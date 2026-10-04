@@ -298,7 +298,7 @@ export class DepthsController {
     const level = sim.areaLevel('depths');
     const mult = this.host.rewardMult();
     const win = rollFloorClear(depth, level, Math.random, this.host.disciplineId?.());
-    const gold = Math.round(win.gold * mult);
+    const gold = Math.round(win.gold * mult) + win.materialGold;
     const xp = Math.round(win.xp * mult);
     this.host.reportFloor({ depth, level, clear: true, chest: false, mult });
     this.host.giveGold(x, z + 1.2, gold);
@@ -324,7 +324,7 @@ export class DepthsController {
     const level = sim.areaLevel('depths');
     const loot = rollChest(run.depth, level, Math.random, this.host.disciplineId?.());
     const mult = this.host.rewardMult();
-    const gold = Math.round(loot.gold * mult);
+    const gold = Math.round(loot.gold * mult) + loot.materialGold;
     const x = f.chest.x;
     const z = f.chest.z;
     this.host.reportFloor({ depth: run.depth, level, clear: false, chest: true, mult });

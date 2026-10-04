@@ -20,7 +20,9 @@
       "Patch notes now show in the launcher, on the website's new Patch notes page, and on the home page.",
       "Fixes: loot icons could draw blank on some graphics cards, tooltips no longer block clicks, and the worn-helm look stays when you change other gear.",
       "Loot no longer flies to you from across the map: walk over an item to pick it up. Anything you leave behind fades after a few minutes (epic and legendary drops after ten).",
-      "Covenant counsel cards now light up the part of the screen they explain, like the alchemy belt and the minimap. Settings → Show tips again walks you through them."
+      "Covenant counsel cards now light up the part of the screen they explain, like the alchemy belt and the minimap. Settings → Show tips again walks you through them.",
+      "Leaner loot: monsters no longer drop ore, bars, logs, bones, seeds or herbs. Gather those instead; you get their value in gold, and gear drops just as often as before.",
+      "New Settings → Loot filter: choose to only see Uncommon, Rare or Epic gear and better. Anything below is turned into gold automatically. Set pieces, legendaries and upgrades for you always drop."
     ]
   }
 ]

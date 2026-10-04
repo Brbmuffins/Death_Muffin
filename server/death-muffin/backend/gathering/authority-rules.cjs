@@ -541,7 +541,6 @@ var AREAS = {
     loot: [
       ...armorLoot("graves"),
       ...necroWeaponLoot("graves"),
-      { item: "material_copper_shard", weight: 30 },
       { item: "ore_copper", weight: 24 },
       { item: "ore_tin", weight: 14 },
       { item: "flask_hp_minor", weight: 12 },
@@ -550,7 +549,9 @@ var AREAS = {
       { item: "helm_copper", weight: 4 },
       { item: "staff_oak", weight: 3 }
     ],
-    itemChance: 0.08,
+    // Copper Shards (weight 30 of 134) left the table on 2026-10-04: the dead drop no profession materials and the shard came from
+    // nowhere else. The chance shrinks by the same share so every other entry, gear included, keeps exactly its old odds.
+    itemChance: 0.08 * (104 / 134),
     breaches: [
       [-18, -29],
       [0, -31],

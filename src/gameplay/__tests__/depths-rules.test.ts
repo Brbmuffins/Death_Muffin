@@ -117,7 +117,10 @@ describe('Depths rewards', () => {
     for (let n = 0; n < N; n++) {
       const depth = 5 * (1 + (n % 12));
       const c = rollChest(depth, depthEnemyLevel(depth, 40), rand);
-      expect(c.drops).toHaveLength(chestDrops(depth) + (c.drops.some((d) => ITEMS[d.item_id]?.type === 'rune') ? 1 : 0));
+      // A roll that lands on a profession material pays its value as gold instead (loot.ts settleCombatDrop).
+      const expected = chestDrops(depth) + (c.drops.some((d) => ITEMS[d.item_id]?.type === 'rune') ? 1 : 0);
+      expect(c.drops.length).toBeLessThanOrEqual(expected);
+      if (c.drops.length < expected) expect(c.materialGold).toBeGreaterThan(0);
       expect(isAffixGear(ITEMS[c.drops[0].item_id].type), `${depth}: first drop ${c.drops[0].item_id}`).toBe(true);
       for (const d of c.drops) {
         expect(ITEMS[d.item_id], d.item_id).toBeDefined();
@@ -146,6 +149,7 @@ describe('Depths rewards', () => {
     let drops = 0;
     for (let n = 0; n < 400; n++) {
       const r = rollFloorClear(12, 55, rand);
+      if (r.materialGold > 0) drops++; // a material roll, paid as gold
       if (r.drop) {
         drops++;
         expect(isGroundItem(r.drop.item_id)).toBe(true);

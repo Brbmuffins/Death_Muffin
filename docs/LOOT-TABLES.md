@@ -6,7 +6,8 @@ Percentages are per event at default settings (Medium difficulty, Wave Speed tie
 
 ## What moves these numbers
 
-- Ordinary kills roll an area item at 0.5x the area's item chance (stacks of materials are x2); elites roll at 6x, capped at 100%.
+- Ordinary kills roll an area item at 0.5x the area's item chance; elites roll at 6x, capped at 100%.
+- The dead drop no profession materials (ore, bars, logs, bones, seeds, herbs): a roll that lands on one pays its sell value in gold, so gear keeps its odds. Gather them instead. Bosses and the Depths can still leave gems.
 - Wave Speed tier raises the item chance of kills and the elite rune chance by +6% per tier (and +20% more from tier 8, the Nightfall milestone).
 - A fortune tonic multiplies the item chance of kills, reagent drops and the elite rune chance: Grave-Luck Tonic (+15%). It does not change boss spoils, Grave Surge offerings or legendary odds.
 - Difficulty changes gold and experience and how often elites appear (Easy +0 points, Medium +0 points, Hard +2 points on every area's elite chance), not what a kill drops.
@@ -16,43 +17,41 @@ Percentages are per event at default settings (Medium difficulty, Wave Speed tie
 ## Hunting grounds and bosses
 
 ### The Hollow Graves
-*Level 1. Area item chance 8%: an ordinary kill rolls 4%, an elite kill 48%, then picks from the table by weight. 3.5% of spawns are elites.*
+*Level 1. Area item chance 6.21%: an ordinary kill rolls 3.1%, an elite kill 37.25%, then picks from the table by weight. 3.5% of spawns are elites.*
+
+*Paid as gold instead of dropping (44.2% of the table): Copper Ore, Tin Ore, Oak Log. Gather these.*
 
 | Item | Rarity | Share of table | Ordinary kill | Elite kill | Grave Surge | Qty (ordinary) |
 |---|---|---|---|---|---|---|
-| Copper Shard | Common | 22.4% | 0.9% (1 in 112) | 10.7% | 14.6% | 2-4 |
-| Copper Ore | Common | 17.9% | 0.72% (1 in 140) | 8.6% | 11.6% | 2-4 |
-| Tin Ore | Common | 10.4% | 0.42% (1 in 239) | 5.01% | 6.79% | 2-4 |
-| Minor Healing Potion | Common | 8.96% | 0.36% (1 in 279) | 4.3% | 5.82% | 2-4 |
-| Oak Log | Common | 5.97% | 0.24% (1 in 419) | 2.87% | 3.88% | 2-4 |
-| Copper Ring | Uncommon | 2.99% | 0.12% (1 in 838) | 1.43% | 1.94% | 1 |
-| Copper Helm | Common | 2.99% | 0.12% (1 in 838) | 1.43% | 1.94% | 1 |
-| Oak Staff | Uncommon | 2.24% | 0.09% (1 in 1,117) | 1.07% | 1.46% | 1 |
-| Gravecall Crown | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Gravecall Grips | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Lamplight Crown | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Lamplight Grips | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Bellwake Crown | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Bellwake Grips | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Ivory Reliquary Crown | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Ivory Reliquary Grips | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Widowveil Crown | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Widowveil Grips | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Carrionbloom Crown | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Carrionbloom Grips | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Blightweave Crown | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Blightweave Grips | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Hollow Oath Crown | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Hollow Oath Grips | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Threshold Crown | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Threshold Grips | Uncommon | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Vertebral Staff | Common | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Gleaner's Scythe | Common | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Knucklebone Wand | Common | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Barrow Sickle | Common | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Pauper's Skull Focus | Common | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Gravedigger's Grimoire | Common | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
-| Pauper's Mourning Bell | Common | 1.04% | 0.042% (1 in 2,393) | 0.5% | 0.68% | 1 |
+| Minor Healing Potion | Common | 11.5% | 0.36% (1 in 279) | 4.3% | 13.4% | 2-4 |
+| Copper Ring | Uncommon | 3.85% | 0.12% (1 in 837) | 1.43% | 4.48% | 1 |
+| Copper Helm | Common | 3.85% | 0.12% (1 in 837) | 1.43% | 4.48% | 1 |
+| Oak Staff | Uncommon | 2.88% | 0.09% (1 in 1,117) | 1.07% | 3.36% | 1 |
+| Gravecall Crown | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Gravecall Grips | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Lamplight Crown | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Lamplight Grips | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Bellwake Crown | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Bellwake Grips | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Ivory Reliquary Crown | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Ivory Reliquary Grips | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Widowveil Crown | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Widowveil Grips | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Carrionbloom Crown | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Carrionbloom Grips | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Blightweave Crown | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Blightweave Grips | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Hollow Oath Crown | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Hollow Oath Grips | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Threshold Crown | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Threshold Grips | Uncommon | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Vertebral Staff | Common | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Gleaner's Scythe | Common | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Knucklebone Wand | Common | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Barrow Sickle | Common | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Pauper's Skull Focus | Common | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Gravedigger's Grimoire | Common | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
+| Pauper's Mourning Bell | Common | 1.35% | 0.042% (1 in 2,393) | 0.5% | 1.57% | 1 |
 
 **Reagents** (separate roll per kill): Grave Dust 1% per kill, 4% per elite (1-2).
 
@@ -70,64 +69,59 @@ Costs 2 soul shards to summon. Spoils: three rolls of the Hollow Graves table, *
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
-| Copper Shard | Common | 53.2% | - |
-| Copper Ore | Common | 44.7% | - |
-| Tin Ore | Common | 28.2% | - |
-| Minor Healing Potion | Common | 24.5% | - |
-| Oak Log | Common | 16.9% | - |
-| Copper Ring | Uncommon | 8.69% | - |
-| Copper Helm | Common | 8.69% | - |
-| Oak Staff | Uncommon | 6.57% | - |
-| Gravecall Crown | Uncommon | 3.1% | - |
-| Gravecall Grips | Uncommon | 3.1% | - |
-| Lamplight Crown | Uncommon | 3.1% | - |
-| Lamplight Grips | Uncommon | 3.1% | - |
-| Bellwake Crown | Uncommon | 3.1% | - |
-| Bellwake Grips | Uncommon | 3.1% | - |
-| Ivory Reliquary Crown | Uncommon | 3.1% | - |
-| Ivory Reliquary Grips | Uncommon | 3.1% | - |
-| Widowveil Crown | Uncommon | 3.1% | - |
-| Widowveil Grips | Uncommon | 3.1% | - |
-| Carrionbloom Crown | Uncommon | 3.1% | - |
-| Carrionbloom Grips | Uncommon | 3.1% | - |
-| Blightweave Crown | Uncommon | 3.1% | - |
-| Blightweave Grips | Uncommon | 3.1% | - |
-| Hollow Oath Crown | Uncommon | 3.1% | - |
-| Hollow Oath Grips | Uncommon | 3.1% | - |
-| Threshold Crown | Uncommon | 3.1% | - |
-| Threshold Grips | Uncommon | 3.1% | - |
-| Vertebral Staff | Common | 3.1% | - |
-| Gleaner's Scythe | Common | 3.1% | - |
-| Knucklebone Wand | Common | 3.1% | - |
-| Barrow Sickle | Common | 3.1% | - |
-| Pauper's Skull Focus | Common | 3.1% | - |
-| Gravedigger's Grimoire | Common | 3.1% | - |
-| Pauper's Mourning Bell | Common | 3.1% | - |
+| Gravecall Crown | Uncommon | 3.98% | - |
+| Gravecall Grips | Uncommon | 3.98% | - |
+| Lamplight Crown | Uncommon | 3.98% | - |
+| Lamplight Grips | Uncommon | 3.98% | - |
+| Bellwake Crown | Uncommon | 3.98% | - |
+| Bellwake Grips | Uncommon | 3.98% | - |
+| Ivory Reliquary Crown | Uncommon | 3.98% | - |
+| Ivory Reliquary Grips | Uncommon | 3.98% | - |
+| Widowveil Crown | Uncommon | 3.98% | - |
+| Widowveil Grips | Uncommon | 3.98% | - |
+| Carrionbloom Crown | Uncommon | 3.98% | - |
+| Carrionbloom Grips | Uncommon | 3.98% | - |
+| Blightweave Crown | Uncommon | 3.98% | - |
+| Blightweave Grips | Uncommon | 3.98% | - |
+| Hollow Oath Crown | Uncommon | 3.98% | - |
+| Hollow Oath Grips | Uncommon | 3.98% | - |
+| Threshold Crown | Uncommon | 3.98% | - |
+| Threshold Grips | Uncommon | 3.98% | - |
+| Vertebral Staff | Common | 3.98% | - |
+| Gleaner's Scythe | Common | 3.98% | - |
+| Knucklebone Wand | Common | 3.98% | - |
+| Barrow Sickle | Common | 3.98% | - |
+| Pauper's Skull Focus | Common | 3.98% | - |
+| Gravedigger's Grimoire | Common | 3.98% | - |
+| Pauper's Mourning Bell | Common | 3.98% | - |
+| Copper Ore | Common | - | - |
+| Tin Ore | Common | - | - |
+| Minor Healing Potion | Common | 30.8% | - |
+| Oak Log | Common | - | - |
+| Copper Ring | Uncommon | 11.1% | - |
+| Copper Helm | Common | 11.1% | - |
+| Oak Staff | Uncommon | 8.41% | - |
 
 Runes from this boss: Rune of Splinters 18.8%, Rune of Marrow-Tap 18.8%, Mass Grave Rune 12.5% (per repeat kill; the first kill always leaves one, at the same relative odds).
 
 ### The Catacomb Warren
 *Level 4, opens after 150 kills in The Hollow Graves. Area item chance 10%: an ordinary kill rolls 5%, an elite kill 60%, then picks from the table by weight. 4.5% of spawns are elites.*
 
+*Paid as gold instead of dropping (70.6% of the table): Old Bones, Tin Ore, Iron Ore, Barrow Bones, Copper Bar, Mourning Moss Seed. Gather these.*
+
 | Item | Rarity | Share of table | Ordinary kill | Elite kill | Grave Surge | Qty (ordinary) |
 |---|---|---|---|---|---|---|
-| Old Bones | Common | 17.2% | 0.86% (1 in 116) | 10.3% | 11.2% | 2-4 |
-| Tin Ore | Common | 15.5% | 0.77% (1 in 129) | 9.3% | 10.1% | 2-4 |
-| Iron Ore | Uncommon | 12.1% | 0.6% (1 in 166) | 7.23% | 7.83% | 2-4 |
-| Barrow Bones | Common | 10.3% | 0.52% (1 in 194) | 6.2% | 6.72% | 2-4 |
-| Minor Healing Potion | Common | 10.3% | 0.52% (1 in 194) | 6.2% | 6.72% | 2-4 |
-| Copper Bar | Common | 8.61% | 0.43% (1 in 232) | 5.17% | 5.6% | 2-4 |
-| Mourning Moss Seed | Common | 6.89% | 0.34% (1 in 290) | 4.13% | 4.48% | 2-4 |
-| Copper Augment | Common | 4.3% | 0.22% (1 in 465) | 2.58% | 2.8% | 1 |
-| Copper Plate | Uncommon | 3.44% | 0.17% (1 in 581) | 2.07% | 2.24% | 1 |
-| Iron Helm | Uncommon | 2.58% | 0.13% (1 in 774) | 1.55% | 1.68% | 1 |
-| Vertebral Staff | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 0.81% | 1 |
-| Gleaner's Scythe | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 0.81% | 1 |
-| Knucklebone Wand | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 0.81% | 1 |
-| Barrow Sickle | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 0.81% | 1 |
-| Pauper's Skull Focus | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 0.81% | 1 |
-| Gravedigger's Grimoire | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 0.81% | 1 |
-| Pauper's Mourning Bell | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 0.81% | 1 |
+| Minor Healing Potion | Common | 10.3% | 0.52% (1 in 194) | 6.2% | 22.8% | 2-4 |
+| Copper Augment | Common | 4.3% | 0.22% (1 in 465) | 2.58% | 9.52% | 1 |
+| Copper Plate | Uncommon | 3.44% | 0.17% (1 in 581) | 2.07% | 7.61% | 1 |
+| Iron Helm | Uncommon | 2.58% | 0.13% (1 in 774) | 1.55% | 5.71% | 1 |
+| Vertebral Staff | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 2.76% | 1 |
+| Gleaner's Scythe | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 2.76% | 1 |
+| Knucklebone Wand | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 2.76% | 1 |
+| Barrow Sickle | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 2.76% | 1 |
+| Pauper's Skull Focus | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 2.76% | 1 |
+| Gravedigger's Grimoire | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 2.76% | 1 |
+| Pauper's Mourning Bell | Common | 1.25% | 0.062% (1 in 1,602) | 0.75% | 2.76% | 1 |
 
 **Reagents** (separate roll per kill): Grave Dust 1.2% per kill, 4.8% per elite (1-2).
 
@@ -148,33 +142,31 @@ Runes from this boss: Rune of Splinters 18.8%, Rune of Marrow-Tap 18.8%, Mass Gr
 ### The Marrow Ossuary
 *Level 5, opens after 300 kills in The Hollow Graves. Area item chance 9%: an ordinary kill rolls 4.5%, an elite kill 54%, then picks from the table by weight. 4.5% of spawns are elites.*
 
+*Paid as gold instead of dropping (53.7% of the table): Iron Ore, Copper Ore, Copper Bar, Bronze Ore. Gather these.*
+
 | Item | Rarity | Share of table | Ordinary kill | Elite kill | Grave Surge | Qty (ordinary) |
 |---|---|---|---|---|---|---|
-| Iron Ore | Uncommon | 20.8% | 0.94% (1 in 107) | 11.2% | 13.5% | 2-4 |
-| Copper Ore | Common | 12.1% | 0.55% (1 in 183) | 6.55% | 7.89% | 2-4 |
-| Copper Bar | Common | 12.1% | 0.55% (1 in 183) | 6.55% | 7.89% | 2-4 |
-| Bronze Ore | Uncommon | 8.67% | 0.39% (1 in 256) | 4.68% | 5.63% | 2-4 |
-| Minor Healing Potion | Common | 8.67% | 0.39% (1 in 256) | 4.68% | 5.63% | 2-4 |
-| Copper Augment | Common | 4.33% | 0.2% (1 in 513) | 2.34% | 2.82% | 1 |
-| Copper Sword | Uncommon | 3.47% | 0.16% (1 in 641) | 1.87% | 2.25% | 1 |
-| Copper Plate | Uncommon | 3.47% | 0.16% (1 in 641) | 1.87% | 2.25% | 1 |
-| Iron Helm | Uncommon | 2.6% | 0.12% (1 in 855) | 1.4% | 1.69% | 1 |
-| Gravecall Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 1.06% | 1 |
-| Lamplight Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 1.06% | 1 |
-| Bellwake Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 1.06% | 1 |
-| Ivory Reliquary Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 1.06% | 1 |
-| Widowveil Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 1.06% | 1 |
-| Carrionbloom Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 1.06% | 1 |
-| Blightweave Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 1.06% | 1 |
-| Hollow Oath Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 1.06% | 1 |
-| Threshold Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 1.06% | 1 |
-| Crypt-Iron Crozier | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 0.85% | 1 |
-| Sexton's Scythe | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 0.85% | 1 |
-| Iron Mourning Wand | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 0.85% | 1 |
-| Plague Sickle | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 0.85% | 1 |
-| Iron-Jawed Skull Focus | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 0.85% | 1 |
-| Iron-Clasped Grimoire | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 0.85% | 1 |
-| Iron Mourning Bell | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 0.85% | 1 |
+| Minor Healing Potion | Common | 8.67% | 0.39% (1 in 256) | 4.68% | 12.2% | 2-4 |
+| Copper Augment | Common | 4.33% | 0.2% (1 in 513) | 2.34% | 6.09% | 1 |
+| Copper Sword | Uncommon | 3.47% | 0.16% (1 in 641) | 1.87% | 4.87% | 1 |
+| Copper Plate | Uncommon | 3.47% | 0.16% (1 in 641) | 1.87% | 4.87% | 1 |
+| Iron Helm | Uncommon | 2.6% | 0.12% (1 in 855) | 1.4% | 3.65% | 1 |
+| Gravecall Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 2.28% | 1 |
+| Lamplight Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 2.28% | 1 |
+| Bellwake Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 2.28% | 1 |
+| Ivory Reliquary Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 2.28% | 1 |
+| Widowveil Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 2.28% | 1 |
+| Carrionbloom Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 2.28% | 1 |
+| Blightweave Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 2.28% | 1 |
+| Hollow Oath Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 2.28% | 1 |
+| Threshold Vestment | Rare | 1.63% | 0.073% (1 in 1,367) | 0.88% | 2.28% | 1 |
+| Crypt-Iron Crozier | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 1.83% | 1 |
+| Sexton's Scythe | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 1.83% | 1 |
+| Iron Mourning Wand | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 1.83% | 1 |
+| Plague Sickle | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 1.83% | 1 |
+| Iron-Jawed Skull Focus | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 1.83% | 1 |
+| Iron-Clasped Grimoire | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 1.83% | 1 |
+| Iron Mourning Bell | Uncommon | 1.3% | 0.059% (1 in 1,709) | 0.7% | 1.83% | 1 |
 
 **Relic runes**: an elite sheds one 6% of the time, a Grave Surge 35% of the time (instead of the item). Pool of 9 (6% per elite in all):
 
@@ -195,15 +187,6 @@ Costs 3 soul shards to summon. Spoils: three rolls of the Marrow Ossuary table, 
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
-| Iron Ore | Uncommon | 50.3% | - |
-| Copper Ore | Common | 32.2% | - |
-| Copper Bar | Common | 32.2% | - |
-| Bronze Ore | Uncommon | 23.8% | - |
-| Minor Healing Potion | Common | 23.8% | - |
-| Copper Augment | Common | 12.4% | - |
-| Copper Sword | Uncommon | 10% | - |
-| Copper Plate | Uncommon | 10% | - |
-| Iron Helm | Uncommon | 7.6% | - |
 | Gravecall Vestment | Rare | 4.8% | 11.1% |
 | Lamplight Vestment | Rare | 4.8% | 11.1% |
 | Bellwake Vestment | Rare | 4.8% | 11.1% |
@@ -220,37 +203,45 @@ Costs 3 soul shards to summon. Spoils: three rolls of the Marrow Ossuary table, 
 | Iron-Jawed Skull Focus | Uncommon | 3.85% | - |
 | Iron-Clasped Grimoire | Uncommon | 3.85% | - |
 | Iron Mourning Bell | Uncommon | 3.85% | - |
+| Iron Ore | Uncommon | - | - |
+| Copper Ore | Common | - | - |
+| Copper Bar | Common | - | - |
+| Bronze Ore | Uncommon | - | - |
+| Minor Healing Potion | Common | 23.8% | - |
+| Copper Augment | Common | 12.4% | - |
+| Copper Sword | Uncommon | 10% | - |
+| Copper Plate | Uncommon | 10% | - |
+| Iron Helm | Uncommon | 7.6% | - |
 
 Runes from this boss: Rune of Impaling 18.8%, Rune of the Volley 12.5%, Ossuary Ring Rune 12.5%, Bone Colossus Rune 6.25% (per repeat kill; the first kill always leaves one, at the same relative odds).
 
 ### The Drowned Nave
 *Level 9, opens after 420 kills in The Marrow Ossuary. Area item chance 10%: an ordinary kill rolls 5%, an elite kill 60%, then picks from the table by weight. 5.5% of spawns are elites.*
 
+*Paid as gold instead of dropping (44.5% of the table): Silver Ore, Iron Ore, Gold Ore. Gather these.*
+
 | Item | Rarity | Share of table | Ordinary kill | Elite kill | Grave Surge | Qty (ordinary) |
 |---|---|---|---|---|---|---|
-| Silver Ore | Uncommon | 18.6% | 0.93% (1 in 108) | 11.1% | 12.1% | 2-4 |
-| Iron Ore | Uncommon | 18.6% | 0.93% (1 in 108) | 11.1% | 12.1% | 2-4 |
-| Major Healing Flask | Uncommon | 9.28% | 0.46% (1 in 216) | 5.57% | 6.03% | 2-4 |
-| Gold Ore | Rare | 7.42% | 0.37% (1 in 269) | 4.45% | 4.83% | 2-4 |
-| Iron Chestplate | Rare | 7.19% | 0.36% (1 in 278) | 4.32% | 4.68% | 1 |
-| Iron Helm | Uncommon | 5.57% | 0.28% (1 in 359) | 3.34% | 3.62% | 1 |
-| Iron Augment | Uncommon | 4.64% | 0.23% (1 in 431) | 2.78% | 3.02% | 1 |
-| Gravecall Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Lamplight Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Bellwake Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Ivory Reliquary Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Widowveil Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Carrionbloom Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Blightweave Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Hollow Oath Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Threshold Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Reliquary Staff | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Tithe-Reaper | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Gilded Censer Wand | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Sexton's Gilded Sickle | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Gilded Skull Focus | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Gilt Reliquary Grimoire | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
-| Gilded Mourning Bell | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 1.17% | 1 |
+| Major Healing Flask | Uncommon | 9.28% | 0.46% (1 in 216) | 5.57% | 10.9% | 2-4 |
+| Iron Chestplate | Rare | 7.19% | 0.36% (1 in 278) | 4.32% | 8.43% | 1 |
+| Iron Helm | Uncommon | 5.57% | 0.28% (1 in 359) | 3.34% | 6.53% | 1 |
+| Iron Augment | Uncommon | 4.64% | 0.23% (1 in 431) | 2.78% | 5.44% | 1 |
+| Gravecall Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Lamplight Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Bellwake Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Ivory Reliquary Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Widowveil Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Carrionbloom Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Blightweave Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Hollow Oath Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Threshold Legguards | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Reliquary Staff | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Tithe-Reaper | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Gilded Censer Wand | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Sexton's Gilded Sickle | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Gilded Skull Focus | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Gilt Reliquary Grimoire | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
+| Gilded Mourning Bell | Rare | 1.8% | 0.09% (1 in 1,112) | 1.08% | 2.11% | 1 |
 
 **Relic runes**: an elite sheds one 7% of the time, a Grave Surge 35% of the time (instead of the item). Pool of 9 (7% per elite in all):
 
@@ -271,13 +262,8 @@ Costs 4 soul shards to summon. Spoils: three rolls of the Drowned Nave table, **
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
-| Silver Ore | Uncommon | 46% | - |
-| Iron Ore | Uncommon | 46% | - |
-| Major Healing Flask | Uncommon | 25.3% | - |
-| Gold Ore | Rare | 20.7% | 17.1% |
 | Iron Chestplate | Rare | 20.1% | 16.6% |
 | Iron Helm | Uncommon | 15.8% | - |
-| Iron Augment | Uncommon | 13.3% | - |
 | Gravecall Legguards | Rare | 5.3% | 4.14% |
 | Lamplight Legguards | Rare | 5.3% | 4.14% |
 | Bellwake Legguards | Rare | 5.3% | 4.14% |
@@ -294,32 +280,34 @@ Costs 4 soul shards to summon. Spoils: three rolls of the Drowned Nave table, **
 | Gilded Skull Focus | Rare | 5.3% | 4.14% |
 | Gilt Reliquary Grimoire | Rare | 5.3% | 4.14% |
 | Gilded Mourning Bell | Rare | 5.3% | 4.14% |
+| Silver Ore | Uncommon | - | - |
+| Iron Ore | Uncommon | - | - |
+| Gold Ore | Rare | - | 17.1% |
+| Major Healing Flask | Uncommon | 25.3% | - |
+| Iron Augment | Uncommon | 13.3% | - |
 
 Runes from this boss: Creeping Rot Rune 21.4%, Contagion Rune 14.3%, Hollow Choir Rune 14.3% (per repeat kill; the first kill always leaves one, at the same relative odds).
 
 ### The Bone Coliseum
 *Level 11, opens after 350 kills in The Marrow Ossuary. Area item chance 17%: an ordinary kill rolls 8.5%, an elite kill 100%, then picks from the table by weight. 13% of spawns are elites.*
 
+*Paid as gold instead of dropping (43.2% of the table): Silver Ore, Gold Ore, Silver Ingot, Grave Garnet, Bone Opal. Gather these.*
+
 | Item | Rarity | Share of table | Ordinary kill | Elite kill | Grave Surge | Qty (ordinary) |
 |---|---|---|---|---|---|---|
-| Silver Ore | Uncommon | 17.3% | 1.47% (1 in 68) | 17.3% | 11.2% | 2-4 |
-| Gold Ore | Rare | 11.5% | 0.98% (1 in 102) | 11.5% | 7.49% | 2-4 |
-| Major Healing Flask | Uncommon | 11.5% | 0.98% (1 in 102) | 11.5% | 7.49% | 2-4 |
-| Iron Chestplate | Rare | 9.6% | 0.82% (1 in 123) | 9.6% | 6.24% | 1 |
-| Iron Warden Kit | Rare | 7.68% | 0.65% (1 in 153) | 7.68% | 4.99% | 1 |
-| Silver Ingot | Uncommon | 5.76% | 0.49% (1 in 204) | 5.76% | 3.74% | 2-4 |
-| Forge-Tempered Flask | Rare | 5.76% | 0.49% (1 in 204) | 5.76% | 3.74% | 2-4 |
-| Grave Garnet | Uncommon | 5.76% | 0.49% (1 in 204) | 5.76% | 3.74% | 2-4 |
-| Iron Augment | Uncommon | 5.76% | 0.49% (1 in 204) | 5.76% | 3.74% | 1 |
-| Iron Helm | Uncommon | 5.76% | 0.49% (1 in 204) | 5.76% | 3.74% | 1 |
-| Bone Opal | Rare | 2.88% | 0.24% (1 in 409) | 2.88% | 1.87% | 2-4 |
-| Crypt-Iron Crozier | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1% | 1 |
-| Sexton's Scythe | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1% | 1 |
-| Iron Mourning Wand | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1% | 1 |
-| Plague Sickle | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1% | 1 |
-| Iron-Jawed Skull Focus | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1% | 1 |
-| Iron-Clasped Grimoire | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1% | 1 |
-| Iron Mourning Bell | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1% | 1 |
+| Major Healing Flask | Uncommon | 11.5% | 0.98% (1 in 102) | 11.5% | 13.2% | 2-4 |
+| Iron Chestplate | Rare | 9.6% | 0.82% (1 in 123) | 9.6% | 11% | 1 |
+| Iron Warden Kit | Rare | 7.68% | 0.65% (1 in 153) | 7.68% | 8.78% | 1 |
+| Forge-Tempered Flask | Rare | 5.76% | 0.49% (1 in 204) | 5.76% | 6.59% | 2-4 |
+| Iron Augment | Uncommon | 5.76% | 0.49% (1 in 204) | 5.76% | 6.59% | 1 |
+| Iron Helm | Uncommon | 5.76% | 0.49% (1 in 204) | 5.76% | 6.59% | 1 |
+| Crypt-Iron Crozier | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1.76% | 1 |
+| Sexton's Scythe | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1.76% | 1 |
+| Iron Mourning Wand | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1.76% | 1 |
+| Plague Sickle | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1.76% | 1 |
+| Iron-Jawed Skull Focus | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1.76% | 1 |
+| Iron-Clasped Grimoire | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1.76% | 1 |
+| Iron Mourning Bell | Uncommon | 1.54% | 0.13% (1 in 766) | 1.54% | 1.76% | 1 |
 
 **Relic runes**: an elite sheds one 8% of the time, a Grave Surge 35% of the time (instead of the item). Pool of 11 (8% per elite in all):
 
@@ -340,49 +328,48 @@ Runes from this boss: Creeping Rot Rune 21.4%, Contagion Rune 14.3%, Hollow Choi
 ### The Bell Sanctum
 *Level 13, opens after 520 kills in The Drowned Nave. Area item chance 12%: an ordinary kill rolls 6%, an elite kill 72%, then picks from the table by weight. 7% of spawns are elites.*
 
+*Paid as gold instead of dropping (25.2% of the table): Gold Ore, Steel Ore, Gold Ingot. Gather these.*
+
 | Item | Rarity | Share of table | Ordinary kill | Elite kill | Grave Surge | Qty (ordinary) |
 |---|---|---|---|---|---|---|
-| Gold Ore | Rare | 11.3% | 0.68% (1 in 147) | 8.16% | 7.36% | 2-4 |
-| Iron Chestplate | Rare | 9.09% | 0.55% (1 in 183) | 6.54% | 5.91% | 1 |
-| Steel Ore | Rare | 8.81% | 0.53% (1 in 189) | 6.34% | 5.73% | 2-4 |
-| Gold-Tempered Helm | Rare | 6.49% | 0.39% (1 in 257) | 4.67% | 4.22% | 1 |
-| Iron Warden Kit | Rare | 6.49% | 0.39% (1 in 257) | 4.67% | 4.22% | 1 |
-| Major Healing Flask | Uncommon | 6.29% | 0.38% (1 in 265) | 4.53% | 4.09% | 2-4 |
-| Gold Ingot | Rare | 5.03% | 0.3% (1 in 331) | 3.62% | 3.27% | 2-4 |
-| Gravecall Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.01% | 1 |
-| Lamplight Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.01% | 1 |
-| Bellwake Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.01% | 1 |
-| Ivory Reliquary Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.01% | 1 |
-| Widowveil Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.01% | 1 |
-| Carrionbloom Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.01% | 1 |
-| Blightweave Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.01% | 1 |
-| Hollow Oath Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.01% | 1 |
-| Threshold Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.01% | 1 |
-| Epitaph Sovereign Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Epitaph Sovereign Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Nightwatch Beacon Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Nightwatch Beacon Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Last Toll Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Last Toll Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Marrow Regent Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Marrow Regent Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Pale Requiem Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Pale Requiem Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Thorn Covenant Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Thorn Covenant Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Virulent Choir Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Virulent Choir Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Oathbreaker Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Oathbreaker Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Umbral Crossing Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Umbral Crossing Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Reliquary Staff | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Tithe-Reaper | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Gilded Censer Wand | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Sexton's Gilded Sickle | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Gilded Skull Focus | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Gilt Reliquary Grimoire | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
-| Gilded Mourning Bell | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 0.84% | 1 |
+| Iron Chestplate | Rare | 9.09% | 0.55% (1 in 183) | 6.54% | 7.89% | 1 |
+| Gold-Tempered Helm | Rare | 6.49% | 0.39% (1 in 257) | 4.67% | 5.64% | 1 |
+| Iron Warden Kit | Rare | 6.49% | 0.39% (1 in 257) | 4.67% | 5.64% | 1 |
+| Major Healing Flask | Uncommon | 6.29% | 0.38% (1 in 265) | 4.53% | 5.47% | 2-4 |
+| Gravecall Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.35% | 1 |
+| Lamplight Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.35% | 1 |
+| Bellwake Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.35% | 1 |
+| Ivory Reliquary Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.35% | 1 |
+| Widowveil Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.35% | 1 |
+| Carrionbloom Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.35% | 1 |
+| Blightweave Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.35% | 1 |
+| Hollow Oath Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.35% | 1 |
+| Threshold Treads | Epic | 1.56% | 0.093% (1 in 1,070) | 1.12% | 1.35% | 1 |
+| Epitaph Sovereign Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Epitaph Sovereign Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Nightwatch Beacon Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Nightwatch Beacon Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Last Toll Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Last Toll Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Marrow Regent Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Marrow Regent Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Pale Requiem Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Pale Requiem Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Thorn Covenant Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Thorn Covenant Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Virulent Choir Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Virulent Choir Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Oathbreaker Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Oathbreaker Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Umbral Crossing Crown | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Umbral Crossing Grips | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Reliquary Staff | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Tithe-Reaper | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Gilded Censer Wand | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Sexton's Gilded Sickle | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Gilded Skull Focus | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Gilt Reliquary Grimoire | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
+| Gilded Mourning Bell | Rare | 1.3% | 0.078% (1 in 1,284) | 0.93% | 1.13% | 1 |
 
 **Relic runes**: an elite sheds one 9% of the time, a Grave Surge 35% of the time (instead of the item). Pool of 11 (9% per elite in all):
 
@@ -405,13 +392,9 @@ Costs 5 soul shards to summon. Spoils: three rolls of the Bell Sanctum table, **
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
-| Gold Ore | Rare | 30.3% | - |
 | Iron Chestplate | Rare | 24.9% | - |
-| Steel Ore | Rare | 24.2% | - |
 | Gold-Tempered Helm | Rare | 18.2% | - |
 | Iron Warden Kit | Rare | 18.2% | - |
-| Major Healing Flask | Uncommon | 17.7% | - |
-| Gold Ingot | Rare | 14.4% | - |
 | Gravecall Treads | Epic | 4.6% | - |
 | Lamplight Treads | Epic | 4.6% | - |
 | Bellwake Treads | Epic | 4.6% | - |
@@ -446,77 +429,77 @@ Costs 5 soul shards to summon. Spoils: three rolls of the Bell Sanctum table, **
 | Gilded Skull Focus | Rare | 3.84% | - |
 | Gilt Reliquary Grimoire | Rare | 3.84% | - |
 | Gilded Mourning Bell | Rare | 3.84% | - |
+| Gold Ore | Rare | - | - |
+| Steel Ore | Rare | - | - |
+| Gold Ingot | Rare | - | - |
+| Major Healing Flask | Uncommon | 17.7% | - |
 
 Runes from this boss: Rune of Splinters 12%, Rune of Marrow-Tap 12%, Rune of Impaling 12%, Creeping Rot Rune 12%, Rune of the Volley 8%, Ossuary Ring Rune 8%, Mass Grave Rune 8%, Contagion Rune 8%, Hollow Choir Rune 8%, Bone Colossus Rune 4%, Requiem Rune 8% (per repeat kill).
 
 ### The Plague Cloister
 *Level 20 (scaled: its dead match the highest-level player, never below 20), opens after 600 kills in The Bell Sanctum. Area item chance 14%: an ordinary kill rolls 7%, an elite kill 84%, then picks from the table by weight. 8% of spawns are elites.*
 
+*Paid as gold instead of dropping (21.9% of the table): Steel Ore, Hell Ore, Moon Ore, Steel Ingot, Grave Garnet, Bone Opal. Gather these.*
+
 | Item | Rarity | Share of table | Ordinary kill | Elite kill | Grave Surge | Qty (ordinary) |
 |---|---|---|---|---|---|---|
-| Steel Ore | Rare | 6.54% | 0.46% (1 in 219) | 5.49% | 4.25% | 2-4 |
-| Hell Ore | Epic | 5.6% | 0.39% (1 in 255) | 4.71% | 3.64% | 2-4 |
-| Gold-Tempered Helm | Rare | 4.96% | 0.35% (1 in 288) | 4.17% | 3.22% | 1 |
-| Iron Chestplate | Rare | 4.96% | 0.35% (1 in 288) | 4.17% | 3.22% | 1 |
-| Major Healing Flask | Uncommon | 4.67% | 0.33% (1 in 306) | 3.92% | 3.03% | 2-4 |
-| Moon Ore | Epic | 2.8% | 0.2% (1 in 510) | 2.35% | 1.82% | 2-4 |
-| Steel Ingot | Rare | 2.8% | 0.2% (1 in 510) | 2.35% | 1.82% | 2-4 |
-| Grave Garnet | Uncommon | 2.8% | 0.2% (1 in 510) | 2.35% | 1.82% | 2-4 |
-| Forge-Tempered Flask | Rare | 2.8% | 0.2% (1 in 510) | 2.35% | 1.82% | 2-4 |
-| Void Resist Flask | Uncommon | 2.33% | 0.16% (1 in 612) | 1.96% | 1.52% | 2-4 |
-| Bone Opal | Rare | 1.4% | 0.098% (1 in 1,020) | 1.18% | 0.91% | 2-4 |
-| Gravecall Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Lamplight Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Bellwake Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Ivory Reliquary Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Widowveil Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Carrionbloom Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Blightweave Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Hollow Oath Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Threshold Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Epitaph Sovereign Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Epitaph Sovereign Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Nightwatch Beacon Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Nightwatch Beacon Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Last Toll Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Last Toll Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Marrow Regent Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Marrow Regent Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Pale Requiem Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Pale Requiem Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Thorn Covenant Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Thorn Covenant Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Virulent Choir Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Virulent Choir Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Oathbreaker Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Oathbreaker Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Umbral Crossing Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Umbral Crossing Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Hellcoal Crozier | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Pyre Reaper | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Emberthorn Wand | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Blightfire Sickle | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Cinder Skull Focus | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Hellbound Grimoire | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Cinder Mourning Bell | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.77% | 1 |
-| Gravecall Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Gravecall Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Lamplight Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Lamplight Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Bellwake Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Bellwake Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Ivory Reliquary Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Ivory Reliquary Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Widowveil Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Widowveil Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Carrionbloom Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Carrionbloom Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Blightweave Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Blightweave Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Hollow Oath Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Hollow Oath Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Threshold Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
-| Threshold Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.64% | 1 |
+| Gold-Tempered Helm | Rare | 4.96% | 0.35% (1 in 288) | 4.17% | 4.13% | 1 |
+| Iron Chestplate | Rare | 4.96% | 0.35% (1 in 288) | 4.17% | 4.13% | 1 |
+| Major Healing Flask | Uncommon | 4.67% | 0.33% (1 in 306) | 3.92% | 3.89% | 2-4 |
+| Forge-Tempered Flask | Rare | 2.8% | 0.2% (1 in 510) | 2.35% | 2.33% | 2-4 |
+| Void Resist Flask | Uncommon | 2.33% | 0.16% (1 in 612) | 1.96% | 1.94% | 2-4 |
+| Gravecall Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Lamplight Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Bellwake Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Ivory Reliquary Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Widowveil Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Carrionbloom Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Blightweave Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Hollow Oath Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Threshold Treads | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Epitaph Sovereign Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Epitaph Sovereign Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Nightwatch Beacon Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Nightwatch Beacon Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Last Toll Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Last Toll Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Marrow Regent Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Marrow Regent Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Pale Requiem Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Pale Requiem Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Thorn Covenant Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Thorn Covenant Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Virulent Choir Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Virulent Choir Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Oathbreaker Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Oathbreaker Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Umbral Crossing Vestment | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Umbral Crossing Legguards | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Hellcoal Crozier | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Pyre Reaper | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Emberthorn Wand | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Blightfire Sickle | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Cinder Skull Focus | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Hellbound Grimoire | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Cinder Mourning Bell | Epic | 1.19% | 0.083% (1 in 1,200) | 1% | 0.99% | 1 |
+| Gravecall Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Gravecall Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Lamplight Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Lamplight Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Bellwake Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Bellwake Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Ivory Reliquary Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Ivory Reliquary Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Widowveil Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Widowveil Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Carrionbloom Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Carrionbloom Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Blightweave Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Blightweave Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Hollow Oath Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Hollow Oath Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Threshold Vestment | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
+| Threshold Legguards | Rare | 0.99% | 0.069% (1 in 1,440) | 0.83% | 0.83% | 1 |
 
 **Reagents** (separate roll per kill): Plague Bile 1% per kill, 4% per elite (1).
 
@@ -543,13 +526,9 @@ Costs 5 soul shards to summon. Spoils: three rolls of the Plague Cloister table,
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
-| Steel Ore | Rare | 18.4% | 7.25% |
-| Hell Ore | Epic | 15.9% | 6.21% |
 | Gold-Tempered Helm | Rare | 14.2% | 5.5% |
 | Iron Chestplate | Rare | 14.2% | 5.5% |
 | Major Healing Flask | Uncommon | 13.4% | - |
-| Moon Ore | Epic | 8.17% | 3.11% |
-| Steel Ingot | Rare | 8.17% | 3.11% |
 | Grave Garnet | Uncommon | 8.17% | - |
 | Forge-Tempered Flask | Rare | 8.17% | 3.11% |
 | Void Resist Flask | Uncommon | 6.84% | - |
@@ -606,94 +585,93 @@ Costs 5 soul shards to summon. Spoils: three rolls of the Plague Cloister table,
 | Hollow Oath Legguards | Rare | 2.95% | 1.1% |
 | Threshold Vestment | Rare | 2.95% | 1.1% |
 | Threshold Legguards | Rare | 2.95% | 1.1% |
+| Steel Ore | Rare | - | 7.25% |
+| Hell Ore | Epic | - | 6.21% |
+| Moon Ore | Epic | - | 3.11% |
+| Steel Ingot | Rare | - | 3.11% |
 
 Runes from this boss: Creeping Rot Rune 16.7%, Contagion Rune 11.1%, Hollow Choir Rune 11.1%, Bone Colossus Rune 5.56%, Requiem Rune 5.56% (per repeat kill; the first kill always leaves one, at the same relative odds).
 
 ### The Cinder Pyre
 *Level 30 (scaled: its dead match the highest-level player, never below 30), opens after 700 kills in The Plague Cloister. Area item chance 15%: an ordinary kill rolls 7.5%, an elite kill 90%, then picks from the table by weight. 9% of spawns are elites.*
 
+*Paid as gold instead of dropping (23.5% of the table): Hell Ore, Steel Ore, Grave Garnet, Hell Ingot, Steel Ingot, Moon Ore, Bone Opal. Gather these.*
+
 | Item | Rarity | Share of table | Ordinary kill | Elite kill | Grave Surge | Qty (ordinary) |
 |---|---|---|---|---|---|---|
-| Hell Ore | Epic | 8.2% | 0.61% (1 in 163) | 7.38% | 5.33% | 2-4 |
-| Steel Ore | Rare | 4.47% | 0.34% (1 in 298) | 4.03% | 2.91% | 2-4 |
-| Gold-Tempered Helm | Rare | 4.08% | 0.31% (1 in 327) | 3.67% | 2.65% | 1 |
-| Iron Chestplate | Rare | 4.08% | 0.31% (1 in 327) | 3.67% | 2.65% | 1 |
-| Major Healing Flask | Uncommon | 3.73% | 0.28% (1 in 358) | 3.35% | 2.42% | 2-4 |
-| Grave Garnet | Uncommon | 2.98% | 0.22% (1 in 447) | 2.68% | 1.94% | 2-4 |
-| Forge-Tempered Flask | Rare | 2.61% | 0.2% (1 in 511) | 2.35% | 1.7% | 2-4 |
-| Hell Ingot | Epic | 2.24% | 0.17% (1 in 596) | 2.01% | 1.45% | 2-4 |
-| Steel Ingot | Rare | 2.24% | 0.17% (1 in 596) | 2.01% | 1.45% | 2-4 |
-| Moon Ore | Epic | 1.86% | 0.14% (1 in 715) | 1.68% | 1.21% | 2-4 |
-| Void Resist Flask | Uncommon | 1.86% | 0.14% (1 in 715) | 1.68% | 1.21% | 2-4 |
-| Bone Opal | Rare | 1.49% | 0.11% (1 in 894) | 1.34% | 0.97% | 2-4 |
-| Gravecall Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Lamplight Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Bellwake Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Ivory Reliquary Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Widowveil Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Carrionbloom Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Blightweave Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Hollow Oath Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Threshold Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Epitaph Sovereign Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Epitaph Sovereign Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Epitaph Sovereign Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Nightwatch Beacon Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Nightwatch Beacon Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Nightwatch Beacon Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Last Toll Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Last Toll Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Last Toll Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Marrow Regent Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Marrow Regent Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Marrow Regent Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Pale Requiem Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Pale Requiem Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Pale Requiem Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Thorn Covenant Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Thorn Covenant Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Thorn Covenant Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Virulent Choir Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Virulent Choir Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Virulent Choir Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Oathbreaker Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Oathbreaker Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Oathbreaker Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Umbral Crossing Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Umbral Crossing Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Umbral Crossing Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Hellcoal Crozier | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Pyre Reaper | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Emberthorn Wand | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Blightfire Sickle | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Cinder Skull Focus | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Hellbound Grimoire | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Cinder Mourning Bell | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.64% | 1 |
-| Gravecall Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Gravecall Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Lamplight Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Lamplight Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Bellwake Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Bellwake Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Ivory Reliquary Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Ivory Reliquary Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Widowveil Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Widowveil Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Carrionbloom Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Carrionbloom Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Blightweave Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Blightweave Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Hollow Oath Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Hollow Oath Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Threshold Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Threshold Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.53% | 1 |
-| Staff of the Pale Moon | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.32% | 1 |
-| Moonreaper | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.32% | 1 |
-| Wand of Quiet Stars | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.32% | 1 |
-| Moonrot Sickle | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.32% | 1 |
-| Moon Skull Focus | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.32% | 1 |
-| Moonlit Grimoire | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.32% | 1 |
-| Moon Mourning Bell | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.32% | 1 |
+| Gold-Tempered Helm | Rare | 4.08% | 0.31% (1 in 327) | 3.67% | 3.46% | 1 |
+| Iron Chestplate | Rare | 4.08% | 0.31% (1 in 327) | 3.67% | 3.46% | 1 |
+| Major Healing Flask | Uncommon | 3.73% | 0.28% (1 in 358) | 3.35% | 3.17% | 2-4 |
+| Forge-Tempered Flask | Rare | 2.61% | 0.2% (1 in 511) | 2.35% | 2.22% | 2-4 |
+| Void Resist Flask | Uncommon | 1.86% | 0.14% (1 in 715) | 1.68% | 1.58% | 2-4 |
+| Gravecall Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Lamplight Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Bellwake Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Ivory Reliquary Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Widowveil Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Carrionbloom Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Blightweave Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Hollow Oath Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Threshold Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Epitaph Sovereign Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Epitaph Sovereign Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Epitaph Sovereign Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Nightwatch Beacon Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Nightwatch Beacon Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Nightwatch Beacon Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Last Toll Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Last Toll Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Last Toll Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Marrow Regent Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Marrow Regent Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Marrow Regent Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Pale Requiem Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Pale Requiem Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Pale Requiem Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Thorn Covenant Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Thorn Covenant Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Thorn Covenant Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Virulent Choir Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Virulent Choir Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Virulent Choir Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Oathbreaker Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Oathbreaker Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Oathbreaker Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Umbral Crossing Vestment | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Umbral Crossing Legguards | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Umbral Crossing Treads | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Hellcoal Crozier | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Pyre Reaper | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Emberthorn Wand | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Blightfire Sickle | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Cinder Skull Focus | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Hellbound Grimoire | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Cinder Mourning Bell | Epic | 0.98% | 0.073% (1 in 1,363) | 0.88% | 0.83% | 1 |
+| Gravecall Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Gravecall Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Lamplight Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Lamplight Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Bellwake Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Bellwake Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Ivory Reliquary Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Ivory Reliquary Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Widowveil Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Widowveil Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Carrionbloom Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Carrionbloom Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Blightweave Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Blightweave Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Hollow Oath Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Hollow Oath Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Threshold Vestment | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Threshold Legguards | Rare | 0.82% | 0.061% (1 in 1,635) | 0.73% | 0.69% | 1 |
+| Staff of the Pale Moon | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.42% | 1 |
+| Moonreaper | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.42% | 1 |
+| Wand of Quiet Stars | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.42% | 1 |
+| Moonrot Sickle | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.42% | 1 |
+| Moon Skull Focus | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.42% | 1 |
+| Moonlit Grimoire | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.42% | 1 |
+| Moon Mourning Bell | Epic | 0.49% | 0.037% (1 in 2,726) | 0.44% | 0.42% | 1 |
 
 **Reagents** (separate roll per kill): Cinder Ash 1.2% per kill, 4.8% per elite (1).
 
@@ -720,16 +698,11 @@ Costs 6 soul shards to summon. Spoils: three rolls of the Cinder Pyre table, **R
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
-| Hell Ore | Epic | 22.6% | 8.97% |
-| Steel Ore | Rare | 12.8% | 4.89% |
 | Gold-Tempered Helm | Rare | 11.7% | 4.46% |
 | Iron Chestplate | Rare | 11.7% | 4.46% |
 | Major Healing Flask | Uncommon | 10.8% | - |
 | Grave Garnet | Uncommon | 8.68% | - |
 | Forge-Tempered Flask | Rare | 7.62% | 2.85% |
-| Hell Ingot | Epic | 6.56% | 2.45% |
-| Steel Ingot | Rare | 6.56% | 2.45% |
-| Moon Ore | Epic | 5.49% | 2.04% |
 | Void Resist Flask | Uncommon | 5.49% | - |
 | Bone Opal | Rare | 4.41% | 1.63% |
 | Gravecall Treads | Epic | 2.91% | 1.07% |
@@ -800,73 +773,71 @@ Costs 6 soul shards to summon. Spoils: three rolls of the Cinder Pyre table, **R
 | Moon Skull Focus | Epic | 1.46% | 0.54% |
 | Moonlit Grimoire | Epic | 1.46% | 0.54% |
 | Moon Mourning Bell | Epic | 1.46% | 0.54% |
+| Hell Ore | Epic | - | 8.97% |
+| Hell Ingot | Epic | - | 2.45% |
+| Steel Ore | Rare | - | 4.89% |
+| Steel Ingot | Rare | - | 2.45% |
+| Moon Ore | Epic | - | 2.04% |
 
 Runes from this boss: Rune of Splinters 6.25%, Rune of Marrow-Tap 6.25%, Rune of Impaling 6.25%, Creeping Rot Rune 6.25%, Rune of the Volley 4.17%, Ossuary Ring Rune 4.17%, Mass Grave Rune 4.17%, Contagion Rune 4.17%, Hollow Choir Rune 4.17%, Bone Colossus Rune 2.08%, Requiem Rune 2.08% (per repeat kill; the first kill always leaves one, at the same relative odds).
 
 ### The Mourning Fen
 *Level 45 (scaled: its dead match the highest-level player, never below 45), opens after 800 kills in The Cinder Pyre. Area item chance 16%: an ordinary kill rolls 8%, an elite kill 96%, then picks from the table by weight. 9% of spawns are elites.*
 
+*Paid as gold instead of dropping (30.2% of the table): Bog Myrtle, Void Sapphire, Bone Opal, Drowned Lotus, Moon Ore, Grave Garnet, Bog Myrtle Seed, Hell Ingot, Drowned Lotus Seed. Gather these.*
+
 | Item | Rarity | Share of table | Ordinary kill | Elite kill | Grave Surge | Qty (ordinary) |
 |---|---|---|---|---|---|---|
-| Bog Myrtle | Rare | 6.72% | 0.54% (1 in 186) | 6.45% | 4.37% | 2-4 |
-| Void Sapphire | Epic | 4.32% | 0.35% (1 in 289) | 4.15% | 2.81% | 2-4 |
-| Gold-Tempered Helm | Rare | 4.32% | 0.35% (1 in 289) | 4.15% | 2.81% | 1 |
-| Bone Opal | Rare | 3.84% | 0.31% (1 in 326) | 3.69% | 2.5% | 2-4 |
-| Drowned Lotus | Epic | 3.84% | 0.31% (1 in 326) | 3.69% | 2.5% | 2-4 |
-| Grand Healing Flask | Rare | 3.84% | 0.31% (1 in 326) | 3.69% | 2.5% | 2-4 |
-| Moon Ore | Epic | 3.36% | 0.27% (1 in 372) | 3.22% | 2.18% | 2-4 |
-| Void Resist Flask | Uncommon | 3.36% | 0.27% (1 in 372) | 3.22% | 2.18% | 2-4 |
-| Grave Garnet | Uncommon | 2.88% | 0.23% (1 in 434) | 2.76% | 1.87% | 2-4 |
-| Forge-Tempered Flask | Rare | 2.88% | 0.23% (1 in 434) | 2.76% | 1.87% | 2-4 |
-| Bog Myrtle Seed | Rare | 1.92% | 0.15% (1 in 651) | 1.84% | 1.25% | 2-4 |
-| Hell Ingot | Epic | 1.92% | 0.15% (1 in 651) | 1.84% | 1.25% | 2-4 |
-| Drowned Lotus Seed | Rare | 1.44% | 0.12% (1 in 868) | 1.38% | 0.94% | 2-4 |
-| Epitaph Sovereign Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Epitaph Sovereign Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Epitaph Sovereign Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Nightwatch Beacon Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Nightwatch Beacon Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Nightwatch Beacon Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Last Toll Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Last Toll Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Last Toll Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Marrow Regent Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Marrow Regent Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Marrow Regent Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Pale Requiem Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Pale Requiem Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Pale Requiem Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Thorn Covenant Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Thorn Covenant Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Thorn Covenant Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Virulent Choir Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Virulent Choir Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Virulent Choir Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Oathbreaker Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Oathbreaker Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Oathbreaker Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Umbral Crossing Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Umbral Crossing Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Umbral Crossing Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 0.84% | 1 |
-| Epitaph Sovereign Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Epitaph Sovereign Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Nightwatch Beacon Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Nightwatch Beacon Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Last Toll Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Last Toll Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Marrow Regent Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Marrow Regent Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Pale Requiem Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Pale Requiem Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Thorn Covenant Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Thorn Covenant Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Virulent Choir Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Virulent Choir Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Oathbreaker Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Oathbreaker Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Umbral Crossing Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Umbral Crossing Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 0.7% | 1 |
-| Moonlight Elixir | Epic | 0.96% | 0.077% (1 in 1,303) | 0.92% | 0.62% | 2-4 |
+| Gold-Tempered Helm | Rare | 4.32% | 0.35% (1 in 289) | 4.15% | 4.02% | 1 |
+| Grand Healing Flask | Rare | 3.84% | 0.31% (1 in 326) | 3.69% | 3.58% | 2-4 |
+| Void Resist Flask | Uncommon | 3.36% | 0.27% (1 in 372) | 3.22% | 3.13% | 2-4 |
+| Forge-Tempered Flask | Rare | 2.88% | 0.23% (1 in 434) | 2.76% | 2.68% | 2-4 |
+| Epitaph Sovereign Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Epitaph Sovereign Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Epitaph Sovereign Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Nightwatch Beacon Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Nightwatch Beacon Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Nightwatch Beacon Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Last Toll Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Last Toll Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Last Toll Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Marrow Regent Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Marrow Regent Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Marrow Regent Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Pale Requiem Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Pale Requiem Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Pale Requiem Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Thorn Covenant Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Thorn Covenant Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Thorn Covenant Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Virulent Choir Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Virulent Choir Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Virulent Choir Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Oathbreaker Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Oathbreaker Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Oathbreaker Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Umbral Crossing Vestment | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Umbral Crossing Legguards | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Umbral Crossing Treads | Epic | 1.3% | 0.1% (1 in 965) | 1.24% | 1.21% | 1 |
+| Epitaph Sovereign Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Epitaph Sovereign Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Nightwatch Beacon Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Nightwatch Beacon Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Last Toll Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Last Toll Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Marrow Regent Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Marrow Regent Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Pale Requiem Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Pale Requiem Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Thorn Covenant Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Thorn Covenant Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Virulent Choir Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Virulent Choir Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Oathbreaker Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Oathbreaker Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Umbral Crossing Crown | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Umbral Crossing Grips | Rare | 1.08% | 0.086% (1 in 1,158) | 1.04% | 1.01% | 1 |
+| Moonlight Elixir | Epic | 0.96% | 0.077% (1 in 1,303) | 0.92% | 0.89% | 2-4 |
 
 **Relic runes**: an elite sheds one 12% of the time, a Grave Surge 35% of the time (instead of the item). Pool of 11 (12% per elite in all):
 
@@ -891,19 +862,13 @@ Costs 7 soul shards to summon. Spoils: three rolls of the Mourning Fen table, **
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
-| Bog Myrtle | Rare | 18.8% | 7.16% |
 | Void Sapphire | Epic | 12.4% | 4.61% |
 | Gold-Tempered Helm | Rare | 12.4% | 4.61% |
 | Bone Opal | Rare | 11.1% | 4.09% |
-| Drowned Lotus | Epic | 11.1% | 4.09% |
 | Grand Healing Flask | Rare | 11.1% | 4.09% |
-| Moon Ore | Epic | 9.74% | 3.58% |
 | Void Resist Flask | Uncommon | 9.74% | - |
 | Grave Garnet | Uncommon | 8.39% | - |
 | Forge-Tempered Flask | Rare | 8.39% | 3.07% |
-| Bog Myrtle Seed | Rare | 5.65% | 2.05% |
-| Hell Ingot | Epic | 5.65% | 2.05% |
-| Drowned Lotus Seed | Rare | 4.26% | 1.54% |
 | Epitaph Sovereign Vestment | Epic | 3.84% | 1.38% |
 | Epitaph Sovereign Legguards | Epic | 3.84% | 1.38% |
 | Epitaph Sovereign Treads | Epic | 3.84% | 1.38% |
@@ -949,6 +914,12 @@ Costs 7 soul shards to summon. Spoils: three rolls of the Mourning Fen table, **
 | Oathbreaker Grips | Rare | 3.2% | 1.15% |
 | Umbral Crossing Crown | Rare | 3.2% | 1.15% |
 | Umbral Crossing Grips | Rare | 3.2% | 1.15% |
+| Bog Myrtle | Rare | - | 7.16% |
+| Drowned Lotus | Epic | - | 4.09% |
+| Bog Myrtle Seed | Rare | - | 2.05% |
+| Drowned Lotus Seed | Rare | - | 1.54% |
+| Moon Ore | Epic | - | 3.58% |
+| Hell Ingot | Epic | - | 2.05% |
 | Moonlight Elixir | Epic | 2.85% | 1.02% |
 
 Runes from this boss: Rune of Splinters 6.25%, Rune of Marrow-Tap 6.25%, Rune of Impaling 6.25%, Creeping Rot Rune 6.25%, Rune of the Volley 4.17%, Ossuary Ring Rune 4.17%, Mass Grave Rune 4.17%, Contagion Rune 4.17%, Hollow Choir Rune 4.17%, Bone Colossus Rune 2.08%, Requiem Rune 2.08% (per repeat kill; the first kill always leaves one, at the same relative odds).

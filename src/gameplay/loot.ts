@@ -29,6 +29,11 @@ export interface LootDrop {
 
 export interface KillReward {
   gold: number;
+  /**
+   * What a profession material the roll landed on would have sold for (settleCombatDrop). Kept apart from `gold` so the kill's
+   * gold still matches the server's per-kill ceiling (killRules.killGoldMax); the client adds it to the same pile.
+   */
+  materialGold: number;
   shards: number;
   items: LootDrop[];
   xp: number;
@@ -47,6 +52,19 @@ export interface KillReward {
  */
 export const KILL_LOOT = { itemChanceMult: 0.5, materialQtyMult: 2, goldEveryKills: 4 } as const;
 
+/**
+ * Profession materials are gathered, not looted (owner, 2026-10-04: "looting feels really bloated"; in the early grounds two
+ * thirds of what the dead dropped was ore, logs, bones and bars). Every one of them comes from a gathering node, the garden or a
+ * smelter. The area tables are unchanged so gear keeps exactly its odds: a combat roll that lands on one of these pays its sell
+ * value in gold instead. Healing flasks, brews, reagents and boss ichor still drop; gems still drop where treasure belongs (bosses,
+ * Depths chests and floors).
+ */
+export const isProfessionMaterial = (id: string) => /^(ore_|ingot_|material_|log_|plank_|bones_|seed_|herb_|gem_)/.test(id);
+export function settleCombatDrop(d: LootDrop, keepGems = false): { drop: LootDrop | null; gold: number } {
+  if (!isProfessionMaterial(d.item_id) || (keepGems && d.item_id.startsWith('gem_'))) return { drop: d, gold: 0 };
+  return { drop: null, gold: Math.max(1, Math.round((ITEMS[d.item_id]?.sell ?? 1) * d.quantity)) };
+}
+
 export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1, reagentRand: () => number = Math.random, runeRand: () => number = Math.random, disciplineId?: string, ownedIds?: () => ReadonlySet<string>): KillReward {
   const d = ENEMIES[def];
   const a = AREAS[area];
@@ -54,10 +72,15 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
   const diff = DIFFICULTIES[difficulty].rewardMult;
   const levelMult = 1 + 0.15 * (level - 1);
   const gold = Math.round(randInt(rand, d.gold[0], d.gold[1]) * levelMult * mods.rewardMult * diff * (elite ? ELITE.goldMult : 1));
+  let materialGold = 0;
   const shards = elite ? (rand() < 0.25 ? 2 : 1) : 0;
   const items: LootDrop[] = [];
   const chance = Math.min(1, a.itemChance * mods.itemChanceMult * itemChanceMult * (elite ? 6 : KILL_LOOT.itemChanceMult));
-  if (a.loot.length && rand() < chance) items.push(rollItem(area, rand, elite ? 1 : KILL_LOOT.materialQtyMult, disciplineId));
+  if (a.loot.length && rand() < chance) {
+    const s = settleCombatDrop(rollItem(area, rand, elite ? 1 : KILL_LOOT.materialQtyMult, disciplineId));
+    if (s.drop) items.push(s.drop);
+    materialGold += s.gold;
+  }
   // Legendary armor (content/legendarySets.ts): a very rare elite drop in the level-scaled areas, weighted to the player's discipline.
   // Rolled only when a discipline is passed, so seeded runs (balance harness, tests) keep their sequence.
   if (disciplineId && elite && a.scaling) {
@@ -72,7 +95,7 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
     if (rune) items.push(rune);
   }
   const xp = Math.round(d.xp * (1 + 0.25 * (level - 1)) * mods.xpMult * diff * (elite ? ELITE.xpMult : 1));
-  return { gold, shards, items, xp };
+  return { gold, materialGold, shards, items, xp };
 }
 
 /**
@@ -103,6 +126,11 @@ export function rollSurgeItem(area: AreaId, rand: () => number = Math.random, di
   if (pool?.length && rand() < SURGE_RUNE_CHANCE) {
     const id = pickRune(pool, rand);
     if (id) return { item_id: id, quantity: 1 };
+  }
+  // An offering is a reward moment: roll until it is something worth carrying, never a profession material.
+  for (let i = 0; i < 40; i++) {
+    const d = rollItem(area, rand, 1, disciplineId);
+    if (!isProfessionMaterial(d.item_id)) return d;
   }
   return rollItem(area, rand, 1, disciplineId);
 }
@@ -136,7 +164,13 @@ export function rollBoss(waveTier: number, rand = Math.random, difficulty: Diffi
   const mods = waveModifiers(waveTier);
   const diff = DIFFICULTIES[difficulty].rewardMult;
   const k = costShards / 5;
-  const items = [rollItem(area, rand, 1, disciplineId), rollItem(area, rand, 1, disciplineId), rollItem(area, rand, 1, disciplineId)];
+  const items: LootDrop[] = [];
+  let materialGold = 0;
+  for (let i = 0; i < 3; i++) {
+    const s = settleCombatDrop(rollItem(area, rand, 1, disciplineId), true);
+    if (s.drop) items.push(s.drop);
+    materialGold += s.gold;
+  }
   // Legendary armor: every area boss has a chance (15%; the Gravedigger King 3%), weighted to the player's discipline ("smart loot").
   if (disciplineId && legendaryBossChance(area) > 0) {
     const id = rollLegendary(disciplineId, legendaryBossChance(area), rand, ownedIds);
@@ -144,7 +178,7 @@ export function rollBoss(waveTier: number, rand = Math.random, difficulty: Diffi
   }
   // Every boss leaves exactly one ichor: the top-tier Alchemy reagent (content/reagents.ts).
   if (boss) items.push({ item_id: bossIchor(boss), quantity: 1 });
-  return { gold: Math.round(320 * k * mods.rewardMult * diff), shards: costShards >= 5 ? 3 : Math.max(1, costShards - 1), items, xp: Math.round(900 * k * diff) };
+  return { gold: Math.round(320 * k * mods.rewardMult * diff), materialGold, shards: costShards >= 5 ? 3 : Math.max(1, costShards - 1), items, xp: Math.round(900 * k * diff) };
 }
 
 /** A boss's first kill per character: a guaranteed rare-or-better item from ids the server knows. */
