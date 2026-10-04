@@ -106,6 +106,8 @@ function createRunner(cfgIn, opts = {}) {
   const readShips = () => { try { return fs.readFileSync(shipsFile, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
   const logShip = (rec) => fs.appendFileSync(shipsFile, JSON.stringify({ ts: new Date(now()).toISOString(), ...rec }) + '\n', { mode: 0o600 });
   const nameOf = (id) => cfg.names[id] || (auth.isOwner(id) ? 'the owner' : `user ${String(id).slice(-4)}`);
+  // Owner alerts about a thread that was deleted go to the channel instead, so a failed deploy is never silent.
+  const pingTarget = (job) => (goneThread(job.threadId) ? { channelId: job.channelId } : { threadId: job.threadId });
   const ownerPing = (target, text) => post(target, { content: `${cfg.ownerIds.map((i) => `<@${i}>`).join(' ')} ${text}`, mentionUsers: cfg.ownerIds });
 
   // ---------- images people attach (written into the worktree for the agent to Read; never redacted, never committed) ----------
@@ -562,8 +564,8 @@ function createRunner(cfgIn, opts = {}) {
       const mm = /^MOBILE: (\S+)\s*(.*)$/m.exec(out); const mkind = mm ? mm[1] : ''; const mwhy = mm ? clip(mm[2], 300) : '';
       audit.log('mobile-result', { job: job.id, kind: mkind || 'none', detail: mwhy });
       say(job, `🚀 Live. Release \`${sha}\` is on master and deployed${mkind === 'live' ? ' (phones and offline updated too)' : ''}. Thanks, ${nameOf(job.creatorId)}.` + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : '') + '\nKeep going here for the next change.');
-      if (mkind === 'pending') ownerPing({ threadId: job.threadId }, `Mobile/offline did NOT update for \`${job.id}\` (PC is live as \`${sha}\`): ${mwhy}`);
-      if (!ownerShips) ownerPing({ threadId: job.threadId }, `${nameOf(approverId)} shipped **${clip(p.title, 100)}** (${p.tier}) as \`${sha}\`. Diff: ${G.compareUrl(cfg, job.branch)} — to undo: say \`rollback\`.`);
+      if (mkind === 'pending') ownerPing(pingTarget(job), `Mobile/offline did NOT update for \`${job.id}\` (PC is live as \`${sha}\`): ${mwhy}`);
+      if (!ownerShips) ownerPing(pingTarget(job), `${nameOf(approverId)} shipped **${clip(p.title, 100)}** (${p.tier}) as \`${sha}\`. Diff: ${G.compareUrl(cfg, job.branch)} — to undo: say \`rollback\`.`);
       // A message that arrived during the ship starts the next round right away (its worktree is cut from the master we just shipped).
       if (job.queue.length && !job.deleteRequested) await beginRound(job);
       else { await G.removeJobArtifacts(cfg, job); job.worktree = null; save(); }
@@ -580,7 +582,7 @@ function createRunner(cfgIn, opts = {}) {
       'deploy-failed': `master was pushed but the deploy script FAILED. The owner should look now.\n${tail}`,
     }[kind] || `unexpected failure (${kind}).\n${tail}`;
     say(job, `❌ Not live: ${why}`);
-    if (kind === 'deploy-failed' || kind === 'crashed') ownerPing({ threadId: job.threadId }, `Deploy problem for \`${job.id}\`: ${kind}. Check ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
+    if (kind === 'deploy-failed' || kind === 'crashed') ownerPing(pingTarget(job), `Deploy problem for \`${job.id}\`: ${kind}. Check ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
     job.status = ['master-moved', 'lock-timeout'].includes(kind) ? 'proposed' : 'idle';
     if (job.status === 'idle') job.proposal = null;
     save(); pump();   // a message that arrived during the ship is handled on this same branch

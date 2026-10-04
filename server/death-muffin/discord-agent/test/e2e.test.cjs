@@ -716,3 +716,19 @@ test('thread deleted: queued outbox ops for it are dropped and nothing new is qu
   const other = new (d.main.constructor)(d.world, 'T-OTHER', { thread: true, parentId: 'SOMEWHERE-ELSE' });
   await d.ad.onThreadDelete(other);   // a thread in another channel is not ours: no event, no effect
 });
+
+test('adapter: a message sent while the runner restarts is retried, not lost', async () => {
+  const { createAdapter } = require('../bot/dm-agent.cjs');
+  let down = 2; const seen = [];
+  const fetchImpl = async (url, init) => {
+    if (url.endsWith('/event') && down-- > 0) throw new Error('connect ECONNREFUSED 127.0.0.1:4321');
+    if (url.endsWith('/event')) seen.push(JSON.parse(init.body));
+    return { ok: true, status: 200, json: async () => (url.endsWith('/config') ? { channelId: 'C' } : { action: 'ignore' }) };
+  };
+  const client = { user: { id: 'BOT' } };
+  const ad = createAdapter({ client, runnerUrl: 'http://x', secret: 's', fetchImpl, channelIdOverride: 'C', log: () => {}, retryDelays: [5, 5, 5] });
+  const msg = { id: 'm1', guild: {}, author: { id: 'U', bot: false, username: 'u' }, content: 'hello', attachments: new Map(), mentions: { users: { has: () => false } },
+    channel: { id: 'T', parentId: 'C', isThread: () => true } };
+  await ad.onMessage(msg);
+  assert.equal(seen.length, 1, 'delivered after two refused attempts'); assert.equal(seen[0].text, 'hello');
+});

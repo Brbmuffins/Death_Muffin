@@ -15,11 +15,18 @@ const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 const IMAGES_PER_MESSAGE = 4;
 const CDN = /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\//;
 
-function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25 }) {
+function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25, retryDelays = [1000, 2000, 4000, 8000, 15000] }) {
   let cachedChannel = channelIdOverride || ''; let cachedAt = 0; let stopped = false;
   const headers = { 'content-type': 'application/json', 'x-dm-secret': secret };
+  // Messages, reactions and thread events are retried for ~30 s when the runner is unreachable (it restarts in a couple of seconds after an
+  // update), so nothing someone types during a restart is lost. Only connection failures retry; an HTTP error answer is final.
   async function call(path, body) {
-    const res = await fetchImpl(`${runnerUrl}${path}`, { method: body === undefined ? 'GET' : 'POST', headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const once = () => fetchImpl(`${runnerUrl}${path}`, { method: body === undefined ? 'GET' : 'POST', headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    let res;
+    for (let i = 0; ; i++) {
+      try { res = await once(); break; }
+      catch (e) { if (!(path === '/event' || path === '/bind') || i >= retryDelays.length) throw e; await new Promise((r) => setTimeout(r, retryDelays[i])); }
+    }
     if (!res.ok) throw new Error(`runner ${path} -> ${res.status}`);
     return res.json();
   }
