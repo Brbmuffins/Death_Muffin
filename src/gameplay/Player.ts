@@ -16,6 +16,9 @@ const OUT_OF_COMBAT_MS = 5000;
  * The local player's body and resources. Movement is client-simulated and
  * reported to the host; health changes arrive as `hurt` events.
  */
+/** How often a moving click target (a chase) may re-plan a full path. */
+const PLAN_MS = 250;
+
 export class Player {
   x = 0;
   z = 0;
@@ -70,6 +73,8 @@ export class Player {
   soulsMax = SOUL_HARVEST.souls;
   /** Queued waypoints for click-to-move (door-aware). */
   private path: { x: number; z: number }[] = [];
+  /** When moveTo last planned a full path (performance.now ms); a moving target re-plans at most every PLAN_MS. */
+  private planAt = -Infinity;
   readonly cooldowns = new Map<string, number>();
 
   constructor(
@@ -112,10 +117,23 @@ export class Player {
     this.area = this.nav.areaAt(this.x, this.z);
   }
 
+  /**
+   * Walk to a clicked point, around props and walls (owner, 2026-10-04: clicking beyond something left the hero stuck against it).
+   * Nav.findPath is the door route plus an A* inside a room only when the straight line is blocked, so an open click costs one line
+   * check. Chasing a moving target calls this every frame: within PLAN_MS of the last plan and a short hop from the old goal, only the
+   * last waypoint moves, and the full plan is redone after PLAN_MS.
+   */
   moveTo(x: number, z: number) {
     const destination = this.destination;
     if (destination && Math.hypot(destination.x - x, destination.z - z) < 0.35) return;
-    this.path = this.nav.route(this.x, this.z, x, z);
+    const now = performance.now();
+    if (destination && now - this.planAt < PLAN_MS && Math.hypot(destination.x - x, destination.z - z) < 2) {
+      destination.x = x;
+      destination.z = z;
+      return;
+    }
+    this.planAt = now;
+    this.path = this.nav.findPath(this.x, this.z, x, z);
   }
 
   /** Follow precomputed waypoints (Nav.findPath — used when walking up to a gathering node). */

@@ -133,6 +133,7 @@ import type { Character, Profession } from '../net/types';
 import { FloatingText } from '../ui/FloatingText';
 import { ForgePanel } from '../ui/ForgePanel';
 import { BossKeyPrompt } from '../ui/BossKeyPrompt';
+import { DepthsStairPrompt } from '../ui/DepthsStairPrompt';
 import { bossKeyClaim, bossKeyRefund, bossKeyStatus, bossKeySummon } from '../net/api';
 import { syncLootRulesWithAccount } from '../net/accountPrefs';
 import { COVENANT_SEAL, canEmpower } from '../gameplay/goldSinkRules';
@@ -350,6 +351,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private gatherReportPanel!: GatherReportPanel;
   private contractsPanel!: ContractsPanel;
   private bossKeyPrompt!: BossKeyPrompt;
+  private depthsStairPrompt!: DepthsStairPrompt;
   /** The boss this hero called Empowered and has not been paid for yet (its prize is claimed from the server on the kill). */
   private empowerPending: BossId | null = null;
   /** The bound summon's id for the Empowered boss being fought (empowered_summons): the kill report names it. */
@@ -1302,6 +1304,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.onboarding.show('reforge', 0, { kind: 'asked' });
       },
     });
+    this.depthsStairPrompt = new DepthsStairPrompt(this.root, (depth) => void this.depths.enter(undefined, depth));
     this.bossKeyPrompt = new BossKeyPrompt(this.root, (id) => this.summonBossNormal(id), (id) => void this.callEmpowered(id));
     this.shelfPanel = new ReagentShelfPanel(this.root, this.character.id, this.inventory);
     this.inventory.onChange((slots) => {
@@ -1473,6 +1476,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.gatherReportPanel?.close();
     this.contractsPanel?.close();
     this.bossKeyPrompt?.close();
+    this.depthsStairPrompt?.close();
     this.vaultPanel?.close();
     this.salvagePanel?.close();
     this.gardenPanel?.close();
@@ -2174,7 +2178,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.bossKeyPrompt?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.atlasPanel?.isOpen || !!this.dialogue?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.bossKeyPrompt?.isOpen || !!this.depthsStairPrompt?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.atlasPanel?.isOpen || !!this.dialogue?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -2608,6 +2612,12 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.emit({ x, y: 1, z, count: 50, color: 0x8f9ed1, spread: 0.6, speed: 1.5, up: 2.5, life: 1, size: 0.35 });
   }
 
+  /** The Warren's stair: one click starts depth 1, or, with a deeper floor on record, opens the two-button choice. */
+  private stairChoice() {
+    const resume = this.depths.stairClicked();
+    if (resume) this.depthsStairPrompt.open(resume);
+  }
+
   private interact(it: Interactable) {
     this.pendingInteract = null;
     this.player.stop();
@@ -2621,7 +2631,7 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'waystone':
         return this.togglePanel('map');
       case 'stair':
-        return void this.depths.enter();
+        return this.stairChoice();
       case 'depths_down':
         return void this.depths.descend();
       case 'depths_up':
@@ -3404,7 +3414,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private bagFullNotice() {
     if (this.bagFullNoticed) return;
     this.bagFullNoticed = true;
-    this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry stays on the ground for a few minutes.', 'err');
+    this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry stays on the ground for a minute.', 'err');
   }
 
   private onGatherReply(r: GatherReply) {

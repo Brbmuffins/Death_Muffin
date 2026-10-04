@@ -201,3 +201,27 @@ describe('Depths: elites and the roster', () => {
     expect(AREAS.depths.instance).toBe(true);
   });
 });
+
+describe('Depths: resuming a run', () => {
+  it('starts on the deepest floor with that depth\'s quota, level and peak, and still descends from there', () => {
+    const { sim, floor } = depthsWorld(3, 40, 17);
+    expect(sim.depths!.depth).toBe(17);
+    expect(sim.depths!.peak).toBe(17);
+    expect(sim.depths!.need).toBe(floorKills(17));
+    expect(floor.depth).toBe(17);
+    expect(sim.areaLevel('depths')).toBe(depthEnemyLevel(17, 40));
+    slayAll(sim);
+    run(sim, 3);
+    for (let i = 0; i < 60 && !sim.depths!.stairOpen; i++) { slayAll(sim); run(sim, 1); }
+    expect(sim.depths!.stairOpen).toBe(true);
+    expect(sim.descendDepths()).not.toBeNull();
+    expect(sim.depths!.depth).toBe(18);
+    expect(sim.depths!.peak).toBe(18);
+  });
+
+  it('a run from depth 1 is unchanged', () => {
+    const { sim } = depthsWorld(3, 40, 1);
+    expect(sim.depths!.depth).toBe(1);
+    expect(sim.areaLevel('depths')).toBe(depthEnemyLevel(1, 40));
+  });
+});

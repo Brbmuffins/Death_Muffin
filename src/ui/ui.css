@@ -1740,3 +1740,8 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .cw-bosskey-go.emp:not(:disabled) { border-color: #ff6a2a; box-shadow: 0 0 10px rgba(255, 106, 42, .35); }
 /* Bag detail dismiss (X): touch only, shown by mobile.css. */
 .cw-bag-detail [data-detailclose] { display: none; position: absolute; top: 0; right: 0; width: 44px; height: 44px; place-items: center; padding: 0; z-index: 2; }
+
+/* The Depths stair's choice (DepthsStairPrompt) */
+.cw-depthsstair { width: 400px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; gap: 8px; }
+.cw-depthsstair-go { text-align: left; }
+.cw-depthsstair-go small { display: block; font-size: 11px; opacity: .8; }

@@ -3,6 +3,7 @@
     "date": "2026-10-04",
     "title": "Smoother, Clearer, Deeper",
     "items": [
+      "Catacomb Depths: once you have been deeper than depth 1, the stair asks whether to descend from depth 1 or resume at your deepest floor. One click either way.",
       "Windows: the title and close button are now a fixed header; only the contents scroll beneath it.",
       "Windows: a Back to top button appears as you scroll down, so the tabs at the top are one click away, and tucks away 2 seconds after you stop.",
       "Grave Laborers: collecting no longer swaps the window for a loot report. What each laborer brought home is listed under the laborers, so you can collect from all of them in one go.",
@@ -27,7 +28,7 @@
       "Levels now count past 255 (up to 999), and logging in somewhere new stops the old window from saving over you.",
       "Patch notes now show in the launcher, on the website's new Patch notes page, and on the home page.",
       "Fixes: loot icons could draw blank on some graphics cards, tooltips no longer block clicks, and the worn-helm look stays when you change other gear.",
-      "Loot no longer flies to you from across the map: walk over an item to pick it up. Anything you leave behind fades after a few minutes (epic and legendary drops after ten).",
+      "Loot no longer flies to you from across the map: walk over an item to pick it up. Anything you leave behind fades after a minute.",
       "Covenant counsel cards now light up the part of the screen they explain, like the alchemy belt and the minimap. Settings → Show tips again walks you through them.",
       "Leaner loot: monsters no longer drop ore, bars, logs, bones, seeds or herbs. Gather those instead; you get their value in gold, and gear drops just as often as before.",
       "New Settings → Loot: for each gear rarity, choose to leave it on the ground, auto-loot it straight into your bag, or sell it for gold as it drops. Set pieces, legendaries and upgrades for you are never sold.",

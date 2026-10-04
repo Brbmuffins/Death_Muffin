@@ -59,6 +59,32 @@ describe('ground loot: walk over it to take it, otherwise it expires', () => {
     for (let i = 0; i < LOOT_ITEM_CAP + 10; i++) v.item(40, 0, { item_id: 'bone_meal', quantity: 1 });
     step(v, 1);
     expect(v.count).toBe(LOOT_ITEM_CAP);
-    expect(v.debugDrops().filter((d) => d.ttl === LOOT_EXPIRE_S.prizeItem)).toHaveLength(1); // the oldest drop, but epic: kept
+    expect(v.debugDrops().filter((d) => d.prize)).toHaveLength(1); // the oldest drop, but epic: kept
+  });
+});
+
+describe('Depths floors leave their loot behind (owner, 2026-10-04)', () => {
+  it('clearWithin removes only the drops inside the rect, without paying them out', () => {
+    const v = view();
+    v.item(5, 5, { item_id: 'bone_meal', quantity: 1 });
+    v.gold(6, 6, 30);
+    v.item(100, 100, { item_id: 'bone_meal', quantity: 1 }); // elsewhere in the world: untouched
+    expect(v.clearWithin({ x0: 0, z0: 0, x1: 20, z1: 20 })).toBe(2);
+    expect(v.count).toBe(1);
+    expect(step(v, 5, () => true, [5, 5])).toMatchObject({ gold: 0, items: 0 });
+  });
+});
+
+describe('loot left on the ground goes away after a minute (owner, 2026-10-04)', () => {
+  it('every rarity, gold and shards expire 60 s after they drop', () => {
+    const v = view();
+    v.item(30, 0, { item_id: 'bone_meal', quantity: 1 });
+    v.item(30, 2, { item_id: 'bone_meal', quantity: 1, instance: { id: 1, ilvl: 5, affixes: [{}, {}, {}, {}] } } as never); // epic
+    v.gold(30, 30, 10);
+    v.shard(-30, 30, 1);
+    step(v, 59);
+    expect(v.count).toBe(4);
+    step(v, 2);
+    expect(v.count).toBe(0);
   });
 });
