@@ -9,10 +9,10 @@ REV="${1:-origin/master}"
 SRC=server/death-muffin/discord-agent
 mkdir -p "$DEST/runner/lib" "$DEST/state"
 chmod 700 "$DEST/state"
-for f in $(git -C "$REPO" ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##") ship.sh rollback.sh check.sh agit PROMPT.md config.example.json death-muffin-discord-agent.service; do
+for f in $(git -C "$REPO" ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##") ship.sh rollback.sh check.sh regen.sh shot.sh shoot.cjs preview.sh agit PROMPT.md config.example.json death-muffin-discord-agent.service; do
   mkdir -p "$DEST/$(dirname "$f")"; git -C "$REPO" show "$REV:$SRC/$f" > "$DEST/$f"
 done
-chmod 755 "$DEST/ship.sh" "$DEST/rollback.sh" "$DEST/check.sh" "$DEST/agit"
+chmod 755 "$DEST/ship.sh" "$DEST/rollback.sh" "$DEST/check.sh" "$DEST/regen.sh" "$DEST/shot.sh" "$DEST/preview.sh" "$DEST/agit"
 if [ ! -f "$DEST/config.json" ]; then
   OWNER="${OWNER_ID:-$(grep -h '^DEVELOPER_USER_ID=' /opt/crossworlds-bot/.env | head -1 | cut -d= -f2 | tr -d '"')}"
   [ -n "$OWNER" ] || { echo "owner id not found; set OWNER_ID" >&2; exit 1; }

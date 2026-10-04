@@ -70,8 +70,8 @@ test('limited approver: casual ok, gameplay refused; Helix ships gameplay; ship 
   assert.equal(sh(w.repo, 'show', 'origin/master:src/gameplay/a.ts').trim(), 'speed=9'.trim());
   const ships = shipsLog(w); assert.equal(ships.length, 1); assert.equal(ships[0].approverId, IDS.HELIX); assert.equal(ships[0].tier, 'gameplay');
   const ping = await until(() => thread.sent.find((s) => (s.payload.allowedMentions && s.payload.allowedMentions.users)), d.ad); assert.ok(ping.payload.content.includes(`<@${IDS.OWNER}>`)); assert.match(ping.payload.content, /compare\/master\.\.\./);
-  assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0, 'worktrees cleaned');
-  assert.equal(sh(w.repo, 'ls-remote', 'origin', 'refs/heads/discord/*'), '', 'remote branch deleted after ship');
+  // Cleanup runs after the "Live" message: wait for it rather than racing it.
+  await until(() => fs.readdirSync(w.cfg.worktreeRoot).length === 0 && sh(w.repo, 'ls-remote', 'origin', 'refs/heads/discord/*') === '', d.ad);
   assert.equal(sh(w.repo, 'branch', '--list', 'discord/*'), '');
   // audit trail
   const audit = fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8');
@@ -278,3 +278,210 @@ test('runner HTTP: loopback + shared secret required', async () => {
   const ok = await fetch(`http://127.0.0.1:${port}/config`, { headers: { 'x-dm-secret': 'topsecret' } }); assert.equal((await ok.json()).channelId, IDS.CHAN);
   srv.close();
 });
+
+const imagesOf = (thread) => thread.sent.filter((s) => s.payload.files && s.payload.files.some((f) => /\.png$/.test(f.name)) && !s.payload.embeds);
+
+test('a PNG written by a turn is posted once; unchanged files are not reposted, changed ones are', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.OWNER, 'SHOT-PNG show me the HUD');
+  const img = await until(() => imagesOf(thread)[0], d.ad);
+  assert.equal(img.payload.files[0].name, 'a.png'); assert.equal(img.payload.files[0].attachment.toString(), 'PNG-one');
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle', d.ad);
+  assert.equal(imagesOf(thread).length, 1);
+  await d.say(thread, IDS.OWNER, 'where is player speed defined?');   // next turn leaves the file untouched
+  await until(() => texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle', d.ad);
+  assert.equal(imagesOf(thread).length, 1, 'unchanged image is not reposted');
+  await d.say(thread, IDS.OWNER, 'SHOT-PNG2 different now');
+  await until(() => imagesOf(thread).some((m) => m.payload.files[0].attachment.toString() === 'PNG-two-bytes'), d.ad);
+});
+
+test('oversized screenshots are skipped with a note, not posted', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.OWNER, 'SHOT-PNG BIG one');
+  await until(() => texts(thread).some((t) => /too big to post/.test(t)), d.ad);
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle', d.ad);
+  assert.ok(!imagesOf(thread).some((m) => m.payload.files[0].name === 'big.png'));
+});
+
+test('a proposal after a shot carries the image as attachment and as the embed image', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS SHOT-PNG make the accent blue and show it');
+  const p = await waitProposal(d, thread);
+  assert.equal(p.payload.embeds[0].image.url, 'attachment://a.png');
+  assert.equal(p.payload.files.length, 1); assert.equal(p.payload.files[0].name, 'a.png'); assert.equal(p.payload.files[0].attachment.toString(), 'PNG-one');
+});
+
+test('a screenshot older than the latest commit is not attached to the next proposal', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS SHOT-PNG make the accent blue and show it');
+  await waitProposal(d, thread);
+  await new Promise((r) => setTimeout(r, 1100)); // commit times have one-second resolution
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS2 actually make it green');
+  const second = await until(() => { const ps = thread.sent.filter((s) => s.payload.embeds && s.reactions.length === 2); return ps.length === 2 && ps[1]; }, d.ad);
+  assert.equal(second.payload.embeds[0].image, undefined, 'no stale preview');
+  assert.equal(second.payload.files, undefined);
+});
+
+test('!shot queues a turn that asks for a screenshot, for any requester; shot files never dirty the tree', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle' && texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  const job = Object.values(w.runner.jobs())[0]; const turns = job.turns;
+  await d.say(thread, IDS.LIMITED, '!shot');
+  await until(() => imagesOf(thread).length === 1, d.ad);
+  await until(() => job.status === 'idle' && !job.running, d.ad);
+  assert.equal(job.turns, turns + 1);
+  assert.ok(fs.existsSync(path.join(job.worktree, '.dm-shots', 'a.png')) && fs.existsSync(path.join(job.worktree, '.dm-shot.json')));
+  assert.equal(sh(job.worktree, 'status', '--porcelain'), '', '.dm-shots/ and .dm-shot.json are excluded from git status');
+  assert.equal(proposalOf(thread), undefined, 'a shot with no change does not propose');
+  const help = await d.say(thread, IDS.HELIX, '!help'); assert.ok(help);
+  await until(() => help.replies.length, d.ad); assert.match(help.replies[0].content, /!shot/);
+});
+
+test('a proposal carries the Try-it preview link, and the preview was built for that job with the proposal title', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p = await waitProposal(d, thread);
+  const id = Object.values(w.runner.jobs())[0].id;
+  assert.equal(field(p, 'Try it'), `https://example.test/death-muffin/preview/${id}/\nOffline sandbox copy of this change: nothing saves to your real character.`);
+  assert.equal(fs.readFileSync(path.join(w.cfg.previewRoot, id, 'index.html'), 'utf8').trim(), 'HUD accent blue|/death-muffin/preview');
+});
+
+test('a failed preview build still posts the proposal, with a short reason; !preview retries', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  fs.writeFileSync(path.join(w.T, 'FAIL'), 'x');
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p = await waitProposal(d, thread);
+  assert.match(field(p, 'Preview build failed'), /vite exploded/);
+  assert.deepEqual(p.reactions, ['✅', '❌']);
+  const job = Object.values(w.runner.jobs())[0];
+  await until(() => job.status === 'proposed' && !job.running, d.ad);
+  fs.unlinkSync(path.join(w.T, 'FAIL'));
+  await d.say(thread, IDS.HELIX, '!preview');
+  const link = await until(() => texts(thread).find((t) => /Playable preview: https:\/\/example\.test/.test(t)), d.ad);
+  assert.ok(link.includes(`/${job.id}/`)); assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, job.id, 'index.html')));
+  assert.equal(job.status, 'proposed', 'preview does not disturb the proposal');
+});
+
+test('!preview with no proposal says so; preview dir is removed when the job is discarded', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  await until(() => texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  const m = await d.say(thread, IDS.HELIX, '!preview'); await until(() => m.replies.length, d.ad); assert.match(m.replies[0].content, /no open proposal/);
+  const { thread: t2 } = await request(d, IDS.HELIX, 'MAKE-CSS blue');
+  const p = await waitProposal(d, t2);
+  const job = Object.values(w.runner.jobs()).find((j) => j.threadId === t2.id);
+  assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, job.id)));
+  await d.react(p, IDS.HELIX, '❌');
+  await until(() => texts(t2).some((t) => /Discarded/.test(t)), d.ad);
+  assert.ok(!fs.existsSync(path.join(w.cfg.previewRoot, job.id)), 'preview removed on discard');
+});
+
+test('preview dir is removed when the job ships', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS blue');
+  const p = await waitProposal(d, thread);
+  const id = Object.values(w.runner.jobs())[0].id;
+  assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, id)));
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)) && !fs.existsSync(path.join(w.cfg.previewRoot, id)), d.ad);
+});
+
+test('preview.sh refuses bad job ids and a missing preview root, without building', () => {
+  const { spawnSync } = require('child_process');
+  const script = path.join(__dirname, '..', 'preview.sh');
+  const bad = spawnSync('bash', [script, '../etc'], { encoding: 'utf8', env: { ...process.env, DM_PREVIEW_ROOT: os_tmp() } }); assert.equal(bad.status, 2); assert.match(bad.stdout, /bad job id/);
+  const none = spawnSync('bash', [script, 'abc123'], { encoding: 'utf8', env: { ...process.env, DM_PREVIEW_ROOT: '/nonexistent/preview' } }); assert.equal(none.status, 2); assert.match(none.stdout, /missing/);
+});
+function os_tmp() { return fs.mkdtempSync(path.join(require('os').tmpdir(), 'dm-prev-')); }
+
+// ---------- generated files + phones ----------
+const gate = (w, wt, base) => { try { return { code: 0, out: require('child_process').execFileSync('node', [path.join(w.tools, 'runner/ship-gate.cjs'), w.cfg.__file, wt, base, 'sensitive'], { stdio: 'pipe' }).toString() }; } catch (e) { return { code: e.status, out: String(e.stdout) }; } };
+const rules = 'server/vps-handoff/necro-progress/necro-rules.cjs';
+
+test('generated files that match a fresh regeneration are derived: a gameplay change with its regenerated bundle stays gameplay tier and can be shipped by Helix', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-DATA faster');
+  const p = await waitProposal(d, thread);
+  assert.match(field(p, 'Review tier'), /^Gameplay/); assert.ok(!/touches/.test(field(p, 'Review tier')));
+  assert.match(field(p, 'Files'), /necro-rules\.cjs/);
+  assert.deepEqual(await d.react(p, IDS.LIMITED, '✅'), [IDS.LIMITED], 'limited approver still cannot ship a gameplay-tier change');
+  assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  assert.equal(sh(w.repo, 'show', `origin/master:${rules}`).trim(), 'SPEED=9');
+  assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0, 'scratch worktrees cleaned up');
+});
+
+test('a hand-edited generated file is rejected by the runner (not the model), the agent is told to regen, and the fixed commit is proposed', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-DATA-HAND faster');
+  const p = await waitProposal(d, thread);
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /not what the generators produce/);
+  assert.match(field(p, 'Review tier'), /^Gameplay/);
+  const br = sh(w.repo, 'branch', '-r', '--list', 'origin/discord/*').trim();
+  assert.equal(sh(w.repo, 'show', `${br}:${rules}`).trim(), 'SPEED=9');
+});
+
+test('a deploy script rewritten by hand is still forbidden (only a verified regeneration is exempt)', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-DATA-FORBIDDEN faster');
+  await until(() => texts(thread).some((t) => /could not get this into a shippable state/.test(t)), d.ad);
+  assert.equal(proposalOf(thread), undefined);
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /deploy-realtime\.sh/);
+});
+
+test('ship-gate re-derives generated files on the merged tree: stale/tampered rejected, exact accepted', () => {
+  const w = makeWorld(); const base = sh(w.repo, 'rev-parse', 'HEAD'); const wt = path.join(w.T, 'gate-wt');
+  sh(w.repo, 'worktree', 'add', '-q', '--detach', wt, base);
+  const put = (f, c) => { fs.mkdirSync(path.dirname(path.join(wt, f)), { recursive: true }); fs.writeFileSync(path.join(wt, f), c); };
+  put('src/gameplay/a.ts', 'speed=9\n'); put(rules, 'SPEED=9\n'); sh(wt, 'add', '--', 'src/gameplay/a.ts', rules); sh(wt, 'commit', '-q', '-m', 'ok');
+  let r = gate(w, wt, base); assert.equal(r.code, 0, r.out); assert.match(r.out, /GATE: ok \(gameplay\)/);
+  put(rules, 'SPEED=9 // tampered\n'); sh(wt, 'add', '--', rules); sh(wt, 'commit', '-q', '-m', 'tamper');
+  r = gate(w, wt, base); assert.equal(r.code, 13); assert.match(r.out, /do not match a fresh regeneration: server\/vps-handoff/);
+  sh(w.repo, 'worktree', 'remove', '--force', wt);
+});
+
+const mobileDeploys = (w) => { try { return fs.readFileSync(path.join(w.deploy, 'mobile-deploys.log'), 'utf8').trim().split('\n').filter(Boolean); } catch { return []; } };
+const remoteRef = (w, ref) => sh(w.repo, 'ls-remote', 'origin', ref).split(/\s/)[0];
+async function shipGameplay(w, d) {
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-GAMEPLAY faster');
+  const p = await waitProposal(d, thread);
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  return thread;
+}
+
+test('after the PC deploy, master is merged into mobile, tested, pushed and published; the message says phones and offline updated too', async () => {
+  const w = makeWorld({ mobile: 'clean' }); const d = makeDiscord(w.runner);
+  const oldMobile = remoteRef(w, 'refs/heads/mobile');
+  const thread = await shipGameplay(w, d);
+  assert.match(texts(thread).find((t) => /Live\. Release/.test(t)), /phones and offline updated too/);
+  const m = remoteRef(w, 'refs/heads/mobile'); assert.notEqual(m, oldMobile);
+  const master = remoteMaster(w);
+  assert.equal(sh(w.repo, 'rev-list', '--parents', '-n', '1', m).split(' ').slice(1).join(' '), `${oldMobile} ${master}`, 'no-ff merge of master into old mobile');
+  const msg = sh(w.repo, 'log', '-1', '--format=%B', m).trim(); assert.match(msg, /^Merge master [0-9a-f]{12} into mobile$/); assert.ok(!/:/.test(msg));
+  assert.equal(sh(w.repo, 'show', 'origin/mobile:src/gameplay/a.ts').trim(), 'speed=9'); assert.equal(sh(w.repo, 'show', 'origin/mobile:mobile-only.txt').trim(), 'touch');
+  assert.deepEqual(mobileDeploys(w), [m], 'deploy-mobile ran once with the merged revision');
+  assert.equal(shipsLog(w).length, 1);
+  assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0, 'mobile scratch worktree cleaned up');
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"event":"mobile-result"[^\n]*"kind":"live"/);
+});
+
+for (const [kind, why] of [['conflict', /merge conflict in src\/gameplay\/a\.ts/], ['failtests', /tests failed on mobile/]]) {
+  test(`mobile ${kind}: PC stays live, mobile is untouched, owner is pinged with the reason`, async () => {
+    const w = makeWorld({ mobile: kind }); const d = makeDiscord(w.runner);
+    const oldMobile = remoteRef(w, 'refs/heads/mobile'); const before = remoteMaster(w);
+    const thread = await shipGameplay(w, d);
+    assert.notEqual(remoteMaster(w), before, 'master was shipped');
+    assert.equal(shipsLog(w)[0].type, 'live');
+    const live = texts(thread).find((t) => /Live\. Release/.test(t));
+    assert.ok(!/updated too/.test(live)); assert.match(live, /Phones and offline will follow/);
+    const ping = await until(() => thread.sent.find((s) => s.payload.content && /Mobile\/offline did NOT update/.test(s.payload.content)), d.ad);
+    assert.ok(ping.payload.content.includes(`<@${IDS.OWNER}>`)); assert.match(ping.payload.content, why);
+    assert.equal(remoteRef(w, 'refs/heads/mobile'), oldMobile, 'mobile branch untouched');
+    assert.deepEqual(mobileDeploys(w), []);
+    assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0);
+    assert.equal(sh(w.repo, 'status', '--porcelain'), '');
+  });
+}

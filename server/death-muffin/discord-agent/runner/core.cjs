@@ -9,11 +9,14 @@ const { redactText, redactDeep } = require('./lib/redact.cjs');
 const G = require('./lib/gitops.cjs');
 const { runTurn, buildPrompt, readResult } = require('./lib/agent.cjs');
 const { parseDiff, classifyDiff, tierLabel, approversFor } = require('./lib/tiers.cjs');
+const { verifyGenerated, describeMismatch } = require('./lib/generated.cjs');
 const { planReply } = require('./lib/discordText.cjs');
 
 const TIER_COLOR = { casual: 0x16a34a, gameplay: 0xb45309, sensitive: 0xdc2626 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clip = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…' : String(s));
+const safeName = (n) => String(n || 'file').replace(/[^\w.-]/g, '_');
+const SHOT_MAX_BYTES = 8 * 1024 * 1024, SHOTS_PER_POST = 4;
 const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a.length - n} more` : a.join('\n'));
 
 function createRunner(cfgIn, opts = {}) {
@@ -29,7 +32,7 @@ function createRunner(cfgIn, opts = {}) {
 
   let jobs = {};       // threadId -> job
   try { jobs = JSON.parse(fs.readFileSync(jobsFile, 'utf8')); } catch { /* fresh */ }
-  for (const j of Object.values(jobs)) { if (j.status === 'running' || j.status === 'shipping') { j.status = 'idle'; } j.running = false; }
+  for (const j of Object.values(jobs)) { if (j.status === 'running' || j.status === 'shipping') { j.status = 'idle'; } j.running = false; j.previewBusy = false; }
   const save = () => { const t = jobsFile + '.tmp'; fs.writeFileSync(t, JSON.stringify(jobs, null, 1), { mode: 0o600 }); fs.renameSync(t, jobsFile); };
   const pendingNew = new Map();   // eventId -> event awaiting a thread id from the bot
   let shipBusy = false;
@@ -40,6 +43,7 @@ function createRunner(cfgIn, opts = {}) {
     const p = { ...payload };
     if (p.content) p.content = redactText(p.content);
     if (p.file) p.file = { name: p.file.name, text: redactText(p.file.text) };
+    if (p.files) p.files = p.files.map((f) => ({ name: safeName(f.name), b64: f.b64 }));   // binary images: never run through redactText
     if (p.embed) p.embed = redactDeep(p.embed);
     const op = { id: crypto.randomBytes(6).toString('hex'), target: typeof target === 'string' ? { threadId: target } : target, ...p, sentAt: 0, createdAt: now() };
     outbox.push(op); if (cb) callbacks.set(op.id, cb);
@@ -152,9 +156,24 @@ function createRunner(cfgIn, opts = {}) {
       case 'discard':
         if (!auth.canDiscard(msg.userId, job, job.proposal && job.proposal.tier)) return { action: 'reply', text: 'Only the person who started this, or the owner, can discard.' };
         discard(job, msg.userId).catch((e) => say(job, `Discard failed: ${e.message}`)); return { action: 'accepted' };
+      case 'shot':
+        if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
+        job.queue.push({ ...msg, text: 'Show me what your current change looks like: write a scenario to .dm-shot.json and run shot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' });
+        job.lastActive = now(); save(); pump(); return { action: 'accepted' };
+      case 'preview': {
+        if (!job.proposal || job.status !== 'proposed') return { action: 'reply', text: 'There is no open proposal to preview yet.' };
+        if (job.running || job.previewBusy) return { action: 'reply', text: 'Busy right now; try again in a minute.' };
+        job.previewBusy = true;
+        say(job, 'Rebuilding the playable preview (about a minute)…');
+        buildPreview(job, job.proposal.title).then((pv) => {
+          if (['discarded', 'shipped', 'shipping'].includes(job.status)) { G.removePreview(cfg, job); return; }
+          say(job, pv.ok ? `Playable preview: ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.` : `Preview build failed: ${pv.why}`);
+        }).finally(() => { job.previewBusy = false; });
+        return { action: 'accepted' };
+      }
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: 'Commands: !status, !model <name> (owner), !cancel, !discard, !sync, rollback (approvers).' };
+      default: return { action: 'reply', text: 'Commands: !status, !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (rebuild the playable preview), !sync, rollback (approvers).' };
     }
   }
 
@@ -245,6 +264,50 @@ function createRunner(cfgIn, opts = {}) {
     }, 8000); ticker.unref();
     try { await runJob(job, real, extra); } finally { clearInterval(ticker); }
   }
+  // ---------- screenshots (<worktree>/.dm-shots/*.png, written by the agent via shot.sh) ----------
+  function listShots(job) {
+    const dir = path.join(job.worktree || '', '.dm-shots'); let out = [];
+    try {
+      out = fs.readdirSync(dir).filter((n) => /\.png$/i.test(n)).map((n) => { const st = fs.statSync(path.join(dir, n)); return { name: n, file: path.join(dir, n), size: st.size, mtime: st.mtimeMs }; });
+    } catch { return []; }
+    return out.sort((a, b) => b.mtime - a.mtime || (a.name < b.name ? -1 : 1));
+  }
+  const readShot = (s) => { try { return { name: safeName(s.name), b64: fs.readFileSync(s.file).toString('base64') }; } catch { return null; } };
+  // New or changed images since the last post go to the thread (once each).
+  function postNewShots(job) {
+    if (!job.worktree) return;
+    job.shotsSeen = job.shotsSeen || {};
+    const fresh = listShots(job).filter((s) => job.shotsSeen[s.name] !== `${s.mtime}:${s.size}`);
+    if (!fresh.length) return;
+    fresh.slice(0, SHOTS_PER_POST).reverse().forEach((s) => {
+      job.shotsSeen[s.name] = `${s.mtime}:${s.size}`;
+      if (s.size > SHOT_MAX_BYTES) { say(job, `Screenshot ${s.name} is too big to post (${Math.round(s.size / 1048576)} MB).`); return; }
+      const f = readShot(s); if (f) post({ threadId: job.threadId }, { content: `📸 ${s.name.replace(/\.png$/i, '')}`, files: [f] });
+    });
+    for (const s of fresh.slice(SHOTS_PER_POST)) job.shotsSeen[s.name] = `${s.mtime}:${s.size}`;   // beyond the cap: not posted, not retried
+    save();
+  }
+  // Only images taken after the branch's last commit show the change being approved; an older one could show a previous version.
+  // ---------- playable preview (preview.sh, or cfg.previewCmd in tests) ----------
+  const previewLink = (job) => `${String(cfg.previewUrl).replace(/\/?$/, '/')}${job.id}/`;
+  // Never throws, never blocks approval: resolves { ok, url } or { ok: false, why }.
+  async function buildPreview(job, title) {
+    if (!cfg.previewRoot && !cfg.previewCmd) return { ok: false, why: 'previews are switched off' };
+    let basePath = '/death-muffin/preview'; try { basePath = new URL(cfg.previewUrl).pathname.replace(/\/$/, ''); } catch { /* default */ }
+    const env = { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', DM_PREVIEW_ROOT: cfg.previewRoot || '', DM_PREVIEW_BASE: basePath, DM_PREVIEW_TITLE: String(title || '').slice(0, 120) };
+    try {
+      const r = cfg.previewCmd
+        ? await G.run('bash', ['-c', cfg.previewCmd, 'preview', job.id], { cwd: job.worktree, env, timeoutMs: 15 * 60000 })
+        : await G.run(path.join(cfg.toolsDir, 'preview.sh'), [job.id], { cwd: job.worktree, env, timeoutMs: 15 * 60000 });
+      if (r.code === 0 && !r.timedOut) { audit.log('preview', { job: job.id, ok: true }); return { ok: true, url: previewLink(job) }; }
+      const why = r.timedOut ? 'the build took too long' : redactText((r.out + r.err).trim().split('\n').slice(-3).join(' ') || `exit ${r.code}`);
+      audit.log('preview', { job: job.id, ok: false, why: clip(why, 300) }); return { ok: false, why: clip(why, 300) };
+    } catch (e) { return { ok: false, why: clip(e.message, 300) }; }
+  }
+  function proposalShots(job, sinceMs) {
+    return listShots(job).filter((s) => s.size <= SHOT_MAX_BYTES && s.mtime >= sinceMs).slice(0, SHOTS_PER_POST).map(readShot).filter(Boolean);
+  }
+
   async function runJob(job, real, extra) {
     let r = null;
     if (real.length || extra) r = await agentTurn(job, buildPrompt(real, extra));
@@ -255,6 +318,7 @@ function createRunner(cfgIn, opts = {}) {
       job.status = 'idle'; return;
     }
     if (r && r.text.trim()) sayLong(job, r.text.trim());
+    postNewShots(job);
     await afterTurn(job, readResult(job.worktree));
   }
 
@@ -270,7 +334,10 @@ function createRunner(cfgIn, opts = {}) {
     const diff = await G.diffText(wt, job.base);
     if (!diff.trim()) return { ok: true, empty: true };
     const files = parseDiff(diff);
-    const cls = classifyDiff(files, cfg);
+    // Generated files are tier-neutral only when a sandboxed regeneration reproduces them exactly (deterministic, not the model's say-so).
+    const gen = await verifyGenerated({ toolsDir: cfg.toolsDir, repo: cfg.repo, scratchRoot: cfg.worktreeRoot, base: job.base, head: await G.head(wt), changedPaths: files.map((f) => f.path) });
+    if (gen.mismatched.length) return { ok: false, fixable: true, why: describeMismatch(gen) };
+    const cls = classifyDiff(files, cfg, gen.derived);
     if (cls.forbidden.length) return { ok: false, fixable: true, why: `These paths may not be changed by this agent: ${cls.forbidden.join(', ')}. Undo those changes (restore them to the original content) and commit.` };
     const secrets = G.scanDiffForSecrets(diff);
     if (secrets.length) return { ok: false, fixable: true, why: `The secret scan flagged ${secrets.map((s) => s.file).join(', ')}. Remove anything secret-like from the change.` };
@@ -297,6 +364,7 @@ function createRunner(cfgIn, opts = {}) {
       const r = await agentTurn(job, `The automatic review failed. Fix this, make sure check.sh passes, and commit:\n${v.why}`);
       if (job.cancelRequested) { job.cancelRequested = false; say(job, 'Cancelled.'); job.status = 'idle'; return; }
       if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return; }
+      postNewShots(job);
       result = readResult(job.worktree) || result;
     }
   }
@@ -325,11 +393,17 @@ function createRunner(cfgIn, opts = {}) {
       ],
       footer: { text: `✅ ship (${owner.join(' / ')}) · ❌ discard · reply to keep iterating · ${job.id}` },
     };
+    const pv = await buildPreview(job, title);
+    if (job.status === 'discarded' || job.cancelRequested) { G.removePreview(cfg, job); return; }
+    embed.fields.splice(embed.fields.length - 1, 0, pv.ok ? { name: 'Try it (playable preview)', value: `${pv.url}\nOffline sandbox copy of this change: nothing saves to your real character.`, inline: false } : { name: 'Preview build failed', value: `${pv.why}\nThe proposal is still valid; review the diff, or say !preview to retry.`, inline: false });
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
     job.proposal = { messageId: null, head, base: job.base, tier, title, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
     job.status = 'proposed'; save();
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
-    post({ threadId: job.threadId }, { embed, reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
+    const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
+    const shots = proposalShots(job, committedAt);
+    if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
+    post({ threadId: job.threadId }, { embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
   }
 
   // ---------- ship / rollback ----------
@@ -341,7 +415,8 @@ function createRunner(cfgIn, opts = {}) {
     const p = job.proposal; const ownerShips = auth.isOwner(approverId);
     say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto master, re-testing, deploying. This takes a few minutes.`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
-      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}) };
+      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}),
+      MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 75 * 60000 }); }
     finally { shipBusy = false; }
@@ -352,7 +427,11 @@ function createRunner(cfgIn, opts = {}) {
       const [sha, rb] = detail.split(' ');
       logShip({ type: 'live', jobId: job.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: p.tier, title: p.title, rollback: rb && rb !== 'none' ? rb : null });
       job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; save();
-      say(job, `🚀 Live. Release \`${sha}\` is on master and deployed. Thanks, ${nameOf(job.creatorId)}.`);
+      // Phones + offline edition are best effort (ship.sh prints one MOBILE: line); the PC release is live either way.
+      const mm = /^MOBILE: (\S+)\s*(.*)$/m.exec(out); const mkind = mm ? mm[1] : ''; const mwhy = mm ? clip(mm[2], 300) : '';
+      audit.log('mobile-result', { job: job.id, kind: mkind || 'none', detail: mwhy });
+      say(job, `🚀 Live. Release \`${sha}\` is on master and deployed${mkind === 'live' ? ' (phones and offline updated too)' : ''}. Thanks, ${nameOf(job.creatorId)}.` + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : ''));
+      if (mkind === 'pending') ownerPing({ threadId: job.threadId }, `Mobile/offline did NOT update for \`${job.id}\` (PC is live as \`${sha}\`): ${mwhy}`);
       if (!ownerShips) ownerPing({ threadId: job.threadId }, `${nameOf(approverId)} shipped **${clip(p.title, 100)}** (${p.tier}) as \`${sha}\`. Diff: ${G.compareUrl(cfg, job.branch)} — to undo: say \`rollback\`.`);
       await G.removeJobArtifacts(cfg, job);
       return;

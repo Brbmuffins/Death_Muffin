@@ -28,7 +28,7 @@ async function createWorktree(cfg, job) {
   // keep the agent's result file and the symlinks out of `git status`
   const common = await trim(git(wt, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
   const ex = path.join(common, 'info', 'exclude');
-  try { fs.mkdirSync(path.dirname(ex), { recursive: true }); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; if (!cur.includes('.dm-result.json')) fs.appendFileSync(ex, '\n.dm-result.json\n'); } catch { /* best effort */ }
+  try { fs.mkdirSync(path.dirname(ex), { recursive: true }); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; const add = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-preview/'].filter((p) => !cur.split('\n').includes(p)); if (add.length) fs.appendFileSync(ex, '\n' + add.join('\n') + '\n'); } catch { /* best effort */ }
   const base = await trim(git(wt, ['rev-parse', 'HEAD']));
   return { worktree: wt, base };
 }
@@ -37,6 +37,12 @@ async function removeJobArtifacts(cfg, job, { remote = true } = {}) {
   await git(cfg.repo, ['branch', '-q', '-D', job.branch], { allowFail: true });
   if (remote) await git(cfg.repo, ['push', '-q', 'origin', '--delete', job.branch], { allowFail: true });
   await git(cfg.repo, ['worktree', 'prune'], { allowFail: true });
+  removePreview(cfg, job);
+}
+// The published playable preview of a job (<previewRoot>/<jobid>); only ever a 6-hex id directly under previewRoot.
+function removePreview(cfg, job) {
+  if (!cfg.previewRoot || !/^[0-9a-f]{6}$/.test(String(job.id))) return;
+  try { fs.rmSync(path.join(cfg.previewRoot, job.id), { recursive: true, force: true }); } catch { /* best effort */ }
 }
 const head = (wt) => trim(git(wt, ['rev-parse', 'HEAD']));
 async function diffText(wt, base) { return (await git(wt, ['diff', '-U0', '--no-color', '--no-renames', base, 'HEAD'])).out; }
@@ -89,4 +95,4 @@ function run(cmd, args, { cwd, env, input, timeoutMs, maxOut = 8 * 1024 * 1024, 
     p.stdin.end(input || '');
   });
 }
-module.exports = { git, run, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };
+module.exports = { removePreview, git, run, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };
