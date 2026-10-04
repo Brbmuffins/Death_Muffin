@@ -56,6 +56,9 @@ const content = {
   depths: { rosters: Object.fromEntries([0, 1, 5, 10, 15].map((d) => [d, depthRoster(d)])), minLevel: DEPTHS.minLevel, chestEvery: DEPTHS.chestEvery, floorDropChance: FLOOR_DROP_CHANCE, floorBonusKills: FLOOR_BONUS_KILLS, chestKills: CHEST_KILLS },
 };
 w('content', content);
+// The loot rules read this subset at runtime: keep a committed copy under godot/data (the fixtures folder is gitignored).
+mkdirSync('godot/data/loot', { recursive: true });
+writeFileSync('godot/data/loot/content.json', JSON.stringify(content));
 const NIGHTFALL_TIER = 8; // upgrades.ts WAVE_MILESTONES nightfall; verified by wave_modifiers fixtures below
 
 // ---------- helpers ----------

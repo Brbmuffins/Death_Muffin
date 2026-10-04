@@ -2,10 +2,10 @@ class_name DmLootData
 extends RefCounted
 ## Content the loot rules read (areas' loot tables, enemy gold/xp, item meta, armour sets, rune pools, reagent drops, ...).
 ## Exported from the real TS modules by tools/godot/fixtures-loot.ts (a subset of src/content/*), never retyped.
-## Until rules-core's DmContent lands, it is read from the test fixture; the integrator points CONTENT_PATH at the shared export
+## Generated next to the fixtures (committed under godot/data/loot so the game never depends on the gitignored fixtures folder)
 ## (or calls set_content() with the same shape).
 
-const CONTENT_PATH := "res://tests/rules-loot/fixtures/content.json"
+const CONTENT_PATH := "res://data/loot/content.json"
 
 static var _c: Dictionary = {}
 
