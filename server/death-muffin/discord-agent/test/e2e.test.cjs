@@ -338,3 +338,60 @@ test('!shot queues a turn that asks for a screenshot, for any requester; shot fi
   const help = await d.say(thread, IDS.HELIX, '!help'); assert.ok(help);
   await until(() => help.replies.length, d.ad); assert.match(help.replies[0].content, /!shot/);
 });
+
+test('a proposal carries the Try-it preview link, and the preview was built for that job with the proposal title', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p = await waitProposal(d, thread);
+  const id = Object.values(w.runner.jobs())[0].id;
+  assert.equal(field(p, 'Try it'), `https://example.test/death-muffin/preview/${id}/\nOffline sandbox copy of this change: nothing saves to your real character.`);
+  assert.equal(fs.readFileSync(path.join(w.cfg.previewRoot, id, 'index.html'), 'utf8').trim(), 'HUD accent blue|/death-muffin/preview');
+});
+
+test('a failed preview build still posts the proposal, with a short reason; !preview retries', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  fs.writeFileSync(path.join(w.T, 'FAIL'), 'x');
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p = await waitProposal(d, thread);
+  assert.match(field(p, 'Preview build failed'), /vite exploded/);
+  assert.deepEqual(p.reactions, ['✅', '❌']);
+  const job = Object.values(w.runner.jobs())[0];
+  await until(() => job.status === 'proposed' && !job.running, d.ad);
+  fs.unlinkSync(path.join(w.T, 'FAIL'));
+  await d.say(thread, IDS.HELIX, '!preview');
+  const link = await until(() => texts(thread).find((t) => /Playable preview: https:\/\/example\.test/.test(t)), d.ad);
+  assert.ok(link.includes(`/${job.id}/`)); assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, job.id, 'index.html')));
+  assert.equal(job.status, 'proposed', 'preview does not disturb the proposal');
+});
+
+test('!preview with no proposal says so; preview dir is removed when the job is discarded', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  await until(() => texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  const m = await d.say(thread, IDS.HELIX, '!preview'); await until(() => m.replies.length, d.ad); assert.match(m.replies[0].content, /no open proposal/);
+  const { thread: t2 } = await request(d, IDS.HELIX, 'MAKE-CSS blue');
+  const p = await waitProposal(d, t2);
+  const job = Object.values(w.runner.jobs()).find((j) => j.threadId === t2.id);
+  assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, job.id)));
+  await d.react(p, IDS.HELIX, '❌');
+  await until(() => texts(t2).some((t) => /Discarded/.test(t)), d.ad);
+  assert.ok(!fs.existsSync(path.join(w.cfg.previewRoot, job.id)), 'preview removed on discard');
+});
+
+test('preview dir is removed when the job ships', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS blue');
+  const p = await waitProposal(d, thread);
+  const id = Object.values(w.runner.jobs())[0].id;
+  assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, id)));
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)) && !fs.existsSync(path.join(w.cfg.previewRoot, id)), d.ad);
+});
+
+test('preview.sh refuses bad job ids and a missing preview root, without building', () => {
+  const { spawnSync } = require('child_process');
+  const script = path.join(__dirname, '..', 'preview.sh');
+  const bad = spawnSync('bash', [script, '../etc'], { encoding: 'utf8', env: { ...process.env, DM_PREVIEW_ROOT: os_tmp() } }); assert.equal(bad.status, 2); assert.match(bad.stdout, /bad job id/);
+  const none = spawnSync('bash', [script, 'abc123'], { encoding: 'utf8', env: { ...process.env, DM_PREVIEW_ROOT: '/nonexistent/preview' } }); assert.equal(none.status, 2); assert.match(none.stdout, /missing/);
+});
+function os_tmp() { return fs.mkdtempSync(path.join(require('os').tmpdir(), 'dm-prev-')); }

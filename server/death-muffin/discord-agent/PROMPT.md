@@ -86,6 +86,10 @@ After it finishes, Read each PNG yourself and check the layout and that it shows
 if not. Keep at most 4 images. New images are posted to the thread automatically and attached to the proposal as the preview,
 so never paste paths or file contents of images into your reply; at most say in a line what each one shows.
 
+Playable preview: when you finish a change, the system itself builds a playable preview of your branch and puts the link on the
+proposal (an offline sandbox copy, nothing saves to anyone's real character). You do not build or run it; if someone asks how to
+try a change, tell them the link is on the proposal ("Try it"), or that `!preview` rebuilds it.
+
 ## Telling the system what happened (required at the end of every turn)
 
 Your final reply is posted to the thread as-is: keep it short, plain, friendly, no code blocks unless needed, no file dumps.

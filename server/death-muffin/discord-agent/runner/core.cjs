@@ -31,7 +31,7 @@ function createRunner(cfgIn, opts = {}) {
 
   let jobs = {};       // threadId -> job
   try { jobs = JSON.parse(fs.readFileSync(jobsFile, 'utf8')); } catch { /* fresh */ }
-  for (const j of Object.values(jobs)) { if (j.status === 'running' || j.status === 'shipping') { j.status = 'idle'; } j.running = false; }
+  for (const j of Object.values(jobs)) { if (j.status === 'running' || j.status === 'shipping') { j.status = 'idle'; } j.running = false; j.previewBusy = false; }
   const save = () => { const t = jobsFile + '.tmp'; fs.writeFileSync(t, JSON.stringify(jobs, null, 1), { mode: 0o600 }); fs.renameSync(t, jobsFile); };
   const pendingNew = new Map();   // eventId -> event awaiting a thread id from the bot
   let shipBusy = false;
@@ -159,9 +159,20 @@ function createRunner(cfgIn, opts = {}) {
         if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
         job.queue.push({ ...msg, text: 'Show me what your current change looks like: write a scenario to .dm-shot.json and run shot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' });
         job.lastActive = now(); save(); pump(); return { action: 'accepted' };
+      case 'preview': {
+        if (!job.proposal || job.status !== 'proposed') return { action: 'reply', text: 'There is no open proposal to preview yet.' };
+        if (job.running || job.previewBusy) return { action: 'reply', text: 'Busy right now; try again in a minute.' };
+        job.previewBusy = true;
+        say(job, 'Rebuilding the playable preview (about a minute)…');
+        buildPreview(job, job.proposal.title).then((pv) => {
+          if (['discarded', 'shipped', 'shipping'].includes(job.status)) { G.removePreview(cfg, job); return; }
+          say(job, pv.ok ? `Playable preview: ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.` : `Preview build failed: ${pv.why}`);
+        }).finally(() => { job.previewBusy = false; });
+        return { action: 'accepted' };
+      }
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: 'Commands: !status, !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !sync, rollback (approvers).' };
+      default: return { action: 'reply', text: 'Commands: !status, !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (rebuild the playable preview), !sync, rollback (approvers).' };
     }
   }
 
@@ -276,6 +287,22 @@ function createRunner(cfgIn, opts = {}) {
     save();
   }
   // Only images taken after the branch's last commit show the change being approved; an older one could show a previous version.
+  // ---------- playable preview (preview.sh, or cfg.previewCmd in tests) ----------
+  const previewLink = (job) => `${String(cfg.previewUrl).replace(/\/?$/, '/')}${job.id}/`;
+  // Never throws, never blocks approval: resolves { ok, url } or { ok: false, why }.
+  async function buildPreview(job, title) {
+    if (!cfg.previewRoot && !cfg.previewCmd) return { ok: false, why: 'previews are switched off' };
+    let basePath = '/death-muffin/preview'; try { basePath = new URL(cfg.previewUrl).pathname.replace(/\/$/, ''); } catch { /* default */ }
+    const env = { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', DM_PREVIEW_ROOT: cfg.previewRoot || '', DM_PREVIEW_BASE: basePath, DM_PREVIEW_TITLE: String(title || '').slice(0, 120) };
+    try {
+      const r = cfg.previewCmd
+        ? await G.run('bash', ['-c', cfg.previewCmd, 'preview', job.id], { cwd: job.worktree, env, timeoutMs: 15 * 60000 })
+        : await G.run(path.join(cfg.toolsDir, 'preview.sh'), [job.id], { cwd: job.worktree, env, timeoutMs: 15 * 60000 });
+      if (r.code === 0 && !r.timedOut) { audit.log('preview', { job: job.id, ok: true }); return { ok: true, url: previewLink(job) }; }
+      const why = r.timedOut ? 'the build took too long' : redactText((r.out + r.err).trim().split('\n').slice(-3).join(' ') || `exit ${r.code}`);
+      audit.log('preview', { job: job.id, ok: false, why: clip(why, 300) }); return { ok: false, why: clip(why, 300) };
+    } catch (e) { return { ok: false, why: clip(e.message, 300) }; }
+  }
   function proposalShots(job, sinceMs) {
     return listShots(job).filter((s) => s.size <= SHOT_MAX_BYTES && s.mtime >= sinceMs).slice(0, SHOTS_PER_POST).map(readShot).filter(Boolean);
   }
@@ -362,6 +389,9 @@ function createRunner(cfgIn, opts = {}) {
       ],
       footer: { text: `✅ ship (${owner.join(' / ')}) · ❌ discard · reply to keep iterating · ${job.id}` },
     };
+    const pv = await buildPreview(job, title);
+    if (job.status === 'discarded' || job.cancelRequested) { G.removePreview(cfg, job); return; }
+    embed.fields.splice(embed.fields.length - 1, 0, pv.ok ? { name: 'Try it (playable preview)', value: `${pv.url}\nOffline sandbox copy of this change: nothing saves to your real character.`, inline: false } : { name: 'Preview build failed', value: `${pv.why}\nThe proposal is still valid; review the diff, or say !preview to retry.`, inline: false });
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
     job.proposal = { messageId: null, head, base: job.base, tier, title, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
     job.status = 'proposed'; save();
