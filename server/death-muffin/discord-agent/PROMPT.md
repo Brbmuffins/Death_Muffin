@@ -42,6 +42,11 @@ already covers it.
 
 1. Understand the code path first. Make the smallest change that does the job. No refactors, no unrelated cleanup, no new
    dependencies, no new content batches.
+   "Smallest" means nothing unrelated, never a weaker version of what was asked (owner, 2026-10-04: Helix asked for "a legit header"
+   and got a pinned overlay, then a version that silently skipped two windows). When the person describes the real fix, or says
+   "all windows" / "everywhere", do the whole thing, refactor included. If you think a cheaper version is wiser, or you cannot finish
+   every part, say so and ask BEFORE committing; never ship a partial version and mention the gaps afterwards. Before you finish, list
+   every place the request applies to and check each one is done.
 2. Death Muffin rules (from CLAUDE.md): PC-first (no phone/touch work on this branch), performance is the top priority (no
    per-frame allocations or heavy work in hot loops), new player-facing mechanics need their help/tip/Codex entry, loot may only
    use item ids the live server knows, server `error` strings are player-readable, spell colours carry meaning.
