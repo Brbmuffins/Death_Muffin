@@ -1,0 +1,2264 @@
+{
+ "parts": [
+  "head",
+  "chest",
+  "hands",
+  "legs",
+  "feet"
+ ],
+ "pieces": [
+  {
+   "id": "set_gravecaller_head",
+   "setId": "gravecaller",
+   "disciplineId": "gravecaller",
+   "collection": 1,
+   "part": "head",
+   "stats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   },
+   "area": "graves",
+   "name": "Gravecall Crown",
+   "setName": "Gravecall"
+  },
+  {
+   "id": "set_gravecaller_chest",
+   "setId": "gravecaller",
+   "disciplineId": "gravecaller",
+   "collection": 1,
+   "part": "chest",
+   "stats": {
+    "stat_int": 8,
+    "stat_vit": 4
+   },
+   "area": "ossuary",
+   "name": "Gravecall Vestment",
+   "setName": "Gravecall"
+  },
+  {
+   "id": "set_gravecaller_hands",
+   "setId": "gravecaller",
+   "disciplineId": "gravecaller",
+   "collection": 1,
+   "part": "hands",
+   "stats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   },
+   "area": "graves",
+   "name": "Gravecall Grips",
+   "setName": "Gravecall"
+  },
+  {
+   "id": "set_gravecaller_legs",
+   "setId": "gravecaller",
+   "disciplineId": "gravecaller",
+   "collection": 1,
+   "part": "legs",
+   "stats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   },
+   "area": "nave",
+   "name": "Gravecall Legguards",
+   "setName": "Gravecall"
+  },
+  {
+   "id": "set_gravecaller_feet",
+   "setId": "gravecaller",
+   "disciplineId": "gravecaller",
+   "collection": 1,
+   "part": "feet",
+   "stats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   },
+   "area": "sanctum",
+   "name": "Gravecall Treads",
+   "setName": "Gravecall"
+  },
+  {
+   "id": "set_warden_head",
+   "setId": "warden",
+   "disciplineId": "warden",
+   "collection": 1,
+   "part": "head",
+   "stats": {
+    "stat_vit": 2,
+    "stat_str": 1
+   },
+   "area": "graves",
+   "name": "Lamplight Crown",
+   "setName": "Lamplight"
+  },
+  {
+   "id": "set_warden_chest",
+   "setId": "warden",
+   "disciplineId": "warden",
+   "collection": 1,
+   "part": "chest",
+   "stats": {
+    "stat_vit": 8,
+    "stat_str": 4
+   },
+   "area": "ossuary",
+   "name": "Lamplight Vestment",
+   "setName": "Lamplight"
+  },
+  {
+   "id": "set_warden_hands",
+   "setId": "warden",
+   "disciplineId": "warden",
+   "collection": 1,
+   "part": "hands",
+   "stats": {
+    "stat_vit": 2,
+    "stat_str": 1
+   },
+   "area": "graves",
+   "name": "Lamplight Grips",
+   "setName": "Lamplight"
+  },
+  {
+   "id": "set_warden_legs",
+   "setId": "warden",
+   "disciplineId": "warden",
+   "collection": 1,
+   "part": "legs",
+   "stats": {
+    "stat_vit": 6,
+    "stat_str": 3
+   },
+   "area": "nave",
+   "name": "Lamplight Legguards",
+   "setName": "Lamplight"
+  },
+  {
+   "id": "set_warden_feet",
+   "setId": "warden",
+   "disciplineId": "warden",
+   "collection": 1,
+   "part": "feet",
+   "stats": {
+    "stat_vit": 6,
+    "stat_str": 3
+   },
+   "area": "sanctum",
+   "name": "Lamplight Treads",
+   "setName": "Lamplight"
+  },
+  {
+   "id": "set_monk_head",
+   "setId": "monk",
+   "disciplineId": "monk",
+   "collection": 1,
+   "part": "head",
+   "stats": {
+    "stat_str": 2,
+    "stat_agi": 1
+   },
+   "area": "graves",
+   "name": "Bellwake Crown",
+   "setName": "Bellwake"
+  },
+  {
+   "id": "set_monk_chest",
+   "setId": "monk",
+   "disciplineId": "monk",
+   "collection": 1,
+   "part": "chest",
+   "stats": {
+    "stat_str": 8,
+    "stat_agi": 4
+   },
+   "area": "ossuary",
+   "name": "Bellwake Vestment",
+   "setName": "Bellwake"
+  },
+  {
+   "id": "set_monk_hands",
+   "setId": "monk",
+   "disciplineId": "monk",
+   "collection": 1,
+   "part": "hands",
+   "stats": {
+    "stat_str": 2,
+    "stat_agi": 1
+   },
+   "area": "graves",
+   "name": "Bellwake Grips",
+   "setName": "Bellwake"
+  },
+  {
+   "id": "set_monk_legs",
+   "setId": "monk",
+   "disciplineId": "monk",
+   "collection": 1,
+   "part": "legs",
+   "stats": {
+    "stat_str": 6,
+    "stat_agi": 3
+   },
+   "area": "nave",
+   "name": "Bellwake Legguards",
+   "setName": "Bellwake"
+  },
+  {
+   "id": "set_monk_feet",
+   "setId": "monk",
+   "disciplineId": "monk",
+   "collection": 1,
+   "part": "feet",
+   "stats": {
+    "stat_str": 6,
+    "stat_agi": 3
+   },
+   "area": "sanctum",
+   "name": "Bellwake Treads",
+   "setName": "Bellwake"
+  },
+  {
+   "id": "set_ossuary_head",
+   "setId": "ossuary",
+   "disciplineId": "ossuary",
+   "collection": 1,
+   "part": "head",
+   "stats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   },
+   "area": "graves",
+   "name": "Ivory Reliquary Crown",
+   "setName": "Ivory Reliquary"
+  },
+  {
+   "id": "set_ossuary_chest",
+   "setId": "ossuary",
+   "disciplineId": "ossuary",
+   "collection": 1,
+   "part": "chest",
+   "stats": {
+    "stat_int": 8,
+    "stat_vit": 4
+   },
+   "area": "ossuary",
+   "name": "Ivory Reliquary Vestment",
+   "setName": "Ivory Reliquary"
+  },
+  {
+   "id": "set_ossuary_hands",
+   "setId": "ossuary",
+   "disciplineId": "ossuary",
+   "collection": 1,
+   "part": "hands",
+   "stats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   },
+   "area": "graves",
+   "name": "Ivory Reliquary Grips",
+   "setName": "Ivory Reliquary"
+  },
+  {
+   "id": "set_ossuary_legs",
+   "setId": "ossuary",
+   "disciplineId": "ossuary",
+   "collection": 1,
+   "part": "legs",
+   "stats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   },
+   "area": "nave",
+   "name": "Ivory Reliquary Legguards",
+   "setName": "Ivory Reliquary"
+  },
+  {
+   "id": "set_ossuary_feet",
+   "setId": "ossuary",
+   "disciplineId": "ossuary",
+   "collection": 1,
+   "part": "feet",
+   "stats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   },
+   "area": "sanctum",
+   "name": "Ivory Reliquary Treads",
+   "setName": "Ivory Reliquary"
+  },
+  {
+   "id": "set_mourner_head",
+   "setId": "mourner",
+   "disciplineId": "mourner",
+   "collection": 1,
+   "part": "head",
+   "stats": {
+    "stat_int": 2,
+    "stat_agi": 1
+   },
+   "area": "graves",
+   "name": "Widowveil Crown",
+   "setName": "Widowveil"
+  },
+  {
+   "id": "set_mourner_chest",
+   "setId": "mourner",
+   "disciplineId": "mourner",
+   "collection": 1,
+   "part": "chest",
+   "stats": {
+    "stat_int": 8,
+    "stat_agi": 4
+   },
+   "area": "ossuary",
+   "name": "Widowveil Vestment",
+   "setName": "Widowveil"
+  },
+  {
+   "id": "set_mourner_hands",
+   "setId": "mourner",
+   "disciplineId": "mourner",
+   "collection": 1,
+   "part": "hands",
+   "stats": {
+    "stat_int": 2,
+    "stat_agi": 1
+   },
+   "area": "graves",
+   "name": "Widowveil Grips",
+   "setName": "Widowveil"
+  },
+  {
+   "id": "set_mourner_legs",
+   "setId": "mourner",
+   "disciplineId": "mourner",
+   "collection": 1,
+   "part": "legs",
+   "stats": {
+    "stat_int": 6,
+    "stat_agi": 3
+   },
+   "area": "nave",
+   "name": "Widowveil Legguards",
+   "setName": "Widowveil"
+  },
+  {
+   "id": "set_mourner_feet",
+   "setId": "mourner",
+   "disciplineId": "mourner",
+   "collection": 1,
+   "part": "feet",
+   "stats": {
+    "stat_int": 6,
+    "stat_agi": 3
+   },
+   "area": "sanctum",
+   "name": "Widowveil Treads",
+   "setName": "Widowveil"
+  },
+  {
+   "id": "set_witch_head",
+   "setId": "witch",
+   "disciplineId": "witch",
+   "collection": 1,
+   "part": "head",
+   "stats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   },
+   "area": "graves",
+   "name": "Carrionbloom Crown",
+   "setName": "Carrionbloom"
+  },
+  {
+   "id": "set_witch_chest",
+   "setId": "witch",
+   "disciplineId": "witch",
+   "collection": 1,
+   "part": "chest",
+   "stats": {
+    "stat_int": 8,
+    "stat_vit": 4
+   },
+   "area": "ossuary",
+   "name": "Carrionbloom Vestment",
+   "setName": "Carrionbloom"
+  },
+  {
+   "id": "set_witch_hands",
+   "setId": "witch",
+   "disciplineId": "witch",
+   "collection": 1,
+   "part": "hands",
+   "stats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   },
+   "area": "graves",
+   "name": "Carrionbloom Grips",
+   "setName": "Carrionbloom"
+  },
+  {
+   "id": "set_witch_legs",
+   "setId": "witch",
+   "disciplineId": "witch",
+   "collection": 1,
+   "part": "legs",
+   "stats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   },
+   "area": "nave",
+   "name": "Carrionbloom Legguards",
+   "setName": "Carrionbloom"
+  },
+  {
+   "id": "set_witch_feet",
+   "setId": "witch",
+   "disciplineId": "witch",
+   "collection": 1,
+   "part": "feet",
+   "stats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   },
+   "area": "sanctum",
+   "name": "Carrionbloom Treads",
+   "setName": "Carrionbloom"
+  },
+  {
+   "id": "set_rotweaver_head",
+   "setId": "rotweaver",
+   "disciplineId": "rotweaver",
+   "collection": 1,
+   "part": "head",
+   "stats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   },
+   "area": "graves",
+   "name": "Blightweave Crown",
+   "setName": "Blightweave"
+  },
+  {
+   "id": "set_rotweaver_chest",
+   "setId": "rotweaver",
+   "disciplineId": "rotweaver",
+   "collection": 1,
+   "part": "chest",
+   "stats": {
+    "stat_int": 8,
+    "stat_vit": 4
+   },
+   "area": "ossuary",
+   "name": "Blightweave Vestment",
+   "setName": "Blightweave"
+  },
+  {
+   "id": "set_rotweaver_hands",
+   "setId": "rotweaver",
+   "disciplineId": "rotweaver",
+   "collection": 1,
+   "part": "hands",
+   "stats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   },
+   "area": "graves",
+   "name": "Blightweave Grips",
+   "setName": "Blightweave"
+  },
+  {
+   "id": "set_rotweaver_legs",
+   "setId": "rotweaver",
+   "disciplineId": "rotweaver",
+   "collection": 1,
+   "part": "legs",
+   "stats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   },
+   "area": "nave",
+   "name": "Blightweave Legguards",
+   "setName": "Blightweave"
+  },
+  {
+   "id": "set_rotweaver_feet",
+   "setId": "rotweaver",
+   "disciplineId": "rotweaver",
+   "collection": 1,
+   "part": "feet",
+   "stats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   },
+   "area": "sanctum",
+   "name": "Blightweave Treads",
+   "setName": "Blightweave"
+  },
+  {
+   "id": "set_knight_head",
+   "setId": "knight",
+   "disciplineId": "knight",
+   "collection": 1,
+   "part": "head",
+   "stats": {
+    "stat_str": 2,
+    "stat_vit": 1
+   },
+   "area": "graves",
+   "name": "Hollow Oath Crown",
+   "setName": "Hollow Oath"
+  },
+  {
+   "id": "set_knight_chest",
+   "setId": "knight",
+   "disciplineId": "knight",
+   "collection": 1,
+   "part": "chest",
+   "stats": {
+    "stat_str": 8,
+    "stat_vit": 4
+   },
+   "area": "ossuary",
+   "name": "Hollow Oath Vestment",
+   "setName": "Hollow Oath"
+  },
+  {
+   "id": "set_knight_hands",
+   "setId": "knight",
+   "disciplineId": "knight",
+   "collection": 1,
+   "part": "hands",
+   "stats": {
+    "stat_str": 2,
+    "stat_vit": 1
+   },
+   "area": "graves",
+   "name": "Hollow Oath Grips",
+   "setName": "Hollow Oath"
+  },
+  {
+   "id": "set_knight_legs",
+   "setId": "knight",
+   "disciplineId": "knight",
+   "collection": 1,
+   "part": "legs",
+   "stats": {
+    "stat_str": 6,
+    "stat_vit": 3
+   },
+   "area": "nave",
+   "name": "Hollow Oath Legguards",
+   "setName": "Hollow Oath"
+  },
+  {
+   "id": "set_knight_feet",
+   "setId": "knight",
+   "disciplineId": "knight",
+   "collection": 1,
+   "part": "feet",
+   "stats": {
+    "stat_str": 6,
+    "stat_vit": 3
+   },
+   "area": "sanctum",
+   "name": "Hollow Oath Treads",
+   "setName": "Hollow Oath"
+  },
+  {
+   "id": "set_veil_head",
+   "setId": "veil",
+   "disciplineId": "veil",
+   "collection": 1,
+   "part": "head",
+   "stats": {
+    "stat_agi": 2,
+    "stat_int": 1
+   },
+   "area": "graves",
+   "name": "Threshold Crown",
+   "setName": "Threshold"
+  },
+  {
+   "id": "set_veil_chest",
+   "setId": "veil",
+   "disciplineId": "veil",
+   "collection": 1,
+   "part": "chest",
+   "stats": {
+    "stat_agi": 8,
+    "stat_int": 4
+   },
+   "area": "ossuary",
+   "name": "Threshold Vestment",
+   "setName": "Threshold"
+  },
+  {
+   "id": "set_veil_hands",
+   "setId": "veil",
+   "disciplineId": "veil",
+   "collection": 1,
+   "part": "hands",
+   "stats": {
+    "stat_agi": 2,
+    "stat_int": 1
+   },
+   "area": "graves",
+   "name": "Threshold Grips",
+   "setName": "Threshold"
+  },
+  {
+   "id": "set_veil_legs",
+   "setId": "veil",
+   "disciplineId": "veil",
+   "collection": 1,
+   "part": "legs",
+   "stats": {
+    "stat_agi": 6,
+    "stat_int": 3
+   },
+   "area": "nave",
+   "name": "Threshold Legguards",
+   "setName": "Threshold"
+  },
+  {
+   "id": "set_veil_feet",
+   "setId": "veil",
+   "disciplineId": "veil",
+   "collection": 1,
+   "part": "feet",
+   "stats": {
+    "stat_agi": 6,
+    "stat_int": 3
+   },
+   "area": "sanctum",
+   "name": "Threshold Treads",
+   "setName": "Threshold"
+  },
+  {
+   "id": "set_gravecaller_ascended_head",
+   "setId": "gravecaller_ascended",
+   "disciplineId": "gravecaller",
+   "collection": 2,
+   "part": "head",
+   "stats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   },
+   "area": "sanctum",
+   "name": "Epitaph Sovereign Crown",
+   "setName": "Epitaph Sovereign"
+  },
+  {
+   "id": "set_gravecaller_ascended_chest",
+   "setId": "gravecaller_ascended",
+   "disciplineId": "gravecaller",
+   "collection": 2,
+   "part": "chest",
+   "stats": {
+    "stat_int": 13,
+    "stat_vit": 6
+   },
+   "area": "cloister",
+   "name": "Epitaph Sovereign Vestment",
+   "setName": "Epitaph Sovereign"
+  },
+  {
+   "id": "set_gravecaller_ascended_hands",
+   "setId": "gravecaller_ascended",
+   "disciplineId": "gravecaller",
+   "collection": 2,
+   "part": "hands",
+   "stats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   },
+   "area": "sanctum",
+   "name": "Epitaph Sovereign Grips",
+   "setName": "Epitaph Sovereign"
+  },
+  {
+   "id": "set_gravecaller_ascended_legs",
+   "setId": "gravecaller_ascended",
+   "disciplineId": "gravecaller",
+   "collection": 2,
+   "part": "legs",
+   "stats": {
+    "stat_int": 10,
+    "stat_vit": 4
+   },
+   "area": "cloister",
+   "name": "Epitaph Sovereign Legguards",
+   "setName": "Epitaph Sovereign"
+  },
+  {
+   "id": "set_gravecaller_ascended_feet",
+   "setId": "gravecaller_ascended",
+   "disciplineId": "gravecaller",
+   "collection": 2,
+   "part": "feet",
+   "stats": {
+    "stat_int": 7,
+    "stat_vit": 3
+   },
+   "area": "pyre",
+   "name": "Epitaph Sovereign Treads",
+   "setName": "Epitaph Sovereign"
+  },
+  {
+   "id": "set_warden_ascended_head",
+   "setId": "warden_ascended",
+   "disciplineId": "warden",
+   "collection": 2,
+   "part": "head",
+   "stats": {
+    "stat_vit": 5,
+    "stat_str": 2
+   },
+   "area": "sanctum",
+   "name": "Nightwatch Beacon Crown",
+   "setName": "Nightwatch Beacon"
+  },
+  {
+   "id": "set_warden_ascended_chest",
+   "setId": "warden_ascended",
+   "disciplineId": "warden",
+   "collection": 2,
+   "part": "chest",
+   "stats": {
+    "stat_vit": 13,
+    "stat_str": 6
+   },
+   "area": "cloister",
+   "name": "Nightwatch Beacon Vestment",
+   "setName": "Nightwatch Beacon"
+  },
+  {
+   "id": "set_warden_ascended_hands",
+   "setId": "warden_ascended",
+   "disciplineId": "warden",
+   "collection": 2,
+   "part": "hands",
+   "stats": {
+    "stat_vit": 5,
+    "stat_str": 2
+   },
+   "area": "sanctum",
+   "name": "Nightwatch Beacon Grips",
+   "setName": "Nightwatch Beacon"
+  },
+  {
+   "id": "set_warden_ascended_legs",
+   "setId": "warden_ascended",
+   "disciplineId": "warden",
+   "collection": 2,
+   "part": "legs",
+   "stats": {
+    "stat_vit": 10,
+    "stat_str": 4
+   },
+   "area": "cloister",
+   "name": "Nightwatch Beacon Legguards",
+   "setName": "Nightwatch Beacon"
+  },
+  {
+   "id": "set_warden_ascended_feet",
+   "setId": "warden_ascended",
+   "disciplineId": "warden",
+   "collection": 2,
+   "part": "feet",
+   "stats": {
+    "stat_vit": 7,
+    "stat_str": 3
+   },
+   "area": "pyre",
+   "name": "Nightwatch Beacon Treads",
+   "setName": "Nightwatch Beacon"
+  },
+  {
+   "id": "set_monk_ascended_head",
+   "setId": "monk_ascended",
+   "disciplineId": "monk",
+   "collection": 2,
+   "part": "head",
+   "stats": {
+    "stat_str": 5,
+    "stat_agi": 2
+   },
+   "area": "sanctum",
+   "name": "Last Toll Crown",
+   "setName": "Last Toll"
+  },
+  {
+   "id": "set_monk_ascended_chest",
+   "setId": "monk_ascended",
+   "disciplineId": "monk",
+   "collection": 2,
+   "part": "chest",
+   "stats": {
+    "stat_str": 13,
+    "stat_agi": 6
+   },
+   "area": "cloister",
+   "name": "Last Toll Vestment",
+   "setName": "Last Toll"
+  },
+  {
+   "id": "set_monk_ascended_hands",
+   "setId": "monk_ascended",
+   "disciplineId": "monk",
+   "collection": 2,
+   "part": "hands",
+   "stats": {
+    "stat_str": 5,
+    "stat_agi": 2
+   },
+   "area": "sanctum",
+   "name": "Last Toll Grips",
+   "setName": "Last Toll"
+  },
+  {
+   "id": "set_monk_ascended_legs",
+   "setId": "monk_ascended",
+   "disciplineId": "monk",
+   "collection": 2,
+   "part": "legs",
+   "stats": {
+    "stat_str": 10,
+    "stat_agi": 4
+   },
+   "area": "cloister",
+   "name": "Last Toll Legguards",
+   "setName": "Last Toll"
+  },
+  {
+   "id": "set_monk_ascended_feet",
+   "setId": "monk_ascended",
+   "disciplineId": "monk",
+   "collection": 2,
+   "part": "feet",
+   "stats": {
+    "stat_str": 7,
+    "stat_agi": 3
+   },
+   "area": "pyre",
+   "name": "Last Toll Treads",
+   "setName": "Last Toll"
+  },
+  {
+   "id": "set_ossuary_ascended_head",
+   "setId": "ossuary_ascended",
+   "disciplineId": "ossuary",
+   "collection": 2,
+   "part": "head",
+   "stats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   },
+   "area": "sanctum",
+   "name": "Marrow Regent Crown",
+   "setName": "Marrow Regent"
+  },
+  {
+   "id": "set_ossuary_ascended_chest",
+   "setId": "ossuary_ascended",
+   "disciplineId": "ossuary",
+   "collection": 2,
+   "part": "chest",
+   "stats": {
+    "stat_int": 13,
+    "stat_vit": 6
+   },
+   "area": "cloister",
+   "name": "Marrow Regent Vestment",
+   "setName": "Marrow Regent"
+  },
+  {
+   "id": "set_ossuary_ascended_hands",
+   "setId": "ossuary_ascended",
+   "disciplineId": "ossuary",
+   "collection": 2,
+   "part": "hands",
+   "stats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   },
+   "area": "sanctum",
+   "name": "Marrow Regent Grips",
+   "setName": "Marrow Regent"
+  },
+  {
+   "id": "set_ossuary_ascended_legs",
+   "setId": "ossuary_ascended",
+   "disciplineId": "ossuary",
+   "collection": 2,
+   "part": "legs",
+   "stats": {
+    "stat_int": 10,
+    "stat_vit": 4
+   },
+   "area": "cloister",
+   "name": "Marrow Regent Legguards",
+   "setName": "Marrow Regent"
+  },
+  {
+   "id": "set_ossuary_ascended_feet",
+   "setId": "ossuary_ascended",
+   "disciplineId": "ossuary",
+   "collection": 2,
+   "part": "feet",
+   "stats": {
+    "stat_int": 7,
+    "stat_vit": 3
+   },
+   "area": "pyre",
+   "name": "Marrow Regent Treads",
+   "setName": "Marrow Regent"
+  },
+  {
+   "id": "set_mourner_ascended_head",
+   "setId": "mourner_ascended",
+   "disciplineId": "mourner",
+   "collection": 2,
+   "part": "head",
+   "stats": {
+    "stat_int": 5,
+    "stat_agi": 2
+   },
+   "area": "sanctum",
+   "name": "Pale Requiem Crown",
+   "setName": "Pale Requiem"
+  },
+  {
+   "id": "set_mourner_ascended_chest",
+   "setId": "mourner_ascended",
+   "disciplineId": "mourner",
+   "collection": 2,
+   "part": "chest",
+   "stats": {
+    "stat_int": 13,
+    "stat_agi": 6
+   },
+   "area": "cloister",
+   "name": "Pale Requiem Vestment",
+   "setName": "Pale Requiem"
+  },
+  {
+   "id": "set_mourner_ascended_hands",
+   "setId": "mourner_ascended",
+   "disciplineId": "mourner",
+   "collection": 2,
+   "part": "hands",
+   "stats": {
+    "stat_int": 5,
+    "stat_agi": 2
+   },
+   "area": "sanctum",
+   "name": "Pale Requiem Grips",
+   "setName": "Pale Requiem"
+  },
+  {
+   "id": "set_mourner_ascended_legs",
+   "setId": "mourner_ascended",
+   "disciplineId": "mourner",
+   "collection": 2,
+   "part": "legs",
+   "stats": {
+    "stat_int": 10,
+    "stat_agi": 4
+   },
+   "area": "cloister",
+   "name": "Pale Requiem Legguards",
+   "setName": "Pale Requiem"
+  },
+  {
+   "id": "set_mourner_ascended_feet",
+   "setId": "mourner_ascended",
+   "disciplineId": "mourner",
+   "collection": 2,
+   "part": "feet",
+   "stats": {
+    "stat_int": 7,
+    "stat_agi": 3
+   },
+   "area": "pyre",
+   "name": "Pale Requiem Treads",
+   "setName": "Pale Requiem"
+  },
+  {
+   "id": "set_witch_ascended_head",
+   "setId": "witch_ascended",
+   "disciplineId": "witch",
+   "collection": 2,
+   "part": "head",
+   "stats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   },
+   "area": "sanctum",
+   "name": "Thorn Covenant Crown",
+   "setName": "Thorn Covenant"
+  },
+  {
+   "id": "set_witch_ascended_chest",
+   "setId": "witch_ascended",
+   "disciplineId": "witch",
+   "collection": 2,
+   "part": "chest",
+   "stats": {
+    "stat_int": 13,
+    "stat_vit": 6
+   },
+   "area": "cloister",
+   "name": "Thorn Covenant Vestment",
+   "setName": "Thorn Covenant"
+  },
+  {
+   "id": "set_witch_ascended_hands",
+   "setId": "witch_ascended",
+   "disciplineId": "witch",
+   "collection": 2,
+   "part": "hands",
+   "stats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   },
+   "area": "sanctum",
+   "name": "Thorn Covenant Grips",
+   "setName": "Thorn Covenant"
+  },
+  {
+   "id": "set_witch_ascended_legs",
+   "setId": "witch_ascended",
+   "disciplineId": "witch",
+   "collection": 2,
+   "part": "legs",
+   "stats": {
+    "stat_int": 10,
+    "stat_vit": 4
+   },
+   "area": "cloister",
+   "name": "Thorn Covenant Legguards",
+   "setName": "Thorn Covenant"
+  },
+  {
+   "id": "set_witch_ascended_feet",
+   "setId": "witch_ascended",
+   "disciplineId": "witch",
+   "collection": 2,
+   "part": "feet",
+   "stats": {
+    "stat_int": 7,
+    "stat_vit": 3
+   },
+   "area": "pyre",
+   "name": "Thorn Covenant Treads",
+   "setName": "Thorn Covenant"
+  },
+  {
+   "id": "set_rotweaver_ascended_head",
+   "setId": "rotweaver_ascended",
+   "disciplineId": "rotweaver",
+   "collection": 2,
+   "part": "head",
+   "stats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   },
+   "area": "sanctum",
+   "name": "Virulent Choir Crown",
+   "setName": "Virulent Choir"
+  },
+  {
+   "id": "set_rotweaver_ascended_chest",
+   "setId": "rotweaver_ascended",
+   "disciplineId": "rotweaver",
+   "collection": 2,
+   "part": "chest",
+   "stats": {
+    "stat_int": 13,
+    "stat_vit": 6
+   },
+   "area": "cloister",
+   "name": "Virulent Choir Vestment",
+   "setName": "Virulent Choir"
+  },
+  {
+   "id": "set_rotweaver_ascended_hands",
+   "setId": "rotweaver_ascended",
+   "disciplineId": "rotweaver",
+   "collection": 2,
+   "part": "hands",
+   "stats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   },
+   "area": "sanctum",
+   "name": "Virulent Choir Grips",
+   "setName": "Virulent Choir"
+  },
+  {
+   "id": "set_rotweaver_ascended_legs",
+   "setId": "rotweaver_ascended",
+   "disciplineId": "rotweaver",
+   "collection": 2,
+   "part": "legs",
+   "stats": {
+    "stat_int": 10,
+    "stat_vit": 4
+   },
+   "area": "cloister",
+   "name": "Virulent Choir Legguards",
+   "setName": "Virulent Choir"
+  },
+  {
+   "id": "set_rotweaver_ascended_feet",
+   "setId": "rotweaver_ascended",
+   "disciplineId": "rotweaver",
+   "collection": 2,
+   "part": "feet",
+   "stats": {
+    "stat_int": 7,
+    "stat_vit": 3
+   },
+   "area": "pyre",
+   "name": "Virulent Choir Treads",
+   "setName": "Virulent Choir"
+  },
+  {
+   "id": "set_knight_ascended_head",
+   "setId": "knight_ascended",
+   "disciplineId": "knight",
+   "collection": 2,
+   "part": "head",
+   "stats": {
+    "stat_str": 5,
+    "stat_vit": 2
+   },
+   "area": "sanctum",
+   "name": "Oathbreaker Crown",
+   "setName": "Oathbreaker"
+  },
+  {
+   "id": "set_knight_ascended_chest",
+   "setId": "knight_ascended",
+   "disciplineId": "knight",
+   "collection": 2,
+   "part": "chest",
+   "stats": {
+    "stat_str": 13,
+    "stat_vit": 6
+   },
+   "area": "cloister",
+   "name": "Oathbreaker Vestment",
+   "setName": "Oathbreaker"
+  },
+  {
+   "id": "set_knight_ascended_hands",
+   "setId": "knight_ascended",
+   "disciplineId": "knight",
+   "collection": 2,
+   "part": "hands",
+   "stats": {
+    "stat_str": 5,
+    "stat_vit": 2
+   },
+   "area": "sanctum",
+   "name": "Oathbreaker Grips",
+   "setName": "Oathbreaker"
+  },
+  {
+   "id": "set_knight_ascended_legs",
+   "setId": "knight_ascended",
+   "disciplineId": "knight",
+   "collection": 2,
+   "part": "legs",
+   "stats": {
+    "stat_str": 10,
+    "stat_vit": 4
+   },
+   "area": "cloister",
+   "name": "Oathbreaker Legguards",
+   "setName": "Oathbreaker"
+  },
+  {
+   "id": "set_knight_ascended_feet",
+   "setId": "knight_ascended",
+   "disciplineId": "knight",
+   "collection": 2,
+   "part": "feet",
+   "stats": {
+    "stat_str": 7,
+    "stat_vit": 3
+   },
+   "area": "pyre",
+   "name": "Oathbreaker Treads",
+   "setName": "Oathbreaker"
+  },
+  {
+   "id": "set_veil_ascended_head",
+   "setId": "veil_ascended",
+   "disciplineId": "veil",
+   "collection": 2,
+   "part": "head",
+   "stats": {
+    "stat_agi": 5,
+    "stat_int": 2
+   },
+   "area": "sanctum",
+   "name": "Umbral Crossing Crown",
+   "setName": "Umbral Crossing"
+  },
+  {
+   "id": "set_veil_ascended_chest",
+   "setId": "veil_ascended",
+   "disciplineId": "veil",
+   "collection": 2,
+   "part": "chest",
+   "stats": {
+    "stat_agi": 13,
+    "stat_int": 6
+   },
+   "area": "cloister",
+   "name": "Umbral Crossing Vestment",
+   "setName": "Umbral Crossing"
+  },
+  {
+   "id": "set_veil_ascended_hands",
+   "setId": "veil_ascended",
+   "disciplineId": "veil",
+   "collection": 2,
+   "part": "hands",
+   "stats": {
+    "stat_agi": 5,
+    "stat_int": 2
+   },
+   "area": "sanctum",
+   "name": "Umbral Crossing Grips",
+   "setName": "Umbral Crossing"
+  },
+  {
+   "id": "set_veil_ascended_legs",
+   "setId": "veil_ascended",
+   "disciplineId": "veil",
+   "collection": 2,
+   "part": "legs",
+   "stats": {
+    "stat_agi": 10,
+    "stat_int": 4
+   },
+   "area": "cloister",
+   "name": "Umbral Crossing Legguards",
+   "setName": "Umbral Crossing"
+  },
+  {
+   "id": "set_veil_ascended_feet",
+   "setId": "veil_ascended",
+   "disciplineId": "veil",
+   "collection": 2,
+   "part": "feet",
+   "stats": {
+    "stat_agi": 7,
+    "stat_int": 3
+   },
+   "area": "pyre",
+   "name": "Umbral Crossing Treads",
+   "setName": "Umbral Crossing"
+  },
+  {
+   "id": "leg_legion_unburied_head",
+   "setId": "legion_unburied",
+   "disciplineId": "gravecaller",
+   "collection": 3,
+   "part": "head",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Warcrown of the Unburied",
+   "setName": "Legion of the Unburied"
+  },
+  {
+   "id": "leg_legion_unburied_chest",
+   "setId": "legion_unburied",
+   "disciplineId": "gravecaller",
+   "collection": 3,
+   "part": "chest",
+   "stats": {
+    "stat_int": 15,
+    "stat_vit": 7
+   },
+   "area": "pyre",
+   "name": "Cuirass of the Unburied",
+   "setName": "Legion of the Unburied"
+  },
+  {
+   "id": "leg_legion_unburied_hands",
+   "setId": "legion_unburied",
+   "disciplineId": "gravecaller",
+   "collection": 3,
+   "part": "hands",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Gauntlets of the Unburied",
+   "setName": "Legion of the Unburied"
+  },
+  {
+   "id": "leg_legion_unburied_legs",
+   "setId": "legion_unburied",
+   "disciplineId": "gravecaller",
+   "collection": 3,
+   "part": "legs",
+   "stats": {
+    "stat_int": 12,
+    "stat_vit": 5
+   },
+   "area": "pyre",
+   "name": "Greaves of the Unburied",
+   "setName": "Legion of the Unburied"
+  },
+  {
+   "id": "leg_legion_unburied_feet",
+   "setId": "legion_unburied",
+   "disciplineId": "gravecaller",
+   "collection": 3,
+   "part": "feet",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Marching Boots of the Unburied",
+   "setName": "Legion of the Unburied"
+  },
+  {
+   "id": "leg_colossus_mantle_head",
+   "setId": "colossus_mantle",
+   "disciplineId": "ossuary",
+   "collection": 3,
+   "part": "head",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Colossus Cowl",
+   "setName": "Colossus Mantle"
+  },
+  {
+   "id": "leg_colossus_mantle_chest",
+   "setId": "colossus_mantle",
+   "disciplineId": "ossuary",
+   "collection": 3,
+   "part": "chest",
+   "stats": {
+    "stat_int": 15,
+    "stat_vit": 7
+   },
+   "area": "pyre",
+   "name": "Colossus Mantle",
+   "setName": "Colossus Mantle"
+  },
+  {
+   "id": "leg_colossus_mantle_hands",
+   "setId": "colossus_mantle",
+   "disciplineId": "ossuary",
+   "collection": 3,
+   "part": "hands",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Colossus Fists",
+   "setName": "Colossus Mantle"
+  },
+  {
+   "id": "leg_colossus_mantle_legs",
+   "setId": "colossus_mantle",
+   "disciplineId": "ossuary",
+   "collection": 3,
+   "part": "legs",
+   "stats": {
+    "stat_int": 12,
+    "stat_vit": 5
+   },
+   "area": "pyre",
+   "name": "Colossus Cuisses",
+   "setName": "Colossus Mantle"
+  },
+  {
+   "id": "leg_colossus_mantle_feet",
+   "setId": "colossus_mantle",
+   "disciplineId": "ossuary",
+   "collection": 3,
+   "part": "feet",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Colossus Footings",
+   "setName": "Colossus Mantle"
+  },
+  {
+   "id": "leg_requiem_wraiths_head",
+   "setId": "requiem_wraiths",
+   "disciplineId": "mourner",
+   "collection": 3,
+   "part": "head",
+   "stats": {
+    "stat_int": 9,
+    "stat_agi": 4
+   },
+   "area": "pyre",
+   "name": "Wraithveil Hood",
+   "setName": "Requiem of Wraiths"
+  },
+  {
+   "id": "leg_requiem_wraiths_chest",
+   "setId": "requiem_wraiths",
+   "disciplineId": "mourner",
+   "collection": 3,
+   "part": "chest",
+   "stats": {
+    "stat_int": 15,
+    "stat_agi": 7
+   },
+   "area": "pyre",
+   "name": "Requiem Shroud",
+   "setName": "Requiem of Wraiths"
+  },
+  {
+   "id": "leg_requiem_wraiths_hands",
+   "setId": "requiem_wraiths",
+   "disciplineId": "mourner",
+   "collection": 3,
+   "part": "hands",
+   "stats": {
+    "stat_int": 9,
+    "stat_agi": 4
+   },
+   "area": "pyre",
+   "name": "Wraithgrasp Gloves",
+   "setName": "Requiem of Wraiths"
+  },
+  {
+   "id": "leg_requiem_wraiths_legs",
+   "setId": "requiem_wraiths",
+   "disciplineId": "mourner",
+   "collection": 3,
+   "part": "legs",
+   "stats": {
+    "stat_int": 12,
+    "stat_agi": 5
+   },
+   "area": "pyre",
+   "name": "Wraithwoven Leggings",
+   "setName": "Requiem of Wraiths"
+  },
+  {
+   "id": "leg_requiem_wraiths_feet",
+   "setId": "requiem_wraiths",
+   "disciplineId": "mourner",
+   "collection": 3,
+   "part": "feet",
+   "stats": {
+    "stat_int": 9,
+    "stat_agi": 4
+   },
+   "area": "pyre",
+   "name": "Requiem Slippers",
+   "setName": "Requiem of Wraiths"
+  },
+  {
+   "id": "leg_plague_choir_head",
+   "setId": "plague_choir",
+   "disciplineId": "rotweaver",
+   "collection": 3,
+   "part": "head",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Choirmaster’s Mask",
+   "setName": "Plague Choir"
+  },
+  {
+   "id": "leg_plague_choir_chest",
+   "setId": "plague_choir",
+   "disciplineId": "rotweaver",
+   "collection": 3,
+   "part": "chest",
+   "stats": {
+    "stat_int": 15,
+    "stat_vit": 7
+   },
+   "area": "pyre",
+   "name": "Plague Choir Surplice",
+   "setName": "Plague Choir"
+  },
+  {
+   "id": "leg_plague_choir_hands",
+   "setId": "plague_choir",
+   "disciplineId": "rotweaver",
+   "collection": 3,
+   "part": "hands",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Blightmonger’s Gloves",
+   "setName": "Plague Choir"
+  },
+  {
+   "id": "leg_plague_choir_legs",
+   "setId": "plague_choir",
+   "disciplineId": "rotweaver",
+   "collection": 3,
+   "part": "legs",
+   "stats": {
+    "stat_int": 12,
+    "stat_vit": 5
+   },
+   "area": "pyre",
+   "name": "Choir Rotleggings",
+   "setName": "Plague Choir"
+  },
+  {
+   "id": "leg_plague_choir_feet",
+   "setId": "plague_choir",
+   "disciplineId": "rotweaver",
+   "collection": 3,
+   "part": "feet",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Plague Choir Treads",
+   "setName": "Plague Choir"
+  }
+ ],
+ "set_bonuses": {
+  "ossuary": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.2,
+      "maxHpMult": 1.02
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.1
+     },
+     "add": {
+      "wardPerThrall": 0.05
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Reliquary Bulwark",
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.1
+     },
+     "add": {
+      "litanyBarrier": 0.04
+     }
+    }
+   }
+  ],
+  "ossuary_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.3,
+      "maxHpMult": 1.03
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.12
+     },
+     "add": {
+      "wardPerThrall": 0.065
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Regent’s Ossuary",
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.14
+     },
+     "add": {
+      "litanyBarrier": 0.06
+     }
+    }
+   }
+  ],
+  "gravecaller": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallDamageMult": 1.08
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallAttackSpeedMult": 1.1
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Legion Call",
+    "effect": {
+     "mult": {
+      "thrallDamageMult": 1.14
+     },
+     "add": {
+      "thrallCap": 1
+     }
+    }
+   }
+  ],
+  "gravecaller_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallDamageMult": 1.14
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallAttackSpeedMult": 1.14,
+      "thrallDamageMult": 1.04
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Sovereign Legion",
+    "effect": {
+     "mult": {
+      "thrallDamageMult": 1.14,
+      "thrallAttackSpeedMult": 1.06
+     },
+     "add": {
+      "thrallCap": 1
+     }
+    }
+   }
+  ],
+  "mourner": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.3,
+      "maxHpMult": 1.06
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.2,
+      "maxHpMult": 1.05
+     },
+     "add": {
+      "corpseHeal": 0.03
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Widow’s Chorus",
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.2,
+      "thrallDamageMult": 1.2,
+      "maxHpMult": 1.04
+     }
+    }
+   }
+  ],
+  "mourner_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.45,
+      "maxHpMult": 1.12
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.3,
+      "maxHpMult": 1.08
+     },
+     "add": {
+      "corpseHeal": 0.05
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Requiem Hush",
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.3,
+      "thrallDamageMult": 1.2,
+      "maxHpMult": 1.07
+     },
+     "add": {
+      "corpseHeal": 0.02
+     }
+    }
+   }
+  ],
+  "rotweaver": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.12
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.08
+     },
+     "add": {
+      "witheredMaxStacks": 2
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Blight Bloom",
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.12,
+      "maxHpMult": 1.03
+     },
+     "add": {
+      "witheredMaxStacks": 1
+     }
+    }
+   }
+  ],
+  "rotweaver_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.16
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.1
+     },
+     "add": {
+      "witheredMaxStacks": 3
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Plague Song",
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.16,
+      "maxHpMult": 1.05
+     },
+     "add": {
+      "witheredMaxStacks": 1
+     }
+    }
+   }
+  ],
+  "legion_unburied": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallDamageMult": 1.25
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "name": "Bursting Dead",
+    "effect": {
+     "mult": {
+      "thrallAttackSpeedMult": 1.1
+     },
+     "add": {
+      "thrallDeathBurst": 0.8
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Legion Champion",
+    "effect": {
+     "add": {
+      "thrallCap": 2,
+      "championEvery": 4,
+      "spearRally": 1
+     }
+    }
+   }
+  ],
+  "colossus_mantle": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.35,
+      "thrallDamageMult": 1.15
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "name": "Reflecting Ward",
+    "effect": {
+     "add": {
+      "wardReflect": 0.6
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Colossus",
+    "effect": {
+     "add": {
+      "colossusGuard": 0.3,
+      "litanyShatter": 4
+     }
+    }
+   }
+  ],
+  "requiem_wraiths": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.4,
+      "maxHpMult": 1.1
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "name": "Wisps",
+    "effect": {
+     "add": {
+      "corpseWisp": 10,
+      "corpseHeal": 0.02
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Requiem",
+    "effect": {
+     "mult": {
+      "soulHarvestRateMult": 2,
+      "thrallAttackSpeedMult": 1.15
+     },
+     "add": {
+      "wraithNova": 1.2
+     }
+    }
+   }
+  ],
+  "plague_choir": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.25,
+      "maxHpMult": 1.08
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "name": "Contagion",
+    "effect": {
+     "add": {
+      "miasmaSpreadsWithered": 1
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Chain Plague",
+    "effect": {
+     "add": {
+      "witheredBurstAt": 8
+     }
+    }
+   }
+  ],
+  "warden": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_vit": 3
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.05
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Lamplight Vigil",
+    "effect": {
+     "stats": {
+      "stat_str": 3
+     },
+     "mult": {
+      "maxHpMult": 1.04
+     }
+    }
+   }
+  ],
+  "warden_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_vit": 4
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.07
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Last Watch",
+    "effect": {
+     "stats": {
+      "stat_str": 4
+     },
+     "mult": {
+      "maxHpMult": 1.05
+     }
+    }
+   }
+  ],
+  "monk": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_agi": 3
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "stats": {
+      "stat_str": 3
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Measured Toll",
+    "effect": {
+     "stats": {
+      "stat_agi": 3,
+      "stat_str": 3
+     }
+    }
+   }
+  ],
+  "monk_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_agi": 4
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "stats": {
+      "stat_str": 4
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Final Note",
+    "effect": {
+     "stats": {
+      "stat_agi": 4,
+      "stat_str": 4
+     }
+    }
+   }
+  ],
+  "witch": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_int": 2
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.06
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Thorn Bloom",
+    "effect": {
+     "stats": {
+      "stat_int": 2
+     },
+     "mult": {
+      "maxHpMult": 1.04
+     }
+    }
+   }
+  ],
+  "witch_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_int": 3
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.08
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Rootbound Covenant",
+    "effect": {
+     "stats": {
+      "stat_int": 3
+     },
+     "mult": {
+      "maxHpMult": 1.06
+     }
+    }
+   }
+  ],
+  "knight": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_str": 3
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.05
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Broken Vow",
+    "effect": {
+     "stats": {
+      "stat_vit": 3,
+      "stat_str": 3
+     }
+    }
+   }
+  ],
+  "knight_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_str": 4
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.07
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Shield Remains",
+    "effect": {
+     "stats": {
+      "stat_vit": 4,
+      "stat_str": 4
+     }
+    }
+   }
+  ],
+  "veil": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_agi": 3
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "stats": {
+      "stat_int": 2
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Edge of Worlds",
+    "effect": {
+     "stats": {
+      "stat_agi": 3
+     },
+     "mult": {
+      "essenceRegenMult": 1.06
+     }
+    }
+   }
+  ],
+  "veil_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_agi": 4
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "stats": {
+      "stat_int": 3
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Shadowless",
+    "effect": {
+     "stats": {
+      "stat_agi": 4
+     },
+     "mult": {
+      "essenceRegenMult": 1.08
+     }
+    }
+   }
+  ]
+ },
+ "set_names": {
+  "gravecaller": "Gravecall",
+  "warden": "Lamplight",
+  "monk": "Bellwake",
+  "ossuary": "Ivory Reliquary",
+  "mourner": "Widowveil",
+  "witch": "Carrionbloom",
+  "rotweaver": "Blightweave",
+  "knight": "Hollow Oath",
+  "veil": "Threshold",
+  "gravecaller_ascended": "Epitaph Sovereign",
+  "warden_ascended": "Nightwatch Beacon",
+  "monk_ascended": "Last Toll",
+  "ossuary_ascended": "Marrow Regent",
+  "mourner_ascended": "Pale Requiem",
+  "witch_ascended": "Thorn Covenant",
+  "rotweaver_ascended": "Virulent Choir",
+  "knight_ascended": "Oathbreaker",
+  "veil_ascended": "Umbral Crossing",
+  "legion_unburied": "Legion of the Unburied",
+  "colossus_mantle": "Colossus Mantle",
+  "requiem_wraiths": "Requiem of Wraiths",
+  "plague_choir": "Plague Choir"
+ }
+}
