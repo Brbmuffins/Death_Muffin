@@ -7,7 +7,7 @@ export type MusicCue = 'chapterhouse' | 'graves' | 'ossuary' | 'pyre' | 'boss';
 export const MUSIC_FOR_AREA: Record<AreaId, Exclude<MusicCue, 'boss'>> = {
   chapterhouse: 'chapterhouse',
   alchemist_wing: 'chapterhouse',
-  acre: 'graves',
+  acre: 'chapterhouse', // the calm, enemy-free gathering sanctuary takes the quiet theme (owner, 2026-10-04)
   graves: 'graves',
   cloister: 'graves',
   fen: 'graves',
