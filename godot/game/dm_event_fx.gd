@@ -225,20 +225,20 @@ func beam(a: Vector3, b: Vector3, color: Variant, width: float, duration: float)
 
 
 func add_ripple(x: float, z: float, size: float) -> void:
-	var b = game.get("builder")
+	var b = game.get("dressing")
 	if b != null and b.has_method("add_ripple"):
 		b.add_ripple(x, z, size)
 
 
 func is_wet(x: float, z: float) -> bool:
-	var b = game.get("builder")
+	var b = game.get("dressing")
 	if b != null and b.has_method("is_wet"):
 		return bool(b.is_wet(x, z))
 	return false
 
 
 func set_candle_group(g: String, on: bool) -> void:
-	var b = game.get("builder")
+	var b = game.get("dressing")
 	if b != null and b.has_method("set_candle_group"):
 		b.set_candle_group(g, on)
 

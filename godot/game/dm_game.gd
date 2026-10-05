@@ -39,6 +39,8 @@ var slots: Array:
 	get: return inventory.slots if inventory != null else []
 var sim: DmWorldSim
 var hero_id: int = 0
+var hero_focus: Node3D            # follows the hero for the world dressing (mist, braziers, wading ripples)
+var dressing: DmWorldDressing     # godot/world_fx: candles, stained glass, water, mist, silhouettes, bloom
 var area_id: String = "acre"
 var in_depths: bool = false
 var lootview: DmLootView
@@ -286,6 +288,10 @@ func _build_visual_world() -> void:
 	builder.npcs_enabled = false
 	world_root.add_child(builder)
 	builder.build(_world_data)
+	hero_focus = Node3D.new()
+	hero_focus.name = "HeroFocus"
+	world_root.add_child(hero_focus)
+	dressing = DmWorldDressing.attach(builder, hero_focus)
 	camera = DmCameraRig.new()
 	camera.name = "Camera"
 	add_child(camera)
@@ -772,6 +778,8 @@ func _tick_visuals(dt: float, now: float) -> void:
 		avatar.update(vdt, player.x, player.z, player.facing, player.moving, float(p["stats"]["moveSpeed"]))
 	if views != null:
 		views.sync(sim.enemies, sim.thralls, vdt, player.x, player.z)
+		if hero_focus != null:
+			hero_focus.position = Vector3(player.x, 0.0, player.z)
 		views.prune_corpses(sim.corpses)
 	var b := sim.boss.state
 	if laborer_views != null:
