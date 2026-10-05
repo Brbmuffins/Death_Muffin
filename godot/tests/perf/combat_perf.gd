@@ -15,14 +15,22 @@ func _arg(name: String, def: String) -> String:
 func _run() -> void:
 	var area := _arg("area", "graves")
 	var secs := float(_arg("seconds", "20"))
-	var mock := DmOffline.make_mock("")
+	var dbp := "user://perf_offline_db.json" if _arg("db", "0") == "1" else ""
+	if dbp != "":
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(dbp))
+	var mock := DmOffline.make_mock(dbp)
 	var api := DmOffline.make_api(mock)
 	var r := await api.register("perf%d" % (Time.get_ticks_usec() % 100000), "p@example.com", "pw1234")
 	api.set_token(r.data["token"])
 	var c := await api.load_or_create_character(2)
 	var game := DmGame.new()
 	root.add_child(game)
-	await game.start(c.data, api, {"visual": true, "persist": false, "local_progress": true, "seed": 7, "warmup": _arg("warmup", "1") == "1"})
+	await game.start(c.data, api, {"visual": true, "persist": _arg("db", "0") == "1", "local_progress": _arg("db", "0") != "1", "seed": 7, "warmup": _arg("warmup", "1") == "1"})
+	if _arg("ui", "0") == "1":
+		var ui := DmGameUi.new()
+		game.add_child(ui)
+		ui.setup(game)
+		game.ui = ui
 	game.character["level"] = int(_arg("level", "12"))
 	game.refresh_stats()
 	game.dev_access = true
@@ -109,6 +117,32 @@ func _run() -> void:
 	print("PERF tick total %.2f ms/frame (process monitor avg %.2f ms)" % [tot / 1000.0 / n, proc_sum / n])
 	for key in keys:
 		print("  %-18s %7.3f ms/frame" % [key, game.prof[key] / 1000.0 / n])
+	print("OFFLINE requests=%d route=%.1fms save=%.1fms writes=%d db_json=%dKB over %.0fs" % [mock.stat_requests, mock.stat_route_us / 1000.0, mock.stat_save_us / 1000.0, mock.stat_writes, JSON.stringify(mock.db).length() / 1024, secs])
+	var ek: Array = game.ev_prof.keys()
+	ek.sort_custom(func(a, b): return game.ev_prof[a] > game.ev_prof[b])
+	for k2 in ek.slice(0, 30):
+		print("EVPROF %-18s total=%.1fms n=%d per=%.3fms" % [k2, game.ev_prof[k2] / 1000.0, game.ev_count[k2], game.ev_prof[k2] / 1000.0 / game.ev_count[k2]])
+	if game.ui != null:
+		var ui = game.ui
+		var parts := {"hud_state": func(): game.hud_state(), "merged_vm": func(): ui.merged_vm(), "hud.apply": func(): ui.hud.apply(ui._vm),
+			"counsel.tick": func(): ui.counsel.tick(0.016, ui.counsel_busy()), "cues.tick": func(): ui.cues.tick(0.016),
+			"guidance": func(): ui._tick_guidance(0.016), "pa.process": func(): ui.pa.process(0.016)}
+		parts["ev.codex"] = func(): game.emit_game_event("codex", {"kind": "dead", "id": "robber"})
+		parts["ev.enemy_spawned"] = func(): game.emit_game_event("enemy_spawned", {"def": "robber", "elite": false, "near": true, "area_safe": false})
+		var h = ui.hud
+		var vm: Dictionary = ui._vm
+		for nm in ["_apply_flags", "_apply_vitals", "_apply_slots", "_refresh_spell_tip", "_apply_souls_thralls", "_apply_economy", "_apply_upgrades",
+				"_apply_left_readouts", "_apply_target_boss", "_apply_map_column", "_apply_misc", "_update_toast_top"]:
+			var argc: int = 0
+			for m in h.get_method_list():
+				if m["name"] == nm:
+					argc = m["args"].size()
+			parts["hud." + nm] = (func(n2: String, a2: int): h.call(n2, vm) if a2 > 0 else h.call(n2)).bind(nm, argc)
+		for part in parts:
+			var t := Time.get_ticks_usec()
+			for i in 200:
+				parts[part].call()
+			print("UIPART %-14s %.3f ms/call" % [part, (Time.get_ticks_usec() - t) / 1000.0 / 200.0])
 	game.queue_free()
 	await process_frame
 	quit(0)

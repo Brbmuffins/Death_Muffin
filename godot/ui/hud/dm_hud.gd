@@ -1126,7 +1126,9 @@ func _apply_slots(v: Dictionary) -> void:
 		primary_slot.apply(p)
 		if not primary_slot.pressed.is_connected(_on_cast_primary):
 			primary_slot.pressed.connect(_on_cast_primary)
-		primary_slot.get_child(1).get_child(0).add_theme_color_override("font_color", DmUi.GOLD)
+		var key_lbl: Control = primary_slot.get_child(1).get_child(0)
+		if not key_lbl.has_theme_color_override("font_color") or key_lbl.get_theme_color("font_color") != DmUi.GOLD:
+			key_lbl.add_theme_color_override("font_color", DmUi.GOLD)
 	var slots: Array = v.get("slots", [])
 	var sig := ""
 	for s in slots:
@@ -1260,6 +1262,8 @@ static func wave_milestone_text(active_tier: int) -> Array:
 	return ["", false]
 
 
+var _chain_tier := -1
+
 func _apply_left_readouts(v: Dictionary) -> void:
 	var w: Variant = v.get("ward")
 	ward.visible = w != null and int((w as Dictionary).get("pct", 0)) > 0
@@ -1274,11 +1278,14 @@ func _apply_left_readouts(v: Dictionary) -> void:
 		chain_lbl.text = DmUi.upper("%s · +%d%% XP & gold" % [c["name"], int(round(bonus * 100.0))]) if bonus > 0.0 else "CHAIN"
 		var tier := clampi(int(c.get("tier", 0)), 0, 5)
 		var col := DmUi.BONE_300 if tier == 0 else Color(String(CHAIN_TIER[tier]))
-		chain_n.add_theme_color_override("font_color", col)
-		chain_bar.fill_a = col
-		chain_bar.fill_b = col
+		# Restyle only when the tier changes: a theme override per frame re-laid the whole left column every frame (~1.6 ms).
+		if tier != _chain_tier:
+			_chain_tier = tier
+			chain_n.add_theme_color_override("font_color", col)
+			chain_bar.fill_a = col
+			chain_bar.fill_b = col
+			chain.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.55), col, Vector4(3, 0, 0, 0), Vector4(12, 6, 12, 8)))
 		chain_bar.value = float(c.get("frac", 0.0))
-		chain.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.55), col, Vector4(3, 0, 0, 0), Vector4(12, 6, 12, 8)))
 	var brews: Array = v.get("brews", [])
 	brews_box.visible = brews.size() > 0
 	var seen := {}

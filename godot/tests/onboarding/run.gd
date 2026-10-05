@@ -280,6 +280,12 @@ func _test_store() -> void:
 	var s2 := DmCounselStore.new(path)
 	var d := DmCounsel.new(9, s2, 0.0)
 	_check(d.has_seen("move") and not d.has_seen("nope"), "file store round trip drops unknown ids")
+	# write-behind: a second change right after is held in memory, flush() writes it (no per-kill disk rewrite)
+	s1.set_item("dm_chain_best_9", "12")
+	var peek := DmCounselStore.new(path)
+	_check(peek.get_item("dm_chain_best_9") == "", "store: a change within the write gap is not rewritten at once")
+	s1.flush()
+	_check(DmCounselStore.new(path).get_item("dm_chain_best_9") == "12", "store: flush() writes the held change")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	# Show tips again: reset + the five calm cards, the optional two gated by what is revealed
 	var e := DmCounsel.new(5, DmCounselStore.new(), 0.0)

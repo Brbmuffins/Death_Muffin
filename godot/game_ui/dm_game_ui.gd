@@ -72,6 +72,8 @@ var _last_gold := 0
 var _family := "necromancer"
 var _kit: Dictionary
 var _vm: Dictionary = {}
+const HUD_INTERVAL_MS := 50
+var _hud_at := 0
 var _bind_capture := ""
 var _last_loadout_slot := -1
 var _loadout_busy := false
@@ -557,8 +559,12 @@ func record_codex(kind: String, id: String) -> void:
 func _process(delta: float) -> void:
 	if game == null:
 		return
-	_vm = merged_vm()
-	hud.apply(_vm)
+	# The web refreshes the HUD at most every HUD_INTERVAL_MS (WorldScene hudDue); every frame here was ~2 ms of view-model + apply.
+	var now := Time.get_ticks_msec()
+	if _vm.is_empty() or now - _hud_at >= HUD_INTERVAL_MS or now < _hud_at:
+		_hud_at = now
+		_vm = merged_vm()
+		hud.apply(_vm)
 	counsel.tick(delta, counsel_busy())
 	cues.tick(delta)
 	_tick_guidance(delta)
@@ -569,6 +575,11 @@ func _process(delta: float) -> void:
 		if game.has_method("counsel_tick_ctx"):
 			counsel.notify_tick(game.counsel_tick_ctx())
 	pa.process(delta)
+
+
+func _exit_tree() -> void:
+	if store != null:
+		store.flush()
 
 
 ## hud.apply(merge(game.hud_state(), ui-owned parts)).

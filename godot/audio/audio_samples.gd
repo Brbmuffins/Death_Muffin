@@ -31,9 +31,9 @@ const INFLIGHT_MAX := 12
 var failed := 0
 
 
-## Resource path of a map clip (`Folder/name` -> flat `Folder__name.ogg`, as encoded by tools/godot/sync-audio-assets.sh).
+## Resource path of a map clip (`Folder/name` -> flat `Folder__name.wav`, as encoded by tools/godot/sync-audio-assets.sh).
 static func clip_path(clip: String) -> String:
-	return ESM_DIR + clip.replace("/", "__") + ".ogg"
+	return ESM_DIR + clip.replace("/", "__") + ".wav"
 
 
 ## Where an older clip lives: loops in ambience/, amb_* in world/, the rest in combat/.

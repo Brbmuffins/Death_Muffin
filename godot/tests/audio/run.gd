@@ -222,7 +222,7 @@ func _test_packs() -> void:
 		eq(got, w2, "area packs %s" % a)
 		ok(got.size() == want.size(), "area packs unique %s" % a)
 	for c in f["clipFileSample"]:
-		ok(Samples.clip_path(c["c"]) == "res://assets/audio/esm/" + String(c["f"]).trim_prefix("audio/esm/").trim_suffix(".opus") + ".ogg", "clip path %s" % c["c"])
+		ok(Samples.clip_path(c["c"]) == "res://assets/audio/esm/" + String(c["f"]).trim_prefix("audio/esm/").trim_suffix(".opus") + ".wav", "clip path %s" % c["c"])
 
 
 func _test_legacy() -> void:

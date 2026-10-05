@@ -82,6 +82,7 @@ func _save() -> void:
 	f.store_string(text)
 	f.flush()
 	f.close()
+	stat_writes += 1
 	if DirAccess.rename_absolute(tmp, persist_path) == OK:
 		_last_saved = text
 
@@ -264,9 +265,20 @@ func _clone_slots(acc: Dictionary) -> Array:
 
 # --- routing -----------------------------------------------------------------------------------------------------------------------
 
+## Perf counters (QA): requests served, time spent routing and saving.
+var stat_requests := 0
+var stat_route_us := 0
+var stat_save_us := 0
+var stat_writes := 0
+
 func handle(method: String, path: String, query: String, body: Dictionary, token: Variant) -> Dictionary:
+	var t0 := Time.get_ticks_usec()
 	var res := _route(method, path, query, body, token)
+	var t1 := Time.get_ticks_usec()
 	_save()
+	stat_requests += 1
+	stat_route_us += t1 - t0
+	stat_save_us += Time.get_ticks_usec() - t1
 	return res
 
 func _account_for(token: Variant) -> Variant:

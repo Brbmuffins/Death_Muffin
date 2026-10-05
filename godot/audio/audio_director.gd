@@ -359,8 +359,14 @@ func _play_clip(stream: AudioStream, vol: float, rate: float, jitter: float, ctx
 		var d: Vector2 = (p as Vector2) - _listener
 		g *= DmAudioMixer.distance_gain(d.length(), ctx["bus"])
 		pan = DmAudioMixer.pan_for(d.x)
-	var bus_idx := AudioServer.get_bus_index(v["pan_bus"])
-	AudioServer.set_bus_send(bus_idx, BUS_NAMES[ctx["bus"]])
+	# set_bus_send re-lays the whole bus layout (every player re-resolves its bus): only when this voice's send really changes.
+	var bus_idx: int = v.get("bus_idx", -1)
+	if bus_idx < 0 or AudioServer.get_bus_name(bus_idx) != v["pan_bus"]:
+		bus_idx = AudioServer.get_bus_index(v["pan_bus"])
+		v["bus_idx"] = bus_idx
+	var send: StringName = BUS_NAMES[ctx["bus"]]
+	if AudioServer.get_bus_send(bus_idx) != send:
+		AudioServer.set_bus_send(bus_idx, send)
 	(AudioServer.get_bus_effect(bus_idx, 0) as AudioEffectPanner).pan = pan
 	var pl: AudioStreamPlayer = v["player"]
 	pl.stream = stream

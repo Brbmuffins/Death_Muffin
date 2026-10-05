@@ -204,11 +204,13 @@ func _test_tips(game: DmMockGame, ui: DmGameUi) -> void:
 	_check(card_pos.y + tip.content.size.y <= a.position.y + 0.5 and absf(card_pos.x + tip.content.size.x * 0.5 - (a.position.x + a.size.x * 0.5)) < 1.0 or card_pos.x <= 12.5 or true, "card centred above the slot")
 	# live refresh: the cooldown line follows the slot
 	game.hud["slots"][0]["left_ms"] = 3000.0
+	await create_timer(float(DmGameUi.HUD_INTERVAL_MS + 20) / 1000.0).timeout   # the HUD refreshes every HUD_INTERVAL_MS
 	await _frames(3)
 	_check(_has_text(tip.content, "Ready in 3s."), "the open card follows the slot's cooldown")
 	# a Grimoire swap puts a different rite in the slot
 	var before := ui.hud_tips.ability_at(0)
 	ui.rites.keys[0] = "wailing_skull" if before != "wailing_skull" else "exhume"
+	await create_timer(float(DmGameUi.HUD_INTERVAL_MS + 20) / 1000.0).timeout   # the HUD refreshes every HUD_INTERVAL_MS
 	await _frames(3)
 	_check(_has_text(tip.content, String(DmAbilities.def(ui.rites.keys[0])["name"])), "the card shows the rite now in the slot")
 	# Esc closes it and the card is hidden when the pointer leaves

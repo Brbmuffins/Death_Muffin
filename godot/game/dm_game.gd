@@ -80,6 +80,8 @@ var hitstopper := DmHitStop.new()
 ## Per-section logic timing (F3 overlay / perf tests): usec accumulated per section while prof_on.
 var prof_on := false
 var prof: Dictionary = {}
+var ev_prof: Dictionary = {}    # per event type usec (prof_on)
+var ev_count: Dictionary = {}
 var _prof_t := 0
 var discipline: Dictionary = {}
 var build: Dictionary = {}
@@ -721,7 +723,14 @@ func tick(dt: float) -> void:
 		var events := sim.step(dt)
 		if prof_on: _pm("sim.step")
 		for ev in events:
-			handle_event(ev)
+			if prof_on:
+				var t0 := Time.get_ticks_usec()
+				handle_event(ev)
+				var k := "ev." + String(ev["t"])
+				ev_prof[k] = int(ev_prof.get(k, 0)) + Time.get_ticks_usec() - t0
+				ev_count[k] = int(ev_count.get(k, 0)) + 1
+			else:
+				handle_event(ev)
 		coop.host_publish(events, now)
 		if prof_on: _pm("handle_events")
 	else:
@@ -1330,6 +1339,8 @@ func _apply_dev_access() -> void:
 
 ## Save everything now (leaving the world, class change, window close).
 func flush_all() -> void:
+	if store != null:
+		store.flush()
 	psync.save_local_now()
 	await psync.flush()
 	await inventory.flush()
@@ -1338,6 +1349,8 @@ func flush_all() -> void:
 
 
 func _exit_tree() -> void:
+	if store != null:
+		store.flush()
 	# Effects hold follow/getter closures over this game and its sim; stop them before the game is freed, or the Vfx autoload
 	# calls into freed objects on its next frame (segfault at quit / on leaving the world).
 	if vfx != null and is_instance_valid(vfx):

@@ -1247,6 +1247,8 @@ func arena_center() -> Dictionary:
 
 ## Advance the world by dt seconds; returns the events produced (also available via drain()).
 func step(dt: float) -> Array:
+	if prof_on:
+		return _step_profiled(dt)
 	time += dt
 	DmSimDirector.update_waves(self, dt)
 	DmSimDirector.update_depths(self, dt)
@@ -1264,6 +1266,46 @@ func step(dt: float) -> Array:
 	DmSimDirector.update_nodes(self)
 	DmSimZones.collect_dead(self)
 	_prune_dot_accum()
+	return drain()
+
+
+## Per-section timing of step() (perf tests / F3): usec accumulated per section while prof_on. Same order as step().
+var prof_on := false
+var prof: Dictionary = {}
+var _pt := 0
+
+func _pm(section: String) -> void:
+	var t := Time.get_ticks_usec()
+	prof[section] = int(prof.get(section, 0)) + t - _pt
+	_pt = t
+
+func _step_profiled(dt: float) -> Array:
+	_pt = Time.get_ticks_usec()
+	time += dt
+	DmSimDirector.update_waves(self, dt)
+	_pm("waves")
+	DmSimDirector.update_depths(self, dt)
+	DmSimDirector.update_surge(self, dt)
+	tick_pending_litanies()
+	_pm("depths+surge+litany")
+	DmSimZones.update_zones(self, dt)
+	if anyPlague:
+		DmSimZones.update_plague(self)
+	update_walls()
+	_pm("zones")
+	DmSimEnemyAI.update_enemies(self, dt)
+	_pm("enemy_ai")
+	DmSimThrallAI.update_thralls(self, dt)
+	_pm("thrall_ai")
+	DmSimThrallAI.separate(self)
+	_pm("separate")
+	boss.update(dt)
+	_pm("boss")
+	DmSimZones.update_corpses(self)
+	DmSimDirector.update_nodes(self)
+	DmSimZones.collect_dead(self)
+	_prune_dot_accum()
+	_pm("corpses+nodes+dead")
 	return drain()
 
 

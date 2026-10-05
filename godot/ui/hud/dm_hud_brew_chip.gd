@@ -73,9 +73,9 @@ func apply(b: Dictionary) -> void:
 	tooltip_text = tip
 	_kbd.text = key_text
 	_glyph.text = glyph
-	_glyph.add_theme_color_override("font_color", color)
-	_glyph.add_theme_color_override("font_shadow_color", Color(color, 0.0 if empty else 0.7))
-	_glyph.add_theme_constant_override("shadow_outline_size", 0 if empty else 6)
+	DmHudKit.set_color(_glyph, "font_color", color)
+	DmHudKit.set_color(_glyph, "font_shadow_color", Color(color, 0.0 if empty else 0.7))
+	DmHudKit.set_const(_glyph, "shadow_outline_size", 0 if empty else 6)
 	_lbl.text = DmUi.upper(label)
 	_sub.text = sub_text(slot, empty, active, left, count)
 	modulate.a = 0.72 if empty else (0.6 if (frac > 0.0 and not active) else 1.0)

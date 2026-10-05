@@ -8,6 +8,26 @@ const SHADOW := Color(0, 0, 0, 1)
 static var _tex: Dictionary = {}
 
 
+## Theme overrides only when the value differs: every add_theme_*_override fires a theme change that re-lays the control's
+## container, and the HUD applies its view-model every frame (that was most of a ~3 ms hud.apply).
+static func set_color(c: Control, name: StringName, col: Color) -> void:
+	if c.has_theme_color_override(name) and c.get_theme_color(name) == col:
+		return
+	c.add_theme_color_override(name, col)
+
+
+static func set_const(c: Control, name: StringName, v: int) -> void:
+	if c.has_theme_constant_override(name) and c.get_theme_constant(name) == v:
+		return
+	c.add_theme_constant_override(name, v)
+
+
+static func set_font_size(c: Control, name: StringName, v: int) -> void:
+	if c.has_theme_font_size_override(name) and c.get_theme_font_size(name) == v:
+		return
+	c.add_theme_font_size_override(name, v)
+
+
 static func tex(path: String) -> Texture2D:
 	if path == "":
 		return null

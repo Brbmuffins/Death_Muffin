@@ -130,6 +130,8 @@ func _ensure_shader() -> void:
 
 
 ## Slot dictionary -> state. Keys: icon key cost left_ms total_ms affordable empowered locked unlock_level alt rune_icon swap.
+var _kp_alt := -1   # the key panel's style is rebuilt only when alt flips
+
 func apply(s: Dictionary) -> void:
 	var new_icon: String = String(s.get("icon", ""))
 	if new_icon != icon_path:
@@ -152,11 +154,11 @@ func apply(s: Dictionary) -> void:
 	key_text = String(s.get("key", ""))
 	_cdtext.text = cd_text(left_ms)
 	_cost.text = str(cost) if cost > 0 else ""
-	_cost.add_theme_color_override("font_color", Color("9ff5e0") if empowered else (Color("f0b08a") if alt else Color("cbb8ff")))
+	DmHudKit.set_color(_cost, "font_color", Color("9ff5e0") if empowered else (Color("f0b08a") if alt else Color("cbb8ff")))
 	_lock.text = str(unlock_level) if locked else ""
 	_key.text = key_text
-	_key.add_theme_color_override("font_color", Color("f0b08a") if alt else DmUi.BONE_300)
-	_key.add_theme_font_size_override("font_size", 10 if alt else 12)
+	DmHudKit.set_color(_key, "font_color", Color("f0b08a") if alt else DmUi.BONE_300)
+	DmHudKit.set_font_size(_key, "font_size", 10 if alt else 12)
 	_swap_ico.visible = swap
 	_key_panel.tooltip_text = "Swap this rite (L)" if swap else ""
 	_icon.get_parent().tooltip_text = String(s.get("tooltip", ""))   # (the HUD replaces this with the spell card when it has a provider)
@@ -169,10 +171,13 @@ func apply(s: Dictionary) -> void:
 			_icon.material = m
 		m.set_shader_parameter("sat", 0.0 if locked else 0.3)
 		m.set_shader_parameter("bright", 0.55)
-	else:
+	elif _icon.material != null:
 		_icon.material = null
-	_key_panel.add_theme_stylebox_override("panel", DmHudKit.style(DmUi.INSET, Color(EMBER, 0.45) if alt else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(5, 0, 5, 0)))
-	add_theme_constant_override("separation", 5)
+	var alt_i := 1 if alt else 0
+	if alt_i != _kp_alt:
+		_kp_alt = alt_i
+		_key_panel.add_theme_stylebox_override("panel", DmHudKit.style(DmUi.INSET, Color(EMBER, 0.45) if alt else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(5, 0, 5, 0)))
+	DmHudKit.set_const(self, "separation", 5)
 	_over.queue_redraw()
 
 
