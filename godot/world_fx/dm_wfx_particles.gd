@@ -96,7 +96,7 @@ func emit(x: float, y: float, z: float, color: Color, spread: float, speed: floa
 	_grav[i] = gravity
 	_drag[i] = drag
 	_shrink[i] = shrink
-	_col[i] = color.srgb_to_linear()
+	_col[i] = color
 
 func _update(dt: float) -> void:
 	var n := 0

@@ -53,7 +53,7 @@ func setup(mist: Dictionary) -> void:
 	_mm.mesh = q
 	_mm.instance_count = count
 	_mm.custom_aabb = AABB(Vector3(-1e4, -1e4, -1e4), Vector3(2e4, 2e4, 2e4))
-	var col := DmWfxData.hex(mist.color).srgb_to_linear()
+	var col := DmWfxData.hex(mist.color)
 	for i in count:
 		pos[i] = Vector3(float(mist.pos[i * 3]), float(mist.pos[i * 3 + 1]), float(mist.pos[i * 3 + 2]))
 		vel[i] = Vector2(float(mist.vel[i * 2]), float(mist.vel[i * 2 + 1]))

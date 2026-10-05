@@ -26,6 +26,8 @@ var _last_pick: Dictionary = {}
 var _owners: Dictionary = {}  # clip name -> {pack/legacy: true}
 var _packs: Dictionary = {}
 var _queue: Array = []  # [name, owner, path]
+var _inflight: Dictionary = {}  # clip name -> path being loaded on a worker thread
+const INFLIGHT_MAX := 12
 var failed := 0
 
 
@@ -91,7 +93,7 @@ func loaded_packs() -> Array[String]:
 
 
 func pending() -> int:
-	return _queue.size()
+	return _queue.size() + _inflight.size()
 
 
 func _own(clip: String, owner: String) -> void:
@@ -128,13 +130,46 @@ func queue_pack(pack: String) -> void:
 		_queue.append([c, clip_path(c)])
 
 
-## Load up to `budget` queued clips (call each frame so a pack never stalls one frame). Returns clips still queued.
+## Load queued clips (call each frame). A per-frame budget loads on worker threads (decoding an .ogg on the main thread mid-fight was
+## a visible hitch); the huge budget of the *_now helpers loads synchronously. Returns clips still pending.
 func pump(budget: int = 6) -> int:
-	while budget > 0 and _queue.size() > 0:
+	if budget >= 1 << 16:
+		for clip in _inflight.keys():
+			_finish(clip, true)
+		while _queue.size() > 0:
+			var item: Array = _queue.pop_front()
+			_load_one(item[0], item[1])
+		return 0
+	for clip in _inflight.keys():
+		_finish(clip, false)
+	while budget > 0 and _queue.size() > 0 and _inflight.size() < INFLIGHT_MAX:
 		var item: Array = _queue.pop_front()
-		_load_one(item[0], item[1])
 		budget -= 1
-	return _queue.size()
+		var clip: String = item[0]
+		var path: String = item[1]
+		if _streams.has(clip) or _inflight.has(clip):
+			continue
+		if not ResourceLoader.exists(path) or ResourceLoader.load_threaded_request(path, "AudioStream") != OK:
+			_load_one(clip, path)
+			continue
+		_inflight[clip] = path
+	return pending()
+
+
+func _finish(clip: String, wait: bool) -> void:
+	var path: String = _inflight[clip]
+	var st := ResourceLoader.load_threaded_get_status(path)
+	if st == ResourceLoader.THREAD_LOAD_IN_PROGRESS and not wait:
+		return
+	_inflight.erase(clip)
+	var s: AudioStream = null
+	if st != ResourceLoader.THREAD_LOAD_FAILED and st != ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+		s = ResourceLoader.load_threaded_get(path) as AudioStream
+	# A pack released while its clip was in flight: drop the stream.
+	if s != null and _owners.has(clip):
+		_streams[clip] = s
+	elif s == null:
+		failed += 1
 
 
 func load_legacy_now() -> void:

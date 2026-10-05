@@ -121,6 +121,45 @@ func preload_ids(ids: Array) -> void:
 		_scene(String(id))
 
 
+## Paths of the scenes behind `ids` (DmWarmup loads them on worker threads during the loading screen).
+func scene_paths(ids: Array) -> Array:
+	var out: Array = []
+	for id in ids:
+		var path := BASE + String(id) + ".tscn"
+		if ResourceLoader.exists(path):
+			out.append(path)
+	return out
+
+
+## First-use hitch removal: build one pooled instance per effect and show it at `at` (playing) so the GPU compiles its shaders and
+## particle programs now rather than on the first cast. Call warm_end() with the result a frame or two later.
+func warm(ids: Array, at: Vector3) -> Array:
+	var out: Array = []
+	for id in ids:
+		var key := String(id)
+		if not _pool.get(key, []).is_empty():
+			continue
+		var inst := _build(key)
+		if inst == null:
+			continue
+		_host.add_child(inst.root)
+		inst.root.position = at
+		inst.root.visible = true
+		for i in inst.particles.size():
+			(inst.particles[i] as GPUParticles3D).emitting = true
+		if inst.has_anim and inst.ap != null:
+			inst.ap.play(inst.anim_name)
+		out.append(inst)
+	return out
+
+
+func warm_end(insts: Array) -> void:
+	for inst in insts:
+		if is_instance_valid((inst as Inst).root):
+			_reset(inst)
+		_stash(inst)
+
+
 ## Play an effect. Never throws: an unknown id or a disabled system is a dead handle.
 ## o: colors (Array of Color/int), scale, rot (yaw), follow (Callable -> Vector3 or null), duration, once, alpha.
 func spawn(id: String, pos: Vector3, o: Dictionary = {}) -> DmFxHandle:

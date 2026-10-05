@@ -55,7 +55,9 @@ func emit(o: Dictionary) -> void:
 	var count := int(o.get("count", 0))
 	if count <= 0:
 		return
-	var c := DmFxData.to_color(o.get("color", Color.WHITE)).srgb_to_linear()
+	# sRGB as given: the Compatibility renderer linearises MultiMesh instance colours itself (converting here too drew every mote
+	# ~3x too dark and dark ones pure black, e.g. the Grave Surge's crypt dust).
+	var c := DmFxData.to_color(o.get("color", Color.WHITE))
 	var spread := float(o.get("spread", 0.2))
 	var speed := float(o.get("speed", 1.0))
 	var up := float(o.get("up", 0.5))

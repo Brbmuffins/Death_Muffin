@@ -77,6 +77,10 @@ var rewards: DmGameRewards
 var combat: DmGameCombat
 var actions: DmGameActions
 var hitstopper := DmHitStop.new()
+## Per-section logic timing (F3 overlay / perf tests): usec accumulated per section while prof_on.
+var prof_on := false
+var prof: Dictionary = {}
+var _prof_t := 0
 var discipline: Dictionary = {}
 var build: Dictionary = {}
 var kit: Dictionary = {}
@@ -232,6 +236,9 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 			if it["kind"] == "waystone":
 				_waystones.append(it)
 	apply_settings(settings_store.values)
+	# Load + draw every model/effect once now, not on its first appearance mid-fight (DmWarmup).
+	if visual and bool(opts.get("warmup", DisplayServer.get_name() != "headless")):
+		await DmWarmup.run(self)
 	ready_ = true
 	set_process(true)
 	# Server data (the web's loadData + progression.connect).
@@ -645,8 +652,16 @@ func _unhandled_input(ev: InputEvent) -> void:
 		input.handle(ev)
 
 
+func _pm(section: String) -> void:
+	var t := Time.get_ticks_usec()
+	prof[section] = int(prof.get(section, 0)) + t - _prof_t
+	_prof_t = t
+
+
 ## WorldScene.update(dt, now): one frame.
 func tick(dt: float) -> void:
+	if prof_on:
+		_prof_t = Time.get_ticks_usec()
 	now_ms += dt * 1000.0
 	var now := now_ms
 	chronicle.time(dt, gather != null and gather.get("afk") == true)
@@ -655,6 +670,7 @@ func tick(dt: float) -> void:
 	_tick_chronicle(dt)
 	if event_fx != null:
 		event_fx.update(dt)
+	if prof_on: _pm("pre/event_fx")
 	# Death / respawn.
 	if not player.alive and dead_until > 0.0 and now >= dead_until:
 		respawn()
@@ -670,6 +686,7 @@ func tick(dt: float) -> void:
 	var auto_move: Variant = input.auto_movement(dt, now)
 	_update_movement_mods()
 	var moved := player.update(dt, now, {"x": kd.x, "z": kd.z} if (kd.x != 0.0 or kd.z != 0.0) else auto_move)
+	if prof_on: _pm("input+player")
 	if settings_store.can_use_auto_combat() and bool(settings["auto_combat"]) and player.alive and now - float(p["lastHurtAt"]) < 5000.0:
 		player.heal(player.max_hp() * 0.02 * dt)
 	if now < actions.meal_until and player.alive:
@@ -682,6 +699,7 @@ func tick(dt: float) -> void:
 		actions.cancel_recall()
 	input.tick_combat(now)
 	abilities.update(now, dt)
+	if prof_on: _pm("gather+abilities")
 	combat.sync_legend(now)
 	input.aim_when_standing(now)
 	if recall_at > 0.0 and now >= recall_at:
@@ -701,9 +719,11 @@ func tick(dt: float) -> void:
 			var r: Dictionary = remotes[rid]
 			sim.set_player(DmSimPlayer.make(rid, r["tx"], r["tz"], nav.area_at(r["tx"], r["tz"]), float(r["hpFrac"]) > 0.0, float(r.get("level", 1)), String(r.get("family", ""))))
 		var events := sim.step(dt)
+		if prof_on: _pm("sim.step")
 		for ev in events:
 			handle_event(ev)
 		coop.host_publish(events, now)
+		if prof_on: _pm("handle_events")
 	else:
 		event_out_clear()
 		coop.guest_update(dt)
@@ -712,11 +732,13 @@ func tick(dt: float) -> void:
 		coop.update_remotes(dt)
 	# Loot.
 	rewards.tick_loot(dt)
+	if prof_on: _pm("coop+loot")
 	# Visuals.
 	hitstopper.frame(dt)
 	if visual:
 		vfx.hitstop_scale = hitstopper.scale
 		_tick_visuals(dt, now)
+	if prof_on: _pm("visuals")
 	input.tick_chain_and_beat(now)
 	if visual:
 		_tick_hud_state(now)
@@ -724,6 +746,7 @@ func tick(dt: float) -> void:
 	combat.tick_counsel(now)
 	rewards.tick_milestones(dt)
 	_tick_audio()
+	if prof_on: _pm("hud+audio")
 
 
 func _update_movement_mods() -> void:
@@ -792,6 +815,7 @@ func _tick_visuals(dt: float, now: float) -> void:
 		if hero_focus != null:
 			hero_focus.position = Vector3(player.x, 0.0, player.z)
 		views.prune_corpses(sim.corpses)
+	if prof_on: _pm("v.entities")
 	var b := sim.boss.state
 	if laborer_views != null:
 		laborer_views.reduce_motion = bool(settings["reduce_motion"])
@@ -807,15 +831,19 @@ func _tick_visuals(dt: float, now: float) -> void:
 		npc_views.update(vdt, player.x, player.z, func(id: String) -> bool: return npc_new.get(id, false))
 	if pet_view != null:
 		pet_view.update(vdt, player.x, player.z, player.facing)
+	if prof_on: _pm("v.npcs+labor")
 	var bv: Variant = boss_view(String(b.id) if b.id != "" else "prelate")
 	if bv != null:
 		bv.sync(b, vdt)
+	if prof_on: _pm("v.boss")
 	var cx := player.x
 	var cz := player.z
 	camera.update_rig(dt, Vector3(cx, 0, cz))
 	builder.update_occlusion(camera, Vector3(player.x, 0, player.z))
+	if prof_on: _pm("v.camera+occ")
 	builder.update_streaming(camera.focus.x, camera.focus.z)
 	builder.update_light_lod(camera.focus.x, camera.focus.z)
+	if prof_on: _pm("v.stream+lights")
 
 
 var _npc_t := 0.0

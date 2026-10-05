@@ -438,7 +438,7 @@ func decal(o: Dictionary) -> DmFxHandle:
 	tr.d = DmFxLayer.Item.new()
 	tr.layer_item = tr.d
 	tr.d.rot_y = float(o.get("rot", 0.0))
-	var col := DmFxData.to_color(o.get("color", Color.WHITE)).srgb_to_linear()
+	var col := DmFxData.to_color(o.get("color", Color.WHITE))
 	tr.d.color = col
 	layer.add(tr.d)
 	if other:
@@ -495,7 +495,7 @@ func flash(o: Dictionary) -> DmFxHandle:
 	tr.s.x = float(o["x"])
 	tr.s.y = float(o["y"])
 	tr.s.z = float(o["z"])
-	tr.s.color = DmFxData.to_color(o.get("color", Color.WHITE)).srgb_to_linear()
+	tr.s.color = DmFxData.to_color(o.get("color", Color.WHITE))
 	tr.layer = layer
 	tr.layer_item = tr.s
 	layer.add(tr.s)
@@ -538,7 +538,7 @@ func orbit(o: Dictionary) -> DmFxHandle:
 	var layer := _sprite_layer(tex)
 	var gh := GroupHandle.new()
 	var count := int(o["count"])
-	var col := DmFxData.to_color(o.get("color", Color.WHITE)).srgb_to_linear()
+	var col := DmFxData.to_color(o.get("color", Color.WHITE))
 	for i in count:
 		var tr := OrbitTr.new()
 		tr.o = o
@@ -589,7 +589,7 @@ class BeamTr:
 func beam(a: Variant, b: Callable, color: Variant, width: float, duration: float) -> DmFxHandle:
 	var tr := BeamTr.new()
 	tr.b = DmFxLayer.Item.new()
-	tr.b.color = DmFxData.to_color(color).srgb_to_linear()
+	tr.b.color = DmFxData.to_color(color)
 	tr.b.sx = width
 	tr.b.sz = 1.0
 	tr.a_src = a
