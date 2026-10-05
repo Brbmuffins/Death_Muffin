@@ -941,7 +941,12 @@ func clear_depths_floor() -> void:
 			(n as Node3D).visible = true
 
 # ---------------------------------------------------------------- NPCs
+## false when DmNpcViews (game/) animates the people instead.
+var npcs_enabled := true
+
 func _npcs() -> void:
+	if not npcs_enabled:
+		return
 	var nd: Dictionary = DmData.load_json("npcs")
 	for n in world.npcs:
 		var entry: Dictionary = nd.models[n.model]

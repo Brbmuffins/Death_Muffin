@@ -106,6 +106,8 @@ var last_hurt_at := -1e9
 var coop: DmGameCoop
 var my_cosmetics := {"cape": "", "pet": ""}
 var pet_view: DmPetView = null
+var npc_views: DmNpcViews = null
+var npc_new: Dictionary = {}           # npc id -> has something new to say (the UI sets it from the guidance)
 var party_code: String:
 	get: return coop.party_code if coop != null else ""
 var mirror: DmSimMirror:
@@ -274,6 +276,7 @@ func _omen_for(ms: float) -> Dictionary:
 func _build_visual_world() -> void:
 	builder = DmWorldBuilder.new()
 	builder.name = "World"
+	builder.npcs_enabled = false
 	world_root.add_child(builder)
 	builder.build(_world_data)
 	camera = DmCameraRig.new()
@@ -349,6 +352,8 @@ func _make_visual_components() -> void:
 	_dress_waystones()
 	lootview.dropped_sound.connect(func(id: String, pos: Vector3): play_sfx(id, pos.x, pos.z))
 	lootview.pickup_fx.connect(func(pos: Vector3, color: Color): vfx.emit({"x": pos.x, "y": pos.y, "z": pos.z, "count": 8, "color": color.to_rgba32() >> 8, "spread": 0.3, "speed": 1.2, "up": 1.0, "life": 0.4, "size": 0.14}))
+	npc_views = DmNpcViews.new()
+	npc_views.setup(world_root)
 	audio_hooks = DmAudioHooks.new()
 	audio_hooks.name = "AudioHooks"
 	add_child(audio_hooks)
@@ -761,6 +766,15 @@ func _tick_visuals(dt: float, now: float) -> void:
 		views.sync(sim.enemies, sim.thralls, vdt, player.x, player.z)
 		views.prune_corpses(sim.corpses)
 	var b := sim.boss.state
+	if npc_views != null:
+		_tick_npcs(vdt)
+		npc_views.hover_id = ""
+		if input.hover != null and input.hover["kind"] == "interact" and input.hover["it"]["kind"] == "npc":
+			for nid in DmContent.get_export("npcs", "NPC_IDS"):
+				if String(input.hover["it"]["id"]) == DmGuidance.npc_interactable_id(String(nid)):
+					npc_views.hover_id = String(nid)
+		npc_views.reduce_motion = bool(settings["reduce_motion"])
+		npc_views.update(vdt, player.x, player.z, func(id: String) -> bool: return npc_new.get(id, false))
 	if pet_view != null:
 		pet_view.update(vdt, player.x, player.z, player.facing)
 	var bv: Variant = boss_view(String(b.id) if b.id != "" else "prelate")
@@ -771,6 +785,28 @@ func _tick_visuals(dt: float, now: float) -> void:
 	camera.update_rig(dt, Vector3(cx, 0, cz))
 	builder.update_streaming(camera.focus.x, camera.focus.z)
 	builder.update_light_lod(camera.focus.x, camera.focus.z)
+
+
+var _npc_t := 0.0
+
+## tickGuidance: who has something new to say (the "!"), first sight of a person, the conversation range.
+func _tick_npcs(dt: float) -> void:
+	var talking := ""
+	if dialogue_open:
+		talking = String(ui.dialogue.npc)
+		if talking != "" and npc_views.distance_to(talking, player.x, player.z) > NPC_TALK_RANGE + 3.5:
+			ui.dialogue.close()
+			talking = ""
+	npc_views.set_talking(talking)
+	_npc_t -= dt
+	if _npc_t > 0.0 or ui == null or ui.get("memory") == null:
+		return
+	_npc_t = 0.5
+	var st: Dictionary = ui.guidance_state()
+	for nid in DmContent.get_export("npcs", "NPC_IDS"):
+		npc_new[nid] = ui.memory.has_something_new(String(nid), st)
+		if npc_views.distance_to(String(nid), player.x, player.z) < 14.0 and ui.memory.first_sight(String(nid)):
+			emit_game_event("npc_first_sight")
 
 
 func boss_view(id: String) -> Variant:
