@@ -275,6 +275,15 @@ func _test_sheet() -> void:
 	_eq(lines.size(), expect, "sheet: one line per stat across sections")
 	_check(DmPa.all_text(v).contains("INT > VIT > STR > AGI"), "looking-for priority order shown")
 	_check(DmPa.all_text(v).contains(String(d["primer"])), "primer shown")
+	# JSON-null weapons (and other looking fields) must not crash the panel (parity fix: the game_ui adapter workaround is gone)
+	var dn: Dictionary = d.duplicate(true)
+	dn["looking"]["weapons"] = null
+	dn["looking"]["why"] = null
+	var vn := DmSheetView.new()
+	_mount(vn)
+	vn.set_data(dn)
+	_check(DmPa.all_text(vn).to_lower().contains("what you"), "sheet: null weapons renders without crashing")
+	vn.queue_free()
 	# maxHp open by default, others closed
 	_check(v.is_line_open("maxHp"), "health line open by default")
 	var other := ""
