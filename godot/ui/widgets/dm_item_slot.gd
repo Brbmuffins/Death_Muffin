@@ -20,6 +20,8 @@ enum Kind { BAG, EQUIP, BELT }
 
 var data: Dictionary = {}
 var index: int = -1
+## Godot drag source (the web only drags brews onto the HUD belt: InventoryPanel `draggable` + BELT_DRAG_TYPE). null = not draggable.
+var drag_data: Variant = null
 var selected := false:
 	set(v):
 		selected = v
@@ -65,6 +67,16 @@ func _gui_input(event: InputEvent) -> void:
 				pressed.emit(self)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and is_filled():
 			right_clicked.emit(self)
+
+
+func _get_drag_data(_at: Vector2) -> Variant:
+	if drag_data == null or not is_filled():
+		return null
+	var prev := Label.new()
+	prev.text = String(data.get("name", ""))
+	prev.theme = DmUi.theme()
+	set_drag_preview(prev)
+	return drag_data
 
 
 func _make_custom_tooltip(_for_text: String) -> Object:
