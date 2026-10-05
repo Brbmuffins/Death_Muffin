@@ -9,9 +9,8 @@ func slam_radius() -> float:
 	return float(def["slamRadius"]) if def.has("slamRadius") else DEFAULT_SLAM_R
 
 
-func begin_attack() -> void:
-	super()
-	telegraph.emit(&"slam", global_position, aim, slam_radius(), windup_s)
+func announce_telegraph(seconds: float) -> void:
+	telegraph.emit(&"slam", global_position, aim, slam_radius(), seconds)
 
 
 func strike() -> void:

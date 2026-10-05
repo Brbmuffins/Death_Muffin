@@ -34,6 +34,7 @@ var api: Variant = null                         ## DmApi: the VPS backend online
 var is_offline: bool = true                     ## D4: true = backed by the local GDScript backend
 var area_id: String = "chapterhouse"
 var rewards: Node
+var enemy_fx: DmEnemyFx                          ## child "EnemyFx" (every peer): telegraphs, impacts, deaths, enemy voices
 var corpses: DmCorpseField                       ## child "Corpses" (same path on every peer); host lays corpses from enemy deaths
 var opts: Dictionary = {}
 var load_ms: int = 0
@@ -68,7 +69,13 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	corpses = DmCorpseField.new()
 	corpses.name = "Corpses"
 	add_child(corpses)
+	enemy_fx = DmEnemyFx.new()
+	enemy_fx.name = "EnemyFx"
+	enemy_fx.player_pos = func() -> Vector3: return local_body().global_position if local_body() != null else camera.global_position
+	enemy_fx.host.camera = camera
+	add_child(enemy_fx)
 	director.enemy_spawned.connect(func(e: DmEnemy) -> void:
+		enemy_fx.watch(e)       # idempotent (the node also auto-watches); explicit so the seam is visible
 		DmStatusSet.attach(e)   # every peer, so status visuals replicate (an ensure()d set never does)
 		corpses.track(e, String(e.get_meta("dm_area", area_id)))
 		enemy_spawned.emit(e))
@@ -104,6 +111,8 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		hooks.name = "AudioHooks"
 		add_child(hooks)
 		hooks.setup(self)
+	if _visual:
+		enemy_fx.warm(local_body().global_position if local_body() != null else Vector3.ZERO)
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()

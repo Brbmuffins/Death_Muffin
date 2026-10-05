@@ -1,0 +1,48 @@
+# DmEnemyFx: enemy telegraphs, strikes, deaths and voices
+
+One node per peer. Host, clients and solo all run the same code; it only reads each peer's own `DmEnemy` nodes.
+
+```gdscript
+var fx := DmEnemyFx.new()
+fx.player_pos = func() -> Vector3: return local_hero.global_position   # distance gating; default = camera position
+fx.host.hitstop_cb = hitstop_callable          # (seconds) for heavy hits / elite deaths near the hero
+fx.host.camera = camera_rig                    # optional, anything with shake(amount)
+fx.host.dressing = water_surface               # optional, add_ripple(x, z, size)
+add_child(fx)                                  # autowatches every DmEnemy and DmHostileZone added to the tree afterwards (and existing ones)
+```
+`Vfx` and `AudioDirector` autoloads are used unless `fx.set_backends(vfx, audio)` is called (tests). `fx.scope = node` restricts it to a subtree.
+Never create two per peer watching the same bodies (everything would play twice).
+
+## Shell entry point (done in `next_game.gd`)
+`DmNextGame.enemy_fx` (child `EnemyFx`, every peer) is created in `start()` before the director: `player_pos` = local body, `host.camera` = the camera rig,
+`watch(e)` called from the `enemy_spawned` hook (idempotent; the node also auto-watches `node_added`), and `enemy_fx.warm(local_body position)` at the end of
+`start()` (visual runs): silent one-of-each telegraph / burst / censer effect so pools, textures and shaders exist before the first fight.
+Not wired yet: `host.hitstop_cb` (the shell has no hitstop).
+
+## What a peer must do for it to work
+- Instantiate puppets with the same `def_id`, `elite`, `rising`, `in_graves` as the host body (spawn args).
+- Feed puppets `get_net_state()` / `apply_net_state()` snapshots (new keys: `aim`, `t` = seconds in state). Nothing else is replicated for fx.
+- Host-spawned `DmHostileZone`s are visualised on the host; each client's fx spawns its own visual-only (`damaging=false`) cloud at the swing's impact time.
+
+## Signals consumed (each peer, exactly once per event)
+| signal | source | plays |
+|---|---|---|
+| `telegraph(kind, from, aim, radius, seconds)` | host: begin_attack / erupt; client: derived from the replicated ATTACK/ERUPT state via `DmEnemy.announce_telegraph` (remaining = windup - `t`) | cone / slam / dust / erupt ground shapes through `DmEventFxTelegraph` (same shape, timing, colour, sound `tollSmall`/`tellStrike`) inside `Vfx.danger()` |
+| `state_changed` -> ATTACK | both | impact timer (windup left); cancelled by any state change (stun, death). At impact: attack voice (<=18 m, by family), smoke at the aim; sac slam puff + `boneHit`; moth dust ring burst + cloud |
+| `state_changed` -> EMERGE / DIG | both | ghoul eruption burst (dirt, cracks, `burst`), dig-in smoke |
+| `state_changed` -> DEAD | both | `DmEventFx._death`: `enemyDeath`/`eliteDeath`, death voice (<=26 m), elite hitstop, ripple, fire-death flare; smoke; elite purple burst + light; wraith defs thin to mist and sink |
+| `damaged` | host: take_damage; client: hp drop in the snapshot | heavy-hit hitstop (same thresholds as DmEntityViews). Hit flash is `DmEnemy._flash` (now also set on puppets) |
+| ready (rising) | both | spawn smoke + sparks + cracks decal; elite: `eliteAggro` (<40 m) and the purple ring (persistent, follows) |
+| DmHostileZone added | both | dust cloud (`zone_visual`), killed when the node leaves |
+`struck` and `cue` are host-only and deliberately unused. Censer ring/smoke and haste motes belong to the status track (`DmStatusSet`), not duplicated here. Idle motes (rising dust, hover motes, tunnelling dirt) run in one 5 Hz pass over watched enemies within 24x20 m of the hero, reusing scratch dictionaries.
+
+## Replication / lead time
+A telegraph is the state change to ATTACK/ERUPT, so it reaches a client with the next snapshot. Measured in-process over ENet loopback (tests/enemy_fx/run.gd):
+snapshots at 20 Hz: delay 14-55 ms, so the client still has 664/700 ms (sac), 936/950 (moth), 1086/1100 (penitent), 945/1000 (ghoul eruption) to dodge;
+with an immediate snapshot on `state_changed` (recommended for the session layer): 1-3 ms delay. Real latency adds on top; the telegraph's fill is shortened by `t` so it still lands with the blow. Budget at 20 Hz: <= 50 ms snapshot wait + one-way latency.
+
+## Cost / warm-up
+No new effects, textures or sounds: everything is existing Vfx decals/emitters/Binbun `censer_incense` and existing sound ids (`DmEnemyFx.EFFECT_IDS`, `SFX_IDS`, checked by the suite), so DmWarmup's all-effects pass covers it. Headless measurements (real Vfx, 30 enemies): ~27 us/frame idle; telegraph ~200 us/event; impact ~90 us; death ~150 us (incl. the enemy itself). Pools are Vfx's.
+
+## Not covered
+Elite affixes (DmEnemy has none), toxic-stink on corpses and corpse looks (corpse track), per-kind idle fx of kinds that have no scene yet (fire/fen/etc. exist in the router: `fx._death` already handles fire deaths).

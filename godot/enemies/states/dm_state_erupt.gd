@@ -12,7 +12,7 @@ func enter(_prev: int) -> void:
 	enemy.set_underground(true)
 	var B: Dictionary = DmSimData.BURROW
 	enemy.aim = enemy.target.global_position if enemy.target_valid(enemy.target) else enemy.global_position
-	windup = float(B["eruptMsGraves"] if enemy.in_graves else B["eruptMs"]) / 1000.0 * (0.85 if enemy.elite else 1.0)
+	windup = (enemy as DmEnemyBurrower).erupt_windup()
 	enemy.telegraph.emit(&"erupt", enemy.global_position, enemy.aim, float(B["eruptR"]), windup)
 
 func tick(_dt: float) -> int:

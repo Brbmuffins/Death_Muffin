@@ -125,6 +125,7 @@ var _net_pos := Vector3.ZERO
 var _net_yaw: float = 0.0
 var _net_seen: bool = false
 var _puppet_speed: float = 0.0
+var net_age: float = 0.0       ## seconds the host had spent in the replicated state when it sent the snapshot (telegraph lead-time)
 
 # --- profiling (tests / tools/perf; off in the game) ---
 static var profile: bool = false
@@ -413,6 +414,14 @@ func begin_attack() -> void:
 	aim = target.global_position if target_valid(target) else global_position + Vector3(sin(rotation.y), 0.0, cos(rotation.y))
 	if target_valid(target):
 		face_point(aim, 1.0)
+	announce_telegraph(windup_s)
+
+
+## Announce the ground telegraph of the wind-up that just began (`seconds` of it left). Runs on the authority at the start of the swing and on
+## puppets when the replicated ATTACK state arrives (aim is replicated), so every peer's VFX layer gets the same `telegraph` signal. The plain
+## melee swing has none; caster / hazard kinds override.
+func announce_telegraph(_seconds: float) -> void:
+	pass
 
 
 ## The blow lands (end of wind-up). Reach is measured from the body, like the sim. Kinds override (slam / cone / dust ...).
@@ -564,7 +573,8 @@ func _process(delta: float) -> void:
 
 ## Everything a puppet needs. Host calls this at the replication rate (10-20 Hz); allocation per call is fine at that rate.
 func get_net_state() -> Dictionary:
-	return {"pos": global_position, "yaw": rotation.y, "state": sm.id(), "hp": hp, "anim": _anim}
+	return {"pos": global_position, "yaw": rotation.y, "state": sm.id(), "hp": hp, "anim": _anim, "aim": aim,
+		"t": sm.current.t if sm.current != null else 0.0}
 
 
 ## Puppet side: adopt a snapshot (position/yaw are eased toward in _process; first snapshot snaps). Also valid on the authority
@@ -572,7 +582,15 @@ func get_net_state() -> Dictionary:
 func apply_net_state(d: Dictionary) -> void:
 	_net_pos = d["pos"]
 	_net_yaw = float(d["yaw"])
-	hp = float(d["hp"])
+	var new_hp := float(d["hp"])
+	if _net_seen and new_hp < hp - 0.001 and not is_multiplayer_authority():
+		_flash = 1.0   # a puppet sees the hit as the hp drop: same flash and `damaged` signal the authority has
+		var lost := hp - new_hp
+		hp = new_hp
+		damaged.emit(lost, hp, null)
+	hp = new_hp
+	aim = d.get("aim", aim)
+	net_age = float(d.get("t", 0.0))
 	var st := int(d["state"])
 	if not _net_seen:
 		global_position = _net_pos
@@ -591,6 +609,8 @@ func _remote_visual(st: int, anim: String, first: bool) -> void:
 	match st:
 		DmEnemyState.Id.ATTACK:
 			play_attack(windup_s)
+			if not is_multiplayer_authority():
+				announce_telegraph(maxf(0.05, windup_s - net_age))
 		DmEnemyState.Id.HURT:
 			play_hurt()
 		DmEnemyState.Id.DEAD:

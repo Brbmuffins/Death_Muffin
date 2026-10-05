@@ -33,8 +33,16 @@ func take_damage(amount: float, from: Node = null, allow_stagger: bool = true) -
 	return ok
 
 
+## Eruption wind-up seconds (BURROW.eruptMsGraves 1.0 s in the Graves, eruptMs 0.8 s elsewhere, x0.85 for elites).
+func erupt_windup() -> float:
+	var B: Dictionary = DmSimData.BURROW
+	return float(B["eruptMsGraves"] if in_graves else B["eruptMs"]) / 1000.0 * (0.85 if elite else 1.0)
+
+
 func _remote_extra(st: int) -> void:
-	if st == DmEnemyState.Id.DIG:
+	if st == DmEnemyState.Id.ERUPT:
+		telegraph.emit(&"erupt", global_position, aim, float(DmSimData.BURROW["eruptR"]), maxf(0.05, erupt_windup() - net_age))
+	elif st == DmEnemyState.Id.DIG:
 		play_dig(float(DmSimData.BURROW["digS"]))
 	elif st == DmEnemyState.Id.EMERGE:
 		play_attack(DmStateEmerge.RECOVER_TIME)

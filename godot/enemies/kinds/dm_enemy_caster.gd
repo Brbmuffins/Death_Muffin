@@ -21,13 +21,12 @@ func _build_states() -> void:
 	sm.add(DmStateKite.new(self, DmEnemyState.Id.CHASE))
 
 
-func begin_attack() -> void:
-	super()
+func announce_telegraph(seconds: float) -> void:
 	match attack_kind:
 		"dust":
-			telegraph.emit(&"dust", global_position, aim, float(DmSimData.DUST["radius"]), windup_s)
+			telegraph.emit(&"dust", global_position, aim, float(DmSimData.DUST["radius"]), seconds)
 		_:
-			telegraph.emit(&"cone", global_position, aim, 0.0, windup_s)
+			telegraph.emit(&"cone", global_position, aim, 0.0, seconds)
 
 
 func strike() -> void:
