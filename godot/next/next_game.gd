@@ -136,7 +136,8 @@ func _on_player_joined(id: int) -> void:
 		rewards.add_member(DmRewardsMember.make(0, id, body_of(id), null, 1, {"id": body_of(id).discipline_id, "family": "necromancer"}))
 
 
-## Called by each DmHeroBody in its _ready on every peer: the rites seam (DmRiteCaster named "Rites", `self` is its DmRiteWorld).
+## Called by each DmHeroBody in its _ready on every peer: attaches "Rites" (DmRiteCaster, `self` is its DmRiteWorld), "Thralls"
+## (DmThrallHost) and "Statuses" (DmStatusSet).
 ## The host holds off for a joiner's body: its caster would RPC the joiner before the joiner's spawner has created the body (a missing path).
 func attach_caster(body: DmHeroBody) -> void:
 	if multiplayer.is_server() and body.owner_peer != session.get_my_id():
@@ -144,6 +145,9 @@ func attach_caster(body: DmHeroBody) -> void:
 		if not is_instance_valid(body) or not body.is_inside_tree():
 			return
 	DmRiteCaster.attach(body, self)
+	DmThrallHost.attach(body, self)   # "Thralls": raise/rally/command on the host, puppets elsewhere
+	if body.get_node_or_null("Statuses") == null:
+		DmStatusSet.attach(body)       # player statuses replicate like enemies'
 
 
 func _process(dt: float) -> void:
