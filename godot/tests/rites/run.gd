@@ -3,7 +3,7 @@ extends SceneTree
 ## Part A: solo (DmSession on OfflineMultiplayerPeer), host stepped by hand (deterministic). Part B: in-process ENet, 1 host + 2 clients
 ## (separate SceneMultiplayer branches). Ports 5194-5195 on 127.0.0.1 only.
 
-const PORT := 5194
+var PORT := DmTestPorts.free_port()   # random free port per run (parallel suites)
 var passed := 0
 var failed := 0
 

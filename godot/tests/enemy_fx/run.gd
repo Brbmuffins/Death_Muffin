@@ -120,16 +120,6 @@ func until(cond: Callable, limit_s: float) -> float:
 		await physics_frame
 	return -1.0
 
-func _free_port() -> int:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	for i in 200:
-		var port := rng.randi_range(40000, 49999)
-		var probe := ENetMultiplayerPeer.new()
-		if probe.create_server(port, 1) == OK:
-			probe.close()
-			return port
-	return 0
 
 func new_arena(with_fx := true) -> void:
 	if fxn != null:
@@ -314,7 +304,7 @@ func _branch(nm: String) -> Node3D:
 
 
 func _t_net() -> void:
-	var port := _free_port()
+	var port := DmTestPorts.free_port()
 	check(port >= 40000, "net: free port %d" % port)
 	var H := _branch("H")
 	var C := _branch("C")

@@ -4,7 +4,7 @@ extends SceneTree
 ## Part B runs a second DmNextGame as a client over ENet (127.0.0.1:5203) to prove spawn + state replication on the same code path.
 
 const DT := 1.0 / 60.0
-const PORT := 5203
+var PORT := DmTestPorts.free_port()   # random free port per run (parallel suites)
 
 class ErrLog extends Logger:
 	var errors: Array = []

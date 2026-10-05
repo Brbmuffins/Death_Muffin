@@ -23,25 +23,10 @@ func _initialize() -> void:
 	_main()
 
 
-## A UDP port nothing is bound to right now (ENet probe), from 40000-49999.
-func _free_port(avoid: int = 0) -> int:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	for i in 200:
-		var port := rng.randi_range(40000, 49999)
-		if port == avoid:
-			continue
-		var probe := ENetMultiplayerPeer.new()
-		if probe.create_server(port, 1) == OK:
-			probe.close()
-			return port
-	return 0
-
-
 func _main() -> void:
 	await process_frame
-	PORT_INPROC = _free_port()
-	PORT_PROC = _free_port(PORT_INPROC)
+	PORT_INPROC = DmTestPorts.free_port()
+	PORT_PROC = DmTestPorts.free_port(PORT_INPROC)
 	ok(PORT_INPROC > 0 and PORT_PROC > 0, "free test ports found (%d, %d)" % [PORT_INPROC, PORT_PROC])
 	await _part_a()
 	await _part_b()
