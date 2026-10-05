@@ -107,6 +107,8 @@ var coop: DmGameCoop
 var my_cosmetics := {"cape": "", "pet": ""}
 var pet_view: DmPetView = null
 var npc_views: DmNpcViews = null
+var laborer_views: DmLaborerViews = null
+var labor: DmGameLabor
 var npc_new: Dictionary = {}           # npc id -> has something new to say (the UI sets it from the guidance)
 var party_code: String:
 	get: return coop.party_code if coop != null else ""
@@ -135,6 +137,7 @@ func _make(path: String) -> Variant:
 ## Build everything and connect to the server. `opts` documented on the class.
 func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	opts = opts_
+	release = "godot-" + str(ProjectSettings.get_setting("application/config/version", "dev"))
 	vfx = get_node_or_null("/root/Vfx")
 	audio = get_node_or_null("/root/AudioDirector")
 	visual = bool(opts.get("visual", true)) and vfx != null and audio != null
@@ -212,6 +215,10 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	_make_abilities()
 	_make_visual_components()
 	depths = DmDepthsController.new(self)
+	labor = DmGameLabor.new(self)
+	if laborer_views != null:
+		labor.views = laborer_views
+		laborer_views.on_view = func(v: Dictionary) -> void: labor.note_labor(v)
 	gatherer = DmGameGather.new(self)
 	gather = gatherer.loop
 	actions.load_belt()
@@ -354,6 +361,8 @@ func _make_visual_components() -> void:
 	lootview.pickup_fx.connect(func(pos: Vector3, color: Color): vfx.emit({"x": pos.x, "y": pos.y, "z": pos.z, "count": 8, "color": color.to_rgba32() >> 8, "spread": 0.3, "speed": 1.2, "up": 1.0, "life": 0.4, "size": 0.14}))
 	npc_views = DmNpcViews.new()
 	npc_views.setup(world_root)
+	laborer_views = DmLaborerViews.new()
+	laborer_views.setup(self)
 	audio_hooks = DmAudioHooks.new()
 	audio_hooks.name = "AudioHooks"
 	add_child(audio_hooks)
@@ -649,6 +658,7 @@ func tick(dt: float) -> void:
 	if now < actions.meal_until and player.alive:
 		player.heal(actions.meal_rate * dt)
 	gather.update(dt)
+	labor.update(dt)
 	if visual:
 		gatherer.tick_visuals(dt)
 	if moved:
@@ -764,6 +774,9 @@ func _tick_visuals(dt: float, now: float) -> void:
 		views.sync(sim.enemies, sim.thralls, vdt, player.x, player.z)
 		views.prune_corpses(sim.corpses)
 	var b := sim.boss.state
+	if laborer_views != null:
+		laborer_views.reduce_motion = bool(settings["reduce_motion"])
+		laborer_views.update(vdt, player.x, player.z)
 	if npc_views != null:
 		_tick_npcs(vdt)
 		npc_views.hover_id = ""
@@ -896,6 +909,8 @@ func _enter_area(area: String) -> void:
 		if area == "acre":
 			game_event.emit("area_first_entered", {"area": area})
 	codex_discover("area", area)
+	if laborer_views != null:
+		laborer_views.set_active(area == "acre")
 	psync.flush()
 	area_changed.emit(area)
 
@@ -1276,6 +1291,10 @@ func flush_all() -> void:
 func _exit_tree() -> void:
 	if coop != null:
 		coop.dispose()
+	if labor != null:
+		labor.dispose()
+	if laborer_views != null:
+		laborer_views.dispose()
 	if ready_ and psync != null:
 		psync.save_local_now()
 
