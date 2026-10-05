@@ -1,7 +1,7 @@
 /**
  * Death Muffin -> Godot golden fixtures for the progression rules (godot/rules/progression/).
  * Imports the REAL game modules, writes:
- *   godot/data/progression/content.json        runtime content the GDScript rules load (never hand-edited)
+ *   (godot/data/progression/extras.json is hand-maintained; the rest of the progression content is projected from godot/data/content/* by DmDb)
  *   godot/tests/rules-progression/fixtures/*.json    inputs -> outputs recorded from the TypeScript
  * Run: npx vite-node tools/godot/fixtures-progression.ts
  */
@@ -98,7 +98,9 @@ const content = {
   startAreas: ['chapterhouse', 'graves'],
   alwaysOpen: Object.fromEntries(Object.keys(AREAS).map((id) => [id, isAlwaysOpen(id as any)])),
 };
-write(DATA, 'content.json', content, true);
+// Fixture generation never writes committed content. godot/data/progression/extras.json (upgrade cost curves + start areas; not in
+// content/*) is maintained by hand; tests/data and rules-progression fail if it drifts from this oracle (`content` above).
+write(FIX, 'content_oracle.json', content);
 
 // ============================================================================
 // random generators

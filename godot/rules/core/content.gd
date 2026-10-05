@@ -9,24 +9,18 @@ extends RefCounted
 ##            DmContent.computed("smartTables")  -> value from computed.json (function results baked from the TS)
 ## Typed:     item(id) enemy(id) area(id) ability(id) discipline(id) boss(id) rune(id) brew(id) ... (see below)
 
-const DIR := "res://data/content/"
-
-static var _files: Dictionary = {}
-static var _manifest: Dictionary = {}
+## Loading/caching lives in DmDb (rules/core/dm_db.gd); this class is the typed view.
 static var _recipes: Array = []
 
 
 ## Drop the cache (tests / hot reload).
 static func reset() -> void:
-	_files = {}
-	_manifest = {}
+	DmDb.reset()
 	_recipes = []
 
 
 static func manifest() -> Dictionary:
-	if _manifest.is_empty():
-		_manifest = _read(DIR + "manifest.json")
-	return _manifest
+	return DmDb.content_manifest()
 
 
 ## Names of every exported file (without .json), excluding manifest.
@@ -38,13 +32,7 @@ static func file_names() -> PackedStringArray:
 
 
 static func file(name: String) -> Dictionary:
-	if not _files.has(name):
-		var path := DIR + name + ".json"
-		if not FileAccess.file_exists(path):
-			push_error("DmContent: unknown content file '%s'" % name)
-			return {}
-		_files[name] = _read(path)
-	return _files[name]
+	return DmDb.content(name)
 
 
 static func get_export(file_name: String, export_name: String) -> Variant:
@@ -53,18 +41,6 @@ static func get_export(file_name: String, export_name: String) -> Variant:
 
 static func computed(key: String) -> Variant:
 	return file("computed").get(key)
-
-
-static func _read(path: String) -> Dictionary:
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
-		push_error("DmContent: cannot open %s" % path)
-		return {}
-	var parsed: Variant = JSON.parse_string(f.get_as_text())
-	if typeof(parsed) != TYPE_DICTIONARY:
-		push_error("DmContent: %s is not a JSON object" % path)
-		return {}
-	return parsed
 
 
 static func _dict(file_name: String, export_name: String) -> Dictionary:

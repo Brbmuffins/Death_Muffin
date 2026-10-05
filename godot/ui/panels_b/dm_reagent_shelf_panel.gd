@@ -19,8 +19,7 @@ static var _wing: Dictionary = {}
 
 static func wing() -> Dictionary:
 	if _wing.is_empty():
-		var f := FileAccess.open("res://data/content/wing.json", FileAccess.READ)
-		_wing = DmGatherData.normalize(JSON.parse_string(f.get_as_text()))
+		_wing = DmGatherData.normalize(DmDb.content("wing"))
 	return _wing
 
 

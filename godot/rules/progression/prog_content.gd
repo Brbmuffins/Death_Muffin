@@ -1,19 +1,14 @@
 class_name DmProgContent
 extends RefCounted
-## Loads res://data/progression/content.json (generated from the TS by tools/godot/fixtures-progression.ts):
+## Typed view of DmDb.progression_view() (projection of data/content/* + data/progression/extras.json):
 ## areas (order/safe/unlock), bosses, vows, boons, upgrade constants, kill-chain tiers, milestones, limits.
-
-const PATH := "res://data/progression/content.json"
 
 static var _data: Dictionary = {}
 
 
 static func get_data() -> Dictionary:
 	if _data.is_empty():
-		var f := FileAccess.open(PATH, FileAccess.READ)
-		assert(f != null, "missing " + PATH)
-		var parsed: Variant = JSON.parse_string(f.get_as_text())
-		_data = DmProgUtil.ints(parsed)
+		_data = DmProgUtil.ints(DmDb.progression_view())
 	return _data
 
 

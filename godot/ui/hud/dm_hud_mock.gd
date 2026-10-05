@@ -21,8 +21,7 @@ static func slots(cd_ms: Array = [0, 4200, 0, 900, 0, 0]) -> Array:
 
 
 static func minimap(px: float = 0.0, pz: float = 20.0) -> Dictionary:
-	var f := FileAccess.open("res://data/slice/world.json", FileAccess.READ)
-	var w: Dictionary = JSON.parse_string(f.get_as_text()) if f != null else {"areas": {}, "doors": []}
+	var w: Dictionary = DmDb.slice("world") if DmDb.exists("slice/world") else {"areas": {}, "doors": []}
 	var areas: Array = []
 	for id in w["areas"]:
 		var a: Dictionary = w["areas"][id]

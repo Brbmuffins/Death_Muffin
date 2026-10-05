@@ -6,7 +6,6 @@ extends Control
 
 signal selected(character: Dictionary)
 
-const DISCIPLINES_JSON := "res://data/content/disciplines.json"
 const FIRST_RUN_DISCIPLINE := "gravecaller"   # src/ui/firstHourRules.ts
 
 var api: DmApi
@@ -22,7 +21,7 @@ func _init(api_: DmApi = null) -> void:
 
 
 static func load_disciplines() -> Array:
-	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(DISCIPLINES_JSON))
+	var d: Variant = DmDb.content("disciplines")
 	return d["PLAYABLE_DISCIPLINES"] if d is Dictionary else []
 
 

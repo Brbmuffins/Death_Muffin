@@ -3,16 +3,11 @@ extends RefCounted
 ## godot/data/world_fx/fx.json (tools/godot/export-world-fx.ts): windows, silhouettes, flames, mist, Atmosphere profiles, water inputs,
 ## bloom, wing table. Everything the dressing draws comes from here; nothing is retyped.
 
-const PATH := "res://data/world_fx/fx.json"
 static var _d: Dictionary = {}
 
 static func get_data() -> Dictionary:
 	if _d.is_empty():
-		var f := FileAccess.open(PATH, FileAccess.READ)
-		if f != null:
-			var v: Variant = JSON.parse_string(f.get_as_text())
-			if v is Dictionary:
-				_d = v
+		_d = DmDb.world_fx()
 	return _d
 
 ## 0xRRGGBB number (JSON) -> Color

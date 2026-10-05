@@ -170,7 +170,7 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	world_root.name = "WorldRoot"
 	add_child(world_root)
 	_world_data = DmData.world()
-	_sim_world = DmSimExact.load_json("res://data/sim/world.json")
+	_sim_world = DmDb.sim_world()
 	nav = DmNav.new()
 	for o in _sim_world["obstacles"]:
 		nav.add_obstacle(DmNavObstacle.from_dict(o))

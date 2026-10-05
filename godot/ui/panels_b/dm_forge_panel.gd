@@ -255,8 +255,7 @@ static func brew_of_the_day(day: String) -> Dictionary:
 	var h := 2166136261
 	for i in day.length():
 		h = ((h ^ day.unicode_at(i)) * 16777619) & 0xFFFFFFFF
-	var f := FileAccess.open("res://data/content/reagents.json", FileAccess.READ)
-	var list: Array = JSON.parse_string(f.get_as_text())["REAGENT_BREW_LIST"]
+	var list: Array = DmDb.content_export("reagents", "REAGENT_BREW_LIST")
 	var entry: Array = list[h % mini(8, list.size())]
 	return {"recipeId": entry[1]["recipe"]["id"], "brewId": entry[0], "name": entry[1]["name"]}
 

@@ -5,7 +5,7 @@ extends VBoxContainer
 ##
 ## Data in:  set_data({ready: bool, primer, looking: {discipline, orderText, why, weapons, weakest:[{text, empty}]},
 ##           sections:[{id, title, lines:[{id, label, value, help, rows:[{label, value, tone?, total?}]}]}]})
-##           (godot/data/panels_a/sheet_sample.json is a real sample). Whoever ports gameplay/gearStats.ts produces this dictionary.
+##           (godot/tests/panels_a/sheet_sample.json is a real sample). Whoever ports gameplay/gearStats.ts produces this dictionary.
 ## Signals:  line_toggled(id, open)   (no DmApi call; first open of the sheet raises the "statSheet" counsel tip in the web: `opened` on the window)
 
 signal line_toggled(id: String, open: bool)

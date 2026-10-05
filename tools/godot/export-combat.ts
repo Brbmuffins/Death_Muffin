@@ -120,15 +120,10 @@ write('enemies.json', {
 });
 
 // ---- Upgrades, vows, boons, legion, resource tables ----
+// Only what content/ does not already carry (upgrade tiers, vows, boons, ascension, chain, stat effects live in godot/data/content/*;
+// DmDb.combat('progression') composes them back in). Writing them here again would resurrect a duplicate.
 write('progression.json', {
-  damage_upgrade: { maxTier: DAMAGE_UPGRADE.maxTier, perTier: DAMAGE_UPGRADE.perTier },
-  wave_upgrade: { maxTier: WAVE_UPGRADE.maxTier },
-  legion_upgrade: { maxTier: LEGION_UPGRADE.maxTier, perTier: LEGION_UPGRADE.perTier, speedPerTier: LEGION_UPGRADE.speedPerTier },
-  thrall_refresh_max: THRALL_REFRESH_MAX, wave_milestones: WAVE_MILESTONES, nightfall_shroud_chance: NIGHTFALL_SHROUD_CHANCE, restless_surge_mult: RESTLESS_SURGE_MULT,
-  ascension: ASCENSION, vows: VOWS, vow_order: VOW_ORDER, boons: BOONS, boon_order: BOON_ORDER,
   kit: { base: KIT_BASE, ids: KIT_IDS, rates: KIT_RATES },
-  stat_effects: STAT_EFFECTS,
   new_blood: { damage_mult: NEW_BLOOD_DAMAGE_MULT, xp_catchup: NEW_BLOOD_XP_CATCHUP },
-  chain: CHAIN,
 });
 console.log('combat data written to', OUT);

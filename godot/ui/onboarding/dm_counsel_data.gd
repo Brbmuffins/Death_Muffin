@@ -2,20 +2,14 @@ class_name DmCounselData
 extends RefCounted
 ## Covenant counsel data: every tip's title/body/kind/group/priority/place/anchor plus the cadence constants, all exported from the real
 ## TypeScript (src/ui/Onboarding.ts TIPS + TIP_ANCHOR, src/ui/counselCadence.ts) by tools/godot/fixtures-onboarding.ts into
-## res://data/onboarding/tips.json. Never hand-edited. Also `render_text` (Onboarding.ts renderText).
-
-const PATH := "res://data/onboarding/tips.json"
+## data/onboarding/tips.json (via DmDb). Never hand-edited. Also `render_text` (Onboarding.ts renderText).
 
 static var _d: Dictionary = {}
 
 
 static func data() -> Dictionary:
 	if _d.is_empty():
-		var f := FileAccess.open(PATH, FileAccess.READ)
-		if f == null:
-			push_error("counsel data missing: run tools/godot/gen-fixtures.sh (%s)" % PATH)
-			return {}
-		_d = JSON.parse_string(f.get_as_text())
+		_d = DmDb.tips()
 	return _d
 
 

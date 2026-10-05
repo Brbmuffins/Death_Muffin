@@ -25,9 +25,12 @@ import { DISCIPLINES as DISC } from '../../src/content/disciplines';
 
 const OUT = resolve('godot/data/panels_a');
 mkdirSync(OUT, { recursive: true });
-const write = (name: string, v: unknown) => {
+// sheet_sample.json is TEST/MOCK data (the dev gallery's stat sheet): it goes under godot/tests/, never godot/data/.
+const MOCK_OUT = resolve('godot/tests/panels_a');
+const write = (name: string, v: unknown, dir = OUT) => {
   const s = JSON.stringify(v);
-  writeFileSync(resolve(OUT, name), s + '\n');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(resolve(dir, name), s + '\n');
   console.log(`${name}: ${(s.length / 1024).toFixed(0)} KB`);
 };
 const round = (n: number, d = 6) => (Number.isFinite(n) ? +n.toFixed(d) : n);
@@ -142,7 +145,7 @@ write('atlas.json', deepRound({
   });
   const slots: any[] = [mk('set_gravecaller_head', 0, { stat_int: 4, stat_vit: 2 }), mk('set_gravecaller_chest', 1, { stat_vit: 6, stat_int: 2 }), mk('set_gravecaller_legs', 2, { stat_vit: 3 })];
   const ctx: any = { character: { id: 1, class_index: 2, class_name: '', level: 12, experience: 0, gold: 0, stat_str: 6, stat_agi: 6, stat_int: 9, stat_vit: 8 }, slots, discipline: DISC.gravecaller, damageTier: 1 };
-  write('sheet_sample.json', deepRound({ primer: STAT_PRIMER, looking: lookingFor(ctx), sections: statSheet(ctx) }));
+  write('sheet_sample.json', deepRound({ primer: STAT_PRIMER, looking: lookingFor(ctx), sections: statSheet(ctx) }), MOCK_OUT);
 }
 
 // ---------------------------------------------------------------- Formatting fixtures (tests/panels_a/fixtures/fmt.json)
