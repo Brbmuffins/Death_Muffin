@@ -104,6 +104,8 @@ func _run() -> void:
 	var tot := 0
 	for key in keys:
 		tot += int(game.prof[key])
+	if game.views != null:
+		print("PERF views ", game.views.counts(), " ", game.views.pool_counts())
 	print("PERF tick total %.2f ms/frame (process monitor avg %.2f ms)" % [tot / 1000.0 / n, proc_sum / n])
 	for key in keys:
 		print("  %-18s %7.3f ms/frame" % [key, game.prof[key] / 1000.0 / n])

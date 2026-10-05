@@ -88,6 +88,7 @@ func run(t: SceneTree) -> void:
 	_test_burrow_and_shroud()
 	await _test_resync()
 	await _test_corpse_prune()
+	await _test_pool_reuse()
 	await _test_avatar()
 	await _test_bosses()
 	views.dispose()
@@ -353,6 +354,31 @@ func _test_corpse_prune() -> void:
 	for i in 30:
 		views.sync(sim.enemies, sim.thralls, 0.05, 0.0, 0.0)
 	check(views.counts().fading == 0, "pruned bodies disposed")
+
+
+## A dead enemy's body goes back to the pool once it has faded and the next spawn of that kind reuses it, standing, opaque and visible.
+func _test_pool_reuse() -> void:
+	var e := _spawn("robber", 3.0, 3.0)
+	views.sync(sim.enemies, sim.thralls, 0.05, 0.0, 0.0)
+	var c1: DmCreature = views.enemy_view(e.id)
+	check(c1 != null, "pool: enemy view built")
+	views.on_event({"t": "death", "id": e.id, "x": e.x, "z": e.z, "def": "robber"})
+	sim.enemies.erase(e.id)
+	for i in 50:
+		views.sync(sim.enemies, sim.thralls, 0.05, 0.0, 0.0)
+	check(views.counts().dying == 0 and views.counts().fading == 0, "pool: dead body faded (%s)" % str(views.counts()))
+	var hits0: int = views.pool_counts().pool_hits
+	var e2 := _spawn("robber", -3.0, 3.0)
+	views.sync(sim.enemies, sim.thralls, 0.05, 0.0, 0.0)
+	var c2: DmCreature = views.enemy_view(e2.id)
+	check(views.pool_counts().pool_hits == hits0 + 1, "pool: next spawn of the kind reuses a body (%s)" % str(views.pool_counts()))
+	check(c2 != null and c2.opacity() == 1.0 and c2.toppled == 0.0 and c2.root.visible and c2.root.is_inside_tree(), "pool: reused body is reset")
+	check(c2 != null and not c2.busy(), "pool: reused body is not still playing its death")
+	check(c2 != null and absf(c2.root.rotation.z) < 0.001, "pool: reused body stands upright")
+	sim.enemies.erase(e2.id)
+	views.sync(sim.enemies, sim.thralls, 0.05, 0.0, 0.0)
+	for i in 30:
+		views.sync(sim.enemies, sim.thralls, 0.05, 0.0, 0.0)
 
 
 func _test_avatar() -> void:

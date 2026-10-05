@@ -958,6 +958,8 @@ func _enter_area(area: String) -> void:
 	codex_discover("area", area)
 	if laborer_views != null:
 		laborer_views.set_active(area == "acre")
+	if views != null and views.has_method("queue_area"):
+		views.queue_area(area)
 	psync.flush()
 	area_changed.emit(area)
 

@@ -132,6 +132,11 @@ var _thralls: Dictionary = {}
 var _corpses: Dictionary = {}
 var _corpse_rings: Dictionary = {}
 var _dying: Array = []
+## Dead enemies' creatures, kept for the next spawn of the same model + look (instancing a skinned model is the wave-spawn cost).
+var _pool: Dictionary = {}   # pool key -> Array[DmCreature]
+const POOL_PER_KEY := 12
+var pool_hits := 0
+var pool_misses := 0
 var _fading: Array = []
 var _frame := 0
 var _crowd: Array = []        # [x, z, r, w]
@@ -327,11 +332,11 @@ func _is_own(owner: String) -> Variant:
 
 # ----------------------------------------------------------------------------------------------------------------- makers
 
-func _make_enemy(e: DmSimEnemy) -> View:
-	var slug: String = ENEMY_SLUG.get(e.def, "grave_robber")
-	var risen := e.def == "risen"
-	var wraith := e.def == "wraith"
-	var drowned := risen and e.area == "fen"
+## The look of an enemy body (tint, emissive, spectral, wings, fallback rig): also its pool key. `e` is a DmSimEnemy or a dict with def/elite/area.
+func _enemy_opts(e: Variant) -> Dictionary:
+	var risen: bool = e.def == "risen"
+	var wraith: bool = e.def == "wraith"
+	var drowned: bool = risen and e.area == "fen"
 	var em := 0x000000
 	var ek := 0.0
 	if e.elite:
@@ -355,7 +360,14 @@ func _make_enemy(e: DmSimEnemy) -> View:
 		o["fallback"] = ENEMY_FALLBACK[e.def]
 	if WINGS.has(e.def):
 		o["wings"] = WINGS[e.def]
-	var c := DmCreature.new(slug, o)
+	return o
+
+func _make_enemy(e: DmSimEnemy) -> View:
+	var slug: String = ENEMY_SLUG.get(e.def, "grave_robber")
+	var o := _enemy_opts(e)
+	var c := _creature(slug, o)
+	c.root.position = Vector3(e.x, 0.0, e.z)
+	c.root.rotation.y = e.facing
 	c.root.scale = Vector3.ONE * e.scale
 	add_child(c.root)
 	var v := View.new()
@@ -370,6 +382,112 @@ func _make_enemy(e: DmSimEnemy) -> View:
 	if e.affix != "":
 		_dress_affix(v, e)
 	return v
+
+static func _pool_key(slug: String, o: Dictionary) -> String:
+	return slug + "|" + var_to_str(o)
+
+## A pooled body of this model + look when one is free, else a new instance. Only enemy bodies are pooled (thralls carry hand props).
+func _creature(slug: String, o: Dictionary) -> DmCreature:
+	var key := _pool_key(slug, o)
+	var list: Array = _pool.get(key, [])
+	while not list.is_empty():
+		var c: DmCreature = list.pop_back()
+		if c.root != null and is_instance_valid(c.root):
+			c.recycle_reset()
+			pool_hits += 1
+			return c
+	pool_misses += 1
+	var nc := DmCreature.new(slug, o)
+	nc.opts["pool_key"] = key
+	return nc
+
+## Retire a body: back to the pool when it is a pooled kind with room, else freed.
+func _retire(c: DmCreature) -> void:
+	var key := String(c.opts.get("pool_key", ""))
+	if key == "" or c.root == null or not is_instance_valid(c.root):
+		c.dispose()
+		return
+	var list: Array = _pool.get(key, [])
+	if list.size() >= POOL_PER_KEY:
+		c.dispose()
+		return
+	if c.root.get_parent() != null:
+		c.root.get_parent().remove_child(c.root)
+	list.append(c)
+	_pool[key] = list
+
+## Pre-build `n` bodies of every enemy kind (DmWarmup), so even a wave's first spawn of a kind reuses a body.
+func prewarm(n: int = 2) -> int:
+	var made := 0
+	for def in ENEMY_SLUG:
+		var o := _enemy_opts({"def": def, "elite": false, "area": ""})
+		var slug: String = ENEMY_SLUG[def]
+		var key := _pool_key(slug, o)
+		var have: int = (_pool.get(key, []) as Array).size()
+		for i in maxi(0, n - have):
+			var c := DmCreature.new(slug, o)
+			c.opts["pool_key"] = key
+			_retire(c)
+			made += 1
+	return made
+
+## Background top-up for the area the hero is in: enough bodies of each roster kind for a wave (by roster weight, 2..8), built
+## one per frame so a wave's spawn frame only takes bodies out of the pool.
+var _topup: Array = []   # [def, area, target]
+
+func queue_area(area: String) -> void:
+	_topup.clear()
+	var def: Dictionary = DmSimData.AREAS.get(area, {})
+	var roster: Array = def.get("enemies", [])
+	var total := 0.0
+	for r in roster:
+		total += float(r.get("weight", 1.0))
+	for r in roster:
+		var share := float(r.get("weight", 1.0)) / maxf(total, 0.001)
+		var pack: Variant = DmSimData.ENEMIES.get(String(r["id"]), {}).get("pack")
+		var want := ceili(share * 14.0) + (int(pack[1]) if pack != null else 0)
+		_topup.append([String(r["id"]), area, clampi(want, 2, 8)])
+
+func _pump_topup() -> void:
+	while not _topup.is_empty():
+		var it: Array = _topup[0]
+		if not ENEMY_SLUG.has(it[0]):
+			_topup.pop_front()
+			continue
+		var o := _enemy_opts({"def": it[0], "elite": false, "area": it[1]})
+		var slug: String = ENEMY_SLUG[it[0]]
+		var key := _pool_key(slug, o)
+		if (_pool.get(key, []) as Array).size() >= int(it[2]):
+			_topup.pop_front()
+			continue
+		var c := DmCreature.new(slug, o)
+		c.opts["pool_key"] = key
+		_retire(c)
+		return
+
+## Show every pooled body once under `parent` (one opaque, one mid-fade per kind) so their shaders compile during the loading screen.
+func warm_bodies(parent: Node3D, at: Vector3) -> Array:
+	var out: Array = []
+	var i := 0
+	for key in _pool:
+		var list: Array = _pool[key]
+		for j in mini(list.size(), 2):
+			var c: DmCreature = list[j]
+			parent.add_child(c.root)
+			c.root.position = at + Vector3(float(i % 8) - 3.5, 0.0, float(i / 8) * 0.6) * 0.5
+			c.root.scale = Vector3.ONE * 0.3
+			if j == 1:
+				c.set_opacity(0.5)
+			c.update(0.016)
+			out.append(c)
+			i += 1
+	return out
+
+func warm_bodies_end(bodies: Array) -> void:
+	for c: DmCreature in bodies:
+		if c.root != null and is_instance_valid(c.root) and c.root.get_parent() != null:
+			c.root.get_parent().remove_child(c.root)
+		c.recycle_reset()
 
 ## A readable, persistent tell for each elite affix.
 func _dress_affix(v: View, e: DmSimEnemy) -> void:
@@ -950,6 +1068,8 @@ func _separate_bodies(bodies: Array, out: PackedFloat32Array, iterations: int, m
 
 ## Create / update / retire the views. enemies: id -> DmSimEnemy, thralls: id -> DmSimThrall. fx/fz = the camera focus (the hero).
 func sync(enemies: Dictionary, thralls: Dictionary, dt: float, focus_x: float, focus_z: float) -> void:
+	if not _topup.is_empty() and enemies.size() < 40:
+		_pump_topup()
 	_frame += 1
 	if vfx != null:
 		DmCreature.hitstop_scale = float(vfx.hitstop_scale)
@@ -1180,7 +1300,10 @@ func sync(enemies: Dictionary, thralls: Dictionary, dt: float, focus_x: float, f
 		f.c.root.position.y -= dt * 1.3
 		f.c.set_opacity(maxf(0.0, 1.0 - f.sink_t / 0.9))
 		if f.sink_t > 0.9:
-			f.c.dispose()
+			if f.mound != null:
+				f.mound.queue_free()
+				f.mound = null
+			_retire(f.c)
 			_fading.remove_at(i)
 
 ## Drop corpse bodies the authority no longer has (resync after migration / drift).
@@ -1200,6 +1323,13 @@ func enemy_anchor(id: int) -> Variant:
 
 func counts() -> Dictionary:
 	return {"enemies": _enemies.size(), "thralls": _thralls.size(), "corpses": _corpses.size(), "dying": _dying.size(), "fading": _fading.size()}
+
+## Enemy body pool (QA/perf): bodies waiting, spawns served from the pool vs new instances.
+func pool_counts() -> Dictionary:
+	var pooled := 0
+	for key in _pool:
+		pooled += (_pool[key] as Array).size()
+	return {"pooled": pooled, "pool_hits": pool_hits, "pool_misses": pool_misses}
 
 ## QA/test accessors.
 func enemy_view(id: int) -> Variant:
@@ -1224,6 +1354,10 @@ func dispose() -> void:
 		for v: View in list:
 			v.c.dispose()
 		list.clear()
+	for key in _pool:
+		for c: DmCreature in _pool[key]:
+			c.dispose()
+	_pool.clear()
 	if is_inside_tree():
 		get_parent().remove_child(self)
 	queue_free()

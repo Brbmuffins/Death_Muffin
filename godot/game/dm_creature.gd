@@ -733,6 +733,52 @@ func _calibrate(a: Dictionary, root_q: Quaternion) -> void:
 	if a.follow != null:
 		a.base_q = q
 
+## Back to a freshly-built state so a pooled body can stand up as a new enemy (DmEntityViews reuses dead enemies' creatures
+## instead of instancing the model again): pose, transform, flash, emissive, opacity, shadows and the clip state.
+func recycle_reset() -> void:
+	toppled = 0.0
+	steady_every = 1
+	last_plan = {}
+	_last_ground = -1.0
+	_settled_t = 0.0
+	_recheck_t = 0.0
+	_steady_n = 0
+	root.position = Vector3.ZERO
+	root.rotation = Vector3.ZERO
+	root.scale = Vector3.ONE
+	root.visible = true
+	_flash_v = 0.0
+	_flash_level = 0
+	_build_emissive_base()
+	_apply_flash(0.0)
+	set_opacity(1.0)
+	set_cast_shadow(bool(opts.get("cast_shadow", true)))
+	_one_shot = ""
+	_one_shot_end = -1.0
+	_death_clip = ""
+	_flinch_t = -1.0
+	_loop = "idle"
+	_loop_speed = 1.0
+	_current = ""
+	if ap != null:
+		ap.stop()
+		ap.speed_scale = 1.0
+	_start_loop(false)
+
+
+func _build_emissive_base() -> void:
+	var em_col := Vector3.ZERO
+	var k := 0.0
+	if opts.has("emissive"):
+		em_col = lin(int(opts.emissive))
+		k = float(opts.get("emissive_intensity", 0.3))
+	if _spectral:
+		em_col = lin(int(opts.get("emissive", 0x8f9ed1)))
+		k = float(opts.get("emissive_intensity", 0.9))
+	_em_base = em_col
+	_em_k = k
+
+
 func dispose() -> void:
 	_disposed = true
 	if ap != null:

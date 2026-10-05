@@ -82,6 +82,11 @@ static func run(game: Node3D) -> void:
 				a.play(names[0])
 		i += 1
 	var warmed: Array = binbun.warm(ids, at) if binbun != null else []
+	# Enemy bodies: two per kind into the views' pool (reused by every wave), drawn opaque + mid-fade so DmCreatureMat compiles now.
+	var bodies: Array = []
+	if game.views != null and game.views.has_method("prewarm"):
+		game.views.prewarm(2)
+		bodies = game.views.warm_bodies(stage, at)
 	# Boss views are built on first sight (36 ms+ at the first wave); build them all now, hidden.
 	for bid in DmContent.bosses().keys():
 		if game.boss_view(String(bid)) != null:
@@ -90,11 +95,13 @@ static func run(game: Node3D) -> void:
 		await tree.process_frame
 	if binbun != null:
 		binbun.warm_end(warmed)
+	if not bodies.is_empty():
+		game.views.warm_bodies_end(bodies)
 	stage.queue_free()
 	await tree.process_frame
 	cover.queue_free()
 	last_ms = Time.get_ticks_msec() - t0
-	print("DmWarmup: %d models + %d effects in %d ms" % [creature_paths.size(), warmed.size(), last_ms])
+	print("DmWarmup: %d models + %d effects + %d pooled bodies in %d ms" % [creature_paths.size(), warmed.size(), bodies.size(), last_ms])
 
 
 static func _cover(game: Node) -> CanvasLayer:
