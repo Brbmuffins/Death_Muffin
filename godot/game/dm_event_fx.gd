@@ -679,7 +679,7 @@ func _exhumed(ev: Dictionary) -> void:
 		hook("on_exhumed_refund", ev)
 		float_text(px(), 2.4, pz(), "Too few corpses for a Colossus" if ev.get("why") == "few" else "The corpse is gone", "info")
 	else:
-		abil("on_corpse_consumed", [])
+		# (the caster's handle_event already ran on_corpse_consumed + the corpse heal for this answer)
 		hook("on_exhumed_ok", ev)
 
 

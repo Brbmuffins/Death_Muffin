@@ -79,6 +79,10 @@ func setup() -> void:
 	_ready_done = true
 	rng.randomize()
 	_ensure_buses()
+	# The voice players + their pan buses up front: each new bus re-lays the whole AudioServer layout (1-3 ms), which otherwise
+	# landed on the first big fights as voices were created on demand.
+	while _voices.size() < MAX_VOICES:
+		_new_voice()
 	music = DmMusicDirector.new()
 	music.name = "Music"
 	music.bus_name = MUSIC_BUS
@@ -319,12 +323,23 @@ func _voice_count() -> int:
 	return n
 
 
-func _acquire_voice() -> Dictionary:
+## An idle voice, preferring one already sending to `send` (re-routing a voice is a set_bus_send, which re-lays every bus).
+func _acquire_voice(send: StringName = &"") -> Dictionary:
+	var any: Dictionary = {}
 	for v in _voices:
 		if not v["active"]:
-			return v
+			if send == &"" or v.get("send", &"") == send:
+				return v
+			if any.is_empty():
+				any = v
+	if not any.is_empty():
+		return any
 	if _voices.size() >= MAX_VOICES * 2:
 		return {}
+	return _new_voice()
+
+
+func _new_voice() -> Dictionary:
 	var p := AudioStreamPlayer.new()
 	add_child(p)
 	var bus_name := "DmPan%d" % _voices.size()
@@ -348,7 +363,8 @@ func _start_clip(stream: AudioStream, vol: float, rate: float, jitter: float, ct
 
 
 func _play_clip(stream: AudioStream, vol: float, rate: float, jitter: float, ctx: Dictionary, cap_s: float) -> void:
-	var v := _acquire_voice()
+	var send: StringName = BUS_NAMES[ctx["bus"]]
+	var v := _acquire_voice(send)
 	if v.is_empty():
 		return
 	var r := rate * (1.0 + (rng.randf() * 2.0 - 1.0) * jitter)
@@ -364,9 +380,9 @@ func _play_clip(stream: AudioStream, vol: float, rate: float, jitter: float, ctx
 	if bus_idx < 0 or AudioServer.get_bus_name(bus_idx) != v["pan_bus"]:
 		bus_idx = AudioServer.get_bus_index(v["pan_bus"])
 		v["bus_idx"] = bus_idx
-	var send: StringName = BUS_NAMES[ctx["bus"]]
 	if AudioServer.get_bus_send(bus_idx) != send:
 		AudioServer.set_bus_send(bus_idx, send)
+	v["send"] = send
 	(AudioServer.get_bus_effect(bus_idx, 0) as AudioEffectPanner).pan = pan
 	var pl: AudioStreamPlayer = v["player"]
 	pl.stream = stream

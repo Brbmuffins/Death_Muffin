@@ -1846,11 +1846,20 @@ func _nb_on_event(ev: Dictionary, mine: bool) -> void:
 # --- host events the web scene routes into the ability system -----------------------------------------------------------------------------------
 
 ## handle_event plus the visual-only events (rally / seeded / seedGone / seedBurst / corpseGone), as WorldScene.handleEvent routes them.
-## Inside DmGame the event router (DmEventFx) already sends these to on_rally etc., so they are only routed here without one
-## (standalone ability-fx tests); routing both drew every Rally / Carrion Seed effect twice.
+## Inside DmGame the event router (DmEventFx) is WorldScene: it calls on_rally / on_seeded / ... and on_mantle / on_offering / on_litany /
+## on_detonated itself, so those are not routed here too (both ran: every Litany / Mantle barrier was paid twice, every effect drawn twice).
+## Without a router (standalone ability-fx tests) this routes everything, as before.
 func handle_event(ev: Dictionary) -> void:
 	if game == null or game.get("event_fx") == null:
 		_route_visual(ev)
+		super.handle_event(ev)
+		return
+	match ev["t"]:
+		"mantle", "offering", "litanyResult":
+			return
+		"detonated":
+			if ev["ok"]:
+				return
 	super.handle_event(ev)
 
 

@@ -289,8 +289,10 @@ func run(p_tree: SceneTree) -> void:
 	check(host.gestures > 0, "remote_gesture forwarded")
 	var calls: Array = host.abilities.calls
 	var names := calls.map(func(c): return c[0])
-	for m in ["on_mantle", "on_offering", "on_rally", "on_seeded", "on_seed_gone", "on_seed_burst", "on_detonated", "on_litany", "on_new_blood", "on_corpse_consumed"]:
+	for m in ["on_mantle", "on_offering", "on_rally", "on_seeded", "on_seed_gone", "on_seed_burst", "on_detonated", "on_litany", "on_new_blood"]:
 		check(names.has(m), "abilities.%s called" % m)
+	# The caster's own handle_event consumes the corpse on an exhume (+ the corpse heal); the router must not do it again.
+	check(not names.has("on_corpse_consumed"), "exhumed: on_corpse_consumed left to the caster")
 	check(host.p["rootedUntil"] > 0.0, "boss root applied to the hero")
 	for t in DmEventFx.HANDLED:
 		if not seen_types.has(t):
