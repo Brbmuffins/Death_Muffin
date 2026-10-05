@@ -2,6 +2,7 @@ class_name DmStateChase
 extends DmEnemyState
 ## Close on the target through the navmesh; swing when in range and the cooldown is up; drop the target and go home when it gets away.
 ## sim_enemy_ai melee branch: attack when dist <= attackRange + 0.35 and cd <= 0; keep walking while dist > attackRange * 0.8.
+## Subclasses override `engage` (what to do once the target is valid, in leash and re-scanned): flankers path to a side point, casters keep range.
 
 func tick(dt: float) -> int:
 	var tg := enemy.target
@@ -18,6 +19,10 @@ func tick(dt: float) -> int:
 			enemy.target = nearer
 			tg = nearer
 			d = enemy.flat_dist_to(tg)
+	return engage(tg, d, dt)
+
+
+func engage(tg: Node3D, d: float, dt: float) -> int:
 	if d <= enemy.attack_range + DmEnemy.ATTACK_TRIGGER_PAD and enemy.attack_cd <= 0.0:
 		return Id.ATTACK
 	if d > enemy.attack_range * DmEnemy.STOP_FRAC:

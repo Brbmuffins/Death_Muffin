@@ -24,7 +24,11 @@ func _ready() -> void:
 		spawn_robber(Vector3(sin(a), 0.0, cos(a)) * spawn_ring)
 
 func spawn_robber(pos: Vector3, props: Dictionary = {}) -> DmEnemy:
-	var e: DmEnemy = ROBBER.instantiate()
+	return spawn_kind("robber", pos, props)
+
+## Any kind that has a scene godot/enemies/<kind>.tscn.
+func spawn_kind(kind: String, pos: Vector3, props: Dictionary = {}) -> DmEnemy:
+	var e: DmEnemy = (ROBBER if kind == "robber" else load("res://enemies/%s.tscn" % kind)).instantiate()
 	e.rising = rising_spawn
 	for k in props:
 		e.set(k, props[k])

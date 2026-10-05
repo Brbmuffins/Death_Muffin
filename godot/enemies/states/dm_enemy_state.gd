@@ -4,8 +4,8 @@ extends RefCounted
 ## `tick` runs only on the authority. `enter`/`exit` are authority-only too; a non-authority copy plays DmEnemy._remote_visual instead.
 
 ## State ids. The int is what goes over the wire in get_net_state(), so only ever APPEND.
-enum Id { RISING, IDLE, CHASE, ATTACK, HURT, RETURN, DEAD }
-const NAMES: Array[String] = ["rising", "idle", "chase", "attack", "hurt", "return", "dead"]
+enum Id { RISING, IDLE, CHASE, ATTACK, HURT, RETURN, DEAD, FLEE, BURROW, ERUPT, DIG, EMERGE }
+const NAMES: Array[String] = ["rising", "idle", "chase", "attack", "hurt", "return", "dead", "flee", "burrow", "erupt", "dig", "emerge"]
 
 var id: int = Id.IDLE
 var enemy: DmEnemy

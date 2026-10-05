@@ -19,6 +19,12 @@ signal state_changed(prev: int, next: int)
 signal struck(target: Node3D, damage: float)  ## the blow landed (host side); integration turns this into a player hurt event
 signal damaged(amount: float, hp_left: float, from: Node)
 signal died(enemy: DmEnemy)
+## A ground telegraph for the integration/VFX layer (sim "telegraph" event): kind is the sim's telegraph kind ("cone", "slam", "dust", "erupt"...).
+## `radius` 0 = a cone/line (use attack_range). The blow lands `seconds` later.
+signal telegraph(kind: StringName, from: Vector3, aim: Vector3, radius: float, seconds: float)
+## A one-off effect cue ("erupt", "dig_in"): the integration plays the sim's matching VFX/SFX.
+signal statuses_cleared   ## a dig-in wipes bleed/withered/root/slow/chill: the host combat code listens and drops them
+signal cue(kind: StringName, at: Vector3, radius: float)
 
 const TARGET_GROUP := &"dm_target"
 ## Physics layers (project.godot layer names to add): 1 world, 2 player, 3 enemy.
@@ -41,6 +47,10 @@ const REPATH_MOVE_SQ := 1.0        ## ...and only when the goal moved more than 
 const DIRECT_RANGE_SQ := 9.0       ## closer than 3 m to the goal: walk straight, skip the navmesh entirely
 const SCAN_S := 0.25               ## target scan period
 const TURN_RATE := 14.0
+const INCENSE_MOVE := 1.3          ## DmSimData.CENSER moveMult / attackRateMult (Censer Bearer haste)
+const INCENSE_ATTACK := 1.25
+const LOOK_FALLBACK := {"rat": "bone_hound", "moth": "choir_wraith", "bat": "skull_rat", "ghoul": "grave_robber", "censer": "deacon"}
+const LOOK_WINGS := {"moth": {"speed": 8.0, "amp": 0.55, "body": 0.16}, "bat": {"speed": 17.0, "amp": 0.75, "body": 0.22}}
 
 # --- config (inspector) ---
 @export var def_id: String = "robber"
@@ -54,6 +64,9 @@ const TURN_RATE := 14.0
 @export var hp_mult: float = 1.0          ## level/difficulty scaling is the spawner's job (sim spawn_enemy math)
 @export var damage_mult: float = 1.0
 @export var rng_seed: int = 0             ## 0 = random
+@export var elite: bool = false           ## sim ELITE multipliers (hp/damage/scale/radius, wind-up x0.85, cooldown x0.8); affixes are NOT implemented
+@export var in_graves: bool = true        ## burrowers: BURROW.eruptMultGraves / eruptMsGraves vs the deeper-area numbers
+@export var flank_side: float = 0.0       ## +-1 flank side for flanker kinds; 0 = random per body
 
 # --- stats (filled from the def in _ready) ---
 var def: Dictionary
@@ -67,6 +80,13 @@ var attack_range: float = 1.3
 var windup_s: float = 0.42
 var cooldown_s: float = 1.3
 var aggro_range: float = AGGRO_RANGE
+var corpse_kind: String = "normal"        ## def "corpse": normal / swift / resonant / toxic / none. The corpse system reads this from `died`.
+var hit_run: float = 0.0                  ## def "hitRun": seconds spent fleeing after each blow (Tithe Bat)
+var flying: float = 0.0                   ## def "flying": hover height of the visual (the body stays on the ground plane, like the sim)
+var attack_rate_mult: float = 1.0         ## statuses (chill, frenzy) write here; scales how fast attack_cd runs down
+var incense_t: float = 0.0                ## Censer Bearer haste: > 0 = x1.3 move, x1.25 attack rate (sim CENSER)
+var aim := Vector3.ZERO                   ## where the current blow is aimed, fixed at wind-up start (the telegraph)
+var attack_anim: String = "attack"       ## casters play "cast" (views: CASTERS)
 
 # --- runtime ---
 var sm: DmEnemyStateMachine
@@ -86,6 +106,7 @@ var agent: NavigationAgent3D
 var rng := RandomNumberGenerator.new()
 
 var _hurt: DmStateHurt
+var _bob: float = 0.0
 var _dt: float = 0.0
 var _want_vel := Vector3.ZERO
 var _safe_vel := Vector3.ZERO
@@ -112,6 +133,7 @@ static var prof_brain_us: int = 0
 static var prof_nav_us: int = 0
 static var prof_repaths: int = 0
 static var prof_scans: int = 0
+static var prof_kind: Dictionary = {}   ## def_id -> [ticks, brain_us]
 
 static func prof_reset() -> void:
 	prof_ticks = 0
@@ -119,6 +141,7 @@ static func prof_reset() -> void:
 	prof_nav_us = 0
 	prof_repaths = 0
 	prof_scans = 0
+	prof_kind = {}
 
 
 func _ready() -> void:
@@ -128,15 +151,23 @@ func _ready() -> void:
 		rng.seed = rng_seed
 	else:
 		rng.randomize()
-	max_hp = float(def["hp"]) * hp_mult
+	var el: Dictionary = DmSimData.ELITE
+	max_hp = float(def["hp"]) * hp_mult * (float(el["hpMult"]) if elite else 1.0)
 	hp = max_hp
-	damage = float(def["damage"]) * damage_mult
+	damage = float(def["damage"]) * damage_mult * (float(el["damageMult"]) if elite else 1.0)
 	speed = float(def["speed"]) * (0.92 + rng.randf() * 0.16)   # sim: per-body +-8% speed
-	radius = float(def["radius"])
+	radius = float(def["radius"]) * (1.25 if elite else 1.0)
 	attack_range = float(def["attackRange"])
-	windup_s = float(def["windupMs"]) / 1000.0
-	cooldown_s = float(def["cooldownMs"]) / 1000.0
-	var sc := float(def.get("scale", 1.0))
+	windup_s = float(def["windupMs"]) / 1000.0 * (0.85 if elite else 1.0)
+	cooldown_s = float(def["cooldownMs"]) / 1000.0 * (0.8 if elite else 1.0)
+	corpse_kind = String(def.get("corpse", "normal"))
+	hit_run = float(def.get("hitRun", 0.0))
+	flying = float(def.get("flying", 0.0))
+	if flank_side == 0.0:
+		flank_side = -1.0 if rng.randf() < 0.5 else 1.0
+	if corpse_kind == "none" and corpse_s <= 0.0:
+		corpse_s = 2.4   # sim/views: a body that leaves no corpse crumbles away ~1.4 s after the fall
+	var sc := float(def.get("scale", 1.0)) * (float(el["scale"]) if elite else 1.0)
 	scale = Vector3.ONE * sc
 	attack_cd = 0.5 + rng.randf()                               # sim: first swing 0.5-1.5 s after spawn
 	_repath_t = rng.randf() * REPATH_S
@@ -166,14 +197,26 @@ func _ready() -> void:
 	agent.max_neighbors = 6
 	agent.time_horizon_agents = 1.0
 	agent.velocity_computed.connect(_on_safe_velocity)
+	# Godot only runs RVO for an agent that has a navigation target; without one (an enemy that aggroes inside the 3 m direct-walk range
+	# never requests a path) the safe velocity comes back zero and the body never moves. A placeholder target fixes it.
+	agent.target_position = global_position
 
 	if with_visual:
 		var slug: String = String(def.get("modelSlug", "grave_robber"))
-		creature = DmCreature.new(slug, {"hitstop": true})
+		creature = DmCreature.new(slug, look_options())
 		$Visual.add_child(creature.root)
 		creature.set_loop("idle")
 
 	sm = DmEnemyStateMachine.new()
+	_build_states()
+	sm.changed.connect(func(p: int, n: int) -> void: state_changed.emit(p, n))
+	sm.start(initial_state())
+	add_to_group(&"dm_enemy")
+
+
+## The default (robber) state set. A kind's script overrides this, calling super() and then re-adding only the states that differ (same id
+## replaces the slot), e.g. a caster swaps CHASE for DmStateKite.
+func _build_states() -> void:
 	sm.add(DmStateRising.new(self, DmEnemyState.Id.RISING))
 	sm.add(DmStateIdle.new(self, DmEnemyState.Id.IDLE))
 	sm.add(DmStateChase.new(self, DmEnemyState.Id.CHASE))
@@ -182,9 +225,33 @@ func _ready() -> void:
 	sm.add(_hurt)
 	sm.add(DmStateReturn.new(self, DmEnemyState.Id.RETURN))
 	sm.add(DmStateDead.new(self, DmEnemyState.Id.DEAD))
-	sm.changed.connect(func(p: int, n: int) -> void: state_changed.emit(p, n))
-	sm.start(DmEnemyState.Id.RISING if rising else DmEnemyState.Id.IDLE)
-	add_to_group(&"dm_enemy")
+
+
+func initial_state() -> int:
+	return DmEnemyState.Id.RISING if rising else DmEnemyState.Id.IDLE
+
+
+## How this kind is dressed (mirrors DmEntityViews._enemy_opts): wings, tint, emissive, missing-model fallback.
+func look_options() -> Dictionary:
+	var o := {"hitstop": true}
+	var em := 0
+	var ek := 0.0
+	if elite:
+		em = 0x4a1f8a
+		ek = 0.14
+	elif def_id == "risen":
+		em = 0x2a3a18
+		ek = 0.3
+	if ek > 0.0:
+		o["emissive"] = em
+		o["emissive_intensity"] = ek
+	if def_id == "risen":
+		o["tint"] = 0x8a8078
+	if LOOK_FALLBACK.has(def_id):
+		o["fallback"] = LOOK_FALLBACK[def_id]
+	if LOOK_WINGS.has(def_id):
+		o["wings"] = LOOK_WINGS[def_id]
+	return o
 
 
 # ============================================================================================ brain (authority only)
@@ -196,13 +263,20 @@ func _physics_process(delta: float) -> void:
 	_dt = delta
 	var sid := sm.id()
 	if sid != DmEnemyState.Id.HURT and sid != DmEnemyState.Id.RISING:
-		attack_cd -= delta
+		attack_cd -= delta * attack_rate_mult * (INCENSE_ATTACK if incense_t > 0.0 else 1.0)
+	if incense_t > 0.0:
+		incense_t -= delta
 	_stagger_t -= delta
 	sm.tick(delta)
 	_move(delta)
 	if profile:
+		var us := Time.get_ticks_usec() - t0
 		prof_ticks += 1
-		prof_brain_us += Time.get_ticks_usec() - t0
+		prof_brain_us += us
+		var k: Array = prof_kind.get(def_id, [0, 0])
+		k[0] += 1
+		k[1] += us
+		prof_kind[def_id] = k
 
 
 ## Apply the velocity the states asked for this tick (_want_vel), turn toward it, and set the walk/run clip.
@@ -303,7 +377,14 @@ func steer_to(goal: Vector3, mult: float) -> void:
 				dir = step
 		if profile:
 			prof_nav_us += Time.get_ticks_usec() - t0
-	_want_vel = dir.normalized() * speed * speed_mult * mult
+	_want_vel = dir.normalized() * speed * speed_mult * (INCENSE_MOVE if incense_t > 0.0 else 1.0) * mult
+
+
+## Move straight toward `goal` at an absolute speed (m/s), no navmesh (underground tunnelling).
+func move_straight(goal: Vector3, spd: float) -> void:
+	var flat := Vector3(goal.x - global_position.x, 0.0, goal.z - global_position.z)
+	if flat.length_squared() > 0.0025:
+		_want_vel = flat.normalized() * spd
 
 
 func face_point(p: Vector3, dt: float) -> void:
@@ -321,23 +402,61 @@ func wander(dt: float) -> void:
 	var away := global_position - home
 	if away.x * away.x + away.z * away.z > WANDER_RADIUS * WANDER_RADIUS:
 		_wander_heading = atan2(-away.x, -away.z)
-	_want_vel = Vector3(sin(_wander_heading), 0.0, cos(_wander_heading)) * speed * speed_mult * WANDER_SPEED_MULT
+	_want_vel = Vector3(sin(_wander_heading), 0.0, cos(_wander_heading)) * speed * speed_mult * (INCENSE_MOVE if incense_t > 0.0 else 1.0) * WANDER_SPEED_MULT
 
 
-## The blow lands (end of wind-up). Reach is measured from the body, like the sim.
+## Called when a swing starts (wind-up begins): fix the aim and announce the telegraph. Kinds override to aim/announce differently.
+func begin_attack() -> void:
+	aim = target.global_position if target_valid(target) else global_position + Vector3(sin(rotation.y), 0.0, cos(rotation.y))
+	if target_valid(target):
+		face_point(aim, 1.0)
+
+
+## The blow lands (end of wind-up). Reach is measured from the body, like the sim. Kinds override (slam / cone / dust ...).
 func strike() -> void:
 	var tg := target
 	if not target_valid(tg):
 		return
 	if flat_dist_to(tg) <= attack_range * STRIKE_REACH_MULT + STRIKE_REACH_PAD:
-		struck.emit(tg, damage)
-		if tg.has_method("dm_take_enemy_hit"):
-			tg.dm_take_enemy_hit(damage, self)
+		hit_target(tg, damage)
+
+
+func hit_target(tg: Node3D, dmg: float) -> void:
+	struck.emit(tg, dmg)
+	if tg.has_method("dm_take_enemy_hit"):
+		tg.dm_take_enemy_hit(dmg, self)
+
+
+## Every valid target within `r` (flat) of point `c`.
+func targets_within(c: Vector3, r: float) -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	var r2 := r * r
+	for n in get_tree().get_nodes_in_group(TARGET_GROUP):
+		var tg := n as Node3D
+		if not target_valid(tg):
+			continue
+		var dx := tg.global_position.x - c.x
+		var dz := tg.global_position.z - c.z
+		if dx * dx + dz * dz <= r2:
+			out.append(tg)
+	return out
+
+
+## State the swing ends in (after the 0.3 s recovery). Bats hit-and-run.
+func post_attack_state() -> int:
+	if hit_run > 0.0 and target_valid(target):
+		return DmEnemyState.Id.FLEE
+	return DmEnemyState.Id.CHASE if target_valid(target) else DmEnemyState.Id.IDLE
+
+
+## False while the body cannot be hurt (burrowed ghoul). take_damage respects it.
+func is_hittable() -> bool:
+	return true
 
 
 ## Damage from the host's combat code. Returns true when applied. A hit also aggroes the attacker if nothing is targeted.
 func take_damage(amount: float, from: Node = null, allow_stagger: bool = true) -> bool:
-	if not is_multiplayer_authority() or sm.id() == DmEnemyState.Id.DEAD or sm.id() == DmEnemyState.Id.RISING:
+	if not is_multiplayer_authority() or sm.id() == DmEnemyState.Id.DEAD or sm.id() == DmEnemyState.Id.RISING or not is_hittable():
 		return false
 	hp -= amount
 	_flash = 1.0
@@ -360,7 +479,7 @@ func take_damage(amount: float, from: Node = null, allow_stagger: bool = true) -
 
 ## Hard interrupt (stun rite): cancels a swing too.
 func stun(seconds: float) -> void:
-	if not is_multiplayer_authority() or sm.id() == DmEnemyState.Id.DEAD:
+	if not is_multiplayer_authority() or sm.id() == DmEnemyState.Id.DEAD or not is_hittable():
 		return
 	_hurt.duration = seconds
 	sm.change(DmEnemyState.Id.HURT)
@@ -371,7 +490,7 @@ func stun(seconds: float) -> void:
 func play_attack(windup: float) -> void:
 	_anim = "attack"
 	if creature != null:
-		creature.play_strike("attack", windup)
+		creature.play_strike(attack_anim, windup)
 
 func play_hurt() -> void:
 	_anim = "hurt"
@@ -398,7 +517,8 @@ func current_clip() -> String:
 
 func _loco(ground: float) -> void:
 	var sid := sm.id() if sm != null else -1
-	if sid == DmEnemyState.Id.ATTACK or sid == DmEnemyState.Id.HURT or sid == DmEnemyState.Id.DEAD:
+	if sid == DmEnemyState.Id.ATTACK or sid == DmEnemyState.Id.HURT or sid == DmEnemyState.Id.DEAD or sid == DmEnemyState.Id.ERUPT \
+			or sid == DmEnemyState.Id.DIG or sid == DmEnemyState.Id.BURROW:
 		return
 	if ground > 0.2:
 		_anim = "run" if ground > speed * 1.2 else "walk"
@@ -415,6 +535,9 @@ func _process(delta: float) -> void:
 		_puppet_step(delta)
 	if creature == null:
 		return
+	if flying > 0.0 and sm.id() != DmEnemyState.Id.DEAD:
+		_bob += delta
+		$Visual.position.y = flying + sin(_bob * 1000.0 / 520.0 + float(get_instance_id() % 7)) * 0.18   # views: hover + sin(t/520 + id) * 0.18
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta * 6.0)
 		creature.set_flash(_flash)
@@ -473,6 +596,26 @@ func _remote_visual(st: int, anim: String, first: bool) -> void:
 			on_death()
 		_:
 			_anim = anim
+	$Visual.visible = st != DmEnemyState.Id.BURROW and st != DmEnemyState.Id.ERUPT
+	_remote_extra(st)
+
+
+## Hide / show the body (and stop it colliding with players and enemies while it is below).
+func set_underground(on: bool) -> void:
+	$Visual.visible = not on
+	collision_layer = 0 if on else LAYER_ENEMY
+	collision_mask = LAYER_WORLD if on else (LAYER_WORLD | LAYER_PLAYER)
+	agent.avoidance_enabled = use_avoidance and not on
+
+func play_dig(seconds: float) -> void:
+	_anim = "dig"
+	if creature != null:
+		creature.play_once("dig", 1.0, seconds)
+
+
+## Puppet hook for kinds with their own states (dig / emerge clips).
+func _remote_extra(_st: int) -> void:
+	pass
 
 
 func _puppet_step(delta: float) -> void:
