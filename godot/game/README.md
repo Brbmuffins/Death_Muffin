@@ -25,14 +25,18 @@ the hero (DmPlayer body + DmAbilitySystem caster), input, entity views, loot, pr
 | dm_depths_controller.gd | DepthsController.ts (Phase B) |
 | dm_offline.gd, dm_basic_ui.gd | the offline edition's mock backend + a fallback HUD until game_ui is merged |
 
-## Additions to GAME_CONTRACT.md (UI track: read this)
-- `game_event` ids the game emits besides the contract's: `panel_toggle {panel}` (inventory sheet legion forge professions contracts garden labor cosmetics vault map codex atlas grimoire
-  ascension salvage settings; the UI opens/closes that window), `escape {panel_open}` (close the open panel, else open Settings), `chat_focus`, `slot_flash {slot}`, `hit_flash`, `chain_pulse`,
-  `death {show, sub}`, `loadout_hotkey {action}` (a rebound loadout key: apply that preset), `boss_key_prompt {boss, seals, gold, shards, bound}` (open the BossKeyPrompt; answer with
-  `game.call_empowered(id)` or `game.summon_boss(id)`), `depths_stair_prompt {resume}`, `grimoire_pulse`, `upgrade_bought {kind}`, `gather_reply`, `gather_stopped {reason}`, `dialogue_close`,
-  plus every counsel event id of ui/onboarding/README.md and `tip {id, delay_ms, opts}`. `toast` may carry `action: "grimoire"`.
-- UI -> game: `game.panel_open` (set true while a window is open: gates combat input), `game.dialogue_open`, `game.next_active` (the Next line shows), `game.use_item(id)`, `game.set_belt(id)`,
-  `game.belt_choices(slot)`, `game.set_primary(id)`, `game.set_rite(slot, id)`, `game.hotbar / loadout / primary / seen`, `game.travel(area)`, `game.start_recall()`, `game.talk_to(npc)`,
-  `game.do_ascend() / do_swear(vows) / do_open(key)`, `game.set_wave_tier(t)`, `game.change_class(index) -> error`, `game.leave_world()`, `game.flush_all()`, `game.keybinds`, `game.store`
-  (DmCounselStore for local per-character records), `game.prog / psync / inventory / chronicle / gatherer.skills` (the state objects the panels read).
-- `hud_state()` follows ui/hud/README.md; icons are `res://assets/game/art/...` (tools/godot/sync-game-art.sh copies them from public/art).
+## Contract status (godot/GAME_CONTRACT.md)
+Everything in the contract and in "Additions by game-ui" is implemented: properties (`settings` uses the Settings panel's keys, see dm_settings.gd), `hud_state()` (brews, slots, minimap, target, boss,
+chain, depth, party, omen, prompt), the optional methods (`use_item`, `set_belt(slot, item)`, `set_rites`, `near_grinder`, `counsel_busy`, `counsel_tick_ctx`, `stop_gathering`, `afk_*`, `start_afk`,
+`stop_player`, `talk_key`, `travel`, `dial_wave`, `send_chat`, `leave_world`, `class_changed(character)` (emits `world_restart` for main), `party_create/join/leave`, `summon_boss(_empowered)`,
+`enter_depths`), and the `game_event` payloads (`toast`, `banner`, `loot {name, qty, rarity}`, `float {world: Vector3, text, kind, color?}`, `chat`, `codex {kind, id}`, `gather_report {report}`,
+`boss_key_offer`, `depths_stair_offer {deepest}`, `hit_flash`, `slot_flash`, every other id = a counsel event).
+Game-core additions the UI may use: `game.ui` (set by main; gives the game `panel_open`, `dialogue_open`, `next_active`), `game.npc_new` (npc id -> has news, set from the UI's guidance memory),
+`game.hotbar / loadout / primary`, `game.set_primary(id)`, `game.set_rite(slot, id)`, `game.do_ascend() / do_swear(vows) / do_open(key)`, `game.flush_all()`, `game.prog / psync / inventory / chronicle`,
+`game.coop` (co-op), `game.apply_cosmetics(selected)` (called after `refresh_character()`).
+Keys: DmGame owns 1-6 R Q Z X T WASD / arrows and the mouse (LMB click / hold-shift, RMB = slot 5, wheel zoom); every other key belongs to DmGameUi.
+
+## Not ported / placeholders
+- Occlusion is ported as dither shaders on walls and props (world/dm_occ_*.gdshader), applied to the builder's materials; floors and gates are not cut.
+- Co-op needs the live relay for a real session; it is tested through an in-process relay (tests/game/coop_run.gd). Perf beacon, release watcher (web reload prompt) and the DEV debug hooks are not ported.
+- The offline edition's mock backend stubs craft / gather / vault / contracts / garden / labor / necro purchases (net track); the game logic is complete, the server half is not.

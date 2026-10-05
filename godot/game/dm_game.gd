@@ -933,7 +933,10 @@ func do_cast(id: String, target: Dictionary, now: float) -> String:
 # ---- contract methods ----------------------------------------------------------------------------------------------------------
 
 func cast(slot: int) -> void:
-	input.cast_slot(slot)
+	if slot <= 0:
+		input.cast_slot_primary()   # the HUD's LMB socket
+	else:
+		input.cast_slot(slot)
 
 
 func use_belt(slot: String) -> void:
