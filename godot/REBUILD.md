@@ -47,7 +47,8 @@ shared) but must catch real regressions.
 
 Reuse the existing audio, music, models, animations and **VFX** (the owner likes the current vibe): the Binbun effects already in the
 project, the `Vfx` autoload (emit/smoke/decal/beam/light flash/motifs), the telegraph and spell looks (`SPELL_FX` colours) as they are now.
-No new effect packs or restyles. Generation is a backup, used only when
+This is the default, not a hard rule (owner): a different effect is fine when it saves real time, as long as it performs at
+least as well and keeps the same readability. Generation is a backup, used only when
 something needed doesn't exist or is unusable: **ElevenLabs** for sound effects/music/ambience (`tools/audio/generate-eleven-*.mjs`,
 key in `~/death-muffin/private/elevenlabs-api-key`), **Tripo** for models (`tools/ai/tripo.mjs`, `ASSET_PIPELINE.md`; budget per
 the autonomy grant). Focus is getting the rebuild working; polish passes can use these later.
