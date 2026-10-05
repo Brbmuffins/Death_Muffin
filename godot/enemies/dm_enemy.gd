@@ -13,7 +13,7 @@ extends CharacterBody3D
 ## Stats come from the existing def (DmSimData.ENEMIES[def_id]) so numbers stay in one place. Not bit-exact with the old sim by design.
 ##
 ## Target contract (duck-typed, so the player scene needs no base class): a Node3D in group "dm_target"; optionally
-## `dm_alive() -> bool` and `dm_take_enemy_hit(damage: float, from: Node) -> void`.
+## `dm_alive() -> bool`, `dm_take_enemy_hit(damage: float, from: Node) -> void` and `dm_target_weight() -> float` (distance multiplier in the target scan).
 
 signal state_changed(prev: int, next: int)
 signal struck(target: Node3D, damage: float)  ## the blow landed (host side); integration turns this into a player hurt event
@@ -319,6 +319,9 @@ func find_target(rng_m: float) -> Node3D:
 		var dx := tg.global_position.x - p.x
 		var dz := tg.global_position.z - p.z
 		var d := dx * dx + dz * dz
+		if tg.has_method("dm_target_weight"):   # sim pick_target: thralls count 1.1x as far (shieldbearer 0.55x); players/dummies 1.0
+			var w: float = tg.dm_target_weight()
+			d *= w * w
 		if d < best_d:
 			best_d = d
 			best = tg
