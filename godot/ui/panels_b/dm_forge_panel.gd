@@ -129,6 +129,17 @@ func select_tab(id: String) -> void:
 var _hold := 0
 var _dirty := false
 
+## Hold redraws across several setters (a caller's own batch); release() redraws once if any was requested.
+func hold() -> void:
+	_hold += 1
+
+
+func release() -> void:
+	_hold = maxi(_hold - 1, 0)
+	if _hold == 0 and _dirty:
+		_render()
+
+
 func open() -> void:
 	_hold += 1
 	super.open()

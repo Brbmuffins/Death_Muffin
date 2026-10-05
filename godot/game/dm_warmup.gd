@@ -121,6 +121,8 @@ static func run(game: Node3D) -> void:
 	stage.queue_free()
 	await tree.process_frame
 	cover.queue_free()
+	# One more frame so the stage/cover teardown (freeing every warmed model) lands in loading, not in the first played frame (~20 ms).
+	await tree.process_frame
 	last_ms = Time.get_ticks_msec() - t0
 	print("DmWarmup: %d models + %d effects + %d pooled bodies in %d ms" % [creature_paths.size(), warmed.size(), bodies.size(), last_ms])
 
