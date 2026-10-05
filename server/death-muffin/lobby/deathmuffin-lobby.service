@@ -1,0 +1,26 @@
+# Death Muffin lobby + relay. NOT installed by anything in this repo; the integrator copies it to /etc/systemd/system/ at deploy time.
+# Expected layout on the VPS: /home/ubuntu/death-muffin/lobby (copy of server/death-muffin/lobby with `npm ci --omit=dev` run there).
+[Unit]
+Description=Death Muffin lobby and packet relay
+After=network.target death-muffin-auth.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/death-muffin/lobby
+ExecStart=/usr/bin/node src/index.js
+Environment=NODE_ENV=production
+# Reads JWT_SECRET from the auth backend's .env (never printed); or set DM_LOBBY_JWT_SECRET directly via a drop-in.
+Environment=ENV_FILE=/home/ubuntu/death-muffin/backend/.env
+Environment=DM_LOBBY_HOST=127.0.0.1
+Environment=DM_LOBBY_PORT=5192
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

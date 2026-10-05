@@ -1,0 +1,17 @@
+{
+  "name": "death-muffin-lobby",
+  "version": "0.1.0",
+  "description": "Death Muffin lobby + packet relay (host <-> clients over WebSocket)",
+  "main": "src/server.js",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3",
+    "ws": "^8.18.0"
+  }
+}
