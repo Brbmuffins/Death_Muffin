@@ -40,6 +40,10 @@ func _ready() -> void:
 	rebuild()
 
 
+func _inputs() -> Variant:
+	return [board, counts, busy, error_text, reset_text()]
+
+
 func set_board(b: Dictionary) -> void:
 	board = b
 	rebuild()

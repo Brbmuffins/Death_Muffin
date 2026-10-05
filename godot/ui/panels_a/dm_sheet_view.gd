@@ -43,7 +43,17 @@ func toggle_line(id: String) -> void:
 	render()
 
 
+var _built_sig := 0
+var _built := false
+
+
 func render() -> void:
+	# The same numbers drawn again (reopening the sheet) keep the nodes.
+	var sig := [data, open_lines].hash()
+	if _built and sig == _built_sig and get_child_count() > 0:
+		return
+	_built_sig = sig
+	_built = true
 	DmPa.clear(self)
 	if not bool(data.get("ready", true)) or data.is_empty():
 		add_child(_primer("Your character is not ready yet."))

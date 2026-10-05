@@ -16,22 +16,46 @@ class ErrLog extends Logger:
 	func _log_message(_m: String, _e: bool) -> void:
 		pass
 
+## Runs after every other node's _process: with Monitor (first) it brackets the frame's process phase.
+class Tail extends Node:
+	var bot
+	func _process(_dt: float) -> void:
+		bot.tail_us = Time.get_ticks_usec()
+
 class Monitor extends Node:
 	var bot
 	var dts: Array = []
+	var play_dts: Array = []   # frames outside the loading phases (boot/front/relaunch): what a player sees
 	var skip := 0
 	var last_us := 0
 	func _process(dt: float) -> void:
 		var now := Time.get_ticks_usec()
+		# The slice of the previous frame: [head .. tail] = every node's _process, [tail .. signal] = deferred calls + engine
+		# (physics, render), [signal .. head] = the bot's own coroutines resumed on process_frame (key presses, panel opens, checks).
+		bot.sl_proc = (bot.tail_us - bot.head_us) / 1000.0
+		bot.sl_engine = (bot.pf_us - bot.tail_us) / 1000.0
+		bot.sl_bot = (now - bot.pf_us) / 1000.0
+		bot.head_us = now
 		skip += 1
 		if skip > 120 and last_us > 0:
-			dts.append((now - last_us) / 1000.0)   # wall-clock frame time (Engine.time_scale does not distort it)
-			if (now - last_us) / 1000.0 > 50.0:
-				bot.on_hitch((now - last_us) / 1000.0)
+			var ms := (now - last_us) / 1000.0
+			dts.append(ms)   # wall-clock frame time (Engine.time_scale does not distort it)
+			if not bot.phase_name in bot.LOADING_PHASES:
+				play_dts.append(ms)
+			if ms > 50.0:
+				bot.on_hitch(ms)
 		last_us = now
 		bot.on_frame(dt)
 		bot.on_frame_prof()
 
+## Phases where the game builds its world behind the loading screen: their long frames are loads, not play stalls.
+const LOADING_PHASES := ["boot", "front", "relaunch"]
+var tail_us := 0
+var head_us := 0
+var pf_us := 0
+var sl_proc := 0.0
+var sl_engine := 0.0
+var sl_bot := 0.0
 var errlog := ErrLog.new()
 var mon: Monitor
 var session := "A"
@@ -127,7 +151,7 @@ func on_hitch(ms: float) -> void:
 			if dv > best:
 				best = dv
 				top = "%s %.0fms" % [k, dv / 1000.0]
-	print("HITCH %.0fms phase=%s area=%s tick-top=%s" % [ms, phase_name, (g.area_id if g != null and is_instance_valid(g) else "-"), top])
+	print("HITCH %.0fms phase=%s area=%s tick-top=%s slices(proc/engine+deferred/bot-coroutines)=%.0f/%.0f/%.0f%s" % [ms, phase_name, (g.area_id if g != null and is_instance_valid(g) else "-"), top, sl_proc, sl_engine, sl_bot, " LOADING" if phase_name in LOADING_PHASES else ""])
 
 
 func on_frame_prof() -> void:
@@ -183,13 +207,18 @@ func frame_stats() -> Dictionary:
 	if mon == null or mon.dts.size() < 10:
 		return {}
 	var a: Array = mon.dts.duplicate()
+	var pa: Array = mon.play_dts.duplicate()
+	pa.sort()
 	a.sort()
 	var n := a.size()
 	var sum := 0.0
 	for v in a:
 		sum += v
 	return {"n": n, "avg_ms": snappedf(sum / n, 0.01), "p50_ms": snappedf(a[n / 2], 0.01), "p95_ms": snappedf(a[int(n * 0.95)], 0.01), "p99_ms": snappedf(a[int(n * 0.99)], 0.01),
-		"worst_ms": snappedf(a[n - 1], 0.01), "over50ms": a.filter(func(v): return v > 50.0).size(), "time_scale": scale}
+		"worst_ms": snappedf(a[n - 1], 0.01), "over50ms": a.filter(func(v): return v > 50.0).size(),
+		# play = every frame outside the loading phases (the world build behind the loading screen is one long frame by design)
+		"play_worst_ms": snappedf(pa[pa.size() - 1], 0.01) if pa.size() > 0 else 0.0, "play_over50ms": pa.filter(func(v): return v > 50.0).size(),
+		"play_over100ms": pa.filter(func(v): return v > 100.0).size(), "time_scale": scale}
 
 
 # ---- input helpers (real events through the viewport) --------------------------------------------------------------------------
@@ -499,7 +528,13 @@ func _run() -> void:
 	sv.add_child(main)
 	mon = Monitor.new()
 	mon.bot = self
+	mon.process_priority = -100000
 	root.add_child(mon)
+	var tl := Tail.new()
+	tl.bot = self
+	tl.process_priority = 100000
+	root.add_child(tl)
+	process_frame.connect(func(): pf_us = Time.get_ticks_usec())
 	await frames(8)
 	chk(main.mode == "offline", "no args = offline edition (never the live server)", "", "critical")
 	if session == "A":

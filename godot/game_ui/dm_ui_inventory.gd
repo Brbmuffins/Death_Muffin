@@ -124,9 +124,43 @@ func card_of(row: Dictionary, ctx: Variant) -> Dictionary:
 	return card
 
 
+var _render_sig := 0
+var _rendered := false
+var _cards: Dictionary = {}     # row hash -> card (item text, verdicts, compare chips: ~2 ms a row), valid while _cards_key holds
+var _cards_key := 0
+
+
+## Cards are the cost of a render (every bag row's verdict and comparison text), and opening the bag used to draw twice (the open, then its `opened`
+## signal): redraw only when the slots, the stat sources, the locks or the grinder proximity changed, and re-text only the rows that changed.
 func render() -> void:
 	var ctx: Variant = ui.stat_ctx()
 	var all := slots()
+	var key: int = DmStatKey.of(ctx) if ctx != null else 0
+	var lock_bits: Array = []
+	for row in all:
+		lock_bits.append(locks.is_locked(row))
+	var sig := [key, all.hash(), lock_bits, ui.near_grinder(), ui.build()["stats"]].hash()
+	if _rendered and sig == _render_sig:
+		return
+	_render_sig = sig
+	_rendered = true
+	if key != _cards_key:
+		_cards.clear()
+		_cards_key = key
+	_render_now(ctx, all)
+
+
+func _card_cached(row: Dictionary, ctx: Variant) -> Dictionary:
+	var h := row.hash()
+	var c: Variant = _cards.get(h)
+	if c == null:
+		c = card_of(row, ctx)
+		_cards[h] = c
+	(c as Dictionary)["locked"] = locks.is_locked(row)
+	return c
+
+
+func _render_now(ctx: Variant, all: Array) -> void:
 	var bag: Array = []
 	bag.resize(BAG_SIZE)
 	for i in BAG_SIZE:
@@ -135,15 +169,15 @@ func render() -> void:
 	for row in all:
 		var si := int(row["slot_index"])
 		if si >= 0 and si < BAG_SIZE and int(row.get("equipped", 0)) == 0:
-			bag[si] = card_of(row, ctx)
+			bag[si] = _card_cached(row, ctx)
 	var worn := {}
 	var wr := DmGear.equipped_by_slot(all)
 	for k in wr:
-		worn[k] = card_of(wr[k], ctx)
+		worn[k] = _card_cached(wr[k], ctx)
 	for row in all:
 		var kind := DmGathering.belt_slot_kind(int(row["slot_index"]))
 		if kind != "" and int(row.get("quantity", 0)) > 0:
-			belt[kind] = card_of(row, ctx)
+			belt[kind] = _card_cached(row, ctx)
 	panel.at_grinder = ui.near_grinder()
 	var junk := DmItemLocks.junk_slots(all, locks, DmItemText.keeps_for_you(ctx))
 	panel.junk_count = junk.size()

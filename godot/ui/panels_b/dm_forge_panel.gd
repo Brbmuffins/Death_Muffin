@@ -261,12 +261,13 @@ func _norm(r: Dictionary) -> Dictionary:
 	return d
 
 
+
 ## content/wing.ts brewOfTheDay: FNV-1a over the UTC day, picking from the first eight reagent brews.
 static func brew_of_the_day(day: String) -> Dictionary:
 	var h := 2166136261
 	for i in day.length():
 		h = ((h ^ day.unicode_at(i)) * 16777619) & 0xFFFFFFFF
-	var list: Array = DmDb.content_export("reagents", "REAGENT_BREW_LIST")
+	var list: Array = DmDb.content_export("reagents", "REAGENT_BREW_LIST")   # (DmDb caches; no private copy)
 	var entry: Array = list[h % mini(8, list.size())]
 	return {"recipeId": entry[1]["recipe"]["id"], "brewId": entry[0], "name": entry[1]["name"]}
 
@@ -276,6 +277,9 @@ func today() -> String:
 
 
 # --- drawing -----------------------------------------------------------------------------------------------------
+var _row_caches: Dictionary = {}   # tab -> DmRowCache: a recipe row is rebuilt only when what it shows changed (a looted ore touches a few rows, not 44)
+
+
 func _render() -> void:
 	if _hold > 0:
 		_dirty = true
@@ -284,41 +288,70 @@ func _render() -> void:
 	if not _lists.has(active):
 		rows.clear()
 		return
+	var day := brew_of_the_day(today())
+	var list: Array = recipes.get(active, [])
+	var shown_list: Array = list.filter(func(r: Dictionary) -> bool: return can_craft(r)) if only_craftable else list
+	var err := _errs[active] as Label
+	err.text = String(errors.get(active, ""))
+	err.visible = err.text != ""
+	var holder := _hints[active] as VBoxContainer
+	var box := _lists[active] as VBoxContainer
+	var cache: DmRowCache = _row_caches.get(active)
+	if cache == null:
+		cache = DmRowCache.new()
+		_row_caches[active] = cache
 	rows.clear()
 	craft_buttons.clear()
 	qty_inputs.clear()
 	max_buttons.clear()
-	var box := _lists[active] as VBoxContainer
-	DmPb.clear(box)
-	var holder := _hints[active] as VBoxContainer
-	DmPb.clear(holder)
 	hint_text = ""
 	empty_text = ""
-	var day := brew_of_the_day(today())
+	var hint_now := ""
 	if station == "cauldron":
-		hint_text = "Brew of the day: %s %s" % [day["name"], "(bonus claimed today)" if bonus_claimed else "(one extra on your first brew today)"]
+		hint_now = "Brew of the day: %s %s" % [day["name"], "(bonus claimed today)" if bonus_claimed else "(one extra on your first brew today)"]
 	elif station == "" and active == "alchemy":
-		hint_text = "Brewing is easier in the Alchemist's Wing, east of the Chapterhouse: the Great Cauldron and the Reagent Shelf are there."
-	if hint_text != "":
-		holder.add_child(DmPb.hint(hint_text))
-	var err := _errs[active] as Label
-	err.text = String(errors.get(active, ""))
-	err.visible = err.text != ""
-	var list: Array = recipes.get(active, [])
-	if list.is_empty():
-		empty_text = "No recipes known for this rite." if recipes.has(active) else "Loading recipes…"
+		hint_now = "Brewing is easier in the Alchemist's Wing, east of the Chapterhouse: the Great Cauldron and the Reagent Shelf are there."
+	if hint_now != String(holder.get_meta("hint", "")) or (hint_now != "" and holder.get_child_count() == 0):
+		DmPb.clear(holder)
+		if hint_now != "":
+			holder.add_child(DmPb.hint(hint_now))
+		holder.set_meta("hint", hint_now)
+	hint_text = hint_now
+	if list.is_empty() or shown_list.is_empty():
+		if list.is_empty():
+			empty_text = "No recipes known for this rite." if recipes.has(active) else "Loading recipes…"
+		else:
+			empty_text = "Nothing here is craftable right now. Untick \"Only show craftable\" to see every recipe."
+		cache.clear(box)
 		box.add_child(DmPb.hint(empty_text))
 		return
-	var shown_list: Array = list.filter(func(r: Dictionary) -> bool: return can_craft(r)) if only_craftable else list
-	if shown_list.is_empty():
-		empty_text = "Nothing here is craftable right now. Untick \"Only show craftable\" to see every recipe."
-		box.add_child(DmPb.hint(empty_text))
-		return
+	var keys: Array = []
+	var sigs: Array = []
 	for r: Dictionary in shown_list:
-		_recipe_row(box, r, day)
+		keys.append(String(r["id"]))
+		sigs.append(_row_sig(r, day))
+	var made: Array = cache.sync(box, keys, sigs, func(i: int) -> Dictionary: return _recipe_row(box, shown_list[i], day))
+	for pay: Dictionary in made:
+		rows.append(pay["row"])
+		craft_buttons[pay["id"]] = pay["go"]
+		qty_inputs[pay["id"]] = pay["inp"]
+		max_buttons[pay["id"]] = pay["mx"]
 
 
-func _recipe_row(box: VBoxContainer, r: Dictionary, day: Dictionary) -> void:
+## Everything one recipe row is drawn from (a row whose signature did not change keeps its nodes).
+func _row_sig(r: Dictionary, day: Dictionary) -> int:
+	var id := String(r["id"])
+	var skill := skill_of(prof_of(r))
+	var skill_ok := skill >= int(r["skill_level_required"])
+	var max_n := max_for(r) if skill_ok else 0
+	var have: Array = []
+	for ing: Dictionary in r["ingredients"]:
+		have.append(count_of(String(ing["item_id"])))
+	return [r, skill_ok, max_n, effective_qty(r, max_n), qty.get(id, 1), busy, status if busy and busy_recipe == id else "", busy and busy_recipe == id,
+		station == "cauldron" and id == day["recipeId"], have].hash()
+
+
+func _recipe_row(box: VBoxContainer, r: Dictionary, day: Dictionary) -> Dictionary:
 	var id := String(r["id"])
 	var skill := skill_of(prof_of(r))
 	var skill_ok := skill >= int(r["skill_level_required"])
@@ -390,9 +423,6 @@ func _recipe_row(box: VBoxContainer, r: Dictionary, day: Dictionary) -> void:
 	go.custom_minimum_size = Vector2(110, 40)
 	ctl.add_child(go)
 	row.add_child(ctl)
-	craft_buttons[id] = go
-	qty_inputs[id] = inp
-	max_buttons[id] = mx
 
 	var set_qty := func(v: int) -> void:
 		qty[id] = DmRecipes.clamp_craft_qty(v, max_for(r) if max_for(r) > 0 else 1)
@@ -416,5 +446,6 @@ func _recipe_row(box: VBoxContainer, r: Dictionary, day: Dictionary) -> void:
 	inp.focus_exited.connect(commit)
 	go.pressed.connect(func() -> void:
 		craft_requested.emit(id, effective_qty(r, max_for(r))))
-	rows.append({"id": id, "name": r["name"], "req": req, "skill_ok": skill_ok, "ingredients": ing_info, "max": max_n, "qty": qty.get(id, 1), "craft_text": craft_text,
-		"craft_enabled": not go.disabled, "step_enabled": not off, "botd": botd})
+	var row_info := {"id": id, "name": r["name"], "req": req, "skill_ok": skill_ok, "ingredients": ing_info, "max": max_n, "qty": qty.get(id, 1), "craft_text": craft_text,
+		"craft_enabled": not go.disabled, "step_enabled": not off, "botd": botd}
+	return {"node": card.get_meta("panel"), "row": row_info, "id": id, "go": go, "inp": inp, "mx": mx}

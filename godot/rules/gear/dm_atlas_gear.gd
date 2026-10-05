@@ -80,7 +80,8 @@ static func _strip_set(rows: Array) -> Array:
 
 
 ## What a piece of an armour or legendary set is worth as part of its set (null for gear of no set).
-static func set_outlook(ctx: Dictionary, item_id: String) -> Variant:
+## `memo` (optional, one per ctx): what is the same for every piece of a set (the three power totals), computed once per set, not per piece.
+static func set_outlook(ctx: Dictionary, item_id: String, memo: Dictionary = {}) -> Variant:
 	_index()
 	var piece: Variant = _by_id.get(item_id)
 	if piece == null:
@@ -88,11 +89,19 @@ static func set_outlook(ctx: Dictionary, item_id: String) -> Variant:
 	var rows := _set_rows(piece["setId"])
 	if rows.size() < 2:
 		return null
-	var now: float = float(DmGearStats.gear_power(ctx)["total"])
-	if now == 0.0:
-		now = 1.0
-	var full: float = DmGearStats.gear_power(ctx, _wear_all(ctx["slots"], rows))["total"]
-	var bare: float = DmGearStats.gear_power(ctx, _wear_all(ctx["slots"], _strip_set(rows)))["total"]
+	var now: float
+	if memo.has("now"):
+		now = memo["now"]
+	else:
+		now = float(DmGearStats.gear_power(ctx)["total"])
+		if now == 0.0:
+			now = 1.0
+		memo["now"] = now
+	var sk := "set:" + String(piece["setId"])
+	if not memo.has(sk):
+		memo[sk] = [float(DmGearStats.gear_power(ctx, _wear_all(ctx["slots"], rows))["total"]), float(DmGearStats.gear_power(ctx, _wear_all(ctx["slots"], _strip_set(rows)))["total"])]
+	var full: float = memo[sk][0]
+	var bare: float = memo[sk][1]
 	var worn: Array = []
 	for s: Dictionary in ctx["slots"]:
 		if not DmCombatData.truthy(s.get("equipped")):
@@ -145,13 +154,14 @@ static func verdict(ctx: Dictionary, item_id: String, worn: bool = false) -> Var
 static func panel_inputs(ctx: Dictionary, item_ids: Array, owned: Dictionary = {}) -> Dictionary:
 	var verdicts := {}
 	var outlooks := {}
+	var memo := {}
 	for id in item_ids:
 		var worn: bool = owned.has(id) and bool(owned[id].get("worn", false))
 		var v: Variant = verdict(ctx, String(id), worn)
 		if v != null:
 			verdicts[id] = {"kind": v["kind"], "pct": v["pct"], "text": v["text"], "empty": v["empty"]}
 		if not worn:
-			var o: Variant = set_outlook(ctx, String(id))
+			var o: Variant = set_outlook(ctx, String(id), memo)
 			if o != null:
 				outlooks[id] = o
 	return {"verdicts": verdicts, "outlooks": outlooks}

@@ -205,7 +205,17 @@ func set_view(v: String) -> void:
 	render()
 
 
+var _render_sig := 0
+var _rendered := false
+
+
 func render() -> void:
+	# open_atlas() and set_context() both ask for a redraw of the same state: the second (and a reopen with nothing changed) is free.
+	var sig := [disc, level, area, owned, verdicts, outlooks, memory, q, sel, trail, all_sources].hash()
+	if _rendered and sig == _render_sig:
+		return
+	_render_sig = sig
+	_rendered = true
 	_render_tabs()
 	render_list()
 	if sel == "":
@@ -414,9 +424,12 @@ func _best_rows() -> Array:
 
 
 # --- sub bar + list ---------------------------------------------------------------------------------------------------
+var _list_cache := DmRowCache.new()   # list rows by "id|place": a row is rebuilt only when what it shows changed (owned, selected, verdict...)
+var _nonce := 0
+
+
 func render_list() -> void:
 	_render_sub()
-	DmPa.clear(_list)
 	var rs := rows()
 	if rs.is_empty():
 		var msg := "Nothing here."
@@ -424,23 +437,55 @@ func render_list() -> void:
 			msg = "Nothing by that name."
 		elif String(memory["view"]) == "best":
 			msg = "No upgrade in reach for any slot. Untick the level filter to see further ahead."
+		_list_cache.clear(_list)
 		var e := DmPa.text(msg, 14, DmUi.TEXT_MUTED)
 		e.set_meta("role", "empty")
 		_list.add_child(e)
 		return
+	# One entry per list child: [key, signature, kind, id/text, place]. Headers that read live state get a fresh signature each time.
+	var keys: Array = []
+	var sigs: Array = []
+	var specs: Array = []
 	if q == "" and String(memory["view"]) == "set":
-		_list.add_child(_set_header())
+		_nonce += 1
+		keys.append("#set")
+		sigs.append(_nonce)
+		specs.append(["set"])
 	elif q == "" and String(memory["view"]) == "mats" and String(memory["mats"]) == "cosmetics":
-		_list.add_child(_cosmetics_header())
+		_nonce += 1
+		keys.append("#cos")
+		sigs.append(_nonce)
+		specs.append(["cos"])
 	var first := true
 	for r in rs:
 		if r.has("head"):
-			var h := DmPa.text(DmUi.upper(String(r["head"])), 14, DmUi.SPELL_300, "display", false)
-			h.set_meta("head", true)
-			_list.add_child(DmPa.margin(h, 0, 0 if first else 8, 0, 2))
+			keys.append("#head:" + String(r["head"]))
+			sigs.append(hash([String(r["head"]), first]))
+			specs.append(["head", String(r["head"]), first])
 		else:
-			_list.add_child(_row(String(r["id"]), String(r.get("place", ""))))
+			var id := String(r["id"])
+			var place := String(r.get("place", ""))
+			keys.append("%s|%s" % [id, place])
+			sigs.append(_row_sig(id, place))
+			specs.append(["row", id, place])
 		first = false
+	_list_cache.sync(_list, keys, sigs, func(i: int) -> Dictionary:
+		var sp: Array = specs[i]
+		match String(sp[0]):
+			"set":
+				return {"node": _set_header()}
+			"cos":
+				return {"node": _cosmetics_header()}
+			"head":
+				var h := DmPa.text(DmUi.upper(String(sp[1])), 14, DmUi.SPELL_300, "display", false)
+				h.set_meta("head", true)
+				return {"node": DmPa.margin(h, 0, 0 if bool(sp[2]) else 8, 0, 2)}
+		return {"node": _row(String(sp[1]), String(sp[2]))})
+
+
+## Everything _row() draws from.
+func _row_sig(id: String, place: String) -> int:
+	return [id, place, disc, owned.get(id), sel == id, verdicts.get(id), outlooks.get(id)].hash()
 
 
 func _render_sub() -> void:

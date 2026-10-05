@@ -59,7 +59,7 @@ func open() -> void:
 		panel.values[k] = game.settings[k]
 	panel.values["party_in"] = ""
 	_options()
-	panel.build()
+	panel.build_if_changed()
 	panel.open()
 
 
@@ -67,6 +67,7 @@ func open() -> void:
 func open_bug_report() -> void:
 	if not panel.visible:
 		open()
+	panel.mark_stale()
 	for c in panel.body.get_children():
 		panel.body.remove_child(c)
 		c.queue_free()

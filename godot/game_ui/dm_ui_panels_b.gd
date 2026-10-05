@@ -303,10 +303,12 @@ func on_acre_open(p: String) -> void:
 
 
 func _professions_data() -> void:
-	var sk := {}
-	for k in ui.skills:
-		sk[k] = {"level": int(ui.skills[k]), "xp": 0}
-	professions.set_skills(sk)
+	professions.hold()   # skills + tools + afk are one redraw, not three
+	if professions.skills.is_empty():
+		var sk := {}
+		for k in ui.skills:
+			sk[k] = {"level": int(ui.skills[k]), "xp": 0}
+		professions.set_skills(sk)   # first look only: later opens keep the last server numbers until the reply lands
 	var held: Array = []
 	var belt: Array = []
 	for s in game.slots:
@@ -317,6 +319,7 @@ func _professions_data() -> void:
 	professions.set_tools(held, belt)
 	var st: Variant = ui.call_game_sync("afk_status")
 	professions.set_afk(st if st is Dictionary else {}, "")
+	professions.release()
 	var r: DmResult = await game.api.get_professions(cid())
 	if r.ok:
 		var m := {}
