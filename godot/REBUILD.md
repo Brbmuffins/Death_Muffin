@@ -24,6 +24,17 @@ local GDScript backend (`godot/net/offline/`, `DmMockBackend`) instead of the VP
 working, it implements the same backend API the online game uses (including loot rolls), and the "server-rolled loot / kill ledger" rules
 run inside it for offline characters. Offline and online characters stay separate (no offline -> cloud sync of value).
 
+Owner answers, 2026-10-05:
+- **D5. Priorities: solo first, online in the back seat.** The rebuild is built on the session structure (so online stays possible), but
+  phases prove and polish **solo/offline play first**; lobby UI, relay deployment and multi-player testing come later.
+- **D6. Host quits = session ends** for everyone (each member keeps what the backend already credited). No host migration.
+  VPS-hosted (headless Godot) sessions are a future option, not planned now.
+- **D7. Branches.** `godot-port` stays the releasable client (fixes/perf ship from it). The rebuild lands on **`godot-next`**; unlisted
+  preview builds come from it; `godot-port` is merged into `godot-next` regularly; `godot-next` replaces it once it is solid.
+- **D8. Characters.** Existing online characters carry into Godot online unchanged (same backend). Offline characters stay offline-only.
+- **D9. Web retirement.** The three.js game is retired once the Godot game is complete: taken offline (not publicly reachable), its code kept
+  in git history only.
+
 ## Classification (from the owner's architecture review)
 
 | Area | Verdict | Notes |
@@ -55,17 +66,19 @@ Godot client  <->  Host's Godot game (authoritative sim, 1-4 players)
      `DmRelayPeer` MultiplayerPeerExtension client in `godot/net/relay/`, proven with the session movement test over the relay.
    - `godot/data` (branch `godot/data-registry`): one content registry (`DmData`) over `godot/data`, merging the duplicate loot and
      progression content files; every rules suite still passes.
-2. **Vertical slice**: Chapterhouse + Hollow Graves as a hosted session: move, cast 2 rites, one enemy kind as a scene with a state machine
-   and navigation, kills reported to the backend, server-rolled loot picked up by the right player.
+2. **Vertical slice** (a small, complete piece of the game on the new structure, to prove it before converting everything; solo first,
+   D5): Chapterhouse + Hollow Graves as a 1-player session (online and offline backends): move, cast 2 Gravecaller rites, robbers as
+   enemy scenes with state machines and navigation, kills reported through session reports, server-rolled loot picked up. A second
+   player joining over the relay is the last step of the slice, not the first.
 3. **Port systems** onto the foundation: enemy scenes (one kind at a time), combat and rites over RPC, loot and progression.
 4. **Backend integration**: cloud characters online, server-rolled loot, session-end report; solo as a 1-player session (online via the
    VPS backend, offline via the local backend, D4).
-5. **Content migration**: remaining areas, bosses, the Depths. Retire the web build and its TS exporters.
+5. **Content migration**: bosses, then the Depths, then the remaining areas. Then retire the web build (D9) and its TS exporters.
 6. **Hardening**: disconnects, host migration (or clean session end), desync checks, cheating review.
 
 ## Status
 
 | Phase | State |
 |---|---|
-| 0 Decisions | D2 + D4 confirmed by owner 2026-10-05; D1/D3 defaults |
+| 0 Decisions | D2, D4-D9 from the owner 2026-10-05; D1/D3 defaults |
 | 1 Foundation | wave 1 started 2026-10-05 (session, relay, data) |
