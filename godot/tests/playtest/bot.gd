@@ -714,9 +714,22 @@ func _p_fight() -> void:
 	g.input.attack_target = null
 	g.input.pending_interact = null
 	g.player.stop()
-	await tap(KEY_T)
-	await wait(0.5)
-	chk(g.recall_at > 0.0, "T starts Recall", "", "minor")
+	# Any hit cancels Recall (web: onHurt -> cancelRecall), so with enemies on top of the hero a single press can legitimately fail.
+	# Retry a few times from a quiet spot; the check then measures the key routing, not the Graves' crowd.
+	# A dead hero cannot Recall (web: startRecall returns when !alive): wait out the respawn first.
+	for attempt in 4:
+		var guard := 0
+		while not g.player.alive and guard < 20:
+			guard += 1
+			await wait(1.0)
+		await tap(KEY_T)
+		await wait(0.5)
+		if g.recall_at > 0.0:
+			break
+		g.player.hp = g.player.max_hp()
+		g.player.teleport(0.0, -10.0)
+		await frames(3)
+	chk(g.recall_at > 0.0, "T starts Recall", "alive=%s area=%s hp=%.0f panel_open=%s cast_until=%s keys=%s" % [str(g.player.alive), g.area_id, g.player.hp, str(g.panel_open), str(g.p.get("castUntil")), str(g.input.keys)], "minor")
 	g.actions.cancel_recall()
 
 
@@ -735,9 +748,18 @@ func _p_loot_equip() -> void:
 			pos = d["pos"]
 		elif d.has("x"):
 			pos = Vector3(float(d["x"]), 0.0, float(d["z"]))
+		# A dead hero (or one sent home by a respawn) cannot pick anything up: wait for the respawn and go back, like a player would.
+		var guard := 0
+		while (not g.player.alive or g.area_id != "graves") and guard < 40:
+			guard += 1
+			await wait(1.0)
+			if g.player.alive and g.area_id != "graves":
+				g.navigate(0.0, -10.0)
+				await wait(3.0)
 		if g.area_id != "graves":
 			break
-		await walk_to(pos.x, pos.z, 0.8, 15.0)
+		var reached := await walk_to(pos.x, pos.z, 0.8, 15.0)
+		note("loot walk to (%.1f,%.1f) reached=%s hero (%.1f,%.1f) area=%s drops=%d" % [pos.x, pos.z, str(reached), g.player.x, g.player.z, g.area_id, g.lootview.count()])
 	await wait(1.0)
 	if drops.size() > 0:
 		chk(g.inventory.slots.size() > bag0 or int(g.character["gold"]) > gold0 or g.lootview.count() < drops.size(), "walking over drops picks them up", "bag %d->%d gold %d->%d drops left %d" % [bag0, g.inventory.slots.size(), gold0, int(g.character["gold"]), g.lootview.count()], "major")
@@ -972,6 +994,14 @@ func _p_boss_one(boss_id: String) -> void:
 	if g.depths.active():
 		bug("major", "cannot leave the Depths via the way-up twice (run stays active)")
 	var id := boss_id
+	# The web allows ONE awake boss (summonBossNormal returns while bossState().active): a previous fight that timed out must be put down
+	# first, or this summon is refused by design (not a product bug).
+	for i in 20:
+		if not g.sim.boss.state.active:
+			break
+		note("a previous boss is still awake: putting it down before summoning %s" % id)
+		g.sim.boss.damage(1.0e9, g.self_id, 0.0)
+		await wait(1.0)
 	var def: Dictionary = DmContent.boss(id)
 	var ar: Dictionary = def["arena"]
 	g.character["level"] = maxi(int(g.character["level"]), 30)
