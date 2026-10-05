@@ -86,7 +86,7 @@ func _enter_world(character: Dictionary, session) -> void:
 	add_child(game)
 	game.left_world.connect(_on_left_world)
 	game.world_restart.connect(func(ch: Dictionary): _on_world_restart(ch))
-	await game.start(character, api, {"local_progress": mode == "offline", "name": token_username(api.get_token())})
+	await game.start(character, api, {"local_progress": mode == "offline", "realtime": mode == "online", "name": token_username(api.get_token())})
 	ui = DmGameUi.new()
 	game.add_child(ui)
 	ui.setup(game)

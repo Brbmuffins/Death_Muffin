@@ -103,8 +103,12 @@ var dead_until := 0.0
 var recall_at := 0.0
 var last_combat_at := -1e9
 var last_hurt_at := -1e9
-var party_code: Variant = null
-var remotes: Dictionary = {}           # co-op (Phase C)
+var coop: DmGameCoop
+var party_code: String:
+	get: return coop.party_code if coop != null else ""
+var mirror: DmSimMirror:
+	get: return coop.mirror if coop != null else null
+var remotes: Dictionary = {}           # co-op: id -> {info, avatar, x, z, tx, tz, facing, moving, hpFrac}
 var _hud_at := -1e9
 var _chron_t := 30.0
 var _lines_busy := false
@@ -197,6 +201,7 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	sim.difficulty = String(settings["difficulty"])
 	sync_world_vows()
 	input = DmGameInput.new(self)
+	coop = DmGameCoop.new(self)
 	rewards = DmGameRewards.new(self)
 	combat = DmGameCombat.new(self)
 	actions = DmGameActions.new(self)
@@ -219,6 +224,8 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	# Server data (the web's loadData + progression.connect).
 	await _load_server_data()
 	_enter_area(player.area if player.area != "" else "acre")
+	if bool(opts.get("realtime", false)):
+		coop.connect_initial()
 	game_event.emit("world_entered", {"family": discipline["family"], "level": int(character["level"]), "grimoire_unlocked": grimoire_unlocked()})
 	check_unlocks()
 
@@ -271,6 +278,7 @@ func _make_abilities() -> void:
 	var ctor: Variant = cls if cls != null else DmSimCaster
 	abilities = ctor.new(sim, p, self_id, discipline["id"], discipline["family"], discipline["mods"])
 	abilities.aim = {"x": 0.0, "z": 0.0}
+	abilities.send_fn = Callable(self, "send_intent")   # every intent goes through the scene (lifesteal, guest relay)
 	abilities.dash_fn = func(tx: float, tz: float) -> Array: return abilities.veil_target(p["x"], p["z"], tx, tz)
 	if "game" in abilities:
 		abilities.game = self
@@ -427,6 +435,8 @@ func counsel_bag_ctx() -> Dictionary:
 
 func _on_inventory_changed(_s: Array) -> void:
 	emit_game_event("bag_changed", counsel_bag_ctx())
+	if coop != null:
+		coop.broadcast_gear()
 	refresh_stats()
 	if avatar != null:
 		avatar.set_equipment(DmGear.equipped_by_slot(inventory.slots))
@@ -459,7 +469,7 @@ func open_areas() -> Array:
 
 
 func sync_world_vows() -> void:
-	if sim == null:
+	if sim == null or (coop != null and coop.mirror != null):
 		return
 	sim.vows = DmAscension.world_vows(prog.vows())
 	sim.corpseLifeMult = float(prog.boons()["corpseLifeMult"])
@@ -482,7 +492,7 @@ func refresh_stats() -> void:
 	var now_main := str(build["loadout"].get("main", ""))
 	if now_main != was_main and now_main != "" and now_main != "null" and now_main != "staff":
 		tip("necroWeapon")
-	if sim != null:
+	if sim != null and (coop == null or coop.mirror == null):
 		sim.waveTier = float(prog.local["waveTierActive"])
 
 
@@ -605,14 +615,22 @@ func tick(dt: float) -> void:
 		_enter_area(area)
 	if depths != null:
 		depths.update(dt, now, player.area == "depths")
-	# Authoritative world (solo / host).
-	sim.set_player(DmSimPlayer.make(self_id, player.x, player.z, player.area if player.alive else "", player.alive, float(character["level"]), String(discipline["family"])))
-	for rid in remotes:
-		var r: Dictionary = remotes[rid]
-		sim.set_player(DmSimPlayer.make(rid, r["tx"], r["tz"], nav.area_at(r["tx"], r["tz"]), float(r["hpFrac"]) > 0.0, float(r.get("level", 1)), String(r.get("family", ""))))
-	var events := sim.step(dt)
-	for ev in events:
-		handle_event(ev)
+	# Authoritative world (solo / host), or the mirror of the host's (guest).
+	if coop.mirror == null:
+		sim.set_player(DmSimPlayer.make(self_id, player.x, player.z, player.area if player.alive else "", player.alive, float(character["level"]), String(discipline["family"])))
+		for rid in remotes:
+			var r: Dictionary = remotes[rid]
+			sim.set_player(DmSimPlayer.make(rid, r["tx"], r["tz"], nav.area_at(r["tx"], r["tz"]), float(r["hpFrac"]) > 0.0, float(r.get("level", 1)), String(r.get("family", ""))))
+		var events := sim.step(dt)
+		for ev in events:
+			handle_event(ev)
+		coop.host_publish(events, now)
+	else:
+		event_out_clear()
+		coop.guest_update(dt)
+	coop.send_move(now)
+	if visual:
+		coop.update_remotes(dt)
 	# Loot.
 	rewards.tick_loot(dt)
 	# Visuals.
@@ -724,6 +742,10 @@ func _tick_audio() -> void:
 	var b := sim.boss.state
 	var area_ok := b.active and String(DmContent.boss(String(b.id) if b.id != "" else "prelate")["area"]) == area_id
 	audio_hooks.update_boss(player.alive, b.active, String(DmContent.boss(String(b.id) if b.id != "" else "prelate")["area"]))
+
+
+func event_out_clear() -> void:
+	coop.event_out.clear()
 
 
 func _tick_chronicle(dt: float) -> void:
@@ -849,7 +871,8 @@ func buy_upgrade(kind: String) -> void:
 
 func set_wave_tier(tier: float) -> void:
 	prog.set_active_wave_tier(tier)
-	sim.waveTier = float(prog.local["waveTierActive"])
+	if coop.mirror == null:
+		sim.waveTier = float(prog.local["waveTierActive"])
 
 
 func _thrall_numbers() -> Dictionary:
@@ -900,6 +923,10 @@ func _on_settings_changed(_v: Dictionary) -> void:
 
 
 func _on_difficulty(d: String) -> void:
+	if coop != null and coop.mirror != null:
+		if coop.mirror.difficulty != d:
+			toast("The world keeper's difficulty applies (%s)" % String(DmContent.difficulty(coop.mirror.difficulty)["name"]))
+		return
 	if sim.difficulty == d:
 		return
 	sim.difficulty = d
@@ -1021,6 +1048,30 @@ func belt_choices(slot: String) -> Array:
 
 
 ## Settings -> Leave: save, then log out (web: setToken(null); goLogin()).
+func party_create() -> void:
+	await coop.create_party()
+
+
+func party_join(code: String) -> void:
+	await coop.join_party(code)
+
+
+func party_leave() -> void:
+	await coop.leave_party()
+
+
+func send_chat(text: String) -> void:
+	coop.send_chat(text)
+
+
+func pause_coop() -> void:
+	coop.pause()
+
+
+func resume_coop() -> void:
+	coop.resume()
+
+
 func leave_world() -> void:
 	await flush_all()
 	api.set_token("")
@@ -1107,6 +1158,8 @@ func flush_all() -> void:
 
 
 func _exit_tree() -> void:
+	if coop != null:
+		coop.dispose()
 	if ready_ and psync != null:
 		psync.save_local_now()
 
@@ -1121,7 +1174,10 @@ func send_intent(intent: Dictionary) -> void:
 			var heal := DmBrews.lifesteal_heal(float(intent["dmg"]), float((intent["ids"] as Array).size()) + (1.0 if intent.get("boss", false) else 0.0), ls, player.max_hp())
 			if heal >= 1.0:
 				player.heal(heal)
-	sim.apply(intent)
+	if coop != null and coop.mirror != null:
+		coop.rt.send_intent(intent)
+	else:
+		sim.apply(intent)
 
 
 func emit_game_event(id: String, ctx: Dictionary = {}) -> void:

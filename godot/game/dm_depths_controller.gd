@@ -453,7 +453,7 @@ func debug() -> Dictionary:
 # --- host plumbing ---------------------------------------------------------------------------------------------------------------
 
 func _in_party() -> bool:
-	return g.party_code != null
+	return String(g.party_code) != ""
 
 
 func _step_out_of_party() -> void:
