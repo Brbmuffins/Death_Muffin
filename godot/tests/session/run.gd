@@ -1,10 +1,11 @@
 extends SceneTree
 ## DmSession tests. Run: godot --headless --path godot --script res://tests/session/run.gd
 ## Part A: in-process (5 SceneMultiplayer branches in one tree). Part B: host + clients as REAL separate processes over ENet.
-## Ports 5192-5199 only.
+## Ports: a free random UDP port per run on 127.0.0.1 (several worktrees run this suite at once; fixed ports made them steal each
+## other's ports, and user:// — shared by every worktree — keyed the command folder by port). Never the production 5190/5191.
 
-const PORT_INPROC := 5193
-const PORT_PROC := 5192
+var PORT_INPROC := 0
+var PORT_PROC := 0
 var passed := 0
 var failed := 0
 var pids: Array = []
@@ -22,8 +23,26 @@ func _initialize() -> void:
 	_main()
 
 
+## A UDP port nothing is bound to right now (ENet probe), from 40000-49999.
+func _free_port(avoid: int = 0) -> int:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	for i in 200:
+		var port := rng.randi_range(40000, 49999)
+		if port == avoid:
+			continue
+		var probe := ENetMultiplayerPeer.new()
+		if probe.create_server(port, 1) == OK:
+			probe.close()
+			return port
+	return 0
+
+
 func _main() -> void:
 	await process_frame
+	PORT_INPROC = _free_port()
+	PORT_PROC = _free_port(PORT_INPROC)
+	ok(PORT_INPROC > 0 and PORT_PROC > 0, "free test ports found (%d, %d)" % [PORT_INPROC, PORT_PROC])
 	await _part_a()
 	await _part_b()
 	await _part_c()
