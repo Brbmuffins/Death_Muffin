@@ -17,6 +17,11 @@ var _transport: DmHttpTransport
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
+	# The Vfx autoload reads the current 3D camera every frame: keep one alive behind the login screens (the world camera takes over).
+	var idle_cam := Camera3D.new()
+	idle_cam.name = "IdleCamera"
+	add_child(idle_cam)
+	idle_cam.current = true
 	var args := OS.get_cmdline_user_args()
 	mode = "online" if "--online" in args else "offline"
 	if mode == "offline":
