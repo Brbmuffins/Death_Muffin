@@ -35,6 +35,14 @@ Owner answers, 2026-10-05:
 - **D9. Web retirement.** The three.js game is retired once the Godot game is complete: taken offline (not publicly reachable), its code kept
   in git history only.
 
+## Performance rule (owner, 2026-10-05: "performance continues to be my main focus. anything that gets added needs to perform well too, no bloat")
+
+Every track and every merge: (1) measured cost of what was added (frame/tick, load, memory) with before/after numbers, or it is not
+merged; (2) event-driven or throttled over per-frame work, no per-frame allocations in hot paths, pool what spawns often; (3) lean code:
+no speculative abstractions, layers, config or files; reuse instead of duplicating; temporary code removed; (4) first-use work
+(shaders, scenes, effects, fonts) warmed during loading, never mid-play; (5) perf budgets in tests use generous margins (the VPS is
+shared) but must catch real regressions.
+
 ## Classification (from the owner's architecture review)
 
 | Area | Verdict | Notes |
