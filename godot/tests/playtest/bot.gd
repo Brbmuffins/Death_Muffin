@@ -20,10 +20,13 @@ class Monitor extends Node:
 	var bot
 	var dts: Array = []
 	var skip := 0
+	var last_us := 0
 	func _process(dt: float) -> void:
+		var now := Time.get_ticks_usec()
 		skip += 1
-		if skip > 120:
-			dts.append(dt * 1000.0)
+		if skip > 120 and last_us > 0:
+			dts.append((now - last_us) / 1000.0)   # wall-clock frame time (Engine.time_scale does not distort it)
+		last_us = now
 		bot.on_frame(dt)
 
 var errlog := ErrLog.new()
@@ -36,6 +39,7 @@ var scale := 3.0
 var shots_dir := ""
 var name_ := "pt"
 var main: DmMain
+var sv: SubViewport   # the game lives in a 1280x800 SubViewport: headless root is 64x64 and ignores pushed mouse input
 var g: DmGame
 var ui
 var findings: Array = []
@@ -58,6 +62,10 @@ var stats := {"kills": 0, "max_enemies": 0, "max_thralls": 0}
 var phase_name := ""
 var t0_ms := 0
 var _rot := 0
+var overlay_note_ms := 0
+var skip_to := ""
+var assist_hp := 0.0   # >0: keep the hero above this hp fraction (noted assist for depths/boss flows)
+var toasts: Array = []
 
 
 func _initialize() -> void:
@@ -70,6 +78,7 @@ func _initialize() -> void:
 		elif a.begins_with("--scale="): scale = float(a.substr(8))
 		elif a.begins_with("--shots="): shots_dir = a.substr(8)
 		elif a.begins_with("--name="): name_ = a.substr(7)
+		elif a.begins_with("--skip-to="): skip_to = a.substr(10)
 	rendered = DisplayServer.get_name() != "headless"
 	if rendered:
 		scale = minf(scale, 1.0)
@@ -112,7 +121,7 @@ func shot(tag: String) -> void:
 		return
 	DirAccess.make_dir_recursive_absolute(shots_dir)
 	_shot_n += 1
-	root.get_viewport().get_texture().get_image().save_png("%s/%s_%02d_%s.png" % [shots_dir, name_, _shot_n, tag])
+	sv.get_texture().get_image().save_png("%s/%s_%02d_%s.png" % [shots_dir, name_, _shot_n, tag])
 
 
 func write_report() -> void:
@@ -168,7 +177,7 @@ func key(code: Key, pressed: bool = true, shift: bool = false) -> void:
 	ev.shift_pressed = shift
 	if (code >= KEY_A and code <= KEY_Z) or (code >= KEY_0 and code <= KEY_9):
 		ev.unicode = code + (32 if code >= KEY_A else 0)
-	root.push_input(ev)
+	sv.push_input(ev)
 
 
 func tap(code: Key, hold_frames: int = 2) -> void:
@@ -202,7 +211,7 @@ func mouse_to(p: Vector2) -> void:
 	var ev := InputEventMouseMotion.new()
 	ev.position = p
 	ev.global_position = p
-	root.push_input(ev)
+	sv.push_input(ev)
 
 
 func click(p: Vector2, button: MouseButton = MOUSE_BUTTON_LEFT, shift: bool = false) -> void:
@@ -214,7 +223,7 @@ func click(p: Vector2, button: MouseButton = MOUSE_BUTTON_LEFT, shift: bool = fa
 		ev.button_index = button
 		ev.pressed = pr
 		ev.shift_pressed = shift
-		root.push_input(ev)
+		sv.push_input(ev)
 		await process_frame
 
 
@@ -257,6 +266,8 @@ func on_frame(dt: float) -> void:
 		return
 	sane_t = 0.0
 	var p := g.player
+	if assist_hp > 0.0 and p.alive and p.hp < p.max_hp() * assist_hp:
+		p.hp = p.max_hp() * assist_hp
 	var hp := p.hp
 	if is_nan(hp) or is_inf(hp) or hp < -0.001 or hp > p.max_hp() * 1.0001 + 0.001:
 		bug("major", "hp out of range", "%.2f / %.2f" % [hp, p.max_hp()])
@@ -289,14 +300,23 @@ func on_frame(dt: float) -> void:
 	else:
 		last_pos = pos
 		last_pos_t = g.now_ms
-	if overlay != null and overlay.panel.visible and Engine.get_frames_drawn() % 480 == 0:
+	if overlay != null and overlay.panel.visible and scale <= 1.0 and Time.get_ticks_msec() - overlay_note_ms > 30000:
+		overlay_note_ms = Time.get_ticks_msec()
 		var s := overlay.summary()
 		if not s.is_empty():
 			note("F3 overlay fps=%.1f avg=%.1fms p50=%.1f worst=%.0f hitches/s=%.2f" % [s["fps"], s["avg"], s["p50"], s["worst"], s["hitches"]])
 
 
-func on_event(id: String, _ctx: Dictionary) -> void:
+func on_event(id: String, ctx: Dictionary) -> void:
 	ev_counts[id] = int(ev_counts.get(id, 0)) + 1
+	if id == "toast":
+		toasts.append(String(ctx.get("text", "")))
+		if toasts.size() > 6:
+			toasts.pop_front()
+
+
+func recent_toasts() -> String:
+	return " | ".join(toasts)
 
 
 # ---- movement ------------------------------------------------------------------------------------------------------------------
@@ -382,7 +402,7 @@ func fight(sec: float, mode: String = "manual", area: String = "", stop_kills: i
 
 func _manual_tick(e: DmSimEnemy) -> void:
 	var sp := screen_of(e.x, 0.9 * e.scale, e.z)
-	var vp := root.get_visible_rect().size
+	var vp := Vector2(sv.size)
 	if sp.x < 4 or sp.y < 4 or sp.x > vp.x - 4 or sp.y > vp.y - 4:
 		g.input.set_ground(e.x, e.z)
 		g.input.hover = {"kind": "enemy", "id": e.id}
@@ -436,14 +456,19 @@ func _wait_world() -> bool:
 
 func _run() -> void:
 	phase("boot")
+	sv = SubViewport.new()
+	sv.size = Vector2i(1280, 800)
+	sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(sv)
 	main = load("res://main/main.tscn").instantiate()
-	root.add_child(main)
+	sv.add_child(main)
 	mon = Monitor.new()
 	mon.bot = self
 	root.add_child(mon)
 	await frames(8)
 	chk(main.mode == "offline", "no args = offline edition (never the live server)", "", "critical")
-	chk(main.flow != null and main.flow.current_name == "login", "login screen first", "got %s" % (main.flow.current_name if main.flow != null else "-"))
+	if session == "A":
+		chk(main.flow != null and main.flow.current_name == "login", "login screen first", "got %s" % (main.flow.current_name if main.flow != null else "-"))
 	if session == "A":
 		await _session_a()
 	else:
@@ -488,8 +513,26 @@ func _session_a() -> void:
 	var want := {1: "ossuary", 2: "gravecaller", 3: "mourner", 4: "rotweaver", 0: "gravecaller"}
 	chk(fam == want.get(disc, fam), "discipline matches class index", "%s vs %s" % [fam, want.get(disc)])
 	note("discipline %s hotbar %s primary %s" % [fam, str(g.hotbar), g.primary])
+	if skip_to != "":
+		# developer shortcut: jump straight to a late phase with the prerequisites set directly (not a real run)
+		g.character["level"] = 20
+		g.refresh_stats()
+		var need: int = g.prog.unlock_kills(float(DmContent.area("warren")["unlock"]["kills"]))
+		for i in need:
+			g.prog.record_kill("graves")
+		g.check_unlocks()
+		g.player.teleport(-52.0, -30.0)
+		await frames(5)
+		if skip_to == "depths":
+			await _p_depths()
+		await _p_boss()
+		await _p_death()
+		await _p_persist_snapshot()
+		return
 	await _p_start()
+	_p_contract()
 	await _p_panels()
+	await _p_events()
 	await _p_walk_to_graves()
 	await _p_overlay()
 	await _p_fight()
@@ -501,8 +544,58 @@ func _session_a() -> void:
 	await _p_persist_snapshot()
 
 
+const UI_GAME_METHODS := ["use_item", "set_belt", "set_rites", "near_grinder", "counsel_busy", "counsel_tick_ctx", "stop_gathering", "afk_active", "afk_status", "start_afk",
+	"stop_player", "talk_key", "travel", "dial_wave", "send_chat", "leave_world", "party_create", "party_join", "party_leave", "summon_boss", "summon_boss_empowered",
+	"enter_depths", "set_auto_combat", "buy_upgrade", "apply_settings", "refresh_character", "refresh_inventory", "refresh_progress", "hud_state"]
+
+## DmGame <-> DmGameUi seam (GAME_CONTRACT.md): every method the UI calls through has_method guards must exist, or the feature silently does nothing.
+func _p_contract() -> void:
+	phase("contract")
+	for m in UI_GAME_METHODS:
+		chk(g.has_method(m), "DmGame implements contract method %s()" % m, "DmGameUi guards the call with has_method, so a missing method is a silent no-op", "major")
+	# every game_event id DmGame can emit must be handled by the UI or be a counsel event (an unknown one logs a warning every time)
+	var ui_src := FileAccess.get_file_as_string("res://game_ui/dm_game_ui.gd")
+	var game_src := ""
+	for f in DirAccess.get_files_at("res://game"):
+		if f.ends_with(".gd"):
+			game_src += FileAccess.get_file_as_string("res://game/" + f)
+	var re := RegEx.new()
+	re.compile("(?:emit_game_event|game_event\\.emit)\\(\"([a-z_0-9.]+)\"")
+	var ids := {}
+	for m in re.search_all(game_src):
+		ids[m.get_string(1)] = true
+	var unhandled: Array = []
+	for id in ids:
+		var counsel: bool = not (DmCounselEvents.table().get(id, []) as Array).is_empty()
+		var handled: bool = ui_src.contains('"%s"' % id)
+		if not counsel and not handled:
+			unhandled.append(id)
+	unhandled.sort()
+	chk(unhandled.is_empty(), "every event DmGame emits is handled by the UI or is a counsel event", "unhandled: %s" % str(unhandled), "major")
+
+
+## UI reacts to the events DmGame emits for world interactions (waystone, altar, grinder...): emit and look.
+func _p_events() -> void:
+	phase("events")
+	close_all_panels()
+	for pair in [["map", "map"], ["ascension", "ascension"], ["salvage", "salvage"], ["codex", "codex"]]:
+		g.game_event.emit("panel_toggle", {"panel": pair[0]})
+		await frames(4)
+		var op := panel_is_open()
+		chk(op, "game_event panel_toggle {%s} opens the window (waystone/altar/grinder/lectern clicks)" % pair[0], "no panel visible after the event", "major")
+		close_all_panels()
+		await frames(2)
+	g.game_event.emit("escape", {"panel_open": false})
+	await frames(4)
+	if ui.is_open("settings"):
+		close_all_panels()
+
+
 func _p_start() -> void:
 	phase("start")
+	mouse_to(Vector2(333, 222))
+	await frames(2)
+	note("viewport mouse after push_input motion: %s (sent 333,222); cursor ground %s hover %s" % [str(sv.get_mouse_position()), str(g.input.ground), str(g.input.hover)])
 	chk(g.area_id == "acre", "new character starts in the Acre", g.area_id)
 	var vm := g.hud_state()
 	chk(vm["max_hp"] > 0 and vm["hp"] > 0, "hud hp populated", str(vm["hp"]))
@@ -557,13 +650,13 @@ func _p_overlay() -> void:
 	await tap(KEY_F3)
 	await frames(3)
 	var found: DmPerfOverlay = null
-	for n in root.find_children("*", "CanvasLayer", true, false):
+	for n in sv.find_children("*", "CanvasLayer", true, false):
 		if n is DmPerfOverlay:
 			found = n
 	if found == null:
 		bug("major", "F3 does nothing: DmPerfOverlay is never instantiated", "main/perf_overlay.gd exists but nothing adds it to the tree; README controls promise F3")
 		overlay = DmPerfOverlay.new()
-		root.add_child(overlay)
+		sv.add_child(overlay)
 		overlay.set_shown(true)
 	else:
 		overlay = found
@@ -606,6 +699,9 @@ func _p_fight() -> void:
 			await tap(KEY_G)
 	else:
 		note("auto combat not allowed on this character (auto_combat_allowed false): skipped")
+	g.input.attack_target = null
+	g.input.pending_interact = null
+	g.player.stop()
 	await tap(KEY_T)
 	await wait(0.5)
 	chk(g.recall_at > 0.0, "T starts Recall", "", "minor")
@@ -718,6 +814,11 @@ func _p_seal_depths() -> void:
 
 func _p_depths() -> void:
 	phase("depths")
+	if int(g.character["level"]) < 15:
+		g.character["level"] = 15   # assist (noted): the depths flow is under test, not a level-5 hero's survival
+		g.refresh_stats()
+		g.player.hp = g.player.max_hp()
+		note("assist: raised level to 15 before the Depths")
 	var st: Dictionary = DmContent.get_export("areas", "DEPTHS_STAIR")
 	var arrived := await walk_to(float(st["x"]) + 2.3, float(st["z"]), 2.5, 60.0)
 	chk(arrived, "walk to the Depths stair", "pos=(%.1f,%.1f)" % [g.player.x, g.player.z], "critical")
@@ -735,7 +836,7 @@ func _p_depths() -> void:
 		return
 	chk(g.area_id == "depths" and g.in_depths, "area is depths", g.area_id, "major")
 	var d1 := await _clear_depth_floor()
-	chk(d1, "floor 1 can be cleared (stair opens)", "", "critical")
+	chk(d1, "floor 1 can be cleared (stair opens)", "toasts: %s" % recent_toasts(), "critical")
 	shot("depths")
 	var chest: Variant = null
 	for it in g.depths.interactables():
@@ -778,7 +879,7 @@ func _p_depths() -> void:
 	g.game_event.disconnect(cb)
 	chk(resume_ev["n"] > 0, "stair offers resume at the deepest floor", "resume_at=%d" % g.depths.resume_at(), "major")
 	if resume_ev["n"] > 0:
-		var resume := int(resume_ev["ctx"].get("resume", 0))
+		var resume := int(resume_ev["ctx"].get("resume", resume_ev["ctx"].get("deepest", 0)))
 		chk(resume >= 2, "resume depth >= 2", "resume=%d" % resume, "major")
 		g.depths.enter(maxi(resume, 2))
 		await frames(5)
@@ -796,7 +897,20 @@ func _p_depths() -> void:
 			chk(g.area_id == "warren", "leaving the Depths puts you back in the Warren", g.area_id, "major")
 
 
+func stall_dump() -> String:
+	var parts: Array = []
+	parts.append("hero (%.1f,%.1f) hp %.0f cast_until-now=%.0f res=%.0f has_path=%s atk_target=%s hover=%s panel=%s" % [g.player.x, g.player.z, g.player.hp, float(g.p["castUntil"]) - g.now_ms, float(g.p["resource"]["value"]), str(g.player.has_path()), str(g.input.attack_target), str(g.input.hover), str(g.panel_open)])
+	for e in alive_enemies().slice(0, 8):
+		parts.append("%s#%d st=%s hp=%.0f d=%.1f at (%.1f,%.1f)" % [e.def, e.id, e.state, e.hp, Vector2(e.x - g.player.x, e.z - g.player.z).length(), e.x, e.z])
+	return " ; ".join(parts)
+
+
 func _clear_depth_floor() -> bool:
+	assist_hp = 0.6
+	var dbg_ms := 0
+	var last_kills: Variant = -1
+	var last_kill_t := g.now_ms
+	var stall_dumped := false
 	var start := g.now_ms
 	while g.now_ms - start < 240000.0:
 		var r: Variant = g.depths.run()
@@ -804,8 +918,16 @@ func _clear_depth_floor() -> bool:
 			return false
 		if bool(r["stairOpen"]):
 			return true
-		g.player.hp = maxf(g.player.hp, g.player.max_hp() * 0.6)
 		var e := nearest_enemy("depths")
+		if int(g.now_ms) - dbg_ms > 4000:
+			dbg_ms = int(g.now_ms)
+			note("depths floor: kills=%s/%s hp=%.0f/%.0f enemies=%d alive=%s area=%s deaths=%d" % [str(r["kills"]), str(r["need"]), g.player.hp, g.player.max_hp(), alive_enemies().size(), str(g.player.alive), g.player.area, deaths_seen])
+		if r["kills"] != last_kills:
+			last_kills = r["kills"]
+			last_kill_t = g.now_ms
+		elif g.now_ms - last_kill_t > 40000.0 and not stall_dumped:
+			stall_dumped = true
+			note("STALL dump: " + stall_dump())
 		if e == null:
 			await wait(1.0)
 			continue
@@ -818,10 +940,26 @@ func _clear_depth_floor() -> bool:
 
 
 func _p_boss() -> void:
+	for bid in boss_pick.split(","):
+		if bid == "all":
+			for x in DmContent.get_export("bosses", "BOSS_IDS"):
+				await _p_boss_one(String(x))
+		else:
+			await _p_boss_one(bid)
+
+
+func _p_boss_one(boss_id: String) -> void:
 	phase("boss")
+	assist_hp = 0.0
+	for i in 3:
+		if g.depths.active():
+			g.depths.leave()
+			await wait(0.3)
+			g.depths.leave()
+			await wait(0.5)
 	if g.depths.active():
-		g.depths.leave()
-	var id := boss_pick
+		bug("major", "cannot leave the Depths via the way-up twice (run stays active)")
+	var id := boss_id
 	var def: Dictionary = DmContent.boss(id)
 	var ar: Dictionary = def["arena"]
 	g.character["level"] = maxi(int(g.character["level"]), 30)
@@ -834,16 +972,21 @@ func _p_boss() -> void:
 	chk(g.player.area == def["area"], "teleported into %s arena" % id, g.player.area, "minor")
 	var b = g.sim.boss.state
 	var hp_trace: Array = []
+	note("before summon: area=%s depths_active=%s shards=%s" % [g.player.area, str(g.depths.active()), str(g.prog.local["shards"])])
 	g.actions.summon_boss_normal(id)
 	await wait(3.0)
-	chk(b.active, "%s wakes when summoned" % id, "", "critical")
+	b = g.sim.boss.state   # sim.boss follows the awake boss id: re-read after the summon
+	chk(b.active, "%s wakes when summoned" % id, "shards=%s toasts: %s" % [str(g.prog.local["shards"]), recent_toasts()], "critical")
 	if not b.active:
 		return
 	shot("boss_wake")
 	var start := g.now_ms
 	var deaths0 := deaths_seen
 	var tr_next := 0.0
-	while b.active and g.now_ms - start < 420000.0:
+	while true:
+		b = g.sim.boss.state
+		if not b.active or g.now_ms - start >= 420000.0:
+			break
 		if not g.player.alive:
 			await wait(5.0)
 			g.player.teleport(float(ar["x"]), float(ar["z"]) + float(ar["r"]) * 0.7)
@@ -863,10 +1006,11 @@ func _p_boss() -> void:
 			tr_next = g.now_ms + 20000.0
 			hp_trace.append(snappedf(float(b.hp) / maxf(float(b.maxHp), 1.0), 0.01))
 	var dur := (g.now_ms - start) / 1000.0
+	b = g.sim.boss.state
 	note("boss %s: active=%s after %.0fs game, boss hp trace %s, hero deaths %d" % [id, str(b.active), dur, str(hp_trace), deaths_seen - deaths0])
 	chk(not b.active, "%s is defeated within 7 min of game time" % id, "hp=%.0f/%.0f phase=%s" % [float(b.hp), float(b.maxHp), str(b.phase)], "critical")
 	await wait(1.5)
-	chk(int(g.prog.local.get("bossKills", 0)) >= 1, "boss kill is recorded", str(ev_counts.keys()), "major")
+	chk(float(g.chronicle.view()["life"].get("boss." + id, 0.0)) >= 1.0, "boss kill is recorded in the chronicle (boss.%s)" % id, "life=%s" % str(g.chronicle.view()["life"].keys().filter(func(k): return String(k).begins_with("boss"))), "major")
 	shot("boss_dead")
 	g.player.hp = g.player.max_hp()
 
@@ -930,19 +1074,24 @@ func _session_b() -> void:
 		return
 	var snap: Dictionary = JSON.parse_string(f.get_as_text())
 	var acct := _account()
-	chk(main.flow.current_name == "login", "relaunch shows the login screen", main.flow.current_name, "minor")
-	var r := await main.api.login(acct["user"], acct["pw"])
-	if not chk(r.ok, "offline account survives relaunch (login)", str(r.error), "critical"):
-		return
-	main.api.set_token(r.data["token"])
-	await main.flow.resume()
-	chk(main.flow.current_name == "", "existing account skips discipline select", main.flow.current_name, "major")
+	await frames(20)
+	# a saved offline session resumes straight into the world (web parity); otherwise log in through the real API
+	if main.game == null and main.flow != null and main.flow.current_name == "login":
+		note("relaunch showed the login screen (no resumed session): logging in")
+		var r := await main.api.login(acct["user"], acct["pw"])
+		if not chk(r.ok, "offline account survives relaunch (login)", str(r.error), "critical"):
+			return
+		main.api.set_token(r.data["token"])
+		await main.flow.resume()
+		chk(main.flow == null or main.flow.current_name == "", "existing account skips discipline select", "", "major")
+	else:
+		note("relaunch resumed the saved session straight into the world")
 	if not await _wait_world():
 		bug("critical", "world does not come up after relaunch")
 		return
 	g.game_event.connect(on_event)
 	await frames(30)
-	var now := _snapshot()
+	var now: Dictionary = JSON.parse_string(JSON.stringify(_snapshot()))   # same float/int normalisation as the saved snapshot
 	for k in ["level", "gold", "equipped", "warren", "graves_kills", "peak_depth", "boss_kills", "class", "id", "xp"]:
 		chk(str(now[k]) == str(snap[k]), "persisted across relaunch: %s" % k, "%s -> %s" % [str(snap[k]), str(now[k])], "critical")
 	chk(int(now["bag_qty"]) == int(snap["bag_qty"]), "persisted across relaunch: bag quantity", "%s -> %s" % [snap["bag_qty"], now["bag_qty"]], "major")
