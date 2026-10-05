@@ -31,6 +31,10 @@ func load_belt() -> void:
 			belt[slot] = id if (id is String and DmContent.brews().has(id) and DmContent.brews()[id]["slot"] == slot) else ""
 
 
+func save_belt() -> void:
+	g.store.set_item(belt_key(), JSON.stringify(belt))
+
+
 func set_belt(id: String) -> void:
 	var b: Variant = DmContent.brews().get(id)
 	if b == null:
@@ -228,7 +232,7 @@ func talk_key() -> void:
 	if not g.player.alive:
 		return
 	if g.dialogue_open:
-		g.emit_game_event("dialogue_close")
+		g.ui.dialogue.close()
 		return
 	var id = nearest_npc()
 	if id != "":
@@ -335,7 +339,7 @@ func open_altar(id: String) -> void:
 	if g.sim.boss.state.active:
 		return
 	if g.inventory.count(DmGoldSink.COVENANT_SEAL) > 0 or bound:
-		g.emit_game_event("boss_key_prompt", {"boss": id, "seals": g.inventory.count(DmGoldSink.COVENANT_SEAL), "gold": g.character.get("gold", 0), "shards": g.prog.local["shards"], "bound": bound})
+		g.emit_game_event("boss_key_offer", {"boss": id, "seals": g.inventory.count(DmGoldSink.COVENANT_SEAL), "gold": g.character.get("gold", 0), "shards": g.prog.local["shards"], "bound": bound})
 	else:
 		summon_boss_normal(id)
 

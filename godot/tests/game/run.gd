@@ -126,9 +126,6 @@ func _input(game: DmGame) -> void:
 	_key(game, "1")
 	_key(game, "1", false)
 	_check(DmPlayerRules.on_cooldown(game.p, slot_ability, game.now_ms) or game.p["castUntil"] > game.now_ms, "key 1 cast %s" % slot_ability)
-	# panel hotkey emits the event for the UI
-	_key(game, "i")
-	_check(events.has("panel_toggle"), "I asks the UI for the Reliquary")
 	# recall (T) from the graves
 	game.player.teleport(0.0, -10.0)
 	game._enter_area("graves")

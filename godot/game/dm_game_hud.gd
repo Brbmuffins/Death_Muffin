@@ -30,7 +30,7 @@ static func build(g) -> Dictionary:
 		"wave": {"owned": loc["waveTierOwned"], "active": loc["waveTierActive"], "pct": DmWaveUpgrades.wave_modifiers(float(loc["waveTierActive"]))["speedPct"], "cost": null if g.prog.wave_cost() == -1 else g.prog.wave_cost()},
 		"area_name": DmContent.area(g.area_id)["name"], "area_progress": area_progress(g),
 		"ward": ward(g), "brews": brews(g), "save": g.last_save_text,
-		"auto_combat": {"on": bool(g.settings["autoCombat"]), "available": g.settings_store.can_use_auto_combat() and g.settings["difficulty"] == "easy", "visible": g.settings_store.can_use_auto_combat()},
+		"auto_combat": {"on": bool(g.settings["auto_combat"]), "available": g.settings_store.can_use_auto_combat() and g.settings["difficulty"] == "easy", "visible": g.settings_store.can_use_auto_combat()},
 		"primary": {"icon": art(String(DmAbilities.def(g.primary)["icon"]).replace("art/", "")), "key": "LMB"},
 		"slots": slots(g, now),
 		"target": target(g), "boss": boss(g), "chain": chain(g, now), "depth": g.depths.hud_state() if g.depths != null else null,
