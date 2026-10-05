@@ -173,7 +173,7 @@ func progress_line() -> String:
 func stair_clicked() -> int:
 	var resume := 0 if can_enter() != "" else resume_at()
 	if resume > 0 and run() == null:
-		g.emit_game_event("depths_stair_prompt", {"resume": resume})
+		g.emit_game_event("depths_stair_offer", {"deepest": resume})
 		return resume
 	enter(1)
 	return 0
@@ -453,7 +453,7 @@ func debug() -> Dictionary:
 # --- host plumbing ---------------------------------------------------------------------------------------------------------------
 
 func _in_party() -> bool:
-	return g.party_code != null
+	return String(g.party_code) != ""
 
 
 func _step_out_of_party() -> void:

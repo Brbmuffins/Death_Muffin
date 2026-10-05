@@ -11,6 +11,7 @@ var _prog := 0.0
 var _last_sync := 0.0
 var _levels: Dictionary = {}
 var _hover_node: Variant = null
+var session: DmGatherSession = null
 
 
 func _init(game) -> void:
@@ -34,7 +35,7 @@ func _init(game) -> void:
 		"onReply": func(r: Dictionary) -> void: on_reply(r),
 		"onStop": func(reason: String, message: String) -> void: on_stop(reason, message),
 		"onError": func(msg: String) -> void: g.toast(msg, "err"),
-		"autoEnabled": func() -> bool: return bool(g.settings["autoGather"]),
+		"autoEnabled": func() -> bool: return bool(g.settings["auto_gather"]),
 	}
 	loop = DmGatherLoop.new(hooks, skills)
 	if g.visual and g.builder != null:
@@ -87,6 +88,8 @@ func on_cycle(def: Dictionary, success: bool, node: Dictionary) -> void:
 
 
 func on_reply(r: Dictionary) -> void:
+	if session != null:
+		session.record(r)
 	for it in r.get("items", []):
 		g.inventory.add({"item_id": it["itemId"], "quantity": int(it["qty"])})
 	var total := 0
@@ -123,6 +126,7 @@ func on_stop(reason: String, message: String) -> void:
 		g.avatar.set_gathering_tool("", 0)
 		g.avatar.release_gesture()
 	g.emit_game_event("gather_stopped", {"reason": reason})
+	_end_session(reason)
 
 
 func on_skills_changed() -> void:
@@ -200,3 +204,58 @@ func on_node_gone(id: String) -> void:
 func on_node_back(id: String) -> void:
 	if views != null:
 		views.set_live(id, true)
+
+
+## AFK in the Sexton's Acre (startAfkGathering): walk to the nearest node of that kind and keep working; a report follows when work stops.
+func start_afk(node_id: String) -> String:
+	var node: Dictionary = {}
+	for n in g._sim_world["nodes"]:
+		if n["id"] == node_id:
+			node = n
+	if node.is_empty():
+		return "Choose a gathering node."
+	if g.player.area != "acre":
+		return "Visit the Sexton’s Acre for safe AFK gathering."
+	loop.stop("moved")
+	await loop.flush()
+	var r: DmResult = await g.api.begin_afk_gather(g.hero_id, String(node["type"]))
+	if not r.ok:
+		return r.error
+	g.input.attack_target = null
+	g.input.pending_interact = null
+	g.actions.cancel_recall()
+	g.input.keys.clear()
+	var refusal: String = loop.start_afk(node)
+	if refusal != "":
+		return refusal
+	g.toast("AFK gathering started — keep the game open. It pauses when your bag fills.", "good")
+	session = DmGatherSession.new(g.now_ms,
+		func(id: String) -> Dictionary:
+			var m := DmContent.item(id)
+			return {"name": m["name"], "rarity": m.get("rarity", "common"), "sell": m.get("sell", 0)},
+		func(skill: String) -> int: return skills.level(skill),
+		func(skill: String) -> float: return float(g.chronicle.view()["life"].get("gathered." + skill, 0)))
+	return ""
+
+
+func afk_status() -> Dictionary:
+	return {"active": loop.afk, "text": loop.status, "allowed": g.player.area == "acre"}
+
+
+func _end_session(reason: String) -> void:
+	var s := session
+	if s == null:
+		return
+	await loop.flush()
+	if session != s:
+		return
+	session = null
+	var bests_key := "dm_gather_best_v1:%d" % g.hero_id
+	var raw: String = g.store.get_item(bests_key)
+	var bests: Dictionary = JSON.parse_string(raw) if raw != "" else {}
+	var out: Variant = s.finish(g.now_ms, reason, bests if bests is Dictionary else {})
+	if out == null:
+		return
+	g.store.set_item(bests_key, JSON.stringify(out["bests"]))
+	g.emit_game_event("gather_report", {"report": out["report"]})
+	g.play_sfx("skillUp" if not (out["report"]["milestones"] as Array).is_empty() else "coin")

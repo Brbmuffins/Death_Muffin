@@ -132,7 +132,7 @@ func collected(items: Array) -> void:
 		var nm = String(meta["name"])
 		if item.get("instance") != null:
 			nm = DmAffixRules.affixed_name(nm, item["instance"]["affixes"])
-		g.emit_game_event("loot", {"name": nm, "quantity": int(item["quantity"]), "rarity": String(meta.get("rarity", "common"))})
+		g.emit_game_event("loot", {"name": nm, "qty": int(item["quantity"]), "rarity": String(meta.get("rarity", "common"))})
 
 
 func _is_armor_piece(id: String) -> bool:
@@ -176,7 +176,7 @@ func _attach_and_land(x: float, z: float, gear: Array, level: float, source: Str
 	if not _alive or g.lootview == null:
 		return
 	# Settings -> Loot, per rarity: leave it on the ground, auto-loot it into the bag, or take its gold.
-	var rules: Dictionary = g.settings["lootRules"]
+	var rules: Dictionary = g.settings_store.loot_rules()
 	var keep = Callable()
 	if rules.values().has("gold"):
 		keep = DmItemText.keeps_for_you(stat_context())

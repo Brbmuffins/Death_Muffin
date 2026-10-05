@@ -127,7 +127,7 @@ func run(tree: SceneTree) -> void:
 	# resume at deepest: a deeper floor is on record -> the choice
 	events.clear()
 	var back := d.stair_clicked()
-	check(back == 2 and _count("depths_stair_prompt") == 1 and events[0][1]["resume"] == 2, "stair click offers the choice (resume 2)")
+	check(back == 2 and _count("depths_stair_offer") == 1 and events[0][1]["deepest"] == 2, "stair click offers the choice (resume 2)")
 	check(game.sim.depths == null, "no run before the pick")
 	game.chronicle.max_("peak.depth", 5.0)
 	check(d.prompt({"kind": "stair"}).contains("resume at depth 5"), "prompt names the resume depth")

@@ -171,7 +171,7 @@ func _load_prop(id: String, height: float, by_longest := false) -> Node3D:
 	return holder
 
 func _hide_helm() -> bool:
-	return bool(settings.get("hideHelm", false))
+	return bool(settings.get("hide_helm", false))
 
 ## Show the matching hand tool while gathering, then restore class gear.
 func set_gathering_tool(skill: String, tier := 0) -> void:

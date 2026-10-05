@@ -37,7 +37,7 @@ func on_hurt(raw: float, from: String, x: float, z: float, chill_ms: Variant = n
 		if z_.kind == "warden_ward" and DmSimMath.hypot(z_.x - player.x, z_.z - player.z) <= z_.r:
 			lantern = 0.2
 			break
-	var auto_guard = 0.3 if (g.settings_store.can_use_auto_combat() and bool(g.settings["autoCombat"]) and (g.discipline["family"] == "knight" or g.discipline["family"] == "veil")) else 0.0
+	var auto_guard = 0.3 if (g.settings_store.can_use_auto_combat() and bool(g.settings["auto_combat"]) and (g.discipline["family"] == "knight" or g.discipline["family"] == "veil")) else 0.0
 	var flask_ward = DmBrews.brew_ward(g.p["brews"], from, now)
 	var ward = float(mods["wardPerThrall"]) * n_thralls + lantern + auto_guard + flask_ward
 	var guard = float(mods["colossusGuard"]) if DmLegend.colossus_active(mods, n_thralls) else 0.0
@@ -206,11 +206,10 @@ var _last_tip_check := -1e9
 ## Busy flags for DmCounsel.tick(dt, busy).
 func counsel_busy() -> Dictionary:
 	var now: float = g.now_ms
-	return {"combat": now - g.last_combat_at < 4000.0, "hurt": now - g.last_hurt_at < 4000.0, "talking": g.dialogue_open, "banner": false,
-		"dead": not g.player.alive, "panel": g.panel_open and not g.dialogue_open, "area": g.area_id, "safe": DmContent.area(g.area_id)["safe"]}
+	return {"combat": now - g.last_combat_at < 4000.0, "hurt": now - g.last_hurt_at < 4000.0, "dead": not g.player.alive}
 
 
-## Every 400 ms: the state-based counsel facts, emitted as `counsel_tick` {ctx} (the UI forwards it to DmCounsel.notify_tick).
+## Every 400 ms: the lastCombatAt / lastHurtAt bookkeeping of tickOnboarding (a fight is three living dead within 9 m, or the boss awake).
 func tick_counsel(now: float) -> void:
 	if now - _last_tip_check < 400.0 or not g.player.alive:
 		return
@@ -227,6 +226,11 @@ func tick_counsel(now: float) -> void:
 				if near >= 3:
 					g.last_combat_at = now
 					break
+
+
+## The state-based counsel facts (DmCounselEvents.tick_calls ctx); the UI asks every 400 ms.
+func counsel_tick_ctx() -> Dictionary:
+	var p: DmPlayer = g.player
 	var corpses_near := 0
 	var pack := false
 	for c in g.sim.corpses.values():
@@ -283,4 +287,4 @@ func tick_counsel(now: float) -> void:
 		"has_belt_item": has_belt, "shards": loc["shards"], "boss_near": boss_near, "has_seal": g.inventory.count(DmGoldSink.COVENANT_SEAL) > 0, "area": g.area_id,
 		"cheapest_unlock": cheapest, "boss_kills": loc["bossKills"], "ascension": loc["ascension"], "ashes": loc["ashes"], "gate_near": gate_near,
 	}
-	g.emit_game_event("counsel_tick", {"ctx": ctx})
+	return ctx

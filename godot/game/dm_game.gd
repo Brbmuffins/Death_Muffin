@@ -14,7 +14,7 @@ signal hero_died
 signal hero_respawned
 signal game_event(event_id: String, ctx: Dictionary)
 signal left_world                       ## the UI asked to leave (log out): main returns to the login screen
-signal class_changed(character: Dictionary)   ## a new discipline was saved: main rebuilds the world with this character
+signal world_restart(character: Dictionary)   ## the UI saved a new discipline (class_changed): main rebuilds the world with this character
 signal npc_interact(npc_id: String)
 signal station_interact(station_id: String)
 
@@ -83,21 +83,32 @@ var loadout: Array = []
 var primary: String = "bone_needle"
 var seen: Dictionary = {}
 var dev_access := false
+var dev_account := false
+var release: String = ""
 var omen: Dictionary = {}
 var vfx: Node
 var audio_hooks: DmAudioHooks
 var audio: Node
 var store: DmCounselStore
 var keybinds: Dictionary = {}
-var dialogue_open := false
-var panel_open := false                # set by the UI while a window is open (gates combat input like the web's panelOpen())
-var next_active := false               # set by the UI while the Next line shows (area_progress wording)
+## The in-world UI (DmGameUi, set by main): a window is open (gates combat input like the web's panelOpen()), a conversation is open, the Next line shows.
+var ui: Node = null
+var panel_open: bool:
+	get: return ui != null and ui.has_method("panel_open") and bool(ui.panel_open())
+var dialogue_open: bool:
+	get: return ui != null and ui.get("dialogue") != null and bool(ui.dialogue.visible)
+var next_active: bool:
+	get: return ui != null and ui.get("guidance_hud") != null and ui.guidance_hud.current != null
 var dead_until := 0.0
 var recall_at := 0.0
 var last_combat_at := -1e9
 var last_hurt_at := -1e9
-var party_code: Variant = null
-var remotes: Dictionary = {}           # co-op (Phase C)
+var coop: DmGameCoop
+var party_code: String:
+	get: return coop.party_code if coop != null else ""
+var mirror: DmSimMirror:
+	get: return coop.mirror if coop != null else null
+var remotes: Dictionary = {}           # co-op: id -> {info, avatar, x, z, tx, tz, facing, moving, hpFrac}
 var _hud_at := -1e9
 var _chron_t := 30.0
 var _lines_busy := false
@@ -161,7 +172,9 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	# Kit, rites, hotbar.
 	var base := DmCharacterBuild.discipline_for(float(character["class_index"]))
 	kit = DmAbilities.kit_for(base["family"])
-	dev_access = false
+	dev_account = _is_dev_account()
+	dev_access = dev_account and bool(settings["dev_access"])
+	prog.dev_access = dev_access
 	var rites := DmLoadout.load_rites(hero_id, DmAbilities.rite_level(float(character.get("level", 1)), dev_access), kit, persist)
 	loadout = rites["keys"]
 	primary = rites["primary"]
@@ -188,6 +201,7 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	sim.difficulty = String(settings["difficulty"])
 	sync_world_vows()
 	input = DmGameInput.new(self)
+	coop = DmGameCoop.new(self)
 	rewards = DmGameRewards.new(self)
 	combat = DmGameCombat.new(self)
 	actions = DmGameActions.new(self)
@@ -210,8 +224,23 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	# Server data (the web's loadData + progression.connect).
 	await _load_server_data()
 	_enter_area(player.area if player.area != "" else "acre")
+	if bool(opts.get("realtime", false)):
+		coop.connect_initial()
 	game_event.emit("world_entered", {"family": discipline["family"], "level": int(character["level"]), "grimoire_unlocked": grimoire_unlocked()})
 	check_unlocks()
+
+
+const DEV_ACCOUNTS := ["brbmuffins"]
+
+
+## gm_enabled on the character, or a DEV_ACCOUNTS name in the session token (downloadable offline profiles can never be staff).
+func _is_dev_account() -> bool:
+	if character.get("gm_enabled", false) == true:
+		return true
+	var tok := api.get_token()
+	if tok.begins_with("offline:"):
+		return false
+	return DmMain.token_username(tok).to_lower() in DEV_ACCOUNTS
 
 
 func _build_hotbar() -> Array:
@@ -249,6 +278,7 @@ func _make_abilities() -> void:
 	var ctor: Variant = cls if cls != null else DmSimCaster
 	abilities = ctor.new(sim, p, self_id, discipline["id"], discipline["family"], discipline["mods"])
 	abilities.aim = {"x": 0.0, "z": 0.0}
+	abilities.send_fn = Callable(self, "send_intent")   # every intent goes through the scene (lifesteal, guest relay)
 	abilities.dash_fn = func(tx: float, tz: float) -> Array: return abilities.veil_target(p["x"], p["z"], tx, tz)
 	if "game" in abilities:
 		abilities.game = self
@@ -299,7 +329,7 @@ func _waystone_motes(dt: float) -> void:
 func _make_visual_components() -> void:
 	if not visual:
 		return
-	vfx.binbun.enabled = String(settings["quality"]) == "high"
+	vfx.binbun.enabled = String(settings["graphics"]) == "high"
 	if vfx.binbun.enabled:
 		vfx.binbun.preload_ids(["toxic_puddle", "grave_hands_pulse", "dirge_area", "plague_bloom_area", "enemy_breach_rim", "crypt_mist", "bell_toll_ring", "miasma_cloud", "grave_frost_mist", "surge_eruption"])
 	_dress_hero()
@@ -405,6 +435,8 @@ func counsel_bag_ctx() -> Dictionary:
 
 func _on_inventory_changed(_s: Array) -> void:
 	emit_game_event("bag_changed", counsel_bag_ctx())
+	if coop != null:
+		coop.broadcast_gear()
 	refresh_stats()
 	if avatar != null:
 		avatar.set_equipment(DmGear.equipped_by_slot(inventory.slots))
@@ -437,7 +469,7 @@ func open_areas() -> Array:
 
 
 func sync_world_vows() -> void:
-	if sim == null:
+	if sim == null or (coop != null and coop.mirror != null):
 		return
 	sim.vows = DmAscension.world_vows(prog.vows())
 	sim.corpseLifeMult = float(prog.boons()["corpseLifeMult"])
@@ -460,7 +492,7 @@ func refresh_stats() -> void:
 	var now_main := str(build["loadout"].get("main", ""))
 	if now_main != was_main and now_main != "" and now_main != "null" and now_main != "staff":
 		tip("necroWeapon")
-	if sim != null:
+	if sim != null and (coop == null or coop.mirror == null):
 		sim.waveTier = float(prog.local["waveTierActive"])
 
 
@@ -560,7 +592,7 @@ func tick(dt: float) -> void:
 	var auto_move: Variant = input.auto_movement(dt, now)
 	_update_movement_mods()
 	var moved := player.update(dt, now, {"x": kd.x, "z": kd.z} if (kd.x != 0.0 or kd.z != 0.0) else auto_move)
-	if settings_store.can_use_auto_combat() and bool(settings["autoCombat"]) and player.alive and now - float(p["lastHurtAt"]) < 5000.0:
+	if settings_store.can_use_auto_combat() and bool(settings["auto_combat"]) and player.alive and now - float(p["lastHurtAt"]) < 5000.0:
 		player.heal(player.max_hp() * 0.02 * dt)
 	if now < actions.meal_until and player.alive:
 		player.heal(actions.meal_rate * dt)
@@ -583,14 +615,22 @@ func tick(dt: float) -> void:
 		_enter_area(area)
 	if depths != null:
 		depths.update(dt, now, player.area == "depths")
-	# Authoritative world (solo / host).
-	sim.set_player(DmSimPlayer.make(self_id, player.x, player.z, player.area if player.alive else "", player.alive, float(character["level"]), String(discipline["family"])))
-	for rid in remotes:
-		var r: Dictionary = remotes[rid]
-		sim.set_player(DmSimPlayer.make(rid, r["tx"], r["tz"], nav.area_at(r["tx"], r["tz"]), float(r["hpFrac"]) > 0.0, float(r.get("level", 1)), String(r.get("family", ""))))
-	var events := sim.step(dt)
-	for ev in events:
-		handle_event(ev)
+	# Authoritative world (solo / host), or the mirror of the host's (guest).
+	if coop.mirror == null:
+		sim.set_player(DmSimPlayer.make(self_id, player.x, player.z, player.area if player.alive else "", player.alive, float(character["level"]), String(discipline["family"])))
+		for rid in remotes:
+			var r: Dictionary = remotes[rid]
+			sim.set_player(DmSimPlayer.make(rid, r["tx"], r["tz"], nav.area_at(r["tx"], r["tz"]), float(r["hpFrac"]) > 0.0, float(r.get("level", 1)), String(r.get("family", ""))))
+		var events := sim.step(dt)
+		for ev in events:
+			handle_event(ev)
+		coop.host_publish(events, now)
+	else:
+		event_out_clear()
+		coop.guest_update(dt)
+	coop.send_move(now)
+	if visual:
+		coop.update_remotes(dt)
 	# Loot.
 	rewards.tick_loot(dt)
 	# Visuals.
@@ -704,6 +744,10 @@ func _tick_audio() -> void:
 	audio_hooks.update_boss(player.alive, b.active, String(DmContent.boss(String(b.id) if b.id != "" else "prelate")["area"]))
 
 
+func event_out_clear() -> void:
+	coop.event_out.clear()
+
+
 func _tick_chronicle(dt: float) -> void:
 	_chron_t -= dt
 	if _chron_t > 0.0:
@@ -801,9 +845,9 @@ func set_auto_combat(on: bool) -> void:
 	if settings["difficulty"] != "easy":
 		toast("Auto combat is available on Easy difficulty. Change it in Settings.")
 		return
-	if bool(settings["autoCombat"]) == on:
+	if bool(settings["auto_combat"]) == on:
 		return
-	settings_store.update({"autoCombat": on})
+	settings_store.update({"auto_combat": on})
 	input.auto_target_id = -1
 	input.auto_aim = null
 	toast("Auto combat on — your hero engages nearby enemies. Click or use keys to take control; G turns it off." if on else "Auto combat off — click enemies and use your rites manually.", "good")
@@ -827,7 +871,8 @@ func buy_upgrade(kind: String) -> void:
 
 func set_wave_tier(tier: float) -> void:
 	prog.set_active_wave_tier(tier)
-	sim.waveTier = float(prog.local["waveTierActive"])
+	if coop.mirror == null:
+		sim.waveTier = float(prog.local["waveTierActive"])
 
 
 func _thrall_numbers() -> Dictionary:
@@ -856,38 +901,43 @@ func apply_settings(s: Dictionary) -> void:
 		settings_store.update(s)
 	if visual:
 		audio.apply_settings(settings_store.audio_dict())
-		vfx.quality = String(settings["quality"])
-		vfx.reduced_motion = bool(settings["reducedMotion"])
+		vfx.quality = String(settings["graphics"])
+		vfx.reduced_motion = bool(settings["reduce_motion"])
 		if camera != null:
-			camera.reduced_motion = bool(settings["reducedMotion"])
-	hitstopper.disabled = func() -> bool: return bool(settings["reducedMotion"])
+			camera.reduced_motion = bool(settings["reduce_motion"])
+	hitstopper.disabled = func() -> bool: return bool(settings["reduce_motion"])
 	if sim != null:
 		_on_difficulty(String(settings["difficulty"]))
 
 
 func _on_settings_changed(_v: Dictionary) -> void:
+	_apply_dev_access()
 	if sim != null:
 		_on_difficulty(String(settings["difficulty"]))
 	if visual and ready_:
 		audio.apply_settings(settings_store.audio_dict())
-		vfx.quality = String(settings["quality"])
-		vfx.reduced_motion = bool(settings["reducedMotion"])
+		vfx.quality = String(settings["graphics"])
+		vfx.reduced_motion = bool(settings["reduce_motion"])
 		if camera != null:
-			camera.reduced_motion = bool(settings["reducedMotion"])
+			camera.reduced_motion = bool(settings["reduce_motion"])
 
 
 func _on_difficulty(d: String) -> void:
+	if coop != null and coop.mirror != null:
+		if coop.mirror.difficulty != d:
+			toast("The world keeper's difficulty applies (%s)" % String(DmContent.difficulty(coop.mirror.difficulty)["name"]))
+		return
 	if sim.difficulty == d:
 		return
 	sim.difficulty = d
 	toast("Difficulty: %s — the next dead to rise feel it" % String(DmContent.difficulty(d)["name"]), "good")
 
 
-# ---- extras the UI calls (not in GAME_CONTRACT.md; see game/README.md) -----------------------------------------------------------
+# ---- optional contract methods (GAME_CONTRACT.md, "Additions by game-ui") -------------------------------------------------------------------
 
-## Records a Codex discovery (kind: dead | area | ...): the UI's Codex journal listens for `codex_discover` {kind, id}.
+## Records a Codex discovery (kind: dead | area): the UI's Codex journal listens for `codex` {kind, id}.
 func codex_discover(kind: String, id: String) -> void:
-	emit_game_event("codex_discover", {"kind": kind, "id": id})
+	emit_game_event("codex", {"kind": kind, "id": id})
 
 
 func travel(area: String) -> void:
@@ -898,12 +948,93 @@ func start_recall() -> void:
 	actions.start_recall()
 
 
-func use_item(id: String) -> void:
-	actions.drink_flask(id)
+## Reliquary double-click / Drink / Eat (drinkFlask(prefer): a flask, a meal or a brew).
+func use_item(item_id: String) -> void:
+	actions.drink_flask(item_id)
 
 
-func set_belt(id: String) -> void:
-	actions.set_belt(id)
+## The UI owns the pick in its store and tells the game which brew a belt slot holds.
+func set_belt(slot: String, item_id: String) -> void:
+	if slot in ["elixir", "tonic"]:
+		actions.belt[slot] = item_id
+		actions.save_belt()
+
+
+## Grimoire changes: the UI persists `dm_loadout_v2_<id>`; the HUD slots follow (setRite / setPrimary / applyRitesPreset).
+func set_rites(new_primary: String, keys: Array) -> void:
+	primary = new_primary
+	loadout = keys.duplicate()
+	hotbar = _build_hotbar()
+	input.queued_cast = null
+	DmLoadout.save_rites(hero_id, {"primary": primary, "keys": loadout}, bool(opts.get("persist", true)))
+	mark_seen([primary] + keys)
+
+
+## The Bone Grinder is within reach (WorldScene.nearGrinder: in the Acre, INTERACT_RANGE + 2 of the grinder).
+func near_grinder() -> bool:
+	if area_id != "acre":
+		return false
+	for it in DmContent.area("acre")["interactables"]:
+		if it["kind"] == "grinder":
+			return DmSimMath.hypot(float(it["x"]) - player.x, float(it["z"]) - player.z) < INTERACT_RANGE + 2.0
+	return false
+
+
+func counsel_busy() -> Dictionary:
+	return combat.counsel_busy()
+
+
+func counsel_tick_ctx() -> Dictionary:
+	return combat.counsel_tick_ctx()
+
+
+func stop_gathering(reason: String) -> void:
+	gatherer.loop.stop(reason)
+
+
+func afk_active() -> bool:
+	return gatherer.loop.afk
+
+
+func afk_status() -> Dictionary:
+	return gatherer.afk_status()
+
+
+## Starts AFK gathering on a node of that kind; returns "" or the player-readable refusal (also toasted).
+func start_afk(node_id: String) -> String:
+	var err: String = await gatherer.start_afk(node_id)
+	if err != "":
+		toast(err, "err")
+	return err
+
+
+func stop_player() -> void:
+	player.stop()
+
+
+func talk_key() -> void:
+	actions.talk_key()
+
+
+func dial_wave(delta: int) -> void:
+	set_wave_tier(float(prog.local["waveTierActive"]) + delta)
+
+
+func summon_boss(id: String) -> void:
+	actions.summon_boss_normal(id)
+
+
+func summon_boss_empowered(id: String) -> void:
+	actions.call_empowered(id)
+
+
+func enter_depths(depth: int) -> void:
+	if depths != null:
+		depths.enter(depth)
+
+
+func talk_to(npc_id: String) -> void:
+	actions.talk_to(npc_id)
 
 
 func belt_choices(slot: String) -> Array:
@@ -916,16 +1047,41 @@ func belt_choices(slot: String) -> Array:
 	return out
 
 
-func summon_boss(id: String) -> void:
-	actions.summon_boss_normal(id)
+## Settings -> Leave: save, then log out (web: setToken(null); goLogin()).
+func party_create() -> void:
+	await coop.create_party()
 
 
-func call_empowered(id: String) -> void:
-	actions.call_empowered(id)
+func party_join(code: String) -> void:
+	await coop.join_party(code)
 
 
-func talk_to(npc_id: String) -> void:
-	actions.talk_to(npc_id)
+func party_leave() -> void:
+	await coop.leave_party()
+
+
+func send_chat(text: String) -> void:
+	coop.send_chat(text)
+
+
+func pause_coop() -> void:
+	coop.pause()
+
+
+func resume_coop() -> void:
+	coop.resume()
+
+
+func leave_world() -> void:
+	await flush_all()
+	api.set_token("")
+	left_world.emit()
+
+
+## The UI saved a new discipline (ClassPanel) and hands the new character over: the world is rebuilt (web onClassChanged -> goWorld).
+func class_changed(new_character: Dictionary) -> void:
+	ready_ = false
+	world_restart.emit(new_character)
 
 
 func do_ascend() -> void:
@@ -974,34 +1130,22 @@ func do_open(key: String) -> void:
 	toast("%s unlocked" % key.substr(key.find(":") + 1), "good")
 
 
-## Settings -> Leave: save, then log out (web: setToken(null); goLogin()).
-func leave_world() -> void:
-	await flush_all()
-	api.set_token("")
-	left_world.emit()
-
-
-## Settings / Class panel: switch discipline (changeClass). Returns "" on success or the player-readable error.
-func change_class(index: int) -> String:
-	if index == int(character["class_index"]):
-		return ""
-	ready_ = false
-	player.stop()
-	input.attack_target = null
-	input.pending_interact = null
-	actions.cancel_recall()
-	var err: String = await psync.save_before_class_change()
-	if err == "":
-		err = await inventory.save_before_class_change()
-	if err != "":
-		ready_ = true
-		return err
-	var r: DmResult = await api.change_discipline(hero_id, index)
-	if not r.ok:
-		ready_ = true
-		return r.error
-	class_changed.emit(r.data)
-	return ""
+## Dev access toggle (Settings -> preview as a normal player): rites, areas and gathering tiers open or close.
+func _apply_dev_access() -> void:
+	if not dev_account:
+		return
+	var on := bool(settings["dev_access"])
+	if on == dev_access:
+		return
+	dev_access = on
+	prog.dev_access = on
+	gatherer.skills.dev_access = on
+	if abilities != null:
+		abilities.dev = on
+	nav.set_unlocked(open_areas())
+	_sync_doors()
+	progress_changed.emit()
+	toast("Dev access on: every rite, area and gathering tier is open (nothing is saved)." if on else "Dev access off: previewing as a normal player.", "good")
 
 
 ## Save everything now (leaving the world, class change, window close).
@@ -1014,6 +1158,8 @@ func flush_all() -> void:
 
 
 func _exit_tree() -> void:
+	if coop != null:
+		coop.dispose()
 	if ready_ and psync != null:
 		psync.save_local_now()
 
@@ -1028,7 +1174,10 @@ func send_intent(intent: Dictionary) -> void:
 			var heal := DmBrews.lifesteal_heal(float(intent["dmg"]), float((intent["ids"] as Array).size()) + (1.0 if intent.get("boss", false) else 0.0), ls, player.max_hp())
 			if heal >= 1.0:
 				player.heal(heal)
-	sim.apply(intent)
+	if coop != null and coop.mirror != null:
+		coop.rt.send_intent(intent)
+	else:
+		sim.apply(intent)
 
 
 func emit_game_event(id: String, ctx: Dictionary = {}) -> void:
@@ -1047,8 +1196,13 @@ func tip(id: String, delay_ms: float = 0.0, opts_: Variant = null) -> void:
 	game_event.emit("tip", {"id": id, "delay_ms": delay_ms, "opts": opts_ if opts_ != null else {}})
 
 
-func float_text(x: float, y: float, z: float, text: String, kind: String = "info") -> void:
-	game_event.emit("float", {"x": x, "y": y, "z": z, "text": text, "kind": kind})
+func float_text(x: float, y: float, z: float, text: String, kind: String = "info", color: Variant = null) -> void:
+	if not bool(settings["damage_numbers"]) and kind in ["hit", "dot", "thrall", "spear"]:
+		return
+	var ctx := {"world": Vector3(x, y, z), "text": text, "kind": kind}
+	if color != null:
+		ctx["color"] = color
+	game_event.emit("float", ctx)
 
 
 func hitstop(weight: float) -> void:

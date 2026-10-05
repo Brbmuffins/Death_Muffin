@@ -72,27 +72,23 @@ func handle(ev: InputEvent) -> void:
 		_mouse_button(ev)
 
 
+## Keys the UI track owns (panels, chat, Esc, auto combat, talk, loadout hotkeys: DmGameUi handles them; GAME_CONTRACT.md).
+const UI_KEYS := ["i", "b", "j", "y", "c", "p", "o", "u", "h", "n", "v", "m", "k", ".", "l", "g", "e", "escape", "enter", "tab"]
+
+
 func _key(ev: InputEventKey) -> void:
 	if not ev.pressed:
 		keys.erase(key_name(ev))
 		mouse["shift"] = ev.shift_pressed
 		return
-	var k = key_name(ev)
+	var k := key_name(ev)
 	if k == "shift":
 		mouse["shift"] = true
 		return
+	if k in UI_KEYS or DmKeybinds.action_for_key(g.keybinds, k) != "":
+		return
 	if k in ["1", "2", "3", "4"]:
 		keys[k] = true
-	if k == "enter":
-		g.emit_game_event("chat_focus")
-		return
-	# Loadout hotkeys: unbound until assigned in Settings, never a key the game already uses.
-	if g.discipline["family"] == "necromancer" and not ev.ctrl_pressed and not ev.meta_pressed and not ev.alt_pressed:
-		var action = DmKeybinds.action_for_key(g.keybinds, k)
-		if action != "":
-			if not ev.echo:
-				g.emit_game_event("loadout_hotkey", {"action": action})
-			return
 	var repeat_ok: bool = k in ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"]
 	if ev.echo and not repeat_ok:
 		return
@@ -108,40 +104,6 @@ func _key(ev: InputEventKey) -> void:
 		g.actions.drink_belt("tonic")
 	elif k == "t":
 		g.actions.start_recall()
-	elif k == "i" or k == "b":
-		g.emit_game_event("panel_toggle", {"panel": "inventory"})
-	elif k == "j":
-		g.emit_game_event("panel_toggle", {"panel": "sheet"})
-	elif k == "y" and g.discipline["family"] == "necromancer":
-		g.emit_game_event("panel_toggle", {"panel": "legion"})
-	elif k == "c":
-		g.emit_game_event("panel_toggle", {"panel": "forge"})
-	elif k == "p":
-		g.emit_game_event("panel_toggle", {"panel": "professions"})
-	elif k == "o":
-		g.emit_game_event("panel_toggle", {"panel": "contracts"})
-	elif k == "u":
-		g.emit_game_event("panel_toggle", {"panel": "garden"})
-	elif k == "h":
-		g.emit_game_event("panel_toggle", {"panel": "labor"})
-	elif k == "n":
-		g.emit_game_event("panel_toggle", {"panel": "cosmetics"})
-	elif k == "v":
-		g.emit_game_event("panel_toggle", {"panel": "vault"})
-	elif k == "m":
-		g.emit_game_event("panel_toggle", {"panel": "map"})
-	elif k == "k":
-		g.emit_game_event("panel_toggle", {"panel": "codex"})
-	elif k == ".":
-		g.emit_game_event("panel_toggle", {"panel": "atlas"})
-	elif k == "l":
-		g.emit_game_event("panel_toggle", {"panel": "grimoire"})
-	elif k == "g":
-		toggle_auto_combat()
-	elif k == "e":
-		g.actions.talk_key()
-	elif k == "escape":
-		g.emit_game_event("escape", {"panel_open": g.panel_open})
 	else:
 		keys[k] = true
 	mouse["shift"] = ev.shift_pressed
@@ -170,7 +132,7 @@ func _mouse_button(ev: InputEventMouseButton) -> void:
 func toggle_auto_combat() -> void:
 	if not g.settings_store.can_use_auto_combat():
 		return
-	g.set_auto_combat(not bool(g.settings["autoCombat"]))
+	g.set_auto_combat(not bool(g.settings["auto_combat"]))
 
 
 # ---- cursor --------------------------------------------------------------------------------------------------------------------
@@ -270,7 +232,7 @@ func on_primary_click() -> void:
 	var h: Variant = hover
 	var shift: bool = mouse["shift"]
 	if h != null and h["kind"] == "laborer" and not shift:
-		g.emit_game_event("panel_toggle", {"panel": "labor", "open_only": true})
+		g.emit_game_event("labor_click")
 		return
 	if h != null and h["kind"] == "node" and not shift:
 		attack_target = null
@@ -426,7 +388,7 @@ func tick_combat(now: float) -> void:
 				cast_slot(slot)
 			return
 	# Easy auto yields to deliberate movement, menus, gathering and manual targets.
-	if not g.settings_store.can_use_auto_combat() or not bool(g.settings["autoCombat"]) or player.has_path() or attack_target != null or not keys.is_empty() or (g.gather != null and g.gather.get("active") == true):
+	if not g.settings_store.can_use_auto_combat() or not bool(g.settings["auto_combat"]) or player.has_path() or attack_target != null or not keys.is_empty() or (g.gather != null and g.gather.get("active") == true):
 		auto_target_id = -1
 		auto_aim = null
 		return
@@ -480,7 +442,7 @@ func dodge_hazards() -> Array:
 
 func auto_movement(dt: float, now: float) -> Variant:
 	var player: DmPlayer = g.player
-	if _auto == null or not g.settings_store.can_use_auto_combat() or not bool(g.settings["autoCombat"]) or not player.alive or g.panel_open or g.recall_at > 0.0 or player.has_path() or attack_target != null or pending_interact != null or (g.gather != null and g.gather.get("active") == true) or not keys.is_empty():
+	if _auto == null or not g.settings_store.can_use_auto_combat() or not bool(g.settings["auto_combat"]) or not player.alive or g.panel_open or g.recall_at > 0.0 or player.has_path() or attack_target != null or pending_interact != null or (g.gather != null and g.gather.get("active") == true) or not keys.is_empty():
 		auto_mem["dir"] = null
 		return null
 	var res: Dictionary = g.p["resource"]

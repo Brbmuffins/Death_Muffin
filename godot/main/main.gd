@@ -2,7 +2,7 @@ class_name DmMain
 extends Node
 ## Game entry (main scene). Launch args (after `--`): `--offline` (default) = the offline edition: local accounts + progress on this device
 ## (DmMockBackend under user://, standalone sign-in rules, no live server); `--online` = DmFrontFlow against the live server.
-## Flow: DmFrontFlow (login / discipline select) -> enter_world -> DmGame (+ DmGameUi if the game-ui track is merged, else DmBasicUi).
+## Flow: DmFrontFlow (login / discipline select) -> enter_world -> DmGame + DmGameUi.
 ## Dev: `--qa` keeps the old QA autoload inactive paths; `--world-demo` skips the front flow (offline test account, class 2).
 
 var mode := "offline"
@@ -12,7 +12,6 @@ var ui: Node
 var api: DmApi
 var _mock: DmMockBackend
 var _transport: DmHttpTransport
-var settings_menu: DmSettingsMenu
 
 
 func _ready() -> void:
@@ -85,42 +84,31 @@ func _enter_world(character: Dictionary, session) -> void:
 	game = DmGame.new()
 	game.name = "Game"
 	add_child(game)
-	var ui_script: Variant = load("res://game_ui/dm_game_ui.gd") if ResourceLoader.exists("res://game_ui/dm_game_ui.gd") else null
 	game.left_world.connect(_on_left_world)
-	game.class_changed.connect(func(ch: Dictionary): _on_class_changed(ch))
-	await game.start(character, api, {"local_progress": mode == "offline", "name": token_username(api.get_token())})
-	if ui_script != null:
-		ui = ui_script.new()
-		game.add_child(ui)
-		ui.setup(game)
-	else:
-		ui = DmBasicUi.new()
-		game.add_child(ui)
-		ui.setup(game)
-		settings_menu = DmSettingsMenu.new()
-		add_child(settings_menu)
-		settings_menu.setup()
-		game.game_event.connect(func(id: String, _c: Dictionary):
-			if id == "escape":
-				settings_menu.toggle())
+	game.world_restart.connect(func(ch: Dictionary): _on_world_restart(ch))
+	await game.start(character, api, {"local_progress": mode == "offline", "realtime": mode == "online", "name": token_username(api.get_token())})
+	ui = DmGameUi.new()
+	game.add_child(ui)
+	ui.setup(game)
+	game.ui = ui
+	ui.sound.connect(func(n: String): get_node("/root/AudioDirector").play_sfx(n))
 
 
 func _teardown_game() -> void:
 	if game != null:
 		game.queue_free()
 		game = null
-	if settings_menu != null:
-		settings_menu.queue_free()
-		settings_menu = null
 	ui = null
 
 
 func _on_left_world() -> void:
+	if game == null:
+		return
 	_teardown_game()
 	_start_flow()
 
 
-func _on_class_changed(character: Dictionary) -> void:
+func _on_world_restart(character: Dictionary) -> void:
 	_teardown_game()
 	await _enter_world(character, api)
 

@@ -1,5 +1,5 @@
 extends SceneTree
-## Audio wiring test (headless, dummy audio driver): drives a scripted session through the real DmGame (offline mock backend) and asserts the AudioDirector
+## Audio wiring test (headless, dummy audio driver): drives a scripted session through the real DmGame (offline mock backend); the Settings panel wiring is tested in tests/game_ui and asserts the AudioDirector
 ## received the expected calls.   godot --headless --audio-driver Dummy --path godot --script res://tests/audio_wire/run.gd
 
 var _fail := 0
@@ -43,10 +43,6 @@ func _run() -> void:
 	var game := DmGame.new()
 	get_root().add_child(game)
 	await game.start(c.data, api, {"visual": true, "persist": false, "seed": 3, "local_progress": true})
-	var sm := DmSettingsMenu.new()
-	game.add_child(sm)
-	sm.cfg_path = CFG
-	sm.setup(ad, CFG)
 	await _frames(5)
 	# --- area music + ambience on start
 	_check(ad.current_area() == "acre", "set_area(acre) on start, got '%s'" % ad.current_area())
@@ -118,34 +114,6 @@ func _run() -> void:
 	game.audio_hooks.update_boss(true, false, ad.current_area())
 	await _frames(2)
 	_check(ad.music_cue() != boss_cue, "boss music off restores the area cue: '%s'" % ad.music_cue())
-	# --- settings: Esc opens the panel, sliders drive apply_settings, persisted + reloaded
-	_check(not sm.is_open(), "settings closed at first")
-	played.clear()
-	var esc := InputEventKey.new()
-	esc.physical_keycode = KEY_ESCAPE
-	esc.keycode = KEY_ESCAPE
-	esc.pressed = true
-	sm._unhandled_key_input(esc)
-	await _frames(3)
-	_check(sm.is_open(), "Esc opens Settings")
-	_check(_heard("panelOpen"), "panel open sound")
-	sm.panel._put("vol_master", 0.2)
-	sm.panel._put("vol_music", 0.4)
-	_check(is_equal_approx(ad.settings.volume, 0.2) and is_equal_approx(ad.settings.musicVolume, 0.4), "sliders drive AudioDirector.apply_settings")
-	var cf := ConfigFile.new()
-	_check(cf.load(CFG) == OK and is_equal_approx(float(cf.get_value("settings", "volume", -1.0)), 0.2) and is_equal_approx(float(cf.get_value("settings", "musicVolume", -1.0)), 0.4), "settings persisted to the cfg with the web keys")
-	var sm2 := DmSettingsMenu.new()
-	game.add_child(sm2)
-	sm2.setup(ad, CFG)
-	_check(is_equal_approx(float(sm2.panel.values.vol_master), 0.2) and is_equal_approx(ad.settings.musicVolume, 0.4), "settings load on start")
-	sm2.queue_free()
-	sm.panel._put("vol_master", 0.7)
-	sm.panel._put("vol_music", 0.85)
-	sm._unhandled_key_input(esc)
-	await _frames(3)
-	_check(not sm.is_open(), "Esc closes Settings")
-	_check(_heard("panelClose"), "panel close sound")
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(CFG))
 	game.queue_free()
 	await _frames(3)
 	_check(ad.current_area() == "", "leaving the world stops the area (stop_area)")
