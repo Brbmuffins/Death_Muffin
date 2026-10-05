@@ -154,6 +154,36 @@ func _on_skills_changed() -> void:
 		g.emit_game_event("skill_up")
 
 
+## nodeTipText: the hover card HTML for a gathering node (trusted markup built from the gathering rules; DmHud.node_tip renders it).
+func node_tip_text(n: Dictionary) -> String:
+	var def: Dictionary = DmGathering.node_def(String(n["type"]))
+	var sk: Dictionary = DmContent.get_export("gameplay_gatheringRules", "SKILLS")[def["skill"]]
+	var lvl: int = skills.gate_level(String(def["skill"]))
+	var need: String
+	if lvl < int(def["level"]):
+		need = '<div class="req missing">Requires %s level %d · use %s</div>' % [sk["name"], int(def["level"]), "Coffin-Oak near the entrance" if String(sk["name"]) == "Woodcutting" else "a beginner node near the entrance"]
+	else:
+		need = '<div class="req ok">%s · level %d%s</div>' % [sk["name"], int(def["level"]), " · Beginner" if int(def["level"]) == 1 else ""]
+	var spent := "" if node_live(String(n["id"])) else '<div class="spent">Spent. It will return soon.</div>'
+	return "<b>%s</b>%s%s<div>%d XP per success · %s</div>%s" % [def["name"], ' <span class="rich">rich</span>' if bool(n.get("rich", false)) else "", need, int(def["xp"]), preload("res://rules/gathering/gather_data.gd").item_meta(String(def["item"]))["name"], spent]
+
+
+## WorldScene's per-frame `hud.nodeTip(hn ? nodeTipText(hn) : hl >= 0 ? laborers.tip(hl) : null, mouse.x, mouse.y)`: only a gathering node or a
+## Grave Laborer under the cursor (and no panel open) gets a card; stations and NPCs have none in the web either.
+func update_node_tip(hover: Variant, mx: float, my: float) -> void:
+	var ui: Variant = g.ui
+	if ui == null or ui.get("hud") == null:
+		return
+	var html: Variant = null
+	if hover != null and not g.panel_open:
+		if hover["kind"] == "node":
+			html = node_tip_text(hover["node"])
+		elif hover["kind"] == "laborer" and g.laborer_views != null:
+			var t: String = g.laborer_views.tip(int(hover["slot"]))
+			html = t if t != "" else null
+	ui.hud.node_tip(html, mx, my)
+
+
 func node_hover(hover: Variant) -> void:
 	_hover_node = hover["node"] if (hover != null and hover["kind"] == "node") else null
 	if views != null:

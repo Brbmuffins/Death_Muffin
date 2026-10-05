@@ -442,7 +442,7 @@ func tip(slot: int) -> String:
 	var def: Dictionary = _nodes_def()[l.node_type]
 	var sk: Dictionary = DmContent.get_export("gameplay_gatheringRules", "SKILLS")[def["skill"]]
 	var line := laborer_tip(String(sk["name"]), _worked_ms(l), l.ready, l.full)
-	return "%s\n%s · click to open the Laborers (H)" % [line, def["name"]]
+	return "<b>%s</b><div>%s · click to open the Laborers (H)</div>" % [line, def["name"]]
 
 
 func _set_mode(l: Laborer, mode: String) -> void:
