@@ -43,6 +43,13 @@ no speculative abstractions, layers, config or files; reuse instead of duplicati
 (shaders, scenes, effects, fonts) warmed during loading, never mid-play; (5) perf budgets in tests use generous margins (the VPS is
 shared) but must catch real regressions.
 
+## Assets rule (owner, 2026-10-05)
+
+Reuse the existing audio, music, models and animations (the owner likes the current vibe). Generation is a backup, used only when
+something needed doesn't exist or is unusable: **ElevenLabs** for sound effects/music/ambience (`tools/audio/generate-eleven-*.mjs`,
+key in `~/death-muffin/private/elevenlabs-api-key`), **Tripo** for models (`tools/ai/tripo.mjs`, `ASSET_PIPELINE.md`; budget per
+the autonomy grant). Focus is getting the rebuild working; polish passes can use these later.
+
 ## Classification (from the owner's architecture review)
 
 | Area | Verdict | Notes |
