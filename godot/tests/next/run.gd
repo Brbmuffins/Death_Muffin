@@ -150,6 +150,8 @@ func _part_a() -> void:
 	e0.take_damage(1e9, hb)
 	await ticks(3)
 	check(e0.sm.id() == DmEnemyState.Id.DEAD and kills[0] == 1, "A: rewards seam credits the kill (%d)" % kills[0])
+	var want_corpse: bool = e0.corpse_kind != "none"
+	check(g.corpses != null and (g.corpses.count() > 0) == want_corpse, "A: a killed %s leaves a corpse: %s (corpses %d)" % [e0.def_id, want_corpse, g.corpses.count()])
 	# ---- death -> respawn in the Chapterhouse
 	var died_seen := [0]
 	var resp_seen := [0]

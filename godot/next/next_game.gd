@@ -34,6 +34,7 @@ var api: Variant = null                         ## DmApi: the VPS backend online
 var is_offline: bool = true                     ## D4: true = backed by the local GDScript backend
 var area_id: String = "chapterhouse"
 var rewards: Node
+var corpses: DmCorpseField                       ## child "Corpses" (same path on every peer); host lays corpses from enemy deaths
 var opts: Dictionary = {}
 var load_ms: int = 0
 var ready_ := false                             ## DmAudioHooks "main" shape: ready_, area_id, player, avatar, builder
@@ -64,7 +65,12 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	director.game = self
 	director.enabled = bool(opts.get("waves", true))
 	hud.visible = bool(opts.get("hud", true))
-	director.enemy_spawned.connect(func(e: DmEnemy) -> void: enemy_spawned.emit(e))
+	corpses = DmCorpseField.new()
+	corpses.name = "Corpses"
+	add_child(corpses)
+	director.enemy_spawned.connect(func(e: DmEnemy) -> void:
+		corpses.track(e, String(e.get_meta("dm_area", area_id)))
+		enemy_spawned.emit(e))
 	director.warm()
 	session.session_ended.connect(func(_r: String) -> void: set_process(false))
 	if _has_world:
