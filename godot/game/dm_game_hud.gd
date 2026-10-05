@@ -150,15 +150,30 @@ static func target(g) -> Variant:
 		return null
 	var d: Dictionary = DmContent.enemy(e.def)
 	var statuses: Array = []
-	var S = "art/status/"
+	var S = "status/"
 	if e.fracture > 0: statuses.append({"icon": art(S + "fracture.webp"), "label": "Fracture", "n": e.fracture})
 	if e.withered > 0: statuses.append({"icon": art(S + "withered.webp"), "label": "Withered", "n": e.withered})
 	if e.slowT > 0.0: statuses.append({"icon": art(S + "void-rot.webp"), "label": "Miasma", "n": 1})
+	if e.bleedT > 0.0: statuses.append({"icon": art(S + "hemorrhage.webp"), "label": "Hemorrhage", "n": 1})
+	if e.chillT > 0.0: statuses.append({"icon": art(S + "chilled.webp"), "label": "Chilled", "n": 1})
+	if e.silenceT > 0.0: statuses.append({"icon": art(S + "silenced.webp"), "label": "Silenced", "n": 1})
+	if e.incenseT > 0.0: statuses.append({"icon": art(S + "incensed.webp"), "label": "Incensed", "n": 1})
+	if e.hexT > 0.0: statuses.append({"icon": art(S + "cursed.webp"), "label": "Bone Hex", "n": 1})
+	if e.sanctT > 0.0: statuses.append({"icon": art(S + "sanctified.webp"), "label": "Sanctified", "n": 1})
 	var affixes: Array = []
 	if e.affix != "":
 		var ad: Dictionary = DmContent.get_export("enemies", "ELITE_AFFIXES")[e.affix]
 		affixes.append({"id": e.affix, "name": ad["name"]})
-	return {"name": d["name"], "elite": e.elite, "affixes": affixes, "hp": e.hp, "max_hp": e.maxHp, "statuses": statuses, "blurb": d.get("blurb", "")}
+	# The Depths give elites more than one affix: the frame names every one, and the blurb lists them all.
+	var blurb: String = String(d.get("blurb", ""))
+	if e.affix != "":
+		var ed: Dictionary = DmContent.get_export("enemies", "ELITE_AFFIXES")
+		var parts: Array = [ed[e.affix]["blurb"]]
+		for x in e.extra:
+			affixes.append({"id": x["affix"], "name": ed[x["affix"]]["name"]})
+			parts.append(ed[x["affix"]]["blurb"])
+		blurb = " ".join(parts)
+	return {"name": d["name"], "elite": e.elite, "affixes": affixes, "hp": e.hp, "max_hp": e.maxHp, "statuses": statuses, "blurb": blurb}
 
 
 static func boss(g) -> Variant:

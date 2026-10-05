@@ -37,8 +37,97 @@ var _glow_tex: ImageTexture
 var _by_area_props: Dictionary = {}
 var nav_bake_ms := 0
 
+## See-through cutout (occlusion.ts): walls and props between the camera and the hero dither away inside a screen circle around the hero.
+var occlusion_enabled := true
+var _occ_mats: Dictionary = {}
+const OCC_PROP := preload("res://world/dm_occ_prop.gdshader")
+const OCC_WALL := preload("res://world/dm_occ_wall.gdshader")
+
+
+static func _ensure_occ_globals() -> void:
+	var names := RenderingServer.global_shader_parameter_get_list()
+	if not names.has(&"dm_occ_a"):
+		RenderingServer.global_shader_parameter_add("dm_occ_a", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(0, 0, 0.16, 100))
+	if not names.has(&"dm_occ_b"):
+		RenderingServer.global_shader_parameter_add("dm_occ_b", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(1.6, 0, 0, 0))
+
+
+## Call once per frame with the camera and the hero's world position (updateOcclusion).
+func update_occlusion(cam: Camera3D, hero: Vector3) -> void:
+	if not occlusion_enabled or cam == null or not cam.is_inside_tree():
+		return
+	var vp := cam.get_viewport().get_visible_rect().size
+	if vp.y <= 0.0:
+		return
+	var ndc := func(v: Vector3) -> Vector2:
+		var s := cam.unproject_position(v)
+		return Vector2((s.x / vp.x) * 2.0 - 1.0, 1.0 - (s.y / vp.y) * 2.0)
+	var p: Vector2 = ndc.call(Vector3(hero.x, 1.1, hero.z))
+	var head: Vector2 = ndc.call(Vector3(hero.x, hero.y + 1.6, hero.z))
+	var feet: Vector2 = ndc.call(Vector3(hero.x, 0.0, hero.z))
+	var radius := clampf(absf(head.y - feet.y) * 1.05, 0.1, 0.5)
+	RenderingServer.global_shader_parameter_set("dm_occ_a", Vector4(p.x, p.y, radius, cam.global_position.distance_to(Vector3(hero.x, 1.1, hero.z))))
+	RenderingServer.global_shader_parameter_set("dm_occ_b", Vector4(vp.x / vp.y, 1.0, 0.0, 0.0))
+
+
+func _occ_prop_material(src: StandardMaterial3D) -> Material:
+	var key := src.get_instance_id()
+	if _occ_mats.has(key):
+		return _occ_mats[key]
+	var m := ShaderMaterial.new()
+	m.shader = OCC_PROP
+	m.set_shader_parameter("albedo", src.albedo_color)
+	if src.albedo_texture != null:
+		m.set_shader_parameter("albedo_tex", src.albedo_texture)
+	if src.normal_enabled and src.normal_texture != null:
+		m.set_shader_parameter("normal_tex", src.normal_texture)
+		m.set_shader_parameter("has_normal", true)
+		m.set_shader_parameter("normal_scale", src.normal_scale)
+	if src.roughness_texture != null:
+		m.set_shader_parameter("orm_tex", src.roughness_texture)
+		m.set_shader_parameter("has_orm", true)
+	m.set_shader_parameter("roughness_f", src.roughness)
+	m.set_shader_parameter("metallic_f", src.metallic if src.roughness_texture != null else src.metallic)
+	_occ_mats[key] = m
+	return m
+
+
+func _occ_wall_material(src: StandardMaterial3D) -> Material:
+	var key := src.get_instance_id()
+	if _occ_mats.has(key):
+		return _occ_mats[key]
+	var m := ShaderMaterial.new()
+	m.shader = OCC_WALL
+	m.set_shader_parameter("albedo", src.albedo_color)
+	m.set_shader_parameter("albedo_tex", src.albedo_texture)
+	m.set_shader_parameter("uv_scale", src.uv1_scale.x)
+	m.set_shader_parameter("roughness_f", src.roughness)
+	_occ_mats[key] = m
+	return m
+
+
+## Walls (box meshes with the triplanar stone material) and props (instanced glTF parts) under `root` get the cutout shaders.
+func apply_occlusion(root: Node) -> void:
+	if not occlusion_enabled:
+		return
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.material_override is StandardMaterial3D and (mi.material_override as StandardMaterial3D).uv1_triplanar and mi.mesh is BoxMesh:
+			mi.material_override = _occ_wall_material(mi.material_override)
+	for n in root.find_children("*", "MultiMeshInstance3D", true, false):
+		var mm := (n as MultiMeshInstance3D).multimesh
+		if mm == null or mm.mesh == null:
+			continue
+		var mesh := mm.mesh
+		for i in mesh.get_surface_count():
+			var mat := mesh.surface_get_material(i)
+			if mat is StandardMaterial3D and not (mat as StandardMaterial3D).transparency:
+				mesh.surface_set_material(i, _occ_prop_material(mat))
+
+
 func build(w: Dictionary) -> void:
 	world = w
+	_ensure_occ_globals()
 	_make_environment()
 	_colliders = StaticBody3D.new()
 	_colliders.name = "Colliders"
@@ -62,6 +151,7 @@ func build(w: Dictionary) -> void:
 	_gates()
 	_depths()
 	_npcs()
+	apply_occlusion(self)
 	_bake_nav()
 	_apply_unlock_state()
 	set_area("chapterhouse")
@@ -820,6 +910,12 @@ var _depths_chest_mat: StandardMaterial3D = null
 
 ## Draw a generated floor (DmDepthsFloor.generate_floor Dictionary): room floors, door mouths, walls, props, the two stairs and the chest.
 func build_depths_floor(f: Dictionary) -> void:
+	_build_depths_floor_raw(f)
+	if _depths_floor_root != null:
+		apply_occlusion(_depths_floor_root)
+
+
+func _build_depths_floor_raw(f: Dictionary) -> void:
 	clear_depths_floor()
 	var parent: Node3D = area_nodes["depths"]
 	for n in _sample_depths_nodes:

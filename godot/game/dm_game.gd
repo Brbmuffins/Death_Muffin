@@ -721,10 +721,8 @@ func _update_movement_mods() -> void:
 
 
 func handle_event(ev: Dictionary) -> void:
-	if ev["t"] == "boss" and input.telegraphs != null:
-		input.telegraphs.on_event(ev, now_ms)
-	if views != null:
-		pass
+	if ev["t"] == "boss" and input.telegraphs != null and event_fx == null:
+		input.telegraphs.on_event(ev, now_ms)   # (DmEventFx feeds them itself, as onBossEvent does)
 	# The caster hears the host's answers first (essence refunds, barrier, wisps, souls).
 	var was_charged := DmPlayerRules.souls_charged(p)
 	abilities.handle_event(ev)
@@ -783,6 +781,7 @@ func _tick_visuals(dt: float, now: float) -> void:
 	var cx := player.x
 	var cz := player.z
 	camera.update_rig(dt, Vector3(cx, 0, cz))
+	builder.update_occlusion(camera, Vector3(player.x, 0, player.z))
 	builder.update_streaming(camera.focus.x, camera.focus.z)
 	builder.update_light_lod(camera.focus.x, camera.focus.z)
 
@@ -807,6 +806,30 @@ func _tick_npcs(dt: float) -> void:
 		npc_new[nid] = ui.memory.has_something_new(String(nid), st)
 		if npc_views.distance_to(String(nid), player.x, player.z) < 14.0 and ui.memory.first_sight(String(nid)):
 			emit_game_event("npc_first_sight")
+
+
+const REMOTE_GESTURE := {"exhumed": "exhume", "litanyResult": "black_litany", "detonated": "corpse_explosion", "mantle": "bone_mantle", "offering": "grave_offering",
+	"rend": "command_rend", "rally": "rally_dead", "seeded": "carrion_seed"}
+
+var empower_pending: String:
+	get: return rewards.empower_pending if rewards != null else ""
+
+
+## Rite events that carry their caster: a remote necromancer makes the same weapon gesture we would (castClips).
+func remote_gesture(ev: Dictionary) -> void:
+	var id: String = REMOTE_GESTURE.get(ev["t"], "")
+	var by: Variant = ev.get("by")
+	if id == "" or by == null or String(by) == self_id or not remotes.has(String(by)):
+		return
+	var r: Dictionary = remotes[String(by)]
+	if r.get("avatar") != null:
+		r["avatar"].cast("dig" if (id == "exhume" or id == "carrion_seed") else "cast", 2.0, r["facing"], float(DmAbilities.cast_flow(id)["gestureSeconds"]), id)
+
+
+func boss_view_hide(id: String) -> void:
+	var v: Variant = boss_view(id)
+	if v != null:
+		v.hide()
 
 
 func boss_view(id: String) -> Variant:
