@@ -1297,6 +1297,10 @@ func flush_all() -> void:
 
 
 func _exit_tree() -> void:
+	# Effects hold follow/getter closures over this game and its sim; stop them before the game is freed, or the Vfx autoload
+	# calls into freed objects on its next frame (segfault at quit / on leaving the world).
+	if vfx != null and is_instance_valid(vfx):
+		vfx.clear_all()
 	if coop != null:
 		coop.dispose()
 	if labor != null:

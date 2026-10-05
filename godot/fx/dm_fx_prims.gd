@@ -1075,6 +1075,15 @@ func _update_projectiles(dt: float) -> void:
 			p.on_trail.call(p.mesh.position)
 
 
+## Drop every transient (decals, flashes, orbits...) now, including persistent/hero ones. Their `follow` closures may capture a
+## game that is about to be freed.
+func clear() -> void:
+	for tr in _transients:
+		tr.release()
+	_transients.clear()
+	combat_transients = 0
+
+
 func dispose() -> void:
 	for l in _decal_layers.values():
 		l.dispose()
