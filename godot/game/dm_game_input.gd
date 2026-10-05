@@ -204,7 +204,13 @@ func _pick(cam: DmCameraRig) -> void:
 				continue
 			var kind: String = String(DmGathering.node_def(String(n["type"]))["kind"])
 			test.call(float(n["x"]), 1.6 if kind == "tree" else (0.1 if kind == "pool" else 0.5), float(n["z"]), {"kind": "node", "node": n}, 14.0 if kind == "tree" else 6.0)
+	if best == null and g.laborer_views != null:
+		best_d = 52.0
+		for l in g.laborer_views.pick_list():
+			test.call(float(l["x"]), 1.0, float(l["z"]), {"kind": "laborer", "slot": int(l["slot"])}, 18.0)
 	hover = best
+	if g.laborer_views != null:
+		g.laborer_views.set_hover(int(hover["slot"]) if (hover != null and hover["kind"] == "laborer" and not g.panel_open) else -1)
 	if g.gather != null and g.has_method("node_hover"):
 		g.node_hover(hover)
 
