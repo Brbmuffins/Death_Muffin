@@ -63,12 +63,16 @@ func render() -> void:
 	add_child(top)
 	add_child(DmPa.text("Capes are earned: level 99 in a skill, or a total level for the mantles. Pets are rare finds while you work; adopt a charm and the companion is yours for good. Other players see what you wear.", 13, DmUi.TEXT_FAINT))
 	add_child(_h("Capes"))
-	var sel: Dictionary = view.get("selected", {})
+	var sel_v: Variant = view.get("selected")
+	var sel: Dictionary = sel_v if sel_v is Dictionary else {}
+	# The server sends null for "nothing worn".
+	var cape_sel := "" if sel.get("cape") == null else String(sel.get("cape"))
+	var pet_sel := "" if sel.get("pet") == null else String(sel.get("pet"))
 	for c in view.get("capes", []):
-		add_child(_cape_row(c, String(sel.get("cape", "")) == String(c["id"])))
+		add_child(_cape_row(c, cape_sel == String(c["id"])))
 	add_child(_h("Companions"))
 	for p in view.get("pets", []):
-		add_child(_pet_row(p, String(sel.get("pet", "")) == String(p["id"])))
+		add_child(_pet_row(p, pet_sel == String(p["id"])))
 	if error != "":
 		add_child(DmPa.text(error, 14, DmUi.DANGER))
 
