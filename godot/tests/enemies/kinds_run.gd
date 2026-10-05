@@ -484,9 +484,9 @@ func _t_censer_risen() -> void:
 	var near := kind("hound", Vector3(-17, 0, -20))
 	var far := kind("hound", Vector3(-12, 0, -20))
 	await secs(1.2)
-	check(near.incense_t > 0.0 and c.incense_t > 0.0, "incense hastes an ally within 5 m and the censer itself")
-	check(far.incense_t <= 0.0, "an ally 8 m away is not incensed")
-	check(near.incense_t <= 1.5 + 0.01, "haste lasts hasteS = 1.5 s")
+	check(DmStatusSet.of(near).has(&"incensed") and DmStatusSet.of(c).has(&"incensed"), "incense hastes an ally within 5 m and the censer itself")
+	check(DmStatusSet.of(far) == null or not DmStatusSet.of(far).has(&"incensed"), "an ally 8 m away is not incensed")
+	check(DmStatusSet.of(near).remaining(&"incensed") <= 1.5 + 0.01, "haste lasts hasteS = 1.5 s")
 	# the haste is real: x1.3 move, x1.25 attack rate
 	near.attack_cd = 1.0
 	var cd0 := near.attack_cd
@@ -495,7 +495,7 @@ func _t_censer_risen() -> void:
 	# killed: the aura stops
 	c.take_damage(1000.0, dummy)
 	await secs(2.5)
-	check(near.incense_t <= 0.0, "kill the censer and the haste wears off")
+	check(not DmStatusSet.of(near).has(&"incensed"), "kill the censer and the haste wears off")
 	await net_roundtrip("censer")
 	# Risen: plain melee body, no corpse, dark look
 	await new_arena()

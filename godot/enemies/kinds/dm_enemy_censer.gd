@@ -24,4 +24,4 @@ func _physics_process(delta: float) -> void:
 			continue
 		var d := o.global_position - global_position
 		if d.x * d.x + d.z * d.z <= r2:
-			o.incense_t = maxf(o.incense_t, float(c["hasteS"]))
+			DmStatusSet.ensure(o).apply(&"incensed", self, 1, float(c["hasteS"]))

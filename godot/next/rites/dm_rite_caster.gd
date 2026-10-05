@@ -35,7 +35,7 @@ const NEEDLE_TARGET_Y := 1.0
 const MIASMA_TARGET_Y := 0.2
 const PICK_RADIUS := 1.5         ## aim point -> enemy when the client names no target (input tolerance, not a game number)
 const STATE_HZ := 10.0
-const DOT_STEP_S := 0.25         ## Withered damage is applied in lumps this long (one flash per lump, not per frame)
+const SLOW_HOLD_S := 0.3         ## the cloud keeps its slow on for this long after the last frame an enemy stood in it
 const HOLD_ACTIONS := {"rite_primary": "bone_needle", "rite_1": "miasma"}  ## optional InputMap actions (owner polls them if they exist)
 
 var world: Object = null            ## DmRiteWorld (duck-typed)
@@ -57,7 +57,6 @@ var _rng := RandomNumberGenerator.new()
 var _mods: Dictionary = {}
 var _pending: Array = []            ## host: shots in flight {at, kind, ...}
 var _zones: Array = []              ## host: {x, z, r, dps, until, tick, cap}
-var _withered: Dictionary = {}      ## host: enemy_id -> {stacks, t, dps, acc, slow_until}
 var _needle_casts: int = 0
 var _state_acc: float = 0.0
 var _last_sent_essence: float = -1.0
@@ -149,7 +148,6 @@ func step(dt: float) -> void:
 	res["value"] = clampf(float(res["value"]) + rate * dt, 0.0, float(res["max"]))
 	_step_pending()
 	_step_zones(dt)
-	_step_withered(dt)
 	_state_acc += dt
 	if _state_acc >= 1.0 / STATE_HZ:
 		_state_acc = fmod(_state_acc, 1.0 / STATE_HZ)
@@ -347,44 +345,18 @@ func _step_zones(dt: float) -> void:
 			var gp := e.global_position
 			if Vector2(gp.x - float(z["x"]), gp.z - float(z["z"])).length() > float(z["r"]) + float(e.get("radius")):
 				continue
-			var eid := int(world.enemy_id(e))
-			var w: Dictionary = _withered.get(eid, {"stacks": 0.0, "t": 0.0, "dps": 0.0, "acc": 0.0, "slow_until": 0.0})
-			_withered[eid] = w
-			e.speed_mult = DmSimData.MIASMA_SLOW
-			w["slow_until"] = _now_ms + 300.0
+			var ss := DmStatusSet.ensure(e)
+			if not ss.dot_damage.is_connected(_on_dot):
+				ss.dot_damage.connect(_on_dot)
+			ss.apply(&"slow", _body, 1, SLOW_HOLD_S)
 			if pulse:
-				w["stacks"] = minf(float(z["cap"]), float(w["stacks"]) + 1.0)
-				w["t"] = float(DmSimData.WITHERED["durationMs"]) / 1000.0
-				w["dps"] = maxf(float(w["dps"]), float(z["dps"]))
+				ss.apply(&"withered", _body, 1, -1.0, {"dps": float(z["dps"]), "cap": float(z["cap"])})
 
 
-## sim_enemy_ai: Withered burns stacks x dps per second for WITHERED.durationMs after the last pulse.
-func _step_withered(dt: float) -> void:
-	for eid in _withered.keys():
-		var w: Dictionary = _withered[eid]
-		var e := world.enemy_by_id(int(eid)) as Node3D
-		if e == null or not _alive(e):
-			_withered.erase(eid)
-			continue
-		if float(w["slow_until"]) > 0.0 and _now_ms >= float(w["slow_until"]):
-			w["slow_until"] = 0.0
-			if is_equal_approx(float(e.speed_mult), DmSimData.MIASMA_SLOW):
-				e.speed_mult = 1.0
-		if float(w["t"]) > 0.0 and float(w["stacks"]) > 0.0:
-			w["t"] = float(w["t"]) - dt
-			w["acc"] = float(w["acc"]) + float(w["stacks"]) * float(w["dps"]) * dt
-			if float(w["t"]) <= 0.0 or _now_ms - float(w.get("last", 0.0)) >= DOT_STEP_S * 1000.0:
-				var amt := float(w["acc"])
-				w["acc"] = 0.0
-				w["last"] = _now_ms
-				if amt > 0.0 and e.take_damage(amt, _body, false):
-					var killed := float(e.get("hp")) <= 0.0
-					hit_resolved.emit("miasma", int(eid), amt, false, killed)
-			if float(w["t"]) <= 0.0:
-				w["stacks"] = 0.0
-				w["dps"] = 0.0
-		if float(w["stacks"]) <= 0.0 and float(w["slow_until"]) <= 0.0:
-			_withered.erase(eid)
+## Withered burns through DmStatusSet (stacks x dps, 0.25 s lumps); the caster that stacked it gets the kill credit.
+func _on_dot(id: StringName, amount: float, source: Node, killed: bool, target: Node) -> void:
+	if id == &"withered" and source == _body:
+		hit_resolved.emit("miasma", int(world.enemy_id(target)), amount, false, killed)
 
 
 # ---- host: replication -------------------------------------------------------------------------------------------------------------------

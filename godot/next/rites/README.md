@@ -51,4 +51,4 @@ host's cooldown paces it). Otherwise the shell just calls `request_cast`.
   the tests do). Events that arrive before a peer has attached are dropped by Godot (reliable RPC to a missing path errors once).
 - Enemies must exist on the host; `DmEnemy` authority is the host. The host steps the caster in `_physics_process` (`auto_step`).
 - Bodies need `owner_peer` (DmSessionBody has it) and sit in the same SceneTree as the enemies so `global_position` agree.
-- The caster sets `DmEnemy.speed_mult` to `MIASMA_SLOW` while an enemy stands in the cloud and back to 1.0 afterwards.
+- The cloud applies `slow` and `withered` through `DmStatusSet` (`next/status/`, ensured on each enemy it touches); the set owns `DmEnemy.speed_mult`. Deterministic hosts must also `advance(dt)` the enemies' sets (tests/rites does).

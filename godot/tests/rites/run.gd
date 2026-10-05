@@ -134,6 +134,11 @@ func _expected_needle(caster: DmRiteCaster, jitter: float, crit_roll: float) -> 
 func _run_host(c: DmRiteCaster, secs: float, dt := 0.02) -> void:
 	for i in int(round(secs / dt)):
 		c.step(dt)
+		if c.world != null:
+			for e in c.world.enemies:   # the frame-less host also ticks the enemies' DmStatusSets
+				var ss := DmStatusSet.of(e) if is_instance_valid(e) else null
+				if ss != null:
+					ss.advance(dt)
 
 
 # ---- Part A: solo ------------------------------------------------------------------------------------------------------------------------
