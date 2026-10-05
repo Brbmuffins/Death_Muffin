@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode blend_mix, cull_disabled;
+render_mode blend_mix, cull_disabled, unshaded;
 
 uniform sampler2D noise_texture;
 uniform sampler2D glow_noise_texture;
@@ -60,6 +60,9 @@ void fragment() {
 	ALBEDO *= dm_gain;
 	EMISSION *= dm_gain;
 	ALPHA *= dm_fade;
+
+	// dm: the web port's lit output, unshaded (tools/godot/fx-binbun-hooks.ts unlitHook)
+	ALBEDO = ALBEDO * 0.25 + EMISSION;
 }
 
 //void light() {

@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode blend_mix, depth_prepass_alpha;
+render_mode blend_mix, depth_prepass_alpha, unshaded;
 
 uniform bool billboard = false;
 
@@ -142,6 +142,9 @@ void fragment() {
 	ALBEDO *= dm_gain;
 	EMISSION *= dm_gain;
 	ALPHA *= dm_fade;
+
+	// dm: the web port's lit output, unshaded (tools/godot/fx-binbun-hooks.ts unlitHook)
+	ALBEDO = ALBEDO * 0.25 + EMISSION;
 }
 
 void light(){

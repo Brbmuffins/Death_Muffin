@@ -250,39 +250,78 @@ func _floor_mat(theme_key: String, w: float, d: float) -> StandardMaterial3D:
 		m.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY  # three: emissive colour x emissiveMap (Godot's default ADDs the texture)
 	return m
 
-func _plane(parent: Node3D, x0: float, z0: float, x1: float, z1: float, theme_key: String, y: float) -> MeshInstance3D:
-	var w := x1 - x0
-	var d := z1 - z0
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(w, d)
-	var mi := MeshInstance3D.new()
-	mi.mesh = pm
+## Floors are tiled (FLOOR_TILE m): the Compatibility renderer shades an object with every light whose range touches it, so one plane
+## per area ran all 8 prop lights on every floor pixel; a tile only gets the 1-3 lights that reach it. UVs are world-anchored in the mesh
+## (the web sets UVs from world position), so one material per theme serves every tile and adjacent tiles line up.
+const FLOOR_TILE := 12.0
+var _floor_mats: Dictionary = {}
+
+func _theme_mat(theme_key: String) -> StandardMaterial3D:
+	if not _floor_mats.has(theme_key):
+		var m := _floor_mat(theme_key, 1.0, 1.0)
+		var f: Dictionary = world.floors[theme_key]
+		m.uv1_scale = Vector3.ONE
+		_floor_mats[theme_key] = m
+	return _floor_mats[theme_key]
+
+func _plane(parent: Node3D, x0: float, z0: float, x1: float, z1: float, theme_key: String, y: float, tile := FLOOR_TILE) -> MeshInstance3D:
 	var f: Dictionary = world.floors[theme_key]
-	var mat := _floor_mat(theme_key, w, d)
-	# World-anchored tiling (the web sets UVs from world position), so adjacent planes of one theme line up.
-	mat.uv1_offset = Vector3(x0 / float(f.tile), z0 / float(f.tile), 0.0)
-	mi.material_override = mat
-	mi.position = Vector3((x0 + x1) / 2.0, y, (z0 + z1) / 2.0)
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(mi)
-	return mi
+	var t := float(f.tile)
+	var mat := _theme_mat(theme_key)
+	var last: MeshInstance3D = null
+	var nx := maxi(1, ceili((x1 - x0) / tile))
+	var nz := maxi(1, ceili((z1 - z0) / tile))
+	for ix in nx:
+		for iz in nz:
+			var ax := lerpf(x0, x1, float(ix) / nx)
+			var bx := lerpf(x0, x1, float(ix + 1) / nx)
+			var az := lerpf(z0, z1, float(iz) / nz)
+			var bz := lerpf(z0, z1, float(iz + 1) / nz)
+			var cx := (ax + bx) / 2.0
+			var cz := (az + bz) / 2.0
+			var st := SurfaceTool.new()
+			st.begin(Mesh.PRIMITIVE_TRIANGLES)
+			st.set_normal(Vector3.UP)
+			var corners := [Vector2(ax, az), Vector2(bx, az), Vector2(bx, bz), Vector2(ax, az), Vector2(bx, bz), Vector2(ax, bz)]
+			for c: Vector2 in corners:
+				st.set_uv(Vector2(c.x / t, c.y / t))
+				st.add_vertex(Vector3(c.x - cx, 0.0, c.y - cz))
+			st.generate_tangents()
+			var mi := MeshInstance3D.new()
+			mi.mesh = st.commit()
+			mi.material_override = mat
+			mi.position = Vector3(cx, y, cz)
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			parent.add_child(mi)
+			last = mi
+	return last
 
 func _floors() -> void:
 	# Beyond the walls: dark earth swallowed by fog.
-	var out := PlaneMesh.new()
-	out.size = Vector2(420, 420)
+	# (tiled 30 m like the floors, so the lights along the outer walls only shade the strip they reach)
 	var om := StandardMaterial3D.new()
 	om.albedo_texture = _tex("grave_soil")
 	om.albedo_color = Color.html("#3a3440")
 	om.roughness = 1.0
-	om.uv1_scale = Vector3(60, 60, 1)
-	var omi := MeshInstance3D.new()
-	omi.mesh = out
-	omi.material_override = om
-	omi.position = Vector3(20, -0.06, -60)
-	omi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	omi.name = "outside"
-	add_child(omi)
+	om.uv1_scale = Vector3(60.0 / 420.0, 60.0 / 420.0, 1)
+	var outside := Node3D.new()
+	outside.name = "outside"
+	add_child(outside)
+	var n := 14
+	var span := 420.0 / n
+	for ix in n:
+		for iz in n:
+			var pm := PlaneMesh.new()
+			pm.size = Vector2(span, span)
+			var tm := om.duplicate() as StandardMaterial3D
+			tm.uv1_scale = Vector3(60.0 / n, 60.0 / n, 1)
+			tm.uv1_offset = Vector3(60.0 * ix / n, 60.0 * iz / n, 0)
+			var omi := MeshInstance3D.new()
+			omi.mesh = pm
+			omi.material_override = tm
+			omi.position = Vector3(20 - 210 + span * (ix + 0.5), -0.06, -60 - 210 + span * (iz + 0.5))
+			omi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			outside.add_child(omi)
 	for id in world.order:
 		var a: Dictionary = world.areas[id]
 		var r: Dictionary = a.rect

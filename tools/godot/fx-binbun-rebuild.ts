@@ -12,6 +12,7 @@
  */
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { unlitHook } from './fx-binbun-hooks';
 
 const SRC = 'public/fx/binbun';
 const OUT = 'godot/assets/fx/binbun';
@@ -243,7 +244,7 @@ function main() {
   }
   for (const s of ids.shaders) {
     mkdirSync(`${OUT}/shaders`, { recursive: true });
-    writeFileSync(`${OUT}/${s}`, injectHooks(readFileSync(`${SRC}/${s}`, 'utf8')));
+    writeFileSync(`${OUT}/${s}`, unlitHook(injectHooks(readFileSync(`${SRC}/${s}`, 'utf8'))));
   }
   for (const t of ids.textures) {
     mkdirSync(`${OUT}/tex`, { recursive: true });

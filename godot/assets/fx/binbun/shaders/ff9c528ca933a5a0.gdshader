@@ -1,4 +1,5 @@
 shader_type spatial;
+render_mode unshaded;
 stencil_mode write, compare_always, 1;
 
 uniform sampler2D shape_texture;
@@ -20,4 +21,7 @@ void fragment() {
 	ALBEDO *= dm_gain;
 	EMISSION *= dm_gain;
 	ALPHA *= dm_fade;
+
+	// dm: the web port's lit output, unshaded (tools/godot/fx-binbun-hooks.ts unlitHook)
+	ALBEDO = ALBEDO * 0.25 + EMISSION;
 }
