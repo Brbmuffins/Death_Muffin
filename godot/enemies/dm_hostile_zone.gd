@@ -13,9 +13,10 @@ var kind: StringName = &"dust"
 var radius: float = 2.0
 var dps: float = 1.0
 var lifetime: float = 3.5
+var tick_s: float = TICK_S   ## pulse period; each pulse hurts for dps * tick_s
 var damaging: bool = true
 var source: Node = null
-var _tick: float = TICK_S
+var _tick: float = -1.0
 var _age: float = 0.0
 
 
@@ -39,10 +40,12 @@ func _physics_process(delta: float) -> void:
 		return
 	if not damaging:
 		return
+	if _tick < 0.0:
+		_tick = tick_s
 	_tick -= delta
 	if _tick > 0.0:
 		return
-	_tick = TICK_S
+	_tick = tick_s
 	var r2 := (radius + TARGET_PAD) * (radius + TARGET_PAD)
 	for n in get_tree().get_nodes_in_group(DmEnemy.TARGET_GROUP):
 		var tg := n as Node3D
@@ -51,5 +54,5 @@ func _physics_process(delta: float) -> void:
 		var dx := tg.global_position.x - global_position.x
 		var dz := tg.global_position.z - global_position.z
 		if dx * dx + dz * dz <= r2 and tg.has_method("dm_take_enemy_hit"):
-			tg.dm_take_enemy_hit(dps * TICK_S, source if source != null and is_instance_valid(source) else self)
+			tg.dm_take_enemy_hit(dps * tick_s, source if source != null and is_instance_valid(source) else self)
 	pulsed.emit(self)
