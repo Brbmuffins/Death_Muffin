@@ -33,7 +33,7 @@ func _ready() -> void:
 	bg.color = DmUi.VOID_950
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	add_child(DmFrontUi.backdrop())
+	add_child(DmNecroBackdrop.new())
 	var shade := ColorRect.new()
 	shade.color = Color(0.027, 0.024, 0.039, 0.5)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
