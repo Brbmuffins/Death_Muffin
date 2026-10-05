@@ -1,5 +1,8 @@
 # Death Muffin → Godot 4 port: conventions (read before writing any code)
 
+> **2026-10-05: superseded in part by `godot/REBUILD.md`** (Godot replaces the web client; networking, sessions, enemies/AI, saves and the
+> data format are being rebuilt Godot-first). The conventions below still apply to everything REBUILD.md does not list.
+
 The three.js web game (`src/`, live at muffindevelopment.com/death-muffin/) is FROZEN and is the **reference spec**: the port must
 reproduce its behaviour, numbers and UI. Port the current game; do not redesign, add, or "fix" gameplay while porting (note any
 web bug you find in your report instead).
