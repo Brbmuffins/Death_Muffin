@@ -393,6 +393,9 @@ func _creature(slug: String, o: Dictionary) -> DmCreature:
 	while not list.is_empty():
 		var c: DmCreature = list.pop_back()
 		if c.root != null and is_instance_valid(c.root):
+			# (a body still on the warm-up stage when the first wave spawns mid-tour)
+			if c.root.get_parent() != null:
+				c.root.get_parent().remove_child(c.root)
 			c.recycle_reset()
 			pool_hits += 1
 			return c
@@ -483,10 +486,12 @@ func warm_bodies(parent: Node3D, at: Vector3) -> Array:
 			i += 1
 	return out
 
-func warm_bodies_end(bodies: Array) -> void:
+## Takes back the bodies still on `stage`; ones a spawn already took out of the pool during the tour are live enemies, left alone.
+func warm_bodies_end(bodies: Array, stage: Node3D) -> void:
 	for c: DmCreature in bodies:
-		if c.root != null and is_instance_valid(c.root) and c.root.get_parent() != null:
-			c.root.get_parent().remove_child(c.root)
+		if c.root == null or not is_instance_valid(c.root) or c.root.get_parent() != stage:
+			continue
+		stage.remove_child(c.root)
 		c.recycle_reset()
 
 ## A readable, persistent tell for each elite affix.

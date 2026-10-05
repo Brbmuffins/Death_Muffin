@@ -14,6 +14,8 @@ signal error(message: String)
 var character: Dictionary
 var local: Dictionary
 ## 'local' or 'server' (server: the server owns the record; we cache and queue).
+var _boons_fx: Dictionary = {}
+var _boons_src: Variant = null
 var mode: String = "local"
 ## The dev-access overlay (TS devAccess.active): seals are open to staff and their kills bank.
 var dev_access: bool = false
@@ -191,8 +193,13 @@ func can_afford(cost: int) -> bool:
 
 # --- Upgrades ----------------------------------------------------------------------
 
+## Cached per boon-rank snapshot (unlock checks, costs and stats ask for it many times per kill; callers only read it).
 func boons() -> Dictionary:
-	return DmAscension.boon_effects(local["boons"])
+	var ranks: Variant = local["boons"]
+	if _boons_fx.is_empty() or ranks != _boons_src:
+		_boons_src = ranks.duplicate() if ranks is Dictionary else ranks
+		_boons_fx = DmAscension.boon_effects(ranks)
+	return _boons_fx
 
 
 ## -1 = at max tier.

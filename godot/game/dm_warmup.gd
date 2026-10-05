@@ -117,7 +117,7 @@ static func run(game: Node3D) -> void:
 	if binbun != null:
 		binbun.warm_end(warmed)
 	if not bodies.is_empty():
-		game.views.warm_bodies_end(bodies)
+		game.views.warm_bodies_end(bodies, stage)
 	stage.queue_free()
 	await tree.process_frame
 	cover.queue_free()

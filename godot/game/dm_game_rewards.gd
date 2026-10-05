@@ -379,21 +379,30 @@ func door_direction(door: Dictionary) -> String:
 
 
 ## Pays any newly reached milestone once per character (claims live on this machine).
+## The claims + stored best chain are read from the store once per hero (this runs on every kill) and kept in step with what it writes.
+var _ms_hero: Variant = null
+var _ms_claimed: Array = []
+var _ms_best := 0
+
 func check_milestones() -> void:
 	var store: DmCounselStore = g.store
-	var claimed: Array = []
-	var best_stored = 0
-	var raw = store.get_item(MILESTONE_KEY + str(g.hero_id))
-	if raw != "":
-		var parsed: Variant = JSON.parse_string(raw)
-		if parsed is Array:
-			claimed = parsed
-	var raw_best = store.get_item(CHAIN_BEST_KEY + str(g.hero_id))
-	if raw_best != "":
-		best_stored = int(raw_best)
-	var best_chain = maxi(best_stored, chain.best)
+	if _ms_hero != g.hero_id:
+		_ms_hero = g.hero_id
+		_ms_claimed = []
+		_ms_best = 0
+		var raw = store.get_item(MILESTONE_KEY + str(g.hero_id))
+		if raw != "":
+			var parsed: Variant = JSON.parse_string(raw)
+			if parsed is Array:
+				_ms_claimed = parsed
+		var raw_best = store.get_item(CHAIN_BEST_KEY + str(g.hero_id))
+		if raw_best != "":
+			_ms_best = int(raw_best)
+	var claimed: Array = _ms_claimed
+	var best_chain = maxi(_ms_best, chain.best)
 	var hit = DmMilestones.newly_reached({"totalKills": g.prog.local["totalKills"], "areaKills": g.prog.local["areaKills"], "bestChain": best_chain}, claimed)
-	if best_chain > best_stored:
+	if best_chain > _ms_best:
+		_ms_best = best_chain
 		store.set_item(CHAIN_BEST_KEY + str(g.hero_id), str(best_chain))
 	if hit.is_empty():
 		return
