@@ -133,23 +133,27 @@ func scene_paths(ids: Array) -> Array:
 
 ## First-use hitch removal: build one pooled instance per effect and show it at `at` (playing) so the GPU compiles its shaders and
 ## particle programs now rather than on the first cast. Call warm_end() with the result a frame or two later.
+## Copies built per effect: a wave plays its breach rim at up to 3 breaches in one frame, and most effects come in pairs in a fight.
+const WARM_COPIES := {"enemy_breach_rim": 3}
+const WARM_DEFAULT := 2
+
 func warm(ids: Array, at: Vector3) -> Array:
 	var out: Array = []
 	for id in ids:
 		var key := String(id)
-		if not _pool.get(key, []).is_empty():
-			continue
-		var inst := _build(key)
-		if inst == null:
-			continue
-		_host.add_child(inst.root)
-		inst.root.position = at
-		inst.root.visible = true
-		for i in inst.particles.size():
-			(inst.particles[i] as GPUParticles3D).emitting = true
-		if inst.has_anim and inst.ap != null:
-			inst.ap.play(inst.anim_name)
-		out.append(inst)
+		var want: int = int(WARM_COPIES.get(key, WARM_DEFAULT)) - (_pool.get(key, []) as Array).size()
+		for n in want:
+			var inst := _build(key)
+			if inst == null:
+				break
+			_host.add_child(inst.root)
+			inst.root.position = at
+			inst.root.visible = true
+			for i in inst.particles.size():
+				(inst.particles[i] as GPUParticles3D).emitting = true
+			if inst.has_anim and inst.ap != null:
+				inst.ap.play(inst.anim_name)
+			out.append(inst)
 	return out
 
 

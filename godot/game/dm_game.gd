@@ -77,6 +77,11 @@ var rewards: DmGameRewards
 var combat: DmGameCombat
 var actions: DmGameActions
 var hitstopper := DmHitStop.new()
+## Graphics settings applied to the engine (GameRuntime.applyQuality): Low = no moon shadows, no bloom, fewer prop lights, the light
+## weather; fps = Engine.max_fps; auto_res = DmResolutionGovernor on the 3D view's scale.
+var governor := DmResolutionGovernor.new()
+var _gfx_key := ""
+var _frame_ms := 16.7
 ## Per-section logic timing (F3 overlay / perf tests): usec accumulated per section while prof_on.
 var prof_on := false
 var prof: Dictionary = {}
@@ -636,7 +641,46 @@ func mark_seen(ids: Array) -> void:
 func _process(delta: float) -> void:
 	if not ready_:
 		return
+	if visual:
+		_pace(delta)
 	tick(minf(delta, MAX_DT))
+
+
+func _pace(delta: float) -> void:
+	_frame_ms += (delta * 1000.0 - _frame_ms) * 0.1
+	if not bool(settings.get("auto_res", true)):
+		return
+	if governor.frame(delta, _frame_ms, DmResolutionGovernor.budget_fps(int(settings.get("fps", 0)))):
+		_apply_render_scale()
+
+
+func _apply_render_scale() -> void:
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var sc := governor.scale if bool(settings.get("auto_res", true)) else 1.0
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	vp.scaling_3d_scale = sc
+
+
+func _apply_graphics() -> void:
+	var high := String(settings.get("graphics", "high")) != "low"
+	var fps := int(settings.get("fps", 0))
+	Engine.max_fps = fps if fps > 0 else 0
+	if builder != null:
+		builder.moon.shadow_enabled = high
+		builder.light_near = DmWorldBuilder.LIGHT_NEAR if high else 3
+	if dressing != null:
+		dressing.set_feature("bloom", high)
+		if dressing.atmosphere != null:
+			dressing.atmosphere.quality_low = not high
+	# Only a graphics change restarts the governor at full resolution.
+	var key := "%s|%d|%s" % [str(high), fps, str(settings.get("auto_res", true))]
+	if key != _gfx_key:
+		_gfx_key = key
+		governor.reset()
+		governor.hold()
+		_apply_render_scale()
 
 
 func _notification(what: int) -> void:
@@ -852,6 +896,7 @@ func _tick_visuals(dt: float, now: float) -> void:
 	if prof_on: _pm("v.camera+occ")
 	builder.update_streaming(camera.focus.x, camera.focus.z)
 	builder.update_light_lod(camera.focus.x, camera.focus.z)
+	builder.update_shadow_cells(player.x, player.z, dt)
 	if prof_on: _pm("v.stream+lights")
 
 
@@ -967,6 +1012,7 @@ func _enter_area(area: String) -> void:
 	codex_discover("area", area)
 	if laborer_views != null:
 		laborer_views.set_active(area == "acre")
+	governor.hold()   # an area entry is a load: slow frames around it are not a GPU problem
 	if views != null and views.has_method("queue_area"):
 		views.queue_area(area)
 	psync.flush()
@@ -1088,6 +1134,7 @@ func apply_settings(s: Dictionary) -> void:
 		vfx.reduced_motion = bool(settings["reduce_motion"])
 		if camera != null:
 			camera.reduced_motion = bool(settings["reduce_motion"])
+		_apply_graphics()
 	hitstopper.disabled = func() -> bool: return bool(settings["reduce_motion"])
 	if sim != null:
 		_on_difficulty(String(settings["difficulty"]))
@@ -1099,6 +1146,7 @@ func _on_settings_changed(_v: Dictionary) -> void:
 		_on_difficulty(String(settings["difficulty"]))
 	if visual and ready_:
 		audio.apply_settings(settings_store.audio_dict())
+		_apply_graphics()
 		vfx.quality = String(settings["graphics"])
 		vfx.reduced_motion = bool(settings["reduce_motion"])
 		if camera != null:

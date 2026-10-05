@@ -12,7 +12,15 @@ const RIM_K := 0.55
 const HEMI_K := 1.0
 const POINT_K := 0.18
 const LIGHT_NEAR := 8        # prop lights enabled at once (nearest to the focus)
+## Runtime cap on prop lights (graphics quality); LIGHT_NEAR on High.
+var light_near := LIGHT_NEAR
 const STREAM_DIST := 95.0    # an area is drawn while its rect is within this many metres of the focus
+## WorldView PROP_CELL / SHADOW_RANGE: prop batches are split into cells so off-screen ones are culled, and cells further than
+## SHADOW_RANGE from the hero stop casting moon shadows (the shadow pass was half the frame).
+const PROP_CELL := 12.0
+const SHADOW_RANGE := 32.0
+var _shadow_cells: Array = []   # {node, x0, z0, x1, z1, on}
+var _shadow_t := 0.0
 const GROW := 0.55           # prop/node obstruction grow for the navmesh (the baker does not inflate projected obstructions)
 
 var world: Dictionary
@@ -374,23 +382,34 @@ func _all_props() -> void:
 					pool_pos.append({"x": p.x, "z": p.z, "y": float(spec.light.y) * float(p.scale), "L": spec.light})
 		_light_pools(parent, pool_pos, area)
 
-func _prop_batch(parent: Node3D, spec: Dictionary, plist: Array) -> void:
+func _prop_batch(parent: Node3D, spec: Dictionary, plist_all: Array) -> void:
 	var parts := DmModels.prop_parts(spec.url, float(spec.height))
-	for part in parts:
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = part.mesh
-		mm.instance_count = plist.size()
-		for i in plist.size():
-			var p: Dictionary = plist[i]
-			var tilt: float = p.tilt
-			var basis := Basis.from_euler(Vector3(tilt, p.rot, tilt * 0.6), EULER_ORDER_XYZ) * Basis.from_scale(Vector3.ONE * p.scale)
-			var t := Transform3D(basis, Vector3(p.x, p.y, p.z)) * (part.local as Transform3D)
-			mm.set_instance_transform(i, t)
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if float(spec.height) > 1.5 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		parent.add_child(mmi)
+	var casts := float(spec.height) > 1.5
+	var cells: Dictionary = {}
+	for p in plist_all:
+		var key := Vector2i(floori(float(p.x) / PROP_CELL), floori(float(p.z) / PROP_CELL))
+		if not cells.has(key):
+			cells[key] = []
+		cells[key].append(p)
+	for key: Vector2i in cells:
+		var plist: Array = cells[key]
+		for part in parts:
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = part.mesh
+			mm.instance_count = plist.size()
+			for i in plist.size():
+				var p: Dictionary = plist[i]
+				var tilt: float = p.tilt
+				var basis := Basis.from_euler(Vector3(tilt, p.rot, tilt * 0.6), EULER_ORDER_XYZ) * Basis.from_scale(Vector3.ONE * p.scale)
+				var t := Transform3D(basis, Vector3(p.x, p.y, p.z)) * (part.local as Transform3D)
+				mm.set_instance_transform(i, t)
+			var mmi := MultiMeshInstance3D.new()
+			mmi.multimesh = mm
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			parent.add_child(mmi)
+			if casts:
+				_shadow_cells.append({"node": mmi, "x0": key.x * PROP_CELL, "z0": key.y * PROP_CELL, "x1": (key.x + 1) * PROP_CELL, "z1": (key.y + 1) * PROP_CELL, "on": true})
 
 func _prop_light(parent: Node3D, p: Dictionary, L: Dictionary, area: String) -> void:
 	var col := _hex(L.color)
@@ -483,7 +502,22 @@ func update_light_lod(fx: float, fz: float) -> void:
 			e.node.visible = false
 	cand.sort_custom(func(a, b): return a[0] < b[0])
 	for i in cand.size():
-		cand[i][1].node.visible = i < LIGHT_NEAR
+		cand[i][1].node.visible = i < light_near
+
+## Cells further than SHADOW_RANGE from the hero stop casting moon shadows (WorldView); re-checked 4x a second, toggled on change only.
+func update_shadow_cells(fx: float, fz: float, dt: float) -> void:
+	_shadow_t -= dt
+	if _shadow_t > 0.0:
+		return
+	_shadow_t = 0.25
+	for c in _shadow_cells:
+		var dx := maxf(maxf(float(c.x0) - fx, fx - float(c.x1)), 0.0)
+		var dz := maxf(maxf(float(c.z0) - fz, fz - float(c.z1)), 0.0)
+		var on := dx * dx + dz * dz < SHADOW_RANGE * SHADOW_RANGE
+		if on != bool(c.on):
+			c.on = on
+			(c.node as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
 
 ## Streaming: draw only the areas near the focus (areas beyond the fog are skipped entirely).
 func update_streaming(fx: float, fz: float) -> void:
