@@ -41,9 +41,50 @@ func set_error(msg: String) -> void:
 	rebuild()
 
 
+## Rebuilding a panel is the expensive part of opening it (every node of the column is recreated), and a panel is fed several times per open
+## with data that has usually not changed. A subclass that lists everything _build() reads in _inputs() gets: no rebuild while that state
+## equals what the column was last built from, and hold()/release() to collapse a batch of setters into one rebuild.
+## Subclasses that return null (the default) rebuild on every call, as before.
+var _built_sig := 0
+var _built := false
+var _hold := 0
+var _dirty := false
+
+
+## Everything _build() reads, as an Array (null = always rebuild).
+func _inputs() -> Variant:
+	return null
+
+
 func rebuild() -> void:
+	if _hold > 0:
+		_dirty = true
+		return
+	_dirty = false
+	var inp: Variant = _inputs()
+	if inp != null:
+		var h: int = (inp as Array).hash()
+		if _built and h == _built_sig and get_child_count() > 0:
+			return
+		_built_sig = h
+	_built = true
 	DmPb.clear(self)
 	_build()
+
+
+## Forget what the column was built from (something outside _inputs() changed the nodes): the next rebuild() draws again.
+func invalidate() -> void:
+	_built = false
+
+
+func hold() -> void:
+	_hold += 1
+
+
+func release() -> void:
+	_hold = maxi(_hold - 1, 0)
+	if _hold == 0 and _dirty:
+		rebuild()
 
 
 func _build() -> void:

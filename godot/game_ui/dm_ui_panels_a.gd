@@ -44,6 +44,8 @@ func _init(ui_: Node) -> void:
 	gv.assign_requested.connect(func(slot: int, id: String) -> void: ui.set_rite(slot, id))
 	gv.assign_primary_requested.connect(func(id: String) -> void: ui.set_primary(id))
 	gv.mark_seen.connect(func(ids: Array) -> void:
+		if ui.warming:
+			return
 		ui.rites.mark_seen(ids)
 		grimoire_changed())
 	gv.rune_socket_requested.connect(func(rite: String, rune_id: String) -> void:
@@ -168,8 +170,8 @@ func refresh_open() -> void:
 	ui.pb.refresh_open()
 
 
-func process(_delta: float) -> void:
-	pass
+func process(delta: float) -> void:
+	tick(delta)
 
 
 # --- sheet / cosmetics -------------------------------------------------------------------------------------------------
@@ -264,20 +266,92 @@ func _reinforce() -> void:
 
 var _atlas_key := 0
 var _atlas_inputs: Dictionary = {}
+var _atlas_task := -1                 # WorkerThreadPool task recomputing the verdicts for _atlas_task_key
+var _atlas_task_key := 0
+var _atlas_task_out: Dictionary = {}  # written by the worker, read only after the task completed
+var _atlas_stale_t := -1.0            # seconds until the verdicts are recomputed in the background (-1 = up to date / not wanted yet)
+const ATLAS_SETTLE_S := 0.8           # looting changes the bag every second: recompute once it goes quiet
+
+
+## What the verdicts depend on (see DmStatKey) plus which catalogue pieces are worn.
+func _atlas_verdict_key(ctx: Dictionary, owned: Dictionary) -> int:
+	var worn: Array = []
+	for id in owned:
+		if bool(owned[id].get("worn", false)):
+			worn.append(id)
+	worn.sort()
+	return [DmStatKey.of(ctx), worn].hash()
+
 
 func _atlas_data() -> void:
 	var ctx: Variant = ui.stat_ctx()
 	var owned := DmAtlasPanel.owned_from_slots(game.slots)
 	var inputs := {"verdicts": {}, "outlooks": {}}
 	if ctx != null:
-		# A verdict for every atlas item is ~0.3 s: reuse it until the stat context or the owned items change.
-		var key := [ctx, owned].hash()
+		# A verdict for every atlas item is ~0.3 s: reuse it until the stat sources or the gear change (a worker thread may already have it).
+		var key := _atlas_verdict_key(ctx, owned)
 		if key != _atlas_key or _atlas_inputs.is_empty():
-			_atlas_inputs = DmAtlasGear.panel_inputs(ctx, DmPaData.atlas().get("items", {}).keys(), owned)
+			if _atlas_task >= 0 and _atlas_task_key == key:
+				WorkerThreadPool.wait_for_task_completion(_atlas_task)
+				_atlas_task = -1
+				_atlas_inputs = _atlas_task_out
+			else:
+				_atlas_wait()
+				_atlas_inputs = DmAtlasGear.panel_inputs(ctx, DmPaData.atlas().get("items", {}).keys(), owned)
 			_atlas_key = key
+		_atlas_stale_t = -1.0
 		inputs = _atlas_inputs
 	atlas.set_context({"disc": String(ui.build()["discipline"]["id"]), "level": int(game.character.get("level", 1)), "area": String(game.area_id), "owned": owned,
 		"verdicts": inputs["verdicts"], "outlooks": inputs["outlooks"]})
+
+
+## The UI is going away (area change, quit): never leave the worker running into a freed object or the engine's shutdown.
+func shutdown() -> void:
+	_atlas_wait()
+	_atlas_stale_t = -1.0
+
+
+func _atlas_wait() -> void:
+	if _atlas_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_atlas_task)
+		_atlas_task = -1
+
+
+## The bag or the character changed: have the verdicts recomputed on a worker thread once things settle, so opening the Atlas finds them done.
+## Only after the first (main-thread) computation: that one fills every lazily built static table the worker then only reads.
+func atlas_dirty() -> void:
+	if not _atlas_inputs.is_empty():
+		_atlas_stale_t = ATLAS_SETTLE_S
+
+
+## True when no verdict recompute is pending or running (tests/perf wait for it after changing the bag).
+func atlas_idle() -> bool:
+	return _atlas_stale_t < 0.0 and (_atlas_task < 0 or WorkerThreadPool.is_task_completed(_atlas_task))
+
+
+func tick(delta: float) -> void:
+	if _atlas_stale_t < 0.0:
+		return
+	_atlas_stale_t -= delta
+	if _atlas_stale_t > 0.0:
+		return
+	_atlas_stale_t = -1.0
+	var ctx: Variant = ui.stat_ctx()
+	if ctx == null or _atlas_task >= 0 and not WorkerThreadPool.is_task_completed(_atlas_task):
+		_atlas_stale_t = ATLAS_SETTLE_S
+		return
+	var owned := DmAtlasPanel.owned_from_slots(game.slots)
+	var key := _atlas_verdict_key(ctx, owned)
+	if key == _atlas_key:
+		return
+	if _atlas_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_atlas_task)
+		_atlas_task = -1
+	var snap: Dictionary = (ctx as Dictionary).duplicate(true)
+	_atlas_task_key = key
+	_atlas_task_out = {}
+	var ids: Array = DmPaData.atlas().get("items", {}).keys()
+	_atlas_task = WorkerThreadPool.add_task(func() -> void: _atlas_task_out = DmAtlasGear.panel_inputs(snap, ids, owned), false, "atlas verdicts")
 
 
 func _codex_data() -> void:

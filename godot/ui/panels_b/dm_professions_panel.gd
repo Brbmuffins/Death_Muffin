@@ -57,6 +57,14 @@ func _init() -> void:
 	panel_width = 860
 
 
+func _inputs() -> Variant:
+	# The bag only reaches the cards as each skill's tool line: looting something that is no tool redraws nothing.
+	var tools: Array = []
+	for id: String in DmGathering.SKILL_IDS:
+		tools.append(tool_line(id))
+	return [skills, gate_levels, tools, has_tools, afk, message, busy, show_contracts, show_garden, show_labor, show_cosmetics, node_choice, head_note, error_text]
+
+
 func set_skills(s: Dictionary) -> void:
 	skills = s
 	head_note = "Total level <b>%d</b>" % total_level()

@@ -43,7 +43,16 @@ func set_error(msg: String) -> void:
 	render()
 
 
+var _built_sig := 0
+var _built := false
+
+
 func render() -> void:
+	var sig := [data, error, busy].hash()
+	if _built and sig == _built_sig and get_child_count() > 0:
+		return
+	_built_sig = sig
+	_built = true
 	DmPa.clear(self)
 	if error != "":
 		var e := DmPa.card(DmUi.BLOOD_500, Color(DmUi.BLOOD_500, 0.28), Vector2(10, 6))

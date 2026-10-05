@@ -147,6 +147,49 @@ func setup(game_: Node) -> void:
 func warm() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
+	await _warm_panels()
+
+
+## Panels worth building ahead: a first open used to cost 50-500 ms (every row built, fonts shaped, first layout) in the middle of play.
+const WARM_PANELS := ["inventory", "sheet", "cosmetics", "legion", "forge", "professions", "garden", "labor", "contracts", "grimoire", "codex", "atlas", "ascension",
+	"map", "settings", "salvage", "shelf"]
+## True while warm() opens the panels behind its cover: no sounds, cue/counsel events, gathering stops or "seen" marks (they belong to the player's own opens).
+var warming := false
+var warm_ms := 0
+
+
+## Build + lay out + draw every panel once under an opaque cover (still the loading screen), so the player's first open of each is a show, not a build.
+func _warm_panels() -> void:
+	var t0 := Time.get_ticks_msec()
+	warming = true
+	var cover := CanvasLayer.new()
+	cover.layer = 90
+	var bg := ColorRect.new()
+	bg.color = Color(0.02, 0.015, 0.03, 1.0)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	cover.add_child(bg)
+	var label := Label.new()
+	label.text = "Waking the dead..."
+	label.set_anchors_preset(Control.PRESET_CENTER)
+	label.add_theme_font_size_override("font_size", 22)
+	label.add_theme_color_override("font_color", Color(0.78, 0.68, 0.95))
+	label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	label.grow_vertical = Control.GROW_DIRECTION_BOTH
+	bg.add_child(label)
+	add_child(cover)
+	var tree := get_tree()
+	await tree.process_frame
+	for p in WARM_PANELS:
+		close_panels()
+		toggle_panel(p)
+		await tree.process_frame
+		await tree.process_frame
+	close_panels()
+	await tree.process_frame
+	cover.queue_free()
+	warming = false
+	warm_ms = Time.get_ticks_msec() - t0
 
 
 func _rite_level() -> float:
@@ -248,6 +291,8 @@ func _build_counsel() -> void:
 
 
 func notify(event_id: String, ctx: Dictionary = {}) -> void:
+	if warming:
+		return
 	counsel.notify(event_id, ctx)
 
 
@@ -324,6 +369,8 @@ func use_cue(id: String) -> void:
 
 
 func use_tab_cue(win: String, tab: String) -> void:
+	if warming:
+		return
 	var id := "tab.%s.%s" % [win, tab]
 	if TAB_CUES.has(id):
 		use_cue(id)
@@ -477,10 +524,12 @@ func _connect_game() -> void:
 	game.character_changed.connect(func() -> void:
 		_invalidate()
 		rites.set_level(_rite_level())
+		pa.atlas_dirty()
 		pa.refresh_open())
 	game.inventory_changed.connect(_on_inventory_changed)
 	game.progress_changed.connect(func() -> void:
 		_invalidate()
+		pa.atlas_dirty()
 		pa.refresh_open())
 	game.area_changed.connect(func(_id: String) -> void:
 		_guide_t = 0.0
@@ -494,6 +543,7 @@ func _connect_game() -> void:
 
 func _on_inventory_changed() -> void:
 	_invalidate()
+	pa.atlas_dirty()
 	locks.prune(game.slots)
 	if inv.panel.visible:
 		inv.render()
@@ -590,6 +640,8 @@ func _process(delta: float) -> void:
 
 
 func _exit_tree() -> void:
+	if pa != null:
+		pa.shutdown()
 	if store != null:
 		store.flush()
 
@@ -688,7 +740,7 @@ func toggle_panel(p: String) -> void:
 	var switching: bool = not h.is_empty() and win.visible and win.active != h[1]
 	var was_open := is_open(p)
 	var vault := p == "vault"
-	if not switching and not (vault and not was_open and not area_safe()):
+	if not switching and not warming and not (vault and not was_open and not area_safe()):
 		var snd := "panelOpen"
 		if p == "inventory":
 			snd = "panelOpenInventory"
@@ -701,9 +753,10 @@ func toggle_panel(p: String) -> void:
 		close_panels()
 	if was_open:
 		return
-	_clear_cues_for(p)
-	if not (p == "professions" and _truthy(call_game_sync("afk_active"))):
-		call_game_sync("stop_gathering", ["panel"])
+	if not warming:
+		_clear_cues_for(p)
+		if not (p == "professions" and _truthy(call_game_sync("afk_active"))):
+			call_game_sync("stop_gathering", ["panel"])
 	if not h.is_empty():
 		win.select_tab(h[1])
 		if not win.visible:

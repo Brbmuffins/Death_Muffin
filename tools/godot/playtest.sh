@@ -15,7 +15,7 @@ export XDG_DATA_HOME="$OUT/xdg"   # user:// -> $OUT/xdg/godot/app_userdata/...
 run() { # session
   local S=$1
   local ARGS=(--path "$ROOT/godot" --script res://tests/playtest/bot.gd)
-  local UA=(-- --session=$S --disc=$DISC --boss=$BOSS --scale=$SCALE --name=$TAG --skip-to=$SKIP --delay=$DELAY --out="$OUT/$S.json" --shots="$OUT/shots")
+  local UA=(-- --session=$S --disc=$DISC --boss=$BOSS --scale=$SCALE --name=$TAG --warmup --skip-to=$SKIP --delay=$DELAY --out="$OUT/$S.json" --shots="$OUT/shots")
   if [ $RENDERED = 1 ]; then
     flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 timeout 1500 xvfb-run -a -s "-screen 0 1280x800x24" $GODOT --rendering-driver opengl3 "${ARGS[@]}" "${UA[@]}" > "$OUT/$S.log" 2>&1
   else

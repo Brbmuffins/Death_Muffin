@@ -55,8 +55,39 @@ func _init() -> void:
 	panel_width = 540
 
 
+var _built_sig := 0
+var _party_le: LineEdit
+
+
+## Everything build() draws from (the join-code field is not part of it: it starts empty on every open).
+func _sig() -> int:
+	var v := values.duplicate()
+	v.erase("party_in")
+	return [v, can_auto_combat, has_dev, has_bug_report, has_reset_tips, has_change_class, has_party, party_code, has_keybinds, binds, kit_primary, kit_corpse, kit_legion].hash()
+
+
+## build(), unless the content on screen was built from exactly this state (opening Settings rebuilt ~430 nodes every time: ~50 ms).
+func build_if_changed() -> void:
+	if _built_sig != 0 and _sig() == _built_sig and body.get_child_count() > 0 and not _stale:
+		if _party_le != null and is_instance_valid(_party_le):
+			_party_le.text = ""
+		return
+	build()
+
+
+## Something else replaced the body (the bug report form): the next build_if_changed() draws Settings again.
+func mark_stale() -> void:
+	_stale = true
+
+
+var _stale := false
+
+
 ## Build (or rebuild) the content from the current `values`/options. Call once after setting options, before open().
 func build() -> void:
+	_built_sig = _sig()
+	_stale = false
+	_party_le = null
 	for c in body.get_children():
 		c.queue_free()
 	_bind_btns.clear()
@@ -156,6 +187,7 @@ func build() -> void:
 			le.max_length = 12
 			le.custom_minimum_size.x = 110
 			le.text_changed.connect(func(t: String) -> void: _put("party_in", t))
+			_party_le = le
 			jr.add_child(le)
 			jr.add_child(_button("Join", "party_join", true))
 			_row(s4, "Join a friend", jr)

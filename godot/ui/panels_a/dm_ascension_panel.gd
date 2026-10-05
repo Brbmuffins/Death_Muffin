@@ -61,13 +61,23 @@ func _same(a: Dictionary, b: Dictionary) -> bool:
 	return true
 
 
+var _built_sig := 0
+var _built := false
+
+
 func render() -> void:
-	DmPa.clear(body)
-	if local.is_empty():
-		return
 	var sworn: Dictionary = local.get("vows", {})
 	if not drafted:
 		draft = sworn.duplicate()
+	# Reopening the altar with nothing changed (the usual case) keeps what is drawn.
+	var sig := [local, draft, drafted, confirming].hash()
+	if _built and sig == _built_sig and body.get_child_count() > 0:
+		return
+	_built_sig = sig
+	_built = true
+	DmPa.clear(body)
+	if local.is_empty():
+		return
 	var run: Dictionary = local.get("run", {"prelateKills": 0, "peakWaveTier": 0, "kills": 0})
 	var unlocks: Variant = local.get("unlocks", [])
 	var shards: int = int(local.get("shards", 0))

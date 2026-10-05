@@ -104,9 +104,23 @@ func selected_rite() -> String:
 	return String((rites.get("keys", []) as Array)[int(selected)])
 
 
+var _built_sig := 0
+var _built := false
+var _list: VBoxContainer                 # the rite cards: persistent, its rows come from _entries
+var _entries := DmRowCache.new()         # rite id -> its card; only a card whose own inputs changed is rebuilt
+
+
 func render() -> void:
+	# One open used to draw this three times (open, refresh, mark_seen's refresh). Nothing in the inputs changed = nothing to redraw.
+	var sig := [state, runes, selected, role, fresh, rune_error, rune_busy].hash()
+	if _built and sig == _built_sig and get_child_count() > 0:
+		return
+	_built_sig = sig
+	_built = true
 	if loadout_host.get_parent() == self:
 		remove_child(loadout_host)   # keep the slot alive across redraws (the presets strip is mounted into it)
+	if _list != null and _list.get_parent() == self:
+		remove_child(_list)
 	DmPa.clear(self)
 	if state.is_empty():
 		return
@@ -138,11 +152,25 @@ func render() -> void:
 				render())
 			f.add_child(c)
 		add_child(f)
-	var list := DmPa.vbox(8)
-	list.set_meta("role", "list")
-	for id in listed():
-		list.add_child(_entry(id, rites, level, primary_mode))
-	add_child(list)
+	if _list == null:
+		_list = DmPa.vbox(8)
+		_list.set_meta("role", "list")
+	add_child(_list)
+	var ids: Array = listed()
+	var sigs: Array = []
+	for id in ids:
+		sigs.append(_entry_sig(String(id), rites, level, primary_mode))
+	_entries.sync(_list, ids, sigs, func(i: int) -> Dictionary: return {"node": _entry(String(ids[i]), rites, level, primary_mode)})
+
+
+## What one rite card is drawn from.
+func _entry_sig(id: String, rites: Dictionary, level: int, primary_mode: bool) -> int:
+	var on: int
+	if primary_mode:
+		on = 0 if String(rites["primary"]) == id else -1
+	else:
+		on = (rites["keys"] as Array).find(id)
+	return [id, level < DmPaData.unlock_level(id), on, fresh.has(id), primary_mode].hash()
 
 
 func _socket(id: String, key: Variant, label: String) -> Control:

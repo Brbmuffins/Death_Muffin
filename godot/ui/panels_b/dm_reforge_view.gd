@@ -34,6 +34,10 @@ func _init() -> void:
 	panel_width = 720
 
 
+func _inputs() -> Variant:
+	return [pieces_src, counts, gold, busy, picked_instance, confirm, result_text, error_text]
+
+
 func set_pieces(slots: Array) -> void:
 	pieces_src = slots
 	rebuild()
