@@ -36,6 +36,9 @@ func _ready() -> void:
 	if "--world-demo" in args:
 		await _demo()
 		return
+	if "--next" in args:
+		await _next_slice(args)
+		return
 	_start_flow()
 
 
@@ -65,6 +68,24 @@ func _demo() -> void:
 	api.set_token(r.data["token"])
 	var c := await api.load_or_create_character(2)
 	await _enter_world(c.data, api)
+
+
+## Rebuild vertical slice (godot/next/README.md): `-- --next [--class=N]` boots the Chapterhouse + Hollow Graves as a solo DmSession on the
+## offline backend. The default path (front flow -> DmGame) is untouched.
+func _next_slice(args: PackedStringArray) -> void:
+	var cls := 2
+	for a in args:
+		if a.begins_with("--class="):
+			cls = int(a.substr(8))
+	var r := await api.register("tester", "t@example.com", "pw1234")
+	if not r.ok:
+		r = await api.login("tester", "pw1234")
+	api.set_token(r.data["token"])
+	var c := await api.load_or_create_character(cls)
+	var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
+	g.name = "NextGame"
+	add_child(g)
+	await g.start(c.data, api, {"offline": true, "name": token_username(api.get_token())})
 
 
 ## The account name the session token carries (web tokenUsername): "offline:<name>" or a JWT whose payload has `username`.

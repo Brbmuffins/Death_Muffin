@@ -34,6 +34,10 @@ enum State { IDLE, HOSTING, JOINING, ACTIVE, ENDING }
 
 var character_name: String = "Player"
 var discipline_id: String = ""
+## Seams for a game built on the session (both default to the arena behaviour): `body_factory: Callable() -> DmSessionBody` makes the
+## player body on EVERY peer (spawner spawn_function), `spawn_origin` shifts the spawn ring (set before host()).
+var body_factory: Callable = Callable()
+var spawn_origin: Vector3 = Vector3.ZERO
 var rejected_intents: int = 0  ## host: intents ignored (not owner / bad values); for tests and cheat logging
 
 var _state: int = State.IDLE
@@ -224,7 +228,7 @@ static func _clean(s: String, max_len: int) -> String:
 
 func _spawn_point(index: int) -> Vector3:
 	var a := TAU * float(index) / float(MAX_PLAYERS)
-	return Vector3(cos(a), 0.0, sin(a)) * 3.0
+	return spawn_origin + Vector3(cos(a), 0.0, sin(a)) * 3.0
 
 
 func _accept(id: int, nm: String, disc: String) -> void:
@@ -233,7 +237,7 @@ func _accept(id: int, nm: String, disc: String) -> void:
 
 
 func _spawn_body(data: Variant) -> Node:
-	var b := DmSessionBody.new()
+	var b: DmSessionBody = body_factory.call() if body_factory.is_valid() else DmSessionBody.new()
 	b.setup(int(data["id"]), str(data["name"]), str(data["disc"]), data["pos"])
 	b.simulated = multiplayer.is_server()
 	return b

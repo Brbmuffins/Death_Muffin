@@ -1,0 +1,226 @@
+class_name DmNextGame
+extends Node3D
+## The vertical-slice game scene (scene-first, replaces the DmGame hub for the rebuild). It composes child nodes and owns almost no logic:
+##   Session (DmSession)  host / join on any MultiplayerPeer; solo = OfflineMultiplayerPeer, the SAME code path as a 2-player session
+##   World   (DmNextWorld) DmWorldBuilder world, dressing, navmesh map          Camera (DmCameraRig)   the existing rig
+##   Waves   (DmWaveDirector) host-side enemy waves + MultiplayerSpawner        Net (DmNextNet)        enemy / vitals replication
+##   Input   (DmNextInput) click / WASD / hotbar -> intents + the hotbar seam   Hud (DmNextHud)        DmHud on the local body
+## Players are DmHeroBody (DmSessionBody subclass made by the session's body_factory). See next/README.md for the seams the rites and
+## rewards tracks plug into.
+##
+##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api)
+## `opts`: peer (MultiplayerPeer, default OfflineMultiplayerPeer = solo), visual (true), dressing (true), world (true: false = no world /
+## navmesh, a headless client), waves (true), hud (true).
+
+const CASTER_DELAY := 0.8
+
+signal started
+signal enemy_spawned(enemy: DmEnemy)            ## every spawned enemy (every peer), once in the tree: the rewards seam
+signal area_changed(id: String)
+signal hero_died(body: DmHeroBody)              ## host
+signal hero_respawned(body: DmHeroBody)         ## host
+
+
+@onready var session: DmSession = $Session
+@onready var world: DmNextWorld = $World
+@onready var director: DmWaveDirector = $Waves
+@onready var net: DmNextNet = $Net
+@onready var input: DmNextInput = $Input
+@onready var camera: DmCameraRig = $Camera
+@onready var hud: DmNextHud = $Hud
+
+var character: Dictionary = {}
+var api: Variant = null                         ## DmApi: the VPS backend online, the offline backend (DmOffline.make_api) offline
+var is_offline: bool = true                     ## D4: true = backed by the local GDScript backend
+var area_id: String = "chapterhouse"
+var rewards: Node
+var opts: Dictionary = {}
+var load_ms: int = 0
+var ready_ := false                             ## DmAudioHooks "main" shape: ready_, area_id, player, avatar, builder
+var player: DmHeroBody:
+	get: return local_body()
+var avatar: DmAvatar:
+	get: return local_body().avatar if local_body() != null else null
+var builder: DmWorldBuilder:
+	get: return world.builder
+
+var _visual := true
+var _has_world := true
+
+
+## Build and start. Host path: the character's body is spawned in the Chapterhouse and the slice is live when this returns.
+func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> void:
+	var t0 := Time.get_ticks_msec()
+	opts = opts_
+	character = character_
+	api = api_
+	is_offline = bool(opts.get("offline", true))
+	_visual = bool(opts.get("visual", true))
+	_has_world = bool(opts.get("world", true))
+	DmSimData.ensure()
+	input.game = self
+	net.game = self
+	hud.game = self
+	director.game = self
+	director.enabled = bool(opts.get("waves", true))
+	hud.visible = bool(opts.get("hud", true))
+	director.enemy_spawned.connect(func(e: DmEnemy) -> void: enemy_spawned.emit(e))
+	director.warm()
+	session.session_ended.connect(func(_r: String) -> void: set_process(false))
+	if _has_world:
+		world.build(bool(opts.get("dressing", true)))
+		await world.wait_nav_ready()
+		camera.setup(world.camera_config())
+	else:
+		camera.setup(DmData.world()["camera"])
+	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
+	session.character_name = String(opts.get("name", "You"))
+	session.discipline_id = String(d["id"])
+	var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
+	session.spawn_origin = Vector3(float(ret["x"]), 0.0, float(ret["z"]))
+	session.body_factory = _make_body
+	session.player_joined.connect(_on_player_joined)
+	var peer: MultiplayerPeer = opts.get("peer", null)
+	if peer == null:
+		peer = OfflineMultiplayerPeer.new()
+	var err := session.host(peer) if bool(opts.get("host", true)) else session.join(peer)
+	assert(err == OK, "DmNextGame: session start failed (%s)" % error_string(err))
+	if session.is_host():
+		var b := local_body()
+		b.bind_character(character)
+		_start_rewards(b)
+		_enter(b.position)
+		camera.snap(b.position)
+	# The current game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
+	if bool(opts.get("audio", DisplayServer.get_name() != "headless")) and _has_world and get_node_or_null("/root/AudioDirector") != null:
+		var hooks := DmAudioHooks.new()
+		hooks.name = "AudioHooks"
+		add_child(hooks)
+		hooks.setup(self)
+	ready_ = true
+	load_ms = Time.get_ticks_msec() - t0
+	started.emit()
+
+
+## Host: the rewards track's node (DmSessionRewards) with one member per player; kills arrive through `enemy_spawned` -> `died`.
+func _start_rewards(b: DmHeroBody) -> void:
+	rewards = DmSessionRewards.new()
+	rewards.name = "Rewards"
+	rewards.local_peer_id = session.get_my_id()
+	rewards.area_id = "graves"
+	add_child(rewards)
+	rewards.attach_spawner(self)
+	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
+	rewards.add_member(DmRewardsMember.make(int(character.get("id", 0)), session.get_my_id(), b, api, int(character.get("level", 1)), {"id": d["id"], "family": d["family"]}))
+	rewards.start(int(character.get("id", 0)))   # session_open (async; a failure arrives as session_failed)
+
+
+func _make_body() -> DmSessionBody:
+	var b := DmHeroBody.new()
+	b.game = self
+	b.died.connect(func(x: DmHeroBody) -> void: hero_died.emit(x))
+	b.respawned.connect(func(x: DmHeroBody) -> void: hero_respawned.emit(x))
+	return b
+
+
+func _on_player_joined(id: int) -> void:
+	# A joiner on the host: a rewards member without its own api yet (its gear drops land unrolled until the join handshake carries one).
+	if rewards != null and session.is_host() and id != session.get_my_id() and body_of(id) != null:
+		rewards.add_member(DmRewardsMember.make(0, id, body_of(id), null, 1, {"id": body_of(id).discipline_id, "family": "necromancer"}))
+
+
+## Called by each DmHeroBody in its _ready on every peer: the rites seam (DmRiteCaster named "Rites", `self` is its DmRiteWorld).
+## The host holds off for a joiner's body: its caster would RPC the joiner before the joiner's spawner has created the body (a missing path).
+func attach_caster(body: DmHeroBody) -> void:
+	if multiplayer.is_server() and body.owner_peer != session.get_my_id():
+		await get_tree().create_timer(CASTER_DELAY).timeout
+		if not is_instance_valid(body) or not body.is_inside_tree():
+			return
+	DmRiteCaster.attach(body, self)
+
+
+func _process(dt: float) -> void:
+	var b := local_body()
+	if b == null:
+		return
+	camera.update_rig(dt, b.position)
+	if _has_world:
+		world.update(camera, b.position, dt)
+	_enter(b.position)
+
+
+func _enter(pos: Vector3) -> void:
+	var a := world.area_at(pos.x, pos.z) if _has_world else ""
+	if a != "" and a != area_id:
+		area_id = a
+		world.enter_area(a)
+		area_changed.emit(a)
+
+
+# ---- seams: accessors for the rites and rewards tracks ------------------------------------------------------------------------
+
+## The body this peer controls (null until the session spawned it).
+func local_body() -> DmHeroBody:
+	return session.get_body(session.get_my_id()) as DmHeroBody if session.is_active() else null
+
+
+func body_of(peer_id: int) -> DmHeroBody:
+	return session.get_body(peer_id) as DmHeroBody
+
+
+## Living enemies within `r` metres of `pos` (flat; measured to the enemy's edge).
+func enemies_in_radius(pos: Vector3, r: float) -> Array[DmEnemy]:
+	return director.enemies_in_radius(pos, r)
+
+
+func enemy_by_id(id: int) -> DmEnemy:
+	return director.enemy_by_id(id)
+
+
+func enemy_id(enemy: Node) -> int:
+	return director.enemy_id(enemy)
+
+
+## DmRiteWorld optional hooks: the local owner's cursor ground point / hovered enemy, and a body's build for the caster.
+func aim_point() -> Vector3:
+	return input.aim_point()
+
+
+func aim_target_id() -> int:
+	return input.hovered_enemy_id()
+
+
+func rite_build(peer_id: int) -> Dictionary:
+	var b := body_of(peer_id)
+	var ch: Dictionary = b.character if b != null and not b.character.is_empty() else {"class_index": 0, "level": 1}
+	var out := DmCharacterBuild.build(ch, [], {})
+	out["runes"] = {}
+	return out
+
+
+## Who is in the session: [{peer_id, name, discipline, character_id, body}]. character_id is the backend character id of the local host's
+## character; remote members are 0 until the join handshake carries one (REBUILD phase 4).
+func roster() -> Array:
+	var out: Array = []
+	for r in session.get_roster():
+		var b := body_of(int(r["peer_id"]))
+		var cid := 0
+		if b != null:
+			cid = b.character_id
+		out.append({"peer_id": int(r["peer_id"]), "name": String(r["name"]), "discipline": String(r["discipline"]), "character_id": cid, "body": b})
+	return out
+
+
+func body_position(peer_id: int) -> Vector3:
+	var b := body_of(peer_id)
+	return b.position if b != null else Vector3.INF
+
+
+## The area id a player is standing in ("" between areas).
+func area_of(peer_id: int) -> String:
+	var b := body_of(peer_id)
+	return world.area_at(b.position.x, b.position.z) if b != null and _has_world else ""
+
+
+func leave() -> void:
+	await session.leave()

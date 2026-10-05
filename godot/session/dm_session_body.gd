@@ -7,6 +7,7 @@ const CAPSULE_RADIUS := 0.4
 const CAPSULE_HEIGHT := 1.8
 const DIR_TTL := 0.25  ## a direction intent expires this long after the last one (lost "stop" packet cannot run a body forever)
 
+var show_capsule: bool = true  ## false when a game dresses the body itself (set before setup())
 var owner_peer: int = 0
 var display_name: String = ""
 var discipline_id: String = ""
@@ -26,6 +27,8 @@ func setup(peer_id: int, nm: String, disc: String, pos: Vector3) -> void:
 	discipline_id = disc
 	position = pos
 	name = "P%d" % peer_id
+	if not show_capsule:
+		return
 	var mi := MeshInstance3D.new()
 	var cap := CapsuleMesh.new()
 	cap.radius = CAPSULE_RADIUS
