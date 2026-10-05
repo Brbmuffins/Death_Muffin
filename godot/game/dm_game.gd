@@ -104,6 +104,8 @@ var recall_at := 0.0
 var last_combat_at := -1e9
 var last_hurt_at := -1e9
 var coop: DmGameCoop
+var my_cosmetics := {"cape": "", "pet": ""}
+var pet_view: DmPetView = null
 var party_code: String:
 	get: return coop.party_code if coop != null else ""
 var mirror: DmSimMirror:
@@ -241,6 +243,17 @@ func _is_dev_account() -> bool:
 	if tok.begins_with("offline:"):
 		return false
 	return DmMain.token_username(tok).to_lower() in DEV_ACCOUNTS
+
+
+## The Omen tints the sky over every area's own palette (half-way, so each place stays itself) and thickens or thins the fog in hunting grounds.
+func _omen_light(area: String) -> void:
+	var def: Dictionary = DmContent.area(area)
+	var sky: Dictionary = omen["sky"]
+	builder.moon.light_color = builder.moon.light_color.lerp(Color.hex(int(sky["moon"]) * 256 + 255), 0.5)
+	var m: float = float(def["ambient"].get("fogMult", 1.0))
+	if not def["safe"]:
+		m *= float(sky["fogMult"])
+	builder.env.fog_depth_end = 130.0 / maxf(0.2, m)
 
 
 func _build_hotbar() -> Array:
@@ -383,6 +396,7 @@ func _load_server_data() -> void:
 	if ch.ok and ch.data is Dictionary:
 		chronicle.set_data(ch.data)
 	await gatherer.load_professions()
+	await load_cosmetics()
 	character_changed.emit()
 	inventory_changed.emit()
 	progress_changed.emit()
@@ -395,6 +409,39 @@ func refresh_character() -> void:
 			character[k] = r.data[k]
 		refresh_stats()
 		character_changed.emit()
+	await load_cosmetics()
+
+
+## The server's saved cape and companion (applyCosmetics): dress the hero, tell the party.
+func load_cosmetics() -> void:
+	var r: DmResult = await api.get_cosmetics(hero_id)
+	if r.ok and r.data is Dictionary and r.data.get("selected") is Dictionary:
+		apply_cosmetics(r.data["selected"])
+
+
+func apply_cosmetics(sel: Dictionary) -> void:
+	var cape: String = String(sel["cape"]) if sel.get("cape") != null else ""
+	var pet: String = String(sel["pet"]) if sel.get("pet") != null else ""
+	my_cosmetics = {"cape": cape, "pet": pet}
+	if avatar != null:
+		avatar.set_cape(cape)
+	var def: Variant = _pet_def(pet)
+	if (pet_view.id() if pet_view != null else "") != (String(def["id"]) if def != null else ""):
+		if pet_view != null:
+			pet_view.dispose()
+			pet_view = null
+		if def != null and visual:
+			pet_view = DmPetView.new(world_root, def, player.x, player.z)
+	coop.broadcast_gear(true)
+
+
+static func _pet_def(id: String) -> Variant:
+	if id == "":
+		return null
+	for p in DmContent.get_export("cosmetics", "PETS"):
+		if p["id"] == id:
+			return p
+	return null
 
 
 func refresh_inventory() -> void:
@@ -714,6 +761,8 @@ func _tick_visuals(dt: float, now: float) -> void:
 		views.sync(sim.enemies, sim.thralls, vdt, player.x, player.z)
 		views.prune_corpses(sim.corpses)
 	var b := sim.boss.state
+	if pet_view != null:
+		pet_view.update(vdt, player.x, player.z, player.facing)
 	var bv: Variant = boss_view(String(b.id) if b.id != "" else "prelate")
 	if bv != null:
 		bv.sync(b, vdt)

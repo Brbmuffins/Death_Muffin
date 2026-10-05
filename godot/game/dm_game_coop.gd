@@ -112,6 +112,10 @@ func gear_ids() -> Dictionary:
 	for slot in worn:
 		if worn[slot] != null:
 			gear[slot] = worn[slot]["item_id"]
+	if String(g.my_cosmetics["cape"]) != "":
+		gear["cape"] = g.my_cosmetics["cape"]
+	if String(g.my_cosmetics["pet"]) != "":
+		gear["pet"] = g.my_cosmetics["pet"]
 	return gear
 
 
@@ -286,6 +290,8 @@ func update_remotes(dt: float) -> void:
 		var av: Variant = r.get("avatar")
 		if av != null:
 			av.update(dt, r["x"], r["z"], r["facing"], r["moving"], 5.4)
+		if r.get("pet") != null:
+			r["pet"].update(dt, r["x"], r["z"], r["facing"])
 
 
 # ---- handlers --------------------------------------------------------------------------------------------------------------------
@@ -340,6 +346,28 @@ func _on_player_gear(u: Dictionary) -> void:
 	var r: Variant = remotes.get(String(u["id"]))
 	if r != null and r.get("avatar") != null:
 		r["avatar"].set_equipment(gear_from_ids(u.get("gear")))
+		dress_remote(r, u.get("gear"))
+
+
+## Another player's cape and companion, from the ids they broadcast (checked against the catalogue).
+func dress_remote(r: Dictionary, gear: Variant) -> void:
+	var cape := ""
+	var pet := ""
+	if gear is Dictionary:
+		for c in DmContent.get_export("cosmetics", "CAPES"):
+			if c["id"] == gear.get("cape"):
+				cape = c["id"]
+		pet = String(gear.get("pet", ""))
+	if r.get("avatar") != null:
+		r["avatar"].set_cape(cape)
+	var def: Variant = g._pet_def(pet)
+	var cur: Variant = r.get("pet")
+	if (cur.id() if cur != null else "") != (String(def["id"]) if def != null else ""):
+		if cur != null:
+			cur.dispose()
+			r["pet"] = null
+		if def != null and g.visual:
+			r["pet"] = DmPetView.new(g.world_root, def, r["tx"], r["tz"])
 
 
 ## The link dropped unexpectedly: carry on solo and keep trying to get back to the same world.
@@ -378,11 +406,15 @@ func add_remote(p: Dictionary) -> void:
 		av.setup(g.world_root, dd.get("color", 0xa26bff), false, String(dd.get("modelSlug", "necromancer")))
 		av.set_equipment(gear_from_ids(p.get("gear")))
 	remotes[id] = {"info": p, "avatar": av, "x": float(p["x"]), "z": float(p["z"]), "tx": float(p["x"]), "tz": float(p["z"]), "facing": float(p.get("facing", 0.0)),
-		"moving": false, "hpFrac": float(p.get("hpFrac", 1.0)), "level": p.get("level", 1), "family": d["family"]}
+		"moving": false, "hpFrac": float(p.get("hpFrac", 1.0)), "level": p.get("level", 1), "family": d["family"], "pet": null}
+	if g.visual:
+		dress_remote(remotes[id], p.get("gear"))
 
 
 func _dispose_remote(id: String) -> void:
 	var r: Variant = remotes.get(id)
+	if r != null and r.get("pet") != null:
+		r["pet"].dispose()
 	if r != null and r.get("avatar") != null and is_instance_valid(r["avatar"]):
 		r["avatar"].queue_free()
 
