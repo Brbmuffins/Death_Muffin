@@ -25,3 +25,9 @@ textures/vram_compression/import_etc2_astc=false
 [gui]
 
 theme/custom="res://ui/theme/dm_theme.tres"
+
+[layer_names]
+
+3d_physics/layer_1="world"
+3d_physics/layer_2="player"
+3d_physics/layer_3="enemy"
