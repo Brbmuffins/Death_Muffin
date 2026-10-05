@@ -1,7 +1,8 @@
 class_name DmBugReportView
-extends DmWindow
-## Port of src/ui/BugReportView.ts (Settings -> Report a bug): the form (kind, description 10-2000 chars), sends via DmApi.send_bug_report with the
-## context the web attaches, and lists the player's recent reports with the status the bug agent gave them.
+extends VBoxContainer
+## Port of src/ui/BugReportView.ts (Settings -> Report a bug). Like the web it renders INTO the Settings window's body (the window stays open and keeps its
+## header and key handling; `DmUiSettings.open_bug_report` swaps the body, Back restores Settings). The form (kind, description 10-2000 chars) sends via
+## DmApi.send_bug_report with the context the web attaches, and lists the player's recent reports with the status the bug agent gave them.
 
 signal back_pressed
 
@@ -21,46 +22,97 @@ var last_report: Dictionary = {}
 
 
 func _init() -> void:
-	super._init()
-	title = "Report a bug"
-	panel_width = 540
+	theme = DmUi.theme()
+	add_theme_constant_override("separation", 18)   # .cw-settings sections are 18 px apart
+
+
+static func _section(title_text: String) -> Array:
+	var p := PanelContainer.new()
+	p.theme_type_variation = "DmInset"
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 0)
+	p.add_child(v)
+	var m := MarginContainer.new()
+	m.add_theme_constant_override("margin_bottom", 6)
+	m.add_child(DmUi.label(DmUi.upper(title_text), "DmH3"))
+	v.add_child(m)
+	return [p, v]
 
 
 func setup(ui_: Node) -> void:
 	ui = ui_
+	var sec := _section("Report a bug")
+	add_child(sec[0])
+	var box: VBoxContainer = sec[1]
 	var note := DmUi.label("Tell us what went wrong, where you were and what you expected. Your area, level, discipline and game version are attached for you. Reports are read every day.", "DmNote", true)
-	body.add_child(note)
+	note.add_theme_font_size_override("font_size", 14)
+	var nm := MarginContainer.new()
+	nm.add_theme_constant_override("margin_top", 8)
+	nm.add_theme_constant_override("margin_bottom", 2)
+	nm.add_child(note)
+	box.add_child(nm)
+	# label.row: "Kind of problem" + the select, 12 px padding, 1 px rule beneath
+	var rm := MarginContainer.new()
+	rm.add_theme_constant_override("margin_top", 12)
+	rm.add_theme_constant_override("margin_bottom", 12)
+	var rh := HBoxContainer.new()
+	rh.add_theme_constant_override("separation", 18)
+	var rl := DmUi.label("Kind of problem", "DmRow", true)
+	rl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	rh.add_child(rl)
 	category = OptionButton.new()
 	for c in CATEGORIES:
 		category.add_item(c[1])
-	body.add_child(category)
+	category.size_flags_horizontal = Control.SIZE_SHRINK_END
+	rh.add_child(category)
+	rm.add_child(rh)
+	box.add_child(rm)
+	box.add_child(DmUi.hrule())
 	message = TextEdit.new()
-	message.custom_minimum_size.y = 120
+	message.custom_minimum_size.y = 150   # rows="6"
+	message.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	message.placeholder_text = "e.g. After I travelled to the Graves my thralls stopped following me until I relogged."
 	message.text_changed.connect(_sync)
-	body.add_child(message)
+	var mm := MarginContainer.new()
+	mm.add_theme_constant_override("margin_top", 6)
+	mm.add_child(message)
+	box.add_child(mm)
 	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
 	count_label = DmUi.label("0 / %d" % MAX_LEN, "DmHint")
 	count_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	count_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(count_label)
 	back_button = Button.new()
 	back_button.text = DmUi.upper("Back")
-	back_button.pressed.connect(func() -> void:
-		close()
-		back_pressed.emit())
+	back_button.focus_mode = Control.FOCUS_NONE
+	back_button.pressed.connect(func() -> void: back_pressed.emit())
 	row.add_child(back_button)
 	send_button = Button.new()
 	send_button.text = DmUi.upper("Send report")
+	send_button.focus_mode = Control.FOCUS_NONE
 	send_button.disabled = true
 	send_button.pressed.connect(send)
 	row.add_child(send_button)
-	body.add_child(row)
+	var rm2 := MarginContainer.new()
+	rm2.add_theme_constant_override("margin_top", 8)
+	rm2.add_child(row)
+	box.add_child(rm2)
 	result_label = DmUi.label("", "DmNote", true)
-	body.add_child(result_label)
-	body.add_child(DmUi.label(DmUi.upper("Your reports"), "DmSub"))
-	list_box = VBoxContainer.new()
-	body.add_child(list_box)
-	opened.connect(func() -> void: load_list())
+	result_label.add_theme_font_size_override("font_size", 14)
+	box.add_child(result_label)
+	var sec2 := _section("Your reports")
+	add_child(sec2[0])
+	list_box = sec2[1]
+
+
+## Called when Settings swaps its body for this view: a fresh form and the player's reports.
+func show_form() -> void:
+	message.text = ""
+	result_label.text = ""
+	_sync()
+	load_list()
+	message.grab_focus.call_deferred()
 
 
 func _sync() -> void:
@@ -96,9 +148,12 @@ func send() -> void:
 
 
 func load_list() -> void:
-	for c in list_box.get_children():
+	for c in list_box.get_children().slice(1):
 		c.queue_free()
+	var loading := DmUi.label("Loading…", "DmHint")
+	list_box.add_child(loading)
 	var r: DmResult = await ui.game.api.get_my_bug_reports()
+	loading.queue_free()
 	if not r.ok or not (r.data is Array):
 		list_box.add_child(DmUi.label("Your reports could not be loaded.", "DmHint"))
 		return

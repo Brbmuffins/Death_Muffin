@@ -161,13 +161,19 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	ui.update_setting({"no_tips": false})
 	sp.action.emit("bug_report")
 	await _frames(3)
-	_check(ui.is_open("report") and not ui.is_open("settings"), "bug report opens in its own window")
-	ui.windows["report"].message.text = "the thralls stopped following me after travel"
-	ui.windows["report"]._sync()
+	_check(ui.is_open("settings") and ui.set_ui.bug_report_open() and ui.set_ui.report.is_visible_in_tree(), "bug report renders inside the Settings body")
+	ui.set_ui.report.message.text = "the thralls stopped following me after travel"
+	ui.set_ui.report._sync()
 	game.clear_calls()
-	await ui.windows["report"].send()
+	await ui.set_ui.report.send()
 	var br := game.calls_to("/api/bug-reports")
 	_check(br.size() == 1 and br[0]["body"]["category"] == "bug" and br[0]["body"]["characterId"] == 7, "bug report sent via DmApi")
+	ui.set_ui.report.back_pressed.emit()
+	await _frames(3)
+	_check(ui.is_open("settings") and not ui.set_ui.bug_report_open() and ui.set_ui.panel.body.get_child_count() > 3, "Back restores the Settings body")
+	ui.open_bug_report()
+	await _frames(3)
+	_check(ui.set_ui.bug_report_open(), "the HUD's Report a bug button opens it in Settings too")
 	ui.close_panels()
 	# difficulty rule
 	game.character["auto_combat_allowed"] = true

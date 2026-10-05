@@ -22,9 +22,7 @@ func _init(ui_: Node) -> void:
 	panel.closed.connect(func() -> void: ui.panel_changed.emit())
 	report = DmBugReportView.new()
 	report.setup(ui)
-	ui.windows["report"] = report
-	ui.windows_root.add_child(report)
-	report.back_pressed.connect(func() -> void: ui.toggle_panel("settings"))
+	report.back_pressed.connect(close_bug_report)   # MiscPanels.openBugReport: Back = close() + open(), i.e. Settings again
 
 
 func _options() -> void:
@@ -56,6 +54,7 @@ func sync_values() -> void:
 
 
 func open() -> void:
+	_detach_report()
 	for k in game.settings:
 		panel.values[k] = game.settings[k]
 	panel.values["party_in"] = ""
@@ -64,8 +63,31 @@ func open() -> void:
 	panel.open()
 
 
+## Settings -> Report a bug swaps the Settings window's BODY for the form (the window, its header and its Esc stay); Back restores Settings.
 func open_bug_report() -> void:
-	report.open()
+	if not panel.visible:
+		open()
+	for c in panel.body.get_children():
+		panel.body.remove_child(c)
+		c.queue_free()
+	panel.body.add_child(report)
+	panel.scroll.scroll_vertical = 0
+	report.show_form()
+
+
+func bug_report_open() -> bool:
+	return report.get_parent() == panel.body
+
+
+func close_bug_report() -> void:
+	_detach_report()
+	panel.close()
+	open()
+
+
+func _detach_report() -> void:
+	if report.get_parent() != null:
+		report.get_parent().remove_child(report)
 
 
 func _on_changed(key: String, value: Variant) -> void:
@@ -80,8 +102,7 @@ func _on_action(name: String) -> void:
 			ui.left_world.emit()
 			ui.call_game_sync("leave_world")
 		"bug_report":
-			panel.close()
-			ui.open_bug_report()
+			open_bug_report()
 		"reset_tips":
 			reset_tips()
 		"change_class":
