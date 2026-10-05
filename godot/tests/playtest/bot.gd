@@ -689,6 +689,7 @@ func _p_walk_to_graves() -> void:
 
 func _p_fight() -> void:
 	phase("fight")
+	chk(g.prog.mode == "server", "progress runs in server mode against the offline backend", "mode=%s" % g.prog.mode, "major")
 	g.inventory.add({"item_id": "flask_hp_minor", "quantity": 6})
 	var gold0 := int(g.character["gold"])
 	var xp0 := int(g.character["experience"])
