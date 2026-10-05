@@ -59,6 +59,19 @@ func _cb(method: StringName, args: Array = []) -> Callable:
 	return func() -> Variant: return me.callv(method, args)
 
 
+var _rfx: DmRiteFx = null
+
+
+## The shared per-rite visuals (game/dm_rite_fx.gd), pointed at THIS system's back-ends and counters (tests may swap `fx` / `audio` at any time).
+func _rite_fx() -> DmRiteFx:
+	if _rfx == null:
+		_rfx = DmRiteFx.new()
+	_rfx.fx = fx
+	_rfx.audio = audio
+	_rfx.stats = stats
+	return _rfx
+
+
 func _col(group: String, key: String) -> Color:
 	return DmFxData.spell(group, key)
 
@@ -312,14 +325,9 @@ func _needle(t: Dictionary) -> String:
 	var r := super._needle(t)
 	if r != "ok":
 		return r
-	var N := DmFxData.spell_group("needle")
 	_gesture("cast", 3.2, "bone_needle", "bone_needle")
 	var from := _tip()
-	_flash(from[0], from[1], from[2], N["trail"], 0.7, 0.14)
-	_sfx("needleCast", _px(), _pz())
-	if rune("bone_needle") == "rune_volley" and _needle_casts % int(DmSimData.RUNE_TUNING["volley"]["every"]) == 0:
-		_m_splinters(from[0], from[1], from[2], 5, N["core"], 3.5)
-		_decal("ring", N["trail"], _px(), _pz(), 1.3, 0.35, 0.55, {"growFrom": 0.4})
+	_rite_fx().needle_cast(from, _px(), _pz(), rune("bone_needle") == "rune_volley" and _needle_casts % int(DmSimData.RUNE_TUNING["volley"]["every"]) == 0)
 	return r
 
 
@@ -336,16 +344,7 @@ func _needle_arrive(pos: Array, ctx: Dictionary) -> void:
 	super._needle_arrive(pos, ctx)
 	if not lands:
 		return
-	var N := DmFxData.spell_group("needle")
-	var crit: bool = ctx["crit"]
-	_sfx("needleHit", pos[0], pos[2], 1.4 if crit else 1.0)
-	_flash(pos[0], pos[1], pos[2], N["impact"], 1.7 if crit else 1.05, 0.2)
-	_emit(pos[0], pos[1], pos[2], 16 if crit else 8, N["dust"], 0.1, 3.2, 1.2, 0.4, 0.13, {"gravity": 7.0})
-	if crit:
-		_emit(pos[0], pos[1], pos[2], 10, N["trail"], 0.2, 4.0, 0.5, 0.3, 0.3)
-	_m_splinters(pos[0], pos[1], pos[2], 7 if crit else 3, N["core"])
-	if crit:
-		_bb("crit_hit", pos[0], pos[2], {"y": pos[1]})
+	_rite_fx().needle_hit(pos, bool(ctx["crit"]))
 
 
 func _enemy_follow(id: int, y: float, last: Array) -> Variant:
@@ -649,20 +648,7 @@ func _send_on_arrive(pos: Array, intent: Dictionary) -> void:
 	super._send_on_arrive(pos, intent)
 	if not alive or intent.get("t") != "miasma":
 		return
-	var M := DmFxData.spell_group("miasma")
-	var x: float = intent["x"]
-	var z: float = intent["z"]
-	var r: float = intent["r"]
-	_decal("ring", M["rot"], x, z, r, 0.45, 0.7, {"growFrom": 0.2})
-	_sfx("miasma", x, z)
-	_loop("miasmaLoop", 6000.0, x, z)
-	_smoke(x, 0.4, z, 6, M["spore"], r * 0.6, 0.5, 0.3, 0.9, 1.1, {"shrink": -0.3, "drag": 0.8})
-	_emit(x, 0.3, z, 16, M["rot"], r * 0.5, 1.1, 0.6, 0.65, 0.18)
-	if fx != null:
-		stats["motif"] += 1
-		fx.motifs.rot_spores(x, z, M["rot"], {"r": r * 0.75, "n": DmMath.js_round(8.0 + r * 2.0)})
-	if not intent.has("creep"):
-		_bb("miasma_cloud", x, z, {"scale": r / 3.8})
+	_rite_fx().miasma_land(float(intent["x"]), float(intent["z"]), float(intent["r"]), intent.has("creep"))
 
 
 # --- Grimoire rites --------------------------------------------------------------------------------------------------------------------------
