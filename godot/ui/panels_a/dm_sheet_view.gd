@@ -67,6 +67,10 @@ func _primer(t: String) -> Control:
 	return c
 
 
+static func _str(v: Variant) -> String:
+	return "" if v == null else str(v)
+
+
 func _looking(l: Dictionary) -> Control:
 	var c := DmPa.card(DmUi.BORDER_STRONG, DmUi.INSET, Vector2(12, 10))
 	c.set_meta("role", "looking")
@@ -74,15 +78,16 @@ func _looking(l: Dictionary) -> Control:
 	b.add_theme_constant_override("separation", 4)
 	b.add_child(DmPa.text(DmUi.upper("What you're looking for"), 15, DmUi.SPELL_300, "display", false))
 	var pri := DmPa.hbox(8)
-	pri.add_child(DmPa.text(String(l.get("orderText", "")), 17, DmUi.BONE_100, "numeric", false))
-	var d := DmPa.text(String(l.get("discipline", "")), 12, DmUi.TEXT_FAINT, "body", false)
+	pri.add_child(DmPa.text(_str(l.get("orderText")), 17, DmUi.BONE_100, "numeric", false))
+	var d := DmPa.text(_str(l.get("discipline")), 12, DmUi.TEXT_FAINT, "body", false)
 	d.size_flags_vertical = Control.SIZE_SHRINK_END
 	pri.add_child(d)
 	b.add_child(pri)
-	b.add_child(DmPa.text(String(l.get("why", "")), 13, DmUi.BONE_300))
-	if String(l.get("weapons", "")) != "":
+	b.add_child(DmPa.text(_str(l.get("why")), 13, DmUi.BONE_300))
+	var weapons := _str(l.get("weapons"))   # JSON null (no weapon advice) must not crash String()
+	if weapons != "":
 		b.add_child(DmPa.margin(DmPa.text(DmUi.upper("Weapons"), 11, DmUi.SPELL_300, "body", false), 0, 6, 0, 0))
-		b.add_child(DmPa.text(String(l["weapons"]), 13, DmUi.BONE_300))
+		b.add_child(DmPa.text(weapons, 13, DmUi.BONE_300))
 	var weak: Array = l.get("weakest", [])
 	if not weak.is_empty():
 		b.add_child(DmPa.margin(DmPa.text(DmUi.upper("Weakest slots"), 11, DmUi.SPELL_300, "body", false), 0, 6, 0, 0))

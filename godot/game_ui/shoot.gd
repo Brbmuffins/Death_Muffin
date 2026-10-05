@@ -38,10 +38,36 @@ func _ready() -> void:
 		"grimoire": ui.toggle_panel("grimoire")
 		"atlas": ui.toggle_panel("atlas")
 		"settings": ui.toggle_panel("settings")
+		"hud": pass
 		"codex": ui.toggle_panel("codex")
 		"acre": ui.toggle_panel("professions")
 		"legion": ui.toggle_panel("legion")
+		"tip_item":
+			ui.toggle_panel("inventory")
+		"tip_spell": pass
+		"belt_picker": pass
+		"bug": ui.open_bug_report()
 	await get_tree().create_timer(1.6).timeout
+	match _page:
+		"tip_item":
+			var tip := DmTip.of(ui)
+			var cell: DmItemSlot = null
+			for sl in ui.inv.panel._slots:
+				if sl.data.get("item_id", "") == "staff_bone" or (cell == null and sl.is_filled()):
+					cell = sl
+			var c := cell.get_global_rect().get_center()
+			tip.test_mouse = c
+			cell.show_tip()
+			await get_tree().create_timer(0.6).timeout
+		"tip_spell":
+			var slot: DmHudSlot = ui.hud._slots[1]
+			var tip2 := DmTip.of(ui)
+			tip2.test_mouse = slot.button.get_global_rect().get_center()
+			ui.hud._spell_hover(1, slot, true)
+			await get_tree().create_timer(0.8).timeout
+		"belt_picker":
+			ui.belt_picker.toggle("elixir")
+			await get_tree().create_timer(0.6).timeout
 	if _out != "":
 		get_viewport().get_texture().get_image().save_png(_out)
 	get_tree().quit()

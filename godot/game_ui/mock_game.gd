@@ -39,6 +39,9 @@ var refreshes := {"character": 0, "inventory": 0, "progress": 0}
 var hud: Dictionary = {}
 var set_rites_calls: Array = []
 var hero_pos := Vector2(0, 20)
+var party_code := ""
+var party_calls: Array = []
+var chats: Array = []
 
 
 func _init() -> void:
@@ -112,6 +115,22 @@ func clear_calls() -> void:
 
 
 # --- contract methods ---
+func party_create() -> void:
+	party_calls.append(["create"])
+
+
+func party_join(code: String) -> void:
+	party_calls.append(["join", code])
+
+
+func party_leave() -> void:
+	party_calls.append(["leave"])
+
+
+func send_chat(text: String) -> void:
+	chats.append(text)
+
+
 func cast(slot: int) -> void:
 	casts.append(slot)
 

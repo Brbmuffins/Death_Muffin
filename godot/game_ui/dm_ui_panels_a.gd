@@ -176,8 +176,6 @@ func process(_delta: float) -> void:
 
 func render_sheet() -> void:
 	var d := DmGearStats.sheet_data(ui.stat_ctx())
-	if d.get("looking") is Dictionary and d["looking"].get("weapons") == null:
-		d["looking"]["weapons"] = ""   # the panel prints String(weapons): JSON null would crash it
 	char_win.sheet.set_data(d)
 
 

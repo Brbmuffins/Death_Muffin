@@ -220,7 +220,7 @@ func _plot_card(grid: GridContainer, p: Dictionary, now: int, meal: int) -> void
 		var pct := 100 if state == "ready" else mini(100, DmMath.js_round(float(total - left) / float(total) * 100.0))
 		var crop := DmPb.item_name(String(seed["harvest"]))
 		var row := DmPb.hbox(8)
-		row.add_child(DmPb.icon(crop_rarity, 34.0))
+		row.add_child(DmPb.icon(crop_rarity, 34.0, null, false, String(seed["harvest"])))
 		var grow_box := DmPb.vbox(3)
 		grow_box.custom_minimum_size.x = 90
 		var bar := DmPbBar.new(5.0)

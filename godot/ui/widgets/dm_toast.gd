@@ -5,7 +5,9 @@ extends PanelContainer
 
 var hold_s: float = 8.0
 var kind: String = ""
+var on_click: Callable = Callable()   ## `.hud-toast.clickable`: a button (a NEW cue opens its panel); clicking runs it and removes the toast
 var _label: Label
+var _hover := false
 
 
 static func make(text: String, kind_: String = "", hold: float = 8.0) -> DmToast:
@@ -43,6 +45,66 @@ func _build(text: String) -> void:
 	row.add_child(_label)
 	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	modulate.a = 0.0
+
+
+## Makes the toast a button like the web's `onClick` toast: pointer cursor, dotted gold underline, gold border on hover, Enter/Space.
+func set_clickable(cb: Callable) -> void:
+	on_click = cb
+	if not cb.is_valid():
+		return
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	focus_mode = Control.FOCUS_ALL
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	mouse_entered.connect(func() -> void: _set_hover(true))
+	mouse_exited.connect(func() -> void: _set_hover(false))
+	queue_redraw()
+
+
+func _set_hover(on: bool) -> void:
+	_hover = on
+	if on:
+		var sb := get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+		if sb != null:
+			sb.border_color = Color("e2c98f")
+			add_theme_stylebox_override("panel", sb)
+	else:
+		remove_theme_stylebox_override("panel")
+
+
+func activate() -> void:
+	if not on_click.is_valid():
+		return
+	var cb := on_click
+	on_click = Callable()
+	cb.call()
+	if is_inside_tree():
+		get_parent().remove_child(self)
+	queue_free()
+
+
+func _gui_input(event: InputEvent) -> void:
+	if not on_click.is_valid():
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		accept_event()
+		activate()
+	elif event is InputEventKey and event.pressed and (event.keycode == KEY_ENTER or event.keycode == KEY_SPACE):
+		accept_event()
+		activate()
+
+
+func _draw() -> void:
+	if not on_click.is_valid() or _label == null:
+		return
+	# text-decoration: underline dotted rgba(226,201,143,.6) under the text line
+	var r := _label.get_global_rect()
+	var y := r.position.y - global_position.y + minf(r.size.y, 22.0) - 3.0
+	var x0 := r.position.x - global_position.x
+	var col := Color(0.886, 0.788, 0.561, 0.6)
+	var x := x0
+	while x < x0 + minf(r.size.x, _label.get_minimum_size().x):
+		draw_rect(Rect2(x, y, 1.5, 1.0), col)
+		x += 3.0
 
 
 func _ready() -> void:

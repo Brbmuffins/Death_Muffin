@@ -15,10 +15,7 @@ func setup(path: String, id: String, color: Color) -> void:
 	label = id.substr(0, 1).to_upper()
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for root in ["res://assets/", "res://assets/slice/"]:
-		if path != "" and ResourceLoader.exists(root + path):
-			tex = load(root + path)
-			break
+	tex = DmUiArt.texture(path)
 	resized.connect(queue_redraw)
 
 

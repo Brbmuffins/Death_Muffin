@@ -44,7 +44,7 @@ func _ready() -> void:
 	bg.color = DmUi.VOID_950
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	add_child(DmFrontUi.backdrop())
+	add_child(DmNecroBackdrop.make_layer())
 	add_child(DmFrontUi.h_gradient(Color(0.027, 0.024, 0.039, 0.7), Color(0.027, 0.024, 0.039, 0.22), 0.56, Color(0.027, 0.024, 0.039, 0.55)))
 	var scroll := ScrollContainer.new()
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -121,7 +121,7 @@ func _build_story() -> VBoxContainer:
 	kick.add_theme_font_override("normal_font", DmFrontUi.fv("numeric", 2))
 	kick.add_theme_font_size_override("normal_font_size", 12)
 	kick.add_theme_color_override("default_color", DmFrontUi.ORANGE)
-	kick.text = "THE OSSUARY COVENANT [color=#c6a4ff]  +  [/color] THE DIOCESE IS BURNING"
+	kick.text = "THE OSSUARY COVENANT [color=#c6a4ff]  ✦  [/color] THE DIOCESE IS BURNING"
 	v.add_child(kick)
 	v.add_child(DmUi.spacer(12))
 	_h1 = RichTextLabel.new()
@@ -166,12 +166,14 @@ func _build_story() -> VBoxContainer:
 func _build_card() -> PanelContainer:
 	var p := PanelContainer.new()
 	p.theme_type_variation = "DmPlate"
-	var sb := DmUi.box(Color(0.105, 0.075, 0.11, 0.98), Color(0.941, 0.914, 0.863, 0.35), 1, 3, Vector2(30, 28))
+	# .cw-login background: --cw-engrave over linear-gradient(150deg, rgba(29,20,30,.97), rgba(10,8,14,.98)): painted by DmPlateFill
+	var sb := DmUi.box(Color(0, 0, 0, 0), Color(0.941, 0.914, 0.863, 0.35), 1, 3, Vector2(30, 28))
 	sb.content_margin_bottom = 25
 	sb.shadow_color = Color(0, 0, 0, 0.8)
 	sb.shadow_size = 40
 	sb.shadow_offset = Vector2(0, 25)
 	p.add_theme_stylebox_override("panel", sb)
+	p.add_child(DmPlateFill.new())
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
 	p.add_child(v)
@@ -353,10 +355,7 @@ class _Sigil extends Control:
 		var c := size / 2.0
 		draw_circle(c, 23.0, Color(0.608, 0.361, 1.0, 0.13))
 		draw_arc(c, 23.5, 0, TAU, 48, Color("b58e6b"), 1.0, true)
-		# four-point star (✦)
-		var pts := PackedVector2Array()
-		for i in 8:
-			var a := -PI / 2.0 + i * PI / 4.0
-			var r := 11.0 if i % 2 == 0 else 3.2
-			pts.append(c + Vector2(cos(a), sin(a)) * r)
-		draw_colored_polygon(pts, Color("c6a4ff"))
+		# the web draws the glyph: ✦ (U+2726) in the numeric face at 28 px, #c6a4ff (the bundled symbol face carries it)
+		var f: Font = DmUi.font("numeric")
+		var gs := f.get_string_size("✦", HORIZONTAL_ALIGNMENT_LEFT, -1, 28)
+		draw_string(f, Vector2(c.x - gs.x * 0.5, c.y + 28.0 * 0.32), "✦", HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("c6a4ff"))

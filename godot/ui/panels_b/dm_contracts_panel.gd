@@ -139,7 +139,7 @@ func _contract_card(parent: Control, c: Dictionary) -> void:
 	(card.get_meta("panel") as Control).modulate.a = 0.55 if done else 1.0
 	var row := DmPb.hbox(10)
 	card.add_child(row)
-	row.add_child(DmPb.icon(rarity, 44.0))
+	row.add_child(DmPb.icon(rarity, 44.0, null, false, String(c.get("itemId", ""))))
 	var txt := DmPb.vbox(3)
 	row.add_child(txt)
 	var hd := DmPb.hbox(10)

@@ -59,12 +59,34 @@ const FONT_DIR := "res://ui/fonts/"
 
 static var _theme: Theme
 static var _fonts: Dictionary = {}
+static var _symbols: Font
+const SYMBOLS_FILE := "dm-symbols-dejavu.woff2"
 
 
 static func theme() -> Theme:
 	if _theme == null:
+		_install_symbols()
 		_theme = load(THEME_PATH) as Theme
 	return _theme
+
+
+## The four UI faces are latin subsets, so ✦ ▲ ◆ ★ ⚑ … fell through to whatever the OS had. The bundled symbol face (dm-symbols-dejavu.woff2) becomes
+## every face's first fallback, so those glyphs look the same on every machine (the web's `font-family` fell back to the system the same way, but only
+## on a machine that had them).
+static func _install_symbols() -> void:
+	if _symbols != null:
+		return
+	_symbols = load(FONT_DIR + SYMBOLS_FILE) as Font
+	for kind in ["display", "display_medium", "display_bold", "display_italic", "body", "body_medium", "body_bold", "body_italic", "numeric", "numeric_medium"]:
+		var f := font(kind)
+		if f is FontFile and _symbols != null:
+			(f as FontFile).fallbacks = [_symbols]
+
+
+## The symbol face itself (e.g. for a label that draws only glyphs, like the login sigil's ✦).
+static func symbols() -> Font:
+	_install_symbols()
+	return _symbols
 
 
 static func rarity_color(rarity: String) -> Color:
