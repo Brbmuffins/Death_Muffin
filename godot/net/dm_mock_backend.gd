@@ -36,6 +36,7 @@ var now_ms: Callable = Callable()
 var rng: Callable = Callable()
 var _last_saved := ""
 var _recipes_cache: Array = []
+var _sessions := DmOfflineSessions.new()
 
 func _init(path: String = "user://dm_offline_db.json") -> void:
 	persist_path = path
@@ -286,6 +287,14 @@ func _account_for(token: Variant) -> Variant:
 		return null
 	return db["accounts"].get(String(token).substr(8))
 
+## The account key that owns a character id ("" = none), for the party-session membership checks.
+func _character_owner(character_id: int) -> String:
+	for k in db["accounts"]:
+		var ch: Variant = db["accounts"][k].get("character")
+		if ch != null and int(ch["id"]) == character_id:
+			return String(k)
+	return ""
+
 func _own(acc: Dictionary, character_id: Variant) -> bool:
 	return acc["character"] != null and _to_num(character_id) == float(acc["character"]["id"])
 
@@ -377,6 +386,9 @@ func _route(method: String, p: String, query: String, body: Dictionary, token: V
 		acc["slots"] = [{"slot_index": 0, "item_id": "staff_oak", "quantity": 1, "equipped": 0}, {"slot_index": 1, "item_id": "flask_hp_minor", "quantity": 3, "equipped": 0}]
 		return {"status": 200, "body": _character_view(acc)}
 
+	# Party sessions (same API as the VPS backend, SESSION-REPORTS.md): an offline solo session reports through the identical client path.
+	if p == "/api/sessions" or p.begins_with("/api/sessions/"):
+		return _sessions.handle(method, p, body, String(token).substr(8), Callable(self, "_character_owner"), _now())
 	if method == "GET":
 		return _route_get(acc, p)
 	if method == "POST":

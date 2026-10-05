@@ -291,6 +291,39 @@ func save_progress(payload: Dictionary) -> DmResult:
 func report_kills(character_id: int, reports: Array) -> DmResult:
 	return await _post("/api/kills/report", {"characterId": character_id, "reports": reports})
 
+# --- Party sessions (host-reported kills; server/death-muffin/backend/SESSION-REPORTS.md). The offline backend answers the same calls. ---
+
+## Host: open a session with one of its own characters. data: {sessionId, status, members, limits}
+func session_open(character_id: int) -> DmResult:
+	return await _post("/api/sessions", {"characterId": character_id})
+
+## Member: attach to a session with your own account and character.
+func session_join(session_id: String, character_id: int) -> DmResult:
+	return await _post("/api/sessions/%s/join" % session_id, {"characterId": character_id})
+
+## Member: "I was there". `seen_kills` = kills this client saw itself (cumulative). data: {ok} or {throttled}
+func session_heartbeat(session_id: String, character_id: int, seen_kills: int = 0) -> DmResult:
+	return await _post("/api/sessions/%s/heartbeat" % session_id, {"characterId": character_id, "kills": seen_kills})
+
+## Member leaves (or the host removes a member).
+func session_leave(session_id: String, character_id: int) -> DmResult:
+	return await _post("/api/sessions/%s/leave" % session_id, {"characterId": character_id})
+
+## Host: one kill batch. members: [{characterId, groups, bosses}] (groups/bosses as in report_kills). `batch` must increase per session.
+## data: {batch, mode, members: [{characterId, credited, accepted: {kills, bosses}, reason?}]} or {duplicate: true}
+func session_report(session_id: String, batch: int, members: Array) -> DmResult:
+	return await _post("/api/sessions/%s/report" % session_id, {"batch": batch, "members": members})
+
+## Host: end the session, optionally with a final batch ({batch, members}) and a numeric summary.
+func session_end(session_id: String, final_batch: Dictionary = {}, summary: Dictionary = {}) -> DmResult:
+	var body := final_batch.duplicate()
+	if not summary.is_empty():
+		body["summary"] = summary
+	return await _post("/api/sessions/%s/end" % session_id, body)
+
+func session_get(session_id: String) -> DmResult:
+	return await _rget("/api/sessions/%s" % session_id)
+
 # Necromancer progression. All replies: {progress, gold?, earned?, cost?}. A 404 on necro_get = older server, keep local storage.
 func necro_get(character_id: int) -> DmResult:
 	return await _rget("/api/necro-progress/%d" % character_id)
