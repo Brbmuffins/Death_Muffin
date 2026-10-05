@@ -401,7 +401,9 @@ func update(dt: float, cam: Camera3D) -> void:
 	if _live.is_empty():
 		return
 	var cam_pos := cam.global_position if cam != null else Vector3.ZERO
-	var planes: Array[Plane] = cam.get_frustum() if cam != null else []
+	var planes: Array[Plane] = []
+	if cam != null:
+		planes.assign(cam.get_frustum())
 	var cull := float(_caps.get("cull_distance", 40)) + absf(cam_pos.y)
 	var fade_out := float(_caps.get("fade_out", 0.3))
 	for i in range(_live.size() - 1, -1, -1):
@@ -484,8 +486,13 @@ func _release(live: Live) -> void:
 
 
 func _stash(inst: Inst) -> void:
+	# The scene that hosted the effect may already be freed (e.g. the world was torn down while it played).
+	if not is_instance_valid(inst.root):
+		_built.erase(inst)
+		return
 	for p in inst.particles:
-		(p as GPUParticles3D).emitting = false
+		if is_instance_valid(p):
+			(p as GPUParticles3D).emitting = false
 	if inst.root.get_parent() != null:
 		inst.root.get_parent().remove_child(inst.root)
 	var list: Array = _pool.get(inst.id, [])
@@ -509,7 +516,12 @@ func clear() -> void:
 func dispose() -> void:
 	clear()
 	for inst in _built:
-		if is_instance_valid((inst as Inst).root):
-			(inst as Inst).root.queue_free()
+		var root: Node = (inst as Inst).root
+		if is_instance_valid(root):
+			# Pooled roots are orphans (no parent): free them now, before the rendering server shuts down at quit.
+			if root.get_parent() == null:
+				root.free()
+			else:
+				root.queue_free()
 	_built.clear()
 	_pool.clear()

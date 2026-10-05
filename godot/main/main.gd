@@ -22,6 +22,7 @@ func _ready() -> void:
 	idle_cam.name = "IdleCamera"
 	add_child(idle_cam)
 	idle_cam.current = true
+	add_child(DmPerfOverlay.new())   # F3 / ?fps overlay, as the web
 	var args := OS.get_cmdline_user_args()
 	mode = "online" if "--online" in args else "offline"
 	if mode == "offline":

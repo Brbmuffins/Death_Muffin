@@ -536,6 +536,10 @@ func _on_game_event(event_id: String, ctx: Dictionary) -> void:
 			hud.hit_flash()
 		"slot_flash":
 			hud.slot_flash(int(ctx.get("slot", 0)))
+		"panel_toggle":
+			toggle_panel(String(ctx.get("panel", "")))
+		"tip":
+			counsel.show(String(ctx.get("id", "")), float(ctx.get("delay_ms", 0.0)), ctx.get("opts", {}))
 		_:
 			counsel.notify(event_id, ctx)
 	if event_id == "level_up":
