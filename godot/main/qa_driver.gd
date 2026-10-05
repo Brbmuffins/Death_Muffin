@@ -12,11 +12,14 @@ var game: DmGame
 var _cast_t := 0.0
 var _setup := false
 var depths_mode := false
+var boss_id := ""
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a == "--qa":
 			active = true
+		elif a.begins_with("--boss="):
+			boss_id = a.substr(7)
 		elif a == "--depths":
 			depths_mode = true
 		elif a.begins_with("--shots="):
@@ -31,6 +34,36 @@ func _process(dt: float) -> void:
 		var m := get_tree().root.get_node_or_null("Main/Game")
 		if m != null and m.ready_:
 			game = m
+		return
+	if boss_id != "":
+		var def: Dictionary = DmContent.boss(boss_id)
+		if not _setup and t > 4.0:
+			_setup = true
+			var ar: Dictionary = def["arena"]
+			game.prog.local["shards"] = 50
+			game.character["level"] = 30
+			game.refresh_stats()
+			game.p["x"] = float(ar["x"])
+			game.p["z"] = float(ar["z"]) + float(ar["r"]) * 0.5
+			game.p["area"] = def["area"]
+			game.camera.snap(Vector3(game.player.x, 0, game.player.z))
+			game.actions.summon_boss_normal(boss_id)
+		if _setup:
+			game.p["hp"] = game.player.max_hp()
+			game.p["resource"]["value"] = 100.0
+			_cast_t -= dt
+			if _cast_t <= 0.0 and game.sim.boss.state.active:
+				_cast_t = 0.5
+				var b = game.sim.boss.state
+				game.input.set_ground(b.x, b.z)
+				game.abilities.cast(game.primary, {"x": b.x, "z": b.z, "boss": true}, game.now_ms)
+				game.abilities.cast("miasma", {"x": b.x, "z": b.z, "boss": true}, game.now_ms)
+		if t > float(n + 1):
+			n += 1
+			DirAccess.make_dir_recursive_absolute(shots)
+			get_viewport().get_texture().get_image().save_png("%s/qa_%02d.png" % [shots, n])
+		if t > seconds:
+			get_tree().quit()
 		return
 	if depths_mode:
 		if not _setup and t > 4.0:
