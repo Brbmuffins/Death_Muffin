@@ -9,6 +9,7 @@ var mode := "offline"
 var flow: DmFrontFlow
 var game: DmGame
 var ui: Node
+var perf: DmPerfOverlay
 var api: DmApi
 var _mock: DmMockBackend
 var _transport: DmHttpTransport
@@ -16,6 +17,11 @@ var _transport: DmHttpTransport
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
+	# The Vfx autoload reads the current 3D camera every frame: keep one alive behind the login screens (the world camera takes over).
+	var idle_cam := Camera3D.new()
+	idle_cam.name = "IdleCamera"
+	add_child(idle_cam)
+	idle_cam.current = true
 	var args := OS.get_cmdline_user_args()
 	mode = "online" if "--online" in args else "offline"
 	if mode == "offline":
@@ -84,6 +90,8 @@ func _enter_world(character: Dictionary, session) -> void:
 	game = DmGame.new()
 	game.name = "Game"
 	add_child(game)
+	perf = DmPerfOverlay.new()
+	game.add_child(perf)
 	game.left_world.connect(_on_left_world)
 	game.world_restart.connect(func(ch: Dictionary): _on_world_restart(ch))
 	await game.start(character, api, {"local_progress": mode == "offline", "realtime": mode == "online", "name": token_username(api.get_token())})

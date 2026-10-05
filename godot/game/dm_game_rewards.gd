@@ -233,7 +233,6 @@ func on_kill(ev: Dictionary) -> void:
 	if ev.get("killer") == g.self_id and not area_def["safe"]:
 		var up: Variant = chain.hit(g.now_ms)
 		chain_mult = chain.mult()
-		g.emit_game_event("chain_pulse")
 		if up != null:
 			on_chain_tier(String(up["name"]), float(up["bonus"]), float(ev["x"]), float(ev["z"]))
 	# The week's Omen pays a little extra on every kill, and doubles or more the shards elites drop.
@@ -334,7 +333,6 @@ func gain_xp(xp_in: float, x: float, z: float) -> void:
 			if learned.size() > 3:
 				nm = "%s and %d more" % [nm, learned.size() - 3]
 			g.game_event.emit("toast", {"text": "%s %s your Grimoire. Click here, press L or use the Grimoire button to place it." % [nm, "join" if learned.size() > 1 else "joins"], "kind": "good", "action": "grimoire"})
-			g.emit_game_event("grimoire_pulse")
 		var bc: Dictionary = g.counsel_bag_ctx()
 		g.emit_game_event("level_up", {"level": int(lvl), "grimoire_unlocked": g.grimoire_unlocked(), "family": g.discipline["family"], "learned_rites": bc["learned_rites"], "rune_count": bc["rune_count"]})
 		g.play_sfx("levelUp")
@@ -408,8 +406,35 @@ func check_milestones() -> void:
 	store.set_item(MILESTONE_KEY + str(g.hero_id), JSON.stringify(claimed))
 
 
-func tick_milestones(_dt: float) -> void:
-	pass
+var seen_wave_tier := -1.0
+var night_k := 0.0
+var _moon_base := -1.0
+var _hemi_base := -1.0
+
+
+## Wave-milestone banners and the Nightfall light dimming (WorldScene.tickMilestones). Intensity only: never toggle light visibility.
+func tick_milestones(dt: float) -> void:
+	var tier: float = boss_wave_tier()
+	if tier != seen_wave_tier:
+		if seen_wave_tier >= 0.0:
+			for m in DmContent.get_export("upgrades", "WAVE_MILESTONES"):
+				if tier >= float(m["tier"]) and seen_wave_tier < float(m["tier"]):
+					g.banner(String(m["name"]), String(m["blurb"]), 3200)
+				elif tier < float(m["tier"]) and seen_wave_tier >= float(m["tier"]):
+					g.toast("%s fades" % m["name"])
+		seen_wave_tier = tier
+	var target := 1.0 if DmUpgrades.milestone_active("nightfall", tier) else 0.0
+	night_k += (target - night_k) * minf(1.0, dt * 0.8)
+	if g.builder == null:
+		return
+	if _moon_base < 0.0:
+		_moon_base = g.builder.moon.light_energy
+		_hemi_base = g.builder.env.ambient_light_energy
+	var acre: bool = g.area_id == "acre" or g.area_id == "alchemist_wing"
+	var night := 0.0 if acre else night_k
+	var orchard: bool = g.area_id == "acre"
+	g.builder.moon.light_energy = _moon_base * ((3.4 if orchard else (2.65 if acre else 2.4)) / 2.4) * (1.0 - 0.6 * night)
+	g.builder.env.ambient_light_energy = _hemi_base * ((2.0 if orchard else (1.12 if acre else 0.95)) / 0.95) * (1.0 - 0.3 * night)
 
 
 ## First kill of an area boss by this character? Recorded in the local store (the web's browser trophy record).

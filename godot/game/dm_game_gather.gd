@@ -87,9 +87,19 @@ func on_cycle(def: Dictionary, success: bool, node: Dictionary) -> void:
 		g.vfx.emit({"x": node["x"], "y": 1.6 if def["kind"] == "tree" else 0.5, "z": node["z"], "count": 6, "color": Color.html(String(sk["color"])).to_rgba32() >> 8, "spread": 0.35, "speed": 1.4, "up": 1.0, "life": 0.5, "size": 0.14})
 
 
+## A charm turned up: a rare moment worth a banner (gathering, laborers and the garden all funnel through here).
+func celebrate_charms(items: Array) -> void:
+	for it in items:
+		for pet in DmContent.get_export("cosmetics", "PETS"):
+			if pet["charm"] == it["itemId"]:
+				g.banner("A rare find!", "%s: adopt it in Character → Capes & Pets (N)" % DmContent.item(String(it["itemId"]))["name"], 4200)
+				g.play_sfx("skillUp")
+
+
 func on_reply(r: Dictionary) -> void:
 	if session != null:
 		session.record(r)
+	celebrate_charms(r.get("items", []))
 	for it in r.get("items", []):
 		g.inventory.add({"item_id": it["itemId"], "quantity": int(it["qty"])})
 	var total := 0
@@ -108,7 +118,6 @@ func on_reply(r: Dictionary) -> void:
 	for it in r.get("items", []):
 		if it["itemId"] != main_item:
 			g.toast("Found: %s%s" % [DmContent.item(String(it["itemId"]))["name"], (" ×%d" % int(it["qty"])) if int(it["qty"]) > 1 else ""], "good")
-	g.emit_game_event("gather_reply", r)
 
 
 func on_stop(reason: String, message: String) -> void:
@@ -125,7 +134,6 @@ func on_stop(reason: String, message: String) -> void:
 	if g.avatar != null:
 		g.avatar.set_gathering_tool("", 0)
 		g.avatar.release_gesture()
-	g.emit_game_event("gather_stopped", {"reason": reason})
 	_end_session(reason)
 
 

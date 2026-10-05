@@ -104,6 +104,10 @@ var recall_at := 0.0
 var last_combat_at := -1e9
 var last_hurt_at := -1e9
 var coop: DmGameCoop
+var my_cosmetics := {"cape": "", "pet": ""}
+var pet_view: DmPetView = null
+var npc_views: DmNpcViews = null
+var npc_new: Dictionary = {}           # npc id -> has something new to say (the UI sets it from the guidance)
 var party_code: String:
 	get: return coop.party_code if coop != null else ""
 var mirror: DmSimMirror:
@@ -243,6 +247,17 @@ func _is_dev_account() -> bool:
 	return DmMain.token_username(tok).to_lower() in DEV_ACCOUNTS
 
 
+## The Omen tints the sky over every area's own palette (half-way, so each place stays itself) and thickens or thins the fog in hunting grounds.
+func _omen_light(area: String) -> void:
+	var def: Dictionary = DmContent.area(area)
+	var sky: Dictionary = omen["sky"]
+	builder.moon.light_color = builder.moon.light_color.lerp(Color.hex(int(sky["moon"]) * 256 + 255), 0.5)
+	var m: float = float(def["ambient"].get("fogMult", 1.0))
+	if not def["safe"]:
+		m *= float(sky["fogMult"])
+	builder.env.fog_depth_end = 130.0 / maxf(0.2, m)
+
+
 func _build_hotbar() -> Array:
 	var sig: String = kit["signatures"].get(String(DmCharacterBuild.discipline_for(float(character["class_index"]))["id"]), "")
 	var out: Array = loadout.duplicate()
@@ -261,6 +276,7 @@ func _omen_for(ms: float) -> Dictionary:
 func _build_visual_world() -> void:
 	builder = DmWorldBuilder.new()
 	builder.name = "World"
+	builder.npcs_enabled = false
 	world_root.add_child(builder)
 	builder.build(_world_data)
 	camera = DmCameraRig.new()
@@ -336,6 +352,8 @@ func _make_visual_components() -> void:
 	_dress_waystones()
 	lootview.dropped_sound.connect(func(id: String, pos: Vector3): play_sfx(id, pos.x, pos.z))
 	lootview.pickup_fx.connect(func(pos: Vector3, color: Color): vfx.emit({"x": pos.x, "y": pos.y, "z": pos.z, "count": 8, "color": color.to_rgba32() >> 8, "spread": 0.3, "speed": 1.2, "up": 1.0, "life": 0.4, "size": 0.14}))
+	npc_views = DmNpcViews.new()
+	npc_views.setup(world_root)
 	audio_hooks = DmAudioHooks.new()
 	audio_hooks.name = "AudioHooks"
 	add_child(audio_hooks)
@@ -383,6 +401,7 @@ func _load_server_data() -> void:
 	if ch.ok and ch.data is Dictionary:
 		chronicle.set_data(ch.data)
 	await gatherer.load_professions()
+	await load_cosmetics()
 	character_changed.emit()
 	inventory_changed.emit()
 	progress_changed.emit()
@@ -395,6 +414,39 @@ func refresh_character() -> void:
 			character[k] = r.data[k]
 		refresh_stats()
 		character_changed.emit()
+	await load_cosmetics()
+
+
+## The server's saved cape and companion (applyCosmetics): dress the hero, tell the party.
+func load_cosmetics() -> void:
+	var r: DmResult = await api.get_cosmetics(hero_id)
+	if r.ok and r.data is Dictionary and r.data.get("selected") is Dictionary:
+		apply_cosmetics(r.data["selected"])
+
+
+func apply_cosmetics(sel: Dictionary) -> void:
+	var cape: String = String(sel["cape"]) if sel.get("cape") != null else ""
+	var pet: String = String(sel["pet"]) if sel.get("pet") != null else ""
+	my_cosmetics = {"cape": cape, "pet": pet}
+	if avatar != null:
+		avatar.set_cape(cape)
+	var def: Variant = _pet_def(pet)
+	if (pet_view.id() if pet_view != null else "") != (String(def["id"]) if def != null else ""):
+		if pet_view != null:
+			pet_view.dispose()
+			pet_view = null
+		if def != null and visual:
+			pet_view = DmPetView.new(world_root, def, player.x, player.z)
+	coop.broadcast_gear(true)
+
+
+static func _pet_def(id: String) -> Variant:
+	if id == "":
+		return null
+	for p in DmContent.get_export("cosmetics", "PETS"):
+		if p["id"] == id:
+			return p
+	return null
 
 
 func refresh_inventory() -> void:
@@ -669,10 +721,8 @@ func _update_movement_mods() -> void:
 
 
 func handle_event(ev: Dictionary) -> void:
-	if ev["t"] == "boss" and input.telegraphs != null:
-		input.telegraphs.on_event(ev, now_ms)
-	if views != null:
-		pass
+	if ev["t"] == "boss" and input.telegraphs != null and event_fx == null:
+		input.telegraphs.on_event(ev, now_ms)   # (DmEventFx feeds them itself, as onBossEvent does)
 	# The caster hears the host's answers first (essence refunds, barrier, wisps, souls).
 	var was_charged := DmPlayerRules.souls_charged(p)
 	abilities.handle_event(ev)
@@ -714,14 +764,72 @@ func _tick_visuals(dt: float, now: float) -> void:
 		views.sync(sim.enemies, sim.thralls, vdt, player.x, player.z)
 		views.prune_corpses(sim.corpses)
 	var b := sim.boss.state
+	if npc_views != null:
+		_tick_npcs(vdt)
+		npc_views.hover_id = ""
+		if input.hover != null and input.hover["kind"] == "interact" and input.hover["it"]["kind"] == "npc":
+			for nid in DmContent.get_export("npcs", "NPC_IDS"):
+				if String(input.hover["it"]["id"]) == DmGuidance.npc_interactable_id(String(nid)):
+					npc_views.hover_id = String(nid)
+		npc_views.reduce_motion = bool(settings["reduce_motion"])
+		npc_views.update(vdt, player.x, player.z, func(id: String) -> bool: return npc_new.get(id, false))
+	if pet_view != null:
+		pet_view.update(vdt, player.x, player.z, player.facing)
 	var bv: Variant = boss_view(String(b.id) if b.id != "" else "prelate")
 	if bv != null:
 		bv.sync(b, vdt)
 	var cx := player.x
 	var cz := player.z
 	camera.update_rig(dt, Vector3(cx, 0, cz))
+	builder.update_occlusion(camera, Vector3(player.x, 0, player.z))
 	builder.update_streaming(camera.focus.x, camera.focus.z)
 	builder.update_light_lod(camera.focus.x, camera.focus.z)
+
+
+var _npc_t := 0.0
+
+## tickGuidance: who has something new to say (the "!"), first sight of a person, the conversation range.
+func _tick_npcs(dt: float) -> void:
+	var talking := ""
+	if dialogue_open:
+		talking = String(ui.dialogue.npc)
+		if talking != "" and npc_views.distance_to(talking, player.x, player.z) > NPC_TALK_RANGE + 3.5:
+			ui.dialogue.close()
+			talking = ""
+	npc_views.set_talking(talking)
+	_npc_t -= dt
+	if _npc_t > 0.0 or ui == null or ui.get("memory") == null:
+		return
+	_npc_t = 0.5
+	var st: Dictionary = ui.guidance_state()
+	for nid in DmContent.get_export("npcs", "NPC_IDS"):
+		npc_new[nid] = ui.memory.has_something_new(String(nid), st)
+		if npc_views.distance_to(String(nid), player.x, player.z) < 14.0 and ui.memory.first_sight(String(nid)):
+			emit_game_event("npc_first_sight")
+
+
+const REMOTE_GESTURE := {"exhumed": "exhume", "litanyResult": "black_litany", "detonated": "corpse_explosion", "mantle": "bone_mantle", "offering": "grave_offering",
+	"rend": "command_rend", "rally": "rally_dead", "seeded": "carrion_seed"}
+
+var empower_pending: String:
+	get: return rewards.empower_pending if rewards != null else ""
+
+
+## Rite events that carry their caster: a remote necromancer makes the same weapon gesture we would (castClips).
+func remote_gesture(ev: Dictionary) -> void:
+	var id: String = REMOTE_GESTURE.get(ev["t"], "")
+	var by: Variant = ev.get("by")
+	if id == "" or by == null or String(by) == self_id or not remotes.has(String(by)):
+		return
+	var r: Dictionary = remotes[String(by)]
+	if r.get("avatar") != null:
+		r["avatar"].cast("dig" if (id == "exhume" or id == "carrion_seed") else "cast", 2.0, r["facing"], float(DmAbilities.cast_flow(id)["gestureSeconds"]), id)
+
+
+func boss_view_hide(id: String) -> void:
+	var v: Variant = boss_view(id)
+	if v != null:
+		v.hide()
 
 
 func boss_view(id: String) -> Variant:
@@ -825,7 +933,10 @@ func do_cast(id: String, target: Dictionary, now: float) -> String:
 # ---- contract methods ----------------------------------------------------------------------------------------------------------
 
 func cast(slot: int) -> void:
-	input.cast_slot(slot)
+	if slot <= 0:
+		input.cast_slot_primary()   # the HUD's LMB socket
+	else:
+		input.cast_slot(slot)
 
 
 func use_belt(slot: String) -> void:
@@ -866,7 +977,6 @@ func buy_upgrade(kind: String) -> void:
 	if kind != "wave":
 		_refresh_standing_thralls(before)
 	play_sfx("shard")
-	game_event.emit("upgrade_bought", {"kind": kind})
 
 
 func set_wave_tier(tier: float) -> void:
@@ -938,6 +1048,12 @@ func _on_difficulty(d: String) -> void:
 ## Records a Codex discovery (kind: dead | area): the UI's Codex journal listens for `codex` {kind, id}.
 func codex_discover(kind: String, id: String) -> void:
 	emit_game_event("codex", {"kind": kind, "id": id})
+
+
+## Opens or toggles one of the UI's windows (inventory, professions, labor, ...).
+func open_panel(panel: String) -> void:
+	if ui != null and ui.has_method("toggle_panel"):
+		ui.toggle_panel(panel)
 
 
 func travel(area: String) -> void:
