@@ -35,8 +35,9 @@ static func ensure_actions() -> void:
 				var ev := InputEventKey.new()
 				ev.physical_keycode = k
 				InputMap.action_add_event(a, ev)
-	# The rites track's caster polls these two when the world offers aim_point() (hold = repeat).
-	for pair in [[&"dm_primary", MOUSE_BUTTON_LEFT], [&"dm_secondary", MOUSE_BUTTON_RIGHT], [&"rite_primary", MOUSE_BUTTON_LEFT]]:
+	# No rite_primary on LMB: _primary_click owns the left click (enemy = cast, ground = walk, as the current game); binding it made every
+	# ground click also fire Bone Needle through the caster's hold poll.
+	for pair in [[&"dm_primary", MOUSE_BUTTON_LEFT], [&"dm_secondary", MOUSE_BUTTON_RIGHT]]:
 		if not InputMap.has_action(pair[0]):
 			InputMap.add_action(pair[0])
 			var m := InputEventMouseButton.new()

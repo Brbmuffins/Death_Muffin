@@ -30,7 +30,7 @@ Rites (`DmRiteCaster`, `next/rites/`): attached as `Rites` to every body on ever
 - `enemies_in_radius(pos: Vector3, r: float) -> Array[DmEnemy]` (living, flat, measured to the enemy's edge)
 - `enemy_by_id(id: int) -> DmEnemy`, `enemy_id(enemy: Node) -> int`
 - `aim_point() -> Vector3`, `aim_target_id() -> int` (local cursor), `rite_build(peer_id: int) -> Dictionary`
-- Input: runtime InputMap actions `rite_primary` (LMB), `rite_1` (key 1), plus `dm_primary`, `dm_secondary` (RMB), `dm_hotbar_1..4`, `dm_move_*`;
+- Input: runtime InputMap actions `rite_1` (key 1; LMB is handled by the click handler, not `rite_primary`), plus `dm_primary`, `dm_secondary` (RMB), `dm_hotbar_1..4`, `dm_move_*`;
   signal `input.hotbar(slot: int, aim: Vector3, enemy_id: int)` (0 = LMB, 1-4, 5 = RMB) for UI/other casters.
 Rewards (`DmSessionRewards`, host only): created in `start()` with one `DmRewardsMember` per player (`_on_player_joined` adds joiners with no api yet).
 - `signal enemy_spawned(enemy: DmEnemy)` (every peer, once in tree); enemy metas `dm_id`, `dm_level`, `dm_elite`, `dm_area`
