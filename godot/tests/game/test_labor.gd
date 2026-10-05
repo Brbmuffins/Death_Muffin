@@ -216,7 +216,7 @@ func _views() -> void:
 	check(by[0]["tools"] == ["tool_hatchet"] and by[1]["tools"] == ["tool_pickaxe"] and by[2]["tools"] == ["tool_spade"], "each laborer holds its skill's tool")
 	check(by[0]["ready"] and not by[1]["ready"] and by[2]["full"], "ready / full flags from the view %s" % str([by[0], by[1], by[2]]))
 	var tip0 := lv.tip(0)
-	check(tip0.begins_with("<b>Grave Laborer · Woodcutting · 2 h 0 m · ready to collect</b>"), "tip text: %s" % tip0)
+	check(tip0.begins_with("<b>Grave Laborer · Woodcutting · 2 h 0 m · ready to collect</b>"), "tip text: %s" % tip0)
 	check(lv.tip(2).contains("full, collect them") and lv.tip(1).contains("working") and lv.tip(3) == "" and lv.tip(9) == "", "tip states + missing slot %s" % str([lv.tip(1), lv.tip(2)]))
 	check(lv.tip(0).contains("click to open the Laborers (H)"), "tip hint line")
 	lv.set_hover(1)
