@@ -549,6 +549,12 @@ func update_shadow_cells(fx: float, fz: float, dt: float) -> void:
 	if _shadow_t > 0.0:
 		return
 	_shadow_t = 0.25
+	# A rebuilt Depths floor frees its prop cells (clear_depths_floor): drop those entries.
+	var i := _shadow_cells.size() - 1
+	while i >= 0:
+		if not is_instance_valid(_shadow_cells[i].node):
+			_shadow_cells.remove_at(i)
+		i -= 1
 	for c in _shadow_cells:
 		var dx := maxf(maxf(float(c.x0) - fx, fx - float(c.x1)), 0.0)
 		var dz := maxf(maxf(float(c.z0) - fz, fz - float(c.z1)), 0.0)
