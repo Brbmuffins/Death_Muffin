@@ -245,6 +245,24 @@ func _footprint_of(tex_name: String) -> String:
 	return "disc" if tex_name in ["disc", "glow", "sigil", "cracks"] else "quad"
 
 
+## Loading screen (DmWarmup): one short decal per texture x blend x order, and one flash per texture, at `at`, so every decal/sprite
+## layer and its material exists and is drawn (compiled) before the first fight instead of on the first wave's cracks and rings.
+func warm_layers(at: Vector3) -> Array:
+	# Long-lived on purpose: warm-up frames take seconds while shaders compile, and a short decal expired before it was ever drawn.
+	# The caller kills the returned handles when the loading screen ends.
+	var out: Array = []
+	var names: Array = DmFxTex.PROCEDURAL.duplicate()
+	names.append_array(DmFxTex.IMAGES.keys())
+	for nm in names:
+		for blend in ["add", "mix"]:
+			for kind in ["friendly", "hero", "danger"]:
+				out.append(decal({"tex": nm, "x": at.x, "z": at.z, "r": 1.0, "duration": 600.0, "opacity": 0.5, "blending": blend, "danger": kind == "danger", "hero": kind == "hero"}))
+		out.append(flash({"tex": nm, "x": at.x, "y": at.y + 1.0, "z": at.z, "size": 1.0, "duration": 600.0}))
+	emit({"x": at.x, "y": at.y + 1.0, "z": at.z, "count": 4, "color": 0xffffff, "life": 30.0})
+	emit_smoke({"x": at.x, "y": at.y + 1.0, "z": at.z, "count": 4, "color": 0x888888, "life": 30.0})
+	return out
+
+
 func _decal_layer(tex: Texture2D, additive_blend: bool, order: int, outline: Variant) -> DmFxLayer:
 	var tname := DmFxTex.name_of(tex)
 	var key := "%s|%s|%d" % [tname, additive_blend, order]
@@ -1014,17 +1032,12 @@ func update(dt: float, real_dt: float) -> void:
 	for key in _decal_layers.keys():
 		var l: DmFxLayer = _decal_layers[key]
 		l.flush()
-		l.idle_s = 0.0 if not l.items.is_empty() else l.idle_s + real_dt
-		if l.idle_s > 5.0:
-			l.dispose()
-			_decal_layers.erase(key)
+		# Idle layers are kept (hidden while empty, see DmFxLayer.flush): disposing them after 5 s idle meant the next wave
+		# rebuilt each one (new MultiMesh + material) on its first frame, undoing the loading-screen warm-up.
 	for key in _sprite_layers.keys():
 		var l2: DmFxLayer = _sprite_layers[key]
 		l2.flush()
-		l2.idle_s = 0.0 if not l2.items.is_empty() else l2.idle_s + real_dt
-		if l2.idle_s > 5.0 and l2 != _glow_layer:
-			l2.dispose()
-			_sprite_layers.erase(key)
+
 	_beam_layer.flush()
 	_update_projectiles(dt)
 	_update_spikes()

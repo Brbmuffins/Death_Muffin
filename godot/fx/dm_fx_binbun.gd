@@ -157,6 +157,23 @@ func warm(ids: Array, at: Vector3) -> Array:
 	return out
 
 
+## Restart warmed instances at `at` (DmWarmup runs one per lighting pass: an effect that finished its animation draws nothing).
+func rewarm(insts: Array, at: Vector3) -> void:
+	for inst in insts:
+		var i2: Inst = inst
+		if not is_instance_valid(i2.root):
+			continue
+		i2.root.position = at
+		i2.root.visible = true
+		for k in i2.particles.size():
+			var gp := i2.particles[k] as GPUParticles3D
+			gp.emitting = true
+			gp.restart()
+		if i2.has_anim and i2.ap != null:
+			i2.ap.stop()
+			i2.ap.play(i2.anim_name)
+
+
 func warm_end(insts: Array) -> void:
 	for inst in insts:
 		if is_instance_valid((inst as Inst).root):
