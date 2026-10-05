@@ -44,7 +44,7 @@ func _ready() -> void:
 	bg.color = DmUi.VOID_950
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	add_child(DmNecroBackdrop.new())
+	add_child(DmNecroBackdrop.make_layer())
 	add_child(DmFrontUi.h_gradient(Color(0.027, 0.024, 0.039, 0.7), Color(0.027, 0.024, 0.039, 0.22), 0.56, Color(0.027, 0.024, 0.039, 0.55)))
 	var scroll := ScrollContainer.new()
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

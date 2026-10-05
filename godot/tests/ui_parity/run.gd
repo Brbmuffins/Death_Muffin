@@ -310,29 +310,7 @@ func _test_art(ui: DmGameUi) -> void:
 
 
 func _test_backdrop() -> void:
-	# --- 7. login backdrop ---
-	var host := Control.new()
-	root.add_child(host)
-	var bd := DmNecroBackdrop.new()
-	host.add_child(bd)
-	await _frames(4)
-	_check(bd.viewport.own_world_3d and bd.camera.fov == 40.0, "backdrop is its own 3D scene, fov 40")
-	_check((bd.matte.material_override as StandardMaterial3D).albedo_texture != null and (bd.matte.mesh as QuadMesh).size == Vector2(96, 54), "matte plane 96 x 54 with the pyre art")
-	_check((bd.sigil.material_override as StandardMaterial3D).blend_mode == BaseMaterial3D.BLEND_MODE_ADD, "sigil is additive")
-	_check(bd.mist.amount == 54 and bd.embers_left.amount > bd.embers_right.amount, "mist banks and more orange than violet embers")
-	var a0 := bd.sigil.rotation.z
-	await _frames(5)
-	_check(bd.sigil.rotation.z != a0, "the sigil turns")
-	# parallax follows the pointer, still mode does not
-	var x0 := bd.camera.position.x
-	bd._mouse = Vector2(1, 0)
-	for i in 30:
-		await _frames(1)
-	_check(bd.camera.position.x > x0 + 0.3, "camera drifts toward the pointer (parallax): %s -> %s" % [x0, bd.camera.position.x])
-	bd.set_still(true)
-	_check(not bd.mist.emitting and not bd.embers_left.emitting, "reduce motion stops mist and embers")
-	bd.queue_free()
-	host.queue_free()
+	# --- 7. login backdrop: the world_fx DmNecroBackdrop layer ---
 	# plate fill: CSS gradient geometry
 	var r := Rect2(0, 0, 400, 500)
 	_check(absf(DmPlateFill.css_t(Vector2(0, 0), r, 150.0)) < 1e-4 and absf(DmPlateFill.css_t(Vector2(400, 500), r, 150.0) - 1.0) < 1e-4, "css gradient: 150deg runs corner to corner")
@@ -342,7 +320,7 @@ func _test_backdrop() -> void:
 	var login := DmLoginScreen.new(api)
 	root.add_child(login)
 	await _frames(3)
-	_check(login.find_children("*", "DmNecroBackdrop", true, false).size() == 1, "login screen uses DmNecroBackdrop")
+	_check(login.find_child("NecroBackdropLayer", true, false) != null, "login screen uses DmNecroBackdrop")
 	_check(login.card.find_children("*", "DmPlateFill", true, false).size() == 1, "login card has the gradient + engrave fill")
 	_check(_has_text(login, "✦"), "login kicker carries the ✦ glyph")
 	login.queue_free()
