@@ -232,7 +232,7 @@ func on_primary_click() -> void:
 	var h: Variant = hover
 	var shift: bool = mouse["shift"]
 	if h != null and h["kind"] == "laborer" and not shift:
-		g.emit_game_event("labor_click")
+		g.open_panel("labor")
 		return
 	if h != null and h["kind"] == "node" and not shift:
 		attack_target = null

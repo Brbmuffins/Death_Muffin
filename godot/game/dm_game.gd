@@ -977,7 +977,6 @@ func buy_upgrade(kind: String) -> void:
 	if kind != "wave":
 		_refresh_standing_thralls(before)
 	play_sfx("shard")
-	game_event.emit("upgrade_bought", {"kind": kind})
 
 
 func set_wave_tier(tier: float) -> void:
@@ -1049,6 +1048,12 @@ func _on_difficulty(d: String) -> void:
 ## Records a Codex discovery (kind: dead | area): the UI's Codex journal listens for `codex` {kind, id}.
 func codex_discover(kind: String, id: String) -> void:
 	emit_game_event("codex", {"kind": kind, "id": id})
+
+
+## Opens or toggles one of the UI's windows (inventory, professions, labor, ...).
+func open_panel(panel: String) -> void:
+	if ui != null and ui.has_method("toggle_panel"):
+		ui.toggle_panel(panel)
 
 
 func travel(area: String) -> void:

@@ -145,7 +145,6 @@ func on_death() -> void:
 	g.chronicle.add("deaths")
 	if g.depths != null:
 		g.depths.on_player_death()
-	g.emit_game_event("death", {"show": true, "sub": "The Chapterhouse will call you back…"})
 	g.hero_died.emit()
 
 

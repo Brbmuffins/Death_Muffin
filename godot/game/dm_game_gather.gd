@@ -118,7 +118,6 @@ func on_reply(r: Dictionary) -> void:
 	for it in r.get("items", []):
 		if it["itemId"] != main_item:
 			g.toast("Found: %s%s" % [DmContent.item(String(it["itemId"]))["name"], (" ×%d" % int(it["qty"])) if int(it["qty"]) > 1 else ""], "good")
-	g.emit_game_event("gather_reply", r)
 
 
 func on_stop(reason: String, message: String) -> void:
@@ -135,7 +134,6 @@ func on_stop(reason: String, message: String) -> void:
 	if g.avatar != null:
 		g.avatar.set_gathering_tool("", 0)
 		g.avatar.release_gesture()
-	g.emit_game_event("gather_stopped", {"reason": reason})
 	_end_session(reason)
 
 

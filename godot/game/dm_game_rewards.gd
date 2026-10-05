@@ -233,7 +233,6 @@ func on_kill(ev: Dictionary) -> void:
 	if ev.get("killer") == g.self_id and not area_def["safe"]:
 		var up: Variant = chain.hit(g.now_ms)
 		chain_mult = chain.mult()
-		g.emit_game_event("chain_pulse")
 		if up != null:
 			on_chain_tier(String(up["name"]), float(up["bonus"]), float(ev["x"]), float(ev["z"]))
 	# The week's Omen pays a little extra on every kill, and doubles or more the shards elites drop.
@@ -334,7 +333,6 @@ func gain_xp(xp_in: float, x: float, z: float) -> void:
 			if learned.size() > 3:
 				nm = "%s and %d more" % [nm, learned.size() - 3]
 			g.game_event.emit("toast", {"text": "%s %s your Grimoire. Click here, press L or use the Grimoire button to place it." % [nm, "join" if learned.size() > 1 else "joins"], "kind": "good", "action": "grimoire"})
-			g.emit_game_event("grimoire_pulse")
 		var bc: Dictionary = g.counsel_bag_ctx()
 		g.emit_game_event("level_up", {"level": int(lvl), "grimoire_unlocked": g.grimoire_unlocked(), "family": g.discipline["family"], "learned_rites": bc["learned_rites"], "rune_count": bc["rune_count"]})
 		g.play_sfx("levelUp")

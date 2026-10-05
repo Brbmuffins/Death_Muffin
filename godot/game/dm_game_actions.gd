@@ -264,10 +264,10 @@ func interact(it: Dictionary) -> void:
 	g.input.pending_interact = null
 	g.player.stop()
 	match String(it["kind"]):
-		"inventory": g.emit_game_event("panel_toggle", {"panel": "inventory"})
-		"forge": g.emit_game_event("panel_toggle", {"panel": "forge"})
-		"professions": g.emit_game_event("panel_toggle", {"panel": "professions"})
-		"waystone": g.emit_game_event("panel_toggle", {"panel": "map"})
+		"inventory": g.open_panel("inventory")
+		"forge": g.station_interact.emit("workbench")
+		"professions": g.open_panel("professions")
+		"waystone": g.station_interact.emit("waystone")
 		"stair":
 			if g.depths != null:
 				g.depths.stair_clicked()
@@ -291,22 +291,22 @@ func interact(it: Dictionary) -> void:
 				g.gather.stop("panel")
 			g.play_sfx("click")
 			g.emit_game_event("cauldron_opened")
-			g.station_interact.emit("cauldron")
+			g.station_interact.emit(String(it["kind"]))
 		"reagents":
 			if g.gather != null:
 				g.gather.stop("panel")
 			g.play_sfx("click")
 			g.emit_game_event("reagent_shelf_opened")
-			g.station_interact.emit("reagents")
-		"upgrades": g.emit_game_event("panel_toggle", {"panel": "ascension"})
+			g.station_interact.emit("shelf")
+		"upgrades": g.station_interact.emit("altar")
 		"vault":
 			if g.gather != null:
 				g.gather.stop("panel")
-			g.emit_game_event("panel_toggle", {"panel": "vault"})
+			g.station_interact.emit("vault")
 		"grinder":
 			if g.gather != null:
 				g.gather.stop("panel")
-			g.emit_game_event("panel_toggle", {"panel": "salvage"})
+			g.station_interact.emit("grinder")
 		"npc":
 			for n in DmContent.get_export("npcs", "NPC_IDS"):
 				if String(it["id"]) == DmGuidance.npc_interactable_id(String(n)):
@@ -314,7 +314,7 @@ func interact(it: Dictionary) -> void:
 					return
 		"lectern":
 			g.emit_game_event("lectern_used")
-			g.emit_game_event("panel_toggle", {"panel": "codex"})
+			g.station_interact.emit("lectern")
 		"boss":
 			var id = boss_for_summon(String(it["id"]))
 			if id == "":
