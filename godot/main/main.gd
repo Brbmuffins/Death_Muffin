@@ -95,7 +95,8 @@ func _enter_world(character: Dictionary, session) -> void:
 	game.add_child(perf)
 	game.left_world.connect(_on_left_world)
 	game.world_restart.connect(func(ch: Dictionary): _on_world_restart(ch))
-	await game.start(character, api, {"local_progress": mode == "offline", "realtime": mode == "online", "name": token_username(api.get_token())})
+	# Offline progress goes through the offline mock backend (it persists under user:// and answers the Altar routes), like the server online.
+	await game.start(character, api, {"local_progress": false, "realtime": mode == "online", "name": token_username(api.get_token())})
 	ui = DmGameUi.new()
 	game.add_child(ui)
 	ui.setup(game)

@@ -39,4 +39,4 @@ Keys: DmGame owns 1-6 R Q Z X T WASD / arrows and the mouse (LMB click / hold-sh
 ## Not ported / placeholders
 - Occlusion is ported as dither shaders on walls and props (world/dm_occ_*.gdshader), applied to the builder's materials; floors and gates are not cut.
 - Co-op needs the live relay for a real session; it is tested through an in-process relay (tests/game/coop_run.gd). Perf beacon, release watcher (web reload prompt) and the DEV debug hooks are not ported.
-- The offline edition's mock backend stubs craft / gather / vault / contracts / garden / labor / necro purchases (net track); the game logic is complete, the server half is not.
+- The offline edition runs on godot/net/dm_mock_backend.gd, a port of src/net/mockBackend.ts covering every route the game calls (persisted under user://).
