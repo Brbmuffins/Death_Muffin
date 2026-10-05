@@ -300,6 +300,8 @@ func _make_visual_components() -> void:
 	if not visual:
 		return
 	vfx.binbun.enabled = String(settings["quality"]) == "high"
+	if vfx.binbun.enabled:
+		vfx.binbun.preload_ids(["toxic_puddle", "grave_hands_pulse", "dirge_area", "plague_bloom_area", "enemy_breach_rim", "crypt_mist", "bell_toll_ring", "miasma_cloud", "grave_frost_mist", "surge_eruption"])
 	_dress_hero()
 	_dress_waystones()
 	lootview.dropped_sound.connect(func(id: String, pos: Vector3): play_sfx(id, pos.x, pos.z))
@@ -379,7 +381,30 @@ func refresh_progress() -> void:
 	progress_changed.emit()
 
 
+## Counsel facts about the bag (WorldScene's inventory.onChange handlers).
+func counsel_bag_ctx() -> Dictionary:
+	var used := 0
+	var cand := false
+	for sl in inventory.slots:
+		if int(sl["slot_index"]) >= 0 and int(sl["slot_index"]) < DmLoot.bag_size() and not bool(sl.get("equipped", 0)):
+			used += 1
+			var t := String(sl.get("item_type", DmContent.item(String(sl["item_id"])).get("type", "")))
+			if t == "weapon" or t.begins_with("armor_"):
+				cand = true
+	var lvl := DmAbilities.rite_level(float(character["level"]), dev_access)
+	var learned := 0
+	for id in DmLoadout.assignable_rites(kit):
+		if DmAbilities.unlock_level(id) <= lvl:
+			learned += 1
+	var runes := 0
+	for k in DmRunes.owned_runes(inventory.slots).values():
+		runes += int(k)
+	runes += DmRunes.sockets_of(inventory.slots).size()
+	return {"slots_used": used, "bag_size": DmLoot.bag_size(), "family": discipline["family"], "kit_candidates": cand, "owns_rune": runes > 0, "learned_rites": learned, "rune_count": runes}
+
+
 func _on_inventory_changed(_s: Array) -> void:
+	emit_game_event("bag_changed", counsel_bag_ctx())
 	refresh_stats()
 	if avatar != null:
 		avatar.set_equipment(DmGear.equipped_by_slot(inventory.slots))
@@ -495,6 +520,16 @@ func _process(delta: float) -> void:
 	tick(minf(delta, MAX_DT))
 
 
+func _notification(what: int) -> void:
+	# The web's window blur: held keys and aiming are forgotten, the hero stops (unless it is gathering AFK).
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and ready_:
+		input.keys.clear()
+		input.mouse["shift"] = false
+		input.mouse["aiming"] = false
+		if not gatherer.afk:
+			player.stop()
+
+
 func _unhandled_input(ev: InputEvent) -> void:
 	if ready_ and input != null:
 		input.handle(ev)
@@ -567,6 +602,7 @@ func tick(dt: float) -> void:
 	if visual:
 		_tick_hud_state(now)
 	combat.tick_bond(now)
+	combat.tick_counsel(now)
 	rewards.tick_milestones(dt)
 	_tick_audio()
 
@@ -707,6 +743,7 @@ func _enter_area(area: String) -> void:
 			game_event.emit("area_first_entered", {"area": area})
 		if area == "acre":
 			game_event.emit("area_first_entered", {"area": area})
+	codex_discover("area", area)
 	psync.flush()
 	area_changed.emit(area)
 
@@ -847,6 +884,11 @@ func _on_difficulty(d: String) -> void:
 
 
 # ---- extras the UI calls (not in GAME_CONTRACT.md; see game/README.md) -----------------------------------------------------------
+
+## Records a Codex discovery (kind: dead | area | ...): the UI's Codex journal listens for `codex_discover` {kind, id}.
+func codex_discover(kind: String, id: String) -> void:
+	emit_game_event("codex_discover", {"kind": kind, "id": id})
+
 
 func travel(area: String) -> void:
 	actions.travel(area)

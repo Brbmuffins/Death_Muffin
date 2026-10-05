@@ -61,6 +61,22 @@ func _demo() -> void:
 	await _enter_world(c.data, api)
 
 
+## The account name the session token carries (web tokenUsername): "offline:<name>" or a JWT whose payload has `username`.
+static func token_username(token: String) -> String:
+	if token.begins_with("offline:"):
+		return token.substr(8)
+	var parts := token.split(".")
+	if parts.size() >= 2:
+		var b64 := String(parts[1]).replace("-", "+").replace("_", "/")
+		while b64.length() % 4 != 0:
+			b64 += "="
+		var raw := Marshalls.base64_to_raw(b64)
+		var j: Variant = JSON.parse_string(raw.get_string_from_utf8())
+		if j is Dictionary and j.get("username") is String:
+			return j["username"]
+	return "You"
+
+
 func _enter_world(character: Dictionary, session) -> void:
 	api = session
 	if flow != null:
@@ -72,7 +88,7 @@ func _enter_world(character: Dictionary, session) -> void:
 	var ui_script: Variant = load("res://game_ui/dm_game_ui.gd") if ResourceLoader.exists("res://game_ui/dm_game_ui.gd") else null
 	game.left_world.connect(_on_left_world)
 	game.class_changed.connect(func(ch: Dictionary): _on_class_changed(ch))
-	await game.start(character, api, {"local_progress": mode == "offline", "name": String(character.get("username", character.get("name", "You")))})
+	await game.start(character, api, {"local_progress": mode == "offline", "name": token_username(api.get_token())})
 	if ui_script != null:
 		ui = ui_script.new()
 		game.add_child(ui)

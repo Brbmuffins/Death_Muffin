@@ -335,7 +335,8 @@ func gain_xp(xp_in: float, x: float, z: float) -> void:
 				nm = "%s and %d more" % [nm, learned.size() - 3]
 			g.game_event.emit("toast", {"text": "%s %s your Grimoire. Click here, press L or use the Grimoire button to place it." % [nm, "join" if learned.size() > 1 else "joins"], "kind": "good", "action": "grimoire"})
 			g.emit_game_event("grimoire_pulse")
-		g.emit_game_event("level_up", {"level": int(lvl), "grimoire_unlocked": g.grimoire_unlocked(), "family": g.discipline["family"]})
+		var bc: Dictionary = g.counsel_bag_ctx()
+		g.emit_game_event("level_up", {"level": int(lvl), "grimoire_unlocked": g.grimoire_unlocked(), "family": g.discipline["family"], "learned_rites": bc["learned_rites"], "rune_count": bc["rune_count"]})
 		g.play_sfx("levelUp")
 		g.character_changed.emit()
 		if g.visual:

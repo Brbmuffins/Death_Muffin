@@ -46,7 +46,46 @@ func _run() -> void:
 	_check(game.sim != null and game.player.alive, "alive after 1 s")
 	await _combat(game)
 	await _input(game)
+	await _progression(game)
 	_finish()
+
+
+func _progression(game: DmGame) -> void:
+	game.respawn()
+	# a seal breaks at the kill count
+	var u: Dictionary = DmContent.area("warren")["unlock"]
+	var need: int = game.prog.unlock_kills(float(u["kills"]))
+	_check(not game.nav.is_unlocked("warren"), "the Warren seal is closed")
+	game.player.teleport(0.0, -10.0)
+	game._enter_area("graves")
+	for i in need - 1 - game.prog.kills(String(u["area"])):
+		game.prog.record_kill(String(u["area"]))
+	game.rewards.on_kill({"t": "death", "id": 999999, "def": "robber", "area": "graves", "level": 1, "elite": false, "x": game.player.x, "z": game.player.z - 2.0, "killer": game.self_id})
+	_check(game.nav.is_unlocked("warren"), "the Warren seal broke at %d kills" % need)
+	_check(game.prog.really_unlocked("warren"), "the seal is saved in progress")
+	# Prelate defeated: kill count, ascension credit, chronicle
+	game.prog.mode = "local"   # the offline edition: the mock server does not pay Prelate summons
+	var before: int = int(game.prog.local["bossKills"])
+	game.player.teleport(0.0, 20.0)
+	game.p["x"] = 0.0
+	game.p["z"] = -108.0
+	game.rewards.on_boss_defeated({"t": "boss", "kind": "defeated", "boss": "prelate", "killer": game.self_id, "x": 0.0, "z": -110.0})
+	_check(int(game.prog.local["bossKills"]) == before + 1, "prelate kill recorded")
+	_check(int(game.character["experience"]) > 0 or int(game.character["level"]) > 1, "boss xp paid")
+	# buying a Damage tier
+	game.character["gold"] = 100000
+	var tier: int = int(game.prog.local["damageTier"])
+	game.buy_upgrade("damage")
+	_check(int(game.prog.local["damageTier"]) == tier + 1, "damage tier bought")
+	# belt: drink a flask
+	game.inventory.add({"item_id": "flask_hp_minor", "quantity": 2})
+	game.p["hp"] = 10.0
+	game.actions.flask_cd_until = 0.0
+	game.use_belt("heal")
+	_check(float(game.p["hp"]) > 10.0, "flask heals")
+	await game.flush_all()
+	var inv := await game.api.get_inventory(game.hero_id)
+	_check(inv.ok, "inventory saved")
 
 
 func _key(game: DmGame, ch: String, pressed: bool = true) -> void:

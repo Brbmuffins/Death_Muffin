@@ -197,3 +197,90 @@ func on_boss_busy(ev: Dictionary) -> void:
 		g.prog.refund_boss_shards(boss)
 	var awake: Dictionary = DmContent.boss(String(ev["awake"]))
 	g.toast("%s already stirs in %s. %s" % [awake["name"], DmContent.area(String(awake["area"]))["name"], "Your Seal and gold are returned." if empowered else "Your shards are returned."], "err")
+
+
+# ---- counsel facts (WorldScene.counselBusy / tickOnboarding) -------------------------------------------------------------------
+
+var _last_tip_check := -1e9
+
+## Busy flags for DmCounsel.tick(dt, busy).
+func counsel_busy() -> Dictionary:
+	var now: float = g.now_ms
+	return {"combat": now - g.last_combat_at < 4000.0, "hurt": now - g.last_hurt_at < 4000.0, "talking": g.dialogue_open, "banner": false,
+		"dead": not g.player.alive, "panel": g.panel_open and not g.dialogue_open, "area": g.area_id, "safe": DmContent.area(g.area_id)["safe"]}
+
+
+## Every 400 ms: the state-based counsel facts, emitted as `counsel_tick` {ctx} (the UI forwards it to DmCounsel.notify_tick).
+func tick_counsel(now: float) -> void:
+	if now - _last_tip_check < 400.0 or not g.player.alive:
+		return
+	_last_tip_check = now
+	var p: DmPlayer = g.player
+	if g.sim.boss.state.active:
+		g.last_hurt_at = now
+		g.last_combat_at = now
+	else:
+		var near := 0
+		for e in g.sim.enemies.values():
+			if e.state != "dead" and DmSimMath.hypot(e.x - p.x, e.z - p.z) < 9.0:
+				near += 1
+				if near >= 3:
+					g.last_combat_at = now
+					break
+	var corpses_near := 0
+	var pack := false
+	for c in g.sim.corpses.values():
+		if DmSimMath.hypot(c.x - p.x, c.z - p.z) > 7.0:
+			continue
+		corpses_near += 1
+		if not pack:
+			var n := 0
+			for e in g.sim.enemies.values():
+				if e.state != "dead" and DmSimMath.hypot(e.x - c.x, e.z - c.z) < 3.0:
+					n += 1
+			pack = n >= 3
+	var wave_cost: int = g.prog.wave_cost()
+	var has_tool := false
+	var has_belt := false
+	var brews: Dictionary = DmContent.brews()
+	var flasks: Dictionary = DmContent.healing_flasks()
+	for s in g.inventory.slots:
+		var id := String(s["item_id"])
+		if id.begins_with("tool_"):
+			has_tool = true
+		if brews.has(id) or flasks.has(id):
+			has_belt = true
+	var boss_near: Array = []
+	for id in ["gravedigger", "abbess", "congregation", "saint", "regent", "mire"]:
+		var def: Dictionary = DmContent.boss(id)
+		if g.player.area != String(def["area"]):
+			continue
+		for it in DmContent.area(String(def["area"]))["interactables"]:
+			if it["id"] == def["summonId"] and DmSimMath.hypot(float(it["x"]) - p.x, float(it["z"]) - p.z) < 12.0:
+				boss_near.append(id)
+	var loc: Dictionary = g.prog.local
+	var cheapest := INF
+	for k in DmProgContent.vow_order():
+		var key := DmAscension.vow_key(String(k))
+		if not DmAscension.is_unlocked(loc.get("unlocks"), key):
+			cheapest = minf(cheapest, float(DmAscension.unlock_cost(key)))
+	for k in DmProgContent.boon_order():
+		var key2 := DmAscension.boon_key(String(k))
+		if not DmAscension.is_unlocked(loc.get("unlocks"), key2):
+			cheapest = minf(cheapest, float(DmAscension.unlock_cost(key2)))
+	var gate_near := false
+	for d in DmContent.doors():
+		if g.nav.is_door_open(d):
+			continue
+		var dx := maxf(maxf(float(d["rect"]["x0"]) - p.x, 0.0), p.x - float(d["rect"]["x1"]))
+		var dz := maxf(maxf(float(d["rect"]["z0"]) - p.z, 0.0), p.z - float(d["rect"]["z1"]))
+		if DmSimMath.hypot(dx, dz) < 6.0:
+			gate_near = true
+			break
+	var ctx := {
+		"wave_affordable": wave_cost != -1 and float(g.character.get("gold", 0)) >= float(wave_cost), "thralls_mine": my_thralls().size(), "corpses_near": corpses_near,
+		"pack_on_corpse": pack, "family": g.discipline["family"], "level": g.character["level"], "total_kills": loc["totalKills"], "has_tool": has_tool,
+		"has_belt_item": has_belt, "shards": loc["shards"], "boss_near": boss_near, "has_seal": g.inventory.count(DmGoldSink.COVENANT_SEAL) > 0, "area": g.area_id,
+		"cheapest_unlock": cheapest, "boss_kills": loc["bossKills"], "ascension": loc["ascension"], "ashes": loc["ashes"], "gate_near": gate_near,
+	}
+	g.emit_game_event("counsel_tick", {"ctx": ctx})
