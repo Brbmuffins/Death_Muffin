@@ -7,8 +7,9 @@ G="${GODOT:-/home/ubuntu/tools/godot/godot}"
 rc=0
 for d in godot/tests/*/; do
   t=$(basename "$d")
-  for r in "$d"run.gd "$d"adapter_run.gd; do
+  for r in "$d"run.gd "$d"adapter_run.gd "$d"*_run.gd; do
     [ -f "$r" ] || continue
+    case " ${seen:-} " in *" $r "*) continue;; esac; seen="${seen:-} $r"
     out=$(timeout 1800 nice "$G" --headless --path godot --script "res://${r#godot/}" 2>&1); code=$?
     line=$(echo "$out" | grep -iE '[0-9]+ (/ [0-9]+ )?passed' | tail -1)
     [ $code -ne 0 ] && rc=1

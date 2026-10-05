@@ -22,6 +22,7 @@ var moon: DirectionalLight3D
 var rim: DirectionalLight3D
 var prop_lights: Array = []   # {node, x, z, area}
 var area_nodes: Dictionary = {}   # id -> Node3D (everything drawn for that area)
+var node_views: Dictionary = {}   # gathering node id -> its Node3D (live look; DmNodeViews swaps live/spent on it)
 var area_rects: Dictionary = {}
 var gates: Dictionary = {}    # door id -> {root, bars, collider, open, door}
 var nav_regions: Dictionary = {}   # "area:<id>" / "door:<id>" -> NavigationRegion3D
@@ -36,8 +37,97 @@ var _glow_tex: ImageTexture
 var _by_area_props: Dictionary = {}
 var nav_bake_ms := 0
 
+## See-through cutout (occlusion.ts): walls and props between the camera and the hero dither away inside a screen circle around the hero.
+var occlusion_enabled := true
+var _occ_mats: Dictionary = {}
+const OCC_PROP := preload("res://world/dm_occ_prop.gdshader")
+const OCC_WALL := preload("res://world/dm_occ_wall.gdshader")
+
+
+static func _ensure_occ_globals() -> void:
+	var names := RenderingServer.global_shader_parameter_get_list()
+	if not names.has(&"dm_occ_a"):
+		RenderingServer.global_shader_parameter_add("dm_occ_a", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(0, 0, 0.16, 100))
+	if not names.has(&"dm_occ_b"):
+		RenderingServer.global_shader_parameter_add("dm_occ_b", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(1.6, 0, 0, 0))
+
+
+## Call once per frame with the camera and the hero's world position (updateOcclusion).
+func update_occlusion(cam: Camera3D, hero: Vector3) -> void:
+	if not occlusion_enabled or cam == null or not cam.is_inside_tree():
+		return
+	var vp := cam.get_viewport().get_visible_rect().size
+	if vp.y <= 0.0:
+		return
+	var ndc := func(v: Vector3) -> Vector2:
+		var s := cam.unproject_position(v)
+		return Vector2((s.x / vp.x) * 2.0 - 1.0, 1.0 - (s.y / vp.y) * 2.0)
+	var p: Vector2 = ndc.call(Vector3(hero.x, 1.1, hero.z))
+	var head: Vector2 = ndc.call(Vector3(hero.x, hero.y + 1.6, hero.z))
+	var feet: Vector2 = ndc.call(Vector3(hero.x, 0.0, hero.z))
+	var radius := clampf(absf(head.y - feet.y) * 1.05, 0.1, 0.5)
+	RenderingServer.global_shader_parameter_set("dm_occ_a", Vector4(p.x, p.y, radius, cam.global_position.distance_to(Vector3(hero.x, 1.1, hero.z))))
+	RenderingServer.global_shader_parameter_set("dm_occ_b", Vector4(vp.x / vp.y, 1.0, 0.0, 0.0))
+
+
+func _occ_prop_material(src: StandardMaterial3D) -> Material:
+	var key := src.get_instance_id()
+	if _occ_mats.has(key):
+		return _occ_mats[key]
+	var m := ShaderMaterial.new()
+	m.shader = OCC_PROP
+	m.set_shader_parameter("albedo", src.albedo_color)
+	if src.albedo_texture != null:
+		m.set_shader_parameter("albedo_tex", src.albedo_texture)
+	if src.normal_enabled and src.normal_texture != null:
+		m.set_shader_parameter("normal_tex", src.normal_texture)
+		m.set_shader_parameter("has_normal", true)
+		m.set_shader_parameter("normal_scale", src.normal_scale)
+	if src.roughness_texture != null:
+		m.set_shader_parameter("orm_tex", src.roughness_texture)
+		m.set_shader_parameter("has_orm", true)
+	m.set_shader_parameter("roughness_f", src.roughness)
+	m.set_shader_parameter("metallic_f", src.metallic if src.roughness_texture != null else src.metallic)
+	_occ_mats[key] = m
+	return m
+
+
+func _occ_wall_material(src: StandardMaterial3D) -> Material:
+	var key := src.get_instance_id()
+	if _occ_mats.has(key):
+		return _occ_mats[key]
+	var m := ShaderMaterial.new()
+	m.shader = OCC_WALL
+	m.set_shader_parameter("albedo", src.albedo_color)
+	m.set_shader_parameter("albedo_tex", src.albedo_texture)
+	m.set_shader_parameter("uv_scale", src.uv1_scale.x)
+	m.set_shader_parameter("roughness_f", src.roughness)
+	_occ_mats[key] = m
+	return m
+
+
+## Walls (box meshes with the triplanar stone material) and props (instanced glTF parts) under `root` get the cutout shaders.
+func apply_occlusion(root: Node) -> void:
+	if not occlusion_enabled:
+		return
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.material_override is StandardMaterial3D and (mi.material_override as StandardMaterial3D).uv1_triplanar and mi.mesh is BoxMesh:
+			mi.material_override = _occ_wall_material(mi.material_override)
+	for n in root.find_children("*", "MultiMeshInstance3D", true, false):
+		var mm := (n as MultiMeshInstance3D).multimesh
+		if mm == null or mm.mesh == null:
+			continue
+		var mesh := mm.mesh
+		for i in mesh.get_surface_count():
+			var mat := mesh.surface_get_material(i)
+			if mat is StandardMaterial3D and not (mat as StandardMaterial3D).transparency:
+				mesh.surface_set_material(i, _occ_prop_material(mat))
+
+
 func build(w: Dictionary) -> void:
 	world = w
+	_ensure_occ_globals()
 	_make_environment()
 	_colliders = StaticBody3D.new()
 	_colliders.name = "Colliders"
@@ -61,6 +151,7 @@ func build(w: Dictionary) -> void:
 	_gates()
 	_depths()
 	_npcs()
+	apply_occlusion(self)
 	_bake_nav()
 	_apply_unlock_state()
 	set_area("chapterhouse")
@@ -478,6 +569,7 @@ func _nodes() -> void:
 		parent.position = Vector3(n.x, 0.04, n.z)
 		parent.rotation.y = n.rot
 		area_nodes[n.area].add_child(parent)
+		node_views[n.id] = parent
 		if n.model != null:
 			for part in DmModels.prop_parts(n.model, float(n.modelHeight)):
 				var mi := MeshInstance3D.new()
@@ -805,9 +897,152 @@ func _depths() -> void:
 		mi.material_override = m[1]
 		mi.position = Vector3(m[0].x, 0.06, m[0].z)
 		parent.add_child(mi)
+	# Everything drawn so far for the Depths is the sample floor: build_depths_floor hides it while a generated floor stands.
+	_sample_depths_nodes = parent.get_children()
+
+# ---------------------------------------------------------------- the generated Depths floor
+var _sample_depths_nodes: Array = []
+var _sample_lights: Array = []
+var _depths_floor_root: Node3D = null
+var _depths_gen_lights: Array = []
+var _depths_stair_mat: StandardMaterial3D = null
+var _depths_chest_mat: StandardMaterial3D = null
+
+## Draw a generated floor (DmDepthsFloor.generate_floor Dictionary): room floors, door mouths, walls, props, the two stairs and the chest.
+func build_depths_floor(f: Dictionary) -> void:
+	_build_depths_floor_raw(f)
+	if _depths_floor_root != null:
+		apply_occlusion(_depths_floor_root)
+
+
+func _build_depths_floor_raw(f: Dictionary) -> void:
+	clear_depths_floor()
+	var parent: Node3D = area_nodes["depths"]
+	for n in _sample_depths_nodes:
+		if is_instance_valid(n):
+			(n as Node3D).visible = false
+	_sample_lights = prop_lights.filter(func(e): return e.area == "depths")
+	prop_lights = prop_lights.filter(func(e): return e.area != "depths")
+	var root := Node3D.new()
+	root.name = "DepthsFloor"
+	parent.add_child(root)
+	_depths_floor_root = root
+	var theme: String = world.areas["depths"].theme
+	for r in f["rooms"]:
+		if r["active"]:
+			var rc: Dictionary = r["rect"]
+			_plane(root, rc.x0, rc.z0, rc.x1, rc.z1, theme, 0.02)
+	for d in f["doors"]:
+		var hx := 0.9 if absf(float(d.dir.x)) > 0.5 else 2.3
+		var hz := 0.9 if absf(float(d.dir.z)) > 0.5 else 2.3
+		_plane(root, d.x - hx, d.z - hz, d.x + hx, d.z + hz, theme, 0.02)
+	# Walls: line segments with a thickness (DmDepthsFloor.wall_obstacle's box).
+	var mats: Dictionary = {}
+	var wl: Array = []
+	for w in f["walls"]:
+		var o := DmDepthsFloor.wall_obstacle(w)
+		var ww: Dictionary = w.duplicate()
+		ww["box"] = {"x0": o.x0, "z0": o.z0, "x1": o.x1, "z1": o.z1}
+		var tex: String = String(w["texture"])
+		var ref: Variant = null
+		for sw in world.depths.walls:
+			if sw.texture == tex:
+				ref = sw
+				break
+		ww["color"] = ref.color if ref != null else 0x8a8070
+		wl.append(ww)
+	_wall_list(root, wl, mats, false)
+	# Props (batched per kind, lights with the rest of the world's prop lights).
+	var kinds: Dictionary = {}
+	for p in f["props"]:
+		if not world.propSpecs.has(p.prop):
+			continue
+		var q: Dictionary = p.duplicate()
+		q["y"] = 0.0
+		q["tilt"] = 0.0
+		if not kinds.has(p.prop):
+			kinds[p.prop] = []
+		kinds[p.prop].append(q)
+	var pool_pos: Array = []
+	var before := prop_lights.size()
+	for kind in kinds:
+		var spec: Dictionary = world.propSpecs[kind]
+		var plist: Array = kinds[kind]
+		if spec.url != null:
+			_prop_batch(root, spec, plist)
+		if spec.has("light") and spec.light != null:
+			for q in plist:
+				_prop_light(root, q, spec.light, "depths")
+				pool_pos.append({"x": q.x, "z": q.z, "y": float(spec.light.y) * float(q.scale), "L": spec.light})
+	_light_pools(root, pool_pos, "depths")
+	_depths_gen_lights = prop_lights.slice(before)
+	# Stairs and chest: worn discs (the way up cold, the way down ember, sealed = dim), the chest a small box.
+	var up_mat := StandardMaterial3D.new()
+	up_mat.albedo_color = Color(0.18, 0.2, 0.26)
+	up_mat.emission_enabled = true
+	up_mat.emission = Color(0.2, 0.4, 0.8)
+	up_mat.emission_energy_multiplier = 0.45
+	_depths_stair_mat = StandardMaterial3D.new()
+	_depths_stair_mat.albedo_color = Color(0.26, 0.18, 0.14)
+	_depths_stair_mat.emission_enabled = true
+	_depths_stair_mat.emission = Color(0.9, 0.4, 0.12)
+	set_depths_stair_open(false)
+	for m in [[f["stairUp"], up_mat], [f["stairDown"], _depths_stair_mat]]:
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.8
+		cm.bottom_radius = 0.8
+		cm.height = 0.1
+		var mi := MeshInstance3D.new()
+		mi.mesh = cm
+		mi.material_override = m[1]
+		mi.position = Vector3(m[0].x, 0.06, m[0].z)
+		root.add_child(mi)
+	if f["chest"] != null:
+		_depths_chest_mat = StandardMaterial3D.new()
+		_depths_chest_mat.albedo_color = Color(0.45, 0.3, 0.12)
+		_depths_chest_mat.emission_enabled = true
+		_depths_chest_mat.emission = Color(0.95, 0.8, 0.3)
+		var bm := BoxMesh.new()
+		bm.size = Vector3(1.1, 0.7, 0.7)
+		var ci := MeshInstance3D.new()
+		ci.name = "Chest"
+		ci.mesh = bm
+		ci.material_override = _depths_chest_mat
+		ci.position = Vector3(f["chest"].x, 0.35, f["chest"].z)
+		root.add_child(ci)
+		set_depths_chest_opened(false)
+
+func set_depths_stair_open(open: bool) -> void:
+	if _depths_stair_mat != null:
+		_depths_stair_mat.emission_energy_multiplier = 1.6 if open else 0.12
+
+func set_depths_chest_opened(opened: bool) -> void:
+	if _depths_chest_mat != null:
+		_depths_chest_mat.emission_energy_multiplier = 0.0 if opened else 0.5
+
+func clear_depths_floor() -> void:
+	if _depths_floor_root != null and is_instance_valid(_depths_floor_root):
+		_depths_floor_root.queue_free()
+	_depths_floor_root = null
+	for e in _depths_gen_lights:
+		prop_lights.erase(e)
+	_depths_gen_lights = []
+	_depths_stair_mat = null
+	_depths_chest_mat = null
+	if not _sample_lights.is_empty():
+		prop_lights.append_array(_sample_lights)
+		_sample_lights = []
+	for n in _sample_depths_nodes:
+		if is_instance_valid(n):
+			(n as Node3D).visible = true
 
 # ---------------------------------------------------------------- NPCs
+## false when DmNpcViews (game/) animates the people instead.
+var npcs_enabled := true
+
 func _npcs() -> void:
+	if not npcs_enabled:
+		return
 	var nd: Dictionary = DmData.load_json("npcs")
 	for n in world.npcs:
 		var entry: Dictionary = nd.models[n.model]
