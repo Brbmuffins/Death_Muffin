@@ -150,7 +150,7 @@ func _pick_row(parent: Control, s: Dictionary, on: bool) -> void:
 	h.offset_left = 5
 	h.offset_right = -5
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_child(DmPb.icon(rarity, 36.0))
+	h.add_child(DmPb.icon(rarity, 36.0, null, false, String(s.get("item_id", ""))))
 	var col := DmPb.vbox(0)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE

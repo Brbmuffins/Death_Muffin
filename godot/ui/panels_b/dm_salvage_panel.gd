@@ -201,7 +201,7 @@ func _row(parent: Control, g: Dictionary) -> void:
 		rebuild.call_deferred())
 	row.add_child(cb)
 	checks[slot] = cb
-	row.add_child(DmPb.icon(rarity, 36.0))
+	row.add_child(DmPb.icon(rarity, 36.0, null, false, String(g.get("item_id", ""))))
 	var col := DmPb.vbox(1)
 	row.add_child(col)
 	var nm := DmPb.hbox(8)

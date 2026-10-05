@@ -82,7 +82,7 @@ click on walkable ground emits `navigate(x, z)` (same rule as `minimapWalkable`)
 `Rect2()` when hidden/unknown) so the integrator can draw the glow; `tip_default_position()` is the card's default spot (18, 70, or under the party list).
 
 ## Placeholders vs the web
-- Hover tooltips are plain Godot tooltips (`tooltip_text`); the web's rich spell card (`spellTooltip`) and the belt picker are not ported (belt chips emit `belt_clicked`).
+- Hover: slots show the web's spell card (`DmSpellCard` through `DmTip`, anchored above the slot, 180 ms bridge, Esc closes, live refresh) when the game UI sets `hud.spell_card` (a Callable(index) -> card data; `game_ui/dm_hud_tips.gd` builds it with `DmSpellTooltip`, golden-tested against `spellTooltip.ts`). Belt chips, the omen chip, Bone Ward, souls etc. keep native tooltips because the web uses plain `title`s there. The belt picker lives in `game_ui/dm_belt_picker.gd` (belt chips emit `belt_clicked`). `hud.node_tip(html, x, y)` draws `.hud-nodetip` (the game feeds it from the node under the cursor).\n- Toasts take an `on_click` Callable (`hud.toast(text, kind, on_click)`): a NEW cue toast opens its panel when clicked (WorldScene `CUE_OPENS`).
 - Slots emit `cast` on click but there is no drag; keyboard casting lives in the scene, not the HUD. Slot dicts may carry a `tooltip` string.
 - Rune badges, the pulse of the Grimoire button (6 s) and the CSS box-shadow glows are approximated with drawn rings.
 - Text `letter-spacing` is rounded to whole pixels (FontVariation).

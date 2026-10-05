@@ -86,6 +86,8 @@ var menu_btns: Dictionary = {}
 var auto_btn: Button
 var banner_host: Control
 var prompt: PanelContainer
+var node_tip_box: PanelContainer
+var node_tip_rt: RichTextLabel
 var prompt_rt: RichTextLabel
 var hint: Label
 var chat_log: VBoxContainer
@@ -106,6 +108,11 @@ var souls_bar: DmHudBar
 var souls_n: Label
 var souls_skull: TextureRect
 var slots_row: HBoxContainer
+## The spell card's data for a slot: Callable(index: int) -> Dictionary ({} = none; index -1 = the LMB primary, 0.. = the hotbar). Set by the
+## game UI (it knows the rites, runes and discipline); see DmHudTips. Without it slots keep Godot's plain tooltip.
+var spell_card: Callable = Callable()
+var _tip_slot := -2
+var _tip_key := ""
 var primary_slot: DmHudSlot
 var grim_btn: Button
 var grim_pip: PanelContainer
@@ -219,6 +226,7 @@ func _build_party_and_edge_readouts() -> void:
 	omen_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	oh.add_child(omen_name)
 	omen.mouse_filter = Control.MOUSE_FILTER_PASS
+	omen.mouse_default_cursor_shape = Control.CURSOR_HELP   # `cursor: help` (the blurb is its title)
 	omen_host = DmHudParts.OverlayHost.new(omen)
 	omen_host.visible = false
 	add_child(omen_host)
@@ -533,6 +541,24 @@ func _build_toasts_banner_prompts() -> void:
 	prompt.visible = false
 	add_child(prompt)
 	DmHudKit.place(prompt, 0.5, 1, 0, -220, Control.GROW_DIRECTION_BOTH, Control.GROW_DIRECTION_BEGIN)
+	# `.hud-nodetip`: the hover card of a gathering node / laborer (HUD.nodeTip): max 260 wide, padding 8 12, 13 px, never takes the mouse
+	node_tip_box = DmHudKit.panel(Color(0.0275, 0.0235, 0.0392, 0.92), DmUi.BORDER_STRONG, Vector4(1, 1, 1, 1), Vector4(12, 8, 12, 8))
+	node_tip_rt = RichTextLabel.new()
+	node_tip_rt.bbcode_enabled = true
+	node_tip_rt.fit_content = true
+	node_tip_rt.scroll_active = false
+	node_tip_rt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	node_tip_rt.custom_minimum_size.x = 236
+	node_tip_rt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	node_tip_rt.add_theme_font_override("normal_font", DmUi.font("body"))
+	node_tip_rt.add_theme_font_override("bold_font", DmUi.font("body_bold"))
+	node_tip_rt.add_theme_font_size_override("normal_font_size", 13)
+	node_tip_rt.add_theme_font_size_override("bold_font_size", 14)
+	node_tip_rt.add_theme_color_override("default_color", Color("e6dccb"))   # bone-200
+	node_tip_box.add_child(node_tip_rt)
+	node_tip_box.visible = false
+	node_tip_box.z_index = 30
+	add_child(node_tip_box)
 	hint = _txt("", 13, DmUi.TEXT_FAINT, "body")
 	add_child(hint)
 	DmHudKit.place(hint, 0.5, 1, 0, -196, Control.GROW_DIRECTION_BOTH, Control.GROW_DIRECTION_BEGIN)
@@ -1028,6 +1054,7 @@ func apply(v: Dictionary) -> void:
 	_apply_flags(v)
 	_apply_vitals(v)
 	_apply_slots(v)
+	_refresh_spell_tip()
 	_apply_souls_thralls(v)
 	_apply_economy(v)
 	_apply_upgrades(v)
@@ -1088,6 +1115,7 @@ func _apply_vitals(v: Dictionary) -> void:
 
 
 func _apply_slots(v: Dictionary) -> void:
+	_bind_primary_tip()
 	var prim: Dictionary = v.get("primary", {})
 	if prim.is_empty():
 		primary_slot.visible = false
@@ -1149,6 +1177,7 @@ func _rebuild_slots(slots: Array) -> void:
 		var idx := i
 		s.pressed.connect(func() -> void: cast.emit(idx + 1))
 		s.swap_pressed.connect(func() -> void: swap_slot.emit(idx))
+		s.hover_changed.connect(func(on: bool) -> void: _spell_hover(idx, s, on))
 
 
 func _apply_souls_thralls(v: Dictionary) -> void:
@@ -1574,3 +1603,104 @@ func tip_default_position() -> Vector2:
 	if party_box.get_child_count() > 0:
 		below = party_box.get_global_rect().end.y + 8.0
 	return Vector2(18.0, maxf(70.0, below))
+
+
+# ======================================================================== spell card (HUD.showTooltip / refreshTooltip)
+
+func _bind_primary_tip() -> void:
+	if not primary_slot.hover_changed.is_connected(_primary_hover):
+		primary_slot.hover_changed.connect(_primary_hover)
+
+
+func _primary_hover(on: bool) -> void:
+	_spell_hover(-1, primary_slot, on)
+
+
+func _spell_hover(idx: int, s: DmHudSlot, on: bool) -> void:
+	if not spell_card.is_valid():
+		return
+	var tip := DmTip.of(self)
+	if not on:
+		tip.hide_for(s.button)
+		return
+	_tip_slot = idx
+	_tip_key = ""
+	_show_spell_tip(s.button, true)
+
+
+func _slot_button(idx: int) -> Control:
+	if idx == -1:
+		return primary_slot.button
+	return _slots[idx].button if idx >= 0 and idx < _slots.size() else null
+
+
+func _show_spell_tip(btn: Control, fresh: bool) -> void:
+	var d: Dictionary = spell_card.call(_tip_slot)
+	var tip := DmTip.of(self)
+	if d.is_empty():
+		tip.hide_now()
+		return
+	var key := String(d.get("key", ""))
+	if not fresh and key == _tip_key:
+		return
+	_tip_key = key
+	var card := DmSpellCard.new()
+	card.build(d, get_viewport_rect().size)
+	if fresh or not tip.is_showing_for(btn):
+		tip.show_anchor(btn, card)
+	else:
+		var old := tip.content as DmSpellCard
+		var keep := old.scroll.scroll_vertical if old != null else 0
+		tip.replace_content(card)
+		card.scroll.set_deferred("scroll_vertical", keep)
+
+
+## Live card: the cost / cooldown / status lines follow the slot while it is open (the web calls refreshTooltip from update()).
+func _refresh_spell_tip() -> void:
+	if _tip_slot == -2 or not spell_card.is_valid():
+		return
+	var btn := _slot_button(_tip_slot)
+	var tip := DmTip.of(self)
+	if btn == null or not tip.is_showing_for(btn):
+		_tip_slot = -2
+		return
+	_show_spell_tip(btn, false)
+
+
+# ======================================================================== node tip (HUD.nodeTip)
+
+## The web's tiny node-tip HTML (`<b>`, `<div class="req ok|missing">`, `<span class="rich">`, `<div class="spent">`, `<div>`) as BBCode.
+static func node_tip_bbcode(html: String) -> String:
+	var src := html.replace("[", "[lb]")
+	var re := RegEx.create_from_string('<div(?: class="([^"]*)")?>(.*?)</div>')
+	var out := ""
+	var pos := 0
+	for m in re.search_all(src):
+		out += src.substr(pos, m.get_start() - pos)
+		var inner := m.get_string(2)
+		match m.get_string(1):
+			"req ok": out += "\n[color=#9fc27a]%s[/color]" % inner
+			"req missing": out += "\n[color=#e58a8a]%s[/color]" % inner
+			"spent": out += "\n[i][color=#8c8478]%s[/color][/i]" % inner
+			_: out += "\n" + inner
+		pos = m.get_end()
+	out += src.substr(pos)
+	out = out.replace("<b>", "[b][color=#%s]" % DmUi.BONE_100.to_html(false)).replace("</b>", "[/color][/b]")
+	out = out.replace('<span class="rich">rich</span>', "[color=#e2c98f][font_size=11]RICH[/font_size][/color]")
+	return out.replace("&amp;", "&").replace("&middot;", "·").strip_edges()
+
+
+## `hud.nodeTip(html, x, y)`: null hides; otherwise the card sits at left = clamp(x + 18, 8, W - w - 8), top = clamp(y - h - 12, 8, H - h - 8).
+## The game feeds it each frame from the node / laborer under the cursor (game core; the HUD only draws it).
+func node_tip(html: Variant, x: float = 0.0, y: float = 0.0) -> void:
+	if html == null or String(html) == "":
+		node_tip_box.visible = false
+		return
+	var bb := node_tip_bbcode(String(html))
+	if node_tip_rt.text != bb:
+		node_tip_rt.text = bb
+	node_tip_box.visible = true
+	var sz := node_tip_box.get_combined_minimum_size()
+	var vp := get_viewport_rect().size
+	node_tip_box.size = sz
+	node_tip_box.position = Vector2(maxf(8.0, minf(vp.x - sz.x - 8.0, x + 18.0)), maxf(8.0, minf(vp.y - sz.y - 8.0, y - sz.y - 12.0)))

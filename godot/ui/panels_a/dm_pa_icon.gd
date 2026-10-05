@@ -18,11 +18,7 @@ func setup(p: String, px: int, seed_in: String, glyph_in: String = "") -> void:
 	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for root in ["res://assets/", "res://assets/slice/"]:
-		var full: String = root + p
-		if p != "" and ResourceLoader.exists(full):
-			tex = load(full)
-			break
+	tex = DmUiArt.texture(p)
 
 
 func _draw() -> void:

@@ -19,6 +19,8 @@ enum Kind { BAG, EQUIP, BELT }
 @export var empty_label: String = ""
 
 var data: Dictionary = {}
+## The web's Vault cell has only a native `title` (VaultPanel), not the Reliquary's hover card: such a cell sets `tooltip_text` itself and shows no DmTip.
+var plain_tip := false
 var index: int = -1
 ## Godot drag source (the web only drags brews onto the HUD belt: InventoryPanel `draggable` + BELT_DRAG_TYPE). null = not draggable.
 var drag_data: Variant = null
@@ -39,15 +41,25 @@ func _init() -> void:
 func _ready() -> void:
 	mouse_entered.connect(func() -> void:
 		_hover = true
-		queue_redraw())
+		queue_redraw()
+		show_tip())
 	mouse_exited.connect(func() -> void:
 		_hover = false
-		queue_redraw())
+		queue_redraw()
+		DmTip.of(self).hide_for(self))
+	tree_exiting.connect(func() -> void:
+		if is_inside_tree():
+			DmTip.of(self).hide_for(self))
 
 
 func set_item(d: Dictionary) -> void:
 	data = d
-	tooltip_text = String(d.get("name", "")) if not d.is_empty() else ""
+	# the web's .cw-tooltip card (DmTip: no delay, follows the pointer); never Godot's native half-second tooltip
+	if is_inside_tree() and _hover and DmTip.of(self).is_showing_for(self):
+		if d.is_empty():
+			DmTip.of(self).hide_now()
+		else:
+			DmTip.of(self).replace_content(DmItemTooltip.make(d))
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if not d.is_empty() else Control.CURSOR_ARROW
 	queue_redraw()
 
@@ -79,10 +91,10 @@ func _get_drag_data(_at: Vector2) -> Variant:
 	return drag_data
 
 
-func _make_custom_tooltip(_for_text: String) -> Object:
-	if not is_filled():
-		return null
-	return DmItemTooltip.make(data)
+## The hover card (InventoryPanel.showTooltip): only for a filled cell.
+func show_tip() -> void:
+	if is_filled() and not plain_tip and not get_viewport().gui_is_dragging():
+		DmTip.of(self).show_follow(self, DmItemTooltip.make(data))
 
 
 func _draw() -> void:

@@ -55,14 +55,11 @@ func count(item_id: String) -> int:
 
 
 static func icon_path(item_id: String) -> String:
-	var meta := DmContent.item(item_id)
-	var p := "res://assets/" + String(meta.get("icon", "art/items/%s.webp" % item_id))
-	return p
+	return DmUiArt.item_path(item_id)
 
 
 static func icon_of_row(row: Dictionary) -> String:
-	var p := icon_path(String(row.get("item_id", "")))
-	return p if ResourceLoader.exists(p) else ""
+	return icon_path(String(row.get("item_id", "")))
 
 
 # --- rendering -----------------------------------------------------------------------------------------------------
@@ -108,6 +105,11 @@ func card_of(row: Dictionary, ctx: Variant) -> Dictionary:
 	if ic != "":
 		base["icon"] = load(ic)
 	var card := DmItemText.card(ctx, slots(), row, base)
+	if card.has("compare"):
+		# gearText.headline: "Instead of A and B:" / "If you equip it (nothing worn there):"
+		var cmp: Variant = DmGearStats.compare_equip(ctx, row)
+		if cmp != null:
+			card["compare_head"] = DmItemText.compare_headline(cmp["replaced"])
 	var bl := _brew_line(String(row["item_id"]))
 	if bl != "":
 		card["brew_line"] = bl

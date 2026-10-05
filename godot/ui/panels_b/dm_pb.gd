@@ -114,7 +114,9 @@ static func card(parent: Control, border: Color = DmUi.BORDER, accent: Color = C
 
 
 ## Item icon tile: bordered square in the rarity colour holding the texture, or the ◆ glyph when there is no art.
-static func icon(rarity: String, size: float = 40.0, tex: Texture2D = null, dim: bool = false) -> Control:
+static func icon(rarity: String, size: float = 40.0, tex: Texture2D = null, dim: bool = false, item_id: String = "") -> Control:
+	if tex == null and item_id != "":
+		tex = DmUiArt.item(item_id)   # the real art (itemMeta.icon ?? art/items/<id>.webp); the glyph only when the file is missing
 	var p := PanelContainer.new()
 	p.custom_minimum_size = Vector2(size, size)
 	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -208,7 +210,7 @@ static func item_rows(parent: Control, items: Array) -> void:
 	for i: Dictionary in items:
 		var rc := DmUi.rarity_color(String(i.get("rarity", "common")))
 		var left := hbox(6)
-		var ic := icon(String(i.get("rarity", "common")), 18.0)
+		var ic := icon(String(i.get("rarity", "common")), 18.0, null, false, String(i.get("itemId", "")))
 		left.add_child(ic)
 		var n := text(String(i.get("name", i.get("itemId", ""))), 13, rc)
 		n.size_flags_vertical = Control.SIZE_SHRINK_CENTER

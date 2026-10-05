@@ -80,7 +80,7 @@ func _build() -> void:
 			panel.modulate.a = 1.0 if ok else 0.5
 			panel.tooltip_text = "%s: you hold %d" % [nm, n] if ok else "Not found yet"
 			c.alignment = BoxContainer.ALIGNMENT_CENTER
-			var ic := DmPb.icon(rarity, 40.0, null, not ok)
+			var ic := DmPb.icon(rarity, 40.0, null, not ok, id)
 			ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			c.add_child(ic)
 			var l := DmPb.text(nm, 13, DmUi.TEXT, "body", true)

@@ -109,12 +109,15 @@ func take_slots(kind: String) -> Array:
 	return out
 
 
-## DmItemSlot data for a server row (glyph stand-in until item art is imported).
+## DmItemSlot data for a server row (real item art via DmUiArt, glyph when it is missing).
 static func slot_data(s: Dictionary, locked: bool) -> Dictionary:
 	var d := s.duplicate()
 	d["equipped"] = int(s.get("equipped", 0)) != 0
 	d["locked"] = locked
 	d["glyph"] = "◆"
+	var ic := DmUiArt.item(String(s.get("item_id", "")))   # the real item art; the glyph shows only when the file is missing
+	if ic != null:
+		d["icon"] = ic
 	d["type_label"] = TYPE_LABEL.get(String(s.get("item_type", "")), String(s.get("item_type", "")))
 	if s.get("inst") != null:
 		d["ilvl"] = s["inst"]["ilvl"]
@@ -188,7 +191,7 @@ func _build() -> void:
 			for v: Dictionary in vault:
 				if int(v["slot_index"]) == idx:
 					row = v
-			var cell := _cell(row, false)
+			var cell := _cell(row, false, "vault")
 			if not row.is_empty():
 				cell.pressed.connect(_on_vault_pressed.bind(row))
 			vg.add_child(cell)
@@ -244,12 +247,41 @@ func _grid() -> GridContainer:
 	return g
 
 
-func _cell(row: Dictionary, locked: bool) -> DmItemSlot:
+func _cell(row: Dictionary, locked: bool, kind: String = "bag") -> DmItemSlot:
 	var c := DmItemSlot.new()
 	c.custom_minimum_size = Vector2(SLOT_PX, SLOT_PX)
+	c.plain_tip = true
 	if not row.is_empty():
 		c.set_item(slot_data(row, locked))
+		c.tooltip_text = plain_title(row, locked, kind)
 	return c
+
+
+## VaultPanel.cell's `btn.title`: what the Reliquary card would say in plain text (kind, base stats, the roll, the price) and the move.
+static func plain_title(row: Dictionary, locked: bool, kind: String) -> String:
+	var q := int(row.get("quantity", 1))
+	var t := "%s%s (%s %s)%s\n" % [row.get("name", ""), " ×%d" % q if q > 1 else "", row.get("rarity", ""), DmItemText.type_label(row), " · locked" if locked else ""]
+	var sb: Variant = row.get("stat_bonus")
+	if sb is Dictionary:
+		var parts: Array = []
+		for k in ["stat_str", "stat_agi", "stat_int", "stat_vit"]:
+			if sb.get(k) != null and float(sb[k]) != 0.0:
+				parts.append("+%s %s" % [DmJsFmt.num_str(float(sb[k])), DmGearStats.STAT_LABELS[k]])
+		if not parts.is_empty():
+			t += ", ".join(parts) + "\n"
+	for l in DmAffixes.roll_title_lines(row):
+		t += String(l) + "\n"
+	if String(row.get("item_type", "")) == "rune":
+		var r := DmContent.rune(String(row.get("item_id", "")))
+		if not r.is_empty():
+			t += "%s: %s\n" % [r["short"], r["lines"][0]]
+	if int(row.get("sell_value", 0)) > 0:
+		t += "Worth %sg%s\n" % [DmJsFmt.num_str(float(row["sell_value"])), " each" if q > 1 else ""]
+	if int(row.get("equipped", 0)) != 0:
+		t += "Equipped gear cannot be stored"
+	else:
+		t += "Click to store it in the Vault" if kind == "bag" else "Click to take it into your bag"
+	return t
 
 
 func _on_bag_pressed(_cell_node: DmItemSlot, row: Dictionary) -> void:

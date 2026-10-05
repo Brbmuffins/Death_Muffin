@@ -7,6 +7,7 @@ extends VBoxContainer
 
 signal pressed          ## left click on the icon (web: click-to-cast)
 signal swap_pressed     ## left click on the key cap while `swap` is on
+signal hover_changed(on: bool)   ## pointer entered / left the 62 px icon (the web's pointerenter / pointerleave -> spell card)
 
 const BTN := 62.0
 const EMBER := Color("d0612e")
@@ -25,6 +26,7 @@ var swap: bool = false
 var icon_path: String = ""
 var rune_path: String = ""
 
+var button: Control          ## the 62 px icon holder: the spell card's anchor
 var _icon: TextureRect
 var _over: Control
 var _cdtext: Label
@@ -52,6 +54,9 @@ func _init() -> void:
 	holder.gui_input.connect(func(e: InputEvent) -> void:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			pressed.emit())
+	holder.mouse_entered.connect(func() -> void: hover_changed.emit(true))
+	holder.mouse_exited.connect(func() -> void: hover_changed.emit(false))
+	button = holder
 	add_child(holder)
 	_icon = TextureRect.new()
 	_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -154,7 +159,7 @@ func apply(s: Dictionary) -> void:
 	_key.add_theme_font_size_override("font_size", 10 if alt else 12)
 	_swap_ico.visible = swap
 	_key_panel.tooltip_text = "Swap this rite (L)" if swap else ""
-	_icon.get_parent().tooltip_text = String(s.get("tooltip", ""))
+	_icon.get_parent().tooltip_text = String(s.get("tooltip", ""))   # (the HUD replaces this with the spell card when it has a provider)
 	_ensure_shader()
 	if not affordable or locked:
 		var m := _icon.material as ShaderMaterial
@@ -206,15 +211,18 @@ func _draw_over() -> void:
 		# conic-gradient(rgba(5,4,8,.82) var(--cd), transparent 0): shaded from 12 o'clock clockwise for pct %
 		var c := r.size * 0.5
 		var a1 := -PI * 0.5 + TAU * pct / 100.0
-		var pts := PackedVector2Array([c])
 		var n := maxi(2, int(pct / 2.0))
+		var prev := Vector2.ZERO
 		for i in n + 1:
 			var a := -PI * 0.5 + (a1 + PI * 0.5) * float(i) / n
 			var d := Vector2(cos(a), sin(a))
 			# extend to the square's edge so the wedge covers the corners
 			var k := 1.0 / maxf(absf(d.x), absf(d.y))
-			pts.append(c + d * k * BTN * 0.5)
-		_over.draw_colored_polygon(pts, Color(0.0196, 0.0157, 0.0314, 0.82))
+			var p := c + d * k * BTN * 0.5
+			if i > 0:
+				# a triangle fan (a single polygon fails to triangulate for some angles past 180 degrees)
+				_over.draw_colored_polygon(PackedVector2Array([c, prev, p]), Color(0.0196, 0.0157, 0.0314, 0.82))
+			prev = p
 	# border + inset 2px #07060a
 	var border := Color(DmUi.BONE_300, 0.35)
 	var inset := Color("07060a")

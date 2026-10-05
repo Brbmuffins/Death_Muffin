@@ -10,6 +10,7 @@ static func make(item: Dictionary) -> DmItemTooltip:
 	t.theme = DmUi.theme()
 	t.theme_type_variation = "DmTooltipCard"
 	var card := DmItemCard.new()
+	card.tip_mode = true
 	card.set_item(item)
 	t.add_child(card)
 	# estimate a natural width from the widest header line, clamped to the CSS min/max
@@ -17,7 +18,7 @@ static func make(item: Dictionary) -> DmItemTooltip:
 	var f := DmUi.font("body_bold")
 	w = maxf(w, f.get_string_size(String(item.get("name", "")), HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 26.0)
 	var ft := DmUi.font("body")
-	var ty := "%s %s %s" % [DmUi.rarity_mark(String(item.get("rarity", "common"))), item.get("rarity", ""), item.get("type_label", "")]
+	var ty := DmItemCard.capitalize_words("%s %s %s" % [DmUi.rarity_mark(String(item.get("rarity", "common"))), item.get("rarity", ""), item.get("type_label", "")])
 	w = maxf(w, ft.get_string_size(ty, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 26.0)
 	if item.get("lore", "") != "" or item.get("stats", []).size() > 0:
 		w = maxf(w, 230.0)
