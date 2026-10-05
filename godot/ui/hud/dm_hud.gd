@@ -1449,7 +1449,7 @@ func _ellipsize(text: String, font_size: int, max_w: float) -> String:
 
 # ======================================================================== events
 
-func toast(text: String, kind: String = "") -> void:
+func toast(text: String, kind: String = "", on_click: Callable = Callable()) -> void:
 	# the same line twice is one toast; three at most
 	for old in toasts.get_children():
 		if old.has_meta("text") and old.get_meta("text") == text and not old.has_meta("loot"):
@@ -1458,6 +1458,8 @@ func toast(text: String, kind: String = "") -> void:
 	var hold := maxf(6000.0, 2000.0 + text.split(" ", false).size() * 400.0) / 1000.0
 	var t := DmToast.make(text, "new_cue" if kind == "new" else kind, hold)
 	t.set_meta("text", text)
+	if on_click.is_valid():
+		t.set_clickable(on_click)
 	toasts.add_child(t)
 	var plain := []
 	for c in toasts.get_children():

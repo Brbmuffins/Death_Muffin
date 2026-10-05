@@ -28,6 +28,11 @@ const CUE_TEXT := {
 	"tab.sheet.pets": "Capes & Pets moved into the Character sheet (J). N still opens them.",
 	"tab.grimoire.legion": "The Legion now sits beside the Grimoire (L). Y still opens it.",
 }
+## The panel a NEW cue's toast opens when clicked (WorldScene CUE_OPENS).
+const CUE_OPENS := {
+	"menu.skills": "professions", "menu.spells": "grimoire", "hud.spells": "grimoire", "menu.atlas": "atlas",
+	"tab.acre.garden": "garden", "tab.sheet.pets": "cosmetics", "tab.grimoire.legion": "legion",
+}
 const TAB_CUES := ["tab.acre.garden", "tab.acre.labor", "tab.acre.contracts", "tab.sheet.pets", "tab.grimoire.legion"]
 const REVEAL_IDS := ["hud.upgrades", "hud.dial", "hud.shards", "hud.spells", "menu.spells", "menu.atlas", "menu.skills"]
 const LOADOUT_ACTIONS := ["loadout_next", "loadout_1", "loadout_2", "loadout_3", "loadout_4", "loadout_5", "loadout_6"]
@@ -241,7 +246,9 @@ func counsel_busy() -> Dictionary:
 func _init_progressive() -> void:
 	cues = DmHudReveal.CueQueue.new()
 	cues.hold_ms = 7500.0
-	cues.show_cb = func(text: String, _key: String) -> void: hud.toast(text, "new")
+	cues.show_cb = func(text: String, key: String) -> void:
+		var opens: String = CUE_OPENS.get(key, "")
+		hud.toast(text, "new", Callable(self, "toggle_panel").bind(opens) if opens != "" else Callable())
 	cues.blocked = func() -> bool: return hud.banner_active() or (dialogue != null and dialogue.visible)
 	var level := int(game.character.get("level", 1))
 	var loc: Dictionary = game.progress
