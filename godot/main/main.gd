@@ -101,6 +101,7 @@ func _enter_world(character: Dictionary, session) -> void:
 	game.add_child(ui)
 	ui.setup(game)
 	game.ui = ui
+	await ui.warm()
 	ui.sound.connect(func(n: String): get_node("/root/AudioDirector").play_sfx(n))
 
 

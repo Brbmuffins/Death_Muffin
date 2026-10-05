@@ -133,8 +133,20 @@ func setup(game_: Node) -> void:
 	hud.hint.text = "Right-click or 5 casts your fifth rite"
 	_last_gold = int(game.character.get("gold", 0))
 	_load_side_data()
+	# First HUD apply now, during setup (loading), not in the first played frame: it builds the hotbar, loads the slot/omen/portrait
+	# textures and shapes every label once (~50 ms headless).
+	_hud_at = Time.get_ticks_msec()
+	_vm = merged_vm()
+	hud.apply(_vm)
 	set_process(true)
 	set_process_unhandled_key_input(true)
+
+
+## Await after setup() while still loading: the first frame with the HUD does the whole control tree's first layout + theme/text
+## shaping (~30 ms headless), so take it here rather than in the first played frame.
+func warm() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
 
 
 func _rite_level() -> float:

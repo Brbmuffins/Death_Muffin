@@ -31,6 +31,7 @@ func _run() -> void:
 		game.add_child(ui)
 		ui.setup(game)
 		game.ui = ui
+		await ui.warm()
 	game.character["level"] = int(_arg("level", "12"))
 	game.refresh_stats()
 	game.dev_access = true

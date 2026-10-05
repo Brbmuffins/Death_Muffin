@@ -144,11 +144,13 @@ func open_forge(station: String) -> void:
 			f.reforge_requested.connect(func(slot: int, aff: int, cost: int) -> void: _reforge(f, slot, aff, cost))
 		f.closed.connect(func() -> void: ui.panel_changed.emit())
 	var fp: DmForgePanel = forges[key]
+	fp.hold()   # bag + open's own redraws collapse into one rebuild of the recipe rows
 	fp.set_bag(_bag_rows())
 	if fp.reforge != null:
 		fp.reforge.set_pieces(_bag_rows())
 		fp.reforge.set_gold(int(game.character.get("gold", 0)))
 	fp.open()
+	fp.release()
 	if station == "cauldron" or station == "alembic":
 		ui.notify("cauldron_opened")
 	elif station != "" and station != "workbench":
@@ -162,9 +164,11 @@ func _recipes(f: DmForgePanel, prof: String) -> void:
 	else:
 		f.set_error(r.error)
 	var pr: DmResult = await game.api.get_professions(cid())
+	f.hold()   # professions + bag: one rebuild, not two
 	if pr.ok:
 		f.set_professions(pr.data)
 	f.set_bag(_bag_rows())
+	f.release()
 
 
 func _craft(f: DmForgePanel, recipe_id: String, qty: int) -> void:
