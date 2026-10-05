@@ -44,9 +44,10 @@ func set_state(s: Dictionary) -> void:
 	render()
 
 
-func set_runes(r: Variant) -> void:
+func set_runes(r: Variant, redraw := true) -> void:
 	runes = r
-	render()
+	if redraw:
+		render()
 
 
 func open_session(select: Variant = null) -> void:

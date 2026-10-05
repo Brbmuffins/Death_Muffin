@@ -237,7 +237,7 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 				_waystones.append(it)
 	apply_settings(settings_store.values)
 	# Load + draw every model/effect once now, not on its first appearance mid-fight (DmWarmup).
-	if visual and bool(opts.get("warmup", DisplayServer.get_name() != "headless")):
+	if visual and bool(opts.get("warmup", DisplayServer.get_name() != "headless" or "--warmup" in OS.get_cmdline_user_args())):
 		await DmWarmup.run(self)
 	ready_ = true
 	set_process(true)

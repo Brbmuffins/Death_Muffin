@@ -124,9 +124,18 @@ func select_tab(id: String) -> void:
 		(_tabs[k]["btn"] as Button).set_pressed_no_signal(k == id)
 
 
+## Opening asks the game for recipes, bag, professions... and each answer used to redraw every row (5 full rebuilds, ~0.5 s):
+## redraws requested while opening collapse into one.
+var _hold := 0
+var _dirty := false
+
 func open() -> void:
+	_hold += 1
 	super.open()
 	_request_current()
+	_hold -= 1
+	if _hold == 0 and _dirty:
+		_render()
 
 
 func current_profession() -> String:
@@ -258,6 +267,10 @@ func today() -> String:
 
 # --- drawing -----------------------------------------------------------------------------------------------------
 func _render() -> void:
+	if _hold > 0:
+		_dirty = true
+		return
+	_dirty = false
 	if not _lists.has(active):
 		rows.clear()
 		return

@@ -224,9 +224,10 @@ func _adopt(pet_id: String) -> void:
 func refresh_grimoire() -> void:
 	var gv: DmGrimoireView = grim_win.grimoire
 	var lvl: float = ui._rite_level()
-	gv.set_state({"rites": {"primary": ui.rites.primary, "keys": ui.rites.keys}, "level": lvl, "unseen": ui.rites.unseen(), "kit": ui.kit()})
+	# Runes first without a redraw, so the grimoire is drawn once (it was drawn twice per open/refresh).
 	if ui.is_necromancer():
-		gv.set_runes({"sockets": DmRunes.sockets_of(game.slots), "owned": DmRunes.owned_runes(game.slots)})
+		gv.set_runes({"sockets": DmRunes.sockets_of(game.slots), "owned": DmRunes.owned_runes(game.slots)}, false)
+	gv.set_state({"rites": {"primary": ui.rites.primary, "keys": ui.rites.keys}, "level": lvl, "unseen": ui.rites.unseen(), "kit": ui.kit()})
 
 
 func grimoire_changed() -> void:
@@ -261,12 +262,20 @@ func _reinforce() -> void:
 
 # --- atlas / codex ---------------------------------------------------------------------------------------------------------
 
+var _atlas_key := 0
+var _atlas_inputs: Dictionary = {}
+
 func _atlas_data() -> void:
 	var ctx: Variant = ui.stat_ctx()
 	var owned := DmAtlasPanel.owned_from_slots(game.slots)
 	var inputs := {"verdicts": {}, "outlooks": {}}
 	if ctx != null:
-		inputs = DmAtlasGear.panel_inputs(ctx, DmPaData.atlas().get("items", {}).keys(), owned)
+		# A verdict for every atlas item is ~0.3 s: reuse it until the stat context or the owned items change.
+		var key := [ctx, owned].hash()
+		if key != _atlas_key or _atlas_inputs.is_empty():
+			_atlas_inputs = DmAtlasGear.panel_inputs(ctx, DmPaData.atlas().get("items", {}).keys(), owned)
+			_atlas_key = key
+		inputs = _atlas_inputs
 	atlas.set_context({"disc": String(ui.build()["discipline"]["id"]), "level": int(game.character.get("level", 1)), "area": String(game.area_id), "owned": owned,
 		"verdicts": inputs["verdicts"], "outlooks": inputs["outlooks"]})
 

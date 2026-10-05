@@ -26,8 +26,11 @@ class Monitor extends Node:
 		skip += 1
 		if skip > 120 and last_us > 0:
 			dts.append((now - last_us) / 1000.0)   # wall-clock frame time (Engine.time_scale does not distort it)
+			if (now - last_us) / 1000.0 > 50.0:
+				bot.on_hitch((now - last_us) / 1000.0)
 		last_us = now
 		bot.on_frame(dt)
+		bot.on_frame_prof()
 
 var errlog := ErrLog.new()
 var mon: Monitor
@@ -111,6 +114,26 @@ func chk(ok: bool, title: String, detail: String = "", sev: String = "major") ->
 func note(s: String) -> void:
 	notes.append("[%s] %s" % [phase_name, s])
 	print("  note: ", s)
+
+
+## Slow frame: where the bot was and which DmGame.tick section grew most since the last frame (prof_on is set at world entry).
+var _prof_prev: Dictionary = {}
+func on_hitch(ms: float) -> void:
+	var top := ""
+	if g != null and is_instance_valid(g):
+		var best := 0
+		for k in g.prof:
+			var dv: int = int(g.prof[k]) - int(_prof_prev.get(k, 0))
+			if dv > best:
+				best = dv
+				top = "%s %.0fms" % [k, dv / 1000.0]
+	print("HITCH %.0fms phase=%s area=%s tick-top=%s" % [ms, phase_name, (g.area_id if g != null and is_instance_valid(g) else "-"), top])
+
+
+func on_frame_prof() -> void:
+	if g != null and is_instance_valid(g):
+		g.prof_on = true
+		_prof_prev = g.prof.duplicate()
 
 
 func phase(n: String) -> void:
