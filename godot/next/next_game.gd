@@ -69,6 +69,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	corpses.name = "Corpses"
 	add_child(corpses)
 	director.enemy_spawned.connect(func(e: DmEnemy) -> void:
+		DmStatusSet.attach(e)   # every peer, so status visuals replicate (an ensure()d set never does)
 		corpses.track(e, String(e.get_meta("dm_area", area_id)))
 		enemy_spawned.emit(e))
 	director.warm()
