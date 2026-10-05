@@ -422,10 +422,21 @@ func _load_server_data() -> void:
 	progress_changed.emit()
 
 
+## The web never re-reads the character mid-session: gold, level, xp and stats are client-saved (DmProgression owns them and pushes them
+## up), so a reply that was in flight while a pickup or kill credited them must never write them back (it rewound gold by 40 once).
+## Only the fields the server owns are adopted, and only from the newest request.
+const CLIENT_OWNED_CHARACTER_FIELDS := ["gold", "level", "experience", "stat_str", "stat_agi", "stat_int", "stat_vit"]
+var _character_seq := 0
+
+
 func refresh_character() -> void:
+	_character_seq += 1
+	var seq := _character_seq
 	var r := await api.get_character()
-	if r.ok and r.data is Dictionary:
+	if seq == _character_seq and r.ok and r.data is Dictionary:
 		for k in r.data:
+			if k in CLIENT_OWNED_CHARACTER_FIELDS and character.has(k):
+				continue
 			character[k] = r.data[k]
 		refresh_stats()
 		character_changed.emit()
