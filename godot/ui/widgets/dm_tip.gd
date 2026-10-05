@@ -31,7 +31,7 @@ static func of(node: Node) -> DmTip:
 	if t == null:
 		t = DmTip.new()
 		t.name = "DmTipLayer"
-		root.add_child(t)
+		root.add_child.call_deferred(t)
 	return t
 
 

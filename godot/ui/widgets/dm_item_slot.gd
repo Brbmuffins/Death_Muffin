@@ -48,8 +48,9 @@ func _ready() -> void:
 		queue_redraw()
 		DmTip.of(self).hide_for(self))
 	tree_exiting.connect(func() -> void:
-		if is_inside_tree():
-			DmTip.of(self).hide_for(self))
+		var t := get_tree().root.get_node_or_null("DmTipLayer") as DmTip if is_inside_tree() else null
+		if t != null:
+			t.hide_for(self))
 
 
 func set_item(d: Dictionary) -> void:
