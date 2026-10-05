@@ -365,7 +365,7 @@ func _flush_tests() -> void:
 
 
 func _api_tests() -> void:
-	# the real DmApi on the mock backend: gather is stubbed there (HTTP 501 = retry later)
+	# the real DmApi on the offline backend: gather is served there (the server's time budget and rules)
 	var mock := DmMockBackend.new("")
 	mock.now_ms = func(): return 1700000000000
 	var api := DmApi.new(mock.transport_callable())
@@ -378,12 +378,14 @@ func _api_tests() -> void:
 	_reset(spot["x"], spot["z"])
 	var post := DmGatherLoop.api_post(api, int(ch.data["id"]))
 	var res: DmResult = await post.call("coffin_oak", 3, false, true)
-	check(not res.ok and res.status == 501, "api_post reaches DmApi.gather (mock stub answers 501)")
+	check(not res.ok and res.status == 400 and res.error == "Start AFK gathering from Skills first.", "api_post reaches DmApi.gather (the backend refuses AFK before afk-start)")
+	var res2: DmResult = await post.call("coffin_oak", 3, false, false)
+	check(res2.ok and res2.data["node"] == "coffin_oak" and int(res2.data["accepted"]) == 3, "api_post gathers on the offline backend")
 	loop.hooks["post"] = post
 	loop.start(oak)
 	loop.update(2.4)
 	await loop.flush()
-	check(errors.is_empty(), "501 from the mock backend reads as a server hiccup (retry), not an error")
+	check(errors.is_empty(), "a flush against the offline backend is not an error")
 
 
 func _fake_builder(defs: Array) -> Object:
