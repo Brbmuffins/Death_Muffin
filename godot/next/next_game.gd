@@ -44,6 +44,7 @@ var progress: DmNextProgress                     ## child "Progress" (host): per
 var bosses: DmBossHost                          ## child "Bosses" (every peer): summon rules, boss bodies, boss events + music
 var enemy_fx: DmEnemyFx                          ## child "EnemyFx" (every peer): telegraphs, impacts, deaths, enemy voices
 var corpses: DmCorpseField                       ## child "Corpses" (same path on every peer); host lays corpses from enemy deaths
+var hitstopper := DmHitStop.new()               ## the picture's micro-freeze on heavy hits / elite deaths (DmHitStop, as the current client)
 var opts: Dictionary = {}
 var load_ms: int = 0
 var ready_ := false                             ## DmAudioHooks "main" shape: ready_, area_id, player, avatar, builder
@@ -55,6 +56,7 @@ var builder: DmWorldBuilder:
 	get: return world.builder
 
 var _visual := true
+var _vfx: Node
 var _has_world := true
 
 
@@ -79,6 +81,8 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	enemy_fx.name = "EnemyFx"
 	enemy_fx.player_pos = func() -> Vector3: return local_body().global_position if local_body() != null else camera.global_position
 	enemy_fx.host.camera = camera
+	enemy_fx.host.hitstop_cb = hitstop
+	hitstopper.disabled = func() -> bool: return ui_host != null and bool(ui_host.settings["reduce_motion"])
 	add_child(enemy_fx)
 	director.enemy_spawned.connect(func(e: DmEnemy) -> void:
 		enemy_fx.watch(e)       # idempotent (the node also auto-watches); explicit so the seam is visible
@@ -96,6 +100,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	bosses.audio_enabled = bool(opts.get("audio", DisplayServer.get_name() != "headless")) and _has_world
 	add_child(bosses)
 	bosses.fx.host.camera = camera
+	bosses.fx.host.hitstop_cb = hitstop
 	bosses.fx.player_pos = enemy_fx.player_pos
 	bosses.fx.host.sink = func(id: String, ctx: Dictionary) -> void:   # banners / toasts -> the HUD
 		if ui_host != null:
@@ -192,6 +197,8 @@ func _start_hud() -> void:
 		await ui.warm()
 		if progress != null:
 			progress.belt.load_pick(ui.belt_pick())
+		ui_host.inventory.changed.connect(func(_s: Array) -> void: sync_runes())   # a socketed / removed rune reaches the caster
+		sync_runes()
 
 
 ## Host: the rewards track's node (DmSessionRewards) with one member per player; kills arrive through `enemy_spawned` -> `died`.
@@ -248,13 +255,22 @@ func attach_caster(body: DmHeroBody) -> void:
 		await get_tree().create_timer(CASTER_DELAY).timeout
 		if not is_instance_valid(body) or not body.is_inside_tree():
 			return
-	DmRiteCaster.attach(body, self)
+	var caster := DmRiteCaster.attach(body, self)
+	if body.owner_peer == session.get_my_id():
+		caster.shake_requested.connect(camera.shake)   # the camera honours reduce_motion
 	DmThrallHost.attach(body, self)   # "Thralls": raise/rally/command on the host, puppets elsewhere
 	if body.get_node_or_null("Statuses") == null:
 		DmStatusSet.attach(body)       # player statuses replicate like enemies'
 
 
 func _process(dt: float) -> void:
+	hitstopper.frame(dt)
+	if _visual:
+		if _vfx == null:
+			_vfx = get_node_or_null("/root/Vfx")
+		if _vfx != null:
+			_vfx.hitstop_scale = hitstopper.scale
+		DmCreature.hitstop_scale = hitstopper.scale
 	var b := local_body()
 	if b == null:
 		return
@@ -311,8 +327,37 @@ func aim_target_id() -> int:
 
 func rite_build(peer_id: int) -> Dictionary:
 	var out := build_for(peer_id)
-	out["runes"] = {}
+	out["runes"] = rune_sockets(peer_id)
 	return out
+
+
+## The runes a peer's character has socketed ({rite: rune_id}, as DmGame: DmRunes.sockets_of the bag). Only the local host's bag is known.
+func rune_sockets(peer_id: int) -> Dictionary:
+	if progress == null or peer_id != session.get_my_id():
+		return {}
+	var b := body_of(peer_id)
+	return DmRunes.sockets_of(progress.slots()) if b != null and b.family == "necromancer" else {}
+
+
+## Host: push the bag's sockets to the local caster (the bag changed, or the HUD's inventory just loaded).
+func sync_runes() -> void:
+	var b := local_body()
+	var c := b.get_node_or_null("Rites") as DmRiteCaster if b != null else null
+	if c != null and session.is_host():
+		c.set_runes(rune_sockets(session.get_my_id()))
+
+
+## The rite on a hotbar slot (0 = LMB primary, 1-4, 5 = RMB, 6 = R): the HUD's loadout when it is up, else the kit's mapping.
+func rite_for_slot(slot: int) -> String:
+	if ui_host != null:
+		return ui_host.rite_at(slot)
+	var b := local_body()
+	return DmRiteHotbar.rite_for_slot(slot, b.family, b.discipline_id) if b != null else ""
+
+
+## Ask for a picture freeze (DmHitStop: min gap, leaky budget, off under reduce_motion). `weight` 0..1.
+func hitstop(weight: float) -> void:
+	hitstopper.request(weight)
 
 
 ## A body's DmCharacterBuild. The local host's carries its progression (damage tier, boons, vows) and its bag's gear; others get the defaults.

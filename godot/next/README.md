@@ -19,6 +19,7 @@
 | Net | `next_net.gd` | enemy `get/apply_net_state` + hero vitals, 20 Hz, only when peers exist |
 | Input | `next_input.gd` | click-to-move, WASD, hotbar seam, hover pick (10 Hz) |
 | Camera | `DmCameraRig` | existing rig |
+| Feel | `feel/dm_combat_input.gd` (+ `rites/dm_rite_gestures.gd`, `hitstopper`, rune sockets) | attack-target chase, hold repeat, queued casts, Shift, held keys, cast gestures, hitstop, runes (`feel/README.md`) |
 | Progress | `progress/dm_next_progress.gd` | host: DmProgression + DmProgressSync persistence, upgrades -> rites / waves, level-ups, milestones, belt (`progress/README.md`) |
 | Areas | `areas/dm_area_flow.gd`, `areas/dm_grave_surge.gd` | every area live: entry banners + Codex, the director follows the hero's area (rosters, 1.3x first wave, processions), Grave Surges; `areas/README.md` |
 | Hud | `next_hud.gd` | health + resource `DmHudOrb`, area name, death veil |

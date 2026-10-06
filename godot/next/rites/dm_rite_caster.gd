@@ -41,6 +41,7 @@ var auto_step: bool = true          ## false: tests drive the host with step(dt)
 var rejected_intents: int = 0       ## host: forged intents (not the owner / bad values)
 var rejected_casts: int = 0         ## host: legitimate intents refused by the rules (cooldown, essence, range, ...)
 var events_played: int = 0
+var gestures_played: int = 0        ## every peer: hero cast gestures played (one per accepted cast, see DmRiteGestures)
 var p: Dictionary = {}
 var peer_id: int = 0
 
@@ -189,6 +190,12 @@ func apply_brew(id: String) -> Dictionary:
 	return DmBrews.apply_brew(p["brews"], id, _now_ms)
 
 
+## Host: the character's socketed runes ({rite: rune_id}, DmRunes.sockets_of the bag): every rune variant a rite module implements reads them.
+func set_runes(runes: Dictionary) -> void:
+	if not p.is_empty():
+		p["runes"] = runes
+
+
 func _init_host_state() -> void:
 	var build: Dictionary = {}
 	if world != null and world.has_method("rite_build"):
@@ -280,7 +287,24 @@ func _apply_cast(sender: int, rite: String, aim: Vector3, target_id: int) -> voi
 		_refuse(sender, rite, why)
 		_push_state(true)
 		return
+	_gesture_cast(rite)
 	_push_state(true)
+
+
+## Host: the hero's cast gesture for an accepted cast, once on every peer (its own RPC, not an event: events_played stays the rites' own).
+func _gesture_cast(rite: String) -> void:
+	if not DmRiteGestures.has(rite):
+		return
+	var yaw := float(_body.get("yaw")) if _body != null and _body.get("yaw") != null else 0.0
+	_play_gesture(rite, yaw)
+	if not multiplayer.get_peers().is_empty():
+		_rpc_gesture.rpc(rite, yaw)
+
+
+func _play_gesture(rite: String, yaw: float) -> void:
+	var av: Variant = _body.get("avatar") if _body != null else null
+	if DmRiteGestures.play(av, rite, yaw):
+		gestures_played += 1
 
 
 ## What apply_cast_cost touches, so a failed resolve can hand it back.
@@ -479,6 +503,11 @@ func _rpc_cast(rite: String, aim: Vector3, target_id: int) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _rpc_event(ev: Dictionary) -> void:
 	_play_event(ev)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_gesture(rite: String, yaw: float) -> void:
+	_play_gesture(rite, yaw)
 
 
 @rpc("authority", "call_remote", "reliable")

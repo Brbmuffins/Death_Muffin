@@ -29,7 +29,7 @@ HUD feeds and contract methods that `DmGame` had and `DmNextGame` / `DmNextUiHos
    `DmFrontFlow` is never used by `--next`. Offline must stay (D4), and real characters (D8) cannot be reached until `DmFrontFlow.enter_world` launches `DmNextGame`. (section 20)
 2. **Performance controls absent (MISSING).** No resolution governor, no FPS cap, no graphics presets (only `vfx.quality`), no loading cover, no GPU shader warm-up of models (`DmWarmup` not run),
    settings `fps` / `auto_res` / `graphics` inert. Owner priority #1; REBUILD Phase 6 plans the replacement but today the slice has no pacing safety net. (sections 17, 23)
-3. **Necromancer combat feel (MISSING/PARTIAL).** Clicking a far enemy does nothing (no attack-target chase, no hold-LMB / Shift+LMB, no queued or held-key casts, out-of-range refusal is silent),
+3. **Necromancer combat feel (DONE on `godot/next-feel`, see `next/feel/README.md`; only Easy auto-combat and standing mouse-aim facing remain; original gap text follows).** Clicking a far enemy does nothing (no attack-target chase, no hold-LMB / Shift+LMB, no queued or held-key casts, out-of-range refusal is silent),
    the hero never plays a cast gesture (`avatar.cast` is never called by rites), and there is no hitstop. Rune choices never reach the caster (`rite_build()` sets `runes = {}`), so Hollow Choir / Requiem / Impaling /
    Mass Grave / Colossus builds are dead. (section 1)
 4. **Difficulty, ascension rank and omen are not applied (MISSING).** `settings.difficulty` is stored but rewards/bosses/director use a constant "medium"; `DmSessionRewards.ascension` stays 0; omen multipliers have no source.

@@ -25,6 +25,7 @@ var _hover_id: int = 0
 var _dir_sent := Vector3.ZERO
 var _resend: float = 0.0
 var _hover_t: float = 0.0
+var combat := DmCombatInput.new()       ## attack-target chase, hold repeat, queued casts, held keys (next/feel/)
 
 
 static func ensure_actions() -> void:
@@ -78,6 +79,14 @@ func _process(dt: float) -> void:
 		game.chapterhouse.hover_at(mp)    # stations / NPCs under the cursor (prompt + highlight)
 
 
+## Left click on an enemy: it becomes the attack target (`shift` = cast in place); the first step is taken now, not next frame.
+func attack(enemy_id: int, shift: bool) -> void:
+	if combat.game == null:
+		combat.setup(game, self)
+	combat.set_target(enemy_id, shift)
+	combat.tick(float(Time.get_ticks_msec()))
+
+
 func _unhandled_input(ev: InputEvent) -> void:
 	if not enabled or game == null or game.local_body() == null:
 		return
@@ -92,12 +101,18 @@ func _unhandled_input(ev: InputEvent) -> void:
 		for i in range(1, 7):
 			if ev.is_action_pressed(&"dm_hotbar_%d" % i):
 				press_hotbar(i)
+				combat.key_down(i, float(Time.get_ticks_msec()))
 
 
 func _physics_process(delta: float) -> void:
 	if not enabled or game == null or game.local_body() == null:
 		return
+	if combat.game == null:
+		combat.setup(game, self)
 	var d := held_direction()
+	if d != Vector3.ZERO:
+		combat.clear()                      # walking by hand ends the chase and the queue (old: key_dir cancels attack_target)
+	combat.tick(float(Time.get_ticks_msec()))
 	_resend -= delta
 	if d != _dir_sent or (d != Vector3.ZERO and _resend <= 0.0):
 		_resend = RESEND_S
@@ -115,8 +130,13 @@ func _primary_click(screen: Vector2) -> void:
 	if gp != null:
 		_aim = Vector3(gp.x, 0.0, gp.z)
 	_hover_id = _pick_enemy(screen)
+	var shift := Input.is_key_pressed(KEY_SHIFT)
 	if _hover_id != 0:
-		press_hotbar(0)
+		attack(_hover_id, shift)              # walk into range and cast the primary; hold = repeat (Shift: in place)
+		return
+	combat.clear()
+	if shift:
+		game.session.request_move_dir(Vector3.ZERO)   # Shift on the ground stands still (old: player.stop())
 	elif game.chapterhouse != null and game.chapterhouse.click_at(screen):
 		pass                                  # walks to the station / NPC and uses it on arrival
 	elif gp != null:
@@ -134,11 +154,23 @@ func click_move(point: Vector3) -> void:
 
 ## Slot 0 = LMB primary, 1..4 = keys, 5 = RMB, 6 = R (the signature). The aim is the hovered enemy's position when there is one, else the ground point.
 func press_hotbar(slot: int) -> void:
+	cast_slot(slot, true)
+
+
+## `manual`: a deliberate press (a refused one is queued for a short window); false = a repeat / the chase / a queued retry.
+func cast_slot(slot: int, manual: bool) -> void:
 	var b: DmHeroBody = game.local_body()
 	if b == null or not b.alive:
 		return
 	var e: DmEnemy = game.enemy_by_id(_hover_id) if _hover_id != 0 else null
-	hotbar.emit(slot, e.global_position if e != null else _aim, _hover_id if e != null else 0)
+	cast_at(slot, e.global_position if e != null else _aim, _hover_id if e != null else 0, manual)
+
+
+func cast_at(slot: int, aim: Vector3, enemy_id: int, manual: bool) -> void:
+	if combat.game == null:
+		combat.setup(game, self)
+	combat.note_cast(slot, String(game.rite_for_slot(slot)), aim, enemy_id, manual)
+	hotbar.emit(slot, aim, enemy_id)
 
 
 func _pick_enemy(screen: Vector2) -> int:
