@@ -327,9 +327,23 @@ func _spawn(dt: float, b: DmHeroBody) -> void:
 	for o in orders:
 		var at: Vector3 = game.world.nav_closest(Vector3(float(o["x"]), 0.0, float(o["z"])))
 		game.director.spawn(String(o["def"]), at, [b], bool(o["elite"]), {},
-			{"area": "depths", "depth": run.depth, "aggro": AGGRO, "leash": LEASH, "affixes": 1 + (o["extras"] as Array).size() if bool(o["elite"]) else 0})
+			{"area": "depths", "depth": run.depth, "aggro": AGGRO, "leash": LEASH, "affixes": 1 + (o["extras"] as Array).size() if bool(o["elite"]) else 0,
+			"affix_list": _affixes_of(o)})
 	if not orders.is_empty():
 		game.director.wave_spawned.emit(orders.size())
+
+
+## An elite's affixes: its roll, the week's Omen forcing the first one (the Tolling: Bell-Tolled) like the sim's spawn_at_breach; distinct.
+func _affixes_of(o: Dictionary) -> PackedStringArray:
+	var out := PackedStringArray()
+	if not bool(o["elite"]):
+		return out
+	var forced: Variant = game.director.omen.get("affix")
+	out.append(String(forced) if forced != null else String(o["affix"]))
+	for a in o["extras"]:
+		if not out.has(String(a)):
+			out.append(String(a))
+	return out
 
 
 func _alive() -> int:

@@ -65,7 +65,7 @@ const LOOK_WINGS := {"moth": {"speed": 8.0, "amp": 0.55, "body": 0.16}, "bat": {
 @export var hp_mult: float = 1.0          ## level/difficulty scaling is the spawner's job (sim spawn_enemy math)
 @export var damage_mult: float = 1.0
 @export var rng_seed: int = 0             ## 0 = random
-@export var elite: bool = false           ## sim ELITE multipliers (hp/damage/scale/radius, wind-up x0.85, cooldown x0.8); affixes are NOT implemented
+@export var elite: bool = false           ## sim ELITE multipliers (hp/damage/scale/radius, wind-up x0.85, cooldown x0.8); elite affixes are a child component, see next/affixes
 @export var in_graves: bool = true        ## burrowers: BURROW.eruptMultGraves / eruptMsGraves vs the deeper-area numbers
 @export var flank_side: float = 0.0       ## +-1 flank side for flanker kinds; 0 = random per body
 @export var model_slug: String = ""       ## "" = the def's modelSlug (or grave_robber); a scene sets it for defs that name no model (deacon)

@@ -49,4 +49,4 @@ with an immediate snapshot on `state_changed` (recommended for the session layer
 No new effects, textures or sounds: everything is existing Vfx decals/emitters/Binbun `censer_incense` and existing sound ids (`DmEnemyFx.EFFECT_IDS`, `SFX_IDS`, checked by the suite), so DmWarmup's all-effects pass covers it. Headless measurements (real Vfx, 30 enemies): ~27 us/frame idle; telegraph ~200 us/event; impact ~90 us; death ~150 us (incl. the enemy itself). Pools are Vfx's.
 
 ## Not covered
-Elite affixes (DmEnemy has none), toxic-stink on corpses and corpse looks (corpse track), per-kind idle fx of kinds that have no scene yet (fire/fen/etc. exist in the router: `fx._death` already handles fire deaths).
+Elite affixes (next/affixes), toxic-stink on corpses and corpse looks (corpse track), per-kind idle fx of kinds that have no scene yet (fire/fen/etc. exist in the router: `fx._death` already handles fire deaths).

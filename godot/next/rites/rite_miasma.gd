@@ -64,6 +64,8 @@ func step(c: DmRiteCaster, dt: float) -> void:
 			var ss := DmStatusSet.ensure(e)
 			c.watch_dots(ss)
 			ss.apply(&"slow", c.body, 1, SLOW_HOLD_S)
+			if e.has_meta(&"dm_shrouded"):
+				e.set_meta(&"dm_miasma_ms", Time.get_ticks_msec())   # lifts the Shrouded affix's ward while it stands in the cloud
 			if pulse:
 				ss.apply(&"withered", c.body, 1, -1.0, {"dps": float(z["dps"]), "cap": float(z["cap"])})
 

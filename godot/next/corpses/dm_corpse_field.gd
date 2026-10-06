@@ -62,6 +62,7 @@ func _ready() -> void:
 	if vfx != null:
 		DmFxTex.get_tex("ring")   # first-use warm: the decal textures exist before the first corpse
 		DmFxTex.get_tex("disc")
+	add_to_group(&"dm_corpse_field")   # corpse eaters (the Hungering affix) find the field without a path
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	set_process(false)
 

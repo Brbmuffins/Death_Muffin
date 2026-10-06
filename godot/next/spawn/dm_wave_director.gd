@@ -278,12 +278,15 @@ func spawn_group(pos: Vector3, heroes: Array, room: int, lead: String = "", rost
 	if pack is Array:
 		k = rng.randi_range(int(pack[0]), int(pack[1]))
 	var elite := pack == null and rng.randf() < elite_chance()
+	var over := {}
+	if not elite and wave_tier > 0.0 and DmWaveUpgrades.milestone_active("nightfall", DmEnemyStats.ramp_tier(wave_tier, _since_arrival)) and rng.randf() < DmSimData.NIGHTFALL_SHROUD_CHANCE:
+		over["affix_list"] = PackedStringArray(["shrouded"])   # the sim rolls Nightfall's shroud once per pick, for the whole pack
 	var made := mini(k, room)
 	for j in made:
 		var at: Vector3 = pos if j == 0 else pos + Vector3(rng.randf_range(-1.5, 1.5), 0.0, rng.randf_range(-1.5, 1.5))
 		if j > 0 and game.world.nav_ready():
 			at = game.world.nav_closest(at)
-		var e := spawn(kind, at, heroes, elite)   # (spawn returns the enemy)
+		var e := spawn(kind, at, heroes, elite, {}, over)   # (spawn returns the enemy)
 		ids.append(id_of(e) if e != null else -1)
 	return made
 
@@ -291,7 +294,8 @@ func spawn_group(pos: Vector3, heroes: Array, room: int, lead: String = "", rost
 ## Host: create one enemy (replicated) and return it. `heroes` only feeds the level / party scaling. `mult` overrides the computed scaling
 ## ({level, hp, dmg}: the hp / damage multipliers as DmEnemy.hp_mult / damage_mult): a Risen raised by an acolyte or a deacon is as strong as its raiser.
 ## `over` (optional): area (the ground the enemy counts as for level scaling and `dm_area`; a boss's adds belong to the boss's
-## area), depth (the Depths run: its level, and full Wave Speed ramp like the sim's instance), aggro / leash (metres), affixes (meta).
+## area), depth (the Depths run: its level, and full Wave Speed ramp like the sim's instance), aggro / leash (metres), affixes (meta),
+## affix_list (PackedStringArray of elite affixes; an elite without one rolls its own: the Omen's forced affix, else one of four, + the Depths' extras).
 func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false, mult: Dictionary = {}, over: Dictionary = {}) -> DmEnemy:
 	var levels: Array = []
 	for h in heroes:
@@ -300,9 +304,12 @@ func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false
 	var level := DmEnemyStats.area_level(spawn_area, levels, float(vow_fx.get("levels", 0.0)), float(over.get("depth", 1.0)))   # Elder Dead: + levels
 	var tier := DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, 1e9 if over.has("depth") else _since_arrival)) if wave_tier > 0.0 else {"enemyHpMult": 1.0, "enemyDamageMult": 1.0}
 	var diff := DmContent.difficulty(difficulty)
+	var affixes: PackedStringArray = over.get("affix_list", PackedStringArray())
+	if affixes.is_empty() and elite:
+		affixes = DmAffixSet.roll(true, String(omen.get("affix", "")) if omen.get("affix") != null else "", float(over["depth"]) if spawn_area == "depths" and over.has("depth") else -1.0, 0.0, rng.randf)
 	var e := _spawner.spawn({
-		"id": _next_id, "def": def_id, "pos": pos, "level": float(mult.get("level", level)), "area": spawn_area,
-		"aggro": float(over.get("aggro", 0.0)), "leash": float(over.get("leash", 0.0)), "affixes": int(over.get("affixes", 0)),
+		"id": _next_id, "affix_list": affixes, "def": def_id, "pos": pos, "level": float(mult.get("level", level)), "area": spawn_area,
+		"aggro": float(over.get("aggro", 0.0)), "leash": float(over.get("leash", 0.0)), "affixes": maxi(int(over.get("affixes", 0)), affixes.size()),
 		"hp": float(mult["hp"]) if mult.has("hp") else DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))) * float(tier["enemyHpMult"]) \
 			* float(diff["enemyHpMult"]) * float(vow_fx.get("enemyHpMult", 1.0)),
 		"dmg": float(mult["dmg"]) if mult.has("dmg") else DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]) * float(diff["enemyDamageMult"]), "rising": true, "elite": elite})
@@ -397,6 +404,9 @@ func _spawn_enemy(data: Variant) -> Node:
 		e.leash_range = float(data["leash"])
 	if int(data.get("affixes", 0)) > 0:
 		e.set_meta(&"dm_affixes", int(data["affixes"]))
+	var affix_list: PackedStringArray = data.get("affix_list", PackedStringArray())
+	if not affix_list.is_empty():
+		DmAffixSet.attach(e, affix_list, self)   # elite affixes: a component only on the bodies that carry one
 	e.set_multiplayer_authority(1)
 	var id := int(data["id"])
 	enemies[id] = e
