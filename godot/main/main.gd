@@ -88,6 +88,11 @@ func _enter_world(character: Dictionary, session) -> void:
 	if flow != null:
 		flow.queue_free()
 		flow = null
+	# The loading screen goes up first and is painted before the (synchronous) world build starts: no login-screen freeze, no black frame.
+	var loading := DmLoadingScreen.acquire(self, "Waking the dead...")
+	loading.set_progress(0.05)
+	await get_tree().process_frame
+	await get_tree().process_frame
 	game = DmGame.new()
 	game.name = "Game"
 	add_child(game)
@@ -102,6 +107,7 @@ func _enter_world(character: Dictionary, session) -> void:
 	ui.setup(game)
 	game.ui = ui
 	await ui.warm()
+	loading.dismiss()   # fades into the game; the same screen has covered every frame since the login screen
 	ui.sound.connect(func(n: String): get_node("/root/AudioDirector").play_sfx(n))
 
 

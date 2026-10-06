@@ -49,6 +49,7 @@ class Monitor extends Node:
 		bot.on_frame_prof()
 
 ## Phases where the game builds its world behind the loading screen: their long frames are loads, not play stalls.
+const PLAY_BUDGET_MS := 150.0
 const LOADING_PHASES := ["boot", "front", "relaunch"]
 var tail_us := 0
 var head_us := 0
@@ -177,6 +178,15 @@ func write_report() -> void:
 	var errs := _script_errors()
 	for e in errs:
 		bug("critical", "SCRIPT ERROR: %s" % String(e["msg"]).left(120), "%s:%d in %s" % [e["file"], e["line"], e["fn"]])
+	# Perf gate: a play frame (outside the loading phases) over PLAY_BUDGET_MS is a stall a player feels. The VPS is shared, so one
+	# over-budget frame is only a minor finding (noise is possible); several, or one over 2x the budget, is major.
+	var pd: Array = mon.play_dts.filter(func(v): return v > PLAY_BUDGET_MS) if mon != null else []
+	if not pd.is_empty():
+		var worst := 0.0
+		for v in pd:
+			worst = maxf(worst, v)
+		bug("major" if (pd.size() >= 3 or worst > PLAY_BUDGET_MS * 2.0) else "minor", "play frames over the %.0f ms budget" % PLAY_BUDGET_MS,
+			"%d frame(s), worst %.0f ms (HITCH lines in the log name the phase and slice)" % [pd.size(), worst])
 	var rep := {"session": session, "disc": disc, "findings": findings, "notes": notes, "frame": frame_stats(), "stats": stats, "events": ev_counts,
 		"engine_errors": errlog.errors.size(), "wall_s": (Time.get_ticks_msec() - t0_ms) / 1000.0, "rendered": rendered}
 	if out_path != "":
