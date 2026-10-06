@@ -149,7 +149,9 @@ func _part_a() -> void:
 	check(await until(func() -> bool: return ne.hp < ehp or ne.sm.id() == DmEnemyState.Id.DEAD, 3.0), "A: the rite caster's needle hits an enemy")
 	e0.take_damage(1e9, hb)
 	await ticks(3)
-	check(e0.sm.id() == DmEnemyState.Id.DEAD and kills[0] == 1, "A: rewards seam credits the kill (%d)" % kills[0])
+	# exact: 1 for e0, +1 when the needle above killed `ne` (a kill credited twice would read one more)
+	var want_kills := 1 + (1 if (ne != e0 and is_instance_valid(ne) and ne.sm.id() == DmEnemyState.Id.DEAD) else 0)
+	check(e0.sm.id() == DmEnemyState.Id.DEAD and kills[0] == want_kills, "A: rewards seam credits each kill once (%d, want %d)" % [kills[0], want_kills])
 	check(e0.get_node_or_null("Statuses") is DmStatusSet, "A: spawned enemies carry a replicated DmStatusSet")
 	check(hb.get_node_or_null("Thralls") is DmThrallHost and hb.get_node_or_null("Statuses") is DmStatusSet and hb.get_node_or_null("Rites") != null, "A: the hero carries Rites, Thralls and Statuses")
 	var want_corpse: bool = e0.corpse_kind != "none"

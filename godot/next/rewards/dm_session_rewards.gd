@@ -434,6 +434,22 @@ func on_boss_defeated(ev: Dictionary) -> void:
 		boss_earned.emit(m.character_id, id, first, at)
 
 
+## A Grave Surge was quelled (DmGraveSurge): every member the normal-kill rule pays gets a guaranteed item from the area's table plus bonus gold
+## on the ground at the crypt. ev {area, x, z}. Mirrors DmGameRewards.on_surge_cleared.
+func on_surge_cleared(ev: Dictionary) -> void:
+	if ended:
+		return
+	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
+	var level := float(DmContent.area(String(ev["area"]))["level"])
+	var gold := DmMath.js_round((24.0 + 10.0 * level) * float(DmWaveUpgrades.wave_modifiers(wave_tier)["rewardMult"]) * float(DmContent.difficulty(difficulty)["rewardMult"]))
+	for cid in members:
+		var m: DmRewardsMember = members[cid]
+		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
+			continue
+		_drop_items(m, at, [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge")
+		_ground(m, {"kind": "gold", "amount": gold}, at)
+
+
 func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
 	var area := String(ev["area"])

@@ -22,7 +22,6 @@ const INTERACT_RANGE := 2.6                      ## DmGame.INTERACT_RANGE
 const PICK_PX := 60.0                            ## DmGameInput._pick: interactables win over nothing within 60 px of the cursor
 const WAYSTONE_RANGE := 5.0
 const RECALL_S := 1.5                            ## DmGame.RECALL_MS
-const SLICE_TRAVEL := ["chapterhouse", "graves"]  ## the other waystones are listed (when unlocked) but locked in the slice
 const STATIONS := {"forge": "workbench", "waystone": "waystone", "upgrades": "altar", "vault": "vault", "grinder": "grinder", "lectern": "lectern",
 	"kiln": "kiln", "sawpit": "sawpit", "fire": "fire", "cauldron": "cauldron", "alembic": "alembic", "reagents": "shelf"}
 const STATION_COUNSEL := {"kiln": "station_opened", "sawpit": "station_opened", "fire": "station_opened", "cauldron": "cauldron_opened",
@@ -344,7 +343,7 @@ func near_waystone(b: DmHeroBody) -> bool:
 	return false
 
 
-## Waystone travel (DmGameActions.travel): from the Chapterhouse or beside a waystone; in the slice only the Chapterhouse and the Graves answer.
+## Waystone travel (DmGameActions.travel): from the Chapterhouse or beside a waystone, to any area with a waystone whose seal is broken.
 func travel(area: String) -> void:
 	var b := game.local_body()
 	if b == null or not b.alive:
@@ -352,8 +351,9 @@ func travel(area: String) -> void:
 	if not near_waystone(b) and game.area_id != "chapterhouse":
 		_toast("Stand beside a waystone to travel (or press T to return home)", "err")
 		return
-	if not SLICE_TRAVEL.has(area):
-		_toast("The %s waystone is not in this slice yet" % String(DmContent.area(area).get("name", area)), "err")
+	var prog := _prog()
+	if prog != null and not prog.is_unlocked(area):
+		_toast("%s is still sealed." % String(DmContent.area(area).get("name", area)), "err")
 		return
 	for it in waystones:
 		if it["area"] == area:

@@ -20,6 +20,7 @@
 | Input | `next_input.gd` | click-to-move, WASD, hotbar seam, hover pick (10 Hz) |
 | Camera | `DmCameraRig` | existing rig |
 | Progress | `progress/dm_next_progress.gd` | host: DmProgression + DmProgressSync persistence, upgrades -> rites / waves, level-ups, milestones, belt (`progress/README.md`) |
+| Areas | `areas/dm_area_flow.gd`, `areas/dm_grave_surge.gd` | every area live: entry banners + Codex, the director follows the hero's area (rosters, 1.3x first wave, processions), Grave Surges; `areas/README.md` |
 | Hud | `next_hud.gd` | health + resource `DmHudOrb`, area name, death veil |
 | Chapterhouse | `chapterhouse/dm_chapterhouse.gd` | NPCs (`DmHubNpcs`), stations, waystone travel / recall (T), seals + doors, interactable hover / click / prompts; emits `npc_interact` / `station_interact` (forwarded by `DmNextUiHost`) and `interacted(it)` for boss altars / stairs (bosses + depths tracks hook it). Tick 10 Hz, NPC refresh 5 Hz, per-frame animation only for NPCs near you. Test `tests/chapterhouse/run.gd` |
 Players are `hero/dm_hero_body.gd` (`DmHeroBody`, a `DmSessionBody`): `DmAvatar` model for the discipline, `DmPlayerRules` vitals,
@@ -45,8 +46,8 @@ Nothing required: input actions are registered at runtime by `DmNextInput.ensure
 
 ## Stubbed / left
 Hotbar UI and DmGameUi, loot view for non-host peers, remote members' real characters (join handshake), area transitions beyond the Chapterhouse and
-Graves (other areas load but have no spawner), hero VFX decals (hero ring) from `DmGame._dress_hero`, GPU shader warm-up (models and scenes are
-preloaded in `start()`; a first-draw shader compile can still hitch once), Depths, bosses (the altars emit `Chapterhouse.interacted`), gathering. Hub gaps: travel/recall teleport on the host only; the Acre/Wing stations open but gold/XP/progress persistence to the backend is the progression track's.
+Graves (done: `areas/README.md`), hero VFX decals (hero ring) from `DmGame._dress_hero`, GPU shader warm-up (models and scenes are
+preloaded in `start()`; a first-draw shader compile can still hitch once), Depths, bosses (the altars emit `Chapterhouse.interacted`), gathering (Acre nodes / professions: `areas/README.md`). Hub gaps: travel/recall teleport on the host only; the Acre/Wing stations open but gold/XP/progress persistence to the backend is the progression track's.
 
 ## Measured (this VPS, shared, noisy)
 Load: world build ~1.3 s (navmesh bake ~130 ms of it) + first nav-map sync ~120 ms headless. Headless 25 chasing enemies: ~5-6 ms/frame

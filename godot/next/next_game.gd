@@ -32,6 +32,7 @@ signal hero_respawned(body: DmHeroBody)         ## host
 var hud: DmNextHud                              ## only with opts hud = "minimal"
 var ui_host: DmNextUiHost                       ## the DmGame-contract adapter the real HUD reads (hud mode true)
 var ui: DmGameUi                                ## the existing HUD + panels
+var areas: DmAreaFlow                           ## child "Areas": entry banners + Codex, processions, Grave Surges (next/areas/)
 var chapterhouse: DmChapterhouse                ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
 
 var character: Dictionary = {}
@@ -99,7 +100,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	bosses.fx.host.sink = func(id: String, ctx: Dictionary) -> void:   # banners / toasts -> the HUD
 		if ui_host != null:
 			ui_host.game_event.emit(id, ctx)
-	director.warm()
+	director.warm(true)   # every area's kinds: no first-entry hitch when a waystone or a door brings the hero to a new roster
 	session.session_ended.connect(func(_r: String) -> void: set_process(false))
 	if _has_world:
 		world.build(bool(opts.get("dressing", true)))
@@ -141,6 +142,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		chapterhouse.start_seals()
 	# The current game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
 	await _start_hud()
+	areas = DmAreaFlow.new()
+	areas.name = "Areas"
+	add_child(areas)
+	areas.setup(self)
 	# One hotbar path: the real HUD casts from the player's loadout (Grimoire edits); without it, the kit mapping does
 	# (next/rites/dm_rite_hotbar.gd). Both connected = every key cast twice.
 	if ui_host == null:

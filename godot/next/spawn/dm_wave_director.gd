@@ -11,6 +11,9 @@ extends Node
 signal enemy_spawned(enemy: DmEnemy)    ## every peer, after the enemy is in the tree
 signal enemy_died(enemy: DmEnemy)       ## host only
 signal wave_spawned(count: int)         ## host only
+signal procession(theme: Dictionary)    ## host: a themed wave (DmSimData.WAVE_THEMES) was spawned
+signal area_followed(id: String)        ## host: the director moved to the combat area the heroes are in
+signal surge_event(ev: Dictionary)      ## host: {t: surge | surgeCleared | surgeFailed, area, x, z, ...} (DmGraveSurge)
 
 const SCENE_DIR := "res://enemies/"
 const CORPSE_S := 4.0
@@ -38,6 +41,10 @@ var _wave_t: float = 0.0
 var _empty_t: float = 0.0
 var _scene_cache: Dictionary = {}
 var _base := [6.5, 9, 28]               ## the area's own interval / size / cap, before the tier
+var follow_areas := true                ## host: when no hero is in `area_id`, move to the combat area one is in (DmNextGame: every area has a roster)
+var surge: DmGraveSurge                 ## Grave Surges (next/areas/dm_grave_surge.gd), host
+var _first_wave := true                 ## the first wave of a visit is 1.3 x the area's wave size (the sim's spawn_wave first)
+var _wave_n: int = 0                    ## waves since arrival (processions start at PROCESSION.minWave)
 var _since_arrival: float = 0.0         ## s a hero has been in the area (Wave Speed ramps in over DmEnemyStats.RAMP_S, like the sim's ramp_tier)
 
 
@@ -51,6 +58,7 @@ func _ready() -> void:
 	add_child(_spawner)
 	_spawner.spawn_path = NodePath("../Bodies")
 	_spawner.spawn_function = Callable(self, "_spawn_enemy")
+	surge = DmGraveSurge.new(self)
 	configure_area(area_id)
 
 
@@ -78,12 +86,27 @@ func configure_area(id: String) -> void:
 		if scene_for(String(e["id"])) != null:
 			kinds.append({"id": String(e["id"]), "weight": float(e["weight"])})
 	_wave_t = first_wave_delay
+	_first_wave = true
+	_wave_n = 0
 
 
-## Loading-time warm-up: scenes and creature models of every kind, so the first wave does not read them from disk mid-play.
-func warm() -> void:
+## Loading-time warm-up: scenes and creature models of every kind, so the first wave does not read them from disk mid-play. `all_areas`: every
+## area's roster and procession themes (DmNextGame: no first-entry hitch in any area).
+func warm(all_areas: bool = false) -> void:
+	var ids: Dictionary = {}
 	for k in kinds:
-		var def: Dictionary = DmSimData.ENEMIES[k["id"]]
+		ids[String(k["id"])] = true
+	if all_areas:
+		for a in DmContent.area_order():
+			for e in DmContent.area(String(a)).get("enemies", []):
+				ids[String(e["id"])] = true
+			for th in DmSimData.WAVE_THEMES.get(String(a), []):
+				for e in th["roster"]:
+					ids[String(e["id"])] = true
+	for id in ids:
+		if scene_for(id) == null:
+			continue
+		var def: Dictionary = DmSimData.ENEMIES[id]
 		var cr := DmCreature.new(String(def.get("modelSlug", "grave_robber")), {})
 		cr.root.free()
 
@@ -139,19 +162,71 @@ func _physics_process(delta: float) -> void:
 	if not enabled or game == null or not multiplayer.is_server() or not game.session.is_active():
 		return
 	var heroes := _heroes_in_area()
+	if heroes.is_empty() and follow_areas:
+		var other := _combat_area_with_hero()
+		if other != "" and other != area_id:
+			clear()
+			if surge != null:
+				surge.reset()
+			configure_area(other)
+			area_followed.emit(other)
+			heroes = _heroes_in_area()
 	if heroes.is_empty():
 		_wave_t = first_wave_delay
 		_since_arrival = 0.0
+		_first_wave = true
+		_wave_n = 0
 		_empty_t += delta
 		if _empty_t > EMPTY_CLEAR_S and not enemies.is_empty():
 			clear()
+		if surge != null:
+			surge.reset()
 		return
 	_empty_t = 0.0
 	_since_arrival += delta
 	_wave_t -= delta
 	if _wave_t <= 0.0:
 		_wave_t = wave_interval
-		spawn_wave(heroes)
+		if _first_wave:
+			_first_wave = false
+			spawn_wave(heroes, DmMath.js_round(float(_base[1]) * 1.3))
+		else:
+			_wave_n += 1
+			var theme: Variant = _roll_theme()
+			if theme == null:
+				spawn_wave(heroes)
+			else:
+				var th: Dictionary = theme
+				var made := spawn_wave(heroes, maxi(1, DmMath.js_round(float(wave_size) * float(th["sizeMult"]))), th["roster"], String(th["lead"]) if th.get("lead") != null else "")
+				if made > 0:
+					procession.emit(th)
+	if surge != null:
+		surge.update(delta, heroes)
+
+
+## A combat (non-instance, non-safe) area a living hero stands in, "" if none.
+func _combat_area_with_hero() -> String:
+	for b in game.session.get_bodies():
+		var hb := b as DmHeroBody
+		if hb == null or not hb.alive:
+			continue
+		var a: String = game.world.area_at(hb.position.x, hb.position.z)
+		if a != "" and not _is_safe_or_instance(a):
+			return a
+	return ""
+
+
+static func _is_safe_or_instance(id: String) -> bool:
+	var def: Dictionary = DmContent.area(id)
+	return bool(def.get("safe", true)) or bool(def.get("instance", false))
+
+
+## The sim's procession: from wave PROCESSION.minWave on, a PROCESSION.chance of waves is themed (a roster, sometimes a lead, a size).
+func _roll_theme() -> Variant:
+	var themes: Array = DmSimData.WAVE_THEMES.get(area_id, [])
+	if themes.is_empty() or _wave_n < int(DmSimData.PROCESSION["minWave"]) or rng.randf() >= float(DmSimData.PROCESSION["chance"]):
+		return null
+	return themes[rng.randi() % themes.size()]
 
 
 func _heroes_in_area() -> Array:
@@ -163,10 +238,12 @@ func _heroes_in_area() -> Array:
 	return out
 
 
-func spawn_wave(heroes: Array, count: int = -1) -> int:
+## A wave of `count` (default: the wave size) climbing in around the heroes. `roster` ([{id, weight}], default the area's) and `lead` (the first
+## group's kind) are a procession's. Returns how many spawned.
+func spawn_wave(heroes: Array, count: int = -1, roster: Array = [], lead: String = "") -> int:
 	if kinds.is_empty() or heroes.is_empty():
 		return 0
-	var n := mini(wave_size if count < 0 else count, cap - alive_count())
+	var n := mini(wave_size if count < 0 else count, mini(cap - alive_count(), int(DmSimData.GLOBAL_ENEMY_CAP) - enemies.size()))
 	var made := 0
 	while made < n:
 		var hero: DmHeroBody = heroes[rng.randi() % heroes.size()]
@@ -174,21 +251,30 @@ func spawn_wave(heroes: Array, count: int = -1) -> int:
 		if pos == null:
 			made += 1   # no walkable spot found: spend the slot so the loop ends
 			continue
-		var kind := _pick_kind()
-		var pack: Variant = DmSimData.ENEMIES[kind].get("pack")   # bats / rats come in packs (sim: [min, max])
-		var k := 1
-		if pack is Array:
-			k = rng.randi_range(int(pack[0]), int(pack[1]))
-		var elite := pack == null and rng.randf() < float(DmContent.area(area_id).get("eliteChance", 0.0))
-		for j in mini(k, cap - alive_count()):
-			var at: Vector3 = pos if j == 0 else pos + Vector3(rng.randf_range(-1.5, 1.5), 0.0, rng.randf_range(-1.5, 1.5))
-			if j > 0 and game.world.nav_ready():
-				at = game.world.nav_closest(at)
-			spawn(kind, at, heroes, elite)
-		made += k
+		made += spawn_group(pos, heroes, n - made, lead if made == 0 else "", roster)
 	if made > 0:
 		waves_spawned += 1
 		wave_spawned.emit(made)
+	return made
+
+
+## One pick (a pack for bats / rats: sim [min, max]) around `pos`, at most `room` bodies. Elites are single picks. Returns how many spawned;
+## `ids` collects the new enemies' ids.
+func spawn_group(pos: Vector3, heroes: Array, room: int, lead: String = "", roster: Array = [], ids: Array = []) -> int:
+	var kind := lead if lead != "" and scene_for(lead) != null else _pick_kind(roster)
+	var pack: Variant = DmSimData.ENEMIES[kind].get("pack")
+	var k := 1
+	if pack is Array:
+		k = rng.randi_range(int(pack[0]), int(pack[1]))
+	var bonus := float(DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, _since_arrival))["eliteBonus"]) if wave_tier > 0.0 else 0.0
+	var elite := pack == null and rng.randf() < float(DmContent.area(area_id).get("eliteChance", 0.0)) + bonus
+	var made := mini(k, room)
+	for j in made:
+		var at: Vector3 = pos if j == 0 else pos + Vector3(rng.randf_range(-1.5, 1.5), 0.0, rng.randf_range(-1.5, 1.5))
+		if j > 0 and game.world.nav_ready():
+			at = game.world.nav_closest(at)
+		var e := spawn(kind, at, heroes, elite)   # (spawn returns the enemy)
+		ids.append(id_of(e) if e != null else -1)
 	return made
 
 
@@ -225,14 +311,15 @@ func _on_raised(at: Vector3, by: DmEnemy) -> void:
 	_risen_for(at, by)
 
 
-func _pick_kind() -> String:
+func _pick_kind(roster: Array = []) -> String:
+	var from: Array = roster if not roster.is_empty() else kinds
 	var total := 0.0
-	for k in kinds:
+	for k in from:
 		total += float(k["weight"])
 	var roll := rng.randf() * total
-	for k in kinds:
+	for k in from:
 		roll -= float(k["weight"])
-		if roll <= 0.0:
+		if roll <= 0.0 and scene_for(String(k["id"])) != null:
 			return String(k["id"])
 	return String(kinds[0]["id"])
 
@@ -293,6 +380,8 @@ func _spawn_enemy(data: Variant) -> Node:
 
 func _on_died(e: DmEnemy) -> void:
 	enemy_died.emit(e)
+	if surge != null:
+		surge.on_enemy_died(e)
 	# The timer outlives the enemy (area change, teardown, clear()). A lambda capturing a freed Object logs "Lambda capture at index 0 was freed"
 	# when called, even if its body guards with is_instance_valid (found by the next suite's intermittent engine-error check), so capture a WeakRef.
 	var ref: WeakRef = weakref(e)
