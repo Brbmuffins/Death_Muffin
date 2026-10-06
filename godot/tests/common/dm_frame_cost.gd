@@ -14,6 +14,9 @@ var _cpu_last := 0.0
 ## Frames over STALL_MS: [wall ms, process CPU ms, load average]. CPU ~ wall = the stall is our code; CPU << wall = the process was descheduled (contention).
 var stalls: Array = []
 const STALL_MS := 50.0
+## A stall where the process got under this share of the wall time on a CPU was descheduled by the OS (shared VPS), not slow code.
+const BUSY_SHARE := 0.4
+var _worst_busy := 0.0
 
 
 ## utime + stime of this process in ms (/proc/self/stat, 10 ms resolution); 0 when unavailable.
@@ -57,8 +60,11 @@ func _on_frame() -> void:
 		var ms := (now - _last) / 1000.0
 		_full.append(ms)
 		_ticks = t
+		var cpu := cpu_ms() - _cpu_last
 		if ms > STALL_MS:
-			stalls.append([ms, cpu_ms() - _cpu_last, load1()])
+			stalls.append([ms, cpu, load1()])
+		if ms <= STALL_MS or cpu >= ms * BUSY_SHARE:
+			_worst_busy = maxf(_worst_busy, ms)
 	_last = now
 	_cpu_last = cpu_ms()
 
@@ -66,6 +72,8 @@ func _on_frame() -> void:
 ## Forget samples so far (warm-up).
 func reset() -> void:
 	_full.clear()
+	stalls.clear()
+	_worst_busy = 0.0
 
 
 func samples() -> int:
@@ -90,3 +98,9 @@ func p95_ms() -> float:
 
 func worst_ms() -> float:
 	return pct(1.0)
+
+
+## The worst frame, ignoring stalls where the process was descheduled (CPU time << wall time: another process held the core). A real
+## hitch in our code (GC, a first-use compile, an O(n^2) frame) burns CPU and still counts; use this for the generous worst-frame cap.
+func worst_busy_ms() -> float:
+	return _worst_busy

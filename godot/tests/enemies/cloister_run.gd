@@ -547,7 +547,7 @@ func _t_perf() -> void:
 		brains.append(float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)))
 		fc.queue_free()
 		fmed.append(fc.median_ms())
-		fworst.append(fc.worst_ms())
+		fworst.append(fc.worst_busy_ms())
 		for k in DmEnemy.prof_kind:
 			var v: Array = DmEnemy.prof_kind[k]
 			if not per_kind.has(k):

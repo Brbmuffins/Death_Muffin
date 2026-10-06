@@ -4,6 +4,10 @@ set -uo pipefail
 cd "$(dirname "$0")/../.."
 G="${GODOT:-/home/ubuntu/tools/godot/godot}"
 "$G" --headless --path godot --import >/dev/null 2>&1
+# user:// (progress / guidance / loadout / settings files keyed by character id) is shared by every Godot run of this user, so suites running in
+# parallel in other worktrees read and overwrote each other's state (a rare "stair never opens" in game/depths_run). Give this run its own.
+XDG_DATA_HOME=$(mktemp -d -t dm-tests-userdata.XXXXXX); export XDG_DATA_HOME
+trap 'rm -rf "$XDG_DATA_HOME"' EXIT
 rc=0
 for d in godot/tests/*/; do
   t=$(basename "$d")

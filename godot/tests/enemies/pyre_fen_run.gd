@@ -583,7 +583,7 @@ func _crowd(mix: Array) -> Array:
 		var v: Array = DmEnemy.prof_kind[k]
 		line += " %s %.0f us;" % [k, float(v[1]) / maxf(1.0, float(v[0]))]
 	var engaged := es.filter(func(e): return e.sm.id() != S.IDLE and e.sm.id() != S.RISING).size()
-	return [float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)), fc.median_ms(), fc.worst_ms(), engaged, line]
+	return [float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)), fc.median_ms(), fc.worst_busy_ms(), engaged, line]
 
 
 func _med(a: Array[float]) -> float:

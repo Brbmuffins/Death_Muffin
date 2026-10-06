@@ -120,7 +120,7 @@ func _run() -> void:
 	check(await until(func() -> bool: return g.director.alive_count() >= 2, 15.0), "robbers spawn")
 	var foe: DmEnemy
 	for e in g.director.enemies.values():
-		if is_instance_valid(e) and (foe == null or e.position.distance_to(b.position) < foe.position.distance_to(b.position)):
+		if is_instance_valid(e) and e.is_hittable() and (foe == null or e.position.distance_to(b.position) < foe.position.distance_to(b.position)):
 			foe = e
 	await until(func() -> bool: return foe.sm.id() != DmEnemyState.Id.RISING, 5.0)   # a rising enemy is immune
 	b.teleport(foe.position + Vector3(0, 0, 4))
@@ -163,13 +163,17 @@ func _run() -> void:
 	# ---- cadence: the HUD applies at 20 Hz, not per frame
 	var n0 := Time.get_ticks_msec()
 	var applies := 0
+	var frames := 0
 	var last_vm = g.ui._vm
 	while Time.get_ticks_msec() - n0 < 1000:
 		await process_frame
+		frames += 1
 		if not is_same(g.ui._vm, last_vm):
 			applies += 1
 			last_vm = g.ui._vm
-	check(applies >= 8 and applies <= 22, "HUD applies at ~20 Hz (%d in 1 s)" % applies)
+	# The throttle is wall-clock (50 ms), so on a loaded machine frames can be slower than 50 ms and every frame applies: the floor is
+	# min(8, frames / 2), the cap stays 22, and with plenty of frames the throttle must be visible (fewer applies than frames).
+	check(applies >= mini(8, frames / 2) and applies <= 22 and (frames < 60 or applies < frames / 2), "HUD applies at ~20 Hz (%d applies in %d frames in 1 s)" % [applies, frames])
 	await g.leave()
 	g.queue_free()
 	await process_frame
@@ -184,8 +188,12 @@ func _first_frame() -> void:
 	root.add_child(n)
 	await n.start(character, api, {"dressing": false, "persist": false})
 	var t := Time.get_ticks_usec()
+	var cpu0 := DmFrameCost.cpu_ms()
 	await process_frame
-	var first := (Time.get_ticks_usec() - t) / 1000.0
+	var wall := (Time.get_ticks_usec() - t) / 1000.0
+	# Budget on CPU time when the process was descheduled (shared VPS: wall >> CPU is another process, not a stall of ours); /proc ticks are 10 ms.
+	var cpu := DmFrameCost.cpu_ms() - cpu0
+	var first := wall if cpu >= wall * DmFrameCost.BUSY_SHARE else cpu
 	print("FIRSTFRAME first=%.1fms budget=%.0fms warm panels %d ms" % [first, FIRST_FRAME_BUDGET_MS, n.ui.warm_ms])
 	check(first < FIRST_FRAME_BUDGET_MS, "first frame after start under %.0f ms (got %.1f)" % [FIRST_FRAME_BUDGET_MS, first])
 	await n.leave()

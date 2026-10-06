@@ -98,6 +98,15 @@ func until(cond: Callable, limit_s: float) -> float:
 		await physics_frame
 	return -1.0
 
+## Like until(), for ENet-driven state: the limit is wall-clock (delivery follows wall time, while sim time stretches or bunches under load).
+func until_wall(cond: Callable, limit_s: float) -> float:
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < limit_s * 1000.0:
+		if cond.call():
+			return (Time.get_ticks_msec() - t0) / 1000.0
+		await physics_frame
+	return -1.0
+
 func flat(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x - b.x, a.z - b.z).length()
 
@@ -549,13 +558,13 @@ func _t_wire() -> void:
 		g.add_child(body)
 		hosts.append(DmThrallHost.attach(body, g))
 		hosts[-1].corpses = tc
-	await until(func(): return cmp.get_unique_id() != 1 and smp.get_peers().size() == 1, 5.0)
+	await until_wall(func(): return cmp.get_unique_id() != 1 and smp.get_peers().size() == 1, 15.0)
 	check(cmp.get_unique_id() != 1 and smp.get_peers().size() == 1, "ENet client connected")
 	tc.add(Vector3(1, 0, 1))
 	var r := hosts[0].raise(intent(), Vector3(1, 0, 1))
 	check(r["ok"], "server raised")
 	var st: DmThrall = r["thralls"][0]
-	var got := await until(func(): return hosts[1].count() == 1, 4.0)
+	var got := await until_wall(func(): return hosts[1].count() == 1, 15.0)
 	check(got >= 0.0, "client host built a puppet over RPC (%.2f s)" % got)
 	if hosts[1].count() == 1:
 		var p: DmThrall = hosts[1].list()[0]
@@ -564,7 +573,7 @@ func _t_wire() -> void:
 		await secs(1.5)
 		check(flat(p.global_position, st.global_position) < 0.4, "puppet follows (%.2f m)" % flat(p.global_position, st.global_position))
 		st.kill("killed")
-		var gone := await until(func(): return hosts[1].count() == 0, 3.0)
+		var gone := await until_wall(func(): return hosts[1].count() == 0, 15.0)
 		check(gone >= 0.0, "death replicates over the wire")
 	sp.close()
 	cp.close()
@@ -613,7 +622,7 @@ func _perf_run(dur: float, with_thralls: bool = true) -> Dictionary:
 	DmEnemy.profile = false
 	DmThrall.profile = false
 	return {"brain": float(DmThrall.prof_brain_us) / maxf(1.0, float(DmThrall.prof_ticks)), "scans": DmThrall.prof_scans, "enemy_brain": float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)),
-		"frame_ms": fc.median_ms(), "worst_ms": fc.worst_ms(), "engaged": engaged, "blows": blows, "alive": host.count()}
+		"frame_ms": fc.median_ms(), "worst_ms": fc.worst_busy_ms(), "engaged": engaged, "blows": blows, "alive": host.count()}
 
 
 func _t_perf() -> void:

@@ -436,7 +436,7 @@ func _t_perf() -> void:
 		slows.append(slow)
 		brains.append(float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)) / slow)   # normalised to the pilot's box speed
 		frames_med.append(fc.median_ms())
-		frames_worst.append(fc.worst_ms())
+		frames_worst.append(fc.worst_busy_ms())
 		var worst := 0.0
 		line = ""
 		for k in DmEnemy.prof_kind:

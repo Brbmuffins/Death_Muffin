@@ -21,6 +21,15 @@ func _frames(n: int) -> void:
 func _wait(sec: float) -> void:
 	await create_timer(sec).timeout
 
+## Poll a condition (wall clock, one frame apart) up to `sec`: fixed waits flaked when the VPS was loaded.
+func _until(cond: Callable, sec: float) -> bool:
+	var end := Time.get_ticks_msec() + int(sec * 1000.0)
+	while Time.get_ticks_msec() < end:
+		if cond.call():
+			return true
+		await process_frame
+	return cond.call()
+
 func _heard(prefix: String) -> bool:
 	for s in played:
 		if s.begins_with(prefix):
@@ -46,22 +55,20 @@ func _run() -> void:
 	await _frames(5)
 	# --- area music + ambience on start
 	_check(ad.current_area() == "acre", "set_area(acre) on start, got '%s'" % ad.current_area())
-	await _wait(1.0)
+	await _until(func() -> bool: return ad.music_cue() != "", 15.0)
 	_check(ad.music_cue() != "", "area music cue running in the acre: '%s'" % ad.music_cue())
 	var cue_a: String = ad.music_cue()
 	# --- walk: footsteps follow the hero
 	played.clear()
 	game.player.move_to(-26.0, 10.0)
-	for i in 120:
-		await process_frame
-		await _wait(0.02)
+	await _until(func() -> bool: return _heard("step"), 15.0)
 	_check(_heard("step"), "hero footsteps while walking (heard: %s)" % str(played.slice(0, 6)))
 	_check(not game.audio_hooks.is_wet(-26.0, 20.0), "acre start is dry")
 	# --- area change -> set_area
 	game.player.teleport(0.0, -10.0)
 	await _frames(4)
 	_check(game.area_id == "graves" and ad.current_area() == "graves", "area change -> set_area(graves), got '%s'" % ad.current_area())
-	await _wait(1.0)
+	await _until(func() -> bool: return ad.music_cue() != "", 15.0)
 	_check(ad.music_cue() != "", "graves music cue: '%s' (acre was '%s')" % [ad.music_cue(), cue_a])
 	# --- cast + enemy death + thrall
 	var foe := game.sim.spawn_enemy("robber", "graves", game.player.x + 4.0, game.player.z, false, false)
@@ -69,25 +76,25 @@ func _run() -> void:
 	played.clear()
 	game.p["castUntil"] = 0.0
 	game.abilities.cast(game.primary, {"x": foe.x, "z": foe.z, "enemyId": foe.id}, game.now_ms)
-	await _wait(0.5)
+	await _until(func() -> bool: return played.size() > 0, 10.0)
 	_check(_heard("needleCast") or _heard("scytheSwing") or _heard("needle") or played.size() > 0, "a rite makes a sound (heard: %s)" % str(played))
 	foe.hp = 1.0
 	game.sim.damage_enemy(foe, 100000.0, game.self_id)
-	await _frames(3)
+	await _until(func() -> bool: return _heard("enemyDeath"), 10.0)
 	_check(_heard("enemyDeath"), "enemy death sound (heard: %s)" % str(played))
 	played.clear()
 	game.p["resource"]["value"] = 100.0
 	game.p["castUntil"] = 0.0
 	game.p["cooldowns"].erase("exhume")
 	game.abilities.cast("exhume", {"x": foe.x, "z": foe.z}, game.now_ms)
-	await _wait(1.3)
+	await _until(func() -> bool: return _heard("exhume"), 15.0)
 	_check(_heard("exhume"), "exhume cast sound (heard: %s)" % str(played))
 	# --- hurt / error / loot drop hooks
 	played.clear()
 	DmAudioHooks.hero_hurt(10.0, 100.0)
 	DmAudioHooks.error()
 	DmAudioHooks.loot_drop("epic", Vector3(game.player.x, 0, game.player.z))
-	await _wait(0.2)
+	await _until(func() -> bool: return _heard("hurt") and _heard("error") and _heard("lootDropEpic"), 10.0)
 	_check(_heard("hurt"), "hero hurt sound")
 	_check(_heard("error"), "error sound")
 	_check(_heard("lootDropEpic"), "epic loot drop sound")
@@ -103,19 +110,19 @@ func _run() -> void:
 		await _frames(3)
 		played.clear()
 		game.builder.set_door_open(door.id, true, true)
-		await _frames(3)
+		await _until(func() -> bool: return _heard("gate"), 10.0)
 		_check(_heard("gate"), "gate sound when a seal opens (heard: %s)" % str(played))
 	# --- boss music hook (the game loop stops driving it, the test does)
 	game.set_process(false)
 	game.audio_hooks.update_boss(true, true, ad.current_area())
-	await _frames(2)
+	await _until(func() -> bool: return ad.music_cue().contains("boss") or ad.music_cue() != cue_a, 10.0)
 	_check(ad.music_cue().contains("boss") or ad.music_cue() != cue_a, "boss music hook changes the cue: '%s'" % ad.music_cue())
 	var boss_cue: String = ad.music_cue()
 	game.audio_hooks.update_boss(true, false, ad.current_area())
-	await _frames(2)
+	await _until(func() -> bool: return ad.music_cue() != boss_cue, 10.0)
 	_check(ad.music_cue() != boss_cue, "boss music off restores the area cue: '%s'" % ad.music_cue())
 	game.queue_free()
-	await _frames(3)
+	await _until(func() -> bool: return ad.current_area() == "", 10.0)
 	_check(ad.current_area() == "", "leaving the world stops the area (stop_area)")
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)

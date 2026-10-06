@@ -549,9 +549,9 @@ func _t_perf() -> void:
 	for e in es:
 		if e.sm.id() != S.IDLE and e.sm.id() != S.RISING:
 			engaged += 1
-	print("PERF mixed-30 Graves crowd: brain %.1f us/enemy-tick, frame median %.2f ms (p95 %.2f, worst %.2f), engaged %d/30, %d blows" % [brain, fc.median_ms(), fc.p95_ms(), fc.worst_ms(), engaged, dummy.hits_taken])
+	print("PERF mixed-30 Graves crowd: brain %.1f us/enemy-tick, frame median %.2f ms (p95 %.2f, worst %.2f), engaged %d/30, %d blows" % [brain, fc.median_ms(), fc.p95_ms(), fc.worst_busy_ms(), engaged, dummy.hits_taken])
 	print("PERF   per kind:", line)
 	check(engaged >= 27, "the mixed crowd is engaged (%d/30)" % engaged)
 	check(brain < BUDGET_BRAIN_US, "mixed brain cost %.1f us/enemy-tick under %.0f us" % [brain, BUDGET_BRAIN_US])
 	check(worst < BUDGET_BRAIN_US, "every kind under the %.0f us budget (worst %.1f us)" % [BUDGET_BRAIN_US, worst])
-	check(fc.median_ms() < BUDGET_FRAME_MS and fc.worst_ms() < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [fc.median_ms(), BUDGET_FRAME_MS, fc.worst_ms(), CAP_WORST_FRAME_MS])
+	check(fc.median_ms() < BUDGET_FRAME_MS and fc.worst_busy_ms() < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [fc.median_ms(), BUDGET_FRAME_MS, fc.worst_busy_ms(), CAP_WORST_FRAME_MS])

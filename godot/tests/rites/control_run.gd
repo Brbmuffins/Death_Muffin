@@ -852,7 +852,7 @@ func _part_b() -> void:
 	var hpf := e_c.hp
 	c2.casters[id2].request_cast("grave_frost", Vector3(0, 0, 10))
 	ok(await wait_for(func(): return peers.all(func(p): return p.casters[id2].events_played == 2), 5.0), "B: frost cast + land on every peer")
-	await create_timer(0.2).timeout
+	ok(await wait_for(func(): return DmStatusSet.of(e_c).has(&"chill") and DmStatusSet.of(e_c2).has(&"chill")), "B: the frost landed on both enemies on the host")
 	ok(is_equal_approx(hpf - e_c.hp, DmAbilities.sp(host.casters[id2].p, host.casters[id2].now_ms) * 1.4), "B: network frost damage == DmAbilities")
 	ok(DmStatusSet.of(e_c).has(&"chill") and DmStatusSet.of(e_c2).has(&"chill"), "B: both enemies chilled on the host")
 	for p in peers:
@@ -863,7 +863,7 @@ func _part_b() -> void:
 	var ev2: int = host.casters[id2].events_played
 	c2.casters[id2].request_cast("bone_prison", Vector3(0, 0, 5))
 	ok(await wait_for(func(): return peers.all(func(p): return p.casters[id2].events_played == ev2 + 1)), "B: prison event on every peer")
-	await create_timer(0.2).timeout
+	await wait_for(func(): return DmStatusSet.of(e_c).has(&"root") and DmStatusSet.of(e_c).stacks(&"fracture") == 1)
 	ok(DmStatusSet.of(e_c).has(&"root") and e_c.speed_mult == 0.0 and DmStatusSet.of(e_c).stacks(&"fracture") == 1, "B: prison root + fracture on the host")
 	for p in peers:
 		var a: RecAudio = p.rec[id2][1]
@@ -875,7 +875,7 @@ func _part_b() -> void:
 	var hph := e_c.hp
 	c2.casters[id2].request_cast("grave_hands", Vector3(0, 0, 5))
 	ok(await wait_for(func(): return peers.all(func(p): return p.casters[id2].events_played >= ev3 + 8), 6.0), "B: hands field + 6 rakes + end on every peer")
-	await create_timer(0.3).timeout
+	await wait_for(func(): return hph - e_c.hp > 0.0)
 	for p in peers:
 		var a: RecAudio = p.rec[id2][1]
 		var fxr: RecFx = p.rec[id2][0]
@@ -895,7 +895,7 @@ func _part_b() -> void:
 		host.casters[id1].p["cooldowns"].clear()
 		host.casters[id1].p["castUntil"] = 0.0
 		c1.casters[id1].request_cast("exhume", Vector3(-4 + i, 0, 2.5))
-		await create_timer(0.7).timeout
+		await wait_for(func(): return (hb.get_node("Thralls") as DmThrallHost).count() == i + 1)
 	var thr: DmThrallHost = hb.get_node("Thralls")
 	ok(await wait_for(func(): return thr.count() == 2 and thr.list().all(func(t): return t.state != DmThrall.S.RISING), 8.0), "B: two thralls risen on the host")
 	ok(await wait_for(func(): return (c2.sess.get_body(id1).get_node("Thralls") as DmThrallHost).count() == 2, 6.0), "B: the thralls replicated to the observer")
@@ -908,8 +908,7 @@ func _part_b() -> void:
 	host.casters[id1].p["castUntil"] = 0.0
 	c1.casters[id1].request_cast("rally_dead", Vector3(0, 0, 6))
 	ok(await wait_for(func(): return peers.all(func(p): return p.casters[id1].events_played == ev4 + 1)), "B: rally event on every peer")
-	await create_timer(0.4).timeout
-	ok(thr.list().all(func(t): return t.rally_t > 0.0), "B: the host rallied both thralls")
+	ok(await wait_for(func(): return thr.list().all(func(t): return t.rally_t > 0.0)), "B: the host rallied both thralls")
 	for p in peers:
 		var a: RecAudio = p.rec[id1][1]
 		var fxr: RecFx = p.rec[id1][0]

@@ -359,8 +359,14 @@ func part_milestones() -> void:
 	# Elite Vanguard: the wave's first plain pick is an elite.
 	g.director.clear()
 	await ticks(2)
-	g.director._vanguard = true
-	g.director.spawn_group(b.position + Vector3(8, 0, 0), [b], 1, "", [])
+	# The pick is random: a pack kind (bats / rats) or a Risen is never the Vanguard's elite and leaves the flag up, so draw again until a
+	# plain pick consumed it (the flag stays set exactly when the pick was not plain).
+	for attempt in 60:
+		g.director.clear()
+		g.director._vanguard = true
+		g.director.spawn_group(b.position + Vector3(8, 0, 0), [b], 1, "", [])
+		if not g.director._vanguard:
+			break
 	var elites := 0
 	for e in g.director.enemies.values():
 		if (e as DmEnemy).elite:

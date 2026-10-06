@@ -332,7 +332,7 @@ func perf(extra: Callable = Callable()) -> void:
 	var fc := DmFrameCost.attach(root)
 	await ticks(360)
 	var med := fc.median_ms()
-	var worst := fc.worst_ms()
+	var worst := fc.worst_busy_ms()
 	print("perf %s: whole frame median %.2f ms, p95 %.2f ms, worst %.2f ms (%d frames, boss + 16 adds + 5 thralls, %d pools)" % [BOSS_ID, med, fc.p95_ms(), worst, fc.samples(), zones().size()])
 	check(med < 18.0, "%s: frame median %.2f ms < 18 ms (budget)" % [BOSS_ID, med])
 	check(worst < 150.0, "%s: worst frame %.2f ms < 150 ms (cap)" % [BOSS_ID, worst])

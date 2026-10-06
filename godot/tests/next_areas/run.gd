@@ -512,7 +512,7 @@ func _walk() -> void:
 			if round_ == 0:
 				check((b.area_nodes[id] as Node3D).visible, "%s: its own ground is drawn" % id)
 	var med := fc.median_ms()
-	var worst := fc.worst_ms()
+	var worst := fc.worst_busy_ms()
 	print("walk: %d frames over 12 areas x2 (waves on): median %.2f ms, p95 %.2f, worst %.2f; slowest frame right after an entry %.1f ms (%s)" % [fc.samples(), med, fc.p95_ms(), worst, worst_entry, worst_at])
 	fc.queue_free()
 	check(med < FRAME_MEDIAN_MS and worst < FRAME_WORST_MS, "walk: frame median %.2f ms under %.0f, worst %.1f ms under %.0f" % [med, FRAME_MEDIAN_MS, worst, FRAME_WORST_MS])

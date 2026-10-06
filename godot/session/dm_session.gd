@@ -215,6 +215,14 @@ func _on_server_disconnected() -> void:
 
 
 func _on_peer_connected(id: int) -> void:
+	# ENet's congestion throttle drops UNRELIABLE packets when the round-trip time spikes (a hitch on either side, a loaded machine) and
+	# can sit at 0 for seconds: boss / enemy / thrall state (unreliable_ordered, 20 Hz) then stopped arriving altogether (a client kept the
+	# boss's full hp while the host was at half). Deceleration 0 = the throttle never goes down; reliable traffic keeps its own congestion control.
+	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	if enet != null:
+		var pp := enet.get_peer(id)
+		if pp != null:
+			pp.throttle_configure(5000, 2, 0)
 	if not _is_host:
 		return
 	# A peer that never says hello is dropped (it holds no slot, but should not linger).

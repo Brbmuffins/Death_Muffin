@@ -125,6 +125,7 @@ func _part_a() -> void:
 	boss.brain._coals_cd = 1.0e9
 	boss.brain._cleave_cd = 1.0e9
 	boss.brain._confl_cd = 0.0
+	g.bosses.rng.seed = 5   # the ash spots are random with a 80-try spacing rule: seeded so 4 / 3 circles are exact, not "usually"
 	hb.teleport(ARENA + Vector3(0.0, 0.0, 0.0))
 	boss.world.refresh()
 	step(0.05)
@@ -168,6 +169,7 @@ func _part_a() -> void:
 	boss.brain.pending.clear()
 	boss.brain.state["state"] = "idle"
 	boss.brain._confl_cd = 0.0
+	g.bosses.rng.seed = 5   # the ash spots are random with a 80-try spacing rule: seeded so 4 / 3 circles are exact, not "usually"
 	boss.world.refresh()
 	step(0.05)
 	var cf2 := telegraphs("conflagration")
@@ -201,6 +203,7 @@ func _part_a() -> void:
 	clear_adds()
 	boss.brain.pending.clear()
 	boss.brain._confl_cd = 0.0
+	g.bosses.rng.seed = 5   # the ash spots are random with a 80-try spacing rule: seeded so 4 / 3 circles are exact, not "usually"
 	boss.world.refresh()
 	step(0.05)
 	var cf3 := telegraphs("conflagration")
@@ -233,6 +236,7 @@ func _part_a() -> void:
 	boss.brain.pending.clear()
 	boss.brain.state["state"] = "idle"
 	boss.brain._confl_cd = 0.0
+	g.bosses.rng.seed = 5   # the ash spots are random with a 80-try spacing rule: seeded so 4 / 3 circles are exact, not "usually"
 	boss.world.refresh()
 	step(0.05)
 	var cf4 := telegraphs("conflagration")

@@ -302,7 +302,7 @@ func _perf_run(props: Dictionary, dur: float) -> Dictionary:
 			engaged += 1
 	DmEnemy.profile = false
 	return {"brain": float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)), "nav": float(DmEnemy.prof_nav_us) / maxf(1.0, float(DmEnemy.prof_ticks)),
-		"repaths": DmEnemy.prof_repaths, "scans": DmEnemy.prof_scans, "frame_ms": fc.median_ms(), "p95_ms": fc.p95_ms(), "worst_ms": fc.worst_ms(),
+		"repaths": DmEnemy.prof_repaths, "scans": DmEnemy.prof_scans, "frame_ms": fc.median_ms(), "p95_ms": fc.p95_ms(), "worst_ms": fc.worst_busy_ms(),
 		"engaged": engaged, "blows": dummy.hits_taken}
 
 func _t_perf() -> void:

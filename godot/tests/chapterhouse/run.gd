@@ -109,6 +109,9 @@ func _run() -> void:
 		h.talk_key()
 		check(not g.ui.dialogue.visible, "%s: E again closes it" % id)
 	check(String(g.ui.dialogue.source.greeting_lines("prior")[0]).length() > 0, "prior greeting follows the memory afterwards (no crash)")
+	# Stand at the Prior first: the hub closes a conversation once the hero is out of talk range (+3.5 m), and the last NPC of the loop above
+	# is elsewhere, so whether the check below saw the dialogue still open depended on where the 0.2 s NPC refresh phase fell.
+	at(float(spots["prior"]["x"]), float(spots["prior"]["z"]) - 2.0)
 	h.talk_to("prior")
 	check(String(g.ui.dialogue.lines[0]) != "", "talk_to opens a conversation")
 	await ticks(20)
