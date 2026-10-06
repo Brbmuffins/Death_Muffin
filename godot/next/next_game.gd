@@ -33,6 +33,7 @@ var hud: DmNextHud                              ## only with opts hud = "minimal
 var ui_host: DmNextUiHost                       ## the DmGame-contract adapter the real HUD reads (hud mode true)
 var ui: DmGameUi                                ## the existing HUD + panels
 var areas: DmAreaFlow                           ## child "Areas": entry banners + Codex, processions, Grave Surges (next/areas/)
+var perf: DmNextPerf                           ## child "Perf": graphics / fps cap / auto-resolution governor (next/perf/)
 var chapterhouse: DmChapterhouse                ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
 var gather: DmNextGather                        ## child "Gather" (every peer): gathering nodes, the gather loop (host), skills, AFK (next/gathering/)
 
@@ -116,6 +117,11 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		camera.setup(world.camera_config())
 	else:
 		camera.setup(DmData.world()["camera"])
+	perf = DmNextPerf.new()
+	perf.name = "Perf"
+	perf.game = self
+	add_child(perf)
+	perf.apply(opts.get("settings", {}))   # the real settings arrive with the HUD (DmNextUiHost calls perf.apply on every change)
 	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
 	session.character_name = String(opts.get("name", "You"))
 	session.discipline_id = String(d["id"])
@@ -181,6 +187,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		var at := local_body().global_position if local_body() != null else Vector3.ZERO
 		enemy_fx.warm(at)
 		bosses.warm(at)
+		# Every model, effect and area lighting drawn once under a cover, so no shader compiles mid-play (default: real renderer only).
+		if bool(opts.get("warmup", DisplayServer.get_name() != "headless" or "--warmup" in OS.get_cmdline_user_args())) and _has_world:
+			await DmNextWarmup.run(self)
+	perf.hold()
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
@@ -302,6 +312,8 @@ func _enter(pos: Vector3) -> void:
 	var a := world.area_at(pos.x, pos.z) if _has_world else ""
 	if a != "" and a != area_id:
 		area_id = a
+		if perf != null:
+			perf.hold()   # an area entry is a load: slow frames around it are not a GPU problem
 		world.enter_area(a)
 		area_changed.emit(a)
 

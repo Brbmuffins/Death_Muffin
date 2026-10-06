@@ -5,6 +5,8 @@ extends RefCounted
 
 const BASE := "res://assets/slice/"
 static var _info: Dictionary = {}
+## Models read from disk because nothing had loaded them yet (tests: a warmed game's tour must leave this at 0).
+static var cold_loads := 0
 
 static func _rel(root: Node, n: Node3D) -> Transform3D:
 	var xf := Transform3D.IDENTITY
@@ -20,6 +22,8 @@ static func analyze(url: String, height: float) -> Dictionary:
 	var key := "%s@%s" % [url, height]
 	if _info.has(key):
 		return _info[key]
+	if not ResourceLoader.has_cached(BASE + url):
+		cold_loads += 1
 	var ps: PackedScene = load(BASE + url)
 	var root: Node3D = ps.instantiate()
 	var skel: Skeleton3D = null

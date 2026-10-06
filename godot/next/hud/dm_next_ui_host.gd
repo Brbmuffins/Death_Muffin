@@ -256,6 +256,8 @@ func _apply_settings_side_effects() -> void:
 	if vfx != null:
 		vfx.quality = String(settings["graphics"])
 		vfx.reduced_motion = bool(settings["reduce_motion"])
+	if shell.perf != null:
+		shell.perf.apply(settings)
 	if shell.camera != null:
 		shell.camera.reduced_motion = bool(settings["reduce_motion"])
 

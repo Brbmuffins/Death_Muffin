@@ -104,12 +104,18 @@ func has_scene(id: String) -> bool:
 	return _scene(id) != null
 
 
+## Effect scenes read from disk on first play (tests: 0 after a warm-up).
+static var cold_loads := 0
+
+
 func _scene(id: String) -> PackedScene:
 	if _scenes.has(id):
 		return _scenes[id]
 	var path := BASE + id + ".tscn"
 	var s: PackedScene = null
 	if ResourceLoader.exists(path):
+		if not ResourceLoader.has_cached(path):
+			cold_loads += 1
 		s = load(path) as PackedScene
 	_scenes[id] = s
 	return s

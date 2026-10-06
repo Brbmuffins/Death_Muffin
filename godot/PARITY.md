@@ -26,7 +26,7 @@ HUD feeds and contract methods that `DmGame` had and `DmNextGame` / `DmNextUiHos
 ### The 10 most important MISSING / PARTIAL items for a player (priority order)
 
 1. **Front flow on the rebuild (DONE, godot/next-front).** `-- --next` (or `DmMain.USE_NEXT`) routes DmFrontFlow's "Enter world" to `DmNextGame` behind the key-art `DmLoadingScreen`: login/register (online) or the offline edition entry, discipline select, log out, class change (re-enter), quit save (`DmMain.save_all`). Tests `tests/next_front`. `-- --old` forces DmGame. Left: Play Online on the rebuild is untested against the live backend.
-2. **Performance controls absent (MISSING).** No resolution governor, no FPS cap, no graphics presets (only `vfx.quality`), no loading cover, no GPU shader warm-up of models (`DmWarmup` not run),
+2. **Performance controls (DONE, godot/next-perfctl).** No resolution governor, no FPS cap, no graphics presets (only `vfx.quality`), no loading cover, no GPU shader warm-up of models (`DmWarmup` not run),
    settings `fps` / `auto_res` / `graphics` inert. Owner priority #1; REBUILD Phase 6 plans the replacement but today the slice has no pacing safety net. (sections 17, 23)
 3. **Necromancer combat feel (DONE on `godot/next-feel`, see `next/feel/README.md`; only Easy auto-combat and standing mouse-aim facing remain; original gap text follows).** Clicking a far enemy does nothing (no attack-target chase, no hold-LMB / Shift+LMB, no queued or held-key casts, out-of-range refusal is silent),
    the hero never plays a cast gesture (`avatar.cast` is never called by rites), and there is no hitstop. Rune choices never reach the caster (`rite_build()` sets `runes = {}`), so Hollow Choir / Requiem / Impaling /
@@ -283,8 +283,8 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | `loot_<tier>` (5) | DONE | `loot_view.rules` |
 | `damage_numbers` | DONE | `DmNextUiHost.float_text` |
 | `reduce_motion` | DONE | Vfx + camera |
-| `graphics` (high/low) | PARTIAL | only `vfx.quality`; no moon-shadow/bloom/prop-light changes (`DmGame._apply_graphics`); REBUILD Phase 6 plans presets |
-| `fps` (Engine.max_fps), `auto_res` (resolution governor), `graphics_chosen` | MISSING | `DmGame._apply_render_scale/_apply_graphics`; nothing in `next/` |
+| `graphics` (high/low) | DONE | `DmNextPerf.apply` (`next/perf/`): moon shadows, bloom, prop lights, weather + `vfx.quality`, live on Settings change; REBUILD Phase 6 plans presets |
+| `fps` (Engine.max_fps), `auto_res` (resolution governor) | DONE | `DmNextPerf` (`next/perf/`), same `DmResolutionGovernor` constants. `graphics_chosen` still MISSING |
 | `difficulty` | DONE | `DmNextMeta.set_difficulty` (director, rewards, bosses) |
 | `auto_combat` / `auto_gather` | MISSING | stored, no consumer |
 | `hide_helm` | MISSING | no gear on hero |
@@ -359,10 +359,10 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
-| Load-time warm-up (models, Binbun effects, shaders, pooled bodies) | PARTIAL | `game/dm_warmup.gd` | `director.warm(true)`, `DmRiteFx.warm`, `enemy_fx.warm`, `bosses.warm`, `ui.warm()`; **no GPU shader pass for models** ("a first-draw shader compile can still hitch once", `next/README.md`) and `DmWarmup` is not run |
-| Loading screen with progress | MISSING | `game/dm_warmup.gd` under cover, `main.gd` | `DmNextGame.start()` is awaited but no loading cover is shown by `_next_slice` |
-| Resolution governor (auto-res, min 0.6) | MISSING | `game/dm_resolution_governor.gd`, `dm_game.gd _apply_render_scale` | not wired. REBUILD Phase 6 intends to change it (floor ~0.85, presets) |
-| FPS cap / graphics presets | MISSING | `_apply_graphics` | Phase 6 |
+| Load-time warm-up (models, Binbun effects, shaders, pooled bodies) | DONE | `game/dm_warmup.gd` | `DmNextWarmup` (`next/perf/`): every enemy/thrall/boss body (opaque, fade, elite, spectral), every Binbun effect, decal layers, telegraphs, and the 13-area tour incl. the no-omni-light and flash-light variants, under `DmWarmup`'s cover (no pooled bodies: enemies are scenes) |
+| Loading screen with progress | PARTIAL | `game/dm_warmup.gd` under cover, `main.gd` | the warm-up draws its own cover ("Waking the dead... <area> n / 13"); the cover before `start()` (world build, nav bake) is `main.gd`'s (front-flow track) |
+| Resolution governor (auto-res, min 0.6) | DONE | `game/dm_resolution_governor.gd`, `dm_game.gd _apply_render_scale` | `DmNextPerf.pace` (same constants; held on every area entry). REBUILD Phase 6 retunes it (floor ~0.85, presets) |
+| FPS cap / graphics high-low | DONE | `_apply_graphics` | `DmNextPerf.apply`; Medium/Ultra presets are Phase 6 |
 | Effect/pool budgets (Vfx pools, decal layers), per-frame cost discipline | DONE | `fx/` | reused; per-track perf budgets in `tests/next*` |
 | Event-driven / throttled systems (corpse expiry, 10 Hz hub tick, 20 Hz net only with peers) | DONE (new) | | the rebuild's stated perf rule |
 | Navmesh-based enemies (replaces custom nav) | DONE (new) | `sim/nav.gd` | `next/next_world.gd` ~130 ms bake |
