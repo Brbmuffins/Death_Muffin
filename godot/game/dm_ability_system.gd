@@ -383,14 +383,11 @@ func _pierce_beyond(first_id: int, at: Array, dmg: float, count: int, extra: Dic
 	super._pierce_beyond(first_id, at, dmg, count, extra)
 	if nxt.is_empty():
 		return
-	var N := DmFxData.spell_group("needle")
+	var rf := _rite_fx()
 	for e: Dictionary in nxt:
 		var last: Array = [e["x"], e["z"]]
-		_beam(Vector3(at[0], 1.0, at[2]), _cb("_enemy_follow", [int(e["id"]), 1.0, last]), N["trail"], 0.02, 0.12)
-		_flash(e["x"], 1.0, e["z"], N["impact"], 0.8, 0.16)
-		_emit(e["x"], 1.0, e["z"], 6, N["dust"], 0.1, 3.0, 1.0, 0.35, 0.12, {"gravity": 7.0})
-		_m_splinters(e["x"], 1.0, e["z"], 3, N["core"])
-	_sfx("needleHit", nxt[0]["x"], nxt[0]["z"], 0.8)
+		rf.pierce_shot(Vector3(at[0], 1.0, at[2]), _cb("_enemy_follow", [int(e["id"]), 1.0, last]), e["x"], e["z"])
+	rf.pierce_sound(nxt[0]["x"], nxt[0]["z"])
 
 
 func _reap(t: Dictionary) -> String:
@@ -401,7 +398,7 @@ func _reap(t: Dictionary) -> String:
 	if r != "ok":
 		return r
 	_gesture("attack", 2.6, "bone_needle", "", float(T["gestureSeconds"]))
-	var N := DmFxData.spell_group("needle")
+	var rf := _rite_fx()
 	var dx: float = t["x"] - _px()
 	var dz: float = t["z"] - _pz()
 	var l := _h(dx, dz)
@@ -417,9 +414,7 @@ func _reap(t: Dictionary) -> String:
 			if e == null:
 				continue
 			landed += 1
-			_emit(e.x, 0.9, e.z, 7, N["dust"], 0.2, 3.0, 1.2, 0.4, 0.13, {"gravity": 7.0})
-			_flash(e.x, 1.0, e.z, N["impact"], 0.9, 0.16)
-			_m_splinters(e.x, 0.9, e.z, 4, N["core"])
+			rf.reap_hit(e.x, e.z)
 	var b := _boss()
 	var hit_boss := false
 	for i in range(n0, popups.size()):
@@ -427,17 +422,8 @@ func _reap(t: Dictionary) -> String:
 			hit_boss = true
 	if hit_boss:
 		landed += 1
-		_flash(b.x, 1.6, b.z, N["impact"], 1.2, 0.18)
-		var bd := _h(b.x - _px(), b.z - _pz())
-		if bd - DmSimConsts.BOSS_RADIUS > float(T["reach"]) * 0.6:
-			var at := maxf(1.3, bd - DmSimConsts.BOSS_RADIUS)
-			_decal("crescent", N["trail"], _px() + dx * at, _pz() + dz * at, 1.6, 0.28, 0.85, {"rot": atan2(dx, dz), "growFrom": 0.6, "fadeOut": 0.22})
-	_decal("crescent", N["trail"], _px() + dx * 1.3, _pz() + dz * 1.3, 2.0, 0.32, 0.95, {"rot": atan2(dx, dz), "growFrom": 0.6, "fadeOut": 0.25})
-	_lf(_px() + dx * 1.3, 1.0, _pz() + dz * 1.3, N["trail"], 10.0, 0.16)
-	_m_dirt(_px() + dx * 1.5, _pz() + dz * 1.5, 0.7, 5)
-	_sfx("spear", _px(), _pz(), 1.1)
-	if landed > 0:
-		_sfx("boneHit", _px() + dx * 1.8, _pz() + dz * 1.8)
+		rf.reap_boss(b.x, b.z, _px(), _pz(), dx, dz)
+	rf.reap_swing(_px(), _pz(), dx, dz, landed)
 	return r
 
 

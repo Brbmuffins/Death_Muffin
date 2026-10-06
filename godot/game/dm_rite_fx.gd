@@ -159,6 +159,49 @@ func splinter_shard(a: Vector3, b: Vector3) -> void:
 	splinters(a.x, 1.0, a.z, 6, core, 4.5)
 
 
+## Staff pierce: the needle carries on into the enemy behind its target (beam from the first target, flash, dust, shards at the second). `pierce_sound` once per pierce.
+func pierce_shot(a: Vector3, follow: Callable, x: float, z: float) -> void:
+	var N := DmFxData.spell_group("needle")
+	beam(a, follow, N["trail"], 0.02, 0.12)
+	flash(x, 1.0, z, N["impact"], 0.8, 0.16)
+	emit(x, 1.0, z, 6, N["dust"], 0.1, 3.0, 1.0, 0.35, 0.12, {"gravity": 7.0})
+	splinters(x, 1.0, z, 3, N["core"])
+
+
+func pierce_sound(x: float, z: float) -> void:
+	sfx("needleHit", x, z, 0.8)
+
+
+## Scythe: one struck enemy (dust, flash, bone shards).
+func reap_hit(x: float, z: float) -> void:
+	var N := DmFxData.spell_group("needle")
+	emit(x, 0.9, z, 7, N["dust"], 0.2, 3.0, 1.2, 0.4, 0.13, {"gravity": 7.0})
+	flash(x, 1.0, z, N["impact"], 0.9, 0.16)
+	splinters(x, 0.9, z, 4, N["core"])
+
+
+## Scythe: the boss was struck (a far boss gets its own crescent where the arc reached it). (px, pz) = caster, (dx, dz) = unit swing direction.
+func reap_boss(bx: float, bz: float, px: float, pz: float, dx: float, dz: float) -> void:
+	var N := DmFxData.spell_group("needle")
+	var reach := float(DmCombatData.load_json("necro_weapons")["tuning"]["scythe"]["reach"])
+	flash(bx, 1.6, bz, N["impact"], 1.2, 0.18)
+	var bd := DmWeaponLine.hypot2(bx - px, bz - pz)
+	if bd - DmSimConsts.BOSS_RADIUS > reach * 0.6:
+		var at := maxf(1.3, bd - DmSimConsts.BOSS_RADIUS)
+		decal("crescent", N["trail"], px + dx * at, pz + dz * at, 1.6, 0.28, 0.85, {"rot": atan2(dx, dz), "growFrom": 0.6, "fadeOut": 0.22})
+
+
+## Scythe: the swing itself (crescent, light, dirt, the swing sound, the bone-hit sound when something was struck).
+func reap_swing(px: float, pz: float, dx: float, dz: float, landed: int) -> void:
+	var N := DmFxData.spell_group("needle")
+	decal("crescent", N["trail"], px + dx * 1.3, pz + dz * 1.3, 2.0, 0.32, 0.95, {"rot": atan2(dx, dz), "growFrom": 0.6, "fadeOut": 0.25})
+	lf(px + dx * 1.3, 1.0, pz + dz * 1.3, N["trail"], 10.0, 0.16)
+	dirt(px + dx * 1.5, pz + dz * 1.5, 0.7, 5)
+	sfx("spear", px, pz, 1.1)
+	if landed > 0:
+		sfx("boneHit", px + dx * 1.8, pz + dz * 1.8)
+
+
 # --- Miasma Circle -----------------------------------------------------------------------------------------------------------------------
 
 ## The cloud settling at (x, z) with radius r. `creep` = the Creeping Rot rune (no cloud model, the zone itself moves: `follow` -> its ground point or

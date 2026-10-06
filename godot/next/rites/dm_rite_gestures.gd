@@ -34,14 +34,21 @@ const TABLE := {
 }
 
 
+## The Scythe's swing replaces the needle's cast: `_gesture("attack", 2.6, "bone_needle", "", scythe.gestureSeconds)`. Sent as the pseudo-rite REAP_KEY.
+const REAP_KEY := "bone_needle:reap"
+const REAP := ["attack", 2.6, "bone_needle", ""]
+
+
 static func has(rite: String) -> bool:
-	return TABLE.has(rite)
+	return TABLE.has(rite) or rite == REAP_KEY
 
 
 ## Play `rite`'s gesture on a hero avatar facing `yaw` (the avatar's own cast(), the same call the current client makes).
 static func play(avatar: Object, rite: String, yaw: float) -> bool:
-	if avatar == null or not TABLE.has(rite) or not avatar.has_method("cast"):
+	if avatar == null or not has(rite) or not avatar.has_method("cast"):
 		return false
-	var g: Array = TABLE[rite]
-	avatar.cast(String(g[0]), float(g[1]), yaw, float(DmAbilities.cast_flow(String(g[2]))["gestureSeconds"]), String(g[3]))
+	var reap := rite == REAP_KEY
+	var g: Array = REAP if reap else TABLE[rite]
+	var secs := float(DmSimData.NECRO_WEAPON_TUNING["scythe"]["gestureSeconds"]) if reap else float(DmAbilities.cast_flow(String(g[2]))["gestureSeconds"])
+	avatar.cast(String(g[0]), float(g[1]), yaw, secs, String(g[3]))
 	return true

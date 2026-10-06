@@ -19,7 +19,7 @@ signal member_credited(character_id: int, delta: Dictionary)   ## {xp, kills, le
 signal member_refused(character_id: int, reason: String)       ## the backend did not credit this member's part of a batch
 signal batch_reported(batch: int, reply: Variant)
 signal kill_earned(character_id: int, enemy_def: String, pos: Vector3)
-signal killer_paid(character_id: int, enemy_def: String)        ## the member's OWN blow ended it (Soul Harvest souls, DmNextMeta)
+signal killer_paid(character_id: int, enemy_def: String, enemy: Node)        ## the member's OWN blow ended it (Soul Harvest souls, DmNextMeta); `enemy` may be null (tests)
 signal chain_tier_up(character_id: int, tier: Dictionary)      ## the member's Kill Chain crossed into a new tier (banner, sound)
 signal boss_earned(character_id: int, boss_id: String, first: bool, pos: Vector3)   ## a member was paid for a boss kill
 signal loot_dropped(character_id: int, drop: Dictionary, pos: Vector3)   ## also lets a shell replicate a member's drops to its peer
@@ -427,7 +427,7 @@ func _on_enemy_died(enemy: Node) -> void:
 	var level := float(enemy.get_meta("dm_level", 1))
 	var elite := bool(enemy.get_meta("dm_elite", false))
 	var area := String(enemy.get_meta("dm_area", area_id))
-	on_kill({"def": def_id, "area": area, "level": level, "elite": elite, "x": at.x, "z": at.z, "killer": killer})
+	on_kill({"def": def_id, "area": area, "level": level, "elite": elite, "x": at.x, "z": at.z, "killer": killer, "enemy": enemy})
 
 
 ## Decide who earned a kill and reward each. ev: {def, area, level, elite, x, z, killer: Node|null}. Public so a shell with its own
@@ -523,7 +523,7 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 	var area_def: Dictionary = DmContent.area(area)
 	var combat: bool = not bool(area_def["safe"])
 	if is_killer:
-		killer_paid.emit(m.character_id, String(ev["def"]))
+		killer_paid.emit(m.character_id, String(ev["def"]), ev.get("enemy"))
 	if is_killer and combat:
 		var up: Variant = m.chain.hit(float(_clock_ms()))
 		chain_mult = m.chain.mult()

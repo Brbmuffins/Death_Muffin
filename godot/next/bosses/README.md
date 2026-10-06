@@ -98,7 +98,7 @@ Suites: `tests/next_bosses/saint_run.gd`, `regent_run.gd`, `mire_run.gd` (shared
 * Limits: the choice is the host's own hero (a client's `request_summon` is the plain RPC); the prize claim window is the backend's (3 h).
 
 ## Gaps
-boss slow/root statuses are ignored (the brain owns speed); hitstop callback unset in the slice; the Ossuary / Nave / Sanctum are not open in the slice yet (their
+boss slow/root statuses are ignored on purpose: the brain owns speed and the current client's bosses are immune too (locked by `tests/next_combat_odds` B; only a stun staggers, capped at 0.5 s every 8 s); a scythe swing reaches a boss with its own reach (`rite_bone_needle.gd _reap`); hitstop callback unset in the slice; the Ossuary / Nave / Sanctum are not open in the slice yet (their
 bosses run in them as soon as the areas track opens them; thralls need the area's navmesh); the Prelate's tally is validated by the backend only for a bell it was told of (online `spend_shards` queues `summon_prelate`);
 `can_ascend` is emitted as a game event only; a late joiner does not see pools that are already burning (the rpc is at creation); the flood's hummock shrink is a presentation event the world builder does not ease yet; the pools of a boss that resets linger their remaining seconds (as sim zones did); the first draw of the six-walker Procession spawn costs one slow frame under software GL (not measured on a GPU).
 

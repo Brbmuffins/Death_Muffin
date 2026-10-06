@@ -52,6 +52,15 @@ and the current game's `DmAbilitySystem` draws through the same functions. Tests
 All numbers come from the existing rules (`DmAbilities.cast_check / needle_cast / needle_hit / miasma / apply_cast_cost / shortfall`,
 `DmSimData.WITHERED / MIASMA_SLOW / HEMORRHAGE`, `DmCombatData.const_table(BONE_FAN, ROT_LANCE, WAILING_SKULL, IVORY_CLEAVE, BONE_STORM, SOUL_SIPHON)`, projectile speeds from `sim_caster.gd`). No new numbers except `PICK_RADIUS` (aim-point tolerance).
 
+## Weapon line on the primary (test `tests/next_combat_odds/run.gd` C; rules `DmWeaponLine`, resolved into `p["loadout"]`)
+`rite_bone_needle.gd` follows the worn weapon like the current client's `SimCaster._needle` / `_reap`: **Staff** = longer reach (`ability_range`) and every needle (a volley's too) pierces the nearest enemy
+behind its target, in its lane, for `pierceDamageMult` (event `pierce`, host `DmStatusSet.hit`); **Wand** = damage / cadence through `needle_cast` / `apply_cast_cost`; **Sickle** = every needle (and pierce)
+adds one Withered stack (`needleWithered`, dps = damage x `WITHERED.dpsPerStack`, the discipline's cap); **Scythe** = no projectile: `_reap` cuts up to `maxHits` enemies in a 100 deg arc plus the boss (its own `bossReach`),
+instant, no crit, +4 essence a hit, 520 ms swing (event `reap`), Splinters (a shard from the first victim to the nearest enemy the arc missed) and Marrow-Tap apply, Volley is the needle's rune only. A kill of an
+enemy the scythe cut in the last 1.2 s banks one more soul: `DmSessionRewards.killer_paid(cid, def, enemy)` -> `DmNextMeta` -> `rite_bone_needle.reaped_souls`. The swing's gesture is the pseudo-rite
+`DmRiteGestures.REAP_KEY` (`attack` 2.6, the scythe's 0.3 s). Visuals / sounds: `DmRiteFx.pierce_shot / pierce_sound / reap_hit / reap_boss / reap_swing` (shared with `DmAbilitySystem`, which calls the same).
+Sound coverage of all 25 rites against the current client: `tests/next_combat_odds` D.
+
 ## Runes and legendary sets (godot/next-runes; test `tests/next_runes/run.gd`)
 
 Runes: `DmNextGame.rite_build()` carries the bag's sockets (`DmRunes.sockets_of`, pushed to the caster by `sync_runes()` on every bag change) and a module reads its rune once per cast

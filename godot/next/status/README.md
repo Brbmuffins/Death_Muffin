@@ -52,6 +52,7 @@ dictionary per id (no allocation), within 30 m of the camera, running only while
 dropped).
 
 ## Gaps
-- Player-side Bone Ward / Colossus guard stay in `DmPlayerRules` (stat-based, not timed statuses). Barrier here has no decay (the 6 s duration only).
+- Player-side Bone Ward / Colossus guard stay in `DmPlayerRules` / `DmHeroBody._ward` (computed from the living thralls on every hit): that IS the current client's rule (`dm_game_combat.gd on_hurt`), not a gap; `tests/next_combat_odds` A. Barrier here has no decay (the 6 s duration only).
+- Bosses (`DmBoss`) carry a set and show `slow` / `root` / `chill` but the brain ignores them, as the current client's bosses are immune (`tests/next_combat_odds` B).
 - `shrouded` does not suspend itself inside friendly miasma: the world code should remove/apply it.
 - The elite-affix rings/auras belong to the enemy_fx track.

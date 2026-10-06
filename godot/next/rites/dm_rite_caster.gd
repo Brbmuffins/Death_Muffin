@@ -347,6 +347,8 @@ func _face_aim(aim: Vector3, from: Vector3) -> void:
 func _gesture_cast(rite: String) -> void:
 	if not DmRiteGestures.has(rite):
 		return
+	if rite == "bone_needle" and bool(p["loadout"]["reap"]):
+		rite = DmRiteGestures.REAP_KEY   # the Scythe swings instead of casting
 	var yaw := float(_body.get("yaw")) if _body != null and _body.get("yaw") != null else 0.0
 	_play_gesture(rite, yaw)
 	if not multiplayer.get_peers().is_empty():

@@ -134,9 +134,15 @@ func _on_chain_tier(cid: int, tier: Dictionary) -> void:
 # ---- Soul Harvest ---------------------------------------------------------------------------------------------------------------------
 
 ## Your own kill banks a soul; the kill that fills the meter charges the next Marrow Spear / Miasma / Black Litany (free, 1.5x), see DmRiteCaster.
-func _on_killer_paid(cid: int, _def: String) -> void:
+func _on_killer_paid(cid: int, _def: String, enemy: Node) -> void:
 	var b := shell.local_body()
-	if cid != member.character_id or b == null or b.p.is_empty() or not DmPlayerRules.add_souls(b.p, 1.0):
+	if cid != member.character_id or b == null or b.p.is_empty():
+		return
+	var souls := 1.0
+	var caster := b.get_node_or_null("Rites") as DmRiteCaster
+	if caster != null and enemy != null:   # the Scythe's reap window: a kill of a victim of its arc banks one more soul
+		souls += (DmRiteRegistry.module("bone_needle") as DmRiteModule).call(&"reaped_souls", caster, enemy)
+	if not DmPlayerRules.add_souls(b.p, souls):
 		return
 	event.emit("souls_charged", {})
 	_float(b, 2.6, "Soul Harvest", "info")
