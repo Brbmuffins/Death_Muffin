@@ -34,7 +34,7 @@ func strike() -> void:
 		"dust":
 			var r := float(DmSimData.DUST["radius"])
 			for tg in targets_within(aim, r):
-				hit_target(tg, damage)
+				hit_target(tg, damage, "dust")
 			DmHostileZone.spawn(get_parent(), aim, &"dust", r, float(DmSimData.DUST["cloudS"]), damage * float(DmSimData.DUST["cloudDpsMult"]), self)
 		_:
 			var dir := Vector3(aim.x - global_position.x, 0.0, aim.z - global_position.z)

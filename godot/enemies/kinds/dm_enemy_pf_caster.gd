@@ -83,12 +83,12 @@ func strike() -> void:
 		"ember":
 			var EB: Dictionary = DmSimData.EMBER_BOLT
 			for tg in targets_within(aim, float(EB["radius"])):
-				hit_target(tg, dmg)
+				hit_target(tg, dmg, "ember")
 			DmPfUtil.ember_pool(self, aim, float(EB["radius"]), float(EB["poolS"]), dmg * float(EB["poolDpsMult"]))
 		"hex":
 			var H: Dictionary = DmSimData.HAG_HEX
 			for tg in targets_within(aim, float(H["radius"])):
-				hit_target(tg, dmg * float(H["blowMult"]))
+				hit_target(tg, dmg * float(H["blowMult"]), "curse")
 				if DmPfUtil.is_thrall(tg):
 					if target_valid(tg):
 						tg.set(&"cursed_t", float(H["durationS"]))
@@ -97,7 +97,7 @@ func strike() -> void:
 		"pulse":
 			var W: Dictionary = DmSimData.WISP_PULSE
 			for tg in targets_within(aim, float(W["radius"])):
-				hit_target(tg, dmg)
+				hit_target(tg, dmg, "dust")
 				if not DmPfUtil.is_thrall(tg):
 					DmPfUtil.chill(self, tg, float(W["chillMs"]) / 1000.0)
 		_:

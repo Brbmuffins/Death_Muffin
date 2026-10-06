@@ -3,13 +3,13 @@ extends DmEnemy
 ## Crypt Deacon (Ossuary, def `deacon`, behaviour "support"): a robed caster that keeps its distance (DmStateCathSupport) and, whenever its
 ## cooldown is up and it is not silenced, does the first of these (sim order, with or without a target):
 ##  1. RAISE: a corpse within 8 m -> a 1.5 s channel (telegraph "raise": thread from the Deacon to the corpse); at the end the corpse is consumed
-##     ("raised") and a Risen spawns on it (through the wave director when the body lives under one, `raised` signal always).
+##     ("raised") and a Risen spawns on it (`raised`; the wave director answers it).
 ##  2. SANCTIFY: the most wounded other non-Deacon ally within SANCTIFIED.range that is not already blessed gets `sanctified` (damage taken
 ##     x0.7 for 5 s, DmStatusSet); cooldown x0.6. `cue("sanctify", ally_pos)` for the thread/halo.
 ##  3. CURSE: the target within attackRange -> 1.5 s wind-up (telegraph "curse"), one blow of def damage.
 ## The corpse / Sanctify scan runs at the target-scan rate (0.25 s), not every tick.
 
-signal raised(at: Vector3)    ## host: a Risen is being raised at `at`
+signal raised(at: Vector3)    ## host: a Risen is being raised at `at` (the wave director spawns it)
 
 const CORPSE_RANGE := 8.0
 const FIND_RETRY_S := 2.0     ## re-search for the corpse field this often while none was found
@@ -128,10 +128,7 @@ func strike() -> void:
 		return
 	swing_raise = false
 	if corpses != null and is_instance_valid(corpses) and corpses.consume(_raise_id, 1, "raised"):
-		raised.emit(aim)
-		var dir := get_parent().get_parent() as DmWaveDirector if get_parent() != null and get_parent().get_parent() != null else null
-		if dir != null:
-			dir.spawn("risen", aim)
+		raised.emit(aim)   # the wave director (host) spawns the Risen with this body's level / multipliers
 	_raise_id = -1
 
 

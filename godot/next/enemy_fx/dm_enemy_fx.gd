@@ -21,7 +21,7 @@ const ELITE_COLOR := 0x9b5cff
 const EFFECT_IDS: Array[String] = ["censer_incense", "vengeful_burst", "surge_eruption", "bonfire"]
 const SFX_IDS: Array[String] = ["eliteAggro", "eliteDeath", "enemyDeath", "tellStrike", "tollSmall", "burst", "boneHit",
 	"enemyAttackBeast", "enemyAttackHumanoid", "enemyAttackBrute", "enemyAttackSpirit",
-	"enemyDeathBeast", "enemyDeathHumanoid", "enemyDeathBrute", "enemyDeathSpirit", "emberThrow", "emberBurst", "slagSlam", "curse"]
+	"enemyDeathBeast", "enemyDeathHumanoid", "enemyDeathBrute", "enemyDeathSpirit", "emberThrow", "emberBurst", "slagSlam", "curse", "raise"]
 const FIRE_DEFS: Array[String] = ["cinder_husk", "pyre_priest", "cinderhound", "slag_brute"]   ## the Cinder Pyre's dead: sparks, soot, ember tells
 const FEN_DEFS: Array[String] = ["fen_wisp", "bog_hag", "drowned_sexton", "mire_leech"]
 const FEN_TEAL := 0x7fe0d0
@@ -34,7 +34,7 @@ var host := DmEnemyFxHost.new()
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
 var auto_watch := true
 var scope: Node = null             ## only watch enemies / zones under this node (null = the whole tree); lets two peers share one test tree
-var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0}
+var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0}
 
 class DefStub:
 	extends RefCounted
@@ -48,6 +48,7 @@ class Slot:
 	var follow: Callable
 	var aura: Variant = null       ## elite ring / censer ground ring
 	var incense: Variant = null    ## censer_incense Binbun handle
+	var reach: Variant = null      ## the Lich Acolyte's crimson reach ring, drawn while a thrall stands inside it
 	var conns: Array = []          ## [Signal, Callable] pairs to disconnect on exit
 
 var _slots: Dictionary = {}        ## instance id -> Slot
@@ -153,6 +154,7 @@ func _on_exit(e: DmEnemy) -> void:
 	_slots.erase(e.get_instance_id())
 	_kill(s.aura)
 	_kill(s.incense)
+	_kill(s.reach)
 	for c in s.conns:
 		if (c[0] as Signal).is_connected(c[1]):
 			(c[0] as Signal).disconnect(c[1])
@@ -217,14 +219,29 @@ func _on_telegraph(kind: StringName, from: Vector3, aim: Vector3, radius: float,
 		_tele.erase("id")
 
 
-## Host-side one-off cues. Only the Deacon's Sanctify: DmEventFx._sanctify's thread and halo (the blessed body's motes come from DmStatusSet).
+## One-off cues (host emits them natively; clients get them replicated by DmNextNet, so every peer draws each once): the Deacon / Seraph Sanctify
+## thread and halo (DmEventFx._sanctify; the blessed body's motes are DmStatusSet's), the Templar's shield glance (spark + chime), the Lich Acolyte's
+## Unbind beam and sigil (DmEntityViews "unbind" / "shieldBlock"). Other cues have no visual of their own (their telegraphs / states draw them).
 func _on_cue(kind: StringName, at: Vector3, _radius: float, e: DmEnemy) -> void:
-	if kind != &"sanctify":
-		return
-	var gold := fx.status_fx("sanctified", "gold")
 	var p := e.global_position
-	fx.beam(Vector3(p.x, 1.9, p.z), Vector3(at.x, 1.6, at.z), gold, 0.04, 0.5)
-	fx.decal({"tex": "ring", "color": gold, "x": at.x, "z": at.z, "r": 1.1, "duration": 0.8, "opacity": 0.8, "growFrom": 1.8})
+	match kind:
+		&"sanctify":
+			var gold := fx.status_fx("sanctified", "gold")
+			fx.beam(Vector3(p.x, 1.9, p.z), Vector3(at.x, 1.6, at.z), gold, 0.04, 0.5)
+			fx.decal({"tex": "ring", "color": gold, "x": at.x, "z": at.z, "r": 1.1, "duration": 0.8, "opacity": 0.8, "growFrom": 1.8})
+		&"shield_block":
+			_pf["color"] = fx.sp("enemy", "toll")
+			_pf_burst(p.x + sin(e.rotation.y) * 0.6, 1.1, p.z + cos(e.rotation.y) * 0.6, 0.15, 2.6, 0.8, 0.3, 0.12, 6.0, 8)
+			fx.snd("tollSmall", p.x, p.z)
+		&"unbind":
+			var curse := fx.sp("enemy", "curse")
+			var delay := float(DmSimData.UNBIND["delayS"])
+			fx.beam(Vector3(p.x, 1.6, p.z), Vector3(at.x, 0.3, at.z), curse, 0.06, delay)
+			fx.decal({"tex": "sigil", "color": curse, "x": at.x, "z": at.z, "r": 1.0, "duration": delay + 0.3, "opacity": 0.85, "spin": 2.5, "fadeOut": 0.3})
+			fx.snd("raise", at.x, at.z)
+		_:
+			return
+	stats["cue"] += 1
 
 
 func _on_damaged(amount: float, _hp_left: float, from: Node, e: DmEnemy) -> void:
@@ -313,8 +330,10 @@ func _die(s: Slot, e: DmEnemy) -> void:
 	stats["death"] += 1
 	_kill(s.aura)
 	_kill(s.incense)
+	_kill(s.reach)
 	s.aura = null
 	s.incense = null
+	s.reach = null
 	var p := e.global_position
 	_death_ev["id"] = e.get_instance_id()
 	_death_ev["x"] = p.x
@@ -366,6 +385,8 @@ func warm(at: Vector3) -> void:
 	var h = fx.bb("censer_incense", at.x, at.z)
 	if h != null:
 		h.kill()
+	vfx.decal({"tex": "sigil", "color": 0xffffff, "x": at.x, "z": at.z, "r": 1.0, "duration": 0.3, "opacity": 0.5, "spin": 2.5})   # the Unbind sigil + thread
+	fx.beam(Vector3(at.x, 1.6, at.z), Vector3(at.x + 1.0, 0.3, at.z), 0xffffff, 0.04, 0.2)
 	fx.audio = quiet
 	stats["telegraph"] = 0
 
@@ -427,10 +448,11 @@ func _ambient(dt: float) -> void:
 		if e.sm == null:
 			continue
 		var st := e.sm.id()
-		if st == DmEnemyState.Id.DEAD:
-			continue
 		var p := e.global_position
-		if absf(p.x - _px) > NEAR_X or absf(p.z - _pz) > NEAR_Z:
+		var near := absf(p.x - _px) <= NEAR_X and absf(p.z - _pz) <= NEAR_Z
+		if bool(e.def.get("unbind", false)):
+			_reach_ring(s, e, near and st != DmEnemyState.Id.DEAD)
+		if st == DmEnemyState.Id.DEAD or not near:
 			continue
 		if st == DmEnemyState.Id.RISING and randf() < dt * 8.0:
 			_burst(_amb_dust, p.x, 0.1, p.z, true)
@@ -442,6 +464,25 @@ func _ambient(dt: float) -> void:
 			_fire_idle(e, st, p, dt)
 		elif FEN_DEFS.has(e.def_id):
 			_fen_idle(e, st, p, dt)
+
+
+## The Lich Acolyte's crimson reach: shown only while a thrall stands inside it (DmEntityViews), on every peer (thralls replicate), so no event is needed.
+func _reach_ring(s: Slot, e: DmEnemy, active: bool) -> void:
+	var any := false
+	if active:
+		var rng := float(DmSimData.UNBIND["range"])
+		var p := e.global_position
+		for t in get_tree().get_nodes_in_group(&"dm_thrall"):
+			var d := (t as Node3D).global_position - p
+			if d.x * d.x + d.z * d.z <= rng * rng:
+				any = true
+				break
+	if any and s.reach == null:
+		s.reach = vfx.decal({"danger": true, "tex": "ring", "color": fx.sp("enemy", "curse"), "x": e.global_position.x, "z": e.global_position.z,
+			"r": float(DmSimData.UNBIND["range"]), "duration": 1e9, "opacity": 0.15, "pulse": 1.5, "follow": s.follow})
+	elif not any and s.reach != null:
+		_kill(s.reach)
+		s.reach = null
 
 
 func _burst(o: Dictionary, x: float, y: float, z: float, smoke: bool) -> void:

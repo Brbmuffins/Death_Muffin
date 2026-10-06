@@ -82,6 +82,8 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	director.enemy_spawned.connect(func(e: DmEnemy) -> void:
 		enemy_fx.watch(e)       # idempotent (the node also auto-watches); explicit so the seam is visible
 		DmStatusSet.attach(e)   # every peer, so status visuals replicate (an ensure()d set never does)
+		if multiplayer.is_server():
+			net.watch_enemy(e)  # host-only cues (shield glance, sanctify, unbind) reach the clients
 		if ui_host != null:
 			ui_host.watch_enemy(e)
 		corpses.track(e, String(e.get_meta("dm_area", area_id)))

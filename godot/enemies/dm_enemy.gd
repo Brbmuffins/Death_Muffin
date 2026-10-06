@@ -13,7 +13,8 @@ extends CharacterBody3D
 ## Stats come from the existing def (DmSimData.ENEMIES[def_id]) so numbers stay in one place. Not bit-exact with the old sim by design.
 ##
 ## Target contract (duck-typed, so the player scene needs no base class): a Node3D in group "dm_target"; optionally
-## `dm_alive() -> bool`, `dm_take_enemy_hit(damage: float, from: Node) -> void` and `dm_target_weight() -> float` (distance multiplier in the target scan).
+## `dm_alive() -> bool`, `dm_take_enemy_hit(damage: float, from: Node[, kind: String]) -> void` (the optional damage kind is the sim's hurt `from`: melee, toxic,
+## burn, ember, dust, curse; a target that declares only two parameters still works, see `deliver`) and `dm_target_weight() -> float` (distance multiplier in the target scan).
 
 signal state_changed(prev: int, next: int)
 signal struck(target: Node3D, damage: float)  ## the blow landed (host side); integration turns this into a player hurt event
@@ -88,6 +89,7 @@ var attack_rate_mult: float = 1.0         ## statuses (chill, frenzy) write here
 var incense_t: float = 0.0                ## Censer Bearer haste: > 0 = x1.3 move, x1.25 attack rate (sim CENSER)
 var aim := Vector3.ZERO                   ## where the current blow is aimed, fixed at wind-up start (the telegraph)
 var attack_anim: String = "attack"       ## casters play "cast" (views: CASTERS)
+var blow_kind: String = "melee"           ## damage kind of this body's plain blow (the sim's hurt `from`): "toxic" for rot bites (def rotBite)
 
 # --- runtime ---
 var sm: DmEnemyStateMachine
@@ -164,6 +166,8 @@ func _ready() -> void:
 	cooldown_s = float(def["cooldownMs"]) / 1000.0 * (0.8 if elite else 1.0)
 	corpse_kind = String(def.get("corpse", "normal"))
 	hit_run = float(def.get("hitRun", 0.0))
+	if bool(def.get("rotBite", false)):
+		blow_kind = "toxic"
 	flying = float(def.get("flying", 0.0))
 	if flank_side == 0.0:
 		flank_side = -1.0 if rng.randf() < 0.5 else 1.0
@@ -440,10 +444,22 @@ func strike() -> void:
 		hit_target(tg, damage)
 
 
-func hit_target(tg: Node3D, dmg: float) -> void:
+## `kind` "" = this body's blow_kind.
+func hit_target(tg: Node3D, dmg: float, kind: String = "") -> void:
 	struck.emit(tg, dmg)
-	if tg.has_method("dm_take_enemy_hit"):
-		tg.dm_take_enemy_hit(dmg, self)
+	deliver(tg, dmg, self, kind if kind != "" else blow_kind)
+
+
+## The target contract call, with the damage kind when the target takes one (hero: Veilwalker's burn / toxic immunity, brew fire / rot resist).
+## Shared by blows and hostile zones. A target whose dm_take_enemy_hit predates `kind` (two parameters) gets the old call.
+static func deliver(tg: Node, dmg: float, from: Node, kind: String) -> void:
+	if not tg.has_method("dm_take_enemy_hit"):
+		return
+	var cb := Callable(tg, &"dm_take_enemy_hit")
+	if cb.get_argument_count() >= 3:
+		cb.call(dmg, from, kind)
+	else:
+		cb.call(dmg, from)
 
 
 ## Every valid target within `r` (flat) of point `c`.
@@ -473,10 +489,11 @@ func is_hittable() -> bool:
 	return true
 
 
-## Damage from the host's combat code. Returns true when applied. A hit also aggroes the attacker if nothing is targeted.
+## Damage from the host's combat code (the status set's damage-taken multiplier is applied here). Returns true when applied. A hit also aggroes the attacker if nothing is targeted.
 func take_damage(amount: float, from: Node = null, allow_stagger: bool = true) -> bool:
 	if not is_multiplayer_authority() or sm.id() == DmEnemyState.Id.DEAD or sm.id() == DmEnemyState.Id.RISING or not is_hittable():
 		return false
+	amount = DmStatusSet.scale_taken(self, amount)   # sanctified / fracture / shrouded: once, here, for every source
 	hp -= amount
 	_flash = 1.0
 	damaged.emit(amount, hp, from)

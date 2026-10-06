@@ -23,6 +23,7 @@ signal feedback(text: String)                ## a cast was refused / unavailable
 const REJECT_TEXT := {"essence": "Not enough Grave Essence", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
 const FEEDBACK_GAP_MS := 600
 const CLIENT_OWNED_CHARACTER_FIELDS := ["gold", "level", "experience", "stat_str", "stat_agi", "stat_int", "stat_vit"]   ## as DmGame
+const HERO_STATUS_TEXT := {&"chill": "Chilled", &"root": "Rooted", &"stun": "Stunned"}   ## the old game's floats over the hero (DmGameCombat.on_hurt / drag_player)
 
 var shell: DmNextGame
 var api: Variant
@@ -63,6 +64,7 @@ var _bind_t := 0.0
 var _last_feedback := 0
 var _character_seq := 0
 var _full_at := -100000
+var _hero_status: Dictionary = {}            ## status id -> true while the local hero has it (a float on the way in, not on every refresh)
 var _target_id := 0
 var _target_until := 0.0
 var _build: Dictionary = {}
@@ -414,6 +416,27 @@ func _on_credited(cid: int, delta: Dictionary) -> void:
 		game_event.emit("level_up", {"level": int(character["level"])})
 
 
+## The local hero got chilled / rooted / stunned: the old game's float, once per status as it appears.
+func _on_hero_statuses(hs: DmStatusSet) -> void:
+	var b := shell.local_body()
+	for id: StringName in HERO_STATUS_TEXT:
+		var on := hs.has(id)
+		if on and not _hero_status.has(id) and b != null:
+			float_text(b.position + Vector3(0, 2.5, 0), String(HERO_STATUS_TEXT[id]), "info")
+		if on:
+			_hero_status[id] = true
+		else:
+			_hero_status.erase(id)
+
+
+func _on_hero_effect(kind: StringName) -> void:
+	var b := shell.local_body()
+	if kind == &"pull" and b != null:
+		float_text(b.position + Vector3(0, 2.5, 0), "Dragged!", "info")
+		if shell.camera != null:
+			shell.camera.shake(0.2)
+
+
 ## Enemy hooks (called for every spawned enemy): thrall blows and Miasma ticks get numbers, like the old DmEventFx.
 func watch_enemy(e: DmEnemy) -> void:
 	e.damaged.connect(func(amount: float, _hp: float, from: Node) -> void:
@@ -442,5 +465,9 @@ func _bind_bodies() -> void:
 		c.hit_number.connect(_on_hit_number)
 		if b == mine:
 			c.cast_rejected.connect(_on_rejected)
+			var hs := DmStatusSet.of(b)
+			if hs != null:
+				hs.changed.connect(_on_hero_statuses.bind(hs))   # replicated: a client's own hero would show them too
 			if shell.session.is_host():
 				b.hurt.connect(_on_hurt)
+				b.enemy_effect.connect(_on_hero_effect)

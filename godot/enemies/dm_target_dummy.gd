@@ -10,6 +10,7 @@ signal hit(damage: float, from: Node)
 @export var move_speed: float = 5.0
 var hp: float = 0.0
 var hits_taken: int = 0
+var last_kind: String = ""   ## the damage kind of the last blow (melee, toxic, burn, ember, dust, curse)
 
 func _ready() -> void:
 	hp = max_hp
@@ -22,7 +23,8 @@ func _ready() -> void:
 func dm_alive() -> bool:
 	return hp > 0.0
 
-func dm_take_enemy_hit(damage: float, from: Node) -> void:
+func dm_take_enemy_hit(damage: float, from: Node, kind: String = "melee") -> void:
+	last_kind = kind
 	hp = maxf(0.0, hp - damage)
 	hits_taken += 1
 	hit.emit(damage, from)

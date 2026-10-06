@@ -119,3 +119,8 @@ also polls it (hold = repeat, the host's cooldown paces it). Otherwise the shell
 Projectile rites (`rite_bone_fan` ... `rite_soul_siphon`): shared geometry is `DmRiteModule.pick_enemy / lane / follow_enemy`; shared visuals are the `DmRiteFx` "Projectile rites" section
 (same calls as `DmAbilitySystem`, which is untouched). Shots are host `c.after` callbacks (no host projectile objects) plus pooled visual `shot`s on every peer. Not ported: the Soul Harvest
 empowered cast (x1.5 spear), bosses as targets (the rebuild's world has none yet), the `legend` rally event fx. Storm and siphon keep a per-peer `mem(id).vis` for their drawn handles.
+
+## One pool of vitals (glue, 2026-10-06)
+A caster whose body has DmPlayerRules vitals (`DmHeroBody.p`) works ON them: `caster.p` is the same Dictionary (`shares_vitals()`), so the essence the HUD orb reads
+(`body.resource`), what a rite spends, brews, the barrier and `alive` are one state, on the body's clock (`now_ms` = `body.clock_ms()`); the body's `tick_vitals`
+regenerates it once (the caster's own regen runs only for a body-less caster, tests). Brews go through `body.apply_brew` only (`DmNextBelt` skips the caster's copy).

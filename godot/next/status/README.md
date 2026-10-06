@@ -15,9 +15,10 @@ signals: changed, expired(id), dot_damage(id, amount, source, killed, target)   
 static: of(body) ensure(body) attach(body) hit(target, amount, from, allow_stagger) warm()
 ```
 - **Ownership of multipliers**: the set writes `speed_mult` and `attack_rate_mult` on the owner (when it has them) only when the status set
-  changes. Nobody else writes them. `damage_taken_mult()` is not auto-applied by `DmEnemy.take_damage` (not touched here): route hits through
-  `DmStatusSet.hit(target, ...)` (DoT already does). `damage_dealt_mult()` (hex) is for the attacker's damage code (thralls).
-- **Kill credit**: DoT ticks call `owner.take_damage(amount, source, false)` in 0.25 s lumps; `source` is the Node that applied (bleed: the
+  changes. Nobody else writes them. `damage_taken_mult()` IS applied centrally, once: every owner's `take_damage` (DmEnemy, DmThrall, DmHeroBody) calls
+  `DmStatusSet.scale_taken(self, amount)` on entry, so rites, thralls, DoTs, zones and enemy blows all get it. `DmStatusSet.hit` is now a plain pass-through
+  (never multiplies); a new owner type's `take_damage` must call `scale_taken` itself. `damage_dealt_mult()` (hex) is for the attacker's damage code (thralls).
+- **Kill credit**: DoT ticks call `owner.take_damage(amount, source, false)` (the owner applies the multiplier; `dot_damage` reports the scaled amount) in 0.25 s lumps; `source` is the Node that applied (bleed: the
   strongest-dps applier, withered: the last stacker). `dot_damage` carries `killed`.
 - Owner hooks used when present: `hp`, `max_hp`, `def` (frenzy), `take_damage`, `stun(s)`, `creature` (shrouded opacity), signals `died`
   (set clears itself) and `statuses_cleared` (drops bleed/withered/root/slow/chill, like a ghoul's dig-in).

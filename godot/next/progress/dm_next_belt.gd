@@ -92,7 +92,7 @@ func drink_buff(id: String) -> void:
 		return
 	var r: Dictionary = body.apply_brew(id)
 	var rites := body.get_node_or_null("Rites") as DmRiteCaster
-	if rites != null:
+	if rites != null and not rites.shares_vitals():   # a caster on the body's vitals already sees the brew
 		rites.apply_brew(id)
 	var text: String
 	if r["replaced"] and prev != null:

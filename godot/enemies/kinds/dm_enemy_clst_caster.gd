@@ -51,12 +51,12 @@ func strike() -> void:
 		var PF: Dictionary = DmSimData.PLAGUE_FLASK
 		var r := float(PF["radius"])
 		for tg in targets_within(aim, r):
-			hit_target(tg, damage)
+			hit_target(tg, damage, "toxic")
 		DmHostileZone.spawn(get_parent(), aim, &"toxic", r, float(PF["poolS"]), damage * float(PF["poolDpsMult"]), self)
 		cue.emit(&"flask", aim, r)
 	elif attack_kind == "curse":
 		var tg := target
 		if target_valid(tg) and flat_dist_to(tg) <= attack_range * STRIKE_REACH_MULT + STRIKE_REACH_PAD:
-			hit_target(tg, damage)
+			hit_target(tg, damage, "curse")
 	else:
 		super()

@@ -192,19 +192,37 @@ func spawn_wave(heroes: Array, count: int = -1) -> int:
 	return made
 
 
-## Host: create one enemy (replicated). `heroes` only feeds the level / party scaling.
-func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false) -> int:
+## Host: create one enemy (replicated) and return it. `heroes` only feeds the level / party scaling. `mult` overrides the computed scaling
+## ({level, hp, dmg}: the hp / damage multipliers as DmEnemy.hp_mult / damage_mult): a Risen raised by an acolyte or a deacon is as strong as its raiser.
+func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false, mult: Dictionary = {}) -> DmEnemy:
 	var levels: Array = []
 	for h in heroes:
 		levels.append(float((h as DmHeroBody).character.get("level", 1)))
 	var level := DmEnemyStats.area_level(area_id, levels, 0.0)
 	var tier := DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, _since_arrival)) if wave_tier > 0.0 else {"enemyHpMult": 1.0, "enemyDamageMult": 1.0}
-	_spawner.spawn({
-		"id": _next_id, "def": def_id, "pos": pos, "level": level,
-		"hp": DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))) * float(tier["enemyHpMult"]),
-		"dmg": DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]), "rising": true, "elite": elite})
+	var e := _spawner.spawn({
+		"id": _next_id, "def": def_id, "pos": pos, "level": float(mult.get("level", level)),
+		"hp": float(mult["hp"]) if mult.has("hp") else DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))) * float(tier["enemyHpMult"]),
+		"dmg": float(mult["dmg"]) if mult.has("dmg") else DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]), "rising": true, "elite": elite})
 	_next_id += 1
-	return _next_id - 1   # the new enemy's id (the boss brains track their adds)
+	return e as DmEnemy
+
+
+## Host: a Risen climbs out at `at` for `by` (an acolyte's claimed thrall or a deacon's raised corpse), scaled like its raiser.
+func _risen_for(at: Vector3, by: DmEnemy) -> DmEnemy:
+	if by == null or not is_instance_valid(by):
+		return null
+	return spawn("risen", at, [], false, {"level": float(by.get_meta(&"dm_level", 1.0)), "hp": by.hp_mult, "dmg": by.damage_mult})
+
+
+func _on_unbind_rise(at: Vector3, by: DmEnemy) -> void:
+	var r := _risen_for(at, by)
+	if r != null and by.has_method(&"adopt"):
+		by.adopt(r)   # counts toward the acolyte's UNBIND.maxAlive
+
+
+func _on_raised(at: Vector3, by: DmEnemy) -> void:
+	_risen_for(at, by)
 
 
 func _pick_kind() -> String:
@@ -266,6 +284,10 @@ func _spawn_enemy(data: Variant) -> Node:
 	e.ready.connect(func() -> void: enemy_spawned.emit(e))
 	if multiplayer.is_server():
 		e.died.connect(_on_died)
+		if e.has_signal(&"unbind_rise"):   # Lich Acolyte
+			e.connect(&"unbind_rise", _on_unbind_rise)
+		if e.has_signal(&"raised"):        # Crypt Deacon
+			e.connect(&"raised", _on_raised.bind(e))
 	return e
 
 

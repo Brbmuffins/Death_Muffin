@@ -128,10 +128,25 @@ static func ensure(owner: Node) -> DmStatusSet:
 	return s if s != null else _make(owner, false)
 
 
-## Damage through the owner's API with the set's damage-taken multiplier (sanctified, fracture, shrouded) applied.
+## `amount` x the owner's damage-taken multiplier (sanctified, fracture, shrouded): THE one place it is applied. Every `take_damage` (enemy, thrall,
+## hero) calls it once on entry, so any source (rites, thralls, DoTs, zones, enemy blows) gets the multiplier without opting in.
+static func scale_taken(owner: Node, amount: float) -> float:
+	var s := of(owner)
+	return amount * s._taken if s != null else amount
+
+
+## Damage through the owner's API. The multiplier is applied by the owner's take_damage (scale_taken), so this is only a convenience.
 static func hit(target: Node, amount: float, from: Node = null, allow_stagger: bool = true) -> bool:
-	var s := of(target)
-	return target.take_damage(amount * (s.damage_taken_mult() if s != null else 1.0), from, allow_stagger)
+	return _deal(target, amount, from, allow_stagger, "")
+
+
+## take_damage has two shapes: enemies/thralls (amount, from, allow_stagger) -> bool, the hero (amount, source, kind: String) -> float.
+## Passing a bool as the hero's kind was a runtime error waiting for the first DoT on a player.
+static func _deal(target: Node, amount: float, from: Node, allow_stagger: bool, kind: String) -> bool:
+	if target is DmHeroBody:
+		target.take_damage(amount, from, kind if kind != "" else "dot")
+		return true
+	return target.take_damage(amount, from, allow_stagger)
 
 
 func _ready() -> void:
@@ -330,12 +345,12 @@ func _step(dt: float) -> void:
 		var r2: Variant = _rec.get(id)
 		if r2 == null:
 			continue   # the owner died during an earlier lump and cleared us
-		var amt: float = r2[ACC] * _taken
+		var amt: float = r2[ACC]
 		r2[ACC] = 0.0
 		if amt > 0.0 and _o.has_method(&"take_damage"):
 			var src: Node = r2[SRC] if is_instance_valid(r2[SRC]) else null
-			if _o.take_damage(amt, src, false):
-				dot_damage.emit(id, amt, src, float(_o.get("hp")) <= 0.0, _o)
+			if _deal(_o, amt, src, false, "dot"):   # the owner applies the damage-taken multiplier (scale_taken)
+				dot_damage.emit(id, amt * _taken, src, float(_o.get("hp")) <= 0.0, _o)
 	for id in _gone:
 		if _rec.erase(id):
 			_mults_dirty = true

@@ -35,6 +35,7 @@ class Dummy:
 	var stuns: Array = []
 	var hits: Array = []
 	func take_damage(a: float, from: Node = null, _stagger := true) -> bool:
+		a = DmStatusSet.scale_taken(self, a)   # what every real owner does on entry
 		hp -= a
 		hits.append([a, from])
 		return true

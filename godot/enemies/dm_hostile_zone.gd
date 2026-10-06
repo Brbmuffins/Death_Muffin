@@ -33,6 +33,11 @@ static func spawn(parent: Node, at: Vector3, zone_kind: StringName, r: float, se
 	return z
 
 
+## The sim's hurt `from` for a zone tick: burning ground is "burn", a toxic pool "toxic", the moth's cloud "dust".
+func damage_kind() -> String:
+	return "burn" if kind == &"ember" else String(kind)
+
+
 func _physics_process(delta: float) -> void:
 	_age += delta
 	if _age >= lifetime:
@@ -53,6 +58,6 @@ func _physics_process(delta: float) -> void:
 			continue
 		var dx := tg.global_position.x - global_position.x
 		var dz := tg.global_position.z - global_position.z
-		if dx * dx + dz * dz <= r2 and tg.has_method("dm_take_enemy_hit"):
-			tg.dm_take_enemy_hit(dps * tick_s, source if source != null and is_instance_valid(source) else self)
+		if dx * dx + dz * dz <= r2:
+			DmEnemy.deliver(tg, dps * tick_s, source if source != null and is_instance_valid(source) else self, damage_kind())
 	pulsed.emit(self)

@@ -222,7 +222,7 @@ func _t_templar() -> void:
 	t.hp = t.max_hp
 	DmStatusSet.ensure(t).apply(&"fracture", dummy)
 	t.take_damage(100.0, dummy)
-	check(absf(t.max_hp - t.hp - 100.0) < 0.01, "templar: Fracture breaks the shield")
+	check(absf(t.max_hp - t.hp - 100.0 * (1.0 + float(DmSimData.FRACTURE["perStack"]))) < 0.01, "templar: Fracture breaks the shield (full blow x the Fracture multiplier, applied once by take_damage)")
 	# it fights: closes in and swings for 17
 	await new_arena()
 	dummy.global_position = Vector3(0, 0, 26)

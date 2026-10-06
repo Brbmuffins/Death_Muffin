@@ -210,9 +210,9 @@ func dm_target_weight() -> float:
 	return WEIGHT_SHIELD if kind == "shieldbearer" else WEIGHT_OTHER
 
 
-## Enemy blow lands (enemy.hit_target): through the status set so damage-taken multipliers apply.
-func dm_take_enemy_hit(dmg: float, from: Node) -> void:
-	DmStatusSet.hit(self, dmg, from)
+## Enemy blow lands (enemy.hit_target); take_damage applies the damage-taken multiplier.
+func dm_take_enemy_hit(dmg: float, from: Node, _kind: String = "") -> void:
+	take_damage(dmg, from)
 
 
 ## DmStatusSet / DoT / blows entry point (host only). Returns true when applied.
@@ -220,6 +220,7 @@ func take_damage(amount: float, from: Node = null, _allow_stagger: bool = true) 
 	if not is_multiplayer_authority() or state == S.DEAD:
 		return false
 	var st := DmStatusSet.of(self)
+	amount = DmStatusSet.scale_taken(self, amount)
 	if st != null:
 		amount = st.absorb(amount)
 	hp -= amount

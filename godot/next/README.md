@@ -15,7 +15,7 @@
 |---|---|---|
 | Session | `DmSession` | host/join, bodies (MultiplayerSpawner), move intents. Hooks added: `body_factory`, `spawn_origin` |
 | World | `next_world.gd` | `DmWorldBuilder` world + `DmWorldDressing`; its per-area navmesh regions (baked at build, ~130 ms) and nav helpers |
-| Waves | `spawn/dm_wave_director.gd` | host waves for the Graves, any kind with `res://enemies/<id>.tscn`, packs, elites, metas; MultiplayerSpawner |
+| Waves | `spawn/dm_wave_director.gd` | host waves for the Graves, any kind with `res://enemies/<id>.tscn`, packs, elites, metas; MultiplayerSpawner. `spawn(def, pos, heroes, elite, mult{level,hp,dmg}) -> DmEnemy`; answers the acolyte's `unbind_rise` (+ `adopt`) and the deacon's `raised` with a `risen` scaled like its raiser |
 | Net | `next_net.gd` | enemy `get/apply_net_state` + hero vitals, 20 Hz, only when peers exist |
 | Input | `next_input.gd` | click-to-move, WASD, hotbar seam, hover pick (10 Hz) |
 | Camera | `DmCameraRig` | existing rig |

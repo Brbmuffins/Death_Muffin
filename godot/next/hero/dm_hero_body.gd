@@ -10,9 +10,11 @@ extends DmSessionBody
 signal hurt(amount: float, source: Node)        ## host only
 signal died(body: DmHeroBody)                   ## host only
 signal respawned(body: DmHeroBody)              ## host only
+signal enemy_effect(kind: StringName)           ## host only: an enemy chilled / rooted / dragged this body (the HUD floats the word)
 
 const RESPAWN_S := 4.0                          ## DmGame.RESPAWN_MS
 const MAX_STEP := 0.25                          ## clamp host dt (a hitch must not teleport the body through a wall)
+const PULL_S := 0.3                             ## a Drowned Sexton's drag is a glide (clients interpolate it; a teleport would snap), not a jump
 
 var game: Node                                  ## the DmNextGame (injected by the body factory)
 var p: Dictionary = {}                          ## host: DmPlayerRules state. Empty on puppets.
@@ -27,6 +29,7 @@ var resource_max: float = 100.0
 var alive: bool = true
 var family: String = "necromancer"
 var move_speed: float = 5.0
+var speed_mult: float = 1.0                     ## written by the body's DmStatusSet only (chill, root = 0); the host's mover scales its speed by it
 var moving: bool = false
 
 var x: float:   ## the DmAudioHooks "player" shape (x / z on the ground plane)
@@ -149,14 +152,15 @@ func dm_alive() -> bool:
 	return alive
 
 
-func dm_take_enemy_hit(damage: float, from: Node) -> void:
-	take_damage(damage, from)
+func dm_take_enemy_hit(damage: float, from: Node, kind: String = "melee") -> void:
+	take_damage(damage, from, kind)
 
 
 ## Host only. Returns the damage actually taken (after Bone Ward / barrier). Death starts the respawn clock.
 func take_damage(amount: float, source: Node = null, kind: String = "melee") -> float:
 	if p.is_empty() or not alive:
 		return 0.0
+	amount = DmStatusSet.scale_taken(self, amount)   # the status set's damage-taken multiplier, once, here
 	var from: Variant = null
 	if source is Node3D:
 		from = {"x": (source as Node3D).global_position.x, "z": (source as Node3D).global_position.z}
@@ -169,6 +173,24 @@ func take_damage(amount: float, source: Node = null, kind: String = "melee") -> 
 		_dead_t = RESPAWN_S
 		died.emit(self)
 	return taken
+
+
+## Host: what an enemy does to a hero besides damage (the DmPfUtil contract): `chill` / `root` {seconds, from} are statuses (the set owns the
+## move multiplier and replicates them), `pull` {to, from} drags the body through the dash glide (navmesh-resolved, keeps its facing).
+func dm_enemy_effect(kind: StringName, params: Dictionary) -> void:
+	if p.is_empty() or not alive:
+		return
+	var from: Node = params.get("from")
+	match kind:
+		&"chill", &"root":
+			DmStatusSet.ensure(self).apply(kind, from if is_instance_valid(from) else null, 1, float(params.get("seconds", -1.0)))
+		&"pull":
+			var y := yaw
+			dash(resolve_point(params["to"]), PULL_S)
+			yaw = y
+		_:
+			return
+	enemy_effect.emit(kind)
 
 
 func heal(amount: float) -> void:
@@ -285,7 +307,7 @@ func step_host(delta: float, _speed: float, _half: float) -> void:
 			move_dir = Vector3.ZERO
 	var br: Dictionary = p["brews"]   # Flask of speed / ghostwalk (a brew lookup only while one was ever drunk)
 	p["moveMult"] = 1.0 + DmBrews.brew_value(br, "speed", _clock_ms) if (br["elixir"] != null or br["tonic"] != null) else 1.0
-	var speed := DmPlayerRules.move_speed(p, _clock_ms)
+	var speed := DmPlayerRules.move_speed(p, _clock_ms) * speed_mult
 	var vel := Vector3.ZERO
 	if _clock_ms < float(p["rootedUntil"]):
 		speed = 0.0
