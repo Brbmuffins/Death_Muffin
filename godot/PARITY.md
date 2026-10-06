@@ -1,50 +1,61 @@
 # Feature parity: current client (`godot-port`) vs the rebuild (`godot-next`)
 
-Audited at `godot-next` 22ee59f3 (worktree branch `godot/parity-audit`), 2026-10-06. Read-only audit: nothing here was run for load; every
-status comes from reading the code and READMEs named in the row. Paths are relative to `godot/` unless they start with `src/` (web) or `docs/`.
-Current game = the `DmGame` hub (`game/`), `game_ui/`, `ui/`, `main/`, `front/`, `net/`, `sim/`. Rebuild = `next/` (`DmNextGame`), `enemies/`,
-`session/`, `net/relay/`, per `REBUILD.md` (D1-D9).
+Re-audited at `godot-next` 569894df (branch `godot/parity-audit-2`), 2026-10-06; the first pass was at 22ee59f3 and went stale as the tracks landed. Every
+row that was not DONE / N/A was re-checked against the code, the track READMEs and the suites on this branch. Paths are relative to `godot/` unless they start with
+`src/` (web) or `docs/`. Suites re-run for this pass: `tests/next_hud_counsel` (94 pass), `tests/next_boss_meta` (61 pass); other citations are from reading the
+code / the test's checks, not from a run. Current game = the `DmGame` hub (`game/`), `game_ui/`, `ui/`, `main/`, `front/`, `net/`, `sim/`. Rebuild = `next/` (`DmNextGame`),
+`enemies/`, `session/`, `net/relay/`, per `REBUILD.md` (D1-D9).
 
-Status key: **DONE** (equivalent behaviour on the rebuild), **PARTIAL** (what is missing is stated), **MISSING** (not on the rebuild, no decision drops it),
-**N/A** (deliberately dropped, with the decision), **IN PROGRESS** (a track is landing it; not in 22ee59f3, per the integrator: Abbess / Congregation / Prelate,
-the Depths, gathering).
+Status key: **DONE** (equivalent behaviour on the rebuild, cited), **PARTIAL** (what is missing is stated), **MISSING** (not on the rebuild, no decision drops it),
+**N/A** (deliberately dropped, with the decision). "unverified" = code seen but no test or run confirms it.
 
 How the rebuild reaches the UI: `DmNextGame` runs the *existing* `DmGameUi` through `DmNextUiHost` (`next/hud/dm_next_ui_host.gd`), an adapter that implements
-the `GAME_CONTRACT.md` surface. So every panel and HUD widget "exists" on the rebuild; the question per row is whether the host feeds it. Contract methods
-`DmNextUiHost` does **not** implement (current `DmGame` does): `stop_gathering`, `afk_active/afk_status/start_afk`, `dial_wave`, `party_create/join/leave`,
-`summon_boss(_empowered)`, `enter_depths`, `class_changed`, `counsel_busy`, `counsel_tick_ctx`, `apply_cosmetics`, `set_primary`,
-`talk_to` (hub covers it), `belt_choices`, `pause/resume_coop`, `hitstop`. `DmGameUi` calls them through `has_method`, so they silently do nothing.
-Also: `hud_state()` on the rebuild (`next/hud/dm_next_hud_vm.gd`) never sets `depth`, `next`, `save`, `auto_combat` (`chain`, `omen`, `ward`, `souls` landed with `next/meta/`).
+the `GAME_CONTRACT.md` surface. So every panel and HUD widget "exists" on the rebuild; the question per row is whether the host feeds it. The adapter now implements
+every contract method the first audit listed as absent (`stop_gathering`, `afk_*`, `start_afk`, `dial_wave`, `summon_boss(_empowered)`, `enter_depths`, `class_changed`,
+`counsel_busy`, `counsel_tick_ctx`, `leave_world`, `flush_chronicle`) except the party calls (`party_create/join/leave`, D5), `pause/resume_coop`, `belt_choices`
+(`DmNextBelt` serves it) and `set_primary` (`set_rites` covers it); `DmGameUi` calls them through `has_method`, so the party ones silently do nothing.
+`hud_state()` (`next/hud/dm_next_hud_vm.gd`) now sets `depth`, `chain`, `omen`, `ward`, `souls` and `save` (the auto-combat button follows the `auto_combat` setting); `next` (Next-step box) is still thin.
+
+**Not the default yet:** `DmMain.USE_NEXT` is still `false` (`main/main.gd:12`); the rebuild runs with `-- --next`, the old game stays the default until the owner flips it.
+
+## Open gaps, ranked
+
+Ranked by owner priority: performance #1; the necromancer's four disciplines and combat / loot / first-hour polish; online is a back seat (D5); the five other disciplines are low.
+
+1. **Performance, rendered (not headless).** All the rebuild's numbers are headless on a shared VPS (frame median ~7.3 ms); no GPU-measured pass of the rebuilt scene exists, and
+   Phase 6 (floor ~0.85 render scale, presets, AA, decal sharpness) is unbuilt. `DmNextPerf` / `DmNextWarmup` are done (sections 17, 23); what is missing is a rendered frame budget on real hardware.
+2. **Target-frame affix chips** (section 2 / 16): `DmNextHudVm._target` hard-codes `"affixes": []`; `dm_affix_list` meta is already there. Small, high-visibility for the corpse-economy counterplay.
+3. **Lifesteal / fortune / wisdom brews** (section 5): rules exist, `DmRewardsMember.wisdom/fortune` are read but never set, `lifesteal_heal` is never called. Silent no-ops on shipped items.
+4. **Gathering world glue** (section 9): visible Grave Laborers, garden / contract notices (`DmGameLabor` timers). The panels already work through the backend. Lower: gather bests are not stored.
+5. **First-hour guidance**: the Next-step box depends on bag / level only; counsel itself is done. Reforge flow, Alchemist's Wing stations, bug report and Acre stations are wired but untested (sections 10, 22, 24).
+6. **Combat odds and ends** (section 1): Bulwark / player-side Bone Ward and Colossus guard as timed statuses, boss slow / root, rite sfx coverage (unverified), pooled creature bodies (probably moot: enemies are scenes).
+7. **Rune variants / Grimoire runes / legendary mechanics / Bonded Dead**: owned by a concurrent agent (rows left as they were; note `next/meta/README.md` says Bonded Dead is wired in `DmNextMeta._bonded_dead` and `next/feel/README.md` says runes now reach the caster, so those rows may be stale).
+8. **Make the rebuild the default** (`USE_NEXT`) once the owner is satisfied; Play Online on the rebuild is untested against the live backend.
+9. **Online (D5, back seat):** lobby UI, client HUD / own backend api for joiners, party chat, reconnect, multi-area waves for a split party, Depths for parties, a client's Covenant Seal / Nightfall dim.
+10. **The five non-necromancer disciplines** (kit rites, monk beat meter, wraith nova): `DmRiteRegistry` is necromancer-only.
 
 ## Summary
 
-**Rows audited: 207.** DONE 84, PARTIAL 56, MISSING 47, IN PROGRESS 11 (Abbess/Congregation/Prelate, Depths, gathering/laborers/garden, Acre ledger, depth prompt/readout),
-N/A 9 (decisions D2/D3/D6/D9, bit-exact math, Socket.IO). The simulation core (rites, enemies, corpses, thralls, statuses, areas, waves, surges, 4 of 7 bosses, rewards, persistence,
-audio/VFX reuse) is at or near parity and mostly better tested than before. What is not at parity is the **shell around it**: the front flow, hero presentation, settings consumers,
-HUD feeds and contract methods that `DmGame` had and `DmNextGame` / `DmNextUiHost` do not. Most "PARTIAL" panels open (the UI is the old `DmGameUi`) but are fed nothing or untested.
+**Rows counted: 206** (the first pass said 207; a header row was miscounted). After the re-check: DONE 156, PARTIAL 34, MISSING 6, N/A 10, IN PROGRESS 0
+(first pass: DONE 84, PARTIAL 56, MISSING 47, IN PROGRESS 11, N/A 9). The simulation core, the shell around it (front flow, hero look, HUD feeds, settings consumers), the
+meta layer (difficulty, vows, Omen, chain, Soul Harvest), all seven bosses with Empowered summons, the Depths, gathering, the Chronicle and Codex are on the rebuild
+and covered by `tests/next_*`. What is left is the list above.
 
-### The 10 most important MISSING / PARTIAL items for a player (priority order)
+### The ten items of the first audit, as they stand
 
-1. **Front flow on the rebuild (DONE, godot/next-front).** `-- --next` (or `DmMain.USE_NEXT`) routes DmFrontFlow's "Enter world" to `DmNextGame` behind the key-art `DmLoadingScreen`: login/register (online) or the offline edition entry, discipline select, log out, class change (re-enter), quit save (`DmMain.save_all`). Tests `tests/next_front`. `-- --old` forces DmGame. Left: Play Online on the rebuild is untested against the live backend.
-2. **Performance controls (DONE, godot/next-perfctl).** No resolution governor, no FPS cap, no graphics presets (only `vfx.quality`), no loading cover, no GPU shader warm-up of models (`DmWarmup` not run),
-   settings `fps` / `auto_res` / `graphics` inert. Owner priority #1; REBUILD Phase 6 plans the replacement but today the slice has no pacing safety net. (sections 17, 23)
-3. **Necromancer combat feel (DONE on `godot/next-feel`, see `next/feel/README.md`; Easy auto-combat and standing mouse-aim facing landed on `godot/next-autocombat`; original gap text follows).** Clicking a far enemy does nothing (no attack-target chase, no hold-LMB / Shift+LMB, no queued or held-key casts, out-of-range refusal is silent),
-   the hero never plays a cast gesture (`avatar.cast` is never called by rites), and there is no hitstop. Rune choices never reach the caster (`rite_build()` sets `runes = {}`), so Hollow Choir / Requiem / Impaling /
-   Mass Grave / Colossus builds are dead. (section 1)
-4. **DONE on `godot/next-meta` (`next/meta/README.md`, test `tests/next_meta`): difficulty, ascension rank / vows, boons, omen and the Altar's actions are applied.** Was: **Difficulty, ascension rank and omen are not applied (MISSING).** `settings.difficulty` is stored but rewards/bosses/director use a constant "medium"; `DmSessionRewards.ascension` stays 0; omen multipliers have no source.
-   The Altar (`do_ascend/do_swear/do_open`) has no host methods. Progression depth beyond XP/tiers is flat. (sections 2, 13)
-5. **DONE on `godot/next-hero-look` (`next/hero/README.md`, test `tests/next_hero_look`): the hero shows worn gear (weapon, off-hand, helm, body tints, legendary aura), the cape, the pet and the hero ring, live from the Reliquary and the Capes & Pets panel, replicated to every peer.** Was: hero looks naked.
-6. **Elite affixes (DONE in `next/affixes`; target-frame chips still missing).** Bell-Tolled, Hungering, Shrouded, Vengeful, their rings and target-frame chips do not exist on `DmEnemy` (`enemies/dm_enemy.gd:68`). Hungering / Vengeful are the corpse-economy
-   counterplay that makes the necromancer loop interesting. (section 2)
-7. **Gathering, professions, laborers, garden, contracts (IN PROGRESS).** Whole Acre loop (nodes, AFK, laborers, charms, gather sfx, hover tips) is not on the rebuild; `DmNextUiHost` lacks
-   `stop_gathering/afk_*`. Also in progress: the Depths (generated floors, stair prompt, readout), and Bone Abbess / Drowned Congregation / Bell-Sworn Prelate. (sections 3, 8, 9)
-8. **HUD feeds (MOSTLY DONE on `godot/next-hud-counsel`).** Save chip, wave dial, loot / coin / shard / hurt sounds are fed (`next/hud/README.md`). Still missing: the auto-combat button (and Easy Auto Combat / auto-dodge themselves). (sections 1, 13, 16, 18)
-9. **Boss meta-progression (DONE on `godot/next-boss-meta`).** Empowered summons + Covenant Seal + boss key prompt + prize claim, first-kill trophies (the chronicle's `boss.<id>` counter, on the backend),
-   the one Chronicle fed by every system and saved, Codex discoveries (enemies, areas, bosses; saved per character), wave-milestone banners, the Nightfall dimming and the three variants.
-   Remaining: the Covenant Seal choice is the host's own hero only (a joined client cannot call Empowered), a client does not see Nightfall's dimming. (sections 3, 6, 13)
-10. **Counsel and guidance state (MOSTLY DONE).** `counsel_busy` / `counsel_tick_ctx` are implemented (`next/hud/dm_next_counsel.gd`), the Legion tier is purchasable, and every panel is pre-built and verified on the offline backend (`tests/next_hud_counsel`). Next box and chat stay solo stubs. (sections 14, 15)
+1. **Front flow (DONE, `tests/next_front`).** `-- --next` routes login / register / offline entry / discipline select / log out / class change / quit save into `DmNextGame` behind the key-art `DmLoadingScreen`. Left: Play Online on the rebuild is untested against the live backend; `USE_NEXT` still false.
+2. **Performance controls (DONE, `tests/next_perfctl`).** `DmNextPerf` (graphics, fps cap, resolution governor) and `DmNextWarmup` (GPU warm-up under a cover). Left: rendered / GPU measurement and the Phase 6 presets.
+3. **Necromancer combat feel (DONE, `tests/next_feel`, `tests/next_combat_feel`, `tests/next_autocombat`).** Attack-target chase, hold / Shift, queued casts, cast gestures, hitstop, shake, Easy auto-combat, standing mouse-aim. Rune choices: see the rune rows (another agent).
+4. **Difficulty, ascension, boons, omen, Altar actions (DONE, `tests/next_meta`).**
+5. **Hero look (DONE, `tests/next_hero_look`):** worn gear, cape, pet, hero ring, legendary aura, replicated.
+6. **Elite affixes (DONE, `tests/next_affixes`)**; only the target-frame chips are missing (gap 2).
+7. **Gathering, professions, Depths, the three cathedral bosses (DONE: `tests/next_gathering`, `tests/next_depths`, `tests/next_bosses/*`).** Laborers' world views and garden / contract notices remain (gap 4).
+8. **HUD feeds (DONE, `tests/next_hud_counsel`):** save chip, wave dial, loot / coin / shard / hurt sounds, Legion purchase, Depths readout, auto-combat button. Left: Next-step box.
+9. **Boss meta-progression (DONE, `tests/next_boss_meta`):** Empowered summons, Covenant Seal, boss key prompt, prize claim, trophies, Chronicle, Codex, milestones, Nightfall. Limits: a client cannot call Empowered or see Nightfall's dim.
+10. **Counsel and guidance state (DONE for counsel).** `counsel_busy` / `counsel_tick_ctx`, state-based tips, every panel pre-built and exercised. Next box and chat stay solo / thin.
 
-Lower priority, listed in the body: the five non-necromancer disciplines (rite registry is necromancer-only), lifesteal / fortune / wisdom brews, party/lobby UI (D5), remote players' gear/HUD, reconnect.
+Lower priority, listed in the body: the five non-necromancer disciplines, lifesteal / fortune / wisdom brews, party / lobby UI (D5), reconnect.
+
 
 
 ---
@@ -60,15 +71,15 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Hotbar: keys 1-4, RMB (5), R signature (6), LMB primary, Grimoire loadout / loadout presets | DONE | `game/dm_loadout.gd`, `game_ui/dm_loadout_presets.gd` | `DmNextUiHost.rite_at/cast/set_rites` + `DmLoadout`; `next/rites/dm_rite_hotbar.gd` |
 | Click an enemy = walk into range + primary attack (attack-target chase), hold LMB / Shift+LMB, held number keys | DONE (`27eba45e`, `tests/next_feel`, `tests/next_combat_feel`) | `game/dm_game_input.gd` `update_attack_target`, `tick_combat` | `DmNextInput.attack` + `next/feel/dm_combat_input.gd` (`DmCombatInput`): chase to the primary's range, sticky target, hold repeat at the rite's cooldown, Shift = cast in place, held keys 1-5 repeat after 150 ms; idle tick 0.4 us |
 | Queued casts (cast fires when the previous cast finishes) | DONE (`27eba45e`) | `dm_game_input.gd tick_combat` | the caster stays a strict validator; `DmCombatInput` queues a deliberate cast refused `busy` (or `cooldown` with <= 220 ms left) for 220 ms and retries every 50 ms, other refusals drop it |
-| Easy Auto Combat (G, owner-only gate) + auto-dodge | DONE (`godot/next-autocombat`) | `game/dm_auto_combat.gd`, `dm_auto_dodge.gd`, `dm_boss_telegraphs.gd` | `DmNextUiHost.set_auto_combat` only stores the setting; nothing runs it (`next/hud/README.md` "No auto-combat") |
+| Easy Auto Combat (G, owner-only gate) + auto-dodge | DONE (`godot/next-autocombat`) | `game/dm_auto_combat.gd`, `dm_auto_dodge.gd`, `dm_boss_telegraphs.gd` | `DmNextAutoCombat` (`next/feel/dm_next_auto.gd`) runs the old `DmAutoCombat` / `DmAutoDodge` / `DmBossTelegraphs` decision code; G / HUD button set `auto_combat`; `tests/next_autocombat` |
 | Hero cast gesture / weapon clips per rite (`castClips.json`) | DONE (`27eba45e`) | `game/dm_avatar.gd cast()`, `dm_ability_system.gd` | `DmRiteCaster._gesture_cast` after each accepted cast, once per peer (own RPC, not an event), table `next/rites/dm_rite_gestures.gd` = the old `DmAbilitySystem._gesture` calls (kind, clip seconds, cast-flow, ability id for the weapon clip); 25 rows for 25 rites |
 | Hitstop on heavy hits / elite deaths | DONE (`27eba45e`) | `game/dm_hitstop.gd` | `DmNextGame.hitstopper` (`DmHitStop`) fed by `enemy_fx.host.hitstop_cb` and `bosses.fx.host.hitstop_cb`; drives `Vfx.hitstop_scale` / `DmCreature.hitstop_scale` only (never `Engine.time_scale`, so the host sim and the wire are untouched, online-safe); off under `reduce_motion` |
-| Camera shake on rites | PARTIAL | `main/camera_rig.gd` | `shake_requested` seam in `dm_rite_hotbar.gd`; boss/enemy fx shake via `host.camera`; rite shake wiring not confirmed |
+| Camera shake on rites | DONE | `main/camera_rig.gd` | `caster.shake_requested.connect(camera.shake)` (`next/next_game.gd:324`, honours `reduce_motion`); rites emit it; boss / enemy fx shake via `host.camera`; hitstop separate. No dedicated assertion for rite shake (unverified in a test) |
 | Hero hurt flash, floating damage/crit/DoT/thrall numbers (Settings: damage numbers) | DONE | `dm_event_fx.gd`, `dm_game_combat.gd` | `DmNextUiHost` (`hit_number`, `_on_hurt`, `watch_enemy`) |
 | Cast feedback texts (essence/cooldown/locked) + `essence_short` counsel | DONE | `dm_game_input.gd feedback` | `DmNextUiHost._on_rejected` (rate-limited 600 ms) |
 | Chill/root/stun/drag floats over hero, Bulwark/ward/barrier on hurt | PARTIAL | `dm_game_combat.gd on_hurt` | chill/root/stun/dragged floats + `_ward` in `DmHeroBody.take_damage`; Bulwark (knight family) not present |
 | Other 5 disciplines (Hollow Knight, Grave Warden, Bell Monk, Carrion Witch, Veilwalker): kit rites (flail, toll, hook, crow, veil...) | MISSING | `data/content/abilities.json`, `kits.json`, `rules/` | `next/rites/dm_rite_registry.gd` is necromancer-only; a non-necro kit rite is refused `unavailable`. `DmHeroBody.family` exists. Owner priority: necromancer first, so low |
-| Monk beat meter, Soul Harvest meter (souls), Bone Ward chip | PARTIAL | `dm_game_input.gd tick_chain_and_beat`, `dm_game_rewards.gd on_souls_charged` | Soul Harvest (own kills fill it; the charged Marrow Spear / Miasma / Black Litany are free and 1.5x) and the Bone Ward chip are on `next/meta/`; no monk beat meter, no wraith-nova on a charged cast, no jade ring under the hero |
+| Monk beat meter, Soul Harvest meter (souls), Bone Ward chip | PARTIAL | `dm_game_input.gd tick_chain_and_beat`, `dm_game_rewards.gd on_souls_charged` | Soul Harvest (own kills fill it; charged Marrow Spear / Miasma / Black Litany free and 1.5x) and the Bone Ward chip are on `next/meta/`; missing: monk beat meter (non-necro), wraith-nova on a charged cast, jade ring under the hero |
 | Legendary gear mechanics (sync_legend: thrallDeathBurst, championEvery...) | PARTIAL | `dm_game_combat.gd sync_legend`, `DmLegend` | `DmThrallHost.legend` consumes `DmLegend` mods; whether the shell feeds worn legendaries each refresh is not shown in `DmNextGame` (grep: no `sync_legend` equivalent) |
 | Bonded Dead boon (thrall rises on area entry) | MISSING | `dm_game_combat.gd tick_bond` | `DmThrallHost.raise_bonded` exists, but nothing in the shell triggers it |
 
@@ -81,10 +92,10 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Special AI (burrow/dig, flank, kite, unbind, sanctify, shield glance, censer pulse, hook, flask, scream, ember lob) | DONE | `sim/sim_enemy_ai.gd` | `enemies/kinds/*`, `enemies/states/*`; cues replicated by `next/next_net.gd` (`CUES`) |
 | Bit-exact sim math / fdlibm determinism | N/A | `sim/fdlibm.gd`, `sim_exact.gd`, `game/dm_fdlibm_x.gd` | dropped: REBUILD "Enemies, AI, navigation: REFACTOR -> REBUILD ... drop bit-exact math"; D1 host-authoritative |
 | Elite multipliers (hp/damage/scale, faster wind-up) | DONE | `sim/sim_data.gd ELITE` | `DmEnemy.elite` |
-| Elite affixes (Bell-Tolled, Hungering, Shrouded, Vengeful) + affix rings/target-frame affix chips | PARTIAL (affixes + rings + moments DONE in `next/affixes`; target-frame chips missing) | `rules/combat/dm_affixes.gd`, `data/combat/affixes.json`, `game/dm_entity_views.gd` | `enemies/dm_enemy.gd:68` "affixes are NOT implemented"; `next/enemy_fx/README.md` "Not covered: elite affixes". `DmStatusSet` has `shrouded` but nothing applies it |
-| Enemy level scaling by area/hero level, wave-tier hp/damage ramp, difficulty hp/damage multipliers | PARTIAL | `sim_director.gd`, `DmEnemyStats` | `DmEnemyStats.area_level`, `ramp_tier` used by `dm_wave_director.gd`; difficulty (Easy/Medium/Hard), Elder Dead levels, Iron Dead hp and the wave-size / elite / deacon vows are applied by `DmNextMeta` (`next/meta/README.md`) |
+| Elite affixes (Bell-Tolled, Hungering, Shrouded, Vengeful) + affix rings/target-frame affix chips | PARTIAL | `rules/combat/dm_affixes.gd`, `data/combat/affixes.json`, `game/dm_entity_views.gd` | Affixes, rings, motes and moments are DONE (`next/affixes`, `tests/next_affixes`); missing: target-frame chips: `DmNextHudVm._target` hard-codes `"affixes": []` (`next/hud/dm_next_hud_vm.gd:171`) although `dm_affix_list` meta exists |
+| Enemy level scaling by area/hero level, wave-tier hp/damage ramp, difficulty hp/damage multipliers | DONE | `sim_director.gd`, `DmEnemyStats` | `DmEnemyStats.area_level` / `ramp_tier` (`dm_wave_director.gd`); difficulty, Elder Dead, Iron Dead, wave-size / elite / deacon vows by `DmNextMeta` (`tests/next_meta`); Depths level `max(12, hero) + depth` (`tests/next_depths`) |
 | Enemy hit/death/windup/voice sfx, telegraphs, hostile zones | DONE | `dm_event_fx*.gd` | `next/enemy_fx/` (`DmEnemyFx`, replicated once per peer) |
-| Enemy idle fx (rising dust, hover motes, fen/fire per-kind idle) | PARTIAL | `dm_entity_views.gd` | `next/enemy_fx/README.md` "per-kind idle fx of kinds that have no scene yet" (all kinds now have scenes; idle motes status unverified) |
+| Enemy idle fx (rising dust, hover motes, fen/fire per-kind idle) | DONE | `dm_entity_views.gd` | `DmEnemyFx` 5 Hz idle pass (dust, hover motes, tunnelling dirt, ember shedding, fen wisp, hag drips, sexton water) over watched enemies within 24x20 m (`next/enemy_fx/README.md`); all kinds have scenes; visual look not screenshot-verified here |
 | Pooled creature bodies / shared materials | PARTIAL | `dm_entity_views.gd`, `dm_creature_mat.gd` | `director.warm(true)` preloads kinds; no body pool equivalent found; `DmCreature` / `dm_creature_mat.gd` reused |
 
 ## 3. Bosses
@@ -94,10 +105,10 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Boss framework (brain, telegraph, phases 60/30 %, stagger, wipe reset, leash, view, fx, hp bar, minimap dot, boss music, E to summon) | DONE | `sim/boss_controller.gd`, `sim/bosses/*`, `game/dm_boss_view.gd` | `next/bosses/` (reuses the 7 `DmBossBrain`s on `DmBossNodeWorld`) |
 | Gravedigger King (Hollow Graves) | DONE | `sim/bosses/` | `next/bosses/README.md` + `tests/next_bosses/run.gd` |
 | Plague Saint (Cloister), Cinder Regent (Pyre), Mire Mother (Fen) | DONE | same | `tests/next_bosses/{saint,regent,mire}_run.gd` |
-| Bone Abbess (Ossuary), Drowned Congregation (Nave), Bell-Sworn Prelate (Sanctum) | IN PROGRESS | `sim/bosses/` | boss track; hooks stubbed (`dm_boss_node_world.gd` `cover()`, `echoes()`); Prelate summons by bell/`spend_shards`; the Sanctum has no boss area in the slice |
-| Boss rewards, first-kill trophy (+2 shards, rare relic), relic rune, reporter `boss` entry | PARTIAL | `dm_game_rewards.gd on_boss_defeated` | `DmSessionRewards.on_boss_defeated`; trophies in memory per session unless `trophy_store` is set by the shell (it is not) |
-| Empowered summons (Covenant Seal + gold), empowered prize claim, boss-busy refunds, boss key prompt | MISSING | `dm_game_actions.gd call_empowered`, `dm_game_rewards.gd claim_empowered`, `game_ui/dm_boss_key_prompt.gd` | `next/bosses/README.md` "Gaps"; `DmNextUiHost` has no `summon_boss(_empowered)` |
-| Boss slow/root statuses, hitstop on boss hits | MISSING | `dm_boss_view.gd` | ignored by brain (README "Gaps"); hitstop callback unset |
+| Bone Abbess (Ossuary), Drowned Congregation (Nave), Bell-Sworn Prelate (Sanctum) | DONE | `sim/bosses/` | `next/bosses/` + `DmBossHost.LIVE` lists all seven; `tests/next_bosses/{abbess,congregation,prelate}_run.gd`; niches (`enemies/niche.tscn`), `cover()`, `echoes()` hooks done; areas are open on the rebuild |
+| Boss rewards, first-kill trophy (+2 shards, rare relic), relic rune, reporter `boss` entry | DONE | `dm_game_rewards.gd on_boss_defeated` | `DmSessionRewards.on_boss_defeated`; `trophy_store` = `DmNextChronicle.claim_trophy` (backend `boss.<id>` counter, survives relaunch); `tests/next_boss_meta` (61 pass) |
+| Empowered summons (Covenant Seal + gold), empowered prize claim, boss-busy refunds, boss key prompt | DONE | `dm_game_actions.gd call_empowered`, `dm_game_rewards.gd claim_empowered`, `game_ui/dm_boss_key_prompt.gd` | `next/bosses/dm_boss_meta.gd` (`call_empowered`, claim, refund, `boss_key_offer`); `DmNextUiHost.summon_boss(_empowered)`; `tests/next_boss_meta`. Limit: the Seal choice is the host hero's only (a joined client gets the plain summon) |
+| Boss slow/root statuses, hitstop on boss hits | PARTIAL | `dm_boss_view.gd` | Hitstop on boss hits DONE (`bosses.fx.host.hitstop_cb`, `tests/next_combat_feel`); slow / root *on the boss* still ignored (the brain owns speed, `next/bosses/README.md` Gaps) |
 | Boss spawn hint prompts / altar clicks | DONE | `dm_game_actions.gd interact` | `DmChapterhouse.interacted` -> `bosses.request_summon`, E key |
 
 ## 4. Thralls and corpses
@@ -107,8 +118,8 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Corpse field (lifetime 26 s, cap 45, echo, toxic rupture, atomic consume, wisps, burst) | DONE | `sim/sim_corpse.gd`, `dm_event_fx*.gd` | `next/corpses/dm_corpse_field.gd` |
 | Thralls: 8 kinds (warrior, shieldbearer, hound, wraith, archer, bone mage, plague bearer, colossus), follow/formation, cap, make-room, decay, rally, rend, sacrifice, plague burst | DONE | `sim/sim_thrall*.gd`, `game/dm_entity_views.gd` | `next/thralls/` (`DmThrall`, `DmThrallHost`, 15 Hz replication) |
 | Enemies target thralls (weights) | DONE | `sim_enemy_ai.gd pick_target` | `dm_target_weight()` in `DmThrall` |
-| Legion tier purchase (Legion panel Y), Legion gear kit (thrall weapons/armour) visuals | PARTIAL | `game_ui/dm_legion_text.gd`, `ui/panels_a/dm_legion_view.gd`, `game/dm_gear_props.gd` | thrall props/rim from `DmEntityViews` reused (`next/thralls/README.md`); "Legion tier is not bought in the slice" (`next/hud/README.md`) |
-| Corpse-eating enemy AI (deacon/hungering) | PARTIAL | `sim_enemy_ai.gd` | `raised` supported; hungering affix missing (see Enemies) |
+| Legion tier purchase (Legion panel Y), Legion gear kit (thrall weapons/armour) visuals | DONE | `game_ui/dm_legion_text.gd`, `ui/panels_a/dm_legion_view.gd`, `game/dm_gear_props.gd` | `DmNextUiHost.buy_legion` -> backend `necro_purchase`, tier raises thrall hp / damage, standing thralls bumped, purse adopted (`tests/next_hud_counsel`); thrall gear props reused from `DmEntityViews` |
+| Corpse-eating enemy AI (deacon/hungering) | DONE | `sim_enemy_ai.gd` | Deacon `raised` supported; Hungering affix consumes corpses atomically via `DmCorpseField.consume` (`next/affixes`, `tests/next_affixes`) |
 | Thrall hurt/crumble sounds | DONE | `dm_event_fx.gd` | `dm_thrall.gd` `thrallRise/thrallDeath` |
 
 ## 5. Statuses
@@ -118,7 +129,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | slow, chill, root, stun, silence, bleed, withered, fracture, hex, sanctified, incensed, frenzy, shrouded, barrier | DONE | `sim/sim_*`, `DmEntityViews` motes | `next/status/dm_status_set.gd` (replicated 4 B/status, visuals via Vfx) |
 | Player-side Bone Ward / Colossus guard as timed statuses; shrouded suspension in own Miasma | PARTIAL | `DmPlayerRules` | stat-based only (`next/status/README.md` "Gaps") |
 | Brews: damage, haste, ward, speed, essence | DONE | `rules/.../dm_brews.gd` | `DmNextBelt` via `p["brews"]` |
-| Brews: lifesteal, fortune, wisdom | MISSING | `dm_brews.gd` | "not applied yet" (`next/hud/README.md`) |
+| Brews: lifesteal, fortune, wisdom | MISSING | `dm_brews.gd` | `DmBrews.lifesteal_heal` never called from `next/`; `DmRewardsMember.wisdom` / `.fortune` are read by `DmSessionRewards` (xp / item chance) but nothing ever sets them: code that exists but is never wired |
 
 ## 6. Areas and travel
 
@@ -129,10 +140,10 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Waystone travel, T recall, minimap click travel, Waystone map panel (M) | DONE | `dm_game_actions.gd travel/start_recall` | `DmChapterhouse.travel/start_recall`, `DmNextUiHost.navigate`; host-only teleport (README gap) |
 | Entry banners, first-entry Codex area discovery, first-entry counsel | DONE | `dm_game.gd _enter_area` | `next/areas/dm_area_flow.gd` |
 | Omen sky tint + fog in hunting grounds | N/A | `dm_game.gd _omen_light` | the current client never calls `_omen_light` either (dead code); the Omen's numbers and chip are on `next/meta/` |
-| Nightfall light dimming, wave-milestone banners (Elite Vanguard, Restless Crypts, Nightfall) | MISSING | `dm_game_rewards.gd tick_milestones` | `next/areas/README.md` "Nightfall shroud / vanguard milestone variants are not ported" |
+| Nightfall light dimming, wave-milestone banners (Elite Vanguard, Restless Crypts, Nightfall) | DONE | `dm_game_rewards.gd tick_milestones` | `next/areas/dm_wave_milestones.gd` (Elite Vanguard 3, Restless Crypts 6, Nightfall 8: banners, eased light, director variants); `tests/next_boss_meta`. Limit: a joined client does not dim |
 | Multi-area simultaneous waves for party members in different areas | PARTIAL | n/a (co-op shared sim) | one director = one area (`areas/README.md`); D5 solo first |
 | Occlusion dither shaders on walls/props | DONE | `world/dm_occ_*.gdshader` | same builder |
-| Catacomb Warren stair -> Depths | IN PROGRESS | `dm_depths_controller.gd` | Warren stair interactable present in hub data; see Depths |
+| Catacomb Warren stair -> Depths | DONE | `dm_depths_controller.gd` | Warren stair -> Depths: `DmDepths.stair_clicked` / `enter`; `tests/next_depths` |
 
 ## 7. Waves, Surges, Processions
 
@@ -141,24 +152,24 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Area rosters, caps (GLOBAL_ENEMY_CAP 72), pacing, first wave 1.3x, elite bonus, packs, metas | DONE | `sim/sim_director.gd` | `next/spawn/dm_wave_director.gd` |
 | Processions (WAVE_THEMES, 30 % from wave 2) + banner | DONE | `sim_director.gd` | director `_roll_theme`, `DmAreaFlow` |
 | Grave Surges (crypt, 3 waves, Surge Quelled reward) | DONE | `sim_director.gd`, `dm_game_rewards.gd on_surge_cleared` | `next/areas/dm_grave_surge.gd`, `DmSessionRewards.on_surge_cleared` |
-| Wave Speed dial (active tier +/-), Wave upgrade tiers | PARTIAL | `dm_game.gd dial_wave/set_wave_tier` | tiers bought + applied (`DmNextProgress`, `set_wave_tier`); `dial_wave` not implemented so the HUD dial buttons do nothing |
+| Wave Speed dial (active tier +/-), Wave upgrade tiers | DONE | `dm_game.gd dial_wave/set_wave_tier` | `DmNextUiHost.dial_wave(delta)` -> active tier -> `DmNextProgress.apply_progress`; tiers bought + applied; `tests/next_hud_counsel` |
 | Waves climb from area breaches | N/A | `world.json breaches` | slice uses a ring 9-14 m around the hero snapped to navmesh (areas README); Godot-idiomatic rebuild |
 
 ## 8. Depths (Catacomb Depths)
 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
-| Per-run generated floors, stairs, chest, depth rewards, depth readout, stair prompt, deepest-floor resume | IN PROGRESS | `game/dm_depths_controller.gd`, `sim/depths_floor.gd`, `sim_depths_rules.gd`, `game_ui/dm_depths_stair_prompt.gd` | depths track; `DmWaveDirector` skips `instance` areas; `DmNextUiHost.enter_depths` missing; HUD `depth` key unset |
-| Depth kills reported to ledger (`report_floor`) | IN PROGRESS | `DmProgressSync.report_floor` | not wired |
+| Per-run generated floors, stairs, chest, depth rewards, depth readout, stair prompt, deepest-floor resume | DONE | `game/dm_depths_controller.gd`, `sim/depths_floor.gd`, `sim_depths_rules.gd`, `game_ui/dm_depths_stair_prompt.gd` | `next/depths/` (`DmDepths`, `DmDepthsRun`, `DmDepthsGround`): generated floors, stair card via `DmNextUiHost.enter_depths`, chest, rewards, death rule, `vm["depth"]` readout, resume at deepest; `tests/next_depths`. Limit: solo only (`can_enter` refuses 2+ players) |
+| Depth kills reported to ledger (`report_floor`) | DONE | `DmProgressSync.report_floor` | `psync.report_floor` on floor clear / chest on the solo path (`next/depths/README.md`); chronicle `peak.depth`, `depths.*` |
 
 ## 9. Gathering, professions, laborers, garden, contracts
 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
-| Acre / Wing gathering nodes (view, hover tips, work loop, tool in hand, gather sfx, charms, AFK gather) | IN PROGRESS | `game/dm_game_gather.gd`, `dm_gather_loop.gd`, `dm_gather_session.gd`, `dm_skills.gd`, `dm_node_views.gd`, `audio/audio_gather_sfx.gd` | `next/areas/README.md` "Gathering ... is not wired"; `DmNextUiHost` lacks `stop_gathering/afk_*/start_afk` |
-| Grave Laborers (visible laborers, collect, full notices) | IN PROGRESS | `game/dm_game_labor.gd`, `dm_laborer_views.gd` | not in `next/` |
-| Garden (plant/harvest ready notices) | IN PROGRESS | `dm_game_labor.gd` | panel `ui/panels_b/dm_garden_panel.gd` opens at Acre station; world glue missing |
-| Contracts panel | PARTIAL | `dm_game_labor.gd refresh_contracts`, `dm_contracts_panel.gd` | panel reachable via station (`station_interact`), untested; `refresh_contracts` glue absent |
+| Acre / Wing gathering nodes (view, hover tips, work loop, tool in hand, gather sfx, charms, AFK gather) | DONE | `game/dm_game_gather.gd`, `dm_gather_loop.gd`, `dm_gather_session.gd`, `dm_skills.gd`, `dm_node_views.gd`, `audio/audio_gather_sfx.gd` | `next/gathering/` (`DmNextGather`): 64 nodes, hover card, work loop, gather sfx, charms, Auto, AFK via `DmNextUiHost.start_afk / stop_gathering / afk_*`; `tests/next_gathering`. Limit: clients cannot start gathering; AFK bests not stored |
+| Grave Laborers (visible laborers, collect, full notices) | PARTIAL | `game/dm_game_labor.gd`, `dm_laborer_views.gd` | Laborers tab (H) works through the backend (assign / collect, `tests/next_hud_counsel`); no `DmLaborerViews` in the Acre, no `DmGameLabor` timers / full notices |
+| Garden (plant/harvest ready notices) | PARTIAL | `dm_game_labor.gd` | Garden panel (U) plants through the backend (`tests/next_hud_counsel`); `note_garden` ready notices not wired |
+| Contracts panel | PARTIAL | `dm_game_labor.gd refresh_contracts`, `dm_contracts_panel.gd` | Contracts panel (O) delivers through the backend (`tests/next_hud_counsel`); `refresh_contracts` world glue / notices absent |
 
 ## 10. Crafting, forge, reforge, salvage, alchemy
 
@@ -173,14 +184,14 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
 | Reliquary (bag 24, equip slots, item cards/tooltips, locks, sort/Drink/Eat double-click, compare) | DONE | `ui/panels/dm_reliquary_panel.gd`, `game_ui/dm_ui_inventory.gd`, `game/dm_inventory.gd` | same classes via `DmNextUiHost.inventory`; pre-built under loading cover |
-| Vault (shared storage, Chapterhouse only) | PARTIAL | `ui/panels_b/dm_vault_panel.gd` | station emits; panel untested (README) |
+| Vault (shared storage, Chapterhouse only) | DONE | `ui/panels_b/dm_vault_panel.gd` | Vault station -> panel; deposit verified through the API (`tests/next_hud_counsel`) |
 | Character stats from worn gear / set bonuses / affixes | DONE | `rules/gear`, `DmCharacterBuild` | `DmNextGame.build_for` + `DmNextProgress.request_stats` |
-| Worn gear visible on the hero (weapons, off-hand, helm, hide-helm setting, class gear props) | MISSING | `game/dm_game.gd:414,534 avatar.set_equipment`, `dm_avatar.gd`, `dm_gear_props.gd` | rebuild never calls `avatar.set_equipment` (only `thralls` use `DmGearProps`) |
-| Legendary aura on hero | MISSING | `dm_avatar.gd _legendary_aura` | needs `set_equipment` |
-| Capes and pets (cosmetics panel N, Character sheet "Pets" tab), pet companion view, remote players' capes | MISSING | `game/dm_game.gd load_cosmetics/apply_cosmetics`, `dm_pet_view.gd`, `ui/panels_a/dm_cosmetics_view.gd` | `apply_cosmetics` absent; no `DmPetView`; panel opens but selection has no effect in world |
-| Hero dressing (contact shadow, pale ring, discipline glow, reticle, soul halo, target ring) | MISSING | `dm_game.gd _dress_hero` | `next/README.md` "hero VFX decals (hero ring) from DmGame._dress_hero" left |
+| Worn gear visible on the hero (weapons, off-hand, helm, hide-helm setting, class gear props) | DONE | `game/dm_game.gd:414,534 avatar.set_equipment`, `dm_avatar.gd`, `dm_gear_props.gd` | `DmHeroLook` (`next/hero/`): `DmAvatar.set_equipment` from the equipped bag, hide-helm, replicated to every peer; `tests/next_hero_look` |
+| Legendary aura on hero | DONE | `dm_avatar.gd _legendary_aura` | legendary set aura via `set_equipment` (`tests/next_hero_look`) |
+| Capes and pets (cosmetics panel N, Character sheet "Pets" tab), pet companion view, remote players' capes | DONE | `game/dm_game.gd load_cosmetics/apply_cosmetics`, `dm_pet_view.gd`, `ui/panels_a/dm_cosmetics_view.gd` | `DmNextUiHost.load_cosmetics` -> `DmHeroLook.set_cosmetics`: `avatar.set_cape`, `DmPetView`, replicated (remote capes / pets too); `tests/next_hero_look`, `tests/next_hud_counsel` |
+| Hero dressing (contact shadow, pale ring, discipline glow, reticle, soul halo, target ring) | DONE | `dm_game.gd _dress_hero` | `DmHeroLook` hero ring: contact shadow, pale ring, discipline glow, reticle, soul halo, hover ring (local hero only, as the current client). Gap: hover ring does not follow the attack / auto target |
 | Loot on ground (pickup 1.3 m, 60 s expiry, never flies, rarity beams, auto-loot rules) | DONE | `loot_view/`, `dm_game_rewards.gd` | `DmSessionRewards` + `DmLootView`; `loot_view.rules` from Settings -> Loot |
-| Loot pickup/drop sounds (coin, drop, rarity) | MISSING | `dm_game_rewards.gd collected` | "not forwarded to the AudioDirector" (`next/hud/README.md`) |
+| Loot pickup/drop sounds (coin, drop, rarity) | DONE | `dm_game_rewards.gd collected` | `DmNextUiHost` forwards `loot_view.dropped_sound`, coin / shard pickup, `play_loot` by rarity (`tests/next_hud_counsel` sound checks) |
 | Reliquary full notice | DONE | `try_take` | `DmNextUiHost._take` |
 
 ## 12. Loot rules and settings
@@ -200,16 +211,16 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Damage / Wave Speed upgrade tiers (Empower / Quicken) | DONE | `dm_game.gd buy_upgrade` | `DmNextProgress.buy` |
 | Backend persistence cadence (urgent / 45 s / area change / quit) | DONE | `DmProgressSync` | reused unchanged; `flush_all` on window close (`main.gd`) |
 | Boons / vows (stat effects) | DONE | `DmCharacterBuild` | `DmNextGame.build_for` includes boons/vows |
-| Vows' world effects (Dry Cellar flask ban, Swift Seals, sync_world_vows) | PARTIAL | `dm_game.gd sync_world_vows` | Dry Cellar + Swift Seals honoured in belt/seals; other world vows not verified |
+| Vows' world effects (Dry Cellar flask ban, Swift Seals, sync_world_vows) | DONE | `dm_game.gd sync_world_vows` | all world vows (Elder Dead, Iron Dead, Swollen Waves, Deacon Host, Elite Surge, Thin Graves, Prelate Echo, Swift Seals) and self vows (Dry Cellar -> belt) via `DmNextMeta.sync` (`tests/next_meta`) |
 | Ascension (Altar: ascend, swear vows, open keys; reward/difficulty scaling by rank) | DONE | `dm_game.gd do_ascend/do_swear/do_open`, `ui/panels_a/dm_ascension_panel.gd` | the panel's API calls land through `refresh_progress` -> `DmNextMeta.sync` (rank -> rewards, vows -> director / bosses / corpses); `do_ascend/do_swear/do_open` on `DmNextUiHost`; `tests/next_meta` |
-| Omen (weekly modifier: reward/shard mult, wave size, elites, chip) | PARTIAL | `dm_game.gd _omen_for`, HUD `omen` | `DmNextMeta.omen_for` (same rotation); the Tolling forces Bell-Tolled (`next/affixes`) |
+| Omen (weekly modifier: reward/shard mult, wave size, elites, chip) | DONE | `dm_game.gd _omen_for`, HUD `omen` | `DmNextMeta.omen_for` (same rotation), wave size / elites / xp / gold / shard mults, HUD chip; the Tolling forces Bell-Tolled (`next/affixes`); `tests/next_meta` |
 | Kill chain (tiers, bonus, break, HUD chain meter) | DONE | `dm_game_rewards.gd on_chain_tier`, `DmKillChain` | `DmRewardsMember.chain` pays; tier banner / sound / burst, break sound + float, reset on death, HUD meter (`DmNextMeta`) |
 | Milestones (best chain, kills -> gold) | DONE | `check_milestones` | `DmNextProgress._check_milestones` (ground gold drop) |
-| Trophies (first boss kill) | PARTIAL | `claim_trophy` | in-memory per session; `trophy_store` unset |
-| Chronicle (life stats / records for the Codex "Chronicle" tab) | MISSING | `dm_game.gd _tick_chronicle/flush_chronicle` | not in `next/` (grep) |
-| Codex (kills discovered, areas) | PARTIAL | `dm_game.gd codex_discover` | areas on entry (`DmAreaFlow`); "dead" (enemy kind first-sight/kill) discoveries not recorded |
-| Leaderboard | MISSING | only `DmApi.get_leaderboard` (`net/dm_api.gd:506`); no panel in the current client either | the public website shows it; no in-game UI planned |
-| Gear Atlas panel (.), Class panel (change discipline) | PARTIAL | `ui/panels_a/dm_atlas_panel.gd`, `dm_class_panel.gd` | atlas reads data (no game needed); Class change needs `class_changed` (absent) |
+| Trophies (first boss kill) | DONE | `claim_trophy` | first-kill trophy persisted as the backend `boss.<id>` counter (`DmNextChronicle.claim_trophy`); `tests/next_boss_meta` |
+| Chronicle (life stats / records for the Codex "Chronicle" tab) | DONE | `dm_game.gd _tick_chronicle/flush_chronicle` | `next/progress/dm_next_chronicle.gd`: one Chronicle fed by kills, gold, gathering, Depths, deaths, boss counters, play time; flushed to the backend, Codex tab reads it (`flush_chronicle`); `tests/next_boss_meta` |
+| Codex (kills discovered, areas) | DONE | `dm_game.gd codex_discover` | `next/progress/dm_next_codex.gd`: enemy kinds (first spawn within 40 m), bosses on waking, areas on entry; saved per character; `tests/next_boss_meta` |
+| Leaderboard | MISSING | only `DmApi.get_leaderboard` (`net/dm_api.gd:506`); no panel in the current client either | only `DmApi.get_leaderboard`; no panel in the current client either; the public website shows it; no in-game UI planned |
+| Gear Atlas panel (.), Class panel (change discipline) | DONE | `ui/panels_a/dm_atlas_panel.gd`, `dm_class_panel.gd` | Atlas reads data; Class panel -> `DmNextUiHost.class_changed` -> `world_restart` -> `main.gd _on_next_restart` re-enters with the new character; `tests/next_front` (class change check) |
 
 ## 14. NPCs, dialogue, counsel, onboarding
 
@@ -232,17 +243,17 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Legion (Y) | DONE | `dm_legion_view.gd` | Reinforce buys a tier via the API; thrall hp / damage follow; standing thralls bumped |
 | Forge / Workbench (C) incl. reforge, Salvage, Reagent shelf | DONE | `ui/panels_b/*` | craft / salvage verified via the API (reforge flow itself untested) |
 | Vault (V) | DONE | `dm_vault_panel.gd` | deposit verified via the API |
-| Acre ledger: Professions (P), Garden (U), Labor (H), Contracts (O), Gather report | IN PROGRESS | `dm_professions_panel.gd`, `dm_garden_panel.gd`, `dm_labor_panel.gd`, `dm_contracts_panel.gd`, `dm_gather_report_panel.gd`, `dm_acre_ledger.gd` | gathering track |
-| Codex (K) | PARTIAL | `dm_codex_panel.gd` | areas only |
+| Acre ledger: Professions (P), Garden (U), Labor (H), Contracts (O), Gather report | PARTIAL | `dm_professions_panel.gd`, `dm_garden_panel.gd`, `dm_labor_panel.gd`, `dm_contracts_panel.gd`, `dm_gather_report_panel.gd`, `dm_acre_ledger.gd` | Professions (P) DONE; Garden (U), Labor (H), Contracts (O) work through the backend (`tests/next_hud_counsel`); missing: visible laborers and garden / contract world notices (see section 9) |
+| Codex (K) | DONE | `dm_codex_panel.gd` | enemy kinds, bosses and areas discovered + saved; Chronicle tab fed (`flush_chronicle`); `tests/next_boss_meta` |
 | Gear Atlas (.) | DONE | `dm_atlas_panel.gd` | data-only |
 | Waystone map (M) | DONE | `dm_waystone_panel.gd` | via `travel` |
 | Ascension / Altar | DONE | `dm_ascension_panel.gd` | boon purchase verified via the API |
-| Class panel | PARTIAL | `dm_class_panel.gd` | `class_changed` absent |
+| Class panel | DONE | `dm_class_panel.gd` | `class_changed` implemented (`next/hud/dm_next_ui_host.gd:403`); `tests/next_front` |
 | Dialogue | DONE | `dm_dialogue_panel.gd` | NPC hub |
-| Boss key prompt (Empowered choice) | MISSING | `game_ui/dm_boss_key_prompt.gd` | no summon methods |
-| Depths stair prompt | IN PROGRESS | `game_ui/dm_depths_stair_prompt.gd` | depths track |
+| Boss key prompt (Empowered choice) | DONE | `game_ui/dm_boss_key_prompt.gd` | `boss_key_offer` -> prompt -> `summon_boss` / `summon_boss_empowered`; `tests/next_boss_meta` |
+| Depths stair prompt | DONE | `game_ui/dm_depths_stair_prompt.gd` | `depths_stair_offer` -> existing card -> `enter_depths`; `tests/next_depths` |
 | Belt picker (Z/X slot) | DONE | `game_ui/dm_belt_picker.gd` | `DmNextBelt.load_pick/set_belt` |
-| Bug report | PARTIAL | `game_ui/dm_bug_report_view.gd` | uses `ui.game.api.send_bug_report`; the adapter exposes `api`, so it should work: untested on the slice |
+| Bug report | PARTIAL | `game_ui/dm_bug_report_view.gd` | uses `ui.game.api.send_bug_report`; the adapter exposes `api`; no `tests/next*` suite exercises it (unverified end to end) |
 | Chat line / chat box | PARTIAL | `game_ui/dm_chat_command.gd` | local only |
 | Spell tooltip, item tooltip, stat key | DONE | `game_ui/dm_spell_tooltip.gd`, `ui/widgets/dm_item_tooltip.gd` | |
 | Keybind rebinding (loadout hotkeys) | DONE | `game_ui/dm_ui_binds.gd` | `DmGameUi._unhandled_key_input`; `DmKeybinds` (game) not used by rebuild: input actions registered at runtime by `DmNextInput` |
@@ -258,19 +269,19 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Boss bar (phases ticks 60/30 %) | DONE | `vm["boss"]` |
 | Party frames | PARTIAL | roster-driven; client peers get no HUD yet |
 | Minimap (enemies, thralls, corpses, doors, boss dot, click travel) | DONE | `DmHudMinimap` |
-| Area label + progress | PARTIAL | label yes; Depths readout missing |
+| Area label + progress | DONE | label + progress; Depths readout (`vm["depth"]`) |
 | Upgrade box (Empower/Quicken, dial) | DONE | tiers + dial (`dial_wave`) |
 | Thrall pips / legion chip | DONE | |
 | Soul Harvest meter | DONE | `next/meta/` |
 | Kill chain meter | DONE | `next/meta/` |
 | Omen chip | DONE | `next/meta/` |
-| Depth readout | IN PROGRESS | |
+| Depth readout | DONE | `vm["depth"]` = `DmDepths.hud_state()` |
 | Bone Ward chip | DONE | `next/hud/dm_next_hud_vm.gd` |
 | Auto-combat button | DONE (G / the HUD button set `auto_combat`; `DmNextAutoCombat` runs it) | |
 | Next-step box, guidance ping, progressive reveal / NEW pips | PARTIAL | reveal logic in `DmGameUi` runs; Next box limited |
 | Toasts, banners, loot toast, floating numbers, death wash, hit flash | DONE | |
 | Save-state chip (`save` text/warn) | DONE | `DmNextUiHost.save_chip()` (psync + bag state) |
-| Node/laborer hover tip | IN PROGRESS | gathering |
+| Node/laborer hover tip | DONE | `DmNextGather` hover ring + node card (`tests/next_gathering`); laborer hover tip n/a (no visible laborers) |
 | Interaction prompt + hover highlight | DONE | `DmChapterhouse` |
 
 ## 17. Settings keys (`game/dm_settings.gd`)
@@ -282,13 +293,13 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | `damage_numbers` | DONE | `DmNextUiHost.float_text` |
 | `reduce_motion` | DONE | Vfx + camera |
 | `graphics` (high/low) | DONE | `DmNextPerf.apply` (`next/perf/`): moon shadows, bloom, prop lights, weather + `vfx.quality`, live on Settings change; REBUILD Phase 6 plans presets |
-| `fps` (Engine.max_fps), `auto_res` (resolution governor) | DONE | `DmNextPerf` (`next/perf/`), same `DmResolutionGovernor` constants. `graphics_chosen` still MISSING |
+| `fps` (Engine.max_fps), `auto_res` (resolution governor) | DONE | `DmNextPerf` (`next/perf/`), same `DmResolutionGovernor` constants; `graphics_chosen` is handled inside the shared `DmSettings` |
 | `difficulty` | DONE | `DmNextMeta.set_difficulty` (director, rewards, bosses) |
-| `auto_combat` / `auto_gather` | auto_combat DONE (`DmNextAutoCombat`); auto_gather MISSING | |
-| `hide_helm` | MISSING | no gear on hero |
-| `no_tips`, `guidance`, `guide_ping` | PARTIAL | consumed by `DmGameUi` counsel; busy ctx missing |
+| `auto_combat` / `auto_gather` | DONE | `auto_combat` by `DmNextAutoCombat`; `auto_gather` read by `DmNextGather` (`autoEnabled`) |
+| `hide_helm` | DONE | `avatar.settings = ui_host.settings` (`next/hero/dm_hero_body.gd:152`), `DmAvatar.refresh_all` on a Settings change |
+| `no_tips`, `guidance`, `guide_ping` | DONE | consumed by `DmGameUi` counsel; `counsel_busy` / `counsel_tick_ctx` = `DmNextCounsel` (`tests/next_hud_counsel`) |
 | `dev_access` | PARTIAL | `dev_access` var false on host; Settings toggle effects (`_apply_dev_access`) absent |
-| Settings -> Leave / log out | PARTIAL | `leave_world` emits `left_world`; `main.gd` only handles it for `DmGame` |
+| Settings -> Leave / log out | DONE | `leave_world` -> `left_world` -> `main.gd _on_next_left` (save, free, login screen); `tests/next_front` log-out checks |
 
 ## 18. Audio
 
@@ -298,9 +309,9 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Footsteps by surface, wading | DONE | `audio_footsteps.gd` | `DmAudioHooks._footsteps` |
 | Boss war-drum bed, boss music | DONE | `AudioDirector.set_boss_music` | `next/bosses/` |
 | Enemy windup/strike/death/voice sfx | DONE | `dm_event_fx.gd` | `DmEnemyFx` |
-| Rite sfx (needle, loops: miasma/siphon) | PARTIAL | `dm_ability_system.gd` | `DmRiteFx` carries sounds; per-rite coverage not individually verified (only 3 rite files mention audio) |
+| Rite sfx (needle, loops: miasma/siphon) | PARTIAL | `dm_ability_system.gd` | `DmRiteFx` carries sounds; per-rite coverage not individually verified (only 3 rite files mention audio) (re-checked 2026-10-06: still unverified) |
 | Thrall rise/death, level-up, UI/panel sounds | DONE | | `dm_thrall.gd`, `DmNextProgress`, `DmGameUi.sound` |
-| Loot, coin, rarity sounds; hero hurt sound; gather sfx family | MISSING | `audio_gather_sfx.gd`, `collected()` | not forwarded; gathering not wired; hero_hurt in `DmAudioHooks` static but unused by next |
+| Loot, coin, rarity sounds; hero hurt sound; gather sfx family | DONE | `audio_gather_sfx.gd`, `collected()` | loot / coin / shard / hurt / lowHealth forwarded (`DmNextUiHost`, `tests/next_hud_counsel`); gather sfx (`click`, `error`, `reel`, `skillUp`) in `DmNextGather` |
 | Co-op `partner` audio flag | N/A | `AudioDirector.partner` | D3 session model |
 
 ## 19. VFX
@@ -310,24 +321,24 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Vfx autoload (Binbun effects, decals, beams, motifs, danger), `SPELL_FX` rite looks | DONE | `fx/` | reused unchanged (REBUILD "Assets rule"); `DmRiteFx` |
 | Enemy telegraphs/strikes/deaths, hostile zones, boss telegraphs | DONE | `dm_event_fx*.gd` | `DmEnemyFx`, `DmBossFx` |
 | Corpse wisps, rise/fall, status motes | DONE | | `next/corpses`, `next/status` |
-| Hero ring / halo / reticle / target ring | MISSING | `_dress_hero` | see Inventory |
+| Hero ring / halo / reticle / target ring | DONE | `_dress_hero` | `DmHeroLook` (see Inventory) |
 | Waystone ring/glow/portal/motes | DONE | `_dress_waystones` | `DmChapterhouse._dress_waystones` |
 | Click-move marker | DONE | | `DmNextInput.click_move` |
-| Omen sky tint, nightfall dimming | MISSING | | see Areas |
-| Hitstop | MISSING | | see Combat |
-| Graphics-quality scaling of effects (Low) | PARTIAL | | `vfx.quality` set |
+| Omen sky tint, nightfall dimming | DONE | Nightfall dimming = `dm_wave_milestones.gd`; the Omen sky tint is N/A (the current client never calls `_omen_light`) |
+| Hitstop | DONE | `DmNextGame.hitstopper` (see Combat) |
+| Graphics-quality scaling of effects (Low) | DONE | `DmNextPerf.apply`: Low = no moon shadows / bloom, fewer prop lights, halved weather, `vfx.quality` |
 
 ## 20. Saves, accounts, front screens, launcher
 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
-| Login, register, resume token, claim_session | MISSING | `front/dm_front_flow.gd`, `dm_login_screen.gd` | `main.gd _next_slice` hard-codes account `tester` on the offline mock; `--next` skips `DmFrontFlow` |
-| Character select / discipline card (create character) | PARTIAL | `front/dm_char_select_screen.gd` | slice takes `--class=N`; no select screen |
+| Login, register, resume token, claim_session | DONE | `front/dm_front_flow.gd`, `dm_login_screen.gd` | `main.gd`: `-- --next` goes through `DmFrontFlow` (login / register / resume) into `_enter_next`; `-- --next --class=N` still skips it; `tests/next_front` |
+| Character select / discipline card (create character) | DONE | `front/dm_char_select_screen.gd` | `dm_char_select_screen.gd` -> `DmNextGame` with that discipline (all four necromancer disciplines walked); `tests/next_front` |
 | Online mode (`--online`) with VPS backend | PARTIAL | `main.gd` | `_next_slice` uses whichever `api` exists; D8 says existing characters carry over; untested end-to-end |
 | Offline edition (local backend `DmMockBackend`, separate characters) | DONE | `game/dm_offline.gd`, `net/dm_mock_backend.gd` | D4; `DmNextGame` takes `DmOffline.make_api` |
 | Cloud saves: progress, necro, inventory | DONE | `DmProgressSync`, `DmInventory` | reused |
-| Class change (rebuild world with new discipline) | MISSING | `dm_game.gd class_changed` | |
-| Log out | MISSING | `dm_game.gd leave_world` | |
+| Class change (rebuild world with new discipline) | DONE | `dm_game.gd class_changed` | `class_changed` -> `world_restart`; `tests/next_front` |
+| Log out | DONE | `dm_game.gd leave_world` | `leave_world` -> `_on_next_left(true)`; `tests/next_front` |
 | Release watcher (web reload prompt) | N/A | `net/dm_release_watch.gd` | not ported in the current game either (`game/README.md`); launcher handles updates (`launcher/`) |
 | Launcher hooks | N/A | `godot/` has none; `launcher/windows` is a separate app | |
 | `flush_all` on window close | DONE | `main.gd _notification` | handles `slice` |
@@ -342,7 +353,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Relay peer + lobby client | DONE | n/a | `net/relay/dm_relay_peer.gd`, `dm_lobby_client.gd`; server `server/death-muffin/lobby/` |
 | Lobby UI (find/create/join, private codes) | MISSING | `/party` chat commands + party code | no UI; `party_*` absent (D5: online back seat) |
 | Joiner gets a real HUD, real character handshake, own backend api for loot/XP | PARTIAL | | clients get no HUD (`hud: true` host only); remote `character_id` 0 until handshake; joiner loot lands unrolled |
-| Remote players' gear/cape/pet display, party chat | MISSING | `dm_game_coop.gd dress_remote/chat_line` | |
+| Remote players' gear/cape/pet display, party chat | PARTIAL | `dm_game_coop.gd dress_remote/chat_line` | remote players' gear / cape / pet DONE (`DmHeroLook` replicates a look to every peer, `tests/next_hero_look`); party chat missing (`send_chat` = "(solo) Nobody hears you") |
 | Reconnect / rejoin (10-minute window) | MISSING | `net/realtime/dm_rt_reconnector.gd`, `dm_rt_rejoin_store.gd` | D6: no migration; reconnect not planned |
 | Session `session_open/report/end`, heartbeats | DONE | `net/dm_api.gd` | `DmSessionRewards` |
 
@@ -350,7 +361,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
-| HUD "Report a bug" button + Settings -> Report a bug form (`/api/bug-reports`) | PARTIAL | `game_ui/dm_bug_report_view.gd`, `ui/hud/dm_hud.gd` | UI + `api.send_bug_report` reused; reachable via `DmGameUi`; untested on the slice |
+| HUD "Report a bug" button + Settings -> Report a bug form (`/api/bug-reports`) | PARTIAL | `game_ui/dm_bug_report_view.gd`, `ui/hud/dm_hud.gd` | UI + `api.send_bug_report` reused; reachable via `DmGameUi`; no `tests/next*` suite exercises it (unverified) |
 | Daily Claude triage agent, Discord "fixed - live now" alerts | N/A | server side | unaffected (backend/server) |
 
 ## 23. Perf features
@@ -358,7 +369,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
 | Load-time warm-up (models, Binbun effects, shaders, pooled bodies) | DONE | `game/dm_warmup.gd` | `DmNextWarmup` (`next/perf/`): every enemy/thrall/boss body (opaque, fade, elite, spectral), every Binbun effect, decal layers, telegraphs, and the 13-area tour incl. the no-omni-light and flash-light variants, under `DmWarmup`'s cover (no pooled bodies: enemies are scenes) |
-| Loading screen with progress | PARTIAL | `game/dm_warmup.gd` under cover, `main.gd` | the warm-up draws its own cover ("Waking the dead... <area> n / 13"); the cover before `start()` (world build, nav bake) is `main.gd`'s (front-flow track) |
+| Loading screen with progress | DONE | `game/dm_warmup.gd` under cover, `main.gd` | `main.gd _enter_next` shows the key-art `DmLoadingScreen` ("Waking the dead...") from the world build; `DmNextWarmup` draws its own progress cover; dismissed after `start()`; `tests/next_front`, `tests/next_perfctl` |
 | Resolution governor (auto-res, min 0.6) | DONE | `game/dm_resolution_governor.gd`, `dm_game.gd _apply_render_scale` | `DmNextPerf.pace` (same constants; held on every area entry). REBUILD Phase 6 retunes it (floor ~0.85, presets) |
 | FPS cap / graphics high-low | DONE | `_apply_graphics` | `DmNextPerf.apply`; Medium/Ultra presets are Phase 6 |
 | Effect/pool budgets (Vfx pools, decal layers), per-frame cost discipline | DONE | `fx/` | reused; per-track perf budgets in `tests/next*` |
@@ -371,7 +382,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 |---|---|---|---|
 | Hero death -> respawn in Chapterhouse (4 s), death veil | DONE | `dm_game.gd respawn` | `DmHeroBody.RESPAWN_S` |
 | Bone Grinder, Lectern, Sawpit, Kiln, Fire stations | PARTIAL | `dm_game_actions.gd interact` | `DmChapterhouse.interact` handles stations; Acre stations "open but persistence is the progression track's" |
-| Boss summon in-world prompts, Next-step guidance ping | PARTIAL | | see above |
-| Dev tools (F9 break seals, `__cwDebug`, QA driver) | PARTIAL | `main/qa_driver.gd` | not ported to slice; DEV account gating partial |
+| Boss summon in-world prompts, Next-step guidance ping | PARTIAL | boss summon in-world prompt DONE (E + click prompts, boss key prompt); Next-step guidance ping still limited (bag / level only) |
+| Dev tools (F9 break seals, `__cwDebug`, QA driver) | PARTIAL | `main/qa_driver.gd` | not ported to slice; DEV account gating partial (re-checked: `main/qa_driver.gd` not referenced from `next/`) |
 | Tests: rules suites, session/relay/rites/status/corpses/thralls/areas/bosses/hud/progress | DONE | `tests/` | `tools/godot/run-all-tests.sh` |
 | Mobile build / web build | N/A | | D9 web retirement; mobile not in Godot scope |
