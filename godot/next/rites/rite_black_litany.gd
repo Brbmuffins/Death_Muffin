@@ -10,10 +10,10 @@ func _init() -> void:
 	id = "black_litany"
 
 
-func resolve(c: DmRiteCaster, _intent: Dictionary) -> String:
+func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 	var RT: Dictionary = DmSimData.RUNE_TUNING
 	var rn := DmAbilities.rune(c.p, id)
-	var r := float(DmAbilities.def(id)["radius"]) * (float(RT["requiem"]["radiusMult"]) if rn == "rune_requiem" else 1.0)
+	var r := float(DmAbilities.def(id)["radius"]) * float(intent.get("mult", 1.0)) * (float(RT["requiem"]["radiusMult"]) if rn == "rune_requiem" else 1.0)
 	var sp := DmAbilities.litany_spell_power(DmAbilities.sp(c.p, c.now_ms), rn)
 	var at := c.pos()
 	var spare := rn == "rune_hollow_choir"

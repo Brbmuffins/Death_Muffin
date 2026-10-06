@@ -54,7 +54,7 @@ func rand() -> float:
 
 
 func area_level(area: String) -> int:
-	return int(DmEnemyStats.area_level(area, _levels, 0.0))
+	return int(DmEnemyStats.area_level(area, _levels, float(host.vow_fx.get("levels", 0.0))))
 
 
 func emit(ev: Dictionary) -> void:
@@ -150,9 +150,10 @@ func cover() -> Array:
 
 
 ## The Prelate's Echoes (vow `prelate_echo`, 0-3) of whoever rang the bell: the summoner's own progression.
+## (No summoner member -> the world's sworn vows, DmNextMeta's vow_fx.)
 func echoes() -> int:
-	var m := host.member_of(boss.summoner)
-	return int(m.prog.vow_fx().get("echoes", 0)) if m != null else 0
+	var m: DmRewardsMember = host.member_of(boss.summoner) if boss != null else null
+	return int(m.prog.vow_fx().get("echoes", 0)) if m != null else int(host.vow_fx.get("echoes", 0))
 
 
 # ---- hooks of the Saint / Regent / Mire Mother: rot pools, ember pools ---------------------------------------------------

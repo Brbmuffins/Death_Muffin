@@ -28,7 +28,8 @@ var game: Node                                    ## DmNextGame
 var area_id: String = "graves"                    ## fallback area of an enemy that carries no `dm_area`
 ## Areas whose bosses this host wakes (each boss's own DmContent.boss(id).area is its arena; a boss in another area is "unknown" here).
 var served_areas: Array = ["graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "fen"]
-var difficulty: String = "medium"
+var difficulty: String = "medium"                 ## DmNextMeta: Settings -> difficulty (the brains read it: hp, damage)
+var vow_fx: Dictionary = {}                       ## DmNextMeta: the sworn world vows (levels: Elder Dead, echoes: Prelate Echoes)
 var visual: bool = true                           ## false = no DmBossView (headless)
 var audio_enabled: bool = false                   ## boss music on the local hero's area
 var assume_area: String = ""                      ## tests without a world: players count as in this area

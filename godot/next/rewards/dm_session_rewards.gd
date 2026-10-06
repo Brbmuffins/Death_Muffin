@@ -19,6 +19,8 @@ signal member_credited(character_id: int, delta: Dictionary)   ## {xp, kills, le
 signal member_refused(character_id: int, reason: String)       ## the backend did not credit this member's part of a batch
 signal batch_reported(batch: int, reply: Variant)
 signal kill_earned(character_id: int, enemy_def: String, pos: Vector3)
+signal killer_paid(character_id: int, enemy_def: String)        ## the member's OWN blow ended it (Soul Harvest souls, DmNextMeta)
+signal chain_tier_up(character_id: int, tier: Dictionary)      ## the member's Kill Chain crossed into a new tier (banner, sound)
 signal boss_earned(character_id: int, boss_id: String, first: bool, pos: Vector3)   ## a member was paid for a boss kill
 signal loot_dropped(character_id: int, drop: Dictionary, pos: Vector3)   ## also lets a shell replicate a member's drops to its peer
 signal loot_picked(character_id: int, event: Dictionary)
@@ -38,6 +40,7 @@ var local_peer_id: int = 1
 var difficulty: String = "medium"
 var wave_tier: float = 0.0
 var ascension: float = 0.0
+var vow_levels: float = 0.0       ## Elder Dead: boss and Surge rewards roll at the area's level + this (DmGame.world_levels)
 var area_id: String = "graves"
 ## Optional (the Depths): Callable(area: String) -> String or null, the hunting ground whose loot table a kill in `area` rolls from (null = the area itself).
 var loot_area_of: Callable = Callable()
@@ -120,6 +123,11 @@ func remove_member(character_id: int) -> void:
 
 func _clock_ms() -> int:
 	return int(now_ms.call()) if now_ms.is_valid() else Time.get_ticks_msec()
+
+
+## The clock the Kill Chain runs on (DmNextMeta ticks the chain's break with it).
+func clock_ms() -> float:
+	return float(_clock_ms())
 
 
 func _join(m: DmRewardsMember) -> bool:
@@ -410,7 +418,7 @@ func on_boss_defeated(ev: Dictionary) -> void:
 		return
 	var def: Dictionary = DmContent.boss(id)
 	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
-	var level := float(DmContent.area(String(def["area"]))["level"])
+	var level := float(DmContent.area(String(def["area"]))["level"]) + vow_levels
 	for cid in members:
 		var m: DmRewardsMember = members[cid]
 		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
@@ -444,7 +452,7 @@ func on_surge_cleared(ev: Dictionary) -> void:
 	if ended:
 		return
 	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
-	var level := float(DmContent.area(String(ev["area"]))["level"])
+	var level := float(DmContent.area(String(ev["area"]))["level"]) + vow_levels
 	var gold := DmMath.js_round((24.0 + 10.0 * level) * float(DmWaveUpgrades.wave_modifiers(wave_tier)["rewardMult"]) * float(DmContent.difficulty(difficulty)["rewardMult"]))
 	for cid in members:
 		var m: DmRewardsMember = members[cid]
@@ -470,9 +478,13 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 	var chain_mult := 1.0
 	var area_def: Dictionary = DmContent.area(area)
 	var combat: bool = not bool(area_def["safe"])
+	if is_killer:
+		killer_paid.emit(m.character_id, String(ev["def"]))
 	if is_killer and combat:
-		m.chain.hit(float(_clock_ms()))
+		var up: Variant = m.chain.hit(float(_clock_ms()))
 		chain_mult = m.chain.mult()
+		if up != null:
+			chain_tier_up.emit(m.character_id, up)
 	var asc := DmAscension.ascension_reward_mult(ascension) * chain_mult * (m.omen_reward if combat else 1.0)
 	if int(reward["shards"]) > 0 and combat:
 		reward["shards"] = int(ceil(float(reward["shards"]) * m.omen_shard))

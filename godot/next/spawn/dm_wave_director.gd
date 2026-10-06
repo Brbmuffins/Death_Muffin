@@ -33,6 +33,10 @@ var enemies: Dictionary = {}            ## id -> DmEnemy (every peer)
 var waves_spawned: int = 0
 var rng := RandomNumberGenerator.new()
 var wave_tier: float = 0.0              ## the Wave Speed tier in force (DmWaveUpgrades.wave_modifiers: interval, size, cap, enemy hp / damage); see set_wave_tier
+var difficulty: String = "medium"       ## DmNextMeta: Settings -> difficulty (DmContent.difficulty: enemy hp / damage, elite chance)
+var vow_fx: Dictionary = {}             ## DmNextMeta: the sworn world vows' effects (levels, enemyHpMult, waveSizeMult, deaconMult, eliteBonus)
+var omen: Dictionary = {}               ## DmNextMeta: the week's Omen (waveSizeMult, eliteBonus, affix)
+var size_extra: float = 1.0             ## omen x vow wave-size multiplier (DmNextMeta); the sim folds it into the one rounded wave size
 
 var _holder: Node3D
 var _spawner: MultiplayerSpawner
@@ -68,7 +72,7 @@ func set_wave_tier(tier: float) -> void:
 	wave_tier = tier
 	var m := DmWaveUpgrades.wave_modifiers(tier)
 	wave_interval = float(_base[0]) * float(m["intervalMult"])
-	wave_size = DmMath.js_round(float(_base[1]) * float(m["sizeMult"]))
+	wave_size = DmMath.js_round(float(_base[1]) * float(m["sizeMult"]) * size_extra)
 	cap = DmMath.js_round(float(_base[2]) * float(m["capMult"]))
 
 
@@ -79,7 +83,7 @@ func configure_area(id: String) -> void:
 	wave_size = int(def.get("waveSize", 9))
 	cap = int(def.get("cap", 28))
 	_base = [wave_interval, wave_size, cap]
-	if wave_tier != 0.0:
+	if wave_tier != 0.0 or size_extra != 1.0:
 		set_wave_tier(wave_tier)
 	kinds.clear()
 	for e in def.get("enemies", []):
@@ -258,6 +262,13 @@ func spawn_wave(heroes: Array, count: int = -1, roster: Array = [], lead: String
 	return made
 
 
+## The chance a single pick is an elite: the area's own + the Wave Speed ramp + difficulty + the Omen + Elite Surge (the sim's spawn_at_breach roll).
+func elite_chance() -> float:
+	var ramp := float(DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, _since_arrival))["eliteBonus"]) if wave_tier > 0.0 else 0.0
+	return float(DmContent.area(area_id).get("eliteChance", 0.0)) + ramp + float(DmContent.difficulty(difficulty)["eliteBonus"]) \
+		+ float(omen.get("eliteBonus", 0.0)) + float(vow_fx.get("eliteBonus", 0.0))
+
+
 ## One pick (a pack for bats / rats: sim [min, max]) around `pos`, at most `room` bodies. Elites are single picks. Returns how many spawned;
 ## `ids` collects the new enemies' ids.
 func spawn_group(pos: Vector3, heroes: Array, room: int, lead: String = "", roster: Array = [], ids: Array = []) -> int:
@@ -266,8 +277,7 @@ func spawn_group(pos: Vector3, heroes: Array, room: int, lead: String = "", rost
 	var k := 1
 	if pack is Array:
 		k = rng.randi_range(int(pack[0]), int(pack[1]))
-	var bonus := float(DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, _since_arrival))["eliteBonus"]) if wave_tier > 0.0 else 0.0
-	var elite := pack == null and rng.randf() < float(DmContent.area(area_id).get("eliteChance", 0.0)) + bonus
+	var elite := pack == null and rng.randf() < elite_chance()
 	var made := mini(k, room)
 	for j in made:
 		var at: Vector3 = pos if j == 0 else pos + Vector3(rng.randf_range(-1.5, 1.5), 0.0, rng.randf_range(-1.5, 1.5))
@@ -287,13 +297,15 @@ func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false
 	for h in heroes:
 		levels.append(float((h as DmHeroBody).character.get("level", 1)))
 	var spawn_area := String(over.get("area", "")) if String(over.get("area", "")) != "" else area_id
-	var level := DmEnemyStats.area_level(spawn_area, levels, 0.0, float(over.get("depth", 1.0)))
+	var level := DmEnemyStats.area_level(spawn_area, levels, float(vow_fx.get("levels", 0.0)), float(over.get("depth", 1.0)))   # Elder Dead: + levels
 	var tier := DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, 1e9 if over.has("depth") else _since_arrival)) if wave_tier > 0.0 else {"enemyHpMult": 1.0, "enemyDamageMult": 1.0}
+	var diff := DmContent.difficulty(difficulty)
 	var e := _spawner.spawn({
 		"id": _next_id, "def": def_id, "pos": pos, "level": float(mult.get("level", level)), "area": spawn_area,
 		"aggro": float(over.get("aggro", 0.0)), "leash": float(over.get("leash", 0.0)), "affixes": int(over.get("affixes", 0)),
-		"hp": float(mult["hp"]) if mult.has("hp") else DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))) * float(tier["enemyHpMult"]),
-		"dmg": float(mult["dmg"]) if mult.has("dmg") else DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]), "rising": true, "elite": elite})
+		"hp": float(mult["hp"]) if mult.has("hp") else DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))) * float(tier["enemyHpMult"]) \
+			* float(diff["enemyHpMult"]) * float(vow_fx.get("enemyHpMult", 1.0)),
+		"dmg": float(mult["dmg"]) if mult.has("dmg") else DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]) * float(diff["enemyDamageMult"]), "rising": true, "elite": elite})
 	_next_id += 1
 	return e as DmEnemy
 
@@ -317,12 +329,13 @@ func _on_raised(at: Vector3, by: DmEnemy) -> void:
 
 func _pick_kind(roster: Array = []) -> String:
 	var from: Array = roster if not roster.is_empty() else kinds
+	var dm := float(vow_fx.get("deaconMult", 1.0))   # Deacon Host vow: deacons weigh more
 	var total := 0.0
 	for k in from:
-		total += float(k["weight"])
+		total += float(k["weight"]) * (dm if k["id"] == "deacon" else 1.0)
 	var roll := rng.randf() * total
 	for k in from:
-		roll -= float(k["weight"])
+		roll -= float(k["weight"]) * (dm if k["id"] == "deacon" else 1.0)
 		if roll <= 0.0 and scene_for(String(k["id"])) != null:
 			return String(k["id"])
 	return String(kinds[0]["id"])

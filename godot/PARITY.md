@@ -12,9 +12,9 @@ the Depths, gathering).
 How the rebuild reaches the UI: `DmNextGame` runs the *existing* `DmGameUi` through `DmNextUiHost` (`next/hud/dm_next_ui_host.gd`), an adapter that implements
 the `GAME_CONTRACT.md` surface. So every panel and HUD widget "exists" on the rebuild; the question per row is whether the host feeds it. Contract methods
 `DmNextUiHost` does **not** implement (current `DmGame` does): `stop_gathering`, `afk_active/afk_status/start_afk`, `dial_wave`, `party_create/join/leave`,
-`summon_boss(_empowered)`, `enter_depths`, `class_changed`, `counsel_busy`, `counsel_tick_ctx`, `do_ascend/do_swear/do_open`, `apply_cosmetics`, `set_primary`,
+`summon_boss(_empowered)`, `enter_depths`, `class_changed`, `counsel_busy`, `counsel_tick_ctx`, `apply_cosmetics`, `set_primary`,
 `talk_to` (hub covers it), `belt_choices`, `pause/resume_coop`, `hitstop`. `DmGameUi` calls them through `has_method`, so they silently do nothing.
-Also: `hud_state()` on the rebuild (`next/hud/dm_next_hud_vm.gd`) never sets `chain`, `omen`, `depth`, `next`, `save`, `ward`, `auto_combat`, `souls` (hard 0/10).
+Also: `hud_state()` on the rebuild (`next/hud/dm_next_hud_vm.gd`) never sets `depth`, `next`, `save`, `auto_combat` (`chain`, `omen`, `ward`, `souls` landed with `next/meta/`).
 
 ## Summary
 
@@ -31,7 +31,7 @@ HUD feeds and contract methods that `DmGame` had and `DmNextGame` / `DmNextUiHos
 3. **Necromancer combat feel (DONE on `godot/next-feel`, see `next/feel/README.md`; only Easy auto-combat and standing mouse-aim facing remain; original gap text follows).** Clicking a far enemy does nothing (no attack-target chase, no hold-LMB / Shift+LMB, no queued or held-key casts, out-of-range refusal is silent),
    the hero never plays a cast gesture (`avatar.cast` is never called by rites), and there is no hitstop. Rune choices never reach the caster (`rite_build()` sets `runes = {}`), so Hollow Choir / Requiem / Impaling /
    Mass Grave / Colossus builds are dead. (section 1)
-4. **Difficulty, ascension rank and omen are not applied (MISSING).** `settings.difficulty` is stored but rewards/bosses/director use a constant "medium"; `DmSessionRewards.ascension` stays 0; omen multipliers have no source.
+4. **DONE on `godot/next-meta` (`next/meta/README.md`, test `tests/next_meta`): difficulty, ascension rank / vows, boons, omen and the Altar's actions are applied.** Was: **Difficulty, ascension rank and omen are not applied (MISSING).** `settings.difficulty` is stored but rewards/bosses/director use a constant "medium"; `DmSessionRewards.ascension` stays 0; omen multipliers have no source.
    The Altar (`do_ascend/do_swear/do_open`) has no host methods. Progression depth beyond XP/tiers is flat. (sections 2, 13)
 5. **Hero looks naked (MISSING).** Worn gear, helm / hide-helm, legendary aura, capes, pets and the hero ring/halo are never applied (`avatar.set_equipment` / `set_cape` / `DmPetView` not called); the Capes & Pets
    panel changes nothing in the world. Hurts gear reward feedback and "immersive" feel. (sections 11, 19)
@@ -39,7 +39,7 @@ HUD feeds and contract methods that `DmGame` had and `DmNextGame` / `DmNextUiHos
    counterplay that makes the necromancer loop interesting. (section 2)
 7. **Gathering, professions, laborers, garden, contracts (IN PROGRESS).** Whole Acre loop (nodes, AFK, laborers, charms, gather sfx, hover tips) is not on the rebuild; `DmNextUiHost` lacks
    `stop_gathering/afk_*`. Also in progress: the Depths (generated floors, stair prompt, readout), and Bone Abbess / Drowned Congregation / Bell-Sworn Prelate. (sections 3, 8, 9)
-8. **HUD feeds missing (MISSING).** Kill chain meter and tier banners, Soul Harvest meter (hard 0), omen chip, Bone Ward chip, save-state chip, wave dial (`dial_wave`), auto-combat button
+8. **HUD feeds missing (MISSING).** (Kill chain meter and tier banners, Soul Harvest meter, omen chip and Bone Ward chip are DONE on `godot/next-meta`.) Save-state chip, wave dial (`dial_wave`), auto-combat button
    (and Easy Auto Combat / auto-dodge themselves). Also loot / coin / rarity sounds and the hero hurt sound are not forwarded. (sections 1, 13, 16, 18)
 9. **Boss meta-progression (MISSING).** Empowered summons + Covenant Seal + prize claim and the boss key prompt, first-kill trophies persisted (`trophy_store` unset), Chronicle (life records for the Codex),
    Codex "dead" discoveries, Nightfall / wave-milestone variants. (sections 3, 6, 13)
@@ -70,7 +70,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Cast feedback texts (essence/cooldown/locked) + `essence_short` counsel | DONE | `dm_game_input.gd feedback` | `DmNextUiHost._on_rejected` (rate-limited 600 ms) |
 | Chill/root/stun/drag floats over hero, Bulwark/ward/barrier on hurt | PARTIAL | `dm_game_combat.gd on_hurt` | chill/root/stun/dragged floats + `_ward` in `DmHeroBody.take_damage`; Bulwark (knight family) not present |
 | Other 5 disciplines (Hollow Knight, Grave Warden, Bell Monk, Carrion Witch, Veilwalker): kit rites (flail, toll, hook, crow, veil...) | MISSING | `data/content/abilities.json`, `kits.json`, `rules/` | `next/rites/dm_rite_registry.gd` is necromancer-only; a non-necro kit rite is refused `unavailable`. `DmHeroBody.family` exists. Owner priority: necromancer first, so low |
-| Monk beat meter, Soul Harvest meter (souls), Bone Ward chip | MISSING | `dm_game_input.gd tick_chain_and_beat`, `dm_game_rewards.gd on_souls_charged` | `hud_state` hard-codes `souls: 0`; no beat/ward chip |
+| Monk beat meter, Soul Harvest meter (souls), Bone Ward chip | PARTIAL | `dm_game_input.gd tick_chain_and_beat`, `dm_game_rewards.gd on_souls_charged` | Soul Harvest (own kills fill it; the charged Marrow Spear / Miasma / Black Litany are free and 1.5x) and the Bone Ward chip are on `next/meta/`; no monk beat meter, no wraith-nova on a charged cast, no jade ring under the hero |
 | Legendary gear mechanics (sync_legend: thrallDeathBurst, championEvery...) | PARTIAL | `dm_game_combat.gd sync_legend`, `DmLegend` | `DmThrallHost.legend` consumes `DmLegend` mods; whether the shell feeds worn legendaries each refresh is not shown in `DmNextGame` (grep: no `sync_legend` equivalent) |
 | Bonded Dead boon (thrall rises on area entry) | MISSING | `dm_game_combat.gd tick_bond` | `DmThrallHost.raise_bonded` exists, but nothing in the shell triggers it |
 
@@ -84,7 +84,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Bit-exact sim math / fdlibm determinism | N/A | `sim/fdlibm.gd`, `sim_exact.gd`, `game/dm_fdlibm_x.gd` | dropped: REBUILD "Enemies, AI, navigation: REFACTOR -> REBUILD ... drop bit-exact math"; D1 host-authoritative |
 | Elite multipliers (hp/damage/scale, faster wind-up) | DONE | `sim/sim_data.gd ELITE` | `DmEnemy.elite` |
 | Elite affixes (Bell-Tolled, Hungering, Shrouded, Vengeful) + affix rings/target-frame affix chips | MISSING | `rules/combat/dm_affixes.gd`, `data/combat/affixes.json`, `game/dm_entity_views.gd` | `enemies/dm_enemy.gd:68` "affixes are NOT implemented"; `next/enemy_fx/README.md` "Not covered: elite affixes". `DmStatusSet` has `shrouded` but nothing applies it |
-| Enemy level scaling by area/hero level, wave-tier hp/damage ramp, difficulty hp/damage multipliers | PARTIAL | `sim_director.gd`, `DmEnemyStats` | `DmEnemyStats.area_level`, `ramp_tier` used by `dm_wave_director.gd`; **difficulty (Easy/Medium/Hard) is not applied**: `DmSessionRewards.difficulty` and `DmBossHost.difficulty` are constants "medium", nothing reads `settings.difficulty` |
+| Enemy level scaling by area/hero level, wave-tier hp/damage ramp, difficulty hp/damage multipliers | PARTIAL | `sim_director.gd`, `DmEnemyStats` | `DmEnemyStats.area_level`, `ramp_tier` used by `dm_wave_director.gd`; difficulty (Easy/Medium/Hard), Elder Dead levels, Iron Dead hp and the wave-size / elite / deacon vows are applied by `DmNextMeta` (`next/meta/README.md`) |
 | Enemy hit/death/windup/voice sfx, telegraphs, hostile zones | DONE | `dm_event_fx*.gd` | `next/enemy_fx/` (`DmEnemyFx`, replicated once per peer) |
 | Enemy idle fx (rising dust, hover motes, fen/fire per-kind idle) | PARTIAL | `dm_entity_views.gd` | `next/enemy_fx/README.md` "per-kind idle fx of kinds that have no scene yet" (all kinds now have scenes; idle motes status unverified) |
 | Pooled creature bodies / shared materials | PARTIAL | `dm_entity_views.gd`, `dm_creature_mat.gd` | `director.warm(true)` preloads kinds; no body pool equivalent found; `DmCreature` / `dm_creature_mat.gd` reused |
@@ -130,7 +130,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Seals / doors / gates, kill-based unlocks (Warren 150 Graves kills, Swift Seals) | DONE | `dm_game_rewards.gd check_unlocks` | `DmChapterhouse.check_seals/apply_seals` |
 | Waystone travel, T recall, minimap click travel, Waystone map panel (M) | DONE | `dm_game_actions.gd travel/start_recall` | `DmChapterhouse.travel/start_recall`, `DmNextUiHost.navigate`; host-only teleport (README gap) |
 | Entry banners, first-entry Codex area discovery, first-entry counsel | DONE | `dm_game.gd _enter_area` | `next/areas/dm_area_flow.gd` |
-| Omen sky tint + fog in hunting grounds | MISSING | `dm_game.gd _omen_light`, `_omen_for` | not in `next/` |
+| Omen sky tint + fog in hunting grounds | N/A | `dm_game.gd _omen_light` | the current client never calls `_omen_light` either (dead code); the Omen's numbers and chip are on `next/meta/` |
 | Nightfall light dimming, wave-milestone banners (Elite Vanguard, Restless Crypts, Nightfall) | MISSING | `dm_game_rewards.gd tick_milestones` | `next/areas/README.md` "Nightfall shroud / vanguard milestone variants are not ported" |
 | Multi-area simultaneous waves for party members in different areas | PARTIAL | n/a (co-op shared sim) | one director = one area (`areas/README.md`); D5 solo first |
 | Occlusion dither shaders on walls/props | DONE | `world/dm_occ_*.gdshader` | same builder |
@@ -203,9 +203,9 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Backend persistence cadence (urgent / 45 s / area change / quit) | DONE | `DmProgressSync` | reused unchanged; `flush_all` on window close (`main.gd`) |
 | Boons / vows (stat effects) | DONE | `DmCharacterBuild` | `DmNextGame.build_for` includes boons/vows |
 | Vows' world effects (Dry Cellar flask ban, Swift Seals, sync_world_vows) | PARTIAL | `dm_game.gd sync_world_vows` | Dry Cellar + Swift Seals honoured in belt/seals; other world vows not verified |
-| Ascension (Altar: ascend, swear vows, open keys; reward/difficulty scaling by rank) | PARTIAL | `dm_game.gd do_ascend/do_swear/do_open`, `ui/panels_a/dm_ascension_panel.gd` | Altar station emits; `DmSessionRewards.ascension` stays 0.0 (never set from progress); `do_*` not on host |
-| Omen (daily/rolling modifier: reward/shard mult, sky, chip) | MISSING | `dm_game.gd _omen_for/_omen_light`, HUD `omen` | `omen_reward/omen_shard` default 1.0, no source; HUD omen unset |
-| Kill chain (tiers, bonus, break, HUD chain meter) | PARTIAL | `dm_game_rewards.gd on_chain_tier`, `DmKillChain` | `DmRewardsMember.chain` multiplies XP/gold; no tier banner/sfx, no HUD `chain` meter |
+| Ascension (Altar: ascend, swear vows, open keys; reward/difficulty scaling by rank) | DONE | `dm_game.gd do_ascend/do_swear/do_open`, `ui/panels_a/dm_ascension_panel.gd` | the panel's API calls land through `refresh_progress` -> `DmNextMeta.sync` (rank -> rewards, vows -> director / bosses / corpses); `do_ascend/do_swear/do_open` on `DmNextUiHost`; `tests/next_meta` |
+| Omen (weekly modifier: reward/shard mult, wave size, elites, chip) | PARTIAL | `dm_game.gd _omen_for`, HUD `omen` | `DmNextMeta.omen_for` (same rotation); the Tolling's Bell-Tolled elite affix waits for the elite-affix track |
+| Kill chain (tiers, bonus, break, HUD chain meter) | DONE | `dm_game_rewards.gd on_chain_tier`, `DmKillChain` | `DmRewardsMember.chain` pays; tier banner / sound / burst, break sound + float, reset on death, HUD meter (`DmNextMeta`) |
 | Milestones (best chain, kills -> gold) | DONE | `check_milestones` | `DmNextProgress._check_milestones` (ground gold drop) |
 | Trophies (first boss kill) | PARTIAL | `claim_trophy` | in-memory per session; `trophy_store` unset |
 | Chronicle (life stats / records for the Codex "Chronicle" tab) | MISSING | `dm_game.gd _tick_chronicle/flush_chronicle` | not in `next/` (grep) |
@@ -263,11 +263,11 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Area label + progress | PARTIAL | label yes; Depths readout missing |
 | Upgrade box (Empower/Quicken, dial) | PARTIAL | tiers yes; dial buttons dead (`dial_wave`) |
 | Thrall pips / legion chip | DONE | |
-| Soul Harvest meter | MISSING | `souls: 0` |
-| Kill chain meter | MISSING | `chain` unset |
-| Omen chip | MISSING | |
+| Soul Harvest meter | DONE | `next/meta/` |
+| Kill chain meter | DONE | `next/meta/` |
+| Omen chip | DONE | `next/meta/` |
 | Depth readout | IN PROGRESS | |
-| Bone Ward chip | MISSING | |
+| Bone Ward chip | DONE | `next/hud/dm_next_hud_vm.gd` |
 | Auto-combat button | MISSING | |
 | Next-step box, guidance ping, progressive reveal / NEW pips | PARTIAL | reveal logic in `DmGameUi` runs; Next box limited |
 | Toasts, banners, loot toast, floating numbers, death wash, hit flash | DONE | |
@@ -285,7 +285,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | `reduce_motion` | DONE | Vfx + camera |
 | `graphics` (high/low) | PARTIAL | only `vfx.quality`; no moon-shadow/bloom/prop-light changes (`DmGame._apply_graphics`); REBUILD Phase 6 plans presets |
 | `fps` (Engine.max_fps), `auto_res` (resolution governor), `graphics_chosen` | MISSING | `DmGame._apply_render_scale/_apply_graphics`; nothing in `next/` |
-| `difficulty` | MISSING | stored, never applied to waves/rewards/bosses |
+| `difficulty` | DONE | `DmNextMeta.set_difficulty` (director, rewards, bosses) |
 | `auto_combat` / `auto_gather` | MISSING | stored, no consumer |
 | `hide_helm` | MISSING | no gear on hero |
 | `no_tips`, `guidance`, `guide_ping` | PARTIAL | consumed by `DmGameUi` counsel; busy ctx missing |

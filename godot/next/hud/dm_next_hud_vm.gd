@@ -19,6 +19,8 @@ var _map := {}
 var _areas: Array = []
 var _doors: Array = []
 var _area_sig := ""
+var _ward_vm := {}
+var _omen_vm := {}
 
 
 func _init(host_: DmNextUiHost) -> void:
@@ -45,7 +47,8 @@ func build() -> Dictionary:
 		"damage": {"tier": host.progress["damageTier"], "pct": DmUpgrades.damage_bonus_pct(float(host.progress["damageTier"])), "cost": null if host.prog.damage_cost() == -1 else host.prog.damage_cost()},
 		"wave": {"owned": host.progress["waveTierOwned"], "active": host.progress["waveTierActive"], "pct": DmWaveUpgrades.wave_modifiers(float(host.progress["waveTierActive"]))["speedPct"],
 			"cost": null if host.prog.wave_cost() == -1 else host.prog.wave_cost()},
-		"souls": 0, "souls_max": 10, "raises_thralls": family == "necromancer",
+		"souls": b.p["souls"] if not b.p.is_empty() else 0, "souls_max": b.p["soulsMax"] if not b.p.is_empty() else 50, "raises_thralls": family == "necromancer",
+		"ward": _ward(b), "chain": _chain(g, b), "omen": _omen(g),
 	}
 	vm["prompt"] = g.chapterhouse.prompt_text if g.chapterhouse != null else null
 	vm["depth"] = g.depths.hud_state() if g.depths != null else null   # the Depths readout (depth, kills / quota, stair, chest)
@@ -97,9 +100,50 @@ func _fill(s: Dictionary, id: String, b: DmHeroBody, level: float, key: String) 
 	s["cost"] = d["essenceCost"]
 	s["left_ms"] = caster.cooldown_left(id) if caster != null else 0.0
 	s["total_ms"] = total
-	s["affordable"] = b.resource >= float(d["essenceCost"])
+	var emp := not b.p.is_empty() and DmAbilities.empowered(b.p, id)   # Soul Harvest: charged souls make this rite free
+	s["empowered"] = emp
+	s["affordable"] = emp or b.resource >= float(d["essenceCost"])
 	s["locked"] = DmAbilities.rite_level(level, host.dev_access) < DmAbilities.unlock_level(id)
 	s["unlock_level"] = DmAbilities.unlock_level(id)
+
+
+# ---- meta feeds: Bone Ward chip, Kill Chain meter, Omen chip (the DmGameHud shapes) ------------------------------------------------------
+
+## The Ossuary's Bone Ward (wardPerThrall x living thralls, at most 60 %): {pct, thralls, per_thrall} or null.
+func _ward(b: DmHeroBody) -> Variant:
+	var per := float(b.mods.get("wardPerThrall", 0.0))
+	var th := b.get_node_or_null("Thralls") as DmThrallHost
+	if per <= 0.0 or th == null:
+		return null
+	var n := th.count()
+	var pct := DmMath.js_round(minf(0.6, per * n) * 100.0)
+	if pct <= 0:
+		return null
+	_ward_vm["pct"] = pct
+	_ward_vm["thralls"] = n
+	_ward_vm["per_thrall"] = per
+	return _ward_vm
+
+
+func _chain(g: DmNextGame, b: DmHeroBody) -> Variant:
+	if g.meta == null or not g.meta.member.chain.active() or not b.alive:
+		return null
+	var c: DmKillChain = g.meta.member.chain
+	var t: Variant = c.tier()
+	var tiers: Array = DmProgContent.get_data()["chain"]["tiers"]
+	return {"count": c.count, "name": t["name"] if t != null else "Chain", "bonus": t["bonus"] if t != null else 0.0, "frac": c.frac(g.rewards.clock_ms()),
+		"tier": (tiers.find(t) + 1) if t != null else 0}
+
+
+func _omen(g: DmNextGame) -> Variant:
+	if g.meta == null or g.meta.omen.is_empty():
+		return null
+	if _omen_vm.get("name") != g.meta.omen["name"]:   # the Omen changes with the week or a test, not per frame
+		_omen_vm["name"] = g.meta.omen["name"]
+		_omen_vm["icon"] = DmGameHud.art(String(g.meta.omen["icon"]).replace("art/", ""))
+		_omen_vm["blurb"] = g.meta.omen["blurb"]
+	_omen_vm["visible"] = not bool(DmContent.area(g.area_id)["safe"])
+	return _omen_vm
 
 
 # ---- belt (Q heal flask with its cooldown, Z / X brews: DmNextBelt) -------------------------------------------------------------

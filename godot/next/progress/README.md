@@ -34,3 +34,5 @@ kill batch + `session_end`, progression, bag; `main.gd` calls it on window close
 
 ## Test / perf
 `godot --headless --path godot --script res://tests/next_progress/run.gd` (offline backend only).
+
+Vows, boons, difficulty and the Omen reach the world through `DmNextMeta.sync()` (called by `apply_progress`; `next/meta/README.md`).

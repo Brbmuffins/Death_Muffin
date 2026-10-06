@@ -100,6 +100,7 @@ func _init_state() -> void:
 	family = String(b["discipline"]["family"])
 	mods = b["discipline"]["mods"]
 	p = DmPlayerRules.new_state(b["stats"], family)
+	_soul_rules(b)
 	p["x"] = position.x
 	p["z"] = position.z
 	p["facing"] = yaw
@@ -112,7 +113,14 @@ func refresh_stats(build: Dictionary) -> void:
 		return
 	DmPlayerRules.set_stats(p, build["stats"])
 	mods = build["discipline"]["mods"]
+	_soul_rules(build)
 	_mirror_from_state()
+
+
+## Soul Harvest's meter size and fill rate (Soul Hunger boon: -8 souls a rank, min 10; the discipline's soulHarvestRateMult), as DmGame._apply_player_extras.
+func _soul_rules(build: Dictionary) -> void:
+	p["soulsMax"] = maxf(10.0, float(DmCombatData.const_table("SOUL_HARVEST")["souls"]) - float(build["boons"]["soulsDiscount"]))
+	p["soulRateMult"] = float(build["discipline"]["mods"].get("soulHarvestRateMult", 1.0))
 
 
 ## Host: a drunk brew on the body's clock (ward and speed brews act through `p["brews"]`).

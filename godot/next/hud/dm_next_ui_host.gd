@@ -90,6 +90,8 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 		shell.rewards.member_credited.connect(_on_credited)
 		if shell.progress != null:
 			shell.progress.event.connect(game_event.emit)   # level-up banner, milestone / seal toasts, belt floats
+		if shell.meta != null:
+			shell.meta.event.connect(game_event.emit)       # difficulty toast, Soul Harvest, chain tiers, bonded dead
 		shell.rewards.kill_earned.connect(func(_c: int, _d: String, _p: Vector3) -> void: _kills[shell.area_id] = int(_kills.get(shell.area_id, 0)) + 1)
 	else:
 		prog = DmProgression.new(character, null)
@@ -190,6 +192,43 @@ func refresh_progress() -> void:
 	progress_changed.emit()
 
 
+## The Altar (DmGame.do_ascend / do_swear / do_open / the Ascension panel): the backend rules the state (ashes, vows, unlocks, boons), `refresh_progress`
+## adopts it, and DmNextProgress.apply_progress -> DmNextMeta.sync carries it into the world. "" = done, else the Altar's refusal.
+func do_ascend() -> String:
+	var heat := DmAscension.vow_heat(prog.vows())
+	await shell.progress.psync.flush()   # the run's kills are what the Ashes pay for: bank them first, or they land on the NEXT run
+	var r: DmResult = await api.necro_ascend(hero_id)
+	if not r.ok:
+		return r.error if r.error != "" else "The Altar refuses."
+	await refresh_progress()
+	var earned := int((r.data as Dictionary).get("earned", 0)) if r.data is Dictionary else 0
+	game_event.emit("banner", {"title": "Ascended at heat %d" % heat, "sub": "+%d Ashes · swear your vows for the next run" % earned, "ms": 4200})
+	shell.progress.sfx("levelUp")
+	return ""
+
+
+func do_swear(next: Dictionary) -> String:
+	await shell.progress.psync.flush()   # a vow change restarts the run's tally: the kills so far must be in it
+	var r: DmResult = await api.necro_vows(hero_id, next)
+	if not r.ok:
+		return r.error if r.error != "" else "The Altar refuses."
+	await refresh_progress()
+	game_event.emit("toast", {"text": "Vows sworn: heat %d" % DmAscension.vow_heat(prog.vows()), "kind": "good"})
+	shell.progress.sfx("shard")
+	return ""
+
+
+## `key` "vow:<id>" / "boon:<id>" opens it with shards; a bare boon id buys the next rank with ashes (the panel's two buttons).
+func do_open(key: String) -> String:
+	var r: DmResult = await (api.necro_unlock(hero_id, key) if key.contains(":") else api.necro_boon(hero_id, key))
+	if not r.ok:
+		return r.error if r.error != "" else "The Altar refuses."
+	await refresh_progress()
+	game_event.emit("toast", {"text": "%s unlocked" % key.substr(key.find(":") + 1) if key.contains(":") else "Boon deepened: %s" % key, "kind": "good"})
+	shell.progress.sfx("levelUp")
+	return ""
+
+
 func refresh_inventory() -> void:
 	var r: DmResult = await api.get_inventory(hero_id)
 	if r.ok and r.data is Array:
@@ -208,6 +247,8 @@ func _apply_settings_side_effects() -> void:
 	var m: DmRewardsMember = shell.rewards.members.get(hero_id) if shell.rewards != null else null
 	if m != null:
 		m.loot_view.rules = settings_store.loot_rules()
+	if shell.meta != null:
+		shell.meta.set_difficulty(String(settings["difficulty"]), not shell.ready_)   # Settings -> difficulty: the next dead to rise feel it
 	var audio := get_node_or_null("/root/AudioDirector")
 	if audio != null and shell.opts.get("audio", DisplayServer.get_name() != "headless"):
 		audio.apply_settings(settings_store.audio_dict())

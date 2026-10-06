@@ -3,7 +3,7 @@ extends DmRiteModule
 ## enemy's radius, 18 essence, 2.2 s, power 2.1), piercing everything on the line, +1 Fracture each and a Hemorrhage bleed. Runes: Ossuary Ring (the cursor,
 ## pulled back to 12 m, erupts a r 3 ring for x0.8), Impaling (stops at the first enemy: x1.5, roots it 1.5 s). The legendary `spearRally` mod marks the
 ## nearest enemy hit: the legion turns on it and hits it harder for LEGEND.rallyS. Numbers: DmAbilities.spear + DmRunes; visuals: DmRiteFx.spear_*.
-## Not here: the Soul Harvest empowered cast (x1.5 line), the boss.
+## Soul Harvest: a charged cast arrives with intent["mult"] 1.5 (longer, wider line; the caster spent souls, not essence).
 
 const SPEED := 48.0
 const Y := 0.3
@@ -25,7 +25,7 @@ func validate(c: DmRiteCaster, intent: Dictionary) -> String:
 func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 	var aim: Vector3 = intent["aim"]
 	var origin := c.pos()
-	var sp := DmAbilities.spear(DmAbilities.sp(c.p, c.now_ms), DmAbilities.rune(c.p, id), 1.0)
+	var sp := DmAbilities.spear(DmAbilities.sp(c.p, c.now_ms), DmAbilities.rune(c.p, id), float(intent.get("mult", 1.0)))
 	var ring: Variant = sp["ring"]
 	var centre: Variant = DmRunes.ring_center({"x": origin.x, "z": origin.z}, {"x": aim.x, "z": aim.z}, float(ring["maxCastRange"])) if ring != null else null
 	var dx: float = (float(centre["x"]) if centre != null else aim.x) - origin.x
@@ -78,7 +78,7 @@ func _arrive(c: DmRiteCaster, rn: String, sp: Dictionary, origin: Vector3, dx: f
 	else:
 		for row: Dictionary in lane(c, origin.x, origin.z, dx, dz, rng_m, half_w, false):
 			hits.append(row["e"])
-		ev.merge({"ox": origin.x, "oz": origin.z, "dx": dx, "dz": dz, "rng": rng_m, "radius": float(sp["radius"]), "mult": 1.0, "end": end}, true)
+		ev.merge({"ox": origin.x, "oz": origin.z, "dx": dx, "dz": dz, "rng": rng_m, "radius": float(sp["radius"]), "mult": rng_m / float(DmAbilities.def(id)["range"]), "end": end}, true)
 	var struck: Array = []
 	var pos: Array = []
 	for e: Node3D in hits:

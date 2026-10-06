@@ -40,7 +40,7 @@ Pre-built under the loading cover (`ui.warm()`, same pre-build + apply-during-lo
 All `DmGameUi` panels are constructed (they are built by `setup`, as in the old game) but only those three are laid out ahead and tested here. Left, with TODO:
 - Sheet (J), Legion (Y), Forge/Salvage/Shelf (C), Professions/Garden/Labor/Contracts (P/U/H/O), Codex (K), Atlas (.), Ascension, Waystone map (M), Vault, Cosmetics: open
   and work on the offline backend in principle but need slice data (stations, NPCs, waystones, Acre areas) and are untested; `npc_interact` / `station_interact` are emitted by `next/chapterhouse/` (Reliquary, Workbench, Altar, Vault, Waystone, Acre/Wing stations verified by `tests/chapterhouse`).
-- Not in the slice, hidden by omission: boss frame, kill chain, Depths readout, omen chip, Next-step guidance depends on bag/level only.
+- Not in the slice, hidden by omission: Depths readout, Next-step guidance depends on bag/level only. The chain meter, Soul Harvest meter, omen chip and Bone Ward chip are fed from `next/meta/`; the Altar's `do_ascend / do_swear / do_open` are on the adapter.
 
 ## Gaps
 - Progression persistence, upgrade tiers, level-ups and the belt are `next/progress/` (DmProgressSync, `DmNextBelt`); see its README.

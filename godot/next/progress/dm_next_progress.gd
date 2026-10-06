@@ -90,6 +90,8 @@ func apply_progress() -> void:
 	var tier := float(prog.local["waveTierActive"])
 	shell.director.set_wave_tier(tier)
 	shell.rewards.wave_tier = tier
+	if shell.meta != null:
+		shell.meta.sync()   # vows, boons and the Omen reach the director, the bosses, the corpses and the rewards
 	refresh_stats()
 
 

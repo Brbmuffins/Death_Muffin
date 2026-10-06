@@ -280,7 +280,10 @@ func _apply_cast(sender: int, rite: String, aim: Vector3, target_id: int) -> voi
 		_refuse(sender, rite, why)
 		return
 	var snap := _cost_snapshot(rite)
-	DmAbilities.apply_cast_cost(p, rite, _now_ms, false, bool(intent.get("colossus_cast", false)))
+	var emp := DmAbilities.empowered(p, rite)   # Soul Harvest: charged souls pay this cast instead of essence, and it is 1.5x as wide
+	if emp:
+		intent["mult"] = DmAbilities.soul_area_mult(true)
+	DmAbilities.apply_cast_cost(p, rite, _now_ms, emp, bool(intent.get("colossus_cast", false)))
 	why = m.resolve(self, intent)
 	if why != "":
 		_restore_cost(rite, snap)   # the rite did not happen (lost a race for its corpse): nothing was spent
@@ -309,13 +312,14 @@ func _play_gesture(rite: String, yaw: float) -> void:
 
 ## What apply_cast_cost touches, so a failed resolve can hand it back.
 func _cost_snapshot(rite: String) -> Array:
-	return [float(p["resource"]["value"]), float(p["castUntil"]), float(p["rootedUntil"]), p["cooldowns"].get(rite)]
+	return [float(p["resource"]["value"]), float(p["castUntil"]), float(p["rootedUntil"]), p["cooldowns"].get(rite), p["souls"]]
 
 
 func _restore_cost(rite: String, snap: Array) -> void:
 	p["resource"]["value"] = snap[0]
 	p["castUntil"] = snap[1]
 	p["rootedUntil"] = snap[2]
+	p["souls"] = snap[4]
 	if snap[3] == null:
 		p["cooldowns"].erase(rite)
 	else:

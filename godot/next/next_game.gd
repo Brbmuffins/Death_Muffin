@@ -42,6 +42,7 @@ var is_offline: bool = true                     ## D4: true = backed by the loca
 var area_id: String = "chapterhouse"
 var rewards: Node
 var progress: DmNextProgress                     ## child "Progress" (host): persistence, upgrades, level-ups, the belt (next/progress/)
+var meta: DmNextMeta                             ## child "Meta" (host): difficulty, vows, the Omen, Soul Harvest, Kill Chain, Bonded Dead (next/meta/)
 var bosses: DmBossHost                          ## child "Bosses" (every peer): summon rules, boss bodies, boss events + music
 var enemy_fx: DmEnemyFx                          ## child "EnemyFx" (every peer): telegraphs, impacts, deaths, enemy voices
 var depths: DmDepths                            ## child "Depths" (host): the procedural descent (next/depths/)
@@ -133,6 +134,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		var b := local_body()
 		b.bind_character(character)
 		_start_rewards(b)
+		meta = DmNextMeta.new()
+		meta.name = "Meta"
+		add_child(meta)
+		meta.attach(self)
 		await _start_progress(b)
 		_enter(b.position)
 		camera.snap(b.position)

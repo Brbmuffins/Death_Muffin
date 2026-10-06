@@ -24,6 +24,7 @@
 | Areas | `areas/dm_area_flow.gd`, `areas/dm_grave_surge.gd` | every area live: entry banners + Codex, the director follows the hero's area (rosters, 1.3x first wave, processions), Grave Surges; `areas/README.md` |
 | Gathering | `gathering/dm_next_gather.gd` | nodes, gather loop (host), skills, AFK, node replication (`gathering/README.md`; test `tests/next_gathering/run.gd`) |
 | Hud | `next_hud.gd` | health + resource `DmHudOrb`, area name, death veil |
+| Meta | `meta/dm_next_meta.gd` | host: difficulty (Settings), the sworn world vows, the weekly Omen, Soul Harvest, the Kill Chain, Bonded Dead; `sync()` pushes them to the director, bosses, corpses and rewards (`meta/README.md`) |
 | Chapterhouse | `chapterhouse/dm_chapterhouse.gd` | NPCs (`DmHubNpcs`), stations, waystone travel / recall (T), seals + doors, interactable hover / click / prompts; emits `npc_interact` / `station_interact` (forwarded by `DmNextUiHost`) and `interacted(it)` for boss altars / stairs (bosses + depths tracks hook it). Tick 10 Hz, NPC refresh 5 Hz, per-frame animation only for NPCs near you. Test `tests/chapterhouse/run.gd` |
 | Depths | `depths/dm_depths.gd` | the procedural descent (solo): Warren stair -> floors, quota, stairs, chests, rewards, death ends the run, chronicle (`depths/README.md`). Test `tests/next_depths/run.gd` |
 Players are `hero/dm_hero_body.gd` (`DmHeroBody`, a `DmSessionBody`): `DmAvatar` model for the discipline, `DmPlayerRules` vitals,

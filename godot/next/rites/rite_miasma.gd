@@ -16,7 +16,7 @@ func _init() -> void:
 
 func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 	var aim: Vector3 = intent["aim"]
-	var m := DmAbilities.miasma(DmAbilities.sp(c.p, c.now_ms), c.mods, DmAbilities.rune(c.p, id), 1.0, {"x": c.p["x"], "z": c.p["z"]}, {"x": aim.x, "z": aim.z})
+	var m := DmAbilities.miasma(DmAbilities.sp(c.p, c.now_ms), c.mods, DmAbilities.rune(c.p, id), float(intent.get("mult", 1.0)), {"x": c.p["x"], "z": c.p["z"]}, {"x": aim.x, "z": aim.z})
 	var to := Vector3(m["x"], TARGET_Y, m["z"])
 	var tip := c.tip()
 	c.after(tip.distance_to(to) / SPEED * 1000.0, func() -> void: _land(c, m))
