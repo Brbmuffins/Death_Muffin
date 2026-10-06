@@ -12,6 +12,17 @@ var stats: Dictionary = {"decal": 0, "emit": 0, "smoke": 0, "flash": 0, "light":
 	"hands": 0, "bone_orbit": 0, "sfx": 0, "loop": 0, "gesture": 0, "shake": 0, "float": 0}
 
 
+## Binbun scenes the rites play. Loading a scene stalls the NEXT frame for ~0.3-0.45 s (measured headless), so they are loaded under the loading
+## screen (warm), never on the first cast. Add the id here when a rite plays a new `bb(...)`.
+const BINBUN_IDS := ["miasma_cloud", "toxic_puddle", "carrion_seed_armed", "carrion_seed_burst", "corpse_explosion", "crit_hit", "exhume_lift",
+	"grave_offering_orb", "grave_offering_ripple", "litany_pulse"]
+
+
+func warm() -> void:
+	if fx != null and fx.get("binbun") != null and fx.binbun.enabled:
+		fx.binbun.preload_ids(BINBUN_IDS)
+
+
 static func with_autoloads() -> DmRiteFx:
 	var r := DmRiteFx.new()
 	var ml := Engine.get_main_loop()

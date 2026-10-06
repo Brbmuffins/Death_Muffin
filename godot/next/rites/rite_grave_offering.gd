@@ -52,8 +52,9 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 			var x := float(ev["x"])
 			var z := float(ev["z"])
 			c.fx.offering_start(x, z)
-			var b: Node3D = c.body
+			var bw: WeakRef = weakref(c.body)   # a WeakRef, not the body: a lambda capturing a freed Object logs an engine error on every call
 			c.fx.offering_orb(x, z, func() -> Variant:
-				return Vector3(b.global_position.x, 1.2, b.global_position.z) if is_instance_valid(b) else null, float(ev["speed"]))
+				var b: Node3D = bw.get_ref() as Node3D
+				return Vector3(b.global_position.x, 1.2, b.global_position.z) if b != null else null, float(ev["speed"]))
 		"land":
 			c.fx.offering_arrive([float(ev["x"]), 1.2, float(ev["z"])], c.is_owner_peer())

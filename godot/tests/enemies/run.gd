@@ -8,7 +8,10 @@ const DT := 1.0 / 60.0
 ## this VPS (load avg ~4, mostly move_and_slide); the budget is 150 us (30 x 150 us = 4.5 ms of a 16.7 ms frame, ~27%, the most the enemy brain may take) and total
 ## physics-process time per frame must stay under 8 ms (headless, includes the physics + navigation servers).
 const BUDGET_BRAIN_US := 150.0
-const BUDGET_PHYS_MS := 8.0
+## Whole-frame cost (physics tick + process + redraw, DmFrameCost): median budget + a generous cap on the worst frame. A quiet VPS measures ~8 ms /
+## 60 ms worst; one stall from another process must not fail the run, a real regression (every frame slower, or a 100+ ms stall in our code) must.
+const BUDGET_FRAME_MS := 14.0
+const CAP_WORST_FRAME_MS := 150.0
 
 var passed := 0
 var failed := 0
@@ -284,24 +287,22 @@ func _perf_run(props: Dictionary, dur: float) -> Dictionary:
 	dummy.global_position = Vector3(0, 0, 6)
 	await secs(1.0)    # warm-up: aggro + first paths
 	DmEnemy.prof_reset()
-	var phys_sum := 0.0
-	var proc_sum := 0.0
-	var frames := 0
+	var fc := DmFrameCost.attach(root)
 	var start := now()
 	while now() - start < dur:
 		var a := (now() - start) * 0.6
 		dummy.global_position = Vector3(sin(a) * 3.0, 0, 6.0 + cos(a) * 3.0)
 		await physics_frame
-		frames += 1
-		phys_sum += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
-		proc_sum += Performance.get_monitor(Performance.TIME_PROCESS)
+	if not fc.stalls.is_empty():
+		print("PERF   stalls [wall ms, cpu ms, load1]: ", fc.stalls)
+	fc.queue_free()
 	var engaged := 0
 	for e in es:
 		if e.sm.id() == S.CHASE or e.sm.id() == S.ATTACK:
 			engaged += 1
 	DmEnemy.profile = false
 	return {"brain": float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)), "nav": float(DmEnemy.prof_nav_us) / maxf(1.0, float(DmEnemy.prof_ticks)),
-		"repaths": DmEnemy.prof_repaths, "scans": DmEnemy.prof_scans, "phys_ms": phys_sum / frames * 1000.0, "proc_ms": proc_sum / frames * 1000.0,
+		"repaths": DmEnemy.prof_repaths, "scans": DmEnemy.prof_scans, "frame_ms": fc.median_ms(), "p95_ms": fc.p95_ms(), "worst_ms": fc.worst_ms(),
 		"engaged": engaged, "blows": dummy.hits_taken}
 
 func _t_perf() -> void:
@@ -309,12 +310,12 @@ func _t_perf() -> void:
 	Engine.time_scale = 1.0
 	Engine.physics_ticks_per_second = 60
 	var m: Dictionary = await _perf_run({}, 6.0)
-	print("PERF 30 robbers (nav + avoidance + visuals): brain %.1f us/enemy-tick (nav part %.1f us), repaths %d (%.1f/s total), scans %d, physics %.2f ms/tick, process %.2f ms/frame, engaged %d/30, %d blows"
-		% [m.brain, m.nav, m.repaths, m.repaths / 6.0, m.scans, m.phys_ms, m.proc_ms, m.engaged, m.blows])
+	print("PERF 30 robbers (nav + avoidance + visuals): brain %.1f us/enemy-tick (nav part %.1f us), repaths %d (%.1f/s total), scans %d, frame median %.2f ms (p95 %.2f, worst %.2f), engaged %d/30, %d blows"
+		% [m.brain, m.nav, m.repaths, m.repaths / 6.0, m.scans, m.frame_ms, m.p95_ms, m.worst_ms, m.engaged, m.blows])
 	check(m.engaged >= 27, "the pack is engaged (%d/30)" % m.engaged)
 	check(m.brain < BUDGET_BRAIN_US, "brain cost %.1f us/enemy-tick under %.0f us" % [m.brain, BUDGET_BRAIN_US])
-	check(m.phys_ms < BUDGET_PHYS_MS, "physics tick %.2f ms under %.0f ms" % [m.phys_ms, BUDGET_PHYS_MS])
+	check(m.frame_ms < BUDGET_FRAME_MS and m.worst_ms < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [m.frame_ms, BUDGET_FRAME_MS, m.worst_ms, CAP_WORST_FRAME_MS])
 	check(m.repaths <= 30 * 6 * 4, "repaths staggered (<= 4/s per enemy, %d)" % m.repaths)
 	for v in [["no avoidance", {"use_avoidance": false}], ["no visuals", {"with_visual": false}], ["no nav (straight)", {"use_nav": false, "use_avoidance": false}]]:
 		var r: Dictionary = await _perf_run(v[1], 3.0)
-		print("PERF   variant %-18s brain %.1f us, physics %.2f ms/tick, process %.2f ms/frame" % [v[0], r.brain, r.phys_ms, r.proc_ms])
+		print("PERF   variant %-18s brain %.1f us, frame median %.2f ms" % [v[0], r.brain, r.frame_ms])

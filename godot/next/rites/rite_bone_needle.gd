@@ -85,9 +85,12 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 			c.fx.needle_cast([from.x, from.y, from.z], from.x, from.z, bool(ev.get("volley", false)))
 			var eid := int(ev["enemy_id"])
 			var last := [to]
-			var w := c.world   # captured by value: the shot may outlive this node
+			# The shot may outlive the world (teardown, area change). A lambda that captures a freed Object logs "Lambda capture at index 0 was
+			# freed" on every call, even when its body guards with is_instance_valid, so it captures a WeakRef instead.
+			var w: WeakRef = weakref(c.world) if c.world is Object else null
 			var follow := func() -> Variant:
-				var e := w.enemy_by_id(eid) as Node3D if w != null else null
+				var wo: Object = w.get_ref() if w != null else null
+				var e: Node3D = wo.enemy_by_id(eid) as Node3D if wo != null else null
 				if e != null and is_instance_valid(e):
 					last[0] = Vector3(e.global_position.x, TARGET_Y, e.global_position.z)
 				return last[0]

@@ -67,9 +67,10 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 	var mine := c.is_owner_peer()
 	match String(ev["t"]):
 		"mantle":
-			var b: Node3D = c.body
+			var bw: WeakRef = weakref(c.body)   # a WeakRef, not the body: a lambda capturing a freed Object logs an engine error on every call
 			var follow := func() -> Variant:
-				return Vector3(b.global_position.x, 0.0, b.global_position.z) if is_instance_valid(b) else null
+				var b: Node3D = bw.get_ref() as Node3D
+				return Vector3(b.global_position.x, 0.0, b.global_position.z) if b != null else null
 			var hs := c.fx.mantle(ev, mine, follow)
 			var st := c.mem(id)
 			DmRiteFx.kill(st.get("fx_orbit"))

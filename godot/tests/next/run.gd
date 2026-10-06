@@ -180,22 +180,18 @@ func _part_a() -> void:
 	await ticks(150)
 	check(g.director.alive_count() == 25, "A: 25 robbers alive (%d)" % g.director.alive_count())
 	hb.heal(1e6)
-	# Engine monitors: seconds of script + physics work per frame (the headless loop is vsync-paced, so wall time says nothing).
-	var proc := 0.0
-	var phys := 0.0
-	var worst := 0.0
+	# DmFrameCost: wall time of whole frames (physics + process + redraw), lifted frame limiter. The engine's TIME_PROCESS / TIME_PHYSICS_PROCESS
+	# monitors are windowed maxima (one stall is held for ~1 s), so their mean flaked on a shared VPS. Median budget + generous worst-frame cap.
+	var fc := DmFrameCost.attach(root)
+	await ticks(5)
+	fc.reset()   # warm-up excluded
 	var n := 180
 	for i in n:
 		await physics_frame
 		hb.heal(1e6)
-		var pr := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
-		var ph := Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
-		proc += pr
-		phys += ph
-		worst = maxf(worst, pr + ph)
-	var per := (proc + phys) / n
-	print("perf: 25 robbers chasing, headless: process %.2f ms + physics %.2f ms = %.2f ms/frame (worst %.2f ms)" % [proc / n, phys / n, per, worst])
-	check(per < 12.0, "A: 25 chasing enemies cost under 12 ms/frame headless (%.2f)" % per)
+	fc.queue_free()
+	print("perf: 25 robbers chasing, headless: frame median %.2f ms (p95 %.2f, worst %.2f, %d samples)" % [fc.median_ms(), fc.p95_ms(), fc.worst_ms(), fc.samples()])
+	check(fc.median_ms() < 14.0 and fc.worst_ms() < 150.0, "A: 25 chasing enemies: frame median %.2f ms under 14, worst %.1f ms under 150" % [fc.median_ms(), fc.worst_ms()])
 	g.queue_free()
 	await ticks(3)
 
@@ -230,18 +226,21 @@ func _part_b() -> void:
 		var ce: DmEnemy = cg.director.enemies[id]
 		check(not ce.is_multiplayer_authority() or cg.session.multiplayer.is_server(), "B: client enemy is a puppet")
 		pairs += 1
-	await ticks(90)
-	var matched := 0
-	for id in cg.director.enemies:
-		var he: DmEnemy = hg.director.enemy_by_id(id)
-		var ce2: DmEnemy = cg.director.enemies[id]
-		if he != null and he.global_position.distance_to(ce2.global_position) < 1.5:
-			matched += 1
-	check(matched >= 3 and cg.net.states_applied > 0, "B: client enemy positions follow the host (%d matched, %d states)" % [matched, cg.net.states_applied])
+	# Replicated state is eventually consistent: poll for the condition (a one-instant sample races the enemies' movement and the host's send rate).
+	var matched := [0]
+	await until(func() -> bool:
+		matched[0] = 0
+		for id in cg.director.enemies:
+			var he: DmEnemy = hg.director.enemy_by_id(id)
+			var ce2: DmEnemy = cg.director.enemies[id]
+			if he != null and he.global_position.distance_to(ce2.global_position) < 1.5:
+				matched[0] += 1
+		return matched[0] >= 3 and cg.net.states_applied > 0, 10.0)
+	check(matched[0] >= 3 and cg.net.states_applied > 0, "B: client enemy positions follow the host (%d matched, %d states)" % [matched[0], cg.net.states_applied])
 	hh.take_damage(10.0, null)
-	await ticks(30)
-	var chb := cg.body_of(1)
-	check(chb != null and absf(chb.hp - hh.hp) < 1.0, "B: host hero vitals reach the client")
+	check(await until(func() -> bool:
+		var b1 := cg.body_of(1)
+		return b1 != null and absf(b1.hp - hh.hp) < 1.0, 5.0), "B: host hero vitals reach the client")
 	var ch := cg.local_body()
 	cg.session.request_move_to(Vector3(0, 0, -20))
 

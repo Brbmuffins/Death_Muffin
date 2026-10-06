@@ -1182,15 +1182,20 @@ func _rebuild_slots(slots: Array) -> void:
 		s.hover_changed.connect(func(on: bool) -> void: _spell_hover(idx, s, on))
 
 
+var _souls_full := -1
+
 func _apply_souls_thralls(v: Dictionary) -> void:
 	var souls := float(v.get("souls", 0))
 	var smax := maxf(float(v.get("souls_max", 1)), 1.0)
 	var full := souls >= smax
 	souls_bar.value = minf(1.0, souls / smax)
 	souls_n.text = "HARVEST" if full else "%d / %d" % [int(souls), int(smax)]
-	souls_n.add_theme_color_override("font_color", Color("9ff5e0") if full else DmUi.TEXT_MUTED)
-	souls_box.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.78), Color(0.435, 0.89, 0.784, 0.6) if full else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(8, 2, 8, 2)))
-	souls_skull.modulate = Color("9ff5e0") if full else Color.WHITE
+	# Restyle only when the state flips (a new StyleBox + theme change every 50 ms re-laid the left column).
+	if int(full) != _souls_full:
+		_souls_full = int(full)
+		souls_n.add_theme_color_override("font_color", Color("9ff5e0") if full else DmUi.TEXT_MUTED)
+		souls_box.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.78), Color(0.435, 0.89, 0.784, 0.6) if full else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(8, 2, 8, 2)))
+		souls_skull.modulate = Color("9ff5e0") if full else Color.WHITE
 	var thr := int(v.get("thralls", 0))
 	var cap := int(v.get("thrall_cap", 0))
 	var on := bool(v.get("raises_thralls", false)) or thr > 0
@@ -1208,7 +1213,7 @@ func _apply_economy(v: Dictionary) -> void:
 	shard_lbl.text = str(int(v.get("shards", 0)))
 	var sv: Dictionary = v.get("save", {})
 	save_lbl.text = String(sv.get("text", ""))
-	save_lbl.add_theme_color_override("font_color", DmUi.DANGER if bool(sv.get("warn", false)) else DmUi.TEXT_FAINT)
+	DmHudKit.set_color(save_lbl, "font_color", DmUi.DANGER if bool(sv.get("warn", false)) else DmUi.TEXT_FAINT)
 
 
 func _apply_upgrades(v: Dictionary) -> void:
@@ -1240,7 +1245,7 @@ func _apply_upgrades(v: Dictionary) -> void:
 	dial_plus.disabled = active >= owned
 	var ms := wave_milestone_text(active)
 	dial_ms.text = ms[0]
-	dial_ms.add_theme_color_override("font_color", Color("d9a441") if ms[1] else DmUi.TEXT_MUTED)
+	DmHudKit.set_color(dial_ms, "font_color", Color("d9a441") if ms[1] else DmUi.TEXT_MUTED)
 	dial_ms.visible = ms[0] != ""
 
 

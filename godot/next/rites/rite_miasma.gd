@@ -5,7 +5,8 @@ extends DmRiteModule
 const SPEED := 18.0        ## sim_caster._miasma projectile
 const TARGET_Y := 0.2
 const ARC := 12.0
-const SLOW_HOLD_S := 0.3   ## the cloud keeps its slow on for this long after the last frame an enemy stood in it
+const SLOW_HOLD_S := 0.3   ## the cloud keeps its slow on for this long after the last scan an enemy stood in it
+const SCAN_S := 0.1        ## a cloud looks for enemies 10x/s (not every frame); the hold above covers the gap
 
 
 func _init() -> void:
@@ -26,7 +27,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 ## A friendly Withered cloud (also what a toxic Corpse Explosion leaves: sim kind "rot", same rules). Host.
 func add_zone(c: DmRiteCaster, x: float, z: float, r: float, dps: float, duration_ms: float, cap: float) -> void:
 	var zones: Array = c.mem(id).get_or_add("zones", [])
-	zones.append({"x": x, "z": z, "r": r, "dps": dps, "until": c.now_ms + duration_ms, "tick": 0.0, "cap": cap})
+	zones.append({"x": x, "z": z, "r": r, "dps": dps, "until": c.now_ms + duration_ms, "tick": 0.0, "scan": 0.0, "cap": cap})
 
 
 func _land(c: DmRiteCaster, m: Dictionary) -> void:
@@ -49,6 +50,10 @@ func step(c: DmRiteCaster, dt: float) -> void:
 		var pulse: bool = z["tick"] <= 0.0
 		if pulse:
 			z["tick"] = 1.0
+		z["scan"] = float(z["scan"]) - dt
+		if z["scan"] > 0.0 and not pulse:
+			continue
+		z["scan"] = SCAN_S
 		for n in c.world.enemies_in_radius(Vector3(z["x"], 0.0, z["z"]), float(z["r"]) + 2.0):
 			var e := n as Node3D
 			if e == null or not DmRiteCaster.alive_enemy(e):

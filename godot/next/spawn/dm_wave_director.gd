@@ -270,6 +270,10 @@ func _spawn_enemy(data: Variant) -> Node:
 
 func _on_died(e: DmEnemy) -> void:
 	enemy_died.emit(e)
+	# The timer outlives the enemy (area change, teardown, clear()). A lambda capturing a freed Object logs "Lambda capture at index 0 was freed"
+	# when called, even if its body guards with is_instance_valid (found by the next suite's intermittent engine-error check), so capture a WeakRef.
+	var ref: WeakRef = weakref(e)
 	get_tree().create_timer(CORPSE_S).timeout.connect(func() -> void:
-		if is_instance_valid(e):
-			e.queue_free())
+		var dead: Node = ref.get_ref() as Node
+		if dead != null:
+			dead.queue_free())

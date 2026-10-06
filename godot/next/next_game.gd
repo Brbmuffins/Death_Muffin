@@ -123,6 +123,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		add_child(hooks)
 		hooks.setup(self)
 	if _visual:
+		DmRiteFx.with_autoloads().warm()
 		enemy_fx.warm(local_body().global_position if local_body() != null else Vector3.ZERO)
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0

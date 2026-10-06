@@ -6,7 +6,7 @@ extends Node
 ## Must sit at the same NodePath on every peer (it does: a fixed child of the DmNextGame scene).
 
 const SEND_HZ := 20.0
-const CHUNK := 8                        ## enemies per packet (keeps each under the MTU)
+const CHUNK := 6                        ## enemies per packet: ~180 bytes each as a Dictionary, 8 measured 1428-1460 B, over the 1392 B MTU (ENet fragments; one lost fragment drops the packet)
 
 var game: Node                          ## DmNextGame
 var packets_sent: int = 0

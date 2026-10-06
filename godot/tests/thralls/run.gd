@@ -6,7 +6,9 @@ const S := DmEnemyState.Id
 const TS := DmThrall.S
 const DT := 1.0 / 60.0
 const BUDGET_BRAIN_US := 150.0   ## per thrall tick (12 x 150 us = 1.8 ms)
-const BUDGET_PHYS_MS := 12.0
+## Whole-frame cost (DmFrameCost: physics + process + redraw): budgets on the median, plus a generous cap on the worst frame.
+const BUDGET_FRAME_MS := 18.0
+const CAP_WORST_FRAME_MS := 150.0
 
 var passed := 0
 var failed := 0
@@ -594,17 +596,13 @@ func _perf_run(dur: float, with_thralls: bool = true) -> Dictionary:
 	await secs(1.5)
 	DmEnemy.prof_reset()
 	DmThrall.prof_reset()
-	var phys := 0.0
-	var proc := 0.0
-	var frames := 0
+	var fc := DmFrameCost.attach(root)
 	var start := now()
 	while now() - start < dur:
 		var a := (now() - start) * 0.5
 		owner_body.global_position = Vector3(sin(a) * 3.0, 0, 6.0 + cos(a) * 3.0)
 		await physics_frame
-		frames += 1
-		phys += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
-		proc += Performance.get_monitor(Performance.TIME_PROCESS)
+	fc.queue_free()
 	var engaged := 0
 	for t in ts:
 		if t.target != null:
@@ -615,7 +613,7 @@ func _perf_run(dur: float, with_thralls: bool = true) -> Dictionary:
 	DmEnemy.profile = false
 	DmThrall.profile = false
 	return {"brain": float(DmThrall.prof_brain_us) / maxf(1.0, float(DmThrall.prof_ticks)), "scans": DmThrall.prof_scans, "enemy_brain": float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)),
-		"phys_ms": phys / frames * 1000.0, "proc_ms": proc / frames * 1000.0, "engaged": engaged, "blows": blows, "alive": host.count()}
+		"frame_ms": fc.median_ms(), "worst_ms": fc.worst_ms(), "engaged": engaged, "blows": blows, "alive": host.count()}
 
 
 func _t_perf() -> void:
@@ -624,9 +622,10 @@ func _t_perf() -> void:
 	var base: Dictionary = await _perf_run(3.0, false)
 	var m: Dictionary = await _perf_run(5.0)
 	var base2: Dictionary = await _perf_run(3.0, false)
-	var base_ms := minf(base.phys_ms, base2.phys_ms)
-	print("PERF 12 thralls + 30 enemies: thrall brain %.1f us/tick (%d idle scans), enemy brain %.1f us/tick, physics %.2f ms/tick (30 enemies alone %.2f), process %.2f ms/frame, engaged %d/12, %d blows, %d alive"
-		% [m.brain, m.scans, m.enemy_brain, m.phys_ms, base_ms, m.proc_ms, m.engaged, m.blows, m.alive])
+	var base_ms := minf(base.frame_ms, base2.frame_ms)
+	print("PERF 12 thralls + 30 enemies: thrall brain %.1f us/tick (%d idle scans), enemy brain %.1f us/tick, frame median %.2f ms (30 enemies alone %.2f, worst %.1f), engaged %d/12, %d blows, %d alive"
+		% [m.brain, m.scans, m.enemy_brain, m.frame_ms, base_ms, m.worst_ms, m.engaged, m.blows, m.alive])
 	check(m.engaged >= 9 and m.blows > 30, "the legion fights (%d engaged, %d blows)" % [m.engaged, m.blows])
 	check(m.brain < BUDGET_BRAIN_US, "thrall brain %.1f us under %.0f us" % [m.brain, BUDGET_BRAIN_US])
-	check(m.phys_ms - base_ms < 6.0 or m.phys_ms < BUDGET_PHYS_MS, "12 thralls add %.2f ms to the physics tick (< 6 ms; machine noise tolerated)" % (m.phys_ms - base_ms))
+	check(m.frame_ms - base_ms < 6.0 or m.frame_ms < BUDGET_FRAME_MS, "12 thralls add %.2f ms to the frame (< 6 ms, or the frame median under %.0f ms)" % [m.frame_ms - base_ms, BUDGET_FRAME_MS])
+	check(m.worst_ms < CAP_WORST_FRAME_MS, "worst frame %.1f ms under %.0f ms" % [m.worst_ms, CAP_WORST_FRAME_MS])

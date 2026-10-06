@@ -17,6 +17,7 @@ var barrier: float = 0.0: set = set_barrier   ## 0..0.9 alpha of the bone ring (
 var beat_pulse: bool = false: set = set_beat
 var _shown_fill: float = 1.0
 var _t: float = 0.0
+var _since_draw: float = 0.0
 
 
 func _init() -> void:
@@ -63,8 +64,13 @@ func use_resource_palette() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	# `transition: height 0.18s ease-out`
+	var easing := not is_equal_approx(_shown_fill, fill)
 	_shown_fill = move_toward(_shown_fill, fill, delta * maxf(1.0, absf(fill - _shown_fill)) / 0.18)
-	queue_redraw()
+	# The surface ripple has a 3.5 s period: 30 Hz is indistinguishable from every frame, so a settled orb redraws at 30 Hz, an easing one every frame.
+	_since_draw += delta
+	if easing or _since_draw >= 0.03:
+		_since_draw = 0.0
+		queue_redraw()
 
 
 func _draw() -> void:

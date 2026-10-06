@@ -9,7 +9,9 @@ const DT := 1.0 / 60.0
 ## this VPS (load avg ~4, mostly move_and_slide); the budget is 150 us (30 x 150 us = 4.5 ms of a 16.7 ms frame, ~27%, the most the enemy brain may take) and total
 ## physics-process time per frame must stay under 8 ms (headless, includes the physics + navigation servers).
 const BUDGET_BRAIN_US := 150.0
-const BUDGET_PHYS_MS := 12.0   # quiet VPS ~3.8 ms; 8 ms tripped once at load ~5 with other agents' suites running (9.8 ms)
+## Whole-frame cost (DmFrameCost: physics + process + redraw): budget on the median, separate generous cap on the worst frame.
+const BUDGET_FRAME_MS := 16.0
+const CAP_WORST_FRAME_MS := 150.0
 
 var passed := 0
 var failed := 0
@@ -527,17 +529,13 @@ func _t_perf() -> void:
 	dummy.global_position = Vector3(0, 0, 6)
 	await secs(1.0)
 	DmEnemy.prof_reset()
-	var phys_sum := 0.0
-	var proc_sum := 0.0
-	var frames := 0
+	var fc := DmFrameCost.attach(root)
 	var start := now()
 	while now() - start < 8.0:
 		var a := (now() - start) * 0.6
 		dummy.global_position = Vector3(sin(a) * 3.0, 0, 6.0 + cos(a) * 3.0)
 		await physics_frame
-		frames += 1
-		phys_sum += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
-		proc_sum += Performance.get_monitor(Performance.TIME_PROCESS)
+	fc.queue_free()
 	DmEnemy.profile = false
 	var brain := float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks))
 	var line := ""
@@ -551,9 +549,9 @@ func _t_perf() -> void:
 	for e in es:
 		if e.sm.id() != S.IDLE and e.sm.id() != S.RISING:
 			engaged += 1
-	print("PERF mixed-30 Graves crowd: brain %.1f us/enemy-tick, physics %.2f ms/tick, process %.2f ms/frame, engaged %d/30, %d blows" % [brain, phys_sum / frames * 1000.0, proc_sum / frames * 1000.0, engaged, dummy.hits_taken])
+	print("PERF mixed-30 Graves crowd: brain %.1f us/enemy-tick, frame median %.2f ms (p95 %.2f, worst %.2f), engaged %d/30, %d blows" % [brain, fc.median_ms(), fc.p95_ms(), fc.worst_ms(), engaged, dummy.hits_taken])
 	print("PERF   per kind:", line)
 	check(engaged >= 27, "the mixed crowd is engaged (%d/30)" % engaged)
 	check(brain < BUDGET_BRAIN_US, "mixed brain cost %.1f us/enemy-tick under %.0f us" % [brain, BUDGET_BRAIN_US])
 	check(worst < BUDGET_BRAIN_US, "every kind under the %.0f us budget (worst %.1f us)" % [BUDGET_BRAIN_US, worst])
-	check(phys_sum / frames * 1000.0 < BUDGET_PHYS_MS, "physics tick %.2f ms under %.0f ms" % [phys_sum / frames * 1000.0, BUDGET_PHYS_MS])
+	check(fc.median_ms() < BUDGET_FRAME_MS and fc.worst_ms() < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [fc.median_ms(), BUDGET_FRAME_MS, fc.worst_ms(), CAP_WORST_FRAME_MS])
