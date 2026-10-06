@@ -477,7 +477,12 @@ func _manual_tick(e: DmSimEnemy) -> void:
 			return
 	var sp := screen_of(e.x, 0.9 * e.scale, e.z)
 	var vp := Vector2(sv.size)
-	if sp.x < 4 or sp.y < 4 or sp.x > vp.x - 4 or sp.y > vp.y - 4:
+	mouse_to(sp)
+	await process_frame
+	# An enemy drawn under a HUD control (e.g. the Buy Damage button, 40 / 60 gold) must not be clicked through it: a real player's click
+	# would buy the upgrade, which the gold-decrease monitor reported as lost milestone gold (findings 1410 -> 1370, 500 -> 440).
+	var over_ui := sv.gui_get_hovered_control() != null
+	if over_ui or sp.x < 4 or sp.y < 4 or sp.x > vp.x - 4 or sp.y > vp.y - 4:
 		g.input.set_ground(e.x, e.z)
 		g.input.hover = {"kind": "enemy", "id": e.id}
 		g.input.on_primary_click()
