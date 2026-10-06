@@ -45,6 +45,7 @@ func _run(_t: SceneTree) -> void:
 	await _persistence()
 	await _no_loss_on_refusal()
 	_grant_caps()
+	_repair_stacks()
 	_clean()
 
 func _session(path: String = "") -> Array:
@@ -285,6 +286,15 @@ func _no_loss_on_refusal() -> void:
 
 ## A contract reward obeys the item's stack cap like contracts.cjs addToBag: a second Copper Ring opens its own slot (a 2-stack was refused by every later
 ## inventory save, so the bag never reached the server and a Workbench reforge found "nothing in that slot": next_acre_guide flaked on the reward roll).
+func _repair_stacks() -> void:
+	var mock: DmMockBackend = _session()[0]
+	var acc := {"slots": [{"slot_index": 0, "item_id": "ring_copper", "quantity": 3, "equipped": 0}, {"slot_index": 1, "item_id": "log_oak", "quantity": 5, "equipped": 0}]}
+	_ok(mock.repair_stacks(acc) == 1, "repair: one over-cap stack found")
+	var rings: Array = acc["slots"].filter(func(x): return x["item_id"] == "ring_copper")
+	_ok(rings.size() == 3 and rings.all(func(x): return int(x["quantity"]) == 1), "repair: a 3-ring stack becomes three rings", str(rings))
+	_ok(mock.repair_stacks(acc) == 0, "repair: nothing left to repair")
+
+
 func _grant_caps() -> void:
 	var mock: DmMockBackend = _session()[0]
 	var acc := {"slots": [{"slot_index": 0, "item_id": "ring_copper", "quantity": 1, "equipped": 0}, {"slot_index": 1, "item_id": "log_oak", "quantity": 95, "equipped": 0}]}

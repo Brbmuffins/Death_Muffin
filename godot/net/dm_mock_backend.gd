@@ -68,6 +68,35 @@ func _load() -> void:
 		if not db.has("next_character_id"):
 			db["next_character_id"] = FIRST_CHARACTER_ID
 		_last_saved = JSON.stringify(db)
+		for name in db["accounts"]:
+			repair_stacks(db["accounts"][name])
+		_save()
+
+
+## Bag stacks above the item's cap (an older offline backend stacked contract-reward gear, e.g. two Copper Rings in one slot) make every
+## inventory save fail with "exceeds its maximum stack size", so the bag stopped saving. Split them into free bag slots; what cannot fit
+## stays at the cap (the rest is dropped). Returns how many stacks were repaired.
+func repair_stacks(acc: Dictionary) -> int:
+	var fixed := 0
+	if not (acc.get("slots") is Array):
+		return 0
+	for s in acc["slots"].duplicate():
+		var id := String(s.get("item_id", ""))
+		var cap := _stack_cap(id)
+		var q := int(s.get("quantity", 1))
+		if q <= cap:
+			continue
+		fixed += 1
+		s["quantity"] = cap
+		var left := q - cap
+		while left > 0:
+			var free := _free_bag_slot(acc)
+			if free < 0:
+				break
+			var put := mini(left, cap)
+			acc["slots"].append({"slot_index": free, "item_id": id, "quantity": put, "equipped": 0})
+			left -= put
+	return fixed
 
 ## Atomic: write a sibling tmp file, then rename it over the real one. Unchanged state is not rewritten.
 func _save() -> void:
