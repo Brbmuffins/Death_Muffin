@@ -109,6 +109,7 @@ func watch(e: DmEnemy) -> void:
 	_slots[e.get_instance_id()] = s
 	_link(s, e.telegraph, _on_telegraph.bind(e))
 	_link(s, e.damaged, _on_damaged.bind(e))
+	_link(s, e.cue, _on_cue.bind(e))
 	_link(s, e.state_changed, _on_state.bind(e))
 	_link(s, e.tree_exiting, _on_exit.bind(e))
 	if e.is_node_ready():
@@ -196,6 +197,16 @@ func _on_telegraph(kind: StringName, from: Vector3, aim: Vector3, radius: float,
 	else:
 		_tele.erase("r")
 	vfx.danger(_tele_call)
+
+
+## Host-side one-off cues. Only the Deacon's Sanctify: DmEventFx._sanctify's thread and halo (the blessed body's motes come from DmStatusSet).
+func _on_cue(kind: StringName, at: Vector3, _radius: float, e: DmEnemy) -> void:
+	if kind != &"sanctify":
+		return
+	var gold := fx.status_fx("sanctified", "gold")
+	var p := e.global_position
+	fx.beam(Vector3(p.x, 1.9, p.z), Vector3(at.x, 1.6, at.z), gold, 0.04, 0.5)
+	fx.decal({"tex": "ring", "color": gold, "x": at.x, "z": at.z, "r": 1.1, "duration": 0.8, "opacity": 0.8, "growFrom": 1.8})
 
 
 func _on_damaged(amount: float, _hp_left: float, from: Node, e: DmEnemy) -> void:

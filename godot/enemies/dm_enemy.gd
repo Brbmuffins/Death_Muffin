@@ -67,6 +67,7 @@ const LOOK_WINGS := {"moth": {"speed": 8.0, "amp": 0.55, "body": 0.16}, "bat": {
 @export var elite: bool = false           ## sim ELITE multipliers (hp/damage/scale/radius, wind-up x0.85, cooldown x0.8); affixes are NOT implemented
 @export var in_graves: bool = true        ## burrowers: BURROW.eruptMultGraves / eruptMsGraves vs the deeper-area numbers
 @export var flank_side: float = 0.0       ## +-1 flank side for flanker kinds; 0 = random per body
+@export var model_slug: String = ""       ## "" = the def's modelSlug (or grave_robber); a scene sets it for defs that name no model (deacon)
 
 # --- stats (filled from the def in _ready) ---
 var def: Dictionary
@@ -203,7 +204,7 @@ func _ready() -> void:
 	agent.target_position = global_position
 
 	if with_visual:
-		var slug: String = String(def.get("modelSlug", "grave_robber"))
+		var slug: String = model_slug if model_slug != "" else String(def.get("modelSlug", "grave_robber"))
 		creature = DmCreature.new(slug, look_options())
 		$Visual.add_child(creature.root)
 		creature.set_loop("idle")
