@@ -1426,7 +1426,7 @@ func _labor_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 	var seed_rng: Object = DmLabor.claim_rng(DmLabor.hash_seed([acc["character"]["id"], int(slot_f), row2["startedAt"], actions]))
 	var roll := DmLabor.roll_labor(def, {"level": pr["skill_level"], "xp": pr["skill_xp"]}, float(elapsed), seed_rng.as_callable())
 	var before := _clone_slots(acc)
-	var placed := DmGathering.place_items(_placement_rows(acc), roll["items"], func(_id: String) -> int: return 250)
+	var placed := DmGathering.place_items(_placement_rows(acc), roll["items"], func(id: String) -> int: return _stack_cap(id))   # labor.cjs / garden.cjs: the item's own cap, gear 1 (a flat 250 stacked rings)
 	if not placed["rejected"].is_empty():
 		var n := 0
 		for g in placed["rejected"]:
@@ -1523,7 +1523,7 @@ func _garden_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 	var grants: Array = [{"itemId": crop["itemId"], "qty": crop["qty"]}]
 	if crop["seedBack"] != null:
 		grants.append({"itemId": crop["seedBack"], "qty": 1})
-	var placed := DmGathering.place_items(_placement_rows(acc), grants, func(_id: String) -> int: return 250)
+	var placed := DmGathering.place_items(_placement_rows(acc), grants, func(id: String) -> int: return _stack_cap(id))   # labor.cjs / garden.cjs: the item's own cap, gear 1 (a flat 250 stacked rings)
 	if not placed["rejected"].is_empty():
 		return _fail("Make room in your bag before you harvest.")
 	_apply_placed(acc, placed)
@@ -1620,16 +1620,26 @@ func _contract_view(acc: Dictionary) -> Dictionary:
 	return {"board": board, "view": {"day": st["day"], "resetsAt": _iso(DmContracts.next_reset_ms(_now())), "contracts": contracts,
 		"bonus": {"gold": bonus["gold"], "item": bi, "claimed": st["bonus"]}, "streak": DmContracts.streak_of(st["days"], st["day"])}}
 
-## Hand `qty` of an item into the bag for a contract reward: onto an existing bag stack, else the first free slot.
+## Hand `qty` of an item into the bag for a contract reward, like contracts.cjs addToBag: top up bag stacks below the item's cap (gear never stacks),
+## then open free slots for the rest. false when some of it did not fit. (This once stacked past the cap, e.g. a second Copper Ring onto the first:
+## the server then held a 2-stack that every later inventory save was refused for, so the bag never reached it.)
 func _grant(acc: Dictionary, item_id: String, qty: int) -> bool:
-	for s in acc["slots"]:
-		if s["item_id"] == item_id and int(s["slot_index"]) < BAG and not _truthy(s.get("equipped")):
-			s["quantity"] = int(s["quantity"]) + qty
-			return true
-	var free := _free_bag_slot(acc)
-	if free < 0:
-		return false
-	acc["slots"].append({"slot_index": free, "item_id": item_id, "quantity": qty, "equipped": 0})
+	var cap := _stack_cap(item_id)
+	var left := qty
+	if cap > 1:
+		var stacks: Array = acc["slots"].filter(func(x): return x["item_id"] == item_id and int(x["slot_index"]) < BAG and not _truthy(x.get("equipped")) and int(x["quantity"]) < cap)
+		stacks = DmStableSort.sorted(stacks, func(a, b): return int(a["slot_index"]) < int(b["slot_index"]))
+		for s in stacks:
+			var add := mini(left, cap - int(s["quantity"]))
+			s["quantity"] = int(s["quantity"]) + add
+			left -= add
+	while left > 0:
+		var free := _free_bag_slot(acc)
+		if free < 0:
+			return false
+		var put := mini(left, cap)
+		acc["slots"].append({"slot_index": free, "item_id": item_id, "quantity": put, "equipped": 0})
+		left -= put
 	return true
 
 func _contracts_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
