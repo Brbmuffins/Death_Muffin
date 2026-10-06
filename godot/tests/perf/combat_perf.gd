@@ -1,7 +1,7 @@
 extends SceneTree
 ## Combat CPU profile (headless dummy renderer or --rendered under xvfb): the hero stands in a hunting ground with waves + thralls and casts
 ## the kit on cooldown; prints frame-time stats and DmGame.tick per-section cost.
-## godot --headless --path godot --script res://tests/perf/combat_perf.gd -- [--area=graves] [--seconds=20] [--level=12] [--boss=1]
+## godot --headless --path godot --script res://tests/perf/combat_perf.gd -- [--area=graves] [--seconds=20] [--level=12] [--boss=1] [--graphics=low|medium|high|ultra]
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -26,6 +26,8 @@ func _run() -> void:
 	var game := DmGame.new()
 	root.add_child(game)
 	await game.start(c.data, api, {"visual": true, "persist": _arg("db", "0") == "1", "local_progress": _arg("db", "0") != "1", "seed": 7, "warmup": _arg("warmup", "1") == "1"})
+	if _arg("graphics", "") != "":
+		game.settings_store.update({"graphics": _arg("graphics", "")})
 	if _arg("ui", "0") == "1":
 		var ui := DmGameUi.new()
 		game.add_child(ui)

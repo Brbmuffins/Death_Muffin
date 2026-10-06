@@ -2,7 +2,7 @@ class_name DmSettings
 extends RefCounted
 ## Port of src/app/settings.ts: the per-viewer settings store, persisted to a JSON file (the desktop stand-in for localStorage). Difficulty and
 ## auto combat are per character (setActiveCharacter). Keys are the Settings panel's (godot/ui/panels/dm_settings_panel.gd `values`), with the
-## web's defaults: difficulty, auto_combat, auto_gather, loot_<tier> ("ground"|"auto"|"gold"), graphics ("high"|"low"), fps, auto_res, vol_master,
+## web's defaults: difficulty, auto_combat, auto_gather, loot_<tier> ("ground"|"auto"|"gold"), graphics ("low"|"medium"|"high"|"ultra", DmGraphicsPreset), fps, auto_res, vol_master,
 ## vol_combat, vol_amb, vol_music, vol_ui (= web volume, combatVolume, ambienceVolume, musicVolume, interfaceVolume), reduce_motion, damage_numbers,
 ## hide_helm, no_tips, guidance, guide_ping, dev_access.
 
@@ -53,6 +53,7 @@ func _load() -> void:
 	for k in VOLUME_KEYS:
 		var v: Variant = values[k]
 		values[k] = clampf(float(v), 0.0, 1.0) if typeof(v) in [TYPE_INT, TYPE_FLOAT] else defaults()[k]
+	values["graphics"] = DmGraphicsPreset.normalize(values["graphics"])   # the old "high"/"low" are presets; anything else is High
 	if not values["graphics_chosen"]:
 		values["fps"] = 0
 	values["auto_res"] = values["auto_res"] != false

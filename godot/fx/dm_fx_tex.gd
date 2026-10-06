@@ -68,7 +68,7 @@ void fragment() {
 	"decal": """
 shader_type spatial;
 render_mode BLEND, unshaded, depth_draw_never, cull_disabled, fog_disabled;
-uniform sampler2D tex : source_color, filter_linear_mipmap;
+uniform sampler2D tex : source_color, filter_linear_mipmap_anisotropic;
 uniform float rim_edge = 2.0;
 uniform float rim_floor = 1.0;
 varying float v_op;

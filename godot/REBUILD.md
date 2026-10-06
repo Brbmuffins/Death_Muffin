@@ -75,6 +75,27 @@ Godot client  <->  Host's Godot game (authoritative sim, 1-4 players)
    VPS backend, offline via the local backend, D4).
 5. **Content migration**: bosses, then the Depths, then the remaining areas. Then retire the web build (D9) and its TS exporters.
 6. **Hardening**: disconnects, host migration (or clean session end), desync checks, cheating review.
+   - **Graphics quality pass** (owner 2026-10-06: ground markings and the overall image look reduced/pixelated). BUILT on `godot/quality`
+     (renderer stays gl_compatibility):
+     - Presets Low / Medium / High / Ultra (`game/dm_graphics_preset.gd`, one table; the saved `graphics` value is the preset id, old
+       "high"/"low" load unchanged, new players = High). MSAA (2/4/8x) and anisotropic level are set on the viewport at runtime by
+       `DmGame._apply_graphics`, plus shadow atlas size / reach / PSSM splits / soft-shadow filter, prop-light count, prop shadow range and mesh LOD (High and Ultra are
+       genuinely richer than the old High: 10 / 14 lights, 4096 shadows reaching 55 / 80 m, Ultra = 8x MSAA, 16x aniso, soft-shadow HIGH, LOD 0.5);
+       `project.godot` is untouched. Glow upscale quality is a project setting (not per-viewport) and was left alone.
+     - Resolution governor floor is per preset (`DmResolutionGovernor.set_floor`): Low 0.6, Medium/High/Ultra 0.85. Behaviour is still timid.
+     - Sharper ground markings: sigil ring texture 128 -> 256 px with mipmaps, ground/wall materials use trilinear + anisotropic filtering,
+       floor/wall + decal textures import with mipmaps, the fx decal shader samples `filter_linear_mipmap_anisotropic`.
+     - Tests: `tests/game/graphics_run.gd`; shots: `tests/perf/quality_shot.gd`; `combat_perf.gd --graphics=`.
+   - **Forward+ evaluation (NOT done, needs real PCs).** Would buy: FSR 1/2 upscaling (a far better "Auto resolution" than bilinear, so the governor
+     could go lower without the pixel look), TAA, SSAO/SSIL-class effects, clustered lights (no 8-light prop cap, no per-object light
+     limit on floors), better shadows, decals as real projected `Decal` nodes instead of quads, better glow.
+     Costs: needs Vulkan/D3D12 (older iGPUs and some laptops fall back or fail; the VPS has none), heavier baseline GPU cost and VRAM,
+     longer shader compile / first-frame stutter, the web/mobile exports stay Compatibility so we would carry two render paths (the
+     MultiMesh COLOR handling, shader `render_mode`s and the light caps are Compatibility-specific), and every fx shader and perf budget
+     would need re-measuring. Must be tested on the owner's and Helix's real PCs before any switch: frame time (avg/p99) in the Hollow
+     Graves with 20+ enemies and a boss at 1080p/1440p on Low/High, FSR quality modes vs native + MSAA, first-frame / shader-compile hitch,
+     VRAM, driver failures, and a Compatibility fallback (`renderer/rendering_method.fallback`). Do it on a separate branch behind a
+     project/launcher flag, not as a preset.
 
 ## Status
 
