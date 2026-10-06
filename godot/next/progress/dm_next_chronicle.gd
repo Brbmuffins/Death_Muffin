@@ -11,6 +11,8 @@ extends Node
 
 const FLUSH_S := 30.0
 
+signal trophy_claimed(boss_id: String)   ## a first kill was counted (the guidance's bosses-beaten feed)
+
 var game: Node                                    ## DmNextGame
 var chronicle := DmChronicle.new()
 var hero_id: int = 0
@@ -68,6 +70,7 @@ func claim_trophy(boss_id: String) -> bool:
 	chronicle.add("boss." + boss_id)
 	_t = minf(_t, 2.0)   # a plain kill rides the next flush; the first is also sent now
 	if first:
+		trophy_claimed.emit(boss_id)
 		flush()
 	return first
 

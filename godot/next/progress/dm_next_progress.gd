@@ -47,7 +47,12 @@ func setup(shell_: DmNextGame, m: DmRewardsMember, persist: bool) -> void:
 	belt.body = m.body as DmHeroBody
 	belt.prog = prog
 	belt.say = func(text: String, kind: String, y: float) -> void: event.emit("float", {"world": belt.body.position + Vector3(0, y, 0), "text": text, "kind": kind})
-	belt.sfx = Callable(self, "sfx")
+	belt.sfx = func(sound: String) -> void:
+		sfx(sound)
+		if sound == "drinkElixir":   # the counsel's first-brew / first-meal tips (DmGameActions.drink_buff / eat_meal)
+			event.emit("brew_drunk", {})
+		elif sound == "eatMeal":
+			event.emit("meal_eaten", {})
 	belt.toast = func(text: String) -> void: event.emit("toast", {"text": text, "kind": ""})
 	shell.rewards.member_credited.connect(_on_credited)
 	prog.synced.connect(apply_progress)   # the backend's reply to a purchase / save is the truth

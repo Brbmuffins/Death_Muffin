@@ -208,7 +208,13 @@ func _quote(f: DmForgePanel) -> void:
 
 func _reforge(f: DmForgePanel, slot: int, affix: int, cost: int) -> void:
 	f.reforge.set_busy(true)
-	var r: DmResult = await game.api.reforge_affix(cid(), slot, affix, cost)
+	var psync: Variant = game.get("psync")
+	var work := func() -> DmResult:
+		if psync != null:   # ForgePanel `spend`: the server prices from ITS gold, so ours is saved first and its reply's gold adopted (else the reforge is free)
+			return await psync.spend_on_server(func() -> DmResult: return await game.api.reforge_affix(cid(), slot, affix, cost))
+		return await game.api.reforge_affix(cid(), slot, affix, cost)
+	var inv: Variant = game.get("inventory")   # Inventory.exclusiveAction: a pickup still in the save debounce reaches the server first (else "nothing in that slot")
+	var r: DmResult = await (inv.exclusive(work) if inv != null else work.call())
 	f.reforge.set_busy(false)
 	if not r.ok:
 		f.reforge.set_error(r.error if r.error != "" else "The Workbench refuses.")
@@ -349,8 +355,11 @@ func _deliver(slot: int) -> void:
 	contracts.set_counts(bag_counts())
 	contracts.set_board(r.data)
 	ui.contract_summary = DmGuidance.summarize_contracts(r.data)
-	ui.play("orderFilled")
-	ui.toast("Order filled", "good")
+	if game.has_method("on_contract_delivered"):
+		game.on_contract_delivered(r.data)   # WorldScene.onContractDelivered: the gold (the server never writes it), the chronicle, the toast
+	else:
+		ui.play("orderFilled")
+		ui.toast("Order filled", "good")
 
 
 func _plant(plot: String, seed_id: String, compost: bool) -> void:
@@ -361,7 +370,10 @@ func _plant(plot: String, seed_id: String, compost: bool) -> void:
 		await game.refresh_inventory()
 		garden.set_bag(_bag_rows())
 		garden.set_view(r.data)
-		ui.play("gardenPlant")
+		if game.has_method("on_garden_result"):
+			game.on_garden_result("plant", r.data)
+		else:
+			ui.play("gardenPlant")
 	else:
 		garden.set_view(garden.view)
 
@@ -374,7 +386,10 @@ func _harvest(plot: String) -> void:
 		await game.refresh_inventory()
 		garden.set_bag(_bag_rows())
 		garden.set_view(r.data)
-		ui.play("gardenHarvest")
+		if game.has_method("on_garden_result"):
+			game.on_garden_result("harvest", r.data)
+		else:
+			ui.play("gardenHarvest")
 
 
 func _labor_assign(slot: int, node: String) -> void:
@@ -395,7 +410,10 @@ func _labor_collect(slot: int) -> void:
 		labor.set_view(r.data)
 		var c: Variant = r.data.get("collected") if r.data is Dictionary else null
 		if c is Dictionary:
-			ui.play("coin")
+			if game.has_method("on_labor_collected"):
+				game.on_labor_collected(r.data, slot)   # WorldScene.onLaborCollected: gold, chronicle, the finds report under the laborer
+			else:
+				ui.play("coin")
 
 
 func refresh_open() -> void:

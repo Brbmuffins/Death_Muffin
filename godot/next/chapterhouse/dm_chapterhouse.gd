@@ -40,6 +40,8 @@ var recall_active := false
 var _acc := 0.0
 var _npc_acc := 0.0
 var _guide_acc := GUIDE_S
+var _news_state: Dictionary = {}
+var _news_sig := -1
 var _recall_end := 0
 var _recall_fx: Variant = null
 var _new: Dictionary = {}
@@ -131,9 +133,14 @@ func _refresh_npcs(b: DmHeroBody, dt: float) -> void:
 	_guide_acc += dt
 	if _guide_acc >= GUIDE_S and ui != null and ui.get("memory") != null:
 		_guide_acc = 0.0
-		var st: Dictionary = ui.guidance_state()
+		var st: Dictionary = ui.last_guidance if not ui.last_guidance.is_empty() else ui.guidance_state()   # the UI's own 0.5 s state: not built twice
+		var sig: int = ui.memory.met_npcs.size() * 1000003 + ui.memory.heard.size() * 1009 + ui.memory._session.size()
+		var news_changed := sig != _news_sig or st != _news_state   # who has something new is only re-read when the facts or the memory changed
+		_news_state = st
+		_news_sig = sig
 		for nid in DmContent.get_export("npcs", "NPC_IDS"):
-			_new[nid] = ui.memory.has_something_new(String(nid), st)
+			if news_changed:
+				_new[nid] = ui.memory.has_something_new(String(nid), st)
 			if npcs.distance_to(String(nid), b.position.x, b.position.z) < 14.0 and ui.memory.first_sight(String(nid)):
 				_event("npc_first_sight")
 	npcs.hover_id = String((hover as Dictionary).get("npc", "")) if hover != null else ""

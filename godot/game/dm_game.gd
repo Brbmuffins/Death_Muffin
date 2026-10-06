@@ -1429,6 +1429,19 @@ func send_intent(intent: Dictionary) -> void:
 		sim.apply(intent)
 
 
+## The Acre panels' hooks (DmUiPanelsB): a laborer collected, a garden plant / harvest, a contract delivered (WorldScene.onLaborCollected / onGardenResult / onContractDelivered).
+func on_labor_collected(r: Dictionary, slot: int) -> void:
+	labor.on_collected(r, slot)
+
+
+func on_garden_result(kind: String, r: Dictionary) -> void:
+	labor.on_garden_result(kind, r)
+
+
+func on_contract_delivered(d: Dictionary) -> void:
+	labor.on_contract_delivered(d)
+
+
 func emit_game_event(id: String, ctx: Dictionary = {}) -> void:
 	game_event.emit(id, ctx)
 

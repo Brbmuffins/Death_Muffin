@@ -14,7 +14,7 @@ the `GAME_CONTRACT.md` surface. So every panel and HUD widget "exists" on the re
 every contract method the first audit listed as absent (`stop_gathering`, `afk_*`, `start_afk`, `dial_wave`, `summon_boss(_empowered)`, `enter_depths`, `class_changed`,
 `counsel_busy`, `counsel_tick_ctx`, `leave_world`, `flush_chronicle`) except the party calls (`party_create/join/leave`, D5), `pause/resume_coop`, `belt_choices`
 (`DmNextBelt` serves it) and `set_primary` (`set_rites` covers it); `DmGameUi` calls them through `has_method`, so the party ones silently do nothing.
-`hud_state()` (`next/hud/dm_next_hud_vm.gd`) now sets `depth`, `chain`, `omen`, `ward`, `souls` and `save` (the auto-combat button follows the `auto_combat` setting); `next` (Next-step box) is still thin.
+`hud_state()` (`next/hud/dm_next_hud_vm.gd`) now sets `depth`, `chain`, `omen`, `ward`, `souls` and `save` (the auto-combat button follows the `auto_combat` setting); `next` (Next-step box) follows the guidance feeds and `minimap.ping` the suggestion (`tests/next_acre_guide`).
 
 **Not the default yet:** `DmMain.USE_NEXT` is still `false` (`main/main.gd:12`); the rebuild runs with `-- --next`, the old game stays the default until the owner flips it.
 
@@ -26,8 +26,8 @@ Ranked by owner priority: performance #1; the necromancer's four disciplines and
    Phase 6 (floor ~0.85 render scale, presets, AA, decal sharpness) is unbuilt. `DmNextPerf` / `DmNextWarmup` are done (sections 17, 23); what is missing is a rendered frame budget on real hardware.
 2. **Target-frame affix chips (DONE, `tests/next_brews_affix`)**: `DmNextHudVm._target` feeds `{id, name}` chips + the combined blurb from the replicated `dm_affix_list` meta, cached per target.
 3. **Lifesteal / fortune / wisdom brews (DONE, `tests/next_brews_affix`)**: `DmRewardsMember.sync_brews` sets wisdom / fortune per kill from the body's active brews; `DmSessionRewards` applies `DmBrews.lifesteal_heal` on every host-side hit the hero lands.
-4. **Gathering world glue** (section 9): visible Grave Laborers, garden / contract notices (`DmGameLabor` timers). The panels already work through the backend. Lower: gather bests are not stored.
-5. **First-hour guidance**: the Next-step box depends on bag / level only; counsel itself is done. Reforge flow, Alchemist's Wing stations, bug report and Acre stations are wired but untested (sections 10, 22, 24).
+4. ~~**Gathering world glue**~~ **CLOSED** (`DmNextAcre`, `tests/next_acre_guide`): visible Grave Laborers, labor / garden / contract notices, collect / contract gold credited. Lower: gather bests are not stored.
+5. ~~**First-hour guidance**~~ **CLOSED** (`tests/next_acre_guide`): the Next box + ping are fed the current client's state (and skills / trophies / labor / contracts), the reforge flow, Wing and Acre stations and the bug report are verified (the reforge gold and the contract / labor gold bugs were fixed on the way). Left: a few counsel events still unraised (`next/hud/README.md`).
 6. **Combat odds and ends** (section 1): Bulwark / player-side Bone Ward and Colossus guard as timed statuses, boss slow / root, rite sfx coverage (unverified), pooled creature bodies (probably moot: enemies are scenes).
 7. ~~Rune variants / Grimoire runes / legendary mechanics / Bonded Dead~~ DONE (`tests/next_runes`). Left: a joined client's own rune sockets do not reach the host (D5); Colossus Mantle hooks are host-hero only; splinter/volley skip the scythe/staff primaries.
 8. **Make the rebuild the default** (`USE_NEXT`) once the owner is satisfied; Play Online on the rebuild is untested against the live backend.
@@ -36,7 +36,7 @@ Ranked by owner priority: performance #1; the necromancer's four disciplines and
 
 ## Summary
 
-**Rows counted: 206** (the first pass said 207; a header row was miscounted). After the re-check: DONE 156, PARTIAL 34, MISSING 6, N/A 10, IN PROGRESS 0
+**Rows counted: 206** (the first pass said 207; a header row was miscounted). After the re-check: DONE 168, PARTIAL 22, MISSING 6, N/A 10, IN PROGRESS 0 (the acre-guide pass closed 12 rows: laborers, garden, contracts, Workbench / reforge, Wing stations, gold sinks, Next box, Acre ledger, the two bug-report rows, Acre stations, boss prompts + ping)
 (first pass: DONE 84, PARTIAL 56, MISSING 47, IN PROGRESS 11, N/A 9). The simulation core, the shell around it (front flow, hero look, HUD feeds, settings consumers), the
 meta layer (difficulty, vows, Omen, chain, Soul Harvest), all seven bosses with Empowered summons, the Depths, gathering, the Chronicle and Codex are on the rebuild
 and covered by `tests/next_*`. What is left is the list above.
@@ -49,10 +49,10 @@ and covered by `tests/next_*`. What is left is the list above.
 4. **Difficulty, ascension, boons, omen, Altar actions (DONE, `tests/next_meta`).**
 5. **Hero look (DONE, `tests/next_hero_look`):** worn gear, cape, pet, hero ring, legendary aura, replicated.
 6. **Elite affixes (DONE, `tests/next_affixes`)**; only the target-frame chips are missing (gap 2).
-7. **Gathering, professions, Depths, the three cathedral bosses (DONE: `tests/next_gathering`, `tests/next_depths`, `tests/next_bosses/*`).** Laborers' world views and garden / contract notices remain (gap 4).
-8. **HUD feeds (DONE, `tests/next_hud_counsel`):** save chip, wave dial, loot / coin / shard / hurt sounds, Legion purchase, Depths readout, auto-combat button. Left: Next-step box.
+7. **Gathering, professions, Depths, the three cathedral bosses (DONE: `tests/next_gathering`, `tests/next_depths`, `tests/next_bosses/*`, laborers + notices `tests/next_acre_guide`).**
+8. **HUD feeds (DONE, `tests/next_hud_counsel`):** save chip, wave dial, loot / coin / shard / hurt sounds, Legion purchase, Depths readout, auto-combat button. The Next-step box is fed (`tests/next_acre_guide`).
 9. **Boss meta-progression (DONE, `tests/next_boss_meta`):** Empowered summons, Covenant Seal, boss key prompt, prize claim, trophies, Chronicle, Codex, milestones, Nightfall. Limits: a client cannot call Empowered or see Nightfall's dim.
-10. **Counsel and guidance state (DONE for counsel).** `counsel_busy` / `counsel_tick_ctx`, state-based tips, every panel pre-built and exercised. Next box and chat stay solo / thin.
+10. **Counsel and guidance state (DONE for counsel).** `counsel_busy` / `counsel_tick_ctx`, state-based tips, every panel pre-built and exercised. The Next box is fully fed (`tests/next_acre_guide`); chat stays solo.
 
 Lower priority, listed in the body: the five non-necromancer disciplines, party / lobby UI (D5), reconnect.
 
@@ -167,17 +167,17 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
 | Acre / Wing gathering nodes (view, hover tips, work loop, tool in hand, gather sfx, charms, AFK gather) | DONE | `game/dm_game_gather.gd`, `dm_gather_loop.gd`, `dm_gather_session.gd`, `dm_skills.gd`, `dm_node_views.gd`, `audio/audio_gather_sfx.gd` | `next/gathering/` (`DmNextGather`): 64 nodes, hover card, work loop, gather sfx, charms, Auto, AFK via `DmNextUiHost.start_afk / stop_gathering / afk_*`; `tests/next_gathering`. Limit: clients cannot start gathering; AFK bests not stored |
-| Grave Laborers (visible laborers, collect, full notices) | PARTIAL | `game/dm_game_labor.gd`, `dm_laborer_views.gd` | Laborers tab (H) works through the backend (assign / collect, `tests/next_hud_counsel`); no `DmLaborerViews` in the Acre, no `DmGameLabor` timers / full notices |
-| Garden (plant/harvest ready notices) | PARTIAL | `dm_game_labor.gd` | Garden panel (U) plants through the backend (`tests/next_hud_counsel`); `note_garden` ready notices not wired |
-| Contracts panel | PARTIAL | `dm_game_labor.gd refresh_contracts`, `dm_contracts_panel.gd` | Contracts panel (O) delivers through the backend (`tests/next_hud_counsel`); `refresh_contracts` world glue / notices absent |
+| Grave Laborers (visible laborers, collect, full notices) | DONE | `game/dm_game_labor.gd`, `dm_laborer_views.gd` | `DmNextAcre` (`next/gathering/dm_next_acre.gd`) runs both unchanged: pooled laborers at their posts in the Acre only, hover card + click -> Laborers (H), arrival / "filled up" notices, collect credits the gold + chronicle (`tests/next_acre_guide`) |
+| Garden (plant/harvest ready notices) | DONE | `dm_game_labor.gd` | ready / still-growing notices on arrival and every 60 s, plant / harvest results ("Harvested ...", chronicle, level banner) through `DmNextAcre` (`tests/next_acre_guide`) |
+| Contracts panel | DONE | `dm_game_labor.gd refresh_contracts`, `dm_contracts_panel.gd` | `refresh_contracts` feeds the guidance summary; a delivery credits the order's gold (the server returns it, never writes it: the Godot panel used to drop it), counts in the chronicle, toasts (`tests/next_acre_guide`) |
 
 ## 10. Crafting, forge, reforge, salvage, alchemy
 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
-| Forge / Workbench (craft, reforge tab, salvage, reagent shelf, grinder range) | PARTIAL | `ui/panels_b/dm_forge_panel.gd`, `dm_reforge_view.gd`, `dm_salvage_panel.gd`, `dm_reagent_shelf_panel.gd`; `game/dm_game.gd near_grinder` | stations emit `station_interact` and `DmNextUiHost.near_grinder` is wired; craft, salvage, shelf verified on the offline backend (`tests/next_hud_counsel`); all panels pre-built; reforge quote answers, the full reforge flow is untested |
-| Alchemist's Wing stations (cauldron, alembic, reagents), brews, meals | PARTIAL | `dm_game_actions.gd` | brews/meals/flasks DONE (`DmNextBelt`); Wing stations emit but untested |
-| Gold sinks (reforge quotes, server-priced) via `spend_on_server` | PARTIAL | `DmProgressSync.spend_on_server` | `DmProgressSync` reused by `DmNextProgress`; reforge flow untested |
+| Forge / Workbench (craft, reforge tab, salvage, reagent shelf, grinder range) | DONE | `ui/panels_b/dm_forge_panel.gd`, `dm_reforge_view.gd`, `dm_salvage_panel.gd`, `dm_reagent_shelf_panel.gd`; `game/dm_game.gd near_grinder` | stations emit `station_interact` and `DmNextUiHost.near_grinder` is wired; craft, salvage, shelf verified on the offline backend (`tests/next_hud_counsel`); all panels pre-built; the full reforge flow (quote, pick, pay, new roll) is verified in `tests/next_acre_guide` |
+| Alchemist's Wing stations (cauldron, alembic, reagents), brews, meals | DONE | `dm_game_actions.gd` | brews/meals/flasks DONE (`DmNextBelt`, now raising `brew_drunk` / `meal_eaten`); the cauldron, alembic and reagent shelf are used in the Wing, open their panels and craft through the API (`tests/next_acre_guide`) |
+| Gold sinks (reforge quotes, server-priced) via `spend_on_server` | DONE | `DmProgressSync.spend_on_server` | the Reforge panel now pays through `psync.spend_on_server` (it called the api directly, so the server's price was never taken from our gold and the next save handed it back); backend and local gold agree after a reforge (`tests/next_acre_guide`) |
 
 ## 11. Inventory, bag, vault, equipment, visuals, cosmetics
 
@@ -227,9 +227,9 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
 | Hub NPCs (spots, talk range, "!" news marker, first-sight), E to talk | DONE | `game/dm_npc_views.gd`, `dm_game.gd _tick_npcs` | `next/chapterhouse/dm_hub_npcs.gd`, `DmChapterhouse.talk_key` (acre / wing NPCs only appear in their areas) |
-| Covenant dialogue / guidance memory / Next box | PARTIAL | `ui/panels_a/dm_dialogue_panel.gd`, `game_ui/dm_game_ui.gd guidance_state` | dialogue panel works through `npc_interact`; Next box depends on bag/level only (`hud/README.md`) |
+| Covenant dialogue / guidance memory / Next box | DONE | `ui/panels_a/dm_dialogue_panel.gd`, `game_ui/dm_game_ui.gd guidance_state` | `guidance_state` is fed the same facts as the current client plus the skills, trophies, labor and contracts that used to be stale; recomputed only on change (`hud/README.md`, `tests/next_acre_guide`) |
 | Counsel tips (cadence, events, store, progressive HUD reveal, NEW cues) | DONE | `ui/onboarding/`, `game_ui/dm_hud_reveal.gd` | UI side reused; `counsel_busy` / `counsel_tick_ctx` = `DmNextCounsel`: state-based tips and in-combat suppression run; events from DmNextProgress/Areas/UiHost |
-| First-hour guidance pings, `/party` etc. chat commands | PARTIAL | `game_ui/dm_chat_command.gd` | `send_chat` = "(solo) Nobody hears you" |
+| First-hour guidance pings, `/party` etc. chat commands | PARTIAL | `game_ui/dm_chat_command.gd` | guidance minimap ping DONE (`vm["minimap"]["ping"]`, `guide_ping` honoured); `send_chat` = "(solo) Nobody hears you" (chat commands are party / online) |
 
 ## 15. UI panels (one row per panel; all exist on the rebuild via `DmGameUi`, status = fed + reachable)
 
@@ -241,9 +241,9 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Character sheet (J) stats tab | DONE | `ui/panels_a/dm_sheet_view.gd` | opens with the build's stats (tested) |
 | Capes & Pets (N, sheet tab) | DONE | `dm_cosmetics_view.gd` | `DmNextUiHost.load_cosmetics` -> `DmHeroLook` (cape + pet appear, replicate) |
 | Legion (Y) | DONE | `dm_legion_view.gd` | Reinforce buys a tier via the API; thrall hp / damage follow; standing thralls bumped |
-| Forge / Workbench (C) incl. reforge, Salvage, Reagent shelf | DONE | `ui/panels_b/*` | craft / salvage verified via the API (reforge flow itself untested) |
+| Forge / Workbench (C) incl. reforge, Salvage, Reagent shelf | DONE | `ui/panels_b/*` | craft / salvage verified via the API; reforge flow verified (`tests/next_acre_guide`) |
 | Vault (V) | DONE | `dm_vault_panel.gd` | deposit verified via the API |
-| Acre ledger: Professions (P), Garden (U), Labor (H), Contracts (O), Gather report | PARTIAL | `dm_professions_panel.gd`, `dm_garden_panel.gd`, `dm_labor_panel.gd`, `dm_contracts_panel.gd`, `dm_gather_report_panel.gd`, `dm_acre_ledger.gd` | Professions (P) DONE; Garden (U), Labor (H), Contracts (O) work through the backend (`tests/next_hud_counsel`); missing: visible laborers and garden / contract world notices (see section 9) |
+| Acre ledger: Professions (P), Garden (U), Labor (H), Contracts (O), Gather report | DONE | `dm_professions_panel.gd`, `dm_garden_panel.gd`, `dm_labor_panel.gd`, `dm_contracts_panel.gd`, `dm_gather_report_panel.gd`, `dm_acre_ledger.gd` | Professions (P) DONE; Garden (U), Labor (H), Contracts (O) work through the backend (`tests/next_hud_counsel`); visible laborers and the garden / contract notices are `DmNextAcre` (section 9) |
 | Codex (K) | DONE | `dm_codex_panel.gd` | enemy kinds, bosses and areas discovered + saved; Chronicle tab fed (`flush_chronicle`); `tests/next_boss_meta` |
 | Gear Atlas (.) | DONE | `dm_atlas_panel.gd` | data-only |
 | Waystone map (M) | DONE | `dm_waystone_panel.gd` | via `travel` |
@@ -253,7 +253,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Boss key prompt (Empowered choice) | DONE | `game_ui/dm_boss_key_prompt.gd` | `boss_key_offer` -> prompt -> `summon_boss` / `summon_boss_empowered`; `tests/next_boss_meta` |
 | Depths stair prompt | DONE | `game_ui/dm_depths_stair_prompt.gd` | `depths_stair_offer` -> existing card -> `enter_depths`; `tests/next_depths` |
 | Belt picker (Z/X slot) | DONE | `game_ui/dm_belt_picker.gd` | `DmNextBelt.load_pick/set_belt` |
-| Bug report | PARTIAL | `game_ui/dm_bug_report_view.gd` | uses `ui.game.api.send_bug_report`; the adapter exposes `api`; no `tests/next*` suite exercises it (unverified end to end) |
+| Bug report | DONE | `game_ui/dm_bug_report_view.gd` | uses `ui.game.api.send_bug_report`; verified end to end on the offline backend (`tests/next_acre_guide`) |
 | Chat line / chat box | PARTIAL | `game_ui/dm_chat_command.gd` | local only |
 | Spell tooltip, item tooltip, stat key | DONE | `game_ui/dm_spell_tooltip.gd`, `ui/widgets/dm_item_tooltip.gd` | |
 | Keybind rebinding (loadout hotkeys) | DONE | `game_ui/dm_ui_binds.gd` | `DmGameUi._unhandled_key_input`; `DmKeybinds` (game) not used by rebuild: input actions registered at runtime by `DmNextInput` |
@@ -278,10 +278,10 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Depth readout | DONE | `vm["depth"]` = `DmDepths.hud_state()` |
 | Bone Ward chip | DONE | `next/hud/dm_next_hud_vm.gd` |
 | Auto-combat button | DONE (G / the HUD button set `auto_combat`; `DmNextAutoCombat` runs it) | |
-| Next-step box, guidance ping, progressive reveal / NEW pips | PARTIAL | reveal logic in `DmGameUi` runs; Next box limited |
+| Next-step box, guidance ping, progressive reveal / NEW pips | PARTIAL | Next box + minimap ping DONE (`tests/next_acre_guide`); reveal logic in `DmGameUi` runs, NEW pips unverified |
 | Toasts, banners, loot toast, floating numbers, death wash, hit flash | DONE | |
 | Save-state chip (`save` text/warn) | DONE | `DmNextUiHost.save_chip()` (psync + bag state) |
-| Node/laborer hover tip | DONE | `DmNextGather` hover ring + node card (`tests/next_gathering`); laborer hover tip n/a (no visible laborers) |
+| Node/laborer hover tip | DONE | `DmNextGather` hover ring + node card (`tests/next_gathering`); laborer hover card + click on `DmNextAcre` (`tests/next_acre_guide`) |
 | Interaction prompt + hover highlight | DONE | `DmChapterhouse` |
 
 ## 17. Settings keys (`game/dm_settings.gd`)
@@ -361,7 +361,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
-| HUD "Report a bug" button + Settings -> Report a bug form (`/api/bug-reports`) | PARTIAL | `game_ui/dm_bug_report_view.gd`, `ui/hud/dm_hud.gd` | UI + `api.send_bug_report` reused; reachable via `DmGameUi`; no `tests/next*` suite exercises it (unverified) |
+| HUD "Report a bug" button + Settings -> Report a bug form (`/api/bug-reports`) | DONE | `game_ui/dm_bug_report_view.gd`, `ui/hud/dm_hud.gd` | opens inside Settings, sends through `api.send_bug_report` (the test uses the OFFLINE backend only), the report lists back; the context's `release` is now `godot-next-<version>` (was "slice") (`tests/next_acre_guide`) |
 | Daily Claude triage agent, Discord "fixed - live now" alerts | N/A | server side | unaffected (backend/server) |
 
 ## 23. Perf features
@@ -381,8 +381,8 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
 | Hero death -> respawn in Chapterhouse (4 s), death veil | DONE | `dm_game.gd respawn` | `DmHeroBody.RESPAWN_S` |
-| Bone Grinder, Lectern, Sawpit, Kiln, Fire stations | PARTIAL | `dm_game_actions.gd interact` | `DmChapterhouse.interact` handles stations; Acre stations "open but persistence is the progression track's" |
-| Boss summon in-world prompts, Next-step guidance ping | PARTIAL | boss summon in-world prompt DONE (E + click prompts, boss key prompt); Next-step guidance ping still limited (bag / level only) |
+| Bone Grinder, Lectern, Sawpit, Kiln, Fire stations | DONE | `dm_game_actions.gd interact` | each used in the Acre like a click: panel opens, first-use counsel event, craft / salvage through the API (`tests/next_acre_guide`) |
+| Boss summon in-world prompts, Next-step guidance ping | DONE | boss summon in-world prompt DONE (E + click prompts, boss key prompt); the Next box + minimap ping are fed the full state (`tests/next_acre_guide`) |
 | Dev tools (F9 break seals, `__cwDebug`, QA driver) | PARTIAL | `main/qa_driver.gd` | not ported to slice; DEV account gating partial (re-checked: `main/qa_driver.gd` not referenced from `next/`) |
 | Tests: rules suites, session/relay/rites/status/corpses/thralls/areas/bosses/hud/progress | DONE | `tests/` | `tools/godot/run-all-tests.sh` |
 | Mobile build / web build | N/A | | D9 web retirement; mobile not in Godot scope |

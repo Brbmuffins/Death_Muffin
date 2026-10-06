@@ -40,7 +40,7 @@ All of `DmGameUi.WARM_PANELS` are pre-built under the loading cover (`ui.warm()`
 basic action through the API: Bag (sort + save), Sheet, Capes & Pets (adopt a companion), Legion (Reinforce), Forge (craft; reforge quote), Salvage, Reagent shelf, Vault (deposit), Contracts (deliver),
 Professions, Garden (plant), Labor (assign), Ascension (deepen a boon), Codex, Atlas, Waystone map. First opens measure 0-62 ms over an idle frame, the same as the old client (`tests/perf/panel_perf.gd`:
 Capes & Pets ~52, Reagent shelf ~41, the rest <= 30; the UI code is shared).
-- Still not on the slice: Depths readout beyond the stair card, Next-step guidance depends on bag/level only.
+- Still not on the slice: Depths readout beyond the stair card.
 
 ## Feeds added by the HUD/counsel track (adapter functions, `# ---- HUD / counsel feeds`)
 | Feed | Source |
@@ -50,6 +50,15 @@ Capes & Pets ~52, Reagent shelf ~41, the rest <= 30; the UI code is shared).
 | Sounds | `loot_view.dropped_sound` (lootDrop..Legendary, positioned), coin / shard on pickup, `play_loot` + the `collected` counsel event on an item pickup, hurt + lowHealth (< 30 %) on host damage; every one also raises `sfx(name)` |
 | Counsel | `counsel_busy()` / `counsel_tick_ctx()` = `DmNextCounsel` (`dm_next_counsel.gd`): hurt / combat (three dead within 9 m or a boss awake) / dead flags, the tick ctx of `DmGameCombat.counsel_tick_ctx`; hurt -> `hurt_check` + the `hurt` tip |
 | Legion | `buy_legion()` (the Legion panel's Reinforce and `buy_upgrade("legion")`): backend `necro_purchase`, `refresh_progress` adopts the tier + the server's purse, stats follow, standing thralls get the one-time bump. The tier raises thrall hp / damage; the thrall CAP comes from boons and weapons (rules, not the tier) |
+
+## First-hour guidance (`next/gathering/dm_next_acre.gd`, `tests/next_acre_guide`)
+The Next-step box / the Covenant dialogue read `DmGameUi.guidance_state()`: level, area, ascension, seals, `areaKills`, `totalKills`, the Prelate this run, bag, dust come straight from the shared progression / bag / character;
+what the adapter now feeds besides: `skills` (a gathering level gained while gathering, from `DmNextGather.skills.changed`), `bossesBeaten` (the backend chronicle's `boss.<id>` counters mirrored into the store key the UI reads,
+`DmNextChronicle.trophy_claimed`), `labor` / `contracts` (`DmGameLabor` summaries, `refresh_contracts`, the labor check and the Laborers panel). Every feed is event driven and asks the UI for a recompute at once
+(`ui._guide_t = 0`); the UI's own 0.5 s tick no longer redoes the suggestion when the state, the setting and the dismissal are unchanged (`DmGuidanceHud.update` memo; `ui.last_guidance` is shared with the hub's NPC "!" poll):
+state + suggestion 0.9 ms -> 0.2 ms per tick. The minimap **ping** (`vm["minimap"]["ping"]`, the web's rule: guidance + `guide_ping` on, the suggestion has a target and is elsewhere or `pingInPlace`) reads the box's own suggestion.
+Counsel events the rebuild did not raise now are: `world_entered` (the welcome and the discipline's first tip), `brew_drunk`, `meal_eaten` (belt sounds), `minimap_travel` (a minimap click). Bug reports carry `release = godot-next-<version>`.
+Still not raised: `corpse_near`, `sanctify_near`, `loadout_check`, `necro_weapon_changed`, `set_bonus_gained`, `omen_told`, `depths_*`, `auto_combat_cast`, `show_tips_again`.
 
 ## Gaps
 - Progression persistence, upgrade tiers, level-ups and the belt are `next/progress/` (DmProgressSync, `DmNextBelt`); see its README.

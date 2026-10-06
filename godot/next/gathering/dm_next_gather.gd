@@ -39,6 +39,7 @@ var _vfx: Node
 var _audio: Node
 var _tip_on := false
 var _levels: Dictionary = {}
+var _pick_d := PICK_PX                          ## the winning screen distance of the last pick() (a laborer must beat it)
 
 
 ## The loop's walker: the host's own hero body, steered by the session's move intents (the same path a click takes).
@@ -309,6 +310,7 @@ var _holding := false
 
 ## The node nearest the cursor within PICK_PX (current area only, near the hero). Pass the cursor's screen position.
 func pick(screen: Vector2) -> Variant:
+	_pick_d = PICK_PX
 	var b := game.local_body()
 	if b == null or not _by_area.has(game.area_id):
 		return null
@@ -326,12 +328,29 @@ func pick(screen: Vector2) -> Variant:
 		if d < best_d:
 			best_d = d
 			best = n
+	_pick_d = best_d
 	return best
 
 
 ## 10 Hz from DmNextInput: the node under the cursor (when no station / NPC is), its ring and its card.
 func hover_at(screen: Vector2, blocked: bool = false) -> void:
 	hover = null if blocked or _panel_open() else pick(screen)
+	var slot := -1
+	if game.acre != null and not blocked and not _panel_open():
+		slot = game.acre.pick_laborer(screen, _pick_d if hover != null else PICK_PX)   # a Grave Laborer nearer than the node wins the hover
+		if slot >= 0:
+			hover = null
+			if views != null:
+				views.hover(null, true)
+	if game.acre != null:
+		game.acre.set_hover(slot)
+	if slot >= 0:
+		var hud0: Variant = game.ui.get("hud") if game.ui != null else null
+		if hud0 != null:
+			_tip_on = true
+			var mp0 := get_viewport().get_mouse_position()
+			hud0.node_tip(game.acre.tip(slot), mp0.x, mp0.y)
+		return
 	if views != null:
 		var ok := true
 		if hover != null:
@@ -348,6 +367,11 @@ func hover_at(screen: Vector2, blocked: bool = false) -> void:
 ## Left click on the ground view (after enemies / stations): walk to the node and work it. True = the click was consumed.
 func click_at(screen: Vector2) -> bool:
 	var n: Variant = pick(screen)
+	if game.acre != null and not _panel_open():
+		var slot: int = game.acre.pick_laborer(screen, _pick_d if n != null else PICK_PX)
+		if slot >= 0:
+			game.acre.open_labor()   # the current game: a click on a laborer opens the Laborers (H)
+			return true
 	if n == null or loop == null:
 		return false
 	var b := game.local_body()
@@ -432,6 +456,10 @@ func _on_reply(r: Dictionary) -> void:
 		if it["itemId"] != main_item:
 			_toast("Found: %s%s" % [DmContent.item(String(it["itemId"]))["name"], (" ×%d" % int(it["qty"])) if int(it["qty"]) > 1 else ""], "good")
 	gathered.emit(r)
+
+
+func celebrate_charms(items: Array) -> void:   ## DmGameLabor's hook (laborers and the garden funnel through the same banner)
+	_celebrate_charms(items)
 
 
 func _celebrate_charms(items: Array) -> void:

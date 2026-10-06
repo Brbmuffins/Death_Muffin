@@ -34,6 +34,7 @@ var ui: DmGameUi                                ## the existing HUD + panels
 var areas: DmAreaFlow                           ## child "Areas": entry banners + Codex, processions, Grave Surges (next/areas/)
 var perf: DmNextPerf                           ## child "Perf": graphics / fps cap / auto-resolution governor (next/perf/)
 var chapterhouse: DmChapterhouse                ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
+var acre: DmNextAcre                            ## child "Acre" (host with the HUD): visible Grave Laborers, labor / garden notices, the first-hour guidance feeds (next/gathering/)
 var gather: DmNextGather                        ## child "Gather" (every peer): gathering nodes, the gather loop (host), skills, AFK (next/gathering/)
 
 var character: Dictionary = {}
@@ -220,6 +221,14 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	if ui_host == null:
 		look.load_from_api()   # no panels here (a joiner, a headless host): the look comes from the character's own backend
 	ready_ = true
+	if ui_host != null:   # the counsel's welcome (and the discipline's first tip): the current game's `world_entered`
+		var lvl := float(character.get("level", 1))
+		var rl := DmAbilities.rite_level(lvl, ui_host.dev_access)
+		var grim := false
+		for id in ui_host.kit["grimoire"]:
+			if DmAbilities.unlock_level(id) <= rl and DmAbilities.unlock_level(id) > 1:
+				grim = true
+		ui_host.game_event.emit("world_entered", {"family": local_body().family, "level": int(lvl), "grimoire_unlocked": grim})
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
 
@@ -255,6 +264,10 @@ func _start_hud() -> void:
 		look.set_gear_from_slots(ui_host.inventory.slots)
 		ui_host.load_cosmetics()
 		sync_runes()
+		acre = DmNextAcre.new()
+		acre.name = "Acre"
+		add_child(acre)
+		acre.setup(self)
 
 
 ## Host: the rewards track's node (DmSessionRewards) with one member per player; kills arrive through `enemy_spawned` -> `died`.

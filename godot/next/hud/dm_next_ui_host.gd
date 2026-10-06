@@ -39,7 +39,7 @@ var keys: Array = []                         ## the five rites on 1-4 / RMB (hot
 var signature: String = ""                   ## the discipline's signature rite on R (hotbar slot 6)
 var in_depths := false
 var hero_id: int = 0
-var release := "slice"
+var release := "godot-next-" + str(ProjectSettings.get_setting("application/config/version", "dev"))
 var party_code := ""
 var dev_account := false
 var dev_access := false
@@ -50,6 +50,8 @@ var persist := true
 var slots: Array:
 	get: return inventory.slots
 	set(v): inventory.slots = v
+var psync: DmProgressSync:
+	get: return shell.progress.psync if shell.progress != null else null
 var progress: Dictionary:
 	get: return prog.local
 var settings: Dictionary:
@@ -387,8 +389,25 @@ func near_grinder() -> bool:
 	return shell.chapterhouse != null and shell.chapterhouse.near_grinder()
 
 
+## The Acre panels' hooks (DmUiPanelsB): the glue that owns the labor / garden / contract rules is `DmNextAcre` (next/gathering/).
+func on_labor_collected(r: Dictionary, slot: int) -> void:
+	if shell.acre != null:
+		shell.acre.on_labor_collected(r, slot)
+
+
+func on_garden_result(kind: String, r: Dictionary) -> void:
+	if shell.acre != null:
+		shell.acre.on_garden_result(kind, r)
+
+
+func on_contract_delivered(d: Dictionary) -> void:
+	if shell.acre != null:
+		shell.acre.on_contract_delivered(d)
+
+
 func navigate(x: float, z: float) -> void:
 	shell.input.click_move(Vector3(x, 0.0, z))
+	game_event.emit("minimap_travel", {})   # the counsel's minimap tip (DmGameInput.click_minimap)
 
 
 func send_chat(_text: String) -> void:

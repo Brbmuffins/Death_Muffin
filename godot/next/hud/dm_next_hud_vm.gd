@@ -231,6 +231,18 @@ func _area_progress(area: String) -> String:
 
 # ---- minimap -------------------------------------------------------------------------------------------------------------------
 
+## The suggestion ping (WorldScene minimap `ping`): where the Next box's suggestion is, when it is elsewhere or marked pingInPlace. The Next box's
+## own suggestion dictionary is read, nothing is allocated.
+func _guide_ping(g: DmNextGame) -> Variant:
+	var cur: Variant = g.ui.guidance_hud.current if g.ui != null else null
+	if cur == null or cur.get("target") == null:
+		return null
+	var st: Dictionary = host.settings
+	if not (bool(st.get("guidance", true)) and bool(st.get("guide_ping", true))):
+		return null
+	return cur["target"] if (bool(cur.get("pingInPlace", false)) or String(cur.get("place", "")) != g.area_id) else null
+
+
 func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 	if _areas.is_empty():
 		for id in DmContent.area_order():
@@ -272,7 +284,7 @@ func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 	_map["waystones"] = []
 	_map["stairs"] = []
 	_map["npcs"] = []
-	_map["ping"] = null
+	_map["ping"] = _guide_ping(g)
 	_map["destination"] = null
 	_map["depths"] = g.depths.map_floor() if g.depths != null else null
 	return _map

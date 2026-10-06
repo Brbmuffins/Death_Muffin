@@ -62,6 +62,7 @@ var stair_prompt: DmDepthsStairPrompt
 var binds: Dictionary = {}
 var skills: Dictionary = {}                ## profession_id -> level (for the guidance state)
 var labor_summary: Variant = null
+var last_guidance: Dictionary = {}          ## the state of the latest 0.5 s tick (shared by whoever polls the same facts: the hub's NPC "!")
 var contract_summary: Variant = null
 var codex_journal := {"dead": {}, "area": {}}
 var _build_cache: Dictionary = {}
@@ -434,7 +435,8 @@ func _tick_guidance(dt: float) -> void:
 	if _guide_t > 0.0:
 		return
 	_guide_t = 0.5
-	guidance_hud.update(guidance_state(), bool(game.settings.get("guidance", true)))
+	last_guidance = guidance_state()
+	guidance_hud.update(last_guidance, bool(game.settings.get("guidance", true)))
 
 
 func _load_side_data() -> void:
