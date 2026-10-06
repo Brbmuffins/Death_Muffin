@@ -130,6 +130,21 @@ func on_collected(r: Dictionary, slot: int) -> void:
 		panel.add_loot(slot, report)
 
 
+## onContractDelivered: the gold (the server returns it, never writes it), the chronicle, the summary and the toast. `d` = the delivery {contracts, gold, paidBonus?}.
+func on_contract_delivered(d: Dictionary) -> void:
+	var gold := float(d.get("gold", 0))
+	if gold > 0.0:
+		g.prog.add_gold(gold)
+		g.play_sfx("coin")
+		g.float_text(g.player.x, 2.4, g.player.z, "+%sg" % _thousands(int(gold)), "gold")
+	g.chronicle.add("contracts")
+	contract_summary = DmGuidance.summarize_contracts(d)
+	guide_dirty = true
+	g.play_sfx("orderFilled")
+	var bonus: Variant = d.get("paidBonus")
+	g.toast("Order filled, and the day’s bonus is yours: +%sg" % _thousands(int(bonus["gold"])) if bonus is Dictionary else "Order filled", "good")
+
+
 func _labor_panel() -> Variant:
 	var ui: Variant = g.get("ui")
 	if ui != null and ui.get("pb") != null and ui.pb.get("labor") != null:
