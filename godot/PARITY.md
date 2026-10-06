@@ -33,8 +33,7 @@ HUD feeds and contract methods that `DmGame` had and `DmNextGame` / `DmNextUiHos
    Mass Grave / Colossus builds are dead. (section 1)
 4. **DONE on `godot/next-meta` (`next/meta/README.md`, test `tests/next_meta`): difficulty, ascension rank / vows, boons, omen and the Altar's actions are applied.** Was: **Difficulty, ascension rank and omen are not applied (MISSING).** `settings.difficulty` is stored but rewards/bosses/director use a constant "medium"; `DmSessionRewards.ascension` stays 0; omen multipliers have no source.
    The Altar (`do_ascend/do_swear/do_open`) has no host methods. Progression depth beyond XP/tiers is flat. (sections 2, 13)
-5. **Hero looks naked (MISSING).** Worn gear, helm / hide-helm, legendary aura, capes, pets and the hero ring/halo are never applied (`avatar.set_equipment` / `set_cape` / `DmPetView` not called); the Capes & Pets
-   panel changes nothing in the world. Hurts gear reward feedback and "immersive" feel. (sections 11, 19)
+5. **DONE on `godot/next-hero-look` (`next/hero/README.md`, test `tests/next_hero_look`): the hero shows worn gear (weapon, off-hand, helm, body tints, legendary aura), the cape, the pet and the hero ring, live from the Reliquary and the Capes & Pets panel, replicated to every peer.** Was: hero looks naked.
 6. **Elite affixes (DONE in `next/affixes`; target-frame chips still missing).** Bell-Tolled, Hungering, Shrouded, Vengeful, their rings and target-frame chips do not exist on `DmEnemy` (`enemies/dm_enemy.gd:68`). Hungering / Vengeful are the corpse-economy
    counterplay that makes the necromancer loop interesting. (section 2)
 7. **Gathering, professions, laborers, garden, contracts (IN PROGRESS).** Whole Acre loop (nodes, AFK, laborers, charms, gather sfx, hover tips) is not on the rebuild; `DmNextUiHost` lacks
@@ -230,7 +229,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Grimoire (L) + loadout presets + rune picks | PARTIAL | `ui/panels_a/dm_grimoire_*`, `game_ui/dm_loadout_presets.gd` | works; runes empty (see Combat) |
 | Settings (Esc) | DONE | `ui/panels/dm_settings_panel.gd` | pre-warmed; some keys inert (section 19) |
 | Character sheet (J) stats tab | PARTIAL | `ui/panels_a/dm_sheet_view.gd` | untested on slice |
-| Capes & Pets (N, sheet tab) | MISSING | `dm_cosmetics_view.gd` | no `apply_cosmetics` |
+| Capes & Pets (N, sheet tab) | DONE | `dm_cosmetics_view.gd` | `DmNextUiHost.load_cosmetics` -> `DmHeroLook` (cape + pet appear, replicate) |
 | Legion (Y) | PARTIAL | `dm_legion_view.gd` | tier not purchasable |
 | Forge / Workbench (C) incl. reforge, Salvage, Reagent shelf | PARTIAL | `ui/panels_b/*` | untested |
 | Vault (V) | PARTIAL | `dm_vault_panel.gd` | untested |

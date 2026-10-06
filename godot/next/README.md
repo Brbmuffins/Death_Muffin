@@ -26,6 +26,7 @@
 | Hud | `next_hud.gd` | health + resource `DmHudOrb`, area name, death veil |
 | Meta | `meta/dm_next_meta.gd` | host: difficulty (Settings), the sworn world vows, the weekly Omen, Soul Harvest, the Kill Chain, Bonded Dead; `sync()` pushes them to the director, bosses, corpses and rewards (`meta/README.md`) |
 | Perf | `perf/dm_next_perf.gd`, `perf/dm_next_warmup.gd` | `DmNextPerf`: settings `graphics` / `fps` / `auto_res` applied live (governor on `scaling_3d_scale`, held on area entry). `DmNextWarmup.run(game)` at the end of `start()` (real renderer, or `opts.warmup`): GPU warm-up of every body / effect / area lighting under a cover (`perf/README.md`) |
+| Look | `hero/dm_hero_look.gd` | every peer: worn gear, cape, pet, hero ring, replicated look descriptor (`hero/README.md`; test `tests/next_hero_look/run.gd`) |
 | Chapterhouse | `chapterhouse/dm_chapterhouse.gd` | NPCs (`DmHubNpcs`), stations, waystone travel / recall (T), seals + doors, interactable hover / click / prompts; emits `npc_interact` / `station_interact` (forwarded by `DmNextUiHost`) and `interacted(it)` for boss altars / stairs (bosses + depths tracks hook it). Tick 10 Hz, NPC refresh 5 Hz, per-frame animation only for NPCs near you. Test `tests/chapterhouse/run.gd` |
 | Depths | `depths/dm_depths.gd` | the procedural descent (solo): Warren stair -> floors, quota, stairs, chests, rewards, death ends the run, chronicle (`depths/README.md`). Test `tests/next_depths/run.gd` |
 Players are `hero/dm_hero_body.gd` (`DmHeroBody`, a `DmSessionBody`): `DmAvatar` model for the discipline, `DmPlayerRules` vitals,
@@ -51,7 +52,7 @@ Nothing required: input actions are registered at runtime by `DmNextInput.ensure
 
 ## Stubbed / left
 Hotbar UI and DmGameUi, loot view for non-host peers, remote members' real characters (join handshake), area transitions beyond the Chapterhouse and
-Graves (done: `areas/README.md`), hero VFX decals (hero ring) from `DmGame._dress_hero`, bosses (the altars emit `Chapterhouse.interacted`), gathering (done: `gathering/README.md`). Hub gaps: travel/recall teleport on the host only; the Acre/Wing stations open but gold/XP/progress persistence to the backend is the progression track's.
+Graves (done: `areas/README.md`), bosses (the altars emit `Chapterhouse.interacted`), gathering (done: `gathering/README.md`). Hub gaps: travel/recall teleport on the host only; the Acre/Wing stations open but gold/XP/progress persistence to the backend is the progression track's.
 
 ## Measured (this VPS, shared, noisy)
 Load: world build ~1.3 s (navmesh bake ~130 ms of it) + first nav-map sync ~120 ms headless. Headless 25 chasing enemies: ~5-6 ms/frame

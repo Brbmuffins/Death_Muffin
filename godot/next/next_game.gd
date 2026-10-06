@@ -46,6 +46,7 @@ var progress: DmNextProgress                     ## child "Progress" (host): per
 var meta: DmNextMeta                             ## child "Meta" (host): difficulty, vows, the Omen, Soul Harvest, Kill Chain, Bonded Dead (next/meta/)
 var bosses: DmBossHost                          ## child "Bosses" (every peer): summon rules, boss bodies, boss events + music
 var enemy_fx: DmEnemyFx                          ## child "EnemyFx" (every peer): telegraphs, impacts, deaths, enemy voices
+var look: DmHeroLook                            ## child "Look" (every peer): worn gear, cape, pet and hero ring on every hero, replicated (next/hero/README.md)
 var depths: DmDepths                            ## child "Depths" (host): the procedural descent (next/depths/)
 var corpses: DmCorpseField                       ## child "Corpses" (same path on every peer); host lays corpses from enemy deaths
 var hitstopper := DmHitStop.new()               ## the picture's micro-freeze on heavy hits / elite deaths (DmHitStop, as the current client)
@@ -122,6 +123,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	perf.game = self
 	add_child(perf)
 	perf.apply(opts.get("settings", {}))   # the real settings arrive with the HUD (DmNextUiHost calls perf.apply on every change)
+	look = DmHeroLook.new()
+	look.name = "Look"
+	add_child(look)
+	look.attach(self)
 	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
 	session.character_name = String(opts.get("name", "You"))
 	session.discipline_id = String(d["id"])
@@ -191,6 +196,8 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		if bool(opts.get("warmup", DisplayServer.get_name() != "headless" or "--warmup" in OS.get_cmdline_user_args())) and _has_world:
 			await DmNextWarmup.run(self)
 	perf.hold()
+	if ui_host == null:
+		look.load_from_api()   # no panels here (a joiner, a headless host): the look comes from the character's own backend
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
@@ -224,6 +231,9 @@ func _start_hud() -> void:
 		if progress != null:
 			progress.belt.load_pick(ui.belt_pick())
 		ui_host.inventory.changed.connect(func(_s: Array) -> void: sync_runes())   # a socketed / removed rune reaches the caster
+		ui_host.inventory.changed.connect(look.set_gear_from_slots)                 # worn gear reaches the avatar (and the other peers)
+		look.set_gear_from_slots(ui_host.inventory.slots)
+		ui_host.load_cosmetics()
 		sync_runes()
 
 

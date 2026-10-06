@@ -182,6 +182,14 @@ func refresh_character() -> void:
 				continue
 			character[k] = r.data[k]
 	character_changed.emit()
+	await load_cosmetics()
+
+
+## The saved cape and companion (the Capes & Pets panel writes them, then refreshes the character): the hero wears them.
+func load_cosmetics() -> void:
+	var r: DmResult = await api.get_cosmetics(hero_id)
+	if r.ok and r.data is Dictionary and r.data.get("selected") is Dictionary and shell.look != null:
+		shell.look.set_cosmetics(r.data["selected"])
 
 
 ## The Altar's vows / boons / ascension live on the backend: adopt its necro state (plus what was gathered since), as DmGame.refresh_progress.
@@ -244,6 +252,7 @@ func apply_settings(s: Dictionary) -> void:
 
 
 func _apply_settings_side_effects() -> void:
+	DmAvatar.refresh_all()   # Hide helm
 	var m: DmRewardsMember = shell.rewards.members.get(hero_id) if shell.rewards != null else null
 	if m != null:
 		m.loot_view.rules = settings_store.loot_rules()
