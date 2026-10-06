@@ -4,15 +4,17 @@ extends Node3D
 ##   Session (DmSession)  host / join on any MultiplayerPeer; solo = OfflineMultiplayerPeer, the SAME code path as a 2-player session
 ##   World   (DmNextWorld) DmWorldBuilder world, dressing, navmesh map          Camera (DmCameraRig)   the existing rig
 ##   Waves   (DmWaveDirector) host-side enemy waves + MultiplayerSpawner        Net (DmNextNet)        enemy / vitals replication
-##   Input   (DmNextInput) click / WASD / hotbar -> intents + the hotbar seam   Hud (DmNextHud)        DmHud on the local body
+##   Input   (DmNextInput) click / WASD / hotbar -> intents + the hotbar seam   UiHost (DmNextUiHost) + Ui (DmGameUi): the real HUD and panels
 ## Players are DmHeroBody (DmSessionBody subclass made by the session's body_factory). See next/README.md for the seams the rites and
 ## rewards tracks plug into.
 ##
 ##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api)
 ## `opts`: peer (MultiplayerPeer, default OfflineMultiplayerPeer = solo), visual (true), dressing (true), world (true: false = no world /
-## navmesh, a headless client), waves (true), hud (true).
+## navmesh, a headless client), waves (true), hud (true = the real HUD, "minimal" = DmNextHud orbs only, false = none), persist (true: settings,
+## loadout and counsel state are written under user://).
 
 const CASTER_DELAY := 0.8
+const SLICE_PANELS := ["inventory", "grimoire", "settings"]   ## panels pre-built under the loading cover; the others open (and build) on first use
 
 signal started
 signal enemy_spawned(enemy: DmEnemy)            ## every spawned enemy (every peer), once in the tree: the rewards seam
@@ -27,7 +29,9 @@ signal hero_respawned(body: DmHeroBody)         ## host
 @onready var net: DmNextNet = $Net
 @onready var input: DmNextInput = $Input
 @onready var camera: DmCameraRig = $Camera
-@onready var hud: DmNextHud = $Hud
+var hud: DmNextHud                              ## only with opts hud = "minimal"
+var ui_host: DmNextUiHost                       ## the DmGame-contract adapter the real HUD reads (hud mode true)
+var ui: DmGameUi                                ## the existing HUD + panels
 
 var character: Dictionary = {}
 var api: Variant = null                         ## DmApi: the VPS backend online, the offline backend (DmOffline.make_api) offline
@@ -61,12 +65,9 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	_has_world = bool(opts.get("world", true))
 	DmSimData.ensure()
 	input.game = self
-	DmRiteHotbar.wire(self)   # slots -> rites (next/rites/dm_rite_hotbar.gd)
 	net.game = self
-	hud.game = self
 	director.game = self
 	director.enabled = bool(opts.get("waves", true))
-	hud.visible = bool(opts.get("hud", true))
 	corpses = DmCorpseField.new()
 	corpses.name = "Corpses"
 	add_child(corpses)
@@ -78,6 +79,8 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	director.enemy_spawned.connect(func(e: DmEnemy) -> void:
 		enemy_fx.watch(e)       # idempotent (the node also auto-watches); explicit so the seam is visible
 		DmStatusSet.attach(e)   # every peer, so status visuals replicate (an ensure()d set never does)
+		if ui_host != null:
+			ui_host.watch_enemy(e)
 		corpses.track(e, String(e.get_meta("dm_area", area_id)))
 		enemy_spawned.emit(e))
 	director.warm()
@@ -107,6 +110,11 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		_enter(b.position)
 		camera.snap(b.position)
 	# The current game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
+	await _start_hud()
+	# One hotbar path: the real HUD casts from the player's loadout (Grimoire edits); without it, the kit mapping does
+	# (next/rites/dm_rite_hotbar.gd). Both connected = every key cast twice.
+	if ui_host == null:
+		DmRiteHotbar.wire(self)
 	if bool(opts.get("audio", DisplayServer.get_name() != "headless")) and _has_world and get_node_or_null("/root/AudioDirector") != null:
 		var hooks := DmAudioHooks.new()
 		hooks.name = "AudioHooks"
@@ -117,6 +125,33 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
+
+
+## The HUD: `hud` true (default) = DmGameUi on the DmNextUiHost adapter (built and warmed here, under the caller's loading screen),
+## "minimal" = the orbs-only DmNextHud, false = none (headless clients).
+func _start_hud() -> void:
+	var mode: Variant = opts.get("hud", true)
+	if mode is String and mode == "minimal":
+		hud = DmNextHud.new()
+		hud.game = self
+		add_child(hud)
+	elif mode == true and session.is_host():
+		ui_host = DmNextUiHost.new()
+		ui_host.name = "UiHost"
+		add_child(ui_host)
+		await ui_host.setup(self, bool(opts.get("persist", DisplayServer.get_name() != "headless")))
+		for e in director.enemies.values():
+			ui_host.watch_enemy(e)
+		ui = DmGameUi.new()
+		ui.name = "Ui"
+		add_child(ui)
+		ui.setup(ui_host)
+		ui.warm_panels = SLICE_PANELS
+		ui.sound.connect(func(n: String) -> void:
+			var a := get_node_or_null("/root/AudioDirector")
+			if a != null:
+				a.play_sfx(n))
+		await ui.warm()
 
 
 ## Host: the rewards track's node (DmSessionRewards) with one member per player; kills arrive through `enemy_spawned` -> `died`.

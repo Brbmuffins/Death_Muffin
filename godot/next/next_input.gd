@@ -1,18 +1,18 @@
 class_name DmNextInput
 extends Node
 ## Local input for the slice. Click-to-move, WASD / arrows and the hotbar, with the current game's feel (DmGameInput): LMB on ground walks
-## there, LMB on an enemy fires the primary (slot 0) at it, 1-4 / RMB are rite slots 1-4 / 5, wheel zooms. Movement goes to the host as
+## there, LMB on an enemy fires the primary (slot 0) at it, 1-5 / RMB are rite slots 1-4 / 5 (key 5 and RMB are the same slot), wheel zooms. Movement goes to the host as
 ## session intents (`DmSession.request_move_to / request_move_dir`), identical solo or online.
 ##
 ## The hotbar is an input SEAM: casters listen to `hotbar` (they never read InputEvents). Actions are registered at runtime in
-## `ensure_actions()` (project.godot is not edited): dm_move_up/down/left/right, dm_primary (LMB), dm_secondary (RMB), dm_hotbar_1..4.
+## `ensure_actions()` (project.godot is not edited): dm_move_up/down/left/right, dm_primary (LMB), dm_secondary (RMB), dm_hotbar_1..5.
 
 signal hotbar(slot: int, aim: Vector3, enemy_id: int)   ## slot 0 = LMB primary, 1..4 = keys, 5 = RMB; enemy_id 0 = ground aim
 signal clicked_move(point: Vector3)
 
 const ACTIONS := {
 	&"dm_move_up": [KEY_W, KEY_UP], &"dm_move_down": [KEY_S, KEY_DOWN], &"dm_move_left": [KEY_A, KEY_LEFT], &"dm_move_right": [KEY_D, KEY_RIGHT],
-	&"rite_1": [KEY_1], &"dm_hotbar_1": [KEY_1], &"dm_hotbar_2": [KEY_2], &"dm_hotbar_3": [KEY_3], &"dm_hotbar_4": [KEY_4],
+	&"dm_hotbar_1": [KEY_1], &"dm_hotbar_2": [KEY_2], &"dm_hotbar_3": [KEY_3], &"dm_hotbar_4": [KEY_4], &"dm_hotbar_5": [KEY_5],
 }
 const PICK_PX := 46.0
 const HOVER_S := 0.1                    ## the hover pick runs at 10 Hz, not every frame
@@ -87,7 +87,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 			MOUSE_BUTTON_LEFT: _primary_click(mb.position)
 			MOUSE_BUTTON_RIGHT: press_hotbar(5)
 	elif ev is InputEventKey and ev.pressed and not ev.echo:
-		for i in range(1, 5):
+		for i in range(1, 6):
 			if ev.is_action_pressed(&"dm_hotbar_%d" % i):
 				press_hotbar(i)
 

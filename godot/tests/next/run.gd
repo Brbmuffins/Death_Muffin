@@ -73,7 +73,7 @@ func _part_a() -> void:
 	root.add_child(g)
 	var spawned: Array = []
 	g.enemy_spawned.connect(func(e: DmEnemy) -> void: spawned.append(e))
-	await g.start(character, api, {"dressing": false})
+	await g.start(character, api, {"dressing": false, "hud": "minimal"})
 	var boot_ms := Time.get_ticks_msec() - t0
 	print("boot: %d ms (world build %d ms incl. navmesh bake %d ms + first nav sync %d ms)" % [boot_ms, g.world.build_ms, g.world.bake_ms, g.world.sync_ms])
 	check(g.session.is_active() and g.session.is_host(), "A: boots as a hosting session")

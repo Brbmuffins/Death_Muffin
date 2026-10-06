@@ -153,6 +153,8 @@ func warm() -> void:
 ## Panels worth building ahead: a first open used to cost 50-500 ms (every row built, fonts shaped, first layout) in the middle of play.
 const WARM_PANELS := ["inventory", "sheet", "cosmetics", "legion", "forge", "professions", "garden", "labor", "contracts", "grimoire", "codex", "atlas", "ascension",
 	"map", "settings", "salvage", "shelf"]
+## The panels warm() builds ahead (a shell that wires fewer panels, like the slice, narrows this before warm()).
+var warm_panels: Array = WARM_PANELS
 ## True while warm() opens the panels behind its cover: no sounds, cue/counsel events, gathering stops or "seen" marks (they belong to the player's own opens).
 var warming := false
 var warm_ms := 0
@@ -180,7 +182,7 @@ func _warm_panels() -> void:
 	add_child(cover)
 	var tree := get_tree()
 	await tree.process_frame
-	for p in WARM_PANELS:
+	for p in warm_panels:
 		close_panels()
 		toggle_panel(p)
 		await tree.process_frame
