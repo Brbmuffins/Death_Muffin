@@ -591,46 +591,10 @@ func _exhume(t: Dictionary) -> String:
 	var r := super._exhume(t)
 	if r != "ok":
 		return r
-	var X := DmFxData.spell_group("exhume")
-	var N := DmFxData.spell_group("needle")
 	_gesture("dig", 2.6, "exhume", "exhume")
-	var tipv := _tip()
-	_beam(_v3(tipv), _cb("_vis_const", [[cx_, 0.3, cz_]]), X["beam"], 0.06, 0.4)
-	_sfx("exhume", cx_, cz_)
-	_emit(cx_, 0.2, cz_, 26, X["spirit"], 0.6, 0.4, 3.4, 1.0, 0.34, {"gravity": -0.5})
-	_decal("cracks", X["deep"], cx_, cz_, 1.4, 1.3, 0.9, {"rot": randf() * 6.0, "growFrom": 0.3})
-	_m_dirt(cx_, cz_, 0.6, 9, 3.0)
-	if fx != null:
-		stats["motif"] += 2
-		fx.motifs.spectral_hands(cx_, cz_, {"n": 3, "r": 0.6, "duration": 1.2})
-		fx.motifs.spirit_wisps(cx_, cz_, X["spirit"], {"n": 2, "r": 0.3, "y": 0.5, "size": 0.7})
-	_bb("exhume_lift", cx_, cz_)
-	if rn == "rune_mass_grave":
-		for o: Array in others:
-			_beam(_v3(_tip()), _cb("_vis_const", [[o[0], 0.3, o[1]]]), X["beam"], 0.04, 0.35)
-			_decal("cracks", X["deep"], o[0], o[1], 1.2, 1.2, 0.9, {"rot": randf() * 6.0, "growFrom": 0.3})
-			_m_dirt(o[0], o[1], 0.5, 6, 2.6)
-			if fx != null:
-				stats["motif"] += 1
-				fx.motifs.spectral_hands(o[0], o[1], {"n": 2, "r": 0.5, "duration": 1.1})
-			_emit(o[0], 0.2, o[1], 18, X["spirit"], 0.5, 0.4, 3.0, 1.0, 0.3, {"gravity": -0.5})
-	elif _colossus_cast and not company.is_empty():
-		var ccx := 0.0
-		var ccz := 0.0
-		for o: Array in company:
-			ccx += o[0]
-			ccz += o[1]
-		ccx /= company.size()
-		ccz /= company.size()
-		for o: Array in company:
-			_beam(Vector3(o[0], 0.4, o[1]), _cb("_vis_const", [[ccx, 1.2, ccz]]), X["beam"], 0.05, 0.7)
-			_emit(o[0], 0.3, o[1], 14, X["spirit"], 0.4, 2.2, 1.2, 0.8, 0.3)
-			_m_splinters(o[0], 0.4, o[1], 5, N["core"], 3.0)
-		_decal("sigil", X["spirit"], ccx, ccz, 3.2, 1.4, 0.8, {"growFrom": 1.4, "spin": 0.8})
-		_decal("ring", X["beam"], ccx, ccz, 3.6, 0.9, 0.9, {"growFrom": 0.4})
-		_emit(ccx, 0.4, ccz, 36, X["spirit"], 3.0, 5.0, 0.4, 0.5, 0.3, {"inward": true, "drag": 0.0})
-		_lf(ccx, 1.5, ccz, X["spirit"], 34.0, 0.9)
-		_shake(0.1)
+	var shake := _rite_fx().exhume_cast(_v3(_tip()), cx_, cz_, others, company if _colossus_cast else [])
+	if shake > 0.0:
+		_shake(shake)
 	return r
 
 
@@ -1037,25 +1001,12 @@ func on_mantle(ev: Dictionary, mine: bool) -> void:
 
 ## `follow`: () -> Vector3 | null, where the caster is (a remote caster's reported position); default: our own body, or the event's point.
 func on_mantle_follow(ev: Dictionary, mine: bool, follow: Callable) -> void:
-	var MN := DmFxData.spell_group("mantle")
-	var M: Dictionary = DmSimData.BONE_MANTLE
 	var fol := follow
 	if not fol.is_valid():
 		fol = _cb("_fol_p") if mine else _cb("_vis_const", [[float(ev["x"]), 0.0, float(ev["z"])]])
-	for tt: Array in ev["tethers"]:
-		_beam(Vector3(tt[0], 0.4, tt[1]), _cb("_mantle_beam_end", [fol]), MN["bone"], 0.05, 0.4)
-		_emit(tt[0], 0.4, tt[1], 10, MN["bone"], 0.4, 1.2, 1.6, 0.5, 0.16, {"gravity": 4.0})
-		_smoke(tt[0], 0.3, tt[1], 2, MN["dust"], 0.4, 0.5, 0.4, 0.8, 0.9)
-		_m_splinters(tt[0], 0.5, tt[1], 3, MN["bone"], 3.6, "player" if mine else "thrall")
-	var handle: Variant = null
-	if fx != null:
-		stats["bone_orbit"] += 1
-		handle = fx.bone_orbit({"fallbackTex": "boneShard", "fallbackColor": MN["bone"], "count": mini(15, 6 + int(ev["corpses"]) * 2), "radius": float(M["orbitRadius"]),
-			"y": 0.7, "size": 0.5, "duration": float(M["durationS"]), "speed": 3.4, "follow": fol})
-	var ring: Variant = _decal("boneRing", MN["amber"], float(ev["x"]), float(ev["z"]), float(M["orbitRadius"]) + 0.5, float(M["durationS"]), 0.45,
-		{"growFrom": 0.4, "spin": 0.5, "fadeOut": 0.4, "follow": fol})
-	_lf(float(ev["x"]), 1.4, float(ev["z"]), MN["gold"], 26.0, 0.4)
-	_sfx("mantle", float(ev["x"]), float(ev["z"]))
+	var hs := _rite_fx().mantle(ev, mine, fol)
+	var handle: Variant = hs[0]
+	var ring: Variant = hs[1]
 	super.on_mantle(ev, mine)
 	if not mine:
 		return
@@ -1280,22 +1231,16 @@ func on_offering_follow(ev: Dictionary, mine: bool, _follow: Callable) -> void:
 		super.on_offering(ev, mine)
 		return
 	var X := DmFxData.spell_group("exhume")
-	_decal("ring", X["spirit"], float(ev["x"]), float(ev["z"]), 1.1, 0.5, 0.9, {"growFrom": 0.3})
-	_emit(float(ev["x"]), 0.5, float(ev["z"]), 14, X["spirit"], 0.3, 1.0, 2.2, 0.6, 0.18)
-	_bb("grave_offering_ripple", float(ev["x"]), float(ev["z"]))
 	_pv = {"kind": "sprite", "tex": "wisp", "size": 0.9, "color": X["beam"]}
 	super.on_offering(ev, mine)
 	_pv = {}
-	_sfx("graveOffering", float(ev["x"]), float(ev["z"]))
+	_rite_fx().offering_start(float(ev["x"]), float(ev["z"]))
 
 
 func _offering_arrive(pos: Array, ctx: Dictionary) -> void:
 	var alive: bool = p["alive"]
 	super._offering_arrive(pos, ctx)
-	_flash(pos[0], pos[1], pos[2], _col("exhume", "spirit"), 1.2, 0.2)
-	_bb("grave_offering_orb", pos[0], pos[2])
-	if ctx["mine"] and alive:
-		_sfx("graveOffering", pos[0], pos[2])
+	_rite_fx().offering_arrive(pos, ctx["mine"] and alive)
 
 
 # --- Ivory Cleave / Veil Step / Rally / Seed ----------------------------------------------------------------------------------------------
@@ -1408,16 +1353,13 @@ var _seed_cores: Dictionary = {}
 
 
 func on_seeded(ev: Dictionary) -> void:
-	var BL := DmFxData.spell_group("bloom")
 	var cid := int(ev["corpseId"])
 	_kill(_seeds.get(cid))
 	_kill(_seed_cores.get(cid))
-	var life := float(DmSimData.CARRION_SEED["lifeS"]) + 1.0
-	var core: Variant = _bb("carrion_seed_armed", float(ev["x"]), float(ev["z"]), {"duration": life})
-	if core != null:
-		_seed_cores[cid] = core
-	_emit(float(ev["x"]), 0.4, float(ev["z"]), 10, BL["petal"], 0.3, 0.8, 1.2, 0.5, 0.14)
-	_seeds[cid] = _decal("seedBud", BL["petal"], float(ev["x"]), float(ev["z"]), 0.75, life, 0.95, {"growFrom": 0.2, "pulse": 3.0, "fadeIn": float(ev["armMs"]) / 1000.0})
+	var hs := _rite_fx().seeded(ev)
+	if hs[1] != null:
+		_seed_cores[cid] = hs[1]
+	_seeds[cid] = hs[0]
 
 
 ## A seed withered, burst or its corpse was used by another rite.
@@ -1429,19 +1371,7 @@ func on_seed_gone(corpse_id: int) -> void:
 
 
 func on_seed_burst(ev: Dictionary) -> void:
-	var BL := DmFxData.spell_group("bloom")
-	var x := float(ev["x"])
-	var z := float(ev["z"])
-	var r := float(ev["r"])
-	_decal("ring", BL["petal"], x, z, r, 0.5, 1.0, {"growFrom": 0.2})
-	_decal("disc", BL["rot"], x, z, r * 0.9, 1.5, 0.55, {"fadeOut": 0.8})
-	_emit(x, 0.5, z, 30, BL["petal"], 0.4, r * 2.4, 1.6, 0.6, 0.22, {"drag": 1.4})
-	_smoke(x, 0.6, z, 6, BL["spore"], r * 0.4, 1.0, 0.6, 1.0, 1.4, {"shrink": -0.4})
-	_lf(x, 1.0, z, BL["petal"], 22.0, 0.3)
-	_bb("carrion_seed_burst", x, z, {"scale": r / 3.0})
-	_bb("toxic_puddle", x, z, {"scale": r / 3.0, "duration": 1.5})
-	_sfx("seedBurst", x, z)
-	_shake(0.06)
+	_shake(_rite_fx().seed_burst(ev))
 
 
 # --- Hollow Knight -----------------------------------------------------------------------------------------------------------------------
@@ -1640,71 +1570,25 @@ func on_detonated(ev: Dictionary, mine: bool) -> void:
 	super.on_detonated(ev, mine)
 	if not ev["ok"]:
 		return
-	var D := DmFxData.spell_group("detonate")
-	var x := float(ev["x"])
-	var z := float(ev["z"])
-	var r := float(ev["r"])
-	_sfx("corpseExplode", x, z)
-	_flash(x, 0.7, z, D["hot"], r * 0.8, 0.2)
-	_decal("ring", D["ember"], x, z, r, 0.45, 1.0, {"growFrom": 0.15})
-	_decal("glow", D["crimson"], x, z, r * 0.9, 0.7, 0.85, {"growFrom": 0.4})
-	_decal("cracks", D["crimson"], x, z, r * 0.75, 1.6, 0.85, {"rot": randf() * 6.0, "growFrom": 0.5})
-	_emit(x, 0.6, z, 24, D["ember"], 0.3, r * 2.8, 1.6, 0.5, 0.34, {"drag": 1.5})
-	_emit(x, 0.7, z, 16, D["bone"], 0.25, r * 2.3, 4.5, 0.9, 0.14, {"gravity": 14.0})
-	_emit(x, 0.4, z, 8, D["crimson"], 0.3, 2.0, 2.4, 0.8, 0.26, {"gravity": 6.0})
-	_smoke(x, 0.4, z, 4, D["smoke"], r * 0.35, 1.4, 0.8, 0.75, 1.0, {"shrink": -0.3})
-	var who := "player" if mine else "thrall"
-	_m_dirt(x, z, r * 0.4, 9, 3.2, who)
-	_m_splinters(x, 0.8, z, 8, D["bone"], r * 1.8, who)
-	_m_skulls(x, z, D["hot"], {"n": 1, "y": 0.8, "size": 0.7, "rise": 1.2, "origin": who})
-	_lf(x, 1.2, z, D["ember"], 55.0 if ev.get("elite", false) else 38.0, 0.45)
-	_bb("corpse_explosion", x, z, {"scale": r / 3.0})
-	if ev.get("corpseKind") == "resonant":
-		_decal("ring", _col("enemy", "toll"), x, z, r * 1.05, 0.6, 0.8, {"growFrom": 0.2, "delay": 0.06})
-		_sfx("tollSmall", x, z)
-	if ev.get("corpseKind") == "toxic":
-		_emit(x, 0.4, z, 24, _col("miasma", "rot"), 0.5, 3.0, 1.4, 0.8, 0.3)
-	if ev.get("elite", false):
-		_decal("ring", D["hot"], x, z, r * 1.2, 0.5, 0.9, {"growFrom": 0.1, "delay": 0.08})
-	_shake((0.055 if mine else 0.025) + (0.035 if ev.get("elite", false) else 0.0))
+	_shake(_rite_fx().detonated(ev, mine))
 
 
 ## VFX + self-effects when the host reports the litany outcome (everyone sees them; the barrier and heal are the caster's).
 func on_litany(ev: Dictionary, mine: bool) -> void:
-	var L := DmFxData.spell_group("litany")
 	var X := DmFxData.spell_group("exhume")
 	var x := float(ev["x"])
 	var z := float(ev["z"])
 	var r := float(ev["r"])
 	var tip: Array = _tip() if mine else [x, 1.6, z]
-	var tethers: Array = ev["tethers"]
-	for k in mini(10, tethers.size()):
-		var tt: Array = tethers[k]
-		_beam(Vector3(tt[0], 0.6, tt[1]), _cb("_vis_const", [tip]), L["core"], 0.045, 0.5)
-		_emit(tt[0], 0.5, tt[1], 8, L["core"], 0.3, 0.6, 1.5, 0.6, 0.3)
-	_emit(x, 0.6, z, 32, L["core"], r, 7.0, 0.2, 0.25, 0.22, {"inward": true, "drag": 0.0})
-	_smoke(x, 0.5, z, 4, L["void"], 1.0, 0.4, 0.2, 0.65, 1.3, {"shrink": -0.3})
-	_decal("sigil", L["core"], x, z, r, 0.7, 0.5, {"growFrom": 0.1, "spin": 0.35})
-	_bb("litany_pulse", x, z, {"scale": r / 7.0})
-	_decal("ring", L["hot"], x, z, r * 1.15, 0.55, 1.0, {"growFrom": 0.05, "delay": 0.18})
-	_emit(x, 0.5, z, 48, L["core"], 1.0, 9.0, 1.8, 0.55, 0.23)
-	_emit(x, 0.8, z, 16, L["hot"], 0.6, 5.0, 3.0, 0.45, 0.2)
-	_flash(x, 1.5, z, L["core"], minf(2.0, r * 0.24), 0.3)
-	var who := "player" if mine else "thrall"
-	if fx != null:
-		stats["motif"] += 1
-		fx.motifs.skull_ring(x, z, minf(r * 0.62, 5.0), L["hot"], {"n": mini(8, 4 + int(ev["corpses"]) + int(ev["thralls"])), "origin": who})
-	for k in mini(5, tethers.size()):
-		_m_motes(tethers[k][0], tethers[k][1], L["hot"], 0.3, 3, 1.8, 0.25, who)
-	_lf(x, 2.0, z, L["core"], 32.0, 0.4)
+	var rfx := _rite_fx()
+	rfx.litany_result(ev, mine, tip)
 	if ev.get("spared", 0):
 		for th: DmSimThrall in sim.thralls.values():
 			if (mine and th.owner != self_id) or _h(th.x - x, th.z - z) > r:
 				continue
 			_decal("ring", X["spirit"], th.x, th.z, 1.2, 0.9, 0.9, {"growFrom": 0.3})
 			_m_motes(th.x, th.z, X["beam"], 0.35, 4, 2.2, 0.25, "thrall")
-	_sfx("litany", x, z, 1.0 + minf(0.6, float(int(ev["corpses"]) + int(ev["thralls"])) * 0.05))
-	_shake(0.08 + minf(0.08, float(int(ev["corpses"]) + int(ev["thralls"])) * 0.008))
+	_shake(rfx.litany_finish(ev))
 	super.on_litany(ev, mine)
 
 

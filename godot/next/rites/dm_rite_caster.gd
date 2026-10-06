@@ -3,19 +3,18 @@ extends Node
 ## Gravecaller rites on the rebuild's session structure (REBUILD D1: the host's game is authoritative). One DmRiteCaster is a child of every
 ## player body, on EVERY peer, at the same NodePath (name it "Rites"; use `DmRiteCaster.attach(body, world)`).
 ##
-## Two rites, both from the existing data and rules (no new numbers):
-##   - "bone_needle"  the Gravecaller primary (LMB, targeting enemy, 380 ms, free, +6 essence per hit);
-##   - "miasma"       Miasma Circle, the grimoire's area rite (ground, 25 essence, 7 s, radius 3.8, a 6 s Withered cloud).
-## Why these: bone_needle IS the primary; of the kit's rites (marrow_spear, exhume, miasma, black_litany, corpse_explosion) miasma is the only
-## area rite that needs nothing else: exhume/black_litany/corpse_explosion need corpses or thralls (a later system), marrow_spear is a line.
+## The caster is the SHARED PLUMBING only. Each rite is its own small module (godot/next/rites/rite_<id>.gd, a DmRiteModule) registered in
+## DmRiteRegistry (one line per rite); the recipe for adding one is in godot/next/rites/README.md. The rules numbers live in DmAbilities /
+## DmSimData / DmFxData, the visuals in DmRiteFx (shared with the current game).
 ##
 ## Flow:
 ##   owner client  request_cast(rite, aim, target_id)  --RPC intent-->  host `_apply_cast`
-##   host validates (sender owns THIS body, finite aim, rite known, DmAbilities.cast_check: alive/unlocked/busy/cooldown/essence, range),
-##        spends + starts the cooldown through DmAbilities.apply_cast_cost, rolls the numbers with DmAbilities (needle_cast / needle_hit /
-##        miasma), flies the shot with the existing projectile speeds, and on arrival damages DmEnemy through take_damage;
-##   host broadcasts EVENT dicts ("cast", "hit", "land") by RPC; EVERY peer (the host included, also solo) plays each event exactly once:
-##        fx via DmRiteFx (the same code the current game draws these rites with), sound via AudioDirector.
+##   host validates (sender owns THIS body, finite aim, rite registered, DmAbilities.cast_check: alive/unlocked/busy/cooldown/essence, then
+##        module.validate: range / target / corpse), spends + starts the cooldown through DmAbilities.apply_cast_cost, then module.resolve
+##        (rolls the numbers, schedules shots with `after`, damages through DmStatusSet.hit / DmEnemy.take_damage, consumes corpses);
+##        a resolve that fails (e.g. the corpse was taken first) refunds the cost and cooldown;
+##   host broadcasts EVENT dicts ({t, rite, ...}) by RPC; EVERY peer (the host included, also solo) plays each event exactly once
+##        through module.play: fx via DmRiteFx (the same code the current game draws the rites with), sound via AudioDirector.
 ##   host replicates {essence, max, cooldowns} to the owner for the HUD (`get_state()` + `state_changed`); a refusal goes back as `cast_rejected`.
 ## Casting is not predicted on the owner: it sees its own cast when the host's event arrives (one round trip).
 ##
@@ -25,18 +24,12 @@ signal state_changed(state: Dictionary)             ## owner: {essence, max_esse
 signal cast_rejected(rite: String, reason: String)  ## owner: the host refused the cast ("cooldown", "essence", "range", "no_target", ...)
 signal event_played(ev: Dictionary)                 ## every peer, once per event, after its fx/sfx ran
 signal hit_number(pos: Vector3, amount: float, crit: bool)  ## every peer: the shell floats the damage number
+signal shake_requested(amount: float)               ## every peer: a rite wants a camera shake (the shell decides whether to apply it)
 signal hit_resolved(rite: String, enemy_id: int, amount: float, crit: bool, killed: bool)  ## HOST only: kill credit / rewards hook
 
-const RITES: Array[String] = ["bone_needle", "miasma"]
-const NEEDLE_SPEED := 26.0       ## sim_caster._fire_needle
-const MIASMA_SPEED := 18.0       ## sim_caster._miasma projectile
-const NEEDLE_TIP_Y := 1.4        ## sim_caster._tip default (over the head)
-const NEEDLE_TARGET_Y := 1.0
-const MIASMA_TARGET_Y := 0.2
-const PICK_RADIUS := 1.5         ## aim point -> enemy when the client names no target (input tolerance, not a game number)
+const TIP_Y := 1.4               ## sim_caster._tip default (over the head)
 const STATE_HZ := 10.0
-const SLOW_HOLD_S := 0.3         ## the cloud keeps its slow on for this long after the last frame an enemy stood in it
-const HOLD_ACTIONS := {"rite_primary": "bone_needle", "rite_1": "miasma"}  ## optional InputMap actions (owner polls them if they exist)
+const HOLD_ACTIONS := {"rite_primary": "bone_needle"}   ## optional InputMap action the owner polls (hold = repeat); the slice's hotbar is next/rites/dm_rite_hotbar.gd
 
 var world: Object = null            ## DmRiteWorld (duck-typed)
 var fx: DmRiteFx = null             ## shared visuals; `fx.fx` / `fx.audio` default to the Vfx / AudioDirector autoloads (tests swap them)
@@ -55,9 +48,8 @@ var _state: Dictionary = {}
 var _now_ms: float = 0.0
 var _rng := RandomNumberGenerator.new()
 var _mods: Dictionary = {}
-var _pending: Array = []            ## host: shots in flight {at, kind, ...}
-var _zones: Array = []              ## host: {x, z, r, dps, until, tick, cap}
-var _needle_casts: int = 0
+var _pending: Array = []            ## host: timed callbacks {at, fn} (shots in flight, delayed bursts), see after()
+var _mem: Dictionary = {}           ## host: per-rite scratch state (rite id -> Dictionary), see mem()
 var _state_acc: float = 0.0
 var _last_sent_essence: float = -1.0
 var _recv_ms: int = 0
@@ -106,6 +98,9 @@ func request_cast(rite: String, aim: Vector3, target_id: int = -1, as_peer: int 
 	if as_peer == 0 and not is_owner_peer():
 		cast_rejected.emit(rite, "not_owner")
 		return
+	if as_peer == 0 and not DmRiteRegistry.has(rite):
+		cast_rejected.emit(rite, "unavailable")   # a rite of the kit that has no module yet
+		return
 	if _is_host():
 		_apply_cast(multiplayer.get_unique_id() if as_peer == 0 else as_peer, rite, aim, target_id)
 	else:
@@ -147,7 +142,9 @@ func step(dt: float) -> void:
 	var rate := DmResources.passive("necromancer", {"stats": p["stats"], "value": res["value"], "max": res["max"], "sinceHurtMs": 1e9, "sinceResourceGainMs": 1e9})
 	res["value"] = clampf(float(res["value"]) + rate * dt, 0.0, float(res["max"]))
 	_step_pending()
-	_step_zones(dt)
+	for m: DmRiteModule in DmRiteRegistry.steppers():
+		if _mem.has(m.id):
+			m.step(self, dt)
 	_state_acc += dt
 	if _state_acc >= 1.0 / STATE_HZ:
 		_state_acc = fmod(_state_acc, 1.0 / STATE_HZ)
@@ -219,7 +216,7 @@ func _apply_cast(sender: int, rite: String, aim: Vector3, target_id: int) -> voi
 	if sender != peer_id:
 		_forged()
 		return
-	if not (is_finite(aim.x) and is_finite(aim.y) and is_finite(aim.z)) or not RITES.has(rite):
+	if not (is_finite(aim.x) and is_finite(aim.y) and is_finite(aim.z)) or not DmRiteRegistry.has(rite):
 		_forged()
 		return
 	_sync_pos()
@@ -227,61 +224,36 @@ func _apply_cast(sender: int, rite: String, aim: Vector3, target_id: int) -> voi
 	if why != "ok":
 		_refuse(sender, rite, why)
 		return
-	var from := [float(p["x"]), NEEDLE_TIP_Y, float(p["z"])]
-	if rite == "bone_needle":
-		var foe := _pick_enemy(aim, target_id)
-		if foe == null:
-			_refuse(sender, rite, "no_target")
-			return
-		var fp := foe.global_position
-		if DmAbilities.shortfall(p, rite, {"x": fp.x, "z": fp.z}, DmSimConsts.BOSS_RADIUS) > 0.0:
-			_refuse(sender, rite, "range")
-			return
-		var rn := DmAbilities.rune(p, rite)
-		if rn == "rune_volley":
-			_needle_casts += 1
-		var nc := DmAbilities.needle_cast(DmAbilities.sp(p, _now_ms), p["loadout"], rn, _needle_casts, _rand())
-		var crit_roll := _rand()
-		DmAbilities.apply_cast_cost(p, rite, _now_ms, false)
-		var to := Vector3(fp.x, NEEDLE_TARGET_Y, fp.z)
-		var eid := int(world.enemy_id(foe))
-		_pending.append({"at": _now_ms + Vector3(from[0], from[1], from[2]).distance_to(to) / NEEDLE_SPEED * 1000.0, "kind": "needle",
-			"enemy_id": eid, "dmg": nc["dmg"], "essence": nc["essence"], "crit_roll": crit_roll})
-		_broadcast({"t": "cast", "rite": rite, "by": peer_id, "from": Vector3(from[0], from[1], from[2]), "to": to, "enemy_id": eid,
-			"speed": NEEDLE_SPEED, "volley": nc["volley"]})
-	else:
-		var m := DmAbilities.miasma(DmAbilities.sp(p, _now_ms), _mods, DmAbilities.rune(p, rite), 1.0, {"x": p["x"], "z": p["z"]}, {"x": aim.x, "z": aim.z})
-		DmAbilities.apply_cast_cost(p, rite, _now_ms, false)
-		var to2 := Vector3(m["x"], MIASMA_TARGET_Y, m["z"])
-		var tip := Vector3(from[0], from[1], from[2])
-		_pending.append({"at": _now_ms + tip.distance_to(to2) / MIASMA_SPEED * 1000.0, "kind": "miasma", "m": m})
-		_broadcast({"t": "cast", "rite": rite, "by": peer_id, "from": tip, "to": to2, "speed": MIASMA_SPEED, "arc": 12.0})
+	var m := DmRiteRegistry.module(rite)
+	var intent := {"rite": rite, "aim": aim, "target_id": target_id, "sender": sender}
+	why = m.validate(self, intent)
+	if why != "":
+		_refuse(sender, rite, why)
+		return
+	var snap := _cost_snapshot(rite)
+	DmAbilities.apply_cast_cost(p, rite, _now_ms, false, bool(intent.get("colossus_cast", false)))
+	why = m.resolve(self, intent)
+	if why != "":
+		_restore_cost(rite, snap)   # the rite did not happen (lost a race for its corpse): nothing was spent
+		_refuse(sender, rite, why)
+		_push_state(true)
+		return
 	_push_state(true)
 
 
-## The enemy a needle is aimed at: the named one if it is a live enemy, else the nearest to the aim point within PICK_RADIUS.
-func _pick_enemy(aim: Vector3, target_id: int) -> Node3D:
-	if world == null:
-		return null
-	if target_id >= 0:
-		var e := world.enemy_by_id(target_id) as Node3D
-		if e != null and _alive(e):
-			return e
-	var best: Node3D = null
-	var best_d := INF
-	for n in world.enemies_in_radius(aim, PICK_RADIUS):
-		var e2 := n as Node3D
-		if e2 == null or not _alive(e2):
-			continue
-		var d := Vector2(e2.global_position.x - aim.x, e2.global_position.z - aim.z).length()
-		if d < best_d:
-			best_d = d
-			best = e2
-	return best
+## What apply_cast_cost touches, so a failed resolve can hand it back.
+func _cost_snapshot(rite: String) -> Array:
+	return [float(p["resource"]["value"]), float(p["castUntil"]), float(p["rootedUntil"]), p["cooldowns"].get(rite)]
 
 
-static func _alive(e: Node) -> bool:
-	return is_instance_valid(e) and float(e.get("hp")) > 0.0
+func _restore_cost(rite: String, snap: Array) -> void:
+	p["resource"]["value"] = snap[0]
+	p["castUntil"] = snap[1]
+	p["rootedUntil"] = snap[2]
+	if snap[3] == null:
+		p["cooldowns"].erase(rite)
+	else:
+		p["cooldowns"][rite] = snap[3]
 
 
 func _step_pending() -> void:
@@ -292,65 +264,106 @@ func _step_pending() -> void:
 			i += 1
 			continue
 		_pending.remove_at(i)
-		if not bool(p["alive"]):
-			continue   # sim: a dead caster's shots do nothing
-		if s["kind"] == "needle":
-			_needle_arrive(s)
-		else:
-			_miasma_land(s["m"])
+		if bool(p["alive"]):   # sim: a dead caster's shots do nothing
+			(s["fn"] as Callable).call()
 
 
-func _needle_arrive(s: Dictionary) -> void:
-	var e := world.enemy_by_id(int(s["enemy_id"])) as Node3D
-	if e == null or not _alive(e):
-		return
-	var hit := DmAbilities.needle_hit(float(s["dmg"]), float(s["crit_roll"]))
-	var amount: float = hit["amount"]
-	var applied: bool = e.take_damage(amount, _body)
-	if not applied:
-		return
+# ---- module API (what rite_<id>.gd uses; see README) ---------------------------------------------------------------------------------------
+
+var body: Node3D:
+	get: return _body
+var mods: Dictionary:
+	get: return _mods
+var now_ms: float:
+	get: return _now_ms
+
+
+func rand() -> float:
+	return _rand()
+
+
+## Per-rite scratch state of this caster (host): the module keeps its counters / zones here, never in its own fields (modules are shared).
+func mem(rite: String) -> Dictionary:
+	if not _mem.has(rite):
+		_mem[rite] = {}
+	return _mem[rite]
+
+
+## Host: run `fn` after `delay_ms` of host clock (a projectile's flight). Skipped when the caster is dead by then.
+func after(delay_ms: float, fn: Callable) -> void:
+	_pending.append({"at": _now_ms + delay_ms, "fn": fn})
+
+
+## The staff tip a shot leaves from.
+func tip() -> Vector3:
+	return Vector3(float(p["x"]), TIP_Y, float(p["z"]))
+
+
+## The caster's ground position (host: from the replicated body).
+func pos() -> Vector3:
+	return Vector3(float(p["x"]), 0.0, float(p["z"]))
+
+
+## The world's corpse field (DmCorpseField contract: pick_corpse / corpses_in_radius / consume / get_corpse / time) or null.
+func corpses() -> Object:
+	return world.get("corpses") if world != null else null
+
+
+## The area this caster stands in ("" = no area filter).
+func area() -> String:
+	return String(world.area_of(peer_id)) if world != null and world.has_method("area_of") else ""
+
+
+## This caster's legion (DmThrallHost, child "Thralls" of the body) or null.
+func thralls() -> DmThrallHost:
+	return _body.get_node_or_null("Thralls") as DmThrallHost if _body != null else null
+
+
+## Host: the caster's essence (clamped to max).
+func gain_essence(amount: float) -> void:
 	var res: Dictionary = p["resource"]
-	res["value"] = minf(float(p["stats"]["maxEssence"]), float(res["value"]) + float(s["essence"]))
-	var gp := e.global_position
-	_broadcast({"t": "hit", "rite": "bone_needle", "by": peer_id, "enemy_id": int(s["enemy_id"]), "pos": Vector3(gp.x, NEEDLE_TARGET_Y, gp.z),
-		"amount": amount, "crit": bool(hit["crit"])})
-	hit_resolved.emit("bone_needle", int(s["enemy_id"]), amount, bool(hit["crit"]), float(e.get("hp")) <= 0.0)
-	_push_state(true)
+	res["value"] = minf(float(p["stats"]["maxEssence"]), float(res["value"]) + amount)
 
 
-func _miasma_land(m: Dictionary) -> void:
-	_zones.append({"x": float(m["x"]), "z": float(m["z"]), "r": float(m["r"]), "dps": float(m["dps"]), "until": _now_ms + float(m["durationMs"]),
-		"tick": 0.0, "cap": float(m["witheredCap"])})
-	_broadcast({"t": "land", "rite": "miasma", "by": peer_id, "x": float(m["x"]), "z": float(m["z"]), "r": float(m["r"])})
+## Host: the vitals that take barrier / healing: the body's own DmPlayerRules state when it has one (DmHeroBody), else the caster's.
+func _vitals() -> Dictionary:
+	var bp: Variant = _body.get("p") if _body != null and is_instance_valid(_body) else null
+	return bp if bp is Dictionary and not (bp as Dictionary).is_empty() else p
 
 
-## The cloud, sim_zones.update_zones for a friendly miasma: every 1 s pulse each enemy inside gets +1 Withered stack (capped) and the
-## strongest dps; enemies inside are slowed (MIASMA_SLOW) while they stand in it.
-func _step_zones(dt: float) -> void:
-	var i := 0
-	while i < _zones.size():
-		var z: Dictionary = _zones[i]
-		if _now_ms >= float(z["until"]):
-			_zones.remove_at(i)
-			continue
-		i += 1
-		z["tick"] = float(z["tick"]) - dt
-		var pulse: bool = z["tick"] <= 0.0
-		if pulse:
-			z["tick"] = 1.0
-		for n in world.enemies_in_radius(Vector3(z["x"], 0.0, z["z"]), float(z["r"]) + 2.0):
-			var e := n as Node3D
-			if e == null or not _alive(e):
-				continue
-			var gp := e.global_position
-			if Vector2(gp.x - float(z["x"]), gp.z - float(z["z"])).length() > float(z["r"]) + float(e.get("radius")):
-				continue
-			var ss := DmStatusSet.ensure(e)
-			if not ss.dot_damage.is_connected(_on_dot):
-				ss.dot_damage.connect(_on_dot)
-			ss.apply(&"slow", _body, 1, SLOW_HOLD_S)
-			if pulse:
-				ss.apply(&"withered", _body, 1, -1.0, {"dps": float(z["dps"]), "cap": float(z["cap"])})
+## The clock the vitals' barrier hold runs on (the body's, else the caster's).
+func _vitals_clock() -> float:
+	var c: Variant = _body.get("_clock_ms") if _body != null and is_instance_valid(_body) else null
+	return float(c) if c != null and _body.get("p") is Dictionary and not (_body.get("p") as Dictionary).is_empty() else _now_ms
+
+
+## Host: max health of the vitals that take barrier / heals.
+func max_hp() -> float:
+	return float(_vitals()["stats"]["maxHp"])
+
+
+## Host: add a barrier (DmAbilities.add_barrier keeps the peak).
+func add_barrier(amount: float) -> void:
+	DmAbilities.add_barrier(_vitals(), amount)
+
+
+## Host: the Mantle's barrier from `corpses` (max with the current one, held for its duration). Returns the end time on the vitals clock.
+func set_mantle_barrier(corpses: float) -> float:
+	return DmAbilities.mantle_apply(_vitals(), corpses, _vitals_clock())
+
+
+## Host: heal the body (hp lives on the body's vitals when it has them).
+func heal(amount: float) -> void:
+	if not is_same(_vitals(), p) and _body.has_method("heal"):
+		_body.heal(amount)
+	else:
+		DmPlayerRules.heal(p, amount)
+
+
+## Host: listen to DoT ticks of a status set (kill credit for Withered stacked by this caster).
+func watch_dots(ss: DmStatusSet) -> void:
+	if not ss.dot_damage.is_connected(_on_dot):
+		ss.dot_damage.connect(_on_dot)
 
 
 ## Withered burns through DmStatusSet (stacks x dps, 0.25 s lumps); the caster that stacked it gets the kill credit.
@@ -359,12 +372,22 @@ func _on_dot(id: StringName, amount: float, source: Node, killed: bool, target: 
 		hit_resolved.emit("miasma", int(world.enemy_id(target)), amount, false, killed)
 
 
+static func alive_enemy(e: Node) -> bool:
+	return is_instance_valid(e) and float(e.get("hp")) > 0.0
+
+
 # ---- host: replication -------------------------------------------------------------------------------------------------------------------
 
-func _broadcast(ev: Dictionary) -> void:
+## Host: an event to every peer (the host plays it too, once). `ev` needs `t` and `rite`; vectors and numbers only (it goes over RPC).
+func broadcast(ev: Dictionary) -> void:
 	_play_event(ev)   # the host sees it through the same path as everyone else, once
 	if not multiplayer.get_peers().is_empty():
 		_rpc_event.rpc(ev)
+
+
+## Host: send the owner its HUD state now (essence / cooldowns changed).
+func push_state() -> void:
+	_push_state(true)
 
 
 func _push_state(force: bool) -> void:
@@ -395,29 +418,9 @@ func _adopt_state(st: Dictionary) -> void:
 ## Once per event per peer. All fx/sfx go through DmRiteFx (shared with the current game's DmAbilitySystem).
 func _play_event(ev: Dictionary) -> void:
 	events_played += 1
-	match String(ev["t"]):
-		"cast":
-			var from: Vector3 = ev["from"]
-			var to: Vector3 = ev["to"]
-			if ev["rite"] == "bone_needle":
-				fx.needle_cast([from.x, from.y, from.z], from.x, from.z, bool(ev.get("volley", false)))
-				var eid := int(ev["enemy_id"])
-				var last := [to]
-				var w := world   # captured by value: the shot may outlive this node
-				var follow := func() -> Variant:
-					var e := w.enemy_by_id(eid) as Node3D if w != null else null
-					if e != null and is_instance_valid(e):
-						last[0] = Vector3(e.global_position.x, NEEDLE_TARGET_Y, e.global_position.z)
-					return last[0]
-				fx.shot(from, follow, float(ev["speed"]), 0.0, "needle", DmFxData.spell("needle", "trail"))
-			else:
-				fx.shot(from, to, float(ev["speed"]), float(ev["arc"]), "orb", DmFxData.spell("miasma", "rot"))
-		"hit":
-			var pos: Vector3 = ev["pos"]
-			fx.needle_hit([pos.x, pos.y, pos.z], bool(ev["crit"]))
-			hit_number.emit(pos, float(ev["amount"]), bool(ev["crit"]))
-		"land":
-			fx.miasma_land(float(ev["x"]), float(ev["z"]), float(ev["r"]))
+	var m := DmRiteRegistry.module(String(ev.get("rite", "")))
+	if m != null:
+		m.play(self, ev)
 	if world != null and world.has_method("on_rite_event"):
 		world.on_rite_event(ev)
 	event_played.emit(ev)

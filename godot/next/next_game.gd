@@ -61,6 +61,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	_has_world = bool(opts.get("world", true))
 	DmSimData.ensure()
 	input.game = self
+	DmRiteHotbar.wire(self)   # slots -> rites (next/rites/dm_rite_hotbar.gd)
 	net.game = self
 	hud.game = self
 	director.game = self

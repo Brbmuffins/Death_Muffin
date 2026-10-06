@@ -44,6 +44,6 @@ Marks are pooled by the Vfx decal layers; decal textures are warmed in `_ready`.
 
 ## Not done / for other tracks
 
-Carrion Seed (`seed*` fields exist but nothing arms/expires them), Plague Bloom/`bloomed`, corpse-eating enemy AI (`raised`/`devoured` just need `consume`),
+Carrion Seed (done: `rite_carrion_seed.gd` arms/expires/bursts the `seed*` fields), Plague Bloom/`bloomed`, corpse-eating enemy AI (`raised`/`devoured` just need `consume`),
 `corpseGone` sounds (no new audio; hook `corpse_gone`), the `DmEnemy` ->field wiring in DmNextGame (call `track` for each spawned enemy). Test harness:
 `godot/tests/corpses/run.gd`.
