@@ -55,7 +55,7 @@ Capes & Pets ~52, Reagent shelf ~41, the rest <= 30; the UI code is shared).
 - Progression persistence, upgrade tiers, level-ups and the belt are `next/progress/` (DmProgressSync, `DmNextBelt`); see its README.
 - Client (non-host) peers get no real HUD yet (`hud: true` builds it for the host only); hurt numbers for a client's own damage need the vitals diff.
 - No auto-combat (the HUD button is not fed); lifesteal / fortune / wisdom brews are not applied yet (damage, haste, ward, speed, essence are).
-- Target frame shows no elite affixes (the slice enemies carry no affix list yet).
+- Target frame elite chips: `_affix_chips` reads the replicated `dm_affix_list` meta (`[{id, name}]` + a blurb listing every affix, as `DmGameHud`), cached per target (rebuilt only when the target or its affix count changes).
 
 ## Tests / cost
 `godot --headless --path godot --script res://tests/next_hud_counsel/run.gd` (feeds, counsel, Legion, every panel).

@@ -45,6 +45,12 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
 4. Gold/shards are ground drops; the member's own save path persists them (capped by the kill ledger from these reports). Gear is rolled
    by `member.api.roll_loot` (server RNG online, offline backend offline); a failed roll leaves plain base gear.
 
+## Brews
+`DmRewardsMember.sync_brews()` (host; called before every kill reward) sets `wisdom` / `fortune` from the active brews of the member's body (`DmPlayerRules.brew_value` on `clock_ms()`),
+so a drink, an extension, a replacement and an expiry all take effect with no extra wiring; a body without a rules state (test stubs) keeps hand-set values. Lifesteal: `watch_enemy`
+hooks the enemy's `damaged(amount, hp, from)`; direct hits from a `DmHeroBody` with a live `lifesteal` elixir are summed per frame and healed once at the end of it,
+`DmBrews.lifesteal_heal(average hit, hits, frac, max_hp)` (target cap + one per-cast cap, >= 1 hp only, as the current game). DoT ticks (`DmStatusSet.dealing_dot`) do not heal. Boss kills do not apply wisdom (same as the current game).
+
 ## Not covered yet
 
 Surge rewards, Depths floors (solo-only), Settings->Loot rules wiring (set `member.loot_view.rules/keep`),

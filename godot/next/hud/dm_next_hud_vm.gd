@@ -21,6 +21,10 @@ var _doors: Array = []
 var _area_sig := ""
 var _ward_vm := {}
 var _omen_vm := {}
+var _aff_id := 0                ## the target whose elite-affix chips are cached (instance id) ...
+var _aff_n := -1                ## ... and how many affixes it bore then (the Shrouded one can be stripped)
+var _aff_chips: Array = []
+var _aff_blurb := ""
 
 
 func _init(host_: DmNextUiHost) -> void:
@@ -168,8 +172,35 @@ func _target(g: DmNextGame) -> Variant:
 			var m: Variant = STATUS_ICON.get(String(id))
 			if m != null:
 				statuses.append({"icon": DmGameHud.art("status/" + m[0]), "label": m[1], "n": set_.stacks(id)})
-	return {"name": d.get("name", e.def_id), "elite": bool(e.get_meta("dm_elite", false)), "affixes": [], "hp": e.hp, "max_hp": e.max_hp,
-		"statuses": statuses, "blurb": String(d.get("blurb", ""))}
+	var chips := _affix_chips(e, String(d.get("blurb", "")))
+	return {"name": d.get("name", e.def_id), "elite": bool(e.get_meta("dm_elite", false)), "affixes": chips, "hp": e.hp, "max_hp": e.max_hp,
+		"statuses": statuses, "blurb": _aff_blurb}
+
+
+## The elite's chips ([{id, name}], DmGameHud's shape) and the blurb listing every affix. Built from the replicated meta `dm_affix_list`,
+## cached per target: rebuilt only when the target (or its affix count) changes, so a held target costs nothing per frame.
+func _affix_chips(e: DmEnemy, base_blurb: String) -> Array:
+	var key := e.get_instance_id()
+	var list: PackedStringArray = e.get_meta(&"dm_affix_list") if e.has_meta(&"dm_affix_list") else PackedStringArray()
+	var n := list.size()
+	if key == _aff_id and n == _aff_n:
+		return _aff_chips
+	_aff_id = key
+	_aff_n = n
+	_aff_chips = []
+	_aff_blurb = base_blurb
+	if n > 0:
+		var ed: Dictionary = DmContent.get_export("enemies", "ELITE_AFFIXES")
+		var parts: Array = []
+		for a in list:
+			var ad: Variant = ed.get(a)
+			if ad == null:
+				continue
+			_aff_chips.append({"id": a, "name": ad["name"]})
+			parts.append(ad["blurb"])
+		if not parts.is_empty():
+			_aff_blurb = " ".join(parts)
+	return _aff_chips
 
 
 func _party(g: DmNextGame) -> Array:

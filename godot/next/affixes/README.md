@@ -25,6 +25,9 @@ signal fires on each peer once per beat. `vfx` / `audio` are instance vars (test
 ## Cost (tests/next_affixes: 30 enemies, 6 affixed elites)
 Frame median +0.1 ms headless (noise level); the component tick is ~3 us for all four affixes; the shroud check runs at 10 Hz, motes at 10 Hz.
 
+## Target-frame chips
+`DmNextHudVm._affix_chips` (next/hud) reads `dm_affix_list` (set on every peer by `attach`, so a joined client has it; `strip_shroud` updates it).
+
 ## Not done
-Target-frame / HUD affix chips (HUD track; read `dm_affix_list`), the floating "+N" heal number (the `moment` carries the position; the amount is the hp change),
+The floating "+N" heal number (the `moment` carries the position; the amount is the hp change),
 wiring `strip_shroud()` to the rebuilt Last Light / Warden rites if/when they exist.

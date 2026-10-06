@@ -61,6 +61,22 @@ static func make(cid: int, peer: int, body_node: Node3D, member_api: DmApi, leve
 	return m
 
 
+## Host: pull wisdom / fortune from the brews active on the body (DmPlayerRules.brew_value on its own clock), like the current game reads them per
+## kill. A body without a rules state (test stubs) keeps whatever the shell set by hand.
+func sync_brews() -> void:
+	var p: Variant = body.get("p") if body != null and is_instance_valid(body) else null
+	if not (p is Dictionary) or (p as Dictionary).is_empty() or not body.has_method(&"clock_ms"):
+		return
+	var br: Dictionary = p["brews"]
+	if br.get("elixir") == null and br.get("tonic") == null:
+		wisdom = 0.0
+		fortune = 0.0
+		return
+	var now := float(body.call(&"clock_ms"))
+	wisdom = DmPlayerRules.brew_value(p, "wisdom", now)
+	fortune = DmPlayerRules.brew_value(p, "fortune", now)
+
+
 func alive() -> bool:
 	return body != null and is_instance_valid(body) and (not body.has_method("dm_alive") or bool(body.call("dm_alive")))
 

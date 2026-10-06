@@ -24,8 +24,8 @@ Ranked by owner priority: performance #1; the necromancer's four disciplines and
 
 1. **Performance, rendered (not headless).** All the rebuild's numbers are headless on a shared VPS (frame median ~7.3 ms); no GPU-measured pass of the rebuilt scene exists, and
    Phase 6 (floor ~0.85 render scale, presets, AA, decal sharpness) is unbuilt. `DmNextPerf` / `DmNextWarmup` are done (sections 17, 23); what is missing is a rendered frame budget on real hardware.
-2. **Target-frame affix chips** (section 2 / 16): `DmNextHudVm._target` hard-codes `"affixes": []`; `dm_affix_list` meta is already there. Small, high-visibility for the corpse-economy counterplay.
-3. **Lifesteal / fortune / wisdom brews** (section 5): rules exist, `DmRewardsMember.wisdom/fortune` are read but never set, `lifesteal_heal` is never called. Silent no-ops on shipped items.
+2. **Target-frame affix chips (DONE, `tests/next_brews_affix`)**: `DmNextHudVm._target` feeds `{id, name}` chips + the combined blurb from the replicated `dm_affix_list` meta, cached per target.
+3. **Lifesteal / fortune / wisdom brews (DONE, `tests/next_brews_affix`)**: `DmRewardsMember.sync_brews` sets wisdom / fortune per kill from the body's active brews; `DmSessionRewards` applies `DmBrews.lifesteal_heal` on every host-side hit the hero lands.
 4. **Gathering world glue** (section 9): visible Grave Laborers, garden / contract notices (`DmGameLabor` timers). The panels already work through the backend. Lower: gather bests are not stored.
 5. **First-hour guidance**: the Next-step box depends on bag / level only; counsel itself is done. Reforge flow, Alchemist's Wing stations, bug report and Acre stations are wired but untested (sections 10, 22, 24).
 6. **Combat odds and ends** (section 1): Bulwark / player-side Bone Ward and Colossus guard as timed statuses, boss slow / root, rite sfx coverage (unverified), pooled creature bodies (probably moot: enemies are scenes).
@@ -54,7 +54,7 @@ and covered by `tests/next_*`. What is left is the list above.
 9. **Boss meta-progression (DONE, `tests/next_boss_meta`):** Empowered summons, Covenant Seal, boss key prompt, prize claim, trophies, Chronicle, Codex, milestones, Nightfall. Limits: a client cannot call Empowered or see Nightfall's dim.
 10. **Counsel and guidance state (DONE for counsel).** `counsel_busy` / `counsel_tick_ctx`, state-based tips, every panel pre-built and exercised. Next box and chat stay solo / thin.
 
-Lower priority, listed in the body: the five non-necromancer disciplines, lifesteal / fortune / wisdom brews, party / lobby UI (D5), reconnect.
+Lower priority, listed in the body: the five non-necromancer disciplines, party / lobby UI (D5), reconnect.
 
 
 
@@ -92,7 +92,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, lifest
 | Special AI (burrow/dig, flank, kite, unbind, sanctify, shield glance, censer pulse, hook, flask, scream, ember lob) | DONE | `sim/sim_enemy_ai.gd` | `enemies/kinds/*`, `enemies/states/*`; cues replicated by `next/next_net.gd` (`CUES`) |
 | Bit-exact sim math / fdlibm determinism | N/A | `sim/fdlibm.gd`, `sim_exact.gd`, `game/dm_fdlibm_x.gd` | dropped: REBUILD "Enemies, AI, navigation: REFACTOR -> REBUILD ... drop bit-exact math"; D1 host-authoritative |
 | Elite multipliers (hp/damage/scale, faster wind-up) | DONE | `sim/sim_data.gd ELITE` | `DmEnemy.elite` |
-| Elite affixes (Bell-Tolled, Hungering, Shrouded, Vengeful) + affix rings/target-frame affix chips | PARTIAL | `rules/combat/dm_affixes.gd`, `data/combat/affixes.json`, `game/dm_entity_views.gd` | Affixes, rings, motes and moments are DONE (`next/affixes`, `tests/next_affixes`); missing: target-frame chips: `DmNextHudVm._target` hard-codes `"affixes": []` (`next/hud/dm_next_hud_vm.gd:171`) although `dm_affix_list` meta exists |
+| Elite affixes (Bell-Tolled, Hungering, Shrouded, Vengeful) + affix rings/target-frame affix chips | DONE | `rules/combat/dm_affixes.gd`, `data/combat/affixes.json`, `game/dm_entity_views.gd` | Affixes, rings, motes and moments (`next/affixes`, `tests/next_affixes`) and the target-frame chips (`DmNextHudVm._affix_chips`, cached per target, same on a joined client: the meta comes from the replicated spawn data; `tests/next_brews_affix`) |
 | Enemy level scaling by area/hero level, wave-tier hp/damage ramp, difficulty hp/damage multipliers | DONE | `sim_director.gd`, `DmEnemyStats` | `DmEnemyStats.area_level` / `ramp_tier` (`dm_wave_director.gd`); difficulty, Elder Dead, Iron Dead, wave-size / elite / deacon vows by `DmNextMeta` (`tests/next_meta`); Depths level `max(12, hero) + depth` (`tests/next_depths`) |
 | Enemy hit/death/windup/voice sfx, telegraphs, hostile zones | DONE | `dm_event_fx*.gd` | `next/enemy_fx/` (`DmEnemyFx`, replicated once per peer) |
 | Enemy idle fx (rising dust, hover motes, fen/fire per-kind idle) | DONE | `dm_entity_views.gd` | `DmEnemyFx` 5 Hz idle pass (dust, hover motes, tunnelling dirt, ember shedding, fen wisp, hag drips, sexton water) over watched enemies within 24x20 m (`next/enemy_fx/README.md`); all kinds have scenes; visual look not screenshot-verified here |
@@ -129,7 +129,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, lifest
 | slow, chill, root, stun, silence, bleed, withered, fracture, hex, sanctified, incensed, frenzy, shrouded, barrier | DONE | `sim/sim_*`, `DmEntityViews` motes | `next/status/dm_status_set.gd` (replicated 4 B/status, visuals via Vfx) |
 | Player-side Bone Ward / Colossus guard as timed statuses; shrouded suspension in own Miasma | PARTIAL | `DmPlayerRules` | stat-based only (`next/status/README.md` "Gaps") |
 | Brews: damage, haste, ward, speed, essence | DONE | `rules/.../dm_brews.gd` | `DmNextBelt` via `p["brews"]` |
-| Brews: lifesteal, fortune, wisdom | MISSING | `dm_brews.gd` | `DmBrews.lifesteal_heal` never called from `next/`; `DmRewardsMember.wisdom` / `.fortune` are read by `DmSessionRewards` (xp / item chance) but nothing ever sets them: code that exists but is never wired |
+| Brews: lifesteal, fortune, wisdom | DONE | `dm_brews.gd` | Wisdom / fortune: `DmRewardsMember.sync_brews()` before each kill reward (per member, from its body's `p["brews"]`). Lifesteal: `DmSessionRewards._lifesteal` on the `damaged` signal when `from` is a `DmHeroBody` (host only), `DmBrews.lifesteal_heal`, hits summed per frame and healed once (target cap + one per-cast cap, as the current game), DoT ticks excluded, heals under 1 hp dropped. `tests/next_brews_affix` |
 
 ## 6. Areas and travel
 
@@ -265,7 +265,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, lifest
 | Health / resource orbs, level badge, XP bar | DONE | `DmNextHudVm` |
 | Hotbar + cooldown sweep, primary socket, rune icon, locked/affordable | DONE | slots from `DmAbilities` |
 | Belt chips (Q/Z/X), brew timers | DONE | `DmNextBelt.rows()` |
-| Target frame (name, hp, statuses) | PARTIAL | no elite affix chips (affixes missing) |
+| Target frame (name, hp, statuses, elite affix chips) | DONE | `DmNextHudVm._target` / `_affix_chips` |
 | Boss bar (phases ticks 60/30 %) | DONE | `vm["boss"]` |
 | Party frames | PARTIAL | roster-driven; client peers get no HUD yet |
 | Minimap (enemies, thralls, corpses, doors, boss dot, click travel) | DONE | `DmHudMinimap` |

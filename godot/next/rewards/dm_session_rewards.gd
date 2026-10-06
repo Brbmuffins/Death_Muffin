@@ -87,7 +87,47 @@ func watch_enemy(enemy: Node) -> void:
 	enemy.connect("died", _on_enemy_died)
 	if enemy.has_signal("damaged"):
 		var id := enemy.get_instance_id()
-		enemy.connect("damaged", func(_a: float, _hp: float, from: Node) -> void: _last_hit[id] = from)
+		enemy.connect("damaged", func(a: float, _hp: float, from: Node) -> void:
+			_last_hit[id] = from
+			if from is DmHeroBody and not DmStatusSet.dealing_dot:
+				_lifesteal(a, from))
+
+
+## Host: the Elixir of lifesteal. Direct hits the hero lands this frame are summed and healed once at the end of the frame, like the current game's
+## send_intent rule: DmBrews.lifesteal_heal(average hit, targets, ...) = % of damage over at most the target cap, capped per cast. DoT ticks do not heal.
+var _ls_acc: Dictionary = {}   ## hero instance id -> [hero, damage sum, hits]
+
+
+func _lifesteal(amount: float, hero: DmHeroBody) -> void:
+	if amount <= 0.0 or hero.p.is_empty() or not hero.alive:
+		return
+	var br: Dictionary = hero.p["brews"]
+	if br.get("elixir") == null and br.get("tonic") == null:
+		return
+	if _ls_acc.is_empty():
+		_flush_lifesteal.call_deferred()
+	var id := hero.get_instance_id()
+	var acc: Array = _ls_acc.get(id, [])
+	if acc.is_empty():
+		_ls_acc[id] = [hero, amount, 1]
+	else:
+		acc[1] += amount
+		acc[2] += 1
+
+
+func _flush_lifesteal() -> void:
+	for id in _ls_acc:
+		var acc: Array = _ls_acc[id]
+		var hero: DmHeroBody = acc[0] if is_instance_valid(acc[0]) else null
+		if hero == null or not hero.alive:
+			continue
+		var ls := DmPlayerRules.brew_value(hero.p, "lifesteal", hero.clock_ms())
+		if ls <= 0.0:
+			continue
+		var heal := DmBrews.lifesteal_heal(float(acc[1]) / float(acc[2]), float(acc[2]), ls, hero.max_hp)
+		if heal >= 1.0:
+			hero.heal(heal)
+	_ls_acc.clear()
 
 
 ## Add a member (before or after start()). Joins the backend session when it is open.
@@ -477,6 +517,7 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 		var la: Variant = loot_area_of.call(area)
 		if la != null:
 			loot_area = String(la)
+	m.sync_brews()   # Tonic of wisdom / Fortune brew
 	var reward: Dictionary = DmLoot.roll_kill(String(ev["def"]), loot_area, level, elite, wave_tier, rng, difficulty, 1.0 + m.fortune, Callable(), Callable(), String(m.discipline["id"]), Callable(m, "owned_ids"))
 	var chain_mult := 1.0
 	var area_def: Dictionary = DmContent.area(area)

@@ -166,6 +166,7 @@ func strip_shroud() -> void:
 		return
 	kinds.remove_at(kinds.find("shrouded"))
 	e.remove_meta(&"dm_shrouded")
+	e.set_meta(&"dm_affix_list", kinds)   # the target frame's chips follow
 	var st := DmStatusSet.of(e)
 	if st != null:
 		st.remove(&"shrouded")

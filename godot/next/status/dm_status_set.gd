@@ -147,7 +147,14 @@ static func _deal(target: Node, amount: float, from: Node, allow_stagger: bool, 
 	if target is DmHeroBody:
 		target.take_damage(amount, from, kind if kind != "" else "dot")
 		return true
-	return target.take_damage(amount, from, allow_stagger)
+	dealing_dot = kind == "dot"
+	var r: bool = target.take_damage(amount, from, allow_stagger)
+	dealing_dot = false
+	return r
+
+
+## True while a DoT tick is being dealt (damage listeners such as lifesteal skip DoTs, as the current client did).
+static var dealing_dot := false
 
 
 func _ready() -> void:
