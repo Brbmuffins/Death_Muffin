@@ -32,7 +32,7 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
 * **Rewards**: `DmSessionRewards.on_boss_defeated({boss, x, z, killer})` (new): the normal-kill rule (alive, within 38 m), `DmLoot.roll_boss`, first kill per character
   (+2 shards, rare relic; `DmRewardsMember.trophies` / `trophy_store`), relic rune, XP, ground gold/shards/gear (gear rolled by the member's api), and a
   `reporter.boss({boss, tier, diff, first})` entry that rides the next `session_report`. The Prelate has no first-kill trophy: it is the run's boss (`prog.record_prelate_kill()`:
-  tally + settles the bell's owed summon; the host tells the HUD `can_ascend`). The Empowered claim (Covenant Seal) is not ported.
+  tally + settles the bell's owed summon; the host tells the HUD `can_ascend`). The Empowered claim is `DmBossMeta` (below).
 * **Audio**: `bossAwaken`/`bossDefeat` sounds go through the router, which makes the AudioDirector start/stop the war-drum bed; `AudioDirector.set_boss_music` follows the
   local hero (alive, in the boss area, a boss awake), checked at 2 Hz.
 
@@ -85,9 +85,20 @@ Suites: `tests/next_bosses/saint_run.gd`, `regent_run.gd`, `mire_run.gd` (shared
 * **Hittability**: `DmBoss.is_awake()` / `is_hittable()` (false while `bstate.state == "sunk"`, replicated): rites, thralls (retarget), the hover pick and `enemies_in_radius` skip a sunk Mire Mother; the brain refuses damage too.
 * **Hands** (Mire) root like Burial: `_route` roots on any ms-0 event carrying `root` (bury, hands, the Congregation's grasp). Defeat timer is a child Timer of the body (the old SceneTreeTimer lambda called a freed boss).
 
+## Boss meta-progression (`dm_boss_meta.gd`, child `BossMeta` of DmNextGame, host; suite `tests/next_boss_meta/run.gd`)
+* **The altar**: E / a click -> `DmBossHost.request_summon` -> `site_hook` = `DmBossMeta.use_site`. A boss in `DmGoldSink.EMPOWERABLE` (all but the Prelate) with a Covenant Seal in the bag (HUD inventory) or a
+  summon already bound by a lost fight opens the HUD's BossKeyPrompt (`boss_key_offer`); the prompt's two answers are `DmNextUiHost.summon_boss` / `summon_boss_empowered` -> `summon_normal` / `call_empowered`.
+  Anything else is the old synchronous soul-shard summon (`request_summon_plain`).
+* **Empowered call**: `_check` first (busy / far / dead, nothing spent), then `/api/boss-key/summon` through `psync.spend_on_server` (the BACKEND takes the Seal and `DmGoldSink.empower_gold` = 7,500 x shards^2,
+  or answers free for a bound summon), then `DmBossHost.try_summon(peer, id, true)` (no shards; the brain's `awaken(empowered)`: level +6 +15 %, hp x1.4, red-gold glow). A boss that woke meanwhile: `boss-key/refund`.
+* **Kill**: the report carries `summon` (`DmRewardsMember.empower_pending/_summon_id`), then on `boss_earned` the prize is claimed (`/api/boss-key/claim`, after `rewards.flush()`) and dropped at the corpse
+  (`loot_view.item`, epic or better, a legendary some of the time); a wipe leaves the summon `bound` (next call free).
+* **Trophies**: see `next/progress/README.md` (the chronicle's `boss.<id>` counter: first kill = nothing counted before it; the rewards member's `trophy_store` is `DmNextChronicle.claim_trophy`).
+* Numbers (offline suite): Gravedigger King Empowered costs 30,000 gold + 1 Seal; hp x1.4 and +6 levels vs plain; claim needs the fight to have lasted 10 s on the backend clock.
+* Limits: the choice is the host's own hero (a client's `request_summon` is the plain RPC); the prize claim window is the backend's (3 h).
+
 ## Gaps
-Empowered (Covenant Seal) summons and the seal prize; first-kill trophies are in memory per session unless
-the shell sets `trophy_store`; chronicle/codex entries; boss slow/root statuses are ignored (the brain owns speed); hitstop callback unset in the slice; the Ossuary / Nave / Sanctum are not open in the slice yet (their
+boss slow/root statuses are ignored (the brain owns speed); hitstop callback unset in the slice; the Ossuary / Nave / Sanctum are not open in the slice yet (their
 bosses run in them as soon as the areas track opens them; thralls need the area's navmesh); the Prelate's tally is validated by the backend only for a bell it was told of (online `spend_shards` queues `summon_prelate`);
 `can_ascend` is emitted as a game event only; a late joiner does not see pools that are already burning (the rpc is at creation); the flood's hummock shrink is a presentation event the world builder does not ease yet; the pools of a boss that resets linger their remaining seconds (as sim zones did); the first draw of the six-walker Procession spawn costs one slow frame under software GL (not measured on a GPU).
 

@@ -19,6 +19,16 @@ start(): _start_rewards -> _start_progress: member.prog = DmProgression(characte
 XP and kill counts arrive only from the rewards node's **accepted** session reports (`member_credited`); gold / shards / items from ground pickups. A relaunch reloads the
 character from the backend (`load_or_create_character`) and `connect_server` adopts the necro state.
 
+## Chronicle, trophies, Codex (`dm_next_chronicle.gd`, `dm_next_codex.gd`; `tests/next_boss_meta/run.gd`)
+* **One Chronicle** (`DmNextGame.chron.chronicle`, child `Chronicle`, loaded before the progression): `prog.chronicle` is it, so kills + `kills.<area>` + `peak.wave` (DmProgression.record_kill, accepted reports only),
+  `gold.earned/spent`, gathering (`gathered.<skill>`), the Depths (`depths.*`, `kills.depths`, `peak.depth`: `DmDepths.chronicle` is the same object), `deaths`, `peak.level`, `boss.<id>` (the Prelate through
+  `boss_earned`, the area bosses through `claim_trophy`), `playSeconds` / `afkSeconds` (per frame float adds). Flush: every 30 s while dirty, 2 s after a boss kill, on leave (`flush_all`), and before the Codex's
+  Chronicle tab reads the backend (`DmNextUiHost.flush_chronicle`); `/api/chronicle/add` only knows whitelisted keys, so nothing else is invented. An Ascension archives (`ascend`) in the same flush.
+* **First-kill trophy** = the backend `boss.<id>` counter was 0 before this kill (it survives a relaunch and a new machine; the web kept a browser-local list). Granted once: +2 shards, a rare relic, the relic rune.
+* **Codex** (`DmNextGame.codex`): `dead` = an enemy kind within 40 m of the hero on its first spawn, or a boss when it wakes (`DmNextGame.codex_discover`, also called by the boss fx); `area` on entry (DmAreaFlow).
+  Saved per character in the local store (`dm_codex_v1:<id>`, like the web's localStorage) and mirrored into the HUD's `ui.codex_journal` through the `codex` game event (seeded when the HUD is built).
+* Cost (headless): chronicle tick ~3 us/frame, codex per spawn ~1 us (known kind), milestone tier call ~5 us and only on a tier change.
+
 ## Save cadence (DmProgressSync, unchanged)
 Urgent on a level-up and on a purchase; 45 s timer while dirty (gold / shards / kills); on an area change (`DmNextGame.area_changed`); on quit / leave (`DmNextGame.flush_all`: last
 kill batch + `session_end`, progression, bag; `main.gd` calls it on window close). Failures retry with backoff. Write-behind: a pickup costs ~4 us, a save call returns at its first await.

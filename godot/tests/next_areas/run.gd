@@ -375,10 +375,19 @@ func _surge() -> void:
 	for i in 100:   # they rise first (not hittable for ~1.1 s)
 		await physics_frame
 		hb.heal(1e6)
-	var targets := d.enemies.values()
-	targets = targets.slice(0, int(ceil(float(s.spawned) * float(DmSimData.SURGE["clearFrac"]))) + 1)   # 80 % of the surge (+1: a body still rising shrugs a hit)
-	for e in targets:
-		(e as DmEnemy).take_damage(1e9, hb)
+	# Kill 80 % of the surge: only hittable bodies count (a burrowed ghoul or a rising body shrugs a hit), so keep going until the
+	# surge's own kill count reaches the clear fraction (the old "first N + 1" picked two burrowed ghouls once vanguard elites came in).
+	var need := int(ceil(float(s.spawned) * float(DmSimData.SURGE["clearFrac"])))
+	for tries in 120:
+		if s.killed >= need:
+			break
+		for e in d.enemies.values():
+			var de := e as DmEnemy
+			if s.killed >= need:
+				break
+			if is_instance_valid(de) and de.sm.id() != DmEnemyState.Id.DEAD and de.is_hittable():
+				de.take_damage(1e9, hb)
+		await physics_frame
 	await ticks(2)
 	events.clear()
 	dropped.clear()

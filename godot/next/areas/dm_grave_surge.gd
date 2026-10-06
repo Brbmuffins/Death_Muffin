@@ -151,4 +151,5 @@ func _end() -> void:
 	active = false
 	_ids.clear()
 	var S: Dictionary = DmSimData.SURGE
-	surge_in = float(S["minIntervalS"]) + director.rng.randf() * (float(S["maxIntervalS"]) - float(S["minIntervalS"]))
+	surge_in = (float(S["minIntervalS"]) + director.rng.randf() * (float(S["maxIntervalS"]) - float(S["minIntervalS"]))) \
+		* (DmSimData.RESTLESS_SURGE_MULT if DmWaveUpgrades.milestone_active("restless", director.wave_tier) else 1.0)   # Restless Crypts: 40 % sooner

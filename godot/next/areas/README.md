@@ -17,9 +17,15 @@ wires the current game's content (`areas.json`, `enemies.json`, `DmSimData`) ont
 ## Not done / limits
 - Gathering (Acre nodes, professions) is `next/gathering/` (`DmNextGather`); visible laborers are not wired (see its README).
 - One director = one simulated area: a second player standing in a different combat area gets no waves until the host's area empties. (Party of 4 solo-first, D5.)
-- Sim waves climb out of area `breaches`; the slice keeps its ring 9-14 m around the hero (snapped to the navmesh). Nightfall shroud / vanguard milestone variants are not ported.
+- Sim waves climb out of area `breaches`; the slice keeps its ring 9-14 m around the hero (snapped to the navmesh). Wave milestones are ported (below).
 - Bosses of the other areas are the bosses tracks'.
 
 ## Tests / perf
 `godot --headless --path godot --script res://tests/next_areas/run.gd` (offline backend; ~1 minute). Rendered walk: `tests/next_areas/walk_probe.gd` (header has the lock command).
 Headless walk through 12 areas twice with waves on: frame median ~7.4 ms (p95 ~8.3), worst ~35 ms, slowest frame after an entry ~20-35 ms, static memory +2 MB and node count flat over 24 entries.
+
+## Wave milestones (`dm_wave_milestones.gd`, child `Milestones`; `tests/next_boss_meta/run.gd`)
+Elite Vanguard (tier 3), Restless Crypts (6), Nightfall (8): banner on crossing (`DmNextProgress.apply_progress` -> `on_tier`), a "fades" toast on dropping back, and the Nightfall light (moon x(1 - 0.6 k),
+hemisphere x(1 - 0.3 k), eased at 0.8/s, scaled by ratio so other light writers compose; the Acre and the Alchemist's Wing stay lit). `_process` only runs while easing. The variants live in the director
+(`DmWaveDirector.milestone(id)` at the ramped tier): the Vanguard's first plain pick of every other wave is an elite, Nightfall makes half the common picks `shrouded`, Restless shortens the next surge x0.6.
+Not done: a joined client does not dim (the tier is host state).

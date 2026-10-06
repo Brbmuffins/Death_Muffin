@@ -47,6 +47,10 @@ var meta: DmNextMeta                             ## child "Meta" (host): difficu
 var bosses: DmBossHost                          ## child "Bosses" (every peer): summon rules, boss bodies, boss events + music
 var enemy_fx: DmEnemyFx                          ## child "EnemyFx" (every peer): telegraphs, impacts, deaths, enemy voices
 var look: DmHeroLook                            ## child "Look" (every peer): worn gear, cape, pet and hero ring on every hero, replicated (next/hero/README.md)
+var chron: DmNextChronicle                       ## child "Chronicle" (host): the one Chronicle every system feeds, first-kill trophies (next/progress/)
+var codex: DmNextCodex                           ## child "Codex" (host): enemies met, areas entered, bosses woken (next/progress/)
+var boss_meta: DmBossMeta                        ## child "BossMeta" (host): the Covenant Seal altar choice, Empowered summons, the Seal's prize (next/bosses/)
+var milestones: DmWaveMilestones                 ## child "Milestones" (host): wave-milestone banners and the Nightfall dimming (next/areas/)
 var depths: DmDepths                            ## child "Depths" (host): the procedural descent (next/depths/)
 var corpses: DmCorpseField                       ## child "Corpses" (same path on every peer); host lays corpses from enemy deaths
 var hitstopper := DmHitStop.new()               ## the picture's micro-freeze on heavy hits / elite deaths (DmHitStop, as the current client)
@@ -149,7 +153,23 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		meta.name = "Meta"
 		add_child(meta)
 		meta.attach(self)
+		milestones = DmWaveMilestones.new()
+		milestones.name = "Milestones"
+		add_child(milestones)
+		milestones.setup(self)
+		chron = DmNextChronicle.new()
+		chron.name = "Chronicle"
+		add_child(chron)
+		await chron.setup(self)   # before the progression: it adopts this chronicle
 		await _start_progress(b)
+		boss_meta = DmBossMeta.new()
+		boss_meta.name = "BossMeta"
+		add_child(boss_meta)
+		await boss_meta.setup(self)
+		codex = DmNextCodex.new()
+		codex.name = "Codex"
+		add_child(codex)
+		codex.setup(self, progress.store)
 		_enter(b.position)
 		camera.snap(b.position)
 	chapterhouse = DmChapterhouse.new()
@@ -174,6 +194,8 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	await gather.setup(self)
 	# The current game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
 	await _start_hud()
+	if codex != null:
+		codex.seed_ui()
 	areas = DmAreaFlow.new()
 	areas.name = "Areas"
 	add_child(areas)
@@ -263,12 +285,18 @@ func _start_progress(b: DmHeroBody) -> void:
 func flush_all() -> void:
 	if rewards != null and session.is_host() and session.is_active():
 		await rewards.end_session({})
-	if depths != null:
-		await depths.flush()
+	if chron != null:
+		await chron.flush()
 	if progress != null:
 		await progress.flush_all()
 	if ui_host != null and ui_host.inventory != null:
 		await ui_host.inventory.flush()
+
+
+## The reference's `codex_discover(kind, id)` (the boss and enemy fx call it by name).
+func codex_discover(kind: String, id: String) -> void:
+	if codex != null:
+		codex.discover(kind, id)
 
 
 func _make_body() -> DmSessionBody:

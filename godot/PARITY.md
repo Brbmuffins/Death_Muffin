@@ -40,8 +40,9 @@ HUD feeds and contract methods that `DmGame` had and `DmNextGame` / `DmNextUiHos
    `stop_gathering/afk_*`. Also in progress: the Depths (generated floors, stair prompt, readout), and Bone Abbess / Drowned Congregation / Bell-Sworn Prelate. (sections 3, 8, 9)
 8. **HUD feeds missing (MISSING).** (Kill chain meter and tier banners, Soul Harvest meter, omen chip and Bone Ward chip are DONE on `godot/next-meta`.) Save-state chip, wave dial (`dial_wave`), auto-combat button
    (and Easy Auto Combat / auto-dodge themselves). Also loot / coin / rarity sounds and the hero hurt sound are not forwarded. (sections 1, 13, 16, 18)
-9. **Boss meta-progression (MISSING).** Empowered summons + Covenant Seal + prize claim and the boss key prompt, first-kill trophies persisted (`trophy_store` unset), Chronicle (life records for the Codex),
-   Codex "dead" discoveries, Nightfall / wave-milestone variants. (sections 3, 6, 13)
+9. **Boss meta-progression (DONE on `godot/next-boss-meta`).** Empowered summons + Covenant Seal + boss key prompt + prize claim, first-kill trophies (the chronicle's `boss.<id>` counter, on the backend),
+   the one Chronicle fed by every system and saved, Codex discoveries (enemies, areas, bosses; saved per character), wave-milestone banners, the Nightfall dimming and the three variants.
+   Remaining: the Covenant Seal choice is the host's own hero only (a joined client cannot call Empowered), a client does not see Nightfall's dimming. (sections 3, 6, 13)
 10. **Counsel and guidance state (PARTIAL).** `counsel_busy` / `counsel_tick_ctx` are not implemented, so state-based tips and in-combat tip suppression do not run; Next box and chat are solo stubs;
     Legion tier cannot be bought; Forge / Vault / Reagent shelf / Contracts / Sheet / Ascension panels open but are untested on the slice (only Bag, Grimoire, Settings are pre-built and tested). (sections 14, 15)
 

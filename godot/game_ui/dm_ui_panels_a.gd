@@ -363,6 +363,8 @@ func _codex_data() -> void:
 
 
 func _load_chronicle() -> void:
+	if game.has_method("flush_chronicle"):
+		await game.flush_chronicle()   # the panel shows the saved record: send what is pending first
 	var r: DmResult = await game.api.get_chronicle(cid())
 	if r.ok and r.data is Dictionary:
 		var c := DmChronicle.new()

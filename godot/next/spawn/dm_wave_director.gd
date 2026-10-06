@@ -49,6 +49,7 @@ var follow_areas := true                ## host: when no hero is in `area_id`, m
 var surge: DmGraveSurge                 ## Grave Surges (next/areas/dm_grave_surge.gd), host
 var _first_wave := true                 ## the first wave of a visit is 1.3 x the area's wave size (the sim's spawn_wave first)
 var _wave_n: int = 0                    ## waves since arrival (processions start at PROCESSION.minWave)
+var _vanguard := false                  ## this wave carries the Elite Vanguard (every other wave): its first plain pick is an elite
 var _since_arrival: float = 0.0         ## s a hero has been in the area (Wave Speed ramps in over DmEnemyStats.RAMP_S, like the sim's ramp_tier)
 
 
@@ -196,6 +197,7 @@ func _physics_process(delta: float) -> void:
 			spawn_wave(heroes, DmMath.js_round(float(_base[1]) * 1.3))
 		else:
 			_wave_n += 1
+			_vanguard = _wave_n % 2 == 1 and milestone("vanguard")
 			var theme: Variant = _roll_theme()
 			if theme == null:
 				spawn_wave(heroes)
@@ -204,6 +206,7 @@ func _physics_process(delta: float) -> void:
 				var made := spawn_wave(heroes, maxi(1, DmMath.js_round(float(wave_size) * float(th["sizeMult"]))), th["roster"], String(th["lead"]) if th.get("lead") != null else "")
 				if made > 0:
 					procession.emit(th)
+			_vanguard = false
 	if surge != null:
 		surge.update(delta, heroes)
 
@@ -262,6 +265,11 @@ func spawn_wave(heroes: Array, count: int = -1, roster: Array = [], lead: String
 	return made
 
 
+## A Wave Speed milestone (Elite Vanguard tier 3, Restless Crypts 6, Nightfall 8) in force at the ramped tier, as the sim's director reads it.
+func milestone(id: String) -> bool:
+	return wave_tier > 0.0 and DmWaveUpgrades.milestone_active(id, DmEnemyStats.ramp_tier(wave_tier, _since_arrival))
+
+
 ## The chance a single pick is an elite: the area's own + the Wave Speed ramp + difficulty + the Omen + Elite Surge (the sim's spawn_at_breach roll).
 func elite_chance() -> float:
 	var ramp := float(DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, _since_arrival))["eliteBonus"]) if wave_tier > 0.0 else 0.0
@@ -277,10 +285,14 @@ func spawn_group(pos: Vector3, heroes: Array, room: int, lead: String = "", rost
 	var k := 1
 	if pack is Array:
 		k = rng.randi_range(int(pack[0]), int(pack[1]))
-	var elite := pack == null and rng.randf() < elite_chance()
+	var vanguard := _vanguard and pack == null and lead == "" and kind != "risen"   # Elite Vanguard: the wave's first plain pick (the sim's force_elite)
+	var elite := pack == null and (vanguard or rng.randf() < elite_chance())
+	if elite:
+		_vanguard = false
 	var over := {}
-	if not elite and wave_tier > 0.0 and DmWaveUpgrades.milestone_active("nightfall", DmEnemyStats.ramp_tier(wave_tier, _since_arrival)) and rng.randf() < DmSimData.NIGHTFALL_SHROUD_CHANCE:
-		over["affix_list"] = PackedStringArray(["shrouded"])   # the sim rolls Nightfall's shroud once per pick, for the whole pack
+	# Nightfall: common dead rise Shrouded — the real affix (next/affixes), rolled once per pick for the whole pack as the sim does
+	if not elite and milestone("nightfall") and rng.randf() < DmSimData.NIGHTFALL_SHROUD_CHANCE:
+		over["affix_list"] = PackedStringArray(["shrouded"])
 	var made := mini(k, room)
 	for j in made:
 		var at: Vector3 = pos if j == 0 else pos + Vector3(rng.randf_range(-1.5, 1.5), 0.0, rng.randf_range(-1.5, 1.5))

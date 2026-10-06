@@ -345,6 +345,23 @@ func stop_gathering(reason: String) -> void:
 		shell.gather.stop_gathering(reason)
 
 
+## The Boss key prompt's two answers (DmGameUi calls them by name): wake it with soul shards / call it Empowered (next/bosses/dm_boss_meta.gd).
+func summon_boss(id: String) -> void:
+	if shell.boss_meta != null:
+		shell.boss_meta.summon_normal(id)
+
+
+func summon_boss_empowered(id: String) -> void:
+	if shell.boss_meta != null:
+		shell.boss_meta.call_empowered(id)
+
+
+## The Codex's Chronicle tab reads the backend: send what is pending first (DmUiPanelsA._load_chronicle).
+func flush_chronicle() -> void:
+	if shell.chron != null:
+		await shell.chron.flush()
+
+
 func afk_active() -> bool:
 	return shell.gather != null and shell.gather.loop != null and shell.gather.loop.afk
 

@@ -47,5 +47,9 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
 
 ## Not covered yet
 
-Bosses/boss first-kill trophies, Surge rewards, Depths floors (solo-only), Settings->Loot rules wiring (set `member.loot_view.rules/keep`),
+Surge rewards, Depths floors (solo-only), Settings->Loot rules wiring (set `member.loot_view.rules/keep`),
 saving the bag to the backend, level-up presentation (read `member_credited.levels`), a client-side mirror of remote members' loot views.
+
+## Bosses (first kills, Empowered)
+`on_boss_defeated` pays each eligible member. `m.claim_trophy(id)` is `DmNextChronicle.claim_trophy` in the slice (persisted through the Chronicle, `next/progress/README.md`); an Empowered kill adds the backend `summon`
+id to the report (`m.empower_pending / empower_summon_id`, set by `DmBossMeta`).

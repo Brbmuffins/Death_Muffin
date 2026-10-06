@@ -24,7 +24,7 @@ const LEASH := 90.0                               ## the floor is 40 x 36: never
 var game: Node                                    ## DmNextGame
 var run: DmDepthsRun
 var ground: DmDepthsGround
-var chronicle := DmChronicle.new()
+var chronicle: DmChronicle                        ## the shared one (DmNextChronicle, `game.chron`): kills, floors, chests and the deepest floor
 var over := false                                 ## the hero fell: the floor stays up behind the death screen until they rise
 var chest_done := false
 var rng := RandomNumberGenerator.new()
@@ -36,7 +36,6 @@ var _leave_until := 0
 var _its: Array = []                              ## this floor's interactables (also in the hub's list)
 var _end_note := ""
 var _flush_t := 0.0
-var _flushing := false
 var _near_t := 0.0
 var _stair_node: Node3D
 var _vfx: Node
@@ -62,8 +61,7 @@ func setup(game_: Node) -> void:
 	game.hero_respawned.connect(_on_hero_respawned)
 	game.director.enemy_died.connect(_on_enemy_died)
 	game.session.player_joined.connect(_on_player_joined)
-	chronicle.max_("peak.level", float(game.character.get("level", 1)))
-	_load_chronicle()
+	chronicle = game.chron.chronicle
 	if game.world.builder != null and game.world.builder.area_nodes.has("warren"):
 		var s: Dictionary = DmContent.get_export("areas", "DEPTHS_STAIR")
 		_stair_node = _make_warren_stair(float(s["x"]), float(s["z"]))
@@ -88,12 +86,6 @@ func warm(depths: Array, spread: bool = false) -> int:
 			if spread:
 				await get_tree().process_frame
 	return n
-
-
-func _load_chronicle() -> void:
-	var r: DmResult = await game.api.get_chronicle(_hero_id)
-	if r.ok and r.data is Dictionary:
-		chronicle.set_data(r.data)
 
 
 # ---- state ----------------------------------------------------------------------------------------------------------------------
@@ -506,15 +498,7 @@ func _wipe_ground() -> void:
 
 ## Save the chronicle (the record of the deepest floor). Awaitable; DmNextGame.flush_all calls it.
 func flush() -> void:
-	if _flushing:
-		return
-	var batch := chronicle.flush_begin()
-	if batch.is_empty():
-		return
-	_flushing = true
-	var r: DmResult = await game.api.add_chronicle(_hero_id, batch["sums"], batch["maxes"])
-	chronicle.flush_done(batch, r.ok)
-	_flushing = false
+	await game.chron.flush()
 
 
 # ---- plumbing -------------------------------------------------------------------------------------------------------------------

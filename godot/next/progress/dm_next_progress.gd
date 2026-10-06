@@ -40,6 +40,7 @@ func setup(shell_: DmNextGame, m: DmRewardsMember, persist: bool) -> void:
 		store = DmCounselStore.new("user://dm_local.json" if persist else "")
 	prog = DmProgression.new(shell.character, DmProgressSync.load_local(hero_id) if persist else null)
 	m.prog = prog
+	prog.chronicle = shell.chron.chronicle   # kills, peak wave, gold, ascents feed the one Chronicle (next/progress/dm_next_chronicle.gd)
 	psync = DmProgressSync.new(shell.api, prog, hero_id, persist)
 	psync.error.connect(func(msg: String) -> void: event.emit("toast", {"text": msg, "kind": "err"}))
 	belt = DmNextBelt.new()
@@ -90,6 +91,8 @@ func apply_progress() -> void:
 	var tier := float(prog.local["waveTierActive"])
 	shell.director.set_wave_tier(tier)
 	shell.rewards.wave_tier = tier
+	if shell.milestones != null:
+		shell.milestones.on_tier(tier)   # milestone banners, the Nightfall light
 	if shell.meta != null:
 		shell.meta.sync()   # vows, boons and the Omen reach the director, the bosses, the corpses and the rewards
 	refresh_stats()
@@ -179,6 +182,7 @@ func _level_up(gained: int) -> void:
 	for id in kit["grimoire"]:
 		if DmAbilities.unlock_level(id) <= lvl and DmAbilities.unlock_level(id) > 1:
 			grim = true
+	shell.chron.level(lvl)
 	event.emit("level_up", {"level": int(lvl), "grimoire_unlocked": grim, "family": b.family, "learned_rites": learned.size()})
 	sfx("levelUp")
 

@@ -36,6 +36,7 @@ var assume_area: String = ""                      ## tests without a world: play
 var rng := RandomNumberGenerator.new()
 var bosses: Dictionary = {}                       ## dm_id -> DmBoss (every peer)
 var fx: DmBossFx
+var site_hook := Callable()                       ## DmBossMeta.use_site(boss_id): the Covenant Seal choice before a plain summon (host)
 var packets_sent: int = 0
 var states_applied: int = 0
 
@@ -153,8 +154,17 @@ func site_near(pos: Vector3, r: float) -> String:
 
 # ---- summon (host rules; any peer may ask) ---------------------------------------------------------------------------------------
 
-## Ask to wake `boss_id` (the local hero, at its site). Any peer; the host decides.
+## Ask to wake `boss_id` (the local hero, at its site). Any peer; the host decides. On the host the BossMeta node's altar choice (Covenant
+## Seal) comes first when it has one to offer (`site_hook`).
 func request_summon(boss_id: String) -> void:
+	if site_hook.is_valid() and multiplayer.is_server():
+		site_hook.call(boss_id)
+	else:
+		request_summon_plain(boss_id)
+
+
+## The soul-shard summon, no altar choice.
+func request_summon_plain(boss_id: String) -> void:
 	if multiplayer.is_server():
 		var me: int = game.session.get_my_id()
 		var why := try_summon(me, boss_id)
@@ -165,12 +175,12 @@ func request_summon(boss_id: String) -> void:
 
 
 ## HOST. "" = woken; else the refusal: busy / far / shards / dead / unknown. Spends the boss's soul shards from the summoner's progression
-## (the Prelate's bell takes `spend_shards`, which also owes the run a Prelate summon; the area bosses `spend_boss_shards`).
+## (an Empowered call pays the Seal and gold instead: no shards) (the Prelate's bell takes `spend_shards`, which also owes the run a Prelate summon; the area bosses `spend_boss_shards`).
 func try_summon(peer: int, boss_id: String, empowered: bool = false) -> String:
 	var why := _check(peer, boss_id)
 	if why == "":
 		var m := member_of(peer)
-		if m != null and not (m.prog.spend_shards(int(DmContent.boss("prelate")["shards"])) if boss_id == "prelate" else m.prog.spend_boss_shards(boss_id)):
+		if m != null and not empowered and not (m.prog.spend_shards(int(DmContent.boss("prelate")["shards"])) if boss_id == "prelate" else m.prog.spend_boss_shards(boss_id)):
 			why = "shards"
 	if why != "":
 		summon_refused.emit(boss_id, why, peer)

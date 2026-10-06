@@ -39,6 +39,8 @@ func enter(id: String) -> void:
 			_event("banner", {"title": def["name"], "sub": def["subtitle"], "ms": 3000})
 		if FIRST_ENTRY_COUNSEL.has(id):
 			_event("area_first_entered", {"area": id})
+	if game.codex != null:
+		game.codex.discover("area", id, false)   # the journal remembers it (saved); the event below is the reference's every-entry one
 	_event("codex", {"kind": "area", "id": id})
 	entered.emit(id, first)
 

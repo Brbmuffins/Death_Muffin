@@ -42,6 +42,9 @@ var joined: bool = false
 ## (Callable(boss_id) -> bool: true = first kill, and records it).
 var trophies: Dictionary = {}
 var trophy_store: Callable = Callable()
+## The Empowered boss this member called (DmBossMeta): its kill's report carries the backend summon id, and the Seal's prize is claimed for it.
+var empower_pending: String = ""
+var empower_summon_id: int = 0
 
 
 ## The usual construction: a fresh character and local progression, its own loot view.

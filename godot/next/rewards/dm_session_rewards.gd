@@ -433,7 +433,10 @@ func on_boss_defeated(ev: Dictionary) -> void:
 		if rune != null:
 			reward["items"].append(rune)
 		m.stats["bosses"] += 1
-		m.reporter.boss({"boss": id, "tier": wave_tier, "diff": difficulty, "first": first})
+		var rep := {"boss": id, "tier": wave_tier, "diff": difficulty, "first": first}
+		if ev.get("empowered", false) and m.empower_pending == id and m.empower_summon_id != 0:
+			rep["summon"] = m.empower_summon_id
+		m.reporter.boss(rep)
 		if id == "prelate":
 			m.prog.record_prelate_kill()
 		_ground(m, {"kind": "gold", "amount": int(reward["gold"]) + int(reward["materialGold"])}, at)
