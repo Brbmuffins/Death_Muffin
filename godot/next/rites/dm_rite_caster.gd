@@ -51,6 +51,8 @@ var _state: Dictionary = {}
 var _now_ms: float = 0.0
 var _rng := RandomNumberGenerator.new()
 var _mods: Dictionary = {}
+var _legends: DmRiteLegends = null  ## host: Requiem Wraiths' wisps and nova, made only when the worn set has them
+var _legend: Dictionary = {}        ## DmLegend.sim_legend_of(_mods), resolved when the mods change (never per tick); the legion's copy is DmThrallHost.legend
 var _pending: Array = []            ## host: timed callbacks {at, fn} (shots in flight, delayed bursts), see after()
 var _mem: Dictionary = {}           ## host: per-rite scratch state (rite id -> Dictionary), see mem()
 var _state_acc: float = 0.0
@@ -159,6 +161,8 @@ func step(dt: float) -> void:
 	for m: DmRiteModule in DmRiteRegistry.steppers():
 		if _mem.has(m.id):
 			m.step(self, dt)
+	if _legends != null and not _legends.wisps.is_empty():
+		_legends.tick()
 	if _mods.get("miasmaBurstsCorpses", false):   # Rotweaver passive: the corpses in her Miasma burst (rite_plague_bloom.gd)
 		_BLOOM.miasma_bursts(self, dt)
 	_state_acc += dt
@@ -182,7 +186,37 @@ func refresh_stats(build: Dictionary) -> void:
 		return
 	DmPlayerRules.set_stats(p, build["stats"])
 	p["loadout"] = build.get("loadout", p.get("loadout"))
-	_mods = build["discipline"]["mods"]
+	_set_mods(build["discipline"]["mods"])
+
+
+## Host: the worn legendaries' sim mechanics (thrallDeathBurst, championEvery, ...), kept current on the legion and read by the withered rites.
+## Runs once per gear / level / boon change (build time), so no cast or tick looks anything up.
+func _set_mods(m: Dictionary) -> void:
+	_mods = m
+	_legend = DmLegend.sim_legend_of(m)
+	push_legend()
+	if _legends == null and (float(m.get("corpseWisp", 0.0)) > 0.0 or float(m.get("wraithNova", 0.0)) > 0.0) and _is_host():
+		_legends = DmRiteLegends.new(self)
+	if _legends != null:
+		_legends.attach()
+
+
+## The legend as of the last build.
+var legend: Dictionary:
+	get: return _legend
+
+
+## Host: hand the legend to this body's legion (also called by the legion when it attaches after the caster).
+func push_legend() -> void:
+	var th := thralls()
+	if th != null:
+		th.set_legend(_legend)
+
+
+## Host, from the body's take_damage (only when the worn set reacts to hits): Colossus Mantle's wardReflect and litanyShatter, resolved by the litany module.
+func legend_hurt(raw: float, ward: float, source: Node, broke: float) -> void:
+	if _is_host() and not p.is_empty():
+		(DmRiteRegistry.module("black_litany") as DmRiteModule).call(&"hurt_legend", self, raw, ward, source, broke)
 
 
 ## Host: a drunk brew on this caster's clock (damage / haste / essence brews act through `p["brews"]`). Returns DmBrews.apply_brew's result.
@@ -213,7 +247,7 @@ func _init_host_state() -> void:
 		p = DmPlayerRules.new_state(build["stats"], family)
 	p["loadout"] = build.get("loadout", DmWeaponLine.no_loadout())
 	p["runes"] = build.get("runes", {})
-	_mods = build["discipline"]["mods"]
+	_set_mods(build["discipline"]["mods"])
 	_sync_pos()
 	_push_state(true)
 
@@ -286,6 +320,8 @@ func _apply_cast(sender: int, rite: String, aim: Vector3, target_id: int) -> voi
 		intent["mult"] = DmAbilities.soul_area_mult(true)
 	DmAbilities.apply_cast_cost(p, rite, _now_ms, emp, bool(intent.get("colossus_cast", false)))
 	why = m.resolve(self, intent)
+	if why == "" and emp and _legends != null:
+		_legends.nova()   # Requiem 5: a Soul Harvest cast sets every wisp and wraith off
 	if why != "":
 		_restore_cost(rite, snap)   # the rite did not happen (lost a race for its corpse): nothing was spent
 		_refuse(sender, rite, why)
@@ -447,6 +483,13 @@ func heal(amount: float) -> void:
 func watch_dots(ss: DmStatusSet) -> void:
 	if not ss.dot_damage.is_connected(_on_dot):
 		ss.dot_damage.connect(_on_dot)
+		ss.withered_died.connect(_on_withered_died)
+
+
+## An enemy this caster withered died: Contagion / Plague Choir hand its stacks on (rite_miasma.gd owns both).
+func _on_withered_died(stacks: float, dps: float, source: Node, target: Node) -> void:
+	if source == _body and _is_host():
+		(DmRiteRegistry.module("miasma") as DmRiteModule).call(&"withered_death", self, stacks, dps, target)
 
 
 ## Withered burns through DmStatusSet (stacks x dps, 0.25 s lumps); the caster that stacked it gets the kill credit.

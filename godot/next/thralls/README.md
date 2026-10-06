@@ -25,7 +25,7 @@ DmThrallHost.attach(body, game)      # child "Thralls" of the body; thralls live
 ```
 Then the rites call `body.get_node("Thralls").raise(intent, aim)` on the host (exhume / Mass Grave / Bone Colossus), `.rally(secs, focus)`,
 `.command_rend(point)`, `.sacrifice(n)` (Black Litany), `.refresh(...)`, `.raise_bonded(intent)`; queries `list() count() places_used() by_id() near()`;
-signals `raised(thrall, corpse_rec)`, `thrall_died(thrall, reason)`, `exhume_failed(why)`; set `legend` (DmLegend mods: championEvery, thrallDeathBurst), `legion_id`, `kit`.
+signals `raised(thrall, corpse_rec)`, `thrall_died(thrall, reason)`, `exhume_failed(why)`; `legend` (DmLegend mods: championEvery, thrallDeathBurst; kept current by the caster through `set_legend(l)` on every gear change, taken from the sibling `Rites` when the host attaches), `legion_id`, `kit`.
 Replication is inside the host (RPC on the host node, 15 Hz partial unreliable + 1 Hz full reliable, tested over ENet). Every thrall gets a `DmStatusSet`
 (`attach`, every peer); thrall blows go through `DmStatusSet.hit`, so enemy damage-taken multipliers apply; wraith chill / bone-mage hex are applied with
 `DmStatusSet.ensure(enemy).apply`. Statuses write `speed_mult` / `attack_rate_mult` on the thrall; `take_damage(amount, from)` exists for DoTs; `stun(s)`.

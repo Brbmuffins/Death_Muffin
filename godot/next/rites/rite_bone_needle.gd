@@ -29,19 +29,48 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 	if rn == "rune_volley":
 		m["casts"] = int(m.get("casts", 0)) + 1
 	var nc := DmAbilities.needle_cast(DmAbilities.sp(c.p, c.now_ms), c.p["loadout"], rn, int(m.get("casts", 0)), c.rand())
-	var crit_roll := c.rand()
-	var from := c.tip()
-	var fp := foe.global_position
-	var to := Vector3(fp.x, TARGET_Y, fp.z)
-	var eid := int(c.world.enemy_id(foe))
 	var dmg: float = nc["dmg"]
 	var ess: float = nc["essence"]
-	c.after(from.distance_to(to) / SPEED * 1000.0, func() -> void: _arrive(c, eid, dmg, ess, crit_roll))
-	c.broadcast({"t": "cast", "rite": id, "by": c.peer_id, "from": from, "to": to, "enemy_id": eid, "speed": SPEED, "volley": nc["volley"]})
+	var splinters := rn == "rune_splinter"
+	var from := c.tip()
+	if not nc["volley"]:
+		_launch(c, foe, from, dmg, ess, splinters, c.rand(), true, false)
+		return ""
+	# Volley rune: every 4th needle is 3, at the target and the enemies nearest it within reach of the caster (all at one target when it stands alone),
+	# each for the volley fraction, the essence of one needle between them, 50 ms apart.
+	var V: Dictionary = DmSimData.RUNE_TUNING["volley"]
+	var foes: Array = []
+	var first := {"id": int(c.world.enemy_id(foe)), "x": foe.global_position.x, "z": foe.global_position.z, "e": foe}
+	for n in c.world.enemies_in_radius(Vector3(float(c.p["x"]), 0.0, float(c.p["z"])), float(V["reach"]) + 3.0):
+		if DmRiteCaster.alive_enemy(n):
+			foes.append({"id": int(c.world.enemy_id(n)), "x": n.global_position.x, "z": n.global_position.z, "e": n})
+	var aims: Array = DmRunes.volley_targets({"x": float(c.p["x"]), "z": float(c.p["z"])}, first, foes)
+	while aims.size() < int(V["needles"]):
+		aims.append(first)
+	var each := DmAbilities.volley_essence_each(ess)
+	for i in aims.size():
+		var tgt: Node3D = aims[i]["e"]
+		var f := Vector3(from.x + (i - 1) * 0.12, from.y, from.z)
+		var crit := c.rand()
+		if i == 0:
+			_launch(c, tgt, f, dmg, each, false, crit, true, true)
+		else:
+			c.after(i * 50.0, func() -> void: _launch(c, tgt, f, dmg, each, false, crit, false, true))
 	return ""
 
 
-func _arrive(c: DmRiteCaster, eid: int, dmg: float, essence: float, crit_roll: float) -> void:
+## One needle in flight: damage and essence on arrival, and (Splinters) a shard to the nearest other enemy. `lead` = it carries the cast's muzzle fx.
+func _launch(c: DmRiteCaster, foe: Node3D, from: Vector3, dmg: float, ess: float, splinters: bool, crit_roll: float, lead: bool, volley: bool) -> void:
+	if not DmRiteCaster.alive_enemy(foe):
+		return
+	var fp := foe.global_position
+	var to := Vector3(fp.x, TARGET_Y, fp.z)
+	var eid := int(c.world.enemy_id(foe))
+	c.after(from.distance_to(to) / SPEED * 1000.0, func() -> void: _arrive(c, eid, dmg, ess, crit_roll, splinters))
+	c.broadcast({"t": "cast", "rite": id, "by": c.peer_id, "from": from, "to": to, "enemy_id": eid, "speed": SPEED, "volley": volley and lead, "lead": lead})
+
+
+func _arrive(c: DmRiteCaster, eid: int, dmg: float, essence: float, crit_roll: float, splinters: bool = false) -> void:
 	var e := c.world.enemy_by_id(eid) as Node3D
 	if e == null or not DmRiteCaster.alive_enemy(e):
 		return
@@ -53,7 +82,28 @@ func _arrive(c: DmRiteCaster, eid: int, dmg: float, essence: float, crit_roll: f
 	var gp := e.global_position
 	c.broadcast({"t": "hit", "rite": id, "by": c.peer_id, "enemy_id": eid, "pos": Vector3(gp.x, TARGET_Y, gp.z), "amount": amount, "crit": bool(hit["crit"])})
 	c.hit_resolved.emit(id, eid, amount, bool(hit["crit"]), float(e.get("hp")) <= 0.0)
+	if splinters:
+		_splinter(c, e, dmg)
 	c.push_state()
+
+
+## Splinters rune: a shard flies to the nearest OTHER enemy within reach for 30 % of the needle's (uncritted) damage.
+func _splinter(c: DmRiteCaster, first: Node3D, dmg: float) -> void:
+	var fp := first.global_position
+	var fd := {"id": int(c.world.enemy_id(first)), "x": fp.x, "z": fp.z}
+	var pool: Array = []
+	for n in c.world.enemies_in_radius(fp, float(DmSimData.RUNE_TUNING["splinter"]["reach"]) + 3.0):
+		if n != first and DmRiteCaster.alive_enemy(n):
+			pool.append({"id": int(c.world.enemy_id(n)), "x": n.global_position.x, "z": n.global_position.z, "e": n})
+	var tg: Variant = DmRunes.splinter_target(fd, pool)
+	if tg == null:
+		return
+	var o: Node3D = tg["e"]
+	var amount := DmAbilities.splinter_damage(dmg)
+	if not DmStatusSet.hit(o, amount, c.body):
+		return
+	c.hit_resolved.emit(id, int(tg["id"]), amount, false, float(o.get("hp")) <= 0.0)
+	c.broadcast({"t": "splinter", "rite": id, "by": c.peer_id, "from": Vector3(fp.x, 1.0, fp.z), "pos": Vector3(o.global_position.x, 1.0, o.global_position.z), "amount": amount})
 
 
 ## The enemy a needle is aimed at: the named one if it is a live enemy, else the nearest to the aim point within PICK_RADIUS.
@@ -82,7 +132,8 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 		"cast":
 			var from: Vector3 = ev["from"]
 			var to: Vector3 = ev["to"]
-			c.fx.needle_cast([from.x, from.y, from.z], from.x, from.z, bool(ev.get("volley", false)))
+			if bool(ev.get("lead", true)):   # a volley's other needles are shots only
+				c.fx.needle_cast([from.x, from.y, from.z], from.x, from.z, bool(ev.get("volley", false)))
 			var eid := int(ev["enemy_id"])
 			var last := [to]
 			# The shot may outlive the world (teardown, area change). A lambda that captures a freed Object logs "Lambda capture at index 0 was
@@ -99,3 +150,7 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 			var pos: Vector3 = ev["pos"]
 			c.fx.needle_hit([pos.x, pos.y, pos.z], bool(ev["crit"]))
 			c.hit_number.emit(pos, float(ev["amount"]), bool(ev["crit"]))
+		"splinter":
+			var to: Vector3 = ev["pos"]
+			c.fx.splinter_shard(ev["from"], to)
+			c.hit_number.emit(to, float(ev["amount"]), false)

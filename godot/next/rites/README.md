@@ -52,6 +52,20 @@ and the current game's `DmAbilitySystem` draws through the same functions. Tests
 All numbers come from the existing rules (`DmAbilities.cast_check / needle_cast / needle_hit / miasma / apply_cast_cost / shortfall`,
 `DmSimData.WITHERED / MIASMA_SLOW / HEMORRHAGE`, `DmCombatData.const_table(BONE_FAN, ROT_LANCE, WAILING_SKULL, IVORY_CLEAVE, BONE_STORM, SOUL_SIPHON)`, projectile speeds from `sim_caster.gd`). No new numbers except `PICK_RADIUS` (aim-point tolerance).
 
+## Runes and legendary sets (godot/next-runes; test `tests/next_runes/run.gd`)
+
+Runes: `DmNextGame.rite_build()` carries the bag's sockets (`DmRunes.sockets_of`, pushed to the caster by `sync_runes()` on every bag change) and a module reads its rune once per cast
+(`DmAbilities.rune(c.p, id)`). All 11 runes of `data/content/runes.json` are live: `bone_needle` Splinters (a 30 % shard to the nearest other enemy within 6 m, event `splinter`), Marrow-Tap,
+Volley (every 4th needle is 3, `DmRunes.volley_targets`, 50 ms apart, one muzzle burst via `lead`, essence of one needle); `marrow_spear` Ossuary Ring / Impaling; `exhume` Mass Grave / Bone Colossus;
+`miasma` Creeping Rot (the circle walks 1.5 m/s on the 10 Hz scan, `move` events at 2.5 Hz, peers ease a per-peer `vis` follower) and Contagion (the circle marks the withered, `dm_contagious`; the
+death hands stacks - 1 to the 2 nearest within 4.5 m); `black_litany` Hollow Choir / Requiem. The Contagion / Plague Choir death hook is `DmStatusSet.withered_died` (fired before the set clears),
+connected by `DmRiteCaster.watch_dots`, resolved by `rite_miasma.gd withered_death`.
+
+Legendary sets: `DmRiteCaster._set_mods` (one place, on every build change: rebuild, gear, level, boon) resolves `DmLegend.sim_legend_of(mods)` into `caster.legend` and pushes it to the legion
+(`DmThrallHost.set_legend`, living thralls too). `miasmaSpreadsWithered` / `witheredBurstAt` (Plague Choir) live in `rite_miasma.gd` (`_plague` opens at most 4 circles, 1 s apart per enemy, like the last
+cast); `spearRally` in `rite_marrow_spear.gd`; Colossus Mantle's `colossusGuard` (damage taken), `wardReflect` and `litanyShatter` run in `DmHeroBody.take_damage` through `DmRiteCaster.legend_hurt`
+-> `rite_black_litany.gd hurt_legend` (armed only while the worn set has one, `DmHeroBody._legend_hurt`); Requiem Wraiths' `corpseWisp` / `wraithNova` are `dm_rite_legends.gd` (made only when worn).
+
 ## Adding a rite (the recipe)
 
 1. `godot/next/rites/rite_<id>.gd`: `extends DmRiteModule`, `func _init(): id = "<id>"` (and `steps = true` if it ticks on the host). Modules are shared

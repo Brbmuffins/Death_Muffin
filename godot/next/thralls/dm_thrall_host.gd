@@ -40,6 +40,17 @@ func _ready() -> void:
 	DmSimData.ensure()
 	DmThrall.warm()
 	set_multiplayer_authority(net_authority)
+	var rites := get_parent().get_node_or_null("Rites") if get_parent() != null else null   # the caster attached first: take its build's legend
+	if rites != null and "legend" in rites:
+		set_legend(rites.legend)
+
+
+## The owner's worn legendaries (DmLegend.sim_legend_of). Takes effect for the living legion too (the burst fraction is read at death).
+func set_legend(l: Dictionary) -> void:
+	legend = l
+	var f := float(l.get("thrallDeathBurst", 0.0))
+	for t in _list:
+		t.death_burst_frac = f
 
 
 ## Soft body separation between this legion's thralls (the sim's separate(): radius 0.4 each, they yield to each other). Only computes

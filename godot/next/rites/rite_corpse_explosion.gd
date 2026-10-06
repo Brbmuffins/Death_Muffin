@@ -45,7 +45,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 		"targets": targets, "dmg": dmg}
 	if rec["kind"] == "toxic":
 		var secs := float(D["rotDurationMs"]) / 1000.0
-		(DmRiteRegistry.module("miasma") as Object).call("add_zone", c, x, z, float(blast["rotRadius"]), float(blast["rotDps"]), float(D["rotDurationMs"]), float(D["rotWitheredCap"]))
+		(DmRiteRegistry.module("miasma") as Object).call("add_zone", c, x, z, float(blast["rotRadius"]), float(blast["rotDps"]), float(D["rotDurationMs"]), float(D["rotWitheredCap"]), "rot")
 		ev["rot_r"] = float(blast["rotRadius"])
 		ev["rot_s"] = secs
 	c.broadcast(ev)

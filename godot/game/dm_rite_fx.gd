@@ -150,14 +150,30 @@ func needle_hit(pos: Array, crit: bool) -> void:
 		bb("crit_hit", pos[0], pos[2], {"y": pos[1]})
 
 
+## The Splinters rune's shard: a thread of bone from the struck enemy to the next (the current game's DmAbilitySystem._splinter).
+func splinter_shard(a: Vector3, b: Vector3) -> void:
+	var core: Variant = DmFxData.spell("needle", "core")
+	beam(a, func() -> Variant: return b, core, 0.03, 0.16)
+	flash(b.x, 1.0, b.z, core, 0.7, 0.16)
+	splinters(b.x, 1.0, b.z, 3, core)
+	splinters(a.x, 1.0, a.z, 6, core, 4.5)
+
+
 # --- Miasma Circle -----------------------------------------------------------------------------------------------------------------------
 
-## The cloud settling at (x, z) with radius r. `creep` = the Creeping Rot rune (no cloud model, the zone itself moves).
-func miasma_land(x: float, z: float, r: float, creep: bool = false) -> void:
+## The cloud settling at (x, z) with radius r. `creep` = the Creeping Rot rune (no cloud model, the zone itself moves: `follow` -> its ground point or
+## null); `contagion` = the Contagion rune's green ring.
+func miasma_land(x: float, z: float, r: float, creep: bool = false, follow: Callable = Callable(), contagion: bool = false) -> void:
 	var M := DmFxData.spell_group("miasma")
+	var fo := {"follow": follow} if follow.is_valid() else {}
 	decal("ring", M["rot"], x, z, r, 0.45, 0.7, {"growFrom": 0.2})
+	if follow.is_valid():   # the walking circle is drawn where it is, for as long as it lives
+		decal("disc", M["deep"], x, z, r, 6.0, 0.5, fo.merged({"growFrom": 0.3, "fadeOut": 0.6}))
+		bb("miasma_cloud", x, z, fo.merged({"scale": r / 3.8, "duration": 6.0}))
+	if contagion:
+		decal("ring", DmFxData.spell("lance", "rot"), x, z, r * 1.02, 6.0, 0.55, fo.merged({"pulse": 3.0, "fadeOut": 0.6}))
 	sfx("miasma", x, z)
-	loop("miasmaLoop", 6000.0, x, z)
+	loop("miasmaLoop", 6000.0, x, z, follow)
 	smoke(x, 0.4, z, 6, M["spore"], r * 0.6, 0.5, 0.3, 0.9, 1.1, {"shrink": -0.3, "drag": 0.8})
 	emit(x, 0.3, z, 16, M["rot"], r * 0.5, 1.1, 0.6, 0.65, 0.18)
 	if fx != null:
@@ -165,6 +181,65 @@ func miasma_land(x: float, z: float, r: float, creep: bool = false) -> void:
 		fx.motifs.rot_spores(x, z, M["rot"], {"r": r * 0.75, "n": DmMath.js_round(8.0 + r * 2.0)})
 	if not creep:
 		bb("miasma_cloud", x, z, {"scale": r / 3.8})
+
+
+## Plague Choir: "plague" = a fresh circle opens on an enemy, "spread" = a dead enemy's Withered passes on (the current game's DmEventFx._legend).
+func legend_burst(kind: String, x: float, z: float, r: float) -> void:
+	var rot: Variant = DmFxData.spell("miasma", "rot")
+	if kind == "spread":
+		decal("ring", rot, x, z, r * 0.7, 0.35, 0.7, {"growFrom": 0.2})
+		if fx != null:
+			stats["motif"] += 1
+			fx.motifs.rot_spores(x, z, rot, {"r": r * 0.5, "n": 6})
+		return
+	decal("ring", rot, x, z, r, 0.5, 0.9, {"growFrom": 0.15})
+	emit(x, 0.5, z, 14, rot, r * 0.4, 2.6, 1.2, 0.55, 0.22)
+	if fx != null:
+		stats["motif"] += 1
+		fx.motifs.rot_spores(x, z, rot, {"r": r * 0.6, "n": 10})
+	sfx("miasma", x, z, 0.7)
+
+
+## Colossus Mantle: r > 0 = the broken barrier's shard burst around (x, z); r = 0 = a few bone chips where the reflected blow struck.
+func legend_hit(x: float, z: float, r: float) -> void:
+	var S := DmFxData.spell_group("spear")
+	if r <= 0.0:
+		emit(x, 1.0, z, 5, S["bone"], 0.2, 2.4, 0.8, 0.3, 0.12)
+		return
+	decal("ring", S["bone"], x, z, r, 0.5, 1.0, {"growFrom": 0.1})
+	splinters(x, 1.0, z, 12, S["bone"], 6.0)
+	emit(x, 0.8, z, 14, S["bone"], 0.5, 5.0, 1.2, 0.5, 0.16, {"gravity": 6.0})
+	sfx("boneHit", x, z, 1.1)
+
+
+## Requiem Wraiths: a wisp circling the caster for `secs` (`follow` -> its ground point or null).
+func wisp(secs: float, speed: float, radius: float, follow: Callable) -> void:
+	var jade: Variant = DmFxData.spell("souls", "jade")
+	if fx != null:
+		stats["orbit"] += 1
+		fx.orbit({"tex": "wisp", "color": jade, "count": 1, "radius": radius, "y": 1.5, "size": 0.6, "duration": secs, "speed": speed, "follow": follow})
+
+
+## Requiem Wraiths 5: a nova ring at each source `pts` ([[x, z]]), radius r.
+func legend_nova(pts: Array, r: float) -> void:
+	var jade: Variant = DmFxData.spell("souls", "jade")
+	var pale: Variant = DmFxData.spell("souls", "pale")
+	for s: Array in pts:
+		decal("ring", jade, float(s[0]), float(s[1]), r, 0.45, 0.8, {"growFrom": 0.15})
+		emit(float(s[0]), 0.9, float(s[1]), 8, pale, 0.4, 3.2, 0.6, 0.4, 0.16)
+	if not pts.is_empty():
+		sfx("soulRelease", float(pts[0][0]), float(pts[0][1]), 0.8)
+
+
+## Contagion rune: a thread of rot from the dying body to the next, and spores where it lands.
+func contagion_thread(x: float, z: float, tx: float, tz: float) -> void:
+	var rot: Variant = DmFxData.spell("lance", "rot")
+	beam(Vector3(x, 0.9, z), func() -> Variant: return Vector3(tx, 1.0, tz), rot, 0.05, 0.45)
+	emit(tx, 0.9, tz, 10, rot, 0.3, 1.4, 1.0, 0.6, 0.2)
+	if fx != null:
+		stats["motif"] += 1
+		fx.motifs.rot_spores(tx, tz, rot, {"r": 0.6, "n": 5})
+	sfx("miasma", tx, tz)
 
 
 # --- shot visuals (rebuild only: the current game flies the caster's own projectile) -----------------------------------------------------

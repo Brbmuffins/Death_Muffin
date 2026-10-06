@@ -81,8 +81,45 @@ func _burst(c: DmRiteCaster, at: Vector3, r: float, sp: float, spare: bool) -> v
 	c.push_state()
 
 
+## Colossus Mantle (legendary), HOST, when the caster is hit: 4 - `wardReflect` of the blow's Bone Ward share goes back at its source (an enemy within reach);
+## 5 - a Litany barrier that just broke bursts into shards (`litanyShatter` x its size) around the caster.
+func hurt_legend(c: DmRiteCaster, raw: float, ward: float, source: Node, broke: float) -> void:
+	var back := DmLegend.ward_reflect_damage(raw, ward, float(c.mods.get("wardReflect", 0.0)))
+	if back >= 1.0 and source is DmEnemy and DmRiteCaster.alive_enemy(source):
+		DmStatusSet.hit(source, back, c.body)
+		var sp := (source as Node3D).global_position
+		c.hit_resolved.emit(id, int(c.world.enemy_id(source)), back, false, float(source.get("hp")) <= 0.0)
+		c.broadcast({"t": "reflect", "rite": id, "by": c.peer_id, "x": sp.x, "z": sp.z, "amount": back})
+	var dmg := DmLegend.shatter_damage(broke, float(c.mods.get("litanyShatter", 0.0)))
+	if dmg > 0.0 and bool(c.p["alive"]):
+		var at := c.pos()
+		for e in enemies_in_circle(c, at.x, at.z, float(DmSimData.LEGEND["shatterR"])):
+			DmStatusSet.hit(e, dmg, c.body)
+			c.hit_resolved.emit(id, int(c.world.enemy_id(e)), dmg, false, float(e.get("hp")) <= 0.0)
+		c.broadcast({"t": "shatter", "rite": id, "by": c.peer_id, "x": at.x, "z": at.z, "r": float(DmSimData.LEGEND["shatterR"]), "amount": dmg})
+
+
 func play(c: DmRiteCaster, ev: Dictionary) -> void:
 	var mine := c.is_owner_peer()
+	match String(ev["t"]):
+		"reflect":
+			c.fx.legend_hit(float(ev["x"]), float(ev["z"]), 0.0)
+			c.hit_number.emit(Vector3(float(ev["x"]), 1.0, float(ev["z"])), float(ev["amount"]), false)
+			return
+		"wisp":   # Requiem 4: an orbiting healing wisp, drawn on every peer around the caster's body
+			var w: WeakRef = weakref(c.body)
+			c.fx.wisp(float(ev["secs"]), float(ev["speed"]), float(ev["radius"]), func() -> Variant:
+				var b := w.get_ref() as Node3D
+				return Vector3(b.global_position.x, 0.0, b.global_position.z) if b != null else null)
+			return
+		"nova":
+			c.fx.legend_nova(ev["pts"], float(ev["r"]))
+			c.hit_number.emit(Vector3(float(ev["pts"][0][0]), 1.0, float(ev["pts"][0][1])), float(ev["amount"]), false)
+			return
+		"shatter":
+			c.fx.legend_hit(float(ev["x"]), float(ev["z"]), float(ev["r"]))
+			c.shake_requested.emit(0.07)
+			return
 	if String(ev["t"]) == "requiem":
 		c.fx.requiem(ev, mine)
 		return

@@ -20,6 +20,7 @@ var game: Node                                  ## the DmNextGame (injected by t
 var p: Dictionary = {}                          ## host: DmPlayerRules state. Empty on puppets.
 var character: Dictionary = {}                  ## host: the character this body plays (level / class_index)
 var mods: Dictionary = {}                       ## host: the discipline's mods (DmCharacterBuild), e.g. Ossuary's wardPerThrall
+var _legend_hurt: bool = false                  ## host: the worn set has a reaction to being hit (colossusGuard / wardReflect / litanyShatter); resolved when mods change
 var character_id: int = 0
 var avatar: DmAvatar
 var hp: float = 100.0                           ## every peer: mirrored from p (host) / vitals broadcast (puppets)
@@ -99,6 +100,7 @@ func _init_state() -> void:
 	var b: Dictionary = game.build_for(owner_peer) if game != null and game.has_method("build_for") else DmCharacterBuild.build(character, [], {})
 	family = String(b["discipline"]["family"])
 	mods = b["discipline"]["mods"]
+	_legend_hurt = _hurt_legend_of(mods)
 	p = DmPlayerRules.new_state(b["stats"], family)
 	_soul_rules(b)
 	p["x"] = position.x
@@ -113,8 +115,13 @@ func refresh_stats(build: Dictionary) -> void:
 		return
 	DmPlayerRules.set_stats(p, build["stats"])
 	mods = build["discipline"]["mods"]
+	_legend_hurt = _hurt_legend_of(mods)
 	_soul_rules(build)
 	_mirror_from_state()
+
+
+static func _hurt_legend_of(m: Dictionary) -> bool:
+	return float(m.get("colossusGuard", 0.0)) > 0.0 or float(m.get("wardReflect", 0.0)) > 0.0 or float(m.get("litanyShatter", 0.0)) > 0.0
 
 
 ## Soul Harvest's meter size and fill rate (Soul Hunger boon: -8 souls a rank, min 10; the discipline's soulHarvestRateMult), as DmGame._apply_player_extras.
@@ -177,7 +184,18 @@ func take_damage(amount: float, source: Node = null, kind: String = "melee") -> 
 	var from: Variant = null
 	if source is Node3D:
 		from = {"x": (source as Node3D).global_position.x, "z": (source as Node3D).global_position.z}
-	var taken := DmPlayerRules.take_damage(p, amount, _ward() + DmBrews.brew_ward(p["brews"], kind, _clock_ms), _clock_ms, from, kind, 0.0)
+	var ward := _ward()
+	var guard := 0.0
+	var th := get_node_or_null("Thralls") as DmThrallHost if _legend_hurt else null
+	if _legend_hurt and th != null:
+		guard = float(mods.get("colossusGuard", 0.0)) if DmLegend.colossus_active(mods, float(th.count())) else 0.0
+	var taken := DmPlayerRules.take_damage(p, amount, ward + DmBrews.brew_ward(p["brews"], kind, _clock_ms), _clock_ms, from, kind, guard)
+	if _legend_hurt:   # Colossus Mantle: Bone Ward turned a share of the blow back at its source; a broken Litany barrier bursts
+		var broke := float(p["barrierBroke"])
+		p["barrierBroke"] = 0.0
+		var rites := get_node_or_null("Rites") as DmRiteCaster
+		if rites != null:
+			rites.legend_hurt(amount, minf(float(DmLegend.L()["wardCap"]), ward), source, broke)
 	_mirror_from_state()
 	if taken > 0.0:
 		hurt.emit(taken, source)

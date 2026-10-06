@@ -9,6 +9,7 @@ extends Node
 signal changed                                  ## set of ids / stacks changed (host and clients)
 signal expired(id: StringName)                  ## host: a status ran out
 signal dot_damage(id: StringName, amount: float, source: Node, killed: bool, target: Node)   ## host: one DoT lump was applied
+signal withered_died(stacks: float, dps: float, source: Node, target: Node)   ## host: the owner died carrying Withered (Contagion / Plague Choir spread; fired before the set clears)
 
 const NODE_NAME := "Statuses"
 const TICK_S := 0.1
@@ -305,6 +306,9 @@ func _on_cleared() -> void:
 
 
 func _on_died(_e: Variant) -> void:
+	var w: Variant = _rec.get(&"withered")
+	if w != null and _is_host():
+		withered_died.emit(w[STK], w[VAL], w[SRC] if is_instance_valid(w[SRC]) else null, _o)
 	clear()
 
 
