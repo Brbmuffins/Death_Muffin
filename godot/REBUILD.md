@@ -92,7 +92,13 @@ Godot client  <->  Host's Godot game (authoritative sim, 1-4 players)
 4. **Backend integration**: cloud characters online, server-rolled loot, session-end report; solo as a 1-player session (online via the
    VPS backend, offline via the local backend, D4).
 5. **Content migration**: bosses, then the Depths, then the remaining areas. Then retire the web build (D9) and its TS exporters.
-6. **Hardening**: disconnects, host migration (or clean session end), desync checks, cheating review.
+6. **Quality pass (after gameplay is stable; owner 2026-10-06: ground markings / overall image look reduced, more pixelated).**
+   Known causes: the auto-resolution governor drops the 3D view to as low as 60% (`DmResolutionGovernor.MIN = 0.6`) with bilinear
+   upscaling; MSAA is off (`msaa_3d=0`). Plan: quality presets (Low/Medium/High/Ultra; High on a real GPU = full resolution + AA,
+   governor only on lower presets, floor ~0.85); sharper decals/ground markings (texture size, mipmaps, anisotropic filtering);
+   evaluate Forward+ for PC (better lighting, FSR upscaling) vs Compatibility on the owner's and Helix's PCs. Every change measured
+   (Performance rule).
+7. **Hardening**: disconnects, host migration (or clean session end), desync checks, cheating review.
 
 ## Status
 
