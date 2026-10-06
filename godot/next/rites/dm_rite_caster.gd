@@ -279,6 +279,7 @@ func _apply_cast(sender: int, rite: String, aim: Vector3, target_id: int) -> voi
 	if why != "":
 		_refuse(sender, rite, why)
 		return
+	var at := _body.position if _body != null else Vector3.ZERO
 	var snap := _cost_snapshot(rite)
 	var emp := DmAbilities.empowered(p, rite)   # Soul Harvest: charged souls pay this cast instead of essence, and it is 1.5x as wide
 	if emp:
@@ -290,8 +291,20 @@ func _apply_cast(sender: int, rite: String, aim: Vector3, target_id: int) -> voi
 		_refuse(sender, rite, why)
 		_push_state(true)
 		return
+	_face_aim(aim, at)
 	_gesture_cast(rite)
 	_push_state(true)
+
+
+## Host: a standing hero turns to its cast (the current client faces the aim), so the gesture and the picture agree. A rite that moved the
+## body (a step, a dash) keeps the heading it set.
+func _face_aim(aim: Vector3, from: Vector3) -> void:
+	if _body == null or not _body.has_method("set_facing") or _body.position != from or bool(_body.get("dashing")):
+		return
+	var dx := aim.x - from.x
+	var dz := aim.z - from.z
+	if dx * dx + dz * dz > 0.0625:
+		_body.set_facing(atan2(dx, dz))
 
 
 ## Host: the hero's cast gesture for an accepted cast, once on every peer (its own RPC, not an event: events_played stays the rites' own).

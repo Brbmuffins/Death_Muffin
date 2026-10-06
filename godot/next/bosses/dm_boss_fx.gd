@@ -17,6 +17,8 @@ class Host:
 		if hide_view.is_valid():
 			hide_view.call(id)
 
+signal played(ev: Dictionary)       ## every peer, once per event (the local owner's auto-dodge reads the telegraphs from it)
+
 var vfx: Node
 var audio: Node
 var fx: DmEventFx
@@ -52,6 +54,7 @@ func set_backends(p_vfx: Node, p_audio: Node) -> void:
 func play(ev: Dictionary) -> void:
 	events += 1
 	fx.handle_now(ev)
+	played.emit(ev)
 
 
 func _process(dt: float) -> void:

@@ -11,11 +11,13 @@ extends RefCounted
 ##   Shift + click enemy  -> the same, standing still (no chase)
 ##   key / RMB cast       -> `note_cast`; a refusal "busy" (or "cooldown" with <= QUEUE_MS left) queues it for QUEUE_MS and it fires when ready
 ##   number key held      -> repeats once HOLD_MS old and the rite is ready
-## Not here: Easy auto-combat (DmAutoCombat reads the old sim's enemy records; see next/feel/README.md).
+##   standing, mouse seen -> `stand_face`: the hero turns toward the cursor (DmGameInput.aim_when_standing); Easy auto-combat is DmNextAutoCombat.
 
 const QUEUE_MS := 220.0       ## DmGameInput: a cast refused for a lock / <= 220 ms of cooldown waits this long
 const RETRY_MS := 50.0        ## minimum gap between two automatic cast requests (host refusals are cheap but an RPC for a client)
 const HOLD_MS := 150.0        ## a number key repeats only once held this long (the press itself already cast)
+const STAND_PAD := 0.25       ## the cursor must be this far from the hero to turn it
+const FACE_STEP := 0.05       ## rad: a new facing is sent only when it moved this much
 const REPLAN_M := 1.0         ## chase: re-plan the walk when the enemy moved this far from the last goal
 
 var game: Node                                  ## DmNextGame
@@ -30,6 +32,7 @@ var _last := {"slot": 0, "rite": "", "aim": Vector3.ZERO, "enemy_id": 0, "manual
 var _caster: DmRiteCaster
 var _chasing := false
 var _goal := Vector3.INF
+var _face_sent: float = 1000.0
 var _next_primary: float = 0.0
 var _held := {}                                 ## slot -> ms the key went down
 var _held_next := {}                            ## slot -> earliest next repeat
@@ -188,6 +191,32 @@ func _tick_target(c: DmRiteCaster, b: DmHeroBody, now: float) -> void:
 		_next_primary = now + RETRY_MS
 		stats["primary_casts"] += 1
 		input.cast_at(0, ep, target_id, false)
+
+
+## Standing mouse-aim: turn the hero toward `point` (the cursor's ground point / hovered enemy) while it stands, casts nothing and auto-combat has
+## no target. One intent (`request_face`) per ~3 degrees of change, nothing at all while walking / chasing / casting / gathering / a panel is open.
+func stand_face(point: Vector3, auto_aim: bool) -> bool:
+	if game == null or auto_aim or target_id != 0 or not queued.is_empty():
+		return false
+	var b: DmHeroBody = game.local_body()
+	if b == null or not b.alive or not game.session.is_active() or input.held_direction() != Vector3.ZERO:
+		return false
+	if (b.has_target or b.move_dir.length_squared() > 0.0001) if not b.p.is_empty() else b.moving:   # the host knows; a puppet only sees the motion
+		return false
+	if not b.p.is_empty() and b.clock_ms() < float(b.p["castUntil"]):
+		return false
+	if (game.ui != null and game.ui.panel_open()) or (game.gather != null and game.gather.loop != null and game.gather.loop.active):
+		return false
+	var dx := point.x - b.position.x
+	var dz := point.z - b.position.z
+	if dx * dx + dz * dz <= STAND_PAD * STAND_PAD:
+		return false
+	var yaw := atan2(dx, dz)
+	if absf(angle_difference(yaw, _face_sent)) < FACE_STEP and absf(angle_difference(yaw, b.yaw)) < FACE_STEP:
+		return false
+	_face_sent = yaw
+	game.session.request_face(yaw)
+	return true
 
 
 ## Stop a chase walk in place (one intent, only when one was running).

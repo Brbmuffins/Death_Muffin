@@ -148,6 +148,17 @@ func request_move_dir(dir: Vector3, body_id: int = 0) -> void:
 		_rpc_move_dir.rpc_id(1, b, dir)
 
 
+## Standing mouse-aim: turn my body to `yaw` (radians, atan2(dx, dz)). The host ignores it while the body walks.
+func request_face(yaw: float, body_id: int = 0) -> void:
+	if _state == State.IDLE:
+		return
+	var b := body_id if body_id != 0 else get_my_id()
+	if multiplayer.is_server():
+		_apply_face(1, b, yaw)
+	else:
+		_rpc_face.rpc_id(1, b, yaw)
+
+
 # ---- plumbing -----------------------------------------------------------------------------------------------------------------
 
 func _exit_tree() -> void:
@@ -325,6 +336,18 @@ func _apply_move_dir(sender: int, body_id: int, d: Vector3) -> void:
 	b.set_move_dir(d)
 
 
+func _apply_face(sender: int, body_id: int, yaw: float) -> void:
+	if _state != State.HOSTING:
+		return
+	var b := _owned_body(sender, body_id)
+	if b == null:
+		return
+	if not is_finite(yaw):
+		rejected_intents += 1
+		return
+	b.set_facing(yaw)
+
+
 # ---- RPCs ---------------------------------------------------------------------------------------------------------------------
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -393,3 +416,9 @@ func _rpc_move_to(body_id: int, p: Vector3) -> void:
 func _rpc_move_dir(body_id: int, d: Vector3) -> void:
 	if multiplayer.is_server():
 		_apply_move_dir(multiplayer.get_remote_sender_id(), body_id, d)
+
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func _rpc_face(body_id: int, yaw: float) -> void:
+	if multiplayer.is_server():
+		_apply_face(multiplayer.get_remote_sender_id(), body_id, yaw)

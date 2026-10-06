@@ -61,6 +61,13 @@ func set_move_dir(d: Vector3) -> void:
 	_dir_ttl = DIR_TTL if d.length_squared() > 0.0 else 0.0
 
 
+## Host: turn in place (mouse aim, a cast). A walking body keeps the heading of its walk.
+func set_facing(y: float) -> void:
+	if has_target or move_dir.length_squared() > 0.0001:
+		return
+	yaw = y
+
+
 func stop() -> void:
 	has_target = false
 	move_dir = Vector3.ZERO

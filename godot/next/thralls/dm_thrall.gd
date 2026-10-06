@@ -289,8 +289,10 @@ func _think(delta: float) -> void:
 
 
 func _target_ok(op: Vector3) -> bool:
+	if not is_instance_valid(target):   # before the cast: casting a freed enemy errors
+		return false
 	var e := target as DmEnemy
-	if e == null or not is_instance_valid(e) or not e.is_inside_tree():
+	if e == null or not e.is_inside_tree():
 		return false
 	var sid := e.sm.id()
 	if sid == DmEnemyState.Id.DEAD or sid == DmEnemyState.Id.BURROW or sid == DmEnemyState.Id.RISING or not e.is_hittable():

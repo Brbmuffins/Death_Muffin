@@ -26,6 +26,8 @@ var _dir_sent := Vector3.ZERO
 var _resend: float = 0.0
 var _hover_t: float = 0.0
 var combat := DmCombatInput.new()       ## attack-target chase, hold repeat, queued casts, held keys (next/feel/)
+var auto := DmNextAutoCombat.new()      ## Easy auto-combat (next/feel/dm_next_auto.gd): gated by the settings, one compare per frame when off
+var _mouse_seen := false                ## the mouse has moved / clicked: standing aim follows the cursor (not the stale default point)
 
 
 static func ensure_actions() -> void:
@@ -75,6 +77,8 @@ func _process(dt: float) -> void:
 	if gp != null:
 		_aim = Vector3(gp.x, 0.0, gp.z)
 	_hover_id = _pick_enemy(mp)
+	if _mouse_seen:
+		stand_face()
 	if game.chapterhouse != null:
 		game.chapterhouse.hover_at(mp)    # stations / NPCs under the cursor (prompt + highlight)
 	if game.get("gather") != null:
@@ -89,9 +93,19 @@ func attack(enemy_id: int, shift: bool) -> void:
 	combat.tick(float(Time.get_ticks_msec()))
 
 
+## Standing aim: face the hovered enemy, else the ground point under the cursor (10 Hz, from the hover pick).
+func stand_face() -> bool:
+	if combat.game == null:
+		combat.setup(game, self)
+	var e: DmEnemy = game.enemy_by_id(_hover_id) if _hover_id != 0 else null
+	return combat.stand_face(e.global_position if e != null else _aim, auto.aim_active)
+
+
 func _unhandled_input(ev: InputEvent) -> void:
 	if not enabled or game == null or game.local_body() == null:
 		return
+	if ev is InputEventMouseMotion or ev is InputEventMouseButton:
+		_mouse_seen = true
 	if ev is InputEventMouseButton and ev.pressed:
 		var mb := ev as InputEventMouseButton
 		match mb.button_index:
@@ -111,10 +125,14 @@ func _physics_process(delta: float) -> void:
 		return
 	if combat.game == null:
 		combat.setup(game, self)
+	if auto.game == null:
+		auto.setup(game, self)
 	var d := held_direction()
 	if d != Vector3.ZERO:
 		combat.clear()                      # walking by hand ends the chase and the queue (old: key_dir cancels attack_target)
-	combat.tick(float(Time.get_ticks_msec()))
+	var now := float(Time.get_ticks_msec())
+	combat.tick(now)
+	auto.tick(now)
 	_resend -= delta
 	if d != _dir_sent or (d != Vector3.ZERO and _resend <= 0.0):
 		_resend = RESEND_S

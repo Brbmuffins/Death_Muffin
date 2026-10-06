@@ -28,7 +28,7 @@ HUD feeds and contract methods that `DmGame` had and `DmNextGame` / `DmNextUiHos
 1. **Front flow on the rebuild (DONE, godot/next-front).** `-- --next` (or `DmMain.USE_NEXT`) routes DmFrontFlow's "Enter world" to `DmNextGame` behind the key-art `DmLoadingScreen`: login/register (online) or the offline edition entry, discipline select, log out, class change (re-enter), quit save (`DmMain.save_all`). Tests `tests/next_front`. `-- --old` forces DmGame. Left: Play Online on the rebuild is untested against the live backend.
 2. **Performance controls (DONE, godot/next-perfctl).** No resolution governor, no FPS cap, no graphics presets (only `vfx.quality`), no loading cover, no GPU shader warm-up of models (`DmWarmup` not run),
    settings `fps` / `auto_res` / `graphics` inert. Owner priority #1; REBUILD Phase 6 plans the replacement but today the slice has no pacing safety net. (sections 17, 23)
-3. **Necromancer combat feel (DONE on `godot/next-feel`, see `next/feel/README.md`; only Easy auto-combat and standing mouse-aim facing remain; original gap text follows).** Clicking a far enemy does nothing (no attack-target chase, no hold-LMB / Shift+LMB, no queued or held-key casts, out-of-range refusal is silent),
+3. **Necromancer combat feel (DONE on `godot/next-feel`, see `next/feel/README.md`; Easy auto-combat and standing mouse-aim facing landed on `godot/next-autocombat`; original gap text follows).** Clicking a far enemy does nothing (no attack-target chase, no hold-LMB / Shift+LMB, no queued or held-key casts, out-of-range refusal is silent),
    the hero never plays a cast gesture (`avatar.cast` is never called by rites), and there is no hitstop. Rune choices never reach the caster (`rite_build()` sets `runes = {}`), so Hollow Choir / Requiem / Impaling /
    Mass Grave / Colossus builds are dead. (section 1)
 4. **DONE on `godot/next-meta` (`next/meta/README.md`, test `tests/next_meta`): difficulty, ascension rank / vows, boons, omen and the Altar's actions are applied.** Was: **Difficulty, ascension rank and omen are not applied (MISSING).** `settings.difficulty` is stored but rewards/bosses/director use a constant "medium"; `DmSessionRewards.ascension` stays 0; omen multipliers have no source.
@@ -60,7 +60,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Hotbar: keys 1-4, RMB (5), R signature (6), LMB primary, Grimoire loadout / loadout presets | DONE | `game/dm_loadout.gd`, `game_ui/dm_loadout_presets.gd` | `DmNextUiHost.rite_at/cast/set_rites` + `DmLoadout`; `next/rites/dm_rite_hotbar.gd` |
 | Click an enemy = walk into range + primary attack (attack-target chase), hold LMB / Shift+LMB, held number keys | MISSING | `game/dm_game_input.gd` `update_attack_target`, `tick_combat` | `next/next_input.gd` casts the primary once on click; out-of-range is a silent refusal (`DmNextUiHost._on_rejected` ignores `range`/`no_target`). No chase, no hold-repeat |
 | Queued casts (cast fires when the previous cast finishes) | MISSING | `dm_game_input.gd tick_combat` | caster refuses `busy` silently |
-| Easy Auto Combat (G, owner-only gate) + auto-dodge | MISSING | `game/dm_auto_combat.gd`, `dm_auto_dodge.gd`, `dm_boss_telegraphs.gd` | `DmNextUiHost.set_auto_combat` only stores the setting; nothing runs it (`next/hud/README.md` "No auto-combat") |
+| Easy Auto Combat (G, owner-only gate) + auto-dodge | DONE (`godot/next-autocombat`) | `game/dm_auto_combat.gd`, `dm_auto_dodge.gd`, `dm_boss_telegraphs.gd` | `DmNextUiHost.set_auto_combat` only stores the setting; nothing runs it (`next/hud/README.md` "No auto-combat") |
 | Hero cast gesture / weapon clips per rite (`castClips.json`) | MISSING | `game/dm_avatar.gd cast()`, `dm_ability_system.gd` | `DmRiteCaster` / rites never call `avatar.cast`; hero only plays idle/walk/dig(raise)/hurt/death (`DmHeroBody._process`) |
 | Hitstop on heavy hits / elite deaths | MISSING | `game/dm_hitstop.gd` | `DmEnemyFx.host.hitstop_cb` and boss `hitstop` callback are unset (`next/enemy_fx/README.md`, `next/bosses/README.md`) |
 | Camera shake on rites | PARTIAL | `main/camera_rig.gd` | `shake_requested` seam in `dm_rite_hotbar.gd`; boss/enemy fx shake via `host.camera`; rite shake wiring not confirmed |
@@ -266,7 +266,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Omen chip | DONE | `next/meta/` |
 | Depth readout | IN PROGRESS | |
 | Bone Ward chip | DONE | `next/hud/dm_next_hud_vm.gd` |
-| Auto-combat button | MISSING | |
+| Auto-combat button | DONE (G / the HUD button set `auto_combat`; `DmNextAutoCombat` runs it) | |
 | Next-step box, guidance ping, progressive reveal / NEW pips | PARTIAL | reveal logic in `DmGameUi` runs; Next box limited |
 | Toasts, banners, loot toast, floating numbers, death wash, hit flash | DONE | |
 | Save-state chip (`save` text/warn) | DONE | `DmNextUiHost.save_chip()` (psync + bag state) |
@@ -284,7 +284,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | `graphics` (high/low) | DONE | `DmNextPerf.apply` (`next/perf/`): moon shadows, bloom, prop lights, weather + `vfx.quality`, live on Settings change; REBUILD Phase 6 plans presets |
 | `fps` (Engine.max_fps), `auto_res` (resolution governor) | DONE | `DmNextPerf` (`next/perf/`), same `DmResolutionGovernor` constants. `graphics_chosen` still MISSING |
 | `difficulty` | DONE | `DmNextMeta.set_difficulty` (director, rewards, bosses) |
-| `auto_combat` / `auto_gather` | MISSING | stored, no consumer |
+| `auto_combat` / `auto_gather` | auto_combat DONE (`DmNextAutoCombat`); auto_gather MISSING | |
 | `hide_helm` | MISSING | no gear on hero |
 | `no_tips`, `guidance`, `guide_ping` | PARTIAL | consumed by `DmGameUi` counsel; busy ctx missing |
 | `dev_access` | PARTIAL | `dev_access` var false on host; Settings toggle effects (`_apply_dev_access`) absent |
