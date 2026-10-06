@@ -27,6 +27,8 @@ const SNAPSHOT_HZ := 20.0
 const INTERP_DELAY := 0.1
 const MOVE_SPEED := 5.0
 const ARENA_HALF := 40.0
+## Half-extent a click-to-move target may be (the arena bound by default; a game whose world is larger, DmNextGame, raises it: the Warren lies at x -72, the Depths at x 150).
+var move_half: float = ARENA_HALF
 const HELLO_TIMEOUT := 5.0
 const REFUSE_FLUSH := 0.3  ## grace between sending a refusal and dropping the peer, so the reason arrives
 
@@ -308,7 +310,7 @@ func _apply_move_to(sender: int, body_id: int, p: Vector3) -> void:
 	if not _valid_vec(p):
 		rejected_intents += 1
 		return
-	b.set_move_target(Vector3(clampf(p.x, -ARENA_HALF, ARENA_HALF), 0.0, clampf(p.z, -ARENA_HALF, ARENA_HALF)))
+	b.set_move_target(Vector3(clampf(p.x, -move_half, move_half), 0.0, clampf(p.z, -move_half, move_half)))
 
 
 func _apply_move_dir(sender: int, body_id: int, d: Vector3) -> void:

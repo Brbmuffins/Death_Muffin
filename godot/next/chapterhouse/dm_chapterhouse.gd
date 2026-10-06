@@ -251,7 +251,7 @@ func interact_prompt(it: Dictionary) -> String:
 			var id := boss_for_summon(String(it["id"]))
 			return boss_prompt(id if id != "" else "prelate")
 		"stair", "depths_down", "depths_up", "depths_chest":
-			return "Use"
+			return game.depths.prompt(it) if game.depths != null else "Use"
 	return DmGameHud.interact_prompt(null, it)
 
 

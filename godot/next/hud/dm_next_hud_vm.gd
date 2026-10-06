@@ -48,6 +48,7 @@ func build() -> Dictionary:
 		"souls": 0, "souls_max": 10, "raises_thralls": family == "necromancer",
 	}
 	vm["prompt"] = g.chapterhouse.prompt_text if g.chapterhouse != null else null
+	vm["depth"] = g.depths.hud_state() if g.depths != null else null   # the Depths readout (depth, kills / quota, stair, chest)
 	var th := b.get_node_or_null("Thralls") as DmThrallHost
 	vm["thralls"] = int(th.places_used()) if th != null else 0
 	vm["thrall_cap"] = int(host.build_cache()["discipline"]["mods"]["thrallCap"])
@@ -145,6 +146,8 @@ func _party(g: DmNextGame) -> Array:
 func _area_progress(area: String) -> String:
 	if area == "chapterhouse":
 		return "Walk north to the Hollow Graves · Click an enemy to attack · Keys 1-5 cast your rites"
+	if area == "depths" and host.shell.depths != null and host.shell.depths.active():
+		return host.shell.depths.progress_line()
 	var def := DmContent.area(area)
 	if bool(def.get("safe", false)):
 		return "Sanctuary. The dead cannot follow you here."
@@ -196,5 +199,5 @@ func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 	_map["npcs"] = []
 	_map["ping"] = null
 	_map["destination"] = null
-	_map["depths"] = null
+	_map["depths"] = g.depths.map_floor() if g.depths != null else null
 	return _map

@@ -39,6 +39,8 @@ var difficulty: String = "medium"
 var wave_tier: float = 0.0
 var ascension: float = 0.0
 var area_id: String = "graves"
+## Optional (the Depths): Callable(area: String) -> String or null, the hunting ground whose loot table a kill in `area` rolls from (null = the area itself).
+var loot_area_of: Callable = Callable()
 ## Deterministic rolls for tests: Callable() -> float in [0,1). Empty = randf.
 var rng: Callable = Callable()
 var now_ms: Callable = Callable()
@@ -459,7 +461,12 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 	var elite := bool(ev["elite"])
 	m.stats["kills_earned"] += 1
 	kill_earned.emit(m.character_id, String(ev["def"]), at)
-	var reward: Dictionary = DmLoot.roll_kill(String(ev["def"]), area, level, elite, wave_tier, rng, difficulty, 1.0 + m.fortune, Callable(), Callable(), String(m.discipline["id"]), Callable(m, "owned_ids"))
+	var loot_area := area
+	if loot_area_of.is_valid():
+		var la: Variant = loot_area_of.call(area)
+		if la != null:
+			loot_area = String(la)
+	var reward: Dictionary = DmLoot.roll_kill(String(ev["def"]), loot_area, level, elite, wave_tier, rng, difficulty, 1.0 + m.fortune, Callable(), Callable(), String(m.discipline["id"]), Callable(m, "owned_ids"))
 	var chain_mult := 1.0
 	var area_def: Dictionary = DmContent.area(area)
 	var combat: bool = not bool(area_def["safe"])
@@ -494,6 +501,11 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 func _ground(m: DmRewardsMember, d: Dictionary, at: Vector3) -> void:
 	m.loot_view.drop(d, at)
 	loot_dropped.emit(m.character_id, d, at)
+
+
+## Items from a source other than a kill (a Depths floor, its chest) for one member: the same landing path (gear rolled by the member's backend).
+func drop_items_for(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String) -> void:
+	_drop_items(m, at, items, level, source)
 
 
 ## Materials land at once; gear first gets its roll from the member's own backend (server RNG online, the offline backend offline).

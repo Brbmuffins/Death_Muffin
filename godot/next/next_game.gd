@@ -44,6 +44,7 @@ var rewards: Node
 var progress: DmNextProgress                     ## child "Progress" (host): persistence, upgrades, level-ups, the belt (next/progress/)
 var bosses: DmBossHost                          ## child "Bosses" (every peer): summon rules, boss bodies, boss events + music
 var enemy_fx: DmEnemyFx                          ## child "EnemyFx" (every peer): telegraphs, impacts, deaths, enemy voices
+var depths: DmDepths                            ## child "Depths" (host): the procedural descent (next/depths/)
 var corpses: DmCorpseField                       ## child "Corpses" (same path on every peer); host lays corpses from enemy deaths
 var hitstopper := DmHitStop.new()               ## the picture's micro-freeze on heavy hits / elite deaths (DmHitStop, as the current client)
 var opts: Dictionary = {}
@@ -120,6 +121,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
 	session.spawn_origin = Vector3(float(ret["x"]), 0.0, float(ret["z"]))
 	session.body_factory = _make_body
+	session.move_half = 1000.0   # the world is larger than the session arena (areas out to x -72 / 150): click-to-move must reach them
 	session.player_joined.connect(_on_player_joined)
 	var peer: MultiplayerPeer = opts.get("peer", null)
 	if peer == null:
@@ -146,6 +148,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 				bosses.request_summon(bid))
 	if session.is_host():
 		chapterhouse.start_seals()
+		depths = DmDepths.new()
+		depths.name = "Depths"
+		add_child(depths)
+		depths.setup(self)
 	gather = DmNextGather.new()
 	gather.name = "Gather"
 	add_child(gather)
@@ -232,6 +238,8 @@ func _start_progress(b: DmHeroBody) -> void:
 func flush_all() -> void:
 	if rewards != null and session.is_host() and session.is_active():
 		await rewards.end_session({})
+	if depths != null:
+		await depths.flush()
 	if progress != null:
 		await progress.flush_all()
 	if ui_host != null and ui_host.inventory != null:

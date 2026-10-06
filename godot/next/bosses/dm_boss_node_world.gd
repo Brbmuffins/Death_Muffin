@@ -71,7 +71,7 @@ func player_count() -> int:
 
 ## Adds leave with the boss (no kill credit / corpse): the director removes them.
 func spawn_enemy(def: String, area: String, x: float, z: float, elite: bool, _rising: bool = true) -> int:
-	var e: DmEnemy = host.game.director.spawn(def, Vector3(x, 0.0, z), host.heroes(), elite, {}, area)   # (spawn returns the enemy; brains track ids)
+	var e: DmEnemy = host.game.director.spawn(def, Vector3(x, 0.0, z), host.heroes(), elite, {}, {"area": area})   # (spawn returns the enemy; brains track ids)
 	return DmWaveDirector.id_of(e) if e != null else -1
 
 

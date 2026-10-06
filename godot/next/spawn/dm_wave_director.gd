@@ -165,7 +165,7 @@ func _physics_process(delta: float) -> void:
 	if heroes.is_empty() and follow_areas:
 		var other := _combat_area_with_hero()
 		if other != "" and other != area_id:
-			clear()
+			clear_area(area_id)   # the old ground's; a Depths run's dead are the Depths'
 			if surge != null:
 				surge.reset()
 			configure_area(other)
@@ -178,7 +178,7 @@ func _physics_process(delta: float) -> void:
 		_wave_n = 0
 		_empty_t += delta
 		if _empty_t > EMPTY_CLEAR_S and not enemies.is_empty():
-			clear()
+			clear_area(area_id)   # only this ground's: another track's enemies (the Depths run) are not ours to sink
 		if surge != null:
 			surge.reset()
 		return
@@ -280,18 +280,20 @@ func spawn_group(pos: Vector3, heroes: Array, room: int, lead: String = "", rost
 
 ## Host: create one enemy (replicated) and return it. `heroes` only feeds the level / party scaling. `mult` overrides the computed scaling
 ## ({level, hp, dmg}: the hp / damage multipliers as DmEnemy.hp_mult / damage_mult): a Risen raised by an acolyte or a deacon is as strong as its raiser.
-## `area` ("" = this director's) is the area it counts as (its level scaling and `dm_area`): a boss's adds belong to the boss's area.
-func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false, mult: Dictionary = {}, area: String = "") -> DmEnemy:
+## `over` (optional): area (the ground the enemy counts as for level scaling and `dm_area`; a boss's adds belong to the boss's
+## area), depth (the Depths run: its level, and full Wave Speed ramp like the sim's instance), aggro / leash (metres), affixes (meta).
+func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false, mult: Dictionary = {}, over: Dictionary = {}) -> DmEnemy:
 	var levels: Array = []
 	for h in heroes:
 		levels.append(float((h as DmHeroBody).character.get("level", 1)))
-	var at_area := area if area != "" else area_id
-	var level := DmEnemyStats.area_level(at_area, levels, 0.0)
-	var tier := DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, _since_arrival)) if wave_tier > 0.0 else {"enemyHpMult": 1.0, "enemyDamageMult": 1.0}
+	var spawn_area := String(over.get("area", "")) if String(over.get("area", "")) != "" else area_id
+	var level := DmEnemyStats.area_level(spawn_area, levels, 0.0, float(over.get("depth", 1.0)))
+	var tier := DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, 1e9 if over.has("depth") else _since_arrival)) if wave_tier > 0.0 else {"enemyHpMult": 1.0, "enemyDamageMult": 1.0}
 	var e := _spawner.spawn({
-		"id": _next_id, "def": def_id, "pos": pos, "level": float(mult.get("level", level)),
+		"id": _next_id, "def": def_id, "pos": pos, "level": float(mult.get("level", level)), "area": spawn_area,
+		"aggro": float(over.get("aggro", 0.0)), "leash": float(over.get("leash", 0.0)), "affixes": int(over.get("affixes", 0)),
 		"hp": float(mult["hp"]) if mult.has("hp") else DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))) * float(tier["enemyHpMult"]),
-		"dmg": float(mult["dmg"]) if mult.has("dmg") else DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]), "rising": true, "elite": elite, "area": at_area})
+		"dmg": float(mult["dmg"]) if mult.has("dmg") else DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]), "rising": true, "elite": elite})
 	_next_id += 1
 	return e as DmEnemy
 
@@ -349,6 +351,17 @@ func clear() -> void:
 	enemies.clear()
 
 
+## Remove the enemies that belong to one ground (meta dm_area).
+func clear_area(area: String) -> void:
+	for id in enemies.keys():
+		var e: Node = enemies[id]
+		if not is_instance_valid(e):
+			enemies.erase(id)
+		elif String(e.get_meta(&"dm_area", area_id)) == area:
+			e.queue_free()
+			enemies.erase(id)
+
+
 # ---- every peer: the spawn function --------------------------------------------------------------------------------------------
 
 func _spawn_enemy(data: Variant) -> Node:
@@ -366,6 +379,11 @@ func _spawn_enemy(data: Variant) -> Node:
 	e.set_meta(&"dm_level", float(data["level"]))
 	e.set_meta(&"dm_elite", bool(data["elite"]))
 	e.set_meta(&"dm_area", String(data.get("area", area_id)))
+	if float(data.get("aggro", 0.0)) > 0.0:
+		e.aggro_range = float(data["aggro"])
+		e.leash_range = float(data["leash"])
+	if int(data.get("affixes", 0)) > 0:
+		e.set_meta(&"dm_affixes", int(data["affixes"]))
 	e.set_multiplayer_authority(1)
 	var id := int(data["id"])
 	enemies[id] = e

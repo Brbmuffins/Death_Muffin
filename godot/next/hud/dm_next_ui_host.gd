@@ -268,6 +268,12 @@ func travel(area_id_: String) -> void:
 		shell.chapterhouse.travel(area_id_)
 
 
+## The stair card's "Start at depth 1" / "Resume at deepest" (DmGameUi calls enter_depths).
+func enter_depths(depth: int) -> void:
+	if shell.depths != null:
+		shell.depths.enter(depth)
+
+
 func stop_player() -> void:
 	if shell.chapterhouse != null:
 		shell.chapterhouse.stop_player()
