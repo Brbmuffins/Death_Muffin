@@ -141,18 +141,20 @@ func _pick_enemy(screen: Vector2) -> int:
 	var cam: DmCameraRig = game.camera
 	var best := 0
 	var best_d := PICK_PX
-	for e in game.director.enemies.values():
+	var cands: Array = game.director.enemies.values()
+	cands.append_array(game.bosses.living())   # bosses are pickable too
+	for e in cands:
 		var en := e as DmEnemy
 		if en == null or not is_instance_valid(en) or en.sm == null:
 			continue
 		var sid := en.sm.id()
 		if sid == DmEnemyState.Id.DEAD or sid == DmEnemyState.Id.RISING:
 			continue
-		var v := en.global_position + Vector3(0.0, 0.9 * en.scale.y, 0.0)
+		var v := en.global_position + Vector3(0.0, (1.7 if en is DmBoss else 0.9 * en.scale.y), 0.0)
 		if cam.is_position_behind(v):
 			continue
 		var d := cam.unproject_position(v).distance_to(screen)
 		if d < best_d:
 			best_d = d
-			best = DmWaveDirector.id_of(en)
+			best = int(en.get_meta(&"dm_id", 0))
 	return best

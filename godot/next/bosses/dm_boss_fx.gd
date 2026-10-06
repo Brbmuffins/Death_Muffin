@@ -1,0 +1,73 @@
+class_name DmBossFx
+extends Node
+## Boss visuals and sounds on every peer, exactly once per event: the current client's own boss presentation (DmEventFx -> DmEventFxBoss:
+## awaken / phase banners, telegraph shapes, impacts, the pits, the defeat; the sounds incl. `bossAwaken` which starts the AudioDirector boss
+## bed). The host feeds it the brain's `t: "boss"` events (and broadcasts them to the other peers), so telegraph timing is the event's `ms`.
+## The model/animation side is DmBossView, owned by each DmBoss.
+
+## What the router needs from its "game": the enemy-fx stub plus banner/toast/float sinks and the boss-view hide.
+class Host:
+	extends DmEnemyFxHost
+	var sink := Callable()           ## (event_id: String, ctx: Dictionary): "toast" / "banner" -> the HUD
+	var hide_view := Callable()      ## (boss_id: String)
+	func emit_game_event(id: String, ctx: Dictionary = {}) -> void:
+		if sink.is_valid():
+			sink.call(id, ctx)
+	func boss_view_hide(id: String) -> void:
+		if hide_view.is_valid():
+			hide_view.call(id)
+
+var vfx: Node
+var audio: Node
+var fx: DmEventFx
+var host := Host.new()
+var player_pos := Callable()         ## () -> Vector3, the local hero (distance gating of hitstop / shake)
+var events: int = 0                  ## events played (tests)
+
+
+func _ready() -> void:
+	DmSimData.ensure()
+	if vfx == null:
+		vfx = get_tree().root.get_node_or_null("Vfx")
+	if audio == null:
+		audio = get_tree().root.get_node_or_null("AudioDirector")
+	_rebuild()
+
+
+func _rebuild() -> void:
+	fx = DmEventFx.new()
+	fx.setup(host)
+	fx.vfx = vfx
+	fx.audio = audio
+
+
+## Tests swap counting back-ends in before the first event.
+func set_backends(p_vfx: Node, p_audio: Node) -> void:
+	vfx = p_vfx
+	audio = p_audio
+	_rebuild()
+
+
+## One brain event (`t: "boss"`): the router draws it inside Vfx.danger().
+func play(ev: Dictionary) -> void:
+	events += 1
+	fx.handle_now(ev)
+
+
+func _process(dt: float) -> void:
+	host.now_ms += dt * 1000.0
+	host.mirror.time = host.now_ms / 1000.0
+	if player_pos.is_valid():
+		var p: Vector3 = player_pos.call()
+		host.p["x"] = p.x
+		host.p["z"] = p.z
+	fx.update(dt)
+
+
+## Silent one-of-each shape at `at` (loading time): decal textures, pools and shaders exist before the first fight.
+func warm(at: Vector3) -> void:
+	var quiet := fx.audio
+	fx.audio = null
+	for kind in ["sweep", "bury"]:
+		play({"t": "boss", "kind": kind, "x": at.x, "z": at.z, "phase": 1, "boss": "gravedigger", "ms": 250.0, "dir": 0.0, "r": 4.5, "targets": [[at.x, at.z + 2.0]]})
+	fx.audio = quiet

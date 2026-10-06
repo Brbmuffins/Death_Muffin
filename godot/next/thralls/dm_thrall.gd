@@ -294,7 +294,13 @@ func _target_ok(op: Vector3) -> bool:
 	var sid := e.sm.id()
 	if sid == DmEnemyState.Id.DEAD or sid == DmEnemyState.Id.BURROW or sid == DmEnemyState.Id.RISING or not e.is_hittable():
 		return false
-	return _flat(e.global_position - op) <= DmSimConsts.THRALL_LEASH
+	return _flat(e.global_position - op) - _edge(e) <= DmSimConsts.THRALL_LEASH
+
+
+## Boss engage rule: a boss (group dm_boss, radius 1.6) counts from its edge in the engage range and the owner leash, so the legion
+## commits to it when it is within reach of the fight instead of waiting until the boss is nearly on top of a thrall.
+static func _edge(e: DmEnemy) -> float:
+	return e.radius if e.is_in_group(&"dm_boss") else 0.0
 
 
 func _scan(op: Vector3) -> Node3D:
@@ -310,9 +316,10 @@ func _scan(op: Vector3) -> Node3D:
 		if sid == DmEnemyState.Id.DEAD or sid == DmEnemyState.Id.BURROW or sid == DmEnemyState.Id.RISING or not e.is_hittable():
 			continue
 		var ep := e.global_position
-		if _flat(ep - op) > lim:
+		var edge := _edge(e)
+		if _flat(ep - op) - edge > lim:
 			continue
-		var d := _flat(ep - p)
+		var d := _flat(ep - p) - edge
 		if d < best_d:
 			best_d = d
 			best = e

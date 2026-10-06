@@ -193,7 +193,7 @@ func spawn_wave(heroes: Array, count: int = -1) -> int:
 
 
 ## Host: create one enemy (replicated). `heroes` only feeds the level / party scaling.
-func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false) -> void:
+func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false) -> int:
 	var levels: Array = []
 	for h in heroes:
 		levels.append(float((h as DmHeroBody).character.get("level", 1)))
@@ -204,6 +204,7 @@ func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false
 		"hp": DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))) * float(tier["enemyHpMult"]),
 		"dmg": DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]), "rising": true, "elite": elite})
 	_next_id += 1
+	return _next_id - 1   # the new enemy's id (the boss brains track their adds)
 
 
 func _pick_kind() -> String:

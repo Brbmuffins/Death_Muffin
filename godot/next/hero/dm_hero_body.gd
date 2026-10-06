@@ -184,6 +184,14 @@ func _ward() -> float:
 	return per * float(th.count()) if per > 0.0 and th != null else 0.0
 
 
+## Host: hold the body still for `seconds` (the Gravedigger's Burial, a boss grasp). Casting stays allowed; movement stops and walks are dropped.
+func root_for(seconds: float) -> void:
+	if p.is_empty():
+		return
+	p["rootedUntil"] = maxf(float(p["rootedUntil"]), _clock_ms + seconds * 1000.0)
+	stop()
+
+
 ## Host: move the body instantly (respawn, waystone, Grave Step).
 func teleport(to: Vector3) -> void:
 	position = Vector3(to.x, 0.0, to.z)
@@ -279,6 +287,9 @@ func step_host(delta: float, _speed: float, _half: float) -> void:
 	p["moveMult"] = 1.0 + DmBrews.brew_value(br, "speed", _clock_ms) if (br["elixir"] != null or br["tonic"] != null) else 1.0
 	var speed := DmPlayerRules.move_speed(p, _clock_ms)
 	var vel := Vector3.ZERO
+	if _clock_ms < float(p["rootedUntil"]):
+		speed = 0.0
+		move_dir = Vector3.ZERO
 	if move_dir.length_squared() > 0.0001:
 		vel = move_dir * speed
 		has_target = false

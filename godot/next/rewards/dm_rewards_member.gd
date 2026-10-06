@@ -36,8 +36,12 @@ var seen_kills: int = 0
 var backend_accepted: int = 0     ## kills the backend has accepted for this member so far (as far as we applied)
 var blocked: String = ""          ## non-empty after the backend said "left"/"not_member": no more rewards for this member
 var last_refusal: String = ""
-var stats := {"kills_earned": 0, "kills_accepted": 0, "xp_applied": 0, "levels": 0, "gold_picked": 0, "shards_picked": 0, "items_picked": 0, "refused_batches": 0}
+var stats := {"kills_earned": 0, "kills_accepted": 0, "xp_applied": 0, "levels": 0, "gold_picked": 0, "shards_picked": 0, "items_picked": 0, "refused_batches": 0, "bosses": 0}
 var joined: bool = false
+## Bosses this character has killed (first kill = trophy + bonus). In memory for the session; a shell that persists them sets `trophy_store`
+## (Callable(boss_id) -> bool: true = first kill, and records it).
+var trophies: Dictionary = {}
+var trophy_store: Callable = Callable()
 
 
 ## The usual construction: a fresh character and local progression, its own loot view.
@@ -75,4 +79,14 @@ func try_take(d: Dictionary) -> bool:
 	if bag.size() >= bag_cap:
 		return false
 	bag.append(d)
+	return true
+
+
+## First kill of this boss by this character? Records it.
+func claim_trophy(boss_id: String) -> bool:
+	if trophy_store.is_valid():
+		return bool(trophy_store.call(boss_id))
+	if trophies.has(boss_id):
+		return false
+	trophies[boss_id] = true
 	return true

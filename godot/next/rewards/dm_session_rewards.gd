@@ -19,6 +19,7 @@ signal member_credited(character_id: int, delta: Dictionary)   ## {xp, kills, le
 signal member_refused(character_id: int, reason: String)       ## the backend did not credit this member's part of a batch
 signal batch_reported(batch: int, reply: Variant)
 signal kill_earned(character_id: int, enemy_def: String, pos: Vector3)
+signal boss_earned(character_id: int, boss_id: String, first: bool, pos: Vector3)   ## a member was paid for a boss kill
 signal loot_dropped(character_id: int, drop: Dictionary, pos: Vector3)   ## also lets a shell replicate a member's drops to its peer
 signal loot_picked(character_id: int, event: Dictionary)
 signal loot_expired(character_id: int, drop: Dictionary, reason: String)
@@ -396,6 +397,41 @@ func on_kill(ev: Dictionary) -> void:
 		if not _rules.boss_reward_eligible(m.alive(), dist):
 			continue
 		_reward(m, ev, ev.get("killer") != null and ev["killer"] == m.body)
+
+
+## A boss died (the boss host calls it): ev {boss, x, z, killer: Node|null, empowered}. The normal-kill rule decides who is paid (alive, within
+## KILL_REWARD_RANGE); each gets its own roll (DmLoot.roll_boss), a first-kill bonus (+2 shards, a rare relic, a trophy), the relic rune, XP now,
+## and a boss entry in its report (the backend's kill ledger). Mirrors DmGameRewards.on_boss_defeated.
+func on_boss_defeated(ev: Dictionary) -> void:
+	var id := String(ev["boss"])
+	if ended or ev.get("killer") == null or id == "prelate":
+		return
+	var def: Dictionary = DmContent.boss(id)
+	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
+	var level := float(DmContent.area(String(def["area"]))["level"])
+	for cid in members:
+		var m: DmRewardsMember = members[cid]
+		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
+			continue
+		var reward: Dictionary = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
+		var first := m.claim_trophy(id)
+		var first_item: Variant = null
+		if first:
+			reward["shards"] = int(reward["shards"]) + 2
+			first_item = DmLoot.roll_first_kill_item(String(def["area"]), rng, String(m.discipline["id"]))
+		var rune: Variant = DmLoot.roll_boss_rune(id, first, rng)
+		if rune != null:
+			reward["items"].append(rune)
+		m.stats["bosses"] += 1
+		m.reporter.boss({"boss": id, "tier": wave_tier, "diff": difficulty, "first": first})
+		_ground(m, {"kind": "gold", "amount": int(reward["gold"]) + int(reward["materialGold"])}, at)
+		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
+		_drop_items(m, at, reward["items"], level, "boss")
+		if first_item != null:
+			_drop_items(m, at, [first_item], level, "first_kill")
+		m.stats["xp_applied"] += int(reward["xp"])
+		m.stats["levels"] += m.prog.add_xp(float(reward["xp"]))
+		boss_earned.emit(m.character_id, id, first, at)
 
 
 func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:

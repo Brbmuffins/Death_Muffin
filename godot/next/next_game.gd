@@ -39,6 +39,7 @@ var is_offline: bool = true                     ## D4: true = backed by the loca
 var area_id: String = "chapterhouse"
 var rewards: Node
 var progress: DmNextProgress                     ## child "Progress" (host): persistence, upgrades, level-ups, the belt (next/progress/)
+var bosses: DmBossHost                          ## child "Bosses" (every peer): summon rules, boss bodies, boss events + music
 var enemy_fx: DmEnemyFx                          ## child "EnemyFx" (every peer): telegraphs, impacts, deaths, enemy voices
 var corpses: DmCorpseField                       ## child "Corpses" (same path on every peer); host lays corpses from enemy deaths
 var opts: Dictionary = {}
@@ -84,6 +85,17 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 			ui_host.watch_enemy(e)
 		corpses.track(e, String(e.get_meta("dm_area", area_id)))
 		enemy_spawned.emit(e))
+	bosses = DmBossHost.new()
+	bosses.name = "Bosses"
+	bosses.game = self
+	bosses.visual = _visual
+	bosses.audio_enabled = bool(opts.get("audio", DisplayServer.get_name() != "headless")) and _has_world
+	add_child(bosses)
+	bosses.fx.host.camera = camera
+	bosses.fx.player_pos = enemy_fx.player_pos
+	bosses.fx.host.sink = func(id: String, ctx: Dictionary) -> void:   # banners / toasts -> the HUD
+		if ui_host != null:
+			ui_host.game_event.emit(id, ctx)
 	director.warm()
 	session.session_ended.connect(func(_r: String) -> void: set_process(false))
 	if _has_world:
@@ -104,6 +116,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		peer = OfflineMultiplayerPeer.new()
 	var err := session.host(peer) if bool(opts.get("host", true)) else session.join(peer)
 	assert(err == OK, "DmNextGame: session start failed (%s)" % error_string(err))
+	bosses.fx.host.self_id = str(session.get_my_id())
 	if session.is_host():
 		var b := local_body()
 		b.bind_character(character)
@@ -124,7 +137,9 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		hooks.setup(self)
 	if _visual:
 		DmRiteFx.with_autoloads().warm()
-		enemy_fx.warm(local_body().global_position if local_body() != null else Vector3.ZERO)
+		var at := local_body().global_position if local_body() != null else Vector3.ZERO
+		enemy_fx.warm(at)
+		bosses.warm(at)
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
@@ -250,11 +265,15 @@ func body_of(peer_id: int) -> DmHeroBody:
 
 ## Living enemies within `r` metres of `pos` (flat; measured to the enemy's edge).
 func enemies_in_radius(pos: Vector3, r: float) -> Array[DmEnemy]:
-	return director.enemies_in_radius(pos, r)
+	var out := director.enemies_in_radius(pos, r)
+	for b in bosses.living():   # a boss counts from its edge, like any big body
+		if Vector2(b.global_position.x - pos.x, b.global_position.z - pos.z).length() - b.radius <= r:
+			out.append(b)
+	return out
 
 
 func enemy_by_id(id: int) -> DmEnemy:
-	return director.enemy_by_id(id)
+	return director.enemy_by_id(id) if id < DmBossHost.ID_BASE else bosses.boss_by_id(id)
 
 
 func enemy_id(enemy: Node) -> int:

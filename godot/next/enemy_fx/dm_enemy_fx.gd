@@ -103,7 +103,8 @@ func _on_node_added(n: Node) -> void:
 	if scope != null and not scope.is_ancestor_of(n):
 		return
 	if n is DmEnemy:
-		watch(n)
+		if not n is DmBoss:   # bosses have their own presentation (DmBossFx / DmBossView)
+			watch(n)
 	elif n is DmHostileZone:
 		_on_zone(n)
 

@@ -40,7 +40,7 @@ func build() -> Dictionary:
 		"gold": int(host.character.get("gold", 0)), "shards": int(host.progress.get("shards", 0)),
 		"area_name": String(DmContent.area(g.area_id).get("name", "")), "area_progress": _area_progress(g.area_id),
 		"primary": _primary_slot(b), "slots": _slot_list(b, level),
-		"target": _target(g), "party": _party(g), "minimap": _minimap(g, b),
+		"target": _target(g), "boss": _boss(g), "party": _party(g), "minimap": _minimap(g, b),
 		"brews": _brews(), "death": {"show": not b.alive, "sub": "The Chapterhouse will call you back…"},
 		"damage": {"tier": host.progress["damageTier"], "pct": DmUpgrades.damage_bonus_pct(float(host.progress["damageTier"])), "cost": null if host.prog.damage_cost() == -1 else host.prog.damage_cost()},
 		"wave": {"owned": host.progress["waveTierOwned"], "active": host.progress["waveTierActive"], "pct": DmWaveUpgrades.wave_modifiers(float(host.progress["waveTierActive"]))["speedPct"],
@@ -51,6 +51,15 @@ func build() -> Dictionary:
 	vm["thralls"] = int(th.places_used()) if th != null else 0
 	vm["thrall_cap"] = int(host.build_cache()["discipline"]["mods"]["thrallCap"])
 	return vm
+
+
+## The boss bar (the current game's DmGameHud.boss shape): the awake boss of this peer's world, hp from the body.
+func _boss(g: DmNextGame) -> Variant:
+	var b := g.bosses.active_boss() if g.bosses != null else null
+	if b == null:
+		return null
+	var def: Dictionary = DmContent.boss(b.boss_id)
+	return {"name": ("Empowered " if b.bstate.empowered else "") + String(def["name"]), "phase": b.phase, "hp": b.hp, "max_hp": b.max_hp, "phases": def["phases"]}
 
 
 # ---- hotbar -----------------------------------------------------------------------------------------------------------------------
@@ -179,7 +188,8 @@ func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 	_map["thralls"] = thralls
 	_map["allies"] = []
 	_map["corpses"] = corpses
-	_map["boss"] = null
+	var bb := g.bosses.active_boss() if g.bosses != null else null
+	_map["boss"] = {"x": bb.position.x, "z": bb.position.z} if bb != null else null
 	_map["waystones"] = []
 	_map["stairs"] = []
 	_map["npcs"] = []
