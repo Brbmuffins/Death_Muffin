@@ -85,3 +85,28 @@ static func follow_enemy(c: DmRiteCaster, eid: int, last: Vector3, y: float) -> 
 		if e != null and is_instance_valid(e):
 			pt[0] = Vector3(e.global_position.x, y, e.global_position.z)
 		return pt[0]
+
+
+## HOST helper (the sim's _in_circle): the living, hittable enemies whose edge is within `r` of (x, z), at most `cap` (nearest-first is not promised).
+static func enemies_in_circle(c: DmRiteCaster, x: float, z: float, r: float, cap: int = 64) -> Array:
+	var out: Array = []
+	for n in c.world.enemies_in_radius(Vector3(x, 0.0, z), r + 1.5):
+		var e := n as DmEnemy
+		if e == null or not DmRiteCaster.alive_enemy(e) or not e.is_hittable():
+			continue
+		if Vector2(e.global_position.x - x, e.global_position.z - z).length() > r + e.radius:
+			continue
+		out.append(e)
+		if out.size() >= cap:
+			break
+	return out
+
+
+## HOST helper (the sim's _face): turn the caster's body toward the ground point (x, z).
+static func face(c: DmRiteCaster, x: float, z: float) -> void:
+	var b: Node3D = c.body
+	if b != null and b.get("yaw") != null:
+		var d := Vector2(x - b.position.x, z - b.position.z)
+		if d.length_squared() > 0.0001:
+			b.set("yaw", atan2(d.x, d.y))
+			b.rotation.y = float(b.get("yaw"))

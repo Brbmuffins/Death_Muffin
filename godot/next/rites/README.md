@@ -23,10 +23,21 @@ module** `rite_<id>.gd` (a `DmRiteModule`) listed in `dm_rite_registry.gd` (one 
 | `ivory_cleave` | grimoire (level 4) | instant 120 deg crescent, reach 3.6, power 1.7, +1 Fracture. 14 essence, 1.6 s |
 | `bone_storm` | grimoire (level 14) | ground funnel (range 10, r 2, power 0.5 every 0.4 s) that drifts 2.2 m/s toward the nearest enemy for 4 s (+0.6 s per corpse under it, up to +3 s; corpses only counted). 32 essence, 12 s |
 | `soul_siphon` | grimoire (level 6) | 3 s tether (range 9, breaks at 12.6): every 0.5 s power 0.55 damage, heals 35 % of it, +2 essence. 14 essence, 7 s |
+| `grave_step` | (no default slot) | blink onto the corpse under the cursor (12 m, same area; the corpse stays), burst r 2.6 = spell power x 1.3 + bleed. Host teleport (`body.teleport`, point resolved on the navmesh), clients snap. 10 essence, 5 s, level 5 |
+| `veil_step` | (no default slot) | 0.16 s glide up to 5.5 m toward the cursor, stops at the last walkable 0.25 m step (walls, sealed doors, area edge: `body.dash_point` / `body.dash`); refused `no_target` when nothing is gained. Free, 7 s, level 4 |
+| `grave_frost` | (no default slot) | 7 m / 35 deg cone after a 40 m/s bolt: x1.4 damage + Chill 3 s (-30 % move, -25 % attack), an already Chilled enemy shatters x1.5. 20 essence, 4.5 s, level 7 |
+| `bone_prison` | (no default slot) | ring r 2.4 at the cursor (11 m): x1.1 damage, Root 1.8 s, 1 Fracture stack. 24 essence, 9 s, level 9 |
+| `grave_hands` | (no default slot) | 3 s field r 3.5 (10 m): a rake every 0.5 s of x0.4 (+15 % per corpse up to 4, they stay) + Slow. 26 essence, 11 s, level 11 |
+| `rally_dead` | (no default slot) | `DmThrallHost.rally`: legion healed 20 %, +40 % damage / +30 % attack speed for 6 s (Gravecaller 8 s), turns on the enemy nearest the cursor; refused `no_thralls`. ONE event, fx once per peer. 20 essence, 12 s, level 6 |
 
 Hotbar mapping (the one place to take over): `dm_rite_hotbar.gd` (`DmRiteHotbar.rite_for_slot`, `wire(game)`): LMB = kit `defaultPrimary`, 1-4 = kit
 `defaultLoadout` (a kit rite without a module is refused `unavailable`), RMB = kit `rmb`. `shake_requested(amount)` is the camera-shake seam.
 World additions for the corpse rites: `world.corpses` (the `DmCorpseField`) and `world.area_of(peer)`; the thralls come from the body's `Thralls` host.
+
+Shared helpers added with these rites: `DmRiteModule.enemies_in_circle(c, x, z, r)` / `face(c, x, z)`; on the body (`DmSessionBody`, navmesh versions in `DmHeroBody`):
+`teleport(to)`, `dash(to, secs)` + `dashing`, `dash_point(to)` (the sim's veil_target), `resolve_point(pt)`, `walkable(pt)`, `area_of_point(pt)`; `DmSessionBody.push_sample` snaps instead of
+gliding when a replicated position jumps more than `SNAP_JUMP` (4 m). The visuals live in `DmRiteFx` (`step_depart/step_arrive`, `veil`, `frost_cast/frost_hits`, `prison`, `hands_*`, `rally_cast/rally`)
+and the current game's `DmAbilitySystem` draws through the same functions. Tests: `godot/tests/rites/control_run.gd`.
 
 All numbers come from the existing rules (`DmAbilities.cast_check / needle_cast / needle_hit / miasma / apply_cast_cost / shortfall`,
 `DmSimData.WITHERED / MIASMA_SLOW / HEMORRHAGE`, `DmCombatData.const_table(BONE_FAN, ROT_LANCE, WAILING_SKULL, IVORY_CLEAVE, BONE_STORM, SOUL_SIPHON)`, projectile speeds from `sim_caster.gd`). No new numbers except `PICK_RADIUS` (aim-point tolerance).

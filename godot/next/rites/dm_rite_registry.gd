@@ -18,6 +18,12 @@ const MODULES := {
 	"ivory_cleave": preload("res://next/rites/rite_ivory_cleave.gd"),
 	"bone_storm": preload("res://next/rites/rite_bone_storm.gd"),
 	"soul_siphon": preload("res://next/rites/rite_soul_siphon.gd"),
+	"grave_step": preload("res://next/rites/rite_grave_step.gd"),
+	"veil_step": preload("res://next/rites/rite_veil_step.gd"),
+	"grave_frost": preload("res://next/rites/rite_grave_frost.gd"),
+	"bone_prison": preload("res://next/rites/rite_bone_prison.gd"),
+	"grave_hands": preload("res://next/rites/rite_grave_hands.gd"),
+	"rally_dead": preload("res://next/rites/rite_rally_dead.gd"),
 }
 
 static var _inst: Dictionary = {}

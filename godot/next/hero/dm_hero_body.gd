@@ -145,9 +145,10 @@ func heal(amount: float) -> void:
 		_mirror_from_state()
 
 
-## Host: move the body instantly (respawn, waystone).
+## Host: move the body instantly (respawn, waystone, Grave Step).
 func teleport(to: Vector3) -> void:
 	position = Vector3(to.x, 0.0, to.z)
+	dashing = false
 	stop()
 	_path = PackedVector3Array()
 	_prev_set = false
@@ -180,6 +181,24 @@ func apply_vitals(v: Array) -> void:
 
 # ---- movement (host) ----------------------------------------------------------------------------------------------------------
 
+## Navmesh queries for the blink / dash rites (DmSessionBody contract). While the nav map is not ready everything is walkable.
+func walkable(pt: Vector3) -> bool:
+	if game == null or game.world == null or not game.world.nav_ready():
+		return true
+	var c: Vector3 = game.world.nav_closest(pt)
+	return Vector2(c.x - pt.x, c.z - pt.z).length_squared() < 0.0004
+
+
+func area_of_point(pt: Vector3) -> String:
+	return game.world.area_at(pt.x, pt.z) if game != null and game.world != null else ""
+
+
+func resolve_point(pt: Vector3) -> Vector3:
+	if game != null and game.world != null and game.world.nav_ready():
+		return game.world.nav_clamp(Vector3(pt.x, 0.0, pt.z))
+	return Vector3(pt.x, 0.0, pt.z)
+
+
 ## Click-to-move: plan along the navmesh. Falls back to a straight line while the nav map is not ready.
 func set_move_target(pt: Vector3) -> void:
 	super.set_move_target(pt)
@@ -206,6 +225,12 @@ func step_host(delta: float, _speed: float, _half: float) -> void:
 			_respawn()
 		_mirror_from_state()
 		rotation.y = yaw
+		return
+	if _step_dash(delta):
+		p["x"] = position.x
+		p["z"] = position.z
+		p["facing"] = yaw
+		_mirror_from_state()
 		return
 	if _dir_ttl > 0.0:
 		_dir_ttl -= delta

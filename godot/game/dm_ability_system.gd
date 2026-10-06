@@ -671,30 +671,13 @@ func _step(t: Dictionary) -> String:
 	var r := super._step(t)
 	if r != "ok":
 		return r
-	var ST := DmFxData.spell_group("step")
-	_smoke(ox, 0.9, oz, 6, ST["mist"], 0.45, 0.7, 0.7, 0.75, 1.2, {"shrink": -0.4})
-	_emit(ox, 1.0, oz, 18, ST["blood"], 0.4, 2.2, 1.2, 0.45, 0.2, {"gravity": 6.0})
-	_decal("bloodSigil", ST["crimson"], ox, oz, 1.2, 0.8, 0.85, {"growFrom": 0.6})
-	_m_dirt(ox, oz, 0.5, 6)
-	_m_motes(ox, oz, ST["blood"], 0.4, 4, 1.4)
-	_bb("grave_step_smoke", ox, oz, {"duration": 1.4})
+	var rf := _rite_fx()
+	rf.step_depart(ox, oz)
 	_gesture("cast", 3.0, "grave_step", "grave_step")
-	_beam(Vector3(ox, 1.0, oz), _cb("_vis_p1"), ST["blood"], 0.07, 0.22)
+	var pts: Array = []
 	for pu: Dictionary in _new_popups(n0):
-		_flash(pu["x"], 0.9, pu["z"], ST["blood"], 0.7, 0.16)
-	var rr := float(DmCombatData.const_table("GRAVE_STEP")["burstRadius"])
-	var x := _px()
-	var z := _pz()
-	_decal("bloodSigil", ST["blood"], x, z, rr * 1.15, 0.9, 1.0, {"growFrom": 0.25, "spin": 0.8})
-	_decal("ring", ST["crimson"], x, z, rr * 1.05, 0.4, 0.9, {"growFrom": 0.15})
-	_emit(x, 0.6, z, 26, ST["blood"], 0.3, rr * 2.6, 1.4, 0.5, 0.26, {"drag": 1.5})
-	_emit(x, 0.8, z, 8, ST["hot"], 0.2, 2.0, 2.2, 0.35, 0.18)
-	_smoke(x, 0.5, z, 5, ST["mist"], rr * 0.4, 1.2, 0.5, 0.8, 1.2, {"shrink": -0.4})
-	_lf(x, 1.2, z, ST["blood"], 30.0, 0.35)
-	_m_dirt(x, z, rr * 0.5, 8, 3.0)
-	_m_splinters(x, 0.5, z, 6, DmFxData.hex(int(DmFxData.data()["necro_matter"]["bone"])))
-	_bb("grave_step_smoke", x, z, {"scale": 1.2, "duration": 1.4})
-	_sfx("bloodStep", x, z)
+		pts.append([pu["x"], pu["z"]])
+	rf.step_arrive(ox, oz, _px(), _pz(), _cb("_vis_p1"), pts)
 	_shake(0.05)
 	return r
 
@@ -709,30 +692,10 @@ func _frost(t: Dictionary) -> String:
 	_pv = {}
 	if r != "ok":
 		return r
-	var FR := DmFxData.spell_group("frost")
 	var ctx := _last_ctx()
 	var origin: Dictionary = ctx["origin"]
-	var dx: float = ctx["dx"]
-	var dz: float = ctx["dz"]
-	var ln: float = ctx["len"]
-	var ox: float = origin["x"]
-	var oz: float = origin["z"]
-	var rot := atan2(dx, dz)
 	_gesture("cast", 2.4, "grave_frost", "grave_frost")
-	var tip := _tip()
-	_flash(tip[0], tip[1], tip[2], FR["pale"], 0.8, 0.14)
-	_decal("frostFan", FR["frost"], ox + dx * ln * 0.5, oz + dz * ln * 0.5, ln * 0.5, 0.9, 0.95, {"rot": rot + PI, "growFrom": 0.35, "fadeIn": 0.08, "fadeOut": 0.45})
-	for i in range(1, 5):
-		var k := float(i) / 4.0
-		_smoke(ox + dx * ln * k * 0.8, 0.7, oz + dz * ln * k * 0.8, 2, 0xb9cbe6, 0.4 + k * 1.4, 0.6, 0.3, 0.7, 1.0 + k * 0.6, {"shrink": -0.4, "drag": 1.0})
-		_emit(ox + dx * ln * k * 0.85, 0.8, oz + dz * ln * k * 0.85, 5, FR["pale"], 0.3 + k * 1.2, 1.2, 0.4, 0.45, 0.14)
-	_sfx("frost", ox + dx * 2.0, oz + dz * 2.0)
-	if fx != null:
-		stats["motif"] += 4
-		fx.motifs.cracked_ground(ox + dx * ln * 0.5, oz + dz * ln * 0.5, ln * 0.5, FR["pale"], {"rot": rot, "sx": 0.5, "duration": 1.8, "opacity": 0.4})
-		for i in range(1, 4):
-			fx.motifs.mist_whisper(ox + dx * ln * i * 0.28, oz + dz * ln * i * 0.28, 0x8fa6c8, {"r": 0.5 + i * 0.5, "n": 2})
-	_bb("grave_frost_mist", ox + dx * ln * 0.45, oz + dz * ln * 0.45, {"rot": rot})
+	_rite_fx().frost_cast(_tip(), float(origin["x"]), float(origin["z"]), float(ctx["dx"]), float(ctx["dz"]), float(ctx["len"]))
 	return r
 
 
@@ -764,27 +727,8 @@ func _frost_arrive(pos: Array, ctx: Dictionary) -> void:
 	super._frost_arrive(pos, ctx)
 	if not p["alive"] and seen.is_empty():
 		return
-	var FR := DmFxData.spell_group("frost")
-	var shown := 0
-	var shattered := 0
-	for s: Dictionary in seen:
-		shown += 1
-		if s["shatter"]:
-			shattered += 1
-		if shown <= 14:
-			_decal("rime", FR["frost"], s["x"], s["z"], 0.75 * float(s["scale"]), 1.4, 0.9, {"rot": randf() * 6.0, "growFrom": 0.4})
-			if s["shatter"]:
-				if shown <= 3:
-					_bb("frost_shard_hit", s["x"], s["z"])
-				_flash(s["x"], 1.0, s["z"], FR["pale"], 1.2, 0.18)
-				_emit(s["x"], 1.0, s["z"], 10, FR["pale"], 0.2, 3.4, 2.0, 0.5, 0.13, {"gravity": 10.0})
-				if shown <= 4:
-					_m_splinters(s["x"], 1.0, s["z"], 4, FR["pale"])
 	var origin2: Dictionary = ctx["origin"]
-	var ln2: float = ctx["len"]
-	_lf(float(origin2["x"]) + float(ctx["dx"]) * ln2 * 0.5, 1.0, float(origin2["z"]) + float(ctx["dz"]) * ln2 * 0.5, FR["frost"], 18.0, 0.3)
-	if shattered > 0:
-		_sfx("needleHit", pos[0], pos[2], 1.4)
+	_rite_fx().frost_hits(seen, float(origin2["x"]), float(origin2["z"]), float(ctx["dx"]), float(ctx["dz"]), float(ctx["len"]), pos[0], pos[2])
 	_shake(0.04)
 
 
@@ -854,26 +798,9 @@ func _prison(t: Dictionary) -> String:
 	var r := super._prison(t)
 	if r != "ok":
 		return r
-	var PR := DmFxData.spell_group("prison")
-	var P: Dictionary = DmSimData.BONE_PRISON
 	var xz := _ground_aim("bone_prison", t)
-	var x: float = xz[0]
-	var z: float = xz[1]
-	var rr := float(DmSimData.ABILITIES["bone_prison"]["radius"])
 	_gesture("cast", 2.3, "bone_prison", "bone_prison")
-	if fx != null:
-		stats["spikes"] += 1
-		fx.spike_ring(x, z, rr, int(P["spikes"]), float(P["rootS"]) + 0.1)
-	_decal("cracks", PR["dust"], x, z, rr * 1.1, float(P["rootS"]) + 0.4, 0.8, {"rot": randf() * 6.0, "growFrom": 0.6, "fadeOut": 0.4})
-	_decal("boneRing", PR["amber"], x, z, rr + 0.3, float(P["rootS"]), 0.4, {"growFrom": 0.8, "fadeOut": 0.3})
-	_smoke(x, 0.3, z, 6, PR["dust"], rr * 0.8, 0.9, 0.5, 0.9, 1.1)
-	_emit(x, 0.4, z, 18, PR["bone"], rr, 1.8, 2.2, 0.5, 0.12, {"gravity": 9.0})
-	for i in 6:
-		var a := (float(i) / 6.0) * TAU
-		_m_dirt(x + cos(a) * rr * 0.9, z + sin(a) * rr * 0.9, 0.35, 3)
-	_m_splinters(x, 0.9, z, 10, PR["bone"], rr * 1.6)
-	_bb("bone_prison_burst", x, z, {"scale": rr / 2.4})
-	_sfx("prison", x, z)
+	_rite_fx().prison(xz[0], xz[1], float(DmSimData.ABILITIES["bone_prison"]["radius"]))
 	_shake(0.06)
 	return r
 
@@ -882,7 +809,6 @@ func _hands(t: Dictionary, now: float) -> String:
 	var r := super._hands(t, now)
 	if r != "ok":
 		return r
-	var GH := DmFxData.spell_group("hands")
 	var G: Dictionary = DmSimData.GRAVE_HANDS
 	var ctx := _timed_ctx()
 	var x: float = ctx["x"]
@@ -891,41 +817,25 @@ func _hands(t: Dictionary, now: float) -> String:
 	_gesture("dig", 2.2, "grave_hands", "grave_hands")
 	var corpses := mini(int(G["maxCorpses"]), _corpses_in(x, z, rr))
 	var hands := mini(int(G["maxHands"]), int(G["hands"]) + corpses * int(G["handsPerCorpse"]))
-	var dur := float(G["durationS"])
-	var vis: Dictionary = {"hands": null, "ground": null, "seep": null}
-	if fx != null:
-		stats["hands"] += 1
-		vis["hands"] = fx.grave_hands(x, z, rr, hands, dur)
-	vis["ground"] = _decal("disc", GH["earth"], x, z, rr, dur, 0.7, {"growFrom": 0.5, "fadeOut": 0.4})
-	vis["seep"] = _decal("cracks", GH["seep"], x, z, rr * 0.95, dur, 0.35, {"rot": randf() * 6.0, "pulse": 2.0, "fadeOut": 0.4})
-	_smoke(x, 0.2, z, 8, GH["earth"], rr * 0.7, 0.8, 0.6, 1.0, 1.2)
-	for i in 5:
-		var a := float(i) * 2.4
-		_m_dirt(x + cos(a) * rr * 0.55, z + sin(a) * rr * 0.55, 0.4, 3)
-	_bb("grave_hands_pulse", x, z, {"scale": rr / 3.5})
-	_sfx("hands", x, z)
-	_loop("handsLoop", 3000.0, x, z)
+	var vis := _rite_fx().hands_start(x, z, rr, hands, float(G["durationS"]))
 	_timed.back()["end"] = Callable(self, "_hands_end").bind(vis)
 	return r
 
 
 func _hands_end(vis: Dictionary) -> void:
-	for k in ["hands", "ground", "seep"]:
-		_kill(vis[k])
+	_rite_fx().hands_end(vis)
 
 
 func _hands_tick(now_ms: float, ctx: Dictionary) -> Variant:
 	var r: Variant = super._hands_tick(now_ms, ctx)
-	var GH := DmFxData.spell_group("hands")
 	var ic := _in_circle(ctx["x"], ctx["z"], ctx["r"])
 	var ids: Array = ic["ids"]
+	var pts: Array = []
 	for k in mini(4, ids.size()):
 		var e: DmSimEnemy = sim.enemies.get(int(ids[k]))
 		if e != null:
-			_emit(e.x, 0.4, e.z, 3, GH["bone"], 0.3, 1.2, 1.2, 0.35, 0.1, {"gravity": 8.0})
-	var a := randf() * TAU
-	var d := sqrt(randf()) * float(ctx["r"]) * 0.85
-	_m_motes(float(ctx["x"]) + cos(a) * d, float(ctx["z"]) + sin(a) * d, GH["seep"], 0.25, 2, 0.9, 0.15)
+			pts.append([e.x, e.z])
+	_rite_fx().hands_tick(float(ctx["x"]), float(ctx["z"]), float(ctx["r"]), pts)
 	return r
 
 
@@ -1283,20 +1193,9 @@ func _veil(t: Dictionary) -> String:
 	var r := super._veil(t)
 	if r != "ok":
 		return r
-	var VL := DmFxData.spell_group("veil")
 	var d: Dictionary = _dashing
-	var tx: float = d["tx"]
-	var tz: float = d["tz"]
 	_gesture("cast", 3.4, "veil_step")
-	var dist := _h(tx - fx0, tz - fz0)
-	var rot := atan2(tx - fx0, tz - fz0)
-	_decal("veilStreak", VL["jade"], (fx0 + tx) / 2.0, (fz0 + tz) / 2.0, dist / 2.0 + 0.4, 0.6, 0.85, {"sx": 0.35, "rot": rot, "fadeOut": 0.45})
-	_smoke(fx0, 0.9, fz0, 4, VL["deep"], 0.4, 0.5, 0.5, 0.6, 1.0, {"shrink": -0.3})
-	_emit(fx0, 1.0, fz0, 12, VL["pale"], 0.3, 1.6, 0.8, 0.4, 0.14)
-	_bb("veil_step_trail", fx0, fz0, {"duration": 0.6, "rot": rot})
-	_decal("ring", VL["jade"], tx, tz, 1.0, 0.45, 0.9, {"growFrom": 0.2})
-	_lf(tx, 1.2, tz, VL["jade"], 14.0, 0.25)
-	_sfx("veilStep", fx0, fz0, 1.3)
+	_rite_fx().veil(fx0, fz0, float(d["tx"]), float(d["tz"]))
 	return r
 
 
@@ -1304,25 +1203,13 @@ func _rally(t: Dictionary) -> String:
 	var r := super._rally(t)
 	if r == "ok":
 		_gesture("cast", 2.0, "rally_dead", "rally_dead")
-		_decal("rallySigil", _col("rend", "jade"), _px(), _pz(), 2.4, 0.8, 0.9, {"growFrom": 0.4, "spin": 1.0})
+		_rite_fx().rally_cast(_px(), _pz())
 	return r
 
 
 func on_rally(ev: Dictionary, follow: Callable = Callable()) -> void:
-	var RD := DmFxData.spell_group("rend")
-	var dur := float(DmSimData.RALLY["durationS"]) + float(DmSimData.RALLY["gravecallerBonusS"])
-	for id in ev["ids"]:
-		var at := _cb("_rally_at", [int(id)])
-		var fv: Variant = follow.call() if follow.is_valid() else null
-		var fx_ := Vector3(ev["x"], 0.0, ev["z"]) if fv == null else (fv as Vector3)
-		_beam(Vector3(fx_.x, 1.2, fx_.z), _cb("_rally_beam_end", [int(id)]), RD["jade"], 0.04, 0.45)
-		_decal("rallySigil", RD["jade"], 0.0, 0.0, 0.7, dur, 0.7, {"spin": 1.4, "fadeOut": 0.4, "follow": at})
-		var a0: Variant = at.call()
-		if a0 != null:
-			_bb("rally_thrall_rim", a0.x, a0.z, {"follow": at, "duration": dur})
-	_lf(float(ev["x"]), 1.2, float(ev["z"]), RD["jade"], 18.0, 0.3)
-	_bb("rally_area", float(ev["x"]), float(ev["z"]))
-	_sfx("rallyDead", float(ev["x"]), float(ev["z"]))
+	var me := self
+	_rite_fx().rally(ev, follow, func(id: int) -> Variant: return me._rally_at(id))
 
 
 func _rally_at(id: int) -> Variant:
@@ -1330,11 +1217,6 @@ func _rally_at(id: int) -> Variant:
 	if th != null and th.state != "dead" and th.rallyT > 0.0:
 		return Vector3(th.x, 0.0, th.z)
 	return null
-
-
-func _rally_beam_end(id: int) -> Variant:
-	var a: Variant = _rally_at(id)
-	return Vector3(a.x, 1.0, a.z) if a != null else null
 
 
 func _seed(t: Dictionary) -> String:

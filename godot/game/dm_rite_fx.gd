@@ -611,3 +611,182 @@ func siphon_tick(q: Vector3, c: Vector3, odd: bool) -> void:
 	emit(c.x, 1.3, c.z, 3, SI["jade"], 0.2, 0.3, 0.6, 0.4, 0.18)
 	if odd:
 		skulls(q.x, q.z, SI["pale"], {"n": 1, "y": q.y + 0.3, "size": 0.5, "rise": 0.9, "duration": 0.7})
+
+
+# --- Grave Step ---------------------------------------------------------------------------------------------------------------------------
+
+## The blood-mist leaving (ox, oz). The caster's gesture (current game) goes between this and `step_arrive`.
+func step_depart(ox: float, oz: float) -> void:
+	var ST := DmFxData.spell_group("step")
+	smoke(ox, 0.9, oz, 6, ST["mist"], 0.45, 0.7, 0.7, 0.75, 1.2, {"shrink": -0.4})
+	emit(ox, 1.0, oz, 18, ST["blood"], 0.4, 2.2, 1.2, 0.45, 0.2, {"gravity": 6.0})
+	decal("bloodSigil", ST["crimson"], ox, oz, 1.2, 0.8, 0.85, {"growFrom": 0.6})
+	dirt(ox, oz, 0.5, 6)
+	motes(ox, oz, ST["blood"], 0.4, 4, 1.4)
+	bb("grave_step_smoke", ox, oz, {"duration": 1.4})
+
+
+## The re-forming at (x, z): a beam from the old spot to `follow` (the caster's point), a flash on each struck enemy `flash_pts` [[x, z]], the burst.
+func step_arrive(ox: float, oz: float, x: float, z: float, follow: Callable, flash_pts: Array) -> void:
+	var ST := DmFxData.spell_group("step")
+	beam(Vector3(ox, 1.0, oz), follow, ST["blood"], 0.07, 0.22)
+	for pt: Array in flash_pts:
+		flash(pt[0], 0.9, pt[1], ST["blood"], 0.7, 0.16)
+	var rr := float(DmCombatData.const_table("GRAVE_STEP")["burstRadius"])
+	decal("bloodSigil", ST["blood"], x, z, rr * 1.15, 0.9, 1.0, {"growFrom": 0.25, "spin": 0.8})
+	decal("ring", ST["crimson"], x, z, rr * 1.05, 0.4, 0.9, {"growFrom": 0.15})
+	emit(x, 0.6, z, 26, ST["blood"], 0.3, rr * 2.6, 1.4, 0.5, 0.26, {"drag": 1.5})
+	emit(x, 0.8, z, 8, ST["hot"], 0.2, 2.0, 2.2, 0.35, 0.18)
+	smoke(x, 0.5, z, 5, ST["mist"], rr * 0.4, 1.2, 0.5, 0.8, 1.2, {"shrink": -0.4})
+	lf(x, 1.2, z, ST["blood"], 30.0, 0.35)
+	dirt(x, z, rr * 0.5, 8, 3.0)
+	splinters(x, 0.5, z, 6, DmFxData.hex(int(DmFxData.data()["necro_matter"]["bone"])))
+	bb("grave_step_smoke", x, z, {"scale": 1.2, "duration": 1.4})
+	sfx("bloodStep", x, z)
+
+
+# --- Veil Step ----------------------------------------------------------------------------------------------------------------------------
+
+## The slip from (fx0, fz0) to (tx, tz): a streak, smoke and a ring at the end.
+func veil(fx0: float, fz0: float, tx: float, tz: float) -> void:
+	var VL := DmFxData.spell_group("veil")
+	var dist := Vector2(tx - fx0, tz - fz0).length()
+	var rot := atan2(tx - fx0, tz - fz0)
+	decal("veilStreak", VL["jade"], (fx0 + tx) / 2.0, (fz0 + tz) / 2.0, dist / 2.0 + 0.4, 0.6, 0.85, {"sx": 0.35, "rot": rot, "fadeOut": 0.45})
+	smoke(fx0, 0.9, fz0, 4, VL["deep"], 0.4, 0.5, 0.5, 0.6, 1.0, {"shrink": -0.3})
+	emit(fx0, 1.0, fz0, 12, VL["pale"], 0.3, 1.6, 0.8, 0.4, 0.14)
+	bb("veil_step_trail", fx0, fz0, {"duration": 0.6, "rot": rot})
+	decal("ring", VL["jade"], tx, tz, 1.0, 0.45, 0.9, {"growFrom": 0.2})
+	lf(tx, 1.2, tz, VL["jade"], 14.0, 0.25)
+	sfx("veilStep", fx0, fz0, 1.3)
+
+
+# --- Grave Frost --------------------------------------------------------------------------------------------------------------------------
+
+## The cone's cast (after the gesture): muzzle flash at `tip` [x, y, z], the fan along (dx, dz) from (ox, oz) for `ln` metres, mist, cracks, sound.
+func frost_cast(tip: Array, ox: float, oz: float, dx: float, dz: float, ln: float) -> void:
+	var FR := DmFxData.spell_group("frost")
+	var rot := atan2(dx, dz)
+	flash(tip[0], tip[1], tip[2], FR["pale"], 0.8, 0.14)
+	decal("frostFan", FR["frost"], ox + dx * ln * 0.5, oz + dz * ln * 0.5, ln * 0.5, 0.9, 0.95, {"rot": rot + PI, "growFrom": 0.35, "fadeIn": 0.08, "fadeOut": 0.45})
+	for i in range(1, 5):
+		var k := float(i) / 4.0
+		smoke(ox + dx * ln * k * 0.8, 0.7, oz + dz * ln * k * 0.8, 2, 0xb9cbe6, 0.4 + k * 1.4, 0.6, 0.3, 0.7, 1.0 + k * 0.6, {"shrink": -0.4, "drag": 1.0})
+		emit(ox + dx * ln * k * 0.85, 0.8, oz + dz * ln * k * 0.85, 5, FR["pale"], 0.3 + k * 1.2, 1.2, 0.4, 0.45, 0.14)
+	sfx("frost", ox + dx * 2.0, oz + dz * 2.0)
+	if fx != null:
+		stats["motif"] += 4
+		fx.motifs.cracked_ground(ox + dx * ln * 0.5, oz + dz * ln * 0.5, ln * 0.5, FR["pale"], {"rot": rot, "sx": 0.5, "duration": 1.8, "opacity": 0.4})
+		for i in range(1, 4):
+			fx.motifs.mist_whisper(ox + dx * ln * i * 0.28, oz + dz * ln * i * 0.28, 0x8fa6c8, {"r": 0.5 + i * 0.5, "n": 2})
+	bb("grave_frost_mist", ox + dx * ln * 0.45, oz + dz * ln * 0.45, {"rot": rot})
+
+
+## The cone landing. `seen` = [{x, z, scale, shatter}] (the first 14 are drawn), (px, pz) = where the bolt arrived. Sound when any shattered.
+func frost_hits(seen: Array, ox: float, oz: float, dx: float, dz: float, ln: float, px: float, pz: float) -> void:
+	var FR := DmFxData.spell_group("frost")
+	var shown := 0
+	var shattered := 0
+	for s: Dictionary in seen:
+		shown += 1
+		if s["shatter"]:
+			shattered += 1
+		if shown <= 14:
+			decal("rime", FR["frost"], s["x"], s["z"], 0.75 * float(s["scale"]), 1.4, 0.9, {"rot": randf() * 6.0, "growFrom": 0.4})
+			if s["shatter"]:
+				if shown <= 3:
+					bb("frost_shard_hit", s["x"], s["z"])
+				flash(s["x"], 1.0, s["z"], FR["pale"], 1.2, 0.18)
+				emit(s["x"], 1.0, s["z"], 10, FR["pale"], 0.2, 3.4, 2.0, 0.5, 0.13, {"gravity": 10.0})
+				if shown <= 4:
+					splinters(s["x"], 1.0, s["z"], 4, FR["pale"])
+	lf(ox + dx * ln * 0.5, 1.0, oz + dz * ln * 0.5, FR["frost"], 18.0, 0.3)
+	if shattered > 0:
+		sfx("needleHit", px, pz, 1.4)
+
+
+# --- Bone Prison --------------------------------------------------------------------------------------------------------------------------
+
+## The ring of spikes bursting at (x, z) with radius rr (after the gesture).
+func prison(x: float, z: float, rr: float) -> void:
+	var PR := DmFxData.spell_group("prison")
+	var P: Dictionary = DmSimData.BONE_PRISON
+	if fx != null:
+		stats["spikes"] += 1
+		fx.spike_ring(x, z, rr, int(P["spikes"]), float(P["rootS"]) + 0.1)
+	decal("cracks", PR["dust"], x, z, rr * 1.1, float(P["rootS"]) + 0.4, 0.8, {"rot": randf() * 6.0, "growFrom": 0.6, "fadeOut": 0.4})
+	decal("boneRing", PR["amber"], x, z, rr + 0.3, float(P["rootS"]), 0.4, {"growFrom": 0.8, "fadeOut": 0.3})
+	smoke(x, 0.3, z, 6, PR["dust"], rr * 0.8, 0.9, 0.5, 0.9, 1.1)
+	emit(x, 0.4, z, 18, PR["bone"], rr, 1.8, 2.2, 0.5, 0.12, {"gravity": 9.0})
+	for i in 6:
+		var a := (float(i) / 6.0) * TAU
+		dirt(x + cos(a) * rr * 0.9, z + sin(a) * rr * 0.9, 0.35, 3)
+	splinters(x, 0.9, z, 10, PR["bone"], rr * 1.6)
+	bb("bone_prison_burst", x, z, {"scale": rr / 2.4})
+	sfx("prison", x, z)
+
+
+# --- Grave Hands --------------------------------------------------------------------------------------------------------------------------
+
+## The field rising at (x, z) (after the gesture). Returns {hands, ground, seep} handles for `hands_end`.
+func hands_start(x: float, z: float, rr: float, hands: int, dur: float) -> Dictionary:
+	var GH := DmFxData.spell_group("hands")
+	var vis: Dictionary = {"hands": null, "ground": null, "seep": null}
+	if fx != null:
+		stats["hands"] += 1
+		vis["hands"] = fx.grave_hands(x, z, rr, hands, dur)
+	vis["ground"] = decal("disc", GH["earth"], x, z, rr, dur, 0.7, {"growFrom": 0.5, "fadeOut": 0.4})
+	vis["seep"] = decal("cracks", GH["seep"], x, z, rr * 0.95, dur, 0.35, {"rot": randf() * 6.0, "pulse": 2.0, "fadeOut": 0.4})
+	smoke(x, 0.2, z, 8, GH["earth"], rr * 0.7, 0.8, 0.6, 1.0, 1.2)
+	for i in 5:
+		var a := float(i) * 2.4
+		dirt(x + cos(a) * rr * 0.55, z + sin(a) * rr * 0.55, 0.4, 3)
+	bb("grave_hands_pulse", x, z, {"scale": rr / 3.5})
+	sfx("hands", x, z)
+	loop("handsLoop", 3000.0, x, z)
+	return vis
+
+
+## One 0.5 s rake: a spray under each of the first 4 struck enemies `pts` [[x, z]], a mote somewhere in the field.
+func hands_tick(x: float, z: float, rr: float, pts: Array) -> void:
+	var GH := DmFxData.spell_group("hands")
+	for k in mini(4, pts.size()):
+		emit(pts[k][0], 0.4, pts[k][1], 3, GH["bone"], 0.3, 1.2, 1.2, 0.35, 0.1, {"gravity": 8.0})
+	var a := randf() * TAU
+	var d := sqrt(randf()) * rr * 0.85
+	motes(x + cos(a) * d, z + sin(a) * d, GH["seep"], 0.25, 2, 0.9, 0.15)
+
+
+func hands_end(vis: Dictionary) -> void:
+	for k in ["hands", "ground", "seep"]:
+		kill(vis.get(k))
+
+
+# --- Rally the Dead -----------------------------------------------------------------------------------------------------------------------
+
+## The sigil under the caster (cast time).
+func rally_cast(px: float, pz: float) -> void:
+	decal("rallySigil", DmFxData.spell("rend", "jade"), px, pz, 2.4, 0.8, 0.9, {"growFrom": 0.4, "spin": 1.0})
+
+
+## The rally the host reported (ev: x, z, ids = the thralls). `follow` = the caster's point (Vector3 / null), `thrall_at(id) -> Vector3 | null` = where a
+## rallied thrall stands (null once it is gone or the rally ended): a beam from the caster and a sigil + rim that follow each thrall.
+func rally(ev: Dictionary, follow: Callable, thrall_at: Callable) -> void:
+	var RD := DmFxData.spell_group("rend")
+	var dur := float(DmSimData.RALLY["durationS"]) + float(DmSimData.RALLY["gravecallerBonusS"])
+	for id in ev["ids"]:
+		var tid := int(id)
+		var at := func() -> Variant: return thrall_at.call(tid)
+		var fv: Variant = follow.call() if follow.is_valid() else null
+		var fx_ := Vector3(ev["x"], 0.0, ev["z"]) if fv == null else (fv as Vector3)
+		var beam_end := func() -> Variant:
+			var a: Variant = at.call()
+			return Vector3(a.x, 1.0, a.z) if a != null else null
+		beam(Vector3(fx_.x, 1.2, fx_.z), beam_end, RD["jade"], 0.04, 0.45)
+		decal("rallySigil", RD["jade"], 0.0, 0.0, 0.7, dur, 0.7, {"spin": 1.4, "fadeOut": 0.4, "follow": at})
+		var a0: Variant = at.call()
+		if a0 != null:
+			bb("rally_thrall_rim", a0.x, a0.z, {"follow": at, "duration": dur})
+	lf(float(ev["x"]), 1.2, float(ev["z"]), RD["jade"], 18.0, 0.3)
+	bb("rally_area", float(ev["x"]), float(ev["z"]))
+	sfx("rallyDead", float(ev["x"]), float(ev["z"]))
