@@ -164,32 +164,21 @@ var warm_ms := 0
 func _warm_panels() -> void:
 	var t0 := Time.get_ticks_msec()
 	warming = true
-	var cover := CanvasLayer.new()
-	cover.layer = 90
-	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.015, 0.03, 1.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_STOP
-	cover.add_child(bg)
-	var label := Label.new()
-	label.text = "Waking the dead..."
-	label.set_anchors_preset(Control.PRESET_CENTER)
-	label.add_theme_font_size_override("font_size", 22)
-	label.add_theme_color_override("font_color", Color(0.78, 0.68, 0.95))
-	label.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	label.grow_vertical = Control.GROW_DIRECTION_BOTH
-	bg.add_child(label)
-	add_child(cover)
+	var cover := DmLoadingScreen.acquire(self, "Waking the dead...")
 	var tree := get_tree()
 	await tree.process_frame
+	var pi := 0
 	for p in warm_panels:
+		cover.set_progress(0.82 + 0.17 * float(pi) / float(warm_panels.size()))
+		pi += 1
 		close_panels()
 		toggle_panel(p)
 		await tree.process_frame
 		await tree.process_frame
 	close_panels()
 	await tree.process_frame
-	cover.queue_free()
+	if cover.owned:
+		cover.dismiss(false)
 	warming = false
 	warm_ms = Time.get_ticks_msec() - t0
 

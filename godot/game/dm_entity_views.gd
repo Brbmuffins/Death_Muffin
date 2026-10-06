@@ -432,6 +432,14 @@ func prewarm(n: int = 2) -> int:
 			c.opts["pool_key"] = key
 			_retire(c)
 			made += 1
+		# One elite body per kind (a different look = a different pool key): the first elite of a kind built a body mid-wave (4-11 ms each).
+		var oe := _enemy_opts({"def": def, "elite": true, "area": ""})
+		var ekey := _pool_key(slug, oe)
+		if (_pool.get(ekey, []) as Array).is_empty():
+			var ce := DmCreature.new(slug, oe)
+			ce.opts["pool_key"] = ekey
+			_retire(ce)
+			made += 1
 	return made
 
 ## Background top-up for the area the hero is in: enough bodies of each roster kind for a wave (by roster weight, 2..8), built

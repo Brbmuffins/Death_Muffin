@@ -413,4 +413,7 @@ func area_of(peer_id: int) -> String:
 
 func leave() -> void:
 	await flush_all()
+	# The session closes its own peer at the start of leave() (the host's closed RPC runs locally) and then waits 0.25 s: nothing in the
+	# tree may tick without a peer (get_unique_id errors), so stop it first. The caller frees the node afterwards.
+	process_mode = Node.PROCESS_MODE_DISABLED
 	await session.leave()

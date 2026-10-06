@@ -3,15 +3,23 @@ extends Node
 ## Game entry (main scene). Launch args (after `--`): `--offline` (default) = the offline edition: local accounts + progress on this device
 ## (DmMockBackend under user://, standalone sign-in rules, no live server); `--online` = DmFrontFlow against the live server.
 ## Flow: DmFrontFlow (login / discipline select) -> enter_world -> DmGame + DmGameUi.
+## Rebuild (godot/next): `USE_NEXT` below (or `-- --next`) routes "Enter world" to DmNextGame instead of DmGame; `--old` forces the old path. The front
+## screens, characters, backends (online = VPS, offline = local) and the loading screen are the same for both. `-- --next --class=N` skips the
+## front flow (test account `tester`, offline backend).
 ## Dev: `--qa` keeps the old QA autoload inactive paths; `--world-demo` skips the front flow (offline test account, class 2).
 
+## D7: flip to true to make the rebuild the default (DmGame stays reachable with `-- --old`).
+const USE_NEXT := false
+
 var mode := "offline"
+var use_next := USE_NEXT
 var flow: DmFrontFlow
 var game: DmGame
 var slice: DmNextGame
 var ui: Node
 var perf: DmPerfOverlay
-var api: DmApi
+var api: DmApi              ## set before add_child (tests) to inject a backend; otherwise built from the launch args
+var persist_token := true
 var _mock: DmMockBackend
 var _transport: DmHttpTransport
 
@@ -25,8 +33,11 @@ func _ready() -> void:
 	idle_cam.current = true
 	add_child(DmPerfOverlay.new())   # F3 / ?fps overlay, as the web
 	var args := OS.get_cmdline_user_args()
-	mode = "online" if "--online" in args else "offline"
-	if mode == "offline":
+	if mode != "test":
+		mode = "online" if "--online" in args else "offline"
+	if api != null:
+		pass   # injected (tests)
+	elif mode == "offline":
 		_mock = DmOffline.make_mock()
 		api = DmOffline.make_api(_mock)
 	else:
@@ -34,10 +45,11 @@ func _ready() -> void:
 		add_child(_transport)
 		api = DmApi.new(_transport.request_callable())
 		api.slot_decorator = Callable(DmAffixes, "decorate_slots")
+	use_next = (USE_NEXT or use_next or "--next" in args) and not "--old" in args
 	if "--world-demo" in args:
 		await _demo()
 		return
-	if "--next" in args:
+	if use_next and Array(args).any(func(a: String) -> bool: return a.begins_with("--class=")):
 		await _next_slice(args)
 		return
 	_start_flow()
@@ -46,19 +58,25 @@ func _ready() -> void:
 ## Window close: save everything first (the web's pagehide flush), then quit.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		if slice != null and slice.ready_:
-			var s := slice
-			slice = null
-			await s.flush_all()   # the rebuild slice: last kill batch, progression, bag
-		if game != null and game.ready_:
-			var g := game
-			game = null
-			await g.flush_all()
+		await save_all()
 		get_tree().quit()
 
 
+## Final save of whichever game is live (also the quit path of the tests): the rebuild's last kill batch, progression and bag, or DmGame's.
+func save_all() -> void:
+	if slice != null and slice.ready_:
+		var s := slice
+		slice = null
+		await s.flush_all()
+	if game != null and game.ready_:
+		var g := game
+		game = null
+		await g.flush_all()
+
+
 func _start_flow() -> void:
-	flow = DmFrontFlow.new(api, mode == "offline", mode == "offline")
+	flow = DmFrontFlow.new(api, mode != "online", mode != "online")
+	flow.persist_token = persist_token
 	flow.name = "Front"
 	flow.enter_world.connect(_enter_world)
 	flow.logged_out.connect(_on_logged_out)
@@ -87,11 +105,7 @@ func _next_slice(args: PackedStringArray) -> void:
 		r = await api.login("tester", "pw1234")
 	api.set_token(r.data["token"])
 	var c := await api.load_or_create_character(cls)
-	var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
-	g.name = "NextGame"
-	slice = g
-	add_child(g)
-	await g.start(c.data, api, {"offline": true, "name": token_username(api.get_token())})
+	await _enter_world(c.data, api)
 
 
 ## The account name the session token carries (web tokenUsername): "offline:<name>" or a JWT whose payload has `username`.
@@ -115,6 +129,14 @@ func _enter_world(character: Dictionary, session) -> void:
 	if flow != null:
 		flow.queue_free()
 		flow = null
+	if use_next:
+		await _enter_next(character)
+		return
+	# The loading screen goes up first and is painted before the (synchronous) world build starts: no login-screen freeze, no black frame.
+	var loading := DmLoadingScreen.acquire(self, "Waking the dead...")
+	loading.set_progress(0.05)
+	await get_tree().process_frame
+	await get_tree().process_frame
 	game = DmGame.new()
 	game.name = "Game"
 	add_child(game)
@@ -129,7 +151,49 @@ func _enter_world(character: Dictionary, session) -> void:
 	ui.setup(game)
 	game.ui = ui
 	await ui.warm()
+	loading.dismiss()   # fades into the game; the same screen has covered every frame since the login screen
 	ui.sound.connect(func(n: String): get_node("/root/AudioDirector").play_sfx(n))
+
+
+## The rebuild: DmNextGame behind the same key-art loading screen (it paints before the synchronous world build; the game's own panel warm-up
+## shares it; it fades out once the game is ready). Backend: the offline mock offline (D4), the VPS api online.
+func _enter_next(character: Dictionary) -> void:
+	var loading := DmLoadingScreen.acquire(self, "Waking the dead...")
+	loading.set_progress(0.05)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
+	g.name = "NextGame"
+	slice = g
+	add_child(g)
+	await g.start(character, api, {"offline": mode != "online", "name": token_username(api.get_token())})
+	if g.ui_host != null:
+		g.ui_host.left_world.connect(_on_next_left.bind(true))
+		g.ui_host.world_restart.connect(func(ch: Dictionary) -> void: _on_next_restart(ch))
+	loading.dismiss()
+
+
+## Log out of the rebuild: final save, free the game, back to the login screen. (`logout` false = keep the session, e.g. a class change.)
+func _on_next_left(logout: bool) -> void:
+	await _teardown_next()
+	if logout:
+		api.set_token("")
+	_start_flow()
+
+
+func _on_next_restart(character: Dictionary) -> void:
+	await _teardown_next()
+	await _enter_world(character, api)
+
+
+func _teardown_next() -> void:
+	var g := slice
+	if g == null:
+		return
+	slice = null
+	await g.leave()   # flush_all + session end
+	g.queue_free()
+	await get_tree().process_frame
 
 
 func _teardown_game() -> void:

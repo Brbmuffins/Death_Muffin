@@ -178,7 +178,7 @@ func _teardown(reason: String) -> void:
 	var peer := multiplayer.multiplayer_peer
 	if peer != null:
 		peer.close()
-	multiplayer.multiplayer_peer = null
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()   # the engine's default (never null): lingering nodes asking get_unique_id() keep working
 	for c in _players.get_children():
 		_players.remove_child(c)
 		c.queue_free()

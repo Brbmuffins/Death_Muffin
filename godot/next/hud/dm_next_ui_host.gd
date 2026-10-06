@@ -18,6 +18,7 @@ signal game_event(event_id: String, ctx: Dictionary)
 signal npc_interact(npc_id: String)
 signal station_interact(station_id: String)
 signal left_world
+signal world_restart(character: Dictionary)   ## the class panel saved a new discipline: the front rebuilds the world with it
 signal feedback(text: String)                ## a cast was refused / unavailable (also drawn as a float over the hero)
 
 const REJECT_TEXT := {"essence": "Not enough Grave Essence", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
@@ -314,6 +315,11 @@ func send_chat(_text: String) -> void:
 
 func leave_world() -> void:
 	left_world.emit()
+
+
+## ClassPanel -> a new discipline: the shell tears the session down and re-enters with the new character (DmGame.class_changed).
+func class_changed(new_character: Dictionary) -> void:
+	world_restart.emit(new_character)
 
 
 # ---- hotbar: HUD click / key / mouse -> DmRiteCaster.request_cast -------------------------------------------------------------------

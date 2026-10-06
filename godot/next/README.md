@@ -4,7 +4,7 @@
 1-player `DmSession` hosted on an `OfflineMultiplayerPeer`; a 2-player session is the same code with another peer (no `if solo` in gameplay).
 
 ## Launch
-- Game: `godot --path godot -- --next [--class=N]` (offline backend, account `tester`; default path without the flag is unchanged).
+- Game: `godot --path godot -- --next` boots through the normal front screens (login / offline entry / discipline select / log out) into DmNextGame behind the key-art loading screen (`--online` = VPS backend, default offline = local backend); `-- --next --class=N` skips the front (account `tester`). `DmMain.USE_NEXT` (main.gd) flips the default to the rebuild (D7); `-- --old` forces DmGame. Test: `tests/next_front/run.gd` (incl. 3 enter/leave cycles: +0 nodes, ~+1.5 MB static).
 - Code: `var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)`.
   opts: `peer` (default Offline), `host` (true; false = join), `offline`, `dressing`, `world` (false = headless client), `waves`, `hud`, `audio`.
 - Tests: `godot --headless --path godot --script res://tests/next/run.gd` (picked up by `tools/godot/run-all-tests.sh`).

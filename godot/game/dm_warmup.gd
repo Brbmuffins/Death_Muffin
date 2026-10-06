@@ -29,7 +29,7 @@ static func _model_paths() -> Array:
 static func run(game: Node3D) -> void:
 	var t0 := Time.get_ticks_msec()
 	var tree := game.get_tree()
-	var cover := _cover(game)
+	var cover := DmLoadingScreen.acquire(game, COVER_TEXT)   # main shows it before the world builds; a bare DmGame (tests) gets its own
 	var binbun: DmFxBinbun = null
 	var ids: Array = []
 	if game.vfx != null and game.vfx.binbun != null and game.vfx.binbun.enabled:
@@ -56,6 +56,7 @@ static func run(game: Node3D) -> void:
 			pending.erase(p)
 			if st == ResourceLoader.THREAD_LOAD_LOADED:
 				_held.append(ResourceLoader.load_threaded_get(p))
+	cover.set_progress(0.2)
 	# 2. draw everything once in front of the camera
 	var cam := game.get_viewport().get_camera_3d()
 	var at := Vector3(game.player.x, 0.0, game.player.z) if game.player != null else Vector3.ZERO
@@ -120,7 +121,8 @@ static func run(game: Node3D) -> void:
 		game.views.warm_bodies_end(bodies, stage)
 	stage.queue_free()
 	await tree.process_frame
-	cover.queue_free()
+	if cover.owned:
+		cover.dismiss(false)   # (main's screen stays up through the HUD + panel warm-up, then fades)
 	# One more frame so the stage/cover teardown (freeing every warmed model) lands in loading, not in the first played frame (~20 ms).
 	await tree.process_frame
 	last_ms = Time.get_ticks_msec() - t0
@@ -129,13 +131,12 @@ static func run(game: Node3D) -> void:
 
 const TOUR_FRAMES := 3
 
-static func _tour(game: Node3D, stage: Node3D, warmed: Array, at0: Vector3, cover: CanvasLayer) -> void:
+static func _tour(game: Node3D, stage: Node3D, warmed: Array, at0: Vector3, cover: DmLoadingScreen) -> void:
 	var tree := game.get_tree()
 	var b = game.builder
 	var cam = game.camera
 	if b == null or cam == null:
 		return
-	var label: Label = cover.find_children("*", "Label", true, false)[0] if not cover.find_children("*", "Label", true, false).is_empty() else null
 	var flash: OmniLight3D = game.vfx.get("_flash_light") if game.vfx != null else null
 	var flash_range := flash.omni_range if flash != null else 9.0
 	var stops: Array = []
@@ -147,8 +148,8 @@ static func _tour(game: Node3D, stage: Node3D, warmed: Array, at0: Vector3, cove
 	for s in stops:
 		n += 1
 		var p: Vector3 = s[1]
-		if label != null:
-			label.text = "%s\n%s  (%d / %d)" % [COVER_TEXT, s[0], n, stops.size()]
+		cover.set_text("%s  %s  (%d / %d)" % [COVER_TEXT, s[0], n, stops.size()])
+		cover.set_progress(0.2 + 0.6 * float(n - 1) / float(stops.size()))
 		cam.snap(p)
 		if game.hero_focus != null:
 			game.hero_focus.position = p
@@ -219,8 +220,7 @@ static func _tour(game: Node3D, stage: Node3D, warmed: Array, at0: Vector3, cove
 	b.update_light_lod(hp.x, hp.z)
 	b._shadow_t = 0.0
 	b.update_shadow_cells(hp.x, hp.z, 0.0)
-	if label != null:
-		label.text = COVER_TEXT
+	cover.set_text(COVER_TEXT)
 
 
 ## Enemies for the views only (ids far above the sim's): the area's roster around `at`, the first one elite, half of them rising.
@@ -252,23 +252,3 @@ static func _fake_wave(game: Node3D, area: String, at: Vector3, salt: int) -> Di
 		out[e.id] = e
 		i += 1
 	return out
-
-
-static func _cover(game: Node) -> CanvasLayer:
-	var layer := CanvasLayer.new()
-	layer.layer = 90
-	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.015, 0.03, 1.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_STOP
-	layer.add_child(bg)
-	var label := Label.new()
-	label.text = COVER_TEXT
-	label.set_anchors_preset(Control.PRESET_CENTER)
-	label.add_theme_font_size_override("font_size", 22)
-	label.add_theme_color_override("font_color", Color(0.78, 0.68, 0.95))
-	label.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	label.grow_vertical = Control.GROW_DIRECTION_BOTH
-	bg.add_child(label)
-	game.add_child(layer)
-	return layer

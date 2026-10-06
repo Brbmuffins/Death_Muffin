@@ -25,8 +25,7 @@ HUD feeds and contract methods that `DmGame` had and `DmNextGame` / `DmNextUiHos
 
 ### The 10 most important MISSING / PARTIAL items for a player (priority order)
 
-1. **No front flow on the rebuild (MISSING).** `main.gd _next_slice` hard-codes account `tester` on the offline mock; there is no login, no character select / creation, no class change, no log out.
-   `DmFrontFlow` is never used by `--next`. Offline must stay (D4), and real characters (D8) cannot be reached until `DmFrontFlow.enter_world` launches `DmNextGame`. (section 20)
+1. **Front flow on the rebuild (DONE, godot/next-front).** `-- --next` (or `DmMain.USE_NEXT`) routes DmFrontFlow's "Enter world" to `DmNextGame` behind the key-art `DmLoadingScreen`: login/register (online) or the offline edition entry, discipline select, log out, class change (re-enter), quit save (`DmMain.save_all`). Tests `tests/next_front`. `-- --old` forces DmGame. Left: Play Online on the rebuild is untested against the live backend.
 2. **Performance controls absent (MISSING).** No resolution governor, no FPS cap, no graphics presets (only `vfx.quality`), no loading cover, no GPU shader warm-up of models (`DmWarmup` not run),
    settings `fps` / `auto_res` / `graphics` inert. Owner priority #1; REBUILD Phase 6 plans the replacement but today the slice has no pacing safety net. (sections 17, 23)
 3. **Necromancer combat feel (DONE on `godot/next-feel`, see `next/feel/README.md`; only Easy auto-combat and standing mouse-aim facing remain; original gap text follows).** Clicking a far enemy does nothing (no attack-target chase, no hold-LMB / Shift+LMB, no queued or held-key casts, out-of-range refusal is silent),
