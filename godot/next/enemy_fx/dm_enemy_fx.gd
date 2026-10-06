@@ -18,10 +18,13 @@ const NEAR_X := 24.0               ## ambient motes only near the hero (DmEntity
 const NEAR_Z := 20.0
 const ELITE_AGGRO_RANGE := 40.0
 const ELITE_COLOR := 0x9b5cff
-const EFFECT_IDS: Array[String] = ["censer_incense"]
+const EFFECT_IDS: Array[String] = ["censer_incense", "vengeful_burst", "surge_eruption", "bonfire"]
 const SFX_IDS: Array[String] = ["eliteAggro", "eliteDeath", "enemyDeath", "tellStrike", "tollSmall", "burst", "boneHit",
 	"enemyAttackBeast", "enemyAttackHumanoid", "enemyAttackBrute", "enemyAttackSpirit",
-	"enemyDeathBeast", "enemyDeathHumanoid", "enemyDeathBrute", "enemyDeathSpirit"]
+	"enemyDeathBeast", "enemyDeathHumanoid", "enemyDeathBrute", "enemyDeathSpirit", "emberThrow", "emberBurst", "slagSlam", "curse"]
+const FIRE_DEFS: Array[String] = ["cinder_husk", "pyre_priest", "cinderhound", "slag_brute"]   ## the Cinder Pyre's dead: sparks, soot, ember tells
+const FEN_DEFS: Array[String] = ["fen_wisp", "bog_hag", "drowned_sexton", "mire_leech"]
+const FEN_TEAL := 0x7fe0d0
 const WRAITH_DEFS: Array[String] = ["wraith"]    ## leave no body: they thin to mist and sink
 
 var vfx: Node                      ## the Vfx autoload (tests pass a counting stub)
@@ -32,6 +35,11 @@ var player_pos := Callable()       ## () -> Vector3, the local hero; default: th
 var auto_watch := true
 var scope: Node = null             ## only watch enemies / zones under this node (null = the whole tree); lets two peers share one test tree
 var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0}
+
+class DefStub:
+	extends RefCounted
+	var def: String = ""
+
 
 class Slot:
 	extends RefCounted
@@ -53,6 +61,8 @@ var _px := 0.0
 var _pz := 0.0
 var _amb_dust := {"x": 0.0, "y": 0.1, "z": 0.0, "count": 1, "color": 0x2a2230, "spread": 0.5, "speed": 0.5, "up": 0.6, "life": 1, "size": 0.9}
 var _amb_mote := {"x": 0.0, "y": 0.0, "z": 0.0, "count": 1, "color": 0xb9cbe6, "spread": 0.35, "speed": 0.1, "up": -0.3, "life": 0.7, "size": 0.18}
+var _pf := {"x": 0.0, "y": 0.0, "z": 0.0, "count": 1, "color": 0, "spread": 0.3, "speed": 0.2, "up": 1.0, "life": 0.8, "size": 0.1}   ## scratch for the pyre / fen tells
+var _stub := DefStub.new()          ## stands in for the sim enemy record the telegraph router looks the def up in (slag brute's slam)
 var _amb_dirt := {"x": 0.0, "y": 0.15, "z": 0.0, "count": 2, "color": 0xffffff, "spread": 0.35, "speed": 0.9, "up": 1.2, "life": 0.4, "size": 0.12, "gravity": 9}
 
 
@@ -196,7 +206,14 @@ func _on_telegraph(kind: StringName, from: Vector3, aim: Vector3, radius: float,
 		_tele["r"] = radius
 	else:
 		_tele.erase("r")
+	if _e != null:   # the router picks the Slag Brute's molten slam by the enemy's def: lend it a stub for this synchronous call
+		_stub.def = _e.def_id
+		_tele["id"] = -7
+		host.mirror.enemies[-7] = _stub
 	vfx.danger(_tele_call)
+	if _e != null:
+		host.mirror.enemies.erase(-7)
+		_tele.erase("id")
 
 
 ## Host-side one-off cues. Only the Deacon's Sanctify: DmEventFx._sanctify's thread and halo (the blessed body's motes come from DmStatusSet).
@@ -257,6 +274,26 @@ func _impact(s: Slot) -> void:
 				zn.damaging = false
 	else:
 		vfx.emit_smoke({"x": a.x, "y": 0.3, "z": a.z, "count": 2, "color": 0x3a3340, "spread": 0.3, "speed": 0.8, "up": 0.3, "life": 0.5, "size": 0.6})
+	if e.def_id == "cinder_husk" or e.def_id == "cinderhound" or e.def_id == "slag_brute":
+		# The Pyre's dead strike in a shower of sparks (DmEventFx._melee).
+		_pf["color"] = fx.sp("enemy", "emberCore")
+		_pf_burst(a.x, 0.9, a.z, 0.3, 3.0, 1.6, 0.4, 0.1, 8.0, 12 if e.def_id == "slag_brute" else 7)
+	e.on_impact_visual()
+
+
+## One burst through the scratch dictionary: spread, speed, up, life, size, gravity (drag stays 0).
+func _pf_burst(x: float, y: float, z: float, spread: float, speed: float, up: float, life: float, size: float, gravity: float, count: int = 1) -> void:
+	_pf["count"] = count
+	_pf["x"] = x
+	_pf["y"] = y
+	_pf["z"] = z
+	_pf["spread"] = spread
+	_pf["speed"] = speed
+	_pf["up"] = up
+	_pf["life"] = life
+	_pf["size"] = size
+	_pf["gravity"] = gravity
+	vfx.emit(_pf)
 
 
 func _erupt(e: DmEnemy) -> void:
@@ -284,6 +321,12 @@ func _die(s: Slot, e: DmEnemy) -> void:
 	_death_ev["elite"] = e.elite
 	_death_ev["def"] = e.def_id
 	fx._death(_death_ev)   # death + elite-death sound, death voice (<= 26 m), elite hitstop, water ripple, fire-death flare
+	if bool(e.def.get("emberDeath", false)):   # the Cinder Husk's last embers (the pool itself is DmEnemyPfMelee's)
+		_death_ev["kind"] = "ember"
+		_death_ev["r"] = float(DmSimData.EMBER_DEATH["radius"])
+		fx._burst(_death_ev)
+		_death_ev.erase("kind")
+		_death_ev.erase("r")
 	if e.def_id in WRAITH_DEFS:
 		vfx.emit({"x": p.x, "y": 1.4, "z": p.z, "count": 22, "color": 0xb9cbe6, "spread": 0.6, "speed": 0.9, "up": 1.2, "life": 1.1, "size": 0.3, "drag": 1})
 		var vis := e.get_node_or_null("Visual") as Node3D
@@ -308,8 +351,12 @@ func warm(at: Vector3) -> void:
 	var quiet := fx.audio
 	fx.audio = null
 	var a := Vector3(at.x, 0.0, at.z + 2.5)
-	for kind in [&"cone", &"slam", &"dust", &"erupt"]:
+	for kind in [&"cone", &"slam", &"dust", &"erupt", &"ember", &"hex", &"pulse", &"hook"]:
 		_on_telegraph(kind, Vector3(at.x, 0.0, at.z), a, 0.0 if kind == &"cone" else 1.8, 0.3, null)
+	for id in ["vengeful_burst", "surge_eruption", "bonfire"]:   # the pyre's bursts and burning pools
+		var hb = fx.bb(id, at.x, at.z, {"scale": 0.5})
+		if hb != null:
+			hb.kill()
 	vfx.emit_smoke({"x": at.x, "y": 0.2, "z": at.z, "count": 10, "color": 0x2a2230, "spread": 0.7, "speed": 1, "up": 0.9, "life": 0.3, "size": 1.2, "shrink": -1})
 	vfx.emit({"x": at.x, "y": 0.1, "z": at.z, "count": 4, "color": 0x5b2bb0, "spread": 0.5, "speed": 0.6, "up": 1.4, "life": 0.3, "size": 0.24})
 	vfx.decal({"tex": "cracks", "color": 0x7c3aed, "x": at.x, "z": at.z, "r": 1.1, "duration": 0.3, "opacity": 0.8, "growFrom": 0.3})
@@ -325,7 +372,7 @@ func warm(at: Vector3) -> void:
 # ============================================================================================ hostile zones
 
 func _on_zone(z: DmHostileZone) -> void:
-	if z == null or z.kind != &"dust":
+	if z == null or (z.kind != &"dust" and z.kind != &"ember"):
 		return
 	stats["zone"] += 1
 	_zone.id = z.get_instance_id()
@@ -388,8 +435,12 @@ func _ambient(dt: float) -> void:
 			_burst(_amb_dust, p.x, 0.1, p.z, true)
 		if st == DmEnemyState.Id.BURROW and randf() < dt * 7.0:
 			_burst(_amb_dirt, p.x, 0.15, p.z, false)
-		if e.flying > 0.0 and randf() < dt * 4.0:
+		if e.flying > 0.0 and randf() < dt * 4.0 and e.def_id != "fen_wisp":
 			_burst(_amb_mote, p.x, e.flying + 0.2, p.z, false)
+		if FIRE_DEFS.has(e.def_id):
+			_fire_idle(e, st, p, dt)
+		elif FEN_DEFS.has(e.def_id):
+			_fen_idle(e, st, p, dt)
 
 
 func _burst(o: Dictionary, x: float, y: float, z: float, smoke: bool) -> void:
@@ -400,3 +451,75 @@ func _burst(o: Dictionary, x: float, y: float, z: float, smoke: bool) -> void:
 		vfx.emit_smoke(o)
 	else:
 		vfx.emit(o)
+
+
+## Ember shedding of the Cinder Pyre's dead (DmEntityViews._fire_dead, same rates).
+func _fire_idle(e: DmEnemy, st: int, p: Vector3, dt: float) -> void:
+	var ember := fx.sp("enemy", "ember")
+	var core := fx.sp("enemy", "emberCore")
+	var deep := fx.sp("enemy", "emberDeep")
+	var s := e.scale.x
+	_pf["drag"] = 0.5
+	match e.def_id:
+		"cinder_husk":
+			if randf() < dt * 7.0:
+				_pf["color"] = ember if randf() < 0.6 else core
+				_pf_burst(p.x, 0.9 + randf() * 0.9, p.z, 0.3, 0.15, 1.1, 0.9, 0.1, 0.0)
+		"pyre_priest":
+			var wind := st == DmEnemyState.Id.ATTACK
+			if randf() < dt * (22.0 if wind else 5.0):
+				_pf["color"] = core
+				_pf_burst(p.x, 0.9 * s, p.z, 0.2, 0.2, 1.2, 0.7, 0.18 if wind else 0.11, 0.0)
+			if randf() < dt * 2.0:
+				_burst_smoke(p.x, 1.5, p.z, 0x8a8680, 0.3, 0.15, 0.3, 1.6, 0.7)
+		"cinderhound":
+			var moving := st == DmEnemyState.Id.CHASE
+			if moving and randf() < dt * 14.0:
+				_pf["color"] = ember if randf() < 0.5 else core
+				_pf_burst(p.x, 0.35, p.z, 0.15, 0.4, 0.8, 0.55, 0.09, 2.0)
+			if moving and randf() < dt * 4.0:
+				_burst_smoke(p.x, 0.5, p.z, deep, 0.2, 0.2, 0.3, 0.8, 0.6)
+		"slag_brute":
+			if randf() < dt * 6.0:
+				_pf["color"] = ember
+				_pf_burst(p.x, 1.0 + randf() * 1.6, p.z, 0.6, 0.15, 1.0, 1.1, 0.16, 0.0)
+			if randf() < dt * 2.5:
+				_burst_smoke(p.x, 2.2, p.z, deep, 0.4, 0.2, 0.6, 1.6, 1.1)
+	_pf.erase("drag")
+
+
+## The Fen's dead: the wisp's marsh-light, the hag's drips, the sexton's water (DmEntityViews._fen_dead; the leech's wiggle is the body's own).
+func _fen_idle(e: DmEnemy, st: int, p: Vector3, dt: float) -> void:
+	match e.def_id:
+		"fen_wisp":
+			if randf() < dt * 9.0:
+				_pf["color"] = FEN_TEAL if randf() < 0.6 else 0xeaffff
+				_pf["drag"] = 0.6
+				_pf_burst(p.x, e.flying + 0.2 + randf() * 0.6, p.z, 0.25, 0.15, -0.2, 0.8, 0.12, 0.0)
+				_pf.erase("drag")
+		"bog_hag":
+			var wind := st == DmEnemyState.Id.ATTACK
+			if randf() < dt * (20.0 if wind else 3.0):
+				_pf["color"] = fx.sp("enemy", "hex") if wind else 0x6fb4a8
+				_pf_burst(p.x, 1.0 + randf() * 0.8, p.z, 0.3, 0.2, 1.2 if wind else -0.4, 0.8, 0.14, -0.3 if wind else 5.0)
+		"drowned_sexton":
+			if randf() < dt * 6.0:
+				_pf["color"] = 0x3a5a54
+				_pf_burst(p.x + (randf() - 0.5) * 0.8, 1.6 * e.scale.x, p.z + (randf() - 0.5) * 0.8, 0.1, 0.1, -0.3, 0.6, 0.1, 9.0)
+
+
+func _burst_smoke(x: float, y: float, z: float, color: int, spread: float, speed: float, up: float, life: float, size: float) -> void:
+	_pf["count"] = 1
+	_pf["x"] = x
+	_pf["y"] = y
+	_pf["z"] = z
+	_pf["color"] = color
+	_pf["spread"] = spread
+	_pf["speed"] = speed
+	_pf["up"] = up
+	_pf["life"] = life
+	_pf["size"] = size
+	_pf["shrink"] = -0.5
+	_pf["gravity"] = 0.0
+	vfx.emit_smoke(_pf)
+	_pf.erase("shrink")

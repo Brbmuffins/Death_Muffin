@@ -34,7 +34,11 @@ Not wired yet: `host.hitstop_cb` (the shell has no hitstop).
 | `damaged` | host: take_damage; client: hp drop in the snapshot | heavy-hit hitstop (same thresholds as DmEntityViews). Hit flash is `DmEnemy._flash` (now also set on puppets) |
 | ready (rising) | both | spawn smoke + sparks + cracks decal; elite: `eliteAggro` (<40 m) and the purple ring (persistent, follows) |
 | DmHostileZone added | both | dust cloud (`zone_visual`), killed when the node leaves |
-`struck` and `cue` are host-only and deliberately unused. Censer ring/smoke and haste motes belong to the status track (`DmStatusSet`), not duplicated here. Idle motes (rising dust, hover motes, tunnelling dirt) run in one 5 Hz pass over watched enemies within 24x20 m of the hero, reusing scratch dictionaries.
+| `telegraph` kinds `ember` / `hex` / `pulse` / `hook` (Cinder Pyre / Mourning Fen kinds) | both | the router's own shapes (ember coal lob + landing burst, hex sigil + beam, wisp ring + ripples, sexton chain line); the Slag Brute's molten slam is picked by lending the router a def stub for the synchronous call |
+| `state_changed` -> ATTACK impact (all kinds) | both | `DmEnemy.on_impact_visual()` (non-authority peers spawn the visual-only ember pool), spark shower for husk / cinderhound / slag brute |
+| `state_changed` -> DEAD, def `emberDeath` | both | the husk's ember burst (`DmEventFx._burst` ember) on top of the fire-death flare |
+| DmHostileZone `ember` | both | burning-ground decals + bonfire (`zone_visual`), like the dust cloud |
+`struck` and `cue` are host-only and deliberately unused. Censer ring/smoke and haste motes belong to the status track (`DmStatusSet`), not duplicated here. Idle motes (rising dust, hover motes, tunnelling dirt, the pyre's ember shedding, the fen wisp's marsh light, the hag's drips, the sexton's water) run in one 5 Hz pass over watched enemies within 24x20 m of the hero, reusing scratch dictionaries.
 
 ## Replication / lead time
 A telegraph is the state change to ATTACK/ERUPT, so it reaches a client with the next snapshot. Measured in-process over ENet loopback (tests/enemy_fx/run.gd):

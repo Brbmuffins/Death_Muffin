@@ -425,6 +425,12 @@ func announce_telegraph(_seconds: float) -> void:
 	pass
 
 
+## Puppet-side hook: the swing's impact moment on EVERY peer (DmEnemyFx calls it at the wind-up's end). Kinds whose blow leaves a host-spawned zone
+## spawn the visual-only copy here on non-authority peers.
+func on_impact_visual() -> void:
+	pass
+
+
 ## The blow lands (end of wind-up). Reach is measured from the body, like the sim. Kinds override (slam / cone / dust ...).
 func strike() -> void:
 	var tg := target
