@@ -147,7 +147,7 @@ func _part_a() -> void:
 	check(boss.phase == 3 and events("summon").size() == 1 and events("summon")[0]["ev"]["targets"].size() == 4, "A: phase 3 (30 %) with a summon event over the four spots")
 	check(boss.brain.standing_niches() == 2 and _niches().size() == before + 2, "A: two broken niches re-form (rebuilt once)")
 	# real corpses: a robber killed in the Ossuary (director.spawn with the area) + laid ones
-	var rid: int = DmWaveDirector.id_of(g.director.spawn("robber", arena() + Vector3(-6.0, 0.0, 4.0), [hb], false, {}, "ossuary"))
+	var rid: int = DmWaveDirector.id_of(g.director.spawn("robber", arena() + Vector3(-6.0, 0.0, 4.0), [hb], false, {}, {"area": "ossuary"}))
 	await ticks(75)
 	var robber: DmEnemy = g.director.enemy_by_id(rid)
 	check(robber != null and String(robber.get_meta(&"dm_area")) == "ossuary", "A: an add spawned for the Ossuary is tagged with that area")

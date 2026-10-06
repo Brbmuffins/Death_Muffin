@@ -95,7 +95,7 @@ func _run() -> void:
 		for def_id in ["risen", "penitent", "wraith", "risen"]:
 			_watch.append(["spawn-" + def_id, 3, 0.0])
 			var t2 := Time.get_ticks_usec()
-			g.director.spawn(def_id, at + Vector3(4.0, 0.0, 0.0), [hb], false, {}, String(bd["area"]))
+			g.director.spawn(def_id, at + Vector3(4.0, 0.0, 0.0), [hb], false, {}, {"area": String(bd["area"])})
 			print("spawn %s cpu %.1f ms" % [def_id, (Time.get_ticks_usec() - t2) / 1000.0])
 			await process_frame
 			await process_frame
