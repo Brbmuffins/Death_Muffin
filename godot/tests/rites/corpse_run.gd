@@ -250,9 +250,17 @@ func _part_a() -> void:
 	var rej := _rejects(c)
 	var max_e: float = c.p["stats"]["maxEssence"]
 
-	# --- unported kit rite + level gate
-	c.request_cast("grave_step", Vector3(0, 0, 5))
-	ok(rej.size() == 1 and rej[0][1] == "unavailable", "A: a kit rite without a module is refused locally (unavailable)")
+	# --- unported kit rite (found from the kit, so this survives rites being ported; skipped once every kit rite is) + level gate
+	var nkit: Dictionary = DmContent.kit("necromancer")
+	var unported := ""
+	for rid in nkit["grimoire"] + nkit["primaries"] + nkit["signatures"].values():
+		if not DmRiteRegistry.has(String(rid)):
+			unported = String(rid)
+			break
+	if unported != "":
+		c.request_cast(unported, Vector3(0, 0, 5))
+		ok(rej.size() == 1 and rej[0][1] == "unavailable", "A: a kit rite without a module (%s) is refused locally (unavailable)" % unported)
+	rej.clear()
 	c.p["stats"]["level"] = 1.0
 	rej.clear()
 	c.request_cast("grave_offering", Vector3(0, 0, 3))
