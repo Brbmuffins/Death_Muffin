@@ -273,6 +273,27 @@ func stop_player() -> void:
 		shell.chapterhouse.stop_player()
 
 
+## Gathering (DmGameUi's Skills tab calls these by name through call_game_sync): AFK in the Acre, pause on a panel / move.
+func start_afk(node_id: String) -> String:
+	var err: String = await shell.gather.start_afk(node_id)
+	if err != "":
+		game_event.emit("toast", {"text": err, "kind": "err"})
+	return err
+
+
+func stop_gathering(reason: String) -> void:
+	if shell.gather != null:
+		shell.gather.stop_gathering(reason)
+
+
+func afk_active() -> bool:
+	return shell.gather != null and shell.gather.loop != null and shell.gather.loop.afk
+
+
+func afk_status() -> Dictionary:
+	return shell.gather.afk_status() if shell.gather != null else {}
+
+
 func near_grinder() -> bool:
 	return shell.chapterhouse != null and shell.chapterhouse.near_grinder()
 
@@ -320,6 +341,8 @@ func _on_hotbar(slot: int, aim: Vector3, enemy_id: int) -> void:
 	if enemy_id != 0:
 		_target_id = enemy_id
 		_target_until = Time.get_ticks_msec() + 4000.0
+	if shell.gather != null:
+		shell.gather.stop_gathering("moved")     # casting pauses gathering
 	caster.request_cast(id, aim, enemy_id if enemy_id != 0 else -1)
 	game_event.emit("slot_flash", {"slot": slot})
 

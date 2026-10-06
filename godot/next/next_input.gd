@@ -77,6 +77,8 @@ func _process(dt: float) -> void:
 	_hover_id = _pick_enemy(mp)
 	if game.chapterhouse != null:
 		game.chapterhouse.hover_at(mp)    # stations / NPCs under the cursor (prompt + highlight)
+	if game.get("gather") != null:
+		game.gather.hover_at(mp, game.chapterhouse != null and game.chapterhouse.hover != null)   # gathering nodes (ring + card) when no station is hovered
 
 
 ## Left click on an enemy: it becomes the attack target (`shift` = cast in place); the first step is taken now, not next frame.
@@ -139,6 +141,8 @@ func _primary_click(screen: Vector2) -> void:
 		game.session.request_move_dir(Vector3.ZERO)   # Shift on the ground stands still (old: player.stop())
 	elif game.chapterhouse != null and game.chapterhouse.click_at(screen):
 		pass                                  # walks to the station / NPC and uses it on arrival
+	elif game.get("gather") != null and game.gather.click_at(screen):
+		pass                                  # walks to the gathering node and works it
 	elif gp != null:
 		click_move(_aim)
 

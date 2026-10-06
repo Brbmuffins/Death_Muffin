@@ -34,6 +34,7 @@ var ui_host: DmNextUiHost                       ## the DmGame-contract adapter t
 var ui: DmGameUi                                ## the existing HUD + panels
 var areas: DmAreaFlow                           ## child "Areas": entry banners + Codex, processions, Grave Surges (next/areas/)
 var chapterhouse: DmChapterhouse                ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
+var gather: DmNextGather                        ## child "Gather" (every peer): gathering nodes, the gather loop (host), skills, AFK (next/gathering/)
 
 var character: Dictionary = {}
 var api: Variant = null                         ## DmApi: the VPS backend online, the offline backend (DmOffline.make_api) offline
@@ -145,6 +146,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 				bosses.request_summon(bid))
 	if session.is_host():
 		chapterhouse.start_seals()
+	gather = DmNextGather.new()
+	gather.name = "Gather"
+	add_child(gather)
+	await gather.setup(self)
 	# The current game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
 	await _start_hud()
 	areas = DmAreaFlow.new()
