@@ -23,6 +23,8 @@ const WHY := {"busy": "Another boss is awake.", "far": "Stand at the grave to wa
 
 var game: Node                                    ## DmNextGame
 var area_id: String = "graves"
+## Areas whose bosses this host wakes (each boss's own DmContent.boss(id).area is its arena; a boss in another area is "unknown" here).
+var served_areas: Array = ["graves", "cloister", "pyre", "fen"]
 var difficulty: String = "medium"
 var visual: bool = true                           ## false = no DmBossView (headless)
 var audio_enabled: bool = false                   ## boss music on the local hero's area
@@ -34,6 +36,9 @@ var packets_sent: int = 0
 var states_applied: int = 0
 
 var _holder: Node3D
+var _pools: Node3D
+var _toxic: Array = []
+var _toxic_frame: int = -1
 var _spawner: MultiplayerSpawner
 var _next: int = 1
 var _acc: float = 0.0
@@ -67,14 +72,14 @@ func _ready() -> void:
 func warm(at: Vector3) -> void:
 	for id in DmContent.get_export("bosses", "BOSS_IDS"):
 		var bd: Dictionary = DmContent.boss(String(id))
-		if bd["area"] == area_id:
+		if bd["area"] == area_id or served_areas.has(bd["area"]):
 			DmCreature.new(String(bd["modelSlug"]), {}).root.free()
 	fx.warm(at)
 
 
 # ---- queries (every peer) ------------------------------------------------------------------------------------------------------
 
-## Awake, hittable bosses.
+## Awake AND hittable bosses (a sunk Mire Mother is awake but not here).
 func living() -> Array[DmBoss]:
 	var out: Array[DmBoss] = []
 	for b in bosses.values():
@@ -83,9 +88,27 @@ func living() -> Array[DmBoss]:
 	return out
 
 
+## The awake boss (hittable or not: a sunk Mire Mother still blocks a second summon and keeps the bar / music).
 func active_boss() -> DmBoss:
-	var l := living()
-	return l[0] if not l.is_empty() else null
+	for b in bosses.values():
+		if is_instance_valid(b) and (b as DmBoss).is_awake():
+			return b
+	return null
+
+
+func _area_for(peer: int) -> String:
+	var a: String = game.area_of(peer)
+	return a if a != "" else assume_area
+
+
+## The area of a ground point (the world's; `assume_area` where there is no world / outside every area).
+func area_at(x: float, z: float) -> String:
+	var a: String = game.area_at(x, z)
+	return a if a != "" else assume_area
+
+
+func arena_area(boss_id: String) -> String:
+	return String(DmContent.boss(boss_id)["area"])
 
 
 func boss_by_id(id: int) -> DmBoss:
@@ -113,7 +136,7 @@ func site_pos(boss_id: String) -> Vector3:
 ## The boss of this area whose grave / altar is within `r` of `pos` ("" = none): the E key and the prompt use it.
 func site_near(pos: Vector3, r: float) -> String:
 	for id in DmContent.get_export("bosses", "BOSS_IDS"):
-		if id != "prelate" and String(DmContent.boss(String(id))["area"]) == area_id:
+		if id != "prelate" and served_areas.has(String(DmContent.boss(String(id))["area"])):
 			var s := site_pos(String(id))
 			if s != Vector3.INF and Vector2(pos.x - s.x, pos.z - s.z).length() <= r:
 				return String(id)
@@ -150,7 +173,7 @@ func try_summon(peer: int, boss_id: String, empowered: bool = false) -> String:
 
 
 func _check(peer: int, boss_id: String) -> String:
-	if not DmContent.get_export("bosses", "BOSS_IDS").has(boss_id) or boss_id == "prelate" or String(DmContent.boss(boss_id)["area"]) != area_id:
+	if not DmContent.get_export("bosses", "BOSS_IDS").has(boss_id) or boss_id == "prelate" or not served_areas.has(String(DmContent.boss(boss_id)["area"])):
 		return "unknown"
 	var hb: DmHeroBody = game.body_of(peer)
 	if hb == null or not hb.alive:
@@ -209,7 +232,7 @@ func _spawn_boss(data: Variant) -> Node:
 	var arena: Dictionary = DmContent.boss(id)["arena"]
 	b.position = Vector3(float(arena["x"]), 0.0, float(arena["z"]))
 	b.set_meta(&"dm_id", dm_id)
-	b.set_meta(&"dm_area", area_id)
+	b.set_meta(&"dm_area", String(arena_area(id)))
 	b.set_multiplayer_authority(1)
 	bosses[dm_id] = b
 	b.tree_exiting.connect(func() -> void: bosses.erase(dm_id))
@@ -234,7 +257,7 @@ func _route(ev: Dictionary, boss: DmBoss) -> void:
 	if String(ev["t"]) != "boss":
 		return
 	var kind := String(ev["kind"])
-	if kind == "bury" and float(ev.get("ms", 0.0)) == 0.0 and ev.get("root") != null:
+	if (kind == "bury" or kind == "hands") and float(ev.get("ms", 0.0)) == 0.0 and ev.get("root") != null:   # hands = the Mire Mother's Drowned Hands
 		for pid in ev.get("players", []):
 			var hb2: DmHeroBody = game.body_of(int(pid))
 			if hb2 != null:
@@ -255,9 +278,12 @@ func _on_defeated(boss: DmBoss, ev: Dictionary) -> void:
 	var killer := String(ev.get("killer", ""))
 	var at := Vector3(float(ev["x"]), 0.0, float(ev["z"]))
 	boss.finish(killer != "")
-	get_tree().create_timer(FREE_S).timeout.connect(func() -> void:
-		if is_instance_valid(boss):
-			boss.queue_free())   # the spawner despawns it everywhere
+	var free_t := Timer.new()   # a child of the body, so it goes with it (a SceneTreeTimer's lambda would call a freed boss)
+	free_t.one_shot = true
+	free_t.wait_time = FREE_S
+	boss.add_child(free_t)
+	free_t.timeout.connect(boss.queue_free)   # the spawner despawns it everywhere
+	free_t.start()
 	if killer == "":
 		reset.emit(boss.boss_id)
 		return
@@ -281,6 +307,47 @@ func replay_pits(boss: DmBoss) -> void:
 		spots.append([float(p[0]), float(p[1])])
 	fx.play({"t": "boss", "kind": "pits", "x": boss.global_position.x, "z": boss.global_position.z, "phase": 3, "boss": boss.boss_id, "targets": spots,
 		"r": float(DmContent.get_export("bosses", "GRAVEDIGGER")["pits"]["r"])})
+
+
+# ---- ground pools (Saint rot / Regent coals): host-damaging DmHostileZone + a visual-only copy on every other peer ---------------------
+
+## HOST. A hostile pool of `kind` (&"toxic" | &"ember") from `boss`: damaging here, announced reliably so the other peers draw the same ground.
+func spawn_pool(kind: StringName, x: float, z: float, r: float, dps: float, seconds: float, boss: DmBoss) -> DmHostileZone:
+	var zn := _make_pool(kind, x, z, r, dps, seconds, boss, true)
+	if not multiplayer.get_peers().is_empty():
+		_rpc_pool.rpc(String(kind), x, z, r, seconds)
+	return zn
+
+
+func _make_pool(kind: StringName, x: float, z: float, r: float, dps: float, seconds: float, boss: Node, damaging: bool) -> DmHostileZone:
+	if _pools == null:
+		_pools = Node3D.new()
+		_pools.name = "Pools"
+		add_child(_pools)
+	_toxic_frame = -1
+	var zn := DmHostileZone.spawn(_pools, Vector3(x, 0.0, z), kind, r, seconds, dps, boss)
+	zn.damaging = damaging
+	if kind == &"toxic":
+		fx.pool_visual(zn)   # ember pools are drawn by the DmEnemyFx zone watcher, like every other ember pool
+	return zn
+
+
+## Live damaging toxic pools (any source: Saint rain, Carrion Sac ruptures, Plague Doctor flasks), as {x, z, r}. Cached per physics frame.
+func toxic_zones() -> Array:
+	var f := Engine.get_physics_frames() * 4096 + get_tree().get_node_count_in_group(&"dm_hostile_zone")   # per frame, or when a zone came / went
+	if f != _toxic_frame:
+		_toxic_frame = f
+		_toxic.clear()
+		for n in get_tree().get_nodes_in_group(&"dm_hostile_zone"):
+			var zn := n as DmHostileZone
+			if zn != null and zn.damaging and zn.kind == &"toxic":
+				_toxic.append({"x": zn.global_position.x, "z": zn.global_position.z, "r": zn.radius})
+	return _toxic
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_pool(kind: String, x: float, z: float, r: float, seconds: float) -> void:
+	_make_pool(StringName(kind), x, z, r, 0.0, seconds, null, false)
 
 
 # ---- replication (20 Hz) ----------------------------------------------------------------------------------------------------------
@@ -326,7 +393,7 @@ func _process(dt: float) -> void:
 	var fighting := false
 	if me != null and me.alive:
 		var b := active_boss()
-		fighting = b != null and String(DmContent.boss(b.boss_id)["area"]) == game.area_of(me.owner_peer)
+		fighting = b != null and String(DmContent.boss(b.boss_id)["area"]) == _area_for(me.owner_peer)
 		near_id = site_near(me.position, SUMMON_RANGE + 1.0)
 		near = active_boss() == null and near_id != ""
 	if fighting != _music and audio_enabled:

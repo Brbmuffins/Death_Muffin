@@ -79,7 +79,7 @@ func enemy_get(id: int) -> Dictionary:
 	var e: DmEnemy = host.game.director.enemy_by_id(id)
 	if e == null:
 		return {}
-	return {"id": id, "def": e.def_id, "area": host.area_id, "x": e.global_position.x, "z": e.global_position.z, "hp": e.hp, "max_hp": e.max_hp, "state": DmEnemyState.NAMES[e.sm.id()]}
+	return {"id": id, "def": e.def_id, "area": host.area_at(e.global_position.x, e.global_position.z), "x": e.global_position.x, "z": e.global_position.z, "hp": e.hp, "max_hp": e.max_hp, "state": DmEnemyState.NAMES[e.sm.id()]}
 
 
 func enemies() -> Array:
@@ -120,22 +120,35 @@ func damage_thrall(id: int, amount: float) -> void:
 		th.take_damage(amount, boss)
 
 
-# Corpses, rot pools and ember pools belong to the Abbess / Mire Mother / Saint / Regent: not needed by the Gravedigger (see README recipe).
+# ---- hooks of the Abbess / Mire Mother (corpses) and the Saint / Regent (pools). Each is its own function. ----------------------------
+
+## Corpses lying in the world (echoes excluded), as {id, area, x, z}. The Mire Mother's rite wants the Fen's.
 func corpses() -> Array:
-	return []
+	var out: Array = []
+	var cf: DmCorpseField = host.game.corpses
+	if cf == null:
+		return out
+	for c: DmSimCorpse in cf.corpses.values():
+		if c.echoOwner == "":
+			out.append({"id": c.id, "area": c.area, "x": c.x, "z": c.z})
+	return out
 
 
-func remove_corpse(_id: int, _reason: String) -> void:
-	pass
+## `reason`: "devoured" | "raised" (the view's wisp / fade for it). Host only.
+func remove_corpse(id: int, reason: String) -> void:
+	host.game.corpses.consume(id, 0, reason)
 
 
+## Rot the Saint stands in: every live damaging toxic pool (hers, a sac's, a doctor's flask).
 func hostile_toxic_zones() -> Array:
-	return []
+	return host.toxic_zones()
 
 
-func add_hostile_pool(_x: float, _z: float, _r: float, _dps: float, _seconds: float) -> void:
-	pass
+## The Saint's Rot Rain pool: a toxic DmHostileZone (dps already scaled by the brain), `seconds` long.
+func add_hostile_pool(x: float, z: float, r: float, dps: float, seconds: float) -> void:
+	host.spawn_pool(&"toxic", x, z, r, dps, seconds, boss)
 
 
-func ember_pool(_x: float, _z: float, _r: float, _seconds: float, _dps: float) -> void:
-	pass
+## The Regent's coals / firebreak / ember pool.
+func ember_pool(x: float, z: float, r: float, seconds: float, dps: float) -> void:
+	host.spawn_pool(&"ember", x, z, r, dps, seconds, boss)

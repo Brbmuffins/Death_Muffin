@@ -71,3 +71,18 @@ func warm(at: Vector3) -> void:
 	for kind in ["sweep", "bury"]:
 		play({"t": "boss", "kind": kind, "x": at.x, "z": at.z, "phase": 1, "boss": "gravedigger", "ms": 250.0, "dir": 0.0, "r": 4.5, "targets": [[at.x, at.z + 2.0]]})
 	fx.audio = quiet
+
+
+## A toxic ground pool (Saint rot): the current client's zone look (cracked green ground, bubbling puddle), gone with the zone node.
+var _pool_zone := DmSimZone.new()
+
+func pool_visual(z: DmHostileZone) -> void:
+	_pool_zone.id = z.get_instance_id()
+	_pool_zone.kind = String(z.kind)
+	_pool_zone.x = z.global_position.x
+	_pool_zone.z = z.global_position.z
+	_pool_zone.r = z.radius
+	_pool_zone.until = host.mirror.time + z.lifetime
+	_pool_zone.hostile = true
+	vfx.danger(fx.zones_fx.zone_visual.bind(_pool_zone), true)
+	z.tree_exiting.connect(fx.zones_fx.zone_gone.bind(_pool_zone.id), CONNECT_ONE_SHOT)

@@ -86,8 +86,14 @@ func initial_state() -> int:
 	return DmEnemyState.Id.IDLE
 
 
-func is_hittable() -> bool:
+## Awake (summoned and not defeated / reset), whether or not it can be hit right now.
+func is_awake() -> bool:
 	return bstate.active and sm.id() != DmEnemyState.Id.DEAD
+
+
+## Untargetable (rites, thralls, the hover pick, enemies' focus) while the Mire Mother is sunk; the brain also refuses damage then.
+func is_hittable() -> bool:
+	return is_awake() and bstate.state != "sunk"
 
 
 # ============================================================================================ host brain

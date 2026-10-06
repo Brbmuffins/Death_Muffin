@@ -1,4 +1,4 @@
-# godot/next/bosses: the boss framework + the Gravedigger King
+# godot/next/bosses: the boss framework + the Gravedigger King, Plague Saint, Cinder Regent, Mire Mother
 
 Suite: `godot --headless --path godot --script res://tests/next_bosses/run.gd`. Screenshots: `tests/next_bosses/shot.gd` (header has the render-lock command).
 
@@ -57,9 +57,20 @@ cooldowns x0.75, a second sweep +60 deg 650 ms after the first. Wipe/leave = res
    Only add a `warm()` shape for a kind whose first draw hitches.
 5. **Tests**: copy `tests/next_bosses/run.gd` parts A/B: summon refusals, each attack's event (`brain_event`, ms and numbers from the content file), phase thresholds, adds, defeat -> reward + reporter entry, 2-peer replication.
 
+## Late bosses: Plague Saint (cloister), Cinder Regent (pyre), Mire Mother (fen)
+Suites: `tests/next_bosses/saint_run.gd`, `regent_run.gd`, `mire_run.gd` (shared helpers in `late_base.gd`). Pictures: `shot_late.gd` (the slice) vs `shot_ref.gd` (the current client's harness, same events).
+* **Host**: serves `served_areas` (graves, cloister, pyre, fen; each boss's own `DmContent.boss(id).area` is its arena, the host is no longer tied to one `area_id`). `DmBossHost.area_at` answers
+  `world.area_at` (or `assume_area` headless), so adds / corpses are matched to the boss's area. `active_boss()` = awake (even if sunk), `living()` = awake AND hittable.
+* **Hooks (dm_boss_node_world.gd)**: `corpses()` / `remove_corpse` -> `DmCorpseField` (echoes excluded; `consume(id, 0, "raised")`), `hostile_toxic_zones()` -> every live damaging toxic `DmHostileZone`
+  (cached per frame / zone count), `add_hostile_pool` / `ember_pool` -> `DmBossHost.spawn_pool`: a host-damaging `DmHostileZone` (credited to the boss; `dm_take_enemy_hit` hits heroes AND thralls) under the host's `Pools` node,
+  announced by a reliable rpc so every other peer holds a visual-only copy (`damaging = false`). Toxic pools are drawn by `DmBossFx.pool_visual` (the current zone look); ember pools by the
+  `DmEnemyFx` zone watcher like the pyre's other embers.
+* **Hittability**: `DmBoss.is_awake()` / `is_hittable()` (false while `bstate.state == "sunk"`, replicated): rites, thralls (retarget), the hover pick and `enemies_in_radius` skip a sunk Mire Mother; the brain refuses damage too.
+* **Hands** (Mire) root like Burial: `_route` treats `hands` impacts as `bury`. Defeat timer is a child Timer of the body (the old SceneTreeTimer lambda called a freed boss).
+
 ## Gaps
 Empowered (Covenant Seal) summons and the seal prize; first-kill trophies are in memory per session unless
-the shell sets `trophy_store`; chronicle/codex entries; boss slow/root statuses are ignored (the brain owns speed); hitstop callback unset in the slice; the Prelate/Sanctum has no area in the slice yet.
+the shell sets `trophy_store`; chronicle/codex entries; boss slow/root statuses are ignored (the brain owns speed); hitstop callback unset in the slice; the Prelate/Sanctum has no area in the slice yet. A late joiner does not see pools that are already burning (the rpc is at creation); the flood's hummock shrink is a presentation event the world builder does not ease yet; the pools of a boss that resets linger their remaining seconds (as sim zones did). Thralls/adds in the three new areas path only where the areas track has baked navigation.
 
 
 ## Cost (headless, shared VPS)
