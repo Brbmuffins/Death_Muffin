@@ -32,6 +32,7 @@ var settings_store: DmSettings
 var kit: Dictionary
 var primary: String = "bone_needle"
 var keys: Array = []                         ## the five rites on 1-4 / RMB (hotbar slot i+1), from DmLoadout
+var signature: String = ""                   ## the discipline's signature rite on R (hotbar slot 6)
 var in_depths := false
 var hero_id: int = 0
 var release := "slice"
@@ -76,6 +77,7 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	var b := shell.local_body()
 	var family: String = b.family if b != null else "necromancer"
 	kit = DmAbilities.kit_for(family)
+	signature = String(kit["signatures"].get(DmCharacterBuild.discipline_for(float(shell.character.get("class_index", 0)))["id"], ""))
 	var m: DmRewardsMember = shell.rewards.members.get(hero_id) if shell.rewards != null else null
 	if m != null:
 		prog = m.prog
@@ -230,10 +232,12 @@ func leave_world() -> void:
 
 # ---- hotbar: HUD click / key / mouse -> DmRiteCaster.request_cast -------------------------------------------------------------------
 
-## The rite id of a hotbar slot: 0 = LMB primary, 1..5 = keys 1-4 and RMB.
+## The rite id of a hotbar slot: 0 = LMB primary, 1..5 = keys 1-4 and RMB, 6 = R (the signature).
 func rite_at(slot: int) -> String:
 	if slot == 0:
 		return primary
+	if slot == 6:
+		return signature
 	return String(keys[slot - 1]) if slot - 1 < keys.size() else ""
 
 

@@ -63,6 +63,9 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 	if not bool(r["ok"]):
 		return String(r["why"])   # no_corpse / gone (lost the race) / few (a Colossus needs more bodies) / owner_dead
 	var at: Vector3 = intent["at"]
+	var heal := c.max_hp() * float(c.mods.get("corpseHeal", 0.0))   # Mourner: raising the dead mends you (sim_caster "exhumed")
+	if heal > 0.0:
+		c.heal(heal)
 	c.broadcast({"t": "cast", "rite": id, "by": c.peer_id, "from": c.tip(), "x": at.x, "z": at.z, "others": intent["others"], "company": intent["company"],
 		"raised": (r["thralls"] as Array).size()})
 	return ""

@@ -29,6 +29,7 @@ signal hit_resolved(rite: String, enemy_id: int, amount: float, crit: bool, kill
 
 const TIP_Y := 1.4               ## sim_caster._tip default (over the head)
 const STATE_HZ := 10.0
+const _BLOOM := preload("res://next/rites/rite_plague_bloom.gd")   ## Rotweaver's passive lives with her signature
 const HOLD_ACTIONS := {"rite_primary": "bone_needle"}   ## optional InputMap action the owner polls (hold = repeat); the slice's hotbar is next/rites/dm_rite_hotbar.gd
 
 var world: Object = null            ## DmRiteWorld (duck-typed)
@@ -145,6 +146,8 @@ func step(dt: float) -> void:
 	for m: DmRiteModule in DmRiteRegistry.steppers():
 		if _mem.has(m.id):
 			m.step(self, dt)
+	if _mods.get("miasmaBurstsCorpses", false):   # Rotweaver passive: the corpses in her Miasma burst (rite_plague_bloom.gd)
+		_BLOOM.miasma_bursts(self, dt)
 	_state_acc += dt
 	if _state_acc >= 1.0 / STATE_HZ:
 		_state_acc = fmod(_state_acc, 1.0 / STATE_HZ)
@@ -152,6 +155,13 @@ func step(dt: float) -> void:
 
 
 # ---- host: setup -------------------------------------------------------------------------------------------------------------------------
+
+## Host: re-read the body's build (its character was bound after the caster attached, or gear / level changed). Starts a fresh state: call it
+## before play, not mid-fight (cooldowns and essence reset).
+func rebuild() -> void:
+	if _is_host() and _body != null:
+		_init_host_state()
+
 
 func _init_host_state() -> void:
 	var build: Dictionary = {}

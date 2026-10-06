@@ -288,8 +288,9 @@ func rally(secs: float, focus: Node3D = null) -> void:
 			t.rally(s, focus)
 
 
-## Command: Rend (signature "rend"): the legion leaps to a ring around `point`, cleaves, pays hp. Returns the enemies hit.
-func command_rend(point: Vector3) -> int:
+## Command: Rend (signature "rend"): the legion leaps to a ring around `point`, cleaves, pays hp. Returns the enemies hit; `leaps` (optional)
+## receives [from_x, from_z, to_x, to_z] per thrall for the visuals.
+func command_rend(point: Vector3, leaps: Array = []) -> int:
 	var R: Dictionary = DmSimData.SIGNATURE["rend"]
 	var legion: Array[DmThrall] = []
 	for t in _list:
@@ -300,7 +301,9 @@ func command_rend(point: Vector3) -> int:
 	for t in legion:
 		var ang := float(i) / float(maxi(1, legion.size())) * TAU
 		i += 1
+		var from := t.global_position
 		t.global_position = Vector3(point.x + cos(ang) * 1.2, 0.0, point.z + sin(ang) * 1.2)
+		leaps.append([from.x, from.z, t.global_position.x, t.global_position.z])
 		t.hp = maxf(1.0, t.hp - t.max_hp * float(R["hpCost"]))
 		t.attack_cd = 0.2
 		t.target = null

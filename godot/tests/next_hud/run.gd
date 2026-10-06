@@ -68,8 +68,9 @@ func _run() -> void:
 	var h := g.ui_host
 	check(h.keys == want and h.primary == kit["defaultPrimary"], "loadout = the kit's default loadout + rmb, primary %s" % h.primary)
 	var vm := h.hud_state()
-	check(vm["slots"].size() == 5 and vm["primary"]["key"] == "LMB" and vm["slots"][4]["key"] == "RMB" and vm["slots"][0]["key"] == "1", "vm: LMB + 5 slots with keys 1-4 / RMB")
-	check(hud.primary_slot != null and hud.primary_slot.key_text == "LMB" and hud._slots.size() == 5, "HUD built the primary slot and 5 rite slots")
+	check(vm["slots"].size() == 6 and vm["primary"]["key"] == "LMB" and vm["slots"][4]["key"] == "RMB" and vm["slots"][0]["key"] == "1", "vm: LMB + 5 slots with keys 1-4 / RMB + the signature on R")
+	check(vm["slots"][5]["key"] == "R" and vm["slots"][5]["locked"] and h.rite_at(6) == kit["signatures"][h.shell.body_of(1).discipline_id], "vm: R is the discipline's signature (locked below level 10)")
+	check(hud.primary_slot != null and hud.primary_slot.key_text == "LMB" and hud._slots.size() == 6, "HUD built the primary slot and 6 rite slots (5 + the signature)")
 	for i in 5:
 		check(String(hud._slots[i].icon_path).ends_with(String(DmAbilities.def(want[i])["icon"]).replace("art/", "")), "slot %d icon is %s" % [i + 1, want[i]])
 	var miasma_slot := want.find("miasma") + 1

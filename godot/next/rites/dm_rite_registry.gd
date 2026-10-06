@@ -24,6 +24,10 @@ const MODULES := {
 	"bone_prison": preload("res://next/rites/rite_bone_prison.gd"),
 	"grave_hands": preload("res://next/rites/rite_grave_hands.gd"),
 	"rally_dead": preload("res://next/rites/rite_rally_dead.gd"),
+	"ossuary_wall": preload("res://next/rites/rite_ossuary_wall.gd"),
+	"command_rend": preload("res://next/rites/rite_command_rend.gd"),
+	"dirge": preload("res://next/rites/rite_dirge.gd"),
+	"plague_bloom": preload("res://next/rites/rite_plague_bloom.gd"),
 }
 
 static var _inst: Dictionary = {}

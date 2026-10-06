@@ -790,3 +790,146 @@ func rally(ev: Dictionary, follow: Callable, thrall_at: Callable) -> void:
 	lf(float(ev["x"]), 1.2, float(ev["z"]), RD["jade"], 18.0, 0.3)
 	bb("rally_area", float(ev["x"]), float(ev["z"]))
 	sfx("rallyDead", float(ev["x"]), float(ev["z"]))
+
+
+# --- Discipline signatures (rebuild only; the current game draws these in DmAbilitySystem / DmEventFx) ---------------------------------------
+
+const SIG_LOOK := {"wall": ["amber", "sigWall"], "rend": ["jade", "sigRend"], "dirge": ["frost", "sigDirge"], "bloom": ["petal", "sigBloom"]}
+static var _rib: CylinderMesh = null
+
+
+## The cast flourish every signature shares: sparks + light at the staff tip and its sound; the Dirge / Bloom start their bed. `sig` = wall rend dirge bloom.
+func signature_cast(sig: String, tip: Vector3) -> void:
+	var look: Array = SIG_LOOK[sig]
+	var color := DmFxData.spell(sig, look[0])
+	emit(tip.x, 1.4, tip.z, 24, color, 0.4, 1.6, 1.2, 0.6, 0.24)
+	lf(tip.x, 1.8, tip.z, color, 24.0, 0.4)
+	sfx(look[1], tip.x, tip.z)
+	if sig == "dirge":
+		loop("dirgeLoop", 4000.0, tip.x, tip.z)
+	elif sig == "bloom":
+		loop("bloomPulse", 6000.0, tip.x, tip.z)
+
+
+## Ossuary Wall: the ribs tear out of the ground along (x0, z0)-(x1, z1). Returns the MultiMesh node for the caller to parent and free (null without a back-end).
+func wall_raise(x0: float, z0: float, x1: float, z1: float, node_name: String) -> MultiMeshInstance3D:
+	var bone := DmFxData.spell("wall", "bone")
+	var length := Vector2(x1 - x0, z1 - z0).length()
+	var n := maxi(6, DmMath.js_round(length * 2.2))
+	if _rib == null:
+		_rib = CylinderMesh.new()
+		_rib.top_radius = 0.0
+		_rib.bottom_radius = 0.22
+		_rib.height = 1.0
+		_rib.radial_segments = 5
+		_rib.rings = 1
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = bone
+		mat.roughness = 0.8
+		mat.emission_enabled = true
+		mat.emission = DmFxData.spell("wall", "amber")
+		mat.emission_energy_multiplier = 0.08
+		_rib.material = mat
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = _rib
+	mm.instance_count = n
+	for i in n:
+		var t := (float(i) + 0.5) / float(n)
+		var h := 1.4 + float((i * 7919) % 5) * 0.18
+		var eul := Vector3(float((i % 3) - 1) * 0.18, float(i) * 1.3, float((i % 2) * 2 - 1) * 0.12)
+		mm.set_instance_transform(i, Transform3D(Basis.from_euler(eul, EULER_ORDER_XYZ) * Basis.from_scale(Vector3(1.0, h, 1.0)), Vector3(x0 + (x1 - x0) * t, h / 2.0, z0 + (z1 - z0) * t)))
+	var node := MultiMeshInstance3D.new()
+	node.multimesh = mm
+	node.name = node_name
+	for i in 7:   # the wall tears out of the grave: bone chips and soil along its foot, a crack beneath it
+		var t := float(i) / 6.0
+		emit(x0 + (x1 - x0) * t, 0.3, z0 + (z1 - z0) * t, 6, bone, 0.3, 1.5, 2.5, 0.6, 0.14, {"gravity": 9.0})
+	var cx := (x0 + x1) / 2.0
+	var cz := (z0 + z1) / 2.0
+	if fx != null:
+		stats["motif"] += 7
+		for i in 5:
+			fx.motifs.grave_dirt(x0 + (x1 - x0) * float(i) / 4.0, z0 + (z1 - z0) * float(i) / 4.0, {"r": 0.4, "n": 3})
+		fx.motifs.bone_splinters(cx, 1.0, cz, {"n": 8, "color": bone, "speed": 4.5})
+		fx.motifs.cracked_ground(cx, cz, length * 0.5, DmFxData.spell("wall", "dust"), {"rot": atan2(x1 - x0, z1 - z0), "sx": 0.22, "duration": 2.2, "opacity": 0.6})
+	sfx("boneHit", cx, cz)
+	return node
+
+
+## The wall crumbles to dust.
+func wall_gone(cx: float, cz: float) -> void:
+	smoke(cx, 0.6, cz, 16, DmFxData.spell("wall", "dust"), 2.4, 0.8, 0.8, 1.4, 1.6)
+
+
+## Command: Rend. `leaps` = [[from_x, from_z, to_x, to_z]] per thrall; (x, z) the target point. `mine`: the caster's own legion draws full strength.
+## Returns the camera shake.
+func rend(leaps: Array, x: float, z: float, mine: bool) -> float:
+	var jade := DmFxData.spell("rend", "jade")
+	var bone := DmFxData.spell("rend", "bone")
+	var pale := DmFxData.spell("rend", "pale")
+	var own := "player" if mine else "thrall"
+	for l: Array in leaps:
+		var to := Vector3(float(l[2]), 0.8, float(l[3]))
+		beam(Vector3(float(l[0]), 0.8, float(l[1])), func() -> Variant: return to, jade, 0.06, 0.35)
+		emit(to.x, 0.6, to.z, 10, bone, 0.5, 3.0, 1.5, 0.5, 0.14, {"gravity": 8.0})
+		if fx != null:   # the thrall's claw: bone chips and a spectral slash where it bites
+			stats["motif"] += 2
+			fx.motifs.bone_splinters(to.x, 0.8, to.z, {"n": 4, "color": bone, "origin": own})
+			fx.motifs.slash_mark(to.x, to.z, pale, {"rot": atan2(to.x - float(l[0]), to.z - float(l[1])), "r": 1.0, "origin": own})
+		bb("rend_impact", to.x, to.z)
+	decal("ring", jade, x, z, 3.0, 0.5, 1.0, {"growFrom": 0.3})
+	lf(x, 1.5, z, jade, 40.0, 0.4)
+	sfx("boneHit", x, z)
+	return 0.2 if mine else 0.0
+
+
+## Dirge: the bell-song ground (radius r for `seconds`): cold-blue disc and ring, soul-lights, grave mist, the small toll.
+func dirge_zone(x: float, z: float, r: float, seconds: float) -> void:
+	var D := DmFxData.spell_group("dirge")
+	decal("disc", D["deep"], x, z, r, seconds, 0.45, {"growFrom": 0.3, "fadeOut": 0.6})
+	decal("ring", D["frost"], x, z, r * 0.95, seconds, 0.6, {"pulse": 6, "spin": 0.0, "fadeOut": 0.6})
+	emit(x, 0.4, z, 30, D["pale"], r * 0.5, 0.6, 2.0, 1.0, 0.22)
+	if fx != null:
+		stats["motif"] += 2
+		fx.motifs.mist_whisper(x, z, D["deep"], {"r": r * 0.6, "n": 3})
+		fx.motifs.spirit_wisps(x, z, D["pale"], {"n": 3, "r": r * 0.6, "y": 0.3, "size": 0.8})
+	sfx("tollSmall", x, z)
+	bb("dirge_area", x, z, {"scale": r / 6.0})
+
+
+## One heartbeat of the Dirge: a ring runs out from its centre as it mends.
+func dirge_pulse(x: float, z: float, r: float) -> void:
+	decal("ring", DmFxData.spell("dirge", "frost"), x, z, r, 0.5, 0.7, {"growFrom": 0.15, "fadeOut": 0.4})
+
+
+## Plague Bloom: a chartreuse flower sigil (radius r for `seconds`) shedding spores.
+func bloom_zone(x: float, z: float, r: float, seconds: float) -> void:
+	var B := DmFxData.spell_group("bloom")
+	decal("disc", B["rot"], x, z, r, seconds, 0.45, {"growFrom": 0.3, "fadeOut": 0.6})
+	decal("sigil", B["petal"], x, z, r * 0.95, seconds, 0.6, {"pulse": 2, "spin": 0.9, "fadeOut": 0.6})
+	emit(x, 0.4, z, 18, B["petal"], r * 0.5, 0.6, 1.2, 1.0, 0.22)
+	if fx != null:
+		stats["motif"] += 1
+		fx.motifs.rot_spores(x, z, B["petal"], {"r": r * 0.7, "n": 12})
+	bb("plague_bloom_area", x, z, {"scale": r / 2.4})
+
+
+## A flower seeds the next one: a thread of petals runs from the old bloom to the corpse that becomes the new one.
+func bloom_spread(x0: float, z0: float, x1: float, z1: float) -> void:
+	var petal := DmFxData.spell("bloom", "petal")
+	var to := Vector3(x1, 0.5, z1)
+	beam(Vector3(x0, 0.5, z0), func() -> Variant: return to, petal, 0.05, 0.45)
+	emit(x1, 0.5, z1, 10, petal, 0.3, 1.0, 1.0, 0.6, 0.18)
+
+
+## A corpse in the Rotweaver's Miasma bursts (r metres): violet ring, spores, smoke.
+func bloom_burst(x: float, z: float, r: float) -> void:
+	var petal := DmFxData.spell("bloom", "petal")
+	sfx("burst", x, z)
+	decal("ring", Color.hex(0xb58cffff), x, z, r, 0.5, 1.0, {"growFrom": 0.2})
+	emit(x, 0.6, z, 30, Color.hex(0xb58cffff), r * 0.5, 3.0, 1.5, 0.8, 0.35)
+	smoke(x, 0.4, z, 8, Color.hex(0x3a2d55ff), r * 0.4, 1.2, 0.8, 1.4, 1.6, {"shrink": -1.0})
+	if fx != null:
+		stats["motif"] += 1
+		fx.motifs.rot_spores(x, z, petal, {"r": r * 0.6, "n": 8})

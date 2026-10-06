@@ -110,3 +110,11 @@ static func face(c: DmRiteCaster, x: float, z: float) -> void:
 		if d.length_squared() > 0.0001:
 			b.set("yaw", atan2(d.x, d.y))
 			b.rotation.y = float(b.get("yaw"))
+
+
+## The ground point `aim` pulled back along the line from the caster to at most `reach` metres (the sim's clampAim; the aim stays when inside).
+static func clamp_reach(from: Vector3, aim: Vector3, reach: float) -> Vector3:
+	var d := Vector2(aim.x - from.x, aim.z - from.z).length()
+	if d <= reach or d < 1e-6:
+		return Vector3(aim.x, 0.0, aim.z)
+	return Vector3(from.x + (aim.x - from.x) / d * reach, 0.0, from.z + (aim.z - from.z) / d * reach)

@@ -32,6 +32,16 @@ module** `rite_<id>.gd` (a `DmRiteModule`) listed in `dm_rite_registry.gd` (one 
 
 Hotbar mapping (the one place to take over): `dm_rite_hotbar.gd` (`DmRiteHotbar.rite_for_slot`, `wire(game)`): LMB = kit `defaultPrimary`, 1-4 = kit
 `defaultLoadout` (a kit rite without a module is refused `unavailable`), RMB = kit `rmb`. `shake_requested(amount)` is the camera-shake seam.
+| `ossuary_wall` | R (signature) | Ossuary: a 7 m x 0.8 m bone wall across the cursor line for 6 s (aim pulled back to 10 m). Host: a StaticBody3D on `DmEnemy.LAYER_PLAYER` (enemies collide, thralls walk through) + a NavigationObstacle3D (avoidance, no rebake); ribs on every peer. 30 essence, 16 s, level 10 |
+| `command_rend` | R | Gravecaller: the whole legion leaps to the cursor (13 m, stopped at the caster's area edge) and cleaves 2.2 m x damage 2.5 via `DmThrallHost.command_rend(point, leaps)`, each thrall paying 15 % hp. Free, 9 s, `no_thralls` without a legion |
+| `dirge` | R | Mourner: 4 s bell-song, radius 6 around you: each second players mend sp x 0.6 and thralls 8 % max hp, enemies inside Silenced (1.2 s). 35 essence, 18 s |
+| `plague_bloom` | R | Rotweaver: a rot flower (r 2.4, 8 s, Withered cap 8, slow) that seeds the nearest corpse within 6 m every 2 s with a child bloom (6 s), 3 generations. 28 essence, 12 s. Also holds her passive: corpses lying in her Miasma burst (`miasma_bursts`, run by the caster while `miasmaBurstsCorpses`) |
+
+Hotbar mapping (the one place to take over): `dm_rite_hotbar.gd` (`DmRiteHotbar.rite_for_slot`, `wire(game)`): LMB = kit `defaultPrimary`, R (slot 6) = the discipline's signature
+(`kit.signatures[discipline]`, level 10), 1-4 = kit `defaultLoadout` (marrow_spear has no module yet: refused `unavailable`), RMB = kit `rmb`. `shake_requested(amount)` is the camera-shake seam.
+Discipline: the caster builds from `world.rite_build(peer)` (DmNextGame: the body's character, so `--class=N` picks the discipline) and `rebuild()` re-reads it when the character is
+bound after the caster attached (DmHeroBody.bind_character does). The mods reach every rite through `c.mods`; the Ossuary's `wardPerThrall` is applied in `DmHeroBody.take_damage`,
+the Mourner's `corpseHeal` in exhume / litany / offering, the Rotweaver's `miasmaBurstsCorpses` by `rite_plague_bloom.gd` (known deviation: a toxic Corpse Explosion's rot pool also bursts corpses, the old sim's did not).
 World additions for the corpse rites: `world.corpses` (the `DmCorpseField`) and `world.area_of(peer)`; the thralls come from the body's `Thralls` host.
 
 Shared helpers added with these rites: `DmRiteModule.enemies_in_circle(c, x, z, r)` / `face(c, x, z)`; on the body (`DmSessionBody`, navmesh versions in `DmHeroBody`):

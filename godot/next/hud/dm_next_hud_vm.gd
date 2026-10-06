@@ -4,7 +4,7 @@ extends RefCounted
 ## the counterpart of DmGameHud.build for the old DmGame. Slot and minimap sub-dictionaries are reused between calls (the HUD is applied at
 ## 20 Hz by DmGameUi; only the enemy/thrall/corpse lists and the top-level dictionary are new each time).
 
-const SLOT_KEYS := ["1", "2", "3", "4", "RMB"]
+const SLOT_KEYS := ["1", "2", "3", "4", "RMB", "R"]
 const STATUS_ICON := {
 	"fracture": ["fracture.webp", "Fracture"], "withered": ["withered.webp", "Withered"], "slow": ["void-rot.webp", "Miasma"],
 	"ward_slow": ["void-rot.webp", "Ward"], "bleed": ["hemorrhage.webp", "Hemorrhage"], "chill": ["chilled.webp", "Chilled"],
@@ -63,15 +63,15 @@ func _primary_slot(b: DmHeroBody) -> Dictionary:
 
 
 func _slot_list(b: DmHeroBody, level: float) -> Array:
-	var keys := host.keys
-	while _slots.size() < keys.size():
+	var n: int = host.keys.size() + (1 if host.signature != "" else 0)   # keys 1-4 + RMB, then R (the signature)
+	while _slots.size() < n:
 		_slots.append({"alt": _slots.size() == 4, "swap": false, "rune_icon": "", "empowered": false})
-	for i in keys.size():
+	for i in n:
 		var s := _slots[i]
-		var id := String(keys[i])
+		var id: String = host.keys[i] if i < host.keys.size() else host.signature
 		s["icon"] = DmGameHud.art(String(DmAbilities.def(id)["icon"]).replace("art/", ""))
 		_fill(s, id, b, level, SLOT_KEYS[i] if i < SLOT_KEYS.size() else "")
-	return _slots.slice(0, keys.size())
+	return _slots.slice(0, n)
 
 
 ## Cost, cooldown sweep, affordable / locked flags of one rite. Cooldown comes from the caster's state (the host's numbers).

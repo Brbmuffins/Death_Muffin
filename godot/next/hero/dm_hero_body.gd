@@ -17,6 +17,7 @@ const MAX_STEP := 0.25                          ## clamp host dt (a hitch must n
 var game: Node                                  ## the DmNextGame (injected by the body factory)
 var p: Dictionary = {}                          ## host: DmPlayerRules state. Empty on puppets.
 var character: Dictionary = {}                  ## host: the character this body plays (level / class_index)
+var mods: Dictionary = {}                       ## host: the discipline's mods (DmCharacterBuild), e.g. Ossuary's wardPerThrall
 var character_id: int = 0
 var avatar: DmAvatar
 var hp: float = 100.0                           ## every peer: mirrored from p (host) / vitals broadcast (puppets)
@@ -65,10 +66,10 @@ func setup(peer_id: int, nm: String, disc: String, pos: Vector3) -> void:
 
 func _ready() -> void:
 	_make_avatar.call_deferred()
+	if simulated:
+		_init_state()   # before the caster attaches: it builds from the body's character (its discipline)
 	if game != null and game.has_method("attach_caster"):
 		game.attach_caster(self)
-	if simulated:
-		_init_state()
 
 
 ## Host: give the body its character. A joiner without one plays a level-1 default of its discipline.
@@ -76,6 +77,9 @@ func bind_character(ch: Dictionary) -> void:
 	character = ch
 	character_id = int(ch.get("id", 0))
 	_init_state()
+	var rites := get_node_or_null("Rites") as DmRiteCaster
+	if rites != null:
+		rites.rebuild()   # the caster attached before the character was bound
 
 
 func _init_state() -> void:
@@ -90,6 +94,7 @@ func _init_state() -> void:
 		character = {"class_index": idx, "level": 1, "id": 0}
 	var b := DmCharacterBuild.build(character, [], {})
 	family = String(b["discipline"]["family"])
+	mods = b["discipline"]["mods"]
 	p = DmPlayerRules.new_state(b["stats"], family)
 	p["x"] = position.x
 	p["z"] = position.z
@@ -128,7 +133,7 @@ func take_damage(amount: float, source: Node = null, kind: String = "melee") -> 
 	var from: Variant = null
 	if source is Node3D:
 		from = {"x": (source as Node3D).global_position.x, "z": (source as Node3D).global_position.z}
-	var taken := DmPlayerRules.take_damage(p, amount, 0.0, _clock_ms, from, kind, 0.0)
+	var taken := DmPlayerRules.take_damage(p, amount, _ward(), _clock_ms, from, kind, 0.0)
 	_mirror_from_state()
 	if taken > 0.0:
 		hurt.emit(taken, source)
@@ -143,6 +148,13 @@ func heal(amount: float) -> void:
 	if not p.is_empty():
 		DmPlayerRules.heal(p, amount)
 		_mirror_from_state()
+
+
+## Bone Ward: the discipline's wardPerThrall (Ossuary 10 %) per living thrall, capped by DmLegend (the old game's onHurt, DmAbilities.incoming_ward).
+func _ward() -> float:
+	var per := float(mods.get("wardPerThrall", 0.0))
+	var th := get_node_or_null("Thralls") as DmThrallHost
+	return per * float(th.count()) if per > 0.0 and th != null else 0.0
 
 
 ## Host: move the body instantly (respawn, waystone, Grave Step).

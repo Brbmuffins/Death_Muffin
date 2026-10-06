@@ -272,6 +272,11 @@ func body_position(peer_id: int) -> Vector3:
 	return b.position if b != null else Vector3.INF
 
 
+## The area at a ground point ("" = outside every area): the rites walk a cast back to where its caster's area ends.
+func area_at(x: float, z: float) -> String:
+	return world.area_at(x, z) if _has_world else ""
+
+
 ## The area id a player is standing in ("" between areas).
 func area_of(peer_id: int) -> String:
 	var b := body_of(peer_id)
