@@ -327,9 +327,11 @@ func _character_owner(character_id: int) -> String:
 func _own(acc: Dictionary, character_id: Variant) -> bool:
 	return acc["character"] != null and _to_num(character_id) == float(acc["character"]["id"])
 
+## Easy auto combat is the owner's tool. Online the backend checks the verified account; offline there is nothing to verify, so a
+## profile named brbmuffins unlocks it (owner 2026-10-06: offline characters never go online, a copied name only affects its own save).
 func _character_view(acc: Dictionary) -> Dictionary:
 	var c: Dictionary = acc["character"].duplicate()
-	c["auto_combat_allowed"] = false
+	c["auto_combat_allowed"] = String(acc.get("username", "")).to_lower() == "brbmuffins"
 	return c
 
 func _recipes() -> Array:
