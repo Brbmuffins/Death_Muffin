@@ -386,3 +386,228 @@ func mantle(ev: Dictionary, mine: bool, follow: Callable) -> Array:
 	lf(float(ev["x"]), 1.4, float(ev["z"]), MN["gold"], 26.0, 0.4)
 	sfx("mantle", float(ev["x"]), float(ev["z"]))
 	return [handle, ring]
+
+
+# --- Projectile rites (rebuild: bone_fan, rot_lance, marrow_spear, wailing_skull, ivory_cleave, bone_storm, soul_siphon) ----------------------------------------
+# The same calls, colours and sounds as DmAbilitySystem's overrides of those rites; positions come from the host's events. Vectors are Vector3.
+
+func spike_line(x: float, z: float, dx: float, dz: float, length: float, width: float, sequential: bool = false) -> void:
+	stats["spikes"] += 1
+	if fx != null:
+		fx.spike_line(x, z, dx, dz, length, width, sequential)
+
+
+func spike_ring(x: float, z: float, r: float, count: int, life: float) -> void:
+	stats["spikes"] += 1
+	if fx != null:
+		fx.spike_ring(x, z, r, count, life)
+
+
+## Bone Fan: the muzzle flash + sound (the slivers themselves are `shot`s).
+func fan_cast(tip: Vector3, px: float, pz: float) -> void:
+	flash(tip.x, tip.y, tip.z, DmFxData.spell("needle", "trail"), 0.8, 0.14)
+	sfx("boneFan", px, pz)
+
+
+func fan_hit(pos: Vector3) -> void:
+	var N := DmFxData.spell_group("needle")
+	sfx("needleHit", pos.x, pos.z, 0.8)
+	flash(pos.x, pos.y, pos.z, N["impact"], 0.8, 0.16)
+	emit(pos.x, pos.y, pos.z, 6, N["dust"], 0.1, 3.0, 1.1, 0.35, 0.12, {"gravity": 7.0})
+
+
+## Rot Lance: flash + sound + the beam down the lane (`end` = where the lance stops).
+func lance_cast(tip: Vector3, end: Vector3, px: float, pz: float) -> void:
+	var LN := DmFxData.spell_group("lance")
+	flash(tip.x, tip.y, tip.z, LN["rot"], 0.7, 0.14)
+	sfx("rotLance", px, pz, 0.8)
+	beam(tip, func() -> Variant: return end, LN["deep"], 0.03, 0.18)
+
+
+## The lance landing on `hits` ([Vector3] of the enemies it pierced, ground y ignored).
+func lance_hit(hits: Array) -> void:
+	var LN := DmFxData.spell_group("lance")
+	for h: Vector3 in hits:
+		smoke(h.x, 0.9, h.z, 2, LN["spore"], 0.3, 0.5, 0.5, 0.6, 0.8, {"shrink": -0.3})
+		emit(h.x, 1.0, h.z, 8, LN["rot"], 0.2, 2.0, 0.8, 0.45, 0.14, {"gravity": 3.0})
+	if not hits.is_empty():
+		sfx("needleHit", (hits[0] as Vector3).x, (hits[0] as Vector3).z, 0.7)
+
+
+## Marrow Spear: flash + beam at the staff tip.
+func spear_cast(tip: Vector3, end: Vector3) -> void:
+	var S := DmFxData.spell_group("spear")
+	flash(tip.x, tip.y, tip.z, S["bone"], 0.65, 0.12)
+	beam(tip, func() -> Variant: return end, S["bone"], 0.025, 0.16)
+
+
+## The spear line landing (ev: ox, oz, dx, dz, rng, radius, mult, end, hits). Returns the camera shake.
+func spear_line(ev: Dictionary) -> float:
+	var S := DmFxData.spell_group("spear")
+	var ox := float(ev["ox"])
+	var oz := float(ev["oz"])
+	var dx := float(ev["dx"])
+	var dz := float(ev["dz"])
+	var rng_m := float(ev["rng"])
+	var radius := float(ev["radius"])
+	var mult := float(ev["mult"])
+	var end: Vector3 = ev["end"]
+	for h: Vector3 in ev["hits"]:
+		flash(h.x, 0.8, h.z, S["bone"], 0.65, 0.14)
+	spike_line(ox, oz, dx, dz, rng_m, radius * 1.3, false)
+	decal("cracks", S["crack"], ox + dx * rng_m * 0.5, oz + dz * rng_m * 0.5, rng_m * 0.5, 0.65, 0.55, {"sx": 0.16 * mult, "rot": atan2(dx, dz)})
+	for i in range(1, 7):
+		var x := ox + dx * (float(i) / 6.0) * rng_m
+		var z := oz + dz * (float(i) / 6.0) * rng_m
+		emit(x, 0.3, z, 3, S["bone"], 0.25, 1.4, 2.1, 0.4, 0.12, {"gravity": 9.0})
+		if i % 2 == 0:
+			dirt(x, z, radius * 0.8, int(4.0 * mult))
+	splinters(end.x, 0.6, end.z, 6, S["bone"], 4.5)
+	lf(ox + dx * 4.0, 1.0, oz + dz * 4.0, S["crack"], 12.0, 0.22)
+	sfx("spear", ox + dx * 3.0, oz + dz * 3.0)
+	return 0.055
+
+
+## Ossuary Ring rune (ev: cx, cz, r, hits). Returns the camera shake.
+func spear_ring(ev: Dictionary) -> float:
+	var S := DmFxData.spell_group("spear")
+	var cx := float(ev["cx"])
+	var cz := float(ev["cz"])
+	var r := float(ev["r"])
+	for h: Vector3 in ev["hits"]:
+		flash(h.x, 0.8, h.z, S["bone"], 0.65, 0.14)
+	spike_ring(cx, cz, r * 0.95, DmMath.js_round(10.0 + r * 3.0), 1.1)
+	spike_ring(cx, cz, r * 0.5, 6, 0.9)
+	decal("ring", S["bone"], cx, cz, r * 1.05, 0.7, 0.85, {"growFrom": 0.3})
+	decal("cracks", S["crack"], cx, cz, r, 0.8, 0.6, {"rot": randf() * 6.0})
+	dirt(cx, cz, r * 0.8, 8, 3.0)
+	splinters(cx, 0.6, cz, 8, S["bone"], 4.5)
+	lf(cx, 1.0, cz, S["crack"], 14.0, 0.25)
+	sfx("spear", cx, cz)
+	return 0.07
+
+
+## Impaling rune (ev: ox, oz, dx, dz, rng, tx, tz, along, hit, root_s). `hit` false = the spear found nothing. Returns the camera shake.
+func spear_impale(ev: Dictionary) -> float:
+	var S := DmFxData.spell_group("spear")
+	var ox := float(ev["ox"])
+	var oz := float(ev["oz"])
+	var dx := float(ev["dx"])
+	var dz := float(ev["dz"])
+	if not bool(ev["hit"]):
+		var rng_m := float(ev["rng"])
+		spike_line(ox, oz, dx, dz, 2.0, 0.6, false)
+		dirt(ox + dx * rng_m, oz + dz * rng_m, 0.6, 4)
+		sfx("spear", ox + dx * rng_m, oz + dz * rng_m)
+		return 0.0
+	var tx := float(ev["tx"])
+	var tz := float(ev["tz"])
+	var root_s := float(ev["root_s"])
+	spike_ring(tx, tz, 0.95, 9, root_s + 0.1)
+	decal("ring", S["crack"], tx, tz, 1.3, root_s, 0.7, {"growFrom": 0.5, "fadeOut": 0.4})
+	spike_line(ox, oz, dx, dz, maxf(1.5, float(ev["along"])), 0.5, false)
+	flash(tx, 1.0, tz, S["bone"], 1.4, 0.2)
+	splinters(tx, 1.0, tz, 8, S["bone"], 4.5)
+	lf(tx, 1.0, tz, S["crack"], 14.0, 0.25)
+	sfx("spear", tx, tz)
+	return 0.06
+
+
+## Wailing Skull: the cast flash + wail at the staff tip.
+func skull_cast(tip: Vector3, px: float, pz: float) -> void:
+	flash(tip.x, tip.y, tip.z, DmFxData.spell("skull", "jade"), 0.9, 0.18)
+	sfx("wail", px, pz)
+
+
+## One skull in flight: the sprite shot (follows `to`) + its billboard glow. `more` = another leap follows (the old game's wail on the leap's start).
+func skull_leap(from: Vector3, to: Variant, speed: float) -> void:
+	var jade := DmFxData.spell("skull", "jade")
+	var h: Variant = shot(from, to, speed, 0.0, "sprite", jade, {"tex": "skull", "size": 0.95, "trail": jade})
+	bb("wailing_skull_projectile", from.x, from.z, {"y": from.y, "follow": Callable(h, "pos") if h != null else Callable()})
+
+
+## A skull landing (pos, killed = the blow killed it: bigger burst).
+func skull_hit(pos: Vector3, killed: bool, more: bool) -> void:
+	var SK := DmFxData.spell_group("skull")
+	sfx("needleHit", pos.x, pos.z, 1.2)
+	flash(pos.x, pos.y, pos.z, SK["pale"], 1.9 if killed else 1.3, 0.22, {"tex": "skull"})
+	decal("ring", SK["jade"], pos.x, pos.z, 0.9, 0.4, 0.9, {"growFrom": 0.3})
+	emit(pos.x, pos.y, pos.z, 18 if killed else 10, SK["jade"], 0.2, 2.4, 1.4, 0.5, 0.22, {"gravity": -1.0})
+	splinters(pos.x, pos.y, pos.z, 6 if killed else 3, SK["pale"])
+	if more:
+		sfx("wail", pos.x, pos.z, 0.6)
+
+
+## Ivory Cleave (ev: x, z, dx, dz, hits). Returns the camera shake.
+func cleave(ev: Dictionary) -> float:
+	var S := DmFxData.spell_group("spear")
+	var x := float(ev["x"])
+	var z := float(ev["z"])
+	var dx := float(ev["dx"])
+	var dz := float(ev["dz"])
+	var k := 0
+	for h: Vector3 in ev["hits"]:
+		k += 1
+		emit(h.x, 0.9, h.z, 5, S["bone"], 0.2, 2.4, 1.1, 0.35, 0.12, {"gravity": 8.0})
+		if k <= 2:
+			bb("ivory_cleave_hit", h.x, h.z)
+	var rot := atan2(dx, dz)
+	decal("crescent", S["bone"], x + dx * 1.5, z + dz * 1.5, 2.2, 0.45, 1.0, {"rot": rot, "growFrom": 0.6, "fadeOut": 0.3})
+	decal("crescent", S["crack"], x + dx * 1.6, z + dz * 1.6, 2.4, 0.35, 0.6, {"rot": rot, "growFrom": 0.7})
+	lf(x + dx * 1.5, 1.0, z + dz * 1.5, S["crack"], 14.0, 0.2)
+	sfx("ivoryCleave", x, z, 1.3)
+	if not (ev["hits"] as Array).is_empty():
+		sfx("boneHit", x + dx * 2.0, z + dz * 2.0)
+	return 0.05
+
+
+## Bone Storm begins: `follow` -> Vector3 (ground point) or null when it is over. Returns the handles [bones, dust, ring] so the caller can end them early.
+func storm_start(life: float, r: float, follow: Callable, x: float, z: float) -> Array:
+	var BS := DmFxData.spell_group("storm")
+	var B: Dictionary = DmCombatData.const_table("BONE_STORM")
+	var bones: Variant = null
+	if fx != null:
+		stats["bone_orbit"] += 1
+		bones = fx.bone_orbit({"fallbackTex": "boneShard", "fallbackColor": BS["bone"], "count": int(B["shards"]), "radius": r * 0.8, "y": 0.25, "size": 0.34, "duration": life,
+			"speed": 7.0, "follow": follow, "funnel": true})
+	var dust: Variant = bb("bone_storm_dust", x, z, {"follow": follow, "duration": life, "colors": [BS["bone"], BS["ash"], BS["dust"]]})
+	var ring: Variant = decal("ring", BS["ash"], x, z, r, life, 0.35, {"spin": 2.0, "fadeOut": 0.4, "follow": follow})
+	sfx("storm", x, z)
+	loop("boneStormLoop", life * 1000.0, x, z)
+	return [bones, dust, ring]
+
+
+## One storm pulse at (x, z) with radius r; `hit` = it struck something.
+func storm_tick(x: float, z: float, r: float, hit: bool) -> void:
+	var BS := DmFxData.spell_group("storm")
+	if hit:
+		sfx("boneHit", x, z)
+	smoke(x, 0.4, z, 3, BS["ash"], r * 0.4, 0.9, 1.4, 0.9, 1.1, {"shrink": -0.4})
+	splinters(x, 0.8, z, 6 if hit else 3, BS["bone"], r * 1.2)
+	dirt(x, z, r * 0.5, 3, 3.0)
+
+
+## Soul Siphon begins: tether beams from `cas` (caster point) to `tgt` (target point), both Callables -> Vector3 or null. Returns [beams, core, rim].
+func siphon_start(dur: float, cas: Callable, tgt: Callable, px: float, pz: float) -> Array:
+	var SI := DmFxData.spell_group("siphon")
+	var beams: Array = [beam(cas, tgt, SI["deep"], 0.1, dur), beam(cas, tgt, SI["jade"], 0.055, dur), beam(cas, tgt, SI["pale"], 0.02, dur)]
+	var first: Variant = tgt.call()
+	var core: Variant = null
+	if first != null:
+		core = bb("soul_orb", first.x, first.z, {"y": first.y, "follow": tgt, "duration": dur, "colors": [SI["jade"], SI["pale"], SI["deep"]]})
+	var rim: Variant = bb("soul_siphon_beam", px, pz, {"follow": cas, "duration": dur})
+	sfx("siphon", px, pz)
+	loop("siphonLoop", dur * 1000.0, px, pz, cas)
+	return [beams, core, rim]
+
+
+## One drain tick: motes along the tether (q = target point, c = caster point), `odd` = every other tick draws a rising skull.
+func siphon_tick(q: Vector3, c: Vector3, odd: bool) -> void:
+	var SI := DmFxData.spell_group("siphon")
+	for k in 6:
+		var f := (float(k) + randf()) / 6.0
+		emit(q.x + (c.x - q.x) * f, q.y + (1.4 - q.y) * f, q.z + (c.z - q.z) * f, 1, SI["pale"] if k % 2 == 1 else SI["jade"], 0.08, 0.2, 0.1, 0.3, 0.22)
+	emit(q.x, q.y, q.z, 5, SI["pale"], 0.25, 0.6, 0.3, 0.35, 0.16)
+	emit(c.x, 1.3, c.z, 3, SI["jade"], 0.2, 0.3, 0.6, 0.4, 0.18)
+	if odd:
+		skulls(q.x, q.z, SI["pale"], {"n": 1, "y": q.y + 0.3, "size": 0.5, "rise": 0.9, "duration": 0.7})

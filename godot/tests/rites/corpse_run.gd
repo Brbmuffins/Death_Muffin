@@ -251,7 +251,7 @@ func _part_a() -> void:
 	var max_e: float = c.p["stats"]["maxEssence"]
 
 	# --- unported kit rite + level gate
-	c.request_cast("marrow_spear", Vector3(0, 0, 5))
+	c.request_cast("grave_step", Vector3(0, 0, 5))
 	ok(rej.size() == 1 and rej[0][1] == "unavailable", "A: a kit rite without a module is refused locally (unavailable)")
 	c.p["stats"]["level"] = 1.0
 	rej.clear()

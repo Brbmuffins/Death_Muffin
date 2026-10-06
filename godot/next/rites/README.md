@@ -16,13 +16,20 @@ module** `rite_<id>.gd` (a `DmRiteModule`) listed in `dm_rite_registry.gd` (one 
 | `grave_offering` | (no default slot) | burn a corpse into essence (16, +8 resonant, x2 elite) and 4 % health via an orb (14 m/s). Free, 2 s, level 2 |
 | `bone_mantle` | (no default slot) | up to 5 corpses within 6 m -> barrier maxHp x min(0.45, 0.10 + 0.07 n) for 6 s, shards every 0.5 s within 1.7 m. 25 essence, 15 s, level 12 |
 | `carrion_seed` | (no default slot) | arm a corpse (arm 0.6 s, life 20 s, trigger 2.2 m); it bursts r 3 with 2 Withered stacks; one seed per caster. 18 essence, 6 s, level 8 |
+| `bone_fan` | LMB primary (level 2) | 3 slivers (24 m/s) homing on the clicked enemy + the 2 nearest the aim line in a 15 deg half-cone; range 8, free, 520 ms, +3 essence per landing up to 6 a cast |
+| `rot_lance` | LMB primary (level 6) | a 32 m/s lance pierces the first 2 enemies in a 0.25 m lane (range 14, free, 700 ms), +1 Withered stack each, +4 essence once |
+| `marrow_spear` | slot 1 | direction skillshot, 48 m/s, range 12, half-width 0.9 + 0.2: power 2.1, +1 Fracture + a bleed. Runes Ossuary Ring (r 3 ring, x0.8) and Impaling (first enemy, x1.5, root 1.5 s); `spearRally` mod marks the nearest hit for the legion. 18 essence, 2.2 s |
+| `wailing_skull` | grimoire (level 3) | 15 m/s skull at the enemy nearest the cursor (within 4 m), leaps up to 3 times within 6.5 m (x0.8 each, a kill earns another, max 5). 16 essence, 3 s |
+| `ivory_cleave` | grimoire (level 4) | instant 120 deg crescent, reach 3.6, power 1.7, +1 Fracture. 14 essence, 1.6 s |
+| `bone_storm` | grimoire (level 14) | ground funnel (range 10, r 2, power 0.5 every 0.4 s) that drifts 2.2 m/s toward the nearest enemy for 4 s (+0.6 s per corpse under it, up to +3 s; corpses only counted). 32 essence, 12 s |
+| `soul_siphon` | grimoire (level 6) | 3 s tether (range 9, breaks at 12.6): every 0.5 s power 0.55 damage, heals 35 % of it, +2 essence. 14 essence, 7 s |
 
 Hotbar mapping (the one place to take over): `dm_rite_hotbar.gd` (`DmRiteHotbar.rite_for_slot`, `wire(game)`): LMB = kit `defaultPrimary`, 1-4 = kit
-`defaultLoadout` (marrow_spear has no module yet: refused `unavailable`), RMB = kit `rmb`. `shake_requested(amount)` is the camera-shake seam.
+`defaultLoadout` (a kit rite without a module is refused `unavailable`), RMB = kit `rmb`. `shake_requested(amount)` is the camera-shake seam.
 World additions for the corpse rites: `world.corpses` (the `DmCorpseField`) and `world.area_of(peer)`; the thralls come from the body's `Thralls` host.
 
 All numbers come from the existing rules (`DmAbilities.cast_check / needle_cast / needle_hit / miasma / apply_cast_cost / shortfall`,
-`DmSimData.WITHERED / MIASMA_SLOW`, projectile speeds from `sim_caster.gd`). No new numbers except `PICK_RADIUS` (aim-point tolerance).
+`DmSimData.WITHERED / MIASMA_SLOW / HEMORRHAGE`, `DmCombatData.const_table(BONE_FAN, ROT_LANCE, WAILING_SKULL, IVORY_CLEAVE, BONE_STORM, SOUL_SIPHON)`, projectile speeds from `sim_caster.gd`). No new numbers except `PICK_RADIUS` (aim-point tolerance).
 
 ## Adding a rite (the recipe)
 
@@ -87,3 +94,7 @@ also polls it (hold = repeat, the host's cooldown paces it). Otherwise the shell
 - Enemies must exist on the host; `DmEnemy` authority is the host. The host steps the caster in `_physics_process` (`auto_step`).
 - Bodies need `owner_peer` (DmSessionBody has it) and sit in the same SceneTree as the enemies so `global_position` agree.
 - The cloud applies `slow` and `withered` through `DmStatusSet` (`next/status/`, ensured on each enemy it touches); the set owns `DmEnemy.speed_mult`. Deterministic hosts must also `advance(dt)` the enemies' sets (tests/rites does).
+
+Projectile rites (`rite_bone_fan` ... `rite_soul_siphon`): shared geometry is `DmRiteModule.pick_enemy / lane / follow_enemy`; shared visuals are the `DmRiteFx` "Projectile rites" section
+(same calls as `DmAbilitySystem`, which is untouched). Shots are host `c.after` callbacks (no host projectile objects) plus pooled visual `shot`s on every peer. Not ported: the Soul Harvest
+empowered cast (x1.5 spear), bosses as targets (the rebuild's world has none yet), the `legend` rally event fx. Storm and siphon keep a per-peer `mem(id).vis` for their drawn handles.
