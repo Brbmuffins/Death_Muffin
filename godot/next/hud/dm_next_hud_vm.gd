@@ -91,20 +91,12 @@ func _fill(s: Dictionary, id: String, b: DmHeroBody, level: float, key: String) 
 	s["unlock_level"] = DmAbilities.unlock_level(id)
 
 
-# ---- belt (heal flask; elixir and tonic are listed empty until the slice has a brewing loop) --------------------------------------
+# ---- belt (Q heal flask with its cooldown, Z / X brews: DmNextBelt) -------------------------------------------------------------
 
 func _brews() -> Array:
-	var flasks: Dictionary = DmContent.healing_flasks()
-	var total := 0
-	for f in flasks:
-		total += host.inventory.count(f)
-	var heal := {"slot": "heal", "key": "Q", "label": "Heal", "glyph": "✚", "color": 0xe0709c, "active": false, "left": 0, "frac": 0.0, "count": total, "empty": total == 0,
-		"tip": "Healing flasks (%d carried). Press Q to drink." % total if total > 0 else "No healing flasks."}
-	var out: Array = [heal]
-	for slot in ["elixir", "tonic"]:
-		out.append({"slot": slot, "key": String(DmContent.get_export("brews", "BREW_KEYS")[slot]).to_upper(), "label": slot.capitalize(), "glyph": "⚗" if slot == "elixir" else "✧",
-			"color": 0x8a8aa0, "active": false, "left": 0, "frac": 0.0, "count": 0, "empty": true, "tip": "Nothing on the belt."})
-	return out
+	if host.shell.progress != null and host.shell.progress.belt.inventory != null:
+		return host.shell.progress.belt.rows()
+	return []
 
 
 # ---- target frame, party, area line ----------------------------------------------------------------------------------------------

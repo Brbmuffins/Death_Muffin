@@ -43,9 +43,9 @@ All `DmGameUi` panels are constructed (they are built by `setup`, as in the old 
 - Not in the slice, hidden by omission: boss frame, kill chain, Depths readout, omen chip, Next-step guidance depends on bag/level only.
 
 ## Gaps
-- Gold / XP / shards earned are in memory (and `prog.save_dirty`); nothing persists the progression to the backend yet (the old `DmProgressSync`). The bag does flush to `api.save_inventory`.
+- Progression persistence, upgrade tiers, level-ups and the belt are `next/progress/` (DmProgressSync, `DmNextBelt`); see its README.
 - Client (non-host) peers get no real HUD yet (`hud: true` builds it for the host only); hurt numbers for a client's own damage need the vitals diff.
-- Elixir/tonic keys (Z/X), brews and the heal-flask cooldown are not wired; no auto-combat; ``buy_upgrade` spends gold on the tier but the slice's rites do not read the tiers yet.
+- No auto-combat; lifesteal / fortune / wisdom brews are not applied yet (damage, haste, ward, speed, essence are); Legion tier is not bought in the slice.
 - Loot drop/pickup sounds (`dropped_sound`, coin) are not forwarded to the AudioDirector.
 - Target frame shows no elite affixes (the slice enemies carry no affix list yet).
 

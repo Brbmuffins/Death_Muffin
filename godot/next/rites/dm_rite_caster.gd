@@ -141,6 +141,8 @@ func step(dt: float) -> void:
 	_sync_pos()
 	var res: Dictionary = p["resource"]
 	var rate := DmResources.passive("necromancer", {"stats": p["stats"], "value": res["value"], "max": res["max"], "sinceHurtMs": 1e9, "sinceResourceGainMs": 1e9})
+	if p["brews"].get("tonic") != null:   # Tonic of grave dust / ghostwalk: more essence regen (the old game's tick_vitals; regen is linear)
+		rate *= 1.0 + DmPlayerRules.brew_value(p, "essence", _now_ms)
 	res["value"] = clampf(float(res["value"]) + rate * dt, 0.0, float(res["max"]))
 	_step_pending()
 	for m: DmRiteModule in DmRiteRegistry.steppers():
@@ -161,6 +163,20 @@ func step(dt: float) -> void:
 func rebuild() -> void:
 	if _is_host() and _body != null:
 		_init_host_state()
+
+
+## Host: take new stats after a level-up, an upgrade or a gear change. Unlike rebuild() the cooldowns and essence stay.
+func refresh_stats(build: Dictionary) -> void:
+	if p.is_empty():
+		return
+	DmPlayerRules.set_stats(p, build["stats"])
+	p["loadout"] = build.get("loadout", p.get("loadout"))
+	_mods = build["discipline"]["mods"]
+
+
+## Host: a drunk brew on this caster's clock (damage / haste / essence brews act through `p["brews"]`). Returns DmBrews.apply_brew's result.
+func apply_brew(id: String) -> Dictionary:
+	return DmBrews.apply_brew(p["brews"], id, _now_ms)
 
 
 func _init_host_state() -> void:

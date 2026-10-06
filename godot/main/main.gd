@@ -8,6 +8,7 @@ extends Node
 var mode := "offline"
 var flow: DmFrontFlow
 var game: DmGame
+var slice: DmNextGame
 var ui: Node
 var perf: DmPerfOverlay
 var api: DmApi
@@ -45,6 +46,10 @@ func _ready() -> void:
 ## Window close: save everything first (the web's pagehide flush), then quit.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if slice != null and slice.ready_:
+			var s := slice
+			slice = null
+			await s.flush_all()   # the rebuild slice: last kill batch, progression, bag
 		if game != null and game.ready_:
 			var g := game
 			game = null
@@ -84,6 +89,7 @@ func _next_slice(args: PackedStringArray) -> void:
 	var c := await api.load_or_create_character(cls)
 	var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
+	slice = g
 	add_child(g)
 	await g.start(c.data, api, {"offline": true, "name": token_username(api.get_token())})
 

@@ -29,6 +29,7 @@ var kinds: Array = []                   ## [{id, weight}] with a scene
 var enemies: Dictionary = {}            ## id -> DmEnemy (every peer)
 var waves_spawned: int = 0
 var rng := RandomNumberGenerator.new()
+var wave_tier: float = 0.0              ## the Wave Speed tier in force (DmWaveUpgrades.wave_modifiers: interval, size, cap, enemy hp / damage); see set_wave_tier
 
 var _holder: Node3D
 var _spawner: MultiplayerSpawner
@@ -36,6 +37,8 @@ var _next_id: int = 1
 var _wave_t: float = 0.0
 var _empty_t: float = 0.0
 var _scene_cache: Dictionary = {}
+var _base := [6.5, 9, 28]               ## the area's own interval / size / cap, before the tier
+var _since_arrival: float = 0.0         ## s a hero has been in the area (Wave Speed ramps in over DmEnemyStats.RAMP_S, like the sim's ramp_tier)
 
 
 func _ready() -> void:
@@ -51,12 +54,25 @@ func _ready() -> void:
 	configure_area(area_id)
 
 
+## Wave Speed (the sim's formulas): the wave timer is divided by 1 + 0.12 d, a wave holds more (sizeMult), the area holds more (capMult).
+## Enemy hp / damage scale at spawn from the ramped tier.
+func set_wave_tier(tier: float) -> void:
+	wave_tier = tier
+	var m := DmWaveUpgrades.wave_modifiers(tier)
+	wave_interval = float(_base[0]) * float(m["intervalMult"])
+	wave_size = DmMath.js_round(float(_base[1]) * float(m["sizeMult"]))
+	cap = DmMath.js_round(float(_base[2]) * float(m["capMult"]))
+
+
 func configure_area(id: String) -> void:
 	area_id = id
 	var def: Dictionary = DmContent.area(id)
 	wave_interval = float(def.get("waveIntervalMs", 6500)) / 1000.0
 	wave_size = int(def.get("waveSize", 9))
 	cap = int(def.get("cap", 28))
+	_base = [wave_interval, wave_size, cap]
+	if wave_tier != 0.0:
+		set_wave_tier(wave_tier)
 	kinds.clear()
 	for e in def.get("enemies", []):
 		if scene_for(String(e["id"])) != null:
@@ -125,11 +141,13 @@ func _physics_process(delta: float) -> void:
 	var heroes := _heroes_in_area()
 	if heroes.is_empty():
 		_wave_t = first_wave_delay
+		_since_arrival = 0.0
 		_empty_t += delta
 		if _empty_t > EMPTY_CLEAR_S and not enemies.is_empty():
 			clear()
 		return
 	_empty_t = 0.0
+	_since_arrival += delta
 	_wave_t -= delta
 	if _wave_t <= 0.0:
 		_wave_t = wave_interval
@@ -180,10 +198,11 @@ func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false
 	for h in heroes:
 		levels.append(float((h as DmHeroBody).character.get("level", 1)))
 	var level := DmEnemyStats.area_level(area_id, levels, 0.0)
+	var tier := DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, _since_arrival)) if wave_tier > 0.0 else {"enemyHpMult": 1.0, "enemyDamageMult": 1.0}
 	_spawner.spawn({
 		"id": _next_id, "def": def_id, "pos": pos, "level": level,
-		"hp": DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))),
-		"dmg": DmEnemyStats.damage_scale(level), "rising": true, "elite": elite})
+		"hp": DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))) * float(tier["enemyHpMult"]),
+		"dmg": DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]), "rising": true, "elite": elite})
 	_next_id += 1
 
 

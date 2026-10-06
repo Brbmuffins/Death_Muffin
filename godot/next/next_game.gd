@@ -38,6 +38,7 @@ var api: Variant = null                         ## DmApi: the VPS backend online
 var is_offline: bool = true                     ## D4: true = backed by the local GDScript backend
 var area_id: String = "chapterhouse"
 var rewards: Node
+var progress: DmNextProgress                     ## child "Progress" (host): persistence, upgrades, level-ups, the belt (next/progress/)
 var enemy_fx: DmEnemyFx                          ## child "EnemyFx" (every peer): telegraphs, impacts, deaths, enemy voices
 var corpses: DmCorpseField                       ## child "Corpses" (same path on every peer); host lays corpses from enemy deaths
 var opts: Dictionary = {}
@@ -107,6 +108,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		var b := local_body()
 		b.bind_character(character)
 		_start_rewards(b)
+		await _start_progress(b)
 		_enter(b.position)
 		camera.snap(b.position)
 	# The current game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
@@ -152,6 +154,8 @@ func _start_hud() -> void:
 			if a != null:
 				a.play_sfx(n))
 		await ui.warm()
+		if progress != null:
+			progress.belt.load_pick(ui.belt_pick())
 
 
 ## Host: the rewards track's node (DmSessionRewards) with one member per player; kills arrive through `enemy_spawned` -> `died`.
@@ -165,6 +169,25 @@ func _start_rewards(b: DmHeroBody) -> void:
 	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
 	rewards.add_member(DmRewardsMember.make(int(character.get("id", 0)), session.get_my_id(), b, api, int(character.get("level", 1)), {"id": d["id"], "family": d["family"]}))
 	rewards.start(int(character.get("id", 0)))   # session_open (async; a failure arrives as session_failed)
+
+
+## Host: the character's persistence, upgrades, level-ups and belt (next/progress/). Awaited under the loading cover: it reads the backend's
+## saved progression (tiers, shards, kills) before the first wave.
+func _start_progress(b: DmHeroBody) -> void:
+	progress = DmNextProgress.new()
+	progress.name = "Progress"
+	add_child(progress)
+	await progress.setup(self, rewards.members.get(int(character.get("id", 0))), bool(opts.get("persist", DisplayServer.get_name() != "headless")))
+
+
+## Everything the character earned, saved: the session's last kill batch, the progression, the bag. The window close and leave() call it.
+func flush_all() -> void:
+	if rewards != null and session.is_host() and session.is_active():
+		await rewards.end_session({})
+	if progress != null:
+		await progress.flush_all()
+	if ui_host != null and ui_host.inventory != null:
+		await ui_host.inventory.flush()
 
 
 func _make_body() -> DmSessionBody:
@@ -247,11 +270,18 @@ func aim_target_id() -> int:
 
 
 func rite_build(peer_id: int) -> Dictionary:
-	var b := body_of(peer_id)
-	var ch: Dictionary = b.character if b != null and not b.character.is_empty() else {"class_index": 0, "level": 1}
-	var out := DmCharacterBuild.build(ch, [], {})
+	var out := build_for(peer_id)
 	out["runes"] = {}
 	return out
+
+
+## A body's DmCharacterBuild. The local host's carries its progression (damage tier, boons, vows) and its bag's gear; others get the defaults.
+func build_for(peer_id: int) -> Dictionary:
+	var b := body_of(peer_id)
+	var ch: Dictionary = b.character if b != null and not b.character.is_empty() else {"class_index": 0, "level": 1}
+	if progress != null and peer_id == session.get_my_id():
+		return DmCharacterBuild.build(ch, progress.slots(), progress.prog.local)
+	return DmCharacterBuild.build(ch, [], {})
 
 
 ## Who is in the session: [{peer_id, name, discipline, character_id, body}]. character_id is the backend character id of the local host's
@@ -284,4 +314,5 @@ func area_of(peer_id: int) -> String:
 
 
 func leave() -> void:
+	await flush_all()
 	await session.leave()

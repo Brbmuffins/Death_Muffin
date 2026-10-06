@@ -92,7 +92,7 @@ func _init_state() -> void:
 				best = int(k)
 		idx = best if best < (1 << 30) else 0
 		character = {"class_index": idx, "level": 1, "id": 0}
-	var b := DmCharacterBuild.build(character, [], {})
+	var b: Dictionary = game.build_for(owner_peer) if game != null and game.has_method("build_for") else DmCharacterBuild.build(character, [], {})
 	family = String(b["discipline"]["family"])
 	mods = b["discipline"]["mods"]
 	p = DmPlayerRules.new_state(b["stats"], family)
@@ -100,6 +100,33 @@ func _init_state() -> void:
 	p["z"] = position.z
 	p["facing"] = yaw
 	_mirror_from_state()
+
+
+## Host: take new stats after a level-up, an upgrade or a gear change (hp keeps its share; a level-up heals separately).
+func refresh_stats(build: Dictionary) -> void:
+	if p.is_empty():
+		return
+	DmPlayerRules.set_stats(p, build["stats"])
+	mods = build["discipline"]["mods"]
+	_mirror_from_state()
+
+
+## Host: a drunk brew on the body's clock (ward and speed brews act through `p["brews"]`).
+func apply_brew(id: String) -> Dictionary:
+	return DmBrews.apply_brew(p["brews"], id, _clock_ms)
+
+
+## Host: full health and resource (a level-up).
+func restore_vitals() -> void:
+	if p.is_empty():
+		return
+	p["hp"] = float(p["stats"]["maxHp"])
+	p["resource"]["value"] = p["resource"]["max"]
+	_mirror_from_state()
+
+
+func clock_ms() -> float:
+	return _clock_ms
 
 
 func _make_avatar() -> void:
@@ -133,7 +160,7 @@ func take_damage(amount: float, source: Node = null, kind: String = "melee") -> 
 	var from: Variant = null
 	if source is Node3D:
 		from = {"x": (source as Node3D).global_position.x, "z": (source as Node3D).global_position.z}
-	var taken := DmPlayerRules.take_damage(p, amount, _ward(), _clock_ms, from, kind, 0.0)
+	var taken := DmPlayerRules.take_damage(p, amount, _ward() + DmBrews.brew_ward(p["brews"], kind, _clock_ms), _clock_ms, from, kind, 0.0)
 	_mirror_from_state()
 	if taken > 0.0:
 		hurt.emit(taken, source)
@@ -248,6 +275,8 @@ func step_host(delta: float, _speed: float, _half: float) -> void:
 		_dir_ttl -= delta
 		if _dir_ttl <= 0.0:
 			move_dir = Vector3.ZERO
+	var br: Dictionary = p["brews"]   # Flask of speed / ghostwalk (a brew lookup only while one was ever drunk)
+	p["moveMult"] = 1.0 + DmBrews.brew_value(br, "speed", _clock_ms) if (br["elixir"] != null or br["tonic"] != null) else 1.0
 	var speed := DmPlayerRules.move_speed(p, _clock_ms)
 	var vel := Vector3.ZERO
 	if move_dir.length_squared() > 0.0001:

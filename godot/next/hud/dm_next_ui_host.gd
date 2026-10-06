@@ -83,11 +83,16 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 		prog = m.prog
 		prog.character = character           # xp / level / gold credited by the rewards land straight in the character the UI reads
 		shell.rewards.member_credited.connect(_on_credited)
+		if shell.progress != null:
+			shell.progress.event.connect(game_event.emit)   # level-up banner, milestone / seal toasts, belt floats
 		shell.rewards.kill_earned.connect(func(_c: int, _d: String, _p: Vector3) -> void: _kills[shell.area_id] = int(_kills.get(shell.area_id, 0)) + 1)
 	else:
 		prog = DmProgression.new(character, null)
 	inventory = DmInventory.new(api, hero_id)
 	inventory.changed.connect(func(_s: Array) -> void: inventory_changed.emit())
+	if shell.progress != null:
+		shell.progress.belt.inventory = inventory
+		inventory.changed.connect(func(_s: Array) -> void: shell.progress.request_stats())   # worn gear feeds the stats
 	if m != null:
 		m.take_item = Callable(self, "_take")   # a walked-over drop goes into the bag, which flushes to the backend
 		m.loot_view.picked.connect(_on_picked)
@@ -122,8 +127,14 @@ func _process(dt: float) -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	var e := event as InputEventKey
-	if e != null and e.pressed and not e.echo and e.keycode == KEY_Q and not (get_viewport().gui_get_focus_owner() is LineEdit):
+	if e == null or not e.pressed or e.echo or get_viewport().gui_get_focus_owner() is LineEdit:
+		return
+	if e.keycode == KEY_Q:
 		use_belt("heal")
+	else:
+		for slot in ["elixir", "tonic"]:   # Z / X (BREW_KEYS)
+			if e.keycode == OS.find_keycode_from_string(String(DmContent.get_export("brews", "BREW_KEYS")[slot])):
+				use_belt(slot)
 
 
 # ---- DmGame contract: state ---------------------------------------------------------------------------------------------------------
@@ -135,9 +146,14 @@ func hud_state() -> Dictionary:
 func build_cache() -> Dictionary:
 	var lvl := int(character.get("level", 1))
 	if _build.is_empty() or lvl != _build_level:
-		_build = DmCharacterBuild.build(character, [], {})
+		_build = shell.build_for(shell.session.get_my_id())
 		_build_level = lvl
 	return _build
+
+
+## The stats were re-read (a tier, gear, a level): drop the cached build.
+func build_changed() -> void:
+	_build = {}
 
 
 func kills_in(area: String) -> int:
@@ -185,9 +201,9 @@ func set_auto_combat(on: bool) -> void:
 	settings_store.update({"auto_combat": on})
 
 
-## Spends gold on the tier (DmProgression). The slice's rites do not read the tiers yet (rite_build passes empty progress).
+## Spends gold on the tier (the backend prices it); the tier reaches the rites' stats and the wave director (DmNextProgress.buy).
 func buy_upgrade(kind: String) -> void:
-	if (prog.buy_damage() if kind == "damage" else prog.buy_wave()):
+	if shell.progress.buy(kind) if shell.progress != null else (prog.buy_damage() if kind == "damage" else prog.buy_wave()):
 		progress_changed.emit()
 		character_changed.emit()
 
@@ -200,22 +216,23 @@ func set_rites(new_primary: String, new_keys: Array) -> void:
 
 ## The Q key and the Reliquary's Drink: a healing flask (the heal belt chip). Host-side vitals; a joiner's drink is a later phase.
 func use_item(item_id: String) -> void:
-	var f: Dictionary = DmContent.healing_flasks()
-	var b := shell.local_body()
-	if b == null or not b.alive or not f.has(item_id) or not shell.session.is_host() or not inventory.consume(item_id):
-		return
-	var amount: float = float(f[item_id]) * b.max_hp
-	b.heal(amount)
-	float_text(b.position + Vector3(0, 2.2, 0), "+%d" % DmMath.js_round(amount), "heal")
+	if shell.progress != null and shell.session.is_host():
+		shell.progress.belt.use(item_id)   # a flask, brew or meal, with the old game's rules (cooldown, replace / extend, Dry Cellar)
 
 
 func use_belt(slot: String) -> void:
+	if shell.progress == null or not shell.session.is_host():
+		return
 	if slot == "heal":
-		for f in DmContent.healing_flasks():
-			if inventory.count(f) > 0:
-				use_item(f)
-				return
-		float_text(shell.local_body().position + Vector3(0, 2.4, 0), "No healing potions", "info")
+		shell.progress.belt.drink_flask()
+	else:
+		shell.progress.belt.drink_belt(slot)
+
+
+## The UI keeps the belt pick in its store and tells the game which brew a slot holds.
+func set_belt(slot: String, item_id: String) -> void:
+	if shell.progress != null:
+		shell.progress.belt.set_belt(slot, item_id)
 
 
 func navigate(x: float, z: float) -> void:
@@ -352,7 +369,7 @@ func _on_credited(cid: int, delta: Dictionary) -> void:
 	if cid != hero_id:
 		return
 	character_changed.emit()
-	if int(delta.get("levels", 0)) > 0:
+	if shell.progress == null and int(delta.get("levels", 0)) > 0:   # DmNextProgress presents level-ups when it exists
 		game_event.emit("toast", {"text": "Level %d reached" % int(character["level"]), "kind": "good"})
 		game_event.emit("level_up", {"level": int(character["level"])})
 

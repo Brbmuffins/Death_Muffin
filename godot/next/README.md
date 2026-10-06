@@ -19,6 +19,7 @@
 | Net | `next_net.gd` | enemy `get/apply_net_state` + hero vitals, 20 Hz, only when peers exist |
 | Input | `next_input.gd` | click-to-move, WASD, hotbar seam, hover pick (10 Hz) |
 | Camera | `DmCameraRig` | existing rig |
+| Progress | `progress/dm_next_progress.gd` | host: DmProgression + DmProgressSync persistence, upgrades -> rites / waves, level-ups, milestones, belt (`progress/README.md`) |
 | Hud | `next_hud.gd` | health + resource `DmHudOrb`, area name, death veil |
 Players are `hero/dm_hero_body.gd` (`DmHeroBody`, a `DmSessionBody`): `DmAvatar` model for the discipline, `DmPlayerRules` vitals,
 navmesh-clamped mover (walls slide), collider on the player layer, group `dm_target`, `take_damage(amount, source)`, death -> respawn in the
