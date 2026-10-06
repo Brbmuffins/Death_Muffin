@@ -5,7 +5,9 @@ extends SceneTree
 const S := DmEnemyState.Id
 const DT := 1.0 / 60.0
 const BUDGET_BRAIN_US := 150.0   ## same budget as the Graves crowd (kinds_run.gd)
-const BUDGET_PHYS_MS := 30.0   ## quiet VPS ~4-5 ms; dev runs at load average 40 measured 12-22 ms. Catches runaway cost, brain us is the strict number
+## Whole-frame cost (DmFrameCost: physics + process + redraw): budget on the median of the samples, generous cap on the worst frame.
+const BUDGET_FRAME_MS := 16.0
+const CAP_WORST_FRAME_MS := 150.0
 
 ## Stand-in for a thrall (DmThrall contract the acolyte uses): group dm_thrall, `died`, `dead_reason`.
 class FakeThrall:
@@ -530,26 +532,22 @@ func _t_perf() -> void:
 	dummy.global_position = Vector3(0, 0, 6)
 	await secs(1.0)
 	var brains: Array = []
-	var phys: Array = []
-	var procs: Array = []
+	var fmed: Array = []
+	var fworst: Array = []
 	var per_kind := {}
 	var blows := 0
 	for sample in 5:
 		DmEnemy.prof_reset()
-		var phys_sum := 0.0
-		var proc_sum := 0.0
-		var frames := 0
+		var fc := DmFrameCost.attach(root)
 		var start := now()
 		while now() - start < 3.0:
 			var a := (now() - start) * 0.6
 			dummy.global_position = Vector3(sin(a) * 3.0, 0, 6.0 + cos(a) * 3.0)
 			await physics_frame
-			frames += 1
-			phys_sum += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
-			proc_sum += Performance.get_monitor(Performance.TIME_PROCESS)
 		brains.append(float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)))
-		phys.append(phys_sum / frames * 1000.0)
-		procs.append(proc_sum / frames * 1000.0)
+		fc.queue_free()
+		fmed.append(fc.median_ms())
+		fworst.append(fc.worst_ms())
 		for k in DmEnemy.prof_kind:
 			var v: Array = DmEnemy.prof_kind[k]
 			if not per_kind.has(k):
@@ -566,9 +564,9 @@ func _t_perf() -> void:
 	for e in es:
 		if e.sm.id() != S.IDLE and e.sm.id() != S.RISING:
 			engaged += 1
-	print("PERF mixed-30 Cloister crowd (median of 5 x 3 s): brain %.1f us/enemy-tick, physics %.2f ms/tick, process %.2f ms/frame, engaged %d/30, %d blows" % [median(brains), median(phys), median(procs), engaged, int(dummy.hits_taken)])
+	print("PERF mixed-30 Cloister crowd (median of 5 x 3 s): brain %.1f us/enemy-tick, frame median %.2f ms (worst %.1f), engaged %d/30, %d blows" % [median(brains), median(fmed), median(fworst), engaged, int(dummy.hits_taken)])
 	print("PERF   per kind:", line)
 	check(engaged >= 27, "the mixed crowd is engaged (%d/30)" % engaged)
 	check(median(brains) < BUDGET_BRAIN_US, "mixed brain cost %.1f us/enemy-tick under %.0f us" % [median(brains), BUDGET_BRAIN_US])
 	check(worst < BUDGET_BRAIN_US, "every kind under the %.0f us budget (worst %.1f us)" % [BUDGET_BRAIN_US, worst])
-	check(median(phys) < BUDGET_PHYS_MS, "physics tick %.2f ms under %.0f ms" % [median(phys), BUDGET_PHYS_MS])
+	check(median(fmed) < BUDGET_FRAME_MS and median(fworst) < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [median(fmed), BUDGET_FRAME_MS, median(fworst), CAP_WORST_FRAME_MS])

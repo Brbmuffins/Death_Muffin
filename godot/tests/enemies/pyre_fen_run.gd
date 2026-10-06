@@ -6,7 +6,9 @@ extends SceneTree
 const S := DmEnemyState.Id
 const DT := 1.0 / 60.0   ## sim seconds per physics tick (240 ticks/s x time_scale 4 in the fight tests, 60 x 1 in the perf test)
 const BUDGET_BRAIN_US := 150.0
-const BUDGET_PHYS_MS := 12.0
+## Whole-frame cost (DmFrameCost: physics + process + redraw): median budget (or within 1.5x the robber crowd), generous cap on the worst frame.
+const BUDGET_FRAME_MS := 16.0
+const CAP_WORST_FRAME_MS := 150.0
 
 class CH:
 	extends RefCounted
@@ -557,7 +559,7 @@ func _t_fx() -> void:
 
 # ======================================================================================================================== perf
 
-## One 30-body crowd sample (real time, visuals + animation on): [brain us/enemy-tick, physics ms/tick, process ms/frame, engaged, per-kind line].
+## One 30-body crowd sample (real time, visuals + animation on): [brain us/enemy-tick, frame median ms, frame worst ms, engaged, per-kind line].
 func _crowd(mix: Array) -> Array:
 	await new_arena()
 	DmEnemy.profile = true
@@ -568,24 +570,20 @@ func _crowd(mix: Array) -> Array:
 	dummy.global_position = Vector3(0, 0, 6)
 	await secs(1.0)
 	DmEnemy.prof_reset()
-	var ps := 0.0
-	var pr := 0.0
-	var frames := 0
+	var fc := DmFrameCost.attach(root)
 	var start := now()
 	while now() - start < 4.0:
 		var a := (now() - start) * 0.6
 		dummy.global_position = Vector3(sin(a) * 3.0, 0, 6.0 + cos(a) * 3.0)
 		await physics_frame
-		frames += 1
-		ps += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
-		pr += Performance.get_monitor(Performance.TIME_PROCESS)
+	fc.queue_free()
 	DmEnemy.profile = false
 	var line := ""
 	for k in DmEnemy.prof_kind:
 		var v: Array = DmEnemy.prof_kind[k]
 		line += " %s %.0f us;" % [k, float(v[1]) / maxf(1.0, float(v[0]))]
 	var engaged := es.filter(func(e): return e.sm.id() != S.IDLE and e.sm.id() != S.RISING).size()
-	return [float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)), ps / frames * 1000.0, pr / frames * 1000.0, engaged, line]
+	return [float(DmEnemy.prof_brain_us) / maxf(1.0, float(DmEnemy.prof_ticks)), fc.median_ms(), fc.worst_ms(), engaged, line]
 
 
 func _med(a: Array[float]) -> float:
@@ -606,7 +604,7 @@ func _t_perf() -> void:
 		base_mix.append("robber")
 	var mb: Array[float] = []
 	var mp: Array[float] = []
-	var mr: Array[float] = []
+	var mr: Array[float] = []   # worst frame of each mixed sample
 	var bb: Array[float] = []
 	var bp: Array[float] = []
 	var engaged := 0
@@ -625,8 +623,9 @@ func _t_perf() -> void:
 	var phys := _med(mp)
 	var base_brain := _med(bb)
 	var base_phys := _med(bp)
-	print("PERF mixed-30 Pyre/Fen crowd (median of 3): brain %.1f us/enemy-tick (30 robbers %.1f), physics %.2f ms/tick (30 robbers %.2f), process %.2f ms/frame, engaged %d/30" % [brain, base_brain, phys, base_phys, _med(mr), engaged])
+	print("PERF mixed-30 Pyre/Fen crowd (median of 3): brain %.1f us/enemy-tick (30 robbers %.1f), frame median %.2f ms (30 robbers %.2f), worst %.1f ms, engaged %d/30" % [brain, base_brain, phys, base_phys, _med(mr), engaged])
 	print("PERF   per kind (last sample):", line)
 	check(engaged >= 27, "the mixed crowd is engaged (%d/30)" % engaged)
 	check(brain < BUDGET_BRAIN_US or brain <= base_brain * 1.5, "median brain cost %.1f us/enemy-tick under %.0f us or 1.5x the robber crowd (%.1f)" % [brain, BUDGET_BRAIN_US, base_brain])
-	check(phys < BUDGET_PHYS_MS or phys <= base_phys * 1.5, "median physics tick %.2f ms under %.0f ms or 1.5x the robber crowd (%.2f)" % [phys, BUDGET_PHYS_MS, base_phys])
+	check(phys < BUDGET_FRAME_MS or phys <= base_phys * 1.5, "median frame %.2f ms under %.0f ms or 1.5x the robber crowd (%.2f)" % [phys, BUDGET_FRAME_MS, base_phys])
+	check(_med(mr) < CAP_WORST_FRAME_MS, "worst frame %.1f ms under %.0f ms" % [_med(mr), CAP_WORST_FRAME_MS])
