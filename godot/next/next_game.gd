@@ -32,6 +32,7 @@ signal hero_respawned(body: DmHeroBody)         ## host
 var hud: DmNextHud                              ## only with opts hud = "minimal"
 var ui_host: DmNextUiHost                       ## the DmGame-contract adapter the real HUD reads (hud mode true)
 var ui: DmGameUi                                ## the existing HUD + panels
+var chapterhouse: DmChapterhouse                ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
 
 var character: Dictionary = {}
 var api: Variant = null                         ## DmApi: the VPS backend online, the offline backend (DmOffline.make_api) offline
@@ -124,6 +125,18 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		await _start_progress(b)
 		_enter(b.position)
 		camera.snap(b.position)
+	chapterhouse = DmChapterhouse.new()
+	chapterhouse.name = "Chapterhouse"
+	add_child(chapterhouse)
+	chapterhouse.setup(self)
+	# A click on a boss summoning site (the hub owns hover/click, the bosses host owns summoning; E at the grave already summons there).
+	chapterhouse.interacted.connect(func(it: Dictionary) -> void:
+		if String(it.get("kind", "")) == "boss":
+			var bid := chapterhouse.boss_for_summon(String(it["id"]))
+			if bid != "":
+				bosses.request_summon(bid))
+	if session.is_host():
+		chapterhouse.start_seals()
 	# The current game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
 	await _start_hud()
 	# One hotbar path: the real HUD casts from the player's loadout (Grimoire edits); without it, the kit mapping does

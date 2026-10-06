@@ -39,7 +39,7 @@ Changed: `game_ui/dm_game_ui.gd` gains `var warm_panels` (default = the old `WAR
 Pre-built under the loading cover (`ui.warm()`, same pre-build + apply-during-loading as the current game): **Bag (Reliquary)**, **Grimoire**, **Settings**.
 All `DmGameUi` panels are constructed (they are built by `setup`, as in the old game) but only those three are laid out ahead and tested here. Left, with TODO:
 - Sheet (J), Legion (Y), Forge/Salvage/Shelf (C), Professions/Garden/Labor/Contracts (P/U/H/O), Codex (K), Atlas (.), Ascension, Waystone map (M), Vault, Cosmetics: open
-  and work on the offline backend in principle but need slice data (stations, NPCs, waystones, Acre areas) and are untested; `npc_interact` / `station_interact` are never emitted.
+  and work on the offline backend in principle but need slice data (stations, NPCs, waystones, Acre areas) and are untested; `npc_interact` / `station_interact` are emitted by `next/chapterhouse/` (Reliquary, Workbench, Altar, Vault, Waystone, Acre/Wing stations verified by `tests/chapterhouse`).
 - Not in the slice, hidden by omission: boss frame, kill chain, Depths readout, omen chip, Next-step guidance depends on bag/level only.
 
 ## Gaps

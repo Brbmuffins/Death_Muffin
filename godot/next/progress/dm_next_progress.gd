@@ -170,8 +170,13 @@ func _level_up(gained: int) -> void:
 	sfx("levelUp")
 
 
-## A seal opens once its area's kills are in (the banked truth). The slice has no door beyond the Graves yet, so it is banked and told.
+## A seal opens once its area's kills are in (the banked truth). With the hub present it owns seals (doors, navmesh, the banner):
+## breaking it here first left the hub finding it already open (no door, no banner). Without the hub: bank it and toast.
 func _check_unlocks() -> void:
+	if shell != null and shell.chapterhouse != null:
+		if not shell.chapterhouse.check_seals().is_empty():
+			psync.flush()
+		return
 	for id in DmContent.area_order():
 		var u: Variant = DmContent.area(id).get("unlock")
 		if u == null or prog.really_unlocked(id):

@@ -22,6 +22,7 @@ signal feedback(text: String)                ## a cast was refused / unavailable
 
 const REJECT_TEXT := {"essence": "Not enough Grave Essence", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
 const FEEDBACK_GAP_MS := 600
+const CLIENT_OWNED_CHARACTER_FIELDS := ["gold", "level", "experience", "stat_str", "stat_agi", "stat_int", "stat_vit"]   ## as DmGame
 
 var shell: DmNextGame
 var api: Variant
@@ -60,6 +61,7 @@ var _kills: Dictionary = {}
 var _bound: Dictionary = {}                  ## body instance id -> true: its caster / hurt signals are connected
 var _bind_t := 0.0
 var _last_feedback := 0
+var _character_seq := 0
 var _full_at := -100000
 var _target_id := 0
 var _target_until := 0.0
@@ -105,6 +107,9 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	primary = String(r["primary"])
 	keys = r["keys"]
 	vm = DmNextHudVm.new(self)
+	if shell.chapterhouse != null:          # NPC / station use -> the events DmGameUi opens dialogue and panels from
+		shell.chapterhouse.npc_interact.connect(func(id: String) -> void: npc_interact.emit(id))
+		shell.chapterhouse.station_interact.connect(func(id: String) -> void: station_interact.emit(id))
 	shell.input.hotbar.connect(_on_hotbar)
 	shell.area_changed.connect(func(id: String) -> void: area_changed.emit(id))
 	shell.hero_died.connect(func(_b: DmHeroBody) -> void: hero_died.emit())
@@ -160,11 +165,25 @@ func kills_in(area: String) -> int:
 	return int(_kills.get(area, 0))
 
 
+## The server's view of the character (fields the server owns only, newest request wins, as DmGame.refresh_character): the Workbench, Vault
+## and Altar panels change the backend and call this.
 func refresh_character() -> void:
+	_character_seq += 1
+	var seq := _character_seq
+	var r: DmResult = await api.get_character()
+	if seq == _character_seq and r.ok and r.data is Dictionary:
+		for k in r.data:
+			if k in CLIENT_OWNED_CHARACTER_FIELDS and character.has(k):
+				continue
+			character[k] = r.data[k]
 	character_changed.emit()
 
 
+## The Altar's vows / boons / ascension live on the backend: adopt its necro state (plus what was gathered since), as DmGame.refresh_progress.
 func refresh_progress() -> void:
+	var r: DmResult = await api.necro_get(hero_id)
+	if r.ok and r.data is Dictionary and r.data.has("progress"):
+		prog.adopt(r.data["progress"])
 	progress_changed.emit()
 
 
@@ -233,6 +252,27 @@ func use_belt(slot: String) -> void:
 func set_belt(slot: String, item_id: String) -> void:
 	if shell.progress != null:
 		shell.progress.belt.set_belt(slot, item_id)
+
+
+# ---- hub: the Chapterhouse node (next/chapterhouse/) answers these DmGameUi calls ------------------------------------------------------
+
+func talk_key() -> void:
+	if shell.chapterhouse != null:
+		shell.chapterhouse.talk_key()
+
+
+func travel(area_id_: String) -> void:
+	if shell.chapterhouse != null:
+		shell.chapterhouse.travel(area_id_)
+
+
+func stop_player() -> void:
+	if shell.chapterhouse != null:
+		shell.chapterhouse.stop_player()
+
+
+func near_grinder() -> bool:
+	return shell.chapterhouse != null and shell.chapterhouse.near_grinder()
 
 
 func navigate(x: float, z: float) -> void:

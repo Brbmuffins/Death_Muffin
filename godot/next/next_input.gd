@@ -74,6 +74,8 @@ func _process(dt: float) -> void:
 	if gp != null:
 		_aim = Vector3(gp.x, 0.0, gp.z)
 	_hover_id = _pick_enemy(mp)
+	if game.chapterhouse != null:
+		game.chapterhouse.hover_at(mp)    # stations / NPCs under the cursor (prompt + highlight)
 
 
 func _unhandled_input(ev: InputEvent) -> void:
@@ -115,6 +117,8 @@ func _primary_click(screen: Vector2) -> void:
 	_hover_id = _pick_enemy(screen)
 	if _hover_id != 0:
 		press_hotbar(0)
+	elif game.chapterhouse != null and game.chapterhouse.click_at(screen):
+		pass                                  # walks to the station / NPC and uses it on arrival
 	elif gp != null:
 		click_move(_aim)
 

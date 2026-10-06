@@ -47,6 +47,7 @@ func build() -> Dictionary:
 			"cost": null if host.prog.wave_cost() == -1 else host.prog.wave_cost()},
 		"souls": 0, "souls_max": 10, "raises_thralls": family == "necromancer",
 	}
+	vm["prompt"] = g.chapterhouse.prompt_text if g.chapterhouse != null else null
 	var th := b.get_node_or_null("Thralls") as DmThrallHost
 	vm["thralls"] = int(th.places_used()) if th != null else 0
 	vm["thrall_cap"] = int(host.build_cache()["discipline"]["mods"]["thrallCap"])
@@ -163,9 +164,9 @@ func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 	var builder: DmWorldBuilder = g.world.builder
 	if builder != null:
 		for a in _areas:
-			a["unlocked"] = builder.area_nodes.has(a["id"])
+			a["unlocked"] = builder.unlocked.has(a["id"])
 		for d in _doors:
-			d["open"] = builder.nav_regions.has("door:" + String(d["id"]))
+			d["open"] = g.chapterhouse.door_open(String(d["id"])) if g.chapterhouse != null else builder.nav_regions.has("door:" + String(d["id"]))
 	var enemies: Array = []
 	for e in g.director.enemies.values():
 		var en := e as DmEnemy
