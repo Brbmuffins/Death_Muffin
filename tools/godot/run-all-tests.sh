@@ -14,6 +14,11 @@ for d in godot/tests/*/; do
     line=$(echo "$out" | grep -iE '[0-9]+ (/ [0-9]+ )?passed' | tail -1)
     [ $code -ne 0 ] && rc=1
     printf '%-18s %-16s exit=%d  %s\n' "$t" "$(basename "$r")" "$code" "${line:-$(echo "$out" | grep -iE 'error|missing|skip' | head -1)}"
+    # A failing suite names its failing checks (the summary line alone hid every flaky check), plus the load at the time.
+    if [ $code -ne 0 ]; then
+      echo "$out" | grep -E '^FAIL' | head -8 | sed 's/^/    /'
+      echo "    (load: $(cut -d' ' -f1-3 /proc/loadavg))"
+    fi
   done
 done
 exit $rc
