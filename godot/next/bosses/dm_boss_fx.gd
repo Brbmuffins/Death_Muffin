@@ -64,13 +64,22 @@ func _process(dt: float) -> void:
 	fx.update(dt)
 
 
-## Silent one-of-each shape at `at` (loading time): decal textures, pools and shaders exist before the first fight.
+## Silent one-of-each shape at `at` (loading time): decal textures, pools and shaders exist before the first fight. The kinds the live bosses draw most
+## differently (cone / grave, line / spokes / arc / ring / rain circles, and the phase burst + the summon marks); no sound, no banner.
+const WARM_KINDS := ["sweep", "bury", "lance", "chorus", "hymn", "toll", "rain", "phase", "summon"]
+
+
 func warm(at: Vector3) -> void:
 	var quiet := fx.audio
+	var sink := host.sink
 	fx.audio = null
-	for kind in ["sweep", "bury"]:
-		play({"t": "boss", "kind": kind, "x": at.x, "z": at.z, "phase": 1, "boss": "gravedigger", "ms": 250.0, "dir": 0.0, "r": 4.5, "targets": [[at.x, at.z + 2.0]]})
+	host.sink = Callable()
+	for kind in WARM_KINDS:
+		play({"t": "boss", "kind": kind, "x": at.x, "z": at.z, "phase": 2, "boss": "gravedigger" if kind == "sweep" or kind == "bury" else "abbess", "ms": 250.0, "dir": 0.0, "r": 4.5,
+			"targets": [[at.x, at.z + 2.0]]})
+	events = 0
 	fx.audio = quiet
+	host.sink = sink
 
 
 ## A toxic ground pool (Saint rot): the current client's zone look (cracked green ground, bubbling puddle), gone with the zone node.

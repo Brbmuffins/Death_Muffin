@@ -175,10 +175,31 @@ func _part_a() -> void:
 	g.bosses.fx.set_backends(stub, astub)
 	check(g.bosses != null and g.bosses.name == "Bosses" and g.bosses.fx != null, "A: DmNextGame has a Bosses host with fx")
 	await ticks(2)
+	# ---- the summon prompt is the hub's, not a toast; key E still wakes it
+	var toasts: Array = []
+	g.bosses.fx.host.sink = func(id: String, _ctx: Dictionary) -> void: toasts.append(id)
+	g.bosses.assume_area = "graves"
+	hb.teleport(GRAVE)
+	await ticks(45)
+	g.chapterhouse._update_prompt(hb)
+	check(g.chapterhouse.prompt_text == "<kbd>E</kbd> Summon The Gravedigger King · 2 shards" and not toasts.has("toast"), "A: at the grave the hub prompt reads '%s', no toast" % g.chapterhouse.prompt_text)
+	_member().prog.add_shards(2)
+	var kev := InputEventKey.new()
+	kev.physical_keycode = KEY_E
+	kev.pressed = true
+	g.bosses._unhandled_input(kev)
+	check(g.bosses.active_boss() != null, "A: key E at the grave wakes the King")
+	g.chapterhouse._update_prompt(hb)
+	check(g.chapterhouse.prompt_text == null, "A: the prompt hides while he is awake")
+	g.bosses.active_boss().queue_free()
+	await ticks(3)
+	g.bosses.fx.host.sink = Callable()
+	g.bosses.assume_area = ""
+	evs.clear()
 	# ---- summon rules
 	hb.teleport(Vector3(0, 0, 20))
 	check(g.bosses.try_summon(g.session.get_my_id(), "gravedigger") == "far", "A: summon refused away from the grave (far)")
-	check(g.bosses.try_summon(g.session.get_my_id(), "prelate") == "unknown" and g.bosses.try_summon(g.session.get_my_id(), "abbess") == "unknown", "A: other areas' bosses / the Prelate are not summonable here")
+	check(g.bosses.try_summon(g.session.get_my_id(), "nobody") == "unknown" and g.bosses.try_summon(g.session.get_my_id(), "abbess") == "far", "A: a boss that is not live is unknown; another area's live boss is far from here")
 	hb.teleport(GRAVE)
 	await ticks(2)
 	check(g.area_of(g.session.get_my_id()) == "graves", "A: hero is in the Hollow Graves")

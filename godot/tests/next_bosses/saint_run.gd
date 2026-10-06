@@ -21,7 +21,7 @@ func _part_a() -> void:
 	check(g.bosses.site_pos("saint").is_equal_approx(SITE) and SITE != Vector3.INF, "saint: the summon site is the cloister's saints_litter %s" % str(SITE))
 	hb.teleport(Vector3(0, 0, 20))
 	check(g.bosses.try_summon(g.session.get_my_id(), "saint") == "far", "saint: refused away from the litter (far)")
-	check(g.bosses.try_summon(g.session.get_my_id(), "abbess") == "unknown" and g.bosses.try_summon(g.session.get_my_id(), "prelate") == "unknown", "saint: other areas' bosses are not summonable here")
+	check(g.bosses.try_summon(g.session.get_my_id(), "abbess") == "far" and g.bosses.try_summon(g.session.get_my_id(), "nobody") == "unknown", "saint: another area's boss is far from here; an unknown id is unknown")
 	await at_site(0)
 	check(g.area_of(g.session.get_my_id()) == "cloister", "saint: hero is in the Cloister")
 	check(g.bosses.try_summon(g.session.get_my_id(), "saint") == "shards" and g.bosses.bosses.is_empty(), "saint: no shards -> refused")

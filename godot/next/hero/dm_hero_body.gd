@@ -29,6 +29,7 @@ var resource_max: float = 100.0
 var alive: bool = true
 var family: String = "necromancer"
 var move_speed: float = 5.0
+var wade_mult: float = 1.0                      ## host: the Drowned Congregation's rising water (DmBossHost), x the move speed
 var speed_mult: float = 1.0                     ## written by the body's DmStatusSet only (chill, root = 0); the host's mover scales its speed by it
 var moving: bool = false
 
@@ -306,7 +307,8 @@ func step_host(delta: float, _speed: float, _half: float) -> void:
 		if _dir_ttl <= 0.0:
 			move_dir = Vector3.ZERO
 	var br: Dictionary = p["brews"]   # Flask of speed / ghostwalk (a brew lookup only while one was ever drunk)
-	p["moveMult"] = 1.0 + DmBrews.brew_value(br, "speed", _clock_ms) if (br["elixir"] != null or br["tonic"] != null) else 1.0
+	var brew_mult := 1.0 + DmBrews.brew_value(br, "speed", _clock_ms) if (br["elixir"] != null or br["tonic"] != null) else 1.0
+	p["moveMult"] = brew_mult * wade_mult   # the Congregation's water x brews; the status speed_mult is applied once, below
 	var speed := DmPlayerRules.move_speed(p, _clock_ms) * speed_mult
 	var vel := Vector3.ZERO
 	if _clock_ms < float(p["rootedUntil"]):

@@ -1,6 +1,6 @@
 class_name DmBossHost
 extends Node
-## The bosses of the slice, one node per peer at the same path (`Bosses` under DmNextGame). Host: summon rules (soul shards at the boss's grave),
+## The bosses of the slice, one node per peer at the same path (`Bosses` under DmNextGame). Host: summon rules (soul shards at the boss's grave / altar / bell),
 ## spawns the DmBoss body (MultiplayerSpawner), turns the brain's events into consequences (player hurt, root, thrall damage, defeat -> rewards)
 ## and broadcasts the boss events + 20 Hz state to the other peers. Every peer: DmBossFx plays each event once, the boss music follows the local
 ## hero. Solo is the same code on the OfflineMultiplayerPeer.
@@ -14,17 +14,20 @@ signal brain_event(ev: Dictionary, boss: DmBoss)  ## host: every event the brain
 signal reset(boss_id: String)                     ## host: the party wiped / left, the boss went back to sleep
 
 const SCENE := "res://next/bosses/boss.tscn"
+## The bosses this build wakes (each in its own area, whichever the world has open; area-agnostic). One line per boss track.
+const LIVE := ["gravedigger", "abbess", "congregation", "prelate", "saint", "regent", "mire"]
+const ADDS := ["niche", "wraith", "penitent", "risen", "ghoul", "robber", "plague_doctor", "flagellant", "rat", "cinder_husk", "pyre_priest", "cinderhound", "mire_leech", "bog_hag"]   ## defs the live brains spawn (warm())
 const ID_BASE := 1000000                          ## dm_id of bosses (the director's ids are small)
-const SUMMON_RANGE := 4.0                         ## metres from the grave
+const SUMMON_RANGE := 4.0                         ## metres from the site
 const SEND_HZ := 20.0
 const FREE_S := 8.0                               ## a defeated body stays this long (the view fades after 2.5 s)
-const WHY := {"busy": "Another boss is awake.", "far": "Stand at the grave to wake it.", "shards": "The grave demands soul shards. Elites carry them.",
+const WHY := {"busy": "Another boss is awake.", "far": "Stand at its altar to wake it.", "shards": "%s demands %d soul shards%s. Elites carry them.",
 	"dead": "You are dead.", "unknown": "Nothing sleeps here.", "area": "Nothing sleeps here."}
 
 var game: Node                                    ## DmNextGame
-var area_id: String = "graves"
+var area_id: String = "graves"                    ## fallback area of an enemy that carries no `dm_area`
 ## Areas whose bosses this host wakes (each boss's own DmContent.boss(id).area is its arena; a boss in another area is "unknown" here).
-var served_areas: Array = ["graves", "cloister", "pyre", "fen"]
+var served_areas: Array = ["graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "fen"]
 var difficulty: String = "medium"
 var visual: bool = true                           ## false = no DmBossView (headless)
 var audio_enabled: bool = false                   ## boss music on the local hero's area
@@ -44,7 +47,8 @@ var _next: int = 1
 var _acc: float = 0.0
 var _slow: float = 0.0
 var _music: bool = false
-var _prompted: bool = false
+var _wade_t: float = 0.0
+var _wading: bool = false
 
 
 func _ready() -> void:
@@ -68,12 +72,15 @@ func _ready() -> void:
 		InputMap.action_add_event(&"dm_interact", k)
 
 
-## Loading time: the model of every boss of this area is read once, the fx shapes warmed (never mid-fight).
+## Loading time: the model of every live boss and of the adds their brains spawn is read once, the fx shapes warmed (never mid-fight).
 func warm(at: Vector3) -> void:
-	for id in DmContent.get_export("bosses", "BOSS_IDS"):
+	for id in LIVE:
 		var bd: Dictionary = DmContent.boss(String(id))
 		if bd["area"] == area_id or served_areas.has(bd["area"]):
 			DmCreature.new(String(bd["modelSlug"]), {}).root.free()
+	for id in ADDS:   # what their brains spawn (niches, climbers, the procession): scene + model read now, not at the phase change
+		if game.director.scene_for(id) != null:
+			DmCreature.new(String(DmSimData.ENEMIES[id].get("modelSlug", "grave_robber")), {}).root.free()
 	fx.warm(at)
 
 
@@ -133,10 +140,10 @@ func site_pos(boss_id: String) -> Vector3:
 	return Vector3.INF
 
 
-## The boss of this area whose grave / altar is within `r` of `pos` ("" = none): the E key and the prompt use it.
+## The live boss whose grave / altar / bell is within `r` of `pos` ("" = none): the E key and the hub prompt use it.
 func site_near(pos: Vector3, r: float) -> String:
-	for id in DmContent.get_export("bosses", "BOSS_IDS"):
-		if id != "prelate" and served_areas.has(String(DmContent.boss(String(id))["area"])):
+	for id in LIVE:
+		if served_areas.has(String(DmContent.boss(String(id))["area"])):
 			var s := site_pos(String(id))
 			if s != Vector3.INF and Vector2(pos.x - s.x, pos.z - s.z).length() <= r:
 				return String(id)
@@ -145,23 +152,24 @@ func site_near(pos: Vector3, r: float) -> String:
 
 # ---- summon (host rules; any peer may ask) ---------------------------------------------------------------------------------------
 
-## Ask to wake `boss_id` (the local hero, at its grave). Any peer; the host decides.
+## Ask to wake `boss_id` (the local hero, at its site). Any peer; the host decides.
 func request_summon(boss_id: String) -> void:
 	if multiplayer.is_server():
 		var me: int = game.session.get_my_id()
 		var why := try_summon(me, boss_id)
 		if why != "":
-			_say("toast", {"text": WHY.get(why, why), "kind": "err"})
+			_say("toast", {"text": why_text(why, boss_id, me), "kind": "err"})
 	else:
 		_rpc_summon.rpc_id(1, boss_id)
 
 
-## HOST. "" = woken; else the refusal: busy / far / shards / dead / unknown. Spends the boss's soul shards from the summoner's progression.
+## HOST. "" = woken; else the refusal: busy / far / shards / dead / unknown. Spends the boss's soul shards from the summoner's progression
+## (the Prelate's bell takes `spend_shards`, which also owes the run a Prelate summon; the area bosses `spend_boss_shards`).
 func try_summon(peer: int, boss_id: String, empowered: bool = false) -> String:
 	var why := _check(peer, boss_id)
 	if why == "":
-		var m := _member(peer)
-		if m != null and not m.prog.spend_boss_shards(boss_id):
+		var m := member_of(peer)
+		if m != null and not (m.prog.spend_shards(int(DmContent.boss("prelate")["shards"])) if boss_id == "prelate" else m.prog.spend_boss_shards(boss_id)):
 			why = "shards"
 	if why != "":
 		summon_refused.emit(boss_id, why, peer)
@@ -173,7 +181,7 @@ func try_summon(peer: int, boss_id: String, empowered: bool = false) -> String:
 
 
 func _check(peer: int, boss_id: String) -> String:
-	if not DmContent.get_export("bosses", "BOSS_IDS").has(boss_id) or boss_id == "prelate" or not served_areas.has(String(DmContent.boss(boss_id)["area"])):
+	if not LIVE.has(boss_id) or not served_areas.has(String(DmContent.boss(boss_id)["area"])):
 		return "unknown"
 	var hb: DmHeroBody = game.body_of(peer)
 	if hb == null or not hb.alive:
@@ -186,7 +194,7 @@ func _check(peer: int, boss_id: String) -> String:
 	return ""
 
 
-func _member(peer: int) -> DmRewardsMember:
+func member_of(peer: int) -> DmRewardsMember:
 	if game.rewards == null:
 		return null
 	for m in game.rewards.members.values():
@@ -202,12 +210,20 @@ func _rpc_summon(boss_id: String) -> void:
 	var from := multiplayer.get_remote_sender_id()
 	var why := try_summon(from, boss_id)
 	if why != "":
-		_rpc_refused.rpc_id(from, why)
+		_rpc_refused.rpc_id(from, why, boss_id)
 
 
 @rpc("authority", "call_remote", "reliable")
-func _rpc_refused(why: String) -> void:
-	_say("toast", {"text": WHY.get(why, why), "kind": "err"})
+func _rpc_refused(why: String, boss_id: String) -> void:
+	_say("toast", {"text": why_text(why, boss_id, game.session.get_my_id()), "kind": "err"})
+
+
+## The refusal in words (the shard one names the site and the member's own count).
+func why_text(why: String, boss_id: String, peer: int) -> String:
+	if why != "shards" or not LIVE.has(boss_id):
+		return String(WHY.get(why, why))
+	var m := member_of(peer)
+	return String(WHY["shards"]) % [DmContent.boss(boss_id)["summonLabel"], int(DmContent.boss(boss_id)["shards"]), " (you have %d)" % int(m.prog.local["shards"]) if m != null else ""]
 
 
 func _say(id: String, ctx: Dictionary) -> void:
@@ -253,11 +269,13 @@ func _route(ev: Dictionary, boss: DmBoss) -> void:
 		var hb: DmHeroBody = game.body_of(int(ev["player"]))
 		if hb != null:
 			hb.take_damage(float(ev["dmg"]), boss)
+			if ev.get("chillMs") != null:   # the Flood Hymn chills whoever it hits
+				DmPfUtil.chill(boss, hb, float(ev["chillMs"]) / 1000.0)
 		return
 	if String(ev["t"]) != "boss":
 		return
 	var kind := String(ev["kind"])
-	if (kind == "bury" or kind == "hands") and float(ev.get("ms", 0.0)) == 0.0 and ev.get("root") != null:   # hands = the Mire Mother's Drowned Hands
+	if float(ev.get("ms", 0.0)) == 0.0 and ev.get("root") != null:   # hands = the Mire Mother's Drowned Hands
 		for pid in ev.get("players", []):
 			var hb2: DmHeroBody = game.body_of(int(pid))
 			if hb2 != null:
@@ -290,6 +308,9 @@ func _on_defeated(boss: DmBoss, ev: Dictionary) -> void:
 	defeated.emit(boss.boss_id, int(killer), at)
 	if game.rewards != null:
 		game.rewards.on_boss_defeated({"boss": boss.boss_id, "x": at.x, "z": at.z, "killer": game.body_of(int(killer)), "empowered": bool(ev.get("empowered", false))})
+		var m := member_of(int(killer))
+		if boss.boss_id == "prelate" and m != null and m.prog.can_ascend():
+			_say("can_ascend", {})
 
 
 func _hide_view(id: String) -> void:
@@ -353,6 +374,8 @@ func _rpc_pool(kind: String, x: float, z: float, r: float, seconds: float) -> vo
 # ---- replication (20 Hz) ----------------------------------------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
+	if multiplayer.is_server():
+		_wade(delta)
 	if not multiplayer.is_server() or multiplayer.get_peers().is_empty() or bosses.is_empty():
 		return
 	_acc += delta
@@ -371,6 +394,35 @@ func _physics_process(delta: float) -> void:
 		packets_sent += 1
 
 
+## The Drowned Congregation: the nave water rises each phase; wading outside her dais is slower (DmGame._update_movement_mods). Host, 10 Hz, only while
+## she is awake or a body is still slowed.
+func _wade(dt: float) -> void:
+	_wade_t -= dt
+	if _wade_t > 0.0:
+		return
+	_wade_t = 0.1
+	if bosses.is_empty() and not _wading:
+		return
+	var b := active_boss()
+	if b != null and b.boss_id != "congregation":
+		b = null
+	var awake := b != null and b.phase >= 2
+	if not awake and not _wading:
+		return
+	_wading = false
+	var arena: Dictionary = DmContent.boss("congregation")["arena"]
+	var C: Dictionary = DmContent.get_export("bosses", "CONGREGATION")["water"]
+	for hb in heroes():
+		var d := Vector2(hb.position.x - float(arena["x"]), hb.position.z - float(arena["z"])).length()
+		var at: String = game.area_of(hb.owner_peer)
+		var in_nave: bool = (at if at != "" else assume_area) == "nave"
+		var m := 1.0
+		if awake and in_nave and d <= float(arena["r"]) and d > float(C["dais"]):
+			m = float(C["slowP3"]) if b.phase >= 3 else float(C["slowP2"])
+			_wading = true
+		hb.wade_mult = m
+
+
 @rpc("authority", "call_remote", "unreliable_ordered")
 func _rpc_state(ids: PackedInt32Array, states: Array) -> void:
 	for i in ids.size():
@@ -380,7 +432,7 @@ func _rpc_state(ids: PackedInt32Array, states: Array) -> void:
 			states_applied += 1
 
 
-# ---- local hero: music, the grave prompt, E -----------------------------------------------------------------------------------------
+# ---- local hero: music, E ---------------------------------------------------------------------------------------------------
 
 func _process(dt: float) -> void:
 	_slow -= dt
@@ -388,25 +440,15 @@ func _process(dt: float) -> void:
 		return
 	_slow = 0.5
 	var me: DmHeroBody = game.local_body()
-	var near := false
-	var near_id := ""
 	var fighting := false
 	if me != null and me.alive:
 		var b := active_boss()
 		fighting = b != null and String(DmContent.boss(b.boss_id)["area"]) == _area_for(me.owner_peer)
-		near_id = site_near(me.position, SUMMON_RANGE + 1.0)
-		near = active_boss() == null and near_id != ""
 	if fighting != _music and audio_enabled:
 		_music = fighting
 		var a := get_node_or_null("/root/AudioDirector")
 		if a != null:
 			a.set_boss_music(fighting)
-	if near and not _prompted:
-		_prompted = true
-		var bd: Dictionary = DmContent.boss(near_id)
-		_say("toast", {"text": "%s: press E to wake it (%d soul shards)." % [bd["summonLabel"], int(bd["shards"])], "kind": "info"})
-	elif not near:
-		_prompted = false
 
 
 func _unhandled_input(ev: InputEvent) -> void:

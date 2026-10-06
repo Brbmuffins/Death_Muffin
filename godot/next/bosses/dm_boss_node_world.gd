@@ -70,8 +70,8 @@ func player_count() -> int:
 
 
 ## Adds leave with the boss (no kill credit / corpse): the director removes them.
-func spawn_enemy(def: String, _area: String, x: float, z: float, elite: bool, _rising: bool = true) -> int:
-	var e: DmEnemy = host.game.director.spawn(def, Vector3(x, 0.0, z), host.heroes(), elite)   # (spawn returns the enemy; brains track ids)
+func spawn_enemy(def: String, area: String, x: float, z: float, elite: bool, _rising: bool = true) -> int:
+	var e: DmEnemy = host.game.director.spawn(def, Vector3(x, 0.0, z), host.heroes(), elite, {}, area)   # (spawn returns the enemy; brains track ids)
 	return DmWaveDirector.id_of(e) if e != null else -1
 
 
@@ -120,7 +120,9 @@ func damage_thrall(id: int, amount: float) -> void:
 		th.take_damage(amount, boss)
 
 
-# ---- hooks of the Abbess / Mire Mother (corpses) and the Saint / Regent (pools). Each is its own function. ----------------------------
+# ---- hooks of the Abbess / Mire Mother (corpses), Congregation (cover), Prelate (echoes) and the Saint / Regent (pools). Each is its own function. -----
+
+static var _cover: Array = []
 
 ## Corpses lying in the world (echoes excluded), as {id, area, x, z}. The Mire Mother's rite wants the Fen's.
 func corpses() -> Array:
@@ -138,6 +140,22 @@ func corpses() -> Array:
 func remove_corpse(id: int, reason: String) -> void:
 	host.game.corpses.consume(id, 0, reason)
 
+
+## The Congregation's pews: the same boxes the sim world uses (sim/world.json `cover`), decoded once.
+func cover() -> Array:
+	if _cover.is_empty():
+		for b in DmDb.sim_world()["cover"]:
+			_cover.append({"x0": float(b["x0"]), "z0": float(b["z0"]), "x1": float(b["x1"]), "z1": float(b["z1"])})
+	return _cover
+
+
+## The Prelate's Echoes (vow `prelate_echo`, 0-3) of whoever rang the bell: the summoner's own progression.
+func echoes() -> int:
+	var m := host.member_of(boss.summoner)
+	return int(m.prog.vow_fx().get("echoes", 0)) if m != null else 0
+
+
+# ---- hooks of the Saint / Regent / Mire Mother: rot pools, ember pools ---------------------------------------------------
 
 ## Rot the Saint stands in: every live damaging toxic pool (hers, a sac's, a doctor's flask).
 func hostile_toxic_zones() -> Array:

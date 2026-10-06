@@ -229,14 +229,19 @@ func nearest_npc() -> String:
 	return best
 
 
-func _update_prompt(_b: DmHeroBody) -> void:
+func _update_prompt(b: DmHeroBody) -> void:
 	var p: Variant = null
-	if hover != null and not _dialogue_open():
+	var awake: bool = game.bosses != null and game.bosses.active_boss() != null   # a boss site has nothing to offer while a boss is awake
+	if hover != null and not _dialogue_open() and not (awake and String(hover["kind"]) == "boss"):
 		p = "<kbd>Click</kbd> %s" % interact_prompt(hover)
 	else:
 		var n := nearest_npc()
 		if n != "" and not _dialogue_open() and not _panel_open():
 			p = "<kbd>E</kbd> Talk to %s" % _npc_spots[n].get("name", n)
+		elif not awake and b != null and b.alive and not _dialogue_open() and not _panel_open():
+			var site: String = game.bosses.site_near(b.position, DmBossHost.SUMMON_RANGE + 1.0) if game.bosses != null else ""
+			if site != "":
+				p = "<kbd>E</kbd> %s" % boss_prompt(site)
 	prompt_text = p
 
 
@@ -244,11 +249,15 @@ func interact_prompt(it: Dictionary) -> String:
 	match String(it["kind"]):
 		"boss":
 			var id := boss_for_summon(String(it["id"]))
-			var b: Dictionary = DmContent.boss(id if id != "" else "prelate")
-			return "Summon %s · %d shards" % [b["name"], int(b["shards"])]
+			return boss_prompt(id if id != "" else "prelate")
 		"stair", "depths_down", "depths_up", "depths_chest":
 			return "Use"
 	return DmGameHud.interact_prompt(null, it)
+
+
+func boss_prompt(boss_id: String) -> String:
+	var b: Dictionary = DmContent.boss(boss_id)
+	return "Summon %s · %d shards" % [b["name"], int(b["shards"])]
 
 
 func boss_for_summon(id: String) -> String:

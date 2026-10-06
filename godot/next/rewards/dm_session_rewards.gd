@@ -404,7 +404,7 @@ func on_kill(ev: Dictionary) -> void:
 ## and a boss entry in its report (the backend's kill ledger). Mirrors DmGameRewards.on_boss_defeated.
 func on_boss_defeated(ev: Dictionary) -> void:
 	var id := String(ev["boss"])
-	if ended or ev.get("killer") == null or id == "prelate":
+	if ended or ev.get("killer") == null:
 		return
 	var def: Dictionary = DmContent.boss(id)
 	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
@@ -414,7 +414,7 @@ func on_boss_defeated(ev: Dictionary) -> void:
 		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
 			continue
 		var reward: Dictionary = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
-		var first := m.claim_trophy(id)
+		var first: bool = id != "prelate" and m.claim_trophy(id)   # the Prelate has no first-kill trophy: it is the run's boss (tally + Ascend instead)
 		var first_item: Variant = null
 		if first:
 			reward["shards"] = int(reward["shards"]) + 2
@@ -424,6 +424,8 @@ func on_boss_defeated(ev: Dictionary) -> void:
 			reward["items"].append(rune)
 		m.stats["bosses"] += 1
 		m.reporter.boss({"boss": id, "tier": wave_tier, "diff": difficulty, "first": first})
+		if id == "prelate":
+			m.prog.record_prelate_kill()
 		_ground(m, {"kind": "gold", "amount": int(reward["gold"]) + int(reward["materialGold"])}, at)
 		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
 		_drop_items(m, at, reward["items"], level, "boss")
