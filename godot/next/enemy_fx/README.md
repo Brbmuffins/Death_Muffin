@@ -17,7 +17,7 @@ Never create two per peer watching the same bodies (everything would play twice)
 `DmNextGame.enemy_fx` (child `EnemyFx`, every peer) is created in `start()` before the director: `player_pos` = local body, `host.camera` = the camera rig,
 `watch(e)` called from the `enemy_spawned` hook (idempotent; the node also auto-watches `node_added`), and `enemy_fx.warm(local_body position)` at the end of
 `start()` (visual runs): silent one-of-each telegraph / burst / censer effect so pools, textures and shaders exist before the first fight.
-Not wired yet: `host.hitstop_cb` (the shell has no hitstop).
+`host.hitstop_cb` is wired by `DmNextGame` to `hitstopper` (`DmHitStop`, picture-only: no `Engine.time_scale`, so online peers never desync; each peer freezes its own view).
 
 ## What a peer must do for it to work
 - Instantiate puppets with the same `def_id`, `elite`, `rising`, `in_graves` as the host body (spawn args).

@@ -38,3 +38,5 @@ Cost (headless, 14 enemies, 20 corpses): one decision ~1.5-2 ms (`select_action`
 
 Not done: no `DmNav` over the navmesh (the decision code's `clear_line` / path-around-an-obstacle is skipped, the body's own nav clamp slides it); non-necromancer families (the old new-blood rules need their rites in the rebuild);
 the old scythe `attack` gesture (no rite module); remote peers' runes (only the local host's bag is known until the join handshake carries one); the Legend litany-shatter shake (a hook, not a rite).
+
+Seam suite `tests/next_combat_feel/run.gd` (9 checks: chase/queue wiring, gesture per accepted cast, weapon-clip ids, hitstop callbacks + `Engine.time_scale` untouched, idle tick 0.4 us, frame median ~7.3 ms headless); the behaviour suite is `tests/next_feel/run.gd` (44 checks).
