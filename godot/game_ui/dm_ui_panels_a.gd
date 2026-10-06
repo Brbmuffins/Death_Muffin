@@ -251,7 +251,8 @@ func _legion_result(err: Variant) -> void:
 
 
 func _reinforce() -> void:
-	var r: DmResult = await game.api.necro_purchase(cid(), "legion")
+	# Through psync so the client adopts the server's gold (a plain call left it stale and the next save refunded the tier).
+	var r: DmResult = await game.psync.spend_on_server(func() -> DmResult: return await game.api.necro_purchase(cid(), "legion"))
 	if not r.ok:
 		grim_win.legion.set_error("Not enough gold." if r.error == "" else r.error)
 		return

@@ -42,6 +42,12 @@ var hero_pos := Vector2(0, 20)
 var party_code := ""
 var party_calls: Array = []
 var chats: Array = []
+var psync := MockPsync.new()   ## spend_on_server passthrough (the real one also adopts the server gold)
+
+
+class MockPsync:
+	func spend_on_server(call: Callable) -> DmResult:
+		return await call.call()
 
 
 func _init() -> void:
