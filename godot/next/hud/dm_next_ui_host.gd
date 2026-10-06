@@ -19,6 +19,7 @@ signal npc_interact(npc_id: String)
 signal station_interact(station_id: String)
 signal left_world
 signal world_restart(character: Dictionary)   ## the class panel saved a new discipline: the front rebuilds the world with it
+signal sfx(name: String)                     ## every sound the adapter forwards to the AudioDirector (tests listen here)
 signal feedback(text: String)                ## a cast was refused / unavailable (also drawn as a float over the hero)
 
 const REJECT_TEXT := {"essence": "Not enough Grave Essence", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
@@ -43,6 +44,7 @@ var party_code := ""
 var dev_account := false
 var dev_access := false
 var vm: DmNextHudVm
+var counsel: DmNextCounsel
 var persist := true
 
 var slots: Array:
@@ -112,6 +114,9 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	primary = String(r["primary"])
 	keys = r["keys"]
 	vm = DmNextHudVm.new(self)
+	counsel = DmNextCounsel.new(self)
+	if m != null:
+		m.loot_view.dropped_sound.connect(func(id: String, pos: Vector3) -> void: _sfx(id, pos))   # lootDrop / Rare / Epic / Legendary, positioned
 	if shell.chapterhouse != null:          # NPC / station use -> the events DmGameUi opens dialogue and panels from
 		shell.chapterhouse.npc_interact.connect(func(id: String) -> void: npc_interact.emit(id))
 		shell.chapterhouse.station_interact.connect(func(id: String) -> void: station_interact.emit(id))
@@ -194,9 +199,14 @@ func load_cosmetics() -> void:
 
 ## The Altar's vows / boons / ascension live on the backend: adopt its necro state (plus what was gathered since), as DmGame.refresh_progress.
 func refresh_progress() -> void:
+	var before := _thrall_numbers()
+	var tier0 := int(prog.local["legionTier"])
 	var r: DmResult = await api.necro_get(hero_id)
 	if r.ok and r.data is Dictionary and r.data.has("progress"):
 		prog.adopt(r.data["progress"])
+	if int(prog.local["legionTier"]) > tier0:
+		await _adopt_server_gold()   # the Legion panel bought it straight from the backend: the purse it took must not be overwritten by the next save
+	_refresh_standing_thralls(before)
 	progress_changed.emit()
 
 
@@ -277,6 +287,9 @@ func set_auto_combat(on: bool) -> void:
 
 ## Spends gold on the tier (the backend prices it); the tier reaches the rites' stats and the wave director (DmNextProgress.buy).
 func buy_upgrade(kind: String) -> void:
+	if kind == "legion":
+		await buy_legion()
+		return
 	if shell.progress.buy(kind) if shell.progress != null else (prog.buy_damage() if kind == "damage" else prog.buy_wave()):
 		progress_changed.emit()
 		character_changed.emit()
@@ -482,6 +495,7 @@ func _on_hurt(amount: float, _source: Node) -> void:
 		return
 	float_text(b.position + Vector3(0, 2.0, 0), "-%d" % DmMath.js_round(amount), "hurt")
 	game_event.emit("hit_flash", {})
+	_hurt_feeds(b)
 
 
 ## DmLootView.try_take: the bag, or false (the drop stays on the ground) with a "Reliquary full" float now and then.
@@ -503,12 +517,15 @@ func _on_picked(ev: Dictionary) -> void:
 	match String(ev["kind"]):
 		"gold":
 			float_text(at + Vector3(0, 2.1, 0), "+%dg" % int(ev["amount"]), "gold")
+			_sfx("coin")
 		"shard":
 			float_text(at + Vector3(0, 2.3, 0), "+%d soul shard%s" % [int(ev["amount"]), "s" if int(ev["amount"]) > 1 else ""], "shard")
+			_sfx("shard")
 		"item":
 			var it: Dictionary = ev["item"]
 			var meta := DmContent.item(String(it["item_id"]))
 			game_event.emit("loot", {"name": String(meta.get("name", it["item_id"])), "qty": int(it.get("quantity", 1)), "rarity": String(meta.get("rarity", "common"))})
+			_item_collected(it, meta)
 
 
 func _on_credited(cid: int, delta: Dictionary) -> void:
@@ -575,3 +592,104 @@ func _bind_bodies() -> void:
 			if shell.session.is_host():
 				b.hurt.connect(_on_hurt)
 				b.enemy_effect.connect(_on_hero_effect)
+
+
+# ---- HUD / counsel feeds (parity items 8 and 10): save chip, wave dial, sounds, counsel facts, Legion -----------------------------------
+
+const SAVE_CHIP := {"saved": ["Saved ✓", false], "dirty": ["Unsaved changes", false], "saving": ["Saving…", false], "retrying": ["Save failed, retrying…", true]}
+const SAVE_RANK := ["saved", "dirty", "saving", "retrying"]
+var _save_vm := {"text": "Saved ✓", "warn": false}
+
+
+## The HUD's save chip: the worse of the progression sync's state and the bag's (saved < dirty < saving < retrying).
+func save_chip() -> Dictionary:
+	var st := "saved"
+	var a: String = shell.progress.psync.state if shell.progress != null else "saved"
+	for s in [a, inventory.state]:
+		if SAVE_RANK.find(s) > SAVE_RANK.find(st):
+			st = s
+	var c: Array = SAVE_CHIP[st]
+	_save_vm["text"] = c[0]
+	_save_vm["warn"] = c[1]
+	return _save_vm
+
+
+## The upgrades box's wave dial (DmGame.dial_wave): the active Wave Speed tier, 0..owned; the director and rewards follow.
+func dial_wave(delta: int) -> void:
+	prog.set_active_wave_tier(float(prog.local["waveTierActive"]) + delta)
+	if shell.progress != null:
+		shell.progress.apply_progress()
+	progress_changed.emit()
+
+
+func counsel_busy() -> Dictionary:
+	return counsel.busy()
+
+
+func counsel_tick_ctx() -> Dictionary:
+	return counsel.tick_ctx()
+
+
+func _sfx(id: String, pos: Variant = null) -> void:
+	sfx.emit(id)
+	var a := get_node_or_null("/root/AudioDirector")
+	if a != null and bool(shell.opts.get("audio", DisplayServer.get_name() != "headless")):
+		a.play_sfx(id, Vector2(pos.x, pos.z) if pos is Vector3 else null, 1.0)
+
+
+## DmGameCombat.on_hurt's side: the hurt sound (+ low-health under 30 %), the counsel's hurt tip / hurt_check, the fight bookkeeping.
+func _hurt_feeds(b: DmHeroBody) -> void:
+	counsel.hurt()
+	_sfx("hurt")
+	if b.alive and b.hp < b.max_hp * 0.3:
+		_sfx("lowHealth")
+	if b.hp < b.max_hp * 0.5:
+		game_event.emit("tip", {"id": "hurt", "delay_ms": 0.0, "opts": {}})
+	game_event.emit("hurt_check", {"hp": b.hp, "max_hp": b.max_hp})
+
+
+## DmGameRewards.collected: the pickup sound by rarity and the counsel's "collected" facts (gear / legendary / armor / reagent / affixed).
+func _item_collected(it: Dictionary, meta: Dictionary) -> void:
+	var rarity := String(meta.get("rarity", "common"))
+	sfx.emit(DmAudioMixer.loot_sfx([rarity]))
+	var a := get_node_or_null("/root/AudioDirector")
+	if a != null and bool(shell.opts.get("audio", DisplayServer.get_name() != "headless")):
+		a.play_loot([rarity])
+	var item_id := String(it["item_id"])
+	var legendary := rarity == "legendary"
+	game_event.emit("collected", {"gear": DmAffixRules.is_affix_gear(String(meta.get("type", ""))), "legendary": legendary, "armor": DmContent.armor_sets().has(item_id) and not legendary,
+		"reagent": DmContent.reagents().has(item_id), "affixed": it.get("instance") != null and not (it["instance"]["affixes"] as Array).is_empty()})
+	if legendary:
+		game_event.emit("toast", {"text": "Legendary: %s" % String(meta.get("name", item_id)), "kind": "good"})
+
+
+## Legion tier (the Legion panel's Reinforce and buy_upgrade("legion")): the backend prices it, `refresh_progress` adopts the tier, the stats (thrall cap,
+## hp, damage) follow through DmNextProgress.apply_progress, and standing thralls get the one-time bump (DmGame.buy_upgrade). "" = bought, else why not.
+func buy_legion() -> String:
+	var r: DmResult = await api.necro_purchase(hero_id, "legion")
+	if not r.ok:
+		return r.error if r.error != "" else "Not enough gold."
+	await refresh_progress()
+	await refresh_character()
+	_sfx("buy")
+	return ""
+
+
+func _adopt_server_gold() -> void:
+	var r: DmResult = await api.get_character()
+	if r.ok and r.data is Dictionary and r.data.has("gold"):
+		character["gold"] = r.data["gold"]
+		character_changed.emit()
+
+
+func _thrall_numbers() -> Dictionary:
+	var st: Dictionary = build_cache()
+	return {"hp": float(st["stats"]["thrallHp"]), "damage": float(st["stats"]["thrallDamage"]), "speedMult": float(st["discipline"]["mods"]["thrallAttackSpeedMult"])}
+
+
+func _refresh_standing_thralls(before: Dictionary) -> void:
+	var b := shell.local_body()
+	var th := b.get_node_or_null("Thralls") as DmThrallHost if b != null else null
+	var r := DmLegion.thrall_refresh(before, _thrall_numbers())
+	if th != null and not r.is_empty():
+		th.refresh(float(r["hpMult"]), float(r["damageMult"]), float(r["speedMult"]))

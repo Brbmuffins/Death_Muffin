@@ -38,13 +38,11 @@ HUD feeds and contract methods that `DmGame` had and `DmNextGame` / `DmNextUiHos
    counterplay that makes the necromancer loop interesting. (section 2)
 7. **Gathering, professions, laborers, garden, contracts (IN PROGRESS).** Whole Acre loop (nodes, AFK, laborers, charms, gather sfx, hover tips) is not on the rebuild; `DmNextUiHost` lacks
    `stop_gathering/afk_*`. Also in progress: the Depths (generated floors, stair prompt, readout), and Bone Abbess / Drowned Congregation / Bell-Sworn Prelate. (sections 3, 8, 9)
-8. **HUD feeds missing (MISSING).** (Kill chain meter and tier banners, Soul Harvest meter, omen chip and Bone Ward chip are DONE on `godot/next-meta`.) Save-state chip, wave dial (`dial_wave`), auto-combat button
-   (and Easy Auto Combat / auto-dodge themselves). Also loot / coin / rarity sounds and the hero hurt sound are not forwarded. (sections 1, 13, 16, 18)
+8. **HUD feeds (MOSTLY DONE on `godot/next-hud-counsel`).** Save chip, wave dial, loot / coin / shard / hurt sounds are fed (`next/hud/README.md`). Still missing: the auto-combat button (and Easy Auto Combat / auto-dodge themselves). (sections 1, 13, 16, 18)
 9. **Boss meta-progression (DONE on `godot/next-boss-meta`).** Empowered summons + Covenant Seal + boss key prompt + prize claim, first-kill trophies (the chronicle's `boss.<id>` counter, on the backend),
    the one Chronicle fed by every system and saved, Codex discoveries (enemies, areas, bosses; saved per character), wave-milestone banners, the Nightfall dimming and the three variants.
    Remaining: the Covenant Seal choice is the host's own hero only (a joined client cannot call Empowered), a client does not see Nightfall's dimming. (sections 3, 6, 13)
-10. **Counsel and guidance state (PARTIAL).** `counsel_busy` / `counsel_tick_ctx` are not implemented, so state-based tips and in-combat tip suppression do not run; Next box and chat are solo stubs;
-    Legion tier cannot be bought; Forge / Vault / Reagent shelf / Contracts / Sheet / Ascension panels open but are untested on the slice (only Bag, Grimoire, Settings are pre-built and tested). (sections 14, 15)
+10. **Counsel and guidance state (MOSTLY DONE).** `counsel_busy` / `counsel_tick_ctx` are implemented (`next/hud/dm_next_counsel.gd`), the Legion tier is purchasable, and every panel is pre-built and verified on the offline backend (`tests/next_hud_counsel`). Next box and chat stay solo stubs. (sections 14, 15)
 
 Lower priority, listed in the body: the five non-necromancer disciplines (rite registry is necromancer-only), lifesteal / fortune / wisdom brews, party/lobby UI (D5), remote players' gear/HUD, reconnect.
 
@@ -166,7 +164,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
-| Forge / Workbench (craft, reforge tab, salvage, reagent shelf, grinder range) | PARTIAL | `ui/panels_b/dm_forge_panel.gd`, `dm_reforge_view.gd`, `dm_salvage_panel.gd`, `dm_reagent_shelf_panel.gd`; `game/dm_game.gd near_grinder` | stations emit `station_interact` and `DmNextUiHost.near_grinder` is wired; `next/hud/README.md`: "open and work on the offline backend in principle but ... untested". Only Bag / Grimoire / Settings are pre-built (`SLICE_PANELS`) |
+| Forge / Workbench (craft, reforge tab, salvage, reagent shelf, grinder range) | PARTIAL | `ui/panels_b/dm_forge_panel.gd`, `dm_reforge_view.gd`, `dm_salvage_panel.gd`, `dm_reagent_shelf_panel.gd`; `game/dm_game.gd near_grinder` | stations emit `station_interact` and `DmNextUiHost.near_grinder` is wired; craft, salvage, shelf verified on the offline backend (`tests/next_hud_counsel`); all panels pre-built; reforge quote answers, the full reforge flow is untested |
 | Alchemist's Wing stations (cauldron, alembic, reagents), brews, meals | PARTIAL | `dm_game_actions.gd` | brews/meals/flasks DONE (`DmNextBelt`); Wing stations emit but untested |
 | Gold sinks (reforge quotes, server-priced) via `spend_on_server` | PARTIAL | `DmProgressSync.spend_on_server` | `DmProgressSync` reused by `DmNextProgress`; reforge flow untested |
 
@@ -219,7 +217,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 |---|---|---|---|
 | Hub NPCs (spots, talk range, "!" news marker, first-sight), E to talk | DONE | `game/dm_npc_views.gd`, `dm_game.gd _tick_npcs` | `next/chapterhouse/dm_hub_npcs.gd`, `DmChapterhouse.talk_key` (acre / wing NPCs only appear in their areas) |
 | Covenant dialogue / guidance memory / Next box | PARTIAL | `ui/panels_a/dm_dialogue_panel.gd`, `game_ui/dm_game_ui.gd guidance_state` | dialogue panel works through `npc_interact`; Next box depends on bag/level only (`hud/README.md`) |
-| Counsel tips (cadence, events, store, progressive HUD reveal, NEW cues) | PARTIAL | `ui/onboarding/`, `game_ui/dm_hud_reveal.gd` | UI side reused; `counsel_busy` / `counsel_tick_ctx` absent so state-based tips and in-combat suppression do not run; events emitted by DmNextProgress/Areas/UiHost only |
+| Counsel tips (cadence, events, store, progressive HUD reveal, NEW cues) | DONE | `ui/onboarding/`, `game_ui/dm_hud_reveal.gd` | UI side reused; `counsel_busy` / `counsel_tick_ctx` = `DmNextCounsel`: state-based tips and in-combat suppression run; events from DmNextProgress/Areas/UiHost |
 | First-hour guidance pings, `/party` etc. chat commands | PARTIAL | `game_ui/dm_chat_command.gd` | `send_chat` = "(solo) Nobody hears you" |
 
 ## 15. UI panels (one row per panel; all exist on the rebuild via `DmGameUi`, status = fed + reachable)
@@ -229,16 +227,16 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Reliquary / bag (I, B) | DONE | `ui/panels/dm_reliquary_panel.gd` | pre-warmed, tested |
 | Grimoire (L) + loadout presets + rune picks | PARTIAL | `ui/panels_a/dm_grimoire_*`, `game_ui/dm_loadout_presets.gd` | works; runes empty (see Combat) |
 | Settings (Esc) | DONE | `ui/panels/dm_settings_panel.gd` | pre-warmed; some keys inert (section 19) |
-| Character sheet (J) stats tab | PARTIAL | `ui/panels_a/dm_sheet_view.gd` | untested on slice |
+| Character sheet (J) stats tab | DONE | `ui/panels_a/dm_sheet_view.gd` | opens with the build's stats (tested) |
 | Capes & Pets (N, sheet tab) | DONE | `dm_cosmetics_view.gd` | `DmNextUiHost.load_cosmetics` -> `DmHeroLook` (cape + pet appear, replicate) |
-| Legion (Y) | PARTIAL | `dm_legion_view.gd` | tier not purchasable |
-| Forge / Workbench (C) incl. reforge, Salvage, Reagent shelf | PARTIAL | `ui/panels_b/*` | untested |
-| Vault (V) | PARTIAL | `dm_vault_panel.gd` | untested |
+| Legion (Y) | DONE | `dm_legion_view.gd` | Reinforce buys a tier via the API; thrall hp / damage follow; standing thralls bumped |
+| Forge / Workbench (C) incl. reforge, Salvage, Reagent shelf | DONE | `ui/panels_b/*` | craft / salvage verified via the API (reforge flow itself untested) |
+| Vault (V) | DONE | `dm_vault_panel.gd` | deposit verified via the API |
 | Acre ledger: Professions (P), Garden (U), Labor (H), Contracts (O), Gather report | IN PROGRESS | `dm_professions_panel.gd`, `dm_garden_panel.gd`, `dm_labor_panel.gd`, `dm_contracts_panel.gd`, `dm_gather_report_panel.gd`, `dm_acre_ledger.gd` | gathering track |
 | Codex (K) | PARTIAL | `dm_codex_panel.gd` | areas only |
 | Gear Atlas (.) | DONE | `dm_atlas_panel.gd` | data-only |
 | Waystone map (M) | DONE | `dm_waystone_panel.gd` | via `travel` |
-| Ascension / Altar | PARTIAL | `dm_ascension_panel.gd` | see Progression |
+| Ascension / Altar | DONE | `dm_ascension_panel.gd` | boon purchase verified via the API |
 | Class panel | PARTIAL | `dm_class_panel.gd` | `class_changed` absent |
 | Dialogue | DONE | `dm_dialogue_panel.gd` | NPC hub |
 | Boss key prompt (Empowered choice) | MISSING | `game_ui/dm_boss_key_prompt.gd` | no summon methods |
@@ -261,7 +259,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Party frames | PARTIAL | roster-driven; client peers get no HUD yet |
 | Minimap (enemies, thralls, corpses, doors, boss dot, click travel) | DONE | `DmHudMinimap` |
 | Area label + progress | PARTIAL | label yes; Depths readout missing |
-| Upgrade box (Empower/Quicken, dial) | PARTIAL | tiers yes; dial buttons dead (`dial_wave`) |
+| Upgrade box (Empower/Quicken, dial) | DONE | tiers + dial (`dial_wave`) |
 | Thrall pips / legion chip | DONE | |
 | Soul Harvest meter | DONE | `next/meta/` |
 | Kill chain meter | DONE | `next/meta/` |
@@ -271,7 +269,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines (rite r
 | Auto-combat button | MISSING | |
 | Next-step box, guidance ping, progressive reveal / NEW pips | PARTIAL | reveal logic in `DmGameUi` runs; Next box limited |
 | Toasts, banners, loot toast, floating numbers, death wash, hit flash | DONE | |
-| Save-state chip (`save` text/warn) | MISSING | not in vm |
+| Save-state chip (`save` text/warn) | DONE | `DmNextUiHost.save_chip()` (psync + bag state) |
 | Node/laborer hover tip | IN PROGRESS | gathering |
 | Interaction prompt + hover highlight | DONE | `DmChapterhouse` |
 

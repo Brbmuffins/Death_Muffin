@@ -48,7 +48,7 @@ func build() -> Dictionary:
 		"wave": {"owned": host.progress["waveTierOwned"], "active": host.progress["waveTierActive"], "pct": DmWaveUpgrades.wave_modifiers(float(host.progress["waveTierActive"]))["speedPct"],
 			"cost": null if host.prog.wave_cost() == -1 else host.prog.wave_cost()},
 		"souls": b.p["souls"] if not b.p.is_empty() else 0, "souls_max": b.p["soulsMax"] if not b.p.is_empty() else 50, "raises_thralls": family == "necromancer",
-		"ward": _ward(b), "chain": _chain(g, b), "omen": _omen(g),
+		"ward": _ward(b), "chain": _chain(g, b), "omen": _omen(g), "save": host.save_chip(),
 	}
 	vm["prompt"] = g.chapterhouse.prompt_text if g.chapterhouse != null else null
 	vm["depth"] = g.depths.hud_state() if g.depths != null else null   # the Depths readout (depth, kills / quota, stair, chest)

@@ -5,7 +5,7 @@ adapter instead of copies: `DmNextUiHost` implements the DmGame side of `godot/G
 works exactly as `setup(DmGame)` does. Nothing in `game_ui/`, `ui/hud/` or `ui/panels*/` knows about the slice.
 
 ```
-DmNextGame.start -> _start_hud():  UiHost (DmNextUiHost) .setup(shell)   then   Ui (DmGameUi).setup(ui_host); warm_panels = SLICE_PANELS; await ui.warm()
+DmNextGame.start -> _start_hud():  UiHost (DmNextUiHost) .setup(shell)   then   Ui (DmGameUi).setup(ui_host); await ui.warm()   (every DmGameUi panel is pre-built under the loading cover, as the old game)
 opts.hud:  true (default) real HUD  |  "minimal" DmNextHud orbs only (fallback, used by tests/next)  |  false none (headless clients)  |  persist (user:// writes)
 ```
 
@@ -36,18 +36,27 @@ Changed: `game_ui/dm_game_ui.gd` gains `var warm_panels` (default = the old `WAR
 `next/next_game.gd` / `.tscn`: the `Hud` node is gone, `start()` builds the HUD (`hud` option). `next_hud.gd` stays as the "minimal" fallback only.
 
 ## Panels
-Pre-built under the loading cover (`ui.warm()`, same pre-build + apply-during-loading as the current game): **Bag (Reliquary)**, **Grimoire**, **Settings**.
-All `DmGameUi` panels are constructed (they are built by `setup`, as in the old game) but only those three are laid out ahead and tested here. Left, with TODO:
-- Sheet (J), Legion (Y), Forge/Salvage/Shelf (C), Professions/Garden/Labor/Contracts (P/U/H/O), Codex (K), Atlas (.), Ascension, Waystone map (M), Vault, Cosmetics: open
-  and work on the offline backend in principle but need slice data (stations, NPCs, waystones, Acre areas) and are untested; `npc_interact` / `station_interact` are emitted by `next/chapterhouse/` (Reliquary, Workbench, Altar, Vault, Waystone, Acre/Wing stations verified by `tests/chapterhouse`).
-- Not in the slice, hidden by omission: Depths readout, Next-step guidance depends on bag/level only. The chain meter, Soul Harvest meter, omen chip and Bone Ward chip are fed from `next/meta/`; the Altar's `do_ascend / do_swear / do_open` are on the adapter.
+All of `DmGameUi.WARM_PANELS` are pre-built under the loading cover (`ui.warm()`, ~1.3 s of the load). `tests/next_hud_counsel` opens each on the offline backend with the rebuild's data and runs one
+basic action through the API: Bag (sort + save), Sheet, Capes & Pets (adopt a companion), Legion (Reinforce), Forge (craft; reforge quote), Salvage, Reagent shelf, Vault (deposit), Contracts (deliver),
+Professions, Garden (plant), Labor (assign), Ascension (deepen a boon), Codex, Atlas, Waystone map. First opens measure 0-62 ms over an idle frame, the same as the old client (`tests/perf/panel_perf.gd`:
+Capes & Pets ~52, Reagent shelf ~41, the rest <= 30; the UI code is shared).
+- Still not on the slice: Depths readout beyond the stair card, Next-step guidance depends on bag/level only.
+
+## Feeds added by the HUD/counsel track (adapter functions, `# ---- HUD / counsel feeds`)
+| Feed | Source |
+|---|---|
+| Save chip (`vm["save"]`) | worse of `DmProgressSync.state` and `DmInventory.state`: Saved / Unsaved changes / Saving... / Save failed, retrying (warn) |
+| Wave dial | `dial_wave(delta)` -> active tier (0..owned) -> `DmNextProgress.apply_progress` (director + rewards) |
+| Sounds | `loot_view.dropped_sound` (lootDrop..Legendary, positioned), coin / shard on pickup, `play_loot` + the `collected` counsel event on an item pickup, hurt + lowHealth (< 30 %) on host damage; every one also raises `sfx(name)` |
+| Counsel | `counsel_busy()` / `counsel_tick_ctx()` = `DmNextCounsel` (`dm_next_counsel.gd`): hurt / combat (three dead within 9 m or a boss awake) / dead flags, the tick ctx of `DmGameCombat.counsel_tick_ctx`; hurt -> `hurt_check` + the `hurt` tip |
+| Legion | `buy_legion()` (the Legion panel's Reinforce and `buy_upgrade("legion")`): backend `necro_purchase`, `refresh_progress` adopts the tier + the server's purse, stats follow, standing thralls get the one-time bump. The tier raises thrall hp / damage; the thrall CAP comes from boons and weapons (rules, not the tier) |
 
 ## Gaps
 - Progression persistence, upgrade tiers, level-ups and the belt are `next/progress/` (DmProgressSync, `DmNextBelt`); see its README.
 - Client (non-host) peers get no real HUD yet (`hud: true` builds it for the host only); hurt numbers for a client's own damage need the vitals diff.
-- No auto-combat; lifesteal / fortune / wisdom brews are not applied yet (damage, haste, ward, speed, essence are); Legion tier is not bought in the slice.
-- Loot drop/pickup sounds (`dropped_sound`, coin) are not forwarded to the AudioDirector.
+- No auto-combat (the HUD button is not fed); lifesteal / fortune / wisdom brews are not applied yet (damage, haste, ward, speed, essence are).
 - Target frame shows no elite affixes (the slice enemies carry no affix list yet).
 
 ## Tests / cost
+`godot --headless --path godot --script res://tests/next_hud_counsel/run.gd` (feeds, counsel, Legion, every panel).
 `godot --headless --path godot --script res://tests/next_hud/run.gd`; cost probe `tests/next_hud/perf.gd -- --hud=real|minimal|none` (numbers in the commit message / report).

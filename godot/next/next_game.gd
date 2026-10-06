@@ -14,7 +14,6 @@ extends Node3D
 ## loadout and counsel state are written under user://).
 
 const CASTER_DELAY := 0.8
-const SLICE_PANELS := ["inventory", "grimoire", "settings"]   ## panels pre-built under the loading cover; the others open (and build) on first use
 
 signal started
 signal enemy_spawned(enemy: DmEnemy)            ## every spawned enemy (every peer), once in the tree: the rewards seam
@@ -244,7 +243,6 @@ func _start_hud() -> void:
 		ui.name = "Ui"
 		add_child(ui)
 		ui.setup(ui_host)
-		ui.warm_panels = SLICE_PANELS
 		ui.sound.connect(func(n: String) -> void:
 			var a := get_node_or_null("/root/AudioDirector")
 			if a != null:
