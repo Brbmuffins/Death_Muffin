@@ -4,7 +4,8 @@ const path = require('path');
 const { run } = require('./gitops.cjs');
 
 function systemPrompt(cfg, job) {
-  return fs.readFileSync(path.join(cfg.toolsDir, 'PROMPT.md'), 'utf8').replaceAll('__BRANCH__', job.branch).replaceAll('__TOOLS__', cfg.toolsDir);
+  const promptFile = cfg.mode === 'godot' ? 'PROMPT-godot.md' : 'PROMPT.md';
+  return fs.readFileSync(path.join(cfg.toolsDir, promptFile), 'utf8').replaceAll('__BRANCH__', job.branch).replaceAll('__TOOLS__', cfg.toolsDir);
 }
 // Quote person text so it cannot close its own wrapper; label the role from CONFIG (never from the message).
 function wrapRequest(m) {
@@ -16,10 +17,15 @@ function buildPrompt(messages, extra) {
   return [...(extra ? [extra] : []), ...messages.map(wrapRequest)].join('\n\n');
 }
 function claudeArgs(cfg, job) {
+  // The only programs the agent may run: agit, and the mode's own check script (+ regen.sh/shot.sh on the web side only: Godot mode has no
+  // generated server bundles to rebuild and no screenshots in v1).
+  const bash = cfg.mode === 'godot'
+    ? [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check-godot.sh)`]
+    : [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check.sh)`, `Bash(${cfg.toolsDir}/regen.sh)`, `Bash(${cfg.toolsDir}/shot.sh)`, `Bash(${cfg.toolsDir}/shot.sh *)`];
   const a = ['-p', '--restricted', '--strict-mcp-config', '--permission-mode', 'dontAsk', '--output-format', 'json',
     '--model', job.model, '--append-system-prompt', systemPrompt(cfg, job),
     '--tools', 'Read,Edit,Write,Glob,Grep,Bash',
-    '--allowedTools', 'Read', 'Edit', 'Write', 'Glob', 'Grep', `Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check.sh)`, `Bash(${cfg.toolsDir}/regen.sh)`, `Bash(${cfg.toolsDir}/shot.sh)`, `Bash(${cfg.toolsDir}/shot.sh *)`,
+    '--allowedTools', 'Read', 'Edit', 'Write', 'Glob', 'Grep', ...bash,
     '--disallowedTools', 'WebFetch', 'WebSearch'];
   if (job.sessionId) a.push('--resume', job.sessionId);
   return a;

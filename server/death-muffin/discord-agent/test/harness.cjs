@@ -7,7 +7,11 @@ const SRC = path.resolve(__dirname, '..');
 const IDS = { OWNER: '100000000000000001', HELIX: '142812688358178816', LIMITED: '300000000000000003', STRANGER: '400000000000000004', BOT: '900000000000000009', CHAN: '700000000000000007' };
 
 function sh(cwd, ...a) { return execFileSync('git', ['-c', 'user.name=T', '-c', 'user.email=t@t', ...a], { cwd, stdio: 'pipe' }).toString().trim(); }
+// over.godot = true: the same world but for mode 'godot': a `godot-port` branch (the base branch) holding a small godot/ tree, master keeping only the
+// publish script (as in the real repo, where publish-godot-client.sh lives on master), a client manifest naming the revision that is "live", fake
+// check-godot.sh / publish script, and a deploy hook that only logs.
 function makeWorld(over = {}) {
+  const godot = !!over.godot; delete over.godot;
   const T = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-e2e-'));
   const origin = path.join(T, 'origin.git'), repo = path.join(T, 'repo'), tools = path.join(T, 'tools'), deploy = path.join(T, 'deploy'), wtRoot = path.join(T, 'wt');
   fs.mkdirSync(wtRoot); fs.mkdirSync(deploy); fs.mkdirSync(path.join(T, 'preview'));
@@ -25,9 +29,21 @@ function makeWorld(over = {}) {
     sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'mobile work'); sh(repo, 'push', '-q', 'origin', 'mobile'); sh(repo, 'checkout', '-q', 'master');
     delete over.mobile;
   }
+  let liveRev = null;
+  if (godot) {
+    w('server/death-muffin/publish-godot-client.sh', '#!/usr/bin/env bash\n# stub of the real publisher: records what it was asked to publish, next to itself\necho "published $1 REPO=$REPO" >> "$(dirname "$0")/published.log"\n');
+    sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'publish script on master'); sh(repo, 'push', '-q', 'origin', 'master');
+    sh(repo, 'checkout', '-q', '-b', 'godot-port');
+    w('godot/project.godot', 'config_version=5'); w('godot/README.md', 'godot readme'); w('godot/game/a.gd', 'speed=1'); w('godot/net/dm_api.gd', 'url=1'); w('godot/export_presets.cfg', '[preset.0]');
+    w('godot/data/loot/content.json', '{"v":1}');
+    sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'godot tree'); sh(repo, 'push', '-q', 'origin', 'godot-port');
+    liveRev = sh(repo, 'rev-parse', 'HEAD');
+    fs.mkdirSync(path.join(T, 'client')); fs.writeFileSync(path.join(T, 'client', 'manifest.json'), JSON.stringify({ version: 'v1', rev: liveRev.slice(0, 12) }));
+  }
   fs.mkdirSync(path.join(tools, 'state'), { recursive: true });
-  for (const f of ['ship.sh', 'rollback.sh', 'agit', 'PROMPT.md']) fs.copyFileSync(path.join(SRC, f), path.join(tools, f));
+  for (const f of ['ship.sh', 'rollback.sh', 'agit', 'PROMPT.md', 'PROMPT-godot.md']) fs.copyFileSync(path.join(SRC, f), path.join(tools, f));
   fs.symlinkSync(path.join(SRC, 'runner'), path.join(tools, 'runner'));
+  fs.writeFileSync(path.join(tools, 'check-godot.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "godot boom"; exit 1; }\necho "tests/game run.gd exit=0  12 passed"; echo "GODOT TESTS: 2 suites, 2 passed, 0 failed"\n', { mode: 0o755 });
   fs.writeFileSync(path.join(tools, 'check.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "boom"; exit 1; }\necho "# tests 3"; echo "# pass 3"; echo "# fail 0"\n', { mode: 0o755 });
   // regen stub: the real generators need the whole game repo; this one derives necro-rules.cjs from src/gameplay/a.ts (upper-cased) and prints the status like the real one
   fs.writeFileSync(path.join(tools, 'regen.sh'), '#!/usr/bin/env bash\nmkdir -p server/vps-handoff/necro-progress\ntr a-z A-Z < src/gameplay/a.ts > server/vps-handoff/necro-progress/necro-rules.cjs\necho "== regenerated"\ngit status --porcelain\n', { mode: 0o755 });
@@ -39,11 +55,14 @@ function makeWorld(over = {}) {
     repo, worktreeRoot: wtRoot, stateDir: path.join(tools, 'state'), toolsDir: tools, deployDir: deploy,
     claudeCmd: path.join(__dirname, 'fake-claude.cjs'), deployCmd: `n=$(ls ${deploy} | grep -c backup); b=${deploy}/backup-pre-release-aaaaaaaaaa$(printf %02d $n)-$(printf '20261004T%02d0000Z' $n); mkdir -p $b; echo 'echo rolled-back-ok' > $b/ROLLBACK.sh; echo "Rollback: $b/ROLLBACK.sh"; echo deployed "$1"`, turnTimeoutMin: 1, mobileDeployCmd: `echo "$1" >> ${deploy}/mobile-deploys.log`,
     previewRoot: path.join(T, 'preview'), previewUrl: 'https://example.test/death-muffin/preview/',
-    previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "vite exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE|$DM_PREVIEW_BASE" > "$DM_PREVIEW_ROOT/$1/index.html"', ...over };
+    previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "vite exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE|$DM_PREVIEW_BASE" > "$DM_PREVIEW_ROOT/$1/index.html"',
+    ...(godot ? { baseBranch: 'godot-port', mode: 'godot', clientManifest: path.join(T, 'client', 'manifest.json'), deployCmd: `echo deployed "$1" >> ${deploy}/deploys.log`,
+      previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "godot exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE" > "$DM_PREVIEW_ROOT/$1/DeathMuffin-Preview-$1-win64.zip"' } : {}),
+    ...over };
   fs.writeFileSync(cfgFile, JSON.stringify(raw));
   const cfg = loadConfig(cfgFile); cfg.__file = cfgFile;
   const runner = createRunner(cfg);
-  return { T, repo, origin, tools, deploy, backup, cfg, runner, sh };
+  return { T, repo, origin, tools, deploy, backup, cfg, runner, sh, liveRev };
 }
 
 // ---- fake Discord layer ----

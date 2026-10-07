@@ -11,7 +11,12 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   // SHOT-PNG / SHOT-PNG2: pretend shot.sh ran (a scenario file + a PNG; PNG2 = different bytes). The !shot prompt mentions shot.sh.
   const rules = 'server/vps-handoff/necro-progress/necro-rules.cjs';
   const wr = (f, c) => { fs.mkdirSync(require('path').dirname(f), { recursive: true }); fs.writeFileSync(f, c); };
-  if (/not what the generators produce/.test(p)) { wr(rules, 'SPEED=9\n'); git('add', '--', rules); try { git('commit', '-q', '-m', 'Regenerate the server rules'); } catch { /* nothing to commit */ } text = 'Regenerated.'; }
+  // godot mode (base branch godot-port): GD-GAMEPLAY = godot/game/a.gd, GD-NET = sensitive net code, GD-DOC = readme, GD-PRESET = a forbidden path
+  if (/GD-GAMEPLAY/.test(p)) { edit('godot/game/a.gd', 'speed=1', 'speed=9', 'Faster movement'); ready('Faster movement', ['speed 9']); text = 'Done.'; }
+  else if (/GD-NET/.test(p)) { edit('godot/net/dm_api.gd', 'url=1', 'url=2', 'Change the api url'); ready('Api url', ['url 2']); text = 'Done.'; }
+  else if (/GD-DOC/.test(p)) { edit('godot/README.md', 'godot readme', 'godot readme v2', 'Clarify the Godot readme'); ready('Readme', ['readme']); text = 'Done.'; }
+  else if (/GD-PRESET/.test(p)) { edit('godot/export_presets.cfg', '[preset.0]', '[preset.0]\nx=1', 'Tweak the export'); ready('Export', ['x']); text = 'Done.'; }
+  else if (/not what the generators produce/.test(p)) { wr(rules, 'SPEED=9\n'); git('add', '--', rules); try { git('commit', '-q', '-m', 'Regenerate the server rules'); } catch { /* nothing to commit */ } text = 'Regenerated.'; }
   else if (/MAKE-DATA-HAND/.test(p)) { wr('src/gameplay/a.ts', 'speed=9\n'); wr(rules, 'SPEED=9 // hand edit\n'); git('add', '--', 'src/gameplay/a.ts', rules); git('commit', '-q', '-m', 'Faster movement'); ready('Faster', ['speed 9']); text = 'Done.'; }
   else if (/MAKE-DATA-FORBIDDEN/.test(p)) { wr('src/gameplay/a.ts', 'speed=9\n'); wr('server/realtime/deploy-realtime.sh', 'echo evil\n'); git('add', '--', 'src/gameplay/a.ts', 'server/realtime/deploy-realtime.sh'); git('commit', '-q', '-m', 'Faster movement'); ready('Faster', ['speed 9']); text = 'Done.'; }
   else if (/MAKE-DATA/.test(p)) { wr('src/gameplay/a.ts', 'speed=9\n'); wr(rules, 'SPEED=9\n'); git('add', '--', 'src/gameplay/a.ts', rules); git('commit', '-q', '-m', 'Faster movement'); ready('Faster movement', ['speed 9']); text = 'Done.'; }

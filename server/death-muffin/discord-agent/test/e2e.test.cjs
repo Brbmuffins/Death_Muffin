@@ -717,6 +717,192 @@ test('thread deleted: queued outbox ops for it are dropped and nothing new is qu
   await d.ad.onThreadDelete(other);   // a thread in another channel is not ours: no event, no effect
 });
 
+// ---------- godot mode (config mode 'godot', base branch godot-port) ----------
+const remoteHead = (w, branch) => remoteRef(w, `refs/heads/${branch}`);
+const godotWorld = (over = {}) => makeWorld({ godot: true, ...over });
+const godotBackups = (w) => fs.readdirSync(w.deploy).filter((n) => /^backup-pre-release-godot-\d{8}T\d{6}Z$/.test(n));
+
+test('godot mode: config defaults, validation and tier selection', () => {
+  const os = require('os'); const { loadConfig } = require('../runner/lib/config.cjs');
+  const cfgOf = (o) => { const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dm-cfg-')), 'c.json'); fs.writeFileSync(f, JSON.stringify(o)); return loadConfig(f); };
+  const dflt = loadConfig(null); assert.equal(dflt.baseBranch, 'master'); assert.equal(dflt.mode, 'web'); assert.ok(dflt.tiers.gameplay.includes('src/**'));
+  const g = cfgOf({ baseBranch: 'godot-port', mode: 'godot' }); assert.equal(g.baseBranch, 'godot-port'); assert.deepEqual(g.tiers, g.godotTiers); assert.ok(g.forbiddenPaths.includes('godot/export_presets.cfg'));
+  for (const bad of ['', 'a b', 'x;rm -rf /', '$(id)', '-D', '--force', 'a..b', 'a//b', 'a/', 'x.lock', 'né']) assert.throws(() => cfgOf({ baseBranch: bad }), /Invalid baseBranch/, JSON.stringify(bad));
+  for (const bad of ['', 'Godot', 'android', null, 1]) assert.throws(() => cfgOf({ mode: bad }), /Invalid mode/, JSON.stringify(bad));
+  assert.equal(cfgOf({ baseBranch: 'release/1.2_x' }).baseBranch, 'release/1.2_x');
+});
+
+test('godot mode: question, gameplay proposal (godot-port compare link, zip preview, godot test summary), ship to godot-port, rollback republishes the previous client', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { thread: q } = await request(d, IDS.OWNER, 'where is player speed defined?');
+  await until(() => texts(q).some((t) => /answer is in/.test(t)), d.ad);
+  assert.equal(proposalOf(q), undefined);
+  const masterBefore = remoteHead(w, 'master'), baseBefore = remoteHead(w, 'godot-port');
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread);
+  const job = Object.values(w.runner.jobs()).find((j) => j.threadId === thread.id); const id = job.id;
+  assert.equal(sh(w.repo, 'rev-list', '--count', `origin/godot-port..origin/discord/${id}`), '1', 'branch was cut from godot-port');
+  assert.match(p.payload.embeds[0].fields[0].value, /^Gameplay/);
+  assert.match(field(p, 'Exact diff'), new RegExp(`compare/godot-port\\.\\.\\.discord/${id}`));
+  assert.equal(field(p, 'Tests'), '✅ 2 suites, 2 passed, 0 failed');
+  assert.equal(field(p, 'Try it'), `https://example.test/death-muffin/preview/${id}/DeathMuffin-Preview-${id}-win64.zip\nUnzip it and run Play Preview (offline).bat. Offline sandbox copy of this change: nothing saves to your real character.`);
+  assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, id, `DeathMuffin-Preview-${id}-win64.zip`)));
+  assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
+  const live = await until(() => texts(thread).find((t) => /Live\. Release/.test(t)), d.ad);
+  assert.match(live, /is on godot-port and deployed\./); assert.ok(!/phones/.test(live));
+  assert.equal(remoteHead(w, 'master'), masterBefore, 'master is never touched in godot mode'); assert.notEqual(remoteHead(w, 'godot-port'), baseBefore);
+  assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/game/a.gd').trim(), 'speed=9');
+  const ship = shipsLog(w)[0]; assert.equal(ship.tier, 'gameplay');
+  assert.match(fs.readFileSync(path.join(w.deploy, 'deploys.log'), 'utf8'), new RegExp(`deployed ${ship.sha}`));
+  assert.ok(!fs.existsSync(path.join(w.deploy, 'mobile-deploys.log')), 'no mobile step in godot mode');
+  // the backup folder: strict name, ROLLBACK.sh for the revision that was live, plus a fresh copy of the publish script taken from master
+  const bks = godotBackups(w); assert.equal(bks.length, 1);
+  assert.equal(ship.rollback, path.join(w.deploy, bks[0], 'ROLLBACK.sh'));
+  const rb = fs.readFileSync(ship.rollback, 'utf8');
+  assert.match(rb, new RegExp(`exec bash \\S*${bks[0]}/publish-godot-client\\.sh ${w.liveRev.slice(0, 12)}\\n$`)); assert.ok(rb.includes(`REPO=${w.repo}`));
+  assert.equal(fs.readFileSync(path.join(w.deploy, bks[0], 'publish-godot-client.sh'), 'utf8'), sh(w.repo, 'show', 'origin/master:server/death-muffin/publish-godot-client.sh') + '\n');
+  assert.equal(fs.statSync(ship.rollback).mode & 0o777, 0o755);
+  // rollback: the owner's command runs that ROLLBACK.sh (under the lock), which republishes the previous revision with the saved publisher
+  await d.say(d.main, IDS.OWNER, `${BOT} rollback`);
+  await until(() => d.main.sent.some((s) => /Rolled back/.test(s.payload.content || '')), d.ad);
+  assert.equal(fs.readFileSync(path.join(w.deploy, bks[0], 'published.log'), 'utf8'), `published ${w.liveRev.slice(0, 12)} REPO=${w.repo}\n`);
+  await until(() => !fs.existsSync(path.join(w.cfg.worktreeRoot, `discord-${id}`)) && !fs.existsSync(path.join(w.cfg.worktreeRoot, `ship-${id}`)), d.ad);
+});
+
+test('godot mode: sensitive net code is flagged and limited approvers cannot ship it; docs are casual; export_presets.cfg is forbidden', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.LIMITED, 'GD-NET change the url');
+  const p = await waitProposal(d, thread);
+  assert.match(p.payload.embeds[0].title, /^⚠/); assert.match(p.payload.embeds[0].fields[0].value, /Sensitive/);
+  assert.deepEqual(await d.react(p, IDS.LIMITED, '✅'), [IDS.LIMITED]);
+  const { thread: t2 } = await request(d, IDS.LIMITED, 'GD-DOC clarify');
+  const p2 = await waitProposal(d, t2); assert.match(p2.payload.embeds[0].fields[0].value, /^Casual/);
+  const { thread: t3 } = await request(d, IDS.OWNER, 'GD-PRESET tweak the export');
+  await until(() => texts(t3).some((t) => /could not get this into a shippable state.*godot\/export_presets\.cfg/s.test(t)), d.ad);
+  assert.equal(proposalOf(t3), undefined);
+});
+
+test('godot mode: !shot is not available, the command list drops it, and the agent is not given shot.sh or regen.sh', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'where is speed?');
+  await until(() => texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  const m = await d.say(thread, IDS.HELIX, '!shot'); await until(() => m.replies.length, d.ad);
+  assert.equal(m.replies[0].content, 'Screenshots are not available for the Godot client yet; use !preview for a playable build.');
+  const j = Object.values(w.runner.jobs())[0]; assert.equal(j.queue.length, 0, 'no screenshot turn queued');
+  const m2 = await d.say(thread, IDS.HELIX, '!nope'); await until(() => m2.replies.length, d.ad); assert.ok(!/!shot/.test(m2.replies[0].content));
+  const { claudeArgs, systemPrompt } = require('../runner/lib/agent.cjs');
+  const a = claudeArgs(w.cfg, j); const allowed = a.slice(a.indexOf('--allowedTools') + 1, a.indexOf('--disallowedTools'));
+  assert.deepEqual(allowed, ['Read', 'Edit', 'Write', 'Glob', 'Grep', `Bash(${w.tools}/agit *)`, `Bash(${w.tools}/check-godot.sh)`]);
+  const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/godot-port/); assert.ok(sp.includes(`${w.tools}/check-godot.sh`) && !sp.includes('__TOOLS__') && !sp.includes('shot.sh'));
+  // web mode is unchanged
+  const wa = makeWorld(); const wj = { ...j, model: 'sonnet' }; const wargs = claudeArgs(wa.cfg, wj);
+  assert.ok(wargs.includes(`Bash(${wa.tools}/shot.sh)`) && wargs.includes(`Bash(${wa.tools}/regen.sh)`) && wargs.includes(`Bash(${wa.tools}/check.sh)`) && !wargs.some((x) => /check-godot/.test(x)));
+});
+
+test('godot mode: if the live client revision cannot be read, nothing is pushed or published and no backup is left; a first publish (no manifest) goes live with no rollback', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0];
+  const before = remoteHead(w, 'godot-port');
+  fs.writeFileSync(w.cfg.clientManifest, '{"rev":"../../etc"}');
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /Not live: I could not prepare a rollback/.test(t)), d.ad);
+  assert.equal(remoteHead(w, 'godot-port'), before); assert.equal(godotBackups(w).length, 0); assert.ok(!fs.existsSync(path.join(w.deploy, 'deploys.log')));
+  await until(() => job.status === 'proposed' && !job.running, d.ad);
+  fs.unlinkSync(w.cfg.clientManifest);   // nothing live yet: first publish
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  assert.notEqual(remoteHead(w, 'godot-port'), before); assert.equal(shipsLog(w)[0].rollback, null);
+  assert.equal(godotBackups(w).length, 1); assert.ok(!fs.existsSync(path.join(w.deploy, godotBackups(w)[0], 'ROLLBACK.sh')));
+});
+
+test('godot mode: base branch moved with a conflict is refused and leaves no backup folder', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread);
+  sh(w.repo, 'checkout', '-q', 'godot-port'); fs.writeFileSync(path.join(w.repo, 'godot/game/a.gd'), 'speed=5'); sh(w.repo, 'commit', '-q', '-am', 'someone else'); sh(w.repo, 'push', '-q', 'origin', 'godot-port');
+  const moved = remoteHead(w, 'godot-port');
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /Not live: godot-port moved and this no longer merges cleanly/.test(t)), d.ad);
+  assert.equal(remoteHead(w, 'godot-port'), moved); assert.equal(godotBackups(w).length, 0);
+});
+
+test('godot mode: rollback only considers the strict godot backup folder names (decoys with newer stamps, wrong names or symlinks are ignored)', async () => {
+  const w = godotWorld();
+  const mk = (n, rb = true) => { const dir = path.join(w.deploy, n); fs.mkdirSync(dir); if (rb) fs.writeFileSync(path.join(dir, 'ROLLBACK.sh'), 'echo evil\n'); return dir; };
+  assert.equal(w.runner.newestBackup(), null, 'the web-style backup in the harness is not a godot backup');
+  mk('backup-pre-release-godot-20991231T000000Z.bak'); mk('backup-pre-release-godotx-20991231T000000Z'); mk('backup-pre-release-GODOT-20991231T000000Z'); mk('backup-pre-release-godot-2099123T000000Z');
+  mk('backup-pre-release-godot-20991231T000000Z-extra'); mk('backup-pre-release-godot-20991231T000000Zx');
+  mk('backup-pre-release-godot-20991231T000001Z', false);   // right name, no ROLLBACK.sh
+  const real = mk('backup-pre-release-godot-20261005T010203Z');
+  assert.equal(w.runner.newestBackup(), path.join(real, 'ROLLBACK.sh'));
+  const target = fs.mkdtempSync(path.join(require('os').tmpdir(), 'dm-sym-')); fs.writeFileSync(path.join(target, 'ROLLBACK.sh'), 'echo evil\n');
+  fs.symlinkSync(target, path.join(w.deploy, 'backup-pre-release-godot-20991231T000002Z'));
+  assert.equal(w.runner.newestBackup(), path.join(real, 'ROLLBACK.sh'), 'a symlinked backup dir is ignored');
+  // web mode never picks a godot folder
+  const wb = makeWorld(); fs.mkdirSync(path.join(wb.deploy, 'backup-pre-release-godot-20991231T000000Z')); fs.writeFileSync(path.join(wb.deploy, 'backup-pre-release-godot-20991231T000000Z', 'ROLLBACK.sh'), 'x');
+  assert.equal(wb.runner.newestBackup(), path.join(wb.backup, 'ROLLBACK.sh'));
+});
+
+test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores godot/data/loot/content.json, fails on a failing suite; no network, own HOME', () => {
+  const { spawnSync, execFileSync } = require('child_process'); const os = require('os');
+  const T = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-cg-')); const wr = (f, c) => { fs.mkdirSync(path.dirname(path.join(T, f)), { recursive: true }); fs.writeFileSync(path.join(T, f), c); };
+  execFileSync('git', ['init', '-q', T]);
+  wr('godot/data/loot/content.json', '{"committed":true}');
+  // fake generator: overwrites the committed file (like the real one), records HOME/XDG and whether the network is reachable
+  wr('tools/godot/gen-fixtures.sh', 'echo \'{"generated":true}\' > godot/data/loot/content.json\necho "$HOME $XDG_DATA_HOME $XDG_CONFIG_HOME $XDG_CACHE_HOME" > .env-seen\n(timeout 2 bash -c "exec 3<>/dev/tcp/1.1.1.1/53" 2>/dev/null && echo NET > .net-seen) || echo nonet > .net-seen\n');
+  wr('tools/godot/run-all-tests.sh', 'echo "loot: $(cat godot/data/loot/content.json)" > .loot-during\nprintf "%-18s %-16s exit=%d  %s\\n" game run.gd 0 "30 passed"\nprintf "%-18s %-16s exit=%d  %s\\n" rules run.gd ${FAIL_SUITE:-0} "5 passed"\n[ -z "${FAIL_SUITE:-}" ]\n');
+  const script = path.join(__dirname, '..', 'check-godot.sh');
+  const run = (env) => spawnSync('bash', [script], { cwd: T, encoding: 'utf8', env: { ...process.env, ...env }, timeout: 120000 });
+  const ok = run({});
+  assert.equal(ok.status, 0, ok.stdout + ok.stderr);
+  assert.match(ok.stdout, /game +run\.gd +exit=0 +30 passed/); assert.match(ok.stdout, /^GODOT TESTS: 2 suites, 2 passed, 0 failed$/m);
+  assert.equal(fs.readFileSync(path.join(T, 'godot/data/loot/content.json'), 'utf8'), '{"committed":true}', 'the generator\'s overwrite is undone');
+  assert.equal(fs.readFileSync(path.join(T, '.loot-during'), 'utf8').trim(), 'loot: {"committed":true}', 'tests run against the committed file');
+  assert.equal(fs.readFileSync(path.join(T, '.net-seen'), 'utf8').trim(), 'nonet');
+  const env = fs.readFileSync(path.join(T, '.env-seen'), 'utf8').trim().split(' '); assert.equal(env.length, 4);
+  for (const e of env) assert.ok(e.startsWith('/tmp/dmgodot.') && !e.startsWith(os.homedir()), e);
+  assert.ok(!fs.existsSync(env[0]), 'scratch lives in the sandbox private /tmp, not on the host');
+  const bad = run({ FAIL_SUITE: '1' });
+  assert.equal(bad.status, 1); assert.match(bad.stdout, /^GODOT TESTS: 2 suites, 1 passed, 1 FAILED$/m);
+  assert.equal(fs.readFileSync(path.join(T, 'godot/data/loot/content.json'), 'utf8'), '{"committed":true}', 'restored on failure too');
+  wr('tools/godot/gen-fixtures.sh', 'echo "gen exploded"; exit 3\n');
+  const g = run({}); assert.equal(g.status, 1); assert.match(g.stdout, /gen exploded/); assert.match(g.stdout, /GODOT TESTS: fixture generation FAILED/);
+  assert.equal(fs.readFileSync(path.join(T, 'godot/data/loot/content.json'), 'utf8'), '{"committed":true}');
+});
+
+test('preview-godot.sh: refuses bad job ids / missing or symlinked root; with a stand-in Godot it exports, zips with the launcher + readme, and publishes 644 into <root>/<id> only', () => {
+  const { spawnSync, execFileSync } = require('child_process'); const os = require('os');
+  const script = path.join(__dirname, '..', 'preview-godot.sh');
+  const bad = spawnSync('bash', [script, '../etc'], { encoding: 'utf8', env: { ...process.env, DM_PREVIEW_ROOT: os_tmp() } }); assert.equal(bad.status, 2); assert.match(bad.stdout, /bad job id/);
+  const none = spawnSync('bash', [script, 'abc123'], { encoding: 'utf8', env: { ...process.env, DM_PREVIEW_ROOT: '/nonexistent/preview' } }); assert.equal(none.status, 2); assert.match(none.stdout, /missing/);
+  const T = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-pg-')); const root = path.join(T, 'preview'); fs.mkdirSync(root);
+  const link = path.join(T, 'rootlink'); fs.symlinkSync(root, link);
+  assert.equal(spawnSync('bash', [script, 'abc123'], { encoding: 'utf8', env: { ...process.env, DM_PREVIEW_ROOT: link } }).status, 2, 'symlinked root refused');
+  const repo = path.join(T, 'wt'); fs.mkdirSync(path.join(repo, 'godot'), { recursive: true }); fs.writeFileSync(path.join(repo, 'godot/project.godot'), 'x'); execFileSync('git', ['init', '-q', repo]);
+  // stand-in godot: --import does nothing, --export-release "<preset>" <out> writes a fake MZ exe + big pck, and records its environment
+  const fake = path.join(repo, '.fake-godot'); fs.mkdirSync(path.join(T, 'templates'));   // inside the worktree: the sandbox has a private /tmp
+  fs.writeFileSync(fake, '#!/usr/bin/env bash\necho "$HOME|$XDG_DATA_HOME|$*" >> ' + path.join(repo, '.godot-calls.log') + '\nif [ "$3" = "--export-release" ] || [ "$4" = "--export-release" ]; then for a in "$@"; do out="$a"; done; printf MZfake > "$out"; head -c 200000 /dev/zero > "${out%.exe}.pck"; touch "${out%.exe}.console.exe"; fi\n', { mode: 0o755 });
+  const env = { ...process.env, DM_PREVIEW_ROOT: root, DM_PREVIEW_TITLE: 'Fix <b>the</b>\nbell', GODOT: fake, GODOT_TEMPLATES: path.join(T, 'templates') };
+  const r = spawnSync('bash', [script, 'abc123'], { cwd: repo, encoding: 'utf8', env, timeout: 120000 });
+  assert.equal(r.status, 0, r.stdout + r.stderr); assert.match(r.stdout, /^RESULT: ok abc123$/m);
+  const zip = path.join(root, 'abc123', 'DeathMuffin-Preview-abc123-win64.zip');
+  assert.equal(fs.statSync(zip).mode & 0o777, 0o644); assert.deepEqual(fs.readdirSync(path.join(root, 'abc123')), ['DeathMuffin-Preview-abc123-win64.zip']);
+  const listing = execFileSync('unzip', ['-Z1', zip]).toString().split('\n').filter(Boolean).sort();
+  assert.deepEqual(listing, ['DeathMuffin.exe', 'DeathMuffin.pck', 'Play Preview (offline).bat', 'README.txt']);
+  const bat = execFileSync('unzip', ['-p', zip, 'Play Preview (offline).bat']).toString(); assert.match(bat, /DeathMuffin\.exe -- --offline\r\n$/);
+  const readme = execFileSync('unzip', ['-p', zip, 'README.txt']).toString(); assert.match(readme, /^PREVIEW of Fix <b>the<\/b> bell, offline edition, nothing saves to your real character\r\n/);
+  const calls = fs.readFileSync(path.join(repo, '.godot-calls.log'), 'utf8'); assert.ok(/--export-release Windows Desktop /.test(calls)); assert.ok(!calls.includes(os.homedir()), 'Godot never sees the real home');
+  // a symlink planted at the destination is refused; a second run replaces the zip and removes strays
+  fs.writeFileSync(path.join(root, 'abc123', 'stray.txt'), 'x');
+  assert.equal(spawnSync('bash', [script, 'abc123'], { cwd: repo, encoding: 'utf8', env, timeout: 120000 }).status, 0); assert.deepEqual(fs.readdirSync(path.join(root, 'abc123')), ['DeathMuffin-Preview-abc123-win64.zip']);
+  fs.symlinkSync(os.tmpdir(), path.join(root, 'def456'));
+  const sym = spawnSync('bash', [script, 'def456'], { cwd: repo, encoding: 'utf8', env, timeout: 120000 }); assert.equal(sym.status, 2); assert.match(sym.stdout, /symlinked destination/);
+  // a failing export is reported and publishes nothing
+  fs.writeFileSync(fake, '#!/usr/bin/env bash\n[ "$3" = "--export-release" ] || [ "$4" = "--export-release" ] && { echo "no templates"; exit 1; }\nexit 0\n', { mode: 0o755 });
+  const f = spawnSync('bash', [script, 'aaaaaa'], { cwd: repo, encoding: 'utf8', env, timeout: 120000 }); assert.equal(f.status, 1); assert.match(f.stdout, /godot export failed/); assert.ok(!fs.existsSync(path.join(root, 'aaaaaa')));
+});
+
 test('adapter: a message sent while the runner restarts is retried, not lost', async () => {
   const { createAdapter } = require('../bot/dm-agent.cjs');
   let down = 2; const seen = [];

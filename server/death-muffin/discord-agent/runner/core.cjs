@@ -50,6 +50,8 @@ const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a
 function createRunner(cfgIn, opts = {}) {
   const cfg = typeof cfgIn === 'string' ? loadConfig(cfgIn) : cfgIn;
   const now = opts.now || (() => Date.now());
+  const BB = cfg.baseBranch || 'master', GODOT = cfg.mode === 'godot';   // loadConfig validates both; raw test configs fall back to web/master
+  const CHECK = GODOT ? 'check-godot.sh' : 'check.sh';
   fs.mkdirSync(cfg.stateDir, { recursive: true });
   const audit = createAudit(path.join(cfg.stateDir, 'audit.jsonl'));
   const auth = createAuth(cfg, now);
@@ -177,10 +179,10 @@ function createRunner(cfgIn, opts = {}) {
     if (!ev.mentioned && cfg.threadReplyRequiresMention) return { action: 'ignore' };
     if (starting.has(job.threadId)) await starting.get(job.threadId).catch(() => {});
     audit.log('request', { userId: msg.userId, role, kind: 'thread', job: job.id, text });
-    // After a ship (or a discard / sweep) the thread stays open: the next message starts a new round on a fresh branch from current master.
+    // After a ship (or a discard / sweep) the thread stays open: the next message starts a new round on a fresh branch from the current base branch.
     const noWorkspace = !job.running && job.status !== 'shipping' && (!job.worktree || !fs.existsSync(job.worktree));
     if (['shipped', 'discarded'].includes(job.status) || noWorkspace) {
-      if (text.startsWith('!')) return /^!status\b/i.test(text) ? handleCommand(job, msg, text) : { action: 'reply', text: 'Nothing is open right now. Tell me what to change next and I will start a fresh branch from the latest master.' };
+      if (text.startsWith('!')) return /^!status\b/i.test(text) ? handleCommand(job, msg, text) : { action: 'reply', text: 'Nothing is open right now. Tell me what to change next and I will start a fresh branch from the latest ' + BB + '.' };
       if ((job.totalTurns || 0) >= cfg.maxTurnsPerThread) return { action: 'reply', text: 'This thread has used up its total turn limit. Start a new request in the channel.' };
       const ok = await beginRound(job);
       if (!ok) return { action: 'reply', text: 'I could not set up a fresh workspace for the next change. Try again in a minute.' };
@@ -200,7 +202,7 @@ function createRunner(cfgIn, opts = {}) {
   // ---------- rounds ----------
   const projDir = (wt) => path.join(cfg.claudeProjectsDir || path.join(process.env.HOME || '', '.claude', 'projects'), String(wt).replace(/[^a-zA-Z0-9]/g, '-'));
   const beginRound = (job) => { const p = startRound(job).catch((e) => { console.error('round failed', e); return false; }); starting.set(job.threadId, p); return p.finally(() => starting.delete(job.threadId)); };
-  // Fresh branch + worktree from the current origin/master in the same thread / job record; the claude session carries on.
+  // Fresh branch + worktree from the current origin/<baseBranch> in the same thread / job record; the claude session carries on.
   async function startRound(job) {
     const prev = { worktree: job.worktree, branch: job.branch };
     const round = (job.round || 1) + 1;
@@ -213,7 +215,7 @@ function createRunner(cfgIn, opts = {}) {
     if (job.sessionId && prev.worktree) { try { const f = `${job.sessionId}.jsonl`; const dst = projDir(w.worktree); fs.mkdirSync(dst, { recursive: true }); fs.copyFileSync(path.join(projDir(prev.worktree), f), path.join(dst, f)); } catch { /* resume falls back to a fresh session */ } }
     if (prev.worktree) await G.removeJobArtifacts(cfg, { ...job, ...prev }).catch(() => {});
     Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, shotsSeen: {}, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
-      roundNote: 'Your previous change shipped and is live (or was discarded). You are on a fresh branch from the latest master; read the code again before relying on what you remember.', lastActive: now() });
+      roundNote: `Your previous change shipped and is live (or was discarded). You are on a fresh branch from the latest ${BB}; read the code again before relying on what you remember.`, lastActive: now() });
     audit.log('round', { job: job.id, round, branch: job.branch, base: w.base });
     save(); return true;
   }
@@ -246,6 +248,7 @@ function createRunner(cfgIn, opts = {}) {
         if (!auth.canDiscard(msg.userId, job, job.proposal && job.proposal.tier)) return { action: 'reply', text: 'Only the person who started this, or the owner, can discard.' };
         discard(job, msg.userId).catch((e) => say(job, `Discard failed: ${e.message}`)); return { action: 'accepted' };
       case 'shot':
+        if (cfg.mode === 'godot') return { action: 'reply', text: 'Screenshots are not available for the Godot client yet; use !preview for a playable build.' };
         if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
         job.queue.push({ ...msg, text: 'Show me what your current change looks like: write a scenario to .dm-shot.json and run shot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' });
         job.lastActive = now(); save(); pump(); return { action: 'accepted' };
@@ -256,13 +259,13 @@ function createRunner(cfgIn, opts = {}) {
         say(job, 'Rebuilding the playable preview (about a minute)…');
         buildPreview(job, job.proposal.title).then((pv) => {
           if (['discarded', 'shipped', 'shipping', 'deleted'].includes(job.status) || job.deleteRequested) { G.removePreview(cfg, job); return; }
-          say(job, pv.ok ? `Playable preview: ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.` : `Preview build failed: ${pv.why}`);
+          say(job, pv.ok ? (GODOT ? `Playable preview (Windows: unzip, run Play Preview (offline).bat): ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.` : `Playable preview: ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.`) : `Preview build failed: ${pv.why}`);
         }).finally(() => { job.previewBusy = false; });
         return { action: 'accepted' };
       }
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: 'Commands: !status, !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (rebuild the playable preview), !sync, rollback (approvers).' };
+      default: return { action: 'reply', text: `Commands: !status, !model <name> (owner), !cancel, !discard${cfg.mode === 'web' ? ', !shot (screenshot of the change)' : ''}, !preview (rebuild the playable preview), !sync, rollback (approvers).` };
     }
   }
 
@@ -375,12 +378,12 @@ function createRunner(cfgIn, opts = {}) {
     if (job.roundNote) { extra = job.roundNote; job.roundNote = null; }
     if (sync) {
       await G.git(cfg.repo, ['fetch', '-q', 'origin']);
-      const m = await G.git(job.worktree, ['merge', '--no-edit', 'origin/master'], { allowFail: true });
+      const m = await G.git(job.worktree, ['merge', '--no-edit', `origin/${BB}`], { allowFail: true });
       if (m.code !== 0) {
         const conflicted = (await G.git(job.worktree, ['diff', '--name-only', '--diff-filter=U'])).out.trim();
-        extra = (extra ? extra + '\n\n' : '') + `Master moved and merging it into your branch left conflicts in:\n${conflicted}\nResolve the conflict markers in those files keeping both sides' intent, stage them with agit add <paths>, then finish with agit commit --no-edit. Then run check.sh.`;
-        say(job, 'Merging the latest master hit conflicts; asking the agent to resolve them.');
-      } else say(job, 'Merged the latest master into this branch cleanly. Re-running checks.');
+        extra = (extra ? extra + '\n\n' : '') + `${BB} moved and merging it into your branch left conflicts in:\n${conflicted}\nResolve the conflict markers in those files keeping both sides' intent, stage them with agit add <paths>, then finish with agit commit --no-edit. Then run ${CHECK}.`;
+        say(job, `Merging the latest ${BB} hit conflicts; asking the agent to resolve them.`);
+      } else say(job, `Merged the latest ${BB} into this branch cleanly. Re-running checks.`);
       job.proposal = null;
     } else if (job.turns === 0) say(job, `On it (${job.model[0].toUpperCase()}${job.model.slice(1)}).`);
     const t0 = now(); let nextUpdate = t0 + 60000;
@@ -417,16 +420,19 @@ function createRunner(cfgIn, opts = {}) {
   // Only images taken after the branch's last commit show the change being approved; an older one could show a previous version.
   // ---------- playable preview (preview.sh, or cfg.previewCmd in tests) ----------
   const previewLink = (job) => `${String(cfg.previewUrl).replace(/\/?$/, '/')}${job.id}/`;
+  // Godot mode publishes one zip (preview-godot.sh) instead of a web page, so the link points at the file.
+  const previewZip = (job) => `${previewLink(job)}DeathMuffin-Preview-${job.id}-win64.zip`;
   // Never throws, never blocks approval: resolves { ok, url } or { ok: false, why }.
   async function buildPreview(job, title) {
     if (!cfg.previewRoot && !cfg.previewCmd) return { ok: false, why: 'previews are switched off' };
     let basePath = '/death-muffin/preview'; try { basePath = new URL(cfg.previewUrl).pathname.replace(/\/$/, ''); } catch { /* default */ }
     const env = { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', DM_PREVIEW_ROOT: cfg.previewRoot || '', DM_PREVIEW_BASE: basePath, DM_PREVIEW_TITLE: String(title || '').slice(0, 120) };
     try {
+      const script = path.join(cfg.toolsDir, GODOT ? 'preview-godot.sh' : 'preview.sh');
       const r = cfg.previewCmd
         ? await G.run('bash', ['-c', cfg.previewCmd, 'preview', job.id], { cwd: job.worktree, env, timeoutMs: 15 * 60000 })
-        : await G.run(path.join(cfg.toolsDir, 'preview.sh'), [job.id], { cwd: job.worktree, env, timeoutMs: 15 * 60000 });
-      if (r.code === 0 && !r.timedOut) { audit.log('preview', { job: job.id, ok: true }); return { ok: true, url: previewLink(job) }; }
+        : await G.run(script, [job.id], { cwd: job.worktree, env, timeoutMs: (GODOT ? 40 : 15) * 60000 });
+      if (r.code === 0 && !r.timedOut) { audit.log('preview', { job: job.id, ok: true }); return { ok: true, url: GODOT ? previewZip(job) : previewLink(job) }; }
       const why = r.timedOut ? 'the build took too long' : redactText((r.out + r.err).trim().split('\n').slice(-3).join(' ') || `exit ${r.code}`);
       audit.log('preview', { job: job.id, ok: false, why: clip(why, 300) }); return { ok: false, why: clip(why, 300) };
     } catch (e) { return { ok: false, why: clip(e.message, 300) }; }
@@ -461,8 +467,9 @@ function createRunner(cfgIn, opts = {}) {
     const diff = await G.diffText(wt, job.base);
     if (!diff.trim()) return { ok: true, empty: true };
     const files = parseDiff(diff);
+    // (Godot mode has no tier-neutral generated files: server bundles are not rebuilt there, so they simply classify by path.)
     // Generated files are tier-neutral only when a sandboxed regeneration reproduces them exactly (deterministic, not the model's say-so).
-    const gen = await verifyGenerated({ toolsDir: cfg.toolsDir, repo: cfg.repo, scratchRoot: cfg.worktreeRoot, base: job.base, head: await G.head(wt), changedPaths: files.map((f) => f.path) });
+    const gen = GODOT ? { derived: [], mismatched: [] } : await verifyGenerated({ toolsDir: cfg.toolsDir, repo: cfg.repo, scratchRoot: cfg.worktreeRoot, base: job.base, head: await G.head(wt), changedPaths: files.map((f) => f.path) });
     if (gen.mismatched.length) return { ok: false, fixable: true, why: describeMismatch(gen) };
     const cls = classifyDiff(files, cfg, gen.derived);
     if (cls.forbidden.length) return { ok: false, fixable: true, why: `These paths may not be changed by this agent: ${cls.forbidden.join(', ')}. Undo those changes (restore them to the original content) and commit.` };
@@ -471,13 +478,15 @@ function createRunner(cfgIn, opts = {}) {
     const migrations = G.migrationsFrom(files);
     if (migrations.length && !cfg.allowMigrations) return { ok: false, fixable: false, why: 'This change adds a database migration, which is switched off for this agent.' };
     const t = await (opts.runChecks || runChecks)(job);
-    if (!t.ok) return { ok: false, fixable: true, why: `check.sh failed:\n${t.tail}`, tests: t };
+    if (!t.ok) return { ok: false, fixable: true, why: `${CHECK} failed:\n${t.tail}`, tests: t };
     return { ok: true, files, cls, migrations, tests: t, diff, commits };
   }
   async function runChecks(job) {
-    const r = await G.run(path.join(cfg.toolsDir, 'check.sh'), [], { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 25 * 60000 });
-    const out = r.out + r.err; const sum = (out.match(/^# (tests|pass|fail) .*$/gm) || []).join(' · ').replace(/# /g, '');
-    return { ok: r.code === 0 && !r.timedOut, tail: out.trim().split('\n').slice(-30).join('\n'), summary: sum || (r.code === 0 ? 'typecheck + client + server tests passed' : 'failed') };
+    const r = await G.run(path.join(cfg.toolsDir, CHECK), [], { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: (GODOT ? 45 : 25) * 60000 });
+    const out = r.out + r.err;
+    // web: the node:test counters; godot: the last "GODOT TESTS: ..." line check-godot.sh prints
+    const sum = GODOT ? ((out.match(/^GODOT TESTS: .*$/gm) || []).pop() || '').replace(/^GODOT TESTS: /, '') : (out.match(/^# (tests|pass|fail) .*$/gm) || []).join(' · ').replace(/# /g, '');
+    return { ok: r.code === 0 && !r.timedOut, tail: out.trim().split('\n').slice(-30).join('\n'), summary: sum || (r.code === 0 ? (GODOT ? 'Godot test suites passed' : 'typecheck + client + server tests passed') : 'failed') };
   }
 
   async function afterTurn(job, result) {
@@ -490,7 +499,7 @@ function createRunner(cfgIn, opts = {}) {
       audit.log('verify-failed', { job: job.id, why: v.why });
       if (!v.fixable || attempt >= 2) { say(job, `I could not get this into a shippable state: ${clip(v.why, 900)}\nNothing was proposed. Tell me how to proceed or react ❌ / say !discard.`); job.status = 'idle'; return; }
       say(job, `Checks found a problem (${clip(v.why.split('\n')[0], 200)}); asking the agent to fix it.`);
-      const r = await agentTurn(job, `The automatic review failed. Fix this, make sure check.sh passes, and commit:\n${v.why}`);
+      const r = await agentTurn(job, `The automatic review failed. Fix this, make sure ${CHECK} passes, and commit:\n${v.why}`);
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
       if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return; }
       postNewShots(job);
@@ -528,7 +537,10 @@ function createRunner(cfgIn, opts = {}) {
     };
     const pv = await buildPreview(job, title);
     if (job.status === 'discarded' || job.cancelRequested) { G.removePreview(cfg, job); return; }
-    embed.fields.splice(embed.fields.length - 1, 0, pv.ok ? { name: 'Try it (playable preview)', value: `${pv.url}\nOffline sandbox copy of this change: nothing saves to your real character.`, inline: false } : { name: 'Preview build failed', value: `${pv.why}\nThe proposal is still valid; review the diff, or say !preview to retry.`, inline: false });
+    const previewField = pv.ok
+      ? { name: GODOT ? 'Try it (Windows download)' : 'Try it (playable preview)', value: `${pv.url}\n${GODOT ? 'Unzip it and run Play Preview (offline).bat. ' : ''}Offline sandbox copy of this change: nothing saves to your real character.`, inline: false }
+      : { name: 'Preview build failed', value: `${pv.why}\nThe proposal is still valid; review the diff, or say !preview to retry.`, inline: false };
+    embed.fields.splice(embed.fields.length - 1, 0, previewField);
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
     job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
     job.status = 'proposed'; save();
@@ -546,9 +558,9 @@ function createRunner(cfgIn, opts = {}) {
   async function ship(job, approverId) {
     shipBusy = true; job.status = 'shipping'; save();
     const p = job.proposal; const ownerShips = auth.isOwner(approverId);
-    say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto master, re-testing, deploying. This takes a few minutes.`);
+    say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto ${BB}, re-testing, deploying. This takes a few minutes.`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
-      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}),
+      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}),
       MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 75 * 60000 }); }
@@ -563,35 +575,38 @@ function createRunner(cfgIn, opts = {}) {
       // Phones + offline edition are best effort (ship.sh prints one MOBILE: line); the PC release is live either way.
       const mm = /^MOBILE: (\S+)\s*(.*)$/m.exec(out); const mkind = mm ? mm[1] : ''; const mwhy = mm ? clip(mm[2], 300) : '';
       audit.log('mobile-result', { job: job.id, kind: mkind || 'none', detail: mwhy });
-      say(job, `🚀 Live. Release \`${sha}\` is on master and deployed${mkind === 'live' ? ' (phones and offline updated too)' : ''}. Thanks, ${nameOf(job.creatorId)}.` + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : '') + '\nKeep going here for the next change.');
+      say(job, `🚀 Live. Release \`${sha}\` is on ${BB} and deployed${mkind === 'live' ? ' (phones and offline updated too)' : ''}. Thanks, ${nameOf(job.creatorId)}.` + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : '') + '\nKeep going here for the next change.');
       if (mkind === 'pending') ownerPing(pingTarget(job), `Mobile/offline did NOT update for \`${job.id}\` (PC is live as \`${sha}\`): ${mwhy}`);
       if (!ownerShips) ownerPing(pingTarget(job), `${nameOf(approverId)} shipped **${clip(p.title, 100)}** (${p.tier}) as \`${sha}\`. Diff: ${G.compareUrl(cfg, job.branch)} — to undo: say \`rollback\`.`);
-      // A message that arrived during the ship starts the next round right away (its worktree is cut from the master we just shipped).
+      // A message that arrived during the ship starts the next round right away (its worktree is cut from the base branch we just shipped).
       if (job.queue.length && !job.deleteRequested) await beginRound(job);
       else { await G.removeJobArtifacts(cfg, job); job.worktree = null; save(); }
       pump();
       return;
     }
     const why = {
-      conflict: `master moved and this no longer merges cleanly (${detail}). Say !sync and I will merge master in and resolve it, then propose again.`,
+      conflict: `${BB} moved and this no longer merges cleanly (${detail}). Say !sync and I will merge ${BB} in and resolve it, then propose again.`,
       'head-moved': 'the branch changed after the proposal. Wait for the new proposal.',
       gate: `the merged change did not pass the final gate: ${detail}.`,
       'tests-failed': `tests failed on the merged tree:\n${tail}`,
-      'master-moved': 'master moved while I was deploying; nothing was pushed. React ✅ again or say !sync.',
+      'master-moved': `${BB} moved while I was deploying; nothing was pushed. React ✅ again or say !sync.`,
+      'backup-failed': `I could not prepare a rollback for the Godot client, so nothing was pushed or published (${detail}). Ask the owner to look, then react ✅ again.`,
       'lock-timeout': 'another deploy held the lock for too long; nothing was changed. React ✅ again later.',
-      'deploy-failed': `master was pushed but the deploy script FAILED. The owner should look now.\n${tail}`,
+      'deploy-failed': `${BB} was pushed but the deploy script FAILED. The owner should look now.\n${tail}`,
     }[kind] || `unexpected failure (${kind}).\n${tail}`;
     say(job, `❌ Not live: ${why}`);
     if (kind === 'deploy-failed' || kind === 'crashed') ownerPing(pingTarget(job), `Deploy problem for \`${job.id}\`: ${kind}. Check ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
-    job.status = ['master-moved', 'lock-timeout'].includes(kind) ? 'proposed' : 'idle';
+    job.status = ['master-moved', 'lock-timeout', 'backup-failed'].includes(kind) ? 'proposed' : 'idle';
     if (job.status === 'idle') job.proposal = null;
     save(); pump();   // a message that arrived during the ship is handled on this same branch
   }
 
   function newestBackup() {
     let ents = []; try { ents = fs.readdirSync(cfg.deployDir); } catch { return null; }
-    const c = ents.map((n) => /^backup-pre-release-[0-9a-f]+-(\d{8}T\d{6}Z)$/.exec(n) && { n, stamp: RegExp.$1 }).filter(Boolean)
-      .filter((e) => fs.existsSync(path.join(cfg.deployDir, e.n, 'ROLLBACK.sh'))).sort((a, b) => (a.stamp < b.stamp ? 1 : -1));
+    // Each mode only ever rolls back its own releases: web = deploy-release.sh's backup-pre-release-<hex sha>-<stamp>, godot = ship.sh's backup-pre-release-godot-<stamp>.
+    const re = GODOT ? /^backup-pre-release-godot-(\d{8}T\d{6}Z)$/ : /^backup-pre-release-[0-9a-f]+-(\d{8}T\d{6}Z)$/;
+    const c = ents.map((n) => re.exec(n) && { n, stamp: re.exec(n)[1] }).filter(Boolean)
+      .filter((e) => { const d = path.join(cfg.deployDir, e.n); try { if (GODOT && !fs.lstatSync(d).isDirectory()) return false; } catch { return false; } return fs.existsSync(path.join(d, 'ROLLBACK.sh')); }).sort((a, b) => (a.stamp < b.stamp ? 1 : -1));
     return c.length ? path.join(cfg.deployDir, c[0].n, 'ROLLBACK.sh') : null;
   }
   async function doRollback(msg, target) {
@@ -614,7 +629,7 @@ function createRunner(cfgIn, opts = {}) {
     const ok = /RESULT: rolled-back/.test(r.out);
     logShip({ type: 'rollback', approverId: msg.userId, backup: newest, ok });
     audit.log('rollback-result', { userId: msg.userId, ok });
-    post(target, { content: ok ? '↩ Rolled back. The live game is back to the previous release. master on GitHub still has the change: the owner should revert it there (or fix forward) so the next deploy does not bring it back.' : `Rollback failed:\n${clip((r.out + r.err).trim().split('\n').slice(-8).join('\n'), 800)}` });
+    post(target, { content: ok ? '↩ Rolled back. The live game is back to the previous release. ' + BB + ' on GitHub still has the change: the owner should revert it there (or fix forward) so the next deploy does not bring it back.' : `Rollback failed:\n${clip((r.out + r.err).trim().split('\n').slice(-8).join('\n'), 800)}` });
     if (!auth.isOwner(msg.userId)) ownerPing(target, `${nameOf(msg.userId)} ran a rollback (${ok ? 'ok' : 'FAILED'}).`);
   }
 
