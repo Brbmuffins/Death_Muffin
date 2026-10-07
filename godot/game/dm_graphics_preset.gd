@@ -3,7 +3,8 @@ extends RefCounted
 ## Settings -> Graphics presets (Low / Medium / High / Ultra): one table, so the Settings panel, DmGame._apply_graphics, the resolution governor
 ## and the tests read the same numbers. The setting value is the preset id ("low"/"medium"/"high"/"ultra"); the old two-value setting
 ## ("high"/"low") is already a valid id, so saved settings migrate as they are. High keeps the old High's cost (owner: performance first) plus
-## 2x smoothing and the 0.85 floor; the heavy extras are opt-in on Ultra. Anything unknown becomes High (the default for new players).
+## the 0.85 floor and anisotropic textures; MSAA and the heavy extras are opt-in on Ultra until real-GPU numbers say High can carry MSAA
+## (on llvmpipe MSAA 2x made the rendered QA run time out; a real GPU is unmeasured). Anything unknown becomes High (the default for new players).
 ## Renderer stays gl_compatibility; MSAA / anisotropy are set on the viewport at runtime (project.godot is not touched). Forward+ is not a preset: see
 ## REBUILD.md Phase 6.
 ##   shadows/bloom  moon shadow + the bloom glow         lights   prop lights lit at once (DmWorldBuilder.light_near)
@@ -16,16 +17,16 @@ const DEFAULT := "high"
 const IDS: Array[String] = ["low", "medium", "high", "ultra"]
 const LABELS := {
 	"low": "Low (fastest)",
-	"medium": "Medium (shadows, 2x smoothing)",
-	"high": "High (bloom, 2x smoothing)",
+	"medium": "Medium (shadows)",
+	"high": "High (bloom, sharp textures)",
 	"ultra": "Ultra (more lights, long sharp shadows, 4x smoothing)",
 }
 const TABLE := {
 	"low": {"shadows": false, "bloom": false, "lights": 3, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
 		"shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 0, "lod": 1.0},
-	"medium": {"shadows": true, "bloom": false, "lights": 5, "msaa": 2, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
+	"medium": {"shadows": true, "bloom": false, "lights": 5, "msaa": 0, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
 		"shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
-	"high": {"shadows": true, "bloom": true, "lights": 8, "msaa": 2, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
+	"high": {"shadows": true, "bloom": true, "lights": 8, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
 		"shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
 	"ultra": {"shadows": true, "bloom": true, "lights": 14, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
 		"shadow_size": 4096, "shadow_dist": 80.0, "prop_shadow": 56.0, "shadow_splits": 2, "soft": 3, "lod": 0.5},
