@@ -8,7 +8,7 @@
 # 2. Hashes every file (SHA-256) and copies them to $OUT_DIR/<version>/ (a folder per build, so a player who is mid-download of the
 #    previous build never sees its files change).
 # 3. Writes $OUT_DIR/manifest.json LAST, atomically:
-#      { version, built_at, rev, files:[{path,size,sha256,url}], online:{enabled,message} }
+#      { version, built_at, rev, files:[{path,size,sha256,url}], online:{enabled,staff,message} }
 #    The `online` block is carried over from the manifest that is live now, so republishing never opens or closes online play.
 #    A first publish starts locked. Devs flip it with set-online.sh.
 # 4. Keeps the newest two build folders (the previous one covers launchers that are mid-download).
@@ -67,14 +67,15 @@ rm -f "$STAGE/import.log" "$STAGE/export.log"
 # Carry the online lock over from the manifest that is live now (locked on a first publish or if the old one is unreadable).
 ONLINE_JSON=$(python3 - "$OUT_DIR/manifest.json" "$DEFAULT_MESSAGE" <<'PY'
 import json, sys
-enabled, message = False, sys.argv[2]
+enabled, staff, message = False, False, sys.argv[2]
 try:
     o = json.load(open(sys.argv[1])).get("online", {})
     enabled = o.get("enabled") is True
+    staff = o.get("staff") is True
     message = o.get("message") if isinstance(o.get("message"), str) else message
 except Exception:
     pass
-print(json.dumps({"enabled": enabled, "message": message}))
+print(json.dumps({"enabled": enabled, "staff": staff, "message": message}))
 PY
 )
 
