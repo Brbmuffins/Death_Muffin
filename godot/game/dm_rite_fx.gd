@@ -15,7 +15,7 @@ var stats: Dictionary = {"decal": 0, "emit": 0, "smoke": 0, "flash": 0, "light":
 ## Binbun scenes the rites play. Loading a scene stalls the NEXT frame for ~0.3-0.45 s (measured headless), so they are loaded under the loading
 ## screen (warm), never on the first cast. Add the id here when a rite plays a new `bb(...)`.
 const BINBUN_IDS := ["miasma_cloud", "toxic_puddle", "carrion_seed_armed", "carrion_seed_burst", "corpse_explosion", "crit_hit", "exhume_lift",
-	"grave_offering_orb", "grave_offering_ripple", "litany_pulse"]
+	"grave_offering_orb", "grave_offering_ripple", "litany_pulse", "rend_impact"]
 
 
 func warm() -> void:
