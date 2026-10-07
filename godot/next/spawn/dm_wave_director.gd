@@ -18,8 +18,8 @@ signal surge_event(ev: Dictionary)      ## host: {t: surge | surgeCleared | surg
 const SCENE_DIR := "res://enemies/"
 const CORPSE_S := 4.0
 const EMPTY_CLEAR_S := 15.0             ## no hero in the area this long -> remaining enemies are removed
-const SPAWN_MIN := 9.0
-const SPAWN_MAX := 14.0                 ## inside DmEnemy.AGGRO_RANGE (15) so a wave notices the hero at once
+const SPAWN_MIN := DmEnemy.AGGRO_RANGE + 3.0   ## owner 2026-10-07: waves climb in outside aggro so the player sees them coming (+3: a group fans out 2.1 m)
+const SPAWN_MAX := 30.0                 ## WorldSim's farthest breach (SPAWN_MAX_DIST)
 
 var game: Node                          ## DmNextGame
 var area_id: String = "graves"
@@ -360,9 +360,12 @@ func _pick_kind(roster: Array = []) -> String:
 	return String(kinds[0]["id"])
 
 
-## A walkable point 9-14 m from `around`, inside the area, at least 6 m away after snapping to the navmesh.
+## A walkable point SPAWN_MIN-SPAWN_MAX m from `around`, inside the area. Clamping to the area edge or snapping to the navmesh can pull a
+## point back toward the hero: such tries are rejected, and if every try lands short the farthest one (at least 6 m) is used.
 func _spawn_pos(around: Vector3) -> Variant:
 	var rect: Dictionary = DmContent.area(area_id)["rect"]
+	var best: Variant = null
+	var best_d := 6.0
 	for _try in 10:
 		var a := rng.randf() * TAU
 		var r := rng.randf_range(SPAWN_MIN, SPAWN_MAX)
@@ -371,9 +374,13 @@ func _spawn_pos(around: Vector3) -> Variant:
 		p.z = clampf(p.z, float(rect["z0"]) + 1.5, float(rect["z1"]) - 1.5)
 		if game.world.nav_ready():
 			p = game.world.nav_closest(p)
-		if Vector2(p.x - around.x, p.z - around.z).length() >= 6.0:
+		var d := Vector2(p.x - around.x, p.z - around.z).length()
+		if d >= SPAWN_MIN:
 			return p
-	return null
+		if d >= best_d:
+			best = p
+			best_d = d
+	return best
 
 
 func clear() -> void:
