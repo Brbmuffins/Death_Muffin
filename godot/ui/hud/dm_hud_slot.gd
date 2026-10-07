@@ -18,6 +18,7 @@ var total_ms: float = 1.0
 var affordable: bool = true
 var empowered: bool = false
 var locked: bool = false
+var needs: String = ""      ## "" or what the rite needs and the world lacks right now ("corpse" / "legion"): dimmed + a small note, not a lock
 var alt: bool = false
 var unlock_level: int = 10
 var cost: int = 0
@@ -32,6 +33,7 @@ var _over: Control
 var _cdtext: Label
 var _cost: Label
 var _lock: Label
+var _need: Label
 var _key_panel: PanelContainer
 var _key: Label
 var _swap_ico: Label
@@ -91,6 +93,13 @@ func _init() -> void:
 	_lock.offset_bottom = -2
 	_lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	holder.add_child(_lock)
+	_need = DmHudKit.lbl("", 10, Color("f0b08a"), "numeric")
+	_need.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_need.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_need.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_need.add_theme_constant_override("outline_size", 3)
+	_need.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	holder.add_child(_need)
 	_rune = TextureRect.new()
 	_rune.position = Vector2(2, BTN - 2 - 19)
 	_rune.size = Vector2(19, 19)
@@ -147,6 +156,7 @@ func apply(s: Dictionary) -> void:
 	affordable = bool(s.get("affordable", true))
 	empowered = bool(s.get("empowered", false))
 	locked = bool(s.get("locked", false))
+	needs = String(s.get("needs", ""))
 	unlock_level = int(s.get("unlock_level", 10))
 	alt = bool(s.get("alt", false))
 	swap = bool(s.get("swap", false))
@@ -156,6 +166,7 @@ func apply(s: Dictionary) -> void:
 	_cost.text = str(cost) if cost > 0 else ""
 	DmHudKit.set_color(_cost, "font_color", Color("9ff5e0") if empowered else (Color("f0b08a") if alt else Color("cbb8ff")))
 	_lock.text = str(unlock_level) if locked else ""
+	_need.text = ("no " + needs) if needs != "" and not locked and left_ms <= 0.0 else ""
 	_key.text = key_text
 	DmHudKit.set_color(_key, "font_color", Color("f0b08a") if alt else DmUi.BONE_300)
 	DmHudKit.set_font_size(_key, "font_size", 10 if alt else 12)
@@ -163,14 +174,15 @@ func apply(s: Dictionary) -> void:
 	_key_panel.tooltip_text = "Swap this rite (L)" if swap else ""
 	_icon.get_parent().tooltip_text = String(s.get("tooltip", ""))   # (the HUD replaces this with the spell card when it has a provider)
 	_ensure_shader()
-	if not affordable or locked:
+	if not affordable or locked or needs != "":
 		var m := _icon.material as ShaderMaterial
 		if m == null:
 			m = ShaderMaterial.new()
 			m.shader = _desat
 			_icon.material = m
-		m.set_shader_parameter("sat", 0.0 if locked else 0.3)
-		m.set_shader_parameter("bright", 0.55)
+		var soft := affordable and not locked   # only "needs": a lighter dim than out of essence
+		m.set_shader_parameter("sat", 0.0 if locked else (0.55 if soft else 0.3))
+		m.set_shader_parameter("bright", 0.7 if soft else 0.55)
 	elif _icon.material != null:
 		_icon.material = null
 	var alt_i := 1 if alt else 0

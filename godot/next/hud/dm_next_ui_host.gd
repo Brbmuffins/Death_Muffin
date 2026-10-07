@@ -561,8 +561,13 @@ func target_enemy() -> DmEnemy:
 
 # ---- floating text, toasts ----------------------------------------------------------------------------------------------------------
 
+var floats := DmFloatBudget.new()   ## on-screen cap of the combat numbers (hit / crit / dot / thrall)
+
+
 func float_text(pos: Vector3, text: String, kind: String = "info", color: Variant = null) -> void:
 	if not bool(settings["damage_numbers"]) and kind in ["hit", "crit", "dot", "thrall", "hurt"]:
+		return
+	if not floats.allow(kind, float(Time.get_ticks_msec())):
 		return
 	var ctx := {"world": pos, "text": text, "kind": kind}
 	if color != null:

@@ -144,6 +144,7 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 			var from: Vector3 = ev["from"]
 			var to: Vector3 = ev["to"]
 			c.fx.spear_cast(from, to)
+			c.fx.sfx("needleCast", from.x, from.z, 0.9)   # a cue at the press: the spear's own sound is the landing, a quarter second of flight later (the old game is silent here)
 			c.fx.shot(from, to, float(ev["speed"]), 0.0, "needle", DmFxData.spell("spear", "bone"))
 			return
 		"line":

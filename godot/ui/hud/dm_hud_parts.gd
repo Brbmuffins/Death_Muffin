@@ -13,6 +13,7 @@ class Diamonds extends Control:
 	var edge_on: Color = DmUi.BONE_100
 	var edge_off: Color = DmUi.BORDER_STRONG
 	var glow_on: Color = Color(0.435, 0.89, 0.784, 0.75)
+	var fill_hurt: Color = Color("ff5a46")   ## a state of 2 (a living thrall under a third of its health) is drawn in this colour
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -30,9 +31,10 @@ class Diamonds extends Control:
 			var pts := PackedVector2Array([c + Vector2(0, -h * 1.4142), c + Vector2(h * 1.4142, 0), c + Vector2(0, h * 1.4142), c + Vector2(-h * 1.4142, 0)])
 			pts = _shrink(pts, c, 0.82)
 			if on[i]:
+				var hurt: bool = typeof(on[i]) == TYPE_INT and int(on[i]) == 2
 				for k in 3:
-					draw_colored_polygon(_shrink(pts, c, 1.0 + 0.22 * (k + 1)), Color(glow_on, glow_on.a * 0.14))
-				draw_colored_polygon(pts, fill_on)
+					draw_colored_polygon(_shrink(pts, c, 1.0 + 0.22 * (k + 1)), Color(fill_hurt if hurt else glow_on, glow_on.a * 0.14))
+				draw_colored_polygon(pts, fill_hurt if hurt else fill_on)
 			var closed := pts.duplicate()
 			closed.append(pts[0])
 			draw_polyline(closed, edge_on if on[i] else edge_off, 1.0)

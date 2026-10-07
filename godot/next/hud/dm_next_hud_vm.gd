@@ -12,7 +12,14 @@ const STATUS_ICON := {
 	"sanctified": ["sanctified.webp", "Sanctified"],
 }
 
+## What a rite needs besides essence, so the bar can say "no corpse" / "no legion" before a press is refused (rite_*.gd validate: no_corpse / no_thralls).
+const NEEDS := {"exhume": "corpse", "corpse_explosion": "corpse", "grave_offering": "corpse", "grave_step": "corpse", "carrion_seed": "corpse",
+	"rally_dead": "legion", "command_rend": "legion"}
+const CORPSE_REACH := 13.0   ## the longest corpse pick of those rites (grave offering 13 m); the nearest corpse inside it makes them usable
+
 var host: DmNextUiHost
+var _corpse_near := true     ## a usable corpse lies within CORPSE_REACH of the hero (refreshed once per build, not per slot)
+var _legion_n := 1
 var _slots: Array[Dictionary] = []
 var _primary := {"icon": "", "key": "LMB"}
 var _map := {}
@@ -58,6 +65,7 @@ func build() -> Dictionary:
 	vm["depth"] = g.depths.hud_state() if g.depths != null else null   # the Depths readout (depth, kills / quota, stair, chest)
 	var th := b.get_node_or_null("Thralls") as DmThrallHost
 	vm["thralls"] = int(th.places_used()) if th != null else 0
+	vm["thrall_hurt"] = _legion_hurt(th)
 	vm["thrall_cap"] = int(host.build_cache()["discipline"]["mods"]["thrallCap"])
 	return vm
 
@@ -81,6 +89,7 @@ func _primary_slot(b: DmHeroBody) -> Dictionary:
 
 
 func _slot_list(b: DmHeroBody, level: float) -> Array:
+	_refresh_needs(b)
 	var n: int = host.keys.size() + (1 if host.signature != "" else 0)   # keys 1-4 + RMB, then R (the signature)
 	while _slots.size() < n:
 		_slots.append({"alt": _slots.size() == 4, "swap": false, "rune_icon": "", "empowered": false})
@@ -109,6 +118,48 @@ func _fill(s: Dictionary, id: String, b: DmHeroBody, level: float, key: String) 
 	s["affordable"] = emp or b.resource >= float(d["essenceCost"])
 	s["locked"] = DmAbilities.rite_level(level, host.dev_access) < DmAbilities.unlock_level(id)
 	s["unlock_level"] = DmAbilities.unlock_level(id)
+	s["needs"] = needs_of(id, _corpse_near, _legion_n)
+
+
+## Living thralls under a third of their health (the HUD paints that many pips red). No allocation: one loop over the legion.
+static func _legion_hurt(th: DmThrallHost) -> int:
+	if th == null:
+		return 0
+	var n := 0
+	for t in th.list():
+		if t.hp > 0.0 and t.hp < t.max_hp * DmThrall.LOW_HP_ENTER and t.state != DmThrall.S.DEAD:
+			n += 1
+	return n
+
+
+## "corpse" / "legion" when the rite needs one and the world has none, else "". Pure, so a test can drive it.
+static func needs_of(id: String, corpse_near: bool, legion_n: int) -> String:
+	var need: String = NEEDS.get(id, "")
+	if need == "corpse" and corpse_near:
+		return ""
+	if need == "legion" and legion_n > 0:
+		return ""
+	return need
+
+
+## One pass over the corpse field (a few dozen at most) and the legion count, once per 20 Hz build; the corpse view marks are not touched.
+func _refresh_needs(b: DmHeroBody) -> void:
+	var th := b.get_node_or_null("Thralls") as DmThrallHost
+	_legion_n = th.count() if th != null else 0
+	_corpse_near = false
+	var field: DmCorpseField = host.shell.corpses
+	if field == null:
+		return
+	var area: String = host.shell.area_of(b.owner_peer)
+	var r2 := CORPSE_REACH * CORPSE_REACH
+	for c: DmSimCorpse in field.corpses.values():
+		if c.echoOwner != "" or (area != "" and c.area != "" and c.area != area):
+			continue
+		var dx := c.x - b.global_position.x
+		var dz := c.z - b.global_position.z
+		if dx * dx + dz * dz <= r2:
+			_corpse_near = true
+			return
 
 
 # ---- meta feeds: Bone Ward chip, Kill Chain meter, Omen chip (the DmGameHud shapes) ------------------------------------------------------

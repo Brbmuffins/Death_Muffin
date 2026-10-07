@@ -1183,6 +1183,7 @@ func _rebuild_slots(slots: Array) -> void:
 
 
 var _souls_full := -1
+var _thr_hurt := 0
 
 func _apply_souls_thralls(v: Dictionary) -> void:
 	var souls := float(v.get("souls", 0))
@@ -1202,10 +1203,14 @@ func _apply_souls_thralls(v: Dictionary) -> void:
 	thrall_pips.get_parent().visible = on
 	thrall_chip.visible = on
 	var flags: Array = []
+	var hurt := int(v.get("thrall_hurt", 0))   # living thralls under a third of their health: their pips are red
 	for i in cap:
-		flags.append(i < thr)
+		flags.append((2 if i < hurt else true) if i < thr else false)
 	thrall_pips.set_state(flags)
 	thrall_num.text = "%d/%d" % [thr, cap]
+	if int(hurt > 0) != _thr_hurt:   # restyle only on a flip (a theme change every 50 ms re-lays the column)
+		_thr_hurt = int(hurt > 0)
+		thrall_num.add_theme_color_override("font_color", Color("ff8a78") if hurt > 0 else DmUi.BONE_100)
 
 
 func _apply_economy(v: Dictionary) -> void:

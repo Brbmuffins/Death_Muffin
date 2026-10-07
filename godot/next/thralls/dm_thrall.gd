@@ -91,6 +91,12 @@ var _em_hex: int = 0
 var _em_k: float = 0.0
 var _rally_look: bool = false
 var _ring: Variant
+var _ring_r := 0.5
+var _ring_hex := 0xffffff
+var _low_hp := false
+const LOW_HP_ENTER := 0.35
+const LOW_HP_LEAVE := 0.5
+const LOW_HP_HEX := 0xff5a46
 var _vfx: Node
 var _audio: Node
 var dead_reason: String = ""
@@ -544,9 +550,34 @@ func _build_visual() -> void:
 	var ring_r: float = (float(look.ring) if look != null and look.has("ring") else (0.6 if kind == "hound" else 0.5)) * (1.3 if champion else 1.0)
 	var ring_hex := 0xd9a441 if champion else (0x8fb4ff if wraith else spirit)
 	# The current game's ground ring: a Vfx decal that follows the body ("other" dims an ally's); gold = champion, blue = wraith.
-	if _vfx != null:
-		_ring = _vfx.decal({"other": not _own, "tex": "ring", "color": ring_hex, "x": global_position.x, "z": global_position.z, "r": ring_r,
-			"duration": 1e9, "opacity": 1.0 if empowered else 0.7, "follow": func() -> Variant: return Vector3(global_position.x, 0.0, global_position.z) if is_inside_tree() else null})
+	_ring_r = ring_r
+	_ring_hex = ring_hex
+	_make_ring()
+
+
+## The ground ring (a decal that follows the body). A thrall under LOW_HP_ENTER of its health wears a pulsing red ring instead, so a failing legion
+## member is findable at a glance; it goes back at LOW_HP_LEAVE (a Rally heal), so the ring is not rebuilt on every hit.
+func _make_ring() -> void:
+	if _ring != null:
+		_ring.kill()
+		_ring = null
+	if _vfx == null:
+		return
+	var o := {"other": not _own, "tex": "ring", "color": LOW_HP_HEX if _low_hp else _ring_hex, "x": global_position.x, "z": global_position.z, "r": _ring_r * (1.15 if _low_hp else 1.0),
+		"duration": 1e9, "opacity": 0.95 if _low_hp else (1.0 if empowered else 0.7), "follow": func() -> Variant: return Vector3(global_position.x, 0.0, global_position.z) if is_inside_tree() else null}
+	if _low_hp:
+		o["pulse"] = 4.0
+	_ring = _vfx.decal(o)
+
+
+## Two compares per frame (no allocation); the ring is rebuilt only when the state flips.
+func _low_hp_check() -> void:
+	if _ring == null or max_hp <= 0.0 or state == S.RISING:
+		return
+	var want := hp > 0.0 and hp < max_hp * (LOW_HP_LEAVE if _low_hp else LOW_HP_ENTER)
+	if want != _low_hp:
+		_low_hp = want
+		_make_ring()
 
 
 func play_attack() -> void:
@@ -624,6 +655,7 @@ func _process(delta: float) -> void:
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta * 5.0)
 		creature.set_flash(_flash)
+	_low_hp_check()
 	var want_rally := rally_t > 0.0
 	if want_rally != _rally_look:
 		_rally_look = want_rally
