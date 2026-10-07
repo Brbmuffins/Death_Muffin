@@ -114,6 +114,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 			MOUSE_BUTTON_LEFT: _primary_click(mb.position)
 			MOUSE_BUTTON_RIGHT: press_hotbar(5)
 	elif ev is InputEventKey and ev.pressed and not ev.echo:
+		if (ev as InputEventKey).keycode == KEY_F9 and game.ui_host != null:
+			game.ui_host.dev_break_seals()   # dev tool; a no-op unless the host's Dev access is on
+			return
 		for i in range(1, 7):
 			if ev.is_action_pressed(&"dm_hotbar_%d" % i):
 				press_hotbar(i)

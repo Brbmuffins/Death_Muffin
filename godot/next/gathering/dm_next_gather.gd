@@ -570,10 +570,18 @@ func _end_session(reason: String) -> void:
 	if session != s:
 		return
 	session = null
+	var store: DmCounselStore = game.progress.store if game.progress != null else null   # the current game's key + shape (DmGameGather._end_session)
+	var key := "dm_gather_best_v1:%d" % _cid()
+	if store != null and bests.is_empty():
+		var raw: String = store.get_item(key)
+		var parsed: Variant = JSON.parse_string(raw) if raw != "" else null
+		bests = parsed if parsed is Dictionary else {}
 	var out: Variant = s.finish(float(Time.get_ticks_msec()), reason, bests)
 	if out == null:
 		return
 	bests = out["bests"]
+	if store != null:
+		store.set_item(key, JSON.stringify(bests))
 	_event("gather_report", {"report": out["report"]})
 	_sfx("skillUp" if not (out["report"]["milestones"] as Array).is_empty() else "coin")
 

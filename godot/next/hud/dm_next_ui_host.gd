@@ -99,6 +99,9 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 		shell.rewards.kill_earned.connect(func(_c: int, _d: String, _p: Vector3) -> void: _kills[shell.area_id] = int(_kills.get(shell.area_id, 0)) + 1)
 	else:
 		prog = DmProgression.new(character, null)
+	if shell.corpses != null:   # the counsel's Exhume tip (DmEventFx._corpse): once per corpse laid
+		shell.corpses.corpse_added.connect(func(c: DmSimCorpse) -> void:
+			game_event.emit("corpse_near", {"area_safe": bool(DmContent.area(shell.area_id)["safe"]), "dist": _dist_hero(c.x, c.z)}))
 	inventory = DmInventory.new(api, hero_id)
 	inventory.changed.connect(func(_s: Array) -> void: inventory_changed.emit())
 	if shell.progress != null:
@@ -112,6 +115,11 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	settings_store.changed.connect(func(_v: Dictionary) -> void: _apply_settings_side_effects())
 	if m != null:
 		m.loot_view.rules = settings_store.loot_rules()
+	dev_account = _is_dev_account()   # DmGame.setup: dev_access = dev_account and the Settings toggle; everything that reads it follows below
+	dev_access = dev_account and bool(settings["dev_access"])
+	_push_dev_access()
+	if dev_access and shell.chapterhouse != null:
+		shell.chapterhouse.apply_seals()   # sealed halls stand open for the dev preview from the first frame
 	var r := DmLoadout.load_rites(hero_id, DmAbilities.rite_level(float(character.get("level", 1)), dev_access), kit, persist)
 	primary = String(r["primary"])
 	keys = r["keys"]
@@ -263,7 +271,65 @@ func apply_settings(s: Dictionary) -> void:
 		_apply_settings_side_effects()
 
 
+const DEV_ACCOUNTS := ["brbmuffins"]   ## = DmGame.DEV_ACCOUNTS
+
+
+## gm_enabled on the character, or a DEV_ACCOUNTS name in the session token (downloadable offline profiles can never be staff).
+func _is_dev_account() -> bool:
+	if character.get("gm_enabled", false) == true:
+		return true
+	var tok: String = api.get_token()
+	if tok.begins_with("offline:"):
+		return false
+	return DmMain.token_username(tok).to_lower() in DEV_ACCOUNTS
+
+
+## Every consumer of dev access on the rebuild: the progression (sealed areas, kills banked), the gathering tiers, the host's own caster (locked rites),
+## the world's gates. Event driven (setup, the Settings toggle); no per-frame work.
+func _push_dev_access() -> void:
+	if prog != null:
+		prog.dev_access = dev_access
+	if shell.gather != null:
+		shell.gather.skills.dev_access = dev_access
+	var b := shell.local_body()
+	var c := b.get_node_or_null("Rites") as DmRiteCaster if b != null else null
+	if c != null:
+		c.dev = dev_access and shell.session.is_host()   # the host validates casts: a client's flag is never trusted
+
+
+## Dev access toggle (Settings -> preview as a normal player): rites, areas and gathering tiers open or close (DmGame._apply_dev_access).
+func _apply_dev_access() -> void:
+	if not dev_account:
+		return
+	var on := bool(settings["dev_access"])
+	if on == dev_access:
+		return
+	dev_access = on
+	_push_dev_access()
+	if shell.chapterhouse != null:
+		shell.chapterhouse.apply_seals()
+	progress_changed.emit()
+	game_event.emit("toast", {"text": "Dev access on: every rite, area and gathering tier is open (nothing is saved)." if on else "Dev access off: previewing as a normal player.", "kind": "good"})
+
+
+## F9 (dev tool): break every seal. Gated exactly like the Settings toggle's effects: only a dev account with Dev access on (never a normal player or a
+## downloadable offline profile). The seals really break (saved), the gates and navmesh follow at once. Returns how many broke.
+func dev_break_seals() -> int:
+	if not dev_access or prog == null:
+		return 0
+	var n := 0
+	for id in DmContent.area_order():
+		if prog.unlock(String(id)):
+			n += 1
+	if shell.chapterhouse != null:
+		shell.chapterhouse.apply_seals()
+	progress_changed.emit()
+	game_event.emit("toast", {"text": "Dev: %d seal%s broken." % [n, "" if n == 1 else "s"] if n > 0 else "Dev: every seal is already broken.", "kind": "good"})
+	return n
+
+
 func _apply_settings_side_effects() -> void:
+	_apply_dev_access()
 	DmAvatar.refresh_all()   # Hide helm
 	var m: DmRewardsMember = shell.rewards.members.get(hero_id) if shell.rewards != null else null
 	if m != null:
@@ -579,6 +645,13 @@ func _on_hero_effect(kind: StringName) -> void:
 
 ## Enemy hooks (called for every spawned enemy): thrall blows and Miasma ticks get numbers, like the old DmEventFx.
 func watch_enemy(e: DmEnemy) -> void:
+	# Counsel moments the current client raises from its event fx (DmEventFx._spawn / _sanctify): once per spawn, no per-frame cost.
+	var near_d := _dist_hero(e.position.x, e.position.z)
+	if near_d < 40.0 and not e is DmBoss:
+		game_event.emit("enemy_spawned", {"def": e.def_id, "elite": e.elite, "near": true, "area_safe": bool(DmContent.area(shell.area_id)["safe"])})
+	e.cue.connect(func(kind: StringName, at: Vector3, _r: float) -> void:
+		if kind == &"sanctify":
+			game_event.emit("sanctify_near", {"dist": _dist_hero(at.x, at.z)}))
 	e.damaged.connect(func(amount: float, _hp: float, from: Node) -> void:
 		if from is DmThrall and is_instance_valid(e):
 			float_text(e.position + Vector3(0, 1.4, 0), str(int(amount)), "thrall"))
@@ -587,6 +660,11 @@ func watch_enemy(e: DmEnemy) -> void:
 		st.dot_damage.connect(func(_id: StringName, amount: float, _src: Node, _killed: bool, target: Node) -> void:
 			if is_instance_valid(target) and target is Node3D:
 				float_text((target as Node3D).position + Vector3(0, 1.2, 0), str(int(amount)), "dot"))
+
+
+func _dist_hero(x: float, z: float) -> float:
+	var b := shell.local_body() if shell != null else null
+	return Vector2(b.position.x - x, b.position.z - z).length() if b != null else 99.0
 
 
 ## Connect every body's caster / hurt signals once (casters of party members attach 0.8 s after the body spawns).
@@ -604,6 +682,7 @@ func _bind_bodies() -> void:
 		_bound[b.get_instance_id()] = true
 		c.hit_number.connect(_on_hit_number)
 		if b == mine:
+			c.dev = dev_access and shell.session.is_host()
 			c.cast_rejected.connect(_on_rejected)
 			var hs := DmStatusSet.of(b)
 			if hs != null:

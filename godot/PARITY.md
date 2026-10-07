@@ -26,7 +26,7 @@ Ranked by owner priority: performance #1; the necromancer's four disciplines and
    Phase 6 (floor ~0.85 render scale, presets, AA, decal sharpness) is unbuilt. `DmNextPerf` / `DmNextWarmup` are done (sections 17, 23); what is missing is a rendered frame budget on real hardware.
 2. **Target-frame affix chips (DONE, `tests/next_brews_affix`)**: `DmNextHudVm._target` feeds `{id, name}` chips + the combined blurb from the replicated `dm_affix_list` meta, cached per target.
 3. **Lifesteal / fortune / wisdom brews (DONE, `tests/next_brews_affix`)**: `DmRewardsMember.sync_brews` sets wisdom / fortune per kill from the body's active brews; `DmSessionRewards` applies `DmBrews.lifesteal_heal` on every host-side hit the hero lands.
-4. ~~**Gathering world glue**~~ **CLOSED** (`DmNextAcre`, `tests/next_acre_guide`): visible Grave Laborers, labor / garden / contract notices, collect / contract gold credited. Lower: gather bests are not stored.
+4. ~~**Gathering world glue**~~ **CLOSED** (`DmNextAcre`, `tests/next_acre_guide`): visible Grave Laborers, labor / garden / contract notices, collect / contract gold credited. Gather bests are stored (`dm_gather_best_v1:<id>`, `tests/next_polish`).
 5. ~~**First-hour guidance**~~ **CLOSED** (`tests/next_acre_guide`): the Next box + ping are fed the current client's state (and skills / trophies / labor / contracts), the reforge flow, Wing and Acre stations and the bug report are verified (the reforge gold and the contract / labor gold bugs were fixed on the way). Left: a few counsel events still unraised (`next/hud/README.md`).
 6. ~~**Combat odds and ends**~~ **CLOSED** (`tests/next_combat_odds`): the brief was partly stale. Player-side Bone Ward / Colossus guard were already the current client's own rule (stat-based on hit, never timed statuses); boss slow / root are ignored by the current client too (bosses are immune), so the rebuild already matched, now locked by a test; rite sfx are verified for all 25 rites against the current client's recorded sounds; the real gap was the necromancer's **weapon-line primaries** (staff pierce, sickle Withered, scythe arc + its soul window), built now. Bulwark stays N/A until a non-necromancer kit exists (gap 10). Pooled creature bodies: still moot (enemies are scenes).
 7. ~~Rune variants / Grimoire runes / legendary mechanics / Bonded Dead~~ DONE (`tests/next_runes`). Left: a joined client's own rune sockets do not reach the host (D5); Colossus Mantle hooks are host-hero only. (Splinters / Volley / Marrow-Tap now apply to the staff and scythe primaries as the current client does, `tests/next_combat_odds`.)
@@ -36,7 +36,7 @@ Ranked by owner priority: performance #1; the necromancer's four disciplines and
 
 ## Summary
 
-**Rows counted: 207** (206 + the weapon-line row added by the combat-odds pass, which also moved boss slow / root and rite sfx to DONE). After the re-check: DONE 171, PARTIAL 20, MISSING 6, N/A 10, IN PROGRESS 0 (the acre-guide pass closed 12 rows: laborers, garden, contracts, Workbench / reforge, Wing stations, gold sinks, Next box, Acre ledger, the two bug-report rows, Acre stations, boss prompts + ping)
+**Rows counted: 207** (206 + the weapon-line row added by the combat-odds pass, which also moved boss slow / root and rite sfx to DONE). After the re-check (+ the polish pass: reveal / dev_access / dev tools closed): DONE 174, PARTIAL 18, MISSING 6, N/A 10, IN PROGRESS 0 (the acre-guide pass closed 12 rows: laborers, garden, contracts, Workbench / reforge, Wing stations, gold sinks, Next box, Acre ledger, the two bug-report rows, Acre stations, boss prompts + ping)
 (first pass: DONE 84, PARTIAL 56, MISSING 47, IN PROGRESS 11, N/A 9). The simulation core, the shell around it (front flow, hero look, HUD feeds, settings consumers), the
 meta layer (difficulty, vows, Omen, chain, Soul Harvest), all seven bosses with Empowered summons, the Depths, gathering, the Chronicle and Codex are on the rebuild
 and covered by `tests/next_*`. What is left is the list above.
@@ -167,7 +167,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
-| Acre / Wing gathering nodes (view, hover tips, work loop, tool in hand, gather sfx, charms, AFK gather) | DONE | `game/dm_game_gather.gd`, `dm_gather_loop.gd`, `dm_gather_session.gd`, `dm_skills.gd`, `dm_node_views.gd`, `audio/audio_gather_sfx.gd` | `next/gathering/` (`DmNextGather`): 64 nodes, hover card, work loop, gather sfx, charms, Auto, AFK via `DmNextUiHost.start_afk / stop_gathering / afk_*`; `tests/next_gathering`. Limit: clients cannot start gathering; AFK bests not stored |
+| Acre / Wing gathering nodes (view, hover tips, work loop, tool in hand, gather sfx, charms, AFK gather) | DONE | `game/dm_game_gather.gd`, `dm_gather_loop.gd`, `dm_gather_session.gd`, `dm_skills.gd`, `dm_node_views.gd`, `audio/audio_gather_sfx.gd` | `next/gathering/` (`DmNextGather`): 64 nodes, hover card, work loop, gather sfx, charms, Auto, AFK via `DmNextUiHost.start_afk / stop_gathering / afk_*`; `tests/next_gathering`. Limit: clients cannot start gathering; AFK bests stored under the current game's key (`tests/next_polish`) |
 | Grave Laborers (visible laborers, collect, full notices) | DONE | `game/dm_game_labor.gd`, `dm_laborer_views.gd` | `DmNextAcre` (`next/gathering/dm_next_acre.gd`) runs both unchanged: pooled laborers at their posts in the Acre only, hover card + click -> Laborers (H), arrival / "filled up" notices, collect credits the gold + chronicle (`tests/next_acre_guide`) |
 | Garden (plant/harvest ready notices) | DONE | `dm_game_labor.gd` | ready / still-growing notices on arrival and every 60 s, plant / harvest results ("Harvested ...", chronicle, level banner) through `DmNextAcre` (`tests/next_acre_guide`) |
 | Contracts panel | DONE | `dm_game_labor.gd refresh_contracts`, `dm_contracts_panel.gd` | `refresh_contracts` feeds the guidance summary; a delivery credits the order's gold (the server returns it, never writes it: the Godot panel used to drop it), counts in the chronicle, toasts (`tests/next_acre_guide`) |
@@ -279,7 +279,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Depth readout | DONE | `vm["depth"]` = `DmDepths.hud_state()` |
 | Bone Ward chip | DONE | `next/hud/dm_next_hud_vm.gd` |
 | Auto-combat button | DONE (G / the HUD button set `auto_combat`; `DmNextAutoCombat` runs it) | |
-| Next-step box, guidance ping, progressive reveal / NEW pips | PARTIAL | Next box + minimap ping DONE (`tests/next_acre_guide`); reveal logic in `DmGameUi` runs, NEW pips unverified |
+| Next-step box, guidance ping, progressive reveal / NEW pips | DONE | Next box + minimap ping DONE (`tests/next_acre_guide`); reveal + NEW pips verified on the rebuild (`tests/next_polish` B: a fresh character holds shards / skills / dial back, progress reveals them with a NEW pip, opening the panel clears it) |
 | Toasts, banners, loot toast, floating numbers, death wash, hit flash | DONE | |
 | Save-state chip (`save` text/warn) | DONE | `DmNextUiHost.save_chip()` (psync + bag state) |
 | Node/laborer hover tip | DONE | `DmNextGather` hover ring + node card (`tests/next_gathering`); laborer hover card + click on `DmNextAcre` (`tests/next_acre_guide`) |
@@ -299,7 +299,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | `auto_combat` / `auto_gather` | DONE | `auto_combat` by `DmNextAutoCombat`; `auto_gather` read by `DmNextGather` (`autoEnabled`) |
 | `hide_helm` | DONE | `avatar.settings = ui_host.settings` (`next/hero/dm_hero_body.gd:152`), `DmAvatar.refresh_all` on a Settings change |
 | `no_tips`, `guidance`, `guide_ping` | DONE | consumed by `DmGameUi` counsel; `counsel_busy` / `counsel_tick_ctx` = `DmNextCounsel` (`tests/next_hud_counsel`) |
-| `dev_access` | PARTIAL | `dev_access` var false on host; Settings toggle effects (`_apply_dev_access`) absent |
+| `dev_access` | DONE | `DmNextUiHost._apply_dev_access` / `_push_dev_access`: gated like `DmGame` (dev account = `gm_enabled` or token user `brbmuffins`, never an offline profile; `dev_access = dev_account and settings.dev_access`); effects: progression (sealed halls open, kills banked), gathering tiers, the host's own caster (`DmRiteCaster.dev`, locked rites cast), gates via `apply_seals`, toast. `tests/next_polish` |
 | Settings -> Leave / log out | DONE | `leave_world` -> `left_world` -> `main.gd _on_next_left` (save, free, login screen); `tests/next_front` log-out checks |
 
 ## 18. Audio
@@ -384,6 +384,6 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Hero death -> respawn in Chapterhouse (4 s), death veil | DONE | `dm_game.gd respawn` | `DmHeroBody.RESPAWN_S` |
 | Bone Grinder, Lectern, Sawpit, Kiln, Fire stations | DONE | `dm_game_actions.gd interact` | each used in the Acre like a click: panel opens, first-use counsel event, craft / salvage through the API (`tests/next_acre_guide`) |
 | Boss summon in-world prompts, Next-step guidance ping | DONE | boss summon in-world prompt DONE (E + click prompts, boss key prompt); the Next box + minimap ping are fed the full state (`tests/next_acre_guide`) |
-| Dev tools (F9 break seals, `__cwDebug`, QA driver) | PARTIAL | `main/qa_driver.gd` | not ported to slice; DEV account gating partial (re-checked: `main/qa_driver.gd` not referenced from `next/`) |
+| Dev tools (F9 break seals, `__cwDebug`, QA driver) | DONE | `main/qa_driver.gd` | QA driver (`-- --qa`) now drives the rebuild (`_process_next`: pack of the dead, rites cast, screenshots; `tests/next_polish`). F9 break seals is new on the rebuild (the current Godot game has none; gated by `dev_access`, `DmNextUiHost.dev_break_seals`). `__cwDebug` is the web client's console hook: N/A in Godot |
 | Tests: rules suites, session/relay/rites/status/corpses/thralls/areas/bosses/hud/progress | DONE | `tests/` | `tools/godot/run-all-tests.sh` |
 | Mobile build / web build | N/A | | D9 web retirement; mobile not in Godot scope |

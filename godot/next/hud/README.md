@@ -58,12 +58,14 @@ what the adapter now feeds besides: `skills` (a gathering level gained while gat
 (`ui._guide_t = 0`); the UI's own 0.5 s tick no longer redoes the suggestion when the state, the setting and the dismissal are unchanged (`DmGuidanceHud.update` memo; `ui.last_guidance` is shared with the hub's NPC "!" poll):
 state + suggestion 0.9 ms -> 0.2 ms per tick. The minimap **ping** (`vm["minimap"]["ping"]`, the web's rule: guidance + `guide_ping` on, the suggestion has a target and is elsewhere or `pingInPlace`) reads the box's own suggestion.
 Counsel events the rebuild did not raise now are: `world_entered` (the welcome and the discipline's first tip), `brew_drunk`, `meal_eaten` (belt sounds), `minimap_travel` (a minimap click). Bug reports carry `release = godot-next-<version>`.
-Still not raised: `corpse_near`, `sanctify_near`, `loadout_check`, `necro_weapon_changed`, `set_bonus_gained`, `omen_told`, `depths_*`, `auto_combat_cast`, `show_tips_again`.
+The polish pass added `enemy_spawned` (near spawn, `watch_enemy`), `sanctify_near` (the Deacon / Seraph `cue`), `corpse_near` (`corpse_added`), `auto_combat_cast` (`DmNextAuto._act`); `depths_*` come from `next/depths`, `show_tips_again` from the Settings panel (shared UI). `loadout_check`, `necro_weapon_changed`, `set_bonus_gained`, `omen_told` are defined in `DmCounselEvents` but the current game never raises them either (nothing to port).
+
+**Dev access** (`DmNextUiHost._is_dev_account` / `_apply_dev_access`, same gate as `DmGame`): dev account and the Settings toggle -> `dev_access` opens rites (`DmRiteCaster.dev`, host's own caster only), sealed halls, gathering tiers; **F9** (`DmNextInput`) = `dev_break_seals()`, a no-op unless dev access is on. `main/qa_driver.gd` (`-- --qa`) drives the rebuild too. Gather bests persist in the progress store (`dm_gather_best_v1:<id>`). Cost: all event driven (one signal per spawn / corpse / cue, nothing per frame); `tests/next_polish`.
 
 ## Gaps
 - Progression persistence, upgrade tiers, level-ups and the belt are `next/progress/` (DmProgressSync, `DmNextBelt`); see its README.
 - Client (non-host) peers get no real HUD yet (`hud: true` builds it for the host only); hurt numbers for a client's own damage need the vitals diff.
-- No auto-combat (the HUD button is not fed); lifesteal / fortune / wisdom brews are not applied yet (damage, haste, ward, speed, essence are).
+- Auto-combat lives in `next/feel` (`DmNextAutoCombat`); lifesteal / fortune / wisdom brews are not applied yet (damage, haste, ward, speed, essence are).
 - Target frame elite chips: `_affix_chips` reads the replicated `dm_affix_list` meta (`[{id, name}]` + a blurb listing every affix, as `DmGameHud`), cached per target (rebuilt only when the target or its affix count changes).
 
 ## Tests / cost

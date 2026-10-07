@@ -43,6 +43,7 @@ var rejected_casts: int = 0         ## host: legitimate intents refused by the r
 var events_played: int = 0
 var gestures_played: int = 0        ## every peer: hero cast gestures played (one per accepted cast, see DmRiteGestures)
 var p: Dictionary = {}
+var dev: bool = false               ## host only: the dev account's "Dev access" setting opens every rite (DmAbilities.cast_check `dev`); set by DmNextUiHost
 var peer_id: int = 0
 
 var _body: Node3D
@@ -303,7 +304,7 @@ func _apply_cast(sender: int, rite: String, aim: Vector3, target_id: int) -> voi
 		_forged()
 		return
 	_sync_pos()
-	var why := DmAbilities.cast_check(p, rite, float(p["stats"]["level"]), _now_ms)
+	var why := DmAbilities.cast_check(p, rite, float(p["stats"]["level"]), _now_ms, dev)
 	if why != "ok":
 		_refuse(sender, rite, why)
 		return

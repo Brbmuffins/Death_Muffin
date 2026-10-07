@@ -225,6 +225,8 @@ func _act(b: DmHeroBody, c: DmRiteCaster, ctx: Dictionary, p: Vector3, now: floa
 	var eid := int(t["enemyId"]) if t.has("enemyId") else (_boss_id if t.has("boss") else 0)
 	stats["casts"] += 1
 	input.cast_at(slot, Vector3(float(t["x"]), 0.0, float(t["z"])), eid, false)
+	if game.ui_host != null:
+		game.ui_host.game_event.emit("auto_combat_cast", {})   # the counsel's one auto-combat tip (DmGameInput)
 
 
 func _flask() -> void:
