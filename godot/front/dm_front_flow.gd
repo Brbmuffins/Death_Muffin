@@ -16,6 +16,8 @@ var standalone: bool = false
 ## Web ?offline / any build whose transport is the local mock: skips the claim_session round-trip at boot.
 var dev_offline: bool = false
 var persist_token: bool = true
+## Online builds (D10): sign-in is checked against the manifest's online/staff mode (DmOnlineGate) before any character route is touched.
+var online_gate: bool = false
 
 var current: Control = null
 var current_name: String = ""   # "login" | "select" | "" (while resuming / in the world)
@@ -57,6 +59,8 @@ func start() -> void:
 
 ## Web boot(): opening the game claims the session (not in offline), then resume().
 func boot() -> void:
+	if not await _gate_allows():
+		return
 	if not dev_offline and not standalone:
 		var fresh := await api.claim_session(api.get_token())
 		if fresh.is_empty() and api.get_token().is_empty():
@@ -67,7 +71,7 @@ func boot() -> void:
 
 func go_login() -> void:
 	var s := DmLoginScreen.new(api, standalone, dev_offline)
-	s.succeeded.connect(func(_t): resume())
+	s.succeeded.connect(func(_t): _after_login())
 	goto(s, "login")
 
 
@@ -95,6 +99,26 @@ func resume() -> void:
 	else:
 		api.set_token("")
 		go_login()
+
+
+func _after_login() -> void:
+	if await _gate_allows():
+		await resume()
+
+
+## D10 online gate. Denied: the token is dropped (nothing was claimed, created or loaded) and the login screen says why.
+func _gate_allows() -> bool:
+	if not online_gate:
+		return true
+	var r := await DmOnlineGate.check(api)
+	if r["allowed"]:
+		return true
+	api.set_token("")
+	go_login()
+	if current is DmLoginScreen:
+		current.show_notice(r["message"])
+	return false
+
 
 
 func logout() -> void:

@@ -14,6 +14,8 @@ const SWEPT := ["register", "login", "load_or_create_character", "get_character"
 ## Called by game code but local to the client (no route).
 ## get_release / get_patch_notes fetch the web site's static files: offline they get a 404 and read as "unknown" (never an error, never a "new release").
 const LOCAL_ONLY := ["set_token", "get_token", "notify_session_replaced", "is_session_replaced", "get_release", "get_patch_notes"]
+## Only reached with `--online` (DmOnlineGate, staff-only online D10): the offline edition never runs the gate, so these have no offline route.
+const ONLINE_ONLY := ["fetch_client_manifest", "get_me"]
 
 var _p := 0
 var _f := 0
@@ -153,7 +155,7 @@ func _scan_sources() -> void:
 	for dir in ["res://game", "res://game_ui", "res://main", "res://front", "res://world", "res://net"]:
 		_scan_dir(dir, re, seen)
 	for m in seen:
-		_ok(m in SWEPT or m in LOCAL_ONLY, "game calls api.%s: add it to the offline sweep" % m, str(seen[m]))
+		_ok(m in SWEPT or m in LOCAL_ONLY or m in ONLINE_ONLY, "game calls api.%s: add it to the offline sweep" % m, str(seen[m]))
 	_ok(seen.size() > 40, "source scan found the api calls", str(seen.size()))
 
 func _scan_dir(dir: String, re: RegEx, seen: Dictionary) -> void:

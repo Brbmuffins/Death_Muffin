@@ -311,6 +311,11 @@ func fail(message: String) -> void:
 		tw.tween_property(card, "position:x", x0 + dx, 0.08)
 
 
+## A plain message under the form (e.g. "Online opens soon"), no shake.
+func show_notice(message: String) -> void:
+	error_label.text = message
+
+
 func _busy_text() -> String:
 	if standalone:
 		return "Opening…"
