@@ -1137,7 +1137,7 @@ func apply_settings(s: Dictionary) -> void:
 		settings_store.update(s)
 	if visual:
 		audio.apply_settings(settings_store.audio_dict())
-		vfx.quality = String(DmGraphicsPreset.get_preset(settings["graphics"])["fx"])
+		_apply_fx_quality()
 		vfx.reduced_motion = bool(settings["reduce_motion"])
 		if camera != null:
 			camera.reduced_motion = bool(settings["reduce_motion"])
@@ -1147,6 +1147,14 @@ func apply_settings(s: Dictionary) -> void:
 		_on_difficulty(String(settings["difficulty"]))
 
 
+## The preset's fx quality, then its Binbun layer: the quality setter alone switches Binbun on for every "high" fx, and Medium has none.
+func _apply_fx_quality() -> void:
+	var gp := DmGraphicsPreset.get_preset(settings["graphics"])
+	vfx.quality = String(gp["fx"])
+	if vfx.binbun != null:
+		vfx.binbun.enabled = bool(gp["binbun"]) and String(gp["fx"]) == "high"
+
+
 func _on_settings_changed(_v: Dictionary) -> void:
 	_apply_dev_access()
 	if sim != null:
@@ -1154,7 +1162,7 @@ func _on_settings_changed(_v: Dictionary) -> void:
 	if visual and ready_:
 		audio.apply_settings(settings_store.audio_dict())
 		_apply_graphics()
-		vfx.quality = String(DmGraphicsPreset.get_preset(settings["graphics"])["fx"])
+		_apply_fx_quality()
 		vfx.reduced_motion = bool(settings["reduce_motion"])
 		if camera != null:
 			camera.reduced_motion = bool(settings["reduce_motion"])
