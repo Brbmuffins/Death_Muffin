@@ -124,6 +124,10 @@ func get_state() -> Dictionary:
 
 
 func cooldown_left(rite: String) -> float:
+	if _is_host() and not p.is_empty():
+		# The host reads its own timeline. The replicated `_state` snapshot is only re-sent when the essence changes, so a free rite (the
+		# primary at a full pool) kept its last-sent cooldown for ever and DmCombatInput's hold-repeat stalled after one cast.
+		return maxf(0.0, float(p["cooldowns"].get(rite, 0.0)) - _now_ms)
 	var cds: Dictionary = _state.get("cooldowns", {})
 	if not cds.has(rite):
 		return 0.0

@@ -166,8 +166,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _place() -> void:
-	if content == null:
-		return
+	if content == null or not content.is_inside_tree():
+		return   # the layer itself joins the tree one frame after DmTip.of() first made it: the first card is placed by _process next frame
 	var vp := content.get_viewport_rect().size
 	var sz := content.get_combined_minimum_size()
 	content.size = sz

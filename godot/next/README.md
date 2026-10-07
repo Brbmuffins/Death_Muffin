@@ -7,6 +7,7 @@
 - Game: `godot --path godot -- --next` boots through the normal front screens (login / offline entry / discipline select / log out) into DmNextGame behind the key-art loading screen (`--online` = VPS backend, default offline = local backend); `-- --next --class=N` skips the front (account `tester`). `DmMain.USE_NEXT` (main.gd) flips the default to the rebuild (D7); `-- --old` forces DmGame. Test: `tests/next_front/run.gd` (incl. 3 enter/leave cycles: +0 nodes, ~+1.5 MB static).
 - Code: `var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)`.
   opts: `peer` (default Offline), `host` (true; false = join), `offline`, `dressing`, `world` (false = headless client), `waves`, `hud`, `audio`.
+- Playtest bot: `tools/godot/playtest.sh --next [--disc=1..4]` (`tests/playtest/bot_next.gd`; headless, front flow -> Graves -> loot -> boss -> death -> relaunch), `tools/godot/playtest-compare.py` for rebuild vs current; results in `tests/playtest/FINDINGS.md`.
 - Tests: `godot --headless --path godot --script res://tests/next/run.gd` (picked up by `tools/godot/run-all-tests.sh`).
   Rendered perf + screenshots: `tests/next/render_probe.gd` (see its header).
 

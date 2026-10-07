@@ -75,6 +75,7 @@ func rite_hit() -> float:
 	c.random = func() -> float: return 0.999
 	var amounts: Array = []
 	c.hit_resolved.connect(func(_r: String, _e: int, amount: float, _crit: bool, _k: bool) -> void: amounts.append(amount), CONNECT_ONE_SHOT)
+	b.restore_vitals()   # the robber bites for the 2.5 s below: a hero worn down by earlier calls died before its cast (it passed only by a stale cooldown wait)
 	g.director.spawn("robber", b.position + Vector3(3, 0, 0), [b])
 	await ticks(150)
 	var e: DmEnemy = null
