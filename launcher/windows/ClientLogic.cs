@@ -138,6 +138,8 @@ namespace DeathMuffinLauncher
         public string Rev = "";
         public List<ManifestFile> Files = new List<ManifestFile>();
         public bool OnlineEnabled;
+        /// <summary>online.staff is a literal true: the Godot client lets only staff/GM accounts in (it asks the server); the button is shown to everyone.</summary>
+        public bool OnlineStaff;
         public string OnlineMessage = "";
         /// <summary>The manifest text exactly as downloaded (saved next to the install so it can be checked later).</summary>
         public string Raw = "";
@@ -211,6 +213,7 @@ namespace DeathMuffinLauncher
                 if (online != null)
                 {
                     m.OnlineEnabled = online.ContainsKey("enabled") && online["enabled"] is bool && (bool)online["enabled"];
+                    m.OnlineStaff = online.ContainsKey("staff") && online["staff"] is bool && (bool)online["staff"];
                     m.OnlineMessage = Str(online, "message");
                 }
                 manifest = m;
@@ -307,8 +310,9 @@ namespace DeathMuffinLauncher
             return m.Length > 70 ? m.Substring(0, 69) + "…" : m;
         }
 
-        /// <summary>Online is open only when a manifest was read and it says enabled:true. Anything else (unreadable, missing, false) is locked.</summary>
-        public static bool IsOpen(ClientManifest live) { return live != null && live.OnlineEnabled; }
+        /// <summary>Online is open only when a manifest was read and it says enabled:true, or staff:true (staff mode: the game itself turns non-staff accounts back
+        /// with "Online opens soon"). Anything else (unreadable, missing, false) is locked.</summary>
+        public static bool IsOpen(ClientManifest live) { return live != null && (live.OnlineEnabled || live.OnlineStaff); }
 
         public static OnlineUi Compute(ClientManifest live, string installedVersion)
         {
@@ -327,7 +331,7 @@ namespace DeathMuffinLauncher
                 return ui;
             }
             ui.Enabled = true;
-            ui.Note = "The live game. Needs internet.";
+            ui.Note = live.OnlineEnabled ? "The live game. Needs internet." : "Staff preview. Needs a staff account.";
             return ui;
         }
     }

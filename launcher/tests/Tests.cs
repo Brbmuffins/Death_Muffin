@@ -217,6 +217,17 @@ namespace DeathMuffinLauncher.Tests
             u = OnlineGate.Compute(open, null);
             T.Ok(!u.Enabled && !u.Locked, "open but not installed -> disabled, not locked");
             T.Ok(OnlineGate.IsOpen(open) && !OnlineGate.IsOpen(locked) && !OnlineGate.IsOpen(null), "IsOpen");
+            // staff mode (D10): enabled:false + staff:true shows the button; only a literal true counts
+            string baseJson = ManifestJson("v1", files, false, "Online opens soon");
+            var staff = Parse(baseJson.Replace("\"enabled\":false", "\"enabled\":false,\"staff\":true"));
+            T.Ok(staff.OnlineStaff && !staff.OnlineEnabled && OnlineGate.IsOpen(staff), "staff mode: not enabled, but online is offered");
+            u = OnlineGate.Compute(staff, "v1");
+            T.Ok(u.Enabled && !u.Locked && u.Note.StartsWith("Staff preview"), "staff mode + installed -> button enabled with staff note");
+            u = OnlineGate.Compute(staff, null);
+            T.Ok(!u.Enabled && !u.Locked, "staff mode, not installed -> disabled, not locked");
+            T.Ok(!Parse(baseJson.Replace("\"enabled\":false", "\"enabled\":false,\"staff\":\"true\"")).OnlineStaff, "string staff stays locked");
+            T.Ok(!Parse(baseJson.Replace("\"enabled\":false", "\"enabled\":false,\"staff\":1")).OnlineStaff, "number staff stays locked");
+            T.Ok(!locked.OnlineStaff && !open.OnlineStaff, "old manifests carry no staff flag");
         }
 
         static OfflineUi Off(string installed, ClientManifest live, bool net = true, RunningMode run = RunningMode.None, bool dl = false, double prog = -1, bool failed = false, string err = null)
