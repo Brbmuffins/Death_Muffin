@@ -294,3 +294,21 @@ test('player-facing refusals are logged whether the route answers 4xx or a 200 w
   assert.match(lines[0], /\[refused\] POST \/api\/inventory\/save 400 duplicate slot_index/);
   assert.match(lines[1], /\[refused\] POST \/api\/vault\/deposit 200 The Vault has no room/);
 });
+
+test('GET /api/me reports staff from the account row only, with no character write', async () => {
+  const check = async (acct, user) => {
+    const f = fakePool();
+    const inner = f.pool.execute;
+    const execute = async (sql, params) => { if (/FROM accounts WHERE id/.test(sql)) { f.log.push({ sql, params }); return [[acct]]; } return inner(sql, params); };
+    const r = await loadServer({ pool: { ...f.pool, execute, query: execute } }).call('GET /api/me', { user });
+    assert.ok(!f.log.some((q) => /UPDATE|INSERT|DELETE/i.test(q.sql)), 'read-only');
+    return r;
+  };
+  const player = await check({ username: 'p', role: 'player', gm_enabled: 0 }, { accountId: 1, username: 'p' });
+  assert.equal(player.json.staff, false);
+  assert.equal((await check({ username: 'g', role: 'gm', gm_enabled: 0 }, { accountId: 1, username: 'g' })).json.staff, true);
+  assert.equal((await check({ username: 'a', role: 'admin', gm_enabled: 0 }, { accountId: 1, username: 'a' })).json.staff, true);
+  assert.equal((await check({ username: 'b', role: 'player', gm_enabled: 1 }, { accountId: 1, username: 'b' })).json.staff, true);
+  // a name that looks like staff gives nothing: the claim's username is not consulted for the decision
+  assert.equal((await check({ username: 'Brbmuffins', role: 'player', gm_enabled: 0 }, { accountId: 1, username: 'Brbmuffins' })).json.staff, false);
+});

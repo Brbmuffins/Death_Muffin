@@ -567,6 +567,12 @@ app.get('/api/session', requireJWT, async (req, res) => {
   res.json({ success: true, active: !(await session.isReplaced(pool, req.user)) });
 });
 
+// Who the server says this token is, read-only (no character load, no `online` flag write). `staff` = admin/gm role or gm_enabled, straight from
+// the account row via verifyJWT: the Godot client's staff-only online mode (client manifest online.staff) and the lobby service both ask this.
+app.get('/api/me', verifyJWT, (req, res) => {
+  res.json({ success: true, username: req.user.username, staff: !!(req.gmFields && req.gmFields.gm_enabled) });
+});
+
 function requireGameServerToken(req, res, next) {
   const provided = req.get('X-Game-Server-Token') || '';
   const expected = process.env.CROSSWORLDS_GAME_SERVICE_TOKEN ||
