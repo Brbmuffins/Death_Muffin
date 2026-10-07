@@ -38,7 +38,8 @@ __export(killRules_exports, {
   mixAllowance: () => mixAllowance,
   multCaps: () => multCaps,
   parseKillReport: () => parseKillReport,
-  rosterIds: () => rosterIds
+  rosterIds: () => rosterIds,
+  vowHeat: () => vowHeat
 });
 module.exports = __toCommonJS(killRules_exports);
 
@@ -1046,6 +1047,40 @@ var ASCENSION = {
   /** Ashes: +20% per point of heat on the run's base payout. */
   ashesPerHeat: 0.2
 };
+var VOWS = {
+  elder_dead: { id: "elder_dead", name: "Elder Dead", blurb: "The dead rise 3 levels older per step.", maxRank: 20, heat: 1, unlockShards: 0, scope: "world" },
+  iron_dead: { id: "iron_dead", name: "Iron Dead", blurb: "Enemies have 25% more health per step.", maxRank: 3, heat: 1, unlockShards: 0, scope: "world" },
+  frail_vessel: { id: "frail_vessel", name: "Frail Vessel", blurb: "You have 12% less maximum health per step.", maxRank: 3, heat: 1, unlockShards: 0, scope: "self" },
+  famished: { id: "famished", name: "Famished Rites", blurb: "Grave Essence returns 20% slower per step.", maxRank: 2, heat: 1, unlockShards: 100, scope: "self" },
+  thin_graves: { id: "thin_graves", name: "Thin Graves", blurb: "Corpses rot 25% sooner per step.", maxRank: 2, heat: 1, unlockShards: 120, scope: "world" },
+  brittle_thralls: { id: "brittle_thralls", name: "Brittle Dead", blurb: "Your thralls have 20% less health per step.", maxRank: 2, heat: 1, unlockShards: 150, scope: "self" },
+  swollen_waves: { id: "swollen_waves", name: "Swollen Waves", blurb: "Every wave brings 25% more of the dead per step.", maxRank: 3, heat: 1, unlockShards: 200, scope: "world" },
+  dry_cellar: { id: "dry_cellar", name: "Dry Cellar", blurb: "Healing flasks no longer work for you (brews and meals still do).", maxRank: 1, heat: 2, unlockShards: 250, scope: "self" },
+  elite_surge: { id: "elite_surge", name: "Bloodied Elites", blurb: "Elites are 8% more common per step.", maxRank: 3, heat: 1, unlockShards: 300, scope: "world" },
+  deacon_host: { id: "deacon_host", name: "Deacon Host", blurb: "Crypt Deacons are twice as common (step 2: three times).", maxRank: 2, heat: 2, unlockShards: 400, scope: "world" },
+  prelate_echo: { id: "prelate_echo", name: "Prelate Echoes", blurb: "The Prelate learns a new trick per step: a second bell, an elite procession, chasing rain.", maxRank: 3, heat: 2, unlockShards: 600, scope: "world" }
+};
+var VOW_ORDER = [
+  "elder_dead",
+  "iron_dead",
+  "swollen_waves",
+  "deacon_host",
+  "elite_surge",
+  "prelate_echo",
+  "thin_graves",
+  "frail_vessel",
+  "famished",
+  "brittle_thralls",
+  "dry_cellar"
+];
+function vowSteps(vows, id) {
+  return Math.max(0, Math.min(VOWS[id].maxRank, Math.floor(Number(vows?.[id])) || 0));
+}
+function vowHeat(vows) {
+  let h = 0;
+  for (const id of VOW_ORDER) h += vowSteps(vows, id) * VOWS[id].heat;
+  return h;
+}
 
 // src/content/fen.ts
 var FEN_ARENA = { x: -42, z: -80, r: 12 };
@@ -3017,5 +3052,6 @@ var FLOOR_RULES = { FLOOR_BONUS_KILLS, CHEST_KILLS, chestEvery: DEPTHS.chestEver
   mixAllowance,
   multCaps,
   parseKillReport,
-  rosterIds
+  rosterIds,
+  vowHeat
 });

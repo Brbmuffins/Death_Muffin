@@ -2015,6 +2015,12 @@ app.post('/api/kills/report', killReportLimiter, requireJWT, async (req, res) =>
     res.status(500).json({ success: false, error: 'internal server error' });
   }
 });
+// Host-reported party sessions (party-sessions.cjs, docs in SESSION-REPORTS.md): a host reports the kills of the members that attached with their own
+// JWT; each member's part is judged by the same kill ledger as a solo report (AUTHORITY_KILLS applies). Inert until the 041 migration is applied (503).
+require('./party-sessions.cjs').mountPartySessions(app, pool, {
+  requireAuth: requireJWT,
+  limiter: rateLimit({ windowMs: 60 * 1000, max: 240, standardHeaders: true, legacyHeaders: false }),
+});
 const ownsCharacterRow = async (req, characterId) => {
   const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
   return rows.length === 1;

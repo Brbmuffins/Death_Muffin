@@ -24,10 +24,17 @@ const secureRandom = () => crypto.randomInt(0, 2 ** 30) / 2 ** 30;
 
 module.exports = function mountLoot(app, pool, { requireAuth, ownsCharacter, random = secureRandom, limiter, guardRoll }) {
   app.post('/api/loot/roll-gear', ...(limiter ? [limiter] : []), requireAuth, async (req, res) => {
+    // Ownership first, on its own pooled query: checking it while holding a connection needs a second one, and ~10 concurrent rolls
+    // (one per pool slot) then wait on each other forever and wedge every DB route (2026-10-06 incident, same rule as reforge.cjs).
+    const id = parseInt(req.body && req.body.characterId, 10);
+    try {
+      if (!id || !(await ownsCharacter(req, id))) return res.status(403).json({ success: false, error: 'character not found or not owned by this account' });
+    } catch (err) {
+      console.error(`${req.method} ${req.path}:`, err.code || err.message);
+      return res.status(500).json({ success: false, error: 'internal server error' });
+    }
     const conn = await pool.getConnection();
     try {
-      const id = parseInt(req.body && req.body.characterId, 10);
-      if (!id || !(await ownsCharacter(req, id))) return res.status(403).json({ success: false, error: 'character not found or not owned by this account' });
       const drops = req.body.drops;
       if (!Array.isArray(drops) || !drops.length || drops.length > MAX_DROPS) throw playerError(`Roll between 1 and ${MAX_DROPS} drops at a time.`);
       for (const d of drops) {

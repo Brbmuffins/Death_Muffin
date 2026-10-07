@@ -95,3 +95,17 @@ test('a failed roll leaves nothing behind (transaction rolls back)', async () =>
   assert.equal(r.json.success, false);
   assert.equal(db.loot.length, 0);
 });
+
+test('ownership is checked before a pooled connection is taken (concurrent rolls must not wedge the pool, 2026-10-06 incident)', async () => {
+  const db = fakeDb();
+  let held = 0, heldDuringOwnership = -1;
+  const pool = { ...db.pool, getConnection: async () => { held++; const c = await db.pool.getConnection(); const rel = c.release; return { ...c, release: () => { held--; if (rel) rel.call(c); } }; } };
+  const routes = {};
+  const app = { post: (p, ...hs) => (routes[p] = hs[hs.length - 1]) };
+  mountLoot(app, pool, { requireAuth: () => {}, ownsCharacter: async () => { heldDuringOwnership = held; return true; }, random: seeded() });
+  let json;
+  await routes['/api/loot/roll-gear']({ body: { characterId: 1, drops: [drop('helm_iron')] }, method: 'POST', path: '/api/loot/roll-gear', user: { accountId: 7 } }, { status() { return this; }, json(j) { json = j; return this; }, headersSent: false });
+  assert.equal(json.success, true);
+  assert.equal(heldDuringOwnership, 0, 'no connection held while ownership is checked');
+  assert.equal(held, 0, 'connection released');
+});
