@@ -341,7 +341,7 @@ func _apply_settings_side_effects() -> void:
 		audio.apply_settings(settings_store.audio_dict())
 	var vfx := get_node_or_null("/root/Vfx")
 	if vfx != null:
-		vfx.quality = String(settings["graphics"])
+		vfx.quality = String(DmGraphicsPreset.get_preset(settings["graphics"])["fx"])
 		vfx.reduced_motion = bool(settings["reduce_motion"])
 	if shell.perf != null:
 		shell.perf.apply(settings)

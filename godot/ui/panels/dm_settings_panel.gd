@@ -141,10 +141,10 @@ func build() -> void:
 
 	# --- Display and sound -------------------------------------------------------------------------
 	var s2 := _section("Display and sound")
-	_option(s2, "Graphics", "graphics", [["high", "High (bloom, shadows)"], ["low", "Low (fast)"]])
+	_option(s2, "Graphics", "graphics", DmGraphicsPreset.options())
 	_option(s2, "Frame rate", "fps", [[0, "Max — your screen's refresh rate"], [60, "60 — smooth"], [30, "30 — battery saver"]])
 	_check(s2, "Auto resolution", "auto_res")
-	_note(s2, "Auto resolution only steps in after several seconds of sustained slow frames. Turn it off to keep a constant sharp picture.")
+	_note(s2, "Auto resolution only steps in after several seconds of sustained slow frames, and never below 85% on Medium and up. Turn it off to keep a constant sharp picture.")
 	_slider(s2, "Volume", "vol_master")
 	_slider(s2, "Combat", "vol_combat")
 	_slider(s2, "Ambience", "vol_amb")

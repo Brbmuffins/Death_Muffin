@@ -19,6 +19,8 @@ const STREAM_DIST := 95.0    # an area is drawn while its rect is within this ma
 ## SHADOW_RANGE from the hero stop casting moon shadows (the shadow pass was half the frame).
 const PROP_CELL := 12.0
 const SHADOW_RANGE := 32.0
+## Runtime range (Graphics preset: further on High / Ultra); SHADOW_RANGE on Low / Medium.
+var shadow_range := SHADOW_RANGE
 var _shadow_cells: Array = []   # {node, x0, z0, x1, z1, on}
 var _shadow_t := 0.0
 const GROW := 0.55           # prop/node obstruction grow for the navmesh (the baker does not inflate projected obstructions)
@@ -169,6 +171,9 @@ func _tex(name: String) -> Texture2D:
 		_tex_cache[name] = load(TEX % name)
 	return _tex_cache[name]
 
+## Ground and wall textures are seen at grazing angles: trilinear + anisotropic (level comes from the Graphics preset on the viewport).
+const SHARP := BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+
 func _hex(v: Variant) -> Color:
 	return Color.hex(int(v) * 256 + 255)
 
@@ -240,6 +245,7 @@ func _floor_mat(theme_key: String, w: float, d: float) -> StandardMaterial3D:
 	var f: Dictionary = world.floors[theme_key]
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = _tex(f.tex)
+	m.texture_filter = SHARP
 	m.albedo_color = _hex(f.color)
 	m.roughness = float(f.rough)
 	m.uv1_scale = Vector3(w / float(f.tile), d / float(f.tile), 1.0)
@@ -301,6 +307,7 @@ func _floors() -> void:
 	# (tiled 30 m like the floors, so the lights along the outer walls only shade the strip they reach)
 	var om := StandardMaterial3D.new()
 	om.albedo_texture = _tex("grave_soil")
+	om.texture_filter = SHARP
 	om.albedo_color = Color.html("#3a3440")
 	om.roughness = 1.0
 	om.uv1_scale = Vector3(60.0 / 420.0, 60.0 / 420.0, 1)
@@ -358,6 +365,7 @@ func _wall_list(parent: Node3D, walls: Array, mats: Dictionary, collide := true)
 		if mat == null:
 			mat = StandardMaterial3D.new()
 			mat.albedo_texture = _tex(w.texture)
+			mat.texture_filter = SHARP
 			mat.albedo_color = _hex(w.color)
 			mat.roughness = 0.92
 			mat.uv1_triplanar = true
@@ -558,7 +566,7 @@ func update_shadow_cells(fx: float, fz: float, dt: float) -> void:
 	for c in _shadow_cells:
 		var dx := maxf(maxf(float(c.x0) - fx, fx - float(c.x1)), 0.0)
 		var dz := maxf(maxf(float(c.z0) - fz, fz - float(c.z1)), 0.0)
-		var on := dx * dx + dz * dz < SHADOW_RANGE * SHADOW_RANGE
+		var on := dx * dx + dz * dz < shadow_range * shadow_range
 		if on != bool(c.on):
 			c.on = on
 			(c.node as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -621,6 +629,7 @@ func _node_standin(n: Dictionary, parent: Node3D) -> void:
 		rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		rm.albedo_texture = _ring_texture()
+		rm.texture_filter = SHARP
 		rm.albedo_color = Color(tint.r * 2.0, tint.g * 2.0, tint.b * 2.0, 0.28)
 		var mi := MeshInstance3D.new()
 		mi.mesh = qm
@@ -682,21 +691,25 @@ func _nodes() -> void:
 			_body(Vector3(n.x, 1.5, n.z), cyl)
 
 # ---------------------------------------------------------------- decals, water, wing floor, hummocks
+const RING_PX := 256   # was 128: the thin sigil lines were upscaled 2x+ on big ground quads (and had no mipmaps, so they shimmered when minified)
+
 func _ring_texture() -> ImageTexture:
 	if _ring_tex != null:
 		return _ring_tex
-	var img := Image.create(128, 128, false, Image.FORMAT_RGBA8)
-	for y in 128:
-		for x in 128:
-			var d := Vector2(x - 63.5, y - 63.5).length() / 63.5
+	var img := Image.create(RING_PX, RING_PX, true, Image.FORMAT_RGBA8)
+	var c := (RING_PX - 1) * 0.5
+	for y in RING_PX:
+		for x in RING_PX:
+			var d := Vector2(x - c, y - c).length() / c
 			var a := 0.0
 			if d < 1.0:
 				a = maxf(a, smoothstep(0.06, 0.0, absf(d - 0.92)))
 				a = maxf(a, smoothstep(0.05, 0.0, absf(d - 0.72)) * 0.8)
 				a = maxf(a, smoothstep(0.05, 0.0, absf(d - 0.38)) * 0.6)
-				var ang := atan2(y - 63.5, x - 63.5)
+				var ang := atan2(y - c, x - c)
 				a = maxf(a, smoothstep(0.03, 0.0, absf(sin(ang * 3.0))) * smoothstep(0.75, 0.4, d) * 0.5)
 			img.set_pixel(x, y, Color(1, 1, 1, a))
+	img.generate_mipmaps()
 	_ring_tex = ImageTexture.create_from_image(img)
 	return _ring_tex
 
@@ -713,10 +726,12 @@ func _decals() -> void:
 		var col := Color.html(d.color)
 		if d.kind == "sigil":
 			m.albedo_texture = ring
+			m.texture_filter = SHARP
 			m.albedo_color = Color(col, float(d.opacity))
 		else:
 			# Blood and cracks: a dark soft stain (the web paints irregular canvas shapes).
 			m.albedo_texture = glow
+			m.texture_filter = SHARP
 			m.albedo_color = Color(col.r * 0.6, col.g * 0.6, col.b * 0.6, float(d.opacity) * 0.8)
 		var mi := MeshInstance3D.new()
 		mi.mesh = qm
@@ -839,6 +854,7 @@ func _gates() -> void:
 	bar_mat.metallic = 0.6
 	var post_mat := StandardMaterial3D.new()
 	post_mat.albedo_texture = _tex("stone_wall")
+	post_mat.texture_filter = SHARP
 	post_mat.albedo_color = Color.html("#8a8296")
 	post_mat.roughness = 0.9
 	post_mat.uv1_triplanar = true
@@ -849,6 +865,7 @@ func _gates() -> void:
 	seal_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	seal_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	seal_mat.albedo_texture = _ring_texture()
+	seal_mat.texture_filter = SHARP
 	seal_mat.albedo_color = Color(0.61, 0.36, 1.0, 0.9)
 	seal_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	for d in world.doors:

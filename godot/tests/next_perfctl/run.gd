@@ -65,6 +65,23 @@ func _settings() -> void:
 	st.update({"graphics": "high", "fps": 60})
 	check(b.moon.shadow_enabled and b.light_near == DmWorldBuilder.LIGHT_NEAR and bool(g.world.dressing.features.get("bloom", true)) and not g.world.dressing.atmosphere.quality_low and vfx.quality == "high", "graphics high restores everything")
 	check(Engine.max_fps == 60, "fps 60 (%d)" % Engine.max_fps)
+	# every preset: the whole DmGraphicsPreset row reaches the builder, dressing, Vfx, viewport and governor
+	var vp := g.get_viewport()
+	for id in DmGraphicsPreset.IDS:
+		st.update({"graphics": id})
+		var gp: Dictionary = DmGraphicsPreset.TABLE[id]
+		check(b.moon.shadow_enabled == bool(gp["shadows"]) and b.light_near == int(gp["lights"]), "preset %s: shadows %s, %d prop lights" % [id, gp["shadows"], b.light_near])
+		check(is_equal_approx(b.shadow_range, float(gp["prop_shadow"])) and is_equal_approx(b.moon.directional_shadow_max_distance, float(gp["shadow_dist"])), "preset %s: prop shadow range %.0f, moon reach %.0f" % [id, b.shadow_range, b.moon.directional_shadow_max_distance])
+		check((b.moon.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS) == (int(gp["shadow_splits"]) == 2), "preset %s: shadow splits" % id)
+		check(bool(g.world.dressing.features.get("bloom", false)) == bool(gp["bloom"]) and g.world.dressing.atmosphere.quality_low == (gp["fx"] == "low"), "preset %s: bloom + weather quality" % id)
+		check(vfx.quality == String(gp["fx"]) and vfx.binbun.enabled == bool(gp["binbun"]), "preset %s: fx quality %s, binbun %s" % [id, vfx.quality, vfx.binbun.enabled])
+		check(vp.msaa_3d == DmGraphicsPreset.msaa_mode(int(gp["msaa"])) and vp.anisotropic_filtering_level == DmGraphicsPreset.aniso_mode(int(gp["aniso"])) and is_equal_approx(vp.mesh_lod_threshold, float(gp["lod"])), "preset %s: msaa %d, aniso %d, lod %.1f on the viewport" % [id, gp["msaa"], gp["aniso"], gp["lod"]])
+		check(is_equal_approx(g.perf.governor.floor_scale, float(gp["floor"])), "preset %s: governor floor %.2f" % [id, g.perf.governor.floor_scale])
+	st.update({"graphics": "ultra"})
+	check(b.light_near > DmWorldBuilder.LIGHT_NEAR and DmGraphicsPreset.get_preset("high")["lights"] == DmWorldBuilder.LIGHT_NEAR, "ultra is richer than high; high keeps the old High's lights")
+	st.update({"graphics": "bogus"})
+	check(DmGraphicsPreset.normalize("bogus") == "high" and b.light_near == DmWorldBuilder.LIGHT_NEAR, "unknown graphics value behaves as High")
+	st.update({"graphics": "high"})
 	st.update({"fps": 0})
 	check(Engine.max_fps == 0, "fps Max = uncapped")
 	# culling / streaming / shadow range are the builder's constants, driven by DmNextWorld.update every frame
@@ -107,6 +124,13 @@ func _governor() -> void:
 	check(p.governor.scale == 1.0, "governor: frames at the 30 fps budget are not a miss")
 	# the same constants as the current client
 	check(DmResolutionGovernor.MIN == 0.6 and DmResolutionGovernor.STEP == 0.9 and DmResolutionGovernor.DOWN_AFTER_S == 3.5 and DmResolutionGovernor.UP_AFTER_S == 15.0 and DmResolutionGovernor.MIN_GAP_S == 20.0, "governor: constants unchanged (the quality pass retunes them)")
+	# the floor follows the preset: Low steps down to 0.6, High / Ultra never below 0.85
+	for pair in [["low", 0.6], ["medium", 0.85], ["high", 0.85], ["ultra", 0.85]]:
+		p.apply({"graphics": pair[0], "fps": 60, "auto_res": true})
+		p.hold()
+		for i in 6000:
+			p.pace(0.05)
+		check(p.governor.scale >= float(pair[1]) - 0.0001 and p.governor.scale < float(pair[1]) / 0.9 + 0.0001, "governor: %s bottoms out at its floor %.2f (%.3f)" % [pair[0], pair[1], p.governor.scale])
 	# auto_res off: no stepping at all
 	p.apply({"graphics": "high", "fps": 60, "auto_res": false})
 	for i in 800:

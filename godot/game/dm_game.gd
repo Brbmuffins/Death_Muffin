@@ -372,7 +372,7 @@ func _waystone_motes(dt: float) -> void:
 func _make_visual_components() -> void:
 	if not visual:
 		return
-	vfx.binbun.enabled = String(settings["graphics"]) == "high"
+	vfx.binbun.enabled = bool(DmGraphicsPreset.get_preset(settings["graphics"])["binbun"])
 	if vfx.binbun.enabled:
 		vfx.binbun.preload_ids(["toxic_puddle", "grave_hands_pulse", "dirge_area", "plague_bloom_area", "enemy_breach_rim", "crypt_mist", "bell_toll_ring", "miasma_cloud", "grave_frost_mist", "surge_eruption"])
 	_dress_hero()
@@ -664,18 +664,25 @@ func _apply_render_scale() -> void:
 
 
 func _apply_graphics() -> void:
-	var high := String(settings.get("graphics", "high")) != "low"
+	var preset := DmGraphicsPreset.normalize(settings.get("graphics", DmGraphicsPreset.DEFAULT))
+	var gp := DmGraphicsPreset.get_preset(preset)
 	var fps := int(settings.get("fps", 0))
 	Engine.max_fps = fps if fps > 0 else 0
 	if builder != null:
-		builder.moon.shadow_enabled = high
-		builder.light_near = DmWorldBuilder.LIGHT_NEAR if high else 3
+		builder.moon.shadow_enabled = bool(gp["shadows"])
+		builder.light_near = int(gp["lights"])
+		builder.shadow_range = float(gp["prop_shadow"])
+		builder.moon.directional_shadow_max_distance = float(gp["shadow_dist"])
+		builder.moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(gp["shadow_splits"]) == 2 else DirectionalLight3D.SHADOW_ORTHOGONAL
 	if dressing != null:
-		dressing.set_feature("bloom", high)
+		dressing.set_feature("bloom", bool(gp["bloom"]))
 		if dressing.atmosphere != null:
-			dressing.atmosphere.quality_low = not high
+			dressing.atmosphere.quality_low = String(gp["fx"]) == "low"
+	if get_viewport() != null:
+		DmGraphicsPreset.apply_render(get_viewport(), preset)
+	governor.set_floor(float(gp["floor"]))
 	# Only a graphics change restarts the governor at full resolution.
-	var key := "%s|%d|%s" % [str(high), fps, str(settings.get("auto_res", true))]
+	var key := "%s|%d|%s" % [preset, fps, str(settings.get("auto_res", true))]
 	if key != _gfx_key:
 		_gfx_key = key
 		governor.reset()
@@ -1130,7 +1137,7 @@ func apply_settings(s: Dictionary) -> void:
 		settings_store.update(s)
 	if visual:
 		audio.apply_settings(settings_store.audio_dict())
-		vfx.quality = String(settings["graphics"])
+		vfx.quality = String(DmGraphicsPreset.get_preset(settings["graphics"])["fx"])
 		vfx.reduced_motion = bool(settings["reduce_motion"])
 		if camera != null:
 			camera.reduced_motion = bool(settings["reduce_motion"])
@@ -1147,7 +1154,7 @@ func _on_settings_changed(_v: Dictionary) -> void:
 	if visual and ready_:
 		audio.apply_settings(settings_store.audio_dict())
 		_apply_graphics()
-		vfx.quality = String(settings["graphics"])
+		vfx.quality = String(DmGraphicsPreset.get_preset(settings["graphics"])["fx"])
 		vfx.reduced_motion = bool(settings["reduce_motion"])
 		if camera != null:
 			camera.reduced_motion = bool(settings["reduce_motion"])

@@ -5,6 +5,7 @@ extends RefCounted
 ## so it doesn't ping-pong. Deliberately timid: several seconds of sustained misses, at most one change per MIN_GAP_S, small steps, and
 ## never while hold() is active (area entry / scene load). `scale` drives the viewport's scaling_3d_scale (the 3D view only; the UI stays sharp).
 
+## Absolute lowest scale (the Low preset's floor). Each graphics preset sets its own floor (DmGraphicsPreset `floor`): never below 0.85 on Medium+.
 const MIN := 0.6
 const STEP := 0.9
 const DOWN_AFTER_S := 3.5
@@ -13,6 +14,8 @@ const MIN_GAP_S := 20.0
 const HOLD_S := 10.0
 
 var scale := 1.0
+## The preset's lowest scale (set_floor); the governor never steps below it.
+var floor_scale := MIN
 var _ceiling := 1.0
 var _over := 0.0
 var _under := 0.0
@@ -51,15 +54,22 @@ func frame(dt_s: float, smooth_ms: float, fps: int) -> bool:
 		_over = 0.0
 		_under = 0.0
 	var settled := _since_change >= MIN_GAP_S
-	if settled and _over >= DOWN_AFTER_S and scale > MIN:
+	if settled and _over >= DOWN_AFTER_S and scale > floor_scale:
 		if _raised_from > 0.0 and _since_change < 60.0:
 			_ceiling = _raised_from
 		_raised_from = 0.0
-		return _set_scale(maxf(MIN, scale * STEP))
+		return _set_scale(maxf(floor_scale, scale * STEP))
 	if settled and _under >= UP_AFTER_S and scale < _ceiling:
 		_raised_from = scale
 		return _set_scale(minf(_ceiling, scale / STEP))
 	return false
+
+
+## A preset change: clamp the floor to [MIN, 1] and lift the current scale (and ceiling) if it is below it.
+func set_floor(f: float) -> void:
+	floor_scale = clampf(f, MIN, 1.0)
+	scale = maxf(scale, floor_scale)
+	_ceiling = maxf(_ceiling, floor_scale)
 
 
 func reset() -> void:

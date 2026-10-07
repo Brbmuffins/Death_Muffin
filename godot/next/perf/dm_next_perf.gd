@@ -1,7 +1,8 @@
 class_name DmNextPerf
 extends Node
 ## The rebuild's performance controls, the same behaviour DmGame has (`_pace`, `_apply_render_scale`, `_apply_graphics`):
-##   graphics "low"  no moon shadows, no bloom, 3 prop lights instead of LIGHT_NEAR, halved atmosphere particles (Vfx.quality "low")
+##   graphics        preset (DmGraphicsPreset: low / medium / high / ultra): moon shadows + reach + atlas + soft filter, bloom, prop lights, prop shadow range,
+##                   MSAA / anisotropy / mesh LOD on the viewport, Vfx.quality + Binbun, the governor's resolution floor (0.6 Low, 0.85 above)
 ##   fps             Engine.max_fps (0 = uncapped)
 ##   auto_res        DmResolutionGovernor on the 3D view's scaling_3d_scale (the UI stays sharp); held through loads and area entries
 ## `apply(settings)` runs at start and whenever Settings change (DmNextUiHost). Prop culling, streaming and the shadow range are the
@@ -28,23 +29,34 @@ func _exit_tree() -> void:
 
 func apply(s: Dictionary) -> void:
 	settings = s
-	var high := String(s.get("graphics", "high")) != "low"
+	var preset := DmGraphicsPreset.normalize(s.get("graphics", DmGraphicsPreset.DEFAULT))
+	var gp := DmGraphicsPreset.get_preset(preset)
 	var fps := int(s.get("fps", 0))
 	Engine.max_fps = fps if fps > 0 else 0
 	var vfx := get_node_or_null("/root/Vfx")
 	if vfx != null:
-		vfx.quality = "high" if high else "low"
+		vfx.quality = String(gp["fx"])
+		if vfx.binbun != null:
+			vfx.binbun.enabled = bool(gp["binbun"]) and String(gp["fx"]) == "high"   # the quality setter alone would switch it on for every "high" fx (Medium has none)
 	var world: DmNextWorld = game.get("world") if game != null else null
 	if world != null:
 		if world.builder != null:
-			world.builder.moon.shadow_enabled = high
-			world.builder.light_near = DmWorldBuilder.LIGHT_NEAR if high else 3
+			var b := world.builder
+			b.moon.shadow_enabled = bool(gp["shadows"])
+			b.light_near = int(gp["lights"])
+			b.shadow_range = float(gp["prop_shadow"])
+			b.moon.directional_shadow_max_distance = float(gp["shadow_dist"])
+			b.moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(gp["shadow_splits"]) == 2 else DirectionalLight3D.SHADOW_ORTHOGONAL
 		if world.dressing != null:
-			world.dressing.set_feature("bloom", high)
+			world.dressing.set_feature("bloom", bool(gp["bloom"]))
 			if world.dressing.atmosphere != null:
-				world.dressing.atmosphere.quality_low = not high
+				world.dressing.atmosphere.quality_low = String(gp["fx"]) == "low"
+	var vp := get_viewport()
+	if vp != null:
+		DmGraphicsPreset.apply_render(vp, preset)
+	governor.set_floor(float(gp["floor"]))
 	# Only a graphics / fps / auto_res change restarts the governor at full resolution.
-	var key := "%s|%d|%s" % [str(high), fps, str(s.get("auto_res", true))]
+	var key := "%s|%d|%s" % [preset, fps, str(s.get("auto_res", true))]
 	if key != _gfx_key:
 		_gfx_key = key
 		governor.reset()
