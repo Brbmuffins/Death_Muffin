@@ -43,7 +43,7 @@ and covered by `tests/next_*`. What is left is the list above.
 
 ### The ten items of the first audit, as they stand
 
-1. **Front flow (DONE, `tests/next_front`).** `-- --next` routes login / register / offline entry / discipline select / log out / class change / quit save into `DmNextGame` behind the key-art `DmLoadingScreen`. Left: Play Online on the rebuild is untested against the live backend; `USE_NEXT` still false.
+1. **Front flow (DONE, `tests/next_front`).** `-- --next` routes login / register / offline entry / discipline select / log out / class change / quit save into `DmNextGame` behind the key-art `DmLoadingScreen`. Left: Play Online on the rebuild is verified against the live backend (solo, `tests/online_live`); `USE_NEXT` still false.
 2. **Performance controls (DONE, `tests/next_perfctl`).** `DmNextPerf` (graphics, fps cap, resolution governor) and `DmNextWarmup` (GPU warm-up under a cover). Left: rendered / GPU measurement and the Phase 6 presets.
 3. **Necromancer combat feel (DONE, `tests/next_feel`, `tests/next_combat_feel`, `tests/next_autocombat`).** Attack-target chase, hold / Shift, queued casts, cast gestures, hitstop, shake, Easy auto-combat, standing mouse-aim. Rune choices reach the caster and all 11 runes work; worn legendaries feed the legion (`tests/next_runes`).
 4. **Difficulty, ascension, boons, omen, Altar actions (DONE, `tests/next_meta`).**
@@ -335,7 +335,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 |---|---|---|---|
 | Login, register, resume token, claim_session | DONE | `front/dm_front_flow.gd`, `dm_login_screen.gd` | `main.gd`: `-- --next` goes through `DmFrontFlow` (login / register / resume) into `_enter_next`; `-- --next --class=N` still skips it; `tests/next_front` |
 | Character select / discipline card (create character) | DONE | `front/dm_char_select_screen.gd` | `dm_char_select_screen.gd` -> `DmNextGame` with that discipline (all four necromancer disciplines walked); `tests/next_front` |
-| Online mode (`--online`) with VPS backend | PARTIAL | `main.gd` | `_next_slice` uses whichever `api` exists; D8 says existing characters carry over; untested end-to-end |
+| Online mode (`--online`) with VPS backend | DONE solo (`tests/online_live`, opt-in) | `main.gd`, `next/rewards/dm_session_rewards.gd` | verified against the live backend with the QA account: login, existing character (D8), area entry, kills, server-rolled gear, gold / xp / bag saves, a `spend_on_server` reforge, session end, relog. The live server has no `/api/sessions` (migration 041 not applied): `DmSessionRewards.legacy_ledger` credits kills through `/api/kills/report` instead. Open: backend ER_DATA_OUT_OF_RANGE on kill reports for fresh characters, `roll-gear` pool deadlock (see `next/rewards/README.md`) |
 | Offline edition (local backend `DmMockBackend`, separate characters) | DONE | `game/dm_offline.gd`, `net/dm_mock_backend.gd` | D4; `DmNextGame` takes `DmOffline.make_api` |
 | Cloud saves: progress, necro, inventory | DONE | `DmProgressSync`, `DmInventory` | reused |
 | Class change (rebuild world with new discipline) | DONE | `dm_game.gd class_changed` | `class_changed` -> `world_restart`; `tests/next_front` |

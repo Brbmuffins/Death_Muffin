@@ -45,6 +45,12 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
 4. Gold/shards are ground drops; the member's own save path persists them (capped by the kill ledger from these reports). Gear is rolled
    by `member.api.roll_loot` (server RNG online, offline backend offline); a failed roll leaves plain base gear.
 
+## Backend without `/api/sessions` (legacy ledger)
+The live backend has no host-session routes until migration 041 is applied (`session_open` answers an HTML 404). `start()` then sets `legacy_ledger` (signal `ledger_fallback`, no `session_failed`):
+each member with its own api reports to **its own kill ledger** (`api.report_kills`, the route the current game uses), and XP / kill counts are applied from that reply's `accepted.kills`
+(a reply without it, e.g. ledger off or a duplicate, applies the claim whole, as the current game). Same cadence, `flush()` and `end_session()` (final flush) as the session path; a transport failure keeps batches and claim for the next flush.
+Joiners without an api are not credited in this mode (they need the session routes). 503 (tables missing) falls back the same way.
+
 ## Brews
 `DmRewardsMember.sync_brews()` (host; called before every kill reward) sets `wisdom` / `fortune` from the active brews of the member's body (`DmPlayerRules.brew_value` on `clock_ms()`),
 so a drink, an extension, a replacement and an expiry all take effect with no extra wiring; a body without a rules state (test stubs) keeps hand-set values. Lifesteal: `watch_enemy`

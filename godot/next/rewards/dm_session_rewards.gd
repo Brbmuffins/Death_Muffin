@@ -15,6 +15,7 @@ extends Node
 signal session_opened(session_id: String)
 signal session_failed(reason: String)       ## open refused / session lost (ended, not host): rewards stop crediting
 signal session_closed
+signal ledger_fallback                      ## the backend has no /api/sessions (older server): kills go to the existing kill ledger (/api/kills/report) instead, as the current game does
 signal member_credited(character_id: int, delta: Dictionary)   ## {xp, kills, levels, batch}: applied from an accepted report
 signal member_refused(character_id: int, reason: String)       ## the backend did not credit this member's part of a batch
 signal batch_reported(batch: int, reply: Variant)
@@ -49,6 +50,9 @@ var rng: Callable = Callable()
 var now_ms: Callable = Callable()
 
 var session_id: String = ""
+## true once session_open answered 404/503 (routes or tables absent, backend migration 041 not applied): every member with its own api
+## reports its kills to its own kill ledger and XP / kill counts are applied from that reply. No session exists then (session_id stays "").
+var legacy_ledger: bool = false
 var host_character_id: int = 0
 var ended: bool = false
 var batch_no: int = 0
@@ -196,6 +200,10 @@ func start(host_char_id: int) -> bool:
 func _open() -> bool:
 	var h: DmRewardsMember = members[host_character_id]
 	var r: DmResult = await h.api.session_open(host_character_id)
+	if not r.ok and ((r.status == 404 and r.error.begins_with("Request failed")) or r.status == 503):   # no route (an HTML 404 carries no error text) / tables missing
+		legacy_ledger = true
+		ledger_fallback.emit()
+		return true
 	if not r.ok or not (r.data is Dictionary):
 		session_failed.emit("open: " + r.error)
 		return false
@@ -220,8 +228,14 @@ func flush() -> void:
 func _flush_inner() -> void:
 	if ended:
 		return
+	if legacy_ledger:
+		await _flush_legacy()
+		return
 	if session_id == "":
 		if members.has(host_character_id) and not await _open():
+			return
+		if legacy_ledger:
+			await _flush_legacy()
 			return
 		if session_id == "":
 			return
@@ -314,17 +328,49 @@ func _apply(sent: Dictionary, data: Variant) -> void:
 			member_refused.emit(cid, reason)
 			continue
 		var acc: Dictionary = e.get("accepted", {"kills": 0})
-		var kills := clampi(int(acc.get("kills", 0)), 0, int(claim["kills"]))
-		var frac := float(kills) / float(claim["kills"]) if int(claim["kills"]) > 0 else 0.0
-		var xp := DmMath.js_round(float(claim["xp"]) * frac)
-		var lv: int = m.prog.add_xp(float(xp))
-		for i in kills:
-			m.prog.record_kill(String(claim["areas"][i]), wave_tier)
-		m.stats["kills_accepted"] += kills
-		m.backend_accepted += kills
-		m.stats["xp_applied"] += xp
-		m.stats["levels"] += lv
-		member_credited.emit(cid, {"xp": xp, "kills": kills, "levels": lv, "batch": int(sent["batch"])})
+		_credit(m, claim, clampi(int(acc.get("kills", 0)), 0, int(claim["kills"])), int(sent["batch"]))
+
+
+## Apply `kills` accepted kills of a member's claim ({xp, kills, areas}): the XP share, the kill counts, the signal.
+func _credit(m: DmRewardsMember, claim: Dictionary, kills: int, batch: int) -> void:
+	var frac := float(kills) / float(claim["kills"]) if int(claim["kills"]) > 0 else 0.0
+	var xp := DmMath.js_round(float(claim["xp"]) * frac)
+	var lv: int = m.prog.add_xp(float(xp))
+	for i in kills:
+		m.prog.record_kill(String(claim["areas"][i]), wave_tier)
+	m.stats["kills_accepted"] += kills
+	m.backend_accepted += kills
+	m.stats["xp_applied"] += xp
+	m.stats["levels"] += lv
+	member_credited.emit(m.character_id, {"xp": xp, "kills": kills, "levels": lv, "batch": batch})
+
+
+## legacy_ledger: each member's pending kills go to ITS OWN kill ledger (`report_kills`, the route the current game uses); the reply's accepted
+## count (audit / enforce) bounds the XP and kill counts, a reply without one (ledger off, duplicate) applies the claim whole, as the current
+## game does. A transport / 5xx failure keeps the batches and the claim for the next flush; a 400 / 404 means the server will not take them.
+func _flush_legacy() -> void:
+	for m in members.values():
+		if m.api == null or m.blocked != "" or not m.reporter.has_pending():
+			continue
+		var batches: Array = m.reporter.batches()
+		var claim := {"xp": m.pending_xp, "kills": m.pending_areas.size(), "areas": m.pending_areas}
+		m.pending_xp = 0.0
+		m.pending_areas = []
+		var r: DmResult = await m.api.report_kills(m.character_id, batches)
+		if not r.ok and r.status != 400 and r.status != 404:
+			m.pending_xp += float(claim["xp"])
+			m.pending_areas = claim["areas"] + m.pending_areas
+			continue
+		if r.ok:
+			m.reporter.ack(int(batches[batches.size() - 1]["seq"]))
+		else:
+			m.reporter.discard()
+		var kills := int(claim["kills"])
+		if r.ok and batches.size() == 1 and r.data is Dictionary and (r.data as Dictionary).get("accepted") is Dictionary:
+			kills = clampi(int(r.data["accepted"].get("kills", 0)), 0, kills)
+		batch_no += 1
+		_credit(m, claim, kills, batch_no)
+		batch_reported.emit(batch_no, r.data)
 
 
 ## The accepted part of `sent` after a lost reply, as a synthetic reply, from session_get (null when it cannot be read).
@@ -351,6 +397,8 @@ func end_session(summary: Dictionary = {}) -> void:
 	while _busy:
 		await get_tree().process_frame
 	_busy = true
+	if legacy_ledger and not ended:
+		await _flush_legacy()
 	if session_id != "" and not ended:
 		var h: DmRewardsMember = members.get(host_character_id)
 		if _inflight.is_empty():
