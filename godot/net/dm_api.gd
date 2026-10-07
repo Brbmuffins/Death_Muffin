@@ -31,6 +31,7 @@ var slot_decorator: Callable = Callable()
 
 var _token: String = ""
 var _replaced: bool = false
+var _roll_busy: bool = false
 
 func _init(transport_callable: Callable = Callable()) -> void:
 	transport = transport_callable
@@ -215,8 +216,15 @@ func equip_item(character_id: int, slot_index: int, equipped: int) -> DmResult:
 	return _slots(await _post("/api/inventory/equip", {"characterId": character_id, "slot_index": slot_index, "equipped": equipped}))
 
 ## data: Array of {item_id, instance_id (null for non-gear), ilvl, affixes}. drops: [{item_id, level, source}]
+## One roll in flight per client: the route holds a DB connection while it checks ownership on the same pool, so a burst of concurrent rolls
+## (one per kill) from a single player can occupy every connection and wedge the whole backend (seen live 2026-10-06 with 24 at once).
 func roll_loot(character_id: int, drops: Array) -> DmResult:
-	return await _post("/api/loot/roll-gear", {"characterId": character_id, "drops": drops})
+	while _roll_busy:
+		await Engine.get_main_loop().process_frame
+	_roll_busy = true
+	var r := await _post("/api/loot/roll-gear", {"characterId": character_id, "drops": drops})
+	_roll_busy = false
+	return r
 
 func belt_tool(character_id: int, slot_index: int, equipped: int) -> DmResult:
 	return _slots(await _post("/api/inventory/belt", {"characterId": character_id, "slot_index": slot_index, "equipped": equipped}))

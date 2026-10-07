@@ -6,8 +6,10 @@ extends RefCounted
 static func parse(text: String) -> Variant:
 	if text.strip_edges().is_empty():
 		return null
-	var v: Variant = JSON.parse_string(text)
-	return normalise(v)
+	var j := JSON.new()   # not JSON.parse_string: an HTML error page (a 404 from a proxy) is expected input, not an engine error
+	if j.parse(text) != OK:
+		return null
+	return normalise(j.data)
 
 static func normalise(v: Variant) -> Variant:
 	match typeof(v):

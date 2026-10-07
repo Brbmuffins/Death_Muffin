@@ -194,8 +194,15 @@ func _job_call(job: Dictionary) -> Callable:
 func spend_on_server(call: Callable) -> DmResult:
 	var done := [null]
 	_queue.append(func() -> DmResult:
-		await api.save_progress(_payload())
-		var before := int(prog.character.get("gold", 0))
+		# `before` is the gold this pre-save SENDS (read before the await): a pickup landing while the save is in flight is then part of
+		# `gained`, not of `before` (reading it after the await lost that pickup when the server's gold replaced ours).
+		var sent := _payload()
+		var before := int(sent["gold"])
+		var sv := await api.save_progress(sent)
+		if not sv.ok:   # the server would price from stale gold, and its reply would overwrite our unsaved gold
+			done[0] = sv
+			return null
+		_ack(sent)
 		var r: DmResult = await call.call()
 		if r.ok and r.data is Dictionary:
 			var gained := int(prog.character.get("gold", 0)) - before
