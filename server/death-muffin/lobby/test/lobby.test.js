@@ -317,3 +317,76 @@ test('health endpoint', async () => {
     assert.equal((await r.json()).ok, true);
   } finally { await s.close(); }
 });
+
+// ---- D10: staff-only online gate -------------------------------------------------------------------------------------------------------
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { createStaffGate } = require('../src/gate');
+
+function gateEnv(online) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-gate-'));
+  const file = path.join(dir, 'manifest.json');
+  const write = (o) => fs.writeFileSync(file, JSON.stringify(o === undefined ? {} : { online: o }));
+  if (online !== null) write(online);
+  const calls = [];
+  const staffIds = new Set([7]);
+  const fetchImpl = async (url, opts) => {
+    calls.push(url);
+    const id = JSON.parse(Buffer.from(opts.headers.authorization.slice(7).split('.')[1], 'base64url')).accountId;
+    return { ok: true, json: async () => ({ success: true, staff: staffIds.has(id) }) };
+  };
+  const gate = createStaffGate({ manifestPath: file, backendUrl: 'http://backend.test', fetchImpl, readMs: 0 });
+  return { gate, write, calls, file };
+}
+
+test('gate: locked manifest refuses everyone, staff mode admits only backend-confirmed staff, open admits all', async () => {
+  const g = gateEnv({ enabled: false, message: 'Online opens soon' });
+  const s = await boot({ accessGate: g.gate });
+  try {
+    const refuse = async (id) => {
+      const c = await s.connect(id, { token: tok(id) });
+      const e = await c.next('error'); await c.until((x) => x.closed);
+      return { e, code: c.closed.code, ready: c.texts.some((m) => m.t === 'ready') };
+    };
+    let r = await refuse(7);
+    assert.equal(r.e.code, 'locked'); assert.equal(r.code, 4403); assert.equal(r.e.msg, 'Online opens soon');
+    assert.equal(g.calls.length, 0, 'locked without staff mode never asks the backend');
+    g.write({ enabled: false, staff: true, message: 'Staff preview' });
+    r = await refuse(8);
+    assert.equal(r.code, 4403); assert.equal(r.e.msg, 'Staff preview'); assert.equal(g.calls.length, 1);
+    const staff = await s.connect(7); // helper waits for `ready`
+    const created = (staff.send({ t: 'create', name: 'staff run', area: 'hollow' }), await staff.next('created'));
+    assert.ok(created.session.id);
+    g.write({ enabled: false, staff: 'true' });  // only a literal true is staff mode
+    assert.equal((await refuse(7)).code, 4403);
+    g.write({ enabled: true });
+    const calls = g.calls.length;
+    const anyone = await s.connect(9);
+    assert.ok(anyone.ws.readyState === 1);
+    assert.equal(g.calls.length, calls, 'open to all never asks the backend');
+  } finally { await s.close(); }
+});
+
+test('gate: unreadable manifest and backend failure both fail closed; a refused account cannot replace a live one', async () => {
+  const g = gateEnv(null);
+  const s = await boot({ accessGate: g.gate });
+  try {
+    const c = await s.connect(7, { token: tok(7) });
+    await c.until((x) => x.closed); assert.equal(c.closed.code, 4403);
+    g.write({ enabled: false, staff: true });
+    const live = await s.connect(7);
+    g.write({ enabled: false, staff: false });
+    const again = await s.connect(7, { token: tok(7) });
+    await again.until((x) => x.closed);
+    assert.equal(live.ws.readyState, 1, 'the refused second login did not kick the live connection');
+    const down = createStaffGate({ manifestPath: g.file, backendUrl: 'http://x', fetchImpl: async () => { throw new Error('down'); }, readMs: 0 });
+    g.write({ enabled: false, staff: true });
+    assert.equal((await down('t')).ok, false);
+  } finally { await s.close(); }
+});
+
+test('gate: off by default (no accessGate option) leaves auth unchanged', async () => {
+  const s = await boot();
+  try { assert.ok((await s.connect(5)).ws.readyState === 1); } finally { await s.close(); }
+});

@@ -182,6 +182,20 @@ func register(username: String, email: String, password: String) -> DmResult:
 func health() -> DmResult:
 	return await _request("/api/health")
 
+## Who the server says this token is, with no side effects (GET /api/me). data: {username, staff}. `staff` = admin/gm role or gm_enabled,
+## decided by the backend from the account row; the client never derives it from a name.
+func get_me() -> DmResult:
+	return await _request("/api/me", "GET", null, true)
+
+## The public client manifest (no auth): the parsed JSON Dictionary, or {} when unreachable / not JSON. See DmOnlineGate.
+func fetch_client_manifest() -> Dictionary:
+	var resp := await _send("GET", DmConfig.CLIENT_MANIFEST_URL, {}, "")
+	var st := int(resp.get("status", 0))
+	if resp.get("network_error", false) or st < 200 or st >= 300:
+		return {}
+	var parsed: Variant = DmJson.parse(String(resp.get("text", "")))
+	return parsed if parsed is Dictionary else {}
+
 # --- Character ---------------------------------------------------------------------------------------------------------------------
 
 ## `class_index` < 0 = not given. Disciplines above 4 are created as legacy 5 then switched, exactly like the TS client.

@@ -77,6 +77,7 @@ func save_all() -> void:
 func _start_flow() -> void:
 	flow = DmFrontFlow.new(api, mode != "online", mode != "online")
 	flow.persist_token = persist_token
+	flow.online_gate = mode == "online"   # D10: staff-only online while the manifest says so
 	flow.name = "Front"
 	flow.enter_world.connect(_enter_world)
 	flow.logged_out.connect(_on_logged_out)

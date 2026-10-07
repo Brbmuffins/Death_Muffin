@@ -23,6 +23,7 @@ const DEFAULTS = {
   bytesBurst: 2 * 1024 * 1024,
   maxBuffered: 4 * 1024 * 1024, // a recipient with more than this queued is dropped as a slow consumer
   quiet: false,
+  accessGate: null,         // optional async (token, claims) => {ok, msg}; see gate.js (staff-only online)
 };
 
 const AREA_RE = /^[\w .'\-]{1,32}$/;
@@ -99,11 +100,21 @@ function createLobby(userOpts = {}) {
     return conn.bucket.msgs >= 0 && conn.bucket.bytes >= 0;
   }
 
-  function authenticate(conn, msg) {
+  async function authenticate(conn, msg) {
     if (typeof msg.token !== 'string' || msg.token.length > 4096) return sendErr(conn, 'auth', 'missing token', 'auth'), dropConn(conn, 4401, 'auth');
     let p;
     try { p = jwt.verify(msg.token, o.jwtSecret, { algorithms: ['HS256'] }); } catch { return sendErr(conn, 'auth', 'invalid or expired token', 'auth'), dropConn(conn, 4401, 'auth'); }
     if (!p || !Number.isSafeInteger(p.accountId)) return sendErr(conn, 'auth', 'invalid token', 'auth'), dropConn(conn, 4401, 'auth');
+    // D10 access gate (src/gate.js): only while the client manifest says staff-only online. Asked once per auth, before this connection can replace another.
+    if (o.accessGate) {
+      if (conn.authing) return;
+      conn.authing = true;
+      let v;
+      try { v = await o.accessGate(msg.token, p); } catch { v = { ok: false }; }
+      conn.authing = false;
+      if (conn.cleaned || conn.ws.readyState !== 1) return;
+      if (!v || !v.ok) return sendErr(conn, 'locked', (v && v.msg) || 'Online opens soon', 'auth'), dropConn(conn, 4403, 'locked');
+    }
     const stamp = typeof p.sid === 'string' ? sidStamp(p.sid) : 0;
     const other = byAccount.get(p.accountId);
     if (other && other !== conn) {
@@ -238,7 +249,7 @@ function createLobby(userOpts = {}) {
       let msg;
       try { msg = JSON.parse(buf.toString('utf8')); } catch { return sendErr(conn, 'bad_request', 'invalid json'); }
       if (!msg || typeof msg !== 'object' || typeof msg.t !== 'string') return sendErr(conn, 'bad_request', 'invalid message');
-      if (!conn.authed) { if (msg.t === 'auth') authenticate(conn, msg); else dropConn(conn, 4401, 'auth required'); return; }
+      if (!conn.authed) { if (msg.t === 'auth') authenticate(conn, msg).catch(() => dropConn(conn, 4401, 'auth')); else dropConn(conn, 4401, 'auth required'); return; }
       if (conn.session) conn.session.lastActivity = Date.now();
       handleControl(conn, msg);
     });

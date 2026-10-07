@@ -15,7 +15,12 @@ First frame on every socket must be `{"t":"auth","token":"<JWT>"}` within 5 s (t
 `jsonwebtoken.verify`, requires integer `accountId`, uses `username`. If the token carries an auth-server `sid`, the newer login of an account replaces the
 older (same rule as `server/realtime`); without `sid` a new connection for the same account replaces the old one. The DB-backed session check is
 not repeated here (no DB access), so a revoked-but-unexpired token still works until it expires (24 h).
-Failure closes with 4401; replaced = 4402; rate limit = 4429; oversize text = 1009.
+**Staff-only online (D10, optional):** with `DM_LOBBY_MANIFEST` set (path of the client `manifest.json`, e.g. `/var/www/death-muffin/client/manifest.json`; optional
+`DM_LOBBY_BACKEND`, default `http://127.0.0.1:5190`), each auth follows the manifest's `online` block (`src/gate.js`): `enabled:true` admits everyone; `enabled:false, staff:true`
+admits only accounts for which the backend's `GET /api/me` (Bearer token forwarded, 3 s timeout) says `staff:true`; anything else, an unreadable manifest or a backend that does
+not answer refuses (error `locked`, close 4403, message from the manifest). The manifest is re-read at most every 2 s, so `set-online.sh` takes effect without a restart; sockets
+already connected are not re-checked. Unset = no gate (the old behaviour).
+Failure closes with 4401; replaced = 4402; locked (staff-only mode) = 4403; rate limit = 4429; oversize text = 1009.
 
 ## Text frames (JSON control)
 Client -> server: `list`, `create {name(1-32), area, private?, code?}`, `join {id, code?}`, `leave`, host only: `set_open {open}`, `kick {id}`.
