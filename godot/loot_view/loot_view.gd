@@ -28,6 +28,10 @@ const ITEM_PICKUP_MIN_AGE := 0.35
 const MAGNET_RADIUS := 3.8
 const MAGNET_MIN_AGE := 0.45
 const COLLECT_RADIUS := 0.5
+const LABEL_NEAR := 7.0
+const LABEL_NEAR_COMMON := 3.0
+const EXPIRY_WARN_S := 8.0       ## the last seconds: the icon blinks (faster in the last 3)
+const ITEM_SPACING := 0.65       ## item drops land at least this far apart when there is room
 
 const RARITY_COLORS := {"common": "#b9b2a4", "uncommon": "#8fb98a", "rare": "#8fa6e8", "epic": "#c6a4ff", "legendary": "#ff9a2e"}
 const GOLD_COLOR := Color("e2c98f")
@@ -41,7 +45,9 @@ var keep: Callable = Callable()
 var try_take: Callable = Callable()
 ## Callable()->float in [0,1) used for scatter (TS Math.random). Empty = randf.
 var rand: Callable = Callable()
-var show_labels := false
+var show_labels := false   ## always show every name (QA / screenshots)
+## Names of the drops near you (rare+ from LABEL_NEAR, ordinary from LABEL_NEAR_COMMON): built the first time you come close, hidden again when you leave.
+var near_labels := true
 
 var _drops: Array[Dictionary] = []
 var _icon_cache: Dictionary = {}
@@ -59,6 +65,26 @@ func _scatter(p: Vector3, r: float = 0.9) -> Vector2:
 	var a := _r() * TAU
 	var d := 0.3 + _r() * r
 	return Vector2(p.x + cos(a) * d, p.z + sin(a) * d)
+
+
+## Like _scatter, but a few tries to land clear of the items already lying around so a pile of drops stays readable.
+func _scatter_apart(p: Vector3, r: float) -> Vector2:
+	if not rand.is_null():   # a scripted rand (the TS fixtures) replays its exact sequence
+		return _scatter(p, r)
+	var best := _scatter(p, r)
+	var best_gap := -1.0
+	for attempt in 8:
+		var c := _scatter(p, r + attempt * 0.25)
+		var gap := 99.0
+		for d in _drops:
+			if d["kind"] == "item":
+				gap = minf(gap, Vector2(c.x - d["x"], c.y - d["z"]).length())
+		if gap >= ITEM_SPACING:
+			return c
+		if gap > best_gap:
+			best_gap = gap
+			best = c
+	return best
 
 
 # ---------------------------------------------------------------- dropping
@@ -135,7 +161,7 @@ func shard(pos: Vector3, amount: int, exact: bool = false) -> void:
 
 
 func item(pos: Vector3, d: Dictionary, exact: bool = false) -> void:
-	var p := Vector2(pos.x, pos.z) if exact else _scatter(pos, 0.7)
+	var p := Vector2(pos.x, pos.z) if exact else _scatter_apart(pos, 0.7)
 	var meta := DmContent.item(str(d["item_id"]))
 	var rarity := rarity_of(d)
 	var color := Color(RARITY_COLORS[rarity])
@@ -181,19 +207,23 @@ func item(pos: Vector3, d: Dictionary, exact: bool = false) -> void:
 	gm.albedo_texture = _glow()
 	glow.material_override = gm
 	root.add_child(glow)
-	if show_labels:
-		var lab := Label3D.new()
-		lab.text = _label_text(d, meta)
-		lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		lab.modulate = color
-		lab.font_size = 28
-		lab.pixel_size = 0.008
-		lab.outline_size = 8
-		lab.no_depth_test = true
-		lab.position.y = 1.25
-		root.add_child(lab)
-	_drops.append({"kind": "item", "node": root, "icon": icon, "beam": beam, "x": p.x, "z": p.y, "amount": int(d.get("quantity", 1)), "item": d, "t": 0.0, "flying": false,
+	var lab: Label3D = _make_label(root, d, meta, color) if show_labels else null
+	_drops.append({"kind": "item", "node": root, "icon": icon, "beam": beam, "label": lab, "meta": meta, "color": color, "common": rarity == "common", "x": p.x, "z": p.y, "amount": int(d.get("quantity", 1)), "item": d, "t": 0.0, "flying": false,
 		"ttl": LOOT_EXPIRE_S["prizeItem"] if prize else LOOT_EXPIRE_S["item"], "prize": prize, "beam_alpha": 0.5 if rarity == "legendary" else 0.35})
+
+
+func _make_label(root: Node3D, d: Dictionary, meta: Dictionary, color: Color) -> Label3D:
+	var lab := Label3D.new()
+	lab.text = _label_text(d, meta)
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.modulate = color
+	lab.font_size = 28
+	lab.pixel_size = 0.008
+	lab.outline_size = 8
+	lab.no_depth_test = true
+	lab.position.y = 1.25
+	root.add_child(lab)
+	return lab
 
 
 func _label_text(d: Dictionary, meta: Dictionary) -> String:
@@ -249,6 +279,15 @@ func tick(dt: float, hero_pos: Vector3) -> Array[Dictionary]:
 		var node: Node3D = d["node"]
 		if d["kind"] == "item":
 			(d["icon"] as Node3D).position.y = 0.7 + sin(d["t"] * 2.5) * 0.08
+			var left: float = d["ttl"] - d["t"]
+			(d["icon"] as Node3D).visible = left > EXPIRY_WARN_S or fmod(left, 0.5 if left > 3.0 else 0.25) > 0.12
+			if near_labels:
+				var near := dist < (LABEL_NEAR_COMMON if d["common"] else LABEL_NEAR)
+				var lb: Label3D = d["label"]
+				if lb == null and near:
+					d["label"] = _make_label(node, d["item"], d["meta"], d["color"])
+				elif lb != null and lb.visible != (near or show_labels):
+					lb.visible = near or show_labels
 			if d["beam"] != null:
 				((d["beam"] as MeshInstance3D).material_override as StandardMaterial3D).albedo_color.a = 0.28 + sin(d["t"] * 3.0) * 0.06
 			if dist < ITEM_PICKUP_RADIUS and d["t"] > ITEM_PICKUP_MIN_AGE and (try_take.is_null() or bool(try_take.call(d["item"]))):

@@ -69,6 +69,10 @@ var _bind_t := 0.0
 var _last_feedback := 0
 var _character_seq := 0
 var _full_at := -100000
+var _bag_full_noticed := false
+var _got_gold := 0
+var _got_shards := 0
+var _got_pending := false
 var _hero_status: Dictionary = {}            ## status id -> true while the local hero has it (a float on the way in, not on every refresh)
 var _target_id := 0
 var _target_until := 0.0
@@ -110,6 +114,10 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	if m != null:
 		m.take_item = Callable(self, "_take")   # a walked-over drop goes into the bag, which flushes to the backend
 		m.loot_view.picked.connect(_on_picked)
+		m.loot_view.auto_sold.connect(_on_auto_sold)
+		m.loot_view.auto_looted.connect(_on_auto_looted)
+		m.loot_view.pickup_fx.connect(_on_pickup_fx)
+		m.loot_view.keep = Callable(self, "_keeps_for_you")
 	settings_store = DmSettings.new(DmSettings.FILE, persist)
 	settings_store.set_active_character(hero_id, character.get("auto_combat_allowed", false) == true)
 	settings_store.changed.connect(func(_v: Dictionary) -> void: _apply_settings_side_effects())
@@ -588,9 +596,21 @@ func _on_hurt(amount: float, _source: Node) -> void:
 	_hurt_feeds(b)
 
 
-## DmLootView.try_take: the bag, or false (the drop stays on the ground) with a "Reliquary full" float now and then.
+## Who the gear text is for (DmGameRewards.stat_context): the compare / "worth wearing" rules read it.
+func stat_context() -> Variant:
+	var b := build_cache()
+	return {"character": character, "slots": inventory.slots, "discipline": b["discipline"], "damageTier": float(progress.get("damageTier", 0)), "legion": b["legion"]}
+
+
+## DmLootView.keep: a 'gold' loot rule leaves gear that would be an upgrade for you on the ground (asked once per drop, only with a 'gold' rule).
+func _keeps_for_you(slot: Dictionary) -> bool:
+	return bool(DmItemText.keeps_for_you(stat_context()).call(slot))
+
+
+## DmLootView.try_take: the bag, or false (the drop stays on the ground) with a "Reliquary full" float now and then and, once, what to do about it.
 func _take(d: Dictionary) -> bool:
 	if inventory.add(d):
+		_bag_full_noticed = false   # room again: the next time something does not fit, say so once more
 		return true
 	var now := Time.get_ticks_msec()
 	if now - _full_at > 8000:
@@ -598,24 +618,90 @@ func _take(d: Dictionary) -> bool:
 		var b := shell.local_body()
 		if b != null:
 			float_text(b.position + Vector3(0, 2.4, 0), "Reliquary full", "info")
+	if not _bag_full_noticed:
+		_bag_full_noticed = true
+		game_event.emit("toast", {"text": "Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry stays on the ground for a minute.", "kind": "err"})
 	return false
 
 
+## Gold and shards walked over in one frame are one float + one sound (a pile of coins is not a stack of numbers).
 func _on_picked(ev: Dictionary) -> void:
-	var b := shell.local_body()
-	var at: Vector3 = b.position if b != null else Vector3.ZERO
 	match String(ev["kind"]):
 		"gold":
-			float_text(at + Vector3(0, 2.1, 0), "+%dg" % int(ev["amount"]), "gold")
-			_sfx("coin")
+			_got_gold += int(ev["amount"])
+			_schedule_got()
 		"shard":
-			float_text(at + Vector3(0, 2.3, 0), "+%d soul shard%s" % [int(ev["amount"]), "s" if int(ev["amount"]) > 1 else ""], "shard")
-			_sfx("shard")
+			_got_shards += int(ev["amount"])
+			_schedule_got()
 		"item":
 			var it: Dictionary = ev["item"]
 			var meta := DmContent.item(String(it["item_id"]))
-			game_event.emit("loot", {"name": String(meta.get("name", it["item_id"])), "qty": int(it.get("quantity", 1)), "rarity": String(meta.get("rarity", "common"))})
+			_loot_toast(it, meta)
 			_item_collected(it, meta)
+
+
+func _schedule_got() -> void:
+	if not _got_pending:
+		_got_pending = true
+		_flush_got.call_deferred()
+
+
+func _flush_got() -> void:
+	_got_pending = false
+	var b := shell.local_body()
+	var at: Vector3 = b.position if b != null else Vector3.ZERO
+	if _got_gold > 0:
+		float_text(at + Vector3(0, 2.1, 0), "+%dg" % _got_gold, "gold")
+		_sfx("coin")
+	if _got_shards > 0:
+		float_text(at + Vector3(0, 2.3, 0), "+%d soul shard%s" % [_got_shards, "s" if _got_shards > 1 else ""], "shard")
+		_sfx("shard")
+	_got_gold = 0
+	_got_shards = 0
+
+
+## The pickup toast: the name in the colour the beam had on the ground (affixes raise it), and "(upgrade)" on a piece that beats what you wear.
+func _loot_toast(it: Dictionary, meta: Dictionary) -> void:
+	var nm := _loot_name(it, meta)
+	if DmAffixRules.is_affix_gear(String(meta.get("type", ""))):
+		var slot: Variant = DmLoot.add_to_slots([], it)
+		if slot != null and not (slot as Array).is_empty():
+			var sl: Dictionary = (slot as Array)[0]
+			if it.get("instance") != null:
+				sl["inst"] = it["instance"]
+			if DmItemText.badge(stat_context(), sl) == "up":
+				nm += " (upgrade)"
+	game_event.emit("loot", {"name": nm, "qty": int(it.get("quantity", 1)), "rarity": DmLootView.rarity_of(it)})
+
+
+## The loot name as the player knows it: affixed gear reads "Cruel Bone Wand of X".
+func _loot_name(it: Dictionary, meta: Dictionary) -> String:
+	var nm := String(meta.get("name", it["item_id"]))
+	if it.get("instance") != null:
+		nm = DmAffixRules.affixed_name(nm, it["instance"]["affixes"])
+	return nm
+
+
+## Settings -> Loot, rule 'gold': the sell value is paid at once (the drop never lands).
+func _on_auto_sold(gold: int, drop: Dictionary, pos: Vector3) -> void:
+	if gold <= 0:
+		return
+	prog.add_gold(gold)
+	float_text(pos + Vector3(0, 1.6, 0), "+%dg  %s" % [gold, _loot_name(drop, DmContent.item(String(drop["item_id"])))], "gold")
+	_sfx("coin")
+
+
+## Settings -> Loot, rule 'auto': straight into the bag, with the pickup's sound, toast and counsel facts.
+func _on_auto_looted(drop: Dictionary, _pos: Vector3) -> void:
+	var meta := DmContent.item(String(drop["item_id"]))
+	_loot_toast(drop, meta)
+	_item_collected(drop, meta)
+
+
+func _on_pickup_fx(pos: Vector3, color: Color) -> void:
+	var v := get_node_or_null("/root/Vfx")
+	if v != null and DisplayServer.get_name() != "headless":
+		v.emit({"x": pos.x, "y": pos.y, "z": pos.z, "count": 8, "color": color.to_rgba32() >> 8, "spread": 0.3, "speed": 1.2, "up": 1.0, "life": 0.4, "size": 0.14})
 
 
 func _on_credited(cid: int, delta: Dictionary) -> void:
