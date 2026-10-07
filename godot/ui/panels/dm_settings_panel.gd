@@ -265,6 +265,7 @@ func _keys_grid() -> Control:
 		[".", "Gear Atlas: where every piece drops and how often, how to craft it, and what suits your discipline"],
 		["F3", "Performance overlay: frame rate, where frame time goes, and a log of recent stutters (also ?fps in the address bar)"],
 		["K", "Codex"],
+		["F", "Party: host a session, join one from the list or with a friend's code, see who is in your party"],
 		["E", "Talk to the Prior, the Sexton or the Apothecary when you stand close (or click them)"],
 		["V", "Ossuary Vault: a shared stash (in the Chapterhouse or the Acre)"],
 	])

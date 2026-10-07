@@ -28,6 +28,7 @@ const MENU_ROW := [
 	["grimoire", "grimoire", "Spells", "Grimoire and Legion (L)", "menu.spells"],
 	["atlas", "atlas", "Atlas", "Gear Atlas (.)", "menu.atlas"],
 	["codex", "book", "Codex", "Codex (K)", ""],
+	["party", "person", "Party", "Party: host a session, join friends (F)", ""],
 	["settings", "gear", "Settings", "Settings (Esc)", ""],
 ]
 const SLOT_KEYS := ["1", "2", "3", "4", "RMB", "R"]

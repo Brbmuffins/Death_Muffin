@@ -22,6 +22,8 @@ const DEFAULTS = {
   bytesPerSec: 1024 * 1024, // bytes/s refilled per connection
   bytesBurst: 2 * 1024 * 1024,
   maxBuffered: 4 * 1024 * 1024, // a recipient with more than this queued is dropped as a slow consumer
+  badCodesMax: 10,          // wrong private codes one connection may try per window before it is told to slow down
+  badCodesWindowMs: 10 * 60 * 1000,
   quiet: false,
   accessGate: null,         // optional async (token, claims) => {ok, msg}; see gate.js (staff-only online)
 };
@@ -140,6 +142,21 @@ function createLobby(userOpts = {}) {
     conns.delete(conn);
   }
 
+  const safeEqual = (a, b) => {
+    const x = Buffer.from(a); const y = Buffer.from(b);
+    return x.length === y.length && crypto.timingSafeEqual(x, y);
+  };
+  // Wrong-code attempts per connection in a sliding window (a 6-digit code is only 1M tries): checked BEFORE a guess, recorded when it misses.
+  function allowCodeTry(conn) {
+    const now = Date.now();
+    conn.badCodes = (conn.badCodes || []).filter((t) => now - t < o.badCodesWindowMs);
+    return conn.badCodes.length < o.badCodesMax;
+  }
+  function badCode(conn) {
+    (conn.badCodes = conn.badCodes || []).push(Date.now());
+    return sendErr(conn, 'bad_code', 'wrong or missing code', 'join');
+  }
+
   function handleControl(conn, msg) {
     const s = conn.session;
     switch (msg.t) {
@@ -156,7 +173,10 @@ function createLobby(userOpts = {}) {
         const isPrivate = msg.private === true;
         let code = '';
         if (isPrivate) {
-          code = typeof msg.code === 'string' && /^[\w-]{4,16}$/.test(msg.code) ? msg.code : String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+          const taken = (c) => [...sessions.values()].some((x) => x.isPrivate && x.code === c);
+          code = typeof msg.code === 'string' && /^[\w-]{4,16}$/.test(msg.code) ? msg.code : '';
+          if (code && taken(code)) return sendErr(conn, 'bad_request', 'that code is already in use', 'create');
+          while (!code || taken(code)) code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');  // unique among live private sessions: join-by-code needs it
         }
         let id;
         do { id = crypto.randomBytes(4).toString('hex'); } while (sessions.has(id));
@@ -168,12 +188,18 @@ function createLobby(userOpts = {}) {
       }
       case 'join': {
         if (s) return sendErr(conn, 'in_session', 'leave your current session first', 'join');
-        const sess = typeof msg.id === 'string' ? sessions.get(msg.id) : null;
+        const givenCode = typeof msg.code === 'string' ? msg.code : '';
+        let sess = null;
+        if (typeof msg.id === 'string') sess = sessions.get(msg.id);
+        else if (givenCode) {                        // join by code alone: private sessions are not listed, the code is the whole address
+          if (!allowCodeTry(conn)) return sendErr(conn, 'rate_limit', 'too many wrong codes, wait a few minutes', 'join');
+          sess = [...sessions.values()].find((x) => x.isPrivate && safeEqual(givenCode, x.code)) || null;
+          if (!sess) return badCode(conn);
+        }
         if (!sess) return sendErr(conn, 'not_found', 'no such session', 'join');
-        if (sess.isPrivate) {
-          const given = typeof msg.code === 'string' ? Buffer.from(msg.code) : Buffer.alloc(0);
-          const want = Buffer.from(sess.code);
-          if (given.length !== want.length || !crypto.timingSafeEqual(given, want)) return sendErr(conn, 'bad_code', 'wrong or missing code', 'join');
+        if (sess.isPrivate && typeof msg.id === 'string') {
+          if (!allowCodeTry(conn)) return sendErr(conn, 'rate_limit', 'too many wrong codes, wait a few minutes', 'join');
+          if (!safeEqual(givenCode, sess.code)) return badCode(conn);
         }
         if (!sess.open) return sendErr(conn, 'closed', 'the host is not accepting players', 'join');
         if (1 + sess.clients.size >= o.maxPlayers) return sendErr(conn, 'full', `session is full (${o.maxPlayers}/${o.maxPlayers})`, 'join');

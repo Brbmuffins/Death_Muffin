@@ -16,6 +16,9 @@ var prog: DmProgression
 ## This member's drops. Only the member the view belongs to renders/picks it up (per-member loot).
 var loot_view: DmLootView
 var discipline: Dictionary = {"id": "", "family": ""}
+## A member whose game runs on ANOTHER peer (a party joiner): the host decides its kills and drops but does not hold them. Its drops leave as
+## `loot_dropped` for the joiner's own client (walk-over, gear rolled by ITS api); its ground view and pickups do not exist here.
+var remote: bool = false
 ## Per-member reward multipliers the shell keeps current (brews, omen, ...).
 var wisdom: float = 0.0          ## Tonic of wisdom: + share of XP
 var fortune: float = 0.0         ## Fortune brew: + share of item chance

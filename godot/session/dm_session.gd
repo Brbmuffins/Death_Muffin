@@ -40,6 +40,8 @@ var discipline_id: String = ""
 ## player body on EVERY peer (spawner spawn_function), `spawn_origin` shifts the spawn ring (set before host()).
 var body_factory: Callable = Callable()
 var spawn_origin: Vector3 = Vector3.ZERO
+## Optional: Callable() -> Variant, a Vector3 a NEW player should appear around (a party host's own position), or null for `spawn_origin`.
+var spawn_override: Callable = Callable()
 var rejected_intents: int = 0  ## host: intents ignored (not owner / bad values); for tests and cheat logging
 
 var _state: int = State.IDLE
@@ -113,6 +115,32 @@ func join(peer: MultiplayerPeer) -> int:
 	_state = State.JOINING
 	_connect_signals()
 	return OK
+
+
+## Host: carry the running session onto another transport without ending it (solo -> hosted over the relay or ENet, hosted -> solo).
+## Players of the old transport are dropped first (their bodies despawn on every peer); the host's own body, the world and everything
+## built on the session stay as they are. `peer` is a connected server-side peer (or OfflineMultiplayerPeer for solo).
+func swap_transport(peer: MultiplayerPeer) -> int:
+	if _state != State.HOSTING or not _is_host:
+		return ERR_UNCONFIGURED
+	for id in _roster.keys():
+		if int(id) != 1:
+			_refusing.erase(id)
+			_remove_player(int(id))
+	var old := multiplayer.multiplayer_peer
+	multiplayer.multiplayer_peer = peer
+	if old != null and old != peer:
+		old.close()
+	return OK
+
+
+## Host: drop one player (the relay's kick; ENet disconnects the peer). The roster follows through peer_disconnected.
+func kick(peer_id: int) -> void:
+	if _state != State.HOSTING or not _is_host or peer_id == 1:
+		return
+	if not _roster.has(peer_id) and not (peer_id in multiplayer.get_peers()):
+		return
+	multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 
 
 ## Leave / close. The host announces the end to clients and waits a moment so it arrives; `await` is optional.
@@ -249,7 +277,12 @@ static func _clean(s: String, max_len: int) -> String:
 
 func _spawn_point(index: int) -> Vector3:
 	var a := TAU * float(index) / float(MAX_PLAYERS)
-	return spawn_origin + Vector3(cos(a), 0.0, sin(a)) * 3.0
+	var origin := spawn_origin
+	if index > 0 and spawn_override.is_valid():   # the host's own body (index 0) always starts at the origin
+		var o: Variant = spawn_override.call()
+		if o is Vector3:
+			origin = o
+	return origin + Vector3(cos(a), 0.0, sin(a)) * 3.0
 
 
 func _accept(id: int, nm: String, disc: String) -> void:

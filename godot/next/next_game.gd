@@ -14,12 +14,14 @@ extends Node3D
 ## loadout and counsel state are written under user://).
 
 const CASTER_DELAY := 0.8
+const CLIENT_ACTIVE_S := 15.0                    ## a joiner waits this long for the host's roster before giving up (`start_failed`)
 
 signal started
 signal enemy_spawned(enemy: DmEnemy)            ## every spawned enemy (every peer), once in the tree: the rewards seam
 signal area_changed(id: String)
 signal hero_died(body: DmHeroBody)              ## host
 signal hero_respawned(body: DmHeroBody)         ## host
+signal start_failed(reason: String)             ## a joiner could not enter the host's session (refused, full, lost): the caller returns to its own world
 
 
 @onready var session: DmSession = $Session
@@ -36,6 +38,8 @@ var perf: DmNextPerf                           ## child "Perf": graphics / fps c
 var chapterhouse: DmChapterhouse                ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
 var acre: DmNextAcre                            ## child "Acre" (host with the HUD): visible Grave Laborers, labor / garden notices, the first-hour guidance feeds (next/gathering/)
 var gather: DmNextGather                        ## child "Gather" (every peer): gathering nodes, the gather loop (host), skills, AFK (next/gathering/)
+var party: DmNextParty                          ## child "Party" (every peer): the lobby link, hosting / joining, roster controls, party chat, the host <-> joiner handshake (next/party/)
+var joiner: DmNextJoiner                        ## child "Joiner" (a party joiner only): its own character, backend session, loot and XP on its own account (next/party/)
 
 var character: Dictionary = {}
 var api: Variant = null                         ## DmApi: the VPS backend online, the offline backend (DmOffline.make_api) offline
@@ -65,6 +69,8 @@ var builder: DmWorldBuilder:
 	get: return world.builder
 
 var _visual := true
+var _hold: DmRelayPeer                          ## a joiner's relay peer, held until the world's nodes exist
+var _aborted := false                           ## a joiner the host refused or lost while loading: start() stops where it is
 var _vfx: Node
 var _has_world := true
 
@@ -131,24 +137,45 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	look.name = "Look"
 	add_child(look)
 	look.attach(self)
+	party = DmNextParty.new()
+	party.name = "Party"   # before the session starts: its RPCs must exist at this path when the first packet arrives
+	add_child(party)
+	party.setup(self)
 	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
 	session.character_name = String(opts.get("name", "You"))
 	session.discipline_id = String(d["id"])
 	var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
 	session.spawn_origin = Vector3(float(ret["x"]), 0.0, float(ret["z"]))
 	session.body_factory = _make_body
+	session.spawn_override = _joiner_spawn
 	session.move_half = 1000.0   # the world is larger than the session arena (areas out to x -72 / 150): click-to-move must reach them
 	session.player_joined.connect(_on_player_joined)
 	var peer: MultiplayerPeer = opts.get("peer", null)
+	var lobby: DmLobbyClient = opts.get("lobby", null)   # a party joiner: the lobby socket the join happened on (main.gd hands it over)
+	var is_host := bool(opts.get("host", true)) and lobby == null
+	if lobby != null:
+		var relay := DmRelayPeer.new()
+		assert(relay.join(lobby) == OK, "DmNextGame: the lobby socket is not in a session")
+		relay.hold = true   # nothing from the host is delivered until every node it addresses exists (released after the Gather node below)
+		_hold = relay
+		peer = relay
+		party.adopt_client(lobby, relay)
 	if peer == null:
 		peer = OfflineMultiplayerPeer.new()
-	var err := session.host(peer) if bool(opts.get("host", true)) else session.join(peer)
+	var err := session.host(peer) if is_host else session.join(peer)
 	assert(err == OK, "DmNextGame: session start failed (%s)" % error_string(err))
+	if not is_host:
+		session.session_started.connect(party.send_profile)
+		joiner = DmNextJoiner.new()
+		joiner.name = "Joiner"
+		add_child(joiner)
+		await joiner.setup(self, bool(opts.get("persist", DisplayServer.get_name() != "headless")))
 	bosses.fx.host.self_id = str(session.get_my_id())
 	if session.is_host():
 		var b := local_body()
 		b.bind_character(character)
 		_start_rewards(b)
+		party.attach_host()
 		meta = DmNextMeta.new()
 		meta.name = "Meta"
 		add_child(meta)
@@ -192,8 +219,13 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	gather.name = "Gather"
 	add_child(gather)
 	await gather.setup(self)
+	if _hold != null:
+		_hold.hold = false
+		_hold = null
 	# The current game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
 	await _start_hud()
+	if _aborted:
+		return
 	if codex != null:
 		codex.seed_ui()
 	areas = DmAreaFlow.new()
@@ -231,6 +263,37 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		ui_host.game_event.emit("world_entered", {"family": local_body().family, "level": int(lvl), "grimoire_unlocked": grim})
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
+	if ui_host != null and joiner != null and joiner.notice != "":
+		ui_host.game_event.emit("toast", {"text": joiner.notice, "kind": "err"})
+		joiner.notice = ""
+	if ui_host != null and String(opts.get("notice", "")) != "":   # why we are here (the session we were in ended)
+		ui_host.game_event.emit("toast", {"text": String(opts["notice"]), "kind": "err"})
+
+
+## A joiner: wait until the host accepted it (roster arrived). false = the session ended or timed out first (`start_failed` emitted).
+func _await_active(timeout: float) -> bool:
+	var t0 := Time.get_ticks_msec()
+	var ended := [""]
+	var cb := func(r: String) -> void: ended[0] = r if r != "" else "ended"
+	session.session_ended.connect(cb)
+	while not session.is_active() and ended[0] == "" and Time.get_ticks_msec() - t0 < timeout * 1000.0:
+		await get_tree().process_frame
+	session.session_ended.disconnect(cb)
+	if session.is_active():
+		var b := local_body()
+		if b != null:
+			camera.snap(b.position)
+		return true
+	_aborted = true
+	start_failed.emit(ended[0] if ended[0] != "" else "The host did not answer.")
+	return false
+
+
+## The local player's rewards member: the host's own (DmSessionRewards) or a joiner's (DmNextJoiner), `null` before either exists.
+func my_member() -> DmRewardsMember:
+	if rewards != null:
+		return rewards.members.get(int(character.get("id", 0)))
+	return joiner.member if joiner != null else null
 
 
 ## The HUD: `hud` true (default) = DmGameUi on the DmNextUiHost adapter (built and warmed here, under the caller's loading screen),
@@ -241,7 +304,9 @@ func _start_hud() -> void:
 		hud = DmNextHud.new()
 		hud.game = self
 		add_child(hud)
-	elif mode == true and session.is_host():
+	elif mode == true:
+		if not session.is_host() and not await _await_active(CLIENT_ACTIVE_S):
+			return   # start_failed was emitted: the caller returns to its own world
 		ui_host = DmNextUiHost.new()
 		ui_host.name = "UiHost"
 		add_child(ui_host)
@@ -264,10 +329,11 @@ func _start_hud() -> void:
 		look.set_gear_from_slots(ui_host.inventory.slots)
 		ui_host.load_cosmetics()
 		sync_runes()
-		acre = DmNextAcre.new()
-		acre.name = "Acre"
-		add_child(acre)
-		acre.setup(self)
+		if session.is_host():   # the Acre's labor / garden glue runs on the host's own character
+			acre = DmNextAcre.new()
+			acre.name = "Acre"
+			add_child(acre)
+			acre.setup(self)
 
 
 ## Host: the rewards track's node (DmSessionRewards) with one member per player; kills arrive through `enemy_spawned` -> `died`.
@@ -294,6 +360,8 @@ func _start_progress(b: DmHeroBody) -> void:
 
 ## Everything the character earned, saved: the session's last kill batch, the progression, the bag. The window close and leave() call it.
 func flush_all() -> void:
+	if joiner != null:
+		await joiner.flush_all()
 	if rewards != null and session.is_host() and session.is_active():
 		await rewards.end_session({})
 	if chron != null:
@@ -318,10 +386,16 @@ func _make_body() -> DmSessionBody:
 	return b
 
 
-func _on_player_joined(id: int) -> void:
-	# A joiner on the host: a rewards member without its own api yet (its gear drops land unrolled until the join handshake carries one).
-	if rewards != null and session.is_host() and id != session.get_my_id() and body_of(id) != null:
-		rewards.add_member(DmRewardsMember.make(0, id, body_of(id), null, 1, {"id": body_of(id).discipline_id, "family": "necromancer"}))
+## A new player appears beside the host (wherever it is), except in the Depths (a solo descent: the Chapterhouse) or when the host is down.
+func _joiner_spawn() -> Variant:
+	var b := local_body()
+	if b == null or not b.alive or area_id == "depths":
+		return null
+	return b.position
+
+
+func _on_player_joined(_id: int) -> void:
+	pass   # a joiner's rewards member is made when its profile arrives (DmNextParty._rpc_profile): its character id and level come from it
 
 
 ## Called by each DmHeroBody in its _ready on every peer: attaches "Rites" (DmRiteCaster, `self` is its DmRiteWorld), "Thralls"

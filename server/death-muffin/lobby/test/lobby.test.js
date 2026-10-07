@@ -390,3 +390,42 @@ test('gate: off by default (no accessGate option) leaves auth unchanged', async 
   const s = await boot();
   try { assert.ok((await s.connect(5)).ws.readyState === 1); } finally { await s.close(); }
 });
+test('join by code alone: finds the private session, wrong codes are counted and rate limited, codes stay unique', async () => {
+  const s = await boot({ badCodesMax: 3 });
+  try {
+    const h = await s.connect(1), h2 = await s.connect(2), a = await s.connect(3), late = await s.connect(4);
+    h.send({ t: 'create', name: 'one', area: 'x', private: true });
+    const c1 = await h.next('created');
+    h2.send({ t: 'create', name: 'two', area: 'x', private: true });
+    const c2 = await h2.next('created');
+    assert.notEqual(c1.code, c2.code);
+    a.send({ t: 'join', code: c2.code });
+    const j = await a.next('joined');
+    assert.equal(j.session.id, c2.session.id);
+    assert.equal(j.peerId, 2);
+    assert.equal((await h2.next('peer_joined')).id, 2);
+    // public sessions are not reachable by a code, an unknown code is bad_code, three misses and the fourth try is rate limited
+    const h3 = await s.connect(5);
+    h3.send({ t: 'create', name: 'pub', area: 'x' });
+    const c3 = await h3.next('created');
+    assert.equal(c3.code, undefined);
+    for (const code of ['999999', '123456', '000000']) {
+      late.send({ t: 'join', code });
+      assert.equal((await late.next('error')).code, 'bad_code');
+    }
+    late.send({ t: 'join', code: c1.code });
+    assert.equal((await late.next('error')).code, 'rate_limit');
+    late.send({ t: 'join', id: c1.session.id, code: c1.code });
+    assert.equal((await late.next('error')).code, 'rate_limit');
+    // a closed session answers closed even for the right code
+    h.send({ t: 'set_open', open: false });
+    await h.next('session_updated');
+    const ok = await s.connect(6);
+    ok.send({ t: 'join', code: c1.code });
+    assert.equal((await ok.next('error')).code, 'closed');
+    // a host-chosen code that is taken is refused
+    const h4 = await s.connect(7);
+    h4.send({ t: 'create', name: 'dup', area: 'x', private: true, code: c1.code });
+    assert.equal((await h4.next('error')).code, 'bad_request');
+  } finally { await s.close(); }
+});

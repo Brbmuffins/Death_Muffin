@@ -38,9 +38,26 @@ var peer_id: int = 0          # 1 = host, 2+ = clients; 0 when not in a session
 var session: Dictionary = {}  # last known session info
 var max_players: int = 4
 var last_error: Dictionary = {}
+## Traffic counters (game packets only, header included): a hosted session's network cost, read by the tests and the perf overlay.
+var packets_out := 0
+var bytes_out := 0
+var packets_in := 0
+var bytes_in := 0
 
-## Binary frames from the relay go here: func(src: int, mode: int, channel: int, payload: PackedByteArray). Set by DmRelayPeer.
-var packet_sink: Callable = Callable()
+## Binary frames from the relay go here: func(src: int, mode: int, channel: int, payload: PackedByteArray). Set by DmRelayPeer. Frames that arrive
+## while no sink is set (a joiner's game is still being swapped in after `session_joined`) are kept and handed over, in order, when it is set.
+var packet_sink: Callable = Callable():
+	set(v):
+		packet_sink = v
+		if v.is_valid():
+			var backlog := _backlog
+			_backlog = []
+			_backlog_bytes = 0
+			for f in backlog:
+				v.call(f[0], f[1], f[2], f[3])
+const BACKLOG_MAX_BYTES := 4 << 20
+var _backlog: Array = []
+var _backlog_bytes := 0
 
 var _ws: WebSocketPeer
 var _token := ""
@@ -83,6 +100,10 @@ func join_session(session_id: String, code: String = "") -> void:
 		m["code"] = code
 	_send(m)
 
+## Join a private session by its code alone (private sessions are not in the list).
+func join_by_code(code: String) -> void:
+	_send({"t": "join", "code": code})
+
 ## Leave the session (a host leaving ends it for everyone). The socket stays open in the lobby.
 func leave() -> void:
 	if in_session():
@@ -108,6 +129,8 @@ func send_packet(dst: int, mode: int, channel: int, payload: PackedByteArray) ->
 	b.encode_u32(3, peer_id)   # the relay overwrites this with the true source
 	b.encode_u32(7, dst)
 	b.append_array(payload)
+	packets_out += 1
+	bytes_out += b.size()
 	return _ws.send(b, WebSocketPeer.WRITE_MODE_BINARY)
 
 func close() -> void:
@@ -158,8 +181,13 @@ func _send(m: Dictionary) -> void:
 func _on_binary(data: PackedByteArray) -> void:
 	if data.size() < HEADER_BYTES or data[0] != KIND_DATA or not in_session():
 		return
+	packets_in += 1
+	bytes_in += data.size()
 	if packet_sink.is_valid():
 		packet_sink.call(data.decode_u32(3), data[1], data[2], data.slice(HEADER_BYTES))
+	elif _backlog_bytes + data.size() <= BACKLOG_MAX_BYTES:
+		_backlog_bytes += data.size()
+		_backlog.append([data.decode_u32(3), data[1], data[2], data.slice(HEADER_BYTES)])
 
 func _on_text(text: String) -> void:
 	var parsed: Variant = JSON.parse_string(text)
@@ -193,6 +221,8 @@ func _on_text(text: String) -> void:
 		"peer_left":
 			peer_left.emit(int(m.get("id", 0)), str(m.get("reason", "")))
 		"session_closed":
+			_backlog = []
+			_backlog_bytes = 0
 			if in_session():
 				state = State.LOBBY
 				peer_id = 0

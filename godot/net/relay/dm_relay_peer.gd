@@ -32,6 +32,9 @@ var _inbox: Array = []                 # {src, mode, channel, data}
 var _events: Array = []                # {connect: bool, id: int}
 ## Why the session ended, set before peer_disconnected(1) fires on a client ("host_left", "kicked", "idle", "shutdown", "connection lost: ...").
 var close_reason := ""
+## A joiner's game builds its world after joining: while `hold` is set nothing is delivered (events and packets queue, the socket is still read),
+## so the host's first spawn / RPC packets do not arrive before the nodes they address exist. Release it once the game is built.
+var hold := false
 
 ## Attach as the host of the session `lobby` just created. The peer is CONNECTED at once.
 func host(lobby: DmLobbyClient) -> Error:
@@ -47,12 +50,12 @@ func host(lobby: DmLobbyClient) -> Error:
 func join(lobby: DmLobbyClient) -> Error:
 	if lobby.state != DmLobbyClient.State.IN_SESSION_CLIENT:
 		return ERR_UNCONFIGURED
-	_attach(lobby)
 	_server = false
 	_unique_id = lobby.peer_id
 	_status = MultiplayerPeer.CONNECTION_CONNECTED
 	_events.append({"connect": true, "id": HOST_ID})
 	_peers[HOST_ID] = true
+	_attach(lobby)   # last: attaching hands over the packets that arrived while no peer was attached (they need the state above)
 	return OK
 
 func get_lobby() -> DmLobbyClient:
@@ -97,6 +100,7 @@ func _on_peer_joined(id: int, _name: String) -> void:
 func _on_peer_left(id: int, _reason: String) -> void:
 	if _peers.erase(id):
 		_events.append({"connect": false, "id": id})
+		_inbox = _inbox.filter(func(p: Dictionary) -> bool: return int(p["src"]) != id)   # SceneMultiplayer rejects packets of a peer it has dropped
 
 func _on_session_closed(reason: String) -> void:
 	_end(reason)
@@ -121,6 +125,8 @@ var _ending := false
 func _poll() -> void:
 	if _lobby != null:
 		_lobby.poll()
+	if hold:
+		return
 	while not _events.is_empty():
 		var e: Dictionary = _events.pop_front()
 		if e["connect"]:
@@ -133,7 +139,7 @@ func _poll() -> void:
 		_detach()
 
 func _get_available_packet_count() -> int:
-	return _inbox.size()
+	return 0 if hold else _inbox.size()
 
 func _get_packet_script() -> PackedByteArray:
 	if _inbox.is_empty():

@@ -23,7 +23,7 @@ already connected are not re-checked. Unset = no gate (the old behaviour).
 Failure closes with 4401; replaced = 4402; locked (staff-only mode) = 4403; rate limit = 4429; oversize text = 1009.
 
 ## Text frames (JSON control)
-Client -> server: `list`, `create {name(1-32), area, private?, code?}`, `join {id, code?}`, `leave`, host only: `set_open {open}`, `kick {id}`.
+Client -> server: `list`, `create {name(1-32), area, private?, code?}`, `join {id, code?}` or `join {code}` (private sessions are not listed: the code alone finds one; wrong codes are counted per connection, 10 per 10 min, then `rate_limit`), `leave`, host only: `set_open {open}`, `kick {id}`.
 Server -> client: `ready {accountId, username, maxPlayers}`, `sessions {sessions:[{id,name,host,area,players,max,private,open}]}` (public + open only),
 `created {session, peerId:1, code?}` (private sessions get a 6-digit code unless one was supplied), `joined {session, peerId}`, `left`, `session_updated`,
 host gets `peer_joined {id,name,accountId}` / `peer_left {id, reason: left|disconnected|kicked}`, everyone else gets

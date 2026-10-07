@@ -28,6 +28,7 @@
 | Meta | `meta/dm_next_meta.gd` | host: difficulty (Settings), the sworn world vows, the weekly Omen, Soul Harvest, the Kill Chain, Bonded Dead; `sync()` pushes them to the director, bosses, corpses and rewards (`meta/README.md`) |
 | Perf | `perf/dm_next_perf.gd`, `perf/dm_next_warmup.gd` | `DmNextPerf`: settings `graphics` / `fps` / `auto_res` applied live (governor on `scaling_3d_scale`, held on area entry). `DmNextWarmup.run(game)` at the end of `start()` (real renderer, or `opts.warmup`): GPU warm-up of every body / effect / area lighting under a cover (`perf/README.md`) |
 | Look | `hero/dm_hero_look.gd` | every peer: worn gear, cape, pet, hero ring, replicated look descriptor (`hero/README.md`; test `tests/next_hero_look/run.gd`) |
+| Party | `party/dm_next_party.gd`, `party/dm_next_joiner.gd` | the lobby link, hosting a running solo session / joining one, roster + kick + open/closed, party chat, a joiner's own backend session, XP and loot (`party/README.md`; tests `tests/next_lobby/`) |
 | Chapterhouse | `chapterhouse/dm_chapterhouse.gd` | NPCs (`DmHubNpcs`), stations, waystone travel / recall (T), seals + doors, interactable hover / click / prompts; emits `npc_interact` / `station_interact` (forwarded by `DmNextUiHost`) and `interacted(it)` for boss altars / stairs (bosses + depths tracks hook it). Tick 10 Hz, NPC refresh 5 Hz, per-frame animation only for NPCs near you. Test `tests/chapterhouse/run.gd` |
 | Depths | `depths/dm_depths.gd` | the procedural descent (solo): Warren stair -> floors, quota, stairs, chests, rewards, death ends the run, chronicle (`depths/README.md`). Test `tests/next_depths/run.gd` |
 Players are `hero/dm_hero_body.gd` (`DmHeroBody`, a `DmSessionBody`): `DmAvatar` model for the discipline, `DmPlayerRules` vitals,
@@ -42,9 +43,9 @@ Rites (`DmRiteCaster`, `next/rites/`): attached as `Rites` to every body on ever
 - `aim_point() -> Vector3`, `aim_target_id() -> int` (local cursor), `rite_build(peer_id: int) -> Dictionary`
 - Input: runtime InputMap actions (LMB is handled by the click handler, not `rite_primary`; keys 1-4 / RMB reach the caster through `DmRiteHotbar.wire(self)`, `next/rites/dm_rite_hotbar.gd`), plus `dm_primary`, `dm_secondary` (RMB), `dm_hotbar_1..4`, `dm_move_*`;
   signal `input.hotbar(slot: int, aim: Vector3, enemy_id: int)` (0 = LMB, 1-4, 5 = RMB) for UI/other casters.
-Rewards (`DmSessionRewards`, host only): created in `start()` with one `DmRewardsMember` per player (`_on_player_joined` adds joiners with no api yet).
+Rewards (`DmSessionRewards`, host only): created in `start()`; the host's member at once, a joiner's (`remote`, no api: its own client rolls and saves) when its profile arrives (`DmNextParty`).
 - `signal enemy_spawned(enemy: DmEnemy)` (every peer, once in tree); enemy metas `dm_id`, `dm_level`, `dm_elite`, `dm_area`
-- `roster() -> Array` of `{peer_id, name, discipline, character_id, body}` (remote character_id is 0 until the handshake carries it)
+- `roster() -> Array` of `{peer_id, name, discipline, character_id, body}` (a remote body's character_id is its profile's, 0 before it arrives)
 - `body_of(peer_id) -> DmHeroBody`, `body_position(peer_id) -> Vector3`, `area_of(peer_id) -> String`, `area_id`
 - `api` (DmApi online / offline backend) and `is_offline`
 

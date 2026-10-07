@@ -14,6 +14,9 @@ const PATCH_NOTES_URL := SITE_BASE + "play/patch-notes.json"
 ## Socket.io realtime (see REALTIME.md). Nginx routes WS_PATH to 127.0.0.1:5191.
 const WS_BASE := "https://muffindevelopment.com"
 const WS_PATH := "/death-muffin/rt/socket.io"
+## Lobby + relay service (server/death-muffin/lobby): find / host / join a party session over WebSocket. Nginx maps the path to 127.0.0.1:5192.
+## A launch arg `--lobby=<ws url>` overrides it (local tests, staging).
+const LOBBY_URL := "wss://muffindevelopment.com/death-muffin/lobby/"
 const MAX_PARTY_SIZE := 10
 ## Seconds before an HTTP request is abandoned (the TS client uses the browser default; the server answers in well under this).
 const REQUEST_TIMEOUT_S := 30.0

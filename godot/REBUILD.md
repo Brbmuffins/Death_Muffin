@@ -128,3 +128,4 @@ Godot client  <->  Host's Godot game (authoritative sim, 1-4 players)
 |---|---|
 | 0 Decisions | D2, D4-D9 from the owner 2026-10-05; D1/D3 defaults |
 | 1 Foundation | wave 1 started 2026-10-05 (session, relay, data) |
+| Lobby (owner 2026-10-07: private codes + public list) | built 2026-10-07 on `godot/lobby`: Party window, hosting from a running solo session, joining, kick, open/closed, joiner HUD + own backend session / XP / loot; not deployed (`next/party/README.md`) |

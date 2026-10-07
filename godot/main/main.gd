@@ -22,6 +22,8 @@ var api: DmApi              ## set before add_child (tests) to inject a backend;
 var persist_token := true
 var _mock: DmMockBackend
 var _transport: DmHttpTransport
+var _transit_lobby: DmLobbyClient   ## the lobby socket a join was made on, polled here while the solo game is swapped for the client game
+var _party_busy := false            ## a join / return is in progress (one at a time)
 
 
 func _ready() -> void:
@@ -53,6 +55,11 @@ func _ready() -> void:
 		await _next_slice(args)
 		return
 	_start_flow()
+
+
+func _process(_dt: float) -> void:
+	if _transit_lobby != null:
+		_transit_lobby.poll()
 
 
 ## Window close: save everything first (the web's pagehide flush), then quit.
@@ -158,8 +165,8 @@ func _enter_world(character: Dictionary, session) -> void:
 
 ## The rebuild: DmNextGame behind the same key-art loading screen (it paints before the synchronous world build; the game's own panel warm-up
 ## shares it; it fades out once the game is ready). Backend: the offline mock offline (D4), the VPS api online.
-func _enter_next(character: Dictionary) -> void:
-	var loading := DmLoadingScreen.acquire(self, "Waking the dead...")
+func _enter_next(character: Dictionary, join: Dictionary = {}) -> void:
+	var loading := DmLoadingScreen.acquire(self, "Waking the dead..." if not join.has("lobby") else "Entering the host's world...")
 	loading.set_progress(0.05)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -167,11 +174,68 @@ func _enter_next(character: Dictionary) -> void:
 	g.name = "NextGame"
 	slice = g
 	add_child(g)
-	await g.start(character, api, {"offline": mode != "online", "name": token_username(api.get_token())})
+	var opts := {"offline": mode != "online", "name": token_username(api.get_token())}
+	for k in ["lobby", "notice"]:
+		if join.has(k):
+			opts[k] = join[k]
+	if join.has("lobby"):
+		opts["host"] = false
+		g.start_failed.connect(_on_next_join_failed.bind(character), CONNECT_ONE_SHOT)
+	await g.start(character, api, opts)
+	if g.start_failed.is_connected(_on_next_join_failed):
+		g.start_failed.disconnect(_on_next_join_failed)
+	if slice != g:
+		return   # a refused joiner: the failure handler already swapped the game
+	_transit_lobby = null
 	if g.ui_host != null:
 		g.ui_host.left_world.connect(_on_next_left.bind(true))
 		g.ui_host.world_restart.connect(func(ch: Dictionary) -> void: _on_next_restart(ch))
+	g.party.join_ready.connect(_on_next_join_ready)
+	g.party.client_ended.connect(_on_next_client_ended.bind(character))
 	loading.dismiss()
+
+
+## Party: the lobby seated us in a host's session. The solo game is saved and freed, a client game starts on the same lobby socket.
+func _on_next_join_ready(lobby: DmLobbyClient, _info: Dictionary) -> void:
+	if _party_busy or slice == null:
+		lobby.leave()
+		return
+	_party_busy = true
+	var character := slice.character
+	_transit_lobby = lobby
+	await _teardown_next()
+	await _enter_next(character, {"lobby": lobby})
+	_party_busy = false
+
+
+## Party: the session we joined is over (left, removed, host gone, connection lost): back to our own world, with the reason on screen.
+func _on_next_client_ended(_reason: String, text: String, character: Dictionary) -> void:
+	if _party_busy or slice == null:
+		return
+	_party_busy = true
+	var lobby: DmLobbyClient = slice.party.lobby
+	await _teardown_next()
+	if lobby != null:
+		lobby.close()
+	await _enter_next(character, {"notice": text} if text != "" else {})
+	_party_busy = false
+
+
+## A joiner the host refused or lost while loading: the half-built client game is dropped and the player lands in their own world again.
+func _on_next_join_failed(reason: String, character: Dictionary) -> void:
+	if slice == null:
+		return
+	var lobby: DmLobbyClient = slice.party.lobby
+	var g := slice
+	slice = null
+	_transit_lobby = null
+	g.process_mode = Node.PROCESS_MODE_DISABLED
+	g.queue_free()
+	if lobby != null:
+		lobby.close()
+	await get_tree().process_frame
+	await _enter_next(character, {"notice": "Could not join: %s" % reason})
+	_party_busy = false
 
 
 ## Log out of the rebuild: final save, free the game, back to the login screen. (`logout` false = keep the session, e.g. a class change.)

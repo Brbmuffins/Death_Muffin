@@ -342,7 +342,7 @@ func _credit(m: DmRewardsMember, claim: Dictionary, kills: int, batch: int) -> v
 	m.backend_accepted += kills
 	m.stats["xp_applied"] += xp
 	m.stats["levels"] += lv
-	member_credited.emit(m.character_id, {"xp": xp, "kills": kills, "levels": lv, "batch": batch})
+	member_credited.emit(m.character_id, {"xp": xp, "kills": kills, "levels": lv, "batch": batch, "areas": (claim["areas"] as Array).slice(0, kills)})
 
 
 ## legacy_ledger: each member's pending kills go to ITS OWN kill ledger (`report_kills`, the route the current game uses); the reply's accepted
@@ -425,7 +425,8 @@ func end_session(summary: Dictionary = {}) -> void:
 ## Drive loot (pickup/expiry), the batch timer and heartbeats. `_process` calls it when auto_tick.
 func tick(dt: float) -> void:
 	for m in members.values():
-		_tick_loot(m, dt)
+		if not m.remote:
+			_tick_loot(m, dt)
 	if session_id == "" and host_character_id == 0:
 		return
 	_flush_t += dt
@@ -603,7 +604,8 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 
 
 func _ground(m: DmRewardsMember, d: Dictionary, at: Vector3) -> void:
-	m.loot_view.drop(d, at)
+	if not m.remote:
+		m.loot_view.drop(d, at)
 	loot_dropped.emit(m.character_id, d, at)
 
 
@@ -625,6 +627,11 @@ func _drop_items(m: DmRewardsMember, at: Vector3, items: Array, level: float, so
 
 
 func _land_gear(m: DmRewardsMember, at: Vector3, gear: Array, level: float, source: String) -> void:
+	if m.remote:   # the joiner's own client rolls its gear with its own api: the drop leaves as plain base gear plus how to roll it
+		for item in gear:
+			item["roll"] = {"level": level, "source": source}
+			_ground(m, item, at)
+		return
 	_gear_pending += 1
 	if m.api != null:
 		for batch in DmLootRoll.batches(gear):

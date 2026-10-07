@@ -12,8 +12,8 @@ Status key: **DONE** (equivalent behaviour on the rebuild, cited), **PARTIAL** (
 How the rebuild reaches the UI: `DmNextGame` runs the *existing* `DmGameUi` through `DmNextUiHost` (`next/hud/dm_next_ui_host.gd`), an adapter that implements
 the `GAME_CONTRACT.md` surface. So every panel and HUD widget "exists" on the rebuild; the question per row is whether the host feeds it. The adapter now implements
 every contract method the first audit listed as absent (`stop_gathering`, `afk_*`, `start_afk`, `dial_wave`, `summon_boss(_empowered)`, `enter_depths`, `class_changed`,
-`counsel_busy`, `counsel_tick_ctx`, `leave_world`, `flush_chronicle`) except the party calls (`party_create/join/leave`, D5), `pause/resume_coop`, `belt_choices`
-(`DmNextBelt` serves it) and `set_primary` (`set_rites` covers it); `DmGameUi` calls them through `has_method`, so the party ones silently do nothing.
+`counsel_busy`, `counsel_tick_ctx`, `leave_world`, `flush_chronicle`) except `pause/resume_coop`, `belt_choices`
+(`DmNextBelt` serves it) and `set_primary` (`set_rites` covers it); the party calls (`party_view/watch/refresh/create/join/join_id/leave/kick/set_open`) are served by `DmNextParty` (`next/party/`).
 `hud_state()` (`next/hud/dm_next_hud_vm.gd`) now sets `depth`, `chain`, `omen`, `ward`, `souls` and `save` (the auto-combat button follows the `auto_combat` setting); `next` (Next-step box) follows the guidance feeds and `minimap.ping` the suggestion (`tests/next_acre_guide`).
 
 **Not the default yet:** `DmMain.USE_NEXT` is still `false` (`main/main.gd:12`); the rebuild runs with `-- --next`, the old game stays the default until the owner flips it.
@@ -31,7 +31,7 @@ Ranked by owner priority: performance #1; the necromancer's four disciplines and
 6. ~~**Combat odds and ends**~~ **CLOSED** (`tests/next_combat_odds`): the brief was partly stale. Player-side Bone Ward / Colossus guard were already the current client's own rule (stat-based on hit, never timed statuses); boss slow / root are ignored by the current client too (bosses are immune), so the rebuild already matched, now locked by a test; rite sfx are verified for all 25 rites against the current client's recorded sounds; the real gap was the necromancer's **weapon-line primaries** (staff pierce, sickle Withered, scythe arc + its soul window), built now. Bulwark stays N/A until a non-necromancer kit exists (gap 10). Pooled creature bodies: still moot (enemies are scenes).
 7. ~~Rune variants / Grimoire runes / legendary mechanics / Bonded Dead~~ DONE (`tests/next_runes`). Left: a joined client's own rune sockets do not reach the host (D5); Colossus Mantle hooks are host-hero only. (Splinters / Volley / Marrow-Tap now apply to the staff and scythe primaries as the current client does, `tests/next_combat_odds`.)
 8. **Make the rebuild the default** (`USE_NEXT`) once the owner is satisfied; Play Online on the rebuild is untested against the live backend.
-9. **Online (D5, back seat):** lobby UI, client HUD / own backend api for joiners, party chat, reconnect, multi-area waves for a split party, Depths for parties, a client's Covenant Seal / Nightfall dim.
+9. **Online (D5, back seat):** ~~lobby UI, client HUD / own backend api for joiners, party chat~~ DONE (`tests/next_lobby`, `next/party/README.md`). Left: reconnect, multi-area waves for a split party, Depths for parties, a client's Covenant Seal / Nightfall dim, a joiner's own gear / upgrades reaching the host's sim, flasks and brews for a joiner.
 10. **The five non-necromancer disciplines** (kit rites, monk beat meter, wraith nova): `DmRiteRegistry` is necromancer-only.
 
 ## Summary
@@ -54,7 +54,7 @@ and covered by `tests/next_*`. What is left is the list above.
 9. **Boss meta-progression (DONE, `tests/next_boss_meta`):** Empowered summons, Covenant Seal, boss key prompt, prize claim, trophies, Chronicle, Codex, milestones, Nightfall. Limits: a client cannot call Empowered or see Nightfall's dim.
 10. **Counsel and guidance state (DONE for counsel).** `counsel_busy` / `counsel_tick_ctx`, state-based tips, every panel pre-built and exercised. The Next box is fully fed (`tests/next_acre_guide`); chat stays solo.
 
-Lower priority, listed in the body: the five non-necromancer disciplines, party / lobby UI (D5), reconnect.
+Lower priority, listed in the body: the five non-necromancer disciplines, reconnect.
 
 
 
@@ -230,7 +230,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Hub NPCs (spots, talk range, "!" news marker, first-sight), E to talk | DONE | `game/dm_npc_views.gd`, `dm_game.gd _tick_npcs` | `next/chapterhouse/dm_hub_npcs.gd`, `DmChapterhouse.talk_key` (acre / wing NPCs only appear in their areas) |
 | Covenant dialogue / guidance memory / Next box | DONE | `ui/panels_a/dm_dialogue_panel.gd`, `game_ui/dm_game_ui.gd guidance_state` | `guidance_state` is fed the same facts as the current client plus the skills, trophies, labor and contracts that used to be stale; recomputed only on change (`hud/README.md`, `tests/next_acre_guide`) |
 | Counsel tips (cadence, events, store, progressive HUD reveal, NEW cues) | DONE | `ui/onboarding/`, `game_ui/dm_hud_reveal.gd` | UI side reused; `counsel_busy` / `counsel_tick_ctx` = `DmNextCounsel`: state-based tips and in-combat suppression run; events from DmNextProgress/Areas/UiHost |
-| First-hour guidance pings, `/party` etc. chat commands | PARTIAL | `game_ui/dm_chat_command.gd` | guidance minimap ping DONE (`vm["minimap"]["ping"]`, `guide_ping` honoured); `send_chat` = "(solo) Nobody hears you" (chat commands are party / online) |
+| First-hour guidance pings, `/party` etc. chat commands | PARTIAL | `game_ui/dm_chat_command.gd` | guidance minimap ping DONE (`vm["minimap"]["ping"]`, `guide_ping` honoured); `/party` makes a private session and prints its code, `/party <code>` joins by code, `/solo` `/leave` leave (`DmNextUiHost.party_*`, `tests/next_lobby`); `send_chat` = party chat in a party, "(solo) Nobody hears you" alone |
 
 ## 15. UI panels (one row per panel; all exist on the rebuild via `DmGameUi`, status = fed + reachable)
 
@@ -268,7 +268,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Belt chips (Q/Z/X), brew timers | DONE | `DmNextBelt.rows()` |
 | Target frame (name, hp, statuses, elite affix chips) | DONE | `DmNextHudVm._target` / `_affix_chips` |
 | Boss bar (phases ticks 60/30 %) | DONE | `vm["boss"]` |
-| Party frames | PARTIAL | roster-driven; client peers get no HUD yet |
+| Party frames | DONE | roster-driven; a joiner's HUD has them too (level shows 1 for remote players on a joiner's screen: the roster carries no level yet) |
 | Minimap (enemies, thralls, corpses, doors, boss dot, click travel) | DONE | `DmHudMinimap` |
 | Area label + progress | DONE | label + progress; Depths readout (`vm["depth"]`) |
 | Upgrade box (Empower/Quicken, dial) | DONE | tiers + dial (`dial_wave`) |
@@ -352,10 +352,10 @@ Lower priority, listed in the body: the five non-necromancer disciplines, party 
 | Party of up to 10 on Socket.IO realtime, host migration, snapshots, remote players | N/A | `game/dm_game_coop.gd`, `net/realtime/` | replaced: D2 (4 players), D3 (listen-server + relay), D6 (host quits = session ends, no migration); Socket.IO retired |
 | Session host/join, roster cap 4, body spawn, movement replication, enemy/corpse/thrall/status/boss replication | DONE | n/a | `session/dm_session.gd`, `next/next_net.gd`, per-subsystem replication; tests over ENet |
 | Relay peer + lobby client | DONE | n/a | `net/relay/dm_relay_peer.gd`, `dm_lobby_client.gd`; server `server/death-muffin/lobby/` |
-| Lobby UI (find/create/join, private codes) | MISSING | `/party` chat commands + party code | no UI; `party_*` absent (D5: online back seat) |
-| Joiner gets a real HUD, real character handshake, own backend api for loot/XP | PARTIAL | | clients get no HUD (`hud: true` host only); remote `character_id` 0 until handshake; joiner loot lands unrolled |
-| Remote players' gear/cape/pet display, party chat | PARTIAL | `dm_game_coop.gd dress_remote/chat_line` | remote players' gear / cape / pet DONE (`DmHeroLook` replicates a look to every peer, `tests/next_hero_look`); party chat missing (`send_chat` = "(solo) Nobody hears you") |
-| Reconnect / rejoin (10-minute window) | MISSING | `net/realtime/dm_rt_reconnector.gd`, `dm_rt_rejoin_store.gd` | D6: no migration; reconnect not planned |
+| Lobby UI (find/create/join, private codes, public list, kick, open/closed, every error in words) | DONE | `/party` chat commands + party code | `ui/panels/dm_lobby_panel.gd` (Party window: key F, HUD button, Settings' Play together, `/party`), `game_ui/dm_ui_lobby.gd`, `next/party/dm_next_party.gd`; hosting turns the running solo session into a hosted one (`DmSession.swap_transport`), joining swaps the solo game for a client game (`main.gd`); `tests/next_lobby` (in-process, UI, multi-process over the real relay) |
+| Joiner gets a real HUD, real character handshake, own backend api for loot/XP | DONE (core) | | the joiner runs `DmNextUiHost` / `DmGameUi`, a `DmNextJoiner` (own `DmProgression` + `DmProgressSync`, backend `session_join` + heartbeat with its OWN token, loot view, bag, gear rolled by ITS api); the host sends it the accepted XP / kills and its drops. Left: its gear / upgrades / level-ups do not feed the host's sim for its body (default build at its reported level), flasks and brews are host-only, first-kill trophies are not paid to joiners, a session on a backend without `/api/sessions` credits nobody but the host |
+| Remote players' gear/cape/pet display, party chat | DONE | `dm_game_coop.gd dress_remote/chat_line` | remote players' gear / cape / pet (`DmHeroLook`, `tests/next_hero_look`); party chat: Enter, `[name] text`, 4 lines/s per sender (`DmNextParty`) |
+| Reconnect / rejoin (10-minute window) | MISSING | `net/realtime/dm_rt_reconnector.gd`, `dm_rt_rejoin_store.gd` | D6: no migration; a drop leaves both sides clean (client back to its own hub, host plays on solo), reconnect is a later track |
 | Session `session_open/report/end`, heartbeats | DONE | `net/dm_api.gd` | `DmSessionRewards` |
 
 ## 22. Bug report button and daily agent

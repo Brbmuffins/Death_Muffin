@@ -11,7 +11,7 @@ signal panel_changed
 
 const PANEL_KEYS := {
 	KEY_I: "inventory", KEY_B: "inventory", KEY_J: "sheet", KEY_Y: "legion", KEY_C: "forge", KEY_P: "professions", KEY_O: "contracts", KEY_U: "garden",
-	KEY_H: "labor", KEY_N: "cosmetics", KEY_V: "vault", KEY_M: "map", KEY_K: "codex", KEY_PERIOD: "atlas", KEY_L: "grimoire",
+	KEY_H: "labor", KEY_N: "cosmetics", KEY_V: "vault", KEY_M: "map", KEY_K: "codex", KEY_PERIOD: "atlas", KEY_L: "grimoire", KEY_F: "party",
 }
 const HOSTS := {
 	"professions": ["acre", "skills"], "garden": ["acre", "garden"], "labor": ["acre", "labor"], "contracts": ["acre", "contracts"],
@@ -55,6 +55,7 @@ var inv: DmUiInventory
 var pa: DmUiPanelsA
 var pb: DmUiPanelsB
 var set_ui: DmUiSettings
+var lobby_ui: DmUiLobby
 var belt_picker: DmBeltPicker
 var hud_tips: DmHudTips
 var boss_key: DmBossKeyPrompt
@@ -106,6 +107,7 @@ func setup(game_: Node) -> void:
 	inv = DmUiInventory.new(self, locks, store)
 	_add_window("inventory", inv.panel)
 	set_ui = DmUiSettings.new(self)
+	lobby_ui = DmUiLobby.new(self)
 	pa = DmUiPanelsA.new(self)
 	pb = DmUiPanelsB.new(self)
 	belt_picker = DmBeltPicker.new(self)
@@ -153,7 +155,7 @@ func warm() -> void:
 
 ## Panels worth building ahead: a first open used to cost 50-500 ms (every row built, fonts shaped, first layout) in the middle of play.
 const WARM_PANELS := ["inventory", "sheet", "cosmetics", "legion", "forge", "professions", "garden", "labor", "contracts", "grimoire", "codex", "atlas", "ascension",
-	"map", "settings", "salvage", "shelf"]
+	"map", "settings", "salvage", "shelf", "party"]
 ## The panels warm() builds ahead (a shell that wires fewer panels, like the slice, narrows this before warm()).
 var warm_panels: Array = WARM_PANELS
 ## True while warm() opens the panels behind its cover: no sounds, cue/counsel events, gathering stops or "seen" marks (they belong to the player's own opens).
@@ -764,6 +766,8 @@ func toggle_panel(p: String) -> void:
 			inv.render()
 		"settings":
 			set_ui.open()
+		"party":
+			lobby_ui.open()
 		"vault":
 			if not area_safe():
 				toast("The Vault is in the Chapterhouse", "err")

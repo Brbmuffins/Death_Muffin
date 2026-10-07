@@ -21,10 +21,12 @@ signal left_world
 signal world_restart(character: Dictionary)   ## the class panel saved a new discipline: the front rebuilds the world with it
 signal sfx(name: String)                     ## every sound the adapter forwards to the AudioDirector (tests listen here)
 signal feedback(text: String)                ## a cast was refused / unavailable (also drawn as a float over the hero)
+signal party_changed                         ## the lobby / party state changed (the Party window redraws from party_view())
 
 const REJECT_TEXT := {"essence": "Not enough Grave Essence", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
 const FEEDBACK_GAP_MS := 600
 const CLIENT_OWNED_CHARACTER_FIELDS := ["gold", "level", "experience", "stat_str", "stat_agi", "stat_int", "stat_vit"]   ## as DmGame
+const PARTY_ALTAR := "The Altar answers only in your own world: leave the party first."
 const HERO_STATUS_TEXT := {&"chill": "Chilled", &"root": "Rooted", &"stun": "Stunned"}   ## the old game's floats over the hero (DmGameCombat.on_hurt / drag_player)
 
 var shell: DmNextGame
@@ -40,7 +42,8 @@ var signature: String = ""                   ## the discipline's signature rite 
 var in_depths := false
 var hero_id: int = 0
 var release := "godot-next-" + str(ProjectSettings.get_setting("application/config/version", "dev"))
-var party_code := ""
+var party_code: String:                      ## the private code of the session we host ("" = none): DmGameUi's /party and Settings read it
+	get: return shell.party.code if shell != null and shell.party != null else ""
 var dev_account := false
 var dev_access := false
 var vm: DmNextHudVm
@@ -51,7 +54,7 @@ var slots: Array:
 	get: return inventory.slots
 	set(v): inventory.slots = v
 var psync: DmProgressSync:
-	get: return shell.progress.psync if shell.progress != null else null
+	get: return shell.progress.psync if shell.progress != null else (shell.joiner.psync if shell.joiner != null else null)
 var progress: Dictionary:
 	get: return prog.local
 var settings: Dictionary:
@@ -91,16 +94,22 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	var family: String = b.family if b != null else "necromancer"
 	kit = DmAbilities.kit_for(family)
 	signature = String(kit["signatures"].get(DmCharacterBuild.discipline_for(float(shell.character.get("class_index", 0)))["id"], ""))
-	var m: DmRewardsMember = shell.rewards.members.get(hero_id) if shell.rewards != null else null
+	var m: DmRewardsMember = shell.my_member()   # the host's own member, or a joiner's (DmNextJoiner)
+	var credits: Object = shell.rewards if shell.rewards != null else shell.joiner
 	if m != null:
 		prog = m.prog
 		prog.character = character           # xp / level / gold credited by the rewards land straight in the character the UI reads
-		shell.rewards.member_credited.connect(_on_credited)
+		credits.member_credited.connect(_on_credited)
+		if shell.joiner != null:
+			shell.joiner.event.connect(game_event.emit)   # a joiner's level-up banner / toasts
 		if shell.progress != null:
 			shell.progress.event.connect(game_event.emit)   # level-up banner, milestone / seal toasts, belt floats
 		if shell.meta != null:
 			shell.meta.event.connect(game_event.emit)       # difficulty toast, Soul Harvest, chain tiers, bonded dead
-		shell.rewards.kill_earned.connect(func(_c: int, _d: String, _p: Vector3) -> void: _kills[shell.area_id] = int(_kills.get(shell.area_id, 0)) + 1)
+		if shell.rewards != null:
+			shell.rewards.kill_earned.connect(func(_c: int, _d: String, _p: Vector3) -> void: _kills[shell.area_id] = int(_kills.get(shell.area_id, 0)) + 1)
+		else:   # a joiner counts the kills the host's accepted report credited to it
+			shell.joiner.member_credited.connect(func(_c: int, d: Dictionary) -> void: _kills[shell.area_id] = int(_kills.get(shell.area_id, 0)) + int(d.get("kills", 0)))
 	else:
 		prog = DmProgression.new(character, null)
 	if shell.corpses != null:   # the counsel's Exhume tip (DmEventFx._corpse): once per corpse laid
@@ -139,6 +148,9 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 		shell.chapterhouse.npc_interact.connect(func(id: String) -> void: npc_interact.emit(id))
 		shell.chapterhouse.station_interact.connect(func(id: String) -> void: station_interact.emit(id))
 	shell.input.hotbar.connect(_on_hotbar)
+	if shell.party != null:
+		shell.party.changed.connect(party_changed.emit)
+		shell.party.notice.connect(func(t: String, k: String) -> void: game_event.emit("toast", {"text": t, "kind": k}))
 	shell.area_changed.connect(func(id: String) -> void: area_changed.emit(id))
 	shell.hero_died.connect(func(_b: DmHeroBody) -> void: hero_died.emit())
 	shell.hero_respawned.connect(func(_b: DmHeroBody) -> void: hero_respawned.emit())
@@ -231,6 +243,8 @@ func refresh_progress() -> void:
 ## The Altar (DmGame.do_ascend / do_swear / do_open / the Ascension panel): the backend rules the state (ashes, vows, unlocks, boons), `refresh_progress`
 ## adopts it, and DmNextProgress.apply_progress -> DmNextMeta.sync carries it into the world. "" = done, else the Altar's refusal.
 func do_ascend() -> String:
+	if shell.progress == null:
+		return PARTY_ALTAR
 	var heat := DmAscension.vow_heat(prog.vows())
 	await shell.progress.psync.flush()   # the run's kills are what the Ashes pay for: bank them first, or they land on the NEXT run
 	var r: DmResult = await api.necro_ascend(hero_id)
@@ -244,6 +258,8 @@ func do_ascend() -> String:
 
 
 func do_swear(next: Dictionary) -> String:
+	if shell.progress == null:
+		return PARTY_ALTAR
 	await shell.progress.psync.flush()   # a vow change restarts the run's tally: the kills so far must be in it
 	var r: DmResult = await api.necro_vows(hero_id, next)
 	if not r.ok:
@@ -379,17 +395,26 @@ func set_rites(new_primary: String, new_keys: Array) -> void:
 
 ## The Q key and the Reliquary's Drink: a healing flask (the heal belt chip). Host-side vitals; a joiner's drink is a later phase.
 func use_item(item_id: String) -> void:
+	if shell.progress == null and shell.joiner != null:
+		_party_belt_note()
+		return
 	if shell.progress != null and shell.session.is_host():
 		shell.progress.belt.use(item_id)   # a flask, brew or meal, with the old game's rules (cooldown, replace / extend, Dry Cellar)
 
 
 func use_belt(slot: String) -> void:
 	if shell.progress == null or not shell.session.is_host():
+		if shell.joiner != null:
+			_party_belt_note()
 		return
 	if slot == "heal":
 		shell.progress.belt.drink_flask()
 	else:
 		shell.progress.belt.drink_belt(slot)
+
+
+func _party_belt_note() -> void:
+	game_event.emit("toast", {"text": "Flasks and brews work only in your own world for now.", "kind": ""})
 
 
 ## The UI keeps the belt pick in its store and tells the game which brew a slot holds.
@@ -484,8 +509,53 @@ func navigate(x: float, z: float) -> void:
 	game_event.emit("minimap_travel", {})   # the counsel's minimap tip (DmGameInput.click_minimap)
 
 
-func send_chat(_text: String) -> void:
-	game_event.emit("chat", {"text": "(solo) Nobody hears you in the dark."})
+func send_chat(text: String) -> void:
+	if shell.party == null or not shell.party.chat(text):
+		game_event.emit("chat", {"text": "(solo) Nobody hears you in the dark."})
+
+
+# ---- party / lobby (DmNextParty; the Party window reads party_view() and calls these) -----------------------------------------------------------------
+
+func party_view() -> Dictionary:
+	return shell.party.view() if shell.party != null else {}
+
+
+## The window opened / closed: a lobby socket is kept (and the list refreshed) only while it is open.
+func party_watch(on: bool) -> void:
+	shell.party.set_watching(on)
+
+
+func party_refresh() -> void:
+	shell.party.refresh()
+
+
+## DmGameUi's /party and Settings' "Play together": hosts a private session (the window's Host form picks the name and public / private).
+func party_create(session_name: String = "", is_private: bool = true) -> void:
+	if shell.party.in_party():   # already hosting (or joined): show the party instead of a refusal
+		game_event.emit("panel_toggle", {"panel": "party"})
+		return
+	shell.party.host_session(session_name, is_private)
+
+
+## A private code (Settings' field, `/party <code>`, the window's Join by code).
+func party_join(code: String) -> void:
+	shell.party.join_by_code(code)
+
+
+func party_join_id(id: String, code: String = "") -> void:
+	shell.party.join_session(id, code)
+
+
+func party_leave() -> void:
+	shell.party.leave()
+
+
+func party_kick(peer_id: int) -> void:
+	shell.party.kick(peer_id)
+
+
+func party_set_open(open: bool) -> void:
+	shell.party.set_open(open)
 
 
 func leave_world() -> void:
