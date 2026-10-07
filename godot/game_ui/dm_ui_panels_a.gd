@@ -434,9 +434,21 @@ func _waystones() -> Array:
 	var out: Array = []
 	var unlocked: Array = game.progress.get("unlocked", [])
 	for a in DmContent.area_order():
-		if not bool(DmContent.area(String(a)).get("instance", false)) and unlocked.has(a):
+		var ar: Dictionary = DmContent.area(String(a))
+		if bool(ar.get("instance", false)):
+			continue
+		if unlocked.has(a):
 			out.append(a)
+		elif game.dev_access and _has_waystone(ar):
+			out.append(a)  # GM / dev access: same rule as walking (open_areas), every area with a stone
 	return out
+
+
+func _has_waystone(ar: Dictionary) -> bool:
+	for it in ar.get("interactables", []):
+		if it["kind"] == "waystone":
+			return true
+	return false
 
 
 func _change_class(index: int) -> void:

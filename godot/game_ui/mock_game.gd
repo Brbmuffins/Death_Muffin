@@ -19,6 +19,7 @@ var character: Dictionary = {"id": 7, "class_index": 1, "class_name": "Gravecall
 	"stat_str": 5, "stat_agi": 5, "stat_int": 9, "stat_vit": 6, "auto_combat_allowed": false}
 var slots: Array = []
 var progress: Dictionary = {}
+var dev_access := false
 var settings: Dictionary = {}
 var sim: Object = null
 var hero_id := 1
