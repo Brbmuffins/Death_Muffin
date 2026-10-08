@@ -44,5 +44,7 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     if (/SHOT-PNG/.test(p) && /BIG/.test(p)) fs.writeFileSync('.dm-shots/big.png', Buffer.alloc(9 * 1024 * 1024, 1));
   }
   if (/previous change shipped/.test(p)) text += ' ROUND-NOTE-SEEN';
+  if (/different version of the game/.test(p)) text += ' MODE-NOTE-SEEN';
+  if (process.argv.includes('--resume')) text += ' RESUMED';
   process.stdout.write(JSON.stringify({ type: 'result', result: text, session_id: 'sess-1', is_error: false, total_cost_usd: 0 }));
 });

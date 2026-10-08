@@ -212,10 +212,14 @@ function createRunner(cfgIn, opts = {}) {
     // images already attached to messages that are waiting come along; the claude conversation file moves to the new project dir
     if (prev.worktree) { try { const inbox = path.join(prev.worktree, '.dm-inbox'); if (fs.existsSync(inbox)) fs.cpSync(inbox, path.join(w.worktree, '.dm-inbox'), { recursive: true }); else job.inboxBytes = 0; } catch { /* best effort */ } }
     else job.inboxBytes = 0;
+    // a conversation from the other game (web-era threads after the switch to godot) would point the agent at the wrong scripts and code: start fresh
+    const carry = (job.sessionMode || 'web') === cfg.mode;
+    if (!carry) job.sessionId = null;
     if (job.sessionId && prev.worktree) { try { const f = `${job.sessionId}.jsonl`; const dst = projDir(w.worktree); fs.mkdirSync(dst, { recursive: true }); fs.copyFileSync(path.join(projDir(prev.worktree), f), path.join(dst, f)); } catch { /* resume falls back to a fresh session */ } }
     if (prev.worktree) await G.removeJobArtifacts(cfg, { ...job, ...prev }).catch(() => {});
     Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, shotsSeen: {}, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
-      roundNote: `Your previous change shipped and is live (or was discarded). You are on a fresh branch from the latest ${BB}; read the code again before relying on what you remember.`, lastActive: now() });
+      roundNote: carry ? `Your previous change shipped and is live (or was discarded). You are on a fresh branch from the latest ${BB}; read the code again before relying on what you remember.`
+        : `This thread's earlier work was on a different version of the game, so that conversation is not carried over. You are on a fresh branch from the latest ${BB}; work from the request and the code.`, lastActive: now() });
     audit.log('round', { job: job.id, round, branch: job.branch, base: w.base });
     save(); return true;
   }
@@ -363,7 +367,7 @@ function createRunner(cfgIn, opts = {}) {
       job.sessionId = null; r = await runTurn(cfg, job, `(The earlier conversation in this thread is not available; work from the request and the code.)\n\n${prompt}`, { onSpawn: (p) => { job.proc = p; } });
     }
     job.proc = null;
-    if (r.sessionId) job.sessionId = r.sessionId;
+    if (r.sessionId) { job.sessionId = r.sessionId; job.sessionMode = cfg.mode; }
     fs.mkdirSync(path.join(cfg.stateDir, 'runs'), { recursive: true });
     fs.appendFileSync(path.join(cfg.stateDir, 'runs', `${job.id}.log`), JSON.stringify({ ts: new Date(now()).toISOString(), turn: job.turns, model: job.model, costUsd: r.costUsd, error: r.error, textLen: r.text.length }) + '\n');
     return r;

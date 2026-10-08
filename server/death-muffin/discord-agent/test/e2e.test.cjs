@@ -922,3 +922,19 @@ test('adapter: a message sent while the runner restarts is retried, not lost', a
   await ad.onMessage(msg);
   assert.equal(seen.length, 1, 'delivered after two refused attempts'); assert.equal(seen[0].text, 'hello');
 });
+
+test('godot mode: a thread whose conversation is from the web era starts the next round fresh (no --resume) and is told why; godot conversations carry over', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p1 = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0];
+  assert.equal(job.sessionMode, 'godot', 'sessions are stamped with the mode that made them');
+  await d.react(p1, IDS.HELIX, '❌'); await until(() => job.status === 'discarded', d.ad);
+  job.sessionMode = undefined;   // as in a thread from before the switch to godot
+  await d.say(thread, IDS.HELIX, 'where is speed?');
+  await until(() => texts(thread).some((t) => /MODE-NOTE-SEEN/.test(t)), d.ad);
+  const t2 = texts(thread).find((t) => /MODE-NOTE-SEEN/.test(t)); assert.ok(!/RESUMED/.test(t2), 'the web-era conversation is not resumed');
+  assert.equal(job.round, 2); assert.equal(job.sessionMode, 'godot');
+  await until(() => !job.running, d.ad);
+  await d.say(thread, IDS.HELIX, 'GD-GAMEPLAY faster again');
+  await until(() => texts(thread).some((t) => /RESUMED/.test(t)) || proposals(thread).length >= 2, d.ad);
+});
