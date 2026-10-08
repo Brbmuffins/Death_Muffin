@@ -137,6 +137,13 @@ func _areas_and_seals() -> void:
 	h.travel("ossuary")
 	var toast := ev("toast")
 	check(toast.size() == 1 and toast[0]["ctx"]["text"] == "The Marrow Ossuary is still sealed." and g.local_body().position.z > 8.0, "a sealed area refuses: %s" % [toast.map(func(e: Dictionary) -> Variant: return e["ctx"]["text"])])
+	# GM / dev access walks the same rule as the Waystones list: a sealed area with a stone opens, then the hero goes back to the Chapterhouse stone
+	h._prog().dev_access = true
+	h.travel("ossuary")
+	check(g.local_body().position.z < 8.0 or absf(g.local_body().position.x - float(way_c["x"])) > 4.0, "dev access: a sealed waystone area opens for travel (GM rule)")
+	h._prog().dev_access = false
+	at(float(way_c["x"]), float(way_c["z"]) + 1.6)
+	await ticks(3)
 	# the seals break at their kill counts, in order, each opening its door and its navmesh
 	var prog := h._prog()
 	var cid := int(character.get("id", 0))

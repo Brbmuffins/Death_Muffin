@@ -77,6 +77,16 @@ func _settings() -> void:
 		check(vfx.quality == String(gp["fx"]) and vfx.binbun.enabled == bool(gp["binbun"]), "preset %s: fx quality %s, binbun %s" % [id, vfx.quality, vfx.binbun.enabled])
 		check(vp.msaa_3d == DmGraphicsPreset.msaa_mode(int(gp["msaa"])) and vp.anisotropic_filtering_level == DmGraphicsPreset.aniso_mode(int(gp["aniso"])) and is_equal_approx(vp.mesh_lod_threshold, float(gp["lod"])), "preset %s: msaa %d, aniso %d, lod %.1f on the viewport" % [id, gp["msaa"], gp["aniso"], gp["lod"]])
 		check(is_equal_approx(g.perf.governor.floor_scale, float(gp["floor"])), "preset %s: governor floor %.2f" % [id, g.perf.governor.floor_scale])
+		check(is_equal_approx(b.preset_lift, float(gp["lift"])) and is_equal_approx(b.env.tonemap_exposure, b.base_exposure * b.brightness * b.area_exposure * float(gp["lift"])), "preset %s: lighting lift %.2f reaches the exposure (%.3f)" % [id, b.preset_lift, b.env.tonemap_exposure])
+	# Settings -> Brightness is a plain multiplier on the exposure; Interface size is the window's content scale
+	st.update({"graphics": "high", "brightness": 1.0})
+	var e1 := b.env.tonemap_exposure
+	st.update({"brightness": 1.3})
+	check(is_equal_approx(b.brightness, 1.3) and is_equal_approx(b.env.tonemap_exposure, e1 * 1.3), "brightness 130%% scales the rebuild's exposure (%.3f -> %.3f)" % [e1, b.env.tonemap_exposure])
+	st.update({"brightness": 1.0, "ui_scale": 1.25})
+	check(is_equal_approx(g.get_window().content_scale_factor, 1.25), "Interface size 125%% reaches the window content scale (%.2f)" % g.get_window().content_scale_factor)
+	st.update({"ui_scale": 1.0})
+	check(is_equal_approx(g.get_window().content_scale_factor, 1.0), "Interface size back to 100%")
 	st.update({"graphics": "ultra"})
 	check(b.light_near > DmWorldBuilder.LIGHT_NEAR and DmGraphicsPreset.get_preset("high")["lights"] == DmWorldBuilder.LIGHT_NEAR, "ultra is richer than high; high keeps the old High's lights")
 	st.update({"graphics": "bogus"})
