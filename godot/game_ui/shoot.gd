@@ -25,6 +25,7 @@ func _ready() -> void:
 	game.hud["area_name"] = "The Hollow Graves"
 	game.hud["minimap"] = DmHudMock.minimap()
 	game.hud["brews"] = DmHudMock.brews()
+	game.settings["hud_scale"] = float(args.get("hud_scale", "1.0"))
 	var ui := DmGameUi.new()
 	game.add_child(ui)
 	ui.setup(game)

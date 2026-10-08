@@ -200,12 +200,43 @@ func _build_safe_frame() -> void:
 		safe.add_child(c)
 
 
+## Settings -> HUD size. The whole safe frame is scaled from its top-left corner and given 1/scale of the room as its layout size, so the
+## edge-anchored groups stay in their corners and the hit areas follow (a Control's scale also scales its input transform). The floating
+## numbers, vignette and death veil are outside the frame and keep their screen size.
+const HUD_SCALE_MIN := 0.75
+const HUD_SCALE_MAX := 1.3
+## The narrowest logical frame width at which the side columns still clear the orb row: the upgrade panel is 298+ wide whatever its clamp says,
+## the orbs reach 413 px either side of the centre, plus the 18 px gutter and a gap (measured; tests/hud/run.gd checks the rects).
+const MIN_FIT_WIDTH := 1500.0
+var hud_scale := 1.0        ## what Settings asked for
+var effective_scale := 1.0  ## what is applied: hud_scale, held back on a frame too narrow to fit it
+
+
+func set_hud_scale(v: float) -> void:
+	v = clampf(v, HUD_SCALE_MIN, HUD_SCALE_MAX)
+	if is_equal_approx(v, hud_scale):
+		return
+	hud_scale = v
+	_notification(NOTIFICATION_RESIZED)
+
+
+## hud_scale, but never more than the frame can hold: above 100 % it is capped at frame width / MIN_FIT_WIDTH (never below 100 %).
+static func fit_scale(want: float, frame_w: float) -> float:
+	if want <= 1.0:
+		return want
+	return minf(want, maxf(1.0, frame_w / MIN_FIT_WIDTH))
+
+
 func _fit_safe_frame() -> void:
 	if safe == null:
 		return
 	var m := maxf(0.0, (size.x - size.y * MAX_ASPECT) * 0.5)
-	safe.offset_left = m
-	safe.offset_right = -m
+	effective_scale = fit_scale(hud_scale, size.x - 2.0 * m)
+	safe.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	safe.pivot_offset = Vector2.ZERO
+	safe.scale = Vector2(effective_scale, effective_scale)
+	safe.position = Vector2(m, 0.0)
+	safe.size = Vector2(size.x - 2.0 * m, size.y) / effective_scale
 
 
 func _txt(text: String, size: int, color: Color, font: String = "body", spacing: float = 0.0, shadow: bool = true) -> Label:
@@ -1070,6 +1101,10 @@ func _notification(what: int) -> void:
 		_update_toast_top()
 
 
+func _frame_w() -> float:
+	return safe.size.x if safe != null and safe.size.x > 0.0 else size.x
+
+
 func _update_toast_top() -> void:
 	var low := boss.visible or target_box.visible
 	toasts.offset_top = 112.0 if low else 64.0
@@ -1495,7 +1530,7 @@ func _apply_misc(v: Dictionary) -> void:
 	prompt.visible = pr != null and String(pr) != ""
 	if prompt.visible:
 		prompt_rt.text = DmUi.markup(String(pr))
-	hint.text = _ellipsize(String(v.get("hint", "")), 13, minf(640.0, size.x - 700.0) if size.x > 0.0 else 640.0)
+	hint.text = _ellipsize(String(v.get("hint", "")), 13, minf(640.0, _frame_w() - 700.0) if size.x > 0.0 else 640.0)
 	var dv: Dictionary = v.get("death", {})
 	var show := bool(dv.get("show", false))
 	death_sub.text = String(dv.get("sub", ""))
@@ -1641,7 +1676,8 @@ func tip_default_position() -> Vector2:
 	var below := 0.0
 	if party_box.get_child_count() > 0:
 		below = party_box.get_global_rect().end.y + 8.0
-	return Vector2(18.0, maxf(70.0, below))
+	var s := effective_scale
+	return Vector2(safe.position.x + 18.0 * s, maxf(70.0 * s, below)) if safe != null else Vector2(18.0, maxf(70.0, below))
 
 
 # ======================================================================== spell card (HUD.showTooltip / refreshTooltip)
@@ -1739,7 +1775,11 @@ func node_tip(html: Variant, x: float = 0.0, y: float = 0.0) -> void:
 	if node_tip_rt.text != bb:
 		node_tip_rt.text = bb
 	node_tip_box.visible = true
+	var s := effective_scale
 	var sz := node_tip_box.get_combined_minimum_size()
 	var vp := get_viewport_rect().size
 	node_tip_box.size = sz
-	node_tip_box.position = Vector2(maxf(8.0, minf(vp.x - sz.x - 8.0, x + 18.0)), maxf(8.0, minf(vp.y - sz.y - 8.0, y - sz.y - 12.0)))
+	# (x, y) is the pointer in screen space; the card lives in the scaled frame, so clamp its screen rect and convert back.
+	var ssz := sz * s
+	var screen := Vector2(maxf(8.0, minf(vp.x - ssz.x - 8.0, x + 18.0)), maxf(8.0, minf(vp.y - ssz.y - 8.0, y - ssz.y - 12.0)))
+	node_tip_box.position = (screen - safe.global_position) / s
