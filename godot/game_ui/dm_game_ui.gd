@@ -97,6 +97,7 @@ func setup(game_: Node) -> void:
 
 	hud = DmHud.new()
 	add_child(hud)
+	hud.set_hud_scale(DmSettings.clamp_hud_scale(game.settings.get("hud_scale", 1.0)))
 	windows_root = Control.new()
 	windows_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	windows_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -912,6 +913,8 @@ func update_setting(patch: Dictionary) -> void:
 	for k in patch:
 		s[k] = patch[k]
 	game.apply_settings(s)
+	if patch.has("hud_scale"):
+		hud.set_hud_scale(DmSettings.clamp_hud_scale(patch["hud_scale"]))
 	if patch.has("no_tips"):
 		counsel.set_tips_enabled(not bool(patch["no_tips"]))
 	if patch.has("reduce_motion"):
