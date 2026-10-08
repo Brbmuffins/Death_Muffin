@@ -672,6 +672,7 @@ func _apply_graphics() -> void:
 		builder.moon.shadow_enabled = bool(gp["shadows"])
 		builder.light_near = int(gp["lights"])
 		builder.set_preset_lift(float(gp["lift"]))
+		builder.set_brightness(float(settings.get("brightness", 1.0)))
 		builder.shadow_range = float(gp["prop_shadow"])
 		builder.moon.directional_shadow_max_distance = float(gp["shadow_dist"])
 		builder.moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(gp["shadow_splits"]) == 2 else DirectionalLight3D.SHADOW_ORTHOGONAL
