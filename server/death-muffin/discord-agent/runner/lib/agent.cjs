@@ -22,11 +22,14 @@ function claudeArgs(cfg, job) {
   const bash = cfg.mode === 'godot'
     ? [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check-godot.sh)`]
     : [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check.sh)`, `Bash(${cfg.toolsDir}/regen.sh)`, `Bash(${cfg.toolsDir}/shot.sh)`, `Bash(${cfg.toolsDir}/shot.sh *)`];
+  // File tools are scoped to the worktree ("//" = absolute path): a bare "Read" grants every path on the machine (runner secret, /opt),
+  // which matters more now that a WebFetch could carry what it read out. WebFetch is limited to documentation hosts (cfg.webDocDomains).
+  const wt = `/${job.worktree}/**`;
+  const web = ['WebSearch', ...(cfg.webDocDomains || []).map((d) => `WebFetch(domain:${d})`)];
   const a = ['-p', '--restricted', '--strict-mcp-config', '--permission-mode', 'dontAsk', '--output-format', 'json',
     '--model', job.model, '--append-system-prompt', systemPrompt(cfg, job),
-    '--tools', 'Read,Edit,Write,Glob,Grep,Bash',
-    '--allowedTools', 'Read', 'Edit', 'Write', 'Glob', 'Grep', ...bash,
-    '--disallowedTools', 'WebFetch', 'WebSearch'];
+    '--tools', 'Read,Edit,Write,Glob,Grep,Bash,WebSearch,WebFetch',
+    '--allowedTools', ...['Read', 'Edit', 'Write', 'Glob', 'Grep'].map((t) => `${t}(${wt})`), ...bash, ...web];
   if (job.sessionId) a.push('--resume', job.sessionId);
   return a;
 }

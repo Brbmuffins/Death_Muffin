@@ -44,6 +44,10 @@ const DEFAULTS = {
   mobileDeployScript: 'server/death-muffin/deploy-mobile.sh',
   githubRepo: 'Brbmuffins/Death_Muffin',
   secretFile: '/home/ubuntu/death-muffin/discord-agent/secret',
+  // The agent may WebSearch freely but WebFetch only these documentation hosts (exact host names): a fetch elsewhere could carry data out
+  // in its URL. Owner 2026-10-08: Helix asked for the agent to look up documentation online.
+  webDocDomains: ['docs.godotengine.org', 'godotengine.org', 'forum.godotengine.org', 'github.com', 'raw.githubusercontent.com',
+    'docs.github.com', 'developer.mozilla.org', 'threejs.org', 'nodejs.org', 'www.typescriptlang.org', 'vitest.dev', 'vite.dev'],
   // Tier rules are deterministic path rules, never the model's opinion. First match wins inside a tier; a diff is as strict as its strictest file.
   // sensitive > gameplay > casual. Files matching no rule: under src/ = gameplay, anything else = sensitive.
   tiers: {

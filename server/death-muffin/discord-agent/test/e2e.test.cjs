@@ -791,8 +791,12 @@ test('godot mode: !shot is not available, the command list drops it, and the age
   const j = Object.values(w.runner.jobs())[0]; assert.equal(j.queue.length, 0, 'no screenshot turn queued');
   const m2 = await d.say(thread, IDS.HELIX, '!nope'); await until(() => m2.replies.length, d.ad); assert.ok(!/!shot/.test(m2.replies[0].content));
   const { claudeArgs, systemPrompt } = require('../runner/lib/agent.cjs');
-  const a = claudeArgs(w.cfg, j); const allowed = a.slice(a.indexOf('--allowedTools') + 1, a.indexOf('--disallowedTools'));
-  assert.deepEqual(allowed, ['Read', 'Edit', 'Write', 'Glob', 'Grep', `Bash(${w.tools}/agit *)`, `Bash(${w.tools}/check-godot.sh)`]);
+  const a = claudeArgs(w.cfg, j); const rest = a.slice(a.indexOf('--allowedTools') + 1); const allowed = rest.slice(0, rest.findIndex((x) => x.startsWith('--')) >>> 0);
+  const wt = `/${j.worktree}/**`;
+  assert.deepEqual(allowed, [`Read(${wt})`, `Edit(${wt})`, `Write(${wt})`, `Glob(${wt})`, `Grep(${wt})`, `Bash(${w.tools}/agit *)`, `Bash(${w.tools}/check-godot.sh)`,
+    'WebSearch', ...w.cfg.webDocDomains.map((h) => `WebFetch(domain:${h})`)]);
+  assert.ok(!allowed.includes('Read') && !allowed.includes('WebFetch'), 'no bare (any-path / any-host) grants');
+  assert.ok(j.worktree && path.isAbsolute(j.worktree));
   const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/godot-port/); assert.ok(sp.includes(`${w.tools}/check-godot.sh`) && !sp.includes('__TOOLS__') && !sp.includes('shot.sh'));
   // web mode is unchanged
   const wa = makeWorld(); const wj = { ...j, model: 'sonnet' }; const wargs = claudeArgs(wa.cfg, wj);
