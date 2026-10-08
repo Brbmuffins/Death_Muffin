@@ -26,7 +26,7 @@ const LOADOUT_ACTIONS := [["loadout_next", "Next loadout"], ["loadout_1", "Loado
 var values: Dictionary = {
 	"difficulty": "medium", "auto_combat": false, "auto_gather": false,
 	"loot_common": "ground", "loot_uncommon": "ground", "loot_rare": "ground", "loot_epic": "ground", "loot_legendary": "ground",
-	"graphics": "high", "fps": 0, "auto_res": true,
+	"graphics": "high", "fps": 0, "auto_res": true, "brightness": 1.0, "ui_scale": 1.0,
 	"vol_master": 0.7, "vol_combat": 0.8, "vol_amb": 0.6, "vol_music": 0.5, "vol_ui": 0.8,
 	"reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false, "guidance": true, "guide_ping": true,
 	"dev_access": true, "party_in": "",
@@ -142,7 +142,9 @@ func build() -> void:
 	# --- Display and sound -------------------------------------------------------------------------
 	var s2 := _section("Display and sound")
 	_option(s2, "Graphics", "graphics", DmGraphicsPreset.options())
+	_brightness(s2)
 	_option(s2, "Frame rate", "fps", [[0, "Max — your screen's refresh rate"], [60, "60 — smooth"], [30, "30 — battery saver"]])
+	_option(s2, "Interface size", "ui_scale", [[0.8, "80%"], [0.9, "90%"], [1.0, "100%"], [1.1, "110%"], [1.25, "125%"]])
 	_check(s2, "Auto resolution", "auto_res")
 	_note(s2, "Auto resolution only steps in after several seconds of sustained slow frames, and never below 85% on Medium and up. Turn it off to keep a constant sharp picture.")
 	_slider(s2, "Volume", "vol_master")
@@ -368,6 +370,27 @@ func _slider(parent: VBoxContainer, text: String, key: String) -> void:
 	_row(parent, text, s)
 
 
+## Settings -> Graphics -> Brightness: 80-130 %, 100 % = the shipped look (a tonemap-exposure multiplier, see DmWorldBuilder.set_brightness).
+func _brightness(parent: VBoxContainer) -> void:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	var s := HSlider.new()
+	s.min_value = DmSettings.BRIGHTNESS_MIN
+	s.max_value = DmSettings.BRIGHTNESS_MAX
+	s.step = 0.05
+	s.value = clampf(float(values.get("brightness", 1.0)), s.min_value, s.max_value)
+	s.custom_minimum_size = Vector2(150, 20)
+	s.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	s.focus_mode = Control.FOCUS_NONE
+	var pct := DmUi.label("%d%%" % roundi(s.value * 100.0), "DmNumeric")
+	s.value_changed.connect(func(v: float) -> void:
+		pct.text = "%d%%" % roundi(v * 100.0)
+		_put("brightness", v))
+	h.add_child(s)
+	h.add_child(pct)
+	_row(parent, "Brightness", h)
+
+
 func _button(text: String, act: String, small: bool = false) -> Button:
 	var b := Button.new()
 	b.text = DmUi.upper(text)
@@ -390,7 +413,7 @@ func _note_margin(parent: VBoxContainer, l: Label) -> void:
 
 func _idx(arr: Array, v: Variant) -> int:
 	for i in arr.size():
-		if arr[i][0] == v:
+		if arr[i][0] == v or (typeof(v) == TYPE_FLOAT and typeof(arr[i][0]) in [TYPE_FLOAT, TYPE_INT] and is_equal_approx(float(arr[i][0]), v)):
 			return i
 	return 0
 

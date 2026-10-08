@@ -12,8 +12,13 @@ AudioDirector="*res://audio/audio_director.gd"
 Vfx="*res://fx/dm_fx.gd"
 
 [display]
-window/size/viewport_width=1280
-window/size/viewport_height=800
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/size/window_width_override=1280
+window/size/window_height_override=800
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/stretch/scale_mode="fractional"
 
 [rendering]
 renderer/rendering_method="gl_compatibility"

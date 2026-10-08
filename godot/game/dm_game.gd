@@ -663,7 +663,15 @@ func _apply_render_scale() -> void:
 	vp.scaling_3d_scale = sc
 
 
+## Interface size (Settings): the window's content scale factor, on top of the project's canvas_items stretch. The 3D view is untouched.
+func _apply_ui_scale() -> void:
+	var w := get_window()
+	if w != null:
+		w.content_scale_factor = DmSettings.clamp_ui_scale(settings.get("ui_scale", 1.0))
+
+
 func _apply_graphics() -> void:
+	_apply_ui_scale()
 	var preset := DmGraphicsPreset.normalize(settings.get("graphics", DmGraphicsPreset.DEFAULT))
 	var gp := DmGraphicsPreset.get_preset(preset)
 	var fps := int(settings.get("fps", 0))
@@ -671,6 +679,8 @@ func _apply_graphics() -> void:
 	if builder != null:
 		builder.moon.shadow_enabled = bool(gp["shadows"])
 		builder.light_near = int(gp["lights"])
+		builder.set_preset_lift(float(gp["lift"]))
+		builder.set_brightness(float(settings.get("brightness", 1.0)))
 		builder.shadow_range = float(gp["prop_shadow"])
 		builder.moon.directional_shadow_max_distance = float(gp["shadow_dist"])
 		builder.moon.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(gp["shadow_splits"]) == 2 else DirectionalLight3D.SHADOW_ORTHOGONAL
@@ -1137,7 +1147,7 @@ func apply_settings(s: Dictionary) -> void:
 		settings_store.update(s)
 	if visual:
 		audio.apply_settings(settings_store.audio_dict())
-		vfx.quality = String(DmGraphicsPreset.get_preset(settings["graphics"])["fx"])
+		_apply_fx_quality()
 		vfx.reduced_motion = bool(settings["reduce_motion"])
 		if camera != null:
 			camera.reduced_motion = bool(settings["reduce_motion"])
@@ -1147,6 +1157,14 @@ func apply_settings(s: Dictionary) -> void:
 		_on_difficulty(String(settings["difficulty"]))
 
 
+## The preset's fx quality, then its Binbun layer: the quality setter alone switches Binbun on for every "high" fx, and Medium has none.
+func _apply_fx_quality() -> void:
+	var gp := DmGraphicsPreset.get_preset(settings["graphics"])
+	vfx.quality = String(gp["fx"])
+	if vfx.binbun != null:
+		vfx.binbun.enabled = bool(gp["binbun"]) and String(gp["fx"]) == "high"
+
+
 func _on_settings_changed(_v: Dictionary) -> void:
 	_apply_dev_access()
 	if sim != null:
@@ -1154,7 +1172,7 @@ func _on_settings_changed(_v: Dictionary) -> void:
 	if visual and ready_:
 		audio.apply_settings(settings_store.audio_dict())
 		_apply_graphics()
-		vfx.quality = String(DmGraphicsPreset.get_preset(settings["graphics"])["fx"])
+		_apply_fx_quality()
 		vfx.reduced_motion = bool(settings["reduce_motion"])
 		if camera != null:
 			camera.reduced_motion = bool(settings["reduce_motion"])

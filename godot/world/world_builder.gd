@@ -7,13 +7,28 @@ extends Node3D
 
 const TEX := "res://assets/slice/art/textures/%s.webp"
 ## Tuning against the web renderer (three.js physical lights are /PI of Godot's energies; ACES differs slightly).
-const MOON_K := 0.55
+const MOON_K := 0.6
 const RIM_K := 0.55
-const HEMI_K := 1.0
+const HEMI_K := 2.0
+## Visibility lift on top of the web look (owner: "pretty dark"): exposure multiplier (the Settings brightness multiplies it again) and how far the
+## ground half of the hemisphere is pulled toward its sky colour so shadowed floors and the undersides of props are not black.
+const EXPOSURE_K := 1.2
+const GROUND_LIFT := 0.25
+## Dim areas' hemisphere sky is scaled (hue kept) until its brightest channel reaches AMBIENT_FLOOR, at most AMBIENT_MAX_BOOST x; bright areas are untouched.
+const AMBIENT_FLOOR := 0.5
+const AMBIENT_LUMA_FLOOR := 0.3
+## Plain-colour ambient (a Sky-radiance ambient did not respond to ambient_light_energy on the compatibility renderer here: tripling it changed no pixel): the hemisphere sky colour
+## eased toward the ground colour by this much, a stand-in for the web's hemisphere light averaged over what the camera sees.
+const AMBIENT_GROUND_MIX := 0.3
+const AMBIENT_MAX_BOOST := 2.4
 const POINT_K := 0.18
 const LIGHT_NEAR := 8        # prop lights enabled at once (nearest to the focus)
 ## Runtime cap on prop lights (graphics quality); LIGHT_NEAR on High.
 var light_near := LIGHT_NEAR
+var base_exposure := 1.0   # the area-independent exposure (lighting.exposure x EXPOSURE_K); brightness scales it
+var area_exposure := 1.0   # per-area easing for already-bright skies (set_area)
+var preset_lift := 1.0     # graphics-preset compensation (set_preset_lift)
+var brightness := 1.0      # Settings -> Brightness
 const STREAM_DIST := 95.0    # an area is drawn while its rect is within this many metres of the focus
 ## WorldView PROP_CELL / SHADOW_RANGE: prop batches are split into cells so off-screen ones are culled, and cells further than
 ## SHADOW_RANGE from the hero stop casting moon shadows (the shadow pass was half the frame).
@@ -191,11 +206,11 @@ func _make_environment() -> void:
 	sky.sky_material = sky_mat
 	sky.radiance_size = Sky.RADIANCE_SIZE_32
 	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_sky_contribution = 1.0
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_energy = float(L.hemiIntensity) * HEMI_K
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = float(L.exposure)
+	base_exposure = float(L.exposure) * EXPOSURE_K
+	_apply_exposure()
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_DEPTH
 	env.fog_density = 1.0
@@ -222,13 +237,37 @@ func _make_environment() -> void:
 	var ro: Dictionary = L.rimOffset
 	rim.look_at_from_position(Vector3(ro.x, ro.y, ro.z), Vector3.ZERO)
 
+## Settings -> Brightness (0.8 .. 1.3): a plain exposure multiplier, no per-frame cost.
+func set_brightness(v: float) -> void:
+	brightness = clampf(v, 0.5, 1.6)
+	_apply_exposure()
+
+## The graphics preset's brightness compensation (DmGraphicsPreset `lift`): Low/Medium have fewer prop lights and no bloom (Medium also has the
+## moon's hard shadows), so they run a little hotter to read as bright as High. Exposure: both presets have plenty of highlight headroom.
+func set_preset_lift(v: float) -> void:
+	preset_lift = v
+	_apply_exposure()
+
+func _apply_exposure() -> void:
+	if env != null:
+		env.tonemap_exposure = base_exposure * brightness * area_exposure * preset_lift
+
 ## Per-area ambient (AREAS[*].ambient): fog colour + density multiplier, hemisphere sky/ground, moon colour.
 func set_area(id: String) -> void:
 	current_area = id
 	var a: Dictionary = world.areas[id]
 	var amb: Dictionary = a.ambient
 	var sky := Color.html(amb.hemiSky)
-	var gnd := Color.html(amb.hemiGround)
+	var peak := maxf(sky.r, maxf(sky.g, sky.b))
+	if peak > 0.01:
+		var luma := 0.2126 * sky.r + 0.7152 * sky.g + 0.0722 * sky.b   # blue-violet skies are bright to the eye in channel terms but not in luma
+		var boost := clampf(maxf(AMBIENT_FLOOR / peak, AMBIENT_LUMA_FLOOR / maxf(luma, 0.01)), 1.0, AMBIENT_MAX_BOOST)
+		sky = Color(sky.r * boost, sky.g * boost, sky.b * boost)
+	var gnd := Color.html(amb.hemiGround).lerp(sky, GROUND_LIFT)
+	# Areas whose sky is already bright (Acre, the Alchemist Wing) keep their old brightness: exposure eases back a little there.
+	area_exposure = clampf(1.0 - (peak - 0.5) * 0.8, 0.88, 1.0)
+	_apply_exposure()
+	env.ambient_light_color = sky.lerp(gnd, AMBIENT_GROUND_MIX)
 	sky_mat.sky_top_color = sky
 	sky_mat.sky_horizon_color = sky.lerp(gnd, 0.5)
 	sky_mat.ground_horizon_color = sky.lerp(gnd, 0.5)

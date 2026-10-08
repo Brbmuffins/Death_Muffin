@@ -53,7 +53,7 @@ func _run() -> void:
 	_check(w.back_to_top_visible(), "back-to-top shown after 120 px")
 	await create_timer(2.6).timeout
 	_check(not w.back_to_top_visible(), "back-to-top hides 2 s after scrolling stops")
-	w.scroll.scroll_vertical = 400
+	w.scroll.scroll_vertical = 200   # a different value than before: the canvas is now >= 900 high, so 300 and 400 may both clamp to the same max
 	await _frames(2)
 	_check(w.back_to_top_visible(), "back-to-top returns on the next scroll")
 	w.scroll.scroll_vertical = 0

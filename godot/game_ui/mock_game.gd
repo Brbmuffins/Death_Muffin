@@ -19,6 +19,7 @@ var character: Dictionary = {"id": 7, "class_index": 1, "class_name": "Gravecall
 	"stat_str": 5, "stat_agi": 5, "stat_int": 9, "stat_vit": 6, "auto_combat_allowed": false}
 var slots: Array = []
 var progress: Dictionary = {}
+var dev_access := false
 var settings: Dictionary = {}
 var sim: Object = null
 var hero_id := 1
@@ -42,6 +43,12 @@ var hero_pos := Vector2(0, 20)
 var party_code := ""
 var party_calls: Array = []
 var chats: Array = []
+var psync := MockPsync.new()   ## spend_on_server passthrough (the real one also adopts the server gold)
+
+
+class MockPsync:
+	func spend_on_server(call: Callable) -> DmResult:
+		return await call.call()
 
 
 func _init() -> void:
@@ -58,7 +65,7 @@ func _init() -> void:
 
 static func default_settings() -> Dictionary:
 	return {"difficulty": "medium", "auto_combat": false, "auto_gather": false, "loot_common": "ground", "loot_uncommon": "ground", "loot_rare": "ground",
-		"loot_epic": "ground", "loot_legendary": "ground", "graphics": "high", "fps": 0, "auto_res": true, "vol_master": 0.7, "vol_combat": 0.8,
+		"loot_epic": "ground", "loot_legendary": "ground", "graphics": "high", "fps": 0, "auto_res": true, "brightness": 1.0, "vol_master": 0.7, "vol_combat": 0.8,
 		"vol_amb": 0.6, "vol_music": 0.5, "vol_ui": 0.8, "reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false,
 		"guidance": true, "guide_ping": true, "dev_access": false}
 
