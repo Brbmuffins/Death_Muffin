@@ -267,9 +267,12 @@ function createRunner(cfgIn, opts = {}) {
         }).finally(() => { job.previewBusy = false; });
         return { action: 'accepted' };
       }
+      case 'retry':
+        if (!job.publishFailed) return { action: 'reply', text: 'Nothing to retry: no failed client publish in this thread.' };
+        return requestRetry(job, String(msg.userId)) ? { action: 'accepted' } : { action: 'accepted' };
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: `Commands: !status, !model <name> (owner), !cancel, !discard${cfg.mode === 'web' ? ', !shot (screenshot of the change)' : ''}, !preview (rebuild the playable preview), !sync, rollback (approvers).` };
+      default: return { action: 'reply', text: `Commands: !status, !model <name> (owner), !cancel, !discard${cfg.mode === 'web' ? ', !shot (screenshot of the change)' : ''}, !preview (rebuild the playable preview), !sync, !retry (a failed client publish), rollback (approvers).` };
     }
   }
 
@@ -294,6 +297,9 @@ function createRunner(cfgIn, opts = {}) {
 
   async function handleReaction(ev) {
     const job = jobs[ev.threadId];
+    if (job && !goneThread(job.threadId) && job.publishFailed && job.publishFailed.messageId === ev.messageId && ev.emoji === '✅') {
+      return requestRetry(job, String(ev.userId)) ? { action: 'accepted' } : { action: 'remove_reaction' };
+    }
     if (!job || goneThread(job.threadId) || !job.proposal || job.proposal.messageId !== ev.messageId) return { action: 'ignore' };
     const uid = String(ev.userId); const p = job.proposal;
     if (ev.emoji === '✅') {
@@ -564,7 +570,7 @@ function createRunner(cfgIn, opts = {}) {
     const p = job.proposal; const ownerShips = auth.isOwner(approverId);
     say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto ${BB}, re-testing, deploying. This takes a few minutes.`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
-      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}),
+      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
       MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 75 * 60000 }); }
@@ -574,6 +580,7 @@ function createRunner(cfgIn, opts = {}) {
     const tail = clip(out.trim().split('\n').slice(-12).join('\n'), 900);
     if (kind === 'live') {
       const [sha, rb] = detail.split(' ');
+      healOtherPublishes(job, sha);
       logShip({ type: 'live', jobId: job.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: p.tier, title: p.title, rollback: rb && rb !== 'none' ? rb : null });
       job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, at: new Date(now()).toISOString() }); save();
       // Phones + offline edition are best effort (ship.sh prints one MOBILE: line); the PC release is live either way.
@@ -598,11 +605,85 @@ function createRunner(cfgIn, opts = {}) {
       'lock-timeout': 'another deploy held the lock for too long; nothing was changed. React ✅ again later.',
       'deploy-failed': `${BB} was pushed but the deploy script FAILED. The owner should look now.\n${tail}`,
     }[kind] || `unexpected failure (${kind}).\n${tail}`;
+    if (GODOT && kind === 'deploy-failed') {
+      const sha = (detail.split(' ')[0] || '').trim();
+      job.publishFailed = { sha, proposal: p, approverId: String(approverId), at: now(), autoRetried: false, messageId: null };
+      job.status = 'idle'; job.proposal = null; save();
+      announcePublishFailed(job, `❌ Not live yet: \`${sha}\` is merged and pushed to ${BB}, but publishing the Windows client failed 3 times in a row. ` +
+        `I will try again by myself in ${cfg.publishAutoRetryMin} minutes. An approver can also react ✅ here or say \`!retry\`.`);
+      ownerPing(pingTarget(job), `Client publish failed 3x for \`${job.id}\` (${sha}); auto-retry in ${cfg.publishAutoRetryMin} min. Log: ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
+      scheduleAutoRetry(job, cfg.publishAutoRetryMin);
+      pump(); return;
+    }
     say(job, `❌ Not live: ${why}`);
     if (kind === 'deploy-failed' || kind === 'crashed') ownerPing(pingTarget(job), `Deploy problem for \`${job.id}\`: ${kind}. Check ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
     job.status = ['master-moved', 'lock-timeout', 'backup-failed'].includes(kind) ? 'proposed' : 'idle';
     if (job.status === 'idle') job.proposal = null;
     save(); pump();   // a message that arrived during the ship is handled on this same branch
+  }
+
+  // ---------- failed client publish: automatic + manual retry (godot) ----------
+  // ship.sh already tried 3 times. The merge is pushed, only the client publish is missing: retry = PUBLISH_ONLY ship.sh for that exact
+  // (tested) commit, which refuses to publish anything older than what is live. A later ship that publishes a client containing it heals it too.
+  function announcePublishFailed(job, text) {
+    post({ threadId: job.threadId }, { content: text, reactions: ['✅'] }, (res) => { if (res.messageId && job.publishFailed) { job.publishFailed.messageId = String(res.messageId); save(); } });
+  }
+  function scheduleAutoRetry(job, min) {
+    const t = setTimeout(() => {
+      const pf = job.publishFailed; if (!pf || pf.autoRetried || job.deleteRequested) return;
+      if (shipBusy) { scheduleAutoRetry(job, 5); return; }
+      pf.autoRetried = true; save();
+      retryPublish(job, null).catch((e) => say(job, `Retry crashed: ${e.message}`));
+    }, min * 60000); t.unref();
+  }
+  function requestRetry(job, uid) {
+    const pf = job.publishFailed; if (!pf) return false;
+    if (!auth.canApprove(uid, pf.proposal.tier)) { say(job, `Only ${approversFor(pf.proposal.tier, cfg).map(nameOf).join(' / ')} can retry this publish.`); return false; }
+    if (shipBusy) { say(job, 'Another ship is running. React again when it finishes.'); return false; }
+    audit.log('publish-retry-request', { userId: uid, job: job.id, sha: pf.sha });
+    retryPublish(job, uid).catch((e) => { shipBusy = false; say(job, `Retry crashed: ${e.message}`); });
+    return true;
+  }
+  async function retryPublish(job, uid) {
+    const pf = job.publishFailed; if (!pf) return;
+    shipBusy = true;
+    say(job, uid ? `Retrying the client publish for \`${pf.sha}\` (${nameOf(uid)})…` : `Trying the client publish for \`${pf.sha}\` again by myself…`);
+    const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, JOBID: job.id, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
+      BASE_BRANCH: BB, MODE: 'godot', DEPLOY_DIR: cfg.deployDir, PUBLISH_ONLY: '1', PUBLISH_SHA: pf.sha, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}),
+      ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}) };
+    let r;
+    try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 60 * 60000 }); }
+    finally { shipBusy = false; }
+    const out = r.out + r.err; const m = /^RESULT: (\S+)\s*(.*)$/m.exec(out); const kind = m ? m[1] : 'crashed'; const detail = m ? m[2] : '';
+    audit.log('publish-retry-result', { job: job.id, kind, detail, by: uid || 'auto' });
+    if (kind === 'live' || kind === 'live-already') {
+      const [sha, rb] = detail.split(' ');
+      const p = pf.proposal; job.publishFailed = null;
+      if (kind === 'live') logShip({ type: 'live', jobId: job.id, sha, approverId: pf.approverId, approverName: nameOf(pf.approverId), tier: p.tier, title: p.title, rollback: rb && rb !== 'none' ? rb : null, retry: uid || 'auto' });
+      (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, at: new Date(now()).toISOString() }); save();
+      say(job, kind === 'live' ? `🚀 Live. The Windows client with \`${sha}\` is published. Thanks, ${nameOf(job.creatorId)}.` : `🚀 Live. The client that is live now (\`${rb}\`) already includes \`${sha}\`.`);
+      if (kind === 'live') healOtherPublishes(job, sha);
+      pump(); return;
+    }
+    const left = !pf.autoRetried;
+    announcePublishFailed(job, `❌ Still not live: the client publish for \`${pf.sha}\` failed again (${kind}${detail ? ' ' + clip(detail, 120) : ''}). ` +
+      (left ? `I will try once more by myself in ${cfg.publishAutoRetryMin} minutes. ` : '') + 'An approver can react ✅ here or say `!retry`.');
+    if (!uid) ownerPing(pingTarget(job), `Automatic publish retry failed for \`${job.id}\` (${pf.sha}). Log: ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
+    if (left) scheduleAutoRetry(job, cfg.publishAutoRetryMin);
+    pump();
+  }
+  // a client that was just published contains every older commit on the branch: threads stuck on a failed publish of one of those are live now
+  function healOtherPublishes(job, sha) {
+    for (const o of Object.values(jobs)) {
+      if (o === job || !o.publishFailed) continue;
+      const pf = o.publishFailed;
+      G.git(cfg.repo, ['merge-base', '--is-ancestor', pf.sha, sha], { allowFail: true }).then((r) => {
+        if (r.code !== 0 || o.publishFailed !== pf) return;
+        o.publishFailed = null; (o.history = o.history || []).push({ round: o.round || 1, branch: o.branch, shipSha: pf.sha, at: new Date(now()).toISOString() }); save();
+        audit.log('publish-healed', { job: o.id, sha: pf.sha, by: sha });
+        say(o, `🚀 Live. \`${pf.sha}\` went out with the client published for \`${sha}\`.`);
+      }).catch(() => {});
+    }
   }
 
   function newestBackup() {
@@ -646,7 +727,8 @@ function createRunner(cfgIn, opts = {}) {
     save();
   }
 
-  for (const j of Object.values(jobs)) if (j.deleteRequested && !j.running) cleanupDeleted(j).catch(() => {});   // a delete that was waiting when the runner stopped
+  for (const j of Object.values(jobs)) if (j.deleteRequested && !j.running) cleanupDeleted(j).catch(() => {});
+  for (const j of Object.values(jobs)) if (j.publishFailed && !j.publishFailed.autoRetried) scheduleAutoRetry(j, 1);   // runner restarted while one was pending   // a delete that was waiting when the runner stopped
   pump();
   return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }

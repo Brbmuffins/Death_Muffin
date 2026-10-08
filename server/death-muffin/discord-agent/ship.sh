@@ -2,17 +2,24 @@
 # The deploy helper (NOT the AI): runs only after an approver's check, from the runner. All inputs are environment variables set by
 # the runner. Takes the global deploy lock (shared with deploy-release.sh), merges the branch onto the current base branch (BASE_BRANCH, default
 # master), re-gates and re-tests the merged tree, pushes it, runs the deploy, and prints machine-readable lines:
-#   RESULT: <live|conflict|head-moved|gate|tests-failed|master-moved|backup-failed|deploy-failed|lock-timeout> ...      ("master-moved" = BASE_BRANCH moved)
+#   RESULT: <live|live-already|conflict|head-moved|gate|tests-failed|master-moved|backup-failed|deploy-failed|lock-timeout> ...      ("master-moved" = BASE_BRANCH moved)
+# PUBLISH_ONLY=1 PUBLISH_SHA=<sha> (godot only; the retry after a failed client publish): no merge/tests/push. Publishes that already-tested, already-
+# pushed commit with a fresh rollback, or prints "RESULT: live-already" when the live client already contains it (never publishes an older client).
+# The Godot publish itself is tried up to 3 times (PUBLISH_RETRY_SLEEPS, default "30 90") before deploy-failed: one-off Godot import crashes heal by themselves.
 # MODE=web (default): deploy-release.sh, then the best-effort mobile step. MODE=godot: check-godot.sh, and the Godot client is published with
 # publish-godot-client.sh after a ROLLBACK.sh for the revision that is live now has been written (see the godot block below). No mobile step.
 set -uo pipefail
-: "${REPO:?}" "${WT_ROOT:?}" "${BRANCH:?}" "${JOBID:?}" "${EXPECT_HEAD:?}" "${LOCK:?}" "${TOOLS:?}" "${CONFIG:?}" "${MAX_TIER:?}"
+: "${REPO:?}" "${WT_ROOT:?}" "${JOBID:?}" "${LOCK:?}" "${TOOLS:?}" "${CONFIG:?}"
+PUBLISH_ONLY="${PUBLISH_ONLY:-}"
+[ -n "$PUBLISH_ONLY" ] || : "${BRANCH:?}" "${EXPECT_HEAD:?}" "${MAX_TIER:?}"
 MIGRATIONS="${MIGRATIONS:-}"
 BASE_BRANCH="${BASE_BRANCH:-master}"
 MODE="${MODE:-web}"
 # These reach git as refs and refspecs: same rules as loadConfig (plain ref characters, nothing git could read as an option or a range).
 [[ "$BASE_BRANCH" =~ ^[A-Za-z0-9._/-]+$ && "$BASE_BRANCH" != -* && "$BASE_BRANCH" != *..* ]] || { echo "RESULT: bad-config base branch"; exit 2; }
 [ "$MODE" = web ] || [ "$MODE" = godot ] || { echo "RESULT: bad-config mode"; exit 2; }
+[ -z "$PUBLISH_ONLY" ] || [ "$MODE" = godot ] || { echo "RESULT: bad-config publish-only is godot mode only"; exit 2; }
+[ -z "$PUBLISH_ONLY" ] || [[ "${PUBLISH_SHA:-}" =~ ^[0-9a-f]{7,40}$ ]] || { echo "RESULT: bad-config PUBLISH_SHA"; exit 2; }
 g() { git -c core.hooksPath=/dev/null "$@"; }
 say() { echo "STEP: $*"; }
 
@@ -28,6 +35,11 @@ trap cleanup EXIT
 
 g -C "$REPO" fetch -q origin || { echo "RESULT: fetch-failed"; exit 4; }
 OLD=$(g -C "$REPO" rev-parse "origin/$BASE_BRANCH")
+if [ -n "$PUBLISH_ONLY" ]; then
+  SHA=$(g -C "$REPO" rev-parse -q --verify "$PUBLISH_SHA^{commit}") || { echo "RESULT: head-moved $PUBLISH_SHA is not in the repo"; exit 5; }
+  # only something the ship really pushed: the commit must be on the base branch
+  g -C "$REPO" merge-base --is-ancestor "$SHA" "$OLD" || { echo "RESULT: head-moved ${SHA:0:12} is not on $BASE_BRANCH"; exit 5; }
+else
 HEAD_NOW=$(g -C "$REPO" rev-parse "refs/heads/$BRANCH") || { echo "RESULT: head-moved branch missing"; exit 5; }
 [ "$HEAD_NOW" = "$EXPECT_HEAD" ] || { echo "RESULT: head-moved $HEAD_NOW"; exit 5; }
 g -C "$REPO" worktree add -q --detach "$SW" "$OLD" || { echo "RESULT: worktree-failed"; exit 6; }
@@ -54,6 +66,7 @@ echo "$GATE"
 say "running tests on the merged tree"
 CHECK="$TOOLS/check.sh"; [ "$MODE" = godot ] && CHECK="$TOOLS/check-godot.sh"
 if ! "$CHECK" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; then tail -25 "$TOOLS/state/ship-$JOBID.tests.log"; echo "RESULT: tests-failed"; exit 9; fi
+fi   # (end of the normal ship's merge/gate/tests; PUBLISH_ONLY skips them: that commit was tested and pushed by the ship that failed to publish)
 
 # ---- godot: get the rollback ready BEFORE anything is pushed or published (a failure here leaves everything as it was) ----
 # The Godot client is published by publish-godot-client.sh, which lives on master only (not necessarily on BASE_BRANCH), so the copy that is used
@@ -70,9 +83,13 @@ if [ "$MODE" = godot ]; then
     [[ "$LIVE_REV" =~ ^[0-9a-f]{7,40}$ ]] || { echo "RESULT: backup-failed live revision in $MANIFEST is unreadable"; exit 12; }
     g -C "$REPO" rev-parse -q --verify "$LIVE_REV^{commit}" >/dev/null || { echo "RESULT: backup-failed live revision ${LIVE_REV:0:12} is not in the repo"; exit 12; }
   fi
-  BK="$DEPLOY_DIR/backup-pre-release-godot-$(date -u +%Y%m%dT%H%M%SZ)"
+  if [ -n "$PUBLISH_ONLY" ] && [ -n "$LIVE_REV" ] && g -C "$REPO" merge-base --is-ancestor "$SHA" "$LIVE_REV"; then
+    echo "RESULT: live-already ${SHA:0:12} ${LIVE_REV:0:12}"; exit 0     # a later publish already carries it: never go backwards
+  fi
   abandon_backup() { [ -n "$BK" ] && rm -rf "$BK"; }
-  mkdir "$BK" || { echo "RESULT: backup-failed cannot create $BK"; exit 12; }
+  # one folder per second: a retry right after a failed ship (whose backup stays) can land in the same second, so wait for the next one
+  for _ in 1 2 3; do BK="$DEPLOY_DIR/backup-pre-release-godot-$(date -u +%Y%m%dT%H%M%SZ)"; mkdir "$BK" 2>/dev/null && break; BK=""; sleep 1; done
+  [ -n "$BK" ] || { echo "RESULT: backup-failed cannot create a backup folder in $DEPLOY_DIR"; exit 12; }
   if ! g -C "$REPO" show "$PUB_REF:$PUB_PATH" >"$BK/publish-godot-client.sh" 2>/dev/null || [ ! -s "$BK/publish-godot-client.sh" ]; then abandon_backup; echo "RESULT: backup-failed no $PUB_PATH on $PUB_REF"; exit 12; fi
   if [ -n "$LIVE_REV" ]; then
     printf '#!/usr/bin/env bash\n# Roll back to the Godot client revision that was live before %s: republish it with the publish script saved next to this file.\nset -euo pipefail\nexport REPO=%q\nexec bash %q %q\n' "${SHA:0:12}" "$REPO" "$BK/publish-godot-client.sh" "$LIVE_REV" >"$BK/ROLLBACK.sh"
@@ -82,19 +99,29 @@ if [ "$MODE" = godot ]; then
   fi
 fi
 
+if [ -z "$PUBLISH_ONLY" ]; then
 say "pushing $BASE_BRANCH"
 if ! g push -q origin "HEAD:refs/heads/$BASE_BRANCH" 2>/tmp/ship-push.$$; then tail -3 /tmp/ship-push.$$; rm -f /tmp/ship-push.$$; [ -n "$BK" ] && abandon_backup; echo "RESULT: master-moved"; exit 10; fi
 rm -f /tmp/ship-push.$$
+fi
 
 say "deploying ${SHA:0:12}"
 LOG="$TOOLS/state/ship-$JOBID.deploy.log"
 if [ "$MODE" = godot ]; then
-  if [ -n "${DEPLOY_CMD:-}" ]; then
-    # test hook only (config.deployCmd): never set in production
-    bash -c "$DEPLOY_CMD" deploy "$SHA" >"$LOG" 2>&1; DRC=$?
-  else
-    REPO="$REPO" bash "$BK/publish-godot-client.sh" "$SHA" >"$LOG" 2>&1; DRC=$?
-  fi
+  publish_once() {
+    if [ -n "${DEPLOY_CMD:-}" ]; then bash -c "$DEPLOY_CMD" deploy "$SHA"     # test hook only (config.deployCmd): never set in production
+    else REPO="$REPO" bash "$BK/publish-godot-client.sh" "$SHA"; fi
+  }
+  # up to 3 tries: a Godot import/export can crash once (2026-10-08: core dump in --import; the same commit imported fine on the next run)
+  : >"$LOG"; DRC=1; TRY=0
+  for WAIT in 0 ${PUBLISH_RETRY_SLEEPS-30 90}; do
+    TRY=$((TRY + 1))
+    if [ "$WAIT" -gt 0 ] 2>/dev/null; then say "client publish failed, retrying in ${WAIT}s (try $TRY)"; sleep "$WAIT"; fi
+    echo "=== publish try $TRY $(date -u +%FT%TZ)" >>"$LOG"
+    publish_once >>"$LOG" 2>&1; DRC=$?
+    [ $DRC -eq 0 ] && break
+  done
+  [ $DRC -eq 0 ] && [ $TRY -gt 1 ] && echo "PUBLISH-RETRIES: $((TRY - 1))"
   if [ $DRC -ne 0 ]; then tail -25 "$LOG"; echo "RESULT: deploy-failed ${SHA:0:12}"; exit 11; fi
   RB=none; [ -f "$BK/ROLLBACK.sh" ] && RB="$BK/ROLLBACK.sh"
   [ "$RB" = none ] || echo "Rollback: $RB"

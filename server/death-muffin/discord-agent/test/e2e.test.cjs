@@ -982,3 +982,56 @@ test('webAnyHost: the agent may WebFetch any host and the prompt says so; file t
   }
   const w0 = makeWorld({ godot: true }); assert.equal(w0.cfg.webAnyHost, false); assert.match(systemPrompt(w0.cfg, { branch: 'b' }), /documentation sites only/);
 });
+
+// ---- failed client publish: ship.sh retries, then the runner retries (automatically and on ✅ / !retry), and later ships heal it ----
+const flakyPublish = (w, failFirst) => `c=${w.deploy}/publish-tries; n=$(cat $c 2>/dev/null || echo 0); echo $((n+1)) > $c; ` +
+  `if [ -e ${w.deploy}/FAIL ] || [ $n -lt ${failFirst} ]; then echo "godot import failed"; exit 1; fi; echo deployed "$1" >> ${w.deploy}/deploys.log; ` +
+  `printf '{"rev":"%s"}' "$(git -C ${w.repo} rev-parse "$1")" > ${w.cfg.clientManifest}`;
+const tries = (w) => Number(fs.readFileSync(path.join(w.deploy, 'publish-tries'), 'utf8'));
+const lastSent = (thread, re) => [...thread.sent].reverse().find((s) => re.test(s.payload.content || ''));
+
+test('godot publish: a one-off publish crash heals inside the ship (3 tries)', async () => {
+  const w = godotWorld({ publishRetrySleeps: '0 0' }); w.runner.cfg.deployCmd = flakyPublish(w, 2);
+  const d = makeDiscord(w.runner); const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread); await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  assert.equal(tries(w), 3); assert.equal(fs.readFileSync(path.join(w.deploy, 'deploys.log'), 'utf8').split('\n').filter(Boolean).length, 1);
+});
+
+test('godot publish: when all 3 tries fail, approvers retry with ✅ on the failure message or !retry; others cannot; the thread keeps working', async () => {
+  const w = godotWorld({ publishRetrySleeps: '0 0' }); w.runner.cfg.deployCmd = flakyPublish(w, 0); fs.writeFileSync(path.join(w.deploy, 'FAIL'), '');
+  const d = makeDiscord(w.runner); const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread); await d.react(p, IDS.HELIX, '✅');
+  const fail = await until(() => lastSent(thread, /Not live yet/), d.ad);
+  assert.match(fail.payload.content, /merged and pushed to godot-port/); await until(() => fail.reactions.includes('✅'), d.ad); assert.equal(tries(w), 3);
+  const job = Object.values(w.runner.jobs())[0]; await until(() => job.publishFailed && job.publishFailed.messageId, d.ad);
+  fail.id = job.publishFailed.messageId;
+  assert.deepEqual(await d.react(fail, IDS.LIMITED, '✅'), [IDS.LIMITED], 'a limited approver cannot retry a gameplay publish');
+  const m = await d.say(thread, IDS.HELIX, '!retry'); await until(() => texts(thread).some((t) => /Still not live/.test(t)), d.ad);   // still failing
+  assert.equal(tries(w), 6, texts(thread).filter((t) => /Still not live|Retry/.test(t)).join(' // ')); assert.ok(job.publishFailed, 'still pending');
+  fs.rmSync(path.join(w.deploy, 'FAIL'));
+  const again = await until(() => lastSent(thread, /Still not live/), d.ad); again.id = job.publishFailed.messageId;
+  assert.deepEqual(await d.react(again, IDS.HELIX, '✅'), []);
+  await until(() => texts(thread).some((t) => /Live\. The Windows client with/.test(t)), d.ad);
+  assert.equal(job.publishFailed, null); assert.ok(shipsLog(w).some((s) => s.retry === IDS.HELIX));
+  void m;
+});
+
+test('godot publish: the runner retries by itself, and a later ship heals a thread whose publish failed', async () => {
+  const w = godotWorld({ publishRetrySleeps: '0 0', publishAutoRetryMin: 0.03 }); w.runner.cfg.deployCmd = flakyPublish(w, 0); fs.writeFileSync(path.join(w.deploy, 'FAIL'), '');
+  const d = makeDiscord(w.runner); const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  await d.react(await waitProposal(d, thread), IDS.HELIX, '✅');
+  await until(() => lastSent(thread, /Not live yet/), d.ad);
+  fs.rmSync(path.join(w.deploy, 'FAIL'));
+  await until(() => texts(thread).some((t) => /again by myself/.test(t)) && texts(thread).some((t) => /Live\. The Windows client with/.test(t)), d.ad);
+  // heal: thread A's publish fails for good (auto retry used up), thread B ships later and its client carries A's commit
+  const w2 = godotWorld({ publishRetrySleeps: '0 0' }); w2.runner.cfg.deployCmd = flakyPublish(w2, 0); fs.writeFileSync(path.join(w2.deploy, 'FAIL'), '');
+  const d2 = makeDiscord(w2.runner); const { thread: a } = await request(d2, IDS.HELIX, 'GD-GAMEPLAY faster');
+  await d2.react(await waitProposal(d2, a), IDS.HELIX, '✅'); await until(() => lastSent(a, /Not live yet/), d2.ad);
+  fs.rmSync(path.join(w2.deploy, 'FAIL'));
+  const { thread: b } = await request(d2, IDS.HELIX, 'GD-DOC readme');
+  await d2.react(await waitProposal(d2, b), IDS.HELIX, '✅');
+  await until(() => texts(b).some((t) => /Live\. Release/.test(t)), d2.ad);
+  await until(() => texts(a).some((t) => /went out with the client published for/.test(t)), d2.ad);
+  assert.ok(Object.values(w2.runner.jobs()).every((j) => !j.publishFailed));
+});

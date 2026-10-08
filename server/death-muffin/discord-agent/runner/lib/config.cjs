@@ -15,6 +15,8 @@ const DEFAULTS = {
   allowedModels: ['sonnet', 'opus', 'haiku'],
   maxConcurrentJobs: 1,
   turnTimeoutMin: 45,
+  publishAutoRetryMin: 10,     // godot: after ship.sh's own 3 publish tries fail, the runner retries once more by itself after this long
+  publishRetrySleeps: null,    // tests only: PUBLISH_RETRY_SLEEPS for ship.sh (default "30 90")
   maxTurnsPerJob: 40,           // per round (a round = one branch, from the first message to ship/discard)
   maxTurnsPerThread: 120,       // hard cap over all rounds of one thread
   // Full approvers (owner, Helix) playtest and ask in bursts, so they get roomier limits than everyone else.

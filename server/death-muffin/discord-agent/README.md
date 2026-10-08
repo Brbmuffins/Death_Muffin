@@ -123,6 +123,15 @@ Rollback undoes the live release only; revert the commit on the base branch afte
   `--disallowedTools`. Why: on 2026-10-08 Claude Code moved a long check-godot.sh run into the background, the agent wrote
   `until ! pgrep -f check-godot.sh; do sleep 5; done`, pgrep matched the loop itself, and job e4388b hung for 35 minutes while every other thread waited.
 
+## When the client publish fails (godot)
+
+- ship.sh tries `publish-godot-client.sh` 3 times (30 s, 90 s apart) before giving up: a one-off Godot crash heals inside the ship.
+- Still failing: the merge is already on the base branch, only the client is missing. The thread says so (the job stays usable), the owner is
+  pinged, and the runner retries by itself after `publishAutoRetryMin` (10). Approvers can retry any time: ✅ on the failure message or `!retry`.
+  A retry is `PUBLISH_ONLY=1 PUBLISH_SHA=<sha> ship.sh`: same lock and fresh rollback, no merge/tests/push, and it refuses to publish anything older
+  than the live client (`RESULT: live-already`). Any later ship whose client contains the stuck commit posts "Live" in that thread too.
+- Why: 2026-10-08 a Godot core dump during `--import` left a pushed fix unpublished with no way to retry; the same commit imported fine a minute later.
+
 ## Install (from a committed revision; nothing starts by itself)
 1. `bash server/death-muffin/discord-agent/install-runner.sh <rev>`: tooling to `~/death-muffin/discord-agent`, `config.json` (owner id from
    `/opt/crossworlds-bot/.env`), `secret`, systemd unit (not started).
