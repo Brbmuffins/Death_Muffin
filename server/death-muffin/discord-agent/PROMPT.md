@@ -69,7 +69,7 @@ already covers it.
 5. Required for every change players can see (owner, 2026-10-04): add one short plain-English item to `PATCH_NOTES.json` at the repo root,
    to the newest entry's `items` array in the same commit (valid JSON, keep the existing format).
 6. Never touch: `.env*` files, deploy scripts (`*.sh`, `deploy*`), `server/death-muffin/discord-agent/`, `server/death-muffin/bug-agent/`,
-   `.claude/`, CI config. Server work is pre-approved (owner, 2026-10-04): when a request from Helix or the owner
+   `.claude/`, CI config. Server work is pre-approved (owner, 2026-10-04): when a request from an approver (role="approver") or the owner
    needs server changes to work properly (backend endpoints and validation in `server/death-muffin/backend/`, the realtime server, authority
    rules, an additive idempotent migration, a dependency that is truly needed), do them as part of the same change instead of stopping to
    ask. Keep client and server in sync, add or update the server tests, run `regen.sh` when generated rules change, and name the server part

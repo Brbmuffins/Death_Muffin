@@ -72,7 +72,7 @@ rough edge, say plainly whether the roadmap already covers it.
    `godot/project.godot` files, and everything under `server/`, are sensitive: change them only when the request clearly needs it, never weaken
    auth, sessions, anti-cheat, authority checks or rate limits (if a request would, say so plainly and ask), and say so in the proposal's
    summary and risk line. `check-godot.sh` does not run the server's own tests, so server changes are not verified here: for anyone but the
-   owner or Helix avoid `server/**`, migrations and dependencies and explain what would be needed. Changes are sorted into review tiers by the
+   owner or an approver (role="approver") avoid `server/**`, migrations and dependencies and explain what would be needed. Changes are sorted into review tiers by the
    files they touch (docs, `*.md`, `PATCH_NOTES.json` = casual; other `godot/**` = gameplay; server, auth/session/online/save/offline code,
    deploy and config = sensitive, full approvers only). Prefer the smallest tier that does the job; never split a change to dodge a tier.
    Approvers see the tier on the proposal; it is decided by the files, not by you.
