@@ -252,9 +252,10 @@ function createRunner(cfgIn, opts = {}) {
         if (!auth.canDiscard(msg.userId, job, job.proposal && job.proposal.tier)) return { action: 'reply', text: 'Only the person who started this, or the owner, can discard.' };
         discard(job, msg.userId).catch((e) => say(job, `Discard failed: ${e.message}`)); return { action: 'accepted' };
       case 'shot':
-        if (cfg.mode === 'godot') return { action: 'reply', text: 'Screenshots are not available for the Godot client yet; use !preview for a playable build.' };
         if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
-        job.queue.push({ ...msg, text: 'Show me what your current change looks like: write a scenario to .dm-shot.json and run shot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' });
+        job.queue.push({ ...msg, text: GODOT
+          ? 'Show me what your current change looks like: write a shot plan to .dm-shot.json and run shot-godot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.'
+          : 'Show me what your current change looks like: write a scenario to .dm-shot.json and run shot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' });
         job.lastActive = now(); save(); pump(); return { action: 'accepted' };
       case 'preview': {
         if (!job.proposal || job.status !== 'proposed') return { action: 'reply', text: 'There is no open proposal to preview yet.' };
@@ -269,7 +270,7 @@ function createRunner(cfgIn, opts = {}) {
       }
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: `Commands: !status, !model <name> (owner), !cancel, !discard${cfg.mode === 'web' ? ', !shot (screenshot of the change)' : ''}, !preview (rebuild the playable preview), !sync, rollback (approvers).` };
+      default: return { action: 'reply', text: `Commands: !status, !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (rebuild the playable preview), !sync, rollback (approvers).` };
     }
   }
 
@@ -445,6 +446,27 @@ function createRunner(cfgIn, opts = {}) {
     return listShots(job).filter((s) => s.size <= SHOT_MAX_BYTES && s.mtime >= sinceMs).slice(0, SHOTS_PER_POST).map(readShot).filter(Boolean);
   }
 
+  // Godot mode: when the agent wrote a shot plan and took "after" pictures, render the same plan on the unchanged base (a scratch worktree at job.base,
+  // shot-godot.sh, same sandbox) so the approver sees before and after. Best effort: any failure (or a base that predates the shot-plan QA code) = no "before".
+  async function baseShots(job, afterNames) {
+    if (!GODOT || !afterNames.length || !job.worktree || !fs.existsSync(path.join(job.worktree, '.dm-shot.json'))) return [];
+    const dir = path.join(cfg.worktreeRoot, `base-${job.id}`);
+    try {
+      say(job, 'Rendering the "before" pictures from the unchanged game (a minute or two)…');
+      await G.git(cfg.repo, ['worktree', 'add', '-q', '--detach', '-f', dir, job.base]);
+      fs.copyFileSync(path.join(job.worktree, '.dm-shot.json'), path.join(dir, '.dm-shot.json'));
+      const r = await G.run(path.join(cfg.toolsDir, 'shot-godot.sh'), [], { cwd: dir, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 20 * 60000 });
+      audit.log('base-shots', { job: job.id, code: r.code, timedOut: !!r.timedOut });
+      const out = [];
+      for (const n of afterNames) {
+        const f = path.join(dir, '.dm-shots', n);
+        try { const st = fs.lstatSync(f); if (st.isFile() && st.size <= SHOT_MAX_BYTES) out.push({ name: `before-${safeName(n)}`, b64: fs.readFileSync(f).toString('base64'), for: n }); } catch { /* no such shot on the base */ }
+      }
+      return out;
+    } catch (e) { audit.log('base-shots', { job: job.id, error: clip(e.message, 200) }); return []; }
+    finally { await G.git(cfg.repo, ['worktree', 'remove', '--force', dir], { allowFail: true }); try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ } }
+  }
+
   async function runJob(job, real, extra) {
     let r = null;
     if (real.length || extra) r = await agentTurn(job, buildPrompt(real, extra));
@@ -550,8 +572,19 @@ function createRunner(cfgIn, opts = {}) {
     job.status = 'proposed'; save();
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
-    const shots = proposalShots(job, committedAt);
-    if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
+    let shots = proposalShots(job, committedAt);
+    if (GODOT && shots.length) {
+      // before/after pairs for the first two pictures (Discord shows them in order: before, after); the embed image is the first "after"
+      const pairs = shots.slice(0, 2), befores = await baseShots(job, pairs.map((s) => s.name));
+      if (job.status === 'discarded' || job.cancelRequested) return;
+      if (befores.length) {
+        const files = []; for (const a of pairs) { const b = befores.find((x) => x.for === a.name); if (b) files.push({ name: b.name, b64: b.b64 }); files.push(a); }
+        shots = files;
+        embed.fields.splice(embed.fields.length - 1, 0, { name: 'Pictures', value: 'Each pair: BEFORE (the game as it is now), then AFTER (this change). Rendered on the offline demo character; not the live game.', inline: false });
+      }
+    }
+    const afterFirst = shots.find((s) => !/^before-/.test(s.name)) || shots[0];
+    if (shots.length) embed.image = { url: `attachment://${afterFirst.name}` };
     post({ threadId: job.threadId }, { embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
   }
 

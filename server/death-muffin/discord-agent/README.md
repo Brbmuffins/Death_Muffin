@@ -27,7 +27,7 @@ not start with `-`, contain `..`, `//`, end in `/` or `.lock`); a bad value or m
 |---|---|---|
 | tests (agent + runner + ship.sh) | `check.sh` | `check-godot.sh` |
 | playable preview | `preview.sh`, a web page | `preview-godot.sh`, a Windows `.zip` |
-| screenshots | `shot.sh` / `!shot` | none (`!shot` says so, `shot.sh` is not in allowedTools) |
+| screenshots | `shot.sh` / `!shot` | `shot-godot.sh` / `!shot` (windows and tooltips on the offline demo hero; before/after on proposals; see Screenshots) |
 | generated files (`regen.sh`) | verified, tier-neutral | not used: they classify by path (server/** = sensitive), `regen.sh` is not in allowedTools |
 | prompt | `PROMPT.md` | `PROMPT-godot.md` (same safety/refusal and reply sections, verbatim) |
 | tier rules | `tiers` | `godotTiers` (picked into `cfg.tiers` by `loadConfig`; a `tiers` override is ignored in godot mode) |
@@ -81,7 +81,7 @@ deploy scripts or `.env*` are refused outright (`forbiddenPaths`). `ship.sh` re-
 the deploy lock, so an approver can never ship above their tier.
 
 ## Chat commands (in the thread, handled by the runner, not the AI)
-`!status` · `!shot` (screenshot of the change; web mode only) · `!cancel` · `!discard` (or ❌) · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
+`!status` · `!shot` (screenshot of the change) · `!cancel` · `!discard` (or ❌) · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
 (full approvers; "use opus" in a message works too) · `rollback` (mention in channel or thread): runs the newest deploy
 backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited approvers only if their ship is the latest.
 Rollback undoes the live release only; revert the commit on the base branch afterwards.
@@ -96,7 +96,7 @@ Rollback undoes the live release only; revert the commit on the base branch afte
   `origin/mobile` prints `MOBILE: skipped`. Test hook: `mobileDeployCmd` (replaces deploy-mobile.sh).
 
 ## Safety summary
-- **One shared sandbox** (`sandbox-lib.sh`, sourced inside `unshare -rnm` by `check.sh`, `check-godot.sh`, `preview.sh`, `preview-godot.sh`, `shot.sh`, `regen.sh`):
+- **One shared sandbox** (`sandbox-lib.sh`, sourced inside `unshare -rnm` by `check.sh`, `check-godot.sh`, `preview.sh`, `preview-godot.sh`, `shot.sh`, `shot-godot.sh`, `regen.sh`):
   every mount in `/proc/self/mountinfo` is remounted read-only (not just `/home/ubuntu`: `ubuntu` also owns `/var/www/death-muffin` incl. the published
   client, `/opt/*`, `/game*`, `/var/log`), `/tmp` and `/dev/shm` are private tmpfs (the host's are invisible), and only the job's worktree is re-opened
   writable. The ro remounts are made by root of the outer user namespace, so the payload then runs in a NESTED user+mount namespace
@@ -105,7 +105,7 @@ Rollback undoes the live release only; revert the commit on the base branch afte
   `test/sandbox.test.cjs` runs each real script with stand-in tools that try to write `/var/www/death-muffin/client`, `/opt/*`, `/game`, `/home/ubuntu`,
   a sibling worktree and the host `/tmp`, after trying to remount `/` and its parents rw, umount `/tmp` and `/dev/shm`, and unshare again. `/proc`, `/sys`, `/dev` stay as they are (kernel views, root-owned); `/dev/shm` is private.
 - AI box: `claude -p --restricted --permission-mode dontAsk`, tools = Read/Edit/Write/Glob/Grep + `agit` (filtered git) +
-  `check.sh` and `regen.sh` (godot mode: only `check-godot.sh`) (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
+  `check.sh` and `regen.sh` (godot mode: `check-godot.sh` and `shot-godot.sh`) (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
 - Discord's 2000-character limit: agent replies are split across messages (code blocks kept balanced) and anything over ~4 messages is a preview plus `reply.md` (`runner/lib/discordText.cjs`). A long paste arrives as Discord's `message.txt`; the adapter reads text attachments from Discord's CDN only (≤100 KB each, ≤60,000 characters in all) into the person's message.
 - Person text is wrapped as data (`<request from=… role=…>`, role from config); rules cannot be changed by messages.
 - Runner redacts every outgoing string and audit field; mentions are disabled except the owner ping.
@@ -130,14 +130,26 @@ Rollback undoes the live release only; revert the commit on the base branch afte
 3. `sudo systemctl enable --now death-muffin-discord-agent`, then `sudo systemctl restart muffin-discord`.
 
 Tests (not wired into test:server; ~1 min, needs git and `unshare`/`zip`/`unzip`): `node --test server/death-muffin/discord-agent/test/*.test.cjs`.
-The installer also copies `check-godot.sh`, `preview-godot.sh` and `PROMPT-godot.md`. To switch the live runner to Godot mode, edit `config.json` (`mode`, `baseBranch`), then restart the service.
+The installer also copies `check-godot.sh`, `preview-godot.sh`, `shot-godot.sh`, `label-shot.py` and `PROMPT-godot.md`. To switch the live runner to Godot mode, edit `config.json` (`mode`, `baseBranch`), then restart the service.
 
-## Screenshots (web mode only)
-The agent can look at its own change: it writes a scenario (`.dm-shot.json`) and runs `shot.sh` (`shoot.cjs` documents the format; dev server + headless Chromium in a no-network sandbox, ~1 min, one at a time). PNGs land in `<worktree>/.dm-shots/`, which together with `.dm-shot.json` is git-excluded (`createWorktree`), so they never dirty the tree or get committed.
+## Screenshots
+Web mode: the agent can look at its own change: it writes a scenario (`.dm-shot.json`) and runs `shot.sh` (`shoot.cjs` documents the format; dev server + headless Chromium in a no-network sandbox, ~1 min, one at a time). PNGs land in `<worktree>/.dm-shots/`, which together with `.dm-shot.json` is git-excluded (`createWorktree`), so they never dirty the tree or get committed.
 - On demand: ask in the thread ("show me what it looks like") or use `!shot` (any requester; queues a turn that takes one).
 - After every turn the runner posts new or changed PNGs to the thread (max 4, skips files over 8 MB with a note, each unchanged file once).
 - A proposal attaches the current PNGs (newest first, max 4) and shows the first one as the embed image, next to ✅/❌.
 - Transport: outbox ops carry `files: [{name, b64}]` (never redacted, names sanitized); the adapter sends them as Discord attachments. Existing job worktrees keep their old `info/exclude` until the next job is created (it is a shared file).
+
+### Godot mode
+`shot-godot.sh [plan.json]` (default `.dm-shot.json`; format in `godot/main/qa_ui_shots.gd` and `PROMPT-godot.md`: up to 4 shots of windows/tooltips, `open` / `hover` / `area` / `clip` / `give`) renders the branch's own client on the offline demo hero with a fixed
+representative bag. Same sandbox as `check-godot.sh` (no network, read-only filesystem, only the worktree writable, private `/tmp` and a fresh HOME); inside it imports the project if `godot/.godot` is missing
+(first run in a fresh worktree, about a minute), then `xvfb-run godot --rendering-driver opengl3 -- --offline --world-demo --qa --shot-plan=... --shots=<worktree>/.dm-shots/.raw`. It takes the shared `qa-browser.lock` (one renderer on the VPS) and has a hard 15 minute limit
+(a run takes 1 to 5 minutes depending on load; it prints `render: cpu=.. wall=..`).
+The label is burned in OUTSIDE the sandbox by `label-shot.py` (trusted code; Pillow): every raw PNG becomes `.dm-shots/<name>.png` with "BRANCH PREVIEW · not live · <branch>"; directory fds + `O_NOFOLLOW`, only real PNGs
+under 12 MB, names `[a-z0-9-]{1,40}.png`; anything else is skipped (exit 3) and nothing unlabelled is ever published, so a branch that edits the QA code cannot drop the label.
+The Godot side lives in the game repo (`godot/main/qa_ui_shots.gd`, inactive without `--qa`): **the branch the agent works on must contain it, i.e. it has to be merged into `godot-port` first**.
+The agent is told (PROMPT-godot.md) to take pictures by default for visible changes (UI, windows, tooltips, HUD, visuals) and to skip them for logic/data/server work and pure Q&A.
+On a proposal (`propose()`), when the agent left a plan and fresh pictures, the runner renders the same plan on an unchanged scratch worktree of the base (`base-<jobid>`, removed afterwards) and attaches
+before/after pairs for the first two pictures (`before-<name>.png`, then `<name>.png`; the embed image is the first AFTER, plus a "Pictures" field). If the base cannot render (for instance it predates the QA shot-plan code) the proposal carries the AFTER pictures only.
 
 ## Playable preview (web; godot mode: see Modes)
 Each proposal gets a "Try it" link: `https://muffindevelopment.com/death-muffin/preview/<jobid>/`, the branch's OFFLINE EDITION build (its own in-browser store and token key, so it cannot touch the live server or a real character).

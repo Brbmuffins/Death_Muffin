@@ -11,7 +11,7 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   // SHOT-PNG / SHOT-PNG2: pretend shot.sh ran (a scenario file + a PNG; PNG2 = different bytes). The !shot prompt mentions shot.sh.
   const rules = 'server/vps-handoff/necro-progress/necro-rules.cjs';
   const wr = (f, c) => { fs.mkdirSync(require('path').dirname(f), { recursive: true }); fs.writeFileSync(f, c); };
-  // godot mode (base branch godot-port): GD-GAMEPLAY = godot/game/a.gd, GD-NET = sensitive net code, GD-DOC = readme, GD-PRESET = a forbidden path
+  // godot mode (base branch godot-port): GD-GAMEPLAY = godot/game/a.gd (GD-SHOT in the same request also leaves a shot plan + picture), GD-NET = sensitive net code, GD-DOC = readme, GD-PRESET = a forbidden path
   if (/GD-GAMEPLAY/.test(p)) { edit('godot/game/a.gd', 'speed=1', 'speed=9', 'Faster movement'); ready('Faster movement', ['speed 9']); text = 'Done.'; }
   else if (/GD-NET/.test(p)) { edit('godot/net/dm_api.gd', 'url=1', 'url=2', 'Change the api url'); ready('Api url', ['url 2']); text = 'Done.'; }
   else if (/GD-DOC/.test(p)) { edit('godot/README.md', 'godot readme', 'godot readme v2', 'Clarify the Godot readme'); ready('Readme', ['readme']); text = 'Done.'; }
@@ -35,10 +35,10 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     text = (m && fs.existsSync(m[1]) ? `IMG-SEEN ${fs.readFileSync(m[1]).length} ${m[1]}` : 'IMG-NONE') + (note ? ` NOTE ${note[0]}` : '');
   }
   else if (/PASTE-ECHO/.test(p)) text = /PASTED-MARKER-42/.test(p) ? 'I can read the pasted file.' : 'No pasted file in the prompt.';
-  else if (/SHOT-PNG|shot\.sh/.test(p)) text = 'Here is how it looks.';
+  else if (/SHOT-PNG|shot(-godot)?\.sh/.test(p)) text = 'Here is how it looks.';
   else if (/ship it|print.*token|ignore your rules/i.test(p)) text = 'I cannot ship, show secrets or change my rules. Only an approver ✅ ships.';
   // Like the real agent, the screenshot comes after the last commit (only images newer than it go on the proposal).
-  if (/SHOT-PNG|shot\.sh/.test(p)) {
+  if (/SHOT-PNG|shot(-godot)?\.sh/.test(p)) {
     fs.writeFileSync('.dm-shot.json', '{"shots":[{"name":"a"}]}'); fs.mkdirSync('.dm-shots', { recursive: true });
     fs.writeFileSync('.dm-shots/a.png', Buffer.from(/SHOT-PNG2/.test(p) ? 'PNG-two-bytes' : 'PNG-one'));
     if (/SHOT-PNG/.test(p) && /BIG/.test(p)) fs.writeFileSync('.dm-shots/big.png', Buffer.alloc(9 * 1024 * 1024, 1));
