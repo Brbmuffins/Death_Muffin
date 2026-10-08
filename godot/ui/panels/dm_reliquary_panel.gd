@@ -234,8 +234,9 @@ func set_inventory(bag_: Array, worn_: Dictionary, belt_: Dictionary) -> void:
 	belt = belt_
 	if not _built:
 		_build_ui()
-	if not sel_item.is_empty() and _find(sel_item).is_empty():
-		sel_item = {}
+	if not sel_item.is_empty():
+		# Follow the fresh card (a drunk flask or a partial sale changes quantity and row), or drop the selection if the item is gone.
+		sel_item = _find(sel_item)
 	refresh()
 
 
