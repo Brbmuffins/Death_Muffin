@@ -1182,14 +1182,21 @@ func _rebuild_slots(slots: Array) -> void:
 		s.hover_changed.connect(func(on: bool) -> void: _spell_hover(idx, s, on))
 
 
+var _souls_full := -1
+var _depth_open := -1
+
 func _apply_souls_thralls(v: Dictionary) -> void:
 	var souls := float(v.get("souls", 0))
 	var smax := maxf(float(v.get("souls_max", 1)), 1.0)
 	var full := souls >= smax
 	souls_bar.value = minf(1.0, souls / smax)
 	souls_n.text = "HARVEST" if full else "%d / %d" % [int(souls), int(smax)]
-	souls_n.add_theme_color_override("font_color", Color("9ff5e0") if full else DmUi.TEXT_MUTED)
-	souls_box.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.78), Color(0.435, 0.89, 0.784, 0.6) if full else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(8, 2, 8, 2)))
+	# Restyle only when the state changes: each override fires a theme change that re-lays the container, and this ran at 20 Hz
+	# (the stylebox was also allocated anew every time).
+	DmHudKit.set_color(souls_n, "font_color", Color("9ff5e0") if full else DmUi.TEXT_MUTED)
+	if int(full) != _souls_full:
+		_souls_full = int(full)
+		souls_box.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.78), Color(0.435, 0.89, 0.784, 0.6) if full else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(8, 2, 8, 2)))
 	souls_skull.modulate = Color("9ff5e0") if full else Color.WHITE
 	var thr := int(v.get("thralls", 0))
 	var cap := int(v.get("thrall_cap", 0))
@@ -1208,7 +1215,7 @@ func _apply_economy(v: Dictionary) -> void:
 	shard_lbl.text = str(int(v.get("shards", 0)))
 	var sv: Dictionary = v.get("save", {})
 	save_lbl.text = String(sv.get("text", ""))
-	save_lbl.add_theme_color_override("font_color", DmUi.DANGER if bool(sv.get("warn", false)) else DmUi.TEXT_FAINT)
+	DmHudKit.set_color(save_lbl, "font_color", DmUi.DANGER if bool(sv.get("warn", false)) else DmUi.TEXT_FAINT)
 
 
 func _apply_upgrades(v: Dictionary) -> void:
@@ -1240,7 +1247,7 @@ func _apply_upgrades(v: Dictionary) -> void:
 	dial_plus.disabled = active >= owned
 	var ms := wave_milestone_text(active)
 	dial_ms.text = ms[0]
-	dial_ms.add_theme_color_override("font_color", Color("d9a441") if ms[1] else DmUi.TEXT_MUTED)
+	DmHudKit.set_color(dial_ms, "font_color", Color("d9a441") if ms[1] else DmUi.TEXT_MUTED)
 	dial_ms.visible = ms[0] != ""
 
 
@@ -1435,17 +1442,19 @@ func _apply_map_column(v: Dictionary) -> void:
 		var open := bool(d.get("open", false))
 		var col := Color("ffb347") if open else DmUi.BONE_300
 		depth_n.text = str(int(d["depth"]))
-		depth_n.add_theme_color_override("font_color", col)
+		DmHudKit.set_color(depth_n, "font_color", col)
 		depth_k.text = "STAIR OPEN" if open else "%d/%d" % [int(d["kills"]), int(d["need"])]
-		depth_k.add_theme_color_override("font_color", col)
+		DmHudKit.set_color(depth_k, "font_color", col)
 		depth_bar.fill_a = col
 		depth_bar.fill_b = col
 		depth_bar.value = float(d["kills"]) / maxf(float(d["need"]), 1.0)
 		var chest := bool(d.get("chest", false))
 		depth_cue.text = ("The stair is open · a chest waits on this floor" if chest else "Follow the amber mark on the minimap") if open else ("A chest waits on this floor" if chest else "")
 		depth_cue.visible = depth_cue.text != ""
-		depth_cue.add_theme_color_override("font_color", Color("ffcf85") if open else DmUi.TEXT_MUTED)
-		depth_box.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.5), col if open else DmUi.BORDER_STRONG, Vector4(0, 0, 0, 2), Vector4(8, 4, 8, 5)))
+		DmHudKit.set_color(depth_cue, "font_color", Color("ffcf85") if open else DmUi.TEXT_MUTED)
+		if int(open) != _depth_open:
+			_depth_open = int(open)
+			depth_box.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.5), col if open else DmUi.BORDER_STRONG, Vector4(0, 0, 0, 2), Vector4(8, 4, 8, 5)))
 	var nx: Variant = v.get("next")
 	next_box.visible = nx != null and String(nx) != ""
 	next_txt.text = String(nx) if nx != null else ""
