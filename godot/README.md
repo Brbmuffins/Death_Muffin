@@ -12,6 +12,8 @@ character/enemy/boss model. Conventions for the parallel tracks: `PORTING.md`. (
 flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice xvfb-run -a -s "-screen 0 1280x800x24" \
   /home/ubuntu/tools/godot/godot --path godot --rendering-driver opengl3 -- --qa --shots=/abs/dir
 ```
+UI shot plan (windows / tooltips on the offline demo hero with a representative bag; used by the Discord agent's `shot-godot.sh`):
+`... -- --offline --world-demo --qa --shot-plan=/abs/plan.json --shots=/abs/dir`, plan format in `godot/main/qa_ui_shots.gd` (`{"shots":[{"name":"bag","open":["bag"],"hover":5,"clip":"window"}]}`, max 4). Inactive without `--qa`; parsing test: `tests/qa/run.gd`.
 World tour (one screenshot per area, all seals broken) and a sealed-gate shot:
 `godot/tests/world/tour.sh` -> `godot/shots/world/area_NN_<id>.png`, `tests/world/tour.sh --gate=graves_ossuary`. Headless test: `godot --headless --path godot --script res://tests/world/run.gd`.
 Dev: **F9** (or `-- --open-all`) breaks every seal so every area is walkable; real seal state is `DmWorldBuilder.set_unlocked([area ids])` (the web's Nav.setUnlocked).
