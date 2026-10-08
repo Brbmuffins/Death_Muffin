@@ -20,6 +20,7 @@ var _buf: PackedFloat32Array
 var _cursor := 0
 var _active := 0
 var _list: PackedInt32Array = PackedInt32Array()  # indices of live motes
+var _shown := false
 
 
 func _init(cap: int, tex: Texture2D, additive: bool) -> void:
@@ -97,6 +98,7 @@ func emit(o: Dictionary) -> void:
 		_col[i * 3 + 1] = c.g
 		_col[i * 3 + 2] = c.b
 	node.visible = true
+	_shown = true
 
 
 func active() -> int:
@@ -105,12 +107,12 @@ func active() -> int:
 
 func update(dt: float) -> void:
 	if _active == 0:
-		node.visible = false
-		mm.visible_instance_count = 0
+		if _shown:   # once, not on every idle frame
+			_shown = false
+			node.visible = false
+			mm.visible_instance_count = 0
 		return
 	var n := 0
-	var keep := PackedInt32Array()
-	keep.resize(_list.size())
 	var kept := 0
 	for idx in _list.size():
 		var i := _list[idx]
@@ -118,7 +120,7 @@ func update(dt: float) -> void:
 		if _life[i] <= 0.0:
 			_active -= 1
 			continue
-		keep[kept] = i
+		_list[kept] = i   # compacted in place (the live list used to be rebuilt into a fresh array every frame)
 		kept += 1
 		var t := 1.0 - maxf(0.0, _life[i]) / _max_life[i]
 		var k := maxf(0.0, 1.0 - _drag[i] * dt)
@@ -152,9 +154,9 @@ func update(dt: float) -> void:
 		_buf[o + 14] = _col[p3 + 2]
 		_buf[o + 15] = alpha
 		n += 1
-	keep.resize(kept)
-	_list = keep
+	_list.resize(kept)
 	mm.visible_instance_count = n
 	if n > 0:
 		mm.buffer = _buf
-	node.visible = _active > 0
+	_shown = _active > 0
+	node.visible = _shown
