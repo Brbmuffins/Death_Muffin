@@ -28,10 +28,10 @@ static func fair_breaches(sim: DmWorldSim, area: String) -> Array:
 static func update_waves(sim: DmWorldSim, dt: float) -> void:
 	crumble_vacant(sim, dt)
 	for id: String in DmSimData.AREA_ORDER:
+		if not sim.has_player_in(id):   # (pure checks, cheapest first: all but the hero's area stop here)
+			continue
 		var def: Dictionary = DmSimData.AREAS[id]
 		if DmCombatData.truthy(def["safe"]) or DmCombatData.truthy(def.get("instance")) or not sim.nav.is_unlocked(id):
-			continue
-		if sim.players_in(id).is_empty():
 			continue
 		if id == String(DmSimData.BOSSES[sim.bossId]["area"]) and sim.boss.state.active:
 			continue
@@ -52,7 +52,7 @@ static func crumble_vacant(sim: DmWorldSim, dt: float) -> void:
 	for id: String in DmSimData.AREA_ORDER:
 		if DmCombatData.truthy(DmSimData.AREAS[id]["safe"]):
 			continue
-		if not sim.players_in(id).is_empty():
+		if sim.has_player_in(id):
 			sim.vacantS.erase(id)
 			continue
 		var v: float = float(sim.vacantS.get(id, 0.0)) + dt
@@ -198,8 +198,10 @@ static func update_surge(sim: DmWorldSim, dt: float) -> void:
 		return
 	var eligible: Array = []
 	for id: String in DmSimData.AREA_ORDER:
+		if not sim.has_player_in(id):
+			continue
 		var def: Dictionary = DmSimData.AREAS[id]
-		if not DmCombatData.truthy(def["safe"]) and def["breaches"].size() > 0 and sim.nav.is_unlocked(id) and not sim.players_in(id).is_empty() \
+		if not DmCombatData.truthy(def["safe"]) and def["breaches"].size() > 0 and sim.nav.is_unlocked(id) \
 				and not (id == String(DmSimData.BOSSES[sim.bossId]["area"]) and sim.boss.state.active):
 			eligible.append(id)
 	if eligible.is_empty():
