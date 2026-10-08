@@ -110,10 +110,12 @@ func _run() -> void:
 			if game_t >= next_wave:
 				DmSimDirector.spawn_wave(game.sim, area)
 				next_wave += every
-			if _arg("legion", "1") == "1" and frame_i % 15 == 0 and game.sim.thralls.size() < 12:
-				var m: Dictionary = game.discipline["mods"]
-				var ang := float(frame_i)
-				game.send_intent({"t": "exhume", "by": game.self_id, "x": game.player.x + sin(ang) * 2.0, "z": game.player.z + cos(ang) * 2.0, "r": 0.8, "kind": m["thrallKind"], "cap": 12, "hp": game.p["stats"]["thrallHp"] * 3.0, "damage": game.p["stats"]["thrallDamage"], "attackSpeedMult": m["thrallAttackSpeedMult"], "bond": true})
+			if _arg("legion", "1") == "1" and frame_i % 12 == 0 and game.sim.thralls.size() < int(_arg("legion_cap", "12")):
+				# raise the next corpse (the sim spends a corpse per thrall, like the Exhume rite)
+				for cp in game.sim.corpses.values():
+					var m: Dictionary = game.discipline["mods"]
+					game.send_intent({"t": "exhume", "by": game.self_id, "x": cp.x, "z": cp.z, "r": 0.8, "kind": m["thrallKind"], "cap": float(_arg("legion_cap", "12")), "hp": game.p["stats"]["thrallHp"] * float(_arg("legion_hp", "30")), "damage": game.p["stats"]["thrallDamage"], "attackSpeedMult": m["thrallAttackSpeedMult"]})
+					break
 			if frame_i % cast_every == 0:
 				var best: DmSimEnemy = null
 				var bd := 1e9
