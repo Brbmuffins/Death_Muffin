@@ -25,12 +25,20 @@ var _age := 0
 var _old: Control = null
 
 
+## The layer is added deferred, so until it lands in the tree `get_node_or_null` finds nothing: keep the one we made, or every hover in that
+## window would build another layer (and place a card on a node that is not in the tree yet).
+static var _pending: DmTip = null
+
+
 static func of(node: Node) -> DmTip:
 	var root := node.get_tree().root
 	var t := root.get_node_or_null("DmTipLayer") as DmTip
 	if t == null:
+		if _pending != null and is_instance_valid(_pending):
+			return _pending
 		t = DmTip.new()
 		t.name = "DmTipLayer"
+		_pending = t
 		root.add_child.call_deferred(t)
 	return t
 
@@ -110,6 +118,7 @@ func _begin(owner_: Control, card: Control, m: Mode) -> void:
 	_age = 0
 	add_child(content)
 	content.top_level = false
+	content.modulate.a = 0.0   # shown by _place once it has a real size
 	if m == Mode.FOLLOW:
 		_ignore_mouse(content)
 	set_process(true)
@@ -166,7 +175,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _place() -> void:
-	if content == null:
+	# Not in the tree yet (the layer is added deferred): _process places the card on its first frame in the tree.
+	if content == null or not is_inside_tree():
 		return
 	var vp := content.get_viewport_rect().size
 	var sz := content.get_combined_minimum_size()
