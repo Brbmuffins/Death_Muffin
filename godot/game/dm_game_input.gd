@@ -180,42 +180,68 @@ func update_cursor() -> void:
 		g.views.hover_id = int(hover["id"]) if (hover != null and hover["kind"] == "enemy") else -1
 
 
+# The running best of one pick. (These were locals captured by a lambda, which captures by value in GDScript 4: the pick never
+# won and `hover` stayed null for every kind of target.)
+var _pb_kind := ""
+var _pb_a: Variant = null
+var _pb_d := 0.0
+var _pb_mx := 0.0
+var _pb_my := 0.0
+
+## Offer one candidate at world (x, y, z): it wins when its screen distance (minus `radius_px`) beats the best so far. The hover
+## dictionary is only built for the final winner.
+func _consider(cam: DmCameraRig, x: float, y: float, z: float, radius_px: float, kind: String, a: Variant) -> void:
+	var v := Vector3(x, y, z)
+	if cam.is_position_behind(v):
+		return
+	var sp := cam.unproject_position(v)
+	var d := Vector2(sp.x - _pb_mx, sp.y - _pb_my).length() - radius_px
+	if d < _pb_d:
+		_pb_d = d
+		_pb_kind = kind
+		_pb_a = a
+
+
 func _pick(cam: DmCameraRig) -> void:
-	var best: Variant = null
-	var best_d = 46.0
-	var mx: float = mouse["x"]
-	var my: float = mouse["y"]
-	var test = func(x: float, y: float, z: float, h: Dictionary, radius_px: float) -> void:
-		var v = Vector3(x, y, z)
-		if cam.is_position_behind(v):
-			return
-		var s = cam.unproject_position(v)
-		var d = Vector2(s.x - mx, s.y - my).length() - radius_px
-		if d < best_d:
-			best_d = d
-			best = h
+	_pb_kind = ""
+	_pb_a = null
+	_pb_d = 46.0
+	_pb_mx = mouse["x"]
+	_pb_my = mouse["y"]
 	for e in g.sim.enemies.values():
 		if e.state == "dead" or e.state == "rising" or e.state == "burrow":
 			continue
-		test.call(e.x, 0.9 * e.scale, e.z, {"kind": "enemy", "id": e.id}, 10.0 if e.elite else 0.0)
+		_consider(cam, e.x, 0.9 * e.scale, e.z, 10.0 if e.elite else 0.0, "enemy", e.id)
 	var b = g.sim.boss.state
 	if b.active:
-		test.call(b.x, 2.4, b.z, {"kind": "boss"}, 40.0)
-	if best == null:
-		best_d = 60.0
+		_consider(cam, b.x, 2.4, b.z, 40.0, "boss", null)
+	if _pb_kind == "":
+		_pb_d = 60.0
 		for it in interactables_near():
-			test.call(float(it["x"]), 1.2, float(it["z"]), {"kind": "interact", "it": it}, 0.0)
-	if best == null:
-		best_d = 52.0
+			_consider(cam, float(it["x"]), 1.2, float(it["z"]), 0.0, "interact", it)
+	if _pb_kind == "":
+		_pb_d = 52.0
 		for n in _nodes:
 			if absf(float(n["x"]) - g.player.x) > 26.0 or absf(float(n["z"]) - g.player.z) > 22.0:
 				continue
 			var kind: String = String(DmGathering.node_def(String(n["type"]))["kind"])
-			test.call(float(n["x"]), 1.6 if kind == "tree" else (0.1 if kind == "pool" else 0.5), float(n["z"]), {"kind": "node", "node": n}, 14.0 if kind == "tree" else 6.0)
+			_consider(cam, float(n["x"]), 1.6 if kind == "tree" else (0.1 if kind == "pool" else 0.5), float(n["z"]), 14.0 if kind == "tree" else 6.0, "node", n)
 		# Web: Grave Laborers join the node pass (same running best distance, 18 px bonus), inside the same "nothing nearer" block.
 		if g.laborer_views != null:
 			for l in g.laborer_views.pick_list():
-				test.call(float(l["x"]), 1.0, float(l["z"]), {"kind": "laborer", "slot": int(l["slot"])}, 18.0)
+				_consider(cam, float(l["x"]), 1.0, float(l["z"]), 18.0, "laborer", int(l["slot"]))
+	var best: Variant = null
+	match _pb_kind:
+		"enemy":
+			best = {"kind": "enemy", "id": _pb_a}
+		"boss":
+			best = {"kind": "boss"}
+		"interact":
+			best = {"kind": "interact", "it": _pb_a}
+		"node":
+			best = {"kind": "node", "node": _pb_a}
+		"laborer":
+			best = {"kind": "laborer", "slot": _pb_a}
 	hover = best
 	if g.laborer_views != null:
 		g.laborer_views.set_hover(int(hover["slot"]) if (hover != null and hover["kind"] == "laborer" and not g.panel_open) else -1)
@@ -242,6 +268,7 @@ func cursor_target() -> Dictionary:
 func on_primary_click() -> void:
 	if not g.ready_ or not g.player.alive:
 		return
+	_pick_ms = 0   # a click picks against the cursor as it is now, not the last 30 Hz pick
 	update_cursor()
 	g.actions.cancel_recall()
 	queued_cast = null
@@ -324,6 +351,7 @@ func cast_slot(slot: int) -> void:
 		return
 	if g.gather != null:
 		g.gather.stop("moved")
+	_pick_ms = 0
 	update_cursor()
 	g.actions.cancel_recall()
 	auto_target_id = -1
@@ -344,6 +372,7 @@ func cast_slot(slot: int) -> void:
 
 func cast_slot_primary() -> void:
 	if g.ready_ and g.player.alive:
+		_pick_ms = 0
 		update_cursor()
 		g.do_cast(g.primary, cursor_target(), g.now_ms)
 
