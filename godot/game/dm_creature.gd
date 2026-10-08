@@ -460,7 +460,8 @@ func world_height() -> float:
 
 ## Walk or run at the pace that matches `ground` (units/s of real movement), with this model's measured stride.
 func set_ground_speed(ground: float) -> Dictionary:
-	if not last_plan.is_empty() and _loop == String(last_plan.clip) and _one_shot == "" and absf(ground - _last_ground) < 0.01 * maxf(1.0, ground):
+	# (cheapest tests first: this is asked for every walking body every frame and almost always answers "same plan")
+	if _one_shot == "" and absf(ground - _last_ground) < 0.01 * maxf(1.0, ground) and not last_plan.is_empty() and _loop == String(last_plan.clip):
 		return last_plan
 	_last_ground = ground
 	var stride: Dictionary = entry.get("stride") if entry.get("stride") is Dictionary else {}
