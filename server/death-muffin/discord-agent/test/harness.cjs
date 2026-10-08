@@ -44,6 +44,8 @@ function makeWorld(over = {}) {
   for (const f of ['ship.sh', 'rollback.sh', 'agit', 'PROMPT.md', 'PROMPT-godot.md']) fs.copyFileSync(path.join(SRC, f), path.join(tools, f));
   fs.symlinkSync(path.join(SRC, 'runner'), path.join(tools, 'runner'));
   fs.writeFileSync(path.join(tools, 'check-godot.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "godot boom"; exit 1; }\necho "tests/game run.gd exit=0  12 passed"; echo "GODOT TESTS: 2 suites, 2 passed, 0 failed"\n', { mode: 0o755 });
+  // shot-godot.sh stand-in: writes a PNG-ish file; in a base-<id> scratch worktree it writes the BEFORE picture (unless NOBASE exists)
+  fs.writeFileSync(path.join(tools, 'shot-godot.sh'), '#!/usr/bin/env bash\n[ -f .dm-shot.json ] || exit 2\nmkdir -p .dm-shots\ncase "$PWD" in */base-*) [ -e "$(dirname "$PWD")/NOBASE" ] && exit 1; echo PNG-before > .dm-shots/a.png;; *) echo PNG-after > .dm-shots/a.png;; esac\n', { mode: 0o755 });
   fs.writeFileSync(path.join(tools, 'check.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "boom"; exit 1; }\necho "# tests 3"; echo "# pass 3"; echo "# fail 0"\n', { mode: 0o755 });
   // regen stub: the real generators need the whole game repo; this one derives necro-rules.cjs from src/gameplay/a.ts (upper-cased) and prints the status like the real one
   fs.writeFileSync(path.join(tools, 'regen.sh'), '#!/usr/bin/env bash\nmkdir -p server/vps-handoff/necro-progress\ntr a-z A-Z < src/gameplay/a.ts > server/vps-handoff/necro-progress/necro-rules.cjs\necho "== regenerated"\ngit status --porcelain\n', { mode: 0o755 });

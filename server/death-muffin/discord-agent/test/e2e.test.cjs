@@ -782,25 +782,44 @@ test('godot mode: sensitive net code is flagged and limited approvers cannot shi
   assert.equal(proposalOf(t3), undefined);
 });
 
-test('godot mode: !shot is not available, the command list drops it, and the agent is not given shot.sh or regen.sh', async () => {
+test('godot mode: !shot is available, the agent may run shot-godot.sh (not shot.sh or regen.sh), and the prompt teaches the plan', async () => {
   const w = godotWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'where is speed?');
   await until(() => texts(thread).some((t) => /answer is in/.test(t)), d.ad);
-  const m = await d.say(thread, IDS.HELIX, '!shot'); await until(() => m.replies.length, d.ad);
-  assert.equal(m.replies[0].content, 'Screenshots are not available for the Godot client yet; use !preview for a playable build.');
-  const j = Object.values(w.runner.jobs())[0]; assert.equal(j.queue.length, 0, 'no screenshot turn queued');
-  const m2 = await d.say(thread, IDS.HELIX, '!nope'); await until(() => m2.replies.length, d.ad); assert.ok(!/!shot/.test(m2.replies[0].content));
+  const j = Object.values(w.runner.jobs())[0];
+  await d.say(thread, IDS.LIMITED, '!shot');
+  await until(() => imagesOf(thread).length === 1, d.ad); await until(() => j.status === 'idle' && !j.running, d.ad);
+  assert.ok(fs.existsSync(path.join(j.worktree, '.dm-shot.json')) && fs.existsSync(path.join(j.worktree, '.dm-shots', 'a.png')));
+  assert.equal(sh(j.worktree, 'status', '--porcelain'), '', 'shot files never dirty the tree');
+  const m2 = await d.say(thread, IDS.HELIX, '!nope'); await until(() => m2.replies.length, d.ad); assert.match(m2.replies[0].content, /!shot/);
   const { claudeArgs, systemPrompt } = require('../runner/lib/agent.cjs');
   const a = claudeArgs(w.cfg, j); const rest = a.slice(a.indexOf('--allowedTools') + 1); const allowed = rest.slice(0, rest.findIndex((x) => x.startsWith('--')) >>> 0);
   const wt = `/${j.worktree}/**`;
   assert.deepEqual(allowed, [`Read(${wt})`, `Edit(${wt})`, `Write(${wt})`, `Glob(${wt})`, `Grep(${wt})`, `Bash(${w.tools}/agit *)`, `Bash(${w.tools}/check-godot.sh)`,
-    'WebSearch', ...w.cfg.webDocDomains.map((h) => `WebFetch(domain:${h})`)]);
+    `Bash(${w.tools}/shot-godot.sh)`, `Bash(${w.tools}/shot-godot.sh *)`, 'WebSearch', ...w.cfg.webDocDomains.map((h) => `WebFetch(domain:${h})`)]);
   assert.ok(!allowed.includes('Read') && !allowed.includes('WebFetch'), 'no bare (any-path / any-host) grants');
   assert.ok(j.worktree && path.isAbsolute(j.worktree));
-  const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/godot-port/); assert.ok(sp.includes(`${w.tools}/check-godot.sh`) && !sp.includes('__TOOLS__') && !sp.includes('shot.sh'));
+  const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/godot-port/); assert.ok(sp.includes(`${w.tools}/check-godot.sh`) && sp.includes(`${w.tools}/shot-godot.sh`) && !sp.includes('__TOOLS__') && !/shot\.sh/.test(sp));
+  assert.match(sp, /at most 4|Never more than 4/); assert.match(sp, /BRANCH PREVIEW/); assert.match(sp, /Logic, data, balance/);
   // web mode is unchanged
   const wa = makeWorld(); const wj = { ...j, model: 'sonnet' }; const wargs = claudeArgs(wa.cfg, wj);
-  assert.ok(wargs.includes(`Bash(${wa.tools}/shot.sh)`) && wargs.includes(`Bash(${wa.tools}/regen.sh)`) && wargs.includes(`Bash(${wa.tools}/check.sh)`) && !wargs.some((x) => /check-godot/.test(x)));
+  assert.ok(wargs.includes(`Bash(${wa.tools}/shot.sh)`) && wargs.includes(`Bash(${wa.tools}/regen.sh)`) && wargs.includes(`Bash(${wa.tools}/check.sh)`) && !wargs.some((x) => /check-godot|shot-godot/.test(x)));
+});
+
+test('godot mode: a proposal with a shot plan carries before/after pairs, the embed image is the AFTER; no base picture = after only', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY SHOT-PNG make it faster and show it');
+  const p = await waitProposal(d, thread);
+  assert.deepEqual(p.payload.files.map((f) => f.name), ['before-a.png', 'a.png']);
+  assert.equal(p.payload.files[0].attachment.toString().trim(), 'PNG-before'); assert.equal(p.payload.files[1].attachment.toString(), 'PNG-one');
+  assert.equal(p.payload.embeds[0].image.url, 'attachment://a.png');
+  assert.ok(p.payload.embeds[0].fields.some((f) => f.name === 'Pictures' && /BEFORE/.test(f.value)));
+  assert.ok(!fs.existsSync(path.join(w.cfg.worktreeRoot, `base-${Object.values(w.runner.jobs())[0].id}`)), 'the scratch base worktree is removed');
+  // the base cannot render (e.g. it predates the QA shot plan): the proposal still goes out with the after picture only
+  fs.writeFileSync(path.join(w.cfg.worktreeRoot, 'NOBASE'), '');
+  const t2 = await request(d, IDS.HELIX, 'GD-DOC SHOT-PNG clarify the readme and show it');
+  const p2 = await waitProposal(d, t2.thread);
+  assert.deepEqual(p2.payload.files.map((f) => f.name), ['a.png']); assert.ok(!p2.payload.embeds[0].fields.some((f) => f.name === 'Pictures'));
 });
 
 test('godot mode: if the live client revision cannot be read, nothing is pushed or published and no backup is left; a first publish (no manifest) goes live with no rollback', async () => {

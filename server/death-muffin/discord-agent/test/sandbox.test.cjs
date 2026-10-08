@@ -1,5 +1,5 @@
 'use strict';
-// The sandbox of EVERY script that runs untrusted code (check.sh, check-godot.sh, preview.sh, preview-godot.sh, shot.sh, regen.sh) goes through
+// The sandbox of EVERY script that runs untrusted code (check.sh, check-godot.sh, preview.sh, preview-godot.sh, shot.sh, shot-godot.sh, regen.sh) goes through
 // sandbox-lib.sh. These tests run the real scripts (real unshare) on a throwaway repo whose "tools" (tsc, vitest, npm scripts, vite, godot) are
 // stand-ins that probe the filesystem from INSIDE the sandbox: the live paths ubuntu owns must not be writable, the worktree and a private /tmp must be.
 const test = require('node:test');
@@ -127,6 +127,45 @@ test('sandbox: shot.sh (dev server)', () => {
     run(W, 'shot.sh', [], { DM_BROWSER_LOCK: path.join(W.root, 'lock'), DM_PLAYWRIGHT_MODULE: '/nonexistent' });
     verdict(W, 'shot-vite');
     spawnSync('pkill', ['-f', '[h]ttp.server 5188']);   // the stand-in dev server outlives shot.sh's kill of its npx wrapper
+  } finally { W.cleanup(); }
+});
+
+test('sandbox: shot-godot.sh (import + render), then trusted labelling that refuses symlinks and non-PNGs', () => {
+  const W = world(); try {
+    W.w('godot/project.godot', 'x'); W.w('.dm-shot.json', '{"shots":[{"name":"a"}]}');
+    W.w('.bin/xvfb-run', '#!/usr/bin/env bash\nshift 3\nexec "$@"\n', 0o755);
+    W.w('.fake-godot', `#!/usr/bin/env bash
+${probeCmd('shot-godot')}
+case " $* " in *" --import "*) mkdir -p godot/.godot/imported; exit 0;; esac
+for a in "$@"; do case "$a" in --shots=*) out="\${a#--shots=}";; esac; done
+python3 -c "
+import zlib,struct,sys
+def ch(t,d): c=struct.pack('>I',len(d))+t+d; return c+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
+raw=b''.join(b'\\x00'+bytes((10,120,10))*640 for _ in range(400))
+open(sys.argv[1],'wb').write(b'\\x89PNG\\r\\n\\x1a\\n'+ch(b'IHDR',struct.pack('>IIBBBBB',640,400,8,2,0,0,0))+ch(b'IDAT',zlib.compress(raw))+ch(b'IEND',b''))" "$out/a.png"
+echo not-a-png > "$out/b.png"; ln -s /etc/passwd "$out/c.png"; mkdir "$out/d.png"
+exit 0
+`, 0o755);
+    const r = run(W, 'shot-godot.sh', [], { GODOT: path.join(W.top, '.fake-godot'), DM_BROWSER_LOCK: path.join(W.root, 'lock'), PATH: `${path.join(W.top, '.bin')}:${process.env.PATH}` });
+    assert.equal(r.status, 3, 'exit 3 = some raw image could not be labelled\n' + r.stdout + r.stderr);
+    verdict(W, 'shot-godot');
+    const out = path.join(W.top, '.dm-shots');
+    assert.deepEqual(fs.readdirSync(out).sort(), ['a.png'], 'only the valid PNG is published; the raw folder is gone');
+    const px = execFileSync('python3', ['-c', `from PIL import Image; i=Image.open('${out}/a.png').convert('RGB'); print(i.size, i.getpixel((11,17)), i.getpixel((600,380)))`], { encoding: 'utf8' });
+    assert.match(px, /\(640, 400\) \(76, 29, 149\) \(10, 120, 10\)/, 'the BRANCH PREVIEW pill (#4c1d95) is burned in at the top left: ' + px);
+    assert.match(r.stdout, /skipped b\.png/); assert.match(r.stdout, /skipped c\.png/);
+  } finally { W.cleanup(); }
+});
+
+test('sandbox: shot-godot.sh refuses a symlinked .dm-shots and plan files outside the worktree', () => {
+  const W = world(); try {
+    W.w('godot/project.godot', 'x'); W.w('.dm-shot.json', '{"shots":[{}]}');
+    const victim = path.join(W.root, 'victim'); fs.mkdirSync(victim); fs.symlinkSync(victim, path.join(W.top, '.dm-shots'));
+    const r = run(W, 'shot-godot.sh', [], { GODOT: '/bin/false', DM_BROWSER_LOCK: path.join(W.root, 'lock') });
+    assert.equal(r.status, 2); assert.deepEqual(fs.readdirSync(victim), []);
+    fs.unlinkSync(path.join(W.top, '.dm-shots'));
+    assert.equal(run(W, 'shot-godot.sh', ['/etc/passwd'], { GODOT: '/bin/false' }).status, 2);
+    assert.equal(run(W, 'shot-godot.sh', ['../x.json'], { GODOT: '/bin/false' }).status, 2);
   } finally { W.cleanup(); }
 });
 
