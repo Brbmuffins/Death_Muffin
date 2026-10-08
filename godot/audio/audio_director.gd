@@ -170,7 +170,12 @@ func _apply_bus_levels() -> void:
 		if _ducks.has(id):
 			var d: Dictionary = _ducks[id]
 			duck = DmAudioMixer.duck_factor(d["depth"], d["hold"], d["release"], d["t"])
-		AudioServer.set_bus_volume_db(AudioServer.get_bus_index(BUS_NAMES[id]), linear_to_db(maxf(g * duck, 0.0001)))
+		# Set only when the level actually moved: AudioServer takes the mixer lock for every set, and these levels sit still almost
+		# all the time (they were rewritten every frame, ~6 locked sets a frame against the audio thread).
+		var bus := AudioServer.get_bus_index(BUS_NAMES[id])
+		var db := linear_to_db(maxf(g * duck, 0.0001))
+		if absf(AudioServer.get_bus_volume_db(bus) - db) >= 0.005:
+			AudioServer.set_bus_volume_db(bus, db)
 
 
 # --- listener -------------------------------------------------------------------------
@@ -688,7 +693,10 @@ func _update_bed(bed: Dictionary, delta: float) -> void:
 	bed["gain"] = float(bed["gain"]) + (float(bed["target"]) - float(bed["gain"])) * (1.0 - exp(-delta / float(bed["tau"])))
 	for l in bed["layers"]:
 		var v: float = float(l["gain"]) * BED_GAIN * _bed_duck * float(bed["gain"])
-		(l["player"] as AudioStreamPlayer).volume_db = linear_to_db(maxf(v, 0.0001))
+		var pl := l["player"] as AudioStreamPlayer
+		var db := linear_to_db(maxf(v, 0.0001))
+		if absf(pl.volume_db - db) >= 0.005:   # (a settled bed was rewritten every frame)
+			pl.volume_db = db
 
 
 func _accent_fire() -> void:

@@ -30,6 +30,11 @@ var _parent: Node3D
 var _buf := PackedFloat32Array()
 var _mat: ShaderMaterial
 var _mesh: Mesh
+## Set by the owner (DmFxPrims): called once when the layer goes from empty to holding items, so the owner flushes only the layers in use
+## (there are ~180 of them once warmed up, and all but a handful are empty on any given frame).
+var wake: Callable
+var live := false
+var _shown := false   # last state pushed to the MultiMesh / node (an empty layer is not re-pushed every frame)
 static var _meshes: Dictionary = {}
 
 
@@ -155,11 +160,16 @@ func _make() -> void:
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.custom_aabb = AABB(Vector3(-500, -500, -500), Vector3(1000, 1000, 1000))
 	node.visible = false
+	_shown = false
 	_parent.add_child(node)
 
 
 func add(it: Item) -> void:
 	items.append(it)
+	if not live:
+		live = true
+		if wake.is_valid():
+			wake.call(self)
 	if items.size() > capacity:
 		capacity *= 2
 		_make()
@@ -170,6 +180,10 @@ func remove(it: Item) -> void:
 
 
 func flush() -> void:
+	if items.is_empty():
+		_hide()
+		live = false   # the owner drops it from its live list; add() wakes it again
+		return
 	var n := 0
 	for it in items:
 		var item: Item = it
@@ -241,10 +255,21 @@ func flush() -> void:
 		_buf[o + 18] = 0.0
 		_buf[o + 19] = 0.0
 		n += 1
+	if n == 0:
+		_hide()
+		return
+	_shown = true
 	mm.visible_instance_count = n
-	node.visible = n > 0
-	if n > 0:
-		mm.buffer = _buf
+	node.visible = true
+	mm.buffer = _buf
+
+
+## Nothing to draw: tell the MultiMesh once, not on every idle frame (each layer used to repeat two server calls per frame while empty).
+func _hide() -> void:
+	if _shown:
+		_shown = false
+		mm.visible_instance_count = 0
+		node.visible = false
 
 
 func dispose() -> void:

@@ -460,7 +460,8 @@ func world_height() -> float:
 
 ## Walk or run at the pace that matches `ground` (units/s of real movement), with this model's measured stride.
 func set_ground_speed(ground: float) -> Dictionary:
-	if not last_plan.is_empty() and _loop == String(last_plan.clip) and _one_shot == "" and absf(ground - _last_ground) < 0.01 * maxf(1.0, ground):
+	# (cheapest tests first: this is asked for every walking body every frame and almost always answers "same plan")
+	if _one_shot == "" and absf(ground - _last_ground) < 0.01 * maxf(1.0, ground) and not last_plan.is_empty() and _loop == String(last_plan.clip):
 		return last_plan
 	_last_ground = ground
 	var stride: Dictionary = entry.get("stride") if entry.get("stride") is Dictionary else {}
@@ -674,14 +675,17 @@ func detach(obj: Node3D) -> void:
 		if par is BoneAttachment3D:
 			par.queue_free()
 
+func _root_rotation() -> Quaternion:
+	return root.global_transform.basis.orthonormalized().get_rotation_quaternion()
+
 func _tick_props(dt: float) -> void:
-	var root_q := root.global_transform.basis.orthonormalized().get_rotation_quaternion()
 	var any_cal := false
 	for a in _attached:
 		if a.cal > 0:
 			any_cal = true
 	if any_cal:
 		if _settled_t > 0.25:
+			var root_q := _root_rotation()
 			for a in _attached:
 				if a.cal <= 0:
 					continue
@@ -695,6 +699,7 @@ func _tick_props(dt: float) -> void:
 	if every > 1 and _steady_n < every:
 		return
 	_steady_n = 0
+	var root_q := _root_rotation()   # (only past the throttle above: it used to be computed, and discarded, every frame)
 	for a in _attached:
 		if a.base_q == null:
 			continue

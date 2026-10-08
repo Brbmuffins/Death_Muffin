@@ -286,6 +286,14 @@ func retag_player(old_id: String, new_id: String) -> void:
 		m.erase(old_id)
 
 
+## `not players_in(area).is_empty()` without building the array (asked per area, several times per step).
+func has_player_in(area: String) -> bool:
+	for p: DmSimPlayer in players.values():
+		if p.alive and p.area == area:
+			return true
+	return false
+
+
 func players_in(area: String) -> Array:
 	var out: Array = []
 	for p: DmSimPlayer in players.values():

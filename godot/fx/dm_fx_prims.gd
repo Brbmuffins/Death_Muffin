@@ -25,6 +25,7 @@ var _transients: Array = []
 var _decal_layers: Dictionary = {}
 var _sprite_layers: Dictionary = {}
 var _beam_layer: DmFxLayer
+var _live_layers: Array = []   # layers that hold items (or must hide once more): the only ones flushed each frame
 var _glow_layer: DmFxLayer
 var _projectiles: Array = []
 var _spikes: Array = []
@@ -126,6 +127,7 @@ func _init(parent: Node3D) -> void:
 	group.add_child(additive.node)
 	group.add_child(smoke.node)
 	_beam_layer = DmFxLayer.new(group, DmFxLayer.Kind.BEAM, null, true, "quad", 6, null)
+	_beam_layer.wake = _wake_layer
 	_glow_layer = _sprite_layer(DmFxTex.get_tex("glow"))
 	_build_spikes()
 	_needle_mat = StandardMaterial3D.new()
@@ -263,12 +265,17 @@ func warm_layers(at: Vector3) -> Array:
 	return out
 
 
+func _wake_layer(l: DmFxLayer) -> void:
+	_live_layers.append(l)
+
+
 func _decal_layer(tex: Texture2D, additive_blend: bool, order: int, outline: Variant) -> DmFxLayer:
 	var tname := DmFxTex.name_of(tex)
 	var key := "%s|%s|%d" % [tname, additive_blend, order]
 	var l: DmFxLayer = _decal_layers.get(key)
 	if l == null:
 		l = DmFxLayer.new(group, DmFxLayer.Kind.DECAL, tex, additive_blend, _footprint_of(tname), order, outline)
+		l.wake = _wake_layer
 		_decal_layers[key] = l
 	return l
 
@@ -278,6 +285,7 @@ func _sprite_layer(tex: Texture2D) -> DmFxLayer:
 	var l: DmFxLayer = _sprite_layers.get(key)
 	if l == null:
 		l = DmFxLayer.new(group, DmFxLayer.Kind.SPRITE, tex, true, "disc" if key == "glow" else "quad", 6, null)
+		l.wake = _wake_layer
 		_sprite_layers[key] = l
 	return l
 
@@ -346,6 +354,29 @@ class DecalTr:
 	var ended := false
 	var entry: Dictionary
 	var ring_for_disc := 1.32
+	# The option values update() reads every frame, read out of `o` once (it ran ~12 dictionary lookups per decal per frame).
+	var has_follow := false
+	var has_grow := false
+	var grow_from := 0.0
+	var r2 := 0.0
+	var mul_x := 1.0
+	var mul_z := 1.0
+	var spin_k := 0.0
+	var rot0 := 0.0
+	var pulse_k := 0.0
+	var x0 := 0.0
+
+	func setup() -> void:
+		has_follow = o.has("follow")
+		has_grow = o.has("growFrom")
+		grow_from = float(o["growFrom"]) if has_grow else 0.0
+		r2 = float(o["r"]) * 2.0
+		mul_x = float(o.get("sx", 1.0))
+		mul_z = float(o.get("sz", 1.0))
+		spin_k = float(o["spin"]) if o.has("spin") else 0.0
+		rot0 = float(o.get("rot", 0.0))
+		pulse_k = float(o["pulse"]) if o.has("pulse") else 0.0
+		x0 = float(o.get("x", 0.0))
 
 	func place() -> void:
 		var f: Variant = null
@@ -378,33 +409,33 @@ class DecalTr:
 		t_now = t_
 		if ended:
 			return
-		if o.has("follow"):
+		if has_follow:
 			place()
 		var grow := 1.0
-		if o.has("growFrom"):
-			grow = float(o["growFrom"]) + (1.0 - float(o["growFrom"])) * minf(1.0, k * 1.2)
-		var s := float(o["r"]) * 2.0 * grow
-		d.sx = s * float(o.get("sx", 1.0))
-		d.sz = s * float(o.get("sz", 1.0))
+		if has_grow:
+			grow = grow_from + (1.0 - grow_from) * minf(1.0, k * 1.2)
+		var s := r2 * grow
+		d.sx = s * mul_x
+		d.sz = s * mul_z
 		var rs := ring_for_disc if (via_ring and other) else 1.0
 		if rs != 1.0:
 			d.sx *= rs
 			d.sz *= rs
-		if o.has("spin") and float(o["spin"]) != 0.0:
-			d.rot_y = float(o.get("rot", 0.0)) + float(o["spin"]) * t_
+		if spin_k != 0.0:
+			d.rot_y = rot0 + spin_k * t_
 		var in_a := minf(1.0, t_ / fade_in) if fade_in > 0.0 else 1.0
 		var out_a := minf(1.0, (duration - t_) / fade_out) if fade_out > 0.0 else 1.0
 		var pulse := 1.0
-		if o.has("pulse") and float(o["pulse"]) != 0.0:
-			pulse = 0.75 + 0.25 * sin(t_ * float(o["pulse"]))
+		if pulse_k != 0.0:
+			pulse = 0.75 + 0.25 * sin(t_ * pulse_k)
 		var op := 0.0 if hidden else base * maxf(0.0, minf(in_a, out_a)) * pulse
 		if other and outline != null:
 			d.rim = 1.0
 		elif settles:
 			var rim := maxf(0.0, minf(1.0, (t_ - outline_at) / outline_fade))
 			d.rim = rim
-			if not (o.has("pulse") and float(o["pulse"]) != 0.0) and rim > 0.0:
-				pulse *= 1.0 - 0.18 * rim * (0.5 + 0.5 * sin(t_ * 2.2 + float(o.get("x", 0.0))))
+			if pulse_k == 0.0 and rim > 0.0:
+				pulse *= 1.0 - 0.18 * rim * (0.5 + 0.5 * sin(t_ * 2.2 + x0))
 			op = 0.0 if hidden else base * maxf(0.0, minf(in_a, out_a)) * pulse
 			if rim > 0.0 and via_ring:
 				if ring_item == null:
@@ -451,6 +482,7 @@ func decal(o: Dictionary) -> DmFxHandle:
 		layer = _decal_layer(tex, additive_blend, order, outline)
 	var tr := DecalTr.new()
 	tr.o = o
+	tr.setup()
 	tr.owner = self
 	tr.layer = layer
 	tr.d = DmFxLayer.Item.new()
@@ -1029,16 +1061,14 @@ func update(dt: float, real_dt: float) -> void:
 				combat_transients -= 1
 			continue
 		tr.update(tr.t, tr.t / tr.duration, dt)
-	for key in _decal_layers.keys():
-		var l: DmFxLayer = _decal_layers[key]
+	# Only layers holding items are flushed (an emptied one is flushed once more to hide, then leaves the list). Idle layers are kept, hidden
+	# (see DmFxLayer.flush): disposing them after 5 s idle meant the next wave rebuilt each one (new MultiMesh + material) on its first
+	# frame, undoing the loading-screen warm-up.
+	for i in range(_live_layers.size() - 1, -1, -1):
+		var l: DmFxLayer = _live_layers[i]
 		l.flush()
-		# Idle layers are kept (hidden while empty, see DmFxLayer.flush): disposing them after 5 s idle meant the next wave
-		# rebuilt each one (new MultiMesh + material) on its first frame, undoing the loading-screen warm-up.
-	for key in _sprite_layers.keys():
-		var l2: DmFxLayer = _sprite_layers[key]
-		l2.flush()
-
-	_beam_layer.flush()
+		if not l.live:
+			_live_layers.remove_at(i)
 	_update_projectiles(dt)
 	_update_spikes()
 	_update_bone_orbits(dt)
@@ -1099,12 +1129,16 @@ func clear() -> void:
 
 func dispose() -> void:
 	for l in _decal_layers.values():
+		l.wake = Callable()
 		l.dispose()
 	for l in _sprite_layers.values():
+		l.wake = Callable()
 		l.dispose()
+	_beam_layer.wake = Callable()
 	_beam_layer.dispose()
 	_decal_layers.clear()
 	_sprite_layers.clear()
+	_live_layers.clear()
 	for p in _projectiles:
 		if is_instance_valid(p.mesh):
 			p.mesh.queue_free()

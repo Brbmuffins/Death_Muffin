@@ -8,7 +8,13 @@ static func _h(a: float, b: float) -> float:
 
 
 static func _tr(d: Dictionary, k: String) -> bool:
-	return d.has(k) and DmCombatData.truthy(d[k])
+	# One lookup and a bool fast path (def flags are bools or absent): ~10 of these run per enemy per tick.
+	var v: Variant = d.get(k)
+	if v == null:
+		return false
+	if v is bool:
+		return v
+	return DmCombatData.truthy(v)
 
 
 # --- Targeting ---
@@ -20,14 +26,14 @@ static func pick_target(sim: DmWorldSim, e: DmSimEnemy) -> Variant:
 	for p: DmSimPlayer in sim.players.values():
 		if not p.alive or p.area != e.area:
 			continue
-		var d := _h(p.x - e.x, p.z - e.z)
+		var d := DmSimMath.hypot(p.x - e.x, p.z - e.z)
 		if d < best_d:
 			best_d = d
 			best = {"x": p.x, "z": p.z, "player": p, "thrall": null}
 	for t: DmSimThrall in sim.thralls.values():
 		if t.state == "dead" or t.state == "rising":
 			continue
-		var d := _h(t.x - e.x, t.z - e.z) * (0.55 if t.kind == "shieldbearer" else 1.1)
+		var d := DmSimMath.hypot(t.x - e.x, t.z - e.z) * (0.55 if t.kind == "shieldbearer" else 1.1)
 		if d < best_d:
 			best_d = d
 			best = {"x": t.x, "z": t.z, "player": null, "thrall": t}
@@ -38,10 +44,14 @@ static func pick_target(sim: DmWorldSim, e: DmSimEnemy) -> Variant:
 static func sanctify_target(sim: DmWorldSim, e: DmSimEnemy) -> DmSimEnemy:
 	var best: DmSimEnemy = null
 	var best_frac := 0.999
+	var reach := float(DmSimData.SANCTIFIED["range"])
 	for o: DmSimEnemy in sim.enemies.values():
 		if o == e or o.def == "deacon" or o.state == "dead" or o.state == "rising" or o.state == "burrow" or o.sanctT > 0.0:
 			continue
-		if _h(o.x - e.x, o.z - e.z) > float(DmSimData.SANCTIFIED["range"]):
+		# hypot(dx, dz) >= |dx|: a component already past the reach settles it without the hypot call.
+		if absf(o.x - e.x) > reach or absf(o.z - e.z) > reach:
+			continue
+		if DmSimMath.hypot(o.x - e.x, o.z - e.z) > reach:
 			continue
 		var frac := o.hp / o.maxHp
 		if frac < best_frac:
@@ -51,7 +61,8 @@ static func sanctify_target(sim: DmWorldSim, e: DmSimEnemy) -> DmSimEnemy:
 
 
 static func frenzied(e: DmSimEnemy) -> bool:
-	return _tr(DmSimData.ENEMIES[e.def], "frenzy") and e.hp < e.maxHp * float(DmSimData.FRENZY["atFrac"])
+	# The cheap hp test first: most enemies are healthy, and this runs several times per enemy per tick (the def lookup was the cost).
+	return e.hp < e.maxHp * float(DmSimData.FRENZY["atFrac"]) and _tr(DmSimData.ENEMIES[e.def], "frenzy")
 
 
 static func move_enemy(sim: DmWorldSim, e: DmSimEnemy, tx: float, tz: float, dt: float, speed_mult: float = 1.0) -> void:
@@ -66,7 +77,7 @@ static func move_enemy(sim: DmWorldSim, e: DmSimEnemy, tx: float, tz: float, dt:
 			tz = hop["z"]
 	var dx := tx - e.x
 	var dz := tz - e.z
-	var d := _h(dx, dz)
+	var d := DmSimMath.hypot(dx, dz)
 	if d < 0.05:
 		return
 	var slow := minf(DmSimData.MIASMA_SLOW if e.slowT > 0.0 else 1.0, DmSimData.WATCHMANS_WARD_SLOW if e.wardSlowT > 0.0 else 1.0) \
@@ -100,7 +111,7 @@ static func sidestep(px: float, pz: float, ux: float, uz: float, step: float, re
 		var c := DmFdlibm.cos_(a)
 		var s := DmFdlibm.sin_(a)
 		var n: Array = resolve.call(px + (ux * c - uz * s) * step, pz + (ux * s + uz * c) * step)
-		var gain: float = (n[0] - px) * ux + (n[1] - pz) * uz + _h(n[0] - px, n[1] - pz) * 0.5
+		var gain: float = (n[0] - px) * ux + (n[1] - pz) * uz + DmSimMath.hypot(n[0] - px, n[1] - pz) * 0.5
 		if gain > best_gain:
 			best_gain = gain
 			best = n
@@ -113,11 +124,11 @@ static func hex_aim(sim: DmWorldSim, e: DmSimEnemy, target: Dictionary) -> Array
 	var best: DmSimThrall = null
 	var best_n := 0
 	for t: DmSimThrall in sim.thralls.values():
-		if t.state == "dead" or t.state == "rising" or _h(t.x - e.x, t.z - e.z) > reach:
+		if t.state == "dead" or t.state == "rising" or DmSimMath.hypot(t.x - e.x, t.z - e.z) > reach:
 			continue
 		var n := 0
 		for o: DmSimThrall in sim.thralls.values():
-			if o.state != "dead" and _h(o.x - t.x, o.z - t.z) <= float(DmSimData.HAG_HEX["radius"]):
+			if o.state != "dead" and DmSimMath.hypot(o.x - t.x, o.z - t.z) <= float(DmSimData.HAG_HEX["radius"]):
 				n += 1
 		if n > best_n:
 			best_n = n
@@ -132,10 +143,10 @@ static func strike(sim: DmWorldSim, e: DmSimEnemy, kind: String, slam_r: float =
 	if kind == "hex":
 		var H: Dictionary = DmSimData.HAG_HEX
 		for p: DmSimPlayer in sim.players.values():
-			if p.alive and _h(p.x - e.aimX, p.z - e.aimZ) <= float(H["radius"]):
+			if p.alive and DmSimMath.hypot(p.x - e.aimX, p.z - e.aimZ) <= float(H["radius"]):
 				sim.emit({"t": "hurt", "player": p.id, "dmg": sim.blow(e) * float(H["blowMult"]), "from": "curse", "x": e.x, "z": e.z, "chillMs": H["chillMs"]})
 		for t: DmSimThrall in sim.thralls.values():
-			if _h(t.x - e.aimX, t.z - e.aimZ) > float(H["radius"]):
+			if DmSimMath.hypot(t.x - e.aimX, t.z - e.aimZ) > float(H["radius"]):
 				continue
 			sim.hurt_thrall(t, sim.blow(e) * float(H["blowMult"]))
 			if t.hp > 0.0:
@@ -144,17 +155,17 @@ static func strike(sim: DmWorldSim, e: DmSimEnemy, kind: String, slam_r: float =
 	if kind == "pulse":
 		var W: Dictionary = DmSimData.WISP_PULSE
 		for p: DmSimPlayer in sim.players.values():
-			if p.alive and _h(p.x - e.aimX, p.z - e.aimZ) <= float(W["radius"]):
+			if p.alive and DmSimMath.hypot(p.x - e.aimX, p.z - e.aimZ) <= float(W["radius"]):
 				sim.emit({"t": "hurt", "player": p.id, "dmg": sim.blow(e), "from": "dust", "x": e.x, "z": e.z, "chillMs": W["chillMs"]})
 		for t: DmSimThrall in sim.thralls.values():
-			if _h(t.x - e.aimX, t.z - e.aimZ) <= float(W["radius"]):
+			if DmSimMath.hypot(t.x - e.aimX, t.z - e.aimZ) <= float(W["radius"]):
 				sim.hurt_thrall(t, sim.blow(e))
 		return
 	if kind == "hook":
 		var SH: Dictionary = DmSimData.SEXTON_HOOK
 		var dx := e.aimX - e.x
 		var dz := e.aimZ - e.z
-		var ln := _h(dx, dz)
+		var ln := DmSimMath.hypot(dx, dz)
 		if ln == 0.0:
 			ln = 1.0
 		var ux := dx / ln
@@ -175,20 +186,20 @@ static func strike(sim: DmWorldSim, e: DmSimEnemy, kind: String, slam_r: float =
 	if kind == "ember":
 		var EB: Dictionary = DmSimData.EMBER_BOLT
 		for p: DmSimPlayer in sim.players.values():
-			if p.alive and _h(p.x - e.aimX, p.z - e.aimZ) <= float(EB["radius"]):
+			if p.alive and DmSimMath.hypot(p.x - e.aimX, p.z - e.aimZ) <= float(EB["radius"]):
 				sim.emit({"t": "hurt", "player": p.id, "dmg": sim.blow(e), "from": "ember", "x": e.x, "z": e.z})
 		for t: DmSimThrall in sim.thralls.values():
-			if _h(t.x - e.aimX, t.z - e.aimZ) <= float(EB["radius"]):
+			if DmSimMath.hypot(t.x - e.aimX, t.z - e.aimZ) <= float(EB["radius"]):
 				sim.hurt_thrall(t, sim.blow(e))
 		sim.ember_pool(e.aimX, e.aimZ, float(EB["radius"]), float(EB["poolS"]), sim.blow(e) * float(EB["poolDpsMult"]))
 		return
 	if kind == "flask":
 		var PF: Dictionary = DmSimData.PLAGUE_FLASK
 		for p: DmSimPlayer in sim.players.values():
-			if p.alive and _h(p.x - e.aimX, p.z - e.aimZ) <= float(PF["radius"]):
+			if p.alive and DmSimMath.hypot(p.x - e.aimX, p.z - e.aimZ) <= float(PF["radius"]):
 				sim.emit({"t": "hurt", "player": p.id, "dmg": sim.blow(e), "from": "toxic", "x": e.x, "z": e.z})
 		for t: DmSimThrall in sim.thralls.values():
-			if _h(t.x - e.aimX, t.z - e.aimZ) <= float(PF["radius"]):
+			if DmSimMath.hypot(t.x - e.aimX, t.z - e.aimZ) <= float(PF["radius"]):
 				sim.hurt_thrall(t, sim.blow(e))
 		var zone := DmSimZone.new()
 		zone.id = sim.next_id()
@@ -210,10 +221,10 @@ static func strike(sim: DmWorldSim, e: DmSimEnemy, kind: String, slam_r: float =
 	if kind == "dust":
 		var DU: Dictionary = DmSimData.DUST
 		for p: DmSimPlayer in sim.players.values():
-			if p.alive and _h(p.x - e.aimX, p.z - e.aimZ) <= float(DU["radius"]):
+			if p.alive and DmSimMath.hypot(p.x - e.aimX, p.z - e.aimZ) <= float(DU["radius"]):
 				sim.emit({"t": "hurt", "player": p.id, "dmg": sim.blow(e), "from": "dust", "x": e.x, "z": e.z})
 		for t: DmSimThrall in sim.thralls.values():
-			if _h(t.x - e.aimX, t.z - e.aimZ) <= float(DU["radius"]):
+			if DmSimMath.hypot(t.x - e.aimX, t.z - e.aimZ) <= float(DU["radius"]):
 				sim.hurt_thrall(t, sim.blow(e))
 		var zone := DmSimZone.new()
 		zone.id = sim.next_id()
@@ -234,22 +245,22 @@ static func strike(sim: DmWorldSim, e: DmSimEnemy, kind: String, slam_r: float =
 	if kind == "scream":
 		var SC: Dictionary = DmSimData.SCREAM
 		for p: DmSimPlayer in sim.players.values():
-			if p.alive and _h(p.x - e.aimX, p.z - e.aimZ) <= float(SC["radius"]):
+			if p.alive and DmSimMath.hypot(p.x - e.aimX, p.z - e.aimZ) <= float(SC["radius"]):
 				sim.emit({"t": "hurt", "player": p.id, "dmg": sim.blow(e), "from": "scream", "x": e.x, "z": e.z})
 		for t: DmSimThrall in sim.thralls.values():
-			if _h(t.x - e.aimX, t.z - e.aimZ) <= float(SC["radius"]):
+			if DmSimMath.hypot(t.x - e.aimX, t.z - e.aimZ) <= float(SC["radius"]):
 				sim.hurt_thrall(t, sim.blow(e))
 		return
 	if kind == "cone":
 		var dir_x := e.aimX - e.x
 		var dir_z := e.aimZ - e.z
-		var ln := _h(dir_x, dir_z)
+		var ln := DmSimMath.hypot(dir_x, dir_z)
 		if ln == 0.0:
 			ln = 1.0
 		var hits := func(x: float, z: float) -> bool:
 			var vx := x - e.x
 			var vz := z - e.z
-			var d := _h(vx, vz)
+			var d := DmSimMath.hypot(vx, vz)
 			if d > float(def["attackRange"]) + DmSimConsts.CONE_REACH_PAD:
 				return false
 			if sim.wall_between(e.x, e.z, x, z):
@@ -273,7 +284,7 @@ static func strike(sim: DmWorldSim, e: DmSimEnemy, kind: String, slam_r: float =
 	var cx := e.aimX if kind == "slam" else e.x
 	var cz := e.aimZ if kind == "slam" else e.z
 	var p: DmSimPlayer = sim.players.get(e.targetPlayer) if e.targetPlayer != "" else null
-	if p != null and p.alive and _h(p.x - cx, p.z - cz) <= reach:
+	if p != null and p.alive and DmSimMath.hypot(p.x - cx, p.z - cz) <= reach:
 		var from := "melee"
 		if kind == "curse":
 			from = "curse"
@@ -281,11 +292,11 @@ static func strike(sim: DmWorldSim, e: DmSimEnemy, kind: String, slam_r: float =
 			from = "toxic"
 		sim.emit({"t": "hurt", "player": p.id, "dmg": sim.blow(e), "from": from, "x": e.x, "z": e.z})
 	var t: DmSimThrall = sim.thralls.get(e.targetThrall) if e.targetThrall >= 0 else null
-	if t != null and _h(t.x - cx, t.z - cz) <= reach:
+	if t != null and DmSimMath.hypot(t.x - cx, t.z - cz) <= reach:
 		sim.hurt_thrall(t, sim.blow(e))
 	if kind == "slam":
 		for other: DmSimPlayer in sim.players.values():
-			if other != p and other.alive and _h(other.x - cx, other.z - cz) <= reach:
+			if other != p and other.alive and DmSimMath.hypot(other.x - cx, other.z - cz) <= reach:
 				sim.emit({"t": "hurt", "player": other.id, "dmg": sim.blow(e), "from": "melee", "x": e.x, "z": e.z})
 	sim.emit({"t": "melee", "id": e.id, "x": e.x, "z": e.z, "tx": cx, "tz": cz})
 
@@ -484,7 +495,7 @@ static func _update_one(sim: DmWorldSim, e: DmSimEnemy, dt: float, active_areas:
 		return
 	var tgx: float = target["x"]
 	var tgz: float = target["z"]
-	var dist := _h(tgx - e.x, tgz - e.z)
+	var dist := DmSimMath.hypot(tgx - e.x, tgz - e.z)
 	if e.area == "depths" and sim.nav.depths_hop(e.x, e.z, tgx, tgz) != null:
 		move_enemy(sim, e, tgx, tgz, dt)
 		return
@@ -579,7 +590,7 @@ static func _update_one(sim: DmWorldSim, e: DmSimEnemy, dt: float, active_areas:
 					var az := (e.z - tgz) / dd
 					var lx: float = float(DmSimData.FEN_LURE["x"]) - e.x
 					var lz: float = float(DmSimData.FEN_LURE["z"]) - e.z
-					var ll := _h(lx, lz)
+					var ll := DmSimMath.hypot(lx, lz)
 					if ll == 0.0:
 						ll = 1.0
 					rx = e.x + (ax * 0.55 + (lx / ll) * 0.45) * 3.0
@@ -631,10 +642,10 @@ static func release(sim: DmWorldSim, e: DmSimEnemy) -> void:
 		e.z = p[1]
 		var dmg := sim.blow(e) * (float(B["eruptMultGraves"]) if e.area == "graves" else float(B["eruptMult"]))
 		for pl: DmSimPlayer in sim.players.values():
-			if pl.alive and _h(pl.x - e.aimX, pl.z - e.aimZ) <= float(B["eruptR"]):
+			if pl.alive and DmSimMath.hypot(pl.x - e.aimX, pl.z - e.aimZ) <= float(B["eruptR"]):
 				sim.emit({"t": "hurt", "player": pl.id, "dmg": dmg, "from": "erupt", "x": e.x, "z": e.z})
 		for t: DmSimThrall in sim.thralls.values():
-			if _h(t.x - e.aimX, t.z - e.aimZ) <= float(B["eruptR"]):
+			if DmSimMath.hypot(t.x - e.aimX, t.z - e.aimZ) <= float(B["eruptR"]):
 				sim.hurt_thrall(t, dmg)
 		sim.emit({"t": "erupt", "id": e.id, "x": e.aimX, "z": e.aimZ, "r": B["eruptR"]})
 		return
@@ -677,7 +688,7 @@ static func seraph_ward(sim: DmWorldSim, e: DmSimEnemy) -> void:
 	for o: DmSimEnemy in sim.enemies.values():
 		if o == e or o.state == "dead" or o.state == "rising" or o.state == "burrow" or o.sanctT > 0.0:
 			continue
-		if _h(o.x - e.x, o.z - e.z) <= float(DmSimData.WARD["range"]):
+		if DmSimMath.hypot(o.x - e.x, o.z - e.z) <= float(DmSimData.WARD["range"]):
 			allies.append(o)
 	if allies.is_empty():
 		return
@@ -706,7 +717,7 @@ static func tick_burrow(sim: DmWorldSim, e: DmSimEnemy, dt: float) -> void:
 	var key: Variant = target["player"].id if target["player"] != null else target["thrall"].id
 	var tx: float = target["x"]
 	var tz: float = target["z"]
-	var d := _h(tx - e.x, tz - e.z)
+	var d := DmSimMath.hypot(tx - e.x, tz - e.z)
 	var left: float = INF if e.burrowLeft == null else float(e.burrowLeft)
 	if d <= float(B["surfaceR"]) or left <= 0.0:
 		var busy := 0
@@ -727,7 +738,7 @@ static func tick_burrow(sim: DmWorldSim, e: DmSimEnemy, dt: float) -> void:
 	var pz := e.z
 	move_enemy(sim, e, tx, tz, dt, float(B["speed"]) / e.speed)
 	if e.burrowLeft != null:
-		e.burrowLeft = float(e.burrowLeft) - _h(e.x - px, e.z - pz)
+		e.burrowLeft = float(e.burrowLeft) - DmSimMath.hypot(e.x - px, e.z - pz)
 
 
 ## Lich Acolyte Unbindings waiting to climb out.
@@ -754,7 +765,7 @@ static func censer_pulse(sim: DmWorldSim, e: DmSimEnemy, dt: float) -> void:
 		return
 	e.auraCd = 1.0
 	for o: DmSimEnemy in sim.enemies.values():
-		if o.state == "dead" or o.area != e.area or _h(o.x - e.x, o.z - e.z) > float(DmSimData.CENSER["radius"]):
+		if o.state == "dead" or o.area != e.area or DmSimMath.hypot(o.x - e.x, o.z - e.z) > float(DmSimData.CENSER["radius"]):
 			continue
 		o.incenseT = maxf(o.incenseT, float(DmSimData.CENSER["hasteS"]))
 
@@ -808,10 +819,10 @@ static func sound_toll(sim: DmWorldSim, e: DmSimEnemy, x: float, z: float) -> vo
 	var T: Dictionary = DmSimData.AFFIX_TUNING["bellTolled"]
 	var dmg := sim.blow(e) * float(T["damageMult"])
 	for p: DmSimPlayer in sim.players.values():
-		if p.alive and _h(p.x - x, p.z - z) <= float(T["r"]):
+		if p.alive and DmSimMath.hypot(p.x - x, p.z - z) <= float(T["r"]):
 			sim.emit({"t": "hurt", "player": p.id, "dmg": dmg, "from": "toll", "x": x, "z": z})
 	for t: DmSimThrall in sim.thralls.values():
-		if _h(t.x - x, t.z - z) <= float(T["r"]):
+		if DmSimMath.hypot(t.x - x, t.z - z) <= float(T["r"]):
 			sim.hurt_thrall(t, dmg)
 	sim.emit({"t": "affix", "id": e.id, "affix": "bellTolled", "x": x, "z": z, "r": T["r"]})
 

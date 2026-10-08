@@ -120,6 +120,16 @@ class View extends RefCounted:
 	var settle_t := 0.0
 	var settle_y := 0.0
 	var extras: Array = []
+	# The enemy def and the flags sync() tests every frame, looked up once when the view is made (a def never changes under an id).
+	var dfn: Dictionary = {}
+	var flying: Variant = null
+	var hover_h := 0.0
+	var has_dive := false
+	var fire_dead := false
+	var fen_dead := false
+	var has_aura := false
+	var has_unbind := false
+	var has_frenzy := false
 
 
 var game: Variant = null
@@ -212,6 +222,18 @@ func _now_ms() -> float:
 
 func _def(id: String) -> Dictionary:
 	return _enemy_defs.get(id, {})
+
+func _cache_def(v: View, id: String) -> void:
+	var d := _def(id)
+	v.dfn = d
+	v.flying = d.get("flying")
+	v.hover_h = float(v.flying) if v.flying != null else float(HOVER.get(id, 0.0))
+	v.has_dive = d.has("dive")
+	v.fire_dead = FIRE_DEAD.has(id)
+	v.fen_dead = FEN_DEAD.has(id)
+	v.has_aura = bool(d.get("aura", false))
+	v.has_unbind = bool(d.get("unbind", false))
+	v.has_frenzy = d.get("frenzy") != null
 
 func _follow(v: View) -> Callable:
 	return func(): return Vector3(v.x + v.ox, 0.0, v.z + v.oz)
@@ -376,6 +398,7 @@ func _make_enemy(e: DmSimEnemy) -> View:
 	v.z = e.z
 	v.facing = e.facing
 	v.def = e.def
+	_cache_def(v, e.def)
 	if e.elite:
 		v.elite_aura = _decal({"danger": true, "tex": "ring", "color": 0x9b5cff, "x": e.x, "z": e.z, "r": 1.1 * e.scale,
 			"duration": 1e9, "opacity": 0.8, "pulse": 4.0, "follow": _follow(v)})
@@ -1090,28 +1113,36 @@ func sync(enemies: Dictionary, thralls: Dictionary, dt: float, focus_x: float, f
 	if _frame % 10 == 0:
 		_shadow_lod(enemies, focus_x, focus_z)
 	var now := _now_ms()
+	var gs_k := 1.0 - exp(-maxf(0.0, dt) / 0.18)   # smooth_speed's blend, the same for every body this frame
 	for id in enemies:
 		var e: DmSimEnemy = enemies[id]
 		var v: View = _enemies.get(id)
 		if v == null:
 			v = _make_enemy(e)
 			_enemies[id] = v
-		_measure_speed(v, e.x, e.z, dt)
+		# _measure_speed(v, e.x, e.z, dt), inline (step_speed + smooth_speed): ran for every enemy every frame
+		var mdx := e.x - v.x
+		var mdz := e.z - v.z
+		var md := sqrt(mdx * mdx + mdz * mdz)
+		var inst := md / dt if (dt > 1e-5 and md <= 3.0) else 0.0
+		var prev_gs := v.gs if v.has_gs else inst
+		v.gs = prev_gs + (inst - prev_gs) * gs_k
+		v.has_gs = true
 		v.x = e.x
 		v.z = e.z
 		v.facing = turn_toward(v.facing, e.facing, dt, 10.0, ENEMY_TURN_RATE)
 		var rise := minf(1.0, e.stateT / 1.1) if e.state == "rising" else 1.0
-		var def := _def(e.def)
-		var flying: Variant = def.get("flying")
-		var hover: float = float(flying) if flying != null else float(HOVER.get(e.def, 0.0))
+		var def := v.dfn
+		var flying: Variant = v.flying
+		var hover: float = v.hover_h
 		var lift := 0.0
 		if hover > 0.0:
 			lift = hover + sin(now / 520.0 + id) * (0.18 if flying != null else 0.12)
-		if def.has("dive") and e.diving:
+		if v.has_dive and e.diving:
 			# Belfry Gargoyle dive: climb over the mark for the first half, then drop onto it.
 			var kk := minf(1.0, e.stateT / ((float(def.windupMs) / 1000.0) * (0.85 if e.elite else 1.0)))
 			lift = hover + kk * 3.0 if kk < 0.5 else (hover + 1.5) * pow(1.0 - (kk - 0.5) * 2.0, 2.0)
-		elif def.has("dive") and e.state == "recover":
+		elif v.has_dive and e.state == "recover":
 			lift = 0.05
 		v.c.root.position = Vector3(e.x, -1.7 * (1.0 - rise) * (1.0 - rise) + lift, e.z)
 		v.c.root.rotation.y = v.facing
@@ -1145,9 +1176,9 @@ func sync(enemies: Dictionary, thralls: Dictionary, dt: float, focus_x: float, f
 			v.flinch_at = now + 700.0
 			v.c.flinch()
 		_tick_anim(v, dt, focus_x, focus_z, crowded)
-		if near_fx and FIRE_DEAD.has(e.def):
+		if near_fx and v.fire_dead:
 			_fire_dead(e, dt, fresh)
-		if near_fx and FEN_DEAD.has(e.def):
+		if near_fx and v.fen_dead:
 			_fen_dead(e, dt, lift, id, v)
 		if near_fx and e.withered > 0.0 and randf() < dt * (1.0 + e.withered * 0.75):
 			_emit({"x": e.x, "y": 0.8 + randf() * 0.8, "z": e.z, "count": 1, "color": _sp("miasma", "rot"), "spread": 0.4, "speed": 0.2, "up": 0.7, "life": 0.9, "size": 0.2})
@@ -1161,13 +1192,13 @@ func sync(enemies: Dictionary, thralls: Dictionary, dt: float, focus_x: float, f
 		if near_fx and e.sanctT > 0.0 and randf() < dt * 2.0:
 			_emit({"x": e.x, "y": 1.9 * e.scale, "z": e.z, "count": 1, "color": _st("sanctified", "gold"), "spread": 0.35, "speed": 0.1, "up": 0.5, "life": 0.7, "size": 0.16})
 		# A frenzied Flagellant sheds blood motes (hp below half; mirrors see the same hp).
-		if near_fx and def.get("frenzy") != null and e.hp < e.maxHp * 0.5 and randf() < dt * 5.0:
+		if near_fx and v.has_frenzy and e.hp < e.maxHp * 0.5 and randf() < dt * 5.0:
 			_emit({"x": e.x, "y": 1.1, "z": e.z, "count": 1, "color": 0x9a1b2a, "spread": 0.3, "speed": 0.4, "up": 0.4, "life": 0.5, "size": 0.14, "gravity": 6})
 		# Incensed (a Censer Bearer's aura): bronze motes drifting off the shoulders.
 		if near_fx and e.incenseT > 0.0 and randf() < dt * 3.0:
 			_emit({"x": e.x, "y": 1.2 * e.scale, "z": e.z, "count": 1, "color": _st("incensed", "bronze"), "spread": 0.4, "speed": 0.2, "up": 0.6, "life": 0.8, "size": 0.14})
 		# The Censer Bearer itself trails incense smoke and wears its aura on the ground.
-		if bool(def.get("aura", false)):
+		if v.has_aura:
 			if v.aura_fx == null:
 				v.aura_fx = _decal({"danger": true, "tex": "ring", "color": _st("incensed", "bronze"), "x": e.x, "z": e.z, "r": float(_censer.radius), "duration": 1e9, "opacity": 0.22, "pulse": 2.5, "follow": _follow(v)})
 			if near_fx and randf() < dt * 2.0:
@@ -1193,7 +1224,7 @@ func sync(enemies: Dictionary, thralls: Dictionary, dt: float, focus_x: float, f
 			v.mound = null
 			v.c.root.visible = true
 		# Lich Acolyte: its crimson reach shows only while one of your thralls stands inside it.
-		if bool(def.get("unbind", false)):
+		if v.has_unbind:
 			var any := false
 			var rng := float(_unbind.range)
 			for t: DmSimThrall in thralls.values():
