@@ -27,6 +27,8 @@ func _init() -> void:
 	ok(DmQaUiShots.parse('{"shots":[]}')["ok"] == false, "empty plan rejected")
 	ok(DmQaUiShots.parse('{"shots":[{"open":["nope"]}]}')["ok"] == false, "unknown window rejected")
 	ok(DmQaUiShots.parse('{"shots":[{"hover":48}]}')["ok"] == false, "slot out of range rejected")
+	ok(DmQaUiShots.parse('{"shots":[{"hover":"item:staff_moon"}]}')["shots"][0]["hover"] == "item:staff_moon", "item hover accepted")
+	ok(DmQaUiShots.parse('{"give":["staff_oak",""],"shots":[{}]}')["give"] == ["staff_oak"], "give list parsed")
 	ok(DmQaUiShots.parse('{"shots":[{"hover":"head"}]}')["ok"] == false, "bad hover string rejected")
 	ok(DmQaUiShots.parse('{"shots":[{"name":"x"}]}')["bag"] == "demo", "demo bag is the default")
 	# every window id the plan accepts must be one DmGameUi.toggle_panel knows

@@ -4,7 +4,7 @@ extends RefCounted
 ## --shot-plan is given, so normal play never touches it. Opens real windows of the real DmGameUi on the offline demo hero (with a
 ## representative bag), optionally shows an item tooltip, and saves one PNG per shot. No network. Used by the Discord agent's shot-godot.sh.
 ##
-## Plan: {"bag": "demo"|"keep", "shots": [{"name", "open": "bag" | ["bag", ...], "hover": <bag slot 0-47> | "worn:<equip slot>" | "belt:<tool>",
+## Plan: {"bag": "demo"|"keep", "give": ["item id", ...] (extra items, one each), "shots": [{"name", "open": "bag" | ["bag", ...], "hover": <bag slot 0-47> | "item:<item id>" | "worn:<equip slot>" | "belt:<tool>",
 ##        "area": "<area id>", "wait_ms": 300, "clip": "window"}]}. At most MAX_SHOTS shots. "open" lists are applied in order (the game keeps one window
 ## open at a time, so the last one stays). "clip": "window" crops to the open window (plus the tooltip when one is shown); default is the whole screen.
 ## Window ids (WINDOWS): bag/reliquary/inventory, character/gear/sheet, pets/cosmetics, legion, grimoire/spellbook, vault, forge, salvage, shelf,
@@ -31,7 +31,7 @@ const DEMO_BAG := [
 ## Parses and validates plan text. Returns {"ok": bool, "error": String, "bag": String, "shots": Array[Dictionary]} with normalised shots
 ## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area: String, wait_ms: int, clip: String}).
 static func parse(text: String) -> Dictionary:
-	var out := {"ok": false, "error": "", "bag": "demo", "shots": []}
+	var out := {"ok": false, "error": "", "bag": "demo", "give": [], "shots": []}
 	var js := JSON.new()
 	var raw: Variant = js.data if js.parse(text) == OK else null
 	if not (raw is Dictionary):
@@ -42,6 +42,9 @@ static func parse(text: String) -> Dictionary:
 		out["error"] = "plan needs a non-empty \"shots\" array"
 		return out
 	out["bag"] = "keep" if String(raw.get("bag", "demo")) == "keep" else "demo"
+	for g in (raw.get("give", []) if raw.get("give", []) is Array else []):
+		if (out["give"] as Array).size() < 20 and String(g) != "":
+			(out["give"] as Array).append(String(g))
 	var i := 0
 	for s in list:
 		if i >= MAX_SHOTS:
@@ -64,10 +67,10 @@ static func parse(text: String) -> Dictionary:
 				out["error"] = "shot %d: hover slot out of range" % (i + 1)
 				return out
 			hover = int(hover)
-		elif hover is String and (hover.begins_with("worn:") or hover.begins_with("belt:")):
+		elif hover is String and (hover.begins_with("worn:") or hover.begins_with("belt:") or hover.begins_with("item:")):
 			pass
 		elif hover != null:
-			out["error"] = "shot %d: hover must be a bag slot number, \"worn:<slot>\" or \"belt:<tool>\"" % (i + 1)
+			out["error"] = "shot %d: hover must be a bag slot number, \"item:<id>\", \"worn:<slot>\" or \"belt:<tool>\"" % (i + 1)
 			return out
 		var nm := String(s.get("name", "shot-%d" % (i + 1))).to_lower()
 		var rx := RegEx.create_from_string("[^a-z0-9-]+")
@@ -99,6 +102,11 @@ static func run(root: Node, game: DmGame, plan_path: String, out_dir: String) ->
 			if int(e[2]) > 0:
 				drop["instance"] = {"id": 900000 + game.inventory.slots.size(), "ilvl": e[2], "affixes": e[3]}
 			game.inventory.add(drop)
+	for id in plan["give"]:   # plan-level "give": extra item ids (one each) so a new item can be shown
+		if DmLootData.item(id).is_empty():
+			print("QA-SHOTS give: unknown item ", id)
+		else:
+			game.inventory.add({"item_id": id, "quantity": 1})
 	game.p["hp"] = game.player.max_hp()
 	var bad := 0
 	for s in plan["shots"]:
@@ -162,6 +170,11 @@ static func _hover(root: Node, ui: DmGameUi, which: Variant) -> Rect2:
 	var slot: DmItemSlot = null
 	if which is int:
 		slot = panel._slots[which]
+	elif String(which).begins_with("item:"):
+		for sl in panel._slots:
+			if sl.is_filled() and String(sl.data.get("item_id", "")) == String(which).substr(5):
+				slot = sl
+				break
 	elif String(which).begins_with("worn:"):
 		slot = panel._doll_slots.get(String(which).substr(5))
 	else:
