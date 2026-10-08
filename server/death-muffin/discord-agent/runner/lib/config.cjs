@@ -46,6 +46,9 @@ const DEFAULTS = {
   secretFile: '/home/ubuntu/death-muffin/discord-agent/secret',
   // The agent may WebSearch freely but WebFetch only these documentation hosts (exact host names): a fetch elsewhere could carry data out
   // in its URL. Owner 2026-10-08: Helix asked for the agent to look up documentation online.
+  // webAnyHost (owner 2026-10-08, "access to the web for research"): WebFetch on any host instead. The workspace holds no secrets (file tools are
+  // scoped to the job's worktree, which is a plain checkout), pages are data never instructions, and nothing ships without a human ✅.
+  webAnyHost: false,
   webDocDomains: ['docs.godotengine.org', 'godotengine.org', 'forum.godotengine.org', 'github.com', 'raw.githubusercontent.com',
     'docs.github.com', 'developer.mozilla.org', 'threejs.org', 'nodejs.org', 'www.typescriptlang.org', 'vitest.dev', 'vite.dev'],
   // Tier rules are deterministic path rules, never the model's opinion. First match wins inside a tier; a diff is as strict as its strictest file.

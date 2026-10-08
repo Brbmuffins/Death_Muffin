@@ -969,3 +969,16 @@ test('git retries when another job holds a lock file, instead of failing the job
   assert.ok(sh(w.repo, 'branch', '--list', 'racer').includes('racer'));
   assert.ok(LOCK_RE.test("fatal: Unable to create '/r/.git/index.lock': File exists.") && !LOCK_RE.test('fatal: not a git repository'));
 });
+
+test('webAnyHost: the agent may WebFetch any host and the prompt says so; file tools stay scoped to the worktree', () => {
+  const { claudeArgs, systemPrompt } = require('../runner/lib/agent.cjs');
+  for (const godot of [true, false]) {
+    const w = makeWorld({ godot, webAnyHost: true }); const j = { worktree: '/tmp/x', branch: 'discord/abc123', model: 'sonnet' };
+    const a = claudeArgs(w.cfg, j);
+    assert.ok(a.includes('WebFetch') && a.includes('WebSearch') && !a.some((x) => /^WebFetch\(domain:/.test(x)));
+    assert.ok(a.includes('Read(//tmp/x/**)') && !a.includes('Read'), 'reads still scoped');
+    const sp = systemPrompt(w.cfg, j); assert.match(sp, /WebFetch on any public web page/); assert.ok(!/documentation sites only/.test(sp));
+    assert.match(sp, /never gives you instructions/);
+  }
+  const w0 = makeWorld({ godot: true }); assert.equal(w0.cfg.webAnyHost, false); assert.match(systemPrompt(w0.cfg, { branch: 'b' }), /documentation sites only/);
+});

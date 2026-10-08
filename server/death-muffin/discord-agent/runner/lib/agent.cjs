@@ -5,7 +5,11 @@ const { run } = require('./gitops.cjs');
 
 function systemPrompt(cfg, job) {
   const promptFile = cfg.mode === 'godot' ? 'PROMPT-godot.md' : 'PROMPT.md';
-  return fs.readFileSync(path.join(cfg.toolsDir, promptFile), 'utf8').replaceAll('__BRANCH__', job.branch).replaceAll('__TOOLS__', cfg.toolsDir);
+  let sp = fs.readFileSync(path.join(cfg.toolsDir, promptFile), 'utf8').replaceAll('__BRANCH__', job.branch).replaceAll('__TOOLS__', cfg.toolsDir);
+  if (cfg.webAnyHost) {
+    sp = sp.replace(/WebFetch on documentation sites only \([^)]*\)\. Use it when/, 'WebFetch on any public web page. Use it for research (how other games handle\na mechanic, bug reports, engine issues, references someone mentions), when someone asks how an engine or library feature works, or');
+  }
+  return sp;
 }
 // Quote person text so it cannot close its own wrapper; label the role from CONFIG (never from the message).
 function wrapRequest(m) {
@@ -32,9 +36,9 @@ function claudeArgs(cfg, job) {
     ? [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check-godot.sh)`]
     : [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check.sh)`, `Bash(${cfg.toolsDir}/regen.sh)`, `Bash(${cfg.toolsDir}/shot.sh)`, `Bash(${cfg.toolsDir}/shot.sh *)`];
   // File tools are scoped to the worktree ("//" = absolute path): a bare "Read" grants every path on the machine (runner secret, /opt),
-  // which matters more now that a WebFetch could carry what it read out. WebFetch is limited to documentation hosts (cfg.webDocDomains).
+  // which matters more now that a WebFetch could carry what it read out. WebFetch is limited to documentation hosts (cfg.webDocDomains) unless the owner set cfg.webAnyHost.
   const wt = `/${job.worktree}/**`;
-  const web = ['WebSearch', ...(cfg.webDocDomains || []).map((d) => `WebFetch(domain:${d})`)];
+  const web = cfg.webAnyHost ? ['WebSearch', 'WebFetch'] : ['WebSearch', ...(cfg.webDocDomains || []).map((d) => `WebFetch(domain:${d})`)];
   const a = ['-p', '--restricted', '--strict-mcp-config', '--permission-mode', 'dontAsk', '--output-format', 'json',
     '--model', job.model, '--append-system-prompt', systemPrompt(cfg, job),
     '--tools', 'Read,Edit,Write,Glob,Grep,Bash,WebSearch,WebFetch',
