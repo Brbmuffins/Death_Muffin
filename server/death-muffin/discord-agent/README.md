@@ -114,6 +114,15 @@ Rollback undoes the live release only; revert the commit on the base branch afte
 - Residual risk: tests run **unsandboxed** inside `deploy-release.sh` on the merged tree. That is why test configs, package files and
   scripts are sensitive/forbidden, and why the proposal links the exact diff for a human to read before ✅.
 
+## Parallel jobs and long checks
+
+- `maxConcurrentJobs` (1-3, live: 3) lets several threads work at once, so one person's long request does not queue everyone else. Ships
+  still go one at a time behind the deploy lock. Git commands that hit a lock file another job is holding retry a few times (gitops.cjs).
+- The check scripts run 10-20 min. The agent's `claude -p` gets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` and a 42-minute Bash limit
+  (`BASH_DEFAULT_TIMEOUT_MS`/`BASH_MAX_TIMEOUT_MS`), so the check call simply blocks until it finishes. `sleep`, `pgrep`, `ps`, `watch` and the like are on
+  `--disallowedTools`. Why: on 2026-10-08 Claude Code moved a long check-godot.sh run into the background, the agent wrote
+  `until ! pgrep -f check-godot.sh; do sleep 5; done`, pgrep matched the loop itself, and job e4388b hung for 35 minutes while every other thread waited.
+
 ## Install (from a committed revision; nothing starts by itself)
 1. `bash server/death-muffin/discord-agent/install-runner.sh <rev>`: tooling to `~/death-muffin/discord-agent`, `config.json` (owner id from
    `/opt/crossworlds-bot/.env`), `secret`, systemd unit (not started).

@@ -4,16 +4,27 @@ const fs = require('fs');
 const path = require('path');
 const { PATTERNS } = require('./redact.cjs');
 
-function git(cwd, args, opts = {}) {
-  return new Promise((resolve, reject) => {
+// Jobs run in parallel (cfg.maxConcurrentJobs) and share one repository, so two of them can race on git's lock files
+// (index.lock, ref locks, worktree metadata) during fetch / worktree add / branch delete: retry those a few times instead of failing the job.
+const LOCK_RE = /\.lock'?:? File exists|Unable to create '[^']*\.lock'|cannot lock ref|could not lock|is locked/i;
+function gitOnce(cwd, args, opts) {
+  return new Promise((resolve) => {
     execFile('git', ['-c', 'core.hooksPath=/dev/null', ...args], {
       cwd, maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout || 300000,
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true' },
-    }, (err, stdout, stderr) => {
-      if (err && !opts.allowFail) { err.message = `git ${args[0]} failed: ${(stderr || err.message).slice(0, 400)}`; return reject(err); }
-      resolve({ code: err ? err.code || 1 : 0, out: String(stdout), err: String(stderr) });
-    });
+    }, (err, stdout, stderr) => resolve({ err, out: String(stdout), stderr: String(stderr) }));
   });
+}
+async function git(cwd, args, opts = {}) {
+  let r;
+  for (let attempt = 0; ; attempt++) {
+    r = await gitOnce(cwd, args, opts);
+    if (!r.err || attempt >= 5 || !LOCK_RE.test(r.stderr)) break;
+    await new Promise((res) => setTimeout(res, 500 * (attempt + 1) + Math.floor(Math.random() * 400)));
+  }
+  const { err, out, stderr } = r;
+  if (err && !opts.allowFail) { err.message = `git ${args[0]} failed: ${(stderr || err.message).slice(0, 400)}`; throw err; }
+  return { code: err ? err.code || 1 : 0, out, err: stderr };
 }
 const trim = async (p) => (await p).out.trim();
 
@@ -95,4 +106,4 @@ function run(cmd, args, { cwd, env, input, timeoutMs, maxOut = 8 * 1024 * 1024, 
     p.stdin.end(input || '');
   });
 }
-module.exports = { removePreview, git, run, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };
+module.exports = { LOCK_RE, removePreview, git, run, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };

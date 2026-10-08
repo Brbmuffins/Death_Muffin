@@ -113,7 +113,7 @@ function loadConfig(file) {
   let user = {};
   if (file && fs.existsSync(file)) user = JSON.parse(fs.readFileSync(file, 'utf8'));
   const c = merge(DEFAULTS, user);
-  c.maxConcurrentJobs = Math.max(1, Math.min(2, Number(c.maxConcurrentJobs) || 1));
+  c.maxConcurrentJobs = Math.max(1, Math.min(3, Number(c.maxConcurrentJobs) || 1));   // 3 = owner + two requesters at once (2026-10-08)
   const ids = (a) => [...new Set((a || []).map(String).filter((x) => /^\d{15,25}$/.test(x)))];
   c.ownerIds = ids(c.ownerIds);
   const pr = (c.projects && c.projects.deathmuffin) || {};

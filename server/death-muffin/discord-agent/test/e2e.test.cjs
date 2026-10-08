@@ -938,3 +938,34 @@ test('godot mode: a thread whose conversation is from the web era starts the nex
   await d.say(thread, IDS.HELIX, 'GD-GAMEPLAY faster again');
   await until(() => texts(thread).some((t) => /RESUMED/.test(t)) || proposals(thread).length >= 2, d.ad);
 });
+
+test('no waiting games: background tasks are off, the Bash limit covers a full check run, and sleep/pgrep/poll commands are refused', () => {
+  const w = makeWorld({ godot: true }); const { claudeArgs, agentEnv } = require('../runner/lib/agent.cjs');
+  const a = claudeArgs(w.cfg, { worktree: '/tmp/x', branch: 'discord/abc123', model: 'sonnet' });
+  const i = a.indexOf('--disallowedTools'); assert.ok(i > 0);
+  const denied = a.slice(i + 1, a.findIndex((x, k) => k > i && x.startsWith('--')) >>> 0);
+  for (const d of ['Bash(sleep *)', 'Bash(pgrep *)', 'Bash(ps *)', 'Bash(watch *)']) assert.ok(denied.includes(d), d);
+  const env = agentEnv(); assert.equal(env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS, '1');
+  assert.ok(Number(env.BASH_MAX_TIMEOUT_MS) > 40 * 60000 && env.BASH_DEFAULT_TIMEOUT_MS === env.BASH_MAX_TIMEOUT_MS, 'longer than check-godot.sh\'s own 40-minute limit');
+  assert.ok(Number(env.BASH_MAX_TIMEOUT_MS) < w.cfg.turnTimeoutMin * 60000 || w.cfg.turnTimeoutMin === 1, 'the turn timeout still wins');
+  const sp = require('../runner/lib/agent.cjs').systemPrompt(w.cfg, { branch: 'discord/abc123' }); assert.match(sp, /never poll/i);
+});
+
+test('parallel jobs: with maxConcurrentJobs 2, two people\'s requests run at the same time instead of queueing', async () => {
+  const w = makeWorld({ maxConcurrentJobs: 2 }); const d = makeDiscord(w.runner);
+  assert.equal(w.cfg.maxConcurrentJobs, 2);
+  await request(d, IDS.HELIX, 'SLOW-TURN first question');
+  await request(d, IDS.OWNER, 'SLOW-TURN second question');
+  await until(() => Object.values(w.runner.jobs()).filter((j) => j.running).length === 2, d.ad);
+  for (const t of d.world.threads) assert.ok(!t.sent.some((s) => /Queued; I am busy/.test(s.payload.content || '')), 'nobody is told to wait');
+  await until(() => Object.values(w.runner.jobs()).every((j) => !j.running), d.ad);
+});
+
+test('git retries when another job holds a lock file, instead of failing the job', async () => {
+  const { git, LOCK_RE } = require('../runner/lib/gitops.cjs');
+  const w = makeWorld(); const lock = path.join(w.repo, '.git', 'refs', 'heads', 'racer.lock');
+  fs.writeFileSync(lock, ''); setTimeout(() => fs.rmSync(lock, { force: true }), 900);
+  const r = await git(w.repo, ['branch', 'racer']); assert.equal(r.code, 0);
+  assert.ok(sh(w.repo, 'branch', '--list', 'racer').includes('racer'));
+  assert.ok(LOCK_RE.test("fatal: Unable to create '/r/.git/index.lock': File exists.") && !LOCK_RE.test('fatal: not a git repository'));
+});
