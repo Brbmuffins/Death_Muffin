@@ -1,3 +1,5 @@
+> **Note (2026-10-08): the web (three.js) game is frozen since 2026-10-04.** This roadmap is the old web roadmap and is kept for its history only. The Godot client's roadmap lives in `godot/REBUILD.md` (decisions, phases, status) and `godot/PARITY.md` (feature parity and open gaps).
+
 # Death Muffin — Roadmap
 
 *Updated 3 October 2026. The player guide is [README.md](README.md); build status and history are in [HANDOFF.md](HANDOFF.md).*

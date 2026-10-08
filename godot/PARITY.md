@@ -1,6 +1,9 @@
 # Feature parity: current client (`godot-port`) vs the rebuild (`godot-next`)
 
-Re-audited at `godot-next` 569894df (branch `godot/parity-audit-2`), 2026-10-06; the first pass was at 22ee59f3 and went stale as the tracks landed. Every
+Re-audited at `godot-next` 569894df (branch `godot/parity-audit-2`), 2026-10-06; the first pass was at 22ee59f3 and went stale as the tracks landed.
+**Partial re-audit 2026-10-08 (branch `next/sync-1008`, after merging `godot-port` into the rebuild line):** only the rows touched by that sync and the open-gaps list were re-checked
+(marked "sync-1008" below: graphics presets + lift, Brightness, Interface size / canvas stretch, the staff online gate, the waystones GM rule, spawn-outside-aggro, reconnect).
+**Every other row is as of 569894df and was NOT re-checked in this pass.** Suites run for the sync: the whole `tools/godot/run-all-tests.sh` (see the REBUILD.md status). Every
 row that was not DONE / N/A was re-checked against the code, the track READMEs and the suites on this branch. Paths are relative to `godot/` unless they start with
 `src/` (web) or `docs/`. Suites re-run for this pass: `tests/next_hud_counsel` (94 pass), `tests/next_boss_meta` (61 pass); other citations are from reading the
 code / the test's checks, not from a run. Current game = the `DmGame` hub (`game/`), `game_ui/`, `ui/`, `main/`, `front/`, `net/`, `sim/`. Rebuild = `next/` (`DmNextGame`),
@@ -22,21 +25,20 @@ every contract method the first audit listed as absent (`stop_gathering`, `afk_*
 
 Ranked by owner priority: performance #1; the necromancer's four disciplines and combat / loot / first-hour polish; online is a back seat (D5); the five other disciplines are low.
 
-1. **Performance, rendered (not headless).** All the rebuild's numbers are headless on a shared VPS (frame median ~7.3 ms); no GPU-measured pass of the rebuilt scene exists, and
-   Phase 6 (floor ~0.85 render scale, presets, AA, decal sharpness) is unbuilt. `DmNextPerf` / `DmNextWarmup` are done (sections 17, 23); what is missing is a rendered frame budget on real hardware.
+1. **Performance, rendered (not headless).** All the rebuild's numbers are headless on a shared VPS (frame median ~7.3 ms); no GPU-measured pass of the rebuilt scene exists. **sync-1008:** Phase 6 (presets Low / Medium / High / Ultra with per-preset brightness lift, floor 0.85, Ultra-only MSAA, anisotropic textures, sharper ground markings, lighting lift + Brightness, canvas_items UI scaling) is now on the rebuild path too: `DmNextPerf` applies the same table and `DmWorldBuilder` is shared (`tests/next_perfctl`). What is missing is a rendered frame budget on real hardware (and the Forward+ evaluation, which needs the owner's and Helix's PCs).
 2. **Target-frame affix chips (DONE, `tests/next_brews_affix`)**: `DmNextHudVm._target` feeds `{id, name}` chips + the combined blurb from the replicated `dm_affix_list` meta, cached per target.
 3. **Lifesteal / fortune / wisdom brews (DONE, `tests/next_brews_affix`)**: `DmRewardsMember.sync_brews` sets wisdom / fortune per kill from the body's active brews; `DmSessionRewards` applies `DmBrews.lifesteal_heal` on every host-side hit the hero lands.
 4. ~~**Gathering world glue**~~ **CLOSED** (`DmNextAcre`, `tests/next_acre_guide`): visible Grave Laborers, labor / garden / contract notices, collect / contract gold credited. Gather bests are stored (`dm_gather_best_v1:<id>`, `tests/next_polish`).
 5. ~~**First-hour guidance**~~ **CLOSED** (`tests/next_acre_guide`): the Next box + ping are fed the current client's state (and skills / trophies / labor / contracts), the reforge flow, Wing and Acre stations and the bug report are verified (the reforge gold and the contract / labor gold bugs were fixed on the way). Left: a few counsel events still unraised (`next/hud/README.md`).
 6. ~~**Combat odds and ends**~~ **CLOSED** (`tests/next_combat_odds`): the brief was partly stale. Player-side Bone Ward / Colossus guard were already the current client's own rule (stat-based on hit, never timed statuses); boss slow / root are ignored by the current client too (bosses are immune), so the rebuild already matched, now locked by a test; rite sfx are verified for all 25 rites against the current client's recorded sounds; the real gap was the necromancer's **weapon-line primaries** (staff pierce, sickle Withered, scythe arc + its soul window), built now. Bulwark stays N/A until a non-necromancer kit exists (gap 10). Pooled creature bodies: still moot (enemies are scenes).
 7. ~~Rune variants / Grimoire runes / legendary mechanics / Bonded Dead~~ DONE (`tests/next_runes`). Left: a joined client's own rune sockets do not reach the host (D5); Colossus Mantle hooks are host-hero only. (Splinters / Volley / Marrow-Tap now apply to the staff and scythe primaries as the current client does, `tests/next_combat_odds`.)
-8. **Make the rebuild the default** (`USE_NEXT`) once the owner is satisfied; Play Online on the rebuild is untested against the live backend.
-9. **Online (D5, back seat):** ~~lobby UI, client HUD / own backend api for joiners, party chat~~ DONE (`tests/next_lobby`, `next/party/README.md`). Left: reconnect, multi-area waves for a split party, Depths for parties, a client's Covenant Seal / Nightfall dim, a joiner's own gear / upgrades reaching the host's sim, flasks and brews for a joiner.
+8. **Make the rebuild the default** (`USE_NEXT`) once the owner is satisfied; Play Online on the rebuild is verified solo against the live backend (`tests/online_live`, opt-in); the staff online gate (D10) is live in both clients.
+9. **Online (D5, back seat):** ~~lobby UI, client HUD / own backend api for joiners, party chat~~ DONE (`tests/next_lobby`, `next/party/README.md`). Left: reconnect (D13: owner wants a rejoin window, NOT built), multi-area waves for a split party, Depths for parties, a client's Covenant Seal / Nightfall dim, a joiner's own gear / upgrades reaching the host's sim, flasks and brews for a joiner.
 10. **The five non-necromancer disciplines** (kit rites, monk beat meter, wraith nova): `DmRiteRegistry` is necromancer-only.
 
 ## Summary
 
-**Rows counted: 207** (206 + the weapon-line row added by the combat-odds pass, which also moved boss slow / root and rite sfx to DONE). After the re-check (+ the polish pass: reveal / dev_access / dev tools closed): DONE 174, PARTIAL 18, MISSING 6, N/A 10, IN PROGRESS 0 (the acre-guide pass closed 12 rows: laborers, garden, contracts, Workbench / reforge, Wing stations, gold sinks, Next box, Acre ledger, the two bug-report rows, Acre stations, boss prompts + ping)
+**Rows counted: 210** (207 + 3 rows added by the 2026-10-08 sync: `brightness`, `ui_scale`, the staff online gate; all DONE. The 207 were 206 + the weapon-line row added by the combat-odds pass, which also moved boss slow / root and rite sfx to DONE). After the re-check (+ the polish pass: reveal / dev_access / dev tools closed): DONE 177 (174 + the 3 new rows; no existing row changed state, the graphics / spawn / waystone / reconnect rows only got text; the other counts are unchanged from 569894df and not re-counted), PARTIAL 18, MISSING 6, N/A 10, IN PROGRESS 0 (the acre-guide pass closed 12 rows: laborers, garden, contracts, Workbench / reforge, Wing stations, gold sinks, Next box, Acre ledger, the two bug-report rows, Acre stations, boss prompts + ping)
 (first pass: DONE 84, PARTIAL 56, MISSING 47, IN PROGRESS 11, N/A 9). The simulation core, the shell around it (front flow, hero look, HUD feeds, settings consumers), the
 meta layer (difficulty, vows, Omen, chain, Soul Harvest), all seven bosses with Empowered summons, the Depths, gathering, the Chronicle and Codex are on the rebuild
 and covered by `tests/next_*`. What is left is the list above.
@@ -44,7 +46,7 @@ and covered by `tests/next_*`. What is left is the list above.
 ### The ten items of the first audit, as they stand
 
 1. **Front flow (DONE, `tests/next_front`).** `-- --next` routes login / register / offline entry / discipline select / log out / class change / quit save into `DmNextGame` behind the key-art `DmLoadingScreen`. Left: Play Online on the rebuild is verified against the live backend (solo, `tests/online_live`); `USE_NEXT` still false.
-2. **Performance controls (DONE, `tests/next_perfctl`).** `DmNextPerf` (graphics, fps cap, resolution governor) and `DmNextWarmup` (GPU warm-up under a cover). Left: rendered / GPU measurement and the Phase 6 presets.
+2. **Performance controls (DONE, `tests/next_perfctl`).** `DmNextPerf` (graphics, fps cap, resolution governor) and `DmNextWarmup` (GPU warm-up under a cover). Presets + lighting lift + Brightness + Interface size: DONE (sync-1008, `tests/next_perfctl`). Left: rendered / GPU measurement.
 3. **Necromancer combat feel (DONE, `tests/next_feel`, `tests/next_combat_feel`, `tests/next_autocombat`).** Attack-target chase, hold / Shift, queued casts, cast gestures, hitstop, shake, Easy auto-combat, standing mouse-aim. Rune choices reach the caster and all 11 runes work; worn legendaries feed the legion (`tests/next_runes`).
 4. **Difficulty, ascension, boons, omen, Altar actions (DONE, `tests/next_meta`).**
 5. **Hero look (DONE, `tests/next_hero_look`):** worn gear, cape, pet, hero ring, legendary aura, replicated.
@@ -138,7 +140,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, reconn
 |---|---|---|---|
 | 12 walkable areas built (Chapterhouse, Acre, Graves, Ossuary, Nave, Sanctum, Cloister, Pyre, Wing, Warren, Coliseum, Fen), streaming, fog, lighting, navmesh per area/door | DONE | `world/world_builder.gd` | `next/next_world.gd` (same builder), `areas/README.md` |
 | Seals / doors / gates, kill-based unlocks (Warren 150 Graves kills, Swift Seals) | DONE | `dm_game_rewards.gd check_unlocks` | `DmChapterhouse.check_seals/apply_seals` |
-| Waystone travel, T recall, minimap click travel, Waystone map panel (M) | DONE | `dm_game_actions.gd travel/start_recall` | `DmChapterhouse.travel/start_recall`, `DmNextUiHost.navigate`; host-only teleport (README gap) |
+| Waystone travel, T recall, minimap click travel, Waystone map panel (M); GM rule (dev-access characters see / use every non-instance area with a waystone, sync-1008: the shared panel reads `DmNextUiHost.dev_access`, `travel` uses `DmProgression.is_unlocked`, `tests/next_areas`) | DONE | `dm_game_actions.gd travel/start_recall` | `DmChapterhouse.travel/start_recall`, `DmNextUiHost.navigate`; host-only teleport (README gap) |
 | Entry banners, first-entry Codex area discovery, first-entry counsel | DONE | `dm_game.gd _enter_area` | `next/areas/dm_area_flow.gd` |
 | Omen sky tint + fog in hunting grounds | N/A | `dm_game.gd _omen_light` | the current client never calls `_omen_light` either (dead code); the Omen's numbers and chip are on `next/meta/` |
 | Nightfall light dimming, wave-milestone banners (Elite Vanguard, Restless Crypts, Nightfall) | DONE | `dm_game_rewards.gd tick_milestones` | `next/areas/dm_wave_milestones.gd` (Elite Vanguard 3, Restless Crypts 6, Nightfall 8: banners, eased light, director variants); `tests/next_boss_meta`. Limit: a joined client does not dim |
@@ -150,7 +152,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, reconn
 
 | Feature | Status | Current | Rebuild / note |
 |---|---|---|---|
-| Area rosters, caps (GLOBAL_ENEMY_CAP 72), pacing, first wave 1.3x, elite bonus, packs, metas | DONE | `sim/sim_director.gd` | `next/spawn/dm_wave_director.gd` |
+| Area rosters, caps (GLOBAL_ENEMY_CAP 72), pacing, first wave 1.3x, elite bonus, packs, metas; waves spawn 18-30 m from the hero, outside the 15 m aggro (owner 2026-10-07, sync-1008, `tests/next_spawn_aggro`; rebuild only: the current client keeps its old ring) | DONE | `sim/sim_director.gd` | `next/spawn/dm_wave_director.gd` |
 | Processions (WAVE_THEMES, 30 % from wave 2) + banner | DONE | `sim_director.gd` | director `_roll_theme`, `DmAreaFlow` |
 | Grave Surges (crypt, 3 waves, Surge Quelled reward) | DONE | `sim_director.gd`, `dm_game_rewards.gd on_surge_cleared` | `next/areas/dm_grave_surge.gd`, `DmSessionRewards.on_surge_cleared` |
 | Wave Speed dial (active tier +/-), Wave upgrade tiers | DONE | `dm_game.gd dial_wave/set_wave_tier` | `DmNextUiHost.dial_wave(delta)` -> active tier -> `DmNextProgress.apply_progress`; tiers bought + applied; `tests/next_hud_counsel` |
@@ -293,7 +295,9 @@ Lower priority, listed in the body: the five non-necromancer disciplines, reconn
 | `loot_<tier>` (5) | DONE | `loot_view.rules` |
 | `damage_numbers` | DONE | `DmNextUiHost.float_text` |
 | `reduce_motion` | DONE | Vfx + camera |
-| `graphics` (high/low) | DONE | `DmNextPerf.apply` (`next/perf/`): moon shadows, bloom, prop lights, weather + `vfx.quality`, live on Settings change; REBUILD Phase 6 plans presets |
+| `graphics` (low / medium / high / ultra) | DONE (sync-1008) | `DmNextPerf.apply` reads the shared `DmGraphicsPreset` table: moon shadows + reach / atlas / splits / soft filter, bloom, prop lights, prop shadow range, MSAA / aniso / LOD, `vfx.quality` + Binbun, governor floor, per-preset brightness `lift`; live on Settings change (`tests/next_perfctl`) |
+| `brightness` (80-130%) | DONE (sync-1008) | exposure multiplier on `DmWorldBuilder` (`set_brightness`), applied by `DmNextPerf.apply`; clamp / persistence in the shared `DmSettings` (`tests/game/graphics_run`, `tests/next_perfctl`) |
+| `ui_scale` (Interface size 80-125%) | DONE (sync-1008) | window `content_scale_factor` set by `DmNextPerf.apply` on top of the project's canvas_items stretch (1600x900 base); HUD column clamps / ultrawide frame are in the shared `DmHud` (`tests/next_perfctl` checks the factor; the HUD layout itself is the current client's tests, not re-run against the rebuild's rendered HUD) |
 | `fps` (Engine.max_fps), `auto_res` (resolution governor) | DONE | `DmNextPerf` (`next/perf/`), same `DmResolutionGovernor` constants; `graphics_chosen` is handled inside the shared `DmSettings` |
 | `difficulty` | DONE | `DmNextMeta.set_difficulty` (director, rewards, bosses) |
 | `auto_combat` / `auto_gather` | DONE | `auto_combat` by `DmNextAutoCombat`; `auto_gather` read by `DmNextGather` (`autoEnabled`) |
@@ -327,7 +331,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, reconn
 | Click-move marker | DONE | | `DmNextInput.click_move` |
 | Omen sky tint, nightfall dimming | DONE | Nightfall dimming = `dm_wave_milestones.gd`; the Omen sky tint is N/A (the current client never calls `_omen_light`) |
 | Hitstop | DONE | `DmNextGame.hitstopper` (see Combat) |
-| Graphics-quality scaling of effects (Low) | DONE | `DmNextPerf.apply`: Low = no moon shadows / bloom, fewer prop lights, halved weather, `vfx.quality` |
+| Graphics-quality scaling of effects (Low / Medium / High / Ultra; Medium has no Binbun layer) | DONE (sync-1008) | `DmNextPerf.apply`: Low = no moon shadows / bloom, fewer prop lights, halved weather, `vfx.quality` |
 
 ## 20. Saves, accounts, front screens, launcher
 
@@ -336,6 +340,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, reconn
 | Login, register, resume token, claim_session | DONE | `front/dm_front_flow.gd`, `dm_login_screen.gd` | `main.gd`: `-- --next` goes through `DmFrontFlow` (login / register / resume) into `_enter_next`; `-- --next --class=N` still skips it; `tests/next_front` |
 | Character select / discipline card (create character) | DONE | `front/dm_char_select_screen.gd` | `dm_char_select_screen.gd` -> `DmNextGame` with that discipline (all four necromancer disciplines walked); `tests/next_front` |
 | Online mode (`--online`) with VPS backend | DONE solo (`tests/online_live`, opt-in) | `main.gd`, `next/rewards/dm_session_rewards.gd` | verified against the live backend with the QA account: login, existing character (D8), area entry, kills, server-rolled gear, gold / xp / bag saves, a `spend_on_server` reforge, session end, relog. The live server has no `/api/sessions` (migration 041 not applied): `DmSessionRewards.legacy_ledger` credits kills through `/api/kills/report` instead. Open: backend ER_DATA_OUT_OF_RANGE on kill reports for fresh characters, `roll-gear` pool deadlock (see `next/rewards/README.md`) |
+| Online staff gate (D10: after sign-in the manifest's `online` block + `GET /api/me` staff flag decide; others see 'Online opens soon'; fails closed; live since 2026-10-07 with launcher 0.6.1) | DONE (sync-1008: one implementation, `front/dm_online_gate.gd` + `DmFrontFlow`, both clients; `tests/next_online_gate`) | `front/dm_online_gate.gd`, `main.gd` | the rebuild enters through the same `DmFrontFlow` |
 | Offline edition (local backend `DmMockBackend`, separate characters) | DONE | `game/dm_offline.gd`, `net/dm_mock_backend.gd` | D4; `DmNextGame` takes `DmOffline.make_api` |
 | Cloud saves: progress, necro, inventory | DONE | `DmProgressSync`, `DmInventory` | reused |
 | Class change (rebuild world with new discipline) | DONE | `dm_game.gd class_changed` | `class_changed` -> `world_restart`; `tests/next_front` |
@@ -355,7 +360,7 @@ Lower priority, listed in the body: the five non-necromancer disciplines, reconn
 | Lobby UI (find/create/join, private codes, public list, kick, open/closed, every error in words) | DONE | `/party` chat commands + party code | `ui/panels/dm_lobby_panel.gd` (Party window: key F, HUD button, Settings' Play together, `/party`), `game_ui/dm_ui_lobby.gd`, `next/party/dm_next_party.gd`; hosting turns the running solo session into a hosted one (`DmSession.swap_transport`), joining swaps the solo game for a client game (`main.gd`); `tests/next_lobby` (in-process, UI, multi-process over the real relay) |
 | Joiner gets a real HUD, real character handshake, own backend api for loot/XP | DONE (core) | | the joiner runs `DmNextUiHost` / `DmGameUi`, a `DmNextJoiner` (own `DmProgression` + `DmProgressSync`, backend `session_join` + heartbeat with its OWN token, loot view, bag, gear rolled by ITS api); the host sends it the accepted XP / kills and its drops. Left: its gear / upgrades / level-ups do not feed the host's sim for its body (default build at its reported level), flasks and brews are host-only, first-kill trophies are not paid to joiners, a session on a backend without `/api/sessions` credits nobody but the host |
 | Remote players' gear/cape/pet display, party chat | DONE | `dm_game_coop.gd dress_remote/chat_line` | remote players' gear / cape / pet (`DmHeroLook`, `tests/next_hero_look`); party chat: Enter, `[name] text`, 4 lines/s per sender (`DmNextParty`) |
-| Reconnect / rejoin (10-minute window) | MISSING | `net/realtime/dm_rt_reconnector.gd`, `dm_rt_rejoin_store.gd` | D6: no migration; a drop leaves both sides clean (client back to its own hub, host plays on solo), reconnect is a later track |
+| Reconnect / rejoin (10-minute window; D13 2026-10-07 reverses 'not planned': disconnects get a rejoin window) | MISSING (decided, not built) | `net/realtime/dm_rt_reconnector.gd`, `dm_rt_rejoin_store.gd` | D6: no migration; a drop leaves both sides clean (client back to its own hub, host plays on solo), reconnect is a later track |
 | Session `session_open/report/end`, heartbeats | DONE | `net/dm_api.gd` | `DmSessionRewards` |
 
 ## 22. Bug report button and daily agent
@@ -371,8 +376,8 @@ Lower priority, listed in the body: the five non-necromancer disciplines, reconn
 |---|---|---|---|
 | Load-time warm-up (models, Binbun effects, shaders, pooled bodies) | DONE | `game/dm_warmup.gd` | `DmNextWarmup` (`next/perf/`): every enemy/thrall/boss body (opaque, fade, elite, spectral), every Binbun effect, decal layers, telegraphs, and the 13-area tour incl. the no-omni-light and flash-light variants, under `DmWarmup`'s cover (no pooled bodies: enemies are scenes) |
 | Loading screen with progress | DONE | `game/dm_warmup.gd` under cover, `main.gd` | `main.gd _enter_next` shows the key-art `DmLoadingScreen` ("Waking the dead...") from the world build; `DmNextWarmup` draws its own progress cover; dismissed after `start()`; `tests/next_front`, `tests/next_perfctl` |
-| Resolution governor (auto-res, min 0.6) | DONE | `game/dm_resolution_governor.gd`, `dm_game.gd _apply_render_scale` | `DmNextPerf.pace` (same constants; held on every area entry). REBUILD Phase 6 retunes it (floor ~0.85, presets) |
-| FPS cap / graphics high-low | DONE | `_apply_graphics` | `DmNextPerf.apply`; Medium/Ultra presets are Phase 6 |
+| Resolution governor (auto-res, min 0.6) | DONE | `game/dm_resolution_governor.gd`, `dm_game.gd _apply_render_scale` | `DmNextPerf.pace` (same constants; held on every area entry); per-preset floor (Low 0.6, others 0.85) via `set_floor` (sync-1008) |
+| FPS cap / graphics high-low | DONE | `_apply_graphics` | `DmNextPerf.apply`; Medium / Ultra presets (sync-1008) |
 | Effect/pool budgets (Vfx pools, decal layers), per-frame cost discipline | DONE | `fx/` | reused; per-track perf budgets in `tests/next*` |
 | Event-driven / throttled systems (corpse expiry, 10 Hz hub tick, 20 Hz net only with peers) | DONE (new) | | the rebuild's stated perf rule |
 | Navmesh-based enemies (replaces custom nav) | DONE (new) | `sim/nav.gd` | `next/next_world.gd` ~130 ms bake |

@@ -4,7 +4,7 @@ Owner direction, 2026-10-05: Godot **replaces** the three.js client (not a parit
 needed, and Godot-idiomatic rebuilds are welcome where they pay off. This file supersedes the "reproduce the web exactly" rule in
 `PORTING.md` for the systems listed below; everything not listed here keeps the PORTING.md conventions.
 
-## Decisions (D1-D4; D2 + D4 confirmed by the owner 2026-10-05, D1/D3 defaults)
+## Decisions (D1-D13; D2 + D4-D9 confirmed by the owner 2026-10-05, D10-D13 on 2026-10-07, D1/D3 defaults)
 
 **D1. Trust model.** The host's Godot game is authoritative for its session (combat, enemies, corpses, thralls, waves, bosses). Clients
 send intents (move, cast, interact) as RPCs to the host. The **backend** stays authoritative for anything that persists or has value:
@@ -34,6 +34,14 @@ Owner answers, 2026-10-05:
 - **D8. Characters.** Existing online characters carry into Godot online unchanged (same backend). Offline characters stay offline-only.
 - **D9. Web retirement.** The three.js game is retired once the Godot game is complete: taken offline (not publicly reachable), its code kept
   in git history only.
+
+Owner decisions, 2026-10-07:
+- **D10. Online unlock = staff/GM accounts first.** Other accounts see "Online opens soon". Live since 2026-10-07: the client gate (after sign-in:
+  the manifest's `online` block, then `GET /api/me` staff flag; fails closed), launcher 0.6.1 and the manifest's `online.staff`.
+- **D11. Lobby = private codes + a public list of open sessions.** Built; deployed as the staff-gated systemd service `deathmuffin-lobby` on :5192.
+- **D12. Migration 041 approved and applied** (the sessions tables). Back up first; verify with `qa_offline_sync` only.
+- **D13. Disconnects get a rejoin window.** Reverses the earlier "reconnect not planned" (D6 still holds for the host: host quits = session ends).
+  NOT built yet; tracked under Phase 7.
 
 ## Performance rule (owner, 2026-10-05: "performance continues to be my main focus. anything that gets added needs to perform well too, no bloat")
 
@@ -92,7 +100,7 @@ Godot client  <->  Host's Godot game (authoritative sim, 1-4 players)
 4. **Backend integration**: cloud characters online, server-rolled loot, session-end report; solo as a 1-player session (online via the
    VPS backend, offline via the local backend, D4).
 5. **Content migration**: bosses, then the Depths, then the remaining areas. Then retire the web build (D9) and its TS exporters.
-6. **Quality pass (after gameplay is stable; owner 2026-10-06: ground markings / overall image look reduced, more pixelated).**
+6. **Quality pass (DONE on the live client, synced into the rebuild 2026-10-08; originally planned for after gameplay is stable; owner 2026-10-06: ground markings / overall image look reduced, more pixelated).**
    Known causes: the auto-resolution governor drops the 3D view to as low as 60% (`DmResolutionGovernor.MIN = 0.6`) with bilinear
    upscaling; MSAA is off (`msaa_3d=0`). Plan: quality presets (Low/Medium/High/Ultra; High on a real GPU = full resolution + AA,
    governor only on lower presets, floor ~0.85); sharper decals/ground markings (texture size, mipmaps, anisotropic filtering);
@@ -124,8 +132,18 @@ Godot client  <->  Host's Godot game (authoritative sim, 1-4 players)
 
 ## Status
 
+Updated 2026-10-08 (branch `next/sync-1008`: `godot-port` merged into the rebuild line, spawn-outside-aggro fix included). Feature-by-feature detail is `godot/PARITY.md`.
+
 | Phase | State |
 |---|---|
-| 0 Decisions | D2, D4-D9 from the owner 2026-10-05; D1/D3 defaults |
-| 1 Foundation | wave 1 started 2026-10-05 (session, relay, data) |
-| Lobby (owner 2026-10-07: private codes + public list) | built 2026-10-07 on `godot/lobby`: Party window, hosting from a running solo session, joining, kick, open/closed, joiner HUD + own backend session / XP / loot; not deployed (`next/party/README.md`) |
+| 0 Decisions | D1-D13 recorded (D10-D13 from the owner 2026-10-07); D1/D3 defaults |
+| 1 Foundation (session, relay, data registry) | DONE: `DmSession` (cap 4), `DmRelayPeer` + lobby/relay service, `DmData` registry; suites green |
+| 2 Vertical slice | DONE, superseded by the full rebuild (`DmNextGame`, `next/`) |
+| 3 Port systems | DONE: enemy scenes, combat and rites over RPC, statuses, thralls, loot and progression; non-necromancer disciplines are not built (PARITY gap 10) |
+| 4 Backend integration | DONE solo, online (verified against the live backend, `tests/online_live`, opt-in) and offline (D4); session open/report/end, kill-ledger fallback, server-rolled loot |
+| 5 Content migration | DONE: all 12 areas, seven bosses, the Depths, gathering/professions, meta layer. Web retirement (D9) NOT done: the web game is frozen (2026-10-04), not removed |
+| Lobby (D11) | DEPLOYED: systemd `deathmuffin-lobby` on :5192, staff-gated; private codes + public list of open sessions; Party window on the rebuild (`next/party/README.md`) |
+| 6 Quality pass | DONE on the live client (`godot-port`: presets Low/Medium/High/Ultra, lighting pass + Brightness, UI scaling) and SYNCED into the rebuild 2026-10-08 (`DmNextPerf` applies preset, lift, Brightness, Interface size; `DmWorldBuilder` is shared). Forward+ evaluation still needs real PCs (owner's and Helix's); no GPU-measured frame budget of the rebuilt scene exists |
+| 7 Hardening | OPEN: disconnects (D13: rejoin window, not built), desync checks, cheating review |
+| Default client | `DmMain.USE_NEXT` is still `false`; the rebuild runs with `-- --next`. `godot-port` is still the client players run |
+| Online unlock (D10) | LIVE since 2026-10-07: client gate (`front/dm_online_gate.gd`, one implementation in both clients) + launcher 0.6.1 + manifest `online.staff` |
