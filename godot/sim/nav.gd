@@ -230,10 +230,10 @@ func area_at(x: float, z: float) -> String:
 ## Push a body of radius r out of obstacles.
 func push_out(x: float, z: float, r: float) -> Array:
 	for pass_ in 2:
-		var k := _gk(int(floorf(x / CELL)), int(floorf(z / CELL)))
-		if not _grid.has(k):
+		# (_gk inlined, one dictionary lookup: this runs for every enemy and thrall move, every tick)
+		var list: Variant = _grid.get((int(floorf(x / CELL)) + 32768) * 65536 + (int(floorf(z / CELL)) + 32768))
+		if list == null:
 			break
-		var list: Array = _grid[k]
 		var moved := false
 		for o: DmNavObstacle in list:
 			if o.is_circle:
