@@ -334,10 +334,11 @@ func _test_node_tip(ui: DmGameUi) -> void:
 	var bb := DmHud.node_tip_bbcode(html)
 	_check(bb.contains("Coffin-Oak") and bb.contains("RICH") and bb.contains("#e58a8a") and bb.contains("[i]") and bb.contains("12 XP per success"), "node tip html -> bbcode")
 	_check(DmHud.node_tip_bbcode('<div class="req ok">Woodcutting · level 1 · Beginner</div>').contains("#9fc27a"), "req ok is green")
-	ui.hud.node_tip(html, 1270.0, 400.0)
+	var cw := ui.get_viewport().get_visible_rect().size.x   # the stretched canvas (>= 1600 wide), not the window's pixels
+	ui.hud.node_tip(html, cw - 10.0, 400.0)
 	await _frames(2)
 	_check(ui.hud.node_tip_box.visible, "node tip shows")
 	var b := ui.hud.node_tip_box
-	_check(b.position.x + b.size.x <= 1280.0 - 8.0 + 0.5 and b.position.y >= 8.0, "node tip is kept inside the screen (left = min(x+18, W-w-8))")
+	_check(b.position.x + b.size.x <= cw - 8.0 + 0.5 and b.position.y >= 8.0, "node tip is kept inside the screen (left = min(x+18, W-w-8))")
 	ui.hud.node_tip(null)
 	_check(not ui.hud.node_tip_box.visible, "null hides the node tip")

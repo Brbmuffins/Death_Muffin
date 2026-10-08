@@ -12,6 +12,7 @@ extends RefCounted
 ##   floor          lowest 3D scale Auto resolution may drop to   fx   DmFx quality ("low" thins bursts and drops the Binbun layer)
 ##   binbun         the premium Binbun VFX layer          shadow_size / shadow_dist / prop_shadow (props further than this stop casting) / shadow_splits / soft   directional shadow atlas size, how far the moon's
 ##   shadows reach, PSSM splits (2 = sharper near the hero), soft-shadow filter (0 low .. 3 ultra)   lod  mesh LOD threshold (0.5 = detail holds longer)
+##   lift           exposure multiplier that keeps a preset as bright as High (fewer prop lights, no bloom: measured with tests/perf/lighting_shot.sh)
 
 const DEFAULT := "high"
 const IDS: Array[String] = ["low", "medium", "high", "ultra"]
@@ -22,13 +23,13 @@ const LABELS := {
 	"ultra": "Ultra (more lights, long sharp shadows, 4x smoothing)",
 }
 const TABLE := {
-	"low": {"shadows": false, "bloom": false, "lights": 3, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
+	"low": {"lift": 1.4, "shadows": false, "bloom": false, "lights": 3, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
 		"shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 0, "lod": 1.0},
-	"medium": {"shadows": true, "bloom": false, "lights": 5, "msaa": 0, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
+	"medium": {"lift": 1.38, "shadows": true, "bloom": false, "lights": 5, "msaa": 0, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
 		"shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
-	"high": {"shadows": true, "bloom": true, "lights": 8, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
+	"high": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 8, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
 		"shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
-	"ultra": {"shadows": true, "bloom": true, "lights": 14, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
+	"ultra": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 14, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
 		"shadow_size": 4096, "shadow_dist": 80.0, "prop_shadow": 56.0, "shadow_splits": 2, "soft": 3, "lod": 0.5},
 }
 

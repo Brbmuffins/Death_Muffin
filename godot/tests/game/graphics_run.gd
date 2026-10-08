@@ -63,6 +63,17 @@ func _run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	_check(DmSettings.new("user://nonexistent_gfx.json", false).values["graphics"] == "high", "new players start on High")
 
+	# --- brightness + lighting lift -------------------------------------------------------------
+	_check(is_equal_approx(float(DmSettings.new("user://nonexistent_gfx.json", false).values["brightness"]), 1.0), "brightness defaults to 100%")
+	for pair in [[0.1, 0.8], [5.0, 1.3], [1.15, 1.15], ["x", 1.0]]:
+		var bf := FileAccess.open(path, FileAccess.WRITE)
+		bf.store_string(JSON.stringify({"brightness": pair[0]}))
+		bf.close()
+		_check(is_equal_approx(float(DmSettings.new(path, true).values["brightness"]), float(pair[1])), "saved brightness %s loads as %s" % [str(pair[0]), str(pair[1])])
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	_check(float(DmGraphicsPreset.get_preset("high")["lift"]) == 1.0 and float(DmGraphicsPreset.get_preset("ultra")["lift"]) == 1.0, "High/Ultra are the lighting reference (lift 1.0)")
+	_check(float(DmGraphicsPreset.get_preset("low")["lift"]) > 1.0 and float(DmGraphicsPreset.get_preset("medium")["lift"]) > 1.0, "Low/Medium run a little hotter to match High")
+
 	# --- governor floors -----------------------------------------------------------------------
 	var g := DmResolutionGovernor.new()
 	_check(g.floor_scale == DmResolutionGovernor.MIN, "governor defaults to the Low floor")

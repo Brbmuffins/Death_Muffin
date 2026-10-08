@@ -177,6 +177,35 @@ func _build() -> void:
 	float_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	float_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(float_layer)
+	_build_safe_frame()
+
+
+## Ultrawide: every HUD element is edge-anchored, so on a 21:9 window the party list, map and cards sit a long way from the centre.
+## They live in a frame no wider than MAX_ASPECT x the height, centred; the vignette, death veil and floating numbers stay full-screen.
+const MAX_ASPECT := 2.0
+var safe: Control
+
+
+func _build_safe_frame() -> void:
+	safe = Control.new()
+	safe.name = "SafeFrame"
+	safe.set_anchors_preset(Control.PRESET_FULL_RECT)
+	safe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(safe)
+	move_child(safe, vignette.get_index() + 1)
+	for c in get_children():
+		if c == vignette or c == safe or c == death or c == float_layer:
+			continue
+		remove_child(c)
+		safe.add_child(c)
+
+
+func _fit_safe_frame() -> void:
+	if safe == null:
+		return
+	var m := maxf(0.0, (size.x - size.y * MAX_ASPECT) * 0.5)
+	safe.offset_left = m
+	safe.offset_right = -m
 
 
 func _txt(text: String, size: int, color: Color, font: String = "body", spacing: float = 0.0, shadow: bool = true) -> Label:
@@ -1028,11 +1057,14 @@ class _Wash extends Control:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and target_box != null:
-		var w := size.x
+		_fit_safe_frame()
+		var w := safe.size.x if safe != null and safe.size.x > 0.0 else size.x
 		target_box.custom_minimum_size.x = minf(440.0, w * 0.5)
 		boss.custom_minimum_size.x = minf(620.0, w * 0.6)
-		xp_box.custom_minimum_size.x = clampf(w * 0.5 - 460.0, 150.0, 360.0)
-		chat_col.custom_minimum_size.x = clampf(w * 0.5 - 450.0, 170.0, 320.0)
+		# The altar (orbs + bar) is 960 wide, centred, with a 18 px gutter on each side: the side columns take what is left of that.
+		xp_box.custom_minimum_size.x = clampf(w * 0.5 - 516.0, 150.0, 360.0)
+		chat_col.custom_minimum_size.x = clampf(w * 0.5 - 506.0, 170.0, 320.0)
+		up_panel.custom_minimum_size.x = clampf(w * 0.5 - 500.0, 230.0, 300.0)
 		hint.custom_minimum_size.x = 0.0
 		# toasts sit lower while a target / boss plate is up
 		_update_toast_top()

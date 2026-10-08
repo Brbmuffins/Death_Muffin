@@ -341,6 +341,17 @@ func _panels(game: DmMockGame, ui: DmGameUi) -> void:
 	ui.toggle_panel("map")
 	await _frames(2)
 	pa.waystone.travel_requested.emit("graves")
+	# GM rule: normal players see only unlocked areas, dev_access sees every non-instance area with a stone
+	game.progress["unlocked"] = ["chapterhouse", "graves"]
+	game.dev_access = false
+	var ws: Array = pa._waystones()
+	_check(ws == ["chapterhouse", "graves"], "waystones: normal player sees only unlocked areas")
+	game.dev_access = true
+	ws = pa._waystones()
+	_check(ws.has("pyre") and ws.has("fen") and not ws.has("depths"), "waystones: dev_access lists pyre and fen, no instance")
+	var order: Array = DmContent.area_order().filter(func(a): return ws.has(a))
+	_check(ws == order, "waystones: dev_access list keeps area_order")
+	game.dev_access = false
 	# Acre tabs
 	ui.toggle_panel("garden")
 	await _frames(3)
