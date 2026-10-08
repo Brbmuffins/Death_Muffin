@@ -107,6 +107,7 @@ static func run(root: Node, game: DmGame, plan_path: String, out_dir: String) ->
 			print("QA-SHOTS give: unknown item ", id)
 		else:
 			game.inventory.add({"item_id": id, "quantity": 1})
+	await game.inventory.commit()   # flush to the offline backend now, or an area change reloads the bag without the seeded items
 	game.p["hp"] = game.player.max_hp()
 	var bad := 0
 	for s in plan["shots"]:
