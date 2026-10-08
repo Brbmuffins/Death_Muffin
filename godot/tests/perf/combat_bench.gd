@@ -162,6 +162,8 @@ func _run() -> void:
 		cpu_last = cpu_now
 	if _arg("spikes", "1") == "1":
 		_spikes(frames, frame_secs)
+	if _arg("fxstat", "1") == "1":
+		_fxstat(game)
 	if _arg("census", "0") == "1":
 		_census(game)
 	if _arg("probe", "0") == "1" and DisplayServer.get_name() != "headless":
@@ -310,3 +312,25 @@ func _mean(a: Array) -> float:
 	for v in a:
 		t += v
 	return t / maxf(1.0, a.size())
+
+
+## Live fx load at the end of the run: particle motes, transients by kind, decal / sprite layer items, binbun effects.
+func _fxstat(game: Node) -> void:
+	var vfx: Node = root.get_node("Vfx")
+	var pr: Variant = vfx.prims
+	var kinds := {}
+	for tr in pr._transients:
+		var nm: String = tr.get_script().resource_path.get_file() + "/" + str(tr.get_script().get_global_name()) if tr.get_script() != null else "?"
+		kinds[nm] = int(kinds.get(nm, 0)) + 1
+	var items := 0
+	var layers_live := 0
+	for key in pr._decal_layers:
+		var n: int = pr._decal_layers[key].items.size()
+		items += n
+		layers_live += 1 if n > 0 else 0
+	var sprite_items := 0
+	for key in pr._sprite_layers:
+		var n2: int = pr._sprite_layers[key].items.size()
+		sprite_items += n2
+		layers_live += 1 if n2 > 0 else 0
+	print("BENCH fx motes: additive %d/%d smoke %d/%d | transients %d %s | decal layers %d (%d items) sprite layers %d (%d items) live | projectiles %d | binbun live %d" % [pr.additive.active(), pr.additive.capacity, pr.smoke.active(), pr.smoke.capacity, pr._transients.size(), str(kinds), pr._decal_layers.size(), items, pr._sprite_layers.size(), sprite_items, pr._projectiles.size(), vfx.binbun._live.size()])
