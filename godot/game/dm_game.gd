@@ -663,7 +663,15 @@ func _apply_render_scale() -> void:
 	vp.scaling_3d_scale = sc
 
 
+## Interface size (Settings): the window's content scale factor, on top of the project's canvas_items stretch. The 3D view is untouched.
+func _apply_ui_scale() -> void:
+	var w := get_window()
+	if w != null:
+		w.content_scale_factor = DmSettings.clamp_ui_scale(settings.get("ui_scale", 1.0))
+
+
 func _apply_graphics() -> void:
+	_apply_ui_scale()
 	var preset := DmGraphicsPreset.normalize(settings.get("graphics", DmGraphicsPreset.DEFAULT))
 	var gp := DmGraphicsPreset.get_preset(preset)
 	var fps := int(settings.get("fps", 0))
