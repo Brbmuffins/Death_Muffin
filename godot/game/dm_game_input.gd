@@ -154,6 +154,9 @@ func interactables_near() -> Array:
 	return out
 
 
+const PICK_EVERY_MS := 33
+var _pick_ms := 0
+
 func update_cursor() -> void:
 	var cam: DmCameraRig = g.camera
 	if cam != null and g.is_inside_tree():
@@ -165,7 +168,12 @@ func update_cursor() -> void:
 		if gp != null:
 			ground["x"] = gp.x
 			ground["z"] = gp.z
-		_pick(cam)
+		# The hover pick projects every enemy / interactable / node each call; 30 Hz is plenty for a hover target (it used to run
+		# every frame, 165 times a second on a fast display).
+		var now_ms := Time.get_ticks_msec()
+		if now_ms - _pick_ms >= PICK_EVERY_MS or now_ms < _pick_ms:
+			_pick_ms = now_ms
+			_pick(cam)
 	if g.abilities != null:
 		g.abilities.aim = {"x": ground["x"], "z": ground["z"]}
 	if g.views != null and "hover_id" in g.views:
