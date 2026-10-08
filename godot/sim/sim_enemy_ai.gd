@@ -8,7 +8,13 @@ static func _h(a: float, b: float) -> float:
 
 
 static func _tr(d: Dictionary, k: String) -> bool:
-	return d.has(k) and DmCombatData.truthy(d[k])
+	# One lookup and a bool fast path (def flags are bools or absent): ~10 of these run per enemy per tick.
+	var v: Variant = d.get(k)
+	if v == null:
+		return false
+	if v is bool:
+		return v
+	return DmCombatData.truthy(v)
 
 
 # --- Targeting ---
