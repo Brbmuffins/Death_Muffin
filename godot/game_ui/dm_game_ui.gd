@@ -608,9 +608,20 @@ func record_codex(kind: String, id: String) -> void:
 
 # --- per frame ----------------------------------------------------------------------------------------------------------------
 
+## Accumulated _process time in microseconds while `prof_on` (the F3 overlay turns it on): the HUD / counsel share of a frame.
+var prof_on := false
+var prof_us := 0
+
 func _process(delta: float) -> void:
 	if game == null:
 		return
+	var prof_t0 := Time.get_ticks_usec() if prof_on else 0
+	_ui_frame(delta)
+	if prof_on:
+		prof_us += Time.get_ticks_usec() - prof_t0
+
+
+func _ui_frame(delta: float) -> void:
 	# The web refreshes the HUD at most every HUD_INTERVAL_MS (WorldScene hudDue); every frame here was ~2 ms of view-model + apply.
 	var now := Time.get_ticks_msec()
 	if _vm.is_empty() or now - _hud_at >= HUD_INTERVAL_MS or now < _hud_at:
