@@ -353,9 +353,16 @@ static func _row_less(a: Dictionary, b: Dictionary) -> bool:
 	return int(a["from"][0]) < int(b["from"][0])
 
 ## Payload for POST /api/inventory/save: the bag only (slot_index 0..bag_size-1); worn gear lives in reserved slots (100+).
+## The server refuses the WHOLE save when any slot lacks a string item_id or a whole quantity of at least 1, so a consumed (quantity 0)
+## row, or a half-built row is left out here: a slot missing from the payload is an emptied slot.
 static func to_save_payload(slots: Array) -> Array:
 	var out: Array = []
 	for s in slots:
-		if int(s["slot_index"]) >= 0 and int(s["slot_index"]) < bag_size():
-			out.append({"slot_index": s["slot_index"], "item_id": s["item_id"], "quantity": s["quantity"], "equipped": s["equipped"], "instance_id": s.get("instance_id")})
+		if not (s is Dictionary) or not (s.get("item_id") is String) or String(s["item_id"]).strip_edges().is_empty():
+			continue
+		var idx := int(s.get("slot_index", -1))
+		var qty := floorf(float(s.get("quantity", 0)))
+		if idx < 0 or idx >= bag_size() or is_nan(qty) or is_inf(qty) or qty < 1.0:
+			continue
+		out.append({"slot_index": idx, "item_id": s["item_id"], "quantity": int(qty), "equipped": int(s.get("equipped", 0)) if s.get("equipped") != null else 0, "instance_id": s.get("instance_id")})
 	return out

@@ -184,11 +184,16 @@ static func sort_bag_slots(slots: Array, moves: Dictionary = {}, is_locked: Call
 	return out
 
 
-## Payload for POST /api/inventory/save: bag slots only.
+## Payload for POST /api/inventory/save: bag slots only. Rows the server would refuse the whole save for (no string item_id, quantity under 1,
+## out of range) are left out: a slot missing from the payload is an emptied slot.
 static func to_save_payload(slots: Array) -> Array:
 	var out: Array = []
 	for s in slots:
-		if int(s["slot_index"]) >= 0 and int(s["slot_index"]) < BAG_SIZE:
-			var iid: Variant = s.get("instance_id", null)
-			out.append({"slot_index": s["slot_index"], "item_id": s["item_id"], "quantity": s["quantity"], "equipped": s["equipped"], "instance_id": iid})
+		if not (s is Dictionary) or not (s.get("item_id") is String) or String(s["item_id"]).strip_edges().is_empty():
+			continue
+		var idx := int(s.get("slot_index", -1))
+		var qty := floorf(float(s.get("quantity", 0)))
+		if idx < 0 or idx >= BAG_SIZE or is_nan(qty) or is_inf(qty) or qty < 1.0:
+			continue
+		out.append({"slot_index": idx, "item_id": s["item_id"], "quantity": int(qty), "equipped": int(s.get("equipped", 0)) if s.get("equipped") != null else 0, "instance_id": s.get("instance_id", null)})
 	return out

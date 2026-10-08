@@ -189,6 +189,8 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	prog.changed.connect(func(): progress_changed.emit())
 	inventory = DmInventory.new(api, hero_id)
 	inventory.changed.connect(_on_inventory_changed)
+	inventory.save_failed.connect(func(m: String) -> void: toast("Your bag could not be saved: %s. Retrying. Your items are safe on screen." % m, "err"))
+	inventory.save_recovered.connect(func() -> void: toast("Bag saved.", "good"))
 	# Kit, rites, hotbar.
 	var base := DmCharacterBuild.discipline_for(float(character["class_index"]))
 	kit = DmAbilities.kit_for(base["family"])
@@ -487,6 +489,20 @@ static func _pet_def(id: String) -> Variant:
 		if p["id"] == id:
 			return p
 	return null
+
+
+## Bag edits the Reliquary makes (GAME_CONTRACT.md). `slots` is read-only: these are the only way to change the bag from the UI.
+func bag_remove(slot_index: int, _item_id: String, n: int) -> int:
+	return inventory.remove_from_slot(slot_index, n)
+
+
+func bag_sort(on_moves: Callable = Callable(), is_locked: Callable = Callable()) -> void:
+	inventory.sort_bag(on_moves, is_locked)
+
+
+## Save the bag now. "" = the server has it; otherwise the reason (the player has already been told by a toast).
+func bag_commit() -> String:
+	return await inventory.commit()
 
 
 func refresh_inventory() -> void:

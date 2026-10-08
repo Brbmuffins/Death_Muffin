@@ -553,6 +553,16 @@ func _inventory_save(acc: Dictionary, body: Dictionary) -> Dictionary:
 	var raw_slots: Variant = body.get("slots", [])
 	if not (raw_slots is Array):
 		raw_slots = []
+	# Same shape rule as server.js POST /api/inventory/save: every slot below the reserved range needs a non-empty string item_id
+	# and a positive whole quantity (the live server answers 400 on the whole save otherwise; nothing is skipped).
+	for s in raw_slots:
+		if s is Dictionary and _num(s, "slot_index") >= 100 and _num(s, "slot_index") <= 134:
+			continue
+		if not (s is Dictionary) or not (s.get("item_id") is String) or String(s["item_id"]).strip_edges().is_empty():
+			return _fail("each slot requires an item_id and positive integer quantity")
+		var qf := _num(s, "quantity")
+		if is_nan(qf) or not _is_int(qf) or qf < 1:
+			return _fail("each slot requires an item_id and positive integer quantity")
 	for s in raw_slots:
 		if not (s is Dictionary):
 			continue

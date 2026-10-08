@@ -25,6 +25,8 @@ signal slot_right_clicked(item: Dictionary)
 
 const BAG_SIZE := 48
 const COLS := 8
+## Height of the selected-item strip; fixed so the window does not change size when the selection does.
+const DETAIL_H := 236
 # paper-doll order (3 columns); "" = spacer, "sheet" = the Sheet · J button
 const DOLL := ["ring", "head", "trinket", "main_hand", "chest", "off_hand", "hands", "legs", "", "", "feet", "sheet"]
 const EQUIP := {
@@ -60,6 +62,7 @@ var _grid: GridContainer
 var _tools: HFlowContainer
 var _detail_panel: PanelContainer
 var _detail: HBoxContainer
+var _detail_scroll: ScrollContainer
 var _error: Label
 var _slots: Array[DmItemSlot] = []
 var _doll_slots: Dictionary = {}
@@ -184,10 +187,18 @@ func _build_ui() -> void:
 	ds.content_margin_top = 8
 	ds.content_margin_bottom = 8
 	_detail_panel.add_theme_stylebox_override("panel", ds)
-	_detail_panel.custom_minimum_size.y = 64
+	# A fixed-height detail strip: the card and its buttons scroll inside it, so selecting items never resizes the window
+	# (and never pushes bag slots out of view).
+	_detail_panel.custom_minimum_size.y = DETAIL_H
+	_detail_scroll = ScrollContainer.new()
+	_detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_detail_scroll.custom_minimum_size.y = DETAIL_H - 16
+	_detail_panel.add_child(_detail_scroll)
 	_detail = HBoxContainer.new()
+	_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_detail.add_theme_constant_override("separation", 14)
-	_detail_panel.add_child(_detail)
+	_detail_scroll.add_child(_detail)
 	body.add_child(_detail_panel)
 	_error = DmUi.label("", "DmError")   # hidden while empty ([data-error]:empty)
 	_error.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
