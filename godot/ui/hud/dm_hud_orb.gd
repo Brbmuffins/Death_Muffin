@@ -17,6 +17,8 @@ var barrier: float = 0.0: set = set_barrier   ## 0..0.9 alpha of the bone ring (
 var beat_pulse: bool = false: set = set_beat
 var _shown_fill: float = 1.0
 var _t: float = 0.0
+var _redraw_t: float = 0.0
+const REDRAW_S := 1.0 / 30.0
 
 
 func _init() -> void:
@@ -63,8 +65,15 @@ func use_resource_palette() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	# `transition: height 0.18s ease-out`
+	var prev := _shown_fill
 	_shown_fill = move_toward(_shown_fill, fill, delta * maxf(1.0, absf(fill - _shown_fill)) / 0.18)
-	queue_redraw()
+	# Redraw while the level moves, otherwise only to advance the surface ripple. The ripple (3.5 s period, 34 px wavelength) travels
+	# about 10 px/s, so 30 redraws a second move it a third of a pixel each: the same picture, a fifth of the _draw work at 165 fps
+	# (the two orbs re-ran this ~140 us script every single frame, in combat and idle alike).
+	_redraw_t += delta
+	if _shown_fill != prev or _redraw_t >= REDRAW_S:
+		_redraw_t = 0.0
+		queue_redraw()
 
 
 func _draw() -> void:
