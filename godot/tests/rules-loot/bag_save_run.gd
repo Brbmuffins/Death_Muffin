@@ -168,6 +168,26 @@ func _run() -> void:
 	api3.fail_with = ""
 	_check((await inv3.commit()) == "" and recovered.size() == 1, "the retry lands and recovery is reported")
 
+	# --- end to end against the strict mock backend (the live server's slot rule): starter bag, sell a stack, sort, save ----------------------------
+	var mock := DmMockBackend.new("")
+	mock.strict_slots = true
+	var sapi := DmApi.new(mock.transport_callable())
+	sapi.base_url = ""
+	var reg := await sapi.register("bagtester", "", "pw1234")
+	sapi.set_token(reg.data["token"])
+	var ch := await sapi.load_or_create_character(7)
+	var cid: int = ch.data["id"]
+	var live := DmInventory.new(sapi, cid)
+	live.replace((await sapi.get_inventory(cid)).data)
+	var refused := await sapi.save_inventory(cid, [{"slot_index": 0, "item_id": "staff_oak", "quantity": 0, "equipped": 0}], 48)
+	_check(not refused.ok and refused.error == "each slot requires an item_id and positive integer quantity", "strict mock refuses a quantity-0 slot like the live server: %s" % refused.error)
+	var first: Dictionary = live.slots[1]
+	live.remove_from_slot(int(first["slot_index"]), int(first["quantity"]))
+	_check((await live.commit()) == "", "selling a whole stack saves against the strict server rule")
+	live.sort_bag()
+	_check((await live.commit()) == "" and live.state == "saved", "sorting saves against the strict server rule")
+	_check(not live.slots.any(func(s) -> bool: return int(s["quantity"]) < 1), "the bag has no quantity-0 rows afterwards")
+
 	# --- the UI must never assign DmGame.slots (it has no setter; the assignment is silently ignored, which stranded quantity-0 rows) ---------
 	var bad: Array = []
 	for dir_path in ["res://game_ui", "res://ui", "res://game"]:

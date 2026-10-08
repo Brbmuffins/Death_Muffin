@@ -540,6 +540,10 @@ func _save_progress(acc: Dictionary, body: Dictionary) -> Dictionary:
 
 # --- inventory ---------------------------------------------------------------------------------------------------------------------
 
+## Enforce the live server's slot shape rule on inventory/save (see _inventory_save). Off for the offline port.
+var strict_slots := false
+
+
 func _inventory_save(acc: Dictionary, body: Dictionary) -> Dictionary:
 	# Same rule as the server (inventory-save.cjs): a save only speaks for slots 0..bagSize-1, 24 when bagSize is absent.
 	var bag_size_f: float = float(DEFAULT_BAG_SAVE) if body.get("bagSize") == null else _to_num(body["bagSize"])
@@ -553,9 +557,10 @@ func _inventory_save(acc: Dictionary, body: Dictionary) -> Dictionary:
 	var raw_slots: Variant = body.get("slots", [])
 	if not (raw_slots is Array):
 		raw_slots = []
-	# Same shape rule as server.js POST /api/inventory/save: every slot below the reserved range needs a non-empty string item_id
-	# and a positive whole quantity (the live server answers 400 on the whole save otherwise; nothing is skipped).
-	for s in raw_slots:
+	# With `strict_slots` (tests) the shape rule of the LIVE server.js POST /api/inventory/save applies: every slot below the reserved
+	# range needs a non-empty string item_id and a positive whole quantity, or the whole save is refused. The offline backend this mock
+	# ports is lenient (it skips quantity-0 rows), and the offline golden fixtures depend on that, so the default stays lenient.
+	for s in (raw_slots if strict_slots else []):
 		if s is Dictionary and _num(s, "slot_index") >= 100 and _num(s, "slot_index") <= 134:
 			continue
 		if not (s is Dictionary) or not (s.get("item_id") is String) or String(s["item_id"]).strip_edges().is_empty():
