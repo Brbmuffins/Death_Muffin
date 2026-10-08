@@ -75,12 +75,14 @@ func _run() -> void:
 				if n.get_script() != null and String(n.get_script().resource_path).ends_with("dm_necro_backdrop.gd"): n.set_process(false)
 	game.prof_on = true
 	game.ev_prof.clear()
+	game.ev_count.clear()
 	game.sim.prof_on = true
 	if ResourceLoader.exists("res://perf_acc_tmp.gd"):
 		load("res://perf_acc_tmp.gd").acc.clear()
 	var every := float(_arg("every", "1.5"))
 	var frames: Array = []
 	var cpus: Array = []
+	var frame_secs: Array = []
 	var cpu_last := _cpu_us()
 	var peak_e := 0
 	var sum_e := 0
@@ -126,11 +128,23 @@ func _run() -> void:
 					game.do_cast(String(rites[k % rites.size()]), tgt, game.now_ms)
 					game.do_cast(game.primary, tgt, game.now_ms)
 					k += 1
+		var snap_g: Dictionary = game.prof.duplicate()
+		var snap_s: Dictionary = game.sim.prof.duplicate()
 		await process_frame
 		var now := Time.get_ticks_usec()
 		var cpu_now := _cpu_us()
 		if game_t > warm:
 			frames.append((now - last) / 1000.0)
+			var fsecs := {}
+			var tick_us := 0
+			for sk in game.prof:
+				var dv: int = int(game.prof[sk]) - int(snap_g.get(sk, 0))
+				fsecs[sk] = dv
+				tick_us += dv
+			for sk2 in game.sim.prof:
+				fsecs["sim." + sk2] = int(game.sim.prof[sk2]) - int(snap_s.get(sk2, 0))
+			fsecs["(outside tick: fx, ui, audio, engine)"] = int(now - last) - tick_us
+			frame_secs.append(fsecs)
 			cpus.append((cpu_now - cpu_last) / 1000.0)
 			peak_e = maxi(peak_e, game.sim.enemies.size())
 			sum_e += game.sim.enemies.size()
@@ -146,6 +160,8 @@ func _run() -> void:
 			game.sim.prof.clear()
 		last = now
 		cpu_last = cpu_now
+	if _arg("spikes", "1") == "1":
+		_spikes(frames, frame_secs)
 	if _arg("census", "0") == "1":
 		_census(game)
 	if _arg("probe", "0") == "1" and DisplayServer.get_name() != "headless":
@@ -180,14 +196,15 @@ func _run() -> void:
 		print("BENCH   sim.%-14s %.3f" % [key, game.sim.prof[key] / 1000.0 / n])
 	var evk: Array = game.ev_prof.keys()
 	evk.sort_custom(func(a, b): return game.ev_prof[a] > game.ev_prof[b])
-	for key in evk.slice(0, 8):
-		print("BENCH   event.%-16s %.3f ms/frame" % [key, game.ev_prof[key] / 1000.0 / n])
+	for key in evk.slice(0, 10):
+		var cnt_k: int = int(game.ev_count.get(key, 1))
+		print("BENCH   event.%-16s %.3f ms/frame   %.2f ms per event" % [key, game.ev_prof[key] / 1000.0 / n, game.ev_prof[key] / 1000.0 / maxf(1.0, cnt_k)])
 	if ResourceLoader.exists("res://perf_acc_tmp.gd"):   # optional per-node _process accounting (temporary instrumentation, never committed)
 		var pa: GDScript = load("res://perf_acc_tmp.gd")
 		var ak: Array = pa.acc.keys()
 		ak.sort_custom(func(a, b): return pa.acc[a] > pa.acc[b])
-		for key in ak:
-			print("BENCH   node %-44s self %.3f ms/frame (%d calls/frame %.1f)" % [key, pa.acc[key] / 1000.0 / n, pa.cnt[key], float(pa.cnt[key]) / n])
+		for key in ak.slice(0, 70):
+			print("BENCH   node %-44s self %.3f ms/frame  %.1f us/call (%d calls)" % [key, pa.acc[key] / 1000.0 / n, float(pa.acc[key]) / maxf(1.0, pa.cnt[key]), pa.cnt[key]])
 	quit(0)
 
 
@@ -261,3 +278,35 @@ func _probe(game: Node) -> void:
 		var pr := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)
 		print("BENCH probe hide %-40s draws -%d objects -%d prims -%dk" % [t.name, base_d - d, base_o - o, (base_p - pr) / 1000])
 		t.visible = was
+
+
+## What the slow frames are made of: the mean of each section over the slowest 5% of frames vs over all frames (ms), biggest excess first.
+func _spikes(frames: Array, frame_secs: Array) -> void:
+	var n := frames.size()
+	if n < 40:
+		return
+	var idx: Array = range(n)
+	idx.sort_custom(func(a, b): return frames[a] > frames[b])
+	var top := maxi(1, int(n * 0.05))
+	var all_m := {}
+	var top_m := {}
+	for i in n:
+		for k in frame_secs[i]:
+			all_m[k] = float(all_m.get(k, 0.0)) + float(frame_secs[i][k]) / 1000.0 / n
+	for j in top:
+		for k in frame_secs[idx[j]]:
+			top_m[k] = float(top_m.get(k, 0.0)) + float(frame_secs[idx[j]][k]) / 1000.0 / top
+	var keys: Array = top_m.keys()
+	keys.sort_custom(func(a, b): return top_m[a] - all_m.get(a, 0.0) > top_m[b] - all_m.get(b, 0.0))
+	var tm := 0.0
+	for j in top:
+		tm += frames[idx[j]] / top
+	print("BENCH spikes: slowest %d frames avg %.1f ms (all-frames avg %.1f)" % [top, tm, _mean(frames)])
+	for k in keys.slice(0, 8):
+		print("BENCH   spike %-42s slow-frames %.2f ms  all %.2f ms  excess %+.2f" % [k, top_m[k], all_m.get(k, 0.0), top_m[k] - all_m.get(k, 0.0)])
+
+func _mean(a: Array) -> float:
+	var t := 0.0
+	for v in a:
+		t += v
+	return t / maxf(1.0, a.size())
