@@ -28,7 +28,7 @@ var persist: bool = true
 static func defaults() -> Dictionary:
 	var d := {
 		"difficulty": "medium", "auto_combat": false, "auto_gather": true,
-		"graphics": "high", "fps": 0, "graphics_chosen": false, "auto_res": true, "brightness": 1.0,
+		"graphics": "high", "fps": 0, "graphics_chosen": false, "auto_res": true, "brightness": 1.0, "ui_scale": 1.0,
 		"vol_master": 0.6, "vol_combat": 1.0, "vol_amb": 1.0, "vol_music": 0.85, "vol_ui": 1.0,
 		"reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false, "guidance": true, "guide_ping": true, "dev_access": true,
 	}
@@ -62,6 +62,7 @@ func _load() -> void:
 	values["auto_res"] = values["auto_res"] != false
 	var br: Variant = values["brightness"]
 	values["brightness"] = clampf(float(br), BRIGHTNESS_MIN, BRIGHTNESS_MAX) if typeof(br) in [TYPE_INT, TYPE_FLOAT] else 1.0
+	values["ui_scale"] = clamp_ui_scale(values["ui_scale"])
 	# Old settings cannot be attributed to a character: each starts on Medium until its own preference loads.
 	values["difficulty"] = "medium"
 	values["auto_combat"] = false
@@ -71,6 +72,13 @@ func _load() -> void:
 	var clean := DmLootFilter.read_loot_rules(rules)
 	for t in TIERS:
 		values["loot_" + t] = clean[t]
+
+
+## Settings -> Interface size: 80..125 %, snapped to the offered steps; anything else is 100 %.
+static func clamp_ui_scale(v: Variant) -> float:
+	if typeof(v) not in [TYPE_INT, TYPE_FLOAT]:
+		return 1.0
+	return clampf(snappedf(float(v), 0.05), 0.8, 1.25)
 
 
 func can_use_auto_combat() -> bool:
