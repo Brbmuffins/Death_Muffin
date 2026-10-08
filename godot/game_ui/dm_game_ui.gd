@@ -67,6 +67,7 @@ var codex_journal := {"dead": {}, "area": {}}
 var _build_cache: Dictionary = {}
 var _build_sig := ""
 var _guide_t := 0.0
+var _busy_t := 0.0
 var _tick_t := 0.0
 var _last_gold := 0
 var _family := "necromancer"
@@ -616,7 +617,14 @@ func _process(delta: float) -> void:
 		_hud_at = now
 		_vm = merged_vm()
 		hud.apply(_vm)
-	counsel.tick(delta, counsel_busy())
+	# The counsel's "is the player busy" snapshot (window scan, game.counsel_busy(), area checks) is refreshed 10x a second; its timers
+	# still advance every frame. It rebuilt the whole dictionary every frame before.
+	_busy_t -= delta
+	var busy_now: Variant = null
+	if _busy_t <= 0.0:
+		_busy_t = 0.1
+		busy_now = counsel_busy()
+	counsel.tick(delta, busy_now)
 	cues.tick(delta)
 	_tick_guidance(delta)
 	_tick_t += delta
