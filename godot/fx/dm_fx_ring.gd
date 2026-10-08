@@ -116,39 +116,42 @@ func update(dt: float) -> void:
 	var kept := 0
 	for idx in _list.size():
 		var i := _list[idx]
-		_life[i] -= dt
-		if _life[i] <= 0.0:
+		var life := _life[i] - dt
+		_life[i] = life
+		if life <= 0.0:
 			_active -= 1
 			continue
 		_list[kept] = i   # compacted in place (the live list used to be rebuilt into a fresh array every frame)
 		kept += 1
-		var t := 1.0 - maxf(0.0, _life[i]) / _max_life[i]
+		var t := 1.0 - life / _max_life[i]
 		var k := maxf(0.0, 1.0 - _drag[i] * dt)
 		var p3 := i * 3
-		_vel[p3] *= k
-		_vel[p3 + 1] = _vel[p3 + 1] * k - _grav[i] * dt
-		_vel[p3 + 2] *= k
-		_pos[p3] += _vel[p3] * dt
-		_pos[p3 + 1] += _vel[p3 + 1] * dt
-		_pos[p3 + 2] += _vel[p3 + 2] * dt
+		var vx := _vel[p3] * k
+		var vy := _vel[p3 + 1] * k - _grav[i] * dt
+		var vz := _vel[p3 + 2] * k
+		_vel[p3] = vx
+		_vel[p3 + 1] = vy
+		_vel[p3 + 2] = vz
+		var px := _pos[p3] + vx * dt
+		var py := _pos[p3 + 1] + vy * dt
+		var pz := _pos[p3 + 2] + vz * dt
+		_pos[p3] = px
+		_pos[p3 + 1] = py
+		_pos[p3 + 2] = pz
 		var alpha := t / 0.15 if t < 0.15 else 1.0 - (t - 0.15) / 0.85
 		var sh := _shrink[i]
 		var size := _base_size[i] * ((1.0 - sh * t * 0.7) if sh >= 0.0 else (1.0 + -sh * t))
 		if alpha < 0.004:
 			continue
+		# Row-major 3x4 transform + colour. The off-diagonal slots (1, 2, 4, 6, 8, 9) are always 0 and `_buf` starts zeroed, so they are
+		# never rewritten (6 of the 16 stores per mote).
 		var o := n * 16
 		_buf[o] = size
-		_buf[o + 1] = 0.0
-		_buf[o + 2] = 0.0
-		_buf[o + 3] = _pos[p3]
-		_buf[o + 4] = 0.0
+		_buf[o + 3] = px
 		_buf[o + 5] = size
-		_buf[o + 6] = 0.0
-		_buf[o + 7] = _pos[p3 + 1]
-		_buf[o + 8] = 0.0
-		_buf[o + 9] = 0.0
+		_buf[o + 7] = py
 		_buf[o + 10] = size
-		_buf[o + 11] = _pos[p3 + 2]
+		_buf[o + 11] = pz
 		_buf[o + 12] = _col[p3]
 		_buf[o + 13] = _col[p3 + 1]
 		_buf[o + 14] = _col[p3 + 2]
