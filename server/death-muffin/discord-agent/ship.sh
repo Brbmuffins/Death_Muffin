@@ -69,14 +69,14 @@ if ! "$CHECK" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; then tail -25 "$TOOLS/
 fi   # (end of the normal ship's merge/gate/tests; PUBLISH_ONLY skips them: that commit was tested and pushed by the ship that failed to publish)
 
 # ---- godot: get the rollback ready BEFORE anything is pushed or published (a failure here leaves everything as it was) ----
-# The Godot client is published by publish-godot-client.sh, which lives on master only (not necessarily on BASE_BRANCH), so the copy that is used
-# for BOTH the new publish and the rollback is taken fresh from origin/master now and kept in the backup folder. ROLLBACK.sh republishes the
+# The Godot client is published by publish-godot-client.sh from the base branch (main), so the copy that is used
+# for BOTH the new publish and the rollback is taken fresh from origin/<base branch> now and kept in the backup folder. ROLLBACK.sh republishes the
 # revision that is live right now (the `rev` in the client manifest). No manifest = nothing is live yet = nothing to roll back to ("Rollback: none").
 BK=""
 if [ "$MODE" = godot ]; then
   DEPLOY_DIR="${DEPLOY_DIR:-$(dirname "$LOCK")}"
   MANIFEST="${CLIENT_MANIFEST:-/var/www/death-muffin/client/manifest.json}"
-  PUB_REF="${PUBLISH_SRC_REF:-origin/master}"; PUB_PATH="${PUBLISH_SRC_PATH:-server/death-muffin/publish-godot-client.sh}"
+  PUB_REF="${PUBLISH_SRC_REF:-origin/${BASE_BRANCH:-main}}"; PUB_PATH="${PUBLISH_SRC_PATH:-server/death-muffin/publish-godot-client.sh}"
   LIVE_REV=""
   if [ -e "$MANIFEST" ]; then
     LIVE_REV=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["rev"])' "$MANIFEST" 2>/dev/null || true)
