@@ -531,14 +531,14 @@ func _run() -> void:
 	sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(sv)
 	main = load("res://main/main.tscn").instantiate()
-	sv.add_child(main)   # --next in the user args routes the front's "enter world" to DmNextGame
+	main.mode = "dev_offline"   # the local testing backend, never the live server
+	sv.add_child(main)
 	mon = Monitor.new()
 	mon.bot = self
 	mon.process_priority = -100000
 	root.add_child(mon)
 	await frames(8)
-	chk(main.mode == "offline", "no args = offline edition (never the live server)", "", "critical")
-	chk(main.use_next, "launch routes to the rebuild (--next)", "", "critical")
+	chk(main.mode == "dev_offline" and main.api.base_url == "", "dev-offline backend (never the live server)", "", "critical")
 	if session == "A":
 		chk(main.flow != null and main.flow.current_name == "login", "login screen first", "got %s" % (main.flow.current_name if main.flow != null else "-"))
 		await _session_a()

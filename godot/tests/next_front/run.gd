@@ -1,7 +1,7 @@
 extends SceneTree
-## Rebuild front-flow suite (godot/main/main.gd, USE_NEXT routing): godot --headless --path godot --script res://tests/next_front/run.gd
-## DmMain on the offline backend (in-memory mock): register -> discipline select -> DmNextGame, log out, log in (persisted), quit save,
-## and 3 enter/leave cycles measured for leaks. The default (old) path is checked to still route to DmGame.
+## Front-flow suite (godot/main/main.gd): godot --headless --path godot --script res://tests/next_front/run.gd
+## DmMain on the offline backend (in-memory mock): register -> discipline select -> DmNextGame for every necromancer discipline, log out,
+## log in (persisted), quit save, class change, and 3 enter/leave cycles measured for leaks. (Unplayable disciplines: tests/game/flow_run.gd.)
 
 class ErrLog extends Logger:
 	var errors: Array = []
@@ -44,10 +44,9 @@ func _in_world() -> bool:
 func _at(screen: String) -> bool:
 	return m.slice == null and m.flow != null and m.flow.current_name == screen
 
-func _new_main(next: bool) -> DmMain:
+func _new_main() -> DmMain:
 	var n := DmMain.new()
 	n.mode = "test"
-	n.use_next = next
 	n.persist_token = false
 	n.api = api
 	root.add_child(n)
@@ -98,12 +97,7 @@ func _run() -> void:
 	OS.add_logger(log_)
 	mock = DmOffline.make_mock("")
 	api = DmOffline.make_api(mock)
-	check(DmMain.USE_NEXT == true, "the rebuild is the default (USE_NEXT true)")
-	for d in DmCharSelectScreen.load_disciplines():
-		var fam := String(DmCharacterBuild.discipline_for(float(d["classIndex"]))["family"])
-		check(DmMain.next_supports({"class_index": int(d["classIndex"])}) == (fam == "necromancer"), "%s (%s) enters %s" % [d["id"], fam, "the rebuild" if fam == "necromancer" else "the old game"])
-	m = _new_main(true)
-	check(m.use_next, "use_next routes the front to DmNextGame")
+	m = _new_main()
 	# ---- every necromancer discipline: register -> select -> the rebuild with that character
 	var necro := _necro_indices()
 	check(necro.size() == 4 and necro.has("ossuary") and necro.has("gravecaller") and necro.has("mourner") and necro.has("rotweaver"), "four necromancer disciplines (%s)" % str(necro.keys()))
@@ -174,28 +168,8 @@ func _run() -> void:
 	check(dm <= MEM_BOUND_MB, "3 cycles: static memory growth %+.1f MB <= %.0f" % [dm, MEM_BOUND_MB])
 	m.queue_free()
 	await process_frame
-	# ---- default routing is the rebuild, but a non-necromancer character (no kit on the rebuild yet) still enters DmGame
-	m = _new_main(false)
-	check(m.use_next, "default routing: the rebuild (USE_NEXT)")
-	await _register_and_pick_old("oldpath", 5)
-	check(m.game != null and m.slice == null, "non-necro (Grave Warden): DmGame entered, no rebuild")
-	await m.save_all()
-	m.queue_free()
-	await process_frame
 	check(log_.errors.is_empty(), "no engine errors in the log (%d: %s)" % [log_.errors.size(), ", ".join(log_.errors.slice(0, 3))])
 	OS.remove_logger(log_)
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
-
-func _register_and_pick_old(name_: String, class_index: int) -> void:
-	await until(func() -> bool: return _at("login"), 10.0)
-	var l: DmLoginScreen = m.flow.current
-	l.toggle_mode()
-	await process_frame
-	l.user_edit.text = name_
-	await l.submit()
-	await until(func() -> bool: return _at("select"), 10.0)
-	var sel: DmCharSelectScreen = m.flow.current
-	await sel.choose(class_index)
-	await until(func() -> bool: return m.game != null and m.game.ready_ and m.ui != null and DmLoadingScreen.current == null, 60.0)

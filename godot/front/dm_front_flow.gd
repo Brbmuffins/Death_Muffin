@@ -2,7 +2,8 @@ class_name DmFrontFlow
 extends Control
 ## Front-end scene router (src/scenes/SceneManager.ts + the login / resume / select wiring of src/main.ts).
 ##   start(): stored token -> resume(); otherwise the login screen.
-##   resume(): GET /character -> 200 enter_world, 404 discipline select, anything else clears the token and shows login.
+##   resume(): GET /character -> 200 enter_world (or the discipline switch when its discipline is not playable yet), 404 discipline select,
+##   anything else clears the token and shows login.
 ## The integrator connects `enter_world(character, session)` to the game scene. `session` is the authenticated DmApi
 ## (same object for the whole run: token, saves, realtime). Call `logout()` from the game's Log out button.
 ## Tokens live in user://dm_jwt.txt when `persist_token` (DmApi's own file); they are never printed or logged.
@@ -94,8 +95,9 @@ func _gate_allows() -> bool:
 	return false
 
 
-func go_select() -> void:
-	var s := DmCharSelectScreen.new(api)
+## `switching` = a character whose discipline is not playable yet: the select screen changes its discipline instead of creating one.
+func go_select(switching: Dictionary = {}) -> void:
+	var s := DmCharSelectScreen.new(api, switching)
 	s.selected.connect(go_world)
 	goto(s, "select")
 
@@ -112,7 +114,10 @@ func go_world(character: Dictionary) -> void:
 func resume() -> void:
 	var r := await api.get_character()
 	if r.ok and r.data is Dictionary:
-		go_world(r.data)
+		if DmCharacterBuild.is_playable(float(r.data.get("class_index", 0))):
+			go_world(r.data)
+		else:
+			go_select(r.data)
 	elif r.status == 404:
 		go_select()
 	else:

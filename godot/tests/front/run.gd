@@ -82,10 +82,17 @@ func _run() -> void:
 	for c in sel.cards:
 		art_ok = art_ok and ResourceLoader.exists("res://front/art/" + String(c.disc["portrait"]).trim_prefix("art/"))
 	_check(art_ok, "all nine portraits shipped under front/art")
-	# ---- create character (Carrion Witch = class_index 7, created legacy then switched)
-	var cw_idx := -1
+	# ---- non-necro disciplines are greyed out until rebuilt (owner 2026-10-09): choosing one is refused
+	var locked_idx := -1
 	for d in sel.disciplines:
 		if d["id"] == "carrion_witch":
+			locked_idx = int(d["classIndex"])
+	var refused := await sel.choose(locked_idx)
+	_check(not refused and _entered.is_empty(), "locked discipline (Carrion Witch) cannot be chosen")
+	# ---- create character (Rotweaver: a playable necro discipline that is not the recommended one)
+	var cw_idx := -1
+	for d in sel.disciplines:
+		if d["id"] == "rotweaver":
 			cw_idx = int(d["classIndex"])
 	var picked := await sel.choose(cw_idx)
 	await _frames(3)

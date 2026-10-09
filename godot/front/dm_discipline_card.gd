@@ -7,8 +7,11 @@ signal chosen(discipline: Dictionary)
 var disc: Dictionary
 var disabled: bool = false:
 	set(v):
-		disabled = v
-		modulate.a = 0.5 if v else 1.0
+		disabled = v or locked
+		modulate.a = 0.5 if disabled else 1.0
+		mouse_default_cursor_shape = Control.CURSOR_ARROW if disabled else Control.CURSOR_POINTING_HAND
+## Not playable yet (DmCharacterBuild.is_playable): greyed out for good, never clickable.
+var locked: bool = false
 var _hover := false
 var _color: Color
 var _style: StyleBoxFlat
@@ -55,6 +58,9 @@ func setup(d: Dictionary, recommended: bool) -> DmDisciplineCard:
 		tag_y = 34.0
 	if String(d["family"]) == "necromancer":
 		holder.add_child(_badge("Necromancer", DmUi.TEXT_FAINT, Color(0, 0, 0, 0.55), true, tag_y))
+	if not DmCharacterBuild.is_playable(float(d["classIndex"])):
+		locked = true
+		holder.add_child(_badge("Coming later", DmUi.BONE_300, Color(0, 0, 0, 0.7), true, tag_y))
 	v.add_child(DmUi.hrule(DmUi.BORDER))
 	var m := MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 14)
@@ -90,6 +96,9 @@ func setup(d: Dictionary, recommended: bool) -> DmDisciplineCard:
 	mouse_exited.connect(func(): _set_hover(false))
 	focus_entered.connect(func(): _set_hover(true))
 	focus_exited.connect(func(): _set_hover(false))
+	if locked:
+		disabled = true
+		focus_mode = Control.FOCUS_NONE
 	return self
 
 

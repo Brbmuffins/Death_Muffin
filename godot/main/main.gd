@@ -1,24 +1,21 @@
 class_name DmMain
 extends Node
-## Game entry (main scene). Launch args (after `--`): `--offline` (default) = the offline edition: local accounts + progress on this device
-## (DmMockBackend under user://, standalone sign-in rules, no live server); `--online` = DmFrontFlow against the live server.
-## Flow: DmFrontFlow (login / discipline select) -> enter_world -> DmGame + DmGameUi.
-## Rebuild (godot/next): `USE_NEXT` below (or `-- --next`) routes "Enter world" to DmNextGame instead of DmGame; `--old` forces the old path. The front
-## screens, characters, backends (online = VPS, offline = local) and the loading screen are the same for both. `-- --next --class=N` skips the
-## front flow (test account `tester`, offline backend).
-## Dev: `--qa` keeps the old QA autoload inactive paths; `--world-demo` skips the front flow (offline test account, class 2).
+## Game entry (main scene). ONE version of the game (owner 2026-10-09): online against the live server, DmFrontFlow (login / discipline select)
+## -> DmNextGame (godot/next). Only the four necromancer disciplines are playable (DmCharacterBuild.is_playable); a character of another
+## discipline is sent to the discipline switch by the front flow.
+## Launch args (after `--`): none needed. `--online` / `--offline` / `--next` from older launchers and scripts are accepted and ignored.
+## Testing only: `--dev-offline` = local accounts + progress in DEV_OFFLINE_DB (DmMockBackend, no live server); `--dev-offline --class=N`
+## skips the front flow (test account `tester`); `--world-demo` (always dev-offline) is the old DmGame scene the screenshot QA still drives.
+## On an online start the retired offline edition's save and its stored "offline:" token are deleted (owner: offline characters are deleted).
 
-## D7: the rebuild is the default (owner 2026-10-09); DmGame stays reachable with `-- --old`. The rebuild has only the necromancer kit
-## (PARITY gap 10), so characters of the other five disciplines still enter DmGame until their kits land (`next_supports`).
-const USE_NEXT := true
+const OFFLINE_EDITION_DB := "user://dm_offline_db.json"   ## the retired player-facing offline edition's accounts + characters
+const DEV_OFFLINE_DB := "user://dm_dev_offline_db.json"    ## --dev-offline testing backend (never the player's old offline save)
 
-var mode := "offline"
-var use_next := USE_NEXT
+var mode := ""              ## "online" | "dev_offline" | "test" (injected api); "" = decided from the launch args in _ready
 var flow: DmFrontFlow
-var game: DmGame
+var game: DmGame            ## only the `--world-demo` screenshot scene (old DmGame); the game itself is `slice`
 var slice: DmNextGame
 var ui: Node
-var perf: DmPerfOverlay
 var api: DmApi              ## set before add_child (tests) to inject a backend; otherwise built from the launch args
 var persist_token := true
 var _mock: DmMockBackend
@@ -36,26 +33,46 @@ func _ready() -> void:
 	idle_cam.current = true
 	add_child(DmPerfOverlay.new())   # F3 / ?fps overlay, as the web
 	var args := OS.get_cmdline_user_args()
-	if mode != "test":
-		mode = "online" if "--online" in args else "offline"
+	if mode == "":
+		mode = mode_for(args)
+	if mode == "online":
+		wipe_offline_edition()
 	if api != null:
 		pass   # injected (tests)
-	elif mode == "offline":
-		_mock = DmOffline.make_mock()
+	elif mode == "dev_offline":
+		_mock = DmOffline.make_mock(DEV_OFFLINE_DB)
 		api = DmOffline.make_api(_mock)
 	else:
 		_transport = DmHttpTransport.new()
 		add_child(_transport)
 		api = DmApi.new(_transport.request_callable())
 		api.slot_decorator = Callable(DmAffixes, "decorate_slots")
-	use_next = (USE_NEXT or use_next or "--next" in args) and not "--old" in args
 	if "--world-demo" in args:
 		await _demo()
 		return
-	if use_next and Array(args).any(func(a: String) -> bool: return a.begins_with("--class=")):
-		await _next_slice(args)
+	if mode != "online" and Array(args).any(func(a: String) -> bool: return a.begins_with("--class=")):
+		await _dev_quick_start(args)
 		return
 	_start_flow()
+
+
+## The mode a launch gets from its user args: online unless a testing flag asks for the local dev backend.
+static func mode_for(args: PackedStringArray) -> String:
+	return "dev_offline" if ("--dev-offline" in args or "--world-demo" in args) else "online"
+
+
+## The retired offline edition (owner 2026-10-09): its local accounts / characters file and a stored "offline:<name>" session token are
+## deleted. Safe to run every start (nothing left = nothing done).
+static func wipe_offline_edition() -> void:
+	for p in [OFFLINE_EDITION_DB, OFFLINE_EDITION_DB + ".tmp"]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	if FileAccess.file_exists(DmApi.TOKEN_FILE):
+		var f := FileAccess.open(DmApi.TOKEN_FILE, FileAccess.READ)
+		var t := f.get_as_text().strip_edges() if f != null else ""
+		f = null
+		if t.begins_with("offline:"):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(DmApi.TOKEN_FILE))
 
 
 func _process(_dt: float) -> void:
@@ -70,7 +87,7 @@ func _notification(what: int) -> void:
 		get_tree().quit()
 
 
-## Final save of whichever game is live (also the quit path of the tests): the rebuild's last kill batch, progression and bag, or DmGame's.
+## Final save of the live game (also the quit path of the tests): the rebuild's last kill batch, progression and bag (or the world demo's).
 func save_all() -> void:
 	if slice != null and slice.ready_:
 		var s := slice
@@ -85,7 +102,7 @@ func save_all() -> void:
 func _start_flow() -> void:
 	flow = DmFrontFlow.new(api, mode != "online", mode != "online")
 	flow.persist_token = persist_token
-	flow.online_gate = mode == "online"   # D10: staff-only online while the manifest says so
+	flow.online_gate = mode == "online"   # the manifest's online switch (DmOnlineGate; open to everyone since 2026-10-09)
 	flow.name = "Front"
 	flow.enter_world.connect(_enter_world)
 	flow.logged_out.connect(_on_logged_out)
@@ -99,12 +116,11 @@ func _demo() -> void:
 		r = await api.login("tester", "pw1234")
 	api.set_token(r.data["token"])
 	var c := await api.load_or_create_character(2)
-	await _enter_world(c.data, api)
+	await _enter_demo_world(c.data)
 
 
-## Rebuild vertical slice (godot/next/README.md): `-- --next [--class=N]` boots the Chapterhouse + Hollow Graves as a solo DmSession on the
-## offline backend. The default path (front flow -> DmGame) is untouched.
-func _next_slice(args: PackedStringArray) -> void:
+## Testing: `-- --dev-offline --class=N` skips the front flow and enters the game as `tester` on the dev-offline backend.
+func _dev_quick_start(args: PackedStringArray) -> void:
 	var cls := 2
 	for a in args:
 		if a.begins_with("--class="):
@@ -138,9 +154,14 @@ func _enter_world(character: Dictionary, session) -> void:
 	if flow != null:
 		flow.queue_free()
 		flow = null
-	if use_next and next_supports(character):
-		await _enter_next(character)
+	if not DmCharacterBuild.is_playable(float(character.get("class_index", 0))):
+		_start_flow()   # the front flow's resume() offers the discipline switch
 		return
+	await _enter_next(character)
+
+
+## `--world-demo` only: the old DmGame scene the screenshot QA (tests/game/shoot.sh) drives. Not reachable by players.
+func _enter_demo_world(character: Dictionary) -> void:
 	# The loading screen goes up first and is painted before the (synchronous) world build starts: no login-screen freeze, no black frame.
 	var loading := DmLoadingScreen.acquire(self, "Waking the dead...")
 	loading.set_progress(0.05)
@@ -149,12 +170,11 @@ func _enter_world(character: Dictionary, session) -> void:
 	game = DmGame.new()
 	game.name = "Game"
 	add_child(game)
-	perf = DmPerfOverlay.new()
-	game.add_child(perf)
+	game.add_child(DmPerfOverlay.new())
 	game.left_world.connect(_on_left_world)
 	game.world_restart.connect(func(ch: Dictionary): _on_world_restart(ch))
 	# Offline progress goes through the offline mock backend (it persists under user:// and answers the Altar routes), like the server online.
-	await game.start(character, api, {"local_progress": false, "realtime": mode == "online", "name": token_username(api.get_token())})
+	await game.start(character, api, {"local_progress": false, "realtime": false, "name": token_username(api.get_token())})
 	ui = DmGameUi.new()
 	game.add_child(ui)
 	ui.setup(game)
@@ -164,13 +184,8 @@ func _enter_world(character: Dictionary, session) -> void:
 	ui.sound.connect(func(n: String): get_node("/root/AudioDirector").play_sfx(n))
 
 
-## True when the rebuild can play this character: necromancer disciplines only for now (non-necro kit rites are refused there).
-static func next_supports(character: Dictionary) -> bool:
-	return String(DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))["family"]) == "necromancer"
-
-
 ## The rebuild: DmNextGame behind the same key-art loading screen (it paints before the synchronous world build; the game's own panel warm-up
-## shares it; it fades out once the game is ready). Backend: the offline mock offline (D4), the VPS api online.
+## shares it; it fades out once the game is ready). Backend: the VPS api online, the mock in dev-offline / tests.
 func _enter_next(character: Dictionary, join: Dictionary = {}) -> void:
 	var loading := DmLoadingScreen.acquire(self, "Waking the dead..." if not join.has("lobby") else "Entering the host's world...")
 	loading.set_progress(0.05)

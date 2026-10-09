@@ -244,12 +244,16 @@ func _test_class() -> void:
 	var cards := DmPa.acts(w, "class")
 	_eq(cards.size(), 9, "class: nine playable disciplines")
 	for c in cards:
-		_eq(c.get_meta("disabled"), int(c.get_meta("arg")) == 2, "only the current class is disabled (class %s)" % c.get_meta("arg"))
+		var a := int(c.get_meta("arg"))
+		_eq(c.get_meta("disabled"), a == 2 or a >= 5, "current class + locked non-necro disciplines disabled (class %s)" % a)
+		_eq(c.get_meta("locked"), a >= 5, "non-necro disciplines locked as Coming later (class %s)" % a)
 	var chosen: Array = []
 	w.class_chosen.connect(func(i: int) -> void: chosen.append(i))
 	w.choose(2)
+	w.choose(7)
 	w.choose(3)
-	_eq(chosen, [3], "choosing the current class does nothing; another emits its index")
+	_eq(chosen, [3], "choosing the current or a locked class does nothing; another emits its index")
+	_check(DmPa.all_text(w).contains("Coming later"), "locked cards say Coming later")
 	w.begin_saving()
 	_check(DmPa.all_text(w).contains("Saving your character"), "saving status shows")
 	for c in DmPa.acts(w, "class"):

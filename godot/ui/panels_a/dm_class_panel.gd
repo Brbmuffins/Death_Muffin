@@ -49,15 +49,17 @@ func render() -> void:
 func _card(d: Dictionary) -> Control:
 	var idx := int(d["classIndex"])
 	var is_current := idx == current
+	var locked := not DmCharacterBuild.is_playable(float(idx))   # greyed out until the discipline is rebuilt (owner 2026-10-09)
 	var col := Color(String(d["color"]))
 	var c := PanelContainer.new()
 	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	c.add_theme_stylebox_override("panel", DmUi.box(DmUi.INSET, col if is_current else DmUi.BORDER, 1, 0, Vector2(0, 0)))
 	c.set_meta("act", "class")
 	c.set_meta("arg", idx)
-	c.set_meta("disabled", is_current or busy)
+	c.set_meta("disabled", is_current or busy or locked)
 	c.set_meta("current", is_current)
-	c.mouse_default_cursor_shape = Control.CURSOR_ARROW if (is_current or busy) else Control.CURSOR_POINTING_HAND
+	c.set_meta("locked", locked)
+	c.mouse_default_cursor_shape = Control.CURSOR_ARROW if (is_current or busy or locked) else Control.CURSOR_POINTING_HAND
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
 	c.add_child(v)
@@ -75,17 +77,19 @@ func _card(d: Dictionary) -> Control:
 	b.add_child(DmPa.rich("<b>%s.</b> %s" % [p["name"], p["text"]], 13, DmUi.BONE_300))
 	if is_current:
 		b.add_child(DmPa.text("Current class", 13, DmUi.BONE_300))
+	elif locked:
+		b.add_child(DmPa.text("Coming later", 13, DmUi.BONE_300))
 	c.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and not (is_current or busy):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and not (is_current or busy or locked):
 			choose(idx))
-	c.modulate = Color(1, 1, 1, 0.5) if busy and not is_current else Color(1, 1, 1, 1)
+	c.modulate = Color(1, 1, 1, 0.5) if (busy or locked) and not is_current else Color(1, 1, 1, 1)
 	_cards.append(c)
 	return c
 
 
-## What a click does (also callable from tests): ignored for the current class or while busy.
+## What a click does (also callable from tests): ignored for the current class, a discipline that is not playable yet, or while busy.
 func choose(idx: int) -> void:
-	if busy or idx == current:
+	if busy or idx == current or not DmCharacterBuild.is_playable(float(idx)):
 		return
 	class_chosen.emit(idx)
 

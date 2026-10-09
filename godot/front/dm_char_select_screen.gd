@@ -1,14 +1,17 @@
 class_name DmCharSelectScreen
 extends Control
-## Port of src/scenes/CharacterSelectScene.ts: "Choose Your Discipline", nine cards. Only reached by an account with no
-## character yet (resume(): 404 -> select), so the first-run discipline always carries the "Recommended" badge.
-## Picking a card calls load_or_create_character(classIndex); the server error string is shown verbatim on failure.
+## Port of src/scenes/CharacterSelectScene.ts: "Choose Your Discipline", nine cards (only the four necromancer ones playable, the others
+## greyed out "Coming later": DmCharacterBuild.is_playable). Reached by an account with no character yet (resume(): 404 -> select), so the
+## first-run discipline carries the "Recommended" badge; picking a card calls load_or_create_character(classIndex).
+## Switch mode (`switching` = the account's character, whose discipline is not playable): picking a card calls change_discipline instead.
+## The server error string is shown verbatim on failure.
 
 signal selected(character: Dictionary)
 
 const FIRST_RUN_DISCIPLINE := "gravecaller"   # src/ui/firstHourRules.ts
 
 var api: DmApi
+var switching: Dictionary = {}
 var grid: GridContainer
 var error_label: Label
 var cards: Array[DmDisciplineCard] = []
@@ -16,8 +19,9 @@ var disciplines: Array = []
 var plate: PanelContainer
 
 
-func _init(api_: DmApi = null) -> void:
+func _init(api_: DmApi = null, switching_: Dictionary = {}) -> void:
 	api = api_
+	switching = switching_
 
 
 static func load_disciplines() -> Array:
@@ -53,10 +57,12 @@ func _ready() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
 	plate.add_child(v)
-	var title := DmFrontUi.lbl("CHOOSE YOUR DISCIPLINE", "display", 30, DmUi.BONE_300, 4.2)
+	var title := DmFrontUi.lbl("CHOOSE YOUR DISCIPLINE" if switching.is_empty() else "CHOOSE A NEW DISCIPLINE", "display", 30, DmUi.BONE_300, 4.2)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(title)
-	var sub := DmFrontUi.lbl("Choose from nine disciplines, each with its own resource, rites, and way through the dead.", "display_italic", 17, DmUi.TEXT_MUTED, 0.0, true)
+	var sub_text := "The four necromancer disciplines are open; the others return later." if switching.is_empty() \
+		else "Your discipline is being rebuilt. Choose a necromancer discipline to keep playing; your level, gear and gold stay with you."
+	var sub := DmFrontUi.lbl(sub_text, "display_italic", 17, DmUi.TEXT_MUTED, 0.0, true)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var sm := MarginContainer.new()
 	sm.add_theme_constant_override("margin_top", 6)
@@ -78,7 +84,7 @@ func _ready() -> void:
 	plate.add_child(DmCorners.new())
 	disciplines = load_disciplines()
 	for d in disciplines:
-		var c := DmDisciplineCard.new().setup(d, String(d["id"]) == FIRST_RUN_DISCIPLINE)
+		var c := DmDisciplineCard.new().setup(d, switching.is_empty() and String(d["id"]) == FIRST_RUN_DISCIPLINE)
 		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		c.chosen.connect(func(dd): choose(int(dd["classIndex"])))
 		grid.add_child(c)
@@ -101,8 +107,15 @@ func _set_disabled(v: bool) -> void:
 ## Web card click handler. Returns true when the character was created/loaded (then `selected` is emitted).
 func choose(class_index: int) -> bool:
 	error_label.text = ""
+	if not DmCharacterBuild.is_playable(float(class_index)):
+		error_label.text = "That discipline returns later"
+		return false
 	_set_disabled(true)
-	var r := await api.load_or_create_character(class_index)
+	var r: DmResult
+	if switching.is_empty():
+		r = await api.load_or_create_character(class_index)
+	else:
+		r = await api.change_discipline(int(switching.get("id", 0)), class_index)
 	if r.ok and r.data is Dictionary:
 		selected.emit(r.data)
 		return true

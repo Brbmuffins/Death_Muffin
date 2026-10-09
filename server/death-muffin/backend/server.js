@@ -178,8 +178,10 @@ const DISCIPLINE_NAMES = {
   8: 'Hollow Knight',
   9: 'Veilwalker',
 };
-/** Highest accepted `discipline_index`. The client presents the names. */
-const MAX_DISCIPLINE_INDEX = 9;
+/** Highest accepted `discipline_index`. The client presents the names. Owner 2026-10-09 (baseline): only the four necromancer
+ *  disciplines (1-4) are playable; 5-9 come back when their kits are rebuilt. Existing characters keep their row and pick a necromancer
+ *  discipline through POST /character/discipline. */
+const MAX_DISCIPLINE_INDEX = 4;
 
 // JWT middleware – verifies token and pre-fetches character row
 async function verifyJWT(req, res, next) {

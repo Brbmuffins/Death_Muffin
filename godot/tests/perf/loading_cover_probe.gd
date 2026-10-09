@@ -4,6 +4,7 @@ var n := 0
 var log_: Array = []
 func _initialize() -> void:
 	main = load("res://main/main.tscn").instantiate()
+	main.mode = "dev_offline"   # never the live server
 	root.add_child(main)
 	process_frame.connect(_f)
 func _cover_up() -> bool:
@@ -13,7 +14,7 @@ func _cover_up() -> bool:
 	return false
 func _f() -> void:
 	n += 1
-	var g = main.get("game") if main.get("game") != null else main.get("slice")   # slice = the rebuild (the default since USE_NEXT)
+	var g = main.get("game") if main.get("game") != null else main.get("slice")   # slice = the game; game = only the --world-demo scene
 	var ui = main.get("ui")
 	var state := "none"
 	if g != null and is_instance_valid(g):

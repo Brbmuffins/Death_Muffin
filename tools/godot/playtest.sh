@@ -11,8 +11,8 @@ for a in "$@"; do case "$a" in
   --rendered) RENDERED=1;; --next) NEXT=1;; --disc=*) DISC="${a#*=}";; --boss=*) BOSS="${a#*=}";; --scale=*) SCALE="${a#*=}";; --tag=*) TAG="${a#*=}";; --sessionA-only) ONLY_A=1;; --skip-to=*) SKIP="${a#*=}";; --delay=*) DELAY="${a#*=}";;
 esac; done
 TAG="${TAG:-$([ $NEXT = 1 ] && echo n)d${DISC}_$([ $RENDERED = 1 ] && echo r || echo h)}"
-BOT=bot.gd; EXTRA=(--old); WARM=--warmup;   # --old: the current game stays reachable once DmMain.USE_NEXT flips
- [ $NEXT = 1 ] && { BOT=bot_next.gd; EXTRA=(--next); }
+# One game since 2026-10-09: the bot always drives DmNextGame on the dev-offline backend (--next is still accepted, it changes nothing).
+BOT=bot_next.gd; EXTRA=(--dev-offline); WARM=--warmup; NEXT=1
 OUT="$ROOT/godot/tests/playtest/out/$TAG"; rm -rf "$OUT"; mkdir -p "$OUT/xdg" "$OUT/shots"
 export XDG_DATA_HOME="$OUT/xdg"   # user:// -> $OUT/xdg/godot/app_userdata/...
 run() { # session
