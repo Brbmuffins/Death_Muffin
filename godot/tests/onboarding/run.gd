@@ -1,6 +1,6 @@
 extends SceneTree
 ## Covenant counsel tests (headless):  godot --headless --path godot --script res://tests/onboarding/run.gd
-## Fixtures come from the real TS (tools/godot/fixtures-onboarding.ts): render, cadence decisions, scripted event sequences run through the
+## Fixtures come from the real TS (the retired web game\'s fixtures-onboarding exporter): render, cadence decisions, scripted event sequences run through the
 ## real Onboarding class, and the web call-site list the event table must cover.
 
 const FIX := "res://tests/onboarding/fixtures/"
@@ -58,7 +58,7 @@ func _eq(a: Variant, b: Variant) -> bool:
 func _run() -> void:
 	var sequences: Variant = _load("sequences.json")
 	if sequences == null or not FileAccess.file_exists("res://data/onboarding/tips.json"):
-		printerr("fixtures missing: run tools/godot/gen-fixtures.sh")
+		printerr("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(1)
 		return
 	_test_data()

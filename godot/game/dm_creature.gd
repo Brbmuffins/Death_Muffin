@@ -3,7 +3,7 @@ extends RefCounted
 ## One animated instance of a model (port of src/graphics/Creature.ts onto Godot): model + AnimationPlayer (advanced by hand, so the
 ## view layer can LOD / hitstop it like the web's mixer.update(dt)), the web's material options (tint, emissive, spectral, wings, rim,
 ## gear tint), stride-matched locomotion, timed strikes, one-shots, flinch, death/landing, hand props with the web's calibration + follow.
-## Model rows (url, height, yaw, clips, timings, stride) come from godot/game/view_models.json (tools/godot/export-view-models.ts).
+## Model rows (url, height, yaw, clips, timings, stride) come from godot/game/view_models.json (the retired web game\'s export-view-models exporter).
 ##
 ## Differences from the three.js version (deliberate, Godot has no equivalent): the flinch is a short replacing hurt clip (only when
 ## nothing else plays) instead of an additive layer; crossfades are the AnimationPlayer blend; the rim/gear/wings are one custom shader.

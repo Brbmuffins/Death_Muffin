@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless tests for godot/loot_view (DmLootView). Fixtures come from the real TS LootView (tools/godot/fixtures-lootview.ts).
+## Headless tests for godot/loot_view (DmLootView). Fixtures come from the real TS LootView (the retired web game\'s fixtures-lootview exporter).
 ## Run: /home/ubuntu/tools/godot/godot --headless --path godot --script res://tests/loot_view/run.gd
 
 const DIR := "res://tests/loot_view/fixtures/"
@@ -9,7 +9,7 @@ var failed := 0
 
 func _initialize() -> void:
 	if not FileAccess.file_exists(DIR + "scenarios.json"):
-		print("fixtures missing: run tools/godot/gen-fixtures.sh")
+		print("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(1)
 		return
 	t_scenarios()

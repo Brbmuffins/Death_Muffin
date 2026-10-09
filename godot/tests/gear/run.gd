@@ -1,7 +1,7 @@
 extends SceneTree
 ## Golden-fixture runner for godot/rules/gear (gearStats.ts, setBonuses text, atlas outlooks, JS number formatting).
 ## Run: /home/ubuntu/tools/godot/godot --headless --path godot --script res://tests/gear/run.gd
-## Fixtures: tools/godot/fixtures-gear.ts (npx vite-node tools/godot/fixtures-gear.ts, or tools/godot/gen-fixtures.sh) -> tests/gear/fixtures/*.json
+## Fixtures: committed golden files, generated from the retired web game (the generators were removed 2026-10-09).
 ## The `context` cases must run in file order: DmGearStats keeps the web's reference-hero cache (keyed by discipline id and thrall cap).
 
 const DIR := "res://tests/gear/fixtures/"
@@ -13,7 +13,7 @@ var _shown := 0
 
 func _initialize() -> void:
 	if not FileAccess.file_exists(DIR + "context.json.gz"):
-		print("fixtures missing (committed under tests/<suite>/fixtures)")
+		print("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(1)
 		return
 	_run_context()

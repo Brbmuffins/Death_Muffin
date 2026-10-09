@@ -1,7 +1,7 @@
 extends SceneTree
 ## Golden-fixture runner for godot/rules/loot.
 ## Run: /home/ubuntu/tools/godot/godot --headless --path godot --script res://tests/rules-loot/run.gd
-## Fixtures: tools/godot/fixtures-loot.ts (npx vite-node tools/godot/fixtures-loot.ts) -> godot/tests/rules-loot/fixtures/*.json
+## Fixtures: committed golden files, generated from the retired web game (the generators were removed 2026-10-09).
 
 const DIR := "res://tests/rules-loot/fixtures/"
 var _rng_script: Script

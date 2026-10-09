@@ -1,7 +1,7 @@
 extends SceneTree
 ## Golden-fixture runner for godot/rules/progression.
 ## Run: /home/ubuntu/tools/godot/godot --headless --path godot --script res://tests/rules-progression/run.gd
-## Fixtures: tools/godot/fixtures-progression.ts (tools/godot/gen-fixtures.sh) -> godot/tests/rules-progression/fixtures/*.json
+## Fixtures: committed golden files, generated from the retired web game (the generators were removed 2026-10-09).
 
 const DIR := "res://tests/rules-progression/fixtures/"
 var passed := 0
@@ -13,7 +13,7 @@ var _cur := ""
 
 func _initialize() -> void:
 	if not FileAccess.file_exists(DIR + "pure.json"):
-		print("fixtures missing (committed under tests/<suite>/fixtures)")
+		print("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(1)
 		return
 	for t in ["pure", "necro_seq", "kill_chain", "chronicle_seq", "progression_seq"]:

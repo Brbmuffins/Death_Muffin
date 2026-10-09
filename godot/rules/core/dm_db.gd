@@ -81,7 +81,7 @@ static func all_files() -> PackedStringArray:
 	return out
 
 
-# ---- content/* (export-content.ts) ------------------------------------------------------------------------------------------
+# ---- content/* (exported from the retired web game) ------------------------------------------------------------------------------------------
 
 static func content_manifest() -> Dictionary:
 	return _dict(raw("content/manifest"))

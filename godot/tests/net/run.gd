@@ -1,6 +1,6 @@
 extends SceneTree
 ## Net track tests. Headless:  godot --headless --path godot --script res://tests/net/run.gd
-## Fixtures come from the TS client (npx vite-node tools/godot/fixtures-net.ts). Live smoke (opt-in, read-only, QA account only):
+## Fixtures come from the TS client (the retired web game\'s fixtures-net exporter). Live smoke (opt-in, read-only, QA account only):
 ##   DM_LIVE_SMOKE=1 DM_QA_PASS_FILE=<file with the password> godot --headless --path godot --script res://tests/net/run.gd
 
 var pass_count := 0
@@ -296,7 +296,7 @@ func live_smoke() -> void:
 func _main() -> void:
 	var f := FileAccess.open("res://tests/net/fixtures/net.json", FileAccess.READ)
 	if f == null:
-		print("missing fixtures: run npx vite-node tools/godot/fixtures-net.ts")
+		print("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(2)
 		return
 	fx = JSON.parse_string(f.get_as_text())

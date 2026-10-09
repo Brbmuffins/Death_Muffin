@@ -7,7 +7,7 @@
  *   node tools/blender.mjs cleanup    <in.glb> <clip> [--out out.glb] [--loop] [--drift] [--foot-lock] [--window 0.25] [--name n]
  *   node tools/blender.mjs retarget   <source.glb|fbx> <target-rig.glb> <clip-map.json> [--out dir] [--only clip,clip] [--install <slug>]
  *   node tools/blender.mjs install    <slug> [--from dir]      copy generated anim_*.glb into art-src/tripo/<slug>/ (originals kept in orig/)
- *   node tools/blender.mjs build      <slug ...>               build-characters + stride speeds + clip timings
+ *   node tools/blender.mjs build      <slug ...>               build-characters
  *   node tools/blender.mjs selftest                            check the kinematics against Blender itself
  *
  * Blender: $BLENDER or /home/ubuntu/tools/blender/blender or `blender` on PATH (headless, glTF addon on).

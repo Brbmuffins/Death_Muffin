@@ -1,7 +1,7 @@
 extends SceneTree
 ## Golden-fixture runner for godot/rules/combat.
 ## Run: /home/ubuntu/tools/godot/godot --headless --path godot --script res://tests/rules-combat/run.gd
-## Fixtures: tools/godot/fixtures-combat.ts (npx vite-node tools/godot/fixtures-combat.ts, or tools/godot/gen-fixtures.sh) -> tests/rules-combat/fixtures/*.json
+## Fixtures: committed golden files, generated from the retired web game (the generators were removed 2026-10-09).
 ## Each fixture file is {fn, cases:[{in, out}]}; HANDLERS maps fn -> a method here taking the case input and returning the expected output.
 
 const DIR := "res://tests/rules-combat/fixtures/"
@@ -14,7 +14,7 @@ var _shown := 0
 func _initialize() -> void:
 	var dir := DirAccess.open(DIR)
 	if dir == null or not FileAccess.file_exists(DIR + "build.json"):
-		print("fixtures missing (committed under tests/<suite>/fixtures)")
+		print("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(1)
 		return
 	var names: Array[String] = []

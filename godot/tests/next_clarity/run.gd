@@ -1,5 +1,5 @@
 extends SceneTree
-## Combat-readability polish of the rebuild (see next/feel/CLARITY.md): the floating-number budget, the action bar's "no corpse / no legion" state,
+## Combat-readability polish of the rebuild (see next/feel/README.md): the floating-number budget, the action bar's "no corpse / no legion" state,
 ## the low-health thrall ring and the red legion pips. godot --headless --path godot --script res://tests/next_clarity/run.gd
 
 var passed := 0

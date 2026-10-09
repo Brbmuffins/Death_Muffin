@@ -9,7 +9,7 @@ static func load_json(name: String) -> Variant:
 		return _cache[name]
 	var v: Variant = DmDb.slice(name)
 	if v == null:
-		push_error("DmData: missing slice dataset %s (run tools/godot/export-slice.ts)" % name)
+		push_error("DmData: missing slice dataset %s (godot/data is committed; restore it from git)" % name)
 		return {}
 	_cache[name] = v
 	return v

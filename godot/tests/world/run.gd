@@ -47,7 +47,7 @@ func _run() -> void:
 	var loco: Variant = _json(fx_dir + "locomotion.json")
 	var strikes: Variant = _json(fx_dir + "strike_timing.json")
 	if loco == null or strikes == null:
-		printerr("fixtures missing: run tools/godot/gen-fixtures.sh")
+		printerr("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(1)
 		return
 

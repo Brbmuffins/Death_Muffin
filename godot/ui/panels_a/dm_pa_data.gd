@@ -15,7 +15,7 @@ static func atlas() -> Dictionary:
 	return load_json("atlas")
 
 
-## Unpack a packed drop-source row (see export-panels-a.ts packSrc) into the TS DropSource shape.
+## Unpack a packed drop-source row (packed by the retired web exporter) into the TS DropSource shape.
 static func src(row: Array) -> Dictionary:
 	var d := {
 		"kind": row[0], "placeId": row[1], "place": row[2], "event": row[3], "chance": float(row[4]),

@@ -1,6 +1,6 @@
 class_name DmFakeBossWorld
 extends "res://sim/bosses/boss_world.gd"
-## Reference DmBossWorld used by the tests: the GDScript twin of StubWorld in tools/godot/fixtures-bosses.ts. It records everything
+## Reference DmBossWorld used by the tests: the GDScript twin of StubWorld in (the retired web game\'s fixtures-bosses exporter). It records everything
 ## the brain asks of the world in `log`, in order, in the same shape as the TS fixture log.
 
 const Rng := preload("res://rules/core/rng.gd")

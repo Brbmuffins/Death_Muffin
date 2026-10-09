@@ -1,6 +1,6 @@
 extends SceneTree
 ## Headless: godot --headless --path godot --script res://tests/rules-gathering/run.gd
-## Reproduces the golden fixtures (godot/tests/rules-gathering/fixtures, generated from the TS by tools/godot/fixtures-gathering.ts).
+## Reproduces the golden fixtures (godot/tests/rules-gathering/fixtures, generated from the TS by (the retired web game\'s fixtures-gathering exporter).
 
 const FX := "res://tests/rules-gathering/fixtures/"
 const Rng := preload("res://rules/core/rng.gd")
@@ -25,7 +25,7 @@ var section := ""
 
 func _init() -> void:
 	if not FileAccess.file_exists(FX + "consts.json"):
-		printerr("fixtures missing (committed under tests/<suite>/fixtures)")
+		printerr("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(1)
 		return
 	for t in ["consts", "xp", "chance", "rolls", "budget", "tools", "place_items", "plan", "labor", "garden", "contracts", "salvage", "gold_sink", "recipes", "bag", "locks", "vault", "potion_belt", "stable_sort"]:

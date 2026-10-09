@@ -3,10 +3,8 @@
 # proposal and before a deploy. Same sandbox as check.sh (sandbox-lib.sh): fresh user/network/mount namespaces, no network (loopback only), the WHOLE
 # filesystem read-only (Godot binary, node_modules, the repo's .git stay readable), a private /tmp, only the worktree writable. HOME and the XDG dirs are a fresh temp dir, so Godot's
 # user:// (saves, settings) can never touch the real home. Hard limit 85 minutes for the whole run (the full suite outgrew 40 min on 2026-10-09).
-# Inside: gen-fixtures.sh (the golden fixtures are gitignored and are generated deterministically from the frozen TS game; node_modules is
-# symlinked into the worktree by the runner), then tools/godot/run-all-tests.sh (one line per suite). The generator also rewrites the COMMITTED
-# godot/data/loot/content.json and .git is read-only, so that file is snapshotted first and put back afterwards: the tests run against the
-# version the branch actually commits. Prints per-suite lines and a final "GODOT TESTS: ..." line; exit 1 if any suite or step fails.
+# Inside: tools/godot/run-all-tests.sh (one line per suite) against the committed golden fixtures. An older branch that still has
+# tools/godot/gen-fixtures.sh runs it first (it rewrites godot/data/loot/content.json, which is snapshotted and put back). Prints per-suite lines and a final "GODOT TESTS: ..." line; exit 1 if any suite or step fails.
 # Run from the worktree root (the agent's cwd). Env: GODOT (default /home/ubuntu/tools/godot/godot).
 set -uo pipefail
 TOP=$(git rev-parse --show-toplevel) || exit 2

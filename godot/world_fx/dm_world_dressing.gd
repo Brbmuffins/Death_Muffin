@@ -50,7 +50,7 @@ static func attach(b: Node3D, follow: Node3D = null) -> DmWorldDressing:
 func build() -> void:
 	data = DmWfxData.get_data()
 	if data.is_empty():
-		push_error("world_fx: godot/data/world_fx/fx.json missing (npx vite-node tools/godot/export-world-fx.ts)")
+		push_error("world_fx: godot/data/world_fx/fx.json missing (it is committed; restore it from git)")
 		return
 	var world: Dictionary = builder.world
 	var order: Array = world.order

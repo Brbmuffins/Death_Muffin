@@ -31,7 +31,7 @@ func _finish() -> void:
 func _run() -> void:
 	var d := DmWfxData.get_data()
 	if d.is_empty():
-		print("fixtures missing: run npx vite-node tools/godot/export-world-fx.ts")
+		print("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(1)
 		return
 	_test_data(d)

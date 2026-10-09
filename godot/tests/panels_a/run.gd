@@ -1,7 +1,7 @@
 extends SceneTree
 ## Panels-A tests (headless):  godot --headless --path godot --script res://tests/panels_a/run.gd
 ## data in -> displayed rows / buttons / enabled state, for Ascension, Class, Sheet, Cosmetics, Legion, Grimoire, Codex, Atlas, Dialogue, Waystones,
-## plus the string formatters against fixtures generated from the TypeScript (tools/godot/export-panels-a.ts).
+## plus the string formatters against fixtures generated from the TypeScript (the retired web game\'s export-panels-a exporter).
 
 var _fail := 0
 var _pass := 0
@@ -35,7 +35,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	if not FileAccess.file_exists("res://tests/panels_a/fixtures/fmt.json") or not FileAccess.file_exists("res://data/panels_a/atlas.json"):
-		printerr("fixtures missing: run npx vite-node tools/godot/export-panels-a.ts")
+		printerr("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(1)
 		return
 	_root = Control.new()
