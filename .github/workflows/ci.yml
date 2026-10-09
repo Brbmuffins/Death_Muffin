@@ -38,6 +38,9 @@ jobs:
           npm ci
           npm ci --prefix server/death-muffin/lobby
 
+      - name: Shared rules tests
+        run: npm run test:rules
+
       - name: Backend tests (auth, gathering, necro-progress)
         run: npm run test:server
 
@@ -47,7 +50,7 @@ jobs:
   godot:
     name: Godot client tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -71,8 +74,8 @@ jobs:
       - name: Import project
         run: ~/godot-bin/godot --headless --path godot --import
 
-      # Only suites that pass from a clean checkout of TRACKED files. Many suites read golden fixtures that are still gitignored
-      # (godot/tests/*/fixtures/ for rules-*, gear, dialogue, ui_parity, game); this list grows once those fixtures are committed.
+      # Suites that run from a clean checkout of tracked files (golden fixtures are committed) and finish quickly; the full set is
+      # tools/godot/run-all-tests.sh (about 100 suites, too long for CI).
       # Each suite prints "N passed, M failed" and exits non-zero on any failure.
       - name: Godot suites
         run: |
@@ -88,20 +91,25 @@ jobs:
             hud/run.gd \
             corpses/run.gd \
             game_ui/run.gd \
-            game/run.gd \
-            game/depths_run.gd \
             game/gather_run.gd \
             game/graphics_run.gd \
             game/labor_run.gd \
             game/acre_gold_run.gd \
             game/legion_gold_run.gd \
-            game/milestone_gold_run.gd \
             game/offline_auto_run.gd \
-            game/playtest_bugs_run.gd \
-            game/waystones_gm_run.gd \
             game/depths_builder_run.gd \
-            game/dispatch_run.gd \
-            game/coop_run.gd; do
+            game/autocombat_run.gd \
+            sim/run.gd \
+            fx/run.gd \
+            dialogue/run.gd \
+            gear/run.gd \
+            ui_parity/run.gd \
+            rules-core/run.gd \
+            rules-combat/run.gd \
+            rules-gathering/run.gd \
+            rules-loot/run.gd \
+            rules-loot/bag_save_run.gd \
+            rules-progression/run.gd; do
             if timeout 300 ~/godot-bin/godot --headless --path godot --script "res://tests/$s"; then echo "OK   $s"; else echo "FAIL $s"; rc=1; fi
           done
           exit $rc
