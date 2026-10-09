@@ -137,7 +137,6 @@
         "godot/main/main.gd",
         "godot/tests/**",
         "tools/hygiene/**",
-        "godot/front/dm_login_screen.gd",
         "server/death-muffin/backend/authority.test.cjs",
         "server/death-muffin/discord-agent/preview.sh",
         "server/death-muffin/discord-agent/preview-godot.sh",

@@ -1,7 +1,7 @@
 class_name DmLoginScreen
 extends Control
 ## Port of archive/legacy-web:src/scenes/LoginScene.ts: story column + login / register card over the pyre backdrop.
-## `standalone` = the web's VITE_OFFLINE_BUILD (local player name only, no email / password, "Offline edition" wording);
+## `standalone` = the web's VITE_OFFLINE_BUILD (local player name only, no email / password, "Dev offline mode" wording);
 ## `dev_offline` = the web's ?offline dev mode (normal fields + "accounts live only in this browser" note).
 ## Server error strings are shown verbatim, only the first letter capitalised.
 
@@ -261,7 +261,7 @@ func render() -> void:
 		c.queue_free()
 		_fields_box().remove_child(c)
 	if standalone:
-		kicker_label.text = "OFFLINE EDITION"
+		kicker_label.text = "DEV OFFLINE MODE"
 		heading_label.text = "Continue local game" if is_login else "Create local player"
 		tagline_label.text = "Your character is saved on this device."
 		toggle_btn.text = "Create a local player" if is_login else "Use an existing local player"

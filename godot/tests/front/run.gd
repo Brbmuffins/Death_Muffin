@@ -143,7 +143,7 @@ func _run() -> void:
 	await f5.start()
 	await _frames()
 	var l5: DmLoginScreen = f5.current
-	_check(l5.kicker_label.text == "OFFLINE EDITION" and l5.heading_label.text == "Continue local game" and l5.pass_edit == null and l5.email_edit == null, "standalone login copy/fields")
+	_check(l5.kicker_label.text == "DEV OFFLINE MODE" and l5.heading_label.text == "Continue local game" and l5.pass_edit == null and l5.email_edit == null, "standalone login copy/fields")
 	_check(l5.submit_btn.text == "CONTINUE" and l5.toggle_btn.text == "Create a local player", "standalone buttons")
 	l5.user_edit.text = "localdude"
 	var created := await l5.submit()   # login first: unknown local player -> server error
