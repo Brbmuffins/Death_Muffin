@@ -4,14 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:rules": "vitest run server/rules",
-    "qa:gear-clip": "GEAR_CLIP_FULL=1 vitest run src/graphics/__tests__/gear-clip.test.ts",
-    "test:server": "node --test server/realtime/server.test.js server/vps-handoff/necro-progress/necro-progress.test.cjs server/death-muffin/backend/gathering/gathering.test.cjs server/death-muffin/backend/discipline.test.cjs server/death-muffin/backend/chronicle.test.cjs server/death-muffin/backend/contracts.test.cjs server/death-muffin/backend/garden.test.cjs server/death-muffin/backend/labor.test.cjs server/death-muffin/backend/cosmetics.test.cjs server/death-muffin/backend/offline-sync.test.cjs server/death-muffin/backend/offline-full-sync.test.cjs server/death-muffin/backend/inventory-save.test.cjs server/death-muffin/backend/vault.test.cjs server/death-muffin/backend/salvage.test.cjs server/death-muffin/backend/tool-belt.test.cjs server/death-muffin/backend/loot.test.cjs server/death-muffin/backend/affix-paths.test.cjs server/death-muffin/backend/authority.test.cjs server/death-muffin/backend/thrall-kit.test.cjs server/death-muffin/backend/runes.test.cjs server/death-muffin/backend/gear-slots.test.cjs server/death-muffin/backend/server-routes.test.cjs server/death-muffin/backend/bug-reports.test.cjs server/death-muffin/backend/kills.test.cjs server/death-muffin/backend/reforge.test.cjs server/death-muffin/backend/boss-key.test.cjs server/death-muffin/backend/loadouts.test.cjs server/death-muffin/backend/session.test.cjs server/death-muffin/backend/prefs.test.cjs server/death-muffin/backend/party-sessions.test.cjs",
+    "test:server": "node --test server/vps-handoff/necro-progress/necro-progress.test.cjs server/death-muffin/backend/gathering/gathering.test.cjs server/death-muffin/backend/discipline.test.cjs server/death-muffin/backend/chronicle.test.cjs server/death-muffin/backend/contracts.test.cjs server/death-muffin/backend/garden.test.cjs server/death-muffin/backend/labor.test.cjs server/death-muffin/backend/cosmetics.test.cjs server/death-muffin/backend/offline-sync.test.cjs server/death-muffin/backend/offline-full-sync.test.cjs server/death-muffin/backend/inventory-save.test.cjs server/death-muffin/backend/vault.test.cjs server/death-muffin/backend/salvage.test.cjs server/death-muffin/backend/tool-belt.test.cjs server/death-muffin/backend/loot.test.cjs server/death-muffin/backend/affix-paths.test.cjs server/death-muffin/backend/authority.test.cjs server/death-muffin/backend/thrall-kit.test.cjs server/death-muffin/backend/runes.test.cjs server/death-muffin/backend/gear-slots.test.cjs server/death-muffin/backend/server-routes.test.cjs server/death-muffin/backend/bug-reports.test.cjs server/death-muffin/backend/kills.test.cjs server/death-muffin/backend/reforge.test.cjs server/death-muffin/backend/boss-key.test.cjs server/death-muffin/backend/loadouts.test.cjs server/death-muffin/backend/session.test.cjs server/death-muffin/backend/prefs.test.cjs server/death-muffin/backend/party-sessions.test.cjs",
     "build:soundboard": "vite-node tools/audio/build-soundboard.mjs",
     "build:vfx": "node tools/binbun-port.mjs",
     "test:vfx": "node tools/binbun-port.test.mjs",
@@ -26,9 +21,7 @@
     "gen:loot": "vite-node tools/gen-loot-tables.ts",
     "balance:runes": "vite-node src/gameplay/balance/runeReport.ts",
     "balance:depths": "vite-node src/gameplay/balance/depthsReport.ts",
-    "build:server-rules": "node tools/build-server-rules.mjs",
-    "build:death-muffin": "DEPLOY_BASE=/death-muffin/play/ VITE_API_BASE=/death-muffin/api VITE_WS_BASE=https://muffindevelopment.com VITE_WS_PATH=/death-muffin/rt/socket.io npm run build && node tools/build-asset-manifest.mjs dist /death-muffin/play/",
-    "build:offline": "VITE_OFFLINE_BUILD=1 DEPLOY_BASE=/death-muffin/offline/ VITE_WS_BASE= vite build --outDir dist-offline && node tools/generate-offline-sw.mjs dist-offline /death-muffin/offline/"
+    "build:server-rules": "node tools/build-server-rules.mjs"
   },
   "dependencies": {
     "@fontsource/alegreya-sans": "^5.3.0",

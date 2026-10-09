@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -13,10 +13,14 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  GODOT_VERSION: 4.7.2-stable
+
 jobs:
-  verify:
+  server:
+    name: Backend + lobby tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -26,24 +30,78 @@ jobs:
           cache: npm
           cache-dependency-path: |
             package-lock.json
-            server/realtime/package-lock.json
+            server/death-muffin/lobby/package-lock.json
 
-      - name: Install client dependencies
-        run: npm ci
+      # The lobby needs ws + jsonwebtoken; the backend tests run on the repo-root install.
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix server/death-muffin/lobby
 
-      - name: Typecheck
-        run: npx tsc --noEmit
+      - name: Backend tests (auth, gathering, necro-progress)
+        run: npm run test:server
 
-      # Before the unit tests: src/net/realtime-join, runes and sim-fuzz import socket.io/dotenv from server/realtime/node_modules.
-      - name: Install realtime server dependencies
-        working-directory: server/realtime
-        run: npm ci
+      - name: Lobby tests
+        run: npm test --prefix server/death-muffin/lobby
 
-      - name: Unit tests (game logic + content)
-        run: npx vitest run
+  godot:
+    name: Godot client tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Realtime server tests
-        run: node --test server/realtime/server.test.js server/vps-handoff/necro-progress/necro-progress.test.cjs server/death-muffin/backend/gathering/gathering.test.cjs
+      - name: Cache Godot binary
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-bin
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
 
-      - name: Production build
-        run: npm run build
+      - name: Download Godot ${{ env.GODOT_VERSION }}
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot-bin
+          curl -fsSL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot-bin
+          mv ~/godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64 ~/godot-bin/godot
+          chmod +x ~/godot-bin/godot
+
+      - name: Import project
+        run: ~/godot-bin/godot --headless --path godot --import
+
+      # Only suites that pass from a clean checkout of TRACKED files. Many suites read golden fixtures that are still gitignored
+      # (godot/tests/*/fixtures/ for rules-*, gear, dialogue, ui_parity, game); this list grows once those fixtures are committed.
+      # Each suite prints "N passed, M failed" and exits non-zero on any failure.
+      - name: Godot suites
+        run: |
+          export XDG_DATA_HOME="$(mktemp -d)"   # user:// state must not leak between suites
+          rc=0
+          for s in \
+            audio/run.gd \
+            audio_wire/run.gd \
+            data/run.gd \
+            front/run.gd \
+            net/run.gd \
+            loot_view/run.gd \
+            hud/run.gd \
+            corpses/run.gd \
+            game_ui/run.gd \
+            game/run.gd \
+            game/depths_run.gd \
+            game/gather_run.gd \
+            game/graphics_run.gd \
+            game/labor_run.gd \
+            game/acre_gold_run.gd \
+            game/legion_gold_run.gd \
+            game/milestone_gold_run.gd \
+            game/offline_auto_run.gd \
+            game/playtest_bugs_run.gd \
+            game/waystones_gm_run.gd \
+            game/depths_builder_run.gd \
+            game/dispatch_run.gd \
+            game/coop_run.gd; do
+            if timeout 300 ~/godot-bin/godot --headless --path godot --script "res://tests/$s"; then echo "OK   $s"; else echo "FAIL $s"; rc=1; fi
+          done
+          exit $rc

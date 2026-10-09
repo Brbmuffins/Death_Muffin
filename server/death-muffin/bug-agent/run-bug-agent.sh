@@ -39,7 +39,6 @@ git -C "$REPO" fetch -q origin
 git -C "$REPO" worktree add -q -b "$BRANCH" "$WT" origin/godot-next
 # node_modules is only for tools/godot/gen-fixtures.sh (the golden fixtures are generated from the frozen TS game).
 ln -s "$REPO/node_modules" "$WT/node_modules"
-[ -d "$REPO/server/realtime/node_modules" ] && ln -s "$REPO/server/realtime/node_modules" "$WT/server/realtime/node_modules"
 BASE=$(git -C "$WT" rev-parse HEAD)
 
 PROMPT_FILE="$STATE/runs/$DATE.prompt.md"

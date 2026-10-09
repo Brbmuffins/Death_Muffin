@@ -55,6 +55,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: launcher-v${{ steps.ver.outputs.version }}
+          # Without this GitHub tags the repo's default branch tip, not the commit that was built (v0.7.0 landed on master's tip).
+          target_commitish: ${{ github.sha }}
           name: Death Muffin Launcher ${{ steps.ver.outputs.version }}
           files: DeathMuffinLauncher-win-x64.zip
           make_latest: true
