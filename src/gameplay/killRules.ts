@@ -465,3 +465,6 @@ export function bucketCaps(unlocked: readonly string[]) {
 
 /** Exported so tests can read the constants that ride on the floors. */
 export const FLOOR_RULES = { FLOOR_BONUS_KILLS, CHEST_KILLS, chestEvery: DEPTHS.chestEvery };
+
+/** The rank a character plays at, from its sworn vows (the backend stores vows; the ceilings above take a rank). */
+export { vowHeat } from '../content/ascension';

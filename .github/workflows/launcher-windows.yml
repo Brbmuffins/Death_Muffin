@@ -40,15 +40,7 @@ jobs:
           New-Item -ItemType Directory -Force $stage | Out-Null
           Copy-Item "$out/DeathMuffinLauncher.exe" $stage
           Copy-Item "$out/DeathMuffinLauncher.exe.config" $stage -ErrorAction SilentlyContinue
-          Copy-Item "$out/Microsoft.Web.WebView2.Core.dll" $stage
-          Copy-Item "$out/Microsoft.Web.WebView2.WinForms.dll" $stage
-          # WebView2Loader.dll for each architecture (the app is AnyCPU and picks the matching one).
-          Copy-Item "$out/runtimes" $stage -Recurse
           Copy-Item launcher/windows/README.md $stage/README.md
-          # Licenses: the WebView2 SDK license ships inside the NuGet package.
-          $pkg = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.web.webview2'
-          $lic = Get-ChildItem $pkg -Recurse -Include 'LICENSE*','NOTICE*' | Select-Object -First 2
-          foreach ($f in $lic) { Copy-Item $f.FullName (Join-Path $stage ("WebView2-" + $f.Name)) }
           Compress-Archive -Path "$stage/*" -DestinationPath DeathMuffinLauncher-win-x64.zip -Force
           (Get-Item DeathMuffinLauncher-win-x64.zip).Length
 
@@ -68,4 +60,4 @@ jobs:
           make_latest: true
           body: |
             Windows launcher for Death Muffin. Unzip anywhere and run DeathMuffinLauncher.exe.
-            Needs the Microsoft Edge WebView2 Runtime (already present on Windows 11).
+            Downloads and updates the Death Muffin game client itself. Needs no extra runtime (.NET Framework 4.8 ships with Windows 10/11).

@@ -126,6 +126,13 @@ function refillLump(ledger, now) {
   };
 }
 
+/** necroSummary answers the sworn vows ({ vowId: steps }) or, for older saves, a numeric rank; the kill rules take a rank (the vows' total heat).
+ *  Passing the vows object straight through made every ceiling NaN, so every report from a character with vows failed (ER_DATA_OUT_OF_RANGE). */
+function ascensionRank(a) {
+  if (a && typeof a === 'object') return rules.vowHeat(a);
+  return Math.max(0, num(a));
+}
+
 // ── POST /api/kills/report ────────────────────────────────────────────────────────────────────────────────────────────
 
 const ENFORCE_NOTICE = 'Some of your kills could not be verified against the time that passed, so the server did not count them.';
@@ -156,8 +163,9 @@ async function handleReport(pool, { char, accountId, body, account, now = Date.n
       return { status: 200, body: { success: true, data: { mode, duplicate: true } } };
     }
     const buckets = refill(ledger, necro.unlocked, now);
+    const rank = ascensionRank(necro.ascension);
     const ev = rules.evaluateKillReport(report, {
-      unlocked: necro.unlocked, ascension: necro.ascension, heroLevel: num(locked.level, 1), deepest: ledger.depthProved,
+      unlocked: necro.unlocked, ascension: rank, heroLevel: num(locked.level, 1), deepest: ledger.depthProved,
       killBucket: buckets.killBucket, bossBucket: buckets.bossBucket, floorBucket: buckets.floorBucket, maxCleared: ledger.maxCleared, staff: !!(account && account.staff),
     });
     const credit = { ...ledger.killCredit };
@@ -440,8 +448,8 @@ async function mayArchiveRun(db, { characterId, runNo, accountId, account, env =
   if (mode === 'off' || (account && account.staff)) return true;
   try {
     const necro = await necroSummary(db, characterId);
-    const ok = runNo - 1 <= necro.ascension;
-    if (!ok) await audit(db, { characterId, accountId, kind: 'run_count', mode, action: mode === 'enforce' ? 'refuse' : 'report', detail: { runNo, ascension: necro.ascension } }, log);
+    const ok = runNo - 1 <= ascensionRank(necro.ascension);
+    if (!ok) await audit(db, { characterId, accountId, kind: 'run_count', mode, action: mode === 'enforce' ? 'refuse' : 'report', detail: { runNo, ascension: ascensionRank(necro.ascension) } }, log);
     return mode === 'enforce' ? ok : true;
   } catch (err) {
     log.error(`[AUTHORITY] run guard unavailable: ${err.code || err.message}`);

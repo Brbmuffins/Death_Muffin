@@ -71,8 +71,11 @@ namespace DeathMuffinLauncher
     /// </summary>
     internal sealed class RuneButton : Control
     {
-        readonly bool primary;
+        bool primary;
         bool hover, down;
+
+        /// <summary>Violet gold-edged emphasis; the launcher moves it to Play offline when there is no internet.</summary>
+        public bool Primary { get { return primary; } set { if (primary != value) { primary = value; Invalidate(); } } }
 
         public RuneButton(string text, bool primary)
         {

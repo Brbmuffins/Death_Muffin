@@ -73,7 +73,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       const ch = msg.channel; const isThread = typeof ch.isThread === 'function' && ch.isThread();
       const parentId = isThread ? ch.parentId : null; const chan = await channelId();
       if (!chan || (isThread ? parentId : ch.id) !== chan) return;
-      const mentioned = !!(msg.mentions && msg.mentions.users && msg.mentions.users.has(botId()));   // explicit @bot only, never @everyone
+      const mentioned = !!(!!(msg.mentions && msg.mentions.users && msg.mentions.users.has(botId())) || (!!msg.guild?.members?.me?.roles?.botRole && !!msg.mentions?.roles?.has?.(msg.guild.members.me.roles.botRole.id)));   // @bot or the bot's own managed role (same name in the @ menu), never @everyone
       if (!isThread && !mentioned) return;
       const images = [];
       const text = stripMention(msg.content) + await attachmentText(msg, images);

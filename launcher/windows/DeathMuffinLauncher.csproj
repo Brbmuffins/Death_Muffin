@@ -9,11 +9,11 @@
     <AssemblyName>DeathMuffinLauncher</AssemblyName>
     <RootNamespace>DeathMuffinLauncher</RootNamespace>
     <!-- The CI workflow reads <Version> from this file to name the release tag (launcher-v<version>). -->
-    <Version>0.5.0</Version>
+    <Version>0.6.1</Version>
     <ApplicationIcon>Resources\DeathMuffin.ico</ApplicationIcon>
     <AssemblyTitle>Death Muffin Launcher</AssemblyTitle>
     <Product>Death Muffin Launcher</Product>
-    <Description>Desktop launcher for Death Muffin</Description>
+    <Description>Desktop launcher and updater for the Death Muffin game client</Description>
     <Copyright>Muffin Development</Copyright>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
@@ -23,7 +23,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Drawing" />

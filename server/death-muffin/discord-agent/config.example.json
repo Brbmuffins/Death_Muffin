@@ -15,5 +15,7 @@
   "names": { "142812688358178816": "Helix" },
   "defaultModel": "sonnet",
   "maxConcurrentJobs": 1,
-  "threadReplyRequiresMention": false
+  "threadReplyRequiresMention": false,
+  "baseBranch": "master",
+  "mode": "web"
 }

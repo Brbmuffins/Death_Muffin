@@ -6,7 +6,7 @@ REPO=/home/ubuntu/vps-handoffs/DeathMuffin/game
 STATE=/home/ubuntu/death-muffin/bug-agent
 REV="${1:-origin/master}"
 mkdir -p "$STATE/runs"
-for f in run-bug-agent.sh reports-cli.cjs check.sh agit PROMPT.md; do
+for f in run-bug-agent.sh reports-cli.cjs check.sh sandbox-lib.sh agit PROMPT.md; do
   git -C "$REPO" show "$REV:server/death-muffin/bug-agent/$f" > "$STATE/$f"
 done
 chmod 755 "$STATE/run-bug-agent.sh" "$STATE/check.sh" "$STATE/agit"

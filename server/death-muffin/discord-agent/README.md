@@ -10,11 +10,54 @@ Discord #death-muffin ── Muffin Core bot (user `muffin`, /opt/muffin/discord
         ▼
 Runner (user `ubuntu`, ~/death-muffin/discord-agent/runner/server.cjs, port 4321)
    allow-list · approver gate · rate limits · audit.jsonl · job queue · tier classifier · proposal builder
-   ├─ per request: git worktree + branch discord/<id> from origin/master, `claude -p` (sandboxed, --resume per thread)
-   ├─ verify (runner code, not the AI): commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · check.sh · tier
+   ├─ per request: git worktree + branch discord/<id> from origin/{baseBranch} (web=master, godot=godot-port), `claude -p` (sandboxed, --resume per thread)
+   ├─ verify (runner code, not the AI): commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · check.sh or check-godot.sh · tier
    ├─ propose: push branch, embed with tier / files / tests / migrations / compare link, ✅ ❌
-   └─ ship.sh (only after an approver's ✅): deploy lock · merge onto master · re-gate · re-test · push master · deploy-release.sh · (best effort) merge master into `mobile`, test, push, deploy-mobile.sh
+   └─ ship.sh (only after an approver's ✅): deploy lock · merge onto {baseBranch} · re-gate · re-test · push · deploy script · (web only: best effort) merge into `mobile`, test, push, deploy-mobile.sh
 ```
+
+## Modes (`mode` and `baseBranch` in `config.json`, owner-edited)
+
+One runner serves one game at a time. `mode: "web"` + `baseBranch: "master"` (the defaults) is the three.js game exactly as before. For the
+Godot 4 client set both: `"mode": "godot", "baseBranch": "godot-port"` (a restart picks it up). `baseBranch` must match `^[A-Za-z0-9._/-]+$` (and
+not start with `-`, contain `..`, `//`, end in `/` or `.lock`); a bad value or mode makes the runner refuse to start. Everything that used to say
+"master" uses it: the worktree base (`origin/<baseBranch>`), `!sync`, the ship merge and push, user-facing messages, the compare link.
+
+| | web | godot |
+|---|---|---|
+| tests (agent + runner + ship.sh) | `check.sh` | `check-godot.sh` |
+| playable preview | `preview.sh`, a web page | `preview-godot.sh`, a Windows `.zip` |
+| screenshots | `shot.sh` / `!shot` | `shot-godot.sh` / `!shot` (windows and tooltips on the offline demo hero; before/after on proposals; see Screenshots) |
+| generated files (`regen.sh`) | verified, tier-neutral | not used: they classify by path (server/** = sensitive), `regen.sh` is not in allowedTools |
+| prompt | `PROMPT.md` | `PROMPT-godot.md` (same safety/refusal and reply sections, verbatim) |
+| tier rules | `tiers` | `godotTiers` (picked into `cfg.tiers` by `loadConfig`; a `tiers` override is ignored in godot mode) |
+| ship | merge, check, push, `deploy-release.sh`, mobile step | merge, check-godot, backup + `ROLLBACK.sh`, push, `publish-godot-client.sh`; `MOBILE: skipped` |
+| rollback folder | `backup-pre-release-<hex>-<stamp>` (deploy-release.sh) | `backup-pre-release-godot-<stamp>` (ship.sh) |
+
+**`check-godot.sh`**: the same sandbox as `check.sh` (`unshare -rnm`, loopback only, whole filesystem read-only, only the worktree writable, scratch tmpfs over
+`node_modules/.vite`), with `HOME` and the XDG dirs in a fresh `/tmp/dmgodot.*` (inside the sandbox's private /tmp) so Godot's `user://` never touches the real home. It runs
+`tools/godot/gen-fixtures.sh` (the golden fixtures are gitignored and generated from the frozen TypeScript game with the worktree's symlinked
+`node_modules`), then `tools/godot/run-all-tests.sh` (one line per suite; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`). The generator
+rewrites the committed `godot/data/loot/content.json` and `.git` is read-only, so that file is snapshotted first and restored before the suites run (and on
+exit). It ends with `GODOT TESTS: <n> suites, <n> passed, <n> failed` (that line is the "Tests" field of the proposal), exits non-zero on any failing
+suite or step, and has a hard 40 minute limit. A run on the current godot-port takes about 10 to 13 minutes (50 suites).
+
+**`preview-godot.sh <jobid>`**: runner-only. Inside the same kind of sandbox it imports the project and exports the `Windows Desktop` preset from
+`godot/` (the installed export templates are linked read-only into the fresh `XDG_DATA_HOME`). Outside, it zips `DeathMuffin.exe`, `DeathMuffin.pck`,
+`Play Preview (offline).bat` (`DeathMuffin.exe -- --offline`) and a README ("PREVIEW of <title>, offline edition, nothing saves to your real
+character") to `<previewRoot>/<jobid>/DeathMuffin-Preview-<jobid>-win64.zip` (mode 644, ~220 MB; job ids `^[0-9a-f]{6}$`, no symlinked root or destination,
+nothing else is left in that folder). The proposal's "Try it (Windows download)" field and `!preview` link to the zip; it is deleted with the job like
+any preview. The build takes about a minute, and the runner allows 40.
+
+**Godot ship** (`ship.sh`, `MODE=godot`), in order: deploy lock; fetch; check `EXPECT_HEAD`; scratch worktree at `origin/$BASE_BRANCH`; ff or no-ff merge (same
+conflict handling); ship gate on the merged diff with the godot tiers; `check-godot.sh` on the merged tree; **rollback preparation, before anything is
+pushed**: read `rev` from the live client manifest (`clientManifest`, default `/var/www/death-muffin/client/manifest.json`; must be hex and in the repo,
+else `RESULT: backup-failed` and nothing changes), create `<deployDir>/backup-pre-release-godot-<UTC stamp>/`, save a fresh `git show
+origin/master:server/death-muffin/publish-godot-client.sh` there (that script lives on master only) and write `ROLLBACK.sh`, which runs that saved
+copy with `REPO=<repo>` for the previous revision (no manifest = first publish = `Rollback: none`); push `HEAD:refs/heads/$BASE_BRANCH`; publish the new
+SHA with the saved copy (`deployCmd` replaces it in tests); print `Rollback: <path>`, `RESULT: live <sha12> <path>`, `MOBILE: skipped`. The runner
+accepts only exact `backup-pre-release-godot-<yyyymmddThhmmssZ>` real directories (no symlinks) with a `ROLLBACK.sh` in godot mode, and only the
+hex-named ones in web mode.
 
 ## Who can do what (`config.json`, owner-edited, never by the AI)
 
@@ -29,15 +72,19 @@ Runner (user `ubuntu`, ~/death-muffin/discord-agent/runner/server.cjs, port 4321
 Tiers come from the diff's **files** (`runner/lib/tiers.cjs`, rules in `lib/config.cjs`), strictest file wins:
 casual = CSS, docs/README, PATCH_NOTES, UI help text, item/ability names+descriptions (string-only edits), balance numbers
 within ±25% of current (numeric-only edits); gameplay = other `src/**`; sensitive = `server/**`, migrations, auth/session/authority,
-deploy scripts, package.json/lockfiles, configs, `.github`, `tools`, CLAUDE.md. Paths that would change the agent itself,
+deploy scripts, package.json/lockfiles, configs, `.github`, `tools`, CLAUDE.md. In godot mode (`godotTiers`): casual = `docs/**`, `*.md`,
+`godot/**/*.md`, PATCH_NOTES.json (any content); gameplay = the rest of `godot/**`; sensitive = server, launcher, tools, CI, scripts, deploy, config,
+`project.godot`, `export_presets.cfg`, and the client's net/front(login)/backend code and anything named auth, session, online, save, offline,
+progress_sync, coop, login, account, token, relay, lobby, realtime or mock_backend, plus native libraries, `addons/` and the net/relay/offline/realtime/
+online_local/front test suites, and the progression/economy authority mirrors (anything named progression, authority, ledger, economy, spend, kill*, gold_sink, vault/labor/legion rules, milestone, reward, unlock, seal, tradeGoods; `rules/progression/`, `data/progression/`); anything unmatched (the frozen web `src/`, root files) is sensitive. `forbiddenPaths` also lists `godot/export_presets.cfg`. Paths that would change the agent itself,
 deploy scripts or `.env*` are refused outright (`forbiddenPaths`). `ship.sh` re-derives the tier from the merged diff under
 the deploy lock, so an approver can never ship above their tier.
 
 ## Chat commands (in the thread, handled by the runner, not the AI)
-`!status` · `!shot` (screenshot of the change) · `!cancel` · `!discard` (or ❌) · `!sync` (merge latest master, agent resolves conflicts) · `!model opus|sonnet|haiku`
+`!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!cancel` · `!discard` (or ❌) · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
 (full approvers; "use opus" in a message works too) · `rollback` (mention in channel or thread): runs the newest deploy
 backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited approvers only if their ship is the latest.
-Rollback undoes the live release only; revert the commit on master afterwards.
+Rollback undoes the live release only; revert the commit on the base branch afterwards.
 
 ## Generated files and phones
 - `regen.sh` (agent-runnable, sandboxed like check.sh) rebuilds the generated server bundles, `docs/LOOT-TABLES.md` and the embedded
@@ -49,8 +96,16 @@ Rollback undoes the live release only; revert the commit on master afterwards.
   `origin/mobile` prints `MOBILE: skipped`. Test hook: `mobileDeployCmd` (replaces deploy-mobile.sh).
 
 ## Safety summary
+- **One shared sandbox** (`sandbox-lib.sh`, sourced inside `unshare -rnm` by `check.sh`, `check-godot.sh`, `preview.sh`, `preview-godot.sh`, `shot.sh`, `shot-godot.sh`, `regen.sh`):
+  every mount in `/proc/self/mountinfo` is remounted read-only (not just `/home/ubuntu`: `ubuntu` also owns `/var/www/death-muffin` incl. the published
+  client, `/opt/*`, `/game*`, `/var/log`), `/tmp` and `/dev/shm` are private tmpfs (the host's are invisible), and only the job's worktree is re-opened
+  writable. The ro remounts are made by root of the outer user namespace, so the payload then runs in a NESTED user+mount namespace
+  (`unshare -Um --map-current-user`, from `dm_sandbox_run`) where those mounts are locked: it cannot remount them rw, unmount `/tmp`, or `unshare` its way
+  out; nothing AI-influenced runs before the nesting. It fails closed: a mount that cannot be made read-only, or a write probe that still succeeds on a read-only mount, aborts the run (exit 99).
+  `test/sandbox.test.cjs` runs each real script with stand-in tools that try to write `/var/www/death-muffin/client`, `/opt/*`, `/game`, `/home/ubuntu`,
+  a sibling worktree and the host `/tmp`, after trying to remount `/` and its parents rw, umount `/tmp` and `/dev/shm`, and unshare again. `/proc`, `/sys`, `/dev` stay as they are (kernel views, root-owned); `/dev/shm` is private.
 - AI box: `claude -p --restricted --permission-mode dontAsk`, tools = Read/Edit/Write/Glob/Grep + `agit` (filtered git) +
-  `check.sh` and `regen.sh` (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
+  `check.sh` and `regen.sh` (godot mode: `check-godot.sh` and `shot-godot.sh`) (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
 - Discord's 2000-character limit: agent replies are split across messages (code blocks kept balanced) and anything over ~4 messages is a preview plus `reply.md` (`runner/lib/discordText.cjs`). A long paste arrives as Discord's `message.txt`; the adapter reads text attachments from Discord's CDN only (≤100 KB each, ≤60,000 characters in all) into the person's message.
 - Person text is wrapped as data (`<request from=… role=…>`, role from config); rules cannot be changed by messages.
 - Runner redacts every outgoing string and audit field; mentions are disabled except the owner ping.
@@ -59,22 +114,80 @@ Rollback undoes the live release only; revert the commit on master afterwards.
 - Residual risk: tests run **unsandboxed** inside `deploy-release.sh` on the merged tree. That is why test configs, package files and
   scripts are sensitive/forbidden, and why the proposal links the exact diff for a human to read before ✅.
 
+## Parallel jobs and long checks
+
+- `maxConcurrentJobs` (1-3, live: 3) lets several threads work at once, so one person's long request does not queue everyone else. Ships
+  still go one at a time behind the deploy lock. Git commands that hit a lock file another job is holding retry a few times (gitops.cjs).
+- The check scripts run 10-20 min. The agent's `claude -p` gets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` and a 42-minute Bash limit
+  (`BASH_DEFAULT_TIMEOUT_MS`/`BASH_MAX_TIMEOUT_MS`), so the check call simply blocks until it finishes. `sleep`, `pgrep`, `ps`, `watch` and the like are on
+  `--disallowedTools`. Why: on 2026-10-08 Claude Code moved a long check-godot.sh run into the background, the agent wrote
+  `until ! pgrep -f check-godot.sh; do sleep 5; done`, pgrep matched the loop itself, and job e4388b hung for 35 minutes while every other thread waited.
+
+## When the client publish fails (godot)
+
+- ship.sh tries `publish-godot-client.sh` 3 times (30 s, 90 s apart) before giving up: a one-off Godot crash heals inside the ship.
+- Still failing: the merge is already on the base branch, only the client is missing. The thread says so (the job stays usable), the owner is
+  pinged, and the runner retries by itself after `publishAutoRetryMin` (10). Approvers can retry any time: ✅ on the failure message or `!retry`.
+  A retry is `PUBLISH_ONLY=1 PUBLISH_SHA=<sha> ship.sh`: same lock and fresh rollback, no merge/tests/push, and it refuses to publish anything older
+  than the live client (`RESULT: live-already`). Any later ship whose client contains the stuck commit posts "Live" in that thread too.
+- Why: 2026-10-08 a Godot core dump during `--import` left a pushed fix unpublished with no way to retry; the same commit imported fine a minute later.
+
+## New models (Gemini concept -> Tripo), approval-gated and credit-capped (godot mode)
+
+Someone asks in a thread for a new character, creature, boss or prop. The agent never holds a key and cannot call an API; it writes SPECS, the runner does the spending after an approver's check.
+
+```
+agent turn ── writes art-manifest/gemini-jobs/<id>.json (one concept job) + art-manifest/tripo-specs/<id>.json (generation / rig / animations) + .dm-art-request.json {id, note}
+runner     ── validates against allow-lists (below), prices it, posts the request:   New character: warlock
+              Will be generated: Concept image (Gemini) -> 3D model (Tripo, up to 7000 faces, detailed textures) -> rig (biped) -> 6 animations: idle, walk, ...
+              Estimated cost: up to 145 credits (image to model 60 + rig 25 + 6 animations x 10)      Helix's budget: 1000 of 1000 left -> 855 after this      Tripo balance now: 3910
+              ✅ spend the credits (the owner / Helix / warbogar) · ❌ cancel · nothing is spent until a ✅
+approver ✅ ── owner or any full approver (self-approval allowed, like code ships). Re-checked live: estimate <= requester's remaining budget AND <= Tripo balance, else "Not started"
+runner     ── art-run.sh in the job's worktree: flock -> balance before -> gemini.mjs -> tripo.mjs run --yes -> balance after.  Posts the concept + Tripo's preview image and the REAL spend
+agent turn ── told the files are ready: build-art.sh <id> (sandboxed: tools/build-characters.mjs, then dequantize into godot/assets/slice/models/...), commits specs + records + GLB,
+              check-godot.sh (adds .import/textures), wires the model in where asked, PATCH_NOTES, then the usual proposal / ✅ ship (art files make it a sensitive-tier proposal: full approvers only)
+```
+- **Keys never enter the agent.** `art-run.sh` gets `TRIPO_API_KEY` / `GEMINI_API_KEY` in its own environment only (read by the runner from `<repo>/.ai-keys.local`, `artKeysFile`); they are never written, logged or committed, every posted line goes through `redact.cjs` (the key values are registered as known secrets, plus `tsk_` / `AIza` / `AQ.` patterns), and `sandbox-lib.sh` binds `/dev/null` over `.ai-keys.local` and the runner `secret` inside every sandbox (check / shot / preview / build-art), so even a test script cannot read them. `agentEnv()` has no keys and `art-run.sh` is not in the agent's allowed tools.
+- **Trusted tools.** The runner runs COPIES of `tools/ai/{common,gemini,tripo}.mjs` installed to `art-tools/` (with their own copy of `sharp`), pointed at the worktree with `DM_ART_ROOT`. The worktree's own `tools/` and `node_modules` (which the agent can edit) are never executed by a process that holds keys.
+- **What runs is what was approved.** The validated canonical specs are stored in the job record at request time; at ✅ the runner rewrites the spec files from that copy (an agent edit after the offer changes nothing) and re-checks that no path the tools write to is a symlink.
+- **Validation (`runner/lib/art.cjs`)**: id `[a-z0-9_]{3,40}` and not an existing model; no extra fields anywhere; `input`/`out` exactly `art-src/concepts/<id>.png`; model `P1-20260311`; `face_limit` integer 300-14000; texture `standard|detailed`; rig `biped` (`v1.0-20240301`) or `quadruped` (`v2.5-20260210`, `preset:quadruped:walk` only); at most 10 distinct known presets, `animationMode: single`; rig <=> id not starting `prop_`; Gemini `aspect`/`size`/`model`/`post.{resize,format}` limited, up to 3 refs that are `art-src/concepts/*.png` real images or reference sheets committed at the repo root. A bad request goes back to the agent to fix (twice), then is dropped. Anything over 400 estimated credits is refused whatever the budget.
+- **Estimate** = the highest credits ever charged per step type in the base branch's `art-manifest/tripo/*.json` (read from git, not the worktree), never below the measured floors (model 60, rig 25, clip 10; rig-check is free). Typical: prop 60 (50 with standard textures), rigged character with 6 clips 145, bone_golem-sized 9 clips 175.
+- **Budgets**: `tripo-budget.json` (next to `config.json`, mode 600, owner-edited, read fresh on every use): `{"<discord id>": <credits>}`. Unlisted users, bad values and negatives = 0 -> "has no model-generation budget", nothing offered. The owner is not exempt. `!credits` shows your numbers. Remaining = budget - the sum of ACTUAL credits in the ledger.
+- **Ledger**: `tripo-ledger.json` (same folder, mode 600, outside every repo): one entry per run `{id, ts, userId, userName, jobId, specId, estimate, approverId, status started|done|failed|interrupted, credits, balanceBefore, balanceAfter, result, note, finishedAt}`. The `started` entry is written BEFORE anything is spent; credits are balance-before minus balance-after (a run that fails midway still records what it spent; a killed run is read from a fresh balance; if the balance cannot be read the estimate is charged). If the runner itself dies mid-run, the next start closes the open entry from the balance delta (`interrupted`).
+- **One run at a time**: an in-process flag plus `flock` on `state/tripo.lock` inside `art-run.sh` (a second run gives up as `busy` without touching the account). Tripo's own resume (`state.json` in `art-src/tripo/<id>/`) means a retry never pays twice: after a failure the thread gets a fresh request (same estimate, updated budget) and a ✅ resumes.
+- **Never without a ✅ / never unapproved**: nothing is spent at request time; only `isFull` approvers' ✅ on that exact request message starts it (others' reactions are removed); `!discard`/❌ clears a pending request; a thread that is running, shipping or generating turns a ✅ away. Audit events: `art-offered`, `art-approve-attempt`, `art-approved`, `art-approve-refused`, `art-refused`, `art-start`, `art-result`, `art-cancelled`, `art-invalid`, `art-reconciled`.
+- Config keys (all optional, defaults shown; `config.json` is not edited): `artKeysFile` (`<repo>/.ai-keys.local`), `artToolsDir` (`<toolsDir>/art-tools`), `artRunScript`, `artLockFile` (`<toolsDir>/state/tripo.lock`), `artLockWaitSec` (1800), `artBudgetFile`, `artLedgerFile`.
+- Tests: `test/art.test.cjs` (validation, pricing, budget/ledger math, every refusal path, approval gating, resume, flock, crash settlement, install) with fake Tripo/Gemini tools in `test/fake-art/`; no API is called and no credits are spent.
+
 ## Install (from a committed revision; nothing starts by itself)
 1. `bash server/death-muffin/discord-agent/install-runner.sh <rev>`: tooling to `~/death-muffin/discord-agent`, `config.json` (owner id from
    `/opt/crossworlds-bot/.env`), `secret`, systemd unit (not started).
 2. `bash install-bot.sh <rev>` (sudo): `/opt/muffin/discord/dm-agent.js`, patched `bot.js` (backup kept), `/opt/muffin/dm-agent.env`.
 3. `sudo systemctl enable --now death-muffin-discord-agent`, then `sudo systemctl restart muffin-discord`.
 
-Tests (not wired into test:server; ~1 min, needs git): `node --test server/death-muffin/discord-agent/test/*.test.cjs`.
+Tests (not wired into test:server; ~1 min, needs git and `unshare`/`zip`/`unzip`): `node --test server/death-muffin/discord-agent/test/*.test.cjs`.
+The installer also copies `check-godot.sh`, `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `art-run.sh`, `build-art.sh` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). To switch the live runner to Godot mode, edit `config.json` (`mode`, `baseBranch`), then restart the service.
 
 ## Screenshots
-The agent can look at its own change: it writes a scenario (`.dm-shot.json`) and runs `shot.sh` (`shoot.cjs` documents the format; dev server + headless Chromium in a no-network sandbox, ~1 min, one at a time). PNGs land in `<worktree>/.dm-shots/`, which together with `.dm-shot.json` is git-excluded (`createWorktree`), so they never dirty the tree or get committed.
+Web mode: the agent can look at its own change: it writes a scenario (`.dm-shot.json`) and runs `shot.sh` (`shoot.cjs` documents the format; dev server + headless Chromium in a no-network sandbox, ~1 min, one at a time). PNGs land in `<worktree>/.dm-shots/`, which together with `.dm-shot.json` is git-excluded (`createWorktree`), so they never dirty the tree or get committed.
 - On demand: ask in the thread ("show me what it looks like") or use `!shot` (any requester; queues a turn that takes one).
 - After every turn the runner posts new or changed PNGs to the thread (max 4, skips files over 8 MB with a note, each unchanged file once).
 - A proposal attaches the current PNGs (newest first, max 4) and shows the first one as the embed image, next to ✅/❌.
 - Transport: outbox ops carry `files: [{name, b64}]` (never redacted, names sanitized); the adapter sends them as Discord attachments. Existing job worktrees keep their old `info/exclude` until the next job is created (it is a shared file).
 
-## Playable preview
+### Godot mode
+`shot-godot.sh [plan.json]` (default `.dm-shot.json`; format in `godot/main/qa_ui_shots.gd` and `PROMPT-godot.md`: up to 4 shots of windows/tooltips, `open` / `hover` / `area` / `clip` / `give`) renders the branch's own client on the offline demo hero with a fixed
+representative bag. Same sandbox as `check-godot.sh` (no network, read-only filesystem, only the worktree writable, private `/tmp` and a fresh HOME); inside it imports the project if `godot/.godot` is missing
+(first run in a fresh worktree, about a minute), then `xvfb-run godot --rendering-driver opengl3 -- --offline --world-demo --qa --shot-plan=... --shots=<worktree>/.dm-shots/.raw`. It takes the shared `qa-browser.lock` (one renderer on the VPS) and has a hard 15 minute limit
+(a run takes 1 to 5 minutes depending on load; it prints `render: cpu=.. wall=..`).
+The label is burned in OUTSIDE the sandbox by `label-shot.py` (trusted code; Pillow): every raw PNG becomes `.dm-shots/<name>.png` with "BRANCH PREVIEW · not live · <branch>"; directory fds + `O_NOFOLLOW`, only real PNGs
+under 12 MB, names `[a-z0-9-]{1,40}.png`; anything else is skipped (exit 3) and nothing unlabelled is ever published, so a branch that edits the QA code cannot drop the label.
+The Godot side lives in the game repo (`godot/main/qa_ui_shots.gd`, inactive without `--qa`): **the branch the agent works on must contain it, i.e. it has to be merged into `godot-port` first**.
+The agent is told (PROMPT-godot.md) to take pictures by default for visible changes (UI, windows, tooltips, HUD, visuals) and to skip them for logic/data/server work and pure Q&A.
+On a proposal (`propose()`), when the agent left a plan and fresh pictures, the runner renders the same plan on an unchanged scratch worktree of the base (`base-<jobid>`, removed afterwards) and attaches
+before/after pairs for the first two pictures (`before-<name>.png`, then `<name>.png`; the embed image is the first AFTER, plus a "Pictures" field). If the base cannot render (for instance it predates the QA shot-plan code) the proposal carries the AFTER pictures only.
+
+## Playable preview (web; godot mode: see Modes)
 Each proposal gets a "Try it" link: `https://muffindevelopment.com/death-muffin/preview/<jobid>/`, the branch's OFFLINE EDITION build (its own in-browser store and token key, so it cannot touch the live server or a real character).
 - `preview.sh <jobid>` is run by the runner (never the AI, not in its allowedTools) from the job's worktree. Build: same sandbox as `check.sh` (no network, home read-only, scratch tmpfs over `node_modules/.vite`), `VITE_OFFLINE_BUILD=1`, base `<previewUrl path>/<jobid>/`, output `.dm-preview/` (git-excluded). The service-worker/PWA step is skipped on purpose, so a preview cannot interfere with `/play/` or `/offline/`.
 - Publish (outside the sandbox): a "PREVIEW of <title>" banner is inserted into `index.html`, then rsync `--delete --link-dest=<live offline dir>` to `<previewRoot>/<jobid>/`. Job ids must match `^[0-9a-f]{6}$`; nothing outside that directory is written. `previewRoot` (default `/var/www/death-muffin/preview`, must exist and be writable by the runner user) and `previewUrl` are in config; `previewCmd` replaces the script (tests).

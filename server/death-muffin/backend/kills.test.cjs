@@ -751,3 +751,15 @@ test('Depths: a run resumed at the deepest floor is accepted at that depth, and 
   const forged = evaluate(report(2, honest), ctx({ unlocked: NAVE.unlockedAreas, heroLevel: 40, deepest: 1 }));
   assert.ok(forged.killsAccepted < 20, 'a character with no record of depth 17 does not get its level-57 dead');
 });
+
+for (const [name, vows] of [['no vows sworn', {}], ['vows sworn', { elder_dead: 2, famished: 1 }]]) {
+  test(`audit: a character whose save holds vows (${name}) is credited, not NaN (2026-10-06 ER_DATA_OUT_OF_RANGE)`, async () => {
+    const fake = killsFake({ necro: { ...NECRO, vows } });
+    const r = await send(fake, report(T0, mixed(1)), T0, AUDIT);
+    assert.equal(r.body.success, true);
+    assert.notEqual(r.body.data.unavailable, true);
+    const l = fake.ledger(1);
+    assert.ok(Number.isFinite(l.xp_credit) && l.xp_credit > 0, 'xp credit is a number');
+    assert.ok(Number.isFinite(l.gold_credit) && l.gold_credit > 0, 'gold credit is a number');
+  });
+}

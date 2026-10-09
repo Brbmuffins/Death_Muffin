@@ -9,7 +9,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+// DM_ART_ROOT: the Discord agent's runner runs trusted copies of these tools (installed outside every worktree) against one job's worktree.
+export const ROOT = process.env.DM_ART_ROOT || join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const ART_SRC = join(ROOT, 'art-src');
 export const MANIFEST_DIR = join(ROOT, 'art-manifest');
 

@@ -5,7 +5,9 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { loadConfig } = require('./lib/config.cjs');
 const { createRunner } = require('./core.cjs');
-const { setKnownSecrets } = require('./lib/redact.cjs');
+const path = require('path');
+const { setKnownSecrets, addKnownSecrets } = require('./lib/redact.cjs');
+const { parseKeyFile } = require('./lib/art.cjs');
 
 function startServer(cfg, runner, secret) {
   const eq = (a, b) => { const x = Buffer.from(String(a || '')), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
@@ -38,6 +40,7 @@ if (require.main === module) {
   const cfg = loadConfig(file); cfg.__file = file;
   const secret = fs.readFileSync(cfg.secretFile, 'utf8').trim();
   setKnownSecrets([secret]);
+  try { addKnownSecrets(Object.values(parseKeyFile(fs.readFileSync(cfg.artKeysFile || path.join(cfg.repo, '.ai-keys.local'), 'utf8')))); } catch { /* no art keys on this box */ }   // the art API keys must never reach Discord or the audit log, even by accident
   if (!cfg.ownerIds.length) { console.error('config.ownerIds is empty; refusing to start'); process.exit(1); }
   const runner = createRunner(cfg);
   const srv = startServer(cfg, runner, secret);

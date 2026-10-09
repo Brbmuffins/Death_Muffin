@@ -4,23 +4,34 @@ const fs = require('fs');
 const path = require('path');
 const { PATTERNS } = require('./redact.cjs');
 
-function git(cwd, args, opts = {}) {
-  return new Promise((resolve, reject) => {
+// Jobs run in parallel (cfg.maxConcurrentJobs) and share one repository, so two of them can race on git's lock files
+// (index.lock, ref locks, worktree metadata) during fetch / worktree add / branch delete: retry those a few times instead of failing the job.
+const LOCK_RE = /\.lock'?:? File exists|Unable to create '[^']*\.lock'|cannot lock ref|could not lock|is locked/i;
+function gitOnce(cwd, args, opts) {
+  return new Promise((resolve) => {
     execFile('git', ['-c', 'core.hooksPath=/dev/null', ...args], {
       cwd, maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout || 300000,
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true' },
-    }, (err, stdout, stderr) => {
-      if (err && !opts.allowFail) { err.message = `git ${args[0]} failed: ${(stderr || err.message).slice(0, 400)}`; return reject(err); }
-      resolve({ code: err ? err.code || 1 : 0, out: String(stdout), err: String(stderr) });
-    });
+    }, (err, stdout, stderr) => resolve({ err, out: String(stdout), stderr: String(stderr) }));
   });
+}
+async function git(cwd, args, opts = {}) {
+  let r;
+  for (let attempt = 0; ; attempt++) {
+    r = await gitOnce(cwd, args, opts);
+    if (!r.err || attempt >= 5 || !LOCK_RE.test(r.stderr)) break;
+    await new Promise((res) => setTimeout(res, 500 * (attempt + 1) + Math.floor(Math.random() * 400)));
+  }
+  const { err, out, stderr } = r;
+  if (err && !opts.allowFail) { err.message = `git ${args[0]} failed: ${(stderr || err.message).slice(0, 400)}`; throw err; }
+  return { code: err ? err.code || 1 : 0, out, err: stderr };
 }
 const trim = async (p) => (await p).out.trim();
 
 async function createWorktree(cfg, job) {
   await git(cfg.repo, ['fetch', '-q', 'origin']);
   const wt = path.join(cfg.worktreeRoot, `discord-${job.id}${job.round > 1 ? '-' + job.round : ''}`);
-  await git(cfg.repo, ['worktree', 'add', '-q', '-b', job.branch, wt, 'origin/master']);
+  await git(cfg.repo, ['worktree', 'add', '-q', '-b', job.branch, wt, `origin/${cfg.baseBranch || 'master'}`]);
   for (const rel of ['node_modules', 'server/realtime/node_modules']) {
     const src = path.join(cfg.repo, rel);
     if (fs.existsSync(src)) { try { fs.symlinkSync(src, path.join(wt, rel)); } catch { /* exists */ } }
@@ -28,7 +39,7 @@ async function createWorktree(cfg, job) {
   // keep the agent's result file and the symlinks out of `git status`
   const common = await trim(git(wt, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
   const ex = path.join(common, 'info', 'exclude');
-  try { fs.mkdirSync(path.dirname(ex), { recursive: true }); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; const add = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-preview/', '.dm-inbox/'].filter((p) => !cur.split('\n').includes(p)); if (add.length) fs.appendFileSync(ex, '\n' + add.join('\n') + '\n'); } catch { /* best effort */ }
+  try { fs.mkdirSync(path.dirname(ex), { recursive: true }); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; const add = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json', '.dm-status'].filter((p) => !cur.split('\n').includes(p)); if (add.length) fs.appendFileSync(ex, '\n' + add.join('\n') + '\n'); } catch { /* best effort */ }
   const base = await trim(git(wt, ['rev-parse', 'HEAD']));
   return { worktree: wt, base };
 }
@@ -77,7 +88,7 @@ const MIGRATION_RE = /^server\/death-muffin\/backend\/migrations\/([^/]+\.sql)$/
 function migrationsFrom(files) { return files.filter((f) => f.status === 'add' && MIGRATION_RE.test(f.path)).map((f) => MIGRATION_RE.exec(f.path)[1]); }
 
 async function pushBranch(cfg, job) { await git(job.worktree, ['push', '-q', '--force', '-u', 'origin', `${job.branch}:refs/heads/${job.branch}`], { timeout: 180000 }); }
-const compareUrl = (cfg, branch) => `https://github.com/${cfg.githubRepo}/compare/master...${branch}`;
+const compareUrl = (cfg, branch) => `https://github.com/${cfg.githubRepo}/compare/${cfg.baseBranch || 'master'}...${branch}`;
 
 // Run a command (no shell), capture combined output, kill the whole process group on timeout.
 function run(cmd, args, { cwd, env, input, timeoutMs, maxOut = 8 * 1024 * 1024, onSpawn } = {}) {
@@ -95,4 +106,4 @@ function run(cmd, args, { cwd, env, input, timeoutMs, maxOut = 8 * 1024 * 1024, 
     p.stdin.end(input || '');
   });
 }
-module.exports = { removePreview, git, run, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };
+module.exports = { LOCK_RE, removePreview, git, run, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };

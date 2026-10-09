@@ -1,13 +1,13 @@
 # Daily bug-report agent
 
-Players file reports in-game (**Settings → Report a bug**, `src/ui/BugReportView.ts`). They land in the `bug_reports` table
+Players file reports in-game (**Settings → Report a bug**; Godot client: `godot/game_ui/dm_bug_report_view.gd`, web: `src/ui/BugReportView.ts`). They land in the `bug_reports` table
 (migration `029-bug-reports.sql`, routes in `backend/bug-reports.cjs`: 10 per account per day, 2,000 characters, client
 context such as area/level/discipline/release and the last five uncaught client errors).
 
 Every day at 09:00 UTC `death-muffin-bug-agent.timer` runs `run-bug-agent.sh`:
 
 1. `reports-cli.cjs list` reads up to 25 `new` reports. None → stop (no agent run).
-2. A fresh worktree `wt/bug-agent-<date>` on branch `bugfix/reports-<date>` is cut from `origin/master`.
+2. A fresh worktree `wt/bug-agent-<date>` on branch `bugfix/reports-<date>` is cut from `origin/godot-next` (the Godot client; the web game on master is frozen).
 3. Headless Claude (`claude -p`, Opus) gets `PROMPT.md` with the reports embedded as data. It fixes what it can confirm,
    one commit per report (`Bug report #<id>: …`), and writes a verdict per report.
 4. The script re-runs the checks on the branch, applies the verdicts to the DB (players see the status and the
@@ -29,8 +29,8 @@ Report text is written by players, so it is treated as untrusted input (prompt i
 
 - `--restricted` (file tools confined to the worktree, user settings and MCP ignored), `--permission-mode dontAsk`, and an
   allowlist: Read/Edit/Write/Glob/Grep, `agit` (a few git verbs, no hooks, no flags that touch files outside the repo or
-  stage everything) and `check.sh` (typecheck + tests in fresh user/network/mount namespaces: no network, home read-only
-  except the worktree).
+  stage everything) and `check.sh` (the Godot test suites, 10 to 20 min, via `sandbox-lib.sh` in fresh user/network/mount namespaces: no network,
+  whole filesystem read-only except the worktree).
 - The agent never sees the database or `.env`; it cannot deploy or push. Verdicts are validated (ids from the batch,
   known statuses, capped notes) before they are written.
 - The systemd unit runs with `ProtectHome=read-only` plus a short `ReadWritePaths` list.

@@ -11,9 +11,13 @@ const PATTERNS = [
   /\b(?:mysql|postgres(?:ql)?|redis|mongodb):\/\/[^\s]*:[^\s@]*@/i,
   /\b(password|passwd|secret|api[_-]?key|token|private[_-]?key)\b\s*[:=]\s*['"]?[^\s'"]{8,}/i,
   /\b[0-9a-f]{40,}\b/i,                                         // long hex blobs
+  /\btsk_[A-Za-z0-9_-]{16,}/,                                  // Tripo API key
+  /\bAIza[0-9A-Za-z_-]{30,}/, /\bAQ\.[A-Za-z0-9_-]{20,}/,       // Google / Gemini API keys
 ];
 let known = [];
 function setKnownSecrets(list) { known = list.filter((s) => typeof s === 'string' && s.length >= 8); }
+// Adds exact secret values (the art keys, read by the runner at use time) without dropping the ones already registered.
+function addKnownSecrets(list) { known = [...new Set([...known, ...list.filter((s) => typeof s === 'string' && s.length >= 8)])]; }
 function looksSecret(line) {
   if (PATTERNS.some((p) => p.test(line))) return true;
   return known.some((s) => line.includes(s));
@@ -28,4 +32,4 @@ function redactDeep(v) {
   if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, k === 'url' ? x : redactDeep(x)]));
   return v;
 }
-module.exports = { redactDeep, redactText, looksSecret, setKnownSecrets, PATTERNS };
+module.exports = { redactDeep, redactText, looksSecret, setKnownSecrets, addKnownSecrets, PATTERNS };

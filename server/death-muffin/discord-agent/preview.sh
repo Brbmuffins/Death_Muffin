@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Playable preview of a proposal: preview.sh <jobid>   (run by the RUNNER from the job's worktree, never by the AI).
 # 1. Build the branch's OFFLINE EDITION (own in-browser store + token key, no live server involved) with base <previewUrl path>/<jobid>/
-#    inside the same sandbox as check.sh (no network, home read-only, worktree writable, scratch tmpfs over node_modules/.vite).
+#    inside the same sandbox as check.sh (no network, whole filesystem read-only via sandbox-lib.sh, worktree writable, scratch tmpfs over node_modules/.vite).
 #    The service worker / PWA manifest step is skipped on purpose, so a preview can never register a worker that touches /play/ or /offline/.
 # 2. Outside the sandbox: put a "PREVIEW" banner into index.html, then rsync to <previewRoot>/<jobid>/ (--delete, hardlinking unchanged
 #    files from the live offline edition to save disk). Refuses any jobid that is not 6 hex chars; never writes outside <previewRoot>/<jobid>.
@@ -18,19 +18,16 @@ TOP=$(git rev-parse --show-toplevel)
 NM=$(readlink -f "$TOP/node_modules")
 OUT="$TOP/.dm-preview"
 export TOP NM JOB BASEPATH
+export DM_SANDBOX_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sandbox-lib.sh"
 rm -rf "$OUT"
-timeout 900 unshare -rnm bash -c '
+export DM_PAYLOAD='
   set -euo pipefail
-  ip link set lo up
-  ro() { [ -e "$1" ] && mount --bind "$1" "$1" && mount -o remount,bind,ro "$1" || true; }
-  ro /home/ubuntu
-  mount --bind "$TOP" "$TOP" && mount -o remount,bind,rw "$TOP"
-  mkdir -p "$NM/.vite" 2>/dev/null || true
-  mount -t tmpfs tmpfs "$NM/.vite"
   export HOME=$(mktemp -d /tmp/dmprev.XXXXXX)
   cd "$TOP"
   VITE_OFFLINE_BUILD=1 DEPLOY_BASE="$BASEPATH/$JOB/" VITE_WS_BASE= npx vite build --outDir .dm-preview --emptyOutDir > "$HOME/build.log" 2>&1 || { tail -15 "$HOME/build.log"; exit 1; }
-' || { echo "preview build failed"; exit 1; }
+'   # the sandboxed work; run by dm_sandbox_run inside the nested namespace (sandbox-lib.sh)
+[ -n "${NM:-}" ] && { mkdir -p "$NM/.vite" 2>/dev/null || true; }   # the sandbox mounts a scratch tmpfs over it
+timeout 900 unshare -rnm bash -c '. "$DM_SANDBOX_LIB"; dm_sandbox_run' || { echo "preview build failed"; exit 1; }
 [ -f "$OUT/index.html" ] || { echo "build produced no index.html"; exit 1; }
 # banner (title is HTML-escaped; inserted at publish time, not in game source)
 DM_OUT="$OUT/index.html" node - <<'JS'

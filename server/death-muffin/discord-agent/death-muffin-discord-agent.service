@@ -14,6 +14,8 @@ Environment=HOME=/home/ubuntu
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 WorkingDirectory=/home/ubuntu/death-muffin/discord-agent
 ExecStart=/usr/bin/node /home/ubuntu/death-muffin/discord-agent/runner/server.cjs /home/ubuntu/death-muffin/discord-agent/config.json
+ExecStop=/bin/bash /home/ubuntu/death-muffin/discord-agent/wait-for-ship.sh /home/ubuntu/death-muffin/discord-agent/state $MAINPID
+TimeoutStopSec=155min
 Restart=on-failure
 RestartSec=10
 PrivateTmp=yes

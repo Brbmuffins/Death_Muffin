@@ -5,6 +5,8 @@
  *   node reports-cli.cjs list                   -> JSON array of 'new' reports (oldest first, at most 25)
  *   node reports-cli.cjs apply <verdicts.json>  -> validates the agent's verdicts and writes status/agent_notes/fix_ref
  *   node reports-cli.cjs release <id,id,...>    -> marks reports whose fix just went live 'released'; prints the ones it changed
+ *   node reports-cli.cjs recent                 -> JSON array of the 8 newest reports, any status (read-only; Discord agent's !report)
+ *   node reports-cli.cjs show <id>              -> JSON of one report with its full context and game log, or null (read-only)
  *
  * Only ids from the batch handed to the agent (BUG_AGENT_IDS) may be updated; status must be one of the known values;
  * notes are capped. A verdict that fails validation is skipped and reported, never half-applied.
@@ -62,8 +64,25 @@ async function main() {
       const [rows] = await db.execute(`SELECT id, category FROM bug_reports WHERE id IN (${marks}) AND status <> 'released'`, ids);
       if (rows.length) await db.execute(`UPDATE bug_reports SET status = 'released' WHERE id IN (${rows.map(() => '?').join(',')})`, rows.map((r) => r.id));
       process.stdout.write(JSON.stringify(rows));
+    } else if (cmd === 'recent') {
+      const [rows] = await db.query(
+        `SELECT r.id, r.category, r.status, LEFT(r.message, 120) AS message, r.created_at, a.username,
+                JSON_EXTRACT(r.context, '$.log') IS NOT NULL AS hasLog
+         FROM bug_reports r JOIN accounts a ON a.id = r.account_id ORDER BY r.id DESC LIMIT 8`,
+      );
+      process.stdout.write(JSON.stringify(rows.map((r) => ({ id: r.id, category: r.category, status: r.status, reporter: r.username, createdAt: r.created_at, hasLog: !!r.hasLog, message: r.message }))));
+    } else if (cmd === 'show') {
+      const id = Number(file);
+      if (!Number.isInteger(id) || id <= 0) return void process.stdout.write('null');
+      const [rows] = await db.execute(
+        `SELECT r.id, r.category, r.status, r.message, r.context, r.agent_notes, r.created_at, a.username
+         FROM bug_reports r JOIN accounts a ON a.id = r.account_id WHERE r.id = ?`, [id],
+      );
+      const r = rows[0];
+      process.stdout.write(JSON.stringify(r ? { id: r.id, category: r.category, status: r.status, reporter: r.username, createdAt: r.created_at, note: r.agent_notes,
+        context: typeof r.context === 'string' ? JSON.parse(r.context) : r.context, message: r.message } : null));
     } else {
-      console.error('usage: reports-cli.cjs list | apply <verdicts.json> | release <ids>');
+      console.error('usage: reports-cli.cjs list | apply <verdicts.json> | release <ids> | recent | show <id>');
       process.exit(2);
     }
   } finally {

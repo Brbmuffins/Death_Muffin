@@ -4,18 +4,16 @@ using System.Web.Script.Serialization;
 
 namespace DeathMuffinLauncher
 {
-    /// <summary>Small JSON settings file next to the WebView2 profile: %LOCALAPPDATA%\DeathMuffin\launcher-settings.json.</summary>
+    /// <summary>Small JSON settings file next to the installed client: %LOCALAPPDATA%\DeathMuffin\launcher-settings.json.</summary>
     internal sealed class Settings
     {
         public bool HighPerformanceGpu { get; set; } = true;
-        /// <summary>Release sha whose files were last fully warmed into the profile's HTTP cache.</summary>
-        public string LastPrecachedSha { get; set; } = "";
-
         public static string Root
         {
             get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeathMuffin"); }
         }
-        public static string ProfileDir { get { return Path.Combine(Root, "LauncherProfile"); } }
+        /// <summary>Installed Godot client versions (see ClientStore).</summary>
+        public static string ClientDir { get { return Path.Combine(Root, "client"); } }
         static string FilePath { get { return Path.Combine(Root, "launcher-settings.json"); } }
 
         public static Settings Load()
