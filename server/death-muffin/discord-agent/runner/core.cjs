@@ -71,6 +71,14 @@ function createRunner(cfgIn, opts = {}) {
   const starting = new Map();      // threadId -> promise while a new round's workspace is being created
   const pendingNew = new Map();   // eventId -> event awaiting a thread id from the bot
   let shipBusy = false;
+  // While a ship, publish retry or rollback runs, state/ship-active names it; the unit's ExecStop (wait-for-ship.sh) holds a stop or
+  // restart until it is gone, so restarting the runner can no longer kill a deploy halfway (2026-10-08: e4388b's deploy-failed came
+  // in the same second as a runner restart).
+  const activeFile = path.join(cfg.stateDir, 'ship-active');
+  const setBusy = (on, what) => {
+    shipBusy = on;
+    try { if (on) fs.writeFileSync(activeFile, JSON.stringify({ pid: process.pid, what, at: new Date(now()).toISOString() })); else fs.rmSync(activeFile, { force: true }); } catch { /* best effort */ }
+  };
 
   // ---------- outbox (runner -> bot, long-polled) ----------
   const outbox = []; const callbacks = new Map(); let waiters = [];
@@ -331,7 +339,7 @@ function createRunner(cfgIn, opts = {}) {
       const curHead = await G.head(job.worktree).catch(() => null);
       if (curHead !== p.head) { audit.log('approve-refused', { userId: uid, job: job.id, why: 'head changed' }); say(job, 'The branch changed after this proposal; wait for the new one.'); return { action: 'remove_reaction' }; }
       audit.log('approved', { userId: uid, job: job.id, tier: p.tier, head: p.head });
-      ship(job, uid).catch((e) => { shipBusy = false; say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } })
+      ship(job, uid).catch((e) => { setBusy(false); say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } })
         .finally(() => { if (job.deleteRequested) cleanupDeleted(job).then(() => pump()); });
       return { action: 'accepted' };
     }
@@ -790,7 +798,7 @@ function createRunner(cfgIn, opts = {}) {
     return G.run('bash', [script, ...(env.__ARGS || [])], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 60 * 60000 });
   }
   async function ship(job, approverId) {
-    shipBusy = true; job.status = 'shipping'; save();
+    setBusy(true, `ship ${job.id}`); job.status = 'shipping'; save();
     const p = job.proposal; const ownerShips = auth.isOwner(approverId);
     say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto ${BB}, re-testing, deploying. This takes a few minutes.`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
@@ -798,7 +806,7 @@ function createRunner(cfgIn, opts = {}) {
       MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 75 * 60000 }); }
-    finally { shipBusy = false; }
+    finally { setBusy(false); }
     const out = r.out + r.err; const m = /^RESULT: (\S+)\s*(.*)$/m.exec(out); const kind = m ? m[1] : 'crashed'; const detail = m ? m[2] : '';
     audit.log('ship-result', { job: job.id, kind, detail, approver: approverId });
     const tail = clip(out.trim().split('\n').slice(-12).join('\n'), 900);
@@ -810,7 +818,9 @@ function createRunner(cfgIn, opts = {}) {
       // Phones + offline edition are best effort (ship.sh prints one MOBILE: line); the PC release is live either way.
       const mm = /^MOBILE: (\S+)\s*(.*)$/m.exec(out); const mkind = mm ? mm[1] : ''; const mwhy = mm ? clip(mm[2], 300) : '';
       audit.log('mobile-result', { job: job.id, kind: mkind || 'none', detail: mwhy });
-      say(job, `🚀 Live. Release \`${sha}\` is on ${BB} and deployed${mkind === 'live' ? ' (phones and offline updated too)' : ''}. Thanks, ${nameOf(job.creatorId)}.` + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : '') + '\nKeep going here for the next change.');
+      say(job, `🚀 Live. Release \`${sha}\` is on ${BB} and deployed${mkind === 'live' ? ' (phones and offline updated too)' : ''}. Thanks, ${nameOf(job.creatorId)}.`
+        // say plainly what did NOT update (owner, 2026-10-09): Godot ships publish the Windows client only; web mode without a mobile branch skips phones
+        + (GODOT ? '\nPlayers get it in the Windows launcher on next start. Phones and the old web/offline game do not get Godot changes.' : (mkind === 'skipped' || !mkind ? '\nPhones and offline were not updated.' : '')) + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : '') + '\nKeep going here for the next change.');
       if (mkind === 'pending') ownerPing(pingTarget(job), `Mobile/offline did NOT update for \`${job.id}\` (PC is live as \`${sha}\`): ${mwhy}`);
       if (!ownerShips) ownerPing(pingTarget(job), `${nameOf(approverId)} shipped **${clip(p.title, 100)}** (${p.tier}) as \`${sha}\`. Diff: ${G.compareUrl(cfg, job.branch)} — to undo: say \`rollback\`.`);
       // A message that arrived during the ship starts the next round right away (its worktree is cut from the base branch we just shipped).
@@ -865,19 +875,19 @@ function createRunner(cfgIn, opts = {}) {
     if (!auth.canApprove(uid, pf.proposal.tier)) { say(job, `Only ${approversFor(pf.proposal.tier, cfg).map(nameOf).join(' / ')} can retry this publish.`); return false; }
     if (shipBusy) { say(job, 'Another ship is running. React again when it finishes.'); return false; }
     audit.log('publish-retry-request', { userId: uid, job: job.id, sha: pf.sha });
-    retryPublish(job, uid).catch((e) => { shipBusy = false; say(job, `Retry crashed: ${e.message}`); });
+    retryPublish(job, uid).catch((e) => { setBusy(false); say(job, `Retry crashed: ${e.message}`); });
     return true;
   }
   async function retryPublish(job, uid) {
     const pf = job.publishFailed; if (!pf) return;
-    shipBusy = true;
+    setBusy(true, `publish retry ${job.id}`);
     say(job, uid ? `Retrying the client publish for \`${pf.sha}\` (${nameOf(uid)})…` : `Trying the client publish for \`${pf.sha}\` again by myself…`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, JOBID: job.id, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
       BASE_BRANCH: BB, MODE: 'godot', DEPLOY_DIR: cfg.deployDir, PUBLISH_ONLY: '1', PUBLISH_SHA: pf.sha, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}),
       ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 60 * 60000 }); }
-    finally { shipBusy = false; }
+    finally { setBusy(false); }
     const out = r.out + r.err; const m = /^RESULT: (\S+)\s*(.*)$/m.exec(out); const kind = m ? m[1] : 'crashed'; const detail = m ? m[2] : '';
     audit.log('publish-retry-result', { job: job.id, kind, detail, by: uid || 'auto' });
     if (kind === 'live' || kind === 'live-already') {
@@ -931,10 +941,10 @@ function createRunner(cfgIn, opts = {}) {
       if (!last || last.approverId !== msg.userId) return refuse('you can only roll back your own last ship, and the last ship was not yours');
       if (last.rollback !== newest) return refuse('something newer has been deployed since your ship; ask the owner');
     }
-    shipBusy = true;
+    setBusy(true, 'rollback');
     post(target, { content: `Rolling back to the state before ${last && last.rollback === newest ? `\`${last.sha}\` (${clip(last.title, 60)})` : 'the newest release'} (${path.basename(path.dirname(newest))}). Taking the deploy lock…` });
     audit.log('rollback-start', { userId: msg.userId, backup: newest });
-    let r; try { r = await G.run('bash', [path.join(cfg.toolsDir, 'rollback.sh'), newest], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LOCK: lockFile, ...(cfg.rollbackCmd ? { ROLLBACK_CMD: cfg.rollbackCmd } : {}) }, timeoutMs: 20 * 60000 }); } finally { shipBusy = false; }
+    let r; try { r = await G.run('bash', [path.join(cfg.toolsDir, 'rollback.sh'), newest], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LOCK: lockFile, ...(cfg.rollbackCmd ? { ROLLBACK_CMD: cfg.rollbackCmd } : {}) }, timeoutMs: 20 * 60000 }); } finally { setBusy(false); }
     const ok = /RESULT: rolled-back/.test(r.out);
     logShip({ type: 'rollback', approverId: msg.userId, backup: newest, ok });
     audit.log('rollback-result', { userId: msg.userId, ok });

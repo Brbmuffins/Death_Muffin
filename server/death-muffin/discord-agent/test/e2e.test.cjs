@@ -758,7 +758,7 @@ test('godot mode: question, gameplay proposal (godot-port compare link, zip prev
   assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, id, `DeathMuffin-Preview-${id}-win64.zip`)));
   assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
   const live = await until(() => texts(thread).find((t) => /Live\. Release/.test(t)), d.ad);
-  assert.match(live, /is on godot-port and deployed\./); assert.ok(!/phones/.test(live));
+  assert.ok(!fs.existsSync(path.join(w.cfg.stateDir, 'ship-active')), 'ship marker removed after the ship'); assert.match(live, /is on godot-port and deployed\./); assert.match(live, /Windows launcher on next start\. Phones and the old web\/offline game do not get Godot changes\./);
   assert.equal(remoteHead(w, 'master'), masterBefore, 'master is never touched in godot mode'); assert.notEqual(remoteHead(w, 'godot-port'), baseBefore);
   assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/game/a.gd').trim(), 'speed=9');
   const ship = shipsLog(w)[0]; assert.equal(ship.tier, 'gameplay');
