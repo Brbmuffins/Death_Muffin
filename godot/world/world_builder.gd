@@ -594,6 +594,31 @@ func update_light_lod(fx: float, fz: float) -> void:
 	for i in cand.size():
 		cand[i][1].node.visible = i < light_near
 
+var _lod_t := 0.0
+var _lod_x := 1e9
+var _lod_z := 1e9
+var _lod_near := -1
+var _lod_areas := -1
+
+## Per-frame entry for update_light_lod: the budget (nearest N of the lights within 40 m) only needs a fresh scan + sort when the focus moved,
+## the preset's N changed or an area was streamed in / out (it ran every frame, ~0.5 ms with the Nave's lights); otherwise at most every 100 ms.
+func tick_light_lod(fx: float, fz: float, dt: float) -> void:
+	var mask := 0
+	var bit := 1
+	for id in world.order:
+		if (area_nodes[id] as Node3D).visible:
+			mask |= bit
+		bit <<= 1
+	_lod_t -= dt
+	if _lod_t > 0.0 and mask == _lod_areas and light_near == _lod_near and absf(fx - _lod_x) + absf(fz - _lod_z) < 1.5:
+		return
+	_lod_t = 0.1
+	_lod_areas = mask
+	_lod_near = light_near
+	_lod_x = fx
+	_lod_z = fz
+	update_light_lod(fx, fz)
+
 ## Cells further than SHADOW_RANGE from the hero stop casting moon shadows (WorldView); re-checked 4x a second, toggled on change only.
 func update_shadow_cells(fx: float, fz: float, dt: float) -> void:
 	_shadow_t -= dt

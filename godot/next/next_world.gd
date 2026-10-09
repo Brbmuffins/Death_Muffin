@@ -73,7 +73,7 @@ func update(cam: DmCameraRig, hero: Vector3, dt: float) -> void:
 	focus.position = Vector3(hero.x, 0.0, hero.z)
 	builder.update_occlusion(cam, hero)
 	builder.update_streaming(cam.focus.x, cam.focus.z)
-	builder.update_light_lod(cam.focus.x, cam.focus.z)
+	builder.tick_light_lod(cam.focus.x, cam.focus.z, dt)
 	builder.update_shadow_cells(hero.x, hero.z, dt)
 
 

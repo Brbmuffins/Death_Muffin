@@ -117,6 +117,8 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 			game_event.emit("corpse_near", {"area_safe": bool(DmContent.area(shell.area_id)["safe"]), "dist": _dist_hero(c.x, c.z)}))
 	inventory = DmInventory.new(api, hero_id)
 	inventory.changed.connect(func(_s: Array) -> void: inventory_changed.emit())
+	inventory.save_failed.connect(func(m_: String) -> void: game_event.emit("toast", {"text": "Your bag could not be saved: %s. Retrying. Your items are safe on screen." % m_, "kind": "err"}))
+	inventory.save_recovered.connect(func() -> void: game_event.emit("toast", {"text": "Bag saved.", "kind": "good"}))
 	if shell.progress != null:
 		shell.progress.belt.inventory = inventory
 		inventory.changed.connect(func(_s: Array) -> void: shell.progress.request_stats())   # worn gear feeds the stats
@@ -279,6 +281,20 @@ func do_open(key: String) -> String:
 	game_event.emit("toast", {"text": "%s unlocked" % key.substr(key.find(":") + 1) if key.contains(":") else "Boon deepened: %s" % key, "kind": "good"})
 	shell.progress.sfx("levelUp")
 	return ""
+
+
+## Bag edits the Reliquary makes (GAME_CONTRACT.md; as DmGame): `slots` is for reading, these change the bag.
+func bag_remove(slot_index: int, _item_id: String, n: int) -> int:
+	return inventory.remove_from_slot(slot_index, n)
+
+
+func bag_sort(on_moves: Callable = Callable(), is_locked: Callable = Callable()) -> void:
+	inventory.sort_bag(on_moves, is_locked)
+
+
+## Save the bag now. "" = the server has it; otherwise the reason (the player was told by a toast).
+func bag_commit() -> String:
+	return await inventory.commit()
 
 
 func refresh_inventory() -> void:

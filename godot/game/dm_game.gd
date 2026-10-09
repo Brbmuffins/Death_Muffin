@@ -928,37 +928,9 @@ func _tick_visuals(dt: float, now: float) -> void:
 	builder.update_occlusion(camera, Vector3(player.x, 0, player.z))
 	if prof_on: _pm("v.camera+occ")
 	builder.update_streaming(camera.focus.x, camera.focus.z)
-	_tick_light_lod(dt)
+	builder.tick_light_lod(camera.focus.x, camera.focus.z, dt)
 	builder.update_shadow_cells(player.x, player.z, dt)
 	if prof_on: _pm("v.stream+lights")
-
-
-var _lod_t := 0.0
-var _lod_x := 1e9
-var _lod_z := 1e9
-var _lod_near := -1
-var _lod_areas := -1
-
-## The prop-light budget (nearest N of the lights within 40 m) only needs a fresh sort when the focus has moved, the preset's N changed or an
-## area was streamed in / out; the full scan + sort ran every frame (~0.5 ms with the Nave's lights). Re-sorted at most every 100 ms otherwise.
-func _tick_light_lod(dt: float) -> void:
-	var fx := camera.focus.x
-	var fz := camera.focus.z
-	var mask := 0
-	var bit := 1
-	for id in builder.world.order:
-		if (builder.area_nodes[id] as Node3D).visible:
-			mask |= bit
-		bit <<= 1
-	_lod_t -= dt
-	if _lod_t > 0.0 and mask == _lod_areas and builder.light_near == _lod_near and absf(fx - _lod_x) + absf(fz - _lod_z) < 1.5:
-		return
-	_lod_t = 0.1
-	_lod_areas = mask
-	_lod_near = builder.light_near
-	_lod_x = fx
-	_lod_z = fz
-	builder.update_light_lod(fx, fz)
 
 
 var _npc_t := 0.0

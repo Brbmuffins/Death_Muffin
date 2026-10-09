@@ -15,6 +15,7 @@ Properties (read by the UI):
 Methods (called by the UI):
 - `cast(slot: int)`, `use_belt(slot: String)`, `navigate(x: float, z: float)`, `set_auto_combat(on: bool)`, `buy_upgrade(kind: String)`.
 - `refresh_character()`, `refresh_inventory()`, `refresh_progress()` — re-fetch from the server, then emit the matching signal.
+- `bag_remove(slot_index, item_id, n) -> int` (a sale: takes n from one bag slot, returns how many), `bag_sort(on_moves, is_locked)`, `bag_commit() -> String` (save now; "" = saved, else the reason). `slots` is read-only: the UI never assigns it.
 - `apply_settings(s: Dictionary)` — store, persist and push to AudioDirector / Vfx / camera.
 - `hud_state() -> Dictionary` — sim-derived live numbers the HUD needs (hp, max_hp, essence, cooldowns per slot, buffs,
   target, boss, wave/surge, kill chain, thrall count, minimap entities, depths readout). Shape = the HUD view-model in
