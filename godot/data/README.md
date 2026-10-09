@@ -5,7 +5,7 @@ loaders are thin typed wrappers over it; production code must not open `res://da
 Test/mock data does not live here (`godot/tests/`).
 
 The files were first exported from the web game's TypeScript (`src/content`, `src/gameplay`). Those exporters and the web source are gone from
-`main` (history on `legacy-web`), so the JSON here is now the source of truth and is edited by hand. Keep each fact in one place.
+`main` (history in tag `archive/legacy-web`), so the JSON here is now the source of truth and is edited by hand. Keep each fact in one place.
 
 ## Datasets
 

@@ -28,7 +28,7 @@ and solo play is polished first. Still the working order: necromancer combat, lo
 Hosting on the VPS (headless Godot) is a future option, not planned.
 
 **D7. Branches (updated).** The Godot line ships from `main` (GitHub default branch since 2026-10-09). `godot-next`,
-`godot-port` and `master` were folded into it; the old web game is on `legacy-web`.
+`godot-port` and `master` were folded into it; the old web game is in tag `archive/legacy-web`.
 
 **D8. Characters.** Existing online characters carry into the Godot game unchanged (same backend). Offline characters were
 local only and were deleted (B1).
@@ -64,7 +64,7 @@ replaced by the launcher page, `src/` deleted from `main`, the web/offline/mobil
 - **B1. Online only for players.** The game starts online by default. Offline launch is a testing flag (`-- --dev-offline`) with
   its own save. Old offline characters and the "offline:" token are wiped on an online start.
 - **B2. One game.** The web game, offline and mobile web builds, Socket.IO realtime (:5191), the old `DmGame` path, WorldSim and
-  co-op code are retired. The Godot line is `main`; `legacy-web` keeps the web game.
+  co-op code are retired. The Godot line is `main`; tag `archive/legacy-web` keeps the web game.
 - **B3. Necromancer-only baseline.** Four necromancer disciplines are playable (`DmCharacterBuild.is_playable`, backend
   `MAX_DISCIPLINE_INDEX` 4). The other five are greyed out as "Coming later" and rebuilt later. Online characters of a
   non-necro discipline switch to a necro discipline.
@@ -79,4 +79,4 @@ replaced by the launcher page, `src/` deleted from `main`, the web/offline/mobil
   deleted TypeScript game.
 - **B9. `deploy-release.sh` is backend plus release notes only.** The client goes out with `publish-godot-client.sh`.
 - **B10. Docs: a small truthful set.** README, ROADMAP, DECISIONS, KNOWN-GAPS, CLAUDE, plus short per-system READMEs. Web-era
-  docs are deleted, not bannered; they stay in git history and on `legacy-web`.
+  docs are deleted, not bannered; they stay in git history and in tag `archive/legacy-web`.

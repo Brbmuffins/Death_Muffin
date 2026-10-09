@@ -51,7 +51,6 @@ git history (`godot/PARITY.md`). Priorities are in [ROADMAP.md](ROADMAP.md).
 
 ## Cleanup left from the web era
 
-- `net/dm_release_watch.gd` and `DmApi.get_release` (web reload prompt) have no caller in the game; they read `play/release.txt`.
 - Bit-exact web math is still in the tree and still used by the Depths floor generator, auto-combat and the DB loader (`sim/fdlibm.gd`, `sim/sim_exact.gd`, `game/dm_fdlibm_x.gd`). New code does not need it; removing it would change golden fixtures.
 - `tools/godot/sync-slice-assets.mjs` still reads `godot/data/slice/assets_used.json`; the exporter that wrote it was deleted.
 - Some `godot/next/*/README.md` files still say "the current game" for the retired `DmGame`; `next/hud/README.md` lists

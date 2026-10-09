@@ -2,7 +2,7 @@
 
 Pure GDScript brains (no nodes, no autoloads) for Prelate, Gravedigger King, Bone Abbess, Drowned Congregation, Plague Saint,
 Cinder Regent and Mire Mother. Numbers come from `godot/data/content/bosses.json`, `fen.json`, `abilities.json`, `difficulty.json`.
-They are ported from the web `BossBrain.ts`, which is gone from `main` (history is on `legacy-web`). The scene side is `godot/next/bosses/`.
+They are ported from the web `BossBrain.ts`, which is gone from `main` (history is in tag `archive/legacy-web`). The scene side is `godot/next/bosses/`.
 
 | file | role |
 |---|---|

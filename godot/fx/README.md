@@ -6,7 +6,7 @@ Autoload `Vfx` (`project.godot`: `Vfx="*res://fx/dm_fx.gd"`, script class `DmFxR
 - **Procedural primitives and motifs**: rings of motes, decals, flashes, orbits, beams, projectiles, spikes, hands (`dm_fx_prims.gd`,
   `dm_fx_ring.gd`, `dm_fx_layer.gd`) and the necromantic motifs (`dm_fx_motifs.gd`).
 Tables (spell colours, presets, caps, catalog) are in `assets/fx/fx_data.json`, read through `DmFxData`.
-The code is a port of the retired web `Effects.ts` / `BinbunFX.ts` / `necroFx.ts` (history on `legacy-web`).
+The code is a port of the retired web `Effects.ts` / `BinbunFX.ts` / `necroFx.ts` (history in tag `archive/legacy-web`).
 
 ## Wiring
 - Callers: `DmRiteFx`, `next/enemy_fx`, `next/bosses/dm_boss_fx.gd`, `next/corpses`, `next/thralls`, `next/affixes`, `next/status` and others call `Vfx.*`.

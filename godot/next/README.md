@@ -2,7 +2,7 @@
 
 `next_game.tscn` / `DmNextGame` is the one in-world game scene (entry from `main/main.gd` through the front flow). It composes child nodes and
 owns little logic. Solo is a 1-player `DmSession` hosted on an `OfflineMultiplayerPeer`; a party is the same code with more peers
-(no `if solo` in gameplay). The old `DmGame` path, WorldSim and Socket.IO co-op were deleted on 2026-10-09 (history on `legacy-web` and earlier commits).
+(no `if solo` in gameplay). The old `DmGame` path, WorldSim and Socket.IO co-op were deleted on 2026-10-09 (history in tag `archive/legacy-web` and earlier commits).
 
 ## Launch
 - Players: the launcher starts the game; `DmMain` runs login / discipline select (`front/`) then `DmNextGame`, online against the live backend.

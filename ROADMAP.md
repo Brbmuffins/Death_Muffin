@@ -4,16 +4,13 @@ Updated 2026-10-09. The game is the Godot online client, necromancer-only. Order
 performance first, polish over new content, necromancer focus. Real gaps are in [KNOWN-GAPS.md](KNOWN-GAPS.md);
 decisions are in [DECISIONS.md](DECISIONS.md).
 
-## Now: baseline (phase 5 of the 2026-10-09 plan)
+## Done: baseline (2026-10-09)
 
-1. Full Godot suite green on the clean tree (`tools/godot/run-all-tests.sh`), plus `test:rules`, `test:server`, lobby and
-   launcher tests. CI suite list updated to match the suites that remain.
-2. Publish the client from `main` (`publish-godot-client.sh`), release the launcher, deploy the backend if it changed.
-3. Tag `baseline-2026-10-xx`. Delete the stale `godot-next`, `master` and `godot-port` branches (keep `main`, `legacy-web`).
-4. Announce in #deathmuffin; restart the Discord dev agent and the daily bug agent against the new docs.
-5. Close the leftovers: dead `DmReleaseWatch` / `get_release`, the stale lines listed under "Cleanup" in KNOWN-GAPS.md, `docs/` size (108 MB).
+Tag `baseline-2026-10-09`: one online Godot client, necro-only, web game retired (tag `archive/legacy-web`), code and docs
+audited, full Godot suite green (101 suites), client `20261009.214420-1971053` published, Discord and bug agents running on `main`,
+announced in #deathmuffin. Still open from that work: the stale lines under "Cleanup" in KNOWN-GAPS.md.
 
-## Next: necromancer polish (no new content)
+## Now: necromancer polish (no new content)
 
 - **Rendered performance.** All frame numbers so far are headless on a shared VPS. Measure a real-GPU frame budget on the
   owner's and Helix's PCs (Hollow Graves with 20+ enemies and a boss, 1080p and 1440p, Low and High), including first-frame

@@ -2,7 +2,7 @@
 
 Autoload `AudioDirector` (`project.godot`: `AudioDirector="*res://audio/audio_director.gd"`). It builds its own buses at runtime (Master <- Combat,
 Enemies, Thralls, Ui, Ambience, Music; plus pooled `DmPan*` voice buses and `DmBedLP*` low-pass buses), so no bus layout file is needed.
-The logic is a port of the retired web audio engine (`src/audio/`, history on `legacy-web`); the mix maths are pinned by golden fixtures.
+The logic is a port of the retired web audio engine (`src/audio/`, history in tag `archive/legacy-web`); the mix maths are pinned by golden fixtures.
 Game code does not call it directly for most cues: `main/audio_hooks.gd` (`DmAudioHooks`) holds the static one-liners, follows the hero as
 listener, keeps the area bed and music in step, and drives footsteps. `next/*` systems call `AudioDirector.play_sfx` and friends.
 

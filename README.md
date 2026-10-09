@@ -9,7 +9,7 @@ disciplines are playable (Ossuary, Gravecaller, Mourner, Rotweaver); the other f
 Parties of up to 4 join through a lobby and relay. Players get the game through the Windows launcher at
 https://muffindevelopment.com/death-muffin/. Offline play is not a player edition; `-- --dev-offline` exists for testing only.
 
-Branches: `main` is the game. `legacy-web` is the frozen three.js web game (its history and docs live there).
+Branch: `main` is the game (the only branch). The retired three.js web game is kept as tag `archive/legacy-web`; older work branches are `archive/*` tags.
 Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md), [CLAUDE.md](CLAUDE.md) (agent rules).
 
 ## Layout

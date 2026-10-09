@@ -2,7 +2,7 @@
 
 What is left here is the shared asset pipeline and the licence and source records. Game documentation is in the repository root
 (`README.md`, `ROADMAP.md`, `DECISIONS.md`, `KNOWN-GAPS.md`, `CLAUDE.md`), `godot/` and `server/`. The web game's reports, plans and screenshots
-were removed on 2026-10-09; they are in git history and on the `legacy-web` branch.
+were removed on 2026-10-09; they are in git history and in tag `archive/legacy-web`.
 
 | File | What it is |
 |---|---|

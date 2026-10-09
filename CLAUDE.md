@@ -3,7 +3,7 @@
 Death Muffin is one game: the Godot 4 client in `godot/`, played online against `server/death-muffin/`. Start with
 [README.md](README.md) (layout, run, test, publish, deploy), [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md) and
 [KNOWN-GAPS.md](KNOWN-GAPS.md). Each system under `godot/next/` has its own README; read it before changing that system.
-The web game is gone from `main` (branch `legacy-web`, history only): do not port from it or fix it.
+The web game is gone from `main` (tag `archive/legacy-web`, history only): do not port from it or fix it.
 
 ## Branches and commits
 
