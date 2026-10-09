@@ -55,6 +55,7 @@ for f in "$B"/server.js "$B"/*.cjs "$B"/gathering/*.cjs "$SRC/server/vps-handoff
 done
 
 echo "== Backup -> $BK"
+mkdir -p "$BK/backend/gathering" "$BK/backend/necro-progress"
 sudo mysqldump --single-transaction death_muffin > "$BK/death_muffin.sql"
 cp -a "$RUNTIME/backend/server.js" "$RUNTIME/backend/"*.cjs "$BK/backend/"
 cp -a "$RUNTIME/backend/gathering/"*.cjs "$BK/backend/gathering/"
