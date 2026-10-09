@@ -41,7 +41,7 @@ fs.mkdirSync(OUT, { recursive: true });
     const rt = await import('/src/app/GameRuntime.ts');
     const occ = await import('/src/graphics/occlusion.ts');
     const d = window.__cwDebug;
-    const AREAS = (await import('/src/content/areas.ts')).AREAS;
+    const AREAS = (await import('/server/rules/content/areas.ts')).AREAS;
     const canvas = () => rt.getRuntime().renderer.domElement;
     const decode = async (url) => { const b = await (await fetch(url)).blob(); const bm = await createImageBitmap(b); const c = new OffscreenCanvas(bm.width, bm.height); const x = c.getContext('2d'); x.drawImage(bm, 0, 0); return x.getImageData(0, 0, bm.width, bm.height); };
     const grab = () => { rt.getRuntime().advance(0, 1 / 60, true); return canvas().toDataURL('image/png'); };
@@ -128,7 +128,7 @@ fs.mkdirSync(OUT, { recursive: true });
   const results = [];
   let bugs = 0;
   for (const area of AREAS) {
-    const rect = await page.evaluate(async (a) => (await import('/src/content/areas.ts')).AREAS[a].rect, area);
+    const rect = await page.evaluate(async (a) => (await import('/server/rules/content/areas.ts')).AREAS[a].rect, area);
     const spots = [];
     const xs = Array.from({ length: GRID }, (_, i) => rect.x0 + 2 + ((rect.x1 - rect.x0 - 4) * i) / Math.max(1, GRID - 1));
     const zs = Array.from({ length: GRID }, (_, i) => rect.z0 + 2 + ((rect.z1 - rect.z0 - 4) * i) / Math.max(1, GRID - 1));

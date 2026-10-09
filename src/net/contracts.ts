@@ -1,7 +1,7 @@
 import type { BossState, Corpse, Intent, SimEvent, Zone } from '../gameplay/sim/types';
-import type { EnemyId } from '../content/enemies';
-import type { ThrallKind } from '../content/disciplines';
-import type { Difficulty } from '../content/difficulty';
+import type { EnemyId } from '../../server/rules/content/enemies';
+import type { ThrallKind } from '../../server/rules/content/disciplines';
+import type { Difficulty } from '../../server/rules/content/difficulty';
 
 /**
  * Realtime wire contracts (Socket.io). The server (server/realtime/server.js)

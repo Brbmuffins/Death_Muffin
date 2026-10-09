@@ -1,13 +1,13 @@
 # Proposal — Relic runes (spell modifiers)
 
 **Status: SUPERSEDED (2026-10-02).** Relic runes were built in this repo against the Death Muffin backend (branch `dm/runes`): migration
-`024-relic-runes.sql`, `backend/runes.cjs`, `src/content/runes.ts`. Differences from this proposal: **no `character_rune_sockets` table and no
+`024-relic-runes.sql`, `backend/runes.cjs`, `server/rules/content/runes.ts`. Differences from this proposal: **no `character_rune_sockets` table and no
 `GET /api/runes`**: a socketed rune is a reserved inventory row (slots 130-134, `equipped_slot = 'rune_<rite>'`), moved by `POST /api/inventory/rune`;
 rune ids equal their icon files (`rune_splinter`, not `rune_needle_splinter`); the behaviours were retuned (see HANDOFF.md "Relic runes"). Kept below
 for history.
 
 **Original status:** proposal only. The web client ships no rune content until the
-server knows the item ids (`src/content/items.ts` is test-enforced against what the live server has).
+server knows the item ids (`server/rules/content/items.ts` is test-enforced against what the live server has).
 **Design source:** `FUTURE_CONTENT.md` → Release 0.2 → "Spell modifiers (Relic runes)".
 
 ## Why

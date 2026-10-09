@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handleMock } from '../mockBackend';
-import { isTwoHanded } from '../../content/necroWeapons';
+import { isTwoHanded } from '../../../server/rules/content/necroWeapons';
 
 const KEYS = ['bone_needle', 'marrow_spear', 'exhume', 'miasma', 'black_litany'];
 function account(slots: object[]) {

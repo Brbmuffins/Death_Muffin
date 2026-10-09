@@ -1,6 +1,6 @@
 import type { InventorySlot } from '../net/types';
-import type { DisciplineMods } from '../content/disciplines';
-import { LEGION_UPGRADE, THRALL_REFRESH_MAX } from '../content/upgrades';
+import type { DisciplineMods } from '../../server/rules/content/disciplines';
+import { LEGION_UPGRADE, THRALL_REFRESH_MAX } from '../../server/rules/content/upgrades';
 import { BAG_SIZE } from './loot';
 import {
   KIT_IDS,
@@ -15,7 +15,7 @@ import {
   type KitPiece,
   type LegionBonus,
   type PieceBonus,
-} from './legionRules';
+} from '../../server/rules/gameplay/legionRules';
 
 /**
  * The Legion kit on the client: finds the two kit rows in the inventory, turns them (and the reinforcement tier) into a LegionBonus

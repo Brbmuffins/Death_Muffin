@@ -1,5 +1,5 @@
 import type { GameScene } from './SceneManager';
-import { PLAYABLE_DISCIPLINES } from '../content/disciplines';
+import { PLAYABLE_DISCIPLINES } from '../../server/rules/content/disciplines';
 import { loadOrCreateCharacter } from '../net/api';
 import type { Character } from '../net/types';
 import type { NecroBackdrop } from '../graphics/NecroBackdrop';

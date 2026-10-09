@@ -8,7 +8,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateLayout, PROPS, wallObstacle, placementObstacle, NODE_COLLIDER } from '../../src/content/layout';
-import { NODES } from '../../src/gameplay/gatheringRules';
+import { NODES } from '../../server/rules/gameplay/gatheringRules';
 import { exactStringify } from './exact-json';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');

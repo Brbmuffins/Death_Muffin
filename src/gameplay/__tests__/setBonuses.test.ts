@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DISCIPLINES, type DisciplineId } from '../../content/disciplines';
-import { ARMOR_BY_ID, ARMOR_PARTS, ARMOR_PIECES, type ArmorPart } from '../../content/armorSets';
-import { LEGENDARY_SET_IDS } from '../../content/legendarySets';
+import { DISCIPLINES, type DisciplineId } from '../../../server/rules/content/disciplines';
+import { ARMOR_BY_ID, ARMOR_PARTS, ARMOR_PIECES, type ArmorPart } from '../../../server/rules/content/armorSets';
+import { LEGENDARY_SET_IDS } from '../../../server/rules/content/legendarySets';
 import { SET_BONUSES, SET_IDS, SET_TIERS, describeEffect, type SetEffect } from '../../content/setBonuses';
 import type { Character, InventorySlot } from '../../net/types';
 import { computeStats } from '../stats';

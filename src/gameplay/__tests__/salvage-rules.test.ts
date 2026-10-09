@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ITEMS } from '../../content/items';
-import { SALVAGE_GEAR_TYPES, SALVAGE_RARITIES, isSalvageGear, mergeGrants, salvageItemIds, salvagePreview, salvageYield, yieldsPlanks } from '../salvageRules';
+import { ITEMS } from '../../../server/rules/content/items';
+import { SALVAGE_GEAR_TYPES, SALVAGE_RARITIES, isSalvageGear, mergeGrants, salvageItemIds, salvagePreview, salvageYield, yieldsPlanks } from '../../../server/rules/gameplay/salvageRules';
 
 /** A deterministic generator (mulberry32). */
 function seeded(seed: number) {

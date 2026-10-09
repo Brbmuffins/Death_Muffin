@@ -161,14 +161,14 @@ const summarize = (frames, t0, t1) => {
           sim.applyExhume({ t: 'exhume', by: d.self(), x, z, r: 2, cap: m.thrallCap, kind: m.thrallKind, hp: 1e6, damage: 0, attackSpeedMult: 1 });
         }
         d.advance(1.5, 1 / 60, false);
-        const roster = (await import('/src/content/areas.ts')).AREAS[area].enemies.map((e) => e.id);
+        const roster = (await import('/server/rules/content/areas.ts')).AREAS[area].enemies.map((e) => e.id);
         for (let k = 0; k < rings; k++) roster.forEach((id, i) => d.ring(id, 4, 6 + i * 1.2 + k * 0.5, i === 0));
         for (let i = 0; i < 40; i++) d.sim().addCorpse(p.x + 4 + (i % 8) * 1.2, p.z - 3 - Math.floor(i / 8) * 1.5, 'normal', 'robber', false, 0, 1, p.area);
         d.advance(0.6, 1 / 60, false);
       }, { area: AREA, rings: RINGS });
       await G.page.evaluate((a) => { const d = window.__cwDebug; d.goto(a); d.advance(0.5, 1 / 60, false); d.zoom(0.8); }, guestArea);
       if (sc === 'split') await H.page.evaluate(async (a) => { // a second, busy zone around the guest, so the host simulates two live areas
-        const d = window.__cwDebug; const sim = d.sim(); const { AREAS } = await import('/src/content/areas.ts');
+        const d = window.__cwDebug; const sim = d.sim(); const { AREAS } = await import('/server/rules/content/areas.ts');
         const r = AREAS[a].rect; const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2 + 4;
         AREAS[a].enemies.forEach((e, i) => { for (let k = 0; k < 8; k++) sim.spawnEnemy(e.id, a, cx + Math.cos(k + i) * (5 + i), cz + Math.sin(k + i) * (5 + i), i === 0, false); });
       }, guestArea);

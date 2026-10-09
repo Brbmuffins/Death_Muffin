@@ -430,7 +430,7 @@ Checks at the end: 80 vitest, 8 realtime, typecheck, production build all green.
 
 
 ## VPS storage handoff — necro progress (2026-09-26) ✅ tests + mock-backend browser QA
-- One rules module, `src/gameplay/necroRules.ts`, covers prices, seals opened by kills, Prelate summons, Ascension,
+- One rules module, `server/rules/gameplay/necroRules.ts`, covers prices, seals opened by kills, Prelate summons, Ascension,
   boons and the one-time browser import clamps. `npm run build:server-rules` bundles it to
   `server/vps-handoff/necro-progress/necro-rules.cjs` for the Node auth server. A parity test keeps
   the bundle in step with the source.
@@ -508,7 +508,7 @@ Checks at the end: 80 vitest, 8 realtime, typecheck, production build all green.
 
 ## Professions G0 + G1 + G2 + G4: gathering and the Sexton's Acre (2026-09-27) ✅ tests + in-browser QA
 Built from `docs/PROFESSIONS-ROADMAP.md` in one cloud session (branch `claude/adoring-knuth-hd1uox`). G3 art is with the owner.
-- **G0 (rules + server):** `src/gameplay/gatheringRules.ts` holds 26 nodes (7 trees, 8 seams + 2 geodes, 6 fishing spots,
+- **G0 (rules + server):** `server/rules/gameplay/gatheringRules.ts` holds 26 nodes (7 trees, 8 seams + 2 geodes, 6 fishing spots,
   4 graves), success odds, loot, both XP curves (live rule active), a time budget (elapsed ÷ cycle + 3 burst, 30 s
   window, 1,800/h cap) and bag placement. It is bundled to `server/death-muffin/backend/gathering/gathering-rules.cjs`
   (`npm run build:server-rules`, with a parity test). `POST /api/gather` runs ownership → node → level → budget → server roll →
@@ -765,7 +765,7 @@ triangles equal, +24 draw calls.
 - Enemies now flinch on a fresh hit: throttled per enemy, near the camera only, and never over a windup.
 - The rebuild kept identical triangle counts and every old clip on all 27 models.
 
-**Professions G6 — processing** (`src/content/processing.ts` is the single source).
+**Professions G6 — processing** (`server/rules/content/processing.ts` is the single source).
 - Carpentry: planks for all 6 woods. Cooking: meals for all 5 fish, healing over time (Eat from the bag, stacks
   with a flask). Bonework: 4 bone grinds → bone meal, plus a Bone-Ash Flask.
 - **Tools**: hatchet, pickaxe, rod and spade × 6 metals. The server reads the bag itself
@@ -785,7 +785,7 @@ triangles equal, +24 draw calls.
   - `WorldSim.bosses` holds all four and `boss` returns the awake one. The ~20 old call sites are unchanged.
   - `summonBoss.boss` defaults to the Prelate for old clients, and the realtime server validates it (42 tests).
   - `BossState.id` travels in snapshots.
-- **Content** (`src/content/bosses.ts`):
+- **Content** (`server/rules/content/bosses.ts`):
   - **Gravedigger King:** Burial roots whoever stays on the outline; each client roots itself. Spade Sweep. P2 digs up
     ghouls; P3 opens pits.
   - **Bone Abbess:** four inert `niche` enemies heal her and fire lances, and breaking one tears at her. Chorus spokes;
@@ -955,7 +955,7 @@ Two more areas, both reusing existing props and mobs (only floor textures are ne
 ## Brew engine (2026-09-30, Alchemy plan Part 1 A)
 
 One table drives every drinkable buff; the three hardcoded `buffUntil` timers are gone.
-- **Where:** `src/content/brews.ts` (`BREWS`, pure helpers `applyBrew`, `brewValue`, `brewWard`, `lifestealHeal`, text helpers). `BUFF_FLASKS` in items.ts is now derived from it (ids and values unchanged). `Player.brews` = `{ elixir, tonic }` active state plus `Player.brewValue(kind, now)` (O(2), no per-effect timers).
+- **Where:** `server/rules/content/brews.ts` (`BREWS`, pure helpers `applyBrew`, `brewValue`, `brewWard`, `lifestealHeal`, text helpers). `BUFF_FLASKS` in items.ts is now derived from it (ids and values unchanged). `Player.brews` = `{ elixir, tonic }` active state plus `Player.brewValue(kind, now)` (O(2), no per-effect timers).
 - **One read site per kind:** damage `AbilitySystem.sp` (fixes the hardcoded 1.15: Moonlit is now +25%); ward + resist_fire (`ember`/`burn`) + resist_rot (`toxic`/`dust`) in `WorldScene.onHurt` (shares the 60% ward cap in `takeDamage`); lifesteal in `WorldScene.sendIntent` (every direct player hit passes it); haste divides the cooldown when it starts (`AbilitySystem.cast`); speed in `moveMult`; essence in `Player.update` regen; wisdom on kill XP; fortune is the new `itemChanceMult` arg of `rollKill`.
 - **Lifesteal cap:** heals `value x damage` per hit intent, counting at most 3 targets, and never more than 1.5% of max HP per hit. No shipped brew uses lifesteal yet (engine only).
 - **Drinking:** a new elixir replaces the active one (float "Moonlit replaces Forge-tempered"); the same brew extends, capped at 2x its duration remaining; tonic is independent. Q and healing flasks unchanged.
@@ -1029,7 +1029,7 @@ timing is verified by numbers and strips, not yet by ear; N3 (weapon trails, hit
 ## Reagents and new brews (2026-09-30, Alchemy plan Part 1 D-lite)
 
 Alchemy now has a way in that does not start with farming: mobs drop reagents, bosses leave ichor, two zone herbs are foraged, and eleven new brews use every previously unused Brew kind.
-- **Where:** `src/content/reagents.ts` (items, drop specs, brew rows, recipes; one source for client, mock, loot, contracts and migration). `BREWS` = original four + `REAGENT_BREWS`. Migration 009 and 007 are untouched.
+- **Where:** `server/rules/content/reagents.ts` (items, drop specs, brew rows, recipes; one source for client, mock, loot, contracts and migration). `BREWS` = original four + `REAGENT_BREWS`. Migration 009 and 007 are untouched.
 - **Migration:** `server/death-muffin/backend/migrations/014-alchemy-reagents.sql`, generated by `node tools/build-alchemy-reagents-sql.mjs` (`--check` runs in vitest), INSERT IGNORE only. **Apply order: 013 (necro weapons, other branch) then 014**, before deploying the client (contracts and gathering reference the new ids).
 - **Icons:** `node tools/build-reagent-icons.mjs` draws 25 SVGs (armor-set style) into `public/art/items/` (no generation credits; `--check` in vitest).
 - **Drops** (independent per-kill roll in `rollReagents`, own rng stream so seeded balance runs are unchanged; elites x4, fortune tonic multiplies): Grave Dust 1.0% (1-2) Graves, 1.2% Warren; Wraith Ectoplasm 10% wraith, 8% seraph (any area); Plague Bile 1.0% Cloister; Cinder Ash 1.2% Pyre. Measured ~4-8 dust / 10 min at 40 kills/min. Boss ichor: `rollBoss(..., bossId)` always adds exactly one (`ichor_gravedigger/abbess/congregation/prelate/plague_saint/regent`).
@@ -1074,7 +1074,7 @@ Owner feedback: the report form was buried in Settings; the elixir belt was hard
 
 Necromancers save rites + runes + weapon/off-hand under a name and apply them in one click (Grimoire, under the rite bar).
 - **Data:** table `character_loadouts (character_id, slot 0-5, name VARCHAR(24), data JSON)`; `data` = `{ rites: { primary, keys[5] }, runes: { <rite>: <rune> }, weapon, offhand }`, weapon/off-hand = `{ itemId, instanceId|null }` (a rolled piece is matched by its roll, never by item id alone); `null` hand = left as it is on apply.
-- **Rules:** `src/gameplay/loadoutRules.ts` (validation, `captureGear`, pure `applyLoadout` over inventory rows); bundled for the backend as `gathering/loadout-rules.cjs`. The server applies from the stored preset (the client sends only the slot), inside one transaction over every locked row, and writes the row difference. Each step is all-or-nothing: missing piece -> `missing`, no free bag slot for what leaves a hand/socket -> `no_room` (nothing moves), the rest still applies. The rites half is applied by the client (rites live in browser storage); unlearned rites fall back like any saved bar.
+- **Rules:** `server/rules/gameplay/loadoutRules.ts` (validation, `captureGear`, pure `applyLoadout` over inventory rows); bundled for the backend as `gathering/loadout-rules.cjs`. The server applies from the stored preset (the client sends only the slot), inside one transaction over every locked row, and writes the row difference. Each step is all-or-nothing: missing piece -> `missing`, no free bag slot for what leaves a hand/socket -> `no_room` (nothing moves), the rest still applies. The rites half is applied by the client (rites live in browser storage); unlearned rites fall back like any saved bar.
 - **Offline mock:** `/api/loadouts/*` in `mockBackend.ts` use the same rules module.
 - **Help:** counsel tip `loadouts` (calm, in the `gear` group; at >= 6 rites learned or >= 2 runes), Codex entry under Relic Runes, README "Loadouts". Hotkeys: `keybinds.ts`, unbound by default, bound in Settings → Controls (click, press a key, Esc clears; refuses game keys and duplicates), shown on the cards; `keybinds.test.ts`.
 - **Tests:** `loadout-rules.test.ts`, `mockLoadouts.test.ts`, `loadoutPresets.test.ts`, server `loadouts.test.cjs` (save/validate/ownership, apply, missing pieces, full bag). QA: `tools/qa/loadouts-smoke.cjs`.

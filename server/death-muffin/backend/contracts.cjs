@@ -1,5 +1,5 @@
 /**
- * Sexton's Contracts: the daily delivery board (rules: gathering/contract-rules.cjs, generated from src/gameplay/contractRules.ts).
+ * Sexton's Contracts: the daily delivery board (rules: gathering/contract-rules.cjs, generated from server/rules/gameplay/contractRules.ts).
  *
  *   GET  /api/contracts/:characterId   -> today's board, streak, reset time
  *   POST /api/contracts/deliver        -> { characterId, slot }: takes the items from the bag, pays the reward

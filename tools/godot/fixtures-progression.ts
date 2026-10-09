@@ -23,12 +23,12 @@ let fetchMode: 'hang' | 'ok' | 'fail' = 'hang';
 };
 console.warn = () => undefined;
 
-const { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, isAlwaysOpen } = await import('../../src/content/areas');
-const { BOSSES, BOSS_IDS } = await import('../../src/content/bosses');
-const A = await import('../../src/content/ascension');
-const U = await import('../../src/content/upgrades');
-const NR = await import('../../src/gameplay/necroRules');
-const { KillChain, CHAIN } = await import('../../src/gameplay/killChain');
+const { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, isAlwaysOpen } = await import('../../server/rules/content/areas');
+const { BOSSES, BOSS_IDS } = await import('../../server/rules/content/bosses');
+const A = await import('../../server/rules/content/ascension');
+const U = await import('../../server/rules/content/upgrades');
+const NR = await import('../../server/rules/gameplay/necroRules');
+const { KillChain, CHAIN } = await import('../../server/rules/gameplay/killChain');
 const MS = await import('../../src/gameplay/milestones');
 const { Chronicle } = await import('../../src/gameplay/chronicle');
 const { Progression, toNecro, loadLocalProgress } = await import('../../src/gameplay/progression');

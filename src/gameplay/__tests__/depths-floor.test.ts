@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, DEPTHS_RECT } from '../../content/areas';
+import { AREAS, DEPTHS_RECT } from '../../../server/rules/content/areas';
 import { Nav } from '../nav';
 import { FLOOR_COLS, FLOOR_ROWS, floorHop, floorPath, floorProblems, floorSeed, generateFloor, roomAt, type DepthsFloor } from '../depthsFloor';
 

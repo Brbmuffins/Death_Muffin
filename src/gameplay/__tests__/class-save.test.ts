@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Progression } from '../progression';
 import { Inventory, addToSlots } from '../loot';
 import { necroApi, saveInventory, saveProgress } from '../../net/api';
-import { blankState } from '../necroRules';
+import { blankState } from '../../../server/rules/gameplay/necroRules';
 import type { Character } from '../../net/types';
 
 vi.mock('../../net/api', () => ({ saveProgress: vi.fn(), saveInventory: vi.fn(), necroApi: { purchase: vi.fn(), get: vi.fn(), save: vi.fn() } }));

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { LEGENDARY_DROP, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor, pickLegendaryItem, pickLegendarySet, rollLegendary } from '../../content/legendarySets';
-import { ARMOR_BY_ID } from '../../content/armorSets';
-import { ITEMS } from '../../content/items';
-import { itemCap, isGroundItem } from '../authorityRules';
+import { LEGENDARY_DROP, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor, pickLegendaryItem, pickLegendarySet, rollLegendary } from '../../../server/rules/content/legendarySets';
+import { ARMOR_BY_ID } from '../../../server/rules/content/armorSets';
+import { ITEMS } from '../../../server/rules/content/items';
+import { itemCap, isGroundItem } from '../../../server/rules/gameplay/authorityRules';
 import { rollBoss, rollKill } from '../loot';
 
 const seeded = (seed: number) => () => {

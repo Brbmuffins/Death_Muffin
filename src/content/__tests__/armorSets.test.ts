@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ARMOR_PARTS, ARMOR_PIECES, ARMOR_SETS, ASCENDED_ARMOR_SETS } from '../armorSets';
-import { AREAS } from '../areas';
-import { LEGENDARY_SETS } from '../legendarySets';
-import { ITEMS } from '../items';
+import { ARMOR_PARTS, ARMOR_PIECES, ARMOR_SETS, ASCENDED_ARMOR_SETS } from '../../../server/rules/content/armorSets';
+import { AREAS } from '../../../server/rules/content/areas';
+import { LEGENDARY_SETS } from '../../../server/rules/content/legendarySets';
+import { ITEMS } from '../../../server/rules/content/items';
 import { gearTier } from '../gear';
 import { handleMock } from '../../net/mockBackend';
 import { rollFirstKillItem } from '../../gameplay/loot';

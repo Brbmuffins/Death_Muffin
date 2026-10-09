@@ -6,13 +6,13 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { mulberry32 } from '../../src/gameplay/rng';
-import { ITEMS } from '../../src/content/items';
-import { RUNES, RUNE_RITES } from '../../src/content/runes';
-import { isTwoHanded } from '../../src/content/necroWeapons';
-import { NODES } from '../../src/gameplay/gatheringRules';
-import { SEEDS, PLOTS } from '../../src/content/gardening';
-import { BOSSES } from '../../src/content/bosses';
-import { petForCharm, CAPES, PETS } from '../../src/content/cosmetics';
+import { ITEMS } from '../../server/rules/content/items';
+import { RUNES, RUNE_RITES } from '../../server/rules/content/runes';
+import { isTwoHanded } from '../../server/rules/content/necroWeapons';
+import { NODES } from '../../server/rules/gameplay/gatheringRules';
+import { SEEDS, PLOTS } from '../../server/rules/content/gardening';
+import { BOSSES } from '../../server/rules/content/bosses';
+import { petForCharm, CAPES, PETS } from '../../server/rules/content/cosmetics';
 
 // ── harness: storage, clock, Math.random ─────────────────────────────────────────────────────────────────────────────────────────
 const store = new Map<string, string>();
@@ -462,8 +462,8 @@ await scenario('labor_garden_cosmetics_contracts', 404, T0 + 7 * 3600_000, async
 
 // ── 5. necromancer progression ───────────────────────────────────────────────────────────────────────────────────────────────────
 await scenario('necro', 505, T0, async (x) => {
-  const asc = await import('../../src/content/ascension');
-  const { AREAS } = await import('../../src/content/areas');
+  const asc = await import('../../server/rules/content/ascension');
+  const { AREAS } = await import('../../server/rules/content/areas');
   const progress = async () => (await x.get(`/api/necro-progress/${x.cid}`)).data.progress;
   const gold = (g: number) => x.c('/api/character/save-progress', { level: 30, xp: 0, gold: g, stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 5 });
   await progress();

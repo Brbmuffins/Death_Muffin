@@ -1,5 +1,5 @@
-import { AREAS, AREA_ORDER, GLOBAL_ENEMY_CAP, type AreaId } from '../../content/areas';
-import { DEPTHS, depthEliteBonus, depthEnemyLevel, depthRoster, depthWaveGapS, depthWaveSize, floorKills, hasChest, pickExtraAffixes } from '../../content/depths';
+import { AREAS, AREA_ORDER, GLOBAL_ENEMY_CAP, type AreaId } from '../../../server/rules/content/areas';
+import { DEPTHS, depthEliteBonus, depthEnemyLevel, depthRoster, depthWaveGapS, depthWaveSize, floorKills, hasChest, pickExtraAffixes } from '../../../server/rules/content/depths';
 import { floorHops, floorSeed, generateFloor, roomAt, type DepthsFloor } from '../depthsFloor';
 import {
   AFFIX_ORDER,
@@ -26,7 +26,7 @@ import {
   type EliteAffix,
   type EnemyId,
   type WaveTheme,
-} from '../../content/enemies';
+} from '../../../server/rules/content/enemies';
 import {
   SIGNATURE,
   DETONATE,
@@ -49,23 +49,23 @@ import {
   RALLY,
   WITHERED,
 } from '../../content/abilities';
-import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, THRALL_REFRESH_MAX, milestoneActive, waveModifiers } from '../../content/upgrades';
-import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
-import { legacyVows, vowEffects, vowHeat, type VowEffects, type VowRanks } from '../../content/ascension';
+import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, THRALL_REFRESH_MAX, milestoneActive, waveModifiers } from '../../../server/rules/content/upgrades';
+import { DIFFICULTIES, type Difficulty } from '../../../server/rules/content/difficulty';
+import { legacyVows, vowEffects, vowHeat, type VowEffects, type VowRanks } from '../../../server/rules/content/ascension';
 import type { Omen } from '../../content/omens';
-import type { ThrallKind } from '../../content/disciplines';
+import type { ThrallKind } from '../../../server/rules/content/disciplines';
 import { BONE_HEX, CHILL, HEMORRHAGE, PLAGUE_BURST, SANCTIFIED } from '../../content/statuses';
 import type { Nav } from '../nav';
 import { LEGEND, clampSimLegend, simLegendActive, type SimLegend } from '../legendary';
 import { pickWeighted } from '../rng';
 import { BOSS_RADIUS, makeBossBrains, type BossBrain, type CoverBox } from './BossBrain';
-import { BOSSES, isBossId, type BossId } from '../../content/bosses';
-import { canEmpower } from '../goldSinkRules';
-import { FEN_LURE, HAG_HEX, SEXTON_HOOK, WISP_PULSE } from '../../content/fen';
-import { NODES, RICH_RESPAWN, RICH_YIELD, type NodeDef } from '../gatheringRules';
+import { BOSSES, isBossId, type BossId } from '../../../server/rules/content/bosses';
+import { canEmpower } from '../../../server/rules/gameplay/goldSinkRules';
+import { FEN_LURE, HAG_HEX, SEXTON_HOOK, WISP_PULSE } from '../../../server/rules/content/fen';
+import { NODES, RICH_RESPAWN, RICH_YIELD, type NodeDef } from '../../../server/rules/gameplay/gatheringRules';
 import { NODE_REACH } from '../../content/layout';
-import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
-import { RUNE_TUNING } from '../../content/runes';
+import { NECRO_WEAPON_TUNING } from '../../../server/rules/content/necroWeapons';
+import { RUNE_TUNING } from '../../../server/rules/content/runes';
 import type {
   BossState,
   Corpse,

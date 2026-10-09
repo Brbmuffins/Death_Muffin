@@ -4,7 +4,7 @@ import { Nav } from '../nav';
 import { AbilitySystem, type AbilityContext } from '../AbilitySystem';
 import { Player } from '../Player';
 import { Effects } from '../../graphics/Effects';
-import { DISCIPLINES } from '../../content/disciplines';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import type { Intent } from '../sim/types';
 
 vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn(), loop: vi.fn(() => () => undefined) } }));

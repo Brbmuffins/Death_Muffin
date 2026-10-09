@@ -16,7 +16,7 @@ hardening are separate (pointers at the end).
 - **Additive only.** New table, new files, new `/api/necro-progress/*` routes. Never edit existing
   routes or `/opt/rod-auth/.env`. The only edit to an existing file is ~10 lines in
   `/opt/rod-auth/server.js` that `require` and mount the new module (backed up first).
-- **Never hand-edit `necro-rules.cjs`.** It is generated from the client's `src/gameplay/necroRules.ts`
+- **Never hand-edit `necro-rules.cjs`.** It is generated from the client's `server/rules/gameplay/necroRules.ts`
   (`npm run build:server-rules` in the web repo). If a rule must change, change it in the web repo,
   regenerate, and copy the new file over — otherwise client and server disagree.
 - Player-facing `error` strings are shown verbatim by the client — keep them readable.

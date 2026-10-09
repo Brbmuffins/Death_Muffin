@@ -7,7 +7,7 @@
  * Env: BALANCE_MINUTES (3), BALANCE_SEEDS (4), BALANCE_AREAS (nave,sanctum), BALANCE_BANDS (intended,push,max), BALANCE_KIT (none).
  */
 import { runBalance, type BalanceResult, type BalanceRun } from './harness';
-import { AREAS, type AreaId } from '../../content/areas';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
 import { BANDS } from './bands';
 import { SET_BONUSES, type SetEffect } from '../../content/setBonuses';
 import type { KitName } from './kits';

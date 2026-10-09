@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Progression } from '../progression';
 import { ApiError, necroApi, reportKills, saveProgress } from '../../net/api';
-import { blankState } from '../necroRules';
+import { blankState } from '../../../server/rules/gameplay/necroRules';
 import type { Character } from '../../net/types';
 
 vi.mock('../../net/api', async (orig) => {

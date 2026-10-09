@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { NodePlacement } from '../content/layout';
-import { NODES, SKILLS, type NodeDef, type NodeKind } from '../gameplay/gatheringRules';
+import { NODES, SKILLS, type NodeDef, type NodeKind } from '../../server/rules/gameplay/gatheringRules';
 import { assets } from './AssetCache';
 import { PROP_URL } from './modelPaths';
 

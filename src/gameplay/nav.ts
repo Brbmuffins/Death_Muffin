@@ -1,4 +1,4 @@
-import { AREAS, AREA_ORDER, DOORS, isAlwaysOpen, type AreaId, type DoorDef, type Rect } from '../content/areas';
+import { AREAS, AREA_ORDER, DOORS, isAlwaysOpen, type AreaId, type DoorDef, type Rect } from '../../server/rules/content/areas';
 import { floorHop, floorObstacles, floorPath, floorSightBoxes, type DepthsFloor } from './depthsFloor';
 
 export interface CircleObstacle {

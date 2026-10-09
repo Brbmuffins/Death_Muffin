@@ -3,7 +3,7 @@
  * Server authority, step 2: the kill ledger (docs/SERVER-AUTHORITY.md "Step 2").
  *
  * The browser reports every kill in small batches (POST /api/kills/report). This module validates a batch against the real time that
- * passed and the game's own tables (gathering/kill-rules.cjs, generated from src/gameplay/killRules.ts), converts the valid part into
+ * passed and the game's own tables (gathering/kill-rules.cjs, generated from server/rules/gameplay/killRules.ts), converts the valid part into
  * CREDITS (kills per ground, XP, gold, soul shards, Depths floors), and makes the routes that carry progression pay out of them:
  *
  *   save-progress        level/XP/gold gains          <- xp / gold credits (+ a small refilling lump for non-kill income)

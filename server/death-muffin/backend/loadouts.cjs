@@ -1,6 +1,6 @@
 /**
  * Loadout presets: rites + socketed runes + worn weapon/off-hand saved together (rules: gathering/loadout-rules.cjs, generated from
- * src/gameplay/loadoutRules.ts). Table character_loadouts (migration 037), one row per (character, slot 0..5).
+ * server/rules/gameplay/loadoutRules.ts). Table character_loadouts (migration 037), one row per (character, slot 0..5).
  *
  *   GET  /api/loadouts/:characterId                      -> { success, data: [{ slot, preset }] }
  *   POST /api/loadouts/save   { characterId, slot, preset } -> { success, data: [{ slot, preset }] }   (validated; slot 0..5)

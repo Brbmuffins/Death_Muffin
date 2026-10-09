@@ -1,6 +1,6 @@
 /**
  * The Ossuary Vault: a 120-slot stash shared by every character on the account (rules: gathering/vault-rules.cjs, generated from
- * src/gameplay/vaultRules.ts).
+ * server/rules/gameplay/vaultRules.ts).
  *
  *   GET  /api/vault/:characterId       -> { bag, vault }
  *   POST /api/vault/deposit            -> { characterId, bagSlot, quantity? }      bag -> vault (whole stack when quantity is omitted)

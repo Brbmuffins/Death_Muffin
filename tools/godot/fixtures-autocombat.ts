@@ -8,7 +8,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { exactStringify } from './exact-json';
 import { mulberry32 } from '../../src/gameplay/rng';
 import { ABILITIES } from '../../src/content/abilities';
-import { AREAS, AREA_ORDER } from '../../src/content/areas';
+import { AREAS, AREA_ORDER } from '../../server/rules/content/areas';
 import { selectAutoCombatAction, selectAutoCombatMovement } from '../../src/gameplay/autoCombat';
 import { BossTelegraphs, dodgeStep, inHazard, nearestSafePoint, poolHazard, stepIntoHazard, type Hazard } from '../../src/gameplay/autoDodge';
 import { worldNav, ALL_OPEN } from './sim-fixture-lib';

@@ -1,6 +1,6 @@
-import { BREW_KEYS } from '../content/brews';
+import { BREW_KEYS } from '../../server/rules/content/brews';
 import type { StorageLike } from './codexJournal';
-import { MAX_PRESETS } from './loadoutRules';
+import { MAX_PRESETS } from '../../server/rules/gameplay/loadoutRules';
 
 /**
  * Rebindable actions (2026-10-03): only the loadout hotkeys for now, all UNBOUND until the player picks a key in Settings → Controls.

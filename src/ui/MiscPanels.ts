@@ -1,7 +1,7 @@
 import { canUseAutoCombat, settings, updateSettings, type Quality } from '../app/settings';
 import { LOOT_TIERS, actionsFor, type LootAction } from '../gameplay/lootFilter';
-import { AREAS, type AreaId } from '../content/areas';
-import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
+import { AREAS, type AreaId } from '../../server/rules/content/areas';
+import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../../server/rules/content/difficulty';
 import { ACTION_LABEL, LOADOUT_ACTIONS, checkBind, label as keyLabel, type ActionId, type Binds } from '../gameplay/keybinds';
 import { saveLootRuleToAccount } from '../net/accountPrefs';
 import { BugReportView, type BugReportContext } from './BugReportView';

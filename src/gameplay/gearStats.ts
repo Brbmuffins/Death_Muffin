@@ -1,8 +1,8 @@
 import type { Character, InventorySlot } from '../net/types';
-import { DISCIPLINES, type Discipline, type DisciplineId } from '../content/disciplines';
-import { DAMAGE_UPGRADE } from '../content/upgrades';
+import { DISCIPLINES, type Discipline, type DisciplineId } from '../../server/rules/content/disciplines';
+import { DAMAGE_UPGRADE } from '../../server/rules/content/upgrades';
 import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../content/gear';
-import { NECRO_KIND_LABEL, isTwoHanded, type NecroKind } from '../content/necroWeapons';
+import { NECRO_KIND_LABEL, isTwoHanded, type NecroKind } from '../../server/rules/content/necroWeapons';
 import { STAT_KEYS, STAT_LABELS, computeStats, type StatKey } from './stats';
 import {
   STAT_EFFECTS as E,
@@ -16,8 +16,8 @@ import {
 import { resolveWeaponLoadout, type WeaponLoadout } from './weaponLine';
 import { diffSetBonuses, effectRelevant, foldEffect, resolveSetBonuses, setDiffText, withSetBonuses, withoutSetBonuses, type SetDiff, type SetStatus, type SetTotals } from './setBonuses';
 import { affixLines, type AffixLine } from './affixes';
-import { affixEffect, type AffixStat } from './affixRules';
-import { NO_LEGION, type LegionBonus } from './legionRules';
+import { affixEffect, type AffixStat } from '../../server/rules/gameplay/affixRules';
+import { NO_LEGION, type LegionBonus } from '../../server/rules/gameplay/legionRules';
 
 /**
  * Gear you can read: everything the Reliquary tooltips, the compare block and the Character sheet say about

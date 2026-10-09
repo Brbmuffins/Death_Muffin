@@ -1,5 +1,5 @@
 /**
- * Salvaging, the Bone Grinder (rules: gathering/salvage-rules.cjs, generated from src/gameplay/salvageRules.ts).
+ * Salvaging, the Bone Grinder (rules: gathering/salvage-rules.cjs, generated from server/rules/gameplay/salvageRules.ts).
  *
  *   POST /api/salvage -> { characterId, slots: number[] }
  *        takes the gear in those BAG slots, gives crafting materials and alchemy reagents, awards Salvaging XP.

@@ -82,7 +82,7 @@ const LIMITS = {
   snapshotBytes: 96 * 1024,
   eventsBytes: 64 * 1024,
   intentBytes: 2 * 1024,
-  /** Most ids one `hit` may name: the world's enemy cap (GLOBAL_ENEMY_CAP in src/content/areas.ts; a unit test keeps them equal). A rite sweeping every body must not be dropped whole. */
+  /** Most ids one `hit` may name: the world's enemy cap (GLOBAL_ENEMY_CAP in server/rules/content/areas.ts; a unit test keeps them equal). A rite sweeping every body must not be dropped whole. */
   hitIds: 72,
   moveBytes: 256,
   gearBytes: 512,
@@ -110,7 +110,7 @@ const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offerin
   'echo', 'veil_tear', 'crossing', 'lay_to_rest']);
 /** Intents that need an x/z. */
 const POINT_INTENTS = new Set(['recallThralls', 'miasma', 'litany', 'exhume']);
-/** ThrallKind (src/content/disciplines.ts): the host sim looks the kind up in THRALL_BASE and throws on anything else. */
+/** ThrallKind (server/rules/content/disciplines.ts): the host sim looks the kind up in THRALL_BASE and throws on anything else. */
 const THRALL_KINDS = new Set(['warrior', 'shieldbearer', 'hound', 'wraith', 'archer', 'bonemage', 'plaguebearer', 'colossus']);
 const WORLD_BOUND = 400; // |x|,|z| sanity bound in world units
 
@@ -263,7 +263,7 @@ function validIntent(intent) {
       break;
     }
     case 'refreshThralls': {
-      // Buying a Damage or Legion tier: one-time multipliers for the owner's standing thralls, 1..1.25 (src/content/upgrades.ts THRALL_REFRESH_MAX; the host clamps again).
+      // Buying a Damage or Legion tier: one-time multipliers for the owner's standing thralls, 1..1.25 (server/rules/content/upgrades.ts THRALL_REFRESH_MAX; the host clamps again).
       const f = (v) => Math.min(1.25, Math.max(1, num(v, 1)));
       out.hpMult = f(out.hpMult);
       out.damageMult = f(out.damageMult);

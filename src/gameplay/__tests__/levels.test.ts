@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, AREA_ORDER, DOORS, type AreaId } from '../../content/areas';
+import { AREAS, AREA_ORDER, DOORS, type AreaId } from '../../../server/rules/content/areas';
 import { generateLayout, PROPS } from '../../content/layout';
-import { ENEMIES } from '../../content/enemies';
+import { ENEMIES } from '../../../server/rules/content/enemies';
 import { CODEX_AREAS } from '../../content/codex';
 
 const layout = generateLayout();

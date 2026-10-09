@@ -13,7 +13,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUTDIR = join(root, 'public/art/items');
 
 async function load() {
-  const res = await build({ entryPoints: [join(root, 'src/content/reagents.ts')], bundle: true, platform: 'node', format: 'esm', write: false });
+  const res = await build({ entryPoints: [join(root, 'server/rules/content/reagents.ts')], bundle: true, platform: 'node', format: 'esm', write: false });
   return import('data:text/javascript;base64,' + Buffer.from(res.outputFiles[0].text).toString('base64'));
 }
 

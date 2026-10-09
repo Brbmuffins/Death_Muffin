@@ -9,9 +9,9 @@
  *      BALANCE_MINUTES (3) BALANCE_SEEDS (2) BALANCE_DIFFICULTY (medium) DEPTH_REFERENCE=pyre,fen (ground rows; '' for none).
  */
 import { runBalance, type BalanceResult, type BalanceRun } from './harness';
-import { depthEnemyLevel } from '../../content/depths';
-import type { AreaId } from '../../content/areas';
-import type { Difficulty } from '../../content/difficulty';
+import { depthEnemyLevel } from '../../../server/rules/content/depths';
+import type { AreaId } from '../../../server/rules/content/areas';
+import type { Difficulty } from '../../../server/rules/content/difficulty';
 import { BANDS } from './bands';
 import type { KitName } from './kits';
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import * as rules from '../necroRules';
+import * as rules from '../../../server/rules/gameplay/necroRules';
 import { Progression } from '../progression';
 import { necroApi, saveProgress } from '../../net/api';
 import type { Character } from '../../net/types';
@@ -126,7 +126,7 @@ describe('sync fixes: progression', () => {
 describe('sync fixes: gathering', () => {
   it('a keepalive flush on page close sends cycles queued while a batch was in flight', async () => {
     const { GatherLoop, Skills } = await import('../Gathering');
-    const { NODES, actionMs } = await import('../gatheringRules');
+    const { NODES, actionMs } = await import('../../../server/rules/gameplay/gatheringRules');
     let now = 0;
     const node = { id: 'acre_1', type: 'coffin_oak', x: 0, z: 0, area: 'acre', rot: 0 } as never;
     const player = { x: 1.35, z: 0, path: [] as unknown[], get hasPath() { return false; }, moving: false, moveAlong() {}, face() {}, stop() {} };
@@ -183,7 +183,7 @@ describe('sync fixes: inventory', () => {
 describe('sync fixes: relay', () => {
   it('the relay accepts a hit naming as many ids as the world enemy cap', async () => {
     const { readFileSync } = await import('node:fs');
-    const { GLOBAL_ENEMY_CAP } = await import('../../content/areas');
+    const { GLOBAL_ENEMY_CAP } = await import('../../../server/rules/content/areas');
     expect(readFileSync('server/realtime/server.js', 'utf8')).toContain(`hitIds: ${GLOBAL_ENEMY_CAP},`);
   });
 });

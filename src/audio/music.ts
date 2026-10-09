@@ -1,4 +1,4 @@
-import type { AreaId } from '../content/areas';
+import type { AreaId } from '../../server/rules/content/areas';
 import { sliderGain } from './mixer';
 
 export type MusicCue = 'chapterhouse' | 'graves' | 'ossuary' | 'pyre' | 'boss';

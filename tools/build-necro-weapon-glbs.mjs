@@ -21,7 +21,7 @@ const RAW = join(root, 'art-src', 'necro-weapons', 'tripo');
 const OUT = join(root, 'public', 'models', 'props');
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 
-const res = await build({ entryPoints: [join(root, 'src/content/necroWeapons.ts')], bundle: true, platform: 'node', format: 'esm', write: false });
+const res = await build({ entryPoints: [join(root, 'server/rules/content/necroWeapons.ts')], bundle: true, platform: 'node', format: 'esm', write: false });
 const { NECRO_MODEL } = await import('data:text/javascript;base64,' + Buffer.from(res.outputFiles[0].text).toString('base64'));
 
 function positions(doc) {

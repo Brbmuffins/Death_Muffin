@@ -2,7 +2,7 @@
 
 ## Gold sinks (3 Oct 2026, branch `dm/gold-sinks`, migration 035, not deployed)
 
-Live balances read-only on 3 Oct 2026: the owner's level-255 hero holds **7.58M** gold, the next richest **174k** (level 119), the rest under 300. Damage tiers total 2.0M, Wave Speed 14k, Legion 75k, so only the owner has run out of places to spend. Both sinks are priced against those two wallets. Numbers come from `src/gameplay/goldSinkRules.ts`; `gold-sinks.test.ts` pins them.
+Live balances read-only on 3 Oct 2026: the owner's level-255 hero holds **7.58M** gold, the next richest **174k** (level 119), the rest under 300. Damage tiers total 2.0M, Wave Speed 14k, Legion 75k, so only the owner has run out of places to spend. Both sinks are priced against those two wallets. Numbers come from `server/rules/gameplay/goldSinkRules.ts`; `gold-sinks.test.ts` pins them.
 
 **Reforge** (`reforgeCost`): `40 x item level x rarity x 1.25^reforges`, rarity as the tooltip shows it (affix count included): common/uncommon x1, rare x1.5, epic x2.5, legendary x4; the exponent stops at 20; hard cap 2M (never reached: the dearest reforge is about 1.4M). The new value is uniform over today's `affixRange` for that item level (read from `affixRules`, so the parallel 1.45x range retune flows through).
 
@@ -269,7 +269,7 @@ Kit `none`, dodging, intended band (kill time of winning runs, min HP across see
 | Cinder Regent (30) | 118-129 s / 26-34% | 0/24 | unchanged | unchanged |
 | Mire Mother (45) | (unreachable, harness) 108-141 s / 90% once reachable | wins 24/24, 75-89%, 1-3% per minute damage | **143-190 s** / 66-95% | wins 24/24, 20-55%, 130-170%/min |
 
-Changes (all in `src/content/bosses.ts`; `necro-rules.cjs` regenerated since it bundles it):
+Changes (all in `server/rules/content/bosses.ts`; `necro-rules.cjs` regenerated since it bundles it):
 - Gravedigger King `baseHp` 15500 -> 22000, Bone Abbess 13000 -> 17000: the first two bosses died in 84-141 s to a careful arrival-level bot, against a 150-210 s target. They stay the gentlest bosses (a non-dodger still wins).
 - Mire Mother `baseHp` 32000 -> 42000 and damage x1.9 (surface 42 -> 160 with the ring windups unchanged, maul 26 -> 80, hands 15 -> 45). She was by far the easiest boss: 1-3% of max health per minute taken by a dodging bot,
   75-89% minimum health even for a bot that ignores every telegraph, killed in under 2.5 minutes. Now a non-dodger drops to 20-55% and a dodger is still barely touched (the bot only sidesteps the ripple rings; real play also has the open-water hands, the flood and the phase-3 rite, which it does not model, so she is probably harder in practice than the table says).
@@ -1069,7 +1069,7 @@ The scythe's arc reaches **4 m against a boss** (3 m against everything else), s
 Biggest moves: Prelate Mourner (intended) 7/8 -> 3/8 wipes; Mire Mother 5 wipes -> 0; Plague Saint damage taken roughly halved. The scythe is still about 1.4x slower than a staff on every boss: that is the style's trade (souls and essence from the arc), not changed here.
 
 ## New Blood catch-up (3 Oct 2026, owner: "apply the 1.5x damage and early xp for new blood")
-`src/gameplay/newBloodTuning.ts`: every New Blood primary, rite and signature hits **x1.5** (`NewBloodSystem.power`), and experience is
+`server/rules/gameplay/newBloodTuning.ts`: every New Blood primary, rite and signature hits **x1.5** (`NewBloodSystem.power`), and experience is
 multiplied **x2 at level 1, fading linearly to x1 at level 15** (`WorldScene.gainXp`; the harness mirrors both). x2.5 was measured first and
 overshot: with the damage boost New Blood out-levelled the necromancers at Graves (412-562 XP/min vs ~375), so the start was lowered to x2.
 Necromancer rows are byte-identical. `BALANCE_SEEDS=4 BALANCE_AREAS=graves,nave BALANCE_BANDS=intended BALANCE_KIT=none npm run balance`:

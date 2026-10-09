@@ -44,7 +44,7 @@ matching Tripo specs in `art-manifest/tripo-specs/prop_node_*.json`, not yet run
 |---|---|---|
 | Professions `mining`, `fishing`, `woodcutting` with `skill_level` / `skill_xp` | Death Muffin DB `professions` table; `GET /api/professions/:characterId` | Rule: XP to next level = `level × 50` (`xpToNextLevel` in `server/death-muffin/backend/server.js`). |
 | Recipes (`smelt` + `craft`, level-gated by profession) | `recipes`, `recipe_ingredients`; `GET /api/professions/recipes/:id`; `POST /api/craft` | Crafting already checks the profession level server-side. |
-| Items: ores copper → moon (9 tiers), `fish_river`, `fish_fillet`, `log_oak`, `plank_oak`, flasks, oak staff/bow | `src/content/items.ts` (mirror of the server table; a unit test enforces it) | Mining can use existing ids for every tier; wood and fish need new ids above tier 1. |
+| Items: ores copper → moon (9 tiers), `fish_river`, `fish_fillet`, `log_oak`, `plank_oak`, flasks, oak staff/bow | `server/rules/content/items.ts` (mirror of the server table; a unit test enforces it) | Mining can use existing ids for every tier; wood and fish need new ids above tier 1. |
 | Rite Niches panel (levels + XP bars), Ossuary Workbench (crafting) | `src/ui/ProfessionsPanel.ts`, `src/ui/ForgePanel.ts` | Become the Skills panel and the station UIs. |
 | Props pipeline, prop batches and colliders | `ASSET_PIPELINE.md`, `content/layout.ts` `PROPS`, `graphics/WorldView.ts` | Nodes are props with state. |
 | Host-authoritative world state in co-op (corpses, zones, walls) | `gameplay/sim/WorldSim.ts`, `sim/snapshot.ts` | Node depletion/respawn follows the corpse pattern. |
@@ -224,7 +224,7 @@ original Crossworlds REST server, and the owner has authorised changes to it (se
 `docs/DEATH-MUFFIN-HANDOFF.md`). **Never touch the original shared server.** Follow the necro-progress
 pattern:
 
-- **Shared rules module** `src/gameplay/gatheringRules.ts`: the node catalogue, success formula, XP,
+- **Shared rules module** `server/rules/gameplay/gatheringRules.ts`: the node catalogue, success formula, XP,
   loot tables and the XP curve. It is bundled for the server like `necroRules.ts`
   (`npm run build:server-rules`, with a parity test).
 - **Migration `002-gathering.sql`** (additive): new `items` rows (§4, with `stackable`,
@@ -311,9 +311,9 @@ order and dependencies are:
 
 | # | Brief | Depends on | Owns (don't edit outside) |
 |---|---|---|---|
-| G0 | [professions-g0-rules-server.md](agent-briefs/professions-g0-rules-server.md): shared rules, migration, `/api/gather`, mock backend, tests | — | `src/gameplay/gatheringRules.ts`, `server/death-muffin/backend/**`, `src/net/**` mock, `tools/build-server-rules.mjs` |
+| G0 | [professions-g0-rules-server.md](agent-briefs/professions-g0-rules-server.md): shared rules, migration, `/api/gather`, mock backend, tests | — | `server/rules/gameplay/gatheringRules.ts`, `server/death-muffin/backend/**`, `src/net/**` mock, `tools/build-server-rules.mjs` |
 | G1 | [professions-g1-nodes-loop.md](agent-briefs/professions-g1-nodes-loop.md): node entities in WorldSim + snapshot, the gathering loop, Auto, feedback | G0 contract (can stub) | `src/gameplay/**` (except rules), `src/scenes/WorldScene.ts` hooks, `src/graphics/EntityViews.ts` |
-| G2 | [professions-g2-sextons-acre.md](agent-briefs/professions-g2-sextons-acre.md): the zone, door, layout, ambience, node placement | — (uses stand-in meshes until G3) | `src/content/areas.ts`, `src/content/layout.ts`, `src/graphics/WorldView.ts`, `Atmosphere.ts` |
+| G2 | [professions-g2-sextons-acre.md](agent-briefs/professions-g2-sextons-acre.md): the zone, door, layout, ambience, node placement | — (uses stand-in meshes until G3) | `server/rules/content/areas.ts`, `src/content/layout.ts`, `src/graphics/WorldView.ts`, `Atmosphere.ts` |
 | G3 | [professions-g3-art.md](agent-briefs/professions-g3-art.md): run Tripo for the approved props, build, register, item icons | owner's Tripo OK | `art-manifest/**`, `public/models/props/**`, `public/art/items/**`, `layout.ts` `PROPS` entries |
 | G4 | [professions-g4-ui-help.md](agent-briefs/professions-g4-ui-help.md): Skills panel, tooltips, stations, tips, Codex tab, README | G0, G1 | `src/ui/**`, `src/content/codex.ts`, README |
 | G5 | Grave Gardening: plots, seeds, growth, tree patches | G0–G2 | new `gardening*` files + its routes |

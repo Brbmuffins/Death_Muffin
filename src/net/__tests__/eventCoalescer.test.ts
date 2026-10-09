@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Nav } from '../../gameplay/nav';
 import { WorldSim } from '../../gameplay/sim/WorldSim';
 import { mulberry32 } from '../../gameplay/rng';
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 import type { EventBatch } from '../contracts';
 import { EventCoalescer } from '../eventCoalescer';
 

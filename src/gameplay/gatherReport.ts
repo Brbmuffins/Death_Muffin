@@ -1,6 +1,6 @@
 import type { GatherReply } from '../net/api';
 import type { Rarity } from '../net/types';
-import { SKILLS, type SkillId } from './gatheringRules';
+import { SKILLS, type SkillId } from '../../server/rules/gameplay/gatheringRules';
 
 /**
  * The "while you were away" report. An AFK session collects what every gather reply returned (items, XP, gold, levels) and, when

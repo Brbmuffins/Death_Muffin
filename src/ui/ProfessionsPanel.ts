@@ -1,9 +1,9 @@
 import type { Skills } from '../gameplay/Gathering';
-import { ALL_SKILLS, GATHER_SKILLS, LEVEL_CAP, SKILLS, TOOL_KIND, nodesForSkill, toolItemId, toolTierFor, type GatherSkill, type SkillId } from '../gameplay/gatheringRules';
+import { ALL_SKILLS, GATHER_SKILLS, LEVEL_CAP, SKILLS, TOOL_KIND, nodesForSkill, toolItemId, toolTierFor, type GatherSkill, type SkillId } from '../../server/rules/gameplay/gatheringRules';
 
 /** Gardening and alchemy have no nodes to work: they live in the Garden panel and at the Workbench. */
 const isGather = (id: SkillId): id is GatherSkill => (GATHER_SKILLS as SkillId[]).includes(id);
-import { itemMeta } from '../content/items';
+import { itemMeta } from '../../server/rules/content/items';
 import { preserveScroll } from './preserveScroll';
 import { wrapPanelBody } from './panelBody';
 import { controlUnderPointer } from './redrawGuard';

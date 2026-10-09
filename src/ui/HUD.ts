@@ -1,16 +1,16 @@
 import { BeltPicker, BELT_DRAG_TYPE, type BeltChoice } from './BeltPicker';
 import { ABILITIES, HOTBAR, type AbilityId, type HotbarSlot } from '../content/abilities';
-import type { Discipline } from '../content/disciplines';
-import type { EliteAffix } from '../content/enemies';
-import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, damageBonusPct, milestones, waveModifiers } from '../content/upgrades';
+import type { Discipline } from '../../server/rules/content/disciplines';
+import type { EliteAffix } from '../../server/rules/content/enemies';
+import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, damageBonusPct, milestones, waveModifiers } from '../../server/rules/content/upgrades';
 import { MAX_PARTY_SIZE } from '../net/config';
 import { ICON } from './icons';
 import { isMinorLoot, lootToastLine, lootToastMs } from './lootToast';
 import type { Rarity } from '../net/types';
 import { Minimap, type MinimapFrame } from './Minimap';
 import { spellTooltip } from './spellTooltip';
-import { RUNES, isRuneRite, type RuneRite } from '../content/runes';
-import type { RuneSockets } from '../gameplay/runeRules';
+import { RUNES, isRuneRite, type RuneRite } from '../../server/rules/content/runes';
+import type { RuneSockets } from '../../server/rules/gameplay/runeRules';
 import type { RevealId } from './progressiveHud';
 
 /** Key caps under each hotbar slot (slot 5 is the right-click action). */

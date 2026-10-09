@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, AREA_ORDER, type AreaId } from '../../content/areas';
-import { BOSSES, BOSS_IDS } from '../../content/bosses';
-import { ITEMS } from '../../content/items';
-import { ARMOR_BY_ID } from '../../content/armorSets';
-import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor } from '../../content/legendarySets';
-import { AREA_REAGENT_DROPS, BOSS_ICHOR } from '../../content/reagents';
-import { BOSS_REPEAT_RUNE_CHANCE, eliteRuneChance, RUNES } from '../../content/runes';
+import { AREAS, AREA_ORDER, type AreaId } from '../../../server/rules/content/areas';
+import { BOSSES, BOSS_IDS } from '../../../server/rules/content/bosses';
+import { ITEMS } from '../../../server/rules/content/items';
+import { ARMOR_BY_ID } from '../../../server/rules/content/armorSets';
+import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor } from '../../../server/rules/content/legendarySets';
+import { AREA_REAGENT_DROPS, BOSS_ICHOR } from '../../../server/rules/content/reagents';
+import { BOSS_REPEAT_RUNE_CHANCE, eliteRuneChance, RUNES } from '../../../server/rules/content/runes';
 import { ALL_RECIPE_ROWS } from '../../content/recipes';
-import { FLOOR_DROP_CHANCE, chestRuneChance, depthLootArea } from '../../content/depths';
-import { DISCIPLINES, type DisciplineId } from '../../content/disciplines';
-import { NODES, rollGather, successChance } from '../gatheringRules';
+import { FLOOR_DROP_CHANCE, chestRuneChance, depthLootArea } from '../../../server/rules/content/depths';
+import { DISCIPLINES, type DisciplineId } from '../../../server/rules/content/disciplines';
+import { NODES, rollGather, successChance } from '../../../server/rules/gameplay/gatheringRules';
 import { KILL_LOOT, rollBoss, rollBossRune, rollEliteRune, rollFirstKillItem, rollKill, rollSurgeItem } from '../loot';
 import { rollChest, rollFloorClear } from '../depthsRewards';
 import { mulberry32 } from '../rng';
-import { rollAffixCount } from '../affixRules';
+import { rollAffixCount } from '../../../server/rules/gameplay/affixRules';
 import {
   SCALING_NOTES, affixCountOdds, cosmeticsInfo, isRecommendedKind, peersOf, atlasSlot, depthBands, fitBand, fitTable, fmtChance, getAtlas, legendaryShare, oneIn, placesFor, powerGainPct, referenceContext,
   sourcesFor, unobtainable,
@@ -361,7 +361,7 @@ describe('atlas: drop quality, your own odds and the roll (3 Oct 2026 achievable
   });
   it('places list in descent order, and each deeper ground rates higher quality', async () => {
     const { getAtlas: ga, areaQuality: aq } = await import('../atlas');
-    const { AREA_ORDER: order, HUNT_ORDER: hunts } = await import('../../content/areas');
+    const { AREA_ORDER: order, HUNT_ORDER: hunts } = await import('../../../server/rules/content/areas');
     const areaPlaces = ga().places.filter((p) => p.kind === 'area').map((p) => p.id);
     expect(areaPlaces).toEqual(order.filter((id) => areaPlaces.includes(id)));
     let prev = 0;

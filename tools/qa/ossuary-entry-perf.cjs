@@ -50,7 +50,7 @@ fs.mkdirSync(OUT, { recursive: true });
     const p1 = progs();
     // A fast player's first wave: one of every roster kind appears now. Programs compiled by it are first-draw stalls.
     const d = window.__cwDebug;
-    const roster = (await import('/src/content/areas.ts')).AREAS[target].enemies.map((e) => e.id);
+    const roster = (await import('/server/rules/content/areas.ts')).AREAS[target].enemies.map((e) => e.id);
     roster.forEach((id, i) => d.ring(id, 1, 5 + i * 0.7, false));
     d.freeze(true);
     const tw = performance.now();

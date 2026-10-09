@@ -1,9 +1,9 @@
-import { AREAS, AREA_ORDER, DEPTHS_STAIR, DOORS, type AreaId, type Rect } from './areas';
+import { AREAS, AREA_ORDER, DEPTHS_STAIR, DOORS, type AreaId, type Rect } from '../../server/rules/content/areas';
 export type { Rect };
 import { mulberry32 } from '../gameplay/rng';
-import { NODES, type NodeKind } from '../gameplay/gatheringRules';
-import { FEN_BOG, FEN_HUMMOCKS } from './fen';
-import { ABBESS_NICHE_SPOTS, BOSSES, GRAVEDIGGER_PITS, summonSpot, type BossId } from './bosses';
+import { NODES, type NodeKind } from '../../server/rules/gameplay/gatheringRules';
+import { FEN_BOG, FEN_HUMMOCKS } from '../../server/rules/content/fen';
+import { ABBESS_NICHE_SPOTS, BOSSES, GRAVEDIGGER_PITS, summonSpot, type BossId } from '../../server/rules/content/bosses';
 import type { BoxObstacle, Obstacle } from '../gameplay/nav';
 
 /**

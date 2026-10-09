@@ -4,7 +4,7 @@ import { WorldSim } from '../sim/WorldSim';
 import { WorldMirror, makeSnapshot } from '../sim/snapshot';
 import { mulberry32 } from '../rng';
 import { rollBoss, rollKill } from '../loot';
-import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty, type Difficulty } from '../../content/difficulty';
+import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty, type Difficulty } from '../../../server/rules/content/difficulty';
 
 function sim(difficulty: Difficulty) {
   const s = new WorldSim(new Nav(), mulberry32(3));

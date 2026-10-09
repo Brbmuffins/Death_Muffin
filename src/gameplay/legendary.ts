@@ -3,7 +3,7 @@
  * The set values live in DisciplineMods (0 = off); this file holds the fixed shapes (radii, caps, durations),
  * the host-side clamp for the mods the shared sim reads, and the damage-reduction maths. Pure, so it is unit tested.
  */
-import type { DisciplineMods } from '../content/disciplines';
+import type { DisciplineMods } from '../../server/rules/content/disciplines';
 
 export const LEGEND = {
   /** Thrall Death Burst radius (m). */

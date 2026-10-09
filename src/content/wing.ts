@@ -1,4 +1,4 @@
-import { REAGENT_BREW_LIST, REAGENT_ITEMS } from './reagents';
+import { REAGENT_BREW_LIST, REAGENT_ITEMS } from '../../server/rules/content/reagents';
 
 /**
  * The Alchemist's Wing, pure data and helpers (no DOM, no three.js): the Reagent Shelf's contents, the "found" record, and the

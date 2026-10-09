@@ -1,5 +1,5 @@
-import { AREAS, type AreaId } from '../content/areas';
-import { AREA_RUNE_POOL } from '../content/runes';
+import { AREAS, type AreaId } from '../../server/rules/content/areas';
+import { AREA_RUNE_POOL } from '../../server/rules/content/runes';
 import { fx } from './fxTextures';
 import { FX_PRESETS } from './binbun/presets';
 import type { BinbunFX } from './binbun/BinbunFX';

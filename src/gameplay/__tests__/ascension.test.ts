@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { ASCENSION, BOONS, BOON_ORDER, VOWS, VOW_ORDER, ashesForRun, ascensionLevels, boonEffects, boonKey, isUnlocked, legacyVows, roman, vowEffects, vowHeat, vowKey, worldVows } from '../../content/ascension';
-import { AREAS } from '../../content/areas';
+import { ASCENSION, BOONS, BOON_ORDER, VOWS, VOW_ORDER, ashesForRun, ascensionLevels, boonEffects, boonKey, isUnlocked, legacyVows, roman, vowEffects, vowHeat, vowKey, worldVows } from '../../../server/rules/content/ascension';
+import { AREAS } from '../../../server/rules/content/areas';
 import { Nav } from '../nav';
 import { mulberry32 } from '../rng';
 import { WorldSim } from '../sim/WorldSim';
@@ -180,7 +180,7 @@ describe('Vows', () => {
   });
 
   it('server rule: swearing validates ids, steps and unlocks; changing mid-run restarts the tally', async () => {
-    const rules = await import('../necroRules');
+    const rules = await import('../../../server/rules/gameplay/necroRules');
     const s0 = { ...rules.blankState(), run, soulShards: 700 };
     expect(rules.swearVows(s0, { bogus: 1 }).ok).toBe(false);
     expect(rules.swearVows(s0, { elder_dead: 99 }).ok).toBe(false);
@@ -206,7 +206,7 @@ describe('Vows', () => {
   });
 
   it('server rule: unlocking spends the shards once, is priced by the server, and gates swearing and buying', async () => {
-    const rules = await import('../necroRules');
+    const rules = await import('../../../server/rules/gameplay/necroRules');
     const s = { ...rules.blankState(), soulShards: 650, ashes: 40 };
     expect(rules.unlockEntry(s, 'vow:elder_dead').ok).toBe(false); // free: nothing to unlock
     expect(rules.unlockEntry(s, 'vow:nope').ok).toBe(false);
@@ -226,7 +226,7 @@ describe('Vows', () => {
   });
 
   it('server rule: ascend pays for the sworn heat, raises the best rank, keeps seals, shards and vows', async () => {
-    const rules = await import('../necroRules');
+    const rules = await import('../../../server/rules/gameplay/necroRules');
     const open = ['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum'] as never;
     const s = { ...rules.blankState(), run, soulShards: 777, damageTier: 5, waveTierOwned: 3, legionTier: 2, areaKills: { graves: 400 }, unlockedAreas: open, vows: { elder_dead: 4, iron_dead: 2 }, ascension: 3 };
     const a = rules.ascend(s);
@@ -251,7 +251,7 @@ describe('Vows', () => {
   });
 
   it('migration: an existing character keeps rank, Ashes and boons, and plays the same world (rank N = N steps of Elder Dead)', async () => {
-    const rules = await import('../necroRules');
+    const rules = await import('../../../server/rules/gameplay/necroRules');
     // Shaped like the live row of 2026-10-03: rank 1, boons bought, Ashes in hand, no vows or unlocks keys yet.
     const old = { damageTier: 3, waveTierOwned: 2, waveTierActive: 2, legionTier: 1, soulShards: 9799, areaKills: { graves: 5 }, unlockedAreas: ['chapterhouse', 'graves', 'ossuary'], bossKills: 4, totalKills: 65925, ascension: 1, ashes: 12, boons: { vigil: 3, bone_tithe: 2, first_rites: 1 }, run: { prelateKills: 1, peakWaveTier: 2, kills: 300 }, summonsPending: 0, migrated: true };
     const m = rules.normalise(old);
@@ -276,14 +276,14 @@ describe('Vows', () => {
   });
 
   it('migration: a stored row with garbage vows or unlocks is cleaned, not trusted', async () => {
-    const rules = await import('../necroRules');
+    const rules = await import('../../../server/rules/gameplay/necroRules');
     const m = rules.normalise({ vows: { elder_dead: 500, bogus: 3, dry_cellar: 'x' }, unlocks: ['vow:prelate_echo', 'vow:elder_dead', 'zzz', 4], ascension: 2 });
     expect(m.vows).toEqual({ elder_dead: VOWS.elder_dead.maxRank });
     expect(m.unlocks).toEqual(['vow:prelate_echo']);
   });
 
   it('tampering: the client cannot choose price, heat or Ashes', async () => {
-    const rules = await import('../necroRules');
+    const rules = await import('../../../server/rules/gameplay/necroRules');
     const s = { ...rules.blankState(), soulShards: 10, run };
     // Extra fields in a swear / unlock are ignored; a price in the body does nothing (unlockEntry takes only the key).
     expect(rules.unlockEntry(s, vowKey('prelate_echo')).ok).toBe(false);
@@ -421,7 +421,7 @@ describe('Vows in the world', () => {
 
 describe('Authority ceilings follow the vows', () => {
   it('a plain rank reads as Elder Dead steps; cooler vows never raise the ceiling; heat and older dead do', async () => {
-    const { ceilingsFor } = await import('../authorityRules');
+    const { ceilingsFor } = await import('../../../server/rules/gameplay/authorityRules');
     const open = ['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum'];
     expect(ceilingsFor(open, 3, 30)).toEqual(ceilingsFor(open, { elder_dead: 3 }, 30));
     const none = ceilingsFor(open, {}, 30);

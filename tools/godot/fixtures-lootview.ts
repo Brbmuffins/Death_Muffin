@@ -17,7 +17,7 @@ Math.random = () => rnd();
 const { LootView } = await import('../../src/graphics/LootView');
 const { lootAction, DEFAULT_LOOT_RULES, LOOT_TIERS } = await import('../../src/gameplay/lootFilter');
 const { addToSlots } = await import('../../src/gameplay/loot');
-const { AFFIXES } = await import('../../src/gameplay/affixRules');
+const { AFFIXES } = await import('../../server/rules/gameplay/affixRules');
 const THREE = await import('three');
 
 const out = 'godot/tests/loot_view/fixtures';

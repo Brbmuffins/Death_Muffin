@@ -79,7 +79,7 @@ async function measure(browser, tier, area) {
   await page.locator('.cw-disc').filter({ hasText: 'Gravecaller' }).click();
   await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 90000 });
   await page.evaluate(() => { const d = window.__cwDebug; d.god(true); d.unlockAll(); });
-  await preloadModules(page, { areas: '/src/content/areas.ts' });
+  await preloadModules(page, { areas: '/server/rules/content/areas.ts' });
   await page.evaluate((a) => { const d = window.__cwDebug; d.goto(a); d.advance(0.5); d.clear(); d.zoom(0.8); d.advance(1); }, area);
   await page.evaluate(() => {
     const sc = window.__qaMods.runtime.getRuntime().view; const d = window.__cwDebug; const sim = d.sim();

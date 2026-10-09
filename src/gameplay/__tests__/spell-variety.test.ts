@@ -8,9 +8,9 @@ import type { Corpse, Enemy, SimEvent } from '../sim/types';
 import { AbilitySystem, veilTarget, type AbilityContext } from '../AbilitySystem';
 import { Player } from '../Player';
 import { Effects } from '../../graphics/Effects';
-import { DISCIPLINES } from '../../content/disciplines';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import { BONE_FAN, CARRION_SEED, RALLY, ROT_LANCE } from '../../content/abilities';
-import { AREAS, DOORS } from '../../content/areas';
+import { AREAS, DOORS } from '../../../server/rules/content/areas';
 import { selectAutoCombatAction } from '../autoCombat';
 
 vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn(), loop: vi.fn(() => () => undefined) } }));

@@ -1,10 +1,10 @@
 import { salvageGear, type SalvageReply } from '../net/api';
 import type { InventorySlot } from '../net/types';
-import { RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
+import { RARITY_COLOR, RARITY_MARK, itemMeta } from '../../server/rules/content/items';
 import type { Inventory } from '../gameplay/loot';
 import { LOCK_SVG, itemIcon } from './InventoryPanel';
 import { salvageBelowRare, type ItemLocks } from '../gameplay/itemLocks';
-import { SALVAGE_RARITIES, isSalvageable, salvagePreview } from '../gameplay/salvageRules';
+import { SALVAGE_RARITIES, isSalvageable, salvagePreview } from '../../server/rules/gameplay/salvageRules';
 import type { Skills } from '../gameplay/Gathering';
 import { rollOf } from '../gameplay/affixes';
 import { keepsForYou, type StatContextSource } from './gearText';

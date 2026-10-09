@@ -1,5 +1,5 @@
 /**
- * Reforge, the Workbench's gold sink (rules: gathering/gold-sink-rules.cjs, generated from src/gameplay/goldSinkRules.ts).
+ * Reforge, the Workbench's gold sink (rules: gathering/gold-sink-rules.cjs, generated from server/rules/gameplay/goldSinkRules.ts).
  *
  *   POST /api/reforge/quote  -> { characterId }
  *        -> { gold, pieces: [{ slot_index, instance_id, rerolls }] }: every rolled piece the character carries or wears and how many times

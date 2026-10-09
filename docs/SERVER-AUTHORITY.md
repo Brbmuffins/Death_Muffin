@@ -23,7 +23,7 @@ Set `AUTHORITY_MODE` in the backend env (`/home/ubuntu/death-muffin/backend/.env
 The value is read on every request, but the service only reads `.env` at start, so a restart is needed to switch.
 
 **Suggested rollout:** apply migration 021, deploy with `report`, play for a few days (friends will exercise it), then read
-`progress_audit` (queries below). If honest saves show up there, adjust the constants in `src/gameplay/authorityRules.ts`
+`progress_audit` (queries below). If honest saves show up there, adjust the constants in `server/rules/gameplay/authorityRules.ts`
 (`npm run build:server-rules`) before enforcing. Only then set `AUTHORITY_MODE=enforce`.
 
 ```sql
@@ -84,7 +84,7 @@ is kept per item (`item_budget` JSON) and for gold credit from sales (`gold_cred
 
 ## Ceilings and how they were derived
 
-All numbers live in `src/gameplay/authorityRules.ts` and are bundled to `gathering/authority-rules.cjs` (`npm run build:server-rules`;
+All numbers live in `server/rules/gameplay/authorityRules.ts` and are bundled to `gathering/authority-rules.cjs` (`npm run build:server-rules`;
 a unit test fails if the bundle is stale).
 
 ### XP and gold per real minute
@@ -251,7 +251,7 @@ chronicle       playSeconds <- wall clock; peak.depth <- proven floors; runs <- 
 leaderboard     totalKills <= ledger base + validated kills (enforce)
 ```
 
-**What a kill is worth (`src/gameplay/killRules.ts`, bundled to `gathering/kill-rules.cjs`).** XP is deterministic in the game (`loot.ts rollKill`), so
+**What a kill is worth (`server/rules/gameplay/killRules.ts`, bundled to `gathering/kill-rules.cjs`).** XP is deterministic in the game (`loot.ts rollKill`), so
 the server's number is **exact** (a unit test compares it with `rollKill` for every enemy, level, tier and difficulty). Gold and shards are random draws:
 the credit is the **best roll the game could have made** (an enemy's top gold, 2 shards per elite), so an honest client is never short and a cheater never
 beats the luckiest honest player. The client's own multipliers (Ascension, chain, Omen, tonic, New Blood catch-up) are reported but **capped** at what play can reach
@@ -323,7 +323,7 @@ Staff-account characters stay on the board unmarked (character #97 included): hi
 2. Leave `AUTHORITY_KILLS` unset. Confirm the service is healthy and `POST /api/kills/report` answers `{"mode":"off"}`.
 3. Set `AUTHORITY_KILLS=audit` in `/home/ubuntu/death-muffin/backend/.env`, restart the API. Play a few real sessions (and a co-op one with a guest) for several days.
 4. Read the audit (queries below). **Healthy audit = no `unbacked_*`, no `kill_invalid`/`kill_mix`/`kill_elite`/`kill_rate` rows from honest players.** Expect `xp_total` at or above `xp_used` per character.
-   Anything honest that shows up is a constant to loosen in `src/gameplay/killRules.ts` (`npm run build:server-rules`) before enforcing.
+   Anything honest that shows up is a constant to loosen in `server/rules/gameplay/killRules.ts` (`npm run build:server-rules`) before enforcing.
 5. Set `AUTHORITY_KILLS=enforce` (and, if you have not, `AUTHORITY_MODE=enforce` for items and the offline confirm), restart. To undo: remove the line, restart; the ledger just stops mattering.
 6. Rollback of the schema: `DROP TABLE character_kill_ledger;` (nothing else reads it; the code fails open).
 

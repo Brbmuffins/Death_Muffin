@@ -1,4 +1,4 @@
-import { AREAS, type AreaId } from '../content/areas';
+import { AREAS, type AreaId } from '../../server/rules/content/areas';
 
 /**
  * Milestones (docs/GRIND-LOOP.md §3 #9): frequent small wins at the "minutes to hours" timescale. Each pays a one-off gold

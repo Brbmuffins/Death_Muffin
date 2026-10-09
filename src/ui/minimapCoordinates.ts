@@ -1,4 +1,4 @@
-import { AREAS, AREA_ORDER, DOORS, type AreaId, type Rect } from '../content/areas';
+import { AREAS, AREA_ORDER, DOORS, type AreaId, type Rect } from '../../server/rules/content/areas';
 
 export const MINIMAP_SIZE = 190;
 export const MINIMAP_SCALE = 2.1;

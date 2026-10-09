@@ -1,7 +1,7 @@
-import type { AreaId } from '../../content/areas';
-import { legacyVows, sanitizeVows, vowEffects, vowHeat, type VowEffects, type VowRanks } from '../../content/ascension';
-import { isDifficulty, type Difficulty } from '../../content/difficulty';
-import { AFFIX_ORDER, type EliteAffix } from '../../content/enemies';
+import type { AreaId } from '../../../server/rules/content/areas';
+import { legacyVows, sanitizeVows, vowEffects, vowHeat, type VowEffects, type VowRanks } from '../../../server/rules/content/ascension';
+import { isDifficulty, type Difficulty } from '../../../server/rules/content/difficulty';
+import { AFFIX_ORDER, type EliteAffix } from '../../../server/rules/content/enemies';
 import type { EnemyRow, ThrallRow, WorldSnapshot } from '../../net/contracts';
 import type { BossState, Corpse, Enemy, EnemyState, SimEvent, Thrall, ThrallState, Zone } from './types';
 import { thrallReach, type WorldSim } from './WorldSim';

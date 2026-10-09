@@ -1,4 +1,4 @@
-import { NODES, type GatherSkill } from '../gameplay/gatheringRules';
+import { NODES, type GatherSkill } from '../../server/rules/gameplay/gatheringRules';
 import { NODE_COLLIDER, type NodePlacement, type Rect } from '../content/layout';
 import type { CreatureSlug } from './modelPaths';
 import type { CreatureAnim } from './Creature';

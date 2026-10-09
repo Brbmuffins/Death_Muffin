@@ -4,15 +4,15 @@
  * armor set bonus and a legendary set bonus add (bonus lines only: the same pieces worn without the set effect).
  * Env: AFFIX_ILVLS (12,25,47,70).
  */
-import { AREAS, type AreaId } from '../../content/areas';
-import { DISCIPLINES } from '../../content/disciplines';
-import { ARMOR_BY_ID, ARMOR_PARTS } from '../../content/armorSets';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
+import { ARMOR_BY_ID, ARMOR_PARTS } from '../../../server/rules/content/armorSets';
 import { EQUIP_SLOTS } from '../../content/gear';
-import { AFFIXES, affixRange } from '../affixRules';
+import { AFFIXES, affixRange } from '../../../server/rules/gameplay/affixRules';
 import { gearPower } from '../gearStats';
 import { botCharacter } from './harness';
 import { kitItems, kitSlots, type KitItem } from './kits';
-import { legendaryItemId } from '../../content/legendarySets';
+import { legendaryItemId } from '../../../server/rules/content/legendarySets';
 
 const NECRO = ['ossuary', 'gravecaller', 'mourner', 'rotweaver'] as const;
 type Necro = (typeof NECRO)[number];

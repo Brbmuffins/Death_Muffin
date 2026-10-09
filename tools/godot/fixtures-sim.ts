@@ -3,7 +3,7 @@
  * Everything is produced by the REAL TS modules (Nav, depthsFloor). Part A: nav + Depths floors. Whole-sim scenario replays: fixtures-sim-run.ts.
  * Format per file: { fn, cases: [{ in, out }] }; tests/sim/run.gd maps fn -> handler.
  */
-import { AREAS, AREA_ORDER } from '../../src/content/areas';
+import { AREAS, AREA_ORDER } from '../../server/rules/content/areas';
 import { floorHop, floorHops, floorPath, floorProblems, floorSeed, generateFloor, roomAt, floorObstacles, floorSightBoxes } from '../../src/gameplay/depthsFloor';
 import { w, J, rand, R, pick, chance, worldNav, ALL_OPEN, counts } from './sim-fixture-lib';
 

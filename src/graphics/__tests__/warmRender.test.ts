@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { claimKeys, gridLayout, slices, stageProgress } from '../warmRender';
 import { areasWithin, requiredAreas } from '../areaStreaming';
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 
 describe('warm render helpers', () => {
   it('lays bodies out centred, rows of at most cols', () => {

@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { audio } from '../audio/Audio';
 import { settings } from '../app/settings';
-import { AREAS } from '../content/areas';
+import { AREAS } from '../../server/rules/content/areas';
 import type { NodePlacement, WorldLayout } from '../content/layout';
-import { laborActions } from '../gameplay/laborRules';
-import { NODES, SKILLS, type GatherSkill } from '../gameplay/gatheringRules';
+import { laborActions } from '../../server/rules/gameplay/laborRules';
+import { NODES, SKILLS, type GatherSkill } from '../../server/rules/gameplay/gatheringRules';
 import { gatherSfx } from '../audio/gatherSfx';
 import type { LaborSlot, LaborView } from '../net/api';
 import { assets } from './AssetCache';

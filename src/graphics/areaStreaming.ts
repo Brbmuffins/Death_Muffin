@@ -1,4 +1,4 @@
-import { AREAS, AREA_ORDER, DOORS, type AreaId, type Rect } from '../content/areas';
+import { AREAS, AREA_ORDER, DOORS, type AreaId, type Rect } from '../../server/rules/content/areas';
 
 /**
  * Pure rules for "layering the levels": which areas are drawn around the player, in what order areas are built, and the

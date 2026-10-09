@@ -1,4 +1,4 @@
-import type { RecipeRow } from './processing';
+import type { RecipeRow } from '../../server/rules/content/processing';
 
 /**
  * Workbench recipes that give the old sell-only trade goods (Tin / Bronze Ingot, Grave Garnet, Bone Opal) a second use, owner

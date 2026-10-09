@@ -7,11 +7,11 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { mulberry32 } from '../../src/gameplay/rng';
-import { DISCIPLINES, type Discipline, type DisciplineId } from '../../src/content/disciplines';
-import { ARMOR_PIECES } from '../../src/content/armorSets';
-import { ITEMS } from '../../src/content/items';
-import { NECRO_WEAPONS } from '../../src/content/necroWeapons';
-import { AFFIXES, AFFIX_GEAR_TYPES, affixAcceptRange } from '../../src/gameplay/affixRules';
+import { DISCIPLINES, type Discipline, type DisciplineId } from '../../server/rules/content/disciplines';
+import { ARMOR_PIECES } from '../../server/rules/content/armorSets';
+import { ITEMS } from '../../server/rules/content/items';
+import { NECRO_WEAPONS } from '../../server/rules/content/necroWeapons';
+import { AFFIXES, AFFIX_GEAR_TYPES, affixAcceptRange } from '../../server/rules/gameplay/affixRules';
 import {
   STAT_PRIORITY, compareEquip, gearPower, itemAffixEffects, itemStatEffects, itemVerdict, lookingFor, simulateEquip, statSheet, weakestSlots, effectText,
   type StatContext,

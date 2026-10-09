@@ -12,7 +12,7 @@ Found while building `src/gameplay/atlas.ts` (every number in the Atlas and in `
 
 ## Fixed (trivial)
 
-- `sapling_oak` and `sapling_yew` pointed at `art/items/sapling_oak.webp` / `sapling_yew.webp`, which do not exist; the art is `sapling_coffin_oak.webp` and `sapling_churchyard_yew.webp`. Icons set in `src/content/items.ts`.
+- `sapling_oak` and `sapling_yew` pointed at `art/items/sapling_oak.webp` / `sapling_yew.webp`, which do not exist; the art is `sapling_coffin_oak.webp` and `sapling_churchyard_yew.webp`. Icons set in `server/rules/content/items.ts`.
 
 ## Open: for the owner or wt/polish-loot
 

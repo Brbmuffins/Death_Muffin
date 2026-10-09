@@ -48,10 +48,10 @@ player behavior, deployment and plans. Update the handoff when you stop.
   3=Cleric, 4=Arcanist. Client discipline indices are 1=Ossuary,
   2=Gravecaller, 3=Mourner, 4=Rotweaver, 5=Grave Warden, 6=Bell Monk,
   7=Carrion Witch, 8=Hollow Knight, 9=Veilwalker (legacy 0 plays as
-  Gravecaller). `src/gameplay/classes.ts`, `src/content/disciplines.ts` and
+  Gravecaller). `src/gameplay/classes.ts`, `server/rules/content/disciplines.ts` and
   Death Muffin's `discipline.cjs` must agree; do not merge the legacy class
   names with the discipline names.
-- Loot may only use item ids the live server knows (`src/content/items.ts`;
+- Loot may only use item ids the live server knows (`server/rules/content/items.ts`;
   a unit test enforces it).
 - Realtime = Socket.io on port 5000 locally (`server/realtime/`); the client must
   keep working solo when it's down. After editing `server.js`, run

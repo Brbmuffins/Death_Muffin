@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { minimapWalkable, minimapWorldPoint, MINIMAP_SCALE } from '../minimapCoordinates';
-import type { AreaId } from '../../content/areas';
+import type { AreaId } from '../../../server/rules/content/areas';
 
 describe('minimap click destinations', () => {
   it('maps the displayed player centre and north/east ground through CSS scaling', () => {

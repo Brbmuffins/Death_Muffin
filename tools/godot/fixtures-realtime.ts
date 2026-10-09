@@ -8,7 +8,7 @@ import { dirname, resolve } from 'node:path';
 import { makeSnapshot, WorldMirror } from '../../src/gameplay/sim/snapshot';
 import { firstConnectDelayMs, isRetryableError, rejoinDelayMs } from '../../src/net/reconnect';
 import { EventCoalescer } from '../../src/net/eventCoalescer';
-import { VOW_ORDER } from '../../src/content/ascension';
+import { VOW_ORDER } from '../../server/rules/content/ascension';
 import { saveRejoin, loadRejoin, REJOIN_WINDOW_MS } from '../../src/net/rejoinStore';
 
 let seed = 12345;

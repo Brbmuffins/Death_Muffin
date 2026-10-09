@@ -25,7 +25,7 @@ async function main() {
     await page.locator('#cw-login-btn').click();
     await page.locator('.cw-disc').filter({ hasText: 'Gravecaller' }).first().click();
     await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 90000 });
-    await preloadModules(page, { depths: '/src/content/depths.ts', areas: '/src/content/areas.ts' });
+    await preloadModules(page, { depths: '/server/rules/content/depths.ts', areas: '/server/rules/content/areas.ts' });
     const dbg = (fn, arg) => page.evaluate(fn, arg);
     const advance = (s) => dbg((n) => window.__cwDebug.advance(n), s);
     const shot = (name) => shotRetry(page, `${out}/${name}.png`);

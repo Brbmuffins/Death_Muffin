@@ -34,7 +34,7 @@ fs.mkdirSync(OUT, { recursive: true });
   await page.locator('.cw-disc').filter({ hasText: 'Gravecaller' }).click();
   await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded && !document.querySelector('.dm-loadveil'), null, { timeout: 120000 });
   await page.evaluate((a) => { const d = window.__cwDebug; d.god(true); d.unlockAll(); d.goto(a); d.advance(1); d.clear(); }, AREA);
-  const roster = await page.evaluate(async (a) => (await import('/src/content/areas.ts')).AREAS[a].enemies.map((e) => e.id), AREA);
+  const roster = await page.evaluate(async (a) => (await import('/server/rules/content/areas.ts')).AREAS[a].enemies.map((e) => e.id), AREA);
   const rows = [];
   const read = () => page.evaluate(() => { const r = window.__cwDebug.perf(1); return { tex: r.textures, geo: r.geometries, enemies: window.__cwDebug.counts().enemies }; });
   rows.push({ wave: 0, kills: 0, ...(await read()) });

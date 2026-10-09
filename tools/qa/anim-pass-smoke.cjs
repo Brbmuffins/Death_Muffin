@@ -49,7 +49,7 @@ async function openHero(browser, errors) {
   await page.locator('.cw-disc').filter({ hasText: 'Gravecaller' }).click();
   await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 90000 });
   await page.evaluate(() => { const d = window.__cwDebug; d.goto('graves'); d.unlockAll?.(); d.god(true); d.clear(); d.zoom(0.4); d.advance(0.5); });
-  await preloadModules(page, { hitstop: '/src/graphics/hitstop.ts', settings: '/src/app/settings.ts', enemies: '/src/content/enemies.ts', api: '/src/net/api.ts' });
+  await preloadModules(page, { hitstop: '/src/graphics/hitstop.ts', settings: '/src/app/settings.ts', enemies: '/server/rules/content/enemies.ts', api: '/src/net/api.ts' });
   return page;
 }
 

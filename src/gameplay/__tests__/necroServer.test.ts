@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import * as rules from '../necroRules';
-import type { NecroState } from '../necroRules';
+import * as rules from '../../../server/rules/gameplay/necroRules';
+import type { NecroState } from '../../../server/rules/gameplay/necroRules';
 
 // --- A fake auth server running the shared rules (what the VPS will run). ---
 const server: { state: NecroState | null; gold: number; up: boolean; calls: string[] } = { state: null, gold: 0, up: true, calls: [] };

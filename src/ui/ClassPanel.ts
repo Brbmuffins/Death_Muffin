@@ -1,4 +1,4 @@
-import { PLAYABLE_DISCIPLINES } from '../content/disciplines';
+import { PLAYABLE_DISCIPLINES } from '../../server/rules/content/disciplines';
 import { SimplePanel } from './MiscPanels';
 
 /** Uses the same portraits, cards and engraved panels as initial class selection. */

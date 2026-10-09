@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { settings } from '../app/settings';
-import type { AreaId } from '../content/areas';
+import type { AreaId } from '../../server/rules/content/areas';
 import { mulberry32 } from '../gameplay/rng';
 
 /**

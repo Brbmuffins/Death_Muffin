@@ -1,4 +1,4 @@
-import { NPC_IDS, NPC_SPOTS, npcInteractableId, type NpcId, type NpcSpot } from './npcSpots';
+import { NPC_IDS, NPC_SPOTS, npcInteractableId, type NpcId, type NpcSpot } from '../../server/rules/content/npcSpots';
 
 export { NPC_IDS, npcInteractableId };
 export type { NpcId };

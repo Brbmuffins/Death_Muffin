@@ -3,7 +3,7 @@ import { DEV_ACCOUNTS, devAccess, devPreference, isDevAccount, riteLevel, setDev
 import { sanitizeLoadout } from '../loadout';
 import { GRIMOIRE, unlockLevel } from '../../content/abilities';
 import { Progression } from '../progression';
-import { AREAS, AREA_ORDER } from '../../content/areas';
+import { AREAS, AREA_ORDER } from '../../../server/rules/content/areas';
 
 const b64url = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const jwt = (payload: object) => `${b64url({ alg: 'HS256' })}.${b64url(payload)}.sig`;

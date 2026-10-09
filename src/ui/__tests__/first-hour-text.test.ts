@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
-import { BOSSES } from '../../content/bosses';
+import { AREAS } from '../../../server/rules/content/areas';
+import { BOSSES } from '../../../server/rules/content/bosses';
 import { NPCS, NPC_IDS } from '../../content/npcs';
-import { ITEMS } from '../../content/items';
+import { ITEMS } from '../../../server/rules/content/items';
 import { adviceLines, greetingLines, TOPICS, topicLines } from '../../content/dialogue';
 import { baseState, nextSuggestion, suggestions } from '../../gameplay/guidance';
 import { TIPS, renderText } from '../Onboarding';

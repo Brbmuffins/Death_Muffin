@@ -9,7 +9,7 @@
  * The necromancer kit is built from those same constants, so the four
  * necromantic disciplines are byte-identical — `__tests__/kits.test.ts` pins it.
  */
-import type { ClassFamily, DisciplineId } from './disciplines';
+import type { ClassFamily, DisciplineId } from '../../server/rules/content/disciplines';
 import {
   DEFAULT_LOADOUT,
   DEFAULT_PRIMARY,

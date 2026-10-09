@@ -1,4 +1,4 @@
-import { AREA_ORDER, type AreaId } from '../content/areas';
+import { AREA_ORDER, type AreaId } from '../../server/rules/content/areas';
 import { DEAD_ORDER, type DeadId } from '../content/codex';
 
 /**

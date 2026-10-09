@@ -1,5 +1,5 @@
 /**
- * Rolled loot instances (migration 020, rules: gathering/affix-rules.cjs generated from src/gameplay/affixRules.ts).
+ * Rolled loot instances (migration 020, rules: gathering/affix-rules.cjs generated from server/rules/gameplay/affixRules.ts).
  *
  * A `loot_instances` row is one piece of gear with an item level and affixes. Only this server ever writes the rolled fields:
  * loot.cjs mints them (server RNG), offline-full-sync.cjs re-creates validated ones on a save import, and everything else

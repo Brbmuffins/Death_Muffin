@@ -3,10 +3,10 @@ import { Nav } from '../nav';
 import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
 import type { SimEvent } from '../sim/types';
-import { AREAS, DOORS } from '../../content/areas';
-import { EMBER_BOLT, EMBER_DEATH, ENEMIES, SLAG_POOL } from '../../content/enemies';
+import { AREAS, DOORS } from '../../../server/rules/content/areas';
+import { EMBER_BOLT, EMBER_DEATH, ENEMIES, SLAG_POOL } from '../../../server/rules/content/enemies';
 import { CODEX_DEAD } from '../../content/codex';
-import { BOSSES, REGENT, summonSpot } from '../../content/bosses';
+import { BOSSES, REGENT, summonSpot } from '../../../server/rules/content/bosses';
 import { Player } from '../Player';
 
 const ALL = ['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre'] as const;

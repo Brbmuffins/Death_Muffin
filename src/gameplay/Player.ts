@@ -1,14 +1,14 @@
 import { BULWARK, KNIGHT_RAGE, SOUL_HARVEST } from '../content/abilities';
 import { CHILL } from '../content/statuses';
 import { damageTakenMult } from './legendary';
-import type { AreaId } from '../content/areas';
-import type { ClassFamily } from '../content/disciplines';
+import type { AreaId } from '../../server/rules/content/areas';
+import type { ClassFamily } from '../../server/rules/content/disciplines';
 import type { DerivedStats } from './characterStats';
 import type { Nav } from './nav';
 import { resourceRulesFor, type ResourceKind, type ResourceRules } from './resources';
-import { brewValue, emptyBrews, type ActiveBrews, type BrewKind } from '../content/brews';
+import { brewValue, emptyBrews, type ActiveBrews, type BrewKind } from '../../server/rules/content/brews';
 import { NO_LOADOUT, type WeaponLoadout } from './weaponLine';
-import type { RuneSockets } from './runeRules';
+import type { RuneSockets } from '../../server/rules/gameplay/runeRules';
 
 const OUT_OF_COMBAT_MS = 5000;
 

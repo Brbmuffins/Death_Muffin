@@ -1,21 +1,21 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { AREAS, AREA_ORDER } from '../../content/areas';
-import { BOSSES, BOSS_IDS } from '../../content/bosses';
-import { BREWS, type BrewKind } from '../../content/brews';
-import { FEN_RECIPES } from '../../content/fenItems';
+import { AREAS, AREA_ORDER } from '../../../server/rules/content/areas';
+import { BOSSES, BOSS_IDS } from '../../../server/rules/content/bosses';
+import { BREWS, type BrewKind } from '../../../server/rules/content/brews';
+import { FEN_RECIPES } from '../../../server/rules/content/fenItems';
 import { codexReagentRecipes, codexReagentRows } from '../../content/codex';
-import { BUFF_FLASKS, ITEMS } from '../../content/items';
+import { BUFF_FLASKS, ITEMS } from '../../../server/rules/content/items';
 import { NODE_COLLIDER, PROPS, generateLayout } from '../../content/layout';
 import {
   ALL_REAGENT_IDS, AREA_REAGENT_DROPS, BOSS_ICHOR, ENEMY_REAGENT_DROPS, ICHORS, MOB_REAGENTS, REAGENT_BREW_ITEMS, REAGENT_BREW_LIST, REAGENT_BREWS,
   REAGENT_ITEMS, REAGENT_RECIPES, reagentDropIds,
-} from '../../content/reagents';
-import { SEEDS } from '../../content/gardening';
+} from '../../../server/rules/content/reagents';
+import { SEEDS } from '../../../server/rules/content/gardening';
 import { TIPS } from '../../ui/Onboarding';
-import { candidatesFor } from '../contractRules';
-import { NODES, rollBatch } from '../gatheringRules';
+import { candidatesFor } from '../../../server/rules/gameplay/contractRules';
+import { NODES, rollBatch } from '../../../server/rules/gameplay/gatheringRules';
 import { standSpot } from '../gatherPlan';
 import { rollBoss, rollKill, rollReagents } from '../loot';
 import { Nav } from '../nav';

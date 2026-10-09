@@ -13,22 +13,22 @@ import type { Corpse, Enemy, Intent, SimEvent } from '../sim/types';
 import { AbilitySystem, type AbilityContext } from '../AbilitySystem';
 import { Player } from '../Player';
 import { Effects } from '../../graphics/Effects';
-import { DISCIPLINES } from '../../content/disciplines';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import { ABILITIES } from '../../content/abilities';
-import { AREAS, AREA_ORDER } from '../../content/areas';
-import { BOSS_IDS } from '../../content/bosses';
-import { ITEMS, RARITY_COLOR } from '../../content/items';
+import { AREAS, AREA_ORDER } from '../../../server/rules/content/areas';
+import { BOSS_IDS } from '../../../server/rules/content/bosses';
+import { ITEMS, RARITY_COLOR } from '../../../server/rules/content/items';
 import {
   AREA_RUNE_POOL, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE_BY_AREA, eliteRuneChance, RUNES, RUNE_IDS, RUNE_RITES, RUNE_TUNING, SURGE_RUNE_CHANCE, isRuneId, pickRune, runeSources, runesFor,
   type RuneId, type RuneRite,
-} from '../../content/runes';
-import { RUNE_BASE, RUNE_SLOT_COUNT, isRuneSlot, ownedRunes, runeEquippedSlot, runeFits, runeSlotIndex, runeSlotRite, socketsOf, socketsSignature } from '../runeRules';
+} from '../../../server/rules/content/runes';
+import { RUNE_BASE, RUNE_SLOT_COUNT, isRuneSlot, ownedRunes, runeEquippedSlot, runeFits, runeSlotIndex, runeSlotRite, socketsOf, socketsSignature } from '../../../server/rules/gameplay/runeRules';
 import { corpsesWithin, impaleTarget, ringCenter, ringHits, splinterTarget, volleyTargets } from '../runeCast';
 import { rollBossRune, rollEliteRune, rollKill, rollSurgeItem, addToSlots } from '../loot';
 import { loadRunesFound, recordRunesFound } from '../runeJournal';
-import { salvagePreview, salvageYield, isSalvageable, isSalvageGear } from '../salvageRules';
-import { itemCap, itemRatePerMin } from '../authorityRules';
-import { depositMany } from '../vaultRules';
+import { salvagePreview, salvageYield, isSalvageable, isSalvageGear } from '../../../server/rules/gameplay/salvageRules';
+import { itemCap, itemRatePerMin } from '../../../server/rules/gameplay/authorityRules';
+import { depositMany } from '../../../server/rules/gameplay/vaultRules';
 import { CODEX_RUNES_COUNSEL, codexRuneRows } from '../../content/codex';
 import { TIPS } from '../../ui/Onboarding';
 import { kindOf } from '../../ui/counselCadence';

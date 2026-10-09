@@ -1,9 +1,9 @@
 import { reforgeAffix, reforgeQuote, type ReforgeReply } from '../net/api';
 import type { InventorySlot } from '../net/types';
-import { RARITY_COLOR, RARITY_MARK } from '../content/items';
+import { RARITY_COLOR, RARITY_MARK } from '../../server/rules/content/items';
 import type { Inventory } from '../gameplay/loot';
-import { affixIsNecro, affixQuality, affixRange, affixText } from '../gameplay/affixRules';
-import { reforgeCost, reforgeProblem } from '../gameplay/goldSinkRules';
+import { affixIsNecro, affixQuality, affixRange, affixText } from '../../server/rules/gameplay/affixRules';
+import { reforgeCost, reforgeProblem } from '../../server/rules/gameplay/goldSinkRules';
 import { itemIcon } from './InventoryPanel';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);

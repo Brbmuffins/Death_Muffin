@@ -6,7 +6,7 @@ import { WorldSim } from '../sim/WorldSim';
 import { AbilitySystem, type AbilityContext } from '../AbilitySystem';
 import { Player } from '../Player';
 import { Effects } from '../../graphics/Effects';
-import { DISCIPLINES } from '../../content/disciplines';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import { ABILITIES } from '../../content/abilities';
 import type { Intent, SimEvent } from '../sim/types';
 

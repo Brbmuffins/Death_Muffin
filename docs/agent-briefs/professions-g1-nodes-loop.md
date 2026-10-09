@@ -26,7 +26,7 @@ Read `CLAUDE.md`, `HANDOFF.md`, **`docs/PROFESSIONS-ROADMAP.md`** (§1, §7 are 
 5. Tests: sim (depletion/respawn/snapshot round trip, co-op: two gatherers deplete one node), auto-gather
    decisions, flush/reconcile with a mocked API.
 
-Do NOT edit `src/content/areas.ts`/`layout.ts` (G2), `src/ui/**` panels (G4), or backend files (G0).
+Do NOT edit `server/rules/content/areas.ts`/`layout.ts` (G2), `src/ui/**` panels (G4), or backend files (G0).
 Keep checks green (`typecheck`, `test`, `test:server`, `build`). Browser-QA with `?offline` +
 `__cwDebug` (add `nodes()` and `gatherAt(type)` debug hooks). Commit on `cloud/professions-g1`; no PR.
 Report: files, the WorldScene hook points you added, test results, a short QA log.

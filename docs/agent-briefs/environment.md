@@ -1,7 +1,7 @@
 # Brief — Environment set pieces → branch `cloud/environment`
 
 Read `CLAUDE.md`, `HANDOFF.md`, then `src/graphics/WorldView.ts`, `src/content/layout.ts`,
-`src/content/areas.ts`, `src/graphics/Effects.ts`, `src/graphics/occlusion.ts`,
+`server/rules/content/areas.ts`, `src/graphics/Effects.ts`, `src/graphics/occlusion.ts`,
 `src/app/GameRuntime.ts`, `src/app/settings.ts`. Three.js r166, one shared renderer with
 UnrealBloom, `settings.quality` 'high' | 'low', desktop target 60 fps.
 

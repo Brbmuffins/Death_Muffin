@@ -1,23 +1,23 @@
 import { ABILITIES, DETONATE } from '../../content/abilities';
-import { disciplineFor } from '../../content/disciplines';
-import { HEALING_FLASKS } from '../../content/items';
+import { disciplineFor } from '../../../server/rules/content/disciplines';
+import { HEALING_FLASKS } from '../../../server/rules/content/items';
 import { deriveStats } from '../characterStats';
 import { Nav } from '../nav';
 import { mulberry32 } from '../rng';
 import { BOSS_RADIUS } from '../sim/BossBrain';
-import { BOSSES, CONGREGATION, type BossId } from '../../content/bosses';
-import { FEN_HUMMOCKS, bogMult } from '../../content/fen';
+import { BOSSES, CONGREGATION, type BossId } from '../../../server/rules/content/bosses';
+import { FEN_HUMMOCKS, bogMult } from '../../../server/rules/content/fen';
 import type { Enemy, SimEvent } from '../sim/types';
 import { WorldSim } from '../sim/WorldSim';
 import { botCharacter } from './harness';
 import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
 import { withSetBonuses } from '../setBonuses';
 import { NO_LOADOUT, abilityCooldownMs, abilityRange, pierceTargets, reapTargets, resolveWeaponLoadout } from '../weaponLine';
-import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
+import { NECRO_WEAPON_TUNING } from '../../../server/rules/content/necroWeapons';
 import { colossusActive, effectiveWitheredCap } from '../legendary';
 import { Player } from '../Player';
 import { resolveKit, type KitName, type KitRequest } from './kits';
-import type { Difficulty } from '../../content/difficulty';
+import type { Difficulty } from '../../../server/rules/content/difficulty';
 
 /**
  * Headless Prelate fight: the same scripted necromancer as the farming

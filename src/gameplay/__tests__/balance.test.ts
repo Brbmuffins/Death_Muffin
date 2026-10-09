@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 import { runBossFight } from '../balance/boss';
 import { runBalance } from '../balance/harness';
 

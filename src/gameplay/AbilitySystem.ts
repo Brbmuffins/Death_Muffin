@@ -35,7 +35,7 @@ import {
   PRIMARIES,
   type AbilityId,
 } from '../content/abilities';
-import type { Discipline } from '../content/disciplines';
+import type { Discipline } from '../../server/rules/content/disciplines';
 import type { Effects, Handle } from '../graphics/Effects';
 import type { NecromancerAvatar } from '../graphics/Avatars';
 import { fx } from '../graphics/fxTextures';
@@ -52,9 +52,9 @@ import * as nf from '../graphics/necroFx';
 import type { BinbunHandle, BinbunSpawn } from '../graphics/binbun/BinbunFX';
 import type { BinbunId } from '../graphics/binbun/catalog';
 import { NewBloodSystem } from './NewBloodSystem';
-import { NECRO_WEAPON_TUNING } from '../content/necroWeapons';
+import { NECRO_WEAPON_TUNING } from '../../server/rules/content/necroWeapons';
 import { abilityCooldownMs, abilityLockMs, abilityRange, pierceTargets, reapTargets } from './weaponLine';
-import { RUNES, RUNE_TUNING, type RuneId, type RuneRite } from '../content/runes';
+import { RUNES, RUNE_TUNING, type RuneId, type RuneRite } from '../../server/rules/content/runes';
 import { corpsesWithin, impaleTarget, ringCenter, ringHits, splinterTarget, volleyTargets } from './runeCast';
 
 /**

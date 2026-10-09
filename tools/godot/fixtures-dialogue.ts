@@ -5,8 +5,8 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { mulberry32 } from '../../src/gameplay/rng';
-import { AREAS, AREA_ORDER } from '../../src/content/areas';
-import { BOSS_IDS } from '../../src/content/bosses';
+import { AREAS, AREA_ORDER } from '../../server/rules/content/areas';
+import { BOSS_IDS } from '../../server/rules/content/bosses';
 import { NPC_IDS } from '../../src/content/npcs';
 import { Guidance, baseState, newsFor, nextSuggestion, suggestionFor, suggestions, summarizeContracts, summarizeLabor, pendingSeals, bossesWaiting, readTrophies, type GuidanceState } from '../../src/gameplay/guidance';
 import { TOPICS, adviceLines, farewell, greetingLines, topicLines } from '../../src/content/dialogue';

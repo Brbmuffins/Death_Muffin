@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
-import { BOSSES, type BossId } from '../../content/bosses';
+import { AREAS } from '../../../server/rules/content/areas';
+import { BOSSES, type BossId } from '../../../server/rules/content/bosses';
 import { runBossFight, type BossRun } from '../balance/boss';
 
 /**

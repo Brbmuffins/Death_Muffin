@@ -1,15 +1,15 @@
-import { isAlwaysOpen, type AreaId } from '../content/areas';
+import { isAlwaysOpen, type AreaId } from '../../server/rules/content/areas';
 import { devAccess } from './devAccess';
 import type { Chronicle } from './chronicle';
-import { ashesForRun, boonBlocked, boonCost, boonEffects, isUnlocked, unlockCost, vowEffects, vowHeat, vowKey, legacyVows, VOWS, type BoonId, type BoonEffects, type BoonRanks, type RunRecord, type VowEffects, type VowId, type VowRanks } from '../content/ascension';
-import { DAMAGE_UPGRADE, LEGION_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
+import { ashesForRun, boonBlocked, boonCost, boonEffects, isUnlocked, unlockCost, vowEffects, vowHeat, vowKey, legacyVows, VOWS, type BoonId, type BoonEffects, type BoonRanks, type RunRecord, type VowEffects, type VowId, type VowRanks } from '../../server/rules/content/ascension';
+import { DAMAGE_UPGRADE, LEGION_UPGRADE, WAVE_UPGRADE } from '../../server/rules/content/upgrades';
 import { ApiError, necroApi, reportKills, saveProgress, type NecroReply } from '../net/api';
 import { KillReporter, type KillInput } from '../net/killReporter';
-import type { BossKill, FloorClear } from './killRules';
-import { applySave, normalise, type NecroState, type SaveInput } from './necroRules';
+import type { BossKill, FloorClear } from '../../server/rules/gameplay/killRules';
+import { applySave, normalise, type NecroState, type SaveInput } from '../../server/rules/gameplay/necroRules';
 import type { Character } from '../net/types';
 import { xpToNext } from './characterStats';
-import { BOSSES, type BossId } from '../content/bosses';
+import { BOSSES, type BossId } from '../../server/rules/content/bosses';
 
 /**
  * Necromancer progression (upgrade tiers, soul shards, area kills / unlocks,

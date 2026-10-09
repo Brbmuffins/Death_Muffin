@@ -1,7 +1,7 @@
 import { beltTool } from '../net/api';
 import type { InventorySlot } from '../net/types';
 import { BAG_SIZE, type Inventory } from '../gameplay/loot';
-import { BELT_KINDS, bestToolPerKind, isBeltSlot, toolKindOf, beltSlotKind, type BeltKind } from '../gameplay/gatheringRules';
+import { BELT_KINDS, bestToolPerKind, isBeltSlot, toolKindOf, beltSlotKind, type BeltKind } from '../../server/rules/gameplay/gatheringRules';
 
 /** The gathering tool belt (slots 110-113, one tool each) and the helpers the Reliquary and Skills panel share. */
 export const BELT_LABEL: Record<BeltKind, string> = { hatchet: 'Hatchet', pickaxe: 'Pickaxe', rod: 'Rod', spade: 'Spade' };

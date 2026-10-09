@@ -1,7 +1,7 @@
-import { FLOOR_DROP_CHANCE, chestBonus, chestDrops, chestRuneChance, chestRunePool, depthLootArea, floorBonus } from '../content/depths';
-import { ITEMS } from '../content/items';
-import { pickRune } from '../content/runes';
-import { isAffixGear } from './affixRules';
+import { FLOOR_DROP_CHANCE, chestBonus, chestDrops, chestRuneChance, chestRunePool, depthLootArea, floorBonus } from '../../server/rules/content/depths';
+import { ITEMS } from '../../server/rules/content/items';
+import { pickRune } from '../../server/rules/content/runes';
+import { isAffixGear } from '../../server/rules/gameplay/affixRules';
 import { rollItem, settleCombatDrop, type LootDrop } from './loot';
 
 /**

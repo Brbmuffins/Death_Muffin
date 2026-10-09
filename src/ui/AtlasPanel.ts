@@ -1,16 +1,16 @@
-import { AREAS } from '../content/areas';
-import { DISCIPLINES, type DisciplineId } from '../content/disciplines';
+import { AREAS } from '../../server/rules/content/areas';
+import { DISCIPLINES, type DisciplineId } from '../../server/rules/content/disciplines';
 import { EQUIP_SLOTS, type EquipSlot } from '../content/gear';
-import { ITEMS, RARITY_COLOR, RARITY_MARK } from '../content/items';
-import { legendarySetFor } from '../content/legendarySets';
-import { RUNES, isRuneId } from '../content/runes';
+import { ITEMS, RARITY_COLOR, RARITY_MARK } from '../../server/rules/content/items';
+import { legendarySetFor } from '../../server/rules/content/legendarySets';
+import { RUNES, isRuneId } from '../../server/rules/content/runes';
 import { ABILITIES } from '../content/abilities';
-import { BREWS } from '../content/brews';
-import { NECRO_WEAPONS } from '../content/necroWeapons';
+import { BREWS } from '../../server/rules/content/brews';
+import { NECRO_WEAPONS } from '../../server/rules/content/necroWeapons';
 import { STAT_LABELS } from '../gameplay/stats';
 import { itemVerdict, STAT_PRIORITY, type StatContext } from '../gameplay/gearStats';
-import { salvagePreview } from '../gameplay/salvageRules';
-import { orderInfo, RELIC_PREMIUM } from '../gameplay/contractRules';
+import { salvagePreview } from '../../server/rules/gameplay/salvageRules';
+import { orderInfo, RELIC_PREMIUM } from '../../server/rules/gameplay/contractRules';
 import {
   FIT_LABEL, SOURCE_LABEL, affixCountOdds, areaQuality, cosmeticsInfo, rollPotential, atlasSlot, setOutlook, type SetOutlook, fitBand, fitTable, fmtChance, fmtQty, getAtlas, gearForSlot, isRecommendedKind, itemLevelAt, oneIn,
   placesFor, skillName, sourcesFor, type AtlasItem, type DropSource, type FitBand, type RecipeInfo,

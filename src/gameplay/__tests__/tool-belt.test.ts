@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BELT_BASE, BELT_KINDS, beltSlotKind, beltSlotOf, bestToolPerKind, isBeltSlot, toolKindOf, toolTierFor } from '../gatheringRules';
+import { BELT_BASE, BELT_KINDS, beltSlotKind, beltSlotOf, bestToolPerKind, isBeltSlot, toolKindOf, toolTierFor } from '../../../server/rules/gameplay/gatheringRules';
 import { beltOffer, beltTools } from '../../ui/toolBelt';
 import type { InventorySlot } from '../../net/types';
 

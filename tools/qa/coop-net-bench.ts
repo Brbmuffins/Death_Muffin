@@ -7,7 +7,7 @@ import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
 import { io, type Socket } from 'socket.io-client';
-import { AREAS, type AreaId } from '../../src/content/areas';
+import { AREAS, type AreaId } from '../../server/rules/content/areas';
 import { Nav } from '../../src/gameplay/nav';
 import { mulberry32 } from '../../src/gameplay/rng';
 import { WorldMirror, makeSnapshot } from '../../src/gameplay/sim/snapshot';

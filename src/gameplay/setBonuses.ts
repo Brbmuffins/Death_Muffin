@@ -1,10 +1,10 @@
 import type { InventorySlot } from '../net/types';
-import type { Discipline, DisciplineMods } from '../content/disciplines';
-import { AREAS } from '../content/areas';
-import { ARMOR_BY_ID, ARMOR_PIECES, ARMOR_PARTS, type ArmorPart, type ArmorPiece } from '../content/armorSets';
+import type { Discipline, DisciplineMods } from '../../server/rules/content/disciplines';
+import { AREAS } from '../../server/rules/content/areas';
+import { ARMOR_BY_ID, ARMOR_PIECES, ARMOR_PARTS, type ArmorPart, type ArmorPiece } from '../../server/rules/content/armorSets';
 import { equippedBySlot } from '../content/gear';
 import { affixSignature, wornAffixTotals } from './affixes';
-import type { AffixTotals } from './affixRules';
+import type { AffixTotals } from '../../server/rules/gameplay/affixRules';
 import {
   SET_NAMES,
   bonusesOf,

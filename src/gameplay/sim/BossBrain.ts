@@ -1,11 +1,11 @@
-import { AREAS } from '../../content/areas';
-import { enemyDamageScale, enemyHpScale } from '../../content/enemies';
+import { AREAS } from '../../../server/rules/content/areas';
+import { enemyDamageScale, enemyHpScale } from '../../../server/rules/content/enemies';
 import { FRACTURE } from '../../content/abilities';
-import { DIFFICULTIES } from '../../content/difficulty';
-import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, MIRE, REGENT, SAINT, type BossId } from '../../content/bosses';
-import { FEN_FLOOD_SCALE, FEN_HUMMOCKS, FEN_SURFACE_SPOTS, inBog, hummockAt } from '../../content/fen';
-import type { EnemyId } from '../../content/enemies';
-import { EMPOWER, empoweredLevel } from '../goldSinkRules';
+import { DIFFICULTIES } from '../../../server/rules/content/difficulty';
+import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, MIRE, REGENT, SAINT, type BossId } from '../../../server/rules/content/bosses';
+import { FEN_FLOOD_SCALE, FEN_HUMMOCKS, FEN_SURFACE_SPOTS, inBog, hummockAt } from '../../../server/rules/content/fen';
+import type { EnemyId } from '../../../server/rules/content/enemies';
+import { EMPOWER, empoweredLevel } from '../../../server/rules/gameplay/goldSinkRules';
 import type { WorldSim } from './WorldSim';
 import type { BossPhase, BossState, PlayerBody } from './types';
 

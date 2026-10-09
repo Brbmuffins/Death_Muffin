@@ -1,7 +1,7 @@
 # Brief — Combat depth pack → branch `cloud/combat-depth`
 
 Read `CLAUDE.md`, `HANDOFF.md`, `FUTURE_CONTENT.md`, and skim `src/gameplay/sim/WorldSim.ts`,
-`src/gameplay/sim/types.ts`, `src/gameplay/AbilitySystem.ts`, `src/content/enemies.ts`,
+`src/gameplay/sim/types.ts`, `src/gameplay/AbilitySystem.ts`, `server/rules/content/enemies.ts`,
 `src/content/abilities.ts` (incl. `SPELL_FX`), `src/graphics/EntityViews.ts`, and
 `src/scenes/WorldScene.ts` (handleEvent, castSlot, bindInput).
 

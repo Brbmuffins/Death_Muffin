@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, AREA_ORDER, DOORS, WING_APOTHECARY_SPOT, isAlwaysOpen } from '../../content/areas';
+import { AREAS, AREA_ORDER, DOORS, WING_APOTHECARY_SPOT, isAlwaysOpen } from '../../../server/rules/content/areas';
 import { PROPS, WING_PROPS, generateLayout } from '../../content/layout';
 import { SHELF_IDS, bonusAvailable, brewOfTheDay, claimBonus, loadFound, recordFound } from '../../content/wing';
-import { REAGENT_BREW_LIST } from '../../content/reagents';
-import { itemMeta } from '../../content/items';
+import { REAGENT_BREW_LIST } from '../../../server/rules/content/reagents';
+import { itemMeta } from '../../../server/rules/content/items';
 
 const layout = generateLayout();
 const wing = AREAS.alchemist_wing;

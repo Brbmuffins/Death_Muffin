@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { AREAS, type AreaId } from '../../content/areas';
-import { ARMOR_PARTS, ARMOR_PIECES } from '../../content/armorSets';
-import { DISCIPLINES } from '../../content/disciplines';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
+import { ARMOR_PARTS, ARMOR_PIECES } from '../../../server/rules/content/armorSets';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
-import { NECRO_WEAPON_BY_ID } from '../../content/necroWeapons';
+import { NECRO_WEAPON_BY_ID } from '../../../server/rules/content/necroWeapons';
 import { SET_BONUSES, SET_IDS, SET_NAMES, describeEffect } from '../../content/setBonuses';
-import { AFFIXES, affixRange, instanceProblem } from '../affixRules';
+import { AFFIXES, affixRange, instanceProblem } from '../../../server/rules/gameplay/affixRules';
 import { runBalance } from '../balance/harness';
 import { BANDS } from '../balance/bands';
 import { KIT_NAMES, kitItems, kitSlots, type KitItem, type KitName } from '../balance/kits';

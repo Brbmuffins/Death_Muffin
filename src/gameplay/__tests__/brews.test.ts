@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ALCHEMY_BUFFS } from '../../content/alchemy';
-import { BREWS, LIFESTEAL_HIT_CAP, LIFESTEAL_TARGET_CAP, applyBrew, brewSummary, brewValue, brewWard, emptyBrews, lifestealHeal, type BrewDef } from '../../content/brews';
-import { BUFF_FLASKS, ITEMS } from '../../content/items';
+import { ALCHEMY_BUFFS } from '../../../server/rules/content/alchemy';
+import { BREWS, LIFESTEAL_HIT_CAP, LIFESTEAL_TARGET_CAP, applyBrew, brewSummary, brewValue, brewWard, emptyBrews, lifestealHeal, type BrewDef } from '../../../server/rules/content/brews';
+import { BUFF_FLASKS, ITEMS } from '../../../server/rules/content/items';
 import { rollKill } from '../loot';
 
 describe('brew engine', () => {

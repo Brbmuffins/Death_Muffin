@@ -1,4 +1,4 @@
-import { DEPTHS_RECT, type Rect } from '../content/areas';
+import { DEPTHS_RECT, type Rect } from '../../server/rules/content/areas';
 import { placementObstacle, wallObstacle, type Placement, type PropId, type WallSegment } from '../content/layout';
 import type { Obstacle } from './nav';
 import { mulberry32 } from './rng';

@@ -1,6 +1,6 @@
 import { ABILITIES } from '../content/abilities';
 import { gateAuto } from '../app/settings';
-import { AREAS, AREA_ORDER } from '../content/areas';
+import { AREAS, AREA_ORDER } from '../../server/rules/content/areas';
 import {
   BEHAVIOUR_LABEL,
   CLASS_CHANGE_COUNSEL,
@@ -48,15 +48,15 @@ import {
   areaUnlockText,
   riteSwatch,
 } from '../content/codex';
-import { PLAYABLE_DISCIPLINES, type DisciplineId } from '../content/disciplines';
-import { ENEMIES, type EnemyId } from '../content/enemies';
-import { BOSSES, type BossId } from '../content/bosses';
+import { PLAYABLE_DISCIPLINES, type DisciplineId } from '../../server/rules/content/disciplines';
+import { ENEMIES, type EnemyId } from '../../server/rules/content/enemies';
+import { BOSSES, type BossId } from '../../server/rules/content/bosses';
 import type { CodexJournal } from '../gameplay/codexJournal';
-import { GATHER_SKILLS, SKILLS, actionMs, nodesForSkill, xpPerHour } from '../gameplay/gatheringRules';
+import { GATHER_SKILLS, SKILLS, actionMs, nodesForSkill, xpPerHour } from '../../server/rules/gameplay/gatheringRules';
 import { CODEX_PEOPLE_COUNSEL, codexPeopleRows } from '../content/codex';
 import type { NpcId } from '../content/npcs';
 import { generateLayout } from '../content/layout';
-import { itemMeta, RARITY_COLOR } from '../content/items';
+import { itemMeta, RARITY_COLOR } from '../../server/rules/content/items';
 import { ICON } from './icons';
 import { wrapPanelBody } from './panelBody';
 import './runes.css';

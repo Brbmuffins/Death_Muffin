@@ -5,7 +5,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { mulberry32 } from '../../src/gameplay/rng';
 import { AUDIO_MAP, type SoundId } from '../../src/content/audioMap';
-import { AREAS } from '../../src/content/areas';
+import { AREAS } from '../../server/rules/content/areas';
 import {
   BUS_IDS, BUS_CAP, PROFILES, profileOf, sliderGain, busGain, masterGain, distanceGain, culled, panFor, repeatGain, repeatDropped,
   effectiveCap, pickVariant, activityWeight, CombatActivity, bedDuckGain, accentsAllowed, lootSfx, VoiceLimiter, IdLimiter, WindowCounter,

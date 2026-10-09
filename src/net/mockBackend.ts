@@ -10,26 +10,26 @@
  * play — the live server's items table is the source of truth.
  */
 import type { InventorySlot, Profession, Recipe, Rarity } from './types';
-import { ITEMS } from '../content/items';
+import { ITEMS } from '../../server/rules/content/items';
 import { equipSlotOf } from '../content/gear';
-import * as necro from '../gameplay/necroRules';
-import type { NecroState } from '../gameplay/necroRules';
-import * as contractRules from '../gameplay/contractRules';
-import * as gardenRules from '../gameplay/gardeningRules';
-import * as laborRules from '../gameplay/laborRules';
-import * as cosmeticRules from '../gameplay/cosmeticRules';
-import { itemMeta } from '../content/items';
-import * as gather from '../gameplay/gatheringRules';
-import * as legion from '../gameplay/legionRules';
-import * as runeRules from '../gameplay/runeRules';
-import { isTwoHanded } from '../content/necroWeapons';
+import * as necro from '../../server/rules/gameplay/necroRules';
+import type { NecroState } from '../../server/rules/gameplay/necroRules';
+import * as contractRules from '../../server/rules/gameplay/contractRules';
+import * as gardenRules from '../../server/rules/gameplay/gardeningRules';
+import * as laborRules from '../../server/rules/gameplay/laborRules';
+import * as cosmeticRules from '../../server/rules/gameplay/cosmeticRules';
+import { itemMeta } from '../../server/rules/content/items';
+import * as gather from '../../server/rules/gameplay/gatheringRules';
+import * as legion from '../../server/rules/gameplay/legionRules';
+import * as runeRules from '../../server/rules/gameplay/runeRules';
+import { isTwoHanded } from '../../server/rules/content/necroWeapons';
 import { ALL_RECIPE_ROWS } from '../content/recipes';
 import { isDevAccount } from '../gameplay/devAccess';
-import * as vaultRules from '../gameplay/vaultRules';
-import * as salvageRules from '../gameplay/salvageRules';
-import * as affixRules from '../gameplay/affixRules';
-import * as sinks from '../gameplay/goldSinkRules';
-import * as loadoutRules from '../gameplay/loadoutRules';
+import * as vaultRules from '../../server/rules/gameplay/vaultRules';
+import * as salvageRules from '../../server/rules/gameplay/salvageRules';
+import * as affixRules from '../../server/rules/gameplay/affixRules';
+import * as sinks from '../../server/rules/gameplay/goldSinkRules';
+import * as loadoutRules from '../../server/rules/gameplay/loadoutRules';
 
 const BAG = gather.BAG_SLOTS;
 /** Mirrors inventory-save.cjs CANT_VERIFY. */

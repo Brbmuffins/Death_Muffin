@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 // Bundle (armorSets imports legendarySets) so the data: URL import below is self-contained.
 const { build } = await import('esbuild');
-const js = (await build({ entryPoints: [resolve(root, 'src/content/armorSets.ts')], bundle: true, write: false, format: 'esm', platform: 'node' })).outputFiles[0].text;
+const js = (await build({ entryPoints: [resolve(root, 'server/rules/content/armorSets.ts')], bundle: true, write: false, format: 'esm', platform: 'node' })).outputFiles[0].text;
 const { ARMOR_PIECES } = await import(`data:text/javascript,${encodeURIComponent(js)}`);
 const outDir = resolve(root, 'public/art/items');
 mkdirSync(outDir, { recursive: true });

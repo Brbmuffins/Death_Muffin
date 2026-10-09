@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BELT_KEY, BELT_SLOT_IDS, beltState, emptyHint, emptyPressText, healPick } from '../beltRules';
-import { HEALING_FLASKS } from '../../content/items';
+import { HEALING_FLASKS } from '../../../server/rules/content/items';
 import { HEAL_ORDER } from '../beltRules';
 
 describe('belt rules', () => {

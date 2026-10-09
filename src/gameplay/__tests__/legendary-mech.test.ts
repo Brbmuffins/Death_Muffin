@@ -4,7 +4,7 @@ import { AbilitySystem, type AbilityContext } from '../AbilitySystem';
 import { Player } from '../Player';
 import { Nav } from '../nav';
 import { Effects } from '../../graphics/Effects';
-import { DISCIPLINES, type DisciplineMods } from '../../content/disciplines';
+import { DISCIPLINES, type DisciplineMods } from '../../../server/rules/content/disciplines';
 import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
 import type { Corpse, Enemy, SimEvent, Thrall } from '../sim/types';

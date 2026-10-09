@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { ITEMS } from '../items';
+import { ITEMS } from '../../../server/rules/content/items';
 import { ALL_RECIPE_ROWS } from '../recipes';
 import { TRADE_GOODS_RECIPES } from '../tradeGoods';
 

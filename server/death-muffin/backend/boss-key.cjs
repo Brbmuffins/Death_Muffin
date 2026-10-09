@@ -1,5 +1,5 @@
 /**
- * Covenant Seals as boss keys (rules: gathering/gold-sink-rules.cjs, generated from src/gameplay/goldSinkRules.ts).
+ * Covenant Seals as boss keys (rules: gathering/gold-sink-rules.cjs, generated from server/rules/gameplay/goldSinkRules.ts).
  *
  *   POST /api/boss-key/summon -> { characterId, boss }
  *        takes one Covenant Seal from the bag and the boss's gold price (7,500 x shards^2), opens the character's bound summon of that

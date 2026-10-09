@@ -8,7 +8,7 @@ import { DepthsController, type DepthsHost } from '../DepthsController';
 import { Nav } from '../../gameplay/nav';
 import { WorldSim } from '../../gameplay/sim/WorldSim';
 import { mulberry32 } from '../../gameplay/rng';
-import { depthEnemyLevel } from '../../content/depths';
+import { depthEnemyLevel } from '../../../server/rules/content/depths';
 
 function setup(peak: number | undefined) {
   const nav = new Nav();

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { getAtlas } from '../atlas';
-import { BUFF_FLASKS, HEALING_FLASKS, ITEMS } from '../../content/items';
-import { COMPOST_ITEM, SEEDS } from '../../content/gardening';
-import { MEALS } from '../../content/processing';
-import { PETS } from '../../content/cosmetics';
-import { candidatesFor, generateBoard, RELIC_ORDERS, RELIC_PREMIUM } from '../contractRules';
-import { SKILLS } from '../gatheringRules';
+import { BUFF_FLASKS, HEALING_FLASKS, ITEMS } from '../../../server/rules/content/items';
+import { COMPOST_ITEM, SEEDS } from '../../../server/rules/content/gardening';
+import { MEALS } from '../../../server/rules/content/processing';
+import { PETS } from '../../../server/rules/content/cosmetics';
+import { candidatesFor, generateBoard, RELIC_ORDERS, RELIC_PREMIUM } from '../../../server/rules/gameplay/contractRules';
+import { SKILLS } from '../../../server/rules/gameplay/gatheringRules';
 
 /**
  * Docs/polish/loot.md item 14: nothing the player can pick up or make may be sell-only. Every material that drops (or is crafted)

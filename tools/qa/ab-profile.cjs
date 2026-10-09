@@ -33,7 +33,7 @@ const DISC = process.env.DM_QA_DISC || 'Gravecaller', SECS = +(process.env.DM_QA
     const m = sc.discipline.mods; const cap = process_thr >= 0 ? process_thr : m.thrallCap; const p = d.player;
     for (let i = 0; i < cap; i++) { const x = p.x - 3 + (i % 5) * 1.5, z = p.z + 2 + Math.floor(i / 5) * 1.5; sim.addCorpse(x, z, 'normal', 'robber', false, 0, 1, p.area); sim.applyExhume({ t: 'exhume', by: d.self(), x, z, r: 2, cap, kind: m.thrallKind, hp: 1e6, damage: STABLE_ ? 0 : 20, attackSpeedMult: 1 }); }
     d.advance(1.5);
-    const roster = (await import('/src/content/areas.ts')).AREAS[p.area].enemies.map((e) => e.id);
+    const roster = (await import('/server/rules/content/areas.ts')).AREAS[p.area].enemies.map((e) => e.id);
     window.__minEn = minEn; window.__roster = roster; window.__refill = () => { const c = d.counts(); if (window.__minEn > 0 && c.enemies < window.__minEn) roster.forEach((id, i) => d.ring(id, 3, 6 + i * 1.2, false)); };
     window.__refill(); d.advance(0.5);
     if (STABLE_) { window.__minEn = 0; d.freeze(true); d.advance(0.3); d.freeze(true); }

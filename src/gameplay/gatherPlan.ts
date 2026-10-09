@@ -1,5 +1,5 @@
 import { NODE_REACH, type NodePlacement } from '../content/layout';
-import { NODES, type GatherSkill } from './gatheringRules';
+import { NODES, type GatherSkill } from '../../server/rules/gameplay/gatheringRules';
 
 /**
  * Pure decisions for the gathering loop (roadmap §7), kept apart from the

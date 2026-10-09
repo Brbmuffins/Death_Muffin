@@ -5,16 +5,16 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { NODES, SKILLS } from '../../src/gameplay/gatheringRules';
+import { NODES, SKILLS } from '../../server/rules/gameplay/gatheringRules';
 import { NODE_REACH } from '../../src/content/layout';
-import { PLOTS, SEEDS, COMPOST_ITEM, COMPOST_SPEED } from '../../src/content/gardening';
+import { PLOTS, SEEDS, COMPOST_ITEM, COMPOST_SPEED } from '../../server/rules/content/gardening';
 import { ALL_RECIPE_ROWS } from '../../src/content/recipes';
-import { PROCESSING_RECIPES, MEALS } from '../../src/content/processing';
-import { ALCHEMY_RECIPES } from '../../src/content/alchemy';
-import { REAGENT_RECIPES } from '../../src/content/reagents';
-import { MOB_REAGENTS } from '../../src/content/reagents';
-import { RELIC_ORDERS } from '../../src/gameplay/contractRules';
-import { ITEMS } from '../../src/content/items';
+import { PROCESSING_RECIPES, MEALS } from '../../server/rules/content/processing';
+import { ALCHEMY_RECIPES } from '../../server/rules/content/alchemy';
+import { REAGENT_RECIPES } from '../../server/rules/content/reagents';
+import { MOB_REAGENTS } from '../../server/rules/content/reagents';
+import { RELIC_ORDERS } from '../../server/rules/gameplay/contractRules';
+import { ITEMS } from '../../server/rules/content/items';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = resolve(ROOT, 'godot/data/gathering');

@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { gearTier, offhandKind, weaponKind, type GearTier } from '../content/gear';
-import { ARMOR_BY_ID } from '../content/armorSets';
+import { ARMOR_BY_ID } from '../../server/rules/content/armorSets';
 import { fx } from './fxTextures';
 import { assets } from './AssetCache';
 import { PROP_URL } from './modelPaths';
-import { NECRO_MODEL, NECRO_WEAPON_BY_ID, type NecroKind } from '../content/necroWeapons';
+import { NECRO_MODEL, NECRO_WEAPON_BY_ID, type NecroKind } from '../../server/rules/content/necroWeapons';
 import type { GripFit } from './Creature';
 
 /**

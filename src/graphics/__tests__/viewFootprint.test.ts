@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 // CameraRig reads the window size and settings when built.
 vi.stubGlobal('window', { innerWidth: 1600, innerHeight: 900 });
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 import { visibleAreas } from '../areaStreaming';
 import { CameraRig } from '../CameraRig';
 import { footprintPoints, footprintReach, footprintRect, rectsOverlap, shadowHalfExtent } from '../viewFootprint';

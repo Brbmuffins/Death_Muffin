@@ -1,15 +1,15 @@
 # Brief G0: gathering rules + server authority → branch `cloud/professions-g0`
 
 Read `CLAUDE.md`, `HANDOFF.md`, `docs/DEATH-MUFFIN-HANDOFF.md`, **`docs/PROFESSIONS-ROADMAP.md`**
-(§2, §4, §8, §9 are the spec), then `src/gameplay/necroRules.ts`, `tools/build-server-rules.mjs`,
+(§2, §4, §8, §9 are the spec), then `server/rules/gameplay/necroRules.ts`, `tools/build-server-rules.mjs`,
 `server/death-muffin/backend/server.js` (professions, recipes, craft, inventory routes),
 `server/death-muffin/backend/migrations/001-discipline-index.sql`, `src/net/api.ts` and the DEV
-offline mock in `src/net/`, and `src/content/items.ts`.
+offline mock in `src/net/`, and `server/rules/content/items.ts`.
 
 Build the contract every other gathering task uses. **Only** the Death Muffin backend
 (`server/death-muffin/backend/`), never the original shared Crossworlds server.
 
-1. **`src/gameplay/gatheringRules.ts`** (pure, DOM-free, no three.js): the node catalogue from roadmap
+1. **`server/rules/gameplay/gatheringRules.ts`** (pure, DOM-free, no three.js): the node catalogue from roadmap
    §4 (`NodeType` id, skill, level, XP, `minActionMs`, success formula `(level − nodeLevel)` + tool tier,
    yields-before-depletion range, respawn, loot table with item ids and weights, rich-variant multipliers),
    the XP curve from §9 behind one exported `xpToNext(level)` (export both the live rule and the recommended
@@ -19,7 +19,7 @@ Build the contract every other gathering task uses. **Only** the Death Muffin ba
 2. **Migration `server/death-muffin/backend/migrations/002-gathering.sql`**, additive only: the new
    `items` rows (§4 ✱ ids, stackable, `max_stack_size` 250 for materials, sensible `sell_value`), new
    profession ids `gravedigging` and `gardening`, and `gather_ledger` for the time budget. Idempotent
-   (`INSERT IGNORE`, `CREATE TABLE IF NOT EXISTS`). Also add each new id to `src/content/items.ts`,
+   (`INSERT IGNORE`, `CREATE TABLE IF NOT EXISTS`). Also add each new id to `server/rules/content/items.ts`,
    and extend the unit test that guards item ids.
 3. **`POST /api/gather`** `{ characterId, nodeType, actions }`: ownership, level ≥ node level, time budget
    `actions ≤ floor((now − last) / minActionMs) + burst(3)`, then roll with the shared rules and grant
@@ -33,7 +33,7 @@ Build the contract every other gathering task uses. **Only** the Death Muffin ba
    exist) using the in-memory store pattern from `server/vps-handoff/necro-progress/`, and vitest for
    the rules (rates stay within the §9 targets and every loot id is in `items.ts`).
 
-Do NOT edit `src/scenes/**`, `src/graphics/**`, `src/ui/**` or `src/content/areas.ts`/`layout.ts`.
+Do NOT edit `src/scenes/**`, `src/graphics/**`, `src/ui/**` or `server/rules/content/areas.ts`/`layout.ts`.
 Write `server/death-muffin/GATHERING_DEPLOY.md` (backup, apply migration, copy backend, restart
 `death-muffin-auth.service`, verify, rollback) but **do not deploy**. Keep `npm run typecheck && npm test
 && npm run test:server && npm run build` green. Commit on `cloud/professions-g0`; no PR, no merge.

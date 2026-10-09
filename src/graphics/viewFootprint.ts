@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Rect } from '../content/areas';
+import type { Rect } from '../../server/rules/content/areas';
 
 /**
  * Where the camera actually looks: the ground-plane (y = 0) footprint of its view frustum.

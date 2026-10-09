@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, AREA_ORDER, DOORS, PLAYER_SPAWN, isAlwaysOpen } from '../../content/areas';
+import { AREAS, AREA_ORDER, DOORS, PLAYER_SPAWN, isAlwaysOpen } from '../../../server/rules/content/areas';
 import { NODE_COLLIDER, NODE_REACH, PROPS, generateLayout } from '../../content/layout';
-import { NODES, NODE_IDS, GATHER_SKILLS } from '../gatheringRules';
+import { NODES, NODE_IDS, GATHER_SKILLS } from '../../../server/rules/gameplay/gatheringRules';
 import { Nav } from '../nav';
 import { standSpot } from '../gatherPlan';
 

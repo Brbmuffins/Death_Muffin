@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { CHAIN, KillChain } from '../killChain';
+import { CHAIN, KillChain } from '../../../server/rules/gameplay/killChain';
 import { MILESTONES, newlyReached } from '../milestones';
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 
 describe('Kill Chain', () => {
   it('chains kills inside the window and reports tier-ups once', () => {

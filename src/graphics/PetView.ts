@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { PetDef } from '../content/cosmetics';
+import type { PetDef } from '../../server/rules/content/cosmetics';
 import { Creature } from './Creature';
 
 /**

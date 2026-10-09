@@ -1,4 +1,4 @@
-import { SKILLS, type NodeKind } from '../gameplay/gatheringRules';
+import { SKILLS, type NodeKind } from '../../server/rules/gameplay/gatheringRules';
 
 /**
  * The sound of one work cycle: the skill's own, except where the map has a finer one (ore rings, herbs rustle, a bed is tended, a

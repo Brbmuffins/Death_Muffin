@@ -3,7 +3,7 @@ import { Nav } from '../nav';
 import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
 import { selectAutoCombatAction, type AutoCombatInput } from '../autoCombat';
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 import { ABILITIES, BONE_PRISON, GRIMOIRE, type AbilityId } from '../../content/abilities';
 import { CODEX_RITES } from '../../content/codex';
 import type { Enemy } from '../sim/types';

@@ -1,11 +1,11 @@
 import { SET_BONUSES, SET_NAMES, describeEffect } from './setBonuses';
-import { ARMOR_PIECES, ARMOR_PARTS } from './armorSets';
-import { LEGENDARY_DROP } from './legendarySets';
-import { AFFIXES, MAX_AFFIXES } from '../gameplay/affixRules';
-import { KIT_RATES, pieceBonus } from '../gameplay/legionRules';
-import { LEGION_UPGRADE } from './upgrades';
-import { ITEMS } from './items';
-import { BOSS_REPEAT_RUNE_CHANCE, ELITE_RUNE_CHANCE_BY_AREA, RUNE_RITES, SURGE_RUNE_CHANCE, runeSources, runesFor, type RuneId } from './runes';
+import { ARMOR_PIECES, ARMOR_PARTS } from '../../server/rules/content/armorSets';
+import { LEGENDARY_DROP } from '../../server/rules/content/legendarySets';
+import { AFFIXES, MAX_AFFIXES } from '../../server/rules/gameplay/affixRules';
+import { KIT_RATES, pieceBonus } from '../../server/rules/gameplay/legionRules';
+import { LEGION_UPGRADE } from '../../server/rules/content/upgrades';
+import { ITEMS } from '../../server/rules/content/items';
+import { BOSS_REPEAT_RUNE_CHANCE, ELITE_RUNE_CHANCE_BY_AREA, RUNE_RITES, SURGE_RUNE_CHANCE, runeSources, runesFor, type RuneId } from '../../server/rules/content/runes';
 import {
   ABILITIES,
   BONE_MANTLE,
@@ -44,20 +44,20 @@ import {
   NEW_BLOOD_ABILITIES,
   type NewBloodId,
 } from './abilities';
-import { BREWS, brewEffectsText, slotName } from './brews';
-import { itemMeta } from './items';
-import { SALVAGE_RARITIES, salvagePreview } from '../gameplay/salvageRules';
-import { EMPOWER, EMPOWERABLE, REFORGE, empowerGold, empoweredLegendaryChance } from '../gameplay/goldSinkRules';
-import { AREA_REAGENT_DROPS, BOSS_ICHOR, ENEMY_REAGENT_DROPS, REAGENT_ITEMS, REAGENT_RECIPES } from './reagents';
-import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
-import { ASCENSION, BOONS, BOON_ORDER, VOWS, VOW_ORDER } from './ascension';
+import { BREWS, brewEffectsText, slotName } from '../../server/rules/content/brews';
+import { itemMeta } from '../../server/rules/content/items';
+import { SALVAGE_RARITIES, salvagePreview } from '../../server/rules/gameplay/salvageRules';
+import { EMPOWER, EMPOWERABLE, REFORGE, empowerGold, empoweredLegendaryChance } from '../../server/rules/gameplay/goldSinkRules';
+import { AREA_REAGENT_DROPS, BOSS_ICHOR, ENEMY_REAGENT_DROPS, REAGENT_ITEMS, REAGENT_RECIPES } from '../../server/rules/content/reagents';
+import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from '../../server/rules/content/areas';
+import { ASCENSION, BOONS, BOON_ORDER, VOWS, VOW_ORDER } from '../../server/rules/content/ascension';
 import { NPCS, NPC_IDS, type NpcId } from './npcs';
-import type { DisciplineId } from './disciplines';
-import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT, type BossId } from './bosses';
-import { BOG, HAG_HEX, SEXTON_HOOK, WISP_PULSE } from './fen';
+import type { DisciplineId } from '../../server/rules/content/disciplines';
+import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT, type BossId } from '../../server/rules/content/bosses';
+import { BOG, HAG_HEX, SEXTON_HOOK, WISP_PULSE } from '../../server/rules/content/fen';
 import { STAT_EFFECTS } from '../gameplay/characterStats';
-import { NECRO_KIND_LABEL, NECRO_TIERS, NECRO_TIER_INFO, NECRO_WEAPON_TUNING as WT, type NecroKind } from './necroWeapons';
-import { BURROW, CENSER, DUST, EMBER_BOLT, EMBER_DEATH, ENEMIES, FRENZY, PLAGUE_FLASK, SCREAM, SLAG_POOL, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
+import { NECRO_KIND_LABEL, NECRO_TIERS, NECRO_TIER_INFO, NECRO_WEAPON_TUNING as WT, type NecroKind } from '../../server/rules/content/necroWeapons';
+import { BURROW, CENSER, DUST, EMBER_BOLT, EMBER_DEATH, ENEMIES, FRENZY, PLAGUE_FLASK, SCREAM, SLAG_POOL, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from '../../server/rules/content/enemies';
 
 /**
  * Codex text — the in-game Codex (ui/CodexPanel) and any docs/README tooling

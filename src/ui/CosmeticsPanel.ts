@@ -1,7 +1,7 @@
 import { adoptPet, getCosmetics, getInventory, selectCosmetics, type CosmeticsResult, type CosmeticsView } from '../net/api';
-import { RARITY_COLOR, itemMeta } from '../content/items';
-import { SKILLS, type SkillId } from '../gameplay/gatheringRules';
-import { petDef } from '../content/cosmetics';
+import { RARITY_COLOR, itemMeta } from '../../server/rules/content/items';
+import { SKILLS, type SkillId } from '../../server/rules/gameplay/gatheringRules';
+import { petDef } from '../../server/rules/content/cosmetics';
 import type { Inventory } from '../gameplay/loot';
 import { wrapPanelBody } from './panelBody';
 

@@ -1,5 +1,5 @@
 import { onSettingsChange, settings } from '../app/settings';
-import type { AreaId } from '../content/areas';
+import type { AreaId } from '../../server/rules/content/areas';
 import {
   BUS_IDS, CombatActivity, IdLimiter, REPEAT_WINDOW, VoiceLimiter, WindowCounter, accentsAllowed, activityWeight, bedDuckGain, busGain,
   distanceGain, culled, masterGain, panFor, partnerAudible, partnerGain, profileOf, repeatDropped, repeatGain, type BusId, type Duck,

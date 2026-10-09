@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Nav } from '../nav';
 import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 
 /** Walk the owner in a line and count how often each following thrall flips between moving and standing. */
 function flips(playerSpeed: number, seconds = 8, dt = 1 / 60, stopAfter = Infinity) {

@@ -5,7 +5,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { ABILITIES, type AbilityId } from '../../src/content/abilities';
-import { DISCIPLINES } from '../../src/content/disciplines';
+import { DISCIPLINES } from '../../server/rules/content/disciplines';
 import { kitFor } from '../../src/content/kits';
 import { setActiveCharacter } from '../../src/app/settings';
 import { spellTooltip, type SpellTooltipState } from '../../src/ui/spellTooltip';
