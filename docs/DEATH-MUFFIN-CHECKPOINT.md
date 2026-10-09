@@ -1,5 +1,7 @@
 # Death Muffin — complete version 1.0.0
 
+> **OBSOLETE (archived 2026-10-09).** Records the web build's 1.0.0 baseline (git tag `death-muffin-v1.0.0`, which must not be moved). History only; see [ARCHIVE.md](ARCHIVE.md).
+
 User-approved smooth-combat baseline, 2026-09-27. Git tag: `death-muffin-v1.0.0`. Gameplay commit: `fca634d057105e995e17e44d7363812b6cb08458`; the tag adds this checkpoint documentation without changing gameplay.
 
 Live: https://muffindevelopment.com/death-muffin/. This is the reference version to preserve while planning new spells. It includes the supplied login/site design, isolated accounts/progress/co-op, leaderboard, accepted click movement/aiming, stable animations, quick spell flow, stationary auto combat and free class switching with preserved progress.

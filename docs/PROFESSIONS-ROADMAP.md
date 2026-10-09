@@ -1,5 +1,7 @@
 # Professions & gathering roadmap
 
+> **ARCHIVED (2026-10-09).** The professions plan (G0 to G4) was built and is ported to the Godot rebuild (`godot/next/gathering/README.md`). Kept as design history and for the rules numbers. See [ARCHIVE.md](ARCHIVE.md).
+
 Written 2026-09-27 for the agents who will build the skilling side of Death Muffin.
 
 > **Status (2026-09-27, cloud session):** G0, G1, G2 and G4 are **built** (see `PHASE_REPORTS.md` → "Professions G0 +

@@ -1,5 +1,7 @@
 # Crossworlds Web — Necromancer Redesign Audit
 
+> **OBSOLETE as a status document (archived 2026-10-09).** The design direction (world, waves, corpses as minions and spell fuel, loot, upgrades) was built and is in the Godot rebuild; its findings about the July web build are history. See [docs/ARCHIVE.md](docs/ARCHIVE.md).
+
 Audit date: 2026-09-26  
 Repository reviewed: `Brbmuffins/Cross-Worlds-Web`, private, `master`, commit `68023fe` (2026-07-03)  
 Live build reviewed: `https://playcrossworlds.com/play/`

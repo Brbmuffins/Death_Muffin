@@ -1,5 +1,7 @@
 # Agent briefs
 
+> **OBSOLETE (archived 2026-10-09).** Every brief in this folder was written for web-era cloud agents; all are history. See [../ARCHIVE.md](../ARCHIVE.md).
+
 These are dated design and implementation briefs, originally handed to cloud
 contributors. Their branch names and instructions describe that original work,
 not the current Git workflow. Read [the documentation map](../README.md),

@@ -1,5 +1,7 @@
 # Crossworlds Web — Action Plan
 
+> **OBSOLETE (archived 2026-10-09).** The original plan for the web client (Unity replacement, Vite + Three.js). The web client is frozen and the project is now the Godot rebuild. History only; see [docs/ARCHIVE.md](docs/ARCHIVE.md).
+
 Goal: replace the Unity client with a browser client (Vite + TypeScript + Three.js), reusing the existing Node/MySQL auth server as-is, built to the visual/workflow standard of `threejs-game-skills` (director → gameplay systems → AAA graphics → UI → debug → QA).
 
 ## What stays the same

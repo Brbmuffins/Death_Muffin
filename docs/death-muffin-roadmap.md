@@ -1,5 +1,7 @@
 # Death Muffin future features
 
+> **OBSOLETE (archived 2026-10-09).** Early web-era feature wishlist (bots and more). Current plan: [ROADMAP.md](../ROADMAP.md). See [ARCHIVE.md](ARCHIVE.md).
+
 ## Game bots
 
 Requested by the owner on 2026-09-27; recorded for future work.

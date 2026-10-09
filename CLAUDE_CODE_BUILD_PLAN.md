@@ -1,5 +1,7 @@
 # Crossworlds Web — Build Plan for Claude Code
 
+> **OBSOLETE (archived 2026-10-09).** The original autonomous build brief for the web client, now frozen. Do not follow its phases. The server confirm-before-you-touch-it rules in `SERVER_OPERATIONS.md` still apply. See [docs/ARCHIVE.md](docs/ARCHIVE.md).
+
 This is the operating brief for Claude Code to build out this project autonomously.
 Read this file first, in full, before writing code. `ACTION_PLAN.md` in this same folder has the architecture rationale — read that too. `SERVER_OPERATIONS.md` covers the separate VPS: what gets deployed there, when, and the exact confirm-before-you-touch-it process — read it before Phase 3 or Phase 6, and follow it any time a step involves `ssh`/`scp` to `playcrossworlds.com`.
 

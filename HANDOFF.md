@@ -1,5 +1,7 @@
 # HANDOFF — current work first
 
+> **OBSOLETE (archived 2026-10-09).** This is the web (three.js) game's work log; that game is frozen. It is kept for history and as a spec for the numbers the Godot rebuild must match. Current status: [ROADMAP.md](ROADMAP.md), [godot/REBUILD.md](godot/REBUILD.md), [godot/PARITY.md](godot/PARITY.md). The file stays at this path because other documents link to it; see [docs/ARCHIVE.md](docs/ARCHIVE.md).
+
 > **Current state (2026-10-09):** Death Muffin is one project, the Godot rebuild on branch `godot-next` (project `godot/`, entry `DmNextGame`). The web client in `src/` (three.js, `master`) is frozen legacy reference; `godot-port` has been merged into `godot-next`. The backend `server/death-muffin/` is live and shared. See [godot/REBUILD.md](godot/REBUILD.md), [godot/PARITY.md](godot/PARITY.md), [godot/README.md](godot/README.md). The text below was written for the web game; treat it as history and spec unless it says otherwise.
 
 Updated 2026-10-01 (late). Read [the documentation map](docs/README.md) for the

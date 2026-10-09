@@ -1,5 +1,7 @@
 # Gravecrawl teardown and what Death Muffin should learn
 
+> **ARCHIVED (2026-10-09).** A 2 October study written against the web build. The design ideas may still be mined, but its status claims and file paths are web-era. See [ARCHIVE.md](ARCHIVE.md).
+
 *2 October 2026, branch `dm/gravecrawl-study`. Study only: no game code changed. Screenshots are in [`docs/gravecrawl-study/`](gravecrawl-study/).*
 
 **Subject:** [Gravecrawl](https://www.gravecrawl.com/), "A CO-OP DESCENT", a free browser co-op gothic survival ARPG by Majid Manzarpour. Nothing from it was downloaded into this repo. Only principles and my own screenshots are used.

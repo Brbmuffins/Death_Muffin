@@ -1,5 +1,7 @@
 # Phase Reports
 
+> **OBSOLETE (archived 2026-10-09).** Chronological build log of the frozen web game (July to September 2026). History only; see [docs/ARCHIVE.md](docs/ARCHIVE.md) and [godot/REBUILD.md](godot/REBUILD.md) for current status.
+
 ## Section 0 — Setup (2026-07-01)
 
 - Node.js 24.18.0 LTS installed via winget (machine had no Node).

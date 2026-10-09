@@ -1,5 +1,7 @@
 # Evaluation: Majid Manzarpour's Three.js skills and VFX repos
 
+> **OBSOLETE (archived 2026-10-09).** A three.js tooling evaluation for the frozen web client; not relevant to the Godot rebuild. See [ARCHIVE.md](ARCHIVE.md).
+
 Date 2026-10-02, branch `dm/skills-eval`. Evaluation only: nothing was installed, `~/.claude` was not touched, no game code changed.
 Source clones were read-only (`git clone --depth 1`) into a scratch directory outside the repo. Everything below was read from those clones;
 nothing was run (no scripts executed, no network calls, no keys used).

@@ -1,5 +1,7 @@
 # Death Muffin spell variety plan
 
+> **OBSOLETE (archived 2026-10-09).** Dated web-era design record; spell variety, loadouts and runes were built and live in the Godot rebuild (see `godot/next/rites/README.md`). See [ARCHIVE.md](ARCHIVE.md).
+
 > **Current reading guide, 2026-09-29:** This is a dated design record. Its
 > loadout, stationary-auto and manual-signature proposals below describe the
 > 2026-09-27 state. The later New Blood release gave Easy auto movement and
