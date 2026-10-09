@@ -3,7 +3,7 @@
 // ``` code blocks balanced across the split; a reply too long for a few messages becomes a short preview plus the full text
 // as a file attachment.
 const MAX = 1900;
-const MAX_CHUNKS = 4;
+const MAX_CHUNKS = 15;   // owner 2026-10-09: forum threads, split into messages; reply.md only for runaway output (~28k+ chars)
 
 function splitForDiscord(text, max = MAX) {
   const chunks = [];
