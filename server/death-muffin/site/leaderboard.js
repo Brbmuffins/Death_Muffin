@@ -27,7 +27,7 @@ async function refreshLeaderboard() {
       fragment.appendChild(row);
     }
     rows.replaceChildren(fragment);
-    leaderboardStatus.textContent = data.players.length ? `Last updated ${new Date(data.updatedAt).toLocaleTimeString()}. Refreshes every minute.` : 'The covenant awaits its first character. Enter the world to claim your place.';
+    leaderboardStatus.textContent = data.players.length ? `Last updated ${new Date(data.updatedAt).toLocaleTimeString()}. Refreshes every minute.` : 'The covenant awaits its first character. Download the game to claim your place.';
   } catch (error) {
     leaderboardStatus.textContent = error instanceof Error ? error.message : 'Could not load the leaderboard.';
   }

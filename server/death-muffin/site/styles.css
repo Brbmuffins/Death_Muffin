@@ -2003,3 +2003,15 @@ button {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Launcher download panel on the landing page (replaces the old sign-in form). */
+.launcher { display: grid; gap: 1rem; }
+a.enter-button { display: flex; align-items: center; justify-content: center; text-decoration: none; text-align: center; }
+.launcher__how { margin: 0; color: var(--bone-bright); font-size: 0.9rem; line-height: 1.5; text-align: center; }
+
+/* Classes page: the five non-necromancer disciplines are not playable yet. */
+.discipline-card--later { opacity: 0.55; filter: grayscale(0.85); }
+.discipline-card__later,
+.discipline-card__now { margin: 0 0 0.35rem; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; }
+.discipline-card__later { color: var(--bone-bright); }
+.discipline-card__now { color: var(--lilac); }

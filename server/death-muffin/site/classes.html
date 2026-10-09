@@ -21,13 +21,13 @@
       rel="stylesheet"
     />
     <link rel="preload" href="assets/about-covenant.png" as="image" />
-    <link rel="stylesheet" href="styles.css?v=8" />
+    <link rel="stylesheet" href="styles.css?v=9" />
   </head>
   <body class="about-page classes-page">
     <a class="skip-link" href="#classes-main">Skip to classes</a>
 
     <header class="site-nav">
-      <a class="site-nav__brand" href="index.html" aria-label="Death Muffin login">
+      <a class="site-nav__brand" href="index.html" aria-label="Death Muffin home">
         <span class="site-nav__mark" aria-hidden="true"></span>
         <span>Death Muffin</span>
       </a>
@@ -36,7 +36,7 @@
         <a class="site-nav__link" href="classes.html" aria-current="page">Classes</a>
         <a class="site-nav__link" href="leaderboard.html">Leaderboard</a>
       <a class="site-nav__link" href="patch-notes.html">Patch notes</a>
-        <a class="site-nav__enter" href="index.html">Enter</a>
+        <a class="site-nav__enter" href="index.html">Download</a>
       </nav>
     </header>
 
@@ -48,7 +48,8 @@
           <p>
             Nine disciplines walk the Covenant's halls. Four are necromancers who raise the dead as
             a shield wall, a restless legion, a choir of wraiths, or a garden of rot. Five are the
-            New Blood, who fight the dead with oil, bells, hooks, oaths and the veil.
+            New Blood, who fight the dead with oil, bells, hooks, oaths and the veil. The four
+            necromancers are playable now; the New Blood come later.
           </p>
           <a class="about-button about-button--primary" href="#disciplines">Read the nine disciplines</a>
         </div>
@@ -56,7 +57,7 @@
 
       <section class="disciplines-section" id="disciplines" aria-labelledby="disciplines-title">
         <div class="section-heading section-heading--center">
-          <p class="eyebrow">Nine ways to meet the dead</p>
+          <p class="eyebrow">Four to play now, five coming later</p>
           <h2 id="disciplines-title">The Covenant’s disciplines</h2>
         </div>
 
@@ -70,6 +71,7 @@
               </svg>
             </div>
             <p class="discipline-card__role">Tank · Bone</p>
+            <p class="discipline-card__now">Playable now</p>
             <h3 id="ossuary-title">Ossuary</h3>
             <p class="discipline-card__title">Keeper of the Bone Wall</p>
             <p class="discipline-card__play">
@@ -93,6 +95,7 @@
               </svg>
             </div>
             <p class="discipline-card__role">Army · Spirit</p>
+            <p class="discipline-card__now">Playable now</p>
             <h3 id="gravecaller-title">Gravecaller</h3>
             <p class="discipline-card__title">Marshal of the Restless</p>
             <p class="discipline-card__play">
@@ -116,6 +119,7 @@
               </svg>
             </div>
             <p class="discipline-card__role">Sustain · Wraith</p>
+            <p class="discipline-card__now">Playable now</p>
             <h3 id="mourner-title">Mourner</h3>
             <p class="discipline-card__title">Singer of the Funeral Rite</p>
             <p class="discipline-card__play">
@@ -139,6 +143,7 @@
               </svg>
             </div>
             <p class="discipline-card__role">Control · Decay</p>
+            <p class="discipline-card__now">Playable now</p>
             <h3 id="rotweaver-title">Rotweaver</h3>
             <p class="discipline-card__title">Gardener of Decay</p>
             <p class="discipline-card__play">
@@ -153,7 +158,7 @@
             </div>
           </article>
 
-          <article class="discipline-card discipline-card--grave-warden" aria-labelledby="grave-warden-title">
+          <article class="discipline-card discipline-card--grave-warden discipline-card--later" aria-labelledby="grave-warden-title">
             <span class="discipline-card__number" aria-hidden="true">V</span>
             <div class="discipline-card__sigil" aria-hidden="true">
               <svg viewBox="0 0 64 64">
@@ -161,6 +166,7 @@
               </svg>
             </div>
             <p class="discipline-card__role">Support · Oil</p>
+            <p class="discipline-card__later">Coming later</p>
             <h3 id="grave-warden-title">Grave Warden</h3>
             <p class="discipline-card__title">Keeper of the Last Lantern</p>
             <p class="discipline-card__play">
@@ -174,7 +180,7 @@
             </div>
           </article>
 
-          <article class="discipline-card discipline-card--bell-monk" aria-labelledby="bell-monk-title">
+          <article class="discipline-card discipline-card--bell-monk discipline-card--later" aria-labelledby="bell-monk-title">
             <span class="discipline-card__number" aria-hidden="true">VI</span>
             <div class="discipline-card__sigil" aria-hidden="true">
               <svg viewBox="0 0 64 64">
@@ -182,6 +188,7 @@
               </svg>
             </div>
             <p class="discipline-card__role">Rhythm · Resonance</p>
+            <p class="discipline-card__later">Coming later</p>
             <h3 id="bell-monk-title">Bell Monk</h3>
             <p class="discipline-card__title">Voice of the Last Toll</p>
             <p class="discipline-card__play">
@@ -195,7 +202,7 @@
             </div>
           </article>
 
-          <article class="discipline-card discipline-card--carrion-witch" aria-labelledby="carrion-witch-title">
+          <article class="discipline-card discipline-card--carrion-witch discipline-card--later" aria-labelledby="carrion-witch-title">
             <span class="discipline-card__number" aria-hidden="true">VII</span>
             <div class="discipline-card__sigil" aria-hidden="true">
               <svg viewBox="0 0 64 64">
@@ -203,6 +210,7 @@
               </svg>
             </div>
             <p class="discipline-card__role">Hexes · Offal</p>
+            <p class="discipline-card__later">Coming later</p>
             <h3 id="carrion-witch-title">Carrion Witch</h3>
             <p class="discipline-card__title">Mistress of Hooks and Crows</p>
             <p class="discipline-card__play">
@@ -216,7 +224,7 @@
             </div>
           </article>
 
-          <article class="discipline-card discipline-card--hollow-knight" aria-labelledby="hollow-knight-title">
+          <article class="discipline-card discipline-card--hollow-knight discipline-card--later" aria-labelledby="hollow-knight-title">
             <span class="discipline-card__number" aria-hidden="true">VIII</span>
             <div class="discipline-card__sigil" aria-hidden="true">
               <svg viewBox="0 0 64 64">
@@ -224,6 +232,7 @@
               </svg>
             </div>
             <p class="discipline-card__role">Bruiser · Rage</p>
+            <p class="discipline-card__later">Coming later</p>
             <h3 id="hollow-knight-title">Hollow Knight</h3>
             <p class="discipline-card__title">Oathbound of the Covenant</p>
             <p class="discipline-card__play">
@@ -237,7 +246,7 @@
             </div>
           </article>
 
-          <article class="discipline-card discipline-card--veilwalker" aria-labelledby="veilwalker-title">
+          <article class="discipline-card discipline-card--veilwalker discipline-card--later" aria-labelledby="veilwalker-title">
             <span class="discipline-card__number" aria-hidden="true">IX</span>
             <div class="discipline-card__sigil" aria-hidden="true">
               <svg viewBox="0 0 64 64">
@@ -245,6 +254,7 @@
               </svg>
             </div>
             <p class="discipline-card__role">Mobility · Veil</p>
+            <p class="discipline-card__later">Coming later</p>
             <h3 id="veilwalker-title">Veilwalker</h3>
             <p class="discipline-card__title">One Foot Beyond</p>
             <p class="discipline-card__play">
@@ -284,7 +294,7 @@
         <p class="eyebrow">The grave is waiting</p>
         <h2>Choose what the dead become.</h2>
         <div>
-          <a class="about-button about-button--primary" href="index.html">Enter Death Muffin</a>
+          <a class="about-button about-button--primary" href="index.html">Download for Windows</a>
           <a class="about-button about-button--quiet" href="about.html">Explore the world</a>
         </div>
       </section>

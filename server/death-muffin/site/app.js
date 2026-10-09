@@ -1,24 +1,6 @@
-const form = document.querySelector("#account-form");
-const switchModeButton = document.querySelector(".switch-mode");
-const submitButton = document.querySelector(".enter-button");
-const submitLabel = document.querySelector(".enter-button__label");
-const formKicker = document.querySelector("#form-kicker");
-const status = document.querySelector(".form-status");
-const nameField = document.querySelector(".field--name");
-const confirmField = document.querySelector(".field--confirm");
-const displayName = document.querySelector("#display-name");
-const email = document.querySelector("#email");
-const emailField = email.closest(".field");
-const password = document.querySelector("#password");
-const confirmPassword = document.querySelector("#confirm-password");
-const remember = document.querySelector(".remember");
-const forgotAction = document.querySelector(".forgot-action");
-const revealPassword = document.querySelector(".reveal-password");
 const soundToggle = document.querySelector(".sound-toggle");
-const gateway = document.querySelector(".gateway");
 const spellCanvas = document.querySelector(".spell-canvas");
 
-let mode = "login";
 let soundEnabled = true;
 let audioContext;
 let ambienceGain;
@@ -485,103 +467,6 @@ function createGraveAtmosphere(canvas) {
 
 createGraveAtmosphere(spellCanvas);
 
-function setError(input, message) {
-  const field = input.closest(".field");
-  const error = field.querySelector(".field__error");
-  field.classList.toggle("has-error", Boolean(message));
-  input.setAttribute("aria-invalid", String(Boolean(message)));
-  error.textContent = message;
-}
-
-function clearErrors() {
-  form.querySelectorAll(".field").forEach((field) => field.classList.remove("has-error"));
-  form.querySelectorAll("input").forEach((input) => input.removeAttribute("aria-invalid"));
-  form.querySelectorAll(".field__error").forEach((error) => {
-    error.textContent = "";
-  });
-  status.textContent = "";
-}
-
-function validate() {
-  clearErrors();
-  let valid = true;
-
-  // Signing up needs a username only. Mirror the server's rule so the error is readable here
-  // instead of arriving as a 400 from /register.
-  if (mode === "register" && !/^[a-zA-Z0-9_]{3,32}$/.test(displayName.value.trim())) {
-    setError(displayName, "Use 3–32 letters, numbers or underscores.");
-    valid = false;
-  }
-
-  // The shared field is the username (or an email, for accounts that chose to add one) at login;
-  // registration hides it entirely, so there is nothing to check in that mode.
-  if (mode === "login" && !email.validity.valid) {
-    setError(email, "Enter your username.");
-    valid = false;
-  }
-
-  if (password.value.length < (mode === "register" ? 8 : 1)) {
-    setError(password, mode === "register" ? "Your password needs at least eight characters." : "Enter your password.");
-    valid = false;
-  }
-
-  if (mode === "register" && confirmPassword.value !== password.value) {
-    setError(confirmPassword, "The passwords do not match.");
-    valid = false;
-  }
-
-  return valid;
-}
-
-function setMode(nextMode) {
-  mode = nextMode;
-  const registering = mode === "register";
-
-  clearErrors();
-  nameField.hidden = !registering;
-  confirmField.hidden = !registering;
-  displayName.required = registering;
-  displayName.maxLength = 32;
-  displayName.placeholder = registering ? "Pick a username" : "Name your wanderer";
-  confirmPassword.required = registering;
-  password.autocomplete = registering ? "new-password" : "current-password";
-  password.minLength = registering ? 8 : 1;
-  // No email is collected at signup — this covenant is friends-only. Existing accounts that have
-  // an email can still log in with it, so the field stays as username-or-email in login mode.
-  emailField.hidden = registering;
-  email.required = !registering;
-  email.type = "text";
-  email.autocomplete = registering ? "off" : "username";
-  email.placeholder = "Your username";
-  document.querySelector('label[for="email"]').textContent = "Username";
-  document.querySelector('label[for="display-name"]').textContent = "Username";
-  remember.hidden = registering;
-  forgotAction.hidden = registering;
-  formKicker.textContent = "Muffin Developed";
-  submitLabel.textContent = registering ? "Join" : "Enter";
-  document.querySelector(".account-switch p").textContent = registering
-    ? "Already sworn?"
-    : "New to the covenant?";
-  switchModeButton.textContent = registering ? "Return to login" : "Create account";
-
-  (registering ? displayName : email).focus();
-}
-
-switchModeButton.addEventListener("click", () => {
-  setMode(mode === "login" ? "register" : "login");
-});
-
-revealPassword.addEventListener("click", () => {
-  const revealing = password.type === "password";
-  password.type = revealing ? "text" : "password";
-  revealPassword.setAttribute("aria-pressed", String(revealing));
-  revealPassword.setAttribute("aria-label", revealing ? "Hide password" : "Show password");
-});
-
-forgotAction.addEventListener("click", () => {
-  status.textContent = "Email recovery is not configured. Contact the game administrator for a password reset.";
-});
-
 soundToggle.addEventListener("click", () => {
   soundEnabled = !soundEnabled;
   soundToggle.setAttribute("aria-pressed", String(soundEnabled));
@@ -589,38 +474,4 @@ soundToggle.addEventListener("click", () => {
   try { localStorage.setItem("dm_login_sound", soundEnabled ? "on" : "off"); } catch {}
   if (soundEnabled) { startAmbience(); playGateSound(); }
   else if (ambienceGain && audioContext) ambienceGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
-});
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!validate()) return;
-  const openingStartedAt = performance.now();
-  startAmbience();
-  playGateSound();
-  window.awakenGraveAtmosphere?.();
-  submitButton.disabled = true;
-  submitButton.classList.add("is-loading");
-  gateway.classList.add("spell-surge");
-  status.textContent = mode === "login" ? "Opening the gate…" : "Binding your oath…";
-  try {
-    const response = await fetch(`api/${mode === "login" ? "login" : "register"}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mode === "login"
-        ? { username: email.value.trim(), password: password.value }
-        : { username: displayName.value.trim(), password: password.value }),
-    });
-    const data = await response.json();
-    if (!response.ok || !data.token) throw new Error(data.error || "Could not open the gate.");
-    sessionStorage.setItem("dm_jwt", data.token);
-    if (form.querySelector('[name="remember"]').checked && mode === "login") localStorage.setItem("dm_jwt", data.token);
-    else localStorage.removeItem("dm_jwt");
-    await new Promise(resolve => window.setTimeout(resolve, Math.max(0, 950 - (performance.now() - openingStartedAt))));
-    window.location.assign("play/");
-  } catch (error) {
-    status.textContent = error instanceof Error ? error.message : "Cannot reach the account service. Please try again.";
-    submitButton.disabled = false;
-    submitButton.classList.remove("is-loading");
-    gateway.classList.remove("spell-surge");
-  }
 });

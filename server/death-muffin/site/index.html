@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#07060a" />
     <meta
       name="description"
-      content="Enter Death Muffin: raise the fallen, face the cathedral's dead, and survive the flames of the Cinder Pyre."
+      content="Death Muffin for Windows: raise the fallen, face the cathedral's dead, and survive the flames of the Cinder Pyre. Download the launcher and play online."
     />
     <title>Death Muffin — Muffin Developed</title>
     <link
@@ -23,11 +23,11 @@
     <link rel="preload" href="assets/covenant-pyre.webp" as="image" />
     <!-- ?v= is a cache buster: Cloudflare overrides nginx's no-cache on .css/.js with a 4h
          browser TTL, so a deploy is invisible until the URL changes. Bump on every site edit. -->
-    <link rel="stylesheet" href="styles.css?v=8" />
-    <script src="app.js?v=3" defer></script>
+    <link rel="stylesheet" href="styles.css?v=9" />
+    <script src="app.js?v=4" defer></script>
   </head>
   <body>
-    <a class="skip-link" href="#account-form">Skip to account form</a>
+    <a class="skip-link" href="#download">Skip to download</a>
 
     <main class="gateway" aria-labelledby="game-title">
       <div class="gateway__shade" aria-hidden="true"></div>
@@ -38,7 +38,7 @@
       <div class="mist mist--one" aria-hidden="true"></div>
       <div class="mist mist--two" aria-hidden="true"></div>
 
-      <section class="account" aria-label="Death Muffin account access">
+      <section class="account" aria-label="Download Death Muffin">
         <header class="brand">
           <span class="brand__sigil" aria-hidden="true">
             <i></i>
@@ -49,9 +49,6 @@
 
         <!-- Latest patch: filled from play/patch-notes.json (the same notes as the launcher); the static line stays if it cannot load. -->
         <div class="account__dispatch" data-latest-patch>
-          <!-- Known issue line: remove this <p> (and bump styles.css?v) once the owner confirms the web lag is gone. -->
-          <p class="account__known" role="status"><b>Known issue:</b> some web players have seen lag. Performance fixes are in this patch; if the web version still lags for you, try the
-            <a class="footer-link" href="https://github.com/Brbmuffins/Death_Muffin/releases/latest/download/DeathMuffinLauncher-win-x64.zip" rel="noopener">Windows launcher</a>.</p>
           <span data-patch-head>LATEST PATCH</span>
           <p data-patch-fallback>Raise the fallen, read the omens, and descend. <a class="footer-link" href="patch-notes.html">See what changed</a>.</p>
         </div>
@@ -87,117 +84,20 @@
           <span class="corner corner--bl" aria-hidden="true"></span>
           <span class="corner corner--br" aria-hidden="true"></span>
 
-          <form id="account-form" class="account-form" novalidate>
-            <div class="field field--name" hidden>
-              <label for="display-name">Covenant name</label>
-              <div class="field__control">
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" />
-                </svg>
-                <input
-                  id="display-name"
-                  name="displayName"
-                  type="text"
-                  autocomplete="nickname"
-                  minlength="3"
-                  maxlength="24"
-                  placeholder="Name your wanderer"
-                />
-              </div>
-              <p class="field__error" id="display-name-error"></p>
-            </div>
-
-            <div class="field">
-              <label for="email">Username</label>
-              <div class="field__control">
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" />
-                </svg>
-                <input
-                  id="email"
-                  name="username"
-                  type="text"
-                  autocomplete="username"
-                  placeholder="Your username"
-                  required
-                />
-              </div>
-              <p class="field__error" id="email-error"></p>
-            </div>
-
-            <div class="field">
-              <div class="label-row">
-                <label for="password">Password</label>
-                <button class="text-action forgot-action" type="button">Forgot password?</button>
-              </div>
-              <div class="field__control">
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <rect x="5" y="10" width="14" height="11" rx="1" />
-                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                </svg>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autocomplete="current-password"
-                  minlength="1"
-                  maxlength="72"
-                  placeholder="Your secret phrase"
-                  required
-                />
-                <button
-                  class="reveal-password"
-                  type="button"
-                  aria-label="Show password"
-                  aria-pressed="false"
-                >
-                  <svg aria-hidden="true" viewBox="0 0 24 24">
-                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-                    <circle cx="12" cy="12" r="2.5" />
-                  </svg>
-                </button>
-              </div>
-              <p class="field__error" id="password-error"></p>
-            </div>
-
-            <div class="field field--confirm" hidden>
-              <label for="confirm-password">Confirm password</label>
-              <div class="field__control">
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="m5 13 4 4L19 7" />
-                </svg>
-                <input
-                  id="confirm-password"
-                  name="confirmPassword"
-                  type="password"
-                  autocomplete="new-password"
-                  minlength="1"
-                  maxlength="72"
-                  placeholder="Repeat your secret phrase"
-                />
-              </div>
-              <p class="field__error" id="confirm-password-error"></p>
-            </div>
-
-            <label class="remember">
-              <input type="checkbox" name="remember" />
-              <span aria-hidden="true"></span>
-              Remember this vessel
-            </label>
-
-            <button class="enter-button" type="submit">
+          <div class="launcher" id="launcher">
+            <a
+              class="enter-button launcher__download"
+              id="download"
+              href="https://github.com/Brbmuffins/Death_Muffin/releases/latest/download/DeathMuffinLauncher-win-x64.zip"
+              rel="noopener"
+            >
               <span class="enter-button__edge" aria-hidden="true"></span>
-              <span class="enter-button__label">Enter</span>
-              <span class="enter-button__spinner" aria-hidden="true"></span>
-            </button>
-
-            <p class="form-status" role="status" aria-live="polite"></p>
-          </form>
-
-          <div class="account-switch">
-            <span class="account-switch__line" aria-hidden="true"></span>
-            <p>New to the covenant?</p>
-            <button class="switch-mode" type="button">Create account</button>
+              <span class="enter-button__label">Download for Windows</span>
+            </a>
+            <p class="launcher__how">
+              Download, unzip, and run DeathMuffinLauncher.exe. It installs and updates the game.
+              Sign in or create your account in the game.
+            </p>
           </div>
         </div>
 
@@ -210,9 +110,6 @@
           <span aria-hidden="true">·</span>
           <a class="text-action" href="leaderboard.html">Leaderboard</a>
           <span aria-hidden="true">◆</span>
-          <a class="text-action" href="offline/">Offline edition</a>
-          <span aria-hidden="true">◆</span>
-          <a class="text-action" href="https://github.com/Brbmuffins/Death_Muffin/releases/latest/download/DeathMuffinLauncher-win-x64.zip" rel="noopener">Download the Windows launcher</a>
           <a class="text-action" href="patch-notes.html">Patch notes</a>
           <span aria-hidden="true">◆</span>
           <button class="text-action sound-toggle" type="button" aria-pressed="true">
