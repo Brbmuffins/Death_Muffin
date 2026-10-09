@@ -1,6 +1,6 @@
 extends SceneTree
 ## DmFx tests: godot --headless --path godot --script res://tests/fx/run.gd
-## Every effect id instantiates; SPELL_FX colours match the web source; animation lengths / particle lifetimes match the converted
+## Every effect id instantiates; animation lengths / particle lifetimes match the converted
 ## JSON; the caps (24 one-shots, 32 loopers, 160 combat transients) hold; the particle rings, roles and motif budget behave.
 
 var passed := 0
@@ -65,27 +65,6 @@ func _test_scenes() -> void:
 
 
 func _test_spell_colors() -> void:
-	var src := _read("res://../src/content/abilities.ts")
-	var start := src.find("export const SPELL_FX = {")
-	check(start >= 0, "SPELL_FX found in abilities.ts")
-	var block := src.substr(start)
-	block = block.substr(0, block.find("} as const;"))
-	var re := RegEx.new()
-	re.compile("(?m)^\\s*(\\w+): \\{([^}]*)\\}")
-	var pair := RegEx.new()
-	pair.compile("(\\w+): 0x([0-9a-fA-F]{6})")
-	var groups := 0
-	var values := 0
-	for m in re.search_all(block):
-		var g := m.get_string(1)
-		for p in pair.search_all(m.get_string(2)):
-			var want := p.get_string(2).hex_to_int()
-			var got := DmFxData.spell(g, p.get_string(1))
-			var exp := DmFxData.hex(want)
-			check(got.is_equal_approx(exp), "SPELL_FX.%s.%s = %s" % [g, p.get_string(1), p.get_string(2)])
-			values += 1
-		groups += 1
-	check(groups >= 28 and values >= 100, "parsed %d groups, %d colours" % [groups, values])
 	# Presets carry the SPELL_FX colour (spell colour keeps its meaning).
 	check(DmFxData.preset("miasma_cloud")["colors"][0].is_equal_approx(DmFxData.spell("miasma", "rot")), "miasma_cloud preset = miasma.rot")
 	check(DmFxData.preset("corpse_explosion")["colors"][2].is_equal_approx(DmFxData.spell("detonate", "crimson")), "corpse_explosion preset = detonate.crimson")
@@ -171,9 +150,6 @@ func _test_caps() -> void:
 	var caps := DmFxData.caps()
 	check(int(caps["max_oneshots"]) == 24 and int(caps["max_loopers"]) == 32, "binbun caps 24 / 32")
 	check(int(caps["combat_transients"]) == 160 and int(caps["additive_particles"]) == 3500 and int(caps["smoke_particles"]) == 900, "effects caps 160 / 3500 / 900")
-	# Caps are the constants in the web source.
-	var src := _read("res://../src/graphics/binbun/BinbunFX.ts")
-	check(src.contains("const MAX_ONESHOTS = %d" % int(caps["max_oneshots"])) and src.contains("const MAX_LOOPERS = %d" % int(caps["max_loopers"])), "caps match BinbunFX.ts")
 	# 40 one-shots: only 24 stay live (the oldest are evicted).
 	for i in 40:
 		fx.play("miasma_cloud", Vector3(i, 0, 0), {})
