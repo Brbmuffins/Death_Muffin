@@ -1,5 +1,5 @@
-import { ARMOR_PIECES, ARMOR_SETS, ASCENDED_ARMOR_SETS } from './armorSets';
-import { LEGENDARY_SETS } from './legendarySets';
+import { ARMOR_PIECES, ARMOR_SETS, ASCENDED_ARMOR_SETS } from '../../server/rules/content/armorSets';
+import { LEGENDARY_SETS } from '../../server/rules/content/legendarySets';
 
 /**
  * Armor set bonuses: 2, 4 and 5 pieces of one set. Every effect is one the game already reads, so a bonus

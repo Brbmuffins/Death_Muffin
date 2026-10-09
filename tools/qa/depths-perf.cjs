@@ -57,9 +57,9 @@ const median = (a) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
         d.advance(1.5);
       });
       const roster = await page.evaluate(async ({ depth }) => {
-        const areas = (await import('/src/content/areas.ts')).AREAS;
+        const areas = (await import('/server/rules/content/areas.ts')).AREAS;
         if (!depth) return areas.warren.enemies.map((e) => e.id);
-        return (await import('/src/content/depths.ts')).depthRoster(depth).map((e) => e.id);
+        return (await import('/server/rules/content/depths.ts')).depthRoster(depth).map((e) => e.id);
       }, s);
       // The Warren's own roster is 7 kinds; the 15th floor's is 25. Cap the rings at 24 bodies (the Depths' alive cap) so the load is the zone's, not the test's.
       await page.evaluate((r) => { const d = window.__cwDebug; let left = 24; r.forEach((id, i) => { const n = Math.min(left, 3); if (n <= 0) return; left -= n; d.ring(id, n, 4 + (i % 6) * 0.8, i === 0); }); d.freeze(true); d.advance(0.6); d.freeze(true); }, roster);

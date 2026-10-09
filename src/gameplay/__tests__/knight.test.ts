@@ -7,7 +7,7 @@ import type { Corpse, Enemy, SimEvent } from '../sim/types';
 import { AbilitySystem, type AbilityContext } from '../AbilitySystem';
 import { Player } from '../Player';
 import { Effects } from '../../graphics/Effects';
-import { DISCIPLINES } from '../../content/disciplines';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import { kitFor } from '../../content/kits';
 import {
   ABILITIES,

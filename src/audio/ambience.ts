@@ -3,7 +3,7 @@
  * which sparse details drift in over it, and how long the gaps between details are.
  * The beds are low and quiet on purpose ("immersive, not overwhelming"). No WebAudio here.
  */
-import type { AreaId } from '../content/areas';
+import type { AreaId } from '../../server/rules/content/areas';
 import type { Sfx } from './Audio';
 
 export interface BedLayer {

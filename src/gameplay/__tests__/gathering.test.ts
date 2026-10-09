@@ -16,8 +16,8 @@ import {
   xpPerHour,
   xpToNextCurve,
   xpToNextLive,
-} from '../gatheringRules';
-import { ITEMS } from '../../content/items';
+} from '../../../server/rules/gameplay/gatheringRules';
+import { ITEMS } from '../../../server/rules/content/items';
 import { addToSlots } from '../loot';
 import { mulberry32 } from '../rng';
 

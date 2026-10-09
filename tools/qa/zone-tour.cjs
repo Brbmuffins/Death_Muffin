@@ -84,8 +84,8 @@ async function visit(page, quality, area) {
   const rec = { quality, area };
   rec.arrivalPerf = await perf(page);
   await shot(page, `${tag}-arrival`);
-  const roster = await page.evaluate(async (a) => (await import('/src/content/areas.ts')).AREAS[a].enemies.map((e) => e.id), area);
-  const safe = await page.evaluate(async (a) => (await import('/src/content/areas.ts')).AREAS[a].safe, area);
+  const roster = await page.evaluate(async (a) => (await import('/server/rules/content/areas.ts')).AREAS[a].enemies.map((e) => e.id), area);
+  const safe = await page.evaluate(async (a) => (await import('/server/rules/content/areas.ts')).AREAS[a].safe, area);
   if (!roster.length || safe) { rec.fight = null; results.push(rec); return; }
   await legion(page, area);
   await page.evaluate((r) => {

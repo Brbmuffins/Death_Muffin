@@ -1,4 +1,4 @@
-import { stateOf, type PlotState } from '../gameplay/gardeningRules';
+import { stateOf, type PlotState } from '../../server/rules/gameplay/gardeningRules';
 
 /**
  * A plot's state on the server's clock. The snapshot's own `state` was true when it was fetched; a growing plot becomes ready while

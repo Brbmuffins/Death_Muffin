@@ -1,6 +1,6 @@
 import { rollLoot, type RolledDrop } from '../net/api';
 import { canRoll } from './affixes';
-import type { DropSource } from './affixRules';
+import type { DropSource } from '../../server/rules/gameplay/affixRules';
 import type { LootDrop } from './loot';
 
 /** How many drops one request may carry (the server's MAX_DROPS). */

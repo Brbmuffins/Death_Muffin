@@ -5,7 +5,7 @@ const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE || 'playwright');
   const b = await chromium.launch({ headless: true, executablePath: process.env.DM_CHROMIUM_PATH || '/home/ubuntu/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome', args: ['--no-sandbox'] });
   const p = await b.newPage(); await p.goto(process.env.DM_QA_URL || 'http://127.0.0.1:5383/?offline');
   const out = await p.evaluate(async () => {
-    const { AREAS } = await import('/src/content/areas.ts');
+    const { AREAS } = await import('/server/rules/content/areas.ts');
     const per = {}; const avg = {}; let n = 0;
     for (const [id, a] of Object.entries(AREAS)) {
       if (!a.cap || !a.enemies?.length) continue; n++;

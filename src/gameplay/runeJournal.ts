@@ -1,5 +1,5 @@
 import type { StorageLike } from './codexJournal';
-import { RUNE_IDS } from '../content/runes';
+import { RUNE_IDS } from '../../server/rules/content/runes';
 
 /** The Relic runes this character has ever held (a browser record, like the Alchemist's Wing shelf): the Codex unseals a rune's page once it has been found. */
 const key = (characterId: number) => `dm_runes_found_${characterId}`;

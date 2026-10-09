@@ -24,7 +24,7 @@ Drafted 2026-09-30 for the owner. Status: **proposed, not built**. Scope the own
 
 Replace the three hardcoded buffs (`buffUntil.{speed,damage,ward}`) with one effect table.
 
-- `src/content/brews.ts`: `BREWS: Record<itemId, { slot: 'elixir' | 'tonic', effects: { kind, value }[], seconds, label, icon, color }>`.
+- `server/rules/content/brews.ts`: `BREWS: Record<itemId, { slot: 'elixir' | 'tonic', effects: { kind, value }[], seconds, label, icon, color }>`.
 - **Two slots, one brew each**: *Elixirs* are combat effects, *Tonics* are utility. A new elixir replaces the old one
   (float text: "Moonlit replaces Forge-tempered"). Healing flasks stay separate on **Q** with their 1.5 s cooldown.
   Two slots keep stacking bounded, so balance stays sane.

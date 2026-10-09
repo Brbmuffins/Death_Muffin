@@ -1,5 +1,5 @@
 import { FRACTURE } from '../content/abilities';
-import { AFFIX_TUNING, type EliteAffix } from '../content/enemies';
+import { AFFIX_TUNING, type EliteAffix } from '../../server/rules/content/enemies';
 import { SANCTIFIED } from '../content/statuses';
 
 /**

@@ -1,5 +1,5 @@
-import { AREAS, type AreaId } from './areas';
-import { BOSSES, BOSS_IDS, type BossId } from './bosses';
+import { AREAS, type AreaId } from '../../server/rules/content/areas';
+import { BOSSES, BOSS_IDS, type BossId } from '../../server/rules/content/bosses';
 import type { NpcId } from './npcs';
 import { formatSealProgress, lowerThe, bossBeaten, bossesWaiting, isOpen, pendingSeals, suggestionFor, BAG_FULL_FRACTION, GRAVE_DUST_FOR_TONIC, type GuidanceState, type NewsItem, type Suggestion } from '../gameplay/guidance';
 

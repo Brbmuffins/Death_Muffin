@@ -1,21 +1,21 @@
-import { AREAS, AREA_ORDER, type AreaId } from '../content/areas';
-import { BOSSES, BOSS_IDS } from '../content/bosses';
-import { DISCIPLINES, type DisciplineId } from '../content/disciplines';
-import { ITEMS } from '../content/items';
-import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, legendaryBossChance, legendaryEliteChance, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendarySetFor } from '../content/legendarySets';
-import { SEEDS } from '../content/gardening';
-import { CHEST_KILLS, DEPTHS, FLOOR_DROP_CHANCE, chestDrops, chestRuneChance, floorKills } from '../content/depths';
-import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT } from '../content/reagents';
-import { eliteRuneChance, SURGE_RUNE_CHANCE, BOSS_REPEAT_RUNE_CHANCE } from '../content/runes';
+import { AREAS, AREA_ORDER, type AreaId } from '../../server/rules/content/areas';
+import { BOSSES, BOSS_IDS } from '../../server/rules/content/bosses';
+import { DISCIPLINES, type DisciplineId } from '../../server/rules/content/disciplines';
+import { ITEMS } from '../../server/rules/content/items';
+import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, legendaryBossChance, legendaryEliteChance, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendarySetFor } from '../../server/rules/content/legendarySets';
+import { SEEDS } from '../../server/rules/content/gardening';
+import { CHEST_KILLS, DEPTHS, FLOOR_DROP_CHANCE, chestDrops, chestRuneChance, floorKills } from '../../server/rules/content/depths';
+import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT } from '../../server/rules/content/reagents';
+import { eliteRuneChance, SURGE_RUNE_CHANCE, BOSS_REPEAT_RUNE_CHANCE } from '../../server/rules/content/runes';
 import { ALL_RECIPE_ROWS } from '../content/recipes';
-import { ARMOR_PIECES } from '../content/armorSets';
-import { AFFIXES, affixRange, affixText } from './affixRules';
-import { NODES, SKILLS } from './gatheringRules';
+import { ARMOR_PIECES } from '../../server/rules/content/armorSets';
+import { AFFIXES, affixRange, affixText } from '../../server/rules/gameplay/affixRules';
+import { NODES, SKILLS } from '../../server/rules/gameplay/gatheringRules';
 import { KILL_LOOT, isProfessionMaterial } from './loot';
 import { STAT_PRIORITY, RECOMMENDED_WEAPONS } from './gearStats';
-import { NECRO_KIND_LABEL } from '../content/necroWeapons';
-import { RELIC_ORDERS, RELIC_PREMIUM, RELIC_CHANCE } from './contractRules';
-import { salvagePreview, SALVAGE_BONUS_PER_LEVEL, SALVAGE_AFFIX_BONUS, SALVAGE_ILVL_BONUS } from './salvageRules';
+import { NECRO_KIND_LABEL } from '../../server/rules/content/necroWeapons';
+import { RELIC_ORDERS, RELIC_PREMIUM, RELIC_CHANCE } from '../../server/rules/gameplay/contractRules';
+import { salvagePreview, SALVAGE_BONUS_PER_LEVEL, SALVAGE_AFFIX_BONUS, SALVAGE_ILVL_BONUS } from '../../server/rules/gameplay/salvageRules';
 import {
   ILVL_OFFSETS, SCALING_NOTES, cosmeticsInfo, SOURCE_LABEL, affixCountOdds, depthBands, fmtChance, fmtQty, getAtlas, legendaryShare, oneIn, skillName, stationOf, tableShares,
   type DropSource,

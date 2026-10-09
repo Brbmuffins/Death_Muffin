@@ -1,7 +1,7 @@
 import type { InventorySlot } from '../net/types';
 import { browserStorage, type StorageLike } from './codexJournal';
-import { isSalvageGear } from './salvageRules';
-import { affixIsNecro } from './affixRules';
+import { isSalvageGear } from '../../server/rules/gameplay/salvageRules';
+import { affixIsNecro } from '../../server/rules/gameplay/affixRules';
 
 /**
  * Reliquary locks: a locked bag item is skipped by every bulk action (Sell all junk, Deposit materials and Deposit all, Salvage all).

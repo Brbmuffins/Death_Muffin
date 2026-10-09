@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, AREA_ORDER, type AreaId } from '../../content/areas';
+import { AREAS, AREA_ORDER, type AreaId } from '../../../server/rules/content/areas';
 import { NODE_COLLIDER, PROPS, generateLayout } from '../../content/layout';
-import { NODES } from '../gatheringRules';
+import { NODES } from '../../../server/rules/gameplay/gatheringRules';
 import { Nav } from '../nav';
 import { mulberry32 } from '../rng';
 

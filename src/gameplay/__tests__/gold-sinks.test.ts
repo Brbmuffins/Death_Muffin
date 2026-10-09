@@ -4,15 +4,15 @@ import { Nav } from '../nav';
 import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
 import type { SimEvent } from '../sim/types';
-import { AREAS } from '../../content/areas';
-import { BOSSES } from '../../content/bosses';
-import { ITEMS } from '../../content/items';
-import { DISCIPLINES } from '../../content/disciplines';
-import { NODES } from '../gatheringRules';
-import { parseKillReport } from '../killRules';
+import { AREAS } from '../../../server/rules/content/areas';
+import { BOSSES } from '../../../server/rules/content/bosses';
+import { ITEMS } from '../../../server/rules/content/items';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
+import { NODES } from '../../../server/rules/gameplay/gatheringRules';
+import { parseKillReport } from '../../../server/rules/gameplay/killRules';
 import { KillReporter } from '../../net/killReporter';
-import { affixRange, AFFIXES, isAffixGear } from '../affixRules';
-import { EMPOWER, EMPOWERABLE, REFORGE, canEmpower, empowerGold, empoweredLegendaryChance, empoweredLevel, reforgeCost, reforgeProblem, reforgeValue, rollEmpoweredInstance, rollEmpoweredPrize } from '../goldSinkRules';
+import { affixRange, AFFIXES, isAffixGear } from '../../../server/rules/gameplay/affixRules';
+import { EMPOWER, EMPOWERABLE, REFORGE, canEmpower, empowerGold, empoweredLegendaryChance, empoweredLevel, reforgeCost, reforgeProblem, reforgeValue, rollEmpoweredInstance, rollEmpoweredPrize } from '../../../server/rules/gameplay/goldSinkRules';
 
 const seeded = (seed: number) => mulberry32(seed);
 

@@ -7,7 +7,7 @@ import {
   PRIMARIES,
   SIGNATURE_BY_DISCIPLINE,
 } from '../../content/abilities';
-import { DISCIPLINES, PLAYABLE_DISCIPLINES, type ClassFamily } from '../../content/disciplines';
+import { DISCIPLINES, PLAYABLE_DISCIPLINES, type ClassFamily } from '../../../server/rules/content/disciplines';
 import { kitFor, signatureFor } from '../../content/kits';
 import { sanitizeLoadout, sanitizePrimary } from '../loadout';
 

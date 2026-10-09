@@ -1,5 +1,5 @@
 /**
- * Grave Gardening (rules: gathering/garden-rules.cjs, generated from src/gameplay/gardeningRules.ts).
+ * Grave Gardening (rules: gathering/garden-rules.cjs, generated from server/rules/gameplay/gardeningRules.ts).
  *
  *   GET  /api/garden/:characterId   -> the six plots (empty ones included), the gardening level and the server's clock
  *   POST /api/garden/plant          -> { characterId, plot, seedId, compost? }: takes the seed (and a bone meal) from the bag

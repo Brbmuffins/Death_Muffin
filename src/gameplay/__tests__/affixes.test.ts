@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DISCIPLINES } from '../../content/disciplines';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import type { Character, InventorySlot } from '../../net/types';
 import {
   AFFIXES, DROP_SOURCES, ILVL_MAX, ILVL_REACH, MAX_AFFIXES, addInstanceTotals, affixEffect, affixAcceptRange, affixQuality, affixRange, affixText, affixedName, clampDropLevel,
   cleanInstance, effectiveRarity, emptyAffixTotals, instancePower, instanceProblem, instanceSellValue, itemLevelFor, rollAffixCount, rollInstance, type AffixRoll, type DropSource,
-} from '../affixRules';
+} from '../../../server/rules/gameplay/affixRules';
 import { affixLines, affixSignature, decorateSlot, rollOf, wornAffixTotals } from '../affixes';
 import { computeStats } from '../stats';
 import { deriveStats } from '../characterStats';
@@ -13,8 +13,8 @@ import { affixSheetLines, gearPower, itemAffixEffects, itemVerdict, statSheet, t
 import { outfitSignature, resolveSetBonuses, withSetBonuses } from '../setBonuses';
 import { toSavePayload, addToSlots } from '../loot';
 import { LootRoller } from '../lootRoll';
-import { depositMany, depositStack, sortVault, withdrawStack, type VaultInfo, type VaultRow } from '../vaultRules';
-import { salvageYield, salvagePreview } from '../salvageRules';
+import { depositMany, depositStack, sortVault, withdrawStack, type VaultInfo, type VaultRow } from '../../../server/rules/gameplay/vaultRules';
+import { salvageYield, salvagePreview } from '../../../server/rules/gameplay/salvageRules';
 import { itemLevelHtml, itemStatsHtml } from '../../ui/gearText';
 import { junkSlots } from '../itemLocks';
 import { CODEX_AFFIX_COUNSEL, codexAffixRows } from '../../content/codex';

@@ -11,7 +11,7 @@ set per necromancer discipline (necromancer first), five pieces (head, chest, ha
 | `requiem_wraiths` | Requiem of Wraiths | Mourner | +40% essence regeneration, +10% max health | **Wisps**: consuming a corpse summons a healing wisp for 10 s (`corpseWisp` 10) and heals 2% max health (`corpseHeal` 0.02) | **Requiem**: Soul Harvest fills 2x faster (`soulHarvestRateMult` 2), thralls attack +15% faster, empowering a rite makes every wraith/wisp nova (`wraithNova` 1.2) |
 | `plague_choir` | Plague Choir | Rotweaver | Miasma is +25% wider, +8% max health | **Contagion**: deaths in Miasma spread Withered (`miasmaSpreadsWithered` 1) | **Chain Plague**: at 8 Withered stacks an enemy bursts into a new Miasma (`witheredBurstAt` 8) |
 
-Contract (commit on `dm/legendary-base`): the mechanics are `DisciplineMods` fields in `src/content/disciplines.ts`, all numeric
+Contract (commit on `dm/legendary-base`): the mechanics are `DisciplineMods` fields in `server/rules/content/disciplines.ts`, all numeric
 with 0 = off (`soulHarvestRateMult` is a multiplier, 1 = normal), and `SetAddKey` / `SetMultKey` in `src/content/setBonuses.ts`
 accept them, so a set bonus folds them in through the existing `applySetMods` / `withSetBonuses` path. Data/drops/UI and the
 sim mechanics are built separately against this contract. Migration number reserved: **025** (024 is relic runes).

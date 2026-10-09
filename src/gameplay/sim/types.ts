@@ -1,8 +1,8 @@
-import type { AreaId } from '../../content/areas';
-import type { ThrallKind } from '../../content/disciplines';
+import type { AreaId } from '../../../server/rules/content/areas';
+import type { ThrallKind } from '../../../server/rules/content/disciplines';
 import type { SimLegend } from '../legendary';
-import type { CorpseKind, EliteAffix, EnemyId } from '../../content/enemies';
-import type { BossId } from '../../content/bosses';
+import type { CorpseKind, EliteAffix, EnemyId } from '../../../server/rules/content/enemies';
+import type { BossId } from '../../../server/rules/content/bosses';
 
 /**
  * Authoritative world-simulation types. The room host (or the solo player)
@@ -269,7 +269,7 @@ export interface PlayerBody {
   z: number;
   alive: boolean;
   area: AreaId | null;
-  family?: import('../../content/disciplines').ClassFamily;
+  family?: import('../../../server/rules/content/disciplines').ClassFamily;
   /** Character level (level-scaled areas match the highest player in them). */
   level?: number;
 }

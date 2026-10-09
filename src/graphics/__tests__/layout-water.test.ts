@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, AREA_ORDER, DOORS } from '../../content/areas';
+import { AREAS, AREA_ORDER, DOORS } from '../../../server/rules/content/areas';
 import { generateLayout, PROPS } from '../../content/layout';
 
 const inside = (r: { x0: number; z0: number; x1: number; z1: number }, x: number, z: number, pad = 0) =>

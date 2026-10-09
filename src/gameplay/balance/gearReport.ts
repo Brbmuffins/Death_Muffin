@@ -10,10 +10,10 @@
  *      GEAR_WEAPON=main:off (override the kit's weapon pair, e.g. staff:none), GEAR_TIER=bone..moon (override its weapon tier).
  */
 import { runBalance, type BalanceResult, type BalanceRun } from './harness';
-import { AREAS, type AreaId } from '../../content/areas';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
 import { BANDS } from './bands';
 import { KIT_NAMES, type KitName, type KitRequest } from './kits';
-import type { NecroKind, NecroTier } from '../../content/necroWeapons';
+import type { NecroKind, NecroTier } from '../../../server/rules/content/necroWeapons';
 
 const list = (v: string | undefined, d: string[]) => (v ? v.split(',').map((s) => s.trim()) : d);
 const areas = list(process.env.GEAR_AREAS, ['graves', 'warren', 'ossuary', 'coliseum', 'nave', 'sanctum', 'cloister', 'pyre', 'fen']) as AreaId[];

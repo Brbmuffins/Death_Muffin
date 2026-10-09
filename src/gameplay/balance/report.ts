@@ -10,12 +10,12 @@
  *      BALANCE_RUNES=bone_needle:rune_volley,exhume:rune_mass_grave (Relic runes socketed in the necromancer's rites; see also `npm run balance:runes`).
  */
 import { runBalance, type BalanceResult, type BalanceRun } from './harness';
-import { AREAS, AREA_ORDER, type AreaId } from '../../content/areas';
-import type { Difficulty } from '../../content/difficulty';
-import { ascensionLevels } from '../../content/ascension';
+import { AREAS, AREA_ORDER, type AreaId } from '../../../server/rules/content/areas';
+import type { Difficulty } from '../../../server/rules/content/difficulty';
+import { ascensionLevels } from '../../../server/rules/content/ascension';
 import { KIT_NAMES, type KitName } from './kits';
 import { BANDS } from './bands';
-import type { RuneId, RuneRite } from '../../content/runes';
+import type { RuneId, RuneRite } from '../../../server/rules/content/runes';
 
 const MINUTES = Number(process.env.BALANCE_MINUTES ?? 3);
 const DIFFICULTY = (process.env.BALANCE_DIFFICULTY ?? 'medium') as Difficulty;

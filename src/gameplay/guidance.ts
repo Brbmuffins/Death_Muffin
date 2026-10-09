@@ -1,5 +1,5 @@
-import { AREAS, AREA_ORDER, type AreaId } from '../content/areas';
-import { BOSSES, BOSS_IDS, type BossId } from '../content/bosses';
+import { AREAS, AREA_ORDER, type AreaId } from '../../server/rules/content/areas';
+import { BOSSES, BOSS_IDS, type BossId } from '../../server/rules/content/bosses';
 import { NPCS, npcInteractableId, type NpcId } from '../content/npcs';
 import type { ContractBoard, LaborView } from '../net/api';
 import { browserStorage, type StorageLike } from './codexJournal';

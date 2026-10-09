@@ -1,4 +1,4 @@
-import type { BossKill, FloorClear, KillGroup, KillReport } from '../gameplay/killRules';
+import type { BossKill, FloorClear, KillGroup, KillReport } from '../../server/rules/gameplay/killRules';
 
 /**
  * Server authority, step 2 (docs/SERVER-AUTHORITY.md): the browser reports what it killed so the server can work out what the kills were

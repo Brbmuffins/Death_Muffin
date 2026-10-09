@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { unlockLevel } from '../../content/abilities';
-import { PLAYABLE_DISCIPLINES } from '../../content/disciplines';
+import { PLAYABLE_DISCIPLINES } from '../../../server/rules/content/disciplines';
 import { topicLines } from '../../content/dialogue';
 import { kitFor } from '../../content/kits';
 import { baseState, formatSealProgress, nextSuggestion, pendingSeals, sealDoorName } from '../../gameplay/guidance';

@@ -1,19 +1,19 @@
-import { AREAS, type AreaId } from '../content/areas';
-import { ELITE, ENEMIES, type EnemyId } from '../content/enemies';
-import { ITEMS } from '../content/items';
-import { waveModifiers } from '../content/upgrades';
+import { AREAS, type AreaId } from '../../server/rules/content/areas';
+import { ELITE, ENEMIES, type EnemyId } from '../../server/rules/content/enemies';
+import { ITEMS } from '../../server/rules/content/items';
+import { waveModifiers } from '../../server/rules/content/upgrades';
 import { saveInventory } from '../net/api';
 import type { InventorySlot } from '../net/types';
-import { BAG_SLOTS } from './gatheringRules';
+import { BAG_SLOTS } from '../../server/rules/gameplay/gatheringRules';
 import { decorateSlot, type DropInstance } from './affixes';
 import { pickWeighted, randInt } from './rng';
-import { smartTable } from './smartLoot';
-import { ARMOR_BY_ID } from '../content/armorSets';
-import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
-import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
-import type { BossId } from '../content/bosses';
-import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, SURGE_RUNE_CHANCE, eliteRuneChance, pickRune } from '../content/runes';
-import { legendaryBossChance, legendaryEliteChance, rollLegendary } from '../content/legendarySets';
+import { smartTable } from '../../server/rules/gameplay/smartLoot';
+import { ARMOR_BY_ID } from '../../server/rules/content/armorSets';
+import { DIFFICULTIES, type Difficulty } from '../../server/rules/content/difficulty';
+import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../../server/rules/content/reagents';
+import type { BossId } from '../../server/rules/content/bosses';
+import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, SURGE_RUNE_CHANCE, eliteRuneChance, pickRune } from '../../server/rules/content/runes';
+import { legendaryBossChance, legendaryEliteChance, rollLegendary } from '../../server/rules/content/legendarySets';
 
 /** One source of truth: gatheringRules.BAG_SLOTS (also bundled for the server). 8 columns × 6 rows = 48. */
 export const BAG_SIZE = BAG_SLOTS;
@@ -153,7 +153,7 @@ export function rollItem(area: AreaId, rand = Math.random, materialQtyMult = 1, 
   return { item_id: pick.item, quantity: meta?.type === 'material' ? (1 + (rand() < 0.35 ? 1 : 0)) * materialQtyMult : 1 };
 }
 
-export { SMART_LOOT, smartTable } from './smartLoot';
+export { SMART_LOOT, smartTable } from '../../server/rules/gameplay/smartLoot';
 
 /**
  * A boss's spoils. The Prelate's are unchanged (Sanctum loot, 3 shards back); an area boss rolls its own area's

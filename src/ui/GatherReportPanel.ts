@@ -1,4 +1,4 @@
-import { RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
+import { RARITY_COLOR, RARITY_MARK, itemMeta } from '../../server/rules/content/items';
 import { durationText, type GatherReport } from '../gameplay/gatherReport';
 import { wrapPanelBody } from './panelBody';
 

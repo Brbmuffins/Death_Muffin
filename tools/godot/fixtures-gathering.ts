@@ -4,24 +4,24 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { mulberry32 } from '../../src/gameplay/rng';
-import * as GR from '../../src/gameplay/gatheringRules';
-import { NODES, NODE_IDS, SKILLS, addSkillXp, checkBudget, placeItems, rollBatch, rollGather, successChance, toolTierFor, toolKindOf, beltSlotOf, beltSlotKind, bestToolPerKind, isBeltSlot, xpPerHour, xpToNextCurve, xpToNextLive, totalXpFor, toolItemId, actionMs, type NodeDef } from '../../src/gameplay/gatheringRules';
+import * as GR from '../../server/rules/gameplay/gatheringRules';
+import { NODES, NODE_IDS, SKILLS, addSkillXp, checkBudget, placeItems, rollBatch, rollGather, successChance, toolTierFor, toolKindOf, beltSlotOf, beltSlotKind, bestToolPerKind, isBeltSlot, xpPerHour, xpToNextCurve, xpToNextLive, totalXpFor, toolItemId, actionMs, type NodeDef } from '../../server/rules/gameplay/gatheringRules';
 import { standSpot, gatherBlocker, nextAutoNode } from '../../src/gameplay/gatherPlan';
-import * as LAB from '../../src/gameplay/laborRules';
-import * as GAR from '../../src/gameplay/gardeningRules';
-import * as CON from '../../src/gameplay/contractRules';
-import * as SAL from '../../src/gameplay/salvageRules';
-import * as GS from '../../src/gameplay/goldSinkRules';
-import { AFFIXES, affixRange } from '../../src/gameplay/affixRules';
-import { BOSSES } from '../../src/content/bosses';
+import * as LAB from '../../server/rules/gameplay/laborRules';
+import * as GAR from '../../server/rules/gameplay/gardeningRules';
+import * as CON from '../../server/rules/gameplay/contractRules';
+import * as SAL from '../../server/rules/gameplay/salvageRules';
+import * as GS from '../../server/rules/gameplay/goldSinkRules';
+import { AFFIXES, affixRange } from '../../server/rules/gameplay/affixRules';
+import { BOSSES } from '../../server/rules/content/bosses';
 import { ALL_RECIPE_ROWS } from '../../src/content/recipes';
 import { clampCraftQty, hasSkillAndMaterials, maxCraftable } from '../../src/gameplay/craftQuantity';
 import { addToSlots, sortBagSlots } from '../../src/gameplay/loot';
 import { ItemLocks, junkSlots, salvageBelowRare } from '../../src/gameplay/itemLocks';
-import * as V from '../../src/gameplay/vaultRules';
+import * as V from '../../server/rules/gameplay/vaultRules';
 import * as PB from '../../src/gameplay/beltRules';
-import { ITEMS, itemMeta } from '../../src/content/items';
-import { SEEDS, PLOTS } from '../../src/content/gardening';
+import { ITEMS, itemMeta } from '../../server/rules/content/items';
+import { SEEDS, PLOTS } from '../../server/rules/content/gardening';
 import type { InventorySlot } from '../../src/net/types';
 
 const out = 'godot/tests/rules-gathering/fixtures';

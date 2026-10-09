@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, type AreaId } from '../../content/areas';
-import { DISCIPLINES } from '../../content/disciplines';
-import { densityTier, waveModifiers } from '../../content/upgrades';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
+import { densityTier, waveModifiers } from '../../../server/rules/content/upgrades';
 import { runBalance, type BalanceResult } from '../balance/harness';
 import { Nav } from '../nav';
 import { mulberry32 } from '../rng';

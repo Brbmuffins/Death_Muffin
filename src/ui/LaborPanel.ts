@@ -1,8 +1,8 @@
 import { assignLabor, collectLabor, getInventory, getLabor, type LaborResult, type LaborView } from '../net/api';
-import { RARITY_COLOR, itemMeta } from '../content/items';
+import { RARITY_COLOR, itemMeta } from '../../server/rules/content/items';
 import type { GatherReport } from '../gameplay/gatherReport';
-import { NODES, SKILLS, type SkillId } from '../gameplay/gatheringRules';
-import { LABOR, assignBlocker, estimate, postsFor } from '../gameplay/laborRules';
+import { NODES, SKILLS, type SkillId } from '../../server/rules/gameplay/gatheringRules';
+import { LABOR, assignBlocker, estimate, postsFor } from '../../server/rules/gameplay/laborRules';
 import { durationText } from '../gameplay/gatherReport';
 import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';

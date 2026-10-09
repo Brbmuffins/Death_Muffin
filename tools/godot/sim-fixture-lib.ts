@@ -4,7 +4,7 @@ import { exactStringify, exactParse } from './exact-json';
 export { exactStringify };
 import { mulberry32 } from '../../src/gameplay/rng';
 import { Nav } from '../../src/gameplay/nav';
-import { AREAS, AREA_ORDER, type AreaId } from '../../src/content/areas';
+import { AREAS, AREA_ORDER, type AreaId } from '../../server/rules/content/areas';
 
 export const OUT = 'godot/tests/sim/fixtures';
 mkdirSync(OUT, { recursive: true });

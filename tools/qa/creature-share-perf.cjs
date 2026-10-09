@@ -44,7 +44,7 @@ const median = (a) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
     }
     d.advance(1.5);
   });
-  const roster = await page.evaluate(async (a) => (await import('/src/content/areas.ts')).AREAS[a].enemies.map((e) => e.id), AREA);
+  const roster = await page.evaluate(async (a) => (await import('/server/rules/content/areas.ts')).AREAS[a].enemies.map((e) => e.id), AREA);
   await page.evaluate(([r, per]) => { const d = window.__cwDebug; r.forEach((id, i) => d.ring(id, per, 5 + i * 1.1, false)); d.freeze(true); d.advance(0.6); d.freeze(true); d.advance(1.5); }, [roster, PER]);
   await page.evaluate(() => { const d = window.__cwDebug; const p = d.player; for (let i = 0; i < 10; i++) d.sim().addCorpse(p.x + 4 + (i % 5) * 1.2, p.z - 3 - Math.floor(i / 5) * 1.5, 'normal', 'robber', false, 0, 1, p.area); d.advance(0.5); });
   // Wait for every body to finish loading (clone + warm): the skinned-mesh count has to hold still.

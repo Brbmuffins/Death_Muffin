@@ -1,4 +1,4 @@
-import { ASCENSION, BOONS, BOON_ORDER, VOWS, VOW_ORDER, ashesForRun, ascensionRewardMult, boonCost, boonKey, isUnlocked, roman, vowHeat, vowKey, vowSteps, worldVows, type BoonId, type VowId, type VowRanks } from '../content/ascension';
+import { ASCENSION, BOONS, BOON_ORDER, VOWS, VOW_ORDER, ashesForRun, ascensionRewardMult, boonCost, boonKey, isUnlocked, roman, vowHeat, vowKey, vowSteps, worldVows, type BoonId, type VowId, type VowRanks } from '../../server/rules/content/ascension';
 import type { Progression } from '../gameplay/progression';
 import { SimplePanel } from './MiscPanels';
 

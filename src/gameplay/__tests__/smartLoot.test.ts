@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
-import { ARMOR_BY_ID } from '../../content/armorSets';
-import { NECRO_WEAPON_BY_ID } from '../../content/necroWeapons';
-import { GROUND_RATES } from '../authorityRules';
+import { AREAS } from '../../../server/rules/content/areas';
+import { ARMOR_BY_ID } from '../../../server/rules/content/armorSets';
+import { NECRO_WEAPON_BY_ID } from '../../../server/rules/content/necroWeapons';
+import { GROUND_RATES } from '../../../server/rules/gameplay/authorityRules';
 import { rollFirstKillItem, rollItem, rollKill } from '../loot';
-import { SMART_LOOT, smartTable } from '../smartLoot';
+import { SMART_LOOT, smartTable } from '../../../server/rules/gameplay/smartLoot';
 import { mulberry32 } from '../rng';
 
 const sum = (t: { weight: number }[]) => t.reduce((n, e) => n + e.weight, 0);

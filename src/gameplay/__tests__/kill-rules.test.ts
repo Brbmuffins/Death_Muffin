@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, type AreaId } from '../../content/areas';
-import { ENEMIES, type EnemyId } from '../../content/enemies';
-import { DIFFICULTY_ORDER } from '../../content/difficulty';
-import { depthEnemyLevel, hasChest } from '../../content/depths';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
+import { ENEMIES, type EnemyId } from '../../../server/rules/content/enemies';
+import { DIFFICULTY_ORDER } from '../../../server/rules/content/difficulty';
+import { depthEnemyLevel, hasChest } from '../../../server/rules/content/depths';
 import { KillReporter } from '../../net/killReporter';
 import { runBalance } from '../balance/harness';
 import { rollKill } from '../loot';
-import { ELITE_SHARDS_MAX, KILLS, bucketCaps, evaluateKillReport, killGoldMax, killXpBase, parseKillReport, type KillContext, type KillGroup, type KillReport } from '../killRules';
+import { ELITE_SHARDS_MAX, KILLS, bucketCaps, evaluateKillReport, killGoldMax, killXpBase, parseKillReport, type KillContext, type KillGroup, type KillReport } from '../../../server/rules/gameplay/killRules';
 import { mulberry32 } from '../rng';
 import { bundleRulesFor } from '../../../tools/build-server-rules.mjs';
 import { readFileSync } from 'node:fs';

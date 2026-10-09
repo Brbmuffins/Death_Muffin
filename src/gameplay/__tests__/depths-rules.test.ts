@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 import {
   CHEST_PER_MIN_CEILING, DEPTHS, DEPTH_LOOT_AREAS, FLOOR_BONUS_KILLS, averageKill, chestBonus, chestDrops, chestRuneChance, chestRunePool, depthEliteBonus, depthsEntryBlock,
   depthEnemyLevel, resumeDepth, depthLootArea, depthRoster, depthWaveGapS, depthWaveSize, extraAffixes, floorBonus, floorKills, hasChest, pickExtraAffixes,
-} from '../../content/depths';
-import { AFFIX_ORDER, ENEMIES } from '../../content/enemies';
-import { ITEMS } from '../../content/items';
-import { RUNES } from '../../content/runes';
+} from '../../../server/rules/content/depths';
+import { AFFIX_ORDER, ENEMIES } from '../../../server/rules/content/enemies';
+import { ITEMS } from '../../../server/rules/content/items';
+import { RUNES } from '../../../server/rules/content/runes';
 import { mulberry32 } from '../rng';
-import { AREA_PEAK, DEPTHS_AUTHORITY, GROUND_RATES, ceilingsFor, depthBound, isGroundItem, itemCap, itemRatePerMin } from '../authorityRules';
+import { AREA_PEAK, DEPTHS_AUTHORITY, GROUND_RATES, ceilingsFor, depthBound, isGroundItem, itemCap, itemRatePerMin } from '../../../server/rules/gameplay/authorityRules';
 import { rollChest, rollFloorClear, rollGearDrop } from '../depthsRewards';
-import { isAffixGear } from '../affixRules';
+import { isAffixGear } from '../../../server/rules/gameplay/affixRules';
 import { rollKill } from '../loot';
 
 describe('Depths scaling', () => {

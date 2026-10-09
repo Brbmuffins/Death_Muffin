@@ -4,9 +4,9 @@ import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
 import type { SimEvent } from '../sim/types';
 import { SaintBrain } from '../sim/BossBrain';
-import { BOSSES, SAINT, summonSpot } from '../../content/bosses';
-import { AREAS } from '../../content/areas';
-import { FRENZY, PLAGUE_FLASK } from '../../content/enemies';
+import { BOSSES, SAINT, summonSpot } from '../../../server/rules/content/bosses';
+import { AREAS } from '../../../server/rules/content/areas';
+import { FRENZY, PLAGUE_FLASK } from '../../../server/rules/content/enemies';
 import { CODEX_DEAD } from '../../content/codex';
 
 function world(level = 49, seed = 5) {

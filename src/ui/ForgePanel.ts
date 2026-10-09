@@ -3,7 +3,7 @@ import type { InventorySlot, Profession, Recipe } from '../net/types';
 import type { Inventory } from '../gameplay/loot';
 import { browserStorage } from '../gameplay/codexJournal';
 import { bonusAvailable, brewOfTheDay, claimBonus } from '../content/wing';
-import { itemMeta } from '../content/items';
+import { itemMeta } from '../../server/rules/content/items';
 import { BAG_SIZE } from '../gameplay/loot';
 import { clampCraftQty, hasSkillAndMaterials, loadOnlyCraftable, maxCraftable, saveOnlyCraftable } from '../gameplay/craftQuantity';
 import { PREF_ONLY_CRAFTABLE, fetchAccountPrefs, reconcileBoolPref, saveAccountPref } from '../net/accountPrefs';

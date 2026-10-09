@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DISCIPLINES } from '../../content/disciplines';
-import { DAMAGE_UPGRADE } from '../../content/upgrades';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
+import { DAMAGE_UPGRADE } from '../../../server/rules/content/upgrades';
 import type { Character, InventorySlot } from '../../net/types';
 import { STAT_EFFECTS, deriveStats, describeStatDelta } from '../characterStats';
 import { compareEquip, effectText, itemStatEffects, simulateEquip, statSheet, boonShare, STAT_PRIORITY, ROLE_WEIGHTS, itemVerdict, lookingFor, weakestSlots, loadoutExtraPct, LOADOUT_VALUE, type StatContext } from '../gearStats';

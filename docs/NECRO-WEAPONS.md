@@ -5,7 +5,7 @@ Phase N1 of [ALCHEMY-AND-WORLDS-PLAN.md](ALCHEMY-AND-WORLDS-PLAN.md). Player-fac
 
 ## One source of truth
 
-`src/content/necroWeapons.ts` holds the catalogue, `NECRO_WEAPON_TUNING` (every number), drop zones, Workbench recipes and the in-hand model spec.
+`server/rules/content/necroWeapons.ts` holds the catalogue, `NECRO_WEAPON_TUNING` (every number), drop zones, Workbench recipes and the in-hand model spec.
 `src/gameplay/weaponLine.ts` turns worn gear into a `WeaponLoadout` (pure); `Player.loadout` is set by `WorldScene.refreshStats`.
 
 | Kind | Where it acts |

@@ -3,8 +3,8 @@ import { Nav } from '../nav';
 import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
 import type { BossState, Enemy, SimEvent } from '../sim/types';
-import { BOSSES, ABBESS, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT, type BossId } from '../../content/bosses';
-import { AREAS } from '../../content/areas';
+import { BOSSES, ABBESS, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT, type BossId } from '../../../server/rules/content/bosses';
+import { AREAS } from '../../../server/rules/content/areas';
 import { BossTelegraphs, dodgeStep, hazardsFromBossEvent, inHazard, nearestSafePoint, poolHazard, stepIntoHazard, type DodgeMemory, type Hazard } from '../autoDodge';
 import { selectAutoCombatMovement, type AutoMoveMemory } from '../autoCombat';
 

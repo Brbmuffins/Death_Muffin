@@ -1,5 +1,5 @@
 import type { InventorySlot, Rarity } from '../net/types';
-import { ITEMS } from '../content/items';
+import { ITEMS } from '../../server/rules/content/items';
 import { equippedBySlot } from '../content/gear';
 import {
   addInstanceTotals,
@@ -16,7 +16,7 @@ import {
   type AffixTotals,
   type DropSource,
   type ItemInstanceData,
-} from './affixRules';
+} from '../../server/rules/gameplay/affixRules';
 
 /**
  * Client side of item level and affixes (rules: affixRules.ts, shared with the server). The server owns every roll; this file only

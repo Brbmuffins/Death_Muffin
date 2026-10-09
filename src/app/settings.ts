@@ -5,7 +5,7 @@
  */
 import { isFpsCap, type FpsCap } from './framePacing';
 import { DEFAULT_LOOT_RULES, readLootRules, type LootRules } from '../gameplay/lootFilter';
-import { isDifficulty, type Difficulty } from '../content/difficulty';
+import { isDifficulty, type Difficulty } from '../../server/rules/content/difficulty';
 
 export type Quality = 'high' | 'low';
 

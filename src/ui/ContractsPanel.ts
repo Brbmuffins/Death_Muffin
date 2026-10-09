@@ -1,6 +1,6 @@
 import { deliverContract, getContracts, getInventory, type ContractBoard, type ContractDelivery } from '../net/api';
-import { RARITY_COLOR, itemMeta } from '../content/items';
-import { SKILLS, type SkillId } from '../gameplay/gatheringRules';
+import { RARITY_COLOR, itemMeta } from '../../server/rules/content/items';
+import { SKILLS, type SkillId } from '../../server/rules/gameplay/gatheringRules';
 import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';
 import { wrapPanelBody } from './panelBody';

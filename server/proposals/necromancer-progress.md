@@ -66,7 +66,7 @@ Errors are player-readable (`"Not enough gold (need 96)"`, `"Already at max tier
 Deltas, not absolutes; the server clamps each delta per call (e.g. ≤ 500
 kills, ≤ 20 shards) and derives `unlockedAreas` from its own thresholds:
 `ossuary: graves ≥ 300`, `nave: ossuary ≥ 420`, `sanctum: nave ≥ 520` (mirror
-`AREAS[*].unlock` in `src/content/areas.ts`; raised in the 2026-09-26 balance pass).
+`AREAS[*].unlock` in `server/rules/content/areas.ts`; raised in the 2026-09-26 balance pass).
 
 ### `POST /api/necro-progress/summon-prelate`
 Deducts 5 shards atomically; returns the new balance. The client only sends
@@ -84,5 +84,5 @@ Deducts 5 shards atomically; returns the new balance. The client only sends
 ## New item types needed by FUTURE_CONTENT.md
 - `item_type = 'rune'` (spell modifiers) — fully specified in `relic-runes.md` — and `'thrall_gear'`. These need the
   items enum extended and rows seeded; until then loot tables only reference
-  ids the server already knows (`src/content/items.ts`, verified by
+  ids the server already knows (`server/rules/content/items.ts`, verified by
   `src/gameplay/__tests__/systems.test.ts`).

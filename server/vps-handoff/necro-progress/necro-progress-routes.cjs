@@ -4,7 +4,7 @@
  * ADDITIVE ONLY: new /api/necro-progress/* routes; no existing route changes.
  *
  * Every rule (prices, unlocks, Ascension, boons, import clamps) comes from
- * necro-rules.cjs, generated from the web client's src/gameplay/necroRules.ts,
+ * necro-rules.cjs, generated from the web client's server/rules/gameplay/necroRules.ts,
  * so client and server can't disagree. This file only does auth, ownership,
  * input shape and the row-locked transaction around each rule.
  *

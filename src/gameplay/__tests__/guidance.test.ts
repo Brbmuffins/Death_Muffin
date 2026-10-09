@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
-import { BOSSES, BOSS_IDS } from '../../content/bosses';
+import { AREAS } from '../../../server/rules/content/areas';
+import { BOSSES, BOSS_IDS } from '../../../server/rules/content/bosses';
 import { LABEL, TOPICS, adviceLines, greetingLines, topicLines, farewell } from '../../content/dialogue';
 import { NPCS, NPC_IDS, NPC_LOOKS, npcFromInteractable, npcInteractableId } from '../../content/npcs';
 import { CREATURE_MODELS } from '../../graphics/modelPaths';

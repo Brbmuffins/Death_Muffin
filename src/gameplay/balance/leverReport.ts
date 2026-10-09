@@ -7,7 +7,7 @@
  * LEVER_SCALE multiplies every step so a small effect rises above the noise; read the table per unit.
  */
 import { runBalance, type BalanceRun, type BalanceResult } from './harness';
-import { AREAS, type AreaId } from '../../content/areas';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
 import { BANDS } from './bands';
 import type { KitName } from './kits';
 import type { SetEffect } from '../../content/setBonuses';

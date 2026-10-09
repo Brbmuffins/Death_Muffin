@@ -3,8 +3,8 @@ import type { Kit } from '../content/kits';
 import { CODEX_RITES, riteSwatch } from '../content/codex';
 import { assignableRites, LOADOUT_SLOTS, type Rites } from '../gameplay/loadout';
 import { SimplePanel } from './MiscPanels';
-import { RUNES, isRuneRite, runeSources, runesFor, type RuneId, type RuneRite } from '../content/runes';
-import type { RuneSockets } from '../gameplay/runeRules';
+import { RUNES, isRuneRite, runeSources, runesFor, type RuneId, type RuneRite } from '../../server/rules/content/runes';
+import type { RuneSockets } from '../../server/rules/gameplay/runeRules';
 import type { LoadoutPresets } from './LoadoutPresets';
 import './runes.css';
 

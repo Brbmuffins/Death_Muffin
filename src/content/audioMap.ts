@@ -11,9 +11,9 @@
  * - `bus`: sfx / ui / ambience / voice. Mapping onto today's mixer buses is in AUDIO-MAP.md.
  * - Audio files are NOT in the repo (licence): this table references them by name only.
  */
-import type { AreaId } from './areas';
-import type { BossId } from './bosses';
-import type { EnemyId } from './enemies';
+import type { AreaId } from '../../server/rules/content/areas';
+import type { BossId } from '../../server/rules/content/bosses';
+import type { EnemyId } from '../../server/rules/content/enemies';
 
 export type SoundBus = 'sfx' | 'ui' | 'ambience' | 'voice';
 

@@ -14,7 +14,7 @@ import {
   xpToNext,
   type NodeDef,
   type SkillId,
-} from './gatheringRules';
+} from '../../server/rules/gameplay/gatheringRules';
 import { gatherBlocker, nextAutoNode, standSpot, type Blocker, type GatherStop, type LiveNode } from './gatherPlan';
 
 /**

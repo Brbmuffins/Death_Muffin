@@ -5,7 +5,7 @@ import {
   NECRO_WEAPON_TUNING as T,
   type NecroMainKind,
   type NecroTier,
-} from '../content/necroWeapons';
+} from '../../server/rules/content/necroWeapons';
 
 /**
  * What the necromancer's equipped weapon and off-hand change (docs/ALCHEMY-AND-WORLDS-PLAN.md N1).

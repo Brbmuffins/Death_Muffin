@@ -3,7 +3,7 @@
  * Server authority, step 1: plausibility guards (docs/SERVER-AUTHORITY.md).
  *
  * The browser still plays the game and reports level, XP, gold and its bag. These guards decide whether a report is believable
- * for the real time that passed, using the ceilings in gathering/authority-rules.cjs (generated from src/gameplay/authorityRules.ts).
+ * for the real time that passed, using the ceilings in gathering/authority-rules.cjs (generated from server/rules/gameplay/authorityRules.ts).
  *
  *   AUTHORITY_MODE=report (default)  log what would have been refused or clamped; NEVER change a save or a reply.
  *   AUTHORITY_MODE=enforce           clamp the part that is not believable and tell the player in plain words.

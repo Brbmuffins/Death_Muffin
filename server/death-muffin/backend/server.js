@@ -309,7 +309,7 @@ function characterXpToNext(level) {
   return Math.max(1, Number(level) || 1) * 100;
 }
 
-// MAX_CHARACTER_LEVEL (999) comes from src/gameplay/authorityRules.ts LEVEL_CAP via gathering/authority-rules.cjs, the same constant the client rules use.
+// MAX_CHARACTER_LEVEL (999) comes from server/rules/gameplay/authorityRules.ts LEVEL_CAP via gathering/authority-rules.cjs, the same constant the client rules use.
 
 async function normalizeCharacterProgress(char) {
   let level = Math.max(1, Number(char.level) || 1);

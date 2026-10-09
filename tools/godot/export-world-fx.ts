@@ -10,7 +10,7 @@ import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
-import { AREAS, AREA_ORDER } from '../../src/content/areas';
+import { AREAS, AREA_ORDER } from '../../server/rules/content/areas';
 import { generateLayout, PROPS } from '../../src/content/layout';
 import { mulberry32 } from '../../src/gameplay/rng';
 import { updateOcclusion, occlusionUniforms } from '../../src/graphics/occlusion';

@@ -8,7 +8,7 @@
  * regeneration), so the four necromantic disciplines are unchanged — the
  * resource regression test in `__tests__/resources.test.ts` pins that.
  */
-import type { ClassFamily } from '../content/disciplines';
+import type { ClassFamily } from '../../server/rules/content/disciplines';
 import type { DerivedStats } from './characterStats';
 
 export type ResourceKind = 'essence' | 'rage' | 'oil' | 'resonance' | 'offal' | 'veil';

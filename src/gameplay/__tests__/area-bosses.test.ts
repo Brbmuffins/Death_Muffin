@@ -5,8 +5,8 @@ import { WorldMirror, makeSnapshot } from '../sim/snapshot';
 import { mulberry32 } from '../rng';
 import type { SimEvent } from '../sim/types';
 import { AbbessBrain, CongregationBrain, segmentHitsBox } from '../sim/BossBrain';
-import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, type BossId } from '../../content/bosses';
-import { AREAS } from '../../content/areas';
+import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, type BossId } from '../../../server/rules/content/bosses';
+import { AREAS } from '../../../server/rules/content/areas';
 import { CODEX_DEAD } from '../../content/codex';
 
 function world(boss: BossId, seed = 3) {

@@ -9,7 +9,7 @@
  * Pure geometry, no DOM and no scene: the scene feeds `BossTelegraphs.onEvent` and passes `active()` plus the pools to
  * `selectAutoCombatMovement`, which calls `dodgeStep` before anything else.
  */
-import { ABBESS, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT } from '../content/bosses';
+import { ABBESS, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT } from '../../server/rules/content/bosses';
 import { BOSS_RING_PAD } from './sim/BossBrain';
 import type { SimEvent } from './sim/types';
 

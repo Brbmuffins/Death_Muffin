@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { equipSlotOf, equippedBySlot, gearTier, offhandKind, weaponKind } from '../gear';
 import type { InventorySlot } from '../../net/types';
-import { ITEMS } from '../items';
+import { ITEMS } from '../../../server/rules/content/items';
 
 const slot = (o: Partial<InventorySlot>) =>
   ({ id: 1, slot_index: 0, quantity: 1, equipped: 0, item_id: 'x', name: 'x', rarity: 'common', item_type: 'material', stat_bonus: null, icon_id: null, sell_value: 0, crafted: 0, ...o }) as InventorySlot;

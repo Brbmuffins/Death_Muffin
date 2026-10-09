@@ -1,5 +1,5 @@
-import { ARMOR_BY_ID } from '../content/armorSets';
-import { affixIsNecro, effectiveRarity, isAffixGear } from './affixRules';
+import { ARMOR_BY_ID } from '../../server/rules/content/armorSets';
+import { affixIsNecro, effectiveRarity, isAffixGear } from '../../server/rules/gameplay/affixRules';
 import type { InventorySlot } from '../net/types';
 
 /**

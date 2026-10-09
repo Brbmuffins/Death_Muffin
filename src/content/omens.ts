@@ -1,4 +1,4 @@
-import type { EliteAffix } from './enemies';
+import type { EliteAffix } from '../../server/rules/content/enemies';
 
 /**
  * Weekly Omens (docs/GRIND-LOOP.md §3 #5): one world modifier per UTC week, the same for everyone, so a co-op party and the

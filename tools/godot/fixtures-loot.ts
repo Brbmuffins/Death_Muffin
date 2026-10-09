@@ -1,26 +1,26 @@
 // Golden fixtures for godot/rules/loot (run: npx vite-node tools/godot/fixtures-loot.ts)
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { mulberry32 } from '../../src/gameplay/rng';
-import { AREAS, type AreaId } from '../../src/content/areas';
-import { ENEMIES, type EnemyId } from '../../src/content/enemies';
-import { ITEMS } from '../../src/content/items';
-import { ARMOR_BY_ID } from '../../src/content/armorSets';
-import { NECRO_WEAPON_BY_ID } from '../../src/content/necroWeapons';
-import { DISCIPLINES } from '../../src/content/disciplines';
-import { DIFFICULTIES, DIFFICULTY_ORDER, type Difficulty } from '../../src/content/difficulty';
-import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, BOSS_ICHOR } from '../../src/content/reagents';
-import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE_BY_AREA, RUNES, RUNE_ORDER, RUNE_WEIGHT, SURGE_RUNE_CHANCE, eliteRuneChance, pickRune } from '../../src/content/runes';
-import { BOSS_IDS, type BossId } from '../../src/content/bosses';
-import { LEGENDARY_SETS, LEGENDARY_SET_IDS, LEGENDARY_DROP, LEGENDARY_BOSS_AREAS, LEGENDARY_BOSS_CHANCE, LEGENDARY_ELITE_CHANCE, LEGENDARY_STARTER_AREA, legendaryBossChance, legendaryEliteChance, pickLegendarySet, pickLegendaryItem, rollLegendary, legendarySetFor } from '../../src/content/legendarySets';
-import { waveModifiers } from '../../src/content/upgrades';
-import { DEPTHS, FLOOR_DROP_CHANCE, FLOOR_BONUS_KILLS, CHEST_KILLS, averageKill, chestBonus, chestDrops, chestRuneChance, chestRunePool, depthLootArea, depthRoster, floorBonus } from '../../src/content/depths';
-import { BAG_SLOTS } from '../../src/gameplay/gatheringRules';
+import { AREAS, type AreaId } from '../../server/rules/content/areas';
+import { ENEMIES, type EnemyId } from '../../server/rules/content/enemies';
+import { ITEMS } from '../../server/rules/content/items';
+import { ARMOR_BY_ID } from '../../server/rules/content/armorSets';
+import { NECRO_WEAPON_BY_ID } from '../../server/rules/content/necroWeapons';
+import { DISCIPLINES } from '../../server/rules/content/disciplines';
+import { DIFFICULTIES, DIFFICULTY_ORDER, type Difficulty } from '../../server/rules/content/difficulty';
+import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, BOSS_ICHOR } from '../../server/rules/content/reagents';
+import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE_BY_AREA, RUNES, RUNE_ORDER, RUNE_WEIGHT, SURGE_RUNE_CHANCE, eliteRuneChance, pickRune } from '../../server/rules/content/runes';
+import { BOSS_IDS, type BossId } from '../../server/rules/content/bosses';
+import { LEGENDARY_SETS, LEGENDARY_SET_IDS, LEGENDARY_DROP, LEGENDARY_BOSS_AREAS, LEGENDARY_BOSS_CHANCE, LEGENDARY_ELITE_CHANCE, LEGENDARY_STARTER_AREA, legendaryBossChance, legendaryEliteChance, pickLegendarySet, pickLegendaryItem, rollLegendary, legendarySetFor } from '../../server/rules/content/legendarySets';
+import { waveModifiers } from '../../server/rules/content/upgrades';
+import { DEPTHS, FLOOR_DROP_CHANCE, FLOOR_BONUS_KILLS, CHEST_KILLS, averageKill, chestBonus, chestDrops, chestRuneChance, chestRunePool, depthLootArea, depthRoster, floorBonus } from '../../server/rules/content/depths';
+import { BAG_SLOTS } from '../../server/rules/gameplay/gatheringRules';
 import * as loot from '../../src/gameplay/loot';
-import * as aff from '../../src/gameplay/affixRules';
+import * as aff from '../../server/rules/gameplay/affixRules';
 import * as affc from '../../src/gameplay/affixes';
 import * as lf from '../../src/gameplay/lootFilter';
 import * as dr from '../../src/gameplay/depthsRewards';
-import { smartTable } from '../../src/gameplay/smartLoot';
+import { smartTable } from '../../server/rules/gameplay/smartLoot';
 import { LootRoller } from '../../src/gameplay/lootRoll';
 
 const out = 'godot/tests/rules-loot/fixtures';
@@ -37,7 +37,7 @@ const content = {
   bagSlots: BAG_SLOTS,
   areas: Object.fromEntries(areaIds.map((id) => [id, { itemChance: AREAS[id].itemChance, loot: AREAS[id].loot, scaling: !!AREAS[id].scaling }])),
   enemies: Object.fromEntries(Object.entries(ENEMIES).map(([id, d]) => [id, { gold: d.gold, xp: d.xp }])),
-  elite: { goldMult: loot && (await import('../../src/content/enemies')).ELITE.goldMult, xpMult: (await import('../../src/content/enemies')).ELITE.xpMult },
+  elite: { goldMult: loot && (await import('../../server/rules/content/enemies')).ELITE.goldMult, xpMult: (await import('../../server/rules/content/enemies')).ELITE.xpMult },
   items: Object.fromEntries(Object.entries(ITEMS).map(([id, m]) => [id, { name: m.name, type: m.type, rarity: m.rarity, sell: m.sell, stack: m.stack ?? null, offlineStats: m.offlineStats ?? null }])),
   armor: Object.fromEntries(Object.entries(ARMOR_BY_ID).map(([id, p]) => [id, p.disciplineId])),
   necroWeapons: Object.keys(NECRO_WEAPON_BY_ID),

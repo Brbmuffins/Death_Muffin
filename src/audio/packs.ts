@@ -7,8 +7,8 @@
  * area and are released again two areas later, so decoded audio stays small.
  */
 import { AUDIO_MAP, AREA_SURFACE, ENEMY_VOICE, EXISTING_SOUND_IDS, type SoundId, type Surface, type VoiceFamily } from '../content/audioMap';
-import type { AreaId } from '../content/areas';
-import { AREAS } from '../content/areas';
+import type { AreaId } from '../../server/rules/content/areas';
+import { AREAS } from '../../server/rules/content/areas';
 import type { BusId } from './mixer';
 
 export type Pack =

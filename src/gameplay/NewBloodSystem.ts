@@ -5,7 +5,7 @@ import { fx } from '../graphics/fxTextures';
 import { fxImage } from '../graphics/fxImages';
 import type { AbilityContext, CastResult, CastTarget } from './AbilitySystem';
 import type { Corpse, Enemy, Intent, SimEvent } from './sim/types';
-import { NEW_BLOOD_DAMAGE_MULT } from './newBloodTuning';
+import { NEW_BLOOD_DAMAGE_MULT } from '../../server/rules/gameplay/newBloodTuning';
 
 const CAST_SFX: Record<NewBloodId, Sfx> = {
   flail_swing: 'flail', lantern_cone: 'lantern', chain_pull: 'chain',

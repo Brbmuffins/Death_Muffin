@@ -4,7 +4,7 @@ import { AbilitySystem, type AbilityContext } from '../AbilitySystem';
 import { Player } from '../Player';
 import { Nav } from '../nav';
 import { Effects } from '../../graphics/Effects';
-import { DISCIPLINES } from '../../content/disciplines';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import { CAST_FLOW } from '../../content/combatFlow';
 import type { Enemy } from '../sim/types';
 

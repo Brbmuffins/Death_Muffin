@@ -1,4 +1,4 @@
-import { BREW_KEYS, type BrewSlot } from '../content/brews';
+import { BREW_KEYS, type BrewSlot } from '../../server/rules/content/brews';
 
 /**
  * The HUD belt (2026-10-02): three always-visible slots by the left edge, so a player can see where the healing potion

@@ -3,7 +3,7 @@ import { Nav } from '../nav';
 import { WorldSim } from '../sim/WorldSim';
 import { WorldMirror, makeSnapshot } from '../sim/snapshot';
 import { mulberry32 } from '../rng';
-import { NODES, RICH_RESPAWN } from '../gatheringRules';
+import { NODES, RICH_RESPAWN } from '../../../server/rules/gameplay/gatheringRules';
 import { generateLayout } from '../../content/layout';
 import { nextAutoNode, standSpot, gatherBlocker, type LiveNode } from '../gatherPlan';
 

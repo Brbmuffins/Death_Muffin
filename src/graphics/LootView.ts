@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { itemMeta, RARITY_COLOR } from '../content/items';
+import { itemMeta, RARITY_COLOR } from '../../server/rules/content/items';
 import type { LootDrop } from '../gameplay/loot';
 import type { Effects, Handle } from './Effects';
 import { fx } from './fxTextures';
 import { playFx } from './binbun/presets';
-import { effectiveRarity } from '../gameplay/affixRules';
+import { effectiveRarity } from '../../server/rules/gameplay/affixRules';
 import { warmObjects } from './warmModel';
 
 type Kind = 'gold' | 'shard' | 'item';

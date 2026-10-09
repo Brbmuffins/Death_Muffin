@@ -1,6 +1,6 @@
 import type { Character, InventorySlot } from '../net/types';
 import { setStatTotals } from './setBonuses';
-import { isKitSlot } from './legionRules';
+import { isKitSlot } from '../../server/rules/gameplay/legionRules';
 
 export const STAT_KEYS = ['stat_str', 'stat_agi', 'stat_int', 'stat_vit'] as const;
 export type StatKey = (typeof STAT_KEYS)[number];

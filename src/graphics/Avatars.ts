@@ -3,19 +3,19 @@ import type { BossState } from '../gameplay/sim/types';
 import { assets } from './AssetCache';
 import { Creature } from './Creature';
 import { PROP_URL, type CreatureSlug } from './modelPaths';
-import type { GatherSkill } from '../gameplay/gatheringRules';
+import type { GatherSkill } from '../../server/rules/gameplay/gatheringRules';
 import type { Effects } from './Effects';
 import { fx } from './fxTextures';
 import type { EquipSlot } from '../content/gear';
 import type { AbilityId } from '../content/abilities';
 import { castClipFor, planGesture, type GestureKey } from '../content/castClips';
 import { buildCape, buildHelm, buildOffhand, buildWeapon, disposeProp, gripFor } from './gearProps';
-import { capeDef } from '../content/cosmetics';
+import { capeDef } from '../../server/rules/content/cosmetics';
 import { gearTier, legendaryAura, weaponKind } from '../content/gear';
 import type { GearRegion } from './gearTint';
 import { onSettingsChange, settings } from '../app/settings';
 import { RIG_HEAD, RIG_HEAD_STRENGTH } from './rigHeads';
-import { ARMOR_BY_ID } from '../content/armorSets';
+import { ARMOR_BY_ID } from '../../server/rules/content/armorSets';
 import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
 
 /** Heroes ease toward a new heading (1/s) but never faster than this (rad/s), so a flip of direction is a visible turn. */

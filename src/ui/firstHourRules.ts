@@ -1,5 +1,5 @@
 import { unlockLevel, type AbilityId } from '../content/abilities';
-import type { DisciplineId } from '../content/disciplines';
+import type { DisciplineId } from '../../server/rules/content/disciplines';
 
 /**
  * First-hour clarity rules (owner decisions, 3 Oct 2026). Pure, so they are unit-tested and cost nothing per frame.

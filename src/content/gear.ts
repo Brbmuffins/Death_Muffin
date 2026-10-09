@@ -1,6 +1,6 @@
 import type { InventorySlot, ItemType } from '../net/types';
-import { ARMOR_BY_ID, ARMOR_PIECES } from './armorSets';
-import { isKitSlot } from '../gameplay/legionRules';
+import { ARMOR_BY_ID, ARMOR_PIECES } from '../../server/rules/content/armorSets';
+import { isKitSlot } from '../../server/rules/gameplay/legionRules';
 
 /** The nine equipment slots the server knows (reservedSlots in /api/inventory/equip). */
 export type EquipSlot = 'head' | 'chest' | 'legs' | 'feet' | 'hands' | 'main_hand' | 'off_hand' | 'ring' | 'trinket';

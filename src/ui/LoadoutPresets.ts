@@ -1,6 +1,6 @@
 import { ABILITIES } from '../content/abilities';
-import { RUNES, RUNE_RITES, type RuneId, type RuneRite } from '../content/runes';
-import { MAX_PRESETS, NAME_MAX, cleanName, type ApplyReport, type LoadoutPreset } from '../gameplay/loadoutRules';
+import { RUNES, RUNE_RITES, type RuneId, type RuneRite } from '../../server/rules/content/runes';
+import { MAX_PRESETS, NAME_MAX, cleanName, type ApplyReport, type LoadoutPreset } from '../../server/rules/gameplay/loadoutRules';
 import './loadouts.css';
 
 const esc = (x: string) => x.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);

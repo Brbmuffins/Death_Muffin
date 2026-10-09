@@ -71,7 +71,7 @@ console.warn = () => undefined;
 const O = await import('../../src/ui/Onboarding');
 const C = await import('../../src/ui/counselCadence');
 const S = await import('../../src/app/settings');
-const { BOSS_SUMMON_SHARDS } = await import('../../src/content/areas');
+const { BOSS_SUMMON_SHARDS } = await import('../../server/rules/content/areas');
 const { SIGNATURE_LEVEL } = await import('../../src/content/abilities');
 const { BAG_SIZE } = await import('../../src/gameplay/loot');
 const { TIPS, TIP_ANCHOR, Onboarding, renderText } = O;

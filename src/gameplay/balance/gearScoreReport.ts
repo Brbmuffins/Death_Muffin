@@ -9,12 +9,12 @@
  * Env: SCORE_AREA (nave), SCORE_BAND (push), SCORE_SEEDS (8), SCORE_DISCIPLINES (1,2,3,4).
  */
 import { runBalance, botCharacter, type BalanceRun, type BalanceResult } from './harness';
-import { AREAS, type AreaId } from '../../content/areas';
-import { disciplineFor } from '../../content/disciplines';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
+import { disciplineFor } from '../../../server/rules/content/disciplines';
 import { gearPower } from '../gearStats';
 import { BANDS } from './bands';
 import { kitItems, kitSlots, type KitItem } from './kits';
-import { ARMOR_PARTS } from '../../content/armorSets';
+import { ARMOR_PARTS } from '../../../server/rules/content/armorSets';
 import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
 
 const area = (process.env.SCORE_AREA ?? 'nave') as AreaId;

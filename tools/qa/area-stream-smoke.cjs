@@ -41,12 +41,12 @@ const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!o
   await page.evaluate(() => { const d = window.__cwDebug; d.god(true); d.unlockAll(); d.freeze?.(true); });
   const veilsAtPlay = await page.evaluate(() => window.__veils);
   check(veilsAtPlay === 1, `exactly one veil at mount (${veilsAtPlay})`);
-  const info = await page.evaluate(async () => (await import('/src/content/areas.ts')).DOORS.map((d) => ({ id: d.id, a: d.a, b: d.b, rect: d.rect, axis: d.axis })));
+  const info = await page.evaluate(async () => (await import('/server/rules/content/areas.ts')).DOORS.map((d) => ({ id: d.id, a: d.a, b: d.b, rect: d.rect, axis: d.axis })));
   for (const id of DOORS) {
     const d = info.find((x) => x.id === id);
     const cx = (d.rect.x0 + d.rect.x1) / 2, cz = (d.rect.z0 + d.rect.z1) / 2;
     // Which side is `a`? Step 7 m back from the door centre toward each room's interior along the door axis.
-    const rects = await page.evaluate(async ([a, b]) => { const A = (await import('/src/content/areas.ts')).AREAS; return { a: A[a].rect, b: A[b].rect }; }, [d.a, d.b]);
+    const rects = await page.evaluate(async ([a, b]) => { const A = (await import('/server/rules/content/areas.ts')).AREAS; return { a: A[a].rect, b: A[b].rect }; }, [d.a, d.b]);
     const mid = (r) => ({ x: (r.x0 + r.x1) / 2, z: (r.z0 + r.z1) / 2 });
     for (const [from, to, rect] of [[d.a, d.b, rects.a], [d.b, d.a, rects.b]]) {
       const m = mid(rect);

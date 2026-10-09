@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
-import { AFFIX_ORDER } from '../../content/enemies';
-import { DEPTHS, depthEnemyLevel, depthRoster, extraAffixes, floorKills } from '../../content/depths';
+import { AREAS } from '../../../server/rules/content/areas';
+import { AFFIX_ORDER } from '../../../server/rules/content/enemies';
+import { DEPTHS, depthEnemyLevel, depthRoster, extraAffixes, floorKills } from '../../../server/rules/content/depths';
 import { roomAt } from '../depthsFloor';
 import { Nav } from '../nav';
 import { mulberry32 } from '../rng';

@@ -3,9 +3,9 @@ import { Nav } from '../nav';
 import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
 import type { SimEvent } from '../sim/types';
-import { ENEMIES, type EnemyId } from '../../content/enemies';
-import { AREAS } from '../../content/areas';
-import { waveModifiers } from '../../content/upgrades';
+import { ENEMIES, type EnemyId } from '../../../server/rules/content/enemies';
+import { AREAS } from '../../../server/rules/content/areas';
+import { waveModifiers } from '../../../server/rules/content/upgrades';
 import { damageTakenScale } from '../hitNumber';
 
 function world(seed = 1) {

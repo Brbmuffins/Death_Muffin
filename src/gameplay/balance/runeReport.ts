@@ -9,11 +9,11 @@
  * plus the `typical` kit as a second table (RUNE_KIT=typical).
  */
 import { runBalance, type BalanceResult, type BalanceRun } from './harness';
-import { AREAS, type AreaId } from '../../content/areas';
-import { RUNES, RUNE_IDS, RUNE_TUNING, type RuneId } from '../../content/runes';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
+import { RUNES, RUNE_IDS, RUNE_TUNING, type RuneId } from '../../../server/rules/content/runes';
 import { BANDS } from './bands';
 import type { KitName } from './kits';
-import type { NecroKind } from '../../content/necroWeapons';
+import type { NecroKind } from '../../../server/rules/content/necroWeapons';
 
 // RUNE_TUNE: dotted paths into RUNE_TUNING, applied before anything runs (the object is plain data at run time).
 for (const pair of (process.env.RUNE_TUNE ?? '').split(',').filter(Boolean)) {

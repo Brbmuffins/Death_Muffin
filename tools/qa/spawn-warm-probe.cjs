@@ -43,7 +43,7 @@ const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE);
       const stillPending = wr.warmPending();
       const d = window.__cwDebug; d.god(true); d.unlockAll(); d.clear(); d.advance(0.5);
       const rt = (await import('/src/app/GameRuntime.ts')).getRuntime(); const R = rt.renderer; const scene = rt.view.scene;
-      const { AREAS, DOORS } = await import('/src/content/areas.ts');
+      const { AREAS, DOORS } = await import('/server/rules/content/areas.ts');
       // Everything within two door-steps of the start (what the login warm-up covers).
       const areasWithin = (start, hops) => { const out = [start]; let fr = [start]; for (let h = 0; h < hops; h++) { const nx = []; for (const a of fr) for (const dr of DOORS) { const n = dr.a === a ? dr.b : dr.b === a ? dr.a : null; if (n && !out.includes(n)) { out.push(n); nx.push(n); } } fr = nx; } return out; };
       const ids = [...new Set(areasWithin('acre', 2).flatMap((a) => AREAS[a].enemies.map((e) => e.id)))];

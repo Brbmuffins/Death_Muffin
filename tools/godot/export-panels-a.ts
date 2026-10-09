@@ -9,19 +9,19 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as codex from '../../src/content/codex';
-import { AREAS, AREA_ORDER } from '../../src/content/areas';
-import { DISCIPLINES } from '../../src/content/disciplines';
-import { ITEMS } from '../../src/content/items';
-import { NECRO_WEAPONS } from '../../src/content/necroWeapons';
+import { AREAS, AREA_ORDER } from '../../server/rules/content/areas';
+import { DISCIPLINES } from '../../server/rules/content/disciplines';
+import { ITEMS } from '../../server/rules/content/items';
+import { NECRO_WEAPONS } from '../../server/rules/content/necroWeapons';
 import { generateLayout } from '../../src/content/layout';
-import { GATHER_SKILLS, SKILLS, actionMs, nodesForSkill, xpPerHour } from '../../src/gameplay/gatheringRules';
+import { GATHER_SKILLS, SKILLS, actionMs, nodesForSkill, xpPerHour } from '../../server/rules/gameplay/gatheringRules';
 import {
   affixCountOdds, areaQuality, fmtChance, fmtQty, oneIn, cosmeticsInfo, fitBand, fitTable, getAtlas, isRecommendedKind, itemLevelAt, placesFor, rollPotential, sourcesFor,
 } from '../../src/gameplay/atlas';
-import { salvagePreview } from '../../src/gameplay/salvageRules';
-import { orderInfo } from '../../src/gameplay/contractRules';
+import { salvagePreview } from '../../server/rules/gameplay/salvageRules';
+import { orderInfo } from '../../server/rules/gameplay/contractRules';
 import { STAT_PRIMER, STAT_PRIORITY, lookingFor, statSheet } from '../../src/gameplay/gearStats';
-import { DISCIPLINES as DISC } from '../../src/content/disciplines';
+import { DISCIPLINES as DISC } from '../../server/rules/content/disciplines';
 
 const OUT = resolve('godot/data/panels_a');
 mkdirSync(OUT, { recursive: true });

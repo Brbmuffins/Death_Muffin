@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, AREA_ORDER, DOORS } from '../../content/areas';
+import { AREAS, AREA_ORDER, DOORS } from '../../../server/rules/content/areas';
 import { BuildQueue, buildOrder, doorNeighbours, loadProgress, rectDistance, requiredAreas, visibleAreas } from '../areaStreaming';
 
 describe('area streaming rules', () => {

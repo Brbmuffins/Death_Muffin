@@ -5,8 +5,8 @@ import { Player } from '../Player';
 import type { DerivedStats } from '../characterStats';
 import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
-import { SURGE } from '../../content/enemies';
-import { BOSSES } from '../../content/bosses';
+import { SURGE } from '../../../server/rules/content/enemies';
+import { BOSSES } from '../../../server/rules/content/bosses';
 
 function world(seed = 1) {
   const nav = new Nav();

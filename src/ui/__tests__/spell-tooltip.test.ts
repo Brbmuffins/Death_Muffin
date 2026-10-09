@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ABILITIES, FRACTURE, SIGNATURE_LEVEL, SOUL_HARVEST, type AbilityId } from '../../content/abilities';
 import { CODEX_RITES } from '../../content/codex';
-import { DISCIPLINES } from '../../content/disciplines';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import { spellTooltip } from '../spellTooltip';
 
 const metric = (id: AbilityId, label: string) => spellTooltip(id).metrics.find((m) => m.label === label)?.value;

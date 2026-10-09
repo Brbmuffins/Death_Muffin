@@ -7,13 +7,13 @@
  *      BALANCE_WEAPONS=kit,staff,scythe,wand,sickle (main-hand worn instead of the discipline's own; `kit` = its own; needs a kit other than none),
  *      BALANCE_DODGE=yes,no.
  */
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 import { runBossFight, type BossResult, type BossRun } from './boss';
-import type { Difficulty } from '../../content/difficulty';
-import { ascensionLevels } from '../../content/ascension';
+import type { Difficulty } from '../../../server/rules/content/difficulty';
+import { ascensionLevels } from '../../../server/rules/content/ascension';
 import { KIT_NAMES, type KitName } from './kits';
-import { BOSSES, BOSS_IDS, isBossId, type BossId } from '../../content/bosses';
-import { NECRO_MAIN_KINDS, type NecroMainKind } from '../../content/necroWeapons';
+import { BOSSES, BOSS_IDS, isBossId, type BossId } from '../../../server/rules/content/bosses';
+import { NECRO_MAIN_KINDS, type NecroMainKind } from '../../../server/rules/content/necroWeapons';
 
 /** `npm run balance:boss -- --boss abbess` (or BALANCE_BOSS=abbess, =all, =abbess,mire); default the Prelate. */
 const list = (v: string | undefined) => (v ? v.split(',').map((s) => s.trim()) : null);

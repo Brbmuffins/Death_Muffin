@@ -1,4 +1,4 @@
-import { AREAS, AREA_ORDER, DOORS, type AreaId } from '../content/areas';
+import { AREAS, AREA_ORDER, DOORS, type AreaId } from '../../server/rules/content/areas';
 import type { DepthsMapFloor } from '../scenes/DepthsController';
 import { MINIMAP_SCALE as SCALE, MINIMAP_SIZE, minimapWalkable, minimapWorldPoint } from './minimapCoordinates';
 

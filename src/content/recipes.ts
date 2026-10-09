@@ -1,8 +1,8 @@
-import { PROCESSING_RECIPES, type RecipeRow } from './processing';
-import { ALCHEMY_RECIPES } from './alchemy';
-import { NECRO_RECIPES } from './necroWeapons';
-import { REAGENT_RECIPES } from './reagents';
-import { FEN_RECIPES } from './fenItems';
+import { PROCESSING_RECIPES, type RecipeRow } from '../../server/rules/content/processing';
+import { ALCHEMY_RECIPES } from '../../server/rules/content/alchemy';
+import { NECRO_RECIPES } from '../../server/rules/content/necroWeapons';
+import { REAGENT_RECIPES } from '../../server/rules/content/reagents';
+import { FEN_RECIPES } from '../../server/rules/content/fenItems';
 import { TRADE_GOODS_RECIPES } from './tradeGoods';
 
 /**

@@ -4,8 +4,8 @@ import { WorldSim } from '../sim/WorldSim';
 import { WorldMirror, makeSnapshot } from '../sim/snapshot';
 import { mulberry32 } from '../rng';
 import type { SimEvent, Thrall } from '../sim/types';
-import { BURROW, ENEMIES, TEMPLAR_SHIELD, UNBIND } from '../../content/enemies';
-import { AREAS } from '../../content/areas';
+import { BURROW, ENEMIES, TEMPLAR_SHIELD, UNBIND } from '../../../server/rules/content/enemies';
+import { AREAS } from '../../../server/rules/content/areas';
 import { CODEX_DEAD, DEAD_ORDER } from '../../content/codex';
 
 function world(area: 'graves' | 'nave' | 'sanctum' = 'graves', seed = 5) {

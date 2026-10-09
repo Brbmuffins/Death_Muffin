@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ARMOR_PIECES } from '../../content/armorSets';
-import { DISCIPLINES, type DisciplineId } from '../../content/disciplines';
-import { ITEMS } from '../../content/items';
-import { legendaryItemId, legendarySetFor } from '../../content/legendarySets';
+import { ARMOR_PIECES } from '../../../server/rules/content/armorSets';
+import { DISCIPLINES, type DisciplineId } from '../../../server/rules/content/disciplines';
+import { ITEMS } from '../../../server/rules/content/items';
+import { legendaryItemId, legendarySetFor } from '../../../server/rules/content/legendarySets';
 import { atlasSlot, fitBand, fitTable, powerGainPct, referenceContext, setOutlook } from '../atlas';
 import { itemVerdict } from '../gearStats';
 

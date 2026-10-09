@@ -3,9 +3,9 @@ import { itemIcon } from './InventoryPanel';
 import { kitMove } from '../net/api';
 import type { InventorySlot } from '../net/types';
 import type { Inventory } from '../gameplay/loot';
-import { RARITY_COLOR, RARITY_MARK } from '../content/items';
-import { LEGION_UPGRADE } from '../content/upgrades';
-import { KIT_IDS, KIT_LABEL, kitSlotIndex, reinforceBonus, type KitId } from '../gameplay/legionRules';
+import { RARITY_COLOR, RARITY_MARK } from '../../server/rules/content/items';
+import { LEGION_UPGRADE } from '../../server/rules/content/upgrades';
+import { KIT_IDS, KIT_LABEL, kitSlotIndex, reinforceBonus, type KitId } from '../../server/rules/gameplay/legionRules';
 import { bonusLines, kitCandidates, kitPieces, legionOf, pieceLines } from '../gameplay/legionKit';
 import './legion.css';
 

@@ -8,7 +8,7 @@ original shared Crossworlds server, the Workbench API or Muffin Development.
 
 | File (repo) | Goes to | What it does |
 |---|---|---|
-| `server/death-muffin/backend/gathering/gathering-rules.cjs` | `/home/ubuntu/death-muffin/backend/gathering/` | Generated from `src/gameplay/gatheringRules.ts` (`npm run build:server-rules`): nodes, success odds, loot, XP curve, time budget, bag placement |
+| `server/death-muffin/backend/gathering/gathering-rules.cjs` | `/home/ubuntu/death-muffin/backend/gathering/` | Generated from `server/rules/gameplay/gatheringRules.ts` (`npm run build:server-rules`): nodes, success odds, loot, XP curve, time budget, bag placement |
 | `server/death-muffin/backend/gathering/gathering-routes.cjs` | same | `POST /api/gather` (ownership → node → level → time budget → roll → one transaction) |
 | `server/death-muffin/backend/gathering/gather-store.cjs` | same | MySQL store (row-locks character, skill row, ledger and bag) + an in-memory store for tests |
 | `server/death-muffin/backend/server.js` | `/home/ubuntu/death-muffin/backend/server.js` | Mounts the route, adds `gravedigging`/`gardening` to the profession list, uses the shared XP curve, caps crafting at 99, **retires `POST /api/professions/award-xp` (410)** |

@@ -1,5 +1,5 @@
 import type { AreaId } from './areas';
-import type { ItemType, Rarity } from '../net/types';
+import type { ItemType, Rarity } from '../../../src/net/types';
 import { LEGENDARY_SETS, legendaryItemId } from './legendarySets';
 
 export type ArmorPart = 'head' | 'chest' | 'hands' | 'legs' | 'feet';

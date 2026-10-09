@@ -45,7 +45,7 @@ const median = (a) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
         }
         d.advance(1.5);
       });
-      const roster = STATIC ? [] : await page.evaluate(async (a) => (await import('/src/content/areas.ts')).AREAS[a].enemies.map((e) => e.id), area);
+      const roster = STATIC ? [] : await page.evaluate(async (a) => (await import('/server/rules/content/areas.ts')).AREAS[a].enemies.map((e) => e.id), area);
       if (!STATIC) await page.evaluate((r) => { const d = window.__cwDebug; r.forEach((id, i) => d.ring(id, 3, 6 + i * 1.2, i === 0)); d.freeze(true); d.advance(0.6); d.freeze(true); }, roster);
       // Fresh corpses for the ring marks.
       if (!STATIC) await page.evaluate(() => { const d = window.__cwDebug; const p = d.player; for (let i = 0; i < 10; i++) d.sim().addCorpse(p.x + 4 + (i % 5) * 1.2, p.z - 3 - Math.floor(i / 5) * 1.5, 'normal', 'robber', false, 0, 1, p.area); d.advance(0.3); });

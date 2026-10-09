@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AREAS, type AreaId } from '../../content/areas';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
 import { BED_FILES, ZONE_ACCENTS, ZONE_BEDS, accentGap, bedReady, pickAccent } from '../ambience';
 import {
   CombatActivity, PROFILES, accentsAllowed, activityWeight, bedDuckGain, lootSfx, profileOf,

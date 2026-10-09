@@ -1,7 +1,7 @@
 # Brief G2: the Sexton's Acre (non-combat gathering zone) → branch `cloud/professions-g2`
 
 Read `CLAUDE.md`, `HANDOFF.md`, **`docs/PROFESSIONS-ROADMAP.md`** (§6 is the spec, §4 the node list),
-then `src/content/areas.ts`, `src/content/layout.ts`, `src/gameplay/nav.ts`, `src/graphics/WorldView.ts`,
+then `server/rules/content/areas.ts`, `src/content/layout.ts`, `src/gameplay/nav.ts`, `src/graphics/WorldView.ts`,
 `src/graphics/Atmosphere.ts`, `src/ui/Minimap.ts`, and `docs/agent-briefs/environment.md` (perf rules).
 
 1. **Area** `'acre'` ("The Sexton's Acre" / subtitle "Where the Covenant's dead are tended"):

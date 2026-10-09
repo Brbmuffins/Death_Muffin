@@ -1,7 +1,7 @@
 import { getGarden, getInventory, harvestGarden, plantGarden, type GardenResult, type GardenView } from '../net/api';
-import { RARITY_COLOR, itemMeta } from '../content/items';
-import { COMPOST_ITEM, seedDef } from '../content/gardening';
-import { remainingText } from '../gameplay/gardeningRules';
+import { RARITY_COLOR, itemMeta } from '../../server/rules/content/items';
+import { COMPOST_ITEM, seedDef } from '../../server/rules/content/gardening';
+import { remainingText } from '../../server/rules/gameplay/gardeningRules';
 import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';
 import { wrapPanelBody } from './panelBody';

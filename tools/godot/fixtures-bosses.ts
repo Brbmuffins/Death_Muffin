@@ -8,9 +8,9 @@
  */
 import { mkdirSync, writeFileSync, readdirSync, rmSync } from 'node:fs';
 import { mulberry32 } from '../../src/gameplay/rng';
-import { AREAS } from '../../src/content/areas';
-import { BOSSES, BOSS_IDS, GRAVEDIGGER_PITS, type BossId } from '../../src/content/bosses';
-import { FEN_HUMMOCKS } from '../../src/content/fen';
+import { AREAS } from '../../server/rules/content/areas';
+import { BOSSES, BOSS_IDS, GRAVEDIGGER_PITS, type BossId } from '../../server/rules/content/bosses';
+import { FEN_HUMMOCKS } from '../../server/rules/content/fen';
 import { makeBossBrains, type BossBrain, type CoverBox } from '../../src/gameplay/sim/BossBrain';
 import type { PlayerBody } from '../../src/gameplay/sim/types';
 

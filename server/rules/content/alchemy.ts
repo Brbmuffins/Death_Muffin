@@ -1,4 +1,4 @@
-import type { Rarity } from '../net/types';
+import type { Rarity } from '../../../src/net/types';
 import type { RecipeRow } from './processing';
 
 /**

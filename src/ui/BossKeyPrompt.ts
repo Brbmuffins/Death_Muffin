@@ -1,5 +1,5 @@
-import { BOSSES, type BossId } from '../content/bosses';
-import { EMPOWER, empowerGold, empoweredLegendaryChance } from '../gameplay/goldSinkRules';
+import { BOSSES, type BossId } from '../../server/rules/content/bosses';
+import { EMPOWER, empowerGold, empoweredLegendaryChance } from '../../server/rules/gameplay/goldSinkRules';
 import { wrapPanelBody } from './panelBody';
 
 export interface BossKeyOffer {

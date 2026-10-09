@@ -1,11 +1,11 @@
 import { API_BASE } from './config';
 import { isReplacedReply, isSessionReplaced, notifySessionReplaced, SESSION_REPLACED_MESSAGE } from './session';
 import type { Character, InventorySlot, Profession, Recipe } from './types';
-import type { NecroState, SaveInput } from '../gameplay/necroRules';
-import type { KillReport } from '../gameplay/killRules';
+import type { NecroState, SaveInput } from '../../server/rules/gameplay/necroRules';
+import type { KillReport } from '../../server/rules/gameplay/killRules';
 import { decorateSlots, type DropInstance } from '../gameplay/affixes';
-import type { DropSource } from '../gameplay/affixRules';
-import type { ApplyReport, LoadoutPreset } from '../gameplay/loadoutRules';
+import type { DropSource } from '../../server/rules/gameplay/affixRules';
+import type { ApplyReport, LoadoutPreset } from '../../server/rules/gameplay/loadoutRules';
 
 /**
  * REST client for the existing Node/Express auth server.

@@ -23,7 +23,7 @@ const URL = process.env.DM_QA_URL, AREA = process.env.DM_QA_AREA || 'graves';
     const m = sc.discipline.mods; const cap = 15;
     for (let i = 0; i < cap; i++) { const x = p.x - 3 + (i % 5) * 1.5, z = p.z + 2 + Math.floor(i / 5) * 1.5; sim.addCorpse(x, z, 'normal', 'robber', false, 0, 1, p.area); sim.applyExhume({ t: 'exhume', by: d.self(), x, z, r: 2, cap, kind: m.thrallKind, hp: 1e6, damage: 20, attackSpeedMult: 1 }); }
     d.advance(1.5);
-    const roster = (await import('/src/content/areas.ts')).AREAS[p.area].enemies.map((e) => e.id);
+    const roster = (await import('/server/rules/content/areas.ts')).AREAS[p.area].enemies.map((e) => e.id);
     roster.forEach((id, i) => d.ring(id, 3, 6 + i * 1.2, false));
     window.__ring = () => roster.forEach((id, i) => d.ring(id, 3, 6 + i * 1.2, false)); window.__d = d; window.__sc = sc;
     return 1;

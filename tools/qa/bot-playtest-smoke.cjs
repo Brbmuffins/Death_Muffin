@@ -63,7 +63,7 @@ async function run(browser, delayMs) {
   await page.addInitScript(() => localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'low', tips: false, autoCombat: false })));
   await page.goto(URL);
   await newCharacter(page, 'Gravecaller', `bot_${delayMs}_${Date.now() % 100000}`);
-  await preloadModules(page, { areas: '/src/content/areas.ts' });
+  await preloadModules(page, { areas: '/server/rules/content/areas.ts' });
   const home = await page.evaluate(() => { const r = window.__qaMods.areas.AREAS.graves.rect; return { x: (r.x0 + r.x1) / 2, z: (r.z0 + r.z1) / 2 + 4 }; });
   const setup = () => page.evaluate(() => { const d = window.__cwDebug; d.unlockAll(); d.clear(); d.goto('graves'); d.advance(0.5, false); });
   await setup();

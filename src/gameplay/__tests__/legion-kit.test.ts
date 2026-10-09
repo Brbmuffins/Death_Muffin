@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { DISCIPLINES } from '../../content/disciplines';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import { equippedBySlot } from '../../content/gear';
-import { LEGION_UPGRADE } from '../../content/upgrades';
+import { LEGION_UPGRADE } from '../../../server/rules/content/upgrades';
 import { codexLegionExamples, codexLegionTiers } from '../../content/codex';
 import type { Character, InventorySlot } from '../../net/types';
 import { computeStats } from '../stats';
 import { deriveStats } from '../characterStats';
 import { gearPower, statSheet, type StatContext } from '../gearStats';
 import { withSetBonuses, applySetMods, resolveSetBonuses } from '../setBonuses';
-import { KIT_BASE, KIT_RATES, NO_LEGION, isKitSlot, kitIdForType, kitSlotId, kitSlotIndex, legionBonus, pieceBonus, reinforceBonus, statPoints, unusedAffixes } from '../legionRules';
+import { KIT_BASE, KIT_RATES, NO_LEGION, isKitSlot, kitIdForType, kitSlotId, kitSlotIndex, legionBonus, pieceBonus, reinforceBonus, statPoints, unusedAffixes } from '../../../server/rules/gameplay/legionRules';
 import { applyLegionMods, bonusLines, kitCandidate, kitCandidates, kitPieces, legionOf, legionSignature, pieceLines } from '../legionKit';
-import { blankState, ascend, normalise, purchase } from '../necroRules';
-import { ITEMS } from '../../content/items';
+import { blankState, ascend, normalise, purchase } from '../../../server/rules/gameplay/necroRules';
+import { ITEMS } from '../../../server/rules/content/items';
 import { MOCK_ITEMS } from '../../net/mockBackend';
 
 const character = (over: Partial<Character> = {}): Character => ({ id: 1, class_index: 1, class_name: '', level: 20, experience: 0, gold: 0, stat_str: 10, stat_agi: 10, stat_int: 10, stat_vit: 10, ...over });

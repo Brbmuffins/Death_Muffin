@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { GatherLoop, Skills, type GatherHooks } from '../Gathering';
 import type { NodePlacement } from '../../content/layout';
 import type { GatherReply } from '../../net/api';
-import { GATHER_FLUSH_MS, NODES, actionMs } from '../gatheringRules';
+import { GATHER_FLUSH_MS, NODES, actionMs } from '../../../server/rules/gameplay/gatheringRules';
 
 const oakA: NodePlacement = { id: 'acre_1', type: 'coffin_oak', x: 0, z: 0, area: 'acre', rot: 0 };
 const oakB: NodePlacement = { id: 'acre_2', type: 'coffin_oak', x: 6, z: 0, area: 'acre', rot: 0 };

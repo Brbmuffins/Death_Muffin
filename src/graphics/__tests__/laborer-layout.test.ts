@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 import { generateLayout } from '../../content/layout';
-import { NODES } from '../../gameplay/gatheringRules';
+import { NODES } from '../../../server/rules/gameplay/gatheringRules';
 import { wrapRange } from '../Creature';
 import { CHOP_IMPACT, CHOP_RANGE, LABORER_MODELS, LABORER_TOOLS, laborerSpot, laborerTip, postNode, workFor, type Spot, type SpotWorld } from '../laborerLayout';
 

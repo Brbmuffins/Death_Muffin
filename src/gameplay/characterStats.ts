@@ -1,6 +1,6 @@
 import type { Character, InventorySlot } from '../net/types';
-import type { Discipline } from '../content/disciplines';
-import { DAMAGE_UPGRADE } from '../content/upgrades';
+import type { Discipline } from '../../server/rules/content/disciplines';
+import { DAMAGE_UPGRADE } from '../../server/rules/content/upgrades';
 import { computeStats } from './stats';
 import { equippedBySlot } from '../content/gear';
 import { resolveWeaponLoadout } from './weaponLine';

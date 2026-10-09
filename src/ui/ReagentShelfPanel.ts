@@ -1,6 +1,6 @@
 import type { Inventory } from '../gameplay/loot';
 import { browserStorage } from '../gameplay/codexJournal';
-import { RARITY_COLOR, itemMeta } from '../content/items';
+import { RARITY_COLOR, itemMeta } from '../../server/rules/content/items';
 import { SHELF_GROUPS, SHELF_IDS, loadFound, recordFound } from '../content/wing';
 import { itemIcon } from './InventoryPanel';
 import { wrapPanelBody } from './panelBody';

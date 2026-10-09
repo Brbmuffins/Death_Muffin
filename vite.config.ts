@@ -18,7 +18,7 @@ export default defineConfig({
   base: DEPLOY_BASE,
   plugins: [qaShots()],
   // vitest: game-logic unit tests only (the realtime server uses node:test).
-  test: { include: ['src/**/*.test.ts'] },
+  test: { include: ['src/**/*.test.ts', 'server/rules/**/*.test.ts'] },
   server: {
     port: 5188,
     proxy: Object.fromEntries(

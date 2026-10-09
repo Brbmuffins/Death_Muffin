@@ -1,8 +1,8 @@
 import type { InventorySlot } from '../../net/types';
-import { AREAS, type AreaId } from '../../content/areas';
-import { ARMOR_BY_ID, ARMOR_PARTS, ARMOR_PIECES, type ArmorPart } from '../../content/armorSets';
-import { NECRO_DISCIPLINES, NECRO_TIERS, NECRO_TIER_INFO, NECRO_WEAPON_BY_ID, type NecroKind, type NecroTier } from '../../content/necroWeapons';
-import { affixRange, rollInstance, type AffixRoll } from '../affixRules';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
+import { ARMOR_BY_ID, ARMOR_PARTS, ARMOR_PIECES, type ArmorPart } from '../../../server/rules/content/armorSets';
+import { NECRO_DISCIPLINES, NECRO_TIERS, NECRO_TIER_INFO, NECRO_WEAPON_BY_ID, type NecroKind, type NecroTier } from '../../../server/rules/content/necroWeapons';
+import { affixRange, rollInstance, type AffixRoll } from '../../../server/rules/gameplay/affixRules';
 import { mulberry32 } from '../rng';
 
 /**

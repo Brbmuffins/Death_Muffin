@@ -1,5 +1,5 @@
 /**
- * Capes and pets (rules: gathering/cosmetic-rules.cjs, generated from src/gameplay/cosmeticRules.ts).
+ * Capes and pets (rules: gathering/cosmetic-rules.cjs, generated from server/rules/gameplay/cosmeticRules.ts).
  *
  *   GET  /api/cosmetics/:characterId   -> every cape (with progress toward it), every pet (adopted or not) and what is worn now
  *   POST /api/cosmetics/select         -> { characterId, cape?, pet? }: wear a cape / call a pet (null puts it away)

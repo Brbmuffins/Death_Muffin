@@ -98,21 +98,21 @@ async function main() {
   delete files['gameplay_loot']?.['devAccess'];
 
   // ---- computed content (results of functions over content) ----
-  const { AREAS, AREA_ORDER } = await import('../../src/content/areas.ts');
-  const { DISCIPLINES } = await import('../../src/content/disciplines.ts');
-  const { smartTable } = await import('../../src/gameplay/smartLoot.ts');
+  const { AREAS, AREA_ORDER } = await import('../../server/rules/content/areas.ts');
+  const { DISCIPLINES } = await import('../../server/rules/content/disciplines.ts');
+  const { smartTable } = await import('../../server/rules/gameplay/smartLoot.ts');
   const { kitFor } = await import('../../src/content/kits.ts');
   const { ABILITIES, unlockLevel } = await import('../../src/content/abilities.ts');
-  const { depthRoster, depthLootArea, chestRunePool } = await import('../../src/content/depths.ts');
-  const { armorLoot } = await import('../../src/content/armorSets.ts');
-  const { necroWeaponLoot } = await import('../../src/content/necroWeapons.ts');
+  const { depthRoster, depthLootArea, chestRunePool } = await import('../../server/rules/content/depths.ts');
+  const { armorLoot } = await import('../../server/rules/content/armorSets.ts');
+  const { necroWeaponLoot } = await import('../../server/rules/content/necroWeapons.ts');
   const { generateLayout } = await import('../../src/content/layout.ts');
   const { allClipNames } = await import('../../src/content/audioMap.ts');
-  const { brewSummary } = await import('../../src/content/brews.ts');
-  const { itemMeta, ITEMS } = await import('../../src/content/items.ts');
+  const { brewSummary } = await import('../../server/rules/content/brews.ts');
+  const { itemMeta, ITEMS } = await import('../../server/rules/content/items.ts');
 
-  const { DAMAGE_UPGRADE, WAVE_UPGRADE, LEGION_UPGRADE } = await import('../../src/content/upgrades.ts');
-  const { AFFIXES, ILVL_MAX } = await import('../../src/gameplay/affixRules.ts');
+  const { DAMAGE_UPGRADE, WAVE_UPGRADE, LEGION_UPGRADE } = await import('../../server/rules/content/upgrades.ts');
+  const { AFFIXES, ILVL_MAX } = await import('../../server/rules/gameplay/affixRules.ts');
   const costs = (u: { maxTier: number; cost: (t: number) => number }) => Array.from({ length: u.maxTier + 1 }, (_, t) => u.cost(t));
   const areaIds = Object.keys(AREAS);
   const discIds = Object.keys(DISCIPLINES);
@@ -127,7 +127,7 @@ async function main() {
     depthChestRunePools: Object.fromEntries(Array.from({ length: 60 }, (_, i) => [i + 1, chestRunePool(i + 1)])),
     armorLootByArea: Object.fromEntries(areaIds.map((a) => [a, armorLoot(a as never)])),
     necroWeaponLootByArea: Object.fromEntries(areaIds.map((a) => [a, necroWeaponLoot(a as never)])),
-    brewSummaries: Object.fromEntries(Object.keys((await import('../../src/content/brews.ts')).BREWS).map((b) => [b, brewSummary(b)])),
+    brewSummaries: Object.fromEntries(Object.keys((await import('../../server/rules/content/brews.ts')).BREWS).map((b) => [b, brewSummary(b)])),
     // cost(tier) for tier 0..maxTier (the TS is Math.round(base * ratio^tier)); upgrades.json holds base data
     upgradeCosts: { damage: costs(DAMAGE_UPGRADE), wave: costs(WAVE_UPGRADE), legion: costs(LEGION_UPGRADE) },
     // AFFIXES[i].range(ilvl) for ilvl 1..ILVL_MAX, indexed by ilvl-1: [min, max]

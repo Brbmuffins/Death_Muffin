@@ -5,11 +5,11 @@ import { resolve } from 'node:path';
 import {
   NECRO_DISCIPLINES, NECRO_MAIN_KINDS, NECRO_OFF_KINDS, NECRO_RECIPES, NECRO_TIERS, NECRO_WEAPONS, NECRO_WEAPON_BY_ID,
   NECRO_WEAPON_TUNING, isTwoHanded, necroWeaponLoot, necroWeaponTooltip,
-} from '../necroWeapons';
-import { AREAS } from '../areas';
-import { ITEMS } from '../items';
+} from '../../../server/rules/content/necroWeapons';
+import { AREAS } from '../../../server/rules/content/areas';
+import { ITEMS } from '../../../server/rules/content/items';
 import { gearTier, offhandKind, weaponKind } from '../gear';
-import { DISCIPLINES } from '../disciplines';
+import { DISCIPLINES } from '../../../server/rules/content/disciplines';
 import { handleMock } from '../../net/mockBackend';
 
 describe('necro weapon catalogue', () => {

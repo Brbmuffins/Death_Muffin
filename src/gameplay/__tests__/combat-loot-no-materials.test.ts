@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS, type AreaId } from '../../content/areas';
-import { ENEMIES, type EnemyId } from '../../content/enemies';
-import { ITEMS } from '../../content/items';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
+import { ENEMIES, type EnemyId } from '../../../server/rules/content/enemies';
+import { ITEMS } from '../../../server/rules/content/items';
 import { isProfessionMaterial, rollBoss, rollItem, rollKill, rollSurgeItem, settleCombatDrop } from '../loot';
 import { rollChest } from '../depthsRewards';
 

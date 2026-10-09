@@ -1,9 +1,9 @@
 import { ABILITIES, DETONATE, GRAVE_SLAM, HOLLOW_CUT, LITANY_PER_CORPSE, SHIELD_BASH, SOUL_HARVEST, unlockLevel } from '../../content/abilities';
-import { bogMult } from '../../content/fen';
-import { AREAS, type AreaId } from '../../content/areas';
-import { chestBonus, depthLootArea, floorBonus, hasChest } from '../../content/depths';
-import { disciplineFor } from '../../content/disciplines';
-import { ENEMIES } from '../../content/enemies';
+import { bogMult } from '../../../server/rules/content/fen';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
+import { chestBonus, depthLootArea, floorBonus, hasChest } from '../../../server/rules/content/depths';
+import { disciplineFor } from '../../../server/rules/content/disciplines';
+import { ENEMIES } from '../../../server/rules/content/enemies';
 import { deriveStats, xpToNext } from '../characterStats';
 import { rollKill } from '../loot';
 import { Nav } from '../nav';
@@ -19,12 +19,12 @@ import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
 import { foldEffect, withSetBonuses } from '../setBonuses';
 import type { SetEffect } from '../../content/setBonuses';
 import { abilityCooldownMs, abilityRange, pierceTargets, reapTargets, resolveWeaponLoadout, NO_LOADOUT } from '../weaponLine';
-import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
+import { NECRO_WEAPON_TUNING } from '../../../server/rules/content/necroWeapons';
 import { resolveKit, type KitName, type KitRequest } from './kits';
-import type { Difficulty } from '../../content/difficulty';
-import { RUNE_TUNING, type RuneId, type RuneRite } from '../../content/runes';
+import type { Difficulty } from '../../../server/rules/content/difficulty';
+import { RUNE_TUNING, type RuneId, type RuneRite } from '../../../server/rules/content/runes';
 import { corpsesWithin, impaleTarget, ringHits, splinterTarget, volleyTargets } from '../runeCast';
-import { newBloodDamageMult, newBloodXpMult } from '../newBloodTuning';
+import { newBloodDamageMult, newBloodXpMult } from '../../../server/rules/gameplay/newBloodTuning';
 
 /**
  * Headless balance harness: drives the real WorldSim with a scripted

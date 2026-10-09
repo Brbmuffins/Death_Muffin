@@ -1,5 +1,5 @@
 /**
- * Relic runes: one socket per necromancer rite (rules: gathering/rune-rules.cjs, generated from src/gameplay/runeRules.ts).
+ * Relic runes: one socket per necromancer rite (rules: gathering/rune-rules.cjs, generated from server/rules/gameplay/runeRules.ts).
  * A socketed rune is a reserved inventory row (slot 130 + the rite's index, `equipped = 1, equipped_slot = 'rune_<rite>'`), the same way the
  * tool belt and the Legion kit are kept, so bag saves, crafting, selling, salvage and the Vault never see it and the live
  * UNIQUE (character_id, equipped_slot) key makes "one rune per rite" a database fact. No table was added (the proposal's

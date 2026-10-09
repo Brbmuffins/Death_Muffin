@@ -2,7 +2,7 @@
  * Relic runes, client side: the target pickers the cast code and the balance bot share (pure geometry, no DOM). The host-side halves of the
  * runes (Mass Grave, Bone Colossus, Creeping Rot, Contagion, Hollow Choir, Requiem, the Impale root) live in sim/WorldSim.ts.
  */
-import { RUNE_TUNING } from '../content/runes';
+import { RUNE_TUNING } from '../../server/rules/content/runes';
 
 export interface Foe {
   id: number;

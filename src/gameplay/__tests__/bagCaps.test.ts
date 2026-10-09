@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ITEMS } from '../../content/items';
+import { ITEMS } from '../../../server/rules/content/items';
 import { BAG_SIZE, addToSlots } from '../loot';
 
 describe('addToSlots honours the server stack rules', () => {

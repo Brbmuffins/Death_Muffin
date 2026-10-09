@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ABILITIES, SPELL_FX, type AbilityId } from '../abilities';
-import { AREAS, AREA_ORDER, type AreaId } from '../areas';
-import { DISCIPLINES, type DisciplineId } from '../disciplines';
-import { ENEMIES, type EnemyId } from '../enemies';
+import { AREAS, AREA_ORDER, type AreaId } from '../../../server/rules/content/areas';
+import { DISCIPLINES, type DisciplineId } from '../../../server/rules/content/disciplines';
+import { ENEMIES, type EnemyId } from '../../../server/rules/content/enemies';
 import {
   BEHAVIOUR_LABEL,
   CODEX_AREAS,

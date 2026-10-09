@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
-import { BOSS_ICHOR } from '../../content/reagents';
-import { ITEMS } from '../../content/items';
-import { AREA_PEAK, AUTHORITY, GROUND_RATES, LEVEL_CAP, ceilingsFor, isGroundItem, itemCap, itemRatePerMin, splitXp, totalXp } from '../authorityRules';
+import { AREAS } from '../../../server/rules/content/areas';
+import { BOSS_ICHOR } from '../../../server/rules/content/reagents';
+import { ITEMS } from '../../../server/rules/content/items';
+import { AREA_PEAK, AUTHORITY, GROUND_RATES, LEVEL_CAP, ceilingsFor, isGroundItem, itemCap, itemRatePerMin, splitXp, totalXp } from '../../../server/rules/gameplay/authorityRules';
 import { xpToNext } from '../characterStats';
 
 describe('authority rules: experience arithmetic', () => {

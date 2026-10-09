@@ -1,5 +1,5 @@
 /**
- * Grave Laborers / thrall labour (rules: gathering/labor-rules.cjs, generated from src/gameplay/laborRules.ts).
+ * Grave Laborers / thrall labour (rules: gathering/labor-rules.cjs, generated from server/rules/gameplay/laborRules.ts).
  *
  *   GET  /api/labor/:characterId   -> the four slots (locked ones included), what each has piled up, the server's clock
  *   POST /api/labor/assign         -> { characterId, slot, nodeType|null }: send a laborer to a post (null recalls it)

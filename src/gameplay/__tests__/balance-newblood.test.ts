@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
+import { AREAS } from '../../../server/rules/content/areas';
 import { runBalance, type BalanceRun } from '../balance/harness';
 
 /**

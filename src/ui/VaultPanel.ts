@@ -1,10 +1,10 @@
-import { RUNES, isRuneId } from '../content/runes';
+import { RUNES, isRuneId } from '../../server/rules/content/runes';
 import { getVault, vaultDeposit, vaultDepositAll, vaultSort, vaultWithdraw, type VaultState } from '../net/api';
 import type { InventorySlot } from '../net/types';
-import { RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
+import { RARITY_COLOR, RARITY_MARK, itemMeta } from '../../server/rules/content/items';
 import { rollTitleLines } from '../gameplay/affixes';
 import { BAG_SIZE, type Inventory } from '../gameplay/loot';
-import { VAULT_SLOTS, VAULT_TAB_SIZE } from '../gameplay/vaultRules';
+import { VAULT_SLOTS, VAULT_TAB_SIZE } from '../../server/rules/gameplay/vaultRules';
 import type { ItemLocks } from '../gameplay/itemLocks';
 import { LOCK_SVG, itemIcon } from './InventoryPanel';
 import { itemTypeLabel } from './gearText';

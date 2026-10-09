@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AREAS, type AreaId } from '../../content/areas';
+import { AREAS, type AreaId } from '../../../server/rules/content/areas';
 import { AUDIO_MAP, AREA_SURFACE, ENEMY_VOICE, STEP_SOUND, type SoundId } from '../../content/audioMap';
 import { GLOBAL_PACKS, ALL_PACKS, areaPacks, clipFile, clipsOf, keepsStart, mixBusOf, packClips, packOf, capSeconds, type Pack } from '../packs';
 import { IdLimiter, partnerAudible, partnerGain, profileOf } from '../mixer';

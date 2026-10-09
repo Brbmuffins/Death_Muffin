@@ -33,7 +33,7 @@ import {
   type AbilityId,
 } from '../content/abilities';
 import { CODEX_RITES } from '../content/codex';
-import { DISCIPLINES, type Discipline } from '../content/disciplines';
+import { DISCIPLINES, type Discipline } from '../../server/rules/content/disciplines';
 import { kitFor, type Kit } from '../content/kits';
 import { CHILL, HEMORRHAGE } from '../content/statuses';
 import { resourceRulesFor } from '../gameplay/resources';

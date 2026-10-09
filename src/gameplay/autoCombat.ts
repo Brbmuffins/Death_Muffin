@@ -2,8 +2,8 @@ import { ABILITIES, DETONATE, GRAVE_FROST, IVORY_CLEAVE, WAILING_SKULL, type Abi
 import type { CastTarget } from './AbilitySystem';
 import { BOSS_RADIUS } from './sim/BossBrain';
 import type { BossState, Corpse, Enemy } from './sim/types';
-import type { ClassFamily } from '../content/disciplines';
-import { AREAS, type AreaId } from '../content/areas';
+import type { ClassFamily } from '../../server/rules/content/disciplines';
+import { AREAS, type AreaId } from '../../server/rules/content/areas';
 import { dodgeStep, stepIntoHazard, type DodgeMemory, type Hazard } from './autoDodge';
 
 export interface AutoCombatInput {
