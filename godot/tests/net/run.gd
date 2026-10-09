@@ -255,19 +255,6 @@ func test_kill_reporter() -> void:
 	r2.kill(k.call({"level": 500}))
 	ok(before == log[7]["before"] and r2.crowded() == log[7]["after"], "kr crowded threshold")
 
-func test_reconnect() -> void:
-	# src/net/reconnect.test.ts values
-	ok([0, 1, 2, 3, 4, 9].map(func(a): return DmRealtimeClient.rejoin_delay_ms(a)) == [1000, 2000, 4000, 8000, 15000, 15000], "rejoin schedule")
-	ok([0, 1, 2, 5].map(func(a): return DmRealtimeClient.first_connect_delay_ms(a)) == [10000, 20000, 30000, 30000], "first-connect schedule")
-	ok(DmRealtimeClient.is_retryable_error("Co-op service unreachable \u2014 playing solo", "first"), "retry: unreachable")
-	ok(not DmRealtimeClient.is_retryable_error("Realtime service not configured", "first"), "final: not configured")
-	ok(not DmRealtimeClient.is_retryable_error("Not authenticated", "rejoin"), "final: not authenticated")
-	ok(not DmRealtimeClient.is_retryable_error("That world is full (10 players)", "rejoin"), "final: world full")
-	ok(DmRealtimeClient.is_retryable_error("You are already in this world", "rejoin") and not DmRealtimeClient.is_retryable_error("You are already in this world", "first"), "already-in-world only retried when rejoining")
-	var rt := DmRealtimeClient.new()
-	var j := rt.connect_to_world("t", {})
-	ok(not j.ok and not rt.is_host() and not rt.is_connected_to_world(), "realtime stub fails soft")
-
 func test_mock() -> void:
 	var tm = load("res://tests/net/test_mock.gd")
 	if tm == null:
@@ -322,7 +309,6 @@ func _main() -> void:
 	await test_scenarios()
 	await test_misc()
 	test_kill_reporter()
-	test_reconnect()
 	await test_mock()
 	if OS.get_environment("DM_LIVE_SMOKE") == "1":
 		await live_smoke()

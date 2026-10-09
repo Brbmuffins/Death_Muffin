@@ -12,10 +12,7 @@ var _samples: Array = []   # [t, dt_ms]
 var _last_paint := 0.0
 var _vp: RID
 # Where the CPU time goes (read the "tick" and "outside" lines): per-section accumulators are only switched on while the overlay is open.
-var _prev_prof: Dictionary = {}
-var _prev_sim: Dictionary = {}
 var _prev_fx_us := 0
-var _prev_ui_us := 0
 var _frames_since_paint := 0
 var _ms_since_paint := 0.0
 
@@ -51,20 +48,10 @@ func set_shown(on: bool) -> void:
 	_samples.clear()
 	_frames_since_paint = 0
 	_ms_since_paint = 0.0
-	var g := get_parent() as DmGame
-	if g != null:
-		g.prof_on = on
-		if g.sim != null:
-			g.sim.prof_on = on
-		if g.ui != null:
-			g.ui.prof_on = on
-		_prev_prof = g.prof.duplicate()
-		_prev_sim = g.sim.prof.duplicate() if g.sim != null else {}
 	var vfx := get_node_or_null("/root/Vfx")
 	if vfx != null:
 		vfx.prof_on = on
 		_prev_fx_us = int(vfx.prof_us)
-	_prev_ui_us = int(g.ui.prof_us) if (g != null and g.ui != null) else 0
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F3:
@@ -122,42 +109,15 @@ func _process(dt: float) -> void:
 	]
 	label.text = "\n".join(lines)
 
-## "tick ..." and "outside ..." rows: the game tick split into its systems (ms per frame over the window since the last paint), then the
-## fx / HUD node time and the rest of the frame (engine: animation, culling, draw submission, GPU wait).
+## "fx ..." row: the Vfx autoload's own node time (ms per frame over the window since the last paint). The old game's per-system tick split went with it.
 func _split_line() -> String:
-	var g := get_parent() as DmGame
 	var n := maxf(1.0, float(_frames_since_paint))
-	var frame_avg_ms := _ms_since_paint / n
 	_frames_since_paint = 0
 	_ms_since_paint = 0.0
-	if g == null or g.sim == null:
-		return "tick: n/a (overlay not inside a running world)"
-	var d := {}
-	var tick_us := 0.0
-	for k in g.prof:
-		var dv := float(int(g.prof[k]) - int(_prev_prof.get(k, 0)))
-		d[k] = dv
-		tick_us += dv
-	var sim_us := float(int(g.sim.prof.get("enemy_ai", 0)) - int(_prev_sim.get("enemy_ai", 0)))
-	_prev_prof = g.prof.duplicate()
-	_prev_sim = g.sim.prof.duplicate()
-	var views_us := 0.0
-	for k in d:
-		if String(k).begins_with("v."):
-			views_us += d[k]
-	var sim_step := float(d.get("sim.step", 0.0))
-	var events := float(d.get("handle_events", 0.0))
 	var vfx := get_node_or_null("/root/Vfx")
 	var fx_us := float(int(vfx.prof_us) - _prev_fx_us) if vfx != null else 0.0
 	_prev_fx_us = int(vfx.prof_us) if vfx != null else 0
-	var ui_total := int(g.ui.prof_us) if g.ui != null else 0
-	var ui_us := float(ui_total - _prev_ui_us)
-	_prev_ui_us = ui_total
-	var rest := tick_us - sim_step - views_us - events
-	var outside := frame_avg_ms - (tick_us + fx_us + ui_us) / n / 1000.0
-	return "tick %.1f ms = sim %.1f (ai %.1f) + views %.1f + events %.1f + rest %.1f   fx %.1f   ui %.1f   outside %.1f   enemies %d thralls %d" % [
-		tick_us / n / 1000.0, sim_step / n / 1000.0, sim_us / n / 1000.0, views_us / n / 1000.0, events / n / 1000.0, rest / n / 1000.0,
-		fx_us / n / 1000.0, ui_us / n / 1000.0, maxf(0.0, outside), g.sim.enemies.size(), g.sim.thralls.size()]
+	return "fx %.1f ms/frame (Vfx autoload)" % (fx_us / n / 1000.0)
 
 
 func _kilo(n: int) -> String:

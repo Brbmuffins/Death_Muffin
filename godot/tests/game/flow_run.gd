@@ -91,7 +91,7 @@ func _run() -> void:
 	await main.flow.resume()
 	sel = main.flow.current as DmCharSelectScreen
 	_check(main.flow.current_name == "select" and sel != null and not sel.switching.is_empty(), "resume offers the discipline switch")
-	_check(main.slice == null and main.game == null, "no game built for an unplayable discipline")
+	_check(main.slice == null, "no game built for an unplayable discipline")
 	if sel != null:
 		await sel.choose(2)
 	await _until(func() -> bool: return main.slice != null and main.slice.ready_ and DmLoadingScreen.current == null, 60.0)
@@ -99,7 +99,6 @@ func _run() -> void:
 	if main.slice != null:
 		var ch: Dictionary = main.slice.character
 		_check(int(ch["class_index"]) == 2 and int(ch["id"]) == int(c5.data["id"]), "same character, now a Gravecaller (%s)" % ch.get("class_index"))
-		_check(main.game == null, "the old DmGame is not built")
 		_check(DmMain.token_username("offline:" + uname) == uname, "token username")
 		main.slice.ui_host.leave_world()
 	await _until(func() -> bool: return main.slice == null and main.flow != null and main.flow.current_name == "login", 30.0)

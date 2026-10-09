@@ -1,8 +1,8 @@
 class_name DmQaUiShots
 extends RefCounted
-## UI shot plan for the QA driver (`-- --offline --world-demo --qa --shot-plan=/abs/plan.json --shots=/abs/dir`). Loaded by main/qa_driver.gd only when
-## --shot-plan is given, so normal play never touches it. Opens real windows of the real DmGameUi on the offline demo hero (with a
-## representative bag), optionally shows an item tooltip, and saves one PNG per shot. No network. Used by the Discord agent's shot-godot.sh.
+## UI shot plan for the QA driver (`-- --dev-offline --class=2 --qa --shot-plan=/abs/plan.json --shots=/abs/dir`; `--world-demo` = `--dev-offline --class=2`).
+## Loaded by main/qa_driver.gd only when --shot-plan is given, so normal play never touches it. Opens real windows of the real DmGameUi of the rebuild
+## (DmNextGame) on the dev-offline `tester` hero (with a representative bag), optionally shows an item tooltip, and saves one PNG per shot. No network. Used by the Discord agent's shot-godot.sh.
 ##
 ## Plan: {"bag": "demo"|"keep", "give": ["item id", ...] (extra items, one each), "shots": [{"name", "open": "bag" | ["bag", ...], "hover": <bag slot 0-47> | "item:<item id>" | "worn:<equip slot>" | "belt:<tool>",
 ##        "area": "<area id>", "wait_ms": 300, "clip": "window"}]}. At most MAX_SHOTS shots. "open" lists are applied in order (the game keeps one window
@@ -18,7 +18,8 @@ const WINDOWS := {
 	"forge": "forge", "salvage": "salvage", "shelf": "shelf", "codex": "codex", "atlas": "atlas", "ascension": "ascension", "map": "map",
 	"class": "class", "settings": "settings", "professions": "professions", "garden": "garden", "labor": "labor", "contracts": "contracts",
 }
-## The demo bag: every rarity, a set piece, affixed gear, stacks and consumables (ids the content does not know are skipped).
+## The demo bag: every rarity, a set piece, affixed gear (rolled by the backend at the listed item level, so the affixes are random; the listed ones are
+## only a fallback shape), stacks and consumables (ids the content does not know are skipped).
 const DEMO_BAG := [
 	["staff_bone", 1, 0, []], ["scythe_iron", 1, 14, [{"id": "p_str", "v": 2}]], ["staff_gold", 1, 22, [{"id": "p_thrall_dmg", "v": 5}, {"id": "s_ward", "v": 3}]],
 	["staff_moon", 1, 31, [{"id": "p_essence_regen", "v": 4}, {"id": "s_thrall_hp", "v": 6}]], ["set_gravecaller_head", 1, 20, []],
@@ -83,7 +84,7 @@ static func parse(text: String) -> Dictionary:
 
 
 ## Runs the plan on a live game, then quits the tree. `root` is any node in the tree (the QA autoload).
-static func run(root: Node, game: DmGame, plan_path: String, out_dir: String) -> void:
+static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String) -> void:
 	var tree := root.get_tree()
 	var plan := parse(FileAccess.get_file_as_string(plan_path))
 	if not plan["ok"]:
@@ -92,6 +93,7 @@ static func run(root: Node, game: DmGame, plan_path: String, out_dir: String) ->
 		return
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	var ui: DmGameUi = game.ui
+	var inventory: DmInventory = game.ui_host.inventory
 	await tree.create_timer(1.0).timeout   # the loading screen's fade-out
 	if plan["bag"] == "demo":
 		for e in DEMO_BAG:
@@ -99,16 +101,20 @@ static func run(root: Node, game: DmGame, plan_path: String, out_dir: String) ->
 				print("QA-SHOTS demo item missing: ", e[0])
 				continue
 			var drop := {"item_id": e[0], "quantity": e[1]}
-			if int(e[2]) > 0:
-				drop["instance"] = {"id": 900000 + game.inventory.slots.size(), "ilvl": e[2], "affixes": e[3]}
-			game.inventory.add(drop)
+			if int(e[2]) > 0:   # gear: a real roll from the backend (random affixes), or the bag save would refuse an instance it never minted
+				var rr: DmResult = await game.ui_host.api.roll_loot(game.ui_host.hero_id, [{"item_id": e[0], "level": e[2], "source": "boss"}])
+				if rr.ok and rr.data is Array and not (rr.data as Array).is_empty() and rr.data[0].get("instance_id") != null:
+					drop["instance"] = {"id": rr.data[0]["instance_id"], "ilvl": rr.data[0]["ilvl"], "affixes": rr.data[0]["affixes"]}
+			inventory.add(drop)
 	for id in plan["give"]:   # plan-level "give": extra item ids (one each) so a new item can be shown
 		if DmLootData.item(id).is_empty():
 			print("QA-SHOTS give: unknown item ", id)
 		else:
-			game.inventory.add({"item_id": id, "quantity": 1})
-	await game.inventory.commit()   # flush to the offline backend now, or an area change reloads the bag without the seeded items
-	game.p["hp"] = game.player.max_hp()
+			inventory.add({"item_id": id, "quantity": 1})
+	var commit_err: String = await inventory.commit()   # flush to the offline backend now, or an area change reloads the bag without the seeded items
+	if commit_err != "":
+		print("QA-SHOTS bag commit: ", commit_err)
+	game.local_body().heal(1e6)
 	var bad := 0
 	for s in plan["shots"]:
 		var t0 := Time.get_ticks_msec()
@@ -152,17 +158,17 @@ static func run(root: Node, game: DmGame, plan_path: String, out_dir: String) ->
 
 
 ## Stand at the area's waystone (or first interactable) like a waystone trip would.
-static func _go_area(game: DmGame, area: String) -> void:
+static func _go_area(game: DmNextGame, area: String) -> void:
 	var def: Dictionary = DmContent.area(area)
 	if def.is_empty():
 		print("QA-SHOTS unknown area ", area)
 		return
 	for it in def["interactables"]:
 		if it["kind"] == "waystone":
-			game.actions.teleport_to(float(it["x"]), float(it["z"]) + 1.6)
+			game.chapterhouse.teleport_to(float(it["x"]), float(it["z"]) + 1.6)
 			return
 	if not (def["interactables"] as Array).is_empty():
-		game.actions.teleport_to(float(def["interactables"][0]["x"]), float(def["interactables"][0]["z"]) + 1.6)
+		game.chapterhouse.teleport_to(float(def["interactables"][0]["x"]), float(def["interactables"][0]["z"]) + 1.6)
 
 
 ## Shows the item card for one cell of the open Reliquary; returns the card's rect (global), or an empty Rect2 when nothing could be shown.

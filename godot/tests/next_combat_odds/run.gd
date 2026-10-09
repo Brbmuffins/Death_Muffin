@@ -3,7 +3,7 @@ extends "res://tests/next_bosses/suite.gd"
 ##   A  player-side Bone Ward / Colossus guard: stat-based on hit exactly as the current client's DmPlayerRules / DmGameCombat.on_hurt (no timed status exists there either)
 ##   B  bosses ignore slow / root / chill like the current client's boss controller (the brain owns speed; only stun is capped, see DmBoss.stun)
 ##   C  the necromancer's primary weapon variants (staff pierce, sickle Withered, scythe arc) and the Splinters / Volley / Marrow-Tap runes on them
-##   D  rite sound coverage: every one of the 25 rites plays the sounds the current client's DmAbilitySystem plays (table-driven, recorded back-ends)
+##   D  rite sound coverage: every one of the 25 rites plays the sounds the old client's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed)
 ##   E  cost: scythe swings and piercing needles over a crowd
 
 const TICK := 1.0 / 60.0
@@ -397,28 +397,33 @@ func _scythe(lo: Dictionary) -> void:
 
 # =========================================================================================================================== D: sounds
 
-func _ref_sounds(id: String) -> Dictionary:
-	var scr: GDScript = load("res://tests/game/test_ability_fx.gd")
-	var t = scr.new()
-	var host = scr.StubHost.new()
-	var w: Dictionary = t.make(true, "necromancer", scr.MODS, DmWeaponLine.no_loadout(), {}, 0.5, host)
-	var c: DmAbilitySystem = w["c"]
-	var now := [1000.0]
-	t.setup_thralls(w, now)
-	var rec := RecAudio.new()
-	c.audio = rec
-	w["p"]["castUntil"] = 0.0
-	w["p"]["cooldowns"].clear()
-	w["p"]["resource"]["value"] = 900.0
-	var r: String = c.cast(id, t.target_for(w, id), now[0])
-	t.step(w, now, 80)
-	var vfx: Node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("Vfx")
-	if vfx != null:
-		vfx.clear()
-	var out := {"result": r, "sfx": rec.sfx.duplicate(), "loops": rec.loops.duplicate()}
-	out["sfx"].sort()
-	out["loops"].sort()
-	return out
+const REF_SOUNDS := {   ## rite -> the sfx (and "loop:"-prefixed loops) the old DmAbilitySystem played for a standard cast, recorded from it before it was removed (2026-10-09)
+	"bone_needle": ["needleCast", "needleHit"],
+	"miasma": ["miasma", "loop:miasmaLoop"],
+	"exhume": ["exhume"],
+	"corpse_explosion": ["corpseExplode"],
+	"black_litany": ["litany"],
+	"grave_offering": ["graveOffering"],
+	"bone_mantle": ["boneHit", "mantle"],
+	"carrion_seed": ["carrionSeed", "seedBurst"],
+	"bone_fan": ["boneFan", "needleHit"],
+	"rot_lance": ["needleHit", "rotLance"],
+	"marrow_spear": ["spear"],
+	"wailing_skull": ["needleHit", "wail"],
+	"ivory_cleave": ["boneHit", "ivoryCleave"],
+	"bone_storm": ["boneHit", "storm", "loop:boneStormLoop"],
+	"soul_siphon": ["siphon", "loop:siphonLoop"],
+	"grave_step": ["bloodStep"],
+	"veil_step": ["veilStep"],
+	"grave_frost": ["frost"],
+	"bone_prison": ["prison"],
+	"grave_hands": ["hands", "loop:handsLoop"],
+	"rally_dead": ["rallyDead"],
+	"ossuary_wall": ["sigWall"],
+	"command_rend": ["sigRend"],
+	"dirge": ["sigDirge", "loop:dirgeLoop"],
+	"plague_bloom": ["sigBloom", "loop:bloomPulse"],
+}
 
 
 func _new_sounds(id: String) -> Dictionary:
@@ -484,15 +489,14 @@ func _sounds() -> void:
 	var missing: Array = []
 	var extra: Array = []
 	for id: String in rites:
-		var ref := _ref_sounds(id)
 		var got := await _new_sounds(id)
-		var rs: Array = ref["sfx"] + ref["loops"].map(func(l: String) -> String: return "loop:" + l)
+		var rs: Array = REF_SOUNDS[id]
 		var ns: Array = got["sfx"] + got["loops"].map(func(l: String) -> String: return "loop:" + l)
 		var lost := rs.filter(func(s: String) -> bool: return not ns.has(s) and not OPTIONAL.has(s))
 		var gained := ns.filter(func(s: String) -> bool: return not rs.has(s) and not OPTIONAL.has(s))
-		print("SFX %-18s ref=%s new=%s%s" % [id, str(rs), str(ns), ("" if got["why"].is_empty() else "  REJECTED " + str(got["why"]))])
-		check(ref["result"] == "ok" and got["why"].is_empty() and not rs.is_empty(), "D: %s casts on both (ref %s, rebuild %s) and makes sound" % [id, ref["result"], str(got["why"])])
-		check(lost.is_empty(), "D: %s - the rebuild plays every sound the current client does (missing %s)" % [id, str(lost)])
+		print("SFX %-18s old=%s new=%s%s" % [id, str(rs), str(ns), ("" if got["why"].is_empty() else "  REJECTED " + str(got["why"]))])
+		check(got["why"].is_empty() and not rs.is_empty(), "D: %s casts on the rebuild (rejected: %s) and makes sound" % [id, str(got["why"])])
+		check(lost.is_empty(), "D: %s - the rebuild plays every sound the old client did (missing %s)" % [id, str(lost)])
 		if not lost.is_empty():
 			missing.append([id, lost])
 		if not gained.is_empty():

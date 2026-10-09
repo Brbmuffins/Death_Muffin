@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Automated Godot playtest (offline edition only). Isolated user:// so the real offline save is never touched.
 # usage: tools/godot/playtest.sh [--next] [--rendered] [--disc=2] [--boss=gravedigger] [--scale=3] [--tag=NAME] [--sessionA-only]
-# --next drives the REBUILD (DmNextGame, tests/playtest/bot_next.gd) instead of the current game (bot.gd); outputs go to out/<tag> with tag prefix n.
+# The bot (tests/playtest/bot_next.gd) drives the one game, the rebuild (DmNextGame); outputs go to out/<tag>.
 # Output: godot/tests/playtest/out/<tag>/{A,B}.json + log. Headless by default; --rendered = xvfb + llvmpipe under the shared renderer lock.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

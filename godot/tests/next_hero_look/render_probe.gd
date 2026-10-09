@@ -1,8 +1,8 @@
 extends SceneTree
-## Rendered shot of a fully dressed hero (legendary set + sword + cape + pet), the rebuild vs the current client (NOT a pass/fail suite):
+## Rendered shot of a fully dressed hero (legendary set + sword + cape + pet), on the rebuild (NOT a pass/fail suite):
 ##   flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 timeout 400 xvfb-run -a -s "-screen 0 1280x800x24" \
-##     godot --rendering-driver opengl3 --path godot --script res://tests/next_hero_look/render_probe.gd -- --mode=next|old --out=/dir
-## Saves <out>/hero_<mode>.png: the hero cropped from the frame and scaled up, and prints the mean frame time of 120 rendered frames.
+##     godot --rendering-driver opengl3 --path godot --script res://tests/next_hero_look/render_probe.gd -- --out=/dir
+## Saves <out>/hero_next.png: the hero cropped from the frame and scaled up, and prints the mean frame time of 120 rendered frames.
 
 const BAG := ["sword_copper", "leg_legion_unburied_head", "leg_legion_unburied_chest", "leg_legion_unburied_hands", "leg_legion_unburied_legs", "leg_legion_unburied_feet", "charm_tithe_bat"]
 
@@ -19,7 +19,7 @@ func _arg(n: String, d: String) -> String:
 
 
 func _run() -> void:
-	var mode := _arg("mode", "next")
+	var mode := "next"
 	var out := _arg("out", "")
 	var mock := DmOffline.make_mock("")
 	var api := DmOffline.make_api(mock)
@@ -35,20 +35,10 @@ func _run() -> void:
 		mock.db["accounts"][k]["professions"][0]["skill_level"] = 99
 	await api.adopt_pet(cid, "pet_tithe_bat")
 	await api.select_cosmetics(cid, {"cape": "cape_mining", "pet": "pet_tithe_bat"})
-	var pos := Callable()
-	if mode == "old":
-		var g := DmGame.new()
-		root.add_child(g)
-		await g.start(c.data, api, {"visual": true, "persist": false, "local_progress": true, "seed": 5})
-		pos = func() -> Vector3: return Vector3(g.player.x, 1.0, g.player.z)
-		for i in 30:
-			g.tick(1.0 / 30.0)
-			await process_frame
-	else:
-		var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
-		root.add_child(g)
-		await g.start(c.data, api, {"persist": false, "waves": false, "audio": false})
-		pos = func() -> Vector3: return g.local_body().position + Vector3(0, 1.0, 0)
+	var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
+	root.add_child(g)
+	await g.start(c.data, api, {"persist": false, "waves": false, "audio": false})
+	var pos := func() -> Vector3: return g.local_body().position + Vector3(0, 1.0, 0)
 	for i in 90:
 		await process_frame
 	var t0 := Time.get_ticks_usec()

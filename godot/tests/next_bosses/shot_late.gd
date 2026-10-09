@@ -3,7 +3,7 @@ extends SceneTree
 ##   flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 timeout 400 xvfb-run -a -s "-screen 0 1280x800x24" \
 ##     godot --rendering-driver opengl3 --path godot --script res://tests/next_bosses/shot_late.gd -- --boss=saint --out=/some/dir
 ## Summons the boss at its altar, stands the hero in the arena and saves a picture while the signature telegraph is up (saint: Rot Rain, regent: Conflagration,
-## mire: Surface ring) and again after the pools / eruption. `shot_ref.gd` draws the same events through the current client's own harness for comparison.
+## mire: Surface ring) and again after the pools / eruption.
 
 var out := ""
 var boss_id := "saint"

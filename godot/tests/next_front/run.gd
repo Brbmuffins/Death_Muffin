@@ -116,7 +116,7 @@ func _run() -> void:
 		check(g.local_body() != null and g.local_body().discipline_id == id, "%s: the body plays that discipline" % id)
 		check(g.is_offline and g.api == api and api.get_token() == "offline:" + who, "%s: offline backend, authenticated session" % id)
 		check(g.ui_host != null and g.ui_host.slots is Array and g.ui_host.character == ch, "%s: HUD host holds the character and a bag" % id)
-		check(m.flow == null and m.game == null, "%s: front screens gone, old game not built" % id)
+		check(m.flow == null, "%s: front screens gone" % id)
 		var bag_before: int = g.ui_host.slots.size()
 		if n == 1:
 			# persistence: a bag item + gold survive log out -> log in

@@ -1,7 +1,7 @@
 extends RefCounted
 ## A headless DmGame --offline session: the offline backend on a real file, a DmGame on top of it, then every system the release needs
 ## driven through game.api exactly as the panels do (craft, gather, salvage, reforge, vault, contract, garden, labor, vows, unlock, boon, ascend,
-## loadout, cosmetics), then a relaunch (new backend + new DmGame on the same file) that must find everything where it was left. Returns [passed, failed].
+## loadout, cosmetics), then a relaunch (new backend + new DmNextGame on the same file) that must find everything where it was left. Returns [passed, failed].
 
 const DB := "user://test_offline_session.json"
 
@@ -61,14 +61,15 @@ func _run(t: SceneTree) -> void:
 	var reg := await api.register("sessionist", "", "pw1234")
 	_ok(reg.ok, "register", reg.error)
 	api.set_token(reg.data["token"])
-	var ch := await api.load_or_create_character(7)
+	var ch := await api.load_or_create_character(2)
 	var cid: int = ch.data["id"]
-	var game := DmGame.new()
+	var game: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	t.root.add_child(game)
-	await game.start(ch.data, api, {"visual": false, "persist": false, "seed": 11, "local_progress": false, "name": "sessionist"})
-	_ok(game.ready_, "DmGame started on the offline backend")
-	_ok(game.prog.mode == "server", "progress runs in server mode against the offline backend", game.prog.mode)
-	_ok(game.slots.size() == 2, "starter kit loaded by DmGame", str(game.slots.size()))
+	await game.start(ch.data, api, {"visual": false, "persist": false, "waves": false, "audio": false, "name": "sessionist"})
+	var host := game.ui_host   # the DmGameUi contract the panels read (bag, progress, refreshes)
+	_ok(game.ready_, "DmNextGame started on the offline backend")
+	_ok(host.prog.mode == "server", "progress runs in server mode against the offline backend", host.prog.mode)
+	_ok(host.slots.size() == 2, "starter kit loaded by the game", str(host.slots.size()))
 	await _gold(api, cid, 5_000_000)
 
 	# --- craft ---
@@ -84,8 +85,8 @@ func _run(t: SceneTree) -> void:
 	var cr := await api.craft(cid, rec["id"])
 	_ok(cr.ok and _count(cr.data["updatedInventory"], rec["result_item_id"]) >= int(rec["result_quantity"]), "craft", cr.error)
 	_ok(cr.ok and int(cr.data["updatedProfession"]["skill_xp"]) > 0, "craft pays skill xp")
-	await game.refresh_inventory()
-	_ok(_count(game.slots, rec["result_item_id"]) >= int(rec["result_quantity"]), "DmGame sees the crafted item after refresh_inventory")
+	await host.refresh_inventory()
+	_ok(_count(host.slots, rec["result_item_id"]) >= int(rec["result_quantity"]), "the game sees the crafted item after refresh_inventory")
 
 	# --- gather ---
 	var node := ""
@@ -101,7 +102,7 @@ func _run(t: SceneTree) -> void:
 	_clock[0] += 60_000
 	var g2 := await api.gather(cid, node, 20, true)
 	_ok(g2.ok, "afk gather", g2.error)
-	_ok(game.gatherer != null, "DmGame has its gatherer")
+	_ok(game.gather != null, "the game has its gatherer")
 
 	# --- salvage ---
 	var rolled := await api.roll_loot(cid, [{"item_id": "helm_copper", "level": 30, "source": "boss"}, {"item_id": "sword_copper", "level": 12, "source": "elite"}, {"item_id": "chest_iron", "level": 40, "source": "boss"}])
@@ -210,14 +211,14 @@ func _run(t: SceneTree) -> void:
 	_ok(ap.ok and ap.data["report"]["applied"].size() == 2, "loadout apply", ap.error)
 
 	# --- necromancer: seals, shards, unlock, vows, boon, ascend (the Altar's calls) ---
-	await game.refresh_progress()
+	await host.refresh_progress()
 	for i in 40:
-		var open: Array = game.progress["unlocked"].filter(func(a): return not DmContent.area(a).get("safe", false))
-		if game.progress["unlocked"].has("sanctum"):
+		var open: Array = host.progress["unlocked"].filter(func(a): return not DmContent.area(a).get("safe", false))
+		if host.progress["unlocked"].has("sanctum"):
 			break
 		await api.necro_save(cid, {"areaKills": {open[i % open.size()]: 900}, "shards": 30})
-		await game.refresh_progress()
-	_ok(game.progress["unlocked"].has("sanctum"), "the sanctum seal broke from saved kills", str(game.progress["unlocked"]))
+		await host.refresh_progress()
+	_ok(host.progress["unlocked"].has("sanctum"), "the sanctum seal broke from saved kills", str(host.progress["unlocked"]))
 	for i in 30:
 		await api.necro_save(cid, {"shards": 30})
 	var vow_id: String = DmProgContent.vow_order()[0]
@@ -225,8 +226,8 @@ func _run(t: SceneTree) -> void:
 	_ok(un.ok or un.error == "Nothing to unlock." or un.error == "Already unlocked.", "unlock a vow", un.error)
 	var sw := await api.necro_vows(cid, {vow_id: 1})
 	_ok(sw.ok, "swear a vow", sw.error)
-	await game.refresh_progress()
-	_ok(int(game.progress["vows"].get(vow_id, 0)) == 1, "DmGame sees the sworn vow", str(game.progress["vows"]))
+	await host.refresh_progress()
+	_ok(int(host.progress["vows"].get(vow_id, 0)) == 1, "the game sees the sworn vow", str(host.progress["vows"]))
 	var clr := await api.necro_vows(cid, {})
 	_ok(clr.ok, "clear the vows", clr.error)
 	var boon_bought := false
@@ -245,9 +246,9 @@ func _run(t: SceneTree) -> void:
 			break
 	_ok(ascended >= 2, "ascended", str(ascended))
 	_ok(boon_bought, "bought a boon with the Ashes")
-	await game.refresh_progress()
-	var pr: Dictionary = game.progress.duplicate(true)
-	_ok(int(pr["ascension"]) >= 0 and not pr["boons"].is_empty() and int(pr["ashes"]) >= 0, "DmGame's progress carries ashes and boons", str(pr["boons"]))
+	await host.refresh_progress()
+	var pr: Dictionary = host.progress.duplicate(true)
+	_ok(int(pr["ascension"]) >= 0 and not pr["boons"].is_empty() and int(pr["ashes"]) >= 0, "the game's progress carries ashes and boons", str(pr["boons"]))
 	var bs := await api.necro_summon_boss(cid, "gravedigger")
 	_ok(bs.ok or bs.error.contains("demands"), "area boss summon answers", bs.error)
 
@@ -265,17 +266,18 @@ func _run(t: SceneTree) -> void:
 	api2.set_token("offline:sessionist")
 	var ch2 := await api2.get_character()
 	_ok(ch2.ok and ch2.data["id"] == cid, "relaunch: same character")
-	var game2 := DmGame.new()
+	var game2: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	t.root.add_child(game2)
-	await game2.start(ch2.data, api2, {"visual": false, "persist": false, "seed": 12, "local_progress": false, "name": "sessionist"})
-	_ok(game2.ready_, "relaunch: DmGame starts on the saved file")
+	await game2.start(ch2.data, api2, {"visual": false, "persist": false, "waves": false, "audio": false, "name": "sessionist"})
+	var host2 := game2.ui_host
+	_ok(game2.ready_, "relaunch: the game starts on the saved file")
 	var snap2 := await _snapshot(api2, cid)
 	var diff = load("res://tests/offline/run.gd").diff
 	for k in snap:
 		var d: String = diff.call(snap2[k], snap[k], k)
 		_ok(d == "", "relaunch keeps " + k, d)
-	_ok(int(game2.progress["ascension"]) == int(pr["ascension"]) and game2.progress["boons"] == pr["boons"], "relaunch: DmGame's progress matches", str(game2.progress["boons"]))
-	_ok(game2.slots.size() == snap["inventory"].size(), "relaunch: DmGame's bag matches the saved one")
+	_ok(int(host2.progress["ascension"]) == int(pr["ascension"]) and host2.progress["boons"] == pr["boons"], "relaunch: the game's progress matches", str(host2.progress["boons"]))
+	_ok(host2.slots.size() == snap["inventory"].size(), "relaunch: the game's bag matches the saved one")
 	_ok(int(game2.character["gold"]) == int(snap["character"]["gold"]), "relaunch: gold")
 	game2.queue_free()
 	await t.process_frame

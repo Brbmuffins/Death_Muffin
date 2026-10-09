@@ -199,8 +199,8 @@ func _run() -> void:
 					if (l.begins_with("game.slots =") or l.begins_with("g.slots =")) and not l.begins_with("game.slots ==") and not l.begins_with("g.slots =="):
 						bad.append("%s/%s: %s" % [dir_path, f, l])
 	_check(bad.is_empty(), "no code assigns the read-only game.slots: %s" % str(bad))
-	var gsrc := FileAccess.get_file_as_string("res://game/dm_game.gd")
-	_check(gsrc.contains("func bag_remove(") and gsrc.contains("func bag_commit(") and gsrc.contains("func bag_sort("), "DmGame offers the bag edit methods the Reliquary calls")
+	var gsrc := FileAccess.get_file_as_string("res://next/hud/dm_next_ui_host.gd")
+	_check(gsrc.contains("func bag_remove(") and gsrc.contains("func bag_commit(") and gsrc.contains("func bag_sort("), "DmNextUiHost offers the bag edit methods the Reliquary calls")
 
 	# --- the real server code (inventory-save.cjs) agrees, when node is available ----------------------------------------------------
 	var root_dir := ProjectSettings.globalize_path("res://").path_join("..")
