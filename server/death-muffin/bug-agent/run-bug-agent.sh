@@ -8,7 +8,7 @@
 # Safety: the agent runs in --restricted mode (file tools confined to its worktree, user settings ignored, no MCP), with
 # --permission-mode dontAsk and an allowlist (read/edit files, `agit` = a few filtered git verbs, `check.sh` = the Godot test suites with no
 # network and a read-only filesystem). Both live in ~/death-muffin/bug-agent, outside the worktree, so the agent cannot rewrite them. It never deploys, never pushes, and never sees the database: this script hands it the reports and applies its
-# validated verdicts. The owner reviews `bugfix/reports-<date>` and ships it with deploy-release.sh.
+# validated verdicts. The owner reviews `bugfix/reports-<date>`, merges it to main and ships it with publish-godot-client.sh.
 set -euo pipefail
 
 REPO=/home/ubuntu/vps-handoffs/DeathMuffin/game

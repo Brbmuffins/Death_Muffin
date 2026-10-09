@@ -1,6 +1,15 @@
 [
   {
     "date": "2026-10-09",
+    "title": "Better Bug Reports",
+    "items": [
+      "Settings → Report a bug can now attach the end of your game log, including the session that crashed if the game closed on you. It is ticked by default; untick it to leave the log out.",
+      "Before sending, your computer's user folder is hidden and anything that looks like a password or login token is blanked.",
+      "Fixes for reported bugs now show as \"Fixed — live now\" in your report list as soon as the update is out, and are announced in #deathmuffin."
+    ]
+  },
+  {
+    "date": "2026-10-09",
     "title": "One Game: the Baseline",
     "items": [
       "Death Muffin is now one game: the Windows client from the launcher, played online. The browser version is retired.",
