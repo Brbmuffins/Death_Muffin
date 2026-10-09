@@ -186,9 +186,9 @@ OLD=$(find "$DM/deploy" -maxdepth 1 -name 'backup-pre-release-*' -mtime +30 2>/d
 
 # 9. DB backups
 section "9. DB backups"
-BD="$DM/backups/db"
+BD="$DM/backups/db"   # backup-db.sh writes daily/ (weekly/, monthly/ are hard links)
 if [ ! -d "$BD" ]; then drift "no DB backup directory ($BD)"; else
-  NEW="$(find "$BD" -maxdepth 1 -type f -printf '%T@ %p\n' | sort -n | tail -1)"
+  NEW="$(find "$BD/daily" -maxdepth 1 -type f -name "*.sql.gz" -printf '%T@ %p\n' | sort -n | tail -1)"
   if [ -z "$NEW" ]; then drift "DB backup directory is empty"; else
     ts="${NEW%% *}"; ts="${ts%.*}"; h=$(( (now - ts) / 3600 ))
     [ "$h" -gt 36 ] && drift "newest DB backup is ${h}h old ($(basename "${NEW#* }"))" || info "newest DB backup ${h}h old ($(basename "${NEW#* }"))"
