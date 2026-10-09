@@ -1,44 +1,38 @@
-# DmGame ↔ DmGameUi contract (integration, 2026-10-04)
+# UI host contract: `DmNextUiHost` <-> `DmGameUi`
 
-Two tracks integrate the port in parallel. **game-core** owns `godot/main/`, `godot/world/`, `godot/game/`;
-**game-ui** owns `godot/game_ui/`. This file is the seam; change it only by agreement (the integrator merges).
+`DmGameUi` (`godot/game_ui/dm_game_ui.gd`) builds the HUD, every panel, counsel, dialogue, settings and chat. It talks to
+the game only through a host node passed to `setup(game)`. In the game that host is `DmNextUiHost`
+(`godot/next/hud/dm_next_ui_host.gd`, child `UiHost` of `DmNextGame`), which feeds the UI from the game's nodes.
+`godot/game_ui/mock_game.gd` implements the same surface for UI tests. Optional calls are made through `has_method`
+guards, so a host without them still works. Last checked against the code 2026-10-09.
 
-## DmGame (`godot/game/dm_game.gd`, built by game-core; the in-world root node)
-Properties (read by the UI):
-- `api: DmApi` — the authenticated session from `DmFrontFlow.enter_world`.
-- `character: Dictionary` — the server character (level, xp, gold, shards, stats, discipline/classIndex, …) as `DmApi` returns it.
-- `slots: Array` — bag + equipped slots in the `DmBag`/`DmLoot` shape the Reliquary already consumes.
-- `progress: Dictionary` — necro progress state (vows, unlocks, run, unlockedAreas, chronicle…) as the server stores it.
-- `settings: Dictionary` — web settings keys (same keys/defaults as the web `settings.ts`), persisted by game-core.
-- `sim: DmWorldSim`, `hero_id: int`, `area_id: String`, `in_depths: bool`.
-- `lootview: DmLootView`, `camera: Camera3D`.
-Methods (called by the UI):
-- `cast(slot: int)`, `use_belt(slot: String)`, `navigate(x: float, z: float)`, `set_auto_combat(on: bool)`, `buy_upgrade(kind: String)`.
-- `refresh_character()`, `refresh_inventory()`, `refresh_progress()` — re-fetch from the server, then emit the matching signal.
-- `bag_remove(slot_index, item_id, n) -> int` (a sale: takes n from one bag slot, returns how many), `bag_sort(on_moves, is_locked)`, `bag_commit() -> String` (save now; "" = saved, else the reason). `slots` is read-only: the UI never assigns it.
-- `apply_settings(s: Dictionary)` — store, persist and push to AudioDirector / Vfx / camera.
-- `hud_state() -> Dictionary` — sim-derived live numbers the HUD needs (hp, max_hp, essence, cooldowns per slot, buffs,
-  target, boss, wave/surge, kill chain, thrall count, minimap entities, depths readout). Shape = the HUD view-model in
-  `godot/ui/hud/README.md` minus the parts the UI owns (menus, toasts, panels, Next box, tips).
-Signals (listened to by the UI):
-- `character_changed`, `inventory_changed`, `progress_changed`, `area_changed(id)`, `hero_died`, `hero_respawned`.
-- `game_event(event_id: String, ctx: Dictionary)` — every moment the web fires a counsel tip, toast, banner, loot toast,
-  float text or chat line (ids from `godot/ui/onboarding/README.md` plus `toast`, `banner`, `loot`, `float`, `chat`).
-- `npc_interact(npc_id: String)`, `station_interact(station_id: String)` — the player used an NPC/station (opens dialogue/panels).
+## What the host provides
 
-## DmGameUi (`godot/game_ui/dm_game_ui.gd`, built by game-ui; a CanvasLayer child of DmGame)
-- `setup(game: DmGame)`; builds DmHud, every panel, DmCounsel + view, guidance Next box, dialogue, settings, chat.
-- Each frame: `hud.apply(merge(game.hud_state(), ui-owned parts))`.
-- Panel actions call `game.api` exactly as the web panels call the REST client, then `game.refresh_*()`.
+Properties (read by the UI): `api` (`DmApi`, the authenticated session), `character` (server character dictionary), `slots`
+(bag + equipped slots, read-only to the UI), `progress` (necro progress state), `settings` (persisted settings keys), `area_id`,
+`release`, `party_code`, `dev_account`, `camera`.
 
-## Additions by game-ui (2026-10-04) — all OPTIONAL: DmGameUi calls them through `has_method` guards, so a DmGame without them still works
-Properties: `release: String`, `party_code: String`, `dev_account: bool`.
-Methods the UI calls (game-core implements; the web equivalents in parentheses):
-- `use_item(item_id)` (drinkFlask/eatMeal/drinkBuff: Reliquary double-click / Drink / Eat), `set_belt(slot, item_id)` (UI owns the pick in its store and tells the game), `set_rites(primary: String, keys: Array)` (Grimoire changes; the UI persists `dm_loadout_v2_<id>`; HUD `slots` must follow).
-- `near_grinder() -> bool` (Bone Grinder range), `counsel_busy() -> {combat, hurt, dead}` (lastCombatAt/lastHurtAt bookkeeping), `counsel_tick_ctx() -> Dictionary` (every 400 ms, DmCounselEvents.tick_calls ctx).
-- `stop_gathering(reason)`, `afk_active() -> bool`, `afk_status() -> {active, text, allowed}`, `start_afk(node_id)`, `stop_player()`, `talk_key()` (E key), `travel(area_id)` (Waystones), `dial_wave(delta)`, `send_chat(text)`.
-- `leave_world()` (Settings), `class_changed(character)`, `party_create()`, `party_join(code)`, `party_leave()`, `summon_boss(id)`, `summon_boss_empowered(id)`, `enter_depths(depth)`.
-`game_event` payloads drawn by the UI: `toast {text, kind}`, `banner {title, sub, ms}`, `loot {name, qty, rarity}`, `float {text, kind, color?, world: Vector3 | screen: Vector2}`, `chat {text}`, `hit_flash`, `slot_flash {slot}`, `codex {kind: dead|area, id}`, `gather_report {report}` (opens the Sexton's Ledger), `boss_key_offer {boss, seals, gold, shards, bound}`, `depths_stair_offer {deepest}`; every other id is a counsel event id (`ui/onboarding/README.md`).
-`progress` is the LocalProgress shape (`DmProgression.blank()` keys: damageTier, waveTierOwned, legionTier, shards, areaKills, unlocked, totalKills, ascension, ashes, boons, vows, unlocks, run).
-`hud_state()` should include `brews` (the Q/Z/X tray), `slots` (primary + hotbar), `minimap`, etc. per `ui/hud/README.md`; the UI adds `reveal`, `new`, `grimoire_new`, `next`, `dev`, slot `swap` flags.
-Keys: DmGameUi handles I B J Y C P O U H N V M K . L G Enter E Esc and the loadout hotkeys itself (physical keys, no input actions); keys 1-6 R Q Z X T and WASD stay with game-core.
+Methods the UI calls: `cast(slot)`, `use_belt(slot)`, `navigate(x, z)`, `set_auto_combat(on)`, `buy_upgrade(kind)`;
+`refresh_character()`, `refresh_inventory()`, `refresh_progress()` (re-fetch, then emit the matching signal);
+`bag_remove(slot_index, item_id, n) -> int`, `bag_sort(on_moves, is_locked)`, `bag_commit() -> String` ("" = saved, else the reason);
+`apply_settings(s)` (store, persist, push to audio / Vfx / camera); `hud_state() -> Dictionary` (live numbers: hp, essence,
+cooldowns per slot, buffs, target, boss, wave, kill chain, thralls, minimap, Depths readout; built by `DmNextHudVm`);
+`use_item(id)`, `set_belt(slot, id)`, `set_rites(primary, keys)`, `near_grinder()`, `counsel_busy()`, `counsel_tick_ctx()`,
+`stop_gathering(reason)`, `afk_active()`, `afk_status()`, `start_afk(node_id)`, `stop_player()`, `talk_key()`, `travel(area_id)`,
+`dial_wave(delta)`, `send_chat(text)`, `leave_world()`, `class_changed(character)`, `party_create()`, `party_join(code)`,
+`party_leave()`, `summon_boss(id)`, `summon_boss_empowered(id)`, `enter_depths(depth)`.
+
+Signals the UI listens to: `character_changed`, `inventory_changed`, `progress_changed`, `area_changed(id)`, `hero_died`,
+`hero_respawned`, `npc_interact(npc_id)`, `station_interact(station_id)`, and `game_event(event_id, ctx)`.
+
+`game_event` carries every moment that raises a counsel tip, toast, banner, loot line, floating text or chat line: `toast`,
+`banner`, `loot`, `float`, `chat`, `hit_flash`, `slot_flash`, `codex`, `gather_report`, `boss_key_offer`, `depths_stair_offer`, and
+the counsel event ids in `DmCounselEvents` (`godot/next/hud/README.md` lists which the game raises).
+
+## Rules
+
+- The UI never assigns `slots`; bag changes go through `bag_remove` / `bag_sort` / `bag_commit`.
+- Panel actions call `game.api` and then the matching `refresh_*()`.
+- `DmGameUi` handles the panel keys itself (physical keys, no input actions); movement, rite keys and the Chapterhouse keys
+  stay with the game (`DmNextInput`, `DmRiteHotbar`).
+- Change this surface only together with `DmNextUiHost`, `mock_game.gd` and the suites in `tests/next_hud*`.
