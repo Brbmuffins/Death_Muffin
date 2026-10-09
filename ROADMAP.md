@@ -33,6 +33,6 @@ decisions are in [DECISIONS.md](DECISIONS.md).
 - **New content after polish:** new zones (the Hollow Court), more bosses with summoning keys, new enemy archetypes,
   replay and endgame depth (weekly Omen variants, deeper Depths rewards). Ideas are in git history (`FUTURE_CONTENT.md`).
 - **In-game leaderboard panel** (the website shows it; `DmApi.get_leaderboard` exists).
-- **Server authority:** the kill ledger (`backend/kills.cjs`) has `AUTHORITY_KILLS=off|audit|enforce`; the code default is `off`. Check the live setting, then move to audit and later enforce.
+- **Server authority:** the kill ledger (`backend/kills.cjs`) has `AUTHORITY_KILLS=off|audit|enforce`; the code default is `off`; live runs `audit` (checked 2026-10-09). Next step: review the audit log, then enforce.
 - **VPS-hosted sessions** (headless Godot) and host migration. Not planned.
 - **Mobile:** not in scope for the Godot game.
