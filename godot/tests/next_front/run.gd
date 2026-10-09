@@ -98,7 +98,10 @@ func _run() -> void:
 	OS.add_logger(log_)
 	mock = DmOffline.make_mock("")
 	api = DmOffline.make_api(mock)
-	check(DmMain.USE_NEXT == false, "the old path stays the default (USE_NEXT false)")
+	check(DmMain.USE_NEXT == true, "the rebuild is the default (USE_NEXT true)")
+	for d in DmCharSelectScreen.load_disciplines():
+		var fam := String(DmCharacterBuild.discipline_for(float(d["classIndex"]))["family"])
+		check(DmMain.next_supports({"class_index": int(d["classIndex"])}) == (fam == "necromancer"), "%s (%s) enters %s" % [d["id"], fam, "the rebuild" if fam == "necromancer" else "the old game"])
 	m = _new_main(true)
 	check(m.use_next, "use_next routes the front to DmNextGame")
 	# ---- every necromancer discipline: register -> select -> the rebuild with that character
@@ -171,11 +174,11 @@ func _run() -> void:
 	check(dm <= MEM_BOUND_MB, "3 cycles: static memory growth %+.1f MB <= %.0f" % [dm, MEM_BOUND_MB])
 	m.queue_free()
 	await process_frame
-	# ---- the old path still routes to DmGame
+	# ---- default routing is the rebuild, but a non-necromancer character (no kit on the rebuild yet) still enters DmGame
 	m = _new_main(false)
-	check(not m.use_next, "default routing: DmGame")
-	await _register_and_pick_old("oldpath")
-	check(m.game != null and m.slice == null, "old path: DmGame entered, no rebuild")
+	check(m.use_next, "default routing: the rebuild (USE_NEXT)")
+	await _register_and_pick_old("oldpath", 5)
+	check(m.game != null and m.slice == null, "non-necro (Grave Warden): DmGame entered, no rebuild")
 	await m.save_all()
 	m.queue_free()
 	await process_frame
@@ -185,7 +188,7 @@ func _run() -> void:
 	quit(1 if failed > 0 else 0)
 
 
-func _register_and_pick_old(name_: String) -> void:
+func _register_and_pick_old(name_: String, class_index: int) -> void:
 	await until(func() -> bool: return _at("login"), 10.0)
 	var l: DmLoginScreen = m.flow.current
 	l.toggle_mode()
@@ -194,5 +197,5 @@ func _register_and_pick_old(name_: String) -> void:
 	await l.submit()
 	await until(func() -> bool: return _at("select"), 10.0)
 	var sel: DmCharSelectScreen = m.flow.current
-	await sel.choose(2)
+	await sel.choose(class_index)
 	await until(func() -> bool: return m.game != null and m.game.ready_ and m.ui != null and DmLoadingScreen.current == null, 60.0)

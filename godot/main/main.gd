@@ -8,8 +8,9 @@ extends Node
 ## front flow (test account `tester`, offline backend).
 ## Dev: `--qa` keeps the old QA autoload inactive paths; `--world-demo` skips the front flow (offline test account, class 2).
 
-## D7: flip to true to make the rebuild the default (DmGame stays reachable with `-- --old`).
-const USE_NEXT := false
+## D7: the rebuild is the default (owner 2026-10-09); DmGame stays reachable with `-- --old`. The rebuild has only the necromancer kit
+## (PARITY gap 10), so characters of the other five disciplines still enter DmGame until their kits land (`next_supports`).
+const USE_NEXT := true
 
 var mode := "offline"
 var use_next := USE_NEXT
@@ -137,7 +138,7 @@ func _enter_world(character: Dictionary, session) -> void:
 	if flow != null:
 		flow.queue_free()
 		flow = null
-	if use_next:
+	if use_next and next_supports(character):
 		await _enter_next(character)
 		return
 	# The loading screen goes up first and is painted before the (synchronous) world build starts: no login-screen freeze, no black frame.
@@ -161,6 +162,11 @@ func _enter_world(character: Dictionary, session) -> void:
 	await ui.warm()
 	loading.dismiss()   # fades into the game; the same screen has covered every frame since the login screen
 	ui.sound.connect(func(n: String): get_node("/root/AudioDirector").play_sfx(n))
+
+
+## True when the rebuild can play this character: necromancer disciplines only for now (non-necro kit rites are refused there).
+static func next_supports(character: Dictionary) -> bool:
+	return String(DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))["family"]) == "necromancer"
 
 
 ## The rebuild: DmNextGame behind the same key-art loading screen (it paints before the synchronous world build; the game's own panel warm-up
