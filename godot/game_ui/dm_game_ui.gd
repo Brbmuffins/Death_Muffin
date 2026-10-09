@@ -69,6 +69,7 @@ var codex_journal := {"dead": {}, "area": {}}
 var _build_cache: Dictionary = {}
 var _build_sig := ""
 var _guide_t := 0.0
+var _busy_t := 0.0
 var _tick_t := 0.0
 var _last_gold := 0
 var _family := "necromancer"
@@ -98,6 +99,7 @@ func setup(game_: Node) -> void:
 
 	hud = DmHud.new()
 	add_child(hud)
+	hud.set_hud_scale(DmSettings.clamp_hud_scale(game.settings.get("hud_scale", 1.0)))
 	windows_root = Control.new()
 	windows_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	windows_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -613,16 +615,34 @@ func record_codex(kind: String, id: String) -> void:
 
 # --- per frame ----------------------------------------------------------------------------------------------------------------
 
+## Accumulated _process time in microseconds while `prof_on` (the F3 overlay turns it on): the HUD / counsel share of a frame.
+var prof_on := false
+var prof_us := 0
+
 func _process(delta: float) -> void:
 	if game == null:
 		return
+	var prof_t0 := Time.get_ticks_usec() if prof_on else 0
+	_ui_frame(delta)
+	if prof_on:
+		prof_us += Time.get_ticks_usec() - prof_t0
+
+
+func _ui_frame(delta: float) -> void:
 	# The web refreshes the HUD at most every HUD_INTERVAL_MS (WorldScene hudDue); every frame here was ~2 ms of view-model + apply.
 	var now := Time.get_ticks_msec()
 	if _vm.is_empty() or now - _hud_at >= HUD_INTERVAL_MS or now < _hud_at:
 		_hud_at = now
 		_vm = merged_vm()
 		hud.apply(_vm)
-	counsel.tick(delta, counsel_busy())
+	# The counsel's "is the player busy" snapshot (window scan, game.counsel_busy(), area checks) is refreshed 10x a second; its timers
+	# still advance every frame. It rebuilt the whole dictionary every frame before.
+	_busy_t -= delta
+	var busy_now: Variant = null
+	if _busy_t <= 0.0:
+		_busy_t = 0.1
+		busy_now = counsel_busy()
+	counsel.tick(delta, busy_now)
 	cues.tick(delta)
 	_tick_guidance(delta)
 	_tick_t += delta
@@ -901,6 +921,8 @@ func update_setting(patch: Dictionary) -> void:
 	for k in patch:
 		s[k] = patch[k]
 	game.apply_settings(s)
+	if patch.has("hud_scale"):
+		hud.set_hud_scale(DmSettings.clamp_hud_scale(patch["hud_scale"]))
 	if patch.has("no_tips"):
 		counsel.set_tips_enabled(not bool(patch["no_tips"]))
 	if patch.has("reduce_motion"):

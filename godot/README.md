@@ -12,6 +12,8 @@ character/enemy/boss model. Conventions for the parallel tracks: `PORTING.md`. (
 flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice xvfb-run -a -s "-screen 0 1280x800x24" \
   /home/ubuntu/tools/godot/godot --path godot --rendering-driver opengl3 -- --qa --shots=/abs/dir
 ```
+UI shot plan (windows / tooltips on the offline demo hero with a representative bag; used by the Discord agent's `shot-godot.sh`):
+`... -- --offline --world-demo --qa --shot-plan=/abs/plan.json --shots=/abs/dir`, plan format in `godot/main/qa_ui_shots.gd` (`{"shots":[{"name":"bag","open":["bag"],"hover":5,"clip":"window"}]}`, max 4). Inactive without `--qa`; parsing test: `tests/qa/run.gd`.
 World tour (one screenshot per area, all seals broken) and a sealed-gate shot:
 `godot/tests/world/tour.sh` -> `godot/shots/world/area_NN_<id>.png`, `tests/world/tour.sh --gate=graves_ossuary`. Headless test: `godot --headless --path godot --script res://tests/world/run.gd`.
 Dev: **F9** (or `-- --open-all`) breaks every seal so every area is walkable; real seal state is `DmWorldBuilder.set_unlocked([area ids])` (the web's Nav.setUnlocked).
@@ -68,3 +70,12 @@ Placeholder:
 5. Resolution/quality: both at the same window size; note GPU model, driver and whether the web build was on the "Low" graphics setting.
 6. Load time: launch to controllable hero. Memory (Task Manager) after 2 minutes.
 7. Report the F3 lines as text/screenshot. Only numbers from a real GPU count: the VPS (llvmpipe, software GL) runs this at ~7 fps and says nothing about real hardware.
+
+## Where the frame goes (CPU)
+- **F3 rows** (in a running world): `tick X = sim .. (ai ..) + views .. + events .. + rest ..` is the game tick split into systems, `fx` the Vfx autoload,
+  `ui` the HUD / counsel, `outside` the remainder of the frame (engine: animation, culling, draw submission, GPU wait). If `outside` dominates in a fight,
+  look at `calls` / `objects` and `render cpu`; if `sim` or `views` grow with `enemies`, it is script cost.
+- **Headless CPU bench**: `godot --headless --fixed-fps 60 --path godot --script res://tests/perf/combat_bench.gd -- --phase=idle|combat|boss [--area=nave] [--seconds=15]`
+  runs the real game loop (DmGame + DmGameUi + autoloads) at a fixed timestep with forced waves and a corpse-raised legion; it prints frame median / p95 / p99, the
+  tick sections, the cost per event type, what the slowest 5% of frames are made of (`--spikes=1`), live fx load, and with `--census=1` the render item census.
+  Run base and candidate at the same time on separate cores and compare medians (a shared VPS is noisy). The older `combat_perf.gd` / `wave_perf.gd` give per-section views.

@@ -201,12 +201,43 @@ func _build_safe_frame() -> void:
 		safe.add_child(c)
 
 
+## Settings -> HUD size. The whole safe frame is scaled from its top-left corner and given 1/scale of the room as its layout size, so the
+## edge-anchored groups stay in their corners and the hit areas follow (a Control's scale also scales its input transform). The floating
+## numbers, vignette and death veil are outside the frame and keep their screen size.
+const HUD_SCALE_MIN := 0.75
+const HUD_SCALE_MAX := 1.3
+## The narrowest logical frame width at which the side columns still clear the orb row: the upgrade panel is 298+ wide whatever its clamp says,
+## the orbs reach 413 px either side of the centre, plus the 18 px gutter and a gap (measured; tests/hud/run.gd checks the rects).
+const MIN_FIT_WIDTH := 1500.0
+var hud_scale := 1.0        ## what Settings asked for
+var effective_scale := 1.0  ## what is applied: hud_scale, held back on a frame too narrow to fit it
+
+
+func set_hud_scale(v: float) -> void:
+	v = clampf(v, HUD_SCALE_MIN, HUD_SCALE_MAX)
+	if is_equal_approx(v, hud_scale):
+		return
+	hud_scale = v
+	_notification(NOTIFICATION_RESIZED)
+
+
+## hud_scale, but never more than the frame can hold: above 100 % it is capped at frame width / MIN_FIT_WIDTH (never below 100 %).
+static func fit_scale(want: float, frame_w: float) -> float:
+	if want <= 1.0:
+		return want
+	return minf(want, maxf(1.0, frame_w / MIN_FIT_WIDTH))
+
+
 func _fit_safe_frame() -> void:
 	if safe == null:
 		return
 	var m := maxf(0.0, (size.x - size.y * MAX_ASPECT) * 0.5)
-	safe.offset_left = m
-	safe.offset_right = -m
+	effective_scale = fit_scale(hud_scale, size.x - 2.0 * m)
+	safe.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	safe.pivot_offset = Vector2.ZERO
+	safe.scale = Vector2(effective_scale, effective_scale)
+	safe.position = Vector2(m, 0.0)
+	safe.size = Vector2(size.x - 2.0 * m, size.y) / effective_scale
 
 
 func _txt(text: String, size: int, color: Color, font: String = "body", spacing: float = 0.0, shadow: bool = true) -> Label:
@@ -1071,6 +1102,10 @@ func _notification(what: int) -> void:
 		_update_toast_top()
 
 
+func _frame_w() -> float:
+	return safe.size.x if safe != null and safe.size.x > 0.0 else size.x
+
+
 func _update_toast_top() -> void:
 	var low := boss.visible or target_box.visible
 	toasts.offset_top = 112.0 if low else 64.0
@@ -1217,6 +1252,7 @@ func _rebuild_slots(slots: Array) -> void:
 
 var _souls_full := -1
 var _thr_hurt := 0
+var _depth_open := -1
 
 func _apply_souls_thralls(v: Dictionary) -> void:
 	var souls := float(v.get("souls", 0))
@@ -1478,17 +1514,19 @@ func _apply_map_column(v: Dictionary) -> void:
 		var open := bool(d.get("open", false))
 		var col := Color("ffb347") if open else DmUi.BONE_300
 		depth_n.text = str(int(d["depth"]))
-		depth_n.add_theme_color_override("font_color", col)
+		DmHudKit.set_color(depth_n, "font_color", col)
 		depth_k.text = "STAIR OPEN" if open else "%d/%d" % [int(d["kills"]), int(d["need"])]
-		depth_k.add_theme_color_override("font_color", col)
+		DmHudKit.set_color(depth_k, "font_color", col)
 		depth_bar.fill_a = col
 		depth_bar.fill_b = col
 		depth_bar.value = float(d["kills"]) / maxf(float(d["need"]), 1.0)
 		var chest := bool(d.get("chest", false))
 		depth_cue.text = ("The stair is open · a chest waits on this floor" if chest else "Follow the amber mark on the minimap") if open else ("A chest waits on this floor" if chest else "")
 		depth_cue.visible = depth_cue.text != ""
-		depth_cue.add_theme_color_override("font_color", Color("ffcf85") if open else DmUi.TEXT_MUTED)
-		depth_box.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.5), col if open else DmUi.BORDER_STRONG, Vector4(0, 0, 0, 2), Vector4(8, 4, 8, 5)))
+		DmHudKit.set_color(depth_cue, "font_color", Color("ffcf85") if open else DmUi.TEXT_MUTED)
+		if int(open) != _depth_open:
+			_depth_open = int(open)
+			depth_box.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.5), col if open else DmUi.BORDER_STRONG, Vector4(0, 0, 0, 2), Vector4(8, 4, 8, 5)))
 	var nx: Variant = v.get("next")
 	next_box.visible = nx != null and String(nx) != ""
 	next_txt.text = String(nx) if nx != null else ""
@@ -1506,7 +1544,7 @@ func _apply_misc(v: Dictionary) -> void:
 	prompt.visible = pr != null and String(pr) != ""
 	if prompt.visible:
 		prompt_rt.text = DmUi.markup(String(pr))
-	hint.text = _ellipsize(String(v.get("hint", "")), 13, minf(640.0, size.x - 700.0) if size.x > 0.0 else 640.0)
+	hint.text = _ellipsize(String(v.get("hint", "")), 13, minf(640.0, _frame_w() - 700.0) if size.x > 0.0 else 640.0)
 	var dv: Dictionary = v.get("death", {})
 	var show := bool(dv.get("show", false))
 	death_sub.text = String(dv.get("sub", ""))
@@ -1652,7 +1690,8 @@ func tip_default_position() -> Vector2:
 	var below := 0.0
 	if party_box.get_child_count() > 0:
 		below = party_box.get_global_rect().end.y + 8.0
-	return Vector2(18.0, maxf(70.0, below))
+	var s := effective_scale
+	return Vector2(safe.position.x + 18.0 * s, maxf(70.0 * s, below)) if safe != null else Vector2(18.0, maxf(70.0, below))
 
 
 # ======================================================================== spell card (HUD.showTooltip / refreshTooltip)
@@ -1750,7 +1789,11 @@ func node_tip(html: Variant, x: float = 0.0, y: float = 0.0) -> void:
 	if node_tip_rt.text != bb:
 		node_tip_rt.text = bb
 	node_tip_box.visible = true
+	var s := effective_scale
 	var sz := node_tip_box.get_combined_minimum_size()
 	var vp := get_viewport_rect().size
 	node_tip_box.size = sz
-	node_tip_box.position = Vector2(maxf(8.0, minf(vp.x - sz.x - 8.0, x + 18.0)), maxf(8.0, minf(vp.y - sz.y - 8.0, y - sz.y - 12.0)))
+	# (x, y) is the pointer in screen space; the card lives in the scaled frame, so clamp its screen rect and convert back.
+	var ssz := sz * s
+	var screen := Vector2(maxf(8.0, minf(vp.x - ssz.x - 8.0, x + 18.0)), maxf(8.0, minf(vp.y - ssz.y - 8.0, y - ssz.y - 12.0)))
+	node_tip_box.position = (screen - safe.global_position) / s

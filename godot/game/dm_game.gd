@@ -189,6 +189,8 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	prog.changed.connect(func(): progress_changed.emit())
 	inventory = DmInventory.new(api, hero_id)
 	inventory.changed.connect(_on_inventory_changed)
+	inventory.save_failed.connect(func(m: String) -> void: toast("Your bag could not be saved: %s. Retrying. Your items are safe on screen." % m, "err"))
+	inventory.save_recovered.connect(func() -> void: toast("Bag saved.", "good"))
 	# Kit, rites, hotbar.
 	var base := DmCharacterBuild.discipline_for(float(character["class_index"]))
 	kit = DmAbilities.kit_for(base["family"])
@@ -487,6 +489,20 @@ static func _pet_def(id: String) -> Variant:
 		if p["id"] == id:
 			return p
 	return null
+
+
+## Bag edits the Reliquary makes (GAME_CONTRACT.md). `slots` is read-only: these are the only way to change the bag from the UI.
+func bag_remove(slot_index: int, _item_id: String, n: int) -> int:
+	return inventory.remove_from_slot(slot_index, n)
+
+
+func bag_sort(on_moves: Callable = Callable(), is_locked: Callable = Callable()) -> void:
+	inventory.sort_bag(on_moves, is_locked)
+
+
+## Save the bag now. "" = the server has it; otherwise the reason (the player has already been told by a toast).
+func bag_commit() -> String:
+	return await inventory.commit()
 
 
 func refresh_inventory() -> void:
@@ -912,9 +928,37 @@ func _tick_visuals(dt: float, now: float) -> void:
 	builder.update_occlusion(camera, Vector3(player.x, 0, player.z))
 	if prof_on: _pm("v.camera+occ")
 	builder.update_streaming(camera.focus.x, camera.focus.z)
-	builder.update_light_lod(camera.focus.x, camera.focus.z)
+	_tick_light_lod(dt)
 	builder.update_shadow_cells(player.x, player.z, dt)
 	if prof_on: _pm("v.stream+lights")
+
+
+var _lod_t := 0.0
+var _lod_x := 1e9
+var _lod_z := 1e9
+var _lod_near := -1
+var _lod_areas := -1
+
+## The prop-light budget (nearest N of the lights within 40 m) only needs a fresh sort when the focus has moved, the preset's N changed or an
+## area was streamed in / out; the full scan + sort ran every frame (~0.5 ms with the Nave's lights). Re-sorted at most every 100 ms otherwise.
+func _tick_light_lod(dt: float) -> void:
+	var fx := camera.focus.x
+	var fz := camera.focus.z
+	var mask := 0
+	var bit := 1
+	for id in builder.world.order:
+		if (builder.area_nodes[id] as Node3D).visible:
+			mask |= bit
+		bit <<= 1
+	_lod_t -= dt
+	if _lod_t > 0.0 and mask == _lod_areas and builder.light_near == _lod_near and absf(fx - _lod_x) + absf(fz - _lod_z) < 1.5:
+		return
+	_lod_t = 0.1
+	_lod_areas = mask
+	_lod_near = builder.light_near
+	_lod_x = fx
+	_lod_z = fz
+	builder.update_light_lod(fx, fz)
 
 
 var _npc_t := 0.0

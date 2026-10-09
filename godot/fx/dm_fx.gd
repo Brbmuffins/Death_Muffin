@@ -192,9 +192,20 @@ func light_flash(pos: Vector3, color: Color, intensity: float, life: float = 0.3
 
 # --- frame ----------------------------------------------------------------------------------------------------------
 
+## Accumulated _process time in microseconds while `prof_on` (the F3 overlay turns it on): the fx share of a frame.
+var prof_on := false
+var prof_us := 0
+
 func _process(dt_real: float) -> void:
 	if prims == null:
 		return
+	var prof_t0 := Time.get_ticks_usec() if prof_on else 0
+	_frame(dt_real)
+	if prof_on:
+		prof_us += Time.get_ticks_usec() - prof_t0
+
+
+func _frame(dt_real: float) -> void:
 	# Particles hang in the air during a hitstop.
 	var dt := dt_real * hitstop_scale
 	binbun.time_scale = hitstop_scale

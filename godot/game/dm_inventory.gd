@@ -6,11 +6,15 @@ extends RefCounted
 ## Timers are driven by `tick(dt)` (DmGame calls it each frame) so tests are deterministic. Slots are the DmBag/DmLoot row Dictionaries.
 
 signal changed(slots: Array)
+## A save was refused or failed. Emitted once per failure streak (not on every retry); `recovered` follows when a later save lands.
+signal save_failed(message: String)
+signal save_recovered
 
 var api: DmApi
 var character_id: int = 0
 var slots: Array = []
 var state: String = "saved"   # saved | saving | retrying
+var last_error: String = ""
 
 var _dirty := false
 var _in_flight := false
@@ -191,6 +195,48 @@ func consume_at(slot_index: int) -> bool:
 	return true
 
 
+## Take `n` of the item out of one bag slot (a sale): the stack shrinks, an emptied slot disappears, and the change is queued for the
+## next save like any pickup. Returns how many were taken. A row is never edited in place (it is shared with saves in flight).
+func remove_from_slot(slot_index: int, n: int) -> int:
+	var taken := 0
+	var item_id := ""
+	for s in slots:
+		if int(s["slot_index"]) == slot_index and _in_bag(s):
+			item_id = String(s["item_id"])
+			taken = mini(n, int(s["quantity"]))
+			break
+	if taken <= 0:
+		return 0
+	var out: Array = []
+	for s in slots:
+		if int(s["slot_index"]) == slot_index and _in_bag(s):
+			var c: Dictionary = s.duplicate(true)
+			c["quantity"] = int(c["quantity"]) - taken
+			if int(c["quantity"]) > 0:
+				out.append(c)
+		else:
+			out.append(s)
+	slots = out
+	# One queued mutation per unit keeps replace() able to replay the sale on top of a fresher server reply.
+	var left := count(item_id)
+	for i in taken:
+		_pending.append({"kind": "consume", "itemId": item_id, "slot": slot_index, "countAfter": left + (taken - 1 - i)})
+	_dirty = true
+	_emit()
+	_schedule(1.5)
+	return taken
+
+
+## Save right now and say how it went: "" when the server has the bag, otherwise the reason (also toasted through save_failed).
+func commit() -> String:
+	await _settle()
+	await flush()
+	await _settle()
+	if _dirty or state == "retrying":
+		return last_error if last_error != "" else "Your bag could not be saved."
+	return ""
+
+
 ## The Reliquary's Sort button; `on_moves(moves: Dictionary)` runs before the emit (slot-keyed state follows).
 func sort_bag(on_moves: Callable = Callable(), is_locked: Callable = Callable()) -> void:
 	var moves := {}
@@ -243,6 +289,10 @@ func flush(keepalive: bool = false) -> void:
 	_in_flight_mutations = sent_mutations
 	var r := await api.save_inventory(character_id, DmLoot.to_save_payload(sent), DmLoot.bag_size())
 	if r.ok:
+		var was_failing := last_error != ""
+		last_error = ""
+		if was_failing:
+			save_recovered.emit()
 		if is_same(slots, sent):
 			slots = r.data
 		else:
@@ -253,6 +303,9 @@ func flush(keepalive: bool = false) -> void:
 	else:
 		_dirty = true
 		state = "retrying"
+		if last_error == "":
+			save_failed.emit(r.error if r.error != "" else "Your bag could not be saved.")
+		last_error = r.error if r.error != "" else "Your bag could not be saved."
 		_pending = sent_mutations + _pending
 		_in_flight_mutations = []
 		_retry_delay = minf(60.0, _retry_delay * 2.0)

@@ -281,5 +281,99 @@ func _run() -> void:
 	_check(hud.tip_anchor_rect("nope") == Rect2(), "unknown tip has no anchor")
 	_check(hud.tip_default_position().x == 18.0 and hud.tip_default_position().y >= 70.0, "tip default position")
 
+	# --- HUD size: scales the frame only, corners stay put, hit areas follow ---
+	await _hud_scale_tests(Vector2i(1600, 900))
+	await _hud_scale_tests(Vector2i(2560, 1080))
+
 	print("hud tests: %d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)
+
+
+func _hud_scale_tests(sz: Vector2i) -> void:
+	# a SubViewport: headless windows drop mouse events, a SubViewport routes them like the real one
+	var sv := SubViewport.new()
+	sv.size = sz
+	get_root().add_child(sv)
+	var hud := DmHud.new()
+	sv.add_child(hud)
+	await _frames(3)
+	var tag := " [%dx%d]" % [sz.x, sz.y]
+	_check(is_equal_approx(DmSettings.clamp_hud_scale(0.1), 0.75) and is_equal_approx(DmSettings.clamp_hud_scale(9), 1.3) and DmSettings.clamp_hud_scale("x") == 1.0, "clamp_hud_scale bounds")
+	# fit rule: never forced below 100 %, never above what the frame width allows
+	_check(DmHud.fit_scale(1.3, 1600.0) < 1.3 and DmHud.fit_scale(1.3, 1600.0) >= 1.0, "130%% is held back on the narrowest frame (%.3f)" % DmHud.fit_scale(1.3, 1600.0))
+	_check(DmHud.fit_scale(1.3, 2400.0) == 1.3 and DmHud.fit_scale(0.75, 800.0) == 0.75 and DmHud.fit_scale(1.3, 900.0) == 1.0, "fit_scale: roomy frame keeps it, shrink is never limited, tiny frame floors at 100%")
+	var m := DmHudMock.combat()
+	m["minimap"] = DmHudMock.minimap()
+	hud.apply(m)
+	var vp: Viewport = sv
+	var hits := {"menu": 0, "nav": 0}
+	var menu_btn: Button = hud.menu_btns["inventory"]
+	menu_btn.pressed.connect(func() -> void: hits["menu"] += 1)
+	hud.navigate.connect(func(_x: float, _z: float) -> void: hits["nav"] += 1)
+	for want in [1.0, 0.75, 1.3, 1.0]:
+		hud.set_hud_scale(want)
+		await _frames(3)
+		var s := hud.effective_scale
+		_check(is_equal_approx(hud.safe.scale.x, s) and (want <= 1.0 and is_equal_approx(s, want) or want > 1.0 and s >= 1.0 and s <= want), "scale %s applied as %.3f%s" % [str(want), s, tag])
+		var frame := Rect2(hud.safe.global_position, hud.safe.size * s)
+		_check(absf(frame.end.x - (hud.size.x - maxf(0.0, (hud.size.x - hud.size.y * DmHud.MAX_ASPECT) * 0.5))) < 1.0 and absf(frame.end.y - hud.size.y) < 1.0, "scaled frame still fills the room (corners stay in their corners) at %s" % str(want))
+		# no overlap: the side columns clear the orbs (with the gutter) at every scale
+		var hp_w: Rect2 = (hud.hp_orb.get_parent() as Control).get_global_rect()
+		var es_w: Rect2 = (hud.ess_orb.get_parent() as Control).get_global_rect()
+		var gap := 8.0
+		var xr := hud.xp_box.get_global_rect()
+		var cr := hud.chat_col.get_global_rect()
+		var ur := hud.up_panel.get_global_rect()
+		_check(xr.end.x + gap <= hp_w.position.x or xr.end.y <= hp_w.position.y, "xp column clears the health orb at %s" % str(want) + tag)
+		_check(cr.end.x + gap <= hp_w.position.x or cr.end.y <= hp_w.position.y, "chat column clears the health orb at %s" % str(want) + tag)
+		_check(ur.position.x >= es_w.end.x + gap or ur.end.y <= es_w.position.y, "upgrade panel clears the essence orb at %s" % str(want) + tag)
+		_check(Rect2(Vector2.ZERO, hud.size).grow(1.0).encloses(menu_btn.get_global_rect()), "menu button stays on screen at %s" % str(want))
+		# a real click at the button's centre and on the minimap
+		var before: int = hits["menu"]
+		_click(vp, menu_btn.get_global_rect().get_center())
+		await _frames(3)
+		_check(hits["menu"] == before + 1, "click on a HUD button lands at %s" % str(want))
+		var mr := hud.minimap.get_global_rect()
+		var nb: int = hits["nav"]
+		_click(vp, mr.position + mr.size * 0.5)
+		await _frames(2)
+		_check(hits["nav"] == nb + 1, "minimap click navigates at %s" % str(want))
+		# the click offset must scale: a point 20 screen px right of centre maps to 20/s local px
+		var got := []
+		var cb := func(x: float, z: float) -> void: got.append(Vector2(x, z))
+		hud.navigate.connect(cb)
+		_click(vp, mr.position + mr.size * 0.5)
+		_click(vp, mr.position + mr.size * 0.5 + Vector2(20.0, 0.0))
+		await _frames(2)
+		hud.navigate.disconnect(cb)
+		_check(got.size() == 2, "two minimap clicks navigate" + tag)
+		if got.size() == 2:
+			var dx: float = got[1].x - got[0].x
+			_check(absf(dx - 20.0 / s / DmHudMinimap.SCALE) < 0.01, "minimap click offset follows the scale at %s (dx %.3f)%s" % [str(want), dx, tag])
+	# node tip stays on the screen when the frame is scaled
+	for want in [0.75, 1.3]:
+		hud.set_hud_scale(want)
+		await _frames(2)
+		hud.node_tip("<b>Oak</b><div>12 XP</div>", hud.size.x - 4.0, hud.size.y - 4.0)
+		await _frames(2)
+		var tr := Rect2(hud.node_tip_box.global_position, hud.node_tip_box.size * hud.effective_scale)
+		_check(Rect2(Vector2.ZERO, hud.size).grow(0.5).encloses(tr), "node tip stays inside the screen at %s" % str(want))
+		hud.node_tip(null)
+	hud.set_hud_scale(1.0)
+	_check(is_equal_approx(hud.effective_scale, 1.0) and hud.safe.scale == Vector2.ONE, "back to 100%" + tag)
+	sv.queue_free()
+
+
+func _click(vp: Viewport, at: Vector2) -> void:
+	var mv := InputEventMouseMotion.new()
+	mv.position = at
+	mv.global_position = at
+	vp.push_input(mv)
+	for pressed in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pressed
+		e.position = at
+		e.global_position = at
+		e.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+		vp.push_input(e)

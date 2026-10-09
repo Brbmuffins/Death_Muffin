@@ -1,5 +1,5 @@
 extends Node
-## Autoload QA driver. Inactive unless the game is started with user args:  -- --qa [--shots=<dir>] [--seconds=N]
+## Autoload QA driver. Inactive unless the game is started with user args:  -- --qa [--shots=<dir>] [--seconds=N] [--shot-plan=<plan.json>]
 ## (use with `--world-demo`): scripted fight in the Hollow Graves with the real DmGame: a wave of the dead around the hero, the real rites
 ## cast at the nearest enemy, Exhume for thralls; one screenshot a second; quits after N seconds.
 
@@ -14,6 +14,7 @@ var _cast_t := 0.0
 var _setup := false
 var depths_mode := false
 var boss_id := ""
+var plan_path := ""   ## --shot-plan=<abs json>: UI shot plan (main/qa_ui_shots.gd) instead of the fight
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -23,6 +24,8 @@ func _ready() -> void:
 			boss_id = a.substr(7)
 		elif a == "--depths":
 			depths_mode = true
+		elif a.begins_with("--shot-plan="):
+			plan_path = a.substr(12)
 		elif a.begins_with("--shots="):
 			shots = a.substr(8)
 		elif a.begins_with("--seconds="):
@@ -42,6 +45,12 @@ func _process(dt: float) -> void:
 			var nm := get_tree().root.get_node_or_null("Main/NextGame")
 			if nm != null and nm.ready_:
 				nxt = nm
+		return
+	if plan_path != "":
+		if game.ui == null or game.ui.warming or DmLoadingScreen.current != null or t < 3.0:
+			return
+		set_process(false)
+		DmQaUiShots.run(self, game, plan_path, shots)
 		return
 	if boss_id != "":
 		var def: Dictionary = DmContent.boss(boss_id)

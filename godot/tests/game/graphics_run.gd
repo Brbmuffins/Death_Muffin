@@ -71,6 +71,17 @@ func _run() -> void:
 		bf.close()
 		_check(is_equal_approx(float(DmSettings.new(path, true).values["brightness"]), float(pair[1])), "saved brightness %s loads as %s" % [str(pair[0]), str(pair[1])])
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	# --- HUD size (75-130 %, snapped, default 100 %) ------------------------------------------
+	_check(is_equal_approx(float(DmSettings.new("user://nonexistent_gfx.json", false).values["hud_scale"]), 1.0), "hud_scale defaults to 100%")
+	for pair in [[0.1, 0.75], [5.0, 1.3], [1.15, 1.15], [0.85, 0.85], [1.12, 1.1], ["x", 1.0], [null, 1.0]]:
+		var hf := FileAccess.open(path, FileAccess.WRITE)
+		hf.store_string(JSON.stringify({"hud_scale": pair[0]}))
+		hf.close()
+		_check(is_equal_approx(float(DmSettings.new(path, true).values["hud_scale"]), float(pair[1])), "saved hud_scale %s loads as %s" % [str(pair[0]), str(pair[1])])
+	var hs := DmSettings.new(path, true)
+	hs.update({"hud_scale": 1.3})
+	_check(is_equal_approx(float(DmSettings.new(path, true).values["hud_scale"]), 1.3), "hud_scale persists across a reload")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	_check(float(DmGraphicsPreset.get_preset("high")["lift"]) == 1.0 and float(DmGraphicsPreset.get_preset("ultra")["lift"]) == 1.0, "High/Ultra are the lighting reference (lift 1.0)")
 	_check(float(DmGraphicsPreset.get_preset("low")["lift"]) > 1.0 and float(DmGraphicsPreset.get_preset("medium")["lift"]) > 1.0, "Low/Medium run a little hotter to match High")
 

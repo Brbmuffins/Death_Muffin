@@ -168,6 +168,36 @@ func refresh_character() -> void:
 	character_changed.emit()
 
 
+func bag_remove(slot_index: int, _item_id: String, n: int) -> int:
+	var taken := 0
+	var out: Array = []
+	for s in slots:
+		if int(s["slot_index"]) == slot_index and int(s.get("equipped", 0)) == 0 and taken == 0:
+			taken = mini(n, int(s["quantity"]))
+			var c: Dictionary = s.duplicate(true)
+			c["quantity"] = int(c["quantity"]) - taken
+			if int(c["quantity"]) > 0:
+				out.append(c)
+		else:
+			out.append(s)
+	slots = out
+	inventory_changed.emit()
+	return taken
+
+
+func bag_sort(on_moves: Callable = Callable(), is_locked: Callable = Callable()) -> void:
+	var moves := {}
+	slots = DmBag.sort_bag_slots(slots, moves, is_locked)
+	if on_moves.is_valid():
+		on_moves.call(moves)
+	inventory_changed.emit()
+
+
+func bag_commit() -> String:
+	var r: DmResult = await api.save_inventory(int(character["id"]), DmBag.to_save_payload(slots), DmBag.BAG_SIZE)
+	return "" if r.ok else r.error
+
+
 func refresh_inventory() -> void:
 	refreshes["inventory"] += 1
 	var r: DmResult = await api.get_inventory(int(character["id"]))

@@ -118,6 +118,14 @@ func _run() -> void:
 	_check(got.size() == 1 and got[0]["id"] == 1, "slot press selects the item")
 	r._slots[0].pressed.emit(r._slots[0])
 	_check(r.sel_item.is_empty(), "second press deselects")
+	r._slots[0].pressed.emit(r._slots[0])
+	var fresh: Array = bag.duplicate()
+	fresh[0] = {"id": 1, "name": "Blade", "rarity": "epic", "quantity": 4, "sell_value": 10, "type_label": "weapon"}
+	r.set_inventory(fresh, {}, {})
+	_check(int(r.sel_item.get("quantity", 0)) == 4, "a refreshed inventory updates the selected item's card")
+	r.set_inventory(bag.map(func(_b: Variant) -> Dictionary: return {}), {}, {})
+	_check(r.sel_item.is_empty(), "selection clears when its item is gone")
+	r.set_inventory(bag, {}, {})
 	r.confirm_junk = true
 	r._render_tools()
 	await _frames(2)

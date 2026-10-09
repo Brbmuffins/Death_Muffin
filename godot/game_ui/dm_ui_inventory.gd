@@ -493,13 +493,10 @@ func socket_rune(row: Dictionary) -> void:
 
 func sort_bag() -> void:
 	panel.sel_item = {}
-	var moves := {}
-	var sorted := DmBag.sort_bag_slots(slots(), moves, func(s: Dictionary) -> bool: return locks.is_locked(s))
-	locks.remap(moves)
-	game.slots = sorted
-	if game.has_method("emit_signal"):
-		game.inventory_changed.emit()
-	await game.api.save_inventory(int(game.character["id"]), DmBag.to_save_payload(sorted), BAG_SIZE)
+	game.bag_sort(locks.remap, func(s: Dictionary) -> bool: return locks.is_locked(s))
+	var err: String = await game.bag_commit()
+	if err != "":
+		panel.set_error("Could not save the sorted bag: %s" % err)
 	await game.refresh_inventory()
 	render()
 
@@ -517,25 +514,19 @@ func _credit(gold: int, name: String, n: int, show_n: bool) -> void:
 
 
 ## Sell from the bag (never equipped gear): each unit leaves the bag, the bag is saved, the gold is credited like any pickup.
+## A save that fails is reported (and retried by the inventory); the sale still stands on screen.
 func sell(it: Dictionary, qty: int) -> void:
 	var row: Dictionary = it["row"]
 	if int(row.get("equipped", 0)) != 0 or locks.is_locked(row):
 		return
-	var sold := mini(qty, int(row["quantity"]))
+	var sold: int = game.bag_remove(int(row["slot_index"]), String(row["item_id"]), mini(qty, int(row["quantity"])))
 	if sold <= 0:
 		return
-	_consume(row, sold)
 	panel.sel_item = {}
-	await game.api.save_inventory(int(game.character["id"]), DmBag.to_save_payload(slots()), BAG_SIZE)
+	var err: String = await game.bag_commit()
+	panel.set_error("" if err == "" else "The sale could not be saved yet: %s. It will keep retrying." % err)
 	await _credit(sold * int(row["sell_value"]), String(row["name"]), sold, sold > 1)
 	render()
-
-
-func _consume(row: Dictionary, n: int) -> void:
-	row["quantity"] = int(row["quantity"]) - n
-	if int(row["quantity"]) <= 0:
-		game.slots = slots().filter(func(s: Dictionary) -> bool: return s != row)
-	game.inventory_changed.emit()
 
 
 func sell_junk() -> void:
@@ -547,11 +538,12 @@ func sell_junk() -> void:
 		var q := int(s["quantity"])
 		gold += int(s["sell_value"]) * q
 		n += q
-		_consume(s, q)
+		game.bag_remove(int(s["slot_index"]), String(s["item_id"]), q)
 	panel.sel_item = {}
 	if n == 0:
 		return
-	await game.api.save_inventory(int(game.character["id"]), DmBag.to_save_payload(slots()), BAG_SIZE)
+	var err: String = await game.bag_commit()
+	panel.set_error("" if err == "" else "The sale could not be saved yet: %s. It will keep retrying." % err)
 	await _credit(gold, "%d junk item%s" % [n, "" if n == 1 else "s"], n, false)
 	render()
 

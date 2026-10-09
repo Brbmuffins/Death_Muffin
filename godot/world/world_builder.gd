@@ -69,12 +69,16 @@ const OCC_PROP := preload("res://world/dm_occ_prop.gdshader")
 const OCC_WALL := preload("res://world/dm_occ_wall.gdshader")
 
 
+## Global shader parameters live as long as the process: register them once and remember it here (global_shader_parameter_get_list is
+## editor-only: the engine logs "should never be used outside the editor, it can severely damage performance").
+static var _occ_globals_added := false
+
 static func _ensure_occ_globals() -> void:
-	var names := RenderingServer.global_shader_parameter_get_list()
-	if not names.has(&"dm_occ_a"):
-		RenderingServer.global_shader_parameter_add("dm_occ_a", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(0, 0, 0.16, 100))
-	if not names.has(&"dm_occ_b"):
-		RenderingServer.global_shader_parameter_add("dm_occ_b", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(1.6, 0, 0, 0))
+	if _occ_globals_added:
+		return
+	_occ_globals_added = true
+	RenderingServer.global_shader_parameter_add("dm_occ_a", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(0, 0, 0.16, 100))
+	RenderingServer.global_shader_parameter_add("dm_occ_b", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(1.6, 0, 0, 0))
 
 
 ## Call once per frame with the camera and the hero's world position (updateOcclusion).

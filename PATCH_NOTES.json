@@ -3,6 +3,7 @@
     "date": "2026-10-04",
     "title": "Smoother, Clearer, Deeper",
     "items": [
+      "Reliquary: the selected item now updates after you drink, eat or sell part of a stack, instead of showing the old count.",
       "Catacomb Depths: once you have been deeper than depth 1, the stair asks whether to descend from depth 1 or resume at your deepest floor. One click either way.",
       "Windows: the title and close button are now a fixed header; only the contents scroll beneath it.",
       "Windows: a Back to top button appears as you scroll down, so the tabs at the top are one click away, and tucks away 2 seconds after you stop.",
