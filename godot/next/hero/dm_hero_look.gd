@@ -1,7 +1,7 @@
 class_name DmHeroLook
 extends Node
 ## What every hero wears, on every peer: worn gear (DmAvatar.set_equipment: weapon, off-hand, helm, body tints, legendary aura), the cape, the
-## pet (DmPetView) and, for the local hero, the hero ring / halo decals (DmGame._dress_hero). Child "Look" of DmNextGame (same path on every peer).
+## pet (DmPetView) and, for the local hero, the hero ring / halo decals. Child "Look" of DmNextGame (same path on every peer).
 ##
 ## A look is a compact descriptor {"g": {slot: [item_id, rarity]}, "c": cape_id, "p": pet_id}, ~100 B. Its owner builds it (the host from the
 ## bag in memory + the Capes & Pets panel's selection; a joiner from its own backend), applies it locally and sends it reliably through the
@@ -222,7 +222,7 @@ func _on_left(id: int) -> void:
 	_applied_gear.erase(id)
 
 
-## The pets trail their owners every frame (as the current client: dt-driven, no allocation); one far from the local hero steps at FAR_HZ.
+## The pets trail their owners every frame (as the original game: dt-driven, no allocation); one far from the local hero steps at FAR_HZ.
 func _process(dt: float) -> void:
 	var me := game.local_body() as DmHeroBody
 	for id in _pets:
@@ -239,7 +239,7 @@ func _process(dt: float) -> void:
 		(_pets[id] as DmPetView).update(step, b.position.x, b.position.z, b.rotation.y)
 
 
-# ---- the hero ring (DmGame._dress_hero) -------------------------------------------------------------------------------------------
+# ---- the hero ring -------------------------------------------------------------------------------------------
 
 ## The hero stays findable: contact shadow + pale ring, the discipline glow + bone ring, the cursor reticle, the soul halo, the hover ring.
 func _dress_ring(b: DmHeroBody) -> void:

@@ -1,6 +1,6 @@
 class_name DmBossFx
 extends Node
-## Boss visuals and sounds on every peer, exactly once per event: the current client's own boss presentation (DmEventFx -> DmEventFxBoss:
+## Boss visuals and sounds on every peer, exactly once per event: the original game's own boss presentation (DmEventFx -> DmEventFxBoss:
 ## awaken / phase banners, telegraph shapes, impacts, the pits, the defeat; the sounds incl. `bossAwaken` which starts the AudioDirector boss
 ## bed). The host feeds it the brain's `t: "boss"` events (and broadcasts them to the other peers), so telegraph timing is the event's `ms`.
 ## The model/animation side is DmBossView, owned by each DmBoss.
@@ -85,7 +85,7 @@ func warm(at: Vector3) -> void:
 	host.sink = sink
 
 
-## A toxic ground pool (Saint rot): the current client's zone look (cracked green ground, bubbling puddle), gone with the zone node.
+## A toxic ground pool (Saint rot): the original game's zone look (cracked green ground, bubbling puddle), gone with the zone node.
 var _pool_zone := DmSimZone.new()
 
 func pool_visual(z: DmHostileZone) -> void:

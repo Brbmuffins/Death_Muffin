@@ -1,6 +1,6 @@
 class_name DmMockGame
 extends Node
-## A stand-in for DmGame (godot/game/dm_game.gd, built by game-core) that implements godot/GAME_CONTRACT.md on top of DmApi with a RECORDING
+## A stand-in for the game host (DmNextUiHost does this in the real game) that implements godot/GAME_CONTRACT.md on top of DmApi with a RECORDING
 ## mock transport (never the live server). Used by tests/game_ui and by shoot.sh. `calls` logs every request as {method, path, body}.
 ## `replies` maps a path (query stripped) to the `data` of a {success:true} reply, or a Callable(body)->Variant; `fail` maps a path to an error string.
 

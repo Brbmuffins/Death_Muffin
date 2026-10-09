@@ -10,7 +10,7 @@ extends Node
 ## `member` is a real DmRewardsMember (api, prog, loot_view) so the HUD adapter treats a joiner and a host alike.
 
 signal member_credited(character_id: int, delta: Dictionary)   ## the same signal the host's DmSessionRewards has (the HUD adapter listens to either)
-signal event(id: String, ctx: Dictionary)                       ## DmGame game_event shape (banner / toast), like DmNextProgress.event; the HUD adapter adds the level_up toast
+signal event(id: String, ctx: Dictionary)                       ## game_event shape (banner / toast), like DmNextProgress.event; the HUD adapter adds the level_up toast
 signal backend_state(ok: bool, why: String)
 
 const HEARTBEAT_S := 20.0

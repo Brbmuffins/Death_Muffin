@@ -1,6 +1,6 @@
 class_name DmNextGather
 extends Node
-## Gathering on the rebuild (child "Gather" of DmNextGame, same path on every peer). The rules are the current game's, not re-implemented:
+## Gathering on the rebuild (child "Gather" of DmNextGame, same path on every peer). The rules are the original game's, not re-implemented:
 ## DmGatherLoop (walk -> work -> batch -> adopt the server's answer), DmGathering (timings, yields, XP, blockers), DmSkills, DmNodeViews
 ## (hover / selected ring, progress arc, spent look), DmGatherSession (AFK report). What is new is the glue to the slice:
 ##   - HOST: runs the loop for its own hero, owns each node's yield (`remaining`, rolled like DmSimDirector.roll_yield) and respawn clock,
@@ -370,7 +370,7 @@ func click_at(screen: Vector2) -> bool:
 	if game.acre != null and not _panel_open():
 		var slot: int = game.acre.pick_laborer(screen, _pick_d if n != null else PICK_PX)
 		if slot >= 0:
-			game.acre.open_labor()   # the current game: a click on a laborer opens the Laborers (H)
+			game.acre.open_labor()   # the original game: a click on a laborer opens the Laborers (H)
 			return true
 	if n == null or loop == null:
 		return false
@@ -570,7 +570,7 @@ func _end_session(reason: String) -> void:
 	if session != s:
 		return
 	session = null
-	var store: DmCounselStore = game.progress.store if game.progress != null else null   # the current game's key + shape (DmGameGather._end_session)
+	var store: DmCounselStore = game.progress.store if game.progress != null else null   # the original game's key + shape (DmGameGather._end_session)
 	var key := "dm_gather_best_v1:%d" % _cid()
 	if store != null and bests.is_empty():
 		var raw: String = store.get_item(key)

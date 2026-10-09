@@ -1,8 +1,7 @@
 class_name DmNextWorld
 extends Node3D
 ## The slice's world: the existing DmWorldBuilder (floors, walls, props, lights, fog, the per-area navmesh regions it bakes from the same
-## obstacles as godot/data/sim/world.json + its wall boxes) plus the world dressing, with the per-frame streaming/occlusion calls DmGame
-## makes. Everything here is presentation + the navigation map; no gameplay.
+## obstacles as godot/data/sim/world.json + its wall boxes) plus the world dressing, with the per-frame streaming/occlusion calls. Everything here is presentation + the navigation map; no gameplay.
 ##
 ## Navigation: DmWorldBuilder bakes one NavigationRegion3D per area and per door corridor at build() (NavigationServer3D.bake_from_source_
 ## geometry_data, projected obstructions for every wall/prop/node/pond), joined by NavigationLinks. `bake_ms` is that cost. The Chapterhouse,
@@ -66,7 +65,7 @@ func enter_area(id: String) -> void:
 		builder.set_area(id)
 
 
-## Per frame, local hero only (what DmGame._tick_visuals does for the world).
+## Per frame, local hero only (streaming / occlusion for the world).
 func update(cam: DmCameraRig, hero: Vector3, dt: float) -> void:
 	if builder == null:
 		return

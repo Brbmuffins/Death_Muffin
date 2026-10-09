@@ -2,7 +2,7 @@ class_name DmNextChronicle
 extends Node
 ## The character's Chronicle on the rebuild (child "Chronicle" of DmNextGame, host): ONE DmChronicle for every system that feeds it (kills and peak wave
 ## through DmProgression, gold, gathering, the Depths, deaths, bosses, play / AFK time, peak level), loaded from the backend, flushed to it every
-## 30 s while dirty and on leave (`/api/chronicle/add`, the same call as the current game's DmGame.flush_chronicle), and the Ascend archive post.
+## 30 s while dirty and on leave (`/api/chronicle/add`), and the Ascend archive post.
 ## Event driven: the only per-frame work is DmChronicle.time (two float adds).
 ##
 ## First-kill trophies live here too: the server whitelists `boss.<id>` as a lifetime counter, so "this character has killed it before" is

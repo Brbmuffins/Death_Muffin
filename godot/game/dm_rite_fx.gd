@@ -1,10 +1,9 @@
 class_name DmRiteFx
 extends RefCounted
-## The per-rite visuals and sounds of the necromancer's rites (needle, miasma, exhume, corpse rites), shared by the current game (DmAbilitySystem delegates here, behaviour and
-## stats counters unchanged) and by the rebuild's DmRiteCaster (godot/next/rites). One place draws a rite, so the two cannot drift apart.
+## The per-rite visuals and sounds of the necromancer's rites (needle, miasma, exhume, corpse rites), used by DmRiteCaster (godot/next/rites). One place draws a rite.
 ##
 ## `fx` / `audio` are the Vfx / AudioDirector back-ends (null-safe; tests pass recording stubs). `stats` is the SAME Dictionary the owner counts
-## into (DmAbilitySystem.stats), so every call is counted exactly once, here.
+## into (the caster's stats), so every call is counted exactly once, here.
 
 var fx: Object = null
 var audio: Object = null
@@ -150,7 +149,7 @@ func needle_hit(pos: Array, crit: bool) -> void:
 		bb("crit_hit", pos[0], pos[2], {"y": pos[1]})
 
 
-## The Splinters rune's shard: a thread of bone from the struck enemy to the next (the current game's DmAbilitySystem._splinter).
+## The Splinters rune's shard: a thread of bone from the struck enemy to the next.
 func splinter_shard(a: Vector3, b: Vector3) -> void:
 	var core: Variant = DmFxData.spell("needle", "core")
 	beam(a, func() -> Variant: return b, core, 0.03, 0.16)
@@ -226,7 +225,7 @@ func miasma_land(x: float, z: float, r: float, creep: bool = false, follow: Call
 		bb("miasma_cloud", x, z, {"scale": r / 3.8})
 
 
-## Plague Choir: "plague" = a fresh circle opens on an enemy, "spread" = a dead enemy's Withered passes on (the current game's DmEventFx._legend).
+## Plague Choir: "plague" = a fresh circle opens on an enemy, "spread" = a dead enemy's Withered passes on (the original game's DmEventFx._legend).
 func legend_burst(kind: String, x: float, z: float, r: float) -> void:
 	var rot: Variant = DmFxData.spell("miasma", "rot")
 	if kind == "spread":
@@ -285,7 +284,7 @@ func contagion_thread(x: float, z: float, tx: float, tz: float) -> void:
 	sfx("miasma", tx, tz)
 
 
-# --- shot visuals (rebuild only: the current game flies the caster's own projectile) -----------------------------------------------------
+# --- shot visuals (rebuild only: the original game flies the caster's own projectile) -----------------------------------------------------
 
 ## A visual-only projectile. `to` = Vector3 or a Callable returning Vector3/null (follows a moving target).
 func shot(from: Vector3, to: Variant, speed: float, arc: float, kind: String, color: Color, extra: Dictionary = {}) -> Variant:
@@ -518,7 +517,7 @@ func mantle(ev: Dictionary, mine: bool, follow: Callable) -> Array:
 
 
 # --- Projectile rites (rebuild: bone_fan, rot_lance, marrow_spear, wailing_skull, ivory_cleave, bone_storm, soul_siphon) ----------------------------------------
-# The same calls, colours and sounds as DmAbilitySystem's overrides of those rites; positions come from the host's events. Vectors are Vector3.
+# Colours and sounds of those rites; positions come from the host's events. Vectors are Vector3.
 
 func spike_line(x: float, z: float, dx: float, dz: float, length: float, width: float, sequential: bool = false) -> void:
 	stats["spikes"] += 1
@@ -921,7 +920,7 @@ func rally(ev: Dictionary, follow: Callable, thrall_at: Callable) -> void:
 	sfx("rallyDead", float(ev["x"]), float(ev["z"]))
 
 
-# --- Discipline signatures (rebuild only; the current game draws these in DmAbilitySystem / DmEventFx) ---------------------------------------
+# --- Discipline signatures  ---------------------------------------
 
 const SIG_LOOK := {"wall": ["amber", "sigWall"], "rend": ["jade", "sigRend"], "dirge": ["frost", "sigDirge"], "bloom": ["petal", "sigBloom"]}
 static var _rib: CylinderMesh = null

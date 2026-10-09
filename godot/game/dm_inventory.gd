@@ -3,7 +3,7 @@ extends RefCounted
 ## Port of the stateful `Inventory` class of src/gameplay/loot.ts: owns the bag. Pickups merge immediately (optimistic) and flush to
 ## the server in debounced batches; failed saves keep the local state and retry with backoff. Server replies (load, equip, craft) are the
 ## source of truth (`replace`), with in-flight / pending local changes replayed on top.
-## Timers are driven by `tick(dt)` (DmGame calls it each frame) so tests are deterministic. Slots are the DmBag/DmLoot row Dictionaries.
+## Timers are driven by `tick(dt)` (the host calls it each frame) so tests are deterministic. Slots are the DmBag/DmLoot row Dictionaries.
 
 signal changed(slots: Array)
 ## A save was refused or failed. Emitted once per failure streak (not on every retry); `recovered` follows when a later save lands.
@@ -95,7 +95,7 @@ func _schedule(seconds: float) -> void:
 	_timer = seconds
 
 
-## Drive the debounce timer. DmGame calls this every frame.
+## Drive the debounce timer. The host (DmNextUiHost) calls this every frame.
 func tick(dt: float) -> void:
 	if _timer < 0.0:
 		return

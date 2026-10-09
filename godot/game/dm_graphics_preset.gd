@@ -1,6 +1,6 @@
 class_name DmGraphicsPreset
 extends RefCounted
-## Settings -> Graphics presets (Low / Medium / High / Ultra): one table, so the Settings panel, DmGame._apply_graphics, the resolution governor
+## Settings -> Graphics presets (Low / Medium / High / Ultra): one table, so the Settings panel, DmNextPerf, the resolution governor
 ## and the tests read the same numbers. The setting value is the preset id ("low"/"medium"/"high"/"ultra"); the old two-value setting
 ## ("high"/"low") is already a valid id, so saved settings migrate as they are. High keeps the old High's cost (owner: performance first) plus
 ## the 0.85 floor and anisotropic textures; MSAA and the heavy extras are opt-in on Ultra until real-GPU numbers say High can carry MSAA
@@ -74,7 +74,7 @@ static func aniso_mode(level: int) -> int:
 	return Viewport.ANISOTROPY_DISABLED
 
 
-## Viewport + RenderingServer side of a preset (the world / fx side is DmGame._apply_graphics).
+## Viewport + RenderingServer side of a preset (the world / fx side is DmNextPerf.apply).
 static func apply_render(vp: Viewport, id: Variant) -> void:
 	var p := get_preset(id)
 	vp.msaa_3d = msaa_mode(int(p["msaa"]))

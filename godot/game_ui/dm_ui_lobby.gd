@@ -2,7 +2,7 @@ class_name DmUiLobby
 extends RefCounted
 ## Party window wiring (ui/panels/dm_lobby_panel.gd <-> the game's party calls, game_ui contract: `party_view()`, `party_watch(on)`, `party_refresh()`,
 ## `party_create(name, private)`, `party_join(code)`, `party_join_id(id)`, `party_leave()`, `party_kick(peer)`, `party_set_open(open)`, signal `party_changed`).
-## A game without them (the mock, DmGame) shows the window's "not available" line. The lobby socket lives only while the window is open.
+## A game without them (the mock, a headless game) shows the window's "not available" line. The lobby socket lives only while the window is open.
 
 var ui: Node
 var game: Node

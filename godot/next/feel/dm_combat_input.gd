@@ -1,6 +1,6 @@
 class_name DmCombatInput
 extends RefCounted
-## The necromancer's combat input feel on the rebuild (the current client's DmGameInput: attack-target chase, hold repeat, queued casts,
+## The necromancer's combat input feel on the rebuild (attack-target chase, hold repeat, queued casts,
 ## held number keys, Shift = cast in place). Local owner only; everything it does is an ordinary intent (`request_move_to` /
 ## `request_move_dir`, the hotbar signal -> request_cast), so the host stays authoritative and it works the same solo or online.
 ##
@@ -11,9 +11,9 @@ extends RefCounted
 ##   Shift + click enemy  -> the same, standing still (no chase)
 ##   key / RMB cast       -> `note_cast`; a refusal "busy" (or "cooldown" with <= QUEUE_MS left) queues it for QUEUE_MS and it fires when ready
 ##   number key held      -> repeats once HOLD_MS old and the rite is ready
-##   standing, mouse seen -> `stand_face`: the hero turns toward the cursor (DmGameInput.aim_when_standing); Easy auto-combat is DmNextAutoCombat.
+##   standing, mouse seen -> `stand_face`: the hero turns toward the cursor; Easy auto-combat is DmNextAutoCombat.
 
-const QUEUE_MS := 220.0       ## DmGameInput: a cast refused for a lock / <= 220 ms of cooldown waits this long
+const QUEUE_MS := 220.0       ## a cast refused for a lock / <= 220 ms of cooldown waits this long
 const RETRY_MS := 50.0        ## minimum gap between two automatic cast requests (host refusals are cheap but an RPC for a client)
 const HOLD_MS := 150.0        ## a number key repeats only once held this long (the press itself already cast)
 const STAND_PAD := 0.25       ## the cursor must be this far from the hero to turn it

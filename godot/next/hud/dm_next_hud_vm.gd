@@ -1,7 +1,7 @@
 class_name DmNextHudVm
 extends RefCounted
 ## The slice's HUD view-model (godot/ui/hud/README.md schema) built from DmNextGame / DmHeroBody / DmRiteCaster / DmThrallHost / DmStatusSet,
-## the counterpart of DmGameHud.build for the old DmGame. Slot and minimap sub-dictionaries are reused between calls (the HUD is applied at
+## Slot and minimap sub-dictionaries are reused between calls (the HUD is applied at
 ## 20 Hz by DmGameUi; only the enemy/thrall/corpse lists and the top-level dictionary are new each time).
 
 const SLOT_KEYS := ["1", "2", "3", "4", "RMB", "R"]
@@ -70,7 +70,7 @@ func build() -> Dictionary:
 	return vm
 
 
-## The boss bar (the current game's DmGameHud.boss shape): the awake boss of this peer's world, hp from the body.
+## The boss bar (the original game's DmGameHud.boss shape): the awake boss of this peer's world, hp from the body.
 func _boss(g: DmNextGame) -> Variant:
 	var b := g.bosses.active_boss() if g.bosses != null else null
 	if b == null:

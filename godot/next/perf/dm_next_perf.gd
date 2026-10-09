@@ -1,13 +1,13 @@
 class_name DmNextPerf
 extends Node
-## The rebuild's performance controls, the same behaviour DmGame has (`_pace`, `_apply_render_scale`, `_apply_graphics`):
+## The performance controls (graphics preset, render scale, fps cap, auto-resolution):
 ##   graphics        preset (DmGraphicsPreset: low / medium / high / ultra): moon shadows + reach + atlas + soft filter, bloom, prop lights, prop shadow range,
 ##                   MSAA / anisotropy / mesh LOD on the viewport, Vfx.quality + Binbun, the governor's resolution floor (0.6 Low, 0.85 above)
 ##   brightness      Settings -> Brightness x the preset's lift, as the builder's exposure multiplier;  ui_scale  Interface size (window content scale)
 ##   fps             Engine.max_fps (0 = uncapped)
 ##   auto_res        DmResolutionGovernor on the 3D view's scaling_3d_scale (the UI stays sharp); held through loads and area entries
 ## `apply(settings)` runs at start and whenever Settings change (DmNextUiHost). Prop culling, streaming and the shadow range are the
-## builder's own (DmNextWorld.update calls them every frame, same cells and ranges as DmGame).
+## builder's own (DmNextWorld.update calls them every frame, same cells and ranges).
 
 var game: Node3D
 var governor := DmResolutionGovernor.new()
@@ -35,7 +35,7 @@ func apply(s: Dictionary) -> void:
 	var fps := int(s.get("fps", 0))
 	var win := get_window()
 	if win != null:
-		win.content_scale_factor = DmSettings.clamp_ui_scale(s.get("ui_scale", 1.0))   # Interface size, on top of the project's canvas_items stretch (as DmGame._apply_ui_scale)
+		win.content_scale_factor = DmSettings.clamp_ui_scale(s.get("ui_scale", 1.0))   # Interface size, on top of the project's canvas_items stretch
 	Engine.max_fps = fps if fps > 0 else 0
 	var vfx := get_node_or_null("/root/Vfx")
 	if vfx != null:
@@ -48,7 +48,7 @@ func apply(s: Dictionary) -> void:
 			var b := world.builder
 			b.moon.shadow_enabled = bool(gp["shadows"])
 			b.light_near = int(gp["lights"])
-			b.set_preset_lift(float(gp["lift"]))                       # Low/Medium run hotter to read as bright as High (same as DmGame._apply_graphics)
+			b.set_preset_lift(float(gp["lift"]))                       # Low/Medium run hotter to read as bright as High
 			b.set_brightness(float(s.get("brightness", 1.0)))          # Settings -> Brightness
 			b.shadow_range = float(gp["prop_shadow"])
 			b.moon.directional_shadow_max_distance = float(gp["shadow_dist"])

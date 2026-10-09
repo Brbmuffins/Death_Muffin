@@ -1,68 +1,37 @@
 # godot/sim/bosses: the seven boss brains
 
-Faithful port of `src/gameplay/sim/BossBrain.ts` (shared machinery + Prelate, Gravedigger King, Bone Abbess, Drowned Congregation,
-Plague Saint, Cinder Regent, Mire Mother). Numbers come from `godot/data/content/bosses.json` / `fen.json` / `abilities.json` /
-`difficulty.json` / `gameplay_goldSinkRules.json` (exported from the TS by `tools/godot/export-content.ts`); nothing is retyped.
-
-## Layers
+Pure GDScript brains (no nodes, no autoloads) for Prelate, Gravedigger King, Bone Abbess, Drowned Congregation, Plague Saint,
+Cinder Regent and Mire Mother. Numbers come from `godot/data/content/bosses.json`, `fen.json`, `abilities.json`, `difficulty.json`.
+They are ported from the web `BossBrain.ts`, which is gone from `main` (history is on `legacy-web`). The scene side is `godot/next/bosses/`.
 
 | file | role |
 |---|---|
 | `boss_brain.gd` (`DmBossBrain`) | shared machinery: awaken, damage + Fracture + Withered, stagger clock, phases at 60% / 30%, telegraph + resolve loop, wipe reset, defeat, arena leash |
-| `prelate_brain.gd` ... `mire_brain.gd` | one brain per boss (`_think`, `_resolve`, `_tick`, `_on_phase`, ...) |
-| `boss_brains.gd` (`DmBossBrains`) | `make(world, id)` / `make_all(world)` |
-| `boss_world.gd` (`DmBossWorld`) | **the world view a brain sees** (below). Pure module: no nodes, no autoloads |
-| `boss_geom.gd`, `boss_pending.gd` | angle / segment / box helpers, the `Pending` telegraph record |
-| `sim_boss_world.gd` | `DmBossWorld` implemented on the sim track's `DmWorldSim` (see `godot/sim/BOSS_HOOK.md`) |
-| `boss_adapter.gd`, `boss_factory.gd` | `DmBossFactory.make_all(sim)`: the hook the sim loads; each controller extends `DmBossController` and runs a brain |
+| `prelate_brain.gd` ... `mire_brain.gd` | one brain per boss (`_think`, `_resolve`, `_tick`, `_on_phase`) |
+| `boss_brains.gd` (`DmBossBrains`) | `make(world, id)`, `make_all(world)`, `BOSS_IDS` |
+| `boss_world.gd` (`DmBossWorld`) | the only view of the world a brain sees; the host subclasses it |
+| `boss_geom.gd`, `boss_pending.gd` | angle / segment / box helpers, the `DmBossPending` telegraph record |
 
-`boss_adapter.gd` / `boss_factory.gd` / `sim_boss_world.gd` need `res://sim/boss_controller.gd` (sim track). The brains themselves do not.
+## The host side
+`next/bosses/dm_boss.gd` builds a brain with `DmBossBrains.make(world, boss_id)`; `next/bosses/dm_boss_node_world.gd`
+(`extends DmBossWorld`) is the live world view over the scene nodes. See `godot/next/bosses/README.md`.
 
-## The boss-world view (`DmBossWorld`)
+`DmBossWorld` methods (defaults report "not implemented"): `now()`, `difficulty()`, `echoes()`, `rand()`, `area_level()`, `emit(ev)`,
+`players()`, `player_count()`, `cover()`, `spawn_enemy()`, `enemy_get()`, `enemies()`, `set_enemy_hp()`, `remove_enemy()`, `thralls()`,
+`damage_thrall()`, `corpses()`, `remove_corpse()`, `hostile_toxic_zones()`, `add_hostile_pool()`, `ember_pool()`. Read `boss_world.gd`
+for exact signatures. Public brain API: `awaken(by, empowered)`, `damage(amount, by, fracture)`, `stagger(seconds)`, `update(dt)`,
+`resume()`; Abbess also `niche_ids()` / `standing_niches()`, Congregation `covered(x, z)`.
 
-A brain never touches a sim; it calls these methods (defaults in `boss_world.gd` report "not implemented"). Entities are plain
-Dictionaries, in the host's stable (insertion) order.
-
-| method | meaning (TS equivalent) |
-|---|---|
-| `now()` | room clock in seconds (`sim.time`); telegraph due times are on this clock |
-| `difficulty()` | `"easy"/"medium"/"hard"` |
-| `echoes()` | `vowFx.echoes` (Prelate Echoes I to III) |
-| `rand()` | the sim's seeded RNG, float in [0,1). Draw order = TS order |
-| `area_level(area)` | `sim.areaLevel(area)` |
-| `emit(ev)` | `sim.emit`: same keys as the TS `SimEvent` (`t, kind, x, z, phase, targets, r, ms, dir, boss, players, root, killer, empowered`; `hurt`: `player, dmg, from, x, z, chillMs`). `null` values are legal and mean "absent" |
-| `players()` | every player: `{id, x, z, alive, area}`; `player_count()` = `sim.players.size()` (party scaling of boss HP) |
-| `cover()` | pews `{x0, z0, x1, z1}` |
-| `spawn_enemy(def, area, x, z, elite, rising)` -> id | add / niche spawn |
-| `enemy_get(id)`, `enemies()` | `{id, def, area, x, z, hp, max_hp, state}`; `{}` if gone |
-| `set_enemy_hp(id, hp, max_hp)`, `remove_enemy(id)` | niche health; adds/niches leave with the boss without a death event |
-| `thralls()`, `damage_thrall(id, amount)` | `{id, x, z}`; damage does `hp -= amount; flash = 1`, kills ('killed') at <= 0 |
-| `corpses()`, `remove_corpse(id, reason)` | `{id, area, x, z}`; reasons `devoured` (Abbess), `raised` (Mire) |
-| `hostile_toxic_zones()` | the Saint's live rot pools `{x, z, r}` |
-| `add_hostile_pool(x, z, r, dps, seconds)`, `ember_pool(x, z, r, seconds, dps)` | boss ground effects |
-
-The brain owns `state` (a Dictionary with the `BossState` keys) and its cooldowns/pending telegraphs. Public API (same as the TS):
-`awaken(by, empowered)`, `damage(amount, by, fracture)`, `stagger(seconds)`, `update(dt)`, `resume()`; Abbess also
-`niche_ids()` / `standing_niches()`, Congregation `covered(x, z)`.
-
-Pending attacks are `DmBossPending` objects (`kind, at, x, z, r, targets, dir, side`); `side` attacks (niche lances, the Prelate's second bell)
-do not count as the boss being busy.
-
-## Tests and fixtures
-
-- `tools/godot/fixtures-bosses.ts` drives the REAL TS `BossBrain` classes against a stub of the world surface above (`StubWorld`) through 44
-  seeded scenarios (every boss: solo full fight through P1/P2/P3 to defeat; hard + empowered 4 players with Fracture; irregular dt on easy;
-  wipe/leave then re-awaken; stagger + Withered + resume; plus Prelate Echoes I/II/III, Abbess niche breaks/communion/resume, Saint doctors and
-  rot pools, Regent thralls + Conflagration, Gravedigger pits, Congregation pews, Mire corpses/rite). Per tick it records the ops applied, the boss
-  state, an ordered log of every world call (events, spawns, pools, removals) and the entities left in the world. ~60k ticks, ~29 MB: gitignored,
-  regenerated by `tools/godot/gen-fixtures.sh`.
-- `godot --headless --path godot --script res://tests/bosses/run.gd`: replays them through the GDScript brains on `tests/bosses/fake_world.gd` (twin of the
-  StubWorld) and compares everything within 1e-9 (relative). "fixtures missing" + non-zero exit without them.
-- `.../adapter_run.gd`: same fixtures through `DmBossFactory` -> `DmBossAdapter` -> `DmSimBossWorld` -> `tests/bosses/mock_sim.gd` (a stand-in for `DmWorldSim` built from the
-  sim track's entity classes). Skips itself until `res://sim/boss_controller.gd` exists.
+## Tests
+- `godot --headless --path godot --script res://tests/bosses/run.gd` replays 44 committed scenarios (`tests/bosses/fixtures/*.json.gz`,
+  captured from the original TS brains) through the brains on `tests/bosses/fake_world.gd` and compares every tick within 1e-9.
+- `tests/bosses/adapter_run.gd` and `mock_sim.gd` target the deleted `DmBossFactory` / `DmWorldSim` path (see Known gaps).
+- Scene-level behaviour: `tests/next_bosses/`.
 
 ## Notes
-
-- There is no enrage timer in `BossBrain.ts`; the "faster" cadence is the per-phase `fast` multiplier, ported as is.
+- There is no enrage timer; the "faster" cadence is the per-phase `fast` multiplier.
 - JS `Array.sort` stability is kept via `DmStableSort` (nearest-two Burial targets, Mire corpse order).
-- `Math.hypot` is `sqrt(x*x+z*z)`: a last-ulp difference is possible but never moves a comparison in the fixtures.
+
+## Known gaps
+- `tests/bosses/adapter_run.gd` references `res://sim/boss_controller.gd`, which no longer exists, so it skips itself; it is stale.
+- The TS fixture generator is gone; the fixtures are frozen.

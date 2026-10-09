@@ -1,6 +1,6 @@
 class_name DmNextGame
 extends Node3D
-## The vertical-slice game scene (scene-first, replaces the DmGame hub for the rebuild). It composes child nodes and owns almost no logic:
+## The vertical-slice game scene (scene-first; the one in-world game). It composes child nodes and owns almost no logic:
 ##   Session (DmSession)  host / join on any MultiplayerPeer; solo = OfflineMultiplayerPeer, the SAME code path as a 2-player session
 ##   World   (DmNextWorld) DmWorldBuilder world, dressing, navmesh map          Camera (DmCameraRig)   the existing rig
 ##   Waves   (DmWaveDirector) host-side enemy waves + MultiplayerSpawner        Net (DmNextNet)        enemy / vitals replication
@@ -31,7 +31,7 @@ signal start_failed(reason: String)             ## a joiner could not enter the 
 @onready var input: DmNextInput = $Input
 @onready var camera: DmCameraRig = $Camera
 var hud: DmNextHud                              ## only with opts hud = "minimal"
-var ui_host: DmNextUiHost                       ## the DmGame-contract adapter the real HUD reads (hud mode true)
+var ui_host: DmNextUiHost                       ## the host-contract adapter the real HUD reads (hud mode true)
 var ui: DmGameUi                                ## the existing HUD + panels
 var areas: DmAreaFlow                           ## child "Areas": entry banners + Codex, processions, Grave Surges (next/areas/)
 var perf: DmNextPerf                           ## child "Perf": graphics / fps cap / auto-resolution governor (next/perf/)
@@ -57,7 +57,7 @@ var boss_meta: DmBossMeta                        ## child "BossMeta" (host): the
 var milestones: DmWaveMilestones                 ## child "Milestones" (host): wave-milestone banners and the Nightfall dimming (next/areas/)
 var depths: DmDepths                            ## child "Depths" (host): the procedural descent (next/depths/)
 var corpses: DmCorpseField                       ## child "Corpses" (same path on every peer); host lays corpses from enemy deaths
-var hitstopper := DmHitStop.new()               ## the picture's micro-freeze on heavy hits / elite deaths (DmHitStop, as the current client)
+var hitstopper := DmHitStop.new()               ## the picture's micro-freeze on heavy hits / elite deaths (DmHitStop, as the original game)
 var opts: Dictionary = {}
 var load_ms: int = 0
 var ready_ := false                             ## DmAudioHooks "main" shape: ready_, area_id, player, avatar, builder
@@ -222,7 +222,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	if _hold != null:
 		_hold.hold = false
 		_hold = null
-	# The current game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
+	# The original game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
 	await _start_hud()
 	if _aborted:
 		return
@@ -253,7 +253,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	if ui_host == null:
 		look.load_from_api()   # no panels here (a joiner, a headless host): the look comes from the character's own backend
 	ready_ = true
-	if ui_host != null:   # the counsel's welcome (and the discipline's first tip): the current game's `world_entered`
+	if ui_host != null:   # the counsel's welcome (and the discipline's first tip): the original game's `world_entered`
 		var lvl := float(character.get("level", 1))
 		var rl := DmAbilities.rite_level(lvl, ui_host.dev_access)
 		var grim := false
@@ -484,7 +484,7 @@ func rite_build(peer_id: int) -> Dictionary:
 	return out
 
 
-## The runes a peer's character has socketed ({rite: rune_id}, as DmGame: DmRunes.sockets_of the bag). Only the local host's bag is known.
+## The runes a peer's character has socketed ({rite: rune_id}, DmRunes.sockets_of the bag). Only the local host's bag is known.
 func rune_sockets(peer_id: int) -> Dictionary:
 	if progress == null or peer_id != session.get_my_id():
 		return {}

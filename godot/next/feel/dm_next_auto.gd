@@ -1,10 +1,10 @@
 class_name DmNextAutoCombat
 extends RefCounted
-## Easy auto-combat on the rebuild: the current client's decision code (DmAutoCombat.select_action / select_movement, DmAutoDodge, DmBossTelegraphs,
-## untouched) fed by a small adapter over the nodes world (DmEnemy, DmBoss, DmCorpseField, DmThrallHost, the caster) instead of the old sim.
+## Easy auto-combat on the rebuild: the shared decision code (DmAutoCombat.select_action / select_movement, DmAutoDodge, DmBossTelegraphs in game/)
+## fed by a small adapter over the nodes world (DmEnemy, DmBoss, DmCorpseField, DmThrallHost, the caster).
 ## Local owner only; its output is the same intents as the keyboard: `DmNextInput.cast_at` (the hotbar seam -> request_cast) and `request_move_dir`.
 ##
-## Rules, as the current client (DmGameInput.tick_combat / auto_movement):
+## Rules:
 ##   gate      settings_store.can_use_auto_combat() (the character's `auto_combat_allowed`) AND settings["auto_combat"] (Easy only, the store enforces it)
 ##   yields    to a walk (click / WASD / held key), a click target, a queued cast, an open panel, gathering, a dead hero (and a non-necromancer: that
 ##             family's rules are not in the rebuild)
@@ -226,7 +226,7 @@ func _act(b: DmHeroBody, c: DmRiteCaster, ctx: Dictionary, p: Vector3, now: floa
 	stats["casts"] += 1
 	input.cast_at(slot, Vector3(float(t["x"]), 0.0, float(t["z"])), eid, false)
 	if game.ui_host != null:
-		game.ui_host.game_event.emit("auto_combat_cast", {})   # the counsel's one auto-combat tip (DmGameInput)
+		game.ui_host.game_event.emit("auto_combat_cast", {})   # the counsel's one auto-combat tip
 
 
 func _flask() -> void:

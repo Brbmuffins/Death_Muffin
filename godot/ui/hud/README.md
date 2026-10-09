@@ -1,7 +1,7 @@
 # In-game HUD (`godot/ui/hud/`)
 
-Port of `src/ui/HUD.ts` + `ui.css` (`.hud*`) + `Minimap.ts` + `FloatingText.ts`. Built on the ui-kit (`DmUi` tokens, `dm_theme.tres`,
-`DmToast`, `DmBanner`, `DmFloatingNumber`, `DmCorners`, `DmUi.new_pip`). It is **not wired to `world/`**: the integrator feeds it.
+The in-game HUD controls. Built on the ui-kit (`DmUi` tokens, `dm_theme.tres`, `DmToast`, `DmBanner`, `DmFloatingNumber`, `DmCorners`, `DmUi.new_pip`).
+It knows nothing about the world: `DmGameUi` feeds it a view-model, built in the game by `DmNextHudVm` (`next/hud/`).
 
 ```gdscript
 var hud := DmHud.new()          # full-rect, mouse-transparent Control; add it to the HUD CanvasLayer
@@ -12,11 +12,11 @@ hud.cast.connect(...)                         # intent out: signals (below)
 ```
 
 Gallery: `ui/hud/shoot.sh combat|boss|calm|death|events [out.png] [WxH]` (renderer lock + Xvfb; screenshots land in the gitignored `shots/hud/`).
-Tests: `godot --headless --path godot --script res://tests/hud/run.gd`.
+Tests: `godot --headless --path godot --script res://tests/hud/run.gd`. Known gaps: see Limits.
 
 ## View-model (`apply(vm: Dictionary)`)
 
-Every key is optional; missing = zero / hidden. Units match HUD.ts `HudFrame` (HP in HP, cooldown in ms). `null` hides a readout.
+Every key is optional; missing = zero / hidden. Units: HP in HP, cooldown in ms. `null` hides a readout.
 
 | key | type | notes |
 |---|---|---|
@@ -47,7 +47,7 @@ Every key is optional; missing = zero / hidden. Units match HUD.ts `HudFrame` (H
 | `chain` | `{count, name, bonus (0..1), frac, tier (0..5)}` or null | Kill Chain |
 | `minimap` | see below | |
 | `next` | String or null | the "Next" suggestion (its X emits `dismiss_next`) |
-| `prompt` | String (web `<kbd>`/`<b>` markup) or null | interaction prompt above the hint |
+| `prompt` | String (`<kbd>`/`<b>` markup) or null | interaction prompt above the hint |
 | `hint` | String | faint line above the altar |
 | `death` | `{show, sub}` | "You have fallen" wash, fades 0.8 s |
 | `auto_combat` | `{on, available, visible}` | the Auto button under the menu |
@@ -73,17 +73,18 @@ click on walkable ground emits `navigate(x, z)` (same rule as `minimapWalkable`)
 `hit_flash()`, `slot_flash(n)` (0 = LMB), `chat_line(text)`, `focus_chat()`, `banner_active()`.
 
 ## Signals (intent out)
-`cast(slot)` (click on a slot icon, 0 = LMB primary, 1..N hotbar; the web's key/right-click casting stays in the scene), `swap_slot(index)` (key cap click while `swap`), `buy_damage`, `buy_wave`, `dial_wave(delta)`,
+`cast(slot)` (click on a slot icon, 0 = LMB primary, 1..N hotbar; key / right-click casting stays in the scene), `swap_slot(index)` (key cap click while `swap`), `buy_damage`, `buy_wave`, `dial_wave(delta)`,
 `open_panel(id)` (inventory forge professions map grimoire atlas codex settings), `open_grimoire(select)`, `chat_sent(text)`, `toggle_auto_combat`,
 `dismiss_next`, `report_bug`, `belt_clicked(slot)`, `navigate(x, z)`, `cue_used(id)`.
 
 ## Counsel-tip anchors
-`tip_anchor_rect(tip_id) -> Rect2` returns the global rect of the HUD part a tip is about (Onboarding.ts `TIP_ANCHOR`: `minimap belt brew wave chain omen prelate grimoire atlas codex relic gather`;
+`tip_anchor_rect(tip_id) -> Rect2` returns the global rect of the HUD part a tip is about (`TIP_ANCHOR` ids: `minimap belt brew wave chain omen prelate grimoire atlas codex relic gather`;
 `Rect2()` when hidden/unknown) so the integrator can draw the glow; `tip_default_position()` is the card's default spot (18, 70, or under the party list).
 
-## Placeholders vs the web
-- Hover: slots show the web's spell card (`DmSpellCard` through `DmTip`, anchored above the slot, 180 ms bridge, Esc closes, live refresh) when the game UI sets `hud.spell_card` (a Callable(index) -> card data; `game_ui/dm_hud_tips.gd` builds it with `DmSpellTooltip`, golden-tested against `spellTooltip.ts`). Belt chips, the omen chip, Bone Ward, souls etc. keep native tooltips because the web uses plain `title`s there. The belt picker lives in `game_ui/dm_belt_picker.gd` (belt chips emit `belt_clicked`). `hud.node_tip(html, x, y)` draws `.hud-nodetip` (the game feeds it from the node under the cursor).\n- Toasts take an `on_click` Callable (`hud.toast(text, kind, on_click)`): a NEW cue toast opens its panel when clicked (WorldScene `CUE_OPENS`).
-- Slots emit `cast` on click but there is no drag; keyboard casting lives in the scene, not the HUD. Slot dicts may carry a `tooltip` string.
+## Limits
+- Hover: slots show the spell card (`DmSpellCard` through `DmTip`, anchored above the slot, 180 ms bridge, Esc closes, live refresh) when the game UI sets `hud.spell_card` (a Callable(index) -> card data; `game_ui/dm_hud_tips.gd` builds it with `DmSpellTooltip`, golden-tested in `tests/hud`). Belt chips, the omen chip, Bone Ward, souls etc. keep native tooltips. The belt picker lives in `game_ui/dm_belt_picker.gd` (belt chips emit `belt_clicked`). `hud.node_tip(html, x, y)` draws the node tip (the game feeds it from the node under the cursor).
+- Toasts take an `on_click` Callable (`hud.toast(text, kind, on_click)`): a NEW cue toast opens its panel when clicked.
+- Slots emit `cast` on click but there is no drag; keyboard casting lives in `DmNextInput`, not the HUD. Slot dicts may carry a `tooltip` string.
 - Rune badges, the pulse of the Grimoire button (6 s) and the CSS box-shadow glows are approximated with drawn rings.
 - Text `letter-spacing` is rounded to whole pixels (FontVariation).
-- Chrome glyphs are SVGs generated from `src/ui/icons.ts` (`tools/gen_icons.mjs`); ability/omen/portrait art in `art/` is a small copy of `public/art/` for the gallery only (the integrator passes real paths).
+- Chrome glyphs are SVGs in `art/`; ability / omen / portrait art in `art/` is a small copy for the gallery only (the game passes real paths).

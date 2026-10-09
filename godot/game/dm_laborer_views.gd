@@ -5,7 +5,7 @@ extends Node3D
 ## digging for graves, standing at the pond with a rod to fish. Idle everywhere else (models are made on the first Acre visit, nothing
 ## updates or fetches elsewhere). The labor view is the one the H panel reads (`game.api.get_labor`); refreshed on entering, when the panel
 ## changes it (`apply`) and every REFRESH_S.
-## Hooks (WorldScene -> DmGame): set_active(area == "acre") / apply(view) / update(dt, px, pz) / pick_list() / set_hover(slot) / tip(slot).
+## Hooks (the host, DmNextAcre): set_active(area == "acre") / apply(view) / update(dt, px, pz) / pick_list() / set_hover(slot) / tip(slot).
 ## The hand tools: tool_*.glb are NOT in godot/assets/slice/models/props (nor are they used by DmAvatar), so code-built stand-ins show.
 
 const REFRESH_S := 60.0

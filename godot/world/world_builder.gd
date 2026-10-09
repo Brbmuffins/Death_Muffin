@@ -1,6 +1,6 @@
 class_name DmWorldBuilder
 extends Node3D
-## Builds the whole connected world from godot/data/slice/world.json (exported from the real TS by tools/godot/export-slice.ts):
+## Builds the whole connected world from godot/data/slice/world.json (originally exported from the web game's TS):
 ## per-area floors, walls, props (MultiMesh + StaticBody3D colliders), gathering nodes, decals, water, light pools, gates, the Depths'
 ## sample floor, NPCs, one navigation region per area and per door corridor (NavigationLinks join them; doors/areas toggle at runtime),
 ## and the web renderer's look: ACES tonemap, hemisphere light, FogExp2 (approximated), moon + violet rim, per-area palettes.

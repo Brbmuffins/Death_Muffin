@@ -19,7 +19,7 @@ const SCENE_DIR := "res://enemies/"
 const CORPSE_S := 4.0
 const EMPTY_CLEAR_S := 15.0             ## no hero in the area this long -> remaining enemies are removed
 const SPAWN_MIN := DmEnemy.AGGRO_RANGE + 3.0   ## owner 2026-10-07: waves climb in outside aggro so the player sees them coming (+3: a group fans out 2.1 m)
-const SPAWN_MAX := 30.0                 ## WorldSim's farthest breach (SPAWN_MAX_DIST)
+const SPAWN_MAX := 30.0                 ## farthest spawn distance (m)
 
 var game: Node                          ## DmNextGame
 var area_id: String = "graves"

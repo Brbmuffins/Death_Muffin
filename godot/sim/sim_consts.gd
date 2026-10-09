@@ -1,6 +1,6 @@
 class_name DmSimConsts
 extends RefCounted
-## Module-level constants of WorldSim.ts / BossBrain.ts (the ones that are not in content/*.ts).
+## Constants of the retired WorldSim / BossBrain (the ones that are not in content/*.json).
 
 const VACANT_CRUMBLE_S := 8.0
 const RAMP_S := 30.0

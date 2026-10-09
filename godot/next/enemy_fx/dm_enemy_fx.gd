@@ -8,7 +8,7 @@ extends Node
 ## signals are deliberately NOT used: a client never sees them. The impact of a swing is a timer started when ATTACK begins (wind-up length is
 ## the same everywhere) and cancelled if the swing is interrupted.
 ##
-## The look and sound are the current game's: telegraph shapes/colours come from DmEventFxTelegraph (the same module DmEventFx.handle uses),
+## The look and sound come from the shared router: telegraph shapes/colours come from DmEventFxTelegraph (the same module DmEventFx.handle uses),
 ## death/voices from DmEventFx, spawn/elite/censer/eruption beats from DmEntityViews. No new effect ids, textures or sounds, so DmWarmup's
 ## existing pass already covers everything (EFFECT_IDS lists the Binbun ids used, SFX_IDS the sounds). Particle bursts and decals go through
 ## the pooled Vfx rings, so nothing here allocates per particle; per-frame work is one pass over the watched enemies every AMBIENT_S.
@@ -196,7 +196,7 @@ func _on_ready(e: DmEnemy) -> void:
 
 
 ## A ground telegraph (host: begin_attack / erupt enter; client: derived from the replicated state). The router draws the shape in
-## the current game's colours and schedules its own landing flourishes; the sound is its `tellStrike` / `tollSmall`.
+## the original game's colours and schedules its own landing flourishes; the sound is its `tellStrike` / `tollSmall`.
 func _on_telegraph(kind: StringName, from: Vector3, aim: Vector3, radius: float, seconds: float, _e: DmEnemy) -> void:
 	stats["telegraph"] += 1
 	_tele["kind"] = String(kind)

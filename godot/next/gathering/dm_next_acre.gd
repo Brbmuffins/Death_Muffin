@@ -1,8 +1,8 @@
 class_name DmNextAcre
 extends Node
-## The Acre's world glue on the rebuild (child "Acre" of DmNextGame, host with the real HUD): the current game's visible Grave Laborers
+## The Acre's world glue on the rebuild (child "Acre" of DmNextGame, host with the real HUD): the visible Grave Laborers
 ## (DmLaborerViews) and its labor / garden / contract notices (DmGameLabor), plus the first-hour guidance feeds the "Next" box and the
-## Covenant dialogue read. Nothing is re-implemented: the two classes above are used as they are, and this node is the "DmGame" they talk to
+## Covenant dialogue read. Nothing is re-implemented: the two classes above are used as they are, and this node is the host object they talk to
 ## (api, hero_id, builder, world_root, settings, vfx / audio, toast / banner / emit_game_event, gatherer, chronicle, prog, ui).
 ## Cost: one bool test + DmGameLabor's three timers per frame; the laborers (4 pooled models, built on the first Acre visit) only update while
 ## the hero is in the Acre; the guidance feeds are event driven (a dirty flag, the skills' `changed`, the trophy signal), never polled.
@@ -14,7 +14,7 @@ var labor: DmGameLabor
 var views: DmLaborerViews
 var hover_d := 0.0                      ## the laborer pick's screen distance (px) of the last pick_laborer() hit
 
-# ---- the "DmGame" surface DmGameLabor / DmLaborerViews read -------------------------------------------------------------------------
+# ---- the host surface DmGameLabor / DmLaborerViews read -------------------------------------------------------------------------
 var api: Variant
 var hero_id := 0
 var builder: DmWorldBuilder
@@ -119,7 +119,7 @@ func feed_trophies() -> void:
 	ui._guide_t = 0.0
 
 
-# ---- the DmGame calls DmGameLabor makes ------------------------------------------------------------------------------------------------
+# ---- the host calls DmGameLabor makes ------------------------------------------------------------------------------------------------
 
 func play_sfx(id: String, _x: float = NAN, _z: float = NAN, _k: float = 1.0) -> void:
 	if audio != null:
@@ -163,7 +163,7 @@ func emit_game_event(id: String, ctx: Dictionary = {}) -> void:
 	game.ui_host.game_event.emit(id, ctx)
 
 
-# ---- hover / click (DmGameInput's laborer pass) -----------------------------------------------------------------------------------------
+# ---- hover / click -----------------------------------------------------------------------------------------
 
 ## The laborer under the cursor, or -1: nearer than `limit` px (the node pass's best), with the web's 18 px bonus. Sets `hover_d`.
 func pick_laborer(screen: Vector2, limit: float) -> int:

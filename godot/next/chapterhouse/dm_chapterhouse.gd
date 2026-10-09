@@ -1,9 +1,8 @@
 class_name DmChapterhouse
 extends Node
 ## The hub of the slice, brought to life (child "Chapterhouse" of DmNextGame): NPCs you can talk to, stations that open the existing panels,
-## waystone travel / recall, door seals, interactable hover + prompts. The rules are the current game's (DmGameActions.interact / talk_to /
-## travel / start_recall, DmGameInput._pick, DmGameRewards.check_unlocks, DmGameHud.prompt); the content is the same (areas.json
-## interactables, npcs.json, DmCovenantDialogue). Panels open through the DmGame-contract events on DmNextUiHost: `npc_interact(id)` and
+## waystone travel / recall, door seals, interactable hover + prompts. The content is areas.json
+## interactables, npcs.json and DmCovenantDialogue. Panels open through the host-contract events on DmNextUiHost: `npc_interact(id)` and
 ## `station_interact(id)` (this node's signals of the same name are forwarded by the host).
 ##
 ## Cost: one 10 Hz tick (hover / pending interact / prompt), a 5 Hz NPC refresh, and the per-frame NPC animation only for NPCs near the player
@@ -18,10 +17,10 @@ signal travelled(area_id: String)
 const TICK_S := 0.1
 const NPC_REFRESH_S := 0.2
 const GUIDE_S := 0.5
-const INTERACT_RANGE := 2.6                      ## DmGame.INTERACT_RANGE
-const PICK_PX := 60.0                            ## DmGameInput._pick: interactables win over nothing within 60 px of the cursor
+const INTERACT_RANGE := 2.6                      ## interact range (m)
+const PICK_PX := 60.0                            ## interactables win over nothing within 60 px of the cursor
 const WAYSTONE_RANGE := 5.0
-const RECALL_S := 1.5                            ## DmGame.RECALL_MS
+const RECALL_S := 1.5                            ## recall time (s)
 const STATIONS := {"forge": "workbench", "waystone": "waystone", "upgrades": "altar", "vault": "vault", "grinder": "grinder", "lectern": "lectern",
 	"kiln": "kiln", "sawpit": "sawpit", "fire": "fire", "cauldron": "cauldron", "alembic": "alembic", "reagents": "shelf"}
 const STATION_COUNSEL := {"kiln": "station_opened", "sawpit": "station_opened", "fire": "station_opened", "cauldron": "cauldron_opened",
@@ -312,7 +311,7 @@ func stop_player() -> void:
 		game.session.request_move_to(b.position)
 
 
-## Use an interactable (DmGameActions.interact).
+## Use an interactable.
 func interact(it: Dictionary) -> void:
 	pending = null
 	stop_player()
@@ -359,7 +358,7 @@ func near_waystone(b: DmHeroBody) -> bool:
 	return false
 
 
-## Waystone travel (DmGameActions.travel): from the Chapterhouse or beside a waystone, to any area with a waystone whose seal is broken.
+## Waystone travel: from the Chapterhouse or beside a waystone, to any area with a waystone whose seal is broken.
 func travel(area: String) -> void:
 	var b := game.local_body()
 	if b == null or not b.alive:
@@ -446,7 +445,7 @@ func _prog() -> DmProgression:
 	return m.prog if m != null else null
 
 
-## The areas whose seal is broken (what DmGame.open_areas / is_unlocked say), applied to the world's gates and navmesh regions.
+## The areas whose seal is broken, applied to the world's gates and navmesh regions.
 func apply_seals() -> void:
 	var prog := _prog()
 	var b: DmWorldBuilder = game.world.builder
@@ -511,7 +510,7 @@ func door_open(id: String) -> bool:
 
 # ---- visuals / plumbing ---------------------------------------------------------------------------------------------------------
 
-## Waystones read as "click me" from across the room (DmGame._dress_waystones): pulsing teal ring, glow, the Binbun portal.
+## Waystones read as "click me" from across the room (old DmGame._dress_waystones): pulsing teal ring, glow, the Binbun portal.
 func _dress_waystones() -> void:
 	if _vfx == null:
 		return

@@ -3,7 +3,7 @@ extends DmRiteModule
 ## DmAbilities.litany_mult / litany_spell_power / litany_gains (and the sim's applyLitany order: corpses, then thralls, then enemies in radius + edge).
 ## 40 essence, 14 s. Corpses only through the field's atomic consume ("litany"); thralls through DmThrallHost near + kill("sacrificed") (the Hollow Choir
 ## rune spares them, Requiem delays the burst and widens it, the Legion of the Unburied `sacrificeLeavesCorpse` lays a risen corpse where each fell).
-## The caster's barrier and heal are paid ONCE, here on the host, from the burst's own counts (the current game paid them twice once; play() only draws).
+## The caster's barrier and heal are paid ONCE, here on the host, from the burst's own counts (the original game paid them twice once; play() only draws).
 
 
 func _init() -> void:

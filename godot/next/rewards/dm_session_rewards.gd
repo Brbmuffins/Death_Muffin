@@ -2,20 +2,20 @@ class_name DmSessionRewards
 extends Node
 ## Host-side rewards for one party session (REBUILD D1/D4/D5; contract in README.md). Runs ONLY on the session host.
 ##
-##  1. every spawned enemy's `died` -> who earned it (the current game's rule: a living member within DmGameRewards.KILL_REWARD_RANGE,
+##  1. every spawned enemy's `died` -> who earned it (the original game's rule: a living member within DmGameRewards.KILL_REWARD_RANGE,
 ##     each at ITS OWN multipliers; the Kill Chain only for the killer, only in unsafe ground),
 ##  2. credit through the backend: session_open (host) / session_join + session_heartbeat (members, own API) / session_report (numbered
 ##     batches every `flush_interval` s and at the end) / session_end. XP and kill counts are applied from what the backend ACCEPTED,
 ##  3. loot: rolled with the same DmLoot rules, gear rolled by the member's own API (server RNG online, offline backend offline), landed in
 ##     THAT member's own DmLootView; walk-over pickup, 60 s expiry, loot never flies to anyone,
 ##  4. identical online/offline: the only difference is which DmApi each member carries.
-## Gold and shards are drops (picked up by walking over them, as in the current game); their persistence is the member's save path, which
+## Gold and shards are drops (picked up by walking over them, as in the original game); their persistence is the member's save path, which
 ## the backend's kill ledger caps from these same reports.
 
 signal session_opened(session_id: String)
 signal session_failed(reason: String)       ## open refused / session lost (ended, not host): rewards stop crediting
 signal session_closed
-signal ledger_fallback                      ## the backend has no /api/sessions (older server): kills go to the existing kill ledger (/api/kills/report) instead, as the current game does
+signal ledger_fallback                      ## the backend has no /api/sessions (older server): kills go to the existing kill ledger (/api/kills/report) instead
 signal member_credited(character_id: int, delta: Dictionary)   ## {xp, kills, levels, batch}: applied from an accepted report
 signal member_refused(character_id: int, reason: String)       ## the backend did not credit this member's part of a batch
 signal batch_reported(batch: int, reply: Variant)
@@ -41,7 +41,7 @@ var local_peer_id: int = 1
 var difficulty: String = "medium"
 var wave_tier: float = 0.0
 var ascension: float = 0.0
-var vow_levels: float = 0.0       ## Elder Dead: boss and Surge rewards roll at the area's level + this (DmGame.world_levels)
+var vow_levels: float = 0.0       ## Elder Dead: boss and Surge rewards roll at the area's level + this 
 var area_id: String = "graves"
 ## Optional (the Depths): Callable(area: String) -> String or null, the hunting ground whose loot table a kill in `area` rolls from (null = the area itself).
 var loot_area_of: Callable = Callable()
@@ -58,7 +58,7 @@ var ended: bool = false
 var batch_no: int = 0
 var members: Dictionary = {}        ## character_id -> DmRewardsMember
 
-var _rules := DmGameRewards.new(null)   ## the current game's proximity rule, reused as the single source
+var _rules := DmGameRewards.new(null)   ## the original game's proximity rule, reused as the single source
 var _handled: Dictionary = {}
 var _last_hit: Dictionary = {}
 var _inflight: Dictionary = {}          ## the batch sent but not confirmed: re-sent under the SAME number until the backend answers
@@ -97,7 +97,7 @@ func watch_enemy(enemy: Node) -> void:
 				_lifesteal(a, from))
 
 
-## Host: the Elixir of lifesteal. Direct hits the hero lands this frame are summed and healed once at the end of the frame, like the current game's
+## Host: the Elixir of lifesteal. Direct hits the hero lands this frame are summed and healed once at the end of the frame, like the original game's
 ## send_intent rule: DmBrews.lifesteal_heal(average hit, targets, ...) = % of damage over at most the target cap, capped per cast. DoT ticks do not heal.
 var _ls_acc: Dictionary = {}   ## hero instance id -> [hero, damage sum, hits]
 
@@ -345,7 +345,7 @@ func _credit(m: DmRewardsMember, claim: Dictionary, kills: int, batch: int) -> v
 	member_credited.emit(m.character_id, {"xp": xp, "kills": kills, "levels": lv, "batch": batch, "areas": (claim["areas"] as Array).slice(0, kills)})
 
 
-## legacy_ledger: each member's pending kills go to ITS OWN kill ledger (`report_kills`, the route the current game uses); the reply's accepted
+## legacy_ledger: each member's pending kills go to ITS OWN kill ledger (`report_kills`, the route the original game uses); the reply's accepted
 ## count (audit / enforce) bounds the XP and kill counts, a reply without one (ledger off, duplicate) applies the claim whole, as the current
 ## game does. A transport / 5xx failure keeps the batches and the claim for the next flush; a 400 / 404 means the server will not take them.
 func _flush_legacy() -> void:
@@ -591,7 +591,7 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 		m.gold_pool = {"amount": 0, "kills": 0}
 	if int(reward["shards"]) > 0:
 		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
-	# Ordinary kills drop half as often, so their gear rolls at elite quality (as in the current game).
+	# Ordinary kills drop half as often, so their gear rolls at elite quality (as in the original game).
 	_drop_items(m, at, reward["items"], level, "elite")
 	if combat:
 		var nb := DmEnemyStats.new_blood_xp_mult(String(m.discipline["family"]), float(m.prog.character["level"]))

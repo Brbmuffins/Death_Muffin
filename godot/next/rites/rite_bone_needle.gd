@@ -1,7 +1,7 @@
 extends DmRiteModule
 ## Bone Needle, the Gravecaller primary: targeting enemy, 380 ms, free, +6 essence per hit, range 11, projectile 26 m/s. Numbers: DmAbilities
-## (needle_cast / needle_hit / shortfall); visuals: DmRiteFx.needle_cast / needle_hit (shared with the current game).
-## Weapon variants (DmWeaponLine loadout, as the current client): Staff = longer reach + the needle pierces the enemy behind its target; Wand = damage / cadence
+## (needle_cast / needle_hit / shortfall); visuals: DmRiteFx.needle_cast / needle_hit (shared with the original game).
+## Weapon variants (DmWeaponLine loadout, as the original game): Staff = longer reach + the needle pierces the enemy behind its target; Wand = damage / cadence
 ## (apply_cast_cost); Sickle = every needle (volley and pierce included) adds a Withered stack; Scythe = no projectile, a melee arc (`_reap`) that takes the
 ## Splinters / Marrow-Tap runes (Volley is the needle's) and leaves a 1.2 s window in which a kill of one of its victims banks an extra soul (`reaped_souls`).
 

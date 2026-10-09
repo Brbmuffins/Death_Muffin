@@ -153,7 +153,7 @@ static func _deal(target: Node, amount: float, from: Node, allow_stagger: bool, 
 	return r
 
 
-## True while a DoT tick is being dealt (damage listeners such as lifesteal skip DoTs, as the current client did).
+## True while a DoT tick is being dealt (damage listeners such as lifesteal skip DoTs, as the original game did).
 static var dealing_dot := false
 
 

@@ -5,7 +5,7 @@ extends Control
 ##   resume(): GET /character -> 200 enter_world (or the discipline switch when its discipline is not playable yet), 404 discipline select,
 ##   anything else clears the token and shows login.
 ## The integrator connects `enter_world(character, session)` to the game scene. `session` is the authenticated DmApi
-## (same object for the whole run: token, saves, realtime). Call `logout()` from the game's Log out button.
+## (same object for the whole run: token, saves, lobby). Call `logout()` from the game's Log out button.
 ## Tokens live in user://dm_jwt.txt when `persist_token` (DmApi's own file); they are never printed or logged.
 
 signal enter_world(character: Dictionary, session)

@@ -1,7 +1,7 @@
 # godot/next/corpses: the necromancer's corpse resource
 
 `DmCorpseField` (`dm_corpse_field.gd`) is a Node named `Corpses`, a child of the session/world root with the same NodePath on every peer
-(RPCs resolve by path). Host is authoritative (REBUILD D1); every peer, host and solo included, holds the replicated record in
+(RPCs resolve by path). Host is authoritative (DECISIONS.md D1); every peer, host and solo included, holds the replicated record in
 `corpses: Dictionary` (id -> `DmSimCorpse`, the sim's record: `id x z kind enemy elite facing scale area bornAt expiresAt ruptureAt echoOwner`)
 and draws the view from it. Add it before peers join; the host connects `peer_connected` and sends a snapshot to late joiners.
 
@@ -17,7 +17,7 @@ and draws the view from it. Add it before peers join; the host connects `peer_co
 | `get_corpse(id)`, `count()` | |
 | knobs | `life_mult` (lingering_dead 1.5, thin_graves 0.75), `echo_enabled`, `area_level: Callable(area) -> int` (toxic pool damage), `resolve_pos: Callable(area, x, z) -> Vector2`, `auto_step`, `visuals`, `vfx` / `audio` (default `/root/Vfx`) |
 
-Thralls track: raising a thrall = `pick_corpse(...)` then `if field.consume(c.id, peer, "consumed"): spawn_thrall(c.kind, c.enemy, c.elite...)`; read `c`
+Thrall raising: a thrall = `pick_corpse(...)` then `if field.consume(c.id, peer, "consumed"): spawn_thrall(c.kind, c.enemy, c.elite...)`; read `c`
 before consuming (the record stays valid after). Mass Grave: `corpses_in_radius(...)` then consume each, skipping the `false` ones. Colossus likewise.
 
 Signals: `corpse_added(c)` (every peer), `corpse_consumed(c, by_peer, reason)` (host, before gone), `corpse_gone(c, reason)` (every peer; reasons
@@ -42,8 +42,6 @@ Expiry is event-driven: `step(dt)` only compares the clock with `_next_due` (the
 Queries scan the <= 45 records linearly (cheaper than bucketing at that size; measured in the test). `_process` runs only while a body is fading.
 Marks are pooled by the Vfx decal layers; decal textures are warmed in `_ready`.
 
-## Not done / for other tracks
-
-Carrion Seed (done: `rite_carrion_seed.gd` arms/expires/bursts the `seed*` fields), Plague Bloom/`bloomed`, corpse-eating enemy AI (`raised`/`devoured` just need `consume`),
-`corpseGone` sounds (no new audio; hook `corpse_gone`), the `DmEnemy` ->field wiring in DmNextGame (call `track` for each spawned enemy). Test harness:
-`godot/tests/corpses/run.gd`.
+## Tests / known gaps
+Suite: `tests/corpses/run.gd`. `DmNextGame` calls `track` for every spawned enemy; Carrion Seed arms / bursts the `seed*` fields in `rite_carrion_seed.gd`.
+Not done: Plague Bloom `bloomed`, corpse-eating enemy AI beyond the Hungering affix (`raised` / `devoured` just need `consume`), `corpse_gone` sounds.

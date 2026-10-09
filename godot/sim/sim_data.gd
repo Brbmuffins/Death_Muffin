@@ -1,7 +1,7 @@
 class_name DmSimData
 extends RefCounted
 ## The content tables the sim reads, cached once (shared Dictionaries from DmContent: never mutate them).
-## DmWorldSim calls ensure() in its constructor; the static helper modules assume it ran.
+## DmNextGame.start() calls ensure(); the static helper modules assume it ran.
 
 static var _loaded: bool = false
 static var ENEMIES: Dictionary

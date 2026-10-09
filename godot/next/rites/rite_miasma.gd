@@ -1,6 +1,6 @@
 extends DmRiteModule
 ## Miasma Circle: ground-targeted, 25 essence, 7 s, radius 3.8 x mods, a 6 s Withered cloud (+1 stack per second, slow 0.6). Numbers:
-## DmAbilities.miasma + DmSimData (WITHERED, MIASMA_SLOW); visuals: DmRiteFx.miasma_land (shared with the current game).
+## DmAbilities.miasma + DmSimData (WITHERED, MIASMA_SLOW); visuals: DmRiteFx.miasma_land (shared with the original game).
 ## Runes: Creeping Rot (radius x0.85, the circle drifts 1.5 m/s toward the nearest enemy within 12 m, inside its area) and Contagion (a withered enemy of the
 ## circle that dies hands its stacks - 1 to its 2 nearest neighbours within 4.5 m). Legendary Plague Choir (`c.legend`): `miasmaSpreadsWithered` (a withered
 ## enemy that dies inside the circle spreads its stacks to the 3 nearest within 4 m) and `witheredBurstAt` (Chain Plague: an enemy reaching N stacks loses

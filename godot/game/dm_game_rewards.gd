@@ -215,7 +215,7 @@ func on_kill(ev: Dictionary) -> void:
 	if DmContent.enemy(String(ev["def"])).get("inert", false) == true:
 		return
 	var player: DmPlayer = g.player
-	# Soul Harvest: the caster already banked this kill's souls (DmSimCaster.handle_event); DmGame announces a filled meter.
+	# Soul Harvest: the caster already banked this kill's souls (the rite caster); the host announces a filled meter.
 	# Personal rewards for kills in (or right next to) your area.
 	if not boss_reward_eligible(player.alive, DmSimMath.hypot(float(ev["x"]) - player.x, float(ev["z"]) - player.z)):
 		return

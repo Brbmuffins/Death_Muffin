@@ -1,5 +1,5 @@
 extends Control
-## Screenshots of DmGameUi over a mock scene (mock DmGame, no server):  game_ui/shoot.sh <page> [out.png]
+## Screenshots of DmGameUi over a mock scene (mock game, no server):  game_ui/shoot.sh <page> [out.png]
 ## pages: hud, inventory, sheet, grimoire, atlas, settings, codex, acre
 
 var _out := ""

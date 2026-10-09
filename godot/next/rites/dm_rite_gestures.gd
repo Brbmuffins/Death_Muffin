@@ -1,7 +1,6 @@
 class_name DmRiteGestures
 extends RefCounted
-## The hero's cast / attack gesture per rite: the exact `_gesture(kind, seconds, flow_id, ability_id)` calls of the current client's
-## DmAbilitySystem, as data. DmRiteCaster plays one per accepted cast on every peer (`avatar.cast`), once, through a separate RPC (never an
+## The hero's cast / attack gesture per rite: the `_gesture(kind, seconds, flow_id, ability_id)` calls, as data. DmRiteCaster plays one per accepted cast on every peer (`avatar.cast`), once, through a separate RPC (never an
 ## event: events_played stays the rites' own).
 
 ## rite -> [clip kind, clip speed seconds, cast-flow id (gestureSeconds), ability id for the weapon's combat clip ("" = none)]
@@ -43,7 +42,7 @@ static func has(rite: String) -> bool:
 	return TABLE.has(rite) or rite == REAP_KEY
 
 
-## Play `rite`'s gesture on a hero avatar facing `yaw` (the avatar's own cast(), the same call the current client makes).
+## Play `rite`'s gesture on a hero avatar facing `yaw` (the avatar's own cast(), the same call the original game makes).
 static func play(avatar: Object, rite: String, yaw: float) -> bool:
 	if avatar == null or not has(rite) or not avatar.has_method("cast"):
 		return false

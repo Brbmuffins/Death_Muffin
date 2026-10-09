@@ -318,7 +318,7 @@ func _build_view(c: DmSimCorpse, hint: DmEnemy) -> void:
 			cr.toppled = 1.0
 		v.creature = cr
 		v.body = n
-	# the current game's looks (dm_entity_views _on_corpse): green aura on toxic, a faint pale ring (capped) on the rest, a violet tell on resonant
+	# the original game's looks (dm_entity_views _on_corpse): green aura on toxic, a faint pale ring (capped) on the rest, a violet tell on resonant
 	if c.kind == "toxic":
 		_decal({"tex": "disc", "color": 0x6f8f3a, "x": c.x, "z": c.z, "r": TOXIC_R * c.scale, "duration": 5, "opacity": 0.35, "pulse": 6.0, "growFrom": 0.6})
 	if c.kind == "resonant":
@@ -400,7 +400,7 @@ func fading_count() -> int:
 	return _fading.size()
 
 
-## The wisps the current game plays per reason (dm_entity_views _on_corpse_gone). Colours are the spell palette's.
+## The wisps the original game plays per reason (dm_entity_views _on_corpse_gone). Colours are the spell palette's.
 func _gone_fx(c: DmSimCorpse, reason: String) -> void:
 	if vfx == null:
 		return

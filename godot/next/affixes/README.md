@@ -1,7 +1,7 @@
 # DmAffixSet: elite affixes (Bell-Tolled, Hungering, Shrouded, Vengeful)
 
 A child node `Affixes` of the `DmEnemy`, created by the director's spawn function (every peer) only on bodies that carry an affix, so a normal enemy has no
-node and no per-frame cost. Numbers: `DmSimData.AFFIX_TUNING`; looks and sounds: the current game's (`DmEntityViews._dress_affix` / `_affix_moment`).
+node and no per-frame cost. Numbers: `DmSimData.AFFIX_TUNING`; looks and sounds: `DmEntityViews._dress_affix` / `_affix_moment` plus this node.
 `DmAffixSet.of(body)`, `has(kind)`, meta `dm_affix_list` (PackedStringArray; the target frame / HUD chips read it), `dm_affixes` (count, Depths).
 
 ## Rolling (`DmAffixSet.roll`, `DmWaveDirector.spawn`)
@@ -28,6 +28,8 @@ Frame median +0.1 ms headless (noise level); the component tick is ~3 us for all
 ## Target-frame chips
 `DmNextHudVm._affix_chips` (next/hud) reads `dm_affix_list` (set on every peer by `attach`, so a joined client has it; `strip_shroud` updates it).
 
-## Not done
+## Tests / known gaps
+Suite: `tests/next_affixes/run.gd`.
+
 The floating "+N" heal number (the `moment` carries the position; the amount is the hp change),
 wiring `strip_shroud()` to the rebuilt Last Light / Warden rites if/when they exist.

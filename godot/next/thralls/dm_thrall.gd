@@ -512,7 +512,7 @@ func _build_visual() -> void:
 	var glow: float = 1.1 if wraith else (float(look.glow) if look != null else (float(legion.get("glow", 0.18)) if legion != null else 0.18)) + (0.22 if empowered else 0.0)
 	glow += 0.35 if champion else 0.0
 	var em: int = int(look.emissive) if look != null else (int(legion.emissive) if legion != null and legion.has("emissive") else (0x8f9ed1 if wraith else 0x1f8f86))
-	var spirit: int = DmFxData.spell("exhume", "spirit").to_html(false).hex_to_int()   # the current game's friendly rim/ring colour
+	var spirit: int = DmFxData.spell("exhume", "spirit").to_html(false).hex_to_int()   # the original game's friendly rim/ring colour
 	var rim_color := 0xd9a441 if champion else spirit
 	var o := {
 		"gear_tint": ka != null,
@@ -549,7 +549,7 @@ func _build_visual() -> void:
 	# Ground ring in the legion's colour: gold = champion, blue = wraith, teal = spirit; dim when it is an ally's, not yours.
 	var ring_r: float = (float(look.ring) if look != null and look.has("ring") else (0.6 if kind == "hound" else 0.5)) * (1.3 if champion else 1.0)
 	var ring_hex := 0xd9a441 if champion else (0x8fb4ff if wraith else spirit)
-	# The current game's ground ring: a Vfx decal that follows the body ("other" dims an ally's); gold = champion, blue = wraith.
+	# The original game's ground ring: a Vfx decal that follows the body ("other" dims an ally's); gold = champion, blue = wraith.
 	_ring_r = ring_r
 	_ring_hex = ring_hex
 	_make_ring()
@@ -603,7 +603,7 @@ func _on_dead() -> void:
 	get_tree().create_timer(CORPSE_S).timeout.connect(queue_free)
 
 
-## The current game's rise (sigil, spirit motes, dirt, flash) and fall (bone chips, soul motes) looks, from DmEntityViews.on_event.
+## The original game's rise (sigil, spirit motes, dirt, flash) and fall (bone chips, soul motes) looks, from DmEntityViews.on_event.
 func _rise_fx() -> void:
 	if _vfx == null:
 		return

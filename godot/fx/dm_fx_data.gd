@@ -1,7 +1,7 @@
 class_name DmFxData
 extends RefCounted
-## The web game's effect tables, exported by tools/godot/export-fx.ts to res://assets/fx/fx_data.json: SPELL_FX colours, the
-## Binbun presets, the catalog lists, per-effect defaults and the caps/budgets. Never hand-edit the JSON.
+## The effect tables in res://assets/fx/fx_data.json: SPELL_FX colours, the
+## Binbun presets, the catalog lists, per-effect defaults and the caps/budgets (originally exported from the web game's TS).
 
 const PATH := "res://assets/fx/fx_data.json"
 static var _d: Dictionary = {}
