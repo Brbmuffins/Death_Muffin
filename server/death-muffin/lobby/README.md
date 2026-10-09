@@ -1,6 +1,6 @@
 # Death Muffin lobby + relay
 
-Listen-server sessions (decision D3 in `godot/REBUILD.md`): a player hosts from their own PC, this service lists sessions and forwards opaque
+Listen-server sessions (decision D3 in `DECISIONS.md`): a player hosts from their own PC, this service lists sessions and forwards opaque
 game packets host <-> clients over WebSocket, so it works behind any NAT with no port forwarding. Max 4 players per session (D2, host included).
 It never parses game data and holds no state beyond the live sessions.
 

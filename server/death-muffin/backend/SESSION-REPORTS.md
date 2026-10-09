@@ -2,7 +2,7 @@
 
 Godot rebuild decision D1: the host's game is authoritative for the *session*; the backend stays authoritative for anything of value.
 This is the backend API a host uses to report what its 1-4 members killed. Code: `party-sessions.cjs`; tables: `migrations/041-party-sessions.sql`;
-tests: `party-sessions.test.cjs` (fake DB `party-sessions-fake-db.cjs`). The routes answer 503 (`unavailable`) until migration 041 is applied.
+tests: `party-sessions.test.cjs` (fake DB `party-sessions-fake-db.cjs`). The routes answer 503 (`unavailable`) if the 041 tables are missing.
 
 ## Principle
 
@@ -51,8 +51,7 @@ Credits land in the member's kill ledger; the member's own `save-progress` / nec
   audited as `session_kill_mismatch` (audit only, nothing clawed back).
 - Loot is not rolled by this API: each member keeps rolling its own drops through `POST /api/loot/roll-gear` (server RNG, existing guards).
 
-## Deployment checklist (not done)
+## Deployment
 
-1. Apply `migrations/041-party-sessions.sql` (additive; check no other branch took 041 first).
-2. Copy `party-sessions.cjs` + `server.js` to the live backend, restart (routes answer 503 until the tables exist).
-3. `AUTHORITY_KILLS` must be `audit` or `enforce` for credits to be recorded.
+Live (checked 2026-10-09): migration 041 applied (`party_sessions`, `party_session_members` exist), `party-sessions.cjs` deployed,
+`AUTHORITY_KILLS=audit`. Credits are only recorded with `audit` or `enforce`.

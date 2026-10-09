@@ -44,8 +44,7 @@ ignored:
 `node tools/build-characters.mjs [id ...]` merges the clip files onto the idle mesh by joint name into one `character.glb`
 (dedup, resample, WebP textures 1024/512 px, quantize, prune) plus `clips.json`. Colour variants without new spend:
 `node tools/tint-variants.mjs [base]`. Free animation: `node tools/blender.mjs` writes `anim_<name>.glb` from code (gaits,
-rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`. Generated assets and their status are listed in `docs/ART-BACKLOG.md`
-(`node tools/art-backlog.mjs` lists unreferenced files).
+rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`.
 
 ## Sync into Godot
 
