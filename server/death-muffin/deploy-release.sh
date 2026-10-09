@@ -92,3 +92,6 @@ echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
 
 # Launcher news + patch notes, the #deathmuffin notice and fixed bug reports (shared with publish-godot-client.sh; never fails the deploy).
 QUIET=1 REPO="$REPO" bash "$SRC/server/death-muffin/announce-release.sh" "$SHA" || true
+
+# The candidate export (~330 MB) is only needed until the release is live and announced; ROLLBACK.sh uses the backup folder.
+rm -rf "$CAND"

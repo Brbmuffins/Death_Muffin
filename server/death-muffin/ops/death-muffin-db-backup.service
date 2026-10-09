@@ -1,0 +1,9 @@
+[Unit]
+Description=Death Muffin nightly database backup (server/death-muffin/ops/backup-db.sh)
+After=mysql.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+# Installed copy (outside the repo checkout): ops/install.sh copies it to /home/ubuntu/death-muffin/ops/.
+ExecStart=/home/ubuntu/death-muffin/ops/backup-db.sh
