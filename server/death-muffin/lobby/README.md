@@ -4,7 +4,7 @@ Listen-server sessions (decision D3 in `DECISIONS.md`): a player hosts from thei
 game packets host <-> clients over WebSocket, so it works behind any NAT with no port forwarding. Max 4 players per session (D2, host included).
 It never parses game data and holds no state beyond the live sessions.
 
-- Port: **5192** (reserved range 5192-5199; 5190 = auth backend; 5191 was the retired realtime service). Binds 127.0.0.1; nginx terminates TLS (`nginx-lobby.conf`).
+- Port: **5192** (reserved range 5192-5199; 5190 = auth backend). Binds 127.0.0.1; nginx terminates TLS (`nginx-lobby.conf`).
 - Env: `DM_LOBBY_JWT_SECRET` (the auth backend's `JWT_SECRET`) or `ENV_FILE` pointing at the backend `.env` (only `JWT_SECRET` is read, never logged);
   `DM_LOBBY_PORT` (5192), `DM_LOBBY_HOST` (127.0.0.1), `DM_LOBBY_IDLE_MS` (900000), `DM_LOBBY_QUIET=1`.
 - Run: `npm ci --omit=dev && node src/index.js`. Tests: `npm install && npm test`. Health: `GET /health`. `deathmuffin-lobby.service` and `nginx-lobby.conf` are installed by hand (nothing in this repo installs them; the live nginx locations are in `../nginx-locations.conf`); the unit expects the code in `/home/ubuntu/death-muffin/lobby` with `npm ci --omit=dev` run there.
@@ -18,7 +18,7 @@ not repeated here (no DB access), so a revoked-but-unexpired token still works u
 `DM_LOBBY_BACKEND`, default `http://127.0.0.1:5190`), each auth follows the manifest's `online` block (`src/gate.js`): `enabled:true` admits everyone; `enabled:false, staff:true`
 admits only accounts for which the backend's `GET /api/me` (Bearer token forwarded, 3 s timeout) says `staff:true`; anything else, an unreadable manifest or a backend that does
 not answer refuses (error `locked`, close 4403, message from the manifest). The manifest is re-read at most every 2 s, so `set-online.sh` takes effect without a restart; sockets
-already connected are not re-checked. Unset = no gate (the old behaviour).
+already connected are not re-checked. Unset = no gate.
 Failure closes with 4401; replaced = 4402; locked (staff-only mode) = 4403; rate limit = 4429; oversize text = 1009.
 
 ## Text frames (JSON control)

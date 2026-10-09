@@ -1,14 +1,14 @@
 # Daily bug-report agent
 
-Players file reports in-game (**Settings → Report a bug**; Godot client: `godot/game_ui/dm_bug_report_view.gd`, web: `src/ui/BugReportView.ts`). They land in the `bug_reports` table
+Players file reports in-game (**Settings → Report a bug**, or the HUD button; `godot/game_ui/dm_bug_report_view.gd`). They land in the `bug_reports` table
 (migration `029-bug-reports.sql`, routes in `backend/bug-reports.cjs`: 10 per account per day, 2,000 characters, client
-context such as area/level/discipline/release and the last five uncaught client errors).
+context such as area/level/discipline/release and the last five uncaught client errors; with "Attach my game log" ticked, the end of the Godot log, crashed session first, stored as `context.log`).
 
 Every day at 09:00 UTC `death-muffin-bug-agent.timer` runs `run-bug-agent.sh`:
 
 1. `reports-cli.cjs list` reads up to 25 `new` reports. None → stop (no agent run).
-2. A fresh worktree `wt/bug-agent-<date>` on branch `bugfix/reports-<date>` is cut from `origin/godot-next` (the Godot client; the web game on master is frozen).
-3. Headless Claude (`claude -p`, Opus) gets `PROMPT.md` with the reports embedded as data. It fixes what it can confirm,
+2. A fresh worktree `wt/bug-agent-<date>` on branch `bugfix/reports-<date>` is cut from `origin/main`.
+3. Headless Claude (`claude -p`, Opus) gets `PROMPT.md` with the reports (log included) embedded as data. It fixes what it can confirm,
    one commit per report (`Bug report #<id>: …`), and writes a verdict per report.
 4. The script re-runs the checks on the branch, applies the verdicts to the DB (players see the status and the
    `note`; `fixed` is downgraded to `triaged` if the branch is red), writes `~/death-muffin/bug-agent/runs/<date>.md`
@@ -16,12 +16,12 @@ Every day at 09:00 UTC `death-muffin-bug-agent.timer` runs `run-bug-agent.sh`:
 
 **Discord.** Every post goes to `~/death-muffin/private/discord-deathmuffin-webhook.url` (the Death Muffin channel) when
 that file exists, else to the older `discord-github-webhook.url` (MuffinCore alerts). Two kinds: the daily triage summary
-(fixes on the branch, awaiting review) and, from `deploy-release.sh`, **"Player-reported bugs fixed — live now"** when a
-release contains `Bug report #<id>: …` commits. That deploy step also sets those reports to `released`, which players see
+(fixes on the branch, awaiting review) and, from `announce-release.sh` (run by every client publish and backend deploy), **"Player-reported bugs fixed — live now"** when a
+release contains `Bug report #<id>: …` commits. That step also sets those reports to `released`, which players see
 as *Fixed — live now*.
 
-**Nothing ships on its own.** The owner (or a Claude session) reviews `bugfix/reports-<date>`, merges it and deploys with
-`deploy-release.sh` as usual.
+**Nothing ships on its own.** The owner (or a Claude session) reviews `bugfix/reports-<date>`, merges it and ships with
+`publish-godot-client.sh` as usual.
 
 ## Why it is boxed in
 
@@ -29,7 +29,7 @@ Report text is written by players, so it is treated as untrusted input (prompt i
 
 - `--restricted` (file tools confined to the worktree, user settings and MCP ignored), `--permission-mode dontAsk`, and an
   allowlist: Read/Edit/Write/Glob/Grep, `agit` (a few git verbs, no hooks, no flags that touch files outside the repo or
-  stage everything) and `check.sh` (the Godot test suites, 10 to 20 min, via `sandbox-lib.sh` in fresh user/network/mount namespaces: no network,
+  stage everything) and `check.sh` (`tools/godot/run-all-tests.sh` against the committed fixtures, 10 to 20 min, via `sandbox-lib.sh` in fresh user/network/mount namespaces: no network,
   whole filesystem read-only except the worktree).
 - The agent never sees the database or `.env`; it cannot deploy or push. Verdicts are validated (ids from the batch,
   known statuses, capped notes) before they are written.
