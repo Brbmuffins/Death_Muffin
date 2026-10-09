@@ -1,8 +1,6 @@
 # Known gaps
 
-Real remaining gaps, checked 2026-10-09 against the code on `main` (`godot/next/`, `godot/net/`, `server/`). Rows that are
-done, or that only concerned the deleted web game and old `DmGame` path, are gone; the rest of the former parity audit is in
-git history (`godot/PARITY.md`). Priorities are in [ROADMAP.md](ROADMAP.md).
+Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](ROADMAP.md). Remove an entry when it is closed.
 
 ## Performance
 
@@ -23,8 +21,6 @@ git history (`godot/PARITY.md`). Priorities are in [ROADMAP.md](ROADMAP.md).
 
 - **Shrouded suspension in the player's own Miasma** is not implemented (`next/status/README.md`). Barrier has no decay beyond
   its 6 s duration.
-- Bone Ward and Colossus guard are computed from living thralls at each hit, never timed statuses. That is the intended rule,
-  not a gap.
 - A late joiner does not see boss pools that are already burning; the flood's hummock shrink is not eased by the world
   builder; pools of a boss that resets linger their remaining seconds (`next/bosses/README.md`).
 
@@ -49,10 +45,8 @@ git history (`godot/PARITY.md`). Priorities are in [ROADMAP.md](ROADMAP.md).
 - Hero: no friendly rim light; the hover ring follows hover only; online joiners' bag and cosmetics do not live-update
   (`next/hero/README.md`).
 
-## Cleanup left from the web era
+## Leftovers from the web era
 
-- Bit-exact web math is still in the tree and still used by the Depths floor generator, auto-combat and the DB loader (`sim/fdlibm.gd`, `sim/sim_exact.gd`, `game/dm_fdlibm_x.gd`). New code does not need it; removing it would change golden fixtures.
-- `tools/godot/sync-slice-assets.mjs` still reads `godot/data/slice/assets_used.json`; the exporter that wrote it was deleted.
-- Some `godot/next/*/README.md` files still say "the current game" for the retired `DmGame`; `next/hud/README.md` lists
-  lifesteal / fortune / wisdom brews as not applied, but they are (`tests/next_brews_affix`).
-- `godot/export_presets.cfg` still names the product "Death Muffin (Godot slice)" and the export file `DeathMuffin-godot-slice`.
+- Bit-exact web math is still used by the Depths floor generator, auto-combat and the DB loader (`sim/fdlibm.gd`, `sim/sim_exact.gd`, `game/dm_fdlibm_x.gd`). New code does not need it; removing it changes golden fixtures.
+- `tools/godot/sync-slice-assets.mjs` reads `godot/data/slice/assets_used.json`; the exporter that wrote it (`export-slice.ts`) is gone, so the list is now hand-maintained.
+- `godot/export_presets.cfg` still names the product "Death Muffin (Godot slice)" and the export files `DeathMuffin-godot-slice`.

@@ -1,35 +1,25 @@
 # Roadmap
 
-Updated 2026-10-09. The game is the Godot online client, necromancer-only. Order of work follows the owner's rules:
-performance first, polish over new content, necromancer focus. Real gaps are in [KNOWN-GAPS.md](KNOWN-GAPS.md);
-decisions are in [DECISIONS.md](DECISIONS.md).
-
-## Done: baseline (2026-10-09)
-
-Tag `baseline-2026-10-09`: one online Godot client, necro-only, web game retired (tag `archive/legacy-web`), code and docs
-audited, full Godot suite green (101 suites), client `20261009.214420-1971053` published, Discord and bug agents running on `main`,
-announced in #deathmuffin. Still open from that work: the stale lines under "Cleanup" in KNOWN-GAPS.md.
+The game is the Godot online client, necromancer-only. Order of work follows the owner's rules: performance first, polish
+over new content, necromancer focus. Open gaps are listed once, in [KNOWN-GAPS.md](KNOWN-GAPS.md); decisions in
+[DECISIONS.md](DECISIONS.md).
 
 ## Now: necromancer polish (no new content)
 
-- **Rendered performance.** All frame numbers so far are headless on a shared VPS. Measure a real-GPU frame budget on the
-  owner's and Helix's PCs (Hollow Graves with 20+ enemies and a boss, 1080p and 1440p, Low and High), including first-frame
-  and shader hitches. Forward+/FSR is only evaluated after that, on a separate branch behind a flag.
+- **Rendered performance:** measure a real-GPU frame budget on the owner's and Helix's PCs (Hollow Graves with 20+ enemies
+  and a boss, 1080p and 1440p, Low and High), including first-frame and shader hitches. Forward+/FSR only after that, on a
+  separate branch behind a flag (KNOWN-GAPS: Performance).
 - **Combat feel and loot** for the four disciplines: tuning from playtests, readability of rites and statuses, gear and
   affix legibility, the first hour (Next-step box, counsel tips, guide NPCs).
-- **Rejoin window** (D13): a dropped party member can return for a short window. Needs host and relay work and a test.
-- **Party gaps**: a joiner's own rune sockets, gear and upgrades reaching the host's sim; flasks and brews for a joiner;
-  Depths for parties; a client's Covenant Seal and Nightfall dim.
-- Remove the remaining stale text in system READMEs under `godot/next/` as each is touched.
+- **Rejoin window** (D13) and the **party gaps** (KNOWN-GAPS: Party and online).
+- Fix stale text in the `godot/next/*/README.md` files as each system is touched.
 
 ## Later
 
-- **The other five disciplines** (Grave Warden, Bell Monk, Carrion Witch, Hollow Knight, Veilwalker), rebuilt on the
-  Godot kit and rite system. Their data exists in `godot/data/content/` but `next/rites/dm_rite_registry.gd` is necromancer-only.
-  Shrouded suspension, monk beat meter and Bulwark come with them.
-- **New content after polish:** new zones (the Hollow Court), more bosses with summoning keys, new enemy archetypes,
-  replay and endgame depth (weekly Omen variants, deeper Depths rewards). Ideas are in git history (`FUTURE_CONTENT.md`).
-- **In-game leaderboard panel** (the website shows it; `DmApi.get_leaderboard` exists).
-- **Server authority:** the kill ledger (`backend/kills.cjs`) has `AUTHORITY_KILLS=off|audit|enforce`; the code default is `off`; live runs `audit` (checked 2026-10-09). Next step: review the audit log, then enforce.
-- **VPS-hosted sessions** (headless Godot) and host migration. Not planned.
-- **Mobile:** not in scope for the Godot game.
+- **The other five disciplines** (Grave Warden, Bell Monk, Carrion Witch, Hollow Knight, Veilwalker) on the Godot kit and rite
+  system; their data is in `godot/data/content/`. Shrouded suspension, monk beat meter and Bulwark come with them.
+- **New content after polish:** new zones (the Hollow Court), more bosses with summoning keys, new enemy archetypes, replay and
+  endgame depth (weekly Omen variants, deeper Depths rewards).
+- **In-game leaderboard panel** (KNOWN-GAPS: UI).
+- **Server authority:** the kill ledger (`backend/kills.cjs`) runs `AUTHORITY_KILLS=audit` live (code default `off`). Next: review the audit log, then enforce.
+- Not planned: VPS-hosted sessions (headless Godot) and host migration; mobile.
