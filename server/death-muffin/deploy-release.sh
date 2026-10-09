@@ -91,4 +91,4 @@ curl -sSf https://muffindevelopment.com/death-muffin/api/health; echo
 echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
 
 # Launcher news + patch notes, the #deathmuffin notice and fixed bug reports (shared with publish-godot-client.sh; never fails the deploy).
-REPO="$REPO" bash "$SRC/server/death-muffin/announce-release.sh" "$SHA" || true
+QUIET=1 REPO="$REPO" bash "$SRC/server/death-muffin/announce-release.sh" "$SHA" || true

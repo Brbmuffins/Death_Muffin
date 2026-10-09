@@ -12,6 +12,8 @@
 #    with their own notice.
 # The last announced revision is the `sha` in the live release-notes.json. A revision that is not newer than it (a rollback, or the
 # same revision published twice) announces nothing.
+# QUIET=1 (deploy-release.sh: backend deploys): when PATCH_NOTES.json did not change, keep the live notes' title and items (commit
+# subjects of a backend fix are not player news) and post no release notice; bug reports are still released and announced.
 # Test overrides: REPO PUBLIC RUNTIME HOOK_FILE REPORTS_CLI, DRY_RUN=1 (write the JSON to $PUBLIC/play without sudo, no Discord, no DB).
 set -uo pipefail
 
@@ -43,9 +45,10 @@ g show "$SHA:PATCH_NOTES.json" >"$TMP/PATCH_NOTES.json" 2>/dev/null || echo '[]'
 g log --no-merges --format='%s' "${RANGE[@]}" | grep -vE '^(Merge |WIP)' | head -12 >"$TMP/commits.txt"
 
 # ---- 1. notes JSON ----
-python3 - "$SHA" "$FRESH" "$TMP" <<'PY' || { echo "release notes: could not build the notes" >&2; exit 0; }
+CARRY=0; [ -n "${QUIET:-}" ] && [ "$FRESH" = 0 ] && CARRY=1
+python3 - "$SHA" "$FRESH" "$TMP" "$CARRY" "$NOTES" <<'PY' || { echo "release notes: could not build the notes" >&2; exit 0; }
 import json, os, sys, datetime
-sha, fresh, tmp = sys.argv[1][:12], sys.argv[2] == "1", sys.argv[3]
+sha, fresh, tmp, carry, live = sys.argv[1][:12], sys.argv[2] == "1", sys.argv[3], sys.argv[4] == "1", sys.argv[5]
 now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 commits = [l.strip()[:150] for l in open(os.path.join(tmp, "commits.txt")) if l.strip()]
 try:
@@ -54,6 +57,12 @@ except Exception:
     history = []
 top = history[0] if (history and fresh) else None
 notes = {"sha": sha, "date": now, "title": top["title"] if top else "", "items": top["items"] if top else commits, "commits": commits}
+if carry:   # a quiet backend deploy: the player-facing notes stay what the last release said
+    try:
+        old = json.load(open(live))
+        notes.update(title=old.get("title", ""), items=old.get("items", []), date=old.get("date", now))
+    except Exception:
+        pass
 json.dump(notes, open(os.path.join(tmp, "release-notes.json"), "w"))
 json.dump({"sha": sha, "date": now, "releases": history[:30]}, open(os.path.join(tmp, "patch-notes.json"), "w"))
 PY
@@ -64,7 +73,7 @@ else
     && sudo install -m 644 -o root -g root "$TMP/release-notes.json" "$PUBLIC/play/release-notes.json" \
     || { echo "release notes: could not write $PUBLIC/play" >&2; exit 0; }
 fi
-echo "release notes: $SHORT published ($( [ "$FRESH" = 1 ] && echo "PATCH_NOTES.json" || echo "commit subjects"))"
+echo "release notes: $SHORT published ($( [ "$FRESH" = 1 ] && echo "PATCH_NOTES.json" || { [ "$CARRY" = 1 ] && echo "previous notes kept"; } || echo "commit subjects"))"
 
 # ---- 2. Discord notice (the repo is public: the webhook URL lives outside it) ----
 HOOK_FILE="${HOOK_FILE:-$RUNTIME/private/discord-deathmuffin-webhook.url}"
@@ -89,7 +98,8 @@ embed = {"title": f"Death Muffin update {sha[:7]} is live", "url": "https://muff
          "description": body[:3700] + f"\n\nThe launcher updates on its own. [What changed]({compare})", "color": 0x7C3AED}
 json.dump({"username": "Death Muffin", "embeds": [embed], "allowed_mentions": {"parse": []}}, open(os.path.join(tmp, "notice.json"), "w"))
 PY
-[ -s "$TMP/notice.json" ] && post "$TMP/notice.json" "release notice"
+if [ "$CARRY" = 1 ]; then echo "Discord: no release notice (quiet backend deploy, no new patch notes)"
+elif [ -s "$TMP/notice.json" ]; then post "$TMP/notice.json" "release notice"; fi
 
 # ---- 3. bug reports fixed by this release ----
 FIXES=$(g log --no-merges --format='%s' "${RANGE[@]}" | grep -E '^Bug report #[0-9]+: ' || true)
