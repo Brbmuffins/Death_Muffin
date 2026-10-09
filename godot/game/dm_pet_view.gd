@@ -1,6 +1,6 @@
 class_name DmPetView
 extends RefCounted
-## Port of src/graphics/PetView.ts: a companion that trails its owner (behind and to the left, walks or flies to catch up, idles when they
+## Port of archive/legacy-web:src/graphics/PetView.ts: a companion that trails its owner (behind and to the left, walks or flies to catch up, idles when they
 ## stop, snaps to them if it falls far behind). Pure looks. `def` = a cosmetics PETS entry {id, model, scale, tint?, fly?{height,speed,amp,body}}.
 
 var c: DmCreature

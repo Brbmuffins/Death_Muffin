@@ -2572,7 +2572,7 @@ var AREA_PEAK = {
   coliseum: { xp: 20609, gold: 16705, kills: 477 },
   fen: { xp: 74831, gold: 25498, kills: 184 },
   // Same settings on held floors of depth 5, 10 and 20 for a level-40 hero, the best column of any discipline, each rate scaled to enemy level 50
-  // (depth 10 for that hero; XP x1.25 per level, gold x1.15): `DEPTH_LEVELS=40 DEPTH_DEPTHS=5,10,20 DEPTH_BANDS=max npm run balance:depths`, BALANCE.md.
+  // (depth 10 for that hero; XP x1.25 per level, gold x1.15): measured with the balance harness (DEPTH_LEVELS=40, DEPTH_DEPTHS=5,10,20, DEPTH_BANDS=max).
   depths: { xp: 27600, gold: 16e3, kills: 72 }
 };
 var DEPTHS_AUTHORITY = { refHero: 40, refDepth: 10, slack: 3, maxDepth: 120 };

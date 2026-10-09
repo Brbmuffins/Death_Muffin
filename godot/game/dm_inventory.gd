@@ -1,6 +1,6 @@
 class_name DmInventory
 extends RefCounted
-## Port of the stateful `Inventory` class of src/gameplay/loot.ts: owns the bag. Pickups merge immediately (optimistic) and flush to
+## Port of the stateful `Inventory` class of archive/legacy-web:src/gameplay/loot.ts: owns the bag. Pickups merge immediately (optimistic) and flush to
 ## the server in debounced batches; failed saves keep the local state and retry with backoff. Server replies (load, equip, craft) are the
 ## source of truth (`replace`), with in-flight / pending local changes replayed on top.
 ## Timers are driven by `tick(dt)` (the host calls it each frame) so tests are deterministic. Slots are the DmBag/DmLoot row Dictionaries.

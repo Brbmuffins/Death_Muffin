@@ -1,6 +1,6 @@
 class_name DmLootView
 extends Node3D
-## Port of src/graphics/LootView.ts: personal loot lying on the ground. Gear/materials wait under a rarity-coloured light pillar until you
+## Port of archive/legacy-web:src/graphics/LootView.ts: personal loot lying on the ground. Gear/materials wait under a rarity-coloured light pillar until you
 ## WALK OVER them (loot never flies to the hero); gold and shards still pull in from a few steps away. EVERYTHING expires after
 ## LOOT_EXPIRE_S (60 s, every rarity incl. prize items); past LOOT_ITEM_CAP items the oldest go early, ordinary before epic/legendary.
 ## Plus the Settings -> Loot rules (rules/loot/loot_filter.gd): per rarity 'ground' / 'auto' (straight to the bag) / 'gold' (sell value paid).

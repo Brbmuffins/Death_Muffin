@@ -1,6 +1,6 @@
 class_name DmAudioAmbience
 extends RefCounted
-## Port of src/audio/ambience.ts: zone ambience data and pure rules (which looping bed layers each area plays, which sparse
+## Port of archive/legacy-web:src/audio/ambience.ts: zone ambience data and pure rules (which looping bed layers each area plays, which sparse
 ## details drift in over it, and the gaps between them). Beds are low and quiet on purpose. lp = 0 means no low-pass.
 
 ## Overall trim on the recorded loops (~-3 dB from the first measured level).

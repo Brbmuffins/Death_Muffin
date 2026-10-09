@@ -1,6 +1,6 @@
 class_name DmNecroRules
 extends RefCounted
-## Port of src/gameplay/necroRules.ts: the server-authoritative necromancer progression rules.
+## Port of server/rules/gameplay/necroRules.ts: the server-authoritative necromancer progression rules.
 ## A state is a plain Dictionary with exactly the JSON shape the server stores (damageTier, waveTierOwned, waveTierActive,
 ## legionTier, soulShards, areaKills, unlockedAreas, bossKills, totalKills, ascension, ashes, boons, vows, unlocks, run,
 ## summonsPending, migrated). Every rule returns a Dictionary: {ok: true, state, ...extras} or {ok: false, error}.

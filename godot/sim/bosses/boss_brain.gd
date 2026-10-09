@@ -1,6 +1,6 @@
 class_name DmBossBrain
 extends RefCounted
-## Shared boss machinery, port of `BossBrain` in src/gameplay/sim/BossBrain.ts: awaken, damage + Fracture + Withered, a host-owned
+## Shared boss machinery, port of `BossBrain` in archive/legacy-web:src/gameplay/sim/BossBrain.ts: awaken, damage + Fracture + Withered, a host-owned
 ## stagger, phase thresholds at 60% / 30%, telegraphed attacks resolved on time, the wipe reset, defeat and the arena leash.
 ## Subclasses add their attacks in `_think` and how they land in `_resolve`. The brain only talks to a DmBossWorld.
 
@@ -17,7 +17,7 @@ const BOSS_RING_PAD := 0.4
 var world: RefCounted
 var id: String = ""
 var def: Dictionary = {}
-## BossState (src/gameplay/sim/types.ts) as a Dictionary: same keys, same meaning. `state["state"]` is the string state.
+## BossState (archive/legacy-web:src/gameplay/sim/types.ts) as a Dictionary: same keys, same meaning. `state["state"]` is the string state.
 var state: Dictionary = {}
 var pending: Array = []
 var last_hit_by: String = ""

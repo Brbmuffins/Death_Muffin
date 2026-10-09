@@ -1,6 +1,6 @@
 class_name DmItemCard
 extends VBoxContainer
-## The text layout of an item (`.cw-tooltip` / `.cw-bag-detail .info`), after src/ui/gearText.ts + InventoryPanel.showTooltip:
+## The text layout of an item (`.cw-tooltip` / `.cw-bag-detail .info`), after archive/legacy-web:src/ui/gearText.ts + InventoryPanel.showTooltip:
 ##   name (rarity colour, bold) / "<mark> rarity type" / "Item level N · M affixes" / verdict / stat lines / set / brew / lore / "Worth Ng".
 ## Reads the same Dictionary DmItemSlot takes. Real numbers come from the rules tracks; this only lays them out.
 ## Keys: name, rarity, quantity, type_label, ilvl, affix_count, verdict {kind: up|down|same, text}, stats: Array[String|Dictionary{text, fx, necro}],

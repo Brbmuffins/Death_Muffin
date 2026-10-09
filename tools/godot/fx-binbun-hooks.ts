@@ -2,7 +2,7 @@
 
 /**
  * Lit (non-`unshaded`) spatial effect shaders become unshaded with the web port's output, `ALBEDO * 0.25 + EMISSION`
- * (src/graphics/binbun/shaders.ts: "lit = ALBEDO·0.25 + EMISSION"). Lit, each overlapping smoke/cloud layer ran the Compatibility
+ * (archive/legacy-web:src/graphics/binbun/shaders.ts: "lit = ALBEDO·0.25 + EMISSION"). Lit, each overlapping smoke/cloud layer ran the Compatibility
  * renderer's whole light loop (8 omni lights + the moon) per pixel: Miasma's cloud alone cost about as much as the rest of the frame,
  * and at night it rendered as faint smudges. Idempotent (a shader already unshaded is left alone).
  */

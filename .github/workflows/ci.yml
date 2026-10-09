@@ -38,6 +38,9 @@ jobs:
           npm ci
           npm ci --prefix server/death-muffin/lobby
 
+      - name: Repo hygiene (stale docs, references, retired terms)
+        run: npm run hygiene
+
       - name: Shared rules tests
         run: npm run test:rules
 

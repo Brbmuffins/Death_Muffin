@@ -1,6 +1,6 @@
 class_name DmNav
 extends RefCounted
-## Port of src/gameplay/nav.ts: walkable space = area rectangles + the corridors of open doors; obstacles push bodies out; A* over a
+## Port of archive/legacy-web:src/gameplay/nav.ts: walkable space = area rectangles + the corridors of open doors; obstacles push bodies out; A* over a
 ## 0.5 m grid for the last leg. Rects are Dictionaries {x0, z0, x1, z1} (the exported JSON shape).
 
 const CELL := 4.0

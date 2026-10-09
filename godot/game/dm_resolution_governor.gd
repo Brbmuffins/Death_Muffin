@@ -1,6 +1,6 @@
 class_name DmResolutionGovernor
 extends RefCounted
-## Port of src/app/framePacing.ts ResolutionGovernor (Settings "Auto resolution"): when frames sustainedly miss the cap's budget (a GPU that
+## Port of archive/legacy-web:src/app/framePacing.ts ResolutionGovernor (Settings "Auto resolution"): when frames sustainedly miss the cap's budget (a GPU that
 ## can't keep up), render fewer pixels; when there is headroom again, step back up. A step up that fails right away becomes the ceiling,
 ## so it doesn't ping-pong. Deliberately timid: several seconds of sustained misses, at most one change per MIN_GAP_S, small steps, and
 ## never while hold() is active (area entry / scene load). `scale` drives the viewport's scaling_3d_scale (the 3D view only; the UI stays sharp).

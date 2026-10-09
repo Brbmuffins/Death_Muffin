@@ -1,6 +1,6 @@
 class_name DmPlayerRules
 extends RefCounted
-## Port of the rules inside src/gameplay/Player.ts: defence (Bone Ward + Colossus guard, barrier, Bulwark, Oath Unbroken), regeneration,
+## Port of the rules inside archive/legacy-web:src/gameplay/Player.ts: defence (Bone Ward + Colossus guard, barrier, Bulwark, Oath Unbroken), regeneration,
 ## resource drift, Rage gain, soul-harvest meter, move speed. Pure functions over a state Dictionary `p` (mutated in place); no movement/pathing
 ## (that is world-sim). Create with new_state().
 

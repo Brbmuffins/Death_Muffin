@@ -1,6 +1,6 @@
 class_name DmBossTelegraphs
 extends RefCounted
-## Port of `BossTelegraphs` (src/gameplay/autoDodge.ts): the scene's record of live boss telegraphs, fed from the same events that draw them.
+## Port of `BossTelegraphs` (archive/legacy-web:src/gameplay/autoDodge.ts): the scene's record of live boss telegraphs, fed from the same events that draw them.
 ## Hazards are the Dictionaries of dm_auto_dodge.gd; boss events are Dictionaries with the TS keys (kind, boss, x, z, ms, r, dir, targets).
 
 var _list: Array = []

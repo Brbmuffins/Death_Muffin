@@ -1,6 +1,6 @@
 class_name DmMockBackend
 extends RefCounted
-## The offline edition's backend (port of src/net/mockBackend.ts, plus the server rules it delegates to): the in-process stand-in for the
+## The dev-offline mode's backend (port of archive/legacy-web:src/net/mockBackend.ts, plus the server rules it delegates to): the in-process stand-in for the
 ## Death Muffin server. Plug it in as the transport:   var mock := DmMockBackend.new();  var api := DmApi.new(mock.transport_callable());  api.base_url = ""
 ## State lives in one JSON file (user://dm_offline_db.json by default; "" = memory only), written atomically (tmp file + rename) after every
 ## request that changed it, so a relaunch finds exactly what the last reply promised. Tokens are "offline:<username>".

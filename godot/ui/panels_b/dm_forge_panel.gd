@@ -1,6 +1,6 @@
 class_name DmForgePanel
 extends DmTabbedWindow
-## The Ossuary Workbench and the Sexton's Acre stations (src/ui/ForgePanel.ts): a profession's recipes with ingredient counts, a quantity picker and
+## The Ossuary Workbench and the Sexton's Acre stations (archive/legacy-web:src/ui/ForgePanel.ts): a profession's recipes with ingredient counts, a quantity picker and
 ## Craft. Recipes are the server's GET /api/recipes rows (the same dictionary shape DmRecipes.for_skill returns also works). Every number that
 ## decides what is craftable comes from DmRecipes (has_skill_and_materials, max_craftable, clamp_craft_qty).
 ##

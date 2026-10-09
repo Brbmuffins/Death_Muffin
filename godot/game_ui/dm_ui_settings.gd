@@ -1,6 +1,6 @@
 class_name DmUiSettings
 extends RefCounted
-## Settings wiring (src/ui/MiscPanels.ts SettingsPanel + WorldScene's callbacks): DmSettingsPanel.values <-> game.settings, game.apply_settings,
+## Settings wiring (archive/legacy-web:src/ui/MiscPanels.ts SettingsPanel + WorldScene's callbacks): DmSettingsPanel.values <-> game.settings, game.apply_settings,
 ## the panel's actions (leave, bug report, show tips again, change class, party), the loadout hotkey capture, and the Report a bug window.
 
 var ui: Node

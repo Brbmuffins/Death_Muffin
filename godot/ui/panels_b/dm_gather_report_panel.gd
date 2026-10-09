@@ -1,6 +1,6 @@
 class_name DmGatherReportPanel
 extends DmPanelB
-## "The Sexton's Ledger" (src/ui/GatherReportPanel.ts): what an AFK session brought back, shown when work stops.
+## "The Sexton's Ledger" (archive/legacy-web:src/ui/GatherReportPanel.ts): what an AFK session brought back, shown when work stops.
 ##
 ## Data in:  show_report(r)  r = GatherReport {seconds, reason, items:[{itemId, name, qty, rarity}], totalItems, goldValue, gold,
 ##           skills:[{name, xp, fromLevel, toLevel}], best:{name, qty, rarity}|null, milestones:[String], records:[String]}

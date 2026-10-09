@@ -1,6 +1,6 @@
 class_name DmRunes
 extends RefCounted
-## Port of src/gameplay/runeRules.ts (socket rows) + src/gameplay/runeCast.ts (target pickers: pure geometry shared by the cast code and bots).
+## Port of server/rules/gameplay/runeRules.ts (socket rows) + archive/legacy-web:src/gameplay/runeCast.ts (target pickers: pure geometry shared by the cast code and bots).
 ## Foes / corpses are Dictionaries {id, x, z, radius}. Sorts are stable (id order of the input list breaks ties), like JS.
 
 const RUNE_BASE := 130

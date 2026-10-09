@@ -1,6 +1,6 @@
 class_name DmLoginScreen
 extends Control
-## Port of src/scenes/LoginScene.ts: story column + login / register card over the pyre backdrop.
+## Port of archive/legacy-web:src/scenes/LoginScene.ts: story column + login / register card over the pyre backdrop.
 ## `standalone` = the web's VITE_OFFLINE_BUILD (local player name only, no email / password, "Offline edition" wording);
 ## `dev_offline` = the web's ?offline dev mode (normal fields + "accounts live only in this browser" note).
 ## Server error strings are shown verbatim, only the first letter capitalised.

@@ -1,6 +1,6 @@
 class_name DmDialoguePanel
 extends PanelContainer
-## The conversation card (src/ui/DialoguePanel.ts). Non-modal: sits high on the screen, never pauses the game, closes by Esc, the X, Goodbye,
+## The conversation card (archive/legacy-web:src/ui/DialoguePanel.ts). Non-modal: sits high on the screen, never pauses the game, closes by Esc, the X, Goodbye,
 ## pressing E again, or walking away (the world checks the distance and calls close()). Two to four buttons at a time.
 ##
 ## Text and heard-state come from a `source` (DmDialogueSource): in the game that is the port of content/dialogue.ts + gameplay/guidance.ts,

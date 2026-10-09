@@ -1,6 +1,6 @@
 class_name DmGatherSfx
 extends RefCounted
-## Port of src/audio/gatherSfx.ts: the sound of one work cycle (the skill's own, except where the map has a finer one).
+## Port of archive/legacy-web:src/audio/gatherSfx.ts: the sound of one work cycle (the skill's own, except where the map has a finer one).
 
 
 static func gather_sfx(skill: String, kind: String = "") -> String:

@@ -1,6 +1,6 @@
 class_name DmAutoDodge
 extends RefCounted
-## One-to-one port of src/gameplay/autoDodge.ts (Easy auto's dodge: leave boss telegraphs, hymn cones and hostile pools).
+## One-to-one port of archive/legacy-web:src/gameplay/autoDodge.ts (Easy auto's dodge: leave boss telegraphs, hymn cones and hostile pools).
 ## Hazards are Dictionaries with the TS keys: {k: circle|cone|seg|rect|except, x, z, r | dir,r,half | dir,len,hw | hw,hd | r,spots,safeR, until, [src], [dir0]}.
 ## Points are {x, z} Dictionaries; hazards `until` Infinity is INF. Boss events are Dictionaries with the TS SimEvent 'boss' keys.
 ## Math.hypot -> DmSimMath.hypot, Math.sin/cos/atan2 -> DmFdlibm (V8-exact), Math.round -> DmMath.js_round.

@@ -1,6 +1,6 @@
 class_name DmSimEnemy
 extends RefCounted
-## One hostile body (port of `Enemy` in src/gameplay/sim/types.ts). Field names are the TS names (camelCase) on purpose: the
+## One hostile body (port of `Enemy` in archive/legacy-web:src/gameplay/sim/types.ts). Field names are the TS names (camelCase) on purpose: the
 ## bosses track and the fixtures read them 1:1. Optional TS fields default to their "undefined" value (0 / false / "" / null).
 ## null-able ids: targetThrall and channelCorpse use -1 for none.
 

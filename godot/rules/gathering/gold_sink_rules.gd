@@ -1,6 +1,6 @@
 class_name DmGoldSink
 extends RefCounted
-## Port of the pure parts of src/gameplay/goldSinkRules.ts: Reforge pricing/validation/roll, and the Empowered-summon constants
+## Port of the pure parts of server/rules/gameplay/goldSinkRules.ts: Reforge pricing/validation/roll, and the Empowered-summon constants
 ## and formulas. Server-authoritative (reforge.cjs / boss-key.cjs roll and charge).
 ##
 ## Dependencies injected as Callables (they belong to the loot track's affix rules):

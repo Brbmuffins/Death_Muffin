@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "hygiene": "node tools/hygiene/check.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:rules": "vitest run server/rules",

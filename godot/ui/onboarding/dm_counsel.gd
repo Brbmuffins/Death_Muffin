@@ -1,6 +1,6 @@
 class_name DmCounsel
 extends RefCounted
-## Covenant counsel: the first-time tip queue (src/ui/Onboarding.ts class `Onboarding`). Pure logic, no nodes: one card at a time, each tip once per
+## Covenant counsel: the first-time tip queue (archive/legacy-web:src/ui/Onboarding.ts class `Onboarding`). Pure logic, no nodes: one card at a time, each tip once per
 ## character, WHEN a queued tip may appear is DmCounselCadence's call, "Don't show tips" turns it off, `show_tips_again()` replays it.
 ## The view (DmCounselView) listens to the signals and draws the DmTipCard + the TIP_ANCHOR glow.
 ##

@@ -1,6 +1,6 @@
 class_name DmDepthsFloor
 extends RefCounted
-## Port of src/gameplay/depthsFloor.ts: the Catacomb Depths floor generator (pure, deterministic: same (seed, depth) -> same floor)
+## Port of archive/legacy-web:src/gameplay/depthsFloor.ts: the Catacomb Depths floor generator (pure, deterministic: same (seed, depth) -> same floor)
 ## and its navigation helpers. A floor is a Dictionary with the TS field names:
 ##   {seed, depth, rect, rooms:[{id,col,row,rect,cx,cz,active,kind,adj:[{to,door}],dist}], doors:[{a,b,x,z,wall,dir:{x,z}}], walls:[WallSegment dict],
 ##    props:[Placement dict], stairUp:{x,z}, start:{x,z}, stairDown:{x,z}, chest:{x,z}|null, startRoom, stairRoom, chestRoom|null,

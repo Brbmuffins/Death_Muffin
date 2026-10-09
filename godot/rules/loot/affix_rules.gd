@@ -1,6 +1,6 @@
 class_name DmAffixRules
 extends RefCounted
-## Port of src/gameplay/affixRules.ts: item level and affixes (the pure rules for server-rolled loot instances).
+## Port of server/rules/gameplay/affixRules.ts: item level and affixes (the pure rules for server-rolled loot instances).
 ## An instance is {ilvl:int, affixes:[{id:String, v:int}]}. `rand` arguments are Callables returning a float in [0,1) (pass `rng.next`);
 ## an empty Callable falls back to randf() (TS: Math.random). The server owns every real roll; rolling here is for the offline
 ## edition / tests and mirrors the shared module the server bundles.

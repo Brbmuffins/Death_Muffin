@@ -1,6 +1,6 @@
 class_name DmAudioMixer
 extends RefCounted
-## Port of src/audio/mixer.ts: pure mixing rules (bus of a sound, priority, distance/repeat gain, voice caps, ducking maths).
+## Port of archive/legacy-web:src/audio/mixer.ts: pure mixing rules (bus of a sound, priority, distance/repeat gain, voice caps, ducking maths).
 ## No Godot audio nodes in here, so it is unit-tested headless. Slider keys match the web Settings: volume, combatVolume,
 ## ambienceVolume, musicVolume, interfaceVolume (the Godot settings panel's vol_master/vol_combat/vol_amb/vol_music/vol_ui map onto them).
 

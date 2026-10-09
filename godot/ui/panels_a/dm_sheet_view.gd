@@ -1,6 +1,6 @@
 class_name DmSheetView
 extends VBoxContainer
-## The Character sheet (Sheet · J; src/ui/CharacterSheet.ts): "What you're looking for", then every stat as a line that expands into its breakdown
+## The Character sheet (Sheet · J; archive/legacy-web:src/ui/CharacterSheet.ts): "What you're looking for", then every stat as a line that expands into its breakdown
 ## (base, level, each worn item, discipline, tiers, boons). Set-bonus and affix lines are always open. Pure display of gearStats.statSheet()/lookingFor().
 ##
 ## Data in:  set_data({ready: bool, primer, looking: {discipline, orderText, why, weapons, weakest:[{text, empty}]},

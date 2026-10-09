@@ -1,6 +1,6 @@
 class_name DmFootstepTracker
 extends RefCounted
-## Port of src/audio/footsteps.ts: footstep timing for the hero in step with the walk animation. Pure: feed it the walk loop's phase
+## Port of archive/legacy-web:src/audio/footsteps.ts: footstep timing for the hero in step with the walk animation. Pure: feed it the walk loop's phase
 ## (0..1, or -1 when no walk loop is playing) and the position each frame; it reports when a foot lands.
 ## A walk cycle has two footfalls, half a cycle apart; without a phase it falls back to one step per FALLBACK_STRIDE units walked.
 

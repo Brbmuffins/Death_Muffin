@@ -1,6 +1,6 @@
 class_name DmReagentShelfPanel
 extends DmPanelB
-## The Reagent Shelf (src/ui/ReagentShelfPanel.ts + content/wing.ts): every alchemy ingredient as a collection. Found ones show their icon,
+## The Reagent Shelf (archive/legacy-web:src/ui/ReagentShelfPanel.ts + content/wing.ts): every alchemy ingredient as a collection. Found ones show their icon,
 ## name and how many you hold; the rest are dim silhouettes ("???"). "Found" = ever carried one.
 ##
 ## Data in:  set_held({item_id: count})  the bag's item counts.   set_found(Array)  the ids recorded earlier (the web keeps them browser-local per

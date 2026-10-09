@@ -1,6 +1,6 @@
 class_name DmUiInventory
 extends RefCounted
-## The Reliquary wiring of src/ui/InventoryPanel.ts + toolBelt.ts: DmReliquaryPanel fed from game.slots, every signal mapped to the DmApi call
+## The Reliquary wiring of archive/legacy-web:src/ui/InventoryPanel.ts + toolBelt.ts: DmReliquaryPanel fed from game.slots, every signal mapped to the DmApi call
 ## the web makes, then game.refresh_inventory(). Gear numbers: DmGearStats (ctx), DmItemText (cards), DmItemLocks (junk / locks).
 
 const BAG_SIZE := 48

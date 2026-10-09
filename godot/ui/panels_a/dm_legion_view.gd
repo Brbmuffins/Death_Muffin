@@ -1,6 +1,6 @@
 class_name DmLegionView
 extends VBoxContainer
-## The Legion (Y, or the Reliquary button; src/ui/LegionPanel.ts): the two kit slots the thralls wear, what each gives in plain words, the legion's total,
+## The Legion (Y, or the Reliquary button; archive/legacy-web:src/ui/LegionPanel.ts): the two kit slots the thralls wear, what each gives in plain words, the legion's total,
 ## Reinforce (the gold sink), and spare gear ranked by green up / red down arrows against the piece it would replace.
 ## Pure display. gameplay/legionKit.ts (kitPieces / pieceLines / bonusLines / kitCandidates) produces the strings; the caller passes them in.
 ##

@@ -1,6 +1,6 @@
 class_name DmGear
 extends RefCounted
-## Port of src/content/gear.ts (slot resolution only) + the Legion-kit slot predicate from legionRules.ts.
+## Port of archive/legacy-web:src/content/gear.ts (slot resolution only) + the Legion-kit slot predicate from legionRules.ts.
 ## An inventory slot is a Dictionary shaped like the server row: slot_index, equipped, item_id, item_type, equipped_slot,
 ## item_equipment_slot, stat_bonus {stat_str..}, inst {ilvl, affixes [{id, v}]}.
 

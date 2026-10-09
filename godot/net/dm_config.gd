@@ -1,6 +1,6 @@
 class_name DmConfig
 extends RefCounted
-## Endpoints and limits. Mirrors src/net/config.ts; the Godot client always talks to the production host unless overridden.
+## Endpoints and limits. Mirrors archive/legacy-web:src/net/config.ts; the Godot client always talks to the production host unless overridden.
 
 ## Nginx strips the "/death-muffin/api" prefix, so every route below (/login, /api/...) is relative to this base.
 const API_BASE := "https://muffindevelopment.com/death-muffin/api"

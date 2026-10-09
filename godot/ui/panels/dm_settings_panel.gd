@@ -1,6 +1,6 @@
 class_name DmSettingsPanel
 extends DmWindow
-## Settings (src/ui/MiscPanels.ts SettingsPanel): every section and control of the web panel, as a native Godot window.
+## Settings (archive/legacy-web:src/ui/MiscPanels.ts SettingsPanel): every section and control of the web panel, as a native Godot window.
 ## Pure UI: it holds a `values` Dictionary (seeded with the web defaults) and emits `changed(key, value)` / `action(name)`;
 ## the integrator wires those to the settings store, party, class change, bug report, leave-the-world.
 ##

@@ -373,7 +373,7 @@ func _load_chronicle() -> void:
 		codex.set_chronicle(c.view())
 
 
-# --- ascension (src/ui/AscensionPanel.ts callbacks in WorldScene: doAscend / doSwear / doOpen / buyBoon) -------------------------
+# --- ascension (archive/legacy-web:src/ui/AscensionPanel.ts callbacks in WorldScene: doAscend / doSwear / doOpen / buyBoon) -------------------------
 
 func _ascension_state() -> Dictionary:
 	var l: Dictionary = game.progress.duplicate(true)

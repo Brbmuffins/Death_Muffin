@@ -1,6 +1,6 @@
 class_name DmGardenPanel
 extends DmPanelB
-## Grave Gardening (src/ui/GardenPanel.ts + gardenView.ts): four Mourning Beds and two Coffin Patches that grow on the server's clock.
+## Grave Gardening (archive/legacy-web:src/ui/GardenPanel.ts + gardenView.ts): four Mourning Beds and two Coffin Patches that grow on the server's clock.
 ##
 ## Data in:  set_view(view)  view = GET /api/garden reply {now (server epoch ms), level, xp, xpToNext, plots:[{plot, kind: herb|tree, label,
 ##           seedId|null, plantedAt, readyAt, composted, state}]}.   set_bag(slots) = the bag rows ({item_id, quantity, equipped}) that

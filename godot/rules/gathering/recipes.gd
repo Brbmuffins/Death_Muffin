@@ -1,7 +1,7 @@
 class_name DmRecipes
 extends RefCounted
-## Workbench / station recipes (src/content/recipes.ts ALL_RECIPE_ROWS, processing.ts) and the pure crafting helpers
-## (src/gameplay/craftQuantity.ts). The rows are exported from the real TS lists, not retyped.
+## Workbench / station recipes (archive/legacy-web:src/content/recipes.ts ALL_RECIPE_ROWS, processing.ts) and the pure crafting helpers
+## (archive/legacy-web:src/gameplay/craftQuantity.ts). The rows are exported from the real TS lists, not retyped.
 ##
 ## Recipe dict shape matches net/types Recipe: {id, name, skill (profession), skill_level_required, result_item_id,
 ## result_quantity, ingredients:[{item_id, quantity}]}.

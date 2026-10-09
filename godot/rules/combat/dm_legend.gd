@@ -1,6 +1,6 @@
 class_name DmLegend
 extends RefCounted
-## Port of src/gameplay/legendary.ts: legendary-set mechanics numbers + the damage-reduction maths. Constants come from statuses.json (LEGEND).
+## Port of archive/legacy-web:src/gameplay/legendary.ts: legendary-set mechanics numbers + the damage-reduction maths. Constants come from statuses.json (LEGEND).
 
 static func L() -> Dictionary:
 	return DmCombatData.statuses()["LEGEND"]

@@ -640,7 +640,7 @@ export const huntRank = (id: AreaId): number => HUNT_ORDER.indexOf(id);
  * necromancer weapons, rare-or-better generic pieces) is weighted up in a ground's loot table by this factor, and the deeper the ground the
  * more: x1.4 in the Hollow Graves, +0.05 per rung, x1.8 in the Mourning Fen. Item chance per kill, and so the NUMBER of drops, is untouched:
  * the same drops are simply likelier to be the ones worth wearing. It is baked into `AREAS[x].loot` once, below, so the Atlas, the smart-loot
- * tables, the server's rate ceilings and the generated LOOT-TABLES.md all read the same weights.
+ * tables, the server's rate ceilings all read the same weights.
  */
 export const CHASE_WEIGHT = { base: 1.4, perRung: 0.05 } as const;
 export const chaseMult = (id: AreaId): number => CHASE_WEIGHT.base + CHASE_WEIGHT.perRung * Math.max(0, huntRank(id));

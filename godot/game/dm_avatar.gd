@@ -1,6 +1,6 @@
 class_name DmAvatar
 extends Node3D
-## The necromancer hero, local or remote (port of NecromancerAvatar in src/graphics/Avatars.ts): one model per discipline (hero_<id>),
+## The necromancer hero, local or remote (port of NecromancerAvatar in archive/legacy-web:src/graphics/Avatars.ts): one model per discipline (hero_<id>),
 ## the discipline colours the staff light and robe glow; worn gear shows as a weapon / off-hand prop, a helm and body-region tints;
 ## gestures (`cast`), gathering tools, the mastery cape. The creature runs in-place (the sim owns position and heading).
 ##

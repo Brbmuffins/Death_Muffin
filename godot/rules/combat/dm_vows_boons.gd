@@ -1,6 +1,6 @@
 class_name DmVowsBoons
 extends RefCounted
-## Numeric half of src/content/ascension.ts: vow effects (frail vessel, brittle thralls, famished ...), boon effects, heat, ashes,
+## Numeric half of server/rules/content/ascension.ts: vow effects (frail vessel, brittle thralls, famished ...), boon effects, heat, ashes,
 ## reward multiplier. (The rules-progression track owns the save/ascend state machine in necroRules.ts; these are the pure effect folds
 ## the stat pipeline needs, ported here so the two tracks do not block each other.)
 

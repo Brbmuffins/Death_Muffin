@@ -1,6 +1,6 @@
 class_name DmSkills
 extends RefCounted
-## Port of `Skills` in src/gameplay/Gathering.ts: levels per skill (server truth from /api/professions and every /api/gather reply)
+## Port of `Skills` in archive/legacy-web:src/gameplay/Gathering.ts: levels per skill (server truth from /api/professions and every /api/gather reply)
 ## plus the XP shown optimistically but not yet confirmed by the server. Profession rows are Dictionaries
 ## {profession_id, skill_level, skill_xp} (the server's shape). TS `onChange(fn)` = the `changed` signal.
 

@@ -1,6 +1,6 @@
 class_name DmPotionBelt
 extends RefCounted
-## Port of the pure parts of src/gameplay/beltRules.ts: the HUD potion belt (Q heal + two brew slots). Not the tool belt
+## Port of the pure parts of archive/legacy-web:src/gameplay/beltRules.ts: the HUD potion belt (Q heal + two brew slots). Not the tool belt
 ## (that is DmGathering.BELT_*). Hint strings are UI copy owned by the ui track; only the rules are ported.
 
 const SLOT_IDS: Array = ["heal", "elixir", "tonic"]

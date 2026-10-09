@@ -1,6 +1,6 @@
 class_name DmHudMinimap
 extends Control
-## `.hud-map .frame` + src/ui/Minimap.ts: a 190 px circular north-up map centred on the player.
+## `.hud-map .frame` + archive/legacy-web:src/ui/Minimap.ts: a 190 px circular north-up map centred on the player.
 ## Fed with a "minimap" Dictionary (README: "minimap"); the draw order and colours are Minimap.ts line for line.
 
 const MAP_SIZE := 190.0

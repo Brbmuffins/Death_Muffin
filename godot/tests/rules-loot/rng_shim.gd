@@ -1,5 +1,5 @@
 extends RefCounted
-## Test-only stand-in for rules-core's DmRng (`DmRng.new(seed)` + `.next() -> float`), bit-exact mulberry32 from src/gameplay/rng.ts.
+## Test-only stand-in for rules-core's DmRng (`DmRng.new(seed)` + `.next() -> float`), bit-exact mulberry32 from archive/legacy-web:src/gameplay/rng.ts.
 ## run.gd uses the real DmRng when res://rules/core/rng.gd exists and this shim otherwise.
 const M := 0xFFFFFFFF
 var a: int

@@ -1,6 +1,6 @@
 class_name DmLootRunes
 extends RefCounted
-## The rune-drop rules of src/content/runes.ts that loot rolls use (pools, chances, pickRune).
+## The rune-drop rules of server/rules/content/runes.ts that loot rolls use (pools, chances, pickRune).
 
 static func _c() -> Dictionary:
 	return DmLootData.content()["runes"]

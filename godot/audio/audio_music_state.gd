@@ -1,6 +1,6 @@
 class_name DmMusicState
 extends RefCounted
-## Pure state machine of src/audio/music.ts MusicDirector (no audio nodes): which cue is wanted for the area / boss / volume,
+## Pure state machine of archive/legacy-web:src/audio/music.ts MusicDirector (no audio nodes): which cue is wanted for the area / boss / volume,
 ## when to crossfade, and when a playing cue hands over to a fresh copy of itself so it loops without the encoder-padding gap.
 ## Every mutator returns an Array of commands for the node to run, in order:
 ##   {op:"start", cue, slot}    create a player for `cue`, begin playing it, then call started(slot) (or start_failed(slot, err))

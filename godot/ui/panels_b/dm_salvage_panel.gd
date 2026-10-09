@@ -1,6 +1,6 @@
 class_name DmSalvagePanel
 extends DmPanelB
-## The Bone Grinder (src/ui/SalvagePanel.ts): tick gear you no longer want and grind it into ingots or planks plus alchemy reagents.
+## The Bone Grinder (archive/legacy-web:src/ui/SalvagePanel.ts): tick gear you no longer want and grind it into ingots or planks plus alchemy reagents.
 ## Locked items are shown but never selectable and never taken by "Salvage all below rare". Yields/XP come from DmSalvage.preview (rules/gathering).
 ##
 ## Data in:  set_bag(slots)  bag rows {slot_index, item_id, name, rarity, base_rarity?, item_type, equipped (0/1), quantity, inst?:{ilvl, affixes:[..]}}

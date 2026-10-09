@@ -1,6 +1,6 @@
 class_name DmLoadout
 extends RefCounted
-## Port of src/gameplay/loadout.ts: the Grimoire loadout (left-click primary + five rites on keys 1-5), a per-character preference kept in a
+## Port of archive/legacy-web:src/gameplay/loadout.ts: the Grimoire loadout (left-click primary + five rites on keys 1-5), a per-character preference kept in a
 ## local JSON store (the stand-in for browser storage). `kit` = DmAbilities.kit_for(family) (keys: grimoire, rmb, defaultLoadout,
 ## primaries, defaultPrimary, signatures, hotbar).
 

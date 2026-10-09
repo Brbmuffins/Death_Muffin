@@ -1,6 +1,6 @@
 class_name DmContractsPanel
 extends DmPanelB
-## The Sexton's Contracts (src/ui/ContractsPanel.ts + contractsView.ts): three delivery orders a day, easy to hard.
+## The Sexton's Contracts (archive/legacy-web:src/ui/ContractsPanel.ts + contractsView.ts): three delivery orders a day, easy to hard.
 ##
 ## Data in:  set_board(board)  board = GET /api/contracts reply: {day, resetsAt (ISO), contracts:[{slot, itemId, name, qty, rarity, skill,
 ##           rewardGold, rewardItem:{name, qty}|null, done}], bonus:{gold, item:{name}, claimed}, streak}

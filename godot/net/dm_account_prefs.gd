@@ -1,6 +1,6 @@
 class_name DmAccountPrefs
 extends RefCounted
-## Account preferences helpers (port of src/net/accountPrefs.ts). The server keys must match DEFS in backend/prefs.cjs.
+## Account preferences helpers (port of archive/legacy-web:src/net/accountPrefs.ts). The server keys must match DEFS in backend/prefs.cjs.
 ## reconcileLootRules / syncLootRulesWithAccount depend on the loot-filter rules (rules track) and are not ported here.
 
 const PREF_ONLY_CRAFTABLE := "only_craftable"

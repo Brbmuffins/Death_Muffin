@@ -1,6 +1,6 @@
 class_name DmMilestones
 extends RefCounted
-## Port of src/gameplay/milestones.ts. The list is generated from the TS (content.json "milestones").
+## Port of archive/legacy-web:src/gameplay/milestones.ts. The list is generated from the TS (content.json "milestones").
 
 
 static func list() -> Array:

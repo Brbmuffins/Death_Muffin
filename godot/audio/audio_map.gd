@@ -1,6 +1,6 @@
 class_name DmAudioMap
 extends RefCounted
-## Typed access to the recorded-sound map (src/content/audioMap.ts, exported to godot/data/content/audioMap.json).
+## Typed access to the recorded-sound map (archive/legacy-web:src/content/audioMap.ts, exported to godot/data/content/audioMap.json).
 ## Fields per id: files[], volume, pitchJitter, maxVoices, cooldownMs, spatial, bus (sfx/ui/ambience/voice), priority 1..5,
 ## trim{startMs,maxMs}, rate, loopMs, layer{files,volume,delayMs}, status (mapped/partial/keep).
 

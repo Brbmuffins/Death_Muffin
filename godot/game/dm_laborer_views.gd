@@ -1,6 +1,6 @@
 class_name DmLaborerViews
 extends Node3D
-## Port of src/graphics/LaborerViews.ts + the pure rules of src/graphics/laborerLayout.ts. Visible Grave Laborers: while the player is in the
+## Port of archive/legacy-web:src/graphics/LaborerViews.ts + the pure rules of archive/legacy-web:src/graphics/laborerLayout.ts. Visible Grave Laborers: while the player is in the
 ## Sexton's Acre each assigned laborer (H panel, up to four) stands beside a node of its post and works it: chop strokes for wood and ore,
 ## digging for graves, standing at the pond with a rod to fish. Idle everywhere else (models are made on the first Acre visit, nothing
 ## updates or fetches elsewhere). The labor view is the one the H panel reads (`game.api.get_labor`); refreshed on entering, when the panel

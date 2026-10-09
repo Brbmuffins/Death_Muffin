@@ -1,6 +1,6 @@
 class_name DmKillChain
 extends RefCounted
-## Port of src/gameplay/killChain.ts: your kills chain while each lands within windowMs of the last.
+## Port of server/rules/gameplay/killChain.ts: your kills chain while each lands within windowMs of the last.
 ## `now` is milliseconds from any monotonic clock.
 
 var count: int = 0

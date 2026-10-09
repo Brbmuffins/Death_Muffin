@@ -1,6 +1,6 @@
 class_name DmReliquaryPanel
 extends DmWindow
-## The Reliquary (src/ui/InventoryPanel.ts): stats line, paper doll (3x4 grid) + tool belt + set summary, 8x6 bag grid,
+## The Reliquary (archive/legacy-web:src/ui/InventoryPanel.ts): stats line, paper doll (3x4 grid) + tool belt + set summary, 8x6 bag grid,
 ## footer (slot count, Legion, Sort, Sell all junk with in-place confirm), detail strip (item text left, action column right).
 ## Layout numbers from ui.css `.cw-reliquary` / gear-stats.css. Pure UI: feed it data, listen to signals.
 ##

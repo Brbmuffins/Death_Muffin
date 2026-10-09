@@ -1,6 +1,6 @@
 class_name DmLegion
 extends RefCounted
-## Port of src/gameplay/legionRules.ts + the numeric parts of legionKit.ts: the Legion kit (thrall gear) -> thrall bonuses.
+## Port of server/rules/gameplay/legionRules.ts + the numeric parts of legionKit.ts: the Legion kit (thrall gear) -> thrall bonuses.
 ## A kit piece is {itemType, statBonus, affixes:[{id,v}]}; the kit is {weapon: piece|null, armor: piece|null}.
 
 const KIT_IDS: Array[String] = ["weapon", "armor"]

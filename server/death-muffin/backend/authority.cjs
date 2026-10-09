@@ -363,7 +363,7 @@ function evaluateOffline({ online, offline }) {
   const goldAllowed = ceil.goldPerMin * minutes + A.GOLD_BURST;
   if (goldGain > goldAllowed) findings.push({ kind: 'gold_rate', gain: goldGain, allowed: Math.floor(goldAllowed), minutes: Math.round(minutes) });
   // Items that can only come off the ground: more than the pace allows is not believable. Crafted and gathered things are not checked here
-  // (the offline edition crafts and gathers too), only items that appear in a drop table.
+  // (dev-offline mode crafts and gathers too), only items that appear in a drop table.
   const had = qtyByItem(online.slots || []);
   const has = qtyByItem(offline.slots || []);
   const itemFindings = [];

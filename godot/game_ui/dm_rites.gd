@@ -1,6 +1,6 @@
 class_name DmRites
 extends RefCounted
-## Port of src/gameplay/loadout.ts: the Grimoire loadout (primary + five rites on keys 1-5) and the "seen" set, per character, persisted through a
+## Port of archive/legacy-web:src/gameplay/loadout.ts: the Grimoire loadout (primary + five rites on keys 1-5) and the "seen" set, per character, persisted through a
 ## DmCounselStore-like object (dm_loadout_v2_<id>, dm_rites_seen_v1_<id>). A kit is DmAbilities.kit_for(family).
 
 const SLOTS := 5

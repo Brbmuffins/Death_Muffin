@@ -1,6 +1,6 @@
 class_name DmLabor
 extends RefCounted
-## Port of src/gameplay/laborRules.ts (Grave Laborers: slow idle work posts that accrue on the server's clock). Server-authoritative
+## Port of server/rules/gameplay/laborRules.ts (Grave Laborers: slow idle work posts that accrue on the server's clock). Server-authoritative
 ## (labor.cjs rolls collections with claim_rng); the client shows estimate(). `rng` = Callable returning [0,1).
 
 const M := preload("res://rules/core/math.gd")

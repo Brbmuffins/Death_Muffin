@@ -1,6 +1,6 @@
 class_name DmGatherLoop
 extends RefCounted
-## Port of `GatherLoop` in src/gameplay/Gathering.ts. Click -> walk to the node's ring -> face -> loop the gesture -> roll each cycle for
+## Port of `GatherLoop` in archive/legacy-web:src/gameplay/Gathering.ts. Click -> walk to the node's ring -> face -> loop the gesture -> roll each cycle for
 ## feel -> batch the cycles to the server -> adopt its answer. Auto moves to the nearest live node of the same kind when this one depletes.
 ##
 ## `hooks` is the TS GatherHooks as a Dictionary (same keys):

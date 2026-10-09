@@ -1,8 +1,8 @@
 class_name DmSimDepthsRules
 extends RefCounted
-## The Catacomb Depths formulas of src/content/depths.ts that the sim needs (the data lives in godot/data/content/depths.json).
+## The Catacomb Depths formulas of server/rules/content/depths.ts that the sim needs (the data lives in godot/data/content/depths.json).
 
-## [{from, add: [{id, weight}]}] (src/content/depths.ts BANDS).
+## [{from, add: [{id, weight}]}] (server/rules/content/depths.ts BANDS).
 const BANDS: Array = [
 	{"from": 1, "add": [["rat", 30], ["robber", 22], ["ghoul", 14], ["bat", 12], ["sac", 10], ["hound", 8]]},
 	{"from": 5, "add": [["penitent", 12], ["deacon", 8], ["acolyte", 6], ["wraith", 6], ["moth", 6]]},

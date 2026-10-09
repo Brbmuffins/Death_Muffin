@@ -1,6 +1,6 @@
 class_name DmAudioPacks
 extends RefCounted
-## Port of src/audio/packs.ts: lazy-load groups for the recorded layer, plus per-id mixer bus and clip-length caps.
+## Port of archive/legacy-web:src/audio/packs.ts: lazy-load groups for the recorded layer, plus per-id mixer bus and clip-length caps.
 ## Groups: core, ui, rites, world, amb (loaded once), boss, foot_<surface>, fam_<voice> (per area, released two areas later).
 
 const _CORE := "needleCast needleHit boneHit thrallMelee thrallShot thrallMagic thrallDeath hurt playerDeath enemyDeath"

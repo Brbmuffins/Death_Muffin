@@ -1,6 +1,6 @@
 class_name DmGuidance
 extends RefCounted
-## Port of src/gameplay/guidance.ts: gentle guidance as pure selectors over a plain snapshot of the character. The same suggestion list feeds the HUD
+## Port of archive/legacy-web:src/gameplay/guidance.ts: gentle guidance as pure selectors over a plain snapshot of the character. The same suggestion list feeds the HUD
 ## "Next" line, the minimap ping and what the Prior, the Sexton and the Apothecary say when asked "where next?". Nothing here can fail or force anything.
 ##
 ## GuidanceState is a Dictionary (the TS GuidanceState, same key names):

@@ -1,6 +1,6 @@
 class_name DmChronicle
 extends RefCounted
-## Pure counter side of src/gameplay/chronicle.ts: lifetime/run counters, play time, the folded view, and the flush
+## Pure counter side of archive/legacy-web:src/gameplay/chronicle.ts: lifetime/run counters, play time, the folded view, and the flush
 ## bookkeeping. The network call (net/ layer) is: b = flush_begin(); if b non-empty, POST it, then flush_done(b, ok).
 
 var data: Dictionary = {"life": {}, "run": {}, "runNo": 1, "runStartedAt": null, "runs": []}

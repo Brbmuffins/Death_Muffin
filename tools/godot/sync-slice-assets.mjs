@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Copies exactly the GLBs/textures the Godot world uses (godot/data/slice/assets_used.json, written by export-slice.ts: every creature, boss,
+// Copies exactly the GLBs/textures the Godot world uses (godot/data/slice/assets_used.json, a committed list of every creature, boss,
 // NPC and hero model, every prop and gathering-node model the layout places, the floor/wall textures) from public/ into godot/assets/slice/
 // (same relative paths; the folder keeps its wave-1 "slice" name so no track's res:// paths move).
 // GLBs are DEQUANTIZED on the way (the web build ships KHR_mesh_quantization, which Godot's glTF importer rejects).
-// Run: npx vite-node tools/godot/export-slice.ts && node tools/godot/sync-slice-assets.mjs
+// Run: node tools/godot/sync-slice-assets.mjs (the TS exporter that wrote assets_used.json was deleted 2026-10-09; the list is edited by hand now)
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dequantize } from '@gltf-transform/functions';

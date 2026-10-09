@@ -1,6 +1,6 @@
 class_name DmVault
 extends RefCounted
-## Port of src/gameplay/vaultRules.ts (the Ossuary Vault shared stash: 120 slots, 3 tabs of 40) including sort_vault.
+## Port of server/rules/gameplay/vaultRules.ts (the Ossuary Vault shared stash: 120 slots, 3 tabs of 40) including sort_vault.
 ## Pure: every function takes plain row arrays and returns new ones; a move either fits entirely or is refused with a player-readable
 ## error. SERVER-AUTHORITATIVE (vault.cjs uses the same rules); the client uses them for previews and the offline mock.
 ##

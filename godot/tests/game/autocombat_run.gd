@@ -1,7 +1,7 @@
 extends SceneTree
 ## Golden-fixture runner for dm_auto_combat.gd / dm_auto_dodge.gd / dm_boss_telegraphs.gd.
 ## Run: godot --headless --path godot --script res://tests/game/autocombat_run.gd [-- only=auto_action,dodge]
-## Fixtures: committed golden files, generated 2026-10-05 from the frozen web game (generator removed with src/ 2026-10-09).
+## Fixtures: committed golden files, generated 2026-10-05 from the frozen web game (generator removed with archive/legacy-web:src/ 2026-10-09).
 
 const DIR := "res://tests/game/fixtures/"
 var passed := 0

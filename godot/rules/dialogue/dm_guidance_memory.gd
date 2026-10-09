@@ -1,6 +1,6 @@
 class_name DmGuidanceMemory
 extends RefCounted
-## Port of the `Guidance` class in src/gameplay/guidance.ts: what this character has met and heard, plus this session's "already told you" set.
+## Port of the `Guidance` class in archive/legacy-web:src/gameplay/guidance.ts: what this character has met and heard, plus this session's "already told you" set.
 ## The web keeps it in browser storage (dm_guidance_v1:<characterId>). Here `storage_path` (e.g. "user://dm_guidance_<id>.json", empty = memory only)
 ## is read on init and written on every change; or use to_dict()/from_dict() and store it with the rest of the local save.
 

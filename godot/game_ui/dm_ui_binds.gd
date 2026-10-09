@@ -1,6 +1,6 @@
 class_name DmUiBinds
 extends RefCounted
-## Port of src/gameplay/keybinds.ts: the rebindable loadout hotkeys (unbound until chosen; a key the game already uses is refused).
+## Port of archive/legacy-web:src/gameplay/keybinds.ts: the rebindable loadout hotkeys (unbound until chosen; a key the game already uses is refused).
 
 const STORAGE_KEY := "dm_keybinds_v1"
 const ACTIONS := ["loadout_next", "loadout_1", "loadout_2", "loadout_3", "loadout_4", "loadout_5", "loadout_6"]

@@ -1,6 +1,6 @@
 class_name DmHud
 extends Control
-## The in-world HUD (src/ui/HUD.ts + ui.css `.hud*`). One full-screen, mouse-transparent Control that owns every readout.
+## The in-world HUD (archive/legacy-web:src/ui/HUD.ts + ui.css `.hud*`). One full-screen, mouse-transparent Control that owns every readout.
 ## State flows in through ONE Dictionary: `hud.apply(vm)` (schema in ui/hud/README.md). One-shot things (toasts, banners, floating
 ## numbers, hit flash, chat lines) are method calls. Player intent flows out as signals; nothing here touches world/ or net/.
 

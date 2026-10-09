@@ -1,6 +1,6 @@
 class_name DmBeltPicker
 extends PanelContainer
-## Port of src/ui/BeltPicker.ts: click a Z / X slot on the HUD belt and choose which brew from the bag it holds. Built on demand. (Dropping a brew
+## Port of archive/legacy-web:src/ui/BeltPicker.ts: click a Z / X slot on the HUD belt and choose which brew from the bag it holds. Built on demand. (Dropping a brew
 ## from the Reliquary onto the slot is DmHud.brew_dropped.)
 
 var ui: Node

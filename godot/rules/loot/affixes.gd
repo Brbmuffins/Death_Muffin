@@ -1,9 +1,9 @@
 class_name DmAffixes
 extends RefCounted
-## Port of src/gameplay/affixes.ts: the client side of item level and affixes. The SERVER owns every roll; this only READS them:
+## Port of archive/legacy-web:src/gameplay/affixes.ts: the client side of item level and affixes. The SERVER owns every roll; this only READS them:
 ## decorate_slot turns the raw columns of a rolled inventory row into a readable one (full name, rarity colour by affix count, price).
 ## Slots are Dictionaries shaped like the web InventorySlot. Not ported here: wornAffixTotals / affixSignature need the equipped-slot
-## helper of the gear track (src/content/gear.ts equippedBySlot); use worn_affix_totals() below with the worn rows already picked.
+## helper of the gear track (archive/legacy-web:src/content/gear.ts equippedBySlot); use worn_affix_totals() below with the worn rows already picked.
 
 ## Whether an item id can roll an instance (gear only).
 static func can_roll(item_id: String) -> bool:

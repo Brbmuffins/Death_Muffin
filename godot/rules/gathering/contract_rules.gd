@@ -1,6 +1,6 @@
 class_name DmContracts
 extends RefCounted
-## Port of src/gameplay/contractRules.ts: the Sexton's daily delivery board. Deterministic from (characterId, UTC day, skill levels),
+## Port of server/rules/gameplay/contractRules.ts: the Sexton's daily delivery board. Deterministic from (characterId, UTC day, skill levels),
 ## so the server and the client agree. Server-authoritative for delivery/payout (contracts.cjs); the client may display the board.
 ## levels: {skill: level} (missing = 1).
 

@@ -1,6 +1,6 @@
 class_name DmBrews
 extends RefCounted
-## Port of the numeric half of src/content/brews.ts + healing flasks / meals / heal cooldown. Brews state is
+## Port of the numeric half of server/rules/content/brews.ts + healing flasks / meals / heal cooldown. Brews state is
 ## {elixir: {id, until}|null, tonic: {id, until}|null}; `now` and `until` are scene milliseconds.
 
 const SLOTS: Array[String] = ["elixir", "tonic"]

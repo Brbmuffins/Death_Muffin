@@ -1,6 +1,6 @@
 class_name DmWfxWater
 extends Node3D
-## Standing water (src/graphics/Water.ts): the flooded Drowned Nave, the Fen bog, the Acre pond and the graveyard's rain puddles, merged into
+## Standing water (archive/legacy-web:src/graphics/Water.ts): the flooded Drowned Nave, the Fen bog, the Acre pond and the graveyard's rain puddles, merged into
 ## ONE mesh (one draw call). Every vertex carries its distance to the shore (UV.x) and a sheen (UV.y), so the shader fades the rim, deepens
 ## the middle and never does a per-pixel rect test. High quality: two scrolling procedural normal maps, fresnel, a moon glint and up to 16
 ## ripple rings; low quality is a flat glossy sheet. Rect/puddle geometry, ripple maths and every constant are the web's.

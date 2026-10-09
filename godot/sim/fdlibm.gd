@@ -1,6 +1,6 @@
 class_name DmFdlibm
 extends RefCounted
-## Bit-exact ports of the fdlibm sin / cos / atan / atan2 that V8 uses for Math.sin / Math.cos / Math.atan2 (V8 src/base/ieee754.cc).
+## Bit-exact ports of the fdlibm sin / cos / atan / atan2 that V8 uses for Math.sin / Math.cos / Math.atan2 (V8 archive/legacy-web:src/base/ieee754.cc).
 ## Godot's own sin/cos/atan2 call the platform libm, which differs from V8 in the last bit for a few percent of inputs; the sim compares
 ## distances and picks nearest targets, so a one-ulp difference can flip a tie (a Rend leaves thralls on a ring of equal distances) and the
 ## replay of a fixture then drifts. Using these keeps the GDScript sim bit-identical to the TS one. Verified against V8 on millions of inputs

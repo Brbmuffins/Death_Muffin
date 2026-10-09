@@ -1,6 +1,6 @@
 class_name DmStats
 extends RefCounted
-## Port of src/gameplay/stats.ts + src/gameplay/characterStats.ts (deriveStats, STAT_EFFECTS, xpToNext).
+## Port of archive/legacy-web:src/gameplay/stats.ts + archive/legacy-web:src/gameplay/characterStats.ts (deriveStats, STAT_EFFECTS, xpToNext).
 
 const STAT_KEYS: Array[String] = ["stat_str", "stat_agi", "stat_int", "stat_vit"]
 

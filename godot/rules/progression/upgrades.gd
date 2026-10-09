@@ -1,6 +1,6 @@
 class_name DmUpgrades
 extends RefCounted
-## Port of src/content/upgrades.ts: Damage / Wave Speed / Legion tiers and costs, wave modifiers, wave milestones.
+## Port of server/rules/content/upgrades.ts: Damage / Wave Speed / Legion tiers and costs, wave modifiers, wave milestones.
 
 
 static func damage_cost(tier: int) -> int:

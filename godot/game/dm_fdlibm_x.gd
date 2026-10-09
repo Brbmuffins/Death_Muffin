@@ -1,6 +1,6 @@
 class_name DmFdlibmX
 extends RefCounted
-## Bit-exact ports of V8's Math.exp and Math.asin (fdlibm e_exp.c / e_asin.c, V8 src/base/ieee754.cc), complementing godot/sim/fdlibm.gd.
+## Bit-exact ports of V8's Math.exp and Math.asin (fdlibm e_exp.c / e_asin.c, V8 archive/legacy-web:src/base/ieee754.cc), complementing godot/sim/fdlibm.gd.
 ## Godot's exp()/asin() call the platform libm, which differs from V8 in the last bit for ~20% of inputs (auto-combat's turn smoothing and
 ## dodge cone margins use them). Constants are built from their exact IEEE-754 words (GDScript's float literal parser is not correctly rounded).
 

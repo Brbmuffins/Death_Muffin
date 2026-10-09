@@ -1,6 +1,6 @@
 class_name DmMusicDirector
 extends Node
-## Port of the MusicDirector in src/audio/music.ts. Streams one cue at a time and crossfades on area or boss changes; each cue
+## Port of the MusicDirector in archive/legacy-web:src/audio/music.ts. Streams one cue at a time and crossfades on area or boss changes; each cue
 ## hands over to a fresh copy of itself just before it ends so it loops without a gap. The decisions live in DmMusicState (pure,
 ## tested); this node runs the commands with AudioStreamPlayers on the "Music" bus. Cues: res://assets/audio/music/<cue>.mp3.
 

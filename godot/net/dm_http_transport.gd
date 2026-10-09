@@ -4,7 +4,7 @@ extends Node
 ## A transport is any `Callable(req: Dictionary) -> Dictionary` (may be a coroutine):
 ##   req  = {method: String, url: String, headers: Dictionary, body: String}   (body "" = none)
 ##   resp = {status: int, text: String, network_error: bool}
-## Tests inject a fake one; the offline edition injects DmMockBackend.transport().
+## Tests inject a fake one; dev-offline mode injects DmMockBackend.transport().
 
 func request_callable() -> Callable:
 	return Callable(self, "send")

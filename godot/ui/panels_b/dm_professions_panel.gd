@@ -1,6 +1,6 @@
 class_name DmProfessionsPanel
 extends DmPanelB
-## The Skills tab of the Acre ledger (src/ui/ProfessionsPanel.ts): a grid with each skill's level, XP bar, XP to go, what the next level
+## The Skills tab of the Acre ledger (archive/legacy-web:src/ui/ProfessionsPanel.ts): a grid with each skill's level, XP bar, XP to go, what the next level
 ## opens, the active gathering tool, and the AFK node picker. Numbers come from DmGathering (nodes, tools, xp curve), never from here.
 ##
 ## Data in:  set_skills({skill_id: {level, xp, next?}})  (the "shown" values; `next` defaults to DmGathering.xp_to_next(level))

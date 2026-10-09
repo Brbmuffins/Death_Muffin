@@ -1,6 +1,6 @@
 class_name DmCreature
 extends RefCounted
-## One animated instance of a model (port of src/graphics/Creature.ts onto Godot): model + AnimationPlayer (advanced by hand, so the
+## One animated instance of a model (port of archive/legacy-web:src/graphics/Creature.ts onto Godot): model + AnimationPlayer (advanced by hand, so the
 ## view layer can LOD / hitstop it like the web's mixer.update(dt)), the web's material options (tint, emissive, spectral, wings, rim,
 ## gear tint), stride-matched locomotion, timed strikes, one-shots, flinch, death/landing, hand props with the web's calibration + follow.
 ## Model rows (url, height, yaw, clips, timings, stride) come from godot/game/view_models.json (the retired web game\'s export-view-models exporter).

@@ -1,6 +1,6 @@
 class_name DmVaultPanel
 extends DmPanelB
-## The Ossuary Vault (src/ui/VaultPanel.ts): a 120-slot stash shared by every character on the account, beside the 48-slot Reliquary.
+## The Ossuary Vault (archive/legacy-web:src/ui/VaultPanel.ts): a 120-slot stash shared by every character on the account, beside the 48-slot Reliquary.
 ## Click an item to move its whole stack across. Tabs of 40 slots (DmVault.VAULT_SLOTS / VAULT_TAB_SIZE). Locked bag items are shown but
 ## never moved by the bulk buttons. Pure UI: the server reply is the truth, feed it back through set_state().
 ##

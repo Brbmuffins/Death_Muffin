@@ -1,6 +1,6 @@
 class_name DmGathering
 extends RefCounted
-## Port of src/gameplay/gatheringRules.ts + gatherPlan.ts (pure rules; no nodes).
+## Port of server/rules/gameplay/gatheringRules.ts + gatherPlan.ts (pure rules; no nodes).
 ##
 ## SERVER-AUTHORITATIVE: the Death Muffin backend (server/death-muffin/backend/gathering/*.cjs, bundled from the same TS)
 ## rolls the real finds, validates the time budget (check_budget), reads the bag for the tool tier and grants items/XP.

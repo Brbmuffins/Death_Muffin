@@ -1,6 +1,6 @@
 class_name DmHudReveal
 extends RefCounted
-## Port of src/ui/progressiveHud.ts: HudReveal (what the HUD has revealed / flagged NEW, per character), veteran_reveals, CueQueue.
+## Port of archive/legacy-web:src/ui/progressiveHud.ts: HudReveal (what the HUD has revealed / flagged NEW, per character), veteran_reveals, CueQueue.
 ## Storage = anything with get_item/set_item (DmCounselStore); key dm_hud_reveal_v1_<id>.
 
 var _revealed: Dictionary = {}

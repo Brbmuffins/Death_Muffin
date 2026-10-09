@@ -1,6 +1,6 @@
 class_name DmResources
 extends RefCounted
-## Port of src/gameplay/resources.ts: per-family resource rules (Grave Essence, Rage, Oil, Resonance, Offal, Veil).
+## Port of archive/legacy-web:src/gameplay/resources.ts: per-family resource rules (Grave Essence, Rage, Oil, Resonance, Offal, Veil).
 ## `stats` = DerivedStats Dictionary. Unknown families fall back to the necromancer rules.
 
 const FAMILIES: Array[String] = ["necromancer", "knight", "warden", "monk", "witch", "veil"]

@@ -1,6 +1,6 @@
 class_name DmApi
 extends RefCounted
-## REST client for the Death Muffin backend (port of src/net/api.ts + session.ts). No UI, no nodes: inject a transport.
+## REST client for the Death Muffin backend (port of archive/legacy-web:src/net/api.ts + session.ts). No UI, no nodes: inject a transport.
 ##
 ## Every call is `await`-able and returns a DmResult (ok / data / error / status). Server `error` strings are player-readable:
 ## show `result.error` verbatim. Numbers in `data` are int when integral (see DmJson).
@@ -493,7 +493,7 @@ func send_bug_report(report: Dictionary) -> DmResult:
 func get_my_bug_reports() -> DmResult:
 	return await _rget("/api/bug-reports/mine")
 
-# --- Offline edition sync (server: /api/offline/*; these answer plain JSON, not the {success,data} envelope) ------------------------
+# --- Dev-offline sync (server: /api/offline/*; these answer plain JSON, not the {success,data} envelope) ------------------------
 
 ## data: {snapshot, fingerprint, summary}
 func offline_snapshot() -> DmResult:

@@ -1,7 +1,7 @@
 /**
  * Session difficulty (Easy / Medium / Hard). Scales how hard enemies and the
  * Prelate hit and how much health they have, and rewards to match so no
- * setting is the "farming" setting. Medium is the tuning in BALANCE.md. In
+ * setting is the "farming" setting. Medium is the tuned baseline. In
  * co-op the host's choice runs the world (it rides in every snapshot).
  * Only append to DIFFICULTY_ORDER — snapshots may carry the index later.
  */

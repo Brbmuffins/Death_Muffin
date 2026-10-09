@@ -1,6 +1,6 @@
 class_name DmGrimoireView
 extends VBoxContainer
-## The Grimoire (L, hotbar button, or right-click a slot; src/ui/GrimoirePanel.ts): the left-click primary plus five rite sockets (keys 1-5, RMB on 5).
+## The Grimoire (L, hotbar button, or right-click a slot; archive/legacy-web:src/ui/GrimoirePanel.ts): the left-click primary plus five rite sockets (keys 1-5, RMB on 5).
 ## Click a socket, then a rite (or a rite's slot buttons) to equip it. A rite already on another key swaps places; cooldowns stay with the rite.
 ## Locked rites stay visible with their level. Relic runes: the selected rite's rune box (socket / swap / take out).
 ##

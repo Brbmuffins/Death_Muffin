@@ -1,6 +1,6 @@
 class_name DmAffixTotals
 extends RefCounted
-## The stat-pipeline half of src/gameplay/affixRules.ts + affixes.ts: what a rolled affix does (effect), how worn affixes fold into
+## The stat-pipeline half of server/rules/gameplay/affixRules.ts + affixes.ts: what a rolled affix does (effect), how worn affixes fold into
 ## totals, and the item-level range tables. Rolling / naming / validation of drops belongs to the loot track.
 ## An affix roll is {id, v}; totals are {mult:{}, add:{}, stats:{}} exactly like SetTotals.
 

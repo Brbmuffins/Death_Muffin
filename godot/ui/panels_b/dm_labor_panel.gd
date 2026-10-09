@@ -1,6 +1,6 @@
 class_name DmLaborPanel
 extends DmPanelB
-## Grave Laborers (src/ui/LaborPanel.ts): the raised dead work a gathering post for you on the server's clock, up to eight hours between collections.
+## Grave Laborers (archive/legacy-web:src/ui/LaborPanel.ts): the raised dead work a gathering post for you on the server's clock, up to eight hours between collections.
 ##
 ## Data in:  set_view(view)  view = GET /api/labor reply {now (server ms), capMs, totalLevel, levelsPerSlot, slots:[{slot, unlocked, nodeType|null,
 ##           nodeName|null, skill, item, startedAt}]}.   set_levels({skill_id: level}) = the player's gathering levels (rules numbers use them).

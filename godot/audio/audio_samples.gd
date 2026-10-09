@@ -1,6 +1,6 @@
 class_name DmSampleBank
 extends RefCounted
-## Port of src/audio/samples.ts: the recorded-sample layer. Event -> clip table is the audio map; clips are imported OGG files under
+## Port of archive/legacy-web:src/audio/samples.ts: the recorded-sample layer. Event -> clip table is the audio map; clips are imported OGG files under
 ## res://assets/audio/. Loaded lazily by pack (see DmAudioPacks) and released two areas later. Every clip is optional: a failed
 ## load leaves the sound silent (the web's synthesised stand-in is not ported, see README).
 

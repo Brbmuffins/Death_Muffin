@@ -1,6 +1,6 @@
 class_name DmNpcViews
 extends Node3D
-## Port of src/graphics/NpcViews.ts: the people of the Covenant standing in their halls: an idle figure, a nameplate, a turn toward you when
+## Port of archive/legacy-web:src/graphics/NpcViews.ts: the people of the Covenant standing in their halls: an idle figure, a nameplate, a turn toward you when
 ## you come close, and a gold "!" with a soft glow on the ground while they have something new to say. Looks come from content/npcs.ts
 ## (NPC_LOOKS). Figures load the first time the player is anywhere near.
 

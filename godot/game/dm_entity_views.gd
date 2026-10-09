@@ -1,6 +1,6 @@
 class_name DmEntityViews
 extends Node3D
-## Maps simulation entities onto animated creatures (port of src/graphics/EntityViews.ts): enemies climb out of the ground, die into
+## Maps simulation entities onto animated creatures (port of archive/legacy-web:src/graphics/EntityViews.ts): enemies climb out of the ground, die into
 ## corpses that stay where they fell, and are consumed or sink away; thralls get weapons, a spirit ring and the legion's look.
 ## Driven purely from the sim: `sync(sim.enemies, sim.thralls, dt, focus_x, focus_z)` every frame, `on_event(ev)` for every sim event,
 ## `prune_corpses(sim.corpses)` after a resync. Visual effects go through the Vfx autoload (the web's `effects.*`); sounds through

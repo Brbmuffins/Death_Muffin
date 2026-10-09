@@ -1,6 +1,6 @@
 class_name DmLoot
 extends RefCounted
-## Port of src/gameplay/loot.ts (the pure parts): what a kill / boss / surge / first kill drops, and how a drop lands in the bag.
+## Port of archive/legacy-web:src/gameplay/loot.ts (the pure parts): what a kill / boss / surge / first kill drops, and how a drop lands in the bag.
 ## KEEP THE STREAM SHAPE: rollKill takes three separate random streams (rand, reagent_rand, rune_rand) so a seeded run matches the web.
 ## Every `rand` is a Callable returning a float in [0,1) (pass `rng.next`); an empty Callable falls back to randf() (TS: Math.random).
 ## Optional TS parameters that were `undefined` are "" (discipline_id) or an empty Callable (owned_ids).

@@ -1,6 +1,6 @@
 class_name DmCharSelectScreen
 extends Control
-## Port of src/scenes/CharacterSelectScene.ts: "Choose Your Discipline", nine cards (only the four necromancer ones playable, the others
+## Port of archive/legacy-web:src/scenes/CharacterSelectScene.ts: "Choose Your Discipline", nine cards (only the four necromancer ones playable, the others
 ## greyed out "Coming later": DmCharacterBuild.is_playable). Reached by an account with no character yet (resume(): 404 -> select), so the
 ## first-run discipline carries the "Recommended" badge; picking a card calls load_or_create_character(classIndex).
 ## Switch mode (`switching` = the account's character, whose discipline is not playable): picking a card calls change_discipline instead.
@@ -8,7 +8,7 @@ extends Control
 
 signal selected(character: Dictionary)
 
-const FIRST_RUN_DISCIPLINE := "gravecaller"   # src/ui/firstHourRules.ts
+const FIRST_RUN_DISCIPLINE := "gravecaller"   # archive/legacy-web:src/ui/firstHourRules.ts
 
 var api: DmApi
 var switching: Dictionary = {}

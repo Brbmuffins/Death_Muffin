@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless: godot --headless --path godot --script res://tests/audio/run.gd
 ## Mixer maths, music state machine + handover timing, seeded sample selection, ambience/footstep rules (golden fixtures from
-## src/audio via (the retired web game\'s fixtures-audio exporter), asset resolution (every referenced sample id resolves to an imported file) and
+## archive/legacy-web:src/audio via (the retired web game\'s fixtures-audio exporter), asset resolution (every referenced sample id resolves to an imported file) and
 ## an AudioDirector integration run on the headless dummy audio driver.
 
 const FX := "res://tests/audio/fixtures/"

@@ -1,8 +1,8 @@
 # Godot client playtest findings
 
 Harness: `tools/godot/playtest.sh` (one discipline, session A = every flow + window-close save, session B = relaunch and compare),
-`tools/godot/playtest-all.sh` (Gravecaller 2, Ossuary 1, Mourner 3, Rotweaver 4). Bot: `godot/tests/playtest/bot.gd`. Offline edition only,
-isolated `XDG_DATA_HOME` per run, no live server. Tree tested: godot/playtest = game-core + godot-port (merge 234cdf87). Runs 2026-10-05.
+`tools/godot/playtest-all.sh` (Gravecaller 2, Ossuary 1, Mourner 3, Rotweaver 4). Bot: `godot/tests/playtest/bot_next.gd`. Offline (`--dev-offline`) only,
+isolated `XDG_DATA_HOME` per run, no live server. Tree tested: godot/playtest = game-core + the archive/godot-port line (merge 234cdf87). Runs 2026-10-05.
 
 Flows covered per discipline (headless, real key/mouse events pushed into a 1280x800 SubViewport): front flow register + create, every panel key
 (I J Y C P O U H N V M K . L) open / Esc / toggle, Settings via Esc, Acre -> Chapterhouse -> Graves by minimap travel, 75 s manual fight (mouse
@@ -68,7 +68,7 @@ counsel_tick unknown-event warning every 0.4 s; `game.panel_open` not following 
 Harness: `tools/godot/playtest.sh --next [--disc=N] [--boss=a,b] [--sessionA-only]` drives the rebuild through `tests/playtest/bot_next.gd` (the twin of `bot.gd`);
 `tools/godot/playtest-all.sh --next` runs the four necromancer disciplines; `tools/godot/playtest-compare.py` prints the rebuild-vs-current table from
 `out/nd<N>_h` and `out/d<N>_h`. Headless, offline edition, isolated `XDG_DATA_HOME`, time scale 3, `--warmup` (the rebuild's `DmNextWarmup` runs, as in play).
-Both bots now write the same `metrics` block into the report JSON. Tree: godot/playtest-next on godot-next 8441daf4. Runs 2026-10-06/07.
+Both bots now write the same `metrics` block into the report JSON. Tree: godot/playtest-next on archive/godot-next 8441daf4. Runs 2026-10-06/07.
 
 Flows the rebuild bot drives (real key / mouse events pushed into a 1280x800 SubViewport): login screen -> register -> discipline card -> loading cover -> world; all 14
 panel keys open / Esc / toggle; Settings via Esc; walk Chapterhouse -> Graves by click-to-move; a controlled damage probe; a 75 s fight (LMB click-attack on the nearest enemy,

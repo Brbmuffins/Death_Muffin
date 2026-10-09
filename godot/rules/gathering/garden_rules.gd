@@ -1,6 +1,6 @@
 class_name DmGarden
 extends RefCounted
-## Port of src/gameplay/gardeningRules.ts + src/content/gardening.ts (plots, seeds). Growth is computed from SERVER timestamps
+## Port of server/rules/gameplay/gardeningRules.ts + server/rules/content/gardening.ts (plots, seeds). Growth is computed from SERVER timestamps
 ## (epoch ms), so plots grow while away; the server owns plant/harvest rolls (garden.cjs). `rng` = Callable returning [0,1).
 
 const M := preload("res://rules/core/math.gd")

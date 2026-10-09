@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Copies the four prop GLBs DmFx instances (Bone Mantle shards, Grave Hands) into godot/assets/fx/models/, dequantized
-// (Godot's glTF importer rejects KHR_mesh_quantization). Full FX asset rebuild:
-//   npx vite-node tools/godot/fx-binbun-rebuild.ts && npx vite-node tools/godot/export-fx.ts && node tools/godot/fx-sync-models.mjs
+// (Godot's glTF importer rejects KHR_mesh_quantization). Run: node tools/godot/fx-sync-models.mjs
+// (the TS exporter export-fx.ts was deleted 2026-10-09). Textures, if needed:
 //   flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock node tools/godot/fx-textures.mjs
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';

@@ -1,6 +1,6 @@
 class_name DmSetText
 extends RefCounted
-## The words and the full status of armor sets (src/content/setBonuses.ts describeEffect + setStatus's `missing`, src/gameplay/setBonuses.ts
+## The words and the full status of armor sets (archive/legacy-web:src/content/setBonuses.ts describeEffect + setStatus's `missing`, archive/legacy-web:src/gameplay/setBonuses.ts
 ## setDiffText). DmSetBonuses (rules/combat) owns the maths; this adds what the Character sheet and tooltips print.
 
 

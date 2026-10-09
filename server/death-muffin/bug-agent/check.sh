@@ -24,7 +24,7 @@ export DM_PAYLOAD='
   if [ -f "$LOOT" ]; then cp -p "$LOOT" "$SCR/content.json.snap"; fi
   restore() { if [ -f "$SCR/content.json.snap" ]; then cp -p "$SCR/content.json.snap" "$LOOT"; fi; }
   trap restore EXIT
-  # The golden fixtures are committed since 2026-10-09 (their TS generator left with src/); older branches still generate them.
+  # The golden fixtures are committed since 2026-10-09 (their TS generator left with archive/legacy-web:src/); older branches still generate them.
   if [ -f tools/godot/gen-fixtures.sh ]; then echo "== generating golden fixtures"
   if ! bash tools/godot/gen-fixtures.sh > "$SCR/gen.log" 2>&1; then tail -30 "$SCR/gen.log"; restore; echo "GODOT TESTS: fixture generation FAILED"; exit 1; fi
   restore; fi

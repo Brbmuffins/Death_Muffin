@@ -1,6 +1,6 @@
 class_name DmFrontFlow
 extends Control
-## Front-end scene router (src/scenes/SceneManager.ts + the login / resume / select wiring of src/main.ts).
+## Front-end scene router (archive/legacy-web:src/scenes/SceneManager.ts + the login / resume / select wiring of archive/legacy-web:src/main.ts).
 ##   start(): stored token -> resume(); otherwise the login screen.
 ##   resume(): GET /character -> 200 enter_world (or the discipline switch when its discipline is not playable yet), 404 discipline select,
 ##   anything else clears the token and shows login.

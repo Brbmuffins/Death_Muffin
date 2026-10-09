@@ -1,6 +1,6 @@
 class_name DmWeaponLine
 extends RefCounted
-## Port of src/gameplay/weaponLine.ts: what the necromancer's equipped weapon and off-hand change. Pure.
+## Port of archive/legacy-web:src/gameplay/weaponLine.ts: what the necromancer's equipped weapon and off-hand change. Pure.
 ## Tuning comes from necro_weapons.json (exported from NECRO_WEAPON_TUNING).
 
 static func _data() -> Dictionary:

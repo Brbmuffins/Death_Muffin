@@ -1,6 +1,6 @@
 class_name DmOfflineLoadout
 extends RefCounted
-## Port of src/gameplay/loadoutRules.ts (loadout presets: validation + applying the gear half to inventory rows), used by the offline
+## Port of server/rules/gameplay/loadoutRules.ts (loadout presets: validation + applying the gear half to inventory rows), used by the offline
 ## backend exactly as the web mock / server loadouts.cjs use it. Rows are Dictionaries {slot_index, item_id, quantity, equipped?, equipped_slot?, instance_id?}.
 
 const MAX_PRESETS := 6

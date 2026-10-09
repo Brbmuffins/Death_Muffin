@@ -1,6 +1,6 @@
 class_name DmLegionText
 extends RefCounted
-## The words and candidate ranking of src/gameplay/legionKit.ts (the numbers live in rules/combat/dm_legion.gd).
+## The words and candidate ranking of archive/legacy-web:src/gameplay/legionKit.ts (the numbers live in rules/combat/dm_legion.gd).
 
 const BAG_SIZE := 48
 const DELTA_PARTS := [["damage", "thrall damage"], ["hp", "thrall health"], ["speed", "attack speed"], ["ward", "less damage to you per thrall"]]

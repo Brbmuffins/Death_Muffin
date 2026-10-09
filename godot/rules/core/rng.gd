@@ -1,6 +1,6 @@
 class_name DmRng
 extends RefCounted
-## Bit-exact port of src/gameplay/rng.ts (mulberry32 + helpers).
+## Bit-exact port of archive/legacy-web:src/gameplay/rng.ts (mulberry32 + helpers).
 ## Usage: var rng := DmRng.new(seed); rng.next() -> float in [0,1).
 ## Pass `rng.as_callable()` anywhere the TS took a `rand: () => number`.
 

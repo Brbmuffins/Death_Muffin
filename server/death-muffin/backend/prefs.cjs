@@ -7,12 +7,12 @@
  * Only keys listed in DEFS are accepted, and each value is checked against its definition, so a pref can never carry free text or
  * grow without bound (a stored value is a JSON scalar of at most VALUE_MAX characters; an account holds at most one row per known key).
  * Preferences are conveniences, never progress: nothing here grants items, gold or levels, and the game works without them.
- * To add a setting: add a DEFS entry (and a matching key in src/net/accountPrefs.ts); no migration needed.
+ * To add a setting: add a DEFS entry (and a matching key in archive/legacy-web:src/net/accountPrefs.ts); no migration needed.
  */
 const DEFS = {
   /** Workbench / Acre stations: hide recipes the player lacks the skill or materials for. */
   only_craftable: { type: 'boolean' },
-  /** Settings -> Loot: what happens to a freshly dropped piece of gear of each rarity (src/gameplay/lootFilter.ts). Legendaries are never sold. */
+  /** Settings -> Loot: what happens to a freshly dropped piece of gear of each rarity (archive/legacy-web:src/gameplay/lootFilter.ts). Legendaries are never sold. */
   loot_common: { type: 'enum', values: ['ground', 'auto', 'gold'] },
   loot_uncommon: { type: 'enum', values: ['ground', 'auto', 'gold'] },
   loot_rare: { type: 'enum', values: ['ground', 'auto', 'gold'] },

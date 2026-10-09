@@ -1,6 +1,6 @@
 class_name DmOfflineEmpower
 extends RefCounted
-## The Empowered-boss prize rules of src/gameplay/goldSinkRules.ts that the gold-sink port (DmGoldSink) leaves out:
+## The Empowered-boss prize rules of server/rules/gameplay/goldSinkRules.ts that the gold-sink port (DmGoldSink) leaves out:
 ## empoweredLegendaryChance, rollEmpoweredPrize, rollEmpoweredInstance. `rand` is a Callable returning [0,1).
 
 

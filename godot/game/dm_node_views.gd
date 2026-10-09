@@ -1,6 +1,6 @@
 class_name DmNodeViews
 extends Node3D
-## Port of `NodeViews` in src/graphics/NodeViews.ts: every gathering node's live / spent look, the hover ring, the selected ring and the
+## Port of `NodeViews` in archive/legacy-web:src/graphics/NodeViews.ts: every gathering node's live / spent look, the hover ring, the selected ring and the
 ## gatherer's progress arc. The node props themselves are the ones DmWorldBuilder._nodes() already builds (`builder.node_views`:
 ## id -> Node3D); this class only swaps them to a spent look and draws the rings. Add it under the world root at the origin.
 ##

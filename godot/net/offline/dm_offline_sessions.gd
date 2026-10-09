@@ -1,6 +1,6 @@
 class_name DmOfflineSessions
 extends RefCounted
-## The offline edition's half of the party-session API (server/death-muffin/backend/SESSION-REPORTS.md, decision D4). Same routes, payloads,
+## The dev-offline mode's half of the party-session API (server/death-muffin/backend/SESSION-REPORTS.md, decision D4). Same routes, payloads,
 ## codes and membership rules as party-sessions.cjs, so an offline solo session reports through the identical client path. There is no kill
 ## ledger offline (nothing of value leaves the device), so accepted counts are the claimed counts; everything else (host-only reports,
 ## attached members only, heartbeats, idempotent batches, bounds, ended/left refusals) is the same. State is in memory: a session is a

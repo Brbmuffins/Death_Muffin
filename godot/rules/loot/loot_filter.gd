@@ -1,6 +1,6 @@
 class_name DmLootFilter
 extends RefCounted
-## Port of src/gameplay/lootFilter.ts: Settings -> Loot, one rule per gear rarity. 'ground' (walk over it), 'auto' (straight into the
+## Port of archive/legacy-web:src/gameplay/lootFilter.ts: Settings -> Loot, one rule per gear rarity. 'ground' (walk over it), 'auto' (straight into the
 ## bag as it drops), 'gold' (sell value paid at once). Only gear follows the rules; set pieces, legendaries, a rolled necromancer affix and
 ## anything the `keep` callback protects are never turned into gold (a 'gold' rule leaves them on the ground).
 

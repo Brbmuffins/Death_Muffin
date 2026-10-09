@@ -1,6 +1,6 @@
 class_name DmWaveUpgrades
 extends RefCounted
-## Port of the numeric half of src/content/upgrades.ts (Damage / Wave Speed / Legion tiers, waveModifiers) and the cost functions
+## Port of the numeric half of server/rules/content/upgrades.ts (Damage / Wave Speed / Legion tiers, waveModifiers) and the cost functions
 ## from necroRules.ts (damageCost, waveCost, legionCost). Costs take the owned tier(s) + boon ranks.
 
 const DENSITY_FULL_TIERS := 3.0

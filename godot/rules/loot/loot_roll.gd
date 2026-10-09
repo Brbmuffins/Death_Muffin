@@ -1,6 +1,6 @@
 class_name DmLootRoll
 extends RefCounted
-## Client side of server item rolls (port of src/gameplay/lootRoll.ts, the pure half).
+## Client side of server item rolls (port of archive/legacy-web:src/gameplay/lootRoll.ts, the pure half).
 ##
 ## WHAT THE SERVER DECIDES vs THE CLIENT
 ## - Server (POST /api/loot/roll-gear, server/death-muffin loot.cjs using the shared affixRules): the item level (item_level_for of
@@ -9,7 +9,7 @@ extends RefCounted
 ## - Client: decides WHAT drops (DmLoot.roll_* with the item tables) and which drops are gear (DmAffixes.can_roll). It sends
 ##   {item_id, level, source} per gear drop (12 per request), attaches the answer as drop.instance = {id, ilvl, affixes}, and
 ##   the bag save names the roll by instance_id only. If the server cannot roll (offline, too many unclaimed relics, error) the drop
-##   stays plain base gear: nothing is invented client-side. (DmAffixRules.roll_instance exists for the offline edition/tests only.)
+##   stays plain base gear: nothing is invented client-side. (DmAffixRules.roll_instance exists for dev-offline mode/tests only.)
 ## This class holds the batching + answer-matching; the net track performs the HTTP call between the two steps:
 ##   var batches := DmLootRoll.batches(drops)
 ##   for b in batches: var answer = await net.roll_gear(char_id, DmLootRoll.request(b, level, source)); DmLootRoll.apply(b, answer)

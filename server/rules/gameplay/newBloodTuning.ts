@@ -1,7 +1,7 @@
 /**
  * New Blood catch-up (owner, 3 Oct 2026: "apply the 1.5x damage and early xp for new blood"). The five New Blood disciplines fight
- * without a legion, so in the balance harness they killed and levelled 3-6x slower than the necromancers (BALANCE.md "New Blood
- * leveling audit"). Two levers, both off for necromancers:
+ * without a legion, so in the balance harness they killed and levelled 3-6x slower than the necromancers (the New Blood
+ * leveling audit). Two levers, both off for necromancers:
  * - every New Blood primary, rite and signature hits 1.5x harder (NewBloodSystem.power);
  * - experience is multiplied for the early levels: x2 at level 1, fading in a straight line to x1 at level 15.
  */

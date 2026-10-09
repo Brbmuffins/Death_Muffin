@@ -1,6 +1,6 @@
 extends SceneTree
 ## Offline backend tests. Headless:  godot --headless --path godot --script res://tests/offline/run.gd
-## 1. Golden replay: every request the real web mock (src/net/mockBackend.ts) answered in (the retired web game\'s fixtures-offline exporter), replayed against
+## 1. Golden replay: every request the real web mock (archive/legacy-web:src/net/mockBackend.ts) answered in (the retired web game\'s fixtures-offline exporter), replayed against
 ##    DmMockBackend with the same Math.random stream (mulberry32 seed) and clock, replies compared field for field.
 ## 2. test_routes.gd: every DmApi call the game makes answers (no 404/501), persistence survives a relaunch, atomic writes, error paths the web leaves out.
 

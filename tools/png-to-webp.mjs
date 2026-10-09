@@ -2,7 +2,7 @@
  * png-to-webp.mjs — converts every public/art/**.png to a sibling .webp (and deletes the PNG when the WebP is written).
  *   node tools/png-to-webp.mjs [--keep] [--dir public/art]
  * Icons/UI: q90 with full-quality alpha. fx/ (additive glow gradients, banding-prone): near-lossless.
- * Prints bytes before/after. References in src/ are `.webp` (art/items/<id>.webp etc.).
+ * Prints bytes before/after. References in archive/legacy-web:src/ are `.webp` (art/items/<id>.webp etc.).
  */
 import sharp from 'sharp';
 import { readdirSync, statSync, unlinkSync } from 'node:fs';

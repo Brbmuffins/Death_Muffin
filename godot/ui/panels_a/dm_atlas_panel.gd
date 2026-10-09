@@ -1,6 +1,6 @@
 class_name DmAtlasPanel
 extends DmWindow
-## The Gear Atlas (the . key; src/ui/AtlasPanel.ts): what drops where and how often, what makes it, and what suits you. Five views (Best for me, By slot,
+## The Gear Atlas (the . key; archive/legacy-web:src/ui/AtlasPanel.ts): what drops where and how often, what makes it, and what suits you. Five views (Best for me, By slot,
 ## By area & boss, By set, Materials & brews) plus search; a list on the left, the selected item's detail on the right (where it drops, how to make it,
 ## salvage, upgrading, set). All numbers come from the exported Atlas model (godot/data/panels_a/atlas.json, evaluated from gameplay/atlas.ts); the
 ## per-player parts (the upgrade/downgrade arrow and set outlook for every item) are INPUT because they need the live stat context.

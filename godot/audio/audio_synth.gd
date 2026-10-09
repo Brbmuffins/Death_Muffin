@@ -1,7 +1,7 @@
 class_name DmAudioSynth
 extends RefCounted
 ## Procedural loops the web engine builds from oscillators: the zone drones (two detuned sawtooths, low-passed at 3x the pitch)
-## and the boss war-drum pulse (src/audio/Audio.ts setBossBed). Generated once into looping AudioStreamWAVs (no asset files).
+## and the boss war-drum pulse (archive/legacy-web:src/audio/Audio.ts setBossBed). Generated once into looping AudioStreamWAVs (no asset files).
 
 const DRONE_RATE := 4000
 const DRONE_SECONDS := 10  # every drone pitch has one decimal, so f * 10 s is a whole number of cycles: the loop is seamless

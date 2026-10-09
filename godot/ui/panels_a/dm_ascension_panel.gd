@@ -1,6 +1,6 @@
 class_name DmAscensionPanel
 extends DmWindow
-## The Altar of Ascension (src/ui/AscensionPanel.ts): Vows (draft the curses for the next run), Ascend (burn a finished run for Ashes, asks twice),
+## The Altar of Ascension (archive/legacy-web:src/ui/AscensionPanel.ts): Vows (draft the curses for the next run), Ascend (burn a finished run for Ashes, asks twice),
 ## Covenant Boons (bought with Ashes; the strange ones are opened with soul shards first). Opening it never resets anything.
 ## Numbers come from rules/progression/ascension.gd (DmAscension), never retyped.
 ##

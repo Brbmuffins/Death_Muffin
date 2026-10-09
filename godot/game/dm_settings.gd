@@ -1,6 +1,6 @@
 class_name DmSettings
 extends RefCounted
-## Port of src/app/settings.ts: the per-viewer settings store, persisted to a JSON file (the desktop stand-in for localStorage). Difficulty and
+## Port of archive/legacy-web:src/app/settings.ts: the per-viewer settings store, persisted to a JSON file (the desktop stand-in for localStorage). Difficulty and
 ## auto combat are per character (setActiveCharacter). Keys are the Settings panel's (godot/ui/panels/dm_settings_panel.gd `values`), with the
 ## web's defaults: difficulty, auto_combat, auto_gather, loot_<tier> ("ground"|"auto"|"gold"), graphics ("low"|"medium"|"high"|"ultra", DmGraphicsPreset), brightness (0.8..1.3), fps, auto_res, vol_master,
 ## vol_combat, vol_amb, vol_music, vol_ui (= web volume, combatVolume, ambienceVolume, musicVolume, interfaceVolume), reduce_motion, damage_numbers,

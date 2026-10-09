@@ -40,7 +40,7 @@ static func tex(path: String) -> Texture2D:
 	return t
 
 
-## Chrome glyph (src/ui/icons.ts) as a texture: skull crown bag anvil gear waymap skills grimoire atlas book ...
+## Chrome glyph (archive/legacy-web:src/ui/icons.ts) as a texture: skull crown bag anvil gear waymap skills grimoire atlas book ...
 static func icon(name: String) -> Texture2D:
 	return tex(ART + "icons/" + name + ".svg")
 

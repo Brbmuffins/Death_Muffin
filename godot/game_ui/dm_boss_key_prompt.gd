@@ -1,6 +1,6 @@
 class_name DmBossKeyPrompt
 extends DmWindow
-## Port of src/ui/BossKeyPrompt.ts: the boss altar's choice when the hero carries a Covenant Seal (wake it with soul shards, or call it Empowered).
+## Port of archive/legacy-web:src/ui/BossKeyPrompt.ts: the boss altar's choice when the hero carries a Covenant Seal (wake it with soul shards, or call it Empowered).
 ## open_offer({boss, seals, gold, shards, bound}); signals mirror the two callbacks. Server-priced: this card only shows the price and the stakes.
 
 signal normal_chosen(boss: String)

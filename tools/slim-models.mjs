@@ -7,7 +7,7 @@
  *               leaves the pre-quantize float accessors behind, ~170 KB per character).
  * 2. dedup()  — merges identical accessors/materials/textures.
  * 3. Hero clip trim — `cast` and `dig` on the player-avatar rigs (hero_* and `necromancer`, the only models built with
- *               Creature `inPlace`) are cut to the window src/graphics/inPlaceAnimation.ts plays (cast 1.1 s, dig 1.3 s)
+ *               Creature `inPlace`) are cut to the window archive/legacy-web:src/graphics/inPlaceAnimation.ts plays (cast 1.1 s, dig 1.3 s)
  *               plus a margin. Every other model keeps its full clips: enemies, bosses and thralls play `cast`/`dig`
  *               whole (laborers loop `dig`; burrowing enemies play it for BURROW.digS).
  *

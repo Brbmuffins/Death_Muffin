@@ -1,6 +1,6 @@
 class_name DmClassPanel
 extends DmWindow
-## Change class (src/ui/ClassPanel.ts): the same portraits and cards as initial class selection, nine playable disciplines, free to change.
+## Change class (archive/legacy-web:src/ui/ClassPanel.ts): the same portraits and cards as initial class selection, nine playable disciplines, free to change.
 ## Data in:  set_data(current_class_index: int, disciplines: Array = [])  (default: the exported PLAYABLE_DISCIPLINES)
 ## Signals:  class_chosen(class_index)  -> DmApi.change_discipline(character_id, class_index); on success the client reloads into the Chapterhouse.
 ## While a change is in flight call begin_saving(); on a refusal call fail(message) (verbatim server error); on done call finish().

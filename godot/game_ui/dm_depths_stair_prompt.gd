@@ -1,6 +1,6 @@
 class_name DmDepthsStairPrompt
 extends DmWindow
-## Port of src/ui/DepthsStairPrompt.ts: the Warren stair's choice once the hero has been below depth 1 (resume at the deepest floor, or start at 1).
+## Port of archive/legacy-web:src/ui/DepthsStairPrompt.ts: the Warren stair's choice once the hero has been below depth 1 (resume at the deepest floor, or start at 1).
 
 signal depth_picked(depth: int)
 

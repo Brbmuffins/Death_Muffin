@@ -1,6 +1,6 @@
 class_name DmItemText
 extends RefCounted
-## The data behind the Reliquary tooltip / detail strip (src/ui/gearText.ts, minus the HTML): turns an inventory row plus the character's
+## The data behind the Reliquary tooltip / detail strip (archive/legacy-web:src/ui/gearText.ts, minus the HTML): turns an inventory row plus the character's
 ## StatContext (see DmGearStats) into the Dictionary DmItemCard / DmItemSlot read:
 ##   type_label, ilvl + affix_count, verdict {kind: up|down|same, text}, stats [{text, fx, necro}], set_line, compare [{text, kind}].
 ## Without a context (before the player exists) the lines are the plain base stats, like the web.

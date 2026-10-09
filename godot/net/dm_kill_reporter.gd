@@ -1,6 +1,6 @@
 class_name DmKillReporter
 extends RefCounted
-## Server authority step 2 (port of src/net/killReporter.ts, docs/SERVER-AUTHORITY.md): count kills as they happen, seal them into
+## Server authority step 2 (port of archive/legacy-web:src/net/killReporter.ts, docs/SERVER-AUTHORITY.md): count kills as they happen, seal them into
 ## numbered batches, and keep each batch until the server confirms it, so a retry after a lost reply is recognised as a repeat.
 ## A batch rides along with the next save-progress (`killReports`) or is posted alone with DmApi.report_kills.
 ##

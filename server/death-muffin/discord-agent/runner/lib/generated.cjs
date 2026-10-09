@@ -1,5 +1,5 @@
 'use strict';
-// Derived ("generated") files: server bundles built from src/, and the loot doc.
+// Derived ("generated") files: server bundles built from archive/legacy-web:src/, and the loot doc.
 // They sit under server/** (sensitive), so by path alone any data change would escalate.
 // Instead they are treated as tier-neutral ONLY when they are exactly what the generators produce from the committed sources.
 // That is proven here by deterministic code: re-run regen.sh (same sandbox as check.sh) in a scratch worktree of the commit and

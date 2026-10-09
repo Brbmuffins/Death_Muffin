@@ -1,6 +1,6 @@
 class_name DmItemLocks
 extends RefCounted
-## Port of src/gameplay/itemLocks.ts: Reliquary item locks + the bulk-action selectors (Sell all junk, Salvage all below rare).
+## Port of archive/legacy-web:src/gameplay/itemLocks.ts: Reliquary item locks + the bulk-action selectors (Sell all junk, Salvage all below rare).
 ## A lock is the pair slot + item id: if the slot's item changes the lock lapses (prune). Per character; persistence is injected:
 ## `storage` = any object with get_item(key) -> String ("" / null if absent) and set_item(key, value) (duck-typed; null = in-memory
 ## only). Stored format matches the web: JSON [[slot, itemId], ...] under "dm_locks_v1_<characterId>".

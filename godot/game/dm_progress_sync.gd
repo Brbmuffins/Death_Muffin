@@ -1,6 +1,6 @@
 class_name DmProgressSync
 extends RefCounted
-## The network + persistence half of src/gameplay/progression.ts (DmProgression is the pure state). Server saves happen on level-up,
+## The network + persistence half of archive/legacy-web:src/gameplay/progression.ts (DmProgression is the pure state). Server saves happen on level-up,
 ## periodically while dirty (45 s), on area change and on quit; failures retry with backoff. Necro-progress mutations run one at a time
 ## so their replies are adopted in the order the server applied them. 'server' mode once the necro-progress routes answered.
 ## `tick(dt)` drives the timers (the host calls it every frame).

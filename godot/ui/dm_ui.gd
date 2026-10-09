@@ -1,6 +1,6 @@
 class_name DmUi
 extends RefCounted
-## Design tokens + small helpers for the Death Muffin UI kit. Mirrors src/theme/tokens.css (web is the spec).
+## Design tokens + small helpers for the Death Muffin UI kit. Mirrors archive/legacy-web:src/theme/tokens.css (web is the spec).
 ## Everything here is static: `DmUi.BONE_100`, `DmUi.rarity_color("epic")`, `DmUi.theme()`.
 
 # --- World materials (tokens.css) -------------------------------------------------------------
@@ -43,7 +43,7 @@ const DOWN_SOFT := Color("d97a6b")
 const BREW := Color("e6d3a0")
 const PANEL_SHADOW := Color(0, 0, 0, 0.62)
 
-# --- Rarity (src/content/items.ts RARITY_COLOR / RARITY_MARK) ------------------------------------
+# --- Rarity (server/rules/content/items.ts RARITY_COLOR / RARITY_MARK) ------------------------------------
 const RARITY_COLOR := {
 	"common": Color("b9b2a4"),
 	"uncommon": Color("8fb98a"),

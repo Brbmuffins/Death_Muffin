@@ -1,6 +1,6 @@
 class_name DmHitStop
 extends RefCounted
-## Port of src/graphics/hitstop.ts: a 2-4 frame micro-freeze of the PICTURE on a heavy impact (visual only: it scales the time that
+## Port of archive/legacy-web:src/graphics/hitstop.ts: a 2-4 frame micro-freeze of the PICTURE on a heavy impact (visual only: it scales the time that
 ## animation mixers and particles see, never the sim clock). Rationed by a minimum gap and a leaky budget (~5% of time frozen).
 
 const FRAME := 1.0 / 60.0

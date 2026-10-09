@@ -1,6 +1,6 @@
 class_name DmBossView
 extends RefCounted
-## Any boss's model (port of BossView in src/graphics/Avatars.ts): one per boss id, created on first summon (the Prelate's is built at
+## Any boss's model (port of BossView in archive/legacy-web:src/graphics/Avatars.ts): one per boss id, created on first summon (the Prelate's is built at
 ## load). `sync(state: DmBossState, dt)` every frame, `hide()` after death / when the fight resets (fades out after 2.5 s), `dispose()`.
 ## Model and colour come from BOSSES[id].modelSlug / .color (godot/data/content/bosses.json).
 

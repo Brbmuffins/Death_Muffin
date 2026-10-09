@@ -1,6 +1,6 @@
 class_name DmSmartLoot
 extends RefCounted
-## Port of src/gameplay/smartLoot.ts. With a discipline given, 70% of an area's class-armour weight goes to the player's own set (the
+## Port of server/rules/gameplay/smartLoot.ts. With a discipline given, 70% of an area's class-armour weight goes to the player's own set (the
 ## rest is shared by the other disciplines) and necromancer weapons drop at a third of their weight for other families.
 ## Without a discipline ("") the table is used as listed. Entries are {item:String, weight:float}.
 

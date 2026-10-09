@@ -1,6 +1,6 @@
 class_name DmAutoCombat
 extends RefCounted
-## One-to-one port of src/gameplay/autoCombat.ts (Easy auto's combat decision + movement).
+## One-to-one port of archive/legacy-web:src/gameplay/autoCombat.ts (Easy auto's combat decision + movement).
 ##
 ## select_action(ctx) = selectAutoCombatAction. ctx keys are the TS AutoCombatInput names:
 ##   player {x, z, essence, maxEssence, [hp, maxHp, area, veilForm, bulwarkUntil, betweenUntil, unbreakableUntil]},

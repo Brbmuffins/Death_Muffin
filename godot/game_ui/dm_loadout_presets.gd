@@ -1,6 +1,6 @@
 class_name DmLoadoutPresets
 extends VBoxContainer
-## Port of src/ui/LoadoutPresets.ts + the loadout half of gameplay/loadoutRules.ts (captureGear, sameLoadout, cleanName, reportLines) +
+## Port of archive/legacy-web:src/ui/LoadoutPresets.ts + the loadout half of gameplay/loadoutRules.ts (captureGear, sameLoadout, cleanName, reportLines) +
 ## WorldScene.loadoutHost / loadoutHotkey: up to six named presets of rites + runes + worn weapon and off-hand, in the Grimoire's loadout slot.
 ## DmApi: list_loadouts / save_loadout / delete_loadout / apply_loadout_preset (the server puts the gear on in one transaction; the rites half is applied here).
 

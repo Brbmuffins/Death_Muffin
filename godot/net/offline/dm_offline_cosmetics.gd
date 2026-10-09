@@ -1,6 +1,6 @@
 class_name DmOfflineCosmetics
 extends RefCounted
-## Port of src/gameplay/cosmeticRules.ts (capes and pets unlock rules) for the offline backend. Data: content/cosmetics.json (CAPES, PETS).
+## Port of server/rules/gameplay/cosmeticRules.ts (capes and pets unlock rules) for the offline backend. Data: content/cosmetics.json (CAPES, PETS).
 ## levels = {skill_id: level}; missing skills count as level 1.
 
 const LEVEL_CAP := 99

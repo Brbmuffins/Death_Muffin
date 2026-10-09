@@ -97,7 +97,7 @@ const statDef = (stat: AffixStat, kind: AffixKind, word: string): AffixDef => ({
 /**
  * The whole pool. Ids are stored in the database: never rename one, only add.
  *
- * Ranges (2026-10-02 gear pass, BALANCE.md): measured against the power score, calibrated on the balance harness. A median stat affix is
+ * Ranges (2026-10-02 gear pass): measured against the power score, calibrated on the balance harness. A median stat affix is
  * worth about 2-3% of power at any item level (the old +0.3/level stat ranges made one affix worth 7-10%, a tier of its own), and a lever
  * affix is sized to match a stat affix for the discipline that uses it (Gravebound for the Gravecaller, of the Legion for the Ossuary,
  * Whispering for the Mourner, of the Rotting Mist for the Rotweaver) and about a third of one for the others. The unit tests in

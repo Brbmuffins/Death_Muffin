@@ -1,7 +1,7 @@
 class_name DmWindow
 extends PanelContainer
 ## The web's floating panel (`.cw-plate.cw-panel-float`): a FIXED header (title, aka, close X: never scroll) over a body
-## that scrolls beneath it, with the "Back to top" button (src/ui/panelBody.ts), draggable by its header, Esc to close.
+## that scrolls beneath it, with the "Back to top" button (archive/legacy-web:src/ui/panelBody.ts), draggable by its header, Esc to close.
 ##
 ## Usage:
 ##   var w := DmWindow.new(); w.title = "Settings"; w.panel_width = 540

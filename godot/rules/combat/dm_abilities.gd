@@ -1,6 +1,6 @@
 class_name DmAbilities
 extends RefCounted
-## Deterministic numbers of src/content/abilities.ts + src/gameplay/AbilitySystem.ts + NewBloodSystem.ts: ability definitions, unlock gates,
+## Deterministic numbers of archive/legacy-web:src/content/abilities.ts + archive/legacy-web:src/gameplay/AbilitySystem.ts + NewBloodSystem.ts: ability definitions, unlock gates,
 ## spell power, cast checks and costs, cooldown / lock math, per-rite damage, Litany / Corpse Explosion / thrall-raise numbers, Mantle and Litany
 ## barriers, wisps, Black-Litany scaling, rune modifiers. Everything that needs the world (targeting, projectiles, AI) is left to the world sim.
 ## A "player" argument is the Dictionary from DmPlayerRules.new_state() with extra keys the scene sets: loadout (DmWeaponLine.resolve),

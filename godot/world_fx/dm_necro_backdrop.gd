@@ -1,6 +1,6 @@
 class_name DmNecroBackdrop
 extends Node3D
-## Login / discipline-select backdrop (src/graphics/NecroBackdrop.ts): the burning-graveyard vista as a deep matte, with parallax, drifting
+## Login / discipline-select backdrop (archive/legacy-web:src/graphics/NecroBackdrop.ts): the burning-graveyard vista as a deep matte, with parallax, drifting
 ## grave-mist, embers and a ritual sigil. Camera fov 40 at (0, 1.6, 12), eased toward the mouse, looking at (0 | -9 on a narrow window, 2, -20).
 ## Bloom {strength 0.75, radius 0.6, threshold 0.78}. `DmNecroBackdrop.make_layer()` returns a SubViewportContainer to put behind the UI
 ## (stretches with its parent); the node itself can also be added to any 3D tree with its own Camera3D (`camera`).

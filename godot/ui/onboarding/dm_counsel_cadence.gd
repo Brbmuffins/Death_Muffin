@@ -1,6 +1,6 @@
 class_name DmCounselCadence
 extends RefCounted
-## Covenant counsel cadence (src/ui/counselCadence.ts): pure rules for WHEN a queued tip may appear. All times are milliseconds on one clock.
+## Covenant counsel cadence (archive/legacy-web:src/ui/counselCadence.ts): pure rules for WHEN a queued tip may appear. All times are milliseconds on one clock.
 ## A queued tip is {id, kind, priority, queued_at, seq}. State is {now, last_closed_at, group_shown_at: {group: ms}, busy: Busy}.
 ## Busy is {combat, hurt, talking, banner, dead, panel: bool, area: String ("" = unknown), safe: bool} (counselCadence.ts `Busy`).
 ## kind/group/priority/place come from the data exported from the TS (DmCounselData), so the web's lists are never retyped.

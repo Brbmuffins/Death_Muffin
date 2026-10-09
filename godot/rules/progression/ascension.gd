@@ -1,6 +1,6 @@
 class_name DmAscension
 extends RefCounted
-## Port of src/content/ascension.ts logic: vows (heat, effects), boons, Ashes, unlock keys.
+## Port of server/rules/content/ascension.ts logic: vows (heat, effects), boons, Ashes, unlock keys.
 ## Pure statics. Vow/boon rank maps are plain Dictionaries ({vow_id: steps}) exactly as stored in the save JSON.
 
 

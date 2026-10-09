@@ -1,6 +1,6 @@
 class_name DmSalvage
 extends RefCounted
-## Port of src/gameplay/salvageRules.ts (the Bone Grinder). Server-authoritative in the live game (salvage.cjs rolls); the
+## Port of server/rules/gameplay/salvageRules.ts (the Bone Grinder). Server-authoritative in the live game (salvage.cjs rolls); the
 ## client uses salvage_preview for the panel. `rand` = Callable returning [0,1).
 
 const M := preload("res://rules/core/math.gd")

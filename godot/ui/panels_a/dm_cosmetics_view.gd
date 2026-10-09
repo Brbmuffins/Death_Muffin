@@ -1,6 +1,6 @@
 class_name DmCosmeticsView
 extends VBoxContainer
-## Capes & Pets (N; src/ui/CosmeticsPanel.ts): mastery capes (level 99 in a skill, or total level for the mantles) and adopted companions.
+## Capes & Pets (N; archive/legacy-web:src/ui/CosmeticsPanel.ts): mastery capes (level 99 in a skill, or total level for the mantles) and adopted companions.
 ##
 ## Data in:  set_view(view: Dictionary)  = the server's CosmeticsView {totalLevel, selected:{cape, pet}, capes:[{id,name,lore,color,trim,unlocked,have,need}],
 ##           pets:[{id,name,lore,skill,charm,adopted, rarity?}]};  set_charm_counts({charm_item_id: count}) (bag counts for the Adopt button).

@@ -1,6 +1,6 @@
 class_name DmSetBonuses
 extends RefCounted
-## Port of src/gameplay/setBonuses.ts (+ the data side of content/setBonuses.ts): armor set bonuses resolved from worn item ids,
+## Port of archive/legacy-web:src/gameplay/setBonuses.ts (+ the data side of content/setBonuses.ts): armor set bonuses resolved from worn item ids,
 ## and the folding of set totals + worn affixes into discipline mods. Descriptive text (describeEffect, missing-piece names) stays in
 ## the TS UI layer; the ui track can add it from armor.json.
 ##

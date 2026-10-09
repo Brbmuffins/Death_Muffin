@@ -117,7 +117,7 @@ const sqlTime = (value) => {
 async function apply(conn, characterId, account) {
   const c = account.character;
   const finitePosition = ['pos_x', 'pos_y', 'pos_z', 'orientation'].every((key) => Number.isFinite(c[key]) && Math.abs(c[key]) < 100000);
-  // pos_map stays as it is online; the offline edition has no map of its own.
+  // pos_map stays as it is online; dev-offline mode has no map of its own.
   await conn.execute(
     `UPDATE characters SET level = ?, experience = ?, gold = ?, stat_str = ?, stat_agi = ?, stat_int = ?, stat_vit = ?,
       pos_x = ?, pos_y = ?, pos_z = ?, orientation = ? WHERE id = ?`,

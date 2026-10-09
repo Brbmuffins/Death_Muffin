@@ -1,6 +1,6 @@
 class_name DmReforgeView
 extends DmPanelB
-## The Workbench's Reforge tab (src/ui/ReforgeView.ts): pick a rolled piece (bag or worn), pick one of its affixes, see the price, confirm.
+## The Workbench's Reforge tab (archive/legacy-web:src/ui/ReforgeView.ts): pick a rolled piece (bag or worn), pick one of its affixes, see the price, confirm.
 ## Only that affix's VALUE is drawn again; the server prices and rolls, this view previews the price with the same rules (DmGoldSink, DmAffixRules).
 ##
 ## Data in:  set_pieces(slots)  bag rows {slot_index, item_id, name, rarity, base_rarity?, inst:{id, ilvl, affixes:[{id, v}]}}   (filtered here)

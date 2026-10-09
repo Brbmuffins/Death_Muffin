@@ -1,6 +1,6 @@
 class_name DmLegendarySets
 extends RefCounted
-## Drop rules of src/content/legendarySets.ts (the names/lore live in the web content; only ids and odds matter to rolling).
+## Drop rules of server/rules/content/legendarySets.ts (the names/lore live in the web content; only ids and odds matter to rolling).
 ## `rand` = Callable -> float in [0,1) (empty = randf()). `owned` = a Callable returning the item ids you already hold, as a Dictionary
 ## {id: true} or an Array, read only when a piece actually drops (TS: `owned?.()`).
 

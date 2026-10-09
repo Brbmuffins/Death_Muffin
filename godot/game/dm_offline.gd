@@ -1,6 +1,6 @@
 class_name DmOffline
 extends RefCounted
-## The offline edition's backend: DmMockBackend (accounts and saves under user://dm_offline_db.json, no live server) with the item
+## The dev-offline mode's backend: DmMockBackend (accounts and saves under user://dm_offline_db.json, no live server) with the item
 ## catalogue filled from the game content (the web's MOCK_ITEMS), so gear equips and stats work. `keep` holds the mock alive.
 
 static func make_mock(path: String = "user://dm_offline_db.json") -> DmMockBackend:

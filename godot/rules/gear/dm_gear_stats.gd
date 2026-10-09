@@ -1,6 +1,6 @@
 class_name DmGearStats
 extends RefCounted
-## Port of src/gameplay/gearStats.ts (+ the describeStatDelta half of characterStats.ts): gear you can read. Everything the Reliquary tooltips,
+## Port of archive/legacy-web:src/gameplay/gearStats.ts (+ the describeStatDelta half of characterStats.ts): gear you can read. Everything the Reliquary tooltips,
 ## the compare block, the Character sheet and the Gear Atlas say about stats is computed here by running DmStats.derive_stats, so the words follow the math.
 ##
 ## A StatContext is a Dictionary {character, slots: Array of inventory rows, discipline: {id, family, name, mods}, damageTier, legion?}

@@ -58,14 +58,14 @@ export const AREA_PEAK: Partial<Record<AreaId, { xp: number; gold: number; kills
   coliseum: { xp: 20609, gold: 16705, kills: 477 },
   fen: { xp: 74831, gold: 25498, kills: 184 },
   // Same settings on held floors of depth 5, 10 and 20 for a level-40 hero, the best column of any discipline, each rate scaled to enemy level 50
-  // (depth 10 for that hero; XP x1.25 per level, gold x1.15): `DEPTH_LEVELS=40 DEPTH_DEPTHS=5,10,20 DEPTH_BANDS=max npm run balance:depths`, BALANCE.md.
+  // (depth 10 for that hero; XP x1.25 per level, gold x1.15): measured with the balance harness (DEPTH_LEVELS=40, DEPTH_DEPTHS=5,10,20, DEPTH_BANDS=max).
   depths: { xp: 27600, gold: 16000, kills: 72 },
 };
 
 /**
  * The Catacomb Depths (content/depths.ts). Its enemies are one level older per floor, so XP and gold per kill grow with the depth, which
  * the character's Chronicle records (`peak.depth`). The peak above was measured on a held floor of depth `refDepth` for a hero of level
- * `refHero` (BALANCE.md "Catacomb Depths"); `ceilingsFor` scales it to the enemy level a character could be facing, taking the deepest
+ * `refHero` (the Catacomb Depths measurement); `ceilingsFor` scales it to the enemy level a character could be facing, taking the deepest
  * floor it has recorded plus `slack` (a chronicle flush is up to half a minute behind the stairs), capped at `maxDepth`.
  */
 export const DEPTHS_AUTHORITY = { refHero: 40, refDepth: 10, slack: 3, maxDepth: 120 } as const;

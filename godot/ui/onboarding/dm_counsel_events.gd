@@ -1,7 +1,7 @@
 class_name DmCounselEvents
 extends RefCounted
 ## Every Covenant-counsel trigger of the web game, as a named event. DmCounsel.notify(event_id, ctx) resolves an event to the same show(tip, delay, opts)
-## calls the web call site makes (src/scenes/WorldScene.ts and DepthsController.ts); `src` is the web file:line of each call. Conditions that
+## calls the web call site makes (archive/legacy-web:src/scenes/WorldScene.ts and DepthsController.ts); `src` is the web file:line of each call. Conditions that
 ## the web checks at the call site (family == necromancer, hp < 50%...) are evaluated here from plain numbers in `ctx`, so the integrator only reports facts.
 ## tests/onboarding checks this table against every onboarding.show()/host.tip() call found in the web source (fixtures/callsites.json), both ways.
 ##

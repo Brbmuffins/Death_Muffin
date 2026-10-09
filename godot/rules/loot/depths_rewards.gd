@@ -1,6 +1,6 @@
 class_name DmDepthsRewards
 extends RefCounted
-## Port of src/gameplay/depthsRewards.ts plus the reward formulas of src/content/depths.ts it reads (floorBonus, chestBonus, chestDrops,
+## Port of archive/legacy-web:src/gameplay/depthsRewards.ts plus the reward formulas of server/rules/content/depths.ts it reads (floorBonus, chestBonus, chestDrops,
 ## chest rune odds, depthLootArea, the weighted roster behind averageKill). The Depths' wave/affix/roster logic is the combat/world
 ## tracks' (not here). Everything comes from loot tables the game already has. `rand` = Callable (empty = randf()).
 

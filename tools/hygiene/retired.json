@@ -1,0 +1,167 @@
+{
+  "maxFileMB": 20,
+  "bigFileAllow": [],
+  "scanExclude": [
+    "godot/tests/**/fixtures/**",
+    "godot/data/**",
+    "godot/assets/**",
+    "package-lock.json",
+    "**/package-lock.json",
+    "PATCH_NOTES.json",
+    "server/death-muffin/discord-agent/test/**"
+  ],
+  "terms": [
+    {
+      "id": "godot-next",
+      "pattern": "(?<!archive/)godot-next",
+      "reason": "branch deleted; tag archive/godot-next",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "godot/next/hud/README.md",
+        "godot/next/hud/dm_next_ui_host.gd",
+        "godot/tests/next_acre_guide/run.gd",
+        "server/death-muffin/discord-agent/runner/lib/config.cjs"
+      ]
+    },
+    {
+      "id": "godot-port",
+      "pattern": "(?<!archive/)godot-port",
+      "reason": "branch deleted; tag archive/godot-port",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "server/death-muffin/discord-agent/runner/lib/config.cjs"
+      ]
+    },
+    {
+      "id": "master-branch",
+      "pattern": "(\\bbranch `?master\\b|origin/master\\b|\\bmaster branch\\b|`master`|\\bgit (checkout|merge|rebase|push|pull) [^\\n]*\\bmaster\\b)",
+      "reason": "branch is main; master is an archive/* tag",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "legacy-web",
+      "pattern": "(?<!archive/)legacy-web",
+      "reason": "only the tag archive/legacy-web exists",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "gen-fixtures",
+      "pattern": "gen-fixtures",
+      "reason": "TS fixture generators were deleted",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "server/death-muffin/discord-agent/*",
+        "server/death-muffin/bug-agent/*"
+      ]
+    },
+    {
+      "id": "vite-node",
+      "pattern": "vite-node",
+      "reason": "no longer used",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "tools/godot/fx-binbun-rebuild.ts",
+        "tools/godot/fx-binbun-unlit.ts"
+      ]
+    },
+    {
+      "id": "src-path",
+      "pattern": "(?:^|[\\s`'\"(])src/",
+      "reason": "root src/ (web game) was deleted",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "server/death-muffin/lobby/**",
+        "launcher/**",
+        "godot/tests/common/dm_test_lobby.gd",
+        "godot/tests/relay/run.gd",
+        "server/death-muffin/discord-agent/runner/lib/config.cjs"
+      ]
+    },
+    {
+      "id": "socket.io",
+      "pattern": "socket\\.io",
+      "flags": "gi",
+      "reason": "realtime server was deleted; lobby uses plain WebSocket",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "death-muffin-realtime",
+      "pattern": "death-muffin-realtime",
+      "reason": "realtime server was deleted",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "port-5191",
+      "pattern": ":5191\\b",
+      "reason": "realtime port is gone; lobby is :5192",
+      "allow": [
+        "DECISIONS.md",
+        "server/death-muffin/README.md",
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "old-docs",
+      "pattern": "\\b(REBUILD|PARITY|PORTING|HANDOFF|LOOT-TABLES|BALANCE|FIRST_HOUR|CLARITY)\\.md",
+      "reason": "doc was deleted",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "server/death-muffin/discord-agent/runner/lib/generated.cjs"
+      ]
+    },
+    {
+      "id": "offline-edition",
+      "pattern": "offline edition",
+      "flags": "gi",
+      "reason": "there is no offline edition; --dev-offline is test-only",
+      "allow": [
+        "DECISIONS.md",
+        "godot/main/main.gd",
+        "godot/tests/**",
+        "tools/hygiene/**",
+        "godot/front/dm_login_screen.gd",
+        "server/death-muffin/backend/authority.test.cjs",
+        "server/death-muffin/discord-agent/preview.sh",
+        "server/death-muffin/discord-agent/preview-godot.sh",
+        "server/death-muffin/discord-agent/ship.sh",
+        "server/death-muffin/discord-agent/runner/core.cjs",
+        "server/death-muffin/discord-agent/runner/lib/config.cjs"
+      ]
+    }
+  ],
+  "allowPaths": {
+    "docs/AUDIO-SOURCES.md": [
+      "tools/audio/build-esm.mjs",
+      "public/audio/crossworlds/"
+    ],
+    "godot/fx/EVAL.md": [
+      "godot/shots/fx_eval/"
+    ],
+    "launcher/windows/README.md": [
+      "launcher/windows/bin/Release/net48/DeathMuffinLauncher.exe"
+    ],
+    "server/death-muffin/discord-agent/README.md": [
+      "tools/godot/gen-fixtures.sh",
+      "godot/data/loot/content.json",
+      "godot/.godot"
+    ]
+  }
+}
