@@ -77,9 +77,7 @@ Three clips (`dark-magic-spell-1`, `dark-magic-spell-2`, `magic-cast-whoosh-2-1`
 were extracted from the Crossworlds Unity client archive, which carried no licence
 or attribution file, so their redistribution rights were unclear. They are removed
 and replaced (first by CC0 equivalents, now by the pack's `litany`, `exhume` and `veilRite`
-clips). See `docs/CROSSWORLDS-AUDIO.md`.
-If the original archive is ever cleared for redistribution, treat that as a
-separate decision; do not add more files of that kind.
+clips). Do not add recordings of unclear origin.
 
 ## Synthesised sound
 

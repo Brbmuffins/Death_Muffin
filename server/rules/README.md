@@ -11,6 +11,3 @@ needs the matching change there.
 - Change a rule or content table here, then `npm run build:server-rules` (and the matching SQL generator) and commit
   both; `node tools/build-server-rules.mjs --check` / the `--check` generators fail when a committed copy is stale.
 - Tests: `npm run test:rules` (unit) and `npm run test:server` (backend, includes the freshness checks).
-
-Moved out of the retired web client's `src/` on 2026-10-09 (Phase 3 of the baseline reset); bundles were byte-identical
-apart from their path comments.

@@ -1,7 +1,7 @@
 # Decisions
 
-Owner decisions that shape the code. D1-D13 come from the 2026-10-05 and 2026-10-07 rebuild plan; where a later decision
-changed one, the entry says so. B1-B10 are the 2026-10-09 baseline decisions. Dates are absolute.
+Owner decisions that shape the code. D1-D13 are the 2026-10-05 and 2026-10-07 rebuild decisions; B1-B10 the 2026-10-09
+baseline decisions. Where a later decision overrode one, the entry says so.
 
 ## Rebuild decisions
 
@@ -16,10 +16,10 @@ the backend's caps accept.
 **D3. Connectivity (default).** Listen-server host, connected through a relay on the VPS: the lobby service lists and creates
 sessions and forwards opaque packets between host and clients over WebSocket, so no port forwarding is needed. Client side is
 `DmRelayPeer`, a `MultiplayerPeerExtension`, so session code is plain Godot high-level multiplayer; `ENetMultiplayerPeer` is
-used for LAN and tests. The Socket.IO realtime service (:5191) is retired.
+used for LAN and tests.
 
-**D4. Offline stays: REVERSED 2026-10-09 (B1).** The offline edition is no longer a player edition. The local GDScript
-backend (`DmMockBackend`, `net/offline/`) remains as the dev/test backend behind `-- --dev-offline`.
+**D4. No offline edition (reversed by B1).** The local GDScript backend (`DmMockBackend`, `net/offline/`) is the dev/test
+backend behind `-- --dev-offline` only.
 
 **D5. Solo first, online in the back seat** (owner, 2026-10-05). The game is built on the session structure so online works,
 and solo play is polished first. Still the working order: necromancer combat, loot and first hour before more party features.
@@ -27,24 +27,20 @@ and solo play is polished first. Still the working order: necromancer combat, lo
 **D6. Host quits = session ends** for everyone; each member keeps what the backend already credited. No host migration.
 Hosting on the VPS (headless Godot) is a future option, not planned.
 
-**D7. Branches (updated).** The Godot line ships from `main` (GitHub default branch since 2026-10-09). `godot-next`,
-`godot-port` and `master` were folded into it; the old web game is in tag `archive/legacy-web`.
+**D7. Branches.** The Godot line ships from `main`, the only branch. Old work is in `archive/*` tags; the web game is `archive/legacy-web`.
 
-**D8. Characters.** Existing online characters carry into the Godot game unchanged (same backend). Offline characters were
-local only and were deleted (B1).
+**D8. Characters.** Existing online characters carry into the Godot game unchanged (same backend). Offline characters are not carried over (B1).
 
-**D9. Web retirement.** The three.js game is retired and its code kept in git history only. Done 2026-10-09 (B2): site pages
-replaced by the launcher page, `src/` deleted from `main`, the web/offline/mobile builds archived off the server.
+**D9. Web retirement.** The three.js game is retired; its code lives in git history and tag `archive/legacy-web` only (see B2).
 
-**D10. Online unlock = staff/GM accounts first: ENDED 2026-10-09 (B5).** Online is open to everyone. The gate code
-(`front/dm_online_gate.gd`, the manifest's `online` block, `set-online.sh`) stays as an emergency off switch.
+**D10. Online gate.** Online was staff-first, then opened to everyone (B5). The gate code (`front/dm_online_gate.gd`, the
+manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
 
-**D11. Lobby = private codes plus a public list of open sessions.** Built and deployed as `deathmuffin-lobby` on :5192
-(it follows the manifest gate, so it is open to everyone while online is `on`).
+**D11. Lobby = private codes plus a public list of open sessions** (`deathmuffin-lobby`, :5192; it follows the manifest gate).
 
-**D12. Migration 041 (party sessions tables) approved and applied** (2026-10-07).
+**D12. Party-session tables (migration 041)** are part of the backend schema.
 
-**D13. Disconnects get a rejoin window.** Decided, not built (see KNOWN-GAPS.md). D6 still holds for the host.
+**D13. Disconnects get a rejoin window** (not built, see KNOWN-GAPS.md). D6 still holds for the host.
 
 ## Rules the owner set during the rebuild
 
@@ -62,7 +58,7 @@ replaced by the launcher page, `src/` deleted from `main`, the web/offline/mobil
 ## Baseline decisions, 2026-10-09
 
 - **B1. Online only for players.** The game starts online by default. Offline launch is a testing flag (`-- --dev-offline`) with
-  its own save. Old offline characters and the "offline:" token are wiped on an online start.
+  its own save; the "offline:" token is wiped on an online start.
 - **B2. One game.** The web game, offline and mobile web builds, Socket.IO realtime (:5191), the old `DmGame` path, WorldSim and
   co-op code are retired. The Godot line is `main`; tag `archive/legacy-web` keeps the web game.
 - **B3. Necromancer-only baseline.** Four necromancer disciplines are playable (`DmCharacterBuild.is_playable`, backend
@@ -70,9 +66,9 @@ replaced by the launcher page, `src/` deleted from `main`, the web/offline/mobil
   non-necro discipline switch to a necro discipline.
 - **B4. One launcher button.** Launcher 0.7.0: a single online Play/Update button; the site's play page is replaced by the
   launcher download page.
-- **B5. Online open to everyone** (`set-online.sh on`, client 20261009.180644-89869ac); staff gate off.
+- **B5. Online open to everyone** (`set-online.sh on`); the staff gate is off.
 - **B6. Repository.** No fresh repo: `Brbmuffins/Death_Muffin` is cleaned in place, because installed launchers self-update from
-  its releases. Default branch `main`; old branches are deleted after the baseline tag.
+  its releases. Default branch `main`; old branches became `archive/*` tags.
 - **B7. Rule sources live in `server/rules/`** (moved out of `src/`); `tools/build-server-rules.mjs` compiles them to the
   `.cjs` files the backend loads. Nothing live depends on a client source tree.
 - **B8. Test fixtures are committed** (trimmed golden fixtures under `godot/tests/*/fixtures/`), so the suites run without the
