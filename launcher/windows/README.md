@@ -1,8 +1,7 @@
 # Death Muffin Windows launcher
 
 A small native launcher for Death Muffin. Windows Forms (.NET Framework 4.8, already part of Windows 10/11): no installer, no
-separate runtime. Since 0.6.0 it launches and updates the **Godot client** (`DeathMuffin.exe` + `DeathMuffin.pck`) instead of
-hosting the web game in WebView2.
+separate runtime. It downloads, verifies, updates and starts the **Godot client** (`DeathMuffin.exe` + `DeathMuffin.pck`).
 
 ## For players
 
@@ -51,8 +50,7 @@ hosting the web game in WebView2.
 | Installed game builds | `%LOCALAPPDATA%\DeathMuffin\client\<version>\` (+ `current.json` naming the active one) |
 | Launcher settings (GPU toggle) | `%LOCALAPPDATA%\DeathMuffin\launcher-settings.json` |
 
-Delete the `client` folder to force a clean re-download. The old web-offline save (`LauncherProfile`, from launcher 0.5.x) is no longer used
-and can be deleted.
+Delete the `client` folder to force a clean re-download.
 
 ## Server side (client files and the online lock)
 
@@ -74,9 +72,9 @@ Published by [`server/death-muffin/publish-godot-client.sh`](../../server/death-
 
 `version` sorts by its dotted number (a newer build is always `UPDATE`; the launcher never downgrades). `url` must be on the same
 host as the manifest. Each build lives in its own `<version>/` folder and `manifest.json` is written last, atomically, so players
-mid-download are never served mixed files. Republishing keeps the current `online` block. Devs open or close online sign-in with
-[`set-online.sh`](../../server/death-muffin/set-online.sh) `on|off ["message"]` (only the `online` block changes). Only a literal
-JSON `true` counts as open.
+mid-download are never served mixed files. Republishing keeps the current `online` block. Online sign-in is switched with
+[`set-online.sh`](../../server/death-muffin/set-online.sh) (only the `online` block changes; release flow in
+[server/death-muffin/README.md](../../server/death-muffin/README.md)). Only a literal JSON `true` counts as open.
 
 The launcher does not gate PLAY on `online`: the game enforces it at sign-in (`online.enabled: true` opens it to everyone).
 
@@ -84,7 +82,7 @@ The launcher does not gate PLAY on `online`: the game enforces it at sign-in (`o
 
 Needs the .NET SDK (8 or newer) and NuGet access for the reference assemblies. The project targets .NET Framework 4.8 and
 uses `Microsoft.NETFramework.ReferenceAssemblies`, so it also compiles on Linux/macOS (it only runs on Windows). There are no
-native dependencies any more (WebView2 was removed in 0.6.0).
+native dependencies.
 
 ```powershell
 dotnet build launcher/windows/DeathMuffinLauncher.csproj -c Release
@@ -96,7 +94,7 @@ Output: `launcher/windows/bin/Release/net48/DeathMuffinLauncher.exe`. The versio
 
 The [Windows launcher workflow](../../.github/workflows/launcher-windows.yml) builds on `windows-latest` for pushes touching
 `launcher/**` (and manual runs), uploads `DeathMuffinLauncher-win-x64.zip` as an artifact and, from `main` or a manual
-run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.7.0) for each new launcher release.
+run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.7.0) for each new launcher release and add a changelog line.
 
 Code map: `ClientLogic.cs` (manifest parsing, version compare, hashing, online note, button state machine; no UI),
 `ClientInstaller.cs` (download/verify/resume/swap and the install folder), `Updates.cs` (server requests), `LauncherForm.cs`
@@ -109,7 +107,4 @@ frame, with a command bar, a World Dispatch panel and a status column.
 
 ### Changelog
 
-- **0.7.0** - One play path: online. A single Download / Play / Update button; the separate Play Online button, the offline edition wording and the online/offline one-session prompt are gone. Always launches with `-- --online`. An unopened online (or no internet) only adds a note under PLAY.
-- **0.6.0** - Launches the Godot client. One Download / Update / Play offline button (SHA-256 verified, resumable, atomic swap into `%LOCALAPPDATA%\DeathMuffin\client\<version>`), Play Online built but locked by `online.enabled` in the server manifest, GPU preference via Windows per-app setting. Removed WebView2, the web game windows, the precache and the web offline edition.
-- **0.5.1** - Online and offline made explicit: three always-visible buttons (Play online, Download offline, Play offline), saved offline download state and build, one-session rule with a confirm, no-internet state, in-launcher patch notes, launcher self-update check; the download is started by the offline page's `?download=1` instead of clicking its button.
-- **0.5.0** - MMO-style frame, command bar, World Dispatch panel.
+- **0.7.0** - One play path: online. A single Download / Play / Update button; always launches with `-- --online`. An unopened online (or no internet) only adds a note under PLAY.
