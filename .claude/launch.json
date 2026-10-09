@@ -12,12 +12,6 @@
       "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
       "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5198", "--strictPort"],
       "port": 5198
-    },
-    {
-      "name": "death-muffin-realtime",
-      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
-      "runtimeArgs": ["server/realtime/server.js"],
-      "port": 5000
     }
   ]
 }

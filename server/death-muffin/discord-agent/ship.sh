@@ -44,7 +44,7 @@ HEAD_NOW=$(g -C "$REPO" rev-parse "refs/heads/$BRANCH") || { echo "RESULT: head-
 [ "$HEAD_NOW" = "$EXPECT_HEAD" ] || { echo "RESULT: head-moved $HEAD_NOW"; exit 5; }
 g -C "$REPO" worktree add -q --detach "$SW" "$OLD" || { echo "RESULT: worktree-failed"; exit 6; }
 cd "$SW"
-for rel in node_modules server/realtime/node_modules; do [ -d "$REPO/$rel" ] && ln -s "$REPO/$rel" "$SW/$rel"; done
+for rel in node_modules; do [ -d "$REPO/$rel" ] && ln -s "$REPO/$rel" "$SW/$rel"; done
 
 say "merging $BRANCH onto $BASE_BRANCH ${OLD:0:7}"
 if ! g merge -q --ff-only "$EXPECT_HEAD" >/dev/null 2>&1; then
@@ -152,7 +152,7 @@ mobile_step() {
   g -C "$REPO" rev-parse -q --verify "refs/remotes/origin/$MB" >/dev/null || { echo "MOBILE: skipped no $MB branch"; return; }
   [ -e "$MW" ] && mobile_cleanup
   g -C "$REPO" worktree add -q --detach "$MW" "origin/$MB" || { echo "MOBILE: pending worktree failed"; return; }
-  for rel in node_modules server/realtime/node_modules; do [ -d "$REPO/$rel" ] && ln -s "$REPO/$rel" "$MW/$rel"; done
+  for rel in node_modules; do [ -d "$REPO/$rel" ] && ln -s "$REPO/$rel" "$MW/$rel"; done
   cd "$MW" || { echo "MOBILE: pending worktree failed"; return; }
   say "merging $BASE_BRANCH ${SHA:0:12} into $MB"
   if ! g merge -q --no-ff -m "Merge $BASE_BRANCH ${SHA:0:12} into $MB" "$SHA" >/dev/null 2>&1; then

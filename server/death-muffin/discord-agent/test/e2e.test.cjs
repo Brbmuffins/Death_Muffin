@@ -452,7 +452,7 @@ test('a deploy script rewritten by hand is still forbidden (only a verified rege
   const { thread } = await request(d, IDS.HELIX, 'MAKE-DATA-FORBIDDEN faster');
   await until(() => texts(thread).some((t) => /could not get this into a shippable state/.test(t)), d.ad);
   assert.equal(proposalOf(thread), undefined);
-  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /deploy-realtime\.sh/);
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /deploy-release\.sh/);
 });
 
 test('ship-gate re-derives generated files on the merged tree: stale/tampered rejected, exact accepted', () => {

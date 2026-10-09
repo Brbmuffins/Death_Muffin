@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Regenerates the files that are DERIVED from shared game data, so a data change can be committed together with its generated
-# server bundles: build:server-rules (server/**/*-rules.cjs), gen:loot (docs/LOOT-TABLES.md) and embed-realtime (the realtime
-# deploy script). Same sandbox as check.sh: fresh user/network/mount namespaces, loopback only, the whole filesystem read-only (sandbox-lib.sh), the worktree
+# server bundles: build:server-rules (server/**/*-rules.cjs), gen:loot (docs/LOOT-TABLES.md). Same sandbox as check.sh: fresh user/network/mount namespaces, loopback only, the whole filesystem read-only (sandbox-lib.sh), the worktree
 # (and only it) writable. Run from the worktree root. Prints what changed (git status) afterwards.
 set -euo pipefail
 TOP=$(git rev-parse --show-toplevel)
@@ -12,7 +11,6 @@ export DM_PAYLOAD='
   cd "$TOP"
   npm run -s build:server-rules
   npm run -s gen:loot
-  node tools/embed-realtime.mjs
 '   # the sandboxed work; run by dm_sandbox_run inside the nested namespace (sandbox-lib.sh)
 unshare -rnm bash -c '. "$DM_SANDBOX_LIB"; dm_sandbox_run'
 echo "== regenerated; changed files:"

@@ -59,9 +59,7 @@ sudo systemctl restart death-muffin-auth.service
 systemctl status death-muffin-auth.service --no-pager
 ```
 
-`.env` is untouched. Realtime needs a restart only if you also ship the realtime `gather` intent
-(`server/realtime/server.js`, re-embedded by `node tools/embed-realtime.mjs`). Older realtime servers drop
-the unknown intent, so co-op node depletion just stays local to each player until it's deployed.
+`.env` is untouched. (The Socket.IO realtime service was retired 2026-10-09; the rest of this paragraph is historical.)
 
 ## 5. Verify (temporary test account; never paste owner credentials)
 

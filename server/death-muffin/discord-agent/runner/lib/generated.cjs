@@ -1,6 +1,6 @@
 'use strict';
-// Derived ("generated") files: server bundles built from src/, the loot doc, and the realtime deploy script that embeds server.js.
-// They sit under server/** (sensitive) and one is a forbidden deploy*.sh by path, so by path alone any data change would escalate.
+// Derived ("generated") files: server bundles built from src/, and the loot doc.
+// They sit under server/** (sensitive), so by path alone any data change would escalate.
 // Instead they are treated as tier-neutral ONLY when they are exactly what the generators produce from the committed sources.
 // That is proven here by deterministic code: re-run regen.sh (same sandbox as check.sh) in a scratch worktree of the commit and
 // require a clean `git status` for every generated file the change touches. The model never decides this.
@@ -13,11 +13,10 @@ const GENERATED = [
   ...['gathering', 'garden', 'cosmetic', 'labor', 'contract', 'salvage', 'affix', 'authority', 'kill', 'vault', 'legion', 'gold-sink', 'rune', 'loadout']
     .map((n) => `server/death-muffin/backend/gathering/${n}-rules.cjs`),
   'docs/LOOT-TABLES.md',
-  'server/realtime/deploy-realtime.sh',      // tools/embed-realtime.mjs rewrites only the heredoc bodies inside it
 ];
 // Files that are edited in place by a generator rather than fully produced: reset to the BASE version (not deleted) before regen,
 // so hand edits outside the generated regions cannot ride along as "derived".
-const PATCHED = ['server/realtime/deploy-realtime.sh'];
+const PATCHED = [];
 
 const git = (cwd, args, o) => run('git', ['-c', 'core.hooksPath=/dev/null', ...args], { cwd, timeoutMs: 120000, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, ...o });
 
@@ -29,7 +28,7 @@ async function verifyGenerated({ toolsDir, repo, scratchRoot, base, head, change
   try {
     const add = await git(repo, ['worktree', 'add', '-q', '--detach', sw, head]);
     if (add.code !== 0) return { derived: [], mismatched: cand, error: `scratch worktree failed: ${add.err.slice(0, 200)}` };
-    for (const rel of ['node_modules', 'server/realtime/node_modules']) {
+    for (const rel of ['node_modules']) {
       const src = path.join(repo, rel);
       if (fs.existsSync(src)) { try { fs.symlinkSync(src, path.join(sw, rel)); } catch { /* exists */ } }
     }

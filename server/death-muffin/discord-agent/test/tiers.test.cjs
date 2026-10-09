@@ -104,10 +104,10 @@ test('parseDiff reads files, statuses and hunks', () => {
 const { GENERATED } = require('../runner/lib/generated.cjs');
 const gen = 'server/vps-handoff/necro-progress/necro-rules.cjs';
 test('derived generated files are tier-neutral and not forbidden; undeclared ones still escalate', () => {
-  const diff = d('src/gameplay/a.ts', ['speed=1'], ['speed=9']) + d(gen, ['SPEED=1'], ['SPEED=9']) + d('server/realtime/deploy-realtime.sh', ['a'], ['b']);
+  const diff = d('src/gameplay/a.ts', ['speed=1'], ['speed=9']) + d(gen, ['SPEED=1'], ['SPEED=9']) + d('server/death-muffin/deploy-release.sh', ['a'], ['b']);
   const plain = classifyDiff(diff, cfg);
-  assert.equal(plain.tier, 'sensitive'); assert.deepEqual(plain.forbidden, ['server/realtime/deploy-realtime.sh']);
-  const c = classifyDiff(diff, cfg, [gen, 'server/realtime/deploy-realtime.sh']);
+  assert.equal(plain.tier, 'sensitive'); assert.deepEqual(plain.forbidden, ['server/death-muffin/deploy-release.sh']);
+  const c = classifyDiff(diff, cfg, [gen, 'server/death-muffin/deploy-release.sh']);
   assert.equal(c.tier, 'gameplay'); assert.deepEqual(c.forbidden, []);
   assert.deepEqual(c.perFile.map((f) => f.tier), ['gameplay', 'derived', 'derived']);
   // an unverified generated file (not in `derived`) still counts
@@ -117,14 +117,14 @@ test('derived generated files are tier-neutral and not forbidden; undeclared one
   // casual source + derived stays casual
   assert.equal(classifyDiff(d('src/ui/ui.css', ['a'], ['b']) + d('docs/LOOT-TABLES.md', ['a'], ['b']), cfg, ['docs/LOOT-TABLES.md']).tier, 'casual');
 });
-test('GENERATED lists exactly the outputs of tools/build-server-rules.mjs plus the loot doc and realtime deploy script', () => {
+test('GENERATED lists exactly the outputs of tools/build-server-rules.mjs plus the loot doc', () => {
   const fs = require('fs'), path = require('path');
   const root = path.resolve(__dirname, '../../../..');
   const f = path.join(root, 'tools/build-server-rules.mjs');
   if (!fs.existsSync(f)) return;   // installed copy without the repo
   const outs = [...fs.readFileSync(f, 'utf8').matchAll(/out: join\(root, '([^']+)'\)/g)].map((m) => m[1]);
   assert.ok(outs.length >= 15);
-  assert.deepEqual([...GENERATED].sort(), [...outs, 'docs/LOOT-TABLES.md', 'server/realtime/deploy-realtime.sh'].sort());
+  assert.deepEqual([...GENERATED].sort(), [...outs, 'docs/LOOT-TABLES.md'].sort());
 });
 
 // ---------- godot mode tiers (cfg.tiers = godotTiers) ----------
