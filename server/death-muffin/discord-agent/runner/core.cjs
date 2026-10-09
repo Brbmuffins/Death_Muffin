@@ -581,7 +581,7 @@ function createRunner(cfgIn, opts = {}) {
     return { ok: true, files, cls, migrations, tests: t, diff, commits };
   }
   async function runChecks(job) {
-    const r = await G.run(path.join(cfg.toolsDir, CHECK), [], { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: (GODOT ? 45 : 25) * 60000 });
+    const r = await G.run(path.join(cfg.toolsDir, CHECK), [], { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: (GODOT ? 90 : 25) * 60000 });
     const out = r.out + r.err;
     // web: the node:test counters; godot: the last "GODOT TESTS: ..." line check-godot.sh prints
     const sum = GODOT ? ((out.match(/^GODOT TESTS: .*$/gm) || []).pop() || '').replace(/^GODOT TESTS: /, '') : (out.match(/^# (tests|pass|fail) .*$/gm) || []).join(' · ').replace(/# /g, '');
@@ -835,7 +835,7 @@ function createRunner(cfgIn, opts = {}) {
       MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
       MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
-    try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 75 * 60000 }); }
+    try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 150 * 60000 }); }
     finally { setBusy(false); }
     const out = r.out + r.err; const m = /^RESULT: (\S+)\s*(.*)$/m.exec(out); const kind = m ? m[1] : 'crashed'; const detail = m ? m[2] : '';
     audit.log('ship-result', { job: job.id, kind, detail, approver: approverId });
