@@ -40,9 +40,9 @@ tools/godot/                 Node/TS tools: data export, golden fixtures, asset 
   run.gd print `fixtures missing: run tools/godot/gen-fixtures.sh` (and exit non-zero) when they are absent.
 
 ## Git
-- Each track works in its own worktree on its own branch cut from `godot-port` (e.g. `godot/rules-loot`), commits with explicit
+- Each track works in its own worktree on its own branch cut from `godot-next` (e.g. `godot/rules-loot`), commits with explicit
   paths (never `git add -A`), plain one-line messages, NEVER a Co-Authored-By or other trailer. Do not push; the integrator merges
-  into `godot-port`. Never touch master/mobile, never deploy, never restart services, never touch .env/secrets.
+  into `godot-next`. Never touch master/mobile, never deploy, never restart services, never touch .env/secrets.
 
 ## Report (every track)
 What's ported (file list), fixture coverage + pass counts, what's stubbed and why, dependencies on other tracks, autoloads/inputs

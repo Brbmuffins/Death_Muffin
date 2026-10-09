@@ -1,5 +1,7 @@
 # Death Muffin — Player Guide
 
+> **Current state (2026-10-09):** Death Muffin is one project, the Godot rebuild on branch `godot-next` (project `godot/`, entry `DmNextGame`). The web client in `src/` (three.js, `master`) is frozen legacy reference; `godot-port` has been merged into `godot-next`. The backend `server/death-muffin/` is live and shared. See [godot/REBUILD.md](godot/REBUILD.md), [godot/PARITY.md](godot/PARITY.md), [godot/README.md](godot/README.md). This guide describes the web game; the Godot client is the same game being rebuilt, with parity tracked in PARITY.md.
+
 *A dark fantasy action RPG in your browser, alone or in a shared world of up to 10 players.*
 
 ![A fight in the Hollow Graves](docs/screenshots/graves-battle.webp)

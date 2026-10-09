@@ -1,5 +1,7 @@
 # HANDOFF — current work first
 
+> **Current state (2026-10-09):** Death Muffin is one project, the Godot rebuild on branch `godot-next` (project `godot/`, entry `DmNextGame`). The web client in `src/` (three.js, `master`) is frozen legacy reference; `godot-port` has been merged into `godot-next`. The backend `server/death-muffin/` is live and shared. See [godot/REBUILD.md](godot/REBUILD.md), [godot/PARITY.md](godot/PARITY.md), [godot/README.md](godot/README.md). The text below was written for the web game; treat it as history and spec unless it says otherwise.
+
 Updated 2026-10-01 (late). Read [the documentation map](docs/README.md) for the
 difference between source, published releases and historical plans. Update the
 **Current state** and **In flight** sections when stopping work. What comes next

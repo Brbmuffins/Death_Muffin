@@ -29,8 +29,8 @@ Owner answers, 2026-10-05:
   phases prove and polish **solo/offline play first**; lobby UI, relay deployment and multi-player testing come later.
 - **D6. Host quits = session ends** for everyone (each member keeps what the backend already credited). No host migration.
   VPS-hosted (headless Godot) sessions are a future option, not planned now.
-- **D7. Branches.** `godot-port` stays the releasable client (fixes/perf ship from it). The rebuild lands on **`godot-next`**; unlisted
-  preview builds come from it; `godot-port` is merged into `godot-next` regularly; `godot-next` replaces it once it is solid.
+- **D7. Branches.** The rebuild lives on **`godot-next`**, which is now the single line (owner, 2026-10-09): fixes, perf and features ship from it, and
+  the launcher client is published from it (`server/death-muffin/publish-godot-client.sh`). `godot-port` was merged into it and is only fast-forwarded to it.
 - **D8. Characters.** Existing online characters carry into Godot online unchanged (same backend). Offline characters stay offline-only.
 - **D9. Web retirement.** The three.js game is retired once the Godot game is complete: taken offline (not publicly reachable), its code kept
   in git history only.
@@ -132,7 +132,7 @@ Godot client  <->  Host's Godot game (authoritative sim, 1-4 players)
 
 ## Status
 
-Updated 2026-10-08 (branch `next/sync-1008`: `godot-port` merged into the rebuild line, spawn-outside-aggro fix included). Feature-by-feature detail is `godot/PARITY.md`.
+Updated 2026-10-09 (branches unified: `godot-port` merged into `godot-next`, which is now the single line and the default client; earlier 2026-10-08 sync: spawn-outside-aggro fix included). Feature-by-feature detail is `godot/PARITY.md`.
 
 | Phase | State |
 |---|---|
@@ -145,5 +145,6 @@ Updated 2026-10-08 (branch `next/sync-1008`: `godot-port` merged into the rebuil
 | Lobby (D11) | DEPLOYED: systemd `deathmuffin-lobby` on :5192, staff-gated; private codes + public list of open sessions; Party window on the rebuild (`next/party/README.md`) |
 | 6 Quality pass | DONE on the live client (`godot-port`: presets Low/Medium/High/Ultra, lighting pass + Brightness, UI scaling) and SYNCED into the rebuild 2026-10-08 (`DmNextPerf` applies preset, lift, Brightness, Interface size; `DmWorldBuilder` is shared). Forward+ evaluation still needs real PCs (owner's and Helix's); no GPU-measured frame budget of the rebuilt scene exists |
 | 7 Hardening | OPEN: disconnects (D13: rejoin window, not built), desync checks, cheating review |
-| Default client | `DmMain.USE_NEXT` is still `false`; the rebuild runs with `-- --next`. `godot-port` is still the client players run |
+| Default client | `DmMain.USE_NEXT := true` since 2026-10-09 (f10c2d1f): the rebuild is the default, `-- --old` forces `DmGame`. Characters of the 5 non-necromancer disciplines still enter `DmGame` until their kits are built on the rebuild (`DmMain.next_supports`) |
+| Branches | `godot-port` was unified into `godot-next` 2026-10-09 (merge 7752a55b + df7a4113); `godot-next` is the single line, `godot-port` only fast-forwards to it. The launcher client is published from `godot-next` |
 | Online unlock (D10) | LIVE since 2026-10-07: client gate (`front/dm_online_gate.gd`, one implementation in both clients) + launcher 0.6.1 + manifest `online.staff` |

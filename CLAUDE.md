@@ -1,6 +1,19 @@
 # Death Muffin — development context
 
-Browser client for Death Muffin (Vite + TypeScript + Three.js): a dark-fantasy
+**Current state (owner decision 2026-10-09): Death Muffin is ONE project, the Godot
+rebuild.** The active client is in `godot/` on branch **`godot-next`** (entry
+`DmNextGame` in `godot/next/`; `DmMain.USE_NEXT := true` is the default, `-- --old`
+forces the legacy `DmGame`). Branch from and ship from `godot-next`; `godot-port` is
+merged into it and is not a line to work on. The TypeScript / Three.js web client in
+`src/` (branch `master`) is **frozen legacy reference**: use it as the spec for
+behaviour and numbers, but make no fixes or features there. The backend
+`server/death-muffin/` is still live and shared by every client. Start with
+`godot/REBUILD.md` (decisions, status), `godot/PARITY.md` (what is built vs the web
+game) and `godot/README.md` (running, exporting, data pipeline). The rest of this
+file describes the web game and its ground rules; keys, art pipeline and discipline
+indices still apply.
+
+Death Muffin is a dark-fantasy
 action RPG with nine classes — one connected world (Chapterhouse → Hollow Graves →
 Marrow Ossuary → Drowned Nave → Bell Sanctum → Plague Cloister → Cinder Pyre → Mourning Fen, the last three level-scaled), continuous waves, corpses as a
 resource, Damage / Wave Speed upgrades and boss fights. The original shared

@@ -1,5 +1,7 @@
 # Death Muffin: Godot port (foundation slice + wave-2 world)
 
+**Current state (2026-10-09):** this is the active Death Muffin client. Work happens on branch `godot-next` (rebuild in `next/`, `DmNextGame`, default via `DmMain.USE_NEXT := true`; `-- --old` forces the legacy `DmGame`). `godot-port` was merged into it. Decisions and status: `REBUILD.md`; parity with the frozen web game: `PARITY.md`.
+
 A native Godot 4.7 build of the web game. The foundation slice was two rooms; the world track (wave 2) extends it to the whole connected
 world: Chapterhouse, Sexton's Acre, Alchemist's Wing, Hollow Graves, Catacomb Warren, Marrow Ossuary, Drowned Nave, Bone Coliseum, Bell Sanctum,
 Plague Cloister, Cinder Pyre, Mourning Fen and the Catacomb Depths (one sample floor), with all doors/gates, props, gathering nodes, NPCs and every

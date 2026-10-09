@@ -1,4 +1,4 @@
-# Feature parity: current client (`godot-port`) vs the rebuild (`godot-next`)
+# Feature parity: legacy client (`DmGame`, formerly `godot-port`) vs the rebuild (`godot-next`, now the default)
 
 Re-audited at `godot-next` 569894df (branch `godot/parity-audit-2`), 2026-10-06; the first pass was at 22ee59f3 and went stale as the tracks landed.
 **Partial re-audit 2026-10-08 (branch `next/sync-1008`, after merging `godot-port` into the rebuild line):** only the rows touched by that sync and the open-gaps list were re-checked
@@ -19,7 +19,7 @@ every contract method the first audit listed as absent (`stop_gathering`, `afk_*
 (`DmNextBelt` serves it) and `set_primary` (`set_rites` covers it); the party calls (`party_view/watch/refresh/create/join/join_id/leave/kick/set_open`) are served by `DmNextParty` (`next/party/`).
 `hud_state()` (`next/hud/dm_next_hud_vm.gd`) now sets `depth`, `chain`, `omen`, `ward`, `souls` and `save` (the auto-combat button follows the `auto_combat` setting); `next` (Next-step box) follows the guidance feeds and `minimap.ping` the suggestion (`tests/next_acre_guide`).
 
-**Not the default yet:** `DmMain.USE_NEXT` is still `false` (`main/main.gd:12`); the rebuild runs with `-- --next`, the old game stays the default until the owner flips it.
+**Now the default (2026-10-09, f10c2d1f):** `DmMain.USE_NEXT := true` (`main/main.gd`); `-- --old` forces `DmGame`. Characters of the 5 non-necromancer disciplines still enter `DmGame` until their kits are built on the rebuild (`DmMain.next_supports`). `godot-port` was unified into `godot-next` the same day.
 
 ## Open gaps, ranked
 
