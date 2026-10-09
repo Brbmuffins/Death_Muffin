@@ -130,6 +130,17 @@ Godot client  <->  Host's Godot game (authoritative sim, 1-4 players)
      project/launcher flag, not as a preset.
 7. **Hardening**: disconnects, host migration (or clean session end), desync checks, cheating review.
 
+## Code audit (2026-10-09, read-only: structure, docs vs code; the test suites were not run for this)
+
+- **Size:** about 425 named `Dm*` classes under `godot/`; no TODO/FIXME/HACK markers in any `.gd` file. Largest files: `sim/sim_caster.gd` (2203 lines), `game/dm_game.gd` (1541), `world/world_builder.gd` (1383), `sim/world_sim.gd` (1327), `game_ui/dm_game_ui.gd` (1049), `next/hud/dm_next_ui_host.gd` (970).
+- **Two game stacks live side by side.** The rebuild (`next/`, `enemies/`, `session/`) is the default; the old `DmGame` hub (`game/`, `sim/` WorldSim with its bit-exact `fdlibm`/`sim_exact`, `net/realtime/` Socket.IO) is still reached by the five non-necromancer disciplines (`DmMain.next_supports`) and `-- --old`. The rebuild reuses the old UI (`DmGameUi` through the `DmNextUiHost` adapter), the world builder, the boss brains and the rules/data layers, so only part of the old stack is deletable once the other kits land: `DmGame`, `sim/` WorldSim and the Socket.IO client. `rules/`, `ui/`, `fx/`, `world*/` and the boss brains stay.
+- **Tests:** about 100 runnable suites (`tests/*/run.gd`, `*_run.gd`), all picked up by `tools/godot/run-all-tests.sh`; `tests/common` is helpers and `tests/playtest` is the bot harness (`tools/godot/playtest.sh`). `tests/online_live` needs the live backend and is opt-in.
+- **Per-frame work:** 30 files under `next/` define `_process` / `_physics_process` (most only one); the big hot paths are covered by perf budgets in the `tests/next*` suites. No rendered (GPU) numbers exist.
+- **Stale text found and fixed in docs:** `PARITY.md` still said `USE_NEXT` was false; `ROADMAP.md` was the frozen web roadmap with no current plan; `docs/README.md` described the web build only; `next/README.md` called the current game untouched.
+- **Stale text left alone (code files, so a separate gameplay-tier change):** header and `_next_slice` comments in `main/main.gd` still say the default path is `DmGame` / "untouched".
+- **Doc conflicts to settle:** migration 041 (sessions tables) is "approved and applied" here (D12) but `PARITY.md` section 20 says the live server has no `/api/sessions`; confirm on the live server. `HANDOFF.md` (765 lines), `PHASE_REPORTS.md`, `BALANCE.md` and most of `docs/` describe the web game and are history unless a section says otherwise.
+- **Docs not changed:** `HANDOFF.md`, `README.md` (player guide, web), `docs/*` briefs; moving or deleting them would break links and needs an owner call.
+
 ## Status
 
 Updated 2026-10-09 (branches unified: `godot-port` merged into `godot-next`, which is now the single line and the default client; earlier 2026-10-08 sync: spawn-outside-aggro fix included). Feature-by-feature detail is `godot/PARITY.md`.

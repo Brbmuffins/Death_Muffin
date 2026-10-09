@@ -1,5 +1,18 @@
 # Documentation map
 
+**Current (2026-10-09): Death Muffin is the Godot rebuild on `godot-next`; the web game and most of the files below describe the frozen web version.** Read these first:
+
+| Question | Read |
+| --- | --- |
+| What is the plan and what is built? | [ROADMAP](../ROADMAP.md) (top section), [godot/REBUILD.md](../godot/REBUILD.md) (decisions D1-D13, phases, status, code audit) |
+| What is still missing vs the web game? | [godot/PARITY.md](../godot/PARITY.md) (open gaps, ranked) |
+| How do I run, test and export the Godot client? | [godot/README.md](../godot/README.md), `tools/godot/run-all-tests.sh` |
+| Where does each rebuild system live? | [godot/next/README.md](../godot/next/README.md) and the READMEs beside each `godot/next/<system>/` |
+| Rules the port follows, UI contract | [godot/PORTING.md](../godot/PORTING.md), [godot/GAME_CONTRACT.md](../godot/GAME_CONTRACT.md) |
+| Working rules for edits | [CLAUDE.md](../CLAUDE.md) |
+
+Everything below is the older web-era map. Treat its statuses and its dated snapshot paragraph as history; the backend (`server/death-muffin/`) docs are still current because the server is shared.
+
 Start here when working with several contributors. The documents serve different
 purposes; a dated design brief is not evidence that a feature is in the game or
 on the public site.

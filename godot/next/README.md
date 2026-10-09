@@ -1,6 +1,6 @@
 # godot/next: the rebuild's vertical-slice game scene
 
-`next_game.tscn` / `DmNextGame` is a slim, scene-first replacement for the `DmGame` hub (the current game is untouched). Solo (default) is a
+`next_game.tscn` / `DmNextGame` is a slim, scene-first replacement for the `DmGame` hub. It is the default client since 2026-10-09; `DmGame` (`game/`) remains only for the five non-necromancer disciplines and `-- --old`. Solo (default) is a
 1-player `DmSession` hosted on an `OfflineMultiplayerPeer`; a 2-player session is the same code with another peer (no `if solo` in gameplay).
 
 ## Launch

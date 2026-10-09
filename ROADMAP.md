@@ -1,4 +1,26 @@
-> **Note (2026-10-08): the web (three.js) game is frozen since 2026-10-04.** This roadmap is the old web roadmap and is kept for its history only. The Godot client's roadmap lives in `godot/REBUILD.md` (decisions, phases, status) and `godot/PARITY.md` (feature parity and open gaps).
+# Death Muffin: current roadmap (Godot rebuild, 2026-10-09)
+
+Death Muffin is one project: the Godot rebuild on `godot-next` (default client since 2026-10-09). Decisions and phase status live in `godot/REBUILD.md`; the feature-by-feature gap list is `godot/PARITY.md`. This section is the short version; everything below the line is the frozen web roadmap, kept for history.
+
+**Done:** the necromancer game on the rebuild (all four disciplines, 25 rites, runes, thralls, 7 bosses, 12 areas, the Depths, gathering and professions, loot, progression, HUD and panels), solo online and offline, the lobby/relay (staff-gated), graphics presets.
+
+**Now (owner priorities, in order)**
+1. Rendered performance on real hardware: no GPU-measured frame budget of the rebuilt scene exists yet; Forward+ evaluation needs the owner's and Helix's PCs (`REBUILD.md` Phase 6).
+2. Necromancer polish: combat feel, loot and first-hour rough edges found in playtests (`godot/tests/playtest/FINDINGS.md`).
+
+**Next**
+- The five non-necromancer disciplines on the rebuild (Grave Warden, Bell Monk, Carrion Witch, Hollow Knight, Veilwalker; `PARITY.md` gap 10). Until then those characters still enter the old `DmGame`, which is why that stack cannot be deleted yet.
+- Online hardening (D13 rejoin window, desync checks, cheating review; `REBUILD.md` Phase 7) and the party gaps listed in `PARITY.md` gap 9.
+
+**Later**
+- Retire the web build (D9) and its TypeScript exporters once nothing needs them; retire `DmGame`, `sim/` (WorldSim) and Socket.IO realtime when the other disciplines land.
+- New content (Hollow Court, AI companions) stays parked behind the polish principle below.
+
+**Small open items:** in-game leaderboard panel (website only today), chat is local-only, a few counsel events unraised (`godot/next/hud/README.md`).
+
+---
+
+> **Note (2026-10-08): the web (three.js) game is frozen since 2026-10-04.** The roadmap below is the old web roadmap and is kept for its history only.
 
 # Death Muffin — Roadmap
 
