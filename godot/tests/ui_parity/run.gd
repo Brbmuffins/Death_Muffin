@@ -88,7 +88,7 @@ func _run_spelltip() -> void:
 
 func _run() -> void:
 	if not FileAccess.file_exists(FIX + "spelltip.json"):
-		print("fixtures missing: run tools/godot/gen-fixtures.sh")
+		print("fixtures missing (committed under tests/<suite>/fixtures)")
 		quit(1)
 		return
 	_run_spelltip()

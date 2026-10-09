@@ -21,13 +21,7 @@ godot/.godot/
 godot/build/
 godot/shots/
 
-# Golden fixtures are generated from the TypeScript (tools/godot/gen-fixtures.sh); large sets stay out of git.
-godot/tests/rules-loot/fixtures/
-godot/tests/rules-gathering/fixtures/
-godot/tests/rules-progression/fixtures/
-godot/tests/rules-combat/fixtures/
-godot/tests/gear/fixtures/
-godot/tests/dialogue/fixtures/
-godot/tests/ui_parity/fixtures/
+# Golden fixtures: rules-*/gear/dialogue/ui_parity/bosses are now COMMITTED (trimmed by tools/godot/trim-fixtures.py). sim/ and game/ are old-path,
+# still generated from the TypeScript (tools/godot/gen-fixtures.sh) and stay out of git.
 godot/tests/game/fixtures/
 godot/vendor_eval/

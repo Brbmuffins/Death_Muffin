@@ -19,10 +19,10 @@ func _init() -> void:
 	var files: Array = []
 	if dir != null:
 		for f in dir.get_files():
-			if f.ends_with(".json"):
+			if f.ends_with(".json.gz"):
 				files.append(f)
 	if files.is_empty():
-		printerr("fixtures missing: run tools/godot/gen-fixtures.sh")
+		printerr("fixtures missing: fixtures are committed: tests/bosses/fixtures/*.json.gz")
 		print("adapter: 0 passed, 1 failed")
 		quit(1)
 		return
@@ -113,8 +113,8 @@ func _apply(sim, c, o: Dictionary) -> void:
 
 
 func _run(file: String) -> void:
-	var f := FileAccess.open(FX + file, FileAccess.READ)
-	var fx: Dictionary = JSON.parse_string(f.get_as_text())
+	# scenarios are committed gzip'd (tools/godot/trim-fixtures.py)
+	var fx: Dictionary = JSON.parse_string(PackedByteArray(FileAccess.get_file_as_bytes(FX + file)).decompress_dynamic(-1, FileAccess.COMPRESSION_GZIP).get_string_from_utf8())
 	var name: String = fx["name"]
 	var Factory := load("res://sim/bosses/boss_factory.gd")
 	var Mock := load("res://tests/bosses/mock_sim.gd")

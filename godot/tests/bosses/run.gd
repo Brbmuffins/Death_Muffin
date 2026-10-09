@@ -1,6 +1,6 @@
 extends SceneTree
 ## Headless: godot --headless --path godot --script res://tests/bosses/run.gd
-## Replays every scenario in tests/bosses/fixtures (generated from the real TS BossBrain by tools/godot/fixtures-bosses.ts) through the
+## Replays every scenario in tests/bosses/fixtures (*.json.gz, captured from the real TS BossBrain; committed answer keys) through the
 ## GDScript brains and compares, per tick: the boss state, the ordered world-call log (events, spawns, pools, removals) and the
 ## entities left in the world. First mismatch per scenario is reported.
 
@@ -18,10 +18,10 @@ func _init() -> void:
 	var files: Array = []
 	if dir != null:
 		for f in dir.get_files():
-			if f.ends_with(".json"):
+			if f.ends_with(".json.gz"):
 				files.append(f)
 	if files.is_empty():
-		printerr("fixtures missing: run tools/godot/gen-fixtures.sh")
+		printerr("fixtures missing: fixtures are committed: tests/bosses/fixtures/*.json.gz")
 		print("bosses: 0 passed, 1 failed")
 		quit(1)
 		return
@@ -113,8 +113,8 @@ func _world_snap(w) -> Dictionary:
 
 
 func _run_scenario(file: String) -> void:
-	var f := FileAccess.open(FX + file, FileAccess.READ)
-	var fx: Dictionary = JSON.parse_string(f.get_as_text())
+	# scenarios are committed gzip'd (tools/godot/trim-fixtures.py)
+	var fx: Dictionary = JSON.parse_string(PackedByteArray(FileAccess.get_file_as_bytes(FX + file)).decompress_dynamic(-1, FileAccess.COMPRESSION_GZIP).get_string_from_utf8())
 	var name: String = fx["name"]
 	var w := FakeWorld.new(int(fx["seed"]) + 1, fx["difficulty"], int(fx["level"]))
 	w.echoes_n = int(fx["echoes"])

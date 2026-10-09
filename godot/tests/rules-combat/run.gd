@@ -14,7 +14,7 @@ var _shown := 0
 func _initialize() -> void:
 	var dir := DirAccess.open(DIR)
 	if dir == null or not FileAccess.file_exists(DIR + "build.json"):
-		print("fixtures missing: run tools/godot/gen-fixtures.sh")
+		print("fixtures missing (committed under tests/<suite>/fixtures)")
 		quit(1)
 		return
 	var names: Array[String] = []

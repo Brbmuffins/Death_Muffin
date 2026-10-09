@@ -13,7 +13,7 @@ var _shown := 0
 
 func _initialize() -> void:
 	if not FileAccess.file_exists(DIR + "context.json"):
-		print("fixtures missing: run tools/godot/gen-fixtures.sh")
+		print("fixtures missing (committed under tests/<suite>/fixtures)")
 		quit(1)
 		return
 	_run_context()
