@@ -251,7 +251,7 @@ test('long replies are split into several messages with code blocks kept closed;
   assert.match(withFile.payload.content, /attached as reply\.md/);
   assert.ok(withFile.payload.content.length <= 2000);
   const body = withFile.payload.files[0].attachment.toString('utf8');
-  assert.equal(withFile.payload.files[0].name, 'reply.md'); assert.ok(body.includes('row 399:'));
+  assert.equal(withFile.payload.files[0].name, 'reply.md'); assert.ok(body.includes('row 599:'));
 });
 
 test('a long paste (Discord message.txt) is read and given to the agent; other files and non-CDN urls are not', async () => {

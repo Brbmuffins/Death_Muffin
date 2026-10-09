@@ -52,7 +52,7 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   else if (/MAKE-SECRET/.test(p)) { edit('src/gameplay/key.ts', '', 'export const k = "sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123";\n', 'Add a helper'); ready('Helper', ['helper']); text = 'Done.'; }
   else if (/MAKE-FORBIDDEN/.test(p)) { edit('server/death-muffin/deploy-release.sh', 'echo', 'echo hacked', 'Speed up deploys'); ready('Deploy tweak', ['x']); text = 'Done.'; }
   else if (/LONG-REPLY/.test(p)) text = 'Here is the log:\n```\n' + Array.from({ length: 70 }, (_, i) => `line ${i}: ${'x'.repeat(40)}`).join('\n') + '\n```\nDone.';
-  else if (/HUGE-REPLY/.test(p)) text = Array.from({ length: 400 }, (_, i) => `row ${i}: ${'y'.repeat(60)}`).join('\n');
+  else if (/HUGE-REPLY/.test(p)) text = Array.from({ length: 600 }, (_, i) => `row ${i}: ${'y'.repeat(60)}`).join('\n');
   else if (/IMG-ECHO/.test(p)) {
     const m = /\[image attached by [^:\]]*: (\.dm-inbox\/[^ ]+) —/.exec(p); const note = /\[(?:attachments not visible|image [^\]]*not attached|file [^\]]*not attached)[^\]]*\]/.exec(p);
     text = (m && fs.existsSync(m[1]) ? `IMG-SEEN ${fs.readFileSync(m[1]).length} ${m[1]}` : 'IMG-NONE') + (note ? ` NOTE ${note[0]}` : '');
