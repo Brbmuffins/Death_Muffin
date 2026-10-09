@@ -13,7 +13,7 @@ func _cover_up() -> bool:
 	return false
 func _f() -> void:
 	n += 1
-	var g = main.get("game")
+	var g = main.get("game") if main.get("game") != null else main.get("slice")   # slice = the rebuild (the default since USE_NEXT)
 	var ui = main.get("ui")
 	var state := "none"
 	if g != null and is_instance_valid(g):

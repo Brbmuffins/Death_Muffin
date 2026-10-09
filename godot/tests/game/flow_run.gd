@@ -38,7 +38,8 @@ func _run() -> void:
 	main.api.set_token(r.data["token"])
 	await main.flow.resume()
 	_check(main.flow.current_name == "select", "a new account goes to discipline select: %s" % main.flow.current_name)
-	var c := await main.api.load_or_create_character(2)
+	# The rebuild is the default for necromancers (USE_NEXT); a Grave Warden (5) still enters DmGame, the path this suite covers.
+	var c := await main.api.load_or_create_character(5)
 	main.flow.go_world(c.data)
 	await _frames(5)
 	await _until(func() -> bool: return main.game != null and main.game.ready_, 60.0)
