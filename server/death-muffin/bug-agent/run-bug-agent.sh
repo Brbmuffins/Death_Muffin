@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Daily bug-report agent (death-muffin-bug-agent.timer). Reads today's 'new' player reports, lets a sandboxed headless Claude
-# fix what it can on a fresh branch, writes each report's verdict back for the player, and tells the owner on Discord.
+# fix what it can in the Godot client (git branch godot-next, project dir godot/) on a fresh branch, writes each report's verdict back for the player, and tells the owner on Discord.
 #
 #   run-bug-agent.sh            normal daily run
 #   run-bug-agent.sh --dry-run  list the pending reports and stop
 #
 # Safety: the agent runs in --restricted mode (file tools confined to its worktree, user settings ignored, no MCP), with
-# --permission-mode dontAsk and an allowlist (read/edit files, `agit` = a few filtered git verbs, `check.sh` = tests with no
-# network and a read-only home). Both live in ~/death-muffin/bug-agent, outside the worktree, so the agent cannot rewrite them. It never deploys, never pushes, and never sees the database: this script hands it the reports and applies its
+# --permission-mode dontAsk and an allowlist (read/edit files, `agit` = a few filtered git verbs, `check.sh` = the Godot test suites with no
+# network and a read-only filesystem). Both live in ~/death-muffin/bug-agent, outside the worktree, so the agent cannot rewrite them. It never deploys, never pushes, and never sees the database: this script hands it the reports and applies its
 # validated verdicts. The owner reviews `bugfix/reports-<date>` and ships it with deploy-release.sh.
 set -euo pipefail
 
@@ -36,7 +36,8 @@ if git -C "$REPO" rev-parse --verify -q "refs/heads/$BRANCH" >/dev/null || [ -e 
   echo "branch $BRANCH or $WT already exists (ran today already?) — stopping"; exit 1
 fi
 git -C "$REPO" fetch -q origin
-git -C "$REPO" worktree add -q -b "$BRANCH" "$WT" origin/master
+git -C "$REPO" worktree add -q -b "$BRANCH" "$WT" origin/godot-next
+# node_modules is only for tools/godot/gen-fixtures.sh (the golden fixtures are generated from the frozen TS game).
 ln -s "$REPO/node_modules" "$WT/node_modules"
 [ -d "$REPO/server/realtime/node_modules" ] && ln -s "$REPO/server/realtime/node_modules" "$WT/server/realtime/node_modules"
 BASE=$(git -C "$WT" rev-parse HEAD)
@@ -90,8 +91,8 @@ fi
   echo "# Bug agent — $DATE"
   echo
   echo "- Reports: $COUNT ($IDS)"
-  echo "- Branch: \`$BRANCH\` — $COMMITS commit(s) on origin/master $(git -C "$WT" rev-parse --short "$BASE"), checks: $CHECKS"
-  echo "- Review: \`git -C $REPO log --stat origin/master..$BRANCH\`"
+  echo "- Branch: \`$BRANCH\` — $COMMITS commit(s) on origin/godot-next $(git -C "$WT" rev-parse --short "$BASE"), checks: $CHECKS"
+  echo "- Review: \`git -C $REPO log --stat origin/godot-next..$BRANCH\`"
   echo
   [ -f "$VERDICTS" ] && node -e '
     const v = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
