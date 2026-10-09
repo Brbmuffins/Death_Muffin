@@ -9,6 +9,7 @@ Usage: tools/godot/trim-fixtures.py FULL_DIR [OUT_ROOT]
 Rules
   * bosses: every scenario is kept byte-for-byte, but stored gzip'd (<name>.json.gz). The brains are stateful across ticks so ticks
     cannot be sampled; gzip gives ~8x. The suites read them through PackedByteArray.decompress_dynamic.
+  * gear/context.json: order-dependent (see GZIP_FULL), kept whole, gzip'd.
   * every other file <= SMALL bytes is copied unchanged.
   * larger files hold a list of independent cases (top level list, or {"cases": [...]}); they are sampled down to ~TARGET bytes:
       1. coverage pass: greedily pick the cases that add the most new "features" (value of every low-cardinality string/bool/null leaf
@@ -24,6 +25,9 @@ TARGET = 150_000
 MIN_CASES = 20
 COVER_CAP = 1.3
 LOWCARD = 40
+# Order-dependent files: gear/context cases share DmGearStats' reference-hero cache (first case per discipline/thrall cap primes it), so they
+# cannot be sampled; stored whole, gzip'd.
+GZIP_FULL = {("gear", "context.json")}
 SUITES = ["bosses", "dialogue", "gear", "rules-combat", "rules-gathering", "rules-loot", "rules-progression", "ui_parity"]
 
 
@@ -109,10 +113,10 @@ def main():
             if not fn.endswith(".json"):
                 continue
             raw = open(os.path.join(sdir, fn), "rb").read()
-            if suite == "bosses":
+            if suite == "bosses" or (suite, fn) in GZIP_FULL:
                 with open(os.path.join(odir, fn + ".gz"), "wb") as f:
                     f.write(gzip.compress(raw, 9, mtime=0))
-                rows.append((suite, fn, "scenario", "scenario", len(raw), len(gzip.compress(raw, 9, mtime=0))))
+                rows.append((suite, fn, "full", "full", len(raw), len(gzip.compress(raw, 9, mtime=0))))
                 continue
             data = json.loads(raw)
             holder = None
