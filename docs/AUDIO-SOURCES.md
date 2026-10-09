@@ -1,6 +1,7 @@
 # Audio sources
 
-Every audio file the game ships, with its origin and licence.
+Every audio file the game ships, with its origin and licence. The masters are in `public/audio/`; `tools/godot/sync-audio-assets.sh` copies them into
+`godot/assets/audio/` (Opus clips become WAV there because Godot cannot import Opus). Paths below are the `public/audio/` masters.
 
 ## Policy
 
@@ -13,21 +14,14 @@ audio without recording its licence here.
 
 ## `public/audio/esm/` (the Epic Stock Media clips)
 
-- **What plays when** is the table `AUDIO_MAP` in `src/content/audioMap.ts` (design and rationale: `docs/audio/AUDIO-MAP.md`).
-  Clip names there are `folder/name` from the pack's own file list (`docs/audio/esm-fantasy-game-files.txt`, prefix stripped).
-- **Built by** `nice -n 19 node tools/audio/build-esm.mjs` from the owner's copy of the pack (default
-  `/home/ubuntu/death-muffin/audio-src/fantasy-game`, or `--src` / `$ESM_SRC`). It reads the map, so the shipped files are exactly the
-  clips the map names (318 clips for 181 sounds). Per clip: mono, 48 kHz; leading silence trimmed; cut to the longest length any
+- **What plays when** is the audio map in `godot/audio/audio_map.gd` (see `godot/audio/README.md`). Clip names there are `folder/name` from the pack's own
+  file list (`docs/audio/esm-fantasy-game-files.txt`, prefix stripped).
+- **Built** from the owner's copy of the pack (`/home/ubuntu/death-muffin/audio-src/fantasy-game`) by a script that is no longer in this repo
+  (`tools/audio/build-esm.mjs`, see git history before 2026-10-09). The shipped files are the clips the map names (318 clips for 181 sounds). Per clip: mono, 48 kHz; leading silence trimmed; cut to the longest length any
   sound using it needs; cast / hit clips start at their impact so the sound lands with the VFX release; fades; RMS-levelled per class
   (sfx / ui / footsteps / ambience) with a peak ceiling; **Ogg Opus, 48 kbps VBR**. Output `public/audio/esm/<folder>__<name>.opus`
   plus `manifest.json` (sizes, lengths, loudness). Re-runnable and deterministic for a given ffmpeg.
-- **Objective check:** the same run writes `docs/audio/esm-sanity-report.txt`: length, loudness, true peak, leading silence, clipping
-  and impact time per clip, with outliers flagged, because the map was made from file names and not by ear.
-- **Format and support:** Opus in Ogg decodes through `decodeAudioData` in Chromium (Chrome, Edge, WebView2, the Windows launcher)
-  and Firefox, and in Safari 18.4+. On an older Safari the clips fail to decode and the game falls back to its synthesised sounds
-  (the same graceful path as any missing file), never to silence or an error.
-- **Lazy loading** (`src/audio/packs.ts`): `core`, `ui`, `rites`, `world`, `amb` load once after the first click; each area adds its
-  floor (`foot_*`), the wading sound, its dead's voices (`fam_*`) and, outside the hub, `boss`; they are released two areas later.
+- **Format:** the masters are Ogg Opus; the Godot copies are mono 44.1 kHz WAV (imported QOA-compressed so a clip starts with no decoder set-up).
 
 ## Kept: not from the pack (no fitting clip in it)
 
@@ -51,7 +45,7 @@ The Kenney clips are CC0 1.0 (credit not required; "Kenney (kenney.nl)" given an
 The original five beds were generated in ffmpeg (no source recording): filtered noise,
 equal-power crossfaded tail-to-head into a seamless 12 s loop, a periodic swell on top,
 mono 24 kHz Ogg Vorbis. The engine varies loops per zone through playback rate, low-pass
-and gain (`src/audio/ambience.ts`).
+and gain (`godot/audio/audio_ambience.gd`).
 
 | File | Recipe |
 |---|---|
@@ -65,7 +59,7 @@ and gain (`src/audio/ambience.ts`).
 
 ## `public/audio/music/` (original game score)
 
-Five original instrumental cues were generated for Death Muffin with Eleven Music v2.5 on 2026-10-04 using the owner's paid Creator account. The prompts are in `tools/audio/generate-eleven-music.mjs`; original MP3s and request metadata are private in `/home/ubuntu/death-muffin/private/music-drafts/`. `tools/audio/prepare-eleven-music.mjs` makes 160 kbps MP3 game loops with a 5 s overlap and a consistent loudness target. The game streams one cue at a time, crossfades on area or boss changes, and has a separate Music slider.
+Five original instrumental cues were generated for Death Muffin with Eleven Music v2.5 on 2026-10-04 using the owner's paid Creator account. The prompts are in `tools/audio/generate-eleven-music.mjs`; original MP3s and request metadata are private in `/home/ubuntu/death-muffin/private/music-drafts/`. `tools/audio/prepare-eleven-music.mjs` makes 160 kbps MP3 game loops with a 5 s overlap and a consistent loudness target. The game streams one cue at a time, crossfades on area or boss changes, and has a separate Music slider (`godot/audio/`).
 
 | Shipped file | ElevenLabs song ID | Intended areas |
 |---|---|---|
@@ -89,5 +83,5 @@ separate decision; do not add more files of that kind.
 
 ## Synthesised sound
 
-Everything not listed above (the fallback for any pack clip that fails to load, bells, tones, noise bursts, the synthesised fallback beds, the low-health heartbeat) is
-generated at runtime by WebAudio in `src/audio/Audio.ts`; there is no source file.
+Sounds not listed above (fallbacks, tones, noise bursts, the low-health heartbeat) are generated at runtime by the audio engine in `godot/audio/`; there is no
+source file.

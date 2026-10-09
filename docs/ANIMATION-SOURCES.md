@@ -46,7 +46,6 @@ measurements and the decision that is left open.
 | `Walk_Loop` | `ual_walk` | 1.33 |
 
 Round 2 (2026-10-02) retargeted `Idle_Talking_Loop` and `Interact` onto `npc_prior`, `npc_sexton` and `npc_apothecary`
-(`art-src/blender/retarget/<npc>/anim_ual_talk.glb`, `anim_ual_interact.glb`). Judged not better than Tripo's `agree`
-(docs/BLENDER-PIPELINE.md); not shipped, and the map gained an `Interact` -> `ual_interact` entry.
+(`art-src/blender/retarget/<npc>/anim_ual_talk.glb`, `anim_ual_interact.glb`). Judged not better than Tripo's `agree`; not shipped, and the map gained an `Interact` -> `ual_interact` entry.
 
 If any of these is ever shipped, add a row to the first table's "Used for" column and keep this file in step.
