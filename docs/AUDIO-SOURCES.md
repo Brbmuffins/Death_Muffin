@@ -57,7 +57,7 @@ and gain (`godot/audio/audio_ambience.gd`).
 
 `bed_rain.ogg` and `bed_flame.ogg` were generated for Death Muffin with ElevenLabs Sound Effects v2 on 2026-10-04 using the owner's paid Creator account. Their source MP3s and request metadata are kept privately under `/home/ubuntu/death-muffin/private/ambience-drafts/`; prompts are in `tools/audio/generate-eleven-ambience.mjs`. `tools/audio/prepare-eleven-ambience.mjs` makes compact 24 kHz mono Vorbis loops and limits peaks. Rain plays in the Graves, Cloister, and Fen; flames play at the Pyre and in the Alchemist's Wing. See the [Sound Effects API](https://elevenlabs.io/docs/api-reference/text-to-sound-effects/convert) and [ElevenLabs terms](https://elevenlabs.io/terms-of-use).
 
-## `public/audio/music/` (original game score)
+## `public/audio/music/` -> `godot/assets/audio/music/` (original game score)
 
 Five original instrumental cues were generated for Death Muffin with Eleven Music v2.5 on 2026-10-04 using the owner's paid Creator account. The prompts are in `tools/audio/generate-eleven-music.mjs`; original MP3s and request metadata are private in `/home/ubuntu/death-muffin/private/music-drafts/`. `tools/audio/prepare-eleven-music.mjs` makes 160 kbps MP3 game loops with a 5 s overlap and a consistent loudness target. The game streams one cue at a time, crossfades on area or boss changes, and has a separate Music slider (`godot/audio/`).
 

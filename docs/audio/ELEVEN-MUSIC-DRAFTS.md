@@ -12,8 +12,8 @@ node tools/audio/generate-eleven-music.mjs chapterhouse --dry-run
 node tools/audio/generate-eleven-music.mjs chapterhouse
 ```
 
-Each live run requests one instrumental cue from `music_v2_5` and saves the MP3 plus its prompt, model, timestamp, and song ID in `/home/ubuntu/death-muffin/private/music-drafts/`. Review the cue for its musical fit, then use `node tools/audio/prepare-eleven-music.mjs <cue>` to encode a loop. The game has a dedicated Music volume control and transition rules.
+Each live run requests one instrumental cue from `music_v2_5` and saves the MP3 plus its prompt, model, timestamp, and song ID in `/home/ubuntu/death-muffin/private/music-drafts/`. Review the cue for its musical fit, then use `node tools/audio/prepare-eleven-music.mjs <cue>` to encode a loop. Then run `tools/godot/sync-audio-assets.sh` to copy it into the Godot client (`godot/assets/audio/music/`), which has a Music slider and crossfades on area and boss changes (`godot/audio/`).
 
 ## Release rights
 
-ElevenLabs' [Music Model-Specific Terms](https://elevenlabs.io/eleven-music-model-specific-terms) currently exclude “Studio Games” from Creator media rights. Their definition includes a monetized game available through more than one platform. Death Muffin's browser and Windows launcher distribution make its monetization status relevant. The owner confirmed on 2026-10-04 that the game is not currently monetized. Recheck rights if that changes. The [Compose Music API](https://elevenlabs.io/docs/api-reference/music/compose) documents the request fields used by the script.
+ElevenLabs' [Music Model-Specific Terms](https://elevenlabs.io/eleven-music-model-specific-terms) currently exclude “Studio Games” from Creator media rights. Their definition includes a monetized game available through more than one platform. Death Muffin ships through the Windows launcher, so its monetization status matters. The owner confirmed on 2026-10-04 that the game is not currently monetized. Recheck rights if that changes. The [Compose Music API](https://elevenlabs.io/docs/api-reference/music/compose) documents the request fields used by the script.

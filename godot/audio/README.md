@@ -62,4 +62,5 @@ per-bus trims (enemies 0.8, thralls 0.5, ui 0.9), master x0.9, music x0.72. The 
 - `godot --headless --audio-driver Dummy --path godot --script res://tests/audio_wire/run.gd`: drives a scripted session through DmNextGame and checks the director got the calls.
 
 ## Known gaps
-- Audio is synthesised/mixed from web-era rules; no new-music or per-boss score work has been done in the rebuild.
+- The score is the five Eleven Music cues from 2026-10-04 (`docs/AUDIO-SOURCES.md`): one boss cue for every boss, no per-boss scores yet.
+  New cues: `tools/audio/generate-eleven-music.mjs` -> `prepare-eleven-music.mjs` (writes `public/audio/music/`) -> `tools/godot/sync-audio-assets.sh`.
