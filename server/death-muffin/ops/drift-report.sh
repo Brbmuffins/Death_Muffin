@@ -101,9 +101,10 @@ if [ ! -f "$MAN" ]; then drift "manifest.json missing ($MAN)"; else
   if [ -z "$CREV" ]; then drift "manifest.json has no rev"
   elif ! g cat-file -e "$CREV^{commit}" 2>/dev/null; then drift "published rev $CREV is not a known commit"
   else
-    N="$(g rev-list --count "$CREV..$REV" -- godot/)"
+    # Only files that go into the exported client count (export_presets.cfg excludes tests/, shots/, build/; docs don't ship).
+    N="$(g rev-list --count "$CREV..$REV" -- godot/ ':(exclude)godot/tests/**' ':(exclude)godot/*.md' ':(exclude)godot/**/*.md' ':(exclude)godot/shots/**' ':(exclude)godot/build/**')"
     info "published rev $CREV"
-    [ "$N" -gt 0 ] && drift "$N commit(s) touching godot/ merged after the published rev $CREV, not published"
+    [ "$N" -gt 0 ] && drift "$N commit(s) changing the shipped client (godot/, not tests or docs) merged after the published rev $CREV, not published"
   fi
 fi
 
@@ -174,6 +175,12 @@ U="$(df --output=pcent / | tail -1 | tr -dc 0-9)"
 [ "$U" -gt 85 ] && drift "/ is ${U}% full" || info "/ usage ${U}%"
 info "wt/ size: $(du -sh "$(dirname "$REPO")/wt" 2>/dev/null | cut -f1)"
 info "deploy/ size: $(du -sh "$DM/deploy" 2>/dev/null | cut -f1)"
+DKB=$(du -sk "$DM/deploy" 2>/dev/null | cut -f1)
+if [ "${DKB:-0}" -gt $((2 * 1024 * 1024)) ]; then
+  # deploy-release.sh removes its candidate export after a good deploy; anything else here is a leftover (owner deletes, this script never does)
+  BREAK=$(cd "$DM/deploy" && ls -1 | sed -E 's/-[0-9a-f]{7,}.*//; s/[0-9]{8}T[0-9]{6}Z.*//; s/\.(png|log|json|cjs|sh)$/ (file)/' | sort | uniq -c | sort -rn | head -6 | awk '{c=$1; $1=""; printf "%s%s x%s", (NR>1?", ":""), substr($0,2), c}')
+  drift "deploy/ holds $(du -sh "$DM/deploy" | cut -f1) (over 2 GB): $BREAK"
+fi
 OLD=$(find "$DM/deploy" -maxdepth 1 -name 'backup-pre-release-*' -mtime +30 2>/dev/null | wc -l)
 [ "$OLD" -gt 0 ] && note "$OLD backup-pre-release-* folder(s) in deploy/ older than 30 days; consider pruning (this script never prunes)"
 
