@@ -1,6 +1,6 @@
 extends SceneTree
 ## Automated playtest bot for the REBUILD (DmNextGame, godot/next/), offline edition only (DmMockBackend under user://, never the live server).
-## The twin of bot.gd (which drives the current DmGame): same report JSON (findings / notes / frame / events + a `metrics` block both bots fill the
+## The old DmGame twin (bot.gd) is gone: same report JSON as it had (findings / notes / frame / events + a `metrics` block both bots fill the
 ## same way), same sessions, same real input path (key + mouse events pushed into a 1280x800 SubViewport), but through the rebuild's seams.
 ##   godot --headless --path godot --script res://tests/playtest/bot_next.gd -- --session=A --disc=2 --out=/abs/report.json [--boss=gravedigger]
 ##   session A: register + pick the discipline on the REAL front screens, walk to the Graves, fight, loot, level, boss summon + kill, death, window-close save.
@@ -655,7 +655,7 @@ func _p_walk_to_graves() -> void:
 	chk(g.area_id == "graves", "area_id is graves after the walk", g.area_id)
 
 
-## Controlled damage probe (same in bot.gd): waves paused, the Graves emptied, then 3 single robbers killed with ONE left click each (the primary's chase and
+## Controlled damage probe: waves paused, the Graves emptied, then 3 single robbers killed with ONE left click each (the primary's chase and
 ## hold-repeat only, no rites, no thralls), and one pack of 6 killed with the full bot rotation. Time to kill is the comparison: it isolates hero damage /
 ## enemy toughness from wave pacing and bot retargeting.
 func _p_dps() -> void:

@@ -26,25 +26,25 @@ func _run() -> void:
 	var r := await api.register("tester", "t@example.com", "pw1234")
 	api.set_token(r.data["token"])
 	var c := await api.load_or_create_character(2)
-	var game := DmGame.new()
+	var game: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	root.add_child(game)
-	await game.start(c.data, api, {"visual": false, "persist": false, "seed": 7})
-	for i in 30:
-		game.tick(1.0 / 60.0)
-	game.character["gold"] = 5000
-	game.prog.add_gold(0.0)
+	await game.start(c.data, api, {"visual": false, "persist": false, "waves": false, "audio": false})
+	var host := game.ui_host   # the DmGameUi contract: character, progression, Acre / Legion hooks
+	await process_frame
+	host.character["gold"] = 5000
+	host.prog.add_gold(0.0)
 	await game.flush_all()
-	var tier0 := int(game.progress.get("legionTier", 0))
-	var res: DmResult = await game.psync.spend_on_server(func() -> DmResult: return await game.api.necro_purchase(game.hero_id, "legion"))
+	var tier0 := int(host.progress.get("legionTier", 0))
+	var res: DmResult = await host.psync.spend_on_server(func() -> DmResult: return await host.api.necro_purchase(host.hero_id, "legion"))
 	_check(res.ok, "legion purchase succeeds: %s" % res.error)
-	await game.refresh_progress()
-	await game.refresh_character()
-	var cost := 5000 - int(game.character["gold"])
+	await host.refresh_progress()
+	await host.refresh_character()
+	var cost := 5000 - int(host.character["gold"])
 	_check(cost > 0, "the client paid for the tier: %d gold" % cost)
-	_check(int(game.progress.get("legionTier", 0)) == tier0 + 1, "legion tier %d -> %s" % [tier0, str(game.progress.get("legionTier", 0))])
-	game.prog.save_dirty = true
+	_check(int(host.progress.get("legionTier", 0)) == tier0 + 1, "legion tier %d -> %s" % [tier0, str(host.progress.get("legionTier", 0))])
+	host.prog.save_dirty = true
 	await game.flush_all()
 	var server: Dictionary = (await api.get_character()).data
-	_check(int(server["gold"]) == 5000 - cost, "the next save keeps the spend: client %d, backend %s" % [int(game.character["gold"]), str(server["gold"])])
+	_check(int(server["gold"]) == 5000 - cost, "the next save keeps the spend: client %d, backend %s" % [int(host.character["gold"]), str(server["gold"])])
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)

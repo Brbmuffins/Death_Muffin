@@ -39,5 +39,10 @@ func _init() -> void:
 	ok(DmQaUiShots.DEMO_BAG.size() <= DmReliquaryPanel.BAG_SIZE, "demo bag fits")
 	for e in DmQaUiShots.DEMO_BAG:
 		ok(not DmLootData.item(e[0]).is_empty(), "demo item %s exists" % e[0])
+	# the screenshot QA's launch lines enter the rebuild directly: --world-demo is an alias of the dev quick start (class 2)
+	ok(DmMain.quick_start_class(PackedStringArray(["--world-demo", "--qa"])) == 2, "--world-demo = quick start as class 2")
+	ok(DmMain.quick_start_class(PackedStringArray(["--dev-offline", "--class=4"])) == 4, "--class=N picks the class")
+	ok(DmMain.quick_start_class(PackedStringArray(["--dev-offline"])) == -1, "no quick start without --class / --world-demo")
+	ok(DmMain.mode_for(PackedStringArray(["--world-demo"])) == "dev_offline", "--world-demo is dev-offline, never the live server")
 	print("qa shot plan tests: %d passed, %d failed" % [pass_count, fail_count])
 	quit(1 if fail_count > 0 else 0)

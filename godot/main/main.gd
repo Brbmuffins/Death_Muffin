@@ -5,7 +5,8 @@ extends Node
 ## discipline is sent to the discipline switch by the front flow.
 ## Launch args (after `--`): none needed. `--online` / `--offline` / `--next` from older launchers and scripts are accepted and ignored.
 ## Testing only: `--dev-offline` = local accounts + progress in DEV_OFFLINE_DB (DmMockBackend, no live server); `--dev-offline --class=N`
-## skips the front flow (test account `tester`); `--world-demo` (always dev-offline) is the old DmGame scene the screenshot QA still drives.
+## skips the front flow (test account `tester`) and enters DmNextGame directly; `--world-demo` is an alias of `--dev-offline --class=2` (the screenshot QA's
+## launch line, shot-godot.sh).
 ## On an online start the retired offline edition's save and its stored "offline:" token are deleted (owner: offline characters are deleted).
 
 const OFFLINE_EDITION_DB := "user://dm_offline_db.json"   ## the retired player-facing offline edition's accounts + characters
@@ -13,9 +14,7 @@ const DEV_OFFLINE_DB := "user://dm_dev_offline_db.json"    ## --dev-offline test
 
 var mode := ""              ## "online" | "dev_offline" | "test" (injected api); "" = decided from the launch args in _ready
 var flow: DmFrontFlow
-var game: DmGame            ## only the `--world-demo` screenshot scene (old DmGame); the game itself is `slice`
 var slice: DmNextGame
-var ui: Node
 var api: DmApi              ## set before add_child (tests) to inject a backend; otherwise built from the launch args
 var persist_token := true
 var _mock: DmMockBackend
@@ -47,13 +46,19 @@ func _ready() -> void:
 		add_child(_transport)
 		api = DmApi.new(_transport.request_callable())
 		api.slot_decorator = Callable(DmAffixes, "decorate_slots")
-	if "--world-demo" in args:
-		await _demo()
-		return
-	if mode != "online" and Array(args).any(func(a: String) -> bool: return a.begins_with("--class=")):
-		await _dev_quick_start(args)
+	var quick := quick_start_class(args)
+	if mode != "online" and quick >= 0:
+		await _dev_quick_start(quick)
 		return
 	_start_flow()
+
+
+## Testing: the class a dev quick start enters with (`--class=N`; `--world-demo` = class 2), -1 = no quick start (the front flow runs).
+static func quick_start_class(args: PackedStringArray) -> int:
+	for a in args:
+		if a.begins_with("--class="):
+			return int(a.substr(8))
+	return 2 if "--world-demo" in args else -1
 
 
 ## The mode a launch gets from its user args: online unless a testing flag asks for the local dev backend.
@@ -87,16 +92,12 @@ func _notification(what: int) -> void:
 		get_tree().quit()
 
 
-## Final save of the live game (also the quit path of the tests): the rebuild's last kill batch, progression and bag (or the world demo's).
+## Final save of the live game (also the quit path of the tests): the rebuild's last kill batch, progression and bag.
 func save_all() -> void:
 	if slice != null and slice.ready_:
 		var s := slice
 		slice = null
 		await s.flush_all()
-	if game != null and game.ready_:
-		var g := game
-		game = null
-		await g.flush_all()
 
 
 func _start_flow() -> void:
@@ -105,26 +106,12 @@ func _start_flow() -> void:
 	flow.online_gate = mode == "online"   # the manifest's online switch (DmOnlineGate; open to everyone since 2026-10-09)
 	flow.name = "Front"
 	flow.enter_world.connect(_enter_world)
-	flow.logged_out.connect(_on_logged_out)
 	add_child(flow)
 	flow.start()
 
 
-func _demo() -> void:
-	var r := await api.register("tester", "t@example.com", "pw1234")
-	if not r.ok:
-		r = await api.login("tester", "pw1234")
-	api.set_token(r.data["token"])
-	var c := await api.load_or_create_character(2)
-	await _enter_demo_world(c.data)
-
-
-## Testing: `-- --dev-offline --class=N` skips the front flow and enters the game as `tester` on the dev-offline backend.
-func _dev_quick_start(args: PackedStringArray) -> void:
-	var cls := 2
-	for a in args:
-		if a.begins_with("--class="):
-			cls = int(a.substr(8))
+## Testing: `-- --dev-offline --class=N` (or `--world-demo`, class 2) skips the front flow and enters the game as `tester` on the dev-offline backend.
+func _dev_quick_start(cls: int) -> void:
 	var r := await api.register("tester", "t@example.com", "pw1234")
 	if not r.ok:
 		r = await api.login("tester", "pw1234")
@@ -158,30 +145,6 @@ func _enter_world(character: Dictionary, session) -> void:
 		_start_flow()   # the front flow's resume() offers the discipline switch
 		return
 	await _enter_next(character)
-
-
-## `--world-demo` only: the old DmGame scene the screenshot QA (tests/game/shoot.sh) drives. Not reachable by players.
-func _enter_demo_world(character: Dictionary) -> void:
-	# The loading screen goes up first and is painted before the (synchronous) world build starts: no login-screen freeze, no black frame.
-	var loading := DmLoadingScreen.acquire(self, "Waking the dead...")
-	loading.set_progress(0.05)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	game = DmGame.new()
-	game.name = "Game"
-	add_child(game)
-	game.add_child(DmPerfOverlay.new())
-	game.left_world.connect(_on_left_world)
-	game.world_restart.connect(func(ch: Dictionary): _on_world_restart(ch))
-	# Offline progress goes through the offline mock backend (it persists under user:// and answers the Altar routes), like the server online.
-	await game.start(character, api, {"local_progress": false, "realtime": false, "name": token_username(api.get_token())})
-	ui = DmGameUi.new()
-	game.add_child(ui)
-	ui.setup(game)
-	game.ui = ui
-	await ui.warm()
-	loading.dismiss()   # fades into the game; the same screen has covered every frame since the login screen
-	ui.sound.connect(func(n: String): get_node("/root/AudioDirector").play_sfx(n))
 
 
 ## The rebuild: DmNextGame behind the same key-art loading screen (it paints before the synchronous world build; the game's own panel warm-up
@@ -280,26 +243,3 @@ func _teardown_next() -> void:
 	await g.leave()   # flush_all + session end
 	g.queue_free()
 	await get_tree().process_frame
-
-
-func _teardown_game() -> void:
-	if game != null:
-		game.queue_free()
-		game = null
-	ui = null
-
-
-func _on_left_world() -> void:
-	if game == null:
-		return
-	_teardown_game()
-	_start_flow()
-
-
-func _on_world_restart(character: Dictionary) -> void:
-	_teardown_game()
-	await _enter_world(character, api)
-
-
-func _on_logged_out() -> void:
-	_teardown_game()

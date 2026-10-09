@@ -5,7 +5,6 @@ extends SceneTree
 ##   H per-frame cost, auto-combat on vs off
 
 const DT := 1.0 / 60.0
-const OLD_SHAKES := "res://game/dm_ability_system.gd"
 
 var passed := 0
 var failed := 0
@@ -245,18 +244,8 @@ func _run() -> void:
 	cb.clear()
 
 	# ---- G: shakes
-	var src := FileAccess.get_file_as_string(OLD_SHAKES)
-	var sites := 0
-	for line in src.split("\n"):
-		if line.strip_edges().begins_with("_shake("):
-			sites += 1
-	check(sites == 16, "G: the old client has 16 _shake call sites (%d): the table below covers every necromancer one" % sites)
 	var table := {"marrow_spear": 3, "exhume": 1, "grave_step": 1, "grave_frost": 1, "bone_prison": 1, "bone_mantle": 1, "black_litany": 1, "ivory_cleave": 1,
-		"carrion_seed": 1, "corpse_explosion": 1}   # old sites per rite (marrow_spear: arrive / ring / impale)
-	var total := 0
-	for k in table:
-		total += int(table[k])
-	check(total + 3 + 1 == sites, "G: 12 necromancer sites + 3 knight rites (shield_bash, grave_slam, oath_unbroken: no module) + the Legend shatter hook = 16")
+		"carrion_seed": 1, "corpse_explosion": 1}   # the old client's shake sites per rite, recorded before DmAbilitySystem was removed 2026-10-09 (marrow_spear: arrive / ring / impale)
 	for kn in ["shield_bash", "grave_slam", "oath_unbroken"]:
 		check(not DmRiteRegistry.has(kn), "G: %s has no rebuild module (a knight rite)" % kn)
 	for rite in table:

@@ -14,8 +14,8 @@ func _cover_up() -> bool:
 	return false
 func _f() -> void:
 	n += 1
-	var g = main.get("game") if main.get("game") != null else main.get("slice")   # slice = the game; game = only the --world-demo scene
-	var ui = main.get("ui")
+	var g = main.get("slice")   # the game
+	var ui = g.get("ui") if g != null and is_instance_valid(g) else null
 	var state := "none"
 	if g != null and is_instance_valid(g):
 		state = "game"

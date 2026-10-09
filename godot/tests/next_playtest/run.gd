@@ -99,7 +99,7 @@ func _run() -> void:
 	# 4: bot wiring
 	var sh := FileAccess.get_file_as_string("res://../tools/godot/playtest.sh")
 	check(sh.contains("--next") and sh.contains("bot_next.gd"), "4: playtest.sh drives the rebuild with --next")
-	for f in ["res://tests/playtest/bot.gd", "res://tests/playtest/bot_next.gd"]:
+	for f in ["res://tests/playtest/bot_next.gd"]:
 		check(load(f) != null, "4: %s loads" % f)
 
 	g.queue_free()

@@ -257,11 +257,11 @@ func _run() -> void:
 
 	# ================================================================ the weekly Omen
 	var order: Array = DmContent.get_export("omens", "OMEN_ORDER")
-	var old_game := DmGame.new()
 	var same := true
-	for ms in [259200000.0, 345600000.0, 1791072000000.0, 1791244800000.0, 1791763200000.0, 1792368000000.0]:
-		same = same and DmNextMeta.omen_for(ms)["id"] == old_game._omen_for(ms)["id"]
-	old_game.free()
+	var want_ids := ["tolling", "blood_moon", "tolling", "blood_moon", "drowned_week", "tolling"]   ## recorded from the old client's _omen_for (removed 2026-10-09)
+	var stamps := [259200000.0, 345600000.0, 1791072000000.0, 1791244800000.0, 1791763200000.0, 1792368000000.0]
+	for i in stamps.size():
+		same = same and DmNextMeta.omen_for(stamps[i])["id"] == want_ids[i]
 	check(same and DmNextMeta.omen_for(1791244800000.0)["id"] == "blood_moon" and DmNextMeta.omen_for(1791763200000.0)["id"] == "drowned_week" and DmNextMeta.omen_for(1792368000000.0)["id"] == "tolling" and DmNextMeta.omen_for(1792972800000.0)["id"] == "blood_moon", "the weekly rotation is the current client's (Monday 12 Oct 2026 = Drowned Week, then The Tolling)")
 	var omens: Dictionary = DmContent.get_export("omens", "OMENS")
 	var xp_plain := xp_for(20)

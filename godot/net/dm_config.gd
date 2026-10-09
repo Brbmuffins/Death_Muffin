@@ -11,9 +11,6 @@ const CLIENT_MANIFEST_URL := SITE_BASE + "client/manifest.json"
 ## deploy-release.sh writes "<sha> <iso-time>" here on every web deploy (web play page; the Godot builds have their own release channel later).
 const RELEASE_URL := SITE_BASE + "play/release.txt"
 const PATCH_NOTES_URL := SITE_BASE + "play/patch-notes.json"
-## Socket.io realtime (see REALTIME.md). Nginx routes WS_PATH to 127.0.0.1:5191.
-const WS_BASE := "https://muffindevelopment.com"
-const WS_PATH := "/death-muffin/rt/socket.io"
 ## Lobby + relay service (server/death-muffin/lobby): find / host / join a party session over WebSocket. Nginx maps the path to 127.0.0.1:5192.
 ## A launch arg `--lobby=<ws url>` overrides it (local tests, staging).
 const LOBBY_URL := "wss://muffindevelopment.com/death-muffin/lobby/"
