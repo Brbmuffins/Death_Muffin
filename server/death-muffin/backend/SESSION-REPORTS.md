@@ -53,5 +53,4 @@ Credits land in the member's kill ledger; the member's own `save-progress` / nec
 
 ## Deployment
 
-Live (checked 2026-10-09): migration 041 applied (`party_sessions`, `party_session_members` exist), `party-sessions.cjs` deployed,
-`AUTHORITY_KILLS=audit`. Credits are only recorded with `audit` or `enforce`.
+Needs migration 041 (applied live). Credits are only recorded with `AUTHORITY_KILLS=audit` or `enforce` (live: `audit`).

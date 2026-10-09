@@ -62,5 +62,6 @@ rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`.
 
 ## Verify
 
+After each paid batch run `node tools/ai/validate-animation.mjs art-src/tripo/<id>/anim_*.glb` and `validate-rig.mjs` (see `docs/TRIPO-ANIMATE-IN-PLACE.md`; `animate_in_place` needs no change).
 Open the asset in game with `-- --dev-offline --class=2`; the F3 overlay shows frame cost. A PBR Tripo material is mostly
 metallic: keep emissive boosts faint (0.15 or less) or models white out under bloom. Run the affected `godot/tests/` suites.

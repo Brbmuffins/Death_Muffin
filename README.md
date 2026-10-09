@@ -25,7 +25,7 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 | `launcher/windows/` | The Windows launcher (.NET Framework 4.8, version in `DeathMuffinLauncher.csproj`). See its README |
 | `tools/` | `tools/godot/` test runner, asset sync and playtest scripts; `tools/ai/` Gemini and Tripo generation; `tools/blender*`, `tools/audio/`, SQL generators |
 | `public/`, `art-manifest/` | Source art, models and audio (synced into `godot/assets/`); generation records |
-| `PATCH_NOTES.json` | Player-facing patch notes, newest first; every client publish and backend deploy publishes them to the launcher and the site (`announce-release.sh`) |
+| `PATCH_NOTES.json` | Player-facing patch notes, newest first; published to the launcher and site by `announce-release.sh` |
 | `docs/` | Design notes and audits that are still referenced |
 
 ## Run the client
@@ -63,25 +63,15 @@ backend, lobby and a subset of Godot suites on `main`.
 
 ## Export, publish, deploy
 
-All three are separate and none runs on its own. Only deploy or publish with checks passing, from a committed revision.
+Client publish, backend deploy and the online gate are separate; none runs on its own. Only from a committed revision with
+checks passing. The full procedure (scripts, release notes, rollback, services) is in
+[server/death-muffin/README.md](server/death-muffin/README.md).
 
-- **Client export:** `godot --headless --path godot --export-release "Windows Desktop" build/win64/DeathMuffin-godot-slice.exe`
-  (presets in `godot/export_presets.cfg`, templates in `~/.local/share/godot/export_templates/4.7.2.stable/`; `godot/build/` is gitignored).
-- **Publish the client:** `server/death-muffin/publish-godot-client.sh <git-rev>`. Exports that revision in a scratch worktree,
-  hashes the files, copies them to `/var/www/death-muffin/client/<version>/` and writes `manifest.json` last. It carries the
-  `online` block over from the live manifest, so publishing never opens or closes online play. The launcher downloads from there.
-  Then `announce-release.sh` updates the launcher/site patch notes, posts the update in #deathmuffin and marks fixed bug reports
-  released (put a new top entry in `PATCH_NOTES.json` first for a named release; otherwise the commit subjects are used).
-- **Online gate:** `server/death-muffin/set-online.sh on|staff|off ["message"]` edits only the manifest's `online` block
-  (`on` = everyone, `staff` = staff accounts only, `off` = nobody; the game reads it about once a minute). Online is `on`
-  since 2026-10-09.
-- **Deploy the backend:** `server/death-muffin/deploy-release.sh [rev] [migration.sql ...]`. Backend plus release notes only. It
-  exports the revision with `git archive`, runs the rules and server tests, backs up the DB and runtime and writes a
-  `ROLLBACK.sh`, applies the named migrations from `backend/migrations/` (additive and idempotent only), installs the code,
-  restarts `death-muffin-auth`, checks health, publishes release/patch notes, and refuses a revision that does not contain
-  `origin/main` (`ALLOW_BEHIND_MAIN=1` for a deliberate rollback). Do not edit the installed backend files by hand.
-- **Launcher:** version in `launcher/windows/DeathMuffinLauncher.csproj`; the "Windows launcher" GitHub workflow builds and releases it.
-- **Services (systemd):** `death-muffin-auth` (:5190), `deathmuffin-lobby` (:5192). The Socket.IO realtime service (:5191) is retired.
+- **Client:** `server/death-muffin/publish-godot-client.sh <git-rev>` exports the `Windows Desktop` preset (`godot/export_presets.cfg`) and publishes it for the launcher.
+- **Backend:** `server/death-muffin/deploy-release.sh [rev] [migration.sql ...]`. Never edit the installed backend by hand.
+- **Release notes:** both scripts end with `announce-release.sh`. Put a new top entry in `PATCH_NOTES.json` for a named release.
+- **Online gate:** `server/death-muffin/set-online.sh on|staff|off ["message"]`; live state is `on`.
+- **Launcher:** version in `launcher/windows/DeathMuffinLauncher.csproj`; see [launcher/windows/README.md](launcher/windows/README.md).
 
 ## Assets
 

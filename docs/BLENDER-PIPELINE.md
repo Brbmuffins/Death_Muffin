@@ -1,7 +1,7 @@
 # Blender animation pipeline
 
 Headless Blender (4.5 LTS, `/home/ubuntu/tools/blender/blender`, glTF addon on) driven by scripts, so animation work is
-free (no Tripo credits) and repeatable. Roadmap item X2b. It writes the same per-clip `anim_<name>.glb` files that
+free (no Tripo credits) and repeatable. It writes the same per-clip `anim_<name>.glb` files that
 `tools/build-characters.mjs` already turns into `public/models/<slug>/character.glb`, so glTF extensions, WebP textures
 and quantisation are untouched. Hand-keyed signature animation stays a human animator's job; the last section shows
 how their files drop into the same flow. Sources and licences: [ANIMATION-SOURCES.md](ANIMATION-SOURCES.md).
@@ -12,7 +12,7 @@ node tools/blender.mjs rigfix     <slug>                            add bones + 
 node tools/blender.mjs cleanup    <in.glb> <clip> [--loop] [--drift] [--foot-lock] [--recipe r.json]
 node tools/blender.mjs retarget   <source.glb> <target-rig.glb> <clip-map.json> [--only a,b]
 node tools/blender.mjs install    <slug>                            copy art-src/blender/<slug>/anim_*.glb into art-src/tripo/<slug>/
-node tools/blender.mjs build      <slug ...>                        build-characters only (its stride-speed and clip-timing steps call scripts that no longer exist)
+node tools/blender.mjs build      <slug ...>                        build-characters only
 node tools/blender.mjs selftest                                     kinematics checked against Blender itself
 ```
 
@@ -57,7 +57,7 @@ joint name.
 | `legs.X.hock` | `true`: a digitigrade hind leg of **three chain bones** (thigh, shin, metatarsus) plus the paw. The first two are solved to the hock, the metatarsus then points at the ankle in a direction that flexes with the stride; the clip's `hock: {stance, swing}` gives degrees (positive folds the foot back; the swing is a sine over the swing phase, `stance` a ramp over the stance). Replaces `rigidFrom` (a stiff lower leg) where the rig has the bones. |
 | `legs.X.minReach` | fraction of the leg's reach below which a swinging foot is pushed away from the hip (weight 0 at lift-off and touch-down, 1 in mid-swing). A tightly folded thin forearm becomes a fin that rises past the spine. |
 | `clips.<name>.hock` | see `legs.X.hock` |
-| `stride` | `{ walk: n }` body heights per second for a rig with no legs to measure (the gargoyle's flap loop); `build-stride-speeds` uses it as is. |
+| `stride` | `{ walk: n }` body heights per second for a rig with no legs to measure (the gargoyle's flap loop). |
 | `levelFeet` | `false` for rigs with no legs |
 | `overlays.<preset>` | lay procedural motion over a **Tripo clip** (see below) |
 
@@ -67,7 +67,7 @@ clip's *ground speed*, printed as `stanceSpeed`. `tools/measure-clips.mjs --stri
 levelled first (`levelFeet`): each paw's target is lowered by the difference between its lowest skinned vertex and the
 lowest of all, so asymmetric rigs touch one floor.
 
-Authoring rules learned the hard way: stride is limited by leg reach (a 0.3 m hind leg cannot take a 0.7 m stride; the
+Authoring rules: stride is limited by leg reach (a 0.3 m hind leg cannot take a 0.7 m stride; the
 auto-crouch hides a little but a run needs `crouch` of 8-10% of the body); a three-bone chain solved with FABRIK has a free
 middle joint that jumps between frames (visible as a one-frame foot dip), so use `rigidFrom`.
 
@@ -76,8 +76,6 @@ middle joint that jumps between frames (visible as a one-frame foot dip), so use
 `recipes/cinderhound.json -> rigfix.legs[]` adds a shoulder/elbow/wrist bone chain per foreleg at the measured leg
 positions and moves every old influence in the leg's column (chest, neck, stubs) onto the new bones with a smooth fade
 toward the shoulder (`zTop`), a cross-fade at elbow and wrist, then normalises. Output: `art-src/tripo/cinderhound/rigfixed.glb`.
-Before this the "legs that work against each other" were two hind legs plus a neck/chest bone dragging both forelegs
-rigidly. Checked by looking at frame strips at run speed.
 
 Three selection modes (all in `rigfix.py`, all move *every* old influence in the region onto the new bones, then normalise):
 
@@ -90,7 +88,6 @@ Three selection modes (all in `rigfix.py`, all move *every* old influence in the
 ## Overlays: new bones on top of Tripo's own clips
 
 `rigfix` adds bones the Tripo presets know nothing about, so a preset leaves them at the rest pose. A recipe's `overlays.<preset>` takes the **original** Tripo clip (`art-src/tripo/<slug>/orig/anim_<preset>.glb` if present, so an overlay is never stacked on an installed overlay), keeps all of its channels and keys the named bones on top: `{ base, bones: {bone: {sign, fold, tip, lag}}, roll: [[u, deg]...] (mean angle over the clip's normalised time), flap: {cycles, amp, env: [[u, 0..1]...]} }`. The roll is about the body's forward axis, applied in each bone's own rest frame so it follows the parent's motion. Output is `anim_<preset>.glb`, so `install` / `build` need nothing new. A Blender 4.4+ gotcha lives in the code: a copied action's channels sit in the slot of the armature it came from, so the target armature must use `action.slots[0]` or the base motion silently disappears (the exported clip then has only the new bones' channels: check `tools/measure-clips.mjs` shows hand/hip motion).
-
 
 ## `cleanup`
 
@@ -133,7 +130,7 @@ no CC0 quadruped library in the repo and the Tripo quadruped rigs differ per mod
 
 - The bone map is hand-written, not inferred. `.fbx` sources go through Blender's FBX importer (untested here; the pack's GLB was used).
 - `retarget` copies motion, not intent: proportions differ (UAL legs are longer relative to the hips than Tripo's), so feet float or sink until `cleanup --foot-lock` runs. Fingers and twist bones are not animated.
-- Retargeted combat clips lose Tripo's per-clip `release` metadata; `build-clip-timings` guesses the impact from peak hand speed, which is wrong for clips whose fastest motion is the recovery.
+- Retargeted combat clips lose Tripo's per-clip `release` metadata (impact timing).
 - `procedural` gaits: only `gait` and `idle` types (plus overlays), one gait per clip. Hock legs need three chain bones; the cinderhound and bone hound have them, the skull rat's hind legs stay `rigidFrom`. A tail cannot be raised by rotating its bones on the skull rat (its hind legs hang off `Tail_0`, and cumulative pitch curls the tail under the body): a `lift` of `Tail_1` is used instead. No 'trot vs gallop' blend, no turning clips, no attack/death/hurt clips for quadrupeds.
 - `rigfix` weights are geometric (capsules, boxes); cloth or hair hanging through a limb column can be shared between the limb and the body and stretch. Check with a posed `skinview.py` and look for vertices under the floor.
 - Installing a procedural clip overwrites `art-src/tripo/<slug>/anim_<clip>.glb` in the shared raw-asset folder (originals are in `orig/`).

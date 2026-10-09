@@ -1,9 +1,8 @@
 # Death Muffin: agent rules
 
-Death Muffin is one game: the Godot 4 client in `godot/`, played online against `server/death-muffin/`. Start with
-[README.md](README.md) (layout, run, test, publish, deploy), [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md) and
-[KNOWN-GAPS.md](KNOWN-GAPS.md). Each system under `godot/next/` has its own README; read it before changing that system.
-The web game is gone from `main` (tag `archive/legacy-web`, history only): do not port from it or fix it.
+Death Muffin is one game: the Godot 4 client in `godot/`, played online against `server/death-muffin/`. Read
+[README.md](README.md) (layout, run, test, release), [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md)
+and the README of any `godot/next/` system before changing it. Tag `archive/legacy-web` is the retired web game: history only, do not port from it.
 
 ## Branches and commits
 
@@ -17,12 +16,9 @@ The web game is gone from `main` (tag `archive/legacy-web`, history only): do no
 
 Never deploy, publish a client, or flip `set-online.sh` without passing checks for what you touched:
 
-- Godot: `tools/godot/run-all-tests.sh` (long; run the relevant suite alone while developing:
-  `/home/ubuntu/tools/godot/godot --headless --path godot --script res://tests/<name>/run.gd`).
-- Server: `npm run test:rules`, `npm run test:server`, `npm test --prefix server/death-muffin/lobby`, `npm run typecheck`.
-- Launcher: `launcher/tests/run-local.sh`.
-- Backend deploys only through `server/death-muffin/deploy-release.sh`; client only through `publish-godot-client.sh`.
-  Migrations must be additive and idempotent; back up first.
+- Commands for Godot, server, lobby and launcher tests: README.md "Tests". Run the one suite you touched while developing, the full set before a release.
+- Backend deploys only through `deploy-release.sh`; client only through `publish-godot-client.sh` (README.md "Export, publish, deploy").
+  Migrations must be additive and idempotent.
 - Shared VPS: run at most one rendered (software-GL) Godot or one headless browser at a time, and not the full suite in
   parallel with another agent's run.
 
@@ -50,5 +46,5 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 - Rule sources are `server/rules/*.ts`; after editing run `npm run build:server-rules` and commit the regenerated `.cjs`.
 - Docs are part of the change. If you change a system, update its README; if you close a gap, remove it from
   KNOWN-GAPS.md. Do not write status banners ("obsolete", "TODO later"): fix or delete the text. Dates are absolute.
-- Discipline indices: the client and backend use 1 Ossuary, 2 Gravecaller, 3 Mourner, 4 Rotweaver for the playable set
-  (`server/rules/content/disciplines.ts` and `backend/discipline.cjs` must agree).
+- Discipline indices 1 Ossuary, 2 Gravecaller, 3 Mourner, 4 Rotweaver are the playable set. `godot/data/combat/disciplines.json`
+  (`by_index`), `server/rules/content/disciplines.ts` and `MAX_DISCIPLINE_INDEX` in `backend/server.js` must agree.
