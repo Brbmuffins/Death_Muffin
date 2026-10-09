@@ -135,7 +135,7 @@ const commands = {
   },
 
   build({ pos }) {
-    for (const cmd of [['tools/build-characters.mjs', ...pos], ['tools/build-stride-speeds.mjs'], ['tools/build-clip-timings.mjs']]) {
+    for (const cmd of [['tools/build-characters.mjs', ...pos]]) {
       const r = spawnSync('node', cmd, { cwd: ROOT, stdio: 'inherit' });
       if (r.status !== 0) throw new Error(`${cmd[0]} failed`);
     }

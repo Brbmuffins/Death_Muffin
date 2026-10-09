@@ -6,7 +6,7 @@
 set -euo pipefail
 REPO="${REPO:-/home/ubuntu/vps-handoffs/DeathMuffin/game}"
 DEST="${DEST:-/home/ubuntu/death-muffin/discord-agent}"
-REV="${1:-origin/master}"
+REV="${1:-origin/main}"
 SRC=server/death-muffin/discord-agent
 mkdir -p "$DEST/runner/lib" "$DEST/state"
 chmod 700 "$DEST/state"

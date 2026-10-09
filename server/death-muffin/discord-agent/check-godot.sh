@@ -15,7 +15,7 @@ NM=$(readlink -f "$TOP/node_modules" 2>/dev/null || true)
 # A change that only touches Markdown files cannot affect the game: skip the suites (owner 2026-10-09: a docs-only audit branch timed
 # out the 40-min suite three times and never got proposed). Compares the working tree (committed + uncommitted + untracked) with
 # where the branch left the base branch; any other file, or a base that cannot be found, runs the full suites as before.
-BASE_REF="origin/${BASE_BRANCH:-godot-next}"
+BASE_REF="origin/${BASE_BRANCH:-main}"
 if MB=$(git -C "$TOP" merge-base HEAD "$BASE_REF" 2>/dev/null); then
   CHANGED=$( { git -C "$TOP" diff --name-only "$MB"; git -C "$TOP" ls-files --others --exclude-standard; } | sort -u | grep -v '^node_modules$')
   if [ -n "$CHANGED" ] && ! grep -qvE '\.md$' <<<"$CHANGED"; then
@@ -35,9 +35,10 @@ export DM_PAYLOAD='
   if [ -f "$LOOT" ]; then cp -p "$LOOT" "$SCR/content.json.snap"; fi
   restore() { if [ -f "$SCR/content.json.snap" ]; then cp -p "$SCR/content.json.snap" "$LOOT"; fi; }
   trap restore EXIT
-  echo "== generating golden fixtures"
+  # The golden fixtures are committed since 2026-10-09 (their TS generator left with src/); older branches still generate them.
+  if [ -f tools/godot/gen-fixtures.sh ]; then echo "== generating golden fixtures"
   if ! bash tools/godot/gen-fixtures.sh > "$SCR/gen.log" 2>&1; then tail -30 "$SCR/gen.log"; restore; echo "GODOT TESTS: fixture generation FAILED"; exit 1; fi
-  restore
+  restore; fi
   echo "== running Godot test suites"
   bash tools/godot/run-all-tests.sh > "$SCR/suites.log" 2>&1; rc=$?
   cat "$SCR/suites.log"
