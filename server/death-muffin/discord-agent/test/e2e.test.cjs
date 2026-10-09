@@ -247,6 +247,21 @@ test('a long turn posts the agent\'s .dm-status line as soon as it appears, and 
   assert.equal(sh(job.worktree, 'check-ignore', '.dm-status').trim(), '.dm-status', 'status file is git-ignored');
 });
 
+test('!report lists in-game bug reports and hands one, with its game log, to the agent; members cannot read them', async () => {
+  const fake = 'case "$1" in recent) echo \'[{"id":9002,"category":"ui","status":"new","reporter":"Helix","createdAt":"2026-10-08T21:00:00Z","hasLog":true,"message":"crash on hover"}]\';; '
+    + 'show) [ "$2" = 9002 ] && echo \'{"id":9002,"category":"ui","status":"new","reporter":"Helix","createdAt":"2026-10-08T21:00:00Z","message":"crash on hover","context":{"area":"graves","log":"LOG-MARKER-77 SCRIPT ERROR: tooltip"}}\' || echo null;; esac';
+  const w = makeWorld({ reportsCmd: fake }); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'what is up with the inventory?');
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle', d.ad);
+  await d.say(thread, IDS.HELIX, '!report');
+  await until(() => texts(thread).some((t) => /#9002.*Helix.*📄 log/s.test(t)), d.ad);
+  await d.say(thread, IDS.HELIX, '!report 1');
+  await until(() => texts(thread).some((t) => /no bug report #1\./.test(t)), d.ad);
+  await d.say(thread, IDS.HELIX, '!report 9002');
+  await until(() => texts(thread).some((t) => /Reading bug report #9002 from Helix \(with its game log\)/.test(t)), d.ad);
+  await until(() => texts(thread).some((t) => /LOG-MARKER-77/.test(t)), d.ad);   // fake claude echoes the prompt marker back below
+});
+
 test('long replies are split into several messages with code blocks kept closed; huge ones become a preview plus reply.md', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.OWNER, 'LONG-REPLY please');

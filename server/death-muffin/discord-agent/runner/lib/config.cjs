@@ -44,6 +44,8 @@ const DEFAULTS = {
   // After a PC ship goes live, ship.sh best-effort merges master into this branch and publishes phones + the offline edition (empty = off).
   mobileBranch: 'mobile',
   mobileDeployScript: 'server/death-muffin/deploy-mobile.sh',
+  // !report: read-only access to in-game bug reports through the bug agent's DB helper (reportsCmd replaces it in tests).
+  reportsCli: '/home/ubuntu/death-muffin/bug-agent/reports-cli.cjs',
   githubRepo: 'Brbmuffins/Death_Muffin',
   secretFile: '/home/ubuntu/death-muffin/discord-agent/secret',
   // The agent may WebSearch freely but WebFetch only these documentation hosts (exact host names): a fetch elsewhere could carry data out

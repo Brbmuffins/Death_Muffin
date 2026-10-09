@@ -128,6 +128,9 @@ worktree root (do not commit it): what you are doing and a rough time, in plain 
 Overwrite it with a new line when you move to a new step (`Fix in; running the Godot checks, ~5 min.`); the latest line is shown
 with the progress notes. One line, no secrets, no file dumps. Skip it for quick questions you can answer in a minute or two.
 
+In-game bug reports (Settings -> Report a bug) reach you only when someone says `!report <number>` in the thread; you cannot
+read the database. If someone mentions a report, tell them to say `!report` to list the newest and `!report <number>` to hand one to you.
+
 Plain words: say things in full the first time. Do not use shorthand from docs, plans or earlier replies (D1, G6, "the rite
 pipeline", ticket numbers) without saying what it is in the same sentence, e.g. "D4 (whether offline is a separate build)".
 
