@@ -87,3 +87,7 @@ The daily agent in `bug-agent/` triages them (`bug-agent/README.md`); `announce-
 
 From the repository root: `npm run test:rules` (shared rules), `npm run test:server` (backend, necro-progress and freshness checks of the generated bundles). Lobby: `cd server/death-muffin/lobby && npm install && npm test`.
 Backend dependencies: `npm ci` inside `backend/`. The Godot suites are run by `tools/godot/run-all-tests.sh`.
+
+## Ops jobs
+
+Nightly DB backup and the weekly drift report: [`ops/README.md`](ops/README.md) (`ops/install.sh` installs both).

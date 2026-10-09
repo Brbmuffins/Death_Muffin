@@ -1,4 +1,15 @@
-# Ops: weekly drift report
+# Ops: nightly DB backup and weekly drift report
+
+Install or update both from a committed revision: `server/death-muffin/ops/install.sh [rev]` (copies the scripts to
+`/home/ubuntu/death-muffin/ops/`, installs the units, enables the timers). Never edit the installed copies.
+
+## Nightly DB backup
+
+`backup-db.sh` (timer `death-muffin-db-backup`, 04:30 UTC): verified gzip `mysqldump` of `death_muffin` to
+`~/death-muffin/backups/db/daily/` (newest 14), plus the first dump of each week in `weekly/` (8) and each month in `monthly/` (12).
+Restore: `gunzip -c <file> | sudo mysql <db>` (into a scratch DB first if unsure).
+
+## Weekly drift report (timer `death-muffin-drift-report`, Mondays 09:30 UTC, posts only when something drifted)
 
 `drift-report.sh` compares the Death Muffin deployment on this VPS with `origin/main` and lists leftovers. It is read-only: it never changes, deletes, restarts or pushes anything (it only runs `git fetch`).
 
@@ -15,12 +26,12 @@ Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`
 |---|---|
 | 1 | Installed discord-agent and bug-agent files, art tools and systemd units vs the repo |
 | 2 | Live backend, gathering, necro-progress and lobby code vs the repo. Comments and blank lines are ignored; comment-only differences are a soft note, not drift |
-| 3 | Published client `rev` vs commits touching `godot/` merged after it |
+| 3 | Published client `rev` vs commits that change shipped client files (`godot/`, not tests or docs) merged after it |
 | 4 | Extra remote/local branches and worktrees. `discord/*` jobs are listed as info and flagged after 7 days; `bugfix/reports-*` after 3 days |
 | 5 | Uncommitted changes in the main checkout |
 | 6 | Unexpected files in the public docroot (allowed: the `server/death-muffin/site/` files plus `client`, `play`, `preview`; `play/` only `index.html`, `patch-notes.json`, `release-notes.json`) and secret-ish names |
 | 7 | Services active, bug-agent timer enabled, auth `/health` |
-| 8 | Disk over 85%, size of `wt/` and `deploy/`, old `backup-pre-release-*` folders (never pruned) |
+| 8 | Disk over 85%, size of `wt/` and `deploy/` (`deploy/` over 2 GB is drift, with a breakdown), old `backup-pre-release-*` folders (never pruned) |
 | 9 | Newest file in `~/death-muffin/backups/db/` missing or older than 36 h |
 
-To run weekly, use a systemd timer or cron calling it with `--discord`. Any worktree you create (including for this report's own branch) shows up in check 4 until it is removed.
+Any worktree you create (including for this report's own branch) shows up in check 4 until it is removed.
