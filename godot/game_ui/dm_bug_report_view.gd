@@ -18,6 +18,7 @@ var send_button: Button
 var back_button: Button
 var result_label: Label
 var list_box: VBoxContainer
+var attach_log: CheckBox
 var last_report: Dictionary = {}
 
 
@@ -44,7 +45,7 @@ func setup(ui_: Node) -> void:
 	var sec := _section("Report a bug")
 	add_child(sec[0])
 	var box: VBoxContainer = sec[1]
-	var note := DmUi.label("Tell us what went wrong, where you were and what you expected. Your area, level, discipline and game version are attached for you. Reports are read every day.", "DmNote", true)
+	var note := DmUi.label("Tell us what went wrong, where you were and what you expected. Your area, level, discipline and game version are attached for you, and your game log if the box below is ticked. Reports are read every day.", "DmNote", true)
 	note.add_theme_font_size_override("font_size", 14)
 	var nm := MarginContainer.new()
 	nm.add_theme_constant_override("margin_top", 8)
@@ -77,6 +78,15 @@ func setup(ui_: Node) -> void:
 	mm.add_theme_constant_override("margin_top", 6)
 	mm.add_child(message)
 	box.add_child(mm)
+	# The end of the game log (the crashed session's too, if the game closed on you): owner 2026-10-09, crash reports had to be pasted by hand.
+	attach_log = CheckBox.new()
+	attach_log.text = "Attach my game log (helps with crashes)"
+	attach_log.button_pressed = true
+	attach_log.focus_mode = Control.FOCUS_NONE
+	var am := MarginContainer.new()
+	am.add_theme_constant_override("margin_top", 6)
+	am.add_child(attach_log)
+	box.add_child(am)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	count_label = DmUi.label("0 / %d" % MAX_LEN, "DmHint")
@@ -134,7 +144,13 @@ func send() -> void:
 	send_button.disabled = true
 	result_label.text = "Sending…"
 	var cat: String = CATEGORIES[category.selected][0]
-	var report := {"category": cat, "message": message.text.strip_edges(), "characterId": int(ui.game.character["id"]), "context": context()}
+	var ctx := context()
+	if attach_log.button_pressed:
+		var log_text := game_log_tail()
+		if log_text != "":
+			ctx["log"] = log_text
+			ctx["errors"] = log_errors(log_text)
+	var report := {"category": cat, "message": message.text.strip_edges(), "characterId": int(ui.game.character["id"]), "context": ctx}
 	last_report = report
 	var r: DmResult = await ui.game.api.send_bug_report(report)
 	if r.ok:
@@ -168,3 +184,50 @@ func load_list() -> void:
 		if rep.get("note") != null and String(rep["note"]) != "":
 			v.add_child(DmUi.label(String(rep["note"]), "DmNote", true))
 		list_box.add_child(v)
+
+
+## The end of the Godot log: the previous session's (where a crash that closed the game is written) and this one's, newest last,
+## at most `max_chars`. The player's home folder becomes ~ and anything that looks like a token or password is blanked.
+static func game_log_tail(max_chars: int = 11000, dir: String = "user://logs") -> String:
+	var files := DirAccess.get_files_at(dir)
+	if files.is_empty():
+		return ""
+	var previous := ""
+	var newest := -1
+	for f in files:
+		if f.begins_with("godot") and f.ends_with(".log") and f != "godot.log":
+			var t := FileAccess.get_modified_time(dir.path_join(f))
+			if t > newest:
+				newest = t
+				previous = f
+	var parts: Array[String] = []
+	var half := max_chars / 2
+	if previous != "":
+		parts.append("=== previous session (%s) ===\n%s" % [previous, _tail(FileAccess.get_file_as_string(dir.path_join(previous)), half)])
+	if files.has("godot.log"):
+		parts.append("=== this session ===\n%s" % _tail(FileAccess.get_file_as_string(dir.path_join("godot.log")), max_chars - half if previous != "" else max_chars))
+	return _scrub("\n".join(parts)).right(max_chars)
+
+
+## Up to five ERROR / SCRIPT ERROR lines from the log, newest last (the report's short "errors" list).
+static func log_errors(log_text: String) -> Array:
+	var out: Array = []
+	for line in log_text.split("\n"):
+		if line.contains("ERROR") or line.begins_with("CrashHandlerException"):
+			out.append(line.strip_edges().left(400))
+	return out.slice(maxi(0, out.size() - 5))
+
+
+static func _tail(text: String, n: int) -> String:
+	return text if text.length() <= n else "…" + text.right(n - 1)
+
+
+static func _scrub(text: String) -> String:
+	for v in ["USERPROFILE", "HOME"]:
+		var home := OS.get_environment(v)
+		if home.length() > 3:
+			text = text.replace(home, "~").replace(home.replace("\\", "/"), "~")
+	var kv := RegEx.create_from_string("(?i)(token|authorization|password|secret|api[_-]?key)([\"']?\\s*[:=]\\s*[\"']?)[^\\s,\"'}&]+")
+	var bearer := RegEx.create_from_string("(?i)(bearer\\s+)[A-Za-z0-9._~+/=-]+")
+	return kv.sub(bearer.sub(text, "$1[redacted]", true), "$1$2[redacted]", true)
+

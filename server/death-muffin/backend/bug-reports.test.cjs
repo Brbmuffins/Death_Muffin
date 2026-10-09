@@ -92,3 +92,14 @@ test('a released report reads as live for the player', async () => {
   const { body } = await h.call('GET /api/bug-reports/mine');
   assert.strictEqual(body.data[0].status, 'Fixed — live now');
 });
+
+test('cleanContext keeps the tail of a game log apart from the context budget', () => {
+  const log = 'old line\n'.repeat(3000) + 'SCRIPT ERROR: tooltip\u0007 crash';
+  const ctx = cleanContext({ area: 'graves', log, errors: Array.from({ length: 5 }, () => 'e'.repeat(400)) });
+  assert.strictEqual(ctx.area, 'graves');
+  assert.strictEqual(ctx.errors.length, 5);
+  assert.strictEqual(ctx.log.length, 12000);
+  assert.ok(ctx.log.endsWith('SCRIPT ERROR: tooltip crash'));
+  assert.deepStrictEqual(cleanContext({ log: 42 }), {});
+  assert.deepStrictEqual(cleanContext({ log: '   ' }), {});
+});

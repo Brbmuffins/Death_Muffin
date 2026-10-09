@@ -15,6 +15,8 @@ const STATUSES = ['new', 'triaged', 'fixing', 'fixed', 'released', 'needs_info',
 const MESSAGE_MIN = 10;
 const MESSAGE_MAX = 2000;
 const CONTEXT_MAX_BYTES = 4000;
+// The Godot client attaches the end of its log (the crashed session's, when there was one): kept apart from the context budget.
+const LOG_MAX = 12000;
 const DAILY_CAP = 10;
 
 /** Player-facing wording for each status (the "Your reports" list). */
@@ -35,14 +37,17 @@ function cleanContext(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
   for (const [key, value] of Object.entries(raw).slice(0, 24)) {
     if (!/^[a-zA-Z][a-zA-Z0-9_]{0,31}$/.test(key)) continue;
+    if (key === 'log') continue;
     if (typeof value === 'number' && Number.isFinite(value)) out[key] = value;
     else if (typeof value === 'boolean') out[key] = value;
     else if (typeof value === 'string') out[key] = value.slice(0, 300);
     else if (key === 'errors' && Array.isArray(value)) out.errors = value.filter((e) => typeof e === 'string').slice(-5).map((e) => e.slice(0, 400));
   }
   while (JSON.stringify(out).length > CONTEXT_MAX_BYTES && out.errors && out.errors.length) out.errors.shift();
-  if (JSON.stringify(out).length > CONTEXT_MAX_BYTES) return { truncated: true };
-  return out;
+  const result = JSON.stringify(out).length > CONTEXT_MAX_BYTES ? { truncated: true } : out;
+  // newest lines matter most (the crash is at the end): keep the tail
+  if (typeof raw.log === 'string' && raw.log.trim()) result.log = raw.log.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').slice(-LOG_MAX);
+  return result;
 }
 
 /** Validate a POST body. Returns { error } or { report }. */
