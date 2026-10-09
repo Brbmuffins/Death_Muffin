@@ -1,0 +1,1 @@
+{"fn":"flasks","cases":[{"in":{"id":"flask_hp_major"},"out":0.7},{"in":{"id":"flask_hp_minor"},"out":0.35},{"in":{"id":"flask_hp_grand"},"out":0.9}]}

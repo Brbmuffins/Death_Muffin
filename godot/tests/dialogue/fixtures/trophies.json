@@ -1,0 +1,1 @@
+{"fn":"trophies","cases":[{"in":"[\"gravedigger\",\"abbess\"]","out":["gravedigger","abbess"]},{"in":"[\"gravedigger\",\"nope\",3]","out":["gravedigger"]},{"in":"bad json","out":[]},{"in":"{\"a\":1}","out":[]},{"in":"","out":[]}]}
