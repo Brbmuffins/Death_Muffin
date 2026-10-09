@@ -53,6 +53,8 @@ echo "== agent (worktree $WT)"
 set +e
 (
   cd "$WT"
+  # check.sh runs ~35 min (hard limit 50): the Bash tool must block that long, never background it (2026-10-08 hang lesson).
+  export CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 BASH_DEFAULT_TIMEOUT_MS=3300000 BASH_MAX_TIMEOUT_MS=3300000
   timeout 3h claude -p \
     --restricted --strict-mcp-config --no-session-persistence \
     --model opus \

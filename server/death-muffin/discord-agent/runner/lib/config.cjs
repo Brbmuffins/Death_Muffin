@@ -14,7 +14,7 @@ const DEFAULTS = {
   defaultModel: 'sonnet',
   allowedModels: ['sonnet', 'opus', 'haiku'],
   maxConcurrentJobs: 1,
-  turnTimeoutMin: 45,
+  turnTimeoutMin: 60,
   publishAutoRetryMin: 10,     // godot: after ship.sh's own 3 publish tries fail, the runner retries once more by itself after this long
   publishRetrySleeps: null,    // tests only: PUBLISH_RETRY_SLEEPS for ship.sh (default "30 90")
   maxTurnsPerJob: 40,           // per round (a round = one branch, from the first message to ship/discard)

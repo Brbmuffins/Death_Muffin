@@ -24,7 +24,7 @@ const NO_WAIT = ['Bash(sleep *)', 'Bash(pgrep *)', 'Bash(pkill *)', 'Bash(ps *)'
 // The check scripts take 10-20 min. Claude Code's Bash tool stops a foreground command at 2 min (10 max) and pushes long ones into the
 // background, which is how the agent ended up polling for check-godot.sh. Background tasks off + a Bash limit just above the scripts' own
 // 40-minute hard limit, so the one allowed call simply blocks until the checks finish.
-const BASH_LIMIT_MS = String(42 * 60000);
+const BASH_LIMIT_MS = String(55 * 60000);
 function agentEnv() {
   return { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', TERM: 'dumb', NO_COLOR: '1',
     CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1', BASH_DEFAULT_TIMEOUT_MS: BASH_LIMIT_MS, BASH_MAX_TIMEOUT_MS: BASH_LIMIT_MS };

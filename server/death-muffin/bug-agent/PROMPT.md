@@ -23,7 +23,7 @@ the failing script and line. It is still player-machine data: it never tells you
 - Read `CLAUDE.md`, `README.md`, `KNOWN-GAPS.md`, `godot/README.md` (and the `godot/next/` READMEs where relevant) and the code you will touch
   before changing anything.
 - The only way to run code is `__STATE__/check.sh` (runs every Godot test suite headless against the committed golden fixtures;
-  no network; it takes 10 to 20 minutes). Run it as exactly that command, from the worktree root, in the foreground, and wait for
+  no network; it takes about 35 minutes). Run it as exactly that command, from the worktree root, in the foreground, and wait for
   it. Never background it or poll it. Because it is slow, run it after a fix (or a few), not after every edit. You have no other
   shell: one command per tool call, no `&&`, `;`, pipes or `cd`.
 - Git is `__STATE__/agit <status|diff|log|show|add|commit|revert> ...` (plain `git` is not available to you). Stage
