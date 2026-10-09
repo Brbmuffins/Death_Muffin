@@ -1,8 +1,7 @@
 class_name DmDepths
 extends Node
-## The Catacomb Depths in the rebuild (child "Depths" of DmNextGame, host only; solo, REBUILD D5). The current game's DmDepthsController
-## (entering by the Warren's stair, floors, stairs, the chest, the rewards, death ends the run, "death takes nothing", the summary) on the
-## rebuilt pieces: the run rules are DmDepthsRun (the sim's, pure), the floor's picture / navmesh / colliders DmDepthsGround, enemies are
+## The Catacomb Depths in the rebuild (child "Depths" of DmNextGame, host only; solo, DECISIONS.md D5): entering by the Warren's stair, floors, stairs, the chest, the rewards, death ends the run, "death takes nothing", the summary) on the
+## rebuilt pieces: the run rules are DmDepthsRun (pure), the floor's picture / navmesh / colliders DmDepthsGround, enemies are
 ## DmEnemy scenes made by DmWaveDirector.spawn(..., over) with the floor's level, kills and loot go through DmSessionRewards (the loot
 ## ground follows the depth: `rewards.loot_area_of`), floor / chest rewards through the rewards + progress nodes, the record through DmChronicle.
 ## The hub's `interacted(it)` (stair, depths_down, depths_up, depths_chest) is the entry point; the floor's own interactables are added to the
@@ -564,7 +563,7 @@ func _sfx(id: String, x: float = NAN, z: float = NAN) -> void:
 		_audio.play_sfx(id, null if is_nan(x) else Vector2(x, z), 1.0)
 
 
-## Stand-in for the Warren's StairView: a worn disc with an ember glow and a light (the current game's DmDepthsController).
+## Stand-in for the Warren's StairView: a worn disc with an ember glow and a light.
 func _make_warren_stair(x: float, z: float) -> Node3D:
 	var root := Node3D.new()
 	root.name = "WarrenStair"

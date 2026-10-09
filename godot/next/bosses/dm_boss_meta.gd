@@ -1,8 +1,7 @@
 class_name DmBossMeta
 extends Node
 ## Boss meta-progression of the rebuild (child "BossMeta" of DmNextGame, host; the local hero's own account): the altar's Covenant Seal choice, the
-## Empowered summon and the Seal's prize. The rules are the current game's (DmGameActions.open_altar / summon_boss_normal / call_empowered,
-## DmGameRewards.claim_empowered) and the money is the BACKEND's (`/api/boss-key/*` takes the Seal and the gold, remembers the open summon, rolls
+## Empowered summon and the Seal's prize. The money is the BACKEND's (`/api/boss-key/*` takes the Seal and the gold, remembers the open summon, rolls
 ## the prize): nothing here prices or rolls anything.
 ##
 ## Flow: E at an altar / a click on it -> DmBossHost.request_summon -> `use_site`. A boss that can be Empowered, with a Seal in the bag (or a summon
@@ -78,7 +77,7 @@ func call_empowered(id: String) -> String:
 	var me: int = game.session.get_my_id()
 	if busy or not DmGoldSink.can_empower(id):
 		return "unknown"
-	var why := b._check(me, id)   # BEFORE the Seal is taken (the current game spent it first and refunded a refusal)
+	var why := b._check(me, id)   # BEFORE the Seal is taken (the original game spent it first and refunded a refusal)
 	if why != "":
 		b._say("toast", {"text": b.why_text(why, id, me), "kind": "err"})
 		return why

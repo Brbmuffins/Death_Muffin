@@ -70,7 +70,7 @@ static func cosmetics_view() -> Dictionary:
 
 
 static func sheet() -> Dictionary:
-	# Dev-mock sample (exported by tools/godot/export-panels-a.ts); lives under tests/, not data/.
+	# Dev-mock sample; lives under tests/, not data/.
 	var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://tests/panels_a/sheet_sample.json"))
 	d["ready"] = true
 	return d

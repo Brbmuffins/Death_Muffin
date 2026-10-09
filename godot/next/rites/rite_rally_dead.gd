@@ -1,7 +1,7 @@
 extends DmRiteModule
 ## Rally the Dead: every thrall you command (DmThrallHost.rally) is healed 20%, hits 40% harder and swings 30% faster for 6 s (Gravecaller +2 s) and
 ## turns on the enemy nearest the cursor (within the leash). 20 essence, 12 s, level 6; refused `no_thralls` with an empty legion (free). The host
-## applies it once; ONE event goes to every peer, which plays the beams / sigils / rims / sound exactly once (the current game's double-dispatch bug
+## applies it once; ONE event goes to every peer, which plays the beams / sigils / rims / sound exactly once (the original game's double-dispatch bug
 ## drew them twice). Numbers: DmSimData.RALLY + DmThrall.rally. Visuals: DmRiteFx.rally_cast / rally; the follow targets read the thrall puppets.
 
 const FOCUS_SEARCH := 30.0

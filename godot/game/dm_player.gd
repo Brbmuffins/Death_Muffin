@@ -1,7 +1,7 @@
 class_name DmPlayer
 extends RefCounted
 ## Port of src/gameplay/Player.ts: the local player's body. The numbers (vitals, defence, souls, cooldowns) live in `p`, the
-## DmPlayerRules state Dictionary (shared with DmSimCaster); this class adds the walking half: click paths over DmNav, WASD steps,
+## DmPlayerRules state Dictionary (shared with the rite caster); this class adds the walking half: click paths over DmNav, WASD steps,
 ## teleport, facing. Movement is client-simulated; positions are plain floats on the XZ plane (never Vector2: float32).
 
 const PLAN_MS := 250.0

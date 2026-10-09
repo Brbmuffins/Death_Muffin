@@ -1,6 +1,6 @@
 class_name DmAffixSet
 extends Node
-## Elite affixes of ONE enemy (the current game's rules, DmSimData.AFFIX_TUNING): bellTolled, hungering, shrouded, vengeful. A child "Affixes"
+## Elite affixes of ONE enemy (the original game's rules, DmSimData.AFFIX_TUNING): bellTolled, hungering, shrouded, vengeful. A child "Affixes"
 ## of the DmEnemy, created only on bodies that carry one (the spawn function, every peer), so a plain enemy has no node and no per-frame cost.
 ## Host: the rules (physics tick). Every peer: the look (persistent rings, 10 Hz motes) and each one-off moment exactly once (reliable RPC from
 ## the host, played locally on the host). See README.md.

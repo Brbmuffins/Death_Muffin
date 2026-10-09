@@ -1,12 +1,12 @@
 class_name DmAreaFlow
 extends Node
-## What happens around the areas of the rebuild (child "Areas" of DmNextGame): the entry banner and Codex discovery on entering an area (the
-## current game's DmGame._enter_area), the "wave procession" banner, and Grave Surge presentation + reward (DmEventFx._surge / _surge_cleared).
+## What happens around the areas of the rebuild (child "Areas" of DmNextGame): the entry banner and Codex discovery on entering an area the
+## the "wave procession" banner, and Grave Surge presentation + reward (DmEventFx._surge / _surge_cleared).
 ## Event driven: it does nothing between area changes, processions and surges.
 
 signal entered(id: String, first: bool)
 
-const FIRST_ENTRY_COUNSEL := ["cloister", "pyre", "fen", "warren", "alchemist_wing", "coliseum", "acre"]   ## DmGame._enter_area
+const FIRST_ENTRY_COUNSEL := ["cloister", "pyre", "fen", "warren", "alchemist_wing", "coliseum", "acre"]
 
 var game: DmNextGame
 var announced: Dictionary = {}          ## area id -> true once its banner was shown this session

@@ -1,7 +1,7 @@
 class_name DmSimExact
 extends RefCounted
 ## Bit-exact doubles in JSON. Godot's JSON parser is not correctly rounded for numbers with more than 12 significant digits (one ulp off for
-## ~13% of random 17-digit doubles), so the sim's own data files (godot/data/sim/*.json, written by tools/godot/export-sim.ts) and the golden
+## ~13% of random 17-digit doubles), so the sim's own data files (godot/data/sim/*.json) and the golden
 ## fixtures store such doubles as the string "d:<16 hex digits of the IEEE-754 bits>". Load them with load_json() (or decode() after parse_string).
 
 static var _b: PackedByteArray = PackedByteArray([0, 0, 0, 0, 0, 0, 0, 0])

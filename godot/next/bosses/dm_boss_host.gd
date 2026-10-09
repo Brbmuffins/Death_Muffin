@@ -405,7 +405,7 @@ func _physics_process(delta: float) -> void:
 		packets_sent += 1
 
 
-## The Drowned Congregation: the nave water rises each phase; wading outside her dais is slower (DmGame._update_movement_mods). Host, 10 Hz, only while
+## The Drowned Congregation: the nave water rises each phase; wading outside her dais is slower. Host, 10 Hz, only while
 ## she is awake or a body is still slowed.
 func _wade(dt: float) -> void:
 	_wade_t -= dt

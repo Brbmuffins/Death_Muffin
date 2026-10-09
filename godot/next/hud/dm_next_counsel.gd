@@ -1,6 +1,6 @@
 class_name DmNextCounsel
 extends RefCounted
-## Counsel facts for the slice (DmGameCombat.counsel_busy / tick_counsel / counsel_tick_ctx of the current client): "busy" flags that hold tips back
+## Counsel facts for the slice : "busy" flags that hold tips back
 ## during a fight, and the state-based ctx the UI polls every 400 ms (DmCounselEvents.tick_calls). Reads the slice's nodes; allocates only on the poll.
 
 const BOSS_IDS := ["gravedigger", "abbess", "congregation", "saint", "regent", "mire"]

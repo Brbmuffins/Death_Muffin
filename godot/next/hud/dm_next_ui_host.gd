@@ -1,7 +1,7 @@
 class_name DmNextUiHost
 extends Node
-## The view-model adapter between DmNextGame and the existing DmGameUi / DmHud / panels: it implements the DmGame side of
-## godot/GAME_CONTRACT.md (character, slots, progress, settings, api, area_id, camera, hud_state(), cast(), refresh_*(), the signals) on top of
+## The view-model adapter between DmNextGame and the existing DmGameUi / DmHud / panels: it implements the host side of
+## the DmGameUi contract (character, slots, progress, settings, api, area_id, camera, hud_state(), cast(), refresh_*(), the signals) on top of
 ## the slice's nodes, so the real HUD and panels run unchanged. Child "UiHost" of DmNextGame.
 ##
 ## Reads: DmHeroBody (vitals), DmRiteCaster (cooldowns, essence, hit numbers, rejections), DmThrallHost (legion), DmStatusSet, the rewards
@@ -25,7 +25,7 @@ signal party_changed                         ## the lobby / party state changed 
 
 const REJECT_TEXT := {"essence": "Not enough Grave Essence", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
 const FEEDBACK_GAP_MS := 600
-const CLIENT_OWNED_CHARACTER_FIELDS := ["gold", "level", "experience", "stat_str", "stat_agi", "stat_int", "stat_vit"]   ## as DmGame
+const CLIENT_OWNED_CHARACTER_FIELDS := ["gold", "level", "experience", "stat_str", "stat_agi", "stat_int", "stat_vit"]
 const PARTY_ALTAR := "The Altar answers only in your own world: leave the party first."
 const HERO_STATUS_TEXT := {&"chill": "Chilled", &"root": "Rooted", &"stun": "Stunned"}   ## the old game's floats over the hero (DmGameCombat.on_hurt / drag_player)
 
@@ -134,7 +134,7 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	settings_store.changed.connect(func(_v: Dictionary) -> void: _apply_settings_side_effects())
 	if m != null:
 		m.loot_view.rules = settings_store.loot_rules()
-	dev_account = _is_dev_account()   # DmGame.setup: dev_access = dev_account and the Settings toggle; everything that reads it follows below
+	dev_account = _is_dev_account()   # old DmGame.setup: dev_access = dev_account and the Settings toggle; everything that reads it follows below
 	dev_access = dev_account and bool(settings["dev_access"])
 	_push_dev_access()
 	if dev_access and shell.chapterhouse != null:
@@ -184,7 +184,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				use_belt(slot)
 
 
-# ---- DmGame contract: state ---------------------------------------------------------------------------------------------------------
+# ---- DmGameUi contract: state ---------------------------------------------------------------------------------------------------------
 
 func hud_state() -> Dictionary:
 	return vm.build()
@@ -207,7 +207,7 @@ func kills_in(area: String) -> int:
 	return int(_kills.get(area, 0))
 
 
-## The server's view of the character (fields the server owns only, newest request wins, as DmGame.refresh_character): the Workbench, Vault
+## The server's view of the character (fields the server owns only, newest request wins, as old DmGame.refresh_character): the Workbench, Vault
 ## and Altar panels change the backend and call this.
 func refresh_character() -> void:
 	_character_seq += 1
@@ -229,7 +229,7 @@ func load_cosmetics() -> void:
 		shell.look.set_cosmetics(r.data["selected"])
 
 
-## The Altar's vows / boons / ascension live on the backend: adopt its necro state (plus what was gathered since), as DmGame.refresh_progress.
+## The Altar's vows / boons / ascension live on the backend: adopt its necro state (plus what was gathered since), as old DmGame.refresh_progress.
 func refresh_progress() -> void:
 	var before := _thrall_numbers()
 	var tier0 := int(prog.local["legionTier"])
@@ -242,7 +242,7 @@ func refresh_progress() -> void:
 	progress_changed.emit()
 
 
-## The Altar (DmGame.do_ascend / do_swear / do_open / the Ascension panel): the backend rules the state (ashes, vows, unlocks, boons), `refresh_progress`
+## The Altar (old DmGame.do_ascend / do_swear / do_open / the Ascension panel): the backend rules the state (ashes, vows, unlocks, boons), `refresh_progress`
 ## adopts it, and DmNextProgress.apply_progress -> DmNextMeta.sync carries it into the world. "" = done, else the Altar's refusal.
 func do_ascend() -> String:
 	if shell.progress == null:
@@ -283,7 +283,7 @@ func do_open(key: String) -> String:
 	return ""
 
 
-## Bag edits the Reliquary makes (GAME_CONTRACT.md; as DmGame): `slots` is for reading, these change the bag.
+## Bag edits the Reliquary makes (GAME_CONTRACT.md; as old DmGame): `slots` is for reading, these change the bag.
 func bag_remove(slot_index: int, _item_id: String, n: int) -> int:
 	return inventory.remove_from_slot(slot_index, n)
 
@@ -311,7 +311,7 @@ func apply_settings(s: Dictionary) -> void:
 		_apply_settings_side_effects()
 
 
-const DEV_ACCOUNTS := ["brbmuffins"]   ## = DmGame.DEV_ACCOUNTS
+const DEV_ACCOUNTS := ["brbmuffins"]
 
 
 ## gm_enabled on the character, or a DEV_ACCOUNTS name in the session token (downloadable offline profiles can never be staff).
@@ -337,7 +337,7 @@ func _push_dev_access() -> void:
 		c.dev = dev_access and shell.session.is_host()   # the host validates casts: a client's flag is never trusted
 
 
-## Dev access toggle (Settings -> preview as a normal player): rites, areas and gathering tiers open or close (DmGame._apply_dev_access).
+## Dev access toggle (Settings -> preview as a normal player): rites, areas and gathering tiers open or close (old DmGame._apply_dev_access).
 func _apply_dev_access() -> void:
 	if not dev_account:
 		return
@@ -578,7 +578,7 @@ func leave_world() -> void:
 	left_world.emit()
 
 
-## ClassPanel -> a new discipline: the shell tears the session down and re-enters with the new character (DmGame.class_changed).
+## ClassPanel -> a new discipline: the shell tears the session down and re-enters with the new character (old DmGame.class_changed).
 func class_changed(new_character: Dictionary) -> void:
 	world_restart.emit(new_character)
 
@@ -822,7 +822,7 @@ func _on_hero_effect(kind: StringName) -> void:
 
 ## Enemy hooks (called for every spawned enemy): thrall blows and Miasma ticks get numbers, like the old DmEventFx.
 func watch_enemy(e: DmEnemy) -> void:
-	# Counsel moments the current client raises from its event fx (DmEventFx._spawn / _sanctify): once per spawn, no per-frame cost.
+	# Counsel moments the original game raises from its event fx (DmEventFx._spawn / _sanctify): once per spawn, no per-frame cost.
 	var near_d := _dist_hero(e.position.x, e.position.z)
 	if near_d < 40.0 and not e is DmBoss:
 		game_event.emit("enemy_spawned", {"def": e.def_id, "elite": e.elite, "near": true, "area_safe": bool(DmContent.area(shell.area_id)["safe"])})
@@ -889,7 +889,7 @@ func save_chip() -> Dictionary:
 	return _save_vm
 
 
-## The upgrades box's wave dial (DmGame.dial_wave): the active Wave Speed tier, 0..owned; the director and rewards follow.
+## The upgrades box's wave dial (old DmGame.dial_wave): the active Wave Speed tier, 0..owned; the director and rewards follow.
 func dial_wave(delta: int) -> void:
 	prog.set_active_wave_tier(float(prog.local["waveTierActive"]) + delta)
 	if shell.progress != null:
@@ -939,7 +939,7 @@ func _item_collected(it: Dictionary, meta: Dictionary) -> void:
 
 
 ## Legion tier (the Legion panel's Reinforce and buy_upgrade("legion")): the backend prices it, `refresh_progress` adopts the tier, the stats (thrall cap,
-## hp, damage) follow through DmNextProgress.apply_progress, and standing thralls get the one-time bump (DmGame.buy_upgrade). "" = bought, else why not.
+## hp, damage) follow through DmNextProgress.apply_progress, and standing thralls get the one-time bump (old DmGame.buy_upgrade). "" = bought, else why not.
 func buy_legion() -> String:
 	var r: DmResult = await api.necro_purchase(hero_id, "legion")
 	if not r.ok:

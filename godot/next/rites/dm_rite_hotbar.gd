@@ -8,7 +8,7 @@ extends RefCounted
 
 static func rite_for_slot(slot: int, family: String = "necromancer", discipline_id: String = "") -> String:
 	var kit: Dictionary = DmContent.kit(family)
-	if slot == 6:   # R: the discipline's signature (the current game's sixth hotbar slot)
+	if slot == 6:   # R: the discipline's signature (the original game's sixth hotbar slot)
 		return String(kit.get("signatures", {}).get(discipline_id, ""))
 	if slot == 0:
 		return String(kit.get("defaultPrimary", ""))

@@ -1,9 +1,8 @@
 class_name DmNextMeta
 extends Node
 ## Host-side meta systems of the slice (child "Meta" of DmNextGame): difficulty, the sworn world vows, the week's Omen, Soul Harvest, the Kill Chain's
-## presentation, the Bonded Dead boon. It owns no rules (DmContent.difficulty, DmAscension / DmVowsBoons, DmPlayerRules souls, DmKillChain are the
-## current game's): it reads the character's progression and pushes the results to the nodes that act on them, as DmGame did through `sim.difficulty`,
-## `sync_world_vows`, `omen` and `rewards.chain`.
+## presentation, the Bonded Dead boon. It owns no rules (DmContent.difficulty, DmAscension / DmVowsBoons, DmPlayerRules souls, DmKillChain are shared
+## rules): it reads the character's progression and pushes the results to the nodes that act on them.
 ##
 ##   difficulty  -> director (enemy hp / damage / elite chance), rewards (xp / gold / loot), bosses (brains)
 ##   world vows  -> director (levels, hp, wave size, deacon weight, elites), bosses (levels, echoes), corpse field (life), rewards (heat -> xp / gold)
@@ -12,7 +11,7 @@ extends Node
 
 signal event(id: String, ctx: Dictionary)
 
-const BOND_DELAY := 1.5                  ## s after entering a hunting ground (DmGame._bond_at)
+const BOND_DELAY := 1.5                  ## s after entering a hunting ground
 const CHAIN_COLORS := [0xe6d3a0, 0xf0b25a, 0xf08a3a, 0xee5a2a, 0xff3a3a]
 
 var shell: DmNextGame
@@ -28,7 +27,7 @@ var _bond_t := 0.0
 var _chain_told := false
 
 
-## The weekly Omen of a clock (ms since the Unix epoch): the same rotation as DmGame._omen_for (week 0 starts on a Monday).
+## The weekly Omen of a clock (ms since the Unix epoch): week 0 starts on a Monday.
 static func omen_for(ms: float) -> Dictionary:
 	var order: Array = DmContent.get_export("omens", "OMEN_ORDER")
 	var week_ms := 7.0 * 24.0 * 3600.0 * 1000.0
@@ -46,14 +45,14 @@ func attach(shell_: DmNextGame) -> void:
 	set_difficulty(String(shell.opts.get("difficulty", "medium")), true)
 	shell.rewards.killer_paid.connect(_on_killer_paid)
 	shell.rewards.chain_tier_up.connect(_on_chain_tier)
-	shell.hero_died.connect(func(_b: DmHeroBody) -> void: member.chain.reset())   # DmGameCombat.on_death
+	shell.hero_died.connect(func(_b: DmHeroBody) -> void: member.chain.reset())
 	shell.area_changed.connect(func(_id: String) -> void: _bond_t = BOND_DELAY)
 	shell.session.player_joined.connect(func(_id: int) -> void: _apply_members.call_deferred())
 	_apply_members()
 	set_process(true)
 
 
-## Settings -> difficulty (and `opts.difficulty`): the next enemies to rise feel it (DmGame._on_difficulty). `quiet` = no toast.
+## Settings -> difficulty (and `opts.difficulty`): the next enemies to rise feel it. `quiet` = no toast.
 func set_difficulty(d: String, quiet: bool = false) -> void:
 	if not DmContent.difficulties().has(d) or d == difficulty and _synced:
 		return
@@ -84,7 +83,7 @@ func sync() -> void:
 	shell.corpses.life_mult = float(prog.boons()["corpseLifeMult"]) * float(vow_fx["corpseLifeMult"])
 	_apply_members()
 	if _synced and sig != _vow_sig:
-		d.clear()   # new vows: the hunting grounds start over (DmGame.do_swear clears every area)
+		d.clear()   # new vows: the hunting grounds start over (every area is cleared)
 	_vow_sig = sig
 	_synced = true
 

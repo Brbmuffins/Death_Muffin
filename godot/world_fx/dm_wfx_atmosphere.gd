@@ -3,7 +3,7 @@ extends Node3D
 ## Per-area weather around the camera focus (src/graphics/Atmosphere.ts): ash and leaves over the Hollow Graves, bone-dust in the Ossuary,
 ## drips and faint rain in the Drowned Nave, rising embers in the Bell Sanctum, ... One mesh = one draw call; every particle moves in the
 ## vertex shader from a seed + time and wraps around the focus. The CPU only touches the mesh when the area changes (cross-fade 1.6/s out,
-## 0.8/s in, like the web). Profiles are read from the TS source by tools/godot/export-world-fx.ts; per-particle seeds replay the web's
+## 0.8/s in, like the web). Profiles are in data/world_fx/fx.json; per-particle seeds replay the web's
 ## mulberry32(area.length * 977 + charCode(area[0])) call order exactly.
 
 const SHADER_CODE := """

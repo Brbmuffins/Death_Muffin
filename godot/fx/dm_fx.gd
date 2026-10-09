@@ -226,7 +226,7 @@ func clear() -> void:
 	binbun.clear()
 
 
-## Stop and drop everything, persistent decals included: call before freeing the owner of any `follow` closures (DmGame._exit_tree).
+## Stop and drop everything, persistent decals included: call before freeing the owner of any `follow` closures (DmNextGame._exit_tree).
 func clear_all() -> void:
 	binbun.clear()
 	if prims != null:

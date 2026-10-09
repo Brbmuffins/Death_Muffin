@@ -5,7 +5,7 @@ extends Node3D
 ## gestures (`cast`), gathering tools, the mastery cape. The creature runs in-place (the sim owns position and heading).
 ##
 ## Use: var a := DmAvatar.new(); a.setup(world_root, "#a26bff", true, "hero_ossuary"); each frame a.update(dt, x, z, facing, moving, move_speed).
-## `settings` = the DmGame settings dictionary (reads hideHelm); call `DmAvatar.refresh_all()` when settings change.
+## `settings` = the game settings dictionary (reads hideHelm); call `DmAvatar.refresh_all()` when settings change.
 
 const HERO_TURN_RATE := 12.0
 const HERO_TURN_MAX := 13.0

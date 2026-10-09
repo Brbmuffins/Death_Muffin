@@ -1,6 +1,6 @@
 class_name DmWarmup
 extends RefCounted
-## First-use hitch removal, run once while the world loads (DmGame.start). Without it every first cast of a rite, first enemy type of a
+## First-use hitch removal, run once while the world loads (the game's start). Without it every first cast of a rite, first enemy type of a
 ## wave and first sound loaded from disk mid-fight (100-800 ms stalls measured by tests/perf/combat_perf.gd), and the GPU compiled each
 ## new shader on its first draw on top of that.
 ##  1. Every creature model and every Binbun effect scene loads on worker threads (the loading screen keeps drawing).
@@ -29,7 +29,7 @@ static func _model_paths() -> Array:
 static func run(game: Node3D) -> void:
 	var t0 := Time.get_ticks_msec()
 	var tree := game.get_tree()
-	var cover := DmLoadingScreen.acquire(game, COVER_TEXT)   # main shows it before the world builds; a bare DmGame (tests) gets its own
+	var cover := DmLoadingScreen.acquire(game, COVER_TEXT)   # main shows it before the world builds; a bare game (tests) gets its own
 	var binbun: DmFxBinbun = null
 	var ids: Array = []
 	if game.vfx != null and game.vfx.binbun != null and game.vfx.binbun.enabled:

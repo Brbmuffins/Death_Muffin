@@ -3,7 +3,7 @@ extends DmEnemy
 ## One boss as a node: a DmEnemy (so rites, thralls, statuses, rewards and the HUD already know how to hit it) whose BRAIN is the existing
 ## per-boss brain of godot/sim/bosses (DmBossBrain: awaken, phases at 60/30 %, telegraph + resolve loop, arena leash, the numbers in
 ## content/bosses.json) running on the host through a DmBossNodeWorld. No navmesh / no DmEnemy state set: the arenas are open rings and the brain
-## owns movement. The look is the current client's DmBossView (model, clips, glow, rise/fade) fed from a DmBossState; the effects are the
+## owns movement. The look is the original game's DmBossView (model, clips, glow, rise/fade) fed from a DmBossState; the effects are the
 ## current DmEventFx boss events (DmBossFx), exactly once per peer. See README.md.
 ##
 ## Host: _physics_process pumps `brain.update(dt)` and mirrors the result (position, hp, phase, state) onto the body. Everywhere else the node is

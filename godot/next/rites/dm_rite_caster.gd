@@ -5,7 +5,7 @@ extends Node
 ##
 ## The caster is the SHARED PLUMBING only. Each rite is its own small module (godot/next/rites/rite_<id>.gd, a DmRiteModule) registered in
 ## DmRiteRegistry (one line per rite); the recipe for adding one is in godot/next/rites/README.md. The rules numbers live in DmAbilities /
-## DmSimData / DmFxData, the visuals in DmRiteFx (shared with the current game).
+## DmSimData / DmFxData, the visuals in DmRiteFx (shared with the original game).
 ##
 ## Flow:
 ##   owner client  request_cast(rite, aim, target_id)  --RPC intent-->  host `_apply_cast`
@@ -14,7 +14,7 @@ extends Node
 ##        (rolls the numbers, schedules shots with `after`, damages through DmStatusSet.hit / DmEnemy.take_damage, consumes corpses);
 ##        a resolve that fails (e.g. the corpse was taken first) refunds the cost and cooldown;
 ##   host broadcasts EVENT dicts ({t, rite, ...}) by RPC; EVERY peer (the host included, also solo) plays each event exactly once
-##        through module.play: fx via DmRiteFx (the same code the current game draws the rites with), sound via AudioDirector.
+##        through module.play: fx via DmRiteFx (the same code the original game draws the rites with), sound via AudioDirector.
 ##   host replicates {essence, max, cooldowns} to the owner for the HUD (`get_state()` + `state_changed`); a refusal goes back as `cast_rejected`.
 ## Casting is not predicted on the owner: it sees its own cast when the host's event arrives (one round trip).
 ##
@@ -337,7 +337,7 @@ func _apply_cast(sender: int, rite: String, aim: Vector3, target_id: int) -> voi
 	_push_state(true)
 
 
-## Host: a standing hero turns to its cast (the current client faces the aim), so the gesture and the picture agree. A rite that moved the
+## Host: a standing hero turns to its cast (the original game faces the aim), so the gesture and the picture agree. A rite that moved the
 ## body (a step, a dash) keeps the heading it set.
 func _face_aim(aim: Vector3, from: Vector3) -> void:
 	if _body == null or not _body.has_method("set_facing") or _body.position != from or bool(_body.get("dashing")):
@@ -548,7 +548,7 @@ func _adopt_state(st: Dictionary) -> void:
 
 # ---- every peer: events -> visuals + sound -----------------------------------------------------------------------------------------------
 
-## Once per event per peer. All fx/sfx go through DmRiteFx (shared with the current game's DmAbilitySystem).
+## Once per event per peer. All fx/sfx go through DmRiteFx .
 func _play_event(ev: Dictionary) -> void:
 	events_played += 1
 	var m := DmRiteRegistry.module(String(ev.get("rite", "")))

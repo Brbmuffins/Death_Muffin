@@ -1,7 +1,7 @@
 class_name DmNextBelt
 extends RefCounted
 ## The slice's belt on the host's body: Q drinks a healing flask (with the 1.5 s sip cooldown), Z / X drink the elixir / tonic on the belt,
-## meals heal over time. Same rules as DmGameActions (drink_flask, drink_buff, eat_meal, belt_brew) and the same HUD rows as DmGameHud.brews.
+## meals heal over time. The HUD rows are DmGameHud.brews.
 ## Brew state lives on the body (ward, speed) and its caster (damage, haste, essence): both are fed by `drink_buff`.
 
 var body: DmHeroBody

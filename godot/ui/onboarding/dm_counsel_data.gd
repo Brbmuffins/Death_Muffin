@@ -1,8 +1,7 @@
 class_name DmCounselData
 extends RefCounted
-## Covenant counsel data: every tip's title/body/kind/group/priority/place/anchor plus the cadence constants, all exported from the real
-## TypeScript (src/ui/Onboarding.ts TIPS + TIP_ANCHOR, src/ui/counselCadence.ts) by tools/godot/fixtures-onboarding.ts into
-## data/onboarding/tips.json (via DmDb). Never hand-edited. Also `render_text` (Onboarding.ts renderText).
+## Covenant counsel data: every tip's title/body/kind/group/priority/place/anchor plus the cadence constants, all in
+## data/onboarding/tips.json (via DmDb; originally exported from the web game's TS). Also `render_text`.
 
 static var _d: Dictionary = {}
 

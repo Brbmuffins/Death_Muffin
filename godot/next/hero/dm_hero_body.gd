@@ -5,14 +5,14 @@ extends DmSessionBody
 ##
 ## The avatar is parented to the game node (the session's Players node may only hold bodies), at world scale, and follows the body.
 ## The host simulates (`step_host`, from DmSession intents); every peer renders. Puppets mirror the vitals the host broadcasts
-## (`apply_vitals`). Death -> respawn in the Chapterhouse after RESPAWN_S, host side, like DmGame.respawn().
+## (`apply_vitals`). Death -> respawn in the Chapterhouse after RESPAWN_S, host side.
 
 signal hurt(amount: float, source: Node)        ## host only
 signal died(body: DmHeroBody)                   ## host only
 signal respawned(body: DmHeroBody)              ## host only
 signal enemy_effect(kind: StringName)           ## host only: an enemy chilled / rooted / dragged this body (the HUD floats the word)
 
-const RESPAWN_S := 4.0                          ## DmGame.RESPAWN_MS
+const RESPAWN_S := 4.0                          ## old DmGame.RESPAWN_MS
 const MAX_STEP := 0.25                          ## clamp host dt (a hitch must not teleport the body through a wall)
 const PULL_S := 0.3                             ## a Drowned Sexton's drag is a glide (clients interpolate it; a teleport would snap), not a jump
 
@@ -124,7 +124,7 @@ static func _hurt_legend_of(m: Dictionary) -> bool:
 	return float(m.get("colossusGuard", 0.0)) > 0.0 or float(m.get("wardReflect", 0.0)) > 0.0 or float(m.get("litanyShatter", 0.0)) > 0.0
 
 
-## Soul Harvest's meter size and fill rate (Soul Hunger boon: -8 souls a rank, min 10; the discipline's soulHarvestRateMult), as DmGame._apply_player_extras.
+## Soul Harvest's meter size and fill rate (Soul Hunger boon: -8 souls a rank, min 10; the discipline's soulHarvestRateMult).
 func _soul_rules(build: Dictionary) -> void:
 	p["soulsMax"] = maxf(10.0, float(DmCombatData.const_table("SOUL_HARVEST")["souls"]) - float(build["boons"]["soulsDiscount"]))
 	p["soulRateMult"] = float(build["discipline"]["mods"].get("soulHarvestRateMult", 1.0))

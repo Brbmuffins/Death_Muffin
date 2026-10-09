@@ -1,14 +1,14 @@
 class_name DmNextProgress
 extends Node
 ## Host-side character progression for the slice (child "Progress" of DmNextGame). Only the slice-side wiring lives here; the rules and the
-## persistence are the current game's: DmProgression (xp / level / gold / shards / kills / upgrade tiers / unlocks) and DmProgressSync (the
+## persistence are the original game's: DmProgression (xp / level / gold / shards / kills / upgrade tiers / unlocks) and DmProgressSync (the
 ## backend saves: urgent on a level-up or a purchase, 45 s when dirty, on an area change and on quit; local file fallback; write-behind, a
 ## save never blocks a frame). Online it talks to the VPS backend, offline to the local backend through the same DmApi (REBUILD D1 / D4).
 ##
 ## Value stays on the backend: XP and kills arrive only through the rewards node's accepted session reports (member_credited), gold and shards
 ## through ground pickups, and every purchase is priced by the backend's rules. This node reacts: level-ups (stats, banner, sound, Grimoire
 ## toasts), the Damage / Wave Speed tiers (stats, the wave director), seal unlocks, milestones and the belt.
-## `event(id, ctx)` is the DmGame game_event shape (the HUD adapter forwards it to DmGameUi).
+## `event(id, ctx)` is the host game_event shape (the HUD adapter forwards it to DmGameUi).
 
 signal event(id: String, ctx: Dictionary)
 
@@ -103,7 +103,7 @@ func apply_progress() -> void:
 	refresh_stats()
 
 
-## The host body's and caster's stats from the character + tiers + boons + vows + worn gear (DmGame.refresh_stats). Cooldowns and essence stay.
+## The host body's and caster's stats from the character + tiers + boons + vows + worn gear . Cooldowns and essence stay.
 func refresh_stats() -> void:
 	var b: DmHeroBody = shell.local_body()
 	if b == null:

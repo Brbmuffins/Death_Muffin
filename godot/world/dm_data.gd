@@ -1,6 +1,6 @@
 class_name DmData
 extends RefCounted
-## Loads the slice JSON written by tools/godot/export-slice.ts (godot/data/slice/*.json). Single source of truth: never hand-edit.
+## Loads the slice JSON (godot/data/slice/*.json; originally exported from the web game's TS).
 
 static var _cache: Dictionary = {}
 

@@ -1,6 +1,6 @@
 class_name DmNextInput
 extends Node
-## Local input for the slice. Click-to-move, WASD / arrows and the hotbar, with the current game's feel (DmGameInput): LMB on ground walks
+## Local input for the slice. Click-to-move, WASD / arrows and the hotbar, with this feel: LMB on ground walks
 ## there, LMB on an enemy fires the primary (slot 0) at it, 1-5 / RMB are rite slots 1-4 / 5 (key 5 and RMB are the same slot), R is slot 6 (the discipline's signature), wheel zooms. Movement goes to the host as
 ## session intents (`DmSession.request_move_to / request_move_dir`), identical solo or online.
 ##
@@ -38,7 +38,7 @@ static func ensure_actions() -> void:
 				var ev := InputEventKey.new()
 				ev.physical_keycode = k
 				InputMap.action_add_event(a, ev)
-	# No rite_primary on LMB: _primary_click owns the left click (enemy = cast, ground = walk, as the current game); binding it made every
+	# No rite_primary on LMB: _primary_click owns the left click (enemy = cast, ground = walk, as the original game); binding it made every
 	# ground click also fire Bone Needle through the caster's hold poll.
 	for pair in [[&"dm_primary", MOUSE_BUTTON_LEFT], [&"dm_secondary", MOUSE_BUTTON_RIGHT]]:
 		if not InputMap.has_action(pair[0]):

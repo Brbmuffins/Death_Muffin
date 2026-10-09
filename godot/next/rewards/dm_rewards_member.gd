@@ -64,7 +64,7 @@ static func make(cid: int, peer: int, body_node: Node3D, member_api: DmApi, leve
 	return m
 
 
-## Host: pull wisdom / fortune from the brews active on the body (DmPlayerRules.brew_value on its own clock), like the current game reads them per
+## Host: pull wisdom / fortune from the brews active on the body (DmPlayerRules.brew_value on its own clock), like the original game reads them per
 ## kill. A body without a rules state (test stubs) keeps whatever the shell set by hand.
 func sync_brews() -> void:
 	var p: Variant = body.get("p") if body != null and is_instance_valid(body) else null

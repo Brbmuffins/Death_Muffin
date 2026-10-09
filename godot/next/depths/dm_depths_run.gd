@@ -1,6 +1,6 @@
 class_name DmDepthsRun
 extends RefCounted
-## One descent, as pure state and rules (no nodes): the current game's sim run (DmSimDirector.start_depths / descend_depths / depths_kill /
+## One descent, as pure state and rules (no nodes): the original game's sim run (DmSimDirector.start_depths / descend_depths / depths_kill /
 ## update_depths) without the sim. The floor of a depth is DmDepthsFloor.generate_floor(floor_seed(seed, depth)), the quota DmSimDepthsRules
 ## .floor_kills, the roster DmSimDepthsRules.depth_roster, the pacing the sim's (first wave 1.4 s, 8 on the first wave, then depth_wave_size,
 ## a gap of depth_wave_gap_s, never more than DEPTHS.cap alive, only as many as the quota still needs). `plan_wave` returns what to spawn;

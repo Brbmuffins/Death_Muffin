@@ -1,6 +1,6 @@
 class_name DmGameHud
 extends RefCounted
-## DmGame.hud_state(): the sim-derived live numbers the HUD needs (WorldScene.updateHud), in the DmHud view-model shape
+## Helpers for the HUD view-model (the live numbers the HUD needs), in the DmHud view-model shape
 ## (godot/ui/hud/README.md) minus the UI-owned parts (menus, toasts, panels, Next box, tips, party names' portraits are paths here).
 
 const ART := "res://assets/game/art/"
