@@ -74,7 +74,7 @@ namespace DeathMuffinLauncher
         bool primary;
         bool hover, down;
 
-        /// <summary>Violet gold-edged emphasis; the launcher moves it to Play offline when there is no internet.</summary>
+        /// <summary>Violet gold-edged emphasis; the launcher's play button is always primary.</summary>
         public bool Primary { get { return primary; } set { if (primary != value) { primary = value; Invalidate(); } } }
 
         public RuneButton(string text, bool primary)

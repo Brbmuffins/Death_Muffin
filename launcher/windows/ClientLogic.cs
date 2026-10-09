@@ -138,7 +138,7 @@ namespace DeathMuffinLauncher
         public string Rev = "";
         public List<ManifestFile> Files = new List<ManifestFile>();
         public bool OnlineEnabled;
-        /// <summary>online.staff is a literal true: the Godot client lets only staff/GM accounts in (it asks the server); the button is shown to everyone.</summary>
+        /// <summary>online.staff is a literal true: the Godot client lets only staff/GM accounts in (it asks the server); the launcher cannot tell, so it only shows the message.</summary>
         public bool OnlineStaff;
         public string OnlineMessage = "";
         /// <summary>The manifest text exactly as downloaded (saved next to the install so it can be checked later).</summary>
@@ -285,22 +285,16 @@ namespace DeathMuffinLauncher
         }
     }
 
-    internal enum RunningMode { None, Online, Offline }
+    // ---- Online notice ------------------------------------------------------------------------------------------------------
 
-    // ---- Online lock -------------------------------------------------------------------------------------------------------
-
-    internal sealed class OnlineUi
-    {
-        public string Text = "PLAY ONLINE   ›";
-        public bool Enabled;
-        public bool Locked;
-        public string Note = "";
-        public string Tip = "";
-    }
-
+    /// <summary>
+    /// Death Muffin has one play path: online. The launcher never blocks PLAY on the online lock, because the game itself checks access
+    /// at sign-in and shows its own message. The lock (online.enabled / online.staff / online.message) only produces a note under the button.
+    /// </summary>
     internal static class OnlineGate
     {
         public const string DefaultMessage = "Online opens soon";
+        public const string NoInternetNote = "No internet connection: the game needs it to sign in.";
 
         /// <summary>Short label for the lock: the developers' message (trimmed to one line) or the default.</summary>
         public static string LockMessage(ClientManifest live)
@@ -310,37 +304,23 @@ namespace DeathMuffinLauncher
             return m.Length > 70 ? m.Substring(0, 69) + "…" : m;
         }
 
-        /// <summary>Online is open only when a manifest was read and it says enabled:true, or staff:true (staff mode: the game itself turns non-staff accounts back
-        /// with "Online opens soon"). Anything else (unreadable, missing, false) is locked.</summary>
-        public static bool IsOpen(ClientManifest live) { return live != null && (live.OnlineEnabled || live.OnlineStaff); }
+        /// <summary>Online is open to everyone only when a manifest was read and it says a literal enabled:true. Anything else (unreadable, missing,
+        /// false, staff-only where the launcher cannot know if this user is staff) is "not known to be open".</summary>
+        public static bool IsOpen(ClientManifest live) { return live != null && live.OnlineEnabled; }
 
-        public static OnlineUi Compute(ClientManifest live, string installedVersion)
+        /// <summary>The note shown under PLAY about signing in: no internet, or the manifest message when online is not open. Empty when open.</summary>
+        public static string Notice(ClientManifest live, bool netReachable)
         {
-            var ui = new OnlineUi();
-            if (!IsOpen(live))
-            {
-                ui.Locked = true;
-                ui.Note = LockMessage(live);
-                ui.Tip = "Online play is locked until the developers open it. It will unlock here by itself, no launcher update needed.";
-                return ui;
-            }
-            if (installedVersion == null)
-            {
-                ui.Note = "Download the game first.";
-                ui.Tip = "Online needs the game files; use the download button on the left.";
-                return ui;
-            }
-            ui.Enabled = true;
-            ui.Note = live.OnlineEnabled ? "The live game. Needs internet." : "Staff preview. Needs a staff account.";
-            return ui;
+            if (!netReachable) return NoInternetNote;
+            return IsOpen(live) ? "" : LockMessage(live);
         }
     }
 
-    // ---- Offline button ----------------------------------------------------------------------------------------------------
+    // ---- The one game button -----------------------------------------------------------------------------------------------
 
-    internal enum OfflineAction { None, Download, Update, Play }
+    internal enum PlayAction { None, Download, Update, Play }
 
-    internal sealed class OfflineInputs
+    internal sealed class PlayInputs
     {
         /// <summary>Version of the verified installed client, or null.</summary>
         public string InstalledVersion;
@@ -348,7 +328,8 @@ namespace DeathMuffinLauncher
         public ClientManifest Live;
         /// <summary>The server answered at all (a missing/invalid manifest still counts as reachable).</summary>
         public bool NetReachable = true;
-        public RunningMode Running;
+        /// <summary>The game process started by the launcher is still open.</summary>
+        public bool Running;
         public bool Downloading;
         /// <summary>0..1, or negative when unknown.</summary>
         public double Progress = -1;
@@ -356,28 +337,33 @@ namespace DeathMuffinLauncher
         public string Error;
     }
 
-    internal sealed class OfflineUi
+    internal sealed class PlayUi
     {
         public string Text = "";
         public bool Enabled;
-        public OfflineAction Action = OfflineAction.None;
+        public PlayAction Action = PlayAction.None;
         public string Note = "";
+        /// <summary>Sign-in note (no internet / "Online opens soon"), shown after Note when the game is installed.</summary>
+        public string Notice = "";
         public bool Warn;
         public bool ShowBar;
         public double Bar;
         /// <summary>"Play installed version instead" link, shown when an update is pending or a download failed but a copy exists.</summary>
         public bool ShowPlayInstalledLink;
+
+        /// <summary>Note and Notice as one line.</summary>
+        public string FullNote { get { return Notice.Length == 0 ? Note : Note + "  " + Notice; } }
     }
 
-    internal static class OfflineStateMachine
+    internal static class PlayStateMachine
     {
         public static string Mb(long bytes) { return Math.Max(1, (long)Math.Round(bytes / 1048576.0)).ToString(CultureInfo.InvariantCulture) + " MB"; }
 
         public static string ShortVersion(string v) { return v != null && v.Length > 22 ? v.Substring(0, 22) : (v ?? ""); }
 
-        public static OfflineUi Compute(OfflineInputs i)
+        public static PlayUi Compute(PlayInputs i)
         {
-            var ui = new OfflineUi();
+            var ui = new PlayUi();
             bool have = i.InstalledVersion != null;
             bool canFetch = i.NetReachable && i.Live != null;
             if (i.Downloading)
@@ -389,9 +375,9 @@ namespace DeathMuffinLauncher
                 ui.Bar = Math.Max(0, i.Progress);
                 return ui;
             }
-            if (i.Running == RunningMode.Offline)
+            if (i.Running)
             {
-                ui.Text = "OFFLINE GAME RUNNING";
+                ui.Text = "GAME RUNNING";
                 ui.Note = "Close the game window to play or update again.";
                 return ui;
             }
@@ -399,7 +385,7 @@ namespace DeathMuffinLauncher
             {
                 ui.Text = "RETRY DOWNLOAD";
                 ui.Enabled = canFetch;
-                ui.Action = have ? OfflineAction.Update : OfflineAction.Download;
+                ui.Action = have ? PlayAction.Update : PlayAction.Download;
                 ui.Note = string.IsNullOrEmpty(i.Error) ? "The download stopped. Already downloaded parts are kept." : i.Error;
                 ui.Warn = true;
                 ui.ShowPlayInstalledLink = have;
@@ -407,33 +393,35 @@ namespace DeathMuffinLauncher
             }
             if (have)
             {
+                // PLAY is never locked by the online state: the game shows its own sign-in message. We only add a note.
+                ui.Notice = OnlineGate.Notice(i.Live, i.NetReachable);
                 if (canFetch && VersionCompare.Compare(i.Live.Version, i.InstalledVersion) > 0)
                 {
-                    ui.Text = "UPDATE OFFLINE GAME";
+                    ui.Text = "UPDATE GAME";
                     ui.Enabled = true;
-                    ui.Action = OfflineAction.Update;
+                    ui.Action = PlayAction.Update;
                     ui.Note = "New build available (" + Mb(i.Live.TotalBytes) + "). Installed: " + ShortVersion(i.InstalledVersion) + ".";
                     ui.ShowPlayInstalledLink = true;
                     return ui;
                 }
-                ui.Text = "PLAY OFFLINE";
+                ui.Text = "PLAY";
                 ui.Enabled = true;
-                ui.Action = OfflineAction.Play;
-                ui.Note = "Build " + ShortVersion(i.InstalledVersion) + (canFetch ? ", up to date." : ". Works without internet.");
+                ui.Action = PlayAction.Play;
+                ui.Note = "Build " + ShortVersion(i.InstalledVersion) + (canFetch ? ", up to date." : ".");
                 return ui;
             }
-            ui.Text = "DOWNLOAD OFFLINE GAME";
+            ui.Text = "DOWNLOAD GAME";
             if (canFetch)
             {
                 ui.Enabled = true;
-                ui.Action = OfflineAction.Download;
-                ui.Note = "Saves the game to this PC (" + Mb(i.Live.TotalBytes) + "). Needs internet once.";
+                ui.Action = PlayAction.Download;
+                ui.Note = "Saves the game to this PC (" + Mb(i.Live.TotalBytes) + "). Needs internet.";
             }
             else if (!i.NetReachable)
-                ui.Note = "No internet connection. Connect once to download the game.";
+                ui.Note = "No internet connection. Connect to download the game.";
             else
             {
-                ui.Text = "OFFLINE GAME NOT AVAILABLE YET";
+                ui.Text = "GAME NOT AVAILABLE YET";
                 ui.Note = "The game build is not published yet. Try again later.";
             }
             return ui;

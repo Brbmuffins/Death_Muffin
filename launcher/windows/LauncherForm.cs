@@ -30,10 +30,10 @@ namespace DeathMuffinLauncher
         // Scrollable so a whole release's notes fit (the old label showed six lines and cut the rest).
         readonly TextBox newsBody = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None, TabStop = false, WordWrap = true };
         readonly LinkLabel newsLink = new LinkLabel();
-        readonly RuneButton playBtn, openBtn;
+        readonly RuneButton playBtn;
         readonly LinkLabel launcherLink = new LinkLabel();
         readonly LinkLabel playInstalledLink = new LinkLabel();
-        readonly Label playNote = new GlassLabel(), openNote = new GlassLabel(), modeLabel = new GlassLabel();
+        readonly Label playNote = new GlassLabel(), modeLabel = new GlassLabel();
         readonly ThinBar dlBar = new ThinBar();
         readonly Timer netTimer = new Timer { Interval = 60000 };
         readonly CheckBox gpu = new CheckBox();
@@ -42,10 +42,10 @@ namespace DeathMuffinLauncher
         static readonly Color Orange = Color.FromArgb(244, 176, 128);
         static readonly Color Good = Color.FromArgb(150, 214, 160);
 
-        // ---- Client state. Everything the two buttons show is computed from these by OfflineStateMachine / OnlineGate. ----
+        // ---- Client state. Everything the play button shows is computed from these by PlayStateMachine / OnlineGate. ----
         /// <summary>The verified installed Godot client, or null.</summary>
         InstalledClient installed;
-        /// <summary>The live manifest from the server, or null if it could not be read (this is also what keeps Online locked).</summary>
+        /// <summary>The live manifest from the server, or null if it could not be read (the play button then shows the default online note).</summary>
         ClientManifest live;
         /// <summary>The server answered the last check. Starts true so nothing flashes "no internet" before the first check.</summary>
         bool reachable = true, checkedOnce, rechecking, launcherChecked;
@@ -54,7 +54,7 @@ namespace DeathMuffinLauncher
         string installError;
         System.Threading.CancellationTokenSource installCts;
         Process gameProc;
-        RunningMode running = RunningMode.None;
+        bool running;
         string statusLink;
 
         public LauncherForm()
@@ -77,14 +77,6 @@ namespace DeathMuffinLauncher
             root.Controls.Add(Lbl("THE LIVE REALM", new Font("Segoe UI", 9f, FontStyle.Bold), Gold, x, 145, w, 20));
             root.Controls.Add(Lbl("Your journey continues in the Ossuary Covenant.", new Font("Segoe UI", 10f), Ink, x, 170, w, 44));
 
-            // 1. PLAY ONLINE: fully wired, but greyed out until the developers unlock it in the server manifest.
-            playBtn = Btn("PLAY ONLINE   ›", 866, 563, 268, 64, true);
-            playBtn.Font = new Font("Georgia", 16f, FontStyle.Bold);
-            playBtn.Click += (s, e) => LaunchGame(true);
-            root.Controls.Add(playBtn);
-            Note(playNote, 866, 638, 268, 16, "");
-            root.Controls.Add(playNote);
-
             updateLabel.SetBounds(x, 226, w, 38);
             updateLabel.ForeColor = Muted;
             updateLabel.Text = "Checking for updates...";
@@ -101,13 +93,13 @@ namespace DeathMuffinLauncher
             launcherLink.LinkClicked += (s, e) => OpenExternalPage(Updates.LauncherDownloadUrl);
             root.Controls.Add(launcherLink);
 
-            // 2. The one offline button: Download / Update / Play depending on state (see OfflineStateMachine).
-            root.Controls.Add(Lbl("OFFLINE EDITION  -  PLAYS ON THIS PC", new Font("Segoe UI", 8.5f, FontStyle.Bold), Gold, 40, 546, 520, 18));
-            openBtn = Btn("DOWNLOAD OFFLINE GAME", 40, 568, 520, 42, false);
-            openBtn.Click += (s, e) => OnOfflineClick();
-            root.Controls.Add(openBtn);
-            Note(openNote, 40, 614, 520, 18, "");
-            root.Controls.Add(openNote);
+            // The one play button: Download / Update / Play depending on state (see PlayStateMachine). The game is online-only.
+            root.Controls.Add(Lbl("PLAY  -  ONLINE", new Font("Segoe UI", 8.5f, FontStyle.Bold), Gold, 40, 546, 520, 18));
+            playBtn = Btn("DOWNLOAD GAME", 40, 568, 520, 42, true);
+            playBtn.Click += (s, e) => OnPlayClick();
+            root.Controls.Add(playBtn);
+            Note(playNote, 40, 614, 520, 18, "");
+            root.Controls.Add(playNote);
             playInstalledLink.SetBounds(40, 632, 520, 16);
             playInstalledLink.BackColor = Color.Transparent;
             playInstalledLink.LinkColor = Gold;
@@ -116,7 +108,7 @@ namespace DeathMuffinLauncher
             playInstalledLink.Font = new Font("Segoe UI", 8.5f);
             playInstalledLink.Text = "Play the installed version instead";
             playInstalledLink.Visible = false;
-            playInstalledLink.LinkClicked += (s, e) => LaunchGame(false);
+            playInstalledLink.LinkClicked += (s, e) => LaunchGame();
             root.Controls.Add(playInstalledLink);
             dlBar.SetBounds(40, 654, 520, 4);
             dlBar.Visible = false;
@@ -144,7 +136,7 @@ namespace DeathMuffinLauncher
             root.Controls.Add(newsBody);
             root.Controls.Add(newsLink);
 
-            // Middle column: which mode is running, the GPU setting, and the status line.
+            // Middle column: whether the game is running, the GPU setting, and the status line.
             modeLabel.SetBounds(590, 568, 250, 20);
             modeLabel.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             root.Controls.Add(modeLabel);
@@ -170,7 +162,7 @@ namespace DeathMuffinLauncher
             status.Click += (s, e) => { if (statusLink != null) OpenExternalPage(statusLink); };
 
             installed = ClientStore.ReadInstalled(Settings.ClientDir);
-            // The check runs once a minute so a dev unlocking Online (or publishing a build) shows up without restarting the launcher.
+            // The check runs once a minute so a dev publishing a build or opening Online shows up without restarting the launcher.
             netTimer.Tick += async (s, e) => await RecheckAsync();
             netTimer.Enabled = true;
             NetworkChange.NetworkAvailabilityChanged += OnNetworkChanged;
@@ -248,8 +240,8 @@ namespace DeathMuffinLauncher
                 if (!first && r.Reachable != was)
                 {
                     if (r.Reachable) SetStatus("Back online.");
-                    else if (installed != null) Warn("No internet connection. Play offline works.", null);
-                    else Warn("No internet connection. Connect once to download the game.", null);
+                    else if (installed != null) Warn("No internet connection. The game needs it to sign in.", null);
+                    else Warn("No internet connection. Connect to download the game.", null);
                 }
                 if (r.Reachable && !launcherChecked)
                 {
@@ -267,46 +259,37 @@ namespace DeathMuffinLauncher
             finally { rechecking = false; }
         }
 
-        static string Short(string v) { return OfflineStateMachine.ShortVersion(v); }
+        static string Short(string v) { return PlayStateMachine.ShortVersion(v); }
 
         /// <summary>
-        /// Paints both buttons, their captions and the status lines from one place so the states cannot disagree.
+        /// Paints the play button, its caption and note from one place so the states cannot disagree.
         /// All decisions live in ClientLogic.cs (unit-tested); this only copies the result onto controls.
         /// </summary>
         void ApplyUi()
         {
             string installedVer = installed != null ? installed.Version : null;
 
-            var on = OnlineGate.Compute(live, installedVer);
-            playBtn.Enabled = on.Enabled && !installing;
-            playNote.Text = on.Note;
-            playNote.ForeColor = on.Locked ? VioletLight : Muted;
-            tip.SetToolTip(playBtn, on.Tip);
-            playBtn.AccessibleDescription = on.Locked ? "Locked. " + on.Note : on.Note;
-
-            var off = OfflineStateMachine.Compute(new OfflineInputs
+            var ui = PlayStateMachine.Compute(new PlayInputs
             {
                 InstalledVersion = installedVer, Live = live, NetReachable = reachable, Running = running,
                 Downloading = installing, Progress = installProgress, Failed = installFailed, Error = installError,
             });
             if (!checkedOnce && installed == null && !installing)
             {
-                off.Text = "CHECKING FOR THE GAME...";
-                off.Enabled = false;
-                off.Action = OfflineAction.None;
-                off.Note = "";
+                ui.Text = "CHECKING FOR THE GAME...";
+                ui.Enabled = false;
+                ui.Action = PlayAction.None;
+                ui.Note = "";
             }
-            openBtn.Text = off.Text;
-            openBtn.Enabled = off.Enabled;
-            // Violet emphasis goes to whichever play path is open: offline while Online is locked or unreachable.
-            openBtn.Primary = !on.Enabled;
-            openNote.Text = off.Note;
-            openNote.ForeColor = off.Warn ? Orange : Muted;
-            playInstalledLink.Visible = off.ShowPlayInstalledLink && running == RunningMode.None;
-            dlBar.Visible = off.ShowBar;
-            if (off.ShowBar) dlBar.Value = off.Bar;
-            openBtn.AccessibleDescription = off.Note;
-            offlineAction = off.Action;
+            playBtn.Text = ui.Text;
+            playBtn.Enabled = ui.Enabled;
+            playNote.Text = ui.FullNote;
+            playNote.ForeColor = ui.Warn ? Orange : ui.Notice.Length > 0 ? VioletLight : Muted;
+            playInstalledLink.Visible = ui.ShowPlayInstalledLink && !running;
+            dlBar.Visible = ui.ShowBar;
+            if (ui.ShowBar) dlBar.Value = ui.Bar;
+            playBtn.AccessibleDescription = ui.FullNote;
+            playAction = ui.Action;
 
             if (!checkedOnce) { }
             else if (!reachable) { updateLabel.Text = "No internet connection. Updates can't be checked."; updateLabel.ForeColor = Muted; }
@@ -316,26 +299,25 @@ namespace DeathMuffinLauncher
             else { updateLabel.Text = "Up to date (build " + Short(installed.Version) + ")."; updateLabel.ForeColor = Muted; }
         }
 
-        OfflineAction offlineAction = OfflineAction.None;
+        PlayAction playAction = PlayAction.None;
 
-        void OnOfflineClick()
+        void OnPlayClick()
         {
-            switch (offlineAction)
+            switch (playAction)
             {
-                case OfflineAction.Download:
-                case OfflineAction.Update:
+                case PlayAction.Download:
+                case PlayAction.Update:
                     var _ = InstallAsync();
                     break;
-                case OfflineAction.Play:
-                    LaunchGame(false);
+                case PlayAction.Play:
+                    LaunchGame();
                     break;
             }
         }
 
         void UpdateMode()
         {
-            if (running == RunningMode.Online) { modeLabel.Text = "Online game running"; modeLabel.ForeColor = VioletLight; }
-            else if (running == RunningMode.Offline) { modeLabel.Text = "Offline game running"; modeLabel.ForeColor = Gold; }
+            if (running) { modeLabel.Text = "Game running"; modeLabel.ForeColor = VioletLight; }
             else { modeLabel.Text = "No game running"; modeLabel.ForeColor = Muted; }
         }
 
@@ -369,12 +351,12 @@ namespace DeathMuffinLauncher
             installing = true; installFailed = false; installError = null; installProgress = 0;
             installCts = new System.Threading.CancellationTokenSource();
             ApplyUi();
-            SetStatus("Downloading the game (" + OfflineStateMachine.Mb(manifest.TotalBytes) + ").");
+            SetStatus("Downloading the game (" + PlayStateMachine.Mb(manifest.TotalBytes) + ").");
             var progress = new Progress<InstallProgress>(p =>
             {
                 installProgress = p.Fraction;
-                var ui = OfflineStateMachine.Compute(new OfflineInputs { InstalledVersion = installed != null ? installed.Version : null, Live = manifest, Downloading = true, Progress = p.Fraction });
-                openBtn.Text = ui.Text;
+                var ui = PlayStateMachine.Compute(new PlayInputs { InstalledVersion = installed != null ? installed.Version : null, Live = manifest, Downloading = true, Progress = p.Fraction });
+                playBtn.Text = ui.Text;
                 dlBar.Visible = true;
                 dlBar.Value = p.Fraction;
             });
@@ -384,7 +366,7 @@ namespace DeathMuffinLauncher
                     await new ClientInstaller(http, Settings.ClientDir).InstallAsync(manifest, installed, progress, installCts.Token);
                 installed = ClientStore.ReadInstalled(Settings.ClientDir);
                 if (installed == null) throw new IOException("The downloaded files did not pass the final check.");
-                SetStatus("Game downloaded. You can play offline.");
+                SetStatus("Game downloaded. Press Play.");
             }
             catch (OperationCanceledException)
             {
@@ -407,11 +389,10 @@ namespace DeathMuffinLauncher
         }
 
         /// <summary>
-        /// Starts the Godot client. online=false is the offline edition (<c>-- --offline</c>); online=true passes <c>-- --online</c> and is
-        /// refused unless the server manifest has unlocked it. Only one game runs at a time (both sign in to the same account), so a
-        /// running game of the other mode is closed first, after asking.
+        /// Starts the Godot client with <c>-- --online</c> (the game is online-only and ignores the flag; it is passed to be explicit).
+        /// Never refused because of the online lock: the game checks access at sign-in and shows its own message. Never passes a dev-only flag.
         /// </summary>
-        void LaunchGame(bool online)
+        void LaunchGame()
         {
             if (installed == null || !File.Exists(installed.ExePath))
             {
@@ -419,23 +400,12 @@ namespace DeathMuffinLauncher
                 ApplyUi();
                 if (installed == null) { Warn("The game files are missing. Download them first.", null); return; }
             }
-            // Locked is locked: even if something calls this path, an unreadable manifest or enabled:false stops here.
-            if (online && !OnlineGate.IsOpen(live)) { Warn(OnlineGate.LockMessage(live) + ".", null); return; }
-            if (Alive(gameProc))
-            {
-                var want = online ? RunningMode.Online : RunningMode.Offline;
-                if (running == want) { SetStatus((online ? "Online" : "Offline") + " game is already running."); return; }
-                string which = online ? "offline" : "online";
-                if (MessageBox.Show(this, "Close the " + which + " game first? Both use your account and would sign each other out.", "Death Muffin",
-                        MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1) != DialogResult.Yes)
-                    return;
-                CloseGame();
-            }
+            if (Alive(gameProc)) { SetStatus("Game is already running."); return; }
             ApplyGpuPreference(installed.ExePath);
             try
             {
                 // Everything after "--" is a user argument for the game: read it with OS.get_cmdline_user_args().
-                var psi = new ProcessStartInfo(installed.ExePath, online ? "-- --online" : "-- --offline")
+                var psi = new ProcessStartInfo(installed.ExePath, "-- --online")
                 {
                     WorkingDirectory = installed.Dir, UseShellExecute = false,
                 };
@@ -443,8 +413,8 @@ namespace DeathMuffinLauncher
                 p.EnableRaisingEvents = true;
                 p.Exited += (s, e) => { try { BeginInvoke(new Action(() => OnGameExited(p))); } catch (Exception) { } };
                 gameProc = p;
-                running = online ? RunningMode.Online : RunningMode.Offline;
-                SetStatus(online ? "Online game running." : "Offline game running.");
+                running = true;
+                SetStatus("Game running.");
             }
             catch (Exception ex)
             {
@@ -456,26 +426,12 @@ namespace DeathMuffinLauncher
 
         void OnGameExited(Process p)
         {
-            if (!ReferenceEquals(gameProc, p)) return;   // an older process replaced by the other mode
+            if (!ReferenceEquals(gameProc, p)) return;
             gameProc = null;
-            running = RunningMode.None;
+            running = false;
             UpdateMode();
             SetStatus("Game closed.");
             ApplyUi();
-        }
-
-        void CloseGame()
-        {
-            var p = gameProc;
-            if (p == null) return;
-            try
-            {
-                p.CloseMainWindow();
-                if (!p.WaitForExit(4000)) p.Kill();   // our own child process only
-                p.WaitForExit(2000);
-            }
-            catch (Exception) { }
-            OnGameExited(p);
         }
 
         /// <summary>
@@ -580,8 +536,6 @@ namespace DeathMuffinLauncher
                         g.DrawLine(goldLine, 46, 288, 398, 288);
                         g.DrawLine(blue, 15, 536, Width - 16, 536);
                         g.DrawLine(dim, 574, 551, 574, 651);
-                        g.DrawLine(dim, 851, 551, 851, 651);
-                        g.DrawLine(goldLine, 866, 633, 1134, 633);
                         // Corner strokes give the edge the feel of a game client, without covering the art.
                         g.DrawLine(goldLine, 15, 15, 74, 15);
                         g.DrawLine(goldLine, 15, 15, 15, 64);
@@ -600,7 +554,6 @@ namespace DeathMuffinLauncher
                         g.DrawString("A WORLD OF DARK MAGIC", kicker, pale, 932, 41);
                         g.DrawString("01  /  WORLD NEWS", kicker, gold, 48, 120);
                         g.DrawString("STATUS", kicker, gold, 590, 546);
-                        g.DrawString("ONLINE", kicker, gold, 866, 542);
                     }
                     using (var glow = new SolidBrush(Color.FromArgb(80, 149, 116, 255)))
                     using (var bright = new SolidBrush(Color.FromArgb(221, 193, 170, 255)))

@@ -112,7 +112,7 @@ namespace DeathMuffinLauncher.Tests
 
         static int Main()
         {
-            JsonTests(); ManifestTests(); VersionTests(); HashTests(); OnlineTests(); OfflineStateTests();
+            JsonTests(); ManifestTests(); VersionTests(); HashTests(); OnlineTests(); PlayStateTests();
             InstallerTests().GetAwaiter().GetResult();
             return T.Done();
         }
@@ -203,75 +203,74 @@ namespace DeathMuffinLauncher.Tests
             var files = new Dictionary<string, byte[]> { { "DeathMuffin.exe", Blob(10, 1) } };
             var locked = Parse(ManifestJson("v1", files, false, "Online opens soon"));
             var open = Parse(ManifestJson("v1", files, true));
-            var u = OnlineGate.Compute(locked, "v1");
-            T.Ok(!u.Enabled && u.Locked, "locked manifest -> disabled");
-            T.Eq(u.Note, "Online opens soon", "lock label from manifest");
-            u = OnlineGate.Compute(null, "v1");
-            T.Ok(!u.Enabled && u.Locked, "unreadable manifest -> locked");
-            T.Eq(u.Note, OnlineGate.DefaultMessage, "unreadable manifest default label");
-            T.Ok(!OnlineGate.Compute(Parse(ManifestJson("v1", files, false, "  \r\n ")), "v1").Enabled, "blank message still locked");
-            T.Eq(OnlineGate.Compute(Parse(ManifestJson("v1", files, false, "  \r\n ")), "v1").Note, OnlineGate.DefaultMessage, "blank message -> default");
-            T.Ok(OnlineGate.Compute(Parse(ManifestJson("v1", files, false, new string('x', 200))), null).Note.Length <= 70, "long message trimmed");
-            u = OnlineGate.Compute(open, "v1");
-            T.Ok(u.Enabled && !u.Locked, "open + installed -> enabled");
-            u = OnlineGate.Compute(open, null);
-            T.Ok(!u.Enabled && !u.Locked, "open but not installed -> disabled, not locked");
+            T.Eq(OnlineGate.Notice(locked, true), "Online opens soon", "lock note from manifest");
+            T.Eq(OnlineGate.Notice(null, true), OnlineGate.DefaultMessage, "unreadable manifest default note");
+            T.Eq(OnlineGate.Notice(Parse(ManifestJson("v1", files, false, "  \r\n ")), true), OnlineGate.DefaultMessage, "blank message -> default");
+            T.Ok(OnlineGate.Notice(Parse(ManifestJson("v1", files, false, new string('x', 200))), true).Length <= 70, "long message trimmed");
+            T.Eq(OnlineGate.Notice(open, true), "", "open: no note");
+            T.Eq(OnlineGate.Notice(open, false), OnlineGate.NoInternetNote, "no internet note wins");
+            T.Eq(OnlineGate.Notice(null, false), OnlineGate.NoInternetNote, "no internet, no manifest");
             T.Ok(OnlineGate.IsOpen(open) && !OnlineGate.IsOpen(locked) && !OnlineGate.IsOpen(null), "IsOpen");
-            // staff mode (D10): enabled:false + staff:true shows the button; only a literal true counts
+            // staff mode: enabled:false + staff:true. The launcher cannot know if the user is staff, so it is "not open" (message shown, PLAY still allowed).
             string baseJson = ManifestJson("v1", files, false, "Online opens soon");
             var staff = Parse(baseJson.Replace("\"enabled\":false", "\"enabled\":false,\"staff\":true"));
-            T.Ok(staff.OnlineStaff && !staff.OnlineEnabled && OnlineGate.IsOpen(staff), "staff mode: not enabled, but online is offered");
-            u = OnlineGate.Compute(staff, "v1");
-            T.Ok(u.Enabled && !u.Locked && u.Note.StartsWith("Staff preview"), "staff mode + installed -> button enabled with staff note");
-            u = OnlineGate.Compute(staff, null);
-            T.Ok(!u.Enabled && !u.Locked, "staff mode, not installed -> disabled, not locked");
+            T.Ok(staff.OnlineStaff && !staff.OnlineEnabled && !OnlineGate.IsOpen(staff), "staff mode: not open for everyone");
+            T.Eq(OnlineGate.Notice(staff, true), "Online opens soon", "staff mode: manifest message");
             T.Ok(!Parse(baseJson.Replace("\"enabled\":false", "\"enabled\":false,\"staff\":\"true\"")).OnlineStaff, "string staff stays locked");
             T.Ok(!Parse(baseJson.Replace("\"enabled\":false", "\"enabled\":false,\"staff\":1")).OnlineStaff, "number staff stays locked");
             T.Ok(!locked.OnlineStaff && !open.OnlineStaff, "old manifests carry no staff flag");
         }
 
-        static OfflineUi Off(string installed, ClientManifest live, bool net = true, RunningMode run = RunningMode.None, bool dl = false, double prog = -1, bool failed = false, string err = null)
+        static PlayUi Off(string installed, ClientManifest live, bool net = true, bool run = false, bool dl = false, double prog = -1, bool failed = false, string err = null)
         {
-            return OfflineStateMachine.Compute(new OfflineInputs { InstalledVersion = installed, Live = live, NetReachable = net, Running = run, Downloading = dl, Progress = prog, Failed = failed, Error = err });
+            return PlayStateMachine.Compute(new PlayInputs { InstalledVersion = installed, Live = live, NetReachable = net, Running = run, Downloading = dl, Progress = prog, Failed = failed, Error = err });
         }
 
-        static void OfflineStateTests()
+        static void PlayStateTests()
         {
             var files = new Dictionary<string, byte[]> { { "DeathMuffin.exe", Blob(10, 1) } };
-            var v2 = Parse(ManifestJson("20261004.120000-b", files));
+            var v2 = Parse(ManifestJson("20261004.120000-b", files));          // online closed
+            var v2open = Parse(ManifestJson("20261004.120000-b", files, true)); // online open
             var u = Off(null, v2);
-            T.Eq(u.Text, "DOWNLOAD OFFLINE GAME", "fresh: download text");
-            T.Ok(u.Enabled && u.Action == OfflineAction.Download, "fresh: download enabled");
+            T.Eq(u.Text, "DOWNLOAD GAME", "fresh: download text");
+            T.Ok(u.Enabled && u.Action == PlayAction.Download, "fresh: download enabled");
             u = Off(null, null, net: false);
-            T.Ok(!u.Enabled && u.Action == OfflineAction.None && u.Note.Contains("No internet"), "fresh, offline: disabled");
+            T.Ok(!u.Enabled && u.Action == PlayAction.None && u.Note.Contains("No internet"), "fresh, offline: disabled");
             u = Off(null, null, net: true);
             T.Ok(!u.Enabled && u.Text.Contains("NOT AVAILABLE"), "fresh, nothing published: disabled");
+            u = Off("20261004.120000-b", v2open);
+            T.Ok(u.Text == "PLAY" && u.Enabled && u.Action == PlayAction.Play && !u.ShowPlayInstalledLink && u.Notice == "", "installed, current, online open: play, no note");
             u = Off("20261004.120000-b", v2);
-            T.Ok(u.Text == "PLAY OFFLINE" && u.Enabled && u.Action == OfflineAction.Play && !u.ShowPlayInstalledLink, "installed, current: play");
+            T.Ok(u.Text == "PLAY" && u.Enabled && u.Action == PlayAction.Play && u.Notice == "soon" && u.FullNote.EndsWith("soon"), "online closed: play still enabled + manifest message");
+            u = Off("20261004.120000-b", v2, net: false);
+            T.Ok(u.Text == "PLAY" && u.Enabled && u.Action == PlayAction.Play && u.Notice == OnlineGate.NoInternetNote, "installed, no internet: play + sign-in note");
             u = Off("20261004.120000-b", null, net: false);
-            T.Ok(u.Text == "PLAY OFFLINE" && u.Enabled && u.Action == OfflineAction.Play, "installed, no internet: play");
+            T.Ok(u.Enabled && u.Action == PlayAction.Play && u.Notice == OnlineGate.NoInternetNote, "installed, no manifest, no internet: play");
             u = Off("20261004.120000-b", null, net: true);
-            T.Ok(u.Action == OfflineAction.Play, "installed, manifest unreadable: play");
+            T.Ok(u.Enabled && u.Action == PlayAction.Play && u.Notice == OnlineGate.DefaultMessage, "installed, manifest unreadable: play + default note");
+            u = Off("20261003.120000-a", v2open);
+            T.Ok(u.Text == "UPDATE GAME" && u.Action == PlayAction.Update && u.ShowPlayInstalledLink, "installed, older: update + play-installed link");
             u = Off("20261003.120000-a", v2);
-            T.Ok(u.Text == "UPDATE OFFLINE GAME" && u.Action == OfflineAction.Update && u.ShowPlayInstalledLink, "installed, older: update + play-installed link");
-            u = Off("20261005.120000-c", v2);
-            T.Ok(u.Action == OfflineAction.Play, "installed newer than live (rollback publish): never downgrade");
+            T.Ok(u.Action == PlayAction.Update && u.Notice == "soon", "update with online closed keeps the note");
+            u = Off("20261005.120000-c", v2open);
+            T.Ok(u.Action == PlayAction.Play, "installed newer than live (rollback publish): never downgrade");
             u = Off("20261003.120000-a", v2, net: false);
-            T.Ok(u.Action == OfflineAction.Play, "installed, older, no internet: play");
+            T.Ok(u.Action == PlayAction.Play, "installed, older, no internet: play");
             u = Off(null, v2, dl: true, prog: 0.426);
             T.Ok(u.Text == "DOWNLOADING 42%" && !u.Enabled && u.ShowBar && Math.Abs(u.Bar - 0.426) < 1e-9, "downloading: percent, bar, disabled");
             u = Off(null, v2, dl: true);
             T.Eq(u.Text, "DOWNLOADING...", "downloading: unknown pct");
-            u = Off("20261004.120000-b", v2, run: RunningMode.Offline);
-            T.Ok(u.Text == "OFFLINE GAME RUNNING" && !u.Enabled, "offline running: disabled");
-            u = Off("20261004.120000-b", v2, run: RunningMode.Online);
-            T.Ok(u.Enabled && u.Action == OfflineAction.Play, "online running: offline play still offered (asks to close)");
+            u = Off("20261004.120000-b", v2, run: true);
+            T.Ok(u.Text == "GAME RUNNING" && !u.Enabled && u.Action == PlayAction.None, "running: disabled");
             u = Off(null, v2, failed: true, err: "boom");
-            T.Ok(u.Text == "RETRY DOWNLOAD" && u.Enabled && u.Action == OfflineAction.Download && u.Warn && u.Note == "boom" && !u.ShowPlayInstalledLink, "failed fresh: retry download");
+            T.Ok(u.Text == "RETRY DOWNLOAD" && u.Enabled && u.Action == PlayAction.Download && u.Warn && u.Note == "boom" && !u.ShowPlayInstalledLink, "failed fresh: retry download");
             u = Off("20261003.120000-a", v2, failed: true);
-            T.Ok(u.Action == OfflineAction.Update && u.ShowPlayInstalledLink, "failed update: retry update + play installed");
+            T.Ok(u.Action == PlayAction.Update && u.ShowPlayInstalledLink, "failed update: retry update + play installed");
             u = Off(null, null, net: false, failed: true);
             T.Ok(!u.Enabled, "failed and offline: retry disabled");
+            // No player-facing text may mention the retired offline edition.
+            foreach (var x in new[] { Off(null, v2), Off("a", v2), Off("20261004.120000-b", v2), Off("20261004.120000-b", v2, run: true), Off(null, null, net: false), Off("20261004.120000-b", null, net: false), Off(null, null) })
+                T.Ok(!(x.Text + x.FullNote).ToLowerInvariant().Contains("offline"), "no 'offline' wording: " + x.Text);
         }
 
         static async Task InstallerTests()
