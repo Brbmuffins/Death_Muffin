@@ -18,28 +18,23 @@ Runner (user `ubuntu`, ~/death-muffin/discord-agent/runner/server.cjs, port 4321
 
 ## Mode and branch (`mode` and `baseBranch` in `config.json`, owner-edited)
 
-Death Muffin is one game, the Godot 4 client, so the runner runs with `"mode": "godot", "baseBranch": "main"` (a restart picks it up). The runner code
-(`runner/lib/config.cjs`, `core.cjs`) still contains the retired web mode and defaults to `mode: "web"`, `baseBranch: "master"`; do not use it, set both
-keys explicitly. `baseBranch` must match `^[A-Za-z0-9._/-]+$` (and not start with `-`, contain `..`, `//`, end in `/` or `.lock`); a bad value or mode makes the
-runner refuse to start. `baseBranch` is used for the worktree base (`origin/<baseBranch>`), `!sync`, the ship merge and push, user-facing messages and the compare link.
+The live config must say `"mode": "godot", "baseBranch": "main"` (a restart picks changes up). Set both keys explicitly: the runner code still has a
+retired web mode and defaults to `mode: "web"`, `baseBranch: "master"`. `baseBranch` must match `^[A-Za-z0-9._/-]+$` (not start with `-`, contain `..`, `//`, end in `/` or `.lock`);
+a bad value or mode makes the runner refuse to start. It is used for the worktree base (`origin/<baseBranch>`), `!sync`, the ship merge and push, messages and the compare link.
 
-What godot mode uses: tests `check-godot.sh` (agent, runner and ship.sh) · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot`
+In godot mode: tests `check-godot.sh` (agent, runner and ship.sh) · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot`
 · prompt `PROMPT-godot.md` · tier rules `godotTiers` (picked into `cfg.tiers` by `loadConfig`) · ship: merge, check-godot, backup + `ROLLBACK.sh`, push,
-`publish-godot-client.sh` · rollback folder `backup-pre-release-godot-<stamp>`. `regen.sh` is not used in godot mode (it is not in allowedTools).
-The deploy of the auth backend (`deploy-release.sh`) is not part of a ship; it is run by the owner.
+`publish-godot-client.sh` · rollback folder `backup-pre-release-godot-<stamp>`.
+The auth backend (`deploy-release.sh`) is not part of a ship; the owner runs it. The web-mode scripts in this folder (`check.sh`, `preview.sh`, `shot.sh`, `regen.sh`) are unused.
 
 **`check-godot.sh`**: the same sandbox as `check.sh` (`unshare -rnm`, loopback only, whole filesystem read-only, only the worktree writable, scratch tmpfs over
 `node_modules/.vite`), with `HOME` and the XDG dirs in a fresh `/tmp/dmgodot.*` (inside the sandbox's private /tmp) so Godot's `user://` never touches the real home. It runs
-`tools/godot/gen-fixtures.sh` (the golden fixtures are gitignored and generated from the frozen TypeScript game with the worktree's symlinked
-`node_modules`), then `tools/godot/run-all-tests.sh` (one line per suite; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`). The generator
-rewrites the committed `godot/data/loot/content.json` and `.git` is read-only, so that file is snapshotted first and restored before the suites run (and on
-exit). It ends with `GODOT TESTS: <n> suites, <n> passed, <n> failed` (that line is the "Tests" field of the proposal), exits non-zero on any failing
+`tools/godot/gen-fixtures.sh` only if the revision still has it (golden fixtures are committed on `main`), then `tools/godot/run-all-tests.sh` (one line per suite; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`). The committed `godot/data/loot/content.json` is snapshotted and restored around the generator. It ends with `GODOT TESTS: <n> suites, <n> passed, <n> failed` (that line is the "Tests" field of the proposal), exits non-zero on any failing
 suite or step, and has a hard 40 minute limit. The full suite takes more than 10 minutes. A change that only touches Markdown files skips the suites (`GODOT TESTS: skipped, docs-only change`).
 
 **`preview-godot.sh <jobid>`**: runner-only. Inside the same kind of sandbox it imports the project and exports the `Windows Desktop` preset from
 `godot/` (the installed export templates are linked read-only into the fresh `XDG_DATA_HOME`). Outside, it zips `DeathMuffin.exe`, `DeathMuffin.pck`,
-`Play Preview (offline).bat` and a README ("PREVIEW of <title>, offline edition, nothing saves to your real
-character") to `<previewRoot>/<jobid>/DeathMuffin-Preview-<jobid>-win64.zip` (mode 644, ~220 MB; job ids `^[0-9a-f]{6}$`, no symlinked root or destination,
+`Play Preview (offline).bat` (starts `-- --dev-offline`) and a README ("nothing saves to your real character") to `<previewRoot>/<jobid>/DeathMuffin-Preview-<jobid>-win64.zip` (mode 644, ~220 MB; job ids `^[0-9a-f]{6}$`, no symlinked root or destination,
 nothing else is left in that folder). The proposal's "Try it (Windows download)" field and `!preview` link to the zip; it is deleted with the job like
 any preview. The build takes about a minute, and the runner allows 40.
 
@@ -49,7 +44,7 @@ pushed**: read `rev` from the live client manifest (`clientManifest`, default `/
 else `RESULT: backup-failed` and nothing changes), create `<deployDir>/backup-pre-release-godot-<UTC stamp>/`, save a fresh `git show
 origin/main:server/death-muffin/publish-godot-client.sh` there (a copy from `origin/main`, whatever `baseBranch` is) and write `ROLLBACK.sh`, which runs that saved
 copy with `REPO=<repo>` for the previous revision (no manifest = first publish = `Rollback: none`); push `HEAD:refs/heads/$BASE_BRANCH`; publish the new
-SHA with the saved copy (`deployCmd` replaces it in tests); print `Rollback: <path>`, `RESULT: live <sha12> <path>`, `MOBILE: skipped` (a leftover line from the retired web/mobile step). The runner
+SHA with the saved copy (`deployCmd` replaces it in tests); print `Rollback: <path>`, `RESULT: live <sha12> <path>`. The runner
 accepts only exact `backup-pre-release-godot-<yyyymmddThhmmssZ>` real directories (no symlinks) with a `ROLLBACK.sh`.
 
 ## Who can do what (`config.json`, owner-edited, never by the AI)
@@ -78,7 +73,7 @@ backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited appr
 Rollback undoes the live release only; revert the commit on the base branch afterwards.
 
 ## Safety summary
-- **One shared sandbox** (`sandbox-lib.sh`, sourced inside `unshare -rnm` by `check-godot.sh`, `preview-godot.sh` and `shot-godot.sh` (and the retired web-mode scripts that are still in this folder)):
+- **One shared sandbox** (`sandbox-lib.sh`, sourced inside `unshare -rnm` by `check-godot.sh`, `preview-godot.sh` and `shot-godot.sh`):
   every mount in `/proc/self/mountinfo` is remounted read-only (not just `/home/ubuntu`: `ubuntu` also owns `/var/www/death-muffin` incl. the published
   client, `/opt/*`, `/game*`, `/var/log`), `/tmp` and `/dev/shm` are private tmpfs (the host's are invisible), and only the job's worktree is re-opened
   writable. The ro remounts are made by root of the outer user namespace, so the payload then runs in a NESTED user+mount namespace
@@ -102,8 +97,7 @@ Rollback undoes the live release only; revert the commit on the base branch afte
   still go one at a time behind the deploy lock. Git commands that hit a lock file another job is holding retry a few times (gitops.cjs).
 - The check scripts run 10-20 min. The agent's `claude -p` gets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` and a 42-minute Bash limit
   (`BASH_DEFAULT_TIMEOUT_MS`/`BASH_MAX_TIMEOUT_MS`), so the check call simply blocks until it finishes. `sleep`, `pgrep`, `ps`, `watch` and the like are on
-  `--disallowedTools`. Why: on 2026-10-08 Claude Code moved a long check-godot.sh run into the background, the agent wrote
-  `until ! pgrep -f check-godot.sh; do sleep 5; done`, pgrep matched the loop itself, and job e4388b hung for 35 minutes while every other thread waited.
+  `--disallowedTools`. Why: a backgrounded check plus an agent-written `pgrep` wait loop matched itself and hung a job (and the queue) for 35 minutes.
 
 ## When the client publish fails
 
@@ -112,7 +106,6 @@ Rollback undoes the live release only; revert the commit on the base branch afte
   pinged, and the runner retries by itself after `publishAutoRetryMin` (10). Approvers can retry any time: ✅ on the failure message or `!retry`.
   A retry is `PUBLISH_ONLY=1 PUBLISH_SHA=<sha> ship.sh`: same lock and fresh rollback, no merge/tests/push, and it refuses to publish anything older
   than the live client (`RESULT: live-already`). Any later ship whose client contains the stuck commit posts "Live" in that thread too.
-- Why: 2026-10-08 a Godot core dump during `--import` left a pushed fix unpublished with no way to retry; the same commit imported fine a minute later.
 
 ## New models (Gemini concept -> Tripo), approval-gated and credit-capped
 
@@ -172,7 +165,7 @@ writable by the runner user) and `previewCmd` (replaces the script, tests) are i
 The adapter downloads image attachments (png/jpg/webp/gif, Discord CDN only, <= 8 MB each, <= 4 per message) and sends them to the runner as `images: [{name, b64}]` in the `/event` body; anything refused stays in the "not visible to the agent" note with the reason. The runner checks the bytes look like an image and writes them to `<worktree>/.dm-inbox/<msgId>-<name>` (git-excluded), appending `[image attached by NAME: .dm-inbox/... — Read it to see it]` to that message so the agent can `Read` it; for a new @mention the files are written in `bind()` once the worktree exists. A job keeps at most 40 MB of images (`job.inboxBytes`), then refuses with a note. Image bytes are never redacted or logged. `/event` accepts bodies up to 48 MB (4 x 8 MB as base64 is about 43 MB); every other route keeps the 1 MB cap.
 
 ## Rounds (one thread, many changes)
-A thread no longer closes when its change ships (or is discarded, or swept after 7 idle days). The next message from an allowed requester starts a new ROUND in the same job record: a fresh branch `discord/<jobid>-<n>` and worktree cut from the current `origin/<baseBranch>`, proposal/shots/preview state reset, the claude session id kept (the runner also copies the session file into the new worktree's claude project dir, and falls back to a fresh session if it cannot be resumed), and the first prompt starts with a note that the earlier change is live. `job.history` records `{round, branch, shipSha | discarded, at}` and the audit log gets a `round` entry.
+A thread does not close when its change ships (or is discarded, or swept after 7 idle days). The next message from an allowed requester starts a new ROUND in the same job record: a fresh branch `discord/<jobid>-<n>` and worktree cut from the current `origin/<baseBranch>`, proposal/shots/preview state reset, the claude session id kept (the runner also copies the session file into the new worktree's claude project dir, and falls back to a fresh session if it cannot be resumed), and the first prompt starts with a note that the earlier change is live. `job.history` records `{round, branch, shipSha | discarded, at}` and the audit log gets a `round` entry.
 - A message sent while a ship is running is kept (shown as waiting). If the ship goes live, the next round starts at once and the message is processed there (attached images are carried over); if the ship fails, the job returns to idle/proposed and the message is handled on the same branch.
 - Turns: `maxTurnsPerJob` (40) now counts per round; `maxTurnsPerThread` (120) is a hard cap over the whole thread.
 - After a sweep a new message also starts a new round (the sweep only released the worktree; the thread and its context are still useful). Commands other than `!status` answer "nothing is open" in a closed thread.
