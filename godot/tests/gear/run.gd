@@ -12,8 +12,8 @@ var _shown := 0
 
 
 func _initialize() -> void:
-	if not FileAccess.file_exists(DIR + "context.json"):
-		print("fixtures missing: run tools/godot/gen-fixtures.sh")
+	if not FileAccess.file_exists(DIR + "context.json.gz"):
+		print("fixtures missing (committed under tests/<suite>/fixtures)")
 		quit(1)
 		return
 	_run_context()
@@ -28,7 +28,12 @@ func _initialize() -> void:
 
 
 func _load(name: String) -> Array:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(DIR + name + ".json"))
+	var text: String
+	if FileAccess.file_exists(DIR + name + ".json.gz"):  # context is committed whole, gzip'd (tools/godot/trim-fixtures.py)
+		text = PackedByteArray(FileAccess.get_file_as_bytes(DIR + name + ".json.gz")).decompress_dynamic(-1, FileAccess.COMPRESSION_GZIP).get_string_from_utf8()
+	else:
+		text = FileAccess.get_file_as_string(DIR + name + ".json")
+	var parsed: Variant = JSON.parse_string(text)
 	return parsed["cases"]
 
 

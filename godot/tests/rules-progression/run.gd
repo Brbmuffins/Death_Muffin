@@ -13,7 +13,7 @@ var _cur := ""
 
 func _initialize() -> void:
 	if not FileAccess.file_exists(DIR + "pure.json"):
-		print("fixtures missing: run tools/godot/gen-fixtures.sh")
+		print("fixtures missing (committed under tests/<suite>/fixtures)")
 		quit(1)
 		return
 	for t in ["pure", "necro_seq", "kill_chain", "chronicle_seq", "progression_seq"]:
