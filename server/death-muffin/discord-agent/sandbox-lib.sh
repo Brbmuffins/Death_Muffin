@@ -14,6 +14,13 @@ dm_sandbox_setup() {
   ip link set lo up || return 99    # loopback only (tests listen on 127.0.0.1); nothing routes out
   mount --make-rprivate / || { echo "sandbox: cannot make mounts private" >&2; exit 99; }
   [ -n "${TOP:-}" ] && [ -d "$TOP" ] || { echo "sandbox: TOP is not a directory" >&2; exit 99; }
+  # Secrets the sandboxed code must never read: /dev/null is bound over each (before the read-only pass below, so the cover is read-only too and, in the nested
+  # namespace, locked). The art API keys (Tripo/Gemini) are spent only by the runner, outside any sandbox; the runner's own shared secret is hidden as well.
+  # DM_SANDBOX_HIDE adds more paths (colon-separated). A path that does not exist is skipped.
+  local hide
+  for hide in /home/ubuntu/vps-handoffs/DeathMuffin/game/.ai-keys.local "$(dirname "${DM_SANDBOX_LIB:-/nonexistent/x}")/secret" $(printf '%s' "${DM_SANDBOX_HIDE:-}" | tr ':' ' '); do
+    if [ -f "$hide" ] && [ ! -L "$hide" ]; then mount --bind /dev/null "$hide" || { echo "sandbox: cannot hide $hide; refusing to run" >&2; exit 99; }; fi
+  done
   local mp opts ro_list=() all=() line
   while read -r line; do all+=("$line"); done < <(awk '{print $5 " " $6}' /proc/self/mountinfo)
   for line in "${all[@]}"; do

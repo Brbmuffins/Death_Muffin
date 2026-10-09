@@ -11,6 +11,7 @@ const { runTurn, buildPrompt, readResult } = require('./lib/agent.cjs');
 const { parseDiff, classifyDiff, tierLabel, approversFor } = require('./lib/tiers.cjs');
 const { verifyGenerated, describeMismatch } = require('./lib/generated.cjs');
 const { planReply } = require('./lib/discordText.cjs');
+const A = require('./lib/art.cjs');
 
 const TIER_COLOR = { casual: 0x16a34a, gameplay: 0xb45309, sensitive: 0xdc2626 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -55,6 +56,9 @@ function createRunner(cfgIn, opts = {}) {
   fs.mkdirSync(cfg.stateDir, { recursive: true });
   const audit = createAudit(path.join(cfg.stateDir, 'audit.jsonl'));
   const auth = createAuth(cfg, now);
+  // Model generation (Gemini concept -> Tripo): Godot mode only. Keys, budgets and the ledger live outside every checkout (lib/art.cjs).
+  const art = GODOT ? A.createArt(cfg, { audit, now }) : null;
+  let artBusy = false;     // one Tripo run at a time inside this process (art-run.sh also holds a flock across processes)
   const jobsFile = path.join(cfg.stateDir, 'jobs.json');
   const shipsFile = path.join(cfg.stateDir, 'ships.jsonl');
   const lockFile = path.join(cfg.deployDir, '.deploy.lock');
@@ -62,7 +66,7 @@ function createRunner(cfgIn, opts = {}) {
 
   let jobs = {};       // threadId -> job
   try { jobs = JSON.parse(fs.readFileSync(jobsFile, 'utf8')); } catch { /* fresh */ }
-  for (const j of Object.values(jobs)) { if (j.status === 'running' || j.status === 'shipping') { j.status = 'idle'; } j.running = false; j.previewBusy = false; }
+  for (const j of Object.values(jobs)) { if (j.status === 'running' || j.status === 'shipping' || j.status === 'generating') { j.status = 'idle'; } j.running = false; j.previewBusy = false; }
   const save = () => { const t = jobsFile + '.tmp'; fs.writeFileSync(t, JSON.stringify(jobs, null, 1), { mode: 0o600 }); fs.renameSync(t, jobsFile); };
   const starting = new Map();      // threadId -> promise while a new round's workspace is being created
   const pendingNew = new Map();   // eventId -> event awaiting a thread id from the bot
@@ -217,7 +221,7 @@ function createRunner(cfgIn, opts = {}) {
     if (!carry) job.sessionId = null;
     if (job.sessionId && prev.worktree) { try { const f = `${job.sessionId}.jsonl`; const dst = projDir(w.worktree); fs.mkdirSync(dst, { recursive: true }); fs.copyFileSync(path.join(projDir(prev.worktree), f), path.join(dst, f)); } catch { /* resume falls back to a fresh session */ } }
     if (prev.worktree) await G.removeJobArtifacts(cfg, { ...job, ...prev }).catch(() => {});
-    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, shotsSeen: {}, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
+    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, shotsSeen: {}, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
       roundNote: carry ? `Your previous change shipped and is live (or was discarded). You are on a fresh branch from the latest ${BB}; read the code again before relying on what you remember.`
         : `This thread's earlier work was on a different version of the game, so that conversation is not carried over. You are on a fresh branch from the latest ${BB}; work from the request and the code.`, lastActive: now() });
     audit.log('round', { job: job.id, round, branch: job.branch, base: w.base });
@@ -271,9 +275,15 @@ function createRunner(cfgIn, opts = {}) {
       case 'retry':
         if (!job.publishFailed) return { action: 'reply', text: 'Nothing to retry: no failed client publish in this thread.' };
         return requestRetry(job, String(msg.userId)) ? { action: 'accepted' } : { action: 'accepted' };
+      case 'credits': case 'art': {
+        if (!art) return { action: 'reply', text: 'Model generation is only available in Godot mode.' };
+        const b = art.store.budgetOf(msg.userId), sp = art.store.spentBy(msg.userId);
+        const pend = job.artRequest ? ` A request for "${job.artRequest.id}" (${job.artRequest.estimate} credits) is waiting for an approver's ✅.` : '';
+        return { action: 'reply', text: b > 0 ? `Model credits for ${msg.name}: ${fmtN(Math.max(0, b - sp))} left of ${fmtN(b)} (${fmtN(sp)} spent).${pend}` : `${msg.name} has no model-generation budget. The owner sets budgets.${pend}` };
+      }
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: `Commands: !status, !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (rebuild the playable preview), !sync, !retry (a failed client publish), rollback (approvers).` };
+      default: return { action: 'reply', text: `Commands: !status, !credits (your model-generation budget), !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (rebuild the playable preview), !sync, !retry (a failed client publish), rollback (approvers).` };
     }
   }
 
@@ -301,6 +311,7 @@ function createRunner(cfgIn, opts = {}) {
     if (job && !goneThread(job.threadId) && job.publishFailed && job.publishFailed.messageId === ev.messageId && ev.emoji === '✅') {
       return requestRetry(job, String(ev.userId)) ? { action: 'accepted' } : { action: 'remove_reaction' };
     }
+    if (job && art && !goneThread(job.threadId) && job.artRequest && job.artRequest.messageId && job.artRequest.messageId === ev.messageId) return handleArtReaction(job, ev);
     if (!job || goneThread(job.threadId) || !job.proposal || job.proposal.messageId !== ev.messageId) return { action: 'ignore' };
     const uid = String(ev.userId); const p = job.proposal;
     if (ev.emoji === '✅') {
@@ -343,6 +354,7 @@ function createRunner(cfgIn, opts = {}) {
     }
     job.discardRequested = null;
     audit.log('discarded', { job: job.id, userId: String(byId) });
+    job.artRequest = null;
     await G.removeJobArtifacts(cfg, job);
     (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, discarded: true, at: new Date(now()).toISOString() });
     job.status = 'discarded'; job.queue = []; job.proposal = null; job.worktree = null; save();
@@ -384,9 +396,12 @@ function createRunner(cfgIn, opts = {}) {
     job.queuedNotice = false;
     const msgs = job.queue.splice(0); save();
     const sync = msgs.some((m) => m.sync);
-    const real = msgs.filter((m) => !m.sync);
+    const real = msgs.filter((m) => !m.sync && !m.art);
     let extra = '';
     if (job.roundNote) { extra = job.roundNote; job.roundNote = null; }
+    const artNotes = msgs.filter((m) => m.art).map((m) => m.text);
+    if (artNotes.length) extra = (extra ? extra + '\n\n' : '') + artNotes.join('\n\n');
+    if (real.length) job.lastAsker = { id: String(real[real.length - 1].userId), name: real[real.length - 1].name };
     if (sync) {
       await G.git(cfg.repo, ['fetch', '-q', 'origin']);
       const m = await G.git(job.worktree, ['merge', '--no-edit', `origin/${BB}`], { allowFail: true });
@@ -484,6 +499,7 @@ function createRunner(cfgIn, opts = {}) {
     }
     if (r && r.text.trim()) sayLong(job, r.text.trim());
     postNewShots(job);
+    if (art && await artStage(job)) return;       // a model request is waiting for an approver (or was refused): nothing to verify or propose yet
     await afterTurn(job, readResult(job.worktree));
   }
 
@@ -592,6 +608,168 @@ function createRunner(cfgIn, opts = {}) {
     const afterFirst = shots.find((s) => !/^before-/.test(s.name)) || shots[0];
     if (shots.length) embed.image = { url: `attachment://${afterFirst.name}` };
     post({ threadId: job.threadId }, { embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
+  }
+
+  // ---------- model generation: request -> estimate -> ✅ -> Gemini + Tripo run by the runner -> the agent builds and commits the result ----------
+  // The agent only writes specs + .dm-art-request.json (it has no keys and no network tool for this). Everything below is runner code.
+  const fmtN = (n) => (Number.isInteger(n) ? String(n) : String(+n.toFixed(2)));
+  async function artStage(job) {
+    for (let attempt = 0; ; attempt++) {
+      const rq = A.readRequest(job.worktree);
+      if (!rq) return false;
+      const v = rq.error ? { ok: false, errors: [rq.error] } : A.validate({ wt: job.worktree, request: rq, info: await A.baseInfo(cfg, job) });
+      if (v.ok) { job.status = 'idle'; await offerArt(job, v, rq.note); return true; }
+      audit.log('art-invalid', { job: job.id, id: rq.id || '', errors: v.errors.join(' | ') });
+      if (attempt >= 2) { say(job, `The model request still has problems, so nothing was offered for approval:\n${v.errors.map((e) => `- ${clip(e, 200)}`).join('\n')}\nTell me what to change.`); job.status = 'idle'; return true; }
+      say(job, `The model request was rejected by the checker (${clip(v.errors[0], 160)}); asking the agent to fix it.`);
+      const r = await agentTurn(job, `The runner rejected your model request. Fix the spec files (art-manifest/gemini-jobs/<id>.json, art-manifest/tripo-specs/<id>.json) and write ${A.REQUEST_FILE} again. Problems:\n${v.errors.map((e) => `- ${e}`).join('\n')}`);
+      if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return true; }
+      if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return true; }
+    }
+  }
+  const artWho = (job) => { const a = job.lastAsker || { id: job.creatorId }; return { id: String(a.id), name: nameOf(a.id) !== `user ${String(a.id).slice(-4)}` ? nameOf(a.id) : (a.name || nameOf(a.id)) }; };
+  // Posts the estimate + budget and waits for an approver's ✅. Refuses (no reactions, nothing stored) when the budget or the live balance cannot cover it.
+  async function offerArt(job, v, note) {
+    const who = artWho(job);
+    const budget = art.store.budgetOf(who.id), spent = art.store.spentBy(who.id), remaining = art.store.remaining(who.id);
+    const est = v.estimate.total;
+    if (budget <= 0) {
+      audit.log('art-refused', { job: job.id, userId: who.id, why: 'no budget' });
+      say(job, `${who.name} has no model-generation budget, so I will not generate "${v.id}". The owner sets credit budgets; ask them to give you some and then ask again. Nothing was spent.`); return;
+    }
+    const bal = await art.balance();
+    if (bal == null) { say(job, `I cannot read the Tripo balance right now, so I will not start "${v.id}". Nothing was spent; try again in a few minutes.`); return; }
+    if (est > remaining) {
+      audit.log('art-refused', { job: job.id, userId: who.id, why: 'over budget', estimate: est, remaining });
+      say(job, `"${v.id}" would cost about ${est} credits, but ${who.name} has ${fmtN(remaining)} left of ${fmtN(budget)}. Nothing was spent. Ask for something cheaper (fewer animations, no rig) or ask the owner for more budget.`); return;
+    }
+    if (est > bal) {
+      audit.log('art-refused', { job: job.id, userId: who.id, why: 'over balance', estimate: est, balance: bal });
+      say(job, `"${v.id}" would cost about ${est} credits but the Tripo account only holds ${fmtN(bal)}. Nothing was spent; the owner needs to top it up.`); return;
+    }
+    const prev = job.artRequest;
+    job.artRequest = { id: v.id, kind: v.kind, userId: who.id, userName: who.name, spec: v.spec, gemini: v.gemini, estimate: est, parts: v.estimate.parts, note: String(note || '').slice(0, 300), messageId: null, createdAt: new Date(now()).toISOString() };
+    save();
+    audit.log('art-offered', { job: job.id, id: v.id, userId: who.id, estimate: est, remaining, balance: bal, supersedes: prev ? prev.id : '' });
+    postArtOffer(job, { remaining, budget, spent, balance: bal });
+  }
+  function postArtOffer(job, nums) {
+    const q = job.artRequest; const approvers = [...new Set([...cfg.ownerIds, ...cfg.project.approvers.sensitive])].map(nameOf);
+    const prompt = q.gemini.prompt.replace(/\s+/g, ' ');
+    const embed = {
+      title: clip(`New ${q.kind}: ${q.id}`, 250), color: 0x7c3aed,
+      description: (q.note ? `${q.note}\n\n` : '') + `**Concept prompt:** ${clip(prompt, 400)}`,
+      fields: [
+        { name: 'Will be generated', value: A.describe({ spec: q.spec }), inline: false },
+        { name: 'Estimated cost', value: `up to **${q.estimate} credits** (${q.parts.map((p) => `${p.label} ${p.credits}`).join(' + ')}). A ceiling from past runs; the real spend is recorded afterwards.`, inline: false },
+        { name: `${q.userName}'s budget`, value: `${fmtN(nums.remaining)} of ${fmtN(nums.budget)} credits left → ${fmtN(nums.remaining - q.estimate)} after this`, inline: true },
+        { name: 'Tripo balance now', value: `${fmtN(nums.balance)} credits`, inline: true },
+      ],
+      footer: { text: `✅ spend the credits (${approvers.join(' / ')}) · ❌ cancel · nothing is spent until a ✅ · ${job.id}` },
+    };
+    post({ threadId: job.threadId }, { embed, reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.artRequest === q) { q.messageId = String(res.messageId); save(); } });
+  }
+  async function handleArtReaction(job, ev) {
+    const uid = String(ev.userId); const q = job.artRequest;
+    if (ev.emoji === '✅') {
+      audit.log('art-approve-attempt', { userId: uid, job: job.id, id: q.id });
+      if (!auth.isFull(uid)) {
+        audit.log('art-approve-refused', { userId: uid, job: job.id, why: 'not a full approver' });
+        if (!job.lastRefusalAt || now() - job.lastRefusalAt > 60000) { job.lastRefusalAt = now(); say(job, `Only ${[...new Set([...cfg.ownerIds, ...cfg.project.approvers.sensitive])].map(nameOf).join(' / ')} can approve spending credits.`); }
+        return { action: 'remove_reaction' };
+      }
+      if (job.running || job.status === 'shipping' || job.status === 'generating') { say(job, 'This thread is busy right now. React again when it is done.'); return { action: 'remove_reaction' }; }
+      if (artBusy) { say(job, 'Another model is being generated (one at a time). React ✅ again when it finishes.'); return { action: 'remove_reaction' }; }
+      audit.log('art-approved', { userId: uid, job: job.id, id: q.id, estimate: q.estimate, requester: q.userId });
+      runArt(job, uid).catch((e) => { console.error('art run crashed', e); say(job, `The model run crashed: ${clip(redactText(e.message), 300)}`); });
+      return { action: 'accepted' };
+    }
+    if (ev.emoji === '❌') {
+      if (!(auth.isFull(uid) || uid === q.userId)) return { action: 'remove_reaction' };
+      if (job.status === 'generating') return { action: 'ignore' };
+      job.artRequest = null; save(); audit.log('art-cancelled', { userId: uid, job: job.id, id: q.id });
+      say(job, `Cancelled the request for "${q.id}". Nothing was spent.`); return { action: 'accepted' };
+    }
+    return { action: 'ignore' };
+  }
+  // Writes the stored, already-validated specs over whatever the worktree holds (so what runs is exactly what was approved), after re-checking the paths.
+  function writeCanonical(job, q) {
+    const wt = job.worktree;
+    const bad = [];
+    for (const rel of ['art-src', 'art-src/concepts', `art-src/concepts/${q.id}.png`, 'art-src/gemini', `art-src/gemini/concept_${q.id}.png`, 'art-src/tripo', `art-src/tripo/${q.id}`, 'art-manifest', 'art-manifest/images.json', 'art-manifest/tripo', `art-manifest/tripo/${q.id}.json`, 'art-manifest/gemini-jobs', 'art-manifest/tripo-specs', `art-manifest/gemini-jobs/${q.id}.json`, `art-manifest/tripo-specs/${q.id}.json`]) {
+      const iss = A.pathIssue(wt, rel); if (iss) bad.push(iss);
+    }
+    if (bad.length) return bad[0];
+    try {
+      for (const d of ['art-manifest/gemini-jobs', 'art-manifest/tripo-specs', 'art-src/concepts']) fs.mkdirSync(path.join(wt, d), { recursive: true });
+      fs.writeFileSync(path.join(wt, 'art-manifest', 'gemini-jobs', `${q.id}.json`), JSON.stringify([q.gemini], null, 2) + '\n');
+      fs.writeFileSync(path.join(wt, 'art-manifest', 'tripo-specs', `${q.id}.json`), JSON.stringify(q.spec, null, 2) + '\n');
+    } catch (e) { return `could not write the specs: ${e.message}`; }
+    return null;
+  }
+  const readImageFile = (job, rel, name) => {
+    try { if (A.pathIssue(job.worktree, rel)) return null; const f = path.join(job.worktree, rel); const st = fs.lstatSync(f); if (!st.isFile() || st.size > SHOT_MAX_BYTES) return null; const b = fs.readFileSync(f); return IMG_MAGIC.some((m) => m.every((x, i) => b[i] === x)) ? { name, b64: b.toString('base64') } : null; } catch { return null; }
+  };
+  async function runArt(job, approverId) {
+    const q = job.artRequest; artBusy = true; job.running = true; job.status = 'generating'; save();
+    let ticker = null, entryId = null, startBal = null, res = null;
+    const finish = async () => {
+      if (ticker) clearInterval(ticker);
+      artBusy = false; job.running = false; job.proc = null; if (job.status === 'generating') job.status = 'idle'; save();
+      if (job.deleteRequested) await cleanupDeleted(job).catch(() => {});
+      else if (job.discardRequested) await discard(job, job.discardRequested).catch((e) => say(job, `Discard failed: ${e.message}`));
+      pump();
+    };
+    try {
+      // everything is re-checked now, with live numbers: the budget file and the balance may have changed since the offer
+      startBal = await art.balance();
+      const remaining = art.store.remaining(q.userId);
+      if (startBal == null) { say(job, 'I cannot read the Tripo balance right now, so nothing was started. React ✅ again in a few minutes.'); return; }
+      if (q.estimate > remaining) { audit.log('art-refused', { job: job.id, userId: q.userId, why: 'over budget at approval', estimate: q.estimate, remaining }); say(job, `Not started: "${q.id}" is estimated at ${q.estimate} credits but ${q.userName} only has ${fmtN(remaining)} left. Nothing was spent.`); return; }
+      if (q.estimate > startBal) { audit.log('art-refused', { job: job.id, userId: q.userId, why: 'over balance at approval', estimate: q.estimate, balance: startBal }); say(job, `Not started: the Tripo balance is ${fmtN(startBal)}, below the estimated ${q.estimate}. Nothing was spent.`); return; }
+      const bad = writeCanonical(job, q);
+      if (bad) { audit.log('art-refused', { job: job.id, why: bad }); say(job, `Not started: ${clip(bad, 200)}. Nothing was spent.`); return; }
+      entryId = art.store.begin({ userId: q.userId, userName: q.userName, jobId: job.id, specId: q.id, estimate: q.estimate, approverId, balanceBefore: startBal });
+      audit.log('art-start', { job: job.id, id: q.id, userId: q.userId, approver: approverId, estimate: q.estimate, balance: startBal });
+      say(job, `Approved by ${nameOf(approverId)}. Generating "${q.id}": concept image, then the model${q.spec.rig ? ', rig and animations' : ''}. This takes a few minutes (up to ${q.spec.animations ? 20 : 10} or so).`);
+      typing(job); const t0 = now(); let nextUpdate = t0 + 5 * 60000;
+      ticker = setInterval(() => { typing(job); if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, `${busyLine()}… (${Math.max(1, Math.round((now() - t0) / 60000))} min)`); } }, 8000); ticker.unref();
+      try { res = await art.run(job.worktree, q.id, { onSpawn: (p) => { job.proc = p; } }); }
+      catch (e) { res = { credits: null, result: 'crashed', tail: redactText(e.message), before: startBal, after: null }; }
+      // the real spend: balance before - after, from the script's own readings (or a fresh reading if it was killed), else Tripo's own manifest, else the estimate
+      let credits = res.credits, note = '';
+      if (credits == null) { const after = await art.balance().catch(() => null); if (after != null) { credits = Math.max(0, +(startBal - after).toFixed(2)); res.after = after; } }
+      if (credits == null) { credits = q.estimate; note = 'balance unreadable after the run; charged the estimate'; }
+      const ok = res.result === 'ok';
+      art.store.finish(entryId, { status: ok ? 'done' : 'failed', credits, balanceBefore: res.before != null ? res.before : startBal, balanceAfter: res.after != null ? res.after : null, result: res.result, note });
+      entryId = null;
+      audit.log('art-result', { job: job.id, id: q.id, userId: q.userId, result: res.result, credits, before: res.before, after: res.after });
+      const left = art.store.remaining(q.userId), budget = art.store.budgetOf(q.userId);
+      const spentLine = `Spent **${fmtN(credits)}** credits (Tripo balance ${res.before != null ? fmtN(res.before) : '?'} → ${res.after != null ? fmtN(res.after) : '?'}). ${q.userName} has ${fmtN(left)} of ${fmtN(budget)} left.`;
+      if (job.cancelRequested || job.discardRequested) { job.cancelRequested = false; say(job, `Stopped. ${spentLine.replace(/\*\*/g, '')} Finished steps are kept, so asking again will not pay for them twice.`); return; }
+      if (!ok) {
+        const why = { 'tripo-failed': 'Tripo stopped partway', 'no-concept': 'Gemini did not return an image', busy: 'another run held the lock too long', 'no-balance': 'the balance could not be read', timeout: 'it took too long', crashed: 'the run crashed' }[res.result] || `it ended with ${res.result}`;
+        say(job, `The model run did not finish: ${why}. ${spentLine}\n${res.tail ? '```\n' + clip(res.tail, 700) + '\n```\n' : ''}Finished steps are kept and are not paid for twice. An approver can react ✅ on the new request below to resume, or ❌ to drop it.`);
+        job.artRequest = { ...q, messageId: null };
+        postArtOffer(job, { remaining: left, budget, spent: art.store.spentBy(q.userId), balance: res.after != null ? res.after : startBal });
+        return;
+      }
+      const files = [readImageFile(job, `art-src/concepts/${q.id}.png`, `concept-${q.id}.png`), readImageFile(job, `art-src/tripo/${q.id}/generate-preview.png`, `model-preview-${q.id}.png`)].filter(Boolean);
+      job.artRequest = null;
+      post({ threadId: job.threadId }, { content: `Done: "${q.id}" is generated. ${spentLine}\nThe agent now builds it and wires it in; you will get a normal proposal to approve.`, ...(files.length ? { files } : {}) });
+      const wire = q.kind === 'prop' ? `godot/assets/slice/models/props/${q.id.slice(5)}.glb` : `godot/assets/slice/models/${q.id}/character.glb`;
+      job.queue.push({ userId: 'runner', name: 'runner', role: 'runner', art: true, ts: now(), text:
+        `The runner generated the approved model "${q.id}" (it paid for it; you never touch keys). Files in your workspace: art-src/concepts/${q.id}.png (concept), art-src/tripo/${q.id}/ (raw Tripo outputs), and the records art-manifest/tripo/${q.id}.json and art-manifest/images.json. ` +
+        `art-src/ is git-ignored: do not commit it. Next: run ${cfg.toolsDir}/build-art.sh ${q.id} (builds the GLB and installs it at ${wire}), read what it prints, then commit the specs (art-manifest/gemini-jobs/${q.id}.json, art-manifest/tripo-specs/${q.id}.json), the two records, and the GLB. ` +
+        `Run ${CHECK}: Godot's import writes the .import file and extracted textures next to the model; commit those too (agit status shows them). Wire the model into the game only as the request asked, add a PATCH_NOTES.json item if players can see it, and keep your reply short.` });
+      job.lastActive = now(); save();
+    } finally {
+      if (entryId) {   // the run threw before settling: close the ledger entry from the balance delta so the spend is never lost
+        let c = null; try { const after = await art.balance(); if (after != null && startBal != null) c = Math.max(0, +(startBal - after).toFixed(2)); } catch { /* unreadable */ }
+        art.store.finish(entryId, { status: 'interrupted', credits: c != null ? c : q.estimate, note: c != null ? 'run aborted; charged from the balance delta' : 'run aborted; balance unreadable, charged the estimate' });
+      }
+      await finish();
+    }
   }
 
   // ---------- ship / rollback ----------
@@ -762,6 +940,7 @@ function createRunner(cfgIn, opts = {}) {
 
   for (const j of Object.values(jobs)) if (j.deleteRequested && !j.running) cleanupDeleted(j).catch(() => {});
   for (const j of Object.values(jobs)) if (j.publishFailed && !j.publishFailed.autoRetried) scheduleAutoRetry(j, 1);   // runner restarted while one was pending   // a delete that was waiting when the runner stopped
+  if (art) art.reconcile().catch((e) => console.error('art reconcile', e.message));   // a run the previous process never settled is closed from the balance delta
   pump();
   return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }

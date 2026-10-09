@@ -796,7 +796,7 @@ test('godot mode: !shot is available, the agent may run shot-godot.sh (not shot.
   const a = claudeArgs(w.cfg, j); const rest = a.slice(a.indexOf('--allowedTools') + 1); const allowed = rest.slice(0, rest.findIndex((x) => x.startsWith('--')) >>> 0);
   const wt = `/${j.worktree}/**`;
   assert.deepEqual(allowed, [`Read(${wt})`, `Edit(${wt})`, `Write(${wt})`, `Glob(${wt})`, `Grep(${wt})`, `Bash(${w.tools}/agit *)`, `Bash(${w.tools}/check-godot.sh)`,
-    `Bash(${w.tools}/shot-godot.sh)`, `Bash(${w.tools}/shot-godot.sh *)`, 'WebSearch', ...w.cfg.webDocDomains.map((h) => `WebFetch(domain:${h})`)]);
+    `Bash(${w.tools}/shot-godot.sh)`, `Bash(${w.tools}/shot-godot.sh *)`, `Bash(${w.tools}/build-art.sh *)`, 'WebSearch', ...w.cfg.webDocDomains.map((h) => `WebFetch(domain:${h})`)]);
   assert.ok(!allowed.includes('Read') && !allowed.includes('WebFetch'), 'no bare (any-path / any-host) grants');
   assert.ok(j.worktree && path.isAbsolute(j.worktree));
   const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/godot-port/); assert.ok(sp.includes(`${w.tools}/check-godot.sh`) && sp.includes(`${w.tools}/shot-godot.sh`) && !sp.includes('__TOOLS__') && !/shot\.sh/.test(sp));

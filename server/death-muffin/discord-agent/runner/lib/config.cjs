@@ -25,7 +25,7 @@ const DEFAULTS = {
   allowMigrations: true,
   numericTolerancePct: 25,
   // Which game the agent works on. web = the three.js game on master (check.sh, preview.sh, shot.sh, PROMPT.md, `tiers`, deploy-release.sh,
-  // mobile step). godot = the Godot 4 client (set baseBranch to godot-port too): check-godot.sh, preview-godot.sh (offline .exe
+  // mobile step). godot = the Godot 4 client (set baseBranch to godot-next too): check-godot.sh, preview-godot.sh (offline .exe
   // zip), PROMPT-godot.md, `godotTiers`, publish-godot-client.sh, no screenshots, no mobile step. baseBranch is where worktrees are cut from and
   // where ships merge and push; it is passed to git as a ref, so it is validated in loadConfig.
   baseBranch: 'master',

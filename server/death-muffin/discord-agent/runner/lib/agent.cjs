@@ -33,7 +33,7 @@ function claudeArgs(cfg, job) {
   // The only programs the agent may run: agit, and the mode's own check script (+ regen.sh on the web side only: Godot mode has no
   // generated server bundles to rebuild; shot.sh on the web side, shot-godot.sh on the Godot side).
   const bash = cfg.mode === 'godot'
-    ? [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh *)`]
+    ? [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh)`, `Bash(${cfg.toolsDir}/shot-godot.sh *)`, `Bash(${cfg.toolsDir}/build-art.sh *)`]
     : [`Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check.sh)`, `Bash(${cfg.toolsDir}/regen.sh)`, `Bash(${cfg.toolsDir}/shot.sh)`, `Bash(${cfg.toolsDir}/shot.sh *)`];
   // File tools are scoped to the worktree ("//" = absolute path): a bare "Read" grants every path on the machine (runner secret, /opt),
   // which matters more now that a WebFetch could carry what it read out. WebFetch is limited to documentation hosts (cfg.webDocDomains) unless the owner set cfg.webAnyHost.

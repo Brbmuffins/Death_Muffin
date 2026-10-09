@@ -93,6 +93,25 @@ test('sandbox: check-godot.sh', () => {
   } finally { W.cleanup(); }
 });
 
+test('sandbox: secret files listed in DM_SANDBOX_HIDE (and the runner secret next to sandbox-lib.sh) read as empty inside, and cannot be un-hidden', () => {
+  const W = world(); try {
+    const hidden = path.join(W.root, 'keys.local'); fs.writeFileSync(hidden, 'TRIPO_API_KEY=tsk_should_never_be_readable_in_a_sandbox\n');
+    W.w('godot/project.godot', 'x');
+    W.w('tools/godot/gen-fixtures.sh', `cat "${hidden}" > "$TOP/.hidden-read" 2>&1; echo "len=$(stat -c %s "${hidden}")" >> "$TOP/.hidden-read"
+mount -o remount,bind,rw "${hidden}" 2>/dev/null && echo REMOUNTED >> "$TOP/.hidden-read"
+umount "${hidden}" 2>/dev/null && echo UNMOUNTED >> "$TOP/.hidden-read"
+unshare -Um --map-current-user bash -c 'umount "${hidden}" 2>/dev/null && echo UNMOUNTED2' >> "$TOP/.hidden-read" 2>&1
+${probeCmd('hide')}
+`);
+    W.w('tools/godot/run-all-tests.sh', 'printf "%-18s %-16s exit=%d  %s\\n" game run.gd 0 "1 passed"\n');
+    const r = run(W, 'check-godot.sh', [], { DM_SANDBOX_HIDE: hidden }); assert.equal(r.status, 0, r.stdout + r.stderr);
+    const seen = fs.readFileSync(path.join(W.top, '.hidden-read'), 'utf8');
+    assert.ok(!/tsk_should_never/.test(seen), seen); assert.match(seen, /len=0/); assert.ok(!/REMOUNTED|UNMOUNTED/.test(seen), seen);
+    assert.match(fs.readFileSync(hidden, 'utf8'), /tsk_should_never/, 'outside the sandbox the file is untouched');
+    verdict(W, 'hide');
+  } finally { W.cleanup(); }
+});
+
 test('sandbox: regen.sh', () => {
   const W = world(); try {
     W.w('package.json', JSON.stringify({ scripts: { 'build:server-rules': probeCmd('regen-rules'), 'gen:loot': 'true' } })); W.w('tools/embed-realtime.mjs', '');

@@ -81,7 +81,7 @@ deploy scripts or `.env*` are refused outright (`forbiddenPaths`). `ship.sh` re-
 the deploy lock, so an approver can never ship above their tier.
 
 ## Chat commands (in the thread, handled by the runner, not the AI)
-`!status` · `!shot` (screenshot of the change) · `!cancel` · `!discard` (or ❌) · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
+`!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!cancel` · `!discard` (or ❌) · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
 (full approvers; "use opus" in a message works too) · `rollback` (mention in channel or thread): runs the newest deploy
 backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited approvers only if their ship is the latest.
 Rollback undoes the live release only; revert the commit on the base branch afterwards.
@@ -132,6 +132,33 @@ Rollback undoes the live release only; revert the commit on the base branch afte
   than the live client (`RESULT: live-already`). Any later ship whose client contains the stuck commit posts "Live" in that thread too.
 - Why: 2026-10-08 a Godot core dump during `--import` left a pushed fix unpublished with no way to retry; the same commit imported fine a minute later.
 
+## New models (Gemini concept -> Tripo), approval-gated and credit-capped (godot mode)
+
+Someone asks in a thread for a new character, creature, boss or prop. The agent never holds a key and cannot call an API; it writes SPECS, the runner does the spending after an approver's check.
+
+```
+agent turn ── writes art-manifest/gemini-jobs/<id>.json (one concept job) + art-manifest/tripo-specs/<id>.json (generation / rig / animations) + .dm-art-request.json {id, note}
+runner     ── validates against allow-lists (below), prices it, posts the request:   New character: warlock
+              Will be generated: Concept image (Gemini) -> 3D model (Tripo, up to 7000 faces, detailed textures) -> rig (biped) -> 6 animations: idle, walk, ...
+              Estimated cost: up to 145 credits (image to model 60 + rig 25 + 6 animations x 10)      Helix's budget: 1000 of 1000 left -> 855 after this      Tripo balance now: 3910
+              ✅ spend the credits (the owner / Helix / warbogar) · ❌ cancel · nothing is spent until a ✅
+approver ✅ ── owner or any full approver (self-approval allowed, like code ships). Re-checked live: estimate <= requester's remaining budget AND <= Tripo balance, else "Not started"
+runner     ── art-run.sh in the job's worktree: flock -> balance before -> gemini.mjs -> tripo.mjs run --yes -> balance after.  Posts the concept + Tripo's preview image and the REAL spend
+agent turn ── told the files are ready: build-art.sh <id> (sandboxed: tools/build-characters.mjs, then dequantize into godot/assets/slice/models/...), commits specs + records + GLB,
+              check-godot.sh (adds .import/textures), wires the model in where asked, PATCH_NOTES, then the usual proposal / ✅ ship (art files make it a sensitive-tier proposal: full approvers only)
+```
+- **Keys never enter the agent.** `art-run.sh` gets `TRIPO_API_KEY` / `GEMINI_API_KEY` in its own environment only (read by the runner from `<repo>/.ai-keys.local`, `artKeysFile`); they are never written, logged or committed, every posted line goes through `redact.cjs` (the key values are registered as known secrets, plus `tsk_` / `AIza` / `AQ.` patterns), and `sandbox-lib.sh` binds `/dev/null` over `.ai-keys.local` and the runner `secret` inside every sandbox (check / shot / preview / build-art), so even a test script cannot read them. `agentEnv()` has no keys and `art-run.sh` is not in the agent's allowed tools.
+- **Trusted tools.** The runner runs COPIES of `tools/ai/{common,gemini,tripo}.mjs` installed to `art-tools/` (with their own copy of `sharp`), pointed at the worktree with `DM_ART_ROOT`. The worktree's own `tools/` and `node_modules` (which the agent can edit) are never executed by a process that holds keys.
+- **What runs is what was approved.** The validated canonical specs are stored in the job record at request time; at ✅ the runner rewrites the spec files from that copy (an agent edit after the offer changes nothing) and re-checks that no path the tools write to is a symlink.
+- **Validation (`runner/lib/art.cjs`)**: id `[a-z0-9_]{3,40}` and not an existing model; no extra fields anywhere; `input`/`out` exactly `art-src/concepts/<id>.png`; model `P1-20260311`; `face_limit` integer 300-14000; texture `standard|detailed`; rig `biped` (`v1.0-20240301`) or `quadruped` (`v2.5-20260210`, `preset:quadruped:walk` only); at most 10 distinct known presets, `animationMode: single`; rig <=> id not starting `prop_`; Gemini `aspect`/`size`/`model`/`post.{resize,format}` limited, up to 3 refs that are `art-src/concepts/*.png` real images or reference sheets committed at the repo root. A bad request goes back to the agent to fix (twice), then is dropped. Anything over 400 estimated credits is refused whatever the budget.
+- **Estimate** = the highest credits ever charged per step type in the base branch's `art-manifest/tripo/*.json` (read from git, not the worktree), never below the measured floors (model 60, rig 25, clip 10; rig-check is free). Typical: prop 60 (50 with standard textures), rigged character with 6 clips 145, bone_golem-sized 9 clips 175.
+- **Budgets**: `tripo-budget.json` (next to `config.json`, mode 600, owner-edited, read fresh on every use): `{"<discord id>": <credits>}`. Unlisted users, bad values and negatives = 0 -> "has no model-generation budget", nothing offered. The owner is not exempt. `!credits` shows your numbers. Remaining = budget - the sum of ACTUAL credits in the ledger.
+- **Ledger**: `tripo-ledger.json` (same folder, mode 600, outside every repo): one entry per run `{id, ts, userId, userName, jobId, specId, estimate, approverId, status started|done|failed|interrupted, credits, balanceBefore, balanceAfter, result, note, finishedAt}`. The `started` entry is written BEFORE anything is spent; credits are balance-before minus balance-after (a run that fails midway still records what it spent; a killed run is read from a fresh balance; if the balance cannot be read the estimate is charged). If the runner itself dies mid-run, the next start closes the open entry from the balance delta (`interrupted`).
+- **One run at a time**: an in-process flag plus `flock` on `state/tripo.lock` inside `art-run.sh` (a second run gives up as `busy` without touching the account). Tripo's own resume (`state.json` in `art-src/tripo/<id>/`) means a retry never pays twice: after a failure the thread gets a fresh request (same estimate, updated budget) and a ✅ resumes.
+- **Never without a ✅ / never unapproved**: nothing is spent at request time; only `isFull` approvers' ✅ on that exact request message starts it (others' reactions are removed); `!discard`/❌ clears a pending request; a thread that is running, shipping or generating turns a ✅ away. Audit events: `art-offered`, `art-approve-attempt`, `art-approved`, `art-approve-refused`, `art-refused`, `art-start`, `art-result`, `art-cancelled`, `art-invalid`, `art-reconciled`.
+- Config keys (all optional, defaults shown; `config.json` is not edited): `artKeysFile` (`<repo>/.ai-keys.local`), `artToolsDir` (`<toolsDir>/art-tools`), `artRunScript`, `artLockFile` (`<toolsDir>/state/tripo.lock`), `artLockWaitSec` (1800), `artBudgetFile`, `artLedgerFile`.
+- Tests: `test/art.test.cjs` (validation, pricing, budget/ledger math, every refusal path, approval gating, resume, flock, crash settlement, install) with fake Tripo/Gemini tools in `test/fake-art/`; no API is called and no credits are spent.
+
 ## Install (from a committed revision; nothing starts by itself)
 1. `bash server/death-muffin/discord-agent/install-runner.sh <rev>`: tooling to `~/death-muffin/discord-agent`, `config.json` (owner id from
    `/opt/crossworlds-bot/.env`), `secret`, systemd unit (not started).
@@ -139,7 +166,7 @@ Rollback undoes the live release only; revert the commit on the base branch afte
 3. `sudo systemctl enable --now death-muffin-discord-agent`, then `sudo systemctl restart muffin-discord`.
 
 Tests (not wired into test:server; ~1 min, needs git and `unshare`/`zip`/`unzip`): `node --test server/death-muffin/discord-agent/test/*.test.cjs`.
-The installer also copies `check-godot.sh`, `preview-godot.sh`, `shot-godot.sh`, `label-shot.py` and `PROMPT-godot.md`. To switch the live runner to Godot mode, edit `config.json` (`mode`, `baseBranch`), then restart the service.
+The installer also copies `check-godot.sh`, `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `art-run.sh`, `build-art.sh` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). To switch the live runner to Godot mode, edit `config.json` (`mode`, `baseBranch`), then restart the service.
 
 ## Screenshots
 Web mode: the agent can look at its own change: it writes a scenario (`.dm-shot.json`) and runs `shot.sh` (`shoot.cjs` documents the format; dev server + headless Chromium in a no-network sandbox, ~1 min, one at a time). PNGs land in `<worktree>/.dm-shots/`, which together with `.dm-shot.json` is git-excluded (`createWorktree`), so they never dirty the tree or get committed.

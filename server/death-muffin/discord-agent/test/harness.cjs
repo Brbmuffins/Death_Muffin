@@ -36,12 +36,17 @@ function makeWorld(over = {}) {
     sh(repo, 'checkout', '-q', '-b', 'godot-port');
     w('godot/project.godot', 'config_version=5'); w('godot/README.md', 'godot readme'); w('godot/game/a.gd', 'speed=1'); w('godot/net/dm_api.gd', 'url=1'); w('godot/export_presets.cfg', '[preset.0]');
     w('godot/data/loot/content.json', '{"v":1}');
+    w('.gitignore', 'art-src/\n');   // like the real repo: raw art outputs are never committed
     sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'godot tree'); sh(repo, 'push', '-q', 'origin', 'godot-port');
     liveRev = sh(repo, 'rev-parse', 'HEAD');
     fs.mkdirSync(path.join(T, 'client')); fs.writeFileSync(path.join(T, 'client', 'manifest.json'), JSON.stringify({ version: 'v1', rev: liveRev.slice(0, 12) }));
   }
   fs.mkdirSync(path.join(tools, 'state'), { recursive: true });
-  for (const f of ['ship.sh', 'rollback.sh', 'agit', 'PROMPT.md', 'PROMPT-godot.md']) fs.copyFileSync(path.join(SRC, f), path.join(tools, f));
+  for (const f of ['ship.sh', 'rollback.sh', 'agit', 'PROMPT.md', 'PROMPT-godot.md', 'art-run.sh', 'build-art.sh']) fs.copyFileSync(path.join(SRC, f), path.join(tools, f));
+  // model generation (godot mode): fake Tripo/Gemini tools (no network, no credits), a fake account balance, fake keys, and the owner-edited budget file
+  const artDir = path.join(T, 'art-tools'); fs.cpSync(path.join(__dirname, 'fake-art'), artDir, { recursive: true }); fs.writeFileSync(path.join(artDir, 'state.json'), JSON.stringify({ balance: 3910 }));
+  fs.writeFileSync(path.join(T, 'keys.local'), 'TRIPO_API_KEY=tsk_FakeTripoKeyForTestsOnly000000000000\nGEMINI_API_KEY=AIzaFakeGeminiKeyForTestsOnly000000000000\n', { mode: 0o600 });
+  fs.writeFileSync(path.join(T, 'budget.json'), '{}', { mode: 0o600 });
   fs.symlinkSync(path.join(SRC, 'runner'), path.join(tools, 'runner'));
   fs.writeFileSync(path.join(tools, 'check-godot.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "godot boom"; exit 1; }\necho "tests/game run.gd exit=0  12 passed"; echo "GODOT TESTS: 2 suites, 2 passed, 0 failed"\n', { mode: 0o755 });
   // shot-godot.sh stand-in: writes a PNG-ish file; in a base-<id> scratch worktree it writes the BEFORE picture (unless NOBASE exists)
@@ -56,6 +61,7 @@ function makeWorld(over = {}) {
     projects: { deathmuffin: { requesters: [IDS.HELIX, IDS.LIMITED], approvers: { casual: [IDS.HELIX, IDS.LIMITED], gameplay: [IDS.HELIX], sensitive: [IDS.HELIX] } } },
     repo, worktreeRoot: wtRoot, stateDir: path.join(tools, 'state'), toolsDir: tools, deployDir: deploy,
     claudeCmd: path.join(__dirname, 'fake-claude.cjs'), deployCmd: `n=$(ls ${deploy} | grep -c backup); b=${deploy}/backup-pre-release-aaaaaaaaaa$(printf %02d $n)-$(printf '20261004T%02d0000Z' $n); mkdir -p $b; echo 'echo rolled-back-ok' > $b/ROLLBACK.sh; echo "Rollback: $b/ROLLBACK.sh"; echo deployed "$1"`, turnTimeoutMin: 1, mobileDeployCmd: `echo "$1" >> ${deploy}/mobile-deploys.log`,
+    artToolsDir: artDir, artKeysFile: path.join(T, 'keys.local'), artBudgetFile: path.join(T, 'budget.json'), artLedgerFile: path.join(T, 'ledger.json'), artLockFile: path.join(T, 'tripo.lock'), artLockWaitSec: 5,
     previewRoot: path.join(T, 'preview'), previewUrl: 'https://example.test/death-muffin/preview/',
     previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "vite exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE|$DM_PREVIEW_BASE" > "$DM_PREVIEW_ROOT/$1/index.html"',
     ...(godot ? { baseBranch: 'godot-port', mode: 'godot', clientManifest: path.join(T, 'client', 'manifest.json'), deployCmd: `echo deployed "$1" >> ${deploy}/deploys.log`,
@@ -64,7 +70,7 @@ function makeWorld(over = {}) {
   fs.writeFileSync(cfgFile, JSON.stringify(raw));
   const cfg = loadConfig(cfgFile); cfg.__file = cfgFile;
   const runner = createRunner(cfg);
-  return { T, repo, origin, tools, deploy, backup, cfg, runner, sh, liveRev };
+  return { T, repo, origin, tools, deploy, backup, cfg, runner, sh, liveRev, artDir, budgetFile: path.join(T, 'budget.json'), ledgerFile: path.join(T, 'ledger.json') };
 }
 
 // ---- fake Discord layer ----
