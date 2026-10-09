@@ -39,7 +39,7 @@ async function createWorktree(cfg, job) {
   // keep the agent's result file and the symlinks out of `git status`
   const common = await trim(git(wt, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
   const ex = path.join(common, 'info', 'exclude');
-  try { fs.mkdirSync(path.dirname(ex), { recursive: true }); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; const add = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json'].filter((p) => !cur.split('\n').includes(p)); if (add.length) fs.appendFileSync(ex, '\n' + add.join('\n') + '\n'); } catch { /* best effort */ }
+  try { fs.mkdirSync(path.dirname(ex), { recursive: true }); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; const add = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json', '.dm-status'].filter((p) => !cur.split('\n').includes(p)); if (add.length) fs.appendFileSync(ex, '\n' + add.join('\n') + '\n'); } catch { /* best effort */ }
   const base = await trim(git(wt, ['rev-parse', 'HEAD']));
   return { worktree: wt, base };
 }

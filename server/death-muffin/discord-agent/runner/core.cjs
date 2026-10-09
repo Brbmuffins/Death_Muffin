@@ -413,11 +413,24 @@ function createRunner(cfgIn, opts = {}) {
       job.proposal = null;
     } else if (job.turns === 0) say(job, `On it (${job.model[0].toUpperCase()}${job.model.slice(1)}).`);
     const t0 = now(); let nextUpdate = t0 + 60000;
+    // The agent says what it is doing in .dm-status (one line, e.g. "Reproducing the tooltip crash, then fixing it; ~20-40 min").
+    // The first status is posted as soon as it appears; later ones ride along on the progress notes, or post on their own at most
+    // every 3 min (owner, 2026-10-09: Helix waited 40 min with only a typing dot and asked "hello?").
+    const statusFile = job.worktree ? path.join(job.worktree, '.dm-status') : null;
+    if (statusFile) { try { fs.rmSync(statusFile, { force: true }); } catch { /* none */ } }
+    let status = '', lastStatusPost = 0;
+    const readStatus = () => { try { return redactText(fs.readFileSync(statusFile, 'utf8').split('\n').map((l) => l.trim()).find(Boolean) || '').slice(0, 240); } catch { return ''; } };
+    const mins = () => Math.max(1, Math.round((now() - t0) / 60000));
     typing(job);
     const ticker = setInterval(() => {
       typing(job);
-      if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, `${busyLine()}… (${Math.max(1, Math.round((now() - t0) / 60000))} min)`); }
-    }, 8000); ticker.unref();
+      const st = statusFile ? readStatus() : '';
+      if (st && st !== status) {
+        status = st;
+        if (!lastStatusPost || now() - lastStatusPost >= 3 * 60000) { lastStatusPost = now(); nextUpdate = now() + 5 * 60000; say(job, `🔧 ${status}`); return; }
+      }
+      if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, status ? `${busyLine()}… (${mins()} min) · now: ${status}` : `${busyLine()}… (${mins()} min)`); }
+    }, cfg.tickMs || 8000); ticker.unref();
     try { await runJob(job, real, extra); } finally { clearInterval(ticker); }
   }
   // ---------- screenshots (<worktree>/.dm-shots/*.png, written by the agent via shot.sh) ----------

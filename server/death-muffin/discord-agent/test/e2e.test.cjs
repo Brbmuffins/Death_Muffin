@@ -238,6 +238,15 @@ test('working shows "typing…" instead of reacting to every message', async () 
   assert.ok(m2.reactions.every((r) => r === '⏳'), 'only an hourglass, and only when it has to wait');
 });
 
+test('a long turn posts the agent\'s .dm-status line as soon as it appears, and the file is never committed', async () => {
+  const w = makeWorld({ tickMs: 300 }); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'STATUS-TURN the game crashes when I hover items');
+  await until(() => texts(thread).some((t) => t === '🔧 Hunting the tooltip crash, then fixing it; ~1 min.'), d.ad);
+  await until(() => texts(thread).some((t) => /src\/gameplay\/a\.ts/.test(t)), d.ad);
+  const job = Object.values(w.runner.jobs())[0];
+  assert.equal(sh(job.worktree, 'check-ignore', '.dm-status').trim(), '.dm-status', 'status file is git-ignored');
+});
+
 test('long replies are split into several messages with code blocks kept closed; huge ones become a preview plus reply.md', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.OWNER, 'LONG-REPLY please');
