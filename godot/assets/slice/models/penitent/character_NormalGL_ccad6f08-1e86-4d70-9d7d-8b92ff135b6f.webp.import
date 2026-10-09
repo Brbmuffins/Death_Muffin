@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://rv34d2lrl1xw"
-path="res://.godot/imported/character_NormalGL_ccad6f08-1e86-4d70-9d7d-8b92ff135b6f.webp-73eda47ffe4f548d14325c776f6436b0.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_ccad6f08-1e86-4d70-9d7d-8b92ff135b6f.webp-73eda47ffe4f548d14325c776f6436b0.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f8c87dc95a95a1d86291105e4c6feeab"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/penitent/character_NormalGL_ccad6f08-1e86-4d70-9d7d-8b92ff135b6f.webp"
-dest_files=["res://.godot/imported/character_NormalGL_ccad6f08-1e86-4d70-9d7d-8b92ff135b6f.webp-73eda47ffe4f548d14325c776f6436b0.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_ccad6f08-1e86-4d70-9d7d-8b92ff135b6f.webp-73eda47ffe4f548d14325c776f6436b0.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

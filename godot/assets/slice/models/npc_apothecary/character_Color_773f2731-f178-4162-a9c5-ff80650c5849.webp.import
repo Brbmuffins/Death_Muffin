@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://e8uil78rob4e"
-path="res://.godot/imported/character_Color_773f2731-f178-4162-a9c5-ff80650c5849.webp-fbb1a1e26e5dbec9ca3aef72fceeb536.ctex"
+path.bptc="res://.godot/imported/character_Color_773f2731-f178-4162-a9c5-ff80650c5849.webp-fbb1a1e26e5dbec9ca3aef72fceeb536.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "aa07b49b650abe5274dc9cbad2c5de66"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/npc_apothecary/character_Color_773f2731-f178-4162-a9c5-ff80650c5849.webp"
-dest_files=["res://.godot/imported/character_Color_773f2731-f178-4162-a9c5-ff80650c5849.webp-fbb1a1e26e5dbec9ca3aef72fceeb536.ctex"]
+dest_files=["res://.godot/imported/character_Color_773f2731-f178-4162-a9c5-ff80650c5849.webp-fbb1a1e26e5dbec9ca3aef72fceeb536.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

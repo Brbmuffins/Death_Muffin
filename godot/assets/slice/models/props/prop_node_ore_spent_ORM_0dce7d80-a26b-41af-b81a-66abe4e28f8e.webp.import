@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bclqcpdesawd6"
-path="res://.godot/imported/prop_node_ore_spent_ORM_0dce7d80-a26b-41af-b81a-66abe4e28f8e.webp-de019d0c681fb55dba70634e98f1c95b.ctex"
+path.bptc="res://.godot/imported/prop_node_ore_spent_ORM_0dce7d80-a26b-41af-b81a-66abe4e28f8e.webp-de019d0c681fb55dba70634e98f1c95b.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ce290802d3bd7e1114a3b30d24454c9c"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_ore_spent_ORM_0dce7d80-a26b-41af-b81a-66abe4e28f8e.webp"
-dest_files=["res://.godot/imported/prop_node_ore_spent_ORM_0dce7d80-a26b-41af-b81a-66abe4e28f8e.webp-de019d0c681fb55dba70634e98f1c95b.ctex"]
+dest_files=["res://.godot/imported/prop_node_ore_spent_ORM_0dce7d80-a26b-41af-b81a-66abe4e28f8e.webp-de019d0c681fb55dba70634e98f1c95b.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

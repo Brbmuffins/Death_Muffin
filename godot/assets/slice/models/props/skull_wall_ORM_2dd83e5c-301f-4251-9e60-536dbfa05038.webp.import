@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ups7cc2r1kmq"
-path="res://.godot/imported/skull_wall_ORM_2dd83e5c-301f-4251-9e60-536dbfa05038.webp-01b92f86edbbd94963b36bc6913d06e9.ctex"
+path.bptc="res://.godot/imported/skull_wall_ORM_2dd83e5c-301f-4251-9e60-536dbfa05038.webp-01b92f86edbbd94963b36bc6913d06e9.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "29ab1abe6dc7dd7fb328008dca9a4d30"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/skull_wall_ORM_2dd83e5c-301f-4251-9e60-536dbfa05038.webp"
-dest_files=["res://.godot/imported/skull_wall_ORM_2dd83e5c-301f-4251-9e60-536dbfa05038.webp-01b92f86edbbd94963b36bc6913d06e9.ctex"]
+dest_files=["res://.godot/imported/skull_wall_ORM_2dd83e5c-301f-4251-9e60-536dbfa05038.webp-01b92f86edbbd94963b36bc6913d06e9.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

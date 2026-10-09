@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cub28hw0a1kvb"
-path="res://.godot/imported/character_ORM_2f668004-68ed-4633-9f7e-f12c25435c0b.webp-625e52b401f38f9ee51ab5dcc691849a.ctex"
+path.bptc="res://.godot/imported/character_ORM_2f668004-68ed-4633-9f7e-f12c25435c0b.webp-625e52b401f38f9ee51ab5dcc691849a.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ccfb8353eac92b28dfe9e3de34016021"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/necromancer/character_ORM_2f668004-68ed-4633-9f7e-f12c25435c0b.webp"
-dest_files=["res://.godot/imported/character_ORM_2f668004-68ed-4633-9f7e-f12c25435c0b.webp-625e52b401f38f9ee51ab5dcc691849a.ctex"]
+dest_files=["res://.godot/imported/character_ORM_2f668004-68ed-4633-9f7e-f12c25435c0b.webp-625e52b401f38f9ee51ab5dcc691849a.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

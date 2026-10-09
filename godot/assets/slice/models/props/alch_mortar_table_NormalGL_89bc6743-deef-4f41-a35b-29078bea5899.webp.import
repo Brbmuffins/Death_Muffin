@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b0b1cpcd4h7k0"
-path="res://.godot/imported/alch_mortar_table_NormalGL_89bc6743-deef-4f41-a35b-29078bea5899.webp-c0ba5922eb681d3652df7d8d3c69371b.ctex"
+path.s3tc="res://.godot/imported/alch_mortar_table_NormalGL_89bc6743-deef-4f41-a35b-29078bea5899.webp-c0ba5922eb681d3652df7d8d3c69371b.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "09ed45dbbbf29b77edaa17da00bb8f1d"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_mortar_table_NormalGL_89bc6743-deef-4f41-a35b-29078bea5899.webp"
-dest_files=["res://.godot/imported/alch_mortar_table_NormalGL_89bc6743-deef-4f41-a35b-29078bea5899.webp-c0ba5922eb681d3652df7d8d3c69371b.ctex"]
+dest_files=["res://.godot/imported/alch_mortar_table_NormalGL_89bc6743-deef-4f41-a35b-29078bea5899.webp-c0ba5922eb681d3652df7d8d3c69371b.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

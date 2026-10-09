@@ -149,6 +149,17 @@ for (const f of files) {
   if (size > limit && !(config.bigFileAllow || []).includes(f)) report(f, 1, `file is ${(size / 1048576).toFixed(1)} MB (> ${config.maxFileMB || 20} MB); add to bigFileAllow if intended`);
 }
 
+// f. 3D textures import VRAM-compressed (Godot's detect_3d never triggers for glTF-extracted images or headless imports).
+const tex3d = ['godot/assets/slice/models/', 'godot/assets/slice/art/textures/', 'godot/assets/fx/art/', 'godot/assets/fx/tex/',
+  'godot/assets/fx/binbun/tex/', 'godot/assets/fx/models/', 'godot/world_fx/assets/'];
+for (const f of files) {
+  if (!f.endsWith('.import') || !tex3d.some((d) => f.startsWith(d))) continue;
+  const text = read(f);
+  if (!text.includes('importer="texture"')) continue;
+  if (!/^compress\/mode=2$/m.test(text)) report(f, 1, 'a 3D texture must import VRAM Compressed (compress/mode=2; normal maps also compress/normal_map=1)');
+  else if (/(NormalGL|_n\.|normal)/i.test(f) && !/^compress\/normal_map=1$/m.test(text)) report(f, 1, 'a normal map must import with compress/normal_map=1');
+}
+
 if (problems.length) {
   console.error(problems.join('\n'));
   console.error(`\nhygiene: ${problems.length} violation(s). See tools/hygiene/README.md.`);

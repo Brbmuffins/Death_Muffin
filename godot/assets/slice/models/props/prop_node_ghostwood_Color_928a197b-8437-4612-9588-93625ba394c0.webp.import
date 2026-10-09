@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ba0c0hykyi0eg"
-path="res://.godot/imported/prop_node_ghostwood_Color_928a197b-8437-4612-9588-93625ba394c0.webp-d31a5736d178452481a6acc478c479ec.ctex"
+path.bptc="res://.godot/imported/prop_node_ghostwood_Color_928a197b-8437-4612-9588-93625ba394c0.webp-d31a5736d178452481a6acc478c479ec.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8a17e19dfb8394a5c1d35b9e3e195919"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_ghostwood_Color_928a197b-8437-4612-9588-93625ba394c0.webp"
-dest_files=["res://.godot/imported/prop_node_ghostwood_Color_928a197b-8437-4612-9588-93625ba394c0.webp-d31a5736d178452481a6acc478c479ec.ctex"]
+dest_files=["res://.godot/imported/prop_node_ghostwood_Color_928a197b-8437-4612-9588-93625ba394c0.webp-d31a5736d178452481a6acc478c479ec.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://4via12r5rfls"
-path="res://.godot/imported/character_NormalGL_b330ec5a-4703-4caa-a49c-3e1651c8d88d.webp-08e056d55de09a6704d4972776d2e222.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_b330ec5a-4703-4caa-a49c-3e1651c8d88d.webp-08e056d55de09a6704d4972776d2e222.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6a11a9222ce665a0f12326d60575abf5"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/drowned_sexton/character_NormalGL_b330ec5a-4703-4caa-a49c-3e1651c8d88d.webp"
-dest_files=["res://.godot/imported/character_NormalGL_b330ec5a-4703-4caa-a49c-3e1651c8d88d.webp-08e056d55de09a6704d4972776d2e222.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_b330ec5a-4703-4caa-a49c-3e1651c8d88d.webp-08e056d55de09a6704d4972776d2e222.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

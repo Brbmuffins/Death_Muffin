@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c4oj4r42nryej"
-path="res://.godot/imported/brazier_ORM_e5ca9be3-09b9-49b6-b72c-3080c186c0c5.webp-375c83a99ac8528e6d6d2c946ff33c5f.ctex"
+path.bptc="res://.godot/imported/brazier_ORM_e5ca9be3-09b9-49b6-b72c-3080c186c0c5.webp-375c83a99ac8528e6d6d2c946ff33c5f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9993e9eeda4cd8d84503b0b023ec5d17"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/brazier_ORM_e5ca9be3-09b9-49b6-b72c-3080c186c0c5.webp"
-dest_files=["res://.godot/imported/brazier_ORM_e5ca9be3-09b9-49b6-b72c-3080c186c0c5.webp-375c83a99ac8528e6d6d2c946ff33c5f.ctex"]
+dest_files=["res://.godot/imported/brazier_ORM_e5ca9be3-09b9-49b6-b72c-3080c186c0c5.webp-375c83a99ac8528e6d6d2c946ff33c5f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cbbjraixoe4t8"
-path="res://.godot/imported/sarcophagus_Color_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a.webp-72f3626d06891d64d57d8d6541fa4eb3.ctex"
+path.bptc="res://.godot/imported/sarcophagus_Color_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a.webp-72f3626d06891d64d57d8d6541fa4eb3.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "aacd4191ee59b0626c1da4cf925bf704"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/sarcophagus_Color_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a.webp"
-dest_files=["res://.godot/imported/sarcophagus_Color_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a.webp-72f3626d06891d64d57d8d6541fa4eb3.ctex"]
+dest_files=["res://.godot/imported/sarcophagus_Color_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a.webp-72f3626d06891d64d57d8d6541fa4eb3.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

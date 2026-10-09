@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cf385ug3gt52i"
-path="res://.godot/imported/slag_font_ORM_248dff37-3e69-4c3d-b744-2fe90cdabd17.webp-b35ebe70bbe6afc8a52ecfea62b9cfe9.ctex"
+path.bptc="res://.godot/imported/slag_font_ORM_248dff37-3e69-4c3d-b744-2fe90cdabd17.webp-b35ebe70bbe6afc8a52ecfea62b9cfe9.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e3d3760916ffcb01ca68cf659aebaf10"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/slag_font_ORM_248dff37-3e69-4c3d-b744-2fe90cdabd17.webp"
-dest_files=["res://.godot/imported/slag_font_ORM_248dff37-3e69-4c3d-b744-2fe90cdabd17.webp-b35ebe70bbe6afc8a52ecfea62b9cfe9.ctex"]
+dest_files=["res://.godot/imported/slag_font_ORM_248dff37-3e69-4c3d-b744-2fe90cdabd17.webp-b35ebe70bbe6afc8a52ecfea62b9cfe9.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

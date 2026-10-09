@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bu1bs8242sgek"
-path="res://.godot/imported/covenant_lectern_Color_1849474b-ce49-4591-bd55-7959840e22b7.webp-e50d99c1ca2635c19b12e6c1eda3c521.ctex"
+path.bptc="res://.godot/imported/covenant_lectern_Color_1849474b-ce49-4591-bd55-7959840e22b7.webp-e50d99c1ca2635c19b12e6c1eda3c521.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c0d6411abec7be1aecf3622e81fe9862"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/covenant_lectern_Color_1849474b-ce49-4591-bd55-7959840e22b7.webp"
-dest_files=["res://.godot/imported/covenant_lectern_Color_1849474b-ce49-4591-bd55-7959840e22b7.webp-e50d99c1ca2635c19b12e6c1eda3c521.ctex"]
+dest_files=["res://.godot/imported/covenant_lectern_Color_1849474b-ce49-4591-bd55-7959840e22b7.webp-e50d99c1ca2635c19b12e6c1eda3c521.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

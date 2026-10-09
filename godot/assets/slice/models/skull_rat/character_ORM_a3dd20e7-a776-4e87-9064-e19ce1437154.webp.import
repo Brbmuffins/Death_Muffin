@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://su4dp7t62ljr"
-path="res://.godot/imported/character_ORM_a3dd20e7-a776-4e87-9064-e19ce1437154.webp-c8d47f41458a0972150a5ddf34714480.ctex"
+path.bptc="res://.godot/imported/character_ORM_a3dd20e7-a776-4e87-9064-e19ce1437154.webp-c8d47f41458a0972150a5ddf34714480.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "fe4ab659ce31a7561b61678fbba206cf"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/skull_rat/character_ORM_a3dd20e7-a776-4e87-9064-e19ce1437154.webp"
-dest_files=["res://.godot/imported/character_ORM_a3dd20e7-a776-4e87-9064-e19ce1437154.webp-c8d47f41458a0972150a5ddf34714480.ctex"]
+dest_files=["res://.godot/imported/character_ORM_a3dd20e7-a776-4e87-9064-e19ce1437154.webp-c8d47f41458a0972150a5ddf34714480.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

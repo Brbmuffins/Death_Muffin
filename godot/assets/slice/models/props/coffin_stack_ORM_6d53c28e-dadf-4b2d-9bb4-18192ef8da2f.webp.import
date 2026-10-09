@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dh1x2n62gbi24"
-path="res://.godot/imported/coffin_stack_ORM_6d53c28e-dadf-4b2d-9bb4-18192ef8da2f.webp-60734589b2458797d5eb4351414dfe13.ctex"
+path.bptc="res://.godot/imported/coffin_stack_ORM_6d53c28e-dadf-4b2d-9bb4-18192ef8da2f.webp-60734589b2458797d5eb4351414dfe13.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5298ee9d8ecba8a175dba8ac434732a5"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/coffin_stack_ORM_6d53c28e-dadf-4b2d-9bb4-18192ef8da2f.webp"
-dest_files=["res://.godot/imported/coffin_stack_ORM_6d53c28e-dadf-4b2d-9bb4-18192ef8da2f.webp-60734589b2458797d5eb4351414dfe13.ctex"]
+dest_files=["res://.godot/imported/coffin_stack_ORM_6d53c28e-dadf-4b2d-9bb4-18192ef8da2f.webp-60734589b2458797d5eb4351414dfe13.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

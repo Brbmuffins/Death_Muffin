@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bs6hcvxw40upv"
-path="res://.godot/imported/alch_canopic_jars_NormalGL_0992584b-cf75-4387-a209-8c378422c2a4.webp-f6001cf037cc203837c6916327b5dc5b.ctex"
+path.s3tc="res://.godot/imported/alch_canopic_jars_NormalGL_0992584b-cf75-4387-a209-8c378422c2a4.webp-f6001cf037cc203837c6916327b5dc5b.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "26e11bf30b4607fac1057612fb3fa983"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_canopic_jars_NormalGL_0992584b-cf75-4387-a209-8c378422c2a4.webp"
-dest_files=["res://.godot/imported/alch_canopic_jars_NormalGL_0992584b-cf75-4387-a209-8c378422c2a4.webp-f6001cf037cc203837c6916327b5dc5b.ctex"]
+dest_files=["res://.godot/imported/alch_canopic_jars_NormalGL_0992584b-cf75-4387-a209-8c378422c2a4.webp-f6001cf037cc203837c6916327b5dc5b.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

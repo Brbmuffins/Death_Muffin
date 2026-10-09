@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://4r6wr43lpl4m"
-path="res://.godot/imported/bell_altar_ORM_83efc3cd-8fcf-4b3c-a516-d32835111748.webp-55f88ed5c4faa1785b538b13fb4d7784.ctex"
+path.bptc="res://.godot/imported/bell_altar_ORM_83efc3cd-8fcf-4b3c-a516-d32835111748.webp-55f88ed5c4faa1785b538b13fb4d7784.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "fdcd9e444646c2c73a59dfb960db12ae"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/bell_altar_ORM_83efc3cd-8fcf-4b3c-a516-d32835111748.webp"
-dest_files=["res://.godot/imported/bell_altar_ORM_83efc3cd-8fcf-4b3c-a516-d32835111748.webp-55f88ed5c4faa1785b538b13fb4d7784.ctex"]
+dest_files=["res://.godot/imported/bell_altar_ORM_83efc3cd-8fcf-4b3c-a516-d32835111748.webp-55f88ed5c4faa1785b538b13fb4d7784.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

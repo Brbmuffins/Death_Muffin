@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bhcfdto5xc3n3"
-path="res://.godot/imported/character_ORM_569097f7-b8c6-44ff-8b86-27d6e97da206.webp-f62a406e3a917ce0e004b4bf0ba0e085.ctex"
+path.bptc="res://.godot/imported/character_ORM_569097f7-b8c6-44ff-8b86-27d6e97da206.webp-f62a406e3a917ce0e004b4bf0ba0e085.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5c4dfd51e126a7f27bee7aab0dcacf85"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/lich_acolyte/character_ORM_569097f7-b8c6-44ff-8b86-27d6e97da206.webp"
-dest_files=["res://.godot/imported/character_ORM_569097f7-b8c6-44ff-8b86-27d6e97da206.webp-f62a406e3a917ce0e004b4bf0ba0e085.ctex"]
+dest_files=["res://.godot/imported/character_ORM_569097f7-b8c6-44ff-8b86-27d6e97da206.webp-f62a406e3a917ce0e004b4bf0ba0e085.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

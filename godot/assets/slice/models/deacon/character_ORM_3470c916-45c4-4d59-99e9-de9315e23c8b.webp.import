@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c1v1as0e17cwv"
-path="res://.godot/imported/character_ORM_3470c916-45c4-4d59-99e9-de9315e23c8b.webp-9b123e92bdb6f4c2ce487946e604d835.ctex"
+path.bptc="res://.godot/imported/character_ORM_3470c916-45c4-4d59-99e9-de9315e23c8b.webp-9b123e92bdb6f4c2ce487946e604d835.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "65cc676662590c5dc122924dea44a200"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/deacon/character_ORM_3470c916-45c4-4d59-99e9-de9315e23c8b.webp"
-dest_files=["res://.godot/imported/character_ORM_3470c916-45c4-4d59-99e9-de9315e23c8b.webp-9b123e92bdb6f4c2ce487946e604d835.ctex"]
+dest_files=["res://.godot/imported/character_ORM_3470c916-45c4-4d59-99e9-de9315e23c8b.webp-9b123e92bdb6f4c2ce487946e604d835.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

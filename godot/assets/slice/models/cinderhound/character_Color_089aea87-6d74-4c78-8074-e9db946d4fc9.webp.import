@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ovpe1v7deqtk"
-path="res://.godot/imported/character_Color_089aea87-6d74-4c78-8074-e9db946d4fc9.webp-a4a2ebdad04680c0544890465ef828d5.ctex"
+path.bptc="res://.godot/imported/character_Color_089aea87-6d74-4c78-8074-e9db946d4fc9.webp-a4a2ebdad04680c0544890465ef828d5.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "df53ff336ce41ed497cfd73496589657"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/cinderhound/character_Color_089aea87-6d74-4c78-8074-e9db946d4fc9.webp"
-dest_files=["res://.godot/imported/character_Color_089aea87-6d74-4c78-8074-e9db946d4fc9.webp-a4a2ebdad04680c0544890465ef828d5.ctex"]
+dest_files=["res://.godot/imported/character_Color_089aea87-6d74-4c78-8074-e9db946d4fc9.webp-a4a2ebdad04680c0544890465ef828d5.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

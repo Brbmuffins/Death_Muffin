@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b2qn82lu4rx1r"
-path="res://.godot/imported/character_NormalGL_38673696-9c21-4448-ab2d-46d6c5f38433.webp-9e5851ea2fc8f6ac6732088f6fb7eec4.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_38673696-9c21-4448-ab2d-46d6c5f38433.webp-9e5851ea2fc8f6ac6732088f6fb7eec4.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "880fbd2d88f1825a2acf998b39e97715"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/carrion_sac/character_NormalGL_38673696-9c21-4448-ab2d-46d6c5f38433.webp"
-dest_files=["res://.godot/imported/character_NormalGL_38673696-9c21-4448-ab2d-46d6c5f38433.webp-9e5851ea2fc8f6ac6732088f6fb7eec4.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_38673696-9c21-4448-ab2d-46d6c5f38433.webp-9e5851ea2fc8f6ac6732088f6fb7eec4.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

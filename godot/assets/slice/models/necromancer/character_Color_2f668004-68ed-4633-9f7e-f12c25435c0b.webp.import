@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://brqb6pc0rtrt2"
-path="res://.godot/imported/character_Color_2f668004-68ed-4633-9f7e-f12c25435c0b.webp-b0175e72afe3e0ea3df5fe0a18f0ea32.ctex"
+path.bptc="res://.godot/imported/character_Color_2f668004-68ed-4633-9f7e-f12c25435c0b.webp-b0175e72afe3e0ea3df5fe0a18f0ea32.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f8ebead11b392a9a7f4cb4b107beba11"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/necromancer/character_Color_2f668004-68ed-4633-9f7e-f12c25435c0b.webp"
-dest_files=["res://.godot/imported/character_Color_2f668004-68ed-4633-9f7e-f12c25435c0b.webp-b0175e72afe3e0ea3df5fe0a18f0ea32.ctex"]
+dest_files=["res://.godot/imported/character_Color_2f668004-68ed-4633-9f7e-f12c25435c0b.webp-b0175e72afe3e0ea3df5fe0a18f0ea32.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

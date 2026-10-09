@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://qc7xsqg5ba7o"
-path="res://.godot/imported/character_NormalGL_7107be34-232c-4a62-b11f-46f6dcd1872b.webp-aa4c7b8f1220ce77fb7462a597d3fd94.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_7107be34-232c-4a62-b11f-46f6dcd1872b.webp-aa4c7b8f1220ce77fb7462a597d3fd94.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "37ec4aae7a3f05240521ea52d12a0223"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/weeping_seraph/character_NormalGL_7107be34-232c-4a62-b11f-46f6dcd1872b.webp"
-dest_files=["res://.godot/imported/character_NormalGL_7107be34-232c-4a62-b11f-46f6dcd1872b.webp-aa4c7b8f1220ce77fb7462a597d3fd94.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_7107be34-232c-4a62-b11f-46f6dcd1872b.webp-aa4c7b8f1220ce77fb7462a597d3fd94.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

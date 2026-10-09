@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cruguj5q3am7m"
-path="res://.godot/imported/character_ORM_81be9e4b-78df-4818-a41c-1690c0fe4d3b.webp-8ad16351231309895439711e8076d165.ctex"
+path.bptc="res://.godot/imported/character_ORM_81be9e4b-78df-4818-a41c-1690c0fe4d3b.webp-8ad16351231309895439711e8076d165.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d63caf6a72bdf798db6878e5feacda19"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_bell_monk/character_ORM_81be9e4b-78df-4818-a41c-1690c0fe4d3b.webp"
-dest_files=["res://.godot/imported/character_ORM_81be9e4b-78df-4818-a41c-1690c0fe4d3b.webp-8ad16351231309895439711e8076d165.ctex"]
+dest_files=["res://.godot/imported/character_ORM_81be9e4b-78df-4818-a41c-1690c0fe4d3b.webp-8ad16351231309895439711e8076d165.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

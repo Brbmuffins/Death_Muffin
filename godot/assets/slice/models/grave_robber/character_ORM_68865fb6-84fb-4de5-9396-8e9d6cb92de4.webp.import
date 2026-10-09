@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://gh2igf4ubcbq"
-path="res://.godot/imported/character_ORM_68865fb6-84fb-4de5-9396-8e9d6cb92de4.webp-afbdbb457df79c8cca75ab7eb21f19e5.ctex"
+path.bptc="res://.godot/imported/character_ORM_68865fb6-84fb-4de5-9396-8e9d6cb92de4.webp-afbdbb457df79c8cca75ab7eb21f19e5.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "26bf900f768d31b021fd2231bbf2e63d"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/grave_robber/character_ORM_68865fb6-84fb-4de5-9396-8e9d6cb92de4.webp"
-dest_files=["res://.godot/imported/character_ORM_68865fb6-84fb-4de5-9396-8e9d6cb92de4.webp-afbdbb457df79c8cca75ab7eb21f19e5.ctex"]
+dest_files=["res://.godot/imported/character_ORM_68865fb6-84fb-4de5-9396-8e9d6cb92de4.webp-afbdbb457df79c8cca75ab7eb21f19e5.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cu23s4h0h60f3"
-path="res://.godot/imported/character_ORM_af0ec7e2-b7e5-4869-a9c7-22823e437c10.webp-1e402eff64f1904f811779c832675699.ctex"
+path.bptc="res://.godot/imported/character_ORM_af0ec7e2-b7e5-4869-a9c7-22823e437c10.webp-1e402eff64f1904f811779c832675699.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "15229451c4df23e645e10e20a1df3435"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/prelate/character_ORM_af0ec7e2-b7e5-4869-a9c7-22823e437c10.webp"
-dest_files=["res://.godot/imported/character_ORM_af0ec7e2-b7e5-4869-a9c7-22823e437c10.webp-1e402eff64f1904f811779c832675699.ctex"]
+dest_files=["res://.godot/imported/character_ORM_af0ec7e2-b7e5-4869-a9c7-22823e437c10.webp-1e402eff64f1904f811779c832675699.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

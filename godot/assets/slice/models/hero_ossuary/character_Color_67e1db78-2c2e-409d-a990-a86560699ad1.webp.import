@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://v1a5atsslg6m"
-path="res://.godot/imported/character_Color_67e1db78-2c2e-409d-a990-a86560699ad1.webp-6dc8c6e22c42d686efa3d819267c7f49.ctex"
+path.bptc="res://.godot/imported/character_Color_67e1db78-2c2e-409d-a990-a86560699ad1.webp-6dc8c6e22c42d686efa3d819267c7f49.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "97639e004afae0f04dc231ad85468b5f"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_ossuary/character_Color_67e1db78-2c2e-409d-a990-a86560699ad1.webp"
-dest_files=["res://.godot/imported/character_Color_67e1db78-2c2e-409d-a990-a86560699ad1.webp-6dc8c6e22c42d686efa3d819267c7f49.ctex"]
+dest_files=["res://.godot/imported/character_Color_67e1db78-2c2e-409d-a990-a86560699ad1.webp-6dc8c6e22c42d686efa3d819267c7f49.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

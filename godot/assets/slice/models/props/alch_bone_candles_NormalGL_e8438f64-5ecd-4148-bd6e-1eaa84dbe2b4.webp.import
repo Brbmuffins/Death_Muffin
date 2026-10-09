@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://1b2juh06svmb"
-path="res://.godot/imported/alch_bone_candles_NormalGL_e8438f64-5ecd-4148-bd6e-1eaa84dbe2b4.webp-e9909a47940c20b05575dece71d0f23d.ctex"
+path.s3tc="res://.godot/imported/alch_bone_candles_NormalGL_e8438f64-5ecd-4148-bd6e-1eaa84dbe2b4.webp-e9909a47940c20b05575dece71d0f23d.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "edd01e0e1e702bc7924767a30107cd82"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_bone_candles_NormalGL_e8438f64-5ecd-4148-bd6e-1eaa84dbe2b4.webp"
-dest_files=["res://.godot/imported/alch_bone_candles_NormalGL_e8438f64-5ecd-4148-bd6e-1eaa84dbe2b4.webp-e9909a47940c20b05575dece71d0f23d.ctex"]
+dest_files=["res://.godot/imported/alch_bone_candles_NormalGL_e8438f64-5ecd-4148-bd6e-1eaa84dbe2b4.webp-e9909a47940c20b05575dece71d0f23d.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

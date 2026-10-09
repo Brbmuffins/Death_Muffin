@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://by1qkxirtbto2"
-path="res://.godot/imported/grave_hand_ORM_46968fcc-8ad0-4ac8-a8ad-003216e4e4b3.webp-180d4af48e457aace67ba95ff8fd650e.ctex"
+path.bptc="res://.godot/imported/grave_hand_ORM_46968fcc-8ad0-4ac8-a8ad-003216e4e4b3.webp-180d4af48e457aace67ba95ff8fd650e.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2f4af4987ba98a81cd2b2b234a626f00"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/fx/models/grave_hand_ORM_46968fcc-8ad0-4ac8-a8ad-003216e4e4b3.webp"
-dest_files=["res://.godot/imported/grave_hand_ORM_46968fcc-8ad0-4ac8-a8ad-003216e4e4b3.webp-180d4af48e457aace67ba95ff8fd650e.ctex"]
+dest_files=["res://.godot/imported/grave_hand_ORM_46968fcc-8ad0-4ac8-a8ad-003216e4e4b3.webp-180d4af48e457aace67ba95ff8fd650e.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

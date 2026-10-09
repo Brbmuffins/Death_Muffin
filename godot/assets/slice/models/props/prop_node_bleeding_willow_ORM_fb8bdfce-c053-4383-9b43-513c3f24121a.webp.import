@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c8wfmbp0i5eq8"
-path="res://.godot/imported/prop_node_bleeding_willow_ORM_fb8bdfce-c053-4383-9b43-513c3f24121a.webp-4127200f48076b745903513728ddbc7c.ctex"
+path.bptc="res://.godot/imported/prop_node_bleeding_willow_ORM_fb8bdfce-c053-4383-9b43-513c3f24121a.webp-4127200f48076b745903513728ddbc7c.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "3bcdaff133f836acb83ecc9211d5cdc8"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_bleeding_willow_ORM_fb8bdfce-c053-4383-9b43-513c3f24121a.webp"
-dest_files=["res://.godot/imported/prop_node_bleeding_willow_ORM_fb8bdfce-c053-4383-9b43-513c3f24121a.webp-4127200f48076b745903513728ddbc7c.ctex"]
+dest_files=["res://.godot/imported/prop_node_bleeding_willow_ORM_fb8bdfce-c053-4383-9b43-513c3f24121a.webp-4127200f48076b745903513728ddbc7c.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

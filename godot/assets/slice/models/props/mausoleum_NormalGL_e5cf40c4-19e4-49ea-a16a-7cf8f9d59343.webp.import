@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c8mijtt2hca5e"
-path="res://.godot/imported/mausoleum_NormalGL_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-01d05f1bb24a87f153e803b52691ddcb.ctex"
+path.s3tc="res://.godot/imported/mausoleum_NormalGL_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-01d05f1bb24a87f153e803b52691ddcb.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ccfac1e5758f4d2e807376178ed7435e"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/mausoleum_NormalGL_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp"
-dest_files=["res://.godot/imported/mausoleum_NormalGL_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-01d05f1bb24a87f153e803b52691ddcb.ctex"]
+dest_files=["res://.godot/imported/mausoleum_NormalGL_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-01d05f1bb24a87f153e803b52691ddcb.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

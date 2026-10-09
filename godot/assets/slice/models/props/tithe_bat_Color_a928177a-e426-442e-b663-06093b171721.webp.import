@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dwkyavvkqhfuy"
-path="res://.godot/imported/tithe_bat_Color_a928177a-e426-442e-b663-06093b171721.webp-2c68d892b5d358486ef2c78ca491cc1f.ctex"
+path.bptc="res://.godot/imported/tithe_bat_Color_a928177a-e426-442e-b663-06093b171721.webp-2c68d892b5d358486ef2c78ca491cc1f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0f5dd24362571d31eda57260534f1ba2"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/tithe_bat_Color_a928177a-e426-442e-b663-06093b171721.webp"
-dest_files=["res://.godot/imported/tithe_bat_Color_a928177a-e426-442e-b663-06093b171721.webp-2c68d892b5d358486ef2c78ca491cc1f.ctex"]
+dest_files=["res://.godot/imported/tithe_bat_Color_a928177a-e426-442e-b663-06093b171721.webp-2c68d892b5d358486ef2c78ca491cc1f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

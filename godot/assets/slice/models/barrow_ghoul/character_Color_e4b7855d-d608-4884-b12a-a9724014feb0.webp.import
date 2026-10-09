@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b6k8p6ily8gom"
-path="res://.godot/imported/character_Color_e4b7855d-d608-4884-b12a-a9724014feb0.webp-5a25f8398dfdf26904e923bcc5152019.ctex"
+path.bptc="res://.godot/imported/character_Color_e4b7855d-d608-4884-b12a-a9724014feb0.webp-5a25f8398dfdf26904e923bcc5152019.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6ccaa87f93f8f0fa69710ca0298977d7"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/barrow_ghoul/character_Color_e4b7855d-d608-4884-b12a-a9724014feb0.webp"
-dest_files=["res://.godot/imported/character_Color_e4b7855d-d608-4884-b12a-a9724014feb0.webp-5a25f8398dfdf26904e923bcc5152019.ctex"]
+dest_files=["res://.godot/imported/character_Color_e4b7855d-d608-4884-b12a-a9724014feb0.webp-5a25f8398dfdf26904e923bcc5152019.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

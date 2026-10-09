@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dudgbya32ad5n"
-path="res://.godot/imported/character_NormalGL_81be9e4b-78df-4818-a41c-1690c0fe4d3b.webp-ea262cca9a8217eedb7ae587229b1eee.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_81be9e4b-78df-4818-a41c-1690c0fe4d3b.webp-ea262cca9a8217eedb7ae587229b1eee.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d4a23795900d5b90561e1e2e6eea30b1"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_bell_monk/character_NormalGL_81be9e4b-78df-4818-a41c-1690c0fe4d3b.webp"
-dest_files=["res://.godot/imported/character_NormalGL_81be9e4b-78df-4818-a41c-1690c0fe4d3b.webp-ea262cca9a8217eedb7ae587229b1eee.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_81be9e4b-78df-4818-a41c-1690c0fe4d3b.webp-ea262cca9a8217eedb7ae587229b1eee.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

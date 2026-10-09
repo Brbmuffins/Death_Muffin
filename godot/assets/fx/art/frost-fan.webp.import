@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dy5vj2eido45n"
-path="res://.godot/imported/frost-fan.webp-6d4c1d36a8b116506f406140e31c2a21.ctex"
+path.bptc="res://.godot/imported/frost-fan.webp-6d4c1d36a8b116506f406140e31c2a21.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/fx/art/frost-fan.webp"
-dest_files=["res://.godot/imported/frost-fan.webp-6d4c1d36a8b116506f406140e31c2a21.ctex"]
+dest_files=["res://.godot/imported/frost-fan.webp-6d4c1d36a8b116506f406140e31c2a21.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

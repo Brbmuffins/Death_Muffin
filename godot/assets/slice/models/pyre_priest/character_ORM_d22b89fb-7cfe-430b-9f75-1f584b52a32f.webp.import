@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ckfmcwrugr6md"
-path="res://.godot/imported/character_ORM_d22b89fb-7cfe-430b-9f75-1f584b52a32f.webp-4c09aa461e7dae92fa4dd9b88ed87e68.ctex"
+path.bptc="res://.godot/imported/character_ORM_d22b89fb-7cfe-430b-9f75-1f584b52a32f.webp-4c09aa461e7dae92fa4dd9b88ed87e68.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "07fa8fcabc87e279196dcb277cf014c3"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/pyre_priest/character_ORM_d22b89fb-7cfe-430b-9f75-1f584b52a32f.webp"
-dest_files=["res://.godot/imported/character_ORM_d22b89fb-7cfe-430b-9f75-1f584b52a32f.webp-4c09aa461e7dae92fa4dd9b88ed87e68.ctex"]
+dest_files=["res://.godot/imported/character_ORM_d22b89fb-7cfe-430b-9f75-1f584b52a32f.webp-4c09aa461e7dae92fa4dd9b88ed87e68.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

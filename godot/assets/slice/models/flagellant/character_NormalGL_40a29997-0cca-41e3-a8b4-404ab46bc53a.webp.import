@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cmtj4hon848vc"
-path="res://.godot/imported/character_NormalGL_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-6c8f29e43de2334c66b3b122f59ad801.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-6c8f29e43de2334c66b3b122f59ad801.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "04b4b056be98db713bf086717022a702"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/flagellant/character_NormalGL_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp"
-dest_files=["res://.godot/imported/character_NormalGL_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-6c8f29e43de2334c66b3b122f59ad801.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-6c8f29e43de2334c66b3b122f59ad801.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

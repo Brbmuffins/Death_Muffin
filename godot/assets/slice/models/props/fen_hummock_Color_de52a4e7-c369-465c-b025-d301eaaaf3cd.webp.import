@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ccpvtwj73u0rh"
-path="res://.godot/imported/fen_hummock_Color_de52a4e7-c369-465c-b025-d301eaaaf3cd.webp-dd51c77ad97d67c1a93de9db32e2ecdf.ctex"
+path.bptc="res://.godot/imported/fen_hummock_Color_de52a4e7-c369-465c-b025-d301eaaaf3cd.webp-dd51c77ad97d67c1a93de9db32e2ecdf.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "dbbede8f4f0307906efd4ff970c70208"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/fen_hummock_Color_de52a4e7-c369-465c-b025-d301eaaaf3cd.webp"
-dest_files=["res://.godot/imported/fen_hummock_Color_de52a4e7-c369-465c-b025-d301eaaaf3cd.webp-dd51c77ad97d67c1a93de9db32e2ecdf.ctex"]
+dest_files=["res://.godot/imported/fen_hummock_Color_de52a4e7-c369-465c-b025-d301eaaaf3cd.webp-dd51c77ad97d67c1a93de9db32e2ecdf.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

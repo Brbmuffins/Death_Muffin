@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bx5tq30iuxo74"
-path="res://.godot/imported/alch_alembic_Color_f64bdd65-9d6c-4995-9e01-e629cc68e5f9.webp-cbd5aa9826b9a276d12bed6429f6600f.ctex"
+path.bptc="res://.godot/imported/alch_alembic_Color_f64bdd65-9d6c-4995-9e01-e629cc68e5f9.webp-cbd5aa9826b9a276d12bed6429f6600f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "bb7443e62474037fb60157a53c5f2734"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_alembic_Color_f64bdd65-9d6c-4995-9e01-e629cc68e5f9.webp"
-dest_files=["res://.godot/imported/alch_alembic_Color_f64bdd65-9d6c-4995-9e01-e629cc68e5f9.webp-cbd5aa9826b9a276d12bed6429f6600f.ctex"]
+dest_files=["res://.godot/imported/alch_alembic_Color_f64bdd65-9d6c-4995-9e01-e629cc68e5f9.webp-cbd5aa9826b9a276d12bed6429f6600f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

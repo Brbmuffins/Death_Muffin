@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bsrlf7fvx55lt"
-path="res://.godot/imported/prop_node_bone_kiln_NormalGL_2bf4c878-5d98-436e-83b7-59630c90cde6.webp-56edf1d776caf8459a7ffc4c709c138a.ctex"
+path.s3tc="res://.godot/imported/prop_node_bone_kiln_NormalGL_2bf4c878-5d98-436e-83b7-59630c90cde6.webp-56edf1d776caf8459a7ffc4c709c138a.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "eb77e68dc8b0d6b2b5eabcb60a9cafd1"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_bone_kiln_NormalGL_2bf4c878-5d98-436e-83b7-59630c90cde6.webp"
-dest_files=["res://.godot/imported/prop_node_bone_kiln_NormalGL_2bf4c878-5d98-436e-83b7-59630c90cde6.webp-56edf1d776caf8459a7ffc4c709c138a.ctex"]
+dest_files=["res://.godot/imported/prop_node_bone_kiln_NormalGL_2bf4c878-5d98-436e-83b7-59630c90cde6.webp-56edf1d776caf8459a7ffc4c709c138a.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

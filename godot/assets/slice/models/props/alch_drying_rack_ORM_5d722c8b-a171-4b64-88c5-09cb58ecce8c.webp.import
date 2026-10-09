@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://brvy8ghhu4yad"
-path="res://.godot/imported/alch_drying_rack_ORM_5d722c8b-a171-4b64-88c5-09cb58ecce8c.webp-f7251de444d8f9bee9a2e0b3a9aecdae.ctex"
+path.bptc="res://.godot/imported/alch_drying_rack_ORM_5d722c8b-a171-4b64-88c5-09cb58ecce8c.webp-f7251de444d8f9bee9a2e0b3a9aecdae.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0e7bc22c91c201b6b455aad545ef943d"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_drying_rack_ORM_5d722c8b-a171-4b64-88c5-09cb58ecce8c.webp"
-dest_files=["res://.godot/imported/alch_drying_rack_ORM_5d722c8b-a171-4b64-88c5-09cb58ecce8c.webp-f7251de444d8f9bee9a2e0b3a9aecdae.ctex"]
+dest_files=["res://.godot/imported/alch_drying_rack_ORM_5d722c8b-a171-4b64-88c5-09cb58ecce8c.webp-f7251de444d8f9bee9a2e0b3a9aecdae.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

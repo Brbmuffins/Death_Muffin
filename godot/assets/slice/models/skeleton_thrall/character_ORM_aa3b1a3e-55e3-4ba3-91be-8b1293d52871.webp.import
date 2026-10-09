@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d2a0ln4rrn8wl"
-path="res://.godot/imported/character_ORM_aa3b1a3e-55e3-4ba3-91be-8b1293d52871.webp-3d79eca20325c03c150903df7067b079.ctex"
+path.bptc="res://.godot/imported/character_ORM_aa3b1a3e-55e3-4ba3-91be-8b1293d52871.webp-3d79eca20325c03c150903df7067b079.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9a281f627b5d40d50a6b4148d7046e7c"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/skeleton_thrall/character_ORM_aa3b1a3e-55e3-4ba3-91be-8b1293d52871.webp"
-dest_files=["res://.godot/imported/character_ORM_aa3b1a3e-55e3-4ba3-91be-8b1293d52871.webp-3d79eca20325c03c150903df7067b079.ctex"]
+dest_files=["res://.godot/imported/character_ORM_aa3b1a3e-55e3-4ba3-91be-8b1293d52871.webp-3d79eca20325c03c150903df7067b079.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

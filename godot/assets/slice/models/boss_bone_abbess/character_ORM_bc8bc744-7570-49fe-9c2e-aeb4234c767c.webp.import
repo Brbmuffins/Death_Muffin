@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://qemuk0robl2v"
-path="res://.godot/imported/character_ORM_bc8bc744-7570-49fe-9c2e-aeb4234c767c.webp-0a79800d6a119542e6ca4619a0b612ef.ctex"
+path.bptc="res://.godot/imported/character_ORM_bc8bc744-7570-49fe-9c2e-aeb4234c767c.webp-0a79800d6a119542e6ca4619a0b612ef.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "3f79cc32ba1dd9f1d0cebd9e962eacd6"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/boss_bone_abbess/character_ORM_bc8bc744-7570-49fe-9c2e-aeb4234c767c.webp"
-dest_files=["res://.godot/imported/character_ORM_bc8bc744-7570-49fe-9c2e-aeb4234c767c.webp-0a79800d6a119542e6ca4619a0b612ef.ctex"]
+dest_files=["res://.godot/imported/character_ORM_bc8bc744-7570-49fe-9c2e-aeb4234c767c.webp-0a79800d6a119542e6ca4619a0b612ef.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

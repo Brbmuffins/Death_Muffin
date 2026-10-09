@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d2dlpmp5ryfoe"
-path="res://.godot/imported/plague_cart_Color_3952c150-45f0-445b-8555-e77255e72fb2.webp-f19c03c59ebe94aa2c2f8efbc592d0be.ctex"
+path.bptc="res://.godot/imported/plague_cart_Color_3952c150-45f0-445b-8555-e77255e72fb2.webp-f19c03c59ebe94aa2c2f8efbc592d0be.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9aa1d78e289848ec363dd8f42bc04e8c"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/plague_cart_Color_3952c150-45f0-445b-8555-e77255e72fb2.webp"
-dest_files=["res://.godot/imported/plague_cart_Color_3952c150-45f0-445b-8555-e77255e72fb2.webp-f19c03c59ebe94aa2c2f8efbc592d0be.ctex"]
+dest_files=["res://.godot/imported/plague_cart_Color_3952c150-45f0-445b-8555-e77255e72fb2.webp-f19c03c59ebe94aa2c2f8efbc592d0be.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

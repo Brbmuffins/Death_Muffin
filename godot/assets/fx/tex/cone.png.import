@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dtkvhfwi4goeh"
-path="res://.godot/imported/cone.png-c93ee44a72abfb29ed839d7fd7cefd53.ctex"
+path.bptc="res://.godot/imported/cone.png-c93ee44a72abfb29ed839d7fd7cefd53.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/fx/tex/cone.png"
-dest_files=["res://.godot/imported/cone.png-c93ee44a72abfb29ed839d7fd7cefd53.ctex"]
+dest_files=["res://.godot/imported/cone.png-c93ee44a72abfb29ed839d7fd7cefd53.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

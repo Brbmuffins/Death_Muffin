@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cvpq4x21pnxem"
-path="res://.godot/imported/hook-chain.webp-a710c16c24151ed2fabe84f3cb6c6b73.ctex"
+path.bptc="res://.godot/imported/hook-chain.webp-a710c16c24151ed2fabe84f3cb6c6b73.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/fx/art/hook-chain.webp"
-dest_files=["res://.godot/imported/hook-chain.webp-a710c16c24151ed2fabe84f3cb6c6b73.ctex"]
+dest_files=["res://.godot/imported/hook-chain.webp-a710c16c24151ed2fabe84f3cb6c6b73.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

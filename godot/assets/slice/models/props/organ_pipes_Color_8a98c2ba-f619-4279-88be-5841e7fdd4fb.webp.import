@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dmbvxcci7xfwr"
-path="res://.godot/imported/organ_pipes_Color_8a98c2ba-f619-4279-88be-5841e7fdd4fb.webp-59f7245e45be0797adbf79bffa668e12.ctex"
+path.bptc="res://.godot/imported/organ_pipes_Color_8a98c2ba-f619-4279-88be-5841e7fdd4fb.webp-59f7245e45be0797adbf79bffa668e12.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "a3537a07894d2f1a757bd4ee7c3a991a"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/organ_pipes_Color_8a98c2ba-f619-4279-88be-5841e7fdd4fb.webp"
-dest_files=["res://.godot/imported/organ_pipes_Color_8a98c2ba-f619-4279-88be-5841e7fdd4fb.webp-59f7245e45be0797adbf79bffa668e12.ctex"]
+dest_files=["res://.godot/imported/organ_pipes_Color_8a98c2ba-f619-4279-88be-5841e7fdd4fb.webp-59f7245e45be0797adbf79bffa668e12.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

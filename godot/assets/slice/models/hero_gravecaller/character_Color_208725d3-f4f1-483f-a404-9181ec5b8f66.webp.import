@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://doh2knsxoo3v3"
-path="res://.godot/imported/character_Color_208725d3-f4f1-483f-a404-9181ec5b8f66.webp-2be5283f48edf43da6dce4d2dc1aa092.ctex"
+path.bptc="res://.godot/imported/character_Color_208725d3-f4f1-483f-a404-9181ec5b8f66.webp-2be5283f48edf43da6dce4d2dc1aa092.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b7702659df76863e92f7e91be72304ec"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_gravecaller/character_Color_208725d3-f4f1-483f-a404-9181ec5b8f66.webp"
-dest_files=["res://.godot/imported/character_Color_208725d3-f4f1-483f-a404-9181ec5b8f66.webp-2be5283f48edf43da6dce4d2dc1aa092.ctex"]
+dest_files=["res://.godot/imported/character_Color_208725d3-f4f1-483f-a404-9181ec5b8f66.webp-2be5283f48edf43da6dce4d2dc1aa092.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

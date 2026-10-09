@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ryujvmjtxvlu"
-path="res://.godot/imported/prop_node_dug_grave_ORM_6c47c397-7414-4d50-b9be-05dce6502b87.webp-16f26ca50a7fbe73d52181911802ce67.ctex"
+path.bptc="res://.godot/imported/prop_node_dug_grave_ORM_6c47c397-7414-4d50-b9be-05dce6502b87.webp-16f26ca50a7fbe73d52181911802ce67.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "716fcdfb44b07f06421099f84f1c8aa3"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_dug_grave_ORM_6c47c397-7414-4d50-b9be-05dce6502b87.webp"
-dest_files=["res://.godot/imported/prop_node_dug_grave_ORM_6c47c397-7414-4d50-b9be-05dce6502b87.webp-16f26ca50a7fbe73d52181911802ce67.ctex"]
+dest_files=["res://.godot/imported/prop_node_dug_grave_ORM_6c47c397-7414-4d50-b9be-05dce6502b87.webp-16f26ca50a7fbe73d52181911802ce67.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

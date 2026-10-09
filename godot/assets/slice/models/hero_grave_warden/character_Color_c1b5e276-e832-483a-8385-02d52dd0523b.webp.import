@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c02argtuo348p"
-path="res://.godot/imported/character_Color_c1b5e276-e832-483a-8385-02d52dd0523b.webp-70479382258290aab86514831d79ec15.ctex"
+path.bptc="res://.godot/imported/character_Color_c1b5e276-e832-483a-8385-02d52dd0523b.webp-70479382258290aab86514831d79ec15.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ff2e92e3f4f160b5b466088d3d33c61b"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_grave_warden/character_Color_c1b5e276-e832-483a-8385-02d52dd0523b.webp"
-dest_files=["res://.godot/imported/character_Color_c1b5e276-e832-483a-8385-02d52dd0523b.webp-70479382258290aab86514831d79ec15.ctex"]
+dest_files=["res://.godot/imported/character_Color_c1b5e276-e832-483a-8385-02d52dd0523b.webp-70479382258290aab86514831d79ec15.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

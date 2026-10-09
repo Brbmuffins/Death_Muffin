@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dw5ucjfw5aq0u"
-path="res://.godot/imported/choir_wraith_NormalGL_84ad79f6-73b8-4461-9350-55bbd4a90145.webp-64b9e31a69d23fd4b12535a459358878.ctex"
+path.s3tc="res://.godot/imported/choir_wraith_NormalGL_84ad79f6-73b8-4461-9350-55bbd4a90145.webp-64b9e31a69d23fd4b12535a459358878.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "dfee952c0923c0efd1dfb01dd9243b3a"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/choir_wraith_NormalGL_84ad79f6-73b8-4461-9350-55bbd4a90145.webp"
-dest_files=["res://.godot/imported/choir_wraith_NormalGL_84ad79f6-73b8-4461-9350-55bbd4a90145.webp-64b9e31a69d23fd4b12535a459358878.ctex"]
+dest_files=["res://.godot/imported/choir_wraith_NormalGL_84ad79f6-73b8-4461-9350-55bbd4a90145.webp-64b9e31a69d23fd4b12535a459358878.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

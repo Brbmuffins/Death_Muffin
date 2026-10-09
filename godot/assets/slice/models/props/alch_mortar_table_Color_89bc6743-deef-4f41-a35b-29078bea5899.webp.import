@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cbr0pmm5seovx"
-path="res://.godot/imported/alch_mortar_table_Color_89bc6743-deef-4f41-a35b-29078bea5899.webp-86f8c43ec8aaa16c93de5ed61f6c73d9.ctex"
+path.bptc="res://.godot/imported/alch_mortar_table_Color_89bc6743-deef-4f41-a35b-29078bea5899.webp-86f8c43ec8aaa16c93de5ed61f6c73d9.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9d3cda0385fd6cc60731cda8ebca145c"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_mortar_table_Color_89bc6743-deef-4f41-a35b-29078bea5899.webp"
-dest_files=["res://.godot/imported/alch_mortar_table_Color_89bc6743-deef-4f41-a35b-29078bea5899.webp-86f8c43ec8aaa16c93de5ed61f6c73d9.ctex"]
+dest_files=["res://.godot/imported/alch_mortar_table_Color_89bc6743-deef-4f41-a35b-29078bea5899.webp-86f8c43ec8aaa16c93de5ed61f6c73d9.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

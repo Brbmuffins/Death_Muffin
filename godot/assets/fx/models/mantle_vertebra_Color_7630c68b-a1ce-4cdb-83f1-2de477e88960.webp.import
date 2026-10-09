@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cfdw61uxw8uv5"
-path="res://.godot/imported/mantle_vertebra_Color_7630c68b-a1ce-4cdb-83f1-2de477e88960.webp-e5c69b4141d14b07bbed32c4b810402c.ctex"
+path.bptc="res://.godot/imported/mantle_vertebra_Color_7630c68b-a1ce-4cdb-83f1-2de477e88960.webp-e5c69b4141d14b07bbed32c4b810402c.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1c67a5916df2c7135f67b95a4315eb47"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/fx/models/mantle_vertebra_Color_7630c68b-a1ce-4cdb-83f1-2de477e88960.webp"
-dest_files=["res://.godot/imported/mantle_vertebra_Color_7630c68b-a1ce-4cdb-83f1-2de477e88960.webp-e5c69b4141d14b07bbed32c4b810402c.ctex"]
+dest_files=["res://.godot/imported/mantle_vertebra_Color_7630c68b-a1ce-4cdb-83f1-2de477e88960.webp-e5c69b4141d14b07bbed32c4b810402c.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

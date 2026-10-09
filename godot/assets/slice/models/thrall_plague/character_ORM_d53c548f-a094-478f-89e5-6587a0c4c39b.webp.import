@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bjlb77glpnt0h"
-path="res://.godot/imported/character_ORM_d53c548f-a094-478f-89e5-6587a0c4c39b.webp-63d6caee8062a889ca6bca97f7256244.ctex"
+path.bptc="res://.godot/imported/character_ORM_d53c548f-a094-478f-89e5-6587a0c4c39b.webp-63d6caee8062a889ca6bca97f7256244.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "294bd1b51743ad41ef3aa143eae8f8ad"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/thrall_plague/character_ORM_d53c548f-a094-478f-89e5-6587a0c4c39b.webp"
-dest_files=["res://.godot/imported/character_ORM_d53c548f-a094-478f-89e5-6587a0c4c39b.webp-63d6caee8062a889ca6bca97f7256244.ctex"]
+dest_files=["res://.godot/imported/character_ORM_d53c548f-a094-478f-89e5-6587a0c4c39b.webp-63d6caee8062a889ca6bca97f7256244.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

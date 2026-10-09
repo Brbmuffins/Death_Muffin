@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c1uhcqh787l64"
-path="res://.godot/imported/alch_bubbling_vat_ORM_a97f3a0b-b660-44a0-94ab-be268fa8ca7a.webp-ad092867e1d4a394e9a03f5dd89f0572.ctex"
+path.bptc="res://.godot/imported/alch_bubbling_vat_ORM_a97f3a0b-b660-44a0-94ab-be268fa8ca7a.webp-ad092867e1d4a394e9a03f5dd89f0572.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "dce25ef37d50d50206fb05a616be160d"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_bubbling_vat_ORM_a97f3a0b-b660-44a0-94ab-be268fa8ca7a.webp"
-dest_files=["res://.godot/imported/alch_bubbling_vat_ORM_a97f3a0b-b660-44a0-94ab-be268fa8ca7a.webp-ad092867e1d4a394e9a03f5dd89f0572.ctex"]
+dest_files=["res://.godot/imported/alch_bubbling_vat_ORM_a97f3a0b-b660-44a0-94ab-be268fa8ca7a.webp-ad092867e1d4a394e9a03f5dd89f0572.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

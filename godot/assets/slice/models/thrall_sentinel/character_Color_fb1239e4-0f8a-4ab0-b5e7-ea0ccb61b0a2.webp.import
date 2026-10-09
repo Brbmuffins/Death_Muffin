@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://7lfaxbxhxrck"
-path="res://.godot/imported/character_Color_fb1239e4-0f8a-4ab0-b5e7-ea0ccb61b0a2.webp-5209097d9054ccbad7f41d27203f5f9f.ctex"
+path.bptc="res://.godot/imported/character_Color_fb1239e4-0f8a-4ab0-b5e7-ea0ccb61b0a2.webp-5209097d9054ccbad7f41d27203f5f9f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "261f88dbe4209c6e66c4e86275e97fee"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/thrall_sentinel/character_Color_fb1239e4-0f8a-4ab0-b5e7-ea0ccb61b0a2.webp"
-dest_files=["res://.godot/imported/character_Color_fb1239e4-0f8a-4ab0-b5e7-ea0ccb61b0a2.webp-5209097d9054ccbad7f41d27203f5f9f.ctex"]
+dest_files=["res://.godot/imported/character_Color_fb1239e4-0f8a-4ab0-b5e7-ea0ccb61b0a2.webp-5209097d9054ccbad7f41d27203f5f9f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

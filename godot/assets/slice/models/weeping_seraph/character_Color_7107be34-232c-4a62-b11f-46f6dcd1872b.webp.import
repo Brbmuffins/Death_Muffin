@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bqgshdk7l6lg8"
-path="res://.godot/imported/character_Color_7107be34-232c-4a62-b11f-46f6dcd1872b.webp-5f81ce7e2e251a4981c3b76a1a88fa0a.ctex"
+path.bptc="res://.godot/imported/character_Color_7107be34-232c-4a62-b11f-46f6dcd1872b.webp-5f81ce7e2e251a4981c3b76a1a88fa0a.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7f077fdc0fb15354ab296409e054fca7"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/weeping_seraph/character_Color_7107be34-232c-4a62-b11f-46f6dcd1872b.webp"
-dest_files=["res://.godot/imported/character_Color_7107be34-232c-4a62-b11f-46f6dcd1872b.webp-5f81ce7e2e251a4981c3b76a1a88fa0a.ctex"]
+dest_files=["res://.godot/imported/character_Color_7107be34-232c-4a62-b11f-46f6dcd1872b.webp-5f81ce7e2e251a4981c3b76a1a88fa0a.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

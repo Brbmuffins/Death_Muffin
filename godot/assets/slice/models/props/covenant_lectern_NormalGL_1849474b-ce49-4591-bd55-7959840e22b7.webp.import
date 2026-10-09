@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d4iwar6w7jwe6"
-path="res://.godot/imported/covenant_lectern_NormalGL_1849474b-ce49-4591-bd55-7959840e22b7.webp-a9fde1d6aa5c15860c7d10c25b6b553f.ctex"
+path.s3tc="res://.godot/imported/covenant_lectern_NormalGL_1849474b-ce49-4591-bd55-7959840e22b7.webp-a9fde1d6aa5c15860c7d10c25b6b553f.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "016d863da5a19de65515e1e3224679b6"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/covenant_lectern_NormalGL_1849474b-ce49-4591-bd55-7959840e22b7.webp"
-dest_files=["res://.godot/imported/covenant_lectern_NormalGL_1849474b-ce49-4591-bd55-7959840e22b7.webp-a9fde1d6aa5c15860c7d10c25b6b553f.ctex"]
+dest_files=["res://.godot/imported/covenant_lectern_NormalGL_1849474b-ce49-4591-bd55-7959840e22b7.webp-a9fde1d6aa5c15860c7d10c25b6b553f.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

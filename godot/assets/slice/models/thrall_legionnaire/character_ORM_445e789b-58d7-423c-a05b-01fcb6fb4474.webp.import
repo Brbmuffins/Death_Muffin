@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://vo45enjo1ok6"
-path="res://.godot/imported/character_ORM_445e789b-58d7-423c-a05b-01fcb6fb4474.webp-466e238c0a22eb58a0b5851447ada0fd.ctex"
+path.bptc="res://.godot/imported/character_ORM_445e789b-58d7-423c-a05b-01fcb6fb4474.webp-466e238c0a22eb58a0b5851447ada0fd.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ac4fd0943cfacb30e69c6e42d4c33565"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/thrall_legionnaire/character_ORM_445e789b-58d7-423c-a05b-01fcb6fb4474.webp"
-dest_files=["res://.godot/imported/character_ORM_445e789b-58d7-423c-a05b-01fcb6fb4474.webp-466e238c0a22eb58a0b5851447ada0fd.ctex"]
+dest_files=["res://.godot/imported/character_ORM_445e789b-58d7-423c-a05b-01fcb6fb4474.webp-466e238c0a22eb58a0b5851447ada0fd.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

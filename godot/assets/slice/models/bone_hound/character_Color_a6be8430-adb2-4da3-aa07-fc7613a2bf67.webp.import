@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://scytuhfgta1x"
-path="res://.godot/imported/character_Color_a6be8430-adb2-4da3-aa07-fc7613a2bf67.webp-4749779c350f473ee6df2ea0d75c0420.ctex"
+path.bptc="res://.godot/imported/character_Color_a6be8430-adb2-4da3-aa07-fc7613a2bf67.webp-4749779c350f473ee6df2ea0d75c0420.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c7174ee4d8ff66fe0209f4412cb5db37"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/bone_hound/character_Color_a6be8430-adb2-4da3-aa07-fc7613a2bf67.webp"
-dest_files=["res://.godot/imported/character_Color_a6be8430-adb2-4da3-aa07-fc7613a2bf67.webp-4749779c350f473ee6df2ea0d75c0420.ctex"]
+dest_files=["res://.godot/imported/character_Color_a6be8430-adb2-4da3-aa07-fc7613a2bf67.webp-4749779c350f473ee6df2ea0d75c0420.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

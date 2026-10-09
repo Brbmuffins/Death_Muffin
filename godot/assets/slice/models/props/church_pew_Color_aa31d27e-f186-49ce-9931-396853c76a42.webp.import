@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cdcvdyacdx2r0"
-path="res://.godot/imported/church_pew_Color_aa31d27e-f186-49ce-9931-396853c76a42.webp-9d7f0641616aaccf17d37003acc47957.ctex"
+path.bptc="res://.godot/imported/church_pew_Color_aa31d27e-f186-49ce-9931-396853c76a42.webp-9d7f0641616aaccf17d37003acc47957.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6b46f821420f64d9eaf7f7dbe8bee5eb"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/church_pew_Color_aa31d27e-f186-49ce-9931-396853c76a42.webp"
-dest_files=["res://.godot/imported/church_pew_Color_aa31d27e-f186-49ce-9931-396853c76a42.webp-9d7f0641616aaccf17d37003acc47957.ctex"]
+dest_files=["res://.godot/imported/church_pew_Color_aa31d27e-f186-49ce-9931-396853c76a42.webp-9d7f0641616aaccf17d37003acc47957.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

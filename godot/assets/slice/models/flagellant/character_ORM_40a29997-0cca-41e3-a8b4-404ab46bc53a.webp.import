@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://deomelhis5jj6"
-path="res://.godot/imported/character_ORM_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-22db0daa1071b844170615c16422b476.ctex"
+path.bptc="res://.godot/imported/character_ORM_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-22db0daa1071b844170615c16422b476.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "333d40373cef6cbede33579cce2f44d8"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/flagellant/character_ORM_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp"
-dest_files=["res://.godot/imported/character_ORM_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-22db0daa1071b844170615c16422b476.ctex"]
+dest_files=["res://.godot/imported/character_ORM_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-22db0daa1071b844170615c16422b476.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

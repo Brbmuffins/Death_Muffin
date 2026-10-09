@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c8kypep1er3ro"
-path="res://.godot/imported/reliquary_NormalGL_4fdac07e-64e3-46a6-bda5-03134eb0f009.webp-dfeb6f23336f32ede154853b475f8865.ctex"
+path.s3tc="res://.godot/imported/reliquary_NormalGL_4fdac07e-64e3-46a6-bda5-03134eb0f009.webp-dfeb6f23336f32ede154853b475f8865.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5be1db8e377ed3494ded1844b36c7d7a"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/reliquary_NormalGL_4fdac07e-64e3-46a6-bda5-03134eb0f009.webp"
-dest_files=["res://.godot/imported/reliquary_NormalGL_4fdac07e-64e3-46a6-bda5-03134eb0f009.webp-dfeb6f23336f32ede154853b475f8865.ctex"]
+dest_files=["res://.godot/imported/reliquary_NormalGL_4fdac07e-64e3-46a6-bda5-03134eb0f009.webp-dfeb6f23336f32ede154853b475f8865.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

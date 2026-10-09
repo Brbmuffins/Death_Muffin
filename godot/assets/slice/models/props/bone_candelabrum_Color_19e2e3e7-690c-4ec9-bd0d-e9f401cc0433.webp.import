@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dw0xmy577pqd7"
-path="res://.godot/imported/bone_candelabrum_Color_19e2e3e7-690c-4ec9-bd0d-e9f401cc0433.webp-70e0cc1c336ed208a3ab21f38ac2d711.ctex"
+path.bptc="res://.godot/imported/bone_candelabrum_Color_19e2e3e7-690c-4ec9-bd0d-e9f401cc0433.webp-70e0cc1c336ed208a3ab21f38ac2d711.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "a09a52cc6ea9e8a153f9442fe697c575"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/bone_candelabrum_Color_19e2e3e7-690c-4ec9-bd0d-e9f401cc0433.webp"
-dest_files=["res://.godot/imported/bone_candelabrum_Color_19e2e3e7-690c-4ec9-bd0d-e9f401cc0433.webp-70e0cc1c336ed208a3ab21f38ac2d711.ctex"]
+dest_files=["res://.godot/imported/bone_candelabrum_Color_19e2e3e7-690c-4ec9-bd0d-e9f401cc0433.webp-70e0cc1c336ed208a3ab21f38ac2d711.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -96,7 +96,7 @@ static func run(game: DmNextGame) -> void:
 	var pending: Array = []
 	for p in paths:
 		if ResourceLoader.has_cached(p):
-			DmWarmup._held.append(ResourceLoader.load(p))
+			DmWarmup.hold(p, ResourceLoader.load(p))
 		elif ResourceLoader.load_threaded_request(p, "", true) == OK:
 			pending.append(p)
 	var deadline := Time.get_ticks_msec() + 60000
@@ -108,7 +108,7 @@ static func run(game: DmNextGame) -> void:
 				continue
 			pending.erase(p)
 			if st == ResourceLoader.THREAD_LOAD_LOADED:
-				DmWarmup._held.append(ResourceLoader.load_threaded_get(p))
+				DmWarmup.hold(p, ResourceLoader.load_threaded_get(p))
 	# 2. draw everything once in front of the camera
 	var cam: DmCameraRig = game.camera
 	var at0 := cam.global_position + (-cam.global_transform.basis.z) * 6.0
@@ -132,6 +132,8 @@ static func run(game: DmNextGame) -> void:
 	for b in bodies:
 		b["c"].dispose()
 	stage.queue_free()
+	var mine: Dictionary = DmContent.discipline(String(game.local_body().discipline_id)) if game.local_body() != null else {}
+	DmWarmup.release_unused_heroes([String(mine.get("modelSlug", ""))])   # the kits of disciplines nobody can pick; the playable ones stay resident (no first-use load)
 	await tree.process_frame
 	if cover.owned:
 		cover.dismiss(false)   # (main's screen stays up through the HUD + panel warm-up, then fades)

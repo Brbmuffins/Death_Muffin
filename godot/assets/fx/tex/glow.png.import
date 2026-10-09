@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dghtqk5a7dwja"
-path="res://.godot/imported/glow.png-caaea5e5033a38a6822feb19f8afafdf.ctex"
+path.bptc="res://.godot/imported/glow.png-caaea5e5033a38a6822feb19f8afafdf.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/fx/tex/glow.png"
-dest_files=["res://.godot/imported/glow.png-caaea5e5033a38a6822feb19f8afafdf.ctex"]
+dest_files=["res://.godot/imported/glow.png-caaea5e5033a38a6822feb19f8afafdf.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

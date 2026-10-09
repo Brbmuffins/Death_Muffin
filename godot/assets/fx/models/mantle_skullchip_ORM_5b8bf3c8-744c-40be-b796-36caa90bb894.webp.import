@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dpkmocwcvcij2"
-path="res://.godot/imported/mantle_skullchip_ORM_5b8bf3c8-744c-40be-b796-36caa90bb894.webp-8e78e408a6436fbf3bd649a12ff4e085.ctex"
+path.bptc="res://.godot/imported/mantle_skullchip_ORM_5b8bf3c8-744c-40be-b796-36caa90bb894.webp-8e78e408a6436fbf3bd649a12ff4e085.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6b19f2dc740df82ce797424765bd0141"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/fx/models/mantle_skullchip_ORM_5b8bf3c8-744c-40be-b796-36caa90bb894.webp"
-dest_files=["res://.godot/imported/mantle_skullchip_ORM_5b8bf3c8-744c-40be-b796-36caa90bb894.webp-8e78e408a6436fbf3bd649a12ff4e085.ctex"]
+dest_files=["res://.godot/imported/mantle_skullchip_ORM_5b8bf3c8-744c-40be-b796-36caa90bb894.webp-8e78e408a6436fbf3bd649a12ff4e085.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

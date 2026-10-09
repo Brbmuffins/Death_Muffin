@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b3jxk8it4lq0o"
-path="res://.godot/imported/prop_node_ghostwood_NormalGL_928a197b-8437-4612-9588-93625ba394c0.webp-bf880cf7641c8917b432300fa8a1431c.ctex"
+path.s3tc="res://.godot/imported/prop_node_ghostwood_NormalGL_928a197b-8437-4612-9588-93625ba394c0.webp-bf880cf7641c8917b432300fa8a1431c.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "792f42cae3671df3f75fd4baf2b10190"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_ghostwood_NormalGL_928a197b-8437-4612-9588-93625ba394c0.webp"
-dest_files=["res://.godot/imported/prop_node_ghostwood_NormalGL_928a197b-8437-4612-9588-93625ba394c0.webp-bf880cf7641c8917b432300fa8a1431c.ctex"]
+dest_files=["res://.godot/imported/prop_node_ghostwood_NormalGL_928a197b-8437-4612-9588-93625ba394c0.webp-bf880cf7641c8917b432300fa8a1431c.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dqe24kf3idshf"
-path="res://.godot/imported/character_ORM_6e85fc4a-099c-4e75-8638-2e39fed77506.webp-e4dc8e8e4fc7a6519d40e131075b2608.ctex"
+path.bptc="res://.godot/imported/character_ORM_6e85fc4a-099c-4e75-8638-2e39fed77506.webp-e4dc8e8e4fc7a6519d40e131075b2608.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "024b4f21bd556f60fc8dcd7d813a8764"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/bog_hag/character_ORM_6e85fc4a-099c-4e75-8638-2e39fed77506.webp"
-dest_files=["res://.godot/imported/character_ORM_6e85fc4a-099c-4e75-8638-2e39fed77506.webp-e4dc8e8e4fc7a6519d40e131075b2608.ctex"]
+dest_files=["res://.godot/imported/character_ORM_6e85fc4a-099c-4e75-8638-2e39fed77506.webp-e4dc8e8e4fc7a6519d40e131075b2608.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

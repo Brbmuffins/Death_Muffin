@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://coixijwhwwg2q"
-path="res://.godot/imported/character_ORM_208725d3-f4f1-483f-a404-9181ec5b8f66.webp-5ec3b5727dd4ace9b2c9a95fdad1625e.ctex"
+path.bptc="res://.godot/imported/character_ORM_208725d3-f4f1-483f-a404-9181ec5b8f66.webp-5ec3b5727dd4ace9b2c9a95fdad1625e.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f10bb9b8d410ab8ad5c2133ed2cd9173"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_gravecaller/character_ORM_208725d3-f4f1-483f-a404-9181ec5b8f66.webp"
-dest_files=["res://.godot/imported/character_ORM_208725d3-f4f1-483f-a404-9181ec5b8f66.webp-5ec3b5727dd4ace9b2c9a95fdad1625e.ctex"]
+dest_files=["res://.godot/imported/character_ORM_208725d3-f4f1-483f-a404-9181ec5b8f66.webp-5ec3b5727dd4ace9b2c9a95fdad1625e.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

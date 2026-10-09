@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dfr6ipf0i6bm0"
-path="res://.godot/imported/grave_lantern_NormalGL_f09b1c9d-babc-4da6-b9f0-985cee787283.webp-557df8e405755b846725eb9dc1ff8df0.ctex"
+path.s3tc="res://.godot/imported/grave_lantern_NormalGL_f09b1c9d-babc-4da6-b9f0-985cee787283.webp-557df8e405755b846725eb9dc1ff8df0.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "845c2b7bf8a88b05fe227faa9aeb82c6"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/grave_lantern_NormalGL_f09b1c9d-babc-4da6-b9f0-985cee787283.webp"
-dest_files=["res://.godot/imported/grave_lantern_NormalGL_f09b1c9d-babc-4da6-b9f0-985cee787283.webp-557df8e405755b846725eb9dc1ff8df0.ctex"]
+dest_files=["res://.godot/imported/grave_lantern_NormalGL_f09b1c9d-babc-4da6-b9f0-985cee787283.webp-557df8e405755b846725eb9dc1ff8df0.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d2b64h2rakrih"
-path="res://.godot/imported/prop_node_crypt_collapse_Color_b49dba17-2809-40bc-9ce0-7a4115dd1b2a.webp-c0f78e4ddcbca8829e5bc49d7e7e5f23.ctex"
+path.bptc="res://.godot/imported/prop_node_crypt_collapse_Color_b49dba17-2809-40bc-9ce0-7a4115dd1b2a.webp-c0f78e4ddcbca8829e5bc49d7e7e5f23.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "787837883c1adf2fb63c627d892b4cdc"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_crypt_collapse_Color_b49dba17-2809-40bc-9ce0-7a4115dd1b2a.webp"
-dest_files=["res://.godot/imported/prop_node_crypt_collapse_Color_b49dba17-2809-40bc-9ce0-7a4115dd1b2a.webp-c0f78e4ddcbca8829e5bc49d7e7e5f23.ctex"]
+dest_files=["res://.godot/imported/prop_node_crypt_collapse_Color_b49dba17-2809-40bc-9ce0-7a4115dd1b2a.webp-c0f78e4ddcbca8829e5bc49d7e7e5f23.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

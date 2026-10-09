@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b5adg4olunwwr"
-path="res://.godot/imported/alch_alembic_NormalGL_f64bdd65-9d6c-4995-9e01-e629cc68e5f9.webp-1bff8e0d98f7495dcd84b6592d5c5236.ctex"
+path.s3tc="res://.godot/imported/alch_alembic_NormalGL_f64bdd65-9d6c-4995-9e01-e629cc68e5f9.webp-1bff8e0d98f7495dcd84b6592d5c5236.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "542a043b723a3653ea3ee741b65a7a14"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_alembic_NormalGL_f64bdd65-9d6c-4995-9e01-e629cc68e5f9.webp"
-dest_files=["res://.godot/imported/alch_alembic_NormalGL_f64bdd65-9d6c-4995-9e01-e629cc68e5f9.webp-1bff8e0d98f7495dcd84b6592d5c5236.ctex"]
+dest_files=["res://.godot/imported/alch_alembic_NormalGL_f64bdd65-9d6c-4995-9e01-e629cc68e5f9.webp-1bff8e0d98f7495dcd84b6592d5c5236.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

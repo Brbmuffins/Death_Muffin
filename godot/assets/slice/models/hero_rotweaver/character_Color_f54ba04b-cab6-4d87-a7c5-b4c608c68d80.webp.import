@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bk2qwe5nrtjcq"
-path="res://.godot/imported/character_Color_f54ba04b-cab6-4d87-a7c5-b4c608c68d80.webp-af4ca5cd2805b241d7f1e3dacf77a756.ctex"
+path.bptc="res://.godot/imported/character_Color_f54ba04b-cab6-4d87-a7c5-b4c608c68d80.webp-af4ca5cd2805b241d7f1e3dacf77a756.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "69b3d45135da60468de79a374fe9c54b"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_rotweaver/character_Color_f54ba04b-cab6-4d87-a7c5-b4c608c68d80.webp"
-dest_files=["res://.godot/imported/character_Color_f54ba04b-cab6-4d87-a7c5-b4c608c68d80.webp-af4ca5cd2805b241d7f1e3dacf77a756.ctex"]
+dest_files=["res://.godot/imported/character_Color_f54ba04b-cab6-4d87-a7c5-b4c608c68d80.webp-af4ca5cd2805b241d7f1e3dacf77a756.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

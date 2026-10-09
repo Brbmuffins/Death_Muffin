@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c3fvhq15mt04b"
-path="res://.godot/imported/character_Color_072e5759-f5fb-459f-8359-d8e18e060ac2.webp-7488b6a0349ac86f3ee18ad4e7d0a787.ctex"
+path.bptc="res://.godot/imported/character_Color_072e5759-f5fb-459f-8359-d8e18e060ac2.webp-7488b6a0349ac86f3ee18ad4e7d0a787.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b5e163c5ae61db470afc8e9173d4c715"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/bell_templar/character_Color_072e5759-f5fb-459f-8359-d8e18e060ac2.webp"
-dest_files=["res://.godot/imported/character_Color_072e5759-f5fb-459f-8359-d8e18e060ac2.webp-7488b6a0349ac86f3ee18ad4e7d0a787.ctex"]
+dest_files=["res://.godot/imported/character_Color_072e5759-f5fb-459f-8359-d8e18e060ac2.webp-7488b6a0349ac86f3ee18ad4e7d0a787.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

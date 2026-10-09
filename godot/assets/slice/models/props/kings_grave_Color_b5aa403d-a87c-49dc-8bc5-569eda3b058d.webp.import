@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b23isb5d20mu2"
-path="res://.godot/imported/kings_grave_Color_b5aa403d-a87c-49dc-8bc5-569eda3b058d.webp-c7922a63675f218760189c298f65fd7d.ctex"
+path.bptc="res://.godot/imported/kings_grave_Color_b5aa403d-a87c-49dc-8bc5-569eda3b058d.webp-c7922a63675f218760189c298f65fd7d.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "db7e19e258a77f99a3b6857ed9fa3373"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/kings_grave_Color_b5aa403d-a87c-49dc-8bc5-569eda3b058d.webp"
-dest_files=["res://.godot/imported/kings_grave_Color_b5aa403d-a87c-49dc-8bc5-569eda3b058d.webp-c7922a63675f218760189c298f65fd7d.ctex"]
+dest_files=["res://.godot/imported/kings_grave_Color_b5aa403d-a87c-49dc-8bc5-569eda3b058d.webp-c7922a63675f218760189c298f65fd7d.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

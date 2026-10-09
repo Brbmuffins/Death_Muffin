@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bpjit7p16nvac"
-path="res://.godot/imported/tithe_bat_NormalGL_a928177a-e426-442e-b663-06093b171721.webp-65dc1480d0f7b5cc9643b271c4389e8f.ctex"
+path.s3tc="res://.godot/imported/tithe_bat_NormalGL_a928177a-e426-442e-b663-06093b171721.webp-65dc1480d0f7b5cc9643b271c4389e8f.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "729eed0cfeb5c6872db8504aee260507"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/tithe_bat_NormalGL_a928177a-e426-442e-b663-06093b171721.webp"
-dest_files=["res://.godot/imported/tithe_bat_NormalGL_a928177a-e426-442e-b663-06093b171721.webp-65dc1480d0f7b5cc9643b271c4389e8f.ctex"]
+dest_files=["res://.godot/imported/tithe_bat_NormalGL_a928177a-e426-442e-b663-06093b171721.webp-65dc1480d0f7b5cc9643b271c4389e8f.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

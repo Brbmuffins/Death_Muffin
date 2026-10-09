@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dqojh3tc3hvx7"
-path="res://.godot/imported/prop_node_blackthorn_Color_4dbaccf3-3417-47ec-85ed-f913c42b91f3.webp-432bd8490ad70c5c5aa9d3bc52056b0f.ctex"
+path.bptc="res://.godot/imported/prop_node_blackthorn_Color_4dbaccf3-3417-47ec-85ed-f913c42b91f3.webp-432bd8490ad70c5c5aa9d3bc52056b0f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0960a979298512aaebed82087bb10109"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_blackthorn_Color_4dbaccf3-3417-47ec-85ed-f913c42b91f3.webp"
-dest_files=["res://.godot/imported/prop_node_blackthorn_Color_4dbaccf3-3417-47ec-85ed-f913c42b91f3.webp-432bd8490ad70c5c5aa9d3bc52056b0f.ctex"]
+dest_files=["res://.godot/imported/prop_node_blackthorn_Color_4dbaccf3-3417-47ec-85ed-f913c42b91f3.webp-432bd8490ad70c5c5aa9d3bc52056b0f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

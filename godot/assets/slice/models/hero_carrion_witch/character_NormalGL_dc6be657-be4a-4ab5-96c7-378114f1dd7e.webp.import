@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cd431hen1vt4s"
-path="res://.godot/imported/character_NormalGL_dc6be657-be4a-4ab5-96c7-378114f1dd7e.webp-146bd76d0d48601696c1b4ee7a69b1c2.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_dc6be657-be4a-4ab5-96c7-378114f1dd7e.webp-146bd76d0d48601696c1b4ee7a69b1c2.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "fe0c22e934b61c0bb35b0bbc6f814890"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_carrion_witch/character_NormalGL_dc6be657-be4a-4ab5-96c7-378114f1dd7e.webp"
-dest_files=["res://.godot/imported/character_NormalGL_dc6be657-be4a-4ab5-96c7-378114f1dd7e.webp-146bd76d0d48601696c1b4ee7a69b1c2.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_dc6be657-be4a-4ab5-96c7-378114f1dd7e.webp-146bd76d0d48601696c1b4ee7a69b1c2.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

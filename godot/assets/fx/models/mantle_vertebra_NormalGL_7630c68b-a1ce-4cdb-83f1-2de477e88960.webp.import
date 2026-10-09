@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cljyr7dfqaj0y"
-path="res://.godot/imported/mantle_vertebra_NormalGL_7630c68b-a1ce-4cdb-83f1-2de477e88960.webp-3842fa8563dabd633073b1e8ca2eb3ad.ctex"
+path.s3tc="res://.godot/imported/mantle_vertebra_NormalGL_7630c68b-a1ce-4cdb-83f1-2de477e88960.webp-3842fa8563dabd633073b1e8ca2eb3ad.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "db43996faa53122de2c34c7ad470eb76"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/fx/models/mantle_vertebra_NormalGL_7630c68b-a1ce-4cdb-83f1-2de477e88960.webp"
-dest_files=["res://.godot/imported/mantle_vertebra_NormalGL_7630c68b-a1ce-4cdb-83f1-2de477e88960.webp-3842fa8563dabd633073b1e8ca2eb3ad.ctex"]
+dest_files=["res://.godot/imported/mantle_vertebra_NormalGL_7630c68b-a1ce-4cdb-83f1-2de477e88960.webp-3842fa8563dabd633073b1e8ca2eb3ad.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

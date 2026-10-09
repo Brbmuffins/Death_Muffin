@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bgffplghgvpwg"
-path="res://.godot/imported/rally-sigil.webp-5fec1669945722350a490d0f1b0e0b44.ctex"
+path.bptc="res://.godot/imported/rally-sigil.webp-5fec1669945722350a490d0f1b0e0b44.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/fx/art/rally-sigil.webp"
-dest_files=["res://.godot/imported/rally-sigil.webp-5fec1669945722350a490d0f1b0e0b44.ctex"]
+dest_files=["res://.godot/imported/rally-sigil.webp-5fec1669945722350a490d0f1b0e0b44.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

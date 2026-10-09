@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d34je007ojo56"
-path="res://.godot/imported/gibbet_cage_Color_d0ecf56e-c7f9-4acd-96e6-1ab2ccfc95c9.webp-34c94986c019f9da213cd273a725455d.ctex"
+path.bptc="res://.godot/imported/gibbet_cage_Color_d0ecf56e-c7f9-4acd-96e6-1ab2ccfc95c9.webp-34c94986c019f9da213cd273a725455d.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ea9169c26ae6377d911d1f1dfc03bbf6"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/gibbet_cage_Color_d0ecf56e-c7f9-4acd-96e6-1ab2ccfc95c9.webp"
-dest_files=["res://.godot/imported/gibbet_cage_Color_d0ecf56e-c7f9-4acd-96e6-1ab2ccfc95c9.webp-34c94986c019f9da213cd273a725455d.ctex"]
+dest_files=["res://.godot/imported/gibbet_cage_Color_d0ecf56e-c7f9-4acd-96e6-1ab2ccfc95c9.webp-34c94986c019f9da213cd273a725455d.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

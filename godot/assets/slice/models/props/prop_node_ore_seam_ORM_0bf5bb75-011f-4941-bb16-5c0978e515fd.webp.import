@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ce7j34jtlpfvn"
-path="res://.godot/imported/prop_node_ore_seam_ORM_0bf5bb75-011f-4941-bb16-5c0978e515fd.webp-3c5f0eb9c7ff083a13bdf53f293e0a2a.ctex"
+path.bptc="res://.godot/imported/prop_node_ore_seam_ORM_0bf5bb75-011f-4941-bb16-5c0978e515fd.webp-3c5f0eb9c7ff083a13bdf53f293e0a2a.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0dd76eb68ca6a93b37c130ffeaca4d90"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_ore_seam_ORM_0bf5bb75-011f-4941-bb16-5c0978e515fd.webp"
-dest_files=["res://.godot/imported/prop_node_ore_seam_ORM_0bf5bb75-011f-4941-bb16-5c0978e515fd.webp-3c5f0eb9c7ff083a13bdf53f293e0a2a.ctex"]
+dest_files=["res://.godot/imported/prop_node_ore_seam_ORM_0bf5bb75-011f-4941-bb16-5c0978e515fd.webp-3c5f0eb9c7ff083a13bdf53f293e0a2a.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

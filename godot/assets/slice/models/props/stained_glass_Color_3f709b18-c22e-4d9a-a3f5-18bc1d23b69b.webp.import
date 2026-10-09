@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bsmht4ujsqq4w"
-path="res://.godot/imported/stained_glass_Color_3f709b18-c22e-4d9a-a3f5-18bc1d23b69b.webp-fbf31d2b7632bbf2f129a508ddb15666.ctex"
+path.bptc="res://.godot/imported/stained_glass_Color_3f709b18-c22e-4d9a-a3f5-18bc1d23b69b.webp-fbf31d2b7632bbf2f129a508ddb15666.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "890445b9f8f666cac3cdc4789a0f4cf2"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/stained_glass_Color_3f709b18-c22e-4d9a-a3f5-18bc1d23b69b.webp"
-dest_files=["res://.godot/imported/stained_glass_Color_3f709b18-c22e-4d9a-a3f5-18bc1d23b69b.webp-fbf31d2b7632bbf2f129a508ddb15666.ctex"]
+dest_files=["res://.godot/imported/stained_glass_Color_3f709b18-c22e-4d9a-a3f5-18bc1d23b69b.webp-fbf31d2b7632bbf2f129a508ddb15666.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://wjwvcf2j4kna"
-path="res://.godot/imported/abbess_reliquary_Color_78559f43-5755-413a-bae0-8e3f62a33d83.webp-83ef16aa4335acf69b84baca725b9303.ctex"
+path.bptc="res://.godot/imported/abbess_reliquary_Color_78559f43-5755-413a-bae0-8e3f62a33d83.webp-83ef16aa4335acf69b84baca725b9303.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f3444984c5b1afbcdad9b1105b39f6ec"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/abbess_reliquary_Color_78559f43-5755-413a-bae0-8e3f62a33d83.webp"
-dest_files=["res://.godot/imported/abbess_reliquary_Color_78559f43-5755-413a-bae0-8e3f62a33d83.webp-83ef16aa4335acf69b84baca725b9303.ctex"]
+dest_files=["res://.godot/imported/abbess_reliquary_Color_78559f43-5755-413a-bae0-8e3f62a33d83.webp-83ef16aa4335acf69b84baca725b9303.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

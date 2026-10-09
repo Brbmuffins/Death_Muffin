@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bddudarqxsho8"
-path="res://.godot/imported/shroud_moth_Color_2df6b711-fc8e-414a-ad1c-2a9eb38d8467.webp-91ed559d8ab7fd7e0d345d02316cfe63.ctex"
+path.bptc="res://.godot/imported/shroud_moth_Color_2df6b711-fc8e-414a-ad1c-2a9eb38d8467.webp-91ed559d8ab7fd7e0d345d02316cfe63.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b4726f5b4e437afd0794a16ba73dd7a2"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/shroud_moth_Color_2df6b711-fc8e-414a-ad1c-2a9eb38d8467.webp"
-dest_files=["res://.godot/imported/shroud_moth_Color_2df6b711-fc8e-414a-ad1c-2a9eb38d8467.webp-91ed559d8ab7fd7e0d345d02316cfe63.ctex"]
+dest_files=["res://.godot/imported/shroud_moth_Color_2df6b711-fc8e-414a-ad1c-2a9eb38d8467.webp-91ed559d8ab7fd7e0d345d02316cfe63.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

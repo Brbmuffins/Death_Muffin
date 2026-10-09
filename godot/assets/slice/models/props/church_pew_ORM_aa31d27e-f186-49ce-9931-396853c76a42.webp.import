@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b6ctx4oxhybmc"
-path="res://.godot/imported/church_pew_ORM_aa31d27e-f186-49ce-9931-396853c76a42.webp-6246d3b70ed0dad53886782f50214a03.ctex"
+path.bptc="res://.godot/imported/church_pew_ORM_aa31d27e-f186-49ce-9931-396853c76a42.webp-6246d3b70ed0dad53886782f50214a03.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c8e601e71eefc3e0ddae19835e6c8860"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/church_pew_ORM_aa31d27e-f186-49ce-9931-396853c76a42.webp"
-dest_files=["res://.godot/imported/church_pew_ORM_aa31d27e-f186-49ce-9931-396853c76a42.webp-6246d3b70ed0dad53886782f50214a03.ctex"]
+dest_files=["res://.godot/imported/church_pew_ORM_aa31d27e-f186-49ce-9931-396853c76a42.webp-6246d3b70ed0dad53886782f50214a03.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

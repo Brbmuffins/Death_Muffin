@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bg80v1gokh4ym"
-path="res://.godot/imported/covenant_lectern_ORM_1849474b-ce49-4591-bd55-7959840e22b7.webp-965fdfc4a53f788e46f5de42fb4502db.ctex"
+path.bptc="res://.godot/imported/covenant_lectern_ORM_1849474b-ce49-4591-bd55-7959840e22b7.webp-965fdfc4a53f788e46f5de42fb4502db.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "3539f4f04854517d9ce755a9ea745afa"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/covenant_lectern_ORM_1849474b-ce49-4591-bd55-7959840e22b7.webp"
-dest_files=["res://.godot/imported/covenant_lectern_ORM_1849474b-ce49-4591-bd55-7959840e22b7.webp-965fdfc4a53f788e46f5de42fb4502db.ctex"]
+dest_files=["res://.godot/imported/covenant_lectern_ORM_1849474b-ce49-4591-bd55-7959840e22b7.webp-965fdfc4a53f788e46f5de42fb4502db.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

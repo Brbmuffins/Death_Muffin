@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d0e1r426j7ue8"
-path="res://.godot/imported/bone_pile_NormalGL_413831b9-4ed6-4f17-bae6-3cd8ea648c77.webp-17528614c43a0f42281dd35d584a9172.ctex"
+path.s3tc="res://.godot/imported/bone_pile_NormalGL_413831b9-4ed6-4f17-bae6-3cd8ea648c77.webp-17528614c43a0f42281dd35d584a9172.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7705570c055efc87d0cec1dd3bbc15ab"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/bone_pile_NormalGL_413831b9-4ed6-4f17-bae6-3cd8ea648c77.webp"
-dest_files=["res://.godot/imported/bone_pile_NormalGL_413831b9-4ed6-4f17-bae6-3cd8ea648c77.webp-17528614c43a0f42281dd35d584a9172.ctex"]
+dest_files=["res://.godot/imported/bone_pile_NormalGL_413831b9-4ed6-4f17-bae6-3cd8ea648c77.webp-17528614c43a0f42281dd35d584a9172.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

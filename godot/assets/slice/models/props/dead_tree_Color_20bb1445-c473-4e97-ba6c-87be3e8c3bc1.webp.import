@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://defnftd58mxmt"
-path="res://.godot/imported/dead_tree_Color_20bb1445-c473-4e97-ba6c-87be3e8c3bc1.webp-69e638025e20fe4a74d5ebddb1a96262.ctex"
+path.bptc="res://.godot/imported/dead_tree_Color_20bb1445-c473-4e97-ba6c-87be3e8c3bc1.webp-69e638025e20fe4a74d5ebddb1a96262.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "41173d18f64c57f30cbb5740fa78358c"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/dead_tree_Color_20bb1445-c473-4e97-ba6c-87be3e8c3bc1.webp"
-dest_files=["res://.godot/imported/dead_tree_Color_20bb1445-c473-4e97-ba6c-87be3e8c3bc1.webp-69e638025e20fe4a74d5ebddb1a96262.ctex"]
+dest_files=["res://.godot/imported/dead_tree_Color_20bb1445-c473-4e97-ba6c-87be3e8c3bc1.webp-69e638025e20fe4a74d5ebddb1a96262.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

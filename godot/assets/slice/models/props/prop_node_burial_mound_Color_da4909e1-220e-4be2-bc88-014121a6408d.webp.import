@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://r6pvoqupb24a"
-path="res://.godot/imported/prop_node_burial_mound_Color_da4909e1-220e-4be2-bc88-014121a6408d.webp-e0a6d6975a233f4827cbc64e985aeeb0.ctex"
+path.bptc="res://.godot/imported/prop_node_burial_mound_Color_da4909e1-220e-4be2-bc88-014121a6408d.webp-e0a6d6975a233f4827cbc64e985aeeb0.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ddb88c60705282baf8f67d4edf4bdab5"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_burial_mound_Color_da4909e1-220e-4be2-bc88-014121a6408d.webp"
-dest_files=["res://.godot/imported/prop_node_burial_mound_Color_da4909e1-220e-4be2-bc88-014121a6408d.webp-e0a6d6975a233f4827cbc64e985aeeb0.ctex"]
+dest_files=["res://.godot/imported/prop_node_burial_mound_Color_da4909e1-220e-4be2-bc88-014121a6408d.webp-e0a6d6975a233f4827cbc64e985aeeb0.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

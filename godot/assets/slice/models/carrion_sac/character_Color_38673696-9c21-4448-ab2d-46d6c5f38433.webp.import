@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c4ghqqkhdhu0w"
-path="res://.godot/imported/character_Color_38673696-9c21-4448-ab2d-46d6c5f38433.webp-201ae071a9b71f584b4d56029104e41a.ctex"
+path.bptc="res://.godot/imported/character_Color_38673696-9c21-4448-ab2d-46d6c5f38433.webp-201ae071a9b71f584b4d56029104e41a.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "47963928d6a7dfecec7aa32bdbff251c"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/carrion_sac/character_Color_38673696-9c21-4448-ab2d-46d6c5f38433.webp"
-dest_files=["res://.godot/imported/character_Color_38673696-9c21-4448-ab2d-46d6c5f38433.webp-201ae071a9b71f584b4d56029104e41a.ctex"]
+dest_files=["res://.godot/imported/character_Color_38673696-9c21-4448-ab2d-46d6c5f38433.webp-201ae071a9b71f584b4d56029104e41a.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

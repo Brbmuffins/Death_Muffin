@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://quqbb10u8ft6"
-path="res://.godot/imported/pyre_stack_ORM_b30e0578-d719-49c0-ad75-f0b870451805.webp-1fbffda0bf2e12acb9f57e68c274ad7b.ctex"
+path.bptc="res://.godot/imported/pyre_stack_ORM_b30e0578-d719-49c0-ad75-f0b870451805.webp-1fbffda0bf2e12acb9f57e68c274ad7b.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7508e22f83d153f1b140b2647a6beaec"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/pyre_stack_ORM_b30e0578-d719-49c0-ad75-f0b870451805.webp"
-dest_files=["res://.godot/imported/pyre_stack_ORM_b30e0578-d719-49c0-ad75-f0b870451805.webp-1fbffda0bf2e12acb9f57e68c274ad7b.ctex"]
+dest_files=["res://.godot/imported/pyre_stack_ORM_b30e0578-d719-49c0-ad75-f0b870451805.webp-1fbffda0bf2e12acb9f57e68c274ad7b.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

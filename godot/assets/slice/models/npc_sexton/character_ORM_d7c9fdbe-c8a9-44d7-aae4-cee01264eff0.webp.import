@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dm10amwm14u3c"
-path="res://.godot/imported/character_ORM_d7c9fdbe-c8a9-44d7-aae4-cee01264eff0.webp-6ecd6659a0f368c3b004eb36ea8af5b7.ctex"
+path.bptc="res://.godot/imported/character_ORM_d7c9fdbe-c8a9-44d7-aae4-cee01264eff0.webp-6ecd6659a0f368c3b004eb36ea8af5b7.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "86656759d9789f251b996990670d14e4"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/npc_sexton/character_ORM_d7c9fdbe-c8a9-44d7-aae4-cee01264eff0.webp"
-dest_files=["res://.godot/imported/character_ORM_d7c9fdbe-c8a9-44d7-aae4-cee01264eff0.webp-6ecd6659a0f368c3b004eb36ea8af5b7.ctex"]
+dest_files=["res://.godot/imported/character_ORM_d7c9fdbe-c8a9-44d7-aae4-cee01264eff0.webp-6ecd6659a0f368c3b004eb36ea8af5b7.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

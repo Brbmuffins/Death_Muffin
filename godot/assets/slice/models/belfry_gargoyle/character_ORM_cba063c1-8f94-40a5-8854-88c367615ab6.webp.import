@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b8yhqt63458hg"
-path="res://.godot/imported/character_ORM_cba063c1-8f94-40a5-8854-88c367615ab6.webp-f2b899c685e94ec963a3ecaaad1f4ad0.ctex"
+path.bptc="res://.godot/imported/character_ORM_cba063c1-8f94-40a5-8854-88c367615ab6.webp-f2b899c685e94ec963a3ecaaad1f4ad0.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e5e502b059ead680a30575751e81c37b"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/belfry_gargoyle/character_ORM_cba063c1-8f94-40a5-8854-88c367615ab6.webp"
-dest_files=["res://.godot/imported/character_ORM_cba063c1-8f94-40a5-8854-88c367615ab6.webp-f2b899c685e94ec963a3ecaaad1f4ad0.ctex"]
+dest_files=["res://.godot/imported/character_ORM_cba063c1-8f94-40a5-8854-88c367615ab6.webp-f2b899c685e94ec963a3ecaaad1f4ad0.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

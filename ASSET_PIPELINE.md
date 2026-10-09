@@ -53,7 +53,9 @@ rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`.
 - Models and textures: `tools/godot/sync-slice-assets.mjs` copies the files named in `godot/data/slice/assets_used.json`
   into `godot/assets/slice/` and dequantizes the GLBs (Godot rejects `KHR_mesh_quantization`). See KNOWN-GAPS.md: the exporter
   that wrote `assets_used.json` was removed, so edit that file by hand when you add a model. `tools/godot/fx-sync-models.mjs` does the same for FX models.
-- Then `godot --headless --path godot --import` and commit the generated `.import` files.
+- Then `godot --headless --path godot --import` and commit the generated `.import` files. Textures used in 3D (model textures, floors, FX sprites)
+  must be VRAM Compressed: set `compress/mode=2` in their `.import` (normal maps `*NormalGL*` also `compress/normal_map=1`) and re-import; a fresh
+  import is Lossless, and `npm run hygiene` fails until it is changed. UI art stays Lossless.
 
 ## Audio generation (ElevenLabs, backup only)
 

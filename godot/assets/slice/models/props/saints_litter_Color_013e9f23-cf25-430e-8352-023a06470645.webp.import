@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dbqb7ts67xpx0"
-path="res://.godot/imported/saints_litter_Color_013e9f23-cf25-430e-8352-023a06470645.webp-bf37cdcf5355a6242de5c5d8e134e3d1.ctex"
+path.bptc="res://.godot/imported/saints_litter_Color_013e9f23-cf25-430e-8352-023a06470645.webp-bf37cdcf5355a6242de5c5d8e134e3d1.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c4cc14aa31f3adb13b1114c945b9c7b6"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/saints_litter_Color_013e9f23-cf25-430e-8352-023a06470645.webp"
-dest_files=["res://.godot/imported/saints_litter_Color_013e9f23-cf25-430e-8352-023a06470645.webp-bf37cdcf5355a6242de5c5d8e134e3d1.ctex"]
+dest_files=["res://.godot/imported/saints_litter_Color_013e9f23-cf25-430e-8352-023a06470645.webp-bf37cdcf5355a6242de5c5d8e134e3d1.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

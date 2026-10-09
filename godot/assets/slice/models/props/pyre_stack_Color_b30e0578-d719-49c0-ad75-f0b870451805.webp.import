@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bnb22gfatbemu"
-path="res://.godot/imported/pyre_stack_Color_b30e0578-d719-49c0-ad75-f0b870451805.webp-ed2098ae1572710099eefd6c8d142f22.ctex"
+path.bptc="res://.godot/imported/pyre_stack_Color_b30e0578-d719-49c0-ad75-f0b870451805.webp-ed2098ae1572710099eefd6c8d142f22.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "249d9eec7f4a95aefa5702795c8de30c"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/pyre_stack_Color_b30e0578-d719-49c0-ad75-f0b870451805.webp"
-dest_files=["res://.godot/imported/pyre_stack_Color_b30e0578-d719-49c0-ad75-f0b870451805.webp-ed2098ae1572710099eefd6c8d142f22.ctex"]
+dest_files=["res://.godot/imported/pyre_stack_Color_b30e0578-d719-49c0-ad75-f0b870451805.webp-ed2098ae1572710099eefd6c8d142f22.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

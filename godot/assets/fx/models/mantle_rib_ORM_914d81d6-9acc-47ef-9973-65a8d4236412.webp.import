@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bb8hxxda2vwh6"
-path="res://.godot/imported/mantle_rib_ORM_914d81d6-9acc-47ef-9973-65a8d4236412.webp-70d6dad2e059eddf9d6a6cebb0bd0b5c.ctex"
+path.bptc="res://.godot/imported/mantle_rib_ORM_914d81d6-9acc-47ef-9973-65a8d4236412.webp-70d6dad2e059eddf9d6a6cebb0bd0b5c.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "80695a6371291498eb46e3b03aadfca7"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/fx/models/mantle_rib_ORM_914d81d6-9acc-47ef-9973-65a8d4236412.webp"
-dest_files=["res://.godot/imported/mantle_rib_ORM_914d81d6-9acc-47ef-9973-65a8d4236412.webp-70d6dad2e059eddf9d6a6cebb0bd0b5c.ctex"]
+dest_files=["res://.godot/imported/mantle_rib_ORM_914d81d6-9acc-47ef-9973-65a8d4236412.webp-70d6dad2e059eddf9d6a6cebb0bd0b5c.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

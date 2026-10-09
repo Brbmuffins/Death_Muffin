@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d1k7kri5lruo5"
-path="res://.godot/imported/gibbet_cage_NormalGL_d0ecf56e-c7f9-4acd-96e6-1ab2ccfc95c9.webp-b7414531ed2831ce5451e115e10bfc79.ctex"
+path.s3tc="res://.godot/imported/gibbet_cage_NormalGL_d0ecf56e-c7f9-4acd-96e6-1ab2ccfc95c9.webp-b7414531ed2831ce5451e115e10bfc79.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "62d56321be87d775b31c371da2ef15f1"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/gibbet_cage_NormalGL_d0ecf56e-c7f9-4acd-96e6-1ab2ccfc95c9.webp"
-dest_files=["res://.godot/imported/gibbet_cage_NormalGL_d0ecf56e-c7f9-4acd-96e6-1ab2ccfc95c9.webp-b7414531ed2831ce5451e115e10bfc79.ctex"]
+dest_files=["res://.godot/imported/gibbet_cage_NormalGL_d0ecf56e-c7f9-4acd-96e6-1ab2ccfc95c9.webp-b7414531ed2831ce5451e115e10bfc79.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

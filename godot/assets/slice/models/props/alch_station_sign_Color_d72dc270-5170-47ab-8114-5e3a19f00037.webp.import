@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bjhsejaqdmqdm"
-path="res://.godot/imported/alch_station_sign_Color_d72dc270-5170-47ab-8114-5e3a19f00037.webp-c10f4e5c12d676049f01a86e8e8d0120.ctex"
+path.bptc="res://.godot/imported/alch_station_sign_Color_d72dc270-5170-47ab-8114-5e3a19f00037.webp-c10f4e5c12d676049f01a86e8e8d0120.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ee4a8d02da6e4782d4f9e54d30ce7426"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_station_sign_Color_d72dc270-5170-47ab-8114-5e3a19f00037.webp"
-dest_files=["res://.godot/imported/alch_station_sign_Color_d72dc270-5170-47ab-8114-5e3a19f00037.webp-c10f4e5c12d676049f01a86e8e8d0120.ctex"]
+dest_files=["res://.godot/imported/alch_station_sign_Color_d72dc270-5170-47ab-8114-5e3a19f00037.webp-c10f4e5c12d676049f01a86e8e8d0120.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

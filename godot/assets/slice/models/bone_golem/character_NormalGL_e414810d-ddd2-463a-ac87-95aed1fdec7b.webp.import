@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b5dkad7sel7uk"
-path="res://.godot/imported/character_NormalGL_e414810d-ddd2-463a-ac87-95aed1fdec7b.webp-2fa2cd9a993d002959a15501f31fa780.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_e414810d-ddd2-463a-ac87-95aed1fdec7b.webp-2fa2cd9a993d002959a15501f31fa780.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "90192a66f2fcc1a5d12e972796d51772"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/bone_golem/character_NormalGL_e414810d-ddd2-463a-ac87-95aed1fdec7b.webp"
-dest_files=["res://.godot/imported/character_NormalGL_e414810d-ddd2-463a-ac87-95aed1fdec7b.webp-2fa2cd9a993d002959a15501f31fa780.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_e414810d-ddd2-463a-ac87-95aed1fdec7b.webp-2fa2cd9a993d002959a15501f31fa780.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

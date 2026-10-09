@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bxsl4x86d5h0f"
-path="res://.godot/imported/character_ORM_cabe14a4-ab3c-45ae-8049-e26885cc9fbe.webp-9cc18ccca11491df058bd5743ecf9993.ctex"
+path.bptc="res://.godot/imported/character_ORM_cabe14a4-ab3c-45ae-8049-e26885cc9fbe.webp-9cc18ccca11491df058bd5743ecf9993.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b5b1b4a36915eedb23be88106a001482"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/cinder_husk/character_ORM_cabe14a4-ab3c-45ae-8049-e26885cc9fbe.webp"
-dest_files=["res://.godot/imported/character_ORM_cabe14a4-ab3c-45ae-8049-e26885cc9fbe.webp-9cc18ccca11491df058bd5743ecf9993.ctex"]
+dest_files=["res://.godot/imported/character_ORM_cabe14a4-ab3c-45ae-8049-e26885cc9fbe.webp-9cc18ccca11491df058bd5743ecf9993.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

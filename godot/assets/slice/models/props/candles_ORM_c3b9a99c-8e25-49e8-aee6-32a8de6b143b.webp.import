@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://llb83nt47jw1"
-path="res://.godot/imported/candles_ORM_c3b9a99c-8e25-49e8-aee6-32a8de6b143b.webp-e6d017c9356e1e019e3c253fd0380aad.ctex"
+path.bptc="res://.godot/imported/candles_ORM_c3b9a99c-8e25-49e8-aee6-32a8de6b143b.webp-e6d017c9356e1e019e3c253fd0380aad.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "aea41c452975465c6c3cc2019f9cb1b7"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/candles_ORM_c3b9a99c-8e25-49e8-aee6-32a8de6b143b.webp"
-dest_files=["res://.godot/imported/candles_ORM_c3b9a99c-8e25-49e8-aee6-32a8de6b143b.webp-e6d017c9356e1e019e3c253fd0380aad.ctex"]
+dest_files=["res://.godot/imported/candles_ORM_c3b9a99c-8e25-49e8-aee6-32a8de6b143b.webp-e6d017c9356e1e019e3c253fd0380aad.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

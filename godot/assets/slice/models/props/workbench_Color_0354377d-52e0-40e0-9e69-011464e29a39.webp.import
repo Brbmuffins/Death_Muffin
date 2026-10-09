@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dspd6he4gsuao"
-path="res://.godot/imported/workbench_Color_0354377d-52e0-40e0-9e69-011464e29a39.webp-31af27de6b5519ad0f7b9343445767bd.ctex"
+path.bptc="res://.godot/imported/workbench_Color_0354377d-52e0-40e0-9e69-011464e29a39.webp-31af27de6b5519ad0f7b9343445767bd.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8dfd3af9fea601ce61ff942affb8f1b9"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/workbench_Color_0354377d-52e0-40e0-9e69-011464e29a39.webp"
-dest_files=["res://.godot/imported/workbench_Color_0354377d-52e0-40e0-9e69-011464e29a39.webp-31af27de6b5519ad0f7b9343445767bd.ctex"]
+dest_files=["res://.godot/imported/workbench_Color_0354377d-52e0-40e0-9e69-011464e29a39.webp-31af27de6b5519ad0f7b9343445767bd.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

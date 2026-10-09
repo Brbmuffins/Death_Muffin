@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bbodtkhbdruce"
-path="res://.godot/imported/alch_herb_bundle_Color_62ad61ff-facf-42d8-8b41-eaf9532d64bf.webp-abfe29de5c81a2cac97e82c05b1d9e5d.ctex"
+path.bptc="res://.godot/imported/alch_herb_bundle_Color_62ad61ff-facf-42d8-8b41-eaf9532d64bf.webp-abfe29de5c81a2cac97e82c05b1d9e5d.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b71c5ee8c114842e45a1900ffb7b9d4e"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_herb_bundle_Color_62ad61ff-facf-42d8-8b41-eaf9532d64bf.webp"
-dest_files=["res://.godot/imported/alch_herb_bundle_Color_62ad61ff-facf-42d8-8b41-eaf9532d64bf.webp-abfe29de5c81a2cac97e82c05b1d9e5d.ctex"]
+dest_files=["res://.godot/imported/alch_herb_bundle_Color_62ad61ff-facf-42d8-8b41-eaf9532d64bf.webp-abfe29de5c81a2cac97e82c05b1d9e5d.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

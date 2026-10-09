@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bxd3ks8nbbf12"
-path="res://.godot/imported/character_Color_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-8ab48150b812e33743c2e5b28a2a08e0.ctex"
+path.bptc="res://.godot/imported/character_Color_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-8ab48150b812e33743c2e5b28a2a08e0.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9953fbc863cd2f1d7f6c891f0acb6945"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/flagellant/character_Color_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp"
-dest_files=["res://.godot/imported/character_Color_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-8ab48150b812e33743c2e5b28a2a08e0.ctex"]
+dest_files=["res://.godot/imported/character_Color_40a29997-0cca-41e3-a8b4-404ab46bc53a.webp-8ab48150b812e33743c2e5b28a2a08e0.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

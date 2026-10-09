@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c7rdu6gbkoatu"
-path="res://.godot/imported/reliquary_Color_4fdac07e-64e3-46a6-bda5-03134eb0f009.webp-fa36f3d7f754000348b0a6e1648182a0.ctex"
+path.bptc="res://.godot/imported/reliquary_Color_4fdac07e-64e3-46a6-bda5-03134eb0f009.webp-fa36f3d7f754000348b0a6e1648182a0.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9ed619472bf766b3987ef9e061fae9f3"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/reliquary_Color_4fdac07e-64e3-46a6-bda5-03134eb0f009.webp"
-dest_files=["res://.godot/imported/reliquary_Color_4fdac07e-64e3-46a6-bda5-03134eb0f009.webp-fa36f3d7f754000348b0a6e1648182a0.ctex"]
+dest_files=["res://.godot/imported/reliquary_Color_4fdac07e-64e3-46a6-bda5-03134eb0f009.webp-fa36f3d7f754000348b0a6e1648182a0.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

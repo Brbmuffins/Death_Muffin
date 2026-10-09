@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://83cgyc2we5sl"
-path="res://.godot/imported/statue_ORM_428f3e95-191d-47c0-9506-11bb87707520.webp-8958e3a30925d5061a616d2b18139ba6.ctex"
+path.bptc="res://.godot/imported/statue_ORM_428f3e95-191d-47c0-9506-11bb87707520.webp-8958e3a30925d5061a616d2b18139ba6.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0bbbf64dbdeb4bb27b04e75653cf95f3"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/statue_ORM_428f3e95-191d-47c0-9506-11bb87707520.webp"
-dest_files=["res://.godot/imported/statue_ORM_428f3e95-191d-47c0-9506-11bb87707520.webp-8958e3a30925d5061a616d2b18139ba6.ctex"]
+dest_files=["res://.godot/imported/statue_ORM_428f3e95-191d-47c0-9506-11bb87707520.webp-8958e3a30925d5061a616d2b18139ba6.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

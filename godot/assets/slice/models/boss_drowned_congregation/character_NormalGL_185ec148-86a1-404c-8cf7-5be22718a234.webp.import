@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b5ogf5jlkrl5d"
-path="res://.godot/imported/character_NormalGL_185ec148-86a1-404c-8cf7-5be22718a234.webp-98c277c1e7f5ebddd26bb95c4241dde3.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_185ec148-86a1-404c-8cf7-5be22718a234.webp-98c277c1e7f5ebddd26bb95c4241dde3.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "4a53b2f086b670d65435ae5168833e0d"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/boss_drowned_congregation/character_NormalGL_185ec148-86a1-404c-8cf7-5be22718a234.webp"
-dest_files=["res://.godot/imported/character_NormalGL_185ec148-86a1-404c-8cf7-5be22718a234.webp-98c277c1e7f5ebddd26bb95c4241dde3.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_185ec148-86a1-404c-8cf7-5be22718a234.webp-98c277c1e7f5ebddd26bb95c4241dde3.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

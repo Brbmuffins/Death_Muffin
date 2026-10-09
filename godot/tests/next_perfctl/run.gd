@@ -170,6 +170,22 @@ func _warmup() -> void:
 			kinds += 1
 	for slug in DmNextWarmup.creature_slugs():
 		DmCreature.new(String(slug), {}).dispose()
+	# residency: the hero kits a session can show (playable disciplines + the local hero) stay loaded, the greyed-out ones are released
+	var in_play := DmWarmup.hero_slugs_in_play()
+	var kept := 0
+	var freed := 0
+	for p in DmWarmup._model_paths():
+		var slug: String = String(p).trim_prefix(DmWarmup.MODELS).get_slice("/", 0)
+		if not slug.begins_with("hero_"):
+			continue
+		if in_play.has(slug):
+			kept += 1
+			check(ResourceLoader.has_cached(p), "residency: %s (playable) stays loaded" % slug)
+			DmCreature.new(slug, {}).dispose()   # (cold_loads below proves a playable hero never loads from disk)
+		else:
+			freed += 1
+			check(not ResourceLoader.has_cached(p), "residency: %s (not playable) is released" % slug)
+	check(kept >= 4 and freed >= 1 and DmWarmup.released_heroes == freed, "residency: %d hero kits kept, %d released (%d)" % [kept, freed, DmWarmup.released_heroes])
 	if vfx.binbun != null and vfx.binbun.enabled:
 		for id in DmFxData.data().get("effects", {}).keys():
 			vfx.binbun._scene(String(id))

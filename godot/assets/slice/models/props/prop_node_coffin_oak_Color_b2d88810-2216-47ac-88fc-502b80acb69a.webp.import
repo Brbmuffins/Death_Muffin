@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d3oksedep3qqe"
-path="res://.godot/imported/prop_node_coffin_oak_Color_b2d88810-2216-47ac-88fc-502b80acb69a.webp-17fe8ab999ce2c680cc990749d04039c.ctex"
+path.bptc="res://.godot/imported/prop_node_coffin_oak_Color_b2d88810-2216-47ac-88fc-502b80acb69a.webp-17fe8ab999ce2c680cc990749d04039c.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1f2e73f38a64ae30fe658a4101fad848"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_coffin_oak_Color_b2d88810-2216-47ac-88fc-502b80acb69a.webp"
-dest_files=["res://.godot/imported/prop_node_coffin_oak_Color_b2d88810-2216-47ac-88fc-502b80acb69a.webp-17fe8ab999ce2c680cc990749d04039c.ctex"]
+dest_files=["res://.godot/imported/prop_node_coffin_oak_Color_b2d88810-2216-47ac-88fc-502b80acb69a.webp-17fe8ab999ce2c680cc990749d04039c.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

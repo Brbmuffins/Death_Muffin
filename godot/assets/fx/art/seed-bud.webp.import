@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dnp0p44r25g4b"
-path="res://.godot/imported/seed-bud.webp-a9355337e58ca4a79b32e34d76e18def.ctex"
+path.bptc="res://.godot/imported/seed-bud.webp-a9355337e58ca4a79b32e34d76e18def.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/fx/art/seed-bud.webp"
-dest_files=["res://.godot/imported/seed-bud.webp-a9355337e58ca4a79b32e34d76e18def.ctex"]
+dest_files=["res://.godot/imported/seed-bud.webp-a9355337e58ca4a79b32e34d76e18def.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

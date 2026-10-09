@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://vtw16kh1l31v"
-path="res://.godot/imported/tombstone_cross_ORM_74601b94-cf66-42da-bd0d-4adfd1e5603b.webp-4f3715d1af62683ec6b6c81db5a41f71.ctex"
+path.bptc="res://.godot/imported/tombstone_cross_ORM_74601b94-cf66-42da-bd0d-4adfd1e5603b.webp-4f3715d1af62683ec6b6c81db5a41f71.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "3fc12d2b33dd9f6355900fa83caf491b"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/tombstone_cross_ORM_74601b94-cf66-42da-bd0d-4adfd1e5603b.webp"
-dest_files=["res://.godot/imported/tombstone_cross_ORM_74601b94-cf66-42da-bd0d-4adfd1e5603b.webp-4f3715d1af62683ec6b6c81db5a41f71.ctex"]
+dest_files=["res://.godot/imported/tombstone_cross_ORM_74601b94-cf66-42da-bd0d-4adfd1e5603b.webp-4f3715d1af62683ec6b6c81db5a41f71.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

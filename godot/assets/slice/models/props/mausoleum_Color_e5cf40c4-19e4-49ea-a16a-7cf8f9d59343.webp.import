@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d3tubwhgkvbro"
-path="res://.godot/imported/mausoleum_Color_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-38b4283456c4916d539e929178d78a2e.ctex"
+path.bptc="res://.godot/imported/mausoleum_Color_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-38b4283456c4916d539e929178d78a2e.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d6e02f5fef0dc418a64b6be66b67c583"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/mausoleum_Color_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp"
-dest_files=["res://.godot/imported/mausoleum_Color_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-38b4283456c4916d539e929178d78a2e.ctex"]
+dest_files=["res://.godot/imported/mausoleum_Color_e5cf40c4-19e4-49ea-a16a-7cf8f9d59343.webp-38b4283456c4916d539e929178d78a2e.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

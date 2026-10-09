@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://coimuqvkweyff"
-path="res://.godot/imported/rite_niches_ORM_6595f828-8c0f-4464-b239-9f264b8ea902.webp-9a742fcd6bf63f8d3bd2e62227bb2ffa.ctex"
+path.bptc="res://.godot/imported/rite_niches_ORM_6595f828-8c0f-4464-b239-9f264b8ea902.webp-9a742fcd6bf63f8d3bd2e62227bb2ffa.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "052150c573cacb15be36881815cba709"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/rite_niches_ORM_6595f828-8c0f-4464-b239-9f264b8ea902.webp"
-dest_files=["res://.godot/imported/rite_niches_ORM_6595f828-8c0f-4464-b239-9f264b8ea902.webp-9a742fcd6bf63f8d3bd2e62227bb2ffa.ctex"]
+dest_files=["res://.godot/imported/rite_niches_ORM_6595f828-8c0f-4464-b239-9f264b8ea902.webp-9a742fcd6bf63f8d3bd2e62227bb2ffa.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

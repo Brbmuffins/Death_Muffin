@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dqjyced1dw0af"
-path="res://.godot/imported/altar_ascension_ORM_e699d872-4307-489b-9442-df0058e32d30.webp-8838413f9ce37d126ccfe59ce1094ef2.ctex"
+path.bptc="res://.godot/imported/altar_ascension_ORM_e699d872-4307-489b-9442-df0058e32d30.webp-8838413f9ce37d126ccfe59ce1094ef2.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "820f3ea5aa7c5bfdd745aab9373d9cf9"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/altar_ascension_ORM_e699d872-4307-489b-9442-df0058e32d30.webp"
-dest_files=["res://.godot/imported/altar_ascension_ORM_e699d872-4307-489b-9442-df0058e32d30.webp-8838413f9ce37d126ccfe59ce1094ef2.ctex"]
+dest_files=["res://.godot/imported/altar_ascension_ORM_e699d872-4307-489b-9442-df0058e32d30.webp-8838413f9ce37d126ccfe59ce1094ef2.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

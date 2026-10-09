@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bswxvjgc0sjiv"
-path="res://.godot/imported/alch_cauldron_NormalGL_6cb3825b-5a82-41e7-9443-d1ebe73a70f2.webp-99e8b4defc2df4b4b8560ad620f67db8.ctex"
+path.s3tc="res://.godot/imported/alch_cauldron_NormalGL_6cb3825b-5a82-41e7-9443-d1ebe73a70f2.webp-99e8b4defc2df4b4b8560ad620f67db8.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b0eb50718b7b5ad200afa7e35f11c77d"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_cauldron_NormalGL_6cb3825b-5a82-41e7-9443-d1ebe73a70f2.webp"
-dest_files=["res://.godot/imported/alch_cauldron_NormalGL_6cb3825b-5a82-41e7-9443-d1ebe73a70f2.webp-99e8b4defc2df4b4b8560ad620f67db8.ctex"]
+dest_files=["res://.godot/imported/alch_cauldron_NormalGL_6cb3825b-5a82-41e7-9443-d1ebe73a70f2.webp-99e8b4defc2df4b4b8560ad620f67db8.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

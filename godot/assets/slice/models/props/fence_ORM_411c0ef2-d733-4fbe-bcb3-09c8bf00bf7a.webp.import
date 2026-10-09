@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dxv5eyrmx7tx8"
-path="res://.godot/imported/fence_ORM_411c0ef2-d733-4fbe-bcb3-09c8bf00bf7a.webp-335a43ba0d9ca0a053d5b55a01fa158f.ctex"
+path.bptc="res://.godot/imported/fence_ORM_411c0ef2-d733-4fbe-bcb3-09c8bf00bf7a.webp-335a43ba0d9ca0a053d5b55a01fa158f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2b48a3ed6e2ea3e1a2c11ecc31b340da"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/fence_ORM_411c0ef2-d733-4fbe-bcb3-09c8bf00bf7a.webp"
-dest_files=["res://.godot/imported/fence_ORM_411c0ef2-d733-4fbe-bcb3-09c8bf00bf7a.webp-335a43ba0d9ca0a053d5b55a01fa158f.ctex"]
+dest_files=["res://.godot/imported/fence_ORM_411c0ef2-d733-4fbe-bcb3-09c8bf00bf7a.webp-335a43ba0d9ca0a053d5b55a01fa158f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

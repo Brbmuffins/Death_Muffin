@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b7sbqxpsl01hs"
-path="res://.godot/imported/skull_wall_Color_2dd83e5c-301f-4251-9e60-536dbfa05038.webp-8405c68c3a1f38592d060999acba96e9.ctex"
+path.bptc="res://.godot/imported/skull_wall_Color_2dd83e5c-301f-4251-9e60-536dbfa05038.webp-8405c68c3a1f38592d060999acba96e9.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c503318222e25d6ae50c1dd3f9b21c3d"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/skull_wall_Color_2dd83e5c-301f-4251-9e60-536dbfa05038.webp"
-dest_files=["res://.godot/imported/skull_wall_Color_2dd83e5c-301f-4251-9e60-536dbfa05038.webp-8405c68c3a1f38592d060999acba96e9.ctex"]
+dest_files=["res://.godot/imported/skull_wall_Color_2dd83e5c-301f-4251-9e60-536dbfa05038.webp-8405c68c3a1f38592d060999acba96e9.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

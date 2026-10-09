@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dahfw40a730o1"
-path="res://.godot/imported/character_NormalGL_c11173e7-ab2d-46de-b01c-acb61c0af0e9.webp-121ddc71aff08b1ea7dfc1c4281e58f6.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_c11173e7-ab2d-46de-b01c-acb61c0af0e9.webp-121ddc71aff08b1ea7dfc1c4281e58f6.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "4b91a80be46268006db76b63227cddb6"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_mourner/character_NormalGL_c11173e7-ab2d-46de-b01c-acb61c0af0e9.webp"
-dest_files=["res://.godot/imported/character_NormalGL_c11173e7-ab2d-46de-b01c-acb61c0af0e9.webp-121ddc71aff08b1ea7dfc1c4281e58f6.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_c11173e7-ab2d-46de-b01c-acb61c0af0e9.webp-121ddc71aff08b1ea7dfc1c4281e58f6.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

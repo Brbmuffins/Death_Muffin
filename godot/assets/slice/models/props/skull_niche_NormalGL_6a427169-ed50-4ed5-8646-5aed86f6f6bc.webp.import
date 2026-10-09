@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c0xfvli302fr0"
-path="res://.godot/imported/skull_niche_NormalGL_6a427169-ed50-4ed5-8646-5aed86f6f6bc.webp-35cc0732b410aea858a81c084ead300c.ctex"
+path.s3tc="res://.godot/imported/skull_niche_NormalGL_6a427169-ed50-4ed5-8646-5aed86f6f6bc.webp-35cc0732b410aea858a81c084ead300c.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6177c94c2f6c8aa3984ba131b6a3ba00"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/skull_niche_NormalGL_6a427169-ed50-4ed5-8646-5aed86f6f6bc.webp"
-dest_files=["res://.godot/imported/skull_niche_NormalGL_6a427169-ed50-4ed5-8646-5aed86f6f6bc.webp-35cc0732b410aea858a81c084ead300c.ctex"]
+dest_files=["res://.godot/imported/skull_niche_NormalGL_6a427169-ed50-4ed5-8646-5aed86f6f6bc.webp-35cc0732b410aea858a81c084ead300c.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

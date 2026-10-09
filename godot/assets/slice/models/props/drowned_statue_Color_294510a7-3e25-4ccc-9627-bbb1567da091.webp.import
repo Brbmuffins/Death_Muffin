@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://df5d3crsx7emm"
-path="res://.godot/imported/drowned_statue_Color_294510a7-3e25-4ccc-9627-bbb1567da091.webp-e8a7cd830f720d6faa43087caf82eeab.ctex"
+path.bptc="res://.godot/imported/drowned_statue_Color_294510a7-3e25-4ccc-9627-bbb1567da091.webp-e8a7cd830f720d6faa43087caf82eeab.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e6f0874dcb2174bd3613d4ff0012df7b"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/drowned_statue_Color_294510a7-3e25-4ccc-9627-bbb1567da091.webp"
-dest_files=["res://.godot/imported/drowned_statue_Color_294510a7-3e25-4ccc-9627-bbb1567da091.webp-e8a7cd830f720d6faa43087caf82eeab.ctex"]
+dest_files=["res://.godot/imported/drowned_statue_Color_294510a7-3e25-4ccc-9627-bbb1567da091.webp-e8a7cd830f720d6faa43087caf82eeab.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

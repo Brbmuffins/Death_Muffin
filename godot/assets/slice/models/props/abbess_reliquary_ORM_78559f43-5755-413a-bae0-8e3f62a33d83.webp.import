@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://2gtkxnotwayq"
-path="res://.godot/imported/abbess_reliquary_ORM_78559f43-5755-413a-bae0-8e3f62a33d83.webp-2fedc6fc533b20519967f3eb2103b2bd.ctex"
+path.bptc="res://.godot/imported/abbess_reliquary_ORM_78559f43-5755-413a-bae0-8e3f62a33d83.webp-2fedc6fc533b20519967f3eb2103b2bd.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "df08a5b34f3f6289546291163188e0ba"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/abbess_reliquary_ORM_78559f43-5755-413a-bae0-8e3f62a33d83.webp"
-dest_files=["res://.godot/imported/abbess_reliquary_ORM_78559f43-5755-413a-bae0-8e3f62a33d83.webp-2fedc6fc533b20519967f3eb2103b2bd.ctex"]
+dest_files=["res://.godot/imported/abbess_reliquary_ORM_78559f43-5755-413a-bae0-8e3f62a33d83.webp-2fedc6fc533b20519967f3eb2103b2bd.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

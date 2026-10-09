@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://n55ymb67srbx"
-path="res://.godot/imported/sarcophagus_ORM_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a.webp-0d41b968def5eb21715d25f6f4f60837.ctex"
+path.bptc="res://.godot/imported/sarcophagus_ORM_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a.webp-0d41b968def5eb21715d25f6f4f60837.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8aa6a6b25eb52810bb4d20812fcc2ad2"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/sarcophagus_ORM_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a.webp"
-dest_files=["res://.godot/imported/sarcophagus_ORM_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a.webp-0d41b968def5eb21715d25f6f4f60837.ctex"]
+dest_files=["res://.godot/imported/sarcophagus_ORM_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a.webp-0d41b968def5eb21715d25f6f4f60837.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

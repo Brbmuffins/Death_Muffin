@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://jyayr2o248y"
-path="res://.godot/imported/character_Color_e2aafe64-a7f7-4d57-92d4-5776101ae5db.webp-52096f8ec7de5f204b3eb5dd6ef303ed.ctex"
+path.bptc="res://.godot/imported/character_Color_e2aafe64-a7f7-4d57-92d4-5776101ae5db.webp-52096f8ec7de5f204b3eb5dd6ef303ed.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5a0fe49f1fc3280b9eebec7d41922278"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/boss_cinder_regent/character_Color_e2aafe64-a7f7-4d57-92d4-5776101ae5db.webp"
-dest_files=["res://.godot/imported/character_Color_e2aafe64-a7f7-4d57-92d4-5776101ae5db.webp-52096f8ec7de5f204b3eb5dd6ef303ed.ctex"]
+dest_files=["res://.godot/imported/character_Color_e2aafe64-a7f7-4d57-92d4-5776101ae5db.webp-52096f8ec7de5f204b3eb5dd6ef303ed.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

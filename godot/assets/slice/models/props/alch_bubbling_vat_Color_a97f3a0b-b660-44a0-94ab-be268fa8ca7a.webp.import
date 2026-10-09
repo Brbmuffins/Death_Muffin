@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ctfrqkddneplt"
-path="res://.godot/imported/alch_bubbling_vat_Color_a97f3a0b-b660-44a0-94ab-be268fa8ca7a.webp-d4f57a410f36e0de743a6a8f78d0dcfd.ctex"
+path.bptc="res://.godot/imported/alch_bubbling_vat_Color_a97f3a0b-b660-44a0-94ab-be268fa8ca7a.webp-d4f57a410f36e0de743a6a8f78d0dcfd.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "bbf97fa0568851f2ec29fb996f3017f0"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_bubbling_vat_Color_a97f3a0b-b660-44a0-94ab-be268fa8ca7a.webp"
-dest_files=["res://.godot/imported/alch_bubbling_vat_Color_a97f3a0b-b660-44a0-94ab-be268fa8ca7a.webp-d4f57a410f36e0de743a6a8f78d0dcfd.ctex"]
+dest_files=["res://.godot/imported/alch_bubbling_vat_Color_a97f3a0b-b660-44a0-94ab-be268fa8ca7a.webp-d4f57a410f36e0de743a6a8f78d0dcfd.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

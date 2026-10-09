@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://278koq7ujb2f"
-path="res://.godot/imported/character_Color_a2b3f781-b86b-4008-872f-582434a36a01.webp-206867ed0c8f1b79e0f843dbcb1de873.ctex"
+path.bptc="res://.godot/imported/character_Color_a2b3f781-b86b-4008-872f-582434a36a01.webp-206867ed0c8f1b79e0f843dbcb1de873.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f446d11f71af0983f9b62ef746e5d55b"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_veilwalker/character_Color_a2b3f781-b86b-4008-872f-582434a36a01.webp"
-dest_files=["res://.godot/imported/character_Color_a2b3f781-b86b-4008-872f-582434a36a01.webp-206867ed0c8f1b79e0f843dbcb1de873.ctex"]
+dest_files=["res://.godot/imported/character_Color_a2b3f781-b86b-4008-872f-582434a36a01.webp-206867ed0c8f1b79e0f843dbcb1de873.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

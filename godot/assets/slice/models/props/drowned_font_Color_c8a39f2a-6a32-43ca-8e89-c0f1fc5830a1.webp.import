@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cicjl8027wh5s"
-path="res://.godot/imported/drowned_font_Color_c8a39f2a-6a32-43ca-8e89-c0f1fc5830a1.webp-d3e160a7b57b0b2658c5564e90bd765e.ctex"
+path.bptc="res://.godot/imported/drowned_font_Color_c8a39f2a-6a32-43ca-8e89-c0f1fc5830a1.webp-d3e160a7b57b0b2658c5564e90bd765e.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "eeceff96027e13e316ee52faeb45e3d4"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/drowned_font_Color_c8a39f2a-6a32-43ca-8e89-c0f1fc5830a1.webp"
-dest_files=["res://.godot/imported/drowned_font_Color_c8a39f2a-6a32-43ca-8e89-c0f1fc5830a1.webp-d3e160a7b57b0b2658c5564e90bd765e.ctex"]
+dest_files=["res://.godot/imported/drowned_font_Color_c8a39f2a-6a32-43ca-8e89-c0f1fc5830a1.webp-d3e160a7b57b0b2658c5564e90bd765e.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

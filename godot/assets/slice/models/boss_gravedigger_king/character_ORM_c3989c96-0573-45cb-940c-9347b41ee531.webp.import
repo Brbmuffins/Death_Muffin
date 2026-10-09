@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bewm5x8mum3e3"
-path="res://.godot/imported/character_ORM_c3989c96-0573-45cb-940c-9347b41ee531.webp-9d1460ed069148774a0cba2a126956d9.ctex"
+path.bptc="res://.godot/imported/character_ORM_c3989c96-0573-45cb-940c-9347b41ee531.webp-9d1460ed069148774a0cba2a126956d9.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0a5b02a73ffb80581ca4f6568242c62d"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/boss_gravedigger_king/character_ORM_c3989c96-0573-45cb-940c-9347b41ee531.webp"
-dest_files=["res://.godot/imported/character_ORM_c3989c96-0573-45cb-940c-9347b41ee531.webp-9d1460ed069148774a0cba2a126956d9.ctex"]
+dest_files=["res://.godot/imported/character_ORM_c3989c96-0573-45cb-940c-9347b41ee531.webp-9d1460ed069148774a0cba2a126956d9.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

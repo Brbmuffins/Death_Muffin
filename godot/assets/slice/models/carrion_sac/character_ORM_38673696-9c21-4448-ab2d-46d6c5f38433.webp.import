@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cd4cro85rfgl6"
-path="res://.godot/imported/character_ORM_38673696-9c21-4448-ab2d-46d6c5f38433.webp-b97c5f0c0e146fd811f4d481926efd36.ctex"
+path.bptc="res://.godot/imported/character_ORM_38673696-9c21-4448-ab2d-46d6c5f38433.webp-b97c5f0c0e146fd811f4d481926efd36.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7880fa03ebe0f656edf96f519b01e9de"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/carrion_sac/character_ORM_38673696-9c21-4448-ab2d-46d6c5f38433.webp"
-dest_files=["res://.godot/imported/character_ORM_38673696-9c21-4448-ab2d-46d6c5f38433.webp-b97c5f0c0e146fd811f4d481926efd36.ctex"]
+dest_files=["res://.godot/imported/character_ORM_38673696-9c21-4448-ab2d-46d6c5f38433.webp-b97c5f0c0e146fd811f4d481926efd36.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

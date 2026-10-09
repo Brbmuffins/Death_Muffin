@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cwksjvfd7nhyy"
-path="res://.godot/imported/alch_drying_rack_Color_5d722c8b-a171-4b64-88c5-09cb58ecce8c.webp-99ea297225c8922dc06d71f2d683e03c.ctex"
+path.bptc="res://.godot/imported/alch_drying_rack_Color_5d722c8b-a171-4b64-88c5-09cb58ecce8c.webp-99ea297225c8922dc06d71f2d683e03c.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1c3e3443cc6465c229e7f777fea6cb1d"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_drying_rack_Color_5d722c8b-a171-4b64-88c5-09cb58ecce8c.webp"
-dest_files=["res://.godot/imported/alch_drying_rack_Color_5d722c8b-a171-4b64-88c5-09cb58ecce8c.webp-99ea297225c8922dc06d71f2d683e03c.ctex"]
+dest_files=["res://.godot/imported/alch_drying_rack_Color_5d722c8b-a171-4b64-88c5-09cb58ecce8c.webp-99ea297225c8922dc06d71f2d683e03c.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

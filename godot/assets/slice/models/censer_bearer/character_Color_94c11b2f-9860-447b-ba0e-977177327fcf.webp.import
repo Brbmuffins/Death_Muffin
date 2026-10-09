@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://7t0r5djhjh10"
-path="res://.godot/imported/character_Color_94c11b2f-9860-447b-ba0e-977177327fcf.webp-7aec6071d3c55df87b7a4e1d0eac4984.ctex"
+path.bptc="res://.godot/imported/character_Color_94c11b2f-9860-447b-ba0e-977177327fcf.webp-7aec6071d3c55df87b7a4e1d0eac4984.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7864c33b18bf2b0734b5cc29561185b4"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/censer_bearer/character_Color_94c11b2f-9860-447b-ba0e-977177327fcf.webp"
-dest_files=["res://.godot/imported/character_Color_94c11b2f-9860-447b-ba0e-977177327fcf.webp-7aec6071d3c55df87b7a4e1d0eac4984.ctex"]
+dest_files=["res://.godot/imported/character_Color_94c11b2f-9860-447b-ba0e-977177327fcf.webp-7aec6071d3c55df87b7a4e1d0eac4984.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

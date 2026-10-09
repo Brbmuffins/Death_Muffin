@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c7777dexh366w"
-path="res://.godot/imported/mire_altar_Color_0615baa1-45d3-4608-9143-cb860ba76a33.webp-60bebbd182db7e469fda1ccf4dae476f.ctex"
+path.bptc="res://.godot/imported/mire_altar_Color_0615baa1-45d3-4608-9143-cb860ba76a33.webp-60bebbd182db7e469fda1ccf4dae476f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "48214471e27bb86bc1cca96873c8923d"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/mire_altar_Color_0615baa1-45d3-4608-9143-cb860ba76a33.webp"
-dest_files=["res://.godot/imported/mire_altar_Color_0615baa1-45d3-4608-9143-cb860ba76a33.webp-60bebbd182db7e469fda1ccf4dae476f.ctex"]
+dest_files=["res://.godot/imported/mire_altar_Color_0615baa1-45d3-4608-9143-cb860ba76a33.webp-60bebbd182db7e469fda1ccf4dae476f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bji21vhwwkwwn"
-path="res://.godot/imported/prop_node_barrow_tomb_ORM_810d9c79-a26f-46d1-ac5f-1c12e9975ac3.webp-a9b602070c25dc48d311c48d70af29db.ctex"
+path.bptc="res://.godot/imported/prop_node_barrow_tomb_ORM_810d9c79-a26f-46d1-ac5f-1c12e9975ac3.webp-a9b602070c25dc48d311c48d70af29db.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2c072fbb33923094d5ab2c398213c0f3"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_barrow_tomb_ORM_810d9c79-a26f-46d1-ac5f-1c12e9975ac3.webp"
-dest_files=["res://.godot/imported/prop_node_barrow_tomb_ORM_810d9c79-a26f-46d1-ac5f-1c12e9975ac3.webp-a9b602070c25dc48d311c48d70af29db.ctex"]
+dest_files=["res://.godot/imported/prop_node_barrow_tomb_ORM_810d9c79-a26f-46d1-ac5f-1c12e9975ac3.webp-a9b602070c25dc48d311c48d70af29db.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

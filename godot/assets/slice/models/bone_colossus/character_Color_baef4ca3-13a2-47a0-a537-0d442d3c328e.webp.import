@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dhoqwg6v72kq6"
-path="res://.godot/imported/character_Color_baef4ca3-13a2-47a0-a537-0d442d3c328e.webp-d54ba01a18becfaae0fbf0f1602eb0c9.ctex"
+path.bptc="res://.godot/imported/character_Color_baef4ca3-13a2-47a0-a537-0d442d3c328e.webp-d54ba01a18becfaae0fbf0f1602eb0c9.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "4d89d0ab5060ade648c63efcbdcc80bc"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/bone_colossus/character_Color_baef4ca3-13a2-47a0-a537-0d442d3c328e.webp"
-dest_files=["res://.godot/imported/character_Color_baef4ca3-13a2-47a0-a537-0d442d3c328e.webp-d54ba01a18becfaae0fbf0f1602eb0c9.ctex"]
+dest_files=["res://.godot/imported/character_Color_baef4ca3-13a2-47a0-a537-0d442d3c328e.webp-d54ba01a18becfaae0fbf0f1602eb0c9.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

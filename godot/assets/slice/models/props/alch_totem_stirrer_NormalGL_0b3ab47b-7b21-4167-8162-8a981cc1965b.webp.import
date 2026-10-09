@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://1x5uovcr8sv8"
-path="res://.godot/imported/alch_totem_stirrer_NormalGL_0b3ab47b-7b21-4167-8162-8a981cc1965b.webp-2cd3110e49b25e1a7a6562f43bd90cdd.ctex"
+path.s3tc="res://.godot/imported/alch_totem_stirrer_NormalGL_0b3ab47b-7b21-4167-8162-8a981cc1965b.webp-2cd3110e49b25e1a7a6562f43bd90cdd.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b5432b97ab4ff06313c7175cd56f5b6a"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/alch_totem_stirrer_NormalGL_0b3ab47b-7b21-4167-8162-8a981cc1965b.webp"
-dest_files=["res://.godot/imported/alch_totem_stirrer_NormalGL_0b3ab47b-7b21-4167-8162-8a981cc1965b.webp-2cd3110e49b25e1a7a6562f43bd90cdd.ctex"]
+dest_files=["res://.godot/imported/alch_totem_stirrer_NormalGL_0b3ab47b-7b21-4167-8162-8a981cc1965b.webp-2cd3110e49b25e1a7a6562f43bd90cdd.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

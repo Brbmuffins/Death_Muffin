@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dcp6oogfq4x"
-path="res://.godot/imported/character_ORM_f347a546-105e-4747-98d6-00e81502297a.webp-cf896c96c39963319337449408ecd35c.ctex"
+path.bptc="res://.godot/imported/character_ORM_f347a546-105e-4747-98d6-00e81502297a.webp-cf896c96c39963319337449408ecd35c.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7c5f65b7a4920416fd6690a5c9ff59a0"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/boss_mire_mother/character_ORM_f347a546-105e-4747-98d6-00e81502297a.webp"
-dest_files=["res://.godot/imported/character_ORM_f347a546-105e-4747-98d6-00e81502297a.webp-cf896c96c39963319337449408ecd35c.ctex"]
+dest_files=["res://.godot/imported/character_ORM_f347a546-105e-4747-98d6-00e81502297a.webp-cf896c96c39963319337449408ecd35c.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

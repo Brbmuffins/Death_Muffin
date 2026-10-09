@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://8b6ajupnydea"
-path="res://.godot/imported/ember_altar_Color_918f5b2a-3fa2-4441-a0f7-1d2919485bd4.webp-47eb3e1bcfdab7b8a6e563aa40622cab.ctex"
+path.bptc="res://.godot/imported/ember_altar_Color_918f5b2a-3fa2-4441-a0f7-1d2919485bd4.webp-47eb3e1bcfdab7b8a6e563aa40622cab.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7235cdc0c0984827824daa85ec8ec5c1"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/ember_altar_Color_918f5b2a-3fa2-4441-a0f7-1d2919485bd4.webp"
-dest_files=["res://.godot/imported/ember_altar_Color_918f5b2a-3fa2-4441-a0f7-1d2919485bd4.webp-47eb3e1bcfdab7b8a6e563aa40622cab.ctex"]
+dest_files=["res://.godot/imported/ember_altar_Color_918f5b2a-3fa2-4441-a0f7-1d2919485bd4.webp-47eb3e1bcfdab7b8a6e563aa40622cab.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

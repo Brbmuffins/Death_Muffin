@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://7pgy0fa42rtg"
-path="res://.godot/imported/wraith_thrall_ORM_71978ec2-9244-46f9-8088-5d9bbdcd9d31.webp-a654a538da609354a0ba4b62dd557863.ctex"
+path.bptc="res://.godot/imported/wraith_thrall_ORM_71978ec2-9244-46f9-8088-5d9bbdcd9d31.webp-a654a538da609354a0ba4b62dd557863.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "429d7187de7c8f79ca58c8a216b00e15"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/wraith_thrall_ORM_71978ec2-9244-46f9-8088-5d9bbdcd9d31.webp"
-dest_files=["res://.godot/imported/wraith_thrall_ORM_71978ec2-9244-46f9-8088-5d9bbdcd9d31.webp-a654a538da609354a0ba4b62dd557863.ctex"]
+dest_files=["res://.godot/imported/wraith_thrall_ORM_71978ec2-9244-46f9-8088-5d9bbdcd9d31.webp-a654a538da609354a0ba4b62dd557863.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

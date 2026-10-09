@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cmlxniaqsda70"
-path="res://.godot/imported/waystone_Color_5bb7af27-7ba8-46a4-9169-ae51256ba4dc.webp-af24c43d0c40869c2813046a91673468.ctex"
+path.bptc="res://.godot/imported/waystone_Color_5bb7af27-7ba8-46a4-9169-ae51256ba4dc.webp-af24c43d0c40869c2813046a91673468.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f9b1bea2b85a866e8422ca62fab8fd46"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/waystone_Color_5bb7af27-7ba8-46a4-9169-ae51256ba4dc.webp"
-dest_files=["res://.godot/imported/waystone_Color_5bb7af27-7ba8-46a4-9169-ae51256ba4dc.webp-af24c43d0c40869c2813046a91673468.ctex"]
+dest_files=["res://.godot/imported/waystone_Color_5bb7af27-7ba8-46a4-9169-ae51256ba4dc.webp-af24c43d0c40869c2813046a91673468.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bove7ioj1x4gc"
-path="res://.godot/imported/pillar_ORM_d495a5cc-e12e-4ecb-8615-1919cb35f3cf.webp-340158e7b4945fb589f4831234b30feb.ctex"
+path.bptc="res://.godot/imported/pillar_ORM_d495a5cc-e12e-4ecb-8615-1919cb35f3cf.webp-340158e7b4945fb589f4831234b30feb.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7324f7467cd1d1ceaa3e27ee662fb4d7"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/pillar_ORM_d495a5cc-e12e-4ecb-8615-1919cb35f3cf.webp"
-dest_files=["res://.godot/imported/pillar_ORM_d495a5cc-e12e-4ecb-8615-1919cb35f3cf.webp-340158e7b4945fb589f4831234b30feb.ctex"]
+dest_files=["res://.godot/imported/pillar_ORM_d495a5cc-e12e-4ecb-8615-1919cb35f3cf.webp-340158e7b4945fb589f4831234b30feb.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

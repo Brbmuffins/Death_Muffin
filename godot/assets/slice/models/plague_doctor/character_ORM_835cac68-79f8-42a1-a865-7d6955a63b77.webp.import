@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cw54ffxy32vny"
-path="res://.godot/imported/character_ORM_835cac68-79f8-42a1-a865-7d6955a63b77.webp-b329351e21671fed3b9187ab927d2832.ctex"
+path.bptc="res://.godot/imported/character_ORM_835cac68-79f8-42a1-a865-7d6955a63b77.webp-b329351e21671fed3b9187ab927d2832.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "22c322b082f72a3e3974e9f435f2e2de"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/plague_doctor/character_ORM_835cac68-79f8-42a1-a865-7d6955a63b77.webp"
-dest_files=["res://.godot/imported/character_ORM_835cac68-79f8-42a1-a865-7d6955a63b77.webp-b329351e21671fed3b9187ab927d2832.ctex"]
+dest_files=["res://.godot/imported/character_ORM_835cac68-79f8-42a1-a865-7d6955a63b77.webp-b329351e21671fed3b9187ab927d2832.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

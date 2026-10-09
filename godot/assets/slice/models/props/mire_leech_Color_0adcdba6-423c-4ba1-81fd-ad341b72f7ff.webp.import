@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://kbiblxa0fgji"
-path="res://.godot/imported/mire_leech_Color_0adcdba6-423c-4ba1-81fd-ad341b72f7ff.webp-0c142cc380eedcd3b37440d937f4aea4.ctex"
+path.bptc="res://.godot/imported/mire_leech_Color_0adcdba6-423c-4ba1-81fd-ad341b72f7ff.webp-0c142cc380eedcd3b37440d937f4aea4.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "05fef49b2c3040f0224837a8d2af127f"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/mire_leech_Color_0adcdba6-423c-4ba1-81fd-ad341b72f7ff.webp"
-dest_files=["res://.godot/imported/mire_leech_Color_0adcdba6-423c-4ba1-81fd-ad341b72f7ff.webp-0c142cc380eedcd3b37440d937f4aea4.ctex"]
+dest_files=["res://.godot/imported/mire_leech_Color_0adcdba6-423c-4ba1-81fd-ad341b72f7ff.webp-0c142cc380eedcd3b37440d937f4aea4.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

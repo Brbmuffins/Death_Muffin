@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ocv0p7ry8f8g"
-path="res://.godot/imported/prop_node_bone_elder_Color_ea0dd70d-3621-4384-a565-8c1ad74680e3.webp-a0e77f18e2dfcef2d799dac1addaf191.ctex"
+path.bptc="res://.godot/imported/prop_node_bone_elder_Color_ea0dd70d-3621-4384-a565-8c1ad74680e3.webp-a0e77f18e2dfcef2d799dac1addaf191.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5c3918896003d1ce06d0a04aa433940a"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/prop_node_bone_elder_Color_ea0dd70d-3621-4384-a565-8c1ad74680e3.webp"
-dest_files=["res://.godot/imported/prop_node_bone_elder_Color_ea0dd70d-3621-4384-a565-8c1ad74680e3.webp-a0e77f18e2dfcef2d799dac1addaf191.ctex"]
+dest_files=["res://.godot/imported/prop_node_bone_elder_Color_ea0dd70d-3621-4384-a565-8c1ad74680e3.webp-a0e77f18e2dfcef2d799dac1addaf191.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
