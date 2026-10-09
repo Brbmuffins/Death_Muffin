@@ -7,7 +7,7 @@ Files: `dm_next_party.gd` (`DmNextParty`, child `Party` of `DmNextGame`, every p
 ## Flows
 | | what happens |
 |---|---|
-| **Solo** | nothing: no socket, no per-frame work. Opening the Party window (key F, HUD button, Settings -> Play together) opens a lobby socket and lists every 10 s; closing it closes the socket again. Offline characters see "Online play needs an online account". |
+| **Solo** | nothing: no socket, no per-frame work. Opening the Party window (key F, HUD button, Settings -> Play together) opens a lobby socket and lists every 10 s; closing it closes the socket again. In `--dev-offline` the window says "Online play needs an online account". |
 | **Host** | `host_session(name, private)` -> lobby `create` -> `DmRelayPeer.host` -> `DmSession.swap_transport(relay)`: the running world, the host's body and its rewards stay; joiners come in through the normal session handshake. Private = a six-digit code to share; public = in everyone's list. Open/Closed (`set_open`) stops new players (and hides it from the list). `kick(peer)`. `leave()` or a lost lobby socket -> back to the offline peer, the game plays on solo (`hosting_changed`). |
 | **Join** | `join_session(id, code?)` / `join_by_code(code)` from a solo game: the lobby seats us (`join_ready(lobby, info)`), `main.gd` saves + frees the solo game and starts a client `DmNextGame` (`opts.lobby`) on the same socket. A refusal (`full`, `bad_code`, `closed`, `not_found`, `rate_limit`, ...) stays a message in the window; the solo game never stopped. |
 | **Client ends** | left, removed, host gone, connection lost, handshake refused: `client_ended(reason, text)` -> `main.gd` saves the joiner, frees the client game, re-enters the player's own hub solo with the reason as a toast. |
@@ -18,7 +18,7 @@ Files: `dm_next_party.gd` (`DmNextParty`, child `Party` of `DmNextGame`, every p
 2. The client calls `session_join(sid, character_id)` with **its own token**, heartbeats every 20 s, and tells the host (`_rpc_backend`): the host then credits the member. A refusal leaves the member blocked and the joiner is told on screen.
 3. The host's session reports carry the joiner's kills (`party-sessions.cjs` credits each member with its own caps). The accepted XP / kill counts go back to the joiner (`_rpc_credit`) and are applied to ITS `DmProgression`, saved by ITS `DmProgressSync`.
 4. Drops of a remote member are not held on the host: `loot_dropped` -> `_rpc_loot` -> the joiner's own loot view (walk-over, its Settings -> Loot rules). Gear leaves the host as plain base gear with `roll: {level, source}` and is rolled by the joiner's own `roll_loot`. The bag is the joiner's `DmInventory`.
-Not carried yet: the joiner's gear / upgrades / vows for its body's damage (the host builds its body from class + reported level), flasks and brews, first-kill trophies (remote members never get them), per-joiner area / Depths.
+Known gaps. Not carried yet: the joiner's gear / upgrades / vows for its body's damage (the host builds its body from class + reported level), flasks and brews, first-kill trophies (remote members never get them), per-joiner area / Depths.
 
 ## Errors in words (`DmNextParty.ERROR_TEXT` / `CLOSE_TEXT`)
 `full bad_code closed not_found rate_limit in_session not_in_session not_host busy bad_request auth` and `host_left kicked idle shutdown`; socket failures (4401 login, 4402 replaced, 4429 too fast, unreachable) map in `_connection_text`.

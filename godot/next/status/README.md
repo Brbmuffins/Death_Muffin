@@ -46,13 +46,13 @@ Host sends `PackedByteArray`, 4 bytes per status (id, stacks, remaining in 0.1 s
 never tick or write multipliers. Replication happens only for `attach`ed sets.
 
 ## Visuals (every peer, from replicated state)
-Same motes as `DmEntityViews` (withered rot, fracture dust, bleed, chill frost, sanctified, frenzy, incense) through `Vfx.emit`, one reused
+Motes as in `DmEntityViews` (withered rot, fracture dust, bleed, chill frost, sanctified, frenzy, incense) through `Vfx.emit`, one reused
 dictionary per id (no allocation), within 30 m of the camera, running only while the body has statuses. Shrouded sets the creature opacity to
-0.38; the Censer Bearer gets its ring decal and smoke. Deviation: the bleed mote uses only the crimson color (the old 70/30 crimson/ember mix is
-dropped).
+0.38; the Censer Bearer gets its ring decal and smoke. The bleed mote uses only crimson.
 
-## Gaps
-- Player-side Bone Ward / Colossus guard stay in `DmPlayerRules` / `DmHeroBody._ward` (computed from the living thralls on every hit): that IS the current client's rule (`dm_game_combat.gd on_hurt`), not a gap; `tests/next_combat_odds` A. Barrier here has no decay (the 6 s duration only).
-- Bosses (`DmBoss`) carry a set and show `slow` / `root` / `chill` but the brain ignores them, as the current client's bosses are immune (`tests/next_combat_odds` B).
+## Tests / known gaps
+Suites: `tests/status/run.gd`, `tests/next_combat_odds/run.gd` (A: ward, B: boss immunity).
+- Player-side Bone Ward / Colossus guard stay in `DmPlayerRules` / `DmHeroBody._ward` (computed from the living thralls on every hit), not here. Barrier here has no decay (the 6 s duration only).
+- Bosses (`DmBoss`) carry a set and show `slow` / `root` / `chill` but the brain ignores them: bosses are immune.
 - `shrouded` does not suspend itself inside friendly miasma: the world code should remove/apply it.
 - The elite-affix rings/auras belong to the enemy_fx track.

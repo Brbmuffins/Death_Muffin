@@ -1,8 +1,7 @@
 # godot/next/depths: the Catacomb Depths on the rebuild
 
-The procedural descent, solo (REBUILD D5). Enter from the Warren's stair, descend floor by floor, chests every fifth depth, death ends
-the run and takes nothing, back to the hub. The current game's rules and numbers (`game/dm_depths_controller.gd`, `sim/depths_floor.gd`,
-`sim/sim_depths_rules.gd`, `rules/loot/depths_rewards.gd`) on the rebuilt pieces.
+The procedural descent, solo (DECISIONS.md D5). Enter from the Warren's stair, descend floor by floor, chests every fifth depth, death ends
+the run and takes nothing, back to the hub. Rules and numbers: `sim/depths_floor.gd`, `sim/sim_depths_rules.gd`, `rules/loot/depths_rewards.gd`.
 
 | file | job |
 |---|---|
@@ -22,7 +21,7 @@ the run and takes nothing, back to the hub. The current game's rules and numbers
   still needs, <= 24 alive. Rosters by band (`depth_roster`: 1 / 5 / 10 / 15, base kinds fade 40% per band, floor 3), elite chance `0.06 + difficulty + 0.5%/depth` (<= +14%).
 - Rewards: kills go through `DmSessionRewards` like any kill; `rewards.loot_area_of` (new hook) maps `depths` to the ground matching the depth (ossuary / coliseum / sanctum
   / cloister / pyre / fen at 1 / 5 / 10 / 15 / 20 / 30). A floor clear pays gold + XP (+ 65% an item); a chest pays gold, XP and 3+ drops (gear first, a rune chance) fanned out
-  (`rewards.drop_items_for`, `progress.grant_xp`); both are reported on the solo path (`psync.report_floor`: session reports drop floors, as in the current game).
+  (`rewards.drop_items_for`, `progress.grant_xp`); both are reported on the solo path (`psync.report_floor`: session reports drop floors).
 - Death: `hero_died` ends the run (`over`: stairs gone, no more waves) but the floor stays up behind the death screen; on `hero_respawned` the Depths close and the summary
   toast is told ("The descent ends at depth N · K slain · F floors cleared. What you looted is yours."). Gold, bag, gear, XP are untouched.
 - Leaving: the way up asks twice (5 s), recall / waystone out ends the run (`recalled`), a second player joining ends it (`party`); the hero returns to the Warren's stair.
@@ -48,9 +47,11 @@ from `DmDepthsFloor.floor_obstacles` (the sim's own). `build_depths_floor` names
 - 14 floors with no enemies: nodes flat (5630-5670 across floors), orphans constant, memory flat (496 MB). 10 floors of real play: +40-60 nodes, +15 MB (new enemy kinds' models cached as bands
   open, bounded by 24 kinds), no orphans added.
 
-## Not done / gaps
+## Tests / known gaps
+Suite: `tests/next_depths/run.gd`.
+
 - Elite **affixes** are not enacted: `DmEnemy` has no affix behaviour yet, so an elite is just the elite multipliers; the depth's extra-affix count rides along as meta `dm_affixes`.
-- Party play: a run needs a solo session (`can_enter` refuses with 2+ players); the party step-out / step-back of the current game is not built (D5, online in the back seat).
+- Party play: a run needs a solo session (`can_enter` refuses with 2+ players); party step-out / step-back is not built (DECISIONS.md D5).
 - Breach "burrow" and other kinds with their own AI behave as in the Graves on the floor's navmesh; no Depths-specific sight blockers for ranged kinds (walls block movement, not sight).
 - The Warren must be open (the areas track) to reach the stair in play; the tests walk to it.
-- Minimap / HUD pieces exist, the stair card is the existing `DmDepthsStairPrompt`; no new art or audio was made (`gate`, `chestOpen`, `levelUp`, `click`, `error` are the current game's).
+- Minimap / HUD pieces exist, the stair card is the existing `DmDepthsStairPrompt`; no new art or audio was made (`gate`, `chestOpen`, `levelUp`, `click`, `error` are existing sounds).
