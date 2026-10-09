@@ -21,11 +21,11 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 | `server/death-muffin/lobby/` | Lobby + packet relay (WebSocket), :5192 |
 | `server/rules/` | Shared game rules in TypeScript. `npm run build:server-rules` compiles them to the `.cjs` files the backend loads |
 | `server/death-muffin/site/` | The launcher download page |
-| `server/death-muffin/` (scripts) | `publish-godot-client.sh`, `set-online.sh`, `deploy-release.sh`, nginx and systemd files |
+| `server/death-muffin/` (scripts) | `publish-godot-client.sh`, `set-online.sh`, `deploy-release.sh`, `announce-release.sh`, nginx and systemd files |
 | `launcher/windows/` | The Windows launcher (.NET Framework 4.8, version in `DeathMuffinLauncher.csproj`). See its README |
 | `tools/` | `tools/godot/` test runner, asset sync and playtest scripts; `tools/ai/` Gemini and Tripo generation; `tools/blender*`, `tools/audio/`, SQL generators |
 | `public/`, `art-manifest/` | Source art, models and audio (synced into `godot/assets/`); generation records |
-| `PATCH_NOTES.json` | Player-facing patch notes, newest first; `deploy-release.sh` publishes them to the launcher and the site |
+| `PATCH_NOTES.json` | Player-facing patch notes, newest first; every client publish and backend deploy publishes them to the launcher and the site (`announce-release.sh`) |
 | `docs/` | Design notes and audits that are still referenced |
 
 ## Run the client
@@ -70,6 +70,8 @@ All three are separate and none runs on its own. Only deploy or publish with che
 - **Publish the client:** `server/death-muffin/publish-godot-client.sh <git-rev>`. Exports that revision in a scratch worktree,
   hashes the files, copies them to `/var/www/death-muffin/client/<version>/` and writes `manifest.json` last. It carries the
   `online` block over from the live manifest, so publishing never opens or closes online play. The launcher downloads from there.
+  Then `announce-release.sh` updates the launcher/site patch notes, posts the update in #deathmuffin and marks fixed bug reports
+  released (put a new top entry in `PATCH_NOTES.json` first for a named release; otherwise the commit subjects are used).
 - **Online gate:** `server/death-muffin/set-online.sh on|staff|off ["message"]` edits only the manifest's `online` block
   (`on` = everyone, `staff` = staff accounts only, `off` = nobody; the game reads it about once a minute). Online is `on`
   since 2026-10-09.

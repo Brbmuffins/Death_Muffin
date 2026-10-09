@@ -26,7 +26,7 @@ Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (
 
 - `site/`: the launcher download page, About, Classes, leaderboard and patch notes. Copied to `/var/www/death-muffin/` by hand; no script publishes it.
 - `client/`: the Godot Windows client and `manifest.json`, written by `publish-godot-client.sh`.
-- `play/release-notes.json`, `play/patch-notes.json`: written by `deploy-release.sh`; read by the launcher and the site.
+- `play/release-notes.json`, `play/patch-notes.json`: written by `announce-release.sh` (run by both publish scripts); read by the launcher, the site and the client.
 
 ## Scripts
 
@@ -36,7 +36,9 @@ Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (
 | `publish-godot-client.sh <git-rev>` | Exports the `Windows Desktop` preset of the Godot project (Godot 4.7.2 at `/home/ubuntu/tools/godot/godot`) from a committed revision into `/var/www/death-muffin/client/<version>/`, then writes `manifest.json` last and atomically (SHA-256 of every file plus the `online` block, which is carried over from the live manifest). Keeps the newest two builds. |
 | `set-online.sh on\|staff\|off ["message"]` | Edits only the `online` block of the live `manifest.json`: `on` = everyone, `staff` = staff accounts only, `off` = nobody (the message is shown as the lock). The launcher, the game and the lobby (if `DM_LOBBY_MANIFEST` is set) re-read it within about a minute; no release needed. |
 
-Client release flow: merge to `main`, `publish-godot-client.sh <rev>`, add a `PATCH_NOTES.json` entry and run `deploy-release.sh <rev>` for the notes. Backend change:
+Client release flow: merge to `main` (with a new top `PATCH_NOTES.json` entry for a release worth naming), then `publish-godot-client.sh <rev>`.
+`announce-release.sh` runs at the end of every publish and backend deploy: it writes the launcher/site notes (the new PATCH_NOTES.json entry, or the
+commit subjects since the last release), posts the update in #deathmuffin and marks `Bug report #<id>:` fixes released. A rollback (older rev) announces nothing. Backend change:
 `deploy-release.sh <rev> [NNN-name.sql]`. See `launcher/windows/README.md` for the manifest format.
 
 ## Database and migrations
@@ -71,7 +73,7 @@ SELECT a.created_at, ac.username, a.character_id, a.kind, a.mode, a.action, a.de
 ## Player bug reports
 
 Settings -> Report a bug in the client posts to `POST /api/bug-reports` (10 per account per day; `GET /api/bug-reports/mine` lists the player's own; table `bug_reports`, migration 029).
-The daily agent in `bug-agent/` triages them; `deploy-release.sh` marks the ones fixed by a release as released. See `bug-agent/README.md`. The Discord dev agent (`discord-agent/`) is
+The daily agent in `bug-agent/` triages them; `announce-release.sh` (every client publish and backend deploy) marks the ones fixed by a release as released. See `bug-agent/README.md`. The Discord dev agent (`discord-agent/`) is
 described in its own README.
 
 ## Tests
