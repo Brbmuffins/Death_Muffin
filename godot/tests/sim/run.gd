@@ -1,6 +1,6 @@
 extends SceneTree
 ## Golden-fixture runner for the pure sim modules the rebuild still uses (DmNav, depths floor, fdlibm trig). The WorldSim / caster replays were retired with the old game. Run: godot --headless --path godot --script res://tests/sim/run.gd [-- only=<name>[,<name>]]
-## Fixtures: tools/godot/fixtures-sim.ts (npx vite-node tools/godot/fixtures-sim.ts, or tools/godot/gen-fixtures.sh) -> tests/sim/fixtures/*.json
+## Fixtures: committed golden files (tests/sim/fixtures/*.json), generated from the frozen web game; the generator left with src/ 2026-10-09.
 ## Unit-style files are {fn, cases:[{in, out}]} and map fn -> h_<fn> below.
 
 const DIR := "res://tests/sim/fixtures/"
@@ -27,7 +27,7 @@ func _initialize() -> void:
 			_dump = a.substr(5)
 	var dir := DirAccess.open(DIR)
 	if dir == null or not FileAccess.file_exists(DIR + "nav_basic.json"):
-		print("fixtures missing: run tools/godot/gen-fixtures.sh")
+		print("fixtures missing (tests/sim/fixtures/ is committed; restore it from git)")
 		quit(1)
 		return
 	var names: Array[String] = []
