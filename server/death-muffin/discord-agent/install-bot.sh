@@ -4,7 +4,7 @@
 #   install-bot.sh [rev]        Env overrides (tests): MUFFIN=/opt/muffin, DEST secret file, NO_CHOWN=1
 set -euo pipefail
 REPO="${REPO:-/home/ubuntu/vps-handoffs/DeathMuffin/game}"
-REV="${1:-origin/master}"
+REV="${1:-origin/main}"
 MUFFIN="${MUFFIN:-/opt/muffin}"
 SECRET_FILE="${SECRET_FILE:-/home/ubuntu/death-muffin/discord-agent/secret}"
 SRC=server/death-muffin/discord-agent/bot

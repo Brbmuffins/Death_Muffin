@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Daily bug-report agent (death-muffin-bug-agent.timer). Reads today's 'new' player reports, lets a sandboxed headless Claude
-# fix what it can in the Godot client (git branch godot-next, project dir godot/) on a fresh branch, writes each report's verdict back for the player, and tells the owner on Discord.
+# fix what it can in the Godot client (git branch main, project dir godot/) on a fresh branch, writes each report's verdict back for the player, and tells the owner on Discord.
 #
 #   run-bug-agent.sh            normal daily run
 #   run-bug-agent.sh --dry-run  list the pending reports and stop
@@ -36,7 +36,7 @@ if git -C "$REPO" rev-parse --verify -q "refs/heads/$BRANCH" >/dev/null || [ -e 
   echo "branch $BRANCH or $WT already exists (ran today already?) — stopping"; exit 1
 fi
 git -C "$REPO" fetch -q origin
-git -C "$REPO" worktree add -q -b "$BRANCH" "$WT" origin/godot-next
+git -C "$REPO" worktree add -q -b "$BRANCH" "$WT" origin/main
 # node_modules is only for tools/godot/gen-fixtures.sh (the golden fixtures are generated from the frozen TS game).
 ln -s "$REPO/node_modules" "$WT/node_modules"
 BASE=$(git -C "$WT" rev-parse HEAD)
@@ -90,8 +90,8 @@ fi
   echo "# Bug agent — $DATE"
   echo
   echo "- Reports: $COUNT ($IDS)"
-  echo "- Branch: \`$BRANCH\` — $COMMITS commit(s) on origin/godot-next $(git -C "$WT" rev-parse --short "$BASE"), checks: $CHECKS"
-  echo "- Review: \`git -C $REPO log --stat origin/godot-next..$BRANCH\`"
+  echo "- Branch: \`$BRANCH\` — $COMMITS commit(s) on origin/main $(git -C "$WT" rev-parse --short "$BASE"), checks: $CHECKS"
+  echo "- Review: \`git -C $REPO log --stat origin/main..$BRANCH\`"
   echo
   [ -f "$VERDICTS" ] && node -e '
     const v = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));

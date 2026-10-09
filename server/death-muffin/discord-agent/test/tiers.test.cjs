@@ -59,13 +59,13 @@ test('tier: css pulling external resources is not casual', () => {
   assert.equal(classifyDiff(d('src/ui/ui.css', ['a{}'], ['@import url(https://evil.example/x.css);']), cfg).tier, 'gameplay');
 });
 test('tier: item names casual, item ids / logic gameplay', () => {
-  assert.equal(classifyDiff(d('server/rules/content/items.ts', ["  name: 'Rusty Nail',"], ["  name: 'Old Nail',"]), cfg).tier, 'casual');
-  assert.equal(classifyDiff(d('server/rules/content/items.ts', ["  id: 'nail',"], ["  id: 'nail2',"]), cfg).tier, 'gameplay');
+  assert.equal(classifyDiff(d('src/content/items.ts', ["  name: 'Rusty Nail',"], ["  name: 'Old Nail',"]), cfg).tier, 'casual');
+  assert.equal(classifyDiff(d('src/content/items.ts', ["  id: 'nail',"], ["  id: 'nail2',"]), cfg).tier, 'gameplay');
 });
 test('tier: balance numbers within 25% casual, beyond gameplay', () => {
-  assert.equal(classifyDiff(d('server/rules/content/enemies.ts', ['  hp: 200,'], ['  hp: 240,']), cfg).tier, 'casual');
-  assert.equal(classifyDiff(d('server/rules/content/enemies.ts', ['  hp: 200,'], ['  hp: 300,']), cfg).tier, 'gameplay');
-  assert.equal(classifyDiff(dnew('server/rules/content/enemies.ts', ['  hp: 200,']), cfg).tier, 'gameplay', 'new content file is not a number tweak');
+  assert.equal(classifyDiff(d('src/content/enemies.ts', ['  hp: 200,'], ['  hp: 240,']), cfg).tier, 'casual');
+  assert.equal(classifyDiff(d('src/content/enemies.ts', ['  hp: 200,'], ['  hp: 300,']), cfg).tier, 'gameplay');
+  assert.equal(classifyDiff(dnew('src/content/enemies.ts', ['  hp: 200,']), cfg).tier, 'gameplay', 'new content file is not a number tweak');
 });
 test('tier: other client code is gameplay', () => {
   for (const f of ['src/gameplay/AbilitySystem.ts', 'src/scenes/WorldScene.ts', 'src/graphics/Effects.ts']) assert.equal(classifyDiff(d(f, ['a'], ['b']), cfg).tier, 'gameplay', f);

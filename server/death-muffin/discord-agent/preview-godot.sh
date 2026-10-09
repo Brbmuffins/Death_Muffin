@@ -3,7 +3,7 @@
 # 1. Import the project and export the "Windows Desktop" preset to <worktree>/.dm-preview/DeathMuffin.exe (+ .pck), inside the same sandbox as
 #    check-godot.sh (no network, the whole filesystem read-only via sandbox-lib.sh, private /tmp, only the worktree writable, fresh HOME / XDG dirs so Godot's user:// never touches the
 #    real home; the installed export templates are re-exposed read-only through XDG_DATA_HOME).
-# 2. Outside the sandbox: zip the build with "Play Preview (offline).bat" (DeathMuffin.exe -- --offline: the offline edition, nothing saves to a
+# 2. Outside the sandbox: zip the build with "Play Preview (offline).bat" (DeathMuffin.exe -- --dev-offline: local testing backend, nothing saves to a
 #    real character) and a README, and write it as <previewRoot>/<jobid>/DeathMuffin-Preview-<jobid>-win64.zip (644). Refuses any jobid that is
 #    not 6 hex chars, a missing or symlinked preview root, and a symlinked destination; never writes outside <previewRoot>/<jobid>.
 # Env: DM_PREVIEW_ROOT (default /var/www/death-muffin/preview), DM_PREVIEW_TITLE (README text), GODOT (default /home/ubuntu/tools/godot/godot),
@@ -40,7 +40,7 @@ rm -f "$OUT"/*.console.exe
 [ "$(stat -c %s "$OUT/DeathMuffin.pck" 2>/dev/null || echo 0)" -gt 100000 ] || { echo "export produced no usable DeathMuffin.pck"; exit 1; }
 # launcher + readme (title: printable ASCII only, one line; it is text in a readme, never part of the .bat)
 TITLE=$(printf '%s' "${DM_PREVIEW_TITLE:-this change}" | tr -c '[:print:]' ' ' | tr -s ' ' | cut -c1-120)
-printf '@echo off\r\ncd /d "%%~dp0"\r\nDeathMuffin.exe -- --offline\r\n' > "$OUT/Play Preview (offline).bat"
+printf '@echo off\r\ncd /d "%%~dp0"\r\nDeathMuffin.exe -- --dev-offline\r\n' > "$OUT/Play Preview (offline).bat"
 printf 'PREVIEW of %s, offline edition, nothing saves to your real character\r\nUnzip everything into one folder, then run "Play Preview (offline).bat".\r\n' "$TITLE" > "$OUT/README.txt"
 ZIPNAME="DeathMuffin-Preview-$JOB-win64.zip"
 rm -f "$SCR/$ZIPNAME"

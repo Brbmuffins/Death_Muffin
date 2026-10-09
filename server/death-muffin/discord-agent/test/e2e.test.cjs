@@ -937,7 +937,7 @@ test('preview-godot.sh: refuses bad job ids / missing or symlinked root; with a 
   assert.equal(fs.statSync(zip).mode & 0o777, 0o644); assert.deepEqual(fs.readdirSync(path.join(root, 'abc123')), ['DeathMuffin-Preview-abc123-win64.zip']);
   const listing = execFileSync('unzip', ['-Z1', zip]).toString().split('\n').filter(Boolean).sort();
   assert.deepEqual(listing, ['DeathMuffin.exe', 'DeathMuffin.pck', 'Play Preview (offline).bat', 'README.txt']);
-  const bat = execFileSync('unzip', ['-p', zip, 'Play Preview (offline).bat']).toString(); assert.match(bat, /DeathMuffin\.exe -- --offline\r\n$/);
+  const bat = execFileSync('unzip', ['-p', zip, 'Play Preview (offline).bat']).toString(); assert.match(bat, /DeathMuffin\.exe -- --dev-offline\r\n$/);
   const readme = execFileSync('unzip', ['-p', zip, 'README.txt']).toString(); assert.match(readme, /^PREVIEW of Fix <b>the<\/b> bell, offline edition, nothing saves to your real character\r\n/);
   const calls = fs.readFileSync(path.join(repo, '.godot-calls.log'), 'utf8'); assert.ok(/--export-release Windows Desktop /.test(calls)); assert.ok(!calls.includes(os.homedir()), 'Godot never sees the real home');
   // a symlink planted at the destination is refused; a second run replaces the zip and removes strays
