@@ -1,9 +1,9 @@
 # Binbun VFX pack evaluation (Godot 4.7.2, gl_compatibility)
 
-A measurement report from the effects pass: which vendor effects are cheap enough, what degrades on `gl_compatibility`, and rules for swapping
-effects. Numbers are from llvmpipe (relative only; re-measure on a real GPU). Vendor sources are private (not in git); the eval tooling is:
+Which vendor (Binbun) effects are cheap enough, and rules for swapping effects. Numbers are from llvmpipe (relative only; re-measure on a real GPU).
+Vendor sources are private (not in git); the eval tooling is:
 `tools/godot/fx-eval-setup.sh` -> `fx-eval-patch.py` -> `fx-eval-run.sh static|perf|perfvar|shots|shaders|synth` -> `fx-eval-report.py`,
-harness `godot/fx/eval/eval_fx.gd`. Output goes to gitignored `godot/shots/fx_eval/`. Not re-run since 2026-10; treat as guidance.
+harness `godot/fx/eval/eval_fx.gd`. Output goes to gitignored `godot/shots/fx_eval/`. Not re-run; treat as guidance.
 
 ## Findings
 - 275 effect scenes in 12 packs load; one is broken (`magic_orb_flash_vfx_03_demo`). Never merge packs into one `res://assets`: the packs ship different
@@ -13,10 +13,10 @@ harness `godot/fx/eval/eval_fx.gd`. Output goes to gitignored `godot/shots/fx_ev
 - Every particle shader with `proximity_fade` declares a depth texture: about +1.5 ms/frame when any is on screen.
 - Tiers (x10 playback): cheap <= 30 ms, medium <= 100 ms (<= 4 alive), heavy = one at a time. Budgets: 24 one-shots + 32 loopers live.
 
-## gl_compatibility degradations
-Portals draw as a clipped quad (no stencil). Trails and sub-emitters show as thin lines. Dither alpha is visibly stippled at 1080p on explosions
-and impacts (use smooth alpha for hero effects). SmokeVFX needs the colour path in `DmFxBinbun` or it renders flat white. Cores clip to white
-without `gain` 0.5. Defaults ship in saturated yellow/magenta/cyan and must be recoloured through the primary/secondary/tertiary uniforms.
+## gl_compatibility notes (beyond the limits in `README.md`)
+Dither alpha is visibly stippled at 1080p on explosions and impacts (use smooth alpha for hero effects). SmokeVFX needs the colour path in `DmFxBinbun`
+or it renders flat white. Cores clip to white without `gain` 0.5. Defaults ship in saturated yellow/magenta/cyan and must be recoloured through the
+primary/secondary/tertiary uniforms.
 
 ## Do not use as authored
 `poison_cloud_01-04`; unmitigated `beam_*` / `laser_*` / `blast_*`; unmitigated `ice_ball_*`, `ice_cloud_*`, `ice_shard_*`; `smoke_big` / `smoke`

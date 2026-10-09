@@ -2,25 +2,21 @@
 
 `next_game.tscn` / `DmNextGame` is the one in-world game scene (entry from `main/main.gd` through the front flow). It composes child nodes and
 owns little logic. Solo is a 1-player `DmSession` hosted on an `OfflineMultiplayerPeer`; a party is the same code with more peers
-(no `if solo` in gameplay). The old `DmGame` path, WorldSim and Socket.IO co-op were deleted on 2026-10-09 (history in tag `archive/legacy-web` and earlier commits).
+(no `if solo` in gameplay).
 
 ## Launch
-- Players: the launcher starts the game; `DmMain` runs login / discipline select (`front/`) then `DmNextGame`, online against the live backend.
-  Only the four necromancer disciplines are playable. Launch args are not needed.
-- Dev/testing: `-- --dev-offline` = local accounts and progress in a mock backend (`user://dm_dev_offline_db.json`); add `--class=N` to skip the front and
-  enter as account `tester`; `--world-demo` = `--dev-offline --class=2` (screenshot QA).
+- Players: the launcher starts the game; `DmMain` runs the front flow (`front/`) then `DmNextGame`. Launch args and the dev-offline flags are in the root [README.md](../../README.md).
 - Code: `var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)`.
   opts: `peer` (default Offline), `host` (true; false = join), `offline`, `visual`, `dressing`, `world` (false = headless client), `waves`,
   `hud` (true | "minimal" | false), `persist`, `warmup`.
 - Playtest bot: `tools/godot/playtest.sh [--disc=1..4]` (`tests/playtest/bot_next.gd`, headless, dev-offline); findings in `tests/playtest/FINDINGS.md`.
-- Test: `godot --headless --path godot --script res://tests/next/run.gd`; each system below has its own suite. `tools/godot/run-all-tests.sh` runs them all.
-  Rendered perf + screenshots: `tests/next/render_probe.gd`.
+- Test: `godot --headless --path godot --script res://tests/next/run.gd`; each system below has its own suite. Rendered perf + screenshots: `tests/next/render_probe.gd`.
 
 ## Structure
 | node | script | job |
 |---|---|---|
 | Session | `DmSession` | host/join, bodies (MultiplayerSpawner), move intents. Hooks: `body_factory`, `spawn_origin` |
-| World | `next_world.gd` | `DmWorldBuilder` world + `DmWorldDressing`; its per-area navmesh regions (baked at build, ~130 ms) and nav helpers |
+| World | `next_world.gd` | `DmWorldBuilder` world + `DmWorldDressing`; its per-area navmesh regions (baked at build) and nav helpers |
 | Waves | `spawn/dm_wave_director.gd` | host waves for the Graves, any kind with `res://enemies/<id>.tscn`, packs, elites, metas; MultiplayerSpawner. `spawn(def, pos, heroes, elite, mult{level,hp,dmg}) -> DmEnemy`; answers the acolyte's `unbind_rise` (+ `adopt`) and the deacon's `raised` with a `risen` scaled like its raiser |
 | Net | `next_net.gd` | enemy `get/apply_net_state` + hero vitals, 20 Hz, only when peers exist |
 | Input | `next_input.gd` | click-to-move, WASD, hotbar seam, hover pick (10 Hz) |
@@ -41,7 +37,7 @@ Players are `hero/dm_hero_body.gd` (`DmHeroBody`, a `DmSessionBody`): `DmAvatar`
 navmesh-clamped mover (walls slide), collider on the player layer, group `dm_target`, `take_damage(amount, source)`, death -> respawn in the
 Chapterhouse after 4 s. Audio/music/footsteps: `AudioDirector` + `DmAudioHooks` (`DmNextGame` exposes `ready_/area_id/player/avatar/builder`).
 
-## Seams (exact signatures, all on `DmNextGame`)
+## Seams (all on `DmNextGame`)
 Rites (`DmRiteCaster`, `next/rites/`): attached as `Rites` to every body on every peer via `attach_caster(body)` (the host delays a joiner's by 0.8 s).
 `DmNextGame` is its `DmRiteWorld`:
 - `enemies_in_radius(pos: Vector3, r: float) -> Array[DmEnemy]` (living, flat, measured to the enemy's edge)
@@ -54,18 +50,3 @@ Rewards (`DmSessionRewards`, host only): created in `start()`; the host's member
 - `roster() -> Array` of `{peer_id, name, discipline, character_id, body}` (a remote body's character_id is its profile's, 0 before it arrives)
 - `body_of(peer_id) -> DmHeroBody`, `body_position(peer_id) -> Vector3`, `area_of(peer_id) -> String`, `area_id`
 - `api` (DmApi online / offline backend) and `is_offline`
-
-## Seams (on `DmNextGame`)
-- Rites (`DmRiteCaster`, `next/rites/`): attached as `Rites` to every body on every peer via `attach_caster(body)` (the host delays a joiner's by 0.8 s).
-  `DmNextGame` is its `DmRiteWorld`: `enemies_in_radius(pos, r) -> Array[DmEnemy]`, `enemy_by_id(id)`, `enemy_id(enemy)`, `aim_point()`,
-  `aim_target_id()`, `rite_build(peer_id) -> Dictionary`.
-- Input: runtime InputMap actions registered by `DmNextInput.ensure_actions()` (`dm_primary`, `dm_secondary`, `dm_hotbar_1..4`, `dm_move_*`); keys 1-4 and RMB
-  reach the caster through `DmRiteHotbar.wire(self)`; signal `input.hotbar(slot, aim, enemy_id)` (0 = LMB, 1-4, 5 = RMB).
-- Rewards (`DmSessionRewards`, host only): the host's member at once; a joiner's (`remote`) when its profile arrives (`DmNextParty`).
-- `signal enemy_spawned(enemy)` (every peer); enemy metas `dm_id`, `dm_level`, `dm_elite`, `dm_area`.
-- `roster() -> Array` of `{peer_id, name, discipline, character_id, body}`, `body_of(peer_id)`, `body_position(peer_id)`, `area_of(peer_id)`, `area_id`, `api`, `is_offline`.
-
-## Known gaps
-- Travel/recall teleport works on the host only.
-- Loot view for non-host peers and remote members' full characters are partial (see `party/README.md`).
-- Recorded load/perf numbers (world build ~1.3 s, navmesh bake ~130 ms) are from the old shared VPS under software GL; re-measure on a real GPU.

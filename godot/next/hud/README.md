@@ -19,7 +19,7 @@ opts.hud:  true (default) real HUD, also for joiners  |  "minimal" DmNextHud orb
 | loadout | `DmLoadout.load_rites` = kit `defaultLoadout` + `rmb` + the saved Grimoire choice; `set_rites()` writes it back |
 | casting | `DmNextInput.hotbar(slot, aim, enemy_id)` (LMB 0, keys 1-4, key 5 and RMB 5) -> `_on_hotbar` -> `DmRiteCaster.request_cast`. A rite missing from `DmRiteRegistry` gives a "not in the slice yet" float |
 | cooldown / rejection | `cast_rejected(rite, reason)` -> texts ("Not enough Grave Essence", "X is not ready", "X unlocks at level N"; busy / range / no_target silent), 1 per 600 ms |
-| float text | casters' `hit_number`, host `body.hurt`, thrall blows, `dot_damage`, heals / gold / shards; goes through `DmFloatBudget` (caps, see `feel/CLARITY.md`) and honours the damage-numbers setting |
+| float text | casters' `hit_number`, host `body.hurt`, thrall blows, `dot_damage`, heals / gold / shards; goes through `DmFloatBudget` (caps, see `feel/README.md`) and honours the damage-numbers setting |
 | toasts / banners | `game_event("toast" / "banner" / "loot" ...)` into `DmGameUi._on_game_event`; level-ups from `member_credited` |
 | belt | Q drinks the best heal flask (`use_item`); elixir / tonic chips |
 | minimap | `DmHudMinimap` fed with enemies, thralls, corpses, built areas / doors; click -> `navigate` -> `DmNextInput.click_move` |
@@ -37,13 +37,20 @@ F9 = `dev_break_seals()`. `main/qa_driver.gd` (`-- --qa`) drives DmNextGame. Bug
 ## Panels
 All of `DmGameUi.WARM_PANELS` are pre-built under the loading cover (`ui.warm()`, ~1.3 s of the load). `tests/next_hud_counsel` opens each and runs one basic action
 through the API: Bag, Sheet, Capes & Pets, Legion, Forge, Salvage, Reagent shelf, Vault, Contracts, Professions, Garden, Labor, Ascension, Codex, Atlas, Waystone map.
-First opens cost 0-62 ms over an idle frame (`tests/perf/panel_perf.gd`: Capes & Pets ~52, Reagent shelf ~41, the rest <= 30).
+First opens cost 0-62 ms over an idle frame (Capes & Pets ~52, Reagent shelf ~41, the rest <= 30; headless, software GL).
+
+## Loot feedback (`dm_next_ui_host.gd`, `loot_view/loot_view.gd`; test `tests/next_loot/run.gd`)
+- Rule "Sell for gold" pays the purse (`auto_sold`) with a "+Ng name" float and the coin sound; rule "Auto-loot" gives the walk-over feedback. `keep` comes from `DmItemText.keeps_for_you`, so the gold rule never sells upgrades.
+- Gold / shards walked over in one frame give one float and one sound.
+- Bag full: "Reliquary full" float plus one toast; re-armed once there is room.
+- Pickup toast colour = beam colour; better-than-worn gear says "(upgrade)".
+- Ground: item names in rarity colour within 7 m (3 m ordinary; `DmLootView.near_labels = false` turns them off), icon blinks in the last 8 s, drops from one kill land >= 0.65 m apart. Loot never flies to you.
 
 ## Tests
 `tests/next_hud_counsel/run.gd` (feeds, counsel, Legion, every panel), `tests/next_hud/run.gd`, `tests/next_polish/run.gd`, `tests/next_acre_guide/run.gd`. Cost probe:
-`tests/next_hud/perf.gd -- --hud=real|minimal|none`. State + suggestion per guidance tick: 0.2 ms.
+`tests/next_hud/perf.gd -- --hud=real|minimal|none`. State + suggestion per guidance tick: 0.2 ms. Counsel tips (queue, cadence, card): `ui/onboarding/README.md`.
 
 ## Known gaps
-- Lifesteal / fortune / wisdom brews are partly applied (damage, haste, ward, speed, essence are); see `next/rewards/README.md`.
+- After entering the Graves the Next line is "Ossuary seal: 0/300 kills" (shared `DmGuidance`, priority 60); a softer first goal means changing the shared rules. The Gravedigger shard hint is priority 50, so it only shows once shards are in hand.
 - No Depths readout beyond the stair card and the HUD depth chip.
-- `loadout_check`, `necro_weapon_changed`, `set_bonus_gained`, `omen_told` counsel events are defined in `DmCounselEvents` but never raised.
+- Counsel events that are defined but never raised: see `ui/onboarding/README.md`.

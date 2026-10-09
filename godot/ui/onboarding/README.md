@@ -1,7 +1,6 @@
 # Covenant counsel (godot/ui/onboarding)
 
-The tip queue, cadence rules, card and glow that guide a new player. Ported from the retired web `Onboarding.ts` / `counselCadence.ts`.
-Tip text, kinds, groups, priorities, places and anchors live in `godot/data/onboarding/tips.json` (120 tips), read through `DmCounselData`.
+The tip queue, cadence rules, card and glow that guide a new player. Tip text, kinds, groups, priorities, places and anchors live in `godot/data/onboarding/tips.json` (120 tips), read through `DmCounselData`.
 
 | file | role |
 |---|---|
@@ -30,9 +29,8 @@ Tip text, kinds, groups, priorities, places and anchors live in `godot/data/onbo
 ## Tests
 `godot --headless --path godot --script res://tests/onboarding/run.gd` replays 53 scripted event sequences (13 hand-written + 40 random) through the
 GDScript counsel and matches the recorded logs, checks cadence decisions, text rendering and the event table against `tests/onboarding/fixtures/*.json`.
-The fixtures were recorded from the original TS and are now frozen (their generator is gone). Screenshots: `tools/godot/shoot-onboarding.sh <tip id> [out.png]`.
+The fixtures are frozen (no generator). Screenshots: `tools/godot/shoot-onboarding.sh <tip id> [out.png]`.
 
 ## Known gaps
-- Counsel events defined but never raised in DmNextGame: `depths_solo`, `depths_floor`, `depths_affix`, `laborers_seen`, `loadout_check`, `necro_weapon_changed`,
-  `set_bonus_gained`, `omen_told`.
+- Events defined in `DmCounselEvents` but never raised: `depths_solo`, `depths_floor`, `depths_affix`, `loadout_check`, `necro_weapon_changed`, `set_bonus_gained`, `omen_told`.
 - The keyboard card-move (arrow keys on the header) is not ported; no entry animation beyond a 0.2 s fade.

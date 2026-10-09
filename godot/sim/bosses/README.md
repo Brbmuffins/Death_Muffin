@@ -2,7 +2,7 @@
 
 Pure GDScript brains (no nodes, no autoloads) for Prelate, Gravedigger King, Bone Abbess, Drowned Congregation, Plague Saint,
 Cinder Regent and Mire Mother. Numbers come from `godot/data/content/bosses.json`, `fen.json`, `abilities.json`, `difficulty.json`.
-They are ported from the web `BossBrain.ts`, which is gone from `main` (history is in tag `archive/legacy-web`). The scene side is `godot/next/bosses/`.
+The scene side is `godot/next/bosses/`.
 
 | file | role |
 |---|---|
@@ -24,8 +24,8 @@ for exact signatures. Public brain API: `awaken(by, empowered)`, `damage(amount,
 
 ## Tests
 - `godot --headless --path godot --script res://tests/bosses/run.gd` replays 44 committed scenarios (`tests/bosses/fixtures/*.json.gz`,
-  captured from the original TS brains) through the brains on `tests/bosses/fake_world.gd` and compares every tick within 1e-9.
-- `tests/bosses/adapter_run.gd` and `mock_sim.gd` target the deleted `DmBossFactory` / `DmWorldSim` path (see Known gaps).
+  recorded, frozen: no generator) through the brains on `tests/bosses/fake_world.gd` and compares every tick within 1e-9.
+- `tests/bosses/adapter_run.gd` and `mock_sim.gd` are stale (below); do not rely on them.
 - Scene-level behaviour: `tests/next_bosses/`.
 
 ## Notes
@@ -33,5 +33,4 @@ for exact signatures. Public brain API: `awaken(by, empowered)`, `damage(amount,
 - JS `Array.sort` stability is kept via `DmStableSort` (nearest-two Burial targets, Mire corpse order).
 
 ## Known gaps
-- `tests/bosses/adapter_run.gd` references `res://sim/boss_controller.gd`, which no longer exists, so it skips itself; it is stale.
-- The TS fixture generator is gone; the fixtures are frozen.
+- `tests/bosses/adapter_run.gd` references `res://sim/boss_controller.gd` and the deleted `DmBossFactory` / `DmWorldSim`; it skips itself. `mock_sim.gd` serves only it.
