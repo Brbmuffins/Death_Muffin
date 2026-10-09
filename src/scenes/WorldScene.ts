@@ -5292,6 +5292,7 @@ export class WorldScene implements GameScene, RuntimeView {
     {
       const b = this.bossState();
       this.bossView(b.id ?? 'prelate').sync(b, dt);
+      audio.setBossMusic(p.alive && b.active && BOSSES[b.id ?? 'prelate'].area === this.area);
     }
     const talkFocus = this.talkFocus();
     this.rig.update(dt, talkFocus ? talkFocus.x : p.x, talkFocus ? talkFocus.z : p.z);
