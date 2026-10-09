@@ -4,16 +4,15 @@ Listen-server sessions (decision D3 in `godot/REBUILD.md`): a player hosts from 
 game packets host <-> clients over WebSocket, so it works behind any NAT with no port forwarding. Max 4 players per session (D2, host included).
 It never parses game data and holds no state beyond the live sessions.
 
-- Port: **5192** (reserved range 5192-5199; 5190 = auth backend, 5191 = realtime). Binds 127.0.0.1; nginx terminates TLS (`nginx-lobby.conf`).
+- Port: **5192** (reserved range 5192-5199; 5190 = auth backend; 5191 was the retired realtime service). Binds 127.0.0.1; nginx terminates TLS (`nginx-lobby.conf`).
 - Env: `DM_LOBBY_JWT_SECRET` (the auth backend's `JWT_SECRET`) or `ENV_FILE` pointing at the backend `.env` (only `JWT_SECRET` is read, never logged);
   `DM_LOBBY_PORT` (5192), `DM_LOBBY_HOST` (127.0.0.1), `DM_LOBBY_IDLE_MS` (900000), `DM_LOBBY_QUIET=1`.
-- Run: `npm ci --omit=dev && node src/index.js`. Tests: `npm install && npm test`. Health: `GET /health`. Files `deathmuffin-lobby.service` and
-  `nginx-lobby.conf` are for later deployment and are not installed by anything here.
+- Run: `npm ci --omit=dev && node src/index.js`. Tests: `npm install && npm test`. Health: `GET /health`. `deathmuffin-lobby.service` and `nginx-lobby.conf` are installed by hand (nothing in this repo installs them; the live nginx locations are in `../nginx-locations.conf`); the unit expects the code in `/home/ubuntu/death-muffin/lobby` with `npm ci --omit=dev` run there.
 
 ## Auth
 First frame on every socket must be `{"t":"auth","token":"<JWT>"}` within 5 s (the token never goes in the URL). Verified like the backend: HS256,
 `jsonwebtoken.verify`, requires integer `accountId`, uses `username`. If the token carries an auth-server `sid`, the newer login of an account replaces the
-older (same rule as `server/realtime`); without `sid` a new connection for the same account replaces the old one. The DB-backed session check is
+older; without `sid` a new connection for the same account replaces the old one. The DB-backed session check is
 not repeated here (no DB access), so a revoked-but-unexpired token still works until it expires (24 h).
 **Staff-only online (D10, optional):** with `DM_LOBBY_MANIFEST` set (path of the client `manifest.json`, e.g. `/var/www/death-muffin/client/manifest.json`; optional
 `DM_LOBBY_BACKEND`, default `http://127.0.0.1:5190`), each auth follows the manifest's `online` block (`src/gate.js`): `enabled:true` admits everyone; `enabled:false, staff:true`
