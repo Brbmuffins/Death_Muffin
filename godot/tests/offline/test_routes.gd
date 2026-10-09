@@ -12,8 +12,8 @@ const SWEPT := ["register", "login", "load_or_create_character", "get_character"
 	"vault_withdraw", "vault_deposit_all", "vault_sort", "salvage_gear", "reforge_quote", "reforge_affix", "boss_key_status", "boss_key_summon", "boss_key_refund",
 	"boss_key_claim", "send_bug_report", "get_my_bug_reports", "get_account_prefs", "set_account_prefs", "claim_session", "probe_session", "get_leaderboard"]
 ## Called by game code but local to the client (no route).
-## get_release / get_patch_notes fetch the web site's static files: offline they get a 404 and read as "unknown" (never an error, never a "new release").
-const LOCAL_ONLY := ["set_token", "get_token", "notify_session_replaced", "is_session_replaced", "get_release", "get_patch_notes"]
+## get_patch_notes fetches the site's static patch notes: offline it gets a 404 and reads as "unknown" (never an error).
+const LOCAL_ONLY := ["set_token", "get_token", "notify_session_replaced", "is_session_replaced", "get_patch_notes"]
 ## Only reached with `--online` (DmOnlineGate, staff-only online D10): the offline edition never runs the gate, so these have no offline route.
 const ONLINE_ONLY := ["fetch_client_manifest", "get_me"]
 
@@ -140,7 +140,6 @@ func _sweep() -> void:
 			"get_garden", "get_labor", "assign_labor", "get_cosmetics", "select_cosmetics", "get_vault", "vault_sort", "reforge_quote", "boss_key_status", "send_bug_report",
 			"get_my_bug_reports", "get_account_prefs", "set_account_prefs", "get_leaderboard"]:
 		_ok(calls[k].ok, "succeeds: " + k, "%d %s" % [calls[k].status, calls[k].error])
-	_ok(await api.get_release() == "", "release marker is unknown offline")
 	_ok(not (await api.get_patch_notes()).ok, "patch notes are not served offline")
 	var claim := await api.claim_session(api.get_token())
 	_ok(claim == api.get_token(), "claim_session")

@@ -1,39 +1,15 @@
 [
   {
-    "date": "2026-10-04",
-    "title": "Smoother, Clearer, Deeper",
+    "date": "2026-10-09",
+    "title": "One Game: the Baseline",
     "items": [
-      "Reliquary: the selected item now updates after you drink, eat or sell part of a stack, instead of showing the old count.",
-      "Catacomb Depths: once you have been deeper than depth 1, the stair asks whether to descend from depth 1 or resume at your deepest floor. One click either way.",
-      "Windows: the title and close button are now a fixed header; only the contents scroll beneath it.",
-      "Windows: a Back to top button appears as you scroll down, so the tabs at the top are one click away, and tucks away 2 seconds after you stop.",
-      "Grave Laborers: collecting no longer swaps the window for a loot report. What each laborer brought home is listed under the laborers, so you can collect from all of them in one go.",
-      "Settings: your Loot rules (on the ground, auto-loot or sell for gold, per rarity) now follow your account to any browser or device.",
-      "Workbench: a new Only show craftable checkbox hides every recipe you lack the skill or materials for. It applies to every crafting page and follows your account to any browser or device.",
-      "Reliquary: a new Sort button merges stacks and orders your bag by type, rarity, item level and name.",
-      "Vault: new Take materials and Take all buttons move things back into your bag in one click, as far as it fits.",
-      "Pets: a pet charm in your bag now has an Adopt button next to Sell and Lock, so you can adopt it without opening Capes & Pets.",
-      "Performance: fixed a graphics memory leak that grew with every kill, thralls no longer stutter while following you, and walking under the arches no longer hitches.",
-      "Audio: every sound is new, from a full fantasy sound library: spells match their element, enemies have voices, bosses warn you, loot sounds by rarity, footsteps change with the floor. Co-op partners are quieter and danger cuts through the mix.",
-      "Full bag: loot no longer chases you around, and the bag-full alert shows once instead of every swing.",
-      "Alerts stay at the top of the screen and no longer cover level-up banners.",
-      "Loot: stronger affix rolls, far more drops from your own set, better drops the deeper you go, more runes and legendaries. The Atlas shows your real odds.",
-      "The map, waystones, Atlas and Codex list the world in descending order.",
-      "Ascension Vows: choose your own curses at the Altar (older dead, no flasks, Prelate Echoes...). Your rank is the heat you swear; soul shards unlock new vows and playstyle boons. Seals no longer reset.",
-      "Gold sinks: Reforge an affix at the Workbench, or spend a Covenant Seal to wake an Empowered boss for a guaranteed epic-or-better prize.",
-      "Loadouts: save rites, runes and weapons together and swap with one click (optional hotkeys in Settings).",
-      "Co-op: you play solo unless you make or join a party with a code (Settings > Play together, /party). Partied players can enter the Depths.",
-      "Cleaner fights: other players' spell areas are drawn faintly, lingering areas fade to outlines, and danger warnings always draw on top.",
-      "HUD: Report a bug button above chat, a clearer elixir belt (click a slot to fill it), new key-art loading screen, fewer panels (Acre Ledger, Character tabs, Grimoire + Legion) and NEW markers when something unlocks.",
-      "Gear: helms tint your own hood or helmet instead of floating on top, capes no longer clip on death, and a set summary sits under the paper doll.",
-      "Levels now count past 255 (up to 999), and logging in somewhere new stops the old window from saving over you.",
-      "Patch notes now show in the launcher, on the website's new Patch notes page, and on the home page.",
-      "Fixes: loot icons could draw blank on some graphics cards, tooltips no longer block clicks, and the worn-helm look stays when you change other gear.",
-      "Loot no longer flies to you from across the map: walk over an item to pick it up. Anything you leave behind fades after a minute.",
-      "Covenant counsel cards now light up the part of the screen they explain, like the alchemy belt and the minimap. Settings → Show tips again walks you through them.",
-      "Leaner loot: monsters no longer drop ore, bars, logs, bones, seeds or herbs. Gather those instead; you get their value in gold, and gear drops just as often as before.",
-      "New Settings → Loot: for each gear rarity, choose to leave it on the ground, auto-loot it straight into your bag, or sell it for gold as it drops. Set pieces, legendaries and upgrades for you are never sold.",
-      "Music: five original themes for the Chapterhouse, the Graves, the Ossuary, the Cinder Pyre and boss fights, with smooth transitions, quieter during fights, and a new Music slider in Settings. Rain now falls in the Graves, Cloister and Fen, and the Pyre roars with fire."
+      "Death Muffin is now one game: the Windows client from the launcher, played online. The browser version is retired.",
+      "Online is open to everyone. Sign in with your existing account; your online characters carry over.",
+      "Necromancer only for now: the four necromancer disciplines are playable. The other five are shown as Coming later while they are rebuilt properly.",
+      "A character on a discipline that is not playable yet can switch to a necromancer discipline.",
+      "Characters from the old offline edition are removed when you start the game online.",
+      "The launcher has one Play button: it downloads, updates and starts the game.",
+      "Behind the scenes: old code and documents cleared out and every test passing, so fixes and polish land faster from here."
     ]
   }
 ]

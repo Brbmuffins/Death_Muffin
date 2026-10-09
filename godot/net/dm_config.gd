@@ -4,12 +4,10 @@ extends RefCounted
 
 ## Nginx strips the "/death-muffin/api" prefix, so every route below (/login, /api/...) is relative to this base.
 const API_BASE := "https://muffindevelopment.com/death-muffin/api"
-## Static site root (release.txt, patch notes, leaderboard page).
+## Static site root (patch notes, client manifest, leaderboard page).
 const SITE_BASE := "https://muffindevelopment.com/death-muffin/"
 ## The Godot client manifest (publish-godot-client.sh / set-online.sh): `online: {enabled, staff, message}` decides who may play online.
 const CLIENT_MANIFEST_URL := SITE_BASE + "client/manifest.json"
-## deploy-release.sh writes "<sha> <iso-time>" here on every web deploy (web play page; the Godot builds have their own release channel later).
-const RELEASE_URL := SITE_BASE + "play/release.txt"
 const PATCH_NOTES_URL := SITE_BASE + "play/patch-notes.json"
 ## Lobby + relay service (server/death-muffin/lobby): find / host / join a party session over WebSocket. Nginx maps the path to 127.0.0.1:5192.
 ## A launch arg `--lobby=<ws url>` overrides it (local tests, staging).

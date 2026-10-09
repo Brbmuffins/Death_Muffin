@@ -188,9 +188,6 @@ func test_scenarios() -> void:
 	ok(api.is_session_replaced(), "session flagged replaced")
 
 func test_misc() -> void:
-	for c in fx["releaseCases"]:
-		var want: String = "" if c["out"] == null else c["out"]
-		ok(DmReleaseWatch.parse_release(c["text"]) == want, "parse_release %s" % c["text"].left(12), DmReleaseWatch.parse_release(c["text"]))
 	for c in fx["boolPref"]:
 		var got := DmAccountPrefs.reconcile_bool(c["local"], c["remote"], c["key"])
 		ok(deep_eq(got, c["out"]), "reconcile_bool", str(got) + " vs " + str(c["out"]))
@@ -293,8 +290,6 @@ func live_smoke() -> void:
 		ok(inv.ok and inv.data is Array, "live get_inventory", inv.error)
 	var lb := await api.get_leaderboard()
 	ok(lb.ok and lb.data is Dictionary and lb.data.has("players"), "live leaderboard", lb.error)
-	var rel := await api.get_release()
-	print("live release marker: ", rel)
 	var bad := await api.get_professions(0)
 	ok(not bad.ok, "live error passthrough (expected failure): " + bad.error)
 

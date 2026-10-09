@@ -528,17 +528,9 @@ func offline_sync_stats(class_index: int, level: int, experience: int, confirm_i
 func get_leaderboard() -> DmResult:
 	return await _request("/leaderboard")
 
-## Patch notes JSON shipped with the web build (site/play/patch-notes.json). data: parsed JSON.
+## Patch notes JSON (site/play/patch-notes.json, written by deploy-release.sh from PATCH_NOTES.json). data: parsed JSON.
 func get_patch_notes() -> DmResult:
 	return await _fetch_site("play/patch-notes.json")
-
-## The current release marker ("<sha> <iso-time>") parsed to the sha, or "" when unknown. Never an error (unknown != changed).
-func get_release() -> String:
-	var resp := await _send("GET", site_base + "play/release.txt?t=%d" % Time.get_unix_time_from_system(), {"Cache-Control": "no-store"}, "")
-	var st := int(resp.get("status", 0))
-	if resp.get("network_error", false) or st < 200 or st >= 300:
-		return ""
-	return DmReleaseWatch.parse_release(String(resp.get("text", "")))
 
 func _fetch_site(rel: String) -> DmResult:
 	var resp := await _send("GET", site_base + rel + "?t=%d" % Time.get_unix_time_from_system(), {"Cache-Control": "no-store"}, "")
