@@ -1,4 +1,4 @@
-import type { Rarity } from '../../../src/net/types';
+import type { Rarity } from '../net/types';
 
 /**
  * Grave Gardening content (docs/PROFESSIONS-ROADMAP.md §5): the seeds, the herbs and trees they grow into, and the plots. One source

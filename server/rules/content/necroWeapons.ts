@@ -1,5 +1,5 @@
 import type { AreaId } from './areas';
-import type { ItemType, Rarity } from '../../../src/net/types';
+import type { ItemType, Rarity } from '../net/types';
 
 /**
  * The necromancer weapon line (docs/ALCHEMY-AND-WORLDS-PLAN.md N1): four main-hand kinds and three

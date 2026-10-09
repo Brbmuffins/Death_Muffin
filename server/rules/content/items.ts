@@ -1,4 +1,4 @@
-import type { ItemType, Rarity } from '../../../src/net/types';
+import type { ItemType, Rarity } from '../net/types';
 import { PROCESSING_ITEMS } from './processing';
 import { GARDEN_ITEMS } from './gardening';
 import { ALCHEMY_HEALING, ALCHEMY_ITEMS } from './alchemy';

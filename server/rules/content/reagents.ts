@@ -1,4 +1,4 @@
-import type { Rarity } from '../../../src/net/types';
+import type { Rarity } from '../net/types';
 import type { AreaId } from './areas';
 import type { BossDef, BossId } from './bosses';
 import type { BrewDef, BrewKind } from './brews';
