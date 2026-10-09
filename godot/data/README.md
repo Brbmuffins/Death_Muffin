@@ -4,8 +4,7 @@ JSON read through ONE class, `DmDb` (`godot/rules/core/dm_db.gd`, static, no aut
 loaders are thin typed wrappers over it; production code must not open `res://data/` itself (`tests/data/run.gd` fails if it does).
 Test/mock data does not live here (`godot/tests/`).
 
-The files were first exported from the web game's TypeScript (`src/content`, `src/gameplay`). Those exporters and the web source are gone from
-`main` (history in tag `archive/legacy-web`), so the JSON here is now the source of truth and is edited by hand. Keep each fact in one place.
+The JSON here is the source of truth and is edited by hand. Keep each fact in one place.
 
 ## Datasets
 
@@ -25,17 +24,14 @@ The files were first exported from the web game's TypeScript (`src/content`, `sr
 | **Progression view** (areas/bosses/vows/boons/ascension/limits/chain/milestones/upgrades) | NO FILE: projection of `content/*` + `progression/extras.json` | `DmDb.progression_view()` (wrapper `DmProgContent`, ints normalised) |
 
 ## Merged and overlapping data
-- `loot/content.json` and `progression/content.json` were removed: `DmDb.loot_view()` and `DmDb.progression_view()` project them from `content/*`
-  (plus `progression/extras.json` for upgrade cost curves and start areas). `combat/progression.json` keeps only residual keys.
+- The loot and progression views are projected by `DmDb.loot_view()` / `DmDb.progression_view()` from `content/*` (plus `progression/extras.json`); `combat/progression.json` keeps only residual keys.
 - Not merged: `combat/*.json`, `gathering/gathering.json`, `panels_a/*`, `slice/*` re-export subtrees that also exist in `content/*` in different
-  shapes (snake_case keys, arrays vs maps). A change to one must be mirrored in the other until they are folded.
+  shapes (snake_case keys, arrays vs maps). A change to one must be mirrored in the other until they are folded (a known duplication).
 
-## Other generated JSON outside data/
-`godot/game/view_models.json` (creature model rows), `godot/assets/fx/fx_data.json` (effect tables). Also hand-edited now.
+## Other JSON outside data/
+`godot/game/view_models.json` (creature model rows), `godot/assets/fx/fx_data.json` (effect tables). Hand-edited too.
 
 ## Tests
 `godot --headless --path godot --script res://tests/data/run.gd`: every dataset loads, nothing under `data/` is unregistered, no duplicates, the
 merged views still match recorded digests, and no production code reads `res://data/` outside `DmDb`.
 
-## Known gaps
-- The overlapping subtrees above are still duplicated.

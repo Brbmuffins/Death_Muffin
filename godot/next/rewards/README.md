@@ -22,7 +22,7 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
 |---|---|
 | Enemies | `died(enemy)` (DmEnemy emits it on the authority); optional `damaged(amount, hp, from)` gives the killer (the last hitter; a node equal to a member's `body`). Optional `get("def_id")`, meta `dm_level` (default 1), `dm_elite` (false), `dm_area` (default `area_id`). Shells with their own death pipeline can call `on_kill({def, area, level, elite, x, z, killer})`. |
 | Roster | `DmRewardsMember`: `character_id`, `peer_id`, `body` (Node3D; position read per tick; optional `dm_alive() -> bool`), `api` (that member's own DmApi/JWT), `prog` (DmProgression: XP/level/gold are applied here), `discipline {id, family}`, multipliers `wisdom`, `fortune`, `omen_reward`, `omen_shard`. `api == null` for a remote peer that joins/heartbeats with its own client (then its gear drops land unrolled). `add_member`/`remove_member` any time. |
-| Ticking | `auto_tick` (default true) lets `_process` drive it; tests/shell call `tick(dt)`. |
+| Ticking | `auto_tick` (default true) lets `_process` drive it; tests call `tick(dt)`. |
 | Loot display | each member has its own `loot_view` (DmLootView, child of the node, visible only when `peer_id == local_peer_id`). For remote peers the shell mirrors the `loot_dropped(character_id, drop, pos)` / `loot_picked` / `loot_expired` signals to that peer. Bag: `member.bag` (cap 24) or set `member.take_item`. |
 | Signals | `session_opened`, `session_failed`, `session_closed`, `member_credited`, `member_refused`, `batch_reported`, `kill_earned`, `loot_dropped/picked/expired` |
 

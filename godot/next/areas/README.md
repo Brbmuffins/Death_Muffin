@@ -15,9 +15,9 @@ wires the shared content (`areas.json`, `enemies.json`, `DmSimData`) onto DmNext
 | Seals, doors, waystones, recall | `chapterhouse/dm_chapterhouse.gd` | the hub owns seals; `travel(area)` now serves every waystone whose seal is broken (`"<Area> is still sealed."` otherwise) |
 
 ## Known gaps
-- Gathering (Acre nodes, professions) is `next/gathering/` (`DmNextGather`); the visible Grave Laborers and the labor / garden notices are `DmNextAcre` (see its README).
+- Gathering is `next/gathering/` (`DmNextGather`, `DmNextAcre`).
 - One director = one simulated area: a second player standing in a different combat area gets no waves until the host's area empties. (Party of 4 solo-first, D5.)
-- Sim waves climb out of area `breaches`; the slice keeps its ring 9-14 m around the hero (snapped to the navmesh). Wave milestones are ported (below).
+- Waves spawn in a ring 9-14 m around the hero (snapped to the navmesh), not at area breaches.
 - Bosses of the other areas are the bosses tracks'.
 
 ## Tests / perf

@@ -4,7 +4,7 @@
 the game only through a host node passed to `setup(game)`. In the game that host is `DmNextUiHost`
 (`godot/next/hud/dm_next_ui_host.gd`, child `UiHost` of `DmNextGame`), which feeds the UI from the game's nodes.
 `godot/game_ui/mock_game.gd` implements the same surface for UI tests. Optional calls are made through `has_method`
-guards, so a host without them still works. Last checked against the code 2026-10-09.
+guards, so a host without them still works.
 
 ## What the host provides
 

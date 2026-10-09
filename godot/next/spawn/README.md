@@ -19,5 +19,4 @@ and late joiners get the same bodies, solo included. Per-tick enemy state travel
 processions, surges), `tests/next/run.gd`.
 
 ## Known gaps
-- One director simulates one area: a second player in a different combat area gets no waves until the host's area empties.
-- Waves are simplified from the old sim (a ring around the hero rather than breach points).
+- One director simulates one area (see `areas/README.md`). Waves spawn in a ring around the hero, not at breach points.

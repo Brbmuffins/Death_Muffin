@@ -12,7 +12,7 @@ hud.cast.connect(...)                         # intent out: signals (below)
 ```
 
 Gallery: `ui/hud/shoot.sh combat|boss|calm|death|events [out.png] [WxH]` (renderer lock + Xvfb; screenshots land in the gitignored `shots/hud/`).
-Tests: `godot --headless --path godot --script res://tests/hud/run.gd`. Known gaps: see Limits.
+Tests: `godot --headless --path godot --script res://tests/hud/run.gd`. The game-side feed is `DmNextHudVm` (`next/hud/README.md`).
 
 ## View-model (`apply(vm: Dictionary)`)
 
@@ -58,13 +58,13 @@ Every key is optional; missing = zero / hidden. Units: HP in HP, cooldown in ms.
 `{icon, key, cost, left_ms, total_ms, affordable, empowered, locked, unlock_level (10), alt, rune_icon, swap}`.
 Cooldown sweep = clockwise shade from 12 o'clock of `round(left/total*100)` %, number = `ceil(s)` or one decimal under 1 s.
 `affordable:false` dims it; `empowered` pulses jade (cost struck-through colour); `locked` greys it and prints `unlock_level`;
-`alt` = the right-click action (ember accent + left rule); `swap` shows the swap arrows on the key cap (swap-ready, `firstHourRules.swapReady`).
+`alt` = the right-click action (ember accent + left rule); `swap` shows the swap arrows on the key cap (swap-ready).
 
 ### minimap dict
 `{px, pz, facing, areas:[{rect:{x0,z0,x1,z1}, safe, unlocked, instance?}], doors:[{rect, open}], enemies:[{x,z,elite}], thralls, allies, corpses, boss:{x,z}|null,
 waystones, stairs, npcs:[{x,z,fresh}], ping:{x,z}|null, destination:{x,z}|null, depths:{rooms,doors,up,down,chest}|null}`.
 `areas`/`doors` come from the world data (`AREAS`, `DOORS`); `unlocked`/`open` are the sim's gate state. 2.1 px per world unit, north-up,
-click on walkable ground emits `navigate(x, z)` (same rule as `minimapWalkable`).
+click on walkable ground emits `navigate(x, z)`.
 
 ## Events (methods)
 `toast(text, kind)` kind `""|"good"|"err"|"new"` (dedupes the same line, 3 at most, newest 2 under a boss/target plate; hold = max(6 s, 2 s + 0.4 s/word)),
@@ -81,10 +81,9 @@ click on walkable ground emits `navigate(x, z)` (same rule as `minimapWalkable`)
 `tip_anchor_rect(tip_id) -> Rect2` returns the global rect of the HUD part a tip is about (`TIP_ANCHOR` ids: `minimap belt brew wave chain omen prelate grimoire atlas codex relic gather`;
 `Rect2()` when hidden/unknown) so the integrator can draw the glow; `tip_default_position()` is the card's default spot (18, 70, or under the party list).
 
-## Limits
+## Notes
 - Hover: slots show the spell card (`DmSpellCard` through `DmTip`, anchored above the slot, 180 ms bridge, Esc closes, live refresh) when the game UI sets `hud.spell_card` (a Callable(index) -> card data; `game_ui/dm_hud_tips.gd` builds it with `DmSpellTooltip`, golden-tested in `tests/hud`). Belt chips, the omen chip, Bone Ward, souls etc. keep native tooltips. The belt picker lives in `game_ui/dm_belt_picker.gd` (belt chips emit `belt_clicked`). `hud.node_tip(html, x, y)` draws the node tip (the game feeds it from the node under the cursor).
 - Toasts take an `on_click` Callable (`hud.toast(text, kind, on_click)`): a NEW cue toast opens its panel when clicked.
 - Slots emit `cast` on click but there is no drag; keyboard casting lives in `DmNextInput`, not the HUD. Slot dicts may carry a `tooltip` string.
-- Rune badges, the pulse of the Grimoire button (6 s) and the CSS box-shadow glows are approximated with drawn rings.
-- Text `letter-spacing` is rounded to whole pixels (FontVariation).
+- Rune badges, the Grimoire button pulse (6 s) and the glows are drawn rings; text `letter-spacing` is rounded to whole pixels (FontVariation).
 - Chrome glyphs are SVGs in `art/`; ability / omen / portrait art in `art/` is a small copy for the gallery only (the game passes real paths).

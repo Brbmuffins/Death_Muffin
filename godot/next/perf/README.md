@@ -15,5 +15,9 @@ light hidden = Godot's separate "no omni light" variant, and with the shared fla
 Test hooks: `DmModels.cold_loads`, `DmFxBinbun.cold_loads` count first loads from disk (0 after a warm-up).
 Tests: `tests/next_perfctl/run.gd`. Rendered probe: `tests/next_perfctl/entry_probe.gd` (header has the command).
 
-## Known gaps
-Rendered (real GPU) cost of the warm-up tour is not recorded; the numbers above were taken headless / under software GL.
+## Reading the F3 overlay
+
+The F3 overlay splits the frame: `tick` is the game tick by system, `fx` the `Vfx` autoload, `ui` the HUD and counsel, `outside`
+the rest (engine animation, culling, draw submission, GPU wait). If `outside` dominates, look at `calls` / `objects` and `render
+cpu`; if sim or views grow with enemies, it is script cost. Only numbers from a real GPU count: the VPS runs software GL at about
+7 fps. Probes: `tests/perf/`, `tests/next/render_probe.gd`; per-system budgets are asserted in the `tests/next*` suites.

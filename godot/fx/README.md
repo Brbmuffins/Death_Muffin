@@ -1,12 +1,11 @@
 # godot/fx: Vfx, the visual effects runtime
 
 Autoload `Vfx` (`project.godot`: `Vfx="*res://fx/dm_fx.gd"`, script class `DmFxRuntime`). Two layers:
-- **Binbun scenes**: 66 native Godot scenes in `assets/fx/binbun/<id>.tscn` (GPUParticles3D, ShaderMaterial, AnimationPlayer), played with
+- **Binbun scenes**: 64 native Godot scenes in `assets/fx/binbun/<id>.tscn` (GPUParticles3D, ShaderMaterial, AnimationPlayer), played with
   spawn colours, pooled per id. `fx/dm_fx_binbun.gd`; `dm_fx_controller.gd` / `dm_fx_light.gd` / `dm_fx_rect.gd` replace the vendor scripts.
 - **Procedural primitives and motifs**: rings of motes, decals, flashes, orbits, beams, projectiles, spikes, hands (`dm_fx_prims.gd`,
   `dm_fx_ring.gd`, `dm_fx_layer.gd`) and the necromantic motifs (`dm_fx_motifs.gd`).
 Tables (spell colours, presets, caps, catalog) are in `assets/fx/fx_data.json`, read through `DmFxData`.
-The code is a port of the retired web `Effects.ts` / `BinbunFX.ts` / `necroFx.ts` (history in tag `archive/legacy-web`).
 
 ## Wiring
 - Callers: `DmRiteFx`, `next/enemy_fx`, `next/bosses/dm_boss_fx.gd`, `next/corpses`, `next/thralls`, `next/affixes`, `next/status` and others call `Vfx.*`.
@@ -31,24 +30,21 @@ var h := Vfx.play("miasma_cloud", Vector3(x, 0, z), {
 })
 Vfx.stop(h)            # == h.kill(): fades out over 0.3 s
 ```
-`play` applies `FX_PRESETS[id]` exactly like the original `playFx` (colours, scale, y, alpha multiply the opts) and, while `Vfx.role == "other"`, the partner dim
-(alpha x0.35, scale x0.75) as `Effects.partnerBinbun` did. A dead handle (`alive == false`) comes back for Low quality, an unknown id, or a dropped looper.
+`play` applies `FX_PRESETS[id]` (colours, scale, y, alpha multiply the opts) and, while `Vfx.role == "other"`, the partner dim (alpha x0.35, scale x0.75). A dead handle (`alive == false`) comes back for Low quality, an unknown id, or a dropped looper.
 
-Procedural primitives, same option names as Effects.ts (`EmitOptions`, `DecalOptions`, ... with Callables for the closures; colours may be `Color` or `0xRRGGBB`;
+Procedural primitives (option dictionaries; closures are Callables; colours may be `Color` or `0xRRGGBB`;
 textures by name: `glow ring disc sigil cone coneEdge bar smoke spark cracks lightPool` and the FX_IMAGES names `skull boneShard crescent wisp frostFan ...`):
 
-| web | DmFx |
-|---|---|
-| `effects.emit(o)` / `emitSmoke(o)` | `Vfx.emit({x,y,z,count,color,spread,speed,up,life,size,gravity,drag,shrink,inward})` / `emit_smoke` |
-| `effects.decal(o)` -> Handle | `Vfx.decal({tex:"disc", color, x, z, r, y, rot, duration, opacity, fadeIn, fadeOut, growFrom, spin, blending:"add"\|"mix", sx, sz, anchor, follow, pulse, delay, persistent, danger, hero, other})` (keys keep the original camelCase) |
-| `effects.danger(fn)` | `Vfx.danger(func(): ...)` |
-| `effects.flash(o)` / `orbit(o)` | `Vfx.flash({x,y,z,color,size,duration,tex,rise,opacity})` / `Vfx.orbit({tex,color,count,radius,y,size,duration,speed,follow})` |
-| `effects.beam(a, b, color, width, duration)` | `Vfx.beam(a: Vector3 \| Callable, b: Callable, color, width, duration)` |
-| `effects.projectile(o)` | `Vfx.projectile({from, to: Callable, speed, color, kind:"needle"\|"orb"\|"sprite", tex, size, arc, on_arrive: Callable(Vector3), on_trail: Callable(Vector3)})` -> ref with `pos()` (null once landed) |
-| `spikeRing / spikeLine / graveHands / boneOrbit` | `spike_ring(x,z,r,count,life)`, `spike_line(x,z,dx,dz,len,width,seq)`, `grave_hands(x,z,r,count,dur)`, `bone_orbit({..., fallbackTex, fallbackColor, funnel})` |
-| `effects.lightFlash(...)` | `Vfx.light_flash(Vector3, Color, intensity, life)` (one shared OmniLight3D; Binbun one-shots call it for their first light) |
-| `effects.particleScale`, `role`, `transientLoad`, `activeHandFields` | `Vfx.particle_scale`, `Vfx.role` ("self"\|"other"), `transient_load()`, `active_hand_fields()` |
-| necroFx `boneSplinters(e, ...)` etc. | `Vfx.motifs.bone_splinters(x, y, z, {n, speed, color, origin})`, `grave_dirt`, `soul_motes`, `rot_spores`, `mist_whisper`, `skull_wisps`, `skull_ring`, `spirit_wisps`, `spectral_hands`, `cracked_ground`, `slash_mark` (same `origin:"thrall"` quieting, budgets and Low / reduced-motion gates; the `e` argument is gone) |
+- `Vfx.emit({x,y,z,count,color,spread,speed,up,life,size,gravity,drag,shrink,inward})` / `emit_smoke`
+- `Vfx.decal({tex:"disc", color, x, z, r, y, rot, duration, opacity, fadeIn, fadeOut, growFrom, spin, blending:"add"|"mix", sx, sz, anchor, follow, pulse, delay, persistent, danger, hero, other})` (camelCase keys)
+- `Vfx.danger(func(): ...)`
+- `Vfx.flash({x,y,z,color,size,duration,tex,rise,opacity})` / `Vfx.orbit({tex,color,count,radius,y,size,duration,speed,follow})`
+- `Vfx.beam(a: Vector3 | Callable, b: Callable, color, width, duration)`
+- `Vfx.projectile({from, to: Callable, speed, color, kind:"needle"|"orb"|"sprite", tex, size, arc, on_arrive: Callable(Vector3), on_trail: Callable(Vector3)})` -> ref with `pos()` (null once landed)
+- `spike_ring(x,z,r,count,life)`, `spike_line(x,z,dx,dz,len,width,seq)`, `grave_hands(x,z,r,count,dur)`, `bone_orbit({..., fallbackTex, fallbackColor, funnel})`
+- `Vfx.light_flash(Vector3, Color, intensity, life)` (one shared OmniLight3D; Binbun one-shots call it for their first light)
+- `Vfx.particle_scale`, `Vfx.role` ("self"|"other"), `transient_load()`, `active_hand_fields()`
+- `Vfx.motifs.bone_splinters(x, y, z, {n, speed, color, origin})`, `grave_dirt`, `soul_motes`, `rot_spores`, `mist_whisper`, `skull_wisps`, `skull_ring`, `spirit_wisps`, `spectral_hands`, `cracked_ground`, `slash_mark` (`origin:"thrall"` quiets them; budgets and Low / reduced-motion gates apply)
 
 Colours: `DmFxData.spell("miasma", "rot")` is `SPELL_FX.miasma.rot` (from `assets/fx/fx_data.json`);
 `DmFxData.spell_group("miasma")` returns the whole group; `DmFxData.preset(id)` the FX_PRESETS entry.
@@ -75,5 +71,5 @@ tonemapping; float uniforms must be written as floats (an int Variant reads as 0
 - Effect cost evaluation of the vendor packs: `EVAL.md`.
 
 ## Known gaps
-- No depth soft-particles, no stencil portal window; dithered alpha reads noisy at 1080p on hero effects.
+- No depth soft-particles, no stencil portal window; dithered alpha reads noisy at 1080p on hero effects (`EVAL.md`).
 - `tests/fx/` has leftover `load_all.gd.uid` / `smoke_tmp.gd.uid` with no script.

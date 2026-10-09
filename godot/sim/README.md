@@ -1,7 +1,6 @@
 # godot/sim: shared sim data classes and pure helpers
 
-The headless WorldSim, caster, snapshot and mirror were deleted on 2026-10-09 with the old DmGame path. What stays are the pure
-classes the rebuild (`godot/next/`) still uses. No nodes, no rendering. Positions are floats on the XZ plane.
+Pure classes `godot/next/` uses: no nodes, no rendering. Positions are floats on the XZ plane.
 
 | file | role |
 |---|---|
@@ -10,7 +9,7 @@ classes the rebuild (`godot/next/`) still uses. No nodes, no rendering. Position
 | `sim_data.gd` (`DmSimData`) | shared content lookups used widely (enemy defs, areas, drops) |
 | `sim_consts.gd` | constants (`BOSS_RADIUS`, `PLAYER_RADIUS`, ...) |
 | `sim_enemy.gd`, `sim_thrall.gd`, `sim_corpse.gd`, `sim_zone.gd`, `boss_state.gd` | plain entity records; field names are camelCase on purpose (the boss brains and the host read them 1:1) |
-| `fdlibm.gd`, `sim_math.gd`, `sim_exact.gd` | V8-exact trig / hypot and exact-double JSON loading |
+| `fdlibm.gd`, `sim_math.gd`, `sim_exact.gd` | V8-exact trig / hypot and exact-double JSON loading (still used by the Depths floor generator, auto-combat and `DmDb`; see KNOWN-GAPS.md) |
 | `bosses/` | the seven boss brains, see `bosses/README.md` |
 
 Data: `godot/data/sim/world.json` (nav colliders, crypts, nodes, pew cover). Load it with `DmSimExact.load_json`, not `JSON.parse_string`.
@@ -23,10 +22,8 @@ Data: `godot/data/sim/world.json` (nav colliders, crypts, nodes, pew cover). Loa
   `"d:<16 hex digits>"` strings; `DmSimExact.decode` restores them.
 
 ## Tests
-`godot --headless --path godot --script res://tests/sim/run.gd` is meant to replay golden fixtures (`tests/sim/fixtures/*.json`, gitignored)
-for `DmNav`, the depths floor and fdlibm. The fixture generators (`tools/godot/fixtures-sim.ts`, `gen-fixtures.sh`) were deleted, so on a clean
-checkout the suite prints "fixtures missing" and exits 1. Needs fixing or removing; see KNOWN-GAPS.md.
+`godot --headless --path godot --script res://tests/sim/run.gd` replays the committed golden fixtures (`tests/sim/fixtures/*.json`: `DmNav`, the depths
+floor, trig) with no generator left; they are frozen. Old WorldSim replay fixtures (`scn_*`, `cast_*`) are skipped as inert.
 
 ## Known gaps
-- No working sim suite (above).
 - `sim_thrall.gd` and `sim_zone.gd` are only referenced by `game/dm_event_fx*.gd`.
