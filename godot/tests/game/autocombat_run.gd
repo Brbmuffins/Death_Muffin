@@ -1,7 +1,7 @@
 extends SceneTree
 ## Golden-fixture runner for dm_auto_combat.gd / dm_auto_dodge.gd / dm_boss_telegraphs.gd.
 ## Run: godot --headless --path godot --script res://tests/game/autocombat_run.gd [-- only=auto_action,dodge]
-## Fixtures: tools/godot/fixtures-autocombat.ts (npx vite-node tools/godot/fixtures-autocombat.ts, or tools/godot/gen-fixtures.sh).
+## Fixtures: committed golden files, generated 2026-10-05 from the frozen web game (generator removed with src/ 2026-10-09).
 
 const DIR := "res://tests/game/fixtures/"
 var passed := 0
@@ -17,7 +17,7 @@ func _initialize() -> void:
 		if a.begins_with("only="):
 			_only = a.substr(5).split(",")
 	if not FileAccess.file_exists(DIR + "auto_action.json"):
-		print("fixtures missing: run tools/godot/gen-fixtures.sh")
+		print("fixtures missing (godot/tests/game/fixtures/ is committed; restore it from git)")
 		quit(1)
 		return
 	for n in ["auto_action", "auto_movement", "telegraph", "dodge", "math"]:

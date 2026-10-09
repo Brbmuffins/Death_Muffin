@@ -23,5 +23,4 @@ godot/shots/
 
 # Golden fixtures: rules-*/gear/dialogue/ui_parity/bosses are now COMMITTED (trimmed by tools/godot/trim-fixtures.py). sim/ and game/ are old-path,
 # still generated from the TypeScript (tools/godot/gen-fixtures.sh) and stay out of git.
-godot/tests/game/fixtures/
 godot/vendor_eval/
