@@ -66,7 +66,7 @@ are correct (FBX match above). It does mean any procedural/Blender clip must dri
 1. **No behavioural change needed.** Keep GLB retargets; do not switch to FBX (costs a Blender conversion, no quality gain).
 2. `tools/ai/tripo.mjs`: `animate_in_place` is now `spec.animateInPlace ?? true`, so a spec can send `false` to be
    honest with the API. Default stays `true`: the flag has no effect, and changing the default would alter the request for
-   no benefit. Root travel is stripped at runtime by `graphics/inPlaceAnimation.ts` either way.
+   no benefit. Root travel is handled by the client either way.
 3. Run `node tools/ai/validate-animation.mjs art-src/tripo/<id>/anim_*.glb` after each paid batch, before the build,
    to catch a lying or over-long preset (hip height under 0.3 and duration over 6 s) before it ships.
 4. If a robed model still looks bad, look at the skin and the preset's pose, not the export path.

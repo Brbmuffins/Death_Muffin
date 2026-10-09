@@ -95,8 +95,8 @@ Output: `launcher/windows/bin/Release/net48/DeathMuffinLauncher.exe`. The versio
 `launcher/tests/run-local.sh` runs the same tests with a .NET 8 runtime and a Roslyn `csc.dll`.
 
 The [Windows launcher workflow](../../.github/workflows/launcher-windows.yml) builds on `windows-latest` for pushes touching
-`launcher/**` (and manual runs), uploads `DeathMuffinLauncher-win-x64.zip` as an artifact and, from `master` or a manual
-run, attaches it to a GitHub Release tagged `launcher-v<version>`. Bump `<Version>` for each new launcher release.
+`launcher/**` (and manual runs), uploads `DeathMuffinLauncher-win-x64.zip` as an artifact and, from `main` or a manual
+run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.7.0) for each new launcher release.
 
 Code map: `ClientLogic.cs` (manifest parsing, version compare, hashing, online note, button state machine; no UI),
 `ClientInstaller.cs` (download/verify/resume/swap and the install folder), `Updates.cs` (server requests), `LauncherForm.cs`
