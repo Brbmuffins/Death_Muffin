@@ -143,8 +143,19 @@ func _physics_process(delta: float) -> void:
 		game.session.request_move_dir(d)
 
 
+## True while the cursor is in a text field (bug report, chat, search, ...).
+func typing() -> bool:
+	var vp := get_viewport()
+	if vp == null:
+		return false
+	var f := vp.gui_get_focus_owner()
+	return f is LineEdit or f is TextEdit
+
+
 ## WASD as a world direction (W = -z, like the web); zero when nothing is held.
 func held_direction() -> Vector3:
+	if typing():
+		return Vector3.ZERO                   # whatever the movement keys are bound to, a focused text field owns the keyboard
 	return Vector3(Input.get_axis(&"dm_move_left", &"dm_move_right"), 0.0, Input.get_axis(&"dm_move_up", &"dm_move_down"))
 
 
