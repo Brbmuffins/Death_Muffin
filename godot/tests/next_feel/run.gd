@@ -274,7 +274,9 @@ func _run() -> void:
 	var e1 := foe(Vector3(5, 0, -18))
 	var e2 := foe(Vector3(9, 0, -18))
 	caster.request_cast("marrow_spear", Vector3(9, 0, -18), eid(e2))
-	await ticks(45)
+	# wait for the spear to land instead of a fixed 45 ticks (it sometimes needed longer and the check flaked, blocking unrelated ships)
+	await until(func() -> bool: return e1.hp < e1.max_hp, 3.0)
+	await ticks(10)   # time for a pierce to reach the second enemy, if the rune failed to stop it
 	var s1 := DmStatusSet.of(e1)
 	var s2 := DmStatusSet.of(e2)
 	check(s1 != null and s1.has(&"root") and (s2 == null or not s2.has(&"root")) and e1.hp < e1.max_hp and e2.hp >= e2.max_hp, "H: Impaling marrow spear hits and roots only the first enemy in line (hp %.0f/%.0f, %.0f/%.0f)" % [e1.hp, e1.max_hp, e2.hp, e2.max_hp])
