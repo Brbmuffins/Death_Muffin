@@ -37,6 +37,17 @@ Players are `hero/dm_hero_body.gd` (`DmHeroBody`, a `DmSessionBody`): `DmAvatar`
 navmesh-clamped mover (walls slide), collider on the player layer, group `dm_target`, `take_damage(amount, source)`, death -> respawn in the
 Chapterhouse after 4 s. Audio/music/footsteps: `AudioDirector` + `DmAudioHooks` (`DmNextGame` exposes `ready_/area_id/player/avatar/builder`).
 
+## Physics interpolation
+`physics/common/physics_interpolation` is on (project.godot), so bodies simulated at 60 Hz draw smoothly at any display rate. It is opt-in:
+`DmMain` turns the whole tree OFF, and only what is moved in `_physics_process` turns itself ON: the host's `DmSessionBody` (set by `simulated`), and a
+`DmEnemy` / `DmThrall` / `DmBoss` that has authority. Puppets, remote bodies (snapshot-eased in `_process`) and `DmCameraRig` stay OFF.
+- Anything that follows a body from `_process` (camera, avatar, pets, follow decals and shot targets) reads the drawn position:
+  `DmSessionBody.visual_position()` / `node.get_global_transform_interpolated().origin`, never `position`.
+- Every instant move calls `reset_physics_interpolation()` after the write (teleports, respawn, Grave/Veil Step fallbacks, thrall recall/rend/snap,
+  burrower surfacing, first puppet snapshot, boss relocation > `DmBoss.JUMP_M`); spawns reset in `_ready` / `_enter_tree`. A reset takes effect when the tick ends.
+- Visual children moved in `_process` under an interpolated body (the hover bob on `$Visual`) are sampled once per tick, which is invisible for a bob; do not add larger motion there.
+- Suite: `tests/interp/run.gd` (smoothness between ticks, no smear after a teleport, which nodes interpolate).
+
 ## Seams (all on `DmNextGame`)
 Rites (`DmRiteCaster`, `next/rites/`): attached as `Rites` to every body on every peer via `attach_caster(body)` (the host delays a joiner's by 0.8 s).
 `DmNextGame` is its `DmRiteWorld`:

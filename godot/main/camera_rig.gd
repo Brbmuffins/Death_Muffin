@@ -16,6 +16,7 @@ func setup(c: Dictionary) -> void:
 	near = float(c.near)
 	far = float(c.far)
 	current = true
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF   # moved in _process from the hero's interpolated position (docs: cameras)
 
 func zoom_step(sign_: float) -> void:
 	target_zoom = clampf(target_zoom + sign_ * 0.12, float(cfg.zoomMin), float(cfg.zoomMax))

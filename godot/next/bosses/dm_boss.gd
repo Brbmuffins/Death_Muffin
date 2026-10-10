@@ -15,6 +15,7 @@ const BOSS_RADIUS := 1.6
 const STUN_CAP_S := 0.5       ## a rite stun staggers the boss at most this long ...
 const STUN_ICD_S := 8.0       ## ... and at most this often (anti stun-lock)
 const GROUP := &"dm_boss"
+const JUMP_M := 4.0           ## a brain position this far (m) from the body in one tick is a relocation: no interpolation glide
 static var _defs_ready: Dictionary = {}
 
 var boss_id: String = "gravedigger"
@@ -115,7 +116,11 @@ func _physics_process(delta: float) -> void:
 ## Brain state -> body (position, hp, phase, the DmEnemy state label).
 func _mirror() -> void:
 	var s: Dictionary = brain.state
-	global_position = Vector3(float(s["x"]), 0.0, float(s["z"]))
+	var to := Vector3(float(s["x"]), 0.0, float(s["z"]))
+	var jump := to.distance_squared_to(global_position) > JUMP_M * JUMP_M
+	global_position = to
+	if jump:
+		reset_physics_interpolation()   # a phase relocation / emerge is a teleport, not a 60 m/s glide
 	rotation.y = float(s["facing"])
 	max_hp = float(s["maxHp"])
 	hp = maxf(0.0, float(s["hp"]))
@@ -220,5 +225,9 @@ func _process(delta: float) -> void:
 		bstate.z = global_position.z
 		bstate.facing = rotation.y
 		bstate.flash = maxf(0.0, bstate.flash - delta * 4.0)
+	else:   # host: the view and fx read the DRAWN (physics-interpolated) position; _mirror writes the tick position again next tick
+		var ip := get_global_transform_interpolated().origin
+		bstate.x = ip.x
+		bstate.z = ip.z
 	if view != null:
 		view.sync(bstate, delta)

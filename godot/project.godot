@@ -31,6 +31,10 @@ textures/vram_compression/import_etc2_astc=false
 
 theme/custom="res://ui/theme/dm_theme.tres"
 
+[physics]
+
+common/physics_interpolation=true
+
 [layer_names]
 
 3d_physics/layer_1="world"

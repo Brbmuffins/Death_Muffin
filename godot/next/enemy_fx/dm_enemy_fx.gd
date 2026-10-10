@@ -139,7 +139,8 @@ func _pos_of(id: int) -> Variant:
 	var s: Slot = _slots.get(id)
 	if s == null or not is_instance_valid(s.e) or s.e.sm == null or s.e.sm.id() == DmEnemyState.Id.DEAD:
 		return null
-	return Vector3(s.e.global_position.x, 0.0, s.e.global_position.z)
+	var ip := s.e.get_global_transform_interpolated().origin   # the drawn position, so decals stay on the smoothed body
+	return Vector3(ip.x, 0.0, ip.z)
 
 
 func watched() -> int:

@@ -34,6 +34,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 		b.call("teleport", to)
 	else:
 		b.position = Vector3(to.x, b.position.y, to.z)
+		b.reset_physics_interpolation()
 	if from.distance_squared_to(to) > 0.0001 and b.get("yaw") != null:
 		b.set("yaw", atan2(to.x - from.x, to.z - from.z))
 		b.rotation.y = float(b.get("yaw"))

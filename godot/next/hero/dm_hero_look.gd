@@ -236,7 +236,8 @@ func _process(dt: float) -> void:
 				_far_acc[id] = step
 				continue
 			_far_acc[id] = 0.0
-		(_pets[id] as DmPetView).update(step, b.position.x, b.position.z, b.rotation.y)
+		var vp := b.visual_position()
+		(_pets[id] as DmPetView).update(step, vp.x, vp.z, b.rotation.y)
 
 
 # ---- the hero ring -------------------------------------------------------------------------------------------
@@ -251,7 +252,10 @@ func _dress_ring(b: DmHeroBody) -> void:
 	var wg: WeakRef = weakref(game)
 	var at := func() -> Variant:
 		var hb: Variant = wb.get_ref()
-		return Vector3(hb.position.x, 0, hb.position.z) if hb != null else null
+		if hb == null:
+			return null
+		var vp: Vector3 = hb.visual_position()
+		return Vector3(vp.x, 0, vp.z)
 	var dd: Dictionary = DmContent.discipline(b.discipline_id)
 	var col: int = int(Color.html(String(dd.get("color", "#a26bff"))).to_rgba32() >> 8)
 	_ring = [

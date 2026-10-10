@@ -180,6 +180,9 @@ func _ready() -> void:
 	_scan_t = rng.randf() * SCAN_S
 	_wander_heading = rng.randf() * TAU
 	home = global_position
+	# The brain moves the body in _physics_process: interpolate it. A puppet is eased in _process, so it must not be.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON if is_multiplayer_authority() else Node.PHYSICS_INTERPOLATION_MODE_OFF
+	reset_physics_interpolation()
 
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
 	max_slides = 3   # cheaper than the default 6; walls here are plain boxes
@@ -619,6 +622,7 @@ func apply_net_state(d: Dictionary) -> void:
 	if not _net_seen:
 		global_position = _net_pos
 		rotation.y = _net_yaw
+		reset_physics_interpolation()
 		_net_seen = true
 	var old := sm.id()
 	if st != old:

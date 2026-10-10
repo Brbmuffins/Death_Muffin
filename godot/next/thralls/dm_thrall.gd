@@ -151,6 +151,7 @@ func configure(d: Dictionary) -> void:
 	legion_id = String(d.get("legion", legion_id))
 	if d.has("pos"):
 		position = d["pos"]
+		reset_physics_interpolation()
 	if d.has("yaw"):
 		rotation.y = float(d["yaw"])
 
@@ -167,6 +168,9 @@ func _ready() -> void:
 	_repath_t = rng.randf() * REPATH_S
 	_scan_t = rng.randf() * SCAN_S
 	radius = 0.8 if kind == "colossus" else 0.4
+	# Moved by the brain in _physics_process: interpolate. A puppet is eased in _process, so it must not be.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON if is_multiplayer_authority() else Node.PHYSICS_INTERPOLATION_MODE_OFF
+	reset_physics_interpolation()
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
 	max_slides = 3
 	collision_layer = LAYER_THRALL
@@ -280,6 +284,7 @@ func _think(delta: float) -> void:
 	var op := owner_node.global_position
 	if _flat(op - global_position) > DmSimConsts.THRALL_TELEPORT:
 		global_position = op + Vector3(rng.randf() - 0.5, 0.0, rng.randf() - 0.5) * 2.0
+		reset_physics_interpolation()
 		target = null
 		_nav_goal = Vector3.INF
 	if not _target_ok(op):
@@ -564,7 +569,7 @@ func _make_ring() -> void:
 	if _vfx == null:
 		return
 	var o := {"other": not _own, "tex": "ring", "color": LOW_HP_HEX if _low_hp else _ring_hex, "x": global_position.x, "z": global_position.z, "r": _ring_r * (1.15 if _low_hp else 1.0),
-		"duration": 1e9, "opacity": 0.95 if _low_hp else (1.0 if empowered else 0.7), "follow": func() -> Variant: return Vector3(global_position.x, 0.0, global_position.z) if is_inside_tree() else null}
+		"duration": 1e9, "opacity": 0.95 if _low_hp else (1.0 if empowered else 0.7), "follow": _drawn_ground}
 	if _low_hp:
 		o["pulse"] = 4.0
 	_ring = _vfx.decal(o)
@@ -641,6 +646,14 @@ func _loco(ground: float) -> void:
 		creature.set_loop("idle")
 
 
+## Decal follow target: the DRAWN (physics-interpolated) ground point, null once out of the tree.
+func _drawn_ground() -> Variant:
+	if not is_inside_tree():
+		return null
+	var ip := get_global_transform_interpolated().origin
+	return Vector3(ip.x, 0.0, ip.z)
+
+
 func _process(delta: float) -> void:
 	if not is_multiplayer_authority():
 		_puppet_step(delta)
@@ -691,6 +704,7 @@ func apply_net_state(d: Dictionary) -> void:
 	if not _net_seen:
 		global_position = _net_pos
 		rotation.y = _net_yaw
+		reset_physics_interpolation()
 		_net_seen = true
 		_swing_seen = int(d["swing"])
 	var st := int(d["state"])

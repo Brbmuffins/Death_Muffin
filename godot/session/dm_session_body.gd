@@ -14,7 +14,10 @@ var owner_peer: int = 0
 var display_name: String = ""
 var discipline_id: String = ""
 var yaw: float = 0.0
-var simulated: bool = false  ## true on the host only
+var simulated: bool = false:  ## true on the host only. The host moves the body in _physics_process (interpolated); others in _process (not)
+	set(v):
+		simulated = v
+		physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON if v else Node.PHYSICS_INTERPOLATION_MODE_OFF
 
 var move_target: Vector3 = Vector3.ZERO
 var has_target: bool = false
@@ -26,6 +29,10 @@ var _dash_from := Vector3.ZERO
 var _dash_to := Vector3.ZERO
 var _dash_t: float = 0.0
 var _dash_dur: float = 0.0
+
+
+func _enter_tree() -> void:
+	reset_physics_interpolation()   # a body that enters the tree at its spawn point must not glide from the origin
 
 
 func setup(peer_id: int, nm: String, disc: String, pos: Vector3) -> void:
@@ -77,8 +84,15 @@ func stop() -> void:
 ## Host: move the body instantly (blink rites, respawn). Clients snap to it (SNAP_JUMP) rather than glide across the room.
 func teleport(to: Vector3) -> void:
 	position = Vector3(to.x, 0.0, to.z)
+	reset_physics_interpolation()
 	dashing = false
 	stop()
+
+
+## Where the body is DRAWN this frame: the physics-interpolated position on the host, `position` elsewhere. Anything that follows the body
+## from _process (camera, avatar, pets, follow decals) reads this, not `position`, or it steps at the physics rate.
+func visual_position() -> Vector3:
+	return get_global_transform_interpolated().origin
 
 
 ## Host: true when the ground point is somewhere a body may stand. Plain bodies: inside the arena. DmHeroBody asks the navmesh.
