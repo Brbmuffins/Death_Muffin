@@ -917,8 +917,18 @@ test('godot mode: !shot is available, the agent may run shot-godot.sh (not shot.
   assert.ok(wargs.includes(`Bash(${wa.tools}/shot.sh)`) && wargs.includes(`Bash(${wa.tools}/regen.sh)`) && wargs.includes(`Bash(${wa.tools}/check.sh)`) && !wargs.some((x) => /check-godot|shot-godot/.test(x)));
 });
 
-test('godot mode: the proposal goes out at once with the AFTER picture and frees the slot; the BEFORE/AFTER pair follows; no base picture = after only', async () => {
+test('godot mode: no BEFORE pictures unless cfg.beforeShots is on (the proposal carries the AFTER picture only)', async () => {
   const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY SHOT-PNG make it faster and show it');
+  const p = await waitProposal(d, thread);
+  assert.deepEqual(p.payload.files.map((f) => f.name), ['a.png']);
+  await until(() => !Object.values(w.runner.jobs())[0].running, d.ad);
+  assert.ok(!thread.sent.some((m) => m.payload && m.payload.files && m.payload.files.some((f) => f.name === 'before-a.png')), 'no BEFORE picture');
+  assert.doesNotMatch(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"event":"base-shots"/, 'no base render');
+});
+
+test('godot mode (beforeShots on): the proposal goes out at once with the AFTER picture and frees the slot; the BEFORE/AFTER pair follows; no base picture = after only', async () => {
+  const w = godotWorld({ beforeShots: true }); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY SHOT-PNG make it faster and show it');
   const p = await waitProposal(d, thread);
   assert.deepEqual(p.payload.files.map((f) => f.name), ['a.png']);

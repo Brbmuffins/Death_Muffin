@@ -732,7 +732,9 @@ function createRunner(cfgIn, opts = {}) {
     post({ threadId: job.threadId }, { embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
     // BEFORE pictures come after, in the background: rendering waits for the shared renderer lock (other renders can hold it for many
     // minutes), and a job waiting on it kept its slot and blocked other requests (2026-10-10). The pair is posted as a follow-up.
-    if (GODOT && shots.length) postBeforeAfter(job, head, shots.slice(0, 2));
+    // BEFORE pictures (the unchanged base rendered with the same shot plan) only when switched on: each is one more software-GL render
+    // in the shared renderer queue (owner, 2026-10-10: "skip making before photos"). cfg.beforeShots: true brings them back.
+    if (GODOT && shots.length && cfg.beforeShots === true) postBeforeAfter(job, head, shots.slice(0, 2));
     carryApproval(job);
   }
   // A ship that hit a merge conflict was synced by the runner; when the resolved change is still the approved one (same files or fewer, tier
