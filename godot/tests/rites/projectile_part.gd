@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## The projectile / line / cone rites (godot/next/rites: bone_fan, rot_lance, marrow_spear, wailing_skull, ivory_cleave, bone_storm, soul_siphon).
 ## godot --headless --path godot --script res://tests/rites/projectile_run.gd
 ## Part A: solo (DmSession on OfflineMultiplayerPeer), host stepped by hand. Part B: in-process ENet, 1 host + 2 clients on DmTestPorts.free_port()
@@ -19,7 +19,7 @@ func ok(c: bool, msg: String) -> void:
 
 
 func _initialize() -> void:
-	_main.call_deferred()
+	await _main()
 
 
 func _main() -> void:
@@ -32,11 +32,10 @@ func _main() -> void:
 
 
 func wait_for(cond: Callable, timeout := 8.0) -> bool:
-	var t := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t < timeout * 1000.0:
+	for i in int(timeout * 60.0):   # sim ticks, not a wall-clock timer
 		if cond.call():
 			return true
-		await create_timer(0.05).timeout
+		await physics_frame
 	return cond.call()
 
 
@@ -667,7 +666,7 @@ func _part_b() -> void:
 		host.casters[id].p["stats"]["level"] = 20.0
 	host.sess.get_body(id1).position = Vector3(0, 0, 2)
 	host.sess.get_body(id2).position = Vector3(0, 0, -3)
-	await create_timer(0.3).timeout
+	await step_secs(0.3)
 	var a := _robber(host.w, host.node, Vector3(0, 0, 8), 1.0e6, true)
 	var b := _robber(host.w, host.node, Vector3(0, 0, 11), 1.0e6, true)
 	var aid := host.w.enemy_id(a)
@@ -699,7 +698,7 @@ func _part_b() -> void:
 			await wait_for(func(): return host.w.count("end") > n_end, 10.0)
 			want = hc.events_played
 		ok(await wait_for(func(): return peers.all(func(p): return p.casters[oid].events_played == want), 10.0), "B: %s: %d events reached every peer" % [sp[1], want - ev0])
-		await create_timer(0.3).timeout
+		await step_secs(0.3)
 		var counts_ok := true
 		for p in peers:
 			var au: RecAudio = p.rec[oid][1]
@@ -711,7 +710,7 @@ func _part_b() -> void:
 				counts_ok = false
 		ok(counts_ok, "B: %s fx/sfx exactly once per peer %s" % [sp[1], str(sp[5])])
 		a.global_position = Vector3(0, 0, 8)
-		await create_timer(0.2).timeout
+		await step_secs(0.2)
 	# the storm: every peer gets the cast + the same ticks, one storm sfx each
 	var sc: DmRiteCaster = host.casters[id2]
 	sc.p["cooldowns"].clear()
@@ -732,7 +731,7 @@ func _part_b() -> void:
 			e.free()
 	for p in [c1, c2, host]:
 		(p as Peer).sess.leave()
-	await create_timer(0.5).timeout
+	await step_secs(0.5)
 	for p in peers:
 		p.node.queue_free()
 

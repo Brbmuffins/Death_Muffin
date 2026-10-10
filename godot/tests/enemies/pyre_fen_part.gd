@@ -1,6 +1,6 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## Headless suite for the Cinder Pyre / Mourning Fen kinds (cinder_husk, pyre_priest, cinderhound, slag_brute, bog_hag, mire_leech, fen_wisp,
-## drowned_sexton). godot --headless --path godot --script res://tests/enemies/pyre_fen_run.gd
+## drowned_sexton). (part of tests/enemies/run.gd)
 ## Numbers are asserted against DmSimData (the old sim's data); behaviour against sim_enemy_ai.gd. Time is in physics ticks with time_scale raised.
 
 const S := DmEnemyState.Id
@@ -67,7 +67,7 @@ var fxn: DmEnemyFx
 
 
 func _initialize() -> void:
-	_run.call_deferred()
+	await _run()
 
 func check(ok: bool, what: String) -> void:
 	if ok:
@@ -599,20 +599,12 @@ func _t_perf() -> void:
 	var mix := ["cinder_husk", "cinder_husk", "pyre_priest", "cinderhound", "cinderhound", "slag_brute", "bog_hag", "mire_leech", "mire_leech", "mire_leech",
 		"fen_wisp", "drowned_sexton", "cinder_husk", "cinderhound", "mire_leech", "pyre_priest", "cinder_husk", "cinderhound", "mire_leech", "bog_hag",
 		"fen_wisp", "cinder_husk", "slag_brute", "mire_leech", "cinderhound", "pyre_priest", "mire_leech", "cinder_husk", "drowned_sexton", "fen_wisp"]
-	var base_mix := []
-	for i in 30:
-		base_mix.append("robber")
 	var mb: Array[float] = []
 	var mp: Array[float] = []
 	var mr: Array[float] = []   # worst frame of each mixed sample
-	var bb: Array[float] = []
-	var bp: Array[float] = []
 	var engaged := 0
 	var line := ""
-	for sample in 3:
-		var b: Array = await _crowd(base_mix)
-		bb.append(b[0])
-		bp.append(b[1])
+	for sample in 1:
 		var m: Array = await _crowd(mix)
 		mb.append(m[0])
 		mp.append(m[1])
@@ -621,13 +613,11 @@ func _t_perf() -> void:
 		line = m[4]
 	var brain := _med(mb)
 	var phys := _med(mp)
-	var base_brain := _med(bb)
-	var base_phys := _med(bp)
-	print("PERF mixed-30 Pyre/Fen crowd (median of 3): brain %.1f us/enemy-tick (30 robbers %.1f), frame median %.2f ms (30 robbers %.2f), worst %.1f ms, engaged %d/30" % [brain, base_brain, phys, base_phys, _med(mr), engaged])
+	print("PERF mixed-30 Pyre/Fen crowd (1 sample): brain %.1f us/enemy-tick, frame median %.2f ms, worst %.1f ms, engaged %d/30" % [brain, phys, _med(mr), engaged])
 	print("PERF   per kind (last sample):", line)
 	check(engaged >= 27, "the mixed crowd is engaged (%d/30)" % engaged)
-	perf_info(brain < BUDGET_BRAIN_US or brain <= base_brain * 1.5, "median brain cost %.1f us/enemy-tick under %.0f us or 1.5x the robber crowd (%.1f)" % [brain, BUDGET_BRAIN_US, base_brain])
-	perf_info(phys < BUDGET_FRAME_MS or phys <= base_phys * 1.5, "median frame %.2f ms under %.0f ms or 1.5x the robber crowd (%.2f)" % [phys, BUDGET_FRAME_MS, base_phys])
+	perf_info(brain < BUDGET_BRAIN_US, "brain cost %.1f us/enemy-tick under %.0f us" % [brain, BUDGET_BRAIN_US])
+	perf_info(phys < BUDGET_FRAME_MS, "frame median %.2f ms under %.0f ms" % [phys, BUDGET_FRAME_MS])
 	perf_info(_med(mr) < CAP_WORST_FRAME_MS, "worst frame %.1f ms under %.0f ms" % [_med(mr), CAP_WORST_FRAME_MS])
 
 

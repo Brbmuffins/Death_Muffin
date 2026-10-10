@@ -12,7 +12,7 @@ hud.cast.connect(...)                         # intent out: signals (below)
 ```
 
 Gallery: `ui/hud/shoot.sh combat|boss|calm|death|events [out.png] [WxH]` (renderer lock + Xvfb; screenshots land in the gitignored `shots/hud/`).
-Tests: `godot --headless --path godot --script res://tests/hud/run.gd`. The game-side feed is `DmNextHudVm` (`next/hud/README.md`).
+Tests: `godot --headless --path godot --script res://tests/ui/run.gd (hud_part)`. The game-side feed is `DmNextHudVm` (`next/hud/README.md`).
 
 ## View-model (`apply(vm: Dictionary)`)
 

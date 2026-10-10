@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## HUD view-model -> widget state (headless):  godot --headless --path godot --script res://tests/hud/run.gd
 
 var _fail := 0
@@ -19,7 +19,7 @@ func _frames(n: int) -> void:
 
 
 func _initialize() -> void:
-	_run.call_deferred()
+	await _run()
 
 
 func _run() -> void:

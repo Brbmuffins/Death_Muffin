@@ -421,7 +421,7 @@ func _run() -> void:
 	var fc := DmFrameCost.attach(self.root)
 	await ticks(10)
 	fc.reset()
-	await ticks(240)
+	await ticks(30)   # timing is INFO only: a short window still runs the gathering frame path
 	print("perf: gathering, headless: frame median %.2f ms (p95 %.2f, worst %.2f, %d samples)" % [fc.median_ms(), fc.p95_ms(), fc.worst_ms(), fc.samples()])
 	perf_info(fc.median_ms() < 14.0 and fc.worst_ms() < 150.0, "frame median %.2f ms under 14 while gathering, worst %.1f ms under 150" % [fc.median_ms(), fc.worst_ms()])
 	fc.queue_free()

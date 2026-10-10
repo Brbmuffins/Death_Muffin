@@ -63,7 +63,7 @@ func _run() -> void:
 	_check(ui.hud.vm["reveal"].has("hud.dial"), "held-back elements listed in vm.reveal")
 	_check(ui.hud.vm.has("new") and ui.hud.vm.has("grimoire_new"), "ui-owned parts merged")
 	game.hud["hp"] = 123
-	await create_timer(float(DmGameUi.HUD_INTERVAL_MS + 20) / 1000.0).timeout
+	ui._hud_at -= DmGameUi.HUD_INTERVAL_MS + 20   # the HUD interval has elapsed (backdated: no wall-clock wait)
 	await _frames(2)
 	_check(ui.hud.vm["hp"] == 123, "hud follows game within HUD_INTERVAL_MS (the web's 50 ms HUD cadence)")
 

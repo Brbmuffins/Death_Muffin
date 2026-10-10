@@ -314,9 +314,10 @@ func _t_net() -> void:
 	var cpeer := ENetMultiplayerPeer.new()
 	check(cpeer.create_client("127.0.0.1", port) == OK, "net: client")
 	C.multiplayer.multiplayer_peer = cpeer
-	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 5000 and H.multiplayer.get_peers().is_empty():
-		await process_frame
+	for _i in 300:   # up to 5 s of physics ticks
+		if not H.multiplayer.get_peers().is_empty():
+			break
+		await physics_frame
 	check(not H.multiplayer.get_peers().is_empty(), "net: peers connected")
 	await process_frame
 	# host world: arena under H; client world: bare puppets under C
@@ -386,11 +387,13 @@ func _t_net() -> void:
 		for he in host_es:
 			if he.sm.id() != S.DEAD:
 				he.attack_cd = 0.1
-		var t1 := Time.get_ticks_msec()
 		var want: Array = ["cone", "slam", "dust", "erupt"] if mode == "20Hz" else ["cone", "slam", "dust"]
-		while Time.get_ticks_msec() - t1 < 20000 and not want.all(func(k): return tlog_h.any(func(t): return t[0] == k)):
-			await process_frame
-		await create_timer(0.3).timeout   # let in-flight snapshots land
+		for _i in 1200:   # up to 20 s of physics ticks
+			if want.all(func(k): return tlog_h.any(func(t): return t[0] == k)):
+				break
+			await physics_frame
+		for _i in 18:   # 0.3 s: let in-flight snapshots land
+			await physics_frame
 		check(tlog_h.size() >= 3, "net[%s]: host telegraphed %d times" % [mode, tlog_h.size()])
 		check(cfx.stats["telegraph"] == tlog_c.size() and hfx.stats["telegraph"] == tlog_h.size(), "net[%s]: each peer's fx saw its own telegraphs exactly once (h %d/%d c %d/%d)" % [mode, hfx.stats["telegraph"], tlog_h.size(), cfx.stats["telegraph"], tlog_c.size()])
 		check(tlog_c.size() >= tlog_h.size() - 1 and tlog_c.size() <= tlog_h.size(), "net[%s]: client got every telegraph the host sent (%d of %d)" % [mode, tlog_c.size(), tlog_h.size()])
@@ -423,7 +426,8 @@ func _t_net() -> void:
 	# death replicates: one death fx per peer
 	var he0: DmEnemy = host_es[0]
 	he0.take_damage(1e9, null)
-	await create_timer(0.4).timeout
+	for _i in 24:   # 0.4 s
+		await physics_frame
 	check(hfx.stats["death"] == 1 and cfx.stats["death"] == 1, "net: death fx once per peer (h %d c %d)" % [hfx.stats["death"], cfx.stats["death"]])
 	check(ha.count("enemyDeath") == 1 and ca.count("enemyDeath") == 1, "net: death sound once per peer")
 	check(hfx.stats["hit"] == cfx.stats["hit"], "net: hit flash events equal (h %d c %d)" % [hfx.stats["hit"], cfx.stats["hit"]])

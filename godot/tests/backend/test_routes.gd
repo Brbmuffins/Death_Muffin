@@ -28,7 +28,7 @@ func _ok(cond: bool, label: String, extra: String = "") -> void:
 		print("FAIL: offline ", label, " ", extra)
 
 static func run(t: SceneTree) -> Array:
-	var me = load("res://tests/offline/test_routes.gd").new()
+	var me = load("res://tests/backend/test_routes.gd").new()
 	await me._run(t)
 	return [me._p, me._f]
 
@@ -226,7 +226,7 @@ func _persistence() -> void:
 	api2.set_token("offline:keeper")
 	var after := await _snapshot(api2, cid)
 	for k in before:
-		var d: String = load("res://tests/offline/run.gd").diff(after[k], before[k], k)
+		var d: String = load("res://tests/backend/offline_part.gd").diff(after[k], before[k], k)
 		_ok(d == "", "relaunch keeps " + k, d)
 	_ok(int(after["character"]["gold"]) == 654321 and int(after["character"]["level"]) == 12, "relaunch keeps gold and level")
 	_ok(after["vault"]["vault"].size() == 2, "relaunch keeps the vault", str(after["vault"]["vault"].size()))

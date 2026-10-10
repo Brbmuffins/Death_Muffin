@@ -1,9 +1,9 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## The bag save payload the client sends must pass the LIVE server's rules (server.js POST /api/inventory/save + inventory-save.cjs):
 ## every slot a non-empty string item_id and a whole quantity >= 1, slot_index inside 0..bagSize-1 and unique, bagSize 1..48.
 ## Regression for 2026-10-08: a sold stack left a quantity-0 row in the bag, so every later save was refused with
 ## "each slot requires an item_id and positive integer quantity". Also checks DmInventory's sale path and its failure reporting.
-##   godot --headless --path godot --script res://tests/rules-loot/bag_save_run.gd
+##   godot --headless --path godot --script res://tests/rules-loot/run.gd (part bag_save_part)
 
 var _pass := 0
 var _fail := 0
@@ -64,7 +64,7 @@ class FakeApi extends DmApi:
 
 
 func _initialize() -> void:
-	_run.call_deferred()
+	await _run()
 
 
 func _run() -> void:

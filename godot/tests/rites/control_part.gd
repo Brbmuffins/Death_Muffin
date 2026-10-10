@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## The control / movement rites (godot/next/rites: grave_step, veil_step, grave_frost, bone_prison, grave_hands, rally_dead).
 ## godot --headless --path godot --script res://tests/rites/control_run.gd
 ## Part A: solo (DmSession on OfflineMultiplayerPeer), host stepped by hand. Part B: in-process ENet, 1 host + 2 clients on DmTestPorts.free_port()
@@ -19,7 +19,7 @@ func ok(c: bool, msg: String) -> void:
 
 
 func _initialize() -> void:
-	_main.call_deferred()
+	await _main()
 
 
 func _main() -> void:
@@ -33,11 +33,10 @@ func _main() -> void:
 
 
 func wait_for(cond: Callable, timeout := 8.0) -> bool:
-	var t := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t < timeout * 1000.0:
+	for i in int(timeout * 60.0):   # sim ticks, not a wall-clock timer
 		if cond.call():
 			return true
-		await create_timer(0.05).timeout
+		await physics_frame
 	return cond.call()
 
 
@@ -785,7 +784,7 @@ func _part_b() -> void:
 		host.casters[id].p["resource"]["max"] = 1000.0
 	var hb: DmSessionBody = host.sess.get_body(id1)
 	hb.position = Vector3(-6, 0, 0)
-	await create_timer(0.4).timeout
+	await step_secs(0.4)
 	ok(await wait_for(func(): return (_bpos(c2, id1) - Vector3(-6, 0, 0)).length() < 0.3), "B: the observer sees the body at its spawn spot")
 
 	# --- veil step: the body glides on the host, the position replicates, the observer sees it moving (interpolated, not jumping)
@@ -846,7 +845,7 @@ func _part_b() -> void:
 	# --- frost / prison / hands by the second client on enemies that exist on the host only
 	hb = host.sess.get_body(id2)
 	hb.position = Vector3(0, 0, 0)
-	await create_timer(0.3).timeout
+	await step_secs(0.3)
 	var e_c := _robber(host.w, host.node, Vector3(0, 0, 4))
 	var e_c2 := _robber(host.w, host.node, Vector3(0.5, 0, 6))
 	var hpf := e_c.hp
@@ -869,7 +868,7 @@ func _part_b() -> void:
 		var a: RecAudio = p.rec[id2][1]
 		var fxr: RecFx = p.rec[id2][0]
 		ok(a.sfx == ["frost", "prison"] and fxr.c.get("spikes", 0) == 1, "B: %s prison fx exactly once (sfx %s)" % [p.node.name, str(a.sfx)])
-	await create_timer(0.3).timeout
+	await step_secs(0.3)
 	host.casters[id2].p["cooldowns"].clear()
 	var ev3: int = host.casters[id2].events_played
 	var hph := e_c.hp
@@ -884,7 +883,7 @@ func _part_b() -> void:
 	ok(hph - e_c.hp > 0.0, "B: the field raked the enemy on the host")
 
 	# --- rally: thralls from exhume, one event, fx once per peer, puppets resolvable on clients
-	await create_timer(0.6).timeout
+	await step_secs(0.6)
 	hb = host.sess.get_body(id1)
 	hb.position = Vector3(-4, 0, 0)
 	host.casters[id1].p["cooldowns"].clear()
@@ -928,13 +927,13 @@ func _part_b() -> void:
 	for t in thr.list().duplicate():
 		t.target = null
 		t.kill("crumbled")
-	await create_timer(0.2).timeout
+	await step_secs(0.2)
 	for e in host.w.enemies:
 		if is_instance_valid(e):
 			e.free()
 	for p in [c1, c2, host]:
 		(p as Peer).sess.leave()
-	await create_timer(0.5).timeout
+	await step_secs(0.5)
 	for p in peers:
 		p.node.queue_free()
 

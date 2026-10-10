@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## The four discipline signatures (godot/next/rites: ossuary_wall, command_rend, dirge, plague_bloom) + the discipline mods + the R hotbar slot.
 ## godot --headless --path godot --script res://tests/rites/signature_run.gd
 ## A: registry, hotbar R slot, validation, numbers (solo, host stepped by hand). B: the wall blocks a chasing enemy (real physics) and is removed.
@@ -25,7 +25,7 @@ func ok(c: bool, msg: String) -> void:
 
 
 func _initialize() -> void:
-	_main.call_deferred()
+	await _main()
 
 
 func _main() -> void:
@@ -44,11 +44,10 @@ func _main() -> void:
 
 
 func wait_for(cond: Callable, timeout := 8.0) -> bool:
-	var t := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t < timeout * 1000.0:
+	for i in int(timeout * 60.0):   # sim ticks, not a wall-clock timer
 		if cond.call():
 			return true
-		await create_timer(0.05).timeout
+		await physics_frame
 	return cond.call()
 
 
@@ -380,8 +379,7 @@ func _part_b() -> void:
 	ok(nav.vertices.size() == 4 and nav.avoidance_enabled and not nav.affect_navigation_mesh and nav.height > 1.8, "B: the obstacle has the footprint, avoids, and does not rebake the navmesh")
 	# the enemy is held on its side for most of the 6 s
 	var max_z := -99.0
-	var t_end := Time.get_ticks_msec() + 800
-	while Time.get_ticks_msec() < t_end:
+	for _i in 48:   # 0.8 s of sim time
 		await physics_frame
 		max_z = maxf(max_z, e.global_position.z)
 	ok(max_z < -5.3, "B: the chaser is stopped at the wall (max z %.2f, wall at -5 +-0.4)" % max_z)
@@ -406,8 +404,9 @@ func _ticks(n: int) -> void:
 
 
 func _until_physics(cond: Callable, limit_s: float) -> void:
-	var end := Time.get_ticks_msec() + int(limit_s * 1000.0)
-	while Time.get_ticks_msec() < end and not cond.call():
+	for _i in int(limit_s * 60.0):
+		if cond.call():
+			return
 		await physics_frame
 
 
@@ -717,7 +716,7 @@ func _part_g() -> void:
 		host.casters[id].p["resource"]["value"] = 1.0e6
 		host.casters[id].p["resource"]["max"] = 1.0e6
 	host.sess.get_body(id1).position = Vector3(0, 0, 0)
-	await create_timer(0.3).timeout
+	await step_secs(0.3)
 	var hc: DmRiteCaster = host.casters[id1]
 	var mine: DmRiteCaster = c1.casters[id1]
 	# wall
@@ -771,7 +770,7 @@ func _part_g() -> void:
 	# a forged intent from a client for another's caster does nothing
 	var n2: int = hc.events_played
 	c2.casters[id1].request_cast("dirge", Vector3.ZERO, -1, 0)
-	await create_timer(0.3).timeout
+	await step_secs(0.3)
 	ok(hc.events_played == n2, "G: a client cannot cast on another player's body")
 	for t in th.list().duplicate():
 		t.kill("crumbled")
@@ -785,7 +784,7 @@ func _part_g() -> void:
 			e.free()
 	for p in [c1, c2, host]:
 		(p as Peer).sess.leave()
-	await create_timer(0.5).timeout
+	await step_secs(0.5)
 	for p in peers:
 		p.node.queue_free()
 
@@ -813,7 +812,7 @@ func _part_h() -> void:
 	ok(slots.size() == 6 and slots[5]["key"] == "R" and not slots[5]["locked"] and is_equal_approx(float(slots[5]["cost"]), 30.0), "H: the HUD shows R as a sixth slot, unlocked at level 12, 30 essence")
 	var ev0 := c.events_played
 	g.input.hotbar.emit(6, Vector3(0, 0, -5) + b.position, 0)
-	await create_timer(0.3).timeout
+	await step_secs(0.3)
 	ok(c.events_played == ev0 + 1 and c.cooldown_left("ossuary_wall") > 15000.0, "H: pressing R raises the wall through the slice's hotbar path")
 	# the Ossuary's Bone Ward: damage reduced by wardPerThrall per living thrall
 	var hp0 := b.hp
@@ -828,7 +827,7 @@ func _part_h() -> void:
 		c.p["castUntil"] = 0.0
 		c.p["resource"]["value"] = c.p["resource"]["max"]
 		c.request_cast("exhume", Vector3(b.position.x + i, 0, b.position.z + 3.0))
-		await create_timer(0.7).timeout
+		await step_secs(0.7)
 	ok(th.count() == 2, "H: two thralls raised")
 	var hp1 := b.hp
 	b.take_damage(100.0, null)

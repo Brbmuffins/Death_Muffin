@@ -119,11 +119,11 @@ func _run() -> void:
 	await g.ui.inv.toggle_equip(row.call("set_gravecaller_legs"))
 	await ticks(30)
 	fc.reset()
-	await ticks(180)
+	await ticks(30)   # timing is INFO only: a short window still runs the dressed-hero frame path
 	var with_look := fc.median_ms()
 	look.set_process(false)
 	fc.reset()
-	await ticks(180)
+	await ticks(30)   # timing is INFO only: a short window still runs the dressed-hero frame path
 	var without_pet := fc.median_ms()
 	look.set_process(true)
 	print("perf: frame median %.2f ms with pet+gear+cape, %.2f ms with the pet frozen (pet update ~%.2f ms)" % [with_look, without_pet, maxf(0.0, with_look - without_pet)])

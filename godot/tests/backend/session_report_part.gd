@@ -1,6 +1,6 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## Party-session API against the offline backend (decision D4): the same calls a host/member makes online, answered locally.
-## Headless:  godot --headless --path godot --script res://tests/session_report/run.gd
+## Headless:  godot --headless --path godot --script res://tests/backend/run.gd
 
 var _p := 0
 var _f := 0
@@ -14,7 +14,7 @@ func ok(cond: bool, label: String, extra: String = "") -> void:
 		print("FAIL: ", label, " ", extra)
 
 func _initialize() -> void:
-	_main.call_deferred()
+	await _main()
 
 func _user(mock: DmMockBackend, name: String, class_index: int) -> Array:
 	var api := DmOffline.make_api(mock)

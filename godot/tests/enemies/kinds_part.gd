@@ -1,5 +1,5 @@
-extends SceneTree
-## Headless suite for the Hollow Graves enemy kinds (godot/enemies/<kind>.tscn). godot --headless --path godot --script res://tests/enemies/kinds_run.gd
+extends "res://tests/common/dm_suite_part.gd"
+## Headless suite for the Hollow Graves enemy kinds (godot/enemies/<kind>.tscn). (part of tests/enemies/run.gd)
 ## Pilot (robber) checks live in run.gd; this file shares its stepping helpers.
 ## Time is stepped in physics ticks (1/60 s) with Engine.time_scale raised so the suite stays quick; assertions are in sim seconds.
 
@@ -21,7 +21,7 @@ var extra_dummies: Array[DmTargetDummy] = []
 
 
 func _initialize() -> void:
-	_run.call_deferred()
+	await _run()
 
 func check(ok: bool, what: String) -> void:
 	if ok:
@@ -531,7 +531,7 @@ func _t_perf() -> void:
 	DmEnemy.prof_reset()
 	var fc := DmFrameCost.attach(root)
 	var start := now()
-	while now() - start < 8.0:
+	while now() - start < 3.0:
 		var a := (now() - start) * 0.6
 		dummy.global_position = Vector3(sin(a) * 3.0, 0, 6.0 + cos(a) * 3.0)
 		await physics_frame
