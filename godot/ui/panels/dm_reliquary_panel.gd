@@ -120,8 +120,16 @@ func _build_ui() -> void:
 			b.custom_minimum_size = Vector2(56, 56)
 			b.theme_type_variation = "DmButtonSmall"
 			b.text = DmUi.upper("Sheet\n· J")
-			b.add_theme_font_size_override("font_size", 10)
+			b.add_theme_font_size_override("font_size", 9)
 			b.add_theme_constant_override("h_separation", 0)
+			# the small-button padding leaves under 40px for the word: tighten the side margins on this one cell
+			for state in ["normal", "hover", "pressed", "disabled"]:
+				var sbx := DmUi.theme().get_stylebox(state, "DmButtonSmall")
+				if sbx is StyleBoxFlat:
+					var sb2 := sbx.duplicate() as StyleBoxFlat
+					sb2.content_margin_left = 2
+					sb2.content_margin_right = 2
+					b.add_theme_stylebox_override(state, sb2)
 			b.clip_text = true  # its text must not make the 3rd doll column wider than the 56px cells (stretched Trinket/Off hand)
 			b.visible = has_sheet
 			b.pressed.connect(func() -> void: sheet_pressed.emit())
