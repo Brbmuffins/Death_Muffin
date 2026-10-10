@@ -99,7 +99,7 @@ const DEFAULTS = {
       'godot/**/*kill*', 'godot/**/*gold_sink*', 'godot/**/*goldSink*', 'godot/**/*vault_rules*', 'godot/**/*vaultRules*', 'godot/**/*labor_rules*', 'godot/**/*laborRules*',
       'godot/**/*legionRules*', 'godot/**/*milestone*', 'godot/**/*reward*', 'godot/**/*tradeGoods*', 'godot/**/*unlock*', 'godot/**/*seal*',
       'godot/tests/rules-progression/**',
-      'godot/tests/net/**', 'godot/tests/relay/**', 'godot/tests/offline/**', 'godot/tests/realtime/**', 'godot/tests/online_local/**', 'godot/tests/front/**',
+      'godot/tests/net/**', 'godot/tests/relay/**', 'godot/tests/offline/**', 'godot/tests/realtime/**', 'godot/tests/online_local/**', 'godot/tests/next_front/**',
     ],
     casual: [
       { glob: 'docs/**', mode: 'any' }, { glob: '*.md', mode: 'any' }, { glob: 'godot/**/*.md', mode: 'any' }, { glob: 'PATCH_NOTES.json', mode: 'any' },
