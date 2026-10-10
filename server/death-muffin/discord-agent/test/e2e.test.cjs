@@ -682,17 +682,19 @@ test('a thread whose workspace vanished starts a fresh round and never runs the 
   assert.doesNotMatch(texts(thread).join('\n'), /Something broke|no workspace/);
 });
 
-test('a question after a proposal re-posts it with the same title, not the oldest commit subject', async () => {
+test('a question after a proposal keeps it as it is: no new checks, no re-post, approvable at once', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
   const p1 = await waitProposal(d, thread);
   await d.say(thread, IDS.HELIX, 'MAKE-CSS2 actually green');
   const p2 = await waitNthProposal(d, thread, 2);
   assert.match(p2.payload.embeds[0].title, /Green accent/);
+  // a question changes nothing: the open proposal stands as it is (no new checks, no re-post) and can be approved right away
+  const job = Object.values(w.runner.jobs())[0];
   await d.say(thread, IDS.HELIX, 'what else could change?');
-  const p3 = await waitNthProposal(d, thread, 3);
-  assert.equal(p3.payload.embeds[0].title, p2.payload.embeds[0].title, 'kept the latest title');
-  assert.doesNotMatch(p3.payload.embeds[0].title, /blue/i);
+  await until(() => texts(thread).some((t) => /proposal above still stands/.test(t)), d.ad);
+  assert.equal(job.status, 'proposed'); assert.equal(job.proposal.title, p2.payload.embeds[0].title, 'kept the latest proposal');
+  assert.equal(thread.sent.filter((s) => s.payload.embeds && s.payload.embeds.length && /Green accent|blue/i.test(s.payload.embeds[0].title || '')).length, 2, 'not re-posted');
   void p1;
 });
 

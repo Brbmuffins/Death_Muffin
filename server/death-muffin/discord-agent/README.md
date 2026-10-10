@@ -85,6 +85,9 @@ backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited appr
 killing the whole process tree (Claude's Bash tool and `timeout` start their own process groups, so a group kill alone orphaned test runs).
 Messages queued before it are dropped, and no review or repair turn follows; the branch and worktree stay, and the next message continues.
 A ship cannot be cancelled. An idle job is closed by the sweep after 7 days without activity.
+A reply to an open proposal that changes nothing (a thank-you, a question) is answered, and the proposal stays as it is: same commit and clean
+workspace means no new checks, preview or re-post (`proposal-kept` in the audit log), and ✅ works right away. The prompt also tells the agent not to
+run `check-godot.sh` for such messages.
 Rollback undoes the live release only; revert the commit on the base branch afterwards.
 
 ## Safety summary

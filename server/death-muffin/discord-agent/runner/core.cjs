@@ -607,6 +607,13 @@ function createRunner(cfgIn, opts = {}) {
     await afterTurn(job, readResult(job.worktree));
   }
 
+  async function unchangedProposal(job) {
+    const p = job.proposal;
+    if (!p || !p.head || p.shipSha || !job.worktree || !fs.existsSync(job.worktree)) return false;
+    if (await G.mergeInProgress(job.worktree) || await G.isDirty(job.worktree)) return false;
+    return (await G.head(job.worktree)) === p.head;
+  }
+
   // Verify -> (fix-up turns) -> propose. Everything here is deterministic runner code, not the model.
   async function verify(job) {
     const wt = job.worktree;
@@ -647,6 +654,14 @@ function createRunner(cfgIn, opts = {}) {
   }
 
   async function afterTurn(job, result) {
+    // A turn that changed nothing (a thank-you, a question, a "what if") leaves the open proposal exactly as it was: same commit, clean
+    // workspace. Its checks already passed for that commit, so nothing is re-checked, re-built or re-posted, and it can be approved at once.
+    if (await unchangedProposal(job)) {
+      job.status = 'proposed'; save(); syncName(job);
+      audit.log('proposal-kept', { job: job.id, head: job.proposal.head });
+      say(job, 'Nothing changed, so the proposal above still stands (already checked). React ✅ on it to ship.');
+      return;
+    }
     for (let attempt = 0; ; attempt++) {
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
       const v = await verify(job);

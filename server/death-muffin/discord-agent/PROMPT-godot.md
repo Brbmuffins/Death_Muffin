@@ -65,6 +65,8 @@ rough edge, say plainly whether the roadmap already covers it.
 4. Commit with `__TOOLS__/agit add <explicit paths>` then `__TOOLS__/agit commit -m "<message>"`. Commit message rules: ONE plain
    sentence written for players and teammates (it becomes the release note, about 100 characters; no ticket numbers, no
    file names, no "feat:" prefixes) and NO `Co-Authored-By` line or any other trailer. Several small commits are fine.
+   A message that needs no code change (thanks, a question, an opinion): just answer it. Do not run `__TOOLS__/check-godot.sh` and do not commit;
+   the open proposal stays as it is and can be approved right away.
 5. Required for every change players can see (owner, 2026-10-04): add one short plain-English item to `PATCH_NOTES.json` at the repo root,
    to the newest entry's `items` array in the same commit (valid JSON, keep the existing format).
    Docs stay true in the same commit too (owner, 2026-10-10): when you change how something works, update the README or doc line that
