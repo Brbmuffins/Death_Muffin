@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The deploy helper (NOT the AI): runs only after an approver's check, from the runner. All inputs are environment variables set by
 # the runner. Takes the global deploy lock (shared with deploy-release.sh), merges the branch onto the current base branch (BASE_BRANCH, default
-# master), re-gates and re-tests the merged tree, pushes it, runs the deploy, and prints machine-readable lines:
+# main), re-gates and re-tests the merged tree, pushes it, runs the deploy, and prints machine-readable lines:
 #   RESULT: <live|live-already|conflict|head-moved|gate|tests-failed|master-moved|backup-failed|deploy-failed|lock-timeout> ...      ("master-moved" = BASE_BRANCH moved)
 # PUBLISH_ONLY=1 PUBLISH_SHA=<sha> (godot only; the retry after a failed client publish): no merge/tests/push. Publishes that already-tested, already-
 # pushed commit with a fresh rollback, or prints "RESULT: live-already" when the live client already contains it (never publishes an older client).
@@ -13,7 +13,7 @@ set -uo pipefail
 PUBLISH_ONLY="${PUBLISH_ONLY:-}"
 [ -n "$PUBLISH_ONLY" ] || : "${BRANCH:?}" "${EXPECT_HEAD:?}" "${MAX_TIER:?}"
 MIGRATIONS="${MIGRATIONS:-}"
-BASE_BRANCH="${BASE_BRANCH:-master}"
+BASE_BRANCH="${BASE_BRANCH:-main}"
 MODE="${MODE:-web}"
 # These reach git as refs and refspecs: same rules as loadConfig (plain ref characters, nothing git could read as an option or a range).
 [[ "$BASE_BRANCH" =~ ^[A-Za-z0-9._/-]+$ && "$BASE_BRANCH" != -* && "$BASE_BRANCH" != *..* ]] || { echo "RESULT: bad-config base branch"; exit 2; }
