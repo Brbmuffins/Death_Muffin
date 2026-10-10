@@ -1089,6 +1089,7 @@ class _Wash extends Control:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and target_box != null:
+		_sec_hash.clear()   # width-dependent readouts (the hint's ellipsis) re-apply
 		_fit_safe_frame()
 		var w := safe.size.x if safe != null and safe.size.x > 0.0 else size.x
 		target_box.custom_minimum_size.x = minf(440.0, w * 0.5)
@@ -1117,19 +1118,56 @@ func _update_toast_top() -> void:
 
 # ======================================================================== apply
 
+## The view-model keys each apply section reads. A section whose inputs hash the same as at its last apply is skipped: assigning a Label's
+## text or a RichTextLabel's markup, a theme override or a container child re-lays and redraws the control even when the value did not change.
+const SECTIONS := {
+	"flags": ["reveal", "new", "grimoire_new", "dev"],
+	"vitals": ["hp", "max_hp", "barrier", "essence", "max_essence", "resource_label", "resource_color", "beat_pulse", "level", "xp", "xp_next"],
+	"souls": ["souls", "souls_max", "thralls", "thrall_cap", "raises_thralls", "thrall_hurt"],
+	"economy": ["gold", "shards", "save"],
+	"upgrades": ["gold", "damage", "wave"],
+	"left": ["ward", "chain", "brews", "omen", "party"],
+	"target": ["boss", "target"],
+	"column": ["area_name", "area_progress", "depth", "next", "auto_combat"],
+	"misc": ["prompt", "hint", "death"],
+}
+var _sec_hash := {}   ## section -> hash of its inputs at the last apply
+
+## True when section `sec`'s inputs differ from the last apply (and remembers them).
+func _changed(sec: String, v: Dictionary) -> bool:
+	var vals: Array = []
+	for k in SECTIONS[sec]:
+		vals.append(v.get(k))
+	var h := vals.hash()
+	if _sec_hash.get(sec, 0) == h:
+		return false
+	_sec_hash[sec] = h
+	return true
+
+
 func apply(v: Dictionary) -> void:
 	vm = v
-	_apply_flags(v)
-	_apply_vitals(v)
+	if _changed("flags", v):
+		_apply_flags(v)
+	if _changed("vitals", v):
+		_apply_vitals(v)
 	_apply_slots(v)
 	_refresh_spell_tip()
-	_apply_souls_thralls(v)
-	_apply_economy(v)
-	_apply_upgrades(v)
-	_apply_left_readouts(v)
-	_apply_target_boss(v)
-	_apply_map_column(v)
-	_apply_misc(v)
+	if _changed("souls", v):
+		_apply_souls_thralls(v)
+	if _changed("economy", v):
+		_apply_economy(v)
+	if _changed("upgrades", v):
+		_apply_upgrades(v)
+	if _changed("left", v):
+		_apply_left_readouts(v)
+	if _changed("target", v):
+		_apply_target_boss(v)
+	_apply_map_column(v, _changed("column", v))
+	if _changed("misc", v):
+		_apply_misc(v)
+	else:
+		area_lbl.tooltip_text = ""
 	_update_toast_top()
 
 
@@ -1502,10 +1540,12 @@ func _apply_target_boss(v: Dictionary) -> void:
 				target_stat.add_child(sp)
 
 
-func _apply_map_column(v: Dictionary) -> void:
+func _apply_map_column(v: Dictionary, changed: bool) -> void:
 	var m: Variant = v.get("minimap")
 	if m != null:
 		minimap.apply(m)
+	if not changed:
+		return
 	area_lbl.text = DmUi.upper(String(v.get("area_name", "")))
 	prog_lbl.text = "[center]" + DmUi.markup(String(v.get("area_progress", "")), DmUi.SPELL_300).replace("[b][color=#%s]" % DmUi.BONE_100.to_html(false), "[color=#%s]" % DmUi.SPELL_300.to_html(false)).replace("[/color][/b]", "[/color]") + "[/center]"
 	var d: Variant = v.get("depth")

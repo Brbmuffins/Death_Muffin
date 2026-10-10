@@ -129,7 +129,7 @@ func _init() -> void:
 	_swap_ico.visible = false
 	kh.add_child(_swap_ico)
 	add_child(_key_panel)
-	set_process(true)
+	set_process(false)   # only while empowered or flashing (see _wake)
 
 
 func _ensure_shader() -> void:
@@ -141,7 +141,12 @@ func _ensure_shader() -> void:
 ## Slot dictionary -> state. Keys: icon key cost left_ms total_ms affordable empowered locked unlock_level alt rune_icon swap.
 var _kp_alt := -1   # the key panel's style is rebuilt only when alt flips
 
+var _last: Dictionary = {}   ## the slot dict last applied (a copy: the view-model reuses its dictionaries)
+
 func apply(s: Dictionary) -> void:
+	if s == _last:
+		return
+	_last = s.duplicate()
 	var new_icon: String = String(s.get("icon", ""))
 	if new_icon != icon_path:
 		icon_path = new_icon
@@ -191,6 +196,7 @@ func apply(s: Dictionary) -> void:
 		_key_panel.add_theme_stylebox_override("panel", DmHudKit.style(DmUi.INSET, Color(EMBER, 0.45) if alt else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(5, 0, 5, 0)))
 	DmHudKit.set_const(self, "separation", 5)
 	_over.queue_redraw()
+	_wake()
 
 
 ## `s.left >= 1000 ? Math.ceil(s.left/1000) : (s.left/1000).toFixed(1)`; empty when ready.
@@ -211,6 +217,12 @@ static func cd_pct(left: float, total: float) -> int:
 
 func flash() -> void:
 	_flash = 0.35
+	_wake()
+
+
+## The pulse and the flash are the only per-frame animations; the cooldown sweep follows the 20 Hz view-model.
+func _wake() -> void:
+	set_process(empowered or _flash > 0.0)
 
 
 func _process(delta: float) -> void:
@@ -219,6 +231,8 @@ func _process(delta: float) -> void:
 		_flash = maxf(0.0, _flash - delta)
 	if empowered or _flash > 0.0:
 		_over.queue_redraw()
+	else:
+		set_process(false)
 
 
 func _draw_over() -> void:

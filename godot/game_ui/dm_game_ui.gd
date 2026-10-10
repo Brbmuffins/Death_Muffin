@@ -673,7 +673,7 @@ func merged_vm() -> Dictionary:
 		fresh[id] = true
 	v["reveal"] = held
 	v["new"] = fresh
-	v["grimoire_new"] = not rites.unseen().is_empty()
+	v["grimoire_new"] = rites.has_unseen()
 	v["dev"] = _dev_access
 	var swap := grimoire_unlocked()
 	if v.has("slots"):
