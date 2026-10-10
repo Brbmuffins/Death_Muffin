@@ -165,6 +165,7 @@ func _run() -> void:
 	await _t_commands()
 	await _t_statuses()
 	await _t_net()
+	await _t_owner_leaves()
 	await _t_wire()
 	await _t_perf()
 	Engine.time_scale = 1.0
@@ -644,3 +645,19 @@ func _t_perf() -> void:
 ## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
 func perf_info(cond: bool, what: String) -> void:
 	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
+
+
+## A co-op partner leaves: their body (and the "Thralls" host under it) is freed; the legion, which lives under the game, goes too.
+func _t_owner_leaves() -> void:
+	await new_arena()
+	owner_body.global_position = Vector3(0, 0, 0)
+	var a := ready_thrall("warrior", Vector3(1, 0, 1))
+	var b := ready_thrall("archer", Vector3(-1, 0, 1))
+	arena.remove_child(host)   # a re-parent is not a leave: the legion stays
+	arena.add_child(host)
+	await ticks(2)
+	check(is_instance_valid(a) and is_instance_valid(b) and host.count() == 2, "re-parenting the host keeps its thralls")
+	host.queue_free()
+	await ticks(3)
+	check(not is_instance_valid(a) and not is_instance_valid(b), "the owner's host freed: its thralls are removed, not left fighting")
+	host = null

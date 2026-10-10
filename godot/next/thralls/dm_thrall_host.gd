@@ -45,6 +45,20 @@ func _ready() -> void:
 		set_legend(rites.legend)
 
 
+## The legion lives under the game, not under the owner's body: when the owner leaves for good (a co-op partner's body is freed on
+## every peer when they leave), take the thralls along. Left behind, they kept fighting for a freed owner (2026-10-10 report #9009).
+## A plain re-parent (not queued for deletion) keeps them.
+func _exit_tree() -> void:
+	var gone := is_queued_for_deletion() or owner_body == null or not is_instance_valid(owner_body) or owner_body.is_queued_for_deletion()
+	if not gone:
+		return
+	for t in _list:
+		if is_instance_valid(t) and not t.is_queued_for_deletion():
+			t.queue_free()
+	_list.clear()
+	_by_id.clear()
+
+
 ## The owner's worn legendaries (DmLegend.sim_legend_of). Takes effect for the living legion too (the burst fraction is read at death).
 func set_legend(l: Dictionary) -> void:
 	legend = l

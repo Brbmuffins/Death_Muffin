@@ -1,6 +1,13 @@
 [
   {
     "date": "2026-10-10",
+    "title": "Co-op: Thralls Leave With Their Necromancer",
+    "items": [
+      "When a co-op partner leaves, their thralls now leave with them instead of staying behind in the host's world, fighting for nobody."
+    ]
+  },
+  {
+    "date": "2026-10-10",
     "title": "Co-op Joining Fixed",
     "items": [
       "Joining a friend's session works again: the joiner now actually connects to the host instead of loading for a minute and failing with \"The host did not answer\"."
