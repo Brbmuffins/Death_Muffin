@@ -249,6 +249,7 @@ func solo() -> void:
 	boss.brain._confl_cd = 1.0e9
 	boss.brain._coals_cd = 1.0e9
 	boss.brain._cleave_cd = 1.0e9
+	await check_thralls()
 	await check_rites_and_stun()
 
 	# ---- defeat, wipe
@@ -269,5 +270,6 @@ func net() -> void:
 	await two_peers_summon()
 	await two_peers_first_telegraph("cleave")
 	await two_peers_pools(&"ember")
+	await two_peers_replication()
 	await two_peers_defeat()
 	await two_peers_end()

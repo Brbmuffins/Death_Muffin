@@ -293,6 +293,7 @@ func solo() -> void:
 	_quiet()
 	boss.brain.state["hp"] = boss.max_hp * 0.9
 	boss.brain.state["phase"] = 1
+	await check_thralls()
 	await check_rites_and_stun()
 
 	# ---- defeat (even a hit at the very end while sunk is refused: she must surface to die), wipe
@@ -333,6 +334,7 @@ func _far_from(p: Vector2) -> Vector3:
 func net() -> void:
 	await two_peers_summon()
 	await two_peers_first_telegraph("maul")
+	await two_peers_replication()
 	# sunk replicates: the client's puppet is awake but not hittable, absent from the pick list
 	hboss.brain.state["state"] = "sunk"
 	hboss._mirror()

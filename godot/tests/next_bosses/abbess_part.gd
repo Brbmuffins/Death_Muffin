@@ -185,6 +185,7 @@ func solo() -> void:
 	for e in _niches():   # (their regeneration would out-heal a thrall's blows)
 		e.take_damage(1e9, hb)
 	step(DT)
+	await check_thralls()
 	await check_rites_and_stun()
 	# ---- defeat: reward + report; the niches leave without a death
 	var kills1 := int(member().stats["kills_earned"])
@@ -246,5 +247,6 @@ func net() -> void:
 	hboss._physics_process(DT)
 	check(await until(func() -> bool: return cg.bosses.fx.events == hg.bosses.fx.events and cg.bosses.fx.events > ev0, 3.0), "B: the nicheBreak event reaches the client once")
 	check(await until(func() -> bool: return cg.director.enemy_by_id(int(host_niche.get_meta(&"dm_id"))) != null and cg.director.enemy_by_id(int(host_niche.get_meta(&"dm_id"))).sm.id() == DmEnemyState.Id.DEAD, 3.0), "B: the broken niche is dead on the client too")
+	await two_peers_replication()
 	await two_peers_defeat()
 	await two_peers_end()

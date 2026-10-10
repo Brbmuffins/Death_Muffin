@@ -35,7 +35,7 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
   `WARM_KINDS` entry in `dm_boss_fx.gd` for any kind whose first draw hitches, and a part `tests/next_bosses/<boss>_part.gd` on `harness.gd` (see `abbess_part.gd`), added to `PARTS` in `run.gd`.
 
 ## Tests
-`tests/next_bosses/`: ONE process, `run.gd`, runs the parts `gravedigger_part.gd` (framework + King, owns the shared thrall / replication / perf probes), `abbess_part.gd`, `congregation_part.gd`, `prelate_part.gd`, `saint_part.gd`, `regent_part.gd`, `mire_part.gd` on one solo game and one host+client pair (shared base `harness.gd`; `BOSS_ONLY=mire,saint` runs a subset); meta-progression in `tests/next_boss_meta/run.gd`. Screenshots: `shot.gd`, `shot_cathedral.gd --boss=...`
+`tests/next_bosses/`: ONE process, `run.gd`, runs the parts `gravedigger_part.gd` (framework + King, owns the one crowd perf probe), `abbess_part.gd`, `congregation_part.gd`, `prelate_part.gd`, `saint_part.gd`, `regent_part.gd`, `mire_part.gd` on one solo game and one host+client pair (shared base `harness.gd`; `BOSS_ONLY=mire,saint` runs a subset); meta-progression in `tests/next_boss_meta/run.gd`. Screenshots: `shot.gd`, `shot_cathedral.gd --boss=...`
 (`--probe=1` times the first draw of each event kind), `shot_late.gd`. Typical cost (headless, printed as INFO by the suite, not asserted): brain tick 30-70 us, whole frame +0.0-0.2 ms.
 
 ## Known gaps

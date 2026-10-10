@@ -525,6 +525,30 @@ func check_defeat(first: bool, bonus_shards: int) -> int:
 	return shards
 
 
+## A thrall is raised, engages the boss from its edge (edge rule) and its blows hurt the boss and credit the owner. The boss is left stepped by hand again.
+func check_thralls() -> void:
+	g.world.builder.set_unlocked([area()])   # the area's navmesh (thralls walk it) is what a broken seal switches on
+	await ticks(45)
+	put(arena() + Vector3(-9.0, 0.0, 2.0))
+	clear_adds()
+	_keep(hb)
+	boss.set_physics_process(true)
+	var th: DmThrallHost = hb.get_node("Thralls")
+	th.clear()
+	var rr: Dictionary = th.raise_bonded({"kind": "warrior", "cap": 6.0, "hp": 4000.0, "damage": 40.0, "attackSpeedMult": 1.0})
+	check(bool(rr["ok"]), "A: a thrall is raised")
+	var t1: DmThrall = rr["thralls"][0]
+	t1.set_deferred("global_position", boss.global_position + Vector3(-2.6, 0.0, 0.0))   # next to it: no navmesh needed in an area the areas track has not opened
+	var hp_t: float = boss.brain.state["hp"]
+	var engaged := await until(func() -> bool: return t1.target == boss, 8.0)
+	check(engaged, "A: the thrall engages the boss (edge rule)")
+	await until(func() -> bool: return boss.hp < hp_t - 1.0, 8.0)
+	check(boss.hp < hp_t and boss.brain.last_hit_by == str(g.session.get_my_id()), "A: thrall blows hurt the boss and credit the owner (%s hp %.1f -> %.1f, by %s, thrall %s d %.1f hp %.0f)" % [boss_id, hp_t, boss.hp, str(boss.brain.last_hit_by), str(is_instance_valid(t1) and t1.target == boss), t1.global_position.distance_to(boss.global_position), t1.hp])
+	th.clear()
+	_keep(hb)
+	boss.set_physics_process(false)
+
+
 ## The rite world sees the boss, a rite (Bone Needle) hits it, a stun staggers it at most 0.5 s and has a cooldown. (The thralls' engage / credit rules are
 ## the framework's, checked once in the Gravedigger's part.)
 func check_rites_and_stun() -> void:

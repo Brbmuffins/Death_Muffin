@@ -133,6 +133,7 @@ func solo() -> void:
 		e.queue_free()
 	g.director.enemies.clear()
 	hb.heal(1e6)
+	await check_thralls()
 	await check_rites_and_stun()
 	var flags: Array = []
 	g.bosses.fx.host.sink = func(id: String, _ctx: Dictionary) -> void: flags.append(id)
@@ -219,5 +220,6 @@ func net() -> void:
 	for i in 10:
 		hboss._physics_process(DT)
 	check(await until(func() -> bool: return cg.director.enemies.values().filter(func(e: DmEnemy) -> bool: return e.def_id == "risen").size() == 2 and cg.director.enemies.values().filter(func(e: DmEnemy) -> bool: return e.def_id == "penitent").size() == 2, 6.0), "B: phase 2's Procession exists on the client too (director spawner)")
+	await two_peers_replication()
 	await two_peers_defeat()
 	await two_peers_end()

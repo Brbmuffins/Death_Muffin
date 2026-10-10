@@ -188,6 +188,7 @@ func solo() -> void:
 	# ---- thralls / rites
 	boss.brain.state["hp"] = boss.max_hp * 0.9
 	boss.brain.state["phase"] = 1
+	await check_thralls()
 	await check_rites_and_stun()
 
 	# ---- defeat
@@ -208,5 +209,6 @@ func net() -> void:
 	await two_peers_summon()
 	await two_peers_first_telegraph("swing")
 	await two_peers_pools(&"toxic")
+	await two_peers_replication()
 	await two_peers_defeat()
 	await two_peers_end()
