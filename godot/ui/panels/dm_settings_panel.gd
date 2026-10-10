@@ -11,7 +11,7 @@ extends DmWindow
 ##   `has_keybinds`, `binds` {action: key}, `kit_primary`, `kit_corpse`, `kit_legion`.
 
 signal changed(key: String, value: Variant)
-signal action(name: String)          # leave, bug_report, reset_tips, change_class, party_make, party_join, party_leave
+signal action(name: String)          # leave, exit_game, bug_report, reset_tips, change_class, party_make, party_join, party_leave
 signal bind_requested(action_id: String)
 
 const DIFFICULTIES := [
@@ -107,6 +107,7 @@ func build() -> void:
 	tl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	th.add_child(tl)
 	th.add_child(_button("Leave the world", "leave"))
+	th.add_child(_button("Exit game", "exit_game"))
 	body.add_child(top)
 
 	# --- Play ---------------------------------------------------------------------------------

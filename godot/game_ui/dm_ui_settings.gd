@@ -102,6 +102,9 @@ func _on_action(name: String) -> void:
 		"leave":
 			ui.left_world.emit()
 			ui.call_game_sync("leave_world")
+		"exit_game":
+			# Same path as the window's close button: Main saves everything, then quits.
+			ui.get_tree().root.propagate_notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
 		"bug_report":
 			open_bug_report()
 		"reset_tips":
