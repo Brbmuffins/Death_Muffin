@@ -8,7 +8,7 @@
 #   --list          print the selected suite files and exit.
 # With --jobs > 1: the job count is capped by the machine's free cores (24 cores, load 20 -> 2 jobs), so several checks running at
 # once (the Discord agent runs up to 3) share the CPU instead of piling up; a suite that fails in the pool is run once more alone at
-# the end and only its retry counts (timing budgets trip under load). Lines appear in completion order (each suite's line plus any FAIL detail is printed whole, never interleaved).
+# the end and only its retry counts (child-process timeouts trip under load). Lines appear in completion order (each suite's line plus any FAIL detail is printed whole, never interleaved).
 # Every running suite gets its own XDG_DATA_HOME/CONFIG/CACHE, so user:// (progress, loadout and settings files keyed by character id) is
 # never shared between suites or runs. Network ports come from godot/tests/common/dm_test_ports.gd (random, probed free).
 set -uo pipefail
@@ -16,8 +16,8 @@ cd "$(dirname "$0")/../.."
 G="${GODOT:-/home/ubuntu/tools/godot/godot}"
 
 # SERIAL_GROUP: selectors (same syntax as --only) run one at a time, with nothing else of ours running, BEFORE the parallel pool (--jobs > 1).
-# They assert wall-clock/frame-time budgets or spawn child processes and wait on them with timeouts, and flake when the pool loads the CPU.
-SERIAL_GROUP=(perf next_perfctl session relay next_lobby)
+# They spawn child processes and wait on them with timeouts, and flake when the pool loads the CPU. (Tests never assert wall-clock time.)
+SERIAL_GROUP=(session relay next_lobby)
 
 jobs="${DM_TEST_JOBS:-6}"; only=""; list=0
 usage() { echo "usage: $0 [--jobs N] [--only <dir|dir/file_run.gd>,...] [--list]" >&2; exit 2; }

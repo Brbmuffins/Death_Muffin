@@ -894,7 +894,13 @@ func _part_i() -> void:
 		active_us = minf(active_us, float(Time.get_ticks_usec() - t3) / 40.0)
 	print("PERF signatures: cast us wall %d, dirge %d, bloom %d, rend %d | caster step idle %.1f us, wall+dirge+bloom with 25 enemies %.1f us per tick" % [
 		cast_us["ossuary_wall"], cast_us["dirge"], cast_us["plague_bloom"], cast_us["command_rend"], idle_us, active_us])
-	ok(active_us < 1500.0, "I: wall + dirge + bloom stepping costs %.0f us per tick (budget 1500)" % active_us)
-	ok(cast_us["ossuary_wall"] < 20000 and cast_us["dirge"] < 5000 and cast_us["plague_bloom"] < 5000 and cast_us["command_rend"] < 8000, "I: every signature resolves in well under a frame (wall %d us)" % cast_us["ossuary_wall"])
-	ok(idle_us < 200.0, "I: an idle caster step is %.1f us (budget 200)" % idle_us)
+	perf_info(active_us < 1500.0, "I: wall + dirge + bloom stepping costs %.0f us per tick (budget 1500)" % active_us)
+	perf_info(cast_us["ossuary_wall"] < 20000 and cast_us["dirge"] < 5000 and cast_us["plague_bloom"] < 5000 and cast_us["command_rend"] < 8000, "I: every signature resolves in well under a frame (wall %d us)" % cast_us["ossuary_wall"])
+	perf_info(idle_us < 200.0, "I: an idle caster step is %.1f us (budget 200)" % idle_us)
 	await _teardown(s)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

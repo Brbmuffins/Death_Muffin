@@ -1055,7 +1055,7 @@ func _part_d() -> void:
 		tot += float(Time.get_ticks_usec() - t0)
 	var dp_us := tot / float(n)
 	print("PERF veil dash_point on the navmesh (5.5 m, 22 queries): %.1f us" % dp_us)
-	ok(dp_us < 2000.0, "D: dash_point < 2 ms (%.0f us)" % dp_us)
+	perf_info(dp_us < 2000.0, "D: dash_point < 2 ms (%.0f us)" % dp_us)
 	await _teardown(s)
 	NavigationServer3D.free_rid(nav_rids[1])
 	NavigationServer3D.free_rid(nav_rids[0])
@@ -1105,7 +1105,7 @@ func _part_c() -> void:
 	print("PERF cast us (25 enemies in range): grave_step %.0f, veil_step %.0f, grave_frost %.0f (+cone on landing, see below), bone_prison %.0f, grave_hands %.0f, rally_dead %.0f" % [
 		cost["grave_step"], cost["veil_step"], cost["grave_frost"], cost["bone_prison"], cost["grave_hands"], cost["rally_dead"]])
 	for r in cost:
-		ok(float(cost[r]) < 6000.0, "C: %s cast costs < 6 ms (%.0f us)" % [r, cost[r]])
+		perf_info(float(cost[r]) < 6000.0, "C: %s cast costs < 6 ms (%.0f us)" % [r, cost[r]])
 	# frost landing (the cone) with 25 enemies inside
 	for e in foes:
 		e.global_position = Vector3(randf_range(-1.5, 1.5), 0, randf_range(1.0, 6.5))
@@ -1117,7 +1117,7 @@ func _part_c() -> void:
 		tfr += float(Time.get_ticks_usec() - t0)
 	var frost_us := tfr / 20.0
 	print("PERF grave_frost cone landing with 25 enemies inside: %.0f us" % frost_us)
-	ok(frost_us < 6000.0, "C: the frost cone resolves < 6 ms for 25 enemies (%.0f us)" % frost_us)
+	perf_info(frost_us < 6000.0, "C: the frost cone resolves < 6 ms for 25 enemies (%.0f us)" % frost_us)
 	# frame cost: no zones vs 3 hands fields rake-ticking over 25 enemies
 	for e in foes:
 		e.global_position = Vector3(randf_range(-1.5, 1.5), 0, randf_range(4.5, 7.5))
@@ -1140,7 +1140,13 @@ func _part_c() -> void:
 		worst = maxf(worst, float(Time.get_ticks_usec() - t0))
 	var zone_us := float(Time.get_ticks_usec() - t_z) / float(n)
 	print("PERF host step: idle %.1f us/tick; 3 grave_hands fields over 25 enemies %.1f us/tick avg, worst tick (a rake) %.0f us" % [base_us, zone_us, worst])
-	ok(zone_us < 3000.0 and worst < 12000.0, "C: 3 fields over 25 enemies < 3 ms/tick avg, rake tick < 12 ms (%.0f / %.0f us)" % [zone_us, worst])
-	ok(base_us < 300.0, "C: an idle caster step is cheap (%.1f us)" % base_us)
+	perf_info(zone_us < 3000.0 and worst < 12000.0, "C: 3 fields over 25 enemies < 3 ms/tick avg, rake tick < 12 ms (%.0f / %.0f us)" % [zone_us, worst])
+	perf_info(base_us < 300.0, "C: an idle caster step is cheap (%.1f us)" % base_us)
 	zones.clear()
 	await _teardown(s)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

@@ -491,7 +491,7 @@ func _perf() -> void:
 	var med: float = samples[samples.size() / 2]
 	print("perf: boss brain tick median %.0f us, p95 %.0f us (20 adds, %d thralls)" % [med, samples[int(samples.size() * 0.95)], th.count()])
 	check(th.count() == 6, "C: 6 thralls standing")
-	check(med < 400.0, "C: boss tick median %.0f us < 400 us (budget)" % med)
+	perf_info(med < 400.0, "C: boss tick median %.0f us < 400 us (budget)" % med)
 	# whole physics frame with the boss ticking vs not (everything else - 20 adds, 6 thralls, hero, session - identical)
 	var offs: Array = []
 	var ons: Array = []
@@ -506,7 +506,7 @@ func _perf() -> void:
 	var med_off: float = offs[0]   # the quietest block of each: a block the OS descheduled on a loaded VPS inflates one side only
 	var med_on: float = ons[0]
 	print("perf: physics frame median %.2f ms without the boss brain, %.2f ms with it (delta %.2f ms)" % [med_off, med_on, med_on - med_off])
-	check(med_on - med_off < 2.0, "C: the boss brain adds < 2 ms per physics frame (%.2f ms)" % (med_on - med_off))
+	perf_info(med_on - med_off < 2.0, "C: the boss brain adds < 2 ms per physics frame (%.2f ms)" % (med_on - med_off))
 	# an event burst: the fx for a telegraph + impact
 	var fx_us := 0
 	for i in 50:
@@ -514,7 +514,7 @@ func _perf() -> void:
 		g.bosses.fx.play({"t": "boss", "kind": "sweep", "x": -14.0, "z": -22.0, "phase": 1, "boss": "gravedigger", "ms": 900.0, "dir": 0.5, "r": 4.5})
 		fx_us += Time.get_ticks_usec() - u1
 	print("perf: sweep telegraph fx %.0f us/event" % (float(fx_us) / 50.0))
-	check(float(fx_us) / 50.0 < 2000.0, "C: telegraph fx < 2 ms per event")
+	perf_info(float(fx_us) / 50.0 < 2000.0, "C: telegraph fx < 2 ms per event")
 
 
 # ---- B: two peers --------------------------------------------------------------------------------------------------------------------------
@@ -596,3 +596,9 @@ func _frame_median(n: int) -> float:
 		frames.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
 	frames.sort()
 	return frames[frames.size() / 2]
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

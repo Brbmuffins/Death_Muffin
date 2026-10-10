@@ -635,6 +635,12 @@ func _t_perf() -> void:
 	print("PERF 12 thralls + 30 enemies: thrall brain %.1f us/tick (%d idle scans), enemy brain %.1f us/tick, frame median %.2f ms (30 enemies alone %.2f, worst %.1f), engaged %d/12, %d blows, %d alive"
 		% [m.brain, m.scans, m.enemy_brain, m.frame_ms, base_ms, m.worst_ms, m.engaged, m.blows, m.alive])
 	check(m.engaged >= 9 and m.blows > 30, "the legion fights (%d engaged, %d blows)" % [m.engaged, m.blows])
-	check(m.brain < BUDGET_BRAIN_US, "thrall brain %.1f us under %.0f us" % [m.brain, BUDGET_BRAIN_US])
-	check(m.frame_ms - base_ms < 6.0 or m.frame_ms < BUDGET_FRAME_MS, "12 thralls add %.2f ms to the frame (< 6 ms, or the frame median under %.0f ms)" % [m.frame_ms - base_ms, BUDGET_FRAME_MS])
-	check(m.worst_ms < CAP_WORST_FRAME_MS, "worst frame %.1f ms under %.0f ms" % [m.worst_ms, CAP_WORST_FRAME_MS])
+	perf_info(m.brain < BUDGET_BRAIN_US, "thrall brain %.1f us under %.0f us" % [m.brain, BUDGET_BRAIN_US])
+	perf_info(m.frame_ms - base_ms < 6.0 or m.frame_ms < BUDGET_FRAME_MS, "12 thralls add %.2f ms to the frame (< 6 ms, or the frame median under %.0f ms)" % [m.frame_ms - base_ms, BUDGET_FRAME_MS])
+	perf_info(m.worst_ms < CAP_WORST_FRAME_MS, "worst frame %.1f ms under %.0f ms" % [m.worst_ms, CAP_WORST_FRAME_MS])
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

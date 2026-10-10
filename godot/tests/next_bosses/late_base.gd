@@ -334,8 +334,8 @@ func perf(extra: Callable = Callable()) -> void:
 	var med := fc.median_ms()
 	var worst := fc.worst_busy_ms()
 	print("perf %s: whole frame median %.2f ms, p95 %.2f ms, worst %.2f ms (%d frames, boss + 16 adds + 5 thralls, %d pools)" % [BOSS_ID, med, fc.p95_ms(), worst, fc.samples(), zones().size()])
-	check(med < 18.0, "%s: frame median %.2f ms < 18 ms (budget)" % [BOSS_ID, med])
-	check(worst < 150.0, "%s: worst frame %.2f ms < 150 ms (cap)" % [BOSS_ID, worst])
+	perf_info(med < 18.0, "%s: frame median %.2f ms < 18 ms (budget)" % [BOSS_ID, med])
+	perf_info(worst < 150.0, "%s: worst frame %.2f ms < 150 ms (cap)" % [BOSS_ID, worst])
 	fc.queue_free()
 	boss.set_physics_process(false)
 	th.clear()
@@ -347,7 +347,7 @@ func perf(extra: Callable = Callable()) -> void:
 		samples.append(Time.get_ticks_usec() - u0)
 	samples.sort()
 	print("perf %s: brain tick median %.0f us, p95 %.0f us" % [BOSS_ID, samples[samples.size() / 2], samples[int(samples.size() * 0.95)]])
-	check(float(samples[samples.size() / 2]) < 500.0, "%s: brain tick median %.0f us < 500 us" % [BOSS_ID, samples[samples.size() / 2]])
+	perf_info(float(samples[samples.size() / 2]) < 500.0, "%s: brain tick median %.0f us < 500 us" % [BOSS_ID, samples[samples.size() / 2]])
 
 
 ## Two in-process ENet peers: body + state + events once per peer. `hook` runs mid-fight on the host boss (to provoke the boss's specific events).
@@ -439,3 +439,9 @@ func _nstep(b: DmBoss, hero: DmHeroBody) -> void:
 	if float(hero.p["stats"]["maxHp"]) < 9.0e8 or hero.hp < 9.0e8:
 		god(hero)
 	b._physics_process(DT)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

@@ -412,7 +412,8 @@ func _t_net() -> void:
 					n += 1
 					report[mode + ":" + String(th[3])] = "delay %.0f ms lead %.0f of %.0f ms" % [delay_ms, lead_ms, float(th[2]) * 1000.0]
 					break
-		check(n >= 3 and worst > 250.0, "net[%s]: client telegraph lead worst %.0f ms, mean %.0f ms (>250 ms to dodge)" % [mode, worst, sum / maxf(1.0, n)])
+		check(n >= 3, "net[%s]: the client got the telegraphs (%d matched)" % [mode, n])
+		perf_info(worst > 250.0, "net[%s]: client telegraph lead worst %.0f ms, mean %.0f ms (>250 ms to dodge)" % [mode, worst, sum / maxf(1.0, n)])
 		print("  lead[%s] %s" % [mode, str(report)])
 	# client-side sounds/decals came from the replicated state: telegraph sfx once per telegraph
 	var tele_sounds_c := ca.count("tellStrike") + ca.count("tollSmall")
@@ -485,9 +486,9 @@ func _t_perf() -> void:
 		(e as DmEnemy).take_damage(1e9, null)
 	var death_us := float(Time.get_ticks_usec() - t0) / 10.0
 	print("  perf: 30 enemies watched: %.0f us/frame; telegraph %.0f us/event (%d events); impact %.0f us/event; death %.0f us/event (incl. enemy)" % [frame_us, tele_us, sacs.size(), hit_us, death_us])
-	check(frame_us < 400.0, "perf: per-frame cost with 30 enemies < 0.4 ms (%.0f us)" % frame_us)
-	check(tele_us < 500.0, "perf: telegraph < 0.5 ms per event (%.0f us)" % tele_us)
-	check(hit_us < 300.0, "perf: impact < 0.3 ms per event (%.0f us)" % hit_us)
+	perf_info(frame_us < 400.0, "perf: per-frame cost with 30 enemies < 0.4 ms (%.0f us)" % frame_us)
+	perf_info(tele_us < 500.0, "perf: telegraph < 0.5 ms per event (%.0f us)" % tele_us)
+	perf_info(hit_us < 300.0, "perf: impact < 0.3 ms per event (%.0f us)" % hit_us)
 	# the pooled rings never grow: a second salvo allocates nothing new in the Vfx
 	var tr0: int = v.transient_load()
 	for e in sacs:
@@ -502,3 +503,9 @@ func _t_warm() -> void:
 		check(effects.has(id), "warm: Binbun effect %s is in the DmWarmup set" % id)
 	for id in DmEnemyFx.SFX_IDS:
 		check(not DmAudioMap.defn(id).is_empty(), "sfx: %s exists in the audio map" % id)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

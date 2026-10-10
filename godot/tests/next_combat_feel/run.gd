@@ -88,7 +88,7 @@ func _run() -> void:
 	for i in 20000:
 		combat.tick(float(i))
 	var idle_us := float(Time.get_ticks_usec() - t0) / 20000.0
-	check(idle_us < 2.0, "5: combat.tick idle %.3f us/frame" % idle_us)
+	perf_info(idle_us < 2.0, "5: combat.tick idle %.3f us/frame" % idle_us)
 	var fc := DmFrameCost.attach(root)
 	await ticks(5)
 	fc.reset()
@@ -100,3 +100,9 @@ func _run() -> void:
 	await ticks(3)
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

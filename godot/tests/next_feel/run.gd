@@ -302,13 +302,13 @@ func _run() -> void:
 	klat.sort()
 	g.input.combat.clear()
 	print("perf: input -> intent, click-to-chase median %.0f us (p95 %.0f), key-cast median %.0f us (p95 %.0f)" % [lat[20], lat[37], klat[20], klat[37]])
-	check(float(lat[20]) < 2000.0 and float(klat[20]) < 2000.0, "I: input -> intent: click-to-chase median %.0f us (p95 %.0f), key-cast median %.0f us (p95 %.0f), same frame" % [lat[20], lat[37], klat[20], klat[37]])
+	perf_info(float(lat[20]) < 2000.0 and float(klat[20]) < 2000.0, "I: input -> intent: click-to-chase median %.0f us (p95 %.0f), key-cast median %.0f us (p95 %.0f), same frame" % [lat[20], lat[37], klat[20], klat[37]])
 	# per-frame cost of the combat tick: idle (the normal case) and with a chase running
 	var tk0 := Time.get_ticks_usec()
 	for i in 20000:
 		combat.tick(float(i))
 	var idle_us := float(Time.get_ticks_usec() - tk0) / 20000.0
-	check(idle_us < 2.0, "I: combat.tick idle costs %.3f us per frame" % idle_us)
+	perf_info(idle_us < 2.0, "I: combat.tick idle costs %.3f us per frame" % idle_us)
 	reset_hero(Vector3(0, 0, -18))
 	g.input.attack(eid(tgt), false)
 	var fc := DmFrameCost.attach(root)
@@ -331,7 +331,7 @@ func _run() -> void:
 	var med_off := fc.median_ms()
 	fc.queue_free()
 	print("perf: combat.tick idle %.3f us, with a target %.2f us; frame median chasing+casting %.2f ms (worst %.1f) vs idle %.2f ms; %d chase ticks" % [idle_us, active_us, med_on, worst_on, med_off, steps_on])
-	check(active_us < 80.0 and med_on < med_off + 3.0, "I: a live chase / repeat adds %.2f ms to the frame median (idle %.2f), tick %.1f us" % [med_on - med_off, med_off, active_us])
+	perf_info(active_us < 80.0 and med_on < med_off + 3.0, "I: a live chase / repeat adds %.2f ms to the frame median (idle %.2f), tick %.1f us" % [med_on - med_off, med_off, active_us])
 
 	g.queue_free()
 	await ticks(3)
@@ -376,3 +376,9 @@ func _client_gestures() -> void:
 	hg.queue_free()
 	cg.queue_free()
 	await ticks(5)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

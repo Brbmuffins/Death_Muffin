@@ -457,7 +457,7 @@ func check_perf(extra_note: String) -> void:
 	samples.sort()
 	var med: float = samples[samples.size() / 2]
 	print("perf: %s brain tick median %.0f us, p95 %.0f us (%s)" % [boss_id, med, samples[int(samples.size() * 0.95)], extra_note])
-	check(med < 400.0, "C: boss tick median %.0f us < 400 us (budget)" % med)
+	perf_info(med < 400.0, "C: boss tick median %.0f us < 400 us (budget)" % med)
 	var fc := DmFrameCost.attach(root)
 	await ticks(5)
 	var offs: Array = []
@@ -484,8 +484,8 @@ func check_perf(extra_note: String) -> void:
 	if not fc.stalls.is_empty():
 		print("perf: stalls (wall ms, cpu ms, load): ", fc.stalls)
 	print("perf: %s whole frame median %.2f ms without the boss ticking, %.2f ms with it (worst frame per block %s ms)" % [boss_id, offs[1], ons[1], str(worsts)])
-	check(ons[1] < 14.0 and worsts[1] < 150.0, "C: frame median %.2f ms under 14, typical worst %.1f ms under 150" % [ons[1], worsts[1]])
-	check(ons[1] - offs[1] < 2.0, "C: the boss adds < 2 ms per frame (%.2f ms)" % (ons[1] - offs[1]))
+	perf_info(ons[1] < 14.0 and worsts[1] < 150.0, "C: frame median %.2f ms under 14, typical worst %.1f ms under 150" % [ons[1], worsts[1]])
+	perf_info(ons[1] - offs[1] < 2.0, "C: the boss adds < 2 ms per frame (%.2f ms)" % (ons[1] - offs[1]))
 	fc.queue_free()
 
 
@@ -563,3 +563,9 @@ func two_peers_common_tail() -> void:
 	hboss.take_damage(hboss.hp + 1.0, hh)
 	check(await until(func() -> bool: return cboss.sm.id() == DmEnemyState.Id.DEAD, 3.0), "B: the client sees the boss die")
 	check(await until(func() -> bool: return cast_.sfx.has("bossDefeat"), 3.0), "B: the defeat sound plays on the client too")
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

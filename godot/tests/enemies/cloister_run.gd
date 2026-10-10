@@ -567,6 +567,12 @@ func _t_perf() -> void:
 	print("PERF mixed-30 Cloister crowd (median of 5 x 3 s): brain %.1f us/enemy-tick, frame median %.2f ms (worst %.1f), engaged %d/30, %d blows" % [median(brains), median(fmed), median(fworst), engaged, int(dummy.hits_taken)])
 	print("PERF   per kind:", line)
 	check(engaged >= 27, "the mixed crowd is engaged (%d/30)" % engaged)
-	check(median(brains) < BUDGET_BRAIN_US, "mixed brain cost %.1f us/enemy-tick under %.0f us" % [median(brains), BUDGET_BRAIN_US])
-	check(worst < BUDGET_BRAIN_US, "every kind under the %.0f us budget (worst %.1f us)" % [BUDGET_BRAIN_US, worst])
-	check(median(fmed) < BUDGET_FRAME_MS and median(fworst) < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [median(fmed), BUDGET_FRAME_MS, median(fworst), CAP_WORST_FRAME_MS])
+	perf_info(median(brains) < BUDGET_BRAIN_US, "mixed brain cost %.1f us/enemy-tick under %.0f us" % [median(brains), BUDGET_BRAIN_US])
+	perf_info(worst < BUDGET_BRAIN_US, "every kind under the %.0f us budget (worst %.1f us)" % [BUDGET_BRAIN_US, worst])
+	perf_info(median(fmed) < BUDGET_FRAME_MS and median(fworst) < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [median(fmed), BUDGET_FRAME_MS, median(fworst), CAP_WORST_FRAME_MS])
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

@@ -37,7 +37,7 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
 ## Tests
 `tests/next_bosses/`: `run.gd` (framework + King), `abbess_run.gd`, `congregation_run.gd`, `prelate_run.gd`, `saint_run.gd`, `regent_run.gd`, `mire_run.gd`
 (shared bases `suite.gd`, `late_base.gd`); meta-progression in `tests/next_boss_meta/run.gd`. Screenshots: `shot.gd`, `shot_cathedral.gd --boss=...`
-(`--probe=1` times the first draw of each event kind), `shot_late.gd`. Budget (headless): brain tick 30-70 us, whole frame +0.0-0.2 ms.
+(`--probe=1` times the first draw of each event kind), `shot_late.gd`. Typical cost (headless, printed as INFO by the suite, not asserted): brain tick 30-70 us, whole frame +0.0-0.2 ms.
 
 ## Known gaps
 - Empowered choice is the host's own hero (a client's `request_summon` is the plain RPC); the prize claim window is the backend's (3 h).

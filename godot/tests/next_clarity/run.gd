@@ -68,7 +68,7 @@ func _budget() -> void:
 		bb.allow("hit", float(i % 5000))
 	var us := float(Time.get_ticks_usec() - t0) / 20000.0
 	print("float budget allow(): %.3f us per call" % us)
-	check(us < 20.0, "allow() costs %.2f us" % us)
+	perf_info(us < 20.0, "allow() costs %.2f us" % us)
 
 
 # ---- action bar --------------------------------------------------------------------------------------------------------------------
@@ -163,7 +163,7 @@ func _game() -> void:
 		DmNextHudVm._legion_hurt(th)
 	var us := float(Time.get_ticks_usec() - t0) / 500.0
 	print("needs + legion pass: %.1f us per build" % us)
-	check(us < 40.0, "the needs / legion pass stays cheap (%.1f us)" % us)
+	perf_info(us < 40.0, "the needs / legion pass stays cheap (%.1f us)" % us)
 
 	# the legion: hurt pips + the low-health ring
 	var spec := {"kind": "warrior", "cap": 6.0, "hp": 500.0, "damage": 10.0, "attackSpeedMult": 1.0}
@@ -195,3 +195,9 @@ func _game() -> void:
 	await g.leave()
 	g.queue_free()
 	await frames(3)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

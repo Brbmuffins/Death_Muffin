@@ -315,8 +315,8 @@ func _t_perf() -> void:
 	print("PERF 30 robbers (nav + avoidance + visuals): brain %.1f us/enemy-tick (nav part %.1f us), repaths %d (%.1f/s total), scans %d, frame median %.2f ms (p95 %.2f, worst %.2f), engaged %d/30, %d blows"
 		% [m.brain, m.nav, m.repaths, m.repaths / 6.0, m.scans, m.frame_ms, m.p95_ms, m.worst_ms, m.engaged, m.blows])
 	check(m.engaged >= 27, "the pack is engaged (%d/30)" % m.engaged)
-	check(m.brain < BUDGET_BRAIN_US, "brain cost %.1f us/enemy-tick under %.0f us" % [m.brain, BUDGET_BRAIN_US])
-	check(m.frame_ms < BUDGET_FRAME_MS and m.worst_ms < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [m.frame_ms, BUDGET_FRAME_MS, m.worst_ms, CAP_WORST_FRAME_MS])
+	perf_info(m.brain < BUDGET_BRAIN_US, "brain cost %.1f us/enemy-tick under %.0f us" % [m.brain, BUDGET_BRAIN_US])
+	perf_info(m.frame_ms < BUDGET_FRAME_MS and m.worst_ms < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [m.frame_ms, BUDGET_FRAME_MS, m.worst_ms, CAP_WORST_FRAME_MS])
 	check(m.repaths <= 30 * 6 * 4, "repaths staggered (<= 4/s per enemy, %d)" % m.repaths)
 	for v in [["no avoidance", {"use_avoidance": false}], ["no visuals", {"with_visual": false}], ["no nav (straight)", {"use_nav": false, "use_avoidance": false}]]:
 		var r: Dictionary = await _perf_run(v[1], 3.0)
@@ -363,3 +363,9 @@ func _t_anim_lod() -> void:
 		check(DmCreature.lod_interval(cam, Vector3(3.0 + 14.0, 0.0, 3.0 - 10.0)) == 0.0, "anim LOD x%.2f: a body at the screen edge updates every frame" % zoom)
 		check(DmCreature.lod_interval(cam, Vector3(3.0 + 60.0 * zoom, 0.0, 3.0)) > 0.0, "anim LOD x%.2f: a body far off screen is throttled" % zoom)
 	cam.free()
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

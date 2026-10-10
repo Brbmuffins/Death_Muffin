@@ -429,8 +429,8 @@ func _part_cost() -> void:
 	var hosted: Array = await _frame_median(g, hb, 150)
 	var secs := float(Time.get_ticks_msec() - t0) / 1000.0
 	print("COST frame median ms (p95 / worst busy): solo %.2f (%.2f / %.1f); hosting, nobody joined %.2f (%.2f / %.1f); hosted with a joiner in this process %.2f (%.2f / %.1f); host -> relay %.1f KB/s %.0f packets/s" % [solo[0], solo[1], solo[2], empty[0], empty[1], empty[2], hosted[0], hosted[1], hosted[2], float(lob.bytes_out - o0) / secs / 1024.0, float(lob.packets_out - p0) / secs])
-	check(empty[0] < solo[0] * 1.25 + 0.6, "cost: hosting with nobody joined costs ~nothing per frame (%.2f vs %.2f ms)" % [empty[0], solo[0]])
-	check(hosted[0] < solo[0] * 1.8 + 3.0, "cost: hosted with a joiner stays near the solo cost (%.2f vs %.2f ms)" % [hosted[0], solo[0]])
+	perf_info(empty[0] < solo[0] * 1.25 + 0.6, "cost: hosting with nobody joined costs ~nothing per frame (%.2f vs %.2f ms)" % [empty[0], solo[0]])
+	perf_info(hosted[0] < solo[0] * 1.8 + 3.0, "cost: hosted with a joiner stays near the solo cost (%.2f vs %.2f ms)" % [hosted[0], solo[0]])
 	check(float(lob.packets_out - p0) / secs < 400.0 and float(lob.bytes_out - o0) / secs < 300.0 * 1024.0, "cost: under 400 packets/s and 300 KB/s to the relay with 25 enemies")
 	await jg.leave()
 	await g.leave()
@@ -461,3 +461,9 @@ func _poll_until(c: DmLobbyClient, cond: Callable, limit_s: float = 6.0) -> bool
 			return true
 		await create_timer(0.03).timeout
 	return cond.call()
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

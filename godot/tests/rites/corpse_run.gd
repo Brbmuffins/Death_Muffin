@@ -769,7 +769,13 @@ func _part_c() -> void:
 	print("PERF idle caster step (nothing active, no cooldown change): %.1f us per tick" % idle_us)
 	print("PERF host step with %d armed seeds + 3 zones + 25 enemies: %.1f us per tick for 3 casters (%.1f us each)" % [armed, per_frame, per_frame / 3.0])
 	ok(armed == 3, "C: three armed seeds in the perf scene")
-	ok(per_frame < 4000.0, "C: stepping 3 casters with 3 seeds + 3 zones + 25 enemies < 4 ms/tick (%.0f us)" % per_frame)
+	perf_info(per_frame < 4000.0, "C: stepping 3 casters with 3 seeds + 3 zones + 25 enemies < 4 ms/tick (%.0f us)" % per_frame)
 	for r in each:
-		ok(float(each[r]) < 6000.0, "C: %s cast costs < 6 ms (%.0f us)" % [r, each[r]])
+		perf_info(float(each[r]) < 6000.0, "C: %s cast costs < 6 ms (%.0f us)" % [r, each[r]])
 	await _teardown(s)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
