@@ -21,7 +21,7 @@ opts.hud:  true (default) real HUD, also for joiners  |  "minimal" DmNextHud orb
 | cooldown / rejection | `cast_rejected(rite, reason)` -> texts ("Not enough Grave Essence", "X is not ready", "X unlocks at level N"; busy / range / no_target silent), 1 per 600 ms |
 | float text | casters' `hit_number`, host `body.hurt`, thrall blows, `dot_damage`, heals / gold / shards; goes through `DmFloatBudget` (caps, see `feel/README.md`) and honours the damage-numbers setting |
 | toasts / banners | `game_event("toast" / "banner" / "loot" ...)` into `DmGameUi._on_game_event`; level-ups from `member_credited` |
-| belt | Q drinks the best heal flask (`use_item`); elixir / tonic chips |
+| belt | Q drinks the flask picked in the Heal slot (Reliquary potion belt or a drop on the chip), else the best one owned (`use_item`); elixir / tonic chips |
 | minimap | `DmHudMinimap` fed with enemies, thralls, corpses, built areas / doors, the click-to-move goal (`destination`, shown while `has_target`; it is static, no `_process`); click -> `navigate` -> `DmNextInput.click_move` |
 | save chip | worse of `DmProgressSync.state` and `DmInventory.state` |
 | wave dial | `dial_wave(delta)` -> `DmNextProgress.apply_progress` |

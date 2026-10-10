@@ -40,7 +40,7 @@ kill batch + `session_end`, progression, bag; `main.gd` calls it on window close
 - Seal unlocks: `chapterhouse.check_seals()` breaks the doors when an area's kills are in (`DmChapterhouse`); without a hub node it only banks `prog.unlock` and toasts. Milestones pay their gold as a **ground drop** (`member.loot_view.gold`) through the rewards pickup path.
 
 ## Belt
-`Q` heal flask (best owned, 1.5 s sip cooldown, Dry Cellar vow forbids), `Z`/`X` elixir / tonic (picked on the belt, else any in the bag; replace / extend rules, `DmBrews.apply_brew`), meals heal over time. Brews act through `p["brews"]` on the body (ward, speed) and its caster (damage, haste, essence regen). HUD chips: `DmNextBelt.rows()`.
+`Q` heal flask (the one picked in the Heal slot of the Reliquary's potion belt while owned, else the best owned; 1.5 s sip cooldown, Dry Cellar vow forbids), `Z`/`X` elixir / tonic (picked on the belt, else any in the bag; replace / extend rules, `DmBrews.apply_brew`), meals heal over time. Brews act through `p["brews"]` on the body (ward, speed) and its caster (damage, haste, essence regen). HUD chips: `DmNextBelt.rows()`.
 
 ## Tests
 
