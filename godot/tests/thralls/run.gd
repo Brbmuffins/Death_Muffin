@@ -528,7 +528,7 @@ func _t_statuses() -> void:
 
 ## Two multiplayer APIs in one process (subtrees /root/Srv and /root/Cli over ENet on 127.0.0.1): the host's RPC replication reaches a client host.
 func _t_wire() -> void:
-	var port := 40000 + randi() % 9000
+	var port := DmTestPorts.free_port()
 	var srv := Node.new()
 	srv.name = "Srv"
 	var cli := Node.new()

@@ -1,6 +1,6 @@
 extends SceneTree
 ## Relay integration test. Headless:  godot --headless --path godot --script res://tests/relay/run.gd
-## Starts the lobby service (server/death-muffin/lobby) on 127.0.0.1:<5192-5199> with a TEST jwt secret, then runs a host and three clients
+## Starts the lobby service (server/death-muffin/lobby) on 127.0.0.1:<a random free port> with a TEST jwt secret, then runs a host and three clients
 ## as separate headless Godot processes (peer_main.gd) through DmRelayPeer, plus this process as a 5th joiner that must be refused.
 ## Needs `node` and `npm install` done in server/death-muffin/lobby; otherwise it prints a skip line and exits 0.
 
@@ -49,14 +49,6 @@ func _log_of(name: String) -> String:
 func _has(name: String, needle: String) -> bool:
 	return _log_of(name).contains(needle)
 
-func _free_port() -> int:
-	for p in range(5192, 5200):
-		var s := TCPServer.new()
-		if s.listen(p, HOST) == OK:
-			s.stop()
-			return p
-	return 0
-
 func _spawn(role: String, token: String, log_name: String, sid: String = "", label: String = "") -> int:
 	var args := ["--headless", "--path", ProjectSettings.globalize_path("res://"), "--script", "res://tests/relay/peer_main.gd", "--",
 		role, "ws://%s:%d" % [HOST, port], token, tmp.path_join(log_name + ".log"), sid, label]
@@ -82,9 +74,9 @@ func _main() -> void:
 		return
 	tmp = OS.get_user_data_dir().path_join("relay_test_%d" % OS.get_process_id())
 	DirAccess.make_dir_recursive_absolute(tmp)
-	port = _free_port()
+	port = DmTestPorts.free_tcp_port()
 	if port == 0:
-		print("relay: SKIPPED (no free port in 5192-5199)")
+		print("relay: SKIPPED (no free port in 40000-49999)")
 		print("0 passed, 0 failed (skipped)")
 		quit(0)
 		return

@@ -314,7 +314,7 @@ func _perf(h: Node) -> void:
 # ---- replication: in-process ENet host + client ------------------------------------------------------------------------------------------
 
 func _replication() -> void:
-	var port := 40000 + randi() % 9000
+	var port := DmTestPorts.free_port()
 	var nodes: Array = []
 	for nm in ["SH", "SC"]:
 		var n := Node.new()
