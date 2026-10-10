@@ -15,7 +15,7 @@ Never create two per peer watching the same bodies (everything would play twice)
 
 ## Shell entry point (done in `next_game.gd`)
 `DmNextGame.enemy_fx` (child `EnemyFx`, every peer) is created in `start()` before the director: `player_pos` = local body, `host.camera` = the camera rig,
-`watch(e)` called from the `enemy_spawned` hook (idempotent; the node also auto-watches `node_added`), and `enemy_fx.warm(local_body position)` at the end of
+`auto_watch = false` (no `node_added` callback for every node in the tree), `watch(e)` called from the `enemy_spawned` hook, `watch_zones_under(node)` on the enemy holder and the boss pool node (`DmBossHost.pools_created`) for dust / ember clouds, and `enemy_fx.warm(local_body position)` at the end of
 `start()` (visual runs): silent one-of-each telegraph / burst / censer effect so pools, textures and shaders exist before the first fight.
 `host.hitstop_cb` is wired by `DmNextGame` to `hitstopper` (`DmHitStop`, picture-only: no `Engine.time_scale`, so online peers never desync; each peer freezes its own view).
 

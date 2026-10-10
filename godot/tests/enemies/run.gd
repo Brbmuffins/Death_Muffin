@@ -82,6 +82,8 @@ func _run() -> void:
 	await _t_damage_death()
 	await _t_leash()
 	await _t_net()
+	await _t_sim_lod()
+	_t_anim_lod()
 	await _t_perf()
 	Engine.time_scale = 1.0
 	Engine.physics_ticks_per_second = 60
@@ -319,3 +321,45 @@ func _t_perf() -> void:
 	for v in [["no avoidance", {"use_avoidance": false}], ["no visuals", {"with_visual": false}], ["no nav (straight)", {"use_nav": false, "use_avoidance": false}]]:
 		var r: Dictionary = await _perf_run(v[1], 3.0)
 		print("PERF   variant %-18s brain %.1f us, frame median %.2f ms" % [v[0], r.brain, r.frame_ms])
+
+
+## Simulation LOD: an idle body far from every target thinks at a fraction of the tick rate; one inside the LOD radius (still outside aggro) does not.
+func _t_sim_lod() -> void:
+	await new_arena()
+	dummy.global_position = Vector3(0, 0, 25)
+	var far := robber(Vector3(-5, 0, -25), {"leash_range": 80.0})   # 50 m from the dummy
+	var near := robber(Vector3(18, 0, 25), {"leash_range": 80.0})    # 18 m: beyond aggro (15), inside IDLE_LOD_FAR
+	await ticks(20)
+	var counts := {}
+	for e: DmEnemy in [far, near]:
+		far.set_physics_process(e == far)   # the profile counters are global: one body at a time
+		near.set_physics_process(e == near)
+		DmEnemy.profile = true
+		DmEnemy.prof_reset()
+		await ticks(120)
+		counts[e] = DmEnemy.prof_ticks
+		DmEnemy.profile = false
+	DmEnemy.profile = false
+	check(far.sm.id() == DmEnemyState.Id.IDLE and near.sm.id() == DmEnemyState.Id.IDLE, "sim LOD: both bodies stay idle")
+	check(int(counts[far]) <= 120 / DmEnemy.IDLE_LOD_TICKS + 2 and int(counts[far]) >= 120 / DmEnemy.IDLE_LOD_TICKS - 2, "sim LOD: a far idle body ticks every %dth tick (%d of 120)" % [DmEnemy.IDLE_LOD_TICKS, counts[far]])
+	check(int(counts[near]) == 120, "sim LOD: an idle body inside the radius keeps the full rate (%d of 120)" % counts[near])
+	check(not far.agent.avoidance_enabled and near.agent.avoidance_enabled, "sim LOD: avoidance is off only for the far idle body")
+	# the hero walks up: the far body returns to full rate and chases
+	far.set_physics_process(true)
+	dummy.global_position = far.global_position + Vector3(6, 0, 0)
+	await secs(1.5)
+	check(far.sm.id() == DmEnemyState.Id.CHASE and far.agent.avoidance_enabled, "sim LOD: a hero in range wakes the body (chase, avoidance back on)")
+
+
+## Animation LOD measures from the point the camera looks at: everything on screen updates every frame, the band outside ~30 Hz, the rest ~10 Hz.
+func _t_anim_lod() -> void:
+	var cam := Camera3D.new()
+	root.add_child(cam)
+	for zoom: float in [1.0, 1.45]:
+		var dist: float = 22.0 * zoom
+		cam.global_position = Vector3(3.0, dist * 0.82, 3.0 + dist * 0.6)
+		cam.look_at(Vector3(3.0, 0.0, 3.0), Vector3.UP)
+		check(DmCreature.lod_interval(cam, Vector3(3.0, 0.0, 3.0)) == 0.0, "anim LOD x%.2f: a body at the hero updates every frame" % zoom)
+		check(DmCreature.lod_interval(cam, Vector3(3.0 + 14.0, 0.0, 3.0 - 10.0)) == 0.0, "anim LOD x%.2f: a body at the screen edge updates every frame" % zoom)
+		check(DmCreature.lod_interval(cam, Vector3(3.0 + 60.0 * zoom, 0.0, 3.0)) > 0.0, "anim LOD x%.2f: a body far off screen is throttled" % zoom)
+	cam.free()

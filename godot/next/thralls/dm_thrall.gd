@@ -668,8 +668,7 @@ func _process(delta: float) -> void:
 		_lod_interval = 0.0
 		var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
 		if cam != null:
-			var d := cam.global_position.distance_to(global_position)
-			_lod_interval = 0.0 if d < 18.0 else (0.04 if d < 40.0 else 0.1)
+			_lod_interval = DmCreature.lod_interval(cam, global_position)
 	if _anim_acc >= _lod_interval or creature.busy():
 		creature.steady_every = 1 if _lod_interval == 0.0 else 2
 		creature.update(_anim_acc)

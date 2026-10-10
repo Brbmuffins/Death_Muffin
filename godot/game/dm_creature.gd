@@ -603,6 +603,20 @@ func has_landed() -> bool:
 		return true
 	return ap.current_animation_position >= landing_time(_death_clip)
 
+## Animation LOD: seconds between `update` calls for a body at `p`, measured on the ground from the point the camera looks at (the followed
+## hero / screen centre), not from the camera itself (which sits ~22 m up and back, so everything on screen used to count as mid-distance).
+## Everything the screen can show (about 1.6 x the camera height, 29 m at the default zoom, 41 m at max) updates every frame (0), the band
+## just outside ~30 Hz, the rest ~10 Hz.
+static func lod_interval(cam: Camera3D, p: Vector3) -> float:
+	var f := -cam.global_transform.basis.z
+	var h := cam.global_position.y
+	if f.y > -0.05 or h <= 0.0:
+		return 0.0
+	var t := h / -f.y
+	var full := maxf(28.0, h * 1.6)
+	var d := Vector2(p.x - (cam.global_position.x + f.x * t), p.z - (cam.global_position.z + f.z * t)).length()
+	return 0.0 if d < full else (0.033 if d < full * 1.6 else 0.1)
+
 ## Advance by a real frame (the picture clock of a struck enemy honours the hitstop).
 func update(dt_real: float) -> void:
 	if ap == null or _disposed:

@@ -34,7 +34,7 @@ offset 0.45, `echoOwner "*"`; toxic ruptures at `TOXIC_RUPTURE` 5 s into a `DmHo
 Events by reliable RPC from the host: `_rpc_add` (compact array), `_rpc_gone(id, reason)`, `_rpc_snapshot` (late join). Clients are visual-only and
 cannot consume. The view: the dying `DmEnemy` body (same def within 1.2 m, state DEAD; the host passes it directly) becomes the corpse, shadow off;
 no body -> a `DmCreature` laid down in its death pose. Effects are the existing ones through the Vfx decal pool (pale ring capped at 8, violet resonant
-ring, green toxic aura, wisps per reason). Gone: 0.9 s opacity fade then the body is freed; `burst` (not toxic) blows the body apart (0.8 s).
+ring, green toxic aura, wisps per reason). A settled corpse (death clip finished) stops its `_process`; nothing animates it again unless a snapshot revives the body. Gone: 0.9 s opacity fade then the body is freed; `burst` (not toxic) blows the body apart (0.8 s).
 
 ## Performance design
 

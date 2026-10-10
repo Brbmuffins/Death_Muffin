@@ -60,6 +60,7 @@ func _run() -> void:
 			for id in d.enemies:
 				before[id] = true
 			d.spawn_wave([g.player], 4)
+			d.flush_spawns()
 			for id in d.enemies:
 				if before.has(id):
 					continue
