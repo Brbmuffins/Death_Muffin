@@ -30,8 +30,8 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 
 ## Run the client
 
-Godot 4.7.2 is at `/home/ubuntu/tools/godot/godot` (`GODOT` env var overrides it in the scripts). The renderer is
-`gl_compatibility`.
+Godot 4.7.2 is at `/home/ubuntu/tools/godot/godot` (`GODOT` env var overrides it in the scripts). The default renderer is
+`gl_compatibility`; players can opt into Mobile (Vulkan), see "Renderer" below.
 
 ```
 godot --headless --path godot --import          # first time, and after adding assets
@@ -63,6 +63,22 @@ backend and is opt-in. `tools/godot/playtest.sh` runs the scripted bot playtest.
 backend, lobby and a subset of Godot suites on `main`.
 Tests never assert wall-clock time: timing figures print as `INFO perf:` lines. FPS is judged on real hardware (F3 overlay);
 suites only check deterministic counters.
+
+## Renderer
+
+Settings > Graphics > Renderer picks Compatibility (OpenGL 3.3, the default) or Mobile (Vulkan, experimental); it applies after a restart (the
+row has a Restart now button). The choice is `user://dm_renderer.cfg` (Windows: `%APPDATA%\Godot\app_userdata\Death Muffin (Godot slice)\dm_renderer.cfg`),
+a project-settings override named by `application/config/project_settings_override` in `godot/project.godot`, which the engine reads before the
+renderer starts, so no launcher change is needed. No file means Compatibility. Safety nets: if Vulkan cannot start the engine falls back to
+OpenGL 3 (`rendering/rendering_device/fallback_to_opengl3`) and the game runs on Compatibility; a Mobile run that dies in its first 25 s
+(`user://dm_renderer.guard` survives) puts the choice back to Compatibility on the next launch and says so in Settings. A crash before the first
+script runs is the one case the game cannot see: delete the cfg file. The F3 overlay's last line and every bug report (`renderer`) show the renderer
+actually running. Other ways back: `DeathMuffin.exe -- --renderer=compat` (rewrites the file, relaunches), or `--rendering-method gl_compatibility` for one run.
+Code branches on `DmRenderer.active()` / `is_mobile()`, never on the setting. Shaders cannot be compiled for Mobile headless (the VPS has no Vulkan);
+Compatibility-specific spots to compare by eye on a Mobile run: Binbun `depth_texture` effects (18 shaders) assume Vulkan depth, so under Mobile their
+proximity fade is the intended one; the water shader's `GL_COMPATIBILITY` define is 0; `DmFxRing` motes pass sRGB colours (Compatibility linearises
+MultiMesh instance colours itself); `world_builder.gd` uses a plain-colour ambient and tiled floors for Compatibility's light handling; ubershaders and
+pipeline precompile exist only on Mobile.
 
 ## Export, publish, deploy
 

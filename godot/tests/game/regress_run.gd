@@ -57,6 +57,17 @@ func _drive(g: DmResolutionGovernor, secs: float, ms: float) -> float:
 	return lowest
 
 
+## Feed `secs` of frames at `ms` per frame with the given GPU / script time; returns the lowest scale reached.
+func _drive_cost(g: DmResolutionGovernor, secs: float, ms: float, gpu: float, logic: float) -> float:
+	var lowest := g.scale
+	var t := 0.0
+	while t < secs:
+		g.frame(0.1, ms, 60, gpu, logic)
+		lowest = minf(lowest, g.scale)
+		t += 0.1
+	return lowest
+
+
 func _graphics() -> void:
 	# --- the table -----------------------------------------------------------------------------
 	_check(DmGraphicsPreset.IDS == ["low", "medium", "high", "ultra"], "four presets in order")
@@ -137,6 +148,61 @@ func _graphics() -> void:
 	g4.reset()
 	_check(g4.scale == 1.0 and g4.floor_scale == 0.85, "reset keeps the floor, restores full resolution")
 	_check(is_equal_approx(DmResolutionGovernor.budget_fps(0), 60.0), "Max fps is judged against 60")
+	# GPU-aware: slow frames the GPU is not the cause of leave the image sharp
+	var gc := DmResolutionGovernor.new()
+	gc.set_floor(0.85)
+	_check(_drive_cost(gc, 300.0, 40.0, 8.0, 5.0) == 1.0, "CPU-bound by the GPU's own timing (8 ms of 40): never steps down")
+	var gl := DmResolutionGovernor.new()
+	gl.set_floor(0.85)
+	_check(_drive_cost(gl, 300.0, 40.0, -1.0, 30.0) == 1.0, "no GPU timing, script time 30 of 40 ms: never steps down")
+	var gg := DmResolutionGovernor.new()
+	gg.set_floor(0.85)
+	_check(_drive_cost(gg, 300.0, 40.0, 35.0, 5.0) < 1.0, "GPU-bound (35 of 40 ms): steps down")
+	var gn := DmResolutionGovernor.new()
+	gn.set_floor(0.85)
+	_check(_drive_cost(gn, 300.0, 40.0, -1.0, 6.0) < 1.0, "no GPU timing, little script time: steps down as before")
+	var gs := DmResolutionGovernor.new()
+	gs.set_floor(0.85)
+	_drive_cost(gs, 100.0, 40.0, 35.0, 5.0)
+	var stepped: float = gs.scale
+	_drive_cost(gs, 100.0, 40.0, 8.0, 5.0)
+	_check(stepped < 1.0 and gs.scale > stepped, "a view stepped down for nothing steps back up (%.2f -> %.2f)" % [stepped, gs.scale])
+	_check(DmResolutionGovernor.scalable(40.0) and DmResolutionGovernor.scalable(40.0, 30.0) and not DmResolutionGovernor.scalable(40.0, 20.0) and not DmResolutionGovernor.scalable(40.0, -1.0, 25.0), "scalable(): GPU share 0.7, script share 0.5, unknown = yes")
+
+	# --- renderer choice (DmRenderer): a file in user:// the engine reads at startup; Compatibility = no file -----------------------
+	var rp := "user://dm_renderer_test.cfg"
+	var gp := "user://dm_renderer_test.guard"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(rp))
+	_check(ProjectSettings.get_setting("application/config/project_settings_override") == DmRenderer.CFG_PATH, "project.godot reads the renderer override file")
+	_check(ProjectSettings.get_setting("rendering/rendering_device/fallback_to_opengl3") == true, "no Vulkan -> the game falls back to OpenGL 3 instead of failing")
+	_check(ProjectSettings.get_setting("rendering/renderer/rendering_method") == "gl_compatibility", "the project default stays Compatibility")
+	_check(DmRenderer.requested(rp) == DmRenderer.COMPAT, "no file = Compatibility")
+	_check(DmRenderer.set_requested(DmRenderer.MOBILE, rp) and DmRenderer.requested(rp) == DmRenderer.MOBILE, "Mobile is saved and read back")
+	var cf := ConfigFile.new()
+	cf.load(rp)
+	_check(cf.get_value("rendering", "renderer/rendering_method") == "mobile", "the file overrides rendering/renderer/rendering_method")
+	_check(DmRenderer.set_requested(DmRenderer.COMPAT, rp) and not FileAccess.file_exists(rp) and DmRenderer.requested(rp) == DmRenderer.COMPAT, "Compatibility removes the file")
+	_check(DmRenderer.set_requested(DmRenderer.COMPAT, rp), "removing an absent file is fine")
+	var bad := FileAccess.open(rp, FileAccess.WRITE)
+	bad.store_string("not a cfg [[[")
+	bad = null
+	_check(DmRenderer.requested(rp) == DmRenderer.COMPAT, "an unreadable file means Compatibility")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(rp))
+	_check(DmRenderer.flag_choice(PackedStringArray(["--renderer=compat"])) == "compat" and DmRenderer.flag_choice(PackedStringArray(["--x", "--renderer=Mobile"])) == "mobile"
+		and DmRenderer.flag_choice(PackedStringArray(["--renderer=vulkan"])) == "" and DmRenderer.flag_choice(PackedStringArray()) == "", "--renderer= parses")
+	_check(DmRenderer.strip_flag(PackedStringArray(["--a", "--renderer=compat", "--b"])) == PackedStringArray(["--a", "--b"]), "the flag is not passed on to the relaunch")
+	_check(DmRenderer.active() == "compat" and not DmRenderer.is_mobile() and DmRenderer.describe().begins_with("Compatibility"), "this run is Compatibility")
+	_check(not DmRenderer.guard_check(false, gp, rp) and not FileAccess.file_exists(gp), "a Compatibility run arms no guard")
+	DmRenderer.set_requested(DmRenderer.MOBILE, rp)
+	_check(DmRenderer.fell_back(rp), "Mobile asked for but not running = fell back")
+	_check(not DmRenderer.guard_check(true, gp, rp) and FileAccess.file_exists(gp), "a Mobile run arms the guard")
+	DmRenderer.guard_ok(gp)
+	_check(not FileAccess.file_exists(gp) and not DmRenderer.guard_check(true, gp, rp), "a survived run clears the guard; the next launch arms it again")
+	_check(DmRenderer.guard_check(true, gp, rp) and DmRenderer.requested(rp) == DmRenderer.COMPAT and not FileAccess.file_exists(gp), "a run that left its guard (crashed): back to Compatibility")
+	_check(DmRenderer.was_reverted(), "...and Settings is told")
+	DmRenderer.set_requested(DmRenderer.MOBILE, rp)
+	_check(not DmRenderer.was_reverted(), "choosing again clears the note")
+	DmRenderer.set_requested(DmRenderer.COMPAT, rp)
 
 
 func _depths_builder() -> void:

@@ -44,7 +44,7 @@ func _mono() -> Font:
 
 func set_shown(on: bool) -> void:
 	panel.visible = on
-	RenderingServer.viewport_set_measure_render_time(_vp, on)
+	RenderingServer.viewport_set_measure_render_time(_vp, on or DmNextPerf.measuring)   # the governor keeps it on while it runs
 	_samples.clear()
 	_frames_since_paint = 0
 	_ms_since_paint = 0.0
@@ -105,7 +105,7 @@ func _process(dt: float) -> void:
 		"logic %.1f ms (process %.1f + physics %.1f)   render cpu %.1f ms   gpu %s" % [proc + phys, proc, phys, cpu_r, ("%.1f ms" % gpu_r) if gpu_r > 0.0 else "n/a"],
 		split,
 		"calls %d   objects %d   prims %s   tex %.0f MB   nodes %d" % [calls, objs, _kilo(prims), tex / 1048576.0, int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))],
-		"%s  %dx%d  mem %.0f MB  window 5 s (%d frames)" % [RenderingServer.get_video_adapter_name(), int(vs.x), int(vs.y), Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, s.n],
+		"%s  [%s]  %dx%d  mem %.0f MB  window 5 s (%d frames)" % [RenderingServer.get_video_adapter_name(), DmRenderer.describe(), int(vs.x), int(vs.y), Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, s.n],
 	]
 	label.text = "\n".join(lines)
 

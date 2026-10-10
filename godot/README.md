@@ -1,6 +1,6 @@
 # godot/: the Death Muffin client
 
-Godot 4.7.2 project, renderer `gl_compatibility`. Run, test, export, publish: root [README.md](../README.md). Agent rules: [CLAUDE.md](../CLAUDE.md).
+Godot 4.7.2 project, default renderer `gl_compatibility` (Mobile/Vulkan is an opt-in setting, root README "Renderer"). Run, test, export, publish: root [README.md](../README.md). Agent rules: [CLAUDE.md](../CLAUDE.md).
 Decisions: [DECISIONS.md](../DECISIONS.md). Gaps: [KNOWN-GAPS.md](../KNOWN-GAPS.md).
 
 ## Folders

@@ -186,6 +186,10 @@ func _governor() -> void:
 	for i in 600:
 		p.pace(0.033)
 	check(p.governor.scale == 1.0, "governor: frames at the 30 fps budget are not a miss")
+	# the cost sampler behind the GPU-aware gate (a headless run has no GPU time: -1; script time is always known)
+	p._sample_cost()
+	check(p.gpu_ms == -1.0 and p.logic_ms >= 0.0, "governor: sampler reports no GPU time headless, script time known")
+	p.logic_ms = -1.0   # the real script time of this test is not the simulated frame stream's
 	# the same constants as the current client
 	check(DmResolutionGovernor.MIN == 0.6 and DmResolutionGovernor.STEP == 0.9 and DmResolutionGovernor.DOWN_AFTER_S == 3.5 and DmResolutionGovernor.UP_AFTER_S == 15.0 and DmResolutionGovernor.MIN_GAP_S == 20.0, "governor: constants unchanged (the quality pass retunes them)")
 	# the floor follows the preset: Low steps down to 0.6, High / Ultra never below 0.85
