@@ -2,10 +2,18 @@ class_name DmFxRing
 extends RefCounted
 ## Port of Effects.ts ParticleSystem: a CPU-simulated ring buffer of motes drawn as one MultiMesh of billboards per blend mode
 ## (additive "glow" ring of 3500, normal-blend "smoke" ring of 900). Same emit options, same alpha/size curves.
+## Upload: the instance buffer is sized to the live motes (instance_count follows them in STEP-sized buckets, with hysteresis) and
+## only that slice is sent each frame, not the whole capacity (224 KB for the additive ring). `limit` lowers the ring's usable size
+## per graphics preset (DmGraphicsPreset "motes"); motes already flying in slots above a lowered limit finish normally.
 
 var node: MultiMeshInstance3D
 var mm: MultiMesh
 var capacity: int
+var limit: int            ## slots new motes may take (<= capacity); see set_limit
+var last_upload_bytes := 0   ## size of the last instance-buffer upload (0 when nothing was sent), for the perf probes
+
+const STEP := 256         ## instance_count granularity
+const SHRINK_SLACK := 512 ## the buffer shrinks only when this many instances too large (reallocation is the costly part)
 
 var _pos: PackedFloat32Array
 var _vel: PackedFloat32Array
@@ -25,6 +33,7 @@ var _shown := false
 
 func _init(cap: int, tex: Texture2D, additive: bool) -> void:
 	capacity = cap
+	limit = cap
 	_pos = PackedFloat32Array(); _pos.resize(cap * 3)
 	_vel = PackedFloat32Array(); _vel.resize(cap * 3)
 	_col = PackedFloat32Array(); _col.resize(cap * 3)
@@ -41,7 +50,7 @@ func _init(cap: int, tex: Texture2D, additive: bool) -> void:
 	var q := QuadMesh.new()
 	q.size = Vector2(1, 1)
 	mm.mesh = q
-	mm.instance_count = cap
+	mm.instance_count = mini(cap, STEP)
 	mm.visible_instance_count = 0
 	node = MultiMeshInstance3D.new()
 	node.multimesh = mm
@@ -49,6 +58,13 @@ func _init(cap: int, tex: Texture2D, additive: bool) -> void:
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.custom_aabb = AABB(Vector3(-500, -500, -500), Vector3(1000, 1000, 1000))
 	node.visible = false
+
+
+## Usable ring size (clamped to 1..capacity). Takes effect for new motes.
+func set_limit(n: int) -> void:
+	limit = clampi(n, 1, capacity)
+	if _cursor >= limit:
+		_cursor = 0
 
 
 ## o: x y z count color(Color/int) spread speed up life size gravity drag shrink inward (Effects.ts EmitOptions).
@@ -73,7 +89,7 @@ func emit(o: Dictionary) -> void:
 	var oz := float(o.get("z", 0.0))
 	for n in count:
 		var i := _cursor
-		_cursor = (_cursor + 1) % capacity
+		_cursor = (_cursor + 1) % limit
 		if _life[i] <= 0.0:
 			_active += 1
 			_list.append(i)
@@ -158,8 +174,17 @@ func update(dt: float) -> void:
 		_buf[o + 15] = alpha
 		n += 1
 	_list.resize(kept)
-	mm.visible_instance_count = n
+	last_upload_bytes = 0
 	if n > 0:
-		mm.buffer = _buf
+		var want := mini(capacity, ((n + STEP - 1) / STEP) * STEP)
+		var have := mm.instance_count
+		if want > have or have - want > SHRINK_SLACK:
+			mm.instance_count = want
+			have = want
+		mm.visible_instance_count = n
+		mm.buffer = _buf if have >= capacity else _buf.slice(0, have * 16)
+		last_upload_bytes = have * 64
+	else:
+		mm.visible_instance_count = 0
 	_shown = _active > 0
 	node.visible = _shown

@@ -44,6 +44,8 @@ func apply(s: Dictionary) -> void:
 	var vfx := get_node_or_null("/root/Vfx")
 	if vfx != null:
 		vfx.quality = String(gp["fx"])
+		if vfx.prims != null:
+			vfx.prims.set_mote_share(float(gp["motes"]))
 		if vfx.binbun != null:
 			vfx.binbun.enabled = bool(gp["binbun"]) and String(gp["fx"]) == "high"   # the quality setter alone would switch it on for every "high" fx (Medium has none)
 	var world: DmNextWorld = game.get("world") if game != null else null

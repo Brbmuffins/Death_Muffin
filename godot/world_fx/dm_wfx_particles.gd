@@ -41,8 +41,11 @@ var _base_size := PackedFloat32Array()
 var _grav := PackedFloat32Array()
 var _drag := PackedFloat32Array()
 var _shrink := PackedFloat32Array()
+var _buf := PackedFloat32Array()   # capacity * 20 floats: row-major 3x4 transform (identity basis, position), colour, custom (size, alpha, 0, 0)
 var _cursor := 0
 var active := 0
+
+const STRIDE := 20
 
 func configure(cap: int, tex: Texture2D, additive: bool, priority: int = 5) -> void:
 	capacity = cap
@@ -51,6 +54,11 @@ func configure(cap: int, tex: Texture2D, additive: bool, priority: int = 5) -> v
 	_col.resize(cap)
 	for a in [_life, _max_life, _base_size, _grav, _drag, _shrink]:
 		a.resize(cap)
+	_buf.resize(cap * STRIDE)
+	for i in cap:   # identity basis once; only position / colour / custom change per frame
+		_buf[i * STRIDE] = 1.0
+		_buf[i * STRIDE + 5] = 1.0
+		_buf[i * STRIDE + 10] = 1.0
 	_mm = MultiMesh.new()
 	_mm.transform_format = MultiMesh.TRANSFORM_3D
 	_mm.use_colors = true
@@ -115,13 +123,24 @@ func _update(dt: float) -> void:
 			v.y = v.y * k - _grav[i] * dt
 			v.z *= k
 			_vel[i] = v
-			_pos[i] += v * dt
+			var p := _pos[i] + v * dt
+			_pos[i] = p
 			var alpha := t / 0.15 if t < 0.15 else 1.0 - (t - 0.15) / 0.85
 			var sh := _shrink[i]
 			var size := _base_size[i] * (1.0 - sh * t * 0.7 if sh >= 0.0 else 1.0 + -sh * t)
-			_mm.set_instance_transform(n, Transform3D(Basis.IDENTITY, _pos[i]))
-			_mm.set_instance_color(n, _col[i])
-			_mm.set_instance_custom_data(n, Color(size, alpha, 0, 0))
+			var o := n * STRIDE
+			var c := _col[i]
+			_buf[o + 3] = p.x
+			_buf[o + 7] = p.y
+			_buf[o + 11] = p.z
+			_buf[o + 12] = c.r
+			_buf[o + 13] = c.g
+			_buf[o + 14] = c.b
+			_buf[o + 15] = c.a
+			_buf[o + 16] = size
+			_buf[o + 17] = alpha
 			n += 1
 	_mm.visible_instance_count = n
+	if n > 0:
+		_mm.buffer = _buf
 	_mmi.visible = n > 0
