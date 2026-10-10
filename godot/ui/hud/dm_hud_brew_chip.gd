@@ -133,8 +133,15 @@ func _gui_input(e: InputEvent) -> void:
 		accept_event()
 
 
+## The belt slot an item goes in ("heal" for a healing flask, "elixir" / "tonic" for a brew, "" for anything else).
+static func belt_slot_of(item_id: String) -> String:
+	if DmContent.healing_flasks().has(item_id):
+		return "heal"
+	return String(DmContent.brew(item_id).get("slot", ""))
+
+
 func _can_drop_data(_at: Vector2, data: Variant) -> bool:
-	return slot != "heal" and data is Dictionary and data.get("type", "") == DRAG_TYPE
+	return data is Dictionary and data.get("type", "") == DRAG_TYPE and belt_slot_of(String(data.get("item_id", ""))) == slot
 
 
 func _drop_data(_at: Vector2, data: Variant) -> void:

@@ -22,6 +22,8 @@ signal salvage_requested(item: Dictionary)
 ## action_requested(id, item) fires when one is pressed. slot_right_clicked(item) is the cell's context click (tool belt / brew belt).
 signal action_requested(id: String, item: Dictionary)
 signal slot_right_clicked(item: Dictionary)
+## A flask or brew was dropped on a potion-belt cell (Heal Q / Elixir Z / Tonic X).
+signal potion_belted(item: Dictionary)
 
 const DRAG_EQUIP := "reliquary_equip"
 const BAG_SIZE := 48
@@ -35,6 +37,8 @@ const EQUIP := {
 	"main_hand": ["Main hand", "⚔"], "off_hand": ["Off hand", "◐"], "ring": ["Ring", "◎"], "trinket": ["Trinket", "✦"],
 }
 const BELT := [["hatchet", "Hatchet"], ["pickaxe", "Pickaxe"], ["rod", "Rod"], ["spade", "Spade"]]
+# the potion belt: [slot, empty label, key]; drop a flask or brew on it to choose what Q / Z / X drink
+const POTION_BELT := [["heal", "Heal", "Q"], ["elixir", "Elixir", "Z"], ["tonic", "Tonic", "X"]]
 
 var has_sell := true
 var has_legion := true
@@ -52,6 +56,7 @@ var _setsum: VBoxContainer
 var bag: Array = []
 var worn: Dictionary = {}
 var belt: Dictionary = {}
+var potions: Dictionary = {}       # potion belt: slot (heal|elixir|tonic) -> the card of the flask / brew that key drinks; set before set_inventory
 var sel_item: Dictionary = {}
 var confirm_junk := false
 var confirm_sell_all := ""
@@ -68,6 +73,7 @@ var _error: Label
 var _slots: Array[DmItemSlot] = []
 var _doll_slots: Dictionary = {}
 var _belt_slots: Dictionary = {}
+var _potion_slots: Dictionary = {}
 var _built := false
 
 
@@ -171,6 +177,20 @@ func _build_ui() -> void:
 		_belt_row.add_child(s2)
 		_belt_slots[b[0]] = s2
 	tb.add_child(_belt_row)
+	var pr := HBoxContainer.new()
+	pr.add_theme_constant_override("separation", 5)
+	for p in POTION_BELT:
+		var s4 := DmItemSlot.new()
+		s4.kind = DmItemSlot.Kind.BELT
+		s4.empty_label = "%s · %s" % [p[1], p[2]]
+		s4.custom_minimum_size = Vector2(39, 39)
+		s4.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		s4.pressed.connect(_on_slot_pressed)
+		s4.accepts = _accepts_potion.bind(p[0])
+		s4.dropped.connect(func(_sl: DmItemSlot, payload: Variant) -> void: potion_belted.emit(payload["card"]))
+		pr.add_child(s4)
+		_potion_slots[p[0]] = s4
+	tb.add_child(pr)
 	col.add_child(tb)
 
 	_grid = GridContainer.new()
@@ -273,8 +293,8 @@ func refresh() -> void:
 	for i in BAG_SIZE:
 		var d: Dictionary = bag[i] if i < bag.size() else {}
 		_slots[i].set_item(d)
-		if drag_brews and d.get("is_brew", false):
-			_slots[i].drag_data = {"type": DmHudBrewChip.DRAG_TYPE, "item_id": d.get("item_id", "")}
+		if drag_brews and (d.get("is_brew", false) or d.get("is_flask", false)):
+			_slots[i].drag_data = {"type": DmHudBrewChip.DRAG_TYPE, "item_id": d.get("item_id", ""), "card": d}
 		elif not d.is_empty() and d.get("equippable", false) and not d.get("equipped", false):
 			_slots[i].drag_data = {"type": DRAG_EQUIP, "item": d}
 		else:
@@ -292,6 +312,11 @@ func refresh() -> void:
 		var d3: Dictionary = belt.get(k, {})
 		s2.set_item(d3)
 		s2.selected = not d3.is_empty() and d3.get("id", -1) == sel_item.get("id", -2)
+	for k in _potion_slots:
+		var s5: DmItemSlot = _potion_slots[k]
+		var d4: Dictionary = potions.get(k, {})
+		s5.set_item(d4)
+		s5.selected = not d4.is_empty() and d4.get("id", -1) == sel_item.get("id", -2)
 	_render_setsum()
 	_render_tools()
 	_render_detail()
@@ -339,6 +364,10 @@ func _accepts_belt(_sl: DmItemSlot, payload: Variant, kind: String) -> bool:
 	if not (payload is Dictionary) or payload.get("type", "") != DRAG_EQUIP:
 		return false
 	return DmGathering.tool_kind_of(String((payload["item"] as Dictionary).get("item_id", ""))) == kind
+
+
+func _accepts_potion(_sl: DmItemSlot, payload: Variant, slot: String) -> bool:
+	return payload is Dictionary and payload.get("type", "") == DmHudBrewChip.DRAG_TYPE and DmHudBrewChip.belt_slot_of(String(payload.get("item_id", ""))) == slot
 
 
 func _on_drop(_sl: DmItemSlot, payload: Variant) -> void:

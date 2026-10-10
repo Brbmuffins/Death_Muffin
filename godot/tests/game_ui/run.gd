@@ -266,9 +266,17 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	_check(DmUiConfig.parse(ui.store.get_item(ui.belt_key())).get("elixir") == "elixir_moonlight", "brew drop sets the belt")
 	var chip := DmHudBrewChip.new()
 	chip.slot = "tonic"
-	_check(chip._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "x"}) and not chip._can_drop_data(Vector2.ZERO, {"type": "other"}), "brew chip accepts only belt drags")
+	_check(chip._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "tonic_graveluck"}) and not chip._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "elixir_moonlight"}), "brew chip takes only its own slot's brew")
+	_check(not chip._can_drop_data(Vector2.ZERO, {"type": "other"}), "brew chip accepts only belt drags")
 	chip.slot = "heal"
-	_check(not chip._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "x"}), "heal slot refuses drops")
+	_check(not chip._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "x"}), "heal slot refuses a non-flask")
+	_check(chip._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "flask_hp_minor"}), "heal slot takes a healing flask")
+	ui.hud.brew_dropped.emit("heal", "flask_hp_grand")
+	_check(DmUiConfig.parse(ui.store.get_item(ui.belt_key())).get("heal") == "flask_hp_grand" and ui.belt_pick()["heal"] == "flask_hp_grand", "flask drop sets the heal slot")
+	var rp := ui.inv.panel
+	var heal_cell: DmItemSlot = rp._potion_slots["heal"]
+	_check(heal_cell._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "flask_hp_minor"}) and not heal_cell._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "elixir_moonlight"}), "reliquary heal cell takes flasks only")
+	_check(rp._potion_slots["tonic"]._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "tonic_graveluck"}) and not rp._potion_slots["tonic"]._can_drop_data(Vector2.ZERO, {"type": "other"}), "reliquary tonic cell takes tonics only")
 	var slot := DmItemSlot.new()
 	slot.set_item({"item_id": "elixir_moonlight", "name": "E"})
 	slot.drag_data = {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "elixir_moonlight"}
