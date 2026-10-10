@@ -4,6 +4,8 @@ extends RefCounted
 ## tabs (Skills, Garden, Laborers, Contracts). Every signal -> the DmApi call its header documents, then game.refresh_*() (the web's
 ## inventory-exclusive guard is the `busy` flag of each panel); replies are fed back through the panel's set_*.
 
+const ONLY_CRAFTABLE_LOCAL := "dm_only_craftable"
+
 var ui: Node
 var game: Node
 var forges: Dictionary = {}          ## station ("" workbench, kiln, sawpit, fire, cauldron) -> DmForgePanel
@@ -138,7 +140,10 @@ func open_forge(station: String) -> void:
 		ui.windows_root.add_child(f)
 		f.recipes_requested.connect(func(prof: String) -> void: _recipes(f, prof))
 		f.craft_requested.connect(func(rid: String, qty: int) -> void: _craft(f, rid, qty))
-		f.only_craftable_changed.connect(func(on: bool) -> void: DmAccountPrefs.save_one(game.api, DmAccountPrefs.PREF_ONLY_CRAFTABLE, on))
+		f.only_craftable_changed.connect(func(on: bool) -> void:
+			ui.store.set_item(ONLY_CRAFTABLE_LOCAL, "1" if on else "0")
+			DmAccountPrefs.save_one(game.api, DmAccountPrefs.PREF_ONLY_CRAFTABLE, on))
+		_restore_only_craftable(f)
 		if f.reforge != null:
 			f.quote_requested.connect(func() -> void: _quote(f))
 			f.reforge_requested.connect(func(slot: int, aff: int, cost: int) -> void: _reforge(f, slot, aff, cost))
@@ -155,6 +160,23 @@ func open_forge(station: String) -> void:
 		ui.notify("cauldron_opened")
 	elif station != "" and station != "workbench":
 		ui.notify("station_opened")
+
+
+## The "only craftable" box: the local copy first (instant), then the account's saved value wins (pushed up when the account has none).
+func _restore_only_craftable(f: DmForgePanel) -> void:
+	var local := str(ui.store.get_item(ONLY_CRAFTABLE_LOCAL)) == "1"
+	if local:
+		f.set_only_craftable(true)
+	var remote: Variant = await DmAccountPrefs.fetch(game.api)
+	var rec := DmAccountPrefs.reconcile_bool(local, remote, DmAccountPrefs.PREF_ONLY_CRAFTABLE)
+	if not is_instance_valid(f):
+		return
+	if rec["value"] != f.only_craftable:
+		f.set_only_craftable(rec["value"])
+	if rec["pushUp"]:
+		DmAccountPrefs.save_one(game.api, DmAccountPrefs.PREF_ONLY_CRAFTABLE, true)
+	if remote is Dictionary and remote.get(DmAccountPrefs.PREF_ONLY_CRAFTABLE) is bool:
+		ui.store.set_item(ONLY_CRAFTABLE_LOCAL, "1" if rec["value"] else "0")
 
 
 func _recipes(f: DmForgePanel, prof: String) -> void:
