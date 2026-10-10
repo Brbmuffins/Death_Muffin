@@ -21,32 +21,24 @@ const safeName = (n) => String(n || 'file').replace(/[^\w.-]/g, '_');
 const INBOX_IMAGE_MAX = 8 * 1024 * 1024, INBOX_JOB_MAX = 40 * 1024 * 1024, INBOX_PER_MESSAGE = 4;
 const IMG_MAGIC = [[0x89, 0x50, 0x4e, 0x47], [0xff, 0xd8, 0xff], [0x47, 0x49, 0x46, 0x38], [0x52, 0x49, 0x46, 0x46]];   // png, jpeg, gif, webp(RIFF)
 const SHOT_MAX_BYTES = 8 * 1024 * 1024, SHOTS_PER_POST = 4;
-// The progress note while a step runs long (owner, 2026-10-04: fun variations instead of "Still working", "a good variety so it's not
-// repeating"). A shuffled deck shared by every thread: each line is used once before any repeats, and a fresh shuffle never opens with
-// the line that just played.
-const BUSY_LINES = [
-  'Tokin up', 'Cheating off my classmate', 'Forging documents', 'Bribing the compiler', 'Arguing with a semicolon',
-  'Reading the manual out loud to the dead', 'Sharpening the tests', 'Laundering pixels', 'Consulting a skull', 'Asking the Prelate for an extension',
-  'Rewiring the motherboard with a spoon', 'Pretending to be busy (I am actually busy)', 'Negotiating with CSS', 'Raising the build from the grave',
-  'Shaking the git tree for loose commits', 'Counting bones twice', 'Microwaving a fish in the break room', 'Copying homework from Stack Overflow',
-  'Blaming the intern', 'Feeding the thralls after midnight', 'Rolling for initiative', 'Reticulating splines', 'Holding a séance for a lost variable',
-  'Googling how to necromance', 'Putting the code in rice', 'Taking a smoke break with the Gravedigger King', 'Explaining TypeScript to a ghoul',
-  'Faking my own death (temporarily)', 'Waiting for the bones to set', 'Whispering to the server rack', 'Sweeping up spare pixels',
-  'Polishing a turd into a gem', 'Asking ChatGPT, do not tell anyone', 'Picking the lock on node_modules', 'Bargaining with the build gods',
-  'Stealing a bell from the Sanctum', 'Filing a complaint with the Covenant', 'Teaching a skeleton to use git', 'Pouring one out for the old code',
-  'Doing push-ups between commits', 'Tuning the organ in the Nave', 'Licking the battery to check it', 'Checking under the bed for bugs',
-  'Herding cats, but dead', 'Renaming things until they feel right', 'Rubbing two sticks together', 'Drinking a suspicious tonic',
-  'Hiding from the Bone Abbess', 'Untangling the headphone cables', 'Loading the dishwasher wrong on purpose',
-];
-let busyDeck = []; let lastBusy = '';
-const busyLine = () => {
-  if (!busyDeck.length) {
-    busyDeck = BUSY_LINES.slice();
-    for (let i = busyDeck.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [busyDeck[i], busyDeck[k]] = [busyDeck[k], busyDeck[i]]; }
-    if (busyDeck[busyDeck.length - 1] === lastBusy) busyDeck.unshift(busyDeck.pop());
+// Progress notes (owner, 2026-10-10: a one-sentence progress report and a percentage of the work done, plus the time worked, instead of
+// random fun lines). The agent writes ".dm-status" as "<pct>% · <sentence>"; while check-godot.sh runs it writes ".dm-check-progress"
+// ("<done> <total>" suites), and the percentage moves from the agent's number toward CHECK_PCT_END as suites finish.
+const CHECK_PCT_END = 95;
+function parseStatus(line) {
+  const m = /^\s*(\d{1,3})\s*%\s*[·|:\-–—]?\s*(.*)$/.exec(line || '');
+  return m ? { pct: Math.min(99, +m[1]), text: m[2].trim() } : { pct: null, text: String(line || '').trim() };
+}
+function progressNote({ status, check, mins }) {
+  const st = parseStatus(status);
+  let pct = st.pct, text = st.text || 'Working on it';
+  if (check && check.total > 0) {
+    const base = pct == null ? 50 : Math.min(pct, CHECK_PCT_END);
+    pct = Math.round(base + (CHECK_PCT_END - base) * Math.min(1, check.done / check.total));
+    text += ` (checks: ${check.done}/${check.total} suites done)`;
   }
-  lastBusy = busyDeck.pop(); return lastBusy;
-};
+  return `🔧 ${pct == null ? '' : `${pct}% · `}${text} · ⏱ ${mins} min`;
+}
 const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a.length - n} more` : a.join('\n'));
 
 function createRunner(cfgIn, opts = {}) {
@@ -470,23 +462,26 @@ function createRunner(cfgIn, opts = {}) {
       job.proposal = null;
     } else if (job.turns === 0) say(job, `On it (${job.model[0].toUpperCase()}${job.model.slice(1)}).`);
     const t0 = now(); let nextUpdate = t0 + 60000;
-    // The agent says what it is doing in .dm-status (one line, e.g. "Reproducing the tooltip crash, then fixing it; ~20-40 min").
-    // The first status is posted as soon as it appears; later ones ride along on the progress notes, or post on their own at most
-    // every 3 min (owner, 2026-10-09: Helix waited 40 min with only a typing dot and asked "hello?").
+    // The agent says what it is doing in .dm-status ("<pct>% · <sentence>", e.g. "10% · Reproducing the tooltip crash, then fixing it; ~20-40 min").
+    // A new status is posted right away, at most every 3 min (owner, 2026-10-09: Helix waited 40 min with only a typing dot and asked
+    // "hello?"); otherwise a progress note every 5 min. During check-godot.sh the suite count in .dm-check-progress moves the percentage.
     const statusFile = job.worktree ? path.join(job.worktree, '.dm-status') : null;
-    if (statusFile) { try { fs.rmSync(statusFile, { force: true }); } catch { /* none */ } }
+    const checkFile = job.worktree ? path.join(job.worktree, '.dm-check-progress') : null;
+    for (const f of [statusFile, checkFile]) if (f) { try { fs.rmSync(f, { force: true }); } catch { /* none */ } }
     let status = '', lastStatusPost = 0;
     const readStatus = () => { try { return redactText(fs.readFileSync(statusFile, 'utf8').split('\n').map((l) => l.trim()).find(Boolean) || '').slice(0, 240); } catch { return ''; } };
+    const readCheck = () => { try { const [d, t] = fs.readFileSync(checkFile, 'utf8').trim().split(/\s+/).map(Number); return t > 0 && d >= 0 ? { done: Math.min(d, t), total: t } : null; } catch { return null; } };
     const mins = () => Math.max(1, Math.round((now() - t0) / 60000));
+    const note = () => progressNote({ status, check: checkFile ? readCheck() : null, mins: mins() });
     typing(job);
     const ticker = setInterval(() => {
       typing(job); syncName(job);
       const st = statusFile ? readStatus() : '';
       if (st && st !== status) {
         status = st;
-        if (!lastStatusPost || now() - lastStatusPost >= 3 * 60000) { lastStatusPost = now(); nextUpdate = now() + 5 * 60000; say(job, `🔧 ${status}`); return; }
+        if (!lastStatusPost || now() - lastStatusPost >= 3 * 60000) { lastStatusPost = now(); nextUpdate = now() + 5 * 60000; say(job, note()); return; }
       }
-      if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, status ? `${busyLine()}… (${mins()} min) · now: ${status}` : `${busyLine()}… (${mins()} min)`); }
+      if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, note()); }
     }, cfg.tickMs || 8000); ticker.unref();
     try { await runJob(job, real, extra); } finally { clearInterval(ticker); syncName(job); }
   }
@@ -803,7 +798,7 @@ function createRunner(cfgIn, opts = {}) {
       audit.log('art-start', { job: job.id, id: q.id, userId: q.userId, approver: approverId, estimate: q.estimate, balance: startBal });
       say(job, `Approved by ${nameOf(approverId)}. Generating "${q.id}": concept image, then the model${q.spec.rig ? ', rig and animations' : ''}. This takes a few minutes (up to ${q.spec.animations ? 20 : 10} or so).`);
       typing(job); const t0 = now(); let nextUpdate = t0 + 5 * 60000;
-      ticker = setInterval(() => { typing(job); if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, `${busyLine()}… (${Math.max(1, Math.round((now() - t0) / 60000))} min)`); } }, 8000); ticker.unref();
+      ticker = setInterval(() => { typing(job); if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, `🎨 Still generating "${q.id}" · ${Math.max(1, Math.round((now() - t0) / 60000))} min (usually up to ${q.spec.animations ? 20 : 10})`); } }, 8000); ticker.unref();
       try { res = await art.run(job.worktree, q.id, { onSpawn: (p) => { job.proc = p; } }); }
       catch (e) { res = { credits: null, result: 'crashed', tail: redactText(e.message), before: startBal, after: null }; }
       // the real spend: balance before - after, from the script's own readings (or a fresh reading if it was killed), else Tripo's own manifest, else the estimate
@@ -1016,4 +1011,4 @@ function createRunner(cfgIn, opts = {}) {
   pump();
   return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }
-module.exports = { createRunner };
+module.exports = { createRunner, progressNote };

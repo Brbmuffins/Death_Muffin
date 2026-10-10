@@ -241,10 +241,11 @@ test('working shows "typing…" instead of reacting to every message', async () 
 test('a long turn posts the agent\'s .dm-status line as soon as it appears, and the file is never committed', async () => {
   const w = makeWorld({ tickMs: 300 }); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'STATUS-TURN the game crashes when I hover items');
-  await until(() => texts(thread).some((t) => t === '🔧 Hunting the tooltip crash, then fixing it; ~1 min.'), d.ad);
+  await until(() => texts(thread).some((t) => t === '🔧 20% · Hunting the tooltip crash, then fixing it; ~1 min. · ⏱ 1 min'), d.ad);
   await until(() => texts(thread).some((t) => /src\/gameplay\/a\.ts/.test(t)), d.ad);
   const job = Object.values(w.runner.jobs())[0];
   assert.equal(sh(job.worktree, 'check-ignore', '.dm-status').trim(), '.dm-status', 'status file is git-ignored');
+  assert.equal(sh(job.worktree, 'check-ignore', '.dm-check-progress').trim(), '.dm-check-progress', 'check progress file is git-ignored');
 });
 
 test('!report lists in-game bug reports and hands one, with its game log, to the agent; members cannot read them', async () => {
@@ -898,7 +899,7 @@ test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores god
   wr('godot/data/loot/content.json', '{"committed":true}');
   // fake generator: overwrites the committed file (like the real one), records HOME/XDG and whether the network is reachable
   wr('tools/godot/gen-fixtures.sh', 'echo \'{"generated":true}\' > godot/data/loot/content.json\necho "$HOME $XDG_DATA_HOME $XDG_CONFIG_HOME $XDG_CACHE_HOME" > .env-seen\n(timeout 2 bash -c "exec 3<>/dev/tcp/1.1.1.1/53" 2>/dev/null && echo NET > .net-seen) || echo nonet > .net-seen\n');
-  wr('tools/godot/run-all-tests.sh', 'echo "loot: $(cat godot/data/loot/content.json)" > .loot-during\nprintf "%-18s %-16s exit=%d  %s\\n" game run.gd 0 "30 passed"\nprintf "%-18s %-16s exit=%d  %s\\n" rules run.gd ${FAIL_SUITE:-0} "5 passed"\n[ -z "${FAIL_SUITE:-}" ]\n');
+  wr('tools/godot/run-all-tests.sh', 'echo "loot: $(cat godot/data/loot/content.json)" > .loot-during\ncat .dm-check-progress > .progress-start\nprintf "%-18s %-16s exit=%d  %s\\n" game run.gd 0 "30 passed"\nprintf "%-18s %-16s exit=%d  %s\\n" rules run.gd ${FAIL_SUITE:-0} "5 passed"\n[ -z "${FAIL_SUITE:-}" ]\n');
   const script = path.join(__dirname, '..', 'check-godot.sh');
   const run = (env) => spawnSync('bash', [script], { cwd: T, encoding: 'utf8', env: { ...process.env, ...env }, timeout: 120000 });
   const ok = run({});
@@ -907,6 +908,8 @@ test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores god
   assert.equal(fs.readFileSync(path.join(T, 'godot/data/loot/content.json'), 'utf8'), '{"committed":true}', 'the generator\'s overwrite is undone');
   assert.equal(fs.readFileSync(path.join(T, '.loot-during'), 'utf8').trim(), 'loot: {"committed":true}', 'tests run against the committed file');
   assert.equal(fs.readFileSync(path.join(T, '.net-seen'), 'utf8').trim(), 'nonet');
+  assert.equal(fs.readFileSync(path.join(T, '.progress-start'), 'utf8').trim(), '0 0', 'progress file exists while suites run (no godot/tests dirs here)');
+  assert.ok(!fs.existsSync(path.join(T, '.dm-check-progress')), 'progress file removed after the run');
   const env = fs.readFileSync(path.join(T, '.env-seen'), 'utf8').trim().split(' '); assert.equal(env.length, 4);
   for (const e of env) assert.ok(e.startsWith('/tmp/dmgodot.') && !e.startsWith(os.homedir()), e);
   assert.ok(!fs.existsSync(env[0]), 'scratch lives in the sandbox private /tmp, not on the host');

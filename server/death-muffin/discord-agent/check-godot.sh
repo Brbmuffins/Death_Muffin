@@ -47,7 +47,14 @@ export DM_PAYLOAD='
   if ! bash tools/godot/gen-fixtures.sh > "$SCR/gen.log" 2>&1; then tail -30 "$SCR/gen.log"; restore; echo "GODOT TESTS: fixture generation FAILED"; exit 1; fi
   restore; fi
   echo "== running Godot test suites"
-  bash tools/godot/run-all-tests.sh > "$SCR/suites.log" 2>&1; rc=$?
+  # Progress for the thread: "<done> <total>" suites in .dm-check-progress (git-ignored, removed when the run ends). Same file list as run-all-tests.sh.
+  total=$(for d in godot/tests/*/; do for r in "$d"run.gd "$d"adapter_run.gd "$d"*_run.gd; do [ -f "$r" ] && echo "$r"; done; done | sort -u | wc -l)
+  [ "$total" -gt 0 ] || total=0
+  trap "restore; rm -f .dm-check-progress" EXIT
+  echo "0 $total" > .dm-check-progress
+  bash tools/godot/run-all-tests.sh 2>&1 | { n=0; while IFS= read -r l; do printf "%s\n" "$l" >> "$SCR/suites.log"; case "$l" in *" exit="[0-9]*) n=$((n+1)); echo "$n $total" > .dm-check-progress;; esac; done; }
+  rc=${PIPESTATUS[0]}
+  rm -f .dm-check-progress
   cat "$SCR/suites.log"
   total=$(grep -cE " exit=[0-9]+" "$SCR/suites.log" || true)
   bad=$(grep -cE " exit=[1-9][0-9]*" "$SCR/suites.log" || true)

@@ -25,11 +25,16 @@ a bad value or mode makes the runner refuse to start. It is used for the worktre
 In godot mode: tests `check-godot.sh` (agent, runner and ship.sh) · preview `preview-godot.sh` (a Windows `.zip`) · screenshots `shot-godot.sh` / `!shot`
 · prompt `PROMPT-godot.md` · tier rules `godotTiers` (picked into `cfg.tiers` by `loadConfig`) · ship: merge, check-godot, backup + `ROLLBACK.sh`, push,
 `publish-godot-client.sh` · rollback folder `backup-pre-release-godot-<stamp>`.
+
+**Progress notes** while a turn runs: `🔧 <pct>% · <sentence> · ⏱ <min> min`. The agent writes `.dm-status` as `<pct>% · <sentence>` (prompt
+`PROMPT-godot.md`); a new status posts at once (at most every 3 min), otherwise a note every 5 min. While `check-godot.sh` runs it keeps
+`<done> <total>` suites in `.dm-check-progress`, and the note's percentage moves from the agent's number toward 95% (`progressNote` in
+`runner/core.cjs`). Both files are git-ignored. Model generation posts `🎨 Still generating "<id>"` with the minutes instead.
 The auth backend (`deploy-release.sh`) is not part of a ship; the owner runs it. The web-mode scripts in this folder (`check.sh`, `preview.sh`, `shot.sh`, `regen.sh`) are unused.
 
 **`check-godot.sh`**: the same sandbox as `check.sh` (`unshare -rnm`, loopback only, whole filesystem read-only, only the worktree writable, scratch tmpfs over
 `node_modules/.vite`), with `HOME` and the XDG dirs in a fresh `/tmp/dmgodot.*` (inside the sandbox's private /tmp) so Godot's `user://` never touches the real home. It runs
-`tools/godot/gen-fixtures.sh` only if the revision still has it (golden fixtures are committed on `main`), then `tools/godot/run-all-tests.sh` (one line per suite; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`). The committed `godot/data/loot/content.json` is snapshotted and restored around the generator. It ends with `GODOT TESTS: <n> suites, <n> passed, <n> failed` (that line is the "Tests" field of the proposal), exits non-zero on any failing
+`tools/godot/gen-fixtures.sh` only if the revision still has it (golden fixtures are committed on `main`), then `tools/godot/run-all-tests.sh` (one line per suite; `GODOT` defaults to `/home/ubuntu/tools/godot/godot`). The committed `godot/data/loot/content.json` is snapshotted and restored around the generator. While the suites run it writes `<done> <total>` to `.dm-check-progress` in the worktree (removed at the end) for the progress notes. It ends with `GODOT TESTS: <n> suites, <n> passed, <n> failed` (that line is the "Tests" field of the proposal), exits non-zero on any failing
 suite or step, and has a hard 85 minute limit. The full suite takes about 35 minutes. Before the suites it runs the repo hygiene check (`tools/hygiene/check.mjs`, the same `npm run hygiene` CI runs), so a proposal or ship with a stale doc link, missing path or retired term fails with `GODOT TESTS: repo hygiene FAILED`. A change that only touches Markdown files still gets the hygiene check but skips the suites (`GODOT TESTS: skipped, docs-only change`).
 
 **`preview-godot.sh <jobid>`**: runner-only. Inside the same kind of sandbox it imports the project and exports the `Windows Desktop` preset from
