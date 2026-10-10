@@ -20,6 +20,7 @@ const CORPSE_S := 4.0
 const EMPTY_CLEAR_S := 15.0             ## no hero in the area this long -> remaining enemies are removed
 const SPAWN_MIN := DmEnemy.AGGRO_RANGE + 3.0   ## owner 2026-10-07: waves climb in outside aggro so the player sees them coming (+3: a group fans out 2.1 m)
 const SPAWN_MAX := 30.0                 ## farthest spawn distance (m)
+const SPAWNS_PER_TICK := 3              ## wave bodies instantiated per physics tick: a 12-body wave takes 4 ticks instead of one 5-10 ms frame
 
 var game: Node                          ## DmNextGame
 var area_id: String = "graves"
@@ -50,6 +51,8 @@ var surge: DmGraveSurge                 ## Grave Surges (next/areas/dm_grave_sur
 var _first_wave := true                 ## the first wave of a visit is 1.3 x the area's wave size (the sim's spawn_wave first)
 var _wave_n: int = 0                    ## waves since arrival (processions start at PROCESSION.minWave)
 var _vanguard := false                  ## this wave carries the Elite Vanguard (every other wave): its first plain pick is an elite
+var _pending: Array[Dictionary] = []    ## host: wave spawns decided (ids, positions, scaling) but not yet instantiated, drained SPAWNS_PER_TICK per tick
+var _staging := false                   ## spawn_wave is queueing its bodies
 var _since_arrival: float = 0.0         ## s a hero has been in the area (Wave Speed ramps in over DmEnemyStats.RAMP_S, like the sim's ramp_tier)
 
 
@@ -163,7 +166,16 @@ static func id_of(e: DmEnemy) -> int:
 
 # ---- host: waves ---------------------------------------------------------------------------------------------------------------
 
+## Instantiate every queued wave body now (tests and scripted setups that read `enemies` right after `spawn_wave`).
+func flush_spawns() -> void:
+	while not _pending.is_empty():
+		_spawner.spawn(_pending.pop_front())
+
+
 func _physics_process(delta: float) -> void:
+	if not _pending.is_empty():
+		for _i in mini(SPAWNS_PER_TICK, _pending.size()):
+			_spawner.spawn(_pending.pop_front())
 	if not enabled or game == null or not multiplayer.is_server() or not game.session.is_active():
 		return
 	var heroes := _heroes_in_area()
@@ -250,8 +262,9 @@ func _heroes_in_area() -> Array:
 func spawn_wave(heroes: Array, count: int = -1, roster: Array = [], lead: String = "") -> int:
 	if kinds.is_empty() or heroes.is_empty():
 		return 0
-	var n := mini(wave_size if count < 0 else count, mini(cap - alive_count(), int(DmSimData.GLOBAL_ENEMY_CAP) - enemies.size()))
+	var n := mini(wave_size if count < 0 else count, mini(cap - alive_count() - _pending.size(), int(DmSimData.GLOBAL_ENEMY_CAP) - enemies.size() - _pending.size()))
 	var made := 0
+	_staging = true
 	while made < n:
 		var hero: DmHeroBody = heroes[rng.randi() % heroes.size()]
 		var pos: Variant = _spawn_pos(hero.position)
@@ -259,6 +272,7 @@ func spawn_wave(heroes: Array, count: int = -1, roster: Array = [], lead: String
 			made += 1   # no walkable spot found: spend the slot so the loop ends
 			continue
 		made += spawn_group(pos, heroes, n - made, lead if made == 0 else "", roster)
+	_staging = false
 	if made > 0:
 		waves_spawned += 1
 		wave_spawned.emit(made)
@@ -319,14 +333,17 @@ func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false
 	var affixes: PackedStringArray = over.get("affix_list", PackedStringArray())
 	if affixes.is_empty() and elite:
 		affixes = DmAffixSet.roll(true, String(omen.get("affix", "")) if omen.get("affix") != null else "", float(over["depth"]) if spawn_area == "depths" and over.has("depth") else -1.0, 0.0, rng.randf)
-	var e := _spawner.spawn({
+	var data := {
 		"id": _next_id, "affix_list": affixes, "def": def_id, "pos": pos, "level": float(mult.get("level", level)), "area": spawn_area,
 		"aggro": float(over.get("aggro", 0.0)), "leash": float(over.get("leash", 0.0)), "affixes": maxi(int(over.get("affixes", 0)), affixes.size()),
 		"hp": float(mult["hp"]) if mult.has("hp") else DmEnemyStats.hp_scale(level) * DmEnemyStats.party_hp_scale(maxf(1.0, float(heroes.size()))) * float(tier["enemyHpMult"]) \
 			* float(diff["enemyHpMult"]) * float(vow_fx.get("enemyHpMult", 1.0)),
-		"dmg": float(mult["dmg"]) if mult.has("dmg") else DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]) * float(diff["enemyDamageMult"]), "rising": true, "elite": elite})
+		"dmg": float(mult["dmg"]) if mult.has("dmg") else DmEnemyStats.damage_scale(level) * float(tier["enemyDamageMult"]) * float(diff["enemyDamageMult"]), "rising": true, "elite": elite}
 	_next_id += 1
-	return e as DmEnemy
+	if _staging:
+		_pending.append(data)   # a wave's bodies are built over the next few ticks (spawn_wave)
+		return null
+	return _spawner.spawn(data) as DmEnemy
 
 
 ## Host: a Risen climbs out at `at` for `by` (an acolyte's claimed thrall or a deacon's raised corpse), scaled like its raiser.
@@ -384,6 +401,7 @@ func _spawn_pos(around: Vector3) -> Variant:
 
 
 func clear() -> void:
+	_pending.clear()
 	for e in enemies.values():
 		if is_instance_valid(e):
 			(e as Node).queue_free()   # the spawner replicates the despawn
@@ -392,6 +410,7 @@ func clear() -> void:
 
 ## Remove the enemies that belong to one ground (meta dm_area).
 func clear_area(area: String) -> void:
+	_pending = _pending.filter(func(d: Dictionary) -> bool: return String(d["area"]) != area)
 	for id in enemies.keys():
 		var e: Node = enemies[id]
 		if not is_instance_valid(e):

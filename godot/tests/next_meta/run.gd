@@ -240,6 +240,7 @@ func _run() -> void:
 	check(near(g.corpses.life_mult, 0.5 * 1.0), "Thin Graves II: corpses lie half as long (field life x%.2f; no Lingering Dead owned)" % g.corpses.life_mult)
 	check(g.bosses.vow_fx["echoes"] == 3 and bw.echoes() == 3, "Prelate Echo III reaches the bosses' world")
 	var made := d.spawn_wave([b])
+	d.flush_spawns()
 	check(made == d.wave_size, "a wave of the vow-sized %d climbs in (spawned %d)" % [d.wave_size, made])
 	d.clear()
 	var dk := 0

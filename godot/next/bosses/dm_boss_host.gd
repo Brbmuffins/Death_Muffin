@@ -7,6 +7,7 @@ extends Node
 ## Seams on DmNextGame: `bosses` (this node), `enemies_in_radius / enemy_by_id` include living bosses (so rites and the hover pick hit them).
 
 signal boss_spawned(boss: DmBoss)                 ## every peer, once in the tree
+signal pools_created(pools: Node3D)               ## the first ground pool made: the node later pools are children of (DmEnemyFx watches it for ember clouds)
 signal summoned(boss_id: String, by_peer: int)    ## host
 signal summon_refused(boss_id: String, why: String, by_peer: int)   ## host
 signal defeated(boss_id: String, killer_peer: int, pos: Vector3)    ## host: a real kill (not a wipe reset)
@@ -356,6 +357,7 @@ func _make_pool(kind: StringName, x: float, z: float, r: float, dps: float, seco
 		_pools = Node3D.new()
 		_pools.name = "Pools"
 		add_child(_pools)
+		pools_created.emit(_pools)
 	_toxic_frame = -1
 	var zn := DmHostileZone.spawn(_pools, Vector3(x, 0.0, z), kind, r, seconds, dps, boss)
 	zn.damaging = damaging

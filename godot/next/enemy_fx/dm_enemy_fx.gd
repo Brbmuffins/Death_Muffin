@@ -32,7 +32,7 @@ var audio: Node                    ## the AudioDirector autoload (ditto)
 var fx: DmEventFx                  ## the shared router half: telegraphs, deaths, voices, zone visuals
 var host := DmEnemyFxHost.new()
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
-var auto_watch := true
+var auto_watch := true             ## watch every enemy / zone added anywhere in the tree (tests); the game turns it off and wires `watch` / `watch_zones_under`
 var scope: Node = null             ## only watch enemies / zones under this node (null = the whole tree); lets two peers share one test tree
 var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0}
 
@@ -98,6 +98,14 @@ func set_backends(p_vfx: Node, p_audio: Node) -> void:
 	vfx = p_vfx
 	audio = p_audio
 	_rebuild_router()
+
+
+## Watch the hostile zones (dust / ember clouds) that enter `parent` as children: the game wires the enemy holder and the boss pool node,
+## so no callback fires for unrelated nodes. Enemies are watched through `watch`, from the director's enemy_spawned signal.
+func watch_zones_under(parent: Node) -> void:
+	parent.child_entered_tree.connect(func(n: Node) -> void:
+		if n is DmHostileZone:
+			_on_node_added(n))
 
 
 func _on_node_added(n: Node) -> void:

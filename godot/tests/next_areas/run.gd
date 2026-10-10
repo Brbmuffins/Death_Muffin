@@ -229,6 +229,7 @@ func _rosters() -> void:
 		d.clear()
 		await ticks(2)
 		var made := d.spawn_wave([hb])
+		d.flush_spawns()
 		var expect_level := DmEnemyStats.area_level(id, [hero_level], 0.0)
 		var ok := made == mini(d.wave_size, d.cap) and d.alive_count() == made
 		var lv_ok := true
@@ -250,6 +251,7 @@ func _rosters() -> void:
 		at(center(id).x, center(id).z)
 		await ticks(2)
 		d.spawn_wave([hb], 2)
+		d.flush_spawns()
 		var want := 60.0 if DmContent.area(id).get("scaling") != null else float(DmContent.area(id)["level"])
 		var lv: float = float((d.enemies.values()[0] as DmEnemy).get_meta("dm_level"))
 		check(absf(lv - want) < 0.001, "%s: a level-60 hero -> enemy level %.0f (want %.0f)" % [id, lv, want])
@@ -334,6 +336,7 @@ func _waves() -> void:
 			for e in th["roster"]:
 				roster[String(e["id"])] = true
 			d.spawn_wave([hb], 8, th["roster"], lead)
+			d.flush_spawns()
 			var kinds_ok := d.enemies.values().all(func(e: DmEnemy) -> bool: return roster.has(e.def_id) or e.def_id == lead)
 			var lead_ok := lead == "" or d.enemies.values().any(func(e: DmEnemy) -> bool: return e.def_id == lead)
 			check(kinds_ok and lead_ok, "%s / %s: themed wave rolls its roster%s" % [aid, th["id"], (" and leads with " + lead) if lead != "" else ""])

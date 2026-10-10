@@ -48,6 +48,8 @@ const REPATH_MOVE_SQ := 1.0        ## ...and only when the goal moved more than 
 const DIRECT_RANGE_SQ := 9.0       ## closer than 3 m to the goal: walk straight, skip the navmesh entirely
 const SCAN_S := 0.25               ## target scan period
 const TURN_RATE := 14.0
+const IDLE_LOD_FAR := 24.0         ## an idle body this far from every target is off screen (camera: fov 40, dist 22 x zoom) and out of aggro range
+const IDLE_LOD_TICKS := 6          ## ...so its brain runs every 6th physics tick (10 Hz) with the accumulated time, staggered by instance id
 const INCENSE_MOVE := 1.3          ## DmSimData.CENSER moveMult / attackRateMult (Censer Bearer haste)
 const INCENSE_ATTACK := 1.25
 const LOOK_FALLBACK := {"rat": "bone_hound", "moth": "choir_wraith", "bat": "skull_rat", "ghoul": "grave_robber", "censer": "deacon"}
@@ -123,6 +125,10 @@ var _flash: float = 0.0
 var _anim_acc: float = 0.0
 var _lod_interval: float = 0.0
 var _lod_t: float = 0.0
+var _nearest_d2: float = 0.0              ## flat distance squared to the nearest valid target as of the last scan (0 until the first scan: full rate)
+var _sim_lod: bool = false                ## idle simulation LOD in force (reduced brain rate, no avoidance)
+var _sim_acc: float = 0.0
+var _sim_skip: int = 0
 # puppet state
 var _net_pos := Vector3.ZERO
 var _net_yaw: float = 0.0
@@ -183,6 +189,7 @@ func _ready() -> void:
 	# The brain moves the body in _physics_process: interpolate it. A puppet is eased in _process, so it must not be.
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON if is_multiplayer_authority() else Node.PHYSICS_INTERPOLATION_MODE_OFF
 	reset_physics_interpolation()
+	_sim_skip = 1 + int(get_instance_id() % IDLE_LOD_TICKS)
 
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
 	max_slides = 3   # cheaper than the default 6; walls here are plain boxes
@@ -268,9 +275,27 @@ func look_options() -> Dictionary:
 func _physics_process(delta: float) -> void:
 	if not is_multiplayer_authority():
 		return
+	var sid := sm.id()
+	# Simulation LOD: an idle body far from every target (off screen, out of aggro range) thinks at 10 Hz and drifts without crowd avoidance.
+	# Anything engaged, telegraphing, hurt, or within IDLE_LOD_FAR of a hero / thrall / dummy keeps the full 60 Hz brain.
+	var lod := sid == DmEnemyState.Id.IDLE and target == null and _nearest_d2 > maxf(IDLE_LOD_FAR, aggro_range + 9.0) ** 2
+	if lod:
+		_sim_acc += delta
+		_sim_skip -= 1
+		if _sim_skip > 0:
+			return
+		_sim_skip = IDLE_LOD_TICKS
+		delta = _sim_acc
+		_sim_acc = 0.0
+		if not _sim_lod:
+			_sim_lod = true
+			agent.avoidance_enabled = false
+	elif _sim_lod:
+		_sim_lod = false
+		_sim_acc = 0.0
+		agent.avoidance_enabled = use_avoidance and collision_layer != 0   # underground / dead bodies keep it off
 	var t0 := Time.get_ticks_usec() if profile else 0
 	_dt = delta
-	var sid := sm.id()
 	if sid != DmEnemyState.Id.HURT and sid != DmEnemyState.Id.RISING:
 		attack_cd -= delta * attack_rate_mult * (INCENSE_ATTACK if incense_t > 0.0 else 1.0)
 	if incense_t > 0.0:
@@ -294,7 +319,7 @@ func _move(delta: float) -> void:
 	if use_avoidance and agent.avoidance_enabled and v != Vector3.ZERO:
 		agent.velocity = v
 		v = _safe_vel
-	velocity = v
+	velocity = v * (maxf(1.0, delta * Engine.physics_ticks_per_second) if _sim_lod else 1.0)   # a reduced-rate step covers the skipped ticks' distance
 	if v != Vector3.ZERO:
 		move_and_slide()
 		rotation.y = lerp_angle(rotation.y, atan2(v.x, v.z), minf(1.0, TURN_RATE * delta))
@@ -321,6 +346,7 @@ func find_target(rng_m: float) -> Node3D:
 	var best: Node3D = null
 	var best_d := rng_m * rng_m
 	var p := global_position
+	_nearest_d2 = INF
 	for n in get_tree().get_nodes_in_group(TARGET_GROUP):
 		var tg := n as Node3D
 		if not target_valid(tg):
@@ -328,6 +354,7 @@ func find_target(rng_m: float) -> Node3D:
 		var dx := tg.global_position.x - p.x
 		var dz := tg.global_position.z - p.z
 		var d := dx * dx + dz * dz
+		_nearest_d2 = minf(_nearest_d2, d)
 		if tg.has_method("dm_target_weight"):   # sim pick_target: thralls count 1.1x as far (shieldbearer 0.55x); players/dummies 1.0
 			var w: float = tg.dm_target_weight()
 			d *= w * w
@@ -588,8 +615,11 @@ func _process(delta: float) -> void:
 		_lod_interval = 0.0
 		var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
 		if cam != null:
-			var d := cam.global_position.distance_to(global_position)
-			_lod_interval = 0.0 if d < 18.0 else (0.04 if d < 40.0 else 0.1)
+			_lod_interval = DmCreature.lod_interval(cam, global_position)
+		if sm.id() == DmEnemyState.Id.DEAD and _flash <= 0.0 and creature.has_landed() and (creature.ap == null or not creature.ap.is_playing()):
+			_anim_acc = 0.0   # settled on the final frame: the corpse needs no per-frame work for the rest of its life
+			set_process(false)
+			return
 	if _anim_acc >= _lod_interval or creature.busy():
 		creature.steady_every = 1 if _lod_interval == 0.0 else 2
 		creature.update(_anim_acc)
@@ -634,6 +664,8 @@ func apply_net_state(d: Dictionary) -> void:
 
 
 func _remote_visual(st: int, anim: String, first: bool) -> void:
+	if st != DmEnemyState.Id.DEAD:
+		set_process(true)   # a body that was settled as a corpse and is revived by a snapshot animates again
 	match st:
 		DmEnemyState.Id.ATTACK:
 			play_attack(windup_s)

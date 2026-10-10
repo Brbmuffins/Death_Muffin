@@ -94,11 +94,13 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	add_child(corpses)
 	enemy_fx = DmEnemyFx.new()
 	enemy_fx.name = "EnemyFx"
+	enemy_fx.auto_watch = false   # enemies come through director.enemy_spawned below, zones through watch_zones_under: no node_added callback per node in the tree
 	enemy_fx.player_pos = func() -> Vector3: return local_body().global_position if local_body() != null else camera.global_position
 	enemy_fx.host.camera = camera
 	enemy_fx.host.hitstop_cb = hitstop
 	hitstopper.disabled = func() -> bool: return ui_host != null and bool(ui_host.settings["reduce_motion"])
 	add_child(enemy_fx)
+	enemy_fx.watch_zones_under(director.get_node("Bodies"))
 	director.enemy_spawned.connect(func(e: DmEnemy) -> void:
 		enemy_fx.watch(e)       # idempotent (the node also auto-watches); explicit so the seam is visible
 		DmStatusSet.attach(e)   # every peer, so status visuals replicate (an ensure()d set never does)
@@ -113,6 +115,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	bosses.game = self
 	bosses.visual = _visual
 	bosses.audio_enabled = bool(opts.get("audio", DisplayServer.get_name() != "headless")) and _has_world
+	bosses.pools_created.connect(enemy_fx.watch_zones_under)
 	add_child(bosses)
 	bosses.fx.host.camera = camera
 	bosses.fx.host.hitstop_cb = hitstop
