@@ -61,10 +61,17 @@ func use_resource_palette() -> void:
 	queue_redraw()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED or what == NOTIFICATION_ENTER_TREE:
+		set_process(is_visible_in_tree())   # a hidden HUD animates nothing
+
+
 func _process(delta: float) -> void:
 	_t += delta
 	# `transition: height 0.18s ease-out`
 	var easing := not is_equal_approx(_shown_fill, fill)
+	if not easing and _shown_fill <= 0.002 and not beat_pulse:
+		return   # an empty settled orb has no ripple; its other changes queue their own redraw
 	_shown_fill = move_toward(_shown_fill, fill, delta * maxf(1.0, absf(fill - _shown_fill)) / 0.18)
 	# The surface ripple has a 3.5 s period: 30 Hz is indistinguishable from every frame, so a settled orb redraws at 30 Hz, an easing one every frame.
 	_since_draw += delta

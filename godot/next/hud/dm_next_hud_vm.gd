@@ -26,6 +26,11 @@ var _map := {}
 var _areas: Array = []
 var _doors: Array = []
 var _area_sig := ""
+var _enemies: Array = []   ## minimap dot lists: the {x, z[, elite]} dictionaries are pooled and rewritten in place, never reallocated per refresh
+var _thralls: Array = []
+var _corpses: Array = []
+var _allies: Array = []
+var _none: Array = []
 var _ward_vm := {}
 var _omen_vm := {}
 var _aff_id := 0                ## the target whose elite-affix chips are cached (instance id) ...
@@ -294,6 +299,19 @@ func _guide_ping(g: DmNextGame) -> Variant:
 	return cur["target"] if (bool(cur.get("pingInPlace", false)) or String(cur.get("place", "")) != g.area_id) else null
 
 
+## Dot `i` of a pooled list, rewritten to (x, z).
+static func _dot_fill(list: Array, i: int, x: float, z: float) -> Dictionary:
+	var d: Dictionary
+	if i < list.size():
+		d = list[i]
+	else:
+		d = {"x": 0.0, "z": 0.0}
+		list.append(d)
+	d["x"] = x
+	d["z"] = z
+	return d
+
+
 func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 	if _areas.is_empty():
 		for id in DmContent.area_order():
@@ -308,33 +326,39 @@ func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 			a["unlocked"] = builder.unlocked.has(a["id"])
 		for d in _doors:
 			d["open"] = g.chapterhouse.door_open(String(d["id"])) if g.chapterhouse != null else builder.nav_regions.has("door:" + String(d["id"]))
-	var enemies: Array = []
+	var ne := 0
 	for e in g.director.enemies.values():
 		var en := e as DmEnemy
 		if en != null and is_instance_valid(en) and en.sm != null and en.sm.id() != DmEnemyState.Id.DEAD:
-			enemies.append({"x": en.position.x, "z": en.position.z, "elite": bool(en.get_meta("dm_elite", false))})
-	var thralls: Array = []
+			_dot_fill(_enemies, ne, en.position.x, en.position.z)["elite"] = bool(en.get_meta("dm_elite", false))
+			ne += 1
+	_enemies.resize(ne)
+	var nt := 0
 	var th := b.get_node_or_null("Thralls") as DmThrallHost
 	if th != null:
 		for t in th.list():
-			thralls.append({"x": t.position.x, "z": t.position.z})
-	var corpses: Array = []
+			_dot_fill(_thralls, nt, t.position.x, t.position.z)
+			nt += 1
+	_thralls.resize(nt)
+	var nc := 0
 	for c in g.corpses.corpses.values():
-		corpses.append({"x": c.x, "z": c.z})
+		_dot_fill(_corpses, nc, c.x, c.z)
+		nc += 1
+	_corpses.resize(nc)
 	_map["px"] = b.position.x
 	_map["pz"] = b.position.z
 	_map["facing"] = b.yaw
 	_map["areas"] = _areas
 	_map["doors"] = _doors
-	_map["enemies"] = enemies
-	_map["thralls"] = thralls
-	_map["allies"] = []
-	_map["corpses"] = corpses
+	_map["enemies"] = _enemies
+	_map["thralls"] = _thralls
+	_map["allies"] = _allies
+	_map["corpses"] = _corpses
 	var bb := g.bosses.active_boss() if g.bosses != null else null
 	_map["boss"] = {"x": bb.position.x, "z": bb.position.z} if bb != null else null
-	_map["waystones"] = []
-	_map["stairs"] = []
-	_map["npcs"] = []
+	_map["waystones"] = _none
+	_map["stairs"] = _none
+	_map["npcs"] = _none
 	_map["ping"] = _guide_ping(g)
 	_map["destination"] = null
 	_map["depths"] = g.depths.map_floor() if g.depths != null else null

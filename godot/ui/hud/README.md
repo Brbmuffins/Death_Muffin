@@ -64,7 +64,8 @@ Cooldown sweep = clockwise shade from 12 o'clock of `round(left/total*100)` %, n
 `{px, pz, facing, areas:[{rect:{x0,z0,x1,z1}, safe, unlocked, instance?}], doors:[{rect, open}], enemies:[{x,z,elite}], thralls, allies, corpses, boss:{x,z}|null,
 waystones, stairs, npcs:[{x,z,fresh}], ping:{x,z}|null, destination:{x,z}|null, depths:{rooms,doors,up,down,chest}|null}`.
 `areas`/`doors` come from the world data (`AREAS`, `DOORS`); `unlocked`/`open` are the sim's gate state. 2.1 px per world unit, north-up,
-click on walkable ground emits `navigate(x, z)`.
+click on walkable ground emits `navigate(x, z)`. `DmNextHudVm` reuses the dot dictionaries between refreshes (rewritten in place), so a consumer must not keep them.
+Drawing: colours are constants, the edge vignette is a static child layer, a sealed area's hatch is cached per area size, and anything outside the disc is skipped.
 
 ## Events (methods)
 `toast(text, kind)` kind `""|"good"|"err"|"new"` (dedupes the same line, 3 at most, newest 2 under a boss/target plate; hold = max(6 s, 2 s + 0.4 s/word)),
@@ -82,6 +83,7 @@ click on walkable ground emits `navigate(x, z)`.
 `Rect2()` when hidden/unknown) so the integrator can draw the glow; `tip_default_position()` is the card's default spot (18, 70, or under the party list).
 
 ## Notes
+- Cost: `apply` skips a section (`SECTIONS` in `dm_hud.gd`: vitals, economy, upgrades, left readouts, target, column, misc) when the view-model keys it reads hash the same as at the last apply; `DmHudSlot.apply` skips an unchanged slot dict. Slots run `_process` only while empowered or flashing, orbs only while visible, the minimap only while a guidance ping pulses. A new readout should read its inputs through a section so it is covered.
 - Hover: slots show the spell card (`DmSpellCard` through `DmTip`, anchored above the slot, 180 ms bridge, Esc closes, live refresh) when the game UI sets `hud.spell_card` (a Callable(index) -> card data; `game_ui/dm_hud_tips.gd` builds it with `DmSpellTooltip`, golden-tested in `tests/hud`). Belt chips, the omen chip, Bone Ward, souls etc. keep native tooltips. The belt picker lives in `game_ui/dm_belt_picker.gd` (belt chips emit `belt_clicked`). `hud.node_tip(html, x, y)` draws the node tip (the game feeds it from the node under the cursor).
 - Toasts take an `on_click` Callable (`hud.toast(text, kind, on_click)`): a NEW cue toast opens its panel when clicked.
 - Slots emit `cast` on click but there is no drag; keyboard casting lives in `DmNextInput`, not the HUD. Slot dicts may carry a `tooltip` string.

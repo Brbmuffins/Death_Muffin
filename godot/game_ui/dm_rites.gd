@@ -137,6 +137,18 @@ func unseen() -> Array:
 	return out
 
 
+## `not unseen().is_empty()` without building the list (the HUD asks every refresh).
+func has_unseen() -> bool:
+	for id in kit["primaries"]:
+		if DmAbilities.unlock_level(id) <= level and not seen.has(id):
+			return true
+	for id in kit["grimoire"]:
+		if DmAbilities.unlock_level(id) <= level and not seen.has(id):
+			return true
+	var rmb: String = kit["rmb"]
+	return DmAbilities.unlock_level(rmb) <= level and not seen.has(rmb)
+
+
 func hotbar(signature: String) -> Array:
 	return keys + [signature]
 

@@ -54,6 +54,9 @@ func _run() -> void:
 	var phys := 0.0
 	var worst := 0.0
 	var n := 300
+	if g.ui != null:
+		g.ui.prof_on = true
+		g.ui.prof_us = 0
 	for i in n:
 		await physics_frame
 		b.heal(1e6)
@@ -66,6 +69,7 @@ func _run() -> void:
 		phys += ph
 		worst = maxf(worst, pr + ph)
 	if g.ui != null:
+		print("PERF[%s] DmGameUi._process (view-model + apply + counsel) %.3f ms/frame" % [mode, g.ui.prof_us / 1000.0 / n])
 		var tv := 0
 		var ta := 0
 		for i in 40:
