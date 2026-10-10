@@ -8,7 +8,7 @@
 # snapshotted and restored). Prints per-suite lines and
 # a final "GODOT TESTS: ..." line; exit 1 if any suite or step fails.
 # QUICK by default (a few minutes): only the suites the change can affect (tools/godot/affected-suites.mjs, via `run-all-tests.sh --only`; every suite
-# when the change is central or wide, or this revision has no selector). `--full` runs every suite (about 35 minutes). Run it in the foreground, one at a time.
+# when the change is central or wide, or this revision has no selector). `--full` runs every suite (about 9 minutes, 6 suites in parallel). Run it in the foreground, one at a time.
 # Run from the worktree root (the agent's cwd). Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_TEST_JOBS (optional: --jobs N).
 set -uo pipefail
 MODE=quick
