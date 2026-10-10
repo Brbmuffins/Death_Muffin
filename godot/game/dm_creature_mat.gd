@@ -8,8 +8,14 @@ extends RefCounted
 ##  - vertex wing flap (wingFlap.ts) for moth / bat / seraph
 ##  - fade variant (blend_mix, no depth write) for opacity < 1 and spectral bodies
 ## Source textures come from the imported glTF StandardMaterial3D (albedo, ORM, normal).
+##
+## One ShaderMaterial per (source material, variant flags) is shared by every body of that model (`shared()`); everything that differs per body is an
+## `instance uniform` set on the MeshInstance3D (set_instance_shader_parameter): tint_op (tint rgb + opacity), emis4 (emissive rgb + intensity,
+## the hit flash drives it), rim, the gear regions and the wing flap geometry/phase. The variants that need another render state (fade/blend, wings,
+## gear masks, back-face cull) are separate shared materials. Godot allows 16 instance uniforms per shader: gear uses 13, wings 3.
 
 static var _shaders: Dictionary = {}
+static var _mats: Dictionary = {}    # "srcid|flags" -> {src, mat} (src held so its instance id is never reused)
 static var _baked: Dictionary = {}   # source ArrayMesh -> gear-masked ArrayMesh
 static var _region_re: Array = []
 
@@ -38,30 +44,28 @@ uniform float rough_f = 1.0;
 uniform float metal_f = 1.0;
 uniform bool use_orm = false;
 uniform bool use_normal = false;
-uniform vec3 tint = vec3(1.0);
-uniform vec3 emis = vec3(0.0);
-uniform float emis_k = 0.0;
-uniform float opacity = 1.0;
-uniform vec4 rim = vec4(0.0);
+instance uniform vec4 tint_op = vec4(1.0);   // tint rgb, opacity (fade variant)
+instance uniform vec4 emis4 = vec4(0.0);     // emissive rgb, intensity
+instance uniform vec4 rim = vec4(0.0);
 """
 	if gear:
 		c += """
-uniform vec4 gt0 = vec4(1.0, 1.0, 1.0, 0.0);
-uniform vec4 gt1 = vec4(1.0, 1.0, 1.0, 0.0);
-uniform vec4 gt2 = vec4(1.0, 1.0, 1.0, 0.0);
-uniform vec4 gt3 = vec4(1.0, 1.0, 1.0, 0.0);
-uniform vec3 gg0 = vec3(0.0);
-uniform vec3 gg1 = vec3(0.0);
-uniform vec3 gg2 = vec3(0.0);
-uniform vec3 gg3 = vec3(0.0);
-uniform vec4 head_t = vec4(1.0, 1.0, 1.0, 0.0);
-uniform vec3 head_g = vec3(0.0);
+instance uniform vec4 gt0 = vec4(1.0, 1.0, 1.0, 0.0);
+instance uniform vec4 gt1 = vec4(1.0, 1.0, 1.0, 0.0);
+instance uniform vec4 gt2 = vec4(1.0, 1.0, 1.0, 0.0);
+instance uniform vec4 gt3 = vec4(1.0, 1.0, 1.0, 0.0);
+instance uniform vec3 gg0 = vec3(0.0);
+instance uniform vec3 gg1 = vec3(0.0);
+instance uniform vec3 gg2 = vec3(0.0);
+instance uniform vec3 gg3 = vec3(0.0);
+instance uniform vec4 head_t = vec4(1.0, 1.0, 1.0, 0.0);
+instance uniform vec3 head_g = vec3(0.0);
 """
 	if wings:
 		c += """
-uniform vec4 wing = vec4(0.0);      // speed, amp, body, half
-uniform vec2 wing_root = vec2(0.0); // centre, phase
-uniform float wing_z = 0.0;
+instance uniform vec4 wing = vec4(0.0);      // speed, amp, body, half
+instance uniform vec2 wing_root = vec2(0.0); // centre, phase
+instance uniform float wing_z = 0.0;
 void vertex() {
 	float ws = (wing_z > 0.5 ? VERTEX.z : VERTEX.x) - wing_root.x;
 	float wd = abs(ws) - wing.z;
@@ -77,7 +81,7 @@ void vertex() {
 	c += """
 void fragment() {
 	vec4 a = texture(albedo_tex, UV) * albedo_col;
-	vec3 alb = a.rgb * tint;
+	vec3 alb = a.rgb * tint_op.rgb;
 	vec3 glow = vec3(0.0);
 """
 	if gear:
@@ -111,15 +115,29 @@ void fragment() {
 	}
 	float fres = 1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
 	vec3 rimc = rim.rgb * rim.a * smoothstep(0.35, 0.95, fres) * 0.9;
-	EMISSION = emis * emis_k + rimc + glow;
+	EMISSION = emis4.rgb * emis4.a + rimc + glow;
 """
 	if fade:
-		c += "	ALPHA = opacity * a.a;\n"
+		c += "	ALPHA = tint_op.a * a.a;\n"
 	c += "}\n"
 	var sh := Shader.new()
 	sh.code = c
 	_shaders[key] = sh
 	return sh
+
+## The shared material of `src` for these flags (every body of the model uses it; per-body looks are instance uniforms).
+static func shared(src: Material, fade: bool, wings: bool, gear: bool, cull_back := false) -> ShaderMaterial:
+	var key := "%d|%d%d%d%d" % [src.get_instance_id() if src != null else 0, int(fade), int(wings), int(gear), int(cull_back)]
+	var e: Variant = _mats.get(key)
+	if e != null:
+		return e.mat
+	var m := make(src, fade, wings, gear, cull_back)
+	_mats[key] = {"src": src, "mat": m}
+	return m
+
+## Materials built so far (the tests count them).
+static func shared_count() -> int:
+	return _mats.size()
 
 ## A ShaderMaterial carrying `src`'s textures and factors. `flags`: fade / wings / gear / cull_back (closed bodies only, CULL_BACK_SLUGS).
 static func make(src: Material, fade: bool, wings: bool, gear: bool, cull_back := false) -> ShaderMaterial:
