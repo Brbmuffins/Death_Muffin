@@ -61,6 +61,8 @@ launcher/tests/run-local.sh         # launcher logic tests
 Run one Godot suite: `godot --headless --path godot --script res://tests/<name>/run.gd`. `tests/online_live` needs the live
 backend and is opt-in. `tools/godot/playtest.sh` runs the scripted bot playtest. CI (`.github/workflows/ci.yml`) runs the
 backend, lobby and a subset of Godot suites on `main`.
+Tests never assert wall-clock time: timing figures print as `INFO perf:` lines. FPS is judged on real hardware (F3 overlay);
+suites only check deterministic counters.
 
 ## Export, publish, deploy
 

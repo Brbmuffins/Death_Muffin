@@ -417,13 +417,13 @@ func _run() -> void:
 	samples.sort()
 	var work_us := samples[150]
 	print("gather node per-frame cost (median of 300): idle %.1f us, working %.1f us" % [idle_us, work_us])
-	check(idle_us < 200.0 and work_us < 800.0, "gather frame cost within budget (%.1f / %.1f us)" % [idle_us, work_us])
+	perf_info(idle_us < 200.0 and work_us < 800.0, "gather frame cost within budget (%.1f / %.1f us)" % [idle_us, work_us])
 	var fc := DmFrameCost.attach(self.root)
 	await ticks(10)
 	fc.reset()
-	await ticks(240)
+	await ticks(30)   # timing is INFO only: a short window still runs the gathering frame path
 	print("perf: gathering, headless: frame median %.2f ms (p95 %.2f, worst %.2f, %d samples)" % [fc.median_ms(), fc.p95_ms(), fc.worst_ms(), fc.samples()])
-	check(fc.median_ms() < 14.0 and fc.worst_ms() < 150.0, "frame median %.2f ms under 14 while gathering, worst %.1f ms under 150" % [fc.median_ms(), fc.worst_ms()])
+	perf_info(fc.median_ms() < 14.0 and fc.worst_ms() < 150.0, "frame median %.2f ms under 14 while gathering, worst %.1f ms under 150" % [fc.median_ms(), fc.worst_ms()])
 	fc.queue_free()
 	gt.loop.stop("moved")
 	await g.flush_all()
@@ -486,3 +486,9 @@ func _part_b() -> void:
 	hg.queue_free()
 	cg.queue_free()
 	await ticks(5)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

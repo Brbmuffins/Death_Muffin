@@ -12,7 +12,7 @@ hud.cast.connect(...)                         # intent out: signals (below)
 ```
 
 Gallery: `ui/hud/shoot.sh combat|boss|calm|death|events [out.png] [WxH]` (renderer lock + Xvfb; screenshots land in the gitignored `shots/hud/`).
-Tests: `godot --headless --path godot --script res://tests/hud/run.gd`. The game-side feed is `DmNextHudVm` (`next/hud/README.md`).
+Tests: `godot --headless --path godot --script res://tests/ui/run.gd (hud_part)`. The game-side feed is `DmNextHudVm` (`next/hud/README.md`).
 
 ## View-model (`apply(vm: Dictionary)`)
 
@@ -84,7 +84,7 @@ Drawing: colours are constants, the edge vignette is a static child layer, a sea
 
 ## Notes
 - Cost: `apply` skips a section (`SECTIONS` in `dm_hud.gd`: vitals, economy, upgrades, left readouts, target, column, misc) when the view-model keys it reads hash the same as at the last apply; `DmHudSlot.apply` skips an unchanged slot dict. Slots run `_process` only while empowered or flashing, orbs only while visible, the minimap only while a guidance ping pulses. A new readout should read its inputs through a section so it is covered.
-- Hover: slots show the spell card (`DmSpellCard` through `DmTip`, anchored above the slot, 180 ms bridge, Esc closes, live refresh) when the game UI sets `hud.spell_card` (a Callable(index) -> card data; `game_ui/dm_hud_tips.gd` builds it with `DmSpellTooltip`, golden-tested in `tests/hud`). Belt chips, the omen chip, Bone Ward, souls etc. keep native tooltips. The belt picker lives in `game_ui/dm_belt_picker.gd` (belt chips emit `belt_clicked`). `hud.node_tip(html, x, y)` draws the node tip (the game feeds it from the node under the cursor).
+- Hover: slots show the spell card (`DmSpellCard` through `DmTip`, anchored above the slot, 180 ms bridge, Esc closes, live refresh) when the game UI sets `hud.spell_card` (a Callable(index) -> card data; `game_ui/dm_hud_tips.gd` builds it with `DmSpellTooltip`, golden-tested in `tests/ui` (hud_part)). Belt chips, the omen chip, Bone Ward, souls etc. keep native tooltips. The belt picker lives in `game_ui/dm_belt_picker.gd` (belt chips emit `belt_clicked`). `hud.node_tip(html, x, y)` draws the node tip (the game feeds it from the node under the cursor).
 - Toasts take an `on_click` Callable (`hud.toast(text, kind, on_click)`): a NEW cue toast opens its panel when clicked.
 - Slots emit `cast` on click but there is no drag; keyboard casting lives in `DmNextInput`, not the HUD. Slot dicts may carry a `tooltip` string.
 - Rune badges, the Grimoire button pulse (6 s) and the glows are drawn rings; text `letter-spacing` is rounded to whole pixels (FontVariation).

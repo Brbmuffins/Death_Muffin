@@ -505,7 +505,7 @@ func _perf() -> void:
 		DmStatusSet.scale_taken(e, 1.0)
 	var per_scale := float(Time.get_ticks_usec() - t1) / float(n)
 	print("perf: take_damage %.2f us/hit, of which scale_taken %.2f us" % [per_hit, per_scale])
-	check(per_scale < 20.0 and per_hit < 80.0, "perf: scale_taken %.2f us, take_damage %.2f us per hit (generous caps)" % [per_scale, per_hit])
+	perf_info(per_scale < 20.0 and per_hit < 80.0, "perf: scale_taken %.2f us, take_damage %.2f us per hit (generous caps)" % [per_scale, per_hit])
 	# per frame: 40 chasing-free enemies incl. 4 acolytes with a thrall inside the reach, the 5 Hz fx pass and the net cue flush
 	g.director.enabled = false
 	var heroes := [hero]
@@ -531,7 +531,13 @@ func _perf() -> void:
 		g.enemy_fx._ambient(0.2)
 	var per_pass := float(Time.get_ticks_usec() - t2) / 200.0
 	print("perf: 40 enemies (4 acolytes): frame median %.2f ms (p95 %.2f, worst %.2f); fx ambient pass %.1f us (5 Hz)" % [fc.median_ms(), fc.p95_ms(), fc.worst_ms(), per_pass])
-	check(fc.median_ms() < 14.0 and fc.worst_busy_ms() < 150.0, "perf: 40 enemies + acolyte rings: frame median %.2f ms under 14, worst %.1f under 150" % [fc.median_ms(), fc.worst_ms()])
-	check(per_pass < 2000.0, "perf: the 5 Hz fx pass (reach rings included) costs %.0f us" % per_pass)
+	perf_info(fc.median_ms() < 14.0 and fc.worst_busy_ms() < 150.0, "perf: 40 enemies + acolyte rings: frame median %.2f ms under 14, worst %.1f under 150" % [fc.median_ms(), fc.worst_ms()])
+	perf_info(per_pass < 2000.0, "perf: the 5 Hz fx pass (reach rings included) costs %.0f us" % per_pass)
 	g.director.clear()
 	t.kill("crumbled")
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

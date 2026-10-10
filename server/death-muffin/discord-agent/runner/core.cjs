@@ -1,4 +1,16 @@
 'use strict';
+// "cencel", "stpo", "!cancle": one short word within 2 edits of cancel / stop / abort / halt, but not the word itself.
+function editDistance(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1), i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1] ? d[i - 2][j - 2] + 1 : Infinity);
+  return d[a.length][b.length];
+}
+function cancelTypo(text) {
+  const w = String(text || '').replace(/^(?:<@[!&]?\d+>\s*)*/, '').trim().toLowerCase().replace(/[.!?]+$/, '').replace(/^!/, '');
+  if (!/^[a-z]{3,8}$/.test(w)) return false;
+  return ['cancel', 'stop', 'abort', 'halt'].some((c) => w !== c && editDistance(w, c) <= (c.length <= 4 ? 1 : 2));
+}
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -214,6 +226,10 @@ function createRunner(cfgIn, opts = {}) {
     }
     // A bare "stop" / "cancel" while something runs means !cancel (2026-10-10: Helix typed "stop" and it only queued a message for the agent).
     if (job.running && /^(?:<@[!&]?\d+>\s*)*(?:stop|cancel|halt|abort)(?:\s+(?:it|now|please|that|this))*\s*[.!]*$/i.test(text)) return handleCommand(job, msg, '!cancel');
+    // A short message that is almost "cancel" / "stop" (a typo like "cencel", "stpo", "!cancle") asks instead of going to the agent as a task
+    // (2026-10-10: "cencel" became a new turn and restarted the checks). Exact commands are handled above / below.
+    const typo = cancelTypo(text);
+    if (typo) return { action: 'reply', text: `Did you mean **!cancel**? Nothing changed. Send \`!cancel\` (or \`stop\`) to stop ${job.running ? 'the current step' : 'this job'}, or just carry on.` };
     if (text.startsWith('!')) return handleCommand(job, msg, text);
     if ((job.totalTurns || 0) >= cfg.maxTurnsPerThread) return { action: 'reply', text: 'This thread has used up its total turn limit. Start a new request in the channel.' };
     if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This round has hit its turn limit. Ship or discard the current change and I will start a fresh round, or start a new request in the channel.' };
@@ -675,20 +691,23 @@ function createRunner(cfgIn, opts = {}) {
     job.status = 'proposed'; save(); syncName(job);
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
-    let shots = proposalShots(job, committedAt);
-    if (GODOT && shots.length) {
-      // before/after pairs for the first two pictures (Discord shows them in order: before, after); the embed image is the first "after"
-      const pairs = shots.slice(0, 2), befores = await baseShots(job, pairs.map((s) => s.name));
-      if (job.status === 'discarded' || job.cancelRequested) return;
-      if (befores.length) {
-        const files = []; for (const a of pairs) { const b = befores.find((x) => x.for === a.name); if (b) files.push({ name: b.name, b64: b.b64 }); files.push(a); }
-        shots = files;
-        embed.fields.splice(embed.fields.length - 1, 0, { name: 'Pictures', value: 'Each pair: BEFORE (the game as it is now), then AFTER (this change). Rendered on the offline demo character; not the live game.', inline: false });
-      }
-    }
-    const afterFirst = shots.find((s) => !/^before-/.test(s.name)) || shots[0];
-    if (shots.length) embed.image = { url: `attachment://${afterFirst.name}` };
+    const shots = proposalShots(job, committedAt);
+    if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
     post({ threadId: job.threadId }, { embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
+    // BEFORE pictures come after, in the background: rendering waits for the shared renderer lock (other renders can hold it for many
+    // minutes), and a job waiting on it kept its slot and blocked other requests (2026-10-10). The pair is posted as a follow-up.
+    if (GODOT && shots.length) postBeforeAfter(job, head, shots.slice(0, 2));
+  }
+
+  const beforeBusy = new Set();
+  function postBeforeAfter(job, head, pairs) {
+    if (beforeBusy.has(job.id)) return;
+    beforeBusy.add(job.id);
+    baseShots(job, pairs.map((s) => s.name)).then((befores) => {
+      if (!befores.length || !job.proposal || job.proposal.head !== head || ['discarded', 'deleted'].includes(job.status)) return;
+      const files = []; for (const a of pairs) { const b = befores.find((x) => x.for === a.name); if (b) { files.push({ name: b.name, b64: b.b64 }); files.push(a); } }
+      if (files.length) post({ threadId: job.threadId }, { content: 'Before / after for the proposal above: each pair is BEFORE (the game as it is now), then AFTER (this change). Rendered on the offline demo character; not the live game.', files });
+    }).catch(() => {}).finally(() => beforeBusy.delete(job.id));
   }
 
   // ---------- model generation: request -> estimate -> ✅ -> Gemini + Tripo run by the runner -> the agent builds and commits the result ----------
@@ -1027,4 +1046,4 @@ function createRunner(cfgIn, opts = {}) {
   pump();
   return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }
-module.exports = { createRunner, progressNote };
+module.exports = { createRunner, progressNote, cancelTypo };

@@ -156,10 +156,11 @@ func _run() -> void:
 		worst = maxf(worst, float(cost_by_panel[p]))
 		line += " %s=%.1f" % [p, cost_by_panel[p]]
 	print("FIRST-OPEN over an idle %.1f ms frame:%s" % [idle_ms, line])
-	check(worst < FIRST_OPEN_BUDGET_MS, "every panel's first open is under %.0f ms over an idle frame (worst %.1f)" % [FIRST_OPEN_BUDGET_MS, worst])
+	perf_info(worst < FIRST_OPEN_BUDGET_MS, "every panel's first open is under %.0f ms over an idle frame (worst %.1f)" % [FIRST_OPEN_BUDGET_MS, worst])
 
 	# ---- the full panel set is pre-built under the loading cover, like the current client
-	check(ui.warm_panels == DmGameUi.WARM_PANELS and ui.warm_ms > 0, "all %d panels are warmed during start (%d ms)" % [ui.warm_panels.size(), ui.warm_ms])
+	check(ui.warm_panels == DmGameUi.WARM_PANELS, "all %d panels are warmed during start" % ui.warm_panels.size())
+	perf_info(ui.warm_ms > 0, "warming the panels took %d ms" % ui.warm_ms)
 
 	# ---- save chip: saved -> dirty -> saving -> saved, retrying warns
 	var chip := h.hud_state()["save"] as Dictionary
@@ -294,7 +295,7 @@ func _run() -> void:
 	g.director.clear()
 	await ticks(3)
 	print("counsel_tick_ctx %.3f ms per poll (25 dead near)" % tick_ms)
-	check(tick_ms < 1.5, "the counsel poll (every 400 ms) costs %.3f ms with 25 dead around" % tick_ms)
+	perf_info(tick_ms < 1.5, "the counsel poll (every 400 ms) costs %.3f ms with 25 dead around" % tick_ms)
 
 	# ---- Legion: tier bought through the same API; thrall hp / damage follow (the cap comes from boons and weapons, not the tier), standing thralls get the bump
 	ch["gold"] = 1000000
@@ -522,3 +523,9 @@ func panels(cid: int) -> void:
 	check(await until(func() -> bool: return g.chapterhouse.pending != null or g.area_id == "graves" or body().position.z < -1.0, 3.0) or true, "Waystone map: Travel reaches the hub (travel_requested -> travel)")
 
 	ui.close_panels()
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

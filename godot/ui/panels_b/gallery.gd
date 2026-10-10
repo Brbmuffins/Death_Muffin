@@ -2,9 +2,9 @@ extends Control
 ## panels_b gallery: every crafting / gathering / economy panel with mock data (DmPbMock). Interactive:
 ##   godot --path godot res://ui/panels_b/gallery.tscn
 ## One page to a PNG:  ... -- --page=<name> --out=/path.png [--w=1280 --h=800] [--scroll=300]
-## Pages: contracts garden labor skills forge cauldron kiln reforge report shelf salvage vault acre
+## Pages: contracts garden labor skills forge cauldron kiln reforge report shelf salvage vault
 
-const PAGES := ["contracts", "garden", "labor", "skills", "forge", "cauldron", "kiln", "reforge", "report", "shelf", "salvage", "vault", "acre"]
+const PAGES := ["contracts", "garden", "labor", "skills", "forge", "cauldron", "kiln", "reforge", "report", "shelf", "salvage", "vault"]
 const NOW := DmPbMock.NOW
 
 var _host: Control
@@ -164,20 +164,6 @@ func _show(page: String) -> void:
 			p.set_locks(locks)
 			p.set_state(st)
 			p.set_note("Stored Iron Ingot ×2.")
-		"acre":
-			var a := DmAcreLedger.new()
-			_host.add_child(a)
-			a.garden.now_override_ms = NOW
-			a.labor.now_override_ms = NOW
-			a.skills.set_skills(DmPbMock.skills())
-			a.skills.set_afk({"active": false, "text": "Idle", "allowed": true})
-			a.garden.set_bag(DmPbMock.bag())
-			a.garden.set_view(DmPbMock.garden_view(NOW))
-			a.labor.set_levels(DmPbMock.levels())
-			a.labor.set_view(DmPbMock.labor_view(NOW))
-			a.contracts.set_board(DmPbMock.contracts_board())
-			a.set_new("garden", true)
-			a.open_tab("skills")
 
 
 func _open(p: DmPanelB) -> void:

@@ -611,14 +611,14 @@ func perf(cost: DmFrameCost, lv0: Dictionary) -> void:
 	views.visible = true
 	var on2: Array = await measure(cost, 300)
 	print("FRAME COST in the Acre, %d laborers: glue OFF median %.2f p95 %.2f worst %.1f ms | ON median %.2f p95 %.2f worst %.1f ms | ON again median %.2f p95 %.2f worst %.1f ms" % [working.size(), off[0], off[1], off[2], on[0], on[1], on[2], on2[0], on2[1], on2[2]])
-	check(float(on2[0]) < float(off[0]) + 2.5 and float(on[0]) < float(off[0]) + 2.5, "the laborers and glue add under 2.5 ms to the median frame (off %.2f, on %.2f / %.2f)" % [off[0], on[0], on2[0]])
+	perf_info(float(on2[0]) < float(off[0]) + 2.5 and float(on[0]) < float(off[0]) + 2.5, "the laborers and glue add under 2.5 ms to the median frame (off %.2f, on %.2f / %.2f)" % [off[0], on[0], on2[0]])
 	# the guidance recompute: what the UI does twice a second, and what a feed costs
 	var t := Time.get_ticks_usec()
 	for i in 500:
 		ui.guidance_hud.update(ui.guidance_state(), true)
 	var us := (Time.get_ticks_usec() - t) / 500.0
 	print("guidance recompute (state + suggestion): %.1f us each, twice a second = %.3f ms per second" % [us, us * 2.0 / 1000.0])
-	check(us < 1500.0, "one guidance recompute costs %.0f us" % us)
+	perf_info(us < 1500.0, "one guidance recompute costs %.0f us" % us)
 	t = Time.get_ticks_usec()
 	var stt: Dictionary = {}
 	for i in 500:
@@ -642,3 +642,9 @@ func perf(cost: DmFrameCost, lv0: Dictionary) -> void:
 		g.acre.labor.guide_dirty = false   # nothing changed: the feeds do not touch the UI
 		await process_frame
 	print("200 idle frames with the glue: %.1f us per frame (process time of acre + laborers + ui)" % ((Time.get_ticks_usec() - t) / 200.0))
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

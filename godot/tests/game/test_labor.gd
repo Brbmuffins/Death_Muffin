@@ -1,6 +1,6 @@
 extends RefCounted
 ## Tests for DmLaborerViews (layout rules, sync, picks, tip, work modes, onSeen) and DmGameLabor (checkLabor / checkGarden / onCollected,
-## timers). A stub host + a fake api object (the mock backend stubs the labor routes with 501). Driven by labor_run.gd.
+## timers). A stub host + a fake api object (the mock backend stubs the labor routes with 501). Driven by units_run.gd.
 
 class FakeApi extends RefCounted:
 	var labor: Variant = null

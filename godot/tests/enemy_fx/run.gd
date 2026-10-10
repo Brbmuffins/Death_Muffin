@@ -314,9 +314,10 @@ func _t_net() -> void:
 	var cpeer := ENetMultiplayerPeer.new()
 	check(cpeer.create_client("127.0.0.1", port) == OK, "net: client")
 	C.multiplayer.multiplayer_peer = cpeer
-	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 5000 and H.multiplayer.get_peers().is_empty():
-		await process_frame
+	for _i in 300:   # up to 5 s of physics ticks
+		if not H.multiplayer.get_peers().is_empty():
+			break
+		await physics_frame
 	check(not H.multiplayer.get_peers().is_empty(), "net: peers connected")
 	await process_frame
 	# host world: arena under H; client world: bare puppets under C
@@ -386,11 +387,13 @@ func _t_net() -> void:
 		for he in host_es:
 			if he.sm.id() != S.DEAD:
 				he.attack_cd = 0.1
-		var t1 := Time.get_ticks_msec()
 		var want: Array = ["cone", "slam", "dust", "erupt"] if mode == "20Hz" else ["cone", "slam", "dust"]
-		while Time.get_ticks_msec() - t1 < 20000 and not want.all(func(k): return tlog_h.any(func(t): return t[0] == k)):
-			await process_frame
-		await create_timer(0.3).timeout   # let in-flight snapshots land
+		for _i in 1200:   # up to 20 s of physics ticks
+			if want.all(func(k): return tlog_h.any(func(t): return t[0] == k)):
+				break
+			await physics_frame
+		for _i in 18:   # 0.3 s: let in-flight snapshots land
+			await physics_frame
 		check(tlog_h.size() >= 3, "net[%s]: host telegraphed %d times" % [mode, tlog_h.size()])
 		check(cfx.stats["telegraph"] == tlog_c.size() and hfx.stats["telegraph"] == tlog_h.size(), "net[%s]: each peer's fx saw its own telegraphs exactly once (h %d/%d c %d/%d)" % [mode, hfx.stats["telegraph"], tlog_h.size(), cfx.stats["telegraph"], tlog_c.size()])
 		check(tlog_c.size() >= tlog_h.size() - 1 and tlog_c.size() <= tlog_h.size(), "net[%s]: client got every telegraph the host sent (%d of %d)" % [mode, tlog_c.size(), tlog_h.size()])
@@ -412,7 +415,8 @@ func _t_net() -> void:
 					n += 1
 					report[mode + ":" + String(th[3])] = "delay %.0f ms lead %.0f of %.0f ms" % [delay_ms, lead_ms, float(th[2]) * 1000.0]
 					break
-		check(n >= 3 and worst > 250.0, "net[%s]: client telegraph lead worst %.0f ms, mean %.0f ms (>250 ms to dodge)" % [mode, worst, sum / maxf(1.0, n)])
+		check(n >= 3, "net[%s]: the client got the telegraphs (%d matched)" % [mode, n])
+		perf_info(worst > 250.0, "net[%s]: client telegraph lead worst %.0f ms, mean %.0f ms (>250 ms to dodge)" % [mode, worst, sum / maxf(1.0, n)])
 		print("  lead[%s] %s" % [mode, str(report)])
 	# client-side sounds/decals came from the replicated state: telegraph sfx once per telegraph
 	var tele_sounds_c := ca.count("tellStrike") + ca.count("tollSmall")
@@ -422,7 +426,8 @@ func _t_net() -> void:
 	# death replicates: one death fx per peer
 	var he0: DmEnemy = host_es[0]
 	he0.take_damage(1e9, null)
-	await create_timer(0.4).timeout
+	for _i in 24:   # 0.4 s
+		await physics_frame
 	check(hfx.stats["death"] == 1 and cfx.stats["death"] == 1, "net: death fx once per peer (h %d c %d)" % [hfx.stats["death"], cfx.stats["death"]])
 	check(ha.count("enemyDeath") == 1 and ca.count("enemyDeath") == 1, "net: death sound once per peer")
 	check(hfx.stats["hit"] == cfx.stats["hit"], "net: hit flash events equal (h %d c %d)" % [hfx.stats["hit"], cfx.stats["hit"]])
@@ -485,9 +490,9 @@ func _t_perf() -> void:
 		(e as DmEnemy).take_damage(1e9, null)
 	var death_us := float(Time.get_ticks_usec() - t0) / 10.0
 	print("  perf: 30 enemies watched: %.0f us/frame; telegraph %.0f us/event (%d events); impact %.0f us/event; death %.0f us/event (incl. enemy)" % [frame_us, tele_us, sacs.size(), hit_us, death_us])
-	check(frame_us < 400.0, "perf: per-frame cost with 30 enemies < 0.4 ms (%.0f us)" % frame_us)
-	check(tele_us < 500.0, "perf: telegraph < 0.5 ms per event (%.0f us)" % tele_us)
-	check(hit_us < 300.0, "perf: impact < 0.3 ms per event (%.0f us)" % hit_us)
+	perf_info(frame_us < 400.0, "perf: per-frame cost with 30 enemies < 0.4 ms (%.0f us)" % frame_us)
+	perf_info(tele_us < 500.0, "perf: telegraph < 0.5 ms per event (%.0f us)" % tele_us)
+	perf_info(hit_us < 300.0, "perf: impact < 0.3 ms per event (%.0f us)" % hit_us)
 	# the pooled rings never grow: a second salvo allocates nothing new in the Vfx
 	var tr0: int = v.transient_load()
 	for e in sacs:
@@ -502,3 +507,9 @@ func _t_warm() -> void:
 		check(effects.has(id), "warm: Binbun effect %s is in the DmWarmup set" % id)
 	for id in DmEnemyFx.SFX_IDS:
 		check(not DmAudioMap.defn(id).is_empty(), "sfx: %s exists in the audio map" % id)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
