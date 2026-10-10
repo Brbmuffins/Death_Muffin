@@ -119,10 +119,9 @@ func _build_ui() -> void:
 			var b := Button.new()
 			b.custom_minimum_size = Vector2(56, 56)
 			b.theme_type_variation = "DmButtonSmall"
-			b.text = DmUi.upper("Sheet · J")
+			b.text = DmUi.upper("Sheet\n· J")
 			b.add_theme_font_size_override("font_size", 10)
 			b.add_theme_constant_override("h_separation", 0)
-			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			b.clip_text = true  # its text must not make the 3rd doll column wider than the 56px cells (stretched Trinket/Off hand)
 			b.visible = has_sheet
 			b.pressed.connect(func() -> void: sheet_pressed.emit())
