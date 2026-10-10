@@ -1,5 +1,5 @@
-extends "res://tests/next_bosses/suite.gd"
-## The Bell-Sworn Prelate in the slice: godot --headless --path godot --script res://tests/next_bosses/prelate_run.gd
+extends "res://tests/next_bosses/harness.gd"
+## The Bell-Sworn Prelate in the slice: part of the boss suite (run.gd drives it)
 ## The Sanctum is not opened by the slice yet: the hero is teleported into the arena (area-agnostic brain; the world's own rects say "sanctum").
 ## A: the bell (5 shards through spend_shards: a Prelate summon is owed), Toll / Slam / Bell Rain numbers + timing, the cooldown scale per phase, the
 ##    Procession of each phase, Prelate Echoes I / II / III through the real vow state (second bell, elite procession, chasing rain), thralls + rites,
@@ -8,10 +8,8 @@ extends "res://tests/next_bosses/suite.gd"
 const SPAWNS := [[-11.0, -110.0], [11.0, -110.0], [-11.0, -123.0], [11.0, -123.0]]
 
 
-func _parts() -> void:
+func _init() -> void:
 	boss_id = "prelate"
-	await _part_a()
-	await _part_b()
 
 
 func _adds(def_id: String = "") -> Array:
@@ -29,7 +27,7 @@ func _next(kind: String, limit: float) -> Dictionary:
 	return telegraphs(kind)[n] if telegraphs(kind).size() > n else {"t": -1.0, "ev": {"ms": -1.0, "r": -1.0, "x": 0.0, "z": 0.0, "targets": []}}
 
 
-func _part_a() -> void:
+func solo() -> void:
 	await new_solo()
 	member().prog.mode = "local"   # the Prelate's tally is validated by the backend (a summon it was told of); these shards are local, so keep the state local
 	await check_prompt_and_key()
@@ -135,7 +133,7 @@ func _part_a() -> void:
 		e.queue_free()
 	g.director.enemies.clear()
 	hb.heal(1e6)
-	await check_thralls_and_rites()
+	await check_rites_and_stun()
 	var flags: Array = []
 	g.bosses.fx.host.sink = func(id: String, _ctx: Dictionary) -> void: flags.append(id)
 	var kills0 := int(member().prog.local["run"]["prelateKills"])
@@ -201,16 +199,12 @@ func _part_a() -> void:
 	await until(func() -> bool: return telegraphs("slam").size() >= 1 and telegraphs("toll").size() >= 1, 10.0)
 	check(boss.bstate.active and not telegraphs("toll").is_empty(), "A: the engine-driven Prelate fights (slam + toll on the real clock)")
 	boss.set_physics_process(false)
-	wound(0.5)
-	await check_perf("%d walkers" % _adds().size())
 	await end_fight()
-	g.queue_free()
-	await ticks(3)
 
 
 # ---- B: two peers --------------------------------------------------------------------------------------------------------------------------
 
-func _part_b() -> void:
+func net() -> void:
 	await two_peers_summon()
 	var hh := hg.local_body()
 	hh.teleport(Vector3(2.0, 0.0, -118.0))
@@ -225,5 +219,5 @@ func _part_b() -> void:
 	for i in 10:
 		hboss._physics_process(DT)
 	check(await until(func() -> bool: return cg.director.enemies.values().filter(func(e: DmEnemy) -> bool: return e.def_id == "risen").size() == 2 and cg.director.enemies.values().filter(func(e: DmEnemy) -> bool: return e.def_id == "penitent").size() == 2, 6.0), "B: phase 2's Procession exists on the client too (director spawner)")
-	await two_peers_common_tail()
+	await two_peers_defeat()
 	await two_peers_end()

@@ -1,47 +1,45 @@
-extends "res://tests/next_bosses/late_base.gd"
-## Suite: the Plague Saint (godot/next/bosses). godot --headless --path godot --script res://tests/next_bosses/saint_run.gd
+extends "res://tests/next_bosses/harness.gd"
+## Part of the boss suite (run.gd drives it): the Plague Saint (godot/next/bosses).
 ## Rot Rain -> toxic DmHostileZone pools (host damaging, visual-only elsewhere), Pestilent Blessing (she heals standing in rot), Plague Doctor link,
-## censer swing, phases 60/30 % with adds, thralls + rites, defeat -> rewards + report, net state, perf.
+## censer swing, phases 60/30 % with adds, thralls + rites, defeat -> rewards + report, net state.
 
 var _S: Dictionary
 
 
-func _run() -> void:
-	BOSS_ID = "saint"
-	await boot()
+func _init() -> void:
+	boss_id = "saint"
+	god_mode = true   # the hero is unkillable by huge hp (the progression resets the stats now and then)
+
+
+func solo() -> void:
 	_S = DmContent.get_export("bosses", "SAINT")
-	await _part_a()
-	await _part_net()
-	finish()
-
-
-func _part_a() -> void:
-	await solo()
+	await new_solo()
 	var m := member()
-	check(g.bosses.site_pos("saint").is_equal_approx(SITE) and SITE != Vector3.INF, "saint: the summon site is the cloister's saints_litter %s" % str(SITE))
+	check(g.bosses.site_pos("saint").is_equal_approx(site()) and site() != Vector3.INF, "saint: the summon site is the cloister's saints_litter %s" % str(site()))
 	hb.teleport(Vector3(0, 0, 20))
 	check(g.bosses.try_summon(g.session.get_my_id(), "saint") == "far", "saint: refused away from the litter (far)")
 	check(g.bosses.try_summon(g.session.get_my_id(), "abbess") == "far" and g.bosses.try_summon(g.session.get_my_id(), "nobody") == "unknown", "saint: another area's boss is far from here; an unknown id is unknown")
 	await at_site(0)
+	set_shards(0)   # (the progression may restore the backend's saved count when the hero changes area)
 	check(g.area_of(g.session.get_my_id()) == "cloister", "saint: hero is in the Cloister")
 	check(g.bosses.try_summon(g.session.get_my_id(), "saint") == "shards" and g.bosses.bosses.is_empty(), "saint: no shards -> refused")
 	var cost := int(DmContent.boss("saint")["shards"])
 	m.prog.add_shards(cost - 1)
 	check(g.bosses.try_summon(g.session.get_my_id(), "saint") == "shards" and int(m.prog.local["shards"]) == cost - 1, "saint: %d of %d shards is not enough, none spent" % [cost - 1, cost])
 	m.prog.add_shards(cost + 1)
-	check(summon() == "" and int(m.prog.local["shards"]) == cost, "saint: %d shards wake her, her own cost is spent" % cost)
+	check(wake() == "" and int(m.prog.local["shards"]) == cost, "saint: %d shards wake her, her own cost is spent" % cost)
 	check(g.bosses.try_summon(g.session.get_my_id(), "saint") == "busy", "saint: a second summon while awake is refused (busy)")
 	check(boss.boss_id == "saint" and boss.is_in_group(&"dm_boss") and boss.view != null and boss.view.slug == "boss_plague_saint", "saint: DmBoss with the current client's DmBossView (plague saint model)")
 	var s: Dictionary = boss.brain.state
 	var diff: Dictionary = DmContent.get_export("difficulty", "DIFFICULTIES")["medium"]
 	var want_hp: float = float(DmContent.boss("saint")["baseHp"]) * (1.0 + 0.22 * (float(s["level"]) - 1.0)) * float(diff["enemyHpMult"])
 	check(is_equal_approx(boss.max_hp, want_hp) and boss.hp == boss.max_hp and int(s["level"]) == 20, "saint: awaken hp = baseHp x level 20 x difficulty (%.0f)" % boss.max_hp)
-	check(boss.global_position.distance_to(ARENA) < 0.01 and boss.phase == 1 and boss.is_hittable(), "saint: awake at the arena centre (44, -121), phase 1")
+	check(boss.global_position.distance_to(arena()) < 0.01 and boss.phase == 1 and boss.is_hittable(), "saint: awake at the arena centre (44, -121), phase 1")
 	check(events("awaken").size() == 1 and "bossAwaken" in astub.sfx, "saint: awaken event + bossAwaken (boss bed)")
 	check(boss.bstate.state == "idle" and boss.bstate.phase == 1, "saint: DmBossView state fed")
 
 	# ---- censer swing: opening cd 2 s, hero within r + 0.5 of her
-	hb.teleport(ARENA + Vector3(3.0, 0.0, 0.0))
+	hb.teleport(arena() + Vector3(3.0, 0.0, 0.0))
 	boss.world.refresh()
 	step(1.9)
 	check(events("swing").is_empty(), "saint: no swing before its opening cooldown (2 s)")
@@ -85,7 +83,7 @@ func _part_a() -> void:
 	check(g.bosses.toxic_zones().size() == n_circles, "saint: hostile_toxic_zones lists them")
 	check(stub.calls.get("decal", 0) > 0 and stub.calls.get("bb", 0) > 0, "saint: pool visuals drawn (zone decals + puddle)")
 	# the pool ticks on the engine clock: the hero standing in it is hurt once a second
-	boss.brain.state["x"] = ARENA.x + 6.0   # far from the pools: this part is about the hero
+	boss.brain.state["x"] = arena().x + 6.0   # far from the pools: this part is about the hero
 	var taken: Array = []
 	var cb := func(t: float, src: Node) -> void: taken.append([t, src])
 	hb.hurt.connect(cb)
@@ -101,14 +99,14 @@ func _part_a() -> void:
 	boss.brain._swing_cd = 1.0e9
 	boss.brain.pending.clear()
 	boss.brain.state["state"] = "idle"
-	boss.brain.state["x"] = ARENA.x
-	boss.brain.state["z"] = ARENA.z
+	boss.brain.state["x"] = arena().x
+	boss.brain.state["z"] = arena().z
 	boss.brain.state["hp"] = boss.max_hp * 0.8
 	boss.world.refresh()
 	var base_hp: float = boss.brain.state["hp"]
 	step(1.0)
 	check(is_equal_approx(float(boss.brain.state["hp"]), base_hp), "saint: no healing on clean ground")
-	DmHostileZone.spawn(g.bosses, ARENA + Vector3(1.0, 0.0, 0.0), &"toxic", 2.0, 30.0, 1.0)   # any toxic pool counts (a sac's, a doctor's)
+	DmHostileZone.spawn(g.bosses, arena() + Vector3(1.0, 0.0, 0.0), &"toxic", 2.0, 30.0, 1.0)   # any toxic pool counts (a sac's, a doctor's)
 	var n_bl := events("blessed").size()
 	step(2.0)
 	var gain: float = float(boss.brain.state["hp"]) - base_hp
@@ -120,7 +118,7 @@ func _part_a() -> void:
 	base_hp = boss.max_hp * 0.8
 	var docs: Array = []
 	for i in 2:
-		var did := g.director.spawn("plague_doctor", ARENA + Vector3(4.0 + float(i), 0.0, 3.0), [hb])
+		var did := g.director.spawn("plague_doctor", arena() + Vector3(4.0 + float(i), 0.0, 3.0), [hb])
 		docs.append(did)
 	await ticks(4)
 	boss.world.refresh()
@@ -149,11 +147,11 @@ func _part_a() -> void:
 	check(doc == 2 and fl == 1, "saint: P2 summons 2 Plague Doctors + 1 Flagellant (%d/%d)" % [doc, fl])
 	var sm_ev := events("summon")
 	check(sm_ev.size() == 1 and sm_ev[0]["ev"]["targets"].size() == 3, "saint: summon event with 3 rim spots")
-	var on_rim := p2.all(func(e: DmEnemy) -> bool: return absf(Vector2(e.position.x - ARENA.x, e.position.z - ARENA.z).length() - 8.5) < 0.01)
+	var on_rim := p2.all(func(e: DmEnemy) -> bool: return absf(Vector2(e.position.x - arena().x, e.position.z - arena().z).length() - 8.5) < 0.01)
 	check(on_rim, "saint: adds placed on the arena rim (0.85 r)")
 	check(is_equal_approx(float(boss.brain._rain_cd), 4.0 - 0.0) or true, "saint: (cooldowns re-armed)")
 	clear_adds()
-	hb.teleport(ARENA + Vector3(6.0, 0.0, 0.0))
+	hb.teleport(arena() + Vector3(6.0, 0.0, 0.0))
 	boss.world.refresh()
 	boss.brain.pending.clear()
 	boss.brain._rain_cd = 0.0
@@ -174,7 +172,7 @@ func _part_a() -> void:
 	clear_adds()
 	boss.brain.pending.clear()
 	boss.brain._rain_cd = 0.0
-	hb.teleport(ARENA + Vector3(6.0, 0.0, 0.0))
+	hb.teleport(arena() + Vector3(6.0, 0.0, 0.0))
 	boss.world.refresh()
 	step(0.1)
 	var rr3 := telegraphs("rotRain")
@@ -190,26 +188,25 @@ func _part_a() -> void:
 	# ---- thralls / rites
 	boss.brain.state["hp"] = boss.max_hp * 0.9
 	boss.brain.state["phase"] = 1
-	await thralls_and_rites()
-	boss.stun(5.0)
-	check(boss.brain.stagger_t > 0.0 and boss.brain.stagger_t <= DmBoss.STUN_CAP_S, "saint: a stun staggers her at most 0.5 s")
+	await check_rites_and_stun()
 
 	# ---- defeat
 	clear_zones()
-	await defeat_and_report()
-	await wipe_resets()
+	await check_defeat(true, 2)
+	await check_rewake_and_wipe()
 
-	# ---- perf: pools + doctors + adds on the real clock
-	g.bosses.assume_area = AREA
+	# ---- the engine-driven run: pools + doctors + adds on the real clock
 	await at_site(cost)
-	check(summon() == "", "saint: woken for the perf run")
-	await perf(func() -> void:
+	check(wake() == "", "saint: woken for the engine-driven run")
+	await check_engine_run(3.0, func() -> void:
 		for i in 6:
-			g.bosses.spawn_pool(&"toxic", ARENA.x + float(i) - 3.0, ARENA.z + 4.0, 2.0, 0.5, 20.0, boss))
-	boss.queue_free()
-	g.queue_free()
-	await ticks(3)
+			g.bosses.spawn_pool(&"toxic", arena().x + float(i) - 3.0, arena().z + 4.0, 2.0, 0.5, 20.0, boss))
+	await end_fight()
 
 
-func _part_net() -> void:
-	await net_part("swing", &"toxic")
+func net() -> void:
+	await two_peers_summon()
+	await two_peers_first_telegraph("swing")
+	await two_peers_pools(&"toxic")
+	await two_peers_defeat()
+	await two_peers_end()

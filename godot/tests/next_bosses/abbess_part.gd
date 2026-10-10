@@ -1,5 +1,5 @@
-extends "res://tests/next_bosses/suite.gd"
-## The Bone Abbess in the slice: godot --headless --path godot --script res://tests/next_bosses/abbess_run.gd
+extends "res://tests/next_bosses/harness.gd"
+## The Bone Abbess in the slice: part of the boss suite (run.gd drives it)
 ## The boss is stepped by hand (set_physics_process(false) + _physics_process(1/60)) so timing is exact; engine frames are awaited where nodes
 ## (niche rise, corpses, thralls) need them. The Ossuary is not opened by the slice yet: the hero is teleported into the arena, which is
 ## area-agnostic (the brain reads the area from the player dict: `assume_area` / the world's own rects).
@@ -10,10 +10,8 @@ extends "res://tests/next_bosses/suite.gd"
 const SPOTS := [[53.30330085889911, -18.696699141100893], [53.30330085889911, -29.303300858899107], [42.69669914110089, -29.303300858899107], [42.69669914110089, -18.696699141100893]]
 
 
-func _parts() -> void:
+func _init() -> void:
 	boss_id = "abbess"
-	await _part_a()
-	await _part_b()
 
 
 func _niches() -> Array:
@@ -25,7 +23,7 @@ func _kill_niche(i: int) -> void:
 	e.take_damage(1e9, hb)
 
 
-func _part_a() -> void:
+func solo() -> void:
 	await new_solo()
 	g.corpses.visuals = false   # records only: the headless dummy renderer logs an error when a faded corpse body is freed (the field's own view is its suite's)
 	await check_prompt_and_key()
@@ -187,7 +185,7 @@ func _part_a() -> void:
 	for e in _niches():   # (their regeneration would out-heal a thrall's blows)
 		e.take_damage(1e9, hb)
 	step(DT)
-	await check_thralls_and_rites()
+	await check_rites_and_stun()
 	# ---- defeat: reward + report; the niches leave without a death
 	var kills1 := int(member().stats["kills_earned"])
 	await check_defeat(true, 2)
@@ -219,10 +217,7 @@ func _part_a() -> void:
 	await until(func() -> bool: return telegraphs("grasp").size() >= 1 and telegraphs("lance").size() >= 1, 8.0)
 	check(boss.bstate.active and not telegraphs("lance").is_empty(), "A: the engine-driven Abbess fights (grasp + lance on the real clock)")
 	boss.set_physics_process(false)
-	await check_perf("4 niches, %d corpses" % g.corpses.count())
 	await end_fight()
-	g.queue_free()
-	await ticks(3)
 
 
 func _summon_again() -> String:
@@ -234,7 +229,7 @@ func _summon_again() -> String:
 
 # ---- B: two peers --------------------------------------------------------------------------------------------------------------------------
 
-func _part_b() -> void:
+func net() -> void:
 	await two_peers_summon()
 	var hh := hg.local_body()
 	check(await until(func() -> bool: return cg.director.enemies.values().filter(func(e: DmEnemy) -> bool: return e.def_id == "niche").size() == 4, 6.0), "B: the four niches spawn on the client (director spawner)")
@@ -251,5 +246,5 @@ func _part_b() -> void:
 	hboss._physics_process(DT)
 	check(await until(func() -> bool: return cg.bosses.fx.events == hg.bosses.fx.events and cg.bosses.fx.events > ev0, 3.0), "B: the nicheBreak event reaches the client once")
 	check(await until(func() -> bool: return cg.director.enemy_by_id(int(host_niche.get_meta(&"dm_id"))) != null and cg.director.enemy_by_id(int(host_niche.get_meta(&"dm_id"))).sm.id() == DmEnemyState.Id.DEAD, 3.0), "B: the broken niche is dead on the client too")
-	await two_peers_common_tail()
+	await two_peers_defeat()
 	await two_peers_end()
