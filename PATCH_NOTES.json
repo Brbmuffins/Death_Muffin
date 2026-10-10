@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-10-10",
+    "title": "Stairs, Fen and Loot Icons",
+    "items": [
+      "Depths stairs look like stone stairwells with steps again, instead of a flat circle.",
+      "The Mourning Fen hummocks are muted peat mounds with a pale rim, closer to how they used to look.",
+      "Loot on the ground now shows the item's own icon (helm, chest, staff...) instead of a plain square.",
+      "Clicking the minimap shows the amber destination marker again while your hero walks there."
+    ]
+  },
+  {
+    "date": "2026-10-10",
     "title": "Threading Options (experimental)",
     "items": [
       "Settings → Graphics: two new opt-in switches to try on your PC, both off by default and applied after a restart: Physics on a separate thread (experimental) and Separate render thread (only with the Mobile renderer).",
@@ -33,9 +43,7 @@
       "Textures use the GPU's compressed formats: about 75% less video memory with the same look.",
       "Fewer shadows to draw in crowds (the nearest enemies keep theirs), and the HUD and minimap only redraw what changed.",
       "Settings → Window mode: choose Windowed, Windowed borderless or Fullscreen.",
-      "Typing in a text field (like the bug report window) no longer moves your hero, whatever keys you have bound to movement.",
-      "Loot on the ground now shows the item's own icon (helm, chest, staff...) instead of a plain square.",
-      "Clicking the minimap shows the amber destination marker again while your hero walks there."
+      "Typing in a text field (like the bug report window) no longer moves your hero, whatever keys you have bound to movement."
     ]
   },
   {
