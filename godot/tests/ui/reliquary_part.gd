@@ -28,7 +28,8 @@ func _rich(n: int) -> Dictionary:
 	for i in n:
 		stats.append({"text": "+%d%% damage to the long-named foes of the Drowned Congregation and their many allies" % (i + 3), "fx": "", "necro": i % 2 == 0})
 	return {"id": 900 + n, "name": "Warden of the Ascended Gravecaller's Vigil", "rarity": "legendary", "quantity": 1, "sell_value": 400, "type_label": "armor chest",
-		"ilvl": 40, "affix_count": n, "stats": stats, "lore": "A very long line of lore. ".repeat(12), "equippable": true}
+		"ilvl": 40, "affix_count": n, "stats": stats, "lore": "A very long line of lore. ".repeat(12), "equippable": true,
+		"set_line": "Requiem of Wraiths 0 / 5 worn\n4 · Wisps: Consumed corpses heal +2% max health · Consuming a corpse summons a healing wisp for 10 s and more words besides"}
 
 
 func _run() -> void:
@@ -82,6 +83,8 @@ func _run() -> void:
 		for s in r._slots:
 			if s.size.x < 40.0 or s.size.y < 40.0:
 				ok = false
+			if s.get_global_rect().end.x > r.get_global_rect().end.x:
+				ok = false   # a cell pushed out past the window edge (a wide detail line once did this)
 		_check(ok and r._slots.size() == 48, "all 48 bag cells have their full size%s" % tag)
 		# the panel never exceeds the viewport height, and what does not fit is reachable by the body scroll
 		_check(r.size.y <= float(vp.y) + 1.0, "window fits the viewport height%s (%s of %d)" % [tag, str(r.size.y), vp.y])

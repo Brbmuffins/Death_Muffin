@@ -94,7 +94,8 @@ func set_item(d: Dictionary, show_lore: bool = true, show_sell: bool = true) -> 
 			row.add_child(fl)
 		add_child(row)
 	if d.get("set_line", "") != "":
-		add_child(DmUi.label(String(d["set_line"]), "DmStat"))
+		# wraps: a long set-bonus line must never widen the window it sits in
+		add_child(DmUi.label(String(d["set_line"]), "DmStat", true))
 	if tip_mode:
 		_add_compare(d)
 		_add_brew(d)
