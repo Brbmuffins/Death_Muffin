@@ -173,7 +173,8 @@ func _build() -> void:
 	right.add_child(_section_head("Vault", "%d / %d" % [vault.size(), DmVault.VAULT_SLOTS]))
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
-	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tabs.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	tabs.custom_minimum_size.x = COLS * SLOT_PX + (COLS - 1) * 4   # as wide as the vault grid below
 	for t in tab_count():
 		var lbl := "Tab %d  %d/%d" % [t + 1, tab_used.call(t), DmVault.VAULT_TAB_SIZE]
 		(shown["tab_labels"] as Array).append(lbl)
