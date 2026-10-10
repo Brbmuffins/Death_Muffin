@@ -407,6 +407,12 @@ func part_perf() -> void:
 		g.milestones.on_tier(0.0)
 	var tier_us := float(Time.get_ticks_usec() - t0) / n
 	print("perf: chronicle tick %.2f us, codex spawn %.2f us, milestone tier call %.2f us (idle: %s)" % [chron_us, codex_us, tier_us, str(not g.milestones.is_processing())])
-	check(chron_us < 50.0 and codex_us < 50.0 and tier_us < 100.0, "P: the per-frame / per-spawn cost stays tiny")
+	perf_info(chron_us < 50.0 and codex_us < 50.0 and tier_us < 100.0, "P: the per-frame / per-spawn cost stays tiny")
 	check(not g.milestones.is_processing(), "P: the Nightfall easing is idle when there is nothing to ease")
 	await close()
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

@@ -735,19 +735,25 @@ func _cost() -> void:
 		await process_frame
 	var med := fc.median_ms()
 	print("COST 12 soaking enemies idle: median frame %.2f ms; with a Contagion circle + Plague Choir + volley needles: median %.2f ms (p95 %.2f, worst %.2f)" % [idle, med, fc.p95_ms(), fc.worst_ms()])
-	check(med < idle + 6.0 and med < 25.0, "E: a Contagion circle + Plague Choir + volleys over 12 enemies adds %.2f ms a frame (%.2f vs %.2f idle; budget +6 ms, shared VPS)" % [med - idle, med, idle])
+	perf_info(med < idle + 6.0 and med < 25.0, "E: a Contagion circle + Plague Choir + volleys over 12 enemies adds %.2f ms a frame (%.2f vs %.2f idle; budget +6 ms, shared VPS)" % [med - idle, med, idle])
 	# the gear-change path itself (no UI): re-reading the build + legend + hit hook
 	var t := Time.get_ticks_usec()
 	for i in 50:
 		g.progress.refresh_stats()
 	var per := (Time.get_ticks_usec() - t) / 50000.0
 	print("COST progress.refresh_stats (build + caster + legend + legion + HUD) with a legendary set: %.2f ms each" % per)
-	check(per < 15.0, "E: a gear change re-reads the build in %.2f ms (budget 15)" % per)
+	perf_info(per < 15.0, "E: a gear change re-reads the build in %.2f ms (budget 15)" % per)
 	var a0 := Time.get_ticks_usec()
 	for i in 2000:
 		caster._set_mods(caster.mods)
 	var legend_us := (Time.get_ticks_usec() - a0) / 2000.0
 	print("COST legend resolve (_set_mods) alone: %.1f us" % legend_us)
-	check(legend_us < 200.0, "E: resolving the legend is %.1f us, once per gear change, never per tick" % legend_us)
+	perf_info(legend_us < 200.0, "E: resolving the legend is %.1f us, once per gear change, never per tick" % legend_us)
 	await strip()
 	fc.queue_free()
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

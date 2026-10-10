@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { affected, SMOKE, dataPatterns, centralReason } from '../affected-suites.mjs';
 
-const suites = ['data', 'status', 'session_report', 'next', 'next_front', 'enemies', 'loot_view', 'gear', 'hud', 'fx', 'world', 'sim', 'thralls', 'rites', 'ui', 'game'];
+const suites = ['data', 'status', 'backend', 'next', 'next_front', 'enemies', 'loot_view', 'gear', 'hud', 'fx', 'world', 'sim', 'thralls', 'rites', 'ui', 'game'];
 // tests: [suite-file, text]; src: [file, text]; classes: file -> class_name
 function mk({ tests = [], src = [], classes = {} } = {}) {
   const hit = (list, p) => list.filter(([, t]) => p.fixed.some((x) => t.includes(x)) || p.words.some((w) => new RegExp(`\\b${w}\\b`).test(t))).map(([f]) => f);

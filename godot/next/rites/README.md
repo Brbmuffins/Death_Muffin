@@ -41,8 +41,8 @@ slot 6 / R = the discipline's signature at level 10), `dm_rite_gestures.gd` (cas
 - Known deviation: a toxic Corpse Explosion's rot pool also bursts corpses for the Rotweaver (the original sim's did not).
 
 ## Tests
-`tests/rites/run.gd` (needle, miasma, shared plumbing), `control_run.gd`, `corpse_run.gd`, `projectile_run.gd`, `signature_run.gd`; `tests/next_runes/run.gd`;
-`tests/next_combat_odds/run.gd` (weapon line, sound coverage of all 25 rites); `tests/next_clarity/cues_run.gd` (cast cues).
+`tests/rites/run.gd` (one process: `caster_part.gd` needle, miasma, plumbing, then `control_part.gd`, `corpse_part.gd`, `projectile_part.gd`, `signature_part.gd`); `tests/next_runes/run.gd`;
+`tests/next_combat_odds/run.gd` (weapon line, sound coverage of all 25 rites); `tests/next_clarity/run.gd` (cast cues).
 
 ## Known gaps
 - The Soul Harvest empowered cast (x1.5 spear) and the `legend` rally event fx are not ported.

@@ -32,12 +32,11 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
   `try_summon(peer, id, true)` (level +6 +15 %, hp x1.4). The kill report carries `summon`, then the prize is claimed (`/api/boss-key/claim`) and dropped at the corpse.
 - **Audio**: `bossAwaken` / `bossDefeat` start / stop the war-drum bed; `AudioDirector.set_boss_music` follows the local hero (2 Hz check).
 - **Adding a boss**: the brain already exists in `DmBossBrains`; add the id to `LIVE` (+ `ADDS`), make sure `bosses.json` and the area's `summonId` exist, add a
-  `WARM_KINDS` entry in `dm_boss_fx.gd` for any kind whose first draw hitches, and a suite on `tests/next_bosses/suite.gd` (see `abbess_run.gd`).
+  `WARM_KINDS` entry in `dm_boss_fx.gd` for any kind whose first draw hitches, and a part `tests/next_bosses/<boss>_part.gd` on `harness.gd` (see `abbess_part.gd`), added to `PARTS` in `run.gd`.
 
 ## Tests
-`tests/next_bosses/`: `run.gd` (framework + King), `abbess_run.gd`, `congregation_run.gd`, `prelate_run.gd`, `saint_run.gd`, `regent_run.gd`, `mire_run.gd`
-(shared bases `suite.gd`, `late_base.gd`); meta-progression in `tests/next_boss_meta/run.gd`. Screenshots: `shot.gd`, `shot_cathedral.gd --boss=...`
-(`--probe=1` times the first draw of each event kind), `shot_late.gd`. Budget (headless): brain tick 30-70 us, whole frame +0.0-0.2 ms.
+`tests/next_bosses/`: ONE process, `run.gd`, runs the parts `gravedigger_part.gd` (framework + King, owns the one crowd perf probe), `abbess_part.gd`, `congregation_part.gd`, `prelate_part.gd`, `saint_part.gd`, `regent_part.gd`, `mire_part.gd` on one solo game and one host+client pair (shared base `harness.gd`; `BOSS_ONLY=mire,saint` runs a subset); meta-progression in `tests/next_boss_meta/run.gd`. Screenshots: `shot.gd`, `shot_cathedral.gd --boss=...`
+(`--probe=1` times the first draw of each event kind), `shot_late.gd`. Typical cost (headless, printed as INFO by the suite, not asserted): brain tick 30-70 us, whole frame +0.0-0.2 ms.
 
 ## Known gaps
 - Empowered choice is the host's own hero (a client's `request_summon` is the plain RPC); the prize claim window is the backend's (3 h).
