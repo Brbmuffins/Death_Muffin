@@ -38,7 +38,7 @@ Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (
 
 ### Release flow
 
-1. Merge to `main`. For a release worth naming, add a new top entry (`title`, `items`) to `PATCH_NOTES.json`.
+1. Merge to `main`. For a release worth naming, add a new top entry (`title`, `items`) to `PATCH_NOTES.json`. Branches that add lines to the same entry merge cleanly: `.gitattributes` routes `PATCH_NOTES.json` through `tools/git/merge-patch-notes.mjs` (register it once per clone with `tools/git/install-merge-drivers.sh`; the VPS clone has it).
 2. Client: `publish-godot-client.sh <rev>`. Backend: `deploy-release.sh <rev> [NNN-name.sql]`. Online play is opened or closed separately with `set-online.sh`.
 3. Both scripts end with `announce-release.sh <rev>` (also callable by hand; never fails the caller; `NO_ANNOUNCE=1` skips it in the publish script). It:
    - writes the launcher/site notes: the top `PATCH_NOTES.json` entry if that file changed since the last announced release, otherwise the commit subjects;

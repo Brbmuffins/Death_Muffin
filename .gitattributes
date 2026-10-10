@@ -1,2 +1,5 @@
 # Shell scripts run on the Linux VPS: always LF, even in Windows checkouts.
 *.sh text eol=lf
+
+# PATCH_NOTES.json merges entry by entry (tools/git/merge-patch-notes.mjs; register with tools/git/install-merge-drivers.sh)
+PATCH_NOTES.json merge=patchnotes
