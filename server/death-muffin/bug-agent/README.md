@@ -6,7 +6,7 @@ context such as area/level/discipline/release and the last five uncaught client 
 
 `death-muffin-bug-agent.timer` runs `run-bug-agent.sh` every 2 minutes (owner 2026-10-10: reports are handled in near real time). A tick
 with no `new` report exits at once and writes nothing; a lock keeps runs from overlapping (a report filed mid-run waits for the next tick).
-A report that a run could not settle stays `new` and is retried; after 3 attempts it is set aside (`attempts.json` in the state dir) and
+A report that a run could not settle stays `new` and is retried; after 3 attempts it is set aside (`runs/attempts.json` in the state dir) and
 the owner is told once in #death-muffin.
 
 1. `reports-cli.cjs list` reads up to 25 `new` reports (minus set-aside ones). None → stop (no agent run).
