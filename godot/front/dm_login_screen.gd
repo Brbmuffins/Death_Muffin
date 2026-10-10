@@ -1,6 +1,6 @@
 class_name DmLoginScreen
 extends Control
-## Port of archive/legacy-web:src/scenes/LoginScene.ts: story column + login / register card over the pyre backdrop.
+## Port of archive/legacy-web:src/scenes/LoginScene.ts: story column + login / register card over the still pyre backdrop (DmFrontUi.backdrop).
 ## `standalone` = the web's VITE_OFFLINE_BUILD (local player name only, no email / password, "Dev offline mode" wording);
 ## `dev_offline` = the web's ?offline dev mode (normal fields + "accounts live only in this browser" note).
 ## Server error strings are shown verbatim, only the first letter capitalised.
@@ -17,6 +17,7 @@ var email_edit: LineEdit
 var pass_edit: LineEdit
 var submit_btn: Button
 var error_label: Label
+var _err_host: MarginContainer
 var toggle_btn: Button
 var card: PanelContainer
 var kicker_label: Label
@@ -44,8 +45,8 @@ func _ready() -> void:
 	bg.color = DmUi.VOID_950
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	add_child(DmNecroBackdrop.make_layer())
-	add_child(DmFrontUi.h_gradient(Color(0.027, 0.024, 0.039, 0.7), Color(0.027, 0.024, 0.039, 0.22), 0.56, Color(0.027, 0.024, 0.039, 0.55)))
+	add_child(DmFrontUi.backdrop())   # a still image: the old mouse-following 3D backdrop was too busy (owner, 2026-10-10)
+	add_child(DmFrontUi.h_gradient(Color(0.027, 0.024, 0.039, 0.8), Color(0.027, 0.024, 0.039, 0.3), 0.56, Color(0.027, 0.024, 0.039, 0.6)))
 	var scroll := ScrollContainer.new()
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -78,10 +79,11 @@ func _ready() -> void:
 func _layout() -> void:
 	var w := size.x if size.x > 0.0 else get_viewport_rect().size.x
 	var shell_w := minf(1120.0, w - 56.0)
-	var h1_size := int(clampf(w * 0.05, 42.0, 70.0))
+	var h1_size := int(clampf(w * 0.04, 40.0, 58.0))
 	if w <= 560.0:
 		h1_size = int(clampf(w * 0.09, 36.0, 45.0))
 	_h1.add_theme_font_size_override("normal_font_size", h1_size)
+	_h1.add_theme_constant_override("line_separation", -int(h1_size * 0.2))   # the display face's own line height is loose
 	_h1.add_theme_font_size_override("italics_font_size", h1_size)
 	_chapters.visible = w > 560.0
 	var stack := w <= 820.0
@@ -106,11 +108,14 @@ func _build_story() -> VBoxContainer:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# logo: sigil circle + two-line wordmark
+	# logo: sigil circle + one-line wordmark
 	var logo := HBoxContainer.new()
 	logo.add_theme_constant_override("separation", 12)
 	logo.add_child(_Sigil.new())
-	logo.add_child(DmFrontUi.lbl("DEATH\nMUFFIN", "display_bold", 34, DmUi.BONE_100, 2.7, false, true))
+	logo.alignment = BoxContainer.ALIGNMENT_BEGIN
+	var mark := DmFrontUi.lbl("DEATH MUFFIN", "display_bold", 30, DmUi.BONE_100, 2.7, false, true)
+	mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	logo.add_child(mark)
 	v.add_child(logo)
 	v.add_child(DmUi.spacer(14))
 	var kick := RichTextLabel.new()
@@ -121,7 +126,7 @@ func _build_story() -> VBoxContainer:
 	kick.add_theme_font_override("normal_font", DmFrontUi.fv("numeric", 2))
 	kick.add_theme_font_size_override("normal_font_size", 12)
 	kick.add_theme_color_override("default_color", DmFrontUi.ORANGE)
-	kick.text = "THE OSSUARY COVENANT [color=#c6a4ff]  ✦  [/color] THE DIOCESE IS BURNING"
+	kick.text = "NECROMANCER ACTION RPG [color=#c6a4ff]  ✦  [/color] CO-OP FOR UP TO 4"
 	v.add_child(kick)
 	v.add_child(DmUi.spacer(12))
 	_h1 = RichTextLabel.new()
@@ -132,10 +137,10 @@ func _build_story() -> VBoxContainer:
 	_h1.add_theme_font_override("normal_font", DmFrontUi.fv("display", -1.6))
 	_h1.add_theme_font_override("italics_font", DmFrontUi.fv("display_medium", -1.6))
 	_h1.add_theme_color_override("default_color", DmUi.BONE_100)
-	_h1.text = "The dead don't stay buried.\n[i][color=#f1b481]Neither does the fire.[/color][/i]"
+	_h1.text = "The dead don't stay buried.\n[i][color=#f1b481]They answer to you now.[/color][/i]"
 	v.add_child(_h1)
 	v.add_child(DmUi.spacer(14))
-	var intro := DmFrontUi.lbl("Raise the fallen, face gargoyles and cinderhounds, and carry your legion into the Cinder Pyre.", "body", 20, DmUi.BONE_100, 0.0, true, true)
+	var intro := DmFrontUi.lbl("Pick one of four necromancer disciplines, raise everything you kill, and lead your legion from Sexton's Acre down into the Catacomb Depths.", "body", 20, DmUi.BONE_100, 0.0, true, true)
 	intro.custom_minimum_size.x = 300
 	v.add_child(intro)
 	_chapters = VBoxContainer.new()
@@ -145,7 +150,7 @@ func _build_story() -> VBoxContainer:
 	wrap.add_theme_constant_override("separation", 0)
 	wrap.add_child(DmUi.spacer(30))
 	wrap.add_child(top)
-	for row in [["01 / THE GRAVES", "Build your legion from the dead."], ["02 / THE NAVE", "Face deacons, gargoyles, and worse."], ["03 / THE PYRE", "Survive cinderhounds and burning ground."]]:
+	for row in [["01 / THE LEGION", "Every corpse can rise again as a thrall."], ["02 / THE DIOCESE", "Graves, catacombs, a drowned nave and the bosses that hold them."], ["03 / THE HOARD", "Loot, gear, runes and crafting worth the descent."], ["04 / THE COVENANT", "Bring up to three friends in co-op."]]:
 		var m := MarginContainer.new()
 		m.add_theme_constant_override("margin_top", 9)
 		m.add_theme_constant_override("margin_bottom", 9)
@@ -167,16 +172,21 @@ func _build_card() -> PanelContainer:
 	var p := PanelContainer.new()
 	p.theme_type_variation = "DmPlate"
 	# .cw-login background: --cw-engrave over linear-gradient(150deg, rgba(29,20,30,.97), rgba(10,8,14,.98)): painted by DmPlateFill
-	var sb := DmUi.box(Color(0, 0, 0, 0), Color(0.941, 0.914, 0.863, 0.35), 1, 3, Vector2(30, 28))
-	sb.content_margin_bottom = 25
+	var sb := DmUi.box(Color(0, 0, 0, 0), Color(0.941, 0.914, 0.863, 0.35), 1, 3, Vector2(0, 0))
 	sb.shadow_color = Color(0, 0, 0, 0.8)
 	sb.shadow_size = 40
 	sb.shadow_offset = Vector2(0, 25)
 	p.add_theme_stylebox_override("panel", sb)
 	p.add_child(DmPlateFill.new())
+	var pad := MarginContainer.new()
+	for side in ["left", "right"]:
+		pad.add_theme_constant_override("margin_" + side, 32)
+	pad.add_theme_constant_override("margin_top", 30)
+	pad.add_theme_constant_override("margin_bottom", 26)
+	p.add_child(pad)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
-	p.add_child(v)
+	pad.add_child(v)
 	kicker_label = DmFrontUi.lbl("", "numeric", 12, DmFrontUi.ORANGE, 2.2)
 	v.add_child(kicker_label)
 	v.add_child(DmUi.spacer(7))
@@ -204,11 +214,11 @@ func _build_card() -> PanelContainer:
 	v.add_child(submit_btn)
 	error_label = DmFrontUi.lbl("", "body", 14, DmUi.DANGER, 0.0, true)
 	error_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	error_label.custom_minimum_size.y = 20
-	var em := MarginContainer.new()
-	em.add_theme_constant_override("margin_top", 8)
-	em.add_child(error_label)
-	v.add_child(em)
+	_err_host = MarginContainer.new()
+	_err_host.add_theme_constant_override("margin_top", 10)
+	_err_host.add_child(error_label)
+	_err_host.visible = false
+	v.add_child(_err_host)
 	toggle_btn = Button.new()
 	toggle_btn.theme_type_variation = "DmLink"
 	toggle_btn.add_theme_font_size_override("font_size", 14)
@@ -216,7 +226,7 @@ func _build_card() -> PanelContainer:
 	toggle_btn.add_theme_color_override("font_hover_color", DmUi.BONE_100)
 	toggle_btn.pressed.connect(toggle_mode)
 	var tm := MarginContainer.new()
-	tm.add_theme_constant_override("margin_top", 14)
+	tm.add_theme_constant_override("margin_top", 16)
 	tm.add_child(toggle_btn)
 	v.add_child(tm)
 	var note := DmFrontUi.lbl("", "body", 12, DmUi.SPELL_300, 0.0, true)
@@ -279,7 +289,7 @@ func render() -> void:
 		email_edit = _field("Email", false, "Email")
 	if not standalone:
 		pass_edit = _field("Password", true, "Pass")
-	error_label.text = ""
+	_set_error("")
 	var note: Label = card.find_child("Note", true, false)
 	var nh: Control = card.find_child("NoteHost", true, false)
 	if standalone:
@@ -304,7 +314,7 @@ func toggle_mode() -> void:
 
 
 func fail(message: String) -> void:
-	error_label.text = DmFrontUi.capitalize_first(message)
+	_set_error(DmFrontUi.capitalize_first(message))
 	var x0 := card.position.x
 	var tw := create_tween()
 	for dx in [-8.0, 7.0, -4.0, 2.0, 0.0]:
@@ -313,7 +323,15 @@ func fail(message: String) -> void:
 
 ## A plain message under the form (e.g. "Online opens soon"), no shake.
 func show_notice(message: String) -> void:
-	error_label.text = message
+	_set_error(message)
+
+
+## The error line only takes room while it has something to say (an always-reserved line left a gap under the button).
+func _set_error(t: String) -> void:
+	error_label.text = t
+	if _err_host != null:
+		_err_host.visible = t != ""
+	_sync_card_height.call_deferred()
 
 
 func _busy_text() -> String:
@@ -327,7 +345,7 @@ func submit() -> bool:
 	if _busy:
 		return false
 	_busy = true
-	error_label.text = ""
+	_set_error("")
 	submit_btn.disabled = true
 	var idle_text := submit_btn.text
 	submit_btn.text = DmUi.upper(_busy_text())

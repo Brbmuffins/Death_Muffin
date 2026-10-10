@@ -152,6 +152,14 @@
       "allow": [
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "necro-backdrop",
+      "pattern": "DmNecroBackdrop|dm_necro_backdrop|backdrop_shot",
+      "reason": "animated 3D login backdrop removed 2026-10-10 (owner: too busy, mouse-follow camera); login/char select use the still DmFrontUi.backdrop()",
+      "allow": [
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

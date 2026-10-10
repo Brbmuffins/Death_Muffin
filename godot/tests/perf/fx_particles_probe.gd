@@ -89,19 +89,4 @@ func _run() -> void:
 		if f >= 120:
 			fu.append((Time.get_ticks_usec() - t1) / 1000.0)
 	_stats("brazier fire _update (cap 160)", fu, "live=%d" % fire.active)
-	var bd := DmNecroBackdrop.make_layer()
-	root.add_child(bd)
-	await process_frame
-	var b: DmNecroBackdrop = bd.get_meta("backdrop")
-	var bu: Array = []
-	for f in 900:
-		for k in 2:
-			b.embers.emit(randf() * 10.0, -2.5, -4.0, Color(1, 0.6, 0.3), 0.5, 0.15, 1.0, 5.0, 0.16, 0.0, 0.2)
-			b.mist.emit(randf() * 10.0, -2.5, -8.0, Color(0.2, 0.2, 0.3), 2.0, 0.4, 0.05, 9.0, 9.0, 0.0, 0.1, -0.6)
-		var t1 := Time.get_ticks_usec()
-		b.mist._update(DT)
-		b.embers._update(DT)
-		if f >= 600:
-			bu.append((Time.get_ticks_usec() - t1) / 1000.0)
-	_stats("backdrop mist+embers _update (2x256)", bu, "live=%d+%d" % [b.mist.active, b.embers.active])
 	quit(0)

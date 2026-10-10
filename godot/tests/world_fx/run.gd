@@ -42,7 +42,6 @@ func _run() -> void:
 	_test_water(d)
 	_test_bloom(d)
 	_test_brazier_fire()
-	await _test_backdrop()
 	await _test_dressing(d)
 	_finish()
 
@@ -312,38 +311,6 @@ func _test_brazier_fire() -> void:
 	var i0 := (f._cursor + f.capacity - 1) % f.capacity
 	_check(f._life[i0] >= 0.7 and f._life[i0] <= 1.3 and f._base_size[i0] >= 0.7 and f._base_size[i0] <= 1.3, "emit randomises life and size x0.7..1.3")
 	f.free()
-
-# ---------------------------------------------------------------- login backdrop
-func _test_backdrop() -> void:
-	var layer := DmNecroBackdrop.make_layer()
-	root.add_child(layer)
-	await _frames(2)
-	var b: DmNecroBackdrop = layer.get_meta("backdrop")
-	_check(layer.stretch and layer.get_child(0) is SubViewport, "backdrop layer is a stretching SubViewportContainer")
-	_check(b.camera != null and _near(b.camera.fov, 40.0) and _near(b.matte.position.z, -48.0) and _near(b.sigil.position.y, -2.4), "camera fov 40, matte at z -48, sigil at y -2.4")
-	_check(_near((b.matte.mesh as QuadMesh).size.x, 96.0) and _near((b.matte.mesh as QuadMesh).size.y, 54.0), "matte is 96 x 54")
-	_check(b.env.glow_enabled and _near(b.env.glow_intensity, 0.75) and _near(b.env.glow_hdr_threshold, 0.78), "bloom 0.75 / threshold 0.78")
-	b.rng.seed = 11
-	b.mist.rng.seed = 5
-	b.embers.rng.seed = 6
-	var rot0 := b.sigil.rotation.y
-	for i in 240:
-		b.tick(1.0 / 60.0)
-	_check(b.mist.active > 5 and b.mist.active < 120, "grave-mist puffs drift (%d alive)" % b.mist.active)
-	_check(b.embers.active > 20 and b.embers.active < 200, "embers rise (%d alive, 14/s for ~5 s)" % b.embers.active)
-	_check(_near(b.sigil.rotation.y - rot0, 4.0 * 0.05, 1e-3), "sigil turns 0.05 rad/s")
-	var a := (b.sigil.material_override as StandardMaterial3D).albedo_color.a
-	_check(a >= 0.2 and a <= 0.3, "sigil breathes 0.25 +- 0.05")
-	b.mouse = Vector2(1, 0)
-	for i in 200:
-		b.tick(1.0 / 60.0)
-	_check(b.camera.position.x > 1.0 and b.camera.position.x < 2.0, "camera eases toward the mouse (x -> 1.4 + sway)")
-	b.reduced_motion = true
-	var before := b.mist.active + b.embers.active
-	for i in 900:
-		b.tick(1.0 / 60.0)
-	_check(b.mist.active + b.embers.active == 0 and before > 0, "reduced motion: no new mist/embers, the old ones die")
-	layer.queue_free()
 
 # ---------------------------------------------------------------- material conversion
 # ---------------------------------------------------------------- dressing on a real builder

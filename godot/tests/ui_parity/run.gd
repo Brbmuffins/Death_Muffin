@@ -312,17 +312,17 @@ func _test_art(ui: DmGameUi) -> void:
 
 
 func _test_backdrop() -> void:
-	# --- 7. login backdrop: the world_fx DmNecroBackdrop layer ---
+	# --- 7. login backdrop: a still image (DmFrontUi.backdrop), no 3D layer ---
 	# plate fill: CSS gradient geometry
 	var r := Rect2(0, 0, 400, 500)
 	_check(absf(DmPlateFill.css_t(Vector2(0, 0), r, 150.0)) < 1e-4 and absf(DmPlateFill.css_t(Vector2(400, 500), r, 150.0) - 1.0) < 1e-4, "css gradient: 150deg runs corner to corner")
 	_check(absf(DmPlateFill.css_t(Vector2(200, 250), r, 150.0) - 0.5) < 1e-4, "css gradient: the centre is the midpoint")
-	# the login card is painted by it, and the screen uses the 3D backdrop
+	# the login card is painted by it, and the screen uses the still backdrop
 	var api := DmApi.new(Callable())
 	var login := DmLoginScreen.new(api)
 	root.add_child(login)
 	await _frames(3)
-	_check(login.find_child("NecroBackdropLayer", true, false) != null, "login screen uses DmNecroBackdrop")
+	_check(login.find_children("*", "SubViewportContainer", true, false).is_empty() and login.find_children("*", "TextureRect", true, false).any(func(t: Node) -> bool: return (t as TextureRect).texture != null and (t as TextureRect).texture.resource_path.ends_with("login-backdrop-pyre.webp")), "login screen: still pyre backdrop, no 3D layer")
 	_check(login.card.find_children("*", "DmPlateFill", true, false).size() == 1, "login card has the gradient + engrave fill")
 	_check(_has_text(login, "✦"), "login kicker carries the ✦ glyph")
 	login.queue_free()

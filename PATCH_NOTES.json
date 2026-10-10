@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-10-10",
+    "title": "A Calmer Login Screen",
+    "items": [
+      "The login and discipline screens use a still background: no more scenery swinging around with your mouse.",
+      "Login screen tidied up: the title fits on one line, the headline is tighter, the sign-in card no longer has an empty gap under the button, and the text describes the game as it is today."
+    ]
+  },
+  {
+    "date": "2026-10-10",
     "title": "Co-op: Thralls Leave With Their Necromancer",
     "items": [
       "When a co-op partner leaves, their thralls now leave with them instead of staying behind in the host's world, fighting for nobody."
