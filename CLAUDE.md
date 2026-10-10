@@ -60,5 +60,5 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
   change, then add the name to `tools/hygiene/retired.json` so it cannot come back. `npm run hygiene` (also in CI) must pass.
 - **Never patch installed copies.** The agents, backend and ops jobs run from installed copies under `/home/ubuntu/death-muffin/`.
   Change the repo, then reinstall (`install-runner.sh`, `bug-agent/install.sh`, `ops/install.sh`, `deploy-release.sh`).
-- The weekly drift report (`server/death-muffin/ops/drift-report.sh`, Mondays) posts in #death-muffin when live and `main` disagree
-  or leftovers pile up. Fix the cause, don't silence the check.
+- The weekly drift report (`server/death-muffin/ops/drift-report.sh`, Mondays) lists in the journal where live and `main` disagree or
+  leftovers pile up (run it by hand any time). Fix the cause, don't silence the check.

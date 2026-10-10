@@ -11,8 +11,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// Fast, broad suites run on every code change (about 100 s together on the shared VPS: data 7 s, status 7 s, session_report 6 s, next 32 s, next_front 37 s).
-export const SMOKE = ['data', 'status', 'backend', 'next', 'next_front'];
+// Fast, broad suites run on every code change (in parallel, ~18 s: data 2 s, status 2 s, backend 12 s, next 18 s; times in tools/godot/suite-times.tsv).
+export const SMOKE = ['data', 'status', 'backend', 'next'];   // next_front (34 s, the login/front flow) runs when front or login code changes; not in every check (owner, 2026-10-10)
 export const MAX_GD_FILES = 40;
 export const MAX_SHARE = 0.6;
 

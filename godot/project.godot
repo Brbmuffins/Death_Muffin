@@ -7,7 +7,7 @@ run/main_scene="res://main/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
-Qa="*res://main/qa_driver.gd"
+Qa="*res://main/qa_boot.gd"
 AudioDirector="*res://audio/audio_director.gd"
 Vfx="*res://fx/dm_fx.gd"
 

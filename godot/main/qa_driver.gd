@@ -1,5 +1,5 @@
 extends Node
-## Autoload QA driver. Inactive unless the game is started with user args:  -- --qa [--shots=<dir>] [--seconds=N] [--shot-plan=<plan.json>]
+## QA driver, loaded by the `Qa` autoload stub (main/qa_boot.gd) only for `-- --qa` / `-- --shot-plan`. Inactive unless the game is started with user args:  -- --qa [--shots=<dir>] [--seconds=N] [--shot-plan=<plan.json>]
 ## Launch it with the dev-offline quick start (`--dev-offline --class=2`, or its alias `--world-demo`): the rebuild (DmNextGame) as the test account `tester`.
 ## Default: scripted fight in the Hollow Graves, a wave of the dead around the hero, the real rites cast at the nearest enemy, Exhume for thralls; one
 ## screenshot a second (qa_NN.png); quits after N seconds. With --shot-plan: the UI shot plan (main/qa_ui_shots.gd) instead of the fight.

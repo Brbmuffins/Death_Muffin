@@ -16,7 +16,7 @@ Decisions: [DECISIONS.md](../DECISIONS.md). Gaps: [KNOWN-GAPS.md](../KNOWN-GAPS.
 | `enemies/`, `sim/`, `game/`, `world/`, `world_fx/`, `fx/`, `audio/` | Enemy scenes, shared sim data and boss brains, shared game classes (creatures, avatars, inventory, settings), world builder, effects, audio |
 | `ui/`, `game_ui/`, `loot_view/` | Theme, panels, HUD, loot display |
 | `assets/` | Imported models, audio and art (synced from `public/`, see [ASSET_PIPELINE.md](../ASSET_PIPELINE.md)) |
-| `tests/<name>/` | Headless suites (`run.gd`, `*_run.gd`), picked up by `tools/godot/run-all-tests.sh` (parallel: each suite gets its own `user://` dirs and random ports from `tests/common/dm_test_ports.gd`; perf and process-spawning suites run alone first, see `SERIAL_GROUP` in the script); `tests/common` holds helpers, `tests/playtest` the bot |
+| `tests/<name>/` | Headless suites (`run.gd`, `*_run.gd`), picked up by `tools/godot/run-all-tests.sh` (parallel: each suite gets its own `user://` dirs and random ports from `tests/common/dm_test_ports.gd`; suites run with `--fixed-fps 60` except the real-time groups `REALTIME_GROUP` / `PACED_GROUP` in the script; slowest first by `tools/godot/suite-times.tsv`); `tests/common` holds helpers, `tests/playtest` the bot |
 
 ## Conventions
 
