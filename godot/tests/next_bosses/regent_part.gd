@@ -1,49 +1,47 @@
-extends "res://tests/next_bosses/late_base.gd"
-## Suite: the Cinder Regent (godot/next/bosses). godot --headless --path godot --script res://tests/next_bosses/regent_run.gd
+extends "res://tests/next_bosses/harness.gd"
+## Part of the boss suite (run.gd drives it): the Cinder Regent (godot/next/bosses).
 ## Coals + Cinder Cleave firebreak + Conflagration (ash circles) -> ember DmHostileZone pools (host damaging, visual-only elsewhere), phases 60/30 % with adds,
-## thralls + rites, defeat -> rewards + report, net state, perf.
+## thralls + rites, defeat -> rewards + report, net state.
 
 var _R: Dictionary
 
 
-func _run() -> void:
-	BOSS_ID = "regent"
-	await boot()
-	_R = DmContent.get_export("bosses", "REGENT")
-	await _part_a()
-	await net_part("cleave", &"ember")
-	finish()
+func _init() -> void:
+	boss_id = "regent"
+	god_mode = true   # the hero is unkillable by huge hp (the progression resets the stats now and then)
 
 
 func _embers() -> Array:
 	return zones(&"ember")
 
 
-func _part_a() -> void:
-	await solo()
+func solo() -> void:
+	_R = DmContent.get_export("bosses", "REGENT")
+	await new_solo()
 	var m := member()
-	check(g.bosses.site_pos("regent").is_equal_approx(SITE) and SITE != Vector3.INF, "regent: the summon site is the pyre's ember_altar %s" % str(SITE))
+	check(g.bosses.site_pos("regent").is_equal_approx(site()) and site() != Vector3.INF, "regent: the summon site is the pyre's ember_altar %s" % str(site()))
 	hb.teleport(Vector3(0, 0, 20))
 	check(g.bosses.try_summon(g.session.get_my_id(), "regent") == "far", "regent: refused away from the altar (far)")
 	await at_site(0)
+	set_shards(0)   # (the progression may restore the backend's saved count when the hero changes area)
 	check(g.area_of(g.session.get_my_id()) == "pyre", "regent: hero is in the Cinder Pyre")
 	check(g.bosses.try_summon(g.session.get_my_id(), "regent") == "shards" and g.bosses.bosses.is_empty(), "regent: no shards -> refused")
 	var cost := int(DmContent.boss("regent")["shards"])
 	m.prog.add_shards(cost - 1)
 	check(g.bosses.try_summon(g.session.get_my_id(), "regent") == "shards" and int(m.prog.local["shards"]) == cost - 1, "regent: %d of %d shards is not enough" % [cost - 1, cost])
 	m.prog.add_shards(cost + 1)
-	check(summon() == "" and int(m.prog.local["shards"]) == cost, "regent: %d shards wake it, its own cost is spent" % cost)
+	check(wake() == "" and int(m.prog.local["shards"]) == cost, "regent: %d shards wake it, its own cost is spent" % cost)
 	check(g.bosses.try_summon(g.session.get_my_id(), "regent") == "busy", "regent: busy while awake")
 	check(boss.view != null and boss.view.slug == "boss_cinder_regent", "regent: the current client's DmBossView (cinder regent model)")
 	var s: Dictionary = boss.brain.state
 	var diff: Dictionary = DmContent.get_export("difficulty", "DIFFICULTIES")["medium"]
 	var want_hp: float = float(DmContent.boss("regent")["baseHp"]) * (1.0 + 0.22 * (float(s["level"]) - 1.0)) * float(diff["enemyHpMult"])
 	check(is_equal_approx(boss.max_hp, want_hp) and int(s["level"]) == 30, "regent: awaken hp = baseHp x level 30 x difficulty (%.0f)" % boss.max_hp)
-	check(boss.global_position.distance_to(ARENA) < 0.01 and boss.phase == 1 and boss.is_hittable(), "regent: awake at the arena centre (90, -117), phase 1")
+	check(boss.global_position.distance_to(arena()) < 0.01 and boss.phase == 1 and boss.is_hittable(), "regent: awake at the arena centre (90, -117), phase 1")
 	check(events("awaken").size() == 1 and "bossAwaken" in astub.sfx, "regent: awaken event + bossAwaken")
 
 	# ---- Cinder Cleave at 2.0 s
-	hb.teleport(ARENA + Vector3(3.0, 0.0, 0.0))
+	hb.teleport(arena() + Vector3(3.0, 0.0, 0.0))
 	boss.world.refresh()
 	step(1.9)
 	check(events("cleave").is_empty() and events("coals").is_empty(), "regent: nothing before the opening cooldowns")
@@ -95,7 +93,7 @@ func _part_a() -> void:
 	var cp := _embers()
 	check(cp.size() == nco and (cp[0] as DmHostileZone).kind == &"ember" and is_equal_approx((cp[0] as DmHostileZone).radius, 1.8) and is_equal_approx((cp[0] as DmHostileZone).lifetime, 4.0) and absf((cp[0] as DmHostileZone).dps - 22.0 * dmg_scale() * 0.3) < 1e-6, "regent: one ember pool per circle, r 1.8, 4 s, dps 22 x scale x 0.3")
 	# an ember pool burns on the engine clock: hero + thrall in it are hurt once a second
-	boss.brain.state["x"] = ARENA.x - 6.0
+	boss.brain.state["x"] = arena().x - 6.0
 	var taken: Array = []
 	var cb := func(t: float, src: Node) -> void: taken.append([t, src])
 	hb.hurt.connect(cb)
@@ -107,8 +105,8 @@ func _part_a() -> void:
 	var rt: Dictionary = th.raise_bonded({"kind": "warrior", "cap": 6.0, "hp": 4000.0, "damage": 5.0, "attackSpeedMult": 1.0})
 	var tz: DmThrall = rt["thralls"][0]
 	clear_zones()
-	DmHostileZone.spawn(g.bosses, Vector3(ARENA.x + 7.0, 0.0, ARENA.z + 7.0), &"ember", 2.0, 5.0, 10.0, boss)
-	tz.set_deferred("global_position", Vector3(ARENA.x + 7.0, 0.0, ARENA.z + 7.0))
+	DmHostileZone.spawn(g.bosses, Vector3(arena().x + 7.0, 0.0, arena().z + 7.0), &"ember", 2.0, 5.0, 10.0, boss)
+	tz.set_deferred("global_position", Vector3(arena().x + 7.0, 0.0, arena().z + 7.0))
 	await ticks(2)
 	var tp := tz.hp
 	await ticks(70)
@@ -118,15 +116,15 @@ func _part_a() -> void:
 	hb.heal(1e6)
 
 	# ---- Conflagration: the telegraph carries the ash circles; stand off them = 46 x scale, on one = safe
-	boss.brain.state["x"] = ARENA.x
-	boss.brain.state["z"] = ARENA.z
+	boss.brain.state["x"] = arena().x
+	boss.brain.state["z"] = arena().z
 	boss.brain.pending.clear()
 	boss.brain.state["state"] = "idle"
 	boss.brain._coals_cd = 1.0e9
 	boss.brain._cleave_cd = 1.0e9
 	boss.brain._confl_cd = 0.0
 	g.bosses.rng.seed = 5   # the ash spots are random with a 80-try spacing rule: seeded so 4 / 3 circles are exact, not "usually"
-	hb.teleport(ARENA + Vector3(0.0, 0.0, 0.0))
+	hb.teleport(arena() + Vector3(0.0, 0.0, 0.0))
 	boss.world.refresh()
 	step(0.05)
 	var cf := telegraphs("conflagration")
@@ -137,7 +135,7 @@ func _part_a() -> void:
 	var spaced := true
 	var inside := true
 	for i in ash.size():
-		inside = inside and Vector2(float(ash[i][0]) - ARENA.x, float(ash[i][1]) - ARENA.z).length() <= 11.0 - 2.7 - 0.6 + 1e-6
+		inside = inside and Vector2(float(ash[i][0]) - arena().x, float(ash[i][1]) - arena().z).length() <= 11.0 - 2.7 - 0.6 + 1e-6
 		for j in range(i + 1, ash.size()):
 			spaced = spaced and Vector2(float(ash[i][0]) - float(ash[j][0]), float(ash[i][1]) - float(ash[j][1])).length() > 2.7 * 2.0 + 1.0
 	check(spaced and inside, "regent: ash circles are inside the arena and never touch each other")
@@ -147,7 +145,7 @@ func _part_a() -> void:
 	for k in 48:
 		var a := float(k) * 0.37
 		var r := 9.5 - float(k % 5) * 1.5
-		var cand := ARENA + Vector3(sin(a) * r, 0.0, cos(a) * r)
+		var cand := arena() + Vector3(sin(a) * r, 0.0, cos(a) * r)
 		if ash.all(func(t: Array) -> bool: return Vector2(cand.x - float(t[0]), cand.z - float(t[1])).length() > 2.7 + 0.5):
 			off = cand
 			break
@@ -188,7 +186,7 @@ func _part_a() -> void:
 	boss.brain.state["state"] = "idle"
 	var phases: Array = []
 	boss.phase_changed.connect(func(p: int) -> void: phases.append(p))
-	hb.teleport(ARENA + Vector3(3.0, 0.0, 0.0))
+	hb.teleport(arena() + Vector3(3.0, 0.0, 0.0))
 	boss.world.refresh()
 	boss.take_damage(boss.hp - boss.max_hp * 0.59, hb)
 	step(0.1)
@@ -199,7 +197,7 @@ func _part_a() -> void:
 	var pri := p2.filter(func(e: DmEnemy) -> bool: return e.def_id == "pyre_priest").size()
 	check(husk == 3 and pri == 2, "regent: P2 adds 3 Cinder Husks + 2 Pyre Priests (%d/%d)" % [husk, pri])
 	check(events("summon").size() == 1 and events("summon")[0]["ev"]["targets"].size() == 5, "regent: summon event with 5 rim spots")
-	check(p2.all(func(e: DmEnemy) -> bool: return absf(Vector2(e.position.x - ARENA.x, e.position.z - ARENA.z).length() - 11.0 * 0.85) < 0.01), "regent: adds on the arena rim")
+	check(p2.all(func(e: DmEnemy) -> bool: return absf(Vector2(e.position.x - arena().x, e.position.z - arena().z).length() - 11.0 * 0.85) < 0.01), "regent: adds on the arena rim")
 	clear_adds()
 	boss.brain.pending.clear()
 	boss.brain._confl_cd = 0.0
@@ -251,22 +249,27 @@ func _part_a() -> void:
 	boss.brain._confl_cd = 1.0e9
 	boss.brain._coals_cd = 1.0e9
 	boss.brain._cleave_cd = 1.0e9
-	await thralls_and_rites()
-	boss.stun(5.0)
-	check(boss.brain.stagger_t > 0.0 and boss.brain.stagger_t <= DmBoss.STUN_CAP_S, "regent: a stun staggers it at most 0.5 s")
+	await check_thralls()
+	await check_rites_and_stun()
 
 	# ---- defeat, wipe
 	clear_zones()
-	await defeat_and_report()
-	await wipe_resets()
+	await check_defeat(true, 2)
+	await check_rewake_and_wipe()
 
-	# ---- perf
-	g.bosses.assume_area = AREA
+	# ---- the engine-driven run
 	await at_site(cost)
-	check(summon() == "", "regent: woken for the perf run")
-	await perf(func() -> void:
+	check(wake() == "", "regent: woken for the engine-driven run")
+	await check_engine_run(3.0, func() -> void:
 		for i in 8:
-			g.bosses.spawn_pool(&"ember", ARENA.x + float(i) - 4.0, ARENA.z + 5.0, 1.8, 0.4, 20.0, boss))
-	boss.queue_free()
-	g.queue_free()
-	await ticks(3)
+			g.bosses.spawn_pool(&"ember", arena().x + float(i) - 4.0, arena().z + 5.0, 1.8, 0.4, 20.0, boss))
+	await end_fight()
+
+
+func net() -> void:
+	await two_peers_summon()
+	await two_peers_first_telegraph("cleave")
+	await two_peers_pools(&"ember")
+	await two_peers_replication()
+	await two_peers_defeat()
+	await two_peers_end()

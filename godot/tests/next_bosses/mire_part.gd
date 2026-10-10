@@ -1,18 +1,14 @@
-extends "res://tests/next_bosses/late_base.gd"
-## Suite: the Mire Mother (godot/next/bosses). godot --headless --path godot --script res://tests/next_bosses/mire_run.gd
+extends "res://tests/next_bosses/harness.gd"
+## Part of the boss suite (run.gd drives it): the Mire Mother (godot/next/bosses).
 ## Maul, Drowned Hands (root, wading only), Surface (sinks = untargetable for rites / thralls / the pick, ripple ring, winded), P2 flood, P3 Drowned Rite
-## (raises a Risen from every corpse in the Fen through DmCorpseField; no corpses = she staggers), thralls + rites, defeat -> rewards + report, net state, perf.
+## (raises a Risen from every corpse in the Fen through DmCorpseField; no corpses = she staggers), thralls + rites, defeat -> rewards + report, net state.
 
 var _M: Dictionary
 
 
-func _run() -> void:
-	BOSS_ID = "mire"
-	await boot()
-	_M = DmContent.get_export("bosses", "MIRE")
-	await _part_a()
-	await net_part("maul")
-	finish()
+func _init() -> void:
+	boss_id = "mire"
+	god_mode = true   # the hero is unkillable by huge hp (the progression resets the stats now and then)
 
 
 func _quiet(maul: float = 1.0e9, hands: float = 1.0e9, surf: float = 1.0e9) -> void:
@@ -39,33 +35,35 @@ func _fen_corpses() -> int:
 	return g.corpses.corpses.values().filter(func(c: DmSimCorpse) -> bool: return c.area == "fen").size()
 
 
-func _part_a() -> void:
-	await solo()
+func solo() -> void:
+	_M = DmContent.get_export("bosses", "MIRE")
+	await new_solo()
 	g.bosses.rng.seed = 7
 	var m := member()
-	check(g.bosses.site_pos("mire").is_equal_approx(SITE) and SITE != Vector3.INF, "mire: the summon site is the fen's mire_altar %s" % str(SITE))
+	check(g.bosses.site_pos("mire").is_equal_approx(site()) and site() != Vector3.INF, "mire: the summon site is the fen's mire_altar %s" % str(site()))
 	hb.teleport(Vector3(0, 0, 20))
 	check(g.bosses.try_summon(g.session.get_my_id(), "mire") == "far", "mire: refused away from the altar (far)")
 	await at_site(0)
+	set_shards(0)   # (the progression may restore the backend's saved count when the hero changes area)
 	check(g.area_of(g.session.get_my_id()) == "fen", "mire: hero is in the Mourning Fen")
 	check(g.bosses.try_summon(g.session.get_my_id(), "mire") == "shards" and g.bosses.bosses.is_empty(), "mire: no shards -> refused")
 	var cost := int(DmContent.boss("mire")["shards"])
 	m.prog.add_shards(cost - 1)
 	check(g.bosses.try_summon(g.session.get_my_id(), "mire") == "shards" and int(m.prog.local["shards"]) == cost - 1, "mire: %d of %d shards is not enough" % [cost - 1, cost])
 	m.prog.add_shards(cost + 1)
-	check(summon() == "" and int(m.prog.local["shards"]) == cost, "mire: %d shards wake her, her own cost is spent" % cost)
+	check(wake() == "" and int(m.prog.local["shards"]) == cost, "mire: %d shards wake her, her own cost is spent" % cost)
 	check(g.bosses.try_summon(g.session.get_my_id(), "mire") == "busy", "mire: busy while awake")
 	check(boss.view != null and boss.view.slug == "boss_mire_mother", "mire: the current client's DmBossView (mire mother model)")
 	var s: Dictionary = boss.brain.state
 	var diff: Dictionary = DmContent.get_export("difficulty", "DIFFICULTIES")["medium"]
 	var want_hp: float = 42000.0 * (1.0 + 0.22 * (float(s["level"]) - 1.0)) * float(diff["enemyHpMult"])
 	check(is_equal_approx(boss.max_hp, want_hp) and int(s["level"]) == 45, "mire: awaken hp = baseHp 42000 x level 45 x difficulty (%.0f)" % boss.max_hp)
-	check(boss.global_position.distance_to(ARENA) < 0.01 and boss.phase == 1 and boss.is_hittable(), "mire: she rises on the central hummock (-42, -80), phase 1")
+	check(boss.global_position.distance_to(arena()) < 0.01 and boss.phase == 1 and boss.is_hittable(), "mire: she rises on the central hummock (-42, -80), phase 1")
 	check(events("awaken").size() == 1 and "bossAwaken" in astub.sfx, "mire: awaken event + bossAwaken")
 
 	# ---- Maul at 2.0 s
 	_quiet(2.0)
-	hb.teleport(ARENA + Vector3(3.0, 0.0, 0.0))
+	hb.teleport(arena() + Vector3(3.0, 0.0, 0.0))
 	boss.world.refresh()
 	step(1.9)
 	check(events("maul").is_empty(), "mire: no maul before its opening cooldown (2 s)")
@@ -83,7 +81,7 @@ func _part_a() -> void:
 
 	# ---- Drowned Hands: only whoever wades the open water
 	_quiet(1.0e9, 0.0)
-	hb.teleport(ARENA + Vector3(5.0, 0.0, 0.0))   # off every hummock, in the bog
+	hb.teleport(arena() + Vector3(5.0, 0.0, 0.0))   # off every hummock, in the bog
 	boss.world.refresh()
 	check(DmBossGeom_in_bog(hb.position) and not DmBossGeom_on_hummock(hb.position, 1.0), "mire: the hero is wading")
 	var nh := hurts.size()
@@ -102,7 +100,7 @@ func _part_a() -> void:
 	check(is_equal_approx(float(hi[0]["ev"]["root"]), 1.0) and hi[0]["ev"]["players"] == [str(g.session.get_my_id())] and float(hb.p["rootedUntil"]) > hb._clock_ms, "mire: they root the hero for 1 s")
 	# on a hummock nothing reaches for you
 	_quiet(1.0e9, 0.0)
-	hb.teleport(ARENA)
+	hb.teleport(arena())
 	boss.world.refresh()
 	step(0.05)
 	var hd2 := telegraphs("hands")
@@ -117,8 +115,8 @@ func _part_a() -> void:
 	boss.world.refresh()
 	for i in 60:
 		_quiet(1.0e9, 1.0e9, 0.0)
-		boss.brain.state["x"] = ARENA.x
-		boss.brain.state["z"] = ARENA.z
+		boss.brain.state["x"] = arena().x
+		boss.brain.state["z"] = arena().z
 		step(0.02)
 		var sf := telegraphs("surface")
 		var last: Dictionary = sf[sf.size() - 1]["ev"]
@@ -126,9 +124,9 @@ func _part_a() -> void:
 			hunts += 1
 	check(hunts >= 30 and hunts <= 55, "mire: she hunts the hummock you stand on 65 %% of the time (%d / 60 on it)" % hunts)
 	_quiet(1.0e9, 1.0e9, 0.0)
-	hb.teleport(ARENA + Vector3(0.0, 0.0, 9.0))
-	boss.brain.state["x"] = ARENA.x
-	boss.brain.state["z"] = ARENA.z
+	hb.teleport(arena() + Vector3(0.0, 0.0, 9.0))
+	boss.brain.state["x"] = arena().x
+	boss.brain.state["z"] = arena().z
 	boss.world.refresh()
 	var spots: Array = DmContent.get_export("fen", "FEN_SURFACE_SPOTS")
 	var humm: Array = DmContent.get_export("fen", "FEN_HUMMOCKS")
@@ -183,9 +181,9 @@ func _part_a() -> void:
 	check(telegraphs("maul").size() == nm + 1, "mire: she attacks again when the stagger ends")
 	# off the hummock the eruption misses
 	_quiet(1.0e9, 1.0e9, 0.0)
-	hb.teleport(ARENA + Vector3(0.0, 0.0, 10.0))
-	boss.brain.state["x"] = ARENA.x
-	boss.brain.state["z"] = ARENA.z
+	hb.teleport(arena() + Vector3(0.0, 0.0, 10.0))
+	boss.brain.state["x"] = arena().x
+	boss.brain.state["z"] = arena().z
 	boss.world.refresh()
 	step(0.02)
 	var sf3 := telegraphs("surface")
@@ -201,9 +199,9 @@ func _part_a() -> void:
 	_quiet()
 	var phases: Array = []
 	boss.phase_changed.connect(func(p: int) -> void: phases.append(p))
-	boss.brain.state["x"] = ARENA.x
-	boss.brain.state["z"] = ARENA.z
-	hb.teleport(ARENA + Vector3(3.0, 0.0, 0.0))
+	boss.brain.state["x"] = arena().x
+	boss.brain.state["z"] = arena().z
+	hb.teleport(arena() + Vector3(3.0, 0.0, 0.0))
 	boss.world.refresh()
 	boss.take_damage(boss.hp - boss.max_hp * 0.59, hb)
 	step(0.1)
@@ -212,7 +210,7 @@ func _part_a() -> void:
 	var fl := events("flood")
 	check(fl.size() == 1 and int(fl[0]["ev"]["phase"]) == 2 and fl[0]["ev"]["targets"].size() == 6, "mire: the marsh floods (event phase 2, 6 spots)")
 	var lee := g.director.enemies.values().filter(func(e: DmEnemy) -> bool: return e.def_id == "mire_leech")
-	check(lee.size() == 6 and lee.all(func(e: DmEnemy) -> bool: return absf(Vector2(e.position.x - ARENA.x, e.position.z - ARENA.z).length() - 12.0 * 0.9) < 0.01), "mire: P2 six Mire Leeches on the rim (0.9 r)")
+	check(lee.size() == 6 and lee.all(func(e: DmEnemy) -> bool: return absf(Vector2(e.position.x - arena().x, e.position.z - arena().z).length() - 12.0 * 0.9) < 0.01), "mire: P2 six Mire Leeches on the rim (0.9 r)")
 	check(is_equal_approx(float(boss.brain._flood_scale(2)), 0.72) and not DmBossGeom_on_hummock(hb.position, 0.72), "mire: the hummocks shrink to 0.72: the hero's old dry spot is now water")
 	clear_adds()
 	_quiet(1.0e9, 0.0)
@@ -222,14 +220,14 @@ func _part_a() -> void:
 	var h3: Dictionary = hd3[hd3.size() - 1]["ev"]
 	check(absf(float(h3["targets"][0][0]) - hb.position.x) < 1e-6 and absf(float(boss.brain._hands_cd) - 7.5) < 0.1, "mire: in the flood the hands reach the hero, cooldown 7.5 s")
 	_quiet(1.0e9, 1.0e9, 0.0)
-	boss.brain.state["x"] = ARENA.x
-	boss.brain.state["z"] = ARENA.z
+	boss.brain.state["x"] = arena().x
+	boss.brain.state["z"] = arena().z
 	step(0.02)
 	var sf4 := telegraphs("surface")
 	check(is_equal_approx(float(sf4[sf4.size() - 1]["ev"]["ms"]), 2000.0) and absf(float(boss.brain._surface_cd) - 11.0) < 0.1, "mire: P2 surface 2000 ms, cooldown 11 s")
 	_quiet()
-	boss.brain.state["x"] = ARENA.x
-	boss.brain.state["z"] = ARENA.z
+	boss.brain.state["x"] = arena().x
+	boss.brain.state["z"] = arena().z
 
 	# ---- phase 3: the Drowned Rite
 	var tk := boss.take_damage(boss.hp - boss.max_hp * 0.29, hb)
@@ -243,11 +241,11 @@ func _part_a() -> void:
 	# 3 corpses in the Fen (+1 in the Graves, which she must not touch); one is claimed mid-windup
 	var ids: Array = []
 	for i in 3:
-		ids.append(g.corpses.add_corpse(ARENA.x - 5.0 + float(i) * 2.0, ARENA.z - 4.0, "normal", "robber", false, 0.0, 1.0, "fen").id)
+		ids.append(g.corpses.add_corpse(arena().x - 5.0 + float(i) * 2.0, arena().z - 4.0, "normal", "robber", false, 0.0, 1.0, "fen").id)
 	g.corpses.add_corpse(-14.0, -22.0, "normal", "robber", false, 0.0, 1.0, "graves")
 	_quiet()
-	boss.brain.state["x"] = ARENA.x
-	boss.brain.state["z"] = ARENA.z
+	boss.brain.state["x"] = arena().x
+	boss.brain.state["z"] = arena().z
 	boss.brain._rite_cd = 0.0
 	boss.world.refresh()
 	var nr := telegraphs("rite").size()
@@ -268,7 +266,7 @@ func _part_a() -> void:
 	await ticks(2)
 	# nine corpses: the six nearest are raised
 	for i in 9:
-		g.corpses.add_corpse(ARENA.x - 8.0 + float(i) * 2.0, ARENA.z + 1.0 + float(i) * 0.5, "normal", "robber", false, 0.0, 1.0, "fen")
+		g.corpses.add_corpse(arena().x - 8.0 + float(i) * 2.0, arena().z + 1.0 + float(i) * 0.5, "normal", "robber", false, 0.0, 1.0, "fen")
 	_quiet()
 	boss.brain._rite_cd = 0.0
 	boss.world.refresh()
@@ -295,24 +293,20 @@ func _part_a() -> void:
 	_quiet()
 	boss.brain.state["hp"] = boss.max_hp * 0.9
 	boss.brain.state["phase"] = 1
-	await thralls_and_rites()
-	boss.stun(5.0)
-	check(boss.brain.stagger_t > 0.0 and boss.brain.stagger_t <= DmBoss.STUN_CAP_S, "mire: a stun staggers her at most 0.5 s")
+	await check_thralls()
+	await check_rites_and_stun()
 
 	# ---- defeat (even a hit at the very end while sunk is refused: she must surface to die), wipe
-	await defeat_and_report()
-	await wipe_resets()
+	await check_defeat(true, 2)
+	await check_rewake_and_wipe()
 
-	# ---- perf
-	g.bosses.assume_area = AREA
+	# ---- the engine-driven run
 	await at_site(cost)
-	check(summon() == "", "mire: woken for the perf run")
-	await perf(func() -> void:
+	check(wake() == "", "mire: woken for the engine-driven run")
+	await check_engine_run(3.0, func() -> void:
 		for i in 6:
-			g.corpses.add_corpse(ARENA.x - 5.0 + float(i), ARENA.z - 3.0, "normal", "robber", false, 0.0, 1.0, "fen"))
-	boss.queue_free()
-	g.queue_free()
-	await ticks(3)
+			g.corpses.add_corpse(arena().x - 5.0 + float(i), arena().z - 3.0, "normal", "robber", false, 0.0, 1.0, "fen"))
+	await end_fight()
 
 
 func DmBossGeom_in_bog(p: Vector3) -> bool:
@@ -325,13 +319,27 @@ func DmBossGeom_on_hummock(p: Vector3, scale: float) -> bool:
 
 ## The point of the arena ring (r 9) farthest from `p`.
 func _far_from(p: Vector2) -> Vector3:
-	var best := ARENA
+	var best := arena()
 	var bd := -1.0
 	for k in 12:
 		var a := float(k) * TAU / 12.0
-		var c := ARENA + Vector3(sin(a) * 9.0, 0.0, cos(a) * 9.0)
+		var c := arena() + Vector3(sin(a) * 9.0, 0.0, cos(a) * 9.0)
 		var d := Vector2(c.x, c.z).distance_to(p)
 		if d > bd:
 			bd = d
 			best = c
 	return best
+
+
+func net() -> void:
+	await two_peers_summon()
+	await two_peers_first_telegraph("maul")
+	await two_peers_replication()
+	# sunk replicates: the client's puppet is awake but not hittable, absent from the pick list
+	hboss.brain.state["state"] = "sunk"
+	hboss._mirror()
+	check(await until(func() -> bool: return cboss.bstate.state == "sunk", 3.0) and not cboss.is_hittable() and cboss.is_awake() and cg.bosses.active_boss() == cboss and cg.bosses.living().is_empty(), "net: sunk replicates, the client's puppet is awake but not hittable")
+	hboss.brain.state["state"] = "idle"
+	hboss._mirror()
+	await two_peers_defeat()
+	await two_peers_end()

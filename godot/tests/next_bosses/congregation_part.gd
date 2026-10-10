@@ -1,5 +1,5 @@
-extends "res://tests/next_bosses/suite.gd"
-## The Drowned Congregation in the slice: godot --headless --path godot --script res://tests/next_bosses/congregation_run.gd
+extends "res://tests/next_bosses/harness.gd"
+## The Drowned Congregation in the slice: part of the boss suite (run.gd drives it)
 ## The Nave is not opened by the slice yet: the hero is teleported into the arena (area-agnostic brain; the world's own rects say "nave").
 ## A: summon rules (4 shards at the Drowned Font), Maul / Drowning Grasp (rings + root) / Flood Hymn (arc, chill) numbers + timing, the pews as cover
 ##    (players and thralls), the rising water (wading slow in P2 / P3, soaked x1.2 off the dais in P3), each phase's six climbers, thralls + rites,
@@ -8,10 +8,8 @@ extends "res://tests/next_bosses/suite.gd"
 var _adds_seen := 0
 
 
-func _parts() -> void:
+func _init() -> void:
 	boss_id = "congregation"
-	await _part_a()
-	await _part_b()
 
 
 func _adds(def_id: String = "") -> Array:
@@ -23,7 +21,7 @@ func _hymn(n: int) -> Dictionary:
 	return telegraphs("hymn")[n]["ev"]
 
 
-func _part_a() -> void:
+func solo() -> void:
 	await new_solo()
 	await check_prompt_and_key()
 	await check_summon_rules(4, "nobody")
@@ -150,7 +148,8 @@ func _part_a() -> void:
 		e.queue_free()
 	g.director.enemies.clear()
 	hb.heal(1e6)
-	await check_thralls_and_rites()
+	await check_thralls()
+	await check_rites_and_stun()
 	await check_defeat(true, 2)
 	await ticks(10)
 	check(hb.wade_mult == 1.0 and _adds().is_empty(), "A: defeated: the water drains (no slow) and the climbers are gone")
@@ -180,16 +179,12 @@ func _part_a() -> void:
 	await until(func() -> bool: return telegraphs("maul").size() >= 1 and telegraphs("grasp").size() >= 1 and telegraphs("hymn").size() >= 1, 10.0)
 	check(boss.bstate.active and not telegraphs("hymn").is_empty(), "A: the engine-driven Congregation fights (maul + grasp + hymn on the real clock)")
 	boss.set_physics_process(false)
-	wound(0.5)
-	await check_perf("%d climbers" % _adds().size())
 	await end_fight()
-	g.queue_free()
-	await ticks(3)
 
 
 # ---- B: two peers --------------------------------------------------------------------------------------------------------------------------
 
-func _part_b() -> void:
+func net() -> void:
 	await two_peers_summon()
 	var hh := hg.local_body()
 	for i in 370:   # 6.17 s: past the first Hymn (6.0 s)
@@ -202,5 +197,6 @@ func _part_b() -> void:
 	for i in 10:
 		hboss._physics_process(DT)
 	check(await until(func() -> bool: return cg.director.enemies.values().filter(func(e: DmEnemy) -> bool: return e.def_id == "wraith").size() == 4 and cg.director.enemies.values().filter(func(e: DmEnemy) -> bool: return e.def_id == "penitent").size() == 2, 6.0), "B: phase 2's six climbers exist on the client too (director spawner)")
-	await two_peers_common_tail()
+	await two_peers_replication()
+	await two_peers_defeat()
 	await two_peers_end()
