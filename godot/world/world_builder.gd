@@ -869,30 +869,68 @@ func _wing_floor() -> void:
 			area_nodes["alchemist_wing"].add_child(ti)
 
 func _hummocks() -> void:
+	# The web's WorldView.buildHummocks: a low peat mound (muted green) with a pale teal rim ring, two draw calls for all of them.
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color.html("#46574a")
+	mat.albedo_color = Color.html("#46574a") * 0.45
 	mat.roughness = 1.0
 	mat.emission_enabled = true
 	mat.emission = Color.html("#0a2622")
-	mat.emission_energy_multiplier = 0.5
-	mat.albedo_color = mat.albedo_color * 0.7
+	mat.emission_energy_multiplier = 0.3
 	var cm := CylinderMesh.new()
 	cm.top_radius = 0.9
 	cm.bottom_radius = 1.0
 	cm.height = 0.34
 	cm.radial_segments = 18
+	var ring := _hummock_ring_mesh()
+	var rim_mat := StandardMaterial3D.new()
+	rim_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	rim_mat.albedo_color = Color(0.435, 0.839, 0.769, 0.38)
+	rim_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rim_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	rim_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	rim_mat.no_depth_test = false
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = cm
 	mm.instance_count = world.hummocks.size()
+	var mr := MultiMesh.new()
+	mr.transform_format = MultiMesh.TRANSFORM_3D
+	mr.mesh = ring
+	mr.instance_count = world.hummocks.size()
 	for i in world.hummocks.size():
 		var h: Dictionary = world.hummocks[i]
-		var t := Transform3D(Basis.from_scale(Vector3(h.r, 1.0, h.r)), Vector3(h.x, 0.17, h.z))
-		mm.set_instance_transform(i, t)
+		mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(h.r, 1.0, h.r)), Vector3(h.x, 0.17, h.z)))
+		mr.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(h.r, 1.0, h.r)), Vector3(h.x, 0.0, h.z)))
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.material_override = mat
 	area_nodes["fen"].add_child(mmi)
+	var rmi := MultiMeshInstance3D.new()
+	rmi.multimesh = mr
+	rmi.material_override = rim_mat
+	rmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	area_nodes["fen"].add_child(rmi)
+
+
+## A flat ring (radius 0.93 to 1.07) 0.36 above the ground, the web's hummock rim.
+static func _hummock_ring_mesh() -> ArrayMesh:
+	var segs := 36
+	var verts := PackedVector3Array()
+	var idx := PackedInt32Array()
+	for i in segs:
+		var a := TAU * i / segs
+		verts.append(Vector3(cos(a) * 0.93, 0.36, sin(a) * 0.93))
+		verts.append(Vector3(cos(a) * 1.07, 0.36, sin(a) * 1.07))
+	for i in segs:
+		var j := (i + 1) % segs
+		idx.append_array(PackedInt32Array([i * 2, i * 2 + 1, j * 2, i * 2 + 1, j * 2 + 1, j * 2]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return m
 
 # ---------------------------------------------------------------- gates (sealed doors)
 func _gates() -> void:
@@ -1017,7 +1055,7 @@ func _depths() -> void:
 	var parent: Node3D = area_nodes["depths"]
 	var mats: Dictionary = {}
 	_wall_list(parent, D.walls, mats)
-	# Stand-ins for the web's StairView (code-built there too): a worn stone disc with a faint glow (up = cold blue, down/chest = ember).
+	# The web's StairView from primitives (DmStairMesh): a stone-framed stairwell with a faint glow (up = cold blue, down = ember); the chest is a worn ember disc.
 	var disc_mat := StandardMaterial3D.new()
 	disc_mat.albedo_color = Color(0.18, 0.2, 0.26)
 	disc_mat.emission_enabled = true
@@ -1028,18 +1066,20 @@ func _depths() -> void:
 	down_mat.emission_enabled = true
 	down_mat.emission = Color(0.9, 0.4, 0.12)
 	down_mat.emission_energy_multiplier = 0.45
-	var marks := [[D.stairUp, disc_mat], [D.stairDown, down_mat]]
-	if D.chest != null:
-		marks.append([D.chest, down_mat])
+	var marks := [[D.stairUp, disc_mat, true], [D.stairDown, down_mat, false]]
 	for m in marks:
+		var st := DmStairMesh.make(m[2], m[1])
+		st.position = Vector3(m[0].x, 0, m[0].z)
+		parent.add_child(st)
+	if D.chest != null:
 		var cm := CylinderMesh.new()
 		cm.top_radius = 0.8
 		cm.bottom_radius = 0.8
 		cm.height = 0.1
 		var mi := MeshInstance3D.new()
 		mi.mesh = cm
-		mi.material_override = m[1]
-		mi.position = Vector3(m[0].x, 0.06, m[0].z)
+		mi.material_override = down_mat
+		mi.position = Vector3(D.chest.x, 0.06, D.chest.z)
 		parent.add_child(mi)
 	# Everything drawn so far for the Depths is the sample floor: build_depths_floor hides it while a generated floor stands.
 	_sample_depths_nodes = parent.get_children()
@@ -1120,7 +1160,7 @@ func _build_depths_floor_raw(f: Dictionary) -> void:
 				pool_pos.append({"x": q.x, "z": q.z, "y": float(spec.light.y) * float(q.scale), "L": spec.light})
 	_light_pools(root, pool_pos, "depths")
 	_depths_gen_lights = prop_lights.slice(before)
-	# Stairs and chest: worn discs (the way up cold, the way down ember, sealed = dim), the chest a small box.
+	# Stairs and chest: stairwells (DmStairMesh; the way up cold, the way down ember, sealed = dim), the chest a small box.
 	var up_mat := StandardMaterial3D.new()
 	up_mat.albedo_color = Color(0.18, 0.2, 0.26)
 	up_mat.emission_enabled = true
@@ -1131,16 +1171,10 @@ func _build_depths_floor_raw(f: Dictionary) -> void:
 	_depths_stair_mat.emission_enabled = true
 	_depths_stair_mat.emission = Color(0.9, 0.4, 0.12)
 	set_depths_stair_open(false)
-	for m in [[f["stairUp"], up_mat], [f["stairDown"], _depths_stair_mat]]:
-		var cm := CylinderMesh.new()
-		cm.top_radius = 0.8
-		cm.bottom_radius = 0.8
-		cm.height = 0.1
-		var mi := MeshInstance3D.new()
-		mi.mesh = cm
-		mi.material_override = m[1]
-		mi.position = Vector3(m[0].x, 0.06, m[0].z)
-		root.add_child(mi)
+	for m in [[f["stairUp"], up_mat, true], [f["stairDown"], _depths_stair_mat, false]]:
+		var st := DmStairMesh.make(m[2], m[1])
+		st.position = Vector3(m[0].x, 0, m[0].z)
+		root.add_child(st)
 	if f["chest"] != null:
 		_depths_chest_mat = StandardMaterial3D.new()
 		_depths_chest_mat.albedo_color = Color(0.45, 0.3, 0.12)

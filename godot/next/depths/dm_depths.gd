@@ -563,25 +563,16 @@ func _sfx(id: String, x: float = NAN, z: float = NAN) -> void:
 		_audio.play_sfx(id, null if is_nan(x) else Vector2(x, z), 1.0)
 
 
-## Stand-in for the Warren's StairView: a worn disc with an ember glow and a light.
+## The Warren's StairView: the stairwell (DmStairMesh, the way down) with an ember glow and a light.
 func _make_warren_stair(x: float, z: float) -> Node3D:
-	var root := Node3D.new()
-	root.name = "WarrenStair"
-	root.position = Vector3(x, 0, z)
-	var cm := CylinderMesh.new()
-	cm.top_radius = 0.9
-	cm.bottom_radius = 0.9
-	cm.height = 0.12
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.26, 0.18, 0.14)
 	mat.emission_enabled = true
 	mat.emission = Color(0.9, 0.4, 0.12)
 	mat.emission_energy_multiplier = 0.45
-	var mi := MeshInstance3D.new()
-	mi.mesh = cm
-	mi.material_override = mat
-	mi.position.y = 0.06
-	root.add_child(mi)
+	var root := DmStairMesh.make(false, mat)
+	root.name = "WarrenStair"
+	root.position = Vector3(x, 0, z)
 	var l := OmniLight3D.new()
 	l.light_color = Color.hex(0xffb347ff)
 	l.omni_range = 10.0

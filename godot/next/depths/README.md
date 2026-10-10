@@ -55,3 +55,4 @@ Suite: `tests/next_depths/run.gd`.
 - Breach "burrow" and other kinds with their own AI behave as in the Graves on the floor's navmesh; no Depths-specific sight blockers for ranged kinds (walls block movement, not sight).
 - The Warren must be open (the areas track) to reach the stair in play; the tests walk to it.
 - Minimap / HUD pieces exist, the stair card is the existing `DmDepthsStairPrompt`; no new art or audio was made (`gate`, `chestOpen`, `levelUp`, `click`, `error` are existing sounds).
+- Stairs look like stairs: the Warren's stair, a floor's way down and its way up are `DmStairMesh` (`world/dm_stair_mesh.gd`): a stone frame round a well with five steps (down: low and darker with depth; up: rising), built from primitives as one cached vertex-coloured mesh per direction plus a glowing quad that `DmWorldBuilder.set_depths_stair_open` drives. The chest is still a code-built box.
