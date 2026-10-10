@@ -14,7 +14,8 @@ extends Node3D
 ## loadout and counsel state are written under user://).
 
 const CASTER_DELAY := 0.8
-const CLIENT_ACTIVE_S := 15.0                    ## a joiner waits this long for the host's roster before giving up (`start_failed`)
+const CLIENT_ACTIVE_S := 20.0                    ## a joiner waits this long (after its hello, running frames) for the host's roster before giving up (`start_failed`)
+const CLIENT_HARD_S := 85.0                      ## ...and never longer than this in wall time (the host waits DmSession.HELLO_TIMEOUT, 90 s)
 
 signal started
 signal enemy_spawned(enemy: DmEnemy)            ## every spawned enemy (every peer), once in the tree: the rewards seam
@@ -220,6 +221,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	add_child(gather)
 	await gather.setup(self)
 	if _hold != null:
+		print("[coop] joiner: world built in %d ms, talking to the host" % (Time.get_ticks_msec() - t0))
 		_hold.hold = false
 		_hold = null
 	# The original game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
@@ -271,20 +273,31 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 
 
 ## A joiner: wait until the host accepted it (roster arrived). false = the session ended or timed out first (`start_failed` emitted).
+## The clock starts when our hello goes out, and counts only frames that ran: the first frames after the world build can stall for many
+## seconds (shader compiles on the Compatibility renderer), which used up the whole wait before the hello was even sent (2026-10-10 co-op
+## report). CLIENT_HARD_S caps the wait however slow the frames are.
 func _await_active(timeout: float) -> bool:
-	var t0 := Time.get_ticks_msec()
+	var begin := Time.get_ticks_msec()
+	var waited := 0.0
+	var last := begin
 	var ended := [""]
 	var cb := func(r: String) -> void: ended[0] = r if r != "" else "ended"
 	session.session_ended.connect(cb)
-	while not session.is_active() and ended[0] == "" and Time.get_ticks_msec() - t0 < timeout * 1000.0:
+	while not session.is_active() and ended[0] == "" and waited < timeout * 1000.0 and Time.get_ticks_msec() - begin < CLIENT_HARD_S * 1000.0:
 		await get_tree().process_frame
+		var now := Time.get_ticks_msec()
+		if session.hello_at_ms > 0:
+			waited += minf(float(now - last), 250.0)   # a stalled frame counts as at most a quarter second
+		last = now
 	session.session_ended.disconnect(cb)
 	if session.is_active():
+		print("[coop] joiner: accepted by the host after %d ms" % (Time.get_ticks_msec() - begin))
 		var b := local_body()
 		if b != null:
 			camera.snap(b.position)
 		return true
 	_aborted = true
+	print("[coop] joiner: gave up after %d ms (hello sent: %s, ended: %s)" % [Time.get_ticks_msec() - begin, session.hello_at_ms > 0, ended[0]])
 	start_failed.emit(ended[0] if ended[0] != "" else "The host did not answer.")
 	return false
 

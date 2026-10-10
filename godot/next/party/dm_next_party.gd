@@ -446,6 +446,7 @@ func _on_joined(i: Dictionary, _peer: int) -> void:
 	busy = ""
 	info = i
 	mode = HANDOFF
+	print("[coop] joiner: seated in \"%s\" as peer %d, swapping in the client game" % [String(i.get("name", "")), _peer])
 	changed.emit()
 	join_ready.emit(lobby, i)
 
