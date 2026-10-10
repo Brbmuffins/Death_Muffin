@@ -1,6 +1,13 @@
 [
   {
     "date": "2026-10-10",
+    "title": "Co-op Joining Fixed",
+    "items": [
+      "Joining a friend's session works again: the joiner now actually connects to the host instead of loading for a minute and failing with \"The host did not answer\"."
+    ]
+  },
+  {
+    "date": "2026-10-10",
     "title": "Stairs, Fen and Loot Icons",
     "items": [
       "Bag: a long set-bonus line no longer stretches the Reliquary, so the bag grid stays fully visible and the window stops jumping when you pick an item.",

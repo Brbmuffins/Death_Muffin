@@ -11,6 +11,7 @@ Checks (`check.mjs`, config in `retired.json`):
 4. `res://tests/<suite>/<file>.gd` and `tests/<suite>/<file>.gd` paths named in docs and scripts exist.
 5. No tracked file is larger than `maxFileMB` (20) unless listed in `bigFileAllow`.
 6. Texture `.import` files under the 3D asset folders (`check.mjs` `tex3d`) use `compress/mode=2`; normal maps also `compress/normal_map=1`. UI art stays lossless. `npm run hygiene -- --fix-textures` rewrites violating `.import` files; then re-import headless.
+7. No call inside a GDScript `assert(...)` condition outside `godot/tests/`: release exports strip asserts together with their expression, so the call never runs in a shipped client.
 
 ## When you delete something
 
