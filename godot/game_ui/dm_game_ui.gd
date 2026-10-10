@@ -720,6 +720,18 @@ func panel_open() -> bool:
 	return dialogue != null and dialogue.visible
 
 
+## True when the screen point lies inside an open window or the dialogue box: a click there belongs to the UI, never to the world.
+func point_in_window(pos: Vector2) -> bool:
+	for k in windows:
+		var w := windows[k] as Control
+		if w.visible and w.get_global_rect().has_point(pos):
+			return true
+	for w in [pa.acre_win, pa.char_win, pa.grim_win]:
+		if w.visible and w.get_global_rect().has_point(pos):
+			return true
+	return dialogue != null and dialogue.visible and dialogue.get_global_rect().has_point(pos)
+
+
 func _blocking_panel_open() -> bool:
 	# navigateFromMinimap refuses while class/settings/inventory/forge/shelf/professions/codex/ascension/waystone is open
 	for k in ["class", "settings", "inventory", "forge", "shelf", "codex", "ascension", "map"]:
