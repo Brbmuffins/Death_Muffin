@@ -3,12 +3,14 @@
     "date": "2026-10-10",
     "title": "Smoother and Faster",
     "items": [
+      "Respawning no longer leaves your hero lying in the death pose.",
       "Thralls animate smoothly again: anything on screen now animates every frame (they were updating at a fraction of the frame rate).",
       "Movement of your hero, enemies, thralls and bosses is smoothed between simulation steps, so it looks fluid on 120/144 Hz screens.",
       "Big fights cost less: enemies far from the action think less often, wave spawns are spread over a few frames, and corpses stop animating once they settle.",
       "Textures use the GPU's compressed formats: about 75% less video memory with the same look.",
       "Fewer shadows to draw in crowds (the nearest enemies keep theirs), and the HUD and minimap only redraw what changed.",
-      "Settings → Window mode: choose Windowed, Windowed borderless or Fullscreen."
+      "Settings → Window mode: choose Windowed, Windowed borderless or Fullscreen.",
+      "Typing in a text field (like the bug report window) no longer moves your hero, whatever keys you have bound to movement."
     ]
   },
   {

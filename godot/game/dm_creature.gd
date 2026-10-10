@@ -532,6 +532,17 @@ func play_death() -> bool:
 	_death_clip = nm
 	return true
 
+## Stand a dead body back up: drop the held death clip and return to the base loop (a respawned hero).
+func revive() -> void:
+	if ap == null:
+		return
+	_death_clip = ""
+	_one_shot = ""
+	_one_shot_end = -1.0
+	_flinch_t = -1.0
+	_current = ""
+	_start_loop(false)
+
 ## A short hit-react (the first half-second of the hurt clip), never over a swing, cast or death. Returns false when the rig has no hurt clip.
 func flinch(_strength: float = 0.85) -> bool:
 	if ap == null or not has("hurt"):
