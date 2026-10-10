@@ -37,14 +37,14 @@ Standing mouse-aim: `DmCombatInput.stand_face` from the 10 Hz hover pick -> `ses
 Cost (headless, 14 enemies, 20 corpses): one decision ~1.5-2 ms (`select_action`) every 180 ms, idle tick 0.3 us; frame median 7.4 ms off vs 7.7 ms on. Tests: `tests/next_autocombat/run.gd`.
 
 ## Combat clarity (cues, slot needs, thrall health, number cap)
-Locks: `tests/next_clarity/cues_run.gd`; audit tools `tests/next_clarity/audit.gd` (cue count per rite in the first 0.25 s and 4 s), `shoot.gd` (rendered Ossuary fight).
+Locks: `tests/next_clarity/run.gd` (cast cues); audit tools `tests/next_clarity/audit.gd` (cue count per rite in the first 0.25 s and 4 s), `shoot.gd` (rendered Ossuary fight).
 - **Cast cue**: every one of the 25 rites gives >= 3 visual calls and a sound within 0.25 s. Marrow Spear plays the existing `needleCast` whoosh at 0.9 on the press, because its own sound is the landing (`next/rites/rite_marrow_spear.gd`).
 - **Slot needs**: a rite that cannot fire dims lightly and says "no corpse" / "no legion". `DmNextHudVm.NEEDS` maps the corpse rites and `rally_dead`, `command_rend` (legion); the test reads every `rite_*.gd` for `"no_corpse"` / `"no_thralls"` so a new rite cannot be forgotten. Rendering: `ui/hud/dm_hud_slot.gd`.
 - **Thrall health**: a thrall under 35 % wears a larger pulsing red ground ring until back above 50 % (`DmThrall.LOW_HP_ENTER` / `LOW_HP_LEAVE`); HUD thrall pips under a third turn red (`ui/hud/dm_hud_parts.gd`).
 - **Damage-number cap**: `DmFloatBudget` (`next/hud/dm_float_budget.gd`, used by `DmNextUiHost.float_text`): hits + crits 14 (a crit gets +4), dot 5, thrall 6, hard total 22; hurt / gold / heal / info are never limited. The caps are judgement numbers: loosen if a crit-heavy build feels muted.
 
 ## Tests
-`tests/next_feel/run.gd` (behaviour), `tests/next_combat_feel/run.gd` (seam: chase/queue wiring, gesture per accepted cast, weapon-clip ids, hitstop callbacks, `Engine.time_scale` untouched, idle tick cost), `tests/next_autocombat/run.gd`, `tests/next_clarity/`.
+`tests/next_feel/run.gd` (behaviour, plus the wiring seams in section J), `tests/next_autocombat/run.gd`, `tests/next_clarity/`.
 
 ## Known gaps
 - Auto-combat has no `DmNav` over the navmesh (the decision code's `clear_line` / path-around is skipped; the body's nav clamp slides it).

@@ -461,7 +461,7 @@ func _e_perf() -> void:
 		await process_frame
 	var delta_ms: float = res[true] - res[false]
 	print("  cost: 30 enemies median %.3f ms plain, %.3f ms with 6 affixed elites (delta %.3f ms)" % [res[false], res[true], delta_ms])
-	ok(delta_ms < 2.0, "E: 6 affixed elites add %.3f ms/frame (< 2.0 ms budget)" % delta_ms)
+	perf_info(delta_ms < 2.0, "E: 6 affixed elites add %.3f ms/frame (< 2.0 ms budget)" % delta_ms)
 	# per-tick cost of the component itself, isolated
 	var arena2 := Node3D.new()
 	root.add_child(arena2)
@@ -472,7 +472,7 @@ func _e_perf() -> void:
 		c2._physics_process(DT)
 	var us := float(Time.get_ticks_usec() - t1) / 6000.0
 	print("  cost: %.2f us per physics tick for an elite with all four affixes" % us)
-	ok(us < 100.0, "E: component tick %.2f us (< 100 us)" % us)
+	perf_info(us < 100.0, "E: component tick %.2f us (< 100 us)" % us)
 	arena2.queue_free()
 	await process_frame
 
@@ -537,3 +537,9 @@ func ticks(n: int) -> void:
 	var target := Engine.get_physics_frames() + n
 	while Engine.get_physics_frames() < target:
 		await physics_frame
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

@@ -320,11 +320,11 @@ func _run() -> void:
 		auto.tick(float(i))
 	var idle_us := float(Time.get_ticks_usec() - idle0) / 20000.0
 	print("perf: frame median off %.2f ms / on %.2f ms (worst on %.1f ms, off %.1f ms), %d decisions in 3 s, one decision %.0f us (14 enemies, 20 corpses), idle tick %.3f us" % [med_off, med_on, worst_on, worst_off, decisions, decide_us, idle_us])
-	check(med_on < med_off + 1.5 and med_on < 12.0, "H: frame median %.2f ms with auto-combat vs %.2f off" % [med_on, med_off])
-	check(worst_on < 120.0, "H: worst frame %.1f ms" % worst_on)
+	perf_info(med_on < med_off + 1.5 and med_on < 12.0, "H: frame median %.2f ms with auto-combat vs %.2f off" % [med_on, med_off])
+	perf_info(worst_on < 120.0, "H: worst frame %.1f ms" % worst_on)
 	check(decisions > 5 and decisions < 25, "H: decisions are throttled (%d in 3 s, ~every %.0f ms)" % [decisions, ACT_MS()])
-	check(decide_us < 4000.0, "H: one decision %.0f us" % decide_us)
-	check(idle_us < 2.0, "H: tick between decisions %.3f us" % idle_us)
+	perf_info(decide_us < 4000.0, "H: one decision %.0f us" % decide_us)
+	perf_info(idle_us < 2.0, "H: tick between decisions %.3f us" % idle_us)
 
 	print("%d passed, %d failed" % [passed, failed])
 	quit(0 if failed == 0 else 1)
@@ -332,3 +332,9 @@ func _run() -> void:
 
 func ACT_MS() -> float:
 	return DmNextAutoCombat.ACT_MS
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

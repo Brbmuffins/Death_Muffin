@@ -1,6 +1,6 @@
 # Decisions
 
-Owner decisions that shape the code. D1-D13 are the 2026-10-05 and 2026-10-07 rebuild decisions; B1-B10 the 2026-10-09
+Owner decisions that shape the code. D1-D13 are the 2026-10-05 and 2026-10-07 rebuild decisions; B1-B10 the 2026-10-09 (B11: 2026-10-10)
 baseline decisions. Where a later decision overrode one, the entry says so.
 
 ## Rebuild decisions
@@ -46,7 +46,7 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
 
 - **Performance first** (2026-10-05, 2026-10-02): anything added must perform; every change is measured before and after or
   it is not merged; event-driven over per-frame work; no per-frame allocations in hot paths; first-use work (shaders,
-  effects, fonts) is warmed during loading, never mid-play; perf budgets in tests use generous margins (the VPS is shared).
+  effects, fonts) is warmed during loading, never mid-play; tests never assert wall-clock time (see below).
 - **Assets: reuse first** (2026-10-05): reuse the existing audio, models, animations and VFX (the Binbun effects, the `Vfx`
   autoload, spell colours). A different effect is fine if it saves real time and performs at least as well. Generate (Tripo
   models, ElevenLabs audio, Gemini concepts) only when something needed does not exist or is unusable.
@@ -76,3 +76,4 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
 - **B9. `deploy-release.sh` is backend plus release notes only.** The client goes out with `publish-godot-client.sh`.
 - **B10. Docs: a small truthful set.** README, ROADMAP, DECISIONS, KNOWN-GAPS, CLAUDE, plus short per-system READMEs. Web-era
   docs are deleted, not bannered; they stay in git history and in tag `archive/legacy-web`.
+- **B11. Tests never assert wall-clock time** (owner, 2026-10-10): timings print as `INFO perf:` lines only; FPS is judged on real hardware (F3 overlay). Deterministic counters (cold loads, node, draw-call and query counts) stay real checks.

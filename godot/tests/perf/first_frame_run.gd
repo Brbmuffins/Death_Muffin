@@ -1,9 +1,9 @@
 extends SceneTree
-## Regression guard for the first-combat-frame stall: the first frame with the HUD attached used to cost ~85-125 ms headless (first
+## Report of the first-combat-frame stall (timing is printed as INFO, never asserted): the first frame with the HUD attached used to cost ~85-125 ms headless (first
 ## HUD apply: hotbar, textures, label shaping; first control-tree layout) vs ~7 ms steady. DmGameUi.setup now applies the HUD once and
 ## DmGameUi.warm() takes the first layout frames while loading (DmNextGame.start does both). Headless, warmup on.
 ## godot --headless --path godot --script res://tests/perf/first_frame_run.gd
-## Budget: 35 ms for the first frame after warm() (measured ~3-4 ms; the stall was 85+), leaving room for VPS noise.
+## Old budget, now informational only: 35 ms for the first frame after warm() (measured ~3-4 ms; the stall was 85+).
 
 const BUDGET_MS := 35.0
 var _pass := 0
@@ -34,8 +34,14 @@ func _run() -> void:
 	await process_frame
 	var first := (Time.get_ticks_usec() - t) / 1000.0
 	print("FIRSTFRAME first=%.1fms budget=%.0fms" % [first, BUDGET_MS])
-	_check(first < BUDGET_MS, "first frame with the HUD attached under %.0f ms (got %.1f)" % [BUDGET_MS, first])
+	perf_info(first < BUDGET_MS, "first frame with the HUD attached under %.0f ms (got %.1f)" % [BUDGET_MS, first])
 	game.queue_free()
 	await process_frame
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

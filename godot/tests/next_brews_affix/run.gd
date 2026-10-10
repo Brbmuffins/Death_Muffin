@@ -194,7 +194,7 @@ func _c_chips(g: DmNextGame) -> void:
 		hv._affix_chips(e, "")
 	var per := float(Time.get_ticks_usec() - t) / float(n)
 	print("PERF chips cached read %.3f us/call" % per)
-	ok(per < 2.0, "C: cached chip read under 2 us (%.3f)" % per)
+	perf_info(per < 2.0, "C: cached chip read under 2 us (%.3f)" % per)
 	# a real held-target frame: the HUD (20 Hz) reads the target every apply
 	var fc := DmFrameCost.attach(root)
 	var end := Engine.get_physics_frames() + 180
@@ -252,3 +252,9 @@ func _bare(parent: Node, list: PackedStringArray) -> DmEnemy:
 	DmAffixSet.attach(e, list)
 	parent.add_child(e)
 	return e
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
