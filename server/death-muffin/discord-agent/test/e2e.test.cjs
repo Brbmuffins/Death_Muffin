@@ -1117,3 +1117,42 @@ test('thread title: a discarded job gets the cross marker, and a title with a me
   await d.react(p, IDS.HELIX, '❌');
   await until(() => thread.name === '❌ Faster walk', d.ad);
 });
+
+test('a bare "stop" while a turn runs is !cancel; messages queued before it are dropped, so nothing restarts the work (2026-10-10 incident)', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'SLOW-TURN MAKE-CSS blue');
+  const job = Object.values(w.runner.jobs())[0];
+  await until(() => job.running && job.proc, d.ad);
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS also make it red');
+  assert.equal(job.queue.length, 1);
+  const turns = job.turns;
+  const r = await d.say(thread, IDS.HELIX, 'stop');
+  assert.match(r.replies[0].content, /^Cancelling the current step\. Dropped 1 waiting message\./);
+  await until(() => !job.running && job.status === 'idle', d.ad);
+  await new Promise((res) => setTimeout(res, 400)); await d.ad.pollOnce();
+  assert.equal(job.turns, turns, 'no new turn after the cancel'); assert.equal(job.queue.length, 0);
+  const said = texts(thread).join('\n');
+  assert.match(said, /Cancelled\./); assert.doesNotMatch(said, /Checks found a problem|asking the agent to fix/);
+  assert.equal(proposals(thread).length, 0);
+  const idle = await d.say(thread, IDS.HELIX, '!cancel'); assert.equal(idle.replies[0].content, 'Nothing is running.');
+});
+
+test('!cancel during the runner\'s own checks stops the check run and its whole process tree (own process groups too); no repair turn', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const pidFile = path.join(w.tools, 'child.pid');
+  // a check whose grandchild sits in its own process group, like Claude's Bash tool + `timeout` around the sandboxed suites
+  fs.writeFileSync(path.join(w.tools, 'check.sh'), `#!/usr/bin/env bash\nsetsid sleep 60 &\necho $! > ${pidFile}\nwait\n`, { mode: 0o755 });
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const job = Object.values(w.runner.jobs())[0];
+  await until(() => fs.existsSync(pidFile) && fs.readFileSync(pidFile, 'utf8').trim(), d.ad);
+  const child = Number(fs.readFileSync(pidFile, 'utf8'));
+  const turns = job.turns;
+  const r = await d.say(thread, IDS.HELIX, '!cancel');
+  assert.match(r.replies[0].content, /^Cancelling the current step\./);
+  await until(() => !job.running && job.status === 'idle', d.ad);
+  let alive = true; for (let i = 0; i < 50 && alive; i++) { try { process.kill(child, 0); await new Promise((res) => setTimeout(res, 50)); } catch { alive = false; } }
+  assert.equal(alive, false, 'the check\'s grandchild in its own process group is gone');
+  await d.ad.pollOnce();
+  assert.equal(job.turns, turns, 'no repair turn'); assert.equal(proposals(thread).length, 0);
+  assert.doesNotMatch(texts(thread).join('\n'), /Checks found a problem/);
+});

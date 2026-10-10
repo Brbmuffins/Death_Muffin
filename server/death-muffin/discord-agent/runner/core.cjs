@@ -60,6 +60,9 @@ function createRunner(cfgIn, opts = {}) {
   let jobs = {};       // threadId -> job
   try { jobs = JSON.parse(fs.readFileSync(jobsFile, 'utf8')); } catch { /* fresh */ }
   for (const j of Object.values(jobs)) { if (j.status === 'running' || j.status === 'shipping' || j.status === 'generating') { j.status = 'idle'; } j.running = false; j.previewBusy = false; }
+  // The runner's own check run per job (verify -> runChecks), so !cancel / ❌ / thread delete can stop it too, not only an agent turn.
+  const checkProcs = new Map();
+  const stopStep = (job) => { if (job.proc) G.killTree(job.proc.pid); const c = checkProcs.get(job.id); if (c) G.killTree(c.pid); };
   const save = () => { const t = jobsFile + '.tmp'; fs.writeFileSync(t, JSON.stringify(jobs, null, 1), { mode: 0o600 }); fs.renameSync(t, jobsFile); };
   const starting = new Map();      // threadId -> promise while a new round's workspace is being created
   const pendingNew = new Map();   // eventId -> event awaiting a thread id from the bot
@@ -209,6 +212,8 @@ function createRunner(cfgIn, opts = {}) {
       const ok = await beginRound(job);
       if (!ok) return { action: 'reply', text: 'I could not set up a fresh workspace for the next change. Try again in a minute.' };
     }
+    // A bare "stop" / "cancel" while something runs means !cancel (2026-10-10: Helix typed "stop" and it only queued a message for the agent).
+    if (job.running && /^(?:<@[!&]?\d+>\s*)*(?:stop|cancel|halt|abort)(?:\s+(?:it|now|please|that|this))*\s*[.!]*$/i.test(text)) return handleCommand(job, msg, '!cancel');
     if (text.startsWith('!')) return handleCommand(job, msg, text);
     if ((job.totalTurns || 0) >= cfg.maxTurnsPerThread) return { action: 'reply', text: 'This thread has used up its total turn limit. Start a new request in the channel.' };
     if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This round has hit its turn limit. Ship or discard the current change and I will start a fresh round, or start a new request in the channel.' };
@@ -267,10 +272,16 @@ function createRunner(cfgIn, opts = {}) {
         if (!auth.canSwitchModel(msg.userId)) { audit.log('refused', { userId: msg.userId, kind: 'model' }); return { action: 'reply', text: 'Only full approvers can switch models.' }; }
         if (!cfg.allowedModels.includes(arg)) return { action: 'reply', text: `Models: ${cfg.allowedModels.join(', ')}` };
         job.model = arg; save(); return { action: 'reply', text: `Model set to ${arg} for the next turn.` };
-      case 'cancel':
+      case 'cancel': {
         if (!auth.canDiscard(msg.userId, job, job.proposal && job.proposal.tier)) return { action: 'reply', text: 'Only the person who started this, or the owner, can cancel.' };
-        if (job.proc) { job.cancelRequested = true; try { process.kill(-job.proc.pid, 'SIGKILL'); } catch { /* gone */ } return { action: 'reply', text: 'Cancelling the current turn.' }; }
-        return { action: 'reply', text: 'Nothing is running.' };
+        // Messages sent before the cancel are dropped too (2026-10-10: Helix's "stop" ran as a new turn right after !cancel, and the
+        // review that followed started a repair turn and a fresh 35-min test run).
+        if (job.status === 'shipping') return { action: 'reply', text: 'A ship cannot be stopped halfway; it finishes (or rolls back) on its own.' };
+        const dropped = job.queue.length; job.queue = [];
+        const also = dropped ? ` Dropped ${dropped} waiting message${dropped === 1 ? '' : 's'}.` : '';
+        if (job.running) { job.cancelRequested = true; stopStep(job); save(); return { action: 'reply', text: `Cancelling the current step.${also} Your changes so far stay on the branch; message me to continue.` }; }
+        save(); return { action: 'reply', text: dropped ? `Nothing was running.${also}` : 'Nothing is running.' };
+      }
       case 'discard':
         if (!auth.canDiscard(msg.userId, job, job.proposal && job.proposal.tier)) return { action: 'reply', text: 'Only the person who started this, or the owner, can discard.' };
         discard(job, msg.userId).catch((e) => say(job, `Discard failed: ${e.message}`)); return { action: 'accepted' };
@@ -343,7 +354,7 @@ function createRunner(cfgIn, opts = {}) {
     job.queue = []; job.proposal = job.status === 'shipping' ? job.proposal : null;
     for (let i = outbox.length - 1; i >= 0; i--) if (outbox[i].target && String(outbox[i].target.threadId) === String(job.threadId)) { callbacks.delete(outbox[i].id); outbox.splice(i, 1); }
     if (job.status === 'shipping') { job.deleteRequested = true; save(); return { action: 'accepted' }; }
-    if (job.running) { job.deleteRequested = true; job.cancelRequested = true; if (job.proc) { try { process.kill(-job.proc.pid, 'SIGKILL'); } catch { /* gone */ } } save(); return { action: 'accepted' }; }
+    if (job.running) { job.deleteRequested = true; job.cancelRequested = true; stopStep(job); save(); return { action: 'accepted' }; }
     await cleanupDeleted(job);
     return { action: 'accepted' };
   }
@@ -398,7 +409,7 @@ function createRunner(cfgIn, opts = {}) {
     // workspace and the cancel path cannot flip the job back to idle (2026-10-04: a ❌ during a turn left the thread stuck).
     if (job.running) {
       job.cancelRequested = true; job.discardRequested = String(byId);
-      if (job.proc) { try { process.kill(-job.proc.pid, 'SIGKILL'); } catch { /* gone */ } }
+      stopStep(job);
       say(job, 'Discarding as soon as the current step stops.'); save(); return;
     }
     job.discardRequested = null;
@@ -595,7 +606,9 @@ function createRunner(cfgIn, opts = {}) {
     return { ok: true, files, cls, migrations, tests: t, diff, commits };
   }
   async function runChecks(job) {
-    const r = await G.run(path.join(cfg.toolsDir, CHECK), [], { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: (GODOT ? 90 : 25) * 60000 });
+    let r;
+    try { r = await G.run(path.join(cfg.toolsDir, CHECK), [], { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: (GODOT ? 90 : 25) * 60000, onSpawn: (p) => checkProcs.set(job.id, p) }); }
+    finally { checkProcs.delete(job.id); }
     const out = r.out + r.err;
     // web: the node:test counters; godot: the last "GODOT TESTS: ..." line check-godot.sh prints
     const sum = GODOT ? ((out.match(/^GODOT TESTS: .*$/gm) || []).pop() || '').replace(/^GODOT TESTS: /, '') : (out.match(/^# (tests|pass|fail) .*$/gm) || []).join(' · ').replace(/# /g, '');

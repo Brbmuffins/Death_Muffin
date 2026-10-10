@@ -90,13 +90,30 @@ function migrationsFrom(files) { return files.filter((f) => f.status === 'add' &
 async function pushBranch(cfg, job) { await git(job.worktree, ['push', '-q', '--force', '-u', 'origin', `${job.branch}:refs/heads/${job.branch}`], { timeout: 180000 }); }
 const compareUrl = (cfg, branch) => `https://github.com/${cfg.githubRepo}/compare/${cfg.baseBranch || 'master'}...${branch}`;
 
-// Run a command (no shell), capture combined output, kill the whole process group on timeout.
+// Every descendant of pid, read from /proc before anything is killed (so nothing has been reparented to init yet).
+function treePids(pid) {
+  const out = [];
+  const walk = (p) => {
+    let kids = [];
+    try { for (const t of fs.readdirSync(`/proc/${p}/task`)) kids = kids.concat(fs.readFileSync(`/proc/${p}/task/${t}/children`, 'utf8').trim().split(/\s+/).filter(Boolean).map(Number)); } catch { /* gone */ }
+    for (const k of kids) if (!out.includes(k)) { out.push(k); walk(k); }
+  };
+  walk(pid); return out;
+}
+// SIGKILL a process, its group and every descendant with their groups. Claude's Bash tool and `timeout` start their own process groups, so a
+// group kill alone left the agent's 35-min test runs orphaned and running after !cancel (2026-10-10).
+function killTree(pid) {
+  if (!pid) return;
+  for (const p of [pid, ...treePids(pid)]) { try { process.kill(-p, 'SIGKILL'); } catch { /* not a group leader */ } try { process.kill(p, 'SIGKILL'); } catch { /* gone */ } }
+}
+
+// Run a command (no shell), capture combined output, kill the whole process tree on timeout.
 function run(cmd, args, { cwd, env, input, timeoutMs, maxOut = 8 * 1024 * 1024, onSpawn } = {}) {
   return new Promise((resolve) => {
     const p = spawn(cmd, args, { cwd, env, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
     if (onSpawn) onSpawn(p);
     let out = '', err = '', done = false, timedOut = false;
-    const kill = () => { try { process.kill(-p.pid, 'SIGKILL'); } catch { try { p.kill('SIGKILL'); } catch { /* gone */ } } };
+    const kill = () => { killTree(p.pid); try { p.kill('SIGKILL'); } catch { /* gone */ } };
     const t = timeoutMs ? setTimeout(() => { timedOut = true; kill(); }, timeoutMs) : null;
     p.stdout.on('data', (d) => { if (out.length < maxOut) out += d; });
     p.stderr.on('data', (d) => { if (err.length < maxOut) err += d; });
@@ -106,4 +123,4 @@ function run(cmd, args, { cwd, env, input, timeoutMs, maxOut = 8 * 1024 * 1024, 
     p.stdin.end(input || '');
   });
 }
-module.exports = { LOCK_RE, removePreview, git, run, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };
+module.exports = { LOCK_RE, removePreview, git, run, killTree, treePids, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };
