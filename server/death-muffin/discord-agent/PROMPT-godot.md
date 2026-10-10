@@ -60,8 +60,9 @@ rough edge, say plainly whether the roadmap already covers it.
    `_process`/`_physics_process` hot loops), new player-facing mechanics need their help/tip/Codex entry, loot may only use item ids the live
    server knows, server `error` strings are player-readable, spell colours carry meaning. Shared rules live in `server/rules` (TypeScript) and the
    GDScript port in `godot/rules/` must match them: keep the golden-fixture tests passing instead of editing fixtures or goldens to fit.
-3. Add or update a test when behaviour changes (the suites live under `godot/tests/`). Run `__TOOLS__/check-godot.sh` until it passes. Never
-   weaken, skip or delete a test to make it pass.
+3. Add or update a test when behaviour changes (the suites live under `godot/tests/`). You do not need to run `__TOOLS__/check-godot.sh` to
+   confirm a finished change: after your turn the runner runs the check itself and hands you any failure to fix. Run it yourself only to
+   debug a failure it reported, or when a test you wrote is the point of the change. Never weaken, skip or delete a test to make it pass.
 4. Commit with `__TOOLS__/agit add <explicit paths>` then `__TOOLS__/agit commit -m "<message>"`. Commit message rules: ONE plain
    sentence written for players and teammates (it becomes the release note, about 100 characters; no ticket numbers, no
    file names, no "feat:" prefixes) and NO `Co-Authored-By` line or any other trailer. Several small commits are fine.

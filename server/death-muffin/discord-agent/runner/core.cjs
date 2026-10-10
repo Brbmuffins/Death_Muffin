@@ -646,9 +646,9 @@ function createRunner(cfgIn, opts = {}) {
     const out = r.out + r.err;
     // web: the node:test counters; godot: the last "GODOT TESTS: ..." line check-godot.sh prints
     let sum = GODOT ? ((out.match(/^GODOT TESTS: .*$/gm) || []).pop() || '').replace(/^GODOT TESTS: /, '') : (out.match(/^# (tests|pass|fail) .*$/gm) || []).join(' · ').replace(/# /g, '');
-    // a proposal only gets the quick check (changed + affected suites); say so, the full suite runs again at ship (ship.sh --full)
+    // proposals and ships run the quick check (changed + affected suites + smoke set); only sensitive ships run the full suite (ship.sh)
     const quick = GODOT && /^quick \((\d+) suites?([^)]*)\) — (.*)$/.exec(sum);
-    if (quick) sum = `quick check: ${quick[1]} suites${quick[2]} — ${quick[3]} (full suite runs at ship)`;
+    if (quick) sum = `quick check: ${quick[1]} suites${quick[2]} — ${quick[3]}`;
     return { ok: r.code === 0 && !r.timedOut, tail: out.trim().split('\n').slice(-30).join('\n'), summary: sum || (r.code === 0 ? (GODOT ? 'Godot test suites passed' : 'typecheck + client + server tests passed') : 'failed') };
   }
 

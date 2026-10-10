@@ -791,7 +791,7 @@ test('godot mode: question, gameplay proposal (godot-port compare link, zip prev
   assert.equal(sh(w.repo, 'rev-list', '--count', `origin/godot-port..origin/discord/${id}`), '1', 'branch was cut from godot-port');
   assert.match(p.payload.embeds[0].fields[0].value, /^Gameplay/);
   assert.match(field(p, 'Exact diff'), new RegExp(`compare/godot-port\\.\\.\\.discord/${id}`));
-  assert.equal(field(p, 'Tests'), '✅ quick check: 2 suites — 2 passed (full suite runs at ship)');
+  assert.equal(field(p, 'Tests'), '✅ quick check: 2 suites — 2 passed');
   const calls = () => fs.readFileSync(path.join(w.tools, 'check-godot.calls'), 'utf8').trim().split('\n');
   assert.ok(calls().length >= 1 && calls().every((c) => c === ''), 'proposal checks ran QUICK (no --full)');
   assert.equal(field(p, 'Try it'), `https://example.test/death-muffin/preview/${id}/DeathMuffin-Preview-${id}-win64.zip\nUnzip it and run Play Preview (offline).bat. Offline sandbox copy of this change: nothing saves to your real character.`);
@@ -801,7 +801,7 @@ test('godot mode: question, gameplay proposal (godot-port compare link, zip prev
   assert.ok(!fs.existsSync(path.join(w.cfg.stateDir, 'ship-active')), 'ship marker removed after the ship'); assert.match(live, /is on godot-port and deployed\./); assert.match(live, /Windows launcher on next start\. Phones and the old web\/offline game do not get Godot changes\./);
   assert.equal(remoteHead(w, 'master'), masterBefore, 'master is never touched in godot mode'); assert.notEqual(remoteHead(w, 'godot-port'), baseBefore);
   assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/game/a.gd').trim(), 'speed=9');
-  assert.equal(calls().pop(), '--full', 'ship.sh runs the FULL gate');
+  assert.equal(calls().pop(), '', 'a gameplay ship runs the QUICK check (dev build; only sensitive ships run --full)');
   const ship = shipsLog(w)[0]; assert.equal(ship.tier, 'gameplay');
   assert.match(fs.readFileSync(path.join(w.deploy, 'deploys.log'), 'utf8'), new RegExp(`deployed ${ship.sha}`));
   assert.ok(!fs.existsSync(path.join(w.deploy, 'mobile-deploys.log')), 'no mobile step in godot mode');

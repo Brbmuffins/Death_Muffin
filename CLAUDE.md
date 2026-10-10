@@ -16,7 +16,7 @@ and the README of any `godot/next/` system before changing it. Tag `archive/lega
 
 Never deploy, publish a client, or flip `set-online.sh` without passing checks for what you touched:
 
-- Commands for Godot, server, lobby and launcher tests: README.md "Tests". Run the one suite you touched while developing, the full set before a release.
+- Commands for Godot, server, lobby and launcher tests: README.md "Tests". Run the one suite you touched while developing. Before a release (dev build, owner 2026-10-10): the suites the change can affect plus the smoke set (`tools/godot/run-all-tests.sh --only $(node tools/godot/affected-suites.mjs)`); the full set for backend deploys and for server, net, login/session/save or central changes.
 - Backend deploys only through `deploy-release.sh`; client only through `publish-godot-client.sh` (README.md "Export, publish, deploy").
   Migrations must be additive and idempotent.
 - Shared VPS: run at most one rendered (software-GL) Godot or one headless browser at a time, and not the full suite in
