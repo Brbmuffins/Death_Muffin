@@ -17,11 +17,24 @@ func _frames(n: int) -> void:
 	for i in n:
 		await process_frame
 
-## The navigation server syncs on its own clock: give it real time, then force the map.
+## The navigation server syncs on its own clock: force the map, then wait (bounded, 10 s) until it has synced and stopped changing.
+## A fixed 0.4 s wait raced under machine load ("sealed-state: chapterhouse reachable" failed with load ~21, 2026-10-10).
 func _settle(b: DmWorldBuilder) -> void:
-	await create_timer(0.4).timeout
-	NavigationServer3D.map_force_update(b.get_world_3d().navigation_map)
+	var map := b.get_world_3d().navigation_map
 	await create_timer(0.1).timeout
+	NavigationServer3D.map_force_update(map)
+	var last := NavigationServer3D.map_get_iteration_id(map)
+	var stable := 0
+	for i in 200:
+		await create_timer(0.05).timeout
+		var it := NavigationServer3D.map_get_iteration_id(map)
+		if it == last and it > 0:
+			stable += 1
+			if stable >= 4:
+				break
+		else:
+			stable = 0
+			last = it
 
 func _initialize() -> void:
 	_run.call_deferred()
