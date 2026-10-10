@@ -6,7 +6,8 @@ and the README of any `godot/next/` system before changing it. Tag `archive/lega
 
 ## Branches and commits
 
-- `main` is the game. Branch from it; ship from it. Never push or deploy unless the task says so.
+- `main` is the game. Branch from it; ship from it. Never push or deploy unless the task says so. A pre-push hook refuses pushing `main`
+  while a Discord agent ship runs (server/death-muffin/ops/README.md): wait for it, then rebase and push.
 - **No `Co-Authored-By` or other trailers on commits**, including subagents' commits. Squash-merge side branches.
 - **Stage explicit paths.** Never `git add -A` or `git add .`; other agents edit the same tree. Review `git diff --cached`
   before committing. Never commit secrets: the repo is public (`.ai-keys.local`, `.env`, tokens, test accounts stay out).

@@ -77,6 +77,7 @@ for f in run-bug-agent.sh reports-cli.cjs PROMPT.md; do compare_exact "$BSRC/$f"
 compare_exact "$SRC/check-godot.sh" "$DM/bug-agent/check.sh" "bug-agent/check.sh (= discord-agent/check-godot.sh)"
 for f in sandbox-lib.sh agit; do compare_exact "$SRC/$f" "$DM/bug-agent/$f" "bug-agent/$f (= discord-agent/$f)"; done
 compare_exact "$SRC/death-muffin-discord-agent.service" /etc/systemd/system/death-muffin-discord-agent.service "systemd death-muffin-discord-agent.service"
+compare_exact server/death-muffin/ops/git-pre-push.sh "$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir)/hooks/pre-push" "git pre-push hook"
 for u in death-muffin-bug-agent.service death-muffin-bug-agent.timer; do compare_exact "$BSRC/$u" "/etc/systemd/system/$u" "systemd $u"; done
 
 info "$NCMP file(s)/unit(s) compared"; NCMP=0

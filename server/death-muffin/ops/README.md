@@ -1,4 +1,4 @@
-# Ops: nightly DB backup and weekly drift report
+# Ops: nightly DB backup, weekly drift report, pre-push hook
 
 Install or update both from a committed revision: `server/death-muffin/ops/install.sh [rev]` (copies the scripts to
 `/home/ubuntu/death-muffin/ops/`, installs the units, enables the timers). Never edit the installed copies.
@@ -35,3 +35,10 @@ Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`
 | 9 | Newest file in `~/death-muffin/backups/db/` missing or older than 36 h |
 
 Any worktree you create (including for this report's own branch) shows up in check 4 until it is removed.
+
+## Pre-push hook (`git-pre-push.sh`)
+
+`install.sh` installs it as the shared checkout's `pre-push` hook (in the common git dir, so every worktree has it). It refuses a push to
+`main` while a Discord agent ship is running (`~/death-muffin/discord-agent/state/ship-active` exists): main moving mid-ship stops that ship
+("master-moved") and its approver has to ✅ again. Branch pushes pass. The agent's ship, runner and `agit` run git with hooks off, so they
+are never blocked. Override once: `DM_ALLOW_PUSH_DURING_SHIP=1 git push ...`. The drift report checks the installed hook matches `main`.
