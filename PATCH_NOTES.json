@@ -1,6 +1,19 @@
 [
   {
     "date": "2026-10-10",
+    "title": "Lighter on the Graphics Card",
+    "items": [
+      "Graveyard and cathedral props draw in far fewer batches (about a third fewer draw calls in the Hollow Graves and the Nave).",
+      "Spell sparks and embers are now animated by the graphics card instead of the CPU, so heavy fights spend far less time on effects.",
+      "Enemies of the same kind share one material, so crowds switch rendering state much less.",
+      "Ultra uses the 8 nearest torches like High does (this renderer lights each object with at most 8 anyway).",
+      "Low and Medium show fewer effect particles at full saturation, to stay smooth on weaker machines.",
+      "New: Settings → Graphics → Renderer → Mobile (Vulkan, experimental). Try it if you like; if it fails to start, the game comes back in the normal renderer.",
+      "Auto resolution only lowers resolution when the graphics card is the bottleneck, so the picture no longer gets blurry for nothing."
+    ]
+  },
+  {
+    "date": "2026-10-10",
     "title": "Smoother and Faster",
     "items": [
       "Bag: you can now drag gear from the Reliquary onto its matching character slot or tool-belt cell to equip it, and item icons keep their proportions instead of stretching.",
