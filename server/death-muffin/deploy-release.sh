@@ -8,7 +8,7 @@
 # 2. Runs the shared-rules and server tests on that export.
 # 3. Backs up the DB and runtime server files, and writes ROLLBACK.sh.
 # 4. Applies the named migrations (each must be additive / idempotent), installs server code, restarts auth.
-# 5. announce-release.sh: release notes for the launcher and site, the #deathmuffin notice, fixed bug reports released.
+# 5. announce-release.sh: release notes for the launcher and site, the #build-alerts notice, fixed bug reports released.
 set -euo pipefail
 
 REPO=/home/ubuntu/vps-handoffs/DeathMuffin/game
@@ -90,7 +90,7 @@ echo "== Verify"
 curl -sSf https://muffindevelopment.com/death-muffin/api/health; echo
 echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
 
-# Launcher news + patch notes, the #deathmuffin notice and fixed bug reports (shared with publish-godot-client.sh; never fails the deploy).
+# Launcher news + patch notes, the #build-alerts notice and fixed bug reports (shared with publish-godot-client.sh; never fails the deploy).
 QUIET=1 REPO="$REPO" bash "$SRC/server/death-muffin/announce-release.sh" "$SHA" || true
 
 # The candidate export (~330 MB) is only needed until the release is live and announced; ROLLBACK.sh uses the backup folder.

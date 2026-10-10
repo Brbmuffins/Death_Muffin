@@ -111,7 +111,7 @@ function createRunner(cfgIn, opts = {}) {
   // never retried, and dropped if the bot did not pick them up within a few seconds (Discord shows typing for ~10 s).
   const typing = (job) => post({ threadId: job.threadId }, { typing: true });
   // Thread titles: the thread starts with a cleaned version of the request; the agent's .dm-title (a short issue name) replaces it, and a
-  // marker shows where the job stands (📝 waiting for approval, ✅ shipped, ❌ discarded). Renames are fire-and-forget and rate limited
+  // marker shows where the job stands (🔧 working or shipping, 📝 waiting for approval, ✅ shipped, ❌ discarded). Renames are fire-and-forget and rate limited
   // (threadTitle.cjs keeps only the newest wish, at most 2 per 10 min per thread). job.title / job.agentTitleKey persist in jobs.json.
   const BOT_NAMES = ['Muffin Core', 'MuffinCore'].concat(cfg.botName ? [cfg.botName] : []);
   const renamer = TT.createRenamer({ now, windowMs: cfg.renameWindowMs || 600000, send: (tid, name) => post({ threadId: tid }, { rename: { threadId: tid, name: redactText(name) } }) });
@@ -146,8 +146,8 @@ function createRunner(cfgIn, opts = {}) {
   const logShip = (rec) => fs.appendFileSync(shipsFile, JSON.stringify({ ts: new Date(now()).toISOString(), ...rec }) + '\n', { mode: 0o600 });
   const nameOf = (id) => cfg.names[id] || (auth.isOwner(id) ? 'the owner' : `user ${String(id).slice(-4)}`);
   // Owner alerts about a thread that was deleted go to the channel instead, so a failed deploy is never silent.
-  const pingTarget = (job) => (goneThread(job.threadId) ? { channelId: job.channelId } : { threadId: job.threadId });
-  const ownerPing = (target, text) => post(target, { content: `${cfg.ownerIds.map((i) => `<@${i}>`).join(' ')} ${text}`, mentionUsers: cfg.ownerIds });
+  const pingTarget = (job) => (goneThread(job.threadId) ? null : { threadId: job.threadId });   // never the channel itself (owner, 2026-10-10)
+  const ownerPing = (target, text) => target && post(target, { content: `${cfg.ownerIds.map((i) => `<@${i}>`).join(' ')} ${text}`, mentionUsers: cfg.ownerIds });
 
   // ---------- images people attach (written into the worktree for the agent to Read; never redacted, never committed) ----------
   // Returns the lines to append to the message text (one per image, or a short note for a refused one).
@@ -452,7 +452,7 @@ function createRunner(cfgIn, opts = {}) {
     while (running().length < cfg.maxConcurrentJobs) {
       const next = Object.values(jobs).filter((j) => !j.running && j.queue.length && ['idle', 'proposed'].includes(j.status) && !j.deleteRequested).sort((a, b) => a.queue[0].ts - b.queue[0].ts)[0];
       if (!next) break;
-      next.running = true; next.status = 'running';
+      next.running = true; next.status = 'running'; syncName(next);   // 🔧 in the thread title as soon as work starts
       processJob(next).catch((e) => { console.error('job crashed', e); say(next, `Something broke on my side: ${clip(e.message, 300)}`); next.running = false; next.status = 'idle'; save(); })
         .finally(async () => {
           next.running = false; save();
@@ -499,15 +499,16 @@ function createRunner(cfgIn, opts = {}) {
         say(job, `Merging the latest ${BB} hit conflicts; asking the agent to resolve them.`);
       } else say(job, `Merged the latest ${BB} into this branch cleanly. Re-running checks.`);
       job.proposal = null;
-    } else if (job.turns === 0) say(job, `On it (${job.model[0].toUpperCase()}${job.model.slice(1)}).`);
-    const t0 = now(); let nextUpdate = t0 + 60000;
+    }   // no "On it" line: the 🔧 in the thread title and the typing indicator say work started (owner, 2026-10-10: fewer thread posts)
+    const t0 = now();
     // The agent says what it is doing in .dm-status ("<pct>% · <sentence>", e.g. "10% · Reproducing the tooltip crash, then fixing it; ~20-40 min").
-    // A new status is posted right away, at most every 3 min (owner, 2026-10-09: Helix waited 40 min with only a typing dot and asked
-    // "hello?"); otherwise a progress note every 5 min. During check-godot.sh the suite count in .dm-check-progress moves the percentage.
+    // Fewer thread posts (owner, 2026-10-10): the first status is posted right away (2026-10-09: Helix waited 40 min with only a typing dot
+    // and asked "hello?"), later ones only when the status changed and at most every STATUS_EVERY_MIN (15); no timed progress notes.
+    // During check-godot.sh the suite count in .dm-check-progress moves the percentage of the next status post.
     const statusFile = job.worktree ? path.join(job.worktree, '.dm-status') : null;
     const checkFile = job.worktree ? path.join(job.worktree, '.dm-check-progress') : null;
     for (const f of [statusFile, checkFile]) if (f) { try { fs.rmSync(f, { force: true }); } catch { /* none */ } }
-    let status = '', lastStatusPost = 0;
+    let status = '', lastStatusPost = 0, pendingStatus = false; const statusEvery = (cfg.statusEveryMin != null ? cfg.statusEveryMin : 15) * 60000;
     const readStatus = () => { try { return redactText(fs.readFileSync(statusFile, 'utf8').split('\n').map((l) => l.trim()).find(Boolean) || '').slice(0, 240); } catch { return ''; } };
     const readCheck = () => { try { const [d, t] = fs.readFileSync(checkFile, 'utf8').trim().split(/\s+/).map(Number); return t > 0 && d >= 0 ? { done: Math.min(d, t), total: t } : null; } catch { return null; } };
     const mins = () => Math.max(1, Math.round((now() - t0) / 60000));
@@ -516,11 +517,8 @@ function createRunner(cfgIn, opts = {}) {
     const ticker = setInterval(() => {
       typing(job); syncName(job);
       const st = statusFile ? readStatus() : '';
-      if (st && st !== status) {
-        status = st;
-        if (!lastStatusPost || now() - lastStatusPost >= 3 * 60000) { lastStatusPost = now(); nextUpdate = now() + 5 * 60000; say(job, note()); return; }
-      }
-      if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, note()); }
+      if (st && st !== status) { status = st; pendingStatus = true; }
+      if (pendingStatus && (!lastStatusPost || now() - lastStatusPost >= statusEvery)) { pendingStatus = false; lastStatusPost = now(); say(job, note()); }
     }, cfg.tickMs || 8000); ticker.unref();
     try { await runJob(job, real, extra); } finally { clearInterval(ticker); syncName(job); }
   }
@@ -670,7 +668,7 @@ function createRunner(cfgIn, opts = {}) {
       if (v.ok) return propose(job, v, result);
       audit.log('verify-failed', { job: job.id, why: v.why });
       if (!v.fixable || attempt >= 2) { say(job, `I could not get this into a shippable state: ${clip(v.why, 900)}\nNothing was proposed. Tell me how to proceed or react ❌ / say !discard.`); job.status = 'idle'; return; }
-      say(job, `Checks found a problem (${clip(v.why.split('\n')[0], 200)}); asking the agent to fix it.`);
+      // the fix-up turn is internal (audit: verify-failed); no thread post (owner, 2026-10-10: fewer thread posts)
       const r = await agentTurn(job, `The automatic review failed. Fix this, make sure ${CHECK} passes, and commit:\n${v.why}`);
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
       if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return; }
@@ -929,7 +927,7 @@ function createRunner(cfgIn, opts = {}) {
   }
   async function ship(job, approverId) {
     setBusy(true, `ship ${job.id}`); job.status = 'shipping'; save();
-    const p = job.proposal; const ownerShips = auth.isOwner(approverId);
+    const p = job.proposal;
     say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto ${BB}, re-testing, deploying. This takes a few minutes.`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
       MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
@@ -952,7 +950,7 @@ function createRunner(cfgIn, opts = {}) {
         // say plainly what did NOT update (owner, 2026-10-09): Godot ships publish the Windows client only; web mode without a mobile branch skips phones
         + (GODOT ? '\nPlayers get it in the Windows launcher on next start. Phones and the old web/offline game do not get Godot changes.' : (mkind === 'skipped' || !mkind ? '\nPhones and offline were not updated.' : '')) + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : '') + '\nKeep going here for the next change.');
       if (mkind === 'pending') ownerPing(pingTarget(job), `Mobile/offline did NOT update for \`${job.id}\` (PC is live as \`${sha}\`): ${mwhy}`);
-      if (!ownerShips) ownerPing(pingTarget(job), `${nameOf(approverId)} shipped **${clip(p.title, 100)}** (${p.tier}) as \`${sha}\`. Diff: ${G.compareUrl(cfg, job.branch)} — to undo: say \`rollback\`.`);
+      // no owner ping for a ship: every release is announced in #build-alerts (announce-release.sh); failures still ping
       // A message that arrived during the ship starts the next round right away (its worktree is cut from the base branch we just shipped).
       if (job.queue.length && !job.deleteRequested) await beginRound(job);
       else { await G.removeJobArtifacts(cfg, job); job.worktree = null; save(); }

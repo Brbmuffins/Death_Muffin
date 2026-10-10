@@ -69,7 +69,8 @@ test('limited approver: casual ok, gameplay refused; Helix ships gameplay; ship 
   assert.notEqual(remoteMaster(w), before);
   assert.equal(sh(w.repo, 'show', 'origin/master:src/gameplay/a.ts').trim(), 'speed=9'.trim());
   const ships = shipsLog(w); assert.equal(ships.length, 1); assert.equal(ships[0].approverId, IDS.HELIX); assert.equal(ships[0].tier, 'gameplay');
-  const ping = await until(() => thread.sent.find((s) => (s.payload.allowedMentions && s.payload.allowedMentions.users)), d.ad); assert.ok(ping.payload.content.includes(`<@${IDS.OWNER}>`)); assert.match(ping.payload.content, /compare\/master\.\.\./);
+  // a ship pings nobody in the thread: releases are announced in #build-alerts by announce-release.sh (owner, 2026-10-10)
+  assert.ok(!thread.sent.some((s) => s.payload.allowedMentions && s.payload.allowedMentions.users && s.payload.allowedMentions.users.length), 'no owner ping for a ship');
   // Cleanup runs after the "Live" message: wait for it rather than racing it.
   await until(() => fs.readdirSync(w.cfg.worktreeRoot).length === 0 && sh(w.repo, 'ls-remote', 'origin', 'refs/heads/discord/*') === '', d.ad);
   assert.equal(sh(w.repo, 'branch', '--list', 'discord/*'), '');
@@ -102,7 +103,8 @@ test('Co-Authored-By trailers are stripped by the runner before the branch is pr
 test('a secret in the diff triggers an automatic fix-up turn; the proposal contains no secret', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.OWNER, 'MAKE-SECRET add a helper');
-  await until(() => texts(thread).some((t) => /Checks found a problem/.test(t)), d.ad);
+  await until(() => /verify-failed/.test(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8')), d.ad);   // the fix-up turn is internal: no thread post
+  assert.doesNotMatch(texts(thread).join('\n'), /Checks found a problem/);
   await until(() => Object.values(w.runner.jobs())[0].status === 'idle' && !Object.values(w.runner.jobs())[0].running, d.ad);
   const audit = fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'); assert.match(audit, /verify-failed/);
   // the fix-up removed the key, so nothing is left to propose, and the secret never reached GitHub
@@ -246,7 +248,8 @@ test('rate limit: polite one-liner after the hourly cap; full approvers get the 
 test('working shows "typing…" instead of reacting to every message', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread, m: msg } = await request(d, IDS.HELIX, 'what does the ascension altar do?');
-  await until(() => texts(thread).length >= 2, d.ad);
+  await until(() => texts(thread).length >= 1, d.ad);   // just the answer: no "On it" line any more
+  assert.ok(!texts(thread).some((t) => /^On it/.test(t)), 'no On it line');
   assert.ok(thread.typing > 0, 'typing indicator sent while working');
   assert.deepEqual(msg.reactions, [], 'no reaction on the opening message');
   const m2 = await d.say(thread, IDS.HELIX, 'and the vows?');
@@ -1152,11 +1155,11 @@ test('godot publish: the runner retries by itself, and a later ship heals a thre
   await until(() => Object.values(w2.runner.jobs()).every((j) => j.status === 'shipped' && j.worktree === null), d2.ad);   // the healed thread ended too
 });
 
-test('thread title: starts clean, the agent\'s .dm-title renames the thread, markers follow the proposal and the ship, and it persists', async () => {
+test('thread title: starts clean, the agent\'s .dm-title renames the thread, 🔧 while working, markers follow the proposal and the ship, and it persists', async () => {
   const w = godotWorld({ tickMs: 200, renameWindowMs: 2500 }); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'hey can you please GD-GAMEPLAY TITLE-TURN="Faster walking speed" make me faster');
-  assert.doesNotMatch(thread.name, /<@|^dm /i); assert.match(thread.name, /^Gd-gameplay/i);
-  await until(() => (thread.renames || []).includes('Faster walking speed'), d.ad);
+  assert.doesNotMatch(thread.name, /<@|^dm /i); assert.match(thread.name, /^(🔧 )?Gd-gameplay/i);
+  await until(() => (thread.renames || []).includes('🔧 Faster walking speed'), d.ad);   // 🔧 while the agent works
   const job = Object.values(w.runner.jobs())[0];
   assert.equal(job.title, 'Faster walking speed');
   assert.equal(sh(job.worktree, 'check-ignore', '.dm-title').trim(), '.dm-title', 'title file is git-ignored');
@@ -1170,7 +1173,7 @@ test('thread title: starts clean, the agent\'s .dm-title renames the thread, mar
 test('thread title: a discarded job gets the cross marker, and a title with a mention cannot ping', async () => {
   const w = godotWorld({ tickMs: 200, renameWindowMs: 2500 }); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY TITLE-TURN="@everyone <@1> Faster `walk`"');
-  await until(() => (thread.renames || []).includes('Faster walk'), d.ad);
+  await until(() => (thread.renames || []).includes('🔧 Faster walk'), d.ad);
   const p = await waitProposal(d, thread);
   await d.react(p, IDS.HELIX, '❌');
   await until(() => thread.name === '❌ Faster walk', d.ad);

@@ -15,13 +15,12 @@ the owner is told once in #death-muffin.
    one commit per report (`Bug report #<id>: …`), and writes a verdict per report.
 4. The script re-runs the checks on the branch, applies the verdicts to the DB (players see the status and the
    `note`; `fixed` is downgraded to `triaged` if the branch is red), writes `~/death-muffin/bug-agent/runs/<date>.md`
-   and posts the summary to the Discord release webhook. A branch with no commits is deleted.
+   (no Discord post). A branch with no commits is deleted.
 
-**Discord.** Every post goes to `~/death-muffin/private/discord-deathmuffin-webhook.url` (the Death Muffin channel) when
-that file exists, else to the older `discord-github-webhook.url` (MuffinCore alerts). Two kinds: the daily triage summary
-(fixes on the branch, awaiting review) and, from `announce-release.sh` (run by every client publish and backend deploy), **"Player-reported bugs fixed — live now"** when a
-release contains `Bug report #<id>: …` commits. That step also sets those reports to `released`, which players see
-as *Fixed — live now*.
+**Discord.** The bug agent posts nothing (owner, 2026-10-10): its triage summary and set-aside notices stay in `runs/`. Players'
+fixes reach Discord only when they ship: `announce-release.sh` (every client publish and backend deploy) posts **"Player-reported bugs fixed —
+live now"** in #build-alerts when a release contains `Bug report #<id>: …` commits, and sets those reports to `released` (players see
+*Fixed — live now*).
 
 **Nothing ships on its own.** The owner (or a Claude session) reviews `bugfix/reports-<date>`, merges it and ships with
 `publish-godot-client.sh` as usual.

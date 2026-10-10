@@ -4,7 +4,7 @@
 
 const NAME_MAX = 60;
 const FALLBACK = 'Death Muffin request';
-const MARKERS = { proposed: '📝 ', shipped: '✅ ', discarded: '❌ ' };
+const MARKERS = { running: '🔧 ', shipping: '🔧 ', proposed: '📝 ', shipped: '✅ ', discarded: '❌ ' };   // 🔧 = work started (owner, 2026-10-10)
 
 // Cut at a word boundary within max characters (an ellipsis marks a cut).
 function clipWords(s, max) {

@@ -9,14 +9,14 @@ Install or update both from a committed revision: `server/death-muffin/ops/insta
 `~/death-muffin/backups/db/daily/` (newest 14), plus the first dump of each week in `weekly/` (8) and each month in `monthly/` (12).
 Restore: `gunzip -c <file> | sudo mysql <db>` (into a scratch DB first if unsure).
 
-## Weekly drift report (timer `death-muffin-drift-report`, Mondays 09:30 UTC, posts only when something drifted)
+## Weekly drift report (timer `death-muffin-drift-report`, Mondays 09:30 UTC; report in the journal, no Discord post since 2026-10-10)
 
 `drift-report.sh` compares the Death Muffin deployment on this VPS with `origin/main` and lists leftovers. It is read-only: it never changes, deletes, restarts or pushes anything (it only runs `git fetch`).
 
 ```
 server/death-muffin/ops/drift-report.sh              # plain-text report; exit 0 clean, 3 drift
 server/death-muffin/ops/drift-report.sh --json       # machine output
-server/death-muffin/ops/drift-report.sh --discord    # also post an embed when there is drift
+server/death-muffin/ops/drift-report.sh --discord    # also post an embed when there is drift (manual only; the weekly timer does not post)
 server/death-muffin/ops/drift-report.sh --discord --always   # post even when clean
 ```
 

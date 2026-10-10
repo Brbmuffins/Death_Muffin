@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Bug-report agent, near real time (death-muffin-bug-agent.timer, every 2 minutes; exits at once when nothing is new). Reads the 'new' player reports, lets a sandboxed headless Claude
-# fix what it can in the Godot client (git branch main, project dir godot/) on a fresh branch, writes each report's verdict back for the player, and tells the owner on Discord.
+# fix what it can in the Godot client (git branch main, project dir godot/) on a fresh branch, writes each report's verdict back for the player, and leaves a summary in runs/ (no Discord post).
 #
 #   run-bug-agent.sh            normal run (one branch per run that found reports)
 #   run-bug-agent.sh --dry-run  list the pending reports and stop
@@ -68,14 +68,8 @@ REPORTS=$(REPORTS="$REPORTS" node -e '
 COUNT=$(printf '%s' "$REPORTS" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).length))')
 IDS=$(printf '%s' "$REPORTS" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).map(r=>r.id).join(",")))')
 if [ "$COUNT" = 0 ]; then
-  if [ -s "$ATTEMPTS.parked" ] && [ -r "$RUNTIME/private/discord-deathmuffin-webhook.url" ]; then
-    python3 - "$RUNTIME/private/discord-deathmuffin-webhook.url" "$(cat "$ATTEMPTS.parked")" <<'PY' || true
-import json, sys, urllib.request
-url, ids = open(sys.argv[1]).read().strip(), sys.argv[2]
-embed = {"title": "Bug reports set aside", "description": f"The bug agent tried {ids} three times without settling them; they wait for a person (reports-cli.cjs show <id>).", "color": 0xB45309}
-urllib.request.urlopen(urllib.request.Request(url, data=json.dumps({"username": "Death Muffin", "embeds": [embed], "allowed_mentions": {"parse": []}}).encode(), headers={"Content-Type": "application/json", "User-Agent": "death-muffin-bug-agent"}), timeout=10)
-PY
-  fi
+  # set-aside reports are logged, not posted (owner, 2026-10-10: Discord only hears about shipped releases, in #build-alerts)
+  [ -s "$ATTEMPTS.parked" ] && echo "$(date -u +%FT%TZ) set aside after 3 attempts: $(cat "$ATTEMPTS.parked")" >> "$LOG"
   rm -f "$ATTEMPTS.parked"
   exit 0
 fi
@@ -161,16 +155,6 @@ if [ "$COMMITS" = 0 ]; then
   echo "no fixes; worktree and branch removed"
 fi
 
-HOOK_FILE="$RUNTIME/private/discord-deathmuffin-webhook.url"
-[ -r "$HOOK_FILE" ] || HOOK_FILE="$RUNTIME/private/discord-github-webhook.url"
-if [ -r "$HOOK_FILE" ]; then
-  python3 - "$SUMMARY" "$HOOK_FILE" <<'PY' && echo "Discord: summary sent" || echo "Discord: summary failed"
-import json, sys, urllib.request
-body, url = open(sys.argv[1]).read(), open(sys.argv[2]).read().strip()
-embed = {"title": "Death Muffin bug reports — triage (fixes await review)", "description": body[:3900], "color": 0xB45309}
-req = urllib.request.Request(url, data=json.dumps({"username": "Death Muffin", "embeds": [embed], "allowed_mentions": {"parse": []}}).encode(),
-                             headers={"Content-Type": "application/json", "User-Agent": "death-muffin-bug-agent"})
-urllib.request.urlopen(req, timeout=10)
-PY
-fi
+# No Discord post (owner, 2026-10-10): the summary stays in runs/<date>-<time>.md and the day log; a fix reaches Discord only when it
+# ships (announce-release.sh posts it in #build-alerts as "fixed — live now").
 exit 0

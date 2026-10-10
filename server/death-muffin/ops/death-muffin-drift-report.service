@@ -1,10 +1,10 @@
 [Unit]
-Description=Death Muffin weekly drift report (server/death-muffin/ops/drift-report.sh; posts to #death-muffin only when something drifted)
+Description=Death Muffin weekly drift report (server/death-muffin/ops/drift-report.sh; journal only, no Discord post)
 After=network-online.target
 
 [Service]
 Type=oneshot
 User=ubuntu
-ExecStart=/home/ubuntu/death-muffin/ops/drift-report.sh --discord
+ExecStart=/home/ubuntu/death-muffin/ops/drift-report.sh
 # exit 3 = drift found and reported: not a failure of the unit
 SuccessExitStatus=3

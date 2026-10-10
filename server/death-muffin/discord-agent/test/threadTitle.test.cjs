@@ -33,6 +33,7 @@ test('withMarker and titleKey', () => {
   assert.equal(TT.withMarker('Bag crash', 'shipped'), '✅ Bag crash');
   assert.equal(TT.withMarker('Bag crash', 'discarded'), '❌ Bag crash');
   assert.equal(TT.withMarker('Bag crash', 'proposed'), '📝 Bag crash');
+  assert.equal(TT.withMarker('Bag crash', 'running'), '🔧 Bag crash'); assert.equal(TT.withMarker('Bag crash', 'shipping'), '🔧 Bag crash');
   assert.equal(TT.withMarker('Bag crash', 'idle'), 'Bag crash');
   assert.equal(TT.titleKey('Bag  Crash!'), TT.titleKey('bag crash'));
 });

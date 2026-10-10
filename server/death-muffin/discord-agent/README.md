@@ -27,7 +27,9 @@ In godot mode: tests `check-godot.sh` (agent, runner and ship.sh) · preview `pr
 `publish-godot-client.sh` · rollback folder `backup-pre-release-godot-<stamp>`.
 
 **Progress notes** while a turn runs: `🔧 <pct>% · <sentence> · ⏱ <min> min`. The agent writes `.dm-status` as `<pct>% · <sentence>` (prompt
-`PROMPT-godot.md`); a new status posts at once (at most every 3 min), otherwise a note every 5 min. While `check-godot.sh` runs it keeps
+`PROMPT-godot.md`); fewer thread posts (owner, 2026-10-10): the first status posts at once, later ones only when it changed and at most every
+`statusEveryMin` (default 15); no timed notes, no "On it" line, no "checks found a problem" line (fix-up turns are in the audit log only).
+While `check-godot.sh` runs it keeps
 `<done> <total>` suites in `.dm-check-progress`, and the note's percentage moves from the agent's number toward 95% (`progressNote` in
 `runner/core.cjs`). Both files are git-ignored. Model generation posts `🎨 Still generating "<id>"` with the minutes instead.
 The auth backend (`deploy-release.sh`) is not part of a ship; the owner runs it. The web-mode scripts in this folder (`check.sh`, `preview.sh`, `shot.sh`, `regen.sh`) are unused.
@@ -54,7 +56,7 @@ accepts only exact `backup-pre-release-godot-<yyyymmddThhmmssZ>` real directorie
 
 ## Who can do what (`config.json`, owner-edited, never by the AI)
 
-- `ownerIds`: always requester + approver of every tier; pinged on every ship/rollback by someone else.
+- `ownerIds`: always requester + approver of every tier; pinged in the thread on failures (deploy/publish problems) and rollbacks by someone else. A ship pings nobody: releases are announced in #build-alerts by `announce-release.sh`. The runner never posts in the channel itself, only in threads.
 - `projects.deathmuffin.requesters`: may talk to it and give work. Everyone else is ignored (no reply, audited).
 - `projects.deathmuffin.approvers.{casual,gameplay,sensitive}`: who may ✅ a proposal of that tier. Anyone in `sensitive` is a
   full approver (all tiers, any rollback, no daily cap, may switch models). Someone only in `casual` is limited
@@ -157,7 +159,7 @@ agent turn ── told the files are ready: build-art.sh <id> (sandboxed: tools/
 
 ## Thread names
 
-The thread opens with a cleaned copy of the request (mentions, the bot's name and filler like "hey, can you" removed, sentence case, at most 60 characters, else `Death Muffin request`). When the agent writes `.dm-title` (2-6 words, see `PROMPT-godot.md`) the runner sanitizes it (one line, no mentions, links, markdown or control characters, redacted, at most 57 characters) and renames the thread to it; a different title in a later round renames again. A marker shows the state: `📝` waiting for approval, `✅` shipped, `❌` discarded. `runner/lib/threadTitle.cjs` keeps only the newest wanted name per thread and sends at most 2 renames per 10 minutes per thread (Discord's limit), dropping no-ops. Renames are fire-and-forget ops (`{ rename: { threadId, name } }`) that the adapter applies with `setName`; failures are logged and skipped, archived threads are not touched. `job.title` in `jobs.json` is the current title, so a restart does not rename again; `!status` shows it. The bot started the thread, and Discord lets a thread's owner edit its name, so no new permission should be needed; if renames fail with "Missing Permissions" in the bot log, give the bot **Manage Threads** in `#death-muffin`.
+The thread opens with a cleaned copy of the request (mentions, the bot's name and filler like "hey, can you" removed, sentence case, at most 60 characters, else `Death Muffin request`). When the agent writes `.dm-title` (2-6 words, see `PROMPT-godot.md`) the runner sanitizes it (one line, no mentions, links, markdown or control characters, redacted, at most 57 characters) and renames the thread to it; a different title in a later round renames again. A marker shows the state: `🔧` working (set as soon as a turn or ship starts), `📝` waiting for approval, `✅` shipped, `❌` discarded. `runner/lib/threadTitle.cjs` keeps only the newest wanted name per thread and sends at most 2 renames per 10 minutes per thread (Discord's limit), dropping no-ops. Renames are fire-and-forget ops (`{ rename: { threadId, name } }`) that the adapter applies with `setName`; failures are logged and skipped, archived threads are not touched. `job.title` in `jobs.json` is the current title, so a restart does not rename again; `!status` shows it. The bot started the thread, and Discord lets a thread's owner edit its name, so no new permission should be needed; if renames fail with "Missing Permissions" in the bot log, give the bot **Manage Threads** in `#death-muffin`.
 
 ## Install (from a committed revision; nothing starts by itself)
 1. `bash server/death-muffin/discord-agent/install-runner.sh <rev>`: tooling to `~/death-muffin/discord-agent`, `config.json` (owner id from

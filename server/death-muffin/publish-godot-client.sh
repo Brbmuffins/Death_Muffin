@@ -12,7 +12,7 @@
 #    The `online` block is carried over from the manifest that is live now, so republishing never opens or closes online play.
 #    A first publish starts locked. Devs flip it with set-online.sh.
 # 4. Keeps the newest two build folders (the previous one covers launchers that are mid-download).
-# 5. announce-release.sh: launcher news + patch notes, the #deathmuffin notice, fixed bug reports released (skipped for a rollback).
+# 5. announce-release.sh: launcher news + patch notes, the #build-alerts notice, fixed bug reports released (skipped for a rollback).
 #
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
 # Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2
@@ -123,11 +123,11 @@ echo "== published $VERSION ($SHA) to $OUT_DIR"
 echo "   online: $ONLINE_JSON"
 python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); [print("   %10d  %s" % (f["size"], f["path"])) for f in m["files"]]' "$OUT_DIR/manifest.json"
 
-# Launcher news + patch notes, the #deathmuffin notice and bug reports marked "Fixed — live now" (announce-release.sh from the published
+# Launcher news + patch notes, the #build-alerts notice and bug reports marked "Fixed — live now" (announce-release.sh from the published
 # revision itself; never fails the publish). A republish of an older revision (rollback) announces nothing. NO_ANNOUNCE=1 skips it.
 if [ -z "${NO_ANNOUNCE:-}" ]; then
   ANN=$(mktemp)
-  if git -C "$REPO" show "$SHA:server/death-muffin/announce-release.sh" >"$ANN" 2>/dev/null; then REPO="$REPO" bash "$ANN" "$SHA" || true
+  if git -C "$REPO" show "$SHA:server/death-muffin/announce-release.sh" >"$ANN" 2>/dev/null; then REPO="$REPO" HOOK_FILE="${HOOK_FILE:-/home/ubuntu/death-muffin/private/discord-build-alerts-webhook.url}" bash "$ANN" "$SHA" || true   # an older revision's copy still defaulted to #death-muffin
   else echo "release notes: $SHA has no announce-release.sh (older revision): skipped"; fi
   rm -f "$ANN"
 fi

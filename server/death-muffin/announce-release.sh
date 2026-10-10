@@ -7,7 +7,8 @@
 # 1. release-notes.json (launcher news panel) and patch-notes.json (launcher "All patch notes", the site's patch-notes page, the in-game
 #    notes) in $PUBLIC/play/. The title and items are the top PATCH_NOTES.json entry when that file changed since the last announced
 #    release, otherwise the commit subjects since then.
-# 2. A "Death Muffin update is live" notice in #deathmuffin (webhook URL outside the repo).
+# 2. A "Death Muffin update is live" notice in #build-alerts (webhook URL outside the repo). Releases are the only Discord posts the
+#    release tooling makes (owner, 2026-10-10: nothing in #death-muffin, only shipped items in #build-alerts).
 # 3. Player bug reports fixed in the range (commits "Bug report #<id>: ...") are marked 'released' (the reporter sees "Fixed — live now"),
 #    with their own notice.
 # The last announced revision is the `sha` in the live release-notes.json. A revision that is not newer than it (a rollback, or the
@@ -76,7 +77,7 @@ fi
 echo "release notes: $SHORT published ($( [ "$FRESH" = 1 ] && echo "PATCH_NOTES.json" || { [ "$CARRY" = 1 ] && echo "previous notes kept"; } || echo "commit subjects"))"
 
 # ---- 2. Discord notice (the repo is public: the webhook URL lives outside it) ----
-HOOK_FILE="${HOOK_FILE:-$RUNTIME/private/discord-deathmuffin-webhook.url}"
+HOOK_FILE="${HOOK_FILE:-$RUNTIME/private/discord-build-alerts-webhook.url}"   # #build-alerts
 post() {   # post <json file> <label>: prints the outcome, never fails
   if [ -n "${DRY_RUN:-}" ]; then echo "Discord: $2 not posted (dry run)"; return 0; fi
   if [ ! -r "$HOOK_FILE" ]; then echo "Discord: $2 not posted (no webhook file)"; return 0; fi
