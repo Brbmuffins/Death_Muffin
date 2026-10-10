@@ -12,6 +12,7 @@ const RESERVED := {
 	".": "the Gear Atlas", "l": "the Grimoire", "g": "auto combat", "e": "talking to someone nearby", "escape": "Settings and closing panels", "enter": "chat",
 	"w": "walking", "a": "walking", "s": "walking", "d": "walking", "arrowup": "walking", "arrowdown": "walking", "arrowleft": "walking", "arrowright": "walking",
 	" ": "the game", "z": "the elixir on your belt", "x": "the tonic on your belt",
+	"f3": "the performance overlay",
 }
 const NOT_A_KEY := ["shift", "control", "alt", "meta", "altgraph", "capslock", "tab", "dead", "unidentified", "contextmenu", "os", "fn"]
 

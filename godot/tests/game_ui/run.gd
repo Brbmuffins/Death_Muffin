@@ -476,6 +476,7 @@ func _extras(game: DmMockGame, ui: DmGameUi) -> void:
 	_check(rt.keys.size() == 5 and rt.primary == String(kit["defaultPrimary"]), "rites default for a fresh character")
 	# bind rules
 	_check(not DmUiBinds.check_bind({}, "loadout_1", "i")["ok"] and DmUiBinds.check_bind({}, "loadout_1", "f7")["ok"], "keybind: reserved refused, F7 ok")
+	_check(not DmUiBinds.check_bind({}, "loadout_2", "f3")["ok"], "keybind: F3 belongs to the performance overlay (a saved F3 bind is dropped on load, which uses the same check)")
 	_check(DmUiBinds.next_slot([0, 2, 5], 2, -1) == 5 and DmUiBinds.next_slot([0, 2, 5], 5, -1) == 0, "next loadout wraps")
 	# clean name
 	_check(DmLoadoutPresets.clean_name("  A<b>  c \u0001") == "Ab c", "loadout name cleaned")
