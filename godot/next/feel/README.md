@@ -44,7 +44,7 @@ Locks: `tests/next_clarity/cues_run.gd`; audit tools `tests/next_clarity/audit.g
 - **Damage-number cap**: `DmFloatBudget` (`next/hud/dm_float_budget.gd`, used by `DmNextUiHost.float_text`): hits + crits 14 (a crit gets +4), dot 5, thrall 6, hard total 22; hurt / gold / heal / info are never limited. The caps are judgement numbers: loosen if a crit-heavy build feels muted.
 
 ## Tests
-`tests/next_feel/run.gd` (behaviour), `tests/next_combat_feel/run.gd` (seam: chase/queue wiring, gesture per accepted cast, weapon-clip ids, hitstop callbacks, `Engine.time_scale` untouched, idle tick cost), `tests/next_autocombat/run.gd`, `tests/next_clarity/`.
+`tests/next_feel/run.gd` (behaviour, plus the wiring seams in section J), `tests/next_autocombat/run.gd`, `tests/next_clarity/`.
 
 ## Known gaps
 - Auto-combat has no `DmNav` over the navmesh (the decision code's `clear_line` / path-around is skipped; the body's nav clamp slides it).
