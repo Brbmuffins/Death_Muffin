@@ -25,6 +25,9 @@ var _party_busy := false            ## a join / return is in progress (one at a 
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
+	# Physics interpolation (project setting) is opt-in per body: everything is OFF by default (effects, cameras, anything placed from
+	# _process), and only what is moved in _physics_process turns itself ON (DmSessionBody on the host, DmEnemy, DmThrall).
+	get_tree().root.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	# The Vfx autoload reads the current 3D camera every frame: keep one alive behind the login screens (the world camera takes over).
 	var idle_cam := Camera3D.new()
 	idle_cam.name = "IdleCamera"

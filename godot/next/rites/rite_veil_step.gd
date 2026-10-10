@@ -34,6 +34,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 		c.body.call("dash", to, secs)
 	else:
 		c.body.position = Vector3(to.x, c.body.position.y, to.z)
+		c.body.reset_physics_interpolation()
 	c.broadcast({"t": "veil", "rite": id, "by": c.peer_id, "fx": from.x, "fz": from.z, "tx": to.x, "tz": to.z})
 	return ""
 

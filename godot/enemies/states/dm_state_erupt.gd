@@ -21,6 +21,7 @@ func tick(_dt: float) -> int:
 	var B: Dictionary = DmSimData.BURROW
 	var dmg := enemy.damage * float(B["eruptMultGraves"] if enemy.in_graves else B["eruptMult"])
 	enemy.global_position = Vector3(enemy.aim.x, enemy.global_position.y, enemy.aim.z)
+	enemy.reset_physics_interpolation()   # the burrower surfaces at the aim point: no glide from where it went under
 	enemy.set_underground(false)
 	enemy.attack_cd = enemy.cooldown_s
 	for tg in enemy.targets_within(enemy.aim, float(B["eruptR"])):

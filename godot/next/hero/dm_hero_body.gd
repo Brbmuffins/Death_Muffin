@@ -248,6 +248,7 @@ func root_for(seconds: float) -> void:
 ## Host: move the body instantly (respawn, waystone, Grave Step).
 func teleport(to: Vector3) -> void:
 	position = Vector3(to.x, 0.0, to.z)
+	reset_physics_interpolation()
 	dashing = false
 	stop()
 	_path = PackedVector3Array()
@@ -391,10 +392,11 @@ func _process(delta: float) -> void:
 	if avatar == null:
 		return
 	_hurt_cd -= delta
+	var vp := visual_position()   # the drawn position (physics-interpolated on the host)
 	var inst := 0.0
 	if _prev_set and delta > 0.0:
-		inst = Vector3(position.x - _prev_pos.x, 0.0, position.z - _prev_pos.z).length() / delta
-	_prev_pos = position
+		inst = Vector3(vp.x - _prev_pos.x, 0.0, vp.z - _prev_pos.z).length() / delta
+	_prev_pos = vp
 	_prev_set = true
 	_speed_vis = lerpf(_speed_vis, inst, 1.0 - exp(-12.0 * delta))
 	moving = alive and _speed_vis > 0.6
@@ -409,4 +411,4 @@ func _process(delta: float) -> void:
 		_hurt_cd = 0.7
 		avatar.play_once("hurt", 1.0)
 	_last_hp = hp
-	avatar.update(delta, position.x, position.z, yaw, moving, maxf(_speed_vis, 0.1) if moving else move_speed)
+	avatar.update(delta, vp.x, vp.z, yaw, moving, maxf(_speed_vis, 0.1) if moving else move_speed)

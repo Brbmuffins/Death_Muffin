@@ -114,7 +114,10 @@ func _on_state(_prev: int, next: int) -> void:
 
 
 func _ground() -> Vector3:
-	return Vector3(e.global_position.x, 0.0, e.global_position.z) if is_instance_valid(e) else Vector3.ZERO
+	if not is_instance_valid(e):
+		return Vector3.ZERO
+	var ip := e.get_global_transform_interpolated().origin   # the drawn position, so the ring stays on the smoothed body
+	return Vector3(ip.x, 0.0, ip.z)
 
 
 func _col(key: String) -> int:

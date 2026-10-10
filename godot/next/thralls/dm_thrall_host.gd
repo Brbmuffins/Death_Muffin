@@ -314,6 +314,7 @@ func command_rend(point: Vector3, leaps: Array = []) -> int:
 		i += 1
 		var from := t.global_position
 		t.global_position = Vector3(point.x + cos(ang) * 1.2, 0.0, point.z + sin(ang) * 1.2)
+		t.reset_physics_interpolation()
 		leaps.append([from.x, from.z, t.global_position.x, t.global_position.z])
 		t.hp = maxf(1.0, t.hp - t.max_hp * float(R["hpCost"]))
 		t.attack_cd = 0.2
@@ -352,6 +353,7 @@ func refresh(hp_mult: float, damage_mult: float, speed_mult: float) -> void:
 func recall() -> void:
 	for t in _list:
 		t.global_position = owner_body.global_position + Vector3(sin(float(t.slot)), 0.0, cos(float(t.slot)))
+		t.reset_physics_interpolation()
 		t.target = null
 
 

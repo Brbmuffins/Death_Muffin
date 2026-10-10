@@ -425,7 +425,7 @@ func _process(dt: float) -> void:
 	var b := local_body()
 	if b == null:
 		return
-	camera.update_rig(dt, b.position)
+	camera.update_rig(dt, b.visual_position())   # the drawn (interpolated) hero position: the follow is smooth at any display rate
 	if _has_world:
 		world.update(camera, b.position, dt)
 	_enter(b.position)

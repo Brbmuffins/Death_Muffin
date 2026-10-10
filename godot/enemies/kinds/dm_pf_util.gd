@@ -58,6 +58,7 @@ static func pull(e: DmEnemy, tg: Node3D, to: Vector3, m: float, root_s: float) -
 			tg.teleport(dest)
 		else:
 			tg.global_position = dest
+			tg.reset_physics_interpolation()
 	if tg.has_method("dm_enemy_effect"):
 		tg.dm_enemy_effect(&"root", {"seconds": root_s, "from": e})
 	else:

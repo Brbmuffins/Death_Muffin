@@ -83,7 +83,8 @@ static func follow_enemy(c: DmRiteCaster, eid: int, last: Vector3, y: float) -> 
 	return func() -> Variant:
 		var e := w.enemy_by_id(eid) as Node3D if w != null else null
 		if e != null and is_instance_valid(e):
-			pt[0] = Vector3(e.global_position.x, y, e.global_position.z)
+			var ip := e.get_global_transform_interpolated().origin   # the drawn position
+			pt[0] = Vector3(ip.x, y, ip.z)
 		return pt[0]
 
 
