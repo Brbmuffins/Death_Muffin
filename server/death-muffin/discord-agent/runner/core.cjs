@@ -675,20 +675,23 @@ function createRunner(cfgIn, opts = {}) {
     job.status = 'proposed'; save(); syncName(job);
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
-    let shots = proposalShots(job, committedAt);
-    if (GODOT && shots.length) {
-      // before/after pairs for the first two pictures (Discord shows them in order: before, after); the embed image is the first "after"
-      const pairs = shots.slice(0, 2), befores = await baseShots(job, pairs.map((s) => s.name));
-      if (job.status === 'discarded' || job.cancelRequested) return;
-      if (befores.length) {
-        const files = []; for (const a of pairs) { const b = befores.find((x) => x.for === a.name); if (b) files.push({ name: b.name, b64: b.b64 }); files.push(a); }
-        shots = files;
-        embed.fields.splice(embed.fields.length - 1, 0, { name: 'Pictures', value: 'Each pair: BEFORE (the game as it is now), then AFTER (this change). Rendered on the offline demo character; not the live game.', inline: false });
-      }
-    }
-    const afterFirst = shots.find((s) => !/^before-/.test(s.name)) || shots[0];
-    if (shots.length) embed.image = { url: `attachment://${afterFirst.name}` };
+    const shots = proposalShots(job, committedAt);
+    if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
     post({ threadId: job.threadId }, { embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
+    // BEFORE pictures come after, in the background: rendering waits for the shared renderer lock (other renders can hold it for many
+    // minutes), and a job waiting on it kept its slot and blocked other requests (2026-10-10). The pair is posted as a follow-up.
+    if (GODOT && shots.length) postBeforeAfter(job, head, shots.slice(0, 2));
+  }
+
+  const beforeBusy = new Set();
+  function postBeforeAfter(job, head, pairs) {
+    if (beforeBusy.has(job.id)) return;
+    beforeBusy.add(job.id);
+    baseShots(job, pairs.map((s) => s.name)).then((befores) => {
+      if (!befores.length || !job.proposal || job.proposal.head !== head || ['discarded', 'deleted'].includes(job.status)) return;
+      const files = []; for (const a of pairs) { const b = befores.find((x) => x.for === a.name); if (b) { files.push({ name: b.name, b64: b.b64 }); files.push(a); } }
+      if (files.length) post({ threadId: job.threadId }, { content: 'Before / after for the proposal above: each pair is BEFORE (the game as it is now), then AFTER (this change). Rendered on the offline demo character; not the live game.', files });
+    }).catch(() => {}).finally(() => beforeBusy.delete(job.id));
   }
 
   // ---------- model generation: request -> estimate -> ✅ -> Gemini + Tripo run by the runner -> the agent builds and commits the result ----------
