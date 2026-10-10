@@ -598,7 +598,10 @@ function createRunner(cfgIn, opts = {}) {
     const r = await G.run(path.join(cfg.toolsDir, CHECK), [], { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: (GODOT ? 90 : 25) * 60000 });
     const out = r.out + r.err;
     // web: the node:test counters; godot: the last "GODOT TESTS: ..." line check-godot.sh prints
-    const sum = GODOT ? ((out.match(/^GODOT TESTS: .*$/gm) || []).pop() || '').replace(/^GODOT TESTS: /, '') : (out.match(/^# (tests|pass|fail) .*$/gm) || []).join(' · ').replace(/# /g, '');
+    let sum = GODOT ? ((out.match(/^GODOT TESTS: .*$/gm) || []).pop() || '').replace(/^GODOT TESTS: /, '') : (out.match(/^# (tests|pass|fail) .*$/gm) || []).join(' · ').replace(/# /g, '');
+    // a proposal only gets the quick check (changed + affected suites); say so, the full suite runs again at ship (ship.sh --full)
+    const quick = GODOT && /^quick \((\d+) suites?([^)]*)\) — (.*)$/.exec(sum);
+    if (quick) sum = `quick check: ${quick[1]} suites${quick[2]} — ${quick[3]} (full suite runs at ship)`;
     return { ok: r.code === 0 && !r.timedOut, tail: out.trim().split('\n').slice(-30).join('\n'), summary: sum || (r.code === 0 ? (GODOT ? 'Godot test suites passed' : 'typecheck + client + server tests passed') : 'failed') };
   }
 

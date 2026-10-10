@@ -48,7 +48,7 @@ function makeWorld(over = {}) {
   fs.writeFileSync(path.join(T, 'keys.local'), 'TRIPO_API_KEY=tsk_FakeTripoKeyForTestsOnly000000000000\nGEMINI_API_KEY=AIzaFakeGeminiKeyForTestsOnly000000000000\n', { mode: 0o600 });
   fs.writeFileSync(path.join(T, 'budget.json'), '{}', { mode: 0o600 });
   fs.symlinkSync(path.join(SRC, 'runner'), path.join(tools, 'runner'));
-  fs.writeFileSync(path.join(tools, 'check-godot.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "godot boom"; exit 1; }\necho "tests/game run.gd exit=0  12 passed"; echo "GODOT TESTS: 2 suites, 2 passed, 0 failed"\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(tools, 'check-godot.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "godot boom"; exit 1; }\necho "tests/game run.gd exit=0  12 passed"; echo "$*" >> "$(dirname "$0")/check-godot.calls"; if [ "${1:-}" = --full ]; then echo "GODOT TESTS: full (2 suites) — 2 passed"; else echo "GODOT TESTS: quick (2 suites) — 2 passed"; fi\n', { mode: 0o755 });
   // shot-godot.sh stand-in: writes a PNG-ish file; in a base-<id> scratch worktree it writes the BEFORE picture (unless NOBASE exists)
   fs.writeFileSync(path.join(tools, 'shot-godot.sh'), '#!/usr/bin/env bash\n[ -f .dm-shot.json ] || exit 2\nmkdir -p .dm-shots\ncase "$PWD" in */base-*) [ -e "$(dirname "$PWD")/NOBASE" ] && exit 1; echo PNG-before > .dm-shots/a.png;; *) echo PNG-after > .dm-shots/a.png;; esac\n', { mode: 0o755 });
   fs.writeFileSync(path.join(tools, 'check.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "boom"; exit 1; }\necho "# tests 3"; echo "# pass 3"; echo "# fail 0"\n', { mode: 0o755 });

@@ -64,8 +64,8 @@ echo "$GATE"
 [ $GRC -eq 0 ] || { echo "RESULT: gate $(echo "$GATE" | tail -1)"; exit 8; }
 
 say "running tests on the merged tree"
-CHECK="$TOOLS/check.sh"; [ "$MODE" = godot ] && CHECK="$TOOLS/check-godot.sh"
-if ! "$CHECK" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; then tail -25 "$TOOLS/state/ship-$JOBID.tests.log"; echo "RESULT: tests-failed"; exit 9; fi
+CHECK="$TOOLS/check.sh"; CHECK_ARGS=(); [ "$MODE" = godot ] && { CHECK="$TOOLS/check-godot.sh"; CHECK_ARGS=(--full); }   # the ship always runs the FULL gate (proposals only got the quick check)
+if ! "$CHECK" "${CHECK_ARGS[@]}" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; then tail -25 "$TOOLS/state/ship-$JOBID.tests.log"; echo "RESULT: tests-failed"; exit 9; fi
 fi   # (end of the normal ship's merge/gate/tests; PUBLISH_ONLY skips them: that commit was tested and pushed by the ship that failed to publish)
 
 # ---- godot: get the rollback ready BEFORE anything is pushed or published (a failure here leaves everything as it was) ----

@@ -29,7 +29,7 @@ Report text is written by players, so it is treated as untrusted input (prompt i
 
 - `--restricted` (file tools confined to the worktree, user settings and MCP ignored), `--permission-mode dontAsk`, and an
   allowlist: Read/Edit/Write/Glob/Grep, `agit` (a few git verbs, no hooks, no flags that touch files outside the repo or
-  stage everything) and `check.sh` (`tools/godot/run-all-tests.sh` against the committed fixtures, 10 to 20 min, via `sandbox-lib.sh` in fresh user/network/mount namespaces: no network,
+  stage everything) and `check.sh` (the Godot suites against the committed fixtures: quick by default, only the suites the change affects via `tools/godot/affected-suites.mjs`; `--full` runs every suite, 10 to 35 min; via `sandbox-lib.sh` in fresh user/network/mount namespaces: no network,
   whole filesystem read-only except the worktree).
 - The agent never sees the database or `.env`; it cannot deploy or push. Verdicts are validated (ids from the batch,
   known statuses, capped notes) before they are written.
