@@ -4,7 +4,7 @@ Autoload `Vfx` (`project.godot`: `Vfx="*res://fx/dm_fx.gd"`, script class `DmFxR
 - **Binbun scenes**: 64 native Godot scenes in `assets/fx/binbun/<id>.tscn` (GPUParticles3D, ShaderMaterial, AnimationPlayer), played with
   spawn colours, pooled per id. `fx/dm_fx_binbun.gd`; `dm_fx_controller.gd` / `dm_fx_light.gd` / `dm_fx_rect.gd` replace the vendor scripts.
 - **Procedural primitives and motifs**: rings of motes, decals, flashes, orbits, beams, projectiles, spikes, hands (`dm_fx_prims.gd`,
-  `dm_fx_ring.gd`, `dm_fx_layer.gd`) and the necromantic motifs (`dm_fx_motifs.gd`).
+  `dm_fx_ring.gd`, `dm_fx_motes.gd`, `dm_fx_layer.gd`) and the necromantic motifs (`dm_fx_motifs.gd`).
 Tables (spell colours, presets, caps, catalog) are in `assets/fx/fx_data.json`, read through `DmFxData`.
 
 ## Wiring
@@ -53,6 +53,15 @@ Colours: `DmFxData.spell("miasma", "rot")` is `SPELL_FX.miasma.rot` (from `asset
 24 live one-shots (oldest evicted), 32 loopers (extras dropped), 160 combat transients (persistent decals excluded), 3500 additive + 900 smoke
 motes, 1 shared flash light, pool of 4 built instances per id, Low = 0.75 of every burst and no Binbun/motifs, motif budget 240 particles +
 14 sprites, partner effects at 0.35 alpha / 0.75 scale.
+
+## Mote rings
+- Additive ring (3500): `DmFxRing` over `DmFxMotes`, simulated in the vertex shader. The CPU writes a mote once, at spawn (velocity, gravity, drag,
+  shrink, size, life and spawn clock packed in its 16-float instance slot); the shader evaluates drag / gravity as the closed form of the mote's age
+  (the continuous limit of the web's per-step update), so there is no per-frame loop; a frame costs a clock uniform plus, in frames that spawned, one
+  upload of the slots in use. Order does not matter when adding. Smoke ring (900, normal blend): CPU ring, oldest drawn first, as before; its
+  instance buffer is sized to the live motes (256-steps) and only that slice is uploaded.
+- `set_limit` / `DmFxPrims.set_mote_share`: graphics preset `motes` share of the caps (Low 0.4, Medium 0.7, High / Ultra 1.0), set by `DmNextPerf.apply`.
+- Probes: `tests/perf/fx_particles_probe.gd` (ms and upload bytes at 500 / 2000 / 3500 live), `tests/perf/fx_mote_shot.gd` (seeded rendered fight).
 
 ## Native vs approximated
 - Binbun scenes are real Godot resources (original ParticleProcessMaterials, meshes, curves, AnimationPlayer libraries, gdshaders). Two hooks

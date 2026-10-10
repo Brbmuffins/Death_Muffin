@@ -120,9 +120,15 @@ class ProjectileRef:
 		return null
 
 
+## Graphics preset share (DmGraphicsPreset "motes") of the mote rings' capacity that new motes may use.
+func set_mote_share(share: float) -> void:
+	additive.set_limit(roundi(additive.capacity * clampf(share, 0.05, 1.0)))
+	smoke.set_limit(roundi(smoke.capacity * clampf(share, 0.05, 1.0)))
+
+
 func _init(parent: Node3D) -> void:
 	group = parent
-	additive = DmFxRing.new(int(_caps.get("additive_particles", 3500)), DmFxTex.get_tex("glow"), true)
+	additive = DmFxRing.new(int(_caps.get("additive_particles", 3500)), DmFxTex.get_tex("glow"), true, true)
 	smoke = DmFxRing.new(int(_caps.get("smoke_particles", 900)), DmFxTex.get_tex("smoke"), false)
 	group.add_child(additive.node)
 	group.add_child(smoke.node)

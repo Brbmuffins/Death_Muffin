@@ -128,6 +128,7 @@ func _settings() -> void:
 		check(bool(g.world.dressing.features.get("bloom", false)) == bool(gp["bloom"]) and g.world.dressing.atmosphere.quality_low == (gp["fx"] == "low"), "preset %s: bloom + weather quality" % id)
 		check(vfx.quality == String(gp["fx"]) and vfx.binbun.enabled == bool(gp["binbun"]), "preset %s: fx quality %s, binbun %s" % [id, vfx.quality, vfx.binbun.enabled])
 		check(vp.msaa_3d == DmGraphicsPreset.msaa_mode(int(gp["msaa"])) and vp.anisotropic_filtering_level == DmGraphicsPreset.aniso_mode(int(gp["aniso"])) and is_equal_approx(vp.mesh_lod_threshold, float(gp["lod"])), "preset %s: msaa %d, aniso %d, lod %.1f on the viewport" % [id, gp["msaa"], gp["aniso"], gp["lod"]])
+		check(vfx.prims.additive.limit == roundi(vfx.prims.additive.capacity * float(gp["motes"])) and vfx.prims.smoke.limit == roundi(vfx.prims.smoke.capacity * float(gp["motes"])), "preset %s: mote ring caps %d / %d" % [id, vfx.prims.additive.limit, vfx.prims.smoke.limit])
 		check(is_equal_approx(g.perf.governor.floor_scale, float(gp["floor"])), "preset %s: governor floor %.2f" % [id, g.perf.governor.floor_scale])
 		check(is_equal_approx(b.preset_lift, float(gp["lift"])) and is_equal_approx(b.env.tonemap_exposure, b.base_exposure * b.brightness * b.area_exposure * float(gp["lift"])), "preset %s: lighting lift %.2f reaches the exposure (%.3f)" % [id, b.preset_lift, b.env.tonemap_exposure])
 	# Settings -> Brightness is a plain multiplier on the exposure; Interface size is the window's content scale
