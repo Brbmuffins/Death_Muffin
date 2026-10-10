@@ -1,14 +1,14 @@
-extends SceneTree
-## Net track tests. Headless:  godot --headless --path godot --script res://tests/net/run.gd
+extends "res://tests/common/dm_suite_part.gd"
+## Net track tests (a part of tests/backend/run.gd). Headless:  godot --headless --path godot --script res://tests/backend/run.gd
 ## Fixtures come from the TS client (the retired web game\'s fixtures-net exporter). Live smoke (opt-in, read-only, QA account only):
-##   DM_LIVE_SMOKE=1 DM_QA_PASS_FILE=<file with the password> godot --headless --path godot --script res://tests/net/run.gd
+##   DM_LIVE_SMOKE=1 DM_QA_PASS_FILE=<file with the password> godot --headless --path godot --script res://tests/backend/run.gd
 
 var pass_count := 0
 var fail_count := 0
 var fx: Dictionary
 
 func _initialize() -> void:
-	_main()
+	await _main()
 
 func ok(cond: bool, label: String, extra: String = "") -> void:
 	if cond:
@@ -253,10 +253,10 @@ func test_kill_reporter() -> void:
 	ok(before == log[7]["before"] and r2.crowded() == log[7]["after"], "kr crowded threshold")
 
 func test_mock() -> void:
-	var tm = load("res://tests/net/test_mock.gd")
+	var tm = load("res://tests/backend/test_mock.gd")
 	if tm == null:
 		return
-	var res: Array = await tm.run(self)
+	var res: Array = await tm.run(tree)
 	pass_count += int(res[0])
 	fail_count += int(res[1])
 
@@ -294,7 +294,7 @@ func live_smoke() -> void:
 	ok(not bad.ok, "live error passthrough (expected failure): " + bad.error)
 
 func _main() -> void:
-	var f := FileAccess.open("res://tests/net/fixtures/net.json", FileAccess.READ)
+	var f := FileAccess.open("res://tests/backend/fixtures/net.json", FileAccess.READ)
 	if f == null:
 		print("fixtures missing: they are committed in git (restore with git checkout)")
 		quit(2)

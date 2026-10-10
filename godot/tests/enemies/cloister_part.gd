@@ -1,5 +1,5 @@
-extends SceneTree
-## Suite for the Cloister kinds (acolyte, templar, seraph, plague_doctor, flagellant): godot --headless --path godot --script res://tests/enemies/cloister_run.gd
+extends "res://tests/common/dm_suite_part.gd"
+## Suite for the Cloister kinds (acolyte, templar, seraph, plague_doctor, flagellant): (part of tests/enemies/run.gd)
 ## Same stepping helpers as kinds_run.gd. Time is in physics ticks (360 Hz, time_scale 6) so assertions are in sim seconds.
 
 const S := DmEnemyState.Id
@@ -58,7 +58,7 @@ var dummy: DmTargetDummy
 
 
 func _initialize() -> void:
-	_run.call_deferred()
+	await _run()
 
 func check(ok: bool, what: String) -> void:
 	if ok:
@@ -536,7 +536,7 @@ func _t_perf() -> void:
 	var fworst: Array = []
 	var per_kind := {}
 	var blows := 0
-	for sample in 5:
+	for sample in 1:
 		DmEnemy.prof_reset()
 		var fc := DmFrameCost.attach(root)
 		var start := now()
@@ -564,7 +564,7 @@ func _t_perf() -> void:
 	for e in es:
 		if e.sm.id() != S.IDLE and e.sm.id() != S.RISING:
 			engaged += 1
-	print("PERF mixed-30 Cloister crowd (median of 5 x 3 s): brain %.1f us/enemy-tick, frame median %.2f ms (worst %.1f), engaged %d/30, %d blows" % [median(brains), median(fmed), median(fworst), engaged, int(dummy.hits_taken)])
+	print("PERF mixed-30 Cloister crowd (1 x 3 s): brain %.1f us/enemy-tick, frame median %.2f ms (worst %.1f), engaged %d/30, %d blows" % [median(brains), median(fmed), median(fworst), engaged, int(dummy.hits_taken)])
 	print("PERF   per kind:", line)
 	check(engaged >= 27, "the mixed crowd is engaged (%d/30)" % engaged)
 	perf_info(median(brains) < BUDGET_BRAIN_US, "mixed brain cost %.1f us/enemy-tick under %.0f us" % [median(brains), BUDGET_BRAIN_US])

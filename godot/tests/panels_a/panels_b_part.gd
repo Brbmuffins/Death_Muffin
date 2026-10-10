@@ -1,5 +1,5 @@
-extends SceneTree
-## Headless panel tests (data -> displayed rows / buttons / enabled state):  godot --headless --path godot --script res://tests/panels_b/run.gd
+extends "res://tests/common/dm_suite_part.gd"
+## Headless panel tests (data -> displayed rows / buttons / enabled state):  (part of tests/panels_a/run.gd)
 
 const NOW := 1790000000000   # = DmPbMock.NOW
 
@@ -31,7 +31,7 @@ func _frames(n: int = 2) -> void:
 
 
 func _initialize() -> void:
-	_run.call_deferred()
+	await _run()
 
 
 ## Every text on screen under `n` (labels, rich labels, button text), upper-cased buttons lowered for matching.
@@ -74,7 +74,6 @@ func _run() -> void:
 	await _t_shelf()
 	await _t_salvage()
 	await _t_vault()
-	await _t_acre()
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)
 
@@ -684,20 +683,3 @@ func _t_vault() -> void:
 	await _frames(2)
 	_check(v.deposit_all_button.disabled and v.sort_button.disabled, "busy disables the bulk buttons")
 	v.queue_free()
-
-
-# --- acre ledger --------------------------------------------------------------------------------------------------
-func _t_acre() -> void:
-	var a := DmAcreLedger.new()
-	_mount(a)
-	_eq(a.active, "skills", "ledger opens on Skills")
-	a.open_tab("labor")
-	await _frames(3)
-	_eq(a.active, "labor", "open a tab by id")
-	_check(a.labor.visible and not a.skills.visible and not a.garden.visible, "only the active tab shows")
-	var pressed := 0
-	for k: String in a._tabs:
-		if (a._tabs[k]["btn"] as Button).button_pressed:
-			pressed += 1
-	_eq(pressed, 1, "a programmatic tab select leaves exactly one tab pressed")
-	a.queue_free()

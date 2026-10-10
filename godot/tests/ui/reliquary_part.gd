@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## Reliquary window size is stable (godot --headless --path godot --script res://tests/ui/reliquary_size_run.gd):
 ## selecting items of any shape must not change the window's size, and all 48 bag cells stay reachable at small and large viewports.
 
@@ -20,7 +20,7 @@ func _frames(n: int) -> void:
 
 
 func _initialize() -> void:
-	_run.call_deferred()
+	await _run()
 
 
 func _rich(n: int) -> Dictionary:

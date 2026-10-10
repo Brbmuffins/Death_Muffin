@@ -1,10 +1,10 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## Online-path regressions that need no live server (the live end-to-end check is tests/online_live, opt-in):
 ##  1. DmProgressSync.spend_on_server must not lose gold picked up while its pre-save is in flight,
 ##  2. a failed pre-save must not let the spend go through on stale server gold,
 ##  3. a backend without /api/sessions (live server, migration 041 not applied): DmSessionRewards falls back to the kill ledger
 ##     (/api/kills/report) so XP and kill counts are still credited, on the very first flush and again at end_session.
-## godot --headless --path godot --script res://tests/online_local/run.gd
+## godot --headless --path godot --script res://tests/backend/run.gd
 
 var _p := 0
 var _f := 0
@@ -24,7 +24,7 @@ func ok(cond: bool, label: String, extra: String = "") -> void:
 
 
 func _initialize() -> void:
-	_main.call_deferred()
+	await _main()
 
 
 ## A transport that holds /save-progress for `hold_frames` (a pickup lands meanwhile) and can fail it.

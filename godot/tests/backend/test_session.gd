@@ -17,7 +17,7 @@ func _ok(cond: bool, label: String, extra: String = "") -> void:
 		print("FAIL: session ", label, " ", extra)
 
 static func run(t: SceneTree) -> Array:
-	var me = load("res://tests/offline/test_session.gd").new()
+	var me = load("res://tests/backend/test_session.gd").new()
 	await me._run(t)
 	return [me._p, me._f]
 
@@ -272,7 +272,7 @@ func _run(t: SceneTree) -> void:
 	var host2 := game2.ui_host
 	_ok(game2.ready_, "relaunch: the game starts on the saved file")
 	var snap2 := await _snapshot(api2, cid)
-	var diff = load("res://tests/offline/run.gd").diff
+	var diff = load("res://tests/backend/offline_part.gd").diff
 	for k in snap:
 		var d: String = diff.call(snap2[k], snap[k], k)
 		_ok(d == "", "relaunch keeps " + k, d)

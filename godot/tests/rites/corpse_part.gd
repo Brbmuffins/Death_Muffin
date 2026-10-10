@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## The corpse rites (godot/next/rites: exhume, corpse_explosion, black_litany, grave_offering, bone_mantle, carrion_seed) + the hotbar mapping.
 ## godot --headless --path godot --script res://tests/rites/corpse_run.gd
 ## Part A: solo (DmSession on OfflineMultiplayerPeer), host stepped by hand. Part B: in-process ENet, 1 host + 2 clients on DmTestPorts.free_port()
@@ -19,7 +19,7 @@ func ok(c: bool, msg: String) -> void:
 
 
 func _initialize() -> void:
-	_main.call_deferred()
+	await _main()
 
 
 func _main() -> void:
@@ -33,11 +33,10 @@ func _main() -> void:
 
 
 func wait_for(cond: Callable, timeout := 8.0) -> bool:
-	var t := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t < timeout * 1000.0:
+	for i in int(timeout * 60.0):   # sim ticks, not a wall-clock timer
 		if cond.call():
 			return true
-		await create_timer(0.05).timeout
+		await physics_frame
 	return cond.call()
 
 
@@ -545,7 +544,7 @@ func _part_b() -> void:
 		host.casters[id].p["resource"]["value"] = 100.0
 	host.sess.get_body(id1).position = Vector3(0, 0, 2)
 	host.sess.get_body(id2).position = Vector3(0, 0, -3)
-	await create_timer(0.3).timeout
+	await step_secs(0.3)
 	var e_a := _robber(host.w, host.node, Vector3(0, 0, 8))
 
 	# --- two casters race for ONE corpse (corpse_explosion): exactly one blast, one consume, the loser is refused
@@ -555,7 +554,7 @@ func _part_b() -> void:
 	c1.casters[id1].request_cast("corpse_explosion", Vector3(0, 0, 6))
 	c2.casters[id2].request_cast("corpse_explosion", Vector3(0, 0, 6))
 	ok(await wait_for(func(): return peers.all(func(p): return p.field.count() == 0)), "B: the corpse is gone on every peer")
-	await create_timer(0.4).timeout
+	await step_secs(0.4)
 	ok(host.consumed.size() == 1, "B: the corpse was consumed exactly once (%d)" % host.consumed.size())
 	var winner: int = host.consumed[0][1]
 	var loser: int = id2 if winner == id1 else id1
@@ -569,14 +568,14 @@ func _part_b() -> void:
 		ok(p.casters[winner].events_played == 1 and a.sfx == ["corpseExplode"], "B: %s played the blast fx/sfx exactly once (sfx %s)" % [p.node.name, str(a.sfx)])
 
 	# --- exhume race on one corpse: one thrall in total
-	await create_timer(0.7).timeout
+	await step_secs(0.7)
 	var cp2 := _corpse(host.field, Vector3(0, 0, 0.5))
 	ok(await wait_for(func(): return peers.all(func(p): return p.field.count() == 1)), "B: second corpse replicated")
 	host.consumed.clear()
 	c1.casters[id1].request_cast("exhume", Vector3(0, 0, 0.5))
 	c2.casters[id2].request_cast("exhume", Vector3(0, 0, 0.5))
 	ok(await wait_for(func(): return host.field.count() == 0), "B: exhume took the corpse")
-	await create_timer(0.5).timeout
+	await step_secs(0.5)
 	var total := 0
 	for id in [id1, id2]:
 		total += (host.sess.get_body(id).get_node("Thralls") as DmThrallHost).count()
@@ -587,7 +586,7 @@ func _part_b() -> void:
 		ok(a.sfx.count("exhume") == 1, "B: %s exhume fx once (sfx %s)" % [p.node.name, str(a.sfx)])
 
 	# --- litany: barrier paid once, fx once per peer
-	await create_timer(0.6).timeout
+	await step_secs(0.6)
 	for i in 3:
 		_corpse(host.field, Vector3(i * 0.6, 0, 1.0))
 	ok(await wait_for(func(): return peers.all(func(p): return p.field.count() == 3)), "B: litany corpses replicated")
@@ -598,7 +597,7 @@ func _part_b() -> void:
 	var ev0: int = hc.events_played
 	c1.casters[id1].request_cast("black_litany", Vector3.ZERO)
 	ok(await wait_for(func(): return peers.all(func(p): return p.casters[id1].events_played == ev0 + 1)), "B: litany event reached every peer")
-	await create_timer(0.4).timeout
+	await step_secs(0.4)
 	var near_thralls := 1   # the one thrall the exhume race left standing is inside the 7 m and is sacrificed
 	var expect_barrier := float(hc.p["stats"]["maxHp"]) * 0.1 * float(3 + near_thralls)
 	ok(is_equal_approx(float(hc.p["barrier"]), expect_barrier) or float(hc.p["barrier"]) < expect_barrier * 1.01, "B: litany barrier paid once on the host (%.2f vs %.2f)" % [hc.p["barrier"], expect_barrier])
@@ -607,7 +606,7 @@ func _part_b() -> void:
 		ok(a.sfx.count("litany") == 1, "B: %s litany sfx once" % p.node.name)
 
 	# --- carrion seed: seeded + burst events once per peer
-	await create_timer(0.3).timeout
+	await step_secs(0.3)
 	host.field.corpses.clear()
 	var sc := _corpse(host.field, Vector3(-3, 0, 6))
 	ok(await wait_for(func(): return peers.all(func(p): return p.field.count() == 1)), "B: seed corpse replicated")
@@ -618,7 +617,7 @@ func _part_b() -> void:
 	ok(await wait_for(func(): return peers.all(func(p): return p.casters[id2].events_played == ev2 + 1)), "B: seeded event on every peer")
 	e_a.global_position = Vector3(-3, 0, 6.5)
 	ok(await wait_for(func(): return peers.all(func(p): return p.casters[id2].events_played == ev2 + 2), 6.0), "B: seedBurst event on every peer")
-	await create_timer(0.3).timeout
+	await step_secs(0.3)
 	for p in peers:
 		var a: RecAudio = p.rec[id2][1]
 		ok(a.sfx.count("carrionSeed") == 1 and a.sfx.count("seedBurst") == 1, "B: %s seed fx once (sfx %s)" % [p.node.name, str(a.sfx)])
@@ -630,7 +629,7 @@ func _part_b() -> void:
 			e.free()
 	for p in [c1, c2, host]:
 		(p as Peer).sess.leave()
-	await create_timer(0.5).timeout
+	await step_secs(0.5)
 	for p in peers:
 		p.node.queue_free()
 

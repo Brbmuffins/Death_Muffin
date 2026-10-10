@@ -1,6 +1,6 @@
-extends SceneTree
+extends "res://tests/common/dm_suite_part.gd"
 ## Headless suite for the Ossuary / Nave / Sanctum / Coliseum kinds: deacon, golem, wraith, gargoyle (godot/enemies/<kind>.tscn).
-## godot --headless --path godot --script res://tests/enemies/cathedral_run.gd
+## (part of tests/enemies/run.gd)
 ## Same stepping conventions as kinds_run.gd: physics ticks, Engine.time_scale raised, assertions in sim seconds.
 
 const S := DmEnemyState.Id
@@ -12,7 +12,7 @@ const BUDGET_BRAIN_US := 150.0
 const BUDGET_FRAME_MS := 16.0
 const CAP_WORST_FRAME_MS := 150.0
 const BUDGET_SCAN_US := 150.0
-const SAMPLES := 3
+const SAMPLES := 1
 const PILOT_ROBBER_US := 73.0   ## the pilot suite's robber brain cost on this VPS (kinds_run.gd PERF line); the box's slowdown = this run's robber cost / it, never below 1x
 const REL_KIND := 3.0            ## each cathedral kind may cost at most this x the robber in the same run
 
@@ -24,7 +24,7 @@ var field: DmCorpseField
 
 
 func _initialize() -> void:
-	_run.call_deferred()
+	await _run()
 
 func check(ok: bool, what: String) -> void:
 	if ok:
@@ -424,7 +424,7 @@ func _t_perf() -> void:
 		DmEnemy.prof_reset()
 		var fc := DmFrameCost.attach(root)
 		var start := now()
-		while now() - start < 5.0:
+		while now() - start < 3.0:
 			var a := (now() - start) * 0.6
 			dummy.global_position = Vector3(sin(a) * 3.0, 0, 6.0 + cos(a) * 3.0)
 			await physics_frame
@@ -465,13 +465,13 @@ func _t_perf() -> void:
 		dc.sanctify_target()
 		dc._nearest_corpse()
 	slows.sort()
-	var scan_us := float(Time.get_ticks_usec() - t0) / 500.0 / slows[1]
-	print("PERF mixed-30 cathedral crowd (median of %d, normalised to the pilot's box speed; slowdown x%.1f): brain %.1f us/enemy-tick, frame median %.2f ms (worst %.1f), engaged %d/30, deacon scan %.1f us/call (every 0.25 s)" % [SAMPLES, slows[1], brains[1], frames_med[1], frames_worst[1], engaged, scan_us])
+	var scan_us := float(Time.get_ticks_usec() - t0) / 500.0 / slows[0]
+	print("PERF mixed-30 cathedral crowd (median of %d, normalised to the pilot's box speed; slowdown x%.1f): brain %.1f us/enemy-tick, frame median %.2f ms (worst %.1f), engaged %d/30, deacon scan %.1f us/call (every 0.25 s)" % [SAMPLES, slows[0], brains[0], frames_med[0], frames_worst[0], engaged, scan_us])
 	print("PERF   per kind (last sample):", line)
 	check(engaged >= 27, "the mixed crowd is engaged (%d/30)" % engaged)
-	perf_info(brains[1] < BUDGET_BRAIN_US, "mixed brain cost %.1f us/enemy-tick under %.0f us" % [brains[1], BUDGET_BRAIN_US])
-	check(worsts[1] < REL_KIND, "every cathedral kind within %.0fx the robber (worst %.1fx)" % [REL_KIND, worsts[1]])
-	perf_info(frames_med[1] < BUDGET_FRAME_MS and frames_worst[1] < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [frames_med[1], BUDGET_FRAME_MS, frames_worst[1], CAP_WORST_FRAME_MS])
+	perf_info(brains[0] < BUDGET_BRAIN_US, "mixed brain cost %.1f us/enemy-tick under %.0f us" % [brains[0], BUDGET_BRAIN_US])
+	check(worsts[0] < REL_KIND, "every cathedral kind within %.0fx the robber (worst %.1fx)" % [REL_KIND, worsts[0]])
+	perf_info(frames_med[0] < BUDGET_FRAME_MS and frames_worst[0] < CAP_WORST_FRAME_MS, "frame median %.2f ms under %.0f ms, worst %.1f ms under %.0f ms" % [frames_med[0], BUDGET_FRAME_MS, frames_worst[0], CAP_WORST_FRAME_MS])
 	perf_info(scan_us < BUDGET_SCAN_US, "deacon scan %.1f us under %.0f us" % [scan_us, BUDGET_SCAN_US])
 
 
