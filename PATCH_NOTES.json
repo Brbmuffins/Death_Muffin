@@ -3,6 +3,7 @@
     "date": "2026-10-10",
     "title": "Stairs, Fen and Loot Icons",
     "items": [
+      "Bag: a long set-bonus line no longer stretches the Reliquary, so the bag grid stays fully visible and the window stops jumping when you pick an item.",
       "Depths stairs look like stone stairwells with steps again, instead of a flat circle.",
       "The Mourning Fen hummocks are muted peat mounds with a pale rim, closer to how they used to look.",
       "Loot on the ground now shows the item's own icon (helm, chest, staff...) instead of a plain square.",
