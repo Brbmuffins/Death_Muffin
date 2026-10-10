@@ -140,7 +140,9 @@ func _settings() -> void:
 	st.update({"ui_scale": 1.0})
 	check(is_equal_approx(g.get_window().content_scale_factor, 1.0), "Interface size back to 100%")
 	st.update({"graphics": "ultra"})
-	check(b.light_near > DmWorldBuilder.LIGHT_NEAR and DmGraphicsPreset.get_preset("high")["lights"] == DmWorldBuilder.LIGHT_NEAR, "ultra is richer than high; high keeps the old High's lights")
+	check(b.light_near == DmWorldBuilder.LIGHT_NEAR and DmGraphicsPreset.get_preset("high")["lights"] == DmWorldBuilder.LIGHT_NEAR, "ultra keeps the High light cap (Compatibility lights a mesh with at most 8)")
+	for pid in DmGraphicsPreset.IDS:
+		check(int(DmGraphicsPreset.get_preset(pid)["lights"]) <= 8, "preset %s: at most 8 prop lights" % pid)
 	st.update({"graphics": "bogus"})
 	check(DmGraphicsPreset.normalize("bogus") == "high" and b.light_near == DmWorldBuilder.LIGHT_NEAR, "unknown graphics value behaves as High")
 	st.update({"graphics": "high"})

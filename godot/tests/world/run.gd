@@ -32,7 +32,7 @@ func _json(path: String) -> Variant:
 		return null
 	return JSON.parse_string(f.get_as_text())
 
-const PROP_NODES_MAX := 330
+const PROP_NODES_MAX := 140
 
 func _finish() -> void:
 	print("%d passed, %d failed" % [_pass, _fail])
@@ -134,20 +134,32 @@ func _run() -> void:
 			var mm := (n as MultiMeshInstance3D).multimesh
 			prop_nodes += 1
 			prop_inst += mm.instance_count
-		var cell: float = b.prop_cells.get(id, 0.0)
-		print("INFO props: %s cell %s" % [id, "whole area" if is_inf(cell) else "%.0f m" % cell])
 	print("INFO props: %d prop MultiMesh nodes, %d instances" % [prop_nodes, prop_inst])
 	_check(prop_nodes <= PROP_NODES_MAX and prop_inst >= 579, "world props draw as <= %d instanced groups (%d nodes, %d instances)" % [PROP_NODES_MAX, prop_nodes, prop_inst])
-	# Compatibility shades a mesh with at most 8 lights: on Ultra (14 prop lights on) no prop group's AABB may be reached by more than 8 of the world's prop lights
-	b.light_near = DmGraphicsPreset.get_preset("ultra")["lights"]
-	var lights: Array = []
-	for e in b.prop_lights:
-		lights.append({"pos": (e.node as OmniLight3D).position, "r": (e.node as OmniLight3D).omni_range})
-	var worst := 0
-	for n in b.find_children("*", "MultiMeshInstance3D", true, false):
-		if n.has_meta("dm_prop"):
-			worst = maxi(worst, DmWorldBuilder._lights_touching((n as MultiMeshInstance3D).multimesh.get_aabb(), lights))
-	_check(b.light_near > 8 and worst <= 8, "ultra (%d lights): no prop group is reached by more than 8 lights (worst %d)" % [b.light_near, worst])
+	# Compatibility shades a mesh with at most 8 lights: no preset keeps more than 8 prop lights on at once, so no prop group (whole area) is reached by more than 8 ACTIVE lights
+	var prop_mmis: Array = b.find_children("*", "MultiMeshInstance3D", true, false).filter(func(n): return n.has_meta("dm_prop"))
+	var worst_on := 0
+	var worst_touch := 0
+	for pid in DmGraphicsPreset.IDS:
+		b.light_near = int(DmGraphicsPreset.get_preset(pid)["lights"])
+		for id in w.order:
+			var r: Dictionary = w.areas[id].rect
+			for fx in [float(r.x0), (float(r.x0) + float(r.x1)) / 2.0, float(r.x1)]:
+				b.update_streaming(fx, (float(r.z0) + float(r.z1)) / 2.0)
+				b.update_light_lod(fx, (float(r.z0) + float(r.z1)) / 2.0)
+				var on: Array = b.prop_lights.filter(func(e): return e.node.visible)
+				worst_on = maxi(worst_on, on.size())
+				for m: MultiMeshInstance3D in prop_mmis:
+					var bb := m.multimesh.get_aabb()
+					var touching := 0
+					for e in on:
+						var L := e.node as OmniLight3D
+						if (L.position - L.position.clamp(bb.position, bb.end)).length_squared() <= L.omni_range * L.omni_range:
+							touching += 1
+					worst_touch = maxi(worst_touch, touching)
+	_check(worst_on <= 8 and worst_touch <= 8, "every preset: at most 8 prop lights on at once (%d), no prop group reached by more than 8 active lights (%d)" % [worst_on, worst_touch])
+	b.light_near = DmWorldBuilder.LIGHT_NEAR
+	b.update_streaming(0.0, 24.0)
 	var tiles := b.get_node("outside").get_children()
 	var ground_mats: Dictionary = {}
 	for t in tiles:

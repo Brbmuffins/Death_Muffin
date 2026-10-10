@@ -2,12 +2,12 @@
 
 `DmNextPerf` (child `Perf` of `DmNextGame`, `game.perf`): the Settings panel's graphics, fps cap and auto-resolution settings.
 `apply(settings)` runs in `start()` (`opts.settings`, default High / uncapped / auto_res on) and on every Settings change (`DmNextUiHost`).
-- `graphics` low: no moon shadows, no bloom, 3 prop lights (8 on High), halved weather, `Vfx.quality = "low"`.
+- `graphics` low: no moon shadows, no bloom, 3 prop lights (8 on High and Ultra), halved weather, `Vfx.quality = "low"`.
 - Moon shadow casters: `DmCasterBudget` every 0.5 s keeps the nearest 12 enemies (8 with 32+ alive) casting on High (Medium 8/6, Ultra 20/14, Low none); the hero, thralls and bosses always cast.
 - `fps`: `Engine.max_fps` (0 = uncapped; the governor judges against the cap, or 60 for Max).
 - `auto_res`: `DmResolutionGovernor`  on the root viewport's `scaling_3d_scale`; `pace(dt)` per frame once `ready_` (real renderer only),
   `hold()` on every area entry. A graphics / fps / auto_res change restarts it at 1.0 and holds.
-- Props are one MultiMeshInstance3D per (mesh part, spatial cell, area): per area the coarsest cell edge (whole area, 48 ... 4 m; `DmWorldBuilder.prop_cells`) for which no group's AABB is reached by more than 8 of the prop lights (Compatibility shades a mesh with at most 8); 325 nodes for 579 instances. A tall group casts moon shadows while the hero is within the shadow range (32 m) of its instances; the outside ground is 49 tiles on one shared material. Shadow range, streaming and light LOD are `DmWorldBuilder`'s, driven every frame by `DmNextWorld.update`.
+- Props are one MultiMeshInstance3D per (mesh part, area): 130 nodes for the 579 instances, culled as a whole while the area streams. No preset keeps more than 8 prop lights on (the nearest 8 to the hero; Low 3, Medium 5), which is Compatibility's per-mesh limit, so a whole-area group never loses a light (`tests/world` checks it for every preset). A tall group casts moon shadows while the hero is within the shadow range (32 m; Ultra 56 m) of its instances; the outside ground is 49 tiles on one shared material. Shadow range, streaming and light LOD are `DmWorldBuilder`'s, driven every frame by `DmNextWorld.update`.
 
 `DmNextWarmup.run(game)` (end of `start()`, under `DmWarmup`'s cover; default on with a real renderer, `opts.warmup` forces it): threaded loads of every model +
 Binbun scene; one body per distinct slug of every enemy kind / thrall / legion / boss (opaque, elite emissive, mid-fade, thrall gear + spectral variants), every Binbun

@@ -8,7 +8,7 @@ var out_dir := "res://../shots/world_fx"
 var areas: PackedStringArray = []
 var feature_areas: PackedStringArray = []
 var frames := 45
-var lights := -1   # --lights=N: prop lights on at once (Ultra = 14); default the builder's
+var lights := -1   # --lights=N: prop lights on at once ; default the builder's
 var rounds := 3
 var rows: Array = []
 var b: DmWorldBuilder

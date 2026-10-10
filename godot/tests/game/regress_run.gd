@@ -80,7 +80,7 @@ func _graphics() -> void:
 		last = int(p["msaa"])
 	var hi := DmGraphicsPreset.get_preset("high")
 	_check(int(hi["lights"]) == DmWorldBuilder.LIGHT_NEAR and float(hi["shadow_dist"]) == 45.0 and int(hi["shadow_size"]) == 2048, "High keeps the old High's lights and shadows (same cost; smoothing + floor are the gain)")
-	_check(int(ult["lights"]) > int(hi["lights"]) and float(ult["shadow_dist"]) > float(hi["shadow_dist"]) and int(ult["soft"]) > int(hi["soft"]) and int(ult["aniso"]) == 16 and float(ult["lod"]) < 1.0, "Ultra beats High on lights, shadows, softness, aniso, LOD")
+	_check(float(ult["shadow_dist"]) > float(hi["shadow_dist"]) and int(ult["soft"]) > int(hi["soft"]) and int(ult["aniso"]) == 16 and float(ult["lod"]) < 1.0, "Ultra beats High on shadows, softness, aniso, LOD")
 	_check(DmGraphicsPreset.options().size() == 4, "Settings panel offers four options")
 	_check(DmGraphicsPreset.msaa_mode(4) == Viewport.MSAA_4X and DmGraphicsPreset.msaa_mode(0) == Viewport.MSAA_DISABLED, "msaa samples -> Viewport mode")
 
