@@ -481,6 +481,9 @@ function createRunner(cfgIn, opts = {}) {
     if (sync) {
       await G.git(cfg.repo, ['fetch', '-q', 'origin']);
       const m = await G.git(job.worktree, ['merge', '--no-edit', `origin/${BB}`], { allowFail: true });
+      // The job's own work is now measured from the merged base: otherwise the base branch's own changes since the job started (e.g. to the
+      // agent's forbidden paths) count as the job's diff and the verify refuses them (2026-10-10: every synced job failed that way).
+      job.base = (await G.git(cfg.repo, ['rev-parse', `origin/${BB}`])).out.trim() || job.base;
       if (m.code !== 0) {
         const conflicted = (await G.git(job.worktree, ['diff', '--name-only', '--diff-filter=U'])).out.trim();
         extra = (extra ? extra + '\n\n' : '') + `${BB} moved and merging it into your branch left conflicts in:\n${conflicted}\nResolve the conflict markers in those files keeping both sides' intent, stage them with agit add <paths>, then finish with agit commit --no-edit. Then run ${CHECK}.`;

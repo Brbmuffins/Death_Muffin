@@ -172,6 +172,22 @@ test('master moved with a conflict: refuse, say so, nothing deployed; !sync reso
   assert.match(texts(thread).join('\n'), /no longer merges cleanly/); assert.equal(remoteMaster(w), before); assert.equal(shipsLog(w).length, 0);
 });
 
+test('!sync after the base moved (incl. a forbidden path): the job diff is measured from the merged base, so the proposal is not refused', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS blue');
+  await waitProposal(d, thread);
+  fs.mkdirSync(path.join(w.repo, 'server/death-muffin/discord-agent'), { recursive: true });
+  fs.writeFileSync(path.join(w.repo, 'server/death-muffin/discord-agent/README.md'), 'runner docs moved on\n');
+  sh(w.repo, 'add', 'server/death-muffin/discord-agent/README.md'); sh(w.repo, 'commit', '-q', '-m', 'agent docs on master'); sh(w.repo, 'push', '-q', 'origin', 'master');
+  const n0 = proposals(thread).length;
+  await d.say(thread, IDS.HELIX, '!sync');
+  await until(() => proposals(thread).length > n0 || texts(thread).some((t) => /may not be changed/.test(t)), d.ad);
+  assert.doesNotMatch(texts(thread).join('\n'), /may not be changed/);
+  assert.ok(proposals(thread).length > n0, 'a fresh proposal after the sync');
+  const job = Object.values(w.runner.jobs())[0];
+  assert.equal(job.base, sh(w.repo, 'rev-parse', 'origin/master').trim(), 'base moved to the merged master');
+});
+
 test('daily cap for LIMITED approvers; full approvers are uncapped', async () => {
   const w = makeWorld({ casualShipsPerDay: 1 }); const d = makeDiscord(w.runner);
   const t1 = (await request(d, IDS.LIMITED, 'MAKE-CSS blue')).thread; const p1 = await waitProposal(d, t1);
