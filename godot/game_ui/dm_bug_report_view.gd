@@ -137,7 +137,7 @@ func context() -> Dictionary:
 	var vp := DisplayServer.window_get_size()
 	return {"area": String(g.area_id), "level": int(g.character.get("level", 1)), "discipline": String(ui.build()["discipline"].get("name", "")),
 		"release": String(g.get("release") if g.get("release") != null else "unknown"), "coop": String(g.get("party_code") if g.get("party_code") != null else "") != "",
-		"viewport": "%dx%d@1" % [vp.x, vp.y], "userAgent": "DeathMuffin Godot %s" % Engine.get_version_info()["string"], "renderer": DmRenderer.describe(), "errors": []}
+		"viewport": "%dx%d@1" % [vp.x, vp.y], "userAgent": "DeathMuffin Godot %s" % Engine.get_version_info()["string"], "errors": []}
 
 
 func send() -> void:

@@ -58,11 +58,19 @@ func _run() -> void:
 		var tag := " @%dx%d" % [vp.x, vp.y]
 		var heights := [h0]
 		var widths := [r.size.x]
+		var xs := [snappedf(r._slots[0].global_position.x, 0.5)]
+		var squares := true
+		for id in r._doll_slots:
+			var ds: DmItemSlot = r._doll_slots[id]
+			if absf(ds.size.x - ds.size.y) > 1.0:
+				squares = false
+		_check(squares, "paper-doll cells are square (Sheet button must not widen a column)%s" % (" @%dx%d" % [vp.x, vp.y]))
 		for i in [0, 1, 2, 3, 3, 0]:
 			r._slots[i].pressed.emit(r._slots[i])
 			await _frames(6)
 			heights.append(r.size.y)
 			widths.append(r.size.x)
+			xs.append(snappedf(r._slots[0].global_position.x, 0.5))
 		for i in [0, 1, 2, 3]:
 			r._slots[i].pressed.emit(r._slots[i])
 			await _frames(4)
@@ -78,6 +86,10 @@ func _run() -> void:
 		for w in widths:
 			wuniq[snappedf(w, 0.5)] = true
 		_check(wuniq.size() == 1, "window width is the same for every selection%s: %s" % [tag, str(widths)])
+		var xu := {}
+		for x in xs:
+			xu[x] = true
+		_check(xu.size() == 1, "bag grid does not shift sideways when the selection changes%s: %s" % [tag, str(xs)])
 		# every bag cell is a laid-out, non-zero control inside the scrollable body
 		var ok := true
 		for s in r._slots:

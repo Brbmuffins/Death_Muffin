@@ -169,7 +169,6 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	sp.action.emit("bug_report")
 	await _frames(3)
 	_check(ui.is_open("settings") and ui.set_ui.bug_report_open() and ui.set_ui.report.is_visible_in_tree(), "bug report renders inside the Settings body")
-	_check(String(ui.set_ui.report.context()["renderer"]) == DmRenderer.describe() and DmRenderer.describe().ends_with(DmRenderer.threads_text()), "bug report context carries the renderer and the threading options running")
 	ui.set_ui.report.message.text = "the thralls stopped following me after travel"
 	ui.set_ui.report._sync()
 	game.clear_calls()

@@ -2,20 +2,10 @@ class_name DmFxRing
 extends RefCounted
 ## Port of Effects.ts ParticleSystem: a CPU-simulated ring buffer of motes drawn as one MultiMesh of billboards per blend mode
 ## (additive "glow" ring of 3500, normal-blend "smoke" ring of 900). Same emit options, same alpha/size curves.
-## Upload: the instance buffer is sized to the live motes (instance_count follows them in STEP-sized buckets, with hysteresis) and
-## only that slice is sent each frame, not the whole capacity (224 KB for the additive ring). `limit` lowers the ring's usable size
-## per graphics preset (DmGraphicsPreset "motes"); motes already flying in slots above a lowered limit finish normally.
 
 var node: MultiMeshInstance3D
 var mm: MultiMesh
 var capacity: int
-var limit: int            ## slots new motes may take (<= capacity); see set_limit
-var last_upload_bytes := 0   ## size of the last instance-buffer upload (0 when nothing was sent), for the perf probes
-
-const STEP := 256         ## instance_count granularity
-const SHRINK_SLACK := 512 ## the buffer shrinks only when this many instances too large (reallocation is the costly part)
-
-var _gpu: DmFxMotes   # set for the additive ring: motes fly on the GPU (order does not matter when adding); null = the CPU ring below
 
 var _pos: PackedFloat32Array
 var _vel: PackedFloat32Array
@@ -33,16 +23,8 @@ var _list: PackedInt32Array = PackedInt32Array()  # indices of live motes
 var _shown := false
 
 
-## gpu: simulate the motes in the vertex shader (DmFxMotes) instead of the CPU loop. Only for blend-add rings: the normal-blend smoke
-## ring keeps its CPU order (oldest first) so overlapping smoke layers exactly as before.
-func _init(cap: int, tex: Texture2D, additive: bool, gpu: bool = false) -> void:
+func _init(cap: int, tex: Texture2D, additive: bool) -> void:
 	capacity = cap
-	limit = cap
-	if gpu:
-		_gpu = DmFxMotes.new(cap, tex, additive, 5)
-		node = _gpu.node
-		mm = _gpu.mm
-		return
 	_pos = PackedFloat32Array(); _pos.resize(cap * 3)
 	_vel = PackedFloat32Array(); _vel.resize(cap * 3)
 	_col = PackedFloat32Array(); _col.resize(cap * 3)
@@ -59,7 +41,7 @@ func _init(cap: int, tex: Texture2D, additive: bool, gpu: bool = false) -> void:
 	var q := QuadMesh.new()
 	q.size = Vector2(1, 1)
 	mm.mesh = q
-	mm.instance_count = mini(cap, STEP)
+	mm.instance_count = cap
 	mm.visible_instance_count = 0
 	node = MultiMeshInstance3D.new()
 	node.multimesh = mm
@@ -67,17 +49,6 @@ func _init(cap: int, tex: Texture2D, additive: bool, gpu: bool = false) -> void:
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.custom_aabb = AABB(Vector3(-500, -500, -500), Vector3(1000, 1000, 1000))
 	node.visible = false
-
-
-## Usable ring size (clamped to 1..capacity). Takes effect for new motes.
-func set_limit(n: int) -> void:
-	if _gpu != null:
-		_gpu.set_limit(n)
-		limit = _gpu.limit
-		return
-	limit = clampi(n, 1, capacity)
-	if _cursor >= limit:
-		_cursor = 0
 
 
 ## o: x y z count color(Color/int) spread speed up life size gravity drag shrink inward (Effects.ts EmitOptions).
@@ -100,13 +71,9 @@ func emit(o: Dictionary) -> void:
 	var ox := float(o.get("x", 0.0))
 	var oy := float(o.get("y", 0.0))
 	var oz := float(o.get("z", 0.0))
-	if _gpu != null:
-		for n in count:
-			_gpu.spawn(ox, oy, oz, c, spread, speed, up, life, size, gravity, drag, shrink, inward)
-		return
 	for n in count:
 		var i := _cursor
-		_cursor = (_cursor + 1) % limit
+		_cursor = (_cursor + 1) % capacity
 		if _life[i] <= 0.0:
 			_active += 1
 			_list.append(i)
@@ -135,16 +102,10 @@ func emit(o: Dictionary) -> void:
 
 
 func active() -> int:
-	if _gpu != null:
-		return _gpu.active()
 	return _active
 
 
 func update(dt: float) -> void:
-	if _gpu != null:
-		_gpu.update(dt)
-		last_upload_bytes = _gpu.last_upload_bytes
-		return
 	if _active == 0:
 		if _shown:   # once, not on every idle frame
 			_shown = false
@@ -197,17 +158,8 @@ func update(dt: float) -> void:
 		_buf[o + 15] = alpha
 		n += 1
 	_list.resize(kept)
-	last_upload_bytes = 0
+	mm.visible_instance_count = n
 	if n > 0:
-		var want := mini(capacity, ((n + STEP - 1) / STEP) * STEP)
-		var have := mm.instance_count
-		if want > have or have - want > SHRINK_SLACK:
-			mm.instance_count = want
-			have = want
-		mm.visible_instance_count = n
-		mm.buffer = _buf if have >= capacity else _buf.slice(0, have * 16)
-		last_upload_bytes = have * 64
-	else:
-		mm.visible_instance_count = 0
+		mm.buffer = _buf
 	_shown = _active > 0
 	node.visible = _shown

@@ -1,7 +1,7 @@
 # Decisions
 
 Owner decisions that shape the code. D1-D13 are the 2026-10-05 and 2026-10-07 rebuild decisions; B1-B10 the 2026-10-09 (B11: 2026-10-10)
-baseline decisions. Where a later decision overrode one, the entry says so.
+baseline decisions; B12 the 2026-10-10 Phase B rollback. Where a later decision overrode one, the entry says so.
 
 ## Rebuild decisions
 
@@ -77,3 +77,4 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
 - **B10. Docs: a small truthful set.** README, ROADMAP, DECISIONS, KNOWN-GAPS, CLAUDE, plus short per-system READMEs. Web-era
   docs are deleted, not bannered; they stay in git history and in tag `archive/legacy-web`.
 - **B11. Tests never assert wall-clock time** (owner, 2026-10-10): timings print as `INFO perf:` lines only; FPS is judged on real hardware (F3 overlay). Deterministic counters (cold loads, node, draw-call and query counts) stay real checks.
+- **B12. Performance Phase B is pulled from `main`** (owner, 2026-10-10). In combat it crashed real players' GPUs to the desktop (NVIDIA and AMD, Compatibility renderer, no trace in the log); the build before it was confirmed stable. The ground-loot icons and a bad import were ruled out. The work (shared creature materials with instance uniforms, GPU-simulated motes, prop MultiMesh, prop lights capped at 8, opt-in Mobile renderer, GPU-time resolution governor, threading options) is kept in tag `archive/perf-phase-b`. It comes back one part at a time in owner-approved test builds; creature instance uniforms are the first suspect.

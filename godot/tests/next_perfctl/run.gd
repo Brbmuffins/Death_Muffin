@@ -128,7 +128,6 @@ func _settings() -> void:
 		check(bool(g.world.dressing.features.get("bloom", false)) == bool(gp["bloom"]) and g.world.dressing.atmosphere.quality_low == (gp["fx"] == "low"), "preset %s: bloom + weather quality" % id)
 		check(vfx.quality == String(gp["fx"]) and vfx.binbun.enabled == bool(gp["binbun"]), "preset %s: fx quality %s, binbun %s" % [id, vfx.quality, vfx.binbun.enabled])
 		check(vp.msaa_3d == DmGraphicsPreset.msaa_mode(int(gp["msaa"])) and vp.anisotropic_filtering_level == DmGraphicsPreset.aniso_mode(int(gp["aniso"])) and is_equal_approx(vp.mesh_lod_threshold, float(gp["lod"])), "preset %s: msaa %d, aniso %d, lod %.1f on the viewport" % [id, gp["msaa"], gp["aniso"], gp["lod"]])
-		check(vfx.prims.additive.limit == roundi(vfx.prims.additive.capacity * float(gp["motes"])) and vfx.prims.smoke.limit == roundi(vfx.prims.smoke.capacity * float(gp["motes"])), "preset %s: mote ring caps %d / %d" % [id, vfx.prims.additive.limit, vfx.prims.smoke.limit])
 		check(is_equal_approx(g.perf.governor.floor_scale, float(gp["floor"])), "preset %s: governor floor %.2f" % [id, g.perf.governor.floor_scale])
 		check(is_equal_approx(b.preset_lift, float(gp["lift"])) and is_equal_approx(b.env.tonemap_exposure, b.base_exposure * b.brightness * b.area_exposure * float(gp["lift"])), "preset %s: lighting lift %.2f reaches the exposure (%.3f)" % [id, b.preset_lift, b.env.tonemap_exposure])
 	# Settings -> Brightness is a plain multiplier on the exposure; Interface size is the window's content scale
@@ -143,25 +142,14 @@ func _settings() -> void:
 	check(DmSettings.clamp_window_mode("fullscreen") == "fullscreen" and DmSettings.clamp_window_mode("borderless") == "borderless", "window mode keeps the offered values")
 	check(DmSettings.clamp_window_mode("bogus") == "windowed" and DmSettings.clamp_window_mode(null) == "windowed", "any other window mode is windowed")
 	st.update({"graphics": "ultra"})
-	check(b.light_near == DmWorldBuilder.LIGHT_NEAR and DmGraphicsPreset.get_preset("high")["lights"] == DmWorldBuilder.LIGHT_NEAR, "ultra keeps the High light cap (Compatibility lights a mesh with at most 8)")
-	for pid in DmGraphicsPreset.IDS:
-		check(int(DmGraphicsPreset.get_preset(pid)["lights"]) <= 8, "preset %s: at most 8 prop lights" % pid)
+	check(b.light_near > DmWorldBuilder.LIGHT_NEAR and DmGraphicsPreset.get_preset("high")["lights"] == DmWorldBuilder.LIGHT_NEAR, "ultra is richer than high; high keeps the old High's lights")
 	st.update({"graphics": "bogus"})
 	check(DmGraphicsPreset.normalize("bogus") == "high" and b.light_near == DmWorldBuilder.LIGHT_NEAR, "unknown graphics value behaves as High")
 	st.update({"graphics": "high"})
 	st.update({"fps": 0})
 	check(Engine.max_fps == 0, "fps Max = uncapped")
-	# F3 overlay: the renderer line names the renderer and the threading options running (DmRenderer.describe)
-	var ov := DmPerfOverlay.new()
-	root.add_child(ov)
-	ov.set_shown(true)
-	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 1500 and not ov.label.text.contains("["):
-		await process_frame
-	check(ov.label.text.contains("[" + DmRenderer.describe() + "]"), "F3 overlay renderer line shows '%s'" % DmRenderer.describe())
-	ov.queue_free()
 	# culling / streaming / shadow range are the builder's constants, driven by DmNextWorld.update every frame
-	check(DmWorldBuilder.SHADOW_RANGE == 32.0 and DmWorldBuilder.LIGHT_NEAR == 8, "culling: shadow range 32 m, 8 prop lights (as the current client)")
+	check(DmWorldBuilder.PROP_CELL == 12.0 and DmWorldBuilder.SHADOW_RANGE == 32.0 and DmWorldBuilder.LIGHT_NEAR == 8, "culling: prop cell 12 m, shadow range 32 m, 8 prop lights (as the current client)")
 	# auto_res off: a stepped-down view returns to full resolution at once
 	g.perf.governor.scale = 0.7
 	g.perf._apply_render_scale()
@@ -198,10 +186,6 @@ func _governor() -> void:
 	for i in 600:
 		p.pace(0.033)
 	check(p.governor.scale == 1.0, "governor: frames at the 30 fps budget are not a miss")
-	# the cost sampler behind the GPU-aware gate (a headless run has no GPU time: -1; script time is always known)
-	p._sample_cost()
-	check(p.gpu_ms == -1.0 and p.logic_ms >= 0.0, "governor: sampler reports no GPU time headless, script time known")
-	p.logic_ms = -1.0   # the real script time of this test is not the simulated frame stream's
 	# the same constants as the current client
 	check(DmResolutionGovernor.MIN == 0.6 and DmResolutionGovernor.STEP == 0.9 and DmResolutionGovernor.DOWN_AFTER_S == 3.5 and DmResolutionGovernor.UP_AFTER_S == 15.0 and DmResolutionGovernor.MIN_GAP_S == 20.0, "governor: constants unchanged (the quality pass retunes them)")
 	# the floor follows the preset: Low steps down to 0.6, High / Ultra never below 0.85

@@ -30,5 +30,3 @@ Stock stand-ins the dressing replaces (plain water planes, puddle quads, the one
 
 ## Known gaps
 - `add_ripple` / `is_wet` are only called from `game/dm_event_fx*.gd` through `DmEnemyFxHost.dressing`, which `DmNextGame` does not set, so enemy wading ripples are not wired.
-
-`DmWfxParticles` (brazier fire, backdrop mist / embers; caps 160 / 256) writes one packed instance buffer per frame (transform, colour, custom data), not per-instance calls.

@@ -229,12 +229,6 @@ func _test_prims() -> void:
 	check(fx.prims.additive.active() <= 3500, "additive ring capped at 3500 (%d)" % fx.prims.additive.active())
 	for i in 40:
 		await process_frame
-	# Upload follows the live motes (the additive ring is GPU-simulated: its slots in use, in 256-steps; the smoke ring: live motes)
-	fx.prims.smoke.update(0.0)
-	check(fx.prims.smoke.last_upload_bytes <= 64 * 256 and fx.prims.smoke.last_upload_bytes > 0, "smoke ring uploads its live range (%d B), not %d" % [fx.prims.smoke.last_upload_bytes, 900 * 64])
-	fx.prims.additive.set_limit(100)
-	check(fx.prims.additive.limit == 100, "ring limit set")
-	fx.prims.additive.set_limit(3500)
 	# Motes expire.
 	fx.prims.additive.update(100.0)
 	check(fx.prims.additive.active() == 0, "motes expire")

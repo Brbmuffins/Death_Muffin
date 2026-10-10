@@ -5,11 +5,10 @@ extends RefCounted
 ## ("high"/"low") is already a valid id, so saved settings migrate as they are. High keeps the old High's cost (owner: performance first) plus
 ## the 0.85 floor and anisotropic textures; MSAA and the heavy extras are opt-in on Ultra until real-GPU numbers say High can carry MSAA
 ## (on llvmpipe MSAA 2x made the rendered QA run time out; a real GPU is unmeasured). Anything unknown becomes High (the default for new players).
-## MSAA / anisotropy are set on the viewport at runtime (project.godot is not touched). The renderer is not a preset: it is a separate setting (DmRenderer).
+## Renderer stays gl_compatibility; MSAA / anisotropy are set on the viewport at runtime (project.godot is not touched). Forward+ is not a preset.
 ##   shadows/bloom  moon shadow + the bloom glow         lights   prop lights lit at once (DmWorldBuilder.light_near)
 ##   msaa           0 / 2 / 4 / 8 samples on the 3D view  aniso    anisotropic filtering level (floor + ground-marking textures at grazing angles)
 ##   floor          lowest 3D scale Auto resolution may drop to   fx   DmFx quality ("low" thins bursts and drops the Binbun layer)
-##   motes          share of the DmFxRing caps (3500 additive / 900 smoke) new motes may use (Low 0.4, Medium 0.7)
 ##   binbun         the premium Binbun VFX layer          shadow_size / shadow_dist / prop_shadow (props further than this stop casting) / shadow_splits / soft   directional shadow atlas size, how far the moon's
 ##   shadows reach, casters / casters_crowd (enemies that cast into the moon shadow, nearest first; DmCasterBudget), PSSM splits (2 = sharper near the hero), soft-shadow filter (0 low .. 3 ultra)   lod  mesh LOD threshold (0.5 = detail holds longer)
 ##   lift           exposure multiplier that keeps a preset as bright as High (fewer prop lights, no bloom: measured with tests/perf/lighting_shot.sh)
@@ -20,16 +19,16 @@ const LABELS := {
 	"low": "Low (fastest)",
 	"medium": "Medium (shadows)",
 	"high": "High (bloom, sharp textures)",
-	"ultra": "Ultra (long sharp shadows, 4x smoothing)",
+	"ultra": "Ultra (more lights, long sharp shadows, 4x smoothing)",
 }
 const TABLE := {
-	"low": {"motes": 0.4, "lift": 1.4, "shadows": false, "bloom": false, "lights": 3, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
+	"low": {"lift": 1.4, "shadows": false, "bloom": false, "lights": 3, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
 		"casters": 0, "casters_crowd": 0, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 0, "lod": 1.0},
-	"medium": {"motes": 0.7, "lift": 1.38, "shadows": true, "bloom": false, "lights": 5, "msaa": 0, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
+	"medium": {"lift": 1.38, "shadows": true, "bloom": false, "lights": 5, "msaa": 0, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
 		"casters": 8, "casters_crowd": 6, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
-	"high": {"motes": 1.0, "lift": 1.0, "shadows": true, "bloom": true, "lights": 8, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
+	"high": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 8, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
 		"casters": 12, "casters_crowd": 8, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
-	"ultra": {"motes": 1.0, "lift": 1.0, "shadows": true, "bloom": true, "lights": 8, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
+	"ultra": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 14, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
 		"casters": 20, "casters_crowd": 14, "shadow_size": 4096, "shadow_dist": 80.0, "prop_shadow": 56.0, "shadow_splits": 2, "soft": 3, "lod": 0.5},
 }
 

@@ -45,9 +45,8 @@ var last_plan: Dictionary = {}
 var base_height := 1.0
 
 var _model: Node3D
-var _meshes: Array = []        # [{mi: MeshInstance3D, surf: int, op: ShaderMaterial (shared), src: Material}]
-var _mis: Array = []           # the MeshInstance3Ds that carry this body's instance uniforms
-var _params: Dictionary = {}   # tint, opacity, emis, emis_k, rim: this body's look, pushed to the instances as instance uniforms
+var _meshes: Array = []        # [{mi: MeshInstance3D, surf: int, op: ShaderMaterial, fade: ShaderMaterial or null, src: Material}]
+var _params: Dictionary = {}
 var _use_fade := false
 var _opacity := 1.0
 var _spectral := false
@@ -195,53 +194,56 @@ func _build_materials() -> void:
 			wing_root = Vector2(center, phase)
 		for s in m.mesh.get_surface_count():
 			var src: Material = m.mesh.surface_get_material(s)
-			var op := DmCreatureMat.shared(src, _spectral, _wings, _gear, _cull_back)
-			_meshes.append({"mi": m, "surf": s, "op": op, "src": src})
+			var op := DmCreatureMat.make(src, _spectral, _wings, _gear, _cull_back)
+			var rec := {"mi": m, "surf": s, "op": op, "fade": null, "src": src}
+			if _wings:
+				op.set_shader_parameter("wing", wing_vec)
+				op.set_shader_parameter("wing_root", wing_root)
+				op.set_shader_parameter("wing_z", wing_axis)
+			_meshes.append(rec)
+			for key in _params:
+				op.set_shader_parameter(key, _params[key])
 			m.set_surface_override_material(s, op)
-		_mis.append(m)
-		if _wings:
-			m.set_instance_shader_parameter("wing", wing_vec)
-			m.set_instance_shader_parameter("wing_root", wing_root)
-			m.set_instance_shader_parameter("wing_z", wing_axis)
-	_push_look()
 
-## The fade variant is the shared material of the same source with the blend flag; opacity / tint / emissive stay instance uniforms.
 func _fade_for(rec: Dictionary) -> ShaderMaterial:
-	return DmCreatureMat.shared(rec.src, true, _wings, _gear, _cull_back)
+	if rec.fade == null:
+		var fm := DmCreatureMat.make(rec.src, true, _wings, _gear, _cull_back)
+		var op: ShaderMaterial = rec.op
+		for key in _params:
+			fm.set_shader_parameter(key, _params[key])
+		if _wings:
+			for key in ["wing", "wing_root", "wing_z"]:
+				fm.set_shader_parameter(key, op.get_shader_parameter(key))
+		if _gear:
+			_copy_gear(fm)
+		rec.fade = fm
+	return rec.fade
 
-func _set_inst(name: String, v: Variant) -> void:
-	for m in _mis:
-		(m as MeshInstance3D).set_instance_shader_parameter(name, v)
-
-func _tint_op() -> Vector4:
-	var t: Vector3 = _params["tint"]
-	return Vector4(t.x, t.y, t.z, float(_params["opacity"]))
-
-func _emis4() -> Vector4:
-	var e: Vector3 = _params["emis"]
-	return Vector4(e.x, e.y, e.z, float(_params["emis_k"]))
-
-func _push_look() -> void:
-	_set_inst("tint_op", _tint_op())
-	_set_inst("emis4", _emis4())
-	if _params.has("rim"):
-		var r: Color = _params["rim"]
-		_set_inst("rim", Vector4(r.r, r.g, r.b, r.a))
-	if _gear:
-		_push_gear()
+func _p(name: String, v: Variant) -> void:
+	_params[name] = v
+	for rec in _meshes:
+		(rec.op as ShaderMaterial).set_shader_parameter(name, v)
+		if rec.fade != null:
+			(rec.fade as ShaderMaterial).set_shader_parameter(name, v)
 
 func _show_variant() -> void:
 	for rec in _meshes:
 		var m: MeshInstance3D = rec.mi
 		m.set_surface_override_material(rec.surf, _fade_for(rec) if _use_fade else rec.op)
 
-func _push_gear() -> void:
+func _copy_gear(m: ShaderMaterial) -> void:
 	for i in 4:
 		var t: Vector4 = _gear_tint[i]
-		_set_inst("gt%d" % i, t)
-		_set_inst("gg%d" % i, _gear_glow[i])
-	_set_inst("head_t", _head_tint)
-	_set_inst("head_g", _head_glow)
+		m.set_shader_parameter("gt%d" % i, Color(t.x, t.y, t.z, t.w))
+		m.set_shader_parameter("gg%d" % i, _gear_glow[i])
+	m.set_shader_parameter("head_t", Color(_head_tint.x, _head_tint.y, _head_tint.z, _head_tint.w))
+	m.set_shader_parameter("head_g", _head_glow)
+
+func _push_gear() -> void:
+	for rec in _meshes:
+		_copy_gear(rec.op)
+		if rec.fade != null:
+			_copy_gear(rec.fade)
 
 ## Hit flash (Creature `flash` setter): pulses the emissive toward the pale flash colour, in FLASH_LEVELS steps.
 func set_flash(v: float) -> void:
@@ -257,14 +259,11 @@ func set_flash(v: float) -> void:
 func _apply_flash(f: float) -> void:
 	if f > 0.01:
 		var fc := lin(FLASH_COLOR)
-		_set_emis(_em_base.lerp(fc, minf(1.0, f)), _em_k + f * 0.16)
+		_p("emis", _em_base.lerp(fc, minf(1.0, f)))
+		_p("emis_k", _em_k + f * 0.16)
 	else:
-		_set_emis(_em_base, _em_k)
-
-func _set_emis(col: Vector3, k: float) -> void:
-	_params["emis"] = col
-	_params["emis_k"] = k
-	_set_inst("emis4", _emis4())
+		_p("emis", _em_base)
+		_p("emis_k", _em_k)
 
 func set_emissive(hex: int, intensity: float) -> void:
 	_em_base = lin(hex)
@@ -281,8 +280,7 @@ func set_cast_shadow(on: bool) -> void:
 func set_opacity(o: float) -> void:
 	_opacity = o
 	var want_fade := o < 1.0 or _spectral
-	_params["opacity"] = (0.55 if _spectral else 1.0) * o
-	_set_inst("tint_op", _tint_op())
+	_p("opacity", (0.55 if _spectral else 1.0) * o)
 	if want_fade != _use_fade:
 		_use_fade = want_fade
 		_show_variant()

@@ -45,8 +45,6 @@ func _json(path: String) -> Variant:
 		return null
 	return JSON.parse_string(f.get_as_text())
 
-const PROP_NODES_MAX := 140
-
 func _finish() -> void:
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)
@@ -136,48 +134,6 @@ func _run() -> void:
 	print("nav bake: %d ms, %d regions, %d links" % [b.nav_bake_ms, b.nav_regions.size(), b.nav_links.size()])
 	_check(b.area_nodes.size() == 13 and b.nav_regions.size() == 13 + 11, "an area node + nav region per area and per door")
 	_check(b.gates.size() == 10, "10 gates (chapter_graves is always open)")
-
-	# draw submission: a prop kind is ONE MultiMeshInstance3D per mesh part and area (no per-cell split), the outside ground is few tiles on one material
-	var prop_nodes := 0
-	var prop_inst := 0
-	for id in b.area_nodes:
-		for n in (b.area_nodes[id] as Node).find_children("*", "MultiMeshInstance3D", false, false):
-			if not n.has_meta("dm_prop"):
-				continue
-			var mm := (n as MultiMeshInstance3D).multimesh
-			prop_nodes += 1
-			prop_inst += mm.instance_count
-	print("INFO props: %d prop MultiMesh nodes, %d instances" % [prop_nodes, prop_inst])
-	_check(prop_nodes <= PROP_NODES_MAX and prop_inst >= 579, "world props draw as <= %d instanced groups (%d nodes, %d instances)" % [PROP_NODES_MAX, prop_nodes, prop_inst])
-	# Compatibility shades a mesh with at most 8 lights: no preset keeps more than 8 prop lights on at once, so no prop group (whole area) is reached by more than 8 ACTIVE lights
-	var prop_mmis: Array = b.find_children("*", "MultiMeshInstance3D", true, false).filter(func(n): return n.has_meta("dm_prop"))
-	var worst_on := 0
-	var worst_touch := 0
-	for pid in DmGraphicsPreset.IDS:
-		b.light_near = int(DmGraphicsPreset.get_preset(pid)["lights"])
-		for id in w.order:
-			var r: Dictionary = w.areas[id].rect
-			for fx in [float(r.x0), (float(r.x0) + float(r.x1)) / 2.0, float(r.x1)]:
-				b.update_streaming(fx, (float(r.z0) + float(r.z1)) / 2.0)
-				b.update_light_lod(fx, (float(r.z0) + float(r.z1)) / 2.0)
-				var on: Array = b.prop_lights.filter(func(e): return e.node.visible)
-				worst_on = maxi(worst_on, on.size())
-				for m: MultiMeshInstance3D in prop_mmis:
-					var bb := m.multimesh.get_aabb()
-					var touching := 0
-					for e in on:
-						var L := e.node as OmniLight3D
-						if (L.position - L.position.clamp(bb.position, bb.end)).length_squared() <= L.omni_range * L.omni_range:
-							touching += 1
-					worst_touch = maxi(worst_touch, touching)
-	_check(worst_on <= 8 and worst_touch <= 8, "every preset: at most 8 prop lights on at once (%d), no prop group reached by more than 8 active lights (%d)" % [worst_on, worst_touch])
-	b.light_near = DmWorldBuilder.LIGHT_NEAR
-	b.update_streaming(0.0, 24.0)
-	var tiles := b.get_node("outside").get_children()
-	var ground_mats: Dictionary = {}
-	for t in tiles:
-		ground_mats[(t as MeshInstance3D).material_override] = true
-	_check(tiles.size() <= 49 and ground_mats.size() == 1, "outside ground: %d tiles, %d materials (<= 49 tiles, 1 shared material)" % [tiles.size(), ground_mats.size()])
 	var start := Vector3(0, 0, 24)
 
 	# default seals: always-open halls reachable, sealed ones not
