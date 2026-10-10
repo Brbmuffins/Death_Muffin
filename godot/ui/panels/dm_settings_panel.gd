@@ -142,6 +142,7 @@ func build() -> void:
 	# --- Display and sound -------------------------------------------------------------------------
 	var s2 := _section("Display and sound")
 	_option(s2, "Graphics", "graphics", DmGraphicsPreset.options())
+	_renderer_row(s2)
 	_brightness(s2)
 	_option(s2, "Frame rate", "fps", [[0, "Max — your screen's refresh rate"], [60, "60 — smooth"], [30, "30 — battery saver"]])
 	_option(s2, "Interface size", "ui_scale", [[0.8, "80%"], [0.9, "90%"], [1.0, "100%"], [1.1, "110%"], [1.25, "125%"]])
@@ -358,6 +359,44 @@ func _option(parent: VBoxContainer, text: String, key: String, opts: Array) -> v
 	ob.select(maxi(0, _idx(opts, values[key])))
 	ob.item_selected.connect(func(i: int) -> void: _put(key, opts[i][0]))
 	_row(parent, text, ob)
+
+
+## Settings -> Graphics -> Renderer (DmRenderer): not a `values` key. The choice is a file the engine reads at startup, so this row writes it
+## itself and the new renderer starts with the next launch.
+func _renderer_row(parent: VBoxContainer) -> void:
+	var ob := OptionButton.new()
+	ob.fit_to_longest_item = true
+	var opts := DmRenderer.options()
+	for o in opts:
+		ob.add_item(o[1])
+	ob.select(maxi(0, _idx(opts, DmRenderer.requested())))
+	var note := DmUi.label("", "DmNote", true)
+	var restart := Button.new()
+	restart.text = "Restart now"
+	restart.focus_mode = Control.FOCUS_NONE
+	restart.pressed.connect(func() -> void: DmRenderer.relaunch(get_tree()))
+	var refresh := func() -> void:
+		var want := DmRenderer.requested()
+		var now := DmRenderer.active()
+		restart.visible = want != now and not DmRenderer.fell_back()
+		if DmRenderer.was_reverted():
+			note.text = "Mobile (Vulkan) stopped working last time, so the game went back to Compatibility. Pick Mobile again to retry."
+		elif DmRenderer.fell_back():
+			note.text = "Mobile is selected but this PC could not start Vulkan, so the game is running on Compatibility."
+		elif want != now:
+			note.text = "Saved. %s applies after a restart (Restart now, or quit and start the game again)." % opts[_idx(opts, want)][1].split(" (")[0]
+		else:
+			note.text = "Running on %s. Mobile (Vulkan) is experimental: if it looks wrong, set this back to Compatibility and restart." % DmRenderer.describe()
+	ob.item_selected.connect(func(i: int) -> void:
+		DmRenderer.set_requested(opts[i][0])
+		refresh.call())
+	var rr := HBoxContainer.new()
+	rr.add_theme_constant_override("separation", 8)
+	rr.add_child(restart)
+	rr.add_child(ob)
+	_row(parent, "Renderer", rr)
+	_note_margin(parent, note)
+	refresh.call()
 
 
 func _slider(parent: VBoxContainer, text: String, key: String) -> void:

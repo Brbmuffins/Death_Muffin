@@ -11,6 +11,11 @@ extends Node
 ## builder's own (DmNextWorld.update calls them every frame, same cells and ranges).
 
 const CASTER_POLL_S := 0.5
+const COST_POLL_S := 0.25      ## how often the governor's GPU / script time is sampled
+const COST_SMOOTH := 0.3
+
+## True while this node has the root viewport's render-time measurement on (the F3 overlay must not switch it off).
+static var measuring := false
 
 var game: Node3D
 var governor := DmResolutionGovernor.new()
@@ -18,14 +23,21 @@ var settings: Dictionary = {}
 var frame_ms := 16.7
 var enabled := true            ## false = no pacing (headless / no renderer)
 var _gfx_key := ""
+var gpu_ms := -1.0             ## smoothed GPU time of the 3D view (-1: the renderer reports none)
+var logic_ms := -1.0           ## smoothed script time (process + physics)
 var _caster_t := 0.0
+var _cost_t := 0.0
 
 
 func _ready() -> void:
 	enabled = DisplayServer.get_name() != "headless"
+	if enabled:
+		measuring = true
+		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 
 
 func _exit_tree() -> void:
+	measuring = false   # the render-time measurement itself stays on until the F3 overlay is next toggled
 	Engine.max_fps = 0
 	var vp := get_viewport()
 	if vp != null:
@@ -103,8 +115,21 @@ func pace(delta: float) -> void:
 	frame_ms += (delta * 1000.0 - frame_ms) * 0.1
 	if not bool(settings.get("auto_res", true)):
 		return
-	if governor.frame(delta, frame_ms, DmResolutionGovernor.budget_fps(int(settings.get("fps", 0)))):
+	if measuring:
+		_cost_t -= delta
+		if _cost_t <= 0.0:
+			_cost_t = COST_POLL_S
+			_sample_cost()
+	if governor.frame(delta, frame_ms, DmResolutionGovernor.budget_fps(int(settings.get("fps", 0))), gpu_ms, logic_ms):
 		_apply_render_scale()
+
+
+## GPU time of the 3D view and script time, smoothed, at 4 Hz: the governor only lowers the resolution when pixels are what the frame waits for.
+func _sample_cost() -> void:
+	var g := RenderingServer.viewport_get_measured_render_time_gpu(get_viewport().get_viewport_rid())
+	gpu_ms = -1.0 if g <= 0.0 else (g if gpu_ms < 0.0 else gpu_ms + (g - gpu_ms) * COST_SMOOTH)
+	var l := (Performance.get_monitor(Performance.TIME_PROCESS) + Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)) * 1000.0
+	logic_ms = l if logic_ms < 0.0 else logic_ms + (l - logic_ms) * COST_SMOOTH
 
 
 func _apply_render_scale() -> void:

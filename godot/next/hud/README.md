@@ -32,7 +32,7 @@ opts.hud:  true (default) real HUD, also for joiners  |  "minimal" DmNextHud orb
 | elite chips | `_affix_chips` reads the replicated `dm_affix_list` meta, cached per target |
 
 **Dev access** (`_is_dev_account` / `_apply_dev_access`): a dev account plus the Settings toggle opens rites (`DmRiteCaster.dev`), sealed halls and gathering tiers;
-F9 = `dev_break_seals()`. `main/qa_driver.gd` (`-- --qa`) drives DmNextGame. Bug reports carry `release = godot-next-<version>`.
+F9 = `dev_break_seals()`. `main/qa_driver.gd` (`-- --qa`) drives DmNextGame. Bug reports carry `release = godot-next-<version>` and `renderer` (`DmRenderer.describe()`).
 
 ## Panels
 All of `DmGameUi.WARM_PANELS` are pre-built under the loading cover (`ui.warm()`, ~1.3 s of the load). `tests/next_hud_counsel` opens each and runs one basic action

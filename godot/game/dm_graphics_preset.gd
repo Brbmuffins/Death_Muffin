@@ -5,7 +5,7 @@ extends RefCounted
 ## ("high"/"low") is already a valid id, so saved settings migrate as they are. High keeps the old High's cost (owner: performance first) plus
 ## the 0.85 floor and anisotropic textures; MSAA and the heavy extras are opt-in on Ultra until real-GPU numbers say High can carry MSAA
 ## (on llvmpipe MSAA 2x made the rendered QA run time out; a real GPU is unmeasured). Anything unknown becomes High (the default for new players).
-## Renderer stays gl_compatibility; MSAA / anisotropy are set on the viewport at runtime (project.godot is not touched). Forward+ is not a preset.
+## MSAA / anisotropy are set on the viewport at runtime (project.godot is not touched). The renderer is not a preset: it is a separate setting (DmRenderer).
 ##   shadows/bloom  moon shadow + the bloom glow         lights   prop lights lit at once (DmWorldBuilder.light_near)
 ##   msaa           0 / 2 / 4 / 8 samples on the 3D view  aniso    anisotropic filtering level (floor + ground-marking textures at grazing angles)
 ##   floor          lowest 3D scale Auto resolution may drop to   fx   DmFx quality ("low" thins bursts and drops the Binbun layer)
