@@ -37,6 +37,7 @@ var tab := 0
 var tab_buttons: Array[Button] = []
 var bag_slots: Dictionary = {}          # bag slot_index -> DmItemSlot
 var vault_slots: Dictionary = {}        # vault slot_index -> DmItemSlot
+var doll_slots: Dictionary = {}         # equip slot id -> DmItemSlot (worn gear, look only)
 var deposit_materials_button: Button
 var take_materials_button: Button
 var deposit_all_button: Button
@@ -49,7 +50,7 @@ var shown: Dictionary = {}
 func _init() -> void:
 	super._init()
 	title = "Ossuary Vault"
-	panel_width = 880
+	panel_width = 1060
 
 
 func set_state(s: Dictionary) -> void:
@@ -150,8 +151,12 @@ func _build() -> void:
 	var left := DmPb.vbox(6)
 	cols.add_child(left)
 	left.add_child(_section_head("Reliquary", "%d / %d" % [bag.size(), DmBag.BAG_SIZE]))
+	var bag_row := HBoxContainer.new()
+	bag_row.add_theme_constant_override("separation", 12)
+	left.add_child(bag_row)
+	bag_row.add_child(_doll(DmGear.equipped_by_slot(state.get("bag", []))))
 	var bg := _grid()
-	left.add_child(bg)
+	bag_row.add_child(bg)
 	for i in DmBag.BAG_SIZE:
 		var row: Dictionary = {}
 		for s: Dictionary in bag:
@@ -168,7 +173,8 @@ func _build() -> void:
 	right.add_child(_section_head("Vault", "%d / %d" % [vault.size(), DmVault.VAULT_SLOTS]))
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
-	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tabs.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	tabs.custom_minimum_size.x = COLS * SLOT_PX + (COLS - 1) * 4   # as wide as the vault grid below
 	for t in tab_count():
 		var lbl := "Tab %d  %d/%d" % [t + 1, tab_used.call(t), DmVault.VAULT_TAB_SIZE]
 		(shown["tab_labels"] as Array).append(lbl)
@@ -244,6 +250,32 @@ func _grid() -> GridContainer:
 	g.columns = COLS
 	g.add_theme_constant_override("h_separation", 4)
 	g.add_theme_constant_override("v_separation", 4)
+	return g
+
+
+## The worn gear, laid out like the Reliquary's paper doll. Look only: worn gear cannot be stored, so the cells do nothing when clicked.
+func _doll(worn: Dictionary) -> GridContainer:
+	var g := GridContainer.new()
+	g.columns = 3
+	g.add_theme_constant_override("h_separation", 4)
+	g.add_theme_constant_override("v_separation", 4)
+	g.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	doll_slots.clear()
+	for id: String in DmReliquaryPanel.DOLL:
+		if not DmReliquaryPanel.EQUIP.has(id):
+			g.add_child(DmUi.spacer(SLOT_PX, SLOT_PX))
+			continue
+		var c := DmItemSlot.new()
+		c.kind = DmItemSlot.Kind.EQUIP
+		c.custom_minimum_size = Vector2(SLOT_PX, SLOT_PX)
+		c.empty_glyph = DmReliquaryPanel.EQUIP[id][1]
+		c.empty_label = DmReliquaryPanel.EQUIP[id][0]
+		c.plain_tip = true
+		if worn.has(id):
+			c.set_item(slot_data(worn[id], false))
+			c.tooltip_text = plain_title(worn[id], false, "bag")
+		g.add_child(c)
+		doll_slots[id] = c
 	return g
 
 

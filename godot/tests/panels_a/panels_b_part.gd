@@ -646,6 +646,11 @@ func _t_vault() -> void:
 	_check(v.bag_slots[1].data["locked"], "locked bag item flagged")
 	_check(v.bag_slots[6].data["equipped"] == true, "equipped flag normalised")
 	_eq(v.bag_slots[4].data["ilvl"], 22, "ilvl passed to the tooltip")
+	var worn_now := DmGear.equipped_by_slot(st["bag"])
+	_eq(v.doll_slots.size(), 9, "9 worn-gear cells")
+	_check(not worn_now.is_empty(), "the demo vault state wears something")
+	for wid: String in v.doll_slots:
+		_eq(v.doll_slots[wid].is_filled(), worn_now.has(wid), "worn cell %s matches the equipped gear" % wid)
 	v.bag_slots[0].pressed.emit(v.bag_slots[0])
 	_eq(ev.back(), ["dep", 0], "click a bag item deposits its slot")
 	v.bag_slots[6].pressed.emit(v.bag_slots[6])
