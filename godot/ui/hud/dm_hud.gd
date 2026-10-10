@@ -1285,7 +1285,6 @@ func _rebuild_slots(slots: Array) -> void:
 		var idx := i
 		s.pressed.connect(func() -> void: cast.emit(idx + 1))
 		s.swap_pressed.connect(func() -> void: swap_slot.emit(idx))
-		s.hover_changed.connect(func(on: bool) -> void: _spell_hover(idx, s, on))
 
 
 var _souls_full := -1
@@ -1737,8 +1736,7 @@ func tip_default_position() -> Vector2:
 # ======================================================================== spell card (HUD.showTooltip / refreshTooltip)
 
 func _bind_primary_tip() -> void:
-	if not primary_slot.hover_changed.is_connected(_primary_hover):
-		primary_slot.hover_changed.connect(_primary_hover)
+	pass   # the bar shows no spell cards: spell info lives in the Grimoire
 
 
 func _primary_hover(on: bool) -> void:

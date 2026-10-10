@@ -194,53 +194,11 @@ func _test_tips(game: DmMockGame, ui: DmGameUi) -> void:
 	tip.test_mouse = s0.button.get_global_rect().get_center()
 	s0.hover_changed.emit(true)
 	await _frames(3)
-	_check(tip.is_showing_for(s0.button) and tip.content is DmSpellCard, "hovering a HUD slot shows the spell card")
-	var rite := ui.hud_tips.ability_at(0)
-	var rname := String(DmAbilities.def(rite)["name"])
-	_check(_has_text(tip.content, rname) and _has_text(tip.content, "Combat tip") and _has_text(tip.content, "Esc closes this card"), "card has name, combat tip and footer")
-	_check(_has_text(tip.content, "Cooldown") and _has_text(tip.content, "Ready to cast."), "card shows cost/cooldown metrics and the ready status")
-	var card_pos: Vector2 = tip.content.position
-	var a := s0.button.get_global_rect()
-	_check(card_pos.y + tip.content.size.y <= a.position.y + 0.5 and absf(card_pos.x + tip.content.size.x * 0.5 - (a.position.x + a.size.x * 0.5)) < 1.0 or card_pos.x <= 12.5 or true, "card centred above the slot")
-	# live refresh: the cooldown line follows the slot
-	game.hud["slots"][0]["left_ms"] = 3000.0
-	await create_timer(float(DmGameUi.HUD_INTERVAL_MS + 20) / 1000.0).timeout   # the HUD refreshes every HUD_INTERVAL_MS
+	_check(tip.content == null, "hovering a HUD slot shows no spell card (spell info lives in the Grimoire)")
+	tip.test_mouse = hud.primary_slot.button.get_global_rect().get_center()
+	hud.primary_slot.hover_changed.emit(true)
 	await _frames(3)
-	_check(_has_text(tip.content, "Ready in 3s."), "the open card follows the slot's cooldown")
-	# a Grimoire swap puts a different rite in the slot
-	var before := ui.hud_tips.ability_at(0)
-	ui.rites.keys[0] = "wailing_skull" if before != "wailing_skull" else "exhume"
-	await create_timer(float(DmGameUi.HUD_INTERVAL_MS + 20) / 1000.0).timeout   # the HUD refreshes every HUD_INTERVAL_MS
-	await _frames(3)
-	_check(_has_text(tip.content, String(DmAbilities.def(ui.rites.keys[0])["name"])), "the card shows the rite now in the slot")
-	# Esc closes it and the card is hidden when the pointer leaves
-	var esc := InputEventKey.new()
-	esc.keycode = KEY_ESCAPE
-	esc.pressed = true
-	tip._input(esc)
-	_check(tip.content == null, "Esc closes the spell card")
-	s0.hover_changed.emit(true)
-	await _frames(2)
-	tip.test_mouse = Vector2(-500, -500)
-	s0.hover_changed.emit(false)
-	await _frames(2)
-	_check(tip.content != null, "the card stays 180 ms after the pointer leaves (bridge to its scroll area)")
-	await create_timer(0.3).timeout
-	await _frames(2)
-	_check(tip.content == null, "then it hides")
-	# primary slot (LMB) and the locked signature slot
-	var pr: DmHudSlot = hud.primary_slot
-	tip.test_mouse = pr.button.get_global_rect().get_center()
-	pr.hover_changed.emit(true)
-	await _frames(3)
-	_check(tip.content is DmSpellCard and _has_text(tip.content, "Click an enemy"), "LMB card says how to cast the primary")
-	tip.hide_now()
-	var sg: DmHudSlot = hud._slots[5]
-	tip.test_mouse = sg.button.get_global_rect().get_center()
-	sg.hover_changed.emit(true)
-	await _frames(3)
-	_check(tip.content is DmSpellCard and _has_text(tip.content, "Locked — unlocks at level"), "a locked rite's card says when it unlocks")
-	tip.hide_now()
+	_check(tip.content == null, "hovering the LMB slot shows no spell card")
 	tip.test_mouse = null
 
 

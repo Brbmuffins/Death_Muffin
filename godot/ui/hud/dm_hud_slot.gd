@@ -177,7 +177,7 @@ func apply(s: Dictionary) -> void:
 	DmHudKit.set_font_size(_key, "font_size", 10 if alt else 12)
 	_swap_ico.visible = swap
 	_key_panel.tooltip_text = "Swap this rite (L)" if swap else ""
-	_icon.get_parent().tooltip_text = String(s.get("tooltip", ""))   # (the HUD replaces this with the spell card when it has a provider)
+	_icon.get_parent().tooltip_text = ""   # no hover tooltip on the bar; spell info lives in the Grimoire
 	_ensure_shader()
 	if not affordable or locked or needs != "":
 		var m := _icon.material as ShaderMaterial
