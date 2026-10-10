@@ -1221,3 +1221,42 @@ test('!cancel during the runner\'s own checks stops the check run and its whole 
   assert.equal(job.turns, turns, 'no repair turn'); assert.equal(proposals(thread).length, 0);
   assert.doesNotMatch(texts(thread).join('\n'), /Checks found a problem/);
 });
+
+// ---- ship queue: a ✅ while another ship runs waits its turn and ships by itself (owner 2026-10-10) ----
+test('godot mode: a second approval during a ship is queued and ships by itself afterwards, in approval order', async () => {
+  const slow = (d) => `sleep 2; echo deployed "$1" >> ${d}/deploys.log`;
+  const w = godotWorld(); w.runner.cfg.deployCmd = slow(w.deploy);
+  const d = makeDiscord(w.runner);
+  const { thread: a } = await request(d, IDS.OWNER, 'GD-GAMEPLAY faster');
+  const pa = await waitProposal(d, a);
+  const { thread: b } = await request(d, IDS.OWNER, 'GD-DOC readme');
+  const pb = await waitProposal(d, b);
+  assert.deepEqual(await d.react(pa, IDS.OWNER, '✅'), []);
+  await until(() => fs.existsSync(path.join(w.cfg.stateDir, 'ship-active')), d.ad);
+  assert.deepEqual(await d.react(pb, IDS.OWNER, '✅'), [], 'the second ✅ is kept, not removed');
+  await until(() => texts(b).some((t) => /queued \(1 ahead of it\).*no need to react again/.test(t)), d.ad);
+  await until(() => texts(a).some((t) => /Live\. Release/.test(t)), d.ad);
+  await until(() => texts(b).some((t) => /Live\. Release/.test(t)), d.ad, 60000);
+  const ships = shipsLog(w); assert.equal(ships.length, 2);
+  const ja = Object.values(w.runner.jobs()).find((j) => j.threadId === a.id), jb = Object.values(w.runner.jobs()).find((j) => j.threadId === b.id);
+  assert.deepEqual(ships.map((s) => s.jobId), [ja.id, jb.id], 'shipped in approval order');
+  assert.equal(jb.shipQueued, null);
+  assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/README.md').trim(), 'godot readme v2');
+  assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/game/a.gd').trim(), 'speed=9');
+});
+
+test('godot mode: a queued ship whose branch moved on is dropped with a note, not shipped', async () => {
+  const w = godotWorld(); w.runner.cfg.deployCmd = `sleep 2; echo deployed "$1" >> ${w.deploy}/deploys.log`;
+  const d = makeDiscord(w.runner);
+  const { thread: a } = await request(d, IDS.OWNER, 'GD-GAMEPLAY faster');
+  const pa = await waitProposal(d, a);
+  const { thread: b } = await request(d, IDS.OWNER, 'GD-DOC readme');
+  const pb = await waitProposal(d, b);
+  await d.react(pa, IDS.OWNER, '✅');
+  await until(() => fs.existsSync(path.join(w.cfg.stateDir, 'ship-active')), d.ad);
+  await d.react(pb, IDS.OWNER, '✅');
+  const jb = Object.values(w.runner.jobs()).find((j) => j.threadId === b.id);
+  jb.proposal = { ...jb.proposal, head: 'f'.repeat(40) };   // as if a new round replaced the approved commit while it waited
+  await until(() => texts(b).some((t) => /Not shipped from the queue: the change moved on/.test(t)), d.ad, 60000);
+  assert.equal(shipsLog(w).length, 1);
+});

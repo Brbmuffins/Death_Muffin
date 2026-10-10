@@ -71,6 +71,11 @@ online_local/front test suites, and the progression/economy authority mirrors (a
 deploy scripts or `.env*` are refused outright (`forbiddenPaths`). `ship.sh` re-derives the tier from the merged diff under
 the deploy lock, so an approver can never ship above their tier.
 
+One ship at a time. A ✅ while another ship runs queues the proposal (the thread says how many are ahead) and it ships by
+itself when its turn comes, in approval order (`job.shipQueued` in jobs.json, so the queue survives a runner restart). When its turn comes
+the runner re-checks it: a proposal that moved on (new round or head), an approver who lost the tier, or a casual approver's daily cap
+drops it from the queue with a note in the thread.
+
 ## Chat commands (in the thread, handled by the runner, not the AI)
 `!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!cancel` · `!discard` (or ❌) · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
 (full approvers; "use opus" in a message works too) · `rollback` (mention in channel or thread): runs the newest deploy

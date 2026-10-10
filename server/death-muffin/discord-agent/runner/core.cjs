@@ -86,6 +86,7 @@ function createRunner(cfgIn, opts = {}) {
   const setBusy = (on, what) => {
     shipBusy = on;
     try { if (on) fs.writeFileSync(activeFile, JSON.stringify({ pid: process.pid, what, at: new Date(now()).toISOString() })); else fs.rmSync(activeFile, { force: true }); } catch { /* best effort */ }
+    if (!on) setTimeout(() => drainShipQueue(), 0);   // the next approved ship goes as soon as this one is done
   };
 
   // ---------- outbox (runner -> bot, long-polled) ----------
@@ -283,7 +284,7 @@ function createRunner(cfgIn, opts = {}) {
   function handleCommand(job, msg, text) {
     const [cmd, ...rest] = text.slice(1).trim().split(/\s+/); const arg = rest.join(' ').toLowerCase();
     switch ((cmd || '').toLowerCase()) {
-      case 'status': return { action: 'reply', text: `Job \`${job.id}\`${job.title ? ` “${job.title}”` : ''} · ${job.status}${job.running ? ' (working)' : ''} · model ${job.model} · ${job.turns} turn(s) · ${job.queue.length} queued` + (job.proposal ? ` · proposal tier ${job.proposal.tier}` : '') };
+      case 'status': return { action: 'reply', text: `Job \`${job.id}\`${job.title ? ` “${job.title}”` : ''} · ${job.status}${job.running ? ' (working)' : ''}${job.shipQueued ? ' (queued to ship)' : ''} · model ${job.model} · ${job.turns} turn(s) · ${job.queue.length} queued` + (job.proposal ? ` · proposal tier ${job.proposal.tier}` : '') };
       case 'model':
         if (!auth.canSwitchModel(msg.userId)) { audit.log('refused', { userId: msg.userId, kind: 'model' }); return { action: 'reply', text: 'Only full approvers can switch models.' }; }
         if (!cfg.allowedModels.includes(arg)) return { action: 'reply', text: `Models: ${cfg.allowedModels.join(', ')}` };
@@ -403,12 +404,20 @@ function createRunner(cfgIn, opts = {}) {
         audit.log('approve-refused', { userId: uid, job: job.id, why: 'daily cap' });
         say(job, `That is today's limit of ${cfg.casualShipsPerDay} ships for you. The owner can still ship it.`); return { action: 'remove_reaction' };
       }
-      if (shipBusy) { say(job, 'Another ship is running. React again when it finishes.'); return { action: 'remove_reaction' }; }
       const curHead = await G.head(job.worktree).catch(() => null);
       if (curHead !== p.head) { audit.log('approve-refused', { userId: uid, job: job.id, why: 'head changed' }); say(job, 'The branch changed after this proposal; wait for the new one.'); return { action: 'remove_reaction' }; }
       audit.log('approved', { userId: uid, job: job.id, tier: p.tier, head: p.head });
-      ship(job, uid).catch((e) => { setBusy(false); say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } })
-        .finally(() => { if (job.deleteRequested) cleanupDeleted(job).then(() => pump()); });
+      // Another ship (or a queue) ahead: this one waits its turn and ships by itself (owner 2026-10-10: no second ✅ after the first ship).
+      if (shipBusy || shipQueue().length) {
+        if (job.shipQueued) return { action: 'accepted' };
+        job.shipQueued = { approverId: uid, head: p.head, at: now() }; save();
+        const ahead = shipQueue().length - 1 + (shipBusy ? 1 : 0);
+        audit.log('ship-queued', { userId: uid, job: job.id, ahead });
+        say(job, `Approved by ${nameOf(uid)}. Another ship is running, so this one is queued (${ahead} ahead of it). It ships by itself when its turn comes; no need to react again.`);
+        if (!shipBusy) drainShipQueue();
+        return { action: 'accepted' };
+      }
+      startShip(job, uid);
       return { action: 'accepted' };
     }
     if (ev.emoji === '❌') {
@@ -879,6 +888,30 @@ function createRunner(cfgIn, opts = {}) {
   function spawnScript(script, env, onLine) {
     return G.run('bash', [script, ...(env.__ARGS || [])], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 60 * 60000 });
   }
+  function startShip(job, approverId) {
+    ship(job, approverId).catch((e) => { setBusy(false); say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } })
+      .finally(() => { if (job.deleteRequested) cleanupDeleted(job).then(() => pump()); });
+  }
+  // Approved ships waiting for the deploy, oldest approval first (job.shipQueued survives a runner restart in jobs.json).
+  function shipQueue() { return Object.values(jobs).filter((j) => j.shipQueued).sort((a, b) => a.shipQueued.at - b.shipQueued.at); }
+  // Ships the oldest queued job that is still exactly what was approved; anything that changed while waiting is dropped with a note.
+  function drainShipQueue() {
+    if (shipBusy) return;
+    for (const job of shipQueue()) {
+      const q = job.shipQueued; job.shipQueued = null; save();
+      const p = job.proposal;
+      const gone = goneThread(job.threadId) || job.deleteRequested || ['discarded', 'deleted', 'shipped'].includes(job.status);
+      const why = gone ? 'gone'
+        : (job.running || job.status !== 'proposed' || !p || !p.testsOk || p.head !== q.head) ? 'the change moved on while it waited in the queue. Approve the new proposal when it comes'
+        : !auth.canApprove(q.approverId, p.tier) ? `${nameOf(q.approverId)} can no longer ship this tier`
+        : (!auth.isFull(q.approverId) && auth.shipsToday(q.approverId, readShips()) >= cfg.casualShipsPerDay) ? `that is today's limit of ${cfg.casualShipsPerDay} ships for ${nameOf(q.approverId)}`
+        : null;
+      if (why) { audit.log('ship-queue-dropped', { job: job.id, why }); if (!gone) say(job, `Not shipped from the queue: ${why}.`); continue; }
+      audit.log('ship-dequeued', { job: job.id, approver: q.approverId });
+      startShip(job, q.approverId);
+      return;
+    }
+  }
   async function ship(job, approverId) {
     setBusy(true, `ship ${job.id}`); job.status = 'shipping'; save();
     const p = job.proposal; const ownerShips = auth.isOwner(approverId);
@@ -1047,6 +1080,7 @@ function createRunner(cfgIn, opts = {}) {
   for (const j of Object.values(jobs)) if (j.publishFailed && !j.publishFailed.autoRetried) scheduleAutoRetry(j, 1);   // runner restarted while one was pending   // a delete that was waiting when the runner stopped
   if (art) art.reconcile().catch((e) => console.error('art reconcile', e.message));   // a run the previous process never settled is closed from the balance delta
   pump();
+  setTimeout(() => drainShipQueue(), 0);   // ships queued before a runner restart
   return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }
 module.exports = { createRunner, progressNote, cancelTypo };
