@@ -403,6 +403,7 @@ func _process(delta: float) -> void:
 	if alive != _was_alive:
 		_was_alive = alive
 		if alive:
+			avatar.revive()
 			avatar.set_loop("idle")
 			avatar.play_once("dig", 1.2)
 		else:

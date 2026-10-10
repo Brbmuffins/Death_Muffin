@@ -118,7 +118,7 @@ func _run() -> void:
 
 func _areas_and_seals() -> void:
 	var b := g.world.builder
-	check(g.world.bake_ms < 2500, "navmesh bake of every area + door %d ms under 2500 (no cache needed)" % g.world.bake_ms)
+	perf_info(g.world.bake_ms < 2500, "navmesh bake of every area + door %d ms under 2500 (no cache needed)" % g.world.bake_ms)
 	check(DmContent.area_order().size() == 13 and WALK_ORDER.size() + 1 == 13, "13 areas (the Depths are the depths track's instance)")
 	for id in DmContent.area_order():
 		var reg: NavigationRegion3D = b.nav_regions.get("area:" + id)
@@ -525,8 +525,8 @@ func _walk() -> void:
 	var worst := fc.worst_busy_ms()
 	print("walk: %d frames over 12 areas x2 (waves on): median %.2f ms, p95 %.2f, worst %.2f; slowest frame right after an entry %.1f ms (%s)" % [fc.samples(), med, fc.p95_ms(), worst, worst_entry, worst_at])
 	fc.queue_free()
-	check(med < FRAME_MEDIAN_MS and worst < FRAME_WORST_MS, "walk: frame median %.2f ms under %.0f, worst %.1f ms under %.0f" % [med, FRAME_MEDIAN_MS, worst, FRAME_WORST_MS])
-	check(worst_entry < ENTRY_HITCH_MS, "first entry to %s: slowest of the first 6 frames %.1f ms, under %.0f (no hitch)" % [worst_at, worst_entry, ENTRY_HITCH_MS])
+	perf_info(med < FRAME_MEDIAN_MS and worst < FRAME_WORST_MS, "walk: frame median %.2f ms under %.0f, worst %.1f ms under %.0f" % [med, FRAME_MEDIAN_MS, worst, FRAME_WORST_MS])
+	perf_info(worst_entry < ENTRY_HITCH_MS, "first entry to %s: slowest of the first 6 frames %.1f ms, under %.0f (no hitch)" % [worst_at, worst_entry, ENTRY_HITCH_MS])
 	# streaming: only the areas near the camera are drawn
 	at(Vector3(90, 0, -116).x, -116.0)
 	await ticks(5)
@@ -545,3 +545,9 @@ func _walk() -> void:
 	print("memory: static %.0f -> %.0f MB, nodes %d -> %d after 24 area entries" % [mem0, mem1, nodes0, nodes1])
 	check(mem1 - mem0 < MEM_GROWTH_MB, "memory after the walk: +%.0f MB under %.0f" % [mem1 - mem0, MEM_GROWTH_MB])
 	check(nodes1 - nodes0 < 400, "nodes after the walk: %d -> %d (enemies, corpses and effects are cleaned up)" % [nodes0, nodes1])
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

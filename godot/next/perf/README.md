@@ -25,4 +25,4 @@ Tests: `tests/next_perfctl/run.gd`. Rendered probe: `tests/next_perfctl/entry_pr
 The F3 overlay splits the frame: `tick` is the game tick by system, `fx` the `Vfx` autoload, `ui` the HUD and counsel, `outside`
 the rest (engine animation, culling, draw submission, GPU wait). If `outside` dominates, look at `calls` / `objects` and `render
 cpu`; if sim or views grow with enemies, it is script cost. Only numbers from a real GPU count: the VPS runs software GL at about
-7 fps. Probes: `tests/perf/`, `tests/next/render_probe.gd`; per-system budgets are asserted in the `tests/next*` suites.
+7 fps. Probes: `tests/perf/`, `tests/next/render_probe.gd`; the `tests/next*` suites print per-system timings as `INFO perf:` lines and never assert them (only deterministic counters are checks).

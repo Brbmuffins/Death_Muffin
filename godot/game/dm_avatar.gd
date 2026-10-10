@@ -416,6 +416,10 @@ func set_loop(anim: String, speed := 1.0) -> void:
 func loop_phase() -> float:
 	return c.loop_phase()
 
+## Stand up out of the death pose (respawn).
+func revive() -> void:
+	c.revive()
+
 func release_gesture() -> void:
 	c.release_gesture()
 

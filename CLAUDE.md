@@ -25,7 +25,8 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 ## Owner principles (these decide ties)
 
 - **Performance first.** Measure before and after; no regression, no per-frame allocation in hot paths, no work added to
-  `_process` that an event or timer can do, warm first-use shaders/effects during loading. Perf-test budgets keep generous margins.
+  `_process` that an event or timer can do, warm first-use shaders/effects during loading. Tests never assert wall-clock time (they may print it as
+  INFO); performance is measured on real hardware (F3 overlay) and with deterministic counters in tests.
 - **Polish over new content.** Finish and tune what exists (necromancer combat, loot and gear, the first hour) before adding.
 - **Necromancer focus.** The four necromancer disciplines are the baseline; the other five are greyed out and come later.
   Anything you add must be easy to find and understand on screen. Immersive, not overwhelming; capped, not cluttered.

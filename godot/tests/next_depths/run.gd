@@ -301,7 +301,7 @@ func _enter_and_floor() -> void:
 	# the navmesh of this floor: the stair, the way up and every breach are reachable from the way in
 	var nav_ok := await _reachable(f)
 	check(nav_ok, "navmesh: the stair down and the breaches are reachable from the way in")
-	check(d.ground.nav_ms < 2500 and d.ground.build_ms < BUILD_BUDGET_MS, "floor 1 built in %d ms (bake %d ms, navigation merged after %d ms)" % [d.ground.build_ms, d.ground.bake_ms, d.ground.nav_ms])
+	perf_info(d.ground.nav_ms < 2500 and d.ground.build_ms < BUILD_BUDGET_MS, "floor 1 built in %d ms (bake %d ms, navigation merged after %d ms)" % [d.ground.build_ms, d.ground.bake_ms, d.ground.nav_ms])
 	# only one run at a time; the stair says so
 	check(d.can_enter() == "You are already below." and not await d.enter(1), "a second run cannot start inside a run")
 
@@ -601,7 +601,7 @@ func _perf() -> void:
 	merges.append(d.ground.nav_ms)
 	await ticks(30)
 	var first_hitch := fc.worst_ms()
-	check(d.ground.build_ms < BUILD_BUDGET_MS, "first floor: %d ms on the main thread (bake %d ms); enter() end to end %.0f ms incl. the server merging the navmesh; worst frame around it %.0f ms" % [d.ground.build_ms, d.ground.bake_ms, enter_ms, first_hitch])
+	perf_info(d.ground.build_ms < BUILD_BUDGET_MS, "first floor: %d ms on the main thread (bake %d ms); enter() end to end %.0f ms incl. the server merging the navmesh; worst frame around it %.0f ms" % [d.ground.build_ms, d.ground.bake_ms, enter_ms, first_hitch])
 	# memory baseline after the first floor has been up and gone through its first wave
 	await clear_floor()
 	await ticks(10)
@@ -626,7 +626,7 @@ func _perf() -> void:
 	await ticks(180)
 	var med := fc.median_ms()
 	var worst := fc.worst_ms()
-	check(med < FRAME_BUDGET_MS, "frame cost with %d hunters on the floor: median %.1f ms, p95 %.1f ms, worst %.0f ms (budget %.0f)" % [depths_enemies().size(), med, fc.p95_ms(), worst, FRAME_BUDGET_MS])
+	perf_info(med < FRAME_BUDGET_MS, "frame cost with %d hunters on the floor: median %.1f ms, p95 %.1f ms, worst %.0f ms (budget %.0f)" % [depths_enemies().size(), med, fc.p95_ms(), worst, FRAME_BUDGET_MS])
 	# ten more floors
 	for i in 10:
 		await clear_floor()
@@ -656,10 +656,16 @@ func _perf() -> void:
 		worst_build = maxi(worst_build, int(x))
 		sum_build += int(x)
 	check(depth >= 12, "descended to depth %d" % depth)
-	check(worst_build < BUILD_BUDGET_MS, "floor build on the main thread over %d floors: mean %.1f ms, worst %d ms; bake worst %d ms; navigation merge worst %d ms" % [builds.size(), float(sum_build) / builds.size(), worst_build, bakes.max(), merges.max()])
+	perf_info(worst_build < BUILD_BUDGET_MS, "floor build on the main thread over %d floors: mean %.1f ms, worst %d ms; bake worst %d ms; navigation merge worst %d ms" % [builds.size(), float(sum_build) / builds.size(), worst_build, bakes.max(), merges.max()])
 	check(nodes - base_nodes < NODE_GROWTH, "no node leak over 10 more floors: %d -> %d nodes (+%d, bound %d), objects %d -> %d" % [base_nodes, nodes, nodes - base_nodes, NODE_GROWTH, base_obj, obj])
 	check(orphans <= 15, "the floors leave no growing pile of orphan nodes (last 5 floors vs first 5: %+d, series %s)" % [orphans, orphan_series])
 	check(mem - base_mem < MEM_GROWTH_MB, "static memory after 10 more floors: %.1f -> %.1f MB (+%.1f, bound %.0f)" % [base_mem, mem, mem - base_mem, MEM_GROWTH_MB])
 	print("PERF depths: first-floor main-thread %d ms, enter() %.0f ms, worst frame %.0f ms; builds mean %.1f / worst %d ms; bake worst %d ms; frame median %.1f ms (24 hunters); nodes %d -> %d; memory %.1f -> %.1f MB" % [builds[0], enter_ms, first_hitch, float(sum_build) / builds.size(), worst_build, bakes.max(), med, base_nodes, nodes, base_mem, mem])
 	fc.queue_free()
 	d.end("left")
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

@@ -236,7 +236,7 @@ func _run() -> void:
 	var flush_us := Time.get_ticks_usec() - t0
 	await until(func() -> bool: return p.psync.state == "saved", 3.0)
 	print("save cost: 200 add_gold %d us (%.1f us each), flush call %d us" % [add_us, add_us / 200.0, flush_us])
-	check(add_us < 50000 and flush_us < 20000, "a pickup is ~free and a save call returns at once (write-behind): %d us per 200 pickups, %d us per flush" % [add_us, flush_us])
+	perf_info(add_us < 50000 and flush_us < 20000, "a pickup is ~free and a save call returns at once (write-behind): %d us per 200 pickups, %d us per flush" % [add_us, flush_us])
 
 	# ---- relaunch: the same character comes back
 	await p.flush_all()
@@ -265,3 +265,9 @@ func _run() -> void:
 	Engine.time_scale = 1.0
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

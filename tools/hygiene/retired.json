@@ -144,6 +144,14 @@
         "server/death-muffin/discord-agent/runner/core.cjs",
         "server/death-muffin/discord-agent/runner/lib/config.cjs"
       ]
+    },
+    {
+      "id": "acre-ledger",
+      "pattern": "DmAcreLedger",
+      "reason": "unused panel deleted 2026-10-10",
+      "allow": [
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

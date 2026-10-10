@@ -195,7 +195,13 @@ func _first_frame() -> void:
 	var cpu := DmFrameCost.cpu_ms() - cpu0
 	var first := wall if cpu >= wall * DmFrameCost.BUSY_SHARE else cpu
 	print("FIRSTFRAME first=%.1fms budget=%.0fms warm panels %d ms" % [first, FIRST_FRAME_BUDGET_MS, n.ui.warm_ms])
-	check(first < FIRST_FRAME_BUDGET_MS, "first frame after start under %.0f ms (got %.1f)" % [FIRST_FRAME_BUDGET_MS, first])
+	perf_info(first < FIRST_FRAME_BUDGET_MS, "first frame after start under %.0f ms (got %.1f)" % [FIRST_FRAME_BUDGET_MS, first])
 	await n.leave()
 	n.queue_free()
 	await process_frame
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

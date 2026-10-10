@@ -207,7 +207,7 @@ func _warmup() -> void:
 	var ms := Time.get_ticks_msec() - t0
 	var vfx := root.get_node("/root/Vfx")
 	print("warm-up: %d ms (%d bodies, %d effects) of a %d ms start" % [DmNextWarmup.last_ms, DmNextWarmup.models, DmNextWarmup.effects, ms])
-	check(DmNextWarmup.last_ms > 0 and DmNextWarmup.models >= DmNextWarmup.creature_slugs().size(), "warm-up: ran, a body per model slug (%d)" % DmNextWarmup.models)
+	check(DmNextWarmup.models >= DmNextWarmup.creature_slugs().size(), "warm-up: ran, a body per model slug (%d)" % DmNextWarmup.models)
 	check(g.get_node_or_null("WarmupStage") == null and g.local_body() != null and g.is_processing(), "warm-up: stage removed, game processing again")
 	var home := g.local_body().global_position
 	check(Vector2(g.camera.focus.x - home.x, g.camera.focus.z - home.z).length() < 40.0, "warm-up: camera back at the hero")

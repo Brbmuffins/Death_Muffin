@@ -3,6 +3,7 @@ extends SceneTree
 ##   A chase to range, then attack     B hold repeat cadence = the rite's cooldown     C queued cast fires after the lock     D shift-cast in place
 ##   E held number key repeats         F gesture once per cast (host + ENet client)    G hitstop on an elite death, off under reduce_motion
 ##   H runes reach the caster and change outcomes (Impaling marrow spear, Hollow Choir litany)     I latency + per-frame cost
+##   J wiring seams (input owner, caster lock, weapon-clip ids, hitstop callbacks; formerly tests/next_combat_feel)
 
 const DT := 1.0 / 60.0
 var PORT := DmTestPorts.free_port()
@@ -102,6 +103,35 @@ func _run() -> void:
 	var combat: DmCombatInput = g.input.combat
 	combat.shift_probe = func() -> bool: return false
 	var cool := DmWeaponLine.ability_cooldown_ms("bone_needle", float(DmAbilities.def("bone_needle")["cooldownMs"]), caster.p["loadout"], true)
+
+	# ---- J: wiring seams (moved from the retired next_combat_feel): input owner, caster lock, clip ids, hitstop callbacks
+	check(combat != null and combat.idle() and g.input.has_method("attack"), "J: DmCombatInput owns click-chase, hold repeat and held keys and starts idle")
+	check(DmCombatInput.HOLD_MS > 0.0 and DmCombatInput.QUEUE_MS > 0.0, "J: hold delay and queue window are defined")
+	var reasons: Array = []
+	caster.cast_rejected.connect(func(_rite: String, why: String) -> void: reasons.append(why))
+	reset_hero(Vector3(0, 0, -18))
+	var jaim := hero.position + Vector3(0, 0, -6)
+	caster.request_cast("miasma", jaim)
+	await ticks(2)
+	caster.request_cast("miasma", jaim)
+	await ticks(2)
+	check(reasons.has("busy") or reasons.has("cooldown"), "J: the caster refuses a second cast during the lock, it stays a strict validator (%s)" % [reasons])
+	var bad_clips: Array = []
+	for rite in DmRiteGestures.TABLE:
+		var jrow: Array = DmRiteGestures.TABLE[rite]
+		if String(jrow[3]) != "" and String(jrow[3]) != String(rite):
+			bad_clips.append(rite)
+	check(bad_clips.is_empty(), "J: weapon-clip ability id matches the rite (%s differ)" % [bad_clips])
+	check(g.enemy_fx.host.hitstop_cb.is_valid() and g.bosses.fx.host.hitstop_cb.is_valid(), "J: enemy fx and boss fx hitstop callbacks are set")
+	var jn0 := g.hitstopper.count
+	g.hitstop(0.05)
+	check(g.hitstopper.count == jn0 + 1, "J: a hitstop request is counted")
+	g.hitstopper.reset()
+	check(is_equal_approx(Engine.time_scale, 1.0), "J: Engine.time_scale untouched (hitstop is picture-only, safe online)")
+	seen.clear()
+	caster.p["cooldowns"].clear()
+	caster.p["castUntil"] = 0.0
+	await ticks(30)   # let the lock / queue state settle before A
 
 	# ---- A: click a far enemy = walk into range, stop, attack
 	reset_hero(Vector3(0, 0, -18))
@@ -302,13 +332,13 @@ func _run() -> void:
 	klat.sort()
 	g.input.combat.clear()
 	print("perf: input -> intent, click-to-chase median %.0f us (p95 %.0f), key-cast median %.0f us (p95 %.0f)" % [lat[20], lat[37], klat[20], klat[37]])
-	check(float(lat[20]) < 2000.0 and float(klat[20]) < 2000.0, "I: input -> intent: click-to-chase median %.0f us (p95 %.0f), key-cast median %.0f us (p95 %.0f), same frame" % [lat[20], lat[37], klat[20], klat[37]])
+	perf_info(float(lat[20]) < 2000.0 and float(klat[20]) < 2000.0, "I: input -> intent: click-to-chase median %.0f us (p95 %.0f), key-cast median %.0f us (p95 %.0f), same frame" % [lat[20], lat[37], klat[20], klat[37]])
 	# per-frame cost of the combat tick: idle (the normal case) and with a chase running
 	var tk0 := Time.get_ticks_usec()
 	for i in 20000:
 		combat.tick(float(i))
 	var idle_us := float(Time.get_ticks_usec() - tk0) / 20000.0
-	check(idle_us < 2.0, "I: combat.tick idle costs %.3f us per frame" % idle_us)
+	perf_info(idle_us < 2.0, "I: combat.tick idle costs %.3f us per frame" % idle_us)
 	reset_hero(Vector3(0, 0, -18))
 	g.input.attack(eid(tgt), false)
 	var fc := DmFrameCost.attach(root)
@@ -331,7 +361,7 @@ func _run() -> void:
 	var med_off := fc.median_ms()
 	fc.queue_free()
 	print("perf: combat.tick idle %.3f us, with a target %.2f us; frame median chasing+casting %.2f ms (worst %.1f) vs idle %.2f ms; %d chase ticks" % [idle_us, active_us, med_on, worst_on, med_off, steps_on])
-	check(active_us < 80.0 and med_on < med_off + 3.0, "I: a live chase / repeat adds %.2f ms to the frame median (idle %.2f), tick %.1f us" % [med_on - med_off, med_off, active_us])
+	perf_info(active_us < 80.0 and med_on < med_off + 3.0, "I: a live chase / repeat adds %.2f ms to the frame median (idle %.2f), tick %.1f us" % [med_on - med_off, med_off, active_us])
 
 	g.queue_free()
 	await ticks(3)
@@ -376,3 +406,9 @@ func _client_gestures() -> void:
 	hg.queue_free()
 	cg.queue_free()
 	await ticks(5)
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])

@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 // Fast, broad suites run on every code change (about 100 s together on the shared VPS: data 7 s, status 7 s, session_report 6 s, next 32 s, next_front 37 s).
-export const SMOKE = ['data', 'status', 'session_report', 'next', 'next_front'];
+export const SMOKE = ['data', 'status', 'backend', 'next', 'next_front'];
 export const MAX_GD_FILES = 40;
 export const MAX_SHARE = 0.6;
 

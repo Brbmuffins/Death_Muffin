@@ -347,7 +347,7 @@ func _run() -> void:
 	var near_ids := h.npcs._near.size() + h.npcs._mid.size()
 	var near := _median_us(300)
 	print("hub node per-frame cost (median of 300): far from NPCs %.1f us, with %d NPC(s) animating %.1f us" % [far, near_ids, near])
-	check(far < IDLE_BUDGET_US and near < IDLE_BUDGET_US * 3.0, "idle hub frame cost within budget (%.1f / %.1f us)" % [far, near])
+	perf_info(far < IDLE_BUDGET_US and near < IDLE_BUDGET_US * 3.0, "idle hub frame cost within budget (%.1f / %.1f us)" % [far, near])
 	check(near_ids >= 1, "the Prior animates when you stand beside them")
 
 	print("%d passed, %d failed" % [passed, failed])
@@ -365,3 +365,9 @@ func _median_us(n: int) -> float:
 		s.append(float(Time.get_ticks_usec() - t0))
 	s.sort()
 	return s[n / 2]
+
+
+## Report-only timing line: tests never assert wall-clock time (owner decision 2026-10-10), so a timing figure is printed, not counted as a check.
+## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
+func perf_info(cond: bool, what: String) -> void:
+	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
