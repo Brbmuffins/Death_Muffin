@@ -1,6 +1,15 @@
 [
   {
     "date": "2026-10-10",
+    "title": "Sharper Spell Impacts",
+    "items": [
+      "Bone Needle, pierce and Scythe hits now land with an animated impact burst, and critical hits flare with a bright ring of rays.",
+      "Exhume draws a glowing summoning circle under the corpse as it rises.",
+      "The Contagion rune's spread is now a crackling tendril of rot from the dying enemy to the next one."
+    ]
+  },
+  {
+    "date": "2026-10-10",
     "title": "A Calmer Login Screen",
     "items": [
       "The crafting windows' \"Only craftable\" checkbox is now remembered between sessions.",

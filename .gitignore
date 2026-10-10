@@ -23,3 +23,5 @@ godot/shots/
 
 # Golden fixtures under godot/tests/*/fixtures are committed (their generators were removed with the web game 2026-10-09).
 godot/vendor_eval/
+# Licensed flipbook sheets: not redistributable in a public repo. Source ~/death-muffin/private/fx-sheets, copied in by tools/godot/fx-sheets-sync.sh and the client publish (godot/fx/README.md).
+godot/assets/fx/sheets/

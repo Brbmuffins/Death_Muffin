@@ -65,6 +65,14 @@ func flash(x: float, y: float, z: float, color: Variant, size: float, duration: 
 		fx.flash(o)
 
 
+## A hit flash: flipbook sheet `sheet` (sheet_size, sheet_duration) when the sheet pack is installed, else the plain glow (size, duration).
+func hit_flash(x: float, y: float, z: float, color: Variant, size: float, duration: float, sheet: String, sheet_size: float, sheet_duration: float) -> void:
+	if DmFxTex.has_sheet(sheet):
+		flash(x, y, z, color, sheet_size, sheet_duration, {"tex": sheet})
+	else:
+		flash(x, y, z, color, size, duration)
+
+
 func bb(id: String, x: float, z: float, o: Dictionary = {}) -> Variant:
 	stats["bb"] += 1
 	if fx == null:
@@ -140,9 +148,12 @@ func needle_cast(from: Array, px: float, pz: float, volley: bool = false) -> voi
 func needle_hit(pos: Array, crit: bool) -> void:
 	var N := DmFxData.spell_group("needle")
 	sfx("needleHit", pos[0], pos[2], 1.4 if crit else 1.0)
-	flash(pos[0], pos[1], pos[2], N["impact"], 1.7 if crit else 1.05, 0.2)
-	emit(pos[0], pos[1], pos[2], 16 if crit else 8, N["dust"], 0.1, 3.2, 1.2, 0.4, 0.13, {"gravity": 7.0})
 	if crit:
+		hit_flash(pos[0], pos[1], pos[2], N["impact"], 1.7, 0.2, "crit_burst", 2.6, 0.3)
+	else:
+		hit_flash(pos[0], pos[1], pos[2], N["impact"], 1.05, 0.2, "hit_flash", 2.3, 0.2)
+	emit(pos[0], pos[1], pos[2], 16 if crit else 8, N["dust"], 0.1, 3.2, 1.2, 0.4, 0.13, {"gravity": 7.0})
+	if crit and not DmFxTex.has_sheet("crit_burst"):   # the crit sheet draws its own rays
 		emit(pos[0], pos[1], pos[2], 10, N["trail"], 0.2, 4.0, 0.5, 0.3, 0.3)
 	splinters(pos[0], pos[1], pos[2], 7 if crit else 3, N["core"])
 	if crit:
@@ -162,7 +173,7 @@ func splinter_shard(a: Vector3, b: Vector3) -> void:
 func pierce_shot(a: Vector3, follow: Callable, x: float, z: float) -> void:
 	var N := DmFxData.spell_group("needle")
 	beam(a, follow, N["trail"], 0.02, 0.12)
-	flash(x, 1.0, z, N["impact"], 0.8, 0.16)
+	hit_flash(x, 1.0, z, N["impact"], 0.8, 0.16, "hit_flash", 1.4, 0.16)
 	emit(x, 1.0, z, 6, N["dust"], 0.1, 3.0, 1.0, 0.35, 0.12, {"gravity": 7.0})
 	splinters(x, 1.0, z, 3, N["core"])
 
@@ -175,7 +186,7 @@ func pierce_sound(x: float, z: float) -> void:
 func reap_hit(x: float, z: float) -> void:
 	var N := DmFxData.spell_group("needle")
 	emit(x, 0.9, z, 7, N["dust"], 0.2, 3.0, 1.2, 0.4, 0.13, {"gravity": 7.0})
-	flash(x, 1.0, z, N["impact"], 0.9, 0.16)
+	hit_flash(x, 1.0, z, N["impact"], 0.9, 0.16, "hit_flash", 1.5, 0.16)
 	splinters(x, 0.9, z, 4, N["core"])
 
 
@@ -276,7 +287,14 @@ func legend_nova(pts: Array, r: float) -> void:
 ## Contagion rune: a thread of rot from the dying body to the next, and spores where it lands.
 func contagion_thread(x: float, z: float, tx: float, tz: float) -> void:
 	var rot: Variant = DmFxData.spell("lance", "rot")
-	beam(Vector3(x, 0.9, z), func() -> Variant: return Vector3(tx, 1.0, tz), rot, 0.05, 0.45)
+	var dx := tx - x
+	var dz := tz - z
+	var span := sqrt(dx * dx + dz * dz)
+	if DmFxTex.has_sheet("chain_arc") and span > 0.3:
+		# The arc sheet lies flat between the two bodies at chest height (the camera looks down on it); its long axis is the decal's x.
+		decal("chain_arc", rot, (x + tx) * 0.5, (z + tz) * 0.5, span * 0.5, 0.45, 1.0, {"rot": atan2(-dz, dx), "sz": 1.6 / span, "y": 0.95, "fadeIn": 0.0, "fadeOut": 0.12})
+	else:
+		beam(Vector3(x, 0.9, z), func() -> Variant: return Vector3(tx, 1.0, tz), rot, 0.05, 0.45)
 	emit(tx, 0.9, tz, 10, rot, 0.3, 1.4, 1.0, 0.6, 0.2)
 	if fx != null:
 		stats["motif"] += 1
@@ -308,6 +326,8 @@ func exhume_cast(tip: Vector3, cx: float, cz: float, others: Array, company: Arr
 	sfx("exhume", cx, cz)
 	emit(cx, 0.2, cz, 26, X["spirit"], 0.6, 0.4, 3.4, 1.0, 0.34, {"gravity": -0.5})
 	decal("cracks", X["deep"], cx, cz, 1.4, 1.3, 0.9, {"rot": randf() * 6.0, "growFrom": 0.3})
+	if DmFxTex.has_sheet("summon_circle"):
+		decal("summon_circle", X["spirit"], cx, cz, 1.25, 1.5, 0.85, {"rot": randf() * 6.0, "growFrom": 0.55, "fadeOut": 0.5})
 	dirt(cx, cz, 0.6, 9, 3.0)
 	if fx != null:
 		stats["motif"] += 2

@@ -260,6 +260,10 @@ func warm_layers(at: Vector3) -> Array:
 			for kind in ["friendly", "hero", "danger"]:
 				out.append(decal({"tex": nm, "x": at.x, "z": at.z, "r": 1.0, "duration": 600.0, "opacity": 0.5, "blending": blend, "danger": kind == "danger", "hero": kind == "hero"}))
 		out.append(flash({"tex": nm, "x": at.x, "y": at.y + 1.0, "z": at.z, "size": 1.0, "duration": 600.0}))
+	for nm: String in DmFxData.data().get("sheets", {}):
+		if DmFxTex.has_sheet(nm):
+			out.append(decal({"tex": nm, "x": at.x, "z": at.z, "r": 1.0, "duration": 600.0, "opacity": 0.5}))
+			out.append(flash({"tex": nm, "x": at.x, "y": at.y + 1.0, "z": at.z, "size": 1.0, "duration": 600.0}))
 	emit({"x": at.x, "y": at.y + 1.0, "z": at.z, "count": 4, "color": 0xffffff, "life": 30.0})
 	emit_smoke({"x": at.x, "y": at.y + 1.0, "z": at.z, "count": 4, "color": 0x888888, "life": 30.0})
 	return out
@@ -365,6 +369,7 @@ class DecalTr:
 	var rot0 := 0.0
 	var pulse_k := 0.0
 	var x0 := 0.0
+	var sheet_rate := -1.0   # flipbook sheet: < 0 none, 0 = one play over the decal's life, > 0 = loops per second
 
 	func setup() -> void:
 		has_follow = o.has("follow")
@@ -409,6 +414,8 @@ class DecalTr:
 		t_now = t_
 		if ended:
 			return
+		if sheet_rate >= 0.0:
+			d.frame = fposmod(t_ * sheet_rate, 1.0) if sheet_rate > 0.0 else k
 		if has_follow:
 			place()
 		var grow := 1.0
@@ -509,6 +516,9 @@ func decal(o: Dictionary) -> DmFxHandle:
 	tr.outline_at = float(_caps.get("outline_after_s", 0.6))
 	tr.outline_fade = float(_caps.get("outline_fade_s", 0.7))
 	tr.persistent = bool(o.get("persistent", false))
+	var sh := DmFxData.sheet(tname)
+	if not sh.is_empty():
+		tr.sheet_rate = float(sh["fps"]) / float(sh["frames"]) if bool(sh["loop"]) else 0.0
 	tr.place()
 	if tr.settles:
 		var r := float(o["r"])
@@ -526,8 +536,14 @@ class FlashTr:
 	extends Tr
 	var o: Dictionary
 	var s: DmFxLayer.Item
+	var sheet := false
 
 	func update(_t: float, k: float, _dt: float) -> void:
+		if sheet:   # the sheet animates itself: full size, play the frames over the life, fade the last quarter
+			s.sx = float(o["size"])
+			s.frame = k
+			s.opacity = float(o.get("opacity", 1.0)) * minf(1.0, (1.0 - k) * 4.0)
+			return
 		s.sx = float(o["size"]) * (0.35 + 0.65 * sin(minf(1.0, k * 1.4) * PI * 0.5))
 		if o.has("rise") and float(o["rise"]) != 0.0:
 			s.y = float(o["y"]) + float(o["rise"]) * k
@@ -550,6 +566,7 @@ func flash(o: Dictionary) -> DmFxHandle:
 	tr.layer_item = tr.s
 	layer.add(tr.s)
 	tr.duration = float(o["duration"])
+	tr.sheet = not DmFxData.sheet(DmFxTex.name_of(tex)).is_empty()
 	return _add(tr)
 
 

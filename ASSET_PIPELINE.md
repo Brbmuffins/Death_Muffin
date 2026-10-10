@@ -62,6 +62,14 @@ rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`.
 `tools/audio/generate-eleven-music.mjs` and `generate-eleven-ambience.mjs` write private drafts to `~/death-muffin/private/`
 (never into the repo); keep only what the owner approves, then run the prepare scripts (`prepare-eleven-*.mjs`) and the sync.
 
+## Flipbook sheets (licensed, outside git)
+
+A few VFX sprite sheets come from the owner's licensed pack (`~/vps-handoffs/DeathMuffin/godot_vfx.zip`; godboyhappy ARCLIGHT /
+CLEAVE: commercial use, no credit, **not redistributable in a public repository**). Converted greyscale grids live in
+`~/death-muffin/private/fx-sheets/` (`<id>.png` + `.png.import`: lossless, mipmaps) and are listed in `fx_data.json` `sheets`;
+`godot/assets/fx/sheets/` is gitignored. How they are drawn and installed: `godot/fx/README.md` "Flipbook sheets". Do not use the pack's
+VESPER or REEBOO 3D scenes: they need Forward+/Mobile or GPUParticles (players run Compatibility; DECISIONS B12).
+
 ## Verify
 
 After each paid batch run `node tools/ai/validate-animation.mjs art-src/tripo/<id>/anim_*.glb` and `validate-rig.mjs` (see `docs/TRIPO-ANIMATE-IN-PLACE.md`; `animate_in_place` needs no change).

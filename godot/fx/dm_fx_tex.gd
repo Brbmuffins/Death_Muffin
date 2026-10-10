@@ -3,6 +3,8 @@ extends RefCounted
 ## Textures + shaders shared by the procedural effects. The sprites are the web's own pixels: fxTextures.ts canvas drawings baked by
 ## tools/godot/fx-textures.mjs to res://assets/fx/tex/<name>.png (glow ring disc sigil cone coneEdge bar smoke spark cracks
 ## lightPool) and the generated sprites res://assets/fx/art/<name>.webp (FX_IMAGES: skull, boneShard, crescent, ...).
+## Flipbook sheets: res://assets/fx/sheets/<id>.png, greyscale intensity grids listed in fx_data.json `sheets`. The pack's licence forbids a
+## public repo, so the PNGs are not in git (README "Flipbook sheets"); a missing sheet loads as null and callers keep their plain look.
 
 const IMAGES := {
 	"skull": "skull", "boneShard": "bone-shard", "bloodSigil": "blood-sigil", "frostFan": "frost-fan", "rime": "rime",
@@ -11,6 +13,7 @@ const IMAGES := {
 	"soundRing": "sound-ring", "lanternCone": "lantern-cone", "veilRift": "veil-rift", "tideCrest": "tide-crest",
 	"drownedHand": "drowned-hand",
 }
+const SHEET_DIR := "res://assets/fx/sheets/"
 const PROCEDURAL := ["glow", "ring", "disc", "sigil", "cone", "coneEdge", "bar", "smoke", "spark", "cracks", "lightPool"]
 
 static var _cache: Dictionary = {}
@@ -26,9 +29,16 @@ static func get_tex(name: String) -> Texture2D:
 		path = "res://assets/fx/tex/%s.png" % name
 	elif IMAGES.has(name):
 		path = "res://assets/fx/art/%s.webp" % IMAGES[name]
+	elif not DmFxData.sheet(name).is_empty():
+		path = SHEET_DIR + name + ".png"
 	var t: Texture2D = load(path) as Texture2D if path != "" and ResourceLoader.exists(path) else null
 	_cache[name] = t
 	return t
+
+
+## True when sheet `id` is known and its texture is installed.
+static func has_sheet(id: String) -> bool:
+	return get_tex(id) != null and not DmFxData.sheet(id).is_empty()
 
 
 ## The texture's name (for outline profile / footprint lookups), "" when unknown.
@@ -111,6 +121,56 @@ void fragment() {
 	ALPHA = a;
 }
 """,
+	# DecalLayer / SpriteLayer with a flipbook sheet: the texture is a grid of greyscale intensity frames; INSTANCE_CUSTOM.z = progress 0..1
+	# picks the frame. Tint = instance colour, the brightest pixels run to white (`core`).
+	"decal_sheet": """
+shader_type spatial;
+render_mode BLEND, unshaded, depth_draw_never, cull_disabled, fog_disabled;
+uniform sampler2D tex : source_color, filter_linear_mipmap;
+uniform vec2 grid = vec2(1.0, 1.0);
+uniform float frames = 1.0;
+uniform float core = 0.7;
+varying float v_op;
+varying vec2 v_cell;
+void vertex() {
+	v_op = INSTANCE_CUSTOM.x;
+	float f = min(floor(INSTANCE_CUSTOM.z * frames), frames - 1.0);
+	v_cell = vec2(mod(f, grid.x), floor(f / grid.x));
+}
+void fragment() {
+	float l = texture(tex, (v_cell + UV) / grid).r;
+	float a = l * v_op;
+	if (a < 0.004) discard;
+	ALBEDO = COLOR.rgb + vec3(core * l * l * l);
+	ALPHA = a;
+}
+""",
+	"sprite_sheet": """
+shader_type spatial;
+render_mode BLEND, unshaded, depth_draw_never, cull_disabled, fog_disabled;
+uniform sampler2D tex : source_color, filter_linear_mipmap;
+uniform vec2 grid = vec2(1.0, 1.0);
+uniform float frames = 1.0;
+uniform float core = 0.7;
+varying float v_op;
+varying vec2 v_cell;
+void vertex() {
+	v_op = INSTANCE_CUSTOM.y;
+	float f = min(floor(INSTANCE_CUSTOM.z * frames), frames - 1.0);
+	v_cell = vec2(mod(f, grid.x), floor(f / grid.x));
+""" + _BILLBOARD + """
+	float c = cos(INSTANCE_CUSTOM.x);
+	float s = sin(INSTANCE_CUSTOM.x);
+	MODELVIEW_MATRIX = MODELVIEW_MATRIX * mat4(vec4(c, s, 0.0, 0.0), vec4(-s, c, 0.0, 0.0), vec4(0.0, 0.0, 1.0, 0.0), vec4(0.0, 0.0, 0.0, 1.0));
+}
+void fragment() {
+	float l = texture(tex, (v_cell + UV) / grid).r;
+	float a = l * v_op;
+	if (a < 0.002) discard;
+	ALBEDO = COLOR.rgb + vec3(core * l * l * l);
+	ALPHA = a;
+}
+""",
 	# BeamLayer: flat tinted open tube, INSTANCE_CUSTOM.x = opacity.
 	"beam": """
 shader_type spatial;
@@ -138,9 +198,14 @@ static func shader(kind: String, additive: bool) -> Shader:
 	return s
 
 
+## A decal / sprite material for a flipbook sheet texture gets the sheet shader and its grid.
 static func material(kind: String, additive: bool, tex: Texture2D, priority: int) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = shader(kind, additive)
+	var sh := DmFxData.sheet(name_of(tex)) if tex != null and kind in ["decal", "sprite"] else {}
+	m.shader = shader(kind + "_sheet" if not sh.is_empty() else kind, additive)
+	if not sh.is_empty():
+		m.set_shader_parameter("grid", Vector2(float(sh["cols"]), float(sh["rows"])))
+		m.set_shader_parameter("frames", float(sh["frames"]))
 	if tex != null:
 		m.set_shader_parameter("tex", tex)
 	m.render_priority = priority

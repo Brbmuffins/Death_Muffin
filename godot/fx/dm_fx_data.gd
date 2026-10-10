@@ -85,3 +85,9 @@ static func is_impact(id: String) -> bool:
 
 static func is_looper(id: String) -> bool:
 	return id in catalog("loopers")
+
+
+## SHEETS[id] ({cols, rows, frames, fps, loop}): a flipbook from the licensed sheet pack, {} when unknown. See DmFxTex.has_sheet for whether
+## its texture is installed (the pack is kept out of git).
+static func sheet(id: String) -> Dictionary:
+	return data().get("sheets", {}).get(id, {})

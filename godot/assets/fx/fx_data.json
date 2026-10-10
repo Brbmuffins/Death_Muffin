@@ -2557,5 +2557,35 @@
   "friendly": 2,
   "hero": 3,
   "danger": 4
+ },
+ "sheets": {
+  "hit_flash": {
+   "cols": 6,
+   "rows": 2,
+   "frames": 12,
+   "fps": 24,
+   "loop": false
+  },
+  "crit_burst": {
+   "cols": 5,
+   "rows": 4,
+   "frames": 20,
+   "fps": 24,
+   "loop": false
+  },
+  "summon_circle": {
+   "cols": 8,
+   "rows": 4,
+   "frames": 32,
+   "fps": 24,
+   "loop": true
+  },
+  "chain_arc": {
+   "cols": 6,
+   "rows": 4,
+   "frames": 24,
+   "fps": 24,
+   "loop": false
+  }
  }
 }

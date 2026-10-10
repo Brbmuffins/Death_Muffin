@@ -2,7 +2,7 @@ class_name DmFxLayer
 extends RefCounted
 ## Port of the instanced layers in Effects.ts (DecalLayer) and fxLayers.ts (SpriteLayer, BeamLayer): every live ground decal /
 ## billboard of one texture + blend mode (or every live tether) drawn as ONE MultiMesh, with per-instance tint (instance colour),
-## opacity (and outline amount for decals) in INSTANCE_CUSTOM. Items are written each frame by their transient, then flush()ed.
+## opacity (and outline amount for decals) and the flipbook frame of a sheet texture in INSTANCE_CUSTOM. Items are written each frame by their transient, then flush()ed.
 
 enum Kind { DECAL, SPRITE, BEAM }
 
@@ -19,6 +19,7 @@ class Item:
 	var color := Color.WHITE  # linear
 	var opacity := 0.0
 	var rim := 0.0
+	var frame := 0.0   # flipbook progress 0..1 (sheet textures only)
 
 var kind: Kind
 var items: Array = []
@@ -252,7 +253,7 @@ func flush() -> void:
 		_buf[o + 13] = item.color.g
 		_buf[o + 14] = item.color.b
 		_buf[o + 15] = 1.0
-		_buf[o + 18] = 0.0
+		_buf[o + 18] = item.frame
 		_buf[o + 19] = 0.0
 		n += 1
 	if n == 0:

@@ -49,6 +49,19 @@ textures by name: `glow ring disc sigil cone coneEdge bar smoke spark cracks lig
 Colours: `DmFxData.spell("miasma", "rot")` is `SPELL_FX.miasma.rot` (from `assets/fx/fx_data.json`);
 `DmFxData.spell_group("miasma")` returns the whole group; `DmFxData.preset(id)` the FX_PRESETS entry.
 
+## Flipbook sheets
+Animated sprite sheets from a licensed pack (ASSET_PIPELINE.md "Flipbook sheets"): greyscale intensity grids at
+`assets/fx/sheets/<id>.png`, **not in git**. `bash tools/godot/fx-sheets-sync.sh [<checkout>]` copies them in from
+`~/death-muffin/private/fx-sheets/` (run it once in a new worktree; `publish-godot-client.sh` runs it on its export and fails if one is
+missing). Discord preview builds and CI have no sheets and draw the plain look.
+- Grid, frames, fps, loop: `fx_data.json` `sheets`, read by `DmFxData.sheet(id)`. Use the id as a texture name: `Vfx.flash({"tex": "hit_flash", ...})`
+  plays the frames once over the flash's life at full size (fades the last quarter); `Vfx.decal({"tex": "summon_circle", ...})` plays once or,
+  for a looping sheet, loops at its fps. Same layers and caps as other textures; the frame is `INSTANCE_CUSTOM.z`; the sheet shaders tint by the
+  instance colour and run the brightest pixels to white.
+- Callers check `DmFxTex.has_sheet(id)` and keep their old look without it (`DmRiteFx.hit_flash`).
+- In use: `hit_flash` (Bone Needle, pierce, Scythe hits), `crit_burst` (crits), `summon_circle` (under an exhumed corpse), `chain_arc`
+  (Contagion thread, lying flat between the two bodies). Warmed with the other layers on the loading screen.
+
 ## Caps and budgets (pinned by `tests/fx/run.gd`)
 24 live one-shots (oldest evicted), 32 loopers (extras dropped), 160 combat transients (persistent decals excluded), 3500 additive + 900 smoke
 motes, 1 shared flash light, pool of 4 built instances per id, Low = 0.75 of every burst and no Binbun/motifs, motif budget 240 particles +

@@ -3,8 +3,8 @@
 #
 #   publish-godot-client.sh <git-rev>
 #
-# 1. `git worktree add --detach` of <rev> into a scratch folder (removed on exit), imports the project and exports the
-#    "Windows Desktop" preset with Godot 4.7.2 (DeathMuffin.exe + DeathMuffin.pck).
+# 1. `git worktree add --detach` of <rev> into a scratch folder (removed on exit), copies in the flipbook sheets kept outside git
+#    (tools/godot/fx-sheets-sync.sh), imports the project and exports the "Windows Desktop" preset with Godot 4.7.2 (DeathMuffin.exe + DeathMuffin.pck).
 # 2. Hashes every file (SHA-256) and copies them to $OUT_DIR/<version>/ (a folder per build, so a player who is mid-download of the
 #    previous build never sees its files change).
 # 3. Writes $OUT_DIR/manifest.json LAST, atomically:
@@ -15,7 +15,7 @@
 # 5. announce-release.sh: launcher news + patch notes, the #build-alerts notice, fixed bug reports released (skipped for a rollback).
 #
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
-# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2
+# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS
 set -euo pipefail
 
 REV="${1:-}"
@@ -56,6 +56,8 @@ echo "== exporting $SHA as $VERSION"
 git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1
 [ -f "$WT/godot/project.godot" ] || { echo "$SHA has no godot/project.godot" >&2; exit 1; }
 [ -f "$WT/godot/export_presets.cfg" ] || { echo "$SHA has no godot/export_presets.cfg (preset \"$PRESET\")" >&2; exit 1; }
+# The licensed flipbook sheets are not in git: copy them in before the import (fails if one is missing).
+[ ! -f "$WT/tools/godot/fx-sheets-sync.sh" ] || bash "$WT/tools/godot/fx-sheets-sync.sh" "$WT" >/dev/null
 "$GODOT" --headless --path "$WT/godot" --import >"$STAGE/import.log" 2>&1 || { tail -30 "$STAGE/import.log" >&2; echo "godot import failed" >&2; exit 1; }
 "$GODOT" --headless --path "$WT/godot" --export-release "$PRESET" "$STAGE/DeathMuffin.exe" >"$STAGE/export.log" 2>&1 || { tail -30 "$STAGE/export.log" >&2; echo "godot export failed" >&2; exit 1; }
 rm -f "$STAGE/import.log" "$STAGE/export.log"

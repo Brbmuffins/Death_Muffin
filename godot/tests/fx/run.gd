@@ -31,6 +31,7 @@ func _run() -> void:
 	_test_json_match()
 	await _test_caps()
 	await _test_prims()
+	await _test_sheets()
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -274,3 +275,37 @@ func _test_prims() -> void:
 	w["fx"].queue_free()
 	w["cam"].queue_free()
 	await process_frame
+
+
+## Flipbook sheets (fx_data.json `sheets`; the PNGs are outside git, tools/godot/fx-sheets-sync.sh): valid grids; when installed, a flash / decal
+## of a sheet draws through the sheet shader and steps its frame with the effect's life (a looping sheet wraps); when missing, no texture.
+func _test_sheets() -> void:
+	var sheets: Dictionary = DmFxData.data().get("sheets", {})
+	check(not sheets.is_empty(), "sheets listed")
+	for id: String in sheets:
+		var sh: Dictionary = sheets[id]
+		check(int(sh["cols"]) * int(sh["rows"]) >= int(sh["frames"]) and float(sh["fps"]) > 0.0, "%s: grid holds its frames" % id)
+		var installed := FileAccess.file_exists(DmFxTex.SHEET_DIR + id + ".png")
+		check(DmFxTex.has_sheet(id) == installed, "%s: has_sheet matches the file (%s)" % [id, installed])
+	if not DmFxTex.has_sheet("hit_flash") or not DmFxTex.has_sheet("summon_circle"):
+		print("INFO sheets not installed: shader/frame checks skipped (tools/godot/fx-sheets-sync.sh)")
+		return
+	var w := _world()
+	var fx: DmFxRuntime = w["fx"]
+	await process_frame
+	var h := fx.flash({"tex": "hit_flash", "x": 0, "y": 1, "z": 0, "color": 0xffffff, "size": 2.0, "duration": 1.0})
+	var tr: DmFxPrims.FlashTr = h.get("tr")   # `.tr` would be Object.tr()
+	check(tr.sheet and (tr.layer._mat as ShaderMaterial).shader == DmFxTex.shader("sprite_sheet", true), "sheet flash uses the sprite sheet shader")
+	check((tr.layer._mat as ShaderMaterial).get_shader_parameter("grid") == Vector2(6, 2), "sheet grid on the material")
+	fx.prims.update(0.5, 0.5)
+	check(is_equal_approx(tr.s.frame, 0.5) and is_equal_approx(tr.s.sx, 2.0), "sheet flash: frame follows its life at full size (%.2f)" % tr.s.frame)
+	var d := fx.decal({"tex": "summon_circle", "color": 0xffffff, "x": 0, "z": 0, "r": 1.0, "duration": 10.0})
+	var dt_: DmFxPrims.DecalTr = d.get("tr")
+	var rate := 24.0 / 32.0
+	check(is_equal_approx(dt_.sheet_rate, rate), "looping sheet decal: %.3f loops/s" % dt_.sheet_rate)
+	fx.prims.update(2.0, 2.0)
+	check(is_equal_approx(dt_.d.frame, fposmod(2.0 * rate, 1.0)), "looping sheet decal wraps its frame (%.3f)" % dt_.d.frame)
+	h.kill()
+	d.kill()
+	fx.queue_free()
+	(w["cam"] as Node).queue_free()
