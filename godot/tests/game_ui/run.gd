@@ -88,7 +88,11 @@ func _run() -> void:
 	await _frames(3)
 	_check(ui.is_open("vault"), "V opens the vault in the Chapterhouse")
 	_check(not game.calls_to("/api/vault/7").is_empty(), "vault read via DmApi")
+	var vault_win := ui.window_for("vault")
+	_check(ui.point_in_window(vault_win.get_global_rect().get_center()), "a point inside an open window counts as on the window")
 	ui.close_panels()
+	await _frames(2)
+	_check(not ui.point_in_window(vault_win.get_global_rect().get_center()), "a closed window no longer blocks world clicks")
 	game.area_id = "graves"
 	_key(ui, KEY_V)
 	await _frames(2)

@@ -75,6 +75,9 @@ func is_filled() -> bool:
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
+		# A handler may rebuild the panel and free this cell mid-click; without an explicit accept the click reaches the world
+		# (click-to-move) as unhandled input.
+		accept_event()
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if not is_filled():
 				return

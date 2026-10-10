@@ -6,7 +6,8 @@
       "The crafting windows' \"Only craftable\" checkbox is now remembered between sessions.",
       "The login and discipline screens use a still background: no more scenery swinging around with your mouse.",
       "Login screen tidied up: the title fits on one line, the headline is tighter, the sign-in card no longer has an empty gap under the button, and the text describes the game as it is today.",
-      "Hovering your ability bar no longer pops up spell tooltips; the details stay in the Grimoire."
+      "Hovering your ability bar no longer pops up spell tooltips; the details stay in the Grimoire.",
+      "Clicking items in the vault (and other item grids) no longer makes your character walk toward the spot under the window."
     ]
   },
   {

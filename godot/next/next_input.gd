@@ -108,6 +108,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 		_mouse_seen = true
 	if ev is InputEventMouseButton and ev.pressed:
 		var mb := ev as InputEventMouseButton
+		if game.ui != null and game.ui.point_in_window(mb.position):
+			return                                # a click on a window (bag, vault, ...) is never a walk or a cast in the world
 		match mb.button_index:
 			MOUSE_BUTTON_WHEEL_UP: game.camera.zoom_step(-1.0)
 			MOUSE_BUTTON_WHEEL_DOWN: game.camera.zoom_step(1.0)
