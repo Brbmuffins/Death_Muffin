@@ -128,12 +128,27 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
     const sent = await ch.send(payload);
     return sent;
   }
+  // Renaming a thread the bot started itself: Discord lets a thread's owner edit its name, so no extra permission is normally needed.
+  // Manage Threads is only needed for threads someone else started. discord.js's `manageable` (Manage Threads) is deliberately not checked.
+  // An archived thread is skipped (editing it needs Manage Threads and would not reopen it); every failure is logged and swallowed.
+  async function renameThread(threadId, name) {
+    try {
+      const ch = await client.channels.fetch(String(threadId));
+      if (!ch || typeof ch.isThread !== 'function' || !ch.isThread()) return;
+      if (ch.archived) { log('[dm-agent] rename skipped, thread archived'); return; }
+      const n = String(name || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+      if (n && n !== ch.name) await ch.setName(n, 'Death Muffin dev agent: issue title');
+    } catch (e) { log('[dm-agent] rename failed', e.message); }
+  }
   async function pollOnce() {
     const { ops } = await call(`/poll?wait=${pollWaitSec}`);
     for (const op of ops || []) {
       if (op.typing) {   // fire-and-forget; the runner never waits for an ack on these
         const t = op.target || {}; await client.channels.fetch(t.threadId || t.channelId).then((ch) => ch.sendTyping()).catch(() => {});
         continue;
+      }
+      if (op.rename) {   // fire-and-forget: a thread can only be renamed ~2 times per 10 min, the runner paces them
+        const r = op.rename; await renameThread(r.threadId, r.name); continue;
       }
       let result; let failed = false; let sent;
       try { sent = await exec(op); result = { messageId: sent.id }; } catch (e) { failed = true; result = { error: e.message }; log('[dm-agent] send failed', e.message); }

@@ -1078,3 +1078,27 @@ test('godot publish: the runner retries by itself, and a later ship heals a thre
   await until(() => texts(a).some((t) => /went out with the client published for/.test(t)), d2.ad);
   assert.ok(Object.values(w2.runner.jobs()).every((j) => !j.publishFailed));
 });
+
+test('thread title: starts clean, the agent\'s .dm-title renames the thread, markers follow the proposal and the ship, and it persists', async () => {
+  const w = godotWorld({ tickMs: 200, renameWindowMs: 2500 }); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'hey can you please GD-GAMEPLAY TITLE-TURN="Faster walking speed" make me faster');
+  assert.doesNotMatch(thread.name, /<@|^dm /i); assert.match(thread.name, /^Gd-gameplay/i);
+  await until(() => (thread.renames || []).includes('Faster walking speed'), d.ad);
+  const job = Object.values(w.runner.jobs())[0];
+  assert.equal(job.title, 'Faster walking speed');
+  assert.equal(sh(job.worktree, 'check-ignore', '.dm-title').trim(), '.dm-title', 'title file is git-ignored');
+  const p = await waitProposal(d, thread);
+  await until(() => thread.name === '📝 Faster walking speed', d.ad);
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => thread.name === '✅ Faster walking speed', d.ad);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(w.cfg.stateDir, 'jobs.json'), 'utf8'))[thread.id].title, 'Faster walking speed');
+});
+
+test('thread title: a discarded job gets the cross marker, and a title with a mention cannot ping', async () => {
+  const w = godotWorld({ tickMs: 200, renameWindowMs: 2500 }); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY TITLE-TURN="@everyone <@1> Faster `walk`"');
+  await until(() => (thread.renames || []).includes('Faster walk'), d.ad);
+  const p = await waitProposal(d, thread);
+  await d.react(p, IDS.HELIX, '❌');
+  await until(() => thread.name === '❌ Faster walk', d.ad);
+});

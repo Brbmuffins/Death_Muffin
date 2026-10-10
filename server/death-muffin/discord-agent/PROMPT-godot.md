@@ -161,6 +161,10 @@ worktree root (do not commit it): what you are doing and a rough time, in plain 
 Overwrite it with a new line when you move to a new step (`Fix in; running the Godot checks, ~5 min.`); the latest line is shown
 with the progress notes. One line, no secrets, no file dumps. Skip it for quick questions you can answer in a minute or two.
 
+Also write a short title for the issue to `.dm-title` (worktree root, not committed) early in your first turn: 2-6 plain words, no
+markdown, mentions or links, e.g. `Thrall animation stutter`, `Fix bag tooltip crash`, `Question: shard costs`. It becomes the thread's name;
+rewrite it only if a later round is about something else.
+
 In-game bug reports (Settings -> Report a bug) reach you only when someone says `!report <number>` in the thread; you cannot
 read the database. If someone mentions a report, tell them to say `!report` to list the newest and `!report <number>` to hand one to you.
 

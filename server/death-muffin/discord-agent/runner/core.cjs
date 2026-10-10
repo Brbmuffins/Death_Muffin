@@ -7,6 +7,7 @@ const { createAudit } = require('./lib/audit.cjs');
 const { createAuth } = require('./lib/auth.cjs');
 const { redactText, redactDeep } = require('./lib/redact.cjs');
 const G = require('./lib/gitops.cjs');
+const TT = require('./lib/threadTitle.cjs');
 const { runTurn, buildPrompt, readResult } = require('./lib/agent.cjs');
 const { parseDiff, classifyDiff, tierLabel, approversFor } = require('./lib/tiers.cjs');
 const { verifyGenerated, describeMismatch } = require('./lib/generated.cjs');
@@ -101,9 +102,25 @@ function createRunner(cfgIn, opts = {}) {
   // "Muffin Core is typing…" is the normal acknowledgement while a job works. Typing ops are fire-and-forget: handed out once,
   // never retried, and dropped if the bot did not pick them up within a few seconds (Discord shows typing for ~10 s).
   const typing = (job) => post({ threadId: job.threadId }, { typing: true });
+  // Thread titles: the thread starts with a cleaned version of the request; the agent's .dm-title (a short issue name) replaces it, and a
+  // marker shows where the job stands (📝 waiting for approval, ✅ shipped, ❌ discarded). Renames are fire-and-forget and rate limited
+  // (threadTitle.cjs keeps only the newest wish, at most 2 per 10 min per thread). job.title / job.agentTitleKey persist in jobs.json.
+  const BOT_NAMES = ['Muffin Core', 'MuffinCore'].concat(cfg.botName ? [cfg.botName] : []);
+  const renamer = TT.createRenamer({ now, windowMs: cfg.renameWindowMs || 600000, send: (tid, name) => post({ threadId: tid }, { rename: { threadId: tid, name: redactText(name) } }) });
+  function syncName(job) {
+    try {
+      if (!job || !job.threadId || goneThread(job.threadId)) return;
+      if (job.worktree) {
+        let raw = null; try { raw = fs.readFileSync(path.join(job.worktree, '.dm-title'), 'utf8'); } catch { /* none */ }
+        const t = raw == null ? '' : TT.sanitizeTitle(redactText(raw));
+        if (t && TT.titleKey(t) !== job.agentTitleKey) { job.agentTitleKey = TT.titleKey(t); job.title = t; save(); }
+      }
+      if (job.title) renamer.want(job.threadId, TT.withMarker(job.title, job.status));
+    } catch (e) { console.error('thread title', e.message); }
+  }
   function dueOps() {
     const t = now();
-    for (let i = outbox.length - 1; i >= 0; i--) if (outbox[i].typing && (outbox[i].sentAt || t - outbox[i].createdAt > 8000)) outbox.splice(i, 1);
+    for (let i = outbox.length - 1; i >= 0; i--) if ((outbox[i].typing || outbox[i].rename) && (outbox[i].sentAt || t - outbox[i].createdAt > 8000)) outbox.splice(i, 1);
     return outbox.filter((o) => t - o.sentAt > 60000);
   }
   async function poll(waitMs) {
@@ -181,9 +198,10 @@ function createRunner(cfgIn, opts = {}) {
       if (!text) return { action: 'reply', text: 'Tell me what you want to look at or change in Death Muffin.' };
       if (!auth.rate(`newjob:${msg.userId}`, full ? cfg.rateLimit.fullApproverNewJobsPerDay : cfg.rateLimit.perUserNewJobsPerDay, 86400e3)) { audit.log('rate-limited', { userId: msg.userId, kind: 'newjob' }); return { action: 'reply', text: 'That is the daily limit of new requests for you. Continue in an existing thread or try tomorrow.' }; }
       const eventId = crypto.randomBytes(5).toString('hex');
-      pendingNew.set(eventId, { ev, msg }); setTimeout(() => pendingNew.delete(eventId), 120000).unref();
+      const threadName = TT.initialName(redactText(text), BOT_NAMES);
+      pendingNew.set(eventId, { ev, msg, threadName }); setTimeout(() => pendingNew.delete(eventId), 120000).unref();
       audit.log('request', { userId: msg.userId, role, kind: 'new', text });
-      return { action: 'create_thread', eventId, threadName: clip(`dm ${text.replace(/\s+/g, ' ').replace(/[^\w .,!?'-]/g, '')}`, 90) };
+      return { action: 'create_thread', eventId, threadName };
     }
 
     const job = jobs[ev.threadId];
@@ -241,6 +259,7 @@ function createRunner(cfgIn, opts = {}) {
     pendingNew.delete(eventId);
     if (error || !threadId) { audit.log('thread-failed', { error: error || 'no thread' }); return { ok: false }; }
     const job = newJob(p.ev); job.threadId = String(threadId); jobs[job.threadId] = job;
+    job.title = p.threadName || null; if (job.title) renamer.setCurrent(job.threadId, job.title);
     try { const w = await G.createWorktree(cfg, job); job.worktree = w.worktree; job.base = w.base; }
     catch (e) { say(job, `I could not set up a workspace: ${e.message}`); job.status = 'discarded'; save(); return { ok: false }; }
     p.msg.text += saveInboxImages(job, p.msg, p.ev.images);
@@ -251,7 +270,7 @@ function createRunner(cfgIn, opts = {}) {
   function handleCommand(job, msg, text) {
     const [cmd, ...rest] = text.slice(1).trim().split(/\s+/); const arg = rest.join(' ').toLowerCase();
     switch ((cmd || '').toLowerCase()) {
-      case 'status': return { action: 'reply', text: `Job \`${job.id}\` · ${job.status}${job.running ? ' (working)' : ''} · model ${job.model} · ${job.turns} turn(s) · ${job.queue.length} queued` + (job.proposal ? ` · proposal tier ${job.proposal.tier}` : '') };
+      case 'status': return { action: 'reply', text: `Job \`${job.id}\`${job.title ? ` “${job.title}”` : ''} · ${job.status}${job.running ? ' (working)' : ''} · model ${job.model} · ${job.turns} turn(s) · ${job.queue.length} queued` + (job.proposal ? ` · proposal tier ${job.proposal.tier}` : '') };
       case 'model':
         if (!auth.canSwitchModel(msg.userId)) { audit.log('refused', { userId: msg.userId, kind: 'model' }); return { action: 'reply', text: 'Only full approvers can switch models.' }; }
         if (!cfg.allowedModels.includes(arg)) return { action: 'reply', text: `Models: ${cfg.allowedModels.join(', ')}` };
@@ -341,7 +360,7 @@ function createRunner(cfgIn, opts = {}) {
     audit.log('thread-deleted', { job: job.id, round: job.round || 1, branch: job.branch });
     await G.removeJobArtifacts(cfg, job).catch(() => {});
     (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, deleted: true, at: new Date(now()).toISOString() });
-    job.status = 'deleted'; job.deleteRequested = false; job.queue = []; job.proposal = null; job.worktree = null; job.running = false; save();
+    renamer.forget(job.threadId); job.status = 'deleted'; job.deleteRequested = false; job.queue = []; job.proposal = null; job.worktree = null; job.running = false; save();
   }
 
   async function handleReaction(ev) {
@@ -395,7 +414,7 @@ function createRunner(cfgIn, opts = {}) {
     job.artRequest = null;
     await G.removeJobArtifacts(cfg, job);
     (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, discarded: true, at: new Date(now()).toISOString() });
-    job.status = 'discarded'; job.queue = []; job.proposal = null; job.worktree = null; save();
+    job.status = 'discarded'; job.queue = []; job.proposal = null; job.worktree = null; save(); syncName(job);
     say(job, `Discarded. Branch \`${job.branch}\` and its workspace are deleted. Nothing went live. Message me here whenever you want to start the next change.`);
   }
 
@@ -461,7 +480,7 @@ function createRunner(cfgIn, opts = {}) {
     const mins = () => Math.max(1, Math.round((now() - t0) / 60000));
     typing(job);
     const ticker = setInterval(() => {
-      typing(job);
+      typing(job); syncName(job);
       const st = statusFile ? readStatus() : '';
       if (st && st !== status) {
         status = st;
@@ -469,7 +488,7 @@ function createRunner(cfgIn, opts = {}) {
       }
       if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, status ? `${busyLine()}… (${mins()} min) · now: ${status}` : `${busyLine()}… (${mins()} min)`); }
     }, cfg.tickMs || 8000); ticker.unref();
-    try { await runJob(job, real, extra); } finally { clearInterval(ticker); }
+    try { await runJob(job, real, extra); } finally { clearInterval(ticker); syncName(job); }
   }
   // ---------- screenshots (<worktree>/.dm-shots/*.png, written by the agent via shot.sh) ----------
   function listShots(job) {
@@ -642,7 +661,7 @@ function createRunner(cfgIn, opts = {}) {
     embed.fields.splice(embed.fields.length - 1, 0, previewField);
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
     job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
-    job.status = 'proposed'; save();
+    job.status = 'proposed'; save(); syncName(job);
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
     let shots = proposalShots(job, committedAt);
@@ -844,7 +863,7 @@ function createRunner(cfgIn, opts = {}) {
       const [sha, rb] = detail.split(' ');
       healOtherPublishes(job, sha);
       logShip({ type: 'live', jobId: job.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: p.tier, title: p.title, rollback: rb && rb !== 'none' ? rb : null });
-      job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, at: new Date(now()).toISOString() }); save();
+      job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, at: new Date(now()).toISOString() }); save(); syncName(job);
       // Phones + offline edition are best effort (ship.sh prints one MOBILE: line); the PC release is live either way.
       const mm = /^MOBILE: (\S+)\s*(.*)$/m.exec(out); const mkind = mm ? mm[1] : ''; const mwhy = mm ? clip(mm[2], 300) : '';
       audit.log('mobile-result', { job: job.id, kind: mkind || 'none', detail: mwhy });
