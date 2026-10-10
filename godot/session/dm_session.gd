@@ -231,14 +231,14 @@ func _teardown(reason: String) -> void:
 	_is_host = false
 	_tick_acc = 0.0
 	hello_at_ms = 0
-	print("[coop] session ended: %s" % reason)
+	printerr("[coop] session ended: %s" % reason)
 	session_ended.emit(reason)
 
 
 func _on_connected_to_server() -> void:
 	_rpc_hello.rpc_id(1, PROTOCOL, character_name, discipline_id)
 	hello_at_ms = Time.get_ticks_msec()
-	print("[coop] joiner: hello sent to the host")
+	printerr("[coop] joiner: hello sent to the host")
 
 
 func _on_connection_failed() -> void:
@@ -261,11 +261,11 @@ func _on_peer_connected(id: int) -> void:
 			pp.throttle_configure(5000, 2, 0)
 	if not _is_host:
 		return
-	print("[coop] host: peer %d connected, waiting for its hello" % id)
+	printerr("[coop] host: peer %d connected, waiting for its hello" % id)
 	# A peer that never says hello is dropped (it holds no slot, but should not linger).
 	get_tree().create_timer(HELLO_TIMEOUT).timeout.connect(func():
 		if _is_host and _state == State.HOSTING and not _roster.has(id) and id in multiplayer.get_peers() and not _refusing.has(id):
-			print("[coop] host: peer %d sent no hello in %d s, refused" % [id, int(HELLO_TIMEOUT)])
+			printerr("[coop] host: peer %d sent no hello in %d s, refused" % [id, int(HELLO_TIMEOUT)])
 			_refuse(id, "handshake timed out"))
 
 
@@ -415,7 +415,7 @@ func _rpc_hello(protocol: int, nm: String, disc: String) -> void:
 		_refuse(id, "session is full (%d/%d players)" % [_roster.size(), MAX_PLAYERS])
 		return
 	_accept(id, _clean(nm, 24) if _clean(nm, 24) != "" else "Player", _clean(disc, 32))
-	print("[coop] host: peer %d said hello, accepted" % id)
+	printerr("[coop] host: peer %d said hello, accepted" % id)
 	_rpc_roster.rpc(get_roster())
 	player_joined.emit(id)
 

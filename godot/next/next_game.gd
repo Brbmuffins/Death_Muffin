@@ -224,7 +224,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	add_child(gather)
 	await gather.setup(self)
 	if _hold != null:
-		print("[coop] joiner: world built in %d ms, talking to the host" % (Time.get_ticks_msec() - t0))
+		printerr("[coop] joiner: world built in %d ms, talking to the host" % (Time.get_ticks_msec() - t0))
 		_hold.hold = false
 		_hold = null
 	# The original game's music, area beds and footsteps (AudioDirector autoload + DmAudioHooks): same sound as the existing game.
@@ -294,13 +294,13 @@ func _await_active(timeout: float) -> bool:
 		last = now
 	session.session_ended.disconnect(cb)
 	if session.is_active():
-		print("[coop] joiner: accepted by the host after %d ms" % (Time.get_ticks_msec() - begin))
+		printerr("[coop] joiner: accepted by the host after %d ms" % (Time.get_ticks_msec() - begin))
 		var b := local_body()
 		if b != null:
 			camera.snap(b.position)
 		return true
 	_aborted = true
-	print("[coop] joiner: gave up after %d ms (hello sent: %s, ended: %s)" % [Time.get_ticks_msec() - begin, session.hello_at_ms > 0, ended[0]])
+	printerr("[coop] joiner: gave up after %d ms (hello sent: %s, ended: %s)" % [Time.get_ticks_msec() - begin, session.hello_at_ms > 0, ended[0]])
 	start_failed.emit(ended[0] if ended[0] != "" else "The host did not answer.")
 	return false
 
