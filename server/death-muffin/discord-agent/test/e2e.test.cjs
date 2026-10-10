@@ -728,6 +728,19 @@ test('a thread whose workspace vanished starts a fresh round and never runs the 
   assert.doesNotMatch(texts(thread).join('\n'), /Something broke|no workspace/);
 });
 
+test('a message sent during a turn: no proposal for the outdated state, one proposal after the next turn with both changes', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'SLOW-TURN MAKE-CSS make the accent blue');
+  const job = Object.values(w.runner.jobs())[0];
+  await until(() => job.running, d.ad);
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS2 actually green');   // arrives while the first turn still runs
+  const p = await waitProposal(d, thread);
+  await until(() => !job.running, d.ad);
+  assert.equal(proposals(thread).length, 1, 'only one proposal: ' + proposals(thread).map((x) => x.payload.embeds[0].title).join(' | '));
+  assert.match(p.payload.embeds[0].title, /Green accent/);
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"event":"proposal-skipped"/);
+});
+
 test('a question after a proposal keeps it as it is: no new checks, no re-post, approvable at once', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');

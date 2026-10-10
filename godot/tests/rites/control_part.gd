@@ -949,6 +949,7 @@ func _make_nav() -> Array:
 		Vector3(3, 0, -12), Vector3(12, 0, -12), Vector3(12, 0, 20), Vector3(3, 0, 20)])
 	nm.add_polygon(PackedInt32Array([0, 1, 2, 3]))
 	nm.add_polygon(PackedInt32Array([4, 5, 6, 7]))
+	NavigationServer3D.map_set_use_async_iterations(map, false)   # merges in step with the frames (under --fixed-fps the worker thread lagged: "map is synced" flaked)
 	var reg := NavigationServer3D.region_create()
 	NavigationServer3D.region_set_map(reg, map)
 	NavigationServer3D.region_set_navigation_mesh(reg, nm)

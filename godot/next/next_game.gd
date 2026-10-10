@@ -256,7 +256,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		enemy_fx.warm(at)
 		bosses.warm(at)
 		# Every model, effect and area lighting drawn once under a cover, so no shader compiles mid-play (default: real renderer only).
-		if bool(opts.get("warmup", DisplayServer.get_name() != "headless" or "--warmup" in OS.get_cmdline_user_args())) and _has_world:
+		if bool(opts.get("warmup", _wants_warmup())) and _has_world:
 			await DmNextWarmup.run(self)
 	perf.hold()
 	if ui_host == null:
@@ -577,3 +577,17 @@ func leave() -> void:
 	# tree may tick without a peer (get_unique_id errors), so stop it first. The caller frees the node afterwards.
 	process_mode = Node.PROCESS_MODE_DISABLED
 	await session.leave()
+
+
+## The panel/creature/effect warm-up (first-use shader compiles during loading) runs for players: not on a headless run, and not on a QA or
+## screenshot run (`--qa`, `--shot-plan=`), where software GL took 154 s of a 192 s start (2026-10-10) and nobody plays. `--warmup` forces it.
+static func _wants_warmup() -> bool:
+	var args := OS.get_cmdline_user_args()
+	if "--warmup" in args:
+		return true
+	if DisplayServer.get_name() == "headless":
+		return false
+	for a in args:
+		if a == "--qa" or a.begins_with("--shot-plan="):
+			return false
+	return true

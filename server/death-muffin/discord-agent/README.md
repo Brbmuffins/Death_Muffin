@@ -104,6 +104,7 @@ its notice lists both changes under both titles, and the waiting thread gets "ðŸ
 `~/death-muffin/test-slot.lock` (shared with the bug agent and the ship; created by both installers) and waits for it, so parallel jobs no longer slow each
 other down. Fresh worktrees (jobs, ships, the bug agent, BEFORE pictures) start from the main checkout's Godot import cache (~14 s instead of ~70 s); the
 client publish still imports from scratch.
+A message sent while a turn runs is handled by the next turn, and the finished turn posts no proposal for the outdated state (audit `proposal-skipped`), so one proposal comes with everything. Screenshot runs (`shot-godot.sh`, `--qa --shot-plan`) skip the game's start-up warm-up (software GL: 192 s -> 41 s per start).
 A reply to an open proposal that changes nothing (a thank-you, a question) is answered, and the proposal stays as it is: same commit and clean
 workspace means no new checks, preview or re-post (`proposal-kept` in the audit log), and âœ… works right away. The prompt also tells the agent not to
 run `check-godot.sh` for such messages.

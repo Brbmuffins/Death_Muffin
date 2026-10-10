@@ -654,6 +654,12 @@ function createRunner(cfgIn, opts = {}) {
   }
 
   async function afterTurn(job, result) {
+    // A message that arrived during the turn changes the request: no proposal for the outdated state (owner, 2026-10-10: a stale proposal
+    // with fresh screenshots came first, then the one with the new change). The next turn starts right away and proposes once, with both.
+    if (job.queue.some((m) => !m.art)) {
+      audit.log('proposal-skipped', { job: job.id, why: 'new message waiting' });
+      job.proposal = null; job.status = 'idle'; save(); return;
+    }
     // A turn that changed nothing (a thank-you, a question, a "what if") leaves the open proposal exactly as it was: same commit, clean
     // workspace. Its checks already passed for that commit, so nothing is re-checked, re-built or re-posted, and it can be approved at once.
     if (await unchangedProposal(job)) {
