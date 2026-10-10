@@ -29,7 +29,9 @@ const MOVE_SPEED := 5.0
 const ARENA_HALF := 40.0
 ## Half-extent a click-to-move target may be (the arena bound by default; a game whose world is larger, DmNextGame, raises it: the Warren lies at x -72, the Depths at x 150).
 var move_half: float = ARENA_HALF
-const HELLO_TIMEOUT := 5.0
+## A joiner says hello only once its world is built (DmRelayPeer.hold): a real PC takes well over 5 s, so a short timeout refused every
+## real joiner (2026-10-09 co-op report: joiners landed back in their solo world). The joiner gives up on its own after CLIENT_ACTIVE_S.
+const HELLO_TIMEOUT := 90.0
 const REFUSE_FLUSH := 0.3  ## grace between sending a refusal and dropping the peer, so the reason arrives
 
 enum State { IDLE, HOSTING, JOINING, ACTIVE, ENDING }
