@@ -147,7 +147,8 @@ function createRunner(cfgIn, opts = {}) {
   const nameOf = (id) => cfg.names[id] || (auth.isOwner(id) ? 'the owner' : `user ${String(id).slice(-4)}`);
   // Owner alerts about a thread that was deleted go to the channel instead, so a failed deploy is never silent.
   const pingTarget = (job) => (goneThread(job.threadId) ? null : { threadId: job.threadId });   // never the channel itself (owner, 2026-10-10)
-  const ownerPing = (target, text) => target && post(target, { content: `${cfg.ownerIds.map((i) => `<@${i}>`).join(' ')} ${text}`, mentionUsers: cfg.ownerIds });
+  // Failures / rollbacks are said in the thread as a plain ⚠ line: nobody is tagged (owner, 2026-10-10: "stop tagging brbmuffins").
+  const ownerPing = (target, text) => target && post(target, { content: `⚠ ${text}` });
 
   // ---------- images people attach (written into the worktree for the agent to Read; never redacted, never committed) ----------
   // Returns the lines to append to the message text (one per image, or a short note for a refused one).

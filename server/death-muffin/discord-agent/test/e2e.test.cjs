@@ -201,7 +201,7 @@ test('daily cap for LIMITED approvers; full approvers are uncapped', async () =>
   await until(() => texts(t2).some((t) => /Live\. Release|Not live/.test(t)), d.ad);
 });
 
-test('rollback: owner and Helix anytime; limited approver only their own last ship; others refused; owner pinged', async () => {
+test('rollback: owner and Helix anytime; limited approver only their own last ship; others refused; a plain note, nobody tagged', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const t1 = (await request(d, IDS.LIMITED, 'MAKE-CSS blue')).thread; const p1 = await waitProposal(d, t1);
   await d.react(p1, IDS.LIMITED, '✅'); await until(() => texts(t1).some((t) => /Live\. Release/.test(t)), d.ad);
@@ -222,7 +222,8 @@ test('rollback: owner and Helix anytime; limited approver only their own last sh
   await until(() => d.main.sent.some((s) => /last ship was not yours/.test(s.payload.content || '')), d.ad);
   await d.say(d.main, IDS.HELIX, `${BOT} rollback`);   // full approver may roll back anything
   await until(() => d.main.sent.filter((s) => /Rolled back/.test(s.payload.content || '')).length === 2, d.ad);
-  await until(() => d.main.sent.some((s) => (s.payload.allowedMentions && s.payload.allowedMentions.users) && /ran a rollback/.test(s.payload.content)), d.ad);
+  const note = await until(() => d.main.sent.find((s) => /ran a rollback/.test(s.payload.content || '')), d.ad);
+  assert.ok(!/<@/.test(note.payload.content) && !(note.payload.mentionUsers || []).length, 'the rollback note tags nobody');
 });
 
 test('model switch: full approvers only', async () => {
@@ -522,7 +523,7 @@ for (const [kind, why] of [['conflict', /merge conflict in src\/gameplay\/a\.ts/
     const live = texts(thread).find((t) => /Live\. Release/.test(t));
     assert.ok(!/updated too/.test(live)); assert.match(live, /Phones and offline will follow/);
     const ping = await until(() => thread.sent.find((s) => s.payload.content && /Mobile\/offline did NOT update/.test(s.payload.content)), d.ad);
-    assert.ok(ping.payload.content.includes(`<@${IDS.OWNER}>`)); assert.match(ping.payload.content, why);
+    assert.ok(!/<@/.test(ping.payload.content) && !(ping.payload.mentionUsers || []).length, 'nobody is tagged'); assert.match(ping.payload.content, why);
     assert.equal(remoteRef(w, 'refs/heads/mobile'), oldMobile, 'mobile branch untouched');
     assert.deepEqual(mobileDeploys(w), []);
     assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0);

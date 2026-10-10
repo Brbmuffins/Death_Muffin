@@ -56,7 +56,7 @@ accepts only exact `backup-pre-release-godot-<yyyymmddThhmmssZ>` real directorie
 
 ## Who can do what (`config.json`, owner-edited, never by the AI)
 
-- `ownerIds`: always requester + approver of every tier; pinged in the thread on failures (deploy/publish problems) and rollbacks by someone else. A ship pings nobody: releases are announced in #build-alerts by `announce-release.sh`. The runner never posts in the channel itself, only in threads.
+- `ownerIds`: always requester + approver of every tier. Failures (deploy/publish problems) and rollbacks by someone else get a plain `⚠` line in the thread; nobody is tagged (owner, 2026-10-10). A ship pings nobody: releases are announced in #build-alerts by `announce-release.sh`. The runner never posts in the channel itself, only in threads.
 - `projects.deathmuffin.requesters`: may talk to it and give work. Everyone else is ignored (no reply, audited).
 - `projects.deathmuffin.approvers.{casual,gameplay,sensitive}`: who may ✅ a proposal of that tier. Anyone in `sensitive` is a
   full approver (all tiers, any rollback, no daily cap, may switch models). Someone only in `casual` is limited
@@ -105,7 +105,7 @@ Rollback undoes the live release only; revert the commit on the base branch afte
   `check-godot.sh` and `shot-godot.sh` (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
 - Discord's 2000-character limit: agent replies are split across messages (code blocks kept balanced) and anything over ~4 messages is a preview plus `reply.md` (`runner/lib/discordText.cjs`). A long paste arrives as Discord's `message.txt`; the adapter reads text attachments from Discord's CDN only (≤100 KB each, ≤60,000 characters in all) into the person's message.
 - Person text is wrapped as data (`<request from=… role=…>`, role from config); rules cannot be changed by messages.
-- Runner redacts every outgoing string and audit field; mentions are disabled except the owner ping.
+- Runner redacts every outgoing string and audit field; mentions are disabled (no post tags anyone).
 - Audit log: `state/audit.jsonl` (every request, proposal, approve/refuse, ship result, rollback); ships: `state/ships.jsonl`.
 - ship + rollback + `deploy-release.sh` all take `~/death-muffin/deploy/.deploy.lock`.
 - Residual risk: `ship.sh` re-runs `check-godot.sh` on the merged tree in the same sandbox, but `publish-godot-client.sh` exports the project outside it. That is why test configs, package files and
