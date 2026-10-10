@@ -7,7 +7,8 @@
       "Movement of your hero, enemies, thralls and bosses is smoothed between simulation steps, so it looks fluid on 120/144 Hz screens.",
       "Big fights cost less: enemies far from the action think less often, wave spawns are spread over a few frames, and corpses stop animating once they settle.",
       "Textures use the GPU's compressed formats: about 75% less video memory with the same look.",
-      "Fewer shadows to draw in crowds (the nearest enemies keep theirs), and the HUD and minimap only redraw what changed."
+      "Fewer shadows to draw in crowds (the nearest enemies keep theirs), and the HUD and minimap only redraw what changed.",
+      "Settings → Window mode: choose Windowed, Windowed borderless or Fullscreen."
     ]
   },
   {

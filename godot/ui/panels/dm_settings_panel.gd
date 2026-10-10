@@ -26,7 +26,7 @@ const LOADOUT_ACTIONS := [["loadout_next", "Next loadout"], ["loadout_1", "Loado
 var values: Dictionary = {
 	"difficulty": "medium", "auto_combat": false, "auto_gather": false,
 	"loot_common": "ground", "loot_uncommon": "ground", "loot_rare": "ground", "loot_epic": "ground", "loot_legendary": "ground",
-	"graphics": "high", "fps": 0, "auto_res": true, "brightness": 1.0, "ui_scale": 1.0, "hud_scale": 1.0,
+	"graphics": "high", "window_mode": "windowed", "fps": 0, "auto_res": true, "brightness": 1.0, "ui_scale": 1.0, "hud_scale": 1.0,
 	"vol_master": 0.7, "vol_combat": 0.8, "vol_amb": 0.6, "vol_music": 0.5, "vol_ui": 0.8,
 	"reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false, "guidance": true, "guide_ping": true,
 	"dev_access": true, "party_in": "",
@@ -141,6 +141,8 @@ func build() -> void:
 
 	# --- Display and sound -------------------------------------------------------------------------
 	var s2 := _section("Display and sound")
+	_option(s2, "Window mode", "window_mode", [["windowed", "Windowed"], ["borderless", "Windowed borderless"], ["fullscreen", "Fullscreen"]])
+	_note(s2, "Borderless fills the screen without a frame, so Alt+Tab stays instant. Fullscreen takes the screen over.")
 	_option(s2, "Graphics", "graphics", DmGraphicsPreset.options())
 	_brightness(s2)
 	_option(s2, "Frame rate", "fps", [[0, "Max — your screen's refresh rate"], [60, "60 — smooth"], [30, "30 — battery saver"]])

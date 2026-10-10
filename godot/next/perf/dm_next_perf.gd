@@ -18,6 +18,7 @@ var settings: Dictionary = {}
 var frame_ms := 16.7
 var enabled := true            ## false = no pacing (headless / no renderer)
 var _gfx_key := ""
+var _window_mode := ""
 var _caster_t := 0.0
 
 
@@ -41,6 +42,8 @@ func apply(s: Dictionary) -> void:
 	if win != null:
 		win.content_scale_factor = DmSettings.clamp_ui_scale(s.get("ui_scale", 1.0))   # Interface size, on top of the project's canvas_items stretch
 	Engine.max_fps = fps if fps > 0 else 0
+	if enabled:
+		_apply_window_mode(DmSettings.clamp_window_mode(s.get("window_mode", "windowed")))
 	var vfx := get_node_or_null("/root/Vfx")
 	if vfx != null:
 		vfx.quality = String(gp["fx"])
@@ -72,6 +75,33 @@ func apply(s: Dictionary) -> void:
 		governor.reset()
 		governor.hold()
 		_apply_render_scale()
+
+
+## Settings -> Window mode: windowed, borderless (a frameless window covering the whole screen) or exclusive fullscreen. Only acts on a change.
+func _apply_window_mode(mode: String) -> void:
+	if mode == _window_mode:
+		return
+	var first := _window_mode == ""
+	_window_mode = mode
+	if first and mode == "windowed":
+		return   # the project's own window, untouched
+	var screen := DisplayServer.window_get_current_screen()
+	match mode:
+		"fullscreen":
+			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+		"borderless":
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
+			DisplayServer.window_set_position(DisplayServer.screen_get_position(screen))
+			DisplayServer.window_set_size(DisplayServer.screen_get_size(screen))
+		_:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
+			var size := DisplayServer.screen_get_size(screen)
+			var win_size := Vector2i(mini(1280, size.x), mini(720, size.y))
+			DisplayServer.window_set_size(win_size)
+			DisplayServer.window_set_position(DisplayServer.screen_get_position(screen) + (size - win_size) / 2)
 
 
 ## An area entry / scene load is not a GPU problem: slow frames around it must not step the resolution down.

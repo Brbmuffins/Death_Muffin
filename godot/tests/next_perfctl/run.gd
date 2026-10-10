@@ -139,6 +139,8 @@ func _settings() -> void:
 	check(is_equal_approx(g.get_window().content_scale_factor, 1.25), "Interface size 125%% reaches the window content scale (%.2f)" % g.get_window().content_scale_factor)
 	st.update({"ui_scale": 1.0})
 	check(is_equal_approx(g.get_window().content_scale_factor, 1.0), "Interface size back to 100%")
+	check(DmSettings.clamp_window_mode("fullscreen") == "fullscreen" and DmSettings.clamp_window_mode("borderless") == "borderless", "window mode keeps the offered values")
+	check(DmSettings.clamp_window_mode("bogus") == "windowed" and DmSettings.clamp_window_mode(null) == "windowed", "any other window mode is windowed")
 	st.update({"graphics": "ultra"})
 	check(b.light_near > DmWorldBuilder.LIGHT_NEAR and DmGraphicsPreset.get_preset("high")["lights"] == DmWorldBuilder.LIGHT_NEAR, "ultra is richer than high; high keeps the old High's lights")
 	st.update({"graphics": "bogus"})
