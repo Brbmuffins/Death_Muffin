@@ -226,7 +226,7 @@ func _build() -> void:
 	c2.add_child(take_all_button)
 	acts.add_child(c1)
 	acts.add_child(c2)
-	sort_button = DmPb.button("Sort", false, off, "Merges stacks, then orders by type, rarity and name")
+	sort_button = DmPb.button("Sort", false, off, "Sorts the Vault and your bag: merges stacks, then orders by type, rarity and name")
 	sort_button.pressed.connect(func() -> void: sort_requested.emit())
 	sort_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	acts.add_child(sort_button)

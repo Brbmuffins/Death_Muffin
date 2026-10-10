@@ -425,6 +425,7 @@ func _panels(game: DmMockGame, ui: DmGameUi) -> void:
 	pb.vault.sort_requested.emit()
 	await _frames(3)
 	_check(not game.calls_to("/api/vault/sort").is_empty(), "vault sort -> DmApi")
+	_check(not game.calls_to("/api/inventory/save").is_empty(), "vault sort also sorts and saves the bag")
 	ui.close_panels()
 	ui.toggle_panel("salvage")
 	await _frames(3)
