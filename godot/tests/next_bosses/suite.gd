@@ -24,8 +24,12 @@ var boss: DmBoss:
 var boss_id: String:
 	get: return h.boss_id
 	set(v): h.boss_id = v
-var passed: int:
+var passed: int:   ## read AND written by scenario suites (next_clarity adds its part's counts): GDScript ignores writes to a getter-only property
 	get: return h.passed
+	set(v): h.passed = v
+var failed: int:
+	get: return h.failed
+	set(v): h.failed = v
 
 
 func _initialize() -> void:
