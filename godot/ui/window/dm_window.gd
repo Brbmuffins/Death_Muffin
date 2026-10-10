@@ -32,6 +32,8 @@ var scroll: ScrollContainer
 var strip_slot: VBoxContainer
 
 static var _stack: Array[DmWindow] = []
+## True while a hotkey button waits for a key: Esc then clears the bind instead of closing the top window.
+static var esc_captured := false
 
 var _root_box: VBoxContainer
 var _title_label: Label
@@ -253,7 +255,7 @@ func _exit_tree() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if visible and event.is_action_pressed("ui_cancel") and _stack.size() > 0 and _stack.back() == self:
+	if visible and not esc_captured and event.is_action_pressed("ui_cancel") and _stack.size() > 0 and _stack.back() == self:
 		close()
 		get_viewport().set_input_as_handled()
 

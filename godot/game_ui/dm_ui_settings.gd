@@ -126,6 +126,7 @@ func reset_tips() -> void:
 func _on_bind_requested(action_id: String) -> void:
 	capturing = action_id
 	ui._bind_capture = action_id
+	DmWindow.esc_captured = true
 	if panel.bind_note != null:
 		panel.bind_note.text = "Press a key for %s (Esc clears)." % DmUiBinds.ACTION_LABEL[action_id]
 
@@ -135,6 +136,7 @@ func capture_key(e: InputEventKey) -> void:
 	var aid := capturing
 	capturing = ""
 	ui._bind_capture = ""
+	DmWindow.esc_captured = false
 	var name := DmUiBinds.key_name(e)
 	var err := ""
 	if name == "escape":
