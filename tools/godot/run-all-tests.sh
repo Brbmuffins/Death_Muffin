@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run the Godot port test suites headless; print one result line per suite as it finishes. Exit non-zero if any fails (2 on bad usage).
 #   run-all-tests.sh [--jobs N] [--only <selectors>] [--list] [--times <out.tsv>]
-#   --jobs N        suites run at once (default $DM_TEST_JOBS or 6; 1 = strictly one after another, in directory order). Keep N <= 8: the VPS
+#   --jobs N        suites run at once (default $DM_TEST_JOBS or 8; 1 = strictly one after another, in directory order). Keep N <= 8: the VPS
 #                   is shared with live game servers.
 #   --only <list>   comma/space separated selectors: a directory under godot/tests (enemies = every runner file in it) or one runner file
 #                   (enemies/kinds_run.gd). Default: all. An unknown selector exits 2.
@@ -28,11 +28,12 @@ G="${GODOT:-/home/ubuntu/tools/godot/godot}"
 REALTIME_GROUP=(session relay next_lobby)
 # PACED_GROUP: pool suites that keep real-time pacing (no --fixed-fps) because the game code they test measures real time (cooldowns and
 # timers on the OS clock, frame-timing checks); measured 2026-10-10: they fail under --fixed-fps. A new suite gets --fixed-fps; add it here
-# if it only passes in real time.
-PACED_GROUP=(chapterhouse interp next_affixes next_autocombat next_depths next_feel rites ui world)
+# if it only passes in real time. Fixed-fps suites get DM_SYNC_NAV=1 (navigation merges in step with game time, world_builder.gd); that
+# took next_depths, rites and world off this list.
+PACED_GROUP=(audio_wire chapterhouse interp next_affixes next_autocombat next_feel ui)
 TIMES_FILE=tools/godot/suite-times.tsv
 
-jobs="${DM_TEST_JOBS:-6}"; only=""; list=0; times_out=""
+jobs="${DM_TEST_JOBS:-8}"; only=""; list=0; times_out=""
 usage() { echo "usage: $0 [--jobs N] [--only <dir|dir/file_run.gd>,...] [--list] [--times <out.tsv>]" >&2; exit 2; }
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -100,7 +101,8 @@ run_one() {
   { is_realtime "$r" || is_paced "$r"; } && pace=()
   mkdir -p "$T/$i/data" "$T/$i/config" "$T/$i/cache"
   t0=$(date +%s.%N)
-  out=$(XDG_DATA_HOME="$T/$i/data" XDG_CONFIG_HOME="$T/$i/config" XDG_CACHE_HOME="$T/$i/cache" \
+  local syncnav=1; [ ${#pace[@]} -eq 0 ] && syncnav=""   # DM_SYNC_NAV: the world's navigation merges in step with --fixed-fps (world_builder.gd)
+  out=$(DM_SYNC_NAV="$syncnav" XDG_DATA_HOME="$T/$i/data" XDG_CONFIG_HOME="$T/$i/config" XDG_CACHE_HOME="$T/$i/cache" \
         timeout 1800 nice -n "$n" "$G" --headless ${pace[@]+"${pace[@]}"} --path godot --script "res://${r#godot/}" 2>&1); code=$?
   rm -rf "$T/$i"
   line=$(echo "$out" | grep -iE '[0-9]+ (/ [0-9]+ )?passed' | tail -1)

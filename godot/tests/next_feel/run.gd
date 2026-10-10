@@ -273,6 +273,7 @@ func _run() -> void:
 	reset_hero(Vector3(0, 0, -18))
 	var e1 := foe(Vector3(5, 0, -18))
 	var e2 := foe(Vector3(9, 0, -18))
+	await until(func() -> bool: return caster.cooldown_left("marrow_spear") <= 0.0, 5.0)   # ready first: a cast on cooldown is dropped
 	caster.request_cast("marrow_spear", Vector3(9, 0, -18), eid(e2))
 	# wait for the spear to land instead of a fixed 45 ticks (it sometimes needed longer and the check flaked, blocking unrelated ships)
 	await until(func() -> bool: return e1.hp < e1.max_hp, 3.0)

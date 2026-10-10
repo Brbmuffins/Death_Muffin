@@ -155,6 +155,11 @@ func apply_occlusion(root: Node) -> void:
 
 func build(w: Dictionary) -> void:
 	world = w
+	# Test runs under --fixed-fps (tools/godot/run-all-tests.sh sets DM_SYNC_NAV=1): game time outruns the navigation server's worker thread,
+	# so freshly enabled regions were not merged yet when a path was asked for (the hero stopped short, enemies never chased). Synchronous
+	# iterations merge once per physics step instead. Never set in the game.
+	if OS.get_environment("DM_SYNC_NAV") == "1" and is_inside_tree():
+		NavigationServer3D.map_set_use_async_iterations(get_world_3d().navigation_map, false)
 	_ensure_occ_globals()
 	_make_environment()
 	_colliders = StaticBody3D.new()

@@ -136,9 +136,10 @@ func _run() -> void:
 	g.input.hotbar.emit(0, foe.global_position, DmWaveDirector.id_of(foe))
 	await ticks(2)
 	check(caster.cooldown_left("bone_needle") > needle_before, "LMB casts bone_needle")
+	# right after the cast: the aimed target is remembered for a short REAL-time window, which a loaded machine could outlast below
+	check(g.ui_host.target_enemy() == foe, "target frame follows the aimed enemy")
 	check(await until(func() -> bool: return not floats("hit").is_empty() or not floats("crit").is_empty(), 4.0), "a rite hit floats a damage number")
 	check(hud.float_layer.get_child_count() > 0, "the number is drawn on the HUD float layer")
-	check(g.ui_host.target_enemy() == foe, "target frame follows the aimed enemy")
 	check(hud.vm.get("target") != null or await until(func() -> bool: return hud.vm.get("target") != null, 1.0), "target frame in the HUD vm")
 	# ---- player damage
 	events.clear()
