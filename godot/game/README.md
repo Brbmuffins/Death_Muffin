@@ -18,6 +18,10 @@ Only the enemy-fx subset is reachable: `next/enemy_fx/dm_enemy_fx.gd` creates on
 ## Creature rendering
 `DmCreatureMat` is the one creature shader. Models in `CULL_BACK_SLUGS` (closed glTF bodies: under 2% open edges, winding agrees with the normals) render back-face culled;
 every other model, and every winged or spectral body, stays `cull_disabled` (hair cards, cloaks, open robes, thin cloth). Add a slug only after checking its mesh is closed.
+All bodies of one model share ONE `ShaderMaterial` per render variant (`DmCreatureMat.shared`: source material x fade / wings / gear / cull_back). What differs per body
+(tint, opacity, emissive and the hit flash, rim, gear-region tints, wing geometry and phase) are `instance uniform`s set on the body's MeshInstance3Ds
+(`tint_op`, `emis4`, `rim`, `gt0..3`/`gg0..3`/`head_t`/`head_g`, `wing*`; Godot allows 16 per shader, gear uses 13, wings 3), so 40 enemies are a handful of materials, not 40.
+A faded body swaps to the shared fade material; `tests/creature_mat/run.gd` checks the sharing, `probe.gd` is the rendered material/draw-call probe.
 Only the nearest enemies cast into the moon shadow (`DmCasterBudget`, counts per preset in `DmGraphicsPreset`, polled at 2 Hz by `DmNextPerf`); the hero, thralls and bosses always cast.
 The boss light and the shared Binbun flash light are `visible = false` while their energy is zero.
 
