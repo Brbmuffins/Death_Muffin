@@ -79,10 +79,10 @@ func set_item(d: Dictionary, show_lore: bool = true, show_sell: bool = true) -> 
 			necro = s.get("necro", false)
 		else:
 			txt = String(s)
-		var row := HFlowContainer.new()
-		row.add_theme_constant_override("h_separation", 8)
-		row.add_theme_constant_override("v_separation", 0)
-		var sl := DmUi.label(("† " if necro else "") + txt, "DmStat")
+		# a row, not a flow: the stat text wraps inside the card, so a long line can never widen the window it sits in
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var sl := DmUi.label(("† " if necro else "") + txt, "DmStat", true)
 		sl.add_theme_font_override("font", DmUi.font("body_bold"))
 		if necro:
 			sl.add_theme_color_override("font_color", DmUi.SPELL_300)

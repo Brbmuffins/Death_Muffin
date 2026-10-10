@@ -122,6 +122,8 @@ func _build_ui() -> void:
 			b.text = DmUi.upper("Sheet · J")
 			b.add_theme_font_size_override("font_size", 10)
 			b.add_theme_constant_override("h_separation", 0)
+			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			b.clip_text = true  # its text must not make the 3rd doll column wider than the 56px cells (stretched Trinket/Off hand)
 			b.visible = has_sheet
 			b.pressed.connect(func() -> void: sheet_pressed.emit())
 			b.focus_mode = Control.FOCUS_NONE
