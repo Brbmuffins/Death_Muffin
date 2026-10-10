@@ -875,8 +875,11 @@ func belt_key() -> String:
 
 func belt_pick() -> Dictionary:
 	var raw: Variant = DmUiConfig.parse(store.get_item(belt_key()))
-	var out := {"elixir": null, "tonic": null}
+	var out := {"heal": null, "elixir": null, "tonic": null}
 	if raw is Dictionary:
+		var heal: Variant = raw.get("heal")
+		if heal is String and DmContent.healing_flasks().has(heal):
+			out["heal"] = heal
 		for slot in ["elixir", "tonic"]:
 			var id: Variant = raw.get(slot)
 			if id is String and DmContent.brew(id).get("slot", "") == slot:
@@ -885,14 +888,16 @@ func belt_pick() -> Dictionary:
 
 
 func set_belt(item_id: String) -> void:
-	var b := DmContent.brew(item_id)
-	if b.is_empty():
+	var slot := DmHudBrewChip.belt_slot_of(item_id)
+	if slot == "":
 		return
 	var pick := belt_pick()
-	pick[b["slot"]] = item_id
+	pick[slot] = item_id
 	store.set_item(belt_key(), JSON.stringify(pick))
-	call_game_sync("set_belt", [String(b["slot"]), item_id])
-	toast("%s is on your belt: press %s to drink it" % [b["label"], "Z" if b["slot"] == "elixir" else "X"], "good")
+	call_game_sync("set_belt", [slot, item_id])
+	var name: String = String(DmContent.item(item_id).get("name", item_id)) if slot == "heal" else String(DmContent.brew(item_id)["label"])
+	toast("%s is on your belt: press %s to drink it" % [name, {"heal": "Q", "elixir": "Z", "tonic": "X"}[slot]], "good")
+	inv.render()
 
 
 # --- auto combat / settings ---------------------------------------------------------------------------------------------------------

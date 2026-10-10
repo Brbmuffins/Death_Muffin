@@ -38,6 +38,7 @@ func _init(ui_: Node, locks_: DmItemLocks, store_: DmCounselStore) -> void:
 	panel.salvage_requested.connect(func(it: Dictionary) -> void: salvage_one(it["row"]))
 	panel.action_requested.connect(_on_action)
 	panel.slot_right_clicked.connect(_on_right_click)
+	panel.potion_belted.connect(func(it: Dictionary) -> void: ui.set_belt(String(it["item_id"])))
 	panel.opened.connect(render)
 	locks.changed.connect(render)
 
@@ -69,7 +70,7 @@ func _brew_line(item_id: String) -> String:
 	if s == "":
 		return ""
 	var b := DmContent.brew(item_id)
-	return "%s\nBelt key %s: right-click or drag it onto the Belt at the left edge." % [s, "Z" if b["slot"] == "elixir" else "X"]
+	return "%s\nBelt key %s: right-click it, or drag it onto the matching slot under your gear or the Belt at the left edge." % [s, "Z" if b["slot"] == "elixir" else "X"]
 
 
 func _rune_text(row: Dictionary) -> String:
@@ -99,7 +100,7 @@ func card_of(row: Dictionary, ctx: Variant) -> Dictionary:
 		"id": int(row.get("id", row["slot_index"])), "slot_index": int(row["slot_index"]), "item_id": row["item_id"], "name": row.get("name", meta.get("name", "")),
 		"rarity": row.get("rarity", "common"), "quantity": int(row.get("quantity", 1)), "equipped": int(row.get("equipped", 0)) != 0,
 		"locked": locks.is_locked(row), "glyph": TYPE_GLYPH.get(String(row.get("item_type", "")), "◆"), "sell_value": int(row.get("sell_value", 0)),
-		"lore": String(meta.get("lore", "")), "row": row, "is_brew": DmContent.brews().has(row["item_id"]),
+		"lore": String(meta.get("lore", "")), "row": row, "is_brew": DmContent.brews().has(row["item_id"]), "is_flask": DmContent.healing_flasks().has(row["item_id"]),
 		"equippable": DmGear.equip_slot_of(row) != "",
 	}
 	if ic != "":
@@ -139,7 +140,7 @@ func render() -> void:
 	var lock_bits: Array = []
 	for row in all:
 		lock_bits.append(locks.is_locked(row))
-	var sig := [key, all.hash(), lock_bits, ui.near_grinder(), ui.build()["stats"]].hash()
+	var sig := [key, all.hash(), lock_bits, ui.near_grinder(), ui.build()["stats"], ui.belt_pick()].hash()
 	if _rendered and sig == _render_sig:
 		return
 	_render_sig = sig
@@ -178,6 +179,7 @@ func _render_now(ctx: Variant, all: Array) -> void:
 		var kind := DmGathering.belt_slot_kind(int(row["slot_index"]))
 		if kind != "" and int(row.get("quantity", 0)) > 0:
 			belt[kind] = _card_cached(row, ctx)
+	panel.potions = potion_belt(bag)
 	panel.at_grinder = ui.near_grinder()
 	var junk := DmItemLocks.junk_slots(all, locks, DmItemText.keeps_for_you(ctx))
 	panel.junk_count = junk.size()
@@ -190,6 +192,34 @@ func _render_now(ctx: Variant, all: Array) -> void:
 	panel.set_summary = set_summary()
 	_belt_offer()
 	panel.set_inventory(bag, worn, belt)
+
+
+## What Q / Z / X drink now, as bag cards (the stack's total count): the picked flask or brew while the bag holds it, else the best flask /
+## first brew of that slot the bag holds (the same fallback the game uses). `bag` is the rendered cell list.
+func potion_belt(bag: Array) -> Dictionary:
+	var pick: Dictionary = ui.belt_pick()
+	var out := {}
+	for slot in DmPotionBelt.SLOT_IDS:
+		var want := ""
+		var chosen: Variant = pick.get(slot)
+		if chosen is String and count(chosen) > 0:
+			want = chosen
+		elif slot == "heal":
+			want = DmPotionBelt.heal_pick(count)
+		else:
+			for id in DmContent.brews():
+				if DmContent.brews()[id]["slot"] == slot and count(id) > 0:
+					want = id
+					break
+		if want == "":
+			continue
+		for card in bag:
+			if not card.is_empty() and card["item_id"] == want:
+				var c: Dictionary = card.duplicate()
+				c["quantity"] = count(want)
+				out[slot] = c
+				break
+	return out
 
 
 func stats_chips() -> Array:
@@ -303,6 +333,8 @@ func _extra_actions(it: Dictionary) -> Array:
 		out.append({"id": "toolbelt", "label": "Take off belt" if DmGathering.is_belt_slot(int(row["slot_index"])) else "Put on belt"})
 	if DmContent.healing_flasks().has(id) or DmContent.buff_flasks().has(id):
 		out.append({"id": "use", "label": "Drink"})
+	if DmContent.healing_flasks().has(id):
+		out.append({"id": "belt", "label": "Put on belt (key Q)", "hint": "Q drinks this flask first, while you carry it"})
 	var brew := DmContent.brew(id)
 	if not brew.is_empty():
 		var key := "Z" if brew["slot"] == "elixir" else "X"
@@ -350,7 +382,7 @@ func _on_right_click(it: Dictionary) -> void:
 	var row: Dictionary = it["row"]
 	if DmGathering.tool_kind_of(String(row["item_id"])) != "":
 		toggle_tool_belt(row)
-	elif DmContent.brews().has(row["item_id"]):
+	elif DmHudBrewChip.belt_slot_of(String(row["item_id"])) != "":
 		ui.set_belt(String(row["item_id"]))
 
 

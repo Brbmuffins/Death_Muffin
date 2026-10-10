@@ -7,7 +7,7 @@ extends RefCounted
 var body: DmHeroBody
 var inventory: DmInventory
 var prog: DmProgression
-var belt: Dictionary = {"elixir": "", "tonic": ""}   ## the picked brew per slot ("" = whichever the bag holds)
+var belt: Dictionary = {"heal": "", "elixir": "", "tonic": ""}   ## the picked flask / brew per slot ("" = whichever the bag holds)
 var flask_cd_until: float = 0.0                      ## body clock ms
 var meal_until: float = 0.0
 var meal_rate: float = 0.0                           ## hp per second
@@ -31,14 +31,24 @@ func _ready_to_drink() -> bool:
 
 ## UI -> game: which brew a belt slot holds (the UI keeps the pick in its store).
 func set_belt(slot: String, id: String) -> void:
-	if slot in ["elixir", "tonic"]:
+	if slot in ["heal", "elixir", "tonic"]:
 		belt[slot] = id
 
 
 func load_pick(raw: Dictionary) -> void:
+	var heal: Variant = raw.get("heal")
+	belt["heal"] = heal if (heal is String and DmContent.healing_flasks().has(heal)) else ""
 	for slot in ["elixir", "tonic"]:
 		var id: Variant = raw.get(slot)
 		belt[slot] = id if (id is String and DmContent.brews().has(id) and DmContent.brews()[id]["slot"] == slot) else ""
+
+
+## The flask Q drinks: the pick while the bag holds it, else the best flask the bag holds.
+func heal_id() -> String:
+	var pick: String = belt["heal"]
+	if pick != "" and inventory.count(pick) > 0:
+		return pick
+	return DmPotionBelt.heal_pick(func(f: String) -> int: return inventory.count(f))
 
 
 ## The brew a slot would drink: the pick if the bag holds it, else any brew of the slot the bag holds.
@@ -132,7 +142,7 @@ func drink_flask(prefer: String = "") -> void:
 			toast.call("Your Dry Cellar vow forbids healing flasks. Brews and meals still work.")
 		return
 	var flasks: Dictionary = DmContent.healing_flasks()
-	var id := prefer if (prefer != "" and flasks.has(prefer)) else DmPotionBelt.heal_pick(func(f: String) -> int: return inventory.count(f))
+	var id := prefer if (prefer != "" and flasks.has(prefer)) else heal_id()
 	if id == "" or not inventory.consume(id):
 		_say("No healing potions", "info", 2.4)
 		if toast.is_valid():
@@ -159,7 +169,7 @@ func tick(dt: float) -> void:
 func rows() -> Array:
 	var now := _now()
 	var flasks: Dictionary = DmContent.healing_flasks()
-	var hid := DmPotionBelt.heal_pick(func(f: String) -> int: return inventory.count(f))
+	var hid := heal_id()
 	var total := 0
 	for f in flasks:
 		total += inventory.count(f)
