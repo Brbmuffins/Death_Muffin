@@ -25,7 +25,6 @@ const MENU_ROW := [
 	["forge", "anvil", "Craft", "Workbench (C)", ""],
 	["professions", "skills", "Acre", "Acre ledger: Skills, Garden, Laborers, Contracts (P)", "menu.skills"],
 	["map", "waymap", "Map", "Waystones (M)", ""],
-	["grimoire", "grimoire", "Spells", "Grimoire and Legion (L)", "menu.spells"],
 	["atlas", "atlas", "Atlas", "Gear Atlas (.)", "menu.atlas"],
 	["codex", "book", "Codex", "Codex (K)", ""],
 	["party", "person", "Party", "Party: host a session, join friends (F)", ""],
