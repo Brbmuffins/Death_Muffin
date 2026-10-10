@@ -121,6 +121,30 @@ func _run() -> void:
 	print("nav bake: %d ms, %d regions, %d links" % [b.nav_bake_ms, b.nav_regions.size(), b.nav_links.size()])
 	_check(b.area_nodes.size() == 13 and b.nav_regions.size() == 13 + 11, "an area node + nav region per area and per door")
 	_check(b.gates.size() == 10, "10 gates (chapter_graves is always open)")
+
+	# draw submission: a prop kind is ONE MultiMeshInstance3D per mesh part and area (no per-cell split), the outside ground is few tiles on one material
+	var prop_nodes := 0
+	var prop_inst := 0
+	var dup_meshes := 0
+	for id in b.area_nodes:
+		var seen: Dictionary = {}
+		for n in (b.area_nodes[id] as Node).find_children("*", "MultiMeshInstance3D", false, false):
+			if not n.has_meta("dm_prop"):
+				continue
+			var mm := (n as MultiMeshInstance3D).multimesh
+			prop_nodes += 1
+			prop_inst += mm.instance_count
+			if seen.has(mm.mesh):
+				dup_meshes += 1
+			seen[mm.mesh] = true
+	print("INFO props: %d prop MultiMesh nodes, %d instances" % [prop_nodes, prop_inst])
+	_check(dup_meshes == 0, "no mesh is split over several MultiMesh nodes inside one area (%d repeats)" % dup_meshes)
+	_check(prop_nodes <= 140 and prop_inst >= 579, "world props draw as <= 140 instanced groups (%d nodes, %d instances)" % [prop_nodes, prop_inst])
+	var tiles := b.get_node("outside").get_children()
+	var ground_mats: Dictionary = {}
+	for t in tiles:
+		ground_mats[(t as MeshInstance3D).material_override] = true
+	_check(tiles.size() <= 49 and ground_mats.size() == 1, "outside ground: %d tiles, %d materials (<= 49 tiles, 1 shared material)" % [tiles.size(), ground_mats.size()])
 	var start := Vector3(0, 0, 24)
 
 	# default seals: always-open halls reachable, sealed ones not

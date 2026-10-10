@@ -7,7 +7,7 @@
 - `fps`: `Engine.max_fps` (0 = uncapped; the governor judges against the cap, or 60 for Max).
 - `auto_res`: `DmResolutionGovernor`  on the root viewport's `scaling_3d_scale`; `pace(dt)` per frame once `ready_` (real renderer only),
   `hold()` on every area entry. A graphics / fps / auto_res change restarts it at 1.0 and holds.
-- Prop culling cells (12 m), shadow range (32 m), streaming and light LOD are `DmWorldBuilder`'s, driven every frame by `DmNextWorld.update`.
+- Props are one MultiMeshInstance3D per (mesh part, area) (130 nodes for the 13 areas; a tall group casts moon shadows while the hero is within the shadow range, 32 m, of its instances), the outside ground is 49 tiles on one shared material. Shadow range, streaming and light LOD are `DmWorldBuilder`'s, driven every frame by `DmNextWorld.update`.
 
 `DmNextWarmup.run(game)` (end of `start()`, under `DmWarmup`'s cover; default on with a real renderer, `opts.warmup` forces it): threaded loads of every model +
 Binbun scene; one body per distinct slug of every enemy kind / thrall / legion / boss (opaque, elite emissive, mid-fade, thrall gear + spectral variants), every Binbun

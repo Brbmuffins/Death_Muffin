@@ -147,7 +147,7 @@ func _settings() -> void:
 	st.update({"fps": 0})
 	check(Engine.max_fps == 0, "fps Max = uncapped")
 	# culling / streaming / shadow range are the builder's constants, driven by DmNextWorld.update every frame
-	check(DmWorldBuilder.PROP_CELL == 12.0 and DmWorldBuilder.SHADOW_RANGE == 32.0 and DmWorldBuilder.LIGHT_NEAR == 8, "culling: prop cell 12 m, shadow range 32 m, 8 prop lights (as the current client)")
+	check(DmWorldBuilder.SHADOW_RANGE == 32.0 and DmWorldBuilder.LIGHT_NEAR == 8, "culling: shadow range 32 m, 8 prop lights (as the current client)")
 	# auto_res off: a stepped-down view returns to full resolution at once
 	g.perf.governor.scale = 0.7
 	g.perf._apply_render_scale()
