@@ -5,8 +5,8 @@
 #   announce-release.sh <rev>
 #
 # 1. release-notes.json (launcher news panel) and patch-notes.json (launcher "All patch notes", the site's patch-notes page, the in-game
-#    notes) in $PUBLIC/play/. The title and items are the top PATCH_NOTES.json entry when that file changed since the last announced
-#    release, otherwise the commit subjects since then.
+#    notes) in $PUBLIC/play/. When PATCH_NOTES.json changed since the last announced release: the lines it added (a new entry keeps its
+#    title; lines added to an older entry are titled with RELEASE_TITLE, else the newest commit subject); otherwise the commit subjects.
 # 2. A "Death Muffin update is live" notice in #build-alerts (webhook URL outside the repo). Releases are the only Discord posts the
 #    release tooling makes (owner, 2026-10-10: nothing in #death-muffin, only shipped items in #build-alerts).
 # 3. Player bug reports fixed in the range (commits "Bug report #<id>: ...") are marked 'released' (the reporter sees "Fixed — live now"),
@@ -15,6 +15,7 @@
 # same revision published twice) announces nothing.
 # QUIET=1 (deploy-release.sh: backend deploys): when PATCH_NOTES.json did not change, keep the live notes' title and items (commit
 # subjects of a backend fix are not player news) and post no release notice; bug reports are still released and announced.
+# RELEASE_TITLE (the Discord agent's thread title) names a release whose lines went into an existing PATCH_NOTES entry.
 # Test overrides: REPO PUBLIC RUNTIME HOOK_FILE REPORTS_CLI, DRY_RUN=1 (write the JSON to $PUBLIC/play without sudo, no Discord, no DB).
 set -uo pipefail
 
@@ -43,6 +44,9 @@ fi
 
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 g show "$SHA:PATCH_NOTES.json" >"$TMP/PATCH_NOTES.json" 2>/dev/null || echo '[]' >"$TMP/PATCH_NOTES.json"
+# What this release adds: the patch-note lines that the previously announced release did not have (Discord ships append to the newest entry,
+# so its title and older lines belong to earlier releases; 2026-10-10 every ship was announced as "A Calmer Login Screen").
+echo '[]' >"$TMP/PREV_NOTES.json"; [ -n "$PREV_FULL" ] && { g show "$PREV_FULL:PATCH_NOTES.json" >"$TMP/PREV_NOTES.json" 2>/dev/null || echo '[]' >"$TMP/PREV_NOTES.json"; }
 g log --no-merges --format='%s' "${RANGE[@]}" | grep -vE '^(Merge |WIP)' | head -12 >"$TMP/commits.txt"
 
 # ---- 1. notes JSON ----
@@ -57,7 +61,19 @@ try:
 except Exception:
     history = []
 top = history[0] if (history and fresh) else None
-notes = {"sha": sha, "date": now, "title": top["title"] if top else "", "items": top["items"] if top else commits, "commits": commits}
+title, items = (top["title"], top["items"]) if top else ("", commits)
+try:
+    prev = [e for e in json.load(open(os.path.join(tmp, "PREV_NOTES.json"))) if e.get("items")]
+except Exception:
+    prev = []
+if top and prev:
+    seen = {str(i).strip() for e in prev for i in e.get("items", [])}
+    new = [i for e in history for i in e.get("items", []) if str(i).strip() not in seen]
+    if new:   # only what this release adds; a brand-new entry keeps its own title, lines added to an older entry get the ship's title
+        items = new
+        if top["title"] in {e.get("title") for e in prev}:
+            title = (os.environ.get("RELEASE_TITLE", "").strip() or (commits[0] if commits else "") or "Death Muffin update")[:120]
+notes = {"sha": sha, "date": now, "title": title, "items": items, "commits": commits}
 if carry:   # a quiet backend deploy: the player-facing notes stay what the last release said
     try:
         old = json.load(open(live))

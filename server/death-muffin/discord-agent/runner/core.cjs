@@ -930,6 +930,7 @@ function createRunner(cfgIn, opts = {}) {
     const p = job.proposal;
     say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto ${BB}, re-testing, deploying. This takes a few minutes.`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
+      RELEASE_TITLE: redactText(job.title || p.title || ''),   // the #build-alerts notice is titled with the thread's name (announce-release.sh)
       MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
       MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
@@ -1011,7 +1012,7 @@ function createRunner(cfgIn, opts = {}) {
     setBusy(true, `publish retry ${job.id}`);
     say(job, uid ? `Retrying the client publish for \`${pf.sha}\` (${nameOf(uid)})…` : `Trying the client publish for \`${pf.sha}\` again by myself…`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, JOBID: job.id, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
-      BASE_BRANCH: BB, MODE: 'godot', DEPLOY_DIR: cfg.deployDir, PUBLISH_ONLY: '1', PUBLISH_SHA: pf.sha, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}),
+      BASE_BRANCH: BB, MODE: 'godot', DEPLOY_DIR: cfg.deployDir, PUBLISH_ONLY: '1', PUBLISH_SHA: pf.sha, RELEASE_TITLE: redactText(job.title || (pf.proposal && pf.proposal.title) || ''), ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}),
       ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 60 * 60000 }); }
