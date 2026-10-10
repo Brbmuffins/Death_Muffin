@@ -8,6 +8,7 @@ var out_dir := "res://../shots/world_fx"
 var areas: PackedStringArray = []
 var feature_areas: PackedStringArray = []
 var frames := 45
+var lights := -1   # --lights=N: prop lights on at once ; default the builder's
 var rounds := 3
 var rows: Array = []
 var b: DmWorldBuilder
@@ -23,6 +24,8 @@ func _initialize() -> void:
 			areas = a.substr(8).split(",")
 		elif a.begins_with("--features="):
 			feature_areas = a.substr(11).split(",")
+		elif a.begins_with("--lights="):
+			lights = int(a.substr(9))
 		elif a.begins_with("--rounds="):
 			rounds = int(a.substr(9))
 		elif a.begins_with("--frames="):
@@ -101,6 +104,8 @@ func _run() -> void:
 	root.add_child(b)
 	b.build(w)
 	b.open_all()
+	if lights > 0:
+		b.light_near = lights
 	cam = DmCameraRig.new()
 	root.add_child(cam)
 	cam.setup(w.camera)

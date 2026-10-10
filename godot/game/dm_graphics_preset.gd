@@ -19,7 +19,7 @@ const LABELS := {
 	"low": "Low (fastest)",
 	"medium": "Medium (shadows)",
 	"high": "High (bloom, sharp textures)",
-	"ultra": "Ultra (more lights, long sharp shadows, 4x smoothing)",
+	"ultra": "Ultra (long sharp shadows, 4x smoothing)",
 }
 const TABLE := {
 	"low": {"lift": 1.4, "shadows": false, "bloom": false, "lights": 3, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
@@ -28,7 +28,7 @@ const TABLE := {
 		"casters": 8, "casters_crowd": 6, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
 	"high": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 8, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
 		"casters": 12, "casters_crowd": 8, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
-	"ultra": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 14, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
+	"ultra": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 8, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
 		"casters": 20, "casters_crowd": 14, "shadow_size": 4096, "shadow_dist": 80.0, "prop_shadow": 56.0, "shadow_splits": 2, "soft": 3, "lod": 0.5},
 }
 

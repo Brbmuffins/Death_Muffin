@@ -23,16 +23,15 @@ const AMBIENT_GROUND_MIX := 0.3
 const AMBIENT_MAX_BOOST := 2.4
 const POINT_K := 0.18
 const LIGHT_NEAR := 8        # prop lights enabled at once (nearest to the focus)
-## Runtime cap on prop lights (graphics quality); LIGHT_NEAR on High.
+## Runtime cap on prop lights (graphics quality); LIGHT_NEAR (the most any preset uses) on High and Ultra.
 var light_near := LIGHT_NEAR
 var base_exposure := 1.0   # the area-independent exposure (lighting.exposure x EXPOSURE_K); brightness scales it
 var area_exposure := 1.0   # per-area easing for already-bright skies (set_area)
 var preset_lift := 1.0     # graphics-preset compensation (set_preset_lift)
 var brightness := 1.0      # Settings -> Brightness
 const STREAM_DIST := 95.0    # an area is drawn while its rect is within this many metres of the focus
-## WorldView PROP_CELL / SHADOW_RANGE: prop batches are split into cells so off-screen ones are culled, and cells further than
-## SHADOW_RANGE from the hero stop casting moon shadows (the shadow pass was half the frame).
-const PROP_CELL := 12.0
+## WorldView SHADOW_RANGE: tall prop groups (one per kind and area) further than SHADOW_RANGE from the hero stop casting moon shadows
+## (the shadow pass was half the frame).
 const SHADOW_RANGE := 32.0
 ## Runtime range (Graphics preset: further on High / Ultra); SHADOW_RANGE on Low / Medium.
 var shadow_range := SHADOW_RANGE
@@ -290,6 +289,7 @@ func _floor_mat(theme_key: String, w: float, d: float) -> StandardMaterial3D:
 ## per area ran all 8 prop lights on every floor pixel; a tile only gets the 1-3 lights that reach it. UVs are world-anchored in the mesh
 ## (the web sets UVs from world position), so one material per theme serves every tile and adjacent tiles line up.
 const FLOOR_TILE := 12.0
+const OUTSIDE_TILE := 60.0   # the dark earth beyond the walls
 var _floor_mats: Dictionary = {}
 
 func _theme_mat(theme_key: String) -> StandardMaterial3D:
@@ -301,9 +301,10 @@ func _theme_mat(theme_key: String) -> StandardMaterial3D:
 	return _floor_mats[theme_key]
 
 func _plane(parent: Node3D, x0: float, z0: float, x1: float, z1: float, theme_key: String, y: float, tile := FLOOR_TILE) -> MeshInstance3D:
-	var f: Dictionary = world.floors[theme_key]
-	var t := float(f.tile)
-	var mat := _theme_mat(theme_key)
+	return _plane_mat(parent, x0, z0, x1, z1, _theme_mat(theme_key), float(world.floors[theme_key].tile), y, tile)
+
+## Tiles of up to `tile` m covering (x0, z0)-(x1, z1) with ONE shared material; UVs are world metres / `t` (+ `uv0`, the anchor).
+func _plane_mat(parent: Node3D, x0: float, z0: float, x1: float, z1: float, mat: Material, t: float, y: float, tile: float, uv0 := Vector2.ZERO) -> MeshInstance3D:
 	var last: MeshInstance3D = null
 	var nx := maxi(1, ceili((x1 - x0) / tile))
 	var nz := maxi(1, ceili((z1 - z0) / tile))
@@ -320,7 +321,7 @@ func _plane(parent: Node3D, x0: float, z0: float, x1: float, z1: float, theme_ke
 			st.set_normal(Vector3.UP)
 			var corners := [Vector2(ax, az), Vector2(bx, az), Vector2(bx, bz), Vector2(ax, az), Vector2(bx, bz), Vector2(ax, bz)]
 			for c: Vector2 in corners:
-				st.set_uv(Vector2(c.x / t, c.y / t))
+				st.set_uv((c - uv0) / t)
 				st.add_vertex(Vector3(c.x - cx, 0.0, c.y - cz))
 			st.generate_tangents()
 			var mi := MeshInstance3D.new()
@@ -340,25 +341,11 @@ func _floors() -> void:
 	om.texture_filter = SHARP
 	om.albedo_color = Color.html("#3a3440")
 	om.roughness = 1.0
-	om.uv1_scale = Vector3(60.0 / 420.0, 60.0 / 420.0, 1)
 	var outside := Node3D.new()
 	outside.name = "outside"
 	add_child(outside)
-	var n := 14
-	var span := 420.0 / n
-	for ix in n:
-		for iz in n:
-			var pm := PlaneMesh.new()
-			pm.size = Vector2(span, span)
-			var tm := om.duplicate() as StandardMaterial3D
-			tm.uv1_scale = Vector3(60.0 / n, 60.0 / n, 1)
-			tm.uv1_offset = Vector3(60.0 * ix / n, 60.0 * iz / n, 0)
-			var omi := MeshInstance3D.new()
-			omi.mesh = pm
-			omi.material_override = tm
-			omi.position = Vector3(20 - 210 + span * (ix + 0.5), -0.06, -60 - 210 + span * (iz + 0.5))
-			omi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			outside.add_child(omi)
+	# One shared material (the soil repeats every 7 m, anchored at the square's corner) on 60 m tiles.
+	_plane_mat(outside, -190.0, -270.0, 230.0, 150.0, om, 7.0, -0.06, OUTSIDE_TILE, Vector2(-190.0, -270.0))
 	for id in world.order:
 		var a: Dictionary = world.areas[id]
 		var r: Dictionary = a.rect
@@ -459,34 +446,40 @@ func _all_props() -> void:
 					pool_pos.append({"x": p.x, "z": p.z, "y": float(spec.light.y) * float(p.scale), "L": spec.light})
 		_light_pools(parent, pool_pos, area)
 
-func _prop_batch(parent: Node3D, spec: Dictionary, plist_all: Array) -> void:
+func _prop_xf(p: Dictionary) -> Transform3D:
+	var tilt: float = p.tilt
+	var basis := Basis.from_euler(Vector3(tilt, p.rot, tilt * 0.6), EULER_ORDER_XYZ) * Basis.from_scale(Vector3.ONE * p.scale)
+	return Transform3D(basis, Vector3(p.x, p.y, p.z))
+
+## One MultiMeshInstance3D per (prop kind part, area): the instances of a kind are drawn in one call (the Depths floor batches its own props the same way).
+## At most LIGHT_NEAR (8) prop lights are on at once, which is also Compatibility's per-mesh light limit, so a group as wide as its area can never lose a light.
+## The shadow cell of a tall group is its instances' bounds: it casts moon shadows while the hero is within shadow_range of them.
+func _prop_batch(parent: Node3D, spec: Dictionary, plist: Array) -> void:
 	var parts := DmModels.prop_parts(spec.url, float(spec.height))
 	var casts := float(spec.height) > 1.5
-	var cells: Dictionary = {}
-	for p in plist_all:
-		var key := Vector2i(floori(float(p.x) / PROP_CELL), floori(float(p.z) / PROP_CELL))
-		if not cells.has(key):
-			cells[key] = []
-		cells[key].append(p)
-	for key: Vector2i in cells:
-		var plist: Array = cells[key]
-		for part in parts:
-			var mm := MultiMesh.new()
-			mm.transform_format = MultiMesh.TRANSFORM_3D
-			mm.mesh = part.mesh
-			mm.instance_count = plist.size()
-			for i in plist.size():
-				var p: Dictionary = plist[i]
-				var tilt: float = p.tilt
-				var basis := Basis.from_euler(Vector3(tilt, p.rot, tilt * 0.6), EULER_ORDER_XYZ) * Basis.from_scale(Vector3.ONE * p.scale)
-				var t := Transform3D(basis, Vector3(p.x, p.y, p.z)) * (part.local as Transform3D)
-				mm.set_instance_transform(i, t)
-			var mmi := MultiMeshInstance3D.new()
-			mmi.multimesh = mm
-			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			parent.add_child(mmi)
-			if casts:
-				_shadow_cells.append({"node": mmi, "x0": key.x * PROP_CELL, "z0": key.y * PROP_CELL, "x1": (key.x + 1) * PROP_CELL, "z1": (key.y + 1) * PROP_CELL, "on": true})
+	var x0 := INF
+	var z0 := INF
+	var x1 := -INF
+	var z1 := -INF
+	for p in plist:
+		x0 = minf(x0, float(p.x))
+		z0 = minf(z0, float(p.z))
+		x1 = maxf(x1, float(p.x))
+		z1 = maxf(z1, float(p.z))
+	for part in parts:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = part.mesh
+		mm.instance_count = plist.size()
+		for i in plist.size():
+			mm.set_instance_transform(i, _prop_xf(plist[i]) * (part.local as Transform3D))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.set_meta("dm_prop", true)
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		parent.add_child(mmi)
+		if casts:
+			_shadow_cells.append({"node": mmi, "x0": x0, "z0": z0, "x1": x1, "z1": z1, "on": true})
 
 func _prop_light(parent: Node3D, p: Dictionary, L: Dictionary, area: String) -> void:
 	var col := _hex(L.color)

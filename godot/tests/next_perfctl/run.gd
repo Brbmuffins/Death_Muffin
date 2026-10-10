@@ -142,14 +142,16 @@ func _settings() -> void:
 	check(DmSettings.clamp_window_mode("fullscreen") == "fullscreen" and DmSettings.clamp_window_mode("borderless") == "borderless", "window mode keeps the offered values")
 	check(DmSettings.clamp_window_mode("bogus") == "windowed" and DmSettings.clamp_window_mode(null) == "windowed", "any other window mode is windowed")
 	st.update({"graphics": "ultra"})
-	check(b.light_near > DmWorldBuilder.LIGHT_NEAR and DmGraphicsPreset.get_preset("high")["lights"] == DmWorldBuilder.LIGHT_NEAR, "ultra is richer than high; high keeps the old High's lights")
+	check(b.light_near == DmWorldBuilder.LIGHT_NEAR and DmGraphicsPreset.get_preset("high")["lights"] == DmWorldBuilder.LIGHT_NEAR, "ultra keeps the High light cap (Compatibility lights a mesh with at most 8)")
+	for pid in DmGraphicsPreset.IDS:
+		check(int(DmGraphicsPreset.get_preset(pid)["lights"]) <= 8, "preset %s: at most 8 prop lights" % pid)
 	st.update({"graphics": "bogus"})
 	check(DmGraphicsPreset.normalize("bogus") == "high" and b.light_near == DmWorldBuilder.LIGHT_NEAR, "unknown graphics value behaves as High")
 	st.update({"graphics": "high"})
 	st.update({"fps": 0})
 	check(Engine.max_fps == 0, "fps Max = uncapped")
 	# culling / streaming / shadow range are the builder's constants, driven by DmNextWorld.update every frame
-	check(DmWorldBuilder.PROP_CELL == 12.0 and DmWorldBuilder.SHADOW_RANGE == 32.0 and DmWorldBuilder.LIGHT_NEAR == 8, "culling: prop cell 12 m, shadow range 32 m, 8 prop lights (as the current client)")
+	check(DmWorldBuilder.SHADOW_RANGE == 32.0 and DmWorldBuilder.LIGHT_NEAR == 8, "culling: shadow range 32 m, 8 prop lights (as the current client)")
 	# auto_res off: a stepped-down view returns to full resolution at once
 	g.perf.governor.scale = 0.7
 	g.perf._apply_render_scale()
