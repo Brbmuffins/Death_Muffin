@@ -1,6 +1,15 @@
 [
   {
     "date": "2026-10-10",
+    "title": "Threading Options (experimental)",
+    "items": [
+      "Settings → Graphics: two new opt-in switches to try on your PC, both off by default and applied after a restart: Physics on a separate thread (experimental) and Separate render thread (only with the Mobile renderer).",
+      "If the game crashes soon after you change one, it starts with all graphics options back to normal; starting with `--safe-graphics` does the same.",
+      "F3 and bug reports show which renderer and threading options are active."
+    ]
+  },
+  {
+    "date": "2026-10-10",
     "title": "Lighter on the Graphics Card",
     "items": [
       "Graveyard and cathedral props draw in far fewer batches (about a third fewer draw calls in the Hollow Graves and the Nave).",
