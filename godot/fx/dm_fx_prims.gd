@@ -128,7 +128,7 @@ func set_mote_share(share: float) -> void:
 
 func _init(parent: Node3D) -> void:
 	group = parent
-	additive = DmFxRing.new(int(_caps.get("additive_particles", 3500)), DmFxTex.get_tex("glow"), true)
+	additive = DmFxRing.new(int(_caps.get("additive_particles", 3500)), DmFxTex.get_tex("glow"), true, true)
 	smoke = DmFxRing.new(int(_caps.get("smoke_particles", 900)), DmFxTex.get_tex("smoke"), false)
 	group.add_child(additive.node)
 	group.add_child(smoke.node)

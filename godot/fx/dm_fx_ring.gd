@@ -15,6 +15,8 @@ var last_upload_bytes := 0   ## size of the last instance-buffer upload (0 when 
 const STEP := 256         ## instance_count granularity
 const SHRINK_SLACK := 512 ## the buffer shrinks only when this many instances too large (reallocation is the costly part)
 
+var _gpu: DmFxMotes   # set for the additive ring: motes fly on the GPU (order does not matter when adding); null = the CPU ring below
+
 var _pos: PackedFloat32Array
 var _vel: PackedFloat32Array
 var _col: PackedFloat32Array
@@ -31,9 +33,16 @@ var _list: PackedInt32Array = PackedInt32Array()  # indices of live motes
 var _shown := false
 
 
-func _init(cap: int, tex: Texture2D, additive: bool) -> void:
+## gpu: simulate the motes in the vertex shader (DmFxMotes) instead of the CPU loop. Only for blend-add rings: the normal-blend smoke
+## ring keeps its CPU order (oldest first) so overlapping smoke layers exactly as before.
+func _init(cap: int, tex: Texture2D, additive: bool, gpu: bool = false) -> void:
 	capacity = cap
 	limit = cap
+	if gpu:
+		_gpu = DmFxMotes.new(cap, tex, additive, 5)
+		node = _gpu.node
+		mm = _gpu.mm
+		return
 	_pos = PackedFloat32Array(); _pos.resize(cap * 3)
 	_vel = PackedFloat32Array(); _vel.resize(cap * 3)
 	_col = PackedFloat32Array(); _col.resize(cap * 3)
@@ -62,6 +71,10 @@ func _init(cap: int, tex: Texture2D, additive: bool) -> void:
 
 ## Usable ring size (clamped to 1..capacity). Takes effect for new motes.
 func set_limit(n: int) -> void:
+	if _gpu != null:
+		_gpu.set_limit(n)
+		limit = _gpu.limit
+		return
 	limit = clampi(n, 1, capacity)
 	if _cursor >= limit:
 		_cursor = 0
@@ -87,6 +100,10 @@ func emit(o: Dictionary) -> void:
 	var ox := float(o.get("x", 0.0))
 	var oy := float(o.get("y", 0.0))
 	var oz := float(o.get("z", 0.0))
+	if _gpu != null:
+		for n in count:
+			_gpu.spawn(ox, oy, oz, c, spread, speed, up, life, size, gravity, drag, shrink, inward)
+		return
 	for n in count:
 		var i := _cursor
 		_cursor = (_cursor + 1) % limit
@@ -118,10 +135,16 @@ func emit(o: Dictionary) -> void:
 
 
 func active() -> int:
+	if _gpu != null:
+		return _gpu.active()
 	return _active
 
 
 func update(dt: float) -> void:
+	if _gpu != null:
+		_gpu.update(dt)
+		last_upload_bytes = _gpu.last_upload_bytes
+		return
 	if _active == 0:
 		if _shown:   # once, not on every idle frame
 			_shown = false
