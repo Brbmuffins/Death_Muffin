@@ -219,6 +219,7 @@ func _build() -> void:
 	take_all_button.pressed.connect(_take.bind("all"))
 	take_row.add_child(take_materials_button)
 	take_row.add_child(take_all_button)
+	right.add_child(DmUi.spacer(0, (ceili(float(DmBag.BAG_SIZE) / COLS) - ceili(float(DmVault.VAULT_TAB_SIZE) / COLS)) * (SLOT_PX + 4) - 38.0))   # line up with the bag's extra row, less the tab row (32 + 6 gap) the Vault side has
 	right.add_child(take_row)
 	var mid := DmPb.vbox(4)
 	add_child(mid)
