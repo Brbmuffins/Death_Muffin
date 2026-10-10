@@ -11,6 +11,8 @@ extends Control
 signal pressed(slot: DmItemSlot)
 signal double_clicked(slot: DmItemSlot)
 signal right_clicked(slot: DmItemSlot)
+## Something was dropped on this cell and `accepts` said yes.
+signal dropped(slot: DmItemSlot, payload: Variant)
 
 enum Kind { BAG, EQUIP, BELT }
 
@@ -24,6 +26,8 @@ var plain_tip := false
 var index: int = -1
 ## Godot drag source (the web only drags brews onto the HUD belt: InventoryPanel `draggable` + BELT_DRAG_TYPE). null = not draggable.
 var drag_data: Variant = null
+## Drop target test: Callable(slot, payload) -> bool. Invalid = this cell takes no drops.
+var accepts: Callable = Callable()
 var selected := false:
 	set(v):
 		selected = v
@@ -85,11 +89,33 @@ func _gui_input(event: InputEvent) -> void:
 func _get_drag_data(_at: Vector2) -> Variant:
 	if drag_data == null or not is_filled():
 		return null
-	var prev := Label.new()
-	prev.text = String(data.get("name", ""))
-	prev.theme = DmUi.theme()
-	set_drag_preview(prev)
+	var ic: Texture2D = data.get("icon", null)
+	if ic != null:
+		var tr := TextureRect.new()
+		tr.texture = ic
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size = Vector2(44, 44)
+		tr.position = Vector2(-22, -22)
+		tr.modulate.a = 0.85
+		var holder := Control.new()
+		holder.add_child(tr)
+		set_drag_preview(holder)
+	else:
+		var prev := Label.new()
+		prev.text = String(data.get("name", ""))
+		prev.theme = DmUi.theme()
+		set_drag_preview(prev)
+	DmTip.of(self).hide_for(self)
 	return drag_data
+
+
+func _can_drop_data(_at: Vector2, payload: Variant) -> bool:
+	return accepts.is_valid() and bool(accepts.call(self, payload))
+
+
+func _drop_data(_at: Vector2, payload: Variant) -> void:
+	dropped.emit(self, payload)
 
 
 ## The hover card (InventoryPanel.showTooltip): only for a filled cell.
@@ -121,7 +147,11 @@ func _draw() -> void:
 		var ic: Texture2D = data.get("icon", null)
 		var inner := r.grow(-1.0)
 		if ic != null:
-			draw_texture_rect(ic, inner, false)
+			# keep the icon's proportions: fit inside the cell, centred (a plain rect stretched non-square art)
+			var ts := ic.get_size()
+			if ts.x > 0.0 and ts.y > 0.0:
+				var fit := ts * minf(inner.size.x / ts.x, inner.size.y / ts.y)
+				draw_texture_rect(ic, Rect2(inner.position + (inner.size - fit) * 0.5, fit), false)
 		else:
 			var g: String = data.get("glyph", "◆")
 			var f := DmUi.font("body")

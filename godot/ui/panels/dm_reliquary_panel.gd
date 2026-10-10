@@ -23,6 +23,7 @@ signal salvage_requested(item: Dictionary)
 signal action_requested(id: String, item: Dictionary)
 signal slot_right_clicked(item: Dictionary)
 
+const DRAG_EQUIP := "reliquary_equip"
 const BAG_SIZE := 48
 const COLS := 8
 ## Height of the selected-item strip; fixed so the window does not change size when the selection does.
@@ -133,6 +134,8 @@ func _build_ui() -> void:
 			s.empty_label = EQUIP[id][0]
 			s.pressed.connect(_on_slot_pressed)
 			s.double_clicked.connect(func(sl: DmItemSlot) -> void: equip_toggled.emit(sl.data))
+			s.accepts = _accepts_doll.bind(id)
+			s.dropped.connect(_on_drop)
 			_doll.add_child(s)
 			_doll_slots[id] = s
 	_setsum = VBoxContainer.new()
@@ -154,6 +157,8 @@ func _build_ui() -> void:
 		s2.pressed.connect(_on_slot_pressed)
 		s2.double_clicked.connect(func(sl: DmItemSlot) -> void: equip_toggled.emit(sl.data))
 		s2.right_clicked.connect(func(sl: DmItemSlot) -> void: slot_right_clicked.emit(sl.data))
+		s2.accepts = _accepts_belt.bind(b[0])
+		s2.dropped.connect(_on_drop)
 		_belt_row.add_child(s2)
 		_belt_slots[b[0]] = s2
 	tb.add_child(_belt_row)
@@ -259,7 +264,12 @@ func refresh() -> void:
 	for i in BAG_SIZE:
 		var d: Dictionary = bag[i] if i < bag.size() else {}
 		_slots[i].set_item(d)
-		_slots[i].drag_data = {"type": DmHudBrewChip.DRAG_TYPE, "item_id": d.get("item_id", "")} if drag_brews and d.get("is_brew", false) else null
+		if drag_brews and d.get("is_brew", false):
+			_slots[i].drag_data = {"type": DmHudBrewChip.DRAG_TYPE, "item_id": d.get("item_id", "")}
+		elif not d.is_empty() and d.get("equippable", false) and not d.get("equipped", false):
+			_slots[i].drag_data = {"type": DRAG_EQUIP, "item": d}
+		else:
+			_slots[i].drag_data = null
 		_slots[i].selected = not d.is_empty() and d.get("id", -1) == sel_item.get("id", -2)
 	for id in _doll_slots:
 		var s: DmItemSlot = _doll_slots[id]
@@ -306,6 +316,24 @@ func _render_setsum() -> void:
 		nx.add_theme_font_size_override("font_size", 11)
 		box.add_child(nx)
 		_setsum.add_child(box)
+
+
+## Drag a bag item onto its paper-doll cell or tool-belt cell to equip it (same action as the Equip button).
+func _accepts_doll(_sl: DmItemSlot, payload: Variant, id: String) -> bool:
+	if not (payload is Dictionary) or payload.get("type", "") != DRAG_EQUIP:
+		return false
+	var row: Variant = (payload["item"] as Dictionary).get("row", null)
+	return row is Dictionary and DmGear.equip_slot_of(row) == id
+
+
+func _accepts_belt(_sl: DmItemSlot, payload: Variant, kind: String) -> bool:
+	if not (payload is Dictionary) or payload.get("type", "") != DRAG_EQUIP:
+		return false
+	return DmGathering.tool_kind_of(String((payload["item"] as Dictionary).get("item_id", ""))) == kind
+
+
+func _on_drop(_sl: DmItemSlot, payload: Variant) -> void:
+	equip_toggled.emit(payload["item"])
 
 
 func _on_slot_pressed(sl: DmItemSlot) -> void:
