@@ -250,7 +250,7 @@ func _branch(nm: String, vis: bool) -> Array:
 
 
 func _e_replication() -> void:
-	var port := 40000 + randi() % 9999
+	var port := DmTestPorts.free_port()
 	var h := _branch("H", false)
 	var c1 := _branch("C1", true)
 	var hp := ENetMultiplayerPeer.new()
