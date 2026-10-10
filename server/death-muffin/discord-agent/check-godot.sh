@@ -84,6 +84,10 @@ export DM_PAYLOAD='
   if [ "$rc" -ne 0 ] || [ "$bad" -gt 0 ]; then echo "GODOT TESTS: $LABEL ($total suites$NOTE) — $((total - bad)) passed, $bad FAILED"; exit 1; fi
   echo "GODOT TESTS: $LABEL ($total suites$NOTE) — $total passed"
 '   # the sandboxed work; run by dm_sandbox_run inside the nested namespace (sandbox-lib.sh)
+# One Godot test run at a time on this VPS (owner, 2026-10-10: three jobs testing at once slowed each other down; one run gets every core).
+# The slot is ~/death-muffin/test-slot.lock, shared by the Discord and bug agents and the ship (both installers create it); no file = no waiting.
+SLOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/test-slot.lock"
+if [ -f "$SLOT" ] && exec 7<"$SLOT"; then flock -n 7 || { echo "waiting for the test slot (another check is running)"; flock -w 3000 7 || echo "test slot still busy after 50 min; running anyway"; }; fi
 timeout -k 30 5100 unshare -rnm bash -c '. "$DM_SANDBOX_LIB"; dm_sandbox_run'
 rc=$?
 if [ $rc -eq 124 ] || [ $rc -eq 137 ]; then echo "GODOT TESTS: timed out after 85 minutes"; fi

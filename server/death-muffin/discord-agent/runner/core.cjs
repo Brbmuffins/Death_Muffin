@@ -245,9 +245,9 @@ function createRunner(cfgIn, opts = {}) {
   }
 
   // ---------- rounds ----------
-  const projDir = (wt) => path.join(cfg.claudeProjectsDir || path.join(process.env.HOME || '', '.claude', 'projects'), String(wt).replace(/[^a-zA-Z0-9]/g, '-'));
   const beginRound = (job) => { const p = startRound(job).catch((e) => { console.error('round failed', e); return false; }); starting.set(job.threadId, p); return p.finally(() => starting.delete(job.threadId)); };
-  // Fresh branch + worktree from the current origin/<baseBranch> in the same thread / job record; the claude session carries on.
+  // Fresh branch + worktree from the current origin/<baseBranch> in the same thread / job record, and a fresh claude session (owner, 2026-10-10:
+  // resuming made every step of a later round re-read all earlier rounds; one thread read 10M cached tokens). The agent gets a short summary instead.
   async function startRound(job) {
     const prev = { worktree: job.worktree, branch: job.branch };
     const round = (job.round || 1) + 1;
@@ -257,13 +257,12 @@ function createRunner(cfgIn, opts = {}) {
     // images already attached to messages that are waiting come along; the claude conversation file moves to the new project dir
     if (prev.worktree) { try { const inbox = path.join(prev.worktree, '.dm-inbox'); if (fs.existsSync(inbox)) fs.cpSync(inbox, path.join(w.worktree, '.dm-inbox'), { recursive: true }); else job.inboxBytes = 0; } catch { /* best effort */ } }
     else job.inboxBytes = 0;
-    // a conversation from the other game (web-era threads after the switch to godot) would point the agent at the wrong scripts and code: start fresh
-    const carry = (job.sessionMode || 'web') === cfg.mode;
-    if (!carry) job.sessionId = null;
-    if (job.sessionId && prev.worktree) { try { const f = `${job.sessionId}.jsonl`; const dst = projDir(w.worktree); fs.mkdirSync(dst, { recursive: true }); fs.copyFileSync(path.join(projDir(prev.worktree), f), path.join(dst, f)); } catch { /* resume falls back to a fresh session */ } }
+    const carry = (job.sessionMode || 'web') === cfg.mode;   // false: the earlier rounds were on the old web game
+    job.sessionId = null;
+    const earlier = (job.history || []).slice(-6).map((h) => `round ${h.round || 1} ${h.discarded ? 'discarded' : `shipped${h.shipSha ? ` (${String(h.shipSha).slice(0, 7)})` : ''}`}${h.title ? `: ${clip(h.title, 90)}` : ''}`).join('; ');
     if (prev.worktree) await G.removeJobArtifacts(cfg, { ...job, ...prev }).catch(() => {});
     Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, shotsSeen: {}, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
-      roundNote: carry ? `Your previous change shipped and is live (or was discarded). You are on a fresh branch from the latest ${BB}; read the code again before relying on what you remember.`
+      roundNote: carry ? `New round in this thread on a fresh branch from the latest ${BB}; the earlier conversation is not carried over. Earlier rounds here: ${earlier || 'none'}. Work from the request and the code as it is now.`
         : `This thread's earlier work was on a different version of the game, so that conversation is not carried over. You are on a fresh branch from the latest ${BB}; work from the request and the code.`, lastActive: now() });
     audit.log('round', { job: job.id, round, branch: job.branch, base: w.base });
     save(); return true;
@@ -313,7 +312,7 @@ function createRunner(cfgIn, opts = {}) {
         if (!job.proposal || job.status !== 'proposed') return { action: 'reply', text: 'There is no open proposal to preview yet.' };
         if (job.running || job.previewBusy) return { action: 'reply', text: 'Busy right now; try again in a minute.' };
         job.previewBusy = true;
-        say(job, 'Rebuilding the playable preview (about a minute)…');
+        say(job, GODOT ? 'Building the Windows test build (a few minutes)…' : 'Rebuilding the playable preview (about a minute)…');
         buildPreview(job, job.proposal.title).then((pv) => {
           if (['discarded', 'shipped', 'shipping', 'deleted'].includes(job.status) || job.deleteRequested) { G.removePreview(cfg, job); return; }
           say(job, pv.ok ? (GODOT ? `Playable preview (Windows: unzip, run Play Preview (offline).bat): ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.` : `Playable preview: ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.`) : `Preview build failed: ${pv.why}`);
@@ -354,7 +353,7 @@ function createRunner(cfgIn, opts = {}) {
       }
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: `Commands: !status, !credits (your model-generation budget), !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (rebuild the playable preview), !report [number] (in-game bug reports), !sync, !retry (a failed client publish), rollback (approvers).` };
+      default: return { action: 'reply', text: `Commands: !status, !credits (your model-generation budget), !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (build a playable preview), !report [number] (in-game bug reports), !sync, !retry (a failed client publish), rollback (approvers).` };
     }
   }
 
@@ -442,7 +441,7 @@ function createRunner(cfgIn, opts = {}) {
     audit.log('discarded', { job: job.id, userId: String(byId) });
     job.artRequest = null;
     await G.removeJobArtifacts(cfg, job);
-    (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, discarded: true, at: new Date(now()).toISOString() });
+    (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, discarded: true, title: (job.proposal && job.proposal.title) || job.title || null, at: new Date(now()).toISOString() });
     job.status = 'discarded'; job.queue = []; job.proposal = null; job.worktree = null; save(); syncName(job);
     say(job, `Discarded. Branch \`${job.branch}\` and its workspace are deleted. Nothing went live. Message me here whenever you want to start the next change.`);
   }
@@ -578,6 +577,7 @@ function createRunner(cfgIn, opts = {}) {
     try {
       say(job, 'Rendering the "before" pictures from the unchanged game (a minute or two)…');
       await G.git(cfg.repo, ['worktree', 'add', '-q', '--detach', '-f', dir, job.base]);
+      await G.seedGodotCache(cfg, dir);
       fs.copyFileSync(path.join(job.worktree, '.dm-shot.json'), path.join(dir, '.dm-shot.json'));
       const r = await G.run(path.join(cfg.toolsDir, 'shot-godot.sh'), [], { cwd: dir, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: 20 * 60000 });
       audit.log('base-shots', { job: job.id, code: r.code, timedOut: !!r.timedOut });
@@ -706,9 +706,12 @@ function createRunner(cfgIn, opts = {}) {
       ],
       footer: { text: `✅ ship (${owner.join(' / ')}) · ❌ discard · reply to keep iterating · ${job.id}` },
     };
-    const pv = await buildPreview(job, title);
+    // Godot: the Windows preview is built only on request (owner, 2026-10-10: 44 built in a day, none downloaded; each is a full import + export).
+    const onRequest = GODOT && cfg.previewOnProposal !== true;
+    const pv = onRequest ? { onRequest: true } : await buildPreview(job, title);
     if (job.status === 'discarded' || job.cancelRequested) { G.removePreview(cfg, job); return; }
-    const previewField = pv.ok
+    const previewField = pv.onRequest ? { name: 'Try it', value: 'Say `!preview` for a Windows test build of this change (a few minutes).', inline: false }
+      : pv.ok
       ? { name: GODOT ? 'Try it (Windows download)' : 'Try it (playable preview)', value: `${pv.url}\n${GODOT ? 'Unzip it and run Play Preview (offline).bat. ' : ''}Offline sandbox copy of this change: nothing saves to your real character.`, inline: false }
       : { name: 'Preview build failed', value: `${pv.why}\nThe proposal is still valid; review the diff, or say !preview to retry.`, inline: false };
     embed.fields.splice(embed.fields.length - 1, 0, previewField);
@@ -906,6 +909,10 @@ function createRunner(cfgIn, opts = {}) {
     ship(job, approverId).catch((e) => { setBusy(false); say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } })
       .finally(() => { if (job.deleteRequested) cleanupDeleted(job).then(() => pump()); });
   }
+  // Ships merged with DEFER_PUBLISH (another approved ship was waiting): pushed to the base branch, not yet in a published client. The next publish
+  // carries them (healOtherPublishes says so in their threads); if nothing else ships, drainShipQueue publishes the newest one by itself.
+  const deferredJobs = () => Object.values(jobs).filter((j) => j.publishFailed && j.publishFailed.deferred).sort((a, b) => a.publishFailed.at - b.publishFailed.at);
+  const releaseTitle = (...titles) => redactText([...deferredJobs().map((j) => j.publishFailed.proposal && j.publishFailed.proposal.title), ...titles].filter(Boolean).filter((t, i, a) => a.indexOf(t) === i).join(' · ')).slice(0, 120);
   // Approved ships waiting for the deploy, oldest approval first (job.shipQueued survives a runner restart in jobs.json).
   function shipQueue() { return Object.values(jobs).filter((j) => j.shipQueued).sort((a, b) => a.shipQueued.at - b.shipQueued.at); }
   // Ships the oldest queued job that is still exactly what was approved; anything that changed while waiting is dropped with a note.
@@ -925,13 +932,17 @@ function createRunner(cfgIn, opts = {}) {
       startShip(job, q.approverId);
       return;
     }
+    const d = deferredJobs(); const last = d[d.length - 1];   // nothing left to ship: publish what the batch merged
+    if (last && !last.deleteRequested) retryPublish(last, null).catch((e) => { setBusy(false); say(last, `Publish crashed: ${e.message}`); });
   }
   async function ship(job, approverId) {
     setBusy(true, `ship ${job.id}`); job.status = 'shipping'; save();
     const p = job.proposal;
+    const defer = GODOT && shipQueue().some((j) => j !== job);   // another approved ship waits: merge now, one publish for the batch
     say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto ${BB}, re-testing, deploying. This takes a few minutes.`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
-      RELEASE_TITLE: redactText(p.title || job.title || ''),   // the #build-alerts notice is titled with the proposal's title, else the thread's name (announce-release.sh)
+      RELEASE_TITLE: releaseTitle(p.title || job.title),   // #build-alerts notice title: the proposal's title (else the thread's name), joined with any batched ships' titles
+      ...(defer ? { DEFER_PUBLISH: '1' } : {}),
       MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
       MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
@@ -940,11 +951,18 @@ function createRunner(cfgIn, opts = {}) {
     const out = r.out + r.err; const m = /^RESULT: (\S+)\s*(.*)$/m.exec(out); const kind = m ? m[1] : 'crashed'; const detail = m ? m[2] : '';
     audit.log('ship-result', { job: job.id, kind, detail, approver: approverId });
     const tail = clip(out.trim().split('\n').slice(-12).join('\n'), 900);
+    if (kind === 'merged') {   // DEFER_PUBLISH: on the base branch, live with the next publish
+      const sha = detail.split(' ')[0];
+      job.publishFailed = { sha, proposal: p, approverId: String(approverId), at: now(), autoRetried: false, messageId: null, deferred: true };
+      job.status = 'idle'; job.proposal = null; save(); syncName(job);
+      say(job, `✅ Merged into ${BB} as \`${sha}\`. Another approved change is right behind it, so both go live together with the next publish (a few minutes).`);
+      pump(); return;
+    }
     if (kind === 'live') {
       const [sha, rb] = detail.split(' ');
       healOtherPublishes(job, sha);
       logShip({ type: 'live', jobId: job.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: p.tier, title: p.title, rollback: rb && rb !== 'none' ? rb : null });
-      job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, at: new Date(now()).toISOString() }); save(); syncName(job);
+      job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, title: p.title, at: new Date(now()).toISOString() }); save(); syncName(job);
       // Phones + offline edition are best effort (ship.sh prints one MOBILE: line); the PC release is live either way.
       const mm = /^MOBILE: (\S+)\s*(.*)$/m.exec(out); const mkind = mm ? mm[1] : ''; const mwhy = mm ? clip(mm[2], 300) : '';
       audit.log('mobile-result', { job: job.id, kind: mkind || 'none', detail: mwhy });
@@ -1011,9 +1029,9 @@ function createRunner(cfgIn, opts = {}) {
   async function retryPublish(job, uid) {
     const pf = job.publishFailed; if (!pf) return;
     setBusy(true, `publish retry ${job.id}`);
-    say(job, uid ? `Retrying the client publish for \`${pf.sha}\` (${nameOf(uid)})…` : `Trying the client publish for \`${pf.sha}\` again by myself…`);
+    if (!pf.deferred || uid) say(job, uid ? `Retrying the client publish for \`${pf.sha}\` (${nameOf(uid)})…` : `Trying the client publish for \`${pf.sha}\` again by myself…`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, JOBID: job.id, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
-      BASE_BRANCH: BB, MODE: 'godot', DEPLOY_DIR: cfg.deployDir, PUBLISH_ONLY: '1', PUBLISH_SHA: pf.sha, RELEASE_TITLE: redactText((pf.proposal && pf.proposal.title) || job.title || ''), ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}),
+      BASE_BRANCH: BB, MODE: 'godot', DEPLOY_DIR: cfg.deployDir, PUBLISH_ONLY: '1', PUBLISH_SHA: pf.sha, RELEASE_TITLE: pf.deferred ? releaseTitle() : releaseTitle((pf.proposal && pf.proposal.title) || job.title), ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}),
       ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 60 * 60000 }); }
@@ -1024,7 +1042,7 @@ function createRunner(cfgIn, opts = {}) {
       const [sha, rb] = detail.split(' ');
       const p = pf.proposal; job.publishFailed = null;
       if (kind === 'live') logShip({ type: 'live', jobId: job.id, sha, approverId: pf.approverId, approverName: nameOf(pf.approverId), tier: p.tier, title: p.title, rollback: rb && rb !== 'none' ? rb : null, retry: uid || 'auto' });
-      (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, at: new Date(now()).toISOString() }); save();
+      (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, title: p.title, at: new Date(now()).toISOString() }); save();
       say(job, kind === 'live' ? `🚀 Live. The Windows client with \`${sha}\` is published. Thanks, ${nameOf(job.creatorId)}.` : `🚀 Live. The client that is live now (\`${rb}\`) already includes \`${sha}\`.`);
       if (kind === 'live') healOtherPublishes(job, sha);
       await endIfSettled(job, kind === 'live' ? sha : (rb || sha), p);
@@ -1059,7 +1077,8 @@ function createRunner(cfgIn, opts = {}) {
       const pf = o.publishFailed;
       G.git(cfg.repo, ['merge-base', '--is-ancestor', pf.sha, sha], { allowFail: true }).then((r) => {
         if (r.code !== 0 || o.publishFailed !== pf) return;
-        o.publishFailed = null; (o.history = o.history || []).push({ round: o.round || 1, branch: o.branch, shipSha: pf.sha, at: new Date(now()).toISOString() }); save();
+        o.publishFailed = null; (o.history = o.history || []).push({ round: o.round || 1, branch: o.branch, shipSha: pf.sha, title: pf.proposal && pf.proposal.title, at: new Date(now()).toISOString() }); save();
+        if (pf.deferred && pf.proposal) logShip({ type: 'live', jobId: o.id, sha: pf.sha, approverId: pf.approverId, approverName: nameOf(pf.approverId), tier: pf.proposal.tier, title: pf.proposal.title, rollback: null, batchedWith: sha });
         audit.log('publish-healed', { job: o.id, sha: pf.sha, by: sha });
         say(o, `🚀 Live. \`${pf.sha}\` went out with the client published for \`${sha}\`.`);
         return endIfSettled(o, sha, pf.proposal);
@@ -1099,8 +1118,23 @@ function createRunner(cfgIn, opts = {}) {
     if (!auth.isOwner(msg.userId)) ownerPing(target, `${nameOf(msg.userId)} ran a rollback (${ok ? 'ok' : 'FAILED'}).`);
   }
 
+  // Housekeeping (owner, 2026-10-10): a job record never points at a workspace that is gone, and a finished job holds no stuck messages
+  // (an older runner left one in a shipped thread for days). Runs at start and with every sweep.
+  function tidy() {
+    let n = 0;
+    for (const j of Object.values(jobs)) {
+      if (j.running || j.status === 'shipping' || starting.has(j.threadId)) continue;
+      if (j.worktree && !fs.existsSync(j.worktree)) { j.worktree = null; n++; }
+      if (['shipped', 'discarded', 'deleted'].includes(j.status) && j.queue.length && now() - (j.lastActive || 0) > 3600e3) {
+        audit.log('stale-queue-dropped', { job: j.id, messages: j.queue.length }); j.queue = []; n++;
+      }
+    }
+    if (n) save();
+    return n;
+  }
   // sweep: abandoned idle threads release their worktree
   async function sweep(staleDays = 7) {
+    tidy();
     for (const j of Object.values(jobs)) {
       if (j.running || ['shipped', 'discarded', 'shipping', 'deleted'].includes(j.status) || j.deleteRequested) continue;
       if (now() - j.lastActive > staleDays * 86400e3) { await G.removeJobArtifacts(cfg, j).catch(() => {}); (j.history = j.history || []).push({ round: j.round || 1, branch: j.branch, discarded: 'swept', at: new Date(now()).toISOString() }); j.status = 'discarded'; j.worktree = null; j.proposal = null; say(j, `Closed after ${staleDays} days without activity; the branch and workspace were removed. Message me here to start a fresh round.`); audit.log('swept', { job: j.id }); }
@@ -1108,11 +1142,12 @@ function createRunner(cfgIn, opts = {}) {
     save();
   }
 
+  tidy();
   for (const j of Object.values(jobs)) if (j.deleteRequested && !j.running) cleanupDeleted(j).catch(() => {});
   for (const j of Object.values(jobs)) if (j.publishFailed && !j.publishFailed.autoRetried) scheduleAutoRetry(j, 1);   // runner restarted while one was pending   // a delete that was waiting when the runner stopped
   if (art) art.reconcile().catch((e) => console.error('art reconcile', e.message));   // a run the previous process never settled is closed from the balance delta
   pump();
   setTimeout(() => drainShipQueue(), 0);   // ships queued before a runner restart
-  return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
+  return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, tidy, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }
 module.exports = { createRunner, progressNote, cancelTypo };

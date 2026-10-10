@@ -596,7 +596,7 @@ test('runner HTTP: /event takes a body far over 1 MB, other routes stay capped',
 const proposals = (thread) => thread.sent.filter((s) => s.payload.embeds);
 const waitNthProposal = (d, thread, n) => until(() => { const p = proposals(thread); return p.length >= n && p[n - 1].reactions.length === 2 && p[n - 1]; }, d.ad);
 
-test('rounds: after a ship the same thread starts a fresh branch from the new master, proposes and ships again', async () => {
+test('rounds: after a ship the same thread starts a fresh branch from the new master and a fresh conversation (with a summary), proposes and ships again', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
   const p1 = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0]; const id = job.id;
@@ -609,7 +609,8 @@ test('rounds: after a ship the same thread starts a fresh branch from the new ma
   const p2 = await waitNthProposal(d, thread, 2);
   assert.equal(job.round, 2); assert.equal(job.branch, `discord/${id}-2`); assert.equal(job.base, master1, 'cut from the master that was just shipped');
   assert.equal(sh(job.worktree, 'rev-parse', 'HEAD~1'), master1);
-  assert.ok(texts(thread).some((t) => /ROUND-NOTE-SEEN/.test(t)), 'the agent is told its earlier change is live');
+  const note = texts(thread).find((t) => /ROUND-NOTE-SEEN/.test(t)); assert.ok(note, 'the agent is told it is in a new round');
+  assert.match(note, /ROUND-SUMMARY-SEEN/, 'with a summary of what this thread shipped'); assert.doesNotMatch(note, /RESUMED/, 'a new round starts a fresh conversation (no --resume)');
   assert.equal(job.history.length, 1); assert.equal(job.history[0].round, 1); assert.ok(job.history[0].shipSha);
   assert.equal(job.turns <= 2, true, 'turn counter restarted for the round');
   await d.react(p2, IDS.HELIX, '✅');
@@ -779,7 +780,7 @@ test('godot mode: config defaults, validation and tier selection', () => {
   assert.equal(cfgOf({ baseBranch: 'release/1.2_x' }).baseBranch, 'release/1.2_x');
 });
 
-test('godot mode: question, gameplay proposal (godot-port compare link, zip preview, godot test summary), ship to godot-port, rollback republishes the previous client', async () => {
+test('godot mode: question, gameplay proposal (godot-port compare link, zip preview on request, godot test summary), ship to godot-port, rollback republishes the previous client', async () => {
   const w = godotWorld(); const d = makeDiscord(w.runner);
   const { thread: q } = await request(d, IDS.OWNER, 'where is player speed defined?');
   await until(() => texts(q).some((t) => /answer is in/.test(t)), d.ad);
@@ -794,14 +795,20 @@ test('godot mode: question, gameplay proposal (godot-port compare link, zip prev
   assert.equal(field(p, 'Tests'), '✅ quick check: 2 suites — 2 passed');
   const calls = () => fs.readFileSync(path.join(w.tools, 'check-godot.calls'), 'utf8').trim().split('\n');
   assert.ok(calls().length >= 1 && calls().every((c) => c === ''), 'proposal checks ran QUICK (no --full)');
-  assert.equal(field(p, 'Try it'), `https://example.test/death-muffin/preview/${id}/DeathMuffin-Preview-${id}-win64.zip\nUnzip it and run Play Preview (offline).bat. Offline sandbox copy of this change: nothing saves to your real character.`);
+  // the Windows preview is built only on request (!preview); none is built with the proposal
+  assert.equal(field(p, 'Try it'), 'Say `!preview` for a Windows test build of this change (a few minutes).');
+  assert.ok(!fs.existsSync(path.join(w.cfg.previewRoot, id)), 'no preview built with the proposal');
+  await d.say(thread, IDS.HELIX, '!preview');
+  await until(() => texts(thread).some((t) => t.includes(`https://example.test/death-muffin/preview/${id}/DeathMuffin-Preview-${id}-win64.zip`)), d.ad);
   assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, id, `DeathMuffin-Preview-${id}-win64.zip`)));
+  const checksBefore = calls().length;
   assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
   const live = await until(() => texts(thread).find((t) => /Live\. Release/.test(t)), d.ad);
   assert.ok(!fs.existsSync(path.join(w.cfg.stateDir, 'ship-active')), 'ship marker removed after the ship'); assert.match(live, /is on godot-port and deployed\./); assert.match(live, /Windows launcher on next start\. Phones and the old web\/offline game do not get Godot changes\./);
   assert.equal(remoteHead(w, 'master'), masterBefore, 'master is never touched in godot mode'); assert.notEqual(remoteHead(w, 'godot-port'), baseBefore);
   assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/game/a.gd').trim(), 'speed=9');
-  assert.equal(calls().pop(), '', 'a gameplay ship runs the QUICK check (dev build; only sensitive ships run --full)');
+  assert.equal(calls().length, checksBefore, 'nothing new to test at ship: the merged tree is exactly the proposal\'s, which passed its check');
+  assert.match(fs.readFileSync(path.join(w.tools, 'state', `ship-${id}.tests.log`), 'utf8'), /tests: skipped, the merged tree is exactly the proposal/);
   const ship = shipsLog(w)[0]; assert.equal(ship.tier, 'gameplay');
   assert.match(fs.readFileSync(path.join(w.deploy, 'deploys.log'), 'utf8'), new RegExp(`deployed ${ship.sha}`));
   assert.ok(!fs.existsSync(path.join(w.deploy, 'mobile-deploys.log')), 'no mobile step in godot mode');
@@ -975,20 +982,37 @@ test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores god
   assert.equal(spawnSync('bash', [script, '--bogus'], { cwd: T, encoding: 'utf8' }).status, 2);
 });
 
-test('bug-agent/check.sh: quick by default (only the selected suites), --full runs every suite, bad flag is a usage error', () => {
+test('the bug agent installs the Discord agent\'s check script (as check.sh): quick by default, --full runs every suite, bad flag is a usage error', () => {
+  assert.match(fs.readFileSync(path.join(__dirname, '..', '..', 'bug-agent', 'install.sh'), 'utf8'), /discord-agent\/check-godot\.sh" > "\$STATE\/check\.sh"/, 'one check script for both agents');
   const { spawnSync, execFileSync } = require('child_process'); const os = require('os');
   const T = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-bc-')); const wr = (f, c) => { fs.mkdirSync(path.dirname(path.join(T, f)), { recursive: true }); fs.writeFileSync(path.join(T, f), c); };
   execFileSync('git', ['init', '-q', T]);
   wr('tools/godot/run-all-tests.sh', '# supports --only\necho "$*" >> .args-seen\nif [ "${1:-}" = --only ]; then printf "%-18s %-16s exit=%d  %s\\n" "$2" run.gd 0 "9 passed"; else printf "%-18s %-16s exit=%d  %s\\n" game run.gd 0 "30 passed"; printf "%-18s %-16s exit=%d  %s\\n" rules run.gd 0 "5 passed"; fi\n');
   wr('tools/godot/affected-suites.mjs', 'console.log("hud");\n');
-  const script = path.join(__dirname, '..', '..', 'bug-agent', 'check.sh');
+  const script = path.join(__dirname, '..', 'check-godot.sh');
   const run = (...a) => spawnSync('bash', [script, ...a], { cwd: T, encoding: 'utf8', timeout: 120000 });
   const q = run(); assert.equal(q.status, 0, q.stdout + q.stderr);
-  assert.match(q.stdout, /^GODOT TESTS: quick \(1 suites\) — 1 passed$/m); assert.equal(fs.readFileSync(path.join(T, '.args-seen'), 'utf8').trim(), '--only hud');
+  assert.match(q.stdout, /^GODOT TESTS: quick \(1 suites\) — 1 passed$/m); assert.equal(fs.readFileSync(path.join(T, '.args-seen'), 'utf8').trim().split('\n').pop(), '--only hud');
   fs.rmSync(path.join(T, '.args-seen'));
   const f = run('--full'); assert.equal(f.status, 0, f.stdout + f.stderr);
-  assert.match(f.stdout, /^GODOT TESTS: full \(2 suites\) — 2 passed$/m); assert.equal(fs.readFileSync(path.join(T, '.args-seen'), 'utf8').trim(), '');
+  assert.match(f.stdout, /^GODOT TESTS: full \(2 suites\) — 2 passed$/m); assert.ok(!/--only/.test(fs.readFileSync(path.join(T, '.args-seen'), 'utf8').trim().split('\n').pop()), 'full: no --only');
   assert.equal(run('--bogus').status, 2);
+});
+
+test('check-godot.sh waits for the shared test slot (~/death-muffin/test-slot.lock) while another check holds it', () => {
+  const { spawnSync, execFileSync, spawn } = require('child_process'); const os = require('os');
+  const R = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-slot-')); const tools = path.join(R, 'tools'); fs.mkdirSync(tools);
+  fs.copyFileSync(path.join(__dirname, '..', 'check-godot.sh'), path.join(tools, 'check-godot.sh'));
+  fs.copyFileSync(path.join(__dirname, '..', 'sandbox-lib.sh'), path.join(tools, 'sandbox-lib.sh'));
+  fs.writeFileSync(path.join(R, 'test-slot.lock'), '');
+  const T = path.join(R, 'wt'); execFileSync('git', ['init', '-q', T]);
+  fs.mkdirSync(path.join(T, 'tools/godot'), { recursive: true });
+  fs.writeFileSync(path.join(T, 'tools/godot/run-all-tests.sh'), '# supports --only\nprintf "%-18s %-16s exit=%d  %s\\n" a run.gd 0 "1 passed"\n');
+  const holder = spawn('flock', [path.join(R, 'test-slot.lock'), 'sleep', '3'], { stdio: 'ignore' });
+  const t0 = Date.now(); spawnSync('sleep', ['0.3']);
+  const r = spawnSync('bash', [path.join(tools, 'check-godot.sh'), '--full'], { cwd: T, encoding: 'utf8', timeout: 60000 });
+  holder.kill();
+  assert.match(r.stdout, /waiting for the test slot/); assert.ok(Date.now() - t0 >= 2500, 'it waited for the holder');
 });
 
 test('preview-godot.sh: refuses bad job ids / missing or symlinked root; with a stand-in Godot it exports, zips with the launcher + readme, and publishes 644 into <root>/<id> only', () => {
@@ -1154,6 +1178,51 @@ test('godot publish: the runner retries by itself, and a later ship heals a thre
   await until(() => texts(a).some((t) => /went out with the client published for/.test(t)), d2.ad);
   assert.ok(Object.values(w2.runner.jobs()).every((j) => !j.publishFailed));
   await until(() => Object.values(w2.runner.jobs()).every((j) => j.status === 'shipped' && j.worktree === null), d2.ad);   // the healed thread ended too
+});
+
+test('housekeeping: a job never points at a workspace that is gone, and a finished job drops messages stuck for over an hour', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'what does the ascension altar do?');
+  const job = Object.values(w.runner.jobs())[0]; await until(() => !job.running && texts(thread).length >= 1, d.ad);
+  job.worktree = path.join(w.cfg.worktreeRoot, 'gone-' + job.id);
+  job.status = 'shipped'; job.queue = [{ userId: IDS.HELIX, text: 'old message', ts: 1 }]; job.lastActive = Date.now() - 2 * 3600e3;
+  assert.equal(w.runner.tidy(), 2);
+  assert.equal(job.worktree, null); assert.deepEqual(job.queue, []);
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /stale-queue-dropped/);
+  job.queue = [{ userId: IDS.HELIX, text: 'fresh', ts: Date.now() }]; job.lastActive = Date.now();
+  assert.equal(w.runner.tidy(), 0, 'a fresh message is left alone');
+});
+
+// ---- a backlog of approved ships: the middle one merges without publishing, the next publish carries it (one client, one notice) ----
+const deploys = (w) => { try { return fs.readFileSync(path.join(w.deploy, 'deploys.log'), 'utf8').split('\n').filter(Boolean); } catch { return []; } };
+async function threeApproved(w, d) {
+  const a = (await request(d, IDS.HELIX, 'GD-GAMEPLAY faster')).thread; const pa = await waitProposal(d, a);
+  const b = (await request(d, IDS.HELIX, 'GD-DOC readme')).thread; const pb = await waitProposal(d, b);
+  const c = (await request(d, IDS.OWNER, 'GD-NET api')).thread; const pc = await waitProposal(d, c);
+  await d.react(pa, IDS.HELIX, '✅'); await d.react(pb, IDS.HELIX, '✅'); await d.react(pc, IDS.OWNER, '✅');
+  return { a, b, c, pc };
+}
+test('ship backlog: a ship with another approved ship behind it merges without publishing; the next publish carries it and closes its thread', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { a, b, c } = await threeApproved(w, d);
+  await until(() => texts(c).some((t) => /Live\. Release/.test(t)), d.ad);
+  await until(() => texts(b).some((t) => /went out with the client published for/.test(t)), d.ad);
+  assert.ok(texts(b).some((t) => /Merged into godot-port as/.test(t)), 'the middle ship merged without its own publish');
+  assert.ok(texts(a).some((t) => /Live\. Release/.test(t)));
+  assert.equal(deploys(w).length, 2, 'two publishes for three ships: ' + deploys(w).join(' | '));
+  const jb = Object.values(w.runner.jobs()).find((j) => j.threadId === b.id);
+  await until(() => jb.status === 'shipped' && jb.worktree === null, d.ad);
+  assert.ok(shipsLog(w).some((s) => s.jobId === jb.id && s.batchedWith), 'the batched ship is in the ships log');
+});
+test('ship backlog fallback: when the ship behind a merged one goes away, the runner publishes the merged one by itself', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { b, pc } = await threeApproved(w, d);
+  await d.react(pc, IDS.OWNER, '❌');   // the third leaves the queue before its turn
+  await until(() => texts(b).some((t) => /Merged into godot-port as/.test(t)), d.ad);
+  await until(() => texts(b).some((t) => /Live\. The Windows client with/.test(t)), d.ad);
+  assert.equal(deploys(w).length, 2, 'the first ship and the fallback publish: ' + deploys(w).join(' | '));
+  const jb = Object.values(w.runner.jobs()).find((j) => j.threadId === b.id);
+  await until(() => jb.status === 'shipped' && !jb.publishFailed, d.ad);
 });
 
 test('thread title: starts clean, the agent\'s .dm-title renames the thread, 🔧 while working, markers follow the proposal and the ship, and it persists', async () => {

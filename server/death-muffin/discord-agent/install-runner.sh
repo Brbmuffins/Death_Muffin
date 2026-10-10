@@ -37,6 +37,7 @@ chmod 600 "$DEST/secret" "$DEST/config.json"
 mkdir -p /home/ubuntu/death-muffin/deploy
 if [ -z "${NO_SYSTEMD:-}" ]; then
   sudo cp "$DEST/death-muffin-discord-agent.service" /etc/systemd/system/death-muffin-discord-agent.service
+  touch "$(dirname "$DEST")/test-slot.lock"   # the shared "one Godot test run at a time" slot (check-godot.sh)
   sudo systemctl daemon-reload
   echo "installed unit (NOT started). Start with: sudo systemctl enable --now death-muffin-discord-agent"
 fi

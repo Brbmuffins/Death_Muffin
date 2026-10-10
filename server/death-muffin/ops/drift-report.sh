@@ -73,7 +73,9 @@ ship.sh rollback.sh sandbox-lib.sh check.sh check-godot.sh regen.sh shot.sh shoo
 for f in $(echo $LIST); do compare_exact "$SRC/$f" "$DM/discord-agent/$f" "discord-agent/$f"; done
 for f in common gemini tripo; do compare_exact "tools/ai/$f.mjs" "$DM/discord-agent/art-tools/tools/ai/$f.mjs" "discord-agent/art-tools/tools/ai/$f.mjs"; done
 BSRC=server/death-muffin/bug-agent
-for f in run-bug-agent.sh reports-cli.cjs check.sh sandbox-lib.sh agit PROMPT.md; do compare_exact "$BSRC/$f" "$DM/bug-agent/$f" "bug-agent/$f"; done
+for f in run-bug-agent.sh reports-cli.cjs PROMPT.md; do compare_exact "$BSRC/$f" "$DM/bug-agent/$f" "bug-agent/$f"; done
+compare_exact "$SRC/check-godot.sh" "$DM/bug-agent/check.sh" "bug-agent/check.sh (= discord-agent/check-godot.sh)"
+for f in sandbox-lib.sh agit; do compare_exact "$SRC/$f" "$DM/bug-agent/$f" "bug-agent/$f (= discord-agent/$f)"; done
 compare_exact "$SRC/death-muffin-discord-agent.service" /etc/systemd/system/death-muffin-discord-agent.service "systemd death-muffin-discord-agent.service"
 for u in death-muffin-bug-agent.service death-muffin-bug-agent.timer; do compare_exact "$BSRC/$u" "/etc/systemd/system/$u" "systemd $u"; done
 

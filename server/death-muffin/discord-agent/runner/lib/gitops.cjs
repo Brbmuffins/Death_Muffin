@@ -40,8 +40,17 @@ async function createWorktree(cfg, job) {
   const common = await trim(git(wt, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
   const ex = path.join(common, 'info', 'exclude');
   try { fs.mkdirSync(path.dirname(ex), { recursive: true }); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; const add = ['.dm-result.json', '.dm-shots/', '.dm-shot.json', '.dm-preview/', '.dm-inbox/', '.dm-art-request.json', '.dm-status', '.dm-check-progress', '.dm-title'].filter((p) => !cur.split('\n').includes(p)); if (add.length) fs.appendFileSync(ex, '\n' + add.join('\n') + '\n'); } catch { /* best effort */ }
+  await seedGodotCache(cfg, wt);
   const base = await trim(git(wt, ['rev-parse', 'HEAD']));
   return { worktree: wt, base };
+}
+// Godot import cache from the main checkout into a fresh worktree (owner, 2026-10-10: a fresh import took ~70 s, a warm one ~14 s; Godot
+// re-imports whatever changed). Used for checks, previews and pictures only; the client publish always imports from scratch.
+async function seedGodotCache(cfg, wt) {
+  if (cfg.mode !== 'godot') return;
+  const src = path.join(cfg.repo, 'godot', '.godot'), dst = path.join(wt, 'godot', '.godot');
+  if (!fs.existsSync(src) || fs.existsSync(dst) || !fs.existsSync(path.join(wt, 'godot'))) return;
+  await run('cp', ['-a', src, dst], { timeoutMs: 5 * 60000 }).catch(() => {});
 }
 async function removeJobArtifacts(cfg, job, { remote = true } = {}) {
   if (job.worktree) await git(cfg.repo, ['worktree', 'remove', '--force', job.worktree], { allowFail: true });
@@ -123,4 +132,4 @@ function run(cmd, args, { cwd, env, input, timeoutMs, maxOut = 8 * 1024 * 1024, 
     p.stdin.end(input || '');
   });
 }
-module.exports = { LOCK_RE, removePreview, git, run, killTree, treePids, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };
+module.exports = { LOCK_RE, removePreview, git, run, seedGodotCache, killTree, treePids, createWorktree, removeJobArtifacts, head, diffText, commitsSince, isDirty, mergeInProgress, scanDiffForSecrets, suspiciousFindings, migrationsFrom, pushBranch, compareUrl, trim };

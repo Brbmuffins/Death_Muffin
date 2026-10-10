@@ -10,10 +10,10 @@ Discord #death-muffin ── Muffin Core bot (user `muffin`, /opt/muffin/discord
         ▼
 Runner (user `ubuntu`, ~/death-muffin/discord-agent/runner/server.cjs, port 4321)
    allow-list · approver gate · rate limits · audit.jsonl · job queue · tier classifier · proposal builder
-   ├─ per request: git worktree + branch discord/<id> from origin/{baseBranch} (`main`), `claude -p` (sandboxed, --resume per thread)
+   ├─ per request: git worktree + branch discord/<id> from origin/{baseBranch} (`main`) with main's Godot import cache copied in, `claude -p` (sandboxed, --resume within a round)
    ├─ verify (runner code, not the AI): commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · check-godot.sh · tier
    ├─ propose: push branch, embed with tier / files / tests / migrations / compare link, ✅ ❌
-   └─ ship.sh (only after an approver's ✅): deploy lock · merge onto {baseBranch} · re-gate · re-test · push · publish-godot-client.sh
+   └─ ship.sh (only after an approver's ✅): deploy lock · merge onto {baseBranch} · re-gate · re-test (skipped when the merged tree is the proposal's) · push · publish-godot-client.sh (deferred when another approved ship waits)
 ```
 
 ## Mode and branch (`mode` and `baseBranch` in `config.json`, owner-edited)
@@ -86,7 +86,17 @@ backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited appr
 `!cancel` (or a bare `stop` / `cancel` while something runs; requester or owner; a near-miss such as `cencel` or `stpo` gets "Did you mean !cancel?" and is not passed to the agent) stops the current step, agent turn or the runner's own check run,
 killing the whole process tree (Claude's Bash tool and `timeout` start their own process groups, so a group kill alone orphaned test runs).
 Messages queued before it are dropped, and no review or repair turn follows; the branch and worktree stay, and the next message continues.
-A ship cannot be cancelled. An idle job is closed by the sweep after 7 days without activity.
+A ship cannot be cancelled. An idle job is closed by the sweep after 7 days without activity. Housekeeping (`tidy()`, at start and with every sweep)
+clears a job's pointer to a workspace that is gone and drops messages stuck in a finished job for over an hour (audit `stale-queue-dropped`).
+
+**Ship speed (owner, 2026-10-10).** The ship's re-test is skipped when the merged tree is exactly the proposal's (main did not move since), which already
+passed the same quick check; a sensitive change still runs the full suite. **Backlog:** when another approved ship is waiting, the current one merges, tests
+and pushes but does not publish (`DEFER_PUBLISH=1`, `RESULT: merged`; the thread is told it goes live with the next publish). The next publish carries it:
+its notice lists both changes under both titles, and the waiting thread gets "🚀 Live" and closes (`healOtherPublishes`, logged in the ships log with
+`batchedWith`). If nothing else ships, the runner publishes the merged one by itself (`drainShipQueue`). **One test run at a time:** `check-godot.sh` takes
+`~/death-muffin/test-slot.lock` (shared with the bug agent and the ship; created by both installers) and waits for it, so parallel jobs no longer slow each
+other down. Fresh worktrees (jobs, ships, the bug agent, BEFORE pictures) start from the main checkout's Godot import cache (~14 s instead of ~70 s); the
+client publish still imports from scratch.
 A reply to an open proposal that changes nothing (a thank-you, a question) is answered, and the proposal stays as it is: same commit and clean
 workspace means no new checks, preview or re-post (`proposal-kept` in the audit log), and ✅ works right away. The prompt also tells the agent not to
 run `check-godot.sh` for such messages.
@@ -183,8 +193,9 @@ On a proposal (`propose()`), when the agent left a plan and fresh pictures, the 
 AFTER pictures right away (the embed image is the first); the BEFORE/AFTER pairs for the first two pictures (`before-<name>.png`, then `<name>.png`) follow as a separate message once the base is rendered in the background, so a busy renderer never holds the job's slot. If the base cannot render (for instance it predates the QA shot-plan code) no pair message follows.
 
 ## Playable preview
-Each proposal gets a "Try it (Windows download)" link to the zip built by `preview-godot.sh` (see above), built in `propose()` before the embed is posted
-(15 min cap). A failure adds "Preview build failed" with a short reason and the proposal is posted anyway. `!preview` rebuilds it on an open proposal. The
+Godot mode builds the Windows zip (`preview-godot.sh`, see above) only on request: the proposal's "Try it" field says to use `!preview` (owner, 2026-10-10:
+44 previews were built in a day and none was downloaded; each is a full import + export). `cfg.previewOnProposal: true` brings back building one with every
+proposal (web mode always does). A failed build says so with a short reason. The
 preview folder is deleted when the job ships, is discarded or is swept (`removeJobArtifacts`). `previewRoot` (default `/var/www/death-muffin/preview`, must exist and be
 writable by the runner user) and `previewCmd` (replaces the script, tests) are in config.
 
@@ -192,7 +203,7 @@ writable by the runner user) and `previewCmd` (replaces the script, tests) are i
 The adapter downloads image attachments (png/jpg/webp/gif, Discord CDN only, <= 8 MB each, <= 4 per message) and sends them to the runner as `images: [{name, b64}]` in the `/event` body; anything refused stays in the "not visible to the agent" note with the reason. The runner checks the bytes look like an image and writes them to `<worktree>/.dm-inbox/<msgId>-<name>` (git-excluded), appending `[image attached by NAME: .dm-inbox/... — Read it to see it]` to that message so the agent can `Read` it; for a new @mention the files are written in `bind()` once the worktree exists. A job keeps at most 40 MB of images (`job.inboxBytes`), then refuses with a note. Image bytes are never redacted or logged. `/event` accepts bodies up to 48 MB (4 x 8 MB as base64 is about 43 MB); every other route keeps the 1 MB cap.
 
 ## Rounds (one thread, many changes)
-A thread does not close when its change ships (or is discarded, or swept after 7 idle days). The next message from an allowed requester starts a new ROUND in the same job record: a fresh branch `discord/<jobid>-<n>` and worktree cut from the current `origin/<baseBranch>`, proposal/shots/preview state reset, the claude session id kept (the runner also copies the session file into the new worktree's claude project dir, and falls back to a fresh session if it cannot be resumed), and the first prompt starts with a note that the earlier change is live. `job.history` records `{round, branch, shipSha | discarded, at}` and the audit log gets a `round` entry.
+A thread does not close when its change ships (or is discarded, or swept after 7 idle days). The next message from an allowed requester starts a new ROUND in the same job record: a fresh branch `discord/<jobid>-<n>` and worktree cut from the current `origin/<baseBranch>`, proposal/shots/preview state reset, and a FRESH claude session (owner, 2026-10-10: resuming carried every earlier round into each step; one thread read 10M cached tokens). The first prompt starts with a note that this is a new round plus a one-line summary of the thread's earlier rounds (`job.history`: `{round, branch, shipSha | discarded, title, at}`). Follow-ups inside a round still resume that round's conversation. The audit log gets a `round` entry.
 - A message sent while a ship is running is kept (shown as waiting). If the ship goes live, the next round starts at once and the message is processed there (attached images are carried over); if the ship fails, the job returns to idle/proposed and the message is handled on the same branch.
 - Turns: `maxTurnsPerJob` (40) now counts per round; `maxTurnsPerThread` (120) is a hard cap over the whole thread.
 - After a sweep a new message also starts a new round (the sweep only released the worktree; the thread and its context are still useful). Commands other than `!status` answer "nothing is open" in a closed thread.

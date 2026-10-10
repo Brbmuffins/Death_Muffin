@@ -2,7 +2,9 @@
 # The deploy helper (NOT the AI): runs only after an approver's check, from the runner. All inputs are environment variables set by
 # the runner. Takes the global deploy lock (shared with deploy-release.sh), merges the branch onto the current base branch (BASE_BRANCH, default
 # main), re-gates and re-tests the merged tree, pushes it, runs the deploy, and prints machine-readable lines:
-#   RESULT: <live|live-already|conflict|head-moved|gate|tests-failed|master-moved|backup-failed|deploy-failed|lock-timeout> ...      ("master-moved" = BASE_BRANCH moved)
+#   RESULT: <live|live-already|merged|conflict|head-moved|gate|tests-failed|master-moved|backup-failed|deploy-failed|lock-timeout> ...      ("master-moved" = BASE_BRANCH moved)
+# DEFER_PUBLISH=1 (godot; the runner sets it when another approved ship waits): merge, gate, test and push, but no client publish ("RESULT: merged
+# <sha>"); the next ship's client carries it (one publish and one notice for a backlog). The runner publishes it alone if nothing else ships.
 # PUBLISH_ONLY=1 PUBLISH_SHA=<sha> (godot only; the retry after a failed client publish): no merge/tests/push. Publishes that already-tested, already-
 # pushed commit with a fresh rollback, or prints "RESULT: live-already" when the live client already contains it (never publishes an older client).
 # The Godot publish itself is tried up to 3 times (PUBLISH_RETRY_SLEEPS, default "30 90") before deploy-failed: one-off Godot import crashes heal by themselves.
@@ -45,6 +47,9 @@ HEAD_NOW=$(g -C "$REPO" rev-parse "refs/heads/$BRANCH") || { echo "RESULT: head-
 g -C "$REPO" worktree add -q --detach "$SW" "$OLD" || { echo "RESULT: worktree-failed"; exit 6; }
 cd "$SW"
 for rel in node_modules; do [ -d "$REPO/$rel" ] && ln -s "$REPO/$rel" "$SW/$rel"; done
+# Godot import cache from the main checkout (a fresh import takes ~70 s, a warm one ~14 s; Godot re-imports whatever changed). Checks only: the
+# client publish always imports from scratch in its own worktree.
+[ "$MODE" = godot ] && [ -d "$REPO/godot/.godot" ] && [ ! -e "$SW/godot/.godot" ] && cp -a "$REPO/godot/.godot" "$SW/godot/.godot" 2>/dev/null
 
 say "merging $BRANCH onto $BASE_BRANCH ${OLD:0:7}"
 if ! g merge -q --ff-only "$EXPECT_HEAD" >/dev/null 2>&1; then
@@ -67,7 +72,11 @@ say "running tests on the merged tree"
 # Dev build (owner, 2026-10-10: tests were costing too much time): the ship runs the QUICK check (the suites the change can affect plus a smoke
 # set) on the merged tree; only a sensitive-tier change (server, net, login/session/save, scripts) gets the FULL suite.
 CHECK="$TOOLS/check.sh"; CHECK_ARGS=(); [ "$MODE" = godot ] && { CHECK="$TOOLS/check-godot.sh"; case "$GATE" in *"GATE: ok (sensitive)"*) CHECK_ARGS=(--full);; esac; }
-if ! "$CHECK" "${CHECK_ARGS[@]}" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; then tail -25 "$TOOLS/state/ship-$JOBID.tests.log"; echo "RESULT: tests-failed"; exit 9; fi
+# Nothing new to test: the merged tree is exactly the proposal's (main did not move since), and that passed the same quick check. A sensitive
+# change still runs its full suite.
+if [ "$MODE" = godot ] && [ ${#CHECK_ARGS[@]} -eq 0 ] && [ "$(g rev-parse HEAD^{tree})" = "$(g rev-parse "$EXPECT_HEAD^{tree}")" ]; then
+  echo "tests: skipped, the merged tree is exactly the proposal's, which passed its check" | tee "$TOOLS/state/ship-$JOBID.tests.log"
+elif ! "$CHECK" "${CHECK_ARGS[@]}" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; then tail -25 "$TOOLS/state/ship-$JOBID.tests.log"; echo "RESULT: tests-failed"; exit 9; fi
 fi   # (end of the normal ship's merge/gate/tests; PUBLISH_ONLY skips them: that commit was tested and pushed by the ship that failed to publish)
 
 # ---- godot: get the rollback ready BEFORE anything is pushed or published (a failure here leaves everything as it was) ----
@@ -75,7 +84,8 @@ fi   # (end of the normal ship's merge/gate/tests; PUBLISH_ONLY skips them: that
 # for BOTH the new publish and the rollback is taken fresh from origin/<base branch> now and kept in the backup folder. ROLLBACK.sh republishes the
 # revision that is live right now (the `rev` in the client manifest). No manifest = nothing is live yet = nothing to roll back to ("Rollback: none").
 BK=""
-if [ "$MODE" = godot ]; then
+DEFER="${DEFER_PUBLISH:-}"; [ -n "$PUBLISH_ONLY" ] && DEFER=""
+if [ "$MODE" = godot ] && [ -z "$DEFER" ]; then
   DEPLOY_DIR="${DEPLOY_DIR:-$(dirname "$LOCK")}"
   MANIFEST="${CLIENT_MANIFEST:-/var/www/death-muffin/client/manifest.json}"
   PUB_REF="${PUBLISH_SRC_REF:-origin/${BASE_BRANCH:-main}}"; PUB_PATH="${PUBLISH_SRC_PATH:-server/death-muffin/publish-godot-client.sh}"
@@ -106,6 +116,7 @@ say "pushing $BASE_BRANCH"
 if ! g push -q origin "HEAD:refs/heads/$BASE_BRANCH" 2>/tmp/ship-push.$$; then tail -3 /tmp/ship-push.$$; rm -f /tmp/ship-push.$$; [ -n "$BK" ] && abandon_backup; echo "RESULT: master-moved"; exit 10; fi
 rm -f /tmp/ship-push.$$
 fi
+if [ "$MODE" = godot ] && [ -n "$DEFER" ]; then echo "RESULT: merged ${SHA:0:12}"; exit 0; fi   # the next ship (or the runner) publishes it
 
 say "deploying ${SHA:0:12}"
 LOG="$TOOLS/state/ship-$JOBID.deploy.log"

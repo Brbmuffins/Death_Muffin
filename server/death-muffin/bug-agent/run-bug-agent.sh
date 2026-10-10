@@ -84,6 +84,8 @@ if git -C "$REPO" rev-parse --verify -q "refs/heads/$BRANCH" >/dev/null || [ -e 
 fi
 git -C "$REPO" fetch -q origin
 git -C "$REPO" worktree add -q -b "$BRANCH" "$WT" origin/main
+# Godot import cache from the main checkout: a fresh import takes ~70 s, a warm one ~14 s (Godot re-imports whatever changed).
+[ -d "$REPO/godot/.godot" ] && cp -a "$REPO/godot/.godot" "$WT/godot/.godot" 2>/dev/null || true
 # node_modules is only for tools/godot/gen-fixtures.sh (the golden fixtures are generated from the frozen TS game).
 ln -s "$REPO/node_modules" "$WT/node_modules"
 BASE=$(git -C "$WT" rev-parse HEAD)
