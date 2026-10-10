@@ -159,7 +159,11 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	var is_host := bool(opts.get("host", true)) and lobby == null
 	if lobby != null:
 		var relay := DmRelayPeer.new()
-		assert(relay.join(lobby) == OK, "DmNextGame: the lobby socket is not in a session")
+		# Never call inside assert(): release exports strip asserts WITH their expression, so the joiner never attached and never said
+		# hello (every live co-op join timed out with "The host did not answer", 2026-10-10). tools/hygiene rejects calls in asserts.
+		var jerr := relay.join(lobby)
+		if jerr != OK:
+			printerr("[coop] joiner: the lobby socket is not in a session (%s)" % error_string(jerr))
 		relay.hold = true   # nothing from the host is delivered until every node it addresses exists (released after the Gather node below)
 		_hold = relay
 		peer = relay

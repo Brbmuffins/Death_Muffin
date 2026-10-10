@@ -1,6 +1,28 @@
 [
   {
     "date": "2026-10-10",
+    "title": "A Calmer Login Screen",
+    "items": [
+      "The login and discipline screens use a still background: no more scenery swinging around with your mouse.",
+      "Login screen tidied up: the title fits on one line, the headline is tighter, the sign-in card no longer has an empty gap under the button, and the text describes the game as it is today."
+    ]
+  },
+  {
+    "date": "2026-10-10",
+    "title": "Co-op: Thralls Leave With Their Necromancer",
+    "items": [
+      "When a co-op partner leaves, their thralls now leave with them instead of staying behind in the host's world, fighting for nobody."
+    ]
+  },
+  {
+    "date": "2026-10-10",
+    "title": "Co-op Joining Fixed",
+    "items": [
+      "Joining a friend's session works again: the joiner now actually connects to the host instead of loading for a minute and failing with \"The host did not answer\"."
+    ]
+  },
+  {
+    "date": "2026-10-10",
     "title": "Stairs, Fen and Loot Icons",
     "items": [
       "Bag: the Trinket and Off hand slots are square again, and long item stat lines wrap so the window contents stay put when you select different items.",
@@ -8,29 +30,8 @@
       "Depths stairs look like stone stairwells with steps again, instead of a flat circle.",
       "The Mourning Fen hummocks are muted peat mounds with a pale rim, closer to how they used to look.",
       "Loot on the ground now shows the item's own icon (helm, chest, staff...) instead of a plain square.",
-      "Clicking the minimap shows the amber destination marker again while your hero walks there."
-    ]
-  },
-  {
-    "date": "2026-10-10",
-    "title": "Threading Options (experimental)",
-    "items": [
-      "Settings → Graphics: two new opt-in switches to try on your PC, both off by default and applied after a restart: Physics on a separate thread (experimental) and Separate render thread (only with the Mobile renderer).",
-      "If the game crashes soon after you change one, it starts with all graphics options back to normal; starting with `--safe-graphics` does the same.",
-      "F3 and bug reports show which renderer and threading options are active."
-    ]
-  },
-  {
-    "date": "2026-10-10",
-    "title": "Lighter on the Graphics Card",
-    "items": [
-      "Graveyard and cathedral props draw in far fewer batches (about a third fewer draw calls in the Hollow Graves and the Nave).",
-      "Spell sparks and embers are now animated by the graphics card instead of the CPU, so heavy fights spend far less time on effects.",
-      "Enemies of the same kind share one material, so crowds switch rendering state much less.",
-      "Ultra uses the 8 nearest torches like High does (this renderer lights each object with at most 8 anyway).",
-      "Low and Medium show fewer effect particles at full saturation, to stay smooth on weaker machines.",
-      "New: Settings → Graphics → Renderer → Mobile (Vulkan, experimental). Try it if you like; if it fails to start, the game comes back in the normal renderer.",
-      "Auto resolution only lowers resolution when the graphics card is the bottleneck, so the picture no longer gets blurry for nothing."
+      "Clicking the minimap shows the amber destination marker again while your hero walks there.",
+      "Bag: the Trinket and Off hand slots no longer stretch, and the window contents stay still when you select items."
     ]
   },
   {

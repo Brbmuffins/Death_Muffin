@@ -7,8 +7,8 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
 - **No rendered (GPU) frame budget exists.** Every number is headless on a shared VPS (frame median about 7 ms). Phase 6
   graphics presets (Low/Medium/High/Ultra, brightness lift, interface size, resolution governor) are applied by
   `next/perf/dm_next_perf.gd`; what is missing is real-hardware measurement.
-- **Mobile renderer / FSR not evaluated.** The default is `gl_compatibility`; Mobile (Vulkan) is an opt-in Settings row with an automatic
-  fallback (root README "Renderer"), never rendered on the VPS. Making it the default needs the owner's and Helix's PCs and re-measured shaders and budgets.
+- **Forward+ / FSR not evaluated.** The renderer is `gl_compatibility` (`project.godot`). A switch needs the owner's and Helix's
+  PCs, a Compatibility fallback and re-measured shaders and budgets.
 
 ## Disciplines
 

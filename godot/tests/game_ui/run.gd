@@ -169,7 +169,6 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	sp.action.emit("bug_report")
 	await _frames(3)
 	_check(ui.is_open("settings") and ui.set_ui.bug_report_open() and ui.set_ui.report.is_visible_in_tree(), "bug report renders inside the Settings body")
-	_check(String(ui.set_ui.report.context()["renderer"]) == DmRenderer.describe() and DmRenderer.describe().ends_with(DmRenderer.threads_text()), "bug report context carries the renderer and the threading options running")
 	ui.set_ui.report.message.text = "the thralls stopped following me after travel"
 	ui.set_ui.report._sync()
 	game.clear_calls()
@@ -476,6 +475,7 @@ func _extras(game: DmMockGame, ui: DmGameUi) -> void:
 	_check(rt.keys.size() == 5 and rt.primary == String(kit["defaultPrimary"]), "rites default for a fresh character")
 	# bind rules
 	_check(not DmUiBinds.check_bind({}, "loadout_1", "i")["ok"] and DmUiBinds.check_bind({}, "loadout_1", "f7")["ok"], "keybind: reserved refused, F7 ok")
+	_check(not DmUiBinds.check_bind({}, "loadout_2", "f3")["ok"], "keybind: F3 belongs to the performance overlay (a saved F3 bind is dropped on load, which uses the same check)")
 	_check(DmUiBinds.next_slot([0, 2, 5], 2, -1) == 5 and DmUiBinds.next_slot([0, 2, 5], 5, -1) == 0, "next loadout wraps")
 	# clean name
 	_check(DmLoadoutPresets.clean_name("  A<b>  c \u0001") == "Ab c", "loadout name cleaned")

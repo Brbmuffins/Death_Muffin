@@ -172,6 +172,17 @@ for (const f of files) {
     : 'a 3D texture must import VRAM Compressed, compress/mode=2 (npm run hygiene -- --fix-textures)');
 }
 
+// g. No calls inside GDScript assert(): release exports strip asserts together with their expression, so a call there never runs in a
+// shipped client (the co-op joiner's relay.join() did not, 2026-10-10). Tests may assert on calls; shipped code computes first, then asserts.
+for (const f of files) {
+  if (!f.startsWith('godot/') || !f.endsWith('.gd') || f.includes('/tests/')) continue;
+  const lines = read(f).split('\n');
+  lines.forEach((l, i) => {
+    const m = /^\s*assert\(([^,]*)/.exec(l);
+    if (m && /[A-Za-z_]\w*\s*\(/.test(m[1])) report(f, i + 1, 'call inside assert() is stripped from release builds; compute it first, then assert the result');
+  });
+}
+
 if (fixed.length) console.log(`hygiene: fixed ${fixed.length} texture import(s); now run: godot --headless --path godot --import`);
 if (problems.length) {
   console.error(problems.join('\n'));

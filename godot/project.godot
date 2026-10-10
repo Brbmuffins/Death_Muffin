@@ -4,7 +4,6 @@ config_version=5
 [application]
 config/name="Death Muffin (Godot slice)"
 run/main_scene="res://main/main.tscn"
-config/project_settings_override="user://dm_renderer.cfg"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
@@ -24,7 +23,6 @@ window/stretch/scale_mode="fractional"
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-rendering_device/fallback_to_opengl3=true
 lights_and_shadows/directional_shadow/size=2048
 anti_aliasing/quality/msaa_3d=0
 textures/vram_compression/import_s3tc_bptc=true

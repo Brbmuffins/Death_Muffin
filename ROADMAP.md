@@ -8,7 +8,8 @@ over new content, necromancer focus. Open gaps are listed once, in [KNOWN-GAPS.m
 
 - **Rendered performance:** measure a real-GPU frame budget on the owner's and Helix's PCs (Hollow Graves with 20+ enemies
   and a boss, 1080p and 1440p, Low and High), including first-frame and shader hitches. Forward+/FSR only after that, on a
-  separate branch behind a flag (KNOWN-GAPS: Performance).
+  separate branch behind a flag (KNOWN-GAPS: Performance). Phase B is pulled (DECISIONS B12): bring it back one part per
+  owner-approved test build from tag `archive/perf-phase-b`.
 - **Combat feel and loot** for the four disciplines: tuning from playtests, readability of rites and statuses, gear and
   affix legibility, the first hour (Next-step box, counsel tips, guide NPCs).
 - **Rejoin window** (D13) and the **party gaps** (KNOWN-GAPS: Party and online).
