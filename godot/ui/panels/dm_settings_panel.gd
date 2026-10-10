@@ -106,7 +106,7 @@ func build() -> void:
 	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	th.add_child(tl)
-	th.add_child(_button("Leave the world", "leave"))
+	th.add_child(_button("Logout", "leave"))
 	th.add_child(_button("Exit game", "exit_game"))
 	body.add_child(top)
 

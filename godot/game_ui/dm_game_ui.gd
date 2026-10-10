@@ -6,7 +6,7 @@ extends CanvasLayer
 ## Ports how archive/legacy-web:src/scenes/WorldScene.ts and archive/legacy-web:src/ui/* wire the UI. Pure UI: all world state is read from `game`.
 
 signal sound(name: String)                 ## the web's audio.play(name) at each UI site (click, coin, equip, buy, panelOpen...): connect to AudioDirector
-signal left_world                          ## Settings -> "Leave the world"
+signal left_world                          ## Settings -> "Logout"
 signal panel_changed
 
 const PANEL_KEYS := {

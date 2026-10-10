@@ -3,6 +3,7 @@
     "date": "2026-10-10",
     "title": "Sharper Spell Impacts",
     "items": [
+      "The Settings button \"Leave the world\" is now called \"Logout\".",
       "Pressing Esc to clear a keybind no longer closes the Settings window.",
       "Bone Needle, pierce and Scythe hits now land with an animated impact burst, and critical hits flare with a bright ring of rays.",
       "Exhume draws a glowing summoning circle under the corpse as it rises.",
