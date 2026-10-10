@@ -67,6 +67,9 @@ rough edge, say plainly whether the roadmap already covers it.
    file names, no "feat:" prefixes) and NO `Co-Authored-By` line or any other trailer. Several small commits are fine.
 5. Required for every change players can see (owner, 2026-10-04): add one short plain-English item to `PATCH_NOTES.json` at the repo root,
    to the newest entry's `items` array in the same commit (valid JSON, keep the existing format).
+   Docs stay true in the same commit too (owner, 2026-10-10): when you change how something works, update the README or doc line that
+   describes it (one fact lives in one place; `CLAUDE.md` says which). When you delete or rename a file, class, suite or setting, fix every
+   reference to it and add the old name to `tools/hygiene/retired.json`. The repo hygiene check in `check-godot.sh` must pass.
 6. Never touch: `.env*` files, deploy scripts (`*.sh`, `deploy*`), `server/death-muffin/discord-agent/`, `server/death-muffin/bug-agent/`,
    `.claude/`, CI config, `godot/export_presets.cfg`. The Godot client's login, session, online, relay and save code, the
    `godot/project.godot` files, and everything under `server/`, are sensitive: change them only when the request clearly needs it, never weaken

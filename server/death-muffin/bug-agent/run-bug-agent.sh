@@ -24,6 +24,27 @@ mkdir -p "$STATE/runs"
 exec 8>"$STATE/runs/.lock"   # runs/ is the only state dir the unit may write
 flock -n 8 || exit 0
 
+# A reviewed fix branch ends once its changes are on main: a session squash-merges it, so "merged" means every file the branch changed
+# reads the same on origin/main (as of the last fetch). Then its worktree (if clean) and branch go. A branch whose files main changed further
+# since is kept (conservative); the weekly drift report lists it.
+cleanup_merged() {
+  local b wt base files
+  for b in $(git -C "$REPO" for-each-ref --format='%(refname:short)' 'refs/heads/bugfix/reports-*'); do
+    base=$(git -C "$REPO" merge-base origin/main "$b" 2>/dev/null) || continue
+    files=$(git -C "$REPO" diff --name-only "$base" "$b")
+    [ -n "$files" ] || continue
+    printf '%s\n' "$files" | xargs -d '\n' git -C "$REPO" diff --quiet origin/main "$b" -- 2>/dev/null || continue
+    wt=$(git -C "$REPO" worktree list --porcelain | awk -v ref="refs/heads/$b" '$1=="worktree"{w=$2} $1=="branch" && $2==ref{print w}')
+    if [ -n "$wt" ]; then
+      [ -z "$(git -C "$wt" status --porcelain 2>/dev/null)" ] || continue
+      git -C "$REPO" worktree remove --force "$wt"
+    fi
+    git -C "$REPO" branch -q -D "$b"
+    echo "$(date -u +%FT%TZ) merged fix branch $b removed${wt:+ (and $wt)}" >> "$LOG"
+  done
+}
+cleanup_merged || true
+
 # The CLI is installed beside the runtime so the job does not depend on any checkout's working tree.
 CLI="$STATE/reports-cli.cjs"
 REPORTS=$(node "$CLI" list)

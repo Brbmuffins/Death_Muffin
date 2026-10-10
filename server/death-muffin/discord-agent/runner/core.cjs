@@ -1012,6 +1012,7 @@ function createRunner(cfgIn, opts = {}) {
       (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, at: new Date(now()).toISOString() }); save();
       say(job, kind === 'live' ? `🚀 Live. The Windows client with \`${sha}\` is published. Thanks, ${nameOf(job.creatorId)}.` : `🚀 Live. The client that is live now (\`${rb}\`) already includes \`${sha}\`.`);
       if (kind === 'live') healOtherPublishes(job, sha);
+      await endIfSettled(job, kind === 'live' ? sha : (rb || sha), p);
       pump(); return;
     }
     const left = !pf.autoRetried;
@@ -1020,6 +1021,21 @@ function createRunner(cfgIn, opts = {}) {
     if (!uid) ownerPing(pingTarget(job), `Automatic publish retry failed for \`${job.id}\` (${pf.sha}). Log: ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
     if (left) scheduleAutoRetry(job, cfg.publishAutoRetryMin);
     pump();
+  }
+  // A release that goes live LATER (publish retry, or healed by another thread's publish) ends the job like a normal ship: shipped, ✅ title,
+  // branch / worktree / preview removed. The thread stayed open while it waited, so only a thread that has not moved on is closed: idle,
+  // nothing queued or proposed, a clean workspace whose HEAD is inside the published release. Otherwise it keeps working (sweep closes it later).
+  async function endIfSettled(job, sha, p) {
+    if (job.running || job.status !== 'idle' || job.proposal || job.queue.length || job.deleteRequested || job.publishFailed) return false;
+    if (job.worktree && fs.existsSync(job.worktree)) {
+      if (await G.isDirty(job.worktree)) return false;
+      const h = (await G.git(job.worktree, ['rev-parse', 'HEAD'], { allowFail: true })).out.trim();
+      if (!h || (await G.git(cfg.repo, ['merge-base', '--is-ancestor', h, sha], { allowFail: true })).code !== 0) return false;
+    }
+    job.status = 'shipped'; job.proposal = { ...(p || {}), shipSha: sha }; save(); syncName(job);
+    await G.removeJobArtifacts(cfg, job); job.worktree = null; save();
+    audit.log('ended', { job: job.id, sha });
+    return true;
   }
   // a client that was just published contains every older commit on the branch: threads stuck on a failed publish of one of those are live now
   function healOtherPublishes(job, sha) {
@@ -1031,6 +1047,7 @@ function createRunner(cfgIn, opts = {}) {
         o.publishFailed = null; (o.history = o.history || []).push({ round: o.round || 1, branch: o.branch, shipSha: pf.sha, at: new Date(now()).toISOString() }); save();
         audit.log('publish-healed', { job: o.id, sha: pf.sha, by: sha });
         say(o, `🚀 Live. \`${pf.sha}\` went out with the client published for \`${sha}\`.`);
+        return endIfSettled(o, sha, pf.proposal);
       }).catch(() => {});
     }
   }

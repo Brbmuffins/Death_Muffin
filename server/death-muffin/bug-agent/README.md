@@ -25,6 +25,8 @@ as *Fixed — live now*.
 
 **Nothing ships on its own.** The owner (or a Claude session) reviews `bugfix/reports-<date>`, merges it and ships with
 `publish-godot-client.sh` as usual.
+Every tick (even a quiet one) removes reviewed branches whose fixes are on `origin/main`: a branch is done when every file it changed reads the same
+on main (squash merges count), and its worktree goes with it if clean. A branch whose files main changed further since is kept; the drift report lists it.
 
 ## Why it is boxed in
 
@@ -32,7 +34,7 @@ Report text is written by players, so it is treated as untrusted input (prompt i
 
 - `--restricted` (file tools confined to the worktree, user settings and MCP ignored), `--permission-mode dontAsk`, and an
   allowlist: Read/Edit/Write/Glob/Grep, `agit` (a few git verbs, no hooks, no flags that touch files outside the repo or
-  stage everything) and `check.sh` (the Godot suites against the committed fixtures: quick by default, only the suites the change affects via `tools/godot/affected-suites.mjs`; `--full` runs every suite, 10 to 35 min; via `sandbox-lib.sh` in fresh user/network/mount namespaces: no network,
+  stage everything) and `check.sh` (the repo hygiene check `npm run hygiene` first, then the Godot suites against the committed fixtures: quick by default, only the suites the change affects via `tools/godot/affected-suites.mjs`; `--full` runs every suite, 10 to 35 min; via `sandbox-lib.sh` in fresh user/network/mount namespaces: no network,
   whole filesystem read-only except the worktree).
 - The agent never sees the database or `.env`; it cannot deploy or push. Verdicts are validated (ids from the batch,
   known statuses, capped notes) before they are written.

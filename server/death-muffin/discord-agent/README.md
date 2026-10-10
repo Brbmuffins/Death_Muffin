@@ -121,6 +121,9 @@ Rollback undoes the live release only; revert the commit on the base branch afte
   pinged, and the runner retries by itself after `publishAutoRetryMin` (10). Approvers can retry any time: ✅ on the failure message or `!retry`.
   A retry is `PUBLISH_ONLY=1 PUBLISH_SHA=<sha> ship.sh`: same lock and fresh rollback, no merge/tests/push, and it refuses to publish anything older
   than the live client (`RESULT: live-already`). Any later ship whose client contains the stuck commit posts "Live" in that thread too.
+  When the release goes live that way (retry or a later ship), the job ends like a normal ship (`shipped`, ✅ title, worktree, branch and preview
+  removed) if the thread has not moved on: idle, nothing queued or proposed, and a clean workspace whose HEAD is inside the published release.
+  A thread that already works on its next change keeps its workspace (the sweep closes it later).
 
 ## New models (Gemini concept -> Tripo), approval-gated and credit-capped
 

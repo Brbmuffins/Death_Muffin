@@ -1124,6 +1124,9 @@ test('godot publish: when all 3 tries fail, approvers retry with ✅ on the fail
   assert.deepEqual(await d.react(again, IDS.HELIX, '✅'), []);
   await until(() => texts(thread).some((t) => /Live\. The Windows client with/.test(t)), d.ad);
   assert.equal(job.publishFailed, null); assert.ok(shipsLog(w).some((s) => s.retry === IDS.HELIX));
+  // the retried release ends the job like a normal ship: shipped, workspace and branch gone (not left idle for the 7-day sweep)
+  const wt = job.worktree || ''; await until(() => job.status === 'shipped' && job.worktree === null, d.ad);
+  assert.ok(!wt || !fs.existsSync(wt), 'the worktree is removed');
   void m;
 });
 
@@ -1144,6 +1147,7 @@ test('godot publish: the runner retries by itself, and a later ship heals a thre
   await until(() => texts(b).some((t) => /Live\. Release/.test(t)), d2.ad);
   await until(() => texts(a).some((t) => /went out with the client published for/.test(t)), d2.ad);
   assert.ok(Object.values(w2.runner.jobs()).every((j) => !j.publishFailed));
+  await until(() => Object.values(w2.runner.jobs()).every((j) => j.status === 'shipped' && j.worktree === null), d2.ad);   // the healed thread ended too
 });
 
 test('thread title: starts clean, the agent\'s .dm-title renames the thread, markers follow the proposal and the ship, and it persists', async () => {

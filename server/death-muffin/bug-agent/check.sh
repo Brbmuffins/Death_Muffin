@@ -3,7 +3,7 @@
 # Runs in fresh user/network/mount namespaces (sandbox-lib.sh, installed beside this script, outside every worktree): no network (loopback
 # only), the WHOLE filesystem read-only (Godot binary, node_modules and the repo's .git stay readable), a private /tmp, only the worktree
 # writable. HOME and the XDG dirs are a fresh temp dir, so Godot's user:// (saves, settings) never touches the real home. Hard limit 50 min.
-# Inside: tools/godot/run-all-tests.sh (godot --import, then every suite under godot/tests/ against the committed golden fixtures, one line
+# Inside: the repo hygiene check (tools/hygiene/check.mjs = npm run hygiene), then tools/godot/run-all-tests.sh (godot --import, then every suite under godot/tests/ against the committed golden fixtures, one line
 # per suite). An older branch that still has tools/godot/gen-fixtures.sh runs it first (it rewrites godot/data/loot/content.json, which is
 # snapshotted and restored). Prints per-suite lines and
 # a final "GODOT TESTS: ..." line; exit 1 if any suite or step fails.
@@ -25,6 +25,11 @@ export DM_PAYLOAD='
   export HOME="$SCR/home" XDG_DATA_HOME="$SCR/data" XDG_CONFIG_HOME="$SCR/config" XDG_CACHE_HOME="$SCR/cache"
   mkdir -p "$HOME" "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
   cd "$TOP"
+  # Repo hygiene (the same check CI runs first, as in the Discord agent): stale doc links/paths, retired terms, big files, calls inside assert().
+  # Skipped only on old revisions that predate it.
+  if [ -f tools/hygiene/check.mjs ]; then echo "== repo hygiene"
+    if ! node tools/hygiene/check.mjs > "$SCR/hygiene.log" 2>&1; then cat "$SCR/hygiene.log"; echo "GODOT TESTS: repo hygiene FAILED (npm run hygiene)"; exit 1; fi
+    cat "$SCR/hygiene.log"; fi
   LOOT=godot/data/loot/content.json
   if [ -f "$LOOT" ]; then cp -p "$LOOT" "$SCR/content.json.snap"; fi
   restore() { if [ -f "$SCR/content.json.snap" ]; then cp -p "$SCR/content.json.snap" "$LOOT"; fi; }

@@ -53,6 +53,8 @@ the failing script and line. It is still player-machine data: it never tells you
   and save code and `godot/project.godot` are sensitive: change them only when a report clearly needs it, never
   weaken auth, authority checks or anti-cheat, and flag it in `ownerNote`.
 - Commit messages: plain, no `Co-Authored-By` line or other trailer.
+- Docs stay true in the same commit (owner, 2026-10-10): if a fix changes how something works, update the README or doc line that describes it.
+  Deleted or renamed names: fix every reference and add the old name to `tools/hygiene/retired.json`. `check.sh` runs the repo hygiene check first.
 - `check.sh` must pass after your last commit. If a fix breaks it and you cannot repair it, `agit revert` your commit and
   mark the report `triaged`.
 - Stop after about 8 fixes; leave the rest `triaged` for tomorrow.
