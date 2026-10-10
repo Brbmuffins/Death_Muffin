@@ -9,7 +9,7 @@ Shared classes that `DmNextGame` (`godot/next/`) and the UI use. Some file heade
 | Combat helpers | `dm_auto_combat.gd`, `dm_auto_dodge.gd`, `dm_boss_telegraphs.gd`, `dm_fdlibm_x.gd`, `dm_hitstop.gd`, `dm_rite_fx.gd` |
 | Leftovers | `dm_game_hud.gd`: only the static `DmGameHud.art(path)` icon helper is used (the HUD view-model is `DmNextHudVm`, shape in `ui/hud/README.md`). `dm_game_rewards.gd` and `dm_player.gd` are not called by the live game (`tests/rewards` uses them); live rewards are `next/rewards/` |
 | Gathering / labor | `dm_gather_loop.gd`, `dm_gather_session.gd`, `dm_skills.gd`, `dm_game_labor.gd` |
-| Settings / perf | `dm_settings.gd`, `dm_graphics_preset.gd`, `dm_renderer.gd` (Compatibility / Mobile choice, root README "Renderer"), `dm_resolution_governor.gd`, `dm_caster_budget.gd`, `dm_warmup.gd` |
+| Settings / perf | `dm_settings.gd`, `dm_graphics_preset.gd`, `dm_renderer.gd` (Compatibility / Mobile choice + physics/render thread options, one override file, root README "Renderer"), `dm_resolution_governor.gd`, `dm_caster_budget.gd`, `dm_warmup.gd` |
 | Offline | `dm_offline.gd`: mock backend with the item catalogue, used by `-- --dev-offline` and by tests |
 
 `dm_event_fx.gd` and `dm_event_fx_{boss,telegraph,zones}.gd` (`DmEventFx`) are the event-to-VFX/audio router, written for the old DmGame host.

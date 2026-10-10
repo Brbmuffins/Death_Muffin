@@ -46,6 +46,8 @@ var kit_legion := true
 var bind_note: Label
 var _diff_note: Label
 var _auto_cb: CheckBox
+var _renderer_refresh := Callable()   # re-reads the renderer row (Restart now / note) after a threading row changes
+var _threads_refresh := Callable()   # re-reads the two threading rows (the renderer row calls it when the choice changes)
 var _bind_btns: Dictionary = {}
 
 
@@ -380,9 +382,9 @@ func _renderer_row(parent: VBoxContainer) -> void:
 	var refresh := func() -> void:
 		var want := DmRenderer.requested()
 		var now := DmRenderer.active()
-		restart.visible = want != now and not DmRenderer.fell_back()
+		restart.visible = (want != now and not DmRenderer.fell_back()) or DmRenderer.physics_thread_requested() != DmRenderer.physics_thread_active() or DmRenderer.render_thread_requested() != DmRenderer.render_thread_active()
 		if DmRenderer.was_reverted():
-			note.text = "Mobile (Vulkan) stopped working last time, so the game went back to Compatibility. Pick Mobile again to retry."
+			note.text = "The last run with Mobile or a threading option did not survive its first seconds, so everything went back to the defaults (Compatibility, threads off). Pick again to retry."
 		elif DmRenderer.fell_back():
 			note.text = "Mobile is selected but this PC could not start Vulkan, so the game is running on Compatibility."
 		elif want != now:
@@ -391,13 +393,51 @@ func _renderer_row(parent: VBoxContainer) -> void:
 			note.text = "Running on %s. Mobile (Vulkan) is experimental: if it looks wrong, set this back to Compatibility and restart." % DmRenderer.describe()
 	ob.item_selected.connect(func(i: int) -> void:
 		DmRenderer.set_requested(opts[i][0])
-		refresh.call())
+		refresh.call()
+		if _threads_refresh.is_valid():
+			_threads_refresh.call())
 	var rr := HBoxContainer.new()
 	rr.add_theme_constant_override("separation", 8)
 	rr.add_child(restart)
 	rr.add_child(ob)
 	_row(parent, "Renderer", rr)
 	_note_margin(parent, note)
+	_renderer_refresh = refresh
+	refresh.call()
+	_threads_rows(parent)
+
+
+## Settings -> Graphics -> threading options (DmRenderer): off by default, restart required, saved in the same override file as the renderer.
+## The render thread is offered only with Mobile (Compatibility/OpenGL gets no separate render thread); the physics thread is marked experimental.
+func _threads_rows(parent: VBoxContainer) -> void:
+	var pcb := CheckBox.new()
+	pcb.focus_mode = Control.FOCUS_NONE
+	_row(parent, "Physics on a separate thread (experimental)", pcb)
+	var rcb := CheckBox.new()
+	rcb.focus_mode = Control.FOCUS_NONE
+	_row(parent, "Separate render thread (Mobile only)", rcb)
+	var note := DmUi.label("", "DmNote", true)
+	_note_margin(parent, note)
+	var refresh := func() -> void:
+		pcb.set_pressed_no_signal(DmRenderer.physics_thread_requested())
+		var mobile := DmRenderer.requested() == DmRenderer.MOBILE
+		rcb.disabled = not mobile
+		rcb.set_pressed_no_signal(DmRenderer.render_thread_requested())
+		var msg := "Both off by default and applied after a restart. If the game crashes in its first 25 seconds with either on, it goes back to the defaults by itself."
+		if not mobile:
+			msg += " The render thread needs Mobile: Compatibility (OpenGL) is not offered one."
+		if DmRenderer.physics_thread_requested() != DmRenderer.physics_thread_active() or DmRenderer.render_thread_requested() != DmRenderer.render_thread_active():
+			msg = "Saved. Applies after a restart (use Restart now above, or quit and start the game again). " + msg
+		note.text = msg
+	pcb.toggled.connect(func(on: bool) -> void:
+		DmRenderer.set_physics_thread(on)
+		_threads_refresh.call()
+		_renderer_refresh.call())
+	rcb.toggled.connect(func(on: bool) -> void:
+		DmRenderer.set_render_thread(on)
+		_threads_refresh.call()
+		_renderer_refresh.call())
+	_threads_refresh = refresh
 	refresh.call()
 
 

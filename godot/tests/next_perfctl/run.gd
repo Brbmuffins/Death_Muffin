@@ -151,6 +151,15 @@ func _settings() -> void:
 	st.update({"graphics": "high"})
 	st.update({"fps": 0})
 	check(Engine.max_fps == 0, "fps Max = uncapped")
+	# F3 overlay: the renderer line names the renderer and the threading options running (DmRenderer.describe)
+	var ov := DmPerfOverlay.new()
+	root.add_child(ov)
+	ov.set_shown(true)
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 1500 and not ov.label.text.contains("["):
+		await process_frame
+	check(ov.label.text.contains("[" + DmRenderer.describe() + "]"), "F3 overlay renderer line shows '%s'" % DmRenderer.describe())
+	ov.queue_free()
 	# culling / streaming / shadow range are the builder's constants, driven by DmNextWorld.update every frame
 	check(DmWorldBuilder.SHADOW_RANGE == 32.0 and DmWorldBuilder.LIGHT_NEAR == 8, "culling: shadow range 32 m, 8 prop lights (as the current client)")
 	# auto_res off: a stepped-down view returns to full resolution at once

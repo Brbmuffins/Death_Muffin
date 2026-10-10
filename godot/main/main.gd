@@ -7,7 +7,7 @@ extends Node
 ## Testing only: `--dev-offline` = local accounts + progress in DEV_OFFLINE_DB (DmMockBackend, no live server); `--dev-offline --class=N`
 ## skips the front flow (test account `tester`) and enters DmNextGame directly; `--world-demo` is an alias of `--dev-offline --class=2` (the screenshot QA's
 ## launch line, shot-godot.sh).
-## `--renderer=compat|mobile` stores the renderer choice for the next launch and relaunches once if this run is not already on it (DmRenderer).
+## `--renderer=compat|mobile` (and `--safe-graphics`, which also resets the threading options) stores the renderer choice for the next launch and relaunches once if this run is not already on it (DmRenderer).
 ## On an online start the retired offline edition's save and its stored "offline:" token are deleted (owner: offline characters are deleted).
 
 const OFFLINE_EDITION_DB := "user://dm_offline_db.json"   ## the retired player-facing offline edition's accounts + characters
@@ -40,7 +40,7 @@ func _ready() -> void:
 		return   # `--renderer=compat|mobile` changed the renderer: relaunching
 	if DmRenderer.guard_start(get_tree(), args):
 		return   # the last Mobile run did not survive its first seconds: back to Compatibility
-	if DmRenderer.is_mobile():
+	if DmRenderer.experimental_active():
 		get_tree().create_timer(DmRenderer.GUARD_OK_S).timeout.connect(DmRenderer.guard_ok)   # survived: the guard is cleared
 	if mode == "":
 		mode = mode_for(args)

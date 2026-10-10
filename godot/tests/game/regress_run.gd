@@ -204,6 +204,42 @@ func _graphics() -> void:
 	_check(not DmRenderer.was_reverted(), "choosing again clears the note")
 	DmRenderer.set_requested(DmRenderer.COMPAT, rp)
 
+	# --- threading options: same file, default off, Mobile-only render thread, guard + safe-graphics reset them all -----------------
+	DmRenderer.reset_all(rp)
+	_check(not DmRenderer.physics_thread_requested(rp) and not DmRenderer.render_thread_requested(rp), "threading options default off")
+	_check(DmRenderer.set_physics_thread(true, rp) and DmRenderer.physics_thread_requested(rp) and DmRenderer.requested(rp) == DmRenderer.COMPAT, "physics thread is saved and read back (Compatibility stays)")
+	cf = ConfigFile.new()
+	cf.load(rp)
+	_check(cf.get_value("physics", "3d/run_on_separate_thread") == true and not cf.has_section_key("rendering", "renderer/rendering_method"), "...as physics/3d/run_on_separate_thread in the same override file")
+	DmRenderer.set_render_thread(true, rp)
+	_check(not DmRenderer.render_thread_requested(rp) and not cf.has_section_key("rendering", "driver/threads/thread_model"), "the render thread is refused while Compatibility is the renderer")
+	DmRenderer.set_requested(DmRenderer.MOBILE, rp)
+	_check(DmRenderer.physics_thread_requested(rp) and DmRenderer.requested(rp) == DmRenderer.MOBILE, "choosing the renderer keeps the physics thread")
+	DmRenderer.set_render_thread(true, rp)
+	cf = ConfigFile.new()
+	cf.load(rp)
+	_check(DmRenderer.render_thread_requested(rp) and cf.get_value("rendering", "driver/threads/thread_model") == 2 and cf.get_value("rendering", "renderer/rendering_method") == "mobile", "Mobile + render thread: thread_model = 2 beside the rendering method")
+	DmRenderer.set_requested(DmRenderer.COMPAT, rp)
+	_check(not DmRenderer.render_thread_requested(rp) and DmRenderer.physics_thread_requested(rp) and FileAccess.file_exists(rp), "back to Compatibility drops the render thread, keeps the physics thread, keeps the file")
+	DmRenderer.set_physics_thread(false, rp)
+	_check(not FileAccess.file_exists(rp), "everything off removes the file")
+	# crash guard over every option
+	DmRenderer.set_physics_thread(true, rp)
+	DmRenderer.set_requested(DmRenderer.MOBILE, rp)
+	DmRenderer.set_render_thread(true, rp)
+	_check(not DmRenderer.guard_check(true, gp, rp) and FileAccess.file_exists(gp), "a run with a threading option arms the guard")
+	_check(DmRenderer.guard_check(true, gp, rp) and not FileAccess.file_exists(rp) and not DmRenderer.physics_thread_requested(rp) and not DmRenderer.render_thread_requested(rp)
+		and DmRenderer.requested(rp) == DmRenderer.COMPAT and DmRenderer.was_reverted(), "a crash within the guard window reverts ALL of them and tells Settings")
+	DmRenderer.set_physics_thread(true, rp)
+	_check(not DmRenderer.was_reverted(), "choosing again clears the note")
+	# --safe-graphics / --renderer=compat flags
+	_check(DmRenderer.strip_flag(PackedStringArray(["--a", "--safe-graphics"])) == PackedStringArray(["--a"]), "--safe-graphics is not passed on to the relaunch")
+	DmRenderer.reset_all(rp)
+	# the text F3 / bug reports show
+	_check(DmRenderer.threads_text() == (", physics thread" if DmRenderer.physics_thread_active() else "") + (", render thread" if DmRenderer.render_thread_active() else "")
+		and DmRenderer.describe().ends_with(DmRenderer.threads_text()), "describe() (F3 + bug report) ends with the threading options running")
+	_check(not DmRenderer.experimental_active() or DmRenderer.physics_thread_active() or DmRenderer.render_thread_active() or DmRenderer.is_mobile(), "experimental_active() = Mobile or a threading option")
+
 
 func _depths_builder() -> void:
 	DmSimData.ensure()

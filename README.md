@@ -74,6 +74,20 @@ OpenGL 3 (`rendering/rendering_device/fallback_to_opengl3`) and the game runs on
 (`user://dm_renderer.guard` survives) puts the choice back to Compatibility on the next launch and says so in Settings. A crash before the first
 script runs is the one case the game cannot see: delete the cfg file. The F3 overlay's last line and every bug report (`renderer`) show the renderer
 actually running. Other ways back: `DeathMuffin.exe -- --renderer=compat` (rewrites the file, relaunches), or `--rendering-method gl_compatibility` for one run.
+**Threading options (A/B, experimental, restart required, default off).** Two more checkboxes under the Renderer row write into the SAME override file:
+"Physics on a separate thread" (`physics/3d/run_on_separate_thread=true`) and "Separate render thread" (`rendering/driver/threads/thread_model=2`,
+offered only while Mobile is the chosen renderer; the engine itself calls it experimental and it crashed at startup with OpenGL here, so Compatibility
+is not offered it, and choosing Compatibility drops it). All our space queries (`intersect_ray` in `DmPfUtil.wall_between`, `DmEnemyGargoyle.clear_line_to`)
+run inside the enemy brain tick in `_physics_process`, bodies are only moved there, and the headless suites (enemies, thralls, bosses, interp, session,
+world, next) pass with the physics thread forced on; real-GPU stability is what the A/B tells. The crash guard covers all three (Mobile, physics thread,
+render thread): a run that dies in its first 25 s puts ALL back to defaults and says so in Settings. `DeathMuffin.exe -- --safe-graphics` (or
+`--renderer=compat`) also resets all of them and relaunches. The F3 renderer line and bug reports (`renderer`) end with `, physics thread` /
+`, render thread` for what is running.
+**Owner A/B on your PC:** (1) pick one fixed fight (same area, same class, same wave) and note F3 `avg`/`p50`/`worst` frame ms for ~30 s; compare
+frame ms, not core usage: with the Frame rate setting on Max (`Engine.max_fps` 0) one pegged main core is expected. Repeat the whole test with Frame rate
+at your monitor's rate as well. (2) Change ONE toggle (physics thread; then, on Mobile, render thread; then Mobile alone), Restart now, repeat the same
+fight, compare. (3) Anything odd (stutter, enemies jittering, crash): untick it, or launch with `-- --safe-graphics`, and send a bug report.
+
 Code branches on `DmRenderer.active()` / `is_mobile()`, never on the setting. Shaders cannot be compiled for Mobile headless (the VPS has no Vulkan);
 Compatibility-specific spots to compare by eye on a Mobile run: Binbun `depth_texture` effects (18 shaders) assume Vulkan depth, so under Mobile their
 proximity fade is the intended one; the water shader's `GL_COMPATIBILITY` define is 0; `DmFxRing` motes pass sRGB colours (Compatibility linearises
