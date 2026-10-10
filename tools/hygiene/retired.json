@@ -177,6 +177,9 @@
       "tools/godot/gen-fixtures.sh",
       "godot/data/loot/content.json",
       "godot/.godot"
+    ],
+    "ASSET_PIPELINE.md": [
+      "godot/assets/fx/sheets/"
     ]
   }
 }
