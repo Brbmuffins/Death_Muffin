@@ -21,7 +21,7 @@ LOG="$STATE/runs/$(date -u +%Y%m%d).log"   # one log per day; quiet ticks (no ne
 SUMMARY="$STATE/runs/$DATE.md"
 mkdir -p "$STATE/runs"
 # One run at a time: a report that arrives during a run is picked up by the next tick.
-exec 8>"$STATE/run.lock"
+exec 8>"$STATE/runs/.lock"   # runs/ is the only state dir the unit may write
 flock -n 8 || exit 0
 
 # The CLI is installed beside the runtime so the job does not depend on any checkout's working tree.
@@ -30,7 +30,7 @@ REPORTS=$(node "$CLI" list)
 if [ "${1:-}" = "--dry-run" ]; then printf '%s\n' "$REPORTS"; exit 0; fi   # read-only: no attempt counted
 # A report a run could not settle stays 'new'; after 3 attempts it is set aside (attempts.json) and the owner is told once, so a
 # stubborn report cannot make every 2-minute tick start a new agent run.
-ATTEMPTS="$STATE/attempts.json"
+ATTEMPTS="$STATE/runs/attempts.json"
 REPORTS=$(REPORTS="$REPORTS" node -e '
   const fs = require("fs"); const f = process.argv[1];
   let a = {}; try { a = JSON.parse(fs.readFileSync(f, "utf8")); } catch {}
