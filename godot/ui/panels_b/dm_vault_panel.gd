@@ -203,34 +203,32 @@ func _build() -> void:
 			vg.add_child(cell)
 			vault_slots[idx] = cell
 
-	var acts := HFlowContainer.new()
-	acts.add_theme_constant_override("h_separation", 8)
-	acts.add_theme_constant_override("v_separation", 6)
-	add_child(acts)
 	var off := busy or not loaded
-	var c1 := DmPb.vbox(6)
-	c1.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var dep_row := DmPb.hbox(8)
 	deposit_materials_button = DmPb.button("Deposit materials", false, off, "Stores every unlocked material and consumable in the Vault")
 	deposit_materials_button.pressed.connect(func() -> void: deposit_all_requested.emit("materials", locked_slots()))
-	take_materials_button = DmPb.button("Take materials", false, off, "Takes every material and consumable from the open Vault tab into your bag, as far as it fits")
-	take_materials_button.pressed.connect(_take.bind("materials"))
-	c1.add_child(deposit_materials_button)
-	c1.add_child(take_materials_button)
-	var c2 := DmPb.vbox(6)
-	c2.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	deposit_all_button = DmPb.button("Deposit all", false, off, "Stores everything unlocked and not worn")
 	deposit_all_button.pressed.connect(func() -> void: deposit_all_requested.emit("all", locked_slots()))
+	dep_row.add_child(deposit_materials_button)
+	dep_row.add_child(deposit_all_button)
+	left.add_child(dep_row)
+	var take_row := DmPb.hbox(8)
+	take_materials_button = DmPb.button("Take materials", false, off, "Takes every material and consumable from the open Vault tab into your bag, as far as it fits")
+	take_materials_button.pressed.connect(_take.bind("materials"))
 	take_all_button = DmPb.button("Take all", false, off, "Takes everything from the open Vault tab into your bag, as far as it fits")
 	take_all_button.pressed.connect(_take.bind("all"))
-	c2.add_child(deposit_all_button)
-	c2.add_child(take_all_button)
-	acts.add_child(c1)
-	acts.add_child(c2)
+	take_row.add_child(take_materials_button)
+	take_row.add_child(take_all_button)
+	right.add_child(take_row)
+	var mid := DmPb.vbox(4)
+	add_child(mid)
 	sort_button = DmPb.button("Sort", false, off, "Merges stacks, then orders by type, rarity and name")
 	sort_button.pressed.connect(func() -> void: sort_requested.emit())
-	sort_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	acts.add_child(sort_button)
-	acts.add_child(DmPb.text(shown["locked_hint"], 12, DmUi.TEXT_FAINT))
+	sort_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	mid.add_child(sort_button)
+	var lh := DmPb.text(shown["locked_hint"], 12, DmUi.TEXT_FAINT)
+	lh.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mid.add_child(lh)
 	var nl := DmPb.text(note, 12, DmUi.OK)
 	nl.name = "Note"
 	nl.custom_minimum_size.y = 18
