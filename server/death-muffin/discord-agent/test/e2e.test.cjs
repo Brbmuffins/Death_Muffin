@@ -163,7 +163,7 @@ test('❌ discards: branch + worktree removed, nothing live; only creator/approv
   assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0);
 });
 
-test('master moved with a conflict: refuse, say so, nothing deployed; !sync resolves via the agent path', async () => {
+test('master moved with a conflict: refuse, say so, nothing deployed; the runner syncs by itself and re-proposes', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS blue');
   const p = await waitProposal(d, thread);
@@ -172,6 +172,47 @@ test('master moved with a conflict: refuse, say so, nothing deployed; !sync reso
   await d.react(p, IDS.OWNER, '✅');
   await until(() => texts(thread).some((t) => /Not live/.test(t)), d.ad);
   assert.match(texts(thread).join('\n'), /no longer merges cleanly/); assert.equal(remoteMaster(w), before); assert.equal(shipsLog(w).length, 0);
+  // nobody types !sync: the runner queues it, the agent merges master in, and a fresh proposal follows (it needs a new ✅)
+  assert.match(texts(thread).join('\n'), /Merging master in now/);
+  await until(() => /"event":"auto-sync"/.test(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8')), d.ad);
+  await until(() => texts(thread).some((t) => /Merging the latest master hit conflicts; asking the agent to resolve them/.test(t)), d.ad);   // the sync turn runs (what follows: the carried-approval tests below)
+});
+
+test('a conflict at ship is synced and resolved, and the same change ships on the original approval (no second ✅)', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS blue');
+  const p = await waitProposal(d, thread);
+  fs.writeFileSync(path.join(w.repo, 'src/ui/ui.css'), 'a{color:pink}'); sh(w.repo, 'add', 'src/ui/ui.css'); sh(w.repo, 'commit', '-q', '-m', 'someone else'); sh(w.repo, 'push', '-q', 'origin', 'master');
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  assert.ok(texts(thread).some((t) => /Shipping on Helix's approval \(same files: src\/ui\/ui\.css\)/.test(t)), texts(thread).join(' // '));
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"carried":true/);
+  assert.equal(shipsLog(w).length, 1);
+});
+test('a resolved conflict that touches new files needs a fresh ✅', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS blue');
+  const p = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0];
+  fs.writeFileSync(path.join(w.repo, 'src/ui/ui.css'), 'a{color:pink}'); sh(w.repo, 'add', 'src/ui/ui.css'); sh(w.repo, 'commit', '-q', '-m', 'someone else'); sh(w.repo, 'push', '-q', 'origin', 'master');
+  fs.writeFileSync(path.join(job.worktree, 'CONFLICT-ADD'), '');   // the fake agent's resolution will also add src/extra.ts
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /needs a fresh ✅/.test(t)), d.ad);
+  assert.match(texts(thread).join('\n'), /also changes src\/extra\.ts/);
+  assert.equal(shipsLog(w).length, 0, 'not shipped without a new approval'); assert.equal(job.status, 'proposed');
+});
+
+test('master moved mid-ship (push rejected): the approval still holds, so the runner ships it again by itself', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const origin = path.join(path.dirname(w.repo), 'origin.git');
+  // the remote refuses the first push to master (as if someone pushed in between), then accepts
+  fs.writeFileSync(path.join(origin, 'hooks', 'pre-receive'), `#!/usr/bin/env bash\nf="$(dirname "$0")/../rejected-once"\nwhile read -r o n r; do if [ "$r" = refs/heads/master ] && [ ! -e "$f" ]; then touch "$f"; echo "simulated race" >&2; exit 1; fi; done\nexit 0\n`, { mode: 0o755 });
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS blue');
+  const p = await waitProposal(d, thread);
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  assert.ok(texts(thread).some((t) => /Shipping it again by itself/.test(t)), 'told the thread it retried');
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"event":"auto-reship"/);
+  assert.equal(shipsLog(w).length, 1);
 });
 
 test('!sync after the base moved (incl. a forbidden path): the job diff is measured from the merged base, so the proposal is not refused', async () => {
@@ -905,7 +946,7 @@ test('godot mode: base branch moved with a conflict is refused and leaves no bac
   sh(w.repo, 'checkout', '-q', 'godot-port'); fs.writeFileSync(path.join(w.repo, 'godot/game/a.gd'), 'speed=5'); sh(w.repo, 'commit', '-q', '-am', 'someone else'); sh(w.repo, 'push', '-q', 'origin', 'godot-port');
   const moved = remoteHead(w, 'godot-port');
   await d.react(p, IDS.HELIX, '✅');
-  await until(() => texts(thread).some((t) => /Not live: godot-port moved and this no longer merges cleanly/.test(t)), d.ad);
+  await until(() => texts(thread).some((t) => /Not live yet: godot-port moved and this no longer merges cleanly/.test(t)), d.ad);
   assert.equal(remoteHead(w, 'godot-port'), moved); assert.equal(godotBackups(w).length, 0);
 });
 

@@ -406,7 +406,7 @@ function createRunner(cfgIn, opts = {}) {
       }
       const curHead = await G.head(job.worktree).catch(() => null);
       if (curHead !== p.head) { audit.log('approve-refused', { userId: uid, job: job.id, why: 'head changed' }); say(job, 'The branch changed after this proposal; wait for the new one.'); return { action: 'remove_reaction' }; }
-      audit.log('approved', { userId: uid, job: job.id, tier: p.tier, head: p.head });
+      audit.log('approved', { userId: uid, job: job.id, tier: p.tier, head: p.head }); job.syncCarries = 0;
       // Another ship (or a queue) ahead: this one waits its turn and ships by itself (owner 2026-10-10: no second ✅ after the first ship).
       if (shipBusy || shipQueue().length) {
         if (job.shipQueued) return { action: 'accepted' };
@@ -486,6 +486,7 @@ function createRunner(cfgIn, opts = {}) {
     if (job.roundNote) { extra = job.roundNote; job.roundNote = null; }
     const artNotes = msgs.filter((m) => m.art).map((m) => m.text);
     if (artNotes.length) extra = (extra ? extra + '\n\n' : '') + artNotes.join('\n\n');
+    if (real.length) job.carryApproval = null;   // someone is changing the request: the next proposal needs a fresh ✅
     if (real.length) job.lastAsker = { id: String(real[real.length - 1].userId), name: real[real.length - 1].name };
     if (sync) {
       await G.git(cfg.repo, ['fetch', '-q', 'origin']);
@@ -717,7 +718,7 @@ function createRunner(cfgIn, opts = {}) {
     embed.fields.splice(embed.fields.length - 1, 0, previewField);
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
     job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
-    job.status = 'proposed'; save(); syncName(job);
+    job.status = 'proposed'; job.autoReships = 0; save(); syncName(job);
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
     const shots = proposalShots(job, committedAt);
@@ -726,6 +727,24 @@ function createRunner(cfgIn, opts = {}) {
     // BEFORE pictures come after, in the background: rendering waits for the shared renderer lock (other renders can hold it for many
     // minutes), and a job waiting on it kept its slot and blocked other requests (2026-10-10). The pair is posted as a follow-up.
     if (GODOT && shots.length) postBeforeAfter(job, head, shots.slice(0, 2));
+    carryApproval(job);
+  }
+  // A ship that hit a merge conflict was synced by the runner; when the resolved change is still the approved one (same files or fewer, tier
+  // not higher, nobody wrote in the thread meanwhile) it ships on the original approval (owner, 2026-10-10: "a second approval is not required").
+  // Anything else falls back to an ordinary proposal that needs a ✅, and the thread says why.
+  function carryApproval(job) {
+    const ca = job.carryApproval; job.carryApproval = null;
+    const p = job.proposal; if (!ca || !p || job.status !== 'proposed') return;
+    const TIERS = ['casual', 'gameplay', 'sensitive'];
+    const extra = (p.files || []).filter((f) => !ca.files.includes(f));
+    const why = extra.length ? `also changes ${extra.slice(0, 3).join(', ')}${extra.length > 3 ? '…' : ''}`
+      : TIERS.indexOf(p.tier) > TIERS.indexOf(ca.tier) ? `is now ${p.tier}-tier (approved as ${ca.tier})`
+      : !auth.canApprove(ca.approverId, p.tier) ? `needs an approver for the ${p.tier} tier` : null;
+    if (why) { audit.log('carry-refused', { job: job.id, why }); say(job, `Merged ${BB} in, but the resolved change ${why}, so it needs a fresh ✅.`); save(); return; }
+    audit.log('approved', { userId: ca.approverId, job: job.id, tier: p.tier, head: p.head, carried: true });
+    say(job, `Resolved the merge with ${BB} and the checks pass. Shipping on ${nameOf(ca.approverId)}'s approval (same files: ${clip((p.files || []).join(', '), 200)}).`);
+    if (shipBusy || shipQueue().length) { job.shipQueued = { approverId: ca.approverId, head: p.head, at: now() }; save(); if (!shipBusy) drainShipQueue(); return; }
+    startShip(job, ca.approverId);
   }
 
   const beforeBusy = new Set();
@@ -996,6 +1015,23 @@ function createRunner(cfgIn, opts = {}) {
       ownerPing(pingTarget(job), `Client publish failed 3x for \`${job.id}\` (${sha}); auto-retry in ${cfg.publishAutoRetryMin} min. Log: ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
       scheduleAutoRetry(job, cfg.publishAutoRetryMin);
       pump(); return;
+    }
+    // Automatic follow-ups (owner, 2026-10-10: "make it auto sync so we don't have to type that"). A conflict queues the same request !sync
+    // does (merge the base in, the agent resolves it, a fresh proposal follows; that needs a new ✅ because the merge is new code). Main moving
+    // mid-ship changed nothing on the branch, so the approval still holds: the ship is queued again by itself (at most twice per proposal).
+    if (kind === 'conflict' && !job.deleteRequested) {
+      say(job, `❌ Not live yet: ${BB} moved and this no longer merges cleanly (${detail}). Merging ${BB} in now; if the resolved change stays the same files, it ships on this approval by itself.`);
+      const n = (job.syncCarries || 0) + 1; job.syncCarries = n;
+      job.carryApproval = n <= 2 ? { approverId: String(approverId), tier: p.tier, files: (p.files || []).slice() } : null;
+      job.status = 'idle'; job.proposal = null;
+      job.queue.push({ userId: String(approverId), name: nameOf(approverId), role: auth.roleOf(approverId) || 'approver', text: '(automatic sync after a merge conflict at ship)', messageId: null, ts: now(), sync: true });
+      audit.log('auto-sync', { job: job.id, files: detail }); save(); pump(); return;
+    }
+    if (kind === 'master-moved' && (job.autoReships || 0) < 2 && !job.deleteRequested) {
+      job.autoReships = (job.autoReships || 0) + 1; job.status = 'proposed';
+      job.shipQueued = { approverId: String(approverId), head: p.head, at: now() };
+      say(job, `${BB} moved while I was shipping, so nothing was pushed. Shipping it again by itself.`);
+      audit.log('auto-reship', { job: job.id, n: job.autoReships }); save(); return;   // drainShipQueue picks it up (the deploy is free)
     }
     say(job, `❌ Not live: ${why}`);
     if (kind === 'deploy-failed' || kind === 'crashed') ownerPing(pingTarget(job), `Deploy problem for \`${job.id}\`: ${kind}. Check ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);

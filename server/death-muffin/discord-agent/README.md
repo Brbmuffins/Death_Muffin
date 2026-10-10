@@ -89,6 +89,13 @@ Messages queued before it are dropped, and no review or repair turn follows; the
 A ship cannot be cancelled. An idle job is closed by the sweep after 7 days without activity. Housekeeping (`tidy()`, at start and with every sweep)
 clears a job's pointer to a workspace that is gone and drops messages stuck in a finished job for over an hour (audit `stale-queue-dropped`).
 
+**After an approval, nobody needs to type `!sync` (2026-10-10, DECISIONS B13).** If the ship hits a merge conflict, the runner queues the sync itself
+(audit `auto-sync`): the agent merges the base branch in and resolves the conflict, checks run, and a proposal is posted. When the resolved change
+touches only files the approved proposal touched, its tier is not higher, and nobody wrote in the thread meanwhile, it ships on the ORIGINAL
+approval (audit `approved` with `carried: true`; the thread names the files). Otherwise it needs a fresh ✅ and the thread says why
+(`carry-refused`). At most 2 carried syncs per human approval. If the base branch moved during the push itself (`master-moved`, nothing
+changed on the branch), the ship is queued again by itself (`auto-reship`, at most twice per proposal).
+
 **Ship speed (owner, 2026-10-10).** The ship's re-test is skipped when the merged tree is exactly the proposal's (main did not move since), which already
 passed the same quick check; a sensitive change still runs the full suite. **Backlog:** when another approved ship is waiting, the current one merges, tests
 and pushes but does not publish (`DEFER_PUBLISH=1`, `RESULT: merged`; the thread is told it goes live with the next publish). The next publish carries it:

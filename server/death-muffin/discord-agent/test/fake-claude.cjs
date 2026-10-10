@@ -17,6 +17,8 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   // godot mode (base branch godot-port): GD-GAMEPLAY = godot/game/a.gd (GD-SHOT in the same request also leaves a shot plan + picture), GD-NET = sensitive net code, GD-DOC = readme, GD-PRESET = a forbidden path
   // model requests: GD-ART [kind] id=<id>. kinds: (none) rigged biped with 6 clips | PROP | BAD (unknown field) | BADFIX (bad first, valid once the runner says it was rejected) | LINK (concept png is a symlink) | SWAP (rewrites the spec bigger, no request)
   const art = /GD-ART(?:-(\w+))? id=([a-z0-9_]+)/.exec(p);
+  // a sync that hit conflicts: keep this branch's side of each conflicted file and commit the merge (a CONFLICT-ADD marker file in the worktree makes it also touch a new file)
+  const conflictList = /left conflicts in:\n([\s\S]*?)\nResolve/.exec(p);
   if (art && !/The runner generated the approved model/.test(p) && !/rejected your model request/.test(p)) {
     const kind = art[1] || '', id = art[2];
     const spec = { id, input: `art-src/concepts/${id}.png`, generation: { model: 'P1-20260311', face_limit: 7000, texture_quality: 'detailed' } };
@@ -37,6 +39,12 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   } else if (/The runner generated the approved model "([a-z0-9_]+)"/.test(p)) {
     const id = /The runner generated the approved model "([a-z0-9_]+)"/.exec(p)[1];
     wr(`godot/assets/slice/models/${id}/character.glb`, 'glb-bytes'); git('add', '--', `godot/assets/slice/models/${id}/character.glb`, `art-manifest/gemini-jobs/${id}.json`, `art-manifest/tripo-specs/${id}.json`, `art-manifest/tripo/${id}.json`); git('commit', '-q', '-m', `Add the ${id} model`); ready(`New model: ${id}`, [`Added ${id}`]); text = 'Built and committed.' + (/build-art\.sh/.test(p) ? ' BUILD-ART-SEEN' : '');
+  }
+  else if (conflictList) {
+    const files = conflictList[1].split('\n').map((x) => x.trim()).filter(Boolean);
+    for (const f of files) { git('checkout', '--ours', '--', f); git('add', '--', f); }
+    if (fs.existsSync('CONFLICT-ADD')) { fs.rmSync('CONFLICT-ADD'); fs.writeFileSync('src/extra.ts', 'x=1\n'); git('add', '--', 'src/extra.ts'); }
+    git('commit', '-q', '--no-edit'); text = 'Resolved the merge.';
   }
   else if (/GD-GAMEPLAY/.test(p)) { edit('godot/game/a.gd', 'speed=1', 'speed=9', 'Faster movement'); ready('Faster movement', ['speed 9']); text = 'Done.'; }
   else if (/GD-NET/.test(p)) { edit('godot/net/dm_api.gd', 'url=1', 'url=2', 'Change the api url'); ready('Api url', ['url 2']); text = 'Done.'; }
