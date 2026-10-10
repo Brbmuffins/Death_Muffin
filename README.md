@@ -72,7 +72,7 @@ checks passing. The full procedure (scripts, release notes, rollback, services) 
 
 - **Client:** `server/death-muffin/publish-godot-client.sh <git-rev>` exports the `Windows Desktop` preset (`godot/export_presets.cfg`) and publishes it for the launcher.
 - **Backend:** `server/death-muffin/deploy-release.sh [rev] [migration.sql ...]`. Never edit the installed backend by hand.
-- **Release notes:** both scripts end with `announce-release.sh`, which posts the release in #build-alerts. Put a new top entry in `PATCH_NOTES.json` for a named release. A notice lists only the patch-note lines added since the last announced release; lines added to an existing entry (Discord ships) are titled with the job's thread title (`RELEASE_TITLE`, passed by the Discord agent), else the newest commit subject.
+- **Release notes:** both scripts end with `announce-release.sh`, which posts the release in #build-alerts. Put a new top entry in `PATCH_NOTES.json` for a named release. A notice lists only the patch-note lines added since the last announced release; lines added to an existing entry (Discord ships) are titled with the job's proposal title, else its thread name (`RELEASE_TITLE`, passed by the Discord agent), else the newest commit subject.
 - **Online gate:** `server/death-muffin/set-online.sh on|staff|off ["message"]`; live state is `on`.
 - **Launcher:** version in `launcher/windows/DeathMuffinLauncher.csproj`; see [launcher/windows/README.md](launcher/windows/README.md).
 

@@ -15,7 +15,7 @@
 # same revision published twice) announces nothing.
 # QUIET=1 (deploy-release.sh: backend deploys): when PATCH_NOTES.json did not change, keep the live notes' title and items (commit
 # subjects of a backend fix are not player news) and post no release notice; bug reports are still released and announced.
-# RELEASE_TITLE (the Discord agent's thread title) names a release whose lines went into an existing PATCH_NOTES entry.
+# RELEASE_TITLE (the Discord agent's proposal title, else thread name) names a release whose lines went into an existing PATCH_NOTES entry.
 # Test overrides: REPO PUBLIC RUNTIME HOOK_FILE REPORTS_CLI, DRY_RUN=1 (write the JSON to $PUBLIC/play without sudo, no Discord, no DB).
 set -uo pipefail
 
