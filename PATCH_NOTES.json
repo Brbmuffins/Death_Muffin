@@ -6,7 +6,8 @@
       "Pressing Esc to clear a keybind no longer closes the Settings window.",
       "Bone Needle, pierce and Scythe hits now land with an animated impact burst, and critical hits flare with a bright ring of rays.",
       "Exhume draws a glowing summoning circle under the corpse as it rises.",
-      "The Contagion rune's spread is now a crackling tendril of rot from the dying enemy to the next one."
+      "The Contagion rune's spread is now a crackling tendril of rot from the dying enemy to the next one.",
+      "Settings now has an \"Exit game\" button at the top, so you can quit from fullscreen without alt-tabbing. It saves first."
     ]
   },
   {
