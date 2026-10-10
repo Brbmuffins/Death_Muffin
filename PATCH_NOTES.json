@@ -3,6 +3,7 @@
     "date": "2026-10-10",
     "title": "A Calmer Login Screen",
     "items": [
+      "Clicking items in the vault (and other item grids) no longer makes your character walk toward the spot under the window.",
       "The login and discipline screens use a still background: no more scenery swinging around with your mouse.",
       "Login screen tidied up: the title fits on one line, the headline is tighter, the sign-in card no longer has an empty gap under the button, and the text describes the game as it is today."
     ]
