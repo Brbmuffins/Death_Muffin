@@ -4,7 +4,9 @@
 
 const NAME_MAX = 60;
 const FALLBACK = 'Death Muffin request';
-const MARKERS = { running: '🔧 ', shipping: '🔧 ', proposed: '📝 ', shipped: '✅ ', discarded: '❌ ' };   // 🔧 = work started (owner, 2026-10-10)
+// 🔧 = the agent is working (owner, 2026-10-10). A ship keeps the 📝 title: Discord allows 2 thread renames per 10 min, and a 🔧 for the ship
+// spent the one the ✅ needed (2361e6's ✅ waited 8 min after a 2-minute ship).
+const MARKERS = { running: '🔧 ', shipping: '📝 ', proposed: '📝 ', shipped: '✅ ', discarded: '❌ ' };
 
 // Cut at a word boundary within max characters (an ellipsis marks a cut).
 function clipWords(s, max) {
