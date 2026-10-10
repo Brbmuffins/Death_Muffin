@@ -891,7 +891,7 @@ test('godot mode: rollback only considers the strict godot backup folder names (
   assert.equal(wb.runner.newestBackup(), path.join(wb.backup, 'ROLLBACK.sh'));
 });
 
-test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores godot/data/loot/content.json, fails on a failing suite; no network, own HOME', () => {
+test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores godot/data/loot/content.json, fails on a failing suite or a hygiene violation (docs-only too); no network, own HOME', () => {
   const { spawnSync, execFileSync } = require('child_process'); const os = require('os');
   const T = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-cg-')); const wr = (f, c) => { fs.mkdirSync(path.dirname(path.join(T, f)), { recursive: true }); fs.writeFileSync(path.join(T, f), c); };
   execFileSync('git', ['init', '-q', T]);
@@ -916,6 +916,18 @@ test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores god
   wr('tools/godot/gen-fixtures.sh', 'echo "gen exploded"; exit 3\n');
   const g = run({}); assert.equal(g.status, 1); assert.match(g.stdout, /gen exploded/); assert.match(g.stdout, /GODOT TESTS: fixture generation FAILED/);
   assert.equal(fs.readFileSync(path.join(T, 'godot/data/loot/content.json'), 'utf8'), '{"committed":true}');
+  // repo hygiene (npm run hygiene) runs first, inside the sandbox; a violation fails the check before any suite
+  wr('tools/godot/gen-fixtures.sh', 'true\n');
+  wr('tools/hygiene/check.mjs', 'if (process.env.HYG_FAIL) { console.log("docs/x.md:3: broken link"); process.exit(1); }\nconsole.log("hygiene: OK");\n');
+  const h = run({ HYG_FAIL: '1' }); assert.equal(h.status, 1); assert.match(h.stdout, /docs\/x\.md:3: broken link/);
+  assert.match(h.stdout, /^GODOT TESTS: repo hygiene FAILED/m); assert.doesNotMatch(h.stdout, /running Godot test suites/);
+  const hok = run({}); assert.equal(hok.status, 0, hok.stdout + hok.stderr); assert.match(hok.stdout, /hygiene: OK/); assert.match(hok.stdout, /^GODOT TESTS: 2 suites, 2 passed, 0 failed$/m);
+  // docs-only change: suites skipped, hygiene still enforced
+  execFileSync('git', ['-C', T, 'add', '-A']); execFileSync('git', ['-C', T, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'base']);
+  execFileSync('git', ['-C', T, 'update-ref', 'refs/remotes/origin/main', 'HEAD']);
+  wr('docs/new.md', '# new\n');
+  const dh = run({ HYG_FAIL: '1' }); assert.equal(dh.status, 1); assert.match(dh.stdout, /^GODOT TESTS: repo hygiene FAILED/m);
+  const dok = run({}); assert.equal(dok.status, 0, dok.stdout + dok.stderr); assert.match(dok.stdout, /^GODOT TESTS: skipped, docs-only change \(1 Markdown files\)$/m);
 });
 
 test('preview-godot.sh: refuses bad job ids / missing or symlinked root; with a stand-in Godot it exports, zips with the launcher + readme, and publishes 644 into <root>/<id> only', () => {
