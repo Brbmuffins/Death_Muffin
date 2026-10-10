@@ -81,7 +81,7 @@ SELECT a.created_at, ac.username, a.character_id, a.kind, a.mode, a.action, a.de
 ## Player bug reports
 
 Settings -> Report a bug in the client posts to `POST /api/bug-reports` (10 per account per day; `GET /api/bug-reports/mine` lists the player's own; table `bug_reports`, migration 029).
-The daily agent in `bug-agent/` triages them (`bug-agent/README.md`); `announce-release.sh` marks fixed ones released. The Discord dev agent is in `discord-agent/README.md`.
+The bug agent in `bug-agent/` (every 2 minutes) triages them (`bug-agent/README.md`); `announce-release.sh` marks fixed ones released. The Discord dev agent is in `discord-agent/README.md`.
 
 ## Tests
 

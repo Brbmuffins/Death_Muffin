@@ -1,8 +1,8 @@
-# Daily Death Muffin bug-report agent (see run-bug-agent.sh). Installed by install.sh.
+# Death Muffin bug-report agent (every 2 minutes) (see run-bug-agent.sh). Installed by install.sh.
 # Home is read-only except what the run needs: the worktree root, the repo's git metadata (worktree + branch), Claude's own
 # state (login, session config) and the agent's run logs. check.sh narrows this further for test runs (no network, .git read-only).
 [Unit]
-Description=Death Muffin daily bug-report agent
+Description=Death Muffin bug-report agent
 After=network-online.target mysql.service
 Wants=network-online.target
 

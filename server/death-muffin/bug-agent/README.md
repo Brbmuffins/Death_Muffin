@@ -4,10 +4,13 @@ Players file reports in-game (**Settings → Report a bug**, or the HUD button; 
 (migration `029-bug-reports.sql`, routes in `backend/bug-reports.cjs`: 10 per account per day, 2,000 characters, client
 context such as area/level/discipline/release and the last five uncaught client errors; with "Attach my game log" ticked, the end of the Godot log, crashed session first, stored as `context.log`).
 
-Every day at 09:00 UTC `death-muffin-bug-agent.timer` runs `run-bug-agent.sh`:
+`death-muffin-bug-agent.timer` runs `run-bug-agent.sh` every 2 minutes (owner 2026-10-10: reports are handled in near real time). A tick
+with no `new` report exits at once and writes nothing; a lock keeps runs from overlapping (a report filed mid-run waits for the next tick).
+A report that a run could not settle stays `new` and is retried; after 3 attempts it is set aside (`attempts.json` in the state dir) and
+the owner is told once in #death-muffin.
 
-1. `reports-cli.cjs list` reads up to 25 `new` reports. None → stop (no agent run).
-2. A fresh worktree `wt/bug-agent-<date>` on branch `bugfix/reports-<date>` is cut from `origin/main`.
+1. `reports-cli.cjs list` reads up to 25 `new` reports (minus set-aside ones). None → stop (no agent run).
+2. A fresh worktree `wt/bug-agent-<date>-<time>` on branch `bugfix/reports-<date>-<time>` is cut from `origin/main` (one per run).
 3. Headless Claude (`claude -p`, Opus) gets `PROMPT.md` with the reports (log included) embedded as data. It fixes what it can confirm,
    one commit per report (`Bug report #<id>: …`), and writes a verdict per report.
 4. The script re-runs the checks on the branch, applies the verdicts to the DB (players see the status and the

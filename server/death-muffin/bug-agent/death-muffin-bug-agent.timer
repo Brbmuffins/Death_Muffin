@@ -1,10 +1,10 @@
 [Unit]
-Description=Run the Death Muffin bug-report agent daily
+Description=Run the Death Muffin bug-report agent every 2 minutes (exits at once when there is no new report)
 
 [Timer]
-OnCalendar=*-*-* 09:00:00 UTC
-RandomizedDelaySec=10m
-Persistent=true
+OnBootSec=2min
+OnUnitInactiveSec=2min
+Persistent=false
 
 [Install]
 WantedBy=timers.target

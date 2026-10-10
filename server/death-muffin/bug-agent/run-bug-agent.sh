@@ -1,39 +1,71 @@
 #!/usr/bin/env bash
-# Daily bug-report agent (death-muffin-bug-agent.timer). Reads today's 'new' player reports, lets a sandboxed headless Claude
+# Bug-report agent, near real time (death-muffin-bug-agent.timer, every 2 minutes; exits at once when nothing is new). Reads the 'new' player reports, lets a sandboxed headless Claude
 # fix what it can in the Godot client (git branch main, project dir godot/) on a fresh branch, writes each report's verdict back for the player, and tells the owner on Discord.
 #
-#   run-bug-agent.sh            normal daily run
+#   run-bug-agent.sh            normal run (one branch per run that found reports)
 #   run-bug-agent.sh --dry-run  list the pending reports and stop
 #
 # Safety: the agent runs in --restricted mode (file tools confined to its worktree, user settings ignored, no MCP), with
 # --permission-mode dontAsk and an allowlist (read/edit files, `agit` = a few filtered git verbs, `check.sh` = the Godot test suites with no
 # network and a read-only filesystem). Both live in ~/death-muffin/bug-agent, outside the worktree, so the agent cannot rewrite them. It never deploys, never pushes, and never sees the database: this script hands it the reports and applies its
-# validated verdicts. The owner reviews `bugfix/reports-<date>`, merges it to main and ships it with publish-godot-client.sh.
+# validated verdicts. The owner reviews `bugfix/reports-<date>-<time>`, merges it to main and ships it with publish-godot-client.sh.
 set -euo pipefail
 
 REPO=/home/ubuntu/vps-handoffs/DeathMuffin/game
 RUNTIME=/home/ubuntu/death-muffin
 STATE="$RUNTIME/bug-agent"
-DATE=$(date -u +%Y%m%d)
+DATE=$(date -u +%Y%m%d-%H%M)   # one run = one branch; runs every 2 minutes, so the minute keeps names unique
 BRANCH="bugfix/reports-$DATE"
 WT=/home/ubuntu/vps-handoffs/DeathMuffin/wt/bug-agent-$DATE
-LOG="$STATE/runs/$DATE.log"
+LOG="$STATE/runs/$(date -u +%Y%m%d).log"   # one log per day; quiet ticks (no new report) write nothing
 SUMMARY="$STATE/runs/$DATE.md"
 mkdir -p "$STATE/runs"
-exec > >(tee -a "$LOG") 2>&1
-echo "== $(date -u +%FT%TZ) bug agent run"
+# One run at a time: a report that arrives during a run is picked up by the next tick.
+exec 8>"$STATE/run.lock"
+flock -n 8 || exit 0
 
 # The CLI is installed beside the runtime so the job does not depend on any checkout's working tree.
 CLI="$STATE/reports-cli.cjs"
 REPORTS=$(node "$CLI" list)
+if [ "${1:-}" = "--dry-run" ]; then printf '%s\n' "$REPORTS"; exit 0; fi   # read-only: no attempt counted
+# A report a run could not settle stays 'new'; after 3 attempts it is set aside (attempts.json) and the owner is told once, so a
+# stubborn report cannot make every 2-minute tick start a new agent run.
+ATTEMPTS="$STATE/attempts.json"
+REPORTS=$(REPORTS="$REPORTS" node -e '
+  const fs = require("fs"); const f = process.argv[1];
+  let a = {}; try { a = JSON.parse(fs.readFileSync(f, "utf8")); } catch {}
+  const rows = JSON.parse(process.env.REPORTS);
+  const keep = rows.filter((r) => (a[r.id] || 0) < 3);
+  const parked = rows.filter((r) => (a[r.id] || 0) >= 3 && !a["told_" + r.id]);
+  for (const r of keep) a[r.id] = (a[r.id] || 0) + 1;
+  for (const r of parked) a["told_" + r.id] = 1;
+  fs.writeFileSync(f, JSON.stringify(a));
+  if (parked.length) fs.writeFileSync(f + ".parked", parked.map((r) => "#" + r.id).join(", "));
+  process.stdout.write(JSON.stringify(keep));
+' "$ATTEMPTS")
+
 COUNT=$(printf '%s' "$REPORTS" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).length))')
 IDS=$(printf '%s' "$REPORTS" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).map(r=>r.id).join(",")))')
-echo "pending reports: $COUNT${IDS:+ ($IDS)}"
-if [ "${1:-}" = "--dry-run" ]; then printf '%s\n' "$REPORTS"; exit 0; fi
-if [ "$COUNT" = 0 ]; then echo "nothing to do"; exit 0; fi
+if [ "$COUNT" = 0 ]; then
+  if [ -s "$ATTEMPTS.parked" ] && [ -r "$RUNTIME/private/discord-deathmuffin-webhook.url" ]; then
+    python3 - "$RUNTIME/private/discord-deathmuffin-webhook.url" "$(cat "$ATTEMPTS.parked")" <<'PY' || true
+import json, sys, urllib.request
+url, ids = open(sys.argv[1]).read().strip(), sys.argv[2]
+embed = {"title": "Bug reports set aside", "description": f"The bug agent tried {ids} three times without settling them; they wait for a person (reports-cli.cjs show <id>).", "color": 0xB45309}
+urllib.request.urlopen(urllib.request.Request(url, data=json.dumps({"username": "Death Muffin", "embeds": [embed], "allowed_mentions": {"parse": []}}).encode(), headers={"Content-Type": "application/json", "User-Agent": "death-muffin-bug-agent"}), timeout=10)
+PY
+  fi
+  rm -f "$ATTEMPTS.parked"
+  exit 0
+fi
+exec > >(tee -a "$LOG") 2>&1
+echo "== $(date -u +%FT%TZ) bug agent run"
+echo "pending reports: $COUNT ($IDS)"
+[ -s "$ATTEMPTS.parked" ] && echo "set aside after 3 attempts: $(cat "$ATTEMPTS.parked")"
+rm -f "$ATTEMPTS.parked"
 
 if git -C "$REPO" rev-parse --verify -q "refs/heads/$BRANCH" >/dev/null || [ -e "$WT" ]; then
-  echo "branch $BRANCH or $WT already exists (ran today already?) — stopping"; exit 1
+  echo "branch $BRANCH or $WT already exists — stopping"; exit 1
 fi
 git -C "$REPO" fetch -q origin
 git -C "$REPO" worktree add -q -b "$BRANCH" "$WT" origin/main
@@ -85,7 +117,7 @@ if [ -f "$VERDICTS" ]; then
   fi
   BUG_AGENT_IDS="$IDS" node "$CLI" apply "$VERDICTS" || echo "verdicts not applied"
 else
-  echo "no verdicts file; reports stay 'new' for tomorrow"
+  echo "no verdicts file; reports stay 'new' for the next run (at most 3 attempts)"
 fi
 
 {
@@ -114,7 +146,7 @@ if [ -r "$HOOK_FILE" ]; then
   python3 - "$SUMMARY" "$HOOK_FILE" <<'PY' && echo "Discord: summary sent" || echo "Discord: summary failed"
 import json, sys, urllib.request
 body, url = open(sys.argv[1]).read(), open(sys.argv[2]).read().strip()
-embed = {"title": "Death Muffin bug reports — daily triage (fixes await review)", "description": body[:3900], "color": 0xB45309}
+embed = {"title": "Death Muffin bug reports — triage (fixes await review)", "description": body[:3900], "color": 0xB45309}
 req = urllib.request.Request(url, data=json.dumps({"username": "Death Muffin", "embeds": [embed], "allowed_mentions": {"parse": []}}).encode(),
                              headers={"Content-Type": "application/json", "User-Agent": "death-muffin-bug-agent"})
 urllib.request.urlopen(req, timeout=10)
