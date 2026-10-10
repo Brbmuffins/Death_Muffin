@@ -431,53 +431,131 @@ func _all_props() -> void:
 		if not kinds.has(p.prop):
 			kinds[p.prop] = []
 		kinds[p.prop].append(p)
+	var all_lights := _spec_lights(_by_area_props.values())
 	for area in _by_area_props:
 		var parent: Node3D = area_nodes[area]
 		var kinds: Dictionary = _by_area_props[area]
 		var pool_pos: Array = []
+		var cell := _pick_cell(kinds, all_lights)
+		prop_cells[area] = cell
 		for kind in kinds:
 			var spec: Dictionary = world.propSpecs[kind]
 			var plist: Array = kinds[kind]
 			if spec.url != null:
-				_prop_batch(parent, spec, plist)
+				_prop_batch(parent, spec, plist, cell)
 			if spec.has("light") and spec.light != null:
 				for p in plist:
 					_prop_light(parent, p, spec.light, area)
 					pool_pos.append({"x": p.x, "z": p.z, "y": float(spec.light.y) * float(p.scale), "L": spec.light})
 		_light_pools(parent, pool_pos, area)
 
-## One MultiMeshInstance3D per (prop kind part, area): the instances of a kind are drawn in one call (the Depths floor batches its own props the same way).
-## The shadow cell of a tall prop group is its instances' bounds: the group casts moon shadows while the hero is within shadow_range of them.
-func _prop_batch(parent: Node3D, spec: Dictionary, plist: Array) -> void:
+## Compatibility shades a mesh instance with at most MAX_LIGHTS_PER_OBJECT of the lights touching its AABB, so a prop group must not be so wide that
+## more than that many torches reach it. Coarsest-first candidate cell edges (metres; INF = the whole area in one group per mesh part).
+const MAX_LIGHTS_PER_OBJECT := 8
+const PROP_CELLS: Array[float] = [INF, 48.0, 32.0, 24.0, 16.0, 12.0, 8.0, 6.0, 4.0]
+var prop_cells: Dictionary = {}   # area id -> the cell edge chosen for its prop groups
+
+## [{pos: Vector3, r: float}] of every prop kind's light in `kind_maps` (each {kind: [prop dicts]}).
+func _spec_lights(kind_maps: Array) -> Array:
+	var out: Array = []
+	for kinds: Dictionary in kind_maps:
+		for kind in kinds:
+			var spec: Dictionary = world.propSpecs[kind]
+			if spec.has("light") and spec.light != null:
+				for p in kinds[kind]:
+					out.append({"pos": Vector3(p.x, float(spec.light.y) * float(p.scale) + float(p.y), p.z), "r": float(spec.light.distance)})
+	return out
+
+func _cell_groups(plist: Array, cell: float) -> Array:
+	if is_inf(cell):
+		return [plist]
+	var cells: Dictionary = {}
+	for p in plist:
+		var key := Vector2i(floori(float(p.x) / cell), floori(float(p.z) / cell))
+		if not cells.has(key):
+			cells[key] = []
+		cells[key].append(p)
+	return cells.values()
+
+## World AABB of one mesh part of `plist` placed as _prop_batch places it.
+func _group_aabb(part: Dictionary, plist: Array) -> AABB:
+	var box: AABB = (part.mesh as Mesh).get_aabb()
+	var out := AABB()
+	var first := true
+	for p in plist:
+		var t := _prop_xf(p) * (part.local as Transform3D)
+		var bb := t * box
+		out = bb if first else out.merge(bb)
+		first = false
+	return out
+
+static func _lights_touching(bb: AABB, lights: Array) -> int:
+	var n := 0
+	var lo := bb.position
+	var hi := bb.end
+	for L in lights:
+		var c: Vector3 = L.pos
+		var d := c - c.clamp(lo, hi)
+		if d.length_squared() <= float(L.r) * float(L.r):
+			n += 1
+	return n
+
+## The coarsest cell edge of PROP_CELLS for which no prop group of `kinds` touches more than MAX_LIGHTS_PER_OBJECT of `lights` (the finest if none does).
+func _pick_cell(kinds: Dictionary, lights: Array) -> float:
+	for cell in PROP_CELLS:
+		var ok := true
+		for kind in kinds:
+			var spec: Dictionary = world.propSpecs[kind]
+			if spec.url == null:
+				continue
+			var parts := DmModels.prop_parts(spec.url, float(spec.height))
+			for g in _cell_groups(kinds[kind], cell):
+				for part in parts:
+					if _lights_touching(_group_aabb(part, g), lights) > MAX_LIGHTS_PER_OBJECT:
+						ok = false
+						break
+				if not ok:
+					break
+			if not ok:
+				break
+		if ok:
+			return cell
+	return PROP_CELLS.back()
+
+func _prop_xf(p: Dictionary) -> Transform3D:
+	var tilt: float = p.tilt
+	var basis := Basis.from_euler(Vector3(tilt, p.rot, tilt * 0.6), EULER_ORDER_XYZ) * Basis.from_scale(Vector3.ONE * p.scale)
+	return Transform3D(basis, Vector3(p.x, p.y, p.z))
+
+## One MultiMeshInstance3D per (prop kind part, spatial cell of `cell` m): the instances of a kind in a cell are drawn in one call (the Depths floor batches its
+## own props the same way). The shadow cell of a tall group is its instances' bounds: it casts moon shadows while the hero is within shadow_range of them.
+func _prop_batch(parent: Node3D, spec: Dictionary, plist_all: Array, cell: float) -> void:
 	var parts := DmModels.prop_parts(spec.url, float(spec.height))
 	var casts := float(spec.height) > 1.5
-	var x0 := INF
-	var z0 := INF
-	var x1 := -INF
-	var z1 := -INF
-	for p in plist:
-		x0 = minf(x0, float(p.x))
-		z0 = minf(z0, float(p.z))
-		x1 = maxf(x1, float(p.x))
-		z1 = maxf(z1, float(p.z))
-	for part in parts:
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = part.mesh
-		mm.instance_count = plist.size()
-		for i in plist.size():
-			var p: Dictionary = plist[i]
-			var tilt: float = p.tilt
-			var basis := Basis.from_euler(Vector3(tilt, p.rot, tilt * 0.6), EULER_ORDER_XYZ) * Basis.from_scale(Vector3.ONE * p.scale)
-			var t := Transform3D(basis, Vector3(p.x, p.y, p.z)) * (part.local as Transform3D)
-			mm.set_instance_transform(i, t)
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.set_meta("dm_prop", true)
-		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		parent.add_child(mmi)
-		if casts:
-			_shadow_cells.append({"node": mmi, "x0": x0, "z0": z0, "x1": x1, "z1": z1, "on": true})
+	for plist in _cell_groups(plist_all, cell):
+		var x0 := INF
+		var z0 := INF
+		var x1 := -INF
+		var z1 := -INF
+		for p in plist:
+			x0 = minf(x0, float(p.x))
+			z0 = minf(z0, float(p.z))
+			x1 = maxf(x1, float(p.x))
+			z1 = maxf(z1, float(p.z))
+		for part in parts:
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = part.mesh
+			mm.instance_count = plist.size()
+			for i in plist.size():
+				mm.set_instance_transform(i, _prop_xf(plist[i]) * (part.local as Transform3D))
+			var mmi := MultiMeshInstance3D.new()
+			mmi.multimesh = mm
+			mmi.set_meta("dm_prop", true)
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			parent.add_child(mmi)
+			if casts:
+				_shadow_cells.append({"node": mmi, "x0": x0, "z0": z0, "x1": x1, "z1": z1, "on": true})
 
 func _prop_light(parent: Node3D, p: Dictionary, L: Dictionary, area: String) -> void:
 	var col := _hex(L.color)
@@ -1107,11 +1185,12 @@ func _build_depths_floor_raw(f: Dictionary) -> void:
 		kinds[p.prop].append(q)
 	var pool_pos: Array = []
 	var before := prop_lights.size()
+	var floor_cell := _pick_cell(kinds, _spec_lights([kinds]))
 	for kind in kinds:
 		var spec: Dictionary = world.propSpecs[kind]
 		var plist: Array = kinds[kind]
 		if spec.url != null:
-			_prop_batch(root, spec, plist)
+			_prop_batch(root, spec, plist, floor_cell)
 		if spec.has("light") and spec.light != null:
 			for q in plist:
 				_prop_light(root, q, spec.light, "depths")

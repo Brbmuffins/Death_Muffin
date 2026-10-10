@@ -32,6 +32,8 @@ func _json(path: String) -> Variant:
 		return null
 	return JSON.parse_string(f.get_as_text())
 
+const PROP_NODES_MAX := 330
+
 func _finish() -> void:
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)
@@ -125,21 +127,27 @@ func _run() -> void:
 	# draw submission: a prop kind is ONE MultiMeshInstance3D per mesh part and area (no per-cell split), the outside ground is few tiles on one material
 	var prop_nodes := 0
 	var prop_inst := 0
-	var dup_meshes := 0
 	for id in b.area_nodes:
-		var seen: Dictionary = {}
 		for n in (b.area_nodes[id] as Node).find_children("*", "MultiMeshInstance3D", false, false):
 			if not n.has_meta("dm_prop"):
 				continue
 			var mm := (n as MultiMeshInstance3D).multimesh
 			prop_nodes += 1
 			prop_inst += mm.instance_count
-			if seen.has(mm.mesh):
-				dup_meshes += 1
-			seen[mm.mesh] = true
+		var cell: float = b.prop_cells.get(id, 0.0)
+		print("INFO props: %s cell %s" % [id, "whole area" if is_inf(cell) else "%.0f m" % cell])
 	print("INFO props: %d prop MultiMesh nodes, %d instances" % [prop_nodes, prop_inst])
-	_check(dup_meshes == 0, "no mesh is split over several MultiMesh nodes inside one area (%d repeats)" % dup_meshes)
-	_check(prop_nodes <= 140 and prop_inst >= 579, "world props draw as <= 140 instanced groups (%d nodes, %d instances)" % [prop_nodes, prop_inst])
+	_check(prop_nodes <= PROP_NODES_MAX and prop_inst >= 579, "world props draw as <= %d instanced groups (%d nodes, %d instances)" % [PROP_NODES_MAX, prop_nodes, prop_inst])
+	# Compatibility shades a mesh with at most 8 lights: on Ultra (14 prop lights on) no prop group's AABB may be reached by more than 8 of the world's prop lights
+	b.light_near = DmGraphicsPreset.get_preset("ultra")["lights"]
+	var lights: Array = []
+	for e in b.prop_lights:
+		lights.append({"pos": (e.node as OmniLight3D).position, "r": (e.node as OmniLight3D).omni_range})
+	var worst := 0
+	for n in b.find_children("*", "MultiMeshInstance3D", true, false):
+		if n.has_meta("dm_prop"):
+			worst = maxi(worst, DmWorldBuilder._lights_touching((n as MultiMeshInstance3D).multimesh.get_aabb(), lights))
+	_check(b.light_near > 8 and worst <= 8, "ultra (%d lights): no prop group is reached by more than 8 lights (worst %d)" % [b.light_near, worst])
 	var tiles := b.get_node("outside").get_children()
 	var ground_mats: Dictionary = {}
 	for t in tiles:
