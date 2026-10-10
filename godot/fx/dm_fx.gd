@@ -46,6 +46,7 @@ func _ready() -> void:
 	_flash_light.omni_range = 9.0
 	_flash_light.omni_attenuation = 1.6
 	_flash_light.shadow_enabled = false
+	_flash_light.visible = false   # a light at zero energy still costs every lit fragment loop; shown only while a flash plays
 	add_child(_flash_light)
 	binbun.enabled = quality == "high"
 
@@ -184,6 +185,7 @@ func light_flash(pos: Vector3, color: Color, intensity: float, life: float = 0.3
 	if _flash_life > 0.0 and _flash_light.light_energy > intensity * 1.25:
 		return
 	_flash_light.position = pos
+	_flash_light.visible = true
 	_flash_light.light_color = color
 	_flash_t = 0.0
 	_flash_life = life
@@ -217,6 +219,7 @@ func _frame(dt_real: float) -> void:
 		if k >= 1.0:
 			_flash_life = 0.0
 			_flash_light.light_energy = 0.0
+			_flash_light.visible = false
 		else:
 			_flash_light.light_energy = _flash_peak * (1.0 - k) * (1.0 - k)
 

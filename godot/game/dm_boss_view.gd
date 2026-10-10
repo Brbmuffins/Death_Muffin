@@ -48,6 +48,7 @@ func setup(parent: Node, id: String = "prelate") -> void:
 	light = OmniLight3D.new()
 	light.light_color = DmGearProps.col(color)
 	light.light_energy = 0.0
+	light.visible = false   # shown only while the boss glows (a zero-energy light still costs every lit fragment)
 	light.omni_range = 14.0
 	light.omni_attenuation = 1.4
 	light.position = Vector3(0, 2.6, 0.6)
@@ -101,6 +102,7 @@ func sync(b: DmBossState, dt: float) -> void:
 	light.light_color = DmGearProps.col(0xff6a2a if emp else color)
 	var intensity := ((glow + sin(now / 200.0) * (1.0 if (_regent or _mire) else 4.0)) * (1.35 if emp else 1.0)) if b.active else maxf(0.0, light.light_energy / _light_k - dt * 30.0)
 	light.light_energy = intensity * _light_k
+	light.visible = light.light_energy > 0.001
 	var grow := 1.12 if emp else 1.0
 	c.root.scale = Vector3.ONE * grow
 	if b.state != _last_state:

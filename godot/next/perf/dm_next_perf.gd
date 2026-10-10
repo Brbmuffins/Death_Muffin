@@ -6,8 +6,11 @@ extends Node
 ##   brightness      Settings -> Brightness x the preset's lift, as the builder's exposure multiplier;  ui_scale  Interface size (window content scale)
 ##   fps             Engine.max_fps (0 = uncapped)
 ##   auto_res        DmResolutionGovernor on the 3D view's scaling_3d_scale (the UI stays sharp); held through loads and area entries
+## Moon shadow casters: the nearest enemies only (DmCasterBudget, polled 2 Hz; counts per preset).
 ## `apply(settings)` runs at start and whenever Settings change (DmNextUiHost). Prop culling, streaming and the shadow range are the
 ## builder's own (DmNextWorld.update calls them every frame, same cells and ranges).
+
+const CASTER_POLL_S := 0.5
 
 var game: Node3D
 var governor := DmResolutionGovernor.new()
@@ -15,6 +18,7 @@ var settings: Dictionary = {}
 var frame_ms := 16.7
 var enabled := true            ## false = no pacing (headless / no renderer)
 var _gfx_key := ""
+var _caster_t := 0.0
 
 
 func _ready() -> void:
@@ -76,8 +80,22 @@ func hold() -> void:
 
 
 func _process(delta: float) -> void:
-	if enabled and bool(game.get("ready_")):
+	if not bool(game.get("ready_")):
+		return
+	_caster_t -= delta
+	if _caster_t <= 0.0:
+		_caster_t = CASTER_POLL_S
+		update_casters()
+	if enabled:
 		pace(delta)
+
+
+## Moon shadow caster budget (DmCasterBudget): the nearest enemies to the hero cast, the rest do not. Public so tests can call it.
+func update_casters() -> void:
+	var gp := DmGraphicsPreset.get_preset(settings.get("graphics", DmGraphicsPreset.DEFAULT))
+	var hero: Node3D = game.get("player") as Node3D
+	var pos := hero.global_position if hero != null and hero.is_inside_tree() else Vector3.ZERO
+	DmCasterBudget.update(get_tree().get_nodes_in_group(&"dm_enemy"), pos.x, pos.z, int(gp["casters"]), int(gp["casters_crowd"]))
 
 
 ## One frame of the governor (public so tests can feed a simulated frame stream).

@@ -10,7 +10,7 @@ extends RefCounted
 ##   msaa           0 / 2 / 4 / 8 samples on the 3D view  aniso    anisotropic filtering level (floor + ground-marking textures at grazing angles)
 ##   floor          lowest 3D scale Auto resolution may drop to   fx   DmFx quality ("low" thins bursts and drops the Binbun layer)
 ##   binbun         the premium Binbun VFX layer          shadow_size / shadow_dist / prop_shadow (props further than this stop casting) / shadow_splits / soft   directional shadow atlas size, how far the moon's
-##   shadows reach, PSSM splits (2 = sharper near the hero), soft-shadow filter (0 low .. 3 ultra)   lod  mesh LOD threshold (0.5 = detail holds longer)
+##   shadows reach, casters / casters_crowd (enemies that cast into the moon shadow, nearest first; DmCasterBudget), PSSM splits (2 = sharper near the hero), soft-shadow filter (0 low .. 3 ultra)   lod  mesh LOD threshold (0.5 = detail holds longer)
 ##   lift           exposure multiplier that keeps a preset as bright as High (fewer prop lights, no bloom: measured with tests/perf/lighting_shot.sh)
 
 const DEFAULT := "high"
@@ -23,13 +23,13 @@ const LABELS := {
 }
 const TABLE := {
 	"low": {"lift": 1.4, "shadows": false, "bloom": false, "lights": 3, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
-		"shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 0, "lod": 1.0},
+		"casters": 0, "casters_crowd": 0, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 0, "lod": 1.0},
 	"medium": {"lift": 1.38, "shadows": true, "bloom": false, "lights": 5, "msaa": 0, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
-		"shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
+		"casters": 8, "casters_crowd": 6, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
 	"high": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 8, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
-		"shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
+		"casters": 12, "casters_crowd": 8, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
 	"ultra": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 14, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
-		"shadow_size": 4096, "shadow_dist": 80.0, "prop_shadow": 56.0, "shadow_splits": 2, "soft": 3, "lod": 0.5},
+		"casters": 20, "casters_crowd": 14, "shadow_size": 4096, "shadow_dist": 80.0, "prop_shadow": 56.0, "shadow_splits": 2, "soft": 3, "lod": 0.5},
 }
 
 

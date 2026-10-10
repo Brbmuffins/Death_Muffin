@@ -42,7 +42,6 @@ const GROW := 0.55           # prop/node obstruction grow for the navmesh (the b
 
 var world: Dictionary
 var env: Environment
-var sky_mat: ProceduralSkyMaterial
 var moon: DirectionalLight3D
 var rim: DirectionalLight3D
 var prop_lights: Array = []   # {node, x, z, area}
@@ -202,14 +201,7 @@ func _make_environment() -> void:
 	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color.html(L.background)
-	# Hemisphere light: the ambient comes from a sky whose top is the hemisphere's sky colour and bottom its ground colour.
-	sky_mat = ProceduralSkyMaterial.new()
-	sky_mat.sky_curve = 1.0
-	sky_mat.ground_curve = 1.0
-	var sky := Sky.new()
-	sky.sky_material = sky_mat
-	sky.radiance_size = Sky.RADIANCE_SIZE_32
-	env.sky = sky
+	# Hemisphere light: plain-colour ambient (set per area in set_area from the hemisphere's sky and ground colours); no Sky resource is rendered.
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_energy = float(L.hemiIntensity) * HEMI_K
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
@@ -272,11 +264,6 @@ func set_area(id: String) -> void:
 	area_exposure = clampf(1.0 - (peak - 0.5) * 0.8, 0.88, 1.0)
 	_apply_exposure()
 	env.ambient_light_color = sky.lerp(gnd, AMBIENT_GROUND_MIX)
-	sky_mat.sky_top_color = sky
-	sky_mat.sky_horizon_color = sky.lerp(gnd, 0.5)
-	sky_mat.ground_horizon_color = sky.lerp(gnd, 0.5)
-	sky_mat.ground_bottom_color = gnd
-	sky_mat.sky_energy_multiplier = 1.0
 	env.fog_light_color = Color.html(amb.fog)
 	# Web FogExp2 = 1 - exp(-(0.014 m d)^2); Godot's depth fog (smoothstep to `end`) tracks it with end ~ 130 / m.
 	var m: float = float(amb.fogMult) if not a.safe else 1.0

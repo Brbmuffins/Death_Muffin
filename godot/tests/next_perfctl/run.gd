@@ -45,8 +45,60 @@ func _run() -> void:
 	if only.is_empty() or "settings" in only: await _settings()
 	if only.is_empty() or "gov" in only: await _governor()
 	if only.is_empty() or "warm" in only: await _warmup()
+	if only.is_empty() or "casters" in only: await _casters()
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
+
+
+## Moon shadow casters (DmCasterBudget) + the creature cull list.
+func _casters() -> void:
+	DmSimData.ensure()
+	var scn: PackedScene = load("res://enemies/robber.tscn")
+	var list: Array = []
+	for i in 40:
+		var e: DmEnemy = scn.instantiate()
+		root.add_child(e)
+		e.global_position = Vector3(float(i) + 1.0, 0, 0)
+		list.append(e)
+	await process_frame
+	var near: Array = list.slice(0, 12)
+	var grp := root.get_tree().get_nodes_in_group(&"dm_enemy")
+	var on := DmCasterBudget.update(grp, 0.0, 0.0, 12, 8)
+	var cast_n := 0
+	var near_ok := true
+	for i in list.size():
+		var c: bool = (list[i] as DmEnemy).creature._shadow_on
+		cast_n += int(c)
+		if i < 8 and not c:
+			near_ok = false
+		if i >= 8 and c:
+			near_ok = false
+	check(on == 8 and cast_n == 8 and near_ok, "casters: 40 enemies = crowded, the nearest 8 cast (%d)" % cast_n)
+	for i in 10:
+		(list[39 - i] as DmEnemy).queue_free()
+	await process_frame
+	await process_frame
+	list = list.slice(0, 30)
+	on = DmCasterBudget.update(root.get_tree().get_nodes_in_group(&"dm_enemy"), 0.0, 0.0, 12, 8)
+	check(on == 12 and (list[11] as DmEnemy).creature._shadow_on and not (list[12] as DmEnemy).creature._shadow_on, "casters: 30 enemies, the nearest 12 cast (%d)" % on)
+	on = DmCasterBudget.update(root.get_tree().get_nodes_in_group(&"dm_enemy"), 29.0, 0.0, 12, 8)
+	check(on == 12 and (list[29] as DmEnemy).creature._shadow_on and not (list[0] as DmEnemy).creature._shadow_on, "casters: follows the hero (%d)" % on)
+	on = DmCasterBudget.update(root.get_tree().get_nodes_in_group(&"dm_enemy"), 0.0, 0.0, 0, 0)
+	check(on == 0 and not (list[0] as DmEnemy).creature._shadow_on, "casters: a budget of 0 (Low) = none")
+	for e in list:
+		(e as DmEnemy).queue_free()
+	await process_frame
+	for id in DmGraphicsPreset.IDS:
+		var gp: Dictionary = DmGraphicsPreset.TABLE[id]
+		check(int(gp["casters"]) >= int(gp["casters_crowd"]) and (id == "low" or int(gp["casters_crowd"]) > 0), "preset %s: caster budget %d / %d crowded" % [id, gp["casters"], gp["casters_crowd"]])
+	# creature cull list: every slug is a real model; the closed-body shader is back-face culled, the rest stay double-sided
+	for sl in DmCreatureMat.CULL_BACK_SLUGS:
+		check(DmCreature.rows().has(sl), "cull list: %s is a model" % sl)
+	check(DmCreatureMat.shader(false, false, false, true).code.contains("cull_back") and DmCreatureMat.shader(false, false, false).code.contains("cull_disabled"), "creature shader: cull_back on closed bodies, cull_disabled otherwise")
+	var cb := DmCreature.new("necromancer", {})
+	var wg := DmCreature.new("hero_ossuary", {})
+	var sp := DmCreature.new("necromancer", {"spectral": true})
+	check(cb._cull_back and not wg._cull_back and not sp._cull_back, "creature: necromancer culls back faces, open-mesh hero_ossuary and spectral bodies stay double-sided")
 
 
 func _settings() -> void:

@@ -223,11 +223,13 @@ static func _tour(game: DmNextGame, stage: Node3D, bodies: Array, warmed: Array,
 			flash.position = p + Vector3(0, 3, 0)
 			flash.omni_range = 60.0
 			flash.light_energy = 1.0
+			flash.visible = true
 			if binbun != null:
 				binbun.rewarm(warmed, at)
 			for k in TOUR_FRAMES:
 				await tree.process_frame
 			flash.light_energy = 0.0
+			flash.visible = false
 			flash.omni_range = flash_range
 	for bd in bodies:
 		(bd["c"] as DmCreature).root.visible = true

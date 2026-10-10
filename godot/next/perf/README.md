@@ -3,6 +3,7 @@
 `DmNextPerf` (child `Perf` of `DmNextGame`, `game.perf`): the Settings panel's graphics, fps cap and auto-resolution settings.
 `apply(settings)` runs in `start()` (`opts.settings`, default High / uncapped / auto_res on) and on every Settings change (`DmNextUiHost`).
 - `graphics` low: no moon shadows, no bloom, 3 prop lights (8 on High), halved weather, `Vfx.quality = "low"`.
+- Moon shadow casters: `DmCasterBudget` every 0.5 s keeps the nearest 12 enemies (8 with 32+ alive) casting on High (Medium 8/6, Ultra 20/14, Low none); the hero, thralls and bosses always cast.
 - `fps`: `Engine.max_fps` (0 = uncapped; the governor judges against the cap, or 60 for Max).
 - `auto_res`: `DmResolutionGovernor`  on the root viewport's `scaling_3d_scale`; `pace(dt)` per frame once `ready_` (real renderer only),
   `hold()` on every area entry. A graphics / fps / auto_res change restarts it at 1.0 and holds.

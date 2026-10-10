@@ -13,14 +13,22 @@ static var _shaders: Dictionary = {}
 static var _baked: Dictionary = {}   # source ArrayMesh -> gear-masked ArrayMesh
 static var _region_re: Array = []
 
+## Models whose glTF surface is a closed body (under 2% open edges, triangle winding agrees with the normals; measured offline per mesh): they render
+## back-face culled. Every other model keeps cull_disabled: hair cards, cloaks, open robes, wings and thin cloth show their inside from behind
+## (hero_ossuary / hero_mourner / bog_hag / pyre_priest / wraith_thrall are 15-24% open edges). Winged and spectral bodies are never in the cull path.
+const CULL_BACK_SLUGS := ["necromancer", "hero_gravecaller", "hero_rotweaver", "hero_grave_warden", "hero_carrion_witch", "hero_veilwalker",
+	"carrion_sac", "boss_gravedigger_king", "boss_drowned_congregation", "boss_cinder_regent", "thrall_sentinel", "skull_rat", "bone_golem",
+	"bone_colossus", "belfry_gargoyle", "bell_templar", "cinderhound", "slag_brute", "mire_leech", "fen_wisp", "skull_niche",
+	"npc_prior", "npc_sexton", "npc_apothecary"]
+
 const REGION_OF_BONE := [["Foot|ToeBase", 3], ["Hand|Forearm", 2], ["Thigh|Calf|Pelvis|^Hip$", 1], ["Spine|Waist|Clavicle|Upperarm", 0]]
 
-static func shader(fade: bool, wings: bool, gear: bool) -> Shader:
-	var key := "%d%d%d" % [int(fade), int(wings), int(gear)]
+static func shader(fade: bool, wings: bool, gear: bool, cull_back := false) -> Shader:
+	var key := "%d%d%d%d" % [int(fade), int(wings), int(gear), int(cull_back)]
 	if _shaders.has(key):
 		return _shaders[key]
 	var c := "shader_type spatial;\n"
-	c += "render_mode blend_mix, %s, cull_disabled, diffuse_burley, specular_schlick_ggx;\n" % ("depth_draw_never" if fade else "depth_draw_opaque")
+	c += "render_mode blend_mix, %s, %s, diffuse_burley, specular_schlick_ggx;\n" % [("depth_draw_never" if fade else "depth_draw_opaque"), ("cull_back" if cull_back else "cull_disabled")]
 	c += """
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D orm_tex : filter_linear_mipmap, repeat_enable;
@@ -113,10 +121,10 @@ void fragment() {
 	_shaders[key] = sh
 	return sh
 
-## A ShaderMaterial carrying `src`'s textures and factors. `flags`: fade / wings / gear.
-static func make(src: Material, fade: bool, wings: bool, gear: bool) -> ShaderMaterial:
+## A ShaderMaterial carrying `src`'s textures and factors. `flags`: fade / wings / gear / cull_back (closed bodies only, CULL_BACK_SLUGS).
+static func make(src: Material, fade: bool, wings: bool, gear: bool, cull_back := false) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = shader(fade, wings, gear)
+	m.shader = shader(fade, wings, gear, cull_back)
 	if src is BaseMaterial3D:
 		var b := src as BaseMaterial3D
 		if b.albedo_texture != null:

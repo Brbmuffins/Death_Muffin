@@ -52,6 +52,7 @@ var _opacity := 1.0
 var _spectral := false
 var _wings := false
 var _gear := false
+var _cull_back := false
 var _shadow_on := true
 var _disposed := false
 var _em_base := Vector3.ZERO
@@ -169,6 +170,7 @@ func _build_materials() -> void:
 		var rc := lin(int(rm.color))
 		_params["rim"] = Color(rc.x, rc.y, rc.z, float(rm.strength))
 	_use_fade = _spectral
+	_cull_back = not _spectral and not _wings and DmCreatureMat.CULL_BACK_SLUGS.has(rig_slug)
 	_params["opacity"] = 0.55 if _spectral else 1.0
 	var wing_axis := 0.0
 	var wing_vec := Vector4.ZERO
@@ -192,7 +194,7 @@ func _build_materials() -> void:
 			wing_root = Vector2(center, phase)
 		for s in m.mesh.get_surface_count():
 			var src: Material = m.mesh.surface_get_material(s)
-			var op := DmCreatureMat.make(src, _spectral, _wings, _gear)
+			var op := DmCreatureMat.make(src, _spectral, _wings, _gear, _cull_back)
 			var rec := {"mi": m, "surf": s, "op": op, "fade": null, "src": src}
 			if _wings:
 				op.set_shader_parameter("wing", wing_vec)
@@ -205,7 +207,7 @@ func _build_materials() -> void:
 
 func _fade_for(rec: Dictionary) -> ShaderMaterial:
 	if rec.fade == null:
-		var fm := DmCreatureMat.make(rec.src, true, _wings, _gear)
+		var fm := DmCreatureMat.make(rec.src, true, _wings, _gear, _cull_back)
 		var op: ShaderMaterial = rec.op
 		for key in _params:
 			fm.set_shader_parameter(key, _params[key])
