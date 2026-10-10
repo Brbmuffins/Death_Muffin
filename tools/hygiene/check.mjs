@@ -2,7 +2,7 @@
 // Repo hygiene check: docs, references and retired terms must not outlive what they point at.
 // See tools/hygiene/README.md. Plain Node, no dependencies.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -150,16 +150,29 @@ for (const f of files) {
 }
 
 // f. 3D textures import VRAM-compressed (Godot's detect_3d never triggers for glTF-extracted images or headless imports).
+const fixTextures = process.argv.includes('--fix-textures');
+const fixed = [];
 const tex3d = ['godot/assets/slice/models/', 'godot/assets/slice/art/textures/', 'godot/assets/fx/art/', 'godot/assets/fx/tex/',
   'godot/assets/fx/binbun/tex/', 'godot/assets/fx/models/', 'godot/world_fx/assets/'];
 for (const f of files) {
   if (!f.endsWith('.import') || !tex3d.some((d) => f.startsWith(d))) continue;
   const text = read(f);
   if (!text.includes('importer="texture"')) continue;
-  if (!/^compress\/mode=2$/m.test(text)) report(f, 1, 'a 3D texture must import VRAM Compressed (compress/mode=2; normal maps also compress/normal_map=1)');
-  else if (/(NormalGL|_n\.|normal)/i.test(f) && !/^compress\/normal_map=1$/m.test(text)) report(f, 1, 'a normal map must import with compress/normal_map=1');
+  const isNormal = /(NormalGL|_n\.|normal)/i.test(f);
+  const ok = /^compress\/mode=2$/m.test(text) && (!isNormal || /^compress\/normal_map=1$/m.test(text));
+  if (ok) continue;
+  if (fixTextures) {   // --fix-textures: rewrite the .import (BPTC for colour, RGTC for normal maps); re-import with `godot --headless --path godot --import`
+    let t = text.replace(/^compress\/mode=\d+$/m, 'compress/mode=2').replace(/^compress\/high_quality=\w+$/m, `compress/high_quality=${isNormal ? 'false' : 'true'}`);
+    if (isNormal) t = t.replace(/^compress\/normal_map=\d+$/m, 'compress/normal_map=1');
+    writeFileSync(path.join(root, f), t);
+    fixed.push(f);
+    continue;
+  }
+  report(f, 1, isNormal ? 'a normal map must import VRAM Compressed with compress/normal_map=1 (npm run hygiene -- --fix-textures)'
+    : 'a 3D texture must import VRAM Compressed, compress/mode=2 (npm run hygiene -- --fix-textures)');
 }
 
+if (fixed.length) console.log(`hygiene: fixed ${fixed.length} texture import(s); now run: godot --headless --path godot --import`);
 if (problems.length) {
   console.error(problems.join('\n'));
   console.error(`\nhygiene: ${problems.length} violation(s). See tools/hygiene/README.md.`);
