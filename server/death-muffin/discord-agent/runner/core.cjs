@@ -1,4 +1,16 @@
 'use strict';
+// "cencel", "stpo", "!cancle": one short word within 2 edits of cancel / stop / abort / halt, but not the word itself.
+function editDistance(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1), i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1] ? d[i - 2][j - 2] + 1 : Infinity);
+  return d[a.length][b.length];
+}
+function cancelTypo(text) {
+  const w = String(text || '').replace(/^(?:<@[!&]?\d+>\s*)*/, '').trim().toLowerCase().replace(/[.!?]+$/, '').replace(/^!/, '');
+  if (!/^[a-z]{3,8}$/.test(w)) return false;
+  return ['cancel', 'stop', 'abort', 'halt'].some((c) => w !== c && editDistance(w, c) <= (c.length <= 4 ? 1 : 2));
+}
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -214,6 +226,10 @@ function createRunner(cfgIn, opts = {}) {
     }
     // A bare "stop" / "cancel" while something runs means !cancel (2026-10-10: Helix typed "stop" and it only queued a message for the agent).
     if (job.running && /^(?:<@[!&]?\d+>\s*)*(?:stop|cancel|halt|abort)(?:\s+(?:it|now|please|that|this))*\s*[.!]*$/i.test(text)) return handleCommand(job, msg, '!cancel');
+    // A short message that is almost "cancel" / "stop" (a typo like "cencel", "stpo", "!cancle") asks instead of going to the agent as a task
+    // (2026-10-10: "cencel" became a new turn and restarted the checks). Exact commands are handled above / below.
+    const typo = cancelTypo(text);
+    if (typo) return { action: 'reply', text: `Did you mean **!cancel**? Nothing changed. Send \`!cancel\` (or \`stop\`) to stop ${job.running ? 'the current step' : 'this job'}, or just carry on.` };
     if (text.startsWith('!')) return handleCommand(job, msg, text);
     if ((job.totalTurns || 0) >= cfg.maxTurnsPerThread) return { action: 'reply', text: 'This thread has used up its total turn limit. Start a new request in the channel.' };
     if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This round has hit its turn limit. Ship or discard the current change and I will start a fresh round, or start a new request in the channel.' };
@@ -1030,4 +1046,4 @@ function createRunner(cfgIn, opts = {}) {
   pump();
   return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }
-module.exports = { createRunner, progressNote };
+module.exports = { createRunner, progressNote, cancelTypo };

@@ -76,7 +76,7 @@ the deploy lock, so an approver can never ship above their tier.
 (full approvers; "use opus" in a message works too) · `rollback` (mention in channel or thread): runs the newest deploy
 backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited approvers only if their ship is the latest.
 
-`!cancel` (or a bare `stop` / `cancel` while something runs; requester or owner) stops the current step, agent turn or the runner's own check run,
+`!cancel` (or a bare `stop` / `cancel` while something runs; requester or owner; a near-miss such as `cencel` or `stpo` gets "Did you mean !cancel?" and is not passed to the agent) stops the current step, agent turn or the runner's own check run,
 killing the whole process tree (Claude's Bash tool and `timeout` start their own process groups, so a group kill alone orphaned test runs).
 Messages queued before it are dropped, and no review or repair turn follows; the branch and worktree stay, and the next message continues.
 A ship cannot be cancelled. An idle job is closed by the sweep after 7 days without activity.

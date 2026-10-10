@@ -1173,6 +1173,19 @@ test('a bare "stop" while a turn runs is !cancel; messages queued before it are 
   const idle = await d.say(thread, IDS.HELIX, '!cancel'); assert.equal(idle.replies[0].content, 'Nothing is running.');
 });
 
+test('a near-miss like "cencel" asks "did you mean !cancel?" and neither cancels nor queues a turn (2026-10-10 incident)', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'SLOW-TURN MAKE-CSS blue');
+  const job = Object.values(w.runner.jobs())[0];
+  await until(() => job.running && job.proc, d.ad);
+  const r = await d.say(thread, IDS.HELIX, 'cencel');
+  assert.match(r.replies[0].content, /Did you mean \*\*!cancel\*\*\?/);
+  assert.equal(job.queue.length, 0, 'the typo is not queued for the agent'); assert.ok(job.running, 'nothing was cancelled');
+  const r2 = await d.say(thread, IDS.HELIX, 'stop');
+  assert.match(r2.replies[0].content, /^Cancelling the current step/);
+  await until(() => !job.running, d.ad);
+});
+
 test('!cancel during the runner\'s own checks stops the check run and its whole process tree (own process groups too); no repair turn', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const pidFile = path.join(w.tools, 'child.pid');
