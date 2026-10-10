@@ -769,7 +769,9 @@ test('godot mode: question, gameplay proposal (godot-port compare link, zip prev
   assert.equal(sh(w.repo, 'rev-list', '--count', `origin/godot-port..origin/discord/${id}`), '1', 'branch was cut from godot-port');
   assert.match(p.payload.embeds[0].fields[0].value, /^Gameplay/);
   assert.match(field(p, 'Exact diff'), new RegExp(`compare/godot-port\\.\\.\\.discord/${id}`));
-  assert.equal(field(p, 'Tests'), '✅ 2 suites, 2 passed, 0 failed');
+  assert.equal(field(p, 'Tests'), '✅ quick check: 2 suites — 2 passed (full suite runs at ship)');
+  const calls = () => fs.readFileSync(path.join(w.tools, 'check-godot.calls'), 'utf8').trim().split('\n');
+  assert.ok(calls().length >= 1 && calls().every((c) => c === ''), 'proposal checks ran QUICK (no --full)');
   assert.equal(field(p, 'Try it'), `https://example.test/death-muffin/preview/${id}/DeathMuffin-Preview-${id}-win64.zip\nUnzip it and run Play Preview (offline).bat. Offline sandbox copy of this change: nothing saves to your real character.`);
   assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, id, `DeathMuffin-Preview-${id}-win64.zip`)));
   assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
@@ -777,6 +779,7 @@ test('godot mode: question, gameplay proposal (godot-port compare link, zip prev
   assert.ok(!fs.existsSync(path.join(w.cfg.stateDir, 'ship-active')), 'ship marker removed after the ship'); assert.match(live, /is on godot-port and deployed\./); assert.match(live, /Windows launcher on next start\. Phones and the old web\/offline game do not get Godot changes\./);
   assert.equal(remoteHead(w, 'master'), masterBefore, 'master is never touched in godot mode'); assert.notEqual(remoteHead(w, 'godot-port'), baseBefore);
   assert.equal(sh(w.repo, 'show', 'origin/godot-port:godot/game/a.gd').trim(), 'speed=9');
+  assert.equal(calls().pop(), '--full', 'ship.sh runs the FULL gate');
   const ship = shipsLog(w)[0]; assert.equal(ship.tier, 'gameplay');
   assert.match(fs.readFileSync(path.join(w.deploy, 'deploys.log'), 'utf8'), new RegExp(`deployed ${ship.sha}`));
   assert.ok(!fs.existsSync(path.join(w.deploy, 'mobile-deploys.log')), 'no mobile step in godot mode');
@@ -904,7 +907,7 @@ test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores god
   const run = (env) => spawnSync('bash', [script], { cwd: T, encoding: 'utf8', env: { ...process.env, ...env }, timeout: 120000 });
   const ok = run({});
   assert.equal(ok.status, 0, ok.stdout + ok.stderr);
-  assert.match(ok.stdout, /game +run\.gd +exit=0 +30 passed/); assert.match(ok.stdout, /^GODOT TESTS: 2 suites, 2 passed, 0 failed$/m);
+  assert.match(ok.stdout, /game +run\.gd +exit=0 +30 passed/); assert.match(ok.stdout, /^GODOT TESTS: quick \(2 suites, targeting fell back to all\) — 2 passed$/m);
   assert.equal(fs.readFileSync(path.join(T, 'godot/data/loot/content.json'), 'utf8'), '{"committed":true}', 'the generator\'s overwrite is undone');
   assert.equal(fs.readFileSync(path.join(T, '.loot-during'), 'utf8').trim(), 'loot: {"committed":true}', 'tests run against the committed file');
   assert.equal(fs.readFileSync(path.join(T, '.net-seen'), 'utf8').trim(), 'nonet');
@@ -914,7 +917,7 @@ test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores god
   for (const e of env) assert.ok(e.startsWith('/tmp/dmgodot.') && !e.startsWith(os.homedir()), e);
   assert.ok(!fs.existsSync(env[0]), 'scratch lives in the sandbox private /tmp, not on the host');
   const bad = run({ FAIL_SUITE: '1' });
-  assert.equal(bad.status, 1); assert.match(bad.stdout, /^GODOT TESTS: 2 suites, 1 passed, 1 FAILED$/m);
+  assert.equal(bad.status, 1); assert.match(bad.stdout, /^GODOT TESTS: quick \(2 suites, targeting fell back to all\) — 1 passed, 1 FAILED$/m);
   assert.equal(fs.readFileSync(path.join(T, 'godot/data/loot/content.json'), 'utf8'), '{"committed":true}', 'restored on failure too');
   wr('tools/godot/gen-fixtures.sh', 'echo "gen exploded"; exit 3\n');
   const g = run({}); assert.equal(g.status, 1); assert.match(g.stdout, /gen exploded/); assert.match(g.stdout, /GODOT TESTS: fixture generation FAILED/);
@@ -924,13 +927,44 @@ test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores god
   wr('tools/hygiene/check.mjs', 'if (process.env.HYG_FAIL) { console.log("docs/x.md:3: broken link"); process.exit(1); }\nconsole.log("hygiene: OK");\n');
   const h = run({ HYG_FAIL: '1' }); assert.equal(h.status, 1); assert.match(h.stdout, /docs\/x\.md:3: broken link/);
   assert.match(h.stdout, /^GODOT TESTS: repo hygiene FAILED/m); assert.doesNotMatch(h.stdout, /running Godot test suites/);
-  const hok = run({}); assert.equal(hok.status, 0, hok.stdout + hok.stderr); assert.match(hok.stdout, /hygiene: OK/); assert.match(hok.stdout, /^GODOT TESTS: 2 suites, 2 passed, 0 failed$/m);
+  const hok = run({}); assert.equal(hok.status, 0, hok.stdout + hok.stderr); assert.match(hok.stdout, /hygiene: OK/); assert.match(hok.stdout, /^GODOT TESTS: quick \(2 suites, targeting fell back to all\) — 2 passed$/m);
   // docs-only change: suites skipped, hygiene still enforced
   execFileSync('git', ['-C', T, 'add', '-A']); execFileSync('git', ['-C', T, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'base']);
   execFileSync('git', ['-C', T, 'update-ref', 'refs/remotes/origin/main', 'HEAD']);
   wr('docs/new.md', '# new\n');
   const dh = run({ HYG_FAIL: '1' }); assert.equal(dh.status, 1); assert.match(dh.stdout, /^GODOT TESTS: repo hygiene FAILED/m);
   const dok = run({}); assert.equal(dok.status, 0, dok.stdout + dok.stderr); assert.match(dok.stdout, /^GODOT TESTS: skipped, docs-only change \(1 Markdown files\)$/m);
+  // QUICK (default) runs only the suites tools/godot/affected-suites.mjs names, through run-all-tests.sh --only; --full runs everything and says so
+  fs.rmSync(path.join(T, 'docs/new.md'));
+  wr('tools/godot/run-all-tests.sh', '# supports --only <list> --list --jobs N\necho "$*" >> .args-seen\n[ "${1:-}" = --only ] && [ "${3:-}" = --list ] && { echo "godot/tests/$2/run.gd"; exit 0; }\nif [ "${1:-}" = --only ]; then printf "%-18s %-16s exit=%d  %s\\n" "$2" run.gd 0 "9 passed"; else printf "%-18s %-16s exit=%d  %s\\n" game run.gd 0 "30 passed"; printf "%-18s %-16s exit=%d  %s\\n" rules run.gd 0 "5 passed"; fi\n');
+  wr('tools/godot/affected-suites.mjs', 'console.log(process.env.SEL_OUT === undefined ? "hud" : process.env.SEL_OUT);\n');
+  const q = run({}); assert.equal(q.status, 0, q.stdout + q.stderr);
+  assert.match(q.stdout, /^GODOT TESTS: quick \(1 suites\) — 1 passed$/m); assert.match(q.stdout, /hud +run\.gd +exit=0/); assert.doesNotMatch(q.stdout, /game +run\.gd/);
+  assert.match(fs.readFileSync(path.join(T, '.args-seen'), 'utf8'), /^--only hud$/m);
+  const qa = run({ SEL_OUT: 'ALL' }); assert.equal(qa.status, 0); assert.match(qa.stdout, /^GODOT TESTS: quick \(2 suites, targeting fell back to all\) — 2 passed$/m);
+  const q0 = run({ SEL_OUT: '' }); assert.equal(q0.status, 0); assert.match(q0.stdout, /^GODOT TESTS: quick \(0 suites\) — nothing to run for this change$/m);
+  const qj = run({ DM_TEST_JOBS: '3' }); assert.match(fs.readFileSync(path.join(T, '.args-seen'), 'utf8'), /^--only hud --jobs 3$/m);
+  fs.rmSync(path.join(T, '.args-seen'));
+  const full = spawnSync('bash', [script, '--full'], { cwd: T, encoding: 'utf8', timeout: 120000 });
+  assert.equal(full.status, 0, full.stdout + full.stderr); assert.match(full.stdout, /^GODOT TESTS: full \(2 suites\) — 2 passed$/m);
+  assert.equal(fs.readFileSync(path.join(T, '.args-seen'), 'utf8').trim(), '', 'full mode passes no --only');
+  assert.equal(spawnSync('bash', [script, '--bogus'], { cwd: T, encoding: 'utf8' }).status, 2);
+});
+
+test('bug-agent/check.sh: quick by default (only the selected suites), --full runs every suite, bad flag is a usage error', () => {
+  const { spawnSync, execFileSync } = require('child_process'); const os = require('os');
+  const T = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-bc-')); const wr = (f, c) => { fs.mkdirSync(path.dirname(path.join(T, f)), { recursive: true }); fs.writeFileSync(path.join(T, f), c); };
+  execFileSync('git', ['init', '-q', T]);
+  wr('tools/godot/run-all-tests.sh', '# supports --only\necho "$*" >> .args-seen\nif [ "${1:-}" = --only ]; then printf "%-18s %-16s exit=%d  %s\\n" "$2" run.gd 0 "9 passed"; else printf "%-18s %-16s exit=%d  %s\\n" game run.gd 0 "30 passed"; printf "%-18s %-16s exit=%d  %s\\n" rules run.gd 0 "5 passed"; fi\n');
+  wr('tools/godot/affected-suites.mjs', 'console.log("hud");\n');
+  const script = path.join(__dirname, '..', '..', 'bug-agent', 'check.sh');
+  const run = (...a) => spawnSync('bash', [script, ...a], { cwd: T, encoding: 'utf8', timeout: 120000 });
+  const q = run(); assert.equal(q.status, 0, q.stdout + q.stderr);
+  assert.match(q.stdout, /^GODOT TESTS: quick \(1 suites\) — 1 passed$/m); assert.equal(fs.readFileSync(path.join(T, '.args-seen'), 'utf8').trim(), '--only hud');
+  fs.rmSync(path.join(T, '.args-seen'));
+  const f = run('--full'); assert.equal(f.status, 0, f.stdout + f.stderr);
+  assert.match(f.stdout, /^GODOT TESTS: full \(2 suites\) — 2 passed$/m); assert.equal(fs.readFileSync(path.join(T, '.args-seen'), 'utf8').trim(), '');
+  assert.equal(run('--bogus').status, 2);
 });
 
 test('preview-godot.sh: refuses bad job ids / missing or symlinked root; with a stand-in Godot it exports, zips with the launcher + readme, and publishes 644 into <root>/<id> only', () => {

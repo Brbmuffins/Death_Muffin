@@ -5,8 +5,15 @@
 # user:// (saves, settings) can never touch the real home. Hard limit 85 minutes for the whole run (the full suite outgrew 40 min on 2026-10-09).
 # Inside: the repo hygiene check (tools/hygiene/check.mjs = npm run hygiene, also on docs-only changes), then tools/godot/run-all-tests.sh (one line per suite) against the committed golden fixtures. An older branch that still has
 # tools/godot/gen-fixtures.sh runs it first (it rewrites godot/data/loot/content.json, which is snapshotted and put back). Prints per-suite lines and a final "GODOT TESTS: ..." line; exit 1 if any suite or step fails.
-# Run from the worktree root (the agent's cwd). Env: GODOT (default /home/ubuntu/tools/godot/godot).
+# Two modes. QUICK (default; the agent in-turn and the runner before a proposal): hygiene + only the suites the change can affect
+# (tools/godot/affected-suites.mjs: changed suites, suites referencing a changed file, a small smoke set; ALL when the change is too central or too wide),
+# run through `run-all-tests.sh --only`. FULL (`--full`; ship.sh before publishing): hygiene + every suite, about 35 minutes. Summary line:
+# "GODOT TESTS: quick (14 suites) — 14 passed" / "GODOT TESTS: full (101 suites) — 101 passed" (", N FAILED" appended on failure).
+# Run from the worktree root (the agent's cwd). Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_TEST_JOBS (optional: passed as --jobs N).
 set -uo pipefail
+MODE=quick
+for a in "$@"; do case "$a" in --full) MODE=full;; --quick) MODE=quick;; *) echo "usage: check-godot.sh [--quick|--full]" >&2; exit 2;; esac; done
+export MODE
 TOP=$(git rev-parse --show-toplevel) || exit 2
 NM=$(readlink -f "$TOP/node_modules" 2>/dev/null || true)
 [ -n "$NM" ] && { mkdir -p "$NM/.vite" 2>/dev/null || true; }   # vitest keeps its results cache here; the sandbox puts a scratch tmpfs over it
@@ -46,21 +53,36 @@ export DM_PAYLOAD='
   if [ -f tools/godot/gen-fixtures.sh ]; then echo "== generating golden fixtures"
   if ! bash tools/godot/gen-fixtures.sh > "$SCR/gen.log" 2>&1; then tail -30 "$SCR/gen.log"; restore; echo "GODOT TESTS: fixture generation FAILED"; exit 1; fi
   restore; fi
-  echo "== running Godot test suites"
+  RUNNER=tools/godot/run-all-tests.sh
+  ARGS=(); LABEL="$MODE"; NOTE=""
+  if [ "$MODE" = quick ]; then
+    # Which suites does this change affect? A branch without the selector, or a runner without --only, runs everything.
+    if [ -f tools/godot/affected-suites.mjs ] && grep -q -- "--only" "$RUNNER"; then
+      SEL=$(node tools/godot/affected-suites.mjs --explain 2> "$SCR/sel.err"); SRC=$?
+      cat "$SCR/sel.err"
+      if [ "$SRC" -ne 0 ]; then echo "affected-suites failed, running every suite"; SEL=ALL; fi
+    else SEL=ALL; echo "no suite selector on this revision, running every suite"; fi
+    if [ "$SEL" = ALL ]; then NOTE=", targeting fell back to all"
+    elif [ -z "$SEL" ]; then echo "GODOT TESTS: quick (0 suites) — nothing to run for this change"; exit 0
+    else ARGS=(--only "$(echo "$SEL" | paste -sd, -)"); echo "suites: $(echo "$SEL" | paste -sd" " -)"; fi
+  fi
+  [ -n "${DM_TEST_JOBS:-}" ] && ARGS+=(--jobs "$DM_TEST_JOBS")
+  echo "== running Godot test suites ($MODE)"
   # Progress for the thread: "<done> <total>" suites in .dm-check-progress (git-ignored, removed when the run ends). Same file list as run-all-tests.sh.
-  total=$(for d in godot/tests/*/; do for r in "$d"run.gd "$d"adapter_run.gd "$d"*_run.gd; do [ -f "$r" ] && echo "$r"; done; done | sort -u | wc -l)
+  if [ "${#ARGS[@]}" -gt 0 ] && bash "$RUNNER" "${ARGS[@]}" --list > "$SCR/list.txt" 2>/dev/null; then total=$(grep -c . "$SCR/list.txt" || true)
+  else total=$(for d in godot/tests/*/; do for r in "$d"run.gd "$d"adapter_run.gd "$d"*_run.gd; do [ -f "$r" ] && echo "$r"; done; done | sort -u | wc -l); fi
   [ "$total" -gt 0 ] || total=0
   trap "restore; rm -f .dm-check-progress" EXIT
   echo "0 $total" > .dm-check-progress
-  bash tools/godot/run-all-tests.sh 2>&1 | { n=0; while IFS= read -r l; do printf "%s\n" "$l" >> "$SCR/suites.log"; case "$l" in *" exit="[0-9]*) n=$((n+1)); echo "$n $total" > .dm-check-progress;; esac; done; }
+  bash "$RUNNER" "${ARGS[@]}" 2>&1 | { n=0; while IFS= read -r l; do printf "%s\n" "$l" >> "$SCR/suites.log"; case "$l" in *" exit="[0-9]*) n=$((n+1)); echo "$n $total" > .dm-check-progress;; esac; done; }
   rc=${PIPESTATUS[0]}
   rm -f .dm-check-progress
   cat "$SCR/suites.log"
   total=$(grep -cE " exit=[0-9]+" "$SCR/suites.log" || true)
   bad=$(grep -cE " exit=[1-9][0-9]*" "$SCR/suites.log" || true)
-  if [ "$total" -eq 0 ]; then echo "GODOT TESTS: no suites ran"; exit 1; fi
-  if [ "$rc" -ne 0 ] || [ "$bad" -gt 0 ]; then echo "GODOT TESTS: $total suites, $((total - bad)) passed, $bad FAILED"; exit 1; fi
-  echo "GODOT TESTS: $total suites, $total passed, 0 failed"
+  if [ "$total" -eq 0 ]; then echo "GODOT TESTS: $MODE — no suites ran"; exit 1; fi
+  if [ "$rc" -ne 0 ] || [ "$bad" -gt 0 ]; then echo "GODOT TESTS: $LABEL ($total suites$NOTE) — $((total - bad)) passed, $bad FAILED"; exit 1; fi
+  echo "GODOT TESTS: $LABEL ($total suites$NOTE) — $total passed"
 '   # the sandboxed work; run by dm_sandbox_run inside the nested namespace (sandbox-lib.sh)
 timeout -k 30 5100 unshare -rnm bash -c '. "$DM_SANDBOX_LIB"; dm_sandbox_run'
 rc=$?
