@@ -23,6 +23,7 @@ var _legion_n := 1
 var _slots: Array[Dictionary] = []
 var _primary := {"icon": "", "key": "LMB"}
 var _map := {}
+var _dest := {"x": 0.0, "z": 0.0}   ## the pooled minimap destination dict
 var _areas: Array = []
 var _doors: Array = []
 var _area_sig := ""
@@ -360,6 +361,12 @@ func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 	_map["stairs"] = _none
 	_map["npcs"] = _none
 	_map["ping"] = _guide_ping(g)
-	_map["destination"] = null
+	# the click-to-move goal (a minimap or ground click) while the hero is walking to it
+	if b.has_target:
+		_dest["x"] = b.move_target.x
+		_dest["z"] = b.move_target.z
+		_map["destination"] = _dest
+	else:
+		_map["destination"] = null
 	_map["depths"] = g.depths.map_floor() if g.depths != null else null
 	return _map

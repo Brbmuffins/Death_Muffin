@@ -22,7 +22,7 @@ opts.hud:  true (default) real HUD, also for joiners  |  "minimal" DmNextHud orb
 | float text | casters' `hit_number`, host `body.hurt`, thrall blows, `dot_damage`, heals / gold / shards; goes through `DmFloatBudget` (caps, see `feel/README.md`) and honours the damage-numbers setting |
 | toasts / banners | `game_event("toast" / "banner" / "loot" ...)` into `DmGameUi._on_game_event`; level-ups from `member_credited` |
 | belt | Q drinks the best heal flask (`use_item`); elixir / tonic chips |
-| minimap | `DmHudMinimap` fed with enemies, thralls, corpses, built areas / doors; click -> `navigate` -> `DmNextInput.click_move` |
+| minimap | `DmHudMinimap` fed with enemies, thralls, corpses, built areas / doors, the click-to-move goal (`destination`, shown while `has_target`; it is static, no `_process`); click -> `navigate` -> `DmNextInput.click_move` |
 | save chip | worse of `DmProgressSync.state` and `DmInventory.state` |
 | wave dial | `dial_wave(delta)` -> `DmNextProgress.apply_progress` |
 | sounds | loot drop / coin / shard sounds, `play_loot`, hurt + lowHealth (< 30 %); each also raises `sfx(name)` |
@@ -44,7 +44,7 @@ First opens cost 0-62 ms over an idle frame (Capes & Pets ~52, Reagent shelf ~41
 - Gold / shards walked over in one frame give one float and one sound.
 - Bag full: "Reliquary full" float plus one toast; re-armed once there is room.
 - Pickup toast colour = beam colour; better-than-worn gear says "(upgrade)".
-- Ground: item names in rarity colour within 7 m (3 m ordinary; `DmLootView.near_labels = false` turns them off), icon blinks in the last 8 s, drops from one kill land >= 0.65 m apart. Loot never flies to you.
+- Ground: item names in rarity colour within 7 m (3 m ordinary; `DmLootView.near_labels = false` turns them off), icon is the inventory's own item art (`DmUiArt.item`; a rarity tile only for an item without art) and blinks in the last 8 s, drops from one kill land >= 0.65 m apart. Loot never flies to you.
 
 ## Tests
 `tests/next_hud_counsel/run.gd` (feeds, counsel, Legion, every panel), `tests/next_hud/run.gd`, `tests/next_polish/run.gd`, `tests/next_acre_guide/run.gd`. Cost probe:

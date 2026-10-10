@@ -79,6 +79,12 @@ func _run() -> void:
 	check(hud.area_lbl.text.to_upper().find("CHAPTERHOUSE") >= 0 and vm["level"] == int(character["level"]), "area name + level")
 	check(is_equal_approx(hud.hp_orb.fill, 1.0), "health orb full")
 	var b := g.local_body()
+	check(h.hud_state()["minimap"]["destination"] == null, "minimap: no destination while standing")
+	b.set_move_target(b.position + Vector3(6, 0, 0))
+	var dest: Variant = h.hud_state()["minimap"]["destination"]
+	check(dest != null and is_equal_approx(float(dest["x"]), b.position.x + 6.0), "minimap: a click-to-move goal shows as the destination mark")
+	b.has_target = false
+	check(h.hud_state()["minimap"]["destination"] == null, "minimap: the mark clears on arrival")
 	var caster := b.get_node("Rites") as DmRiteCaster
 	# ---- keys cast through DmRiteCaster
 	caster.p["resource"]["value"] = 100.0

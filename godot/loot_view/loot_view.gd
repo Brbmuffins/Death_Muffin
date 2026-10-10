@@ -362,13 +362,14 @@ func debug_drops() -> Array[Dictionary]:
 func _icon_for(id: String, color: Color) -> Texture2D:
 	if _icon_cache.has(id):
 		return _icon_cache[id]
-	var path := "res://assets/slice/art/items/%s.webp" % id
-	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else _placeholder(color)
+	var tex: Texture2D = DmUiArt.item(id)   # the inventory's own icon lookup (meta.icon or art/items/<id>.webp)
+	if tex == null:
+		tex = _placeholder(color)
 	_icon_cache[id] = tex
 	return tex
 
 
-## Stand-in icon (no item art is synced to godot/assets yet): a rounded rarity-tinted tile.
+## Stand-in icon for an item without art: a rounded rarity-tinted tile.
 static func _placeholder(color: Color) -> Texture2D:
 	var size := 48
 	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)

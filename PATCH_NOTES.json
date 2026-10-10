@@ -33,7 +33,9 @@
       "Textures use the GPU's compressed formats: about 75% less video memory with the same look.",
       "Fewer shadows to draw in crowds (the nearest enemies keep theirs), and the HUD and minimap only redraw what changed.",
       "Settings → Window mode: choose Windowed, Windowed borderless or Fullscreen.",
-      "Typing in a text field (like the bug report window) no longer moves your hero, whatever keys you have bound to movement."
+      "Typing in a text field (like the bug report window) no longer moves your hero, whatever keys you have bound to movement.",
+      "Loot on the ground now shows the item's own icon (helm, chest, staff...) instead of a plain square.",
+      "Clicking the minimap shows the amber destination marker again while your hero walks there."
     ]
   },
   {
