@@ -29,13 +29,13 @@ var role := "all"
 var fresh: Dictionary = {}
 var rune_error := ""
 var rune_busy := false
-var loadout_host: Control
+var loadout_host: VBoxContainer
 
 
 func _init() -> void:
 	add_theme_constant_override("separation", 8)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	loadout_host = Control.new()
+	loadout_host = VBoxContainer.new()   # a container, so the presets strip pushes the rows below it down instead of overlapping them
 	loadout_host.name = "LoadoutHost"
 
 

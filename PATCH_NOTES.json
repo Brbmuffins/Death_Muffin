@@ -8,6 +8,7 @@
       "Login screen tidied up: the title fits on one line, the headline is tighter, the sign-in card no longer has an empty gap under the button, and the text describes the game as it is today.",
       "Hovering your ability bar no longer pops up spell tooltips; the details stay in the Grimoire.",
       "Clicking items in the vault (and other item grids) no longer makes your character walk toward the spot under the window.",
+      "Grimoire: the Loadouts strip no longer gets covered by the Rune socket panel.",
       "The Reliquary has a new potion belt under the tool belt: drag a healing flask, elixir or tonic from your bag onto the Heal (Q), Elixir (Z) or Tonic (X) slot to choose what each key drinks."
     ]
   },
