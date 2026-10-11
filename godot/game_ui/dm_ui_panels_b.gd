@@ -28,9 +28,11 @@ func _init(ui_: Node) -> void:
 	_host_window("vault", vault)
 	vault.deposit_requested.connect(func(slot: int) -> void: _vault(func() -> DmResult: return await game.api.vault_deposit(cid(), slot)))
 	vault.withdraw_requested.connect(func(slot: int) -> void: _vault(func() -> DmResult: return await game.api.vault_withdraw(cid(), slot)))
+	vault.deposit_part_requested.connect(func(slot: int, qty: int) -> void: _vault(func() -> DmResult: return await game.api.vault_deposit(cid(), slot, qty)))
+	vault.withdraw_part_requested.connect(func(slot: int, qty: int) -> void: _vault(func() -> DmResult: return await game.api.vault_withdraw(cid(), slot, qty)))
 	vault.deposit_all_requested.connect(func(kind: String, except: Array) -> void: _vault(func() -> DmResult: return await game.api.vault_deposit_all(cid(), kind, except)))
 	vault.take_all_requested.connect(_take_all)
-	vault.sort_requested.connect(func() -> void: _vault(func() -> DmResult: return await game.api.vault_sort(cid())))
+	vault.sort_requested.connect(_vault_sort)
 	vault.set_locks(ui.locks)
 
 	salvage = DmSalvagePanel.new()
@@ -269,6 +271,27 @@ func _vault(call: Callable) -> void:
 		var g: DmResult = await game.api.get_vault(cid())
 		if g.ok:
 			vault.set_state(g.data)
+
+
+## The Vault's Sort button sorts the Vault (server) and then the bag, the same way the Reliquary's Sort does.
+func _vault_sort() -> void:
+	vault.set_busy(true)
+	var r: DmResult = await game.api.vault_sort(cid())
+	if not r.ok:
+		vault.set_busy(false)
+		vault.set_error(r.error)
+		return
+	game.bag_sort(ui.locks.remap, func(s: Dictionary) -> bool: return ui.locks.is_locked(s))
+	var err: String = await game.bag_commit()
+	await game.refresh_inventory()
+	var g: DmResult = await game.api.get_vault(cid())
+	vault.set_busy(false)
+	if g.ok:
+		vault.set_state(g.data)
+	elif r.data is Dictionary and r.data.has("bag"):
+		vault.set_state(r.data)
+	if err != "":
+		vault.set_note("Vault sorted, but the bag could not be saved: %s" % err)
 
 
 func _take_all(_kind: String, slots: Array) -> void:

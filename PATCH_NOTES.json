@@ -10,7 +10,11 @@
       "The Contagion rune's spread is now a crackling tendril of rot from the dying enemy to the next one.",
       "Settings now has an \"Exit game\" button at the top, so you can quit from fullscreen without alt-tabbing. It saves first.",
       "The Ossuary Vault now shows your worn gear beside the Reliquary, laid out like the Reliquary's gear slots.",
-      "In the Vault, the Deposit buttons now sit under your Reliquary grid, the Take buttons under the Vault grid, and Sort is centered above the Reliquary grid. The Vault tabs line up with the top of the Reliquary grid, the Vault grid matches its size, and the gear panel now also shows your tool belt and potion belt."
+      "In the Vault, the Deposit buttons now sit under your Reliquary grid, the Take buttons under the Vault grid, and Sort is centered above the Reliquary grid. The Vault tabs line up with the top of the Reliquary grid, the Vault grid matches its size, and the gear panel now also shows your tool belt and potion belt.",
+      "The Vault's Sort button now sorts your bag as well as the Vault.",
+      "The \"Swap spells\" button at the bottom right is now called \"Spellbook\" and is a snugger fit.",
+      "In the Ossuary Vault you can now drag items between the Vault and your bag or worn gear, and Shift+click a stack to choose how many to move.",
+      "The \"Spells\" button is gone from the menu row under the minimap; the Grimoire still opens with L or the spells button by the action bar."
     ]
   },
   {

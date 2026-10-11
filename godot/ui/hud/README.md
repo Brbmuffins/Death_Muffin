@@ -29,7 +29,7 @@ Every key is optional; missing = zero / hidden. Units: HP in HP, cooldown in ms.
 | `dev` | bool | the DEV chip |
 | `primary` | `{icon, key="LMB", rune_icon?}` | left-click socket; icon is a `res://` texture path |
 | `slots` | Array of slot dicts | see below. Row rebuilds when the count or any `alt` flag changes |
-| `grimoire_new` | bool | NEW pip on the "Swap spells" button |
+| `grimoire_new` | bool | NEW pip on the "Spellbook" button |
 | `souls`, `souls_max` | number | Soul Harvest meter; full -> "HARVEST" + jade |
 | `thralls`, `thrall_cap`, `raises_thralls` | number, number, bool | pips + chip appear when `raises_thralls` or `thralls > 0` |
 | `gold`, `shards` | number | currency row; `gold` also drives the buy buttons' enabled state |
@@ -51,7 +51,7 @@ Every key is optional; missing = zero / hidden. Units: HP in HP, cooldown in ms.
 | `hint` | String | faint line above the altar |
 | `death` | `{show, sub}` | "You have fallen" wash, fades 0.8 s |
 | `auto_combat` | `{on, available, visible}` | the Auto button under the menu |
-| `reveal` | `{id: bool}` | progressive HUD: `hud.upgrades hud.dial hud.shards hud.spells menu.spells menu.atlas menu.skills`. **Absent id = revealed** (list only what is still held back) |
+| `reveal` | `{id: bool}` | progressive HUD: `hud.upgrades hud.dial hud.shards hud.spells menu.atlas menu.skills`. **Absent id = revealed** (list only what is still held back) |
 | `new` | `{id: bool}` | NEW pip + gold glow on the same ids (+ `hud.omen`); a click/hover on a NEW button emits `cue_used(id)` |
 
 ### slot dict (`slots[]`, and `primary`)

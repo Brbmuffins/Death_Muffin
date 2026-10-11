@@ -25,7 +25,6 @@ const MENU_ROW := [
 	["forge", "anvil", "Craft", "Workbench (C)", ""],
 	["professions", "skills", "Acre", "Acre ledger: Skills, Garden, Laborers, Contracts (P)", "menu.skills"],
 	["map", "waymap", "Map", "Waystones (M)", ""],
-	["grimoire", "grimoire", "Spells", "Grimoire and Legion (L)", "menu.spells"],
 	["atlas", "atlas", "Atlas", "Gear Atlas (.)", "menu.atlas"],
 	["codex", "book", "Codex", "Codex (K)", ""],
 	["party", "person", "Party", "Party: host a session, join friends (F)", ""],
@@ -790,13 +789,13 @@ func _build_altar() -> void:
 	slots_row.add_child(DmUi.spacer(0, 12))
 	grim_btn = Button.new()
 	grim_btn.focus_mode = Control.FOCUS_NONE
-	grim_btn.custom_minimum_size = Vector2(130, 50)
+	grim_btn.custom_minimum_size = Vector2(104, 50)
 	grim_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	grim_btn.add_theme_stylebox_override("normal", DmHudKit.style(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_STRONG, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
 	grim_btn.add_theme_stylebox_override("hover", DmHudKit.style(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_ACTIVE, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
 	grim_btn.add_theme_stylebox_override("pressed", DmHudKit.style(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_ACTIVE, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
 	grim_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	grim_btn.tooltip_text = "Swap spells in the Grimoire (L)"
+	grim_btn.tooltip_text = "Open the Spellbook (L)"
 	var gv := VBoxContainer.new()
 	gv.add_theme_constant_override("separation", 2)
 	gv.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -809,7 +808,7 @@ func _build_altar() -> void:
 	gi.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	gi.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gv.add_child(gi)
-	var gl := _txt("SWAP SPELLS · L", 11, DmUi.BONE_100, "body_bold", 1.0, false)
+	var gl := _txt("SPELLBOOK · L", 11, DmUi.BONE_100, "body_bold", 1.0, false)
 	gl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	gv.add_child(gl)
 	grim_btn.pressed.connect(func() -> void: open_grimoire.emit(null))

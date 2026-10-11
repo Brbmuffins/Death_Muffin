@@ -668,6 +668,37 @@ func _t_vault() -> void:
 	_eq(ev.size(), 1, "no deposit signal for equipped gear")
 	v.vault_slots[2].pressed.emit(v.vault_slots[2])
 	_eq(ev.back(), ["wd", 2], "click a vault item withdraws its slot")
+	# drag and drop, and Shift+click for part of a stack
+	v.deposit_part_requested.connect(func(s: int, q: int) -> void: ev.append(["deppart", s, q]))
+	v.withdraw_part_requested.connect(func(s: int, q: int) -> void: ev.append(["wdpart", s, q]))
+	var bag_drag: Variant = v.bag_slots[0].drag_data
+	_check(bag_drag != null and v.bag_slots[6].drag_data == null, "bag items drag, worn gear does not")
+	_check(v.vault_slots[2].drag_data != null and v.vault_slots[39].drag_data == null, "filled Vault cells drag, empty ones do not")
+	_check(v.vault_slots[39]._can_drop_data(Vector2.ZERO, bag_drag) and not v.bag_slots[20]._can_drop_data(Vector2.ZERO, bag_drag), "a bag item drops on the Vault only")
+	_check(v.bag_slots[20]._can_drop_data(Vector2.ZERO, v.vault_slots[2].drag_data) and v.doll_slots["main_hand"]._can_drop_data(Vector2.ZERO, v.vault_slots[2].drag_data), "a Vault item drops on the bag or worn gear")
+	_check(not v.bag_slots[20]._can_drop_data(Vector2.ZERO, {"type": "other"}), "foreign drags are refused")
+	v.vault_slots[39]._drop_data(Vector2.ZERO, bag_drag)
+	_eq(ev.back(), ["dep", 0], "dropping a bag item on the Vault deposits it")
+	v.bag_slots[20]._drop_data(Vector2.ZERO, v.vault_slots[2].drag_data)
+	_eq(ev.back(), ["wd", 2], "dropping a Vault item on the bag withdraws it")
+	var stack_slot := -1
+	for s: Dictionary in st["bag"]:
+		if int(s["quantity"]) > 1 and int(s.get("equipped", 0)) == 0:
+			stack_slot = int(s["slot_index"])
+			break
+	_check(stack_slot >= 0, "the demo bag has a stack")
+	var shift_on := true
+	v.shift_probe = func() -> bool: return shift_on
+	v.bag_slots[stack_slot].pressed.emit(v.bag_slots[stack_slot])
+	await _frames(2)
+	_check(v.qty_spin != null and v.qty_move_button != null and not v.pending.is_empty(), "Shift+click on a stack asks how many")
+	var before := ev.size()
+	v.qty_spin.value = 3
+	v.qty_move_button.pressed.emit()
+	_eq(ev.back(), ["deppart", stack_slot, 3], "the chosen amount is deposited")
+	_eq(ev.size(), before + 1, "one signal for the part move")
+	shift_on = false
+	v.shift_probe = Callable()
 	v.deposit_materials_button.pressed.emit()
 	_eq(ev.back(), ["depall", "materials", [1]], "deposit materials excludes locked slots")
 	v.deposit_all_button.pressed.emit()

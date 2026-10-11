@@ -194,10 +194,10 @@ func _run() -> void:
 
 	# --- progressive reveal + NEW cues ---
 	var rv := DmHudMock.combat()
-	rv["reveal"] = {"hud.upgrades": false, "hud.shards": false, "hud.spells": false, "menu.spells": false, "menu.atlas": false}
+	rv["reveal"] = {"hud.upgrades": false, "hud.shards": false, "hud.spells": false, "menu.atlas": false}
 	hud.apply(rv)
 	_check(not hud.up_plate.visible and not hud.shard_chip.visible, "unrevealed plate and shards are held back")
-	_check(not hud.menu_btns["grimoire"].visible and not hud.menu_btns["atlas"].visible and hud.menu_btns["codex"].visible, "unrevealed menu buttons hidden")
+	_check(not hud.menu_btns.has("grimoire") and not hud.menu_btns["atlas"].visible and hud.menu_btns["codex"].visible, "unrevealed menu buttons hidden, no Spells menu button")
 	_check(not hud.grim_btn.get_meta("host").visible, "grimoire button held back")
 	rv["reveal"] = {}
 	rv["new"] = {"hud.upgrades": true}
@@ -210,10 +210,10 @@ func _run() -> void:
 	_check(pip_vis == 1 and (hud._glows["hud.upgrades"][0] as DmHudParts.NewGlow).active, "NEW pip + glow on the upgrades plate")
 	var cue := []
 	hud.cue_used.connect(func(id: String) -> void: cue.append(id))
-	rv["new"] = {"menu.spells": true}
+	rv["new"] = {"menu.atlas": true}
 	hud.apply(rv)
-	hud.menu_btns["grimoire"].pressed.emit()
-	_check(cue == ["menu.spells"], "clicking a NEW menu button reports the cue as used")
+	hud.menu_btns["atlas"].pressed.emit()
+	_check(cue == ["menu.atlas"], "clicking a NEW menu button reports the cue as used")
 
 	# --- toasts ---
 	for c in hud.toasts.get_children():

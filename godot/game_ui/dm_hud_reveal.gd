@@ -99,7 +99,7 @@ static func veteran_reveals(f: Dictionary) -> Array:
 	if int(f.get("shards", 0)) > 0:
 		out.append("hud.shards")
 	if f.get("swap_ready", false):
-		out.append_array(["hud.spells", "menu.spells"])
+		out.append("hud.spells")
 	if f.get("has_gear", false):
 		out.append("menu.atlas")
 	if f.get("knows_acre", false) or int(f.get("level", 1)) >= 3:
