@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_prop_gear_reaper_scythe",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy weapon for a fast soul-reaping fighter: a one-handed-looking light reaper's scythe, upright and filling the frame top to bottom. A slim dark iron-wood shaft with a leather grip wrap and a small pointed ferrule at the bottom, and at the top a long, thin, wickedly curved crescent blade sweeping out to ONE side, with a sharp pale steel edge, a few cut-out notches along the spine, and faintly glowing acid-green etched runes along the blade. A small skull ornament where blade meets shaft, with a wisp of green soul-light in its eye sockets. Chunky readable silhouette, hand-crafted, nothing else.",
+    "out": "art-src/concepts/prop_gear_reaper_scythe.png",
+    "aspect": "1:1"
+  }
+]
