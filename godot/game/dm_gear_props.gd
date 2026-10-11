@@ -526,28 +526,41 @@ static func _cape_arc(rt: float, rb: float, h: float, rows: int, arc: float) -> 
 
 # ----------------------------------------------------------------------------------------------------------------- grips
 
-const BASE_GRIP := {"lean": [0.0, 0.1], "follow": 0.8}
-const GRIPS := {
-	"staff": {"lean": [0.06, 0.1], "follow": 0.8}, "scythe": {"lean": [0.06, 0.1], "follow": 0.8},
-	"wand": {"lean": [0.35, 0.3], "follow": 0.8}, "sickle": {"lean": [0.35, 0.3], "follow": 0.8},
-	"skull_focus": {"lean": [0.25, 0.1], "follow": 0.8},
-	"grimoire": {"lean": [0.45, 0.15], "offset": [0.04, 0.02, 0.06], "follow": 0.8},
-	"mourning_bell": {"lean": [-0.5, 0.2], "offset": [0.05, 0.0, 0.06], "follow": 0.8},
+## How each kind of prop sits in a hand (`DmCreature.attach_held`). A prop's +Y is its long axis and its origin is where it is meant to be gripped, so a
+## model made later only needs a row here (or none: `HOLD_DEFAULT`). lean = degrees its top tips from the knuckle line toward the fingers (the forearm),
+## roll = degrees about its own long axis, hold = metres up the shaft from the origin that the palm actually sits (long weapons are held low, off the end).
+const HOLD_DEFAULT := {"lean": 12.0, "roll": 0.0, "hold": 0.0}
+const HOLDS := {
+	"default_staff": {"lean": -65.0, "roll": 0.0, "hold": 0.0},
+	"staff": {"lean": -65.0, "roll": 0.0, "hold": 0.0},
+	"scythe": {"lean": -65.0, "roll": 0.0, "hold": 0.0},
+	"wand": {"lean": 35.0, "roll": 0.0, "hold": 0.04},
+	"sickle": {"lean": 35.0, "roll": 0.0, "hold": 0.0},
+	"skull_focus": {"lean": 30.0, "roll": 0.0, "hold": 0.05},
+	"mourning_bell": {"lean": -50.0, "roll": 0.0, "hold": 0.0},
+	"grimoire": {"lean": 40.0, "roll": 90.0, "hold": 0.16},
+	"tome": {"lean": 40.0, "roll": 90.0, "hold": 0.16},
+	"sword": {"lean": 65.0, "roll": 0.0, "hold": 0.0},
+	"dagger": {"lean": 65.0, "roll": 0.0, "hold": 0.0},
+	"mace": {"lean": 45.0, "roll": 0.0, "hold": 0.0},
+	"bow": {"lean": 10.0, "roll": 0.0, "hold": 0.0},
+	"shield": {"lean": 0.0, "roll": 0.0, "hold": 0.0},
+	"skull": {"lean": 30.0, "roll": 0.0, "hold": 0.05},
+	"bell": {"lean": -50.0, "roll": 0.0, "hold": 0.0},
 }
 
-## gripFor: how a prop sits in the hand. Right hand = the character's -X side, left +X. -> {dir: Vector3, follow, fit: {roll?, offset?}}
-static func grip_for(slot: String, item_id: String, has_tip: bool) -> Dictionary:
-	var side := -1.0 if slot == "main_hand" else 1.0
+## The kind a worn item is gripped as: a necromancer weapon's own kind, else the weapon / off-hand kind of its id.
+static func hold_kind(slot: String, item_id: String) -> String:
 	var necro := necro_by_id(item_id)
-	var kind: String = String(necro.kind) if not necro.is_empty() else (weapon_kind(item_id) if slot == "main_hand" else offhand_kind(item_id))
-	var spec: Dictionary = GRIPS.get(kind, {"lean": BASE_GRIP.lean, "follow": 0.3 if (slot == "main_hand" and has_tip) else BASE_GRIP.follow})
-	var fit := {}
-	if spec.has("roll"):
-		fit["roll"] = spec.roll
-	if spec.has("offset"):
-		var o: Array = spec.offset
-		fit["offset"] = Vector3(side * o[0], o[1], o[2])
-	return {"dir": Vector3(side * spec.lean[0], 1.0, spec.lean[1]), "follow": spec.follow, "fit": fit}
+	if not necro.is_empty():
+		return String(necro.kind)
+	return weapon_kind(item_id) if slot == "main_hand" else offhand_kind(item_id)
+
+## The `DmCreature.attach_held` spec of a kind: {side: 1 right hand / -1 left, lean, roll (radians), hold (metres)}.
+static func hold_spec(kind: String, left := false) -> Dictionary:
+	var h: Dictionary = HOLDS.get(kind, HOLD_DEFAULT)
+	return {"side": -1.0 if left else 1.0, "lean": deg_to_rad(float(h.lean)),
+		"roll": deg_to_rad(float(h.roll)), "hold": float(h.hold)}
 
 # ----------------------------------------------------------------------------------------------------------------- thrall props (EntityViews.ts)
 

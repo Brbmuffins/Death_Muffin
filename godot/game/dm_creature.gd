@@ -26,6 +26,8 @@ const TOPPLE_S := 0.45
 const FLASH_LEVELS := 8
 const FLASH_COLOR := 0xfff0dc
 const COMBAT := ["slam", "sweep", "flick", "channel", "summon"]
+## Hand-local palm centre when a rig's hand cannot be measured (the necromancer rigs measure ~(0.01, 0.055, -0.01)).
+const PALM_DEFAULT := Vector3(0.0, 0.055, 0.0)
 const GEAR_REGIONS := ["chest", "legs", "hands", "feet"]
 const FALLBACK := {
 	"idle": ["idle", "walk"], "walk": ["walk", "run", "idle"], "run": ["run", "walk", "idle"],
@@ -38,6 +40,8 @@ const FALLBACK := {
 
 static var _rows: Dictionary = {}
 static var _landings: Dictionary = {}
+## Bone-local palm centre per rig and hand bone, measured once from the skinned mesh (see `palm_of`).
+static var _palms: Dictionary = {}
 ## The picture clock of a struck enemy (hitstop.scale): the views copy Vfx.hitstop_scale here every frame.
 static var hitstop_scale := 1.0
 
@@ -848,9 +852,76 @@ func _flush_pending() -> void:
 		var gs := att.global_transform.basis.get_scale().x
 		var rs := root.global_transform.basis.get_scale().x
 		obj.scale = obj.scale * (rs / maxf(gs, 1e-6))
-		if p[2] != null:
+		var held: Variant = (p[4] as Dictionary).get("held")
+		if held != null:
+			_seat_held(att, obj, att.bone_name, held)
+		elif p[2] != null:
 			var d := (p[2] as Vector3).normalized()
 			_attached.append({"obj": obj, "att": att, "dir": d, "follow": p[3], "base_q": null, "fit": p[4], "cal": 4})
+
+## Seat `obj` in a hand: its origin (the prop's grip point, moved `hold` metres along the prop's +Y) sits on the measured palm centre, its +Y
+## along the knuckle line (hand-local X, mirrored for the left hand) leaned `lean` radians toward the fingers and rolled `roll` about itself.
+## `spec`: {side: 1 right / -1 left, lean, roll, hold, palm?: Vector3 (bone-local override)}. The attachment follows the bone every frame
+## at no script cost: nothing here runs per frame (the world-up lock of `attach` with a `dir` is for props that should hang, not be held).
+func attach_held(bone: String, obj: Node3D, spec: Dictionary) -> void:
+	_pending.append([bone, obj, null, null, {"held": spec}])
+	if root.is_inside_tree():
+		_flush_pending()
+
+func _seat_held(att: BoneAttachment3D, obj: Node3D, bone: String, spec: Dictionary) -> void:
+	var side := float(spec.get("side", 1.0))
+	var lean := float(spec.get("lean", 0.0))
+	var up := Vector3(side * cos(lean), sin(lean), 0.0).normalized()
+	var q := Quaternion(Vector3.UP, up)
+	var roll := float(spec.get("roll", 0.0))
+	if roll != 0.0:
+		q = q * Quaternion(Vector3.UP, roll)
+	obj.quaternion = q
+	var palm: Vector3 = spec.palm if spec.has("palm") else palm_of(bone)
+	obj.position = palm - q * Vector3(0, float(spec.get("hold", 0.0)), 0) * obj.scale.y
+
+## The centre of the hand's skinned vertices in the hand bone's own space (the palm: the rigs have no finger bones), cached per rig.
+func palm_of(bone: String) -> Vector3:
+	var key := rig_slug + "/" + bone
+	if _palms.has(key):
+		return _palms[key]
+	var palm := PALM_DEFAULT
+	var bi := skeleton.find_bone(bone) if skeleton != null else -1
+	if bi >= 0:
+		var sum := Vector3.ZERO
+		var n := 0
+		for m in skeleton.find_children("*", "MeshInstance3D", true, false):
+			var mi := m as MeshInstance3D
+			var skin := mi.skin
+			if skin == null or mi.mesh == null:
+				continue
+			var bind := -1
+			for b in skin.get_bind_count():
+				if skin.get_bind_bone(b) == bi or skin.get_bind_name(b) == bone:
+					bind = b
+			if bind < 0:
+				continue
+			var pose := skin.get_bind_pose(bind)
+			for s in mi.mesh.get_surface_count():
+				var arr := mi.mesh.surface_get_arrays(s)
+				var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+				var bs: PackedInt32Array = arr[Mesh.ARRAY_BONES]
+				var ws: PackedFloat32Array = arr[Mesh.ARRAY_WEIGHTS]
+				if bs.is_empty() or vs.is_empty():
+					continue
+				var per := bs.size() / vs.size()
+				for v in vs.size():
+					var w := 0.0
+					for k in per:
+						if bs[v * per + k] == bind:
+							w += ws[v * per + k]
+					if w > 0.5:
+						sum += pose * vs[v]
+						n += 1
+		if n > 20:
+			palm = sum / float(n)
+	_palms[key] = palm
+	return palm
 
 func detach(obj: Node3D) -> void:
 	_pending = _pending.filter(func(p): return p[1] != obj)

@@ -23,6 +23,7 @@ var _far_acc: Dictionary = {}   ## peer id -> accumulated dt of a far pet
 var _ring: Array = []           ## the local hero's decal handles
 var _ring_done := false
 var _gear: Dictionary = {}      ## the local look's parts (kept so each source updates its own)
+var _element := ""              ## the weapon element the local hero's socketed runes give (DmGearFx.ELEMENTS key, "" = the weapon's own)
 var _cape := ""
 var _pet := ""
 var _applied_gear: Dictionary = {}   ## peer id -> the gear last given to its avatar
@@ -55,8 +56,10 @@ func set_gear_from_slots(slots: Array) -> void:
 	for slot in worn:
 		if slot in BODY_SLOTS:
 			g[slot] = [String(worn[slot]["item_id"]), String(worn[slot].get("rarity", ""))]
-	if g != _gear:
+	var el := DmGearFx.element_of_runes(DmRunes.sockets_of(slots))
+	if g != _gear or el != _element:
 		_gear = g
+		_element = el
 		_publish()
 
 
@@ -81,6 +84,7 @@ func load_from_api() -> void:
 		for slot in worn:
 			if slot in BODY_SLOTS:
 				_gear[slot] = [String(worn[slot]["item_id"]), String(worn[slot].get("rarity", ""))]
+		_element = DmGearFx.element_of_runes(DmRunes.sockets_of(inv.data))
 	var cos: DmResult = await api.get_cosmetics(cid)
 	if cos.ok and cos.data is Dictionary and cos.data.get("selected") is Dictionary:
 		var sel: Dictionary = cos.data["selected"]
@@ -90,7 +94,10 @@ func load_from_api() -> void:
 
 
 func descriptor() -> Dictionary:
-	return {"g": _gear, "c": _cape, "p": _pet}
+	var d := {"g": _gear, "c": _cape, "p": _pet}
+	if _element != "":
+		d["e"] = _element
+	return d
 
 
 func _publish() -> void:
@@ -149,6 +156,8 @@ func _replay_to(id: int) -> void:
 static func _valid(d: Dictionary) -> bool:
 	if not (d.get("g") is Dictionary and d.get("c") is String and d.get("p") is String):
 		return false
+	if d.has("e") and not DmGearFx.valid_element(d["e"]):
+		return false
 	var g: Dictionary = d["g"]
 	if g.size() > BODY_SLOTS.size():
 		return false
@@ -180,6 +189,7 @@ func _apply(id: int) -> void:
 			items[slot] = {"item_id": d["g"][slot][0], "rarity": d["g"][slot][1]}
 		b.avatar.set_equipment(items)
 		applied += 1
+	b.avatar.set_weapon_element(String(d.get("e", "")))
 	b.avatar.set_cape(String(d["c"]))
 	var pet := String(d["p"])
 	var cur: DmPetView = _pets.get(id)

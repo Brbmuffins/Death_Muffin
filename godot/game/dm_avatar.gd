@@ -11,7 +11,7 @@ const HERO_TURN_RATE := 12.0
 const HERO_TURN_MAX := 13.0
 const HELM_APEX := 0.19
 const HELM_OVER := 0.01
-const STAFF_FOLLOW := 0.6
+const STAFF_FOLLOW := 0.6   ## (New Blood hero props only)
 const TOOL_GRIP := {"woodcutting": -0.3, "mining": -0.15, "fishing": -0.3, "gravedigging": -0.3, "gardening": -0.3}
 const TOOL_TINT := [0xb87333, 0x9097a0, 0xdfe4ee, 0x7a98b0, 0xd0452f, 0xaec8ff]
 const TOOLS := {
@@ -25,15 +25,21 @@ const RIG_HEAD := {
 	"hero_ossuary": "covered", "hero_gravecaller": "covered", "hero_mourner": "covered", "hero_rotweaver": "covered",
 	"hero_hollow_knight": "covered", "hero_grave_warden": "covered", "hero_veilwalker": "covered", "hero_carrion_witch": "covered", "hero_bell_monk": "covered",
 }
-const RIG_HEAD_STRENGTH := {"hero_bell_monk": 0.25}
+const RIG_HEAD_STRENGTH := {"hero_bell_monk": 0.25}   ## (a cap: other heads use the rarity's tint strength)
 # castClips.ts
 const MIN_SECONDS := {"slam": 0.55, "sweep": 0.42, "flick": 0.26, "channel": 0.9, "summon": 0.7}
 ## The Reaper's rites -> the hero rig's combat clips (measured on hero_mourner: sweep 1.4 s, slam 2.0 s, flick 1.03 s, channel 1.6 s, summon 1.6 s).
 const REAPER_CLIPS := {"scythe_sweep": "sweep", "harvest_spin": "sweep", "reap": "slam", "scythe_throw": "flick", "wraith_walk": "channel", "soul_burst": "summon"}
+## Worn set pieces that step the set's aura up (DmGearFx.AURA_MOTES): 2 = level 1, 4 = level 2. From 3 pieces on `set_look` also switches the set's colour scheme on.
+const SET_AURA_STEPS := [2, 4]
+const SET_SCHEME_PIECES := 3
 const MAX_SPEED := 3.2
 const MIN_SPEED := 0.7
 
 static var _live: Array = []
+
+## The set look changed (set id "" and 0 pieces = none). The full-set models (mantles, ...) connect here: pieces >= 3 is their cue.
+signal set_look_changed(set_id: String, pieces: int)
 
 var c: DmCreature
 var lantern: OmniLight3D = null
@@ -65,6 +71,13 @@ var _last_x := 0.0
 var _last_z := 0.0
 var _ground_speed := 0.0
 var _helm_want := ""
+var _element := ""                   ## the weapon's element override (socketed runes); "" = the weapon's own tier
+var _main_rarity := ""
+var set_id := ""                     ## the set whose look is on (see set_look)
+var set_pieces := 0
+var _aura: CPUParticles3D = null
+var _aura_level := 0
+var _scheme_glow: Variant = null     ## the set's trim glow colour while its scheme is on
 
 
 ## Rebuild the visibility of default props / worn gear for every live hero (the Hide helms setting reaches own and remote avatars).
@@ -94,8 +107,9 @@ func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, m
 		_staff = (DmGearProps.scythe_model() if _reaper else null)   # the Reaper carries her scythe, not the skull staff
 		if _staff == null:
 			_staff = _skull_staff(accent_hex)
-		c.attach("R_Hand", _staff, Vector3(0, 1, 0.12), STAFF_FOLLOW)
+		c.attach_held("R_Hand", _staff, DmGearProps.hold_spec("scythe" if _reaper else "default_staff"))
 		_default_hand[_staff] = "main_hand"
+		_refresh_weapon_fx()
 	_live.append(self)
 	if with_light:
 		lantern = OmniLight3D.new()
@@ -216,6 +230,8 @@ func apply_gear_visibility() -> void:
 		var w: Dictionary = _worn[slot]
 		(w.obj as Node3D).visible = idle and not (_hide_helm() if slot == "head" else _downed)
 	c.set_head_tint(_head_tint if (idle and not _hide_helm()) else null)
+	if _aura != null:
+		_aura.visible = idle and not _downed
 	if _cape != null:
 		(_cape.obj as Node3D).visible = idle and _cape_fade > 0.01
 
@@ -232,7 +248,7 @@ func set_equipment(items: Dictionary) -> void:
 		if slot == "head" and item == null:
 			_helm_want = ""
 		var key: Variant = item.get("item_id") if item is Dictionary else null
-		if cur != null and cur.key == key:
+		if cur != null and cur.key == key and (slot != "main_hand" or String(cur.get("rarity", "")) == String(item.get("rarity", "") if item is Dictionary else "")):
 			continue
 		if slot == "head":
 			_head_tint = null   # only when the helm changes: any later inventory change calls this again and must keep the worn helm's tint
@@ -240,7 +256,11 @@ func set_equipment(items: Dictionary) -> void:
 			c.detach(cur.obj)
 			DmGearProps.dispose_prop(cur.obj)
 			_worn.erase(slot)
+			if slot == "main_hand":
+				_main_rarity = ""
 		if item == null:
+			if slot == "main_hand":
+				_refresh_weapon_fx()
 			continue
 		if slot == "head":
 			_helm_want = String(item.item_id)
@@ -249,42 +269,97 @@ func set_equipment(items: Dictionary) -> void:
 			continue
 		var rarity := String(item.get("rarity", ""))
 		var obj: Node3D = DmGearProps.build_offhand(item.item_id, rarity) if slot == "off_hand" else DmGearProps.build_weapon(item.item_id, rarity)
-		var grip := DmGearProps.grip_for(slot, String(item.item_id), obj.has_meta("tip"))
+		var kind := DmGearProps.hold_kind(slot, String(item.item_id))
 		if _reaper and slot == "main_hand":
 			var scythe := DmGearProps.scythe_model()   # her weapon is always the scythe, whatever the bag row says
 			if scythe != null:
 				DmGearProps.dispose_prop(obj)
 				obj = scythe
-				grip = {"dir": Vector3(0, 1, 0.12), "follow": STAFF_FOLLOW, "fit": {}}
-		c.attach(bone, obj, grip.dir, grip.follow, grip.fit)
-		_worn[slot] = {"obj": obj, "key": item.item_id}
-	# Body slots have no prop: they recolour their region of the body by material tier.
-	var aura: Variant = _legendary_aura(items)
+				kind = "scythe"
+		c.attach_held(bone, obj, DmGearProps.hold_spec(kind, slot == "off_hand"))
+		_worn[slot] = {"obj": obj, "key": item.item_id, "rarity": rarity}
+		if slot == "main_hand":
+			_main_rarity = rarity
+			_refresh_weapon_fx()
+	# Body slots have no prop: they tint their region of the body lightly by material tier (the texture keeps its detail; trim and rim carry the glow).
+	var best := _best_set(items)
+	set_look(best[0], best[1])
 	for pair in [["chest", "chest"], ["legs", "legs"], ["hands", "hands"], ["feet", "feet"]]:
 		var it2: Variant = items.get(pair[1])
 		if it2 == null:
 			c.set_region_tint(pair[0], null)
 		else:
-			var t := DmGearProps.tier(String(it2.item_id), String(it2.get("rarity", "")))
-			var glow: Variant = aura if aura != null else (t.glow if int(t.glow) >= 0 else null)
-			c.set_region_tint(pair[0], {"color": t.color, "glow": glow})
+			var rarity2 := String(it2.get("rarity", ""))
+			var t := DmGearProps.tier(String(it2.item_id), rarity2)
+			var glow: Variant = _scheme_glow if _scheme_glow != null else (t.glow if int(t.glow) >= 0 else DmGearProps._dim(int(t.color), 0.3))
+			c.set_region_tint(pair[0], {"color": t.color, "glow": glow, "strength": float(DmGearFx.look_of(rarity2).tint)})
 	apply_gear_visibility()
 
-## legendaryAura: the glow colour of a worn legendary set (4+ pieces of one), or null.
-func _legendary_aura(items: Dictionary) -> Variant:
+## The weapon in hand shows its rarity glow and element (the socketed runes' if set, else its metal tier's); the default staff only the element.
+func _refresh_weapon_fx() -> void:
+	var mh: Variant = _worn.get("main_hand")
+	if mh != null:
+		DmGearFx.dress_weapon(mh.obj, _main_rarity, DmGearFx.element_for(String(mh.key), _element))
+	if _staff != null:
+		DmGearFx.dress_weapon(_staff, "", "" if mh != null else _element)   # the staff under a worn weapon shows nothing
+
+## The element the socketed runes give the weapon ("" = its own tier's); `DmGearFx.ELEMENTS` keys.
+func set_weapon_element(element: String) -> void:
+	if _disposed or element == _element or (element != "" and not DmGearFx.valid_element(element)):
+		return
+	_element = element
+	_refresh_weapon_fx()
+
+## The set with the most worn pieces (ties: the first found) -> [set_id, pieces] (["", 0] when nothing is worn).
+func _best_set(items: Dictionary) -> Array:
 	var count: Dictionary = {}
 	for it in items.values():
 		if it == null:
 			continue
 		var p := DmGearProps.armor_by_id(String(it.item_id))
-		if not p.is_empty() and int(p.collection) == 3:
+		if not p.is_empty():
 			count[p.setId] = int(count.get(p.setId, 0)) + 1
-	for set_id in count:
-		if count[set_id] >= 4:
-			for p in DmContent.get_export("armorSets", "ARMOR_PIECES"):
-				if p.setId == set_id:
-					return DmGearProps._dim(int(p.accent), 0.5)
-	return null
+	var best := ["", 0]
+	for id in count:
+		if count[id] > best[1]:
+			best = [id, count[id]]
+	return best
+
+## Dress the hero in a worn set: `pieces` of set `id_` (0 / "" = none). 2 pieces light a faint aura, 4 a full one; from SET_SCHEME_PIECES (3) the
+## set's colour scheme (its accent as the trim glow of every worn piece) is on too. The full-set models plug in through `set_look_changed`.
+func set_look(id_: String, pieces: int) -> void:
+	if _disposed:
+		return
+	if id_ == "" or pieces < SET_AURA_STEPS[0]:
+		id_ = ""
+		pieces = 0
+	if id_ == set_id and pieces == set_pieces:
+		return
+	var rebuild_aura := id_ != set_id or _aura_level != _aura_level_for(pieces)
+	set_id = id_
+	set_pieces = pieces
+	var accent := 0
+	var legendary := false
+	for p in DmContent.get_export("armorSets", "ARMOR_PIECES"):
+		if p.setId == id_:
+			accent = int(p.accent)
+			legendary = int(p.collection) == 3
+			break
+	_aura_level = _aura_level_for(pieces) if id_ != "" else 0
+	_scheme_glow = DmGearProps._dim(accent, 0.5 if legendary else 0.3) if (id_ != "" and pieces >= SET_SCHEME_PIECES) else null
+	if rebuild_aura:
+		if _aura != null:
+			c.root.remove_child(_aura)
+			_aura.queue_free()
+			_aura = null
+		if _aura_level > 0:
+			_aura = DmGearFx.build_aura(DmGearProps.col(accent), _aura_level)
+			c.root.add_child(_aura)
+			_aura.visible = _gathering_skill == "" and not _downed
+	set_look_changed.emit(set_id, set_pieces)
+
+func _aura_level_for(pieces: int) -> int:
+	return 0 if pieces < SET_AURA_STEPS[0] else (2 if pieces >= SET_AURA_STEPS[1] else 1)
 
 func _mount_helm(item: Dictionary) -> void:
 	if _disposed or _helm_want != String(item.item_id):
@@ -296,7 +371,7 @@ func _mount_helm(item: Dictionary) -> void:
 		# The rig already has a hood, cowl or helmet: no dome. The helm shows as trim on that head region.
 		var t := DmGearProps.tier(String(item.item_id), String(item.get("rarity", "")))
 		var set := DmGearProps.armor_by_id(String(item.item_id))
-		_head_tint = {"color": int(set.accent) if not set.is_empty() else t.color, "glow": t.glow if int(t.glow) >= 0 else null, "strength": RIG_HEAD_STRENGTH.get(slug, 0.55)}
+		_head_tint = {"color": int(set.accent) if not set.is_empty() else t.color, "glow": t.glow if int(t.glow) >= 0 else null, "strength": minf(float(RIG_HEAD_STRENGTH.get(slug, 1.0)), float(DmGearFx.look_of(String(item.get("rarity", ""))).tint) * 0.4)}
 		_worn["head"] = {"obj": Node3D.new(), "key": item.item_id}
 		apply_gear_visibility()
 		return
