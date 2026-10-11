@@ -21,7 +21,7 @@ const CUE_TEXT := {
 	"hud.upgrades": "Upgrades unlocked: spend gold on Empower (damage) and Quicken (wave speed), bottom right.",
 	"hud.dial": "The wave dial appeared in the Upgrades box: choose how fast the waves you face run.",
 	"hud.shards": "Soul Shards counter: kept from bosses, spent on boons at the Altar of Ascension.",
-	"menu.spells": "You can swap rites now: open the Grimoire (L).",
+	"hud.spells": "You can swap rites now: open the Grimoire (L).",
 	"menu.atlas": "Gear Atlas (.): every item, set and recipe in the game, with where to find it.",
 	"menu.skills": "The Acre ledger (P): your skills, garden, laborers and contracts in one place.",
 	"tab.acre.garden": "Garden, Laborers and Contracts are tabs of the Acre ledger now (P). U, H and O still open them.",
@@ -30,11 +30,11 @@ const CUE_TEXT := {
 }
 ## The panel a NEW cue's toast opens when clicked (WorldScene CUE_OPENS).
 const CUE_OPENS := {
-	"menu.skills": "professions", "menu.spells": "grimoire", "hud.spells": "grimoire", "menu.atlas": "atlas",
+	"menu.skills": "professions", "hud.spells": "grimoire", "menu.atlas": "atlas",
 	"tab.acre.garden": "garden", "tab.sheet.pets": "cosmetics", "tab.grimoire.legion": "legion",
 }
 const TAB_CUES := ["tab.acre.garden", "tab.acre.labor", "tab.acre.contracts", "tab.sheet.pets", "tab.grimoire.legion"]
-const REVEAL_IDS := ["hud.upgrades", "hud.dial", "hud.shards", "hud.spells", "menu.spells", "menu.atlas", "menu.skills"]
+const REVEAL_IDS := ["hud.upgrades", "hud.dial", "hud.shards", "hud.spells", "menu.atlas", "menu.skills"]
 const LOADOUT_ACTIONS := ["loadout_next", "loadout_1", "loadout_2", "loadout_3", "loadout_4", "loadout_5", "loadout_6"]
 
 var game: Node
@@ -376,7 +376,6 @@ func _clear_cues_for(p: String) -> void:
 	if p == "professions":
 		use_cue("menu.skills")
 	elif p == "grimoire":
-		use_cue("menu.spells")
 		use_cue("hud.spells")
 	elif p == "atlas":
 		use_cue("menu.atlas")
@@ -392,9 +391,8 @@ func _progressive_tick() -> void:
 		reveal_hud("hud.dial")
 	if not reveal.has("hud.shards") and int(loc.get("shards", 0)) > 0:
 		reveal_hud("hud.shards")
-	if not reveal.has("menu.spells") and grimoire_unlocked():
-		reveal_hud("hud.spells", false)
-		reveal_hud("menu.spells")
+	if not reveal.has("hud.spells") and grimoire_unlocked():
+		reveal_hud("hud.spells")
 	if not reveal.has("menu.skills"):
 		for k in skills:
 			if int(skills[k]) > 1:

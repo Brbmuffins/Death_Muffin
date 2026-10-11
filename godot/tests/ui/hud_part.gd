@@ -194,7 +194,7 @@ func _run() -> void:
 
 	# --- progressive reveal + NEW cues ---
 	var rv := DmHudMock.combat()
-	rv["reveal"] = {"hud.upgrades": false, "hud.shards": false, "hud.spells": false, "menu.spells": false, "menu.atlas": false}
+	rv["reveal"] = {"hud.upgrades": false, "hud.shards": false, "hud.spells": false, "menu.atlas": false}
 	hud.apply(rv)
 	_check(not hud.up_plate.visible and not hud.shard_chip.visible, "unrevealed plate and shards are held back")
 	_check(not hud.menu_btns.has("grimoire") and not hud.menu_btns["atlas"].visible and hud.menu_btns["codex"].visible, "unrevealed menu buttons hidden, no Spells menu button")
