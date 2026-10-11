@@ -155,7 +155,7 @@ func _build() -> void:
 	var left := DmPb.vbox(6)
 	cols.add_child(left)
 	left.add_child(_section_head("Reliquary", "%d / %d" % [bag.size(), DmBag.BAG_SIZE]))
-	left.add_child(DmUi.spacer(0, TAB_ROW_PX))   # the Vault side has its tab row here; this keeps both grids level
+	left.add_child(DmUi.spacer(TAB_ROW_PX - 6.0))   # the Vault side has its tab row here; this keeps both grids level
 	var bag_row := HBoxContainer.new()
 	bag_row.add_theme_constant_override("separation", 12)
 	left.add_child(bag_row)
@@ -220,7 +220,7 @@ func _build() -> void:
 	dep_row.add_child(deposit_materials_button)
 	dep_row.add_child(deposit_all_button)
 	var dep_outer := DmPb.hbox(12)   # the Deposit row is centered under the bag grid, not under the gear doll beside it
-	dep_outer.add_child(DmUi.spacer(DOLL_PX, 0))
+	dep_outer.add_child(DmUi.spacer(0, DOLL_PX))
 	dep_row.custom_minimum_size.x = GRID_W
 	dep_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	dep_outer.add_child(dep_row)
