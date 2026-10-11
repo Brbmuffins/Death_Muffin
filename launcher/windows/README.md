@@ -14,7 +14,7 @@ separate runtime. It downloads, verifies, updates and starts the **Godot client*
 
 ### What the launcher does
 
-- **One button that changes with the state** (bottom left). Death Muffin is online-only, so there is a single play path:
+- **One button that changes with the state** (bottom right, the same place in every state). Death Muffin is online-only, so there is a single play path:
   **DOWNLOAD GAME** (nothing installed yet: saves the game to this PC, size shown) ->
   **PLAY** (installed: starts the game) ->
   **UPDATE GAME** (a newer build is on the server; a small "Play the installed version instead" link keeps you playing) ->
@@ -35,10 +35,13 @@ separate runtime. It downloads, verifies, updates and starts the **Godot client*
   `--dev-offline`. Everything after `--` is for the game (`OS.get_cmdline_user_args()` in Godot).
 - **World Dispatch** shows the newest release's patch notes (`play/release-notes.json`) in a scrollable box, with an **All patch
   notes** link that opens an in-launcher window (`play/patch-notes.json`). Releases without notes fall back to the commit subjects.
-- **One game at a time.** While the game is open the button reads GAME RUNNING and the status panel says so.
+- **One status line** in the footer: a coloured dot (green ready / running, violet download or update, orange a problem) and one short
+  line ("Ready to play", "Game running", "Update ready (250 MB)", the online message, ...); hover it for the longer note. One-off messages
+  ("Game closed.") show for a few seconds, then the state's status returns. Version, status, Settings and the button share one line.
+- **One game at a time.** While the game is open the button reads GAME RUNNING (disabled) and the status says "Game running".
 - **No internet:** the update check says so; **PLAY** still works if the game is installed (the game shows its own sign-in error),
   otherwise one download while online is needed first. The launcher re-checks once a minute and when Windows reports a network change.
-- **Use high-performance GPU** (default on) is in Client Settings. It writes Windows' per-app graphics preference for the installed
+- **Use high-performance GPU** (default on) is in the footer's **Settings** menu. It writes Windows' per-app graphics preference for the installed
   `DeathMuffin.exe` (`HKCU\Software\Microsoft\DirectX\UserGpuPreferences`, `GpuPreference=2`) just before each launch, and removes it when
   unticked. It is the same switch as Windows Settings > System > Display > Graphics.
 - The launcher checks GitHub for a newer launcher and shows a link (the only browser launch, since an exe cannot replace itself).
@@ -94,7 +97,7 @@ Output: `launcher/windows/bin/Release/net48/DeathMuffinLauncher.exe`. The versio
 
 The [Windows launcher workflow](../../.github/workflows/launcher-windows.yml) builds on `windows-latest` for pushes touching
 `launcher/**` (and manual runs), uploads `DeathMuffinLauncher-win-x64.zip` as an artifact and, from `main` or a manual
-run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.7.0) for each new launcher release and add a changelog line.
+run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.8.0) for each new launcher release and add a changelog line.
 
 Code map: `ClientLogic.cs` (manifest parsing, version compare, hashing, online note, button state machine; no UI),
 `ClientInstaller.cs` (download/verify/resume/swap and the install folder), `Updates.cs` (server requests), `LauncherForm.cs`
@@ -103,8 +106,11 @@ Code map: `ClientLogic.cs` (manifest parsing, version compare, hashing, online n
 ## Window
 
 Launcher source is this folder only. The window uses the game's key art (`Resources/keyart.jpg`, embedded) inside a painted indigo
-frame, with a command bar, a World Dispatch panel and a status column.
+frame: a left reading panel (Realm Update and World Dispatch: one heading style, one body size; the dispatch headline wraps to
+two lines) over a subtle dark backing, and a footer with version, status, Settings and the play button.
 
 ### Changelog
 
+- **0.8.0** - Play button bottom right in every state; one footer status with a coloured dot instead of three "Game running" texts;
+  GPU switch moved into a Settings menu; tidier news panel (consistent headings, two-line dispatch headline); shorter footer.
 - **0.7.0** - One play path: online. A single Download / Play / Update button; always launches with `-- --online`. An unopened online (or no internet) only adds a note under PLAY.

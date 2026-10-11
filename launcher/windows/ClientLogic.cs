@@ -320,6 +320,9 @@ namespace DeathMuffinLauncher
 
     internal enum PlayAction { None, Download, Update, Play }
 
+    /// <summary>Colour of the footer status indicator: Ok green, Busy violet, Warn orange.</summary>
+    internal enum StatusLevel { Ok, Busy, Warn }
+
     internal sealed class PlayInputs
     {
         /// <summary>Version of the verified installed client, or null.</summary>
@@ -351,6 +354,10 @@ namespace DeathMuffinLauncher
         /// <summary>"Play installed version instead" link, shown when an update is pending or a download failed but a copy exists.</summary>
         public bool ShowPlayInstalledLink;
 
+        /// <summary>The one short footer status (the indicator colour is <see cref="Level"/>); Note / Notice are its tooltip.</summary>
+        public string Status = "";
+        public StatusLevel Level = StatusLevel.Ok;
+
         /// <summary>Note and Notice as one line.</summary>
         public string FullNote { get { return Notice.Length == 0 ? Note : Note + "  " + Notice; } }
     }
@@ -371,6 +378,7 @@ namespace DeathMuffinLauncher
                 int pct = i.Progress >= 0 ? (int)Math.Min(100, Math.Floor(i.Progress * 100)) : -1;
                 ui.Text = pct >= 0 ? "DOWNLOADING " + pct + "%" : "DOWNLOADING...";
                 ui.Note = "Keep the launcher open until it finishes.";
+                ui.Status = "Downloading: keep the launcher open"; ui.Level = StatusLevel.Busy;
                 ui.ShowBar = true;
                 ui.Bar = Math.Max(0, i.Progress);
                 return ui;
@@ -379,6 +387,7 @@ namespace DeathMuffinLauncher
             {
                 ui.Text = "GAME RUNNING";
                 ui.Note = "Close the game window to play or update again.";
+                ui.Status = "Game running"; ui.Level = StatusLevel.Ok;
                 return ui;
             }
             if (i.Failed)
@@ -388,6 +397,7 @@ namespace DeathMuffinLauncher
                 ui.Action = have ? PlayAction.Update : PlayAction.Download;
                 ui.Note = string.IsNullOrEmpty(i.Error) ? "The download stopped. Already downloaded parts are kept." : i.Error;
                 ui.Warn = true;
+                ui.Status = "Download stopped: press Retry"; ui.Level = StatusLevel.Warn;
                 ui.ShowPlayInstalledLink = have;
                 return ui;
             }
@@ -402,12 +412,15 @@ namespace DeathMuffinLauncher
                     ui.Action = PlayAction.Update;
                     ui.Note = "New build available (" + Mb(i.Live.TotalBytes) + "). Installed: " + ShortVersion(i.InstalledVersion) + ".";
                     ui.ShowPlayInstalledLink = true;
+                    ui.Status = "Update ready (" + Mb(i.Live.TotalBytes) + ")"; ui.Level = StatusLevel.Busy;
                     return ui;
                 }
                 ui.Text = "PLAY";
                 ui.Enabled = true;
                 ui.Action = PlayAction.Play;
                 ui.Note = "Build " + ShortVersion(i.InstalledVersion) + (canFetch ? ", up to date." : ".");
+                if (ui.Notice.Length > 0) { ui.Status = ui.Notice; ui.Level = StatusLevel.Warn; }
+                else { ui.Status = "Ready to play"; ui.Level = StatusLevel.Ok; }
                 return ui;
             }
             ui.Text = "DOWNLOAD GAME";
@@ -416,13 +429,18 @@ namespace DeathMuffinLauncher
                 ui.Enabled = true;
                 ui.Action = PlayAction.Download;
                 ui.Note = "Saves the game to this PC (" + Mb(i.Live.TotalBytes) + "). Needs internet.";
+                ui.Status = "Download size " + Mb(i.Live.TotalBytes); ui.Level = StatusLevel.Busy;
             }
             else if (!i.NetReachable)
+            {
                 ui.Note = "No internet connection. Connect to download the game.";
+                ui.Status = "No internet connection"; ui.Level = StatusLevel.Warn;
+            }
             else
             {
                 ui.Text = "GAME NOT AVAILABLE YET";
                 ui.Note = "The game build is not published yet. Try again later.";
+                ui.Status = "Not published yet"; ui.Level = StatusLevel.Warn;
             }
             return ui;
         }

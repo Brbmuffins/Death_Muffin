@@ -24,7 +24,7 @@ namespace DeathMuffinLauncher
         public static Icon AppIcon { get { return Icon.ExtractAssociatedIcon(Application.ExecutablePath); } }
 
         readonly Settings settings = Settings.Load();
-        readonly Label status = new GlassLabel();
+        readonly StatusLine status = new StatusLine();
         readonly Label updateLabel = new GlassLabel();
         readonly Label newsTitle = new GlassLabel();
         // Scrollable so a whole release's notes fit (the old label showed six lines and cut the rest).
@@ -33,14 +33,26 @@ namespace DeathMuffinLauncher
         readonly RuneButton playBtn;
         readonly LinkLabel launcherLink = new LinkLabel();
         readonly LinkLabel playInstalledLink = new LinkLabel();
-        readonly Label playNote = new GlassLabel(), modeLabel = new GlassLabel();
         readonly ThinBar dlBar = new ThinBar();
         readonly Timer netTimer = new Timer { Interval = 60000 };
-        readonly CheckBox gpu = new CheckBox();
+        readonly LinkLabel settingsLink = new LinkLabel();
+        readonly ContextMenuStrip settingsMenu = new ContextMenuStrip { ShowImageMargin = false, ShowCheckMargin = true };
+        readonly ToolStripMenuItem gpuItem = new ToolStripMenuItem("Use high-performance GPU") { CheckOnClick = true };
+        /// <summary>A one-off message ("Game closed.") holds the footer status until this tick count, then the state's status returns.</summary>
+        int flashUntil;
+        readonly Timer flashTimer = new Timer { Interval = 6000 };
         readonly ToolTip tip = new ToolTip { ShowAlways = true };
         PatchNotesWindow patchWin;
         static readonly Color Orange = Color.FromArgb(244, 176, 128);
         static readonly Color Good = Color.FromArgb(150, 214, 160);
+        static readonly Color PanelFill = Color.FromArgb(13, 15, 27);
+
+        // ---- Layout (client area 1180 x 680, frame inset 15). ----
+        const int PanelX = 20, PanelW = 410, PanelTop = 122, PanelBottom = 566;
+        const int HeadGap = 8, SectionGap = 24;
+        const int FooterTop = 584, FooterMid = 622;
+        const int PlayW = 300, PlayH = 44, PlayX = 1180 - 15 - 24 - PlayW;
+        static int DividerY;
 
         // ---- Client state. Everything the play button shows is computed from these by PlayStateMachine / OnlineGate. ----
         /// <summary>The verified installed Godot client, or null.</summary>
@@ -73,62 +85,46 @@ namespace DeathMuffinLauncher
             var root = new Backdrop() { Dock = DockStyle.Fill };
             Controls.Add(root);
 
-            int x = 48, w = 350;
-            root.Controls.Add(Lbl("THE LIVE REALM", new Font("Segoe UI", 9f, FontStyle.Bold), Gold, x, 145, w, 20));
-            root.Controls.Add(Lbl("Your journey continues in the Ossuary Covenant.", new Font("Segoe UI", 10f), Ink, x, 170, w, 44));
-
-            updateLabel.SetBounds(x, 226, w, 38);
+            // Left reading panel (key art stays clear on the right): one heading style, one body size, even spacing.
+            var heading = new Font("Segoe UI", 9f, FontStyle.Bold);
+            var body = new Font("Segoe UI", 10f);
+            int x = PanelX + 24, w = PanelW - 48, y = PanelTop + 20;
+            root.Controls.Add(Lbl("REALM UPDATE", heading, Gold, x, y, w, 18));
+            y += 18 + HeadGap;
+            root.Controls.Add(Lbl("Your journey continues in the Ossuary Covenant.", body, Ink, x, y, w, 22));
+            y += 24;
+            updateLabel.SetBounds(x, y, w, 22);
+            updateLabel.Font = body;
             updateLabel.ForeColor = Muted;
             updateLabel.Text = "Checking for updates...";
             root.Controls.Add(updateLabel);
+            y += 24;
             // Shown only when GitHub has a newer launcher. It opens the zip in the browser: an exe cannot replace itself.
-            launcherLink.SetBounds(x, 271, w, 16);
-            launcherLink.BackColor = Color.Transparent;
-            launcherLink.LinkColor = Gold;
-            launcherLink.ActiveLinkColor = Ink;
-            launcherLink.LinkBehavior = LinkBehavior.HoverUnderline;
-            launcherLink.Font = new Font("Segoe UI", 8.5f);
+            launcherLink.SetBounds(x, y, w, 18);
+            StyleLink(launcherLink, new Font("Segoe UI", 9f));
             launcherLink.AutoEllipsis = true;
             launcherLink.Visible = false;
             launcherLink.LinkClicked += (s, e) => OpenExternalPage(Updates.LauncherDownloadUrl);
             root.Controls.Add(launcherLink);
+            y += 18 + SectionGap;
+            DividerY = y - SectionGap / 2;
 
-            // The one play button: Download / Update / Play depending on state (see PlayStateMachine). The game is online-only.
-            root.Controls.Add(Lbl("PLAY  -  ONLINE", new Font("Segoe UI", 8.5f, FontStyle.Bold), Gold, 40, 546, 520, 18));
-            playBtn = Btn("DOWNLOAD GAME", 40, 568, 520, 42, true);
-            playBtn.Click += (s, e) => OnPlayClick();
-            root.Controls.Add(playBtn);
-            Note(playNote, 40, 614, 520, 18, "");
-            root.Controls.Add(playNote);
-            playInstalledLink.SetBounds(40, 632, 520, 16);
-            playInstalledLink.BackColor = Color.Transparent;
-            playInstalledLink.LinkColor = Gold;
-            playInstalledLink.ActiveLinkColor = Ink;
-            playInstalledLink.LinkBehavior = LinkBehavior.HoverUnderline;
-            playInstalledLink.Font = new Font("Segoe UI", 8.5f);
-            playInstalledLink.Text = "Play the installed version instead";
-            playInstalledLink.Visible = false;
-            playInstalledLink.LinkClicked += (s, e) => LaunchGame();
-            root.Controls.Add(playInstalledLink);
-            dlBar.SetBounds(40, 654, 520, 4);
-            dlBar.Visible = false;
-            root.Controls.Add(dlBar);
-
-            root.Controls.Add(Lbl("WORLD DISPATCH", new Font("Segoe UI", 9f, FontStyle.Bold), Gold, x, 303, w, 20));
-            newsTitle.SetBounds(x, 329, w, 38);
+            root.Controls.Add(Lbl("WORLD DISPATCH", heading, Gold, x, y, w, 18));
+            y += 18 + HeadGap;
+            // Two lines for the headline: long release titles wrap instead of being cut off.
+            newsTitle.SetBounds(x, y, w, 46);
             newsTitle.ForeColor = Ink;
             newsTitle.Font = new Font("Georgia", 13f, FontStyle.Bold);
             newsTitle.Text = "Loading...";
-            newsBody.SetBounds(x, 370, w, 117);
+            y += 46 + HeadGap;
+            int linkY = PanelBottom - 16 - 20;
+            newsBody.SetBounds(x, y, w, linkY - 8 - y);
             newsBody.ForeColor = Muted;
-            newsBody.BackColor = Color.FromArgb(14, 17, 31);
-            newsBody.Font = new Font("Segoe UI", 9.5f);
-            newsLink.SetBounds(x, 495, 200, 20);
+            newsBody.BackColor = PanelFill;
+            newsBody.Font = body;
+            newsLink.SetBounds(x, linkY, 200, 20);
             newsLink.Text = "All patch notes";
-            newsLink.BackColor = Color.Transparent;
-            newsLink.LinkColor = Gold;
-            newsLink.ActiveLinkColor = Ink;
-            newsLink.LinkBehavior = LinkBehavior.HoverUnderline;
+            StyleLink(newsLink, body);
             newsLink.Visible = false;
             // Opens inside the launcher (reads play/patch-notes.json), not the browser.
             newsLink.LinkClicked += (s, e) => ShowPatchNotes();
@@ -136,49 +132,69 @@ namespace DeathMuffinLauncher
             root.Controls.Add(newsBody);
             root.Controls.Add(newsLink);
 
-            // Middle column: whether the game is running, the GPU setting, and the status line.
-            modeLabel.SetBounds(590, 568, 250, 20);
-            modeLabel.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-            root.Controls.Add(modeLabel);
-            gpu.SetBounds(590, 590, 250, 22);
-            gpu.Text = "Use high-performance GPU";
-            gpu.ForeColor = Muted;
-            gpu.BackColor = Color.Transparent;
-            gpu.Checked = settings.HighPerformanceGpu;
-            gpu.CheckedChanged += (s, e) =>
-            {
-                settings.HighPerformanceGpu = gpu.Checked;
-                settings.Save();
-                if (Alive(gameProc)) SetStatus("GPU setting applies the next time the game starts.");
-            };
-            root.Controls.Add(gpu);
-
-            status.SetBounds(590, 616, 250, 42);
-            status.ForeColor = Muted;
+            // Footer: version, status, Settings and the play button on one line; the button never moves.
+            var small = new Font("Segoe UI", 9f);
+            int line = FooterMid - 10;
+            root.Controls.Add(Lbl("LAUNCHER " + Program.Version, new Font("Segoe UI", 9f, FontStyle.Bold), Muted, 44, line, 130, 20, ContentAlignment.MiddleLeft));
+            status.SetBounds(180, line, PlayX - 180 - 130, 20);
+            status.Font = small;
             root.Controls.Add(status);
-            root.Controls.Add(Lbl("LAUNCHER " + Program.Version, new Font("Segoe UI", 8f, FontStyle.Bold), Muted, 700, 546, 140, 16, ContentAlignment.TopRight));
-            foreach (var l in new Label[] { updateLabel, newsTitle, status }) { l.AutoEllipsis = true; l.BackColor = Color.Transparent; }
-            status.TextChanged += (s, e) => tip.SetToolTip(status, status.Text);
+            status.Changed += () => tip.SetToolTip(status, status.Detail.Length > 0 ? status.Detail : status.Text);
+
+            settingsLink.SetBounds(PlayX - 110, line, 92, 20);
+            settingsLink.Text = "\u2699 Settings";
+            settingsLink.TextAlign = ContentAlignment.MiddleRight;
+            StyleLink(settingsLink, small);
+            settingsLink.LinkColor = Muted;
+            settingsLink.LinkClicked += (s, e) => settingsMenu.Show(settingsLink, new Point(0, -settingsMenu.PreferredSize.Height));
+            root.Controls.Add(settingsLink);
+            gpuItem.Checked = settings.HighPerformanceGpu;
+            gpuItem.ToolTipText = "Asks Windows to run the game on your dedicated graphics card.";
+            gpuItem.CheckedChanged += (s, e) =>
+            {
+                settings.HighPerformanceGpu = gpuItem.Checked;
+                settings.Save();
+                if (Alive(gameProc)) Flash("GPU setting applies the next time the game starts.", StatusLevel.Busy);
+            };
+            settingsMenu.Items.Add(gpuItem);
+            settingsMenu.Renderer = new ToolStripProfessionalRenderer(new MenuColors());
+            settingsMenu.ForeColor = Ink;
+            settingsMenu.Font = small;
+
+            // The one play button: Download / Update / Play / Game running (see PlayStateMachine). The game is online-only.
+            playBtn = Btn("DOWNLOAD GAME", PlayX, FooterMid - PlayH / 2, PlayW, PlayH, true);
+            playBtn.Click += (s, e) => OnPlayClick();
+            root.Controls.Add(playBtn);
+            playInstalledLink.SetBounds(PlayX, FooterMid + PlayH / 2 + 2, PlayW, 16);
+            StyleLink(playInstalledLink, new Font("Segoe UI", 8.5f));
+            playInstalledLink.TextAlign = ContentAlignment.TopCenter;
+            playInstalledLink.Text = "Play the installed version instead";
+            playInstalledLink.Visible = false;
+            playInstalledLink.LinkClicked += (s, e) => LaunchGame();
+            root.Controls.Add(playInstalledLink);
+            dlBar.SetBounds(PlayX, FooterMid + PlayH / 2 + 4, PlayW, 4);
+            dlBar.Visible = false;
+            root.Controls.Add(dlBar);
+            foreach (var l in new Label[] { updateLabel, newsTitle }) { l.AutoEllipsis = true; l.BackColor = Color.Transparent; }
             status.Click += (s, e) => { if (statusLink != null) OpenExternalPage(statusLink); };
+            flashTimer.Tick += (s, e) => { flashTimer.Stop(); flashUntil = 0; ApplyUi(); };
 
             installed = ClientStore.ReadInstalled(Settings.ClientDir);
             // The check runs once a minute so a dev publishing a build or opening Online shows up without restarting the launcher.
             netTimer.Tick += async (s, e) => await RecheckAsync();
             netTimer.Enabled = true;
             NetworkChange.NetworkAvailabilityChanged += OnNetworkChanged;
-            SetStatus("Ready.");
-            UpdateMode();
             ApplyUi();
             Shown += async (s, e) => await InitAsync();
         }
 
-        static void Note(Label l, int x, int y, int w, int h, string text)
+        static void StyleLink(LinkLabel l, Font f)
         {
-            l.SetBounds(x, y, w, h);
-            l.Font = new Font("Segoe UI", 8.5f);
-            l.ForeColor = Muted;
+            l.Font = f;
             l.BackColor = Color.Transparent;
-            l.Text = text;
+            l.LinkColor = Gold;
+            l.ActiveLinkColor = Ink;
+            l.LinkBehavior = LinkBehavior.HoverUnderline;
         }
 
         void OnNetworkChanged(object sender, NetworkAvailabilityEventArgs e)
@@ -201,21 +217,20 @@ namespace DeathMuffinLauncher
             return b;
         }
 
-        void SetStatus(string text)
+        /// <summary>Shows a one-off message in the footer status for a few seconds, then the state's own status returns.</summary>
+        void Flash(string text, StatusLevel level, string link = null)
         {
-            statusLink = null;
-            status.Cursor = Cursors.Default;
-            status.ForeColor = Muted;
-            status.Text = text;
+            statusLink = link;
+            status.Cursor = link != null ? Cursors.Hand : Cursors.Default;
+            status.Set(text, level, "");
+            flashUntil = Environment.TickCount + flashTimer.Interval;
+            flashTimer.Stop();
+            flashTimer.Start();
         }
 
-        void Warn(string text, string link)
-        {
-            SetStatus(text);
-            status.ForeColor = Orange;
-            statusLink = link;
-            if (link != null) status.Cursor = Cursors.Hand;
-        }
+        void SetStatus(string text) { Flash(text, StatusLevel.Ok); }
+
+        void Warn(string text, string link) { Flash(text, StatusLevel.Warn, link); }
 
         async System.Threading.Tasks.Task InitAsync()
         {
@@ -280,11 +295,18 @@ namespace DeathMuffinLauncher
                 ui.Enabled = false;
                 ui.Action = PlayAction.None;
                 ui.Note = "";
+                ui.Status = "Checking for the game...";
+                ui.Level = StatusLevel.Busy;
             }
             playBtn.Text = ui.Text;
             playBtn.Enabled = ui.Enabled;
-            playNote.Text = ui.FullNote;
-            playNote.ForeColor = ui.Warn ? Orange : ui.Notice.Length > 0 ? VioletLight : Muted;
+            if (flashUntil == 0 || Environment.TickCount - flashUntil >= 0)
+            {
+                flashUntil = 0;
+                statusLink = null;
+                status.Cursor = Cursors.Default;
+                status.Set(ui.Status, ui.Level, ui.FullNote);
+            }
             playInstalledLink.Visible = ui.ShowPlayInstalledLink && !running;
             dlBar.Visible = ui.ShowBar;
             if (ui.ShowBar) dlBar.Value = ui.Bar;
@@ -294,9 +316,10 @@ namespace DeathMuffinLauncher
             if (!checkedOnce) { }
             else if (!reachable) { updateLabel.Text = "No internet connection. Updates can't be checked."; updateLabel.ForeColor = Muted; }
             else if (live == null) { updateLabel.Text = "No game build is published yet."; updateLabel.ForeColor = Muted; }
-            else if (installed == null) { updateLabel.Text = "Game not downloaded yet (build " + Short(live.Version) + " available)."; updateLabel.ForeColor = VioletLight; }
-            else if (VersionCompare.Compare(live.Version, installed.Version) > 0) { updateLabel.Text = "Update available (build " + Short(live.Version) + "). Installed: " + Short(installed.Version) + "."; updateLabel.ForeColor = VioletLight; }
-            else { updateLabel.Text = "Up to date (build " + Short(installed.Version) + ")."; updateLabel.ForeColor = Muted; }
+            else if (installed == null) { updateLabel.Text = "Build " + Short(live.Version) + " ready to download."; updateLabel.ForeColor = VioletLight; }
+            else if (VersionCompare.Compare(live.Version, installed.Version) > 0) { updateLabel.Text = "Update available: build " + Short(live.Version) + "."; updateLabel.ForeColor = VioletLight; }
+            else { updateLabel.Text = "Up to date: build " + Short(installed.Version) + "."; updateLabel.ForeColor = Muted; }
+            tip.SetToolTip(updateLabel, installed != null && live != null && VersionCompare.Compare(live.Version, installed.Version) > 0 ? "Installed: build " + Short(installed.Version) : null);
         }
 
         PlayAction playAction = PlayAction.None;
@@ -313,12 +336,6 @@ namespace DeathMuffinLauncher
                     LaunchGame();
                     break;
             }
-        }
-
-        void UpdateMode()
-        {
-            if (running) { modeLabel.Text = "Game running"; modeLabel.ForeColor = VioletLight; }
-            else { modeLabel.Text = "No game running"; modeLabel.ForeColor = Muted; }
         }
 
         static bool Alive(Process p)
@@ -414,13 +431,11 @@ namespace DeathMuffinLauncher
                 p.Exited += (s, e) => { try { BeginInvoke(new Action(() => OnGameExited(p))); } catch (Exception) { } };
                 gameProc = p;
                 running = true;
-                SetStatus("Game running.");
             }
             catch (Exception ex)
             {
                 Warn("The game could not start: " + ex.Message, null);
             }
-            UpdateMode();
             ApplyUi();
         }
 
@@ -429,7 +444,6 @@ namespace DeathMuffinLauncher
             if (!ReferenceEquals(gameProc, p)) return;
             gameProc = null;
             running = false;
-            UpdateMode();
             SetStatus("Game closed.");
             ApplyUi();
         }
@@ -474,6 +488,7 @@ namespace DeathMuffinLauncher
             if (e.Cancel) return;
             NetworkChange.NetworkAvailabilityChanged -= OnNetworkChanged;
             netTimer.Stop();
+            flashTimer.Stop();
             if (installCts != null) try { installCts.Cancel(); } catch (Exception) { }   // partial files stay for the next resume
             if (Alive2(patchWin)) patchWin.Close();
             // The game keeps running if the launcher is closed; it is a separate program now.
@@ -512,30 +527,31 @@ namespace DeathMuffinLauncher
                     // Keep the figure and cathedral unobstructed; only the naturally dark side carries reading content.
                     Art.DrawCover(g, ClientSize);
 
+                    // A soft fade on the dark side of the art, then a subtle backing for the reading panel.
                     var left = new Rectangle(0, 0, 650, Height);
                     using (var br = new LinearGradientBrush(left, Color.Black, Color.Black, 0f))
                     {
                         br.InterpolationColors = new ColorBlend
                         {
-                            Colors = new[] { Color.FromArgb(229, 7, 11, 24), Color.FromArgb(207, 8, 11, 25), Color.FromArgb(94, 8, 11, 25), Color.FromArgb(0, 8, 11, 25) },
+                            Colors = new[] { Color.FromArgb(190, 7, 11, 24), Color.FromArgb(150, 8, 11, 25), Color.FromArgb(60, 8, 11, 25), Color.FromArgb(0, 8, 11, 25) },
                             Positions = new[] { 0f, 0.58f, 0.82f, 1f },
                         };
                         g.FillRectangle(br, left);
                     }
-                    using (var shade = new SolidBrush(Color.FromArgb(164, 5, 9, 21)))
-                        g.FillRectangle(shade, 20, 116, 410, 412);
+                    using (var shade = new SolidBrush(Color.FromArgb(150, PanelFill)))
+                        g.FillRectangle(shade, PanelX, PanelTop, PanelW, PanelBottom - PanelTop);
                     using (var shade = new SolidBrush(Color.FromArgb(231, 7, 12, 27)))
-                        g.FillRectangle(shade, 15, 536, Width - 30, 130);
+                        g.FillRectangle(shade, 15, FooterTop, Width - 30, Height - 15 - FooterTop);
                     using (var blue = new Pen(Color.FromArgb(126, 94, 119, 173)))
-                    using (var dim = new Pen(Color.FromArgb(80, 95, 115, 163)))
+                    using (var dim = new Pen(Color.FromArgb(60, 95, 115, 163)))
                     using (var goldLine = new Pen(Color.FromArgb(175, Gold)))
+                    using (var divider = new Pen(Color.FromArgb(90, Gold)))
                     {
                         g.DrawRectangle(blue, 15, 15, Width - 31, Height - 31);
                         g.DrawRectangle(dim, 19, 19, Width - 39, Height - 39);
-                        g.DrawRectangle(dim, 20, 116, 410, 412);
-                        g.DrawLine(goldLine, 46, 288, 398, 288);
-                        g.DrawLine(blue, 15, 536, Width - 16, 536);
-                        g.DrawLine(dim, 574, 551, 574, 651);
+                        g.DrawRectangle(dim, PanelX, PanelTop, PanelW, PanelBottom - PanelTop);
+                        g.DrawLine(divider, PanelX + 24, DividerY, PanelX + PanelW - 24, DividerY);
+                        g.DrawLine(blue, 15, FooterTop, Width - 16, FooterTop);
                         // Corner strokes give the edge the feel of a game client, without covering the art.
                         g.DrawLine(goldLine, 15, 15, 74, 15);
                         g.DrawLine(goldLine, 15, 15, 15, 64);
@@ -552,8 +568,6 @@ namespace DeathMuffinLauncher
                         g.DrawString("THE OSSUARY COVENANT", kicker, gold, 48, 38);
                         Art.DrawTitle(g, title, 40, 56);
                         g.DrawString("A WORLD OF DARK MAGIC", kicker, pale, 932, 41);
-                        g.DrawString("01  /  WORLD NEWS", kicker, gold, 48, 120);
-                        g.DrawString("STATUS", kicker, gold, 590, 546);
                     }
                     using (var glow = new SolidBrush(Color.FromArgb(80, 149, 116, 255)))
                     using (var bright = new SolidBrush(Color.FromArgb(221, 193, 170, 255)))
@@ -563,6 +577,61 @@ namespace DeathMuffinLauncher
                     }
                 }
             }
+        }
+
+        /// <summary>The footer status: a coloured indicator dot and one short line (ellipsis when long; the full note is the tooltip).</summary>
+        sealed class StatusLine : Control
+        {
+            Color dot = Good;
+            public string Detail { get; private set; } = "";
+            /// <summary>Text, colour or detail changed (the form refreshes the tooltip).</summary>
+            public event Action Changed;
+            public StatusLine()
+            {
+                SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
+                BackColor = Color.Transparent;
+                ForeColor = Ink;
+                AccessibleRole = AccessibleRole.StaticText;
+            }
+
+            public void Set(string text, StatusLevel level, string detail)
+            {
+                var c = level == StatusLevel.Warn ? Orange : level == StatusLevel.Busy ? VioletLight : Good;
+                if (Text == text && dot == c && Detail == detail) return;
+                dot = c;
+                Detail = detail ?? "";
+                AccessibleName = text;
+                Text = text;
+                Invalidate();
+                if (Changed != null) Changed();
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                int d = 8, cy = Height / 2;
+                using (var glow = new SolidBrush(Color.FromArgb(70, dot))) g.FillEllipse(glow, 0, cy - d / 2 - 2, d + 4, d + 4);
+                using (var b = new SolidBrush(dot)) g.FillEllipse(b, 2, cy - d / 2, d, d);
+                var r = new Rectangle(d + 12, 0, Width - d - 12, Height);
+                TextRenderer.DrawText(g, Text, Font, r, Art.Ink, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+            }
+        }
+
+        /// <summary>Dark colours for the Settings menu so it matches the launcher instead of the light Windows default.</summary>
+        sealed class MenuColors : ProfessionalColorTable
+        {
+            static readonly Color Back = Color.FromArgb(18, 20, 36), Hover = Color.FromArgb(51, 62, 101), Edge = Color.FromArgb(103, 124, 172);
+            public override Color ToolStripDropDownBackground { get { return Back; } }
+            public override Color ImageMarginGradientBegin { get { return Back; } }
+            public override Color ImageMarginGradientMiddle { get { return Back; } }
+            public override Color ImageMarginGradientEnd { get { return Back; } }
+            public override Color MenuBorder { get { return Edge; } }
+            public override Color MenuItemBorder { get { return Edge; } }
+            public override Color MenuItemSelected { get { return Hover; } }
+            public override Color CheckBackground { get { return Hover; } }
+            public override Color CheckSelectedBackground { get { return Hover; } }
+            public override Color CheckPressedBackground { get { return Hover; } }
         }
 
         /// <summary>Label drawn over the backdrop (transparent, double-buffered so progress updates don't flicker).</summary>

@@ -268,6 +268,16 @@ namespace DeathMuffinLauncher.Tests
             T.Ok(u.Action == PlayAction.Update && u.ShowPlayInstalledLink, "failed update: retry update + play installed");
             u = Off(null, null, net: false, failed: true);
             T.Ok(!u.Enabled, "failed and offline: retry disabled");
+            // One short footer status per state, with its indicator colour (the long note is the tooltip).
+            T.Ok(Off("20261004.120000-b", v2open).Status == "Ready to play" && Off("20261004.120000-b", v2open).Level == StatusLevel.Ok, "status: ready (green)");
+            T.Ok(Off("20261004.120000-b", v2).Status == "soon" && Off("20261004.120000-b", v2).Level == StatusLevel.Warn, "status: online closed shows the manifest message (orange)");
+            T.Ok(Off("20261004.120000-b", v2, run: true).Status == "Game running" && Off("20261004.120000-b", v2, run: true).Level == StatusLevel.Ok, "status: game running");
+            T.Ok(Off("20261003.120000-a", v2open).Status.StartsWith("Update ready") && Off("20261003.120000-a", v2open).Level == StatusLevel.Busy, "status: update ready (violet)");
+            T.Ok(Off(null, v2, dl: true, prog: 0.5).Level == StatusLevel.Busy && !Off(null, v2, dl: true, prog: 0.5).Status.Contains("%"), "status: downloading, percent only on the button");
+            T.Ok(Off(null, v2, failed: true).Level == StatusLevel.Warn, "status: failed download (orange)");
+            T.Ok(Off(null, null, net: false).Status == "No internet connection" && Off(null, null, net: false).Level == StatusLevel.Warn, "status: no internet");
+            foreach (var x in new[] { Off(null, v2), Off("20261004.120000-b", v2open), Off("20261003.120000-a", v2open), Off(null, v2, dl: true), Off("20261004.120000-b", v2, run: true), Off(null, v2, failed: true), Off(null, null, net: false), Off(null, null) })
+                T.Ok(x.Status.Length > 0 && x.Status.Length <= 40, "status is short: " + x.Status);
             // No player-facing text may mention the retired offline edition.
             foreach (var x in new[] { Off(null, v2), Off("a", v2), Off("20261004.120000-b", v2), Off("20261004.120000-b", v2, run: true), Off(null, null, net: false), Off("20261004.120000-b", null, net: false), Off(null, null) })
                 T.Ok(!(x.Text + x.FullNote).ToLowerInvariant().Contains("offline"), "no 'offline' wording: " + x.Text);
