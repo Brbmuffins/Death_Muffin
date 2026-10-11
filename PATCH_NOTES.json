@@ -15,7 +15,8 @@
       "The \"Swap spells\" button at the bottom right is now called \"Spellbook\" and is a snugger fit.",
       "In the Ossuary Vault you can now drag items between the Vault and your bag or worn gear, and Shift+click a stack to choose how many to move.",
       "The \"Spells\" button is gone from the menu row under the minimap; the Grimoire still opens with L or the spells button by the action bar.",
-      "Vault: dragging items works now. A plain click still moves an item at once; press and drag to drop it where you want."
+      "Vault: dragging items works now. A plain click still moves an item at once; press and drag to drop it where you want.",
+      "Vault: Shift+click now moves the amount you type (it moved the whole stack before), and Enter in the amount box moves it too."
     ]
   },
   {

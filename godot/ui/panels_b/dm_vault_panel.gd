@@ -65,6 +65,7 @@ var pending_qty := 1
 var shift_probe := Callable()           # () -> bool; tests swap it, default Input.is_key_pressed(KEY_SHIFT)
 var qty_spin: SpinBox
 var qty_move_button: Button
+var _qty_typed := false   ## the amount box holds text the player typed that its value has not taken yet
 ## Drawn counts and state for tests: {bag_count, bag_total, vault_count, vault_total, tab_labels, locked_hint, loading}.
 var shown: Dictionary = {}
 
@@ -510,6 +511,9 @@ func _qty_row() -> Control:
 	qty_spin.max_value = int(row["quantity"])
 	qty_spin.value = clampi(pending_qty, 1, int(row["quantity"]))
 	qty_spin.value_changed.connect(func(v: float) -> void: pending_qty = int(v))
+	_qty_typed = false
+	qty_spin.get_line_edit().text_changed.connect(func(_t: String) -> void: _qty_typed = true)   # typed by the player (not set by code)
+	qty_spin.get_line_edit().text_submitted.connect(func(_t: String) -> void: confirm_pending())   # Enter moves the typed amount
 	h.add_child(qty_spin)
 	h.add_child(DmPb.text("of %d" % int(row["quantity"]), 12, DmUi.TEXT_FAINT, "numeric"))
 	qty_move_button = DmPb.button("Move", true, busy)
@@ -526,6 +530,10 @@ func _qty_row() -> Control:
 func confirm_pending() -> void:
 	if pending.is_empty() or busy:
 		return
+	# A typed amount only reaches the SpinBox's value on Enter or focus loss, and the Move button takes no focus: commit it first (2026-10-10:
+	# typing 3 and clicking Move moved the whole stack).
+	if qty_spin != null and _qty_typed:
+		qty_spin.apply()
 	var from := String(pending["from"])
 	var slot := int(pending["row"]["slot_index"])
 	var n := clampi(int(qty_spin.value) if qty_spin != null else pending_qty, 1, int(pending["row"]["quantity"]))

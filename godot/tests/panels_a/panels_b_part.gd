@@ -716,6 +716,19 @@ func _t_vault() -> void:
 	v.qty_move_button.pressed.emit()
 	_eq(ev.back(), ["deppart", stack_slot, 3], "the chosen amount is deposited")
 	_eq(ev.size(), before + 1, "one signal for the part move")
+	# a typed amount (no Enter, Move takes no focus) is what moves, not the SpinBox's untouched default (the whole stack), and Enter moves it too
+	v.bag_slots[stack_slot].pressed.emit(v.bag_slots[stack_slot])
+	await _frames(2)
+	v.qty_spin.get_line_edit().text = "2"
+	v.qty_spin.get_line_edit().text_changed.emit("2")   # as typing does
+	v.qty_move_button.pressed.emit()
+	_eq(ev.back(), ["deppart", stack_slot, 2], "a typed amount moves that amount when Move is clicked")
+	v.bag_slots[stack_slot].pressed.emit(v.bag_slots[stack_slot])
+	await _frames(2)
+	v.qty_spin.get_line_edit().text = "4"
+	v.qty_spin.get_line_edit().text_changed.emit("4")
+	v.qty_spin.get_line_edit().text_submitted.emit("4")
+	_eq(ev.back(), ["deppart", stack_slot, 4], "Enter in the amount box moves the typed amount")
 	shift_on = false
 	v.shift_probe = Callable()
 	v.deposit_materials_button.pressed.emit()
