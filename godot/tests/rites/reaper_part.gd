@@ -10,6 +10,7 @@ func _initialize() -> void:
 	DmSimData.ensure()
 	await _wiring()
 	await _rites()
+	await _unleash()
 	_auto()
 	_gestures()
 	print("reaper: %d passed, %d failed" % [passed, failed])
@@ -69,8 +70,8 @@ func _wiring() -> void:
 	ok(DmAbilities.kit_for("reaper")["defaultPrimary"] == "scythe_sweep" and kit["defaultPrimary"] == "scythe_sweep", "wiring: LMB is Scythe Sweep (both kit copies)")
 	var names := ["scythe_throw", "reap", "wraith_walk", "soul_burst"]
 	ok(_slots() == names, "wiring: keys 1-4 are throw, reap, wraith walk, soul burst %s" % [_slots()])
-	ok(DmRiteHotbar.rite_for_slot(5, "reaper") == "harvest_spin" and DmRiteHotbar.rite_for_slot(6, "reaper", "reaper") == "", "wiring: RMB is Harvest Spin, no signature yet")
-	for id in names + ["scythe_sweep", "harvest_spin"]:
+	ok(DmRiteHotbar.rite_for_slot(5, "reaper") == "harvest_spin" and DmRiteHotbar.rite_for_slot(6, "reaper", "reaper") == "unleash_souls", "wiring: RMB is Harvest Spin, R is Unleash Souls")
+	for id in names + ["scythe_sweep", "harvest_spin", "unleash_souls"]:
 		ok(DmRiteRegistry.has(id) and DmRiteGestures.has(id) and String(DmAbilities.def(id)["icon"]) != "" and DmContent.get_export("codex", "CODEX_RITES").has(id), "wiring: %s has a module, a gesture, an icon and a Codex entry" % id)
 	var sl := DmLoadout.sanitize_loadout(null, 1.0, DmAbilities.kit_for("reaper"))
 	ok(sl.size() == 5 and not sl.has(null) and sl.find("harvest_spin") == 4, "wiring: the default loadout fills all five slots")
@@ -250,6 +251,45 @@ func _rites() -> void:
 	c.request_cast("scythe_sweep", Vector3(8, 0, 0))
 	ok(rej.is_empty(), "sweep: needs neither energy nor souls")
 
+	await _teardown(s)
+
+
+# ---- Unleash Souls: the whole bag as homing wisps; with nothing to hunt they circle her ---------------------------------------------------------
+
+func _unleash() -> void:
+	var s := await _solo("UN", REAPER)
+	var c: DmRiteCaster = s["c"]
+	var w: World = s["w"]
+	var h: Node = s["h"]
+	var rej := _rejects(c)
+	_ready_cast(c)
+	c.p["souls"] = 0
+	c.request_cast("unleash_souls", Vector3(0, 0, 0))
+	ok(rej.size() == 1 and rej[0][1] == "souls", "unleash: refused with an empty bag")
+	rej.clear()
+	_ready_cast(c)
+	c.p["souls"] = 7
+	var sp7 := DmAbilities.sp(c.p, c.now_ms)   # seven left once the price is paid
+	c.p["souls"] = 8
+	c.request_cast("unleash_souls", Vector3(0, 0, 0))
+	var wisps: Array = c.mem("unleash_souls")["wisps"]
+	ok(int(c.p["souls"]) == 0 and wisps.size() == 8 and is_equal_approx(c.cooldown_left("unleash_souls"), 8000.0), "unleash: all 8 souls leave the bag as wisps, 8 s")
+	ok(_events(w, "unleash_souls", "release").size() == 1 and rej.is_empty(), "unleash: one release event")
+	_step(c, 2.0)
+	ok(wisps.size() == 8 and _events(w, "unleash_souls", "hit").is_empty(), "unleash: with no enemies the 8 wisps circle her and strike nothing")
+	var foe := _robber(w, h, Vector3(9, 0, 0))
+	_step(c, 2.0)
+	var expect := 8.0 * DmAbilities.rite_damage(sp7, "unleash_souls")
+	ok(wisps.is_empty() and is_equal_approx(_lost(foe), expect), "unleash: an enemy shows up and every wisp finds it (%.1f of %.1f)" % [_lost(foe), expect])
+	ok(not _events(w, "unleash_souls", "hit").is_empty() and not _events(w, "unleash_souls", "end").is_empty(), "unleash: hit and end events were sent")
+	# the nearest enemy to each wisp is the one it hunts
+	_ready_cast(c)
+	c.p["souls"] = 3
+	var near := _robber(w, h, Vector3(0, 0, 4))
+	var far := _robber(w, h, Vector3(0, 0, -20))
+	c.request_cast("unleash_souls", Vector3(0, 0, 0))
+	_step(c, 2.0)
+	ok(_lost(near) > 0.0 and _lost(far) == 0.0 and (c.mem("unleash_souls")["wisps"] as Array).is_empty(), "unleash: they go for the nearer enemy, not the far one")
 	await _teardown(s)
 
 

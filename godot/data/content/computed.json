@@ -13319,7 +13319,8 @@
     "reap",
     "wraith_walk",
     "soul_burst",
-    "harvest_spin"
+    "harvest_spin",
+    "unleash_souls"
    ],
    "grimoire": [
     "scythe_throw",
@@ -13338,7 +13339,9 @@
    ],
    "defaultPrimary": "scythe_sweep",
    "rmb": "harvest_spin",
-   "signatures": {}
+   "signatures": {
+    "reaper": "unleash_souls"
+   }
   }
  },
  "abilityUnlockLevels": {
@@ -13348,6 +13351,7 @@
   "wraith_walk": 1,
   "soul_burst": 1,
   "harvest_spin": 1,
+  "unleash_souls": 1,
   "flail_swing": 1,
   "lantern_cone": 1,
   "chain_pull": 1,

@@ -3,6 +3,7 @@
     "date": "2026-10-11",
     "title": "Polish Pass: Co-op, Animation and the Reaper",
     "items": [
+      "Reaper: new ability Unleash Souls (R). It lets every soul in your bag go at once; each one hunts the nearest enemy and strikes it, and with no enemies around they circle you until one shows up.",
       "Co-op: everyone in a party now shows their real level, and the world scales to the party leader's level instead of whoever happens to be standing closest.",
       "Co-op: bosses gain much less health per extra player (two players: x1.3 instead of x1.8; four: x1.9 instead of x3.4).",
       "Bosses no longer get stuck on walls or on thralls: they slide along walls, find a way round when blocked, and walk through a thrall legion. In co-op a boss keeps one target instead of flipping between players.",

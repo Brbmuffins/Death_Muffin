@@ -896,6 +896,20 @@
    "range": 0,
    "radius": 4,
    "power": 1.1
+  },
+  "unleash_souls": {
+   "id": "unleash_souls",
+   "slot": 6,
+   "name": "Unleash Souls",
+   "description": "Release every soul in your bag at once. Each one hunts the nearest enemy and strikes it; with nothing to hunt they circle you until something shows up. Needs at least 1 soul.",
+   "icon": "art/abilities/necro-soul-siphon.webp",
+   "targeting": "self",
+   "cooldownMs": 8000,
+   "essenceCost": 0,
+   "soulCost": 1,
+   "range": 0,
+   "radius": 0,
+   "power": 0.45
   }
  },
  "constants": {
@@ -1198,6 +1212,9 @@
     "damage"
    ],
    "harvest_spin": [
+    "damage"
+   ],
+   "unleash_souls": [
     "damage"
    ]
   },
@@ -1676,6 +1693,10 @@
   "harvest_spin": {
    "lockMs": 120,
    "gestureSeconds": 0.4
+  },
+  "unleash_souls": {
+   "lockMs": 150,
+   "gestureSeconds": 0.45
   }
  },
  "kits": {
@@ -1884,7 +1905,8 @@
     "reap",
     "wraith_walk",
     "soul_burst",
-    "harvest_spin"
+    "harvest_spin",
+    "unleash_souls"
    ],
    "grimoire": [
     "scythe_throw",
@@ -1903,7 +1925,9 @@
    ],
    "defaultPrimary": "scythe_sweep",
    "rmb": "harvest_spin",
-   "signatures": {}
+   "signatures": {
+    "reaper": "unleash_souls"
+   }
   }
  },
  "rune_tuning": {

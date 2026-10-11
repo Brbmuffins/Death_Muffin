@@ -26,7 +26,7 @@ func _cues() -> void:
 	tail = 0.0
 	await _setup()
 	var ids: Array = DmRiteRegistry.ids()
-	check(ids.size() == 31, "31 rites are registered (%d)" % ids.size())
+	check(ids.size() == 32, "32 rites are registered (%d)" % ids.size())
 	for id in ids:
 		await audit_rite(id)
 		var r: Dictionary = results[id]

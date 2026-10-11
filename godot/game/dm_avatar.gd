@@ -29,7 +29,7 @@ const RIG_HEAD_STRENGTH := {"hero_bell_monk": 0.25}
 # castClips.ts
 const MIN_SECONDS := {"slam": 0.55, "sweep": 0.42, "flick": 0.26, "channel": 0.9, "summon": 0.7}
 ## The Reaper's rites -> the hero rig's combat clips (measured on hero_mourner: sweep 1.4 s, slam 2.0 s, flick 1.03 s, channel 1.6 s, summon 1.6 s).
-const REAPER_CLIPS := {"scythe_sweep": "sweep", "harvest_spin": "sweep", "reap": "slam", "scythe_throw": "flick", "wraith_walk": "channel", "soul_burst": "summon"}
+const REAPER_CLIPS := {"scythe_sweep": "sweep", "harvest_spin": "sweep", "reap": "slam", "scythe_throw": "flick", "wraith_walk": "channel", "soul_burst": "summon", "unleash_souls": "summon"}
 const MAX_SPEED := 3.2
 const MIN_SPEED := 0.7
 

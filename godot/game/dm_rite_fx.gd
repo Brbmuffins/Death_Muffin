@@ -293,6 +293,14 @@ func wisp(secs: float, speed: float, radius: float, follow: Callable) -> void:
 		fx.orbit({"tex": "wisp", "color": jade, "count": 1, "radius": radius, "y": 1.5, "size": 0.6, "duration": secs, "speed": speed, "follow": follow})
 
 
+## Unleash Souls: `count` soul wisps circling the caster for `secs`; returns the handle (kill it with DmRiteFx.kill) or null.
+func soul_circle(count: int, secs: float, speed: float, radius: float, follow: Callable) -> Variant:
+	if fx == null:
+		return null
+	stats["orbit"] += 1
+	return fx.orbit({"tex": "wisp", "color": DmReaperRites.GREEN, "count": count, "radius": radius, "y": 1.2, "size": 0.7, "duration": secs, "speed": speed, "follow": follow})
+
+
 ## Requiem Wraiths 5: a nova ring at each source `pts` ([[x, z]]), radius r.
 func legend_nova(pts: Array, r: float) -> void:
 	var jade: Variant = DmFxData.spell("souls", "jade")

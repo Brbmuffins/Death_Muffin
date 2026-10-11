@@ -55,7 +55,7 @@ static func build(id: String, discipline: Dictionary = {}, state: Dictionary = {
 	if family == "reaper":
 		resource_name = "Souls"
 		cost = float(a.get("soulCost", 0))
-		cost_text = "%s%s" % [_n(cost), " (all)" if id == "soul_burst" else ""] if cost != 0.0 else "Free"
+		cost_text = "%s%s" % [_n(cost), " (all)" if id == "soul_burst" or id == "unleash_souls" else ""] if cost != 0.0 else "Free"
 	elif empowered:
 		cost_text = "Free (normally %s)" % _s(cost)
 	else:
