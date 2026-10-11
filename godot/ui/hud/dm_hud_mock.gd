@@ -109,7 +109,7 @@ static func calm() -> Dictionary:
 	v["omen"]["visible"] = false
 	v["depth"] = {"depth": 7, "kills": 20, "need": 20, "open": true, "chest": true}
 	v["reveal"] = {}
-	v["new"] = {"hud.upgrades": true, "menu.spells": true, "hud.shards": true}
+	v["new"] = {"hud.upgrades": true, "menu.atlas": true, "hud.shards": true}
 	v["grimoire_new"] = true
 	var mm := minimap(0.0, 20.0)
 	mm["ping"] = {"x": 9.0, "z": 26.5}

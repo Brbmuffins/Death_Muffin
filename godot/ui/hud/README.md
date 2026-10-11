@@ -51,7 +51,7 @@ Every key is optional; missing = zero / hidden. Units: HP in HP, cooldown in ms.
 | `hint` | String | faint line above the altar |
 | `death` | `{show, sub}` | "You have fallen" wash, fades 0.8 s |
 | `auto_combat` | `{on, available, visible}` | the Auto button under the menu |
-| `reveal` | `{id: bool}` | progressive HUD: `hud.upgrades hud.dial hud.shards hud.spells menu.spells menu.atlas menu.skills`. **Absent id = revealed** (list only what is still held back) |
+| `reveal` | `{id: bool}` | progressive HUD: `hud.upgrades hud.dial hud.shards hud.spells menu.atlas menu.skills`. **Absent id = revealed** (list only what is still held back) |
 | `new` | `{id: bool}` | NEW pip + gold glow on the same ids (+ `hud.omen`); a click/hover on a NEW button emits `cue_used(id)` |
 
 ### slot dict (`slots[]`, and `primary`)
