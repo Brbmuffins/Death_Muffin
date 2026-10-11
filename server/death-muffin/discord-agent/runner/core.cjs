@@ -157,6 +157,10 @@ function createRunner(cfgIn, opts = {}) {
   const pingTarget = (job) => (goneThread(job.threadId) ? null : { threadId: job.threadId });   // never the channel itself (owner, 2026-10-10)
   // Failures / rollbacks are said in the thread as a plain ⚠ line: nobody is tagged (owner, 2026-10-10: "stop tagging brbmuffins").
   const ownerPing = (target, text) => target && post(target, { content: `⚠ ${text}` });
+  // The one ping the agent sends: a proposal (or a merge that needs a fresh ✅) tags the person whose request it answers, so it is not missed
+  // (Helix, 2026-10-11). Only that user (allowedMentions users), never roles or @everyone; nothing else tags anyone.
+  const requesterOf = (job) => String((job.lastAsker && job.lastAsker.id) || job.creatorId || '');
+  const pingRequester = (job) => { const id = requesterOf(job); return /^\d{5,25}$/.test(id) ? { content: `<@${id}>`, mentionUsers: [id] } : {}; };
 
   // ---------- images people attach (written into the worktree for the agent to Read; never redacted, never committed) ----------
   // Returns the lines to append to the message text (one per image, or a short note for a refused one).
@@ -781,7 +785,8 @@ function createRunner(cfgIn, opts = {}) {
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
     const shots = proposalShots(job, committedAt);
     if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
-    post({ threadId: job.threadId }, { embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
+    // no ping when the original approval is about to carry (it ships by itself; carryApproval pings if it cannot)
+    post({ threadId: job.threadId }, { ...(job.carryApproval ? {} : pingRequester(job)), embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
     // BEFORE pictures come after, in the background: rendering waits for the shared renderer lock (other renders can hold it for many
     // minutes), and a job waiting on it kept its slot and blocked other requests (2026-10-10). The pair is posted as a follow-up.
     // BEFORE pictures (the unchanged base rendered with the same shot plan) only when switched on: each is one more software-GL render
@@ -800,7 +805,7 @@ function createRunner(cfgIn, opts = {}) {
     const why = extra.length ? `also changes ${extra.slice(0, 3).join(', ')}${extra.length > 3 ? '…' : ''}`
       : TIERS.indexOf(p.tier) > TIERS.indexOf(ca.tier) ? `is now ${p.tier}-tier (approved as ${ca.tier})`
       : !auth.canApprove(ca.approverId, p.tier) ? `needs an approver for the ${p.tier} tier` : null;
-    if (why) { audit.log('carry-refused', { job: job.id, why }); say(job, `Merged ${BB} in, but the resolved change ${why}, so it needs a fresh ✅.`); save(); return; }
+    if (why) { audit.log('carry-refused', { job: job.id, why }); const pr = pingRequester(job); say(job, `${pr.content ? pr.content + ' ' : ''}Merged ${BB} in, but the resolved change ${why}, so it needs a fresh ✅.`, pr.mentionUsers ? { mentionUsers: pr.mentionUsers } : {}); save(); return; }
     audit.log('approved', { userId: ca.approverId, job: job.id, tier: p.tier, head: p.head, carried: true });
     say(job, `Resolved the merge with ${BB} and the checks pass. Shipping on ${nameOf(ca.approverId)}'s approval (same files: ${clip((p.files || []).join(', '), 200)}).`);
     if (shipBusy || shipQueue().length) { job.shipQueued = { approverId: ca.approverId, head: p.head, at: now() }; save(); if (!shipBusy) drainShipQueue(); return; }

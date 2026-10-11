@@ -69,8 +69,10 @@ test('limited approver: casual ok, gameplay refused; Helix ships gameplay; ship 
   assert.notEqual(remoteMaster(w), before);
   assert.equal(sh(w.repo, 'show', 'origin/master:src/gameplay/a.ts').trim(), 'speed=9'.trim());
   const ships = shipsLog(w); assert.equal(ships.length, 1); assert.equal(ships[0].approverId, IDS.HELIX); assert.equal(ships[0].tier, 'gameplay');
-  // a ship pings nobody in the thread: releases are announced in #build-alerts by announce-release.sh (owner, 2026-10-10)
-  assert.ok(!thread.sent.some((s) => s.payload.allowedMentions && s.payload.allowedMentions.users && s.payload.allowedMentions.users.length), 'no owner ping for a ship');
+  // the proposal tags its requester (only that user, no roles or @everyone; Helix 2026-10-11); a ship pings nobody: releases are announced
+  // in #build-alerts by announce-release.sh (owner, 2026-10-10)
+  assert.equal(p.payload.content, `<@${IDS.LIMITED}>`); assert.deepEqual(p.payload.allowedMentions, { parse: [], users: [IDS.LIMITED] });
+  assert.equal(thread.sent.filter((s) => s.payload.allowedMentions && s.payload.allowedMentions.users && s.payload.allowedMentions.users.length).length, 1, 'only the proposal pings; no ping for a ship');
   // Cleanup runs after the "Live" message: wait for it rather than racing it.
   await until(() => fs.readdirSync(w.cfg.worktreeRoot).length === 0 && sh(w.repo, 'ls-remote', 'origin', 'refs/heads/discord/*') === '', d.ad);
   assert.equal(sh(w.repo, 'branch', '--list', 'discord/*'), '');
@@ -88,7 +90,7 @@ test('sensitive change is flagged and only owner/Helix (full approvers) can ship
   assert.deepEqual(await d.react(p, IDS.OWNER, '✅'), []);
   await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
   assert.equal(shipsLog(w)[0].approverId, IDS.OWNER);
-  assert.ok(!thread.sent.some((s) => (s.payload.allowedMentions && s.payload.allowedMentions.users)), 'no ping when the owner ships');
+  assert.ok(!thread.sent.some((s) => s !== p && s.payload.allowedMentions && s.payload.allowedMentions.users), 'no ping when the owner ships (only the proposal tags its requester)');
 });
 
 test('Co-Authored-By trailers are stripped by the runner before the branch is proposed', async () => {
@@ -188,6 +190,7 @@ test('a conflict at ship is synced and resolved, and the same change ships on th
   assert.ok(texts(thread).some((t) => /Shipping on Helix's approval \(same files: src\/ui\/ui\.css\)/.test(t)), texts(thread).join(' // '));
   assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"carried":true/);
   assert.equal(shipsLog(w).length, 1);
+  assert.equal(thread.sent.filter((s) => s.payload.allowedMentions && s.payload.allowedMentions.users).length, 1, 'the re-proposal that ships on the carried approval pings nobody (only the first proposal did)');
 });
 test('a resolved conflict that touches new files needs a fresh ✅', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
@@ -198,6 +201,8 @@ test('a resolved conflict that touches new files needs a fresh ✅', async () =>
   await d.react(p, IDS.HELIX, '✅');
   await until(() => texts(thread).some((t) => /needs a fresh ✅/.test(t)), d.ad);
   assert.match(texts(thread).join('\n'), /also changes src\/extra\.ts/);
+  const fresh = thread.sent.find((s) => /needs a fresh ✅/.test(s.payload.content || ''));
+  assert.match(fresh.payload.content, new RegExp(`^<@${IDS.HELIX}> Merged`)); assert.deepEqual(fresh.payload.allowedMentions, { parse: [], users: [IDS.HELIX] });
   assert.equal(shipsLog(w).length, 0, 'not shipped without a new approval'); assert.equal(job.status, 'proposed');
 });
 

@@ -62,7 +62,7 @@ accepts only exact `backup-pre-release-godot-<yyyymmddThhmmssZ>` real directorie
 
 ## Who can do what (`config.json`, owner-edited, never by the AI)
 
-- `ownerIds`: always requester + approver of every tier. Failures (deploy/publish problems) and rollbacks by someone else get a plain `⚠` line in the thread; nobody is tagged (owner, 2026-10-10). A ship pings nobody: releases are announced in #build-alerts by `announce-release.sh`. The runner never posts in the channel itself, only in threads.
+- `ownerIds`: always requester + approver of every tier. Failures (deploy/publish problems) and rollbacks by someone else get a plain `⚠` line in the thread; nobody is tagged (owner, 2026-10-10). The one ping: a proposal (and a resolved merge that needs a fresh ✅) tags the requester (`job.lastAsker`, else the thread's creator) so it is not missed (Helix, 2026-10-11); only that user, never roles or @everyone, and not on a re-proposal that ships on a carried approval. A ship pings nobody: releases are announced in #build-alerts by `announce-release.sh`. The runner never posts in the channel itself, only in threads.
 - `projects.deathmuffin.requesters`: may talk to it and give work. Everyone else is ignored (no reply, audited).
 - `projects.deathmuffin.approvers.{casual,gameplay,sensitive}`: who may ✅ a proposal of that tier. Anyone in `sensitive` is a
   full approver (all tiers, any rollback, no daily cap, may switch models). Someone only in `casual` is limited
