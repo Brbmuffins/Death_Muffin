@@ -67,3 +67,17 @@ test('too many .gd files, or too wide a target, fall back to ALL', () => {
 test('an unreferenced asset still gets the smoke set', () => {
   assert.deepEqual(sel(affected(['godot/assets/slice/a.png'], mk())), [...SMOKE].sort());
 });
+test('an add-only change to the API client or mock selects the users of the added functions and routes, not ALL', () => {
+  const added = { 'godot/net/dm_api.gd': ['func vault_withdraw_many(character_id: int, slots: Array) -> DmResult:', '\treturn await _post("/api/vault/withdraw-many", {})'],
+    'godot/net/dm_mock_backend.gd': ['\t\t"/api/vault/withdraw-many":', '\t\t\treturn _take(body)'] };
+  const ctx = { ...mk({
+    src: [['godot/game_ui/panels.gd', 'DmApi.vault_withdraw_many(1, [])'], ['godot/hud/other.gd', 'DmApi.login()']],
+    tests: [['godot/tests/ui/run.gd', 'preload("res://game_ui/panels.gd")'], ['godot/tests/backend/test_routes.gd', '"/api/vault/withdraw-many"'], ['godot/tests/hud/run.gd', 'DmApi.x()']],
+    classes: { 'godot/net/dm_api.gd': 'DmApi' },
+  }), addedLines: (f) => added[f] || null };
+  const s = sel(affected(['godot/net/dm_api.gd', 'godot/net/dm_mock_backend.gd'], ctx));
+  assert.ok(s.includes('ui') && s.includes('backend') && !s.includes('hud'), s.join());
+  // any removed or edited line (addedLines null), or another net file, stays central
+  assert.equal(affected(['godot/net/dm_api.gd'], { ...ctx, addedLines: () => null }).all, true);
+  assert.equal(affected(['godot/net/dm_config.gd'], ctx).all, true);
+});

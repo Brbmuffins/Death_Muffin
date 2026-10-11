@@ -11,7 +11,6 @@
   "id": "prop_necro_mantle_mourner",
   "steps": {
     "upload": {
-      "fileToken": "file_fc0e9f3e-d375-4b93-8ad5-2989e641f196",
       "hash": "sha256:a0b5cb244f41a72898d76e7b4528d1151970a6f65bc7c462045d3d67971f7088",
       "status": "success",
       "input": "art-src/concepts/necrogear/B-mantles/mantle_mourner.png"
@@ -20,7 +19,6 @@
       "taskId": "6e5a220b-a140-450c-ad29-7de79dca60c6",
       "status": "success",
       "request": {
-        "input": "file_fc0e9f3e-d375-4b93-8ad5-2989e641f196",
         "texture": true,
         "pbr": true,
         "model": "P1-20260311",
@@ -30,8 +28,8 @@
       "createdAt": "2026-10-11T16:15:59.576Z",
       "credits": 60,
       "output": {
-        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261011/6e5a220b-a140-450c-ad29-7de79dca60c6/tripo_pbr_model_6e5a220b-a140-450c-ad29-7de79dca60c6.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfMzQ0MTZhZWQzNzAwNDIxZWExOTg1YmNmMjU2NzAyMjYvMjAyNjEwMTEvNmU1YTIyMGItYTE0MC00NTBjLWFkMjktN2RlNzlkY2E2MGM2L3RyaXBvX3Bicl9tb2RlbF82ZTVhMjIwYi1hMTQwLTQ1MGMtYWQyOS03ZGU3OWRjYTYwYzYuZ2xiIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzkxODIxOTAxfX19XX0_&Signature=lzDG35pbzKdtFhu1rL-jeCFatuFv46K6Xncy~Wakx1MLkM3W36hIswQj06s8B0SUNknqepqAO2jKG7mkENRdO6j5PrcDCVvPgTEY5IFHuKtEFs~m2zxfWkpDKUPtXyOR1Wn4PjUayOwXYutaycZ6aOJSQ5UPQJLSRq16NmnB9CZJmvdBo3XdDoWXuB3-TteM4r29OC4UiMo1q5XH~c3BZfwKURouGY6PG3rfmaHIiDjVaVBA~gaJylydhWqW9Lcb2ZbWL3w8kJ1wRdWL7F~yLYAX7jpw3n~ZdVo-yoiGEAdyf6-QkIPQWiP4SRI~R56pEHbW55d1vSwEmt-XJRq2pA__&Key-Pair-Id=K1676C64NMVM2J",
-        "rendered_image_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261011/6e5a220b-a140-450c-ad29-7de79dca60c6/legacy_mesh.webp?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfMzQ0MTZhZWQzNzAwNDIxZWExOTg1YmNmMjU2NzAyMjYvMjAyNjEwMTEvNmU1YTIyMGItYTE0MC00NTBjLWFkMjktN2RlNzlkY2E2MGM2L2xlZ2FjeV9tZXNoLndlYnAiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTE4MjE5MDF9fX1dfQ__&Signature=GXJwN7oa6NwOYjQXkG0xo4oafw3~PjkvZD6yOV6S89Gp-0Nl1ww4VuLEiO8-jAWeUAcQaajsrwPYLElhMcOh4vzq2YcJ9t5Tso99mTaWBO6Mj97v45izDnUNDIANyeojfGa~c1SrD1tzk3oNwS5DLNAKew~7AJtVLYVtb15NU~l~v3ADNJ5-m8~9860B9KbicgWvFRxQBdbCTDY-OfQpmM6bTwn4-qhk1r~Wo0R625~-ptU6GlFJ82fWj7x3O2f1GUOb6XHlCBCxezXvIy77xoEf6bNXR9JwEzB5yL9HmZ-~i8fcLN0G0HEiU54S2XnduQhBS0tIp35ufh3qPLFdzQ__&Key-Pair-Id=K1676C64NMVM2J"
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261011/6e5a220b-a140-450c-ad29-7de79dca60c6/tripo_pbr_model_6e5a220b-a140-450c-ad29-7de79dca60c6.glb",
+        "rendered_image_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261011/6e5a220b-a140-450c-ad29-7de79dca60c6/legacy_mesh.webp"
       },
       "fileHash": "sha256:129ee606b1d671f364f58aadc6d93addf0c691bf442952df6a1c759d4aafc361"
     }

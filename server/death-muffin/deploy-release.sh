@@ -2,7 +2,10 @@
 # Deploy the Death Muffin backend (auth server :5190) from a COMMITTED revision (default HEAD), never the working tree.
 # The Godot client is published separately with publish-godot-client.sh; the web client was retired 2026-10-09.
 #
-#   deploy-release.sh [rev] [migration.sql ...]
+#   deploy-release.sh [--if-changed] [rev] [migration.sql ...]
+#
+# --if-changed (the Discord agent's Godot ships, before the client publish): exit 0 doing nothing ("backend: unchanged") when every server file
+# <rev> would install is byte-identical to the installed one and no migration is named. Otherwise the normal deploy below.
 #
 # 1. Exports <rev> with `git archive` into deploy/candidate-<sha>/src.
 # 2. Runs the shared-rules and server tests on that export.
@@ -20,9 +23,22 @@ if [ -z "${DEPLOY_LOCK_HELD:-}" ]; then
   flock -w 1800 9 || { echo "another deploy holds $RUNTIME/deploy/.deploy.lock" >&2; exit 1; }
 fi
 PUBLIC=/var/www/death-muffin
+IF_CHANGED=""; [ "${1:-}" = --if-changed ] && { IF_CHANGED=1; shift; }
 REV="${1:-HEAD}"
 shift || true
 SHA=$(git -C "$REPO" rev-parse --short=12 "$REV^{commit}")
+# The files "== Server code" installs: repo path -> installed path (one list for --if-changed and the install).
+server_files() {
+  git -C "$REPO" ls-tree --name-only "$SHA" server/death-muffin/backend/ server/death-muffin/backend/gathering/ |
+    grep -E '^server/death-muffin/backend/(server\.js|[^/]+\.cjs|gathering/[^/]+\.cjs)$' | grep -v '\.test\.cjs$' |
+    while read -r f; do echo "$f $RUNTIME/backend/${f#server/death-muffin/backend/}"; done
+  for f in necro-rules.cjs necro-progress-routes.cjs mysql-store.cjs; do echo "server/vps-handoff/necro-progress/$f $RUNTIME/backend/necro-progress/$f"; done
+}
+if [ -n "$IF_CHANGED" ] && [ $# -eq 0 ]; then
+  CHANGED=$(server_files | while read -r f dst; do git -C "$REPO" show "$SHA:$f" 2>/dev/null | cmp -s - "$dst" || echo "${f#server/}"; done)
+  [ -n "$CHANGED" ] || { echo "backend: unchanged at $SHA, nothing to deploy"; exit 0; }
+  echo "backend: changed at $SHA: $(echo "$CHANGED" | head -8 | paste -sd' ' -)"
+fi
 # Never publish a revision that is missing commits main already has (2026-10-04: a manual deploy that queued for the lock behind a Discord
 # ship published afterwards and rolled the ship back). Checked while holding the lock. ALLOW_BEHIND_MAIN=1 only for a deliberate rollback.
 if [ -z "${ALLOW_BEHIND_MAIN:-}" ]; then
@@ -78,9 +94,7 @@ for m in "$@"; do
 done
 
 echo "== Server code"
-for f in "$B"/server.js "$B"/*.cjs; do case "$f" in *.test.cjs) ;; *) cp "$f" "$RUNTIME/backend/";; esac; done
-for f in "$B"/gathering/*.cjs; do case "$f" in *.test.cjs) ;; *) cp "$f" "$RUNTIME/backend/gathering/";; esac; done
-for f in necro-rules.cjs necro-progress-routes.cjs mysql-store.cjs; do cp "$SRC/server/vps-handoff/necro-progress/$f" "$RUNTIME/backend/necro-progress/"; done
+server_files | while read -r f dst; do cp "$SRC/$f" "$dst"; done
 node --check "$RUNTIME/backend/server.js"
 sudo systemctl restart death-muffin-auth.service
 curl --silent --show-error --fail --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:5190/health >/dev/null
@@ -91,7 +105,8 @@ curl -sSf https://muffindevelopment.com/death-muffin/api/health; echo
 echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
 
 # Launcher news + patch notes, the #build-alerts notice and fixed bug reports (shared with publish-godot-client.sh; never fails the deploy).
-QUIET=1 REPO="$REPO" bash "$SRC/server/death-muffin/announce-release.sh" "$SHA" || true
+# NO_ANNOUNCE=1 (a Godot ship: the client publish right after announces the release once).
+[ -n "${NO_ANNOUNCE:-}" ] || QUIET=1 REPO="$REPO" bash "$SRC/server/death-muffin/announce-release.sh" "$SHA" || true
 
 # The candidate export (~330 MB) is only needed until the release is live and announced; ROLLBACK.sh uses the backup folder.
 rm -rf "$CAND"

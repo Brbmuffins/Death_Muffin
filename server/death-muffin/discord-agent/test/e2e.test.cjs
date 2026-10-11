@@ -716,6 +716,19 @@ test('rounds: ❌ while a turn is running discards once the step stops, then the
   assert.equal(job.round, 2);
 });
 
+test('a ✅ on the old proposal while a newer version is being made is removed with one explanation (not silently)', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p1 = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0];
+  await d.say(thread, IDS.HELIX, 'SLOW-TURN MAKE-CSS a bit darker');
+  await until(() => job.running && job.status === 'running', d.ad);
+  assert.deepEqual(await d.react(p1, IDS.HELIX, '✅'), [IDS.HELIX], 'reaction removed');
+  assert.deepEqual(await d.react(p1, IDS.HELIX, '✅'), [IDS.HELIX]);
+  await until(() => texts(thread).some((t) => /still working on a newer version/.test(t)), d.ad);
+  assert.equal(texts(thread).filter((t) => /still working on a newer version/.test(t)).length, 1, 'said once, not per click');
+  await until(() => !job.running, d.ad);
+});
+
 test('a thread whose workspace vanished starts a fresh round and never runs the agent without one', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
@@ -878,6 +891,75 @@ test('godot mode: question, gameplay proposal (godot-port compare link, zip prev
   await until(() => d.main.sent.some((s) => /Rolled back/.test(s.payload.content || '')), d.ad);
   assert.equal(fs.readFileSync(path.join(w.deploy, bks[0], 'published.log'), 'utf8'), `published ${w.liveRev.slice(0, 12)} REPO=${w.repo}\n`);
   await until(() => !fs.existsSync(path.join(w.cfg.worktreeRoot, `discord-${id}`)) && !fs.existsSync(path.join(w.cfg.worktreeRoot, `ship-${id}`)), d.ad);
+});
+
+test('godot mode: the ship deploys the backend (deploy-release.sh --if-changed) before the client, and ROLLBACK.sh undoes both', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const order = path.join(w.deploy, 'order.log'), brb = path.join(w.deploy, 'backup-pre-release-bbbbbbbbbbbb-20261011T190000Z');
+  w.cfg.deployCmd = `echo client >> ${order}; ` + w.cfg.deployCmd;
+  w.cfg.backendDeployCmd = `echo "backend $*" >> ${order}; mkdir -p ${brb}; echo 'echo backend-rolled-back >> ${order}' > ${brb}/ROLLBACK.sh; echo "Rollback: ${brb}/ROLLBACK.sh"`;
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread);
+  assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  const ship = shipsLog(w)[0];
+  assert.deepEqual(fs.readFileSync(order, 'utf8').trim().split('\n'), [`backend --if-changed ${remoteHead(w, 'godot-port')}`, 'client'], 'backend first, then the client');
+  const rb = fs.readFileSync(ship.rollback, 'utf8');
+  assert.match(rb, new RegExp(`\\nbash ${brb}/ROLLBACK\\.sh\\nexec bash \\S*/publish-godot-client\\.sh ${w.liveRev.slice(0, 12)}\\n$`));
+  await d.say(d.main, IDS.OWNER, `${BOT} rollback`);
+  await until(() => d.main.sent.some((s) => /Rolled back/.test(s.payload.content || '')), d.ad);
+  assert.match(fs.readFileSync(order, 'utf8'), /backend-rolled-back\n$/);
+});
+
+test('godot mode: a failed backend deploy stops the ship before the client is published', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  w.cfg.backendDeployCmd = 'echo "server tests failed"; exit 1';
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread);
+  assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
+  await until(() => texts(thread).some((t) => /Not live yet/.test(t)), d.ad);
+  await until(() => !fs.existsSync(path.join(w.cfg.stateDir, 'ship-active')), d.ad);
+  assert.equal(godotBackups(w).length, 0, 'the unused client backup was removed');
+  assert.ok(!fs.existsSync(path.join(w.deploy, 'deploys.log')), 'the client was not published');
+  assert.ok(!texts(thread).some((t) => /Live\. Release/.test(t)));
+});
+
+// A check-godot.sh stand-in whose quick check fails one suite; `--rerun` passes unless REALFAIL exists. Calls are logged next to it.
+const flakyCheck = (w) => fs.writeFileSync(path.join(w.tools, 'check-godot.sh'), '#!/usr/bin/env bash\nD=$(dirname "$0"); echo "$*" >> "$D/check-godot.calls"\n' +
+  'if [ "${1:-}" = --rerun ]; then [ -e "$D/REALFAIL" ] && { echo "next_bosses        run.gd           exit=1  1 passed, 1 failed"; echo "GODOT TESTS: rerun (1 suites) — 0 passed, 1 FAILED"; exit 1; }; echo "GODOT TESTS: rerun (1 suites) — 1 passed"; exit 0; fi\n' +
+  'echo "data               run.gd           exit=0  9 passed, 0 failed"; echo "next_bosses        run.gd           exit=1  722 passed, 1 failed"; echo "    FAIL boss phase timing"; echo "GODOT TESTS: quick (2 suites) — 1 passed, 1 FAILED"; exit 1\n', { mode: 0o755 });
+
+test('godot mode: a suite that fails once is re-run alone before an agent turn is spent; a real failure still goes to the agent', async () => {
+  const w = godotWorld(); flakyCheck(w); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread);
+  assert.equal(field(p, 'Tests'), '✅ quick check: 2 suites — passed (next_bosses passed on a re-run)');
+  const calls = fs.readFileSync(path.join(w.tools, 'check-godot.calls'), 'utf8').trim().split('\n');
+  assert.ok(calls.includes('--rerun next_bosses'), calls.join('|'));
+  const audits = fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8');
+  assert.match(audits, /"event":"flake-rerun","job":"[0-9a-f]+","suites":\["next_bosses"\],"ok":true/);
+  assert.doesNotMatch(audits, /"verify-failed"/);
+  // the ship (main moved, so the merged tree is tested again) re-runs the failing suite too, and goes live
+  sh(w.repo, 'checkout', '-q', 'godot-port'); fs.writeFileSync(path.join(w.repo, 'godot/README.md'), 'moved'); sh(w.repo, 'commit', '-q', '-am', 'someone else'); sh(w.repo, 'push', '-q', 'origin', 'godot-port');
+  assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  const job = Object.values(w.runner.jobs()).find((j) => j.threadId === thread.id);
+  assert.match(fs.readFileSync(path.join(w.tools, 'state', `ship-${job.id}.tests.log`), 'utf8'), /== re-running next_bosses\nGODOT TESTS: rerun \(1 suites\) — 1 passed/);
+  // a real failure fails the re-run too: the agent gets the failure (only the failing lines, not the passing ones) and nothing is proposed
+  const w2 = godotWorld(); flakyCheck(w2); fs.writeFileSync(path.join(w2.tools, 'REALFAIL'), ''); const d2 = makeDiscord(w2.runner);
+  const { thread: t2 } = await request(d2, IDS.HELIX, 'GD-GAMEPLAY faster');
+  await until(() => texts(t2).some((t) => /could not get this into a shippable state/.test(t)), d2.ad);
+  const a2 = fs.readFileSync(path.join(w2.cfg.stateDir, 'audit.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.ok(a2.some((e) => e.event === 'flake-rerun' && e.ok === false));
+  const vf = a2.find((e) => e.event === 'verify-failed'); assert.match(vf.why, /next_bosses .*exit=1[\s\S]*FAIL boss phase timing/); assert.doesNotMatch(vf.why, /exit=0/);
+});
+
+test('failedSuites: 1-3 failing suite lines re-run, anything else does not', () => {
+  const { failedSuites } = require('../runner/core.cjs');
+  assert.deepEqual(failedSuites('a  run.gd  exit=0  1 passed\nnext_bosses  run.gd  exit=1  x\n    FAIL y\nGODOT TESTS: quick (2 suites) — 1 passed, 1 FAILED'), ['next_bosses']);
+  assert.deepEqual(failedSuites('a  r.gd  exit=1\nb  r.gd  exit=2\nc  r.gd  exit=1\nd  r.gd  exit=1'), []);
+  assert.deepEqual(failedSuites('GODOT TESTS: repo hygiene FAILED (npm run hygiene)'), []);
+  assert.deepEqual(failedSuites('a  r.gd  exit=124\nGODOT TESTS: timed out after 85 minutes'), []);
 });
 
 test('godot mode: sensitive net code is flagged and limited approvers cannot ship it; docs are casual; export_presets.cfg is forbidden', async () => {

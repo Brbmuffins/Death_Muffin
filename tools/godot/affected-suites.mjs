@@ -23,6 +23,19 @@ const CENTRAL = [
   /^tools\/godot\/(?!affected-suites\.mjs$|test\/)/, /^godot\/data\/content\/manifest\.json$/, /^godot\/ui\/theme\//,
 ];
 export function centralReason(f) { return CENTRAL.some((re) => re.test(f)) ? f : null; }
+// The API client and its offline mock grow by one function / route per backend feature. A change that only ADDS lines to them is not central:
+// it selects the suites (and one level of scripts) that use the added functions or routes. Any removed or edited line keeps them central.
+const ADDITIVE = [/^godot\/net\/dm_api\.gd$/, /^godot\/net\/dm_mock_backend\.gd$/];
+/** The names an add-only change to an ADDITIVE file introduces: `func x(` names and "/api/..." route strings. null = not add-only. */
+export function additiveNames(f, added) {
+  if (!ADDITIVE.some((re) => re.test(f)) || !Array.isArray(added)) return null;
+  const words = new Set(), fixed = new Set();
+  for (const l of added) {
+    for (const m of l.matchAll(/^\s*(?:static\s+)?func\s+(\w+)/g)) words.add(m[1]);
+    for (const m of l.matchAll(/"(\/api\/[^"]+)"/g)) fixed.add(m[1]);
+  }
+  return { words: [...words], fixed: [...fixed] };
+}
 
 const IGNORED = (f) => /\.(md|uid|import)$/.test(f) || !/^godot\//.test(f);   // docs, Godot bookkeeping, and everything outside godot/ (server/, docs/, ...)
 
@@ -43,12 +56,19 @@ export function dataPatterns(rel) {
   return [...lit, ...acc];
 }
 
-/** ctx: { suites: string[] (test dirs that have run files), testsOnly(pats:{fixed:[],words:[]}) -> files, srcOnly(...) -> files, classNameOf(file) -> string|null } */
+/** ctx: { suites: string[] (test dirs that have run files), testsOnly(pats:{fixed:[],words:[]}) -> files, srcOnly(...) -> files, classNameOf(file) -> string|null,
+ *  addedLines?(file) -> string[] | null (the lines a change adds when it removes none, else null) } */
 export function affected(changed, ctx) {
   const files = [...new Set(changed)].filter(Boolean);
   const relevant = files.filter((f) => !IGNORED(f) || /^tools\/godot\//.test(f));
   if (!relevant.length) return { all: false, selectors: [], why: 'no Godot-affecting files changed' };
-  for (const f of relevant) { const c = centralReason(f); if (c) return { all: true, why: `central file: ${c}` }; }
+  const additive = new Map();   // ADDITIVE file -> the names it adds (its users are found by those, not by its class name)
+  for (const f of relevant) {
+    const c = centralReason(f); if (!c) continue;
+    const a = additiveNames(f, ctx.addedLines ? ctx.addedLines(f) : null);
+    if (!a) return { all: true, why: `central file: ${c}` };
+    additive.set(f, a);
+  }
   const gd = relevant.filter((f) => f.endsWith('.gd'));
   if (gd.length > MAX_GD_FILES) return { all: true, why: `${gd.length} changed .gd files (> ${MAX_GD_FILES})` };
 
@@ -70,7 +90,8 @@ export function affected(changed, ctx) {
     return { fixed: [...fixed], words: [...words] };
   };
   const nonTest = relevant.filter((f) => !f.startsWith('godot/tests/'));
-  const p1 = patsFor(relevant);
+  const p1 = patsFor(relevant.filter((f) => !additive.has(f)));
+  for (const a of additive.values()) { p1.fixed.push(...a.fixed); p1.words.push(...a.words); }
   const addSuites = (testFiles) => { for (const t of testFiles) { const s = suiteOf(t); if (s && ctx.suites.includes(s)) sel.add(s); } };
   addSuites(ctx.testsOnly(p1));
   // one level of dependents: non-test scripts/scenes that refer to the changed files (data -> its readers; class -> its users)
@@ -81,7 +102,8 @@ export function affected(changed, ctx) {
   }
   const share = ctx.suites.length ? sel.size / ctx.suites.length : 0;
   if (share > MAX_SHARE) return { all: true, why: `targets ${sel.size} of ${ctx.suites.length} suites (> ${Math.round(MAX_SHARE * 100)}%)` };
-  return { all: false, selectors: [...sel].sort(), why: `${sel.size} suites (${direct.size} changed, ${deps.length} dependent files)` };
+  const add = additive.size ? `, add-only: ${[...additive.keys()].map((f) => path.basename(f)).join(' ')}` : '';
+  return { all: false, selectors: [...sel].sort(), why: `${sel.size} suites (${direct.size} changed, ${deps.length} dependent files${add})` };
 }
 
 // ---- CLI ------------------------------------------------------------------------------------------------------------------
@@ -90,7 +112,7 @@ function git(args, cwd, ok = false) {
   catch (e) { if (ok || e.status === 1) return e.stdout || ''; throw e; }
 }
 
-function buildCtx(top) {
+function buildCtx(top, base) {
   const suites = [];
   const tdir = path.join(top, 'godot/tests');
   for (const d of fs.readdirSync(tdir, { withFileTypes: true })) {
@@ -113,6 +135,14 @@ function buildCtx(top) {
   const cn = new Map();
   return {
     suites,
+    addedLines: (f) => {
+      if (!base) return null;
+      const d = git(['diff', '--no-color', '-U0', base, '--', f], top, true);
+      if (!d || /^deleted file|^new file/m.test(d)) return null;
+      const lines = d.split('\n').filter((l) => !/^(\+\+\+|---) /.test(l));
+      if (lines.some((l) => l.startsWith('-'))) return null;
+      return lines.filter((l) => l.startsWith('+')).map((l) => l.slice(1));
+    },
     testsOnly: (p) => grep(p, ['godot/tests']).filter((f) => /\.(gd|tscn|tres)$/.test(f)),
     srcOnly: (p) => grep(p, ['godot', ':(exclude)godot/tests']).filter((f) => /\.(gd|tscn|tres)$/.test(f)),
     classNameOf: (f) => {
@@ -125,9 +155,12 @@ function buildCtx(top) {
   };
 }
 
-function changedFiles(top, base) {
-  let b = base;
-  if (!b) { try { b = git(['merge-base', 'HEAD', `origin/${process.env.BASE_BRANCH || 'main'}`], top).trim(); } catch { b = ''; } }
+function baseOf(top, base) {
+  if (base) return base;
+  try { return git(['merge-base', 'HEAD', `origin/${process.env.BASE_BRANCH || 'main'}`], top).trim(); } catch { return ''; }
+}
+
+function changedFiles(top, b) {
   if (!b) return null;
   const a = git(['diff', '--name-only', b], top, true), u = git(['ls-files', '--others', '--exclude-standard'], top, true);
   return [...new Set((a + u).split('\n').filter((x) => x && x !== 'node_modules'))];
@@ -144,9 +177,10 @@ function main(argv) {
     else { console.error('usage: affected-suites.mjs [--base ref] [--files a,b | --files-from f] [--explain]'); process.exit(2); }
   }
   const top = git(['rev-parse', '--show-toplevel'], process.cwd()).trim();
-  const changed = o.files || changedFiles(top, o.base);
+  const base = baseOf(top, o.base);
+  const changed = o.files || changedFiles(top, base);
   if (!changed) { if (o.explain) console.error('no base found'); console.log('ALL'); return; }   // cannot tell what changed: be safe
-  const r = affected(changed, buildCtx(top));
+  const r = affected(changed, buildCtx(top, base));
   if (o.explain) console.error('affected-suites: ' + r.why);
   if (r.all) console.log('ALL'); else for (const s of r.selectors) console.log(s);
 }

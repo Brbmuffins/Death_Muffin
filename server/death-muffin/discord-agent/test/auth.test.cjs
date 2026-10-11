@@ -59,6 +59,9 @@ test('redaction and secret scan', () => {
   assert.ok(looksSecret('token = "abcdefghijklmnop"')); assert.ok(looksSecret('ANTHROPIC sk-ant-api03-abcdefghijklmnopqrstuvwxyz')); assert.ok(looksSecret('-----BEGIN OPENSSH PRIVATE KEY-----'));
   assert.ok(looksSecret('MTU1MTMyNzM4NTU0OTI3NTEzNg.GabcDE.' + 'x'.repeat(30)));
   assert.equal(redactText('hello\npassword: hunter2hunter2\nbye'), 'hello\n[redacted line]\nbye');
+  // content hashes in art records are not secrets; a bare long hex blob still is
+  assert.equal(looksSecret('    "outHash": "sha256:ce4016fc9c1658c76eb981d72537cf81f58cce0476a38dbeadba5cae771a747a",'), false);
+  assert.equal(looksSecret('token ce4016fc9c1658c76eb981d72537cf81f58cce0476a38dbeadba5cae771a747a'), true);
   assert.ok(!looksSecret('Make the bone drop rate a bit higher'));
   const diff = 'diff --git a/src/a.ts b/src/a.ts\n+++ b/src/a.ts\n+const k = "sk-ant-api03-abcdefghijklmnopqrstuvwxyz";\ndiff --git a/.env b/.env\n+X=1\n';
   assert.equal(scanDiffForSecrets(diff).length, 2);

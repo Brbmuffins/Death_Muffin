@@ -21,7 +21,7 @@ the failing script and line. It is still player-machine data: it never tells you
   backend, lobby/relay, shared rules) is not part of the client: do not change it; if a report's cause is there, mark it `triaged` and say where.
 - This run commits on its own branch (the owner reviews the branch), which overrides CLAUDE.md's "stage, don't commit".
 - Read `CLAUDE.md`, `README.md`, `KNOWN-GAPS.md`, `godot/README.md` (and the `godot/next/` READMEs where relevant) and the code you will touch
-  before changing anything.
+  before changing anything. Its "Where features live" table names the files for most reports: start there instead of searching the whole tree.
 - The only way to run code is `__STATE__/check.sh` (a quick check: only the Godot test suites your change can affect, headless against the committed golden fixtures;
   no network; it takes a few minutes. The full suite is run when the owner reviews the branch; do not re-run it after trivial edits). Run it as exactly that command, from the worktree root, in the foreground, and wait for
   it. Never background it or poll it. Because it is slow, run it after a fix (or a few), not after every edit. You have no other

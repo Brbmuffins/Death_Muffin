@@ -9,11 +9,16 @@
 # (tools/godot/affected-suites.mjs: changed suites, suites referencing a changed file, a small smoke set; ALL when the change is too central or too wide),
 # run through `run-all-tests.sh --only`. FULL (`--full`; ship.sh before publishing): hygiene + every suite, about 9 minutes. Summary line:
 # "GODOT TESTS: quick (14 suites) — 14 passed" / "GODOT TESTS: full (101 suites) — 101 passed" (", N FAILED" appended on failure).
+# RERUN (`--rerun a,b`; the runner and ship.sh, once, for the few suites a check just failed): hygiene + exactly those suites, one at a time. A suite
+# that fails under load (another ship's client export) passes here and costs no agent turn; a real failure fails again.
 # Run from the worktree root (the agent's cwd). Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_TEST_JOBS (optional: passed as --jobs N).
 set -uo pipefail
 MODE=quick
-for a in "$@"; do case "$a" in --full) MODE=full;; --quick) MODE=quick;; *) echo "usage: check-godot.sh [--quick|--full]" >&2; exit 2;; esac; done
-export MODE
+RERUN=""
+while [ $# -gt 0 ]; do case "$1" in --full) MODE=full;; --quick) MODE=quick;;
+  --rerun) [[ "${2:-}" =~ ^[A-Za-z0-9_-]+(,[A-Za-z0-9_-]+)*$ ]] || { echo "usage: check-godot.sh --rerun suite[,suite...]" >&2; exit 2; }; MODE=rerun; RERUN="$2"; shift;;
+  *) echo "usage: check-godot.sh [--quick|--full|--rerun a,b]" >&2; exit 2;; esac; shift; done
+export MODE RERUN
 TOP=$(git rev-parse --show-toplevel) || exit 2
 NM=$(readlink -f "$TOP/node_modules" 2>/dev/null || true)
 [ -n "$NM" ] && { mkdir -p "$NM/.vite" 2>/dev/null || true; }   # vitest keeps its results cache here; the sandbox puts a scratch tmpfs over it
@@ -65,8 +70,9 @@ export DM_PAYLOAD='
     if [ "$SEL" = ALL ]; then NOTE=", targeting fell back to all"
     elif [ -z "$SEL" ]; then echo "GODOT TESTS: quick (0 suites) — nothing to run for this change"; exit 0
     else ARGS=(--only "$(echo "$SEL" | paste -sd, -)"); echo "suites: $(echo "$SEL" | paste -sd" " -)"; fi
+  elif [ "$MODE" = rerun ]; then ARGS=(--only "$RERUN" --jobs 1); echo "re-running: ${RERUN//,/ }"
   fi
-  [ -n "${DM_TEST_JOBS:-}" ] && ARGS+=(--jobs "$DM_TEST_JOBS")
+  [ -n "${DM_TEST_JOBS:-}" ] && [ "$MODE" != rerun ] && ARGS+=(--jobs "$DM_TEST_JOBS")
   echo "== running Godot test suites ($MODE)"
   # Progress for the thread: "<done> <total>" suites in .dm-check-progress (git-ignored, removed when the run ends). Same file list as run-all-tests.sh.
   if [ "${#ARGS[@]}" -gt 0 ] && bash "$RUNNER" "${ARGS[@]}" --list > "$SCR/list.txt" 2>/dev/null; then total=$(grep -c . "$SCR/list.txt" || true)

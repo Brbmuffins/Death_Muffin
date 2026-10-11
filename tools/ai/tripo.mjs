@@ -2,21 +2,23 @@
  * tripo.mjs — Tripo v3 API pipeline (image → low-poly model → rig → retargeted clips).
  *
  * Resumable and spend-safe: every step's task id is recorded in
- * art-src/tripo/<id>/state.json (and mirrored, minus local paths, into
- * art-manifest/tripo/<id>.json). Re-running a spec skips finished steps, so a
+ * art-src/tripo/<id>/state.json (and mirrored, minus local paths, upload tokens and
+ * signed link query strings, into art-manifest/tripo/<id>.json). Re-running a spec skips finished steps, so a
  * crash or rerun never pays twice. Nothing is spent without --yes.
  *
  * Usage:
  *   node tools/ai/tripo.mjs balance
  *   node tools/ai/tripo.mjs task <task_id>
  *   node tools/ai/tripo.mjs run art-manifest/tripo-specs/<id>.json [--yes] [--until generate|rig|retarget]
+ *   node tools/ai/tripo.mjs scrub   (re-write the committed records through publicRecord; no API call)
  *
  * Spec: { id, input: "art-src/concepts/<id>.png", generation: { model, face_limit, texture_quality },
  *         rig?: { model, rig_type, spec }, animations?: ["preset:biped:idle", ...],
  *         animationMode?: "batch"|"single", animateInPlace?: boolean (default true) }
  */
-import { createWriteStream, existsSync, readFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { createWriteStream, existsSync, readdirSync, readFileSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { ART_SRC, ensureDir, loadKey, MANIFEST_DIR, readJson, redact, ROOT, sha256, sleep, writeJson } from './common.mjs';
@@ -93,6 +95,30 @@ async function download(url, dest) {
   return dest;
 }
 
+/**
+ * The committed copy of a run's state (art-manifest/tripo/<id>.json; the repo is public): no local file paths, no upload tokens (`fileToken`,
+ * `file_token`, a task's `input`/`file` naming one), and download links without their signed query string (CloudFront Policy/Signature/
+ * Key-Pair-Id: they expire within a day and only trip secret scans). The full state stays in art-src/ (git-ignored) for resuming.
+ */
+export function publicRecord(state) {
+  const tok = (v) => typeof v === 'string' && /^file_[0-9a-f-]{8,}$/i.test(v);
+  const walk = (v, key) => {
+    if (Array.isArray(v)) return v.map((x) => walk(x, key));
+    if (v && typeof v === 'object') {
+      const o = {};
+      for (const [k, x] of Object.entries(v)) {
+        if (k === 'fileToken' || k === 'file_token' || tok(x)) continue;
+        if (k === 'file' && typeof x === 'string') continue;
+        o[k] = walk(x, k);
+      }
+      return o;
+    }
+    if (typeof v === 'string' && /^https?:\/\//.test(v)) return v.replace(/\?.*$/, '');
+    return v;
+  };
+  return walk(JSON.parse(JSON.stringify(state)));
+}
+
 class Run {
   constructor(spec) {
     this.spec = spec;
@@ -104,8 +130,7 @@ class Run {
 
   save() {
     writeJson(this.statePath, this.state);
-    const pub = JSON.parse(JSON.stringify(this.state));
-    for (const s of Object.values(pub.steps)) delete s.file;
+    const pub = publicRecord(this.state);
     writeJson(join(MANIFEST_DIR, 'tripo', `${this.spec.id}.json`), {
       spec: this.spec,
       ...pub,
@@ -245,11 +270,22 @@ async function main() {
     console.log(`credits: ${before.balance} → ${after.balance} (spent ${(before.balance - after.balance).toFixed(2)}, frozen ${after.frozen})`);
     return;
   }
-  console.error('usage: tripo.mjs balance | task <id> | run <spec.json> [--yes] [--until step]');
+  if (cmd === 'scrub') {   // rewrite every committed run record through publicRecord (no API call, nothing spent)
+    const dir = join(MANIFEST_DIR, 'tripo'); let n = 0;
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+      const p = join(dir, f), before = readFileSync(p, 'utf8'), rec = publicRecord(JSON.parse(before));
+      if (JSON.stringify(rec, null, 2) + '\n' !== before) { writeJson(p, rec); n++; }
+    }
+    console.log(`scrubbed ${n} record(s) in ${dir}`);
+    return;
+  }
+  console.error('usage: tripo.mjs balance | task <id> | run <spec.json> [--yes] [--until step] | scrub');
   process.exit(1);
 }
 
-main().catch((e) => {
-  console.error('\n' + redact(e.message ?? e));
-  process.exit(1);
-});
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  main().catch((e) => {
+    console.error('\n' + redact(e.message ?? e));
+    process.exit(1);
+  });
+}

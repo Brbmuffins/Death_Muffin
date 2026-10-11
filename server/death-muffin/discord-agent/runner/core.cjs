@@ -51,6 +51,13 @@ function progressNote({ status, check, mins }) {
   }
   return `🔧 ${pct == null ? '' : `${pct}% · `}${text} · ⏱ ${mins} min`;
 }
+// The suites a Godot check failed, when a re-run of just them makes sense: 1-3 failing suite lines and no failure outside the suites (hygiene,
+// fixtures, a timeout, nothing ran). Otherwise [].
+function failedSuites(out) {
+  if (/GODOT TESTS: (repo hygiene|fixture generation|timed out|.*no suites ran)/.test(out)) return [];
+  const bad = [...new Set([...String(out).matchAll(/^([A-Za-z0-9_-]+)\s+\S+\s+exit=([1-9]\d*)/gm)].map((m) => m[1]))];
+  return bad.length >= 1 && bad.length <= 3 ? bad : [];
+}
 const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a.length - n} more` : a.join('\n'));
 
 function createRunner(cfgIn, opts = {}) {
@@ -401,7 +408,14 @@ function createRunner(cfgIn, opts = {}) {
         if (!job.lastRefusalAt || now() - job.lastRefusalAt > 60000) { job.lastRefusalAt = now(); say(job, `Only ${who} can ship this one (${p.tier} tier).`); }
         return { action: 'remove_reaction' };
       }
-      if (job.status !== 'proposed' || !p.testsOk) { audit.log('approve-refused', { userId: uid, job: job.id, why: `status ${job.status}` }); return { action: 'remove_reaction' }; }
+      if (job.status !== 'proposed' || !p.testsOk) {
+        audit.log('approve-refused', { userId: uid, job: job.id, why: `status ${job.status}` });
+        // A silently removed ✅ looked like a missed click (2026-10-11: reacted again and again). Say why once a minute, except while it ships
+        // (the ✅ that started it already counts).
+        const why = { running: 'I am still working on a newer version of this change; react ✅ on the new proposal when it posts.', generating: 'A model is still generating for this thread; react ✅ on the proposal that follows.' }[job.status];
+        if (why && (!job.lastRefusalAt || now() - job.lastRefusalAt > 60000)) { job.lastRefusalAt = now(); say(job, why); }
+        return { action: 'remove_reaction' };
+      }
       if (!auth.isFull(uid) && auth.shipsToday(uid, readShips()) >= cfg.casualShipsPerDay) {
         audit.log('approve-refused', { userId: uid, job: job.id, why: 'daily cap' });
         say(job, `That is today's limit of ${cfg.casualShipsPerDay} ships for you. The owner can still ship it.`); return { action: 'remove_reaction' };
@@ -638,13 +652,21 @@ function createRunner(cfgIn, opts = {}) {
     if (secrets.length) return { ok: false, fixable: true, why: `The secret scan flagged ${secrets.map((s) => s.file).join(', ')}. Remove anything secret-like from the change.` };
     const migrations = G.migrationsFrom(files);
     if (migrations.length && !cfg.allowMigrations) return { ok: false, fixable: false, why: 'This change adds a database migration, which is switched off for this agent.' };
-    const t = await (opts.runChecks || runChecks)(job);
+    let t = await (opts.runChecks || runChecks)(job);
+    // A few suites failing (often under load from another ship's client export, even after run-all-tests.sh retried them alone) get ONE more run of
+    // just those suites before an agent turn is spent on them. A real failure fails again and goes to the agent as before.
+    const flaky = !t.ok && GODOT ? failedSuites(t.tail) : [];
+    if (flaky.length) {
+      const r = await (opts.runChecks || runChecks)(job, ['--rerun', flaky.join(',')]);
+      audit.log('flake-rerun', { job: job.id, suites: flaky, ok: r.ok });
+      if (r.ok) t = { ...t, ok: true, summary: `${t.summary.replace(/ — .*$/, '')} — passed (${flaky.join(', ')} passed on a re-run)` };
+    }
     if (!t.ok) return { ok: false, fixable: true, why: `${CHECK} failed:\n${t.tail}`, tests: t };
     return { ok: true, files, cls, migrations, tests: t, diff, commits };
   }
-  async function runChecks(job) {
+  async function runChecks(job, args = []) {
     let r;
-    try { r = await G.run(path.join(cfg.toolsDir, CHECK), [], { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: (GODOT ? 90 : 25) * 60000, onSpawn: (p) => checkProcs.set(job.id, p) }); }
+    try { r = await G.run(path.join(cfg.toolsDir, CHECK), args, { cwd: job.worktree, env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8' }, timeoutMs: (GODOT ? 90 : 25) * 60000, onSpawn: (p) => checkProcs.set(job.id, p) }); }
     finally { checkProcs.delete(job.id); }
     const out = r.out + r.err;
     // web: the node:test counters; godot: the last "GODOT TESTS: ..." line check-godot.sh prints
@@ -652,7 +674,7 @@ function createRunner(cfgIn, opts = {}) {
     // proposals and ships run the quick check (changed + affected suites + smoke set); only sensitive ships run the full suite (ship.sh)
     const quick = GODOT && /^quick \((\d+) suites?([^)]*)\) — (.*)$/.exec(sum);
     if (quick) sum = `quick check: ${quick[1]} suites${quick[2]} — ${quick[3]}`;
-    return { ok: r.code === 0 && !r.timedOut, tail: out.trim().split('\n').slice(-30).join('\n'), summary: sum || (r.code === 0 ? (GODOT ? 'Godot test suites passed' : 'typecheck + client + server tests passed') : 'failed') };
+    return { ok: r.code === 0 && !r.timedOut, tail: out.trim().split('\n').filter((l) => !(GODOT && / exit=0 /.test(l))).slice(-30).join('\n'), summary: sum || (r.code === 0 ? (GODOT ? 'Godot test suites passed' : 'typecheck + client + server tests passed') : 'failed') };
   }
 
   async function afterTurn(job, result) {
@@ -972,7 +994,7 @@ function createRunner(cfgIn, opts = {}) {
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
       RELEASE_TITLE: releaseTitle(p.title || job.title),   // #build-alerts notice title: the proposal's title (else the thread's name), joined with any batched ships' titles
       ...(defer ? { DEFER_PUBLISH: '1' } : {}),
-      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
+      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
       MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 150 * 60000 }); }
@@ -1078,7 +1100,7 @@ function createRunner(cfgIn, opts = {}) {
     if (!pf.deferred || uid) say(job, uid ? `Retrying the client publish for \`${pf.sha}\` (${nameOf(uid)})…` : `Trying the client publish for \`${pf.sha}\` again by myself…`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, JOBID: job.id, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
       BASE_BRANCH: BB, MODE: 'godot', DEPLOY_DIR: cfg.deployDir, PUBLISH_ONLY: '1', PUBLISH_SHA: pf.sha, RELEASE_TITLE: pf.deferred ? releaseTitle() : releaseTitle((pf.proposal && pf.proposal.title) || job.title), ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}),
-      ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}) };
+      ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 60 * 60000 }); }
     finally { setBusy(false); }
@@ -1214,4 +1236,4 @@ function createRunner(cfgIn, opts = {}) {
   setTimeout(() => drainShipQueue(), 0);   // ships queued before a runner restart
   return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, tidy, archiveQuiet, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }
-module.exports = { createRunner, progressNote, cancelTypo };
+module.exports = { createRunner, progressNote, cancelTypo, failedSuites };

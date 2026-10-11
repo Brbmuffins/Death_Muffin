@@ -76,7 +76,17 @@ CHECK="$TOOLS/check.sh"; CHECK_ARGS=(); [ "$MODE" = godot ] && { CHECK="$TOOLS/c
 # change still runs its full suite.
 if [ "$MODE" = godot ] && [ ${#CHECK_ARGS[@]} -eq 0 ] && [ "$(g rev-parse HEAD^{tree})" = "$(g rev-parse "$EXPECT_HEAD^{tree}")" ]; then
   echo "tests: skipped, the merged tree is exactly the proposal's, which passed its check" | tee "$TOOLS/state/ship-$JOBID.tests.log"
-elif ! "$CHECK" "${CHECK_ARGS[@]}" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; then tail -25 "$TOOLS/state/ship-$JOBID.tests.log"; echo "RESULT: tests-failed"; exit 9; fi
+elif ! "$CHECK" "${CHECK_ARGS[@]}" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; then
+  # godot: 1-3 failing suites (and nothing failing outside the suites) get one re-run of just those, as the runner does before a proposal
+  TL="$TOOLS/state/ship-$JOBID.tests.log"; FLAKY=""
+  if [ "$MODE" = godot ] && ! grep -qE 'GODOT TESTS: (repo hygiene|fixture generation|timed out|.*no suites ran)' "$TL"; then
+    FLAKY=$(grep -oE '^[A-Za-z0-9_-]+ +[^ ]+ +exit=[1-9][0-9]*' "$TL" | awk '{print $1}' | sort -u)
+    [ "$(echo "$FLAKY" | grep -c .)" -le 3 ] || FLAKY=""
+  fi
+  if [ -n "$FLAKY" ] && { echo "== re-running $(echo $FLAKY)"; "$CHECK" --rerun "$(echo "$FLAKY" | paste -sd, -)"; } >>"$TL" 2>&1; then
+    echo "tests: $(echo $FLAKY) failed once and passed on a re-run"
+  else grep -vE ' exit=0 ' "$TL" | tail -25; echo "RESULT: tests-failed"; exit 9; fi
+fi
 fi   # (end of the normal ship's merge/gate/tests; PUBLISH_ONLY skips them: that commit was tested and pushed by the ship that failed to publish)
 
 # ---- godot: get the rollback ready BEFORE anything is pushed or published (a failure here leaves everything as it was) ----
@@ -121,6 +131,32 @@ if [ "$MODE" = godot ] && [ -n "$DEFER" ]; then echo "RESULT: merged ${SHA:0:12}
 say "deploying ${SHA:0:12}"
 LOG="$TOOLS/state/ship-$JOBID.deploy.log"
 if [ "$MODE" = godot ]; then
+  # The backend first, when the server files this revision installs differ from the installed ones (2026-10-11: two Godot ships published a
+  # client that called a route the live server did not have yet). deploy-release.sh --if-changed is a no-op otherwise; it runs its own server
+  # tests, DB backup and ROLLBACK.sh, and stays quiet (the client publish below announces the release). Deferred merges get it from the ship that
+  # publishes them. Test runs (DEPLOY_CMD set) never reach the real script: BACKEND_DEPLOY_CMD stands in for it, or the step is skipped.
+  BRB=""
+  if [ -n "${BACKEND_DEPLOY_CMD:-}" ] || [ -z "${DEPLOY_CMD:-}" ]; then
+    say "checking the backend for ${SHA:0:12}"
+    BLOG="$TOOLS/state/ship-$JOBID.backend.log"
+    BSW="$WT_ROOT/backend-$JOBID"
+    if [ -n "${BACKEND_DEPLOY_CMD:-}" ]; then bash -c "$BACKEND_DEPLOY_CMD" deploy-backend --if-changed "$SHA" $MIGRATIONS >"$BLOG" 2>&1; BDRC=$?
+    else
+      # the deploy script of the revision being shipped (PUBLISH_ONLY has no merged worktree of its own)
+      [ -n "$PUBLISH_ONLY" ] && { g -C "$REPO" worktree add -q --detach "$BSW" "$SHA" >/dev/null 2>&1 || { echo "RESULT: deploy-failed ${SHA:0:12} backend worktree"; exit 11; }; }
+      BDIR="$SW"; [ -n "$PUBLISH_ONLY" ] && BDIR="$BSW"
+      # shellcheck disable=SC2086
+      NO_ANNOUNCE=1 bash "$BDIR/server/death-muffin/deploy-release.sh" --if-changed "$SHA" $MIGRATIONS >"$BLOG" 2>&1; BDRC=$?
+      [ -n "$PUBLISH_ONLY" ] && { g -C "$REPO" worktree remove --force "$BSW" >/dev/null 2>&1; g -C "$REPO" worktree prune >/dev/null 2>&1; }
+    fi
+    if [ $BDRC -ne 0 ]; then tail -25 "$BLOG"; [ -n "$BK" ] && abandon_backup; echo "RESULT: deploy-failed ${SHA:0:12} backend (the client was not published)"; exit 11; fi
+    BRB=$(grep -oE 'Rollback: [^ ]+ROLLBACK\.sh' "$BLOG" | tail -1 | sed 's/^Rollback: //')
+    if [ -n "$BRB" ]; then
+      echo "Backend: deployed ${SHA:0:12}, rollback $BRB"
+      # one ROLLBACK.sh undoes the whole ship: the server code first, then the previous client
+      [ -f "$BK/ROLLBACK.sh" ] && sed -i "s|^exec bash |bash $(printf %q "$BRB")\nexec bash |" "$BK/ROLLBACK.sh"
+    else echo "Backend: unchanged"; fi
+  fi
   publish_once() {
     if [ -n "${DEPLOY_CMD:-}" ]; then bash -c "$DEPLOY_CMD" deploy "$SHA"     # test hook only (config.deployCmd): never set in production
     else REPO="$REPO" bash "$BK/publish-godot-client.sh" "$SHA"; fi

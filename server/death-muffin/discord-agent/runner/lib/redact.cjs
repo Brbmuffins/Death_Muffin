@@ -10,7 +10,7 @@ const PATTERNS = [
   /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, // JWT
   /\b(?:mysql|postgres(?:ql)?|redis|mongodb):\/\/[^\s]*:[^\s@]*@/i,
   /\b(password|passwd|secret|api[_-]?key|token|private[_-]?key)\b\s*[:=]\s*['"]?[^\s'"]{8,}/i,
-  /\b[0-9a-f]{40,}\b/i,                                         // long hex blobs
+  /(?<!sha256:)\b[0-9a-f]{40,}\b/i,                            // long hex blobs (not `sha256:<hex>` content hashes, e.g. art provenance)
   /\btsk_[A-Za-z0-9_-]{16,}/,                                  // Tripo API key
   /\bAIza[0-9A-Za-z_-]{30,}/, /\bAQ\.[A-Za-z0-9_-]{20,}/,       // Google / Gemini API keys
 ];
