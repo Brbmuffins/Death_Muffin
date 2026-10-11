@@ -402,7 +402,7 @@
   "unleash_souls": {
    "fx": "reaper",
    "colour": "Soul green",
-   "tip": "R: lets every soul in the bag go at once. Each one flies to the nearest enemy and strikes it. With nobody to hunt they circle you and wait. It empties the bag, so Reap and Wraith Walk lose their souls."
+   "tip": "R: lets every soul in the bag go at once. They burst outward in a ring, then each one picks a nearby enemy (sharing them out) and strikes it. With nobody to hunt they circle you and wait. It empties the bag, so Reap and Wraith Walk lose their souls."
   }
  },
  "CLASS_CHANGE_COUNSEL": "Change class whenever you like through Settings → Account → Change class. Your level, gold, items and permanent progress stay with the same character; the new discipline begins in the Sexton's Acre.",

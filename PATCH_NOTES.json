@@ -3,6 +3,7 @@
     "date": "2026-10-11",
     "title": "Necromancer Look: Staff in Hand",
     "items": [
+      "Reaper: Unleash Souls now sends every soul (up to 30) out in an even ring first, and only then does each one lock onto an enemy, sharing out the targets instead of all piling onto the nearest one.",
       "The staff (and every weapon) now sits in your hero's hand and moves with it: no more staff hinged at the elbow, and casts swing the staff forward instead of leaving it behind.",
       "Gear keeps your robe's own colours: worn pieces tint the trim and edges instead of washing the whole robe.",
       "Weapons glow by rarity (rare, epic and legendary get a stronger halo and drifting motes that streak as you swing), coloured by the weapon's metal or your socketed runes.",

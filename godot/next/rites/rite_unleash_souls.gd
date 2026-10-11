@@ -1,11 +1,15 @@
 extends DmRiteModule
-## Unleash Souls (the Reaper, R): needs 1 soul and lets the whole bag go at once, 8 s. Every soul is a wisp that hunts the enemy nearest to it and strikes it
-## once for power 0.45 (spell power read before the bag is emptied, so a full bag also hits harder). With nothing to hunt the wisps circle her until an enemy
+## Unleash Souls (the Reaper, R): needs 1 soul and lets the whole bag go at once (up to 30), 8 s. The wisps burst outward in an even 360 degree ring and fly
+## straight for OUT_T seconds; only then does each hunt a target (the nearest to it, but enemies already chosen count as farther, so the wisps spread
+## out instead of overkilling one weak mob) and strike it once for power 0.45 (spell power read before the bag is emptied, so a full bag also hits harder). With nothing to hunt the wisps circle her until an enemy
 ## comes within reach (no time limit; they go when she dies). Host: `mem(id).wisps` ({a, x, z, eid, dmg}), looked after in `step`; every peer draws the wisps
 ## from the events: `release` (the burst and the circling wisps), `sync` (wisps that found a target fly off, the circle shrinks or grows), `hit`, `end`.
 
 const SPEED := 16.0       ## m/s a hunting soul flies
-const SEEK_R := 30.0      ## m from her that a soul looks for prey
+const OUT_SPEED := 13.0   ## m/s the ring flies outward before any wisp locks on
+const OUT_T := 0.7        ## s of straight flight
+const LOAD_PAD := 5.0     ## m of extra distance per wisp already sent at an enemy, when picking prey
+const SEEK_R := 30.0     ## m from her that a soul looks for prey
 const SEEK_EVERY := 0.25  ## s between searches (hunting souls steer every tick; only the search is spaced)
 const ORBIT_R := 1.6
 const ORBIT_SPEED := 2.2  ## rad/s
@@ -26,11 +30,11 @@ func resolve(c: DmRiteCaster, _intent: Dictionary) -> String:
 	var n := DmAbilities.soul_cost(c.p, id) + DmPlayerRules.bag_spend(c.p, int(c.p["souls"]))   # the price (paid by the cast) plus the rest of the bag
 	var origin := c.pos()
 	for i in n:
-		wisps.append({"a": float(i) / float(n) * TAU, "x": origin.x, "z": origin.z, "eid": -1, "dmg": dmg})
+		wisps.append({"a": float(i) / float(n) * TAU, "x": origin.x, "z": origin.z, "eid": -1, "dmg": dmg, "t": OUT_T})
 	m["seek"] = 0.0
 	m["refresh"] = REFRESH_S
-	m["shown"] = wisps.size()
-	c.broadcast({"t": "release", "rite": id, "by": c.peer_id, "x": origin.x, "z": origin.z, "n": n, "orbit": wisps.size()})
+	m["shown"] = 0
+	c.broadcast({"t": "release", "rite": id, "by": c.peer_id, "x": origin.x, "z": origin.z, "n": n, "orbit": 0})
 	c.push_state()
 	return ""
 
@@ -52,11 +56,22 @@ func step(c: DmRiteCaster, dt: float) -> void:
 	if seeking:
 		m["seek"] = SEEK_EVERY
 		prey = _prey(c, origin)
+	var load := {}   # enemy id -> wisps already sent at it
+	if seeking and not prey.is_empty():
+		for w: Dictionary in wisps:
+			if int(w["eid"]) >= 0:
+				load[int(w["eid"])] = int(load.get(int(w["eid"]), 0)) + 1
 	var hits: Array = []
 	var dmg_each := 0.0
 	var i := wisps.size() - 1
 	while i >= 0:
 		var w: Dictionary = wisps[i]
+		if float(w["t"]) > 0.0:   # still flying outward in the ring
+			w["t"] = float(w["t"]) - dt
+			w["x"] = float(w["x"]) + cos(float(w["a"])) * OUT_SPEED * dt
+			w["z"] = float(w["z"]) + sin(float(w["a"])) * OUT_SPEED * dt
+			i -= 1
+			continue
 		var e: DmEnemy = null
 		if int(w["eid"]) >= 0:
 			e = c.world.enemy_by_id(int(w["eid"])) as DmEnemy
@@ -64,9 +79,10 @@ func step(c: DmRiteCaster, dt: float) -> void:
 				e = null
 				w["eid"] = -1
 		if e == null and seeking and not prey.is_empty():
-			e = _nearest(prey, float(w["x"]), float(w["z"]))
+			e = _pick(c, prey, float(w["x"]), float(w["z"]), load)
 			if e != null:
 				w["eid"] = int(c.world.enemy_id(e))
+				load[w["eid"]] = int(load.get(w["eid"], 0)) + 1
 				go.append([float(w["x"]), float(w["z"]), int(w["eid"])])
 		if e == null:   # circling her
 			w["a"] = float(w["a"]) + ORBIT_SPEED * dt
@@ -91,7 +107,7 @@ func step(c: DmRiteCaster, dt: float) -> void:
 		i -= 1
 	var orbiting := 0
 	for w: Dictionary in wisps:
-		if int(w["eid"]) < 0:
+		if int(w["eid"]) < 0 and float(w["t"]) <= 0.0:
 			orbiting += 1
 	m["refresh"] = float(m["refresh"]) - dt
 	if not go.is_empty() or orbiting != int(m["shown"]) or (float(m["refresh"]) <= 0.0 and orbiting > 0):
@@ -115,11 +131,12 @@ func _prey(c: DmRiteCaster, origin: Vector3) -> Array:
 	return out
 
 
-func _nearest(prey: Array, x: float, z: float) -> DmEnemy:
+## The enemy a wisp at (x, z) hunts: the nearest, with LOAD_PAD metres added per wisp already sent at it, so a crowd is shared out.
+func _pick(c: DmRiteCaster, prey: Array, x: float, z: float, load: Dictionary) -> DmEnemy:
 	var best: DmEnemy = null
 	var best_d := INF
 	for e: DmEnemy in prey:
-		var d := Vector2(e.global_position.x - x, e.global_position.z - z).length_squared()
+		var d := Vector2(e.global_position.x - x, e.global_position.z - z).length() + LOAD_PAD * float(load.get(int(c.world.enemy_id(e)), 0))
 		if d < best_d:
 			best_d = d
 			best = e
@@ -137,6 +154,11 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 			c.fx.lf(x, 1.2, z, DmReaperRites.GREEN, 12.0, 0.3)
 			c.fx.sfx("wail", x, z, 0.8)
 			c.shake_requested.emit(0.03 + 0.001 * float(ev["n"]))
+			var n := int(ev["n"])
+			var from := Vector3(x, Y, z)
+			for k in n:   # the ring: one sprite per soul, flying straight out
+				var a := float(k) / float(n) * TAU
+				c.fx.shot(from, from + Vector3(cos(a), 0.0, sin(a)) * OUT_SPEED * OUT_T, OUT_SPEED, 0.0, "sprite", DmReaperRites.GREEN, {"tex": "wisp", "size": 0.9})
 			_circle(c, vis, int(ev["orbit"]))
 		"sync":
 			_circle(c, vis, int(ev["orbit"]))

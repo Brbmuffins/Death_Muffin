@@ -282,14 +282,17 @@ func _unleash() -> void:
 	var expect := 8.0 * DmAbilities.rite_damage(sp7, "unleash_souls")
 	ok(wisps.is_empty() and is_equal_approx(_lost(foe), expect), "unleash: an enemy shows up and every wisp finds it (%.1f of %.1f)" % [_lost(foe), expect])
 	ok(not _events(w, "unleash_souls", "hit").is_empty() and not _events(w, "unleash_souls", "end").is_empty(), "unleash: hit and end events were sent")
-	# the nearest enemy to each wisp is the one it hunts
+	# the ring flies outward before anything locks on, then the wisps share out the enemies instead of all hitting the nearest
 	_ready_cast(c)
-	c.p["souls"] = 3
+	c.p["souls"] = 6
 	var near := _robber(w, h, Vector3(0, 0, 4))
-	var far := _robber(w, h, Vector3(0, 0, -20))
+	var far := _robber(w, h, Vector3(0, 0, -9))
 	c.request_cast("unleash_souls", Vector3(0, 0, 0))
-	_step(c, 2.0)
-	ok(_lost(near) > 0.0 and _lost(far) == 0.0 and (c.mem("unleash_souls")["wisps"] as Array).is_empty(), "unleash: they go for the nearer enemy, not the far one")
+	var ring: Array = c.mem("unleash_souls")["wisps"]
+	_step(c, 0.3)
+	ok(ring.size() == 6 and _lost(near) == 0.0 and _lost(far) == 0.0, "unleash: the wisps fly outward first, nothing is struck yet")
+	_step(c, 3.0)
+	ok(_lost(near) > 0.0 and _lost(far) > 0.0 and ring.is_empty(), "unleash: the wisps are shared between both enemies (%.1f / %.1f)" % [_lost(near), _lost(far)])
 	await _teardown(s)
 
 

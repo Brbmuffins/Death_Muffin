@@ -901,7 +901,7 @@
    "id": "unleash_souls",
    "slot": 6,
    "name": "Unleash Souls",
-   "description": "Release every soul in your bag at once. Each one hunts the nearest enemy and strikes it; with nothing to hunt they circle you until something shows up. Needs at least 1 soul.",
+   "description": "Release every soul in your bag at once. They fly outward in a ring, then each one locks onto a nearby enemy and strikes it; with nothing to hunt they circle you until something shows up. Needs at least 1 soul.",
    "icon": "art/abilities/necro-soul-siphon.webp",
    "targeting": "self",
    "cooldownMs": 8000,
