@@ -62,6 +62,16 @@ func _wiring() -> void:
 	var sl := DmLoadout.sanitize_loadout(null, 1.0, DmAbilities.kit_for("reaper"))
 	ok(sl.size() == 5 and not sl.has(null) and sl.find("harvest_spin") == 4, "wiring: the default loadout fills all five slots")
 	ok(DmContent.get_export("codex", "CODEX_DISCIPLINES").has("reaper"), "wiring: the Reaper has a Codex entry")
+	# built to stand in the pack: more health, a share of every blow shrugged off, nothing lands during Wraith Walk's rush
+	var mst: Dictionary = DmCharacterBuild.build({"class_index": 3, "level": 5}, [], {})["stats"]
+	ok(absf(float(st["maxHp"]) / float(mst["maxHp"]) - 1.3) < 0.02, "survival: 30%% more health than a Mourner (%.0f vs %.0f)" % [st["maxHp"], mst["maxHp"]])
+	var rp := DmPlayerRules.new_state(st, "reaper")
+	var np := DmPlayerRules.new_state(st, "necromancer")
+	var rt := DmPlayerRules.take_damage(rp, 100.0, 0.0, 1000.0)
+	var nt := DmPlayerRules.take_damage(np, 100.0, 0.0, 1000.0)
+	ok(is_equal_approx(rt, nt * 0.85), "survival: she takes 15%% less from a blow (%.1f vs %.1f)" % [rt, nt])
+	rp["phasedUntil"] = 2000.0
+	ok(DmPlayerRules.take_damage(rp, 100.0, 0.0, 1500.0) == 0.0 and DmPlayerRules.take_damage(rp, 100.0, 0.0, 2000.0) > 0.0, "survival: untouchable until phasedUntil, hit again after")
 
 
 # ---- the rites ----------------------------------------------------------------------------------------------------------------------------
@@ -154,7 +164,9 @@ func _rites() -> void:
 	var off_lane := _robber(w, h, Vector3(4, 0, 4.0))
 	c.p["souls"] = 8
 	var e3: float = c.essence()
+	var cast_at := c.now_ms
 	c.request_cast("wraith_walk", Vector3(20, 0, 0))
+	ok(is_equal_approx(float(c.p["phasedUntil"]), cast_at + 320.0), "walk: untouchable for the 0.32 s rush")
 	var evs := _events(w, "wraith_walk", "walk")
 	ok(evs.size() == 1, "walk: one event")
 	var ev: Dictionary = evs[0]
@@ -171,6 +183,29 @@ func _rites() -> void:
 	body.dashing = false
 	c.request_cast("wraith_walk", Vector3(c.p["x"], 0, c.p["z"]))
 	ok(rej.size() == 1 and rej[0][1] == "no_target", "walk: a cursor on her makes no dash")
+
+
+	# life steal: each enemy a swing strikes heals 1.5% of her health, at most 6% a swing; the thrown scythe heals nothing
+	var mx := float(c.p["stats"]["maxHp"])
+	_ready_cast(c)
+	c.p["hp"] = mx * 0.5
+	var lone := _robber(w, h, Vector3(0, 0, 30))
+	body.teleport(Vector3(0, 0, 28))
+	c.p["x"] = 0.0
+	c.p["z"] = 28.0
+	c.request_cast("scythe_sweep", Vector3(0, 0, 34))
+	ok(_lost(lone) > 0.0 and is_equal_approx(float(c.p["hp"]), mx * 0.515), "leech: one enemy struck heals 1.5%% (%.1f of %.1f)" % [c.p["hp"], mx])
+	for i in 6:
+		_robber(w, h, Vector3(1.5 * cos(i), 0, 28.0 + 1.5 * sin(i)))
+	_ready_cast(c)
+	c.p["hp"] = mx * 0.5
+	c.request_cast("harvest_spin", Vector3(0, 0, 34))
+	ok(is_equal_approx(float(c.p["hp"]), mx * 0.56), "leech: a spin through 7 enemies heals the 6%% cap (%.1f)" % c.p["hp"])
+	_ready_cast(c)
+	c.p["hp"] = mx * 0.5
+	c.request_cast("scythe_throw", Vector3(0, 0, 30))
+	_step(c, 2.6)
+	ok(is_equal_approx(float(c.p["hp"]), mx * 0.5), "leech: the thrown scythe heals nothing (%.1f)" % c.p["hp"])
 
 	# not enough energy
 	_ready_cast(c)

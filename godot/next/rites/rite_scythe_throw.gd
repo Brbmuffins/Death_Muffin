@@ -30,7 +30,7 @@ func step(c: DmRiteCaster, _dt: float) -> void:
 			spins.remove_at(i)
 		elif c.now_ms >= float(s["next"]):
 			s["next"] = float(s["next"]) + float(DmReaperRites.k()["throwTickS"]) * 1000.0
-			var marks := DmReaperRites.strike(c, id, DmReaperRites.cone(c, float(s["x"]), float(s["z"]), 0.0, 1.0, float(s["r"]), 180.0), float(s["dmg"]))
+			var marks := DmReaperRites.strike(c, id, DmReaperRites.cone(c, float(s["x"]), float(s["z"]), 0.0, 1.0, float(s["r"]), 180.0), float(s["dmg"]), false)   # thrown: no leech
 			if not marks.is_empty():
 				c.broadcast({"t": "tick", "rite": id, "by": c.peer_id, "x": float(s["x"]), "z": float(s["z"]), "r": float(s["r"]), "hits": marks, "amount": float(s["dmg"])})
 				c.push_state()
@@ -45,11 +45,15 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 		var life := float(ev["life"])
 		c.fx.decal("ring", DmReaperRites.GREEN, x, z, r, life, 0.55, {"spin": 7.0, "fadeOut": 0.4})
 		c.fx.decal("crescent", DmReaperRites.PALE, x, z, r * 0.8, life, 0.8, {"spin": 14.0, "fadeOut": 0.3})
+		if DmFxTex.has_sheet("trail_arc"):
+			DmReaperRites.whirl(c, x, z, r, 0.4)
 		c.fx.smoke(x, 0.5, z, 5, DmReaperRites.DEEP, r * 0.5, 1.0, 1.0, 0.8, 1.0, {"shrink": -0.4})
 		c.fx.lf(x, 1.2, z, DmReaperRites.GREEN, 16.0, 0.3)
 		c.fx.sfx("storm", x, z, 0.9)
 		c.shake_requested.emit(0.03)
 		return
+	if DmFxTex.has_sheet("trail_arc"):   # each cutting turn of the spinning blade
+		DmReaperRites.whirl(c, x, z, float(ev["r"]), 0.25)
 	for h: Vector3 in ev["hits"]:
 		c.fx.emit(h.x, 0.9, h.z, 3, DmReaperRites.GREEN, 0.2, 2.2, 1.0, 0.3, 0.1, {"gravity": 8.0})
 		c.hit_number.emit(h, float(ev["amount"]), false)

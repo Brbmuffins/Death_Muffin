@@ -35,15 +35,21 @@ static func cone(c: DmRiteCaster, ox: float, oz: float, dx: float, dz: float, re
 	return out
 
 
-## HOST. One blow of `dmg` to each target (kill credit to the caster); returns the hit marks to put in the event (at most SHOWN).
-static func strike(c: DmRiteCaster, rite: String, targets: Array, dmg: float) -> Array:
+## HOST. One blow of `dmg` to each target (kill credit to the caster); returns the hit marks to put in the event (at most SHOWN). With `leech`,
+## every enemy struck heals her leechPerHit of her max health, at most leechSwingCap a swing: standing in the pack is how she stays up.
+static func strike(c: DmRiteCaster, rite: String, targets: Array, dmg: float, leech: bool = true) -> Array:
 	var marks: Array = []
+	var struck := 0
 	for e: DmEnemy in targets:
 		if not DmStatusSet.hit(e, dmg, c.body):
 			continue
+		struck += 1
 		c.hit_resolved.emit(rite, int(c.world.enemy_id(e)), dmg, false, float(e.get("hp")) <= 0.0)
 		if marks.size() < SHOWN:
 			marks.append(Vector3(e.global_position.x, 0.9, e.global_position.z))
+	if leech and struck > 0:
+		var K := k()
+		c.heal(float(c.p["stats"]["maxHp"]) * minf(float(K["leechPerHit"]) * float(struck), float(K["leechSwingCap"])))
 	return marks
 
 
@@ -77,16 +83,25 @@ static func draw_circle(c: DmRiteCaster, ev: Dictionary) -> void:
 	var z := float(ev["z"])
 	var r := float(ev["r"])
 	c.fx.decal("ring", GREEN, x, z, r, 0.45, 0.9, {"growFrom": 0.3, "fadeOut": 0.3})
-	c.fx.decal("ring", PALE, x, z, r * 0.7, 0.3, 0.5, {"growFrom": 0.2, "spin": 6.0})
+	if DmFxTex.has_sheet("trail_arc"):   # the melee pack's swing trail runs once round her (README "Flipbook sheets")
+		whirl(c, x, z, r, 0.32)
+	else:
+		c.fx.decal("ring", PALE, x, z, r * 0.7, 0.3, 0.5, {"growFrom": 0.2, "spin": 6.0})
 	c.fx.smoke(x, 0.4, z, 4, DEEP, r * 0.5, 1.2, 0.8, 0.6, 0.9, {"shrink": -0.4})
 	c.fx.lf(x, 1.0, z, GREEN, 14.0, 0.22)
 	c.fx.sfx("ivoryCleave", x, z, 1.2)
 	_hits(c, ev)
 
 
+## The melee pack's swing trail lying flat round (x, z), one turn over `secs` (callers check DmFxTex.has_sheet("trail_arc")).
+static func whirl(c: DmRiteCaster, x: float, z: float, r: float, secs: float) -> void:
+	c.fx.decal("trail_arc", PALE, x, z, r * 1.15, secs, 1.0, {"y": 0.3, "fadeIn": 0.0, "fadeOut": 0.1})
+
+
 static func _hits(c: DmRiteCaster, ev: Dictionary) -> void:
 	for h: Vector3 in ev["hits"]:
 		c.fx.emit(h.x, 0.9, h.z, 5, GREEN, 0.2, 2.4, 1.1, 0.35, 0.12, {"gravity": 8.0})
+		c.fx.hit_flash(h.x, 1.0, h.z, GREEN, 0.9, 0.16, "hit_flash", 1.5, 0.16)   # the scythe's contact flash, in her green
 		c.hit_number.emit(h, float(ev["amount"]), false)
 	if not (ev["hits"] as Array).is_empty():
 		c.fx.sfx("boneHit", float(ev["x"]), float(ev["z"]))

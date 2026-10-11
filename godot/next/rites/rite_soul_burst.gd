@@ -23,6 +23,8 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 	DmReaperRites.draw_circle(c, ev)
 	var x := float(ev["x"])
 	var z := float(ev["z"])
+	if DmFxTex.has_sheet("crush_slam"):   # the melee pack's ground slam under the blast
+		c.fx.flash(x, 0.6, z, DmReaperRites.GREEN, float(ev["r"]) * 0.9, 0.5, {"tex": "crush_slam"})
 	c.fx.emit(x, 1.0, z, 10 + 3 * int(ev["souls"]), DmReaperRites.PALE, float(ev["r"]) * 0.5, 4.0, 2.0, 0.8, 0.18, {"gravity": 0.5})
 	c.fx.sfx("wail", x, z, 0.8)
 	c.shake_requested.emit(0.06 + 0.002 * float(ev["souls"]))

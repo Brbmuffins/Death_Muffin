@@ -7724,5 +7724,24 @@
     "rawHash": "sha256:25fe7d2dd60052731f06c6267169e979bbf5acb361012d94e76b9ddd9f5b3bd1",
     "outHash": "sha256:fcd72db2fba0b814e5b25ed8a4c86471821a689bb4f047976900acd269f894ce",
     "generatedAt": "2026-10-02T02:05:43.007Z"
+  },
+  "portrait_reaper": {
+    "generator": "owner-submission",
+    "source": "~/character-concept-submission/reaper/reaper-character-green.png (owner, 2026-10-11)",
+    "out": "public/art/portraits/reaper.webp",
+    "post": {
+      "crop": [
+        200,
+        0,
+        1145,
+        1260
+      ],
+      "resize": [
+        480,
+        640
+      ],
+      "format": "webp"
+    },
+    "sha256": "9b4aec2484518cad2208b8b91d9e99bf4cec4ec0ec4787c5a9b8e2fe2893d5dd"
   }
 }
