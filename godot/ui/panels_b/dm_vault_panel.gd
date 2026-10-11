@@ -210,6 +210,11 @@ func _build() -> void:
 				cell.pressed.connect(_on_vault_pressed.bind(row))
 			vg.add_child(cell)
 			vault_slots[idx] = cell
+		for _i in DmBag.BAG_SIZE - DmVault.VAULT_TAB_SIZE:   # a tab holds 40 slots: dim, inert cells fill the sixth row so the grid matches the bag's
+			var pad := _cell({}, false)
+			pad.modulate.a = 0.3
+			pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			vg.add_child(pad)
 
 	var off := busy or not loaded
 	var dep_row := DmPb.hbox(8)
