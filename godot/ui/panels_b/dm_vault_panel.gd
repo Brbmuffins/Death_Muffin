@@ -196,6 +196,7 @@ func _build() -> void:
 				row = s
 		var cell := _cell(row, is_locked(row) if not row.is_empty() else false)
 		if not row.is_empty():
+			cell.press_on_release = true   # click moves on release; press-and-drag drags
 			cell.pressed.connect(_on_bag_pressed.bind(row))
 			if int(row.get("equipped", 0)) == 0:
 				cell.drag_data = {"type": DRAG_TYPE, "from": "bag", "row": row}
@@ -238,6 +239,7 @@ func _build() -> void:
 					row = v
 			var cell := _cell(row, false, "vault")
 			if not row.is_empty():
+				cell.press_on_release = true   # click moves on release; press-and-drag drags
 				cell.pressed.connect(_on_vault_pressed.bind(row))
 				cell.drag_data = {"type": DRAG_TYPE, "from": "vault", "row": row}
 			cell.accepts = _accepts.bind("bag")   # a Vault cell takes what comes from the bag

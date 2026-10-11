@@ -681,6 +681,25 @@ func _t_vault() -> void:
 	_eq(ev.back(), ["dep", 0], "dropping a bag item on the Vault deposits it")
 	v.bag_slots[20]._drop_data(Vector2.ZERO, v.vault_slots[2].drag_data)
 	_eq(ev.back(), ["wd", 2], "dropping a Vault item on the bag withdraws it")
+	# real mouse input (the signal-level checks above missed this, 2026-10-10): a press alone moves nothing because a drag may follow,
+	# the release moves it, and a drag that began in between cancels the click
+	var c0: DmItemSlot = v.bag_slots[0]
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.pressed = false
+	var n0 := ev.size()
+	c0._gui_input(down)
+	_eq(ev.size(), n0, "pressing a Vault-window item moves nothing yet (a drag may follow)")
+	c0._gui_input(up)
+	_eq(ev.back(), ["dep", 0], "releasing without a drag deposits it")
+	var n1 := ev.size()
+	c0._gui_input(down)
+	c0.notification(Control.NOTIFICATION_DRAG_BEGIN)
+	c0._gui_input(up)
+	_eq(ev.size(), n1, "a drag between press and release does not also click")
 	var stack_slot := -1
 	for s: Dictionary in st["bag"]:
 		if int(s["quantity"]) > 1 and int(s.get("equipped", 0)) == 0:

@@ -26,6 +26,10 @@ var plain_tip := false
 var index: int = -1
 ## Godot drag source (the web only drags brews onto the HUD belt: InventoryPanel `draggable` + BELT_DRAG_TYPE). null = not draggable.
 var drag_data: Variant = null
+## A cell whose click acts AND which can be dragged (the Vault): `pressed` fires on release instead of press, and not at all when a drag
+## began in between (2026-10-10: the Vault moved the stack on press, so a drag never started).
+var press_on_release := false
+var _press_armed := false
 ## Drop target test: Callable(slot, payload) -> bool. Invalid = this cell takes no drops.
 var accepts: Callable = Callable()
 var selected := false:
@@ -74,6 +78,12 @@ func is_filled() -> bool:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT and _press_armed:
+		_press_armed = false
+		accept_event()
+		if is_filled():
+			pressed.emit(self)
+		return
 	if event is InputEventMouseButton and event.pressed:
 		# A handler may rebuild the panel and free this cell mid-click; without an explicit accept the click reaches the world
 		# (click-to-move) as unhandled input.
@@ -83,10 +93,17 @@ func _gui_input(event: InputEvent) -> void:
 				return
 			if event.double_click:
 				double_clicked.emit(self)
+			elif press_on_release:
+				_press_armed = true
 			else:
 				pressed.emit(self)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and is_filled():
 			right_clicked.emit(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_BEGIN:
+		_press_armed = false   # a drag started: the release must not also click
 
 
 func _get_drag_data(_at: Vector2) -> Variant:
