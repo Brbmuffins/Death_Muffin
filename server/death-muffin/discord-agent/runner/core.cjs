@@ -100,6 +100,7 @@ function createRunner(cfgIn, opts = {}) {
     if (p.files) p.files = p.files.map((f) => ({ name: safeName(f.name), b64: f.b64 }));   // binary images: never run through redactText
     if (p.embed) p.embed = redactDeep(p.embed);
     const op = { id: crypto.randomBytes(6).toString('hex'), target: typeof target === 'string' ? { threadId: target } : target, ...p, sentAt: 0, createdAt: now() };
+    if ((p.content || p.embed || p.files || p.file) && op.target.threadId && jobs[String(op.target.threadId)]) jobs[String(op.target.threadId)].archived = false;   // a post reopens an archived thread
     outbox.push(op); if (cb) callbacks.set(op.id, cb);
     const w = waiters; waiters = []; w.forEach((f) => f());
     return op.id;
@@ -185,6 +186,7 @@ function createRunner(cfgIn, opts = {}) {
     if (!cfg.channelId || !inScope(ev)) return { action: 'ignore' };
     if (ev.type === 'thread-deleted') return handleThreadDeleted(ev);
     if (ev.type === 'reaction') return handleReaction(ev);
+    if (ev.threadId && jobs[String(ev.threadId)]) { const j = jobs[String(ev.threadId)]; j.archived = false; j.seenAt = now(); }   // anyone's message reopens an archived thread in Discord
     const role = auth.roleOf(ev.userId);
     if (!role) { audit.log('ignored-unlisted', { userId: String(ev.userId), mentioned: !!ev.mentioned }); return { action: 'ignore' }; }
     const text = String(ev.text || '').trim();
@@ -1176,6 +1178,24 @@ function createRunner(cfgIn, opts = {}) {
     if (n) save();
     return n;
   }
+  // Archiving (owner, 2026-10-11: keep the channel organized, everyone can still browse archived threads): a shipped or discarded job's
+  // thread is archived after an hour without activity (cfg.archiveAfterMin), an idle one without a proposal after a day (cfg.archiveIdleAfterMin).
+  // A pending rename (the ✅/❌ marker) goes first. Discord reopens an archived thread when anyone posts in it; that clears job.archived, so
+  // the thread is archived again once it is quiet. Archive ops are acked by the adapter, so they are re-sent while the bot is away.
+  function archiveQuiet() {
+    const mins = (v, d) => (v != null ? v : d) * 60000;
+    const doneAfter = mins(cfg.archiveAfterMin, 60), idleAfter = mins(cfg.archiveIdleAfterMin, 1440);
+    let n = 0;
+    for (const j of Object.values(jobs)) {
+      if (j.archived || !j.threadId || j.running || j.queue.length || j.shipQueued || j.publishFailed || starting.has(j.threadId) || goneThread(j.threadId)) continue;
+      const after = ['shipped', 'discarded'].includes(j.status) ? doneAfter : (j.status === 'idle' && !j.proposal ? idleAfter : null);
+      const last = Math.max(j.lastActive || 0, j.seenAt || 0, Date.parse(((j.history || []).slice(-1)[0] || {}).at) || 0);
+      if (after == null || now() - last < after || renamer.pending(j.threadId)) continue;
+      j.archived = true; n++; post({ threadId: j.threadId }, { archive: { threadId: j.threadId } });
+    }
+    if (n) { save(); audit.log('threads-archived', { count: n }); }
+    return n;
+  }
   // sweep: abandoned idle threads release their worktree
   async function sweep(staleDays = 7) {
     tidy();
@@ -1192,6 +1212,6 @@ function createRunner(cfgIn, opts = {}) {
   if (art) art.reconcile().catch((e) => console.error('art reconcile', e.message));   // a run the previous process never settled is closed from the balance delta
   pump();
   setTimeout(() => drainShipQueue(), 0);   // ships queued before a runner restart
-  return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, tidy, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
+  return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, tidy, archiveQuiet, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }
 module.exports = { createRunner, progressNote, cancelTypo };

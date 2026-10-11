@@ -140,6 +140,15 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       if (n && n !== ch.name) await ch.setName(n, 'Death Muffin dev agent: issue title');
     } catch (e) { log('[dm-agent] rename failed', e.message); }
   }
+  // Archiving a finished job's thread (the runner decides when). The bot started the thread; if Discord refuses, give the bot Manage Threads
+  // in the channel. An already archived or missing thread is skipped; failures are logged, and the op is acked either way.
+  async function archiveThread(threadId) {
+    try {
+      const ch = await client.channels.fetch(String(threadId));
+      if (!ch || typeof ch.isThread !== 'function' || !ch.isThread() || ch.archived) return;
+      await ch.setArchived(true, 'Death Muffin dev agent: finished, archived to keep the channel tidy');
+    } catch (e) { log('[dm-agent] archive failed', e.message); }
+  }
   async function pollOnce() {
     const { ops } = await call(`/poll?wait=${pollWaitSec}`);
     for (const op of ops || []) {
@@ -150,6 +159,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       if (op.rename) {   // fire-and-forget: a thread can only be renamed ~2 times per 10 min, the runner paces them
         const r = op.rename; await renameThread(r.threadId, r.name); continue;
       }
+      if (op.archive) { await archiveThread(op.archive.threadId); await call('/ack', { id: op.id, result: {}, ok: true }); continue; }
       let result; let failed = false; let sent;
       try { sent = await exec(op); result = { messageId: sent.id }; } catch (e) { failed = true; result = { error: e.message }; log('[dm-agent] send failed', e.message); }
       await call('/ack', { id: op.id, result, ok: !failed });       // ack BEFORE reacting so the runner knows the proposal message id first

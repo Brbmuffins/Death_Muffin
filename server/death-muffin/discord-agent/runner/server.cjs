@@ -46,4 +46,5 @@ if (require.main === module) {
   const srv = startServer(cfg, runner, secret);
   srv.listen(cfg.runnerPort, '127.0.0.1', () => console.log(`dm-agent runner on 127.0.0.1:${cfg.runnerPort}`));
   setInterval(() => runner.sweep().catch(() => {}), 6 * 3600e3).unref();
+  runner.archiveQuiet(); setInterval(() => runner.archiveQuiet(), 10 * 60000).unref();   // finished threads leave the channel list
 }
