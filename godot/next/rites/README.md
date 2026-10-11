@@ -4,8 +4,10 @@
 It is the shared plumbing: intent RPC, owner / cooldown / essence validation through `DmAbilities`, event broadcast, once-per-peer playback, state
 replication. **Each rite is its own module** `rite_<id>.gd` (a `DmRiteModule`), listed with one line in `dm_rite_registry.gd`. 31 rites are registered; the last six
 are the Reaper's (family `reaper`, class 11; shared helpers in `dm_reaper_rites.gd`, test `tests/rites/reaper_part.gd`): scythe_sweep (LMB), scythe_throw, reap, wraith_walk,
-soul_burst (keys 1-4) and harvest_spin (RMB). Her green energy is the caster's resource; her soul bag is `p["souls"]` (size `soulsMax` 30), filled by `DmNextMeta._bank_reaper_soul`
-on her kills, worth +2% rite damage a soul in `DmAbilities.sp`, and spent by `DmPlayerRules.bag_spend` in reap, wraith_walk and soul_burst. She fights in melee without thralls, so `DmPlayerRules.take_damage`
+soul_burst (keys 1-4) and harvest_spin (RMB). Her soul bag is her only resource (the HUD's energy orb shows it; `p["resource"]` is an inert full bar): `p["souls"]` (size `soulsMax` 30, 10 at the start),
+filled one soul per enemy that dies near her (`DmNextMeta._bank_reaper_soul` on `kill_earned`, the wisp loops round the corpse for a second and then flies to her),
+worth +2% rite damage a soul in `DmAbilities.sp`. Every rite but scythe_sweep has a `soulCost` in abilities.json that `DmAbilities.cast_check` (refusal `souls`) and
+`apply_cast_cost` take (throw 3, reap 5, wraith_walk 4, harvest_spin 2, soul_burst 6 and then the rest of the bag); reap, wraith_walk and soul_burst add damage per soul paid. She fights in melee without thralls, so `DmPlayerRules.take_damage`
 cuts her damage taken (REAPER `damageTakenMult`) and refuses every blow while `p["phasedUntil"]` (Wraith Walk's rush) runs, and `DmReaperRites.strike` heals her
 `leechPerHit` of her max health per enemy struck, at most `leechSwingCap` a swing (the thrown scythe passes `leech = false`). The necromancer rites:
 bone_needle, bone_fan, rot_lance (primaries); miasma, marrow_spear, exhume, black_litany, corpse_explosion, grave_offering, bone_mantle, carrion_seed,

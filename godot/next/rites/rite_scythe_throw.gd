@@ -1,6 +1,6 @@
 extends DmRiteModule
 ## Scythe Throw (the Reaper): the scythe is hurled to the cursor (ground, clamped to 12 m) and spins there for 2 s, hitting everything within 2.6 m (+ the
-## enemy's radius) every 0.25 s for power 0.45 each. 22 energy, 7 s. Host: `mem("scythe_throw").spins` (the damage is rolled once, at the throw); every
+## enemy's radius) every 0.25 s for power 0.45 each. 3 souls, 7 s. Host: `mem("scythe_throw").spins` (the damage is rolled once, at the throw); every
 ## peer draws the ring from the cast event and a spray from each tick that struck something.
 
 

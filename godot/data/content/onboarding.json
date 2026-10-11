@@ -18,7 +18,7 @@
   },
   "reaper_souls": {
    "title": "Fill the soul bag",
-   "body": "You are the <b>Reaper</b>: green <b>energy</b> refills on its own, so keep swinging and keep moving. Every kill sends its soul to your <b>soul bag</b> (the skull bar): each soul adds 2% damage. <kbd>2</kbd> Reap, <kbd>3</kbd> Wraith Walk and <kbd>4</kbd> Soul Burst spend souls for much more. <kbd>1</kbd> throws the scythe to spin on a pack."
+   "body": "You are the <b>Reaper</b>: <b>souls</b> are your energy. Every enemy that dies sends its soul to your <b>soul bag</b> (the green orb), and each soul adds 2% damage. Your left click is free; <kbd>1</kbd> Scythe Throw, <kbd>2</kbd> Reap, <kbd>3</kbd> Wraith Walk, <kbd>4</kbd> Soul Burst and right click all spend souls, so keep killing."
   },
   "minimap": {
    "title": "Choose your path",

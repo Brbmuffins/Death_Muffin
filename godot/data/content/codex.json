@@ -371,7 +371,7 @@
   "scythe_sweep": {
    "fx": "reaper",
    "colour": "Soul green",
-   "tip": "Your free left click: a wide arc, 130 degrees, that cuts everything in front of you. Keep swinging while you run; your energy comes back on its own, so use the big rites freely."
+   "tip": "Your free left click: a wide arc, 130 degrees, that cuts everything in front of you. Keep swinging while you run: it costs nothing, and every kill feeds your soul bag for the big rites."
   },
   "scythe_throw": {
    "fx": "reaper",
@@ -429,7 +429,7 @@
    "tip": "Veil Form drains Veil while shielding you from enemy blows and speeding your steps. Lay a corpse to rest to create echoes, raise one with Echo, or Cross to it. Return to Life form to refill. You fight without a legion, so you hit 1.5x harder and gain extra experience while young (2x at level 1, back to normal by level 15)."
   },
   "reaper": {
-   "tip": "A fast scythe fighter: green energy refills on its own and you run 10% faster, so keep moving and keep swinging. Every kill sends its soul to your soul bag (the skull bar under the orbs): each soul adds 2% damage, and Reap, Wraith Walk and Soul Burst spend them for far more. Throw the scythe at a pack, sweep the survivors, and Wraith Walk out when it turns. You fight without a legion but take a hit well: 30% more health, 15% less damage, and every enemy your swings strike heals you, so stay in the pack. You also gain extra experience while young (2x at level 1, back to normal by level 15)."
+   "tip": "A fast scythe fighter: you run 10% faster, so keep moving and keep swinging. Souls are your only resource: every enemy that dies sends its soul to your soul bag (the green orb), each soul adds 2% damage, and every rite but the free scythe sweep spends souls (Reap 5, Wraith Walk 4, Scythe Throw 3, Harvest Spin 2, Soul Burst 6 and the whole bag). Throw the scythe at a pack, sweep the survivors, and Wraith Walk out when it turns. You fight without a legion but take a hit well: 30% more health, 15% less damage, and every enemy your swings strike heals you, so stay in the pack. You also gain extra experience while young (2x at level 1, back to normal by level 15)."
   }
  },
  "DEAD_ORDER": [

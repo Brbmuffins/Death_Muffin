@@ -1,7 +1,7 @@
 extends DmRiteModule
-## Wraith Walk (the Reaper): she becomes a towering phantom and rushes up to 9 m toward the cursor (at least 2 m), 30 energy, 11 s. Everything in the
+## Wraith Walk (the Reaper): she becomes a towering phantom and rushes up to 9 m toward the cursor (at least 2 m), 4 souls, 11 s. Everything in the
 ## lane she passes through (1.6 m either side, plus the enemy's radius) is cursed with a Hemorrhage damage-over-time for 5 s at power 0.7 a second, +15% a
-## soul spent (up to 8 from the soul bag; the bag's own +2% a soul is read before it is spent). Host-authoritative like Veil Step: `body.dash_point`
+## soul it costs (the bag's own +2% a soul is what is left in the bag). Host-authoritative like Veil Step: `body.dash_point`
 ## validates the way, `body.dash` glides the body (0.32 s). The lane is read once, at the cast, from where she started to where the dash ends.
 
 
@@ -33,7 +33,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 	var length := lane_v.length()
 	var dir := lane_v / length
 	var dps := DmAbilities.rite_damage(DmAbilities.sp(c.p, c.now_ms), id)
-	var spent := DmPlayerRules.bag_spend(c.p, int(K["wraithSoulsMax"]))
+	var spent := DmAbilities.soul_cost(c.p, id)   # already paid by the cast (DmAbilities.apply_cast_cost)
 	dps *= 1.0 + float(K["wraithPerSoul"]) * float(spent)
 	var marks: Array = []
 	for hit: Dictionary in DmRiteModule.lane(c, from.x, from.z, dir.x, dir.y, length, float(DmAbilities.def(id)["radius"]), true):

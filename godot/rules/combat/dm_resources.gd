@@ -1,7 +1,7 @@
 class_name DmResources
 extends RefCounted
-## Port of archive/legacy-web:src/gameplay/resources.ts: per-family resource rules (Grave Essence, Rage, Oil, Resonance, Offal, Veil), plus the
-## Reaper's green energy (REAPER constants in abilities.json; the Reaper's soul bag lives on the player state, see DmPlayerRules).
+## Port of archive/legacy-web:src/gameplay/resources.ts: per-family resource rules (Grave Essence, Rage, Oil, Resonance, Offal, Veil). The Reaper's
+## real resource is her soul bag (on the player state, see DmPlayerRules + DmAbilities.soul_cost); her "reaper" entry here is an inert full bar.
 ## `stats` = DerivedStats Dictionary. Unknown families fall back to the necromancer rules.
 
 const FAMILIES: Array[String] = ["necromancer", "knight", "warden", "monk", "witch", "veil", "reaper"]
@@ -25,7 +25,7 @@ static func label_for(family: String) -> String:
 		"monk": return "Resonance"
 		"witch": return "Offal"
 		"veil": return "Veil"
-		"reaper": return "Reaper Energy"
+		"reaper": return "Soul Bag"
 		_: return "Grave Essence"
 
 
@@ -77,5 +77,5 @@ static func passive(family: String, ctx: Dictionary) -> float:
 		"monk": return -5.0 if float(ctx["sinceResourceGainMs"]) > 2000.0 else 0.0
 		"witch": return 0.0
 		"veil": return 8.0
-		"reaper": return float(DmCombatData.const_table("REAPER")["energyRegenPerS"])
+		"reaper": return 0.0   # no energy to refill: her resource is the soul bag
 		_: return float(ctx["stats"]["essenceRegen"])

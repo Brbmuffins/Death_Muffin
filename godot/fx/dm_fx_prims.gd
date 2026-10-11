@@ -106,6 +106,9 @@ class Projectile:
 	var t := 0.0
 	var dist := 0.1
 	var kind := "orb"
+	var hover := 0.0     ## seconds spent wisping around `from` before the flight to `to` starts
+	var hover_r := 0.0
+	var phase := 0.0
 
 
 class ProjectileRef:
@@ -714,7 +717,10 @@ func projectile(o: Dictionary) -> ProjectileRef:
 	rec.on_trail = o.get("on_trail", Callable())
 	rec.arc = float(o.get("arc", 0.0))
 	rec.kind = kind
-	rec.dist = maxf(0.1, rec.last_to.distance_to(from))
+	rec.hover = float(o.get("hover", 0.0))
+	rec.hover_r = float(o.get("hover_r", 0.9))
+	rec.phase = randf() * TAU
+	rec.dist =maxf(0.1, rec.last_to.distance_to(from))
 	_projectiles.append(rec)
 	var ref := ProjectileRef.new()
 	ref._p = rec
@@ -1099,32 +1105,37 @@ func _update_projectiles(dt: float) -> void:
 		if target is Vector3:
 			p.last_to = target
 		var pos := p.mesh.position
-		var to_vec := p.last_to - pos
-		var d := to_vec.length()
-		var step := p.speed * dt
 		p.t += dt
-		var arc_progress := minf(1.0, p.t * p.speed / p.dist)
-		if (arc_progress >= 1.0 if p.arc != 0.0 else d <= step) or p.t > 3.0:
-			p.mesh.position = p.last_to
-			group.remove_child(p.mesh)
-			if p.pool.size() < 64:
-				p.pool.append(p.mesh)
-			else:
-				p.mesh.queue_free()
-			_projectiles.remove_at(i)
-			if p.on_arrive.is_valid():
-				p.on_arrive.call(p.last_to)
-			continue
-		if p.arc != 0.0:
-			var np := p.from.lerp(p.last_to, arc_progress)
-			np.y += sin(arc_progress * PI) * p.arc * 0.1
-			p.mesh.position = np
+		if p.t < p.hover:   # a wisp lazily loops round where it started (a rising figure of eight) before it sets off
+			var a := p.t * 6.0 + p.phase
+			var goal := p.from + Vector3(cos(a) * p.hover_r, 0.25 + 0.5 * sin(p.t * PI / p.hover) + 0.15 * sin(a * 2.0), sin(a * 2.0) * p.hover_r * 0.6)
+			p.mesh.position = pos.lerp(goal, minf(1.0, dt * 9.0))
 		else:
-			p.mesh.position = pos + to_vec * (step / maxf(0.001, d))
-		if p.kind != "sprite" and (p.last_to - p.mesh.position).length_squared() > 1e-8:
-			var dir := (p.last_to - p.mesh.position).normalized()
-			var up := Vector3.UP if absf(dir.dot(Vector3.UP)) < 0.999 else Vector3.RIGHT
-			p.mesh.look_at_from_position(p.mesh.position, p.last_to, up)
+			var to_vec := p.last_to - pos
+			var d := to_vec.length()
+			var step := p.speed * dt
+			var arc_progress := minf(1.0, (p.t - p.hover) * p.speed / p.dist)
+			if (arc_progress >= 1.0 if p.arc != 0.0 else d <= step) or p.t > 3.0 + p.hover:
+				p.mesh.position = p.last_to
+				group.remove_child(p.mesh)
+				if p.pool.size() < 64:
+					p.pool.append(p.mesh)
+				else:
+					p.mesh.queue_free()
+				_projectiles.remove_at(i)
+				if p.on_arrive.is_valid():
+					p.on_arrive.call(p.last_to)
+				continue
+			if p.arc != 0.0:
+				var np := p.from.lerp(p.last_to, arc_progress)
+				np.y += sin(arc_progress * PI) * p.arc * 0.1
+				p.mesh.position = np
+			else:
+				p.mesh.position = pos + to_vec * (step / maxf(0.001, d))
+			if p.kind != "sprite" and (p.last_to - p.mesh.position).length_squared() > 1e-8:
+				var dir := (p.last_to - p.mesh.position).normalized()
+				var up := Vector3.UP if absf(dir.dot(Vector3.UP)) < 0.999 else Vector3.RIGHT
+				p.mesh.look_at_from_position(p.mesh.position, p.last_to, up)
 		p.trail += dt
 		if p.trail > 0.024:
 			p.trail = 0.0

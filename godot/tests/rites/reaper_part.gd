@@ -1,5 +1,5 @@
 extends "res://tests/rites/signature_part.gd"
-## The Reaper (class index 11, family "reaper"): the class wiring, green energy, the soul bag and its six rites (scythe_sweep, scythe_throw, reap,
+## The Reaper (class index 11, family "reaper"): the class wiring, the soul bag (her only resource) and its six rites (scythe_sweep, scythe_throw, reap,
 ## wraith_walk, soul_burst, harvest_spin). Reuses the signature part's doubles (solo session, fake world, recording fx); the host is stepped by hand.
 ## godot --headless --path godot --script res://tests/rites/run.gd
 
@@ -12,6 +12,12 @@ func _initialize() -> void:
 	await _rites()
 	print("reaper: %d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
+
+
+## Ready to cast, with a full bag (her souls are her resource).
+func _ready_cast(c: DmRiteCaster) -> void:
+	super._ready_cast(c)
+	c.p["souls"] = 30
 
 
 ## Damage a robber has taken.
@@ -35,13 +41,18 @@ func _wiring() -> void:
 	ok(DmCharacterBuild.is_playable(float(REAPER)) and DmCharacterBuild.is_playable(2.0) and not DmCharacterBuild.is_playable(9.0), "wiring: the Reaper is playable, the Veilwalker still is not")
 	var pd: Array = DmContent.get_export("disciplines", "PLAYABLE_DISCIPLINES").filter(func(x: Dictionary) -> bool: return x["id"] == "reaper")
 	ok(pd.size() == 1 and int(pd[0]["classIndex"]) == REAPER, "wiring: the Reaper has a discipline card")
-	ok(DmResources.kind_for("reaper") == "reaper" and DmResources.label_for("reaper") == "Reaper Energy" and DmResources.color_for("reaper") == "#6ee7a0", "wiring: green Reaper Energy")
+	ok(DmResources.kind_for("reaper") == "reaper" and DmResources.label_for("reaper") == "Soul Bag" and DmResources.color_for("reaper") == "#6ee7a0", "wiring: the green resource is the Soul Bag")
 	var st: Dictionary = DmCharacterBuild.build({"class_index": REAPER, "level": 5}, [], {})["stats"]
 	var p := DmPlayerRules.new_state(st, "reaper")
-	ok(float(p["resource"]["max"]) == 100.0 and float(p["resource"]["value"]) == 100.0 and p["resource"]["kind"] == "reaper", "wiring: energy starts full at 100")
+	ok(int(p["souls"]) == 10 and p["resource"]["kind"] == "reaper", "wiring: she starts with 10 souls in the bag")
 	p["resource"]["value"] = 40.0
 	DmPlayerRules.tick_vitals(p, 1.0, 1000.0)
-	ok(is_equal_approx(float(p["resource"]["value"]), 50.0), "wiring: energy refills 10 a second (%.1f)" % p["resource"]["value"])
+	ok(is_equal_approx(float(p["resource"]["value"]), 40.0) and int(p["souls"]) == 10, "wiring: no energy refills on its own, souls only come from kills")
+	p["alive"] = false
+	p["souls"] = 2
+	DmPlayerRules.revive(p)
+	ok(int(p["souls"]) == 10, "wiring: coming back from the dead refills a poor bag to 10 souls")
+	p["souls"] = 0
 	var base_speed := DmPlayerRules.move_speed(DmPlayerRules.new_state(st, "necromancer"), 0.0)
 	ok(is_equal_approx(DmPlayerRules.move_speed(p, 0.0), base_speed * 1.1), "wiring: the Reaper runs 10% faster")
 	# the soul bag
@@ -90,57 +101,74 @@ func _rites() -> void:
 	var behind := _robber(w, h, Vector3(-2.5, 0, 0))
 	var wide := _robber(w, h, Vector3(0.5, 0, 3.2))   # 81 degrees off the aim: outside the 65 degree half angle
 	_ready_cast(c)
-	var e0: float = c.essence()
+	var s0 := int(c.p["souls"])
 	c.request_cast("scythe_sweep", Vector3(6, 0, 0))
 	var dmg := DmAbilities.rite_damage(DmAbilities.sp(c.p, c.now_ms), "scythe_sweep")
 	ok(is_equal_approx(_lost(front), dmg) and _lost(behind) == 0.0 and _lost(wide) == 0.0, "sweep: hits the enemy in front (%.1f of %.1f), not the one behind or off to the side" % [_lost(front), dmg])
-	ok(is_equal_approx(e0 - c.essence(), 0.0) and is_equal_approx(c.cooldown_left("scythe_sweep"), 600.0), "sweep: free, 0.6 s")
+	ok(int(c.p["souls"]) == s0 and is_equal_approx(c.cooldown_left("scythe_sweep"), 600.0), "sweep: costs no souls, 0.6 s")
+	_ready_cast(c)
+	c.p["souls"] = 0
+	c.request_cast("scythe_sweep", Vector3(6, 0, 0))
+	ok(rej.is_empty() and c.cooldown_left("scythe_sweep") > 0.0, "sweep: swings with an empty bag")
 	ok(not _events(w, "scythe_sweep", "sweep").is_empty() and rej.is_empty(), "sweep: one event, no refusal")
 	_ready_cast(c)
 	c.request_cast("scythe_sweep", Vector3(0, 0, 0))
 	ok(rej.size() == 1 and rej[0][1] == "no_target", "sweep: refused with the cursor on her")
 	rej.clear()
 
-	# Harvest Spin: a full circle, 16 energy
+	# Harvest Spin: a full circle, 2 souls
 	_ready_cast(c)
 	var before_b := _lost(behind)
-	var e1: float = c.essence()
 	c.request_cast("harvest_spin", Vector3(5, 0, 0))
 	ok(_lost(behind) > before_b and _lost(wide) > 0.0, "spin: hits all round her, including behind")
-	ok(is_equal_approx(e1 - c.essence(), 16.0) and is_equal_approx(c.cooldown_left("harvest_spin"), 3500.0), "spin: 16 energy, 3.5 s")
+	ok(int(c.p["souls"]) == 28 and is_equal_approx(c.cooldown_left("harvest_spin"), 3500.0), "spin: 2 souls, 3.5 s")
 
-	# Reap: a cone, spends souls, bigger with them
+	# Reap: a cone, costs 5 souls, every soul paid adds damage
 	_ready_cast(c)
 	var r1 := _robber(w, h, Vector3(5.0, 0, 0.5))
+	c.p["souls"] = 4
+	rej.clear()
+	c.request_cast("reap", Vector3(8, 0, 0))
+	ok(rej.size() == 1 and rej[0][1] == "souls" and int(c.p["souls"]) == 4 and _lost(r1) == 0.0, "reap: refused with 4 souls, nothing spent")
+	rej.clear()
 	c.p["souls"] = 0
+	var sp_empty := DmAbilities.sp(c.p, c.now_ms)   # what is left in the bag once the price is paid
+	c.p["souls"] = 5
 	c.request_cast("reap", Vector3(8, 0, 0))
 	var plain := _lost(r1)
-	ok(plain > 0.0 and is_equal_approx(c.cooldown_left("reap"), 6000.0), "reap: hits 5 m out (%.1f), 6 s" % plain)
+	ok(int(c.p["souls"]) == 0 and plain > 0.0 and is_equal_approx(c.cooldown_left("reap"), 6000.0), "reap: 5 souls pay for it, hits 5 m out (%.1f), 6 s" % plain)
+	ok(is_equal_approx(plain, DmAbilities.rite_damage(sp_empty, "reap") * (1.0 + 0.12 * 5.0)), "reap: the 5 souls paid add 60%% damage")
 	_ready_cast(c)
+	c.p["souls"] = 5
+	var sp_five := DmAbilities.sp(c.p, c.now_ms)
 	c.p["souls"] = 10
-	var sp_with := DmAbilities.sp(c.p, c.now_ms)
 	c.request_cast("reap", Vector3(8, 0, 0))
 	var second := _lost(r1) - plain
-	ok(int(c.p["souls"]) == 0, "reap: spends the 10 souls")
-	ok(is_equal_approx(second, DmAbilities.rite_damage(sp_with, "reap") * (1.0 + 0.12 * 10.0)) and second > plain * 1.5, "reap: 10 souls hit %.1f against %.1f with none" % [second, plain])
+	ok(int(c.p["souls"]) == 5, "reap: 10 souls in the bag leave 5")
+	ok(is_equal_approx(second, DmAbilities.rite_damage(sp_five, "reap") * (1.0 + 0.12 * 5.0)) and second > plain, "reap: a fuller bag hits harder (%.1f against %.1f)" % [second, plain])
 
-	# Soul Burst: empties the bag
+	# Soul Burst: needs 6 souls, empties the bag
 	_ready_cast(c)
-	c.p["souls"] = 7
-	var sp7 := DmAbilities.sp(c.p, c.now_ms)
+	c.p["souls"] = 5
 	var rb := _robber(w, h, Vector3(0, 0, 5.5))
+	rej.clear()
+	c.request_cast("soul_burst", Vector3(0, 0, 0))
+	ok(rej.size() == 1 and rej[0][1] == "souls" and int(c.p["souls"]) == 5 and _lost(rb) == 0.0, "burst: refused with 5 souls")
+	rej.clear()
+	c.p["souls"] = 1
+	var sp1 := DmAbilities.sp(c.p, c.now_ms)   # one soul left once the price is paid
+	c.p["souls"] = 7
 	c.request_cast("soul_burst", Vector3(0, 0, 0))
 	ok(int(c.p["souls"]) == 0 and _lost(rb) > 0.0, "burst: empties the bag and hits 5.5 m out")
-	ok(is_equal_approx(_lost(rb), DmAbilities.rite_damage(sp7, "soul_burst") * (1.0 + 0.18 * 7.0)), "burst: 7 souls add 126%% to the base blow (%.1f)" % _lost(rb))
+	ok(is_equal_approx(_lost(rb), DmAbilities.rite_damage(sp1, "soul_burst") * (1.0 + 0.18 * 7.0)), "burst: 7 souls add 126%% to the base blow (%.1f)" % _lost(rb))
 
 	# Scythe Throw: spins in place, damaging every quarter second for 2 s, only inside 2.6 m
 	_ready_cast(c)
 	var spot := Vector3(0, 0, -9)
 	var inside := _robber(w, h, spot + Vector3(1.5, 0, 0))
 	var outside := _robber(w, h, spot + Vector3(5.0, 0, 0))
-	var e2: float = c.essence()
 	c.request_cast("scythe_throw", spot)
-	ok(is_equal_approx(e2 - c.essence(), 22.0) and is_equal_approx(c.cooldown_left("scythe_throw"), 7000.0), "throw: 22 energy, 7 s")
+	ok(int(c.p["souls"]) == 27 and is_equal_approx(c.cooldown_left("scythe_throw"), 7000.0), "throw: 3 souls, 7 s")
 	_step(c, 2.6)
 	var ticks := _events(w, "scythe_throw", "tick").size()
 	ok(ticks >= 7 and ticks <= 8, "throw: about 8 ticks over 2 s (%d)" % ticks)
@@ -163,14 +191,13 @@ func _rites() -> void:
 	var lane_b := _robber(w, h, Vector3(7, 0, -1.0))
 	var off_lane := _robber(w, h, Vector3(4, 0, 4.0))
 	c.p["souls"] = 8
-	var e3: float = c.essence()
 	var cast_at := c.now_ms
 	c.request_cast("wraith_walk", Vector3(20, 0, 0))
 	ok(is_equal_approx(float(c.p["phasedUntil"]), cast_at + 320.0), "walk: untouchable for the 0.32 s rush")
 	var evs := _events(w, "wraith_walk", "walk")
 	ok(evs.size() == 1, "walk: one event")
 	var ev: Dictionary = evs[0]
-	ok(is_equal_approx(e3 - c.essence(), 30.0) and is_equal_approx(c.cooldown_left("wraith_walk"), 11000.0) and int(c.p["souls"]) == 0, "walk: 30 energy, 11 s, spends the 8 souls")
+	ok(is_equal_approx(c.cooldown_left("wraith_walk"), 11000.0) and int(c.p["souls"]) == 4, "walk: 4 souls (8 become 4), 11 s")
 	ok(Vector2(float(ev["tx"]) - float(ev["fx"]), float(ev["tz"]) - float(ev["fz"])).length() <= 9.01 and body.dashing, "walk: dashes at most 9 m and the body glides")
 	var sa := DmStatusSet.of(lane_a)
 	var sb := DmStatusSet.of(lane_b)
@@ -207,11 +234,18 @@ func _rites() -> void:
 	_step(c, 2.6)
 	ok(is_equal_approx(float(c.p["hp"]), mx * 0.5), "leech: the thrown scythe heals nothing (%.1f)" % c.p["hp"])
 
-	# not enough energy
+	# every rite but the sweep needs its souls, and energy no longer matters
+	for pair: Array in [["scythe_throw", 3], ["wraith_walk", 4], ["harvest_spin", 2]]:
+		_ready_cast(c)
+		c.p["souls"] = int(pair[1]) - 1
+		c.p["resource"]["value"] = 100.0
+		rej.clear()
+		c.request_cast(String(pair[0]), Vector3(8, 0, 0))
+		ok(rej.size() == 1 and rej[0][1] == "souls" and int(c.p["souls"]) == int(pair[1]) - 1, "%s: refused one soul short" % pair[0])
 	_ready_cast(c)
-	c.p["resource"]["value"] = 10.0
+	c.p["resource"]["value"] = 0.0
 	rej.clear()
-	c.request_cast("reap", Vector3(8, 0, 0))
-	ok(rej.size() == 1 and rej[0][1] == "essence", "reap: refused below 35 energy")
+	c.request_cast("scythe_sweep", Vector3(8, 0, 0))
+	ok(rej.is_empty(), "sweep: needs neither energy nor souls")
 
 	await _teardown(s)

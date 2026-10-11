@@ -30,7 +30,7 @@ Every key is optional; missing = zero / hidden. Units: HP in HP, cooldown in ms.
 | `primary` | `{icon, key="LMB", rune_icon?}` | left-click socket; icon is a `res://` texture path |
 | `slots` | Array of slot dicts | see below. Row rebuilds when the count or any `alt` flag changes |
 | `grimoire_new` | bool | NEW pip on the "Spellbook" button |
-| `souls`, `souls_max` | number | Soul Harvest meter; full -> "HARVEST" + jade |
+| `souls`, `souls_max` | number | Soul Harvest meter; full -> "HARVEST" + jade. `soul_bag: true` (the Reaper) hides it: her bag is the energy orb (`essence` / `max_essence` carry the souls, slot `cost` is in souls) |
 | `thralls`, `thrall_cap`, `raises_thralls` | number, number, bool | pips + chip appear when `raises_thralls` or `thralls > 0` |
 | `gold`, `shards` | number | currency row; `gold` also drives the buy buttons' enabled state |
 | `damage` | `{tier, pct, cost}` | `cost: null` = max tier ("Max"). Bar/gems use the max tier from `data/content/upgrades.json` |

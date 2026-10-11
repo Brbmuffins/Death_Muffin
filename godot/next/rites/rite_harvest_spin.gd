@@ -1,5 +1,5 @@
 extends DmRiteModule
-## Harvest Spin (the Reaper's right-click): a full circle around her, 4 m, power 1.1, 16 energy, 3.5 s. Resolved at once.
+## Harvest Spin (the Reaper's right-click): a full circle around her, 4 m, power 1.1, 2 souls, 3.5 s. Resolved at once.
 
 
 func _init() -> void:

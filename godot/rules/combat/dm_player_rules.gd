@@ -15,12 +15,17 @@ static func new_state(stats: Dictionary, family: String = "necromancer") -> Dict
 		"resource": {"kind": DmResources.kind_for(family), "value": DmResources.initial(family, mx), "max": mx},
 		"veilForm": false, "betweenUntil": 0.0, "lastResourceGainAt": 0.0, "clockNow": 0.0,
 		"barrier": 0.0, "barrierPeak": 0.0, "barrierBroke": 0.0, "barrierHoldUntil": 0.0,
-		"soulRateMult": 1.0, "soulAcc": 0.0, "souls": 0, "soulsMax": DmCombatData.const_table("SOUL_HARVEST")["souls"],
+		"soulRateMult": 1.0, "soulAcc": 0.0, "souls": reaper_start_souls() if family == "reaper" else 0, "soulsMax": DmCombatData.const_table("SOUL_HARVEST")["souls"],
 		"bulwarkUntil": 0.0, "bulwarkPerfectUntil": 0.0, "unbreakableUntil": 0.0, "lastBlock": "none",
 		"alive": true, "lastHurtAt": -1e9, "rootedUntil": 0.0, "chilledUntil": 0.0, "castUntil": 0.0, "god": false,
 		"moveMult": 1.0, "facing": PI, "x": 0.0, "z": 0.0,
 		"brews": DmBrews.empty_brews(), "cooldowns": {},
 	}
+
+
+## Souls the Reaper starts a life with (her only resource, so she is never helpless in the first fight).
+static func reaper_start_souls() -> int:
+	return int(DmCombatData.const_table("REAPER")["soulsStart"])
 
 
 static func add_resource(p: Dictionary, amount: float) -> void:
@@ -194,4 +199,6 @@ static func revive(p: Dictionary) -> void:
 	p["chilledUntil"] = 0.0
 	p["hp"] = float(p["stats"]["maxHp"])
 	p["resource"]["value"] = DmResources.on_revive(p["family"], p["resource"]["max"])
+	if p["family"] == "reaper":
+		p["souls"] = maxi(int(p["souls"]), reaper_start_souls())
 	p["barrier"] = 0.0

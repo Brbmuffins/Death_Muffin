@@ -51,9 +51,11 @@ func build() -> Dictionary:
 		return {}
 	var family := b.family
 	var level := float(host.character.get("level", 1))
+	var bag := family == "reaper"   # the Reaper's energy orb IS her soul bag
+	var souls := _souls(b)
 	var vm := {
 		"hp": b.hp, "max_hp": b.max_hp, "barrier": 0.0,
-		"essence": b.resource, "max_essence": b.resource_max,
+		"essence": float(souls) if bag else b.resource, "max_essence": (float(b.p["soulsMax"]) if not b.p.is_empty() else 30.0) if bag else b.resource_max,
 		"resource_label": DmResources.label_for(family), "resource_color": DmResources.color_for(family) if family != "necromancer" else "",
 		"level": int(level), "xp": host.character.get("experience", 0), "xp_next": DmStats.xp_to_next(level),
 		"gold": int(host.character.get("gold", 0)), "shards": int(host.progress.get("shards", 0)),
@@ -64,8 +66,8 @@ func build() -> Dictionary:
 		"damage": {"tier": host.progress["damageTier"], "pct": DmUpgrades.damage_bonus_pct(float(host.progress["damageTier"])), "cost": null if host.prog.damage_cost() == -1 else host.prog.damage_cost()},
 		"wave": {"owned": host.progress["waveTierOwned"], "active": host.progress["waveTierActive"], "pct": DmWaveUpgrades.wave_modifiers(float(host.progress["waveTierActive"]))["speedPct"],
 			"cost": null if host.prog.wave_cost() == -1 else host.prog.wave_cost()},
-		"souls": _souls(b), "souls_max": b.p["soulsMax"] if not b.p.is_empty() else (30 if family == "reaper" else 50), "raises_thralls": family == "necromancer",
-		"soul_bag": family == "reaper",
+		"souls": souls, "souls_max": b.p["soulsMax"] if not b.p.is_empty() else (30 if bag else 50), "raises_thralls": family == "necromancer",
+		"soul_bag": bag,
 		"ward": _ward(b), "chain": _chain(g, b), "omen": _omen(g), "save": host.save_chip(),
 	}
 	vm["prompt"] = g.chapterhouse.prompt_text if g.chapterhouse != null else null
@@ -125,12 +127,13 @@ func _fill(s: Dictionary, id: String, b: DmHeroBody, level: float, key: String) 
 	if caster != null and caster.p.has("loadout"):
 		total = DmWeaponLine.ability_cooldown_ms(id, base, caster.p["loadout"], DmAbilities.is_primary(id))
 	s["key"] = key
-	s["cost"] = d["essenceCost"]
+	var souls_rite := b.family == "reaper"
+	s["cost"] = d.get("soulCost", 0) if souls_rite else d["essenceCost"]
 	s["left_ms"] = caster.cooldown_left(id) if caster != null else 0.0
 	s["total_ms"] = total
 	var emp := not b.p.is_empty() and DmAbilities.empowered(b.p, id)   # Soul Harvest: charged souls make this rite free
 	s["empowered"] = emp
-	s["affordable"] = emp or b.resource >= float(d["essenceCost"])
+	s["affordable"] = (_souls(b) >= int(s["cost"])) if souls_rite else (emp or b.resource >= float(d["essenceCost"]))
 	s["locked"] = DmAbilities.rite_level(level, host.dev_access) < DmAbilities.unlock_level(id)
 	s["unlock_level"] = DmAbilities.unlock_level(id)
 	s["needs"] = needs_of(id, _corpse_near, _legion_n)

@@ -23,7 +23,7 @@ signal sfx(name: String)                     ## every sound the adapter forwards
 signal feedback(text: String)                ## a cast was refused / unavailable (also drawn as a float over the hero)
 signal party_changed                         ## the lobby / party state changed (the Party window redraws from party_view())
 
-const REJECT_TEXT := {"essence": "Not enough Grave Essence", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
+const REJECT_TEXT := {"essence": "Not enough Grave Essence", "souls": "Not enough souls (%d needed)", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
 const FEEDBACK_GAP_MS := 600
 const CLIENT_OWNED_CHARACTER_FIELDS := ["gold", "level", "experience", "stat_str", "stat_agi", "stat_int", "stat_vit"]
 const PARTY_ALTAR := "The Altar answers only in your own world: leave the party first."
@@ -626,6 +626,8 @@ func _on_rejected(rite: String, reason: String) -> void:
 		"essence":
 			game_event.emit("essence_short", {})
 			_feedback(REJECT_TEXT["essence"])
+		"souls":
+			_feedback(REJECT_TEXT["souls"] % int(def.get("soulCost", 0)))
 		"cooldown":
 			_feedback(REJECT_TEXT["cooldown"] % def["name"])
 		"locked":

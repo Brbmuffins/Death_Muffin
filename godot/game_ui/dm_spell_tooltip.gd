@@ -52,7 +52,11 @@ static func build(id: String, discipline: Dictionary = {}, state: Dictionary = {
 		resource_name = DmResources.label_for(family)
 	var cost := float(a.get("essenceCost", 0))
 	var cost_text: String
-	if empowered:
+	if family == "reaper":
+		resource_name = "Souls"
+		cost = float(a.get("soulCost", 0))
+		cost_text = "%s%s" % [_n(cost), " (all)" if id == "soul_burst" else ""] if cost != 0.0 else "Free"
+	elif empowered:
 		cost_text = "Free (normally %s)" % _s(cost)
 	else:
 		cost_text = _n(cost) if cost != 0.0 else "Free"

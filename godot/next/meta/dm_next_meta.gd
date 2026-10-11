@@ -11,7 +11,8 @@ extends Node
 
 signal event(id: String, ctx: Dictionary)
 
-const BOND_DELAY := 1.5                  ## s after entering a hunting ground
+const SOUL_HOVER_S := 1.0                ## s a Reaper's soul wisps around its dead enemy before flying to her
+const BOND_DELAY := 1.5                 ## s after entering a hunting ground
 const CHAIN_COLORS := [0xe6d3a0, 0xf0b25a, 0xf08a3a, 0xee5a2a, 0xff3a3a]
 
 var shell: DmNextGame
@@ -45,6 +46,7 @@ func attach(shell_: DmNextGame) -> void:
 	omen = o if o is Dictionary else omen_for(Time.get_unix_time_from_system() * 1000.0)
 	set_difficulty(String(shell.opts.get("difficulty", "medium")), true)
 	shell.rewards.killer_paid.connect(_on_killer_paid)
+	shell.rewards.kill_earned.connect(_on_kill_earned)
 	shell.rewards.chain_tier_up.connect(_on_chain_tier)
 	shell.hero_died.connect(func(_b: DmHeroBody) -> void: member.chain.reset())
 	shell.area_changed.connect(func(_id: String) -> void: _bond_t = BOND_DELAY)
@@ -137,8 +139,7 @@ func _on_chain_tier(cid: int, tier: Dictionary) -> void:
 func _on_killer_paid(cid: int, _def: String, enemy: Node) -> void:
 	var m: DmRewardsMember = shell.rewards.members.get(cid)
 	var killer := m.body as DmHeroBody if m != null else null
-	if killer != null and killer.family == "reaper":   # her kills fill the soul bag, not the Soul Harvest meter
-		_bank_reaper_soul(killer, enemy)
+	if killer != null and killer.family == "reaper":   # the Reaper's souls come from every kill she is paid for (_on_kill_earned)
 		return
 	var b := shell.local_body()
 	if cid != member.character_id or b == null or b.p.is_empty():
@@ -160,21 +161,31 @@ func _on_killer_paid(cid: int, _def: String, enemy: Node) -> void:
 		vfx.light_flash(Vector3(b.position.x, 1.5, b.position.z), Color.hex(jade * 256 + 255), 30.0, 0.6)
 
 
-## The Reaper's soul bag: every kill she lands banks one soul (until the bag is full); a wisp of it flies from the dead enemy to her.
-func _bank_reaper_soul(b: DmHeroBody, enemy: Node) -> void:
+## Every enemy that dies for a Reaper (her blow, a friend's, a curse: anything that pays her the kill) gives her one soul.
+func _on_kill_earned(cid: int, _def: String, at: Vector3) -> void:
+	var m: DmRewardsMember = shell.rewards.members.get(cid)
+	var b := m.body as DmHeroBody if m != null else null
+	if b != null and b.family == "reaper":
+		_bank_reaper_soul(b, at)
+
+
+## The Reaper's soul bag: the soul is banked at once (until the bag is full); its wisp loops round the dead enemy for a second, then flies to her.
+func _bank_reaper_soul(b: DmHeroBody, at: Vector3) -> void:
 	if b.p.is_empty() or not b.alive or DmPlayerRules.bag_add(b.p, 1) == 0:
 		return
 	var vfx := get_node_or_null("/root/Vfx")
-	var e3 := enemy as Node3D
-	if vfx == null or not shell._visual or e3 == null or not is_instance_valid(e3):
+	if vfx == null or not shell._visual:
 		return
 	if _soul_fx == null:
 		_soul_fx = DmRiteFx.with_autoloads()
 	var bw: WeakRef = weakref(b)   # a WeakRef, not the body: a lambda capturing a freed Object logs an engine error on every call
-	_soul_fx.shot(Vector3(e3.global_position.x, 0.8, e3.global_position.z), func() -> Variant:
+	var from := Vector3(at.x, 0.9, at.z)
+	_soul_fx.emit(at.x, 0.9, at.z, 8, DmReaperRites.GREEN, 0.5, 1.2, 1.6, 0.7, 0.2, {"gravity": -0.4})   # the soul slips out of the body
+	_soul_fx.shot(from, func() -> Variant:
 		var hero: Node3D = bw.get_ref() as Node3D
 		return Vector3(hero.global_position.x, 1.2, hero.global_position.z) if hero != null else null,
-		12.0, 0.0, "sprite", DmReaperRites.GREEN, {"tex": "wisp", "size": 0.7})
+		9.0, 0.0, "sprite", DmReaperRites.GREEN, {"tex": "wisp", "size": 1.0, "hover": SOUL_HOVER_S, "hover_r": 1.0,
+			"on_arrive": func(pos: Vector3) -> void: _soul_fx.emit(pos.x, pos.y, pos.z, 6, DmReaperRites.GREEN, 0.25, 1.4, 0.8, 0.4, 0.18)})
 
 
 # ---- Bonded Dead ----------------------------------------------------------------------------------------------------------------------

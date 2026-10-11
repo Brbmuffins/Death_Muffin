@@ -1,6 +1,6 @@
 extends DmRiteModule
-## Reap (the Reaper, key 3rd of her kit): a huge cone toward the cursor, 150 degrees and 6.5 m, power 2.4, 35 energy, 6 s. It spends up to 10 souls from
-## the soul bag, each adding 12% damage on top of the bag's own +2% a soul (the bag is read before it is spent). Resolved at once.
+## Reap (the Reaper, key 3rd of her kit): a huge cone toward the cursor, 150 degrees and 6.5 m, power 2.4, 5 souls, 6 s. Each soul it costs adds 12% damage
+## on top of the bag's own +2% a soul (what is left in the bag). Resolved at once.
 
 
 func _init() -> void:
@@ -17,7 +17,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 	var origin := c.pos()
 	var reach := float(DmAbilities.def(id)["range"])
 	var dmg := DmAbilities.rite_damage(DmAbilities.sp(c.p, c.now_ms), id)
-	var spent := DmPlayerRules.bag_spend(c.p, int(K["reapSoulsMax"]))
+	var spent := DmAbilities.soul_cost(c.p, id)   # already paid by the cast (DmAbilities.apply_cast_cost)
 	dmg *= 1.0 + float(K["reapPerSoul"]) * float(spent)
 	var marks := DmReaperRites.strike(c, id, DmReaperRites.cone(c, origin.x, origin.z, dir.x, dir.y, reach, float(K["reapHalfAngleDeg"])), dmg)
 	c.broadcast({"t": "reap", "rite": id, "by": c.peer_id, "x": origin.x, "z": origin.z, "dx": dir.x, "dz": dir.y, "reach": reach, "hits": marks, "amount": dmg, "souls": spent})

@@ -253,6 +253,20 @@ func _test_prims() -> void:
 	for i in 30:
 		await process_frame
 	check(landed[0] and ref.pos() == null, "projectile landed + on_arrive")
+	# A hovering shot (the Reaper's soul wisp) loops round where it started for `hover` seconds, then flies to its target and lands.
+	var hlanded := [false]
+	var hover_s := 0.0   # game time (headless frames are not real time): the per-frame deltas added up
+	var href := fx.projectile({"from": Vector3.ZERO, "to": func(): return Vector3(30, 1, 0), "speed": 60.0, "color": 0xffffff, "kind": "orb", "hover": 0.4, "hover_r": 0.9, "on_arrive": func(_p): hlanded[0] = true})
+	await process_frame
+	hover_s += root.get_process_delta_time()
+	var hp: Variant = href.pos()
+	check(hp != null and not hlanded[0] and (hp as Vector3).length() < 2.0, "hovering projectile stays near where it started")
+	var hover_guard := 0
+	while not hlanded[0] and hover_guard < 600:
+		await process_frame
+		hover_s += root.get_process_delta_time()
+		hover_guard += 1
+	check(hlanded[0] and href.pos() == null and hover_s >= 0.38, "hovering projectile lands only after its hover time (%.2f s)" % hover_s)
 	# Motif budget: a thrall asks for 40 % and may get zero; the budget never goes negative.
 	fx.motifs.reset_budget()
 	var before: int = fx.motifs.stats["particles"]

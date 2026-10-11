@@ -487,8 +487,11 @@ func _run() -> void:
 	g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
 	g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": null})
 	var rhs: Dictionary = g.ui_host.hud_state()
-	check(int(b.p["souls"]) == 1 and int(rhs["souls"]) == 1 and bool(rhs["soul_bag"]) and int(rhs["souls_max"]) == 30, "her own kill banks one soul (a kill by someone else does not), and the HUD reads the bag 1 / 30")
-	check(String(rhs["resource_label"]) == "Reaper Energy" and String(rhs["resource_color"]) == "#6ee7a0", "the HUD names her green energy")
+	check(int(b.p["souls"]) == 2 and int(rhs["souls"]) == 2 and bool(rhs["soul_bag"]) and int(rhs["souls_max"]) == 30, "every enemy that dies near her banks one soul, whoever struck it, and the HUD reads the bag 2 / 30")
+	check(String(rhs["resource_label"]) == "Soul Bag" and String(rhs["resource_color"]) == "#6ee7a0", "the HUD names her green resource the Soul Bag")
+	check(float(rhs["essence"]) == 2.0 and float(rhs["max_essence"]) == 30.0, "the energy orb reads the bag (2 / 30)")
+	var rslots: Array = rhs["slots"]
+	check(int(rslots[1]["cost"]) == 5 and bool(rslots[1]["affordable"]) == false, "a slot's cost is in souls (Reap 5) and dims below it")
 	b.p["souls"] = 29
 	for i in 3:
 		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})

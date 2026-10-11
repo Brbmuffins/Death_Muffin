@@ -103,6 +103,7 @@ var hp_sub: Label
 var ess_orb: DmHudOrb
 var ess_txt: Label
 var ess_sub: Label
+var ess_wrap: Control
 var souls_box: PanelContainer
 var souls_bar: DmHudBar
 var souls_n: Label
@@ -843,6 +844,8 @@ func _build_altar() -> void:
 	ess_sub = ew[2]
 	var ewrap: VBoxContainer = ew[0]
 	ewrap.size_flags_vertical = Control.SIZE_SHRINK_END
+	ewrap.mouse_filter = Control.MOUSE_FILTER_PASS   # carries the soul bag tooltip for the Reaper
+	ess_wrap = ewrap
 	altar.add_child(ewrap)
 
 
@@ -1287,7 +1290,7 @@ func _rebuild_slots(slots: Array) -> void:
 
 
 const SOUL_HARVEST_TIP := "Soul Harvest — kills by you or your thralls fill the skull. When full, your next Marrow Spear, Miasma or Black Litany is free and 50% larger."
-const SOUL_BAG_TIP := "Soul bag — every kill sends its soul to you. Each soul adds 2% damage; Reap, Wraith Walk and Soul Burst spend them."
+const SOUL_BAG_TIP := "Soul bag — your only resource. Every enemy that dies sends its soul to you. Each soul adds 2% damage; every rite but the free scythe sweep spends souls."
 var _soul_bag := 0
 var _souls_full := -1
 var _thr_hurt := 0
@@ -1302,7 +1305,9 @@ func _apply_souls_thralls(v: Dictionary) -> void:
 	souls_n.text = "HARVEST" if full else "%d / %d" % [int(souls), int(smax)]
 	if int(bag) != _soul_bag:
 		_soul_bag = int(bag)
-		souls_box.tooltip_text = SOUL_BAG_TIP if bag else SOUL_HARVEST_TIP
+		souls_box.tooltip_text = SOUL_HARVEST_TIP
+		souls_box.visible = not bag   # the Reaper's soul bag IS the energy orb; the skull bar is the other classes' Soul Harvest meter
+		ess_wrap.tooltip_text = SOUL_BAG_TIP if bag else ""
 	# Restyle only when the state flips (a new StyleBox + theme change every 50 ms re-laid the left column).
 	if int(full) != _souls_full:
 		_souls_full = int(full)

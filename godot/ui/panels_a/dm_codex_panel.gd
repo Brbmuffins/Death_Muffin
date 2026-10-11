@@ -217,7 +217,7 @@ func _rites(v: VBoxContainer) -> void:
 		var r: Dictionary = _c["CODEX_RITES"][id]
 		var slot := int(a.get("slot", 1))
 		var key := "Left click" if slot == 0 else ("Key R" if slot == 6 else "Grimoire · slots 1–5")
-		var cost := "%d essence" % int(a["essenceCost"]) if float(a.get("essenceCost", 0)) > 0.0 else "No cost"
+		var cost := "%d essence" % int(a["essenceCost"]) if float(a.get("essenceCost", 0)) > 0.0 else ("%d souls" % int(a["soulCost"]) if float(a.get("soulCost", 0)) > 0.0 else "No cost")
 		var txt := _entry(v, String(a["name"]), "%s · %s · %s" % [key, cost, _secs(float(a["cooldownMs"]))], _ability_icon(String(id)))
 		_p(txt, String(a["description"]))
 		_use_well(txt, _gate(String(r["tip"])))

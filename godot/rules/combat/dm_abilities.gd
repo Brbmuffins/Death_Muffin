@@ -71,7 +71,19 @@ static func empowered(p: Dictionary, id: String) -> bool:
 	return DmPlayerRules.souls_charged(p) and (C("SOUL_HARVEST")["spells"] as Array).has(id)
 
 
-## Everything that can refuse a cast before the rite itself runs: "ok", "dead", "locked", "busy", "cooldown", "essence".
+## Souls a rite takes from the Reaper's soul bag (her only resource; her free primary and every other family's rites cost none).
+static func soul_cost(p: Dictionary, id: String) -> int:
+	return int(def(id).get("soulCost", 0)) if p.get("family") == "reaper" else 0
+
+
+## Can the caster pay `id`'s price: souls for the Reaper, essence (or a charged Soul Harvest) for everyone else.
+static func can_pay(p: Dictionary, id: String) -> bool:
+	if p.get("family") == "reaper":
+		return int(p["souls"]) >= soul_cost(p, id)
+	return empowered(p, id) or p["resource"]["value"] >= float(def(id)["essenceCost"])
+
+
+## Everything that can refuse a cast before the rite itself runs: "ok", "dead", "locked", "busy", "cooldown", "essence", "souls".
 static func cast_check(p: Dictionary, id: String, level: float, now: float, dev: bool = false) -> String:
 	if not p["alive"]:
 		return "dead"
@@ -81,15 +93,14 @@ static func cast_check(p: Dictionary, id: String, level: float, now: float, dev:
 		return "busy"
 	if DmPlayerRules.on_cooldown(p, id, now):
 		return "cooldown"
-	if not empowered(p, id) and p["resource"]["value"] < float(def(id)["essenceCost"]):
-		return "essence"
+	if not can_pay(p, id):
+		return "souls" if p.get("family") == "reaper" else "essence"
 	return "ok"
 
 
 ## AbilitySystem.ready(id, now)
 static func ready(p: Dictionary, id: String, level: float, now: float, dev: bool = false) -> bool:
-	return p["alive"] and unlocked(id, level, dev) and now >= p["castUntil"] and not DmPlayerRules.on_cooldown(p, id, now) \
-		and (empowered(p, id) or p["resource"]["value"] >= float(def(id)["essenceCost"]))
+	return p["alive"] and unlocked(id, level, dev) and now >= p["castUntil"] and not DmPlayerRules.on_cooldown(p, id, now) and can_pay(p, id)
 
 
 ## Distance a target is beyond the ability's reach (0 if in range). t = {x, z, boss?}; boss radius BOSS_RADIUS is passed in (world constant).
@@ -109,7 +120,9 @@ static func apply_cast_cost(p: Dictionary, id: String, now: float, was_empowered
 	var lo: Dictionary = p["loadout"]
 	p["castUntil"] = now + DmWeaponLine.ability_lock_ms(id, float(cast_flow(id)["lockMs"]), lo)
 	p["rootedUntil"] = maxf(p["rootedUntil"], p["castUntil"])
-	if was_empowered:
+	if p.get("family") == "reaper":
+		DmPlayerRules.bag_spend(p, soul_cost(p, id))
+	elif was_empowered:
 		DmPlayerRules.spend_souls(p)
 	else:
 		p["resource"]["value"] -= float(d["essenceCost"])

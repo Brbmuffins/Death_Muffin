@@ -228,7 +228,7 @@ func _entry(id: String, rites: Dictionary, level: int, primary_mode: bool) -> Co
 		on = 0 if String(rites["primary"]) == id else -1
 	else:
 		on = keys.find(id)
-	var cost := "%d essence" % int(a["essenceCost"]) if float(a.get("essenceCost", 0)) > 0.0 else "No cost"
+	var cost := "%d essence" % int(a["essenceCost"]) if float(a.get("essenceCost", 0)) > 0.0 else ("%d souls" % int(a["soulCost"]) if float(a.get("soulCost", 0)) > 0.0 else "No cost")
 	var roles := " · ".join(PackedStringArray(DmPaData.roles_of(id).map(func(r: String) -> String: return String(DmContent.get_export("abilities", "ROLE_LABEL")[r]))))
 	var card := PanelContainer.new()
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL

@@ -6,7 +6,8 @@
       "The Reaper can take a hit now: 30% more health than a necromancer, 15% less damage from every blow, and each enemy a scythe swing strikes heals her a little (up to 6% of her health a swing). Wraith Walk's rush can't be hit.",
       "Harvest Spin and the spinning thrown scythe leave a sweeping blade trail, every scythe hit lands with a green impact flash, and Soul Burst slams the ground.",
       "The Reaper has her own portrait on character select.",
-      "The Reaper now carries a green-etched scythe in her hand, and Scythe Throw sends the same scythe spinning across the ground."
+      "The Reaper now carries a green-etched scythe in her hand, and Scythe Throw sends the same scythe spinning across the ground.",
+      "The Reaper's souls are now her only resource: the energy orb is her soul bag, every rite except the free Scythe Sweep costs souls, and every enemy that dies gives her one. Souls wisp around the corpse for a second before flying to her."
     ]
   },
   {

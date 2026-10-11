@@ -387,7 +387,7 @@
    "description": "A mobile scythe fighter who cuts great arcs through the pack and gathers the souls of everything that dies.",
    "passive": {
     "name": "Soul Harvest",
-    "text": "Green energy refills constantly and you run 10% faster. Built for the thick of it: 30% more health, 15% less damage taken, every enemy a swing strikes heals you a little (up to 6% a swing), and nothing lands during Wraith Walk's rush. Every kill sends its soul to your soul bag; each soul adds 2% damage, and Reap, Wraith Walk and Soul Burst spend them."
+    "text": "Souls are your only resource: every enemy that dies sends its soul to your soul bag (the green orb), each soul adds 2% damage, and every rite but the free scythe sweep spends souls. You run 10% faster. Built for the thick of it: 30% more health, 15% less damage taken, every enemy a swing strikes heals you a little (up to 6% a swing), and nothing lands during Wraith Walk's rush."
    },
    "color": "#6ee7a0",
    "portrait": "art/portraits/reaper.webp",
@@ -809,7 +809,7 @@
    "description": "A mobile scythe fighter who cuts great arcs through the pack and gathers the souls of everything that dies.",
    "passive": {
     "name": "Soul Harvest",
-    "text": "Green energy refills constantly and you run 10% faster. Built for the thick of it: 30% more health, 15% less damage taken, every enemy a swing strikes heals you a little (up to 6% a swing), and nothing lands during Wraith Walk's rush. Every kill sends its soul to your soul bag; each soul adds 2% damage, and Reap, Wraith Walk and Soul Burst spend them."
+    "text": "Souls are your only resource: every enemy that dies sends its soul to your soul bag (the green orb), each soul adds 2% damage, and every rite but the free scythe sweep spends souls. You run 10% faster. Built for the thick of it: 30% more health, 15% less damage taken, every enemy a swing strikes heals you a little (up to 6% a swing), and nothing lands during Wraith Walk's rush."
    },
    "color": "#6ee7a0",
    "portrait": "art/portraits/reaper.webp",
