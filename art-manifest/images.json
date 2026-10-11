@@ -7734,8 +7734,6 @@
     "aspect": "1:1",
     "post": null,
     "out": "art-src/concepts/prop_gear_reaper_scythe.png",
-    "rawHash": "sha256:2f5d38f1790a19d6c1f6c6b5d7fb0de90668b06c7f38908dea947e5be4bb8d5c",
-    "outHash": "sha256:ce4016fc9c1658c76eb981d72537cf81f58cce0476a38dbeadba5cae771a747a",
     "generatedAt": "2026-10-11T02:27:40.886Z"
   }
 }
