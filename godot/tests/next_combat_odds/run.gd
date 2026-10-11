@@ -427,7 +427,7 @@ const REF_SOUNDS := {   ## rite -> the sfx (and "loop:"-prefixed loops) the old 
 	"scythe_sweep": ["boneHit", "ivoryCleave"],
 	"scythe_throw": ["boneHit", "storm"],
 	"reap": ["boneHit", "ivoryCleave"],
-	"wraith_walk": ["wail"],
+	"wraith_walk": ["wail", "banshee"],
 	"soul_burst": ["boneHit", "ivoryCleave", "wail"],
 	"harvest_spin": ["boneHit", "ivoryCleave"],
 	"unleash_souls": ["wail", "boneHit"],

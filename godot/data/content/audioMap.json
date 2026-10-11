@@ -12,6 +12,7 @@
   "thrallShot",
   "thrallMagic",
   "wail",
+  "banshee",
   "bloodStep",
   "frost",
   "mantle",
@@ -365,6 +366,22 @@
    "bus": "sfx",
    "priority": 3,
    "notes": "Wailing Skull (jade spirit): \"hollow, creepy\" liquid bolts. Each hop plays at intensity 0.6."
+  },
+  "banshee": {
+   "files": [
+    "Attacks_and_Creatures/Creature_High_A_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+    "Attacks_and_Creatures/Creature_High_C_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+    "Attacks_and_Creatures/Creature_High_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle"
+   ],
+   "volume": 0.5,
+   "pitchJitter": 0.06,
+   "maxVoices": 1,
+   "cooldownMs": 300,
+   "spatial": true,
+   "bus": "sfx",
+   "priority": 4,
+   "rate": 1.2,
+   "notes": "Reaper Wraith Walk: a high keening banshee wail while she rushes (stand-in creature-voice clips until an ElevenLabs wail is dropped in)."
   },
   "bloodStep": {
    "files": [

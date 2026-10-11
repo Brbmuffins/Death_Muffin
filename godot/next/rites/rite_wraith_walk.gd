@@ -72,6 +72,7 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 	for h: Vector3 in ev["hits"]:
 		c.fx.emit(h.x, 0.9, h.z, 6, DmReaperRites.GREEN, 0.3, 2.0, 1.4, 0.5, 0.12, {"gravity": 4.0})
 	c.fx.sfx("wail", fx0, fz0, 0.9)
+	c.fx.sfx("banshee", fx0, fz0, 1.0)   # the banshee keen over the rush
 	c.shake_requested.emit(0.04)
 	_phantom(c, float(ev["dash"]))
 

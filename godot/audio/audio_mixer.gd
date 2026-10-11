@@ -30,6 +30,7 @@ const PROFILES := {
 	"miasma": {"bus": "combat", "priority": 9, "dur": 1.2},
 	"litany": {"bus": "combat", "priority": 9, "dur": 3},
 	"wail": {"bus": "combat", "priority": 9, "dur": 1.1},
+	"banshee": {"bus": "combat", "priority": 9, "dur": 1.0},
 	"bloodStep": {"bus": "combat", "priority": 9, "dur": 0.9},
 	"frost": {"bus": "combat", "priority": 9, "dur": 0.7},
 	"mantle": {"bus": "combat", "priority": 9, "dur": 0.9},
