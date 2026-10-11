@@ -5,7 +5,8 @@
  *   GET  /api/vault/:characterId       -> { bag, vault }
  *   POST /api/vault/deposit            -> { characterId, bagSlot, quantity? }      bag -> vault (whole stack when quantity is omitted)
  *   POST /api/vault/withdraw           -> { characterId, vaultSlot, quantity? }    vault -> bag
- *   POST /api/vault/deposit-all        -> { characterId, kind: 'materials' | 'all', exceptSlots: number[] }
+ *   POST /api/vault/withdraw-many      -> { characterId, vaultSlots: number[] }     vault -> bag in one transaction, stops at the first that does not fit
+ *   POST /api/vault/deposit-all       -> { characterId, kind: 'materials' | 'all', exceptSlots: number[] }
  *   POST /api/vault/sort               -> { characterId }                           merge stacks, order by type, rarity, id
  *   POST /api/vault/move               -> { characterId, from, fromSlot, to, toSlot, quantity? }   from/to = 'bag' | 'vault': a stack to exactly
  *                                         that slot (rearranging within a side too): empty = put, same item = merge, else swap (vaultRules.moveToSlot)
@@ -86,7 +87,29 @@ module.exports = function mountVault(app, pool, { requireAuth, ownsCharacter }) 
     return move(conn, id, accountId, (bag, vault, info) => rules.withdrawStack(bag, vault, slot, quantity, info));
   }));
 
-  app.post('/api/vault/deposit-all', requireAuth, handle(async (conn, id, accountId, req) => {
+  // The "Take" buttons: withdraw the listed Vault slots in order in ONE transaction, stopping at the first stack that does not fit
+  // (what already moved is kept; `stopped` carries the player-readable reason).
+  app.post('/api/vault/withdraw-many', requireAuth, handle(async (conn, id, accountId, req) => {
+    const slots = Array.isArray(req.body.vaultSlots) ? req.body.vaultSlots.slice(0, rules.VAULT_SLOTS).map(int).filter((n) => n >= 0 && n < rules.VAULT_SLOTS) : [];
+    if (!slots.length) throw playerError('Nothing to take.');
+    const bag = await store.loadBag(conn, id);
+    const vault = await store.loadVault(conn, accountId);
+    const info = await store.loadInfo(conn, [...bag, ...vault].map((r) => r.itemId));
+    let cur = { bag, vault };
+    let stopped = '';
+    for (const slot of slots) {
+      const r = rules.withdrawStack(cur.bag, cur.vault, slot, undefined, info);
+      if (!r.ok) { stopped = r.error; break; }
+      cur = r;
+    }
+    if (cur.bag === bag) throw playerError(stopped);
+    await store.writeBag(conn, id, bag, cur.bag);
+    await store.writeVault(conn, accountId, vault, cur.vault);
+    const view =await store.view(conn, id, accountId);
+    return stopped ? { ...view, stopped } : view;
+  }));
+
+  app.post('/api/vault/deposit-all',requireAuth, handle(async (conn, id, accountId, req) => {
     const kind = req.body.kind;
     if (kind !== 'materials' && kind !== 'all') throw playerError('Choose what to deposit: materials or everything.');
     const except = Array.isArray(req.body.exceptSlots) ? req.body.exceptSlots.slice(0, 200).map(int).filter((n) => n >= 0 && n < gather.BAG_SLOTS) : [];
