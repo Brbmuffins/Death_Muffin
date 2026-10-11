@@ -29,7 +29,7 @@ Every key is optional; missing = zero / hidden. Units: HP in HP, cooldown in ms.
 | `dev` | bool | the DEV chip |
 | `primary` | `{icon, key="LMB", rune_icon?}` | left-click socket; icon is a `res://` texture path |
 | `slots` | Array of slot dicts | see below. Row rebuilds when the count or any `alt` flag changes |
-| `grimoire_new` | bool | NEW pip on the "Swap spells" button |
+| `grimoire_new` | bool | NEW pip on the "Spellbook" button |
 | `souls`, `souls_max` | number | Soul Harvest meter; full -> "HARVEST" + jade |
 | `thralls`, `thrall_cap`, `raises_thralls` | number, number, bool | pips + chip appear when `raises_thralls` or `thralls > 0` |
 | `gold`, `shards` | number | currency row; `gold` also drives the buy buttons' enabled state |
