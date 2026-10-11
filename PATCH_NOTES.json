@@ -3,6 +3,7 @@
     "date": "2026-10-11",
     "title": "Necromancer Look: Real Weapons, Helms and Mantles",
     "items": [
+      "The Vault's Take materials and Take all buttons are fast now: they move everything in one go instead of one stack at a time.",
       "Every necromancer weapon now has its own model in your hand: staves, scythes, wands, sickles, skull foci, mourning bells and grimoires. Bone, iron, gold, hell and moon weapons share a model and differ in metal and glow. The default staff uses the new staff too.",
       "Helms show as a hooded crown over your hero: iron for class sets, silver for ascended sets, copper, iron and silver for crafted helms, a thorned hellsteel crown for legendary sets. Hide helms still hides them.",
       "Wearing the chest piece of a class or ascended set puts that set's mantle on your hero's shoulders.",

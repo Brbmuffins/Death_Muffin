@@ -451,6 +451,10 @@ func vault_withdraw(character_id: int, vault_slot: int, quantity: int = -1) -> D
 		body["quantity"] = quantity
 	return _decorate_keys(await _post("/api/vault/withdraw", body), ["bag", "vault"])
 
+## One request for the "Take" buttons. data: {bag, vault, stopped?} (`stopped` = why the rest did not fit).
+func vault_withdraw_many(character_id: int, vault_slots: Array) -> DmResult:
+	return _decorate_keys(await _post("/api/vault/withdraw-many", {"characterId": character_id, "vaultSlots": vault_slots}), ["bag", "vault"])
+
 ## kind: "materials" | "all"
 func vault_deposit_all(character_id: int, kind: String, except_slots: Array) -> DmResult:
 	return _decorate_keys(await _post("/api/vault/deposit-all", {"characterId": character_id, "kind": kind, "exceptSlots": except_slots}), ["bag", "vault"])

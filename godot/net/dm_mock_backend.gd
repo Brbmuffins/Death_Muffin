@@ -1054,6 +1054,31 @@ func _vault_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 			if not _is_int(vs_f) or vs_f < 0 or vs_f >= DmVault.VAULT_SLOTS:
 				return _fail("Choose a Vault slot between 0 and %d." % (DmVault.VAULT_SLOTS - 1))
 			return _apply_vault(acc, DmVault.withdraw_stack(_bag_rows(acc), _vault_rows(acc), int(vs_f), qty, info))
+		"/api/vault/withdraw-many":
+			var bag_rows := _bag_rows(acc)
+			var vault_rows := _vault_rows(acc)
+			var moved := 0
+			var stopped := ""
+			var wanted: Array = body["vaultSlots"] if body.get("vaultSlots") is Array else []
+			for n in wanted:
+				var nf := _to_num(n)
+				if not _is_int(nf) or nf < 0 or nf >= DmVault.VAULT_SLOTS:
+					continue
+				var w: Dictionary = DmVault.withdraw_stack(bag_rows, vault_rows, int(nf), null, info)
+				if not w["ok"]:
+					stopped = w["error"]
+					break
+				bag_rows = w["bag"]
+				vault_rows = w["vault"]
+				moved += 1
+			if moved == 0:
+				return _fail(stopped if stopped != "" else "Nothing to take.")
+			_store_bag(acc, bag_rows)
+			_vault_store(acc, vault_rows)
+			var view := _vault_view(acc)
+			if stopped != "":
+				view["stopped"] = stopped
+			return _ok(view)
 		"/api/vault/deposit-all":
 			var kind: Variant = body.get("kind")
 			if kind != "materials" and kind != "all":

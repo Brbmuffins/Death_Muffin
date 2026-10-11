@@ -306,11 +306,11 @@ func _vault_sort() -> void:
 func _take_all(_kind: String, slots: Array) -> void:
 	vault.set_busy(true)
 	var note := ""
-	for s in slots:
-		var r: DmResult = await game.api.vault_withdraw(cid(), int(s))
-		if not r.ok:
-			note = "Took what fit. %s" % r.error
-			break
+	var r: DmResult = await game.api.vault_withdraw_many(cid(), slots)
+	if not r.ok:
+		note = "Took what fit. %s" % r.error
+	elif r.data is Dictionary and str(r.data.get("stopped", "")) != "":
+		note = "Took what fit. %s" % r.data["stopped"]
 	vault.set_busy(false)
 	await game.refresh_inventory()
 	var g: DmResult = await game.api.get_vault(cid())
