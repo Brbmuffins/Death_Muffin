@@ -296,6 +296,39 @@
     "miasmaSpreadsWithered": 0,
     "witheredBurstAt": 0
    }
+  },
+  "reaper": {
+   "id": "reaper",
+   "classIndex": 11,
+   "family": "reaper",
+   "name": "Reaper",
+   "mods": {
+    "thrallCap": 3,
+    "thrallKind": "warrior",
+    "thrallHpMult": 1,
+    "thrallDamageMult": 1,
+    "thrallAttackSpeedMult": 1,
+    "maxHpMult": 1,
+    "essenceRegenMult": 1,
+    "miasmaRadiusMult": 1,
+    "witheredMaxStacks": 5,
+    "corpseHeal": 0,
+    "wardPerThrall": 0,
+    "litanyBarrier": 0,
+    "sacrificeLeavesCorpse": false,
+    "miasmaBurstsCorpses": false,
+    "thrallDeathBurst": 0,
+    "championEvery": 0,
+    "spearRally": 0,
+    "wardReflect": 0,
+    "colossusGuard": 0,
+    "litanyShatter": 0,
+    "corpseWisp": 0,
+    "soulHarvestRateMult": 1,
+    "wraithNova": 0,
+    "miasmaSpreadsWithered": 0,
+    "witheredBurstAt": 0
+   }
   }
  },
  "by_index": {
@@ -310,7 +343,7 @@
   "8": "hollow_knight",
   "9": "veilwalker",
   "10": "gravecaller",
-  "11": "gravecaller",
+  "11": "reaper",
   "12": "gravecaller"
  },
  "fallback": "gravecaller"

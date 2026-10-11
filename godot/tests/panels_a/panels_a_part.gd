@@ -242,11 +242,12 @@ func _test_class() -> void:
 	_mount(w)
 	w.set_data(2)
 	var cards := DmPa.acts(w, "class")
-	_eq(cards.size(), 9, "class: nine playable disciplines")
+	_eq(cards.size(), 10, "class: ten disciplines")
 	for c in cards:
 		var a := int(c.get_meta("arg"))
-		_eq(c.get_meta("disabled"), a == 2 or a >= 5, "current class + locked non-necro disciplines disabled (class %s)" % a)
-		_eq(c.get_meta("locked"), a >= 5, "non-necro disciplines locked as Coming later (class %s)" % a)
+		var locked := a >= 5 and a != 11   # 11 = the Reaper, playable
+		_eq(c.get_meta("disabled"), a == 2 or locked, "current class + locked non-necro disciplines disabled (class %s)" % a)
+		_eq(c.get_meta("locked"), locked, "non-necro disciplines locked as Coming later (class %s)" % a)
 	var chosen: Array = []
 	w.class_chosen.connect(func(i: int) -> void: chosen.append(i))
 	w.choose(2)
@@ -536,7 +537,7 @@ func _test_codex() -> void:
 	# disciplines: 9, mine marked
 	w.select_tab("disciplines")
 	var discs := _entries(w.tab_view("disciplines"))
-	_eq(discs.size(), 9, "disciplines tab: nine")
+	_eq(discs.size(), 10, "disciplines tab: ten")
 	var mine := discs.filter(func(n: Node) -> bool: return n.has_meta("mine") and n.get_meta("mine"))
 	_eq(mine.size(), 1, "exactly one marked 'Your discipline'")
 	_check(DmPa.all_text(w.tab_view("disciplines")).contains("Your discipline"), "mine label")

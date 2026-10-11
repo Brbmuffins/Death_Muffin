@@ -377,6 +377,48 @@
     "miasmaSpreadsWithered": 0,
     "witheredBurstAt": 0
    }
+  },
+  "reaper": {
+   "classIndex": 11,
+   "id": "reaper",
+   "family": "reaper",
+   "name": "Reaper",
+   "epithet": "Harvester of the Fallen",
+   "description": "A mobile scythe fighter who cuts great arcs through the pack and gathers the souls of everything that dies.",
+   "passive": {
+    "name": "Soul Harvest",
+    "text": "Green energy refills constantly and you run 10% faster. Every kill sends its soul to your soul bag; each soul adds 2% damage, and Reap, Wraith Walk and Soul Burst spend them."
+   },
+   "color": "#6ee7a0",
+   "portrait": "art/portraits/mourner.webp",
+   "modelSlug": "hero_mourner",
+   "mods": {
+    "thrallCap": 3,
+    "thrallKind": "warrior",
+    "thrallHpMult": 1,
+    "thrallDamageMult": 1,
+    "thrallAttackSpeedMult": 1,
+    "maxHpMult": 1,
+    "essenceRegenMult": 1,
+    "miasmaRadiusMult": 1,
+    "witheredMaxStacks": 5,
+    "corpseHeal": 0,
+    "wardPerThrall": 0,
+    "litanyBarrier": 0,
+    "sacrificeLeavesCorpse": false,
+    "miasmaBurstsCorpses": false,
+    "thrallDeathBurst": 0,
+    "championEvery": 0,
+    "spearRally": 0,
+    "wardReflect": 0,
+    "colossusGuard": 0,
+    "litanyShatter": 0,
+    "corpseWisp": 0,
+    "soulHarvestRateMult": 1,
+    "wraithNova": 0,
+    "miasmaSpreadsWithered": 0,
+    "witheredBurstAt": 0
+   }
   }
  },
  "PLAYABLE_DISCIPLINES": [
@@ -730,6 +772,48 @@
    "color": "#bff3ff",
    "portrait": "art/portraits/veilwalker.webp",
    "modelSlug": "hero_veilwalker",
+   "mods": {
+    "thrallCap": 3,
+    "thrallKind": "warrior",
+    "thrallHpMult": 1,
+    "thrallDamageMult": 1,
+    "thrallAttackSpeedMult": 1,
+    "maxHpMult": 1,
+    "essenceRegenMult": 1,
+    "miasmaRadiusMult": 1,
+    "witheredMaxStacks": 5,
+    "corpseHeal": 0,
+    "wardPerThrall": 0,
+    "litanyBarrier": 0,
+    "sacrificeLeavesCorpse": false,
+    "miasmaBurstsCorpses": false,
+    "thrallDeathBurst": 0,
+    "championEvery": 0,
+    "spearRally": 0,
+    "wardReflect": 0,
+    "colossusGuard": 0,
+    "litanyShatter": 0,
+    "corpseWisp": 0,
+    "soulHarvestRateMult": 1,
+    "wraithNova": 0,
+    "miasmaSpreadsWithered": 0,
+    "witheredBurstAt": 0
+   }
+  },
+  {
+   "classIndex": 11,
+   "id": "reaper",
+   "family": "reaper",
+   "name": "Reaper",
+   "epithet": "Harvester of the Fallen",
+   "description": "A mobile scythe fighter who cuts great arcs through the pack and gathers the souls of everything that dies.",
+   "passive": {
+    "name": "Soul Harvest",
+    "text": "Green energy refills constantly and you run 10% faster. Every kill sends its soul to your soul bag; each soul adds 2% damage, and Reap, Wraith Walk and Soul Burst spend them."
+   },
+   "color": "#6ee7a0",
+   "portrait": "art/portraits/mourner.webp",
+   "modelSlug": "hero_mourner",
    "mods": {
     "thrallCap": 3,
     "thrallKind": "warrior",

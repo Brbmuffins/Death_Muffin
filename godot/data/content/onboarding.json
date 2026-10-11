@@ -16,6 +16,10 @@
    "title": "Walk the Veil",
    "body": "<kbd>1</kbd> changes form. Veil form drains your meter and protects you from enemy attacks while you move faster; your spirit attacks deal less damage. Life form refills Veil. Lay a body to rest for healing and echo corpses, then raise or cross to an echo."
   },
+  "reaper_souls": {
+   "title": "Fill the soul bag",
+   "body": "You are the <b>Reaper</b>: green <b>energy</b> refills on its own, so keep swinging and keep moving. Every kill sends its soul to your <b>soul bag</b> (the skull bar): each soul adds 2% damage. <kbd>2</kbd> Reap, <kbd>3</kbd> Wraith Walk and <kbd>4</kbd> Soul Burst spend souls for much more. <kbd>1</kbd> throws the scythe to spin on a pack."
+  },
   "minimap": {
    "title": "Choose your path",
    "body": "Click a walkable spot on the minimap to travel there. The amber marker shows your fixed destination. Click another spot to change it; sealed halls stay closed. Hover a spell icon for its cost, targeting, effects and a useful combat tip."

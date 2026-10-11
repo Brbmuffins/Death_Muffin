@@ -108,6 +108,11 @@
    "group": null,
    "priority": 50
   },
+  "reaper_souls": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
   "minimap": {
    "kind": "asked",
    "group": null,

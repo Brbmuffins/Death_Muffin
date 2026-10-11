@@ -239,6 +239,30 @@
   "plague_bloom": {
    "lockMs": 130,
    "gestureSeconds": 0.36
+  },
+  "scythe_sweep": {
+   "lockMs": 90,
+   "gestureSeconds": 0.3
+  },
+  "scythe_throw": {
+   "lockMs": 100,
+   "gestureSeconds": 0.32
+  },
+  "reap": {
+   "lockMs": 170,
+   "gestureSeconds": 0.5
+  },
+  "wraith_walk": {
+   "lockMs": 60,
+   "gestureSeconds": 0.3
+  },
+  "soul_burst": {
+   "lockMs": 150,
+   "gestureSeconds": 0.45
+  },
+  "harvest_spin": {
+   "lockMs": 120,
+   "gestureSeconds": 0.4
   }
  }
 }

@@ -240,8 +240,8 @@ func _test_art(ui: DmGameUi) -> void:
 			abil_missing.append(id)
 	_check(abil_missing.is_empty(), "every ability icon is synced (missing: %s)" % str(abil_missing))
 	var por_missing: Array = []
-	for id in DmContent.get_export("disciplines", "DISCIPLINES"):
-		if DmUiArt.texture("art/portraits/%s.webp" % id) == null:
+	for id in DmContent.get_export("disciplines", "DISCIPLINES"):   # the portrait each class declares (the Reaper borrows the Mourner's until its own is made)
+		if DmUiArt.texture(String(DmContent.get_export("disciplines", "DISCIPLINES")[id]["portrait"])) == null:
 			por_missing.append(id)
 	_check(por_missing.is_empty(), "every class portrait is synced (missing: %s)" % str(por_missing))
 	_check(DmUiArt.texture("art/omens/blood_moon.webp") != null or DirAccess.get_files_at("res://assets/ui_art/art/omens").size() > 0, "omen art is synced")

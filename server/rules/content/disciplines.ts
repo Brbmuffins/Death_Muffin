@@ -5,7 +5,7 @@
  * disciplines in a client content manifest"). Index 0 (legacy Engineer, no
  * model) plays as a Gravecaller.
  */
-export type DisciplineId = 'ossuary' | 'gravecaller' | 'mourner' | 'rotweaver' | 'grave_warden' | 'bell_monk' | 'carrion_witch' | 'hollow_knight' | 'veilwalker';
+export type DisciplineId = 'ossuary' | 'gravecaller' | 'mourner' | 'rotweaver' | 'grave_warden' | 'bell_monk' | 'carrion_witch' | 'hollow_knight' | 'veilwalker' | 'reaper';
 
 /**
  * Which kit a discipline plays. The four necromantic disciplines share the
@@ -15,7 +15,7 @@ export type DisciplineId = 'ossuary' | 'gravecaller' | 'mourner' | 'rotweaver' |
  * becomes reachable once its kit exists and its discipline is added to
  * `PLAYABLE_DISCIPLINES`.
  */
-export type ClassFamily = 'necromancer' | 'warden' | 'monk' | 'witch' | 'knight' | 'veil';
+export type ClassFamily = 'necromancer' | 'warden' | 'monk' | 'witch' | 'knight' | 'veil' | 'reaper';
 /** warrior/shieldbearer/wraith come from the discipline; hound, archer, bonemage and plaguebearer from the corpse. */
 export type ThrallKind = 'warrior' | 'shieldbearer' | 'wraith' | 'hound' | 'archer' | 'bonemage' | 'plaguebearer' | 'colossus';
 
@@ -223,9 +223,16 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
     passive: { name: 'Thin Places', text: 'Veil refills in Life form and drains in Veil form. Spectral echoes appear where corpses fall.' },
     color: '#bff3ff', portrait: 'art/portraits/veilwalker.webp', modelSlug: 'hero_veilwalker', mods: { ...BASE },
   },
+  reaper: {
+    classIndex: 11, id: 'reaper', family: 'reaper', name: 'Reaper',
+    epithet: 'Harvester of the Fallen',
+    description: 'A mobile scythe fighter who cuts great arcs through the pack and gathers the souls of everything that dies.',
+    passive: { name: 'Soul Harvest', text: 'Green energy refills constantly and you run 10% faster. Every kill sends its soul to your soul bag; each soul adds 2% damage, and Reap, Wraith Walk and Soul Burst spend them.' },
+    color: '#6ee7a0', portrait: 'art/portraits/mourner.webp', modelSlug: 'hero_mourner', mods: { ...BASE },
+  },
 };
 
-const BY_INDEX: Record<number, DisciplineId> = { 0: 'gravecaller', 1: 'ossuary', 2: 'gravecaller', 3: 'mourner', 4: 'rotweaver', 5: 'grave_warden', 6: 'bell_monk', 7: 'carrion_witch', 8: 'hollow_knight', 9: 'veilwalker' };
+const BY_INDEX: Record<number, DisciplineId> = { 0: 'gravecaller', 1: 'ossuary', 2: 'gravecaller', 3: 'mourner', 4: 'rotweaver', 5: 'grave_warden', 6: 'bell_monk', 7: 'carrion_witch', 8: 'hollow_knight', 9: 'veilwalker', 11: 'reaper' };
 
 export function disciplineFor(classIndex: number): Discipline {
   return DISCIPLINES[BY_INDEX[classIndex] ?? 'gravecaller'];
@@ -241,4 +248,5 @@ export const PLAYABLE_DISCIPLINES: Discipline[] = [
   DISCIPLINES.carrion_witch,
   DISCIPLINES.hollow_knight,
   DISCIPLINES.veilwalker,
+  DISCIPLINES.reaper,
 ];

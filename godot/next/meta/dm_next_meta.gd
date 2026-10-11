@@ -21,6 +21,7 @@ var omen: Dictionary = {}                ## the week's Omen (DmContent omens), o
 var vow_fx: Dictionary = {}              ## DmVowsBoons.vow_effects of the sworn WORLD vows (the player-scope ones reach the hero through DmCharacterBuild)
 var heat := 0                            ## the world vows' heat: the run's rank (xp / gold multiplier, kill reports)
 
+var _soul_fx: DmRiteFx = null            ## draws the Reaper's soul wisps (made on the first one)
 var _synced := false
 var _vow_sig := ""
 var _bond_t := 0.0
@@ -134,6 +135,11 @@ func _on_chain_tier(cid: int, tier: Dictionary) -> void:
 
 ## Your own kill banks a soul; the kill that fills the meter charges the next Marrow Spear / Miasma / Black Litany (free, 1.5x), see DmRiteCaster.
 func _on_killer_paid(cid: int, _def: String, enemy: Node) -> void:
+	var m: DmRewardsMember = shell.rewards.members.get(cid)
+	var killer := m.body as DmHeroBody if m != null else null
+	if killer != null and killer.family == "reaper":   # her kills fill the soul bag, not the Soul Harvest meter
+		_bank_reaper_soul(killer, enemy)
+		return
 	var b := shell.local_body()
 	if cid != member.character_id or b == null or b.p.is_empty():
 		return
@@ -152,6 +158,23 @@ func _on_killer_paid(cid: int, _def: String, enemy: Node) -> void:
 		var jade: int = int(DmContent.spell_fx()["souls"]["jade"])
 		vfx.emit({"x": b.position.x, "y": 0.3, "z": b.position.z, "count": 50, "color": jade, "spread": 1.2, "speed": 1.4, "up": 3.0, "life": 1.0, "size": 0.3, "inward": true})
 		vfx.light_flash(Vector3(b.position.x, 1.5, b.position.z), Color.hex(jade * 256 + 255), 30.0, 0.6)
+
+
+## The Reaper's soul bag: every kill she lands banks one soul (until the bag is full); a wisp of it flies from the dead enemy to her.
+func _bank_reaper_soul(b: DmHeroBody, enemy: Node) -> void:
+	if b.p.is_empty() or not b.alive or DmPlayerRules.bag_add(b.p, 1) == 0:
+		return
+	var vfx := get_node_or_null("/root/Vfx")
+	var e3 := enemy as Node3D
+	if vfx == null or not shell._visual or e3 == null or not is_instance_valid(e3):
+		return
+	if _soul_fx == null:
+		_soul_fx = DmRiteFx.with_autoloads()
+	var bw: WeakRef = weakref(b)   # a WeakRef, not the body: a lambda capturing a freed Object logs an engine error on every call
+	_soul_fx.shot(Vector3(e3.global_position.x, 0.8, e3.global_position.z), func() -> Variant:
+		var hero: Node3D = bw.get_ref() as Node3D
+		return Vector3(hero.global_position.x, 1.2, hero.global_position.z) if hero != null else null,
+		12.0, 0.0, "sprite", DmReaperRites.GREEN, {"tex": "wisp", "size": 0.7})
 
 
 # ---- Bonded Dead ----------------------------------------------------------------------------------------------------------------------

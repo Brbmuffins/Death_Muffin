@@ -177,11 +177,14 @@ const DISCIPLINE_NAMES = {
   7: 'Carrion Witch',
   8: 'Hollow Knight',
   9: 'Veilwalker',
+  11: 'Reaper',
 };
 /** Highest accepted `discipline_index`. The client presents the names. Owner 2026-10-09 (baseline): only the four necromancer
- *  disciplines (1-4) are playable; 5-9 come back when their kits are rebuilt. Existing characters keep their row and pick a necromancer
+ *  disciplines (1-4) are playable; 5-9 come back when their kits are rebuilt. The Reaper (11; 10 stays the "unknown class" index the
+ *  golden fixtures use) is the first of the new kits to be playable. Existing characters keep their row and pick a playable
  *  discipline through POST /character/discipline. */
-const MAX_DISCIPLINE_INDEX = 4;
+const MAX_DISCIPLINE_INDEX = 11;
+const PLAYABLE_DISCIPLINE_INDICES = [1, 2, 3, 4, 11];
 
 // JWT middleware – verifies token and pre-fetches character row
 async function verifyJWT(req, res, next) {
@@ -2180,7 +2183,7 @@ require('./bug-reports.cjs')(app, pool, {
   },
 });
 require('./prefs.cjs')(app, pool, { requireAuth: requireJWT });
-require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex: MAX_DISCIPLINE_INDEX });
+require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex: MAX_DISCIPLINE_INDEX, playable: PLAYABLE_DISCIPLINE_INDICES });
 // Last resort for anything a route throws outside its own try (Express 5 forwards a rejected async handler here): JSON like every other
 // failure, one journal line instead of a stack dump, and nothing internal in the reply.
 app.use((err, req, res, next) => {

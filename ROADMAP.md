@@ -1,6 +1,6 @@
 # Roadmap
 
-The game is the Godot online client, necromancer-only. Order of work follows the owner's rules: performance first, polish
+The game is the Godot online client, necromancers plus the Reaper (a scythe class with a soul bag, first pass: placeholder model and art, untuned numbers). Order of work follows the owner's rules: performance first, polish
 over new content, necromancer focus. Open gaps are listed once, in [KNOWN-GAPS.md](KNOWN-GAPS.md); decisions in
 [DECISIONS.md](DECISIONS.md).
 

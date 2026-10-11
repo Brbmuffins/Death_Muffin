@@ -64,7 +64,8 @@ func build() -> Dictionary:
 		"damage": {"tier": host.progress["damageTier"], "pct": DmUpgrades.damage_bonus_pct(float(host.progress["damageTier"])), "cost": null if host.prog.damage_cost() == -1 else host.prog.damage_cost()},
 		"wave": {"owned": host.progress["waveTierOwned"], "active": host.progress["waveTierActive"], "pct": DmWaveUpgrades.wave_modifiers(float(host.progress["waveTierActive"]))["speedPct"],
 			"cost": null if host.prog.wave_cost() == -1 else host.prog.wave_cost()},
-		"souls": b.p["souls"] if not b.p.is_empty() else 0, "souls_max": b.p["soulsMax"] if not b.p.is_empty() else 50, "raises_thralls": family == "necromancer",
+		"souls": _souls(b), "souls_max": b.p["soulsMax"] if not b.p.is_empty() else (30 if family == "reaper" else 50), "raises_thralls": family == "necromancer",
+		"soul_bag": family == "reaper",
 		"ward": _ward(b), "chain": _chain(g, b), "omen": _omen(g), "save": host.save_chip(),
 	}
 	vm["prompt"] = g.chapterhouse.prompt_text if g.chapterhouse != null else null
@@ -74,6 +75,14 @@ func build() -> Dictionary:
 	vm["thrall_hurt"] = _legion_hurt(th)
 	vm["thrall_cap"] = int(host.build_cache()["discipline"]["mods"]["thrallCap"])
 	return vm
+
+
+## Souls banked: the host reads its body's state, a party member the count the host replicated to its caster (the Reaper's soul bag needs it on both).
+func _souls(b: DmHeroBody) -> int:
+	if not b.p.is_empty():
+		return int(b.p["souls"])
+	var caster := b.get_node_or_null("Rites") as DmRiteCaster
+	return int(caster.get_state().get("souls", 0)) if caster != null else 0
 
 
 ## The boss bar (the original game's DmGameHud.boss shape): the awake boss of this peer's world, hp from the body.
@@ -269,7 +278,7 @@ func _party(g: DmNextGame) -> Array:
 		var d := DmContent.discipline(String(r["discipline"]))
 		var lvl := int(host.character.get("level", 1)) if b == g.local_body() else int(b.character.get("level", 1))
 		out.append({"id": int(r["peer_id"]), "name": String(r["name"]), "discipline": "%s · Level %d" % [d.get("name", r["discipline"]), lvl],
-			"portrait": DmGameHud.art("portraits/%s.webp" % r["discipline"]), "hp_frac": b.hp / maxf(b.max_hp, 1.0)})
+			"portrait": DmGameHud.art(String(d.get("portrait", "art/portraits/%s.webp" % r["discipline"])).replace("art/", "")), "hp_frac": b.hp / maxf(b.max_hp, 1.0)})
 		if out.size() >= 4:
 			break
 	return out

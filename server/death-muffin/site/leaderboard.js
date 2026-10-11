@@ -2,7 +2,7 @@ const leaderboardStatus = document.querySelector('#leaderboard-status');
 const rows = document.querySelector('#leaderboard-rows');
 // Indexed by COALESCE(discipline_index, class_index) from /leaderboard.
 // The source flag disambiguates legacy class_index 5 from Grave Warden's discipline_index 5.
-const disciplines = ['Engineer', 'Ossuary', 'Gravecaller', 'Mourner', 'Rotweaver', 'Grave Warden', 'Bell Monk', 'Carrion Witch', 'Hollow Knight', 'Veilwalker'];
+const disciplines = ['Engineer', 'Ossuary', 'Gravecaller', 'Mourner', 'Rotweaver', 'Grave Warden', 'Bell Monk', 'Carrion Witch', 'Hollow Knight', 'Veilwalker', 'Unknown', 'Reaper'];
 const legacy = ['Engineer', 'Guardian', 'Shadowblade', 'Cleric', 'Arcanist', 'Necromancer'];
 function hoursLabel(seconds) {
   if (!seconds) return '—';

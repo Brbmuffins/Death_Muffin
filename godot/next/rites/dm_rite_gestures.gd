@@ -30,6 +30,12 @@ const TABLE := {
 	"command_rend": ["cast", 1.8, "command_rend", "command_rend"],
 	"dirge": ["cast", 1.8, "dirge", "dirge"],
 	"plague_bloom": ["cast", 1.8, "plague_bloom", "plague_bloom"],
+	"scythe_sweep": ["attack", 2.6, "scythe_sweep", ""],
+	"scythe_throw": ["cast", 3.0, "scythe_throw", ""],
+	"reap": ["attack", 2.2, "reap", ""],
+	"wraith_walk": ["cast", 3.4, "wraith_walk", ""],
+	"soul_burst": ["cast", 2.0, "soul_burst", ""],
+	"harvest_spin": ["attack", 2.4, "harvest_spin", ""],
 }
 
 

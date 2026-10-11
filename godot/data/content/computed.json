@@ -13311,9 +13311,43 @@
    "signatures": {
     "veilwalker": "between_worlds"
    }
+  },
+  "reaper": {
+   "family": "reaper",
+   "hotbar": [
+    "scythe_throw",
+    "reap",
+    "wraith_walk",
+    "soul_burst",
+    "harvest_spin"
+   ],
+   "grimoire": [
+    "scythe_throw",
+    "reap",
+    "wraith_walk",
+    "soul_burst"
+   ],
+   "defaultLoadout": [
+    "scythe_throw",
+    "reap",
+    "wraith_walk",
+    "soul_burst"
+   ],
+   "primaries": [
+    "scythe_sweep"
+   ],
+   "defaultPrimary": "scythe_sweep",
+   "rmb": "harvest_spin",
+   "signatures": {}
   }
  },
  "abilityUnlockLevels": {
+  "scythe_sweep": 1,
+  "scythe_throw": 1,
+  "reap": 1,
+  "wraith_walk": 1,
+  "soul_burst": 1,
+  "harvest_spin": 1,
   "flail_swing": 1,
   "lantern_cone": 1,
   "chain_pull": 1,

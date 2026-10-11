@@ -54,6 +54,7 @@ static func table() -> Dictionary:
 		_c("monk_beat", ws + "885", 2600, "", false, func(x: Dictionary) -> bool: return String(x.get("family", "")) == "monk"),
 		_c("witch_offal", ws + "886", 2600, "", false, func(x: Dictionary) -> bool: return String(x.get("family", "")) == "witch"),
 		_c("veil_forms", ws + "887", 2600, "", false, func(x: Dictionary) -> bool: return String(x.get("family", "")) == "veil"),
+		_c("reaper_souls", ws + "888", 2600, "", false, func(x: Dictionary) -> bool: return String(x.get("family", "")) == "reaper"),
 		_c("signature", ws + "888", 4000, "", false, func(x: Dictionary) -> bool: return int(x.get("level", 1)) >= sig_level),
 		_c("grimoire", ws + "889", 4500, "", false, func(x: Dictionary) -> bool: return bool(x.get("grimoire_unlocked", false))),
 	]

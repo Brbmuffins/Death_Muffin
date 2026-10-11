@@ -1,7 +1,7 @@
 extends "res://tests/next_clarity/audit.gd"
 ## Combat-readability polish of the rebuild, one process (next/feel/README.md):
 ##   1. clarity_part: the floating-number budget, the action bar's "no corpse / no legion" state, the low-health thrall ring, the red legion pips
-##   2. cues: every one of the 25 rites gives a visible AND an audible cue in the 0.25 s after an accepted cast (never silent, never only on landing).
+##   2. cues: every one of the 31 rites gives a visible AND an audible cue in the 0.25 s after an accepted cast (never silent, never only on landing).
 ## godot --headless --path godot --script res://tests/next_clarity/run.gd   (audit.gd is the table tool: same file, tail 3.75 s)
 
 
@@ -26,7 +26,7 @@ func _cues() -> void:
 	tail = 0.0
 	await _setup()
 	var ids: Array = DmRiteRegistry.ids()
-	check(ids.size() == 25, "25 rites are registered (%d)" % ids.size())
+	check(ids.size() == 31, "31 rites are registered (%d)" % ids.size())
 	for id in ids:
 		await audit_rite(id)
 		var r: Dictionary = results[id]

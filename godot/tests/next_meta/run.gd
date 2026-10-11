@@ -473,5 +473,26 @@ func _run() -> void:
 	await launch()
 	check(int(g.progress.prog.local["ashes"]) == asc_state["ashes"] and int(g.progress.prog.local["damageTier"]) == asc_state["tier"] and int(g.progress.prog.local["ascension"]) == asc_state["best"], "after a relaunch the ascension persisted (ashes %d, tier %d, best rank %d)" % [asc_state["ashes"], asc_state["tier"], asc_state["best"]])
 	await close()
+
+	# ================================================================ The Reaper (class 11): her own kills fill the soul bag, never Soul Harvest
+	var rc := await api.change_discipline(cid, 11)
+	check(rc.ok, "the backend takes the Reaper (%s)" % rc.error)
+	await launch()
+	b = g.local_body()
+	check(b.family == "reaper" and float(b.p["soulsMax"]) == 30.0 and b.p["resource"]["kind"] == "reaper", "a Reaper character plays the reaper family with a 30-soul bag")
+	b.teleport(graves_at)
+	await ticks(2)
+	b.p["souls"] = 0
+	events.clear()
+	g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
+	g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": null})
+	var rhs: Dictionary = g.ui_host.hud_state()
+	check(int(b.p["souls"]) == 1 and int(rhs["souls"]) == 1 and bool(rhs["soul_bag"]) and int(rhs["souls_max"]) == 30, "her own kill banks one soul (a kill by someone else does not), and the HUD reads the bag 1 / 30")
+	check(String(rhs["resource_label"]) == "Reaper Energy" and String(rhs["resource_color"]) == "#6ee7a0", "the HUD names her green energy")
+	b.p["souls"] = 29
+	for i in 3:
+		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": b.position.x, "z": b.position.z, "killer": b})
+	check(int(b.p["souls"]) == 30 and not event_ids().has("souls_charged"), "the bag holds 30 and a full bag never charges Soul Harvest")
+	await close()
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)

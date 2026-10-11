@@ -59,7 +59,13 @@
   "ossuary_wall",
   "command_rend",
   "dirge",
-  "plague_bloom"
+  "plague_bloom",
+  "scythe_sweep",
+  "scythe_throw",
+  "reap",
+  "wraith_walk",
+  "soul_burst",
+  "harvest_spin"
  ],
  "CODEX_RITES": {
   "flail_swing": {
@@ -361,6 +367,36 @@
    "fx": "knight",
    "colour": "Oath crimson",
    "tip": "Hollow Knight signature (level 10). For 6s nothing can drop you below 1 health, you deal 30% more, and your Rage refills. It is a commitment, not an escape — spend the window swinging."
+  },
+  "scythe_sweep": {
+   "fx": "reaper",
+   "colour": "Soul green",
+   "tip": "Your free left click: a wide arc, 130 degrees, that cuts everything in front of you. Keep swinging while you run; your energy comes back on its own, so use the big rites freely."
+  },
+  "scythe_throw": {
+   "fx": "reaper",
+   "colour": "Soul green",
+   "tip": "Throw the scythe into the middle of a pack and walk away: it spins for 2s and keeps cutting without you. Lay it where the enemies are about to stand, or on a door they have to come through."
+  },
+  "reap": {
+   "fx": "reaper",
+   "colour": "Soul green",
+   "tip": "Your biggest cone: 150 degrees and 6.5m. It spends up to 10 souls from your soul bag, each adding 12% damage, so let the bag fill during a pack and spend it on the next one."
+  },
+  "wraith_walk": {
+   "fx": "reaper",
+   "colour": "Soul green with a pale wraith",
+   "tip": "Rush up to 9m as a towering wraith. Everything you pass through is cursed with a heavy damage-over-time for 5s, so run through the middle of a pack, not around it. It spends up to 8 souls (+15% each) and doubles as your escape."
+  },
+  "soul_burst": {
+   "fx": "reaper",
+   "colour": "Soul green",
+   "tip": "Empties the whole soul bag in a 6m blast around you; each soul adds 18% damage. Save it for a thick crowd or a boss, and remember it takes the souls Reap and Wraith Walk would have used."
+  },
+  "harvest_spin": {
+   "fx": "reaper",
+   "colour": "Soul green",
+   "tip": "Your right click: a full circle, 4m, quick and cheap. It is the answer to being surrounded."
   }
  },
  "CLASS_CHANGE_COUNSEL": "Change class whenever you like through Settings → Change class. Your level, gold, items and permanent progress stay with the same character; the new discipline begins in the Sexton's Acre.",
@@ -391,6 +427,9 @@
   },
   "veilwalker": {
    "tip": "Veil Form drains Veil while shielding you from enemy blows and speeding your steps. Lay a corpse to rest to create echoes, raise one with Echo, or Cross to it. Return to Life form to refill. You fight without a legion, so you hit 1.5x harder and gain extra experience while young (2x at level 1, back to normal by level 15)."
+  },
+  "reaper": {
+   "tip": "A fast scythe fighter: green energy refills on its own and you run 10% faster, so keep moving and keep swinging. Every kill sends its soul to your soul bag (the skull bar under the orbs): each soul adds 2% damage, and Reap, Wraith Walk and Soul Burst spend them for far more. Throw the scythe at a pack, sweep the survivors, and Wraith Walk out when it turns. You fight without a legion, so you gain extra experience while young (2x at level 1, back to normal by level 15)."
   }
  },
  "DEAD_ORDER": [

@@ -10,7 +10,7 @@ const mountDiscipline = require('./discipline.cjs');
  * Captures the route handler mountDiscipline registers, then lets a test call
  * it with a synthetic req/res. `rows` is what the UPDATE reports as affected.
  */
-function harness({ maxIndex = 9, character = { id: 7 }, affectedRows = 1 } = {}) {
+function harness({ maxIndex = 9, playable = null, character = { id: 7 }, affectedRows = 1 } = {}) {
   let handler = null;
   const app = { post: (_path, _auth, fn) => { handler = fn; } };
   const updates = [];
@@ -30,6 +30,7 @@ function harness({ maxIndex = 9, character = { id: 7 }, affectedRows = 1 } = {})
     getGearLoadout: async () => [],
     invalidateLeaderboard: () => {},
     maxIndex,
+    playable,
   });
   const call = async (body) => {
     let status = 200;
@@ -56,6 +57,23 @@ test('accepts the Release 0.3 class indices 5-9', async () => {
     const { status } = await call({ characterId: 7, class_index: index });
     assert.equal(status, 200, `index ${index} should be accepted`);
     assert.equal(updates[0].params[0], index);
+  }
+});
+
+test('accepts the Reaper (index 11) and only the playable list when one is given', async () => {
+  const playable = [1, 2, 3, 4, 11];
+  for (const index of playable) {
+    const { call, updates } = harness({ maxIndex: 11, playable });
+    const { status } = await call({ characterId: 7, class_index: index });
+    assert.equal(status, 200, `index ${index} should be accepted`);
+    assert.equal(updates[0].params[0], index);
+  }
+  for (const index of [5, 6, 7, 8, 9, 10, 12]) {
+    const { call, updates } = harness({ maxIndex: 11, playable });
+    const { status, json } = await call({ characterId: 7, class_index: index });
+    assert.equal(status, 400, `index ${index} should be refused`);
+    assert.match(json.error, /5 classes/);
+    assert.equal(updates.length, 0, 'a refused index must not touch the database');
   }
 });
 

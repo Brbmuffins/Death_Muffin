@@ -2319,6 +2319,19 @@ var DISCIPLINES = {
     portrait: "art/portraits/veilwalker.webp",
     modelSlug: "hero_veilwalker",
     mods: { ...BASE }
+  },
+  reaper: {
+    classIndex: 11,
+    id: "reaper",
+    family: "reaper",
+    name: "Reaper",
+    epithet: "Harvester of the Fallen",
+    description: "A mobile scythe fighter who cuts great arcs through the pack and gathers the souls of everything that dies.",
+    passive: { name: "Soul Harvest", text: "Green energy refills constantly and you run 10% faster. Every kill sends its soul to your soul bag; each soul adds 2% damage, and Reap, Wraith Walk and Soul Burst spend them." },
+    color: "#6ee7a0",
+    portrait: "art/portraits/mourner.webp",
+    modelSlug: "hero_mourner",
+    mods: { ...BASE }
   }
 };
 var PLAYABLE_DISCIPLINES = [
@@ -2330,7 +2343,8 @@ var PLAYABLE_DISCIPLINES = [
   DISCIPLINES.bell_monk,
   DISCIPLINES.carrion_witch,
   DISCIPLINES.hollow_knight,
-  DISCIPLINES.veilwalker
+  DISCIPLINES.veilwalker,
+  DISCIPLINES.reaper
 ];
 
 // server/rules/gameplay/smartLoot.ts

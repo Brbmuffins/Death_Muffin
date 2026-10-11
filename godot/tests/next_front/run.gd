@@ -148,16 +148,16 @@ func _front_screens() -> void:
 	await _fr(4)
 	check(flow.current_name == "select" and flow.current is DmCharSelectScreen, "no character -> discipline select")
 	var sel: DmCharSelectScreen = flow.current
-	check(sel.cards.size() == 9, "nine discipline cards")
+	check(sel.cards.size() == 10, "ten discipline cards")
 	var rec := sel.cards.filter(func(c): return c.has_meta("recommended"))
 	check(rec.size() == 1 and rec[0].disc["id"] == "gravecaller", "gravecaller recommended for first run")
-	var want := ["ossuary", "gravecaller", "mourner", "rotweaver", "grave_warden", "bell_monk", "carrion_witch", "hollow_knight", "veilwalker"]
+	var want := ["ossuary", "gravecaller", "mourner", "rotweaver", "grave_warden", "bell_monk", "carrion_witch", "hollow_knight", "veilwalker", "reaper"]
 	var got: Array = sel.cards.map(func(c): return c.disc["id"])
 	check(got == want, "card order matches PLAYABLE_DISCIPLINES")
 	var art_ok := true
 	for c in sel.cards:
 		art_ok = art_ok and ResourceLoader.exists("res://front/art/" + String(c.disc["portrait"]).trim_prefix("art/"))
-	check(art_ok, "all nine portraits shipped under front/art")
+	check(art_ok, "all ten portraits shipped under front/art")
 	# ---- non-necro disciplines are greyed out until rebuilt (owner 2026-10-09): choosing one is refused
 	var locked_idx := -1
 	for d in sel.disciplines:
@@ -279,10 +279,10 @@ func _entry_flow() -> void:
 	var necro := 0
 	for d in DmCharSelectScreen.load_disciplines():
 		var fam := String(DmCharacterBuild.discipline_for(float(d["classIndex"]))["family"])
-		check(DmCharacterBuild.is_playable(float(d["classIndex"])) == (fam == "necromancer"), "%s playable only if necromancer" % d["id"])
+		check(DmCharacterBuild.is_playable(float(d["classIndex"])) == (fam == "necromancer" or fam == "reaper"), "%s playable only if necromancer or reaper" % d["id"])
 		if fam == "necromancer":
 			necro += 1
-	check(necro == 4, "four playable disciplines (%d)" % necro)
+	check(necro == 4, "four playable necromancer disciplines (%d)" % necro)
 	# ---- main scene: login -> select
 	var main2: DmMain = load("res://main/main.tscn").instantiate()
 	main2.mode = "dev_offline"
