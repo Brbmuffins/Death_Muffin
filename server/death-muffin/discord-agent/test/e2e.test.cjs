@@ -1257,6 +1257,27 @@ test('housekeeping: a job never points at a workspace that is gone, and a finish
   assert.equal(w.runner.tidy(), 0, 'a fresh message is left alone');
 });
 
+test('archiving: a finished thread is archived once quiet, reopened by a message, and archived again later', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'what does the ascension altar do?');
+  const job = Object.values(w.runner.jobs())[0]; await until(() => !job.running && texts(thread).length >= 1, d.ad);
+  assert.equal(w.runner.archiveQuiet(), 0, 'an active idle thread stays open');
+  job.status = 'shipped'; job.lastActive = job.seenAt = Date.now() - 30 * 60000; job.history = [];
+  assert.equal(w.runner.archiveQuiet(), 0, 'not yet an hour');
+  job.lastActive = job.seenAt = Date.now() - 2 * 3600e3;
+  assert.equal(w.runner.archiveQuiet(), 1); await d.ad.pollOnce(); assert.equal(thread.archived, true);
+  assert.equal(w.runner.archiveQuiet(), 0, 'archived once'); assert.equal(w.runner.outboxSize(), 0, 'the archive op was acked');
+  thread.archived = false; await d.say(thread, IDS.HELIX, 'one more thing'); assert.equal(job.archived, false, 'a message reopens it');
+  await until(() => !job.running && !job.queue.length, d.ad);
+  job.status = 'discarded'; job.lastActive = job.seenAt = Date.now() - 2 * 3600e3; job.history = [];
+  assert.equal(w.runner.archiveQuiet(), 1); await d.ad.pollOnce(); assert.equal(thread.archived, true);
+  job.archived = false; job.status = 'idle'; job.proposal = null; job.lastActive = job.seenAt = Date.now() - 3 * 3600e3;
+  assert.equal(w.runner.archiveQuiet(), 0, 'an idle thread waits a day'); job.lastActive = job.seenAt = Date.now() - 25 * 3600e3;
+  assert.equal(w.runner.archiveQuiet(), 1);
+  job.archived = false; job.status = 'proposed'; job.lastActive = job.seenAt = 0;
+  assert.equal(w.runner.archiveQuiet(), 0, 'an open proposal is never archived');
+});
+
 // ---- a backlog of approved ships: the middle one merges without publishing, the next publish carries it (one client, one notice) ----
 const deploys = (w) => { try { return fs.readFileSync(path.join(w.deploy, 'deploys.log'), 'utf8').split('\n').filter(Boolean); } catch { return []; } };
 async function threeApproved(w, d) {

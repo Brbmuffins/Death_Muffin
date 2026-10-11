@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-10-11",
+    "title": "Necromancer Look: Staff in Hand",
+    "items": [
+      "The staff (and every weapon) now sits in your hero's hand and moves with it: no more staff hinged at the elbow, and casts swing the staff forward instead of leaving it behind.",
+      "Gear keeps your robe's own colours: worn pieces tint the trim and edges instead of washing the whole robe.",
+      "Weapons glow by rarity (rare, epic and legendary get a stronger halo and drifting motes that streak as you swing), coloured by the weapon's metal or your socketed runes.",
+      "Wearing 2+ pieces of a set adds a set aura that grows at 4 pieces; 3+ pieces switch on the set's colours. (New weapon, mantle, helm and legendary-set models are on the way.)"
+    ]
+  },
+  {
+    "date": "2026-10-11",
     "title": "Polish Pass: Co-op, Animation and the Reaper",
     "items": [
       "Reaper: new ability Unleash Souls (R). It lets every soul in your bag go at once; each one hunts the nearest enemy and strikes it, and with no enemies around they circle you until one shows up.",

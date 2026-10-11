@@ -94,7 +94,11 @@ void fragment() {
 	alb = mix(alb, gt3.rgb * (0.22 + lum * 1.5), m3);
 	float mh = clamp(UV2.x * head_t.w, 0.0, 1.0);
 	alb = mix(alb, head_t.rgb * (0.22 + lum * 1.5), mh);
-	glow = gg0 * gm.r * gt0.w + gg1 * gm.g * gt1.w + gg2 * gm.b * gt2.w + gg3 * gm.a * gt3.w + head_g * UV2.x * head_t.w;
+	// The worn piece's glow lights only the trim: bright detail of the texture and the silhouette's edge, never the whole cloth.
+	float edge = 1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
+	float trim = max(smoothstep(0.45, 0.8, lum), smoothstep(0.4, 0.9, edge) * 0.8);
+	glow = (gg0 * gm.r * step(0.001, gt0.w) + gg1 * gm.g * step(0.001, gt1.w) + gg2 * gm.b * step(0.001, gt2.w) + gg3 * gm.a * step(0.001, gt3.w)
+		+ head_g * UV2.x * step(0.001, head_t.w)) * (0.2 + 0.8 * trim);
 """
 	c += """
 	ALBEDO = alb;

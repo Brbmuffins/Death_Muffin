@@ -36,14 +36,14 @@
  "WEAPON_CLIPS": {
   "none": {
    "primary": null,
-   "bolt": null,
+   "bolt": "flick",
    "big": "slam",
    "channel": "channel",
    "summon": "summon"
   },
   "staff": {
    "primary": null,
-   "bolt": null,
+   "bolt": "flick",
    "big": "slam",
    "channel": "channel",
    "summon": "summon"

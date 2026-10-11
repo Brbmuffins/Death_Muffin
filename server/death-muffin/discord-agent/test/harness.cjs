@@ -78,6 +78,7 @@ class Chan extends EventEmitter {
   constructor(world, id, opts = {}) { super(); this.world = world; this.id = id; this.sent = []; this.thread = !!opts.thread; this.parentId = opts.parentId || null; world.chans.set(id, this); }
   isThread() { return this.thread; }
   async setName(n) { this.name = n; this.renames = (this.renames || []).concat(n); return this; }
+  async setArchived(a) { this.archived = a; return this; }
   async sendTyping() { this.typing = (this.typing || 0) + 1; }
   async send(p) { const m = new Msg(this.world, this, IDS.BOT, p.content || '', true); m.payload = p; this.sent.push(m); return m; }
 }
