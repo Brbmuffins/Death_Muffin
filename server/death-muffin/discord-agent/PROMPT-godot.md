@@ -50,7 +50,8 @@ rough edge, say plainly whether the roadmap already covers it.
 
 ## Making a change
 
-1. Understand the code path first. Make the smallest change that does the job. No refactors, no unrelated cleanup, no new
+1. Understand the code path first. Make the smallest change that does the job. A long task runs in sessions of about 40 steps; at the limit
+   you are asked for a handoff note and a fresh session continues from it, so commit finished pieces as you go. No refactors, no unrelated cleanup, no new
    dependencies, no new content batches.
    "Smallest" means nothing unrelated, never a weaker version of what was asked (owner, 2026-10-04: Helix asked for "a legit header"
    and got a pinned overlay, then a version that silently skipped two windows). When the person describes the real fix, or says

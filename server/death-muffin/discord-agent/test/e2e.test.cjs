@@ -962,6 +962,28 @@ test('failedSuites: 1-3 failing suite lines re-run, anything else does not', () 
   assert.deepEqual(failedSuites('a  r.gd  exit=124\nGODOT TESTS: timed out after 85 minutes'), []);
 });
 
+test('step budget: a session that runs out of steps writes a handoff note and a fresh session finishes the work, invisibly to the thread', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'LONG-TASK GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread);
+  const job = Object.values(w.runner.jobs()).find((j) => j.threadId === thread.id);
+  assert.deepEqual(fs.readFileSync(path.join(job.worktree, '.fake-calls'), 'utf8').trim().split('\n').slice(0, 3), ['40 fresh turn', '6 resume note', '40 fresh continue'], 'budget 40, the note from the same session, then a fresh one');
+  assert.ok(!fs.existsSync(path.join(job.worktree, '.dm-handoff.md')), 'the note is consumed');
+  const audit = fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8');
+  assert.match(audit, /"event":"handoff","job":"[0-9a-f]+","n":1,"note":true/);
+  assert.match(texts(thread).join('\n'), /CONTINUED-FROM-NOTE/, 'the fresh session saw the note');
+  assert.doesNotMatch(texts(thread).join('\n'), /step limit|handoff|Note written/i, 'nothing about it in the thread');
+  assert.match(field(p, 'Tests'), /passed/);
+});
+
+test('step budget: past maxHandoffs the turn stops with a plain message and keeps what is committed', async () => {
+  const w = godotWorld({ maxHandoffs: 1 }); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'LONG-FOREVER GD-GAMEPLAY faster');
+  await until(() => texts(thread).some((t) => /needed more than 2 sessions of work in one go/.test(t)), d.ad);
+  const job = Object.values(w.runner.jobs()).find((j) => j.threadId === thread.id);
+  assert.equal(fs.readFileSync(path.join(job.worktree, '.fake-calls'), 'utf8').trim().split('\n').filter((l) => / note$/.test(l)).length, 1);
+});
+
 test('godot mode: sensitive net code is flagged and limited approvers cannot ship it; docs are casual; export_presets.cfg is forbidden', async () => {
   const w = godotWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.LIMITED, 'GD-NET change the url');

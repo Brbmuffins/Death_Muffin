@@ -29,7 +29,7 @@ function agentEnv() {
   return { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', TERM: 'dumb', NO_COLOR: '1',
     CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1', BASH_DEFAULT_TIMEOUT_MS: BASH_LIMIT_MS, BASH_MAX_TIMEOUT_MS: BASH_LIMIT_MS };
 }
-function claudeArgs(cfg, job) {
+function claudeArgs(cfg, job, { maxTurns } = {}) {
   // The only programs the agent may run: agit, and the mode's own check script (+ regen.sh on the web side only: Godot mode has no
   // generated server bundles to rebuild; shot.sh on the web side, shot-godot.sh on the Godot side).
   const bash = cfg.mode === 'godot'
@@ -46,6 +46,11 @@ function claudeArgs(cfg, job) {
     // No waiting games: Claude Code auto-allows "read-only" commands, so a turn could build its own `until ! pgrep ...; do sleep 5; done`
     // poll loop (2026-10-08: pgrep -f matched the loop itself and job e4388b hung 35 min, blocking every other thread).
     '--disallowedTools', ...NO_WAIT];
+  // Step budget per session (cfg.handoffEveryTurns, default 40): a session re-reads its whole conversation on every step, so a long one gets
+  // slower and costs roughly steps x context (2026-10-11: one 176-step session was a third of three days' spend). At the limit the runner has
+  // the agent write a handoff note and continues in a fresh session (core.cjs agentTurn). 0 = no limit.
+  const mt = maxTurns != null ? maxTurns : (cfg.handoffEveryTurns != null ? cfg.handoffEveryTurns : 40);
+  if (mt > 0) a.push('--max-turns', String(mt));
   if (job.sessionId) a.push('--resume', job.sessionId);
   return a;
 }
@@ -55,19 +60,26 @@ function parseClaudeJson(out) {
   const i = t.lastIndexOf('\n{'); if (i >= 0) { try { return JSON.parse(t.slice(i + 1)); } catch { /* fallthrough */ } }
   return null;
 }
-// One turn. cfg.claudeCmd lets tests substitute a fake CLI. Returns { text, sessionId, costUsd, error, timedOut, cancelled }.
-async function runTurn(cfg, job, prompt, { onSpawn } = {}) {
+// One turn. cfg.claudeCmd lets tests substitute a fake CLI. Returns { text, sessionId, costUsd, error, timedOut, cancelled, maxTurns }.
+// maxTurns: the session stopped at its step budget (not an error; the caller hands off to a fresh session).
+async function runTurn(cfg, job, prompt, { onSpawn, maxTurns } = {}) {
   // Never run without the job's own worktree: with no cwd the session would start wherever the runner lives (its tools, config, secret).
   if (!job.worktree || !fs.existsSync(path.join(job.worktree, '.git'))) return { text: '', sessionId: job.sessionId, error: 'This thread has no workspace right now; send your message again and I will start a fresh one.', timedOut: false };
   const cmd = cfg.claudeCmd || 'claude';
   const env = agentEnv();
-  const r = await run(cmd, claudeArgs(cfg, job), { cwd: job.worktree, env, input: prompt, timeoutMs: cfg.turnTimeoutMin * 60000, onSpawn });
+  const r = await run(cmd, claudeArgs(cfg, job, { maxTurns }), { cwd: job.worktree, env, input: prompt, timeoutMs: cfg.turnTimeoutMin * 60000, onSpawn });
   const j = parseClaudeJson(r.out);
   if (!j) return { text: '', sessionId: job.sessionId, error: r.timedOut ? 'timeout' : (r.err || r.out || `exit ${r.code}`).slice(0, 300), timedOut: r.timedOut, signal: r.signal };
-  return { text: String(j.result || ''), sessionId: j.session_id || job.sessionId, costUsd: j.total_cost_usd, error: j.is_error ? String(j.result || 'error').slice(0, 300) : null, timedOut: r.timedOut, signal: r.signal };
+  const atLimit = j.subtype === 'error_max_turns';
+  return { text: String(j.result || ''), sessionId: j.session_id || job.sessionId, costUsd: j.total_cost_usd, error: j.is_error && !atLimit ? String(j.result || 'error').slice(0, 300) : null, timedOut: r.timedOut, signal: r.signal, maxTurns: atLimit };
+}
+// The note the agent writes when its session hits the step budget (.dm-handoff.md, removed once read). null = none written.
+function readHandoff(wt) {
+  const f = path.join(wt, '.dm-handoff.md');
+  try { const t = fs.readFileSync(f, 'utf8'); fs.unlinkSync(f); return t.trim() ? t.trim().slice(0, 12000) : null; } catch { return null; }
 }
 function readResult(wt) {
   const f = path.join(wt, '.dm-result.json');
   try { const j = JSON.parse(fs.readFileSync(f, 'utf8')); fs.unlinkSync(f); return j && typeof j === 'object' ? j : null; } catch { return null; }
 }
-module.exports = { runTurn, claudeArgs, agentEnv, buildPrompt, wrapRequest, readResult, systemPrompt };
+module.exports = { runTurn, claudeArgs, agentEnv, buildPrompt, wrapRequest, readResult, readHandoff, systemPrompt };

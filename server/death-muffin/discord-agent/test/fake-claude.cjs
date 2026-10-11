@@ -6,6 +6,13 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   const git = (...a) => execFileSync('git', a, { stdio: 'pipe' });
   const ready = (title, summary) => fs.writeFileSync('.dm-result.json', JSON.stringify({ status: 'ready', title, summary, testing: 'check.sh', risk: 'none' }));
   let text = 'The answer is in src/gameplay/a.ts.';
+  // step budget: LONG-TASK runs out of steps (error_max_turns) unless it is continuing from a handoff; LONG-FOREVER always does; the runner's
+  // note request writes .dm-handoff.md (NO-NOTE in the worktree: writes none). Every call logs its --max-turns and whether it resumed.
+  try { const ex = require('path').join(String(execFileSync('git', ['rev-parse', '--git-common-dir'])).trim(), 'info', 'exclude'); if (!fs.readFileSync(ex, 'utf8').includes('.fake-calls')) fs.appendFileSync(ex, '\n.fake-calls\n'); } catch { /* not a repo */ }
+  const mtI = process.argv.indexOf('--max-turns'); fs.appendFileSync('.fake-calls', `${mtI >= 0 ? process.argv[mtI + 1] : '-'} ${process.argv.includes('--resume') ? 'resume' : 'fresh'} ${/step limit\. The work continues/.test(p) ? 'note' : /<handoff>/.test(p) ? 'continue' : 'turn'}\n`);
+  const out = (o) => process.stdout.write(JSON.stringify({ type: 'result', session_id: 'sess-' + Math.random().toString(16).slice(2, 8), total_cost_usd: 0, ...o }));
+  if (/step limit\. The work continues/.test(p)) { if (!fs.existsSync('NO-NOTE')) fs.writeFileSync('.dm-handoff.md', 'HANDOFF: speed half done; next set speed=9 in godot/game/a.gd\n'); return out({ subtype: 'success', is_error: false, result: 'Note written.' }); }
+  if (/LONG-FOREVER/.test(p) || (/LONG-TASK/.test(p) && !/<handoff>|left no note/.test(p))) return out({ subtype: 'error_max_turns', is_error: true, errors: ['Reached maximum number of turns (40)'] });
   if (/LOG-MARKER-77/.test(p)) text = 'Saw LOG-MARKER-77 in the report.';
   if (/STATUS-TURN/.test(p)) { fs.writeFileSync('.dm-status', '20% · Hunting the tooltip crash, then fixing it; ~1 min.\n'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2500); }
   const ttl = /TITLE-TURN="([^"]+)"/.exec(p); if (ttl) { fs.writeFileSync('.dm-title', ttl[1] + '\n'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 800); }
@@ -81,5 +88,6 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   if (/Earlier rounds here: round 1 shipped/.test(p)) text += ' ROUND-SUMMARY-SEEN';
   if (/different version of the game/.test(p)) text += ' MODE-NOTE-SEEN';
   if (process.argv.includes('--resume')) text += ' RESUMED';
+  if (/<handoff>[\s\S]*HANDOFF: speed half done/.test(p)) text += ' CONTINUED-FROM-NOTE';
   process.stdout.write(JSON.stringify({ type: 'result', result: text, session_id: 'sess-1', is_error: false, total_cost_usd: 0 }));
 });

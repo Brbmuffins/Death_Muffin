@@ -20,7 +20,7 @@ const { createAuth } = require('./lib/auth.cjs');
 const { redactText, redactDeep } = require('./lib/redact.cjs');
 const G = require('./lib/gitops.cjs');
 const TT = require('./lib/threadTitle.cjs');
-const { runTurn, buildPrompt, readResult } = require('./lib/agent.cjs');
+const { runTurn, buildPrompt, readResult, readHandoff } = require('./lib/agent.cjs');
 const { parseDiff, classifyDiff, tierLabel, approversFor } = require('./lib/tiers.cjs');
 const { verifyGenerated, describeMismatch } = require('./lib/generated.cjs');
 const { planReply } = require('./lib/discordText.cjs');
@@ -480,16 +480,44 @@ function createRunner(cfgIn, opts = {}) {
     for (const j of Object.values(jobs)) if (!j.running && j.queue.length && ['idle', 'proposed'].includes(j.status) && !j.queuedNotice) { j.queuedNotice = true; if (j.turns === 0) say(j, 'Queued; I am busy with another request and will start as soon as I can.'); }
   }
 
+  const HANDOFF_ASK = 'Stop here: this session has reached its step limit. The work continues right away in a FRESH session that sees only the ' +
+    'note you write now (plus the code and git history). Do not continue the task in this reply. Use the Write tool to write .dm-handoff.md in the ' +
+    'worktree root, at most about 60 lines: the request in one or two lines (and who asked); what is done (commit subjects); what is left, as a ' +
+    'checklist; the key files with line numbers; decisions, constraints and gotchas you found; the exact next step. Commit any finished work first ' +
+    '(agit add <paths>, agit commit -m "<one plain sentence>"). Then reply with one line.';
+  // One agent turn as the thread sees it. Each session has a step budget (cfg.handoffEveryTurns, see agent.cjs); when it runs out the same session
+  // writes .dm-handoff.md and a fresh session continues from that note, invisibly to the thread, up to cfg.maxHandoffs times (default 5).
   async function agentTurn(job, prompt) {
     job.turns++; job.totalTurns = (job.totalTurns || 0) + 1;
-    let r = await runTurn(cfg, job, prompt, { onSpawn: (p) => { job.proc = p; } });
+    const spawn = { onSpawn: (p) => { job.proc = p; } };
+    const logRun = (r, extra = {}) => {
+      fs.mkdirSync(path.join(cfg.stateDir, 'runs'), { recursive: true });
+      fs.appendFileSync(path.join(cfg.stateDir, 'runs', `${job.id}.log`), JSON.stringify({ ts: new Date(now()).toISOString(), turn: job.turns, model: job.model, costUsd: r.costUsd, error: r.error, textLen: r.text.length, ...(r.maxTurns ? { maxTurns: true } : {}), ...extra }) + '\n');
+    };
+    let r = await runTurn(cfg, job, prompt, spawn);
     if (r.error && job.sessionId && /no conversation found/i.test(r.error)) {   // the earlier conversation could not be resumed from the new workspace: start a fresh one
-      job.sessionId = null; r = await runTurn(cfg, job, `(The earlier conversation in this thread is not available; work from the request and the code.)\n\n${prompt}`, { onSpawn: (p) => { job.proc = p; } });
+      job.sessionId = null; r = await runTurn(cfg, job, `(The earlier conversation in this thread is not available; work from the request and the code.)\n\n${prompt}`, spawn);
+    }
+    if (r.sessionId) { job.sessionId = r.sessionId; job.sessionMode = cfg.mode; }
+    logRun(r);
+    const maxHandoffs = cfg.maxHandoffs != null ? cfg.maxHandoffs : 5;
+    for (let n = 1; r.maxTurns && !job.cancelRequested; n++) {
+      if (n > maxHandoffs) { r = { ...r, maxTurns: false, budgetOut: true, error: `This needed more than ${maxHandoffs + 1} sessions of work in one go. Finished work is committed; say "continue" to keep going, or narrow the request.` }; break; }
+      // 1. the session that ran out writes its note (a few steps; its context is still cached)
+      const w = await runTurn(cfg, job, HANDOFF_ASK, { ...spawn, maxTurns: 6 });
+      logRun(w, { handoff: n, step: 'note' });
+      const note = job.worktree ? readHandoff(job.worktree) : null;
+      audit.log('handoff', { job: job.id, n, note: !!note });
+      if (job.cancelRequested) break;
+      // 2. a fresh session continues from it
+      job.sessionId = null;
+      r = await runTurn(cfg, job, '(You are continuing a task that an earlier session of yours started; that session reached its step limit. ' +
+        (note ? `Its handoff note:)\n<handoff>\n${note}\n</handoff>` : 'It left no note: read agit log and agit status to see what is done.)') +
+        `\n\nThe request that turn was working on:\n${prompt}\n\nContinue from the next step. Do not redo finished work.`, spawn);
+      if (r.sessionId) { job.sessionId = r.sessionId; job.sessionMode = cfg.mode; }
+      logRun(r, { handoff: n, step: 'continue' });
     }
     job.proc = null;
-    if (r.sessionId) { job.sessionId = r.sessionId; job.sessionMode = cfg.mode; }
-    fs.mkdirSync(path.join(cfg.stateDir, 'runs'), { recursive: true });
-    fs.appendFileSync(path.join(cfg.stateDir, 'runs', `${job.id}.log`), JSON.stringify({ ts: new Date(now()).toISOString(), turn: job.turns, model: job.model, costUsd: r.costUsd, error: r.error, textLen: r.text.length }) + '\n');
     return r;
   }
 
@@ -614,7 +642,7 @@ function createRunner(cfgIn, opts = {}) {
     if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
     if (r && r.error) {
       audit.log('turn-error', { job: job.id, error: r.error });
-      say(job, r.timedOut ? `That took longer than ${cfg.turnTimeoutMin} minutes, so I stopped it. Try a smaller step.` : `The agent hit an error: ${clip(redactText(r.error), 300)}`);
+      say(job, r.timedOut ? `That took longer than ${cfg.turnTimeoutMin} minutes, so I stopped it. Try a smaller step.` : (r.budgetOut ? r.error : `The agent hit an error: ${clip(redactText(r.error), 300)}`));
       job.status = 'idle'; return;
     }
     if (r && r.text.trim()) sayLong(job, r.text.trim());
@@ -703,7 +731,7 @@ function createRunner(cfgIn, opts = {}) {
       // the fix-up turn is internal (audit: verify-failed); no thread post (owner, 2026-10-10: fewer thread posts)
       const r = await agentTurn(job, `The automatic review failed. Fix this, make sure ${CHECK} passes, and commit:\n${v.why}`);
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
-      if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return; }
+      if (r.error) { say(job, (r.budgetOut ? r.error : `The agent hit an error: ${clip(redactText(r.error), 300)}`)); job.status = 'idle'; return; }
       postNewShots(job);
       result = readResult(job.worktree) || result;
     }
@@ -804,7 +832,7 @@ function createRunner(cfgIn, opts = {}) {
       say(job, `The model request was rejected by the checker (${clip(v.errors[0], 160)}); asking the agent to fix it.`);
       const r = await agentTurn(job, `The runner rejected your model request. Fix the spec files (art-manifest/gemini-jobs/<id>.json, art-manifest/tripo-specs/<id>.json) and write ${A.REQUEST_FILE} again. Problems:\n${v.errors.map((e) => `- ${e}`).join('\n')}`);
       if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return true; }
-      if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return true; }
+      if (r.error) { say(job, (r.budgetOut ? r.error : `The agent hit an error: ${clip(redactText(r.error), 300)}`)); job.status = 'idle'; return true; }
     }
   }
   const artWho = (job) => { const a = job.lastAsker || { id: job.creatorId }; return { id: String(a.id), name: nameOf(a.id) !== `user ${String(a.id).slice(-4)}` ? nameOf(a.id) : (a.name || nameOf(a.id)) }; };
