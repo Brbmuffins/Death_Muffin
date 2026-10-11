@@ -23,6 +23,10 @@ signal sort_requested
 
 const COLS := 8
 const SLOT_PX := 44.0
+const GRID_W := COLS * SLOT_PX + (COLS - 1) * 4.0
+const GRID_H := 6 * SLOT_PX + 5 * 4.0        # the 48-slot bag grid: 6 rows
+const DOLL_PX := 3 * SLOT_PX + 2 * 4.0       # the gear doll's width (3 columns)
+const TAB_ROW_PX := 32.0 + 6.0               # a Vault tab button plus the column gap
 const TYPE_LABEL := {
 	"weapon": "weapon", "offhand": "off hand", "armor_head": "head armor", "armor_chest": "chest armor", "armor_legs": "legs armor",
 	"armor_feet": "feet armor", "armor_hands": "hand armor", "ring": "ring", "trinket": "trinket", "rune": "rune",
@@ -151,6 +155,7 @@ func _build() -> void:
 	var left := DmPb.vbox(6)
 	cols.add_child(left)
 	left.add_child(_section_head("Reliquary", "%d / %d" % [bag.size(), DmBag.BAG_SIZE]))
+	left.add_child(DmUi.spacer(0, TAB_ROW_PX))   # the Vault side has its tab row here; this keeps both grids level
 	var bag_row := HBoxContainer.new()
 	bag_row.add_theme_constant_override("separation", 12)
 	left.add_child(bag_row)
@@ -187,9 +192,12 @@ func _build() -> void:
 		tab_buttons.append(b)
 	right.add_child(tabs)
 	if not loaded:
-		right.add_child(DmPb.hint("Opening the Vault…"))
+		var wait := DmPb.hint("Opening the Vault…")
+		wait.custom_minimum_size.y = GRID_H
+		right.add_child(wait)
 	else:
 		var vg := _grid()
+		vg.custom_minimum_size.y = GRID_H   # as tall as the bag grid: a tab holds 40 slots (5 rows), the bag 48 (6 rows)
 		right.add_child(vg)
 		for i in DmVault.VAULT_TAB_SIZE:
 			var idx := tab * DmVault.VAULT_TAB_SIZE + i
@@ -211,15 +219,21 @@ func _build() -> void:
 	deposit_all_button.pressed.connect(func() -> void: deposit_all_requested.emit("all", locked_slots()))
 	dep_row.add_child(deposit_materials_button)
 	dep_row.add_child(deposit_all_button)
-	left.add_child(dep_row)
+	var dep_outer := DmPb.hbox(12)   # the Deposit row is centered under the bag grid, not under the gear doll beside it
+	dep_outer.add_child(DmUi.spacer(DOLL_PX, 0))
+	dep_row.custom_minimum_size.x = GRID_W
+	dep_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	dep_outer.add_child(dep_row)
+	left.add_child(dep_outer)
 	var take_row := DmPb.hbox(8)
+	take_row.custom_minimum_size.x = GRID_W
+	take_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	take_materials_button = DmPb.button("Take materials", false, off, "Takes every material and consumable from the open Vault tab into your bag, as far as it fits")
 	take_materials_button.pressed.connect(_take.bind("materials"))
 	take_all_button = DmPb.button("Take all", false, off, "Takes everything from the open Vault tab into your bag, as far as it fits")
 	take_all_button.pressed.connect(_take.bind("all"))
 	take_row.add_child(take_materials_button)
 	take_row.add_child(take_all_button)
-	right.add_child(DmUi.spacer(0, (ceili(float(DmBag.BAG_SIZE) / COLS) - ceili(float(DmVault.VAULT_TAB_SIZE) / COLS)) * (SLOT_PX + 4) - 38.0))   # line up with the bag's extra row, less the tab row (32 + 6 gap) the Vault side has
 	right.add_child(take_row)
 	var mid := DmPb.vbox(4)
 	add_child(mid)
