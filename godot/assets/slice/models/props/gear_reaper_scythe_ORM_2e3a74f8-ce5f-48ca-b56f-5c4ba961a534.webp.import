@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c58vsh2h6addb"
-path="res://.godot/imported/gear_reaper_scythe_ORM_2e3a74f8-ce5f-48ca-b56f-5c4ba961a534.webp-718969e59ac518f7e7cc608e917b50bd.ctex"
+path.s3tc="res://.godot/imported/gear_reaper_scythe_ORM_2e3a74f8-ce5f-48ca-b56f-5c4ba961a534.webp-718969e59ac518f7e7cc608e917b50bd.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "edb06161bc7b9b7afc8babe862a38f75"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/gear_reaper_scythe_ORM_2e3a74f8-ce5f-48ca-b56f-5c4ba961a534.webp"
-dest_files=["res://.godot/imported/gear_reaper_scythe_ORM_2e3a74f8-ce5f-48ca-b56f-5c4ba961a534.webp-718969e59ac518f7e7cc608e917b50bd.ctex"]
+dest_files=["res://.godot/imported/gear_reaper_scythe_ORM_2e3a74f8-ce5f-48ca-b56f-5c4ba961a534.webp-718969e59ac518f7e7cc608e917b50bd.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
