@@ -29,6 +29,7 @@ var _dash_from := Vector3.ZERO
 var _dash_to := Vector3.ZERO
 var _dash_t: float = 0.0
 var _dash_dur: float = 0.0
+var _dash_ease: bool = true
 
 
 func _enter_tree() -> void:
@@ -125,10 +126,32 @@ func dash_point(to: Vector3) -> Vector3:
 	return best
 
 
-## Host: glide to `to` over `secs` (quadratic ease-out, the sim's dash). The caller validated the point (dash_point). Movement intents are
-## ignored until it ends; the position replicates through the normal snapshots, clients interpolate it.
-func dash(to: Vector3, secs: float) -> void:
+## Host: a ground path length for `phase_point` (the navmesh path on a hero; the straight line on a plain body).
+func path_len(a: Vector3, b: Vector3) -> float:
+	return a.distance_to(b)
+
+
+## Host: like `dash_point` for a phantom that slips through props: the furthest point on the way to `to` that is walkable, in the same area, and
+## reachable without a detour (a wall in between forces a long way round, a gravestone or crate does not). Searches back from the far end.
+func phase_point(to: Vector3) -> Vector3:
+	var from := Vector3(position.x, 0.0, position.z)
+	var goal := Vector3(to.x, 0.0, to.z)
+	var area := area_of_point(from)
+	var n := maxi(1, int(ceilf(from.distance_to(goal) / DASH_STEP)))
+	for i in range(n, 0, -1):
+		var pt := from.lerp(goal, float(i) / float(n))
+		if not walkable(pt) or area_of_point(pt) != area:
+			continue
+		if path_len(from, pt) <= from.distance_to(pt) * 1.25 + 1.0:
+			return pt
+	return from
+
+
+## Host: glide to `to` over `secs` (quadratic ease-out by default, the sim's dash; `ease_out` false = even speed). The caller validated the
+## point (dash_point / phase_point). Movement intents are ignored until it ends; the position replicates through the normal snapshots.
+func dash(to: Vector3, secs: float, ease_out := true) -> void:
 	stop()
+	_dash_ease = ease_out
 	_dash_from = Vector3(position.x, 0.0, position.z)
 	_dash_to = Vector3(to.x, 0.0, to.z)
 	_dash_t = 0.0
@@ -145,7 +168,7 @@ func _step_dash(delta: float) -> bool:
 		return false
 	_dash_t += delta
 	var k := minf(1.0, _dash_t / _dash_dur)
-	position = _dash_from.lerp(_dash_to, 1.0 - (1.0 - k) * (1.0 - k))
+	position = _dash_from.lerp(_dash_to, 1.0 - (1.0 - k) * (1.0 - k) if _dash_ease else k)
 	rotation.y = yaw
 	if k >= 1.0:
 		dashing = false

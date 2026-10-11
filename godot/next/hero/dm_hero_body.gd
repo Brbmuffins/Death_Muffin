@@ -298,6 +298,18 @@ func area_of_point(pt: Vector3) -> String:
 	return game.world.area_at(pt.x, pt.z) if game != null and game.world != null else ""
 
 
+func path_len(a: Vector3, b: Vector3) -> float:
+	if game == null or game.world == null or not game.world.nav_ready():
+		return a.distance_to(b)
+	var path: PackedVector3Array = game.world.nav_path(a, b)
+	if path.size() < 2:
+		return INF
+	var d := 0.0
+	for i in range(1, path.size()):
+		d += path[i - 1].distance_to(path[i])
+	return d
+
+
 func resolve_point(pt: Vector3) -> Vector3:
 	if game != null and game.world != null and game.world.nav_ready():
 		return game.world.nav_clamp(Vector3(pt.x, 0.0, pt.z))
