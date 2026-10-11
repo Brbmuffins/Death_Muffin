@@ -43,6 +43,7 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 	if String(ev["t"]) == "throw":
 		var r := float(ev["r"])
 		var life := float(ev["life"])
+		c.fx.scythe_spin(x, z, life, r)
 		c.fx.decal("ring", DmReaperRites.GREEN, x, z, r, life, 0.55, {"spin": 7.0, "fadeOut": 0.4})
 		c.fx.decal("crescent", DmReaperRites.PALE, x, z, r * 0.8, life, 0.8, {"spin": 14.0, "fadeOut": 0.3})
 		if DmFxTex.has_sheet("trail_arc"):

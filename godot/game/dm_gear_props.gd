@@ -18,6 +18,9 @@ const TIERS := {
 	"moon": {"color": 0xaab8e8, "metal": 0.85, "rough": 0.3, "glow": 0x3a4a9a},
 }
 const THRALL_BOW_FILE := "gear_thrall_bow"
+const SCYTHE_FILE := "gear_reaper_scythe"
+const SCYTHE_LENGTH := 2.0   ## metres, pole foot to blade tip
+const SCYTHE_GRIP := 0.28    ## the hand sits this fraction of the length up from the foot
 
 static var _glow_tex: Texture2D
 
@@ -260,6 +263,39 @@ static func _tome(t: Dictionary) -> Node3D:
 	g.add_child(_mi(_box(0.26, 0.34, 0.07), _mat(0x3a2432, 0.0, 0.8), Vector3(0, 0.18, 0)))
 	g.add_child(_mi(_box(0.05, 0.08, 0.085), _metal(t), Vector3(0.13, 0.18, 0)))
 	_tip(g, 0.36)
+	return g
+
+## A prop GLB (models/props/<id>.glb) scaled so its height is `height` (or its longest side with `by_longest`), standing on y = 0; null when the asset is absent.
+static func load_prop(id: String, height: float, by_longest := false) -> Node3D:
+	var path := DmModels.BASE + "models/props/%s.glb" % id
+	if not ResourceLoader.exists(path):
+		return null
+	var ps: PackedScene = load(path)
+	var inst: Node3D = ps.instantiate()
+	var bb := AABB()
+	var first := true
+	for m in inst.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		var box := mi.mesh.get_aabb()
+		bb = box if first else bb.merge(box)
+		first = false
+	var size := bb.size
+	var denom := maxf(0.001, maxf(size.x, maxf(size.y, size.z))) if by_longest else maxf(0.0001, size.y)
+	var holder := Node3D.new()
+	holder.add_child(inst)
+	inst.scale = Vector3.ONE * (height / denom)
+	inst.position = -bb.get_center() * (height / denom) + Vector3(0, bb.size.y * 0.5 * (height / denom), 0)
+	return holder
+
+## The Reaper's scythe model, grip at the origin, blade up (+Y), `tip` meta at the blade; null when the asset is absent.
+static func scythe_model() -> Node3D:
+	var g := load_prop(SCYTHE_FILE, SCYTHE_LENGTH)
+	if g == null:
+		return null
+	(g.get_child(0) as Node3D).position.y -= SCYTHE_GRIP * SCYTHE_LENGTH
+	_tip(g, SCYTHE_LENGTH * (1.0 - SCYTHE_GRIP))
 	return g
 
 static func _necro_fallback(kind: String, t: Dictionary) -> Node3D:

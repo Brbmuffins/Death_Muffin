@@ -75,7 +75,7 @@ static func _hex(v: Variant) -> int:
 		return Color.html(v).to_rgba32() >> 8
 	return int(v)
 
-func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, model_slug: String = "necromancer") -> void:
+func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, model_slug: String = "necromancer", family: String = "") -> void:
 	slug = model_slug
 	accent_hex = _hex(accent)
 	name = "Avatar_" + model_slug
@@ -87,7 +87,9 @@ func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, m
 	if NEW_BLOOD.has(model_slug):
 		_attach_class_gear(model_slug)
 	else:
-		_staff = _skull_staff(accent_hex)
+		_staff = (DmGearProps.scythe_model() if family == "reaper" else null)   # the Reaper carries her scythe, not the skull staff
+		if _staff == null:
+			_staff = _skull_staff(accent_hex)
 		c.attach("R_Hand", _staff, Vector3(0, 1, 0.12), STAFF_FOLLOW)
 		_default_hand[_staff] = "main_hand"
 	_live.append(self)
@@ -148,27 +150,7 @@ func _attach_class_gear(model_slug: String) -> void:
 
 ## A prop GLB (models/props/<id>.glb) scaled to `height`, or null when the asset is absent.
 func _load_prop(id: String, height: float, by_longest := false) -> Node3D:
-	var path := DmModels.BASE + "models/props/%s.glb" % id
-	if not ResourceLoader.exists(path):
-		return null
-	var ps: PackedScene = load(path)
-	var inst: Node3D = ps.instantiate()
-	var bb := AABB()
-	var first := true
-	for m in inst.find_children("*", "MeshInstance3D", true, false):
-		var mi := m as MeshInstance3D
-		if mi.mesh == null:
-			continue
-		var box := mi.mesh.get_aabb()
-		bb = box if first else bb.merge(box)
-		first = false
-	var size := bb.size
-	var denom := maxf(0.001, maxf(size.x, maxf(size.y, size.z))) if by_longest else maxf(0.0001, size.y)
-	var holder := Node3D.new()
-	holder.add_child(inst)
-	inst.scale = Vector3.ONE * (height / denom)
-	inst.position = -bb.get_center() * (height / denom) + Vector3(0, bb.size.y * 0.5 * (height / denom), 0)
-	return holder
+	return DmGearProps.load_prop(id, height, by_longest)
 
 func _hide_helm() -> bool:
 	return bool(settings.get("hide_helm", false))

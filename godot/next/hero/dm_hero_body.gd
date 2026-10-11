@@ -161,7 +161,7 @@ func _make_avatar() -> void:
 	avatar = DmAvatar.new()
 	if game.ui_host != null:
 		avatar.settings = game.ui_host.settings   # hide_helm
-	avatar.setup(game, dd.get("color", 0xa26bff), owner_peer == game.session.get_my_id(), String(dd.get("modelSlug", "hero_gravecaller")))   # the lantern is the local hero's only
+	avatar.setup(game, dd.get("color", 0xa26bff), owner_peer == game.session.get_my_id(), String(dd.get("modelSlug", "hero_gravecaller")), String(dd.get("family", "")))   # the lantern is the local hero's only
 	avatar.c.root.position = Vector3(position.x, 0.0, position.z)
 	tree_exiting.connect(func() -> void:
 		if avatar != null and is_instance_valid(avatar):

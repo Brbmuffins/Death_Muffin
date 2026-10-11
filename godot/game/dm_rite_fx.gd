@@ -212,6 +212,26 @@ func reap_swing(px: float, pz: float, dx: float, dz: float, landed: int) -> void
 		sfx("boneHit", px + dx * 1.8, pz + dz * 1.8)
 
 
+## Scythe Throw: the scythe model lying flat at (x, z), spinning for `life` seconds (one tween, no per-frame code), then gone.
+func scythe_spin(x: float, z: float, life: float, r: float) -> void:
+	var host := fx as Node3D
+	if host == null or not host.is_inside_tree():
+		return
+	var model := DmGearProps.scythe_model()
+	if model == null:
+		return
+	var spinner := Node3D.new()
+	model.rotation.x = PI / 2.0   # pole flat on the ground, blade swinging round
+	model.position.y = 0.0
+	model.scale = Vector3.ONE * clampf(r / 2.6, 0.6, 1.2)
+	spinner.add_child(model)
+	host.add_child(spinner)
+	spinner.position = Vector3(x, 0.9, z)
+	var tw := spinner.create_tween()
+	tw.tween_property(spinner, "rotation:y", TAU * life * 3.0, life)
+	tw.tween_callback(spinner.queue_free)
+
+
 # --- Miasma Circle -----------------------------------------------------------------------------------------------------------------------
 
 ## The cloud settling at (x, z) with radius r. `creep` = the Creeping Rot rune (no cloud model, the zone itself moves: `follow` -> its ground point or

@@ -75,6 +75,16 @@ func _run() -> void:
 	check(b.avatar.lantern != null, "the local hero carries the lantern")
 	var fc := DmFrameCost.attach(g)
 
+	# ---- the Reaper holds her scythe model by default; other classes keep the skull staff
+	var ra := DmAvatar.new()
+	ra.setup(g, 0x6ee7a0, false, "hero_mourner", "reaper")
+	check(ra._staff != null and ra._staff.has_meta("tip") and DmGearProps.scythe_model() != null, "Reaper: the scythe model is the default weapon in hand")
+	var ma := DmAvatar.new()
+	ma.setup(g, 0x8f9ed1, false, "hero_mourner", "necromancer")
+	check(ma._staff != null and not (ra._staff.get_child_count() == ma._staff.get_child_count()), "Reaper: a necromancer with the same body keeps the skull staff")
+	ra.queue_free()
+	ma.queue_free()
+
 	# ---- worn gear: equip -> the avatar shows the piece, unequip -> it is gone
 	check(_worn(b.avatar, "main_hand") == null, "A: nothing worn at first")
 	await g.ui_host.refresh_inventory()
