@@ -107,5 +107,26 @@ func _run() -> void:
 		_check(last.get_global_rect().size.y > 0.0, "last bag cell exists%s" % tag)
 		sv.queue_free()
 		await _frames(2)
+	# drag a bag item onto another bag cell to rearrange (empty cell or swap); the drop carries both slot numbers
+	var rq := DmReliquaryPanel.new()
+	root.add_child(rq)
+	var bg: Array = []
+	bg.resize(48)
+	for i in 48:
+		bg[i] = {}
+	bg[2] = {"id": 2, "item_id": "ore_copper", "name": "Ore", "rarity": "common", "quantity": 40, "row": {"slot_index": 2, "item_id": "ore_copper", "quantity": 40}}
+	bg[7] = {"id": 7, "item_id": "log_oak", "name": "Log", "rarity": "common", "quantity": 3, "row": {"slot_index": 7, "item_id": "log_oak", "quantity": 3}}
+	rq.set_inventory(bg, {}, {})
+	rq.open()
+	await _frames(3)
+	var moves := []
+	rq.bag_move_requested.connect(func(f: int, t: int) -> void: moves.append([f, t]))
+	var pay: Variant = rq._slots[2].drag_data
+	_check(pay != null, "a plain (non-gear) bag item can be dragged")
+	_check(rq._slots[30]._can_drop_data(Vector2.ZERO, pay) and not rq._slots[2]._can_drop_data(Vector2.ZERO, pay), "any other bag cell takes it, its own cell does not")
+	rq._slots[30]._drop_data(Vector2.ZERO, pay)
+	rq._slots[7]._drop_data(Vector2.ZERO, pay)
+	_check(moves == [[2, 30], [2, 7]], "drops ask to move to the empty cell and to swap with another item (%s)" % str(moves))
+	rq.queue_free()
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)

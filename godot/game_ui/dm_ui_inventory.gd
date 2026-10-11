@@ -32,6 +32,7 @@ func _init(ui_: Node, locks_: DmItemLocks, store_: DmCounselStore) -> void:
 		render())
 	panel.sell_requested.connect(func(it: Dictionary, q: int) -> void: sell(it, q))
 	panel.sort_requested.connect(sort_bag)
+	panel.bag_move_requested.connect(move_in_bag)
 	panel.junk_sell_confirmed.connect(sell_junk)
 	panel.legion_pressed.connect(func() -> void: ui.toggle_panel("legion"))
 	panel.sheet_pressed.connect(func() -> void: ui.toggle_panel("sheet"))
@@ -521,6 +522,22 @@ func socket_rune(row: Dictionary) -> void:
 	if err != "":
 		panel.set_error(err)
 	_end()
+
+
+## A bag item dropped on another bag cell: the server moves it there (empty), merges (same item) or swaps; a lock follows its item.
+func move_in_bag(from_slot: int, to_slot: int) -> void:
+	var err: String = await game.bag_commit()   # unsaved bag edits first, so the reload below cannot drop them
+	if err != "":
+		panel.set_error("Could not save the bag first: %s" % err)
+		return
+	var r: DmResult = await game.api.vault_move(int(game.character["id"]), "bag", from_slot, "bag", to_slot)
+	if not r.ok:
+		panel.set_error(r.error)
+	else:
+		locks.remap({from_slot: to_slot, to_slot: from_slot})
+		panel.sel_item = {}
+	await game.refresh_inventory()
+	render()
 
 
 func sort_bag() -> void:

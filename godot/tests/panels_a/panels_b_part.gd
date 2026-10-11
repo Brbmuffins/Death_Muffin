@@ -674,13 +674,21 @@ func _t_vault() -> void:
 	var bag_drag: Variant = v.bag_slots[0].drag_data
 	_check(bag_drag != null and v.bag_slots[6].drag_data == null, "bag items drag, worn gear does not")
 	_check(v.vault_slots[2].drag_data != null and v.vault_slots[39].drag_data == null, "filled Vault cells drag, empty ones do not")
-	_check(v.vault_slots[39]._can_drop_data(Vector2.ZERO, bag_drag) and not v.bag_slots[20]._can_drop_data(Vector2.ZERO, bag_drag), "a bag item drops on the Vault only")
+	_check(v.vault_slots[39]._can_drop_data(Vector2.ZERO, bag_drag) and v.bag_slots[20]._can_drop_data(Vector2.ZERO, bag_drag), "a bag item drops on any Vault or bag cell")
 	_check(v.bag_slots[20]._can_drop_data(Vector2.ZERO, v.vault_slots[2].drag_data) and v.doll_slots["main_hand"]._can_drop_data(Vector2.ZERO, v.vault_slots[2].drag_data), "a Vault item drops on the bag or worn gear")
 	_check(not v.bag_slots[20]._can_drop_data(Vector2.ZERO, {"type": "other"}), "foreign drags are refused")
+	v.move_requested.connect(func(fs: String, fsl: int, ts: String, tsl: int, q: int) -> void: ev.append(["move", fs, fsl, ts, tsl, q]))
 	v.vault_slots[39]._drop_data(Vector2.ZERO, bag_drag)
-	_eq(ev.back(), ["dep", 0], "dropping a bag item on the Vault deposits it")
+	_eq(ev.back(), ["move", "bag", 0, "vault", 39, -1], "a bag item dropped on Vault cell 39 goes exactly there")
 	v.bag_slots[20]._drop_data(Vector2.ZERO, v.vault_slots[2].drag_data)
-	_eq(ev.back(), ["wd", 2], "dropping a Vault item on the bag withdraws it")
+	_eq(ev.back(), ["move", "vault", 2, "bag", 20, -1], "a Vault item dropped on bag cell 20 goes exactly there")
+	v.bag_slots[30]._drop_data(Vector2.ZERO, bag_drag)
+	_eq(ev.back(), ["move", "bag", 0, "bag", 30, -1], "rearranging inside the bag")
+	v.vault_slots[10]._drop_data(Vector2.ZERO, v.vault_slots[2].drag_data)
+	_eq(ev.back(), ["move", "vault", 2, "vault", 10, -1], "rearranging inside the Vault")
+	var n_same := ev.size()
+	v.bag_slots[0]._drop_data(Vector2.ZERO, bag_drag)
+	_eq(ev.size(), n_same, "a drop on its own cell does nothing")
 	# real mouse input (the signal-level checks above missed this, 2026-10-10): a press alone moves nothing because a drag may follow,
 	# the release moves it, and a drag that began in between cancels the click
 	var c0: DmItemSlot = v.bag_slots[0]
@@ -729,6 +737,14 @@ func _t_vault() -> void:
 	v.qty_spin.get_line_edit().text_changed.emit("4")
 	v.qty_spin.get_line_edit().text_submitted.emit("4")
 	_eq(ev.back(), ["deppart", stack_slot, 4], "Enter in the amount box moves the typed amount")
+	# Shift on a drop onto an exact cell asks how many, and that amount goes to that cell
+	v.vault_slots[15]._drop_data(Vector2.ZERO, v.bag_slots[stack_slot].drag_data)
+	await _frames(2)
+	_check(not v.pending.is_empty() and v.pending.get("to_slot", -1) == 15, "Shift-drop on a cell asks how many")
+	v.qty_spin.get_line_edit().text = "3"
+	v.qty_spin.get_line_edit().text_changed.emit("3")
+	v.qty_move_button.pressed.emit()
+	_eq(ev.back(), ["move", "bag", stack_slot, "vault", 15, 3], "the typed amount goes to the cell it was dropped on")
 	shift_on = false
 	v.shift_probe = Callable()
 	v.deposit_materials_button.pressed.emit()

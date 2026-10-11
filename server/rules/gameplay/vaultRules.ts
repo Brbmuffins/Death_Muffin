@@ -85,6 +85,62 @@ export const depositStack = (bag: VaultRow[], vault: VaultRow[], bagSlot: number
 export const withdrawStack = (bag: VaultRow[], vault: VaultRow[], vaultSlot: number, qty: number | undefined, info: VaultInfo) =>
   moveStack(vault, bag, vaultSlot, qty, BAG_SLOTS, info, false);
 
+export type VaultSide = 'bag' | 'vault';
+
+/**
+ * Move (part of) the stack in `fromSlot` of one side to exactly `toSlot` of either side (the same side rearranges). An empty target takes
+ * it; the same stackable item merges (what does not fit stays where it was); anything else swaps places (whole stacks only, and the
+ * swapped row must be allowed on the source side). Equipped gear (fixed) never moves and is never swapped. `qty` omitted = the whole stack.
+ */
+export function moveToSlot(bag: VaultRow[], vault: VaultRow[], fromSide: VaultSide, fromSlot: number, toSide: VaultSide, toSlot: number, qty: number | undefined, info: VaultInfo): VaultResult {
+  const b = clone(bag);
+  const v = fromSide === 'vault' || toSide === 'vault' ? clone(vault) : vault.map((r) => ({ ...r }));
+  const sideRows = (side: VaultSide) => (side === 'bag' ? b : v);
+  const size = (side: VaultSide) => (side === 'bag' ? BAG_SLOTS : VAULT_SLOTS);
+  if (!(Number.isInteger(toSlot) && toSlot >= 0 && toSlot < size(toSide))) return { ok: false, error: 'That slot does not exist.' };
+  const src = sideRows(fromSide);
+  const dst = sideRows(toSide);
+  const row = src.find((r) => r.slot === fromSlot);
+  if (!row) return { ok: false, error: 'There is nothing in that slot.' };
+  if (row.fixed) return { ok: false, error: 'Equipped gear stays where it is. Unequip it first.' };
+  const want = qty === undefined ? row.qty : Math.floor(Number(qty));
+  if (!Number.isFinite(want) || want < 1) return { ok: false, error: 'Choose how many to move.' };
+  const n = Math.min(want, row.qty);
+  const done = (moved: number): VaultResult => ({ ok: true, bag: b.filter((r) => r.qty > 0).sort(bySlot), vault: v.filter((r) => r.qty > 0).sort(bySlot), moved });
+  if (fromSide === toSide && fromSlot === toSlot) return done(0);
+  const target = dst.find((r) => r.slot === toSlot);
+  if (!target) {
+    if (n === row.qty) {
+      src.splice(src.indexOf(row), 1);
+      dst.push({ ...row, slot: toSlot });
+    } else {
+      row.qty -= n;
+      dst.push({ slot: toSlot, itemId: row.itemId, qty: n });
+    }
+    return done(n);
+  }
+  if (target.fixed) return { ok: false, error: 'That slot holds equipped gear.' };
+  const cap = row.inst !== undefined || target.inst !== undefined ? 1 : Math.max(1, info(row.itemId).maxStack);
+  if (target.itemId === row.itemId && cap > 1) {
+    const add = Math.min(n, cap - target.qty);
+    if (add <= 0) return { ok: false, error: 'That stack is full.' };
+    target.qty += add;
+    row.qty -= add;
+    return done(add);
+  }
+  if (n !== row.qty) return { ok: false, error: 'Drop part of a stack on an empty slot or on the same item.' };
+  if (src === dst) {
+    target.slot = fromSlot;
+    row.slot = toSlot;
+  } else {
+    src.splice(src.indexOf(row), 1);
+    dst.splice(dst.indexOf(target), 1);
+    dst.push({ ...row, slot: toSlot });
+    src.push({ ...target, slot: fromSlot });
+  }
+  return done(n);
+}
+
 export type DepositKind = 'materials' | 'all';
 const isMaterialLike = (type: string) => type === 'material' || type === 'consumable' || type === 'rune';
 

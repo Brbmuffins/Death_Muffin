@@ -1,7 +1,8 @@
 class_name DmVaultPanel
 extends DmPanelB
 ## The Ossuary Vault (archive/legacy-web:src/ui/VaultPanel.ts): a 120-slot stash shared by every character on the account, beside the 48-slot Reliquary.
-## Click an item to move its whole stack across; Shift+click (or Shift held on a drop) asks how many; dragging works between the Vault and the bag or worn-gear cells. Tabs of 40 slots (DmVault.VAULT_SLOTS / VAULT_TAB_SIZE). Locked bag items are shown but
+## Click an item to move its whole stack across; Shift+click (or Shift held on a drop) asks how many; drag a stack onto any bag or Vault cell to put it
+## exactly there (rearranging within a side too: empty = move, same item = merge, else swap; vault.cjs /api/vault/move); worn-gear cells take Vault items into the bag. Tabs of 40 slots (DmVault.VAULT_SLOTS / VAULT_TAB_SIZE). Locked bag items are shown but
 ## never moved by the bulk buttons. Pure UI: the server reply is the truth, feed it back through set_state().
 ##
 ## Data in:  set_state(state)  state = GET /api/vault reply {bag:[rows], vault:[rows]}  (rows: {slot_index, item_id, name, rarity, item_type,
@@ -9,6 +10,7 @@ extends DmPanelB
 ##           potion_pick = DmGameUi.belt_pick(): which flask / brew Q / Z / X drink, for the look-only potion belt under the gear doll.
 ##           Until set_state() runs the vault shows "Opening the Vault…" and every action button is disabled.
 ## Signals:  deposit_requested(bag_slot)              -> DmApi.vault_deposit(character_id, bag_slot)
+##           move_requested(from_side, from_slot, to_side, to_slot, qty) -> DmApi.vault_move (a drop on an exact cell; qty -1 = whole stack)
 ##           withdraw_requested(vault_slot)           -> DmApi.vault_withdraw(character_id, vault_slot)
 ##           deposit_part_requested(bag_slot, qty)    -> DmApi.vault_deposit(character_id, bag_slot, qty)   (Shift+click amount prompt)
 ##           withdraw_part_requested(vault_slot, qty) -> DmApi.vault_withdraw(character_id, vault_slot, qty)
@@ -24,6 +26,8 @@ signal deposit_all_requested(kind: String, except_slots: Array)
 signal take_all_requested(kind: String, vault_slots: Array)
 signal sort_requested
 signal deposit_part_requested(bag_slot: int, quantity: int)
+## A drop on an exact cell (any bag or Vault cell, the same side rearranges) -> DmApi.vault_move; quantity -1 = the whole stack.
+signal move_requested(from_side: String, from_slot: int, to_side: String, to_slot: int, quantity: int)
 signal withdraw_part_requested(vault_slot: int, quantity: int)
 
 const DRAG_TYPE := "vault_move"
@@ -201,8 +205,8 @@ func _build() -> void:
 			cell.pressed.connect(_on_bag_pressed.bind(row))
 			if int(row.get("equipped", 0)) == 0:
 				cell.drag_data = {"type": DRAG_TYPE, "from": "bag", "row": row}
-		cell.accepts = _accepts.bind("vault")   # a bag cell takes what comes from the Vault
-		cell.dropped.connect(_on_dropped)
+		cell.accepts = _accepts_any   # any bag cell takes a stack from the bag (rearrange) or the Vault, into exactly that slot
+		cell.dropped.connect(_on_dropped_at.bind("bag", i))
 		bg.add_child(cell)
 		bag_slots[i] = cell
 
@@ -243,8 +247,8 @@ func _build() -> void:
 				cell.press_on_release = true   # click moves on release; press-and-drag drags
 				cell.pressed.connect(_on_vault_pressed.bind(row))
 				cell.drag_data = {"type": DRAG_TYPE, "from": "vault", "row": row}
-			cell.accepts = _accepts.bind("bag")   # a Vault cell takes what comes from the bag
-			cell.dropped.connect(_on_dropped)
+			cell.accepts = _accepts_any   # any Vault cell takes a stack from the bag or the Vault (rearrange), into exactly that slot
+			cell.dropped.connect(_on_dropped_at.bind("vault", idx))
 			vg.add_child(cell)
 			vault_slots[idx] = cell
 
@@ -495,6 +499,27 @@ func _accepts(_cell_node: DmItemSlot, payload: Variant, from: String) -> bool:
 	return not busy and not state.is_empty() and payload is Dictionary and payload.get("type", "") == DRAG_TYPE and payload.get("from", "") == from
 
 
+func _accepts_any(_cell_node: DmItemSlot, payload: Variant) -> bool:
+	return not busy and not state.is_empty() and payload is Dictionary and payload.get("type", "") == DRAG_TYPE
+
+
+## A stack dropped on an exact bag or Vault cell: moves there (empty), merges (same item) or swaps (anything else). Shift asks how many.
+func _on_dropped_at(_cell_node: DmItemSlot, payload: Variant, to_side: String, to_slot: int) -> void:
+	if busy or state.is_empty() or not (payload is Dictionary):
+		return
+	var from := String(payload["from"])
+	var row: Dictionary = payload["row"]
+	var from_slot := int(row["slot_index"])
+	if from == to_side and from_slot == to_slot:
+		return
+	if _shift() and int(row.get("quantity", 1)) > 1:
+		pending = {"from": from, "row": row, "to_side": to_side, "to_slot": to_slot}
+		pending_qty = int(row["quantity"])
+		rebuild()
+		return
+	move_requested.emit(from, from_slot, to_side, to_slot, -1)
+
+
 func _on_dropped(_cell_node: DmItemSlot, payload: Variant) -> void:
 	if busy or state.is_empty() or not (payload is Dictionary):
 		return
@@ -537,7 +562,11 @@ func confirm_pending() -> void:
 	var from := String(pending["from"])
 	var slot := int(pending["row"]["slot_index"])
 	var n := clampi(int(qty_spin.value) if qty_spin != null else pending_qty, 1, int(pending["row"]["quantity"]))
+	var to: Dictionary = pending
 	pending = {}
+	if to.has("to_side"):   # a Shift-drop on an exact cell
+		move_requested.emit(from, slot, String(to["to_side"]), int(to["to_slot"]), n)
+		return
 	if from == "bag":
 		deposit_part_requested.emit(slot, n)
 	else:

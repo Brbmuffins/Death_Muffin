@@ -9,7 +9,7 @@ const SWEPT := ["register", "login", "load_or_create_character", "get_character"
 	"begin_afk_gather", "save_progress", "report_kills", "necro_get", "necro_save", "necro_purchase", "necro_summon_prelate", "necro_summon_boss", "necro_ascend",
 	"necro_vows", "necro_unlock", "necro_boon", "necro_import_local", "get_chronicle", "add_chronicle", "ascend_chronicle", "get_contracts", "deliver_contract", "get_garden",
 	"plant_garden", "harvest_garden", "get_labor", "assign_labor", "collect_labor", "get_cosmetics", "select_cosmetics", "adopt_pet", "get_vault", "vault_deposit",
-	"vault_withdraw", "vault_deposit_all", "vault_sort", "salvage_gear", "reforge_quote", "reforge_affix", "boss_key_status", "boss_key_summon", "boss_key_refund",
+	"vault_withdraw", "vault_deposit_all", "vault_sort", "vault_move", "salvage_gear", "reforge_quote", "reforge_affix", "boss_key_status", "boss_key_summon", "boss_key_refund",
 	"boss_key_claim", "send_bug_report", "get_my_bug_reports", "get_account_prefs", "set_account_prefs", "claim_session", "probe_session", "get_leaderboard"]
 ## Called by game code but local to the client (no route).
 ## get_patch_notes fetches the site's static patch notes: offline it gets a 404 and reads as "unknown" (never an error).
@@ -120,6 +120,7 @@ func _sweep() -> void:
 	calls["vault_withdraw"] = await api.vault_withdraw(cid, 0, 1)
 	calls["vault_deposit_all"] = await api.vault_deposit_all(cid, "materials", [])
 	calls["vault_sort"] = await api.vault_sort(cid)
+	calls["vault_move"] = await api.vault_move(cid, "bag", 0, "bag", 1)
 	calls["salvage_gear"] = await api.salvage_gear(cid, [0])
 	calls["reforge_quote"] = await api.reforge_quote(cid)
 	calls["reforge_affix"] = await api.reforge_affix(cid, 0, 0, 0)

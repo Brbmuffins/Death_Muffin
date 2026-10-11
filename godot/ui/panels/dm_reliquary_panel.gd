@@ -24,8 +24,11 @@ signal action_requested(id: String, item: Dictionary)
 signal slot_right_clicked(item: Dictionary)
 ## A flask or brew was dropped on a potion-belt cell (Heal Q / Elixir Z / Tonic X).
 signal potion_belted(item: Dictionary)
+## A bag item was dropped on another bag cell: move it there (empty), merge (same item) or swap (vault.cjs /api/vault/move, bag -> bag).
+signal bag_move_requested(from_slot: int, to_slot: int)
 
 const DRAG_EQUIP := "reliquary_equip"
+const DRAG_BAG := "reliquary_bag"   ## any other unequipped bag item: drag it to another bag cell to rearrange
 const BAG_SIZE := 48
 const COLS := 8
 ## Height of the selected-item strip; fixed so the window does not change size when the selection does.
@@ -206,6 +209,8 @@ func _build_ui() -> void:
 		s3.pressed.connect(_on_slot_pressed)
 		s3.double_clicked.connect(func(sl: DmItemSlot) -> void: equip_toggled.emit(sl.data))
 		s3.right_clicked.connect(func(sl: DmItemSlot) -> void: slot_right_clicked.emit(sl.data))
+		s3.accepts = _accepts_bag.bind(i)
+		s3.dropped.connect(_on_bag_drop.bind(i))
 		_grid.add_child(s3)
 		_slots.append(s3)
 
@@ -297,6 +302,8 @@ func refresh() -> void:
 			_slots[i].drag_data = {"type": DmHudBrewChip.DRAG_TYPE, "item_id": d.get("item_id", ""), "card": d}
 		elif not d.is_empty() and d.get("equippable", false) and not d.get("equipped", false):
 			_slots[i].drag_data = {"type": DRAG_EQUIP, "item": d}
+		elif not d.is_empty() and not d.get("equipped", false):
+			_slots[i].drag_data = {"type": DRAG_BAG, "item": d}
 		else:
 			_slots[i].drag_data = null
 		_slots[i].selected = not d.is_empty() and d.get("id", -1) == sel_item.get("id", -2)
@@ -350,6 +357,26 @@ func _render_setsum() -> void:
 		nx.add_theme_font_size_override("font_size", 11)
 		box.add_child(nx)
 		_setsum.add_child(box)
+
+
+## The bag slot a drag payload comes from (any of the bag's drag kinds), -1 when it is not a bag item.
+static func _bag_slot_of(payload: Variant) -> int:
+	if not (payload is Dictionary) or not (payload.get("type", "") in [DRAG_EQUIP, DRAG_BAG, DmHudBrewChip.DRAG_TYPE]):
+		return -1
+	var it: Variant = payload.get("item", payload.get("card", null))
+	var row: Variant = (it as Dictionary).get("row", null) if it is Dictionary else null
+	return int((row as Dictionary).get("slot_index", -1)) if row is Dictionary else -1
+
+
+func _accepts_bag(_sl: DmItemSlot, payload: Variant, i: int) -> bool:
+	var from := _bag_slot_of(payload)
+	return from >= 0 and from != i
+
+
+func _on_bag_drop(_sl: DmItemSlot, payload: Variant, i: int) -> void:
+	var from := _bag_slot_of(payload)
+	if from >= 0 and from != i:
+		bag_move_requested.emit(from, i)
 
 
 ## Drag a bag item onto its paper-doll cell or tool-belt cell to equip it (same action as the Equip button).

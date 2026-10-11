@@ -146,3 +146,21 @@ test('belt tools (slots 110-113) are never deposited, listed in the bag or count
   assert.equal(db.inv.length, 1, 'only the belt row is left in the inventory table');
   assert.equal((await dep(c, { bagSlot: 110 })).json.success, false, 'a belt slot is not a bag slot');
 });
+
+test('move: a stack to an exact slot, rearranging inside the bag and the vault, swapping across, merging, and bad input', async () => {
+  const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'ore_copper', quantity: 10 }, { slot_index: 1, item_id: 'staff_oak', quantity: 1 }], vault: [{ slot_index: 5, item_id: 'log_oak', quantity: 9 }] });
+  const c = call(db);
+  const mv = (body) => c('POST /api/vault/move', { body: { characterId: 1, ...body } });
+  assert.equal((await mv({ from: 'bag', fromSlot: 1, to: 'bag', toSlot: 20 })).json.success, true);
+  assert.deepEqual(db.inv.map((r) => [r.slot_index, r.item_id]).sort((a, b) => a[0] - b[0]), [[0, 'ore_copper'], [20, 'staff_oak']], 'rearranged in the bag');
+  assert.equal((await mv({ from: 'vault', fromSlot: 5, to: 'vault', toSlot: 40 })).json.success, true);
+  assert.deepEqual(db.vault.map((r) => [r.slot_index, r.item_id]), [[40, 'log_oak']], 'rearranged in the vault (another tab)');
+  assert.equal((await mv({ from: 'bag', fromSlot: 0, to: 'vault', toSlot: 7, quantity: 4 })).json.success, true);
+  assert.equal(db.vault.find((r) => r.slot_index === 7).quantity, 4, 'part of a stack to a chosen vault slot');
+  assert.equal((await mv({ from: 'bag', fromSlot: 20, to: 'vault', toSlot: 40 })).json.success, true);
+  assert.equal(db.vault.find((r) => r.slot_index === 40).item_id, 'staff_oak', 'swapped across');
+  assert.equal(db.inv.find((r) => r.slot_index === 20).item_id, 'log_oak');
+  assert.match((await mv({ from: 'bag', fromSlot: 0, to: 'sky', toSlot: 1 })).json.error, /bag or vault/);
+  assert.match((await mv({ from: 'bag', fromSlot: 0, to: 'bag', toSlot: 48 })).json.error, /does not exist/);
+});
+

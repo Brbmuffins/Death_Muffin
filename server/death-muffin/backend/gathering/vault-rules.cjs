@@ -28,6 +28,7 @@ __export(vaultRules_exports, {
   depositMany: () => depositMany,
   depositStack: () => depositStack,
   moveStack: () => moveStack,
+  moveToSlot: () => moveToSlot,
   sortVault: () => sortVault,
   withdrawStack: () => withdrawStack
 });
@@ -245,6 +246,54 @@ function moveStack(from, to, fromSlot, qty, toSize, info, toVault) {
 }
 var depositStack = (bag, vault, bagSlot, qty, info) => moveStack(bag, vault, bagSlot, qty, VAULT_SLOTS, info, true);
 var withdrawStack = (bag, vault, vaultSlot, qty, info) => moveStack(vault, bag, vaultSlot, qty, BAG_SLOTS, info, false);
+function moveToSlot(bag, vault, fromSide, fromSlot, toSide, toSlot, qty, info) {
+  const b = clone(bag);
+  const v = fromSide === "vault" || toSide === "vault" ? clone(vault) : vault.map((r) => ({ ...r }));
+  const sideRows = (side) => side === "bag" ? b : v;
+  const size = (side) => side === "bag" ? BAG_SLOTS : VAULT_SLOTS;
+  if (!(Number.isInteger(toSlot) && toSlot >= 0 && toSlot < size(toSide))) return { ok: false, error: "That slot does not exist." };
+  const src = sideRows(fromSide);
+  const dst = sideRows(toSide);
+  const row = src.find((r) => r.slot === fromSlot);
+  if (!row) return { ok: false, error: "There is nothing in that slot." };
+  if (row.fixed) return { ok: false, error: "Equipped gear stays where it is. Unequip it first." };
+  const want = qty === void 0 ? row.qty : Math.floor(Number(qty));
+  if (!Number.isFinite(want) || want < 1) return { ok: false, error: "Choose how many to move." };
+  const n = Math.min(want, row.qty);
+  const done = (moved) => ({ ok: true, bag: b.filter((r) => r.qty > 0).sort(bySlot), vault: v.filter((r) => r.qty > 0).sort(bySlot), moved });
+  if (fromSide === toSide && fromSlot === toSlot) return done(0);
+  const target = dst.find((r) => r.slot === toSlot);
+  if (!target) {
+    if (n === row.qty) {
+      src.splice(src.indexOf(row), 1);
+      dst.push({ ...row, slot: toSlot });
+    } else {
+      row.qty -= n;
+      dst.push({ slot: toSlot, itemId: row.itemId, qty: n });
+    }
+    return done(n);
+  }
+  if (target.fixed) return { ok: false, error: "That slot holds equipped gear." };
+  const cap = row.inst !== void 0 || target.inst !== void 0 ? 1 : Math.max(1, info(row.itemId).maxStack);
+  if (target.itemId === row.itemId && cap > 1) {
+    const add = Math.min(n, cap - target.qty);
+    if (add <= 0) return { ok: false, error: "That stack is full." };
+    target.qty += add;
+    row.qty -= add;
+    return done(add);
+  }
+  if (n !== row.qty) return { ok: false, error: "Drop part of a stack on an empty slot or on the same item." };
+  if (src === dst) {
+    target.slot = fromSlot;
+    row.slot = toSlot;
+  } else {
+    src.splice(src.indexOf(row), 1);
+    dst.splice(dst.indexOf(target), 1);
+    dst.push({ ...row, slot: toSlot });
+    src.push({ ...target, slot: fromSlot });
+  }
+  return done(n);
+}
 var isMaterialLike = (type) => type === "material" || type === "consumable" || type === "rune";
 function depositMany(bag, vault, kind, exceptSlots, info) {
   const except = new Set(exceptSlots);
@@ -305,6 +354,7 @@ function addGrants(bag, grants, info) {
   depositMany,
   depositStack,
   moveStack,
+  moveToSlot,
   sortVault,
   withdrawStack
 });

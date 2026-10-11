@@ -455,6 +455,13 @@ func vault_withdraw(character_id: int, vault_slot: int, quantity: int = -1) -> D
 func vault_deposit_all(character_id: int, kind: String, except_slots: Array) -> DmResult:
 	return _decorate_keys(await _post("/api/vault/deposit-all", {"characterId": character_id, "kind": kind, "exceptSlots": except_slots}), ["bag", "vault"])
 
+## A stack to exactly `to_slot` of `to_side` ("bag" | "vault"; the same side rearranges): empty = put, same item = merge, else swap.
+func vault_move(character_id: int, from_side: String, from_slot: int, to_side: String, to_slot: int, quantity: int = -1) -> DmResult:
+	var body := {"characterId": character_id, "from": from_side, "fromSlot": from_slot, "to": to_side, "toSlot": to_slot}
+	if quantity >= 0:
+		body["quantity"] = quantity
+	return _decorate_keys(await _post("/api/vault/move", body), ["bag", "vault"])
+
 func vault_sort(character_id: int) -> DmResult:
 	return _decorate_keys(await _post("/api/vault/sort", {"characterId": character_id}), ["bag", "vault"])
 

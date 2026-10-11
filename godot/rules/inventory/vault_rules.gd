@@ -110,6 +110,85 @@ static func withdraw_stack(bag: Array, vault: Array, vault_slot: int, qty: Varia
 	return move_stack(vault, bag, vault_slot, qty, G.BAG_SLOTS, info, false)
 
 
+## Port of vaultRules.moveToSlot: (part of) the stack in `from_slot` of `from_side` ("bag" | "vault") to exactly `to_slot` of `to_side` (the same
+## side rearranges). Empty target = put there; the same stackable item = merge (what does not fit stays); anything else = swap (whole stacks
+## only). Equipped gear (fixed) never moves and is never swapped. `qty` null = the whole stack.
+static func move_to_slot(bag: Array, vault: Array, from_side: String, from_slot: int, to_side: String, to_slot: int, qty: Variant, info: Callable) -> Dictionary:
+	var b := _clone(bag)
+	var v := _clone(vault)
+	var size := func(side: String) -> int: return G.BAG_SLOTS if side == "bag" else VAULT_SLOTS
+	if to_slot < 0 or to_slot >= int(size.call(to_side)):
+		return {"ok": false, "error": "That slot does not exist."}
+	var src: Array = b if from_side == "bag" else v
+	var dst: Array = b if to_side == "bag" else v
+	var row: Dictionary = {}
+	for r in src:
+		if int(r["slot"]) == from_slot:
+			row = r
+			break
+	if row.is_empty():
+		return {"ok": false, "error": "There is nothing in that slot."}
+	if row.get("fixed", false):
+		return {"ok": false, "error": "Equipped gear stays where it is. Unequip it first."}
+	var want: int = int(row["qty"])
+	if qty != null:
+		var f := float(qty)
+		if is_nan(f) or is_inf(f) or floorf(f) < 1.0:
+			return {"ok": false, "error": "Choose how many to move."}
+		want = int(floorf(f))
+	var n := mini(want, int(row["qty"]))
+	var done := func(moved: int) -> Dictionary:
+		var keep := func(rows: Array) -> Array:
+			var out: Array = []
+			for r in rows:
+				if int(r["qty"]) > 0:
+					out.append(r)
+			return _by_slot(out)
+		return {"ok": true, "bag": keep.call(b), "vault": keep.call(v), "moved": moved}
+	if from_side == to_side and from_slot == to_slot:
+		return done.call(0)
+	var target: Dictionary = {}
+	for r in dst:
+		if int(r["slot"]) == to_slot:
+			target = r
+			break
+	if target.is_empty():
+		if n == int(row["qty"]):
+			src.erase(row)
+			var moved_row := row.duplicate()
+			moved_row["slot"] = to_slot
+			dst.append(moved_row)
+		else:
+			row["qty"] = int(row["qty"]) - n
+			dst.append({"slot": to_slot, "itemId": row["itemId"], "qty": n})
+		return done.call(n)
+	if target.get("fixed", false):
+		return {"ok": false, "error": "That slot holds equipped gear."}
+	var cap := 1 if (row.get("inst", null) != null or target.get("inst", null) != null) else maxi(1, int(info.call(row["itemId"])["maxStack"]))
+	if target["itemId"] == row["itemId"] and cap > 1:
+		var add := mini(n, cap - int(target["qty"]))
+		if add <= 0:
+			return {"ok": false, "error": "That stack is full."}
+		target["qty"] = int(target["qty"]) + add
+		row["qty"] = int(row["qty"]) - add
+		return done.call(add)
+	if n != int(row["qty"]):
+		return {"ok": false, "error": "Drop part of a stack on an empty slot or on the same item."}
+	if from_side == to_side:   # (Array == compares contents in GDScript, so test the sides)
+		target["slot"] = from_slot
+		row["slot"] = to_slot
+	else:
+		src.erase(row)
+		dst.erase(target)
+		var r2 := row.duplicate()
+		r2["slot"] = to_slot
+		dst.append(r2)
+		var t2 := target.duplicate()
+		t2["slot"] = from_slot
+		src.append(t2)
+	return done.call(n)
+
+
 static func _is_material_like(t: String) -> bool:
 	return t == "material" or t == "consumable" or t == "rune"
 

@@ -1068,6 +1068,18 @@ func _vault_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 		"/api/vault/sort":
 			_vault_store(acc, DmVault.sort_vault(_vault_rows(acc), info))
 			return _ok(_vault_view(acc))
+		"/api/vault/move":
+			var from: Variant = body.get("from")
+			var to: Variant = body.get("to")
+			if not (from in ["bag", "vault"]) or not (to in ["bag", "vault"]):
+				return _fail("Choose where to move it: bag or vault.")
+			var fs := _num(body, "fromSlot")
+			var ts := _num(body, "toSlot")
+			var fsize := BAG if from == "bag" else DmVault.VAULT_SLOTS
+			var tsize := BAG if to == "bag" else DmVault.VAULT_SLOTS
+			if not _is_int(fs) or not _is_int(ts) or fs < 0 or fs >= fsize or ts < 0 or ts >= tsize:
+				return _fail("That slot does not exist.")
+			return _apply_vault(acc, DmVault.move_to_slot(_bag_rows(acc), _vault_rows(acc), String(from), int(fs), String(to), int(ts), qty, info))
 	return _err("Offline backend: no route for POST %s" % p, 404)
 
 func _salvage(acc: Dictionary, body: Dictionary) -> Dictionary:

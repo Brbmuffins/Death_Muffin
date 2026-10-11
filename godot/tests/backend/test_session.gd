@@ -158,6 +158,16 @@ func _run(t: SceneTree) -> void:
 	_ok(vs.ok, "vault sort", vs.error)
 	var vw := await api.vault_withdraw(cid, 0, 5)
 	_ok(vw.ok, "vault withdraw", vw.error)
+	# exact-slot moves (the offline backend runs the same rules as vault.cjs /api/vault/move)
+	var vbag: Array = vw.data["bag"]
+	var any_bag_slot := int(vbag[0]["slot_index"]) if not vbag.is_empty() else -1
+	var vm := await api.vault_move(cid, "bag", any_bag_slot, "vault", 77)
+	_ok(vm.ok and vm.data["vault"].any(func(r: Dictionary) -> bool: return int(r["slot_index"]) == 77), "vault move to an exact vault slot", vm.error)
+	var vr := await api.vault_move(cid, "vault", 77, "vault", 101)
+	_ok(vr.ok and vr.data["vault"].any(func(r: Dictionary) -> bool: return int(r["slot_index"]) == 101), "vault move: rearrange inside the vault", vr.error)
+	var vb := await api.vault_move(cid, "vault", 101, "bag", 40)
+	_ok(vb.ok and vb.data["bag"].any(func(r: Dictionary) -> bool: return int(r["slot_index"]) == 40), "vault move to an exact bag slot", vb.error)
+	_ok(not (await api.vault_move(cid, "bag", 40, "moon", 1)).ok, "vault move refuses a bad side")
 
 	# --- contract ---
 	var view: Dictionary = (await api.get_contracts(cid)).data

@@ -7,6 +7,8 @@
  *   POST /api/vault/withdraw           -> { characterId, vaultSlot, quantity? }    vault -> bag
  *   POST /api/vault/deposit-all        -> { characterId, kind: 'materials' | 'all', exceptSlots: number[] }
  *   POST /api/vault/sort               -> { characterId }                           merge stacks, order by type, rarity, id
+ *   POST /api/vault/move               -> { characterId, from, fromSlot, to, toSlot, quantity? }   from/to = 'bag' | 'vault': a stack to exactly
+ *                                         that slot (rearranging within a side too): empty = put, same item = merge, else swap (vaultRules.moveToSlot)
  *
  * Every route answers { bag, vault } (the bag in the GET /api/inventory shape). A move stacks first, then takes free slots; it is
  * one transaction with both sides locked, and a move that will not fit is refused with a readable error, changing nothing.
@@ -89,6 +91,17 @@ module.exports = function mountVault(app, pool, { requireAuth, ownsCharacter }) 
     if (kind !== 'materials' && kind !== 'all') throw playerError('Choose what to deposit: materials or everything.');
     const except = Array.isArray(req.body.exceptSlots) ? req.body.exceptSlots.slice(0, 200).map(int).filter((n) => n >= 0 && n < gather.BAG_SLOTS) : [];
     return move(conn, id, accountId, (bag, vault, info) => rules.depositMany(bag, vault, kind, except, info));
+  }));
+
+  app.post('/api/vault/move', requireAuth, handle(async (conn, id, accountId, req) => {
+    const side = (v) => (v === 'bag' || v === 'vault' ? v : null);
+    const from = side(req.body.from), to = side(req.body.to);
+    if (!from || !to) throw playerError('Choose where to move it: bag or vault.');
+    const size = (s) => (s === 'bag' ? gather.BAG_SLOTS : rules.VAULT_SLOTS);
+    const fromSlot = int(req.body.fromSlot), toSlot = int(req.body.toSlot);
+    if (!(fromSlot >= 0 && fromSlot < size(from)) || !(toSlot >= 0 && toSlot < size(to))) throw playerError('That slot does not exist.');
+    const quantity = qtyOf(req.body.quantity);
+    return move(conn, id, accountId, (bag, vault, info) => rules.moveToSlot(bag, vault, from, fromSlot, to, toSlot, quantity, info));
   }));
 
   app.post('/api/vault/sort', requireAuth, handle(async (conn, id, accountId) => {

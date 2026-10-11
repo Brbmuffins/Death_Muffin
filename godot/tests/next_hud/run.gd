@@ -138,9 +138,14 @@ func _run() -> void:
 	check(caster.cooldown_left("bone_needle") > needle_before, "LMB casts bone_needle")
 	# right after the cast: the aimed target is remembered for a short REAL-time window, which a loaded machine could outlast below
 	check(g.ui_host.target_enemy() == foe, "target frame follows the aimed enemy")
+	# the HUD vm refreshes on a real-time interval (and the target window is real time too): wait in real time, right after the cast
+	var alive := func() -> bool: return is_instance_valid(foe) and foe.sm != null and foe.sm.id() != DmEnemyState.Id.DEAD
+	var t_end := Time.get_ticks_msec() + 2000
+	while hud.vm.get("target") == null and alive.call() and Time.get_ticks_msec() < t_end:
+		await process_frame
+	check(hud.vm.get("target") != null or not alive.call(), "target frame in the HUD vm (empty only once the target died)")
 	check(await until(func() -> bool: return not floats("hit").is_empty() or not floats("crit").is_empty(), 4.0), "a rite hit floats a damage number")
 	check(hud.float_layer.get_child_count() > 0, "the number is drawn on the HUD float layer")
-	check(hud.vm.get("target") != null or await until(func() -> bool: return hud.vm.get("target") != null, 1.0), "target frame in the HUD vm")
 	# ---- player damage
 	events.clear()
 	var hp0 := b.hp

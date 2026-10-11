@@ -1,5 +1,14 @@
 [
   {
+    "date": "2026-10-11",
+    "title": "Arrange Your Bag and Vault",
+    "items": [
+      "Drag an item onto any bag or Vault slot to put it exactly there: an empty slot takes it, the same item stacks onto it, and a different item swaps places.",
+      "Rearrange inside your bag (in the Reliquary or the Vault window) and inside the Vault, or move items between them to the slot you choose.",
+      "Hold Shift while dropping a stack to choose how many go to that slot."
+    ]
+  },
+  {
     "date": "2026-10-10",
     "title": "Sharper Spell Impacts",
     "items": [

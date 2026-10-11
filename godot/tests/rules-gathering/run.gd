@@ -468,6 +468,26 @@ func _test_vault() -> void:
 			"grants":
 				got = Vault.add_grants(c["bag"], c["grants"], info)
 		eq(got, c["out"], "vault %s" % c["mode"])
+	# move_to_slot (port of vaultRules.moveToSlot; same cases as vault-rules.test.ts)
+	var tbl := {"ore": {"maxStack": 250, "itemType": "material", "rarity": "common"}, "flask": {"maxStack": 20, "itemType": "consumable", "rarity": "common"}, "staff": {"maxStack": 1, "itemType": "weapon", "rarity": "common"}, "ring": {"maxStack": 1, "itemType": "ring", "rarity": "rare"}}
+	var mi := func(id: String) -> Dictionary: return tbl.get(id, {"maxStack": 1, "itemType": "material", "rarity": "common"})
+	var bag := [{"slot": 0, "itemId": "ore", "qty": 100}, {"slot": 1, "itemId": "staff", "qty": 1}, {"slot": 2, "itemId": "ring", "qty": 1, "fixed": true}, {"slot": 5, "itemId": "flask", "qty": 18}]
+	var vault := [{"slot": 0, "itemId": "ore", "qty": 240}, {"slot": 3, "itemId": "flask", "qty": 5}, {"slot": 7, "itemId": "staff", "qty": 1}]
+	var slots := func(rows: Array) -> Array: return rows.map(func(r: Dictionary) -> Array: return [int(r["slot"]), r["itemId"], int(r["qty"])])
+	var m1: Dictionary = Vault.move_to_slot(bag, vault, "bag", 1, "bag", 9, null, mi)
+	eq(slots.call(m1["bag"]), [[0, "ore", 100], [2, "ring", 1], [5, "flask", 18], [9, "staff", 1]], "move_to_slot: to an empty bag slot")
+	ok(int(bag[1]["slot"]) == 1, "move_to_slot: inputs untouched")
+	var m2: Dictionary = Vault.move_to_slot(bag, vault, "bag", 0, "bag", 10, 30, mi)
+	eq(slots.call(m2["bag"]).filter(func(r: Array) -> bool: return r[1] == "ore"), [[0, "ore", 70], [10, "ore", 30]], "move_to_slot: part of a stack")
+	var m3: Dictionary = Vault.move_to_slot(bag, vault, "bag", 0, "vault", 0, null, mi)
+	ok(int(m3["moved"]) == 10 and int(m3["vault"][0]["qty"]) == 250 and int(m3["bag"][0]["qty"]) == 90, "move_to_slot: merge capped, the rest stays")
+	ok(not Vault.move_to_slot(bag, [{"slot": 0, "itemId": "ore", "qty": 250}], "bag", 0, "vault", 0, null, mi)["ok"], "move_to_slot: a full stack refuses")
+	eq(slots.call(Vault.move_to_slot(bag, vault, "bag", 1, "bag", 5, null, mi)["bag"]), [[0, "ore", 100], [1, "flask", 18], [2, "ring", 1], [5, "staff", 1]], "move_to_slot: swap in a side")
+	var m6: Dictionary = Vault.move_to_slot(bag, vault, "bag", 5, "vault", 7, null, mi)
+	ok(slots.call(m6["bag"]).has([5, "staff", 1]) and slots.call(m6["vault"]).has([7, "flask", 18]), "move_to_slot: swap across sides")
+	ok(not Vault.move_to_slot(bag, vault, "bag", 0, "bag", 1, 5, mi)["ok"], "move_to_slot: part of a stack onto another item refuses")
+	ok(not Vault.move_to_slot(bag, vault, "bag", 2, "bag", 20, null, mi)["ok"] and not Vault.move_to_slot(bag, vault, "bag", 1, "bag", 2, null, mi)["ok"], "move_to_slot: equipped gear neither moves nor swaps")
+	ok(not Vault.move_to_slot(bag, vault, "bag", 1, "bag", 48, null, mi)["ok"] and Vault.move_to_slot(bag, vault, "bag", 1, "vault", 119, null, mi)["ok"], "move_to_slot: bounds")
 
 
 func _test_potion_belt() -> void:

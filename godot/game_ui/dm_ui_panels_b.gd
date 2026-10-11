@@ -28,6 +28,15 @@ func _init(ui_: Node) -> void:
 	_host_window("vault", vault)
 	vault.deposit_requested.connect(func(slot: int) -> void: _vault(func() -> DmResult: return await game.api.vault_deposit(cid(), slot)))
 	vault.withdraw_requested.connect(func(slot: int) -> void: _vault(func() -> DmResult: return await game.api.vault_withdraw(cid(), slot)))
+	vault.move_requested.connect(func(fs: String, fslot: int, ts: String, tslot: int, q: int) -> void:
+		_vault(func() -> DmResult:
+			var err: String = await game.bag_commit()   # unsaved bag edits first, so the reload after the move cannot drop them
+			if err != "":
+				return DmResult.failure("Could not save the bag first: %s" % err, 0)
+			var r: DmResult = await game.api.vault_move(cid(), fs, fslot, ts, tslot, q)
+			if r.ok and fs == "bag" and ts == "bag":
+				ui.locks.remap({fslot: tslot, tslot: fslot})   # a lock follows its item (a swap moves both)
+			return r))
 	vault.deposit_part_requested.connect(func(slot: int, qty: int) -> void: _vault(func() -> DmResult: return await game.api.vault_deposit(cid(), slot, qty)))
 	vault.withdraw_part_requested.connect(func(slot: int, qty: int) -> void: _vault(func() -> DmResult: return await game.api.vault_withdraw(cid(), slot, qty)))
 	vault.deposit_all_requested.connect(func(kind: String, except: Array) -> void: _vault(func() -> DmResult: return await game.api.vault_deposit_all(cid(), kind, except)))
