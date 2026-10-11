@@ -28,6 +28,7 @@ func _main() -> void:
 	PORT_INPROC = DmTestPorts.free_port()
 	PORT_PROC = DmTestPorts.free_port(PORT_INPROC)
 	ok(PORT_INPROC > 0 and PORT_PROC > 0, "free test ports found (%d, %d)" % [PORT_INPROC, PORT_PROC])
+	_phase_point()
 	await _part_a()
 	await _part_b()
 	await _part_c()
@@ -35,6 +36,31 @@ func _main() -> void:
 		OS.kill(p)
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
+
+
+## A body with a 1 m prop hole at x 2..3 (a detour of a metre) and a wall at x 6..6.5 (a 30 m detour).
+class PropBody:
+	extends DmSessionBody
+
+	func walkable(pt: Vector3) -> bool:
+		return not (pt.x >= 2.0 and pt.x <= 3.0) and not (pt.x >= 6.0 and pt.x <= 6.5)
+
+	func path_len(a: Vector3, b: Vector3) -> float:
+		var d := a.distance_to(b)
+		return d + 30.0 if (a.x < 6.0 and b.x > 6.5) else d + (1.0 if (a.x < 2.0 and b.x > 3.0) else 0.0)
+
+
+func _phase_point() -> void:
+	var b := PropBody.new()
+	var p := b.phase_point(Vector3(5.0, 0, 0))
+	ok(absf(p.x - 5.0) < 0.01, "phase_point slips past a prop hole to the far end (%s)" % str(p))
+	ok(b.dash_point(Vector3(5.0, 0, 0)).x < 2.0, "dash_point still stops at the same hole (veil step is unchanged)")
+	p = b.phase_point(Vector3(9.0, 0, 0))
+	ok(p.x < 6.0 and p.x > 5.5, "phase_point stops at a wall, not beyond it (%s)" % str(p))
+	b.dash(Vector3(8, 0, 0), 1.0, false)
+	b._step_dash(0.25)
+	ok(absf(b.position.x - 2.0) < 0.01, "an even dash covers a quarter of the way in a quarter of the time (%.2f)" % b.position.x)
+	b.free()
 
 
 func wait_for(cond: Callable, timeout := 8.0) -> bool:

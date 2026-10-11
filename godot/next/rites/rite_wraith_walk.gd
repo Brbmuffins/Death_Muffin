@@ -1,7 +1,7 @@
 extends DmRiteModule
 ## Wraith Walk (the Reaper): she becomes a towering phantom and rushes up to 9 m toward the cursor (at least 2 m), 4 souls, 11 s. Everything in the
 ## lane she passes through (1.6 m either side, plus the enemy's radius) burns in green flame (the `wraithfire` status, a Hemorrhage-style damage-over-time) for 5 s at power 0.7 a second, +15% a
-## soul it costs (the bag's own +2% a soul is what is left in the bag). Host-authoritative like Veil Step: `body.dash_point`
+## soul it costs (the bag's own +2% a soul is what is left in the bag). Host-authoritative like Veil Step: `body.phase_point`
 ## validates the way, `body.dash` glides the body (0.32 s). The lane is read once, at the cast, from where she started to where the dash ends.
 
 
@@ -22,7 +22,7 @@ func validate(c: DmRiteCaster, intent: Dictionary) -> String:
 	var want := clampf(Vector2(intent["aim"].x - from.x, intent["aim"].z - from.z).length(), float(K["wraithMinM"]), float(DmAbilities.def(id)["range"]))
 	var goal := Vector3(from.x + dir.x * want, 0.0, from.z + dir.y * want)
 	var b: Node3D = c.body
-	var to := (b.call("dash_point", goal) as Vector3) if b.has_method("dash_point") else goal
+	var to := (b.call("phase_point", goal) as Vector3) if b.has_method("phase_point") else goal
 	if Vector2(to.x - from.x, to.z - from.z).length() < 0.5:
 		return "no_target"
 	intent["to"] = to
@@ -49,7 +49,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 			marks.append(Vector3(e.global_position.x, 0.9, e.global_position.z))
 	c.p["phasedUntil"] = c.now_ms + float(K["wraithDashS"]) * 1000.0   # untouchable for the rush (DmPlayerRules.take_damage)
 	if c.body.has_method("dash"):
-		c.body.call("dash", to, float(K["wraithDashS"]))
+		c.body.call("dash", to, float(K["wraithDashS"]), false)   # an even rush: no 56 m/s first step for other peers to snap over
 	else:
 		c.body.position = Vector3(to.x, c.body.position.y, to.z)
 		c.body.reset_physics_interpolation()
@@ -77,7 +77,7 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 
 
 ## The hero swells into a towering, half-see-through phantom with a faint green glow for the rush, then settles back (every peer; the avatar is the
-## model on the body). The body is never blocked by monsters (it is a point on the navmesh, not a physics body); `dash_point` stops it at walls.
+## model on the body). The body is never blocked by monsters (it is a point on the navmesh, not a physics body); `phase_point` stops it at walls but not at props.
 func _phantom(c: DmRiteCaster, secs: float) -> void:
 	var b: Node3D = c.body
 	var av: Variant = b.get("avatar") if b != null else null
@@ -87,10 +87,11 @@ func _phantom(c: DmRiteCaster, secs: float) -> void:
 	var cr := a.c
 	cr.set_opacity(PHANTOM_ALPHA)
 	cr.set_emissive(0x6ee7a0, PHANTOM_GLOW)   # DmReaperRites.GREEN
+	var base := cr.root.scale   # the model swells about its own feet (scaling the avatar node scaled her world position away from the origin)
 	var tw := a.create_tween()
-	tw.tween_property(a, "scale", Vector3.ONE * 1.6, 0.08)
+	tw.tween_property(cr.root, "scale", base * 1.6, 0.08)
 	tw.tween_interval(maxf(0.0, secs - 0.05))
-	tw.tween_property(a, "scale", Vector3.ONE, 0.22)
+	tw.tween_property(cr.root, "scale", base, 0.22)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(a):
 			cr.set_opacity(1.0)
