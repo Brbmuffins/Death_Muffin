@@ -4,7 +4,7 @@ extends RefCounted
 ## Groups: core, ui, rites, world, amb (loaded once), boss, foot_<surface>, fam_<voice> (per area, released two areas later).
 
 const _CORE := "needleCast needleHit boneHit thrallMelee thrallShot thrallMagic thrallDeath hurt playerDeath enemyDeath"
-const _RITES := """needleCast needleHit boneHit spear exhume thrallRise miasma litany wail bloodStep frost mantle siphon prison hands storm
+const _RITES := """needleCast needleHit boneHit spear exhume thrallRise miasma litany wail banshee bloodStep frost mantle siphon prison hands storm
   soulRelease sigWall sigRend sigDirge sigBloom curse raise burst flail lantern chain pyre ward palm choir crow bloodRite veilRite spiritBolt
   rotLance boneFan ivoryCleave hollowCut veilStep rallyDead carrionSeed seedBurst graveOffering corpseExplode shieldBash graveSlam
   graveSlamLand bulwarkRaise bulwarkBlock oathUnbroken corpseVigil graveBrand thrallDeath thrallBind miasmaLoop siphonLoop handsLoop
