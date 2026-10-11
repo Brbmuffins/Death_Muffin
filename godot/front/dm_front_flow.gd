@@ -5,7 +5,7 @@ extends Control
 ##   resume(): GET /character -> 200 enter_world (or the discipline switch when its discipline is not playable yet), 404 discipline select,
 ##   anything else clears the token and shows login.
 ## The integrator connects `enter_world(character, session)` to the game scene. `session` is the authenticated DmApi
-## (same object for the whole run: token, saves, lobby). Call `logout()` from the game's Log out button.
+## (same object for the whole run: token, saves, lobby). Call `logout()` from the game's Log out button, `switch_character()` from Switch character (select screen, same token).
 ## Tokens live in user://dm_jwt.txt when `persist_token` (DmApi's own file); they are never printed or logged.
 
 signal enter_world(character: Dictionary, session)
@@ -123,6 +123,28 @@ func resume() -> void:
 	else:
 		api.set_token("")
 		go_login()
+
+
+## In-game "Switch character": the session is still ours, so no login screen. Same online gate as a login; the token is checked once (GET /api/me)
+## and only a 401 sends the player to login (the notice says why). A network failure keeps the token: the select screen shows the error.
+func switch_character() -> void:
+	if api.get_token().is_empty():
+		go_login()
+		return
+	if not await _gate_allows():
+		return
+	var ok := true
+	if api.is_session_replaced():
+		ok = not (await api.claim_session(api.get_token())).is_empty()   # "Play here" again, as boot() does
+	else:
+		ok = (await api.get_me()).status != 401
+	if not ok:
+		api.set_token("")
+		go_login()
+		if current is DmLoginScreen:
+			current.show_notice("Your session ended: sign in again")
+		return
+	go_select()
 
 
 func logout() -> void:

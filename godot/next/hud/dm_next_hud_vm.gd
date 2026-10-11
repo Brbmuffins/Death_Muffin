@@ -52,10 +52,11 @@ func build() -> Dictionary:
 	var family := b.family
 	var level := float(host.character.get("level", 1))
 	var bag := family == "reaper"   # the Reaper's energy orb IS her soul bag
-	var souls := _souls(b)
+	var sp := soul_state(b)
+	var souls := int(sp.get("souls", 0))
 	var vm := {
 		"hp": b.hp, "max_hp": b.max_hp, "barrier": 0.0,
-		"essence": float(souls) if bag else b.resource, "max_essence": (float(b.p["soulsMax"]) if not b.p.is_empty() else 30.0) if bag else b.resource_max,
+		"essence": float(souls) if bag else b.resource, "max_essence": float(sp.get("soulsMax", 30.0)) if bag else b.resource_max,
 		"resource_label": DmResources.label_for(family), "resource_color": DmResources.color_for(family) if family != "necromancer" else "",
 		"level": int(level), "xp": host.character.get("experience", 0), "xp_next": DmStats.xp_to_next(level),
 		"gold": int(host.character.get("gold", 0)), "shards": int(host.progress.get("shards", 0)),
@@ -66,7 +67,7 @@ func build() -> Dictionary:
 		"damage": {"tier": host.progress["damageTier"], "pct": DmUpgrades.damage_bonus_pct(float(host.progress["damageTier"])), "cost": null if host.prog.damage_cost() == -1 else host.prog.damage_cost()},
 		"wave": {"owned": host.progress["waveTierOwned"], "active": host.progress["waveTierActive"], "pct": DmWaveUpgrades.wave_modifiers(float(host.progress["waveTierActive"]))["speedPct"],
 			"cost": null if host.prog.wave_cost() == -1 else host.prog.wave_cost()},
-		"souls": souls, "souls_max": b.p["soulsMax"] if not b.p.is_empty() else (30 if bag else 50), "raises_thralls": family == "necromancer",
+		"souls": souls, "souls_max": sp.get("soulsMax", 30 if bag else 50), "raises_thralls": family == "necromancer",
 		"soul_bag": bag,
 		"ward": _ward(b), "chain": _chain(g, b), "omen": _omen(g), "save": host.save_chip(),
 	}
@@ -79,12 +80,13 @@ func build() -> Dictionary:
 	return vm
 
 
-## Souls banked: the host reads its body's state, a party member the count the host replicated to its caster (the Reaper's soul bag needs it on both).
-func _souls(b: DmHeroBody) -> int:
+## Soul Harvest numbers ({souls, soulsMax}): the host's hero reads its own state; a joiner's hero is a puppet (empty `p`), so it reads what the
+## host's caster last sent it. {} before anything arrived.
+static func soul_state(b: DmHeroBody) -> Dictionary:
 	if not b.p.is_empty():
-		return int(b.p["souls"])
-	var caster := b.get_node_or_null("Rites") as DmRiteCaster
-	return int(caster.get_state().get("souls", 0)) if caster != null else 0
+		return b.p
+	var c := b.get_node_or_null("Rites") as DmRiteCaster
+	return c.get_state() if c != null else {}
 
 
 ## The boss bar (the original game's DmGameHud.boss shape): the awake boss of this peer's world, hp from the body.
@@ -131,9 +133,10 @@ func _fill(s: Dictionary, id: String, b: DmHeroBody, level: float, key: String) 
 	s["cost"] = d.get("soulCost", 0) if souls_rite else d["essenceCost"]
 	s["left_ms"] = caster.cooldown_left(id) if caster != null else 0.0
 	s["total_ms"] = total
-	var emp := not b.p.is_empty() and DmAbilities.empowered(b.p, id)   # Soul Harvest: charged souls make this rite free
+	var sp := soul_state(b)
+	var emp := sp.has("soulsMax") and DmAbilities.empowered(sp, id)   # Soul Harvest: charged souls make this rite free
 	s["empowered"] = emp
-	s["affordable"] = (_souls(b) >= int(s["cost"])) if souls_rite else (emp or b.resource >= float(d["essenceCost"]))
+	s["affordable"] = (int(sp.get("souls", 0)) >= int(s["cost"])) if souls_rite else (emp or b.resource >= float(d["essenceCost"]))
 	s["locked"] = DmAbilities.rite_level(level, host.dev_access) < DmAbilities.unlock_level(id)
 	s["unlock_level"] = DmAbilities.unlock_level(id)
 	s["needs"] = needs_of(id, _corpse_near, _legion_n)
@@ -279,7 +282,7 @@ func _party(g: DmNextGame) -> Array:
 		if b == null:
 			continue
 		var d := DmContent.discipline(String(r["discipline"]))
-		var lvl := int(host.character.get("level", 1)) if b == g.local_body() else int(b.character.get("level", 1))
+		var lvl := g.party.level_of(b)
 		out.append({"id": int(r["peer_id"]), "name": String(r["name"]), "discipline": "%s · Level %d" % [d.get("name", r["discipline"]), lvl],
 			"portrait": DmGameHud.art(String(d.get("portrait", "art/portraits/%s.webp" % r["discipline"])).replace("art/", "")), "hp_frac": b.hp / maxf(b.max_hp, 1.0)})
 		if out.size() >= 4:

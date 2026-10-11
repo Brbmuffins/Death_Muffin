@@ -254,7 +254,7 @@ async function creditMembers(pool, { session, entries, now, env, log, isStaff })
     if (built.floorsDropped) r.floorsDropped = built.floorsDropped;
     const claimed = built.body.groups.reduce((n, g) => n + Math.max(0, Math.trunc(num(g && g.n))), 0);
     const out = await kills.handleReport(pool, {
-      char: { id: cid }, accountId: m.accountId, body: built.body, account: { staff: await isStaff(m.accountId) }, now, env, log,
+      char: { id: cid }, accountId: m.accountId, body: built.body, account: { staff: await isStaff(m.accountId) }, carried: true, now, env, log,
     });
     if (out.status >= 400) { r.reason = 'rejected'; r.error = out.body && out.body.error; continue; }
     const d = (out.body && out.body.data) || {};

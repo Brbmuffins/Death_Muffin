@@ -496,7 +496,7 @@ func _build_map_column() -> void:
 	nx.text = "×"
 	nx.flat = true
 	nx.focus_mode = Control.FOCUS_NONE
-	nx.tooltip_text = "Hide this suggestion (turn the line off in Settings)"
+	nx.tooltip_text = "Hide this suggestion (turn the line off in Settings → Display)"
 	nx.add_theme_font_size_override("font_size", 17)
 	nx.add_theme_color_override("font_color", DmUi.TEXT_MUTED)
 	nx.add_theme_color_override("font_hover_color", DmUi.BONE_100)
@@ -686,7 +686,7 @@ func _build_xp() -> void:
 	dev_chip = DmHudKit.panel(DmUi.GOLD, Color(0, 0, 0, 0), Vector4(0, 0, 0, 0), Vector4(5, 1, 5, 1), 3)
 	dev_chip.add_child(_txt("DEV", 10, Color("1a1206"), "numeric", 0.0, false))
 	dev_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	dev_chip.tooltip_text = "Dev access: every rite, area and gathering tier is open. Nothing is saved. Toggle it in Settings."
+	dev_chip.tooltip_text = "Dev access: every rite, area and gathering tier is open. Nothing is saved. Toggle it in Settings → Account."
 	dev_chip.visible = false
 	xp.add_child(dev_chip)
 	var col := VBoxContainer.new()

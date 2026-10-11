@@ -27,6 +27,7 @@ func _init() -> void:
 		return
 	files.sort()
 	_test_factory()
+	_test_nav_chase()
 	for f in files:
 		_run_scenario(f)
 	print("bosses: %d passed, %d failed" % [pass_n, fail_n])
@@ -141,3 +142,76 @@ func _run_scenario(file: String) -> void:
 			ok(false, "%s tick %d: %s" % [name, int(tk["t"]), msg])
 			return
 	ok(true, name)
+
+
+## A world with a wall the boss cannot cross, on the live game's nav hooks: `walk` refuses a step into the wall, `detour` routes round its end.
+class WallWorld extends FakeWorld:
+	var last := Vector2(-18.0, -22.0)
+	var routes := true
+	var asked := 0
+	func nav_active() -> bool:
+		return true
+	func walk(x: float, z: float) -> Vector2:
+		if _wall(x, z):
+			if not _wall(x, last.y):   # slide along the wall, like nav_clamp
+				last = Vector2(x, last.y)
+			elif not _wall(last.x, z):
+				last = Vector2(last.x, z)
+			return last
+		last = Vector2(x, z)
+		return last
+	func _wall(x: float, z: float) -> bool:
+		return absf(x + 14.0) < 0.4 and z < -17.0 and z > -27.0
+	func detour(x0: float, z0: float, x1: float, z1: float) -> PackedVector2Array:
+		asked += 1
+		return PackedVector2Array([Vector2(x0, z0), Vector2(-15.0 if x0 < -14.0 else -13.0, -16.0), Vector2(-13.0, -16.0), Vector2(x1, z1)]) if routes else PackedVector2Array()
+
+
+func _fresh(w: WallWorld, players: Array) -> RefCounted:
+	w.player_list = players
+	var brain: RefCounted = Brains.make(w, "gravedigger")
+	brain.awaken("1", false)
+	brain.state["x"] = -18.0
+	brain.state["z"] = -22.0
+	return brain
+
+
+func _p(id: String, x: float, z: float) -> Dictionary:
+	return {"id": id, "x": x, "z": z, "alive": true, "area": "graves"}
+
+
+func _run_chase(w: WallWorld, brain: RefCounted, secs: float) -> Array:
+	var switches := 0
+	var last_t: Variant = null
+	for i in int(secs / 0.1):
+		w.time += 0.1
+		brain.update(0.1)
+		if brain._target_id != last_t:
+			switches += 1
+			last_t = brain._target_id
+	return [switches, Vector2(float(brain.state["x"]), float(brain.state["z"]))]
+
+
+func _test_nav_chase() -> void:
+	# one hero behind a wall: the straight line is blocked; with a route the boss walks round and reaches it
+	var w := WallWorld.new(7, "medium", 5)
+	var brain := _fresh(w, [_p("a", -9.0, -22.0)])
+	var r := _run_chase(w, brain, 30.0)
+	ok((r[1] as Vector2).distance_to(Vector2(-9.0, -22.0)) < 4.5, "nav chase: the boss got round the wall to the hero (%s)" % str(r[1]))
+	# control: the same fight with no route is the pinned boss the owner saw
+	var w2 := WallWorld.new(7, "medium", 5)
+	w2.routes = false
+	var b2 := _fresh(w2, [_p("a", -9.0, -22.0)])
+	var r2 := _run_chase(w2, b2, 30.0)
+	ok(float((r2[1] as Vector2).x) < -13.0, "nav chase: (control) without a route the boss stays on its side (%s)" % str(r2[1]))
+	# two heroes, one behind the wall with no route: the boss gives up on it and goes for the one it can reach
+	var w3 := WallWorld.new(7, "medium", 5)
+	w3.routes = false
+	var b3 := _fresh(w3, [_p("far", -9.0, -22.0), _p("near", -22.0, -22.0)])
+	var r3 := _run_chase(w3, b3, 30.0)
+	ok((r3[1] as Vector2).distance_to(Vector2(-22.0, -22.0)) < 4.5 or float((r3[1] as Vector2).x) < -17.0, "nav chase: with a hero it cannot reach, it turns to the one it can (%s)" % str(r3[1]))
+	# two heroes at nearly the same range do not make it swing between them
+	var w4 := WallWorld.new(7, "medium", 5)
+	var b4 := _fresh(w4, [_p("l", -18.0, -12.0), _p("r", -18.0, -31.8)])
+	var r4 := _run_chase(w4, b4, 10.0)
+	ok(int(r4[0]) <= 2, "nav chase: two heroes at similar range, the boss keeps one target (%d picks)" % int(r4[0]))

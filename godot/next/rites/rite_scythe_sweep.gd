@@ -1,5 +1,5 @@
 extends DmRiteModule
-## Scythe Sweep (the Reaper's primary): a 130 degree arc, 3.4 m, toward the cursor or the enemy clicked, resolved at once. Free, 0.6 s, power 0.9.
+## Scythe Sweep (the Reaper's primary): a 130 degree arc, 3.4 m, toward the cursor or the enemy clicked, resolved at once. Free, 0.6 s, power 1.2.
 ## Numbers: DmAbilities + REAPER.sweepHalfAngleDeg; visuals: DmReaperRites.draw_sweep.
 
 

@@ -64,3 +64,14 @@ func set_tab_hidden(id: String, hidden: bool) -> void:
 func set_new(id: String, on: bool) -> void:
 	if _tabs.has(id):
 		(_tabs[id]["btn"] as DmTabButton).set_new(on)
+
+
+## Drop every tab button (the caller frees the contents) before adding a fresh set.
+func clear_tabs() -> void:
+	for id in _order:
+		var b := _tabs[id]["btn"] as Button
+		_strip.remove_child(b)
+		b.queue_free()
+	_tabs.clear()
+	_order.clear()
+	active = ""

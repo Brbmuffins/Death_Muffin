@@ -136,19 +136,19 @@ func _on_chain_tier(cid: int, tier: Dictionary) -> void:
 # ---- Soul Harvest ---------------------------------------------------------------------------------------------------------------------
 
 ## Your own kill banks a soul; the kill that fills the meter charges the next Marrow Spear / Miasma / Black Litany (free, 1.5x), see DmRiteCaster.
+## Every member's hero banks on the host (a joiner's meter reaches its HUD through its caster's state); the announcement is the host hero's.
 func _on_killer_paid(cid: int, _def: String, enemy: Node) -> void:
 	var m: DmRewardsMember = shell.rewards.members.get(cid)
-	var killer := m.body as DmHeroBody if m != null else null
-	if killer != null and killer.family == "reaper":   # the Reaper's souls come from every kill she is paid for (_on_kill_earned)
+	if m == null or not is_instance_valid(m.body):
 		return
-	var b := shell.local_body()
-	if cid != member.character_id or b == null or b.p.is_empty():
+	var b := m.body as DmHeroBody
+	if b == null or b.p.is_empty() or b.family == "reaper":   # the Reaper's souls come from every kill she is paid for (_on_kill_earned)
 		return
 	var souls := 1.0
 	var caster := b.get_node_or_null("Rites") as DmRiteCaster
 	if caster != null and enemy != null:   # the Scythe's reap window: a kill of a victim of its arc banks one more soul
 		souls += (DmRiteRegistry.module("bone_needle") as DmRiteModule).call(&"reaped_souls", caster, enemy)
-	if not DmPlayerRules.add_souls(b.p, souls):
+	if not DmPlayerRules.add_souls(b.p, souls) or b != shell.local_body():
 		return
 	event.emit("souls_charged", {})
 	_float(b, 2.6, "Soul Harvest", "info")

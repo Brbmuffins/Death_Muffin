@@ -4,6 +4,8 @@ extends RefCounted
 ## multipliers, Depths level, killRules XP/gold, new-blood XP catch-up, hit-number scale. Spawn placement/AI is the world sim's.
 
 const RAMP_S := 30.0
+## Boss health per extra player (the brains: maxHp x (1 + this x (players - 1))). 4 players = x1.9.
+const BOSS_PARTY_HP_PER_EXTRA := 0.3
 
 
 static func E() -> Dictionary:

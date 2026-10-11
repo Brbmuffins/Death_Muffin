@@ -24,6 +24,20 @@ var last_hit_by: String = ""
 var stagger_t: float = 0.0
 var _adds: Dictionary = {}
 var _fracture: Dictionary
+const STUCK_S := 0.6      ## seconds of no headway toward a reachable player before the boss asks for a route round (nav worlds)
+const STUCK_FRAC := 0.3   ## "no headway" = it closed less than this share of the step it wanted
+const DETOUR_S := 8.0     ## longest it follows a route round an obstacle before trying the straight line again
+var _stuck_t := 0.0
+const STICKY_GAIN := 0.7  ## another player must be closer than this share of the current target's range to take the boss over
+const AVOID_S := 4.0      ## seconds a player the boss could not reach is skipped
+var _target_id: Variant = null
+var _avoid_id: Variant = null
+var _avoid_t := 0.0
+var state_dt := 0.0
+var _detours_tried := 0
+var _route := PackedVector2Array()
+var _route_i := 0
+var _detour_t := 0.0
 var _empower: Dictionary
 var _difficulties: Dictionary
 
@@ -93,7 +107,7 @@ func awaken(by: String, empowered: bool = false) -> void:
 	s["level"] = world.area_level(def["area"])
 	if empowered:
 		s["level"] = M.js_round(float(s["level"]) + float(_empower["levelsFlat"]) + float(s["level"]) * float(_empower["levelsShare"]))
-	s["maxHp"] = float(def["baseHp"]) * _hp_scale(float(s["level"])) * (float(_empower["hpMult"]) if empowered else 1.0) * (1.0 + 0.8 * float(party - 1)) * float(_diff()["enemyHpMult"])
+	s["maxHp"] = float(def["baseHp"]) * _hp_scale(float(s["level"])) * (float(_empower["hpMult"]) if empowered else 1.0) * (1.0 + world.party_hp_per_extra() * float(party - 1)) * float(_diff()["enemyHpMult"])
 	s["hp"] = s["maxHp"]
 	s["phase"] = 1
 	s["state"] = "idle"
@@ -250,6 +264,7 @@ func update(dt: float) -> void:
 		if dt <= 0.0:
 			return
 	s["stateT"] = float(s["stateT"]) + dt
+	state_dt = dt
 	_tick(dt, players)
 
 	# Resolve telegraphed attacks.
@@ -337,35 +352,106 @@ func _busy() -> bool:
 	return false
 
 
-## Returns {"nearest": player, "nd": float}
+## Returns {"nearest": player, "nd": float}. On a nav world (the live game) the pick is sticky: the current target is kept until another player is
+## clearly closer (STICKY_GAIN), so two heroes at similar range do not make the boss swing between them every tick; a player the boss
+## could not get to (see _track_progress) is skipped for AVOID_S while anyone else is in the arena.
 func _nearest(players: Array) -> Dictionary:
+	var nav: bool = world.nav_active()
 	var nearest: Dictionary = players[0]
 	var nd := INF
+	var cur: Variant = null
+	var cur_d := INF
 	for p in players:
 		var d := Geom.hyp(p["x"] - float(state["x"]), p["z"] - float(state["z"]))
+		if nav and p["id"] == _target_id:
+			cur = p
+			cur_d = d
+		if nav and _avoid_t > 0.0 and p["id"] == _avoid_id and players.size() > 1:
+			continue
 		if d < nd:
 			nd = d
 			nearest = p
+	if nav:
+		if _avoid_t > 0.0:
+			_avoid_t -= state_dt
+		if cur != null and cur["id"] != nearest["id"] and not (_avoid_t > 0.0 and cur["id"] == _avoid_id and players.size() > 1) and nd >= cur_d * STICKY_GAIN:
+			nearest = cur
+			nd = cur_d
+		if _target_id != nearest["id"]:
+			_target_id = nearest["id"]
+			_stuck_t = 0.0
+			_detour_t = 0.0
 	return {"nearest": nearest, "nd": nd}
 
 
 ## Lumber toward the nearest player, leashed inside the arena (radius - margin). `busy` < 0: use the live value.
+## On a world with `nav_active()` the step is also kept on walkable ground, and a boss that makes no headway toward a player it could reach
+## (a wall or pillar between them) walks the nav route's next waypoint for DETOUR_S before it tries the straight line again.
 func _chase(nearest: Dictionary, nd: float, speed: float, dt: float, margin: float = 2.0, stop_at: float = 3.0, busy_override: int = -1) -> void:
 	var s := state
 	var busy := _busy() if busy_override < 0 else busy_override == 1
 	if nd > stop_at:
-		var dx: float = nearest["x"] - float(s["x"])
-		var dz: float = nearest["z"] - float(s["z"])
-		s["x"] = float(s["x"]) + (dx / nd) * speed * dt
-		s["z"] = float(s["z"]) + (dz / nd) * speed * dt
+		var nav: bool = world.nav_active()
+		var px: float = s["x"]
+		var pz: float = s["z"]
+		var gx: float = nearest["x"]
+		var gz: float = nearest["z"]
+		var gd := nd
+		if nav and _detour_t > 0.0:   # walking the route round an obstacle, waypoint by waypoint
+			_detour_t -= dt
+			while _route_i < _route.size() and Geom.hyp(_route[_route_i].x - px, _route[_route_i].y - pz) < 0.8:
+				_route_i += 1
+			if _route_i >= _route.size():
+				_detour_t = 0.0
+			else:
+				gx = _route[_route_i].x
+				gz = _route[_route_i].y
+				gd = Geom.hyp(gx - px, gz - pz)
+		var dx: float = gx - px
+		var dz: float = gz - pz
+		s["x"] = float(s["x"]) + (dx / gd) * speed * dt
+		s["z"] = float(s["z"]) + (dz / gd) * speed * dt
 		var ox: float = float(s["x"]) - _ax()
 		var oz: float = float(s["z"]) - _az()
 		var o_r := Geom.hyp(ox, oz)
 		if o_r > _ar() - margin:
 			s["x"] = _ax() + (ox / o_r) * (_ar() - margin)
 			s["z"] = _az() + (oz / o_r) * (_ar() - margin)
+		if nav:
+			var w: Vector2 = world.walk(s["x"], s["z"])
+			s["x"] = w.x
+			s["z"] = w.y
+			_track_progress(nearest, px, pz, speed * dt, dt, margin)
 		s["state"] = s["state"] if busy else "move"
+	else:
+		_stuck_t = 0.0
 	s["facing"] = atan2(nearest["x"] - float(s["x"]), nearest["z"] - float(s["z"]))
+
+
+## Nav worlds: time spent not getting anywhere toward a target inside the leash; past STUCK_S ask the world for a route round the obstacle.
+func _track_progress(nearest: Dictionary, px: float, pz: float, want: float, dt: float, margin: float) -> void:
+	var s := state
+	var moved := Geom.hyp(float(nearest["x"]) - px, float(nearest["z"]) - pz) - Geom.hyp(float(nearest["x"]) - float(s["x"]), float(nearest["z"]) - float(s["z"]))   # headway: the range closed
+	var reachable := Geom.hyp(float(nearest["x"]) - _ax(), float(nearest["z"]) - _az()) < _ar() - margin
+	if moved >= want * STUCK_FRAC or not reachable or want <= 0.0:
+		_stuck_t = 0.0
+		if moved >= want * STUCK_FRAC:
+			_detours_tried = 0
+		return
+	_stuck_t += dt
+	if _stuck_t < STUCK_S:
+		return
+	_stuck_t = 0.0
+	var route: PackedVector2Array = world.detour(float(s["x"]), float(s["z"]), float(nearest["x"]), float(nearest["z"]))
+	_detours_tried += 1
+	if route.size() >= 2:
+		_route = route
+		_route_i = 1
+		_detour_t = DETOUR_S
+	if _detour_t <= 0.0 or _detours_tried >= 3:   # no way round, or the way round did not help: try someone else for a while
+		_avoid_id = nearest["id"]
+		_avoid_t = AVOID_S
+		_detours_tried = 0
 
 
 ## A point on the arena rim (for adds and pits).

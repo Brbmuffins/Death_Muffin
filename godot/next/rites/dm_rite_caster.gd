@@ -15,12 +15,12 @@ extends Node
 ##        a resolve that fails (e.g. the corpse was taken first) refunds the cost and cooldown;
 ##   host broadcasts EVENT dicts ({t, rite, ...}) by RPC; EVERY peer (the host included, also solo) plays each event exactly once
 ##        through module.play: fx via DmRiteFx (the same code the original game draws the rites with), sound via AudioDirector.
-##   host replicates {essence, max, cooldowns} to the owner for the HUD (`get_state()` + `state_changed`); a refusal goes back as `cast_rejected`.
+##   host replicates {essence, max, cooldowns, souls} to the owner for the HUD (`get_state()` + `state_changed`); a refusal goes back as `cast_rejected`.
 ## Casting is not predicted on the owner: it sees its own cast when the host's event arrives (one round trip).
 ##
 ## World contract: see godot/next/rites/README.md (DmRiteWorld).
 
-signal state_changed(state: Dictionary)             ## owner: {essence, max_essence, cooldowns{id: remaining_ms}, alive, souls (the soul bag / Soul Harvest count)}; fires on host for the host's own body too
+signal state_changed(state: Dictionary)             ## owner: {essence, max_essence, cooldowns{id: remaining_ms}, alive, souls (the soul bag / Soul Harvest count), soulsMax}; fires on host for the host's own body too
 signal cast_rejected(rite: String, reason: String)  ## owner: the host refused the cast ("cooldown", "essence", "range", "no_target", ...)
 signal event_played(ev: Dictionary)                 ## every peer, once per event, after its fx/sfx ran
 signal hit_number(pos: Vector3, amount: float, crit: bool)  ## every peer: the shell floats the damage number
@@ -58,7 +58,7 @@ var _pending: Array = []            ## host: timed callbacks {at, fn} (shots in 
 var _mem: Dictionary = {}           ## host: per-rite scratch state (rite id -> Dictionary), see mem()
 var _state_acc: float = 0.0
 var _last_sent_essence: float = -1.0
-var _last_sent_souls: int = -1
+var _last_sent_souls: float = -1.0
 var _recv_ms: int = 0
 var _hold_t: float = 0.0
 
@@ -353,17 +353,24 @@ func _face_aim(aim: Vector3, from: Vector3) -> void:
 func _gesture_cast(rite: String) -> void:
 	if not DmRiteGestures.has(rite):
 		return
+	var tempo := _gesture_tempo(rite)
 	if rite == "bone_needle" and bool(p["loadout"]["reap"]):
 		rite = DmRiteGestures.REAP_KEY   # the Scythe swings instead of casting
 	var yaw := float(_body.get("yaw")) if _body != null and _body.get("yaw") != null else 0.0
-	_play_gesture(rite, yaw)
+	_play_gesture(rite, yaw, tempo)
 	if not multiplayer.get_peers().is_empty():
-		_rpc_gesture.rpc(rite, yaw)
+		_rpc_gesture.rpc(rite, yaw, tempo)
 
 
-func _play_gesture(rite: String, yaw: float) -> void:
+## How much faster than its base cooldown a rite just came back (haste brews, weapon line): the swing plays at that pace, 1.0 = normal.
+func _gesture_tempo(rite: String) -> float:
+	var base := float(DmAbilities.defs().get(rite, {}).get("cooldownMs", 0.0))
+	return clampf(cooldown_left(rite) / base, 0.4, 1.0) if base > 0.0 else 1.0
+
+
+func _play_gesture(rite: String, yaw: float, tempo: float = 1.0) -> void:
 	var av: Variant = _body.get("avatar") if _body != null else null
-	if DmRiteGestures.play(av, rite, yaw):
+	if DmRiteGestures.play(av, rite, yaw, tempo):
 		gestures_played += 1
 
 
@@ -526,16 +533,17 @@ func push_state() -> void:
 
 func _push_state(force: bool) -> void:
 	var res: Dictionary = p["resource"]
-	if not force and absf(float(res["value"]) - _last_sent_essence) < 0.01 and int(p["souls"]) == _last_sent_souls:
+	var souls := float(p["souls"])
+	if not force and absf(float(res["value"]) - _last_sent_essence) < 0.01 and souls == _last_sent_souls:
 		return
 	_last_sent_essence = float(res["value"])
-	_last_sent_souls = int(p["souls"])
+	_last_sent_souls = souls
 	var cds := {}
 	for id in p["cooldowns"]:
 		var left: float = float(p["cooldowns"][id]) - _now_ms
 		if left > 0.0:
 			cds[id] = left
-	var st := {"essence": float(res["value"]), "max_essence": float(res["max"]), "cooldowns": cds, "alive": bool(p["alive"]), "souls": int(p["souls"])}
+	var st := {"essence": float(res["value"]), "max_essence": float(res["max"]), "cooldowns": cds, "alive": bool(p["alive"]), "souls": souls, "soulsMax": float(p["soulsMax"])}
 	if peer_id == multiplayer.get_unique_id():
 		_adopt_state(st)
 	elif peer_id in multiplayer.get_peers():
@@ -575,8 +583,8 @@ func _rpc_event(ev: Dictionary) -> void:
 
 
 @rpc("authority", "call_remote", "reliable")
-func _rpc_gesture(rite: String, yaw: float) -> void:
-	_play_gesture(rite, yaw)
+func _rpc_gesture(rite: String, yaw: float, tempo: float) -> void:
+	_play_gesture(rite, yaw, clampf(tempo, 0.4, 1.0))
 
 
 @rpc("authority", "call_remote", "reliable")

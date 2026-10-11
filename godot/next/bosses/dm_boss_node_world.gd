@@ -7,9 +7,11 @@ extends DmBossWorld
 var host: DmBossHost
 var boss: DmBoss
 var t: float = 0.0                   ## room clock: the boss advances it by its own physics delta
+const WALK_SNAP_M := 2.5            ## a step more than this from the navmesh is not on it at all: leave the boss where the brain put it
+
 var _players: Array = []
 var _by_peer: Dictionary = {}        ## peer id -> reused player dict
-var _levels: Array = []
+var _heroes: Array = []   ## the session's hero bodies this tick (the level the arena scales to is worked out when a brain asks)
 
 
 func _init(host_: DmBossHost, boss_: DmBoss) -> void:
@@ -20,7 +22,7 @@ func _init(host_: DmBossHost, boss_: DmBoss) -> void:
 ## Rebuild the cached player list from the session's bodies (call once per tick, before the brain runs).
 func refresh() -> void:
 	_players.clear()
-	_levels.clear()
+	_heroes.clear()
 	var g := host.game
 	if g == null:
 		return
@@ -38,7 +40,7 @@ func refresh() -> void:
 		var a: String = g.area_of(hb.owner_peer)
 		d["area"] = a if a != "" else host.assume_area
 		_players.append(d)
-		_levels.append(float(hb.character.get("level", 1)))
+		_heroes.append(hb)
 
 
 func now() -> float:
@@ -54,7 +56,31 @@ func rand() -> float:
 
 
 func area_level(area: String) -> int:
-	return int(DmEnemyStats.area_level(area, _levels, float(host.vow_fx.get("levels", 0.0))))
+	return int(DmEnemyStats.area_level(area, host.game.director.scaling_levels(_heroes), float(host.vow_fx.get("levels", 0.0))))
+
+
+func party_hp_per_extra() -> float:
+	return DmEnemyStats.BOSS_PARTY_HP_PER_EXTRA
+
+
+## The arenas sit on the area navmeshes: a walking boss stays on walkable ground (a wall slides it) and can plan a route round an obstacle.
+func nav_active() -> bool:
+	return host.game != null and host.game.world != null and host.game.world.nav_ready()
+
+
+## The step kept on walkable ground; a point far from any mesh (an arena the mesh does not cover) is left alone.
+func walk(x: float, z: float) -> Vector2:
+	var p := Vector3(x, 0.0, z)
+	var c: Vector3 = host.game.world.nav_closest(p)
+	var off := Vector2(c.x - x, c.z - z)
+	return Vector2(c.x, c.z) if off.length_squared() > 0.0004 and off.length_squared() < WALK_SNAP_M * WALK_SNAP_M else Vector2(x, z)
+
+
+func detour(x0: float, z0: float, x1: float, z1: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for pt in host.game.world.nav_path(Vector3(x0, 0.0, z0), Vector3(x1, 0.0, z1)):
+		out.append(Vector2(pt.x, pt.z))
+	return out
 
 
 func emit(ev: Dictionary) -> void:

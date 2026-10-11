@@ -81,6 +81,81 @@ func _logout() -> void:
 	await until(func() -> bool: return _at("login"), 30.0)
 	await process_frame
 
+## A real click (move, press, release) on the centre of a control.
+func _click(c: Control) -> void:
+	var vp := c.get_viewport()
+	var at: Vector2 = vp.get_final_transform() * c.get_global_rect().get_center()   # window pixels (the UI is content-scaled)
+	var mv := InputEventMouseMotion.new()
+	mv.position = at
+	mv.global_position = at
+	vp.push_input(mv)
+	for pressed in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pressed
+		e.position = at
+		e.global_position = at
+		e.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+		vp.push_input(e)
+
+func _find_button(n: Node, text: String) -> Button:
+	if n is Button and (n as Button).text == text and (n as Button).is_visible_in_tree():
+		return n
+	for c in n.get_children():
+		var r := _find_button(c, text)
+		if r != null:
+			return r
+	return null
+
+## Settings -> Switch character: saved, game freed, back at the select screen on the SAME token (no login screen); picking a card re-enters.
+## The token is kept and nothing is re-asked; only a token the server refuses lands on login.
+func _switch_character() -> void:
+	var g: DmNextGame = m.slice
+	var tok := api.get_token()
+	var cid := int(g.character["id"])
+	g.ui_host.inventory.add({"item_id": "flask_hp_minor", "quantity": 1})
+	var flasks := g.ui_host.inventory.count("flask_hp_minor")
+	var old_size := root.size
+	root.size = Vector2i(1280, 720)   # the headless window is tiny: the Settings window needs room for the click to land on it
+	await process_frame
+	g.ui.set_ui.open()
+	await process_frame
+	await process_frame
+	var account: Button = g.ui.set_ui.panel._tabs["account"]["btn"]   # Switch character lives on the Account tab, beside Logout
+	_click(account)
+	await process_frame
+	await process_frame
+	var btn := _find_button(g.ui.set_ui.panel, DmUi.upper("Switch character"))
+	check(btn != null and _find_button(g.ui.set_ui.panel, DmUi.upper("Logout")) != null, "settings: Switch character sits beside Logout on the Account tab")
+	if btn == null:
+		return
+	await process_frame
+	_click(btn)
+	await process_frame
+	await until(func() -> bool: return _at("select"), 30.0)
+	check(_at("select") and not (m.flow.current is DmLoginScreen), "switch character: the select screen, no login screen")
+	check(m.get_node_or_null("NextGame") == null, "switch character: the rebuild is freed")
+	check(api.get_token() == tok and not tok.is_empty(), "switch character: the session token is kept")
+	var inv := await api.get_inventory(cid)
+	var total := 0
+	for sl in inv.data:
+		if sl is Dictionary and String(sl.get("item_id", "")) == "flask_hp_minor":
+			total += int(sl.get("quantity", 0))
+	check(total == flasks, "switch character: saved first (%d of %d flasks on the backend)" % [total, flasks])
+	var sel: DmCharSelectScreen = m.flow.current
+	await sel.choose(int(_necro_indices()["ossuary"]))
+	await until(_in_world, 60.0)
+	check(_in_world() and api.get_token() == tok, "switch character: a card re-enters the world on the same token")
+	# the server refuses the token: login, with the reason, and the stored token is gone
+	m.slice.ui_host.switch_character()
+	await until(func() -> bool: return _at("select"), 30.0)
+	api.set_token("offline:nobody-here")
+	m.flow.switch_character()
+	await until(func() -> bool: return _at("login"), 10.0)
+	check(_at("login") and api.get_token() == "", "switch character: a refused token goes to login and is cleared")
+	root.size = old_size
+	await _login("necro1")
+
 func _necro_indices() -> Dictionary:
 	var out := {}
 	for d in DmCharSelectScreen.load_disciplines():
@@ -388,6 +463,7 @@ func _run() -> void:
 	check(_in_world() and m.slice.get_instance_id() != before, "class change re-enters a fresh rebuild")
 	await process_frame
 	check(not is_instance_id_valid(before) or (instance_from_id(before) as Node).is_queued_for_deletion(), "class change frees the old rebuild")
+	await _switch_character()
 	await _logout()
 	await process_frame
 	var base := _snap()

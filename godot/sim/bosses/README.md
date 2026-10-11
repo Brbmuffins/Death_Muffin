@@ -18,7 +18,7 @@ The scene side is `godot/next/bosses/`.
 
 `DmBossWorld` methods (defaults report "not implemented"): `now()`, `difficulty()`, `echoes()`, `rand()`, `area_level()`, `emit(ev)`,
 `players()`, `player_count()`, `cover()`, `spawn_enemy()`, `enemy_get()`, `enemies()`, `set_enemy_hp()`, `remove_enemy()`, `thralls()`,
-`damage_thrall()`, `corpses()`, `remove_corpse()`, `hostile_toxic_zones()`, `add_hostile_pool()`, `ember_pool()`. Read `boss_world.gd`
+`damage_thrall()`, `party_hp_per_extra()`, `nav_active()` / `walk()` / `detour()` (the live host's navmesh hooks; the sim worlds are open rings), `corpses()`, `remove_corpse()`, `hostile_toxic_zones()`, `add_hostile_pool()`, `ember_pool()`. Read `boss_world.gd`
 for exact signatures. Public brain API: `awaken(by, empowered)`, `damage(amount, by, fracture)`, `stagger(seconds)`, `update(dt)`,
 `resume()`; Abbess also `niche_ids()` / `standing_niches()`, Congregation `covered(x, z)`.
 

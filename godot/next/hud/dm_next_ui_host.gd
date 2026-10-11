@@ -18,6 +18,7 @@ signal game_event(event_id: String, ctx: Dictionary)
 signal npc_interact(npc_id: String)
 signal station_interact(station_id: String)
 signal left_world
+signal character_switch                           ## Settings -> "Switch character": back to the select screen on the same session
 signal world_restart(character: Dictionary)   ## the class panel saved a new discipline: the front rebuilds the world with it
 signal sfx(name: String)                     ## every sound the adapter forwards to the AudioDirector (tests listen here)
 signal feedback(text: String)                ## a cast was refused / unavailable (also drawn as a float over the hero)
@@ -107,7 +108,8 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 		if shell.meta != null:
 			shell.meta.event.connect(game_event.emit)       # difficulty toast, Soul Harvest, chain tiers, bonded dead
 		if shell.rewards != null:
-			shell.rewards.kill_earned.connect(func(_c: int, _d: String, _p: Vector3) -> void: _kills[shell.area_id] = int(_kills.get(shell.area_id, 0)) + 1)
+			shell.rewards.kill_earned.connect(func(c: int, _d: String, _p: Vector3) -> void: if c == hero_id: _kills[shell.area_id] = int(_kills.get(shell.area_id, 0)) + 1)
+			shell.rewards.kill_counted.connect(func(_c: int, a: String) -> void: if _c == hero_id: _kills[a] = int(_kills.get(a, 0)) + 1)   # party kills it was not paid for
 		else:   # a joiner counts the kills the host's accepted report credited to it
 			shell.joiner.member_credited.connect(func(_c: int, d: Dictionary) -> void: _kills[shell.area_id] = int(_kills.get(shell.area_id, 0)) + int(d.get("kills", 0)))
 	else:
@@ -576,6 +578,10 @@ func party_set_open(open: bool) -> void:
 
 func leave_world() -> void:
 	left_world.emit()
+
+
+func switch_character() -> void:
+	character_switch.emit()
 
 
 ## ClassPanel -> a new discipline: the shell tears the session down and re-enters with the new character (old DmGame.class_changed).

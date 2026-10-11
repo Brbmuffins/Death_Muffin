@@ -916,7 +916,7 @@ func toggle_auto_combat() -> void:
 	if not bool(game.character.get("auto_combat_allowed", false)):
 		return
 	if String(game.settings.get("difficulty", "medium")) != "easy":
-		toast("Auto combat is available on Easy difficulty. Change it in Settings.")
+		toast("Auto combat is available on Easy difficulty. Change it in Settings → Play.")
 		return
 	var on := not bool(game.settings.get("auto_combat", false))
 	update_setting({"auto_combat": on})

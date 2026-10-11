@@ -34,6 +34,11 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
 - **Adding a boss**: the brain already exists in `DmBossBrains`; add the id to `LIVE` (+ `ADDS`), make sure `bosses.json` and the area's `summonId` exist, add a
   `WARM_KINDS` entry in `dm_boss_fx.gd` for any kind whose first draw hitches, and a part `tests/next_bosses/<boss>_part.gd` on `harness.gd` (see `abbess_part.gd`), added to `PARTS` in `run.gd`.
 
+## Party and movement
+- Boss health is `baseHp x level x difficulty x (1 + 0.3 x (players - 1))` (`DmEnemyStats.BOSS_PARTY_HP_PER_EXTRA`, served to the brain by `DmBossNodeWorld.party_hp_per_extra`); the replay world keeps the recorded 0.8. Two players x1.3, four x1.9.
+- The arena level follows the party leader (`DmWaveDirector.scaling_levels`).
+- Movement: the brain walks straight at its target, and on the live world (`nav_active`) each step is kept on the navmesh (a wall slides it). The target is sticky (another player must be 30 % closer to take over), a boss that closes no range for 0.6 s asks for a nav route and follows it waypoint by waypoint, and a player it cannot reach is skipped for 4 s. The boss has no collision with heroes or thralls (`collision_mask = 0`), so a legion cannot body-block it.
+
 ## Tests
 `tests/next_bosses/`: ONE process, `run.gd`, runs the parts `gravedigger_part.gd` (framework + King, owns the one crowd perf probe), `abbess_part.gd`, `congregation_part.gd`, `prelate_part.gd`, `saint_part.gd`, `regent_part.gd`, `mire_part.gd` on one solo game and one host+client pair (shared base `harness.gd`; `BOSS_ONLY=mire,saint` runs a subset); meta-progression in `tests/next_boss_meta/run.gd`. Screenshots: `shot.gd`, `shot_cathedral.gd --boss=...`
 (`--probe=1` times the first draw of each event kind), `shot_late.gd`. Typical cost (headless, printed as INFO by the suite, not asserted): brain tick 30-70 us, whole frame +0.0-0.2 ms.

@@ -108,6 +108,7 @@ func _main() -> void:
 	await _t_lost_reply_and_partial()
 	await _t_refusals()
 	await _t_end()
+	await _t_boss_xp_remote()
 	print("%d passed, %d failed" % [_p, _f])
 	quit(1 if _f > 0 else 0)
 
@@ -212,6 +213,30 @@ func _t_solo() -> void:
 	r.queue_free()
 
 
+# ---------------------------------------------------------------------------------------------------------------- boss XP for a joiner
+
+## Bug report #9014: a boss kill's XP was applied to the host's stand-in progression of a remote member and never reached the joiner.
+func _t_boss_xp_remote() -> void:
+	var shell := Shell.new()
+	root.add_child(shell)
+	var r := _new_rewards(shell)
+	var host := DmRewardsMember.make(1, 1, _body(Vector3.ZERO), null, 1, {"id": "gravecaller", "family": "necromancer"})
+	var joiner := DmRewardsMember.make(2, 2, _body(Vector3(2, 0, 0)), null, 1, {"id": "rotweaver", "family": "necromancer"})
+	joiner.remote = true
+	for m in [host, joiner]:
+		m.trophy_store = func(_boss: String) -> bool: return false
+		r.add_member(m)
+	var credited := {}
+	r.member_credited.connect(func(cid: int, d: Dictionary) -> void: credited[cid] = d)
+	r.on_boss_defeated({"boss": "regent", "x": 0.0, "z": 0.0, "killer": host.body})
+	await _wait_gear(r)
+	ok(int(joiner.stats["xp_applied"]) > 0 and credited.has(2) and int(credited[2]["xp"]) == int(joiner.stats["xp_applied"]) and int(credited[2]["kills"]) == 0,
+		"a boss kill's XP is sent on for a remote member (no kills)", str(credited))
+	ok(not credited.has(1) and int(host.stats["xp_applied"]) > 0, "the host's own boss XP is applied in place, not re-sent", str(credited))
+	shell.queue_free()
+	r.queue_free()
+
+
 # ---------------------------------------------------------------------------------------------------------------- party
 
 func _t_two_members() -> void:
@@ -280,13 +305,13 @@ func _t_two_members() -> void:
 	for i in 3:
 		_kill(_robber(shell, Vector3(5, 0, i)), a_body)
 	await r.flush()
-	ok(a.stats["kills_accepted"] == 4 and b.stats["kills_accepted"] == 4 and c.stats["kills_accepted"] == 0, "backend accepted each earner's kills", str([a.stats, b.stats]))
+	ok(a.stats["kills_accepted"] == 4 and b.stats["kills_accepted"] == 4 and c.stats["kills_accepted"] == 4 and c.stats["xp_applied"] == 0 and c.stats["kills_earned"] == 0, "backend accepted each earner's kills; the far member only counts them toward its tally (no XP)", str([a.stats, b.stats, c.stats]))
 	ok(b.stats["xp_applied"] > a.stats["xp_applied"], "a member's own multiplier (wisdom) applies to its XP", str([a.stats["xp_applied"], b.stats["xp_applied"]]))
 	var v: DmResult = await ua[0].session_get(r.session_id)
 	var counts := {}
 	for mm in v.data["members"]:
 		counts[int(mm["characterId"])] = int(mm["acceptedKills"])
-	ok(counts[ua[1]] == 4 and counts[ub[1]] == 4 and counts[uc[1]] == 0, "per-member counters on the backend", str(counts))
+	ok(counts[ua[1]] == 4 and counts[ub[1]] == 4 and counts[uc[1]] == 4, "per-member counters on the backend", str(counts))
 	# heartbeats go out with each member's own API
 	_clock[0] += 30000
 	r.tick(21.0)

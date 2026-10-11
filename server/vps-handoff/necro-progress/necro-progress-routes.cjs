@@ -79,7 +79,7 @@ function createNecroProgressHandlers({ store, ownsCharacter, isStaff, logger = c
       const staff = isStaff ? !!(await isStaff(req)) : false;
       let outcome = null;
       const done = await store.withLock(characterId, (state, gold) => {
-        const r = apply(state, gold, req.body || {}, { staff });
+        const r = apply(state, gold, req.body || {}, { staff, backed: req.killsBacked && typeof req.killsBacked === 'object' ? req.killsBacked : undefined });
         outcome = r;
         if (!r.ok) return {}; // nothing written
         return { state: r.state, gold: r.gold };

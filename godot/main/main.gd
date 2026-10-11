@@ -25,6 +25,9 @@ var _party_busy := false            ## a join / return is in progress (one at a 
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
+	# The window title players see. config/name in project.godot stays as it is: Godot names the user:// folder after it (the saved
+	# login, settings, tips), so renaming it would sign every player out and reset their settings.
+	get_window().title = "Death Muffin"
 	# Physics interpolation (project setting) is opt-in per body: everything is OFF by default (effects, cameras, anything placed from
 	# _process), and only what is moved in _physics_process turns itself ON (DmSessionBody on the host, DmEnemy, DmThrall).
 	get_tree().root.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
@@ -103,14 +106,17 @@ func save_all() -> void:
 		await s.flush_all()
 
 
-func _start_flow() -> void:
+func _start_flow(switching_character: bool = false) -> void:
 	flow = DmFrontFlow.new(api, mode != "online", mode != "online")
 	flow.persist_token = persist_token
 	flow.online_gate = mode == "online"   # the manifest's online switch (DmOnlineGate; open to everyone since 2026-10-09)
 	flow.name = "Front"
 	flow.enter_world.connect(_enter_world)
 	add_child(flow)
-	flow.start()
+	if switching_character:
+		flow.switch_character()
+	else:
+		flow.start()
 
 
 ## Testing: `-- --dev-offline --class=N` (or `--world-demo`, class 2) skips the front flow and enters the game as `tester` on the dev-offline backend.
@@ -176,6 +182,7 @@ func _enter_next(character: Dictionary, join: Dictionary = {}) -> void:
 	_transit_lobby = null
 	if g.ui_host != null:
 		g.ui_host.left_world.connect(_on_next_left.bind(true))
+		g.ui_host.character_switch.connect(_on_next_switch)
 		g.ui_host.world_restart.connect(func(ch: Dictionary) -> void: _on_next_restart(ch))
 	g.party.join_ready.connect(_on_next_join_ready)
 	g.party.client_ended.connect(_on_next_client_ended.bind(character))
@@ -231,6 +238,20 @@ func _on_next_left(logout: bool) -> void:
 	if logout:
 		api.set_token("")
 	_start_flow()
+
+
+## Switch character: the same final save and session / party leave as a log out, but the token stays: the front goes straight to the select
+## screen (DmFrontFlow.switch_character; it asks for a password only when the server says the token is no longer good).
+func _on_next_switch() -> void:
+	if _party_busy or slice == null:
+		return
+	_party_busy = true
+	var lobby: DmLobbyClient = slice.party.lobby
+	await _teardown_next()
+	if lobby != null:
+		lobby.close()
+	_party_busy = false
+	_start_flow(true)
 
 
 func _on_next_restart(character: Dictionary) -> void:

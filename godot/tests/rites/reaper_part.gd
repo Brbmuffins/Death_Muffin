@@ -10,6 +10,8 @@ func _initialize() -> void:
 	DmSimData.ensure()
 	await _wiring()
 	await _rites()
+	_auto()
+	_gestures()
 	print("reaper: %d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -249,3 +251,70 @@ func _rites() -> void:
 	ok(rej.is_empty(), "sweep: needs neither energy nor souls")
 
 	await _teardown(s)
+
+
+# ---- Auto combat: the pure decision (DmAutoCombat._reaper_action) -----------------------------------------------------------------------------
+
+func _tgt(x: float, z: float, id := 1, elite := false) -> Dictionary:
+	return {"x": x, "z": z, "enemyId": id, "radius": 0.5, "distance": Vector2(x, z).length(), "elite": elite, "hp": 100.0, "maxHp": 100.0, "state": "chase", "hexOwner": ""}
+
+
+func _ctx(foes: Array, souls: int, hp := 1.0, ready: Array = ["scythe_sweep", "scythe_throw", "reap", "wraith_walk", "soul_burst", "harvest_spin"]) -> Dictionary:
+	var enemies: Array = []
+	for f in foes:
+		enemies.append(f)
+	return {"player": {"x": 0.0, "z": 0.0, "essence": 100.0, "maxEssence": 100.0, "hp": hp * 100.0, "maxHp": 100.0, "souls": souls, "area": ""}, "enemies": enemies, "corpses": [],
+		"boss": null, "thrallCount": 0, "thrallCap": 0, "ready": func(id: String) -> bool: return ready.has(id), "primary": "scythe_sweep", "primaryRange": 3.4, "family": "reaper", "now": 0.0}
+
+
+func _pick(ctx: Dictionary) -> String:
+	var a: Variant = DmAutoCombat.select_action(ctx)
+	return "" if a == null else String(a["id"])
+
+
+func _auto() -> void:
+	var one := [{"id": 1, "x": 0.0, "z": 2.5, "hp": 100.0, "maxHp": 100.0, "state": "chase", "radius": 0.5, "elite": false, "area": ""}]
+	ok(_pick(_ctx(one, 0)) == "scythe_sweep", "auto: one foe in reach and an empty bag = the free Scythe Sweep")
+	ok(_pick(_ctx(one, 0, 1.0, ["reap"])) == "", "auto: the sweep on cooldown = no action (no spamming a refusal)")
+	var far := [{"id": 1, "x": 0.0, "z": 9.0, "hp": 100.0, "maxHp": 100.0, "state": "chase", "radius": 0.5, "elite": false, "area": ""}]
+	ok(_pick(_ctx(far, 2)) == "", "auto: a foe out of reach and a poor bag = wait for the walk to close in")
+	var pack: Array = []
+	for i in 4:
+		pack.append({"id": i + 1, "x": float(i) * 0.6, "z": 3.0, "hp": 100.0, "maxHp": 100.0, "state": "chase", "radius": 0.5, "elite": false, "area": ""})
+	ok(_pick(_ctx(pack, 8)) == "reap", "auto: a knot of four in the cone and 8 souls = Reap")
+	ok(_pick(_ctx(pack, 3)) in ["harvest_spin", "scythe_sweep"] and _pick(_ctx(pack, 3)) != "reap", "auto: 3 souls cannot Reap (%s)" % _pick(_ctx(pack, 3)))
+	var ring: Array = []
+	for i in 6:
+		ring.append({"id": i + 1, "x": cos(float(i)) * 2.5, "z": sin(float(i)) * 2.5, "hp": 100.0, "maxHp": 100.0, "state": "chase", "radius": 0.5, "elite": false, "area": ""})
+	ok(_pick(_ctx(ring, 14)) == "soul_burst", "auto: surrounded by six with 14 souls = Soul Burst")
+	ok(_pick(_ctx(ring, 14, 1.0, ["scythe_sweep", "harvest_spin"])) == "harvest_spin", "auto: surrounded, burst not ready = Harvest Spin")
+	var low := _ctx(one, 6, 0.2)
+	var esc: Variant = DmAutoCombat.select_action(low)
+	ok(esc != null and esc["id"] == "wraith_walk" and float(esc["target"]["z"]) < -5.0, "auto: low on health with a foe on her = Wraith Walk away from it (%s)" % str(esc))
+	ok(_pick(_ctx(one, 3, 0.2)) == "scythe_sweep", "auto: low on health but too few souls to rush = keep fighting")
+	var hurt_pack: String = _pick(_ctx(pack, 8, 0.5))
+	ok(hurt_pack == "scythe_sweep" or hurt_pack == "harvest_spin", "auto: hurt, she keeps the 4 souls an escape needs instead of Reap (%s)" % hurt_pack)
+	var lone_far := [{"id": 1, "x": 0.0, "z": 10.0, "hp": 100.0, "maxHp": 100.0, "state": "chase", "radius": 0.5, "elite": false, "area": ""}]
+	ok(_pick(_ctx(lone_far, 26)) == "wraith_walk", "auto: a full bag and a far foe = Wraith Walk to close in")
+	var elite := [{"id": 1, "x": 0.0, "z": 8.0, "hp": 100.0, "maxHp": 100.0, "state": "chase", "radius": 0.5, "elite": true, "area": ""}]
+	ok(_pick(_ctx(elite, 5, 1.0, ["scythe_sweep", "scythe_throw"])) == "scythe_throw", "auto: an elite at range with 5 souls = Scythe Throw")
+
+
+# ---- Gestures: the rig's own clips, timed by tempo ---------------------------------------------------------------------------------------------
+
+func _gestures() -> void:
+	var av := DmAvatar.new()
+	av.setup(null, 0x6ee7a0, false, "hero_mourner", "reaper")
+	ok(av.weapon_gesture() == "scythe", "gesture: the Reaper always gestures with the scythe, whatever the bag says")
+	for rite in DmAvatar.REAPER_CLIPS:
+		var ch: Variant = av._cast_clip_for("scythe", rite)
+		ok(ch != null and DmRiteGestures.TABLE[rite][3] == rite and ["sweep", "slam", "flick", "channel", "summon"].has(ch["clip"]), "gesture: %s plays the %s clip" % [rite, DmAvatar.REAPER_CLIPS[rite]])
+	var sw: Variant = av._cast_clip_for("scythe", "scythe_sweep")
+	var normal := av._plan_gesture(sw, 0.3, 1.4)
+	var hasted := av._plan_gesture(sw, 0.3 * 0.5, 1.4, 0.5)
+	ok(float(hasted["speed"]) > float(normal["speed"]) and float(normal["releaseDelayS"]) <= 0.1, "gesture: haste plays the sweep faster (x%.2f -> x%.2f) and the release stays on the cast" % [normal["speed"], hasted["speed"]])
+	var ne := DmAvatar.new()
+	ne.setup(null, 0x8f9ed1, false, "hero_mourner", "necromancer")
+	ok(ne._cast_clip_for("scythe", "scythe_sweep") == null, "gesture: a necromancer's avatar ignores the Reaper clip table")
+	av.dispose()
+	ne.dispose()

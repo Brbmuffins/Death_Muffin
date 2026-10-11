@@ -172,6 +172,7 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	ui.update_setting({"hud_scale": 1.0})
 	sp.action.emit("bug_report")
 	await _frames(3)
+	_check(not sp.strip_slot.visible, "the tab strip is hidden while the bug report fills the Settings body")
 	_check(ui.is_open("settings") and ui.set_ui.bug_report_open() and ui.set_ui.report.is_visible_in_tree(), "bug report renders inside the Settings body")
 	ui.set_ui.report.message.text = "the thralls stopped following me after travel"
 	ui.set_ui.report._sync()
@@ -199,6 +200,10 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	ui.set_ui.report.back_pressed.emit()
 	await _frames(3)
 	_check(ui.is_open("settings") and not ui.set_ui.bug_report_open() and ui.set_ui.panel.body.get_child_count() > 3, "Back restores the Settings body")
+	_check(ui.set_ui.panel.strip_slot.visible, "Back brings the tab strip back")
+	ui.set_ui.panel.action.emit("party_window")
+	await _frames(3)
+	_check(ui.is_open("party") and not ui.is_open("settings"), "Settings' Open the Party window button opens the Party window")
 	ui.open_bug_report()
 	await _frames(3)
 	_check(ui.set_ui.bug_report_open(), "the HUD's Report a bug button opens it in Settings too")

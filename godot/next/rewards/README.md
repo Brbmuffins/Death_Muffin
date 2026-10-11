@@ -62,5 +62,5 @@ Suite: `tests/rewards/run.gd`.
 A client-side mirror of remote members' loot views is partial (see `next/party/README.md`).
 
 ## Bosses (first kills, Empowered)
-`on_boss_defeated` pays each eligible member. `m.claim_trophy(id)` is `DmNextChronicle.claim_trophy` in the slice (persisted through the Chronicle, `next/progress/README.md`); an Empowered kill adds the backend `summon`
+`on_boss_defeated` pays each eligible member; its XP is applied at once, and for a remote member also sent as `member_credited` (`kills` 0) so the joiner's own client gets it. `m.claim_trophy(id)` is `DmNextChronicle.claim_trophy` in the slice (persisted through the Chronicle, `next/progress/README.md`); an Empowered kill adds the backend `summon`
 id to the report (`m.empower_pending / empower_summon_id`, set by `DmBossMeta`).

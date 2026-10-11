@@ -30,12 +30,12 @@ const TABLE := {
 	"command_rend": ["cast", 1.8, "command_rend", "command_rend"],
 	"dirge": ["cast", 1.8, "dirge", "dirge"],
 	"plague_bloom": ["cast", 1.8, "plague_bloom", "plague_bloom"],
-	"scythe_sweep": ["attack", 2.6, "scythe_sweep", ""],
-	"scythe_throw": ["cast", 3.0, "scythe_throw", ""],
-	"reap": ["attack", 2.2, "reap", ""],
-	"wraith_walk": ["cast", 3.4, "wraith_walk", ""],
-	"soul_burst": ["cast", 2.0, "soul_burst", ""],
-	"harvest_spin": ["attack", 2.4, "harvest_spin", ""],
+	"scythe_sweep": ["attack", 2.6, "scythe_sweep", "scythe_sweep"],
+	"scythe_throw": ["cast", 3.0, "scythe_throw", "scythe_throw"],
+	"reap": ["attack", 2.2, "reap", "reap"],
+	"wraith_walk": ["cast", 3.4, "wraith_walk", "wraith_walk"],
+	"soul_burst": ["cast", 2.0, "soul_burst", "soul_burst"],
+	"harvest_spin": ["attack", 2.4, "harvest_spin", "harvest_spin"],
 }
 
 
@@ -49,11 +49,15 @@ static func has(rite: String) -> bool:
 
 
 ## Play `rite`'s gesture on a hero avatar facing `yaw` (the avatar's own cast(), the same call the original game makes).
-static func play(avatar: Object, rite: String, yaw: float) -> bool:
+## `tempo` < 1 (a rite on a shortened cooldown: haste) plays the swing that much faster.
+static func play(avatar: Object, rite: String, yaw: float, tempo: float = 1.0) -> bool:
 	if avatar == null or not has(rite) or not avatar.has_method("cast"):
 		return false
 	var reap := rite == REAP_KEY
 	var g: Array = REAP if reap else TABLE[rite]
 	var secs := float(DmSimData.NECRO_WEAPON_TUNING["scythe"]["gestureSeconds"]) if reap else float(DmAbilities.cast_flow(String(g[2]))["gestureSeconds"])
-	avatar.cast(String(g[0]), float(g[1]), yaw, secs, String(g[3]))
+	if tempo < 1.0:
+		avatar.cast(String(g[0]), float(g[1]), yaw, secs * tempo, String(g[3]), tempo)
+	else:
+		avatar.cast(String(g[0]), float(g[1]), yaw, secs, String(g[3]))
 	return true

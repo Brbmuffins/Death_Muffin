@@ -13,6 +13,21 @@ func _check(ok: bool, what: String) -> void:
 		printerr("FAIL: ", what)
 
 
+func _tab_click(vp: Viewport, at: Vector2) -> void:
+	var mv := InputEventMouseMotion.new()
+	mv.position = at
+	mv.global_position = at
+	vp.push_input(mv)
+	for pressed in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pressed
+		e.position = at
+		e.global_position = at
+		e.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+		vp.push_input(e)
+
+
 func _frames(n: int) -> void:
 	for i in n:
 		await process_frame
@@ -142,6 +157,44 @@ func _run() -> void:
 	s._put("vol_music", 0.25)
 	_check(seen.get("vol_music") == 0.25, "settings emits changed")
 	_check(s.values["vol_music"] == 0.25, "settings keeps values")
+	# tabs: Co-op and Audio come first, a real click switches, the choice is remembered across a rebuild
+	# (a SubViewport: headless windows drop mouse events, a SubViewport routes them like the real one)
+	var sv := SubViewport.new()
+	sv.size = Vector2i(1280, 800)
+	root.add_child(sv)
+	var sp := DmSettingsPanel.new()
+	sv.add_child(sp)
+	DmSettingsPanel.last_tab = "coop"
+	sp.build()
+	sp.open()
+	await _frames(3)
+	var tabs := sp.find_children("*", "DmTabButton", true, false)
+	_check(tabs.size() == 6 and tabs[0].text == "CO-OP" and tabs[1].text == "AUDIO", "settings has tabs, Co-op then Audio first")
+	_check(sp.active == "coop" and (sp.find_children("*", "HSlider", true, false).filter(func(n: Node) -> bool: return n.is_visible_in_tree())).is_empty(), "Co-op tab is shown first, no sliders on it")
+	_check(tabs[0].global_position.y < sp.scroll.global_position.y, "the tab bar sits above the scrolling content")
+	var btn: Button = tabs[1]
+	_tab_click(sv, btn.get_global_rect().get_center())
+	await _frames(2)
+	var vis := sp.find_children("*", "HSlider", true, false).filter(func(n: Node) -> bool: return n.is_visible_in_tree())
+	_check(sp.active == "audio" and vis.size() == 5, "clicking Audio shows the five volume sliders")
+	sp.build()
+	await _frames(2)
+	_check(sp.active == "audio", "the last opened tab is remembered across a rebuild")
+	var acts: Array = []
+	sp.action.connect(func(a: String) -> void: acts.append(a))
+	tabs = sp.find_children("*", "DmTabButton", true, false)
+	_tab_click(sv, (tabs[0] as Button).get_global_rect().get_center())
+	await _frames(2)
+	var open_btn: Button
+	for pb in sp.find_children("*", "Button", true, false):
+		if pb.is_visible_in_tree() and pb.text == "OPEN THE PARTY WINDOW":
+			open_btn = pb
+	_check(open_btn != null, "Co-op tab has the Open the Party window button")
+	if open_btn != null:
+		_tab_click(sv, open_btn.get_global_rect().get_center())
+		_check(acts.has("party_window"), "clicking it asks for the Party window")
+	sv.queue_free()
+	DmSettingsPanel.last_tab = "coop"
 
 	# toast / banner / floating number build without error
 	root.add_child(DmToast.make("hi", "good", 0.1))

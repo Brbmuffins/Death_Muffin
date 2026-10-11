@@ -17,8 +17,8 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
   (`DmCharacterBuild.is_playable`) and the backend only accepts classes 1-4 and 11 (`PLAYABLE_DISCIPLINE_INDICES`). Missing with them:
   kit rites, monk beat meter, wraith nova on a charged cast, Bulwark (`DmPlayerRules` already honours `bulwarkUntil`).
 - **The Reaper is a first pass.** It has its own portrait but borrows the Mourner's hero model and existing rite icons, has no armor set of its
-  own, no runes, no signature (R) rite, and Auto combat does not play it. Its soul wisps are drawn on the host only; a party member's soul
-  count reaches their HUD by the caster state. Numbers (REAPER in `data/combat/abilities.json`) are a first tuning, not yet playtested.
+  own, no runes and no signature (R) rite. Its soul wisps are drawn on the host only; a party member's soul
+  count reaches their HUD by the caster state. Numbers (REAPER in `data/combat/abilities.json`) are a first tuning (2026-10-11 headless probe with Auto combat, level 20, no thralls: Scythe Sweep 52 damage a second on one foe and 276 on a pack of six, against the Mourner's 88 and 379; she makes up for it with 30% more health, 15% less damage taken and her leech), not yet playtested by a person.
 
 ## Combat and statuses
 
@@ -42,4 +42,4 @@ Shrouded suspension in the player's own Miasma, the Barrier decay, and boss-pool
 
 - Bit-exact web math (fdlibm, exact-double loading) is still used by the Depths floor generator, auto-combat and the DB loader: `godot/sim/README.md`.
 - `tools/godot/sync-slice-assets.mjs` reads `godot/data/slice/assets_used.json`; the exporter that wrote it (`export-slice.ts`) is gone, so the list is now hand-maintained.
-- `godot/export_presets.cfg` still names the product "Death Muffin (Godot slice)" and the export files `DeathMuffin-godot-slice`.
+- `config/name` in `godot/project.godot` is still "Death Muffin (Godot slice)": Godot names the user:// folder after it (saved login, settings), so it stays until a migration copies that folder. Players see "Death Muffin" (`main.gd` sets the window title; the exe product name is "Death Muffin").

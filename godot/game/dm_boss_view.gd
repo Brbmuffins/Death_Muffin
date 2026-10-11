@@ -4,6 +4,10 @@ extends RefCounted
 ## load). `sync(state: DmBossState, dt)` every frame, `hide()` after death / when the fight resets (fades out after 2.5 s), `dispose()`.
 ## Model and colour come from BOSSES[id].modelSlug / .color (godot/data/content/bosses.json).
 
+## Seconds from the state flip to the swing's impact frame (the telegraphs run 0.9-1.4 s): the clip is timed to land there, then hands back to idle / walk.
+const BOSS_SLAM_IMPACT_S := 0.9
+const BOSS_CAST_IMPACT_S := 1.2
+
 var root: Node3D
 var c: DmCreature
 var boss_id := "prelate"
@@ -109,13 +113,13 @@ func sync(b: DmBossState, dt: float) -> void:
 		_last_state = b.state
 		match b.state:
 			"toll", "rain", "summon":
-				c.play_once("cast", 1.1)
+				c.play_strike("cast", BOSS_CAST_IMPACT_S)
 			"slam":
-				c.play_once("attack", 1.3)
+				c.play_strike("attack", BOSS_SLAM_IMPACT_S)
 			"move":
 				c.set_ground_speed(_ground_speed if _ground_speed != 0.0 else 2.0)
 			"dead":
-				c.play_once("death", 0.8)
+				c.play_death()
 			_:
 				c.set_loop("idle")
 	elif b.state == "move":

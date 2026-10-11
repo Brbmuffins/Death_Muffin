@@ -544,9 +544,27 @@ func check_thralls() -> void:
 	check(engaged, "A: the thrall engages the boss (edge rule)")
 	await until(func() -> bool: return boss.hp < hp_t - 1.0, 8.0)
 	check(boss.hp < hp_t and boss.brain.last_hit_by == str(g.session.get_my_id()), "A: thrall blows hurt the boss and credit the owner (%s hp %.1f -> %.1f, by %s, thrall %s d %.1f hp %.0f)" % [boss_id, hp_t, boss.hp, str(boss.brain.last_hit_by), str(is_instance_valid(t1) and t1.target == boss), t1.global_position.distance_to(boss.global_position), t1.hp])
+	# a legion ringed round the hero does not body-block the boss: it owns its movement (no collision with thralls) and walks through to the hero
+	th.clear()
+	check(boss.collision_mask == 0 and (DmThrall.LAYER_THRALL & boss.collision_mask) == 0 and (DmEnemy.LAYER_ENEMY & t1.collision_mask) == 0, "A: boss and thralls do not collide with each other")
+	for i in 12:
+		corpses_stub_add(hb.position + Vector3(cos(i * 0.52) * 3.0, 0.0, sin(i * 0.52) * 3.0))
+		var rr2: Dictionary = th.raise({"kind": "warrior", "cap": 12.0, "hp": 4000.0, "damage": 1.0, "attackSpeedMult": 1.0}, hb.position + Vector3(cos(i * 0.52) * 3.0, 0.0, sin(i * 0.52) * 3.0))
+		if bool(rr2["ok"]):
+			var tt: DmThrall = rr2["thralls"][0]
+			tt.set_physics_process(false)
+			tt.global_position = hb.position + Vector3(cos(i * 0.52 * 1.0) * 2.0, 0.0, sin(i * 0.52) * 2.0)
+	check(th.count() >= 6, "A: a ring of thralls round the hero (%d)" % th.count())
+	var d0 := boss.global_position.distance_to(hb.position)
+	step(25.0)
+	check(boss.global_position.distance_to(hb.position) < 6.5, "A: the boss walked through the ring to the hero (%.1f m -> %.1f m)" % [d0, boss.global_position.distance_to(hb.position)])
 	th.clear()
 	_keep(hb)
 	boss.set_physics_process(false)
+
+
+func corpses_stub_add(pos: Vector3) -> void:
+	g.corpses.add_corpse(pos.x, pos.z, "normal", "robber", false, 0.0, 1.0, g.area_id)
 
 
 ## The rite world sees the boss, a rite (Bone Needle) hits it, a stun staggers it at most 0.5 s and has a cooldown. (The thralls' engage / credit rules are

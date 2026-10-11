@@ -152,6 +152,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	session.spawn_origin = Vector3(float(ret["x"]), 0.0, float(ret["z"]))
 	session.body_factory = _make_body
 	session.spawn_override = _joiner_spawn
+	session.spawn_resolve = _walkable_spawn
 	session.move_half = 1000.0   # the world is larger than the session arena (areas out to x -72 / 150): click-to-move must reach them
 	session.player_joined.connect(_on_player_joined)
 	var peer: MultiplayerPeer = opts.get("peer", null)
@@ -412,6 +413,13 @@ func _joiner_spawn() -> Variant:
 	if b == null or not b.alive or area_id == "depths":
 		return null
 	return b.position
+
+
+## A joiner's ring point moved onto the navmesh (about one in five fell off it); a world without navigation keeps the point.
+func _walkable_spawn(pt: Vector3) -> Vector3:
+	if _has_world and world.nav_ready():
+		return world.nav_clamp(pt)
+	return pt
 
 
 func _on_player_joined(_id: int) -> void:

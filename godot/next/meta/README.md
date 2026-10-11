@@ -20,7 +20,7 @@ prog (vows, boons)      --sync()---------->  director (vow_fx, omen, size_extra)
 | Boons | all through `DmCharacterBuild` -> `DmHeroBody.refresh_stats` + `DmRiteCaster.refresh_stats`: Vigil (max hp), Marrow Font (essence regen), Legion Pact (+1 thrall cap), Grave Feast (corpse heal on Exhume / Offering), Bone Ward (ward per thrall), Hollow Sacrifice / Carrion Bloom (caster mods), Soul Hunger (Soul Harvest meter -8 a rank, min 10), Lingering Dead (corpse life x1.5 a rank, `corpses.life_mult`), Bone Tithe / Quickened Coin (upgrade prices, `DmProgression`), Swift Seals (seal kills), First Rites / Shard Keeper (the starting tier / shards after an ascension), Bonded Dead (a thrall rises 1.5 s after entering a hunting ground with none: `DmNextMeta._bonded_dead`) |
 | The Omen | weekly, `DmNextMeta.omen_for(ms)` (`opts.omen` pins it for tests): wave size, elite chance, xp / gold x`rewardMult`, shards x`shardMult` (combat areas only), HUD chip (hidden in sanctuaries) |
 | Reaper soul bag | every kill that pays a Reaper (`DmSessionRewards.kill_earned`) banks a soul with a wisp (not Soul Harvest); see `next/rites/README.md` |
-| Soul Harvest | your own kill (`DmSessionRewards.killer_paid`) banks a soul; a full meter charges the next Marrow Spear / Miasma / Black Litany: free, 1.5 x radius / range (`DmRiteCaster._apply_cast` -> `intent["mult"]`). HUD meter + empowered slot flags |
+| Soul Harvest | your own kill (`DmSessionRewards.killer_paid`) banks a soul, for every party member's hero on the host (a joiner's HUD meter reads its caster's replicated `souls` / `soulsMax`, `DmNextHudVm.soul_state`); a full meter charges the next Marrow Spear / Miasma / Black Litany: free, 1.5 x radius / range (`DmRiteCaster._apply_cast` -> `intent["mult"]`). HUD meter + empowered slot flags |
 | Kill Chain | `DmKillChain` per member, paid by `DmSessionRewards` (+5..25 % xp / gold); `chain_tier_up` -> banner float, sound, burst; the chain breaks on its 4 s window (sound, "Chain broken: N" from 10) and on death; HUD meter |
 | Bone Ward chip | `wardPerThrall` x living thralls, at most 60 % (`DmNextHudVm._ward`) |
 
@@ -34,7 +34,7 @@ opens it with shards, a bare boon id buys the next rank with Ashes.
 ## Known gaps
 - Elite affixes: the Tolling's Bell-Tolled elites (`omen.affix`) wait for the affix track; the Omen's sky tint is not applied.
 - Soul Harvest's wraith nova on a charged cast (legendary `wraithNova`), the jade ring under a charged hero, the monk's beat meter.
-- Co-op: the host's difficulty and vows rule the world; a joiner's own progression is not read.
+- Co-op: the host's difficulty and vows rule the world; a joiner's own progression is not read. A joiner's meter fills, but the "charged" toast, float and burst are the host hero's only.
 
 ## Tests / cost
 `godot --headless --path godot --script res://tests/next_meta/run.gd` (offline backend, two accounts; relaunches). Cost: `DmNextMeta._process` is two compares per frame

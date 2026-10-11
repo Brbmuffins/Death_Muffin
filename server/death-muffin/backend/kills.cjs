@@ -141,7 +141,7 @@ const ENFORCE_NOTICE = 'Some of your kills could not be verified against the tim
  * Judge and record one kill report. Returns { status, body }. `char` is the owned character row, `account` = { staff }.
  * Off: acknowledge, write nothing. Audit and enforce keep the same ledger (so audit shows exactly what enforce would do).
  */
-async function handleReport(pool, { char, accountId, body, account, now = Date.now(), env = process.env, log = console }) {
+async function handleReport(pool, { char, accountId, body, account, carried = false, now = Date.now(), env = process.env, log = console }) {
   const mode = killsMode(env);
   if (mode === 'off') return { status: 200, body: { success: true, data: { mode } } };
   const report = rules.parseKillReport(body);
@@ -166,7 +166,7 @@ async function handleReport(pool, { char, accountId, body, account, now = Date.n
     const rank = ascensionRank(necro.ascension);
     const ev = rules.evaluateKillReport(report, {
       unlocked: necro.unlocked, ascension: rank, heroLevel: num(locked.level, 1), deepest: ledger.depthProved,
-      killBucket: buckets.killBucket, bossBucket: buckets.bossBucket, floorBucket: buckets.floorBucket, maxCleared: ledger.maxCleared, staff: !!(account && account.staff),
+      killBucket: buckets.killBucket, bossBucket: buckets.bossBucket, floorBucket: buckets.floorBucket, maxCleared: ledger.maxCleared, staff: !!(account && account.staff), carried,
     });
     const credit = { ...ledger.killCredit };
     for (const [area, n] of Object.entries(ev.credits.kills)) credit[area] = (credit[area] || 0) + n;
@@ -352,7 +352,12 @@ function necroGuard({ pool, ownsCharacter, isStaff, env = process.env, log = con
       // Audit consumes what enforce would have paid, so its balances stay comparable; the request itself is not touched.
       const consumeKills = claim.used;
       const consumeShards = claim.shardsUsed;
-      if (mode === 'enforce') req.body = { ...req.body, areaKills: claim.kills, shards: claim.shards, prelateKills: claim.prelate };
+      if (mode === 'enforce') {
+        req.body = { ...req.body, areaKills: claim.kills, shards: claim.shards, prelateKills: claim.prelate };
+      }
+      // Both modes: the ledger-backed kills per area may count in a ground the character has not opened (carried by a party). Unbacked
+      // kills there still count for nothing, as before; audit leaves the request itself untouched.
+      req.killsBacked = claim.kills;
       res.on('finish', () => {
         if (res.statusCode >= 400) return;
         consumeNecro(pool, characterId, consumeKills, consumeShards, log).catch((err) => log.error(`[AUTHORITY] necro credit consume failed: ${err.code || err.message}`));

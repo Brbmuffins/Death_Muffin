@@ -600,7 +600,7 @@ func _on_dead() -> void:
 	agent.avoidance_enabled = false
 	remove_from_group(&"dm_target")
 	if creature != null and not creature.play_death():
-		creature.root.rotation.x = -PI * 0.5
+		creature.topple()
 	if _ring != null:
 		_ring.kill()
 	_death_fx()
@@ -665,6 +665,9 @@ func _process(delta: float) -> void:
 	if state == S.RISING:
 		var k := minf(1.0, state_t / DmSimConsts.THRALL_RISE_TIME)
 		$Visual.position.y = _hover - 1.8 * (1.0 - k) * (1.0 - k)
+		creature.set_rise(k)
+	elif creature.rising():
+		creature.set_rise(1.0)
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta * 5.0)
 		creature.set_flash(_flash)

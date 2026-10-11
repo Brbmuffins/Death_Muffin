@@ -25,13 +25,13 @@ static func _wall_ms() -> int:
 static func _round2(n: float) -> float:
 	return floorf(n * 100.0 + 0.5) / 100.0
 
-## A kill the hero is paid for. Multipliers are rounded to two places so a chain ticking up does not make a group per kill.
+## A kill the hero is paid for (`objective: true` = a party kill it only counts toward its area tally). Multipliers are rounded to two places so a chain ticking up does not make a group per kill.
 func kill(input: Dictionary) -> void:
 	var k := input.duplicate()
 	k["xpMult"] = _round2(float(input["xpMult"]))
 	k["goldMult"] = _round2(float(input["goldMult"]))
 	k["shardMult"] = _round2(float(input["shardMult"]))
-	var key := "%s|%s|%s|%d|%s|%s|%s|%s|%s|%s" % [k["area"], k["def"], k["level"], 1 if k["elite"] else 0, k["tier"], k["diff"], k["rank"], k["xpMult"], k["goldMult"], k["shardMult"]]
+	var key := "%s|%s|%s|%d|%s|%s|%s|%s|%s|%s|%d" % [k["area"], k["def"], k["level"], 1 if k["elite"] else 0, k["tier"], k["diff"], k["rank"], k["xpMult"], k["goldMult"], k["shardMult"], 1 if k.get("objective", false) else 0]
 	if _groups.has(key):
 		_groups[key]["n"] += 1
 	else:

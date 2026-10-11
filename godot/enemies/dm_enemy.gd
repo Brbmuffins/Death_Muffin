@@ -122,6 +122,7 @@ var _stagger_t: float = 0.0
 var _wander_heading: float = 0.0
 var _anim: String = "idle"
 var _flash: float = 0.0
+var _rise_vis: float = 0.0               ## 0..1 progress of the spawn rise as drawn (own clock: a puppet never ticks the state)
 var _anim_acc: float = 0.0
 var _lod_interval: float = 0.0
 var _lod_t: float = 0.0
@@ -570,7 +571,7 @@ func on_death() -> void:
 	agent.avoidance_enabled = false
 	set_physics_process(false)
 	if creature != null and not creature.play_death():
-		creature.root.rotation.x = -PI * 0.5   # rigs with no death clip: tip over
+		creature.topple()   # rigs with no death clip: tip over
 	if is_multiplayer_authority():
 		died.emit(self)
 	if corpse_s > 0.0:
@@ -601,6 +602,16 @@ func _process(delta: float) -> void:
 		_puppet_step(delta)
 	if creature == null:
 		return
+	if sm.id() == DmEnemyState.Id.RISING:
+		_rise_vis = minf(1.0, _rise_vis + delta / DmStateRising.RISE_TIME)
+		creature.set_rise(_rise_vis)
+		if flying <= 0.0:
+			$Visual.position.y = -0.9 * creature.base_height * (1.0 - _rise_vis) * (1.0 - _rise_vis)   # claws up out of the ground
+	elif creature.rising():
+		_rise_vis = 0.0
+		creature.set_rise(1.0)
+		if flying <= 0.0:
+			$Visual.position.y = 0.0
 	if flying > 0.0 and sm.id() != DmEnemyState.Id.DEAD:
 		_bob += delta
 		$Visual.position.y = flying + sin(_bob * 1000.0 / 520.0 + float(get_instance_id() % 7)) * 0.18   # views: hover + sin(t/520 + id) * 0.18

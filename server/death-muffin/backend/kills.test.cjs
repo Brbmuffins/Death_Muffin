@@ -467,6 +467,7 @@ test('audit: a necromancer save is compared but never changed', async () => {
   assert.deepEqual(n.req.body.areaKills, { graves: 900 });
   assert.equal(n.req.body.shards, 30);
   assert.deepEqual(fake.audit.map((a) => a.kind).sort(), ['unbacked_kills', 'unbacked_shards']);
+  assert.ok(n.req.killsBacked && typeof n.req.killsBacked === 'object' && !(n.req.killsBacked.graves > 900), 'audit still tells the save what the ledger backs');
 });
 
 test('off: the necromancer guard passes the request through untouched', async () => {

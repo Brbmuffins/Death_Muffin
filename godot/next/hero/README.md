@@ -6,6 +6,7 @@ lantern is the **local** hero's only (a remote puppet carries none: one light pe
 `dm_hero_look.gd` (`DmHeroLook`, child `Look` of DmNextGame, same path on every peer): worn gear, cape, pet and hero ring.
 - **Gear**: `DmAvatar.set_equipment` (weapon in hand, off-hand, helm / hide-helm, body tints by material tier, legendary set aura) from the
   equipped bag rows. `set_equipment` diffs per slot; `DmHeroLook` also skips an unchanged gear set, so an unrelated bag change rebuilds nothing.
+- The Reaper's weapon slot always shows her green-etched scythe (`DmAvatar._reaper`, `DmGearProps.scythe_model`), whatever weapon her bag row names, and she gestures with it as a scythe.
 - **Cape / pet**: `DmAvatar.set_cape`, `DmPetView` (trails the owner, idles, snaps when far; parented to the game). Source = the Capes & Pets panel:
   `_cosmetics_act` -> backend -> `DmNextUiHost.refresh_character` -> `load_cosmetics` -> `Look.set_cosmetics`.
 - **Hero ring** (local hero only): contact shadow + pale ring, discipline glow + bone ring, cursor reticle, soul halo, hover ring.

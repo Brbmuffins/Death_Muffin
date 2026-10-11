@@ -1,5 +1,5 @@
 class_name DmSettingsPanel
-extends DmWindow
+extends DmTabbedWindow
 ## Settings (archive/legacy-web:src/ui/MiscPanels.ts SettingsPanel): every section and control of the web panel, as a native Godot window.
 ## Pure UI: it holds a `values` Dictionary (seeded with the web defaults) and emits `changed(key, value)` / `action(name)`;
 ## the integrator wires those to the settings store, party, class change, bug report, leave-the-world.
@@ -7,11 +7,13 @@ extends DmWindow
 ## value keys: difficulty, auto_combat, auto_gather, loot_common..loot_legendary ("ground"|"auto"|"gold"), graphics, fps,
 ##   auto_res, vol_master, vol_combat, vol_amb, vol_music, vol_ui, reduce_motion, damage_numbers, hide_helm, no_tips,
 ##   guidance, guide_ping, dev_access, party_in (the join-code field).
+## Tabs (strip under the title, in this order): Co-op, Audio, Play, Display, Controls, Account. The last tab opened is
+## remembered for the session (`last_tab`).
 ## Options: `can_auto_combat`, `has_dev`, `has_bug_report`, `has_reset_tips`, `has_change_class`, `has_party`, `party_code` ("" = solo),
 ##   `has_keybinds`, `binds` {action: key}, `kit_primary`, `kit_corpse`, `kit_legion`.
 
 signal changed(key: String, value: Variant)
-signal action(name: String)          # leave, exit_game, bug_report, reset_tips, change_class, party_make, party_join, party_leave
+signal action(name: String)          # leave, switch_character, exit_game, bug_report, reset_tips, change_class, party_make, party_join, party_leave, party_window
 signal bind_requested(action_id: String)
 
 const DIFFICULTIES := [
@@ -44,6 +46,10 @@ var kit_primary := "Bone Needle"
 var kit_corpse := "Corpse Explosion"
 var kit_legion := true
 var bind_note: Label
+## The tab shown on open; kept for the whole session (the panel is rebuilt, the choice is not).
+static var last_tab := "coop"
+var _page: VBoxContainer
+var _building := false
 var _diff_note: Label
 var _auto_cb: CheckBox
 var _bind_btns: Dictionary = {}
@@ -52,7 +58,10 @@ var _bind_btns: Dictionary = {}
 func _init() -> void:
 	super._init()
 	title = "Settings"
-	panel_width = 540
+	panel_width = 640
+	tab_changed.connect(func(id: String) -> void:
+		if not _building:
+			last_tab = id)
 
 
 var _built_sig := 0
@@ -88,29 +97,51 @@ func build() -> void:
 	_built_sig = _sig()
 	_stale = false
 	_party_le = null
+	_building = true
 	for c in body.get_children():
+		body.remove_child(c)
 		c.queue_free()
+	clear_tabs()
 	_bind_btns.clear()
-	var top := PanelContainer.new()
-	top.theme_type_variation = "DmInsetTight"
-	var tm := DmUi.theme().get_stylebox("panel", "DmInsetTight")
-	var tb := tm.duplicate() as StyleBoxFlat
-	tb.content_margin_left = 16
-	tb.content_margin_right = 16
-	tb.content_margin_top = 10
-	tb.content_margin_bottom = 10
-	top.add_theme_stylebox_override("panel", tb)
-	var th := HBoxContainer.new()
-	top.add_child(th)
-	var tl := DmUi.label("Done for now?", "DmMuted")
-	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	th.add_child(tl)
-	th.add_child(_button("Logout", "leave"))
-	th.add_child(_button("Exit game", "exit_game"))
-	body.add_child(top)
 
-	# --- Play ---------------------------------------------------------------------------------
+	# --- Co-op ---------------------------------------------------------------------------------------
+	if has_party:
+		_tab("coop", "Co-op")
+		var s4 := _section("Play together")
+		if party_code != "":
+			var code := DmUi.label(party_code, "DmNumeric")
+			code.add_theme_font_size_override("font_size", 15)
+			_row(s4, "Your party code", code)
+			_note(s4, "Friends enter this code under Play together (or type /party %s) to join you. You choose who plays with you: being online at the same time never makes a party." % party_code)
+			_row(s4, "Who is here, open or close the party", _button("Open the Party window", "party_window", true))
+			_row(s4, "Done playing together?", _button("Leave party (play solo)", "party_leave", true))
+		else:
+			_note(s4, "You are playing solo. Make a party and share its code, or enter a friend's code. In a party you share one world and its enemies; the Catacomb Depths stay a solo descent (you step out, then rejoin).")
+			_row(s4, "Start a party", _button("Make a party", "party_make", true))
+			var jr := HBoxContainer.new()
+			jr.add_theme_constant_override("separation", 6)
+			var le := LineEdit.new()
+			le.placeholder_text = "code"
+			le.max_length = 12
+			le.custom_minimum_size.x = 110
+			le.text_changed.connect(func(t: String) -> void: _put("party_in", t))
+			_party_le = le
+			jr.add_child(le)
+			jr.add_child(_button("Join", "party_join", true))
+			_row(s4, "Join a friend", jr)
+			_row(s4, "Public sessions and the list", _button("Open the Party window", "party_window", true))
+
+	# --- Audio -----------------------------------------------------------------------------------------
+	_tab("audio", "Audio")
+	var sa := _section("Volume")
+	_slider(sa, "Volume", "vol_master")
+	_slider(sa, "Combat", "vol_combat")
+	_slider(sa, "Ambience", "vol_amb")
+	_slider(sa, "Music", "vol_music")
+	_slider(sa, "Interface", "vol_ui")
+
+	# --- Play ------------------------------------------------------------------------------------------
+	_tab("play", "Play")
 	var s1 := _section("Play")
 	var diff := OptionButton.new()
 	for d in DIFFICULTIES:
@@ -122,6 +153,7 @@ func build() -> void:
 	_row(s1, "Difficulty", diff)
 	_diff_note = DmUi.label("", "DmNote", true)
 	_note_margin(s1, _diff_note)
+	_auto_cb = null
 	if can_auto_combat:
 		_auto_cb = _check(s1, "Auto combat (Easy only, G)", "auto_combat")
 	_check(s1, "Auto gathering", "auto_gather")
@@ -140,8 +172,9 @@ func build() -> void:
 		_note(s1, "On Easy, Auto engages enemies in your current area, uses equipped rites and may cast your signature when a fight calls for it. Click or use WASD to take control; hold 1–5 to repeat a rite.")
 	_refresh_diff()
 
-	# --- Display and sound -------------------------------------------------------------------------
-	var s2 := _section("Display and sound")
+	# --- Display ---------------------------------------------------------------------------------------
+	_tab("display", "Display")
+	var s2 := _section("Display")
 	_option(s2, "Window mode", "window_mode", [["windowed", "Windowed"], ["borderless", "Windowed borderless"], ["fullscreen", "Fullscreen"]])
 	_note(s2, "Borderless fills the screen without a frame, so Alt+Tab stays instant. Fullscreen takes the screen over.")
 	_option(s2, "Graphics", "graphics", DmGraphicsPreset.options())
@@ -152,54 +185,17 @@ func build() -> void:
 	_note(s2, "Interface size scales everything; HUD size scales only the in-game bars, orbs, minimap and chat, on top of it. On a narrow window the largest sizes are held back so the side columns never overlap the orbs.")
 	_check(s2, "Auto resolution", "auto_res")
 	_note(s2, "Auto resolution only steps in after several seconds of sustained slow frames, and never below 85% on Medium and up. Turn it off to keep a constant sharp picture.")
-	_slider(s2, "Volume", "vol_master")
-	_slider(s2, "Combat", "vol_combat")
-	_slider(s2, "Ambience", "vol_amb")
-	_slider(s2, "Music", "vol_music")
-	_slider(s2, "Interface", "vol_ui")
-	_check(s2, "Reduce motion (no camera shake)", "reduce_motion")
-	_check(s2, "Damage numbers", "damage_numbers")
-	_check(s2, "Hide helms", "hide_helm")
-	_check(s2, "Don't show tips", "no_tips")
-	_check(s2, "Show the “Next” suggestion under the minimap", "guidance")
-	_check(s2, "Point to it on the minimap", "guide_ping")
 
-	# --- Character and help ------------------------------------------------------------------------
-	var s3 := _section("Character and help")
-	if has_dev:
-		_check(s3, "Dev access (preview as a normal player when off)", "dev_access")
-	if has_bug_report:
-		_row(s3, "Found a bug or something odd?", _button("Report a bug", "bug_report", true))
-	if has_reset_tips:
-		_row(s3, "New to the Covenant?", _button("Show tips again", "reset_tips", true))
-	if has_change_class:
-		_row(s3, "Class", _button("Change class", "change_class", true))
-
-	# --- Play together -------------------------------------------------------------------------------
-	if has_party:
-		var s4 := _section("Play together")
-		if party_code != "":
-			var code := DmUi.label(party_code, "DmNumeric")
-			code.add_theme_font_size_override("font_size", 15)
-			_row(s4, "Your party code", code)
-			_note(s4, "Friends enter this code under Play together (or type /party %s) to join you. You choose who plays with you: being online at the same time never makes a party." % party_code)
-			_row(s4, "Done playing together?", _button("Leave party (play solo)", "party_leave", true))
-		else:
-			_note(s4, "You are playing solo. Make a party and share its code, or enter a friend's code. In a party you share one world and its enemies; the Catacomb Depths stay a solo descent (you step out, then rejoin).")
-			_row(s4, "Start a party", _button("Make a party", "party_make", true))
-			var jr := HBoxContainer.new()
-			jr.add_theme_constant_override("separation", 6)
-			var le := LineEdit.new()
-			le.placeholder_text = "code"
-			le.max_length = 12
-			le.custom_minimum_size.x = 110
-			le.text_changed.connect(func(t: String) -> void: _put("party_in", t))
-			_party_le = le
-			jr.add_child(le)
-			jr.add_child(_button("Join", "party_join", true))
-			_row(s4, "Join a friend", jr)
+	var si := _section("Interface")
+	_check(si, "Reduce motion (no camera shake)", "reduce_motion")
+	_check(si, "Damage numbers", "damage_numbers")
+	_check(si, "Hide helms", "hide_helm")
+	_check(si, "Don't show tips", "no_tips")
+	_check(si, "Show the “Next” suggestion under the minimap", "guidance")
+	_check(si, "Point to it on the minimap", "guide_ping")
 
 	# --- Controls --------------------------------------------------------------------------------------
+	_tab("controls", "Controls")
 	var s5 := _section("Controls")
 	if has_keybinds:
 		var hh := HBoxContainer.new()
@@ -234,13 +230,56 @@ func build() -> void:
 		bind_note.add_theme_color_override("font_color", DmUi.TEXT_MUTED)
 		s5.add_child(_margin(bind_note, 8, 2))
 	s5.add_child(_margin(_keys_grid(), 10, 0))
-	for sec in body.get_children():
-		var v := (sec as Node).get_child(0) if sec is PanelContainer else null
-		if v == null or v.get_child_count() == 0:
-			continue
-		var last := v.get_child(v.get_child_count() - 1)
-		if last is VBoxContainer and last.get_child_count() == 2 and last.get_child(1) is ColorRect:
-			(last.get_child(1) as Control).visible = false
+
+	# --- Account ---------------------------------------------------------------------------------------
+	_tab("account", "Account")
+	var top := PanelContainer.new()
+	top.theme_type_variation = "DmInsetTight"
+	var tm := DmUi.theme().get_stylebox("panel", "DmInsetTight")
+	var tb := tm.duplicate() as StyleBoxFlat
+	tb.content_margin_left = 16
+	tb.content_margin_right = 16
+	tb.content_margin_top = 10
+	tb.content_margin_bottom = 10
+	top.add_theme_stylebox_override("panel", tb)
+	var th := HBoxContainer.new()
+	top.add_child(th)
+	var tl := DmUi.label("Done for now?", "DmMuted")
+	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	th.add_child(tl)
+	th.add_child(_button("Switch character", "switch_character"))
+	th.add_child(_button("Logout", "leave"))
+	th.add_child(_button("Exit game", "exit_game"))
+	_page.add_child(top)
+	var s3 := _section("Character and help")
+	if has_dev:
+		_check(s3, "Dev access (preview as a normal player when off)", "dev_access")
+	if has_bug_report:
+		_row(s3, "Found a bug or something odd?", _button("Report a bug", "bug_report", true))
+	if has_reset_tips:
+		_row(s3, "New to the Covenant?", _button("Show tips again", "reset_tips", true))
+	if has_change_class:
+		_row(s3, "Class", _button("Change class", "change_class", true))
+
+	for pg in body.get_children():
+		for sec in pg.get_children():
+			var v := (sec as Node).get_child(0) if sec is PanelContainer else null
+			if v == null or v.get_child_count() == 0:
+				continue
+			var last := v.get_child(v.get_child_count() - 1)
+			if last is VBoxContainer and last.get_child_count() == 2 and last.get_child(1) is ColorRect:
+				(last.get_child(1) as Control).visible = false
+	select_tab(last_tab if _tabs.has(last_tab) else _order[0])
+	_building = false
+
+
+## A new tab page; the sections that follow go on it.
+func _tab(id: String, label: String) -> void:
+	_page = VBoxContainer.new()
+	_page.add_theme_constant_override("separation", 18)
+	_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	add_tab(id, label, _page)
 
 
 func _keys_grid() -> Control:
@@ -309,8 +348,7 @@ func _section(title_text: String) -> VBoxContainer:
 	p.add_child(v)
 	var h := DmUi.label(DmUi.upper(title_text), "DmH3")
 	v.add_child(_margin(h, 0, 6))
-	body.add_child(p)
-	body.add_theme_constant_override("separation", 18)
+	_page.add_child(p)
 	return v
 
 

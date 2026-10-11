@@ -326,6 +326,52 @@ func _run() -> void:
 	perf_info(decide_us < 4000.0, "H: one decision %.0f us" % decide_us)
 	perf_info(idle_us < 2.0, "H: tick between decisions %.3f us" % idle_us)
 
+	# ---- I: the Reaper plays too (a second game, her own account)
+	var arena := Vector3(0, 0, -6)   # open ground near the start (the Graves' far end has walls the walk catches on)
+	store.update({"auto_combat": false})
+	g.queue_free()
+	await ticks(3)
+	var r2 := await api.register("reap%d" % (Time.get_ticks_usec() % 100000), "q@example.com", "pw1234")
+	api.set_token(r2.data["token"])
+	var c2 := await api.load_or_create_character(11)
+	g = load("res://next/next_game.tscn").instantiate()
+	root.add_child(g)
+	await g.start(c2.data, api, {"dressing": false, "persist": false, "waves": false})
+	hero = g.local_body()
+	await ticks(3)
+	caster = hero.get_node("Rites") as DmRiteCaster
+	seen.clear()
+	caster.event_played.connect(func(ev: Dictionary) -> void: seen.append({"rite": String(ev["rite"]), "t": String(ev["t"]), "ev": ev}))
+	auto = g.input.auto
+	store = g.ui_host.settings_store
+	check(hero.family == "reaper", "I: the second hero is the Reaper (%s)" % hero.family)
+	store.set_active_character(int(g.character.get("id", 1)), true)
+	store.update({"difficulty": "easy", "auto_combat": true})
+	check(bool(store.values["auto_combat"]) and auto.allowed(), "I: the gate opens for her too")
+	var seen_rite := func(rite: String) -> bool: return seen.any(func(s: Dictionary) -> bool: return s["rite"] == rite)
+	reset_hero(arena)
+	caster.p["souls"] = 0
+	var lone := foe(arena + Vector3(0, 0, -7))
+	check(await until(func() -> bool: return seen_rite.call("scythe_sweep"), 8.0), "I: with an empty bag she walks in and swings Scythe Sweep (%d moves)" % auto.stats["moves"])
+	check(hero.position.distance_to(lone.position) < 6.0, "I: she closed to melee (%.1f m)" % hero.position.distance_to(lone.position))
+	clear_foes()
+	await ticks(3)
+	reset_hero(arena)
+	caster.p["souls"] = 20
+	for i in 7:
+		foe(arena + Vector3(cos(float(i)) * 2.4, 0, sin(float(i)) * 2.4 - 1.0))
+	check(await until(func() -> bool: return seen_rite.call("soul_burst") or seen_rite.call("reap") or seen_rite.call("harvest_spin"), 4.0), "I: a full bag among a pack is spent on a rite (%s)" % str(seen.map(func(s: Dictionary) -> String: return s["rite"])))
+	check(int(caster.p["souls"]) < 20, "I: the souls were paid (%s left)" % str(caster.p["souls"]))
+	clear_foes()
+	await ticks(3)
+	reset_hero(arena)
+	caster.p["souls"] = 8
+	hero.p["hp"] = hero.max_hp * 0.2   # the body mirrors p each tick
+	var chaser := foe(arena + Vector3(0, 0, -2.5))
+	check(await until(func() -> bool: return seen_rite.call("wraith_walk"), 4.0), "I: low on health with a foe on her she Wraith Walks away")
+	await ticks(40)
+	check(hero.position.distance_to(chaser.position) > 5.0, "I: ...and ends up clear of it (%.1f m)" % hero.position.distance_to(chaser.position))
+
 	print("%d passed, %d failed" % [passed, failed])
 	quit(0 if failed == 0 else 1)
 

@@ -72,6 +72,7 @@ var _members: Dictionary = {}            ## host: peer id -> the rewards member'
 var _chat_rate: Dictionary = {}          ## host: peer id -> [second, count]
 var _url := ""
 var _profile_sent := false
+var levels: Dictionary = {}              ## every peer: peer id -> that hero's level (the host's table, replicated on join and on each level-up)
 
 
 func setup(shell_: DmNextGame) -> void:
@@ -545,6 +546,7 @@ func _rpc_profile(p: Dictionary) -> void:
 	m.blocked = "pending_join" if key > 0 else "no_character"
 	shell.rewards.add_member(m)
 	_members[peer] = key
+	sync_levels()
 	_rpc_welcome.rpc_id(peer, shell.rewards.session_id, String(shell.session.character_name))
 	changed.emit()
 
@@ -584,7 +586,11 @@ func _rpc_backend(ok: bool, why: String) -> void:
 
 func _on_credited(cid: int, delta: Dictionary) -> void:
 	var m: DmRewardsMember = shell.rewards.members.get(cid)
-	if m == null or not m.remote:
+	if m == null:
+		return
+	if not m.remote:
+		if int(delta.get("levels", 0)) > 0:
+			sync_levels()   # the host levelled: every joiner's party frame shows it
 		return
 	if int(delta.get("levels", 0)) > 0 and m.body != null and is_instance_valid(m.body):   # its body fights at the new level
 		var b := m.body as DmHeroBody
@@ -594,7 +600,40 @@ func _on_credited(cid: int, delta: Dictionary) -> void:
 		var c := b.get_node_or_null("Rites") as DmRiteCaster
 		if c != null:
 			c.refresh_stats(shell.build_for(m.peer_id))
+		sync_levels()
 	_rpc_credit.rpc_id(m.peer_id, delta)
+
+
+## The level a party frame shows for a hero body: the local hero's own character, else the host's replicated table, else what the body knows.
+func level_of(b: DmHeroBody) -> int:
+	if b == null:
+		return 1
+	if b == shell.local_body():
+		return int(shell.character.get("level", 1))
+	return int(levels.get(b.owner_peer, b.character.get("level", 1)))
+
+
+## Host: send every hero's level to every peer (event-driven: a join, a level-up; never per frame). Heroes' bodies on a client carry no
+## character, so this table is the only place a joiner learns the others' levels.
+func sync_levels() -> void:
+	if not shell.session.is_host():
+		return
+	var t := {}
+	for b in shell.session.get_bodies():
+		var hb := b as DmHeroBody
+		if hb == null:
+			continue
+		t[hb.owner_peer] = int(shell.character.get("level", 1)) if hb == shell.local_body() else int(hb.character.get("level", 1))
+	levels = t
+	if shell.session.is_active() and not multiplayer.get_peers().is_empty():
+		_rpc_levels.rpc(t)
+		changed.emit()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_levels(t: Dictionary) -> void:
+	levels = t
+	changed.emit()
 
 
 @rpc("authority", "call_remote", "reliable")

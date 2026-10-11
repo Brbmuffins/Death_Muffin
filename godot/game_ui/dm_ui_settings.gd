@@ -68,6 +68,7 @@ func open_bug_report() -> void:
 	if not panel.visible:
 		open()
 	panel.mark_stale()
+	panel.strip_slot.visible = false
 	for c in panel.body.get_children():
 		panel.body.remove_child(c)
 		c.queue_free()
@@ -87,6 +88,7 @@ func close_bug_report() -> void:
 
 
 func _detach_report() -> void:
+	panel.strip_slot.visible = true
 	if report.get_parent() != null:
 		report.get_parent().remove_child(report)
 
@@ -102,6 +104,8 @@ func _on_action(name: String) -> void:
 		"leave":
 			ui.left_world.emit()
 			ui.call_game_sync("leave_world")
+		"switch_character":
+			ui.call_game_sync("switch_character")   # the session stays; the front shows the discipline select
 		"exit_game":
 			# Same path as the window's close button: Main saves everything, then quits.
 			ui.get_tree().root.propagate_notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
@@ -117,6 +121,8 @@ func _on_action(name: String) -> void:
 			ui.call_game_sync("party_join", [String(panel.values.get("party_in", "")).strip_edges()])
 		"party_leave":
 			ui.call_game_sync("party_leave")
+		"party_window":
+			ui.toggle_panel("party")
 
 
 ## Settings "Show tips again": the counsel starts over, then walks the parts of the screen the player already has (WorldScene settings callback).

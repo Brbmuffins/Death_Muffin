@@ -1,6 +1,26 @@
 [
   {
     "date": "2026-10-11",
+    "title": "Polish Pass: Co-op, Animation and the Reaper",
+    "items": [
+      "Co-op: everyone in a party now shows their real level, and the world scales to the party leader's level instead of whoever happens to be standing closest.",
+      "Co-op: bosses gain much less health per extra player (two players: x1.3 instead of x1.8; four: x1.9 instead of x3.4).",
+      "Bosses no longer get stuck on walls or on thralls: they slide along walls, find a way round when blocked, and walk through a thrall legion. In co-op a boss keeps one target instead of flipping between players.",
+      "Co-op: shared objectives count for the whole party. Every party kill adds to each member's area kills and seals (opening the next ground), even if you are dead or far away, and kills in a ground you haven't opened yourself still count for you. XP and loot are unchanged.",
+      "Co-op: players who join a party no longer get boss XP skipped, and the Rotweaver's Soul Harvest meter fills for them.",
+      "Co-op: no more sluggish WASD right after joining (joiners now arrive on walkable ground).",
+      "Settings has tabs along the top: Co-op and Audio first, then Play, Display, Controls and Account. It remembers the last tab you used.",
+      "Switch character (Settings, Account) takes you back to character select without logging in again.",
+      "Smoother animation: enemies, thralls and bosses recoil when hit, lunge into their strikes, climb out of the ground when they rise, tip over smoothly when they die, and crowds no longer breathe in step. The necromancer's scythe swing no longer snaps by at 20x speed.",
+      "The Reaper always holds her scythe, even with another weapon in her bag.",
+      "The Reaper's rites now swing like a scythe: Scythe Sweep and Harvest Spin sweep, Reap slams down, Scythe Throw flicks, Wraith Walk and Soul Burst use the channel and summon poses, and haste speeds the swing up.",
+      "Auto combat now plays the Reaper: Scythe Sweep as the filler, souls spent on Reap, Harvest Spin, Soul Burst and Scythe Throw, and Wraith Walk to escape when she is low.",
+      "Scythe Sweep hits a third harder.",
+      "The game window now just says \"Death Muffin\"."
+    ]
+  },
+  {
+    "date": "2026-10-11",
     "title": "The Reaper: Built for the Front Line",
     "items": [
       "Wraith Walk turns the Reaper into a large, half-see-through wraith with a faint green glow for the rush: she passes through monsters, takes no damage, and sets everything she passes through alight with a green flame that burns for 5 seconds.",

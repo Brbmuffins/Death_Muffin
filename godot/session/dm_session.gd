@@ -44,6 +44,9 @@ var body_factory: Callable = Callable()
 var spawn_origin: Vector3 = Vector3.ZERO
 ## Optional: Callable() -> Variant, a Vector3 a NEW player should appear around (a party host's own position), or null for `spawn_origin`.
 var spawn_override: Callable = Callable()
+## Optional: Callable(point: Vector3) -> Vector3, keeps a new body's spawn point on walkable ground (a joiner's ring point can fall in a wall, and the
+## host's mover then snaps the body back to the mesh edge on every step: the first WASD presses seemed to lag).
+var spawn_resolve: Callable = Callable()
 var rejected_intents: int = 0  ## host: intents ignored (not owner / bad values); for tests and cheat logging
 
 var _state: int = State.IDLE
@@ -292,7 +295,10 @@ func _spawn_point(index: int) -> Vector3:
 		var o: Variant = spawn_override.call()
 		if o is Vector3:
 			origin = o
-	return origin + Vector3(cos(a), 0.0, sin(a)) * 3.0
+	var pt := origin + Vector3(cos(a), 0.0, sin(a)) * 3.0
+	if index > 0 and spawn_resolve.is_valid():
+		pt = spawn_resolve.call(pt)
+	return pt
 
 
 func _accept(id: int, nm: String, disc: String) -> void:

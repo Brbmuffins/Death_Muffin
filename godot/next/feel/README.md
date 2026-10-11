@@ -25,9 +25,10 @@ the caster (`cooldown_left`, essence), hostile pools (`dm_hostile_zone` group) a
 | rule | here |
 |---|---|
 | gate | `settings_store.can_use_auto_combat()` (character `auto_combat_allowed`) AND `settings["auto_combat"]` (Easy only; the store forces it off otherwise). G / the button flip the setting (HUD) |
-| yields | walk in progress (click / WASD / held key), a click target, a queued cast, an open panel, gathering, dead hero |
+| yields | walk in progress (click / WASD / held key), a click target, a queued cast, an open panel, gathering, dead hero; any family but the necromancers and the Reaper |
 | cadence | movement every 100 ms, one action every 180 ms, direction intent re-sent every 150 ms, one ZERO when it stops; one compare per physics frame otherwise |
 | action | nearest-first targets, rite rotation (essence reserve, Exhume / Grave Offering / Rally / Carrion Seed / Mantle / Litany / Detonate / Cleave / Miasma / Prison / Hands / Storm / Siphon / Frost / Spear), corpse rites |
+| the Reaper | `DmAutoCombat._reaper_action` (ctx `family` = "reaper", `player.souls`): Scythe Sweep as the free filler; souls go to Soul Burst (five in the blast, or a boss / elite with 14+ souls), Reap (a knot of three in the cone, a boss / elite, or 22+ souls), Harvest Spin (three on her) and Scythe Throw (a knot or an elite at range); while under 60 % health she keeps the 4 souls an escape needs; under 35 % health with a foe within 4.5 m she Wraith Walks straight away from it, and with 24+ souls she Wraith Walks to a foe 6-14 m off. She walks in to the sweep's 3.4 m reach like any melee primary |
 | movement | leave telegraphs and hostile pools first, close to the primary's range, back off a pack, evade a wind-up, then hold |
 | extras | Healing flask under 42 % hp (belt, host), 2 %/s regen for 5 s after a hit |
 

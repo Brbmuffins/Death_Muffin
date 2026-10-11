@@ -21,6 +21,13 @@ every other model, and every winged or spectral body, stays `cull_disabled` (hai
 Only the nearest enemies cast into the moon shadow (`DmCasterBudget`, counts per preset in `DmGraphicsPreset`, polled at 2 Hz by `DmNextPerf`); the hero, thralls and bosses always cast.
 The boss light and the shared Binbun flash light are `visible = false` while their energy is zero.
 
+## Creature animation (`dm_creature.gd`)
+The AnimationPlayer is advanced by hand (`update(dt)`: animation LOD, hitstop). Blends: swing in over 0.3 x its wind-up (0.06-0.14 s), flinch 0.09, death 0.12, back to the loop 0.2, idle/walk/run 0.28.
+Walk and run are stride-matched (`set_ground_speed`, allocation-free plan). Idle starts at a random phase and +-8% rate per non-hero body so a crowd does not breathe in step.
+A procedural layer rides the single model node (no skeleton work, `_fx_step` runs only while one is active, `busy()` keeps it at full rate): hit recoil (`react`, fired by a fresh `set_flash(1)`
+and by `flinch`), strike lunge timed to the clip's impact (`play_strike`; the hounds, which have no attack clip, lunge and bite with the body alone), `topple` for rigs with no death clip
+(eased 0.45 s, then the pose freezes), `set_rise` (enemy and thrall spawn climb). Boss swings use `play_strike` so a 6.6 s clip never plays out its tail. Tests: `tests/game/anim_run.gd`.
+
 ## Tests
 Suites in `godot/tests/`: `game/` (auto combat, gather, labor, graphics presets), `rewards/`, `rules-loot/`, `next_bag/`, `next_perfctl/`
 and the `next_*` suites that exercise these classes through DmNextGame. Run one with

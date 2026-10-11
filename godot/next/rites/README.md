@@ -15,7 +15,7 @@ wailing_skull, ivory_cleave, bone_storm, soul_siphon, grave_step, veil_step, gra
 ossuary_wall, command_rend, dirge, plague_bloom. Numbers come from the shared rules (`DmAbilities`, `DmSimData`, `DmCombatData`, `abilities.json`), not from the modules.
 
 Other files: `dm_rite_hotbar.gd` (`DmRiteHotbar.rite_for_slot` / `wire(game)`: LMB = kit `defaultPrimary`, 1-4 = `defaultLoadout`, RMB = kit `rmb`,
-slot 6 / R = the discipline's signature at level 10), `dm_rite_gestures.gd` (cast gestures), `dm_rite_legends.gd` (legendary-set effects),
+slot 6 / R = the discipline's signature at level 10), `dm_rite_gestures.gd` (cast gestures; the Reaper's rites play the Mourner rig's own combat clips, `DmAvatar.REAPER_CLIPS`: sweep / spin = `sweep`, reap = `slam`, throw = `flick`, wraith walk = `channel`, soul burst = `summon`, each timed so its release frame lands on the cast and played faster the shorter the rite's cooldown got, e.g. under haste), `dm_rite_legends.gd` (legendary-set effects),
 `game/dm_rite_fx.gd` (`DmRiteFx`, all visuals and sounds).
 
 ## Flow (DECISIONS.md D1)
@@ -25,7 +25,7 @@ slot 6 / R = the discipline's signature at level 10), `dm_rite_gestures.gd` (cas
 3. Host pays essence and cooldown (`apply_cast_cost`), `module.resolve` does the damage / statuses / corpse use, then `broadcast`s events.
 4. Every peer (host and solo included) plays each event once via `module.play` and emits `event_played`; `hit_number(pos, amount, crit)` feeds floating numbers.
 5. Vitals live on the host. When the body has `DmPlayerRules` vitals the caster works ON them (`shares_vitals()`): one essence pool the HUD, rites and brews share.
-   The owner receives `{essence, max_essence, cooldowns, alive}` by RPC (10 Hz while essence changes). Host hook: `hit_resolved(rite, enemy_id, amount, crit, killed)`.
+   The owner receives `{essence, max_essence, cooldowns, alive, souls, soulsMax}` by RPC (10 Hz while essence or souls change; a joiner's HUD reads its Soul Harvest meter from it). Host hook: `hit_resolved(rite, enemy_id, amount, crit, killed)`.
 
 ## Adding a rite
 1. `rite_<id>.gd`: `extends DmRiteModule`, `func _init(): id = "<id>"` (`steps = true` if it ticks on the host). Modules are shared singletons: per-caster state in `c.mem(id)`.

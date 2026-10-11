@@ -6,8 +6,8 @@ extends RefCounted
 ##
 ## Rules:
 ##   gate      settings_store.can_use_auto_combat() (the character's `auto_combat_allowed`) AND settings["auto_combat"] (Easy only, the store enforces it)
-##   yields    to a walk (click / WASD / held key), a click target, a queued cast, an open panel, gathering, a dead hero (and a non-necromancer: that
-##             family's rules are not in the rebuild)
+##   yields    to a walk (click / WASD / held key), a click target, a queued cast, an open panel, gathering, a dead hero (and a family other than the
+##             necromancers and the Reaper: those rules are not in the rebuild)
 ##   action    every ACT_MS: one `select_action` (rite rotation, corpse rites, target priority) and one cast; a Healing flask under 42 % hp
 ##   movement  every MOVE_MS: `select_movement` (leave telegraphs / hostile pools first, close to the primary's range, back off a pack), sent as a
 ##             direction intent (re-sent every RESEND_MS, one ZERO when it stops); 2 %/s regen for 5 s after a hit (the old game loop's Easy sustain)
@@ -78,7 +78,7 @@ func tick(now: float) -> void:
 	var dt := minf((now - _last_ms) / 1000.0, 0.5) if _last_ms > 0.0 else MOVE_MS / 1000.0
 	_last_ms = now
 	var b: DmHeroBody = game.local_body()
-	if b == null or not b.alive or not allowed() or b.family != "necromancer" or game.bosses == null:
+	if b == null or not b.alive or not allowed() or (b.family != "necromancer" and b.family != "reaper") or game.bosses == null:
 		_release()
 		return
 	var c := b.get_node_or_null("Rites") as DmRiteCaster
@@ -184,6 +184,8 @@ func _fill(b: DmHeroBody, c: DmRiteCaster, p: Vector3, now: float) -> Dictionary
 	pl["maxEssence"] = b.resource_max
 	pl["hp"] = b.hp
 	pl["maxHp"] = b.max_hp
+	pl["souls"] = int(c.p.get("souls", 0)) if not c.p.is_empty() else 0
+	_ctx["family"] = b.family
 	_ctx["enemies"] = _enemies
 	_ctx["corpses"] = _corpses
 	_ctx["boss"] = _boss

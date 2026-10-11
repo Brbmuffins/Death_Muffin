@@ -317,15 +317,28 @@ func spawn_group(pos: Vector3, heroes: Array, room: int, lead: String = "", rost
 	return made
 
 
+## The hero levels the world scales to. Solo: the heroes' own (the highest wins, DmEnemyStats.area_level). In a party the world follows the
+## PARTY LEADER (the host) whoever is standing where, so a joiner who is stronger, weaker or not yet profiled never moves the enemies' level.
+func scaling_levels(heroes: Array) -> Array:
+	var levels: Array = []
+	if heroes.is_empty():
+		return levels
+	var lead: DmHeroBody = game.local_body() if game.session.get_bodies().size() > 1 else null
+	if lead != null and lead.is_inside_tree():
+		levels.append(float(lead.character.get("level", 1)))
+		return levels
+	for h in heroes:
+		levels.append(float((h as DmHeroBody).character.get("level", 1)))
+	return levels
+
+
 ## Host: create one enemy (replicated) and return it. `heroes` only feeds the level / party scaling. `mult` overrides the computed scaling
 ## ({level, hp, dmg}: the hp / damage multipliers as DmEnemy.hp_mult / damage_mult): a Risen raised by an acolyte or a deacon is as strong as its raiser.
 ## `over` (optional): area (the ground the enemy counts as for level scaling and `dm_area`; a boss's adds belong to the boss's
 ## area), depth (the Depths run: its level, and full Wave Speed ramp like the sim's instance), aggro / leash (metres), affixes (meta),
 ## affix_list (PackedStringArray of elite affixes; an elite without one rolls its own: the Omen's forced affix, else one of four, + the Depths' extras).
 func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false, mult: Dictionary = {}, over: Dictionary = {}) -> DmEnemy:
-	var levels: Array = []
-	for h in heroes:
-		levels.append(float((h as DmHeroBody).character.get("level", 1)))
+	var levels := scaling_levels(heroes)
 	var spawn_area := String(over.get("area", "")) if String(over.get("area", "")) != "" else area_id
 	var level := DmEnemyStats.area_level(spawn_area, levels, float(vow_fx.get("levels", 0.0)), float(over.get("depth", 1.0)))   # Elder Dead: + levels
 	var tier := DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, 1e9 if over.has("depth") else _since_arrival)) if wave_tier > 0.0 else {"enemyHpMult": 1.0, "enemyDamageMult": 1.0}

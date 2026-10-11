@@ -90,6 +90,8 @@ export interface KillGroup {
   goldMult: number;
   /** Shard multiplier (the Omen of the Tolling). */
   shardMult: number;
+  /** A party kill the member was not paid for (dead or out of range): it counts toward the member's area kills and seals, and earns no XP, gold or shards. */
+  objective?: boolean;
   n: number;
 }
 export interface BossKill {
@@ -144,7 +146,7 @@ export function parseKillReport(raw: unknown): KillReport | null {
     groups.push({
       area: x.area, def: x.def, level: int(x.level, 1, 2000, 1), elite: x.elite === true || x.elite === 1, tier: int(x.tier, 0, 99, 0),
       diff: typeof x.diff === 'string' ? x.diff : 'medium', rank: int(x.rank, 0, 99, 0),
-      xpMult: real(x.xpMult, 0, 50, 1), goldMult: real(x.goldMult, 0, 50, 1), shardMult: real(x.shardMult, 0, 50, 1), n,
+      xpMult: real(x.xpMult, 0, 50, 1), goldMult: real(x.goldMult, 0, 50, 1), shardMult: real(x.shardMult, 0, 50, 1), ...(x.objective === true ? { objective: true } : {}), n,
     });
   }
   const bosses: BossKill[] = [];
@@ -299,6 +301,8 @@ export interface KillContext {
   /** The highest floor already cleared (proven), so a clear needs its predecessor. */
   maxCleared: number;
   staff: boolean;
+  /** A party member's report (the host sends it): kills in a ground the member has not opened still count (being carried counts) and the enemy level is the host's world's. */
+  carried?: boolean;
 }
 export interface Evaluation {
   credits: Credits;
@@ -310,6 +314,9 @@ export interface Evaluation {
   depthProved: number;
   findings: Finding[];
 }
+
+/** The level a carried (party) kill's world may reach: the host's scaled grounds follow the host, whose level is not the member's. */
+const CARRIED_LEVEL_CEILING = 200;
 
 const emptyCredits = (): Credits => ({ kills: {}, xp: 0, gold: 0, shards: 0, prelate: 0 });
 
@@ -338,10 +345,10 @@ export function evaluateKillReport(report: KillReport, ctx: KillContext): Evalua
   const ok: Ok[] = [];
   const rejected = { ground: 0, kind: 0, level: 0, difficulty: 0 };
   for (const g of report.groups) {
-    if (!isCombatGround(g.area) || !groundOpen(g.area, ctx.unlocked)) { rejected.ground += g.n; continue; }
+    if (!isCombatGround(g.area) || !(groundOpen(g.area, ctx.unlocked) || (ctx.carried && g.area !== 'depths'))) { rejected.ground += g.n; continue; }
     const id = g.area as AreaId;
     if (!(g.def in ENEMIES) || ENEMIES[g.def as EnemyId].inert || !rosterIds(id, ctx.deepest + DEPTHS_AUTHORITY.slack).has(g.def)) { rejected.kind += g.n; continue; }
-    if (g.level > maxEnemyLevel(id, heroLevel, ctx.ascension, ctx.deepest)) { rejected.level += g.n; continue; }
+    if (g.level > maxEnemyLevel(id, ctx.carried ? Math.max(heroLevel, CARRIED_LEVEL_CEILING) : heroLevel, ctx.ascension, ctx.deepest)) { rejected.level += g.n; continue; }
     if (!isDifficulty(g.diff)) { rejected.difficulty += g.n; continue; }
     ok.push({ ...g, id, diffId: g.diff as Difficulty });
   }
@@ -387,6 +394,8 @@ export function evaluateKillReport(report: KillReport, ctx: KillContext): Evalua
     budget -= n;
     if (n <= 0) continue;
     killsAccepted += n;
+    credits.kills[g.id] = (credits.kills[g.id] ?? 0) + n;
+    if (g.objective) continue;
     const xpMult = Math.min(g.xpMult, caps.xp);
     const goldMult = Math.min(g.goldMult, caps.gold);
     const xpEach = Math.round(Math.round(killXpBase(g.def as EnemyId, g.level, g.elite, Math.min(g.tier, WAVE_UPGRADE.maxTier), g.diffId)) * xpMult);
@@ -394,7 +403,6 @@ export function evaluateKillReport(report: KillReport, ctx: KillContext): Evalua
     credits.xp += xpEach * n;
     credits.gold += goldEach * n;
     if (g.elite) credits.shards += Math.ceil(ELITE_SHARDS_MAX * Math.min(g.shardMult, caps.shard)) * n;
-    credits.kills[g.id] = (credits.kills[g.id] ?? 0) + n;
   }
   if (overRate > 0) findings.push({ kind: 'kill_rate', dropped: overRate, bucket: Math.floor(ctx.killBucket) });
 

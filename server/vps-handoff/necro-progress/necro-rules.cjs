@@ -1380,8 +1380,9 @@ function applySave(state, input, opts) {
   let budget = NECRO_LIMITS.killsPerSave;
   let kills = 0;
   for (const id of AREA_ORDER) {
-    const n = Math.min(budget, clampInt(input.areaKills?.[id], 0, budget));
-    if (!n || AREAS[id].safe || !isOpen(s, id, opts)) continue;
+    let n = Math.min(budget, clampInt(input.areaKills?.[id], 0, budget));
+    if (!isOpen(s, id, opts)) n = Math.min(n, clampInt(opts?.backed?.[id], 0, n));
+    if (!n || AREAS[id].safe) continue;
     s.areaKills[id] = (s.areaKills[id] ?? 0) + n;
     budget -= n;
     kills += n;

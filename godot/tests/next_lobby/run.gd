@@ -154,6 +154,9 @@ func _part_host_join() -> void:
 	check(p.busy == "creating", "host: busy while the lobby answers")
 	check(await until(func() -> bool: return p.mode == DmNextParty.HOST, 8.0), "host: solo becomes a hosted session", str(p.last_error) + " link=" + p.link + " busy=" + p.busy)
 	check(p.code == "" and String(p.info.get("name", "")) == "Open Crypt" and not bool(p.info.get("private", true)), "host: a public session has no code")
+	hg.session.spawn_resolve = func(pt: Vector3) -> Vector3: return Vector3(pt.x, 0.0, 7.0)
+	check(hg.session._spawn_point(1).z == 7.0 and hg.session._spawn_point(0).z != 7.0, "spawn: a joiner's ring point goes through the walkable resolver, the host's own does not")
+	hg.session.spawn_resolve = hg._walkable_spawn
 	check(hg.local_body() == body_before and hg.session.get_bodies().size() == spawner_bodies_before, "host: the running world and the host's body are the same ones")
 	check(hg.session.multiplayer.multiplayer_peer is DmRelayPeer and hg.session.is_host(), "host: the session now rides the relay peer")
 	# a third party lobby client sees it listed
@@ -185,6 +188,7 @@ func _part_host_join() -> void:
 	_checks_after_join(jg)
 	await _part_chat_and_open_closed(jg)
 	await _part_rewards(jg)
+	await _part_polish(jg)
 	await _part_kick(jg, jb)
 	await _part_private_and_full()
 	await _part_drops()
@@ -257,6 +261,108 @@ func _part_rewards(jg: DmNextGame) -> void:
 	var rolls: int = hm.gear_pending()
 	check(rolls == 0, "loot: the host rolled nothing for the joiner")
 	check(await until(func() -> bool: return j.rolls_pending == 0, 8.0), "loot: the joiner's own gear rolls finished")
+
+
+## Co-op polish (owner playtest 2026-10-11): every peer shows every hero's level, the world scales to the party leader, a friend's rites leave
+## another player's thralls and body alone.
+func _part_polish(jg: DmNextGame) -> void:
+	var hb := hg.body_of(1)
+	var jbody := hg.body_of(2)
+	var key := int(ch_j["id"])
+	# ---- levels reach every peer (the joiner's puppets of the others carry no character)
+	check(await until(func() -> bool: return jg.party.levels.has(1) and jg.party.levels.has(2), 5.0), "levels: the host sent its table to the joiner")
+	check(jg.party.level_of(jg.body_of(2)) == int(jg.character["level"]) and jg.party.level_of(jg.body_of(1)) == int(hg.character["level"]), "levels: the joiner shows its own and the host's level")
+	check(hg.party.level_of(jbody) == int(ch_j["level"]) and hg.party.level_of(hb) == int(hg.character["level"]), "levels: the host shows its own and the joiner's level")
+	hg.character["level"] = 31
+	hg.rewards.member_credited.emit(int(ch_h["id"]), {"levels": 1, "xp": 0, "kills": 0})   # the host levelled
+	check(await until(func() -> bool: return jg.party.level_of(jg.body_of(1)) == 31, 5.0), "levels: the host's level-up reaches the joiner's party frame")
+	var m: DmRewardsMember = hg.rewards.members[key]
+	m.prog.character["level"] = 12
+	hg.rewards.member_credited.emit(key, {"levels": 1, "xp": 0, "kills": 0})   # the joiner levelled
+	check(await until(func() -> bool: return jg.party.levels.get(2, 0) == 12, 5.0), "levels: the joiner's level-up reaches every peer's table")
+	check(hg.party.level_of(jbody) == 12 and jbody.character["level"] == 12, "levels: and on the host")
+	# ---- shared objectives: a party kill counts for every member's own area tally, and a joiner's own seal breaks on its own account
+	var hmem: DmRewardsMember = hg.rewards.members[int(ch_h["id"])]
+	var jprog: DmProgression = jg.joiner.prog
+	var need := jprog.unlock_kills(300.0)
+	var hk0 := hmem.prog.kills("graves")
+	var jk0 := jprog.kills("graves")
+	var warren_before := jprog.really_unlocked("ossuary")
+	for i in 3:
+		hg.rewards.on_kill({"def": "robber", "area": "graves", "level": 3.0, "elite": false, "x": hb.position.x, "z": hb.position.z, "killer": jbody})   # the JOINER's kill
+	await hg.rewards.flush()
+	check(await until(func() -> bool: return hmem.prog.kills("graves") >= hk0 + 3, 8.0), "objectives: the joiner's kills count on the host's own tally too (%d -> %d)" % [hk0, hmem.prog.kills("graves")])
+	check(await until(func() -> bool: return jprog.kills("graves") >= jk0 + 3, 8.0), "objectives: and on the joiner's own account (%d -> %d)" % [jk0, jprog.kills("graves")])
+	# the whole party counts: a joiner out of range of the kill gets no XP or loot, but its area tally and the host's both move
+	var far := hb.position + Vector3(60.0, 0.0, 0.0)
+	var xp_before: int = jg.joiner.member.stats["xp_applied"]
+	var drops_before: int = jg.joiner.drops_received
+	var jk1 := jprog.kills("graves")
+	var hk1 := hmem.prog.kills("graves")
+	jbody.teleport(far)
+	await ticks(2)
+	for i in 4:
+		hg.rewards.on_kill({"def": "robber", "area": "graves", "level": 3.0, "elite": false, "x": hb.position.x, "z": hb.position.z, "killer": hb})
+	await hg.rewards.flush()
+	check(await until(func() -> bool: return jprog.kills("graves") >= jk1 + 4, 8.0), "party objective: an out-of-range joiner's tally still counts the 4 kills (%d -> %d)" % [jk1, jprog.kills("graves")])
+	check(hmem.prog.kills("graves") >= hk1 + 4, "party objective: and the host's own tally")
+	check(jg.joiner.member.stats["xp_applied"] == xp_before and jg.joiner.drops_received == drops_before, "party objective: but it earns no XP and no loot for them")
+	check(hg.ui_host == null or hg.ui_host.kills_in("graves") >= 4, "party objective: the host's HUD tally agrees")
+	jbody.teleport(hb.position + Vector3(2.0, 0.0, 0.0))
+	jprog.local["areaKills"]["graves"] = need   # the seal check itself, on the joiner's account
+	var toasts := []
+	jg.joiner.event.connect(func(_id: String, ctx: Dictionary) -> void: toasts.append(String(ctx.get("text", ""))))
+	jg.joiner._check_unlocks()   # (the backend owns the unlock: with only 9 real kills it takes the flag back at the next sync)
+	check(not warren_before and toasts.any(func(t: String) -> bool: return t.contains("A seal breaks: ")), "objectives: the joiner's own seal check runs and announces a broken seal once its tally is in", str(toasts))
+	# ---- the world scales to the party leader, wherever the stronger friend stands
+	jbody.character["level"] = 60
+	hb.character["level"] = 25
+	var heroes: Array = [jbody, hb]
+	check(hg.director.scaling_levels(heroes) == [25.0], "scaling: a party of 60 and 25 scales to the leader (%s)" % str(hg.director.scaling_levels(heroes)))
+	check(hg.director.scaling_levels([jbody]) == [25.0], "scaling: and to the leader even when only the friend is in the area")
+	var e := hg.director.spawn("robber", hb.position, heroes, false, {}, {"area": "cloister"})
+	check(e != null and int(e.get_meta(&"dm_level", 0.0)) == 25, "scaling: a Cloister dead rises at the leader's level 25, not the friend's 60 (%s)" % (str(e.get_meta(&"dm_level", 0.0)) if e != null else "-"))
+	if e != null:
+		e.queue_free()
+	jbody.character["level"] = 12
+	hb.character["level"] = 31
+
+	# ---- a friend's rites do not hurt another player's thralls or body
+	check(await until(func() -> bool: return jbody.get_node_or_null("Thralls") != null and hb.get_node_or_null("Rites") != null, 5.0), "friendly fire: both bodies have their legion and caster")
+	var th := jbody.get_node("Thralls") as DmThrallHost
+	var spot := hb.position + Vector3(2.0, 0.0, 0.0)
+	var mine: Array = []
+	for i in 3:
+		hg.corpses.add_corpse(spot.x + i * 0.4, spot.z, "normal", "robber", false, 0.0, 1.0, hg.area_id)
+		var r := th.raise({"kind": "warrior", "cap": 6.0, "hp": 400.0, "damage": 10.0, "attackSpeedMult": 1.0}, spot)
+		if r["ok"]:
+			mine.append(r["thralls"][0])
+	check(mine.size() >= 2, "friendly fire: the joiner has thralls to protect (%d)" % mine.size())
+	jbody.teleport(spot)
+	hb.teleport(spot + Vector3(-1.0, 0.0, 0.0))
+	var foe := hg.director.spawn("robber", spot + Vector3(1.0, 0.0, 0.0), [hb], false, {}, {})
+	await ticks(30)
+	var hp0: Array = mine.map(func(t: DmThrall) -> float: return t.hp)
+	var jhp0 := jbody.hp
+	var caster := hb.get_node("Rites") as DmRiteCaster
+	for rite in DmRiteRegistry.MODULES.keys():
+		if rite in ["black_litany", "grave_step", "veil_step", "wraith_walk"]:
+			continue   # black litany spends the caster's OWN legion; the others only move the caster
+		caster.p["resource"]["value"] = caster.p["resource"]["max"]
+		caster.p["cooldowns"].clear()
+		caster.request_cast(rite, spot, -1, 1)
+		await ticks(4)
+	await ticks(60)
+	var hurt := 0
+	for i in mine.size():
+		if is_instance_valid(mine[i]) and mine[i].hp < hp0[i] - 0.01:
+			hurt += 1
+	check(hurt == 0, "friendly fire: none of the joiner's thralls took damage from the host's rites (%d hurt)" % hurt)
+	check(jbody.hp >= jhp0 - 0.01, "friendly fire: nor the joiner's body")
+	check(foe == null or not is_instance_valid(foe) or foe.hp < foe.max_hp, "friendly fire: (the rites did hit the enemy, so they were cast)")
+	for t in mine:
+		if is_instance_valid(t):
+			t.kill("test")
 
 
 func _part_kick(jg: DmNextGame, jb: Node) -> void:

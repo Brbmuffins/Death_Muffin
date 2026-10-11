@@ -441,11 +441,12 @@ func record_prelate_kill() -> void:
 # --- Kills / unlocks / shards -----------------------------------------------------
 
 ## wave_tier < 0 = use the active tier (the TS default argument).
-func record_kill(area: String, wave_tier: float = -1.0) -> void:
+## `carried`: a party member's kill the host's backend credited (it counts in a hall this character has not opened).
+func record_kill(area: String, wave_tier: float = -1.0, carried: bool = false) -> void:
 	if wave_tier < 0:
 		wave_tier = float(local["waveTierActive"])
-	# Dev access banks kills in sealed halls; without it a sealed hall cannot be entered.
-	if not dev_access and not really_unlocked(area):
+	# Dev access banks kills in sealed halls; without it a sealed hall cannot be entered, unless a party carries this character through it.
+	if not carried and not dev_access and not really_unlocked(area):
 		return
 	local["areaKills"][area] = int(DmProgUtil.nn(local["areaKills"].get(area), 0)) + 1
 	local["totalKills"] += 1

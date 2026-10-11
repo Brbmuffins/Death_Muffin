@@ -825,7 +825,7 @@
    "essenceCost": 0,
    "range": 3.4,
    "radius": 3.4,
-   "power": 0.9
+   "power": 1.2
   },
   "scythe_throw": {
    "id": "scythe_throw",

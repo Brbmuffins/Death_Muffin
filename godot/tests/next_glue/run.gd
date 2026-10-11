@@ -2,7 +2,7 @@ extends SceneTree
 ## Integration-glue suite (godot/next): the gaps the rebuild's tracks found between their systems.
 ## godot --headless --path godot --script res://tests/next_glue/run.gd
 ##   1 damage-taken multipliers applied once by take_damage   2 damage kinds in the hit contract   3 the hero receives enemy effects (chill/root/pull)
-##   4 Risen requests (acolyte unbind, deacon raise)          5 host-only cues reach clients           6 one essence pool
+##   4 Risen requests (acolyte unbind, deacon raise)          5 host-only cues (and a joiner's souls) reach clients   6 one essence pool
 
 const DT := 1.0 / 60.0
 
@@ -421,6 +421,24 @@ func _gap5() -> void:
 	check(int(seen["h"].get(&"unbind", 0)) == 1 and int(seen["c"].get(&"unbind", 0)) == 1, "G5: unbind seen once on the host and once on the client (%d / %d)" % [seen["h"].get(&"unbind", 0), seen["c"].get(&"unbind", 0)])
 	check(not ac.unbound.is_empty() and cg.director.enemy_by_id(DmWaveDirector.id_of(ac.unbound[0])) != null, "G5: the Risen from the unbind exists on the client too")
 	check(hg.enemy_fx.stats["cue"] - h0 == 3 and cg.enemy_fx.stats["cue"] - c0 == 3, "G5: each peer's DmEnemyFx drew exactly the 3 cues (%d host / %d client)" % [hg.enemy_fx.stats["cue"] - h0, cg.enemy_fx.stats["cue"] - c0])
+	# Soul Harvest for a joiner (bug report #9013): the host banks the joiner's own kills on its hero, and the joiner's HUD meter follows
+	var jkey := -cg.session.get_my_id()
+	var jm := DmRewardsMember.make(jkey, cg.session.get_my_id(), cb, null, 1, {"id": "gravecaller", "family": "necromancer"})
+	jm.remote = true
+	hg.rewards.add_member(jm)
+	check(await until(func() -> bool: return cb.get_node_or_null("Rites") != null and cb.alive, 3.0), "G5: the joiner's hero has its caster on the host")
+	var cself := cg.local_body()
+	var host_souls := float(hh.p["souls"])
+	cb.p["souls"] = 0.0
+	hg.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": cb.position.x, "z": cb.position.z, "killer": cb})
+	check(float(cb.p["souls"]) == 1.0 and float(hh.p["souls"]) == host_souls, "G5: a joiner's own kill banks a soul on its hero (not the host's) (%s)" % str(cb.p["souls"]))
+	check(await until(func() -> bool: return float(DmNextHudVm.soul_state(cself).get("souls", 0.0)) == 1.0, 3.0), "G5: the joiner's HUD meter reads 1 soul")
+	cb.p["souls"] = float(cb.p["soulsMax"]) - 1.0
+	hg.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": false, "x": cb.position.x, "z": cb.position.z, "killer": cb})
+	check(await until(func() -> bool:
+		var s := DmNextHudVm.soul_state(cself)
+		return s.has("soulsMax") and DmAbilities.empowered(s, "marrow_spear"), 3.0), "G5: the joiner's meter fills and its Marrow Spear shows as charged")
+	hg.rewards.members.erase(jkey)
 	Engine.time_scale = 1.0
 	hg.queue_free()
 	cg.queue_free()

@@ -115,7 +115,7 @@ func on_credit(delta: Dictionary) -> void:
 	var lv := prog.add_xp(xp)
 	var areas: Array = delta.get("areas", [])
 	for i in kills:
-		prog.record_kill(String(areas[i]) if i < areas.size() else shell.area_id)
+		prog.record_kill(String(areas[i]) if i < areas.size() else shell.area_id, -1.0, true)
 	kills_seen += kills
 	member.stats["xp_applied"] += int(xp)
 	member.stats["kills_accepted"] += kills
@@ -123,7 +123,20 @@ func on_credit(delta: Dictionary) -> void:
 	if lv > 0:
 		var lvl := int(prog.character["level"])
 		event.emit("banner", {"title": "Level %d" % lvl, "sub": "The dead answer you more readily", "ms": 2600})
+	_check_unlocks()
 	member_credited.emit(hero_id, delta)
+
+
+## A seal on THIS player's account breaks once its own kills are in (the same rule as DmNextProgress for a host): the party's kills the host
+## credited to this member count towards it, so a joiner opens its own doors by playing in someone else's world.
+func _check_unlocks() -> void:
+	for id in DmContent.area_order():
+		var u: Variant = DmContent.area(String(id)).get("unlock")
+		if u == null or prog.really_unlocked(String(id)):
+			continue
+		if prog.kills(String(u["area"])) >= prog.unlock_kills(float(u["kills"])) and prog.unlock(String(id)):
+			event.emit("toast", {"text": "A seal breaks: %s lies open" % DmContent.area(String(id))["name"], "kind": "good"})
+			psync.flush()
 
 
 ## One drop of THIS member from the host: gold / shards / materials land on the ground at once; gear is rolled by this player's own backend first

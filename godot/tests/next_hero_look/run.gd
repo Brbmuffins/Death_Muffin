@@ -82,6 +82,9 @@ func _run() -> void:
 	var ma := DmAvatar.new()
 	ma.setup(g, 0x8f9ed1, false, "hero_mourner", "necromancer")
 	check(ma._staff != null and not (ra._staff.get_child_count() == ma._staff.get_child_count()), "Reaper: a necromancer with the same body keeps the skull staff")
+	ra.set_equipment({"main_hand": {"item_id": "sword_copper", "rarity": ""}})
+	check(ra._worn.has("main_hand") and ra._worn["main_hand"].obj.has_meta("tip") and ra._worn["main_hand"].obj.get_child_count() == DmGearProps.scythe_model().get_child_count(), "Reaper: a sword in her bag still shows as the scythe in her hand")
+	check(ra.weapon_gesture() == "scythe", "Reaper: ...and she still swings it as a scythe")
 	ra.queue_free()
 	ma.queue_free()
 

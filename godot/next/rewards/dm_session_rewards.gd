@@ -19,6 +19,7 @@ signal ledger_fallback                      ## the backend has no /api/sessions 
 signal member_credited(character_id: int, delta: Dictionary)   ## {xp, kills, levels, batch}: applied from an accepted report
 signal member_refused(character_id: int, reason: String)       ## the backend did not credit this member's part of a batch
 signal batch_reported(batch: int, reply: Variant)
+signal kill_counted(character_id: int, area: String)   ## a party kill that only counts toward the member's area tally / seals (it was dead or out of range: no XP, gold or loot)
 signal kill_earned(character_id: int, enemy_def: String, pos: Vector3)
 signal killer_paid(character_id: int, enemy_def: String, enemy: Node)        ## the member's OWN blow ended it (Soul Harvest souls, DmNextMeta); `enemy` may be null (tests)
 signal chain_tier_up(character_id: int, tier: Dictionary)      ## the member's Kill Chain crossed into a new tier (banner, sound)
@@ -337,7 +338,7 @@ func _credit(m: DmRewardsMember, claim: Dictionary, kills: int, batch: int) -> v
 	var xp := DmMath.js_round(float(claim["xp"]) * frac)
 	var lv: int = m.prog.add_xp(float(xp))
 	for i in kills:
-		m.prog.record_kill(String(claim["areas"][i]), wave_tier)
+		m.prog.record_kill(String(claim["areas"][i]), wave_tier, m.remote)
 	m.stats["kills_accepted"] += kills
 	m.backend_accepted += kills
 	m.stats["xp_applied"] += xp
@@ -494,6 +495,7 @@ func on_kill(ev: Dictionary) -> void:
 			continue
 		var dist := DmSimMath.hypot(kx - m.pos().x, kz - m.pos().z)
 		if not _rules.boss_reward_eligible(m.alive(), dist):
+			_count_only(m, ev)
 			continue
 		_reward(m, ev, ev.get("killer") != null and ev["killer"] == m.body)
 
@@ -534,7 +536,10 @@ func on_boss_defeated(ev: Dictionary) -> void:
 		if first_item != null:
 			_drop_items(m, at, [first_item], level, "first_kill")
 		m.stats["xp_applied"] += int(reward["xp"])
-		m.stats["levels"] += m.prog.add_xp(float(reward["xp"]))
+		var lv: int = m.prog.add_xp(float(reward["xp"]))
+		m.stats["levels"] += lv
+		if m.remote:   # a joiner's XP lives on its own client: DmNextParty relays member_credited to it (no kills: the boss is in the report)
+			member_credited.emit(m.character_id, {"xp": int(reward["xp"]), "kills": 0, "levels": lv, "batch": 0, "areas": []})
 		boss_earned.emit(m.character_id, id, first, at)
 
 
@@ -552,6 +557,21 @@ func on_surge_cleared(ev: Dictionary) -> void:
 			continue
 		_drop_items(m, at, [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge")
 		_ground(m, {"kind": "gold", "amount": gold}, at)
+
+
+## The whole party's objectives: a kill the member is not paid for (dead, or out of range) still counts toward its area tally and seals. It rides
+## the member's own report as an `objective` group (the backend credits the area kill and nothing else), and the accepted count comes back through
+## the same credit path as any kill, so the progression's counters move only for what the backend accepted.
+func _count_only(m: DmRewardsMember, ev: Dictionary) -> void:
+	var area := String(ev["area"])
+	if bool(DmContent.area(area)["safe"]):
+		return
+	m.reporter.kill({"area": area, "def": ev["def"], "level": float(ev["level"]), "elite": bool(ev["elite"]), "tier": wave_tier, "diff": difficulty, "rank": ascension,
+		"xpMult": 1.0, "goldMult": 1.0, "shardMult": 1.0, "objective": true})
+	m.pending_areas.append(area)
+	kill_counted.emit(m.character_id, area)
+	if m.reporter._groups.size() >= EARLY_FLUSH_GROUPS and not _busy:
+		flush()
 
 
 func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:

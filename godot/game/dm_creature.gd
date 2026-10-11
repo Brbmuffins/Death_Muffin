@@ -13,6 +13,16 @@ const FADE_RETURN := 0.2
 const IDLE_STAND_IN := 0.2
 const FLINCH_SECONDS := 0.5
 const FLINCH_SPEED := 1.35
+## Blend times (seconds) per transition: a swing blends in over a fraction of its wind-up (never longer than FADE_STRIKE_MAX), a flinch and a death
+## are quick but never a one-frame cut, and everything returns to the loop over FADE_RETURN.
+const FADE_STRIKE_MAX := 0.14
+const FADE_STRIKE_MIN := 0.06
+const FADE_HURT := 0.09
+const FADE_DEATH := 0.12
+## Procedural layer on the body (one Node3D, no skeleton work): hit recoil, strike lunge, tip-over and the thrall's climb out of the ground.
+const KICK_S := 0.3
+const LUNGE_SETTLE_S := 0.3
+const TOPPLE_S := 0.45
 const FLASH_LEVELS := 8
 const FLASH_COLOR := 0xfff0dc
 const COMBAT := ["slam", "sweep", "flick", "channel", "summon"]
@@ -43,6 +53,8 @@ var toppled := 0.0
 var steady_every := 1
 var last_plan: Dictionary = {}
 var base_height := 1.0
+## Idle desync: a crowd that spawns together must not breathe in step (every shipped idle is the same 15 s Tripo loop).
+var _idle_k := 1.0
 
 var _model: Node3D
 var _meshes: Array = []        # [{mi: MeshInstance3D, surf: int, op: ShaderMaterial, fade: ShaderMaterial or null, src: Material}]
@@ -77,6 +89,18 @@ var _settled_t := 0.0
 var _recheck_t := 0.0
 var _steady_n := 0
 var _fade_loco := FADE_LOCOMOTION
+# procedural body layer (see _fx_step); `_fx_on` keeps update() running at full rate until it settles
+var _fx_on := false
+var _kick_t := -1.0
+var _kick_amp := 1.0
+var _kick_side := 1.0
+var _lunge_t := -1.0
+var _lunge_in := 0.5
+var _lunge_len := 0.0
+var _lunge_pitch := 0.0
+var _topple_t := -1.0
+var _rise_k := 1.0
+var _stride: Dictionary = {}
 # props
 var _pending: Array = []       # [bone, obj, dir, follow, fit]
 var _attached: Array = []      # {obj, att, dir, follow, base_q, fit, calibrating}
@@ -145,7 +169,10 @@ func _init(model_slug: String, o: Dictionary = {}) -> void:
 		_prep_clips()
 		ap.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	loaded = true
+	if not bool(o.get("in_place", false)):
+		_idle_k = randf_range(0.92, 1.08)
 	_start_loop(false)
+	_desync_idle()
 
 # ----------------------------------------------------------------------------------------------------------------- materials
 
@@ -249,6 +276,8 @@ func _push_gear() -> void:
 func set_flash(v: float) -> void:
 	if absf(v - _flash_v) < 0.02:
 		return
+	if v > 0.9 and _flash_v < 0.5:
+		react(1.0)   # every fresh hit recoils the body, whoever flashed it (enemy, thrall, boss)
 	_flash_v = v
 	var level := roundi(clampf(v, 0.0, 1.0) * FLASH_LEVELS)
 	if level == _flash_level:
@@ -403,6 +432,18 @@ func _resolve(anim: String) -> String:
 func _stand_in(clip: String) -> bool:
 	return _loop == "idle" and clip != "" and clip != "idle"
 
+## Playback speed of a base loop: the walk-only rigs shuffle at a crawl for idle, everyone else idles at a per-body rate (+-8%).
+func _loop_sp(clip: String, speed: float) -> float:
+	if _stand_in(clip):
+		return IDLE_STAND_IN
+	return speed * _idle_k if clip == "idle" else speed
+
+## First start only: each body begins its idle at its own point of the loop.
+func _desync_idle() -> void:
+	if ap == null or _idle_k == 1.0 or _current != "idle" or not ap.has_animation("idle"):
+		return
+	ap.seek(randf() * ap.get_animation("idle").length, true)
+
 func _is_stride(n: String) -> bool:
 	return n == "walk" or n == "run"
 
@@ -414,7 +455,7 @@ func _start_loop(fade: bool, fade_s: float = -1.0) -> void:
 	var nxt := _resolve(_loop)
 	if nxt == "":
 		return
-	var sp := IDLE_STAND_IN if _stand_in(nxt) else _loop_speed
+	var sp := _loop_sp(nxt, _loop_speed)
 	if nxt == _current and _one_shot == "" and ap.is_playing():
 		ap.speed_scale = sp
 		return
@@ -434,7 +475,7 @@ func set_loop(anim: String, speed: float = 1.0) -> void:
 	_loop_speed = speed
 	if _current != "" and _loop == anim:
 		if _one_shot == "":
-			ap.speed_scale = IDLE_STAND_IN if _stand_in(_current) else speed
+			ap.speed_scale = _loop_sp(_current, speed)
 		return
 	_loop = anim
 	if _one_shot == "":
@@ -442,7 +483,7 @@ func set_loop(anim: String, speed: float = 1.0) -> void:
 
 ## True while a one-shot (swing, cast, death) is playing: the view layer never throttles those.
 func busy() -> bool:
-	return _one_shot != ""
+	return _one_shot != "" or _fx_on
 
 func one_shot_name() -> String:
 	return _one_shot
@@ -466,16 +507,20 @@ func set_ground_speed(ground: float) -> Dictionary:
 	if _one_shot == "" and absf(ground - _last_ground) < 0.01 * maxf(1.0, ground) and not last_plan.is_empty() and _loop == String(last_plan.clip):
 		return last_plan
 	_last_ground = ground
-	var stride: Dictionary = entry.get("stride") if entry.get("stride") is Dictionary else {}
-	var plan := DmAnimator.plan_loco(stride, world_height(), ground, has("run"), _loco_run)
-	_loco_run = plan.clip == "run"
-	last_plan = plan
-	set_loop(plan.clip, plan.timeScale)
-	return plan
+	if _stride.is_empty() and entry.get("stride") is Dictionary:
+		_stride = entry.get("stride")
+	if last_plan.is_empty():
+		last_plan = {"clip": "walk", "timeScale": 1.0, "stride": 0.0, "residual": 0.0}
+	DmAnimator.plan_into(last_plan, _stride, world_height(), ground, has("run"), _loco_run)
+	_loco_run = last_plan.clip == "run"
+	set_loop(last_plan.clip, last_plan.timeScale)
+	return last_plan
 
 ## A timed strike: the clip's measured impact frame lands `impact_in` seconds from now (strikeTiming).
 func play_strike(anim: String, impact_in: float, follow_through: float = 0.3) -> bool:
-	if not play_once(anim):
+	var played := play_once(anim, 1.0, 0.0, 0.0, clampf(impact_in * 0.3, FADE_STRIKE_MIN, FADE_STRIKE_MAX))
+	_start_lunge(anim, impact_in, played)
+	if not played:
 		return false
 	var nm := _one_shot
 	if nm == "" or nm.begins_with("death"):
@@ -491,7 +536,7 @@ func play_strike(anim: String, impact_in: float, follow_through: float = 0.3) ->
 	return true
 
 ## One-shot overlay (attack / cast / hurt / death / dig ...); returns to the loop after.
-func play_once(anim: String, speed: float = 1.0, duration_s: float = 0.0, start_at: float = 0.0) -> bool:
+func play_once(anim: String, speed: float = 1.0, duration_s: float = 0.0, start_at: float = 0.0, fade_s: float = 0.1) -> bool:
 	if ap == null:
 		return false
 	if anim == "hurt" and has("hurt"):
@@ -507,7 +552,7 @@ func play_once(anim: String, speed: float = 1.0, duration_s: float = 0.0, start_
 	a.loop_mode = Animation.LOOP_NONE
 	var sp := a.length / maxf(0.12, duration_s) if duration_s > 0.0 else speed
 	ap.speed_scale = sp
-	ap.play(nm, 0.08 if _current != "" else 0.0, 1.0)
+	ap.play(nm, fade_s if _current != "" else 0.0, 1.0)
 	ap.seek(minf(start_at, a.length) if start_at > 0.0 else 0.0, true)
 	_one_shot = nm
 	_current = nm
@@ -525,11 +570,13 @@ func play_death() -> bool:
 	var a := ap.get_animation(nm)
 	a.loop_mode = Animation.LOOP_NONE
 	ap.speed_scale = 1.0
-	ap.play(nm, 0.05 if _current != "" else 0.0, 1.0)
+	ap.play(nm, FADE_DEATH if _current != "" else 0.0, 1.0)
 	_one_shot = nm
 	_current = nm
 	_one_shot_end = -1.0
 	_death_clip = nm
+	_kick_t = -1.0
+	_lunge_t = -1.0
 	return true
 
 ## Stand a dead body back up: drop the held death clip and return to the base loop (a respawned hero).
@@ -541,10 +588,16 @@ func revive() -> void:
 	_one_shot_end = -1.0
 	_flinch_t = -1.0
 	_current = ""
+	_topple_t = -1.0
+	toppled = 0.0
+	_fx_on = false
+	if _model != null:
+		_model.transform = Transform3D.IDENTITY
 	_start_loop(false)
 
 ## A short hit-react (the first half-second of the hurt clip), never over a swing, cast or death. Returns false when the rig has no hurt clip.
-func flinch(_strength: float = 0.85) -> bool:
+func flinch(strength: float = 0.85) -> bool:
+	react(strength)
 	if ap == null or not has("hurt"):
 		return false
 	if _one_shot != "":
@@ -553,7 +606,7 @@ func flinch(_strength: float = 0.85) -> bool:
 	var a := ap.get_animation(nm)
 	a.loop_mode = Animation.LOOP_NONE
 	ap.speed_scale = FLINCH_SPEED
-	ap.play(nm, 0.06 if _current != "" else 0.0, 1.0)
+	ap.play(nm, FADE_HURT if _current != "" else 0.0, 1.0)
 	_one_shot = nm
 	_current = nm
 	_one_shot_end = minf(a.length, FLINCH_SECONDS * FLINCH_SPEED)
@@ -616,6 +669,112 @@ func has_landed() -> bool:
 		return true
 	return ap.current_animation_position >= landing_time(_death_clip)
 
+# ----------------------------------------------------------------------------------------------------------------- body layer
+
+## A hit recoil: the body kicks back, squashes and rolls a touch, then settles (0.3 s). It rides the one `_model` node, so it costs no skeleton
+## work and plays over any clip (a swing, a walk, a rig that has no hurt clip at all). Heavy bodies move less. Ignored while one is playing.
+func react(strength: float = 1.0) -> void:
+	if _model == null or _kick_t >= 0.0 or _death_clip != "" or _topple_t >= 0.0 or toppled > 0.0:
+		return
+	_kick_t = 0.0
+	_kick_amp = strength * clampf(2.0 / maxf(base_height, 0.5), 0.35, 1.0)
+	_kick_side = 1.0 if randf() < 0.5 else -1.0
+	_fx_on = true
+
+## A strike's body language, timed to the clip's impact: rock back through the wind-up, drive forward on the hit, settle. Rigs with no attack
+## clip (the hounds) lunge and bite with the body alone; a cast only leans.
+func _start_lunge(anim: String, impact_in: float, has_clip: bool) -> void:
+	if _model == null or _death_clip != "" or _topple_t >= 0.0 or toppled > 0.0:
+		return
+	var cast := anim.begins_with("cast")
+	_lunge_t = 0.0
+	_lunge_in = maxf(0.12, impact_in)
+	_lunge_len = 0.0 if cast else base_height * (0.07 if has_clip else 0.22)
+	_lunge_pitch = 0.05 if cast else (0.07 if has_clip else 0.2)
+	_fx_on = true
+
+## Tip a body over (rigs with no death clip): falls backwards in 0.45 s and holds, the pose frozen. `instant` lays it down at once (a late joiner's corpse).
+func topple(instant: bool = false) -> void:
+	if _model == null or _topple_t >= 1.0:
+		return
+	_kick_t = -1.0
+	_lunge_t = -1.0
+	_topple_t = 1.0 if instant else 0.0
+	_fx_on = true
+	_fx_step(0.0)
+
+## The climb out of the ground (a spawning enemy, a raised thrall): the body leans into it until it stands. Call with k = 0..1 while rising; 1 ends it.
+func set_rise(k: float) -> void:
+	if _model == null or (k >= 1.0 and _rise_k >= 1.0):
+		return
+	_rise_k = minf(1.0, k)
+	_fx_on = true
+	_fx_step(0.0)
+
+func rising() -> bool:
+	return _rise_k < 1.0
+
+static func _smooth(x: float) -> float:
+	x = clampf(x, 0.0, 1.0)
+	return x * x * (3.0 - 2.0 * x)
+
+## Folds the live body effects into the `_model` transform (feet at the origin, +Z forward). Runs only while one is active; when none is,
+## the identity (or the final tipped pose) is written once and `_fx_on` drops, so an idle body costs a bool check.
+func _fx_step(dt: float) -> void:
+	var pitch := 0.0
+	var roll := 0.0
+	var sq := 0.0
+	var zo := 0.0
+	var live := false
+	if _kick_t >= 0.0:
+		_kick_t += dt
+		if _kick_t >= KICK_S:
+			_kick_t = -1.0
+		else:
+			var u := _kick_t / KICK_S
+			var f := _smooth(u / 0.16) if u < 0.16 else _smooth(1.0 - (u - 0.16) / 0.84)
+			pitch -= 0.11 * _kick_amp * f
+			roll += 0.04 * _kick_amp * _kick_side * f
+			sq += 0.05 * _kick_amp * f
+			live = true
+	if _lunge_t >= 0.0:
+		_lunge_t += dt
+		var lead := _lunge_in
+		if _lunge_t >= lead + LUNGE_SETTLE_S:
+			_lunge_t = -1.0
+		else:
+			var k: float
+			if _lunge_t < lead * 0.65:
+				k = -0.4 * _smooth(_lunge_t / (lead * 0.65))
+			elif _lunge_t < lead:
+				k = lerpf(-0.4, 1.0, _smooth((_lunge_t - lead * 0.65) / (lead * 0.35)))
+			else:
+				k = 1.0 - _smooth((_lunge_t - lead) / LUNGE_SETTLE_S)
+			zo += _lunge_len * k
+			pitch += _lunge_pitch * k
+			live = true
+	if _rise_k < 1.0:
+		var r := 1.0 - _rise_k
+		pitch += 0.5 * r * r
+		live = true
+	if _topple_t >= 0.0:
+		_topple_t = minf(1.0, _topple_t + dt / TOPPLE_S)
+		toppled = _topple_t
+		pitch = -PI * 0.5 * pow(_topple_t, 1.7)
+		roll = 0.0
+		sq = 0.0
+		zo = 0.0
+		if _topple_t >= 1.0:
+			if ap != null:
+				ap.stop(true)   # the pose freezes where it fell: a corpse needs no more animation work
+		else:
+			live = true
+	_model.rotation = Vector3(pitch, 0.0, roll)
+	_model.scale = Vector3(1.0 + sq * 0.6, 1.0 - sq, 1.0 + sq * 0.6)
+	_model.position = Vector3(0.0, 0.0, zo)
+	if not live:
+		_fx_on = false
+
 ## Animation LOD: seconds between `update` calls for a body at `p`, measured on the ground from the point the camera looks at (the followed
 ## hero / screen centre), not from the camera itself (which sits ~22 m up and back, so everything on screen used to count as mid-distance).
 ## Everything the screen can show (about 1.6 x the camera height, 29 m at the default zoom, 41 m at max) updates every frame (0), the band
@@ -636,6 +795,8 @@ func update(dt_real: float) -> void:
 		return
 	var dt := dt_real * (hitstop_scale if bool(opts.get("hitstop", false)) else 1.0)
 	ap.advance(dt)
+	if _fx_on:
+		_fx_step(dt)
 	if _one_shot != "" and _death_clip == "":
 		if _one_shot_end >= 0.0 and ap.current_animation_position >= _one_shot_end:
 			_one_shot = ""
@@ -789,6 +950,13 @@ func recycle_reset() -> void:
 	_one_shot_end = -1.0
 	_death_clip = ""
 	_flinch_t = -1.0
+	_kick_t = -1.0
+	_lunge_t = -1.0
+	_topple_t = -1.0
+	_rise_k = 1.0
+	_fx_on = false
+	if _model != null:
+		_model.transform = Transform3D.IDENTITY
 	_loop = "idle"
 	_loop_speed = 1.0
 	_current = ""

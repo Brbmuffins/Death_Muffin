@@ -128,6 +128,8 @@ static func select_action(ctx: Dictionary) -> Variant:
 		return null
 	targets = _by_distance(targets)
 	var family: Variant = ctx.get("family")
+	if family == "reaper":
+		return _reaper_action(ctx, targets)
 	if _tr(family) and family != "necromancer":
 		return _new_blood_action(ctx, targets)
 	# Always retain a little essence for player-directed spells. Low essence uses the free generator.
@@ -371,6 +373,73 @@ static func select_action(ctx: Dictionary) -> Variant:
 		if sig == "dirge" and hp_v != null and _tr(max_hp_v) and float(hp_v) < float(max_hp_v) * 0.65:
 			return _action(sig, p_pt)
 	return _action(primary, needle) if needle != null and ready.call(primary) else null
+
+
+## The Reaper (family "reaper", ctx.player.souls = her soul bag): Scythe Sweep is the free filler, souls are spent on the rite that fits the crowd,
+## and Wraith Walk is the way out when she is low (away from the nearest foes) or a soul sink to close on a far target when the bag is full.
+## Priority: escape, Soul Burst (big crowd or a boss / elite, bag well filled), Reap (a knot in the cone), Harvest Spin (surrounded), Scythe Throw
+## (a knot or a boss / elite at range), gap close, Sweep. While hurt she keeps the 4 souls an escape needs.
+static func _reaper_action(ctx: Dictionary, targets: Array) -> Variant:
+	var p: Variant = ctx["player"]
+	var p_pt := {"x": float(_g(p, "x", 0.0)), "z": float(_g(p, "z", 0.0))}
+	var souls := int(_g(p, "souls", 0))
+	var hp_v: Variant = _g(p, "hp", null)
+	var max_hp_v: Variant = _g(p, "maxHp", null)
+	var hurt: float = float(hp_v) / float(max_hp_v) if hp_v != null and _tr(max_hp_v) else 1.0
+	var ready: Callable = ctx["ready"]
+	var nearest: Dictionary = targets[0]
+	var nd: float = nearest["distance"]
+	var walk_cost := int(_ab("wraith_walk").get("soulCost", 4))
+	var reserve := walk_cost if hurt < 0.6 else 0
+	var can := func(id: String, keep := 0) -> bool:
+		return ready.call(id) and souls >= int(_ab(id).get("soulCost", 0)) + keep
+	var crowd := func(centre: Variant, r: float) -> int:
+		var n := 0
+		for e in targets:
+			if _dist(centre, e) <= r + float(e["radius"]):
+				n += 1
+		return n
+	var big := false   # a boss or an elite close enough to be worth spending souls on
+	for e in targets:
+		if (e.has("boss") or _tr(e.get("elite", false))) and float(e["distance"]) <= 7.0:
+			big = true
+			break
+	# Escape: low on health with foes on her, rush straight away from the nearest one.
+	if hurt < 0.35 and nd < 4.5 and can.call("wraith_walk"):
+		var ax: float = p_pt["x"] - (float(nearest["x"]) - p_pt["x"]) / maxf(nd, 0.01) * 9.0
+		var az: float = p_pt["z"] - (float(nearest["z"]) - p_pt["z"]) / maxf(nd, 0.01) * 9.0
+		return {"id": "wraith_walk", "target": {"x": ax, "z": az}}
+	var burst_r := float(_ab("soul_burst")["radius"])
+	if souls >= 10 and can.call("soul_burst", reserve) \
+			and (crowd.call(p_pt, burst_r) >= 5 or (big and souls >= 14) or (souls >= 28 and crowd.call(p_pt, burst_r) >= 2)):
+		return {"id": "soul_burst", "target": _aim(p_pt)}
+	var reap_r := float(_ab("reap")["range"])
+	if can.call("reap", reserve) and nd <= reap_r and (crowd.call(nearest, 3.0) >= 3 or big or souls >= 22):
+		return _action("reap", nearest)
+	if can.call("harvest_spin", reserve) and crowd.call(p_pt, float(_ab("harvest_spin")["radius"])) >= 3:
+		return {"id": "harvest_spin", "target": _aim(p_pt)}
+	var throw_r := float(_ab("scythe_throw")["range"])
+	if can.call("scythe_throw", reserve) and nd <= throw_r and nd > 3.0:
+		var best: Variant = null
+		var best_n := 1
+		for t in targets:
+			if float(t["distance"]) > throw_r:
+				continue
+			var n: int = crowd.call(t, float(_ab("scythe_throw")["radius"]))
+			if n > best_n or (best == null and (t.has("boss") or _tr(t.get("elite", false)))):
+				best = t
+				best_n = n
+		if best != null:
+			return _action("scythe_throw", best)
+	# A full bag walks to the fight rather than waiting for it.
+	if souls >= 24 and nd > 6.0 and nd <= 14.0 and can.call("wraith_walk"):
+		return {"id": "wraith_walk", "target": {"x": float(nearest["x"]), "z": float(nearest["z"])}}
+	var primary: String = str(ctx.get("primary", "scythe_sweep")) if ctx.get("primary") != null else "scythe_sweep"
+	var prim_range: Variant = ctx.get("primaryRange")
+	var reach: float = float(prim_range) if prim_range != null else float(_ab(primary)["range"])
+	if ready.call(primary) and nd <= reach + float(nearest["radius"]):
+		return _action(primary, nearest)
+	return null
 
 
 static func _new_blood_action(ctx: Dictionary, targets: Array) -> Variant:

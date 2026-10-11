@@ -34,6 +34,12 @@ The game pays personal rewards to every living player within `KILL_REWARD_RANGE`
 to the killer (`dm_game_rewards.gd on_kill`). The host applies that proximity rule and sends each member the kills THAT member earned, with
 that member's own multipliers. The backend cannot see positions; it bounds the result with the ledger caps below. A co-op guest earns at the
 host world's Ascension rank: the ledger's existing `COOP_RANK_ALLOWANCE` covers that. Depths floors/chests are solo-only and always dropped from host reports.
+**The whole party shares the objective.** A kill a member is not paid for (dead, or out of range) still counts toward that member's area kills and
+seals: the host sends it as a group with `objective: true`. The ledger credits the area kill and nothing else (no XP, gold or shards). Reports from a
+session are `carried` (`kills.handleReport({carried: true})`): a ground the member has not opened is accepted (the Depths still are not) and the enemy
+level may be the host's. The member's next `necro-progress/save` keeps those ledger-backed area kills even in a sealed ground
+(`kills.necroGuard` hands the save the ledger-backed kills per area as `killsBacked` in audit and enforce; `applySave(..., {backed})` counts
+at most that many in a sealed ground), so the tally persists. No migration.
 Credits land in the member's kill ledger; the member's own `save-progress` / necro saves claim them, exactly as today.
 
 ## Anti-cheat

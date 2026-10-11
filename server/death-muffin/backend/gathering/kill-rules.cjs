@@ -2786,6 +2786,7 @@ function parseKillReport(raw) {
       xpMult: real(x.xpMult, 0, 50, 1),
       goldMult: real(x.goldMult, 0, 50, 1),
       shardMult: real(x.shardMult, 0, 50, 1),
+      ...x.objective === true ? { objective: true } : {},
       n
     });
   }
@@ -2880,6 +2881,7 @@ function killsPerMin(unlocked) {
   }
   return Math.ceil(Math.max(best, AREA_PEAK.graves?.kills ?? 0) * KILLS.RATE_HEADROOM);
 }
+var CARRIED_LEVEL_CEILING = 200;
 var emptyCredits = () => ({ kills: {}, xp: 0, gold: 0, shards: 0, prelate: 0 });
 function groundOpen(area, unlocked) {
   if (area === "depths") return unlocked.includes("warren");
@@ -2897,7 +2899,7 @@ function evaluateKillReport(report, ctx) {
   const ok = [];
   const rejected = { ground: 0, kind: 0, level: 0, difficulty: 0 };
   for (const g of report.groups) {
-    if (!isCombatGround(g.area) || !groundOpen(g.area, ctx.unlocked)) {
+    if (!isCombatGround(g.area) || !(groundOpen(g.area, ctx.unlocked) || ctx.carried && g.area !== "depths")) {
       rejected.ground += g.n;
       continue;
     }
@@ -2906,7 +2908,7 @@ function evaluateKillReport(report, ctx) {
       rejected.kind += g.n;
       continue;
     }
-    if (g.level > maxEnemyLevel(id, heroLevel, ctx.ascension, ctx.deepest)) {
+    if (g.level > maxEnemyLevel(id, ctx.carried ? Math.max(heroLevel, CARRIED_LEVEL_CEILING) : heroLevel, ctx.ascension, ctx.deepest)) {
       rejected.level += g.n;
       continue;
     }
@@ -2964,6 +2966,8 @@ function evaluateKillReport(report, ctx) {
     budget -= n;
     if (n <= 0) continue;
     killsAccepted += n;
+    credits.kills[g.id] = (credits.kills[g.id] ?? 0) + n;
+    if (g.objective) continue;
     const xpMult = Math.min(g.xpMult, caps.xp);
     const goldMult = Math.min(g.goldMult, caps.gold);
     const xpEach = Math.round(Math.round(killXpBase(g.def, g.level, g.elite, Math.min(g.tier, WAVE_UPGRADE.maxTier), g.diffId)) * xpMult);
@@ -2971,7 +2975,6 @@ function evaluateKillReport(report, ctx) {
     credits.xp += xpEach * n;
     credits.gold += goldEach * n;
     if (g.elite) credits.shards += Math.ceil(ELITE_SHARDS_MAX * Math.min(g.shardMult, caps.shard)) * n;
-    credits.kills[g.id] = (credits.kills[g.id] ?? 0) + n;
   }
   if (overRate > 0) findings.push({ kind: "kill_rate", dropped: overRate, bucket: Math.floor(ctx.killBucket) });
   let bossBudget = ctx.staff ? Infinity : Math.floor(ctx.bossBucket);

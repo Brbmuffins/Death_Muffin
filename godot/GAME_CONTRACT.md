@@ -19,7 +19,7 @@ Methods the UI calls: `cast(slot)`, `use_belt(slot)`, `navigate(x, z)`, `set_aut
 cooldowns per slot, buffs, target, boss, wave, kill chain, thralls, minimap, Depths readout; built by `DmNextHudVm`);
 `use_item(id)`, `set_belt(slot, id)`, `set_rites(primary, keys)`, `near_grinder()`, `counsel_busy()`, `counsel_tick_ctx()`,
 `stop_gathering(reason)`, `afk_active()`, `afk_status()`, `start_afk(node_id)`, `stop_player()`, `talk_key()`, `travel(area_id)`,
-`dial_wave(delta)`, `send_chat(text)`, `leave_world()`, `class_changed(character)`, `party_create()`, `party_join(code)`,
+`dial_wave(delta)`, `send_chat(text)`, `leave_world()`, `switch_character()`, `class_changed(character)`, `party_create()`, `party_join(code)`,
 `party_leave()`, `summon_boss(id)`, `summon_boss_empowered(id)`, `enter_depths(depth)`.
 
 Signals the UI listens to: `character_changed`, `inventory_changed`, `progress_changed`, `area_changed(id)`, `hero_died`,

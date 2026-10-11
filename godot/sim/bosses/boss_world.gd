@@ -60,6 +60,27 @@ func player_count() -> int:
 	return players().size()
 
 
+## Boss health per extra player in the room: maxHp x (1 + this x (players - 1)). 0.8 is the recorded sim's number (the replay fixtures);
+## the live host answers with `DmEnemyStats.BOSS_PARTY_HP_PER_EXTRA`.
+func party_hp_per_extra() -> float:
+	return 0.8
+
+
+## True when the world can keep a walking boss on walkable ground (`walk`) and plan a way round an obstacle (`detour`). The sim worlds are open rings.
+func nav_active() -> bool:
+	return false
+
+
+## A point the boss would walk to, kept on walkable ground (a wall slides it). Only asked while `nav_active()`.
+func walk(x: float, z: float) -> Vector2:
+	return Vector2(x, z)
+
+
+## The waypoints (x, z) of a walkable route from the first point to the second, the first one being the start itself. Empty = none. Only asked while `nav_active()`.
+func detour(_x0: float, _z0: float, _x1: float, _z1: float) -> PackedVector2Array:
+	return PackedVector2Array()
+
+
 ## Drowned Congregation pews (WorldSim.cover).
 func cover() -> Array:
 	return []

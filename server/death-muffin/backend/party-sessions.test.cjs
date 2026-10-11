@@ -158,8 +158,8 @@ test('caps apply per member exactly as for a solo report: rate, level, ground, e
   const m = r.body.data.members[0];
   assert.ok(m.claimedKills === 100_000 && m.accepted.kills < 2_000, `rate cap cut ${m.claimedKills} to ${m.accepted.kills}`);
   assert.ok(t.fake.audit.some((a) => a.kind === 'kill_rate' && a.character_id === 12));
-  // Ground and level plausibility: the Drowned Nave is locked for 13; a level-900 robber is not plausible.
-  const r2 = await t.report(sid, 1, { batch: 2, members: [entry(13, [group({ area: 'nave', def: 'robber', n: 20 }), group({ level: 900, n: 20 })])] });
+  // Level plausibility: a level-900 robber is not plausible (a locked ground is no longer a reason: a carried member's kills count, see below).
+  const r2 = await t.report(sid, 1, { batch: 2, members: [entry(13, [group({ level: 900, n: 20 })])] });
   assert.equal(r2.body.data.members[0].accepted.kills, 0);
   assert.ok(t.fake.audit.filter((a) => a.kind === 'kill_invalid' && a.character_id === 13).length >= 1);
   // Elites are capped by share.
@@ -341,4 +341,33 @@ test('routes: wired through requireAuth with the account from the token', async 
   assert.equal((await srv.call('POST /api/sessions/:id/report', { params: { id: sid }, body: { batch: 2, members: [entry(12, mixed(1))] }, user: user(2) })).status, 403);
   assert.equal((await srv.call('GET /api/sessions/:id', { params: { id: sid }, user: user(2) })).json.data.members.length, 2);
   assert.equal((await srv.call('POST /api/sessions/:id/end', { params: { id: sid }, body: {}, user: user(1) })).json.data.ended, true);
+});
+
+test('a carried member earns kills in a ground it has not opened; the Depths and a bad enemy are still refused', async () => {
+  const { t, sid } = await party();
+  const nave = [group({ area: 'nave', def: 'robber', level: 9, n: 20 })];
+  const r = await t.report(sid, 1, { batch: 1, members: [entry(13, nave)] });
+  assert.equal(r.body.data.members[0].accepted.kills, 20, "13 has only the Graves open and still gets the Nave kills");
+  assert.equal(JSON.parse(t.fake.ledger(13).kill_credit).nave, 20, 'and the ledger backs them for its next necromancer save');
+  const d = await t.report(sid, 1, { batch: 2, members: [entry(13, [group({ area: 'depths', def: 'robber', n: 5 })])] });
+  assert.equal(d.body.data.members[0].accepted.kills, 0, 'the Depths stay a solo descent');
+  const solo = sessionsFake({ characters: CHARS, necro: NECRO });
+  const out = await require('./kills.cjs').handleReport(solo.pool, { char: { id: 13 }, accountId: 3, body: { seq: T0 + 1, groups: nave, bosses: [], floors: [] }, account: { staff: false }, now: T0, env: ENFORCE, log: quietLog() });
+  assert.equal(out.body.data.accepted.kills, 0, 'the same kills reported alone (not carried) are still refused');
+});
+
+test('an objective group (a party kill the member was not paid for) counts kills and earns no XP, gold or shards', async () => {
+  const { t, sid } = await party();
+  const paid = await t.report(sid, 1, { batch: 1, members: [entry(12, [group({ def: 'robber', elite: true, n: 10 })])] });
+  assert.equal(paid.body.data.members[0].accepted.kills, 9, 'the elite share caps the batch');
+  const xp1 = t.fake.ledger(12).xp_credit;
+  const gold1 = t.fake.ledger(12).gold_credit;
+  const shards1 = t.fake.ledger(12).shard_credit;
+  assert.ok(xp1 > 0 && shards1 > 0);
+  const o = await t.report(sid, 1, { batch: 2, members: [entry(12, [group({ def: 'robber', n: 10, objective: true })])] });
+  assert.equal(o.body.data.members[0].accepted.kills, 10);
+  assert.equal(JSON.parse(t.fake.ledger(12).kill_credit).graves, 19, 'the area tally moves');
+  assert.equal(t.fake.ledger(12).xp_credit, xp1, 'no xp');
+  assert.equal(t.fake.ledger(12).gold_credit, gold1, 'no gold');
+  assert.equal(t.fake.ledger(12).shard_credit, shards1, 'no shards');
 });

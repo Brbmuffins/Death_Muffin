@@ -53,6 +53,19 @@ static func plan_loco(row: Dictionary, h: float, ground: float, hr: bool, was_ru
 	var residual: float = absf(ground - ts * st) / ground if ground > 1e-3 else 0.0
 	return {"clip": "run" if run else "walk", "timeScale": ts, "stride": st, "residual": residual}
 
+## plan_loco without the allocation: writes the plan into `out` (a creature animates every walking body every frame it moves).
+static func plan_into(out: Dictionary, row: Dictionary, h: float, ground: float, hr: bool, was_run_now: bool) -> void:
+	var walk_u: float = float(row.get("walk", DEFAULT_WALK)) * h
+	var run_u: float = float(row.get("run", 0.0)) * h if hr else 0.0
+	var run: bool = run_u > 0.0 and ground > walk_u * (RUN_DOWN if was_run_now else RUN_UP)
+	var st: float = run_u if run else walk_u
+	var mx: float = RUN_MAX if run else walk_cap(h)
+	var ts: float = minf(mx, maxf(LOCO_MIN, ground / st))
+	out["clip"] = "run" if run else "walk"
+	out["timeScale"] = ts
+	out["stride"] = st
+	out["residual"] = absf(ground - ts * st) / ground if ground > 1e-3 else 0.0
+
 func plan(ground: float, was_run_now: bool) -> Dictionary:
 	return plan_loco(stride, height, ground, has_run, was_run_now)
 

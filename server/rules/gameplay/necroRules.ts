@@ -121,6 +121,9 @@ export function unlockKills(s: NecroState, id: AreaId): number | null {
  */
 export interface RuleOpts {
   staff?: boolean;
+  /** Area kills the kill ledger backs (audit and enforce): up to this many count in a ground the character has not opened yet
+   *  (a party member carried through its host's world). */
+  backed?: Partial<Record<AreaId, number>>;
 }
 const isOpen = (s: NecroState, id: AreaId, opts?: RuleOpts) => !!opts?.staff || s.unlockedAreas.includes(id);
 
@@ -153,9 +156,10 @@ export function applySave(state: NecroState, input: SaveInput, opts?: RuleOpts):
   let budget = NECRO_LIMITS.killsPerSave;
   let kills = 0;
   for (const id of AREA_ORDER) {
-    const n = Math.min(budget, clampInt(input.areaKills?.[id], 0, budget));
-    // Kills only count where the character can actually be.
-    if (!n || AREAS[id].safe || !isOpen(s, id, opts)) continue;
+    let n = Math.min(budget, clampInt(input.areaKills?.[id], 0, budget));
+    // Kills only count where the character can actually be, or as far as the kill ledger backs them (a party member carried through its host's world).
+    if (!isOpen(s, id, opts)) n = Math.min(n, clampInt(opts?.backed?.[id], 0, n));
+    if (!n || AREAS[id].safe) continue;
     s.areaKills[id] = (s.areaKills[id] ?? 0) + n;
     budget -= n;
     kills += n;

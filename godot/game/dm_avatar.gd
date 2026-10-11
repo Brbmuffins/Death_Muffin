@@ -28,6 +28,8 @@ const RIG_HEAD := {
 const RIG_HEAD_STRENGTH := {"hero_bell_monk": 0.25}
 # castClips.ts
 const MIN_SECONDS := {"slam": 0.55, "sweep": 0.42, "flick": 0.26, "channel": 0.9, "summon": 0.7}
+## The Reaper's rites -> the hero rig's combat clips (measured on hero_mourner: sweep 1.4 s, slam 2.0 s, flick 1.03 s, channel 1.6 s, summon 1.6 s).
+const REAPER_CLIPS := {"scythe_sweep": "sweep", "harvest_spin": "sweep", "reap": "slam", "scythe_throw": "flick", "wraith_walk": "channel", "soul_burst": "summon"}
 const MAX_SPEED := 3.2
 const MIN_SPEED := 0.7
 
@@ -43,6 +45,7 @@ var cast_lock := 0.0
 var gathering_tool_tier: Dictionary = {}
 
 var _staff: Node3D = null
+var _reaper := false                 ## the Reaper: whatever she wields shows as her scythe
 var _class_gear: Array = []
 var _default_hand: Dictionary = {}   # Node3D -> "main_hand" | "off_hand"
 var _worn: Dictionary = {}           # slot -> {obj, key}
@@ -77,6 +80,7 @@ static func _hex(v: Variant) -> int:
 
 func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, model_slug: String = "necromancer", family: String = "") -> void:
 	slug = model_slug
+	_reaper = family == "reaper"
 	accent_hex = _hex(accent)
 	name = "Avatar_" + model_slug
 	c = DmCreature.new(model_slug, {"in_place": true, "gear_tint": true, "emissive": accent_hex, "emissive_intensity": 0.04,
@@ -87,7 +91,7 @@ func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, m
 	if NEW_BLOOD.has(model_slug):
 		_attach_class_gear(model_slug)
 	else:
-		_staff = (DmGearProps.scythe_model() if family == "reaper" else null)   # the Reaper carries her scythe, not the skull staff
+		_staff = (DmGearProps.scythe_model() if _reaper else null)   # the Reaper carries her scythe, not the skull staff
 		if _staff == null:
 			_staff = _skull_staff(accent_hex)
 		c.attach("R_Hand", _staff, Vector3(0, 1, 0.12), STAFF_FOLLOW)
@@ -246,6 +250,12 @@ func set_equipment(items: Dictionary) -> void:
 		var rarity := String(item.get("rarity", ""))
 		var obj: Node3D = DmGearProps.build_offhand(item.item_id, rarity) if slot == "off_hand" else DmGearProps.build_weapon(item.item_id, rarity)
 		var grip := DmGearProps.grip_for(slot, String(item.item_id), obj.has_meta("tip"))
+		if _reaper and slot == "main_hand":
+			var scythe := DmGearProps.scythe_model()   # her weapon is always the scythe, whatever the bag row says
+			if scythe != null:
+				DmGearProps.dispose_prop(obj)
+				obj = scythe
+				grip = {"dir": Vector3(0, 1, 0.12), "follow": STAFF_FOLLOW, "fit": {}}
 		c.attach(bone, obj, grip.dir, grip.follow, grip.fit)
 		_worn[slot] = {"obj": obj, "key": item.item_id}
 	# Body slots have no prop: they recolour their region of the body by material tier.
@@ -378,14 +388,19 @@ func update(dt: float, x: float, z: float, facing: float, moving: bool, speed: f
 
 ## Play a one-shot gesture. `attack` is the weapon swing every shipped hero rig carries; the necromancer rites gesture with `cast` or `dig`.
 ## With an `ability` id and a `duration_s`, the weapon in hand picks a combat clip (castClips.ts) timed so its release frame lands on the rite.
-func cast(kind: String, speed := 2.0, facing: Variant = null, duration_s := 0.0, ability := "") -> void:
+## `tempo` < 1 (haste) shortens the Reaper's swing, including its minimum length.
+func cast(kind: String, speed := 2.0, facing: Variant = null, duration_s := 0.0, ability := "", tempo := 1.0) -> void:
 	if facing != null:
 		c.root.rotation.y = float(facing)
 	var choice: Variant = _cast_clip_for(weapon_gesture(), ability) if (ability != "" and duration_s > 0.0) else null
 	var clip := c.clip_duration(choice.clip) if choice != null else 0.0
 	if choice != null and clip > 0.0:
-		var plan := _plan_gesture(choice, duration_s, clip)
+		var plan := _plan_gesture(choice, duration_s, clip, tempo if _reaper else 1.0)
 		c.play_once(choice.clip, plan.speed, 0.0, plan.startAt)
+		return
+	if kind == "attack" and duration_s > 0.0 and c.clip_duration("attack") > 2.0:
+		# The 6.6 s weapon swing squeezed into a rite's window played ~20x; time its measured impact frame to the window instead.
+		c.play_strike("attack", duration_s * 0.45)
 		return
 	c.play_once(kind, speed, duration_s)
 
@@ -407,6 +422,8 @@ func release_gesture() -> void:
 
 ## The weapon kind steering the gesture: the equipped main hand, or 'none' (the default skull staff).
 func weapon_gesture() -> String:
+	if _reaper:
+		return "scythe"
 	var mh: Variant = _worn.get("main_hand")
 	if mh == null:
 		return "none"
@@ -414,6 +431,9 @@ func weapon_gesture() -> String:
 	return String(necro.kind) if not necro.is_empty() and necro.kind in ["staff", "scythe", "wand", "sickle"] else DmGearProps.weapon_kind(String(mh.key))
 
 func _cast_clip_for(weapon: String, ability: String) -> Variant:
+	if _reaper and REAPER_CLIPS.has(ability):
+		var rc: String = REAPER_CLIPS[ability]
+		return {"clip": rc, "releaseAt": float(DmContent.file("castClips").CLIP_RELEASE[rc]), "minSeconds": float(MIN_SECONDS[rc])}
 	var cc := DmContent.file("castClips")
 	var role: Variant = (cc.ABILITY_ROLE as Dictionary).get(ability)
 	if role == null:
@@ -423,9 +443,9 @@ func _cast_clip_for(weapon: String, ability: String) -> Variant:
 		return null
 	return {"clip": clip, "releaseAt": float(cc.CLIP_RELEASE[clip]), "minSeconds": float(MIN_SECONDS[clip])}
 
-func _plan_gesture(choice: Dictionary, seconds: float, clip_duration: float) -> Dictionary:
+func _plan_gesture(choice: Dictionary, seconds: float, clip_duration: float, tempo := 1.0) -> Dictionary:
 	var lead: float = float(DmContent.file("castClips").RELEASE_LEAD_S)
-	var total := maxf(seconds, choice.minSeconds)
+	var total := maxf(seconds, choice.minSeconds * tempo)
 	var release_t: float = choice.releaseAt * clip_duration
 	var tail := maxf(0.05, total - lead)
 	var speed := minf(MAX_SPEED, maxf(MIN_SPEED, (clip_duration - release_t) / tail))

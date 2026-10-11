@@ -315,7 +315,7 @@ func _build_view(c: DmSimCorpse, hint: DmEnemy) -> void:
 		n.add_child(cr.root)
 		add_child(n)
 		if not cr.hold_last_frame("death"):
-			cr.toppled = 1.0
+			cr.topple(true)
 		v.creature = cr
 		v.body = n
 	# the original game's looks (dm_entity_views _on_corpse): green aura on toxic, a faint pale ring (capped) on the rest, a violet tell on resonant
