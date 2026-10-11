@@ -47,6 +47,7 @@ per-bus trims (enemies 0.8, thralls 0.5, ui 0.9), master x0.9, music x0.72. The 
 | `music/` | 5 | 7.9 MB | MP3 |
 | `ambience/` | 7 | 0.5 MB | bed loops, Ogg; `.import` has `loop=true` |
 | `world/`, `combat/` | 12 + 2 | 0.3 MB | bells, gusts, crows, moans, embers, boss toll |
+| `eleven/` | - | - | generated from Discord with ElevenLabs (ASSET_PIPELINE.md): sfx WAV mono 16-bit, music MP3; spec in `audio-manifest/eleven/<id>.json` |
 
 ## Behaviour worth knowing
 - No synthesised fallback voices: `lowHealth` (no clip) is silent, and `partial` clips play alone. Zone drones and the boss drum are generated

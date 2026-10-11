@@ -8,6 +8,7 @@ dist-offline/
 .ai-keys.local
 server/web-deploy/*.tar.gz
 art-src
+audio-src
 .claude/worktrees/
 *.tsbuildinfo
 __pycache__/

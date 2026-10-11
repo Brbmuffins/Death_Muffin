@@ -181,6 +181,25 @@ agent turn ── told the files are ready: build-art.sh <id> (sandboxed: tools/
 - Config keys (all optional, defaults shown; `config.json` is not edited): `artKeysFile` (`<repo>/.ai-keys.local`), `artToolsDir` (`<toolsDir>/art-tools`), `artRunScript`, `artLockFile` (`<toolsDir>/state/tripo.lock`), `artLockWaitSec` (1800), `artBudgetFile`, `artLedgerFile`.
 - Tests: `test/art.test.cjs` (validation, pricing, budget/ledger math, every refusal path, approval gating, resume, flock, crash settlement, install) with fake Tripo/Gemini tools in `test/fake-art/`; no API is called and no credits are spent.
 
+## New sounds (ElevenLabs), no budget gate
+
+```
+agent turn ── writes audio-manifest/eleven/<id>.json {id, kind sfx|music, prompt, duration_seconds, variants, loop?, prompt_influence?} + .dm-sound-request.json {id, note}
+runner     ── runner/lib/sound.cjs validates (no extra fields; sfx 0.5-30 s, 1-4 takes; music 10-180 s, 1-2 takes, instrumental; prompt 10-1000/2000 chars; no symlinks).
+              The asker (job.lastAsker) must be in soundUsers (config.json; the owner always is). Then it runs right away, no ✅ and no budget:
+              the owner authorized sound users to spend any amount of the ElevenLabs balance (2026-10-11).
+              sound-run.mjs (trusted copy in the tools dir, ELEVENLABS_API_KEY in its env only) -> audio-src/eleven/<id>/v<n>.mp3 (git-ignored), takes posted in the thread
+agent turn ── build-sound.sh <id> <take> (sandboxed ffmpeg: sfx -> godot/assets/audio/eleven/<id>.wav mono 16-bit, music -> .mp3), wires it in, commits spec + asset + .import,
+              then the usual proposal / ✅ ship
+```
+
+- Key: `/home/ubuntu/death-muffin/private/elevenlabs-api-key` (`soundKeyFile`), hidden inside every sandbox by `sandbox-lib.sh`, registered with `redact.cjs` (plus an `sk_` pattern).
+  The key has no `user_read` permission, so the balance cannot be read; the cost comes from ElevenLabs' `character-cost` header per take (a 1 s effect cost 11 credits, 2026-10-11).
+- Ledger: `eleven-ledger.json` (tools dir, mode 600): `{id, ts, userId, userName, jobId, specId, kind, seconds, variants, files, credits, result}`. `!credits` shows a sound user's total.
+- A take that already exists is not generated again, so a retry pays only for missing takes. Audit events: `sound-start`, `sound-result`, `sound-refused`, `sound-invalid`.
+- Config keys (optional): `soundUsers` (Discord ids), `soundKeyFile`, `soundRunScript` (`<toolsDir>/sound-run.mjs`), `soundLedgerFile`.
+- Tests: `test/sound.test.cjs` (validation, refusal, ledger, a fake ElevenLabs server for sound-run.mjs); no API is called.
+
 ## Thread names
 
 The thread opens with a cleaned copy of the request (mentions, the bot's name and filler like "hey, can you" removed, sentence case, at most 60 characters, else `Death Muffin request`). When the agent writes `.dm-title` (2-6 words, see `PROMPT-godot.md`) the runner sanitizes it (one line, no mentions, links, markdown or control characters, redacted, at most 57 characters) and renames the thread to it; a different title in a later round renames again. A marker shows the state: `🔧` the agent is working (set as soon as a turn starts), `📝` waiting for approval or shipping (a ship does not rename: Discord's 2 renames per 10 minutes are kept for the `✅`), `✅` shipped, `❌` discarded. `runner/lib/threadTitle.cjs` keeps only the newest wanted name per thread and sends at most 2 renames per 10 minutes per thread (Discord's limit), dropping no-ops. Renames are fire-and-forget ops (`{ rename: { threadId, name } }`) that the adapter applies with `setName`; failures are logged and skipped, archived threads are not touched. `job.title` in `jobs.json` is the current title, so a restart does not rename again; `!status` shows it. The bot started the thread, and Discord lets a thread's owner edit its name, so no new permission should be needed; if renames fail with "Missing Permissions" in the bot log, give the bot **Manage Threads** in `#death-muffin`.

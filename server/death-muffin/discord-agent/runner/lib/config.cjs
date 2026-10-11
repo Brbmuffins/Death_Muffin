@@ -123,6 +123,7 @@ function loadConfig(file) {
   c.maxConcurrentJobs = Math.max(1, Math.min(3, Number(c.maxConcurrentJobs) || 1));   // 3 = owner + two requesters at once (2026-10-08)
   const ids = (a) => [...new Set((a || []).map(String).filter((x) => /^\d{15,25}$/.test(x)))];
   c.ownerIds = ids(c.ownerIds);
+  c.soundUsers = ids([...c.ownerIds, ...(c.soundUsers || [])]);   // may generate ElevenLabs sounds, no budget (lib/sound.cjs); the owner always may
   const pr = (c.projects && c.projects.deathmuffin) || {};
   const ap = pr.approvers || {};
   c.project = { requesters: ids([...c.ownerIds, ...(pr.requesters || [])]), approvers: {} };

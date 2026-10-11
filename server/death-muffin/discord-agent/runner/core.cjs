@@ -25,6 +25,7 @@ const { parseDiff, classifyDiff, tierLabel, approversFor } = require('./lib/tier
 const { verifyGenerated, describeMismatch } = require('./lib/generated.cjs');
 const { planReply } = require('./lib/discordText.cjs');
 const A = require('./lib/art.cjs');
+const S = require('./lib/sound.cjs');
 
 const TIER_COLOR = { casual: 0x16a34a, gameplay: 0xb45309, sensitive: 0xdc2626 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -70,6 +71,8 @@ function createRunner(cfgIn, opts = {}) {
   const auth = createAuth(cfg, now);
   // Model generation (Gemini concept -> Tripo): Godot mode only. Keys, budgets and the ledger live outside every checkout (lib/art.cjs).
   const art = GODOT ? A.createArt(cfg, { audit, now }) : null;
+  // Sound effects / music (ElevenLabs): Godot mode only, for cfg.soundUsers, no budget gate (lib/sound.cjs).
+  const sound = GODOT ? S.createSound(cfg, { now }) : null;
   let artBusy = false;     // one Tripo run at a time inside this process (art-run.sh also holds a flock across processes)
   const jobsFile = path.join(cfg.stateDir, 'jobs.json');
   const shipsFile = path.join(cfg.stateDir, 'ships.jsonl');
@@ -339,7 +342,8 @@ function createRunner(cfgIn, opts = {}) {
         if (!art) return { action: 'reply', text: 'Model generation is only available in Godot mode.' };
         const b = art.store.budgetOf(msg.userId), sp = art.store.spentBy(msg.userId);
         const pend = job.artRequest ? ` A request for "${job.artRequest.id}" (${job.artRequest.estimate} credits) is waiting for an approver's ✅.` : '';
-        return { action: 'reply', text: b > 0 ? `Model credits for ${msg.name}: ${fmtN(Math.max(0, b - sp))} left of ${fmtN(b)} (${fmtN(sp)} spent).${pend}` : `${msg.name} has no model-generation budget. The owner sets budgets.${pend}` };
+        const snd = sound && sound.allowed(msg.userId) ? ` Sounds (ElevenLabs): no limit, ${fmtN(sound.spentBy(msg.userId))} credits used so far.` : '';
+        return { action: 'reply', text: (b > 0 ? `Model credits for ${msg.name}: ${fmtN(Math.max(0, b - sp))} left of ${fmtN(b)} (${fmtN(sp)} spent).${pend}` : `${msg.name} has no model-generation budget. The owner sets budgets.${pend}`) + snd };
       }
       case 'report': case 'reports': {
         // In-game bug reports (Settings -> Report a bug), read-only: `!report` lists the newest, `!report <id>` hands one (message,
@@ -366,7 +370,7 @@ function createRunner(cfgIn, opts = {}) {
       }
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: `Commands: !status, !credits (your model-generation budget), !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (build a playable preview), !report [number] (in-game bug reports), !sync, !retry (a failed client publish), rollback (approvers).` };
+      default: return { action: 'reply', text: `Commands: !status, !credits (your model and sound budgets), !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !preview (build a playable preview), !report [number] (in-game bug reports), !sync, !retry (a failed client publish), rollback (approvers).` };
     }
   }
 
@@ -652,6 +656,7 @@ function createRunner(cfgIn, opts = {}) {
     if (r && r.text.trim()) sayLong(job, r.text.trim());
     postNewShots(job);
     if (art && await artStage(job)) return;       // a model request is waiting for an approver (or was refused): nothing to verify or propose yet
+    if (sound && await soundStage(job)) return;   // a sound is being generated (or was refused): the agent continues once the takes exist
     await afterTurn(job, readResult(job.worktree));
   }
 
@@ -923,6 +928,63 @@ function createRunner(cfgIn, opts = {}) {
   const readImageFile = (job, rel, name) => {
     try { if (A.pathIssue(job.worktree, rel)) return null; const f = path.join(job.worktree, rel); const st = fs.lstatSync(f); if (!st.isFile() || st.size > SHOT_MAX_BYTES) return null; const b = fs.readFileSync(f); return IMG_MAGIC.some((m) => m.every((x, i) => b[i] === x)) ? { name, b64: b.toString('base64') } : null; } catch { return null; }
   };
+  // ---------- sounds: request -> generated right away for cfg.soundUsers -> takes posted in the thread -> the agent builds and wires one ----------
+  async function soundStage(job) {
+    for (let attempt = 0; ; attempt++) {
+      const rq = S.readRequest(job.worktree);
+      if (!rq && attempt > 0) { say(job, 'The sound request was not fixed, so nothing was generated. Tell me what to change.'); job.status = 'idle'; return true; }
+      if (!rq) return false;
+      const v = rq.error ? { ok: false, errors: [rq.error] } : S.validate({ wt: job.worktree, request: rq });
+      if (v.ok) {
+        const who = artWho(job);
+        if (!sound.allowed(who.id)) {
+          audit.log('sound-refused', { job: job.id, userId: who.id, id: v.id });
+          say(job, `Sound generation is only open to ${sound.users().map(nameOf).join(' / ')}. Nothing was generated.`); job.status = 'idle'; return true;
+        }
+        runSound(job, v.spec, who, rq.note).catch((e) => { console.error('sound run crashed', e); say(job, `The sound run crashed: ${clip(redactText(e.message), 300)}`); });
+        return true;
+      }
+      audit.log('sound-invalid', { job: job.id, id: rq.id || '', errors: v.errors.join(' | ') });
+      if (attempt >= 2) { say(job, `The sound request still has problems, so nothing was generated:\n${v.errors.map((e) => `- ${clip(e, 200)}`).join('\n')}\nTell me what to change.`); job.status = 'idle'; return true; }
+      const r = await agentTurn(job, `The runner rejected your sound request. Fix ${S.SPEC_DIR}/<id>.json and write ${S.REQUEST_FILE} again. Problems:\n${v.errors.map((e) => `- ${e}`).join('\n')}`);
+      if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return true; }
+      if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return true; }
+    }
+  }
+  async function runSound(job, spec, who, note) {
+    job.running = true; job.status = 'generating'; save();
+    let ticker = null;
+    try {
+      audit.log('sound-start', { job: job.id, id: spec.id, kind: spec.kind, userId: who.id, seconds: spec.duration_seconds, variants: spec.variants });
+      say(job, `🔊 Generating "${spec.id}" with ElevenLabs: ${S.describe(spec)}.${note ? ` (${clip(note, 200)})` : ''}`);
+      typing(job); ticker = setInterval(() => typing(job), 8000); ticker.unref();
+      let res;
+      try { res = await sound.run(job.worktree, spec, { onSpawn: (p) => { job.proc = p; } }); }
+      catch (e) { res = { result: 'crashed', credits: 0, files: [], tail: redactText(e.message) }; }
+      sound.record({ userId: who.id, userName: who.name, jobId: job.id, specId: spec.id, kind: spec.kind, seconds: spec.duration_seconds, variants: spec.variants, files: res.files.length, credits: res.credits, result: res.result });
+      audit.log('sound-result', { job: job.id, id: spec.id, userId: who.id, result: res.result, credits: res.credits, files: res.files.length });
+      if (job.cancelRequested || job.discardRequested) { job.cancelRequested = false; say(job, `Stopped. ${res.files.length} take(s) were made (${fmtN(res.credits)} credits).`); return; }
+      if (!res.files.length) { say(job, `The sound did not generate (${res.result}).${res.tail ? '\n```\n' + clip(res.tail, 600) + '\n```' : ''}\nAsk again to retry.`); return; }
+      const files = res.files.slice(0, 4).map((rel, i) => {
+        try { if (A.pathIssue(job.worktree, rel)) return null; const b = fs.readFileSync(path.join(job.worktree, rel)); return b.length <= SHOT_MAX_BYTES ? { name: `${spec.id}-take${i + 1}.mp3`, b64: b.toString('base64') } : null; } catch { return null; }
+      }).filter(Boolean);
+      const partial = res.result === 'ok' ? '' : ` (stopped after ${res.files.length} of ${spec.variants}: ${res.result})`;
+      post({ threadId: job.threadId }, { content: `Done: ${res.files.length} take${res.files.length === 1 ? '' : 's'} of "${spec.id}"${partial}, ${fmtN(res.credits)} ElevenLabs credits. Have a listen below.\n${res.files.length > 1 ? 'Say which take you want (e.g. "take 2"), or ask for another go. ' : ''}The agent wires it in now; you get a normal proposal to approve.`, ...(files.length ? { files } : {}) });
+      job.queue.push({ userId: 'runner', name: 'runner', role: 'runner', art: true, ts: now(), text:
+        `The runner generated the sound "${spec.id}" (${spec.kind}, ${spec.duration_seconds} s): ${res.files.join(', ')} (git-ignored raw takes; never commit audio-src/). The takes were posted in the thread. ` +
+        `Next: unless the requester already picked a take, use take 1. Run ${cfg.toolsDir}/build-sound.sh ${spec.id} <take> (writes godot/assets/audio/eleven/${spec.id}.${spec.kind === 'music' ? 'mp3' : 'wav'}), ` +
+        `wire it in where the request asked (godot/audio/README.md: audioMap.json + the sample bank), commit ${S.SPEC_DIR}/${spec.id}.json and the asset, run ${CHECK} (commit the .import file it writes), add a PATCH_NOTES.json item if players can hear it, and keep your reply short. ` +
+        `If the requester later picks another take, rerun build-sound.sh with that take number.` });
+      job.lastActive = now(); save();
+    } finally {
+      if (ticker) clearInterval(ticker);
+      job.running = false; job.proc = null; if (job.status === 'generating') job.status = 'idle'; save();
+      if (job.deleteRequested) await cleanupDeleted(job).catch(() => {});
+      else if (job.discardRequested) await discard(job, job.discardRequested).catch((e) => say(job, `Discard failed: ${e.message}`));
+      pump();
+    }
+  }
+
   async function runArt(job, approverId) {
     const q = job.artRequest; artBusy = true; job.running = true; job.status = 'generating'; save();
     let ticker = null, entryId = null, startBal = null, res = null;

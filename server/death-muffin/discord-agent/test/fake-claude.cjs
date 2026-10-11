@@ -43,6 +43,16 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     const dir = 'art-manifest/tripo-specs'; let id = null;
     for (const n of fs.readdirSync(dir)) { const f = `${dir}/${n}`; const cur = JSON.parse(fs.readFileSync(f, 'utf8')); if ('api_key' in cur) { id = cur.id; if (!cur.nofix) { delete cur.api_key; wr(f, JSON.stringify(cur)); } } }
     if (id) wr('.dm-art-request.json', JSON.stringify({ id })); text = 'Tried to fix the spec.';
+  } else if (/GD-SOUND id=([a-z0-9_]+)/.test(p) && !/The runner generated the sound/.test(p) && !/rejected your sound request/.test(p)) {
+    // sound requests: GD-SOUND id=<id> [BADSOUND] writes the spec + trigger file
+    const id = /GD-SOUND id=([a-z0-9_]+)/.exec(p)[1];
+    wr(`audio-manifest/eleven/${id}.json`, JSON.stringify({ id, kind: 'sfx', prompt: 'A ghostly banshee wail, rising then fading, no music.', duration_seconds: 2, variants: 2, ...(/BADSOUND/.test(p) ? { voice: 'x' } : {}) }));
+    wr('.dm-sound-request.json', JSON.stringify({ id, note: 'dash sound' })); text = 'Asked for the sound.';
+  } else if (/rejected your sound request/.test(p)) {
+    text = 'Cannot fix it.';
+  } else if (/The runner generated the sound "([a-z0-9_]+)"/.test(p)) {
+    const id = /The runner generated the sound "([a-z0-9_]+)"/.exec(p)[1];
+    wr(`godot/assets/audio/eleven/${id}.wav`, fs.readFileSync(`audio-src/eleven/${id}/v1.mp3`)); git('add', '--', `godot/assets/audio/eleven/${id}.wav`, `audio-manifest/eleven/${id}.json`); git('commit', '-q', '-m', `Add the ${id} sound`); ready(`New sound: ${id}`, [`Added ${id}`]); text = 'Built and committed.' + (/build-sound\.sh/.test(p) ? ' BUILD-SOUND-SEEN' : '');
   } else if (/The runner generated the approved model "([a-z0-9_]+)"/.test(p)) {
     const id = /The runner generated the approved model "([a-z0-9_]+)"/.exec(p)[1];
     wr(`godot/assets/slice/models/${id}/character.glb`, 'glb-bytes'); git('add', '--', `godot/assets/slice/models/${id}/character.glb`, `art-manifest/gemini-jobs/${id}.json`, `art-manifest/tripo-specs/${id}.json`, `art-manifest/tripo/${id}.json`); git('commit', '-q', '-m', `Add the ${id} model`); ready(`New model: ${id}`, [`Added ${id}`]); text = 'Built and committed.' + (/build-art\.sh/.test(p) ? ' BUILD-ART-SEEN' : '');

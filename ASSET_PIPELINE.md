@@ -63,6 +63,10 @@ rig fixes, CC0 retargets); see `docs/BLENDER-PIPELINE.md`.
 `tools/audio/generate-eleven-music.mjs` and `generate-eleven-ambience.mjs` write private drafts to `~/death-muffin/private/`
 (never into the repo); keep only what the owner approves, then run the prepare scripts (`prepare-eleven-*.mjs`) and the sync.
 
+From Discord, the dev agent asks for a sound effect or track with `audio-manifest/eleven/<id>.json` (the spec, committed); the runner generates it for the
+owner's sound users with no budget gate and records the cost (`server/death-muffin/discord-agent/README.md` "New sounds"). Raw takes land in
+`audio-src/eleven/<id>/` (gitignored); the chosen take is installed as `godot/assets/audio/eleven/<id>.wav` (sfx) or `.mp3` (music).
+
 ## Flipbook sheets (licensed, outside git)
 
 A few VFX sprite sheets come from the owner's licensed pack (`~/vps-handoffs/DeathMuffin/godot_vfx.zip`; godboyhappy ARCLIGHT /

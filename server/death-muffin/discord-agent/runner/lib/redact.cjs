@@ -12,6 +12,7 @@ const PATTERNS = [
   /\b(password|passwd|secret|api[_-]?key|token|private[_-]?key)\b\s*[:=]\s*['"]?[^\s'"]{8,}/i,
   /(?<!sha256:)\b[0-9a-f]{40,}\b/i,                            // long hex blobs (not `sha256:<hex>` content hashes, e.g. art provenance)
   /\btsk_[A-Za-z0-9_-]{16,}/,                                  // Tripo API key
+  /\bsk_[A-Za-z0-9]{20,}/,                                     // ElevenLabs API key
   /\bAIza[0-9A-Za-z_-]{30,}/, /\bAQ\.[A-Za-z0-9_-]{20,}/,       // Google / Gemini API keys
 ];
 let known = [];

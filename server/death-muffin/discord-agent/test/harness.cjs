@@ -36,7 +36,7 @@ function makeWorld(over = {}) {
     sh(repo, 'checkout', '-q', '-b', 'godot-port');
     w('godot/project.godot', 'config_version=5'); w('godot/README.md', 'godot readme'); w('godot/game/a.gd', 'speed=1'); w('godot/net/dm_api.gd', 'url=1'); w('godot/export_presets.cfg', '[preset.0]');
     w('godot/data/loot/content.json', '{"v":1}');
-    w('.gitignore', 'art-src/\n');   // like the real repo: raw art outputs are never committed
+    w('.gitignore', 'art-src/\naudio-src/\n');   // like the real repo: raw art outputs are never committed
     sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'godot tree'); sh(repo, 'push', '-q', 'origin', 'godot-port');
     liveRev = sh(repo, 'rev-parse', 'HEAD');
     fs.mkdirSync(path.join(T, 'client')); fs.writeFileSync(path.join(T, 'client', 'manifest.json'), JSON.stringify({ version: 'v1', rev: liveRev.slice(0, 12) }));
@@ -47,6 +47,7 @@ function makeWorld(over = {}) {
   const artDir = path.join(T, 'art-tools'); fs.cpSync(path.join(__dirname, 'fake-art'), artDir, { recursive: true }); fs.writeFileSync(path.join(artDir, 'state.json'), JSON.stringify({ balance: 3910 }));
   fs.writeFileSync(path.join(T, 'keys.local'), 'TRIPO_API_KEY=tsk_FakeTripoKeyForTestsOnly000000000000\nGEMINI_API_KEY=AIzaFakeGeminiKeyForTestsOnly000000000000\n', { mode: 0o600 });
   fs.writeFileSync(path.join(T, 'budget.json'), '{}', { mode: 0o600 });
+  fs.writeFileSync(path.join(T, 'eleven.key'), 'sk_FakeElevenKeyForTestsOnly00000000000000\n', { mode: 0o600 });
   fs.symlinkSync(path.join(SRC, 'runner'), path.join(tools, 'runner'));
   fs.writeFileSync(path.join(tools, 'check-godot.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "godot boom"; exit 1; }\necho "tests/game run.gd exit=0  12 passed"; echo "$*" >> "$(dirname "$0")/check-godot.calls"; if [ "${1:-}" = --full ]; then echo "GODOT TESTS: full (2 suites) — 2 passed"; else echo "GODOT TESTS: quick (2 suites) — 2 passed"; fi\n', { mode: 0o755 });
   // shot-godot.sh stand-in: writes a PNG-ish file; in a base-<id> scratch worktree it writes the BEFORE picture (unless NOBASE exists)
@@ -62,6 +63,7 @@ function makeWorld(over = {}) {
     repo, worktreeRoot: wtRoot, stateDir: path.join(tools, 'state'), toolsDir: tools, deployDir: deploy,
     claudeCmd: path.join(__dirname, 'fake-claude.cjs'), deployCmd: `n=$(ls ${deploy} | grep -c backup); b=${deploy}/backup-pre-release-aaaaaaaaaa$(printf %02d $n)-$(printf '20261004T%02d0000Z' $n); mkdir -p $b; echo 'echo rolled-back-ok' > $b/ROLLBACK.sh; echo "Rollback: $b/ROLLBACK.sh"; echo deployed "$1"`, turnTimeoutMin: 1, mobileDeployCmd: `echo "$1" >> ${deploy}/mobile-deploys.log`,
     artToolsDir: artDir, artKeysFile: path.join(T, 'keys.local'), artBudgetFile: path.join(T, 'budget.json'), artLedgerFile: path.join(T, 'ledger.json'), artLockFile: path.join(T, 'tripo.lock'), artLockWaitSec: 5,
+    soundRunScript: path.join(SRC, 'sound-run.mjs'), soundKeyFile: path.join(T, 'eleven.key'), soundLedgerFile: path.join(T, 'eleven-ledger.json'),
     previewRoot: path.join(T, 'preview'), previewUrl: 'https://example.test/death-muffin/preview/',
     previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "vite exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE|$DM_PREVIEW_BASE" > "$DM_PREVIEW_ROOT/$1/index.html"',
     ...(godot ? { baseBranch: 'godot-port', mode: 'godot', clientManifest: path.join(T, 'client', 'manifest.json'), deployCmd: `echo deployed "$1" >> ${deploy}/deploys.log`,
