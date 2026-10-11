@@ -4,7 +4,7 @@ extends SceneTree
 ## godot --headless --path godot --script res://tests/next_hero_look/run.gd
 
 const DT := 1.0 / 60.0
-const BAG := ["sword_copper", "helm_copper", "set_gravecaller_chest", "set_gravecaller_legs", "charm_tithe_bat"]
+const BAG := ["sword_copper", "helm_copper", "set_gravecaller_chest", "set_gravecaller_legs", "charm_tithe_bat", "leg_legion_unburied_head", "leg_legion_unburied_chest", "leg_legion_unburied_legs", "set_gravecaller_head"]
 
 var passed := 0
 var failed := 0
@@ -128,6 +128,24 @@ func _run() -> void:
 	# ---- hero ring
 	check(look._ring.size() == 7 and look._ring.all(func(h: Variant) -> bool: return h != null), "C: the hero ring and halos are laid (7 decals)")
 
+	# ---- the legendary set through the real bag path: three pieces turn the hero into the set's hero, taking one off turns it back
+	var base_body := b.avatar.body_slug
+	var weapon_obj: Node3D = _worn(b.avatar, "main_hand").obj
+	await g.ui.inv.toggle_equip(row.call("leg_legion_unburied_head"))
+	await g.ui.inv.toggle_equip(row.call("leg_legion_unburied_chest"))
+	check(b.avatar.body_slug == base_body, "G: two legendary pieces keep the hero's own body")
+	var t_swap := Time.get_ticks_usec()
+	await g.ui.inv.toggle_equip(row.call("leg_legion_unburied_legs"))
+	check(b.avatar.body_slug == "hero_leg_legion_unburied" and b.avatar.c.rig_slug == "hero_leg_legion_unburied", "G: three legendary pieces: the hero's body is the Legion Unburied hero")
+	print("INFO perf: equip click that swaps the body (incl. bag refresh) %.1f ms" % ((Time.get_ticks_usec() - t_swap) / 1000.0))
+	check(is_instance_valid(weapon_obj) and b.avatar.c.skeleton.is_ancestor_of(weapon_obj) and b.avatar._cape != null and b.avatar.c.skeleton.is_ancestor_of(b.avatar._cape.obj), "G: the sword and the cape are on the new body")
+	check(b.avatar.lantern != null and b.avatar.lantern.get_parent() == b.avatar.c.root, "G: the local lantern moved with it")
+	await g.ui.inv.toggle_equip(row.call("leg_legion_unburied_legs"))
+	check(b.avatar.body_slug == base_body, "G: taking one piece off gives the hero's own body back")
+	await g.ui.inv.toggle_equip(row.call("leg_legion_unburied_head"))
+	await g.ui.inv.toggle_equip(row.call("leg_legion_unburied_chest"))
+	# (the set pieces from before are still on; the bag is as the perf section below expects)
+
 	# ---- perf: a pet + full gear frame, an equip change
 	await g.ui.inv.toggle_equip(row.call("set_gravecaller_legs"))
 	await ticks(30)
@@ -218,6 +236,16 @@ func _replication(api0: DmApi, ch: Dictionary) -> void:
 	var cb := hg.body_of(cg.session.get_my_id())
 	check(await until(func() -> bool: return cb != null and cb.avatar != null and _worn(cb.avatar, "head") != null, 10.0), "F: the client's helm shows on the host's puppet of it")
 	check(hg.look.pet_of(cg.session.get_my_id()) == null and cb.avatar._cape == null, "F: the client's no-cape no-pet look is respected")
+	# a legendary set on the host turns its puppet on the client into the set's hero, and back
+	var hrow := func(id: String, slot: int) -> Dictionary: return {"slot_index": slot, "item_id": id, "quantity": 1, "equipped": 1, "rarity": "legendary", "item_type": "armor_" + id.get_slice("_", 3)}
+	var leg3: Array = [hrow.call("leg_plague_choir_head", 20), hrow.call("leg_plague_choir_chest", 21), hrow.call("leg_plague_choir_legs", 22)]
+	hg.look.set_gear_from_slots(leg3)
+	check(hg.body_of(1).avatar.body_slug == "hero_leg_plague_choir", "F: the host's own hero is the Plague Choir hero at three pieces")
+	check(await until(func() -> bool: return hb.avatar.body_slug == "hero_leg_plague_choir", 6.0), "F: ...and so is the host's puppet on the client (same look descriptor)")
+	check(hb.avatar.set_id == "plague_choir" and hb.avatar.set_pieces == 3 and hb.avatar._aura != null, "F: the client derives the set look and aura from the same gear")
+	hg.look.set_gear_from_slots(leg3.slice(0, 2))
+	check(await until(func() -> bool: return hb.avatar.body_slug == hb.avatar.slug, 6.0), "F: two pieces: the client's puppet is back in its own body")
+	hg.look.set_gear_from_slots([])
 	# a live change on the host reaches the client
 	hg.look.set_cosmetics({"cape": null, "pet": null})
 	check(await until(func() -> bool: return hb.avatar._cape == null and cg.look.pet_of(1) == null, 6.0), "F: taking the cape and pet off on the host clears them on the client")

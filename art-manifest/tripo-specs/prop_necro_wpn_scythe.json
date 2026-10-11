@@ -1,0 +1,9 @@
+{
+  "id": "prop_necro_wpn_scythe",
+  "input": "art-src/concepts/necrogear/A-weapons/wpn_scythe.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2500,
+    "texture_quality": "detailed"
+  }
+}

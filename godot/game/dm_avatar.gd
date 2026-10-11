@@ -4,13 +4,15 @@ extends Node3D
 ## the discipline colours the staff light and robe glow; worn gear shows as a weapon / off-hand prop, a helm and body-region tints;
 ## gestures (`cast`), gathering tools, the mastery cape. The creature runs in-place (the sim owns position and heading).
 ##
+## Worn gear is real models (`DmGearModels`): weapons and off-hand pieces in the palm (`DmCreature.attach_held`), the tier helm on the head and the set mantle on
+## the upper body (`attach_fitted`: seated from the rig's rest pose, sized from the measured head / chest). At 3+ pieces of a legendary set the body itself
+## becomes that set's hero model (`_swap_body`, from the `set_look_changed` hook).
+##
 ## Use: var a := DmAvatar.new(); a.setup(world_root, "#a26bff", true, "hero_ossuary"); each frame a.update(dt, x, z, facing, moving, move_speed).
 ## `settings` = the game settings dictionary (reads hideHelm); call `DmAvatar.refresh_all()` when settings change.
 
 const HERO_TURN_RATE := 12.0
 const HERO_TURN_MAX := 13.0
-const HELM_APEX := 0.19
-const HELM_OVER := 0.01
 const STAFF_FOLLOW := 0.6   ## (New Blood hero props only)
 const TOOL_GRIP := {"woodcutting": -0.3, "mining": -0.15, "fishing": -0.3, "gravedigging": -0.3, "gardening": -0.3}
 const TOOL_TINT := [0xb87333, 0x9097a0, 0xdfe4ee, 0x7a98b0, 0xd0452f, 0xaec8ff]
@@ -24,7 +26,15 @@ const NEW_BLOOD := ["hero_hollow_knight", "hero_grave_warden", "hero_bell_monk",
 const RIG_HEAD := {
 	"hero_ossuary": "covered", "hero_gravecaller": "covered", "hero_mourner": "covered", "hero_rotweaver": "covered",
 	"hero_hollow_knight": "covered", "hero_grave_warden": "covered", "hero_veilwalker": "covered", "hero_carrion_witch": "covered", "hero_bell_monk": "covered",
+	"hero_leg_colossus_mantle": "covered", "hero_leg_legion_unburied": "covered", "hero_leg_plague_choir": "covered", "hero_leg_requiem_wraiths": "covered",
 }
+## The helm model is this much taller than the measured head (hood and all), and sits this far (metres) above its centre; the mantle is this much wider than the chest.
+const HELM_FIT := 1.5
+const HELM_OVER := 0.03
+const MANTLE_FIT := 1.65
+const MANTLE_LIFT := 0.06
+const HEAD_BONES := ["Head"]
+const CHEST_BONES := ["Spine02", "Spine01", "L_Clavicle", "R_Clavicle"]
 const RIG_HEAD_STRENGTH := {"hero_bell_monk": 0.25}   ## (a cap: other heads use the rarity's tint strength)
 # castClips.ts
 const MIN_SECONDS := {"slam": 0.55, "sweep": 0.42, "flick": 0.26, "channel": 0.9, "summon": 0.7}
@@ -43,7 +53,8 @@ signal set_look_changed(set_id: String, pieces: int)
 
 var c: DmCreature
 var lantern: OmniLight3D = null
-var slug := "necromancer"
+var slug := "necromancer"           ## the hero's own body (its discipline's); `body_slug` is the one showing now (a legendary set's while it is worn)
+var body_slug := "necromancer"
 var accent_hex := 0xa26bff
 var settings: Dictionary = {}
 var cast_lock := 0.0
@@ -75,6 +86,11 @@ var _element := ""                   ## the weapon's element override (socketed 
 var _main_rarity := ""
 var set_id := ""                     ## the set whose look is on (see set_look)
 var set_pieces := 0
+var _mounts: Dictionary = {}         # prop Node3D -> {bone, mode: "held" | "fitted" | "plain" | "dir", arg}: what `_swap_body` re-seats on the new body
+var _opts: Dictionary = {}
+var _helm_item: Dictionary = {}     # the worn head item (re-fitted on a new body)
+var _mantle: Variant = null          # {obj, set}
+var _region_tints: Dictionary = {}   # region -> tint (replayed on a new body)
 var _aura: CPUParticles3D = null
 var _aura_level := 0
 var _scheme_glow: Variant = null     ## the set's trim glow colour while its scheme is on
@@ -93,11 +109,12 @@ static func _hex(v: Variant) -> int:
 
 func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, model_slug: String = "necromancer", family: String = "") -> void:
 	slug = model_slug
+	body_slug = model_slug
 	_reaper = family == "reaper"
 	accent_hex = _hex(accent)
 	name = "Avatar_" + model_slug
-	c = DmCreature.new(model_slug, {"in_place": true, "gear_tint": true, "emissive": accent_hex, "emissive_intensity": 0.04,
-		"fallback": "necromancer", "locomotion_fade": 0.16})
+	_opts = {"in_place": true, "gear_tint": true, "emissive": accent_hex, "emissive_intensity": 0.04, "fallback": "necromancer", "locomotion_fade": 0.16}
+	c = DmCreature.new(model_slug, _opts)
 	add_child(c.root)
 	if parent != null:
 		parent.add_child(self)
@@ -106,10 +123,11 @@ func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, m
 	else:
 		_staff = (DmGearProps.scythe_model() if _reaper else null)   # the Reaper carries her scythe, not the skull staff
 		if _staff == null:
-			_staff = _skull_staff(accent_hex)
-		c.attach_held("R_Hand", _staff, DmGearProps.hold_spec("scythe" if _reaper else "default_staff"))
+			_staff = _default_staff(accent_hex)
+		_mount(_staff, "R_Hand", "held", DmGearProps.hold_spec("scythe" if _reaper else "default_staff"))
 		_default_hand[_staff] = "main_hand"
 		_refresh_weapon_fx()
+		set_look_changed.connect(_on_set_look)
 	_live.append(self)
 	if with_light:
 		lantern = OmniLight3D.new()
@@ -120,19 +138,42 @@ func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, m
 		lantern.position = Vector3(0, 3.2, 0.6)
 		c.root.add_child(lantern)
 
-## Coffin-oak staff with a skull finial and a violet soul-light.
-func _skull_staff(accent: int) -> Node3D:
-	var g := Node3D.new()
+## The default staff: the bone-tier staff model with the discipline's soul-light at its head (the code-built skull staff when the model is absent).
+func _default_staff(accent: int) -> Node3D:
+	var g := DmGearModels.weapon("staff", "bone")
+	if g != null:
+		var glow := DmGearProps.glow_sprite(accent, 0.42, 0.8)
+		var tip := g.get_meta("tip") as Node3D
+		glow.position = tip.position
+		g.add_child(glow)
+		g.set_meta("tip", glow)
+		return g
+	g = Node3D.new()
 	g.add_child(DmGearProps._mi(DmGearProps._cyl(0.025, 0.035, 1.9, 6), DmGearProps._mat(0x2b211c, 0.0, 0.85), Vector3(0, 0.35, 0)))
 	var skull := DmGearProps._mi(DmGearProps._sph(0.1), DmGearProps._mat(0xd8cfbd, 0.0, 0.7), Vector3(0, 1.35, 0))
 	skull.scale = Vector3(1, 1.1, 1.15)
 	g.add_child(skull)
-	g.add_child(DmGearProps._mi(DmGearProps._torus(0.16, 0.012), DmGearProps._mat(0x5a4a3a, 0.6, 0.4), Vector3(0, 1.36, 0)))
-	var glow := DmGearProps.glow_sprite(accent, 0.55, 1.0)
-	glow.position.y = 1.36
-	g.add_child(glow)
-	g.set_meta("tip", glow)
+	var glow2 := DmGearProps.glow_sprite(accent, 0.55, 1.0)
+	glow2.position.y = 1.36
+	g.add_child(glow2)
+	g.set_meta("tip", glow2)
 	return g
+
+## Seat a prop on the body and remember how, so a body swap can move it. mode: "held" (hand grip spec), "fitted" (rest-pose spec), "plain", "dir" (aimed, arg = direction).
+func _mount(obj: Node3D, bone: String, mode: String, arg: Variant = null) -> void:
+	_mounts[obj] = {"bone": bone, "mode": mode, "arg": arg}
+	_seat(c, obj, _mounts[obj])
+
+func _seat(body: DmCreature, obj: Node3D, m: Dictionary) -> void:
+	match m.mode:
+		"held": body.attach_held(m.bone, obj, m.arg)
+		"fitted": body.attach_fitted(m.bone, obj, m.arg)
+		"dir": body.attach(m.bone, obj, m.arg)
+		_: body.attach(m.bone, obj)
+
+func _unmount(obj: Node3D) -> void:
+	c.detach(obj)
+	_mounts.erase(obj)
 
 ## New Blood heroes use their authored gear or bare hands (class gear models: props/gear_*.glb, absent from the slice assets => none).
 func _attach_class_gear(model_slug: String) -> void:
@@ -196,7 +237,7 @@ func set_gathering_tool(skill: String, tier := 0) -> void:
 	var grip: float = TOOL_GRIP[skill]
 	inner.position.y += -grip * float(tool.length)
 	obj.visible = _gathering_skill == skill
-	c.attach("R_Hand", obj, Vector3(0, 1, 0.1))
+	_mount(obj, "R_Hand", "dir", Vector3(0, 1, 0.1))
 	_gathering_tools[skill] = obj
 	_tint_tool(skill, obj, _tool_tier)
 
@@ -234,6 +275,8 @@ func apply_gear_visibility() -> void:
 		_aura.visible = idle and not _downed
 	if _cape != null:
 		(_cape.obj as Node3D).visible = idle and _cape_fade > 0.01
+	if _mantle != null:
+		(_mantle.obj as Node3D).visible = idle and not _downed
 
 ## Show equipped gear on the model: weapon in the right hand, off-hand piece in the left, helm on the head, body slots as tints.
 ## `items`: slot id -> {item_id, rarity?}. Only changed slots are rebuilt.
@@ -253,7 +296,7 @@ func set_equipment(items: Dictionary) -> void:
 		if slot == "head":
 			_head_tint = null   # only when the helm changes: any later inventory change calls this again and must keep the worn helm's tint
 		if cur != null:
-			c.detach(cur.obj)
+			_unmount(cur.obj)
 			DmGearProps.dispose_prop(cur.obj)
 			_worn.erase(slot)
 			if slot == "main_hand":
@@ -276,7 +319,7 @@ func set_equipment(items: Dictionary) -> void:
 				DmGearProps.dispose_prop(obj)
 				obj = scythe
 				kind = "scythe"
-		c.attach_held(bone, obj, DmGearProps.hold_spec(kind, slot == "off_hand"))
+		_mount(obj, bone, "held", DmGearProps.hold_spec(kind, slot == "off_hand"))
 		_worn[slot] = {"obj": obj, "key": item.item_id, "rarity": rarity}
 		if slot == "main_hand":
 			_main_rarity = rarity
@@ -284,15 +327,19 @@ func set_equipment(items: Dictionary) -> void:
 	# Body slots have no prop: they tint their region of the body lightly by material tier (the texture keeps its detail; trim and rim carry the glow).
 	var best := _best_set(items)
 	set_look(best[0], best[1])
+	var chest: Variant = items.get("chest")
+	_set_mantle(DmGearModels.mantle_set_of(String(chest.item_id)) if chest is Dictionary else "")
 	for pair in [["chest", "chest"], ["legs", "legs"], ["hands", "hands"], ["feet", "feet"]]:
 		var it2: Variant = items.get(pair[1])
 		if it2 == null:
+			_region_tints.erase(pair[0])
 			c.set_region_tint(pair[0], null)
 		else:
 			var rarity2 := String(it2.get("rarity", ""))
 			var t := DmGearProps.tier(String(it2.item_id), rarity2)
 			var glow: Variant = _scheme_glow if _scheme_glow != null else (t.glow if int(t.glow) >= 0 else DmGearProps._dim(int(t.color), 0.3))
-			c.set_region_tint(pair[0], {"color": t.color, "glow": glow, "strength": float(DmGearFx.look_of(rarity2).tint)})
+			_region_tints[pair[0]] = {"color": t.color, "glow": glow, "strength": float(DmGearFx.look_of(rarity2).tint)}
+			c.set_region_tint(pair[0], _region_tints[pair[0]])
 	apply_gear_visibility()
 
 ## The weapon in hand shows its rarity glow and element (the socketed runes' if set, else its metal tier's); the default staff only the element.
@@ -345,6 +392,8 @@ func set_look(id_: String, pieces: int) -> void:
 			accent = int(p.accent)
 			legendary = int(p.collection) == 3
 			break
+	if legendary and pieces >= SET_AURA_STEPS[0]:
+		DmGearModels.prefetch(DmGearModels.legendary_slug(id_))   # the body swap at 3 pieces then finds the model loaded
 	_aura_level = _aura_level_for(pieces) if id_ != "" else 0
 	_scheme_glow = DmGearProps._dim(accent, 0.5 if legendary else 0.3) if (id_ != "" and pieces >= SET_SCHEME_PIECES) else null
 	if rebuild_aura:
@@ -358,6 +407,66 @@ func set_look(id_: String, pieces: int) -> void:
 			_aura.visible = _gathering_skill == "" and not _downed
 	set_look_changed.emit(set_id, set_pieces)
 
+## The legendary hero body of the worn set look ("" = the hero's own).
+func _look_body() -> String:
+	if set_id == "" or set_pieces < SET_SCHEME_PIECES or NEW_BLOOD.has(slug) or _reaper:   # (the Reaper keeps her own body: aura and colours only)
+		return slug
+	var legendary := DmGearModels.legendary_slug(set_id)
+	return legendary if legendary != "" else slug
+
+func _on_set_look(_id: String, _pieces: int) -> void:
+	var want := _look_body()
+	if want != body_slug and not _disposed:
+		_swap_body(want)
+
+## Rebuild the hero's body from another model (a legendary set's hero, or back), keeping what it carries: held props, helm, mantle, cape, aura, lantern, tints,
+## position / heading and the walk / idle. A one-shot in progress (a cast) is dropped, the body returns to its loop.
+func _swap_body(new_slug: String) -> void:
+	var nc := DmCreature.new(new_slug, _opts)
+	if nc.skeleton == null or nc.rig_slug != new_slug:
+		nc.dispose()   # model absent: the hero keeps the body it has
+		return
+	var old := c
+	add_child(nc.root)
+	move_child(nc.root, old.root.get_index())
+	nc.root.transform = old.root.transform
+	var refit: Array = []   # the helm and the mantle are sized from the head / chest: made again for the new body
+	if _worn.has("head") and _mounts.has(_worn.head.obj):
+		refit.append(_worn.head.obj)
+	if _mantle != null:
+		refit.append(_mantle.obj)
+	for obj: Node3D in _mounts.keys():
+		old.detach(obj)
+		if refit.has(obj):
+			continue
+		obj.scale = Vector3.ONE   # (the seat scales a prop by the bone chain's scale: from a clean 1)
+		_seat(nc, obj, _mounts[obj])
+	for n: Node in [lantern, _aura]:
+		if n != null:
+			old.root.remove_child(n)
+			nc.root.add_child(n)
+	c = nc
+	body_slug = new_slug
+	for obj: Node3D in refit:
+		_mounts.erase(obj)
+		DmGearProps.dispose_prop(obj)
+	if refit.has(_worn.get("head", {}).get("obj")):
+		_worn.erase("head")
+		_mount_helm(_helm_item)
+	if _mantle != null and refit.has(_mantle.obj):
+		var ms: String = _mantle.set
+		_mantle = null
+		_set_mantle(ms)
+	for region in _region_tints:
+		c.set_region_tint(region, _region_tints[region])
+	if _head_tint != null:
+		c.set_head_tint(_head_tint)
+	old.dispose()
+	if _moving:
+		c.set_ground_speed(_ground_speed)
+	_downed = false
+	apply_gear_visibility()
+
 func _aura_level_for(pieces: int) -> int:
 	return 0 if pieces < SET_AURA_STEPS[0] else (2 if pieces >= SET_AURA_STEPS[1] else 1)
 
@@ -367,26 +476,66 @@ func _mount_helm(item: Dictionary) -> void:
 	var cur: Variant = _worn.get("head")
 	if cur != null and cur.key == item.item_id:
 		return
-	if RIG_HEAD.get(slug, "bare") == "covered":
-		# The rig already has a hood, cowl or helmet: no dome. The helm shows as trim on that head region.
+	if RIG_HEAD.get(body_slug, "bare") == "covered":
+		# The rig already has a hood, cowl or helmet: the helm model sits over it, and the head region keeps a faint trim tint.
 		var t := DmGearProps.tier(String(item.item_id), String(item.get("rarity", "")))
 		var set := DmGearProps.armor_by_id(String(item.item_id))
-		_head_tint = {"color": int(set.accent) if not set.is_empty() else t.color, "glow": t.glow if int(t.glow) >= 0 else null, "strength": minf(float(RIG_HEAD_STRENGTH.get(slug, 1.0)), float(DmGearFx.look_of(String(item.get("rarity", ""))).tint) * 0.4)}
-		_worn["head"] = {"obj": Node3D.new(), "key": item.item_id}
+		_head_tint = {"color": int(set.accent) if not set.is_empty() else t.color, "glow": t.glow if int(t.glow) >= 0 else null, "strength": minf(float(RIG_HEAD_STRENGTH.get(body_slug, 1.0)), float(DmGearFx.look_of(String(item.get("rarity", ""))).tint) * 0.4)}
+		var obj := _helm_model(DmGearModels.helm_tier_of(String(item.item_id), String(item.get("rarity", ""))))
+		_helm_item = item
+		_worn["head"] = {"obj": obj if obj != null else Node3D.new(), "key": item.item_id}
+		if obj != null:
+			_mount(obj, "Head", "fitted", _head_spec(obj.get_meta("height")))
 		apply_gear_visibility()
 		return
 	mount_dome(item)
+
+## The helm model of a tier, `HELM_FIT` times the measured head's height.
+func _helm_model(tier: String) -> Node3D:
+	var fit := c.region_fit("Head", HEAD_BONES)
+	var row: Dictionary = DmGearModels.table().get("helm_by_tier", {}).get(tier, {})
+	var h := (fit.size.y * HELM_FIT) if fit.size.y > 0.0 else float(row.get("height_m", 0.27))
+	var g := DmGearModels.helm(tier, h)
+	if g != null:
+		g.set_meta("height", h)
+	return g
+
+func _head_spec(h: float) -> Dictionary:
+	var fit := c.region_fit("Head", HEAD_BONES)
+	var centre := fit.get_center() if fit.size.y > 0.0 else Vector3(0, 0.14, 0)
+	return {"offset": Vector3(centre.x, fit.end.y + HELM_OVER - h * 0.5, centre.z) if fit.size.y > 0.0 else centre}
+
+## Wear the set's mantle on the upper body ("" = none): a model sized to the measured chest, seated from the rig's rest pose on Spine02.
+func _set_mantle(set: String) -> void:
+	if (_mantle.set if _mantle != null else "") == set:
+		return
+	if _mantle != null:
+		_unmount(_mantle.obj)
+		DmGearProps.dispose_prop(_mantle.obj)
+		_mantle = null
+	if set == "":
+		return
+	var fit := c.region_fit("Spine02", CHEST_BONES)
+	var row: Dictionary = DmGearModels.table().get("mantle_by_set_id", {}).get(set, {})
+	var width := (fit.size.z * MANTLE_FIT) if fit.size.z > 0.0 else float(row.get("width_m", 0.42))
+	var obj := DmGearModels.mantle(set, width)
+	if obj == null:
+		return
+	var centre := fit.get_center() if fit.size.z > 0.0 else Vector3.ZERO
+	_mount(obj, "Spine02", "fitted", {"offset": centre + Vector3(0, MANTLE_LIFT, 0)})
+	_mantle = {"obj": obj, "set": set}
+	obj.visible = _gathering_skill == "" and not _downed
 
 ## The helm dome on a bare-headed rig. (The web seats it on a measured head fit; head_fit is not ported, no shipped hero is bare-headed.)
 func mount_dome(item: Dictionary) -> void:
 	var old: Variant = _worn.get("head")
 	if old != null:
-		c.detach(old.obj)
+		_unmount(old.obj)
 		DmGearProps.dispose_prop(old.obj)
 		_worn.erase("head")
 	_head_tint = null
 	var obj := DmGearProps.build_helm(String(item.item_id), String(item.get("rarity", "")), 1.0)
-	c.attach("Head", obj, Vector3(0, 1, 0))
+	_mount(obj, "Head", "plain")
 	_worn["head"] = {"obj": obj, "key": item.item_id}
 	apply_gear_visibility()
 
@@ -395,7 +544,7 @@ func set_cape(id: String) -> void:
 	if _disposed or (_cape.id if _cape != null else "") == id:
 		return
 	if _cape != null:
-		c.detach(_cape.obj)
+		_unmount(_cape.obj)
 		DmGearProps.dispose_prop(_cape.obj)
 		_cape = null
 	if id == "":
@@ -407,7 +556,7 @@ func set_cape(id: String) -> void:
 	if def.is_empty():
 		return
 	var obj := DmGearProps.build_cape(int(def.color), int(def.trim))
-	c.attach("Spine02", obj)
+	_mount(obj, "Spine02", "plain")
 	_cape = {"obj": obj, "id": id}
 	_cape_fade = 0.0 if _downed else 1.0
 	obj.visible = _gathering_skill == "" and _cape_fade > 0.01
@@ -536,6 +685,10 @@ func dispose() -> void:
 	if _cape != null:
 		DmGearProps.dispose_prop(_cape.obj)
 	_cape = null
+	if _mantle != null:
+		DmGearProps.dispose_prop(_mantle.obj)
+	_mantle = null
+	_mounts.clear()
 	if c != null:
 		c.dispose()
 	if is_inside_tree():

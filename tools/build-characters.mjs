@@ -59,7 +59,7 @@ const DEFAULT_TEXTURE = 512;
  * the source clip's first frame (the standing pose), so the runtime keeps the crouch/leap but drops the drift.
  * Only the four necromancer discipline heroes get them. `release` ends up in clips.json as a 0..1 fraction.
  */
-const NECRO_HEROES = new Set(['hero_gravecaller', 'hero_ossuary', 'hero_mourner', 'hero_rotweaver']);
+const NECRO_HEROES = new Set(['hero_gravecaller', 'hero_ossuary', 'hero_mourner', 'hero_rotweaver', 'hero_leg_colossus_mantle', 'hero_leg_legion_unburied', 'hero_leg_plague_choir', 'hero_leg_requiem_wraiths']);
 const COMBAT_TRIMS = {
   slam: { preset: 'slash', start: 1.3, end: 3.3, release: 2.1 },
   sweep: { preset: 'box_03', start: 0.3, end: 1.7, release: 0.7 },

@@ -224,8 +224,9 @@ func _warmup() -> void:
 			kinds += 1
 	for slug in DmNextWarmup.creature_slugs():
 		DmCreature.new(String(slug), {}).dispose()
-	# residency: the hero kits a session can show (playable disciplines + the local hero) stay loaded, the greyed-out ones are released
+	# residency: the hero kits a session can show (playable disciplines + the local hero + its legendary-set body) stay loaded, the greyed-out ones are released
 	var in_play := DmWarmup.hero_slugs_in_play()
+	in_play.append(DmGearModels.legendary_of_discipline(String(g.local_body().discipline_id)))   # the local hero's own legendary-set body stays resident too (no hitch at three pieces)
 	var kept := 0
 	var freed := 0
 	for p in DmWarmup._model_paths():

@@ -1,0 +1,44 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://bbgldrbxk4x3g"
+path.bptc="res://.godot/imported/necro_mantle_mourner_ORM_6e5a220b-a140-450c-ad29-7de79dca60c6.webp-e14010ef494e6d0fb774b5512423b8dd.bptc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
+generator_parameters={
+"md5": "96749afe1eab1ebc38997a2c32ce52a2"
+}
+
+[deps]
+
+source_file="res://assets/slice/models/props/necro_mantle_mourner_ORM_6e5a220b-a140-450c-ad29-7de79dca60c6.webp"
+dest_files=["res://.godot/imported/necro_mantle_mourner_ORM_6e5a220b-a140-450c-ad29-7de79dca60c6.webp-e14010ef494e6d0fb774b5512423b8dd.bptc.ctex"]
+
+[params]
+
+compress/mode=2
+compress/high_quality=true
+compress/lossy_quality=0.7
+compress/uastc_level=0
+compress/rdo_quality_loss=0.0
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/channel_remap/red=0
+process/channel_remap/green=1
+process/channel_remap/blue=2
+process/channel_remap/alpha=3
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1

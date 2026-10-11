@@ -116,6 +116,11 @@ static func run(game: DmNextGame) -> void:
 	stage.name = "WarmupStage"
 	game.add_child(stage)
 	var bodies := _bodies(stage, at0)
+	for k in 2:   # the gear models' two material variants (the model's own, and the emissive tier dress), drawn once so they compile now
+		var w := DmGearModels.weapon("staff", ["bone", "hell"][k])
+		if w != null:
+			stage.add_child(w)
+			w.position = at0 + Vector3(-1.2 + 0.6 * k, 0.9, 0.0)
 	var warmed: Array = binbun.warm(ids, at0) if binbun != null else []
 	var layer_handles: Array = vfx.prims.warm_layers(at0) if vfx != null and vfx.prims != null else []
 	game.enemy_fx.warm(at0)
@@ -133,7 +138,8 @@ static func run(game: DmNextGame) -> void:
 		b["c"].dispose()
 	stage.queue_free()
 	var mine: Dictionary = DmContent.discipline(String(game.local_body().discipline_id)) if game.local_body() != null else {}
-	DmWarmup.release_unused_heroes([String(mine.get("modelSlug", ""))])   # the kits of disciplines nobody can pick; the playable ones stay resident (no first-use load)
+	# the kits of disciplines nobody can pick are freed; the playable ones stay resident (no first-use load), and so does the hero's own legendary-set body
+	DmWarmup.release_unused_heroes([String(mine.get("modelSlug", "")), DmGearModels.legendary_of_discipline(String(game.local_body().discipline_id) if game.local_body() != null else "")])
 	await tree.process_frame
 	if cover.owned:
 		cover.dismiss(false)   # (main's screen stays up through the HUD + panel warm-up, then fades)

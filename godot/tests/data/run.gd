@@ -103,6 +103,25 @@ func _initialize() -> void:
 	ok(DmCounselData.order().size() == 121, "counsel tips")
 	ok(DmData.world()["areas"].size() == 13, "slice world")
 	ok(DmPaData.atlas()["item_order"].size() == 304, "panels_a atlas")
+	# necromancer gear look props (slice/necro_gear.json): every prop and legendary hero model is registered and imported
+	var ng: Dictionary = DmDb.slice("necro_gear")
+	var used_models: Array = DmDb.slice("assets_used")["models"]
+	var ng_props: Array = []
+	for tbl in ["weapon_kind_prop", "mantle_by_set_id", "helm_by_tier"]:
+		for k in ng[tbl]:
+			ng_props.append("models/props/%s.glb" % ng[tbl][k]["prop"])
+	for k in ng["legendary_hero_by_set_id"]:
+		ng_props.append(ng["legendary_hero_by_set_id"][k]["url"])
+	var ng_bad := 0
+	for m in ng_props:
+		if not used_models.has(m) or not ResourceLoader.exists("res://assets/slice/" + m):
+			ng_bad += 1
+			print("necro_gear model missing: ", m)
+	ok(ng_props.size() == 7 + 8 + 6 + 4 and ng_bad == 0, "necro gear table: 25 models listed in assets_used and imported")
+	var asets: Dictionary = DmContent.get_export("armorSets", "ARMOR_SETS")
+	ok(ng["mantle_by_set_id"].has("gravecaller") and ng["mantle_by_set_id"].has("rotweaver_ascended") and asets.has("gravecaller"), "necro gear table: class and ascended mantle ids")
+	for k in ng["legendary_hero_by_set_id"]:
+		ok(DmContent.get_export("armorSets", "ARMOR_BY_ID").has("leg_%s_chest" % k), "necro gear table: legendary set %s exists" % k)
 	ok(DmWfxData.get_data().has("windows") and DmWfxData.get_data()["windows"].size() == 4, "world fx")
 	var sw1: Dictionary = DmDb.sim_world()
 	var sw2: Dictionary = DmDb.sim_world()

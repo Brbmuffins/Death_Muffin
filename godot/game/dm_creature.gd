@@ -42,6 +42,8 @@ static var _rows: Dictionary = {}
 static var _landings: Dictionary = {}
 ## Bone-local palm centre per rig and hand bone, measured once from the skinned mesh (see `palm_of`).
 static var _palms: Dictionary = {}
+## `region_fit` boxes per rig.
+static var _fits: Dictionary = {}
 ## The picture clock of a struck enemy (hitstop.scale): the views copy Vfx.hitstop_scale here every frame.
 static var hitstop_scale := 1.0
 
@@ -853,8 +855,11 @@ func _flush_pending() -> void:
 		var rs := root.global_transform.basis.get_scale().x
 		obj.scale = obj.scale * (rs / maxf(gs, 1e-6))
 		var held: Variant = (p[4] as Dictionary).get("held")
+		var fitted: Variant = (p[4] as Dictionary).get("fitted")
 		if held != null:
 			_seat_held(att, obj, att.bone_name, held)
+		elif fitted != null:
+			_seat_fitted(att, obj, fitted)
 		elif p[2] != null:
 			var d := (p[2] as Vector3).normalized()
 			_attached.append({"obj": obj, "att": att, "dir": d, "follow": p[3], "base_q": null, "fit": p[4], "cal": 4})
@@ -879,6 +884,73 @@ func _seat_held(att: BoneAttachment3D, obj: Node3D, bone: String, spec: Dictiona
 	obj.quaternion = q
 	var palm: Vector3 = spec.palm if spec.has("palm") else palm_of(bone)
 	obj.position = palm - q * Vector3(0, float(spec.get("hold", 0.0)), 0) * obj.scale.y
+
+## Parent `obj` to a bone at a fixed pose in the HERO's axes (+X the way it faces, +Y up, +Z its right), read from the rig's rest pose: the prop keeps its
+## orientation relative to the body part, whatever that bone's own axes are. `spec`: {offset: Vector3 metres from the bone's rest origin, in hero axes;
+## yaw: radians about the hero's up (0 = the prop's +X forward)}. Used by worn models that follow a body part (helm on Head, mantle on Spine02).
+## Nothing runs per frame.
+func attach_fitted(bone: String, obj: Node3D, spec: Dictionary) -> void:
+	_pending.append([bone, obj, null, null, {"fitted": spec}])
+	if root.is_inside_tree():
+		_flush_pending()
+
+func _seat_fitted(att: BoneAttachment3D, obj: Node3D, spec: Dictionary) -> void:
+	var rest := skeleton.get_bone_global_rest(skeleton.find_bone(att.bone_name))
+	var rq := rest.basis.orthonormalized().get_rotation_quaternion().inverse()
+	var gs := maxf(att.global_transform.basis.get_scale().x, 1e-6) / maxf(root.global_transform.basis.get_scale().x, 1e-6)
+	obj.quaternion = rq * Quaternion(Vector3.UP, float(spec.get("yaw", 0.0)))
+	obj.position = rq * ((spec.get("offset", Vector3.ZERO) as Vector3) / gs)
+
+## The box (metres, hero axes, relative to `bone`'s rest origin) of the skinned vertices weighted >= 0.5 to `bones`: where the head, the chest are on this
+## rig. Measured once per rig from the mesh data; AABB() when nothing is weighted there.
+func region_fit(bone: String, bones: Array) -> AABB:
+	var key := rig_slug + "/" + bone + "/" + ",".join(bones)
+	if _fits.has(key):
+		return _fits[key]
+	var fit := AABB()
+	var bi := skeleton.find_bone(bone) if skeleton != null else -1
+	if bi >= 0:
+		var ids: Array = []
+		for n in bones:
+			ids.append(skeleton.find_bone(String(n)))
+		var gs := skeleton.global_transform.basis.get_scale().x / maxf(root.global_transform.basis.get_scale().x, 1e-6)
+		var origin := skeleton.get_bone_global_rest(bi).origin
+		var first := true
+		for m in skeleton.find_children("*", "MeshInstance3D", true, false):
+			var mi := m as MeshInstance3D
+			var skin := mi.skin
+			if skin == null or mi.mesh == null:
+				continue
+			var binds := {}
+			for b in skin.get_bind_count():
+				var id := skin.get_bind_bone(b)
+				if id < 0:
+					id = skeleton.find_bone(skin.get_bind_name(b))
+				if ids.has(id):
+					binds[b] = id
+			if binds.is_empty():
+				continue
+			for s in mi.mesh.get_surface_count():
+				var arr := mi.mesh.surface_get_arrays(s)
+				var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+				var bs: PackedInt32Array = arr[Mesh.ARRAY_BONES]
+				var ws: PackedFloat32Array = arr[Mesh.ARRAY_WEIGHTS]
+				if bs.is_empty() or vs.is_empty():
+					continue
+				var per := bs.size() / vs.size()
+				for v in vs.size():
+					var w := 0.0
+					var bind := -1
+					for k in per:
+						if binds.has(bs[v * per + k]):
+							w += ws[v * per + k]
+							bind = bs[v * per + k]
+					if w >= 0.5:
+						var p := (skeleton.get_bone_global_rest(binds[bind]) * (skin.get_bind_pose(bind) * vs[v]) - origin) * gs
+						fit = AABB(p, Vector3.ZERO) if first else fit.expand(p)
+						first = false
+	_fits[key] = fit
+	return fit
 
 ## The centre of the hand's skinned vertices in the hand bone's own space (the palm: the rigs have no finger bones), cached per rig.
 func palm_of(bone: String) -> Vector3:

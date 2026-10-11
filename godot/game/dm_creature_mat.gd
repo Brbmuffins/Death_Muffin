@@ -15,8 +15,9 @@ static var _region_re: Array = []
 
 ## Models whose glTF surface is a closed body (under 2% open edges, triangle winding agrees with the normals; measured offline per mesh): they render
 ## back-face culled. Every other model keeps cull_disabled: hair cards, cloaks, open robes, wings and thin cloth show their inside from behind
-## (hero_ossuary / hero_mourner / bog_hag / pyre_priest / wraith_thrall are 15-24% open edges). Winged and spectral bodies are never in the cull path.
-const CULL_BACK_SLUGS := ["necromancer", "hero_gravecaller", "hero_rotweaver", "hero_grave_warden", "hero_carrion_witch", "hero_veilwalker",
+## (hero_ossuary / hero_mourner / bog_hag / pyre_priest / wraith_thrall are 15-24% open edges; of the legendary set heroes hero_leg_legion_unburied is 3.2%
+## and hero_leg_requiem_wraiths 18.6%, so they stay open, while hero_leg_colossus_mantle 0.3% and hero_leg_plague_choir 0.1% cull). Winged and spectral bodies are never in the cull path.
+const CULL_BACK_SLUGS := ["necromancer", "hero_gravecaller", "hero_rotweaver", "hero_leg_colossus_mantle", "hero_leg_plague_choir", "hero_grave_warden", "hero_carrion_witch", "hero_veilwalker",
 	"carrion_sac", "boss_gravedigger_king", "boss_drowned_congregation", "boss_cinder_regent", "thrall_sentinel", "skull_rat", "bone_golem",
 	"bone_colossus", "belfry_gargoyle", "bell_templar", "cinderhound", "slag_brute", "mire_leech", "fen_wisp", "skull_niche",
 	"npc_prior", "npc_sexton", "npc_apothecary"]

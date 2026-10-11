@@ -20,7 +20,7 @@ const DOMAINS := {
 	"panels_a": ["atlas", "codex_rows"],
 	"progression": ["extras"],
 	"sim": ["world"],
-	"slice": ["assets_used", "enemies", "hero", "npcs", "world"],
+	"slice": ["assets_used", "enemies", "hero", "necro_gear", "npcs", "world"],
 	"world_fx": ["fx"],
 }
 

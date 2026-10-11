@@ -347,6 +347,11 @@ static func _necro_fallback(kind: String, t: Dictionary) -> Node3D:
 			return _tome(t)
 	return g
 
+## A necromancer weapon: the real model in the item's metal tier, or the code-built stand-in when the model is absent.
+static func _necro_item(necro: Dictionary, t: Dictionary) -> Node3D:
+	var g := DmGearModels.weapon(String(necro.kind), String(necro.tier))
+	return g if g != null else _necro_fallback(String(necro.kind), t)
+
 static func _blade(len: float, bulge: float, thick: float, depth: float) -> ArrayMesh:
 	# Crescent in the XY plane (extrudeFlat of crescent()): root at the origin, sweeping +X and curling back to the point.
 	var top := PackedVector2Array()
@@ -407,7 +412,7 @@ static func build_weapon(item_id: String, rarity: String = "") -> Node3D:
 	var t := tier(item_id, rarity)
 	var necro := necro_by_id(item_id)
 	if not necro.is_empty():
-		return _necro_fallback(String(necro.kind), t)
+		return _necro_item(necro, t)
 	match weapon_kind(item_id):
 		"staff": return _staff(t)
 		"bow": return _bow(t)
@@ -421,7 +426,7 @@ static func build_offhand(item_id: String, rarity: String = "") -> Node3D:
 	var t := tier(item_id, rarity)
 	var necro := necro_by_id(item_id)
 	if not necro.is_empty():
-		return _necro_fallback(String(necro.kind), t)
+		return _necro_item(necro, t)
 	if offhand_kind(item_id) == "tome":
 		return _tome(t)
 	var g := Node3D.new()
@@ -533,9 +538,9 @@ const HOLD_DEFAULT := {"lean": 12.0, "roll": 0.0, "hold": 0.0}
 const HOLDS := {
 	"default_staff": {"lean": -65.0, "roll": 0.0, "hold": 0.0},
 	"staff": {"lean": -65.0, "roll": 0.0, "hold": 0.0},
-	"scythe": {"lean": -65.0, "roll": 0.0, "hold": 0.0},
-	"wand": {"lean": 35.0, "roll": 0.0, "hold": 0.04},
-	"sickle": {"lean": 35.0, "roll": 0.0, "hold": 0.0},
+	"scythe": {"lean": -65.0, "roll": -90.0, "hold": 0.0},
+	"wand": {"lean": -30.0, "roll": 0.0, "hold": 0.04},
+	"sickle": {"lean": -30.0, "roll": 0.0, "hold": 0.0},
 	"skull_focus": {"lean": 30.0, "roll": 0.0, "hold": 0.05},
 	"mourning_bell": {"lean": -50.0, "roll": 0.0, "hold": 0.0},
 	"grimoire": {"lean": 40.0, "roll": 90.0, "hold": 0.16},

@@ -7754,5 +7754,447 @@
       "format": "webp"
     },
     "sha256": "9b4aec2484518cad2208b8b91d9e99bf4cec4ec0ec4787c5a9b8e2fe2893d5dd"
+  },
+  "necrogear_wpn_staff": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: a tall two-handed necromancer staff: dark wood shaft bound with leather and bone vertebra segments, crowned by a cage of curved bone talons clutching a skull-shaped orb socket, small iron bands. Upright, filling the frame top to bottom. Base materials bone, dark wood and iron, no glowing parts.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/A-weapons/wpn_staff.png",
+    "rawHash": "sha256:22d687e3f094a8e48183f5c658e172c840e17b1627551c98008acec34400617e",
+    "outHash": "sha256:1eec970e3a285d37ddb34ab65bd5a56ba62917771eafb62ee5f0df1e0513ec8a",
+    "generatedAt": "2026-10-11T15:46:25.597Z"
+  },
+  "necrogear_wpn_scythe": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: a tall two-handed reaper's scythe: long straight dark wood shaft with iron bands and a grip wrap, a huge crescent iron blade sweeping to one side with rib-like fuller grooves and a serrated inner edge, a small bone skull ornament where blade meets shaft. Upright, filling the frame top to bottom. Base materials bone, dark wood and iron, no glowing parts.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/A-weapons/wpn_scythe.png",
+    "rawHash": "sha256:591f696289c040d3df248f6c30d1aee15774aa42165171658f5cb29f9d4a7cc8",
+    "outHash": "sha256:baf5a78702ccdd7dd0b4e654e4b36980d907338c11ae830cb470a9858d7c6bac",
+    "generatedAt": "2026-10-11T15:46:33.520Z"
+  },
+  "necrogear_wpn_wand": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: a one-handed necromancer wand, slim and elegant, standing perfectly UPRIGHT and vertical, filling the frame top to bottom: a thin straight dark wood shaft with a leather-wrapped grip, a few small bone vertebra beads along it, and a clearly readable tip: a small clawed bone cradle holding a pale skull. Tall and thin silhouette, about a tenth as wide as it is tall. Base materials bone, dark wood and iron, no glowing parts.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/A-weapons/wpn_wand.png",
+    "rawHash": "sha256:845cf7719a5aa9a52bf12df7db967b053871e6b5b20b89699cf30e6ffdabc6e3",
+    "outHash": "sha256:95cdf5c74486368a9f3f0685efea54e234661e331b93631eecb211331ee55a3a",
+    "generatedAt": "2026-10-11T16:06:26.295Z"
+  },
+  "necrogear_wpn_sickle": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: a one-handed ritual sickle: short bone-and-wood handle with leather wrap, a wickedly curved dark iron blade with engraved runes and a small skull pommel, a short loop of cord. Upright or slightly angled, filling the frame. Base materials bone, dark wood and iron, no glowing parts.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/A-weapons/wpn_sickle.png",
+    "rawHash": "sha256:0c5881232caaf04bce8a20694a6d1d864356445436ebb0b3b00ac5f8f5fe73f2",
+    "outHash": "sha256:89a6d673750eaf056b59c3bcc52f9735b2f7501726e1e98a16d128c3d2461c86",
+    "generatedAt": "2026-10-11T15:46:48.244Z"
+  },
+  "necrogear_wpn_skull_focus": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: an off-hand skull focus: a small ivory skull held in a cage of black iron bands on a short bone handle, hollow eye sockets, a short chain and a hanging tooth charm. Upright, filling the frame. Base materials bone, dark wood and iron, no glowing parts.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/A-weapons/wpn_skull_focus.png",
+    "rawHash": "sha256:c9fc55f882d0a8527089558868bcf1c4fe7eb1d886acc90d26741dd4e8334d99",
+    "outHash": "sha256:b2363fb2800ac08f321c0ab95945178275711c21a43095c2b69fa5b7c9fa646d",
+    "generatedAt": "2026-10-11T15:46:57.120Z"
+  },
+  "necrogear_wpn_mourning_bell": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: an off-hand mourning bell: a hand bell of dark tarnished iron with a bone handle, a ragged black funeral ribbon tied at the handle, a small skull clapper, worn engraved band around the rim. Upright, filling the frame. Base materials bone, dark wood and iron, no glowing parts.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/A-weapons/wpn_mourning_bell.png",
+    "rawHash": "sha256:be911a0ecf721ef78bdceb4e1d981913309c43231b791feb5e566315f9bbb95d",
+    "outHash": "sha256:f40c90fc349bbb38a8a3ebbe06490150dafc0ac904da8da4dcb6a3afde72cd23",
+    "generatedAt": "2026-10-11T15:47:06.572Z"
+  },
+  "necrogear_wpn_grimoire": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: an off-hand grimoire: a thick closed tome bound in dark cracked leather with iron corner plates, a bone clasp shaped like a ribcage, a skull embossed on the cover, a short chain dangling. Standing upright, slight angle, filling the frame. Base materials bone, dark wood and iron, no glowing parts.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/A-weapons/wpn_grimoire.png",
+    "rawHash": "sha256:764d299e3c52264c479f562c639222a8e9c591ecad78a37235e1ae57471d78ac",
+    "outHash": "sha256:07a38d08e44e5c576885916a0d2a86e3bd0d6b52a7b905653279fd8078a24d1b",
+    "generatedAt": "2026-10-11T15:47:14.723Z"
+  },
+  "necrogear_mantle_gravecaller": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: the 'Gravecall' mantle, a rigid shoulder-and-collar armour piece (a pair of pauldrons joined by a collar) that is worn over a robe, shown alone and floating as an empty piece with no wearer inside: dark blackened-iron pauldrons with a raised collar and a gorget, violet trim and engraved violet runes, small skull rivets, tattered black cloth hanging from the plates; commanding, militant. Match the material language and palette of the reference character's shoulders. Wider than tall, filling the frame.",
+    "refs": [
+      "art-src/concepts/hero_gravecaller.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-mantles/mantle_gravecaller.png",
+    "rawHash": "sha256:97d182cde01eaa55b90ee2c98bf494fe62ec621a8a41eab7c6be8a8d8769aa0b",
+    "outHash": "sha256:a5aa090fac9592839f0c167b8ff7a4189217fb57f910216f08aa50844481c1b4",
+    "generatedAt": "2026-10-11T15:47:24.839Z"
+  },
+  "necrogear_mantle_ossuary": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: the 'Ivory Reliquary' mantle, a rigid shoulder-and-collar armour piece (a pair of pauldrons joined by a collar) that is worn over a robe, shown alone and floating as an empty piece with no wearer inside: pale aged-ivory bone plates: ribs and scapula shapes forming rigid shoulder plates and a bone collar, old-ivory and faded gold, engraved lines, small vertebra trim; reliquary-like. Match the material language and palette of the reference character's shoulders. Wider than tall, filling the frame. All bone pieces are firmly joined into one solid connected armour piece with a solid base layer beneath; no loose or floating ribs, no hanging separate ribcage.",
+    "refs": [
+      "art-src/concepts/hero_ossuary.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-mantles/mantle_ossuary.png",
+    "rawHash": "sha256:df04c14293bdd6cdd36dbb086c330a7713127004d87d4ff8f49de7c6e74e3670",
+    "outHash": "sha256:04abf60aa57796bf66fb01ef7c9090ad7d2e53ba4849ef22b08578c2f132b6bc",
+    "generatedAt": "2026-10-11T16:06:34.687Z"
+  },
+  "necrogear_mantle_mourner": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: the 'Widowveil' mantle, a rigid shoulder-and-collar armour piece (a pair of pauldrons joined by a collar) that is worn over a robe, shown alone and floating as an empty piece with no wearer inside: a rigid pale silver-grey pauldron pair with a high stiff collar, draped pale blue funeral gauze and small tarnished silver bells hanging at the edges, delicate engraved filigree; mournful. Match the material language and palette of the reference character's shoulders. Wider than tall, filling the frame.",
+    "refs": [
+      "art-src/concepts/hero_mourner.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-mantles/mantle_mourner.png",
+    "rawHash": "sha256:93e8659ddabd2438d830d2eb5f6f6493e04f416cf550e7368976806921bbb1e1",
+    "outHash": "sha256:a0b5cb244f41a72898d76e7b4528d1151970a6f65bc7c462045d3d67971f7088",
+    "generatedAt": "2026-10-11T15:47:43.152Z"
+  },
+  "necrogear_mantle_rotweaver": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: the 'Blightweave' mantle, a rigid shoulder-and-collar armour piece (a pair of pauldrons joined by a collar) that is worn over a robe, shown alone and floating as an empty piece with no wearer inside: moss-covered rotten leather and bark pauldrons with a raised thorny collar, tangled roots and small mushrooms growing on the plates, dripping green moss, a small skull charm; sickly acid-green. Match the material language and palette of the reference character's shoulders. Wider than tall, filling the frame.",
+    "refs": [
+      "art-src/concepts/hero_rotweaver.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-mantles/mantle_rotweaver.png",
+    "rawHash": "sha256:c55745074b8acf123f46037af846dec9cb294a97c8953dc0eba24d4b8fb8e95c",
+    "outHash": "sha256:9b12454a3462d8bb4a7bbbd4aaad58c7d9aea097e051628c5bf3680eb18c7b8c",
+    "generatedAt": "2026-10-11T15:47:52.405Z"
+  },
+  "necrogear_mantle_gravecaller_asc": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: the 'Epitaph Sovereign' mantle, a rigid shoulder-and-collar armour piece (a pair of pauldrons joined by a collar) that is worn over a robe, shown alone and floating as an empty piece with no wearer inside: ascended royal version: dark indigo-black plate pauldrons and a tall collar, bright pale-violet inscribed epitaph engraving and bone clasps, ornate sovereign crest, regal. Match the material language and palette of the reference character's shoulders. Wider than tall, filling the frame.",
+    "refs": [
+      "art-src/concepts/hero_gravecaller.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-mantles/mantle_gravecaller_asc.png",
+    "rawHash": "sha256:244fc86fe0ceb82f7a5c0bcafffbfe5b9a3be0d3e95520475a583b0683f0decf",
+    "outHash": "sha256:458b5c89deeb4bead090b047435ee31b79947e9fc8a3385b7274782657b0929c",
+    "generatedAt": "2026-10-11T15:48:01.548Z"
+  },
+  "necrogear_mantle_ossuary_asc": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: the 'Marrow Regent' mantle, a rigid shoulder-and-collar armour piece (a pair of pauldrons joined by a collar) that is worn over a robe, shown alone and floating as an empty piece with no wearer inside: ascended regal version: large layered ivory bone pauldrons and a tall rib-crown collar with warm gold-cream inlay and a reliquary box clasp; opulent. Match the material language and palette of the reference character's shoulders. Wider than tall, filling the frame.",
+    "refs": [
+      "art-src/concepts/hero_ossuary.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-mantles/mantle_ossuary_asc.png",
+    "rawHash": "sha256:6cb2cd574dc40122b134eeb21f0d346117e4c9ea9dfd3901099dfcd0bdf18883",
+    "outHash": "sha256:9a21323e75ff8038bf042afef29a3d893109d5f7004e5a53df2f254c75db527b",
+    "generatedAt": "2026-10-11T15:48:11.390Z"
+  },
+  "necrogear_mantle_mourner_asc": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: the 'Pale Requiem' mantle, a rigid shoulder-and-collar armour piece (a pair of pauldrons joined by a collar) that is worn over a robe, shown alone and floating as an empty piece with no wearer inside: ascended version: pale silver pauldrons with a flowing high collar, ice-blue glowing filigree, long silver hem tassels and many tiny bells; ethereal. Match the material language and palette of the reference character's shoulders. Wider than tall, filling the frame. Matte solid materials only: no glow, no aura, no halo, no light outline around the piece.",
+    "refs": [
+      "art-src/concepts/hero_mourner.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-mantles/mantle_mourner_asc.png",
+    "rawHash": "sha256:b9613ff14ba7a0ab13d6aae51689763299ddfa7e38ed39b235c16a0874fc25ae",
+    "outHash": "sha256:47873e0a28412f94175248bb92dfda53a54359472cdb7a5cf3d7b9bfd46c16a8",
+    "generatedAt": "2026-10-11T16:06:43.408Z"
+  },
+  "necrogear_mantle_rotweaver_asc": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: the 'Virulent Choir' mantle, a rigid shoulder-and-collar armour piece (a pair of pauldrons joined by a collar) that is worn over a robe, shown alone and floating as an empty piece with no wearer inside: ascended version: bright lime-green spore-glowing fungal and bone pauldrons with a ribbed choir-like collar, thick roots and glowing pustules; vivid but still rotten. Match the material language and palette of the reference character's shoulders. Wider than tall, filling the frame.",
+    "refs": [
+      "art-src/concepts/hero_rotweaver.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-mantles/mantle_rotweaver_asc.png",
+    "rawHash": "sha256:6af0ce3b06285726347a9e2b61aa252974cf0eb5a2ed26e8edf6be77d03c0708",
+    "outHash": "sha256:c87eb45a81fbcc185ec70592e746173ed2d117a6e605f3116884e5fc9caea82d",
+    "generatedAt": "2026-10-11T15:48:28.748Z"
+  },
+  "necrogear_helm_copper": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: a necromancer's headpiece, shown alone as an empty hood or crown floating with no head or mannequin inside, three-quarter view: a simple hooded cowl with a hammered copper circlet and a few rivets, rough dark cloth hood, warm reddish copper metal; humble. Not a knight helmet. Filling the frame.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-helms/helm_copper.png",
+    "rawHash": "sha256:9cac06f7e111fc118d38293399aed1fdc31d40cdc15d16ff68b27bc9b2446601",
+    "outHash": "sha256:f7faba02203e13bb0768175cc453862c73cc0a401e2eaf3c2391e32f021b2983",
+    "generatedAt": "2026-10-11T15:48:37.336Z"
+  },
+  "necrogear_helm_iron": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: a necromancer's headpiece, shown alone as an empty hood or crown floating with no head or mannequin inside, three-quarter view: a dark cloth cowl with a heavy blackened-iron skull-brow band and iron studs; grim. Not a knight helmet. Filling the frame.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-helms/helm_iron.png",
+    "rawHash": "sha256:95c084fd7c03532026ca2f8b916487256d94d3e03c852e1f2099cc38beedee48",
+    "outHash": "sha256:bf435e4be2cc785489ccafe981e01820fd8670c53a6de6b7374b1ed075fd7eec",
+    "generatedAt": "2026-10-11T15:48:45.294Z"
+  },
+  "necrogear_helm_silver": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: a necromancer's headpiece, shown alone as an empty hood or crown floating with no head or mannequin inside, three-quarter view: a pale hood with a polished silver bone-shaped circlet, fine engraving and a small hanging chain; refined. Not a knight helmet. Filling the frame.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-helms/helm_silver.png",
+    "rawHash": "sha256:9880b5f78cf8d787398777e77e1617636f8f2d5895e5203390c353d79629e1fc",
+    "outHash": "sha256:eabbb1bceabbdfb8ddb79bab21e82ac31968858639db1ad865978d7b0013abc5",
+    "generatedAt": "2026-10-11T15:48:55.149Z"
+  },
+  "necrogear_helm_steel": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: a necromancer's headpiece, shown alone as an empty hood or crown floating with no head or mannequin inside, three-quarter view: a hood with a steel skull-half mask covering the brow and cheekbones, rivetted steel plates over the crown, leaves lower face open; severe. Not a knight helmet. Filling the frame.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-helms/helm_steel.png",
+    "rawHash": "sha256:2943b46dc55438a552281964211bf05fbd4d9568e6a29f3b0d4ee11268fb402c",
+    "outHash": "sha256:c5263bd9e730a8fc16039f1c96628aaba88e90c7abd35e8072801be35843b9eb",
+    "generatedAt": "2026-10-11T15:49:04.465Z"
+  },
+  "necrogear_helm_hellsteel": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: a necromancer's hooded crown shown alone, empty, with no head inside: a dark charcoal cloth cowl with a low open-topped circlet of hellsteel (dark red-black iron) shaped like a ring of small curved bone-like thorns, thin glowing ember-orange cracks along the circlet only, face opening fully open. Cloth cowl is the main shape, the metal is only a crown on top. Not a knight helmet, no visor, no cheek guards. Filling the frame.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-helms/helm_hellsteel.png",
+    "rawHash": "sha256:4e20d5e3c8945063e9548ef3488b9202979cea360f203e2a279f8f16070d89c8",
+    "outHash": "sha256:09df7f3bb19efc0c4306e79b948ebfa8aea32f49172600f4873867e895d6c0c6",
+    "generatedAt": "2026-10-11T16:06:51.542Z"
+  },
+  "necrogear_helm_moonsilver": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands, no mannequin, no character. Dark fantasy necromancer gear, painterly-realistic, fully textured with real materials, chunky readable silhouette that still reads from a top-down camera far away. Subject: a necromancer's hooded crown shown alone, empty, with no head inside: a pale blue-grey silk cowl draped softly, with a thin floating circlet of luminous moonsilver holding a crescent-moon brow ornament and a few slender crescent spikes, faint cold glow only on the circlet. Cloth cowl is the main shape. Not a knight helmet, no visor, no cheek guards, face opening fully open. Filling the frame.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/necrogear/B-helms/helm_moonsilver.png",
+    "rawHash": "sha256:77c5bf12c45e746d3a431e3abd6b83410c80b6244ada31e64759b3f964917863",
+    "outHash": "sha256:29c43566518435b071283c55c4517af3bd54928c71ae4df7d6889e58562b646d",
+    "generatedAt": "2026-10-11T16:06:59.316Z"
+  },
+  "necrogear_legendary_colossus_mantle": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character source for 3D modeling. Redraw the necromancer from the FIRST image wearing a complete legendary armour set. Keep the same body proportions, face, hood silhouette, pose and framing as the reference; upgrade the whole outfit. Colossus Mantle: a hooded necromancer in dark robes with giant ribs worn as armour OVER the robe. The hood is up and the human face of the reference is clearly visible (no skull face, no skeleton body). Enormous ivory-and-tan rib pauldrons, a heavy bone breastplate of ribs over the robe, bone vambraces and cuisses, warm gold accents (#f2d98a), tarnished ivory (#7d7255) base, hung with broken oath tokens; massive and imposing but still a hooded necromancer. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no staff, no props, no magic), legs straight and slightly apart, robe hem above the ankles, no long trailing cape on the floor. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow spilling on the background, no text, no other characters. Dark fantasy painterly-realistic game art.",
+    "refs": [
+      "art-src/concepts/hero_ossuary.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/necrogear/C-legendary/legendary_colossus_mantle.png",
+    "rawHash": "sha256:04b6fddc31d723a511e5d13616efcea47488e7bc82979767e937c3751b27a68a",
+    "outHash": "sha256:d1d20a559501e7dea25975e9fb230fa646a8bccea16a0eda66083e3bf1e60461",
+    "generatedAt": "2026-10-11T16:07:08.153Z"
+  },
+  "necrogear_legendary_legion_unburied": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character source for 3D modeling. Redraw the necromancer from the FIRST image wearing a complete legendary armour set. Keep the same body proportions, face, hood silhouette, pose and framing as the reference; upgrade the whole outfit. Legion of the Unburied: a cuirass and warcrown of dark plum-black plate (#3a1f2b) with fiery orange (#ff7a3d) glowing seams and runes, a crown of skulls, skeletal hand motifs clutching the pauldrons, tattered black cape-cloth, spiked gauntlets and greaves, violet underrobe. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no staff, no props, no magic), legs straight and slightly apart, robe hem above the ankles, no long trailing cape on the floor. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow spilling on the background, no text, no other characters. Dark fantasy painterly-realistic game art.",
+    "refs": [
+      "art-src/concepts/hero_gravecaller.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/necrogear/C-legendary/legendary_legion_unburied.png",
+    "rawHash": "sha256:3c7e54a9e18ba257a6d4059aa5cee434685c3175ed5eef3136dc76f1c7608664",
+    "outHash": "sha256:d46ca73a6ee8609e16650ad645d066d2f195ccbe4e124d9004558ac2e5ec562f",
+    "generatedAt": "2026-10-11T15:49:40.639Z"
+  },
+  "necrogear_legendary_plague_choir": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character source for 3D modeling. Redraw the necromancer from the FIRST image wearing a complete legendary armour set. Keep the same body proportions, face, hood silhouette, pose and framing as the reference; upgrade the whole outfit. Plague Choir: a stained surplice of dark green-black (#3d4a1c) with glowing acid-lime (#b6ff4d) pustules and veins, a choirmaster's bone-and-fungus mask over the hood, rotten gloves and leggings, hanging censers and small organ-pipe bones, moss and roots. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no staff, no props, no magic), legs straight and slightly apart, robe hem above the ankles, no long trailing cape on the floor. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow spilling on the background, no text, no other characters. Dark fantasy painterly-realistic game art.",
+    "refs": [
+      "art-src/concepts/hero_rotweaver.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/necrogear/C-legendary/legendary_plague_choir.png",
+    "rawHash": "sha256:d27087218a2aabd7a2816b6c6b29194c4d5506b9278d6234b1f57ec5b98eb0c6",
+    "outHash": "sha256:44b9deae0f8f5b4b082af6f789da817c162f5b4ec3b60af6d49455004b841ea7",
+    "generatedAt": "2026-10-11T15:49:50.667Z"
+  },
+  "necrogear_legendary_requiem_wraiths": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character source for 3D modeling. Redraw the necromancer from the FIRST image wearing a complete legendary armour set. Keep the same body proportions, face, hood silhouette, pose and framing as the reference; upgrade the whole outfit. Requiem of Wraiths: a dark navy-teal robe (#2c4a5e) with a layered semi-translucent spectral shroud over it in several overlapping cloth layers, subtle cyan (#7fe3ff) wraith-wisps and faint faces in the outer layer only, a wraithveil hood, dark fitted gloves, proper dark leather boots, silver bells, short ribbons; deeper contrast and shading, not flat. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no staff, no props, no magic), legs straight and slightly apart, robe hem above the ankles, no long trailing cape on the floor. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow spilling on the background, no text, no other characters. Dark fantasy painterly-realistic game art.",
+    "refs": [
+      "art-src/concepts/hero_mourner.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/necrogear/C-legendary/legendary_requiem_wraiths.png",
+    "rawHash": "sha256:7892015343be70b7f6cf90e713e15aae92a7533ab93474ba2e61398840986843",
+    "outHash": "sha256:07c81d47fdae265b453c9cada8eb16d4f64e30d85e1f159d0a23c1d9120b2bb6",
+    "generatedAt": "2026-10-11T16:07:17.471Z"
+  },
+  "necrogear_sheet_ossuary": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character design presentation sheet, three full-body necromancer figures side by side on a plain light grey background, evenly spaced, labelled nothing (no text at all). LEFT: the base Ossuary hero exactly as in the FIRST image. MIDDLE: the same hero, same T-pose, now also wearing the rigid mantle/pauldrons from the SECOND image and the headpiece from the THIRD image over the robe. RIGHT: the same hero wearing the complete legendary set exactly as in the FOURTH image. Same proportions and T-pose for all three, same lighting, painterly-realistic dark fantasy game art, entire bodies visible.",
+    "refs": [
+      "art-src/concepts/hero_ossuary.png",
+      "art-src/concepts/necrogear/B-mantles/mantle_ossuary.png",
+      "art-src/concepts/necrogear/B-helms/helm_silver.png",
+      "art-src/concepts/necrogear/C-legendary/legendary_colossus_mantle.png"
+    ],
+    "crop": null,
+    "aspect": "16:9",
+    "post": null,
+    "out": "art-src/concepts/necrogear/D-sheets/sheet_ossuary.png",
+    "rawHash": "sha256:57de704a0205334efd01ffdc7b41c1793f85700bd3fca9efdd431a194ba0ace3",
+    "outHash": "sha256:305f0d0747e73cd2384297b0b37c68eed338d7b1b6f41ab96eee4cab878b8cdd",
+    "generatedAt": "2026-10-11T15:50:25.272Z"
+  },
+  "necrogear_sheet_gravecaller": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character design presentation sheet, three full-body necromancer figures side by side on a plain light grey background, evenly spaced, labelled nothing (no text at all). LEFT: the base Gravecaller hero exactly as in the FIRST image. MIDDLE: the same hero, same T-pose, now also wearing the rigid mantle/pauldrons from the SECOND image and the headpiece from the THIRD image over the robe. RIGHT: the same hero wearing the complete legendary set exactly as in the FOURTH image. Same proportions and T-pose for all three, same lighting, painterly-realistic dark fantasy game art, entire bodies visible.",
+    "refs": [
+      "art-src/concepts/hero_gravecaller.png",
+      "art-src/concepts/necrogear/B-mantles/mantle_gravecaller.png",
+      "art-src/concepts/necrogear/B-helms/helm_hellsteel.png",
+      "art-src/concepts/necrogear/C-legendary/legendary_legion_unburied.png"
+    ],
+    "crop": null,
+    "aspect": "16:9",
+    "post": null,
+    "out": "art-src/concepts/necrogear/D-sheets/sheet_gravecaller.png",
+    "rawHash": "sha256:5fb1f31907f5c8730f9784a012d459b6da537b0418cd0067c8834582b3cc0ed7",
+    "outHash": "sha256:ee715702d36c4080cc1683adb8c3fa0900cbebc9019efd42b3282b7a0164264b",
+    "generatedAt": "2026-10-11T15:50:35.679Z"
+  },
+  "necrogear_sheet_mourner": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character design presentation sheet, three full-body necromancer figures side by side on a plain light grey background, evenly spaced, labelled nothing (no text at all). LEFT: the base Mourner hero exactly as in the FIRST image. MIDDLE: the same hero, same T-pose, now also wearing the rigid mantle/pauldrons from the SECOND image and the headpiece from the THIRD image over the robe. RIGHT: the same hero wearing the complete legendary set exactly as in the FOURTH image. Same proportions and T-pose for all three, same lighting, painterly-realistic dark fantasy game art, entire bodies visible.",
+    "refs": [
+      "art-src/concepts/hero_mourner.png",
+      "art-src/concepts/necrogear/B-mantles/mantle_mourner.png",
+      "art-src/concepts/necrogear/B-helms/helm_moonsilver.png",
+      "art-src/concepts/necrogear/C-legendary/legendary_requiem_wraiths.png"
+    ],
+    "crop": null,
+    "aspect": "16:9",
+    "post": null,
+    "out": "art-src/concepts/necrogear/D-sheets/sheet_mourner.png",
+    "rawHash": "sha256:22356f54c6aa520b8e97110863462c43e8766309329c131fa1ae87bcf3712084",
+    "outHash": "sha256:ab89d580bbbf17da9341ed7c519dffe10e0134752f8a889fb9ce2255674578be",
+    "generatedAt": "2026-10-11T15:50:44.391Z"
+  },
+  "necrogear_sheet_rotweaver": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character design presentation sheet, three full-body necromancer figures side by side on a plain light grey background, evenly spaced, labelled nothing (no text at all). LEFT: the base Rotweaver hero exactly as in the FIRST image. MIDDLE: the same hero, same T-pose, now also wearing the rigid mantle/pauldrons from the SECOND image and the headpiece from the THIRD image over the robe. RIGHT: the same hero wearing the complete legendary set exactly as in the FOURTH image. Same proportions and T-pose for all three, same lighting, painterly-realistic dark fantasy game art, entire bodies visible.",
+    "refs": [
+      "art-src/concepts/hero_rotweaver.png",
+      "art-src/concepts/necrogear/B-mantles/mantle_rotweaver.png",
+      "art-src/concepts/necrogear/B-helms/helm_iron.png",
+      "art-src/concepts/necrogear/C-legendary/legendary_plague_choir.png"
+    ],
+    "crop": null,
+    "aspect": "16:9",
+    "post": null,
+    "out": "art-src/concepts/necrogear/D-sheets/sheet_rotweaver.png",
+    "rawHash": "sha256:5f7901e0730d82328364b29cf6a6aba6d0aa09c0e4b6be5e92f526aee6b211fa",
+    "outHash": "sha256:7d6ddf9be75b3e8ea3dace2639d32c93b2e9d5d0ba3c259417ff46f64d150778",
+    "generatedAt": "2026-10-11T15:50:54.389Z"
+  },
+  "necrogear_sheet_weapons": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "A weapon lineup presentation sheet for a dark fantasy game: the seven weapons shown in the reference images, redrawn together standing upright side by side in one row on a plain light grey background, evenly spaced, each matching its reference image (same design, same materials). Order left to right: staff, scythe, wand, sickle, skull focus, mourning bell, grimoire. No text, no hands.",
+    "refs": [
+      "art-src/concepts/necrogear/A-weapons/wpn_staff.png",
+      "art-src/concepts/necrogear/A-weapons/wpn_scythe.png",
+      "art-src/concepts/necrogear/A-weapons/wpn_wand.png",
+      "art-src/concepts/necrogear/A-weapons/wpn_sickle.png",
+      "art-src/concepts/necrogear/A-weapons/wpn_skull_focus.png",
+      "art-src/concepts/necrogear/A-weapons/wpn_mourning_bell.png",
+      "art-src/concepts/necrogear/A-weapons/wpn_grimoire.png"
+    ],
+    "crop": null,
+    "aspect": "16:9",
+    "post": null,
+    "out": "art-src/concepts/necrogear/D-sheets/sheet_weapons.png",
+    "rawHash": "sha256:9f25daf70cadf30bd83b32df9bbc4a48aad5fce0dde61575b6e31ad8628650a3",
+    "outHash": "sha256:4260d4b03ef3ffdc1f3215676579edd5681e40a5423a76d7579136da927564c5",
+    "generatedAt": "2026-10-11T15:51:14.949Z"
   }
 }

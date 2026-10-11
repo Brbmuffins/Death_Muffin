@@ -1,20 +1,29 @@
 [
   {
     "date": "2026-10-11",
+    "title": "Necromancer Look: Real Weapons, Helms and Mantles",
+    "items": [
+      "Every necromancer weapon now has its own model in your hand: staves, scythes, wands, sickles, skull foci, mourning bells and grimoires. Bone, iron, gold, hell and moon weapons share a model and differ in metal and glow. The default staff uses the new staff too.",
+      "Helms show as a hooded crown over your hero: iron for class sets, silver for ascended sets, copper, iron and silver for crafted helms, a thorned hellsteel crown for legendary sets. Hide helms still hides them.",
+      "Wearing the chest piece of a class or ascended set puts that set's mantle on your hero's shoulders.",
+      "Wear 3 pieces of a legendary set (Legion Unburied, Colossus Mantle, Requiem Wraiths, Plague Choir) and your hero becomes that set's hero, weapon and all. Take a piece off and you are yourself again. Other players see it too."
+    ]
+  },
+  {
+    "date": "2026-10-11",
     "title": "Necromancer Look: Staff in Hand",
     "items": [
-      "Reaper: Unleash Souls now sends every soul (up to 30) out in an even ring first, and only then does each one lock onto an enemy, sharing out the targets instead of all piling onto the nearest one.",
       "The staff (and every weapon) now sits in your hero's hand and moves with it: no more staff hinged at the elbow, and casts swing the staff forward instead of leaving it behind.",
       "Gear keeps your robe's own colours: worn pieces tint the trim and edges instead of washing the whole robe.",
       "Weapons glow by rarity (rare, epic and legendary get a stronger halo and drifting motes that streak as you swing), coloured by the weapon's metal or your socketed runes.",
-      "Wearing 2+ pieces of a set adds a set aura that grows at 4 pieces; 3+ pieces switch on the set's colours. (New weapon, mantle, helm and legendary-set models are on the way.)"
+      "Wearing 2+ pieces of a set adds a set aura that grows at 4 pieces; 3+ pieces switch on the set's colours.",
+      "Reaper: Unleash Souls now sends every soul (up to 30) out in an even ring first, and only then does each one lock onto an enemy, sharing out the targets instead of all piling onto the nearest one."
     ]
   },
   {
     "date": "2026-10-11",
     "title": "Polish Pass: Co-op, Animation and the Reaper",
     "items": [
-      "Reaper: new ability Unleash Souls (R). It lets every soul in your bag go at once; each one hunts the nearest enemy and strikes it, and with no enemies around they circle you until one shows up.",
       "Co-op: everyone in a party now shows their real level, and the world scales to the party leader's level instead of whoever happens to be standing closest.",
       "Co-op: bosses gain much less health per extra player (two players: x1.3 instead of x1.8; four: x1.9 instead of x3.4).",
       "Bosses no longer get stuck on walls or on thralls: they slide along walls, find a way round when blocked, and walk through a thrall legion. In co-op a boss keeps one target instead of flipping between players.",
@@ -28,7 +37,8 @@
       "The Reaper's rites now swing like a scythe: Scythe Sweep and Harvest Spin sweep, Reap slams down, Scythe Throw flicks, Wraith Walk and Soul Burst use the channel and summon poses, and haste speeds the swing up.",
       "Auto combat now plays the Reaper: Scythe Sweep as the filler, souls spent on Reap, Harvest Spin, Soul Burst and Scythe Throw, and Wraith Walk to escape when she is low.",
       "Scythe Sweep hits a third harder.",
-      "The game window now just says \"Death Muffin\"."
+      "The game window now just says \"Death Muffin\".",
+      "Reaper: new ability Unleash Souls (R). It lets every soul in your bag go at once; each one hunts the nearest enemy and strikes it, and with no enemies around they circle you until one shows up."
     ]
   },
   {

@@ -1,0 +1,9 @@
+{
+  "id": "prop_necro_mantle_rotweaver",
+  "input": "art-src/concepts/necrogear/B-mantles/mantle_rotweaver.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3500,
+    "texture_quality": "detailed"
+  }
+}

@@ -37,6 +37,7 @@ ignored:
   use a biped rig for winged humanoids or no rig for animals.
 - Tripo's `hurt` preset is a 14 s lying-injured clip, not a flinch; `tools/build-characters.mjs` keeps it out of play.
 - Props: omit `rig` and `animations`. Face budgets: hero 12k, boss 14k, horde enemy 4-5k, props 0.9-3.5k.
+- Combat-trim source clips (`box_03`, `pitch_baseball`, `sing_01`, `basketball_shot`, see `build-characters.mjs` `COMBAT_TRIMS`) need no retarget credits for another biped hero: all Tripo biped rigs share one joint set, so copy the four `anim_*.glb` files from `art-src/tripo/hero_gravecaller/` into the new hero's folder before `build-characters.mjs` (done for the four `hero_leg_*` legendary looks).
 - Runs are resumable: task ids are written to `art-src/tripo/<id>/state.json` before polling; failed tasks refund.
 
 ## Build
