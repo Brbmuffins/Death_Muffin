@@ -28,6 +28,8 @@ func _init(ui_: Node) -> void:
 	_host_window("vault", vault)
 	vault.deposit_requested.connect(func(slot: int) -> void: _vault(func() -> DmResult: return await game.api.vault_deposit(cid(), slot)))
 	vault.withdraw_requested.connect(func(slot: int) -> void: _vault(func() -> DmResult: return await game.api.vault_withdraw(cid(), slot)))
+	vault.deposit_part_requested.connect(func(slot: int, qty: int) -> void: _vault(func() -> DmResult: return await game.api.vault_deposit(cid(), slot, qty)))
+	vault.withdraw_part_requested.connect(func(slot: int, qty: int) -> void: _vault(func() -> DmResult: return await game.api.vault_withdraw(cid(), slot, qty)))
 	vault.deposit_all_requested.connect(func(kind: String, except: Array) -> void: _vault(func() -> DmResult: return await game.api.vault_deposit_all(cid(), kind, except)))
 	vault.take_all_requested.connect(_take_all)
 	vault.sort_requested.connect(_vault_sort)
