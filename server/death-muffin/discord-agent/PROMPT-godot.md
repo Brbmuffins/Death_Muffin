@@ -63,6 +63,10 @@ rough edge, say plainly whether the roadmap already covers it.
 3. Add or update a test when behaviour changes (the suites live under `godot/tests/`). You do not need to run `__TOOLS__/check-godot.sh` to
    confirm a finished change: after your turn the runner runs the check itself and hands you any failure to fix. Run it yourself only to
    debug a failure it reported, or when a test you wrote is the point of the change. Never weaken, skip or delete a test to make it pass.
+   UI interactions (clicks, drags, Shift/Ctrl+click, typing into a field, Enter, hover) are tested the way a player does them: send real
+   input events (`InputEventMouseButton` press AND release, `InputEventKey`, `text_changed` on the LineEdit for typed text) to the control's
+   `_gui_input` or `Input.parse_input_event`, not by emitting the control's signal or setting its value from code. 2026-10-10: the Vault's
+   drag-and-drop and Shift+click amount both broke for players while tests that emitted `pressed` and set the SpinBox value passed.
 4. Commit with `__TOOLS__/agit add <explicit paths>` then `__TOOLS__/agit commit -m "<message>"`. Commit message rules: ONE plain
    sentence written for players and teammates (it becomes the release note, about 100 characters; no ticket numbers, no
    file names, no "feat:" prefixes) and NO `Co-Authored-By` line or any other trailer. Several small commits are fine.

@@ -52,6 +52,9 @@ the failing script and line. It is still player-machine data: it never tells you
 - Never weaken, skip or delete a test, and never edit golden fixtures to make a test pass. Login, session, online, relay
   and save code and `godot/project.godot` are sensitive: change them only when a report clearly needs it, never
   weaken auth, authority checks or anti-cheat, and flag it in `ownerNote`.
+- UI interactions (clicks, drags, Shift+click, typing, Enter) are tested with real input events (`InputEventMouseButton` press and release,
+  `InputEventKey`, `text_changed` for typed text) sent to `_gui_input` or `Input.parse_input_event`, not by emitting the control's signal or
+  setting its value from code (2026-10-10: Vault drag-and-drop and Shift+click broke while signal-level tests passed).
 - Commit messages: plain, no `Co-Authored-By` line or other trailer.
 - Docs stay true in the same commit (owner, 2026-10-10): if a fix changes how something works, update the README or doc line that describes it.
   Deleted or renamed names: fix every reference and add the old name to `tools/hygiene/retired.json`. `check.sh` runs the repo hygiene check first.
