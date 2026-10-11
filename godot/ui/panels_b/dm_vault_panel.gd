@@ -227,11 +227,13 @@ func _build() -> void:
 	var dep_outer := DmPb.hbox(12)   # the Deposit row is centered under the bag grid, not under the gear doll beside it
 	dep_outer.add_child(DmUi.spacer(0, DOLL_PX))
 	dep_row.custom_minimum_size.x = GRID_W
+	dep_row.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	dep_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	dep_outer.add_child(dep_row)
 	left.add_child(dep_outer)
 	var take_row := DmPb.hbox(8)
 	take_row.custom_minimum_size.x = GRID_W
+	take_row.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	take_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	take_materials_button = DmPb.button("Take materials", false, off, "Takes every material and consumable from the open Vault tab into your bag, as far as it fits")
 	take_materials_button.pressed.connect(_take.bind("materials"))
