@@ -70,6 +70,8 @@ func step(c: DmRiteCaster, dt: float) -> void:
 			w["t"] = float(w["t"]) - dt
 			w["x"] = float(w["x"]) + cos(float(w["a"])) * OUT_SPEED * dt
 			w["z"] = float(w["z"]) + sin(float(w["a"])) * OUT_SPEED * dt
+			if float(w["t"]) <= 0.0:
+				m["seek"] = 0.0   # the ring is done: hunt on the very next tick, from where the ring ended (not from her)
 			i -= 1
 			continue
 		var e: DmEnemy = null
