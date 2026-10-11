@@ -28,6 +28,12 @@ const MODULES := {
 	"command_rend": preload("res://next/rites/rite_command_rend.gd"),
 	"dirge": preload("res://next/rites/rite_dirge.gd"),
 	"plague_bloom": preload("res://next/rites/rite_plague_bloom.gd"),
+	"scythe_sweep": preload("res://next/rites/rite_scythe_sweep.gd"),
+	"scythe_throw": preload("res://next/rites/rite_scythe_throw.gd"),
+	"reap": preload("res://next/rites/rite_reap.gd"),
+	"wraith_walk": preload("res://next/rites/rite_wraith_walk.gd"),
+	"soul_burst": preload("res://next/rites/rite_soul_burst.gd"),
+	"harvest_spin": preload("res://next/rites/rite_harvest_spin.gd"),
 }
 
 static var _inst: Dictionary = {}

@@ -20,7 +20,7 @@ extends Node
 ##
 ## World contract: see godot/next/rites/README.md (DmRiteWorld).
 
-signal state_changed(state: Dictionary)             ## owner: {essence, max_essence, cooldowns{id: remaining_ms}, alive}; fires on host for the host's own body too
+signal state_changed(state: Dictionary)             ## owner: {essence, max_essence, cooldowns{id: remaining_ms}, alive, souls (the soul bag / Soul Harvest count)}; fires on host for the host's own body too
 signal cast_rejected(rite: String, reason: String)  ## owner: the host refused the cast ("cooldown", "essence", "range", "no_target", ...)
 signal event_played(ev: Dictionary)                 ## every peer, once per event, after its fx/sfx ran
 signal hit_number(pos: Vector3, amount: float, crit: bool)  ## every peer: the shell floats the damage number
@@ -58,6 +58,7 @@ var _pending: Array = []            ## host: timed callbacks {at, fn} (shots in 
 var _mem: Dictionary = {}           ## host: per-rite scratch state (rite id -> Dictionary), see mem()
 var _state_acc: float = 0.0
 var _last_sent_essence: float = -1.0
+var _last_sent_souls: int = -1
 var _recv_ms: int = 0
 var _hold_t: float = 0.0
 
@@ -525,15 +526,16 @@ func push_state() -> void:
 
 func _push_state(force: bool) -> void:
 	var res: Dictionary = p["resource"]
-	if not force and absf(float(res["value"]) - _last_sent_essence) < 0.01:
+	if not force and absf(float(res["value"]) - _last_sent_essence) < 0.01 and int(p["souls"]) == _last_sent_souls:
 		return
 	_last_sent_essence = float(res["value"])
+	_last_sent_souls = int(p["souls"])
 	var cds := {}
 	for id in p["cooldowns"]:
 		var left: float = float(p["cooldowns"][id]) - _now_ms
 		if left > 0.0:
 			cds[id] = left
-	var st := {"essence": float(res["value"]), "max_essence": float(res["max"]), "cooldowns": cds, "alive": bool(p["alive"])}
+	var st := {"essence": float(res["value"]), "max_essence": float(res["max"]), "cooldowns": cds, "alive": bool(p["alive"]), "souls": int(p["souls"])}
 	if peer_id == multiplayer.get_unique_id():
 		_adopt_state(st)
 	elif peer_id in multiplayer.get_peers():

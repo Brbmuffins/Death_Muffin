@@ -126,6 +126,10 @@ static func _hurt_legend_of(m: Dictionary) -> bool:
 
 ## Soul Harvest's meter size and fill rate (Soul Hunger boon: -8 souls a rank, min 10; the discipline's soulHarvestRateMult).
 func _soul_rules(build: Dictionary) -> void:
+	if family == "reaper":   # the Reaper's soul bag: a fixed size, filled by every kill (DmNextMeta), spent by its big rites
+		p["soulsMax"] = float(DmCombatData.const_table("REAPER")["soulBagMax"])
+		p["soulRateMult"] = 1.0
+		return
 	p["soulsMax"] = maxf(10.0, float(DmCombatData.const_table("SOUL_HARVEST")["souls"]) - float(build["boons"]["soulsDiscount"]))
 	p["soulRateMult"] = float(build["discipline"]["mods"].get("soulHarvestRateMult", 1.0))
 

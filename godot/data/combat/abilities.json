@@ -813,6 +813,84 @@
    "range": 14,
    "radius": 2.4,
    "power": 0.3
+  },
+  "scythe_sweep": {
+   "id": "scythe_sweep",
+   "slot": 0,
+   "name": "Scythe Sweep",
+   "description": "A wide scythe arc in front of you (130 degrees, 3.4m). Free, and quick enough to swing while you run.",
+   "icon": "art/abilities/knight-hollow-cut.webp",
+   "targeting": "enemy",
+   "cooldownMs": 600,
+   "essenceCost": 0,
+   "range": 3.4,
+   "radius": 3.4,
+   "power": 0.9
+  },
+  "scythe_throw": {
+   "id": "scythe_throw",
+   "slot": 1,
+   "name": "Scythe Throw",
+   "description": "Hurl your scythe at the cursor (up to 12m). It spins in place for 2s, cutting everything within 2.6m every quarter second.",
+   "icon": "art/abilities/necro-bone-storm.webp",
+   "targeting": "ground",
+   "cooldownMs": 7000,
+   "essenceCost": 22,
+   "range": 12,
+   "radius": 2.6,
+   "power": 0.45
+  },
+  "reap": {
+   "id": "reap",
+   "slot": 2,
+   "name": "Reap",
+   "description": "A huge cone of death swept toward the cursor (150 degrees, 6.5m). Spends up to 10 souls from your soul bag: each adds 12% damage.",
+   "icon": "art/abilities/necro-ivory-cleave.webp",
+   "targeting": "direction",
+   "cooldownMs": 6000,
+   "essenceCost": 35,
+   "range": 6.5,
+   "radius": 6.5,
+   "power": 2.4
+  },
+  "wraith_walk": {
+   "id": "wraith_walk",
+   "slot": 3,
+   "name": "Wraith Walk",
+   "description": "Become a towering wraith and rush up to 9m toward the cursor. Everything you pass through is cursed with a deep damage-over-time for 5s. Spends up to 8 souls: each adds 15% to the curse.",
+   "icon": "art/abilities/necro-veil-step.webp",
+   "targeting": "direction",
+   "cooldownMs": 11000,
+   "essenceCost": 30,
+   "range": 9,
+   "radius": 1.6,
+   "power": 0.7
+  },
+  "soul_burst": {
+   "id": "soul_burst",
+   "slot": 4,
+   "name": "Soul Burst",
+   "description": "Empty your soul bag in a blast around you (6m). Each soul adds 18% damage; with an empty bag it still hits for the base blow.",
+   "icon": "art/abilities/necro-soul-siphon.webp",
+   "targeting": "self",
+   "cooldownMs": 10000,
+   "essenceCost": 20,
+   "range": 0,
+   "radius": 6,
+   "power": 1.2
+  },
+  "harvest_spin": {
+   "id": "harvest_spin",
+   "slot": 5,
+   "name": "Harvest Spin",
+   "description": "Spin the scythe in a full circle around you (4m). A quick, wide sweep to keep the pack off you.",
+   "icon": "art/abilities/monk-knell.webp",
+   "targeting": "self",
+   "cooldownMs": 3500,
+   "essenceCost": 16,
+   "range": 0,
+   "radius": 4,
+   "power": 1.1
   }
  },
  "constants": {
@@ -1097,6 +1175,25 @@
    ],
    "between_worlds": [
     "survival"
+   ],
+   "scythe_sweep": [
+    "damage"
+   ],
+   "scythe_throw": [
+    "damage"
+   ],
+   "reap": [
+    "damage"
+   ],
+   "wraith_walk": [
+    "damage",
+    "survival"
+   ],
+   "soul_burst": [
+    "damage"
+   ],
+   "harvest_spin": [
+    "damage"
    ]
   },
   "SLOT_KEYS": [
@@ -1287,6 +1384,26 @@
   "OATH_UNBROKEN": {
    "durationS": 6,
    "damageMult": 1.3
+  },
+  "REAPER": {
+   "energyMax": 100,
+   "energyRegenPerS": 10,
+   "moveMult": 1.1,
+   "soulBagMax": 30,
+   "damagePerSoul": 0.02,
+   "soulRange": 30,
+   "sweepHalfAngleDeg": 65,
+   "throwLifeS": 2,
+   "throwTickS": 0.25,
+   "reapHalfAngleDeg": 75,
+   "reapSoulsMax": 10,
+   "reapPerSoul": 0.12,
+   "wraithDashS": 0.32,
+   "wraithMinM": 2,
+   "wraithCurseS": 5,
+   "wraithSoulsMax": 8,
+   "wraithPerSoul": 0.15,
+   "burstPerSoul": 0.18
   }
  },
  "cast_flow": {
@@ -1529,6 +1646,30 @@
   "plague_bloom": {
    "lockMs": 130,
    "gestureSeconds": 0.36
+  },
+  "scythe_sweep": {
+   "lockMs": 90,
+   "gestureSeconds": 0.3
+  },
+  "scythe_throw": {
+   "lockMs": 100,
+   "gestureSeconds": 0.32
+  },
+  "reap": {
+   "lockMs": 170,
+   "gestureSeconds": 0.5
+  },
+  "wraith_walk": {
+   "lockMs": 60,
+   "gestureSeconds": 0.3
+  },
+  "soul_burst": {
+   "lockMs": 150,
+   "gestureSeconds": 0.45
+  },
+  "harvest_spin": {
+   "lockMs": 120,
+   "gestureSeconds": 0.4
   }
  },
  "kits": {
@@ -1729,6 +1870,34 @@
    "signatures": {
     "veilwalker": "between_worlds"
    }
+  },
+  "reaper": {
+   "family": "reaper",
+   "hotbar": [
+    "scythe_throw",
+    "reap",
+    "wraith_walk",
+    "soul_burst",
+    "harvest_spin"
+   ],
+   "grimoire": [
+    "scythe_throw",
+    "reap",
+    "wraith_walk",
+    "soul_burst"
+   ],
+   "defaultLoadout": [
+    "scythe_throw",
+    "reap",
+    "wraith_walk",
+    "soul_burst"
+   ],
+   "primaries": [
+    "scythe_sweep"
+   ],
+   "defaultPrimary": "scythe_sweep",
+   "rmb": "harvest_spin",
+   "signatures": {}
   }
  },
  "rune_tuning": {

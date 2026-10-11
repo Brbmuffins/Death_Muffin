@@ -1,11 +1,13 @@
 /** Change the active discipline without moving or replacing a character save. */
-module.exports = function mountDiscipline(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex = 4 }) {
+module.exports = function mountDiscipline(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex = 4, playable = null }) {
   app.post('/character/discipline', verifyJWT, async (req, res) => {
     const { class_index: index, characterId } = req.body || {};
-    // 1–4 are the necromantic disciplines; 5–9 the Release 0.3 classes. The
-    // caller passes the ceiling so this module never outruns the client build.
-    if (!Number.isInteger(index) || index < 1 || index > maxIndex)
-      return res.status(400).json({ error: `Choose one of the ${maxIndex} classes.` });
+    // 1–4 are the necromantic disciplines; 5–9 the Release 0.3 classes; 11 the Reaper (10 is unused).
+    // The caller passes the ceiling so this module never outruns the client build, and
+    // optionally the exact list of indices the client can play (the Reaper is playable
+    // while 5–9 are not yet).
+    if (!Number.isInteger(index) || index < 1 || index > maxIndex || (playable && !playable.includes(index)))
+      return res.status(400).json({ error: `Choose one of the ${playable ? playable.length : maxIndex} classes.` });
     if (!req.character) return res.status(404).json({ error: 'No character found.' });
     if (characterId !== req.character.id)
       return res.status(403).json({ error: 'That character is not your active character.' });

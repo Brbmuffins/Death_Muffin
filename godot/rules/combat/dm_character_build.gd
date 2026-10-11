@@ -14,10 +14,12 @@ static func discipline_for(class_index: float) -> Dictionary:
 	return (d["disciplines"][id] as Dictionary).duplicate(true)
 
 
-## Owner 2026-10-09 (baseline): only the four necromancer disciplines are playable. The other five are shown greyed out until their kits
-## are rebuilt; a character of one of them is asked to switch to a necromancer discipline before entering the world.
+## Owner 2026-10-09 (baseline): only the four necromancer disciplines are playable, plus the Reaper (approved 2026-10-11, the first class with a new
+## kit). The other five are shown greyed out until their kits are rebuilt; a character of one of them is asked to switch to a playable discipline
+## before entering the world.
 static func is_playable(class_index: float) -> bool:
-	return String(discipline_for(class_index)["family"]) == "necromancer"
+	var family := String(discipline_for(class_index)["family"])
+	return family == "necromancer" or family == "reaper"
 
 
 ## applyBoons(): returns the boon/vow/legion/set-adjusted discipline {id, family, mods}.

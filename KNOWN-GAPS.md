@@ -12,10 +12,13 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
 
 ## Disciplines
 
-- **Only the four necromancer disciplines exist.** `next/rites/dm_rite_registry.gd` is necromancer-only; a non-necro rite is
-  refused `unavailable`. Character select greys out the other five (`DmCharacterBuild.is_playable`) and the backend caps
-  `MAX_DISCIPLINE_INDEX` at 4. Missing with them: kit rites, monk beat meter, wraith nova on a charged cast, Bulwark
-  (`DmPlayerRules` already honours `bulwarkUntil`).
+- **Only the four necromancer disciplines and the Reaper exist.** `next/rites/dm_rite_registry.gd` holds the necromancer rites and the
+  Reaper's six; any other non-necro rite is refused `unavailable`. Character select greys out the other five
+  (`DmCharacterBuild.is_playable`) and the backend only accepts classes 1-4 and 11 (`PLAYABLE_DISCIPLINE_INDICES`). Missing with them:
+  kit rites, monk beat meter, wraith nova on a charged cast, Bulwark (`DmPlayerRules` already honours `bulwarkUntil`).
+- **The Reaper is a first pass.** It borrows the Mourner's hero model, portrait and rite icons (art to be generated), has no armor set of its
+  own, no runes, no signature (R) rite, and Auto combat does not play it. Its soul wisps are drawn on the host only; a party member's soul
+  count reaches their HUD by the caster state. Numbers (REAPER in `data/combat/abilities.json`) are untuned.
 
 ## Combat and statuses
 

@@ -197,7 +197,7 @@ static func party(g) -> Array:
 	var d: Dictionary = g.discipline
 	var asc = int(g.prog.local["ascension"])
 	var out = [{"id": g.self_id, "name": g.self_name, "discipline": "%s · Level %d%s" % [DmContent.discipline(String(d["id"])).get("name", d["id"]), int(g.character["level"]), (" · Ascension %s" % DmAscension.roman(asc)) if asc > 0 else ""],
-		"portrait": art("portraits/%s.webp" % d["id"]), "hp_frac": float(g.p["hp"]) / g.player.max_hp()}]
+		"portrait": art(String(DmContent.discipline(String(d["id"])).get("portrait", "art/portraits/%s.webp" % d["id"])).replace("art/", "")), "hp_frac": float(g.p["hp"]) / g.player.max_hp()}]
 	return out
 
 

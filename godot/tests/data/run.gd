@@ -5,7 +5,7 @@ extends SceneTree
 
 # md5 of JSON.stringify(sort_keys) of the files that were merged away (loot/content.json, progression/content.json after int
 # normalisation, combat/progression.json before its duplicated keys were dropped), recorded before they were deleted.
-const GOLD_LOOT := "c0fa66ac6ce30536741c89133da45cc3"
+const GOLD_LOOT := "d97bcdf3049f078bd61555519fb2c0bb"   # 2026-10-11: + disciplineFamily.reaper (the Reaper)
 const GOLD_PROG := "ef52eaf07b78f1318163e29622fa56a1"
 const GOLD_COMBAT_PROG := "92bc273531f1cb361132f3bad0dfb1bf"
 
@@ -95,12 +95,12 @@ func _initialize() -> void:
 	ok(DmContent.file_names().size() > 60, "content file names")
 	ok(DmContent.get_export("areas", "AREA_ORDER").size() == 13, "content export")
 	ok(DmContent.file("items") == DmDb.content("items"), "DmContent delegates")
-	ok(DmCombatData.abilities()["abilities"].size() == 60, "combat abilities")
+	ok(DmCombatData.abilities()["abilities"].size() == 66, "combat abilities")
 	var prog: Dictionary = DmCombatData.load_json("progression")
 	ok(prog["vows"]["elder_dead"]["maxRank"] == 20 and prog["chain"]["windowMs"] == 4000 and prog["boon_order"].size() == 15, "combat progression composed")
 	ok(prog["kit"]["base"] == 120 and prog["new_blood"]["damage_mult"] == 1.5, "combat progression residual")
 	ok(DmGatherData.get_data()["nodes"].size() == 30, "gathering nodes")
-	ok(DmCounselData.order().size() == 120, "counsel tips")
+	ok(DmCounselData.order().size() == 121, "counsel tips")
 	ok(DmData.world()["areas"].size() == 13, "slice world")
 	ok(DmPaData.atlas()["item_order"].size() == 304, "panels_a atlas")
 	ok(DmWfxData.get_data().has("windows") and DmWfxData.get_data()["windows"].size() == 4, "world fx")

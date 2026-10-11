@@ -29,6 +29,11 @@
    "kind": "veil",
    "label": "Veil",
    "color": "#bff3ff"
+  },
+  "reaper": {
+   "kind": "reaper",
+   "label": "Reaper Energy",
+   "color": "#6ee7a0"
   }
  }
 }

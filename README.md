@@ -5,7 +5,8 @@ world (Chapterhouse, Sexton's Acre, Alchemist's Wing, Hollow Graves, Catacomb Wa
 Coliseum, Bell Sanctum, Plague Cloister, Cinder Pyre, Mourning Fen, and the Catacomb Depths), gather and craft, and chase gear.
 
 **One game, one client:** a Godot 4 client (`godot/`), played online against the Death Muffin backend. Four necromancer
-disciplines are playable (Ossuary, Gravecaller, Mourner, Rotweaver); the other five show greyed out as "Coming later".
+disciplines are playable (Ossuary, Gravecaller, Mourner, Rotweaver), and so is the Reaper, a scythe fighter with a soul bag; the other
+five show greyed out as "Coming later".
 Parties of up to 4 join through a lobby and relay. Players get the game through the Windows launcher at
 https://muffindevelopment.com/death-muffin/. Offline play is not a player edition; `-- --dev-offline` exists for testing only.
 

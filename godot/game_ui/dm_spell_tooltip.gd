@@ -11,7 +11,7 @@ const TARGETING := {
 	"ground": "Aim at a point on the ground.",
 	"self": "Cast around your character; no target needed.",
 }
-const RADIUS_IDS := ["miasma", "black_litany", "corpse_explosion", "dirge", "plague_bloom", "command_rend", "grave_step", "bone_mantle", "carrion_seed", "rally_dead", "bone_prison", "grave_hands", "bone_storm"]
+const RADIUS_IDS := ["miasma", "black_litany", "corpse_explosion", "dirge", "plague_bloom", "command_rend", "grave_step", "bone_mantle", "carrion_seed", "rally_dead", "bone_prison", "grave_hands", "bone_storm", "scythe_throw", "soul_burst", "harvest_spin"]
 
 
 static func K(name: String) -> Variant:

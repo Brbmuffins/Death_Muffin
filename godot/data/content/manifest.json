@@ -3,10 +3,10 @@
  "sourceSrcTree": "50fa82d037472f2c1e52a3216e8c8afa9b697822",
  "files": {
   "abilities": {
-   "keys": 49,
+   "keys": 50,
    "counts": {
     "NEW_BLOOD_ABILITIES": 28,
-    "ABILITIES": 60,
+    "ABILITIES": 66,
     "SIGNATURE_LEVEL": 1,
     "SIGNATURE_BY_DISCIPLINE": 4,
     "SIGNATURE_KIND": 4,
@@ -17,7 +17,7 @@
     "PRIMARIES": 3,
     "DEFAULT_PRIMARY": 1,
     "ROLE_LABEL": 5,
-    "RITE_ROLES": 55,
+    "RITE_ROLES": 61,
     "SLOT_KEYS": 6,
     "BONE_FAN": 6,
     "ROT_LANCE": 5,
@@ -53,6 +53,7 @@
     "CORPSE_VIGIL": 2,
     "GRAVE_BRAND": 3,
     "OATH_UNBROKEN": 2,
+    "REAPER": 18,
     "SPELL_FX": 31
    }
   },
@@ -158,10 +159,10 @@
   "codex": {
    "keys": 33,
    "counts": {
-    "RITE_ORDER": 60,
-    "CODEX_RITES": 60,
+    "RITE_ORDER": 66,
+    "CODEX_RITES": 66,
     "CLASS_CHANGE_COUNSEL": 1,
-    "CODEX_DISCIPLINES": 9,
+    "CODEX_DISCIPLINES": 10,
     "DEAD_ORDER": 35,
     "PRELATE_NAME": 1,
     "BEHAVIOUR_LABEL": 6,
@@ -196,15 +197,15 @@
   "combatFlow": {
    "keys": 1,
    "counts": {
-    "CAST_FLOW": 60
+    "CAST_FLOW": 66
    }
   },
   "computed": {
    "keys": 16,
    "counts": {
     "smartTables": 13,
-    "kits": 6,
-    "abilityUnlockLevels": 60,
+    "kits": 7,
+    "abilityUnlockLevels": 66,
     "depthRosters": 60,
     "depthLootAreas": 60,
     "depthChestRunePools": 60,
@@ -244,7 +245,7 @@
     "YIELD_AFTER_MS": 1,
     "PREEMPT_AFTER_MS": 1,
     "HERE": 19,
-    "tipMeta": 120
+    "tipMeta": 121
    }
   },
   "depths": {
@@ -277,8 +278,8 @@
   "disciplines": {
    "keys": 2,
    "counts": {
-    "DISCIPLINES": 9,
-    "PLAYABLE_DISCIPLINES": 9
+    "DISCIPLINES": 10,
+    "PLAYABLE_DISCIPLINES": 10
    }
   },
   "enemies": {
@@ -384,7 +385,7 @@
   "gameplay_classes": {
    "keys": 1,
    "counts": {
-    "CLASSES": 10
+    "CLASSES": 11
    }
   },
   "gameplay_contractRules": {
@@ -601,7 +602,7 @@
   "gameplay_resources": {
    "keys": 1,
    "counts": {
-    "RESOURCE_RULES": 6
+    "RESOURCE_RULES": 7
    }
   },
   "gameplay_runeRules": {
@@ -752,7 +753,7 @@
   "onboarding": {
    "keys": 2,
    "counts": {
-    "TIPS": 120,
+    "TIPS": 121,
     "TIP_ANCHOR": 15
    }
   },
@@ -856,8 +857,8 @@
   "items": 304,
   "enemies": 28,
   "areas": 13,
-  "abilities": 60,
-  "disciplines": 9
+  "abilities": 66,
+  "disciplines": 10
  },
  "droppedFunctions": 633,
  "droppedPaths": [

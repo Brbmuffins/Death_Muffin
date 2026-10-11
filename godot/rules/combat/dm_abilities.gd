@@ -53,11 +53,12 @@ static func is_primary(id: String) -> bool:
 	return (C("PRIMARIES") as Array).has(id)
 
 
-## AbilitySystem.sp: spell power x Oath Unbroken x the active damage elixir.
+## AbilitySystem.sp: spell power x Oath Unbroken x the active damage elixir (x the Reaper's soul bag: +2% a soul).
 static func sp(p: Dictionary, now: float) -> float:
 	var oath: float = C("OATH_UNBROKEN")["damageMult"] if now < p["unbreakableUntil"] else 1.0
 	var flask := 1.0 + DmPlayerRules.brew_value(p, "damage", now)
-	return float(p["stats"]["spellPower"]) * oath * flask
+	var bag := 1.0 + float(C("REAPER")["damagePerSoul"]) * float(p["souls"]) if p.get("family") == "reaper" else 1.0
+	return float(p["stats"]["spellPower"]) * oath * flask * bag
 
 
 ## NewBloodSystem.power: spell power x 1.5, x0.7 while in Veil form outside the Between Worlds window.

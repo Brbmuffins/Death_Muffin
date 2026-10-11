@@ -17,8 +17,8 @@ extends RefCounted
 const BAG := 48
 const DEFAULT_BAG_SAVE := 24
 const CLASS_NAMES := ["Engineer", "Guardian", "Shadowblade", "Cleric", "Arcanist", "Necromancer"]
-const DISCIPLINE_NAMES := {5: "Grave Warden", 6: "Bell Monk", 7: "Carrion Witch", 8: "Hollow Knight", 9: "Veilwalker"}
-const MAX_DISCIPLINE_INDEX := 9
+const DISCIPLINE_NAMES := {5: "Grave Warden", 6: "Bell Monk", 7: "Carrion Witch", 8: "Hollow Knight", 9: "Veilwalker", 11: "Reaper"}
+const MAX_DISCIPLINE_INDEX := 11
 const RESERVED := {"head": 100, "chest": 101, "legs": 102, "feet": 103, "hands": 104, "main_hand": 105, "off_hand": 106, "ring": 107, "trinket": 108}
 const TYPE_TO_SLOT := {"weapon": "main_hand", "armor_head": "head", "armor_chest": "chest", "armor_legs": "legs", "armor_feet": "feet", "armor_hands": "hands", "offhand": "off_hand", "ring": "ring", "trinket": "trinket"}
 const MAX_PRESETS := 6

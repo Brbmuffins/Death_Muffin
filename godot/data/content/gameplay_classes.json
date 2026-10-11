@@ -59,6 +59,12 @@
    "name": "Veilwalker",
    "role": "Spirit medium",
    "color": "#bff3ff"
+  },
+  {
+   "index": 11,
+   "name": "Reaper",
+   "role": "Magical melee / scythe",
+   "color": "#6ee7a0"
   }
  ]
 }

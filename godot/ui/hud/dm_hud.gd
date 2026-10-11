@@ -768,7 +768,7 @@ func _build_altar() -> void:
 	souls_n.custom_minimum_size.x = 48
 	souls_n.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	sh.add_child(souls_n)
-	souls_box.tooltip_text = "Soul Harvest — kills by you or your thralls fill the skull. When full, your next Marrow Spear, Miasma or Black Litany is free and 50% larger."
+	souls_box.tooltip_text = SOUL_HARVEST_TIP
 	souls_box.mouse_filter = Control.MOUSE_FILTER_PASS
 	mid.add_child(souls_box)
 	mid.add_child(DmUi.spacer(6))
@@ -1122,7 +1122,7 @@ func _update_toast_top() -> void:
 const SECTIONS := {
 	"flags": ["reveal", "new", "grimoire_new", "dev"],
 	"vitals": ["hp", "max_hp", "barrier", "essence", "max_essence", "resource_label", "resource_color", "beat_pulse", "level", "xp", "xp_next"],
-	"souls": ["souls", "souls_max", "thralls", "thrall_cap", "raises_thralls", "thrall_hurt"],
+	"souls": ["souls", "souls_max", "soul_bag", "thralls", "thrall_cap", "raises_thralls", "thrall_hurt"],
 	"economy": ["gold", "shards", "save"],
 	"upgrades": ["gold", "damage", "wave"],
 	"left": ["ward", "chain", "brews", "omen", "party"],
@@ -1286,6 +1286,9 @@ func _rebuild_slots(slots: Array) -> void:
 		s.swap_pressed.connect(func() -> void: swap_slot.emit(idx))
 
 
+const SOUL_HARVEST_TIP := "Soul Harvest — kills by you or your thralls fill the skull. When full, your next Marrow Spear, Miasma or Black Litany is free and 50% larger."
+const SOUL_BAG_TIP := "Soul bag — every kill sends its soul to you. Each soul adds 2% damage; Reap, Wraith Walk and Soul Burst spend them."
+var _soul_bag := 0
 var _souls_full := -1
 var _thr_hurt := 0
 var _depth_open := -1
@@ -1293,9 +1296,13 @@ var _depth_open := -1
 func _apply_souls_thralls(v: Dictionary) -> void:
 	var souls := float(v.get("souls", 0))
 	var smax := maxf(float(v.get("souls_max", 1)), 1.0)
-	var full := souls >= smax
+	var bag := bool(v.get("soul_bag", false))   # the Reaper's soul bag: a plain count, never "HARVEST"
+	var full := souls >= smax and not bag
 	souls_bar.value = minf(1.0, souls / smax)
 	souls_n.text = "HARVEST" if full else "%d / %d" % [int(souls), int(smax)]
+	if int(bag) != _soul_bag:
+		_soul_bag = int(bag)
+		souls_box.tooltip_text = SOUL_BAG_TIP if bag else SOUL_HARVEST_TIP
 	# Restyle only when the state flips (a new StyleBox + theme change every 50 ms re-laid the left column).
 	if int(full) != _souls_full:
 		_souls_full = int(full)

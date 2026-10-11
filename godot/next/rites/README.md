@@ -2,7 +2,10 @@
 
 `DmRiteCaster` (`dm_rite_caster.gd`) is a Node named `Rites`, a child of every player body on every peer (same NodePath, because RPCs resolve by path).
 It is the shared plumbing: intent RPC, owner / cooldown / essence validation through `DmAbilities`, event broadcast, once-per-peer playback, state
-replication. **Each rite is its own module** `rite_<id>.gd` (a `DmRiteModule`), listed with one line in `dm_rite_registry.gd`. 25 rites are registered:
+replication. **Each rite is its own module** `rite_<id>.gd` (a `DmRiteModule`), listed with one line in `dm_rite_registry.gd`. 31 rites are registered; the last six
+are the Reaper's (family `reaper`, class 11; shared helpers in `dm_reaper_rites.gd`, test `tests/rites/reaper_part.gd`): scythe_sweep (LMB), scythe_throw, reap, wraith_walk,
+soul_burst (keys 1-4) and harvest_spin (RMB). Her green energy is the caster's resource; her soul bag is `p["souls"]` (size `soulsMax` 30), filled by `DmNextMeta._bank_reaper_soul`
+on her kills, worth +2% rite damage a soul in `DmAbilities.sp`, and spent by `DmPlayerRules.bag_spend` in reap, wraith_walk and soul_burst. The necromancer rites:
 bone_needle, bone_fan, rot_lance (primaries); miasma, marrow_spear, exhume, black_litany, corpse_explosion, grave_offering, bone_mantle, carrion_seed,
 wailing_skull, ivory_cleave, bone_storm, soul_siphon, grave_step, veil_step, grave_frost, bone_prison, grave_hands, rally_dead; signatures
 ossuary_wall, command_rend, dirge, plague_bloom. Numbers come from the shared rules (`DmAbilities`, `DmSimData`, `DmCombatData`, `abilities.json`), not from the modules.

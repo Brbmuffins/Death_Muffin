@@ -63,7 +63,8 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
   co-op code are retired. The Godot line is `main`; tag `archive/legacy-web` keeps the web game.
 - **B3. Necromancer-only baseline.** Four necromancer disciplines are playable (`DmCharacterBuild.is_playable`, backend
   `MAX_DISCIPLINE_INDEX` 4). The other five are greyed out as "Coming later" and rebuilt later. Online characters of a
-  non-necro discipline switch to a necro discipline.
+  non-necro discipline switch to a necro discipline. Amended 2026-10-11 (warbogar): the Reaper (class 11, family `reaper`; 10 stays the unknown-class fallback the golden fixtures use) is the first
+  non-necromancer class to ship; the backend accepts classes 1-4 and 11 only, and `DmCharacterBuild.is_playable` allows the necromancer and reaper families.
 - **B4. One launcher button.** Launcher 0.7.0: a single online Play/Update button; the site's play page is replaced by the
   launcher download page.
 - **B5. Online open to everyone** (`set-online.sh on`); the staff gate is off.

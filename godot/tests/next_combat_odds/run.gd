@@ -3,7 +3,7 @@ extends "res://tests/next_bosses/suite.gd"
 ##   A  player-side Bone Ward / Colossus guard: stat-based on hit exactly as the current client's DmPlayerRules / DmGameCombat.on_hurt (no timed status exists there either)
 ##   B  bosses ignore slow / root / chill like the current client's boss controller (the brain owns speed; only stun is capped, see DmBoss.stun)
 ##   C  the necromancer's primary weapon variants (staff pierce, sickle Withered, scythe arc) and the Splinters / Volley / Marrow-Tap runes on them
-##   D  rite sound coverage: every one of the 25 rites plays the sounds the old client's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed)
+##   D  rite sound coverage: every one of the 31 rites plays the sounds the old client's DmAbilitySystem played (REF_SOUNDS: a table recorded from it before it was removed; the Reaper's six are new)
 ##   E  cost: scythe swings and piercing needles over a crowd
 
 const TICK := 1.0 / 60.0
@@ -423,6 +423,13 @@ const REF_SOUNDS := {   ## rite -> the sfx (and "loop:"-prefixed loops) the old 
 	"command_rend": ["sigRend"],
 	"dirge": ["sigDirge", "loop:dirgeLoop"],
 	"plague_bloom": ["sigBloom", "loop:bloomPulse"],
+	# The Reaper's six (2026-10-11): new rites, no old client to record from; these are the sounds they were written to play.
+	"scythe_sweep": ["boneHit", "ivoryCleave"],
+	"scythe_throw": ["boneHit", "storm"],
+	"reap": ["boneHit", "ivoryCleave"],
+	"wraith_walk": ["wail"],
+	"soul_burst": ["boneHit", "ivoryCleave", "wail"],
+	"harvest_spin": ["boneHit", "ivoryCleave"],
 }
 
 
@@ -485,7 +492,7 @@ const OPTIONAL := ["boneHit", "needleHit", "soulRelease", "tollSmall", "toll", "
 
 func _sounds() -> void:
 	var rites: Array = DmRiteRegistry.ids()
-	check(rites.size() == 25, "D: 25 rites are registered (%d)" % rites.size())
+	check(rites.size() == 31, "D: 31 rites are registered (%d)" % rites.size())
 	var missing: Array = []
 	var extra: Array = []
 	for id: String in rites:

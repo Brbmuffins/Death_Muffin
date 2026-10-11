@@ -58,6 +58,21 @@ static func spend_souls(p: Dictionary) -> void:
 	p["souls"] = 0
 
 
+## The Reaper's soul bag (`p["souls"]` counts it, `p["soulsMax"]` is its size): bank up to `n` souls, returns how many fitted.
+static func bag_add(p: Dictionary, n: int = 1) -> int:
+	var room := maxi(0, int(p["soulsMax"]) - int(p["souls"]))
+	var took := mini(n, room)
+	p["souls"] = int(p["souls"]) + took
+	return took
+
+
+## Take up to `most` souls out of the bag, returns how many were taken.
+static func bag_spend(p: Dictionary, most: int) -> int:
+	var took := mini(maxi(most, 0), int(p["souls"]))
+	p["souls"] = int(p["souls"]) - took
+	return took
+
+
 static func on_cooldown(p: Dictionary, id: String, now: float) -> bool:
 	return float(p["cooldowns"].get(id, 0.0)) > now
 
@@ -103,7 +118,8 @@ static func tick_vitals(p: Dictionary, dt: float, now: float) -> void:
 ## Walking speed this instant (Veil form / Between Worlds +20%, scene move multiplier, Chill).
 static func move_speed(p: Dictionary, now: float) -> float:
 	var chill: float = DmCombatData.statuses()["CHILL"]["moveMult"]
-	return float(p["stats"]["moveSpeed"]) * (1.2 if (p["veilForm"] or now < p["betweenUntil"]) else 1.0) * p["moveMult"] * (chill if now < p["chilledUntil"] else 1.0)
+	var fleet: float = float(DmCombatData.const_table("REAPER")["moveMult"]) if p.get("family") == "reaper" else 1.0   # the Reaper runs faster
+	return float(p["stats"]["moveSpeed"]) * (1.2 if (p["veilForm"] or now < p["betweenUntil"]) else 1.0) * fleet * p["moveMult"] * (chill if now < p["chilledUntil"] else 1.0)
 
 
 ## Inside Bulwark's frontal cover? `from` = {x, z} or null.
