@@ -144,6 +144,10 @@ static func take_damage(p: Dictionary, raw: float, ward_pct: float, now: float, 
 	if p["resource"]["kind"] == "veil" and source != "toxic" and source != "burn" and (p["veilForm"] or now < p["betweenUntil"]):
 		return 0.0
 	var dmg := raw * DmLegend.damage_taken_mult(ward_pct, guard)
+	if p["family"] == "reaper":   # a melee class with no thralls to share the blows: Wraith Walk's rush can't be hit, and she shrugs off a share
+		if now < float(p.get("phasedUntil", 0.0)):
+			return 0.0
+		dmg *= float(DmCombatData.const_table("REAPER")["damageTakenMult"])
 	var B: Dictionary = DmCombatData.const_table("BULWARK")
 	if now < p["bulwarkUntil"] and blow_is_frontal(p, from):
 		p["lastBlock"] = "perfect" if now < p["bulwarkPerfectUntil"] else "front"

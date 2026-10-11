@@ -1403,7 +1403,10 @@
    "wraithCurseS": 5,
    "wraithSoulsMax": 8,
    "wraithPerSoul": 0.15,
-   "burstPerSoul": 0.18
+   "burstPerSoul": 0.18,
+   "damageTakenMult": 0.85,
+   "leechPerHit": 0.015,
+   "leechSwingCap": 0.06
   }
  },
  "cast_flow": {

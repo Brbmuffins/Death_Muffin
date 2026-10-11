@@ -7735,5 +7735,24 @@
     "post": null,
     "out": "art-src/concepts/prop_gear_reaper_scythe.png",
     "generatedAt": "2026-10-11T02:27:40.886Z"
+  },
+  "portrait_reaper": {
+    "generator": "owner-submission",
+    "source": "~/character-concept-submission/reaper/reaper-character-green.png (owner, 2026-10-11)",
+    "out": "public/art/portraits/reaper.webp",
+    "post": {
+      "crop": [
+        200,
+        0,
+        1145,
+        1260
+      ],
+      "resize": [
+        480,
+        640
+      ],
+      "format": "webp"
+    },
+    "sha256": "9b4aec2484518cad2208b8b91d9e99bf4cec4ec0ec4787c5a9b8e2fe2893d5dd"
   }
 }

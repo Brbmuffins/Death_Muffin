@@ -2586,6 +2586,20 @@
    "frames": 24,
    "fps": 24,
    "loop": false
+  },
+  "trail_arc": {
+   "cols": 8,
+   "rows": 3,
+   "frames": 24,
+   "fps": 24,
+   "loop": false
+  },
+  "crush_slam": {
+   "cols": 8,
+   "rows": 3,
+   "frames": 24,
+   "fps": 24,
+   "loop": false
   }
  }
 }

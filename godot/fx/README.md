@@ -60,7 +60,8 @@ missing). Discord preview builds and CI have no sheets and draw the plain look.
   instance colour and run the brightest pixels to white.
 - Callers check `DmFxTex.has_sheet(id)` and keep their old look without it (`DmRiteFx.hit_flash`).
 - In use: `hit_flash` (Bone Needle, pierce, Scythe hits), `crit_burst` (crits), `summon_circle` (under an exhumed corpse), `chain_arc`
-  (Contagion thread, lying flat between the two bodies). Warmed with the other layers on the loading screen.
+  (Contagion thread, lying flat between the two bodies), `trail_arc` (the Reaper's Harvest Spin and spinning thrown scythe, flat round her),
+  `crush_slam` (under Soul Burst); the Reaper's scythe hits use `hit_flash` too. Warmed with the other layers on the loading screen.
 
 ## Caps and budgets (pinned by `tests/fx/run.gd`)
 24 live one-shots (oldest evicted), 32 loopers (extras dropped), 160 combat transients (persistent decals excluded), 3500 additive + 900 smoke

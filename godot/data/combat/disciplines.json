@@ -308,7 +308,7 @@
     "thrallHpMult": 1,
     "thrallDamageMult": 1,
     "thrallAttackSpeedMult": 1,
-    "maxHpMult": 1,
+    "maxHpMult": 1.3,
     "essenceRegenMult": 1,
     "miasmaRadiusMult": 1,
     "witheredMaxStacks": 5,

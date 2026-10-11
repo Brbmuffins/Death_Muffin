@@ -227,8 +227,8 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
     classIndex: 11, id: 'reaper', family: 'reaper', name: 'Reaper',
     epithet: 'Harvester of the Fallen',
     description: 'A mobile scythe fighter who cuts great arcs through the pack and gathers the souls of everything that dies.',
-    passive: { name: 'Soul Harvest', text: 'Green energy refills constantly and you run 10% faster. Every kill sends its soul to your soul bag; each soul adds 2% damage, and Reap, Wraith Walk and Soul Burst spend them.' },
-    color: '#6ee7a0', portrait: 'art/portraits/mourner.webp', modelSlug: 'hero_mourner', mods: { ...BASE },
+    passive: { name: 'Soul Harvest', text: 'Green energy refills constantly and you run 10% faster. Built for the thick of it: 30% more health, 15% less damage taken, every enemy a swing strikes heals you a little (up to 6% a swing), and nothing lands during Wraith Walk\'s rush. Every kill sends its soul to your soul bag; each soul adds 2% damage, and Reap, Wraith Walk and Soul Burst spend them.' },
+    color: '#6ee7a0', portrait: 'art/portraits/reaper.webp', modelSlug: 'hero_mourner', mods: { ...BASE, maxHpMult: 1.3 },
   },
 };
 

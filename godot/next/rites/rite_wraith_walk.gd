@@ -43,6 +43,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 		DmStatusSet.ensure(e).apply(&"bleed", c.body, 1, float(K["wraithCurseS"]), {"dps": dps})
 		if marks.size() < DmReaperRites.SHOWN:
 			marks.append(Vector3(e.global_position.x, 0.9, e.global_position.z))
+	c.p["phasedUntil"] = c.now_ms + float(K["wraithDashS"]) * 1000.0   # untouchable for the rush (DmPlayerRules.take_damage)
 	if c.body.has_method("dash"):
 		c.body.call("dash", to, float(K["wraithDashS"]))
 	else:
