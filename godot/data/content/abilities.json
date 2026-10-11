@@ -1237,7 +1237,7 @@
    "id": "wraith_walk",
    "slot": 3,
    "name": "Wraith Walk",
-   "description": "Become a towering wraith and rush up to 9m toward the cursor. Everything you pass through is cursed with a deep damage-over-time for 5s. Costs 4 souls; each soul spent adds 15% to the curse.",
+   "description": "Become a towering, half-seen green wraith and rush up to 9m toward the cursor, passing through monsters and taking no damage. Everything you pass through burns in green flame for 5s. Costs 4 souls; each soul spent adds 15% to the flame.",
    "icon": "art/abilities/necro-veil-step.webp",
    "targeting": "direction",
    "cooldownMs": 11000,

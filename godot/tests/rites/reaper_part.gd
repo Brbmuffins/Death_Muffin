@@ -201,10 +201,10 @@ func _rites() -> void:
 	ok(Vector2(float(ev["tx"]) - float(ev["fx"]), float(ev["tz"]) - float(ev["fz"])).length() <= 9.01 and body.dashing, "walk: dashes at most 9 m and the body glides")
 	var sa := DmStatusSet.of(lane_a)
 	var sb := DmStatusSet.of(lane_b)
-	ok(sa != null and sa.has(&"bleed") and sb != null and sb.has(&"bleed"), "walk: both enemies in the lane are cursed")
-	ok(DmStatusSet.of(off_lane) == null or not DmStatusSet.of(off_lane).has(&"bleed"), "walk: the one off the lane is not")
+	ok(sa != null and sa.has(&"wraithfire") and sb != null and sb.has(&"wraithfire"), "walk: both enemies in the lane are set alight")
+	ok(DmStatusSet.of(off_lane) == null or not DmStatusSet.of(off_lane).has(&"wraithfire"), "walk: the one off the lane is not")
 	_step(c, 5.5)
-	ok(_lost(lane_a) > 0.0 and _lost(lane_b) > 0.0 and _lost(off_lane) == 0.0, "walk: the curse burns as a damage-over-time (%.0f)" % _lost(lane_a))
+	ok(_lost(lane_a) > 0.0 and _lost(lane_b) > 0.0 and _lost(off_lane) == 0.0, "walk: the green flame burns as a damage-over-time (%.0f)" % _lost(lane_a))
 	rej.clear()
 	_ready_cast(c)
 	body.dashing = false

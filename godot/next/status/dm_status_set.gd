@@ -24,9 +24,9 @@ const SRC := 3
 const ACC := 4
 ## Index = wire id.
 const IDS: Array[StringName] = [&"slow", &"ward_slow", &"chill", &"root", &"stun", &"silence", &"bleed", &"withered", &"fracture",
-	&"hex", &"sanctified", &"incensed", &"frenzy", &"shrouded", &"barrier"]
+	&"hex", &"sanctified", &"incensed", &"frenzy", &"shrouded", &"barrier", &"wraithfire"]
 ## statuses_cleared (a ghoul digging in): sim_enemy_ai wipes exactly these
-const CLEARED: Array[StringName] = [&"bleed", &"withered", &"root", &"slow", &"chill"]
+const CLEARED: Array[StringName] = [&"bleed", &"wraithfire", &"withered", &"root", &"slow", &"chill"]
 const NEAR_FX := 30.0
 
 static var _defs: Dictionary = {}      ## id -> {dur, move, atk, taken, dealt, tps, slow, root, dot, stack, max, bleed, barrier}
@@ -73,6 +73,7 @@ static func warm() -> void:
 		&"stun": {"dur": 0.5},
 		&"silence": {"dur": 1.0},
 		&"bleed": {"dur": float(S.HEMORRHAGE["durationS"]), "dot": true, "bleed": true},
+		&"wraithfire": {"dur": float(S.HEMORRHAGE["durationS"]), "dot": true, "bleed": true},   # Wraith Walk's green flame: a bleed that burns
 		&"withered": {"dur": float(S.WITHERED["durationMs"]) / 1000.0, "dot": true, "stack": true, "max": 1.0e6},
 		&"fracture": {"dur": float(S.FRACTURE["durationMs"]) / 1000.0, "stack": true, "max": float(S.FRACTURE["maxStacks"]), "tps": float(S.FRACTURE["perStack"])},
 		&"hex": {"dur": float(S.BONE_HEX["durationS"]), "dealt": float(S.BONE_HEX["damageMult"])},
@@ -92,6 +93,7 @@ static func warm() -> void:
 		&"withered": _mote(1.0, 0.75, 0.8, 0.8, {"color": rot, "spread": 0.4, "speed": 0.2, "up": 0.7, "life": 0.9, "size": 0.2}),
 		&"fracture": _mote(0.0, 1.5, 1.2, 0.0, {"color": dust, "spread": 0.3, "speed": 0.6, "up": 0.4, "life": 0.5, "size": 0.1, "gravity": 5}),
 		&"bleed": _mote(4.0, 0.0, 0.7, 0.6, {"color": int(st["hemorrhage"]["crimson"]), "spread": 0.3, "speed": 0.1, "up": -0.2, "life": 0.6, "size": 0.12, "gravity": 8}),
+		&"wraithfire": _mote(7.0, 0.0, 0.3, 1.2, {"color": 0x6ee7a0, "spread": 0.3, "speed": 0.15, "up": 1.1, "life": 0.7, "size": 0.18}),
 		&"chill": _mote(3.0, 0.0, 0.3, 1.2, {"color": int(st["chill"]["frost"]), "spread": 0.45, "speed": 0.15, "up": 0.2, "life": 0.8, "size": 0.14, "drag": 0.5}),
 		&"sanctified": _mote(2.0, 0.0, 1.9, 0.0, {"color": int(st["sanctified"]["gold"]), "spread": 0.35, "speed": 0.1, "up": 0.5, "life": 0.7, "size": 0.16}),
 		&"frenzy": _mote(5.0, 0.0, 1.1, 0.0, {"color": 0x9a1b2a, "spread": 0.3, "speed": 0.4, "up": 0.4, "life": 0.5, "size": 0.14, "gravity": 6}),

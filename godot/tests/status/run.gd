@@ -248,6 +248,8 @@ func _misc(h: Node) -> void:
 	var s := DmStatusSet.of(d)
 	s.apply(&"bleed", null, 1, -1.0, {"dps": 1.0})
 	s.apply(&"withered", null, 1, -1.0, {"dps": 1.0})
+	s.apply(&"wraithfire", null, 1, 5.0, {"dps": 2.0})
+	ok(s.has(&"wraithfire") and near(s.remaining(&"wraithfire"), 5.0), "wraithfire: applies like a bleed for the given time")
 	s.apply(&"root")
 	s.apply(&"slow", null, 1, 5.0)
 	s.apply(&"chill")

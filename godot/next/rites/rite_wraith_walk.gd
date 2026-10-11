@@ -1,8 +1,12 @@
 extends DmRiteModule
 ## Wraith Walk (the Reaper): she becomes a towering phantom and rushes up to 9 m toward the cursor (at least 2 m), 4 souls, 11 s. Everything in the
-## lane she passes through (1.6 m either side, plus the enemy's radius) is cursed with a Hemorrhage damage-over-time for 5 s at power 0.7 a second, +15% a
+## lane she passes through (1.6 m either side, plus the enemy's radius) burns in green flame (the `wraithfire` status, a Hemorrhage-style damage-over-time) for 5 s at power 0.7 a second, +15% a
 ## soul it costs (the bag's own +2% a soul is what is left in the bag). Host-authoritative like Veil Step: `body.dash_point`
 ## validates the way, `body.dash` glides the body (0.32 s). The lane is read once, at the cast, from where she started to where the dash ends.
+
+
+const PHANTOM_ALPHA := 0.45   ## how see-through she is while rushing
+const PHANTOM_GLOW := 0.9     ## the faint green emissive (her resting glow is 0.04)
 
 
 func _init() -> void:
@@ -40,7 +44,7 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 		var e := hit["e"] as DmEnemy
 		if e == null or not e.is_hittable():
 			continue
-		DmStatusSet.ensure(e).apply(&"bleed", c.body, 1, float(K["wraithCurseS"]), {"dps": dps})
+		DmStatusSet.ensure(e).apply(&"wraithfire", c.body, 1, float(K["wraithCurseS"]), {"dps": dps})
 		if marks.size() < DmReaperRites.SHOWN:
 			marks.append(Vector3(e.global_position.x, 0.9, e.global_position.z))
 	c.p["phasedUntil"] = c.now_ms + float(K["wraithDashS"]) * 1000.0   # untouchable for the rush (DmPlayerRules.take_damage)
@@ -72,15 +76,22 @@ func play(c: DmRiteCaster, ev: Dictionary) -> void:
 	_phantom(c, float(ev["dash"]))
 
 
-## The hero swells into a towering phantom for the rush, then settles back (every peer; the avatar is the model on the body). Scale only: a material
-## change would compile a shader on the first cast.
+## The hero swells into a towering, half-see-through phantom with a faint green glow for the rush, then settles back (every peer; the avatar is the
+## model on the body). The body is never blocked by monsters (it is a point on the navmesh, not a physics body); `dash_point` stops it at walls.
 func _phantom(c: DmRiteCaster, secs: float) -> void:
 	var b: Node3D = c.body
 	var av: Variant = b.get("avatar") if b != null else null
-	if av == null or not is_instance_valid(av) or not (av is Node3D):
+	if av == null or not is_instance_valid(av) or not (av is DmAvatar):
 		return
-	var a := av as Node3D
+	var a := av as DmAvatar
+	var cr := a.c
+	cr.set_opacity(PHANTOM_ALPHA)
+	cr.set_emissive(0x6ee7a0, PHANTOM_GLOW)   # DmReaperRites.GREEN
 	var tw := a.create_tween()
 	tw.tween_property(a, "scale", Vector3.ONE * 1.6, 0.08)
 	tw.tween_interval(maxf(0.0, secs - 0.05))
 	tw.tween_property(a, "scale", Vector3.ONE, 0.22)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(a):
+			cr.set_opacity(1.0)
+			cr.set_emissive(a.accent_hex, 0.04))

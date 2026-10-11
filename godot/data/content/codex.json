@@ -386,7 +386,7 @@
   "wraith_walk": {
    "fx": "reaper",
    "colour": "Soul green with a pale wraith",
-   "tip": "Rush up to 9m as a towering wraith. Everything you pass through is cursed with a heavy damage-over-time for 5s, so run through the middle of a pack, not around it. It spends up to 8 souls (+15% each) and doubles as your escape."
+   "tip": "Rush up to 9m as a towering, half-seen wraith that nothing can hurt or block. Everything you pass through burns in green flame for 5s, so run through the middle of a pack, not around it. It spends up to 8 souls (+15% each) and doubles as your escape."
   },
   "soul_burst": {
    "fx": "reaper",
