@@ -6,6 +6,7 @@ extends DmPanelB
 ##
 ## Data in:  set_state(state)  state = GET /api/vault reply {bag:[rows], vault:[rows]}  (rows: {slot_index, item_id, name, rarity, item_type,
 ##           quantity, equipped 0/1, sell_value, inst?})   set_locks(locks) (DmItemLocks)   set_busy(bool)   set_note(text)   set_error(text)
+##           potion_pick = DmGameUi.belt_pick(): which flask / brew Q / Z / X drink, for the look-only potion belt under the gear doll.
 ##           Until set_state() runs the vault shows "Opening the Vault…" and every action button is disabled.
 ## Signals:  deposit_requested(bag_slot)              -> DmApi.vault_deposit(character_id, bag_slot)
 ##           withdraw_requested(vault_slot)           -> DmApi.vault_withdraw(character_id, vault_slot)
@@ -25,8 +26,11 @@ const COLS := 8
 const SLOT_PX := 44.0
 const GRID_W := COLS * SLOT_PX + (COLS - 1) * 4.0
 const GRID_H := 6 * SLOT_PX + 5 * 4.0        # the 48-slot bag grid: 6 rows
-const DOLL_PX := 3 * SLOT_PX + 2 * 4.0       # the gear doll's width (3 columns)
-const TAB_ROW_PX := 32.0 + 6.0               # a Vault tab button plus the column gap
+const BELT_PX := 39.0                         # a tool / potion belt cell, as in the Reliquary
+const PREFIX_PX := 4 * BELT_PX + 3 * 5.0     # the gear column: as wide as the four tool cells
+const VAULT_GRID_H := 5 * SLOT_PX + 4 * 4.0   # a Vault tab is 40 slots: 5 rows
+const TAB_H := GRID_H - VAULT_GRID_H - 6.0    # tabs + grid together are exactly as tall as the bag grid
+const SORT_ROW_PX := 34.0
 const TYPE_LABEL := {
 	"weapon": "weapon", "offhand": "off hand", "armor_head": "head armor", "armor_chest": "chest armor", "armor_legs": "legs armor",
 	"armor_feet": "feet armor", "armor_hands": "hand armor", "ring": "ring", "trinket": "trinket", "rune": "rune",
@@ -42,6 +46,9 @@ var tab_buttons: Array[Button] = []
 var bag_slots: Dictionary = {}          # bag slot_index -> DmItemSlot
 var vault_slots: Dictionary = {}        # vault slot_index -> DmItemSlot
 var doll_slots: Dictionary = {}         # equip slot id -> DmItemSlot (worn gear, look only)
+var belt_slots: Dictionary = {}         # tool kind -> DmItemSlot (tool belt, look only)
+var potion_slots: Dictionary = {}       # heal|elixir|tonic -> DmItemSlot (potion belt, look only)
+var potion_pick: Dictionary = {}        # the player's chosen flask / brew per potion slot (DmGameUi.belt_pick()); set before set_state
 var deposit_materials_button: Button
 var take_materials_button: Button
 var deposit_all_button: Button
@@ -155,11 +162,19 @@ func _build() -> void:
 	var left := DmPb.vbox(6)
 	cols.add_child(left)
 	left.add_child(_section_head("Reliquary", "%d / %d" % [bag.size(), DmBag.BAG_SIZE]))
-	left.add_child(DmUi.spacer(TAB_ROW_PX - 6.0))   # the Vault side has its tab row here; this keeps both grids level
+	var sort_outer := DmPb.hbox(12)   # Sort is centered above the bag grid, not above the gear column beside it
+	sort_outer.custom_minimum_size.y = SORT_ROW_PX
+	sort_outer.add_child(DmUi.spacer(0, PREFIX_PX))
+	var sort_row := DmPb.hbox(8)
+	sort_row.custom_minimum_size.x = GRID_W
+	sort_row.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	sort_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	sort_outer.add_child(sort_row)
+	left.add_child(sort_outer)
 	var bag_row := HBoxContainer.new()
 	bag_row.add_theme_constant_override("separation", 12)
 	left.add_child(bag_row)
-	bag_row.add_child(_doll(DmGear.equipped_by_slot(state.get("bag", []))))
+	bag_row.add_child(_gear_column())
 	var bg := _grid()
 	bag_row.add_child(bg)
 	for i in DmBag.BAG_SIZE:
@@ -176,6 +191,7 @@ func _build() -> void:
 	var right := DmPb.vbox(6)
 	cols.add_child(right)
 	right.add_child(_section_head("Vault", "%d / %d" % [vault.size(), DmVault.VAULT_SLOTS]))
+	right.add_child(DmUi.spacer(SORT_ROW_PX))   # level with the Sort row on the bag side, so the tabs start where the bag grid starts
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	tabs.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -186,18 +202,17 @@ func _build() -> void:
 		var b := DmPb.button(lbl, t == tab)
 		b.toggle_mode = false
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.custom_minimum_size = Vector2(0, 32)
+		b.custom_minimum_size = Vector2(0, TAB_H)
 		b.pressed.connect(func() -> void: select_tab(t))
 		tabs.add_child(b)
 		tab_buttons.append(b)
 	right.add_child(tabs)
 	if not loaded:
 		var wait := DmPb.hint("Opening the Vault…")
-		wait.custom_minimum_size.y = GRID_H
+		wait.custom_minimum_size.y = VAULT_GRID_H
 		right.add_child(wait)
 	else:
 		var vg := _grid()
-		vg.custom_minimum_size.y = GRID_H   # as tall as the bag grid: a tab holds 40 slots (5 rows), the bag 48 (6 rows)
 		right.add_child(vg)
 		for i in DmVault.VAULT_TAB_SIZE:
 			var idx := tab * DmVault.VAULT_TAB_SIZE + i
@@ -210,11 +225,6 @@ func _build() -> void:
 				cell.pressed.connect(_on_vault_pressed.bind(row))
 			vg.add_child(cell)
 			vault_slots[idx] = cell
-		for _i in DmBag.BAG_SIZE - DmVault.VAULT_TAB_SIZE:   # a tab holds 40 slots: dim, inert cells fill the sixth row so the grid matches the bag's
-			var pad := _cell({}, false)
-			pad.modulate.a = 0.3
-			pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			vg.add_child(pad)
 
 	var off := busy or not loaded
 	var dep_row := DmPb.hbox(8)
@@ -225,7 +235,7 @@ func _build() -> void:
 	dep_row.add_child(deposit_materials_button)
 	dep_row.add_child(deposit_all_button)
 	var dep_outer := DmPb.hbox(12)   # the Deposit row is centered under the bag grid, not under the gear doll beside it
-	dep_outer.add_child(DmUi.spacer(0, DOLL_PX))
+	dep_outer.add_child(DmUi.spacer(0, PREFIX_PX))
 	dep_row.custom_minimum_size.x = GRID_W
 	dep_row.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	dep_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -242,15 +252,13 @@ func _build() -> void:
 	take_row.add_child(take_materials_button)
 	take_row.add_child(take_all_button)
 	right.add_child(take_row)
-	var mid := DmPb.vbox(4)
-	add_child(mid)
 	sort_button = DmPb.button("Sort", false, off, "Merges stacks, then orders by type, rarity and name")
 	sort_button.pressed.connect(func() -> void: sort_requested.emit())
-	sort_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	mid.add_child(sort_button)
+	sort_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sort_row.add_child(sort_button)
 	var lh := DmPb.text(shown["locked_hint"], 12, DmUi.TEXT_FAINT)
 	lh.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	mid.add_child(lh)
+	add_child(lh)
 	var nl := DmPb.text(note, 12, DmUi.OK)
 	nl.name = "Note"
 	nl.custom_minimum_size.y = 18
@@ -271,6 +279,91 @@ func _grid() -> GridContainer:
 	g.add_theme_constant_override("h_separation", 4)
 	g.add_theme_constant_override("v_separation", 4)
 	return g
+
+
+## The Reliquary's gear column: the paper doll, then the tool belt (hatchet, pickaxe, rod, spade) and the potion belt (Heal Q, Elixir Z, Tonic X).
+## Look only, like the doll: the cells show what is worn and belted and do nothing when clicked.
+func _gear_column() -> Control:
+	var col := DmPb.vbox(6)
+	col.custom_minimum_size.x = PREFIX_PX
+	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	col.add_child(_doll(DmGear.equipped_by_slot(state.get("bag", []))))
+	col.add_child(DmUi.hrule())
+	belt_slots.clear()
+	potion_slots.clear()
+	var tools := belt_rows()
+	var tr := DmPb.hbox(5)
+	for b: Array in DmReliquaryPanel.BELT:
+		var c := _belt_cell(String(b[1]), tools.get(b[0], {}))
+		tr.add_child(c)
+		belt_slots[b[0]] = c
+	col.add_child(tr)
+	var brews := potion_rows()
+	var pr := DmPb.hbox(5)
+	for p: Array in DmReliquaryPanel.POTION_BELT:
+		var c := _belt_cell("%s · %s" % [p[1], p[2]], brews.get(p[0], {}))
+		pr.add_child(c)
+		potion_slots[p[0]] = c
+	col.add_child(pr)
+	return col
+
+
+func _belt_cell(label: String, row: Dictionary) -> DmItemSlot:
+	var c := DmItemSlot.new()
+	c.kind = DmItemSlot.Kind.BELT
+	c.empty_label = label
+	c.custom_minimum_size = Vector2(BELT_PX, BELT_PX)
+	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	c.plain_tip = true
+	if not row.is_empty():
+		c.set_item(slot_data(row, false))
+		c.tooltip_text = plain_title(row, false, "look")
+	return c
+
+
+## Tool-belt rows by kind (hatchet|pickaxe|rod|spade): the reply's bag rows that sit in the belt slots.
+func belt_rows() -> Dictionary:
+	var out := {}
+	for s: Dictionary in state.get("bag", []):
+		var kind := DmGathering.belt_slot_kind(int(s["slot_index"]))
+		if kind != "" and int(s.get("quantity", 0)) > 0:
+			out[kind] = s
+	return out
+
+
+func _bag_count(item_id: String) -> int:
+	var n := 0
+	for s: Dictionary in bag_rows():
+		if s["item_id"] == item_id:
+			n += int(s["quantity"])
+	return n
+
+
+## What Q / Z / X drink: the picked flask or brew while the bag holds it, else the best flask / first brew of that slot (the Reliquary's rule),
+## as bag rows with the stack's total count.
+func potion_rows() -> Dictionary:
+	var out := {}
+	for slot in DmPotionBelt.SLOT_IDS:
+		var want := ""
+		var chosen: Variant = potion_pick.get(slot)
+		if chosen is String and _bag_count(chosen) > 0:
+			want = chosen
+		elif slot == "heal":
+			want = DmPotionBelt.heal_pick(_bag_count)
+		else:
+			for id in DmContent.brews():
+				if DmContent.brews()[id]["slot"] == slot and _bag_count(id) > 0:
+					want = id
+					break
+		if want == "":
+			continue
+		for s: Dictionary in bag_rows():
+			if s["item_id"] == want:
+				var r := s.duplicate()
+				r["quantity"] = _bag_count(want)
+				out[slot] = r
+				break
+	return out
 
 
 ## The worn gear, laid out like the Reliquary's paper doll. Look only: worn gear cannot be stored, so the cells do nothing when clicked.
@@ -329,7 +422,9 @@ static func plain_title(row: Dictionary, locked: bool, kind: String) -> String:
 			t += "%s: %s\n" % [r["short"], r["lines"][0]]
 	if int(row.get("sell_value", 0)) > 0:
 		t += "Worth %sg%s\n" % [DmJsFmt.num_str(float(row["sell_value"])), " each" if q > 1 else ""]
-	if int(row.get("equipped", 0)) != 0:
+	if kind == "look":
+		t = t.trim_suffix("\n")
+	elif int(row.get("equipped", 0)) != 0:
 		t += "Equipped gear cannot be stored"
 	else:
 		t += "Click to store it in the Vault" if kind == "bag" else "Click to take it into your bag"

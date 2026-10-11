@@ -107,6 +107,7 @@ func _skill_levels() -> Dictionary:
 func open(p: String) -> void:
 	match p:
 		"vault":
+			vault.potion_pick = ui.belt_pick()
 			vault.set_state({})
 			vault.window.open()
 			ui.notify("vault_opened")
