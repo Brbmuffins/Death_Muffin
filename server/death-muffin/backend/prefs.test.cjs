@@ -39,6 +39,8 @@ test('only known keys with a valid value are accepted', () => {
   assert.deepStrictEqual(checkValue('only_craftable', true), { ok: true, value: true });
   assert.deepStrictEqual(checkValue('only_craftable', false), { ok: true, value: false });
   for (const bad of ['true', 1, 0, null, undefined, {}, []]) assert.strictEqual(checkValue('only_craftable', bad).ok, false, String(bad));
+  assert.deepStrictEqual(checkValue('no_tips', true), { ok: true, value: true });
+  assert.strictEqual(checkValue('no_tips', 'yes').ok, false);
   for (const key of ['nope', '', '__proto__', 'constructor', 'toString', 'ONLY_CRAFTABLE', 'only craftable', 'x'.repeat(41), 7, null]) {
     assert.strictEqual(checkValue(key, true).ok, false, String(key));
   }

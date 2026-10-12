@@ -4,6 +4,7 @@
     "title": "One Character Per Account",
     "items": [
       "Picking a discipline (including from Switch character) now switches your own character to it instead of starting a new level-1 character. Your level, gold and gear stay.",
+      "\"Don't show tips\" now follows your account: turn tips off once and they stay off on every device.",
       "Crafting with Max (or any batch) now shows live progress on the button (Crafting 3/20) instead of looking frozen.",
       "Laborers sent to a post that has no node in the Acre (like level 45 gravedigging) now work the closest lower tier there instead of the level 1 node.",
       "Settings > Display now has a V-Sync switch. Turn it off for lower input delay and frame rates above your screen's refresh rate."

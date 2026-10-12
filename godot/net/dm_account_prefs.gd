@@ -4,6 +4,7 @@ extends RefCounted
 ## reconcileLootRules / syncLootRulesWithAccount depend on the loot-filter rules (rules track) and are not ported here.
 
 const PREF_ONLY_CRAFTABLE := "only_craftable"
+const PREF_NO_TIPS := "no_tips"
 
 static func loot_pref_key(tier: String) -> String:
 	return "loot_" + tier

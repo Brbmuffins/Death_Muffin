@@ -284,6 +284,27 @@ func _build_counsel() -> void:
 	counsel_view.reduce_motion = bool(game.settings.get("reduce_motion", false))
 	add_child(counsel_view)
 	counsel_view.setup(counsel, hud, store)
+	_restore_no_tips()
+
+
+## "Don't show tips" follows the account: the saved account value wins over this device's copy (pushed up when the account has none and tips are off here).
+func _restore_no_tips() -> void:
+	if game.api == null:
+		return
+	var local := bool(game.settings.get("no_tips", false))
+	var remote: Variant = await DmAccountPrefs.fetch(game.api)
+	var rec := DmAccountPrefs.reconcile_bool(local, remote, DmAccountPrefs.PREF_NO_TIPS)
+	if not is_instance_valid(self):
+		return
+	if bool(rec["value"]) != local:
+		var s: Dictionary = game.settings.duplicate(true)
+		s["no_tips"] = rec["value"]
+		game.apply_settings(s)
+		counsel.set_tips_enabled(not bool(rec["value"]))
+		if set_ui != null:
+			set_ui.sync_values()
+	if rec["pushUp"]:
+		DmAccountPrefs.save_one(game.api, DmAccountPrefs.PREF_NO_TIPS, true)
 
 
 func notify(event_id: String, ctx: Dictionary = {}) -> void:
@@ -940,6 +961,8 @@ func update_setting(patch: Dictionary) -> void:
 		hud.set_hud_scale(DmSettings.clamp_hud_scale(patch["hud_scale"]))
 	if patch.has("no_tips"):
 		counsel.set_tips_enabled(not bool(patch["no_tips"]))
+		if game.api != null:
+			DmAccountPrefs.save_one(game.api, DmAccountPrefs.PREF_NO_TIPS, bool(patch["no_tips"]))
 	if patch.has("reduce_motion"):
 		counsel_view.reduce_motion = bool(patch["reduce_motion"])
 	if patch.has("auto_combat") and game.has_method("set_auto_combat"):
