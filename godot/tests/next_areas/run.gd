@@ -5,6 +5,7 @@ extends SceneTree
 ## godot --headless --path godot --script res://tests/next_areas/run.gd
 
 const DT := 1.0 / 60.0
+const NEUTRAL_OMEN := {"id": "none", "name": "A Quiet Week", "icon": "art/omens/blood_moon.webp", "blurb": "Nothing stirs.", "eliteBonus": 0.0, "waveSizeMult": 1.0, "rewardMult": 1.0, "shardMult": 1.0}
 const WALK_ORDER := ["chapterhouse", "acre", "alchemist_wing", "graves", "warren", "ossuary", "nave", "coliseum", "sanctum", "cloister", "pyre", "fen"]
 const FRAME_MEDIAN_MS := 16.0       ## headless, waves on, every area in turn (generous: shared VPS)
 const FRAME_WORST_MS := 250.0
@@ -94,7 +95,7 @@ func _run() -> void:
 	character = c.data
 	g = load("res://next/next_game.tscn").instantiate()
 	root.add_child(g)
-	await g.start(character, api, {"dressing": false, "persist": false, "waves": false})
+	await g.start(character, api, {"dressing": false, "persist": false, "waves": false, "omen": NEUTRAL_OMEN})   # the week's Omen can change wave sizes: pin a quiet week
 	h = g.chapterhouse
 	d = g.director
 	g.ui_host.game_event.connect(func(id: String, ctx: Dictionary) -> void: events.append({"id": id, "ctx": ctx}))
