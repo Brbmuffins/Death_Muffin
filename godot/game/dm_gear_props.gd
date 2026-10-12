@@ -289,9 +289,10 @@ static func load_prop(id: String, height: float, by_longest := false) -> Node3D:
 	inst.position = -bb.get_center() * (height / denom) + Vector3(0, bb.size.y * 0.5 * (height / denom), 0)
 	return holder
 
-## The Reaper's scythe model, grip at the origin, blade up (+Y), `tip` meta at the blade; null when the asset is absent.
-static func scythe_model() -> Node3D:
-	var g := load_prop(SCYTHE_FILE, SCYTHE_LENGTH)
+## The Reaper's scythe model (`file`: a props/ GLB, a worn set's own scythe or the default), grip at the origin, blade up (+Y), `tip` meta at the
+## blade; null when the asset is absent.
+static func scythe_model(file := SCYTHE_FILE) -> Node3D:
+	var g := load_prop(file, SCYTHE_LENGTH)
 	if g == null:
 		return null
 	(g.get_child(0) as Node3D).position.y -= SCYTHE_GRIP * SCYTHE_LENGTH

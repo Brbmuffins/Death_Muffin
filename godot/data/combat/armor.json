@@ -1546,6 +1546,76 @@
    "area": "pyre",
    "name": "Plague Choir Treads",
    "setName": "Plague Choir"
+  },
+  {
+   "id": "leg_soul_harbingers_head",
+   "setId": "soul_harbingers",
+   "disciplineId": "reaper",
+   "collection": 3,
+   "part": "head",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Harbinger’s Hood",
+   "setName": "Soul Harbinger’s Raiment"
+  },
+  {
+   "id": "leg_soul_harbingers_chest",
+   "setId": "soul_harbingers",
+   "disciplineId": "reaper",
+   "collection": 3,
+   "part": "chest",
+   "stats": {
+    "stat_int": 15,
+    "stat_vit": 7
+   },
+   "area": "pyre",
+   "name": "Harbinger’s Ribcage",
+   "setName": "Soul Harbinger’s Raiment"
+  },
+  {
+   "id": "leg_soul_harbingers_hands",
+   "setId": "soul_harbingers",
+   "disciplineId": "reaper",
+   "collection": 3,
+   "part": "hands",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Harbinger’s Grasp",
+   "setName": "Soul Harbinger’s Raiment"
+  },
+  {
+   "id": "leg_soul_harbingers_legs",
+   "setId": "soul_harbingers",
+   "disciplineId": "reaper",
+   "collection": 3,
+   "part": "legs",
+   "stats": {
+    "stat_int": 12,
+    "stat_vit": 5
+   },
+   "area": "pyre",
+   "name": "Harbinger’s Legwraps",
+   "setName": "Soul Harbinger’s Raiment"
+  },
+  {
+   "id": "leg_soul_harbingers_feet",
+   "setId": "soul_harbingers",
+   "disciplineId": "reaper",
+   "collection": 3,
+   "part": "feet",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "area": "pyre",
+   "name": "Harbinger’s Treads",
+   "setName": "Soul Harbinger’s Raiment"
   }
  ],
  "set_bonuses": {
@@ -2235,6 +2305,28 @@
      }
     }
    }
+  ],
+  "soul_harbingers": [
+   {
+    "pieces": 2,
+    "effect": {
+     "text": "Scythe Throw’s radius is doubled"
+    }
+   },
+   {
+    "pieces": 4,
+    "name": "Soul Ward",
+    "effect": {
+     "text": "Unleash Souls wisps that hit give you a barrier equal to the damage they deal (a new release refreshes it, it does not stack)"
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Harvest of Blades",
+    "effect": {
+     "text": "Each Unleash Souls wisp that hits leaves a Scythe Throw behind (at most 15 at once)"
+    }
+   }
   ]
  },
  "set_names": {
@@ -2259,6 +2351,7 @@
   "legion_unburied": "Legion of the Unburied",
   "colossus_mantle": "Colossus Mantle",
   "requiem_wraiths": "Requiem of Wraiths",
-  "plague_choir": "Plague Choir"
+  "plague_choir": "Plague Choir",
+  "soul_harbingers": "Soul Harbinger’s Raiment"
  }
 }

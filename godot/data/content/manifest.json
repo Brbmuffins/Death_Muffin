@@ -89,8 +89,8 @@
     "ARMOR_PARTS": 5,
     "ARMOR_SETS": 9,
     "ASCENDED_ARMOR_SETS": 9,
-    "ARMOR_PIECES": 110,
-    "ARMOR_BY_ID": 110
+    "ARMOR_PIECES": 115,
+    "ARMOR_BY_ID": 115
    }
   },
   "ascension": {
@@ -216,7 +216,7 @@
     "affixRanges": 14,
     "allClipNames": 318,
     "areaOrder": 13,
-    "itemIds": 304,
+    "itemIds": 309,
     "itemMetaSample": 4,
     "worldLayout1337": 12
    }
@@ -351,8 +351,8 @@
     "FIT_LABEL": 4,
     "SLOT_ORDER": 9,
     "RETIRED_ITEMS": 1,
-    "ARMOR_BY_ID": 110,
-    "LEGENDARY_SETS": 4,
+    "ARMOR_BY_ID": 115,
+    "LEGENDARY_SETS": 5,
     "CHEST_KILLS": 1
    }
   },
@@ -363,7 +363,7 @@
     "AREA_PEAK": 10,
     "DEPTHS_AUTHORITY": 4,
     "AUTHORITY": 16,
-    "GROUND_RATES": 209
+    "GROUND_RATES": 214
    }
   },
   "gameplay_beltRules": {
@@ -676,7 +676,7 @@
   "items": {
    "keys": 5,
    "counts": {
-    "ITEMS": 304,
+    "ITEMS": 309,
     "RARITY_COLOR": 5,
     "RARITY_MARK": 5,
     "BUFF_FLASKS": 15,
@@ -701,8 +701,8 @@
   "legendarySets": {
    "keys": 7,
    "counts": {
-    "LEGENDARY_SETS": 4,
-    "LEGENDARY_SET_IDS": 4,
+    "LEGENDARY_SETS": 5,
+    "LEGENDARY_SET_IDS": 5,
     "LEGENDARY_DROP": 4,
     "LEGENDARY_BOSS_AREAS": 6,
     "LEGENDARY_STARTER_AREA": 1,
@@ -810,9 +810,9 @@
    "keys": 4,
    "counts": {
     "SET_TIERS": 3,
-    "SET_BONUSES": 22,
-    "SET_NAMES": 22,
-    "SET_IDS": 22
+    "SET_BONUSES": 23,
+    "SET_NAMES": 23,
+    "SET_IDS": 23
    }
   },
   "statuses": {
@@ -854,7 +854,7 @@
   }
  },
  "summary": {
-  "items": 304,
+  "items": 309,
   "enemies": 28,
   "areas": 13,
   "abilities": 67,

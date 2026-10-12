@@ -179,11 +179,27 @@ runner posts after your turn. Read it; if a piece came out wrong, say so plainly
 **4. In game.** For gear, take screenshots of a hero wearing it (Screenshots: `"equip"`, `"view": "hero"`, front and `"turn": 180` for the back; `"discipline"`
 for another necromancer) even though screenshots are otherwise only on request, check them, and fix fit or scale before you propose.
 
-Armor sets in this game: pieces, set ids and drop rules live in `server/rules/content/armorSets.ts` and `legendarySets.ts` (item ids must be ones the live
-server knows, `items.ts`; run `npm run build:server-rules` after editing and commit the `.cjs`); the look is `godot/data/slice/necro_gear.json`
-(`mantle_by_set_id`, `helm_by_tier`, `weapon_kind_prop`, `legendary_hero_by_set_id`: a legendary set swaps the whole hero body at 3+ pieces) read by
-`godot/game/dm_gear_models.gd` and `godot/game/dm_avatar.gd`. A new set usually needs a mantle (prop), maybe a helm (prop) and a weapon (prop), and for a
-legendary set a rigged hero body with the same clips as the necromancer heroes. Never edit `tools/ai/`.
+**5. A new armor set, start to finish (you do all of it; nobody else has to step in).** A set someone designs with you (names, bonuses, models) is
+not done until it can drop and be worn in the live game. One proposal carries the whole thing; an approver's ✅ ships it, and the ship applies the new
+migration to the live database, deploys the backend and publishes the client. The steps:
+- *Rules.* A class's own build-defining set is a legendary set: add it to `LEGENDARY_SETS` in `server/rules/content/legendarySets.ts` (`disciplineId`,
+  `name`, `wearer`, `color`/`accent`, two `stats` from the class's weapon, `lore`, five piece names); its item ids are `leg_<setId>_<part>` and it drops
+  from area bosses like the others (70% to its own class). Class and ascended sets are `ARMOR_SETS` / `ASCENDED_ARMOR_SETS` in `armorSets.ts`.
+- *Bonuses.* Add the set to `godot/data/content/setBonuses.json` `SET_BONUSES` (tiers 2, 4, 5): an effect the set totals fold (see existing sets and
+  `godot/rules/gear/dm_set_text.gd` for the keys and their words), or `{"text": "..."}` for a bonus coded elsewhere (as `godot/rules/combat/dm_reaper_set.gd` does).
+- *Everything else follows from those two:* run `node tools/generate-armor-assets.mjs` (it refreshes every client data copy, the content manifest, the
+  inventory icons and writes the new `server/death-muffin/backend/migrations/NNN-armor-<set>.sql` with the item rows), then `npm run build:server-rules`.
+  Commit all of it, including the new `.sql`, the icons and the `.import` files Godot writes for them.
+- *Tests that pin counts* (`godot/tests/data/run.gd`: armor, item and Atlas counts, the loot view digest; `godot/tests/rules-loot` golden fixtures whose
+  legendary picks move when the set list grows) are expected to fail after a new set. Update the counts; recompute a digest or fixture only where the
+  set change explains the difference (a legendary pick changing to another set id, nothing else), and say so in the summary.
+- *Look* (`godot/data/slice/necro_gear.json`, read by `godot/game/dm_gear_models.gd` and `godot/game/dm_avatar.gd`): `mantle_by_set_id.<setId>` (worn chest
+  piece shows it), `helm_by_tier.<setId>` (its head piece shows its own helm), `weapon_by_set_id.<setId>` `{kind, prop, pieces}` (weapons of that kind show
+  the set's prop from that many pieces; the Reaper's scythe), `legendary_hero_by_set_id` (a whole rigged body at 3+ pieces; never for the Reaper). Add new
+  props to `godot/data/slice/assets_used.json`. Then the in-game screenshots of step 4.
+- *Decisions.* When the requester has not said where it drops or how strong it is, do not stop to ask: use the defaults above (legendary, boss drops,
+  legendary stats) and state them in the proposal so they can change them in the next round. Ask only when the request contradicts itself.
+Never edit `tools/ai/`.
 
 ## Making a new sound effect or music track (ElevenLabs)
 

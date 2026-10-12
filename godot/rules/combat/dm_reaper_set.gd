@@ -1,6 +1,7 @@
 class_name DmReaperSet
 extends RefCounted
-## Soul Harbinger's Raiment, the Reaper's armor set. Its pieces are the items `set_soul_harbingers_<part>`; the bonuses act on her rites, so they are
+## Soul Harbinger's Raiment, the Reaper's legendary armor set (server/rules/content/legendarySets.ts). Its pieces are the items
+## `leg_soul_harbingers_<part>`; the words are in content/setBonuses.json (text-only effects); the bonuses act on her rites, so they are
 ## folded into the discipline mods as extra keys, and ONLY while enough pieces are worn (every other build is untouched):
 ##   2 pieces: scytheRadiusMult 2.0 (Scythe Throw's radius, read by rite_scythe_throw.gd)
 ##   4 pieces: soulShield true (each Unleash Souls wisp that lands adds its damage to her barrier; rite_unleash_souls.gd)
@@ -13,7 +14,7 @@ const MAX_SCYTHES := 15
 
 
 static func item_id(part: String) -> String:
-	return "set_%s_%s" % [SET_ID, part]
+	return DmLegendarySets.item_id(SET_ID, part)
 
 
 ## How many pieces of the set are worn.

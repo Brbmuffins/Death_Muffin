@@ -691,6 +691,28 @@
      }
     }
    }
+  ],
+  "soul_harbingers": [
+   {
+    "pieces": 2,
+    "effect": {
+     "text": "Scythe Throw’s radius is doubled"
+    }
+   },
+   {
+    "pieces": 4,
+    "name": "Soul Ward",
+    "effect": {
+     "text": "Unleash Souls wisps that hit give you a barrier equal to the damage they deal (a new release refreshes it, it does not stack)"
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Harvest of Blades",
+    "effect": {
+     "text": "Each Unleash Souls wisp that hits leaves a Scythe Throw behind (at most 15 at once)"
+    }
+   }
   ]
  },
  "SET_NAMES": {
@@ -715,7 +737,8 @@
   "legion_unburied": "Legion of the Unburied",
   "colossus_mantle": "Colossus Mantle",
   "requiem_wraiths": "Requiem of Wraiths",
-  "plague_choir": "Plague Choir"
+  "plague_choir": "Plague Choir",
+  "soul_harbingers": "Soul Harbinger’s Raiment"
  },
  "SET_IDS": [
   "gravecaller",
@@ -739,6 +762,7 @@
   "legion_unburied",
   "colossus_mantle",
   "requiem_wraiths",
-  "plague_choir"
+  "plague_choir",
+  "soul_harbingers"
  ]
 }

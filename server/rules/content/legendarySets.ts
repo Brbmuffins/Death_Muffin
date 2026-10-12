@@ -1,8 +1,10 @@
 import type { AreaId } from './areas';
 
 /**
- * Legendary armor sets (docs/LEGENDARY-SETS.md): one rare, build-defining set per necromancer discipline. The pieces are built into
- * ARMOR_PIECES (armorSets.ts, collection 3); the bonuses are in setBonuses.ts; this file holds the names and the drop rules, which
+ * Legendary armor sets: one rare, build-defining set per necromancer discipline and the Reaper's (Soul Harbinger's Raiment,
+ * its bonuses coded in godot/rules/combat/dm_reaper_set.gd). The pieces are built into
+ * ARMOR_PIECES (armorSets.ts, collection 3); the bonuses are in godot/data/content/setBonuses.json; after a change run
+ * tools/generate-armor-assets.mjs (client copies, icons, item migration); this file holds the names and the drop rules, which
  * are pure so the client (loot.ts) and the server's ground-rate ceiling (authorityRules.ts) read the same numbers.
  */
 export type LegendaryPart = 'head' | 'chest' | 'hands' | 'legs' | 'feet';
@@ -41,6 +43,11 @@ export const LEGENDARY_SETS: Record<string, LegendarySet> = {
     disciplineId: 'rotweaver', name: 'Plague Choir', wearer: 'Rotweaver', color: 0x3d4a1c, accent: 0xb6ff4d, stats: ['stat_int', 'stat_vit'],
     lore: 'Sung into being by a congregation that died of its own hymn. Every note it carries is catching.',
     pieces: { head: 'Choirmaster’s Mask', chest: 'Plague Choir Surplice', hands: 'Blightmonger’s Gloves', legs: 'Choir Rotleggings', feet: 'Plague Choir Treads' },
+  },
+  soul_harbingers: {
+    disciplineId: 'reaper', name: 'Soul Harbinger’s Raiment', wearer: 'Reaper', color: 0x2f4a33, accent: 0x6ee7a0, stats: ['stat_int', 'stat_vit'],
+    lore: 'Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.',
+    pieces: { head: 'Harbinger’s Hood', chest: 'Harbinger’s Ribcage', hands: 'Harbinger’s Grasp', legs: 'Harbinger’s Legwraps', feet: 'Harbinger’s Treads' },
   },
 };
 

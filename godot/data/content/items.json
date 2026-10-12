@@ -2548,6 +2548,66 @@
     "stat_vit": 4
    }
   },
+  "leg_soul_harbingers_head": {
+   "name": "Harbinger’s Hood",
+   "type": "armor_head",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "icon": "art/items/leg_soul_harbingers_head.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "leg_soul_harbingers_chest": {
+   "name": "Harbinger’s Ribcage",
+   "type": "armor_chest",
+   "rarity": "legendary",
+   "sell": 180,
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "icon": "art/items/leg_soul_harbingers_chest.svg",
+   "offlineStats": {
+    "stat_int": 15,
+    "stat_vit": 7
+   }
+  },
+  "leg_soul_harbingers_hands": {
+   "name": "Harbinger’s Grasp",
+   "type": "armor_hands",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "icon": "art/items/leg_soul_harbingers_hands.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "leg_soul_harbingers_legs": {
+   "name": "Harbinger’s Legwraps",
+   "type": "armor_legs",
+   "rarity": "legendary",
+   "sell": 150,
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "icon": "art/items/leg_soul_harbingers_legs.svg",
+   "offlineStats": {
+    "stat_int": 12,
+    "stat_vit": 5
+   }
+  },
+  "leg_soul_harbingers_feet": {
+   "name": "Harbinger’s Treads",
+   "type": "armor_feet",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "icon": "art/items/leg_soul_harbingers_feet.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
   "staff_bone": {
    "name": "Vertebral Staff",
    "type": "weapon",

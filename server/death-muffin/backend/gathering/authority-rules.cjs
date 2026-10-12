@@ -78,6 +78,16 @@ var LEGENDARY_SETS = {
     stats: ["stat_int", "stat_vit"],
     lore: "Sung into being by a congregation that died of its own hymn. Every note it carries is catching.",
     pieces: { head: "Choirmaster\u2019s Mask", chest: "Plague Choir Surplice", hands: "Blightmonger\u2019s Gloves", legs: "Choir Rotleggings", feet: "Plague Choir Treads" }
+  },
+  soul_harbingers: {
+    disciplineId: "reaper",
+    name: "Soul Harbinger\u2019s Raiment",
+    wearer: "Reaper",
+    color: 3099187,
+    accent: 7268256,
+    stats: ["stat_int", "stat_vit"],
+    lore: "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+    pieces: { head: "Harbinger\u2019s Hood", chest: "Harbinger\u2019s Ribcage", hands: "Harbinger\u2019s Grasp", legs: "Harbinger\u2019s Legwraps", feet: "Harbinger\u2019s Treads" }
   }
 };
 var LEGENDARY_SET_IDS = Object.keys(LEGENDARY_SETS);

@@ -19,6 +19,8 @@ static func _truthy(v: Variant) -> bool:
 ## Plain-language lines for one effect ("Thralls have +5% health").
 static func describe_effect(e: Dictionary) -> Array:
 	var out: Array = []
+	if e.get("text") is String:   # a bonus coded outside the set totals (e.g. DmReaperSet) carries its own words
+		out.append(String(e["text"]))
 	var m: Dictionary = DmCombatData.nn(e.get("mult"), {})
 	var a: Dictionary = DmCombatData.nn(e.get("add"), {})
 	var st: Variant = e.get("stats")

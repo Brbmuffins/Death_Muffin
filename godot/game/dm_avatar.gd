@@ -63,6 +63,7 @@ var gathering_tool_tier: Dictionary = {}
 
 var _staff: Node3D = null
 var _reaper := false                 ## the Reaper: whatever she wields shows as her scythe
+var _scythe_prop := DmGearProps.SCYTHE_FILE   ## the scythe model she carries (a worn set can bring its own: DmGearModels.set_weapon_prop)
 var _class_gear: Array = []
 var _default_hand: Dictionary = {}   # Node3D -> "main_hand" | "off_hand"
 var _worn: Dictionary = {}           # slot -> {obj, key}
@@ -121,7 +122,7 @@ func setup(parent: Node, accent: Variant = 0xa26bff, with_light: bool = false, m
 	if NEW_BLOOD.has(model_slug):
 		_attach_class_gear(model_slug)
 	else:
-		_staff = (DmGearProps.scythe_model() if _reaper else null)   # the Reaper carries her scythe, not the skull staff
+		_staff = (DmGearProps.scythe_model(_scythe_prop) if _reaper else null)   # the Reaper carries her scythe, not the skull staff
 		if _staff == null:
 			_staff = _default_staff(accent_hex)
 		_mount(_staff, "R_Hand", "held", DmGearProps.hold_spec("scythe" if _reaper else "default_staff"))
@@ -314,7 +315,7 @@ func set_equipment(items: Dictionary) -> void:
 		var obj: Node3D = DmGearProps.build_offhand(item.item_id, rarity) if slot == "off_hand" else DmGearProps.build_weapon(item.item_id, rarity)
 		var kind := DmGearProps.hold_kind(slot, String(item.item_id))
 		if _reaper and slot == "main_hand":
-			var scythe := DmGearProps.scythe_model()   # her weapon is always the scythe, whatever the bag row says
+			var scythe := DmGearProps.scythe_model(_scythe_prop)   # her weapon is always the scythe, whatever the bag row says
 			if scythe != null:
 				DmGearProps.dispose_prop(obj)
 				obj = scythe
@@ -418,6 +419,31 @@ func _on_set_look(_id: String, _pieces: int) -> void:
 	var want := _look_body()
 	if want != body_slug and not _disposed:
 		_swap_body(want)
+	if _reaper and not _disposed:
+		_reseat_scythe(DmGearModels.set_weapon_prop(set_id, set_pieces, "scythe"))
+
+## Swap the Reaper's scythe for `file` ("" = her own): the one in hand and the default one shown when nothing is equipped.
+func _reseat_scythe(file: String) -> void:
+	if file == "":
+		file = DmGearProps.SCYTHE_FILE
+	if file == _scythe_prop or not ResourceLoader.exists(DmModels.BASE + "models/props/%s.glb" % file):
+		return
+	_scythe_prop = file
+	var mh: Variant = _worn.get("main_hand")
+	for old: Node3D in ([mh.obj] if mh != null else []) + ([_staff] if _staff != null else []):
+		var obj := DmGearProps.scythe_model(file)
+		var hand: Variant = _default_hand.get(old)
+		_unmount(old)
+		_default_hand.erase(old)
+		DmGearProps.dispose_prop(old)
+		_mount(obj, "R_Hand", "held", DmGearProps.hold_spec("scythe"))
+		if old == _staff:
+			_staff = obj
+			_default_hand[obj] = hand if hand != null else "main_hand"
+		else:
+			mh.obj = obj
+	_refresh_weapon_fx()
+	apply_gear_visibility()
 
 ## Rebuild the hero's body from another model (a legendary set's hero, or back), keeping what it carries: held props, helm, mantle, cape, aura, lantern, tints,
 ## position / heading and the walk / idle. A one-shot in progress (a cast) is dropped, the body returns to its loop.

@@ -2354,6 +2354,111 @@
    "wearer": "Rotweaver",
    "lore": "Sung into being by a congregation that died of its own hymn. Every note it carries is catching.",
    "sell": 120
+  },
+  "leg_soul_harbingers_head": {
+   "id": "leg_soul_harbingers_head",
+   "setId": "soul_harbingers",
+   "disciplineId": "reaper",
+   "collection": 3,
+   "setName": "Soul Harbinger’s Raiment",
+   "part": "head",
+   "name": "Harbinger’s Hood",
+   "type": "armor_head",
+   "rarity": "legendary",
+   "area": "pyre",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "color": 3099187,
+   "accent": 7268256,
+   "wearer": "Reaper",
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "sell": 120
+  },
+  "leg_soul_harbingers_chest": {
+   "id": "leg_soul_harbingers_chest",
+   "setId": "soul_harbingers",
+   "disciplineId": "reaper",
+   "collection": 3,
+   "setName": "Soul Harbinger’s Raiment",
+   "part": "chest",
+   "name": "Harbinger’s Ribcage",
+   "type": "armor_chest",
+   "rarity": "legendary",
+   "area": "pyre",
+   "stats": {
+    "stat_int": 15,
+    "stat_vit": 7
+   },
+   "color": 3099187,
+   "accent": 7268256,
+   "wearer": "Reaper",
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "sell": 180
+  },
+  "leg_soul_harbingers_hands": {
+   "id": "leg_soul_harbingers_hands",
+   "setId": "soul_harbingers",
+   "disciplineId": "reaper",
+   "collection": 3,
+   "setName": "Soul Harbinger’s Raiment",
+   "part": "hands",
+   "name": "Harbinger’s Grasp",
+   "type": "armor_hands",
+   "rarity": "legendary",
+   "area": "pyre",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "color": 3099187,
+   "accent": 7268256,
+   "wearer": "Reaper",
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "sell": 120
+  },
+  "leg_soul_harbingers_legs": {
+   "id": "leg_soul_harbingers_legs",
+   "setId": "soul_harbingers",
+   "disciplineId": "reaper",
+   "collection": 3,
+   "setName": "Soul Harbinger’s Raiment",
+   "part": "legs",
+   "name": "Harbinger’s Legwraps",
+   "type": "armor_legs",
+   "rarity": "legendary",
+   "area": "pyre",
+   "stats": {
+    "stat_int": 12,
+    "stat_vit": 5
+   },
+   "color": 3099187,
+   "accent": 7268256,
+   "wearer": "Reaper",
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "sell": 150
+  },
+  "leg_soul_harbingers_feet": {
+   "id": "leg_soul_harbingers_feet",
+   "setId": "soul_harbingers",
+   "disciplineId": "reaper",
+   "collection": 3,
+   "setName": "Soul Harbinger’s Raiment",
+   "part": "feet",
+   "name": "Harbinger’s Treads",
+   "type": "armor_feet",
+   "rarity": "legendary",
+   "area": "pyre",
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   },
+   "color": 3099187,
+   "accent": 7268256,
+   "wearer": "Reaper",
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "sell": 120
   }
  },
  "LEGENDARY_SETS": {
@@ -2431,6 +2536,25 @@
     "hands": "Blightmonger’s Gloves",
     "legs": "Choir Rotleggings",
     "feet": "Plague Choir Treads"
+   }
+  },
+  "soul_harbingers": {
+   "disciplineId": "reaper",
+   "name": "Soul Harbinger’s Raiment",
+   "wearer": "Reaper",
+   "color": 3099187,
+   "accent": 7268256,
+   "stats": [
+    "stat_int",
+    "stat_vit"
+   ],
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "pieces": {
+    "head": "Harbinger’s Hood",
+    "chest": "Harbinger’s Ribcage",
+    "hands": "Harbinger’s Grasp",
+    "legs": "Harbinger’s Legwraps",
+    "feet": "Harbinger’s Treads"
    }
   }
  },

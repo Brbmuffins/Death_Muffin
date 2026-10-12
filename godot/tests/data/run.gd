@@ -5,7 +5,7 @@ extends SceneTree
 
 # md5 of JSON.stringify(sort_keys) of the files that were merged away (loot/content.json, progression/content.json after int
 # normalisation, combat/progression.json before its duplicated keys were dropped), recorded before they were deleted.
-const GOLD_LOOT := "d97bcdf3049f078bd61555519fb2c0bb"   # 2026-10-11: + disciplineFamily.reaper (the Reaper)
+const GOLD_LOOT := "8fba9415aaf06bb4b35651557047192b"   # 2026-10-12: + legendary set soul_harbingers (the Reaper's), 5 armor pieces and their items
 const GOLD_PROG := "ef52eaf07b78f1318163e29622fa56a1"
 const GOLD_COMBAT_PROG := "92bc273531f1cb361132f3bad0dfb1bf"
 
@@ -82,7 +82,7 @@ func _initialize() -> void:
 	var rat := DmLootData.enemy("rat")
 	ok(int(rat["gold"][0]) == 0 and int(rat["gold"][1]) == 1 and int(rat["xp"]) == 1, "loot enemy")
 	ok(is_equal_approx(DmLootData.difficulty_reward_mult("hard"), 1.3), "difficulty reward")
-	ok(DmLootData.content()["armor"].size() == 110 and DmLootData.content()["necroWeapons"].size() == 35, "armor/necro counts")
+	ok(DmLootData.content()["armor"].size() == 115 and DmLootData.content()["necroWeapons"].size() == 35, "armor/necro counts")
 	ok(is_equal_approx(float(DmLootData.area("graves")["itemChance"]), 0.062089552238805974), "area itemChance")
 	ok(DmProgContent.vows()["elder_dead"]["maxRank"] == 20 and typeof(DmProgContent.vows()["elder_dead"]["maxRank"]) == TYPE_INT, "prog vow int")
 	ok(DmProgContent.boon_order().size() == 15 and DmProgContent.vow_order().size() == 11, "prog orders")
@@ -91,7 +91,7 @@ func _initialize() -> void:
 	ok(DmProgContent.areas()["ossuary"]["unlock"] == {"area": "graves", "kills": 300}, "area unlock")
 	ok(DmProgContent.is_always_open("graves") and not DmProgContent.is_always_open("ossuary"), "always open")
 	ok(DmProgContent.get_data()["startAreas"] == ["chapterhouse", "graves"], "start areas")
-	ok(DmContent.items().size() == 304 and int(DmContent.item("log_oak")["sell"]) == 1, "content items")
+	ok(DmContent.items().size() == 309 and int(DmContent.item("log_oak")["sell"]) == 1, "content items")
 	ok(DmContent.file_names().size() > 60, "content file names")
 	ok(DmContent.get_export("areas", "AREA_ORDER").size() == 13, "content export")
 	ok(DmContent.file("items") == DmDb.content("items"), "DmContent delegates")
@@ -102,12 +102,12 @@ func _initialize() -> void:
 	ok(DmGatherData.get_data()["nodes"].size() == 30, "gathering nodes")
 	ok(DmCounselData.order().size() == 121, "counsel tips")
 	ok(DmData.world()["areas"].size() == 13, "slice world")
-	ok(DmPaData.atlas()["item_order"].size() == 304, "panels_a atlas")
+	ok(DmPaData.atlas()["item_order"].size() == 309, "panels_a atlas")
 	# necromancer gear look props (slice/necro_gear.json): every prop and legendary hero model is registered and imported
 	var ng: Dictionary = DmDb.slice("necro_gear")
 	var used_models: Array = DmDb.slice("assets_used")["models"]
 	var ng_props: Array = []
-	for tbl in ["weapon_kind_prop", "mantle_by_set_id", "helm_by_tier"]:
+	for tbl in ["weapon_kind_prop", "mantle_by_set_id", "helm_by_tier", "weapon_by_set_id"]:
 		for k in ng[tbl]:
 			ng_props.append("models/props/%s.glb" % ng[tbl][k]["prop"])
 	for k in ng["legendary_hero_by_set_id"]:
@@ -117,7 +117,7 @@ func _initialize() -> void:
 		if not used_models.has(m) or not ResourceLoader.exists("res://assets/slice/" + m):
 			ng_bad += 1
 			print("necro_gear model missing: ", m)
-	ok(ng_props.size() == 7 + 8 + 6 + 4 and ng_bad == 0, "necro gear table: 25 models listed in assets_used and imported")
+	ok(ng_props.size() == 7 + 9 + 7 + 1 + 4 and ng_bad == 0, "necro gear table: 28 models listed in assets_used and imported")
 	var asets: Dictionary = DmContent.get_export("armorSets", "ARMOR_SETS")
 	ok(ng["mantle_by_set_id"].has("gravecaller") and ng["mantle_by_set_id"].has("rotweaver_ascended") and asets.has("gravecaller"), "necro gear table: class and ascended mantle ids")
 	for k in ng["legendary_hero_by_set_id"]:

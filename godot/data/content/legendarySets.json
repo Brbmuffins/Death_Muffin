@@ -75,13 +75,33 @@
     "legs": "Choir Rotleggings",
     "feet": "Plague Choir Treads"
    }
+  },
+  "soul_harbingers": {
+   "disciplineId": "reaper",
+   "name": "Soul Harbinger’s Raiment",
+   "wearer": "Reaper",
+   "color": 3099187,
+   "accent": 7268256,
+   "stats": [
+    "stat_int",
+    "stat_vit"
+   ],
+   "lore": "Green bone, hooded and hollow, with a soul-light caught between the ribs. The souls it gathers do not go quietly.",
+   "pieces": {
+    "head": "Harbinger’s Hood",
+    "chest": "Harbinger’s Ribcage",
+    "hands": "Harbinger’s Grasp",
+    "legs": "Harbinger’s Legwraps",
+    "feet": "Harbinger’s Treads"
+   }
   }
  },
  "LEGENDARY_SET_IDS": [
   "legion_unburied",
   "colossus_mantle",
   "requiem_wraiths",
-  "plague_choir"
+  "plague_choir",
+  "soul_harbingers"
  ],
  "LEGENDARY_DROP": {
   "bossChance": 0.2,

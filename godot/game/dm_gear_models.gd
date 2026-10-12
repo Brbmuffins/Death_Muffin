@@ -1,7 +1,7 @@
 class_name DmGearModels
 extends RefCounted
 ## The real (Tripo) models of necromancer gear and the table that says which item shows which one (godot/data/slice/necro_gear.json): the seven weapon
-## kinds, the eight set mantles (class + ascended), the six tier helms and the four legendary-set hero bodies. Every prop is one mesh with one
+## kinds, the set mantles, the tier helms (and set helms), set weapons (`weapon_by_set_id`) and the legendary-set hero bodies. Every prop is one mesh with one
 ## material (one draw call). Weapon metal tiers (bone / iron / gold / hell / moon) are tint + glow variants of the one model, each built once and
 ## shared by every instance (`_mats`); nothing is allocated per frame.
 ##
@@ -204,6 +204,8 @@ static func weapon(kind: String, tier := "bone") -> Node3D:
 static func helm_tier_of(item_id: String, rarity := "") -> String:
 	var armor := DmGearProps.armor_by_id(item_id)
 	if not armor.is_empty():
+		if table().get("helm_by_tier", {}).has(String(armor.setId)):
+			return String(armor.setId)   # a set with its own helm model (a `helm_by_tier` row keyed by its set id)
 		return String(HELM_OF_COLLECTION.get(int(armor.collection), "iron"))
 	for w: String in HELM_WORDS:
 		if item_id.contains(w):
@@ -226,12 +228,20 @@ static func helm(tier: String, height: float) -> Node3D:
 	return _seat(String(row.prop), height / bb.size.y, Vector3(0.5, 0.5, 0.5))
 
 
-## The set whose mantle a worn chest piece brings (class sets and their ascended sets only); "" when it brings none.
+## The set whose mantle a worn chest piece brings (any set with a `mantle_by_set_id` row); "" when it brings none.
 static func mantle_set_of(item_id: String) -> String:
 	var armor := DmGearProps.armor_by_id(item_id)
 	if armor.is_empty() or String(armor.part) != "chest":
 		return ""
 	return String(armor.setId) if table().get("mantle_by_set_id", {}).has(String(armor.setId)) else ""
+
+
+## The props/ GLB a worn set gives weapons of `kind` from `pieces` worn (`weapon_by_set_id`), "" when it gives none.
+static func set_weapon_prop(set_id: String, pieces: int, kind: String) -> String:
+	var row: Dictionary = table().get("weapon_by_set_id", {}).get(set_id, {})
+	if row.is_empty() or String(row.get("kind", "")) != kind or pieces < int(row.get("pieces", 3)):
+		return ""
+	return String(row.prop)
 
 
 ## A set's mantle model, its centre on the origin, `width` metres across (its +Z axis, the wearer's shoulders).

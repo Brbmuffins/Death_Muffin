@@ -26799,6 +26799,11 @@
   "leg_plague_choir_hands",
   "leg_plague_choir_legs",
   "leg_plague_choir_feet",
+  "leg_soul_harbingers_head",
+  "leg_soul_harbingers_chest",
+  "leg_soul_harbingers_hands",
+  "leg_soul_harbingers_legs",
+  "leg_soul_harbingers_feet",
   "staff_bone",
   "staff_iron",
   "staff_gold",
@@ -33819,7 +33824,7 @@
    {
     "id": "acre_51",
     "type": "bog_myrtle",
-    "x": -53.0,
+    "x": -53,
     "z": 31.8,
     "area": "acre",
     "rot": 4.1

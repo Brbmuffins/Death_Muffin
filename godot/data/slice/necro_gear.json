@@ -384,6 +384,33 @@
      0.499
     ]
    }
+  },
+  "soul_harbingers": {
+   "prop": "gear_greenbone_mantle",
+   "width_m": 0.42,
+   "anchor_bone": "Spine02",
+   "offset_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.494,
+     0.998,
+     0.916
+    ],
+    "min": [
+     -0.247,
+     -0.499,
+     -0.458
+    ],
+    "max": [
+     0.247,
+     0.499,
+     0.458
+    ]
+   }
   }
  },
  "helm_by_tier": {
@@ -548,6 +575,33 @@
      0.378
     ]
    }
+  },
+  "soul_harbingers": {
+   "prop": "gear_greenbone_helm",
+   "height_m": 0.27,
+   "anchor_bone": "Head",
+   "offset_m": [
+    0.0,
+    0.07,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.998,
+     0.994,
+     0.705
+    ],
+    "min": [
+     -0.499,
+     -0.497,
+     -0.353
+    ],
+    "max": [
+     0.499,
+     0.497,
+     0.353
+    ]
+   }
   }
  },
  "helm_tier_alias": {
@@ -578,5 +632,12 @@
   }
  },
  "weapon_tiers": "Weapon tiers (bone, iron, gold, hell, moon) share one mesh per kind; tint with DmGearProps.TIERS.",
- "tier_sets": "mantle_by_set_id keys are armorSets setIds: class sets (gravecaller, ossuary, mourner, rotweaver) and their ascended sets (<id>_ascended)."
+ "tier_sets": "mantle_by_set_id keys are armorSets setIds (class, ascended and legendary sets). helm_by_tier also takes a set id: that set’s head piece shows its own helm. weapon_by_set_id: from `pieces` worn, weapons of `kind` show the set’s prop (the Reaper’s scythe).",
+ "weapon_by_set_id": {
+  "soul_harbingers": {
+   "kind": "scythe",
+   "prop": "gear_greenbone_scythe",
+   "pieces": 3
+  }
+ }
 }
