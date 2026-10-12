@@ -157,7 +157,8 @@ func _run() -> void:
 	var m: DmRewardsMember = g.rewards.members[int(character["id"])]
 	var bag_before := g.ui_host.inventory.count("reagent_grave_dust")
 	m.loot_view.item(b.position, {"item_id": "reagent_grave_dust", "quantity": 3}, true)
-	check(await until(func() -> bool: return g.ui_host.inventory.count("reagent_grave_dust") == bag_before + 3, 3.0), "a walked-over drop lands in the bag")
+	m.loot_view.request_pickup(m.loot_view._drops[-1])   # what a click on it does (DmNextUiHost.loot_click)
+	check(await until(func() -> bool: return g.ui_host.inventory.count("reagent_grave_dust") == bag_before + 3, 3.0), "a clicked drop lands in the bag")
 	check(g.ui_host.slots.any(func(s: Dictionary) -> bool: return s["item_id"] == "reagent_grave_dust"), "bag slots (game.slots) include it")
 	check(events.any(func(e: Dictionary) -> bool: return e["id"] == "loot"), "loot toast event")
 	g.ui.toggle_panel("inventory")

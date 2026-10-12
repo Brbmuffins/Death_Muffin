@@ -178,6 +178,15 @@
         "tools/hygiene/**",
         "art-manifest/**"
       ]
+    },
+    {
+      "id": "loot-filter",
+      "pattern": "DmLootFilter|loot_filter\\.gd|gameplay_lootFilter|auto_looted|auto_sold",
+      "reason": "Settings loot rules removed 2026-10-12 (DECISIONS B15: click to pick up)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

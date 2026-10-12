@@ -757,7 +757,9 @@ func _p_loot_equip() -> void:
 	var gold0 := gold()
 	var loot0 := int(ev_counts.get("loot", 0))
 	var shards0 := int(uh.prog.local.get("shards", 0))
-	for d in drops.slice(0, 12):
+	for d in m.loot_view._drops.slice(0, 12):
+		if not is_instance_valid(d["node"]):
+			continue                                   # expired or taken meanwhile
 		var guard := 0
 		while (not body().alive or g.area_id != "graves") and guard < 40:
 			guard += 1
@@ -766,6 +768,7 @@ func _p_loot_equip() -> void:
 				await walk_to(0.0, -10.0, 3.0, 20.0)
 		if g.area_id != "graves":
 			break
+		m.loot_view.request_pickup(d)                  # what a click on the drop does (DmNextUiHost.loot_click)
 		walk_soft = true
 		await walk_to(float(d["x"]), float(d["z"]), 0.8, 15.0)
 		walk_soft = false
@@ -776,7 +779,7 @@ func _p_loot_equip() -> void:
 	metrics["loot_gold_gained"] = gold() - gold0
 	metrics["loot_shards_gained"] = int(uh.prog.local.get("shards", 0)) - shards0
 	if drops.size() > 0:
-		chk(uh.slots.size() > bag0 or gold() > gold0 or m.loot_view.count() < drops.size() or picked > 0, "walking over drops picks them up", "bag %d->%d gold %d->%d drops left %d" % [bag0, uh.slots.size(), gold0, gold(), m.loot_view.count()], "major")
+		chk(uh.slots.size() > bag0 or gold() > gold0 or m.loot_view.count() < drops.size() or picked > 0, "clicking drops picks them up", "bag %d->%d gold %d->%d drops left %d" % [bag0, uh.slots.size(), gold0, gold(), m.loot_view.count()], "major")
 	# equip / unequip through the Reliquary
 	var gear_id := ""
 	for id in DmContent.items():

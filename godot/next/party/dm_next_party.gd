@@ -673,17 +673,22 @@ func _rpc_say(text: String) -> void:
 	if not multiplayer.is_server() or shell == null:
 		return
 	var peer := multiplayer.get_remote_sender_id()
+	if _over_rate(peer):
+		return
+	var t := text.strip_edges().substr(0, CHAT_MAX)
+	if t != "":
+		_broadcast_chat(peer, t)
+
+
+## Host: more than CHAT_PER_S lines (chat + announcements) from one peer in a second are dropped.
+func _over_rate(peer: int) -> bool:
 	var now := int(Time.get_ticks_msec() / 1000)
 	var r: Array = _chat_rate.get(peer, [now, 0])
 	if int(r[0]) != now:
 		r = [now, 0]
 	r[1] = int(r[1]) + 1
 	_chat_rate[peer] = r
-	if int(r[1]) > CHAT_PER_S:
-		return
-	var t := text.strip_edges().substr(0, CHAT_MAX)
-	if t != "":
-		_broadcast_chat(peer, t)
+	return int(r[1]) > CHAT_PER_S
 
 
 func _broadcast_chat(peer: int, text: String) -> void:
@@ -700,8 +705,51 @@ func _rpc_chat(who: String, text: String) -> void:
 	_show_chat(who, text)
 
 
+## A find the whole party reads in chat (a legendary, a new rune). `line` names the finder as "{who}"; the host fills in the roster name.
+## Returns false when not in a party (the caller shows its own line).
+func announce(line: String) -> bool:
+	var t := line.strip_edges().substr(0, CHAT_MAX)
+	if t == "" or not in_party() or not shell.session.is_active():
+		return false
+	if shell.session.is_host():
+		_broadcast_announce(1, t)
+	else:
+		_rpc_announce.rpc_id(1, t)
+	return true
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_announce(line: String) -> void:
+	if not multiplayer.is_server() or shell == null:
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	if _over_rate(peer):
+		return
+	var t := line.strip_edges().substr(0, CHAT_MAX)
+	if t != "":
+		_broadcast_announce(peer, t)
+
+
+func _broadcast_announce(peer: int, line: String) -> void:
+	var who := "Someone"
+	for r in shell.session.get_roster():
+		if int(r["peer_id"]) == peer:
+			who = String(r["name"])
+	var text := line.replace("{who}", who)
+	_rpc_announced.rpc(text)
+	_show_line(text)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_announced(text: String) -> void:
+	_show_line(text)
+
+
 func _show_chat(who: String, text: String) -> void:
-	var line := "[%s] %s" % [who, text]
+	_show_line("[%s] %s" % [who, text])
+
+
+func _show_line(line: String) -> void:
 	chat_log.append(line)
 	if chat_log.size() > 40:
 		chat_log.pop_front()

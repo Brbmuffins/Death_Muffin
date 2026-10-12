@@ -158,23 +158,28 @@ func _t_solo() -> void:
 	ok(r.batch_no == 2 and m.stats["kills_accepted"] == 6, "timer flushes a second batch with an increasing number", str(r.batch_no))
 	await _wait_gear(r)
 
-	# loot: pick up by walking over it; the ground view has this member's drops
+	# loot: gold / shards go straight to the purse; items wait on the ground until a pickup request (a click) and the hero reaching them
+	r.tick(0.1)
+	ok(m.stats["gold_picked"] > 0 and int(m.prog.character["gold"]) == m.stats["gold_picked"], "the pooled gold went straight to the purse", str(m.stats))
 	var drops: Array = m.loot_view.debug_drops()
-	ok(drops.size() > 0, "kills left drops on the ground", str(drops))
-	var kinds := {}
+	ok(drops.size() > 0, "kills left items on the ground", str(drops))
+	var only_items := true
 	for d in drops:
-		kinds[d["kind"]] = true
-	ok(kinds.has("gold"), "pooled gold pile dropped after 4 kills")
-	ok(m.loot_view.count() == drops.size(), "debug_drops matches count")
-	r.tick(0.6)   # hero stands far from drops? (0,0,0) vs kills at x=2..3: gold magnets, items need <1.3
-	for d in m.loot_view.debug_drops():
+		only_items = only_items and d["kind"] == "item"
+	ok(only_items, "nothing but items lies on the ground")
+	for d in drops:
 		hero.position = Vector3(d["x"], 0, d["z"])
 		r.tick(0.5)
-	for i in 6:
-		r.tick(0.5)
-	ok(m.loot_view.count() == 0, "walking over every drop clears the ground", str(m.loot_view.debug_drops()))
-	ok(m.stats["gold_picked"] > 0 and int(m.prog.character["gold"]) == m.stats["gold_picked"], "gold pickup paid", str(m.stats))
-	ok(m.bag.size() > 0 or m.stats["items_picked"] == 0, "picked items are in the bag")
+	ok(m.loot_view.count() == drops.size(), "walking over the drops takes none of them")
+	var guard := 0
+	while m.loot_view.count() > 0 and guard < 50:
+		var target: Dictionary = m.loot_view._drops[-1]
+		m.loot_view.request_pickup(target)
+		hero.position = Vector3(target["x"], 0, target["z"])
+		r.tick(0.1)
+		guard += 1
+	ok(m.loot_view.count() == 0, "a pickup request per drop clears the ground", str(m.loot_view.debug_drops()))
+	ok(m.bag.size() > 0 and m.stats["items_picked"] > 0, "picked items are in the bag")
 	var item_n := 0
 	for it in m.bag:
 		item_n += int(it["quantity"])
@@ -199,8 +204,8 @@ func _t_solo() -> void:
 			moved = true
 	ok(not moved, "item loot never flies toward the hero")
 	hero.position = Vector3(500, 0, 500)
-	r.tick(61.0)
-	ok(m.loot_view.count() == 0 and exp_seen.size() > 0 and exp_seen[0] == "ttl", "unclaimed loot expires after 60 s", str(exp_seen))
+	r.tick(171.0)
+	ok(m.loot_view.count() == 0 and exp_seen.size() > 0 and exp_seen[0] == "ttl", "unclaimed loot expires after 3 minutes", str(exp_seen))
 	var gold_before: int = m.stats["gold_picked"]
 	r.tick(1.0)
 	ok(m.stats["gold_picked"] == gold_before, "expired loot pays nothing")
@@ -292,14 +297,15 @@ func _t_two_members() -> void:
 	ok(a.chain.count == 1 and b.chain.count == 0, "kill chain only for the killer")
 	await _wait_gear(r)
 	ok(a.loot_view.count() > 0 and b.loot_view.count() > 0 and c.loot_view.count() == 0, "each member that earned it has its OWN drops", str([a.loot_view.count(), b.loot_view.count(), c.loot_view.count()]))
-	# alice standing on bob's drops gets nothing from them; bob's pickup is bob's
+	# bob's drops are bob's: alice standing on them takes nothing; bob's pickup request takes his
 	var bd: Array = b.loot_view.debug_drops()
 	a_body.position = Vector3(bd[0]["x"], 0, bd[0]["z"])
 	r.tick(1.0)
-	ok(b.loot_view.count() == bd.size(), "another member walking over my drops does not take them")
+	ok(b.loot_view.count() == bd.size() and a.stats["items_picked"] == 0, "another member on my drops does not take them")
+	b.loot_view.request_pickup(b.loot_view._drops[0])
 	b_body.position = Vector3(bd[0]["x"], 0, bd[0]["z"])
 	r.tick(1.0)
-	ok(b.loot_view.count() < bd.size() or b.stats["gold_picked"] > 0, "the owner walking over them picks them up")
+	ok(b.loot_view.count() == bd.size() - 1 and b.stats["items_picked"] > 0, "the owner's pickup request takes it")
 	# each member's report at its own multipliers; wisdom raises bob's XP
 	var more := 0
 	for i in 3:

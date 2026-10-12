@@ -2,7 +2,7 @@ class_name DmSettings
 extends RefCounted
 ## Port of archive/legacy-web:src/app/settings.ts: the per-viewer settings store, persisted to a JSON file (the desktop stand-in for localStorage). Difficulty and
 ## auto combat are per character (setActiveCharacter). Keys are the Settings panel's (godot/ui/panels/dm_settings_panel.gd `values`), with the
-## web's defaults: difficulty, auto_combat, auto_gather, loot_<tier> ("ground"|"auto"|"gold"), graphics ("low"|"medium"|"high"|"ultra", DmGraphicsPreset), brightness (0.8..1.3), fps, auto_res, vol_master,
+## web's defaults: difficulty, auto_combat, auto_gather, graphics ("low"|"medium"|"high"|"ultra", DmGraphicsPreset), brightness (0.8..1.3), fps, auto_res, vol_master,
 ## vol_combat, vol_amb, vol_music, vol_ui (= web volume, combatVolume, ambienceVolume, musicVolume, interfaceVolume), reduce_motion, damage_numbers,
 ## hide_helm, no_tips, guidance, guide_ping, dev_access.
 
@@ -15,7 +15,6 @@ const BRIGHTNESS_MIN := 0.8
 const BRIGHTNESS_MAX := 1.3
 const VOLUME_KEYS: Array[String] = ["vol_master", "vol_combat", "vol_amb", "vol_music", "vol_ui"]
 const WEB_VOLUME := {"vol_master": "volume", "vol_combat": "combatVolume", "vol_amb": "ambienceVolume", "vol_music": "musicVolume", "vol_ui": "interfaceVolume"}
-const TIERS := ["common", "uncommon", "rare", "epic", "legendary"]
 
 var values: Dictionary = {}
 var path: String = FILE
@@ -32,8 +31,6 @@ static func defaults() -> Dictionary:
 		"vol_master": 0.6, "vol_combat": 1.0, "vol_amb": 1.0, "vol_music": 0.85, "vol_ui": 1.0,
 		"reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false, "guidance": true, "guide_ping": true, "dev_access": true,
 	}
-	for t in TIERS:
-		d["loot_" + t] = "ground"
 	return d
 
 
@@ -69,12 +66,6 @@ func _load() -> void:
 	# Old settings cannot be attributed to a character: each starts on Medium until its own preference loads.
 	values["difficulty"] = "medium"
 	values["auto_combat"] = false
-	var rules := {}
-	for t in TIERS:
-		rules[t] = values["loot_" + t]
-	var clean := DmLootFilter.read_loot_rules(rules)
-	for t in TIERS:
-		values["loot_" + t] = clean[t]
 
 
 ## Settings -> Window mode: "windowed" | "borderless" | "fullscreen"; anything else is windowed.
@@ -98,14 +89,6 @@ static func clamp_hud_scale(v: Variant) -> float:
 
 func can_use_auto_combat() -> bool:
 	return auto_combat_allowed
-
-
-## Settings -> Loot as the loot-rule Dictionary {tier: action} (DmLootFilter shape).
-func loot_rules() -> Dictionary:
-	var out := {}
-	for t in TIERS:
-		out[t] = values["loot_" + t]
-	return DmLootFilter.read_loot_rules(out)
 
 
 ## Called after the authenticated character response, before the world mounts (setActiveCharacter).

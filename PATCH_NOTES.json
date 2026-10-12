@@ -1,6 +1,17 @@
 [
   {
     "date": "2026-10-12",
+    "title": "Loot: Click to Pick Up",
+    "items": [
+      "Gold and soul shards now go straight to your purse when an enemy dies. One float per fight, no more coins on the ground.",
+      "Gear and materials stay on the ground for 3 minutes (was 1 minute). Walking over them no longer picks them up: click a drop and your hero walks over and grabs it. Hover a drop to see its name, hold Alt to see every name, and Alt+click grabs loot in the middle of a fight.",
+      "Runes go straight into your bag, and you never get a rune you already own (bag, sockets and Vault count): a duplicate becomes a rune you are missing, and once you own every rune a source can drop it pays 1-3 soul shards instead. A Reaper keeps collecting necromancer runes for a switch back.",
+      "Finding a new rune or a legendary posts a line in chat. In a party everyone sees it.",
+      "The Settings loot rules (Auto-loot, Sell for gold) are gone. Sell spare gear with Sell all junk in the Reliquary (I)."
+    ]
+  },
+  {
+    "date": "2026-10-12",
     "title": "The Reaper's Full Set Look",
     "items": [
       "Soul Harbinger's Raiment now dresses the whole Reaper: from 3 pieces she wears the full green bone armor (hood, glowing ribcage, bone pauldrons, gauntlets and greaves) as one outfit, with the green bone scythe and a soft green glow at her edges. Below 3 pieces the hood shows on its own.",

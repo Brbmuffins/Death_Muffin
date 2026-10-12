@@ -85,7 +85,7 @@ func call_by_name(api: DmApi, name: String) -> DmResult:
 		"deleteLoadout": return await api.delete_loadout(12, 2)
 		"applyLoadoutPreset": return await api.apply_loadout_preset(12, 2)
 		"getAccountPrefs": return await api.get_account_prefs()
-		"setAccountPrefs": return await api.set_account_prefs({"only_craftable": true, "loot_common": "auto"})
+		"setAccountPrefs": return await api.set_account_prefs({"only_craftable": true, "no_tips": true})
 		"getProfessions": return await api.get_professions(12)
 		"getRecipes": return await api.get_recipes("black smith/x")
 		"craft": return await api.craft(12, "recipe_copper_bar")

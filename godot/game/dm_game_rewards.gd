@@ -99,7 +99,7 @@ func tick_loot(dt: float) -> void:
 		collected(got["items"])
 
 
-## Items just went into the bag (walked over, or auto-looted by the Settings loot rules): sound, toasts and first-time counsel.
+## Items just went into the bag (picked up): sound, toasts and first-time counsel.
 func collected(items: Array) -> void:
 	var rarities: Array = []
 	for item in items:
@@ -175,32 +175,8 @@ func _attach_and_land(x: float, z: float, gear: Array, level: float, source: Str
 			DmLootRoll.apply(batch, r.data)
 	if not _alive or g.lootview == null:
 		return
-	# Settings -> Loot, per rarity: leave it on the ground, auto-loot it into the bag, or take its gold.
-	var rules: Dictionary = g.settings_store.loot_rules()
-	var keep = Callable()
-	if rules.values().has("gold"):
-		keep = DmItemText.keeps_for_you(stat_context())
-	var gold = 0
-	var auto: Array = []
 	for item in gear:
-		var slots: Variant = DmLoot.add_to_slots([], item)
-		var slot: Variant = (slots as Array)[0] if slots != null and not (slots as Array).is_empty() else null
-		var action = "ground"
-		if slot != null:
-			if item.get("instance") != null:
-				slot["inst"] = item["instance"]
-			action = DmLootFilter.loot_action(slot, rules, keep)
-		if action == "gold":
-			gold += int(slot["sell_value"]) * int(item["quantity"])
-		elif action == "auto" and g.inventory.add(item):
-			auto.append(item)
-		else:
-			g.lootview.item(Vector3(x, 0, z), item)
-	if not auto.is_empty():
-		collected(auto)
-	if gold > 0:
-		g.prog.add_gold(gold)
-		g.float_text(x, 2.1, z, "+%dg" % gold, "gold")
+		g.lootview.item(Vector3(x, 0, z), item)
 
 
 ## Who the gear text is for (DmGearStats / DmItemText context).

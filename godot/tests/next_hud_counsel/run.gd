@@ -215,7 +215,7 @@ func _run() -> void:
 	m.loot_view.shard(b.position, 1)
 	await until(func() -> bool: return count_sound("coin") >= 1 and count_sound("shard") >= 1, 4.0)
 	await frames(10)
-	check(count_sound("coin") == 1 and count_sound("shard") == 1, "gold and shard pickups each play their sound once (%s)" % str(sounds))
+	check(count_sound("coin") == 1 and count_sound("shard") == 1, "gold and shards credited play their sound once each (%s)" % str(sounds))
 	sounds.clear()
 	events.clear()
 	b.take_damage(b.max_hp * 0.2, null)
@@ -282,6 +282,7 @@ func _run() -> void:
 	events.clear()
 	sounds.clear()
 	m.loot_view.item(b.position, {"item_id": drop_item, "quantity": 1}, true)
+	m.loot_view.request_pickup(m.loot_view._drops[-1])   # a click on it
 	await until(func() -> bool: return not ids("collected").is_empty(), 4.0)
 	check(ids("collected").size() == 1 and ids("collected")[0]["ctx"]["gear"] == true, "picking up gear emits the 'collected' counsel event once")
 

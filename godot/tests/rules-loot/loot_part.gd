@@ -16,7 +16,7 @@ func _initialize() -> void:
 	for t in ["wave_modifiers", "affix_defs", "affix_ranges", "affix_text", "item_level", "affix_count", "affix_roll_instance", "affix_problem", "affix_misc",
 			"can_roll", "decorate_slot", "smart_table", "is_profession_material", "settle_combat_drop", "roll_item", "roll_kill", "roll_reagents",
 			"roll_elite_rune", "roll_surge_item", "roll_boss_rune", "roll_boss", "roll_first_kill", "legendary", "add_to_slots", "sort_bag",
-			"loot_action", "read_loot_rules", "depths", "loot_roller", "kill_loot_const"]:
+			"depths", "loot_roller", "kill_loot_const"]:
 		call("t_" + t)
 	var total := passed + failed
 	print("--- rules-loot: %d / %d passed, %d failed ---" % [passed, total, failed])
@@ -247,17 +247,6 @@ func t_sort_bag() -> void:
 		for m in c["moves0"]:
 			want0[int(m[0])] = int(m[1])
 		check("sort_bag", [res, moves, res0, moves0, DmLoot.to_save_payload(res)], [c["res"], want_moves, c["res0"], want0, c["payload"]], c["locked"])
-
-func t_loot_action() -> void:
-	for c in load_json("loot_action"):
-		var keep := c["keep"] as bool
-		check("loot_action", [DmLootFilter.loot_action(c["row"], c["rules"], (func(_s): return true) if keep else Callable()), DmLootFilter.loot_action(c["row"], c["rules"])], [c["action"], c["actionNoKeepFn"]], c)
-
-func t_read_loot_rules() -> void:
-	for c in load_json("read_loot_rules"):
-		check("read_loot_rules", DmLootFilter.read_loot_rules(c["saved"], c["legacy"]), c["rules"], c)
-	for c in load_json("actions_for"):
-		check("read_loot_rules", DmLootFilter.actions_for(c["t"]), c["a"], c)
 
 func t_depths() -> void:
 	for c in load_json("depths_bonus"):

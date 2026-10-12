@@ -31,7 +31,8 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 - **Polish over new content.** Finish and tune what exists (necromancer combat, loot and gear, the first hour) before adding.
 - **Necromancer focus.** The four necromancer disciplines are the baseline, joined by the Reaper (the first non-necromancer kit); the other five are greyed out and come later.
   Anything you add must be easy to find and understand on screen. Immersive, not overwhelming; capped, not cluttered.
-- **Loot never vacuums.** Loot does not fly to the player; walk over it or it expires. Do not add magnets or auto-pickup of items.
+- **Loot never vacuums.** Items never fly to the player and walking over them takes nothing: the player clicks a drop to pick it up, or it
+  expires (3 min). Gold, soul shards and runes the player lacks go straight to them (DECISIONS B15). No magnets, no other auto-pickup.
 - **Assets: reuse first.** Reuse existing audio, models, animations and VFX (`Vfx` autoload, Binbun effects, current spell
   colours, which carry meaning). Generate only when nothing usable exists, and record it (see ASSET_PIPELINE.md); spend
   limits come from the owner.

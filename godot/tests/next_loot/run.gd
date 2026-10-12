@@ -1,6 +1,6 @@
 extends SceneTree
-## Loot polish on the rebuild: the Settings -> Loot rules actually pay out / land in the bag with feedback, gold + shards coalesce into
-## one float, the bag-full toast, expiry blink, near-labels, item spacing.
+## Loot on the rebuild (rework 2026-10-12): click to pick up (walking over takes nothing), runes into the bag with a chat line / shards when
+## known, the legendary chat line, gold + shards coalesce into one float, the bag-full toast, expiry blink, near-labels, item spacing.
 ## godot --headless --path godot --script res://tests/next_loot/run.gd
 
 var passed := 0
@@ -31,6 +31,15 @@ func ids(id: String) -> Array:
 	return events.filter(func(e: Dictionary) -> bool: return e["id"] == id)
 
 
+func until(cond: Callable, secs: float) -> bool:
+	var t := Time.get_ticks_msec() + int(secs * 1000.0)
+	while Time.get_ticks_msec() < t:
+		if cond.call():
+			return true
+		await physics_frame
+	return bool(cond.call())
+
+
 func floats(text_part: String) -> Array:
 	return ids("float").filter(func(e: Dictionary) -> bool: return String(e["ctx"]["text"]).contains(text_part))
 
@@ -57,39 +66,19 @@ func _run() -> void:
 			break
 	var gear := {"item_id": gear_id, "quantity": 1, "instance": {"id": "t1", "ilvl": 3, "affixes": []}}
 
-	# ---- rule 'gold': the sell value is paid (it used to vanish)
-	var rules := DmLootFilter.default_rules()
-	rules["common"] = "gold"
-	rules["uncommon"] = "gold"
-	rules["rare"] = "gold"
-	lv.rules = rules
-	var gold0 := float(h.character.get("gold", 0))
 	var rarity_of := DmLootView.rarity_of(gear)
-	lv.keep = func(_s: Dictionary) -> bool: return true
-	check(lv.drop(gear, b.position, true) == "ground", "rule gold: a piece worth wearing stays on the ground")
-	lv.clear_all()
-	lv.keep = func(_s: Dictionary) -> bool: return false
-	var res := lv.drop(gear, b.position, true)
-	await frames(2)
-	if res == "gold":
-		check(float(h.character.get("gold", 0)) > gold0 or int(DmLoot.add_to_slots([], gear)[0].get("sell_value", 0)) == 0, "rule gold: the sell value lands in the purse")
-		check(floats("+").size() > 0, "rule gold: a +Ng float names the piece")
-	else:
-		check(false, "rule gold sold the %s piece (got %s, rarity %s)" % [gear_id, res, rarity_of])
-
-	lv.keep = Callable(h, "_keeps_for_you")
-	# ---- rule 'auto': straight into the bag with the pickup's feedback
-	lv.rules = DmLootFilter.default_rules()
-	rules = DmLootFilter.default_rules()
-	rules[rarity_of] = "auto"
-	lv.rules = rules
+	# ---- items: walking over one takes nothing; a click walks the hero there and takes it with the pickup's feedback
 	events.clear()
 	var n0: int = h.slots.size()
-	res = lv.drop(gear, b.position, true)
-	await frames(2)
-	check(res == "auto" and h.slots.size() == n0 + 1, "rule auto: into the bag (%s, %d -> %d)" % [res, n0, h.slots.size()])
-	check(ids("loot").size() == 1 and ids("collected").size() == 1, "rule auto: the loot toast + counsel fact are raised")
-
+	lv.drop(gear, b.position + Vector3(0.4, 0, 0), true)
+	for i in 10:
+		await physics_frame
+	check(lv.count() == 1 and h.slots.size() == n0, "standing on a drop takes nothing")
+	var at: Vector2 = g.camera.unproject_position(lv._drops[0]["node"].global_position + Vector3(0, 0.7, 0))
+	check(h.loot_click(at), "a click on the drop's icon starts a pickup")
+	check(await until(func() -> bool: return h.slots.size() == n0 + 1, 4.0), "the hero reaches it and it goes into the bag (%d -> %d)" % [n0, h.slots.size()])
+	check(lv.count() == 0 and ids("loot").size() == 1 and ids("collected").size() == 1, "the pickup raises the loot toast + counsel fact")
+	check(not h.loot_click(at), "nothing left to click there")
 	check(String(ids("loot")[0]["ctx"]["rarity"]) == rarity_of, "the toast colour is the beam colour (%s)" % rarity_of)
 	var seen_up := false
 	var seen_not := false
@@ -109,22 +98,33 @@ func _run() -> void:
 		if seen_up and seen_not:
 			break
 	check(seen_up or seen_not, "judged some gear")
-	# ---- the 'gold' rule asks keep() so an upgrade is not sold
-	var slot: Dictionary = DmLoot.add_to_slots([], gear)[0]
-	slot["inst"] = gear["instance"]
-	check(h.stat_context() != null and typeof(h._keeps_for_you(slot)) == TYPE_BOOL, "keep() answers from the stat context")
+	# ---- runes: a new one goes into the bag with a chat line; a known one becomes one the player lacks; a complete pool pays shards
+	events.clear()
+	var vault_rune := "rune_marrow_tap"
+	h.note_vault({"vault": [{"item_id": vault_rune, "quantity": 1, "slot_index": 0}]})
+	n0 = h.slots.size()
+	check(lv.drop({"item_id": "rune_splinter", "quantity": 1, "rune_pool": ["rune_splinter", vault_rune]}, b.position, true) == "auto" and h.slots.size() == n0 + 1, "a new rune goes straight into the bag")
+	var chat := ids("chat")
+	check(chat.size() == 1 and String(chat[0]["ctx"]["text"]).begins_with("You found the Rune of Splinters"), "a chat line names it %s" % [chat])
+	check(ids("loot").size() == 1, "and the loot toast")
+	check(lv.drop({"item_id": "rune_splinter", "quantity": 1, "rune_pool": ["rune_splinter", vault_rune]}, b.position, true) == "shards", "owned in the bag + the Vault: the pool is complete, shards instead")
+	check(String(ids("chat")[-1]["ctx"]["text"]).begins_with("Known rune"), "a chat line says why")
+	events.clear()
+	lv.drop({"item_id": "leg_legion_unburied_head", "quantity": 1}, b.position + Vector3(8, 0, 0), true)
+	check(ids("chat").size() == 1 and String(ids("chat")[0]["ctx"]["text"]).contains("(legendary)"), "a legendary landing is a chat line")
+	lv.clear_all()
 
-	# ---- gold + shards in one frame: one float, one sound
-	lv.rules = DmLootFilter.default_rules()
+	# ---- gold + shards credited within the window: one float, one sound
 	events.clear()
 	for i in 4:
 		lv.gold(b.position, 7, true)
 	lv.shard(b.position, 3, true)
 	await frames(1)
-	await create_timer(0.6).timeout
-	await frames(30)
-	check(floats("g").size() <= 1 and floats("soul shard").size() <= 1, "coins and shards walked over together give one float each (%d, %d)" % [floats("g").size(), floats("soul shard").size()])
-	check(floats("+28g").size() == 1 or floats("+").size() >= 1, "the coin float totals the pile")
+	lv.gold(b.position + Vector3(30, 0, 0), 5, true)   # far away: still credited at once
+	await create_timer(DmNextUiHost.GOT_WINDOW_S + 0.3).timeout
+	await frames(5)
+	check(floats("g").size() == 1 and floats("soul shard").size() == 1, "coins and shards of one fight give one float each (%d, %d)" % [floats("g").size(), floats("soul shard").size()])
+	check(floats("+33g").size() == 1, "the coin float totals the fight")
 
 	# ---- bag full: stays on the ground, one explanatory toast
 	events.clear()

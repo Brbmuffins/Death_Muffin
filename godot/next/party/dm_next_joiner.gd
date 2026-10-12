@@ -4,7 +4,7 @@ extends Node
 ## The host's game decides what happened (kills, drops, XP: D1); everything that persists lands on THIS player's account through its own api:
 ##   - the character's xp / gold / shards / kills: a DmProgression + DmProgressSync exactly as the host's own character has (saved by this client),
 ##   - XP and kill counts the backend accepted for this member (`DmNextParty._rpc_credit`, applied here),
-##   - ground loot the host sends for this member (`_rpc_loot`): shown, walked over (this player's Settings -> Loot rules), gear rolled by this
+##   - loot the host sends for this member (`_rpc_loot`): gold/shards credited, items shown and picked up by a click, gear rolled by this
 ##     player's own api (`roll_loot`), the bag saved by DmInventory,
 ##   - the backend session: `session_join` with this player's own token and a heartbeat every 20 s, so the host's reports can credit this member.
 ## `member` is a real DmRewardsMember (api, prog, loot_view) so the HUD adapter treats a joiner and a host alike.
@@ -139,7 +139,7 @@ func _check_unlocks() -> void:
 			psync.flush()
 
 
-## One drop of THIS member from the host: gold / shards / materials land on the ground at once; gear is rolled by this player's own backend first
+## One drop of THIS member from the host: gold / shards are credited and materials land at once; gear is rolled by this player's own backend first
 ## (a failed roll leaves plain base gear: nothing is invented client-side).
 func on_loot(drop: Dictionary, pos: Vector3) -> void:
 	drops_received += 1

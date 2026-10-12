@@ -1,65 +1,59 @@
 class_name DmLootView
 extends Node3D
-## Port of archive/legacy-web:src/graphics/LootView.ts: personal loot lying on the ground. Gear/materials wait under a rarity-coloured light pillar until you
-## WALK OVER them (loot never flies to the hero); gold and shards still pull in from a few steps away. EVERYTHING expires after
-## LOOT_EXPIRE_S (60 s, every rarity incl. prize items); past LOOT_ITEM_CAP items the oldest go early, ordinary before epic/legendary.
-## Plus the Settings -> Loot rules (rules/loot/loot_filter.gd): per rarity 'ground' / 'auto' (straight to the bag) / 'gold' (sell value paid).
+## Personal loot of one player (port of archive/legacy-web:src/graphics/LootView.ts, reworked 2026-10-12, DECISIONS B15).
+## - Gold and soul shards never touch the ground: drop() credits them on the next tick() as "picked" events (no mesh, no magnet).
+## - Gear and materials wait under a rarity-coloured light pillar for LOOT_EXPIRE_S (3 min). Walking over them does nothing: the player
+##   clicks one (pick() + request_pickup()), walks there, and it is taken once the hero is within ITEM_PICKUP_RADIUS. Loot never flies.
+## - Runes: drop() asks `rune_resolve` for a rune the player does not own (else soul shards) and puts it straight into the bag
+##   (`rune_found`); a full bag leaves it on the ground like any item. Legendaries landing raise `legendary_dropped` (the chat line).
+## Past LOOT_ITEM_CAP items the oldest go early, ordinary before epic/legendary.
 ##
 ## Usage:  var lv := DmLootView.new(); add_child(lv)
-##         lv.drop({"item_id": "...", "quantity": 1, "instance": {...}}, pos)   # item (rules applied)
+##         lv.drop({"item_id": "...", "quantity": 1, "instance": {...}}, pos)   # item / rune
 ##         lv.drop({"kind": "gold", "amount": 12}, pos)  /  {"kind": "shard", "amount": 3}
 ##         var events := lv.tick(delta, hero_pos)        # [{kind:"gold"|"shard"|"item", amount:int, item?:Dictionary, pos:Vector3}]
-## Render budget: beams and ground glows share one material per rarity (the pulse is one write per frame), and shards carry no light of their own
-## (only their emissive crystal: a light per shard shaded everything around it; 60+ drops in a big fight made the GPU the bottleneck).
-## The web has no hover/click pickup and no ground labels; `show_labels` (default off) is an optional extra for QA / screenshots.
-## NOT ported: the Binbun ground markers / soul orbs, the lightFlash on shards (effects layer) -> the `fx` signal tells the scene when
-## to play the pickup puff; warmTasks (a GPU-upload warm-up is a three.js concern).
+## Render budget: beams and ground glows share one material per rarity (the pulse is one write per frame, not per drop).
+## Names: the drop under the cursor (hover()), drops near the hero (rare+ from LABEL_NEAR, ordinary from LABEL_NEAR_COMMON), every drop while
+## `all_labels` is on (Alt held) or `show_labels` (QA / screenshots).
 
-signal picked(event: Dictionary)          ## gold / shard / item collected by tick()
+signal picked(event: Dictionary)          ## gold / shard credited, or an item taken by a pickup request
 signal expired(drop: Dictionary, reason: String)  ## reason "ttl" or "cap" (removed without payout)
-signal auto_sold(gold: int, drop: Dictionary, pos: Vector3)   ## rule 'gold': sell value paid at once (add it, float "+Ng")
-signal auto_looted(drop: Dictionary, pos: Vector3)            ## rule 'auto': went straight into the bag
+signal rune_found(drop: Dictionary, pos: Vector3)             ## a rune the player did not own went straight into the bag
+signal rune_known(shards: int, rune_id: String, pos: Vector3)  ## every rune of the pool was owned: paid as soul shards instead (also a "shard" picked event)
+signal legendary_dropped(drop: Dictionary, pos: Vector3)      ## a legendary landed on the ground
 signal dropped_sound(sound_id: String, pos: Vector3)          ## lootDrop / lootDropRare / lootDropEpic / lootDropLegendary
-signal pickup_fx(pos: Vector3, color: Color)                  ## the little particle puff on a gold/shard collect
 
-## Owner 2026-10-04: "if you don't grab it within 1 minute, it goes away".
-const LOOT_EXPIRE_S := {"gold": 60.0, "shard": 60.0, "item": 60.0, "prizeItem": 60.0}
+## Owner 2026-10-12 (team thread): gear and materials stay 3 minutes (was 60 s).
+const LOOT_EXPIRE_S := 180.0
 const LOOT_ITEM_CAP := 60
 const ITEM_PICKUP_RADIUS := 1.3
-const ITEM_PICKUP_MIN_AGE := 0.35
-const MAGNET_RADIUS := 3.8
-const MAGNET_MIN_AGE := 0.45
-const COLLECT_RADIUS := 0.5
+const PICK_PX := 40.0            ## a click this close (screen px) to a drop's icon picks it
 const LABEL_NEAR := 7.0
 const LABEL_NEAR_COMMON := 3.0
 const EXPIRY_WARN_S := 8.0       ## the last seconds: the icon blinks (faster in the last 3)
 const ITEM_SPACING := 0.65       ## item drops land at least this far apart when there is room
 
 const RARITY_COLORS := {"common": "#b9b2a4", "uncommon": "#8fb98a", "rare": "#8fa6e8", "epic": "#c6a4ff", "legendary": "#ff9a2e"}
-const GOLD_COLOR := Color("e2c98f")
-const SHARD_COLOR := Color("b58cff")
 
-## Settings -> Loot rules; defaults to every tier 'ground'.
-var rules: Dictionary = DmLootFilter.default_rules()
-## Optional Callable(slot)->bool: gear worth wearing for you (keepsForYou) so a 'gold' rule leaves it on the ground.
-var keep: Callable = Callable()
-## Callable(drop)->bool: put it in the bag; false when full (the item then stays until it expires). Used for walk-over pickup and 'auto' rule.
+## Callable(drop)->bool: put it in the bag; false when full (the item then stays until it expires).
 var try_take: Callable = Callable()
+## Callable(drop)->Dictionary for a rune drop: {"item_id": id} (a rune the player does not own) or {"shards": n} (DmLootRunes.resolve). Empty = the rune lands as dropped.
+var rune_resolve: Callable = Callable()
 ## Callable()->float in [0,1) used for scatter (TS Math.random). Empty = randf.
 var rand: Callable = Callable()
 var show_labels := false   ## always show every name (QA / screenshots)
-## Names of the drops near you (rare+ from LABEL_NEAR, ordinary from LABEL_NEAR_COMMON): built the first time you come close, hidden again when you leave.
-var near_labels := true
+var all_labels := false    ## Alt held: every name on the ground
+var near_labels := true    ## names of the drops near the hero
 
 var _drops: Array[Dictionary] = []
+var _credit: Array[Dictionary] = []     ## gold / shard events waiting for the next tick()
+var _target: Dictionary = {}            ## the drop the player clicked: taken when the hero reaches it
+var _hover: Dictionary = {}             ## the drop under the cursor (its name shows)
 var _icon_cache: Dictionary = {}
-static var _pile_meshes: Dictionary = {}
-static var _shard_mesh: ArrayMesh
 static var _glow_tex: Texture2D
 static var _beam_mats: Dictionary = {}   ## rarity -> the shared beam material (its pulse is written once per frame, not per drop)
 static var _glow_mats: Dictionary = {}   ## rarity -> the shared ground-glow material
 var _pulse_t := 0.0
-static var _placeholder_tex: Texture2D
 
 
 func _r() -> float:
@@ -82,8 +76,7 @@ func _scatter_apart(p: Vector3, r: float) -> Vector2:
 		var c := _scatter(p, r + attempt * 0.25)
 		var gap := 99.0
 		for d in _drops:
-			if d["kind"] == "item":
-				gap = minf(gap, Vector2(c.x - d["x"], c.y - d["z"]).length())
+			gap = minf(gap, Vector2(c.x - d["x"], c.y - d["z"]).length())
 		if gap >= ITEM_SPACING:
 			return c
 		if gap > best_gap:
@@ -94,70 +87,53 @@ func _scatter_apart(p: Vector3, r: float) -> Vector2:
 
 # ---------------------------------------------------------------- dropping
 
-## Land a drop. Item drop dict = {item_id, quantity, instance?}; gold = {kind:"gold", amount}; shard = {kind:"shard", amount}.
-## Items go through the loot rules (gear only) first. `exact` skips the scatter (tests / replaying a recorded position).
-## Returns "ground" / "auto" / "gold" (what happened).
+## Land a drop. Item drop dict = {item_id, quantity, instance?, rune_pool?}; gold = {kind:"gold", amount}; shard = {kind:"shard", amount}.
+## `exact` skips the scatter (tests / replaying a recorded position). Returns "auto" (credited / into the bag), "shards" (a known rune paid
+## as shards) or "ground".
 func drop(d: Dictionary, pos: Vector3, exact: bool = false) -> String:
 	var kind: String = str(d.get("kind", "item"))
 	if kind == "gold":
 		gold(pos, int(d["amount"]), exact)
-		return "ground"
+		return "auto"
 	if kind == "shard":
 		shard(pos, int(d["amount"]), exact)
-		return "ground"
-	var act := item_action(d)
-	if act == "gold":
-		var slot := _slot_of(d)
-		var g := int(slot.get("sell_value", 0)) * int(d.get("quantity", 1))
-		auto_sold.emit(g, d, pos)
-		return "gold"
-	if act == "auto" and try_take.is_valid() and bool(try_take.call(d)):
-		auto_looted.emit(d, pos)
 		return "auto"
-	item(pos, d, exact)  # 'ground', or the bag is full
+	if DmRunes.is_rune_id(d.get("item_id")):
+		return _rune(d, pos, exact)
+	item(pos, d, exact)
 	return "ground"
 
 
-## What the rules say for this item drop (non-gear is always 'ground').
-func item_action(d: Dictionary) -> String:
-	var slot := _slot_of(d)
-	if slot.is_empty():
-		return "ground"
-	return DmLootFilter.loot_action(slot, rules, keep)
+func _rune(d: Dictionary, pos: Vector3, exact: bool) -> String:
+	var it := d
+	if rune_resolve.is_valid():
+		var res: Dictionary = rune_resolve.call(d)
+		if res.has("shards"):
+			var n := int(res["shards"])
+			rune_known.emit(n, str(d["item_id"]), pos)
+			shard(pos, n, exact)
+			return "shards"
+		if str(res.get("item_id", d["item_id"])) != str(d["item_id"]):
+			it = d.duplicate()
+			it["item_id"] = res["item_id"]
+	it.erase("rune_pool")
+	if try_take.is_valid() and bool(try_take.call(it)):
+		rune_found.emit(it, pos)
+		return "auto"
+	item(pos, it, exact)   # the bag is full: it waits on the ground like any item
+	return "ground"
 
 
-func _slot_of(d: Dictionary) -> Dictionary:
-	var s: Variant = DmLoot.add_to_slots([], d)
-	if s == null or (s as Array).is_empty():
-		return {}
-	var slot: Dictionary = (s as Array)[0]
-	if d.has("instance"):
-		slot["inst"] = d["instance"]
-	return slot
+## Gold goes straight to the purse: credited (a "picked" event) on the next tick().
+func gold(pos: Vector3, amount: int, _exact: bool = false) -> void:
+	if amount > 0:
+		_credit.append({"kind": "gold", "amount": amount, "pos": pos})
 
 
-func gold(pos: Vector3, amount: int, exact: bool = false) -> void:
-	if amount <= 0:
-		return
-	var p := Vector2(pos.x, pos.z) if exact else _scatter(pos)
-	var mi := MeshInstance3D.new()
-	mi.mesh = _pile_mesh(mini(9, 2 + int(floor(amount / 4.0))))
-	mi.material_override = _gold_material()
-	mi.rotation.y = _r() * TAU
-	mi.position = Vector3(p.x, 0, p.y)
-	add_child(mi)
-	_drops.append({"kind": "gold", "node": mi, "x": p.x, "z": p.y, "amount": amount, "t": 0.0, "flying": false, "ttl": LOOT_EXPIRE_S["gold"], "prize": false})
-
-
-func shard(pos: Vector3, amount: int, exact: bool = false) -> void:
-	for i in amount:
-		var p := Vector2(pos.x, pos.z) if exact else _scatter(pos, 0.6)
-		var mi := MeshInstance3D.new()
-		mi.mesh = _get_shard_mesh()
-		mi.material_override = _shard_material()
-		mi.position = Vector3(p.x, 0.5, p.y)
-		add_child(mi)
-		_drops.append({"kind": "shard", "node": mi, "x": p.x, "z": p.y, "amount": 1, "t": 0.0, "flying": false, "ttl": LOOT_EXPIRE_S["shard"], "prize": false})
+## Soul shards go straight to the purse, like gold.
+func shard(pos: Vector3, amount: int, _exact: bool = false) -> void:
+	if amount > 0:
+		_credit.append({"kind": "shard", "amount": amount, "pos": pos})
 
 
 func item(pos: Vector3, d: Dictionary, exact: bool = false) -> void:
@@ -167,6 +143,8 @@ func item(pos: Vector3, d: Dictionary, exact: bool = false) -> void:
 	var color := Color(RARITY_COLORS[rarity])
 	var prize := is_prize(rarity)
 	dropped_sound.emit("lootDropLegendary" if rarity == "legendary" else "lootDropEpic" if rarity == "epic" else "lootDropRare" if rarity == "rare" else "lootDrop", Vector3(p.x, 0, p.y))
+	if rarity == "legendary":
+		legendary_dropped.emit(d, Vector3(p.x, 0, p.y))
 	var root := Node3D.new()
 	root.position = Vector3(p.x, 0, p.y)
 	add_child(root)
@@ -204,8 +182,8 @@ func item(pos: Vector3, d: Dictionary, exact: bool = false) -> void:
 	glow.material_override = _glow_material(rarity, color)
 	root.add_child(glow)
 	var lab: Label3D = _make_label(root, d, meta, color) if show_labels else null
-	_drops.append({"kind": "item", "node": root, "icon": icon, "beam": beam, "label": lab, "meta": meta, "color": color, "common": rarity == "common", "x": p.x, "z": p.y, "amount": int(d.get("quantity", 1)), "item": d, "t": 0.0, "flying": false,
-		"ttl": LOOT_EXPIRE_S["prizeItem"] if prize else LOOT_EXPIRE_S["item"], "prize": prize, "beam_alpha": 0.5 if rarity == "legendary" else 0.35})
+	_drops.append({"kind": "item", "node": root, "icon": icon, "beam": beam, "label": lab, "meta": meta, "color": color, "common": rarity == "common", "x": p.x, "z": p.y, "amount": int(d.get("quantity", 1)), "item": d, "t": 0.0,
+		"ttl": LOOT_EXPIRE_S, "prize": prize, "beam_alpha": 0.5 if rarity == "legendary" else 0.35})
 
 
 func _make_label(root: Node3D, d: Dictionary, meta: Dictionary, color: Color) -> Label3D:
@@ -242,87 +220,110 @@ static func is_prize(rarity: String) -> bool:
 	return rarity == "epic" or rarity == "legendary"
 
 
+# ---------------------------------------------------------------- picking up
+
+## The drop whose icon is nearest the screen point within PICK_PX, or {} (`cam` = the game camera).
+func pick(screen: Vector2, cam: Camera3D) -> Dictionary:
+	var best: Dictionary = {}
+	var best_d := PICK_PX
+	for d in _drops:
+		var v := (d["node"] as Node3D).global_position + Vector3(0, 0.7, 0)
+		if cam.is_position_behind(v):
+			continue
+		var px := cam.unproject_position(v).distance_to(screen)
+		if px < best_d:
+			best_d = px
+			best = d
+	return best
+
+
+## The player clicked this drop: it is taken when the hero reaches it (tick). The caller walks the hero there.
+func request_pickup(d: Dictionary) -> void:
+	_target = d
+
+
+func cancel_pickup() -> void:
+	_target = {}
+
+
+## The drop waiting to be taken, or {}.
+func pickup_target() -> Dictionary:
+	return _target
+
+
+## The drop under the cursor shows its name ({} = none).
+func hover(d: Dictionary) -> void:
+	_hover = d
+
+
 # ---------------------------------------------------------------- per frame
 
-## Advance drops; returns what the hero collected this frame (events in the order picked). hero_pos uses x/z.
+## Credit gold/shards, age the drops, take the clicked one when the hero reaches it. Returns the events of this tick in order. hero_pos uses x/z.
 func tick(dt: float, hero_pos: Vector3) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	for ev in _credit:
+		events.append(ev)
+		picked.emit(ev)
+	_credit.clear()
+	if _drops.is_empty():
+		return events
 	_pulse_t += dt
 	if not _beam_mats.is_empty():
 		var pa := 0.28 + sin(_pulse_t * 3.0) * 0.06   # the beams' slow pulse: one write per rarity instead of one per drop
 		for m: StandardMaterial3D in _beam_mats.values():
 			m.albedo_color.a = pa
-	var px := hero_pos.x
-	var pz := hero_pos.z
 	# Too many items: the oldest expire now (array is in drop order), ordinary ones before epic/legendary.
-	if _drops.size() > LOOT_ITEM_CAP:   # (items <= drops: under the cap there is nothing to count or expire)
-		var surplus := -LOOT_ITEM_CAP
-		for d in _drops:
-			if d["kind"] == "item":
-				surplus += 1
+	if _drops.size() > LOOT_ITEM_CAP:
+		var surplus := _drops.size() - LOOT_ITEM_CAP
 		for pass_ in 2:
 			var prize_too := pass_ == 1
 			var i := 0
 			while i < _drops.size() and surplus > 0:
 				var d: Dictionary = _drops[i]
-				if d["kind"] == "item" and (prize_too or not d["prize"]):
+				if prize_too or not d["prize"]:
 					_remove(i, "cap")
 					surplus -= 1
 				else:
 					i += 1
+	var px := hero_pos.x
+	var pz := hero_pos.z
 	var i := _drops.size() - 1
 	while i >= 0:
 		var d: Dictionary = _drops[i]
 		i -= 1
 		d["t"] += dt
-		if d["t"] > d["ttl"] and not d["flying"]:
+		if d["t"] > d["ttl"]:
 			_remove(i + 1, "ttl")
 			continue
 		var ddx: float = px - d["x"]
 		var ddz: float = pz - d["z"]
 		var dist := sqrt(ddx * ddx + ddz * ddz)
 		var node: Node3D = d["node"]
-		if d["kind"] == "item":
-			(d["icon"] as Node3D).position.y = 0.7 + sin(d["t"] * 2.5) * 0.08
-			var left: float = d["ttl"] - d["t"]
-			(d["icon"] as Node3D).visible = left > EXPIRY_WARN_S or fmod(left, 0.5 if left > 3.0 else 0.25) > 0.12
-			if near_labels:
-				var near := dist < (LABEL_NEAR_COMMON if d["common"] else LABEL_NEAR)
-				var lb: Label3D = d["label"]
-				if lb == null and near:
-					d["label"] = _make_label(node, d["item"], d["meta"], d["color"])
-				elif lb != null and lb.visible != (near or show_labels):
-					lb.visible = near or show_labels
-			if dist < ITEM_PICKUP_RADIUS and d["t"] > ITEM_PICKUP_MIN_AGE and (try_take.is_null() or bool(try_take.call(d["item"]))):
+		(d["icon"] as Node3D).position.y = 0.7 + sin(d["t"] * 2.5) * 0.08
+		var left: float = d["ttl"] - d["t"]
+		(d["icon"] as Node3D).visible = left > EXPIRY_WARN_S or fmod(left, 0.5 if left > 3.0 else 0.25) > 0.12
+		var show := show_labels or all_labels or is_same(d, _hover) or (near_labels and dist < (LABEL_NEAR_COMMON if d["common"] else LABEL_NEAR))
+		var lb: Label3D = d["label"]
+		if lb == null and show:
+			d["label"] = _make_label(node, d["item"], d["meta"], d["color"])
+		elif lb != null and lb.visible != show:
+			lb.visible = show
+		if is_same(d, _target) and dist < ITEM_PICKUP_RADIUS:
+			_target = {}
+			if try_take.is_null() or bool(try_take.call(d["item"])):
 				var ev := {"kind": "item", "amount": d["amount"], "item": d["item"], "pos": node.position}
 				events.append(ev)
 				picked.emit(ev)
-				_remove(i + 1, "")
-			continue
-		if d["kind"] == "shard":
-			node.rotation.y += dt * 2.0
-			if not d["flying"]:
-				node.position.y = 0.5 + sin(d["t"] * 3.0) * 0.1
-		if not d["flying"] and dist < MAGNET_RADIUS and d["t"] > MAGNET_MIN_AGE:
-			d["flying"] = true
-		if d["flying"]:
-			var k := minf(1.0, dt * (8.0 + d["t"] * 4.0))
-			d["x"] += (px - d["x"]) * k
-			d["z"] += (pz - d["z"]) * k
-			node.position.x = d["x"]
-			node.position.z = d["z"]
-			node.position.y += (1.0 - node.position.y) * k
-			if dist < COLLECT_RADIUS:
-				var ev2 := {"kind": d["kind"], "amount": d["amount"], "pos": Vector3(px, 1.0, pz)}
-				events.append(ev2)
-				picked.emit(ev2)
-				pickup_fx.emit(Vector3(px, 1.0, pz), GOLD_COLOR if d["kind"] == "gold" else SHARD_COLOR)
 				_remove(i + 1, "")
 	return events
 
 
 func _remove(idx: int, reason: String) -> void:
 	var d: Dictionary = _drops[idx]
+	if is_same(d, _target):
+		_target = {}
+	if is_same(d, _hover):
+		_hover = {}
 	(d["node"] as Node).queue_free()
 	_drops.remove_at(idx)
 	if reason != "":
@@ -342,6 +343,7 @@ func clear_within(r: Rect2) -> int:
 	return n
 
 
+## Items on the ground (gold and shards never lie there).
 func count() -> int:
 	return _drops.size()
 
@@ -355,8 +357,7 @@ func clear_all() -> void:
 func debug_drops() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for d in _drops:
-		var it: Variant = d.get("item")
-		out.append({"kind": d["kind"], "id": null if it == null else it["item_id"], "x": d["x"], "z": d["z"], "ttl": d["ttl"], "prize": d["prize"]})
+		out.append({"kind": d["kind"], "id": d["item"]["item_id"], "x": d["x"], "z": d["z"], "ttl": d["ttl"], "prize": d["prize"]})
 	return out
 
 
@@ -433,65 +434,3 @@ static func _additive_material(color: Color, alpha: float) -> StandardMaterial3D
 	m.no_depth_test = false
 	m.albedo_color = Color(color.r, color.g, color.b, alpha)
 	return m
-
-
-static var _gold_mat: StandardMaterial3D
-static func _gold_material() -> StandardMaterial3D:
-	if _gold_mat == null:
-		_gold_mat = StandardMaterial3D.new()
-		_gold_mat.albedo_color = Color("c9a24a")
-		_gold_mat.metallic = 0.85
-		_gold_mat.roughness = 0.35
-		_gold_mat.emission_enabled = true
-		_gold_mat.emission = Color("3a2808")
-		_gold_mat.emission_energy_multiplier = 0.4
-	return _gold_mat
-
-
-static var _shard_mat: StandardMaterial3D
-static func _shard_material() -> StandardMaterial3D:
-	if _shard_mat == null:
-		_shard_mat = StandardMaterial3D.new()
-		_shard_mat.albedo_color = Color("b58cff")
-		_shard_mat.emission_enabled = true
-		_shard_mat.emission = Color("7c3aed")
-		_shard_mat.emission_energy_multiplier = 2.2
-		_shard_mat.roughness = 0.2
-		_shard_mat.metallic = 0.1
-	return _shard_mat
-
-
-## A pile of n coins (cylinder r 0.09, h 0.025) as one merged mesh, built once per size.
-static func _pile_mesh(n: int) -> ArrayMesh:
-	if _pile_meshes.has(n):
-		return _pile_meshes[n]
-	var coin := CylinderMesh.new()
-	coin.top_radius = 0.09
-	coin.bottom_radius = 0.09
-	coin.height = 0.025
-	coin.radial_segments = 10
-	coin.rings = 1
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for i in n:
-		var b := Basis.from_euler(Vector3((randf() - 0.5) * 0.4, randf() * 3.0, (randf() - 0.5) * 0.4))
-		st.append_from(coin, 0, Transform3D(b, Vector3((randf() - 0.5) * 0.35, 0.02 + i * 0.02, (randf() - 0.5) * 0.35)))
-	var m := st.commit()
-	_pile_meshes[n] = m
-	return m
-
-
-## Octahedron r 0.18 stretched (0.6, 1.4, 0.6).
-static func _get_shard_mesh() -> ArrayMesh:
-	if _shard_mesh == null:
-		var r := 0.18
-		var v := [Vector3(r * 0.6, 0, 0), Vector3(-r * 0.6, 0, 0), Vector3(0, r * 1.4, 0), Vector3(0, -r * 1.4, 0), Vector3(0, 0, r * 0.6), Vector3(0, 0, -r * 0.6)]
-		var faces := [[2, 0, 4], [2, 4, 1], [2, 1, 5], [2, 5, 0], [3, 4, 0], [3, 1, 4], [3, 5, 1], [3, 0, 5]]
-		var st := SurfaceTool.new()
-		st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		for f in faces:
-			for k in 3:
-				st.add_vertex(v[f[k]])
-		st.generate_normals()
-		_shard_mesh = st.commit()
-	return _shard_mesh

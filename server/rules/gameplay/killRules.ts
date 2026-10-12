@@ -187,6 +187,8 @@ export function killGoldMax(def: EnemyId, level: number, elite: boolean, tier: n
 }
 /** The most soul shards one elite can shed (rollKill: 1, or 2 on a 25% roll). */
 export const ELITE_SHARDS_MAX = 2;
+/** A rune drop the player already owns pays soul shards instead, up to this many (an epic; godot/rules/loot/loot_runes.gd KNOWN_RUNE_SHARDS). */
+export const KNOWN_RUNE_SHARDS_MAX = 3;
 
 /** Highest multipliers the client could honestly apply on top of rollKill, so a claimed `xpMult` is capped, never trusted. */
 export function multCaps(rank: number, heroLevel: number): { xp: number; gold: number; shard: number } {
@@ -402,7 +404,8 @@ export function evaluateKillReport(report: KillReport, ctx: KillContext): Evalua
     const goldEach = Math.round(Math.round(killGoldMax(g.def as EnemyId, g.level, g.elite, Math.min(g.tier, WAVE_UPGRADE.maxTier), g.diffId)) * goldMult);
     credits.xp += xpEach * n;
     credits.gold += goldEach * n;
-    if (g.elite) credits.shards += Math.ceil(ELITE_SHARDS_MAX * Math.min(g.shardMult, caps.shard)) * n;
+    // An elite's own shards, plus its rune drop when it comes as shards (every rune of the ground already owned).
+    if (g.elite) credits.shards += (Math.ceil(ELITE_SHARDS_MAX * Math.min(g.shardMult, caps.shard)) + KNOWN_RUNE_SHARDS_MAX) * n;
   }
   if (overRate > 0) findings.push({ kind: 'kill_rate', dropped: overRate, bucket: Math.floor(ctx.killBucket) });
 
@@ -424,7 +427,8 @@ export function evaluateKillReport(report: KillReport, ctx: KillContext): Evalua
     credits.gold += Math.round(320 * k * waveModifiers(tier).rewardMult * DIFFICULTIES[b.diff as Difficulty].rewardMult) * n;
     // Boss XP and gold are not scaled by Ascension, chain or the Omen (WorldScene boss handler); only the New Blood catch-up applies to XP (gainXp).
     credits.xp += Math.round(Math.round(900 * k * DIFFICULTIES[b.diff as Difficulty].rewardMult) * nb) * n;
-    credits.shards += ((def.shards >= 5 ? 3 : Math.max(1, def.shards - 1)) + (b.first && b.boss !== 'prelate' ? 2 : 0)) * n;
+    // Its shards (+2 on a first kill), plus its rune(s) paid as shards when known: one rune, two on a first kill (the relic rune too).
+    credits.shards += ((def.shards >= 5 ? 3 : Math.max(1, def.shards - 1)) + (b.first && b.boss !== 'prelate' ? 2 : 0) + KNOWN_RUNE_SHARDS_MAX * (b.first ? 2 : 1)) * n;
   }
 
   // Depths floors: each clear proves the next depth; a clear needs its predecessor cleared before (or in this batch).

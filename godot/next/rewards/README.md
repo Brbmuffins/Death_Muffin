@@ -32,7 +32,7 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
   (the node calls `DmGameRewards.boss_reward_eligible` itself, no copy). Inert defs pay nothing.
 - Per member: `DmLoot.roll_kill` (items/reagents/runes/shards/gold/xp), Kill Chain only for the killer in unsafe ground, ascension and omen
   multipliers, wisdom on XP, new-blood XP catch-up, gold pooled over `goldEveryKills` kills (elites always pay out), "elite" gear quality.
-- Walk-over pickup (1.3 m), 60 s expiry, loot never flies to anyone (DmLootView rules; gold/shards still magnet from a few steps).
+- Gold and shards are credited at once; items wait 3 min for a click (pickup within 1.3 m), loot never flies to anyone (DmLootView). Rune drops carry `rune_pool` (their source's pool) for the owner's rune rule.
 
 ## Backend flow
 
@@ -42,7 +42,7 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
 3. The reply decides value: XP and kill counts (and area kills) are applied only for what the backend accepted (`accepted.kills / claimed`
    share of the XP). `credited:false` -> `member_refused(reason)`; `left`/`not_member` also stop that member's rewards. A `duplicate` reply
    (lost answer) is reconciled from `session_get` counters. 403/404/409 on report = session lost (`session_failed`); transport errors retry.
-4. Gold/shards are ground drops; the member's own save path persists them (capped by the kill ledger from these reports). Gear is rolled
+4. Gold/shards are credited to the member's purse at once; the member's own save path persists them (capped by the kill ledger from these reports). Gear is rolled
    by `member.api.roll_loot` (server RNG online, mock backend in dev-offline); a failed roll leaves plain base gear.
 
 ## Backend without `/api/sessions` (legacy ledger)

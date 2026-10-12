@@ -155,9 +155,15 @@ func _walk() -> void:
 	var gear := dropped.filter(func(d: Dictionary) -> bool: return DmAffixes.can_roll(String(d.get("item_id", ""))))
 	var rolled := gear.filter(func(d: Dictionary) -> bool: return d.get("instance") != null)
 	check(not gear.is_empty() and rolled.size() == gear.size(), "every gear drop carries the server's roll (%d of %d; %d drops in all)" % [rolled.size(), gear.size(), dropped.size()])
-	# pick everything up: gold / shards / items by standing on them
-	await until(func() -> bool: return m.loot_view.count() == 0, 15.0)
-	check(m.loot_view.count() == 0 or m.stats["items_picked"] > 0, "loot picked up by walking over it (%d left)" % m.loot_view.count())
+	# gold / shards were credited at once; items: a pickup request (a click) each, taken where the hero stands
+	var tries := 0
+	while m.loot_view.count() > 0 and tries < 60:
+		var drop: Dictionary = m.loot_view._drops[-1]
+		m.loot_view.request_pickup(drop)
+		body.position = Vector3(float(drop["x"]), 0.0, float(drop["z"]))
+		await until(func() -> bool: return m.loot_view.pickup_target().is_empty(), 2.0)
+		tries += 1
+	check(m.loot_view.count() == 0 or m.stats["items_picked"] > 0, "loot picked up by clicking it (%d left)" % m.loot_view.count())
 	var gold_now := int(g.progress.prog.character["gold"])
 	check(gold_now > gold0, "gold picked up (%d -> %d)" % [gold0, gold_now])
 

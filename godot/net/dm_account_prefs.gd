@@ -1,13 +1,9 @@
 class_name DmAccountPrefs
 extends RefCounted
 ## Account preferences helpers (port of archive/legacy-web:src/net/accountPrefs.ts). The server keys must match DEFS in backend/prefs.cjs.
-## reconcileLootRules / syncLootRulesWithAccount depend on the loot-filter rules (rules track) and are not ported here.
 
 const PREF_ONLY_CRAFTABLE := "only_craftable"
 const PREF_NO_TIPS := "no_tips"
-
-static func loot_pref_key(tier: String) -> String:
-	return "loot_" + tier
 
 ## The account's saved preferences, or null when they cannot be had (not signed in, server down): keep the local copy.
 static func fetch(api: DmApi) -> Variant:

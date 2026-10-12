@@ -14,12 +14,6 @@ const DEFS = {
   only_craftable: { type: 'boolean' },
   /** Settings -> "Don't show tips": the tip cards stay off on every character and device of the account. */
   no_tips: { type: 'boolean' },
-  /** Settings -> Loot: what happens to a freshly dropped piece of gear of each rarity (archive/legacy-web:src/gameplay/lootFilter.ts). Legendaries are never sold. */
-  loot_common: { type: 'enum', values: ['ground', 'auto', 'gold'] },
-  loot_uncommon: { type: 'enum', values: ['ground', 'auto', 'gold'] },
-  loot_rare: { type: 'enum', values: ['ground', 'auto', 'gold'] },
-  loot_epic: { type: 'enum', values: ['ground', 'auto', 'gold'] },
-  loot_legendary: { type: 'enum', values: ['ground', 'auto'] },
 };
 const KEY_RE = /^[a-z][a-z0-9_]{0,39}$/;
 const MAX_PER_REQUEST = 10;

@@ -100,7 +100,7 @@ func _initialize() -> void:
 	ok(prog["vows"]["elder_dead"]["maxRank"] == 20 and prog["chain"]["windowMs"] == 4000 and prog["boon_order"].size() == 15, "combat progression composed")
 	ok(prog["kit"]["base"] == 120 and prog["new_blood"]["damage_mult"] == 1.5, "combat progression residual")
 	ok(DmGatherData.get_data()["nodes"].size() == 30, "gathering nodes")
-	ok(DmCounselData.order().size() == 121, "counsel tips")
+	ok(DmCounselData.order().size() == 122, "counsel tips")
 	ok(DmData.world()["areas"].size() == 13, "slice world")
 	ok(DmPaData.atlas()["item_order"].size() == 309, "panels_a atlas")
 	# necromancer gear look props (slice/necro_gear.json): every prop and legendary hero model is registered and imported

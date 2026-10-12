@@ -40,3 +40,23 @@ static func pick_rune(pool: Array, rand: Callable) -> String:
 		if roll < 0.0:
 			return pool[i]
 	return pool[pool.size() - 1]
+
+## Soul shards a known rune pays instead (owner 2026-10-12): by rarity. The kill ledger credits the most of these (killRules.ts KNOWN_RUNE_SHARDS_MAX).
+const KNOWN_RUNE_SHARDS := {"uncommon": 1, "rare": 2, "epic": 3}
+
+## Every rune id, in RUNE_ORDER.
+static func all_ids() -> Array:
+	return _c()["order"]
+
+## What a rune drop becomes for a player who owns `owned` (rune id -> true): the dropped rune when it is new, else another rune of
+## `pool` they do not own (weighted like pick_rune), else {"shards": n} (n by the dropped rune's rarity). An empty pool = every rune.
+static func resolve(rune_id: String, pool: Array, owned: Dictionary, rand: Callable = Callable()) -> Dictionary:
+	if not owned.has(rune_id):
+		return {"item_id": rune_id}
+	var fresh: Array = []
+	for id in (pool if not pool.is_empty() else all_ids()):
+		if not owned.has(id) and not fresh.has(id):
+			fresh.append(id)
+	if not fresh.is_empty():
+		return {"item_id": pick_rune(fresh, rand)}
+	return {"shards": int(KNOWN_RUNE_SHARDS.get(str(_c()["rarity"].get(rune_id, "uncommon")), 1))}

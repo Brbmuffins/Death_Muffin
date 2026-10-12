@@ -26,6 +26,7 @@ __export(killRules_exports, {
   ELITE_SHARDS_MAX: () => ELITE_SHARDS_MAX,
   FLOOR_RULES: () => FLOOR_RULES,
   KILLS: () => KILLS,
+  KNOWN_RUNE_SHARDS_MAX: () => KNOWN_RUNE_SHARDS_MAX,
   bucketCaps: () => bucketCaps,
   evaluateKillReport: () => evaluateKillReport,
   groundOpen: () => groundOpen,
@@ -2831,6 +2832,7 @@ function killGoldMax(def, level, elite, tier, diff) {
   return d.gold[1] * (1 + 0.15 * (level - 1)) * waveModifiers(tier).rewardMult * DIFFICULTIES[diff].rewardMult * (elite ? ELITE.goldMult : 1);
 }
 var ELITE_SHARDS_MAX = 2;
+var KNOWN_RUNE_SHARDS_MAX = 3;
 function multCaps(rank, heroLevel) {
   const r = Math.min(ASCENSION.maxRank, Math.max(0, rank) + AUTHORITY.COOP_RANK_ALLOWANCE);
   const asc = 1 + ASCENSION.rewardPerRank * r;
@@ -2984,7 +2986,7 @@ function evaluateKillReport(report, ctx) {
     const goldEach = Math.round(Math.round(killGoldMax(g.def, g.level, g.elite, Math.min(g.tier, WAVE_UPGRADE.maxTier), g.diffId)) * goldMult);
     credits.xp += xpEach * n;
     credits.gold += goldEach * n;
-    if (g.elite) credits.shards += Math.ceil(ELITE_SHARDS_MAX * Math.min(g.shardMult, caps.shard)) * n;
+    if (g.elite) credits.shards += (Math.ceil(ELITE_SHARDS_MAX * Math.min(g.shardMult, caps.shard)) + KNOWN_RUNE_SHARDS_MAX) * n;
   }
   if (overRate > 0) findings.push({ kind: "kill_rate", dropped: overRate, bucket: Math.floor(ctx.killBucket) });
   let bossBudget = ctx.staff ? Infinity : Math.floor(ctx.bossBucket);
@@ -3009,7 +3011,7 @@ function evaluateKillReport(report, ctx) {
     const tier = Math.min(b.tier, WAVE_UPGRADE.maxTier);
     credits.gold += Math.round(320 * k * waveModifiers(tier).rewardMult * DIFFICULTIES[b.diff].rewardMult) * n;
     credits.xp += Math.round(Math.round(900 * k * DIFFICULTIES[b.diff].rewardMult) * nb) * n;
-    credits.shards += ((def.shards >= 5 ? 3 : Math.max(1, def.shards - 1)) + (b.first && b.boss !== "prelate" ? 2 : 0)) * n;
+    credits.shards += ((def.shards >= 5 ? 3 : Math.max(1, def.shards - 1)) + (b.first && b.boss !== "prelate" ? 2 : 0) + KNOWN_RUNE_SHARDS_MAX * (b.first ? 2 : 1)) * n;
   }
   let floorBudget = ctx.staff ? Infinity : Math.floor(ctx.floorBucket);
   let floorsAccepted = 0;
@@ -3067,6 +3069,7 @@ var FLOOR_RULES = { FLOOR_BONUS_KILLS, CHEST_KILLS, chestEvery: DEPTHS.chestEver
   ELITE_SHARDS_MAX,
   FLOOR_RULES,
   KILLS,
+  KNOWN_RUNE_SHARDS_MAX,
   bucketCaps,
   evaluateKillReport,
   groundOpen,

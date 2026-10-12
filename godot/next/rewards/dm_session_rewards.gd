@@ -7,10 +7,10 @@ extends Node
 ##  2. credit through the backend: session_open (host) / session_join + session_heartbeat (members, own API) / session_report (numbered
 ##     batches every `flush_interval` s and at the end) / session_end. XP and kill counts are applied from what the backend ACCEPTED,
 ##  3. loot: rolled with the same DmLoot rules, gear rolled by the member's own API (server RNG online, offline backend offline), landed in
-##     THAT member's own DmLootView; walk-over pickup, 60 s expiry, loot never flies to anyone,
+##     THAT member's own DmLootView; gold/shards credited at once, items picked up by a click, 3 min expiry, loot never flies to anyone,
 ##  4. identical online/offline: the only difference is which DmApi each member carries.
-## Gold and shards are drops (picked up by walking over them, as in the original game); their persistence is the member's save path, which
-## the backend's kill ledger caps from these same reports.
+## Gold and shards go straight to the member's purse (DmLootView credits them on its next tick); their persistence is the member's save path,
+## which the backend's kill ledger caps from these same reports.
 
 signal session_opened(session_id: String)
 signal session_failed(reason: String)       ## open refused / session lost (ended, not host): rewards stop crediting
@@ -532,7 +532,7 @@ func on_boss_defeated(ev: Dictionary) -> void:
 			m.prog.record_prelate_kill()
 		_ground(m, {"kind": "gold", "amount": int(reward["gold"]) + int(reward["materialGold"])}, at)
 		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
-		_drop_items(m, at, reward["items"], level, "boss")
+		_drop_items(m, at, reward["items"], level, "boss", DmLootRunes.boss_pool(id))
 		if first_item != null:
 			_drop_items(m, at, [first_item], level, "first_kill")
 		m.stats["xp_applied"] += int(reward["xp"])
@@ -555,7 +555,7 @@ func on_surge_cleared(ev: Dictionary) -> void:
 		var m: DmRewardsMember = members[cid]
 		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
 			continue
-		_drop_items(m, at, [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge")
+		_drop_items(m, at, [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge", DmLootRunes.area_pool(String(ev["area"])))
 		_ground(m, {"kind": "gold", "amount": gold}, at)
 
 
@@ -612,7 +612,7 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 	if int(reward["shards"]) > 0:
 		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
 	# Ordinary kills drop half as often, so their gear rolls at elite quality (as in the original game).
-	_drop_items(m, at, reward["items"], level, "elite")
+	_drop_items(m, at, reward["items"], level, "elite", DmLootRunes.area_pool(loot_area))
 	if combat:
 		var nb := DmEnemyStats.new_blood_xp_mult(String(m.discipline["family"]), float(m.prog.character["level"]))
 		m.reporter.kill({"area": area, "def": ev["def"], "level": level, "elite": elite, "tier": wave_tier, "diff": difficulty, "rank": ascension,
@@ -630,14 +630,17 @@ func _ground(m: DmRewardsMember, d: Dictionary, at: Vector3) -> void:
 
 
 ## Items from a source other than a kill (a Depths floor, its chest) for one member: the same landing path (gear rolled by the member's backend).
-func drop_items_for(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String) -> void:
-	_drop_items(m, at, items, level, source)
+func drop_items_for(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String, rune_pool: Array = []) -> void:
+	_drop_items(m, at, items, level, source, rune_pool)
 
 
 ## Materials land at once; gear first gets its roll from the member's own backend (server RNG online, the offline backend offline).
-func _drop_items(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String) -> void:
+## A rune carries `rune_pool` (the runes its source drops) so the owner's loot view can swap a known rune for one they lack (DmLootRunes.resolve).
+func _drop_items(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String, rune_pool: Array = []) -> void:
 	var gear: Array = []
 	for d in items:
+		if DmRunes.is_rune_id(d["item_id"]):
+			d["rune_pool"] = rune_pool
 		if DmAffixes.can_roll(d["item_id"]):
 			gear.append(d)
 		else:

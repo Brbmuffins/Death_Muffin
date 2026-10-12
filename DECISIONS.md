@@ -51,8 +51,7 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
   autoload, spell colours). A different effect is fine if it saves real time and performs at least as well. Generate (Tripo
   models, ElevenLabs audio, Gemini concepts) only when something needed does not exist or is unusable.
 - **Polish over new content; necromancer focus; immersive but capped, not overwhelming** (2026-10-02/03).
-- **Loot never vacuums** (2026-10-04): loot does not fly to the player; walk over it or it expires (gold and shards pull in
-  from a few steps).
+- **Loot never vacuums** (2026-10-04): items never fly to the player; since 2026-10-12 they are picked up by a click (B15).
 - **No Godot-vs-web parity target** (2026-10-05): the rebuild is Godot-idiomatic; bit-exact web simulation math was dropped.
 
 ## Baseline decisions, 2026-10-09
@@ -87,3 +86,11 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
   half their hits for about 0.6 ms and was removed; loot on the ground was the GPU hog of big fights (a light per soul shard, a new
   material per beam): shards carry no light now and beams share one material per rarity; physics catch-up is capped at 3 steps a frame
   so an overloaded moment slows briefly instead of spiralling into a freeze.
+- **B15. Loot rework: click to pick up** (owner, 2026-10-12, team thread "Loot rework" in #feedback-ideas). The Settings loot rules
+  (per rarity: on the ground / auto-loot / sell for gold) are gone: Sell sold about a third of the gear (every armour piece counts as a set
+  piece and 6 of 14 affixes are necromancer affixes, both protected), and auto-loot covered gear only. Now gold and soul shards go straight
+  to the purse; items stay on the ground 3 minutes (was 60 s) and only a click picks one up (the hero walks there; walking over takes
+  nothing). Runes go straight into the bag with a chat line and never repeat one the account owns (bag, sockets, Vault): a known rune
+  becomes another of its source's pool the player lacks, or soul shards (1/2/3 by rarity) when they own the whole pool; the kill ledger
+  credits those shards (`KNOWN_RUNE_SHARDS_MAX`). Legendaries and new runes are a chat line, for the whole party in co-op. Co-op loot stays
+  personal. Next: dropping gear from the bag for party members who were there when it was found (same session only).

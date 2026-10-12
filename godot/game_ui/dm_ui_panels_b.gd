@@ -124,7 +124,7 @@ func open(p: String) -> void:
 			ui.notify("vault_opened")
 			var r: DmResult = await game.api.get_vault(cid())
 			if r.ok and r.data is Dictionary:
-				vault.set_state(r.data)
+				_vault_state(r.data)
 			else:
 				vault.set_error(r.error)
 		"salvage":
@@ -268,6 +268,13 @@ func _reforge(f: DmForgePanel, slot: int, affix: int, cost: int) -> void:
 
 # --- vault ------------------------------------------------------------------------------------------------------------------
 
+## Show the Vault and tell the game what it holds (the loot rules skip runes the account already owns, Vault included).
+func _vault_state(data: Dictionary) -> void:
+	vault.set_state(data)
+	if game.has_method("note_vault"):
+		game.note_vault(data)
+
+
 func _vault(call: Callable) -> void:
 	vault.set_busy(true)
 	var r: DmResult = await call.call()
@@ -277,11 +284,11 @@ func _vault(call: Callable) -> void:
 		return
 	await game.refresh_inventory()
 	if r.data is Dictionary and r.data.has("bag"):
-		vault.set_state(r.data)
+		_vault_state(r.data)
 	else:
 		var g: DmResult = await game.api.get_vault(cid())
 		if g.ok:
-			vault.set_state(g.data)
+			_vault_state(g.data)
 
 
 ## The Vault's Sort button sorts the Vault (server) and then the bag, the same way the Reliquary's Sort does.
@@ -298,9 +305,9 @@ func _vault_sort() -> void:
 	var g: DmResult = await game.api.get_vault(cid())
 	vault.set_busy(false)
 	if g.ok:
-		vault.set_state(g.data)
+		_vault_state(g.data)
 	elif r.data is Dictionary and r.data.has("bag"):
-		vault.set_state(r.data)
+		_vault_state(r.data)
 	if err != "":
 		vault.set_note("Vault sorted, but the bag could not be saved: %s" % err)
 
@@ -317,7 +324,7 @@ func _take_all(_kind: String, slots: Array) -> void:
 	await game.refresh_inventory()
 	var g: DmResult = await game.api.get_vault(cid())
 	if g.ok:
-		vault.set_state(g.data)
+		_vault_state(g.data)
 	if note != "":
 		vault.set_note(note)
 

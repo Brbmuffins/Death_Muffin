@@ -15,7 +15,7 @@ opts.hud:  true (default) real HUD, also for joiners  |  "minimal" DmNextHud orb
 | `hud_state()` | `DmNextHudVm.build()`: `DmHeroBody` (hp, essence), `DmRiteCaster` (`cooldown_left`, loadout), `DmThrallHost`, `DmStatusSet`, `DmWaveDirector.enemies` (minimap, target), `DmCorpseField`, roster (party), `world.builder` (areas / doors). Shape: `ui/hud/README.md` |
 | `character`, `progress` | the shell's character dict shared with the rewards member's `DmProgression` |
 | bag | `DmInventory` (optimistic bag + debounced `api.save_inventory`); "Reliquary full" float when full |
-| `settings` | `DmSettings`; `apply_settings` pushes audio, Vfx quality / reduced motion, camera; Settings -> Loot sets `loot_view.rules` |
+| `settings` | `DmSettings`; `apply_settings` pushes audio, Vfx quality / reduced motion, camera |
 | loadout | `DmLoadout.load_rites` = kit `defaultLoadout` + `rmb` + the saved Grimoire choice; `set_rites()` writes it back |
 | casting | `DmNextInput.hotbar(slot, aim, enemy_id)` (LMB 0, keys 1-4, key 5 and RMB 5) -> `_on_hotbar` -> `DmRiteCaster.request_cast`. A rite missing from `DmRiteRegistry` gives a "not in the slice yet" float |
 | cooldown / rejection | `cast_rejected(rite, reason)` -> texts ("Not enough Grave Essence", "X is not ready", "X unlocks at level N"; busy / range / no_target silent), 1 per 600 ms |
@@ -39,9 +39,10 @@ All of `DmGameUi.WARM_PANELS` are pre-built under the loading cover (`ui.warm()`
 through the API: Bag, Sheet, Capes & Pets, Legion, Forge, Salvage, Reagent shelf, Vault, Contracts, Professions, Garden, Labor, Ascension, Codex, Atlas, Waystone map.
 First opens cost 0-62 ms over an idle frame (Capes & Pets ~52, Reagent shelf ~41, the rest <= 30; headless, software GL).
 
-## Loot feedback (`dm_next_ui_host.gd`, `loot_view/loot_view.gd`; test `tests/next_loot/run.gd`)
-- Rule "Sell for gold" pays the purse (`auto_sold`) with a "+Ng name" float and the coin sound; rule "Auto-loot" gives the walk-over feedback. `keep` comes from `DmItemText.keeps_for_you`, so the gold rule never sells upgrades.
-- Gold / shards walked over in one frame give one float and one sound.
+## Loot (`dm_next_ui_host.gd`, `loot_view/loot_view.gd`; tests `tests/next_loot/run.gd`, `tests/loot_view/run.gd`)
+- Click to pick up (DECISIONS B15): `DmNextInput` asks `loot_click(screen)` after the enemy pick (Alt+click: drops first); the hero walks there and `DmLootView` takes it on arrival. Any other click or a WASD step calls `loot_cancel()`. The 10 Hz hover pick (`loot_hover`) shows the hovered drop's name; Alt shows every name.
+- Gold / shards are credited at once; everything credited within `GOT_WINDOW_S` (1.2 s) is one float and one sound.
+- Runes (`rune_resolve` = `_resolve_rune`: bag and socket rows + the Vault from `note_vault`): a new rune goes into the bag with the pickup feedback and a chat line; a known one pays shards with a "Known rune" line. Legendaries landing are a chat line. In a party `DmNextParty.announce` sends the line to everyone ("{who}" = the finder's roster name).
 - Bag full: "Reliquary full" float plus one toast; re-armed once there is room.
 - Pickup toast colour = beam colour; better-than-worn gear says "(upgrade)".
 - Ground: item names in rarity colour within 7 m (3 m ordinary; `DmLootView.near_labels = false` turns them off), icon is the inventory's own item art (`DmUiArt.item`; a rarity tile only for an item without art) and blinks in the last 8 s, drops from one kill land >= 0.65 m apart. Loot never flies to you.

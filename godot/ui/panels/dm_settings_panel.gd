@@ -4,7 +4,7 @@ extends DmTabbedWindow
 ## Pure UI: it holds a `values` Dictionary (seeded with the web defaults) and emits `changed(key, value)` / `action(name)`;
 ## the integrator wires those to the settings store, party, class change, bug report, leave-the-world.
 ##
-## value keys: difficulty, auto_combat, auto_gather, loot_common..loot_legendary ("ground"|"auto"|"gold"), graphics, fps,
+## value keys: difficulty, auto_combat, auto_gather, graphics, fps,
 ##   auto_res, vol_master, vol_combat, vol_amb, vol_music, vol_ui, reduce_motion, damage_numbers, hide_helm, no_tips,
 ##   guidance, guide_ping, dev_access, party_in (the join-code field).
 ## Tabs (strip under the title, in this order): Co-op, Audio, Play, Display, Controls, Account. The last tab opened is
@@ -21,13 +21,10 @@ const DIFFICULTIES := [
 	["medium", "Medium", "The intended balance."],
 	["hard", "Hard", "Tougher, deadlier dead and more elites. More gold and experience."],
 ]
-const LOOT_TIERS := [["common", "Common"], ["uncommon", "Uncommon"], ["rare", "Rare"], ["epic", "Epic"], ["legendary", "Legendary"]]
-const LOOT_ACTIONS := [["ground", "On the ground"], ["auto", "Auto-loot"], ["gold", "Sell for gold"]]
 const LOADOUT_ACTIONS := [["loadout_next", "Next loadout"], ["loadout_1", "Loadout 1"], ["loadout_2", "Loadout 2"], ["loadout_3", "Loadout 3"], ["loadout_4", "Loadout 4"], ["loadout_5", "Loadout 5"], ["loadout_6", "Loadout 6"]]
 
 var values: Dictionary = {
 	"difficulty": "medium", "auto_combat": false, "auto_gather": false,
-	"loot_common": "ground", "loot_uncommon": "ground", "loot_rare": "ground", "loot_epic": "ground", "loot_legendary": "ground",
 	"graphics": "high", "window_mode": "windowed", "fps": 0, "vsync": true, "auto_res": true, "brightness": 1.0, "ui_scale": 1.0, "hud_scale": 1.0,
 	"vol_master": 0.7, "vol_combat": 0.8, "vol_amb": 0.6, "vol_music": 0.5, "vol_ui": 0.8,
 	"reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false, "guidance": true, "guide_ping": true,
@@ -157,17 +154,6 @@ func build() -> void:
 	if can_auto_combat:
 		_auto_cb = _check(s1, "Auto combat (Easy only, G)", "auto_combat")
 	_check(s1, "Auto gathering", "auto_gather")
-	s1.add_child(_margin(DmUi.label(DmUi.upper("Loot"), "DmSub"), 10, 4))
-	for t in LOOT_TIERS:
-		var ob := OptionButton.new()
-		var acts: Array = LOOT_ACTIONS if t[0] != "legendary" else LOOT_ACTIONS.slice(0, 2)
-		for a in acts:
-			ob.add_item(a[1])
-		ob.select(maxi(0, _idx(acts, values["loot_" + t[0]])))
-		var key: String = "loot_" + t[0]
-		ob.item_selected.connect(func(i: int) -> void: _put(key, acts[i][0]))
-		_row(s1, "%s gear" % t[1], ob)
-	_note(s1, "On the ground: walk over it. Auto-loot: straight into your bag as it drops (if the bag is full it lands instead). Sell for gold: you get its sell value and it never drops. Set pieces, legendaries, necromancer affixes and upgrades for you are never sold.")
 	if can_auto_combat:
 		_note(s1, "On Easy, Auto engages enemies in your current area, uses equipped rites and may cast your signature when a fight calls for it. Click or use WASD to take control; hold 1–5 to repeat a rite.")
 	_refresh_diff()

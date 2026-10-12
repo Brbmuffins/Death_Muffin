@@ -75,7 +75,7 @@ test('an honest batch is credited at the game\'s own XP, the best gold roll and 
   assert.equal(e.credits.kills.graves, 104);
   const xp = (def, level, elite) => Math.round(rules.killXpBase(def, level, elite, 0, 'medium'));
   assert.equal(e.credits.xp, mixedXp(1) + 4 * xp('robber', 2, true));
-  assert.equal(e.credits.shards, 4 * rules.ELITE_SHARDS_MAX, 'only elites shed shards');
+  assert.equal(e.credits.shards, 4 * (rules.ELITE_SHARDS_MAX + rules.KNOWN_RUNE_SHARDS_MAX), 'only elites shed shards (their own, and a known rune paid as shards)');
   assert.ok(e.credits.gold > 0);
 });
 
@@ -187,7 +187,7 @@ test('boss kills pay the boss\'s own gold, XP and shards and are bounded by thei
   const rep = report(1, [], { bosses: [{ boss: 'abbess', tier: 0, diff: 'medium', first: true, n: 1 }] });
   const e = evaluate(rep, NAVE_CTX);
   assert.equal(e.bossesAccepted, 1);
-  assert.equal(e.credits.shards, 2 + 2, 'a cost-3 boss gives 2 shards back, its first kill 2 more');
+  assert.equal(e.credits.shards, 2 + 2 + 2 * rules.KNOWN_RUNE_SHARDS_MAX, 'a cost-3 boss gives 2 shards back, its first kill 2 more, and both its runes may come as shards');
   const spam = evaluate(report(1, [], { bosses: [{ boss: 'abbess', tier: 0, diff: 'medium', first: false, n: 20 }] }), { ...NAVE_CTX, bossBucket: 2 });
   assert.equal(spam.bossesAccepted, 2);
   assert.ok(spam.findings.some((f) => f.kind === 'boss_rate'));
@@ -410,10 +410,10 @@ function necroRequest(fake, body, env) {
 test('enforce: a necromancer save can only claim kills, shards and Prelate kills the ledger credits', async () => {
   const fake = killsFake({ necro: { ...NECRO, unlockedAreas: [...NAVE.unlockedAreas, 'sanctum'] } });
   await send(fake, report(T0, [...mixed(1), group({ elite: true, n: 6, level: 1 })], { bosses: [{ boss: 'prelate', tier: 0, diff: 'medium', first: false, n: 1 }] }), T0, ENFORCE);
-  const n = necroRequest(fake, { areaKills: { graves: 900, pyre: 400 }, shards: 30, prelateKills: 3 }, ENFORCE);
+  const n = necroRequest(fake, { areaKills: { graves: 900, pyre: 400 }, shards: 60, prelateKills: 3 }, ENFORCE);
   await n.run();
   assert.deepEqual(n.req.body.areaKills, { graves: 106 });
-  assert.equal(n.req.body.shards, 6 * rules.ELITE_SHARDS_MAX + 3, 'the elites\' shards plus the Prelate\'s own three');
+  assert.equal(n.req.body.shards, 6 * (rules.ELITE_SHARDS_MAX + rules.KNOWN_RUNE_SHARDS_MAX) + 3 + rules.KNOWN_RUNE_SHARDS_MAX, 'the elites\' shards plus the Prelate\'s own three, runes paid as shards included');
   assert.equal(n.req.body.prelateKills, 1, 'one reported Prelate, three claimed');
   await n.finish();
   assert.deepEqual(JSON.parse(fake.ledger(1).kill_credit || '{}'), {});

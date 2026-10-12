@@ -77,6 +77,8 @@ var _bag_full_noticed := false
 var _got_gold := 0
 var _got_shards := 0
 var _got_pending := false
+var _loot_tip_sent := false
+var _vault_runes: Dictionary = {}            ## rune ids in the account's Vault (note_vault): a rune drop never repeats one the player owns
 var _hero_status: Dictionary = {}            ## status id -> true while the local hero has it (a float on the way in, not on every refresh)
 var _target_id := 0
 var _target_until := 0.0
@@ -127,15 +129,14 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	if m != null:
 		m.take_item = Callable(self, "_take")   # a walked-over drop goes into the bag, which flushes to the backend
 		m.loot_view.picked.connect(_on_picked)
-		m.loot_view.auto_sold.connect(_on_auto_sold)
-		m.loot_view.auto_looted.connect(_on_auto_looted)
-		m.loot_view.pickup_fx.connect(_on_pickup_fx)
-		m.loot_view.keep = Callable(self, "_keeps_for_you")
+		m.loot_view.rune_found.connect(_on_rune_found)
+		m.loot_view.rune_known.connect(_on_rune_known)
+		m.loot_view.legendary_dropped.connect(_on_legendary_dropped)
+		m.loot_view.rune_resolve = Callable(self, "_resolve_rune")
+		_load_vault_runes()
 	settings_store = DmSettings.new(DmSettings.FILE, persist)
 	settings_store.set_active_character(hero_id, character.get("auto_combat_allowed", false) == true)
 	settings_store.changed.connect(func(_v: Dictionary) -> void: _apply_settings_side_effects())
-	if m != null:
-		m.loot_view.rules = settings_store.loot_rules()
 	dev_account = _is_dev_account()   # old DmGame.setup: dev_access = dev_account and the Settings toggle; everything that reads it follows below
 	dev_access = dev_account and bool(settings["dev_access"])
 	_push_dev_access()
@@ -147,7 +148,7 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	vm = DmNextHudVm.new(self)
 	counsel = DmNextCounsel.new(self)
 	if m != null:
-		m.loot_view.dropped_sound.connect(func(id: String, pos: Vector3) -> void: _sfx(id, pos))   # lootDrop / Rare / Epic / Legendary, positioned
+		m.loot_view.dropped_sound.connect(_on_item_landed)
 	if shell.chapterhouse != null:          # NPC / station use -> the events DmGameUi opens dialogue and panels from
 		shell.chapterhouse.npc_interact.connect(func(id: String) -> void: npc_interact.emit(id))
 		shell.chapterhouse.station_interact.connect(func(id: String) -> void: station_interact.emit(id))
@@ -373,9 +374,6 @@ func dev_break_seals() -> int:
 func _apply_settings_side_effects() -> void:
 	_apply_dev_access()
 	DmAvatar.refresh_all()   # Hide helm
-	var m: DmRewardsMember = shell.rewards.members.get(hero_id) if shell.rewards != null else null
-	if m != null:
-		m.loot_view.rules = settings_store.loot_rules()
 	if shell.meta != null:
 		shell.meta.set_difficulty(String(settings["difficulty"]), not shell.ready_)   # Settings -> difficulty: the next dead to rise feel it
 	var audio := get_node_or_null("/root/AudioDirector")
@@ -696,11 +694,6 @@ func stat_context() -> Variant:
 	return {"character": character, "slots": inventory.slots, "discipline": b["discipline"], "damageTier": float(progress.get("damageTier", 0)), "legion": b["legion"]}
 
 
-## DmLootView.keep: a 'gold' loot rule leaves gear that would be an upgrade for you on the ground (asked once per drop, only with a 'gold' rule).
-func _keeps_for_you(slot: Dictionary) -> bool:
-	return bool(DmItemText.keeps_for_you(stat_context()).call(slot))
-
-
 ## DmLootView.try_take: the bag, or false (the drop stays on the ground) with a "Reliquary full" float now and then and, once, what to do about it.
 func _take(d: Dictionary) -> bool:
 	if inventory.add(d):
@@ -718,7 +711,8 @@ func _take(d: Dictionary) -> bool:
 	return false
 
 
-## Gold and shards walked over in one frame are one float + one sound (a pile of coins is not a stack of numbers).
+const GOT_WINDOW_S := 1.2
+
 func _on_picked(ev: Dictionary) -> void:
 	match String(ev["kind"]):
 		"gold":
@@ -734,10 +728,11 @@ func _on_picked(ev: Dictionary) -> void:
 			_item_collected(it, meta)
 
 
+## Gold and shards credited within GOT_WINDOW_S are one float + one sound: a fight pays out once, not per pile.
 func _schedule_got() -> void:
 	if not _got_pending:
 		_got_pending = true
-		_flush_got.call_deferred()
+		get_tree().create_timer(GOT_WINDOW_S).timeout.connect(_flush_got)
 
 
 func _flush_got() -> void:
@@ -776,26 +771,100 @@ func _loot_name(it: Dictionary, meta: Dictionary) -> String:
 	return nm
 
 
-## Settings -> Loot, rule 'gold': the sell value is paid at once (the drop never lands).
-func _on_auto_sold(gold: int, drop: Dictionary, pos: Vector3) -> void:
-	if gold <= 0:
-		return
-	prog.add_gold(gold)
-	float_text(pos + Vector3(0, 1.6, 0), "+%dg  %s" % [gold, _loot_name(drop, DmContent.item(String(drop["item_id"])))], "gold")
-	_sfx("coin")
+## An item landed on the ground: its drop sound (by rarity, positioned) and, once per session, the counsel's "click to pick up" tip.
+func _on_item_landed(sound_id: String, pos: Vector3) -> void:
+	_sfx(sound_id, pos)
+	if not _loot_tip_sent:
+		_loot_tip_sent = true
+		game_event.emit("loot_landed", {})
 
 
-## Settings -> Loot, rule 'auto': straight into the bag, with the pickup's sound, toast and counsel facts.
-func _on_auto_looted(drop: Dictionary, _pos: Vector3) -> void:
+## A rune the player did not own went straight into the bag: the pickup's sound, toast and counsel facts, and a line in chat (the party sees it too).
+func _on_rune_found(drop: Dictionary, _pos: Vector3) -> void:
 	var meta := DmContent.item(String(drop["item_id"]))
 	_loot_toast(drop, meta)
 	_item_collected(drop, meta)
+	var rune: Dictionary = DmContent.get_export("runes", "RUNES").get(String(drop["item_id"]), {})
+	var nm := String(meta.get("name", drop["item_id"]))
+	var short := String(rune.get("short", ""))
+	var reaper := shell.local_body() != null and shell.local_body().family != "necromancer"
+	_loot_chat("You found the %s%s%s." % [nm, (": " + short.substr(0, 1).to_lower() + short.substr(1)) if short != "" else "", " (a necromancer rune)" if reaper else ""],
+		"{who} found the %s." % nm)
 
 
-func _on_pickup_fx(pos: Vector3, color: Color) -> void:
-	var v := get_node_or_null("/root/Vfx")
-	if v != null and DisplayServer.get_name() != "headless":
-		v.emit({"x": pos.x, "y": pos.y, "z": pos.z, "count": 8, "color": color.to_rgba32() >> 8, "spread": 0.3, "speed": 1.2, "up": 1.0, "life": 0.4, "size": 0.14})
+## Every rune this source drops is already owned: it paid soul shards instead (credited as a shard pickup).
+func _on_rune_known(shards: int, rune_id: String, _pos: Vector3) -> void:
+	game_event.emit("chat", {"text": "Known rune (%s): +%d soul shard%s." % [String(DmContent.item(rune_id).get("name", rune_id)), shards, "s" if shards > 1 else ""]})
+
+
+func _on_legendary_dropped(drop: Dictionary, _pos: Vector3) -> void:
+	var nm := _loot_name(drop, DmContent.item(String(drop["item_id"])))
+	_loot_chat("You found %s (legendary)." % nm, "{who} found %s (legendary)." % nm)
+
+
+## A find worth telling: in a party every member reads `party_line` ("{who}" = the finder's roster name) in chat, solo you read `own_line`.
+func _loot_chat(own_line: String, party_line: String) -> void:
+	if shell.party != null and shell.party.announce(party_line):
+		return
+	game_event.emit("chat", {"text": own_line})
+
+
+## DmLootView.rune_resolve: the dropped rune if it is new, else another of its pool the account does not own, else soul shards.
+## Owned = any rune row of the character (bag, sockets) or the Vault (note_vault).
+func _resolve_rune(drop: Dictionary) -> Dictionary:
+	var owned := _vault_runes.duplicate()
+	for r: Dictionary in inventory.slots:
+		if DmRunes.is_rune_id(r.get("item_id")):
+			owned[String(r["item_id"])] = true
+	return DmLootRunes.resolve(String(drop["item_id"]), drop.get("rune_pool", []), owned)
+
+
+## A left click on a drop (DmNextInput): the hero walks there and takes it on arrival. False = no drop under the cursor.
+func loot_click(screen: Vector2) -> bool:
+	var m: DmRewardsMember = shell.my_member()
+	var b := shell.local_body()
+	if m == null or b == null or not b.alive:
+		return false
+	var d := m.loot_view.pick(screen, shell.camera)
+	if d.is_empty():
+		return false
+	m.loot_view.request_pickup(d)
+	shell.input.click_move(Vector3(float(d["x"]), 0.0, float(d["z"])))
+	return true
+
+
+## Any other click or a WASD step: the hero no longer heads for a drop.
+func loot_cancel() -> void:
+	var m: DmRewardsMember = shell.my_member()
+	if m != null:
+		m.loot_view.cancel_pickup()
+
+
+## The 10 Hz hover pick (DmNextInput): the drop under the cursor shows its name; Alt shows every name.
+func loot_hover(screen: Vector2, enemy_hovered: bool, alt: bool) -> void:
+	var m: DmRewardsMember = shell.my_member()
+	if m == null:
+		return
+	m.loot_view.all_labels = alt
+	m.loot_view.hover({} if enemy_hovered and not alt else m.loot_view.pick(screen, shell.camera))
+
+
+## The Vault's rows (every {bag, vault} answer, and once at setup): which runes the account keeps there.
+func note_vault(data: Dictionary) -> void:
+	if not (data.get("vault") is Array):
+		return
+	_vault_runes.clear()
+	for r: Dictionary in data["vault"]:
+		if DmRunes.is_rune_id(r.get("item_id")):
+			_vault_runes[String(r["item_id"])] = true
+
+
+func _load_vault_runes() -> void:
+	if api == null or not api.has_method("get_vault"):
+		return
+	var r: DmResult = await api.get_vault(hero_id)
+	if r.ok and r.data is Dictionary:
+		note_vault(r.data)
 
 
 func _on_credited(cid: int, delta: Dictionary) -> void:

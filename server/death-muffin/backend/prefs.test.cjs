@@ -62,24 +62,9 @@ test('enum and int definitions validate their range (for settings added later)',
   }
 });
 
-test('loot rules: each rarity takes ground, auto or gold, and a legendary is never sold', () => {
-  for (const tier of ['common', 'uncommon', 'rare', 'epic']) {
-    for (const v of ['ground', 'auto', 'gold']) assert.strictEqual(checkValue(`loot_${tier}`, v).ok, true, `${tier} ${v}`);
-    for (const bad of ['sell', '', null, true, 1]) assert.strictEqual(checkValue(`loot_${tier}`, bad).ok, false, `${tier} ${bad}`);
-  }
-  assert.strictEqual(checkValue('loot_legendary', 'auto').ok, true);
-  assert.strictEqual(checkValue('loot_legendary', 'ground').ok, true);
-  assert.strictEqual(checkValue('loot_legendary', 'gold').ok, false);
-});
-
-test('all five loot rules save in one request and read back', async () => {
-  const h = harness();
-  const prefs = { loot_common: 'gold', loot_uncommon: 'gold', loot_rare: 'auto', loot_epic: 'auto', loot_legendary: 'auto' };
-  const saved = await h.call('POST /api/prefs', { prefs });
-  assert.deepStrictEqual(saved.body, { success: true, data: prefs });
-  assert.deepStrictEqual((await h.call('GET /api/prefs')).body.data, prefs);
-  const bad = await h.call('POST /api/prefs', { prefs: { loot_legendary: 'gold' } });
-  assert.strictEqual(bad.code, 400);
+test('the retired loot rules (2026-10-12, click to pick up) are no longer kept', () => {
+  for (const tier of ['common', 'uncommon', 'rare', 'epic', 'legendary']) assert.strictEqual(checkValue(`loot_${tier}`, 'ground').ok, false, tier);
+  assert.deepStrictEqual(readRows([{ pref_key: 'loot_common', value: '"gold"' }]), {});
 });
 
 test('parsePrefs needs a prefs object of 1 to MAX_PER_REQUEST valid keys, all or nothing', () => {

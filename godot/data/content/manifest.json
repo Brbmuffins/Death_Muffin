@@ -512,10 +512,11 @@
    }
   },
   "gameplay_killRules": {
-   "keys": 4,
+   "keys": 5,
    "counts": {
     "KILLS": 28,
     "ELITE_SHARDS_MAX": 1,
+    "KNOWN_RUNE_SHARDS_MAX": 1,
     "CHAIN_MAX": 1,
     "FLOOR_RULES": 3
    }
@@ -570,14 +571,6 @@
     "BAG_ROWS": 1,
     "KILL_LOOT": 3,
     "SMART_LOOT": 2
-   }
-  },
-  "gameplay_lootFilter": {
-   "keys": 3,
-   "counts": {
-    "LOOT_TIERS": 5,
-    "LOOT_ACTIONS": 3,
-    "DEFAULT_LOOT_RULES": 5
    }
   },
   "gameplay_milestones": {

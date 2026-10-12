@@ -213,6 +213,11 @@ func _part_chat_and_open_closed(jg: DmNextGame) -> void:
 	check(await until(func() -> bool: return hg.party.chat_log.size() == 1 and jg.party.chat_log.size() == 1, 5.0), "chat: the host and the joiner both show it")
 	check(hg.party.chat_log[0] == "[%s] hello host" % api_j.get_token().trim_prefix("offline:"), "chat: line is [name] text", str(hg.party.chat_log))
 	check(hg.party.chat("hi joiner") and await until(func() -> bool: return jg.party.chat_log.size() == 2, 5.0), "chat: the host's line reaches the joiner")
+	# a find (a new rune, a legendary): the host stamps the finder's roster name, everyone reads the line
+	check(jg.party.announce("{who} found the Rune of Splinters."), "announce: a joiner's find goes to the party")
+	var who_j := api_j.get_token().trim_prefix("offline:")
+	check(await until(func() -> bool: return hg.party.chat_log.size() == 3 and jg.party.chat_log.size() == 3, 5.0), "announce: the host and the joiner both show it")
+	check(hg.party.chat_log[2] == "%s found the Rune of Splinters." % who_j and jg.party.chat_log[2] == hg.party.chat_log[2], "announce: the finder is named, no [name] prefix", str(hg.party.chat_log))
 	# open / closed
 	hg.party.set_open(false)
 	check(await until(func() -> bool: return not bool(hg.party.info.get("open", true)), 5.0), "open/closed: the host closes the session")
@@ -256,8 +261,7 @@ func _part_rewards(jg: DmNextGame) -> void:
 	await hm.flush()
 	check(await until(func() -> bool: return int(jg.character["experience"]) > xp0 or int(jg.character["level"]) > int(ch_j["level"]) - 0 and j.member.stats["kills_accepted"] > 0, 8.0), "xp: the accepted report reached the joiner's own character")
 	check(j.member.stats["kills_accepted"] == 6 and j.kills_seen == 6, "xp: all 6 kills credited to the joiner (%d)" % j.member.stats["kills_accepted"])
-	check(await until(func() -> bool: return j.member.loot_view.count() > 0 or int(jg.character["gold"]) > gold0, 5.0), "loot: drops stand on the joiner's own ground")
-	check(await until(func() -> bool: return int(jg.character["gold"]) > gold0, 8.0), "loot: the joiner walked over its gold and it went to its own purse (%d -> %d)" % [gold0, int(jg.character["gold"])])
+	check(await until(func() -> bool: return int(jg.character["gold"]) > gold0, 8.0), "loot: the joiner's gold went straight to its own purse (%d -> %d)" % [gold0, int(jg.character["gold"])])
 	var rolls: int = hm.gear_pending()
 	check(rolls == 0, "loot: the host rolled nothing for the joiner")
 	check(await until(func() -> bool: return j.rolls_pending == 0, 8.0), "loot: the joiner's own gear rolls finished")

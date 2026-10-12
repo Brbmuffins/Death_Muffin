@@ -79,6 +79,7 @@ static func table() -> Dictionary:
 	t["salvaged"] = [_c("salvage", ws + "1686")]
 	t["class_panel_opened"] = [_c("change_class", ws + "1330")]
 	t["bag_full"] = [_c("bag_full", ws + "782")]                            # gathering stopped: bagFull
+	t["loot_landed"] = [_c("loot_click", ws + "4165")]                       # Godot rework 2026-10-12 (DECISIONS B15): the first item on the ground
 	t["collected"] = [                                                      # ctx {gear, legendary, armor, reagent, affixed: bool} (any item in the pickup matches)
 		_c("relic", ws + "4165"),
 		_c("atlas", ws + "4168", 2500, "", false, func(x: Dictionary) -> bool: return bool(x.get("gear", false))),

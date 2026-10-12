@@ -388,7 +388,7 @@ func _quota_and_descend() -> void:
 	check(run.stair_open and cleared[0] == 1 and run.floors == 1 and run.kills >= 10, "the stair opens once, at the 10th kill (kills %d)" % run.kills)
 	check(d.prompt(_it("depths_down")) == "Descend to depth 2" and d.hud_state()["open"] and d.map_floor()["down"]["open"], "the stair's prompt, the HUD and the minimap show it open")
 	check(ev("banner").any(func(e: Dictionary) -> bool: return String(e["ctx"]["title"]) == "The stair opens"), "a banner says so")
-	check(await until(func() -> bool: return int(character["gold"]) > gold0 or m.loot_view.get_child_count() > 0, 5.0), "kills and the floor clear drop gold on the ground")
+	check(await until(func() -> bool: return int(character["gold"]) > gold0 or m.loot_view.get_child_count() > 0, 5.0), "kills and the floor clear pay gold")
 	check(int(character["experience"]) > xp0 or int(character["level"]) > lvl0, "XP was earned (floor clear + kills)")
 	await until(func() -> bool: return not g.progress.psync.reporter.has_pending(), 5.0)
 	check(not g.progress.psync.reporter.has_pending(), "the floor report was sent and acknowledged by the offline backend")
@@ -448,11 +448,11 @@ func _chest() -> void:
 	check(d.open_chest() and opened[0] == 1, "opening the chest")
 	await until(func() -> bool: return g.rewards.gear_pending() == 0, 5.0)
 	await ticks(3)
-	check(_loot_count(m) >= loot_n0 + 2, "the chest drops gold and its finds (gear first) on the ground (%d -> %d)" % [loot_n0, _loot_count(m)])
+	check(_loot_count(m) >= loot_n0 + 2, "the chest drops its finds (gear first) on the ground (%d -> %d)" % [loot_n0, _loot_count(m)])
 	check(not d.open_chest() and d.chest_done and not d.hud_state()["chest"] and _it("depths_chest").is_empty() and d.map_floor()["chest"] == null, "a chest opens once; it leaves the HUD, the map and the clickables")
 	check(ev("banner").any(func(e: Dictionary) -> bool: return String(e["ctx"]["title"]) == "The chest opens"), "a banner reports the chest")
 	check(int(DmDepthsRewards.chest_drops(5.0)) == 3 and DmDepthsRewards.chest_drops(15.0) == 4 and DmDepthsRewards.chest_drops(4.0) == 3, "chest size: 3 at depth 5, one more every ten floors")
-	# the drops are walk-over loot on this floor and go away with it
+	# the drops are click-to-pick-up loot on this floor and go away with it
 	var chronicle_floors := float(d.chronicle.view()["life"].get("depths.floors", 0.0))
 	check(chronicle_floors >= 4.0 and float(d.chronicle.view()["life"].get("depths.chests", 0.0)) == 1.0, "the chronicle counts floors (%d) and the chest" % int(chronicle_floors))
 
