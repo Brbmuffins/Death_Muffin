@@ -13,7 +13,9 @@
 # slow), so the longest ones no longer start last and decide the total.
 # With --jobs > 1: the job count is capped by the machine's free cores (24 cores, load 20 -> 2 jobs), so a run never piles onto a busy
 # machine (check-godot.sh also lets only one check run at a time); a suite that fails in the pool is run once more alone at the end and only
-# its retry counts (child-process timeouts trip under load). Lines appear in completion order (each suite's line plus any FAIL detail is
+# its retry counts (child-process timeouts trip under load). A suite gets a time limit from its usual time in suite-times.tsv (10x, at least
+# 4 min, at most 30; 15 min when it has no time yet): a wait that never ends (2026-10-12: an agent's new check awaited a flush forever and held the
+# one test slot for 30 + 30 min) fails fast with "timed out", and a timeout is not retried alone (load does not make 20 s take 4 min). Lines appear in completion order (each suite's line plus any FAIL detail is
 # printed whole, never interleaved).
 # Every running suite gets its own XDG_DATA_HOME/CONFIG/CACHE, so user:// (progress, loadout and settings files keyed by character id) is
 # never shared between suites or runs. Network ports come from godot/tests/common/dm_test_ports.gd (random, probed free).
@@ -102,11 +104,15 @@ run_one() {
   mkdir -p "$T/$i/data" "$T/$i/config" "$T/$i/cache"
   t0=$(date +%s.%N)
   local syncnav=1; [ ${#pace[@]} -eq 0 ] && syncnav=""   # DM_SYNC_NAV: the world's navigation merges in step with --fixed-fps (world_builder.gd)
+  local usual limit
+  usual=$(awk -F'\t' -v r="$r" '$2 == r { print $1; exit }' "$TIMES_FILE" 2>/dev/null)
+  if [ -n "$usual" ]; then limit=$(awk -v u="$usual" 'BEGIN { l = int(u * 10); if (l < 240) l = 240; if (l > 1800) l = 1800; print l }'); else limit=900; fi
   out=$(DM_SYNC_NAV="$syncnav" XDG_DATA_HOME="$T/$i/data" XDG_CONFIG_HOME="$T/$i/config" XDG_CACHE_HOME="$T/$i/cache" \
-        timeout 1800 nice -n "$n" "$G" --headless ${pace[@]+"${pace[@]}"} --path godot --script "res://${r#godot/}" 2>&1); code=$?
+        timeout "$limit" nice -n "$n" "$G" --headless ${pace[@]+"${pace[@]}"} --path godot --script "res://${r#godot/}" 2>&1); code=$?
   rm -rf "$T/$i"
   line=$(echo "$out" | grep -iE '[0-9]+ (/ [0-9]+ )?passed' | tail -1)
-  if [ $code -ne 0 ] && [ -n "$defer" ]; then   # retried alone after the pool; say so, never hide it
+  [ $code -eq 124 ] && line="timed out after ${limit}s (usually ${usual:-?}s): a wait in the suite never ended"
+  if [ $code -ne 0 ] && [ $code -ne 124 ] && [ -n "$defer" ]; then   # retried alone after the pool; say so, never hide it
     { flock 9; echo "$i" >> "$T/retry"; echo "($t/$(basename "$r") failed in the pool, load $(cut -d' ' -f1 /proc/loadavg): retrying it alone at the end; $(echo "$out" | grep -E '^FAIL' | head -1 | cut -c1-140))"; } 9>"$T/lock"; return
   fi
   [ $code -ne 0 ] && : > "$T/failed"

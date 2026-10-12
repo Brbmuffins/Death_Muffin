@@ -965,6 +965,7 @@ test('failedSuites: 1-3 failing suite lines re-run, anything else does not', () 
   assert.deepEqual(failedSuites('a  r.gd  exit=1\nb  r.gd  exit=2\nc  r.gd  exit=1\nd  r.gd  exit=1'), []);
   assert.deepEqual(failedSuites('GODOT TESTS: repo hygiene FAILED (npm run hygiene)'), []);
   assert.deepEqual(failedSuites('a  r.gd  exit=124\nGODOT TESTS: timed out after 85 minutes'), []);
+  assert.deepEqual(failedSuites('next_gathering     run.gd           exit=124  timed out after 240s (usually 18.9s): a wait in the suite never ended\nGODOT TESTS: quick (5 suites) — 4 passed, 1 FAILED'), [], 'a suite timeout is not re-run');
 });
 
 test('step budget: a session that runs out of steps writes a handoff note and a fresh session finishes the work, invisibly to the thread', async () => {

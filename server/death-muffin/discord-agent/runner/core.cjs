@@ -55,7 +55,7 @@ function progressNote({ status, check, mins }) {
 // The suites a Godot check failed, when a re-run of just them makes sense: 1-3 failing suite lines and no failure outside the suites (hygiene,
 // fixtures, a timeout, nothing ran). Otherwise [].
 function failedSuites(out) {
-  if (/GODOT TESTS: (repo hygiene|fixture generation|timed out|.*no suites ran)/.test(out)) return [];
+  if (/GODOT TESTS: (repo hygiene|fixture generation|timed out|.*no suites ran)/.test(out) || / exit=124 /.test(out)) return [];   // a suite timeout is a wait that never ends, not load
   const bad = [...new Set([...String(out).matchAll(/^([A-Za-z0-9_-]+)\s+\S+\s+exit=([1-9]\d*)/gm)].map((m) => m[1]))];
   return bad.length >= 1 && bad.length <= 3 ? bad : [];
 }

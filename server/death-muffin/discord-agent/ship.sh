@@ -79,7 +79,7 @@ if [ "$MODE" = godot ] && [ ${#CHECK_ARGS[@]} -eq 0 ] && [ "$(g rev-parse HEAD^{
 elif ! "$CHECK" "${CHECK_ARGS[@]}" >"$TOOLS/state/ship-$JOBID.tests.log" 2>&1; then
   # godot: 1-3 failing suites (and nothing failing outside the suites) get one re-run of just those, as the runner does before a proposal
   TL="$TOOLS/state/ship-$JOBID.tests.log"; FLAKY=""
-  if [ "$MODE" = godot ] && ! grep -qE 'GODOT TESTS: (repo hygiene|fixture generation|timed out|.*no suites ran)' "$TL"; then
+  if [ "$MODE" = godot ] && ! grep -qE 'GODOT TESTS: (repo hygiene|fixture generation|timed out|.*no suites ran)| exit=124 ' "$TL"; then
     FLAKY=$(grep -oE '^[A-Za-z0-9_-]+ +[^ ]+ +exit=[1-9][0-9]*' "$TL" | awk '{print $1}' | sort -u)
     [ "$(echo "$FLAKY" | grep -c .)" -le 3 ] || FLAKY=""
   fi
