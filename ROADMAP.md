@@ -6,10 +6,10 @@ over new content, necromancer focus. Open gaps are listed once, in [KNOWN-GAPS.m
 
 ## Now: necromancer polish (no new content)
 
-- **Rendered performance:** measure a real-GPU frame budget on the owner's and Helix's PCs (Hollow Graves with 20+ enemies
-  and a boss, 1080p and 1440p, Low and High), including first-frame and shader hitches. Forward+/FSR only after that, on a
-  separate branch behind a flag (KNOWN-GAPS: Performance). Phase B is pulled (DECISIONS B12): bring it back one part per
-  owner-approved test build from tag `archive/perf-phase-b`.
+- **Performance:** the in-game benchmark (character select -> Benchmark) is the measuring stick; experiments go out as test builds
+  (`server/death-muffin/publish-test-build.sh`). Next: HUD draw calls, then combat work over several cores (KNOWN-GAPS: Performance).
+  Forward+/FSR only after that, behind a flag. Phase B is pulled (DECISIONS B12): bring it back one part per owner-approved test build
+  from tag `archive/perf-phase-b`.
 - **Combat feel and loot** for the four disciplines: tuning from playtests, readability of rites and statuses, gear and
   affix legibility, the first hour (Next-step box, counsel tips, guide NPCs).
 - **Rejoin window** (D13) and the **party gaps** (KNOWN-GAPS: Party and online).

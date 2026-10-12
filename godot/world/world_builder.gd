@@ -36,7 +36,13 @@ const PROP_CELL := 12.0
 const SHADOW_RANGE := 32.0
 ## Runtime range (Graphics preset: further on High / Ultra); SHADOW_RANGE on Low / Medium.
 var shadow_range := SHADOW_RANGE
-var _shadow_cells: Array = []   # {node, x0, z0, x1, z1, on}
+var _sc_nodes: Array = []   ## prop cells that can drop their moon shadow; parallel arrays: rect and whether it casts now
+var _sc_x0 := PackedFloat64Array()
+var _sc_z0 := PackedFloat64Array()
+var _sc_x1 := PackedFloat64Array()
+var _sc_z1 := PackedFloat64Array()
+var _sc_on := PackedByteArray()
+var _sc_cursor := -1            ## -1 = no pass running; else the next cell of the running pass
 var _shadow_t := 0.0
 const GROW := 0.55           # prop/node obstruction grow for the navmesh (the baker does not inflate projected obstructions)
 
@@ -491,7 +497,12 @@ func _prop_batch(parent: Node3D, spec: Dictionary, plist_all: Array) -> void:
 			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			parent.add_child(mmi)
 			if casts:
-				_shadow_cells.append({"node": mmi, "x0": key.x * PROP_CELL, "z0": key.y * PROP_CELL, "x1": (key.x + 1) * PROP_CELL, "z1": (key.y + 1) * PROP_CELL, "on": true})
+				_sc_nodes.append(mmi)
+				_sc_x0.append(key.x * PROP_CELL)
+				_sc_z0.append(key.y * PROP_CELL)
+				_sc_x1.append((key.x + 1) * PROP_CELL)
+				_sc_z1.append((key.y + 1) * PROP_CELL)
+				_sc_on.append(1)
 
 func _prop_light(parent: Node3D, p: Dictionary, L: Dictionary, area: String) -> void:
 	var col := _hex(L.color)
@@ -504,6 +515,7 @@ func _prop_light(parent: Node3D, p: Dictionary, L: Dictionary, area: String) -> 
 	light.visible = false
 	parent.add_child(light)
 	prop_lights.append({"node": light, "x": p.x, "z": p.z, "area": area})
+	_lights_dirty = true
 	# The flame itself (the web draws point sprites): a small unshaded glow.
 	var sm := SphereMesh.new()
 	sm.radius = 0.1
@@ -570,21 +582,58 @@ func _light_pools(parent: Node3D, srcs: Array, area: String) -> void:
 	parent.add_child(mi)
 
 ## Only the lights nearest the focus (in drawn areas) are on: the Compatibility renderer has a small per-object light budget.
+## No allocations: squared distances go to a reused array, the budget's cut-off is the light_near-th smallest of a native sort.
+var _ll_d := PackedFloat64Array()
+var _ll_sorted := PackedFloat64Array()
+var _ll_x := PackedFloat64Array()      ## per light, parallel to prop_lights (rebuilt when `_lights_dirty`)
+var _ll_z := PackedFloat64Array()
+var _ll_on := PackedByteArray()        ## last visibility written: 0 off, 1 on, 2 unknown
+var _ll_lights: Array = []
+var _ll_areas: Array[Node3D] = []
+var _lights_dirty := true              ## set wherever prop_lights changes
+
 func update_light_lod(fx: float, fz: float) -> void:
-	var cand: Array = []
-	for e in prop_lights:
-		var an: Node3D = area_nodes[e.area]
-		if not an.visible:
-			e.node.visible = false
-			continue
-		var d := Vector2(e.x - fx, e.z - fz).length()
-		if d < 40.0:
-			cand.append([d, e])
+	var n := prop_lights.size()
+	if _lights_dirty or _ll_x.size() != n:
+		_lights_dirty = false
+		_ll_x.resize(n)
+		_ll_z.resize(n)
+		_ll_d.resize(n)
+		_ll_on.resize(n)
+		_ll_lights.clear()
+		_ll_areas.clear()
+		for i in n:
+			var e: Dictionary = prop_lights[i]
+			_ll_x[i] = e.x
+			_ll_z[i] = e.z
+			_ll_on[i] = 2
+			_ll_lights.append(e.node)
+			_ll_areas.append(area_nodes[e.area])
+	_ll_sorted.resize(0)
+	for i in n:
+		var dx := _ll_x[i] - fx
+		var dz := _ll_z[i] - fz
+		var d2 := dx * dx + dz * dz
+		if d2 < 1600.0 and _ll_areas[i].visible:
+			_ll_d[i] = d2
+			_ll_sorted.append(d2)
 		else:
-			e.node.visible = false
-	cand.sort_custom(func(a, b): return a[0] < b[0])
-	for i in cand.size():
-		cand[i][1].node.visible = i < light_near
+			_ll_d[i] = -1.0
+	var budget := mini(light_near, _ll_sorted.size())
+	var cut := -1.0
+	if budget > 0:
+		_ll_sorted.sort()
+		cut = _ll_sorted[budget - 1]
+	var taken := 0
+	for i in n:
+		var d2 := _ll_d[i]
+		var on := d2 >= 0.0 and d2 <= cut and taken < budget
+		if on:
+			taken += 1
+		var v := 1 if on else 0
+		if _ll_on[i] != v:
+			_ll_on[i] = v
+			_ll_lights[i].visible = on
 
 var _lod_t := 0.0
 var _lod_x := 1e9
@@ -595,12 +644,7 @@ var _lod_areas := -1
 ## Per-frame entry for update_light_lod: the budget (nearest N of the lights within 40 m) only needs a fresh scan + sort when the focus moved,
 ## the preset's N changed or an area was streamed in / out (it ran every frame, ~0.5 ms with the Nave's lights); otherwise at most every 100 ms.
 func tick_light_lod(fx: float, fz: float, dt: float) -> void:
-	var mask := 0
-	var bit := 1
-	for id in world.order:
-		if (area_nodes[id] as Node3D).visible:
-			mask |= bit
-		bit <<= 1
+	var mask := _stream_mask
 	_lod_t -= dt
 	if _lod_t > 0.0 and mask == _lod_areas and light_near == _lod_near and absf(fx - _lod_x) + absf(fz - _lod_z) < 1.5:
 		return
@@ -611,36 +655,79 @@ func tick_light_lod(fx: float, fz: float, dt: float) -> void:
 	_lod_z = fz
 	update_light_lod(fx, fz)
 
-## Cells further than SHADOW_RANGE from the hero stop casting moon shadows (WorldView); re-checked 4x a second, toggled on change only.
+## Cells further than SHADOW_RANGE from the hero stop casting moon shadows (WorldView); re-checked 4x a second, toggled on change only. A pass
+## walks SC_CHUNK cells per frame (the whole list in one call when dt is 0: warm-up), so the re-check is not a once-per-15-frames spike.
+const SC_CHUNK := 48
+
 func update_shadow_cells(fx: float, fz: float, dt: float) -> void:
-	_shadow_t -= dt
-	if _shadow_t > 0.0:
-		return
-	_shadow_t = 0.25
-	# A rebuilt Depths floor frees its prop cells (clear_depths_floor): drop those entries.
-	var i := _shadow_cells.size() - 1
-	while i >= 0:
-		if not is_instance_valid(_shadow_cells[i].node):
-			_shadow_cells.remove_at(i)
-		i -= 1
-	for c in _shadow_cells:
-		var dx := maxf(maxf(float(c.x0) - fx, fx - float(c.x1)), 0.0)
-		var dz := maxf(maxf(float(c.z0) - fz, fz - float(c.z1)), 0.0)
-		var on := dx * dx + dz * dz < shadow_range * shadow_range
-		if on != bool(c.on):
-			c.on = on
-			(c.node as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if _sc_cursor < 0:
+		_shadow_t -= dt
+		if _shadow_t > 0.0:
+			return
+		_shadow_t = 0.25
+		_sc_cursor = 0
+	var n := _sc_nodes.size()
+	var end := n if dt <= 0.0 else mini(_sc_cursor + SC_CHUNK, n)
+	var r2 := shadow_range * shadow_range
+	var i := _sc_cursor
+	while i < end:
+		# A rebuilt Depths floor frees its prop cells (clear_depths_floor): drop those entries.
+		if not is_instance_valid(_sc_nodes[i]):
+			_sc_nodes.remove_at(i)
+			_sc_x0.remove_at(i)
+			_sc_z0.remove_at(i)
+			_sc_x1.remove_at(i)
+			_sc_z1.remove_at(i)
+			_sc_on.remove_at(i)
+			end -= 1
+			n -= 1
+			continue
+		var dx := maxf(maxf(_sc_x0[i] - fx, fx - _sc_x1[i]), 0.0)
+		var dz := maxf(maxf(_sc_z0[i] - fz, fz - _sc_z1[i]), 0.0)
+		var on := dx * dx + dz * dz < r2
+		if on != (_sc_on[i] == 1):
+			_sc_on[i] = 1 if on else 0
+			(_sc_nodes[i] as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		i += 1
+	_sc_cursor = -1 if i >= n else i
 
 
-## Streaming: draw only the areas near the focus (areas beyond the fog are skipped entirely).
+## Streaming: draw only the areas near the focus (areas beyond the fog are skipped entirely). Also leaves `_stream_mask` (bit per
+## drawn area, in world.order) for tick_light_lod. Rect and node arrays are built once (the rects never change after build).
+var _stream_mask := 0
+var _st_x0 := PackedFloat64Array()
+var _st_x1 := PackedFloat64Array()
+var _st_z0 := PackedFloat64Array()
+var _st_z1 := PackedFloat64Array()
+var _st_nodes: Array[Node3D] = []
+
 func update_streaming(fx: float, fz: float) -> void:
-	for id in world.order:
-		var r: Dictionary = area_rects[id]
-		var dx := maxf(maxf(r.x0 - fx, fx - r.x1), 0.0)
-		var dz := maxf(maxf(r.z0 - fz, fz - r.z1), 0.0)
-		var show := Vector2(dx, dz).length() < STREAM_DIST
-		if area_nodes[id].visible != show:
-			area_nodes[id].visible = show
+	var n: int = world.order.size()
+	if _st_nodes.size() != n:
+		_st_nodes.clear()
+		_st_x0.resize(n)
+		_st_x1.resize(n)
+		_st_z0.resize(n)
+		_st_z1.resize(n)
+		for i in n:
+			var id = world.order[i]
+			var r: Dictionary = area_rects[id]
+			_st_x0[i] = r.x0
+			_st_x1[i] = r.x1
+			_st_z0[i] = r.z0
+			_st_z1[i] = r.z1
+			_st_nodes.append(area_nodes[id])
+	var mask := 0
+	for i in n:
+		var dx := maxf(maxf(_st_x0[i] - fx, fx - _st_x1[i]), 0.0)
+		var dz := maxf(maxf(_st_z0[i] - fz, fz - _st_z1[i]), 0.0)
+		var show := dx * dx + dz * dz < STREAM_DIST * STREAM_DIST
+		var nd := _st_nodes[i]
+		if nd.visible != show:
+			nd.visible = show
+		if show:
+			mask |= 1 << i
+	_stream_mask = mask
 
 func area_at(x: float, z: float) -> String:
 	for id in world.order:
@@ -1119,6 +1206,7 @@ func _build_depths_floor_raw(f: Dictionary) -> void:
 			(n as Node3D).visible = false
 	_sample_lights = prop_lights.filter(func(e): return e.area == "depths")
 	prop_lights = prop_lights.filter(func(e): return e.area != "depths")
+	_lights_dirty = true
 	var root := Node3D.new()
 	root.name = "DepthsFloor"
 	parent.add_child(root)
@@ -1172,6 +1260,7 @@ func _build_depths_floor_raw(f: Dictionary) -> void:
 				pool_pos.append({"x": q.x, "z": q.z, "y": float(spec.light.y) * float(q.scale), "L": spec.light})
 	_light_pools(root, pool_pos, "depths")
 	_depths_gen_lights = prop_lights.slice(before)
+	_lights_dirty = true
 	# Stairs and chest: stairwells (DmStairMesh; the way up cold, the way down ember, sealed = dim), the chest a small box.
 	var up_mat := StandardMaterial3D.new()
 	up_mat.albedo_color = Color(0.18, 0.2, 0.26)
@@ -1216,11 +1305,13 @@ func clear_depths_floor() -> void:
 	_depths_floor_root = null
 	for e in _depths_gen_lights:
 		prop_lights.erase(e)
+		_lights_dirty = true
 	_depths_gen_lights = []
 	_depths_stair_mat = null
 	_depths_chest_mat = null
 	if not _sample_lights.is_empty():
 		prop_lights.append_array(_sample_lights)
+		_lights_dirty = true
 		_sample_lights = []
 	for n in _sample_depths_nodes:
 		if is_instance_valid(n):

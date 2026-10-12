@@ -437,6 +437,7 @@ func _build_map_column() -> void:
 	prog_lbl.bbcode_enabled = true
 	prog_lbl.fit_content = true
 	prog_lbl.scroll_active = false
+	prog_lbl.clip_contents = false   # fit_content: the box is the text, nothing to clip (a clip is a scissor state change)
 	prog_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	prog_lbl.custom_minimum_size.x = 200
 	prog_lbl.add_theme_font_override("normal_font", DmUi.font("body"))
@@ -593,6 +594,7 @@ func _build_toasts_banner_prompts() -> void:
 	prompt_rt.bbcode_enabled = true
 	prompt_rt.fit_content = true
 	prompt_rt.scroll_active = false
+	prompt_rt.clip_contents = false
 	prompt_rt.autowrap_mode = TextServer.AUTOWRAP_OFF
 	prompt_rt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	prompt_rt.add_theme_font_override("normal_font", DmUi.font("body"))
@@ -608,6 +610,7 @@ func _build_toasts_banner_prompts() -> void:
 	node_tip_rt.bbcode_enabled = true
 	node_tip_rt.fit_content = true
 	node_tip_rt.scroll_active = false
+	node_tip_rt.clip_contents = false
 	node_tip_rt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	node_tip_rt.custom_minimum_size.x = 236
 	node_tip_rt.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1059,6 +1062,7 @@ func _build_death() -> void:
 	death.set_anchors_preset(Control.PRESET_FULL_RECT)
 	death.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	death.modulate.a = 0.0
+	death.visible = false   # its 48 rings are not drawn while it is faded out
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_CENTER)
 	v.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -1600,7 +1604,11 @@ func _apply_misc(v: Dictionary) -> void:
 	death_sub.text = String(dv.get("sub", ""))
 	if show != bool(death.get_meta("shown", false)):
 		death.set_meta("shown", show)
-		create_tween().tween_property(death, "modulate:a", 1.0 if show else 0.0, 0.8)
+		death.visible = true
+		var tw := create_tween()
+		tw.tween_property(death, "modulate:a", 1.0 if show else 0.0, 0.8)
+		if not show:
+			tw.tween_callback(func() -> void: death.visible = death.get_meta("shown", false))
 
 
 ## `max-width + text-overflow: ellipsis` for a one-line label that must keep its natural width otherwise.

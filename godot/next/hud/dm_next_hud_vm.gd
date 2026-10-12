@@ -20,6 +20,9 @@ const CORPSE_REACH := 13.0   ## the longest corpse pick of those rites (grave of
 var host: DmNextUiHost
 var _corpse_near := true     ## a usable corpse lies within CORPSE_REACH of the hero (refreshed once per build, not per slot)
 var _legion_n := 1
+var _area_id := "\u0001"
+var _area_def: Dictionary = {}
+var _rites := {}   ## id -> static rite facts (_rite)
 var _slots: Array[Dictionary] = []
 var _primary := {"icon": "", "key": "LMB"}
 var _map := {}
@@ -60,7 +63,7 @@ func build() -> Dictionary:
 		"resource_label": DmResources.label_for(family), "resource_color": DmResources.color_for(family) if family != "necromancer" else "",
 		"level": int(level), "xp": host.character.get("experience", 0), "xp_next": DmStats.xp_to_next(level),
 		"gold": int(host.character.get("gold", 0)), "shards": int(host.progress.get("shards", 0)),
-		"area_name": String(DmContent.area(g.area_id).get("name", "")), "area_progress": _area_progress(g.area_id),
+		"area_name": String(_area(g.area_id).get("name", "")), "area_progress": _area_progress(g.area_id),
 		"primary": _primary_slot(b), "slots": _slot_list(b, level),
 		"target": _target(g), "boss": _boss(g), "party": _party(g), "minimap": _minimap(g, b),
 		"brews": _brews(), "death": {"show": not b.alive, "sub": "The Chapterhouse will call you back…"},
@@ -100,9 +103,27 @@ func _boss(g: DmNextGame) -> Variant:
 
 # ---- hotbar -----------------------------------------------------------------------------------------------------------------------
 
+## What never changes about a rite (the table is static), looked up once: icon path, unlock level, costs, base cooldown.
+func _rite(id: String) -> Dictionary:
+	var r: Variant = _rites.get(id)
+	if r == null:
+		var d := DmAbilities.def(id)
+		r = {"icon": DmGameHud.art(String(d["icon"]).replace("art/", "")), "unlock": DmAbilities.unlock_level(id), "cd": float(d["cooldownMs"]),
+			"essence": d["essenceCost"], "soul": d.get("soulCost", 0), "primary": DmAbilities.is_primary(id)}
+		_rites[id] = r
+	return r
+
+
+## The current area's (static) definition, kept while the area stays the same.
+func _area(id: String) -> Dictionary:
+	if id != _area_id:
+		_area_id = id
+		_area_def = DmContent.area(id)
+	return _area_def
+
+
 func _primary_slot(b: DmHeroBody) -> Dictionary:
-	var d := DmAbilities.def(host.primary)
-	_primary["icon"] = DmGameHud.art(String(d["icon"]).replace("art/", ""))
+	_primary["icon"] = _rite(host.primary)["icon"]
 	_fill(_primary, host.primary, b, float(host.character.get("level", 1)), "LMB")
 	return _primary
 
@@ -115,30 +136,30 @@ func _slot_list(b: DmHeroBody, level: float) -> Array:
 	for i in n:
 		var s := _slots[i]
 		var id: String = host.keys[i] if i < host.keys.size() else host.signature
-		s["icon"] = DmGameHud.art(String(DmAbilities.def(id)["icon"]).replace("art/", ""))
+		s["icon"] = _rite(id)["icon"]
 		_fill(s, id, b, level, SLOT_KEYS[i] if i < SLOT_KEYS.size() else "")
 	return _slots.slice(0, n)
 
 
 ## Cost, cooldown sweep, affordable / locked flags of one rite. Cooldown comes from the caster's state (the host's numbers).
 func _fill(s: Dictionary, id: String, b: DmHeroBody, level: float, key: String) -> void:
-	var d := DmAbilities.def(id)
+	var d := _rite(id)
 	var caster := b.get_node_or_null("Rites") as DmRiteCaster
-	var base := float(d["cooldownMs"])
+	var base: float = d["cd"]
 	var total := base
 	if caster != null and caster.p.has("loadout"):
-		total = DmWeaponLine.ability_cooldown_ms(id, base, caster.p["loadout"], DmAbilities.is_primary(id))
+		total = DmWeaponLine.ability_cooldown_ms(id, base, caster.p["loadout"], d["primary"])
 	s["key"] = key
 	var souls_rite := b.family == "reaper"
-	s["cost"] = d.get("soulCost", 0) if souls_rite else d["essenceCost"]
+	s["cost"] = d["soul"] if souls_rite else d["essence"]
 	s["left_ms"] = caster.cooldown_left(id) if caster != null else 0.0
 	s["total_ms"] = total
 	var sp := soul_state(b)
 	var emp := sp.has("soulsMax") and DmAbilities.empowered(sp, id)   # Soul Harvest: charged souls make this rite free
 	s["empowered"] = emp
-	s["affordable"] = (int(sp.get("souls", 0)) >= int(s["cost"])) if souls_rite else (emp or b.resource >= float(d["essenceCost"]))
-	s["locked"] = DmAbilities.rite_level(level, host.dev_access) < DmAbilities.unlock_level(id)
-	s["unlock_level"] = DmAbilities.unlock_level(id)
+	s["affordable"] = (int(sp.get("souls", 0)) >= int(s["cost"])) if souls_rite else (emp or b.resource >= float(d["essence"]))
+	s["locked"] = DmAbilities.rite_level(level, host.dev_access) < float(d["unlock"])
+	s["unlock_level"] = d["unlock"]
 	s["needs"] = needs_of(id, _corpse_near, _legion_n)
 
 
@@ -218,7 +239,7 @@ func _omen(g: DmNextGame) -> Variant:
 		_omen_vm["name"] = g.meta.omen["name"]
 		_omen_vm["icon"] = DmGameHud.art(String(g.meta.omen["icon"]).replace("art/", ""))
 		_omen_vm["blurb"] = g.meta.omen["blurb"]
-	_omen_vm["visible"] = not bool(DmContent.area(g.area_id)["safe"])
+	_omen_vm["visible"] = not bool(_area(g.area_id)["safe"])
 	return _omen_vm
 
 
@@ -295,7 +316,7 @@ func _area_progress(area: String) -> String:
 		return "Walk north to the Hollow Graves · Click an enemy to attack · Keys 1-5 cast your rites"
 	if area == "depths" and host.shell.depths != null and host.shell.depths.active():
 		return host.shell.depths.progress_line()
-	var def := DmContent.area(area)
+	var def := _area(area)
 	if bool(def.get("safe", false)):
 		return "Sanctuary. The dead cannot follow you here."
 	return "<b>%d</b> slain here · Level %d dead" % [host.kills_in(area), int(float(def.get("level", 1)))]

@@ -15,7 +15,7 @@ except scan period 0.25 s, repath 0.3 s, corpse linger 1.4 s.
   reach `range + target.radius`. Kind extras: wraith chill + `bell_heal`, bone mage hex (`status_applied`, the status track applies them), colossus cleave 0.6x in 2.4 m.
   Plague bearer ruptures on death (2.5x dmg, `plague_pool` signal for the zone), `death_burst_frac` (Legion of the Unburied) on "killed".
 - Dies: `kill(reason)` reasons `killed crumbled sacrificed decayed`; `lifetime_s > 0` = decay (echo); owner dead/gone = crumble. Body frees itself after 1.4 s.
-- Soft separation between the legion (host loop computes a push velocity, no transform writes).
+- Soft separation between the legion (host loop computes a push velocity, no transform writes; positions are read once per thrall into scratch arrays, then the O(n^2) pair loop touches no nodes).
 - Credit: a blow's `from` is the thrall node: `thrall.owner_peer` is the peer to credit (rewards track: `DmEnemy.damaged/died` carry `from`).
 
 ## Integration with DmNextGame (the one entry point)
@@ -54,5 +54,6 @@ current rise (sigil + motes + dirt + sfx) and fall (bone chips, soul motes, sfx)
 
 ## Tests / known gaps
 Suite: `tests/thralls/run.gd` (corpse field double with the real signatures), plus `tests/rites/` for raising.
+
 Needs physics layer 4 named "thrall" (`DmThrall.LAYER_THRALL = 8`: thralls collide with the world only).
 The sim's exhume intent shape (`kind, cap, hp, damage, ...`) is still the contract between rites and the host.

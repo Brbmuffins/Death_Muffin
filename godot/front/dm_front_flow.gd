@@ -10,6 +10,7 @@ extends Control
 
 signal enter_world(character: Dictionary, session)
 signal logged_out
+signal benchmark_requested   ## the select screen's Benchmark button
 
 var api: DmApi
 ## Web VITE_OFFLINE_BUILD: local-player wording, no password / email.
@@ -99,6 +100,7 @@ func _gate_allows() -> bool:
 func go_select(switching: Dictionary = {}) -> void:
 	var s := DmCharSelectScreen.new(api, switching)
 	s.selected.connect(go_world)
+	s.benchmark_requested.connect(func() -> void: benchmark_requested.emit())
 	goto(s, "select")
 
 

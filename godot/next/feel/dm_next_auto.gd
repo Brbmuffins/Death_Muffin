@@ -29,6 +29,7 @@ var mem: Dictionary = {}                         ## AutoMoveMemory
 var aim_active := false                          ## auto has a target: the standing mouse-aim leaves the hero alone
 var stats := {"ticks": 0, "actions": 0, "casts": 0, "moves": 0, "yields": 0, "flasks": 0}
 var last_action: Variant = null                  ## the last select_action result (tests)
+var hold_position := false                       ## cast but never walk (the in-game benchmark keeps the hero at the room's centre)
 
 var _next_move := 0.0
 var _next_act := 0.0
@@ -95,7 +96,8 @@ func tick(now: float) -> void:
 	if now >= _next_act:
 		_next_act = now + ACT_MS
 		_act(b, c, ctx, p, now)
-	_move(ctx, dt, now)
+	if not hold_position:
+		_move(ctx, dt, now)
 
 
 ## Drop the target and stop the walk this adapter started (the gate closed, or a deliberate input took over).

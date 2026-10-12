@@ -63,10 +63,18 @@ static func lbl(text: String, size: int = 14, color: Color = DmUi.BONE_100, font
 
 
 ## Letter-spaced font (CSS letter-spacing in px; Godot spacing is whole pixels on the glyph advance).
+## One FontVariation per (font, spacing), shared by every label that uses it (they were one per label, each its own font resource).
+static var _spaced: Dictionary = {}
+
 static func spaced(base: String, px: float) -> Font:
+	var key := "%s|%d" % [base, int(round(px))]
+	var cached: Font = _spaced.get(key)
+	if cached != null:
+		return cached
 	var fv := FontVariation.new()
 	fv.base_font = DmUi.font(base)
 	fv.spacing_glyph = int(round(px))
+	_spaced[key] = fv
 	return fv
 
 

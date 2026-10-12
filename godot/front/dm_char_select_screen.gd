@@ -7,6 +7,7 @@ extends Control
 ## The server error string is shown verbatim on failure.
 
 signal selected(character: Dictionary)
+signal benchmark_requested   ## the small "Benchmark" button (bottom right); the front flow hands it to main
 
 const FIRST_RUN_DISCIPLINE := "gravecaller"   # archive/legacy-web:src/ui/firstHourRules.ts
 
@@ -89,6 +90,13 @@ func _ready() -> void:
 		c.chosen.connect(func(dd): choose(int(dd["classIndex"])))
 		grid.add_child(c)
 		cards.append(c)
+	var bench := Button.new()
+	bench.text = "Benchmark"
+	bench.theme_type_variation = "DmButtonSmall"
+	bench.tooltip_text = "Run the same fight on this PC (about 80 seconds) to compare builds and settings. Offline; your characters are not touched."
+	bench.pressed.connect(func() -> void: benchmark_requested.emit())
+	bench.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
+	add_child(bench)
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 

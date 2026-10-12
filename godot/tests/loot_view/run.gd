@@ -15,6 +15,7 @@ func _initialize() -> void:
 	t_scenarios()
 	t_rules()
 	t_signals_and_misc()
+	t_render_budget()
 	print("%d passed, %d failed" % [passed, failed])
 	quit(0 if failed == 0 else 1)
 
@@ -118,6 +119,26 @@ func t_rules() -> void:
 			ok(v.drop(r["drop"], Vector3.ZERO) == "ground" and v.count() == b2 + 1, "auto with full bag lands on the ground")
 		v.clear_all()
 	v.free()
+
+
+## Many drops on the ground must not multiply render cost: no shard lights, one beam / glow material per rarity.
+func t_render_budget() -> void:
+	var v := DmLootView.new()
+	root.add_child(v)
+	v.rand = func(): return 0.5
+	for i in 20:
+		v.shard(Vector3(i, 0, 0), 1)
+	ok(v.find_children("*", "Light3D", true, false).is_empty(), "shards carry no light (20 shards)")
+	v.tick(61.0, Vector3(99, 0, 99))
+	for i in 6:
+		v.drop({"item_id": "leg_legion_unburied_head", "quantity": 1}, Vector3(i, 0, 3))
+	var mats := {}
+	for b in v.find_children("*", "MeshInstance3D", true, false):
+		var mi := b as MeshInstance3D
+		if mi.mesh is CylinderMesh and (mi.mesh as CylinderMesh).height == 6.0:
+			mats[mi.material_override] = true
+	ok(mats.size() == 1, "beams of one rarity share one material (%d materials)" % mats.size())
+	v.queue_free()
 
 
 func t_signals_and_misc() -> void:

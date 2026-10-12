@@ -32,7 +32,6 @@ var _sub: Label
 func _init() -> void:
 	custom_minimum_size = Vector2(W, H)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	clip_contents = true
 	_kbd = DmHudKit.lbl("", 11, DmUi.BONE_100, "numeric", false)
 	_kbd.position = Vector2(3, 2)
 	_kbd.custom_minimum_size = Vector2(14, 14)

@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-10-12",
+    "title": "Smoother Big Fights and a Benchmark",
+    "items": [
+      "Big fights with lots of loot on the ground run much smoother: in a 30-enemy test fight the frame rate went from about 42 to 87 fps and the long freezes are gone. Soul shards no longer light the ground around them; their crystals still glow.",
+      "If the game ever falls far behind, it now slows for a moment instead of freezing up.",
+      "Effects, the HUD and the world do less work every frame (same look).",
+      "New Benchmark button on the character select screen: it plays the same offline fight on any PC (your characters are not touched) and shows your frame rate and what each part of the picture costs. Copy the result and share it with us. Near the end the fight freezes on purpose while it measures; a banner says so."
+    ]
+  },
+  {
+    "date": "2026-10-12",
     "title": "Fen Herbs in the Sexton's Acre",
     "items": [
       "Bog Myrtle (gravedigging 25) and Drowned Lotus (gravedigging 45) now also grow in the Sexton's Acre, so Start AFK and Grave Laborers work for every gravedigging tier."

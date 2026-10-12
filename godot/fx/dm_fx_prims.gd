@@ -23,6 +23,7 @@ var combat_transients := 0
 var _caps := DmFxData.caps()
 var _transients: Array = []
 var _decal_layers: Dictionary = {}
+var _spikes_shown := false
 var _sprite_layers: Dictionary = {}
 var _beam_layer: DmFxLayer
 var _live_layers: Array = []   # layers that hold items (or must hide once more): the only ones flushed each frame
@@ -129,6 +130,9 @@ func _init(parent: Node3D) -> void:
 	smoke = DmFxRing.new(int(_caps.get("smoke_particles", 900)), DmFxTex.get_tex("smoke"), false)
 	group.add_child(additive.node)
 	group.add_child(smoke.node)
+	for r in [additive, smoke]:
+		if r.node_small != null:
+			group.add_child(r.node_small)
 	_beam_layer = DmFxLayer.new(group, DmFxLayer.Kind.BEAM, null, true, "quad", 6, null)
 	_beam_layer.wake = _wake_layer
 	_glow_layer = _sprite_layer(DmFxTex.get_tex("glow"))
@@ -372,6 +376,12 @@ class DecalTr:
 	var rot0 := 0.0
 	var pulse_k := 0.0
 	var x0 := 0.0
+	var follow_fn: Callable   # o["follow"], read once
+	var off_x := 0.0          # sin(rot) * anchor * r and cos(rot) * anchor * r: the fixed offset from the followed point
+	var off_z := 0.0
+	var off_anchor := 0.0
+	var base_y := 0.04
+	var z0 := 0.0
 	var sheet_rate := -1.0   # flipbook sheet: < 0 none, 0 = one play over the decal's life, > 0 = loops per second
 
 	func setup() -> void:
@@ -385,21 +395,28 @@ class DecalTr:
 		rot0 = float(o.get("rot", 0.0))
 		pulse_k = float(o["pulse"]) if o.has("pulse") else 0.0
 		x0 = float(o.get("x", 0.0))
+		z0 = float(o.get("z", 0.0))
+		base_y = float(o.get("y", 0.04))
+		if has_follow:
+			follow_fn = o["follow"] as Callable
 
+	## `anchor` is set by decal() after setup(), so the fixed offset is computed on the first place() (and again if anchor changes).
 	func place() -> void:
-		var f: Variant = null
-		if o.has("follow") and (o["follow"] as Callable).is_valid():
-			f = (o["follow"] as Callable).call()
-		hidden = o.has("follow") and f == null
-		var x := float(o.get("x", 0.0))
-		var z := float(o.get("z", 0.0))
-		if f is Vector3:
-			x = f.x
-			z = f.z
-		var rot := float(o.get("rot", 0.0))
-		d.x = x + sin(rot) * anchor * float(o["r"])
-		d.y = float(o.get("y", 0.04))
-		d.z = z + cos(rot) * anchor * float(o["r"])
+		if anchor != off_anchor:
+			off_anchor = anchor
+			off_x = sin(rot0) * anchor * (r2 * 0.5)
+			off_z = cos(rot0) * anchor * (r2 * 0.5)
+		var x := x0
+		var z := z0
+		if has_follow:
+			var f: Variant = follow_fn.call() if follow_fn.is_valid() else null
+			hidden = f == null
+			if f is Vector3:
+				x = f.x
+				z = f.z
+		d.x = x + off_x
+		d.y = base_y
+		d.z = z + off_z
 
 	func release() -> void:
 		ended = true
@@ -859,6 +876,12 @@ func spike_line(x: float, z: float, dir_x: float, dir_z: float, length: float, w
 
 
 func _update_spikes() -> void:
+	if _spikes.is_empty():
+		if _spikes_shown:   # once, not on every idle frame
+			_spikes_shown = false
+			_spike_mesh.multimesh.visible_instance_count = 0
+		return
+	_spikes_shown = true
 	var mm := _spike_mesh.multimesh
 	var n := 0
 	for i in range(_spikes.size() - 1, -1, -1):

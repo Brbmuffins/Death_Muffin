@@ -8,6 +8,7 @@ extends RefCounted
 
 const NEEDLE_CRIT_CHANCE := 0.08
 const NEEDLE_CRIT_MULT := 1.8
+static var _unlock_memo := {}   ## id -> unlock level (the table is static; the HUD asks ~10 times per refresh)
 
 
 static func defs() -> Dictionary:
@@ -28,7 +29,11 @@ static func tune() -> Dictionary:
 
 ## Level a rite unlocks at (1 = from the start).
 static func unlock_level(id: String) -> float:
-	return float(DmCombatData.nn(def(id).get("unlockLevel"), 1))
+	var u: Variant = _unlock_memo.get(id)
+	if u == null:
+		u = float(DmCombatData.nn(def(id).get("unlockLevel"), 1))
+		_unlock_memo[id] = u
+	return u
 
 
 ## devAccess.active makes every gate pass; here `dev` carries it.

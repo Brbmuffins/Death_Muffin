@@ -9,6 +9,8 @@ extends Node3D
 ##         lv.drop({"item_id": "...", "quantity": 1, "instance": {...}}, pos)   # item (rules applied)
 ##         lv.drop({"kind": "gold", "amount": 12}, pos)  /  {"kind": "shard", "amount": 3}
 ##         var events := lv.tick(delta, hero_pos)        # [{kind:"gold"|"shard"|"item", amount:int, item?:Dictionary, pos:Vector3}]
+## Render budget: beams and ground glows share one material per rarity (the pulse is one write per frame), and shards carry no light of their own
+## (only their emissive crystal: a light per shard shaded everything around it; 60+ drops in a big fight made the GPU the bottleneck).
 ## The web has no hover/click pickup and no ground labels; `show_labels` (default off) is an optional extra for QA / screenshots.
 ## NOT ported: the Binbun ground markers / soul orbs, the lightFlash on shards (effects layer) -> the `fx` signal tells the scene when
 ## to play the pickup puff; warmTasks (a GPU-upload warm-up is a three.js concern).
@@ -54,6 +56,9 @@ var _icon_cache: Dictionary = {}
 static var _pile_meshes: Dictionary = {}
 static var _shard_mesh: ArrayMesh
 static var _glow_tex: Texture2D
+static var _beam_mats: Dictionary = {}   ## rarity -> the shared beam material (its pulse is written once per frame, not per drop)
+static var _glow_mats: Dictionary = {}   ## rarity -> the shared ground-glow material
+var _pulse_t := 0.0
 static var _placeholder_tex: Texture2D
 
 
@@ -152,11 +157,6 @@ func shard(pos: Vector3, amount: int, exact: bool = false) -> void:
 		mi.material_override = _shard_material()
 		mi.position = Vector3(p.x, 0.5, p.y)
 		add_child(mi)
-		var light := OmniLight3D.new()
-		light.light_color = Color("a26bff")
-		light.light_energy = 0.6
-		light.omni_range = 2.2
-		mi.add_child(light)
 		_drops.append({"kind": "shard", "node": mi, "x": p.x, "z": p.y, "amount": 1, "t": 0.0, "flying": false, "ttl": LOOT_EXPIRE_S["shard"], "prize": false})
 
 
@@ -192,9 +192,7 @@ func item(pos: Vector3, d: Dictionary, exact: bool = false) -> void:
 		cm.cap_bottom = false
 		beam.mesh = cm
 		beam.position.y = 3.0
-		var bm := _additive_material(color, 0.5 if rarity == "legendary" else 0.35)
-		bm.albedo_texture = _glow()
-		beam.material_override = bm
+		beam.material_override = _beam_material(rarity, color)
 		root.add_child(beam)
 	# ground glow decal (r 0.9, additive)
 	var glow := MeshInstance3D.new()
@@ -203,9 +201,7 @@ func item(pos: Vector3, d: Dictionary, exact: bool = false) -> void:
 	q.orientation = PlaneMesh.FACE_Y
 	glow.mesh = q
 	glow.position.y = 0.03
-	var gm := _additive_material(color, 0.7)
-	gm.albedo_texture = _glow()
-	glow.material_override = gm
+	glow.material_override = _glow_material(rarity, color)
 	root.add_child(glow)
 	var lab: Label3D = _make_label(root, d, meta, color) if show_labels else null
 	_drops.append({"kind": "item", "node": root, "icon": icon, "beam": beam, "label": lab, "meta": meta, "color": color, "common": rarity == "common", "x": p.x, "z": p.y, "amount": int(d.get("quantity", 1)), "item": d, "t": 0.0, "flying": false,
@@ -251,22 +247,29 @@ static func is_prize(rarity: String) -> bool:
 ## Advance drops; returns what the hero collected this frame (events in the order picked). hero_pos uses x/z.
 func tick(dt: float, hero_pos: Vector3) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	_pulse_t += dt
+	if not _beam_mats.is_empty():
+		var pa := 0.28 + sin(_pulse_t * 3.0) * 0.06   # the beams' slow pulse: one write per rarity instead of one per drop
+		for m: StandardMaterial3D in _beam_mats.values():
+			m.albedo_color.a = pa
 	var px := hero_pos.x
 	var pz := hero_pos.z
 	# Too many items: the oldest expire now (array is in drop order), ordinary ones before epic/legendary.
-	var surplus := -LOOT_ITEM_CAP
-	for d in _drops:
-		if d["kind"] == "item":
-			surplus += 1
-	for prize_too in [false, true]:
-		var i := 0
-		while i < _drops.size() and surplus > 0:
-			var d: Dictionary = _drops[i]
-			if d["kind"] == "item" and (prize_too or not d["prize"]):
-				_remove(i, "cap")
-				surplus -= 1
-			else:
-				i += 1
+	if _drops.size() > LOOT_ITEM_CAP:   # (items <= drops: under the cap there is nothing to count or expire)
+		var surplus := -LOOT_ITEM_CAP
+		for d in _drops:
+			if d["kind"] == "item":
+				surplus += 1
+		for pass_ in 2:
+			var prize_too := pass_ == 1
+			var i := 0
+			while i < _drops.size() and surplus > 0:
+				var d: Dictionary = _drops[i]
+				if d["kind"] == "item" and (prize_too or not d["prize"]):
+					_remove(i, "cap")
+					surplus -= 1
+				else:
+					i += 1
 	var i := _drops.size() - 1
 	while i >= 0:
 		var d: Dictionary = _drops[i]
@@ -275,7 +278,9 @@ func tick(dt: float, hero_pos: Vector3) -> Array[Dictionary]:
 		if d["t"] > d["ttl"] and not d["flying"]:
 			_remove(i + 1, "ttl")
 			continue
-		var dist := Vector2(px - d["x"], pz - d["z"]).length()
+		var ddx: float = px - d["x"]
+		var ddz: float = pz - d["z"]
+		var dist := sqrt(ddx * ddx + ddz * ddz)
 		var node: Node3D = d["node"]
 		if d["kind"] == "item":
 			(d["icon"] as Node3D).position.y = 0.7 + sin(d["t"] * 2.5) * 0.08
@@ -288,8 +293,6 @@ func tick(dt: float, hero_pos: Vector3) -> Array[Dictionary]:
 					d["label"] = _make_label(node, d["item"], d["meta"], d["color"])
 				elif lb != null and lb.visible != (near or show_labels):
 					lb.visible = near or show_labels
-			if d["beam"] != null:
-				((d["beam"] as MeshInstance3D).material_override as StandardMaterial3D).albedo_color.a = 0.28 + sin(d["t"] * 3.0) * 0.06
 			if dist < ITEM_PICKUP_RADIUS and d["t"] > ITEM_PICKUP_MIN_AGE and (try_take.is_null() or bool(try_take.call(d["item"]))):
 				var ev := {"kind": "item", "amount": d["amount"], "item": d["item"], "pos": node.position}
 				events.append(ev)
@@ -401,6 +404,23 @@ static func _glow() -> Texture2D:
 		t.height = 128
 		_glow_tex = t
 	return _glow_tex
+
+
+## One beam material per rarity, shared by every beam of that rarity (they batch, and the pulse is one write per frame in tick()).
+static func _beam_material(rarity: String, color: Color) -> StandardMaterial3D:
+	if not _beam_mats.has(rarity):
+		var m := _additive_material(color, 0.5 if rarity == "legendary" else 0.35)
+		m.albedo_texture = _glow()
+		_beam_mats[rarity] = m
+	return _beam_mats[rarity]
+
+
+static func _glow_material(rarity: String, color: Color) -> StandardMaterial3D:
+	if not _glow_mats.has(rarity):
+		var m := _additive_material(color, 0.7)
+		m.albedo_texture = _glow()
+		_glow_mats[rarity] = m
+	return _glow_mats[rarity]
 
 
 static func _additive_material(color: Color, alpha: float) -> StandardMaterial3D:

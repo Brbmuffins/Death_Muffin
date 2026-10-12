@@ -1,7 +1,7 @@
 # Decisions
 
 Owner decisions that shape the code. D1-D13 are the 2026-10-05 and 2026-10-07 rebuild decisions; B1-B10 the 2026-10-09 (B11: 2026-10-10)
-baseline decisions; B12 the 2026-10-10 Phase B rollback, B13 the carried approval after a ship conflict. Where a later decision overrode one, the entry says so.
+baseline decisions; B12 the 2026-10-10 Phase B rollback, B13 the carried approval after a ship conflict, B14 how performance work is measured and tried (and what it taught). Where a later decision overrode one, the entry says so.
 
 ## Rebuild decisions
 
@@ -80,3 +80,10 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
 - **B11. Tests never assert wall-clock time** (owner, 2026-10-10): timings print as `INFO perf:` lines only; FPS is judged on real hardware (F3 overlay). Deterministic counters (cold loads, node, draw-call and query counts) stay real checks.
 - **B12. Performance Phase B is pulled from `main`** (owner, 2026-10-10). In combat it crashed real players' GPUs to the desktop (NVIDIA and AMD, Compatibility renderer, no trace in the log); the build before it was confirmed stable. The ground-loot icons and a bad import were ruled out. The work (shared creature materials with instance uniforms, GPU-simulated motes, prop MultiMesh, prop lights capped at 8, opt-in Mobile renderer, GPU-time resolution governor, threading options) is kept in tag `archive/perf-phase-b`. It comes back one part at a time in owner-approved test builds; creature instance uniforms are the first suspect.
 - **B13. One approval carries through a ship conflict** (Helix, 2026-10-10: "a second approval is not required"). When a Discord agent ship hits a merge conflict, the runner syncs by itself and the agent resolves it; the resolved change ships on the original ✅ if it touches only the approved files, at the same or a lower tier, with no new messages in the thread (at most twice per approval). Anything else asks for a fresh ✅. Trade-off accepted: the conflict resolution is AI-written after the approval. `server/death-muffin/discord-agent/README.md` has the details.
+- **B14. Performance work is measured on real PCs and tried in test builds** (Helix, 2026-10-12). The in-game benchmark (a held offline
+  fight in the Bell Sanctum plus a render breakdown) runs on testers' PCs; risky changes ship first as unlisted test builds
+  (`publish-test-build.sh`), never straight to `main`. Learned on the way: Godot 4.7's separate render thread (`--render-thread separate`)
+  crashes this game on its first UI frame (engine race, not fixable in game code); thinking thralls / far enemies at 30 Hz cost thralls
+  half their hits for about 0.6 ms and was removed; loot on the ground was the GPU hog of big fights (a light per soul shard, a new
+  material per beam): shards carry no light now and beams share one material per rarity; physics catch-up is capped at 3 steps a frame
+  so an overloaded moment slows briefly instead of spiralling into a freeze.

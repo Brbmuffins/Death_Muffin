@@ -51,15 +51,18 @@ func _draw() -> void:
 		if glow.a > 0.0:
 			for i in 3:
 				draw_rect(Rect2(inner.position - Vector2(i + 1, i + 1), Vector2(w + 2 * (i + 1), inner.size.y + 2 * (i + 1))), Color(glow, glow.a * 0.18))
-		var pts := PackedVector2Array([inner.position, inner.position + Vector2(w, 0), inner.position + Vector2(w, inner.size.y), inner.position + Vector2(0, inner.size.y)])
 		# the web's gradient spans the fill element itself, so the end colour is always at the fill's right edge
-		if mid.a > 0.0:
+		if mid.a <= 0.0 and fill_a == fill_b:
+			# a flat fill is one batched rect, not a polygon (same pixels: neither is anti-aliased)
+			draw_rect(Rect2(inner.position, Vector2(w, inner.size.y)), fill_a)
+		elif mid.a > 0.0:
 			var xm := inner.position.x + w * mid_at
 			var y0 := inner.position.y
 			var y1 := inner.position.y + inner.size.y
 			draw_polygon(PackedVector2Array([Vector2(inner.position.x, y0), Vector2(xm, y0), Vector2(xm, y1), Vector2(inner.position.x, y1)]), PackedColorArray([fill_a, mid, mid, fill_a]))
 			draw_polygon(PackedVector2Array([Vector2(xm, y0), Vector2(inner.position.x + w, y0), Vector2(inner.position.x + w, y1), Vector2(xm, y1)]), PackedColorArray([mid, fill_b, fill_b, mid]))
 		else:
+			var pts := PackedVector2Array([inner.position, inner.position + Vector2(w, 0), inner.position + Vector2(w, inner.size.y), inner.position + Vector2(0, inner.size.y)])
 			draw_polygon(pts, PackedColorArray([fill_a, fill_b, fill_b, fill_a]))
 	if border.a > 0.0:
 		draw_rect(r, border, false, 1.0)

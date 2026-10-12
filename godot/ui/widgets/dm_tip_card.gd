@@ -49,6 +49,7 @@ func _init() -> void:
 	_body.bbcode_enabled = true
 	_body.fit_content = true
 	_body.scroll_active = false
+	_body.clip_contents = false   # fit_content: the box is the text
 	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_body.add_theme_color_override("default_color", DmUi.BONE_300)
 	v.add_child(_body)

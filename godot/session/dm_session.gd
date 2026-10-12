@@ -91,8 +91,19 @@ func get_roster() -> Array:
 	return out
 
 
+var _body_cache: Dictionary = {}   # peer id -> its DmSessionBody under _players
+
+
 func get_body(peer_id: int) -> DmSessionBody:
-	return _players.get_node_or_null("P%d" % peer_id) as DmSessionBody
+	var c: Variant = _body_cache.get(peer_id)   # asked ~10x a frame: the node-path lookup (string format + path parse) only when the cached body is gone
+	if c != null and is_instance_valid(c) and (c as Node).get_parent() == _players:
+		return c as DmSessionBody
+	var b := _players.get_node_or_null("P%d" % peer_id) as DmSessionBody
+	if b != null:
+		_body_cache[peer_id] = b
+	else:
+		_body_cache.erase(peer_id)
+	return b
 
 
 func get_bodies() -> Array:

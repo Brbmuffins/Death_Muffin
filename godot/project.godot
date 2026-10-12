@@ -34,6 +34,7 @@ theme/custom="res://ui/theme/dm_theme.tres"
 
 [physics]
 
+common/max_physics_steps_per_frame=3
 common/physics_interpolation=true
 
 [layer_names]

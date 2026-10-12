@@ -39,6 +39,7 @@ godot --headless --path godot --import          # first time, and after adding a
 godot --path godot                              # normal start: online, needs the live server
 godot --path godot -- --dev-offline             # testing only: local accounts in user://dm_dev_offline_db.json, no server
 godot --path godot -- --dev-offline --class=2   # skip the front flow, enter as account "tester" (1 Ossuary ... 4 Rotweaver)
+godot --path godot -- --benchmark               # the in-game benchmark (also the Benchmark button on character select); offline, ~80 s, see godot/next/perf/README.md
 ```
 
 `--world-demo` is an alias of `--dev-offline --class=2`. Older launch args (`--online`, `--offline`, `--next`) are accepted and
@@ -50,7 +51,7 @@ overlay, T waystone travel in the Chapterhouse, G auto-combat. F9 breaks all sea
 ## Tests
 
 ```
-tools/godot/run-all-tests.sh        # every godot/tests/*/ suite headless, --jobs N at once (default $DM_TEST_JOBS or 8, keep <= 8); one line per suite as it finishes, non-zero exit on any failure; ~2 min for all 70 (--fixed-fps 60 except the real-time groups; slowest first by tools/godot/suite-times.tsv, refresh it with --times <file>)
+tools/godot/run-all-tests.sh        # every godot/tests/*/ suite headless, --jobs N at once (default $DM_TEST_JOBS or 8, keep <= 8); one line per suite as it finishes, non-zero exit on any failure; ~2 min for all 71 (--fixed-fps 60 except the real-time groups; slowest first by tools/godot/suite-times.tsv, refresh it with --times <file>)
 tools/godot/run-all-tests.sh --only enemies,next_hud/run.gd   # just those dirs/files (--list prints the selection, unknown name exits 2); --jobs 1 = strictly serial
 npm run test:rules                  # shared rules (vitest, server/rules)
 npm run test:server                 # backend suites (node --test)

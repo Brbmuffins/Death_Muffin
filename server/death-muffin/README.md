@@ -36,6 +36,15 @@ Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (
 | `publish-godot-client.sh <git-rev>` | Exports the `Windows Desktop` preset of the Godot project (Godot 4.7.2 at `/home/ubuntu/tools/godot/godot`) from a committed revision into `/var/www/death-muffin/client/<version>/`, then writes `manifest.json` last and atomically (SHA-256 of every file plus the `online` block, which is carried over from the live manifest). Keeps the newest two builds. |
 | `set-online.sh on\|staff\|off ["message"]` | Edits only the `online` block of the live `manifest.json`: `on` = everyone, `staff` = staff accounts only, `off` = nobody (the message is shown as the lock). The launcher, the game and the lobby (if `DM_LOBBY_MANIFEST` is set) re-read it within about a minute; no release needed. |
 
+### Test builds
+
+`publish-test-build.sh <git-rev> <label>` exports an experimental client for the owner and one tester, without the launcher, the live manifest or any announcement. Same export as `publish-godot-client.sh` (scratch worktree of the committed rev, Godot 4.7.2, holds `~/death-muffin/deploy/.deploy.lock`), plus, in the scratch copy only, its own `user://` folder (`Death Muffin TEST`) and `application/config/dm_test_build="<label>"` (the window title then reads "Death Muffin — TEST BUILD <label>"). It writes `DeathMuffin-TEST-<label>-<sha>.zip` to `/var/www/death-muffin/test/<random 16-hex token>/` and prints the unlisted URL `https://muffindevelopment.com/death-muffin/test/<token>/<zip>`. Send that link to the tester; they unzip and run `DeathMuffin.exe`. The newest 3 test folders are kept.
+
+- Does not touch: `manifest.json`, the `online` lock, `client/` folders, `announce-release.sh` (no news, no Discord, no bug reports released), the backend, the launcher. `/death-muffin/test/` has no index page and nginx has no autoindex, so only the full link works.
+- Settings, saved login and tips live in the separate TEST folder (`%APPDATA%\Death Muffin TEST`), so the real client's are never read or overwritten. Sign in again in the test build (same account, same online character and backend).
+- Co-op only works between players on the same test build: the co-op handshake compares `DmSession.PROTOCOL`, not the build, so builds with the same PROTOCOL do connect, but different builds may desync. The online lock still applies: the test build reads the live `client/manifest.json` `online` block.
+- First run only: `/var/www/death-muffin` is root-owned; the script creates `test/` with `sudo -n install` (or prints the one command to run).
+
 ### Release flow
 
 1. Merge to `main`. For a release worth naming, add a new top entry (`title`, `items`) to `PATCH_NOTES.json`. Branches that add lines to the same entry merge cleanly: `.gitattributes` routes `PATCH_NOTES.json` through `tools/git/merge-patch-notes.mjs` (register it once per clone with `tools/git/install-merge-drivers.sh`; the VPS clone has it).

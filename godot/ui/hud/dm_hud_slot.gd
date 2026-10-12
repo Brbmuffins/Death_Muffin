@@ -51,7 +51,7 @@ func _init() -> void:
 	holder.custom_minimum_size = Vector2(BTN, BTN)
 	holder.mouse_filter = Control.MOUSE_FILTER_PASS
 	holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	holder.clip_contents = true
+	# no clip_contents: everything inside is laid out within the 62 px square, and a clip is a scissor state change per slot
 	holder.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	holder.gui_input.connect(func(e: InputEvent) -> void:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:

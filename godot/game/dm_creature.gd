@@ -90,6 +90,7 @@ var _one_shot_end := -1.0
 var _death_clip := ""
 var _loco_run := false
 var _last_ground := -1.0
+var _hitstop := false           ## opts.hitstop, read once (update() asks every frame)
 var _flinch_t := -1.0
 var _settled_t := 0.0
 var _recheck_t := 0.0
@@ -138,6 +139,7 @@ func _init(model_slug: String, o: Dictionary = {}) -> void:
 	slug = model_slug
 	rig_slug = model_slug
 	opts = o
+	_hitstop = bool(o.get("hitstop", false))
 	_shadow_on = bool(o.get("cast_shadow", true))
 	_spectral = bool(o.get("spectral", false))
 	_gear = bool(o.get("gear_tint", false))
@@ -799,7 +801,7 @@ static func lod_interval(cam: Camera3D, p: Vector3) -> float:
 func update(dt_real: float) -> void:
 	if ap == null or _disposed:
 		return
-	var dt := dt_real * (hitstop_scale if bool(opts.get("hitstop", false)) else 1.0)
+	var dt := dt_real * (hitstop_scale if _hitstop else 1.0)
 	ap.advance(dt)
 	if _fx_on:
 		_fx_step(dt)
@@ -1007,13 +1009,14 @@ func detach(obj: Node3D) -> void:
 			par.queue_free()
 
 func _root_rotation() -> Quaternion:
-	return root.global_transform.basis.orthonormalized().get_rotation_quaternion()
+	return root.global_basis.get_rotation_quaternion()   # (get_rotation_quaternion orthonormalizes itself)
 
 func _tick_props(dt: float) -> void:
 	var any_cal := false
 	for a in _attached:
 		if a.cal > 0:
 			any_cal = true
+			break
 	if any_cal:
 		if _settled_t > 0.25:
 			var root_q := _root_rotation()
@@ -1035,7 +1038,7 @@ func _tick_props(dt: float) -> void:
 		if a.base_q == null:
 			continue
 		var att: BoneAttachment3D = a.att
-		var pq := att.global_transform.basis.orthonormalized().get_rotation_quaternion()
+		var pq := att.global_basis.get_rotation_quaternion()
 		var driven: Quaternion = pq * (a.base_q as Quaternion)
 		var up := driven * Vector3.UP
 		var want := root_q * (a.dir as Vector3)
@@ -1047,7 +1050,7 @@ func _tick_props(dt: float) -> void:
 		if _recheck_t <= 0.0:
 			_recheck_t = 2.0
 			for a in _attached:
-				var oq := (a.obj as Node3D).global_transform.basis.orthonormalized().get_rotation_quaternion()
+				var oq := (a.obj as Node3D).global_basis.get_rotation_quaternion()
 				var upv := oq * Vector3.UP
 				if upv.angle_to(root_q * (a.dir as Vector3)) > deg_to_rad(25.0):
 					a.cal = 1

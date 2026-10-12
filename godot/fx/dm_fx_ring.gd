@@ -3,24 +3,32 @@ extends RefCounted
 ## Port of Effects.ts ParticleSystem: a CPU-simulated ring buffer of motes drawn as one MultiMesh of billboards per blend mode
 ## (additive "glow" ring of 3500, normal-blend "smoke" ring of 900). Same emit options, same alpha/size curves.
 
-var node: MultiMeshInstance3D
+## While at most SMALL_CAP motes are live only a small MultiMesh is drawn and uploaded (a full-ring buffer is 224 KB for the additive ring, and
+## `MultiMesh.buffer` must always be the whole buffer). Both MultiMeshes are allocated once here and never resized; only visibility switches.
+const SMALL_CAP := 256
+
+var node: MultiMeshInstance3D        # full-size ring
 var mm: MultiMesh
+var node_small: MultiMeshInstance3D  # SMALL_CAP ring, sibling of `node` (visibility is not inherited)
+var mm_small: MultiMesh
 var capacity: int
 
 var _pos: PackedFloat32Array
 var _vel: PackedFloat32Array
 var _col: PackedFloat32Array
 var _life: PackedFloat32Array
-var _max_life: PackedFloat32Array
+var _inv_life: PackedFloat32Array   # 1 / the mote's full life
 var _base_size: PackedFloat32Array
 var _grav: PackedFloat32Array
 var _drag: PackedFloat32Array
 var _shrink: PackedFloat32Array
-var _buf: PackedFloat32Array
+var _buf: PackedFloat32Array        # the buffer update() is writing (swapped with _buf_other while the small ring is the one drawn)
+var _buf_other: PackedFloat32Array
 var _cursor := 0
 var _active := 0
 var _list: PackedInt32Array = PackedInt32Array()  # indices of live motes
 var _shown := false
+var _mode := 0   # 0 neither ring shown yet, 1 full ring, 2 small ring
 
 
 func _init(cap: int, tex: Texture2D, additive: bool) -> void:
@@ -29,26 +37,41 @@ func _init(cap: int, tex: Texture2D, additive: bool) -> void:
 	_vel = PackedFloat32Array(); _vel.resize(cap * 3)
 	_col = PackedFloat32Array(); _col.resize(cap * 3)
 	_life = PackedFloat32Array(); _life.resize(cap)
-	_max_life = PackedFloat32Array(); _max_life.resize(cap)
+	_inv_life = PackedFloat32Array(); _inv_life.resize(cap)
 	_base_size = PackedFloat32Array(); _base_size.resize(cap)
 	_grav = PackedFloat32Array(); _grav.resize(cap)
 	_drag = PackedFloat32Array(); _drag.resize(cap)
 	_shrink = PackedFloat32Array(); _shrink.resize(cap)
 	_buf = PackedFloat32Array(); _buf.resize(cap * 16)
-	mm = MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
 	var q := QuadMesh.new()
 	q.size = Vector2(1, 1)
-	mm.mesh = q
-	mm.instance_count = cap
-	mm.visible_instance_count = 0
-	node = MultiMeshInstance3D.new()
-	node.multimesh = mm
-	node.material_override = DmFxTex.material("particle", additive, tex, 5)
-	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	node.custom_aabb = AABB(Vector3(-500, -500, -500), Vector3(1000, 1000, 1000))
-	node.visible = false
+	var mat := DmFxTex.material("particle", additive, tex, 5)
+	mm = _make_mm(q, cap)
+	node = _make_node(mm, mat)
+	if cap > SMALL_CAP:
+		_buf_other = PackedFloat32Array(); _buf_other.resize(SMALL_CAP * 16)
+		mm_small = _make_mm(q, SMALL_CAP)
+		node_small = _make_node(mm_small, mat)
+
+
+static func _make_mm(q: Mesh, cap: int) -> MultiMesh:
+	var m := MultiMesh.new()
+	m.transform_format = MultiMesh.TRANSFORM_3D
+	m.use_colors = true
+	m.mesh = q
+	m.instance_count = cap
+	m.visible_instance_count = 0
+	return m
+
+
+static func _make_node(m: MultiMesh, mat: Material) -> MultiMeshInstance3D:
+	var nd := MultiMeshInstance3D.new()
+	nd.multimesh = m
+	nd.material_override = mat
+	nd.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	nd.custom_aabb = AABB(Vector3(-500, -500, -500), Vector3(1000, 1000, 1000))
+	nd.visible = false
+	return nd
 
 
 ## o: x y z count color(Color/int) spread speed up life size gravity drag shrink inward (Effects.ts EmitOptions).
@@ -89,7 +112,7 @@ func emit(o: Dictionary) -> void:
 		_vel[i * 3 + 2] = sin(va) * sp
 		var l := life * (0.7 + randf() * 0.6)
 		_life[i] = l
-		_max_life[i] = l
+		_inv_life[i] = 1.0 / l
 		_base_size[i] = size * (0.7 + randf() * 0.6)
 		_grav[i] = gravity
 		_drag[i] = drag
@@ -97,8 +120,7 @@ func emit(o: Dictionary) -> void:
 		_col[i * 3] = c.r
 		_col[i * 3 + 1] = c.g
 		_col[i * 3 + 2] = c.b
-	node.visible = true
-	_shown = true
+	_shown = true   # update() picks which of the two rings is visible
 
 
 func active() -> int:
@@ -109,9 +131,19 @@ func update(dt: float) -> void:
 	if _active == 0:
 		if _shown:   # once, not on every idle frame
 			_shown = false
+			_mode = 0
 			node.visible = false
 			mm.visible_instance_count = 0
+			if node_small != null:
+				node_small.visible = false
+				mm_small.visible_instance_count = 0
 		return
+	# _active bounds the packed count n, so a small ring is safe whenever it fits.
+	var small := node_small != null and _active <= SMALL_CAP
+	if small:
+		var tmp := _buf
+		_buf = _buf_other
+		_buf_other = tmp
 	var n := 0
 	var kept := 0
 	for idx in _list.size():
@@ -123,7 +155,7 @@ func update(dt: float) -> void:
 			continue
 		_list[kept] = i   # compacted in place (the live list used to be rebuilt into a fresh array every frame)
 		kept += 1
-		var t := 1.0 - life / _max_life[i]
+		var t := 1.0 - life * _inv_life[i]
 		var k := maxf(0.0, 1.0 - _drag[i] * dt)
 		var p3 := i * 3
 		var vx := _vel[p3] * k
@@ -158,8 +190,20 @@ func update(dt: float) -> void:
 		_buf[o + 15] = alpha
 		n += 1
 	_list.resize(kept)
-	mm.visible_instance_count = n
-	if n > 0:
-		mm.buffer = _buf
 	_shown = _active > 0
-	node.visible = _shown
+	var mode := 2 if small else 1
+	if mode != _mode:   # switching rings: the other one stops drawing (once, not every frame)
+		_mode = mode
+		node.visible = not small
+		mm.visible_instance_count = 0
+		if node_small != null:
+			node_small.visible = small
+			mm_small.visible_instance_count = 0
+	var draw_mm := mm_small if small else mm
+	draw_mm.visible_instance_count = n
+	if n > 0:
+		draw_mm.buffer = _buf
+	if small:
+		var tmp2 := _buf
+		_buf = _buf_other
+		_buf_other = tmp2

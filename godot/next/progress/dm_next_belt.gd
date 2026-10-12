@@ -56,10 +56,28 @@ func belt_brew(slot: String) -> String:
 	var pick: String = belt[slot]
 	if pick != "" and inventory.count(pick) > 0:
 		return pick
-	for id in DmContent.brews():
-		if DmContent.brews()[id]["slot"] == slot and inventory.count(id) > 0:
+	var all: Dictionary = DmContent.brews()
+	for id in all:
+		if all[id]["slot"] == slot and inventory.count(id) > 0:
 			return id
 	return ""
+
+
+var _heal_tip := ""   ## the Heal slot sentence, rebuilt only when the flask, the count or the vow changes
+var _heal_tip_ok := false
+var _tip_hid := ""
+var _tip_total := -1
+var _tip_dry := false
+var _brew_tips := {}   ## "<id>|<active>" -> tip sentence
+
+
+func _brew_tip(id: String, def: Dictionary, active: bool) -> String:
+	var k := id + ("|1" if active else "|0")
+	var t: Variant = _brew_tips.get(k)
+	if t == null:
+		t = "%s: %s · %ds" % [def["label"], "active" if active else "on your belt", int(def["seconds"])]
+		_brew_tips[k] = t
+	return t
 
 
 func empty_hint(slot: String) -> String:
@@ -177,27 +195,37 @@ func rows() -> Array:
 	var cd_total := DmBrews.heal_cooldown_ms()
 	var dry := prog != null and bool(prog.vow_fx().get("noFlasks", false))
 	var tip := ""
-	if dry:
+	if _heal_tip_ok and hid == _tip_hid and total == _tip_total and dry == _tip_dry:
+		tip = _heal_tip   # the sentence changes with the pick, the count or the vow, not per refresh
+	elif dry:
 		tip = "Dry Cellar: your vow forbids healing flasks. Break it at the Altar of Ascension."
 	elif hid != "":
 		tip = "Healing: %s restores %d%% of your health (%d carried). Press Q to drink; sips are %ds apart." % [DmContent.item(hid)["name"], DmMath.js_round(float(flasks[hid]) * 100.0), total, int(cd_total / 1000.0)]
 	else:
 		tip = empty_hint("heal")
+	if tip != _heal_tip:
+		_heal_tip = tip
+		_heal_tip_ok = true
+		_tip_hid = hid
+		_tip_total = total
+		_tip_dry = dry
 	var out: Array = [{"slot": "heal", "key": "Q", "label": "Heal", "glyph": "✚", "color": 0xe0709c, "active": false, "left": 0,
 		"frac": (cd_left / cd_total) if (cd_left > 0.0 and hid != "") else 0.0, "count": total, "empty": hid == "", "tip": tip}]
+	var brews: Dictionary = DmContent.brews()
+	var keys: Dictionary = DmContent.get_export("brews", "BREW_KEYS")
 	for slot in ["elixir", "tonic"]:
 		var act: Variant = body.p["brews"].get(slot) if body != null and not body.p.is_empty() else null
 		var live: Variant = act if (act != null and now < float(act["until"])) else null
 		var belt_id := belt_brew(slot)
 		var shown: String = String(live["id"]) if live != null else belt_id
-		var key := String(DmContent.get_export("brews", "BREW_KEYS")[slot]).to_upper()
+		var key := String(keys[slot]).to_upper()
 		if shown == "":
 			out.append({"slot": slot, "key": key, "label": "Elixir" if slot == "elixir" else "Tonic", "glyph": "⚗" if slot == "elixir" else "✧", "color": 0x8a8aa0,
 				"active": false, "left": 0, "frac": 0.0, "count": 0, "empty": true, "tip": empty_hint(slot)})
 			continue
-		var def: Dictionary = DmContent.brews()[shown]
+		var def: Dictionary = brews[shown]
 		out.append({"slot": slot, "key": key, "label": def["label"], "glyph": def["glyph"], "color": def["color"], "active": live != null,
 			"left": int(ceil((float(live["until"]) - now) / 1000.0)) if live != null else 0, "empty": false,
 			"frac": minf(1.0, (float(live["until"]) - now) / (float(def["seconds"]) * 1000.0)) if live != null else 0.0,
-			"count": inventory.count(belt_id) if belt_id != "" else 0, "tip": "%s: %s · %ds" % [def["label"], "active" if live != null else "on your belt", int(def["seconds"])]})
+			"count": inventory.count(belt_id) if belt_id != "" else 0, "tip": _brew_tip(shown, def, live != null)})
 	return out

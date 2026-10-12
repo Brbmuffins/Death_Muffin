@@ -44,21 +44,33 @@ func set_beat(b: bool) -> void:
 ## From a "#rrggbb" resource colour (resources.ts): liquid = res -> res 55% over #0b0810 -> #0b0810, surface = res 70% over white.
 func set_resource_color(c: Color) -> void:
 	var dark := Color("0b0810")
+	if liquid.size() == 3 and (liquid[0] as Color) == c and (liquid[2] as Color) == dark:
+		return   # applied with every vitals change; an unchanged colour repaints nothing
 	liquid = [c, c.lerp(dark, 0.45), dark]
 	surface = c.lerp(Color.WHITE, 0.3)
+	_palette_changed()
+
+
+func _palette_changed() -> void:
 	queue_redraw()
+	if _under != null:
+		_under.queue_redraw()
 
 
 func use_health_palette() -> void:
+	if liquid == LIQUID_HP:
+		return
 	liquid = LIQUID_HP
 	surface = SURFACE_HP
-	queue_redraw()
+	_palette_changed()
 
 
 func use_resource_palette() -> void:
+	if liquid == LIQUID_ESS:
+		return
 	liquid = LIQUID_ESS
 	surface = SURFACE_ESS
-	queue_redraw()
+	_palette_changed()
 
 
 func _notification(what: int) -> void:
@@ -73,6 +85,8 @@ func _process(delta: float) -> void:
 	if not easing and _shown_fill <= 0.002 and not beat_pulse:
 		return   # an empty settled orb has no ripple; its other changes queue their own redraw
 	_shown_fill = move_toward(_shown_fill, fill, delta * maxf(1.0, absf(fill - _shown_fill)) / 0.18)
+	if easing and _under != null:
+		_under.queue_redraw()   # the liquid body follows the shown fill
 	# The surface ripple has a 3.5 s period: 30 Hz is indistinguishable from every frame, so a settled orb redraws at 30 Hz, an easing one every frame.
 	_since_draw += delta
 	if easing or _since_draw >= 0.03:
@@ -80,36 +94,94 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
+## Static art in two never-redrawing-on-their-own children: the dish (rings, bowl) behind the orb and the gloss in front. The liquid body is
+## the "under" layer too and repaints only when the shown fill or the palette changes; this node paints the moving ripple, barrier and beat rings.
+class _Layer extends Control:
+	var orb: DmHudOrb
+	var kind := 0   ## 0 = dish + liquid body (behind), 1 = gloss (in front)
+
+	func _init(o: DmHudOrb, k: int) -> void:
+		orb = o
+		kind = k
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		show_behind_parent = k == 0
+		size = Vector2(DmHudOrb.SIZE, DmHudOrb.SIZE)
+
+	func _draw() -> void:
+		if kind == 0:
+			orb._draw_dish()
+			orb._draw_body(self)
+		else:
+			orb._draw_gloss(self)
+
+
+var _under: _Layer
+var _gloss: _Layer
+
+
+func _ready() -> void:
+	_under = _Layer.new(self, 0)
+	add_child(_under)
+	_gloss = _Layer.new(self, 1)
+	add_child(_gloss)
+
+
+func _geo_top(ri: float, f: float) -> float:
+	return SIZE * 0.5 + ri - f * 2.0 * ri
+
+
+func _draw_dish() -> void:
+	var c := Vector2(SIZE, SIZE) * 0.5
+	var r := SIZE * 0.5
+	var u := _under
+	# rings: 0 0 0 6px (bone 20%), 5px #0b090e, 1px (bone 40%)
+	u.draw_circle(c, r + 6.0, Color(DmUi.BONE_300, 0.20))
+	u.draw_circle(c, r + 5.0, Color("0b090e"))
+	u.draw_circle(c, r + 1.0, Color(DmUi.BONE_300, 0.40))
+	u.draw_circle(c, r, Color("1a1620"))               # 3px border
+	var ri := r - 3.0
+	u.draw_circle(c, ri, Color("050407"))
+	u.draw_circle(c, ri * 0.72, Color("0b0910"))        # radial-gradient(circle at 50% 40%, #1a1420, #050407 72%)
+	u.draw_circle(c + Vector2(0, -ri * 0.2), ri * 0.4, Color("120e17"))
+
+
+func _draw_body(u: Control) -> void:
+	var f := _shown_fill
+	if f <= 0.002:
+		return
+	var c := Vector2(SIZE, SIZE) * 0.5
+	var ri := SIZE * 0.5 - 3.0
+	var top := _geo_top(ri, f)
+	var dy := clampf((top - c.y) / ri, -1.0, 1.0)
+	var a0 := asin(dy)
+	var a1 := PI - a0
+	var pts := PackedVector2Array()
+	var cols := PackedColorArray()
+	var steps := 40
+	var bottom := c.y + ri
+	for i in steps + 1:
+		var a := a0 + (a1 - a0) * float(i) / steps
+		var p := c + Vector2(cos(a), sin(a)) * ri
+		pts.append(p)
+		cols.append(_grad((p.y - top) / maxf(bottom - top, 1.0)))
+	u.draw_polygon(pts, cols)
+
+
+func _draw_gloss(g_: Control) -> void:
+	# gloss: radial-gradient(circle at 34% 26%, white 28%..transparent 26%) + dark under-glow
+	var g := Vector2(SIZE * 0.34, SIZE * 0.26)
+	for i in 6:
+		g_.draw_circle(g, SIZE * 0.26 * (1.0 - i / 6.0), Color(1, 1, 1, 0.045))
+
+
 func _draw() -> void:
 	var c := Vector2(SIZE, SIZE) * 0.5
 	var r := SIZE * 0.5
-	# rings: 0 0 0 6px (bone 20%), 5px #0b090e, 1px (bone 40%)
-	draw_circle(c, r + 6.0, Color(DmUi.BONE_300, 0.20))
-	draw_circle(c, r + 5.0, Color("0b090e"))
-	draw_circle(c, r + 1.0, Color(DmUi.BONE_300, 0.40))
-	draw_circle(c, r, Color("1a1620"))               # 3px border
 	var ri := r - 3.0
-	draw_circle(c, ri, Color("050407"))
-	draw_circle(c, ri * 0.72, Color("0b0910"))        # radial-gradient(circle at 50% 40%, #1a1420, #050407 72%)
-	draw_circle(c + Vector2(0, -ri * 0.2), ri * 0.4, Color("120e17"))
-	# liquid
 	var f := _shown_fill
 	if f > 0.002:
-		var top := c.y + ri - f * 2.0 * ri
-		var dy := clampf((top - c.y) / ri, -1.0, 1.0)
-		var a0 := asin(dy)
-		var a1 := PI - a0
-		var pts := PackedVector2Array()
-		var cols := PackedColorArray()
-		var steps := 40
-		var bottom := c.y + ri
-		for i in steps + 1:
-			var a := a0 + (a1 - a0) * float(i) / steps
-			var p := c + Vector2(cos(a), sin(a)) * ri
-			pts.append(p)
-			cols.append(_grad((p.y - top) / maxf(bottom - top, 1.0)))
-		draw_polygon(pts, cols)
 		# the rippling surface: a band of scallops along the liquid line (orb-wave, 3.5 s, 34 px period)
+		var top := _geo_top(ri, f)
 		var band := PackedVector2Array()
 		var x0 := c.x - ri
 		var n := 48
@@ -123,10 +195,6 @@ func _draw() -> void:
 	# barrier ring (inset 4px bone)
 	if barrier > 0.0:
 		draw_arc(c, ri - 2.0, 0.0, TAU, 48, Color(DmUi.BONE_300, barrier), 4.0, true)
-	# gloss: radial-gradient(circle at 34% 26%, white 28%..transparent 26%) + dark under-glow
-	var g := Vector2(SIZE * 0.34, SIZE * 0.26)
-	for i in 6:
-		draw_circle(g, SIZE * 0.26 * (1.0 - i / 6.0), Color(1, 1, 1, 0.045))
 	if beat_pulse:
 		draw_arc(c, r + 1.5, 0.0, TAU, 64, Color(0.9, 0.827, 0.545, 0.72), 3.0, true)
 		draw_arc(c, r + 5.0, 0.0, TAU, 64, Color(0.9, 0.827, 0.545, 0.25), 6.0, true)

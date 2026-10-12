@@ -33,6 +33,12 @@ var _list: Array[DmThrall] = []
 var _by_id: Dictionary = {}
 var _dead_out: Array = []
 var _net_t: float = 0.0
+var _sx := PackedFloat64Array()                    ## separation scratch (per thrall: x, z, radius, takes part, pushed x / z)
+var _sz := PackedFloat64Array()
+var _sr := PackedFloat64Array()
+var _sa := PackedByteArray()
+var _vx := PackedFloat64Array()
+var _vz := PackedFloat64Array()
 var _full_t: float = 0.0                           ## deaths not yet sent in a snapshot
 
 
@@ -74,25 +80,43 @@ func _physics_process(dt: float) -> void:
 		return
 	_replicate(dt)
 	var n := _list.size()
-	for t in _list:
-		t.sep_v = Vector3.ZERO
+	# One pass reads each body once (position, radius, whether it takes part) into reused arrays; the pair loop then touches no nodes.
+	if _sx.size() < n:
+		_sx.resize(n)
+		_sz.resize(n)
+		_sr.resize(n)
+		_sa.resize(n)
+		_vx.resize(n)
+		_vz.resize(n)
 	for i in n:
-		var a := _list[i]
-		if a.state == DmThrall.S.DEAD or a.state == DmThrall.S.RISING:
+		var t := _list[i]
+		var gp := t.global_position
+		_sx[i] = gp.x
+		_sz[i] = gp.z
+		_sr[i] = t.radius
+		_sa[i] = 0 if (t.state == DmThrall.S.DEAD or t.state == DmThrall.S.RISING) else 1
+		_vx[i] = 0.0
+		_vz[i] = 0.0
+	for i in n:
+		if _sa[i] == 0:
 			continue
-		var ap := a.global_position
+		var ax := _sx[i]
+		var az := _sz[i]
+		var ar := _sr[i]
 		for j in range(i + 1, n):
-			var b := _list[j]
-			var bp := b.global_position
-			var dx := bp.x - ap.x
-			var dz := bp.z - ap.z
-			var mn := a.radius + b.radius
+			var dx := _sx[j] - ax
+			var dz := _sz[j] - az
+			var mn := ar + _sr[j]
 			var d2 := dx * dx + dz * dz
-			if d2 >= mn * mn or d2 < 1e-8 or b.state == DmThrall.S.DEAD or b.state == DmThrall.S.RISING:
+			if d2 >= mn * mn or d2 < 1e-8 or _sa[j] == 0:
 				continue
 			var k := (mn - sqrt(d2)) * 6.0 / sqrt(d2)
-			a.sep_v -= Vector3(dx, 0.0, dz) * k
-			b.sep_v += Vector3(dx, 0.0, dz) * k
+			_vx[i] -= dx * k
+			_vz[i] -= dz * k
+			_vx[j] += dx * k
+			_vz[j] += dz * k
+	for i in n:
+		_list[i].sep_v = Vector3(_vx[i], 0.0, _vz[i])
 
 
 ## The one integration call: a host on `body` (a DmHeroBody), on EVERY peer, same name/path, right after the body spawns. Thralls live under `game`.

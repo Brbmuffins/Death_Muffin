@@ -202,17 +202,10 @@ class _Map extends Control:
 			if Vector2(sx2 - half, sz2 - half).length() > half - 3.0:
 				continue
 			_tri(PackedVector2Array([Vector2(sx2, sz2 - 4.5), Vector2(sx2 + 3.5, sz2), Vector2(sx2, sz2 + 4.5), Vector2(sx2 - 3.5, sz2)]), C_NPC_FRESH if bool(p.get("fresh", false)) else C_NPC)
-		for k2 in f.get("corpses", []):
-			_dot(k2, 1.2, C_CORPSE, px, pz, half)
-		for e in f.get("enemies", []):
-			if e.get("elite", false):
-				_dot(e, 3.0, C_ELITE, px, pz, half)
-			else:
-				_dot(e, 1.8, C_ENEMY, px, pz, half)
-		for t in f.get("thralls", []):
-			_dot(t, 2.0, C_THRALL, px, pz, half)
-		for a2 in f.get("allies", []):
-			_dot(a2, 3.0, C_ALLY, px, pz, half)
+		_dots(f.get("corpses", []), 1.2, C_CORPSE, px, pz, half)
+		_dots(f.get("enemies", []), 1.8, C_ENEMY, px, pz, half, 3.0, C_ELITE)
+		_dots(f.get("thralls", []), 2.0, C_THRALL, px, pz, half)
+		_dots(f.get("allies", []), 3.0, C_ALLY, px, pz, half)
 		if f.get("boss") != null:
 			_dot(f["boss"], 5.0, C_BOSS, px, pz, half)
 			_dot(f["boss"], 2.5, C_BOSS_CORE, px, pz, half)
@@ -261,6 +254,20 @@ class _Map extends Control:
 		draw_colored_polygon(pts, fill)
 		pts.append(pts[0])
 		draw_polyline(pts, C_VOID, 1.0, true)
+
+	## A whole dot list in one call (the loop and the cull inline): `elite_r` > 0 draws entries with `elite` set larger and in `elite_col`.
+	func _dots(list: Array, r: float, col: Color, px: float, pz: float, half: float, elite_r: float = 0.0, elite_col: Color = Color.WHITE) -> void:
+		var lo := -4.0
+		var hi := MAP_SIZE + 4.0
+		for o: Dictionary in list:
+			var sx: float = half + (float(o["x"]) - px) * SCALE
+			var sz: float = half + (float(o["z"]) - pz) * SCALE
+			if sx < lo or sz < lo or sx > hi or sz > hi:
+				continue
+			if elite_r > 0.0 and o.get("elite", false):
+				draw_circle(Vector2(sx, sz), elite_r, elite_col)
+			else:
+				draw_circle(Vector2(sx, sz), r, col)
 
 	func _dot(o: Dictionary, r: float, col: Color, px: float, pz: float, half: float) -> void:
 		var sx: float = half + (float(o["x"]) - px) * SCALE

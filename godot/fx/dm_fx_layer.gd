@@ -20,9 +20,12 @@ class Item:
 	var opacity := 0.0
 	var rim := 0.0
 	var frame := 0.0   # flipbook progress 0..1 (sheet textures only)
+	var _rot_seen := INF   # decal yaw that _rot_s / _rot_c were computed for
+	var _rot_s := 0.0
+	var _rot_c := 1.0
 
 var kind: Kind
-var items: Array = []
+var items: Array[Item] = []
 var idle_s := 0.0
 var node: MultiMeshInstance3D
 var mm: MultiMesh
@@ -186,46 +189,58 @@ func flush() -> void:
 		live = false   # the owner drops it from its live list; add() wakes it again
 		return
 	var n := 0
-	for it in items:
-		var item: Item = it
-		var floor_op := 0.0 if kind == Kind.DECAL else 0.001
-		if item.opacity <= floor_op:
-			continue
-		var o := n * 20
-		match kind:
-			Kind.DECAL:
-				var s := sin(item.rot_y)
-				var c := cos(item.rot_y)
+	match kind:
+		Kind.DECAL:
+			for item in items:
+				if item.opacity <= 0.0:
+					continue
+				if item.rot_y != item._rot_seen:   # most decals never spin: sin/cos once, not every frame
+					item._rot_seen = item.rot_y
+					item._rot_s = sin(item.rot_y)
+					item._rot_c = cos(item.rot_y)
+				var s := item._rot_s
+				var c := item._rot_c
+				var o := n * 20
 				_buf[o] = c * item.sx
-				_buf[o + 1] = 0.0
 				_buf[o + 2] = s * item.sz
 				_buf[o + 3] = item.x
-				_buf[o + 4] = 0.0
 				_buf[o + 5] = 1.0
-				_buf[o + 6] = 0.0
 				_buf[o + 7] = item.y
 				_buf[o + 8] = -s * item.sx
-				_buf[o + 9] = 0.0
 				_buf[o + 10] = c * item.sz
 				_buf[o + 11] = item.z
+				_buf[o + 12] = item.color.r
+				_buf[o + 13] = item.color.g
+				_buf[o + 14] = item.color.b
+				_buf[o + 15] = 1.0
 				_buf[o + 16] = item.opacity
 				_buf[o + 17] = item.rim
-			Kind.SPRITE:
+				_buf[o + 18] = item.frame
+				n += 1
+		Kind.SPRITE:
+			for item in items:
+				if item.opacity <= 0.001:
+					continue
+				var o := n * 20
 				_buf[o] = item.sx
-				_buf[o + 1] = 0.0
-				_buf[o + 2] = 0.0
 				_buf[o + 3] = item.x
-				_buf[o + 4] = 0.0
 				_buf[o + 5] = item.sx
-				_buf[o + 6] = 0.0
 				_buf[o + 7] = item.y
-				_buf[o + 8] = 0.0
-				_buf[o + 9] = 0.0
 				_buf[o + 10] = item.sx
 				_buf[o + 11] = item.z
+				_buf[o + 12] = item.color.r
+				_buf[o + 13] = item.color.g
+				_buf[o + 14] = item.color.b
+				_buf[o + 15] = 1.0
 				_buf[o + 16] = item.rot_y
 				_buf[o + 17] = item.opacity
-			Kind.BEAM:
+				_buf[o + 18] = item.frame
+				n += 1
+		Kind.BEAM:
+			for item in items:
+				if item.opacity <= 0.001:
+					continue
+				var o := n * 20
 				var from := Vector3(item.x, item.y, item.z)
 				var to := Vector3(item.tx, item.ty, item.tz)
 				var dir := to - from
@@ -248,14 +263,13 @@ func flush() -> void:
 				_buf[o + 9] = b.y.z
 				_buf[o + 10] = b.z.z
 				_buf[o + 11] = item.z
+				_buf[o + 12] = item.color.r
+				_buf[o + 13] = item.color.g
+				_buf[o + 14] = item.color.b
+				_buf[o + 15] = 1.0
 				_buf[o + 16] = item.opacity
-		_buf[o + 12] = item.color.r
-		_buf[o + 13] = item.color.g
-		_buf[o + 14] = item.color.b
-		_buf[o + 15] = 1.0
-		_buf[o + 18] = item.frame
-		_buf[o + 19] = 0.0
-		n += 1
+				_buf[o + 18] = item.frame
+				n += 1
 	if n == 0:
 		_hide()
 		return

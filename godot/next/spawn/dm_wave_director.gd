@@ -38,6 +38,8 @@ var difficulty: String = "medium"       ## DmNextMeta: Settings -> difficulty (D
 var vow_fx: Dictionary = {}             ## DmNextMeta: the sworn world vows' effects (levels, enemyHpMult, waveSizeMult, deaconMult, eliteBonus)
 var omen: Dictionary = {}               ## DmNextMeta: the week's Omen (waveSizeMult, eliteBonus, affix)
 var size_extra: float = 1.0             ## omen x vow wave-size multiplier (DmNextMeta); the sim folds it into the one rounded wave size
+var spawn_min: float = SPAWN_MIN         ## wave spawn distance from the hero (the in-game benchmark brings it in for its small room)
+var spawn_max: float = SPAWN_MAX
 
 var _holder: Node3D
 var _spawner: MultiplayerSpawner
@@ -390,7 +392,7 @@ func _pick_kind(roster: Array = []) -> String:
 	return String(kinds[0]["id"])
 
 
-## A walkable point SPAWN_MIN-SPAWN_MAX m from `around`, inside the area. Clamping to the area edge or snapping to the navmesh can pull a
+## A walkable point spawn_min-spawn_max (SPAWN_MIN-SPAWN_MAX in play) m from `around`, inside the area. Clamping to the area edge or snapping to the navmesh can pull a
 ## point back toward the hero: such tries are rejected, and if every try lands short the farthest one (at least 6 m) is used.
 func _spawn_pos(around: Vector3) -> Variant:
 	var rect: Dictionary = DmContent.area(area_id)["rect"]
@@ -398,14 +400,14 @@ func _spawn_pos(around: Vector3) -> Variant:
 	var best_d := 6.0
 	for _try in 10:
 		var a := rng.randf() * TAU
-		var r := rng.randf_range(SPAWN_MIN, SPAWN_MAX)
+		var r := rng.randf_range(spawn_min, spawn_max)
 		var p := around + Vector3(sin(a), 0.0, cos(a)) * r
 		p.x = clampf(p.x, float(rect["x0"]) + 1.5, float(rect["x1"]) - 1.5)
 		p.z = clampf(p.z, float(rect["z0"]) + 1.5, float(rect["z1"]) - 1.5)
 		if game.world.nav_ready():
 			p = game.world.nav_closest(p)
 		var d := Vector2(p.x - around.x, p.z - around.z).length()
-		if d >= SPAWN_MIN:
+		if d >= spawn_min:
 			return p
 		if d >= best_d:
 			best = p

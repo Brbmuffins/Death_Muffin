@@ -7,6 +7,8 @@ extends Node
 ## Testing only: `--dev-offline` = local accounts + progress in DEV_OFFLINE_DB (DmMockBackend, no live server); `--dev-offline --class=N`
 ## skips the front flow (test account `tester`) and enters DmNextGame directly; `--world-demo` is an alias of `--dev-offline --class=2` (the screenshot QA's
 ## launch line, shot-godot.sh).
+## `--benchmark`: runs the in-game benchmark straight away on an isolated offline game (DmBenchmark, no
+## network, no login) and stays on the results screen with a Quit button. The character select screen has the same thing as its Benchmark button.
 ## On an online start the retired offline edition's save and its stored "offline:" token are deleted (owner: offline characters are deleted).
 
 const OFFLINE_EDITION_DB := "user://dm_offline_db.json"   ## the retired player-facing offline edition's accounts + characters
@@ -20,6 +22,7 @@ var persist_token := true
 var _mock: DmMockBackend
 var _transport: DmHttpTransport
 var _transit_lobby: DmLobbyClient   ## the lobby socket a join was made on, polled here while the solo game is swapped for the client game
+var _idle_cam: Camera3D
 var _party_busy := false            ## a join / return is in progress (one at a time)
 
 
@@ -28,6 +31,8 @@ func _ready() -> void:
 	# The window title players see. config/name in project.godot stays as it is: Godot names the user:// folder after it (the saved
 	# login, settings, tips), so renaming it would sign every player out and reset their settings.
 	get_window().title = "Death Muffin"
+	if ProjectSettings.has_setting("application/config/dm_test_build"):   # only set by publish-test-build.sh, never in the repo
+		get_window().title += " — TEST BUILD " + str(ProjectSettings.get_setting("application/config/dm_test_build"))
 	# Physics interpolation (project setting) is opt-in per body: everything is OFF by default (effects, cameras, anything placed from
 	# _process), and only what is moved in _physics_process turns itself ON (DmSessionBody on the host, DmEnemy, DmThrall).
 	get_tree().root.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
@@ -37,7 +42,12 @@ func _ready() -> void:
 	add_child(idle_cam)
 	idle_cam.current = true
 	add_child(DmPerfOverlay.new())   # F3 / ?fps overlay, as the web
+	_idle_cam = idle_cam
 	var args := OS.get_cmdline_user_args()
+	if "--benchmark" in args:
+		mode = "benchmark"
+		_run_benchmark(true, _arg_float(args, "--bench-warm=", 10.0), _arg_float(args, "--bench-measure=", 30.0))
+		return
 	if mode == "":
 		mode = mode_for(args)
 	if mode == "online":
@@ -112,11 +122,40 @@ func _start_flow(switching_character: bool = false) -> void:
 	flow.online_gate = mode == "online"   # the manifest's online switch (DmOnlineGate; open to everyone since 2026-10-09)
 	flow.name = "Front"
 	flow.enter_world.connect(_enter_world)
+	flow.benchmark_requested.connect(func() -> void: _run_benchmark(false))
 	add_child(flow)
 	if switching_character:
 		flow.switch_character()
 	else:
 		flow.start()
+
+
+## Shortened benchmark for smoke runs: `--bench-warm=<s>` / `--bench-measure=<s>`.
+static func _arg_float(args: PackedStringArray, prefix: String, d: float) -> float:
+	for a in args:
+		if a.begins_with(prefix):
+			return maxf(1.0, float(a.substr(prefix.length())))
+	return d
+
+
+## The benchmark over whatever is on screen: from the character select (the front flow is hidden meanwhile, Back returns to it) or as the whole
+## session (`--benchmark`, Quit button). It builds its own mock-backed game; `api` and the player's characters are never used.
+func _run_benchmark(quit_on_close: bool, warm_s: float = 10.0, measure_s: float = 30.0) -> void:
+	if flow != null:
+		flow.visible = false
+	var s := DmBenchmarkScreen.new()
+	s.quit_on_close = quit_on_close
+	s.warm_s = warm_s
+	s.measure_s = measure_s
+	var top := CanvasLayer.new()
+	top.layer = 95   # above the fight's HUD (10) and loading cover (90), under the F3 overlay (100): the screen takes every click
+	s.closed.connect(func() -> void:
+		top.queue_free()
+		_idle_cam.current = true   # the fight's camera is gone
+		if flow != null:
+			flow.visible = true)
+	top.add_child(s)
+	add_child(top)
 
 
 ## Testing: `-- --dev-offline --class=N` (or `--world-demo`, class 2) skips the front flow and enters the game as `tester` on the dev-offline backend.

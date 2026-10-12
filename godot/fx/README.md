@@ -68,6 +68,11 @@ missing). Discord preview builds and CI have no sheets and draw the plain look.
 motes, 1 shared flash light, pool of 4 built instances per id, Low = 0.75 of every burst and no Binbun/motifs, motif budget 240 particles +
 14 sprites, partner effects at 0.35 alpha / 0.75 scale.
 
+## Hot-path notes
+- `DmFxRing` owns two MultiMeshes per ring, both allocated once (full size and 256 motes, never resized). While <= 256 motes are live only the small one is drawn and uploaded (`MultiMesh.buffer` must be the whole buffer, so the 3500-mote ring cost 224 KB per frame even for a handful of motes); only visibility switches.
+- `DmFxLayer.flush` runs one loop per layer kind, and caches a decal's sin/cos of its yaw until the yaw changes. Slots that are always 0 are never rewritten.
+- `DecalTr.place` reads its options in `setup()`: the follow callable, the base x/y/z and the fixed anchor offset. `_update_spikes` returns early (hiding once) when there are none.
+
 ## Native vs approximated
 - Binbun scenes are real Godot resources (original ParticleProcessMaterials, meshes, curves, AnimationPlayer libraries, gdshaders). Two hooks
   are injected at the end of every spatial fragment shader that writes ALPHA: `dm_fade` and `dm_gain`.

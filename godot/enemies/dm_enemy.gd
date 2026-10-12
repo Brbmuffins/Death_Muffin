@@ -602,7 +602,8 @@ func _process(delta: float) -> void:
 		_puppet_step(delta)
 	if creature == null:
 		return
-	if sm.id() == DmEnemyState.Id.RISING:
+	var sid := sm.id()
+	if sid == DmEnemyState.Id.RISING:
 		_rise_vis = minf(1.0, _rise_vis + delta / DmStateRising.RISE_TIME)
 		creature.set_rise(_rise_vis)
 		if flying <= 0.0:
@@ -612,7 +613,7 @@ func _process(delta: float) -> void:
 		creature.set_rise(1.0)
 		if flying <= 0.0:
 			$Visual.position.y = 0.0
-	if flying > 0.0 and sm.id() != DmEnemyState.Id.DEAD:
+	if flying > 0.0 and sid != DmEnemyState.Id.DEAD:
 		_bob += delta
 		$Visual.position.y = flying + sin(_bob * 1000.0 / 520.0 + float(get_instance_id() % 7)) * 0.18   # views: hover + sin(t/520 + id) * 0.18
 	if _flash > 0.0:
@@ -627,7 +628,7 @@ func _process(delta: float) -> void:
 		var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
 		if cam != null:
 			_lod_interval = DmCreature.lod_interval(cam, global_position)
-		if sm.id() == DmEnemyState.Id.DEAD and _flash <= 0.0 and creature.has_landed() and (creature.ap == null or not creature.ap.is_playing()):
+		if sid == DmEnemyState.Id.DEAD and _flash <= 0.0 and creature.has_landed() and (creature.ap == null or not creature.ap.is_playing()):
 			_anim_acc = 0.0   # settled on the final frame: the corpse needs no per-frame work for the rest of its life
 			set_process(false)
 			return

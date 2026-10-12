@@ -25,6 +25,7 @@ the caster (`cooldown_left`, essence), hostile pools (`dm_hostile_zone` group) a
 | rule | here |
 |---|---|
 | gate | `settings_store.can_use_auto_combat()` (character `auto_combat_allowed`) AND `settings["auto_combat"]` (Easy only; the store forces it off otherwise). G / the button flip the setting (HUD) |
+| hold position | `hold_position` (default off): casts but never walks; the in-game benchmark sets it so the hero holds the room centre |
 | yields | walk in progress (click / WASD / held key), a click target, a queued cast, an open panel, gathering, dead hero; any family but the necromancers and the Reaper |
 | cadence | movement every 100 ms, one action every 180 ms, direction intent re-sent every 150 ms, one ZERO when it stops; one compare per physics frame otherwise |
 | action | nearest-first targets, rite rotation (essence reserve, Exhume / Grave Offering / Rally / Carrion Seed / Mantle / Litany / Detonate / Cleave / Miasma / Prison / Hands / Storm / Siphon / Frost / Spear), corpse rites |

@@ -4,9 +4,11 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
 
 ## Performance
 
-- **No rendered (GPU) frame budget exists.** Every number is headless on a shared VPS (frame median about 7 ms). Phase 6
-  graphics presets (Low/Medium/High/Ultra, brightness lift, interface size, resolution governor) are applied by
-  `next/perf/dm_next_perf.gd`; what is missing is real-hardware measurement.
+- **The main thread is the limit in big fights.** Measured on Helix's PC (Ryzen 5950X, RTX 4070 SUPER, 1440p Ultra) with the in-game
+  benchmark (`next/perf/README.md`): about 87 fps in the Bell Sanctum stress fight, render CPU about 4 ms of which the HUD is more than half
+  (about 600 of 900 draw calls), scripts and physics about 10 ms; everything runs on one thread (Godot's default). The breakdown's ms
+  columns jitter on that PC (GPU / driver state), only its draw-call counts are steady. Next: HUD draw calls (minimap dots and mask, shadowed
+  labels, the tip card), then splitting combat work over cores.
 - **Forward+ / FSR not evaluated.** The renderer is `gl_compatibility` (`project.godot`). A switch needs the owner's and Helix's
   PCs, a Compatibility fallback and re-measured shaders and budgets.
 
