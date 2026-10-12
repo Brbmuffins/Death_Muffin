@@ -3,7 +3,8 @@
     "date": "2026-10-12",
     "title": "One Character Per Account",
     "items": [
-      "Picking a discipline (including from Switch character) now switches your own character to it instead of starting a new level-1 character. Your level, gold and gear stay."
+      "Picking a discipline (including from Switch character) now switches your own character to it instead of starting a new level-1 character. Your level, gold and gear stay.",
+      "Crafting with Max (or any batch) now shows live progress on the button (Crafting 3/20) instead of looking frozen."
     ]
   },
   {
