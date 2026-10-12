@@ -19,7 +19,7 @@ const TIERS := {
 }
 const THRALL_BOW_FILE := "gear_thrall_bow"
 const SCYTHE_FILE := "gear_reaper_scythe"
-const SCYTHE_LENGTH := 2.0   ## metres, pole foot to blade tip
+const SCYTHE_LENGTH := 2.7  ## metres, pole foot to blade tip
 const SCYTHE_GRIP := 0.28    ## the hand sits this fraction of the length up from the foot
 
 static var _glow_tex: Texture2D
@@ -295,7 +295,14 @@ static func scythe_model(file := SCYTHE_FILE) -> Node3D:
 	var g := load_prop(file, SCYTHE_LENGTH)
 	if g == null:
 		return null
-	(g.get_child(0) as Node3D).position.y -= SCYTHE_GRIP * SCYTHE_LENGTH
+	var inst := g.get_child(0) as Node3D
+	var bb := DmGearModels.bounds_of(file)
+	if bb.size.y > 0.0:   # the blade makes the bounds wide: seat the shaft itself (not the middle of the bounds) in the hand
+		var s := SCYTHE_LENGTH / bb.size.y
+		var shaft := DmGearModels.shaft_at(file, SCYTHE_GRIP)
+		inst.position.x -= s * (shaft.x - (bb.position.x + bb.size.x * 0.5))
+		inst.position.z -= s * (shaft.y - (bb.position.z + bb.size.z * 0.5))
+	inst.position.y -= SCYTHE_GRIP * SCYTHE_LENGTH
 	_tip(g, SCYTHE_LENGTH * (1.0 - SCYTHE_GRIP))
 	return g
 
