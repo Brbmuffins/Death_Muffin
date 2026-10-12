@@ -346,7 +346,11 @@ func _run() -> void:
 		gt.loop.stop("moved")
 	check(bag_count("log_oak") >= 3, "gathered %d logs (had %d)" % [bag_count("log_oak"), logs_before])
 	g.ui.close_panels()
-	g.chapterhouse.interact(g.chapterhouse.interactables.filter(func(it: Dictionary) -> bool: return it["kind"] == "sawpit")[0])
+	# walk up to the Sawpit first, as a player does: a station window closes when the hero is a few steps away from it
+	var sawpit: Dictionary = g.chapterhouse.interactables.filter(func(it: Dictionary) -> bool: return it["kind"] == "sawpit")[0]
+	g.local_body().teleport(g.world.nav_clamp(Vector3(float(sawpit["x"]) + 1.2, 0.0, float(sawpit["z"]))))
+	await ticks(2)
+	g.chapterhouse.interact(sawpit)
 	await ticks(3)
 	var forge: DmForgePanel = g.ui.pb.forges.get("sawpit")
 	check(forge != null and forge.visible, "the Sawpit panel opens")

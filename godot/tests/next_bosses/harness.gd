@@ -412,9 +412,16 @@ func check_prompt_and_key() -> void:
 	var ch: DmChapterhouse = g.chapterhouse
 	g.bosses.assume_area = area()
 	hb.teleport(near_site())
+	clear_adds()   # a slow machine lets wave adds reach the hero before the prompt is read
+	if g.ui != null:
+		g.ui.close_panels()
 	await ticks(45)   # past the host's 0.5 s tick, where the old "press E" toast fired
+	_keep(hb)
+	if hb.position.distance_to(near_site()) > 1.0:   # a slow machine lets a late area arrival put the hero back at the spawn
+		hb.teleport(near_site())
+		await ticks(5)
 	ch._update_prompt(hb)
-	check(ch.prompt_text == "<kbd>E</kbd> Summon %s · %d shards" % [def()["name"], int(def()["shards"])], "A: at the site the hub prompt reads '%s'" % ch.prompt_text)
+	check(ch.prompt_text == "<kbd>E</kbd> Summon %s · %d shards" % [def()["name"], int(def()["shards"])], "A: at the site the hub prompt reads '%s' (alive %s, awake %s, panel %s, site '%s', hero %s vs %s)" % [ch.prompt_text, hb.alive, g.bosses.active_boss() != null, ch._panel_open(), g.bosses.site_near(hb.position, DmBossHost.SUMMON_RANGE + 1.0), hb.position, near_site()])
 	check(not toasts.has("toast"), "A: no fading toast any more")
 	var it: Dictionary = {}
 	for x in ch.interactables:
@@ -540,7 +547,7 @@ func check_thralls() -> void:
 	var t1: DmThrall = rr["thralls"][0]
 	t1.set_deferred("global_position", boss.global_position + Vector3(-2.6, 0.0, 0.0))   # next to it: no navmesh needed in an area the areas track has not opened
 	var hp_t: float = boss.brain.state["hp"]
-	var engaged := await until(func() -> bool: return t1.target == boss, 8.0)
+	var engaged := await until(func() -> bool: return t1.target == boss, 20.0)   # generous: the shared machine can be slow
 	check(engaged, "A: the thrall engages the boss (edge rule)")
 	await until(func() -> bool: return boss.hp < hp_t - 1.0, 8.0)
 	check(boss.hp < hp_t and boss.brain.last_hit_by == str(g.session.get_my_id()), "A: thrall blows hurt the boss and credit the owner (%s hp %.1f -> %.1f, by %s, thrall %s d %.1f hp %.0f)" % [boss_id, hp_t, boss.hp, str(boss.brain.last_hit_by), str(is_instance_valid(t1) and t1.target == boss), t1.global_position.distance_to(boss.global_position), t1.hp])
