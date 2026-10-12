@@ -1,0 +1,9 @@
+{
+  "id": "prop_gear_greenbone_scythe",
+  "input": "art-src/concepts/prop_gear_greenbone_scythe.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3500,
+    "texture_quality": "detailed"
+  }
+}

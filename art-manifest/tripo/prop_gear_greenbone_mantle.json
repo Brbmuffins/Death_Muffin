@@ -1,0 +1,38 @@
+{
+  "spec": {
+    "id": "prop_gear_greenbone_mantle",
+    "input": "art-src/concepts/prop_gear_greenbone_mantle.png",
+    "generation": {
+      "model": "P1-20260311",
+      "face_limit": 3500,
+      "texture_quality": "detailed"
+    }
+  },
+  "id": "prop_gear_greenbone_mantle",
+  "steps": {
+    "upload": {
+      "hash": "sha256:e5f8c1c059d76b67aa249909a3e44a29596382af64e088cc5f21d32e86f1ca17",
+      "status": "success",
+      "input": "art-src/concepts/prop_gear_greenbone_mantle.png"
+    },
+    "generate": {
+      "taskId": "6ddc8323-7553-471e-8125-376ad66dc4a9",
+      "status": "success",
+      "request": {
+        "texture": true,
+        "pbr": true,
+        "model": "P1-20260311",
+        "face_limit": 3500,
+        "texture_quality": "detailed"
+      },
+      "createdAt": "2026-10-12T17:44:39.468Z",
+      "credits": 60,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261012/6ddc8323-7553-471e-8125-376ad66dc4a9/tripo_pbr_model_6ddc8323-7553-471e-8125-376ad66dc4a9.glb",
+        "rendered_image_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261012/6ddc8323-7553-471e-8125-376ad66dc4a9/legacy_mesh.webp"
+      },
+      "fileHash": "sha256:1c18302fb0e6025f0f53e0ae1b8b6acf971c9885b0dc172c6c0e44b761beaeb0"
+    }
+  },
+  "totalCredits": 60
+}

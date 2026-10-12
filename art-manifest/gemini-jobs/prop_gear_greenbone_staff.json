@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_prop_gear_greenbone_staff",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy necromancer staff, upright and filling the frame top to bottom: a shaft made of lashed pale bones and dark wood with a leather wrap, topped by a small horned skull whose eye sockets glow acid-green, cradled in curved rib-like bone prongs with a glowing acid-green soul orb floating between the ribs. Green light seeps through the gaps between the bones. Chunky readable silhouette, hand-crafted, nothing else.",
+    "out": "art-src/concepts/prop_gear_greenbone_staff.png",
+    "aspect": "1:1"
+  }
+]

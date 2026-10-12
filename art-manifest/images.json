@@ -8209,5 +8209,57 @@
     "rawHash": "sha256:64ca2dd92f9ebae78a3f8dd952ed80753c04bd0e3e59542b10663107d00f9dd0",
     "outHash": "sha256:9e5d3d13fe719d3de6943acef4e8c588c4a350b82dcd1f7ec99e4bcb72cf8067",
     "generatedAt": "2026-10-12T16:19:24.420Z"
+  },
+  "concept_prop_gear_greenbone_helm": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no head or body inside it. Dark fantasy medium-armor hood-helm for a necromancer: a deep pointed cloth hood of dark moss-green and charcoal fabric reinforced with curved pale bone plates along the brow and cheeks, a bone ridge down the crown, and under the hood opening two empty eye sockets glowing bright acid-green. Small bone studs and thin green-lit cracks between the plates. Chunky readable silhouette, hand-crafted, nothing else.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/prop_gear_greenbone_helm.png",
+    "rawHash": "sha256:eb3ba78b779ce0a6c32d8818eff5b034dd872ef289e81dee0a35a300dc3b32d2",
+    "outHash": "sha256:d863abf0f6824bda70d1ce7f3b43ca04c9ddfb5490a9a2943f6ec163d1c044be",
+    "generatedAt": "2026-10-12T17:40:22.908Z"
+  },
+  "concept_prop_gear_greenbone_mantle": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view from slightly behind, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no body inside it. Dark fantasy medium-armor back mantle for a necromancer: a short tattered dark moss-green cloak with a bone collar and two pauldron-like bone shoulder plates, and across the back a curved bone ribcage armor piece whose ribs are separated by glowing acid-green light shining between the bones. Ragged hem, a few small hanging bone charms. Chunky readable silhouette, hand-crafted, nothing else.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/prop_gear_greenbone_mantle.png",
+    "rawHash": "sha256:edac2d48713a11723bd560af8252aac7d50ebc055a23fcce39b42f43709650d0",
+    "outHash": "sha256:e5f8c1c059d76b67aa249909a3e44a29596382af64e088cc5f21d32e86f1ca17",
+    "generatedAt": "2026-10-12T17:40:31.740Z"
+  },
+  "concept_prop_gear_greenbone_staff": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy necromancer staff, upright and filling the frame top to bottom: a shaft made of lashed pale bones and dark wood with a leather wrap, topped by a small horned skull whose eye sockets glow acid-green, cradled in curved rib-like bone prongs with a glowing acid-green soul orb floating between the ribs. Green light seeps through the gaps between the bones. Chunky readable silhouette, hand-crafted, nothing else.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/prop_gear_greenbone_staff.png",
+    "rawHash": "sha256:c30c456bb86554d22131459ba00114331e47200ce7a73e7606f8a83b2b9c6301",
+    "outHash": "sha256:ad5c08eb5f0f980c6fd23a410ccb75870773b12e6957fd162ede13648e61ed5f",
+    "generatedAt": "2026-10-12T17:40:39.838Z"
+  },
+  "concept_prop_gear_greenbone_scythe": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy reaper's scythe, upright and filling the frame top to bottom: a shaft made of lashed pale bones and dark wood with a leather grip wrap, and at the top a long curved crescent blade sweeping out to ONE side, made of pale bone with a sharp edge. A small horned skull where blade meets shaft with eye sockets glowing acid-green, and rib-like bone prongs along the blade spine with acid-green light glowing between the bones. Chunky readable silhouette, hand-crafted, nothing else.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/prop_gear_greenbone_scythe.png",
+    "rawHash": "sha256:b48ef69184b864a660e424953ae44e5a76142915600553209a4b1ac07d3b9c01",
+    "outHash": "sha256:8aa7b413c0e27661de5411671172471305f20164af09a257ebfea2505f29a5a7",
+    "generatedAt": "2026-10-12T17:42:14.366Z"
   }
 }

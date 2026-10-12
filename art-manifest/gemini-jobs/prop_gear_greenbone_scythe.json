@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_prop_gear_greenbone_scythe",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy reaper's scythe, upright and filling the frame top to bottom: a shaft made of lashed pale bones and dark wood with a leather grip wrap, and at the top a long curved crescent blade sweeping out to ONE side, made of pale bone with a sharp edge. A small horned skull where blade meets shaft with eye sockets glowing acid-green, and rib-like bone prongs along the blade spine with acid-green light glowing between the bones. Chunky readable silhouette, hand-crafted, nothing else.",
+    "out": "art-src/concepts/prop_gear_greenbone_scythe.png",
+    "aspect": "1:1"
+  }
+]
