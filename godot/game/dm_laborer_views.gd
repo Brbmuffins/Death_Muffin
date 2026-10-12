@@ -127,7 +127,7 @@ static func work_for(skill: Variant) -> Dictionary:
 	return {"anim": "idle", "range": null, "impact": null, "beatEvery": 0.0}
 
 
-## The Acre node a post is worked at: that exact node type, else the lowest-tier node of the same skill. {} when none.
+## The Acre node a post is worked at: that exact node type, else the highest-tier Acre node of the same skill at or below the post's level (the lowest if none). {} when none.
 static func post_node(nodes: Array, node_type: String, slot: int = 0) -> Dictionary:
 	var defs := _nodes_def()
 	if not defs.has(node_type):
@@ -146,7 +146,11 @@ static func post_node(nodes: Array, node_type: String, slot: int = 0) -> Diction
 	if skill.is_empty():
 		return {}
 	skill.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(defs[a["type"]]["level"]) < int(defs[b["type"]]["level"]))
-	return skill[0]
+	var best: Dictionary = skill[0]
+	for n in skill:
+		if int(defs[n["type"]]["level"]) <= int(def["level"]):
+			best = n
+	return best
 
 
 static func _preferred_angle(n: Dictionary, slot: int) -> float:

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { affected, SMOKE, dataPatterns, centralReason } from '../affected-suites.mjs';
 
-const suites = ['data', 'status', 'backend', 'next', 'next_front', 'enemies', 'loot_view', 'gear', 'hud', 'fx', 'world', 'sim', 'thralls', 'rites', 'ui', 'game'];
+const suites = ['data', 'status', 'backend', 'next', 'rules-core', 'next_front', 'enemies', 'loot_view', 'gear', 'hud', 'fx', 'world', 'sim', 'thralls', 'rites', 'ui', 'game'];
 // tests: [suite-file, text]; src: [file, text]; classes: file -> class_name
 function mk({ tests = [], src = [], classes = {} } = {}) {
   const hit = (list, p) => list.filter(([, t]) => p.fixed.some((x) => t.includes(x)) || p.words.some((w) => new RegExp(`\\b${w}\\b`).test(t))).map(([f]) => f);
@@ -80,4 +80,8 @@ test('an add-only change to the API client or mock selects the users of the adde
   // any removed or edited line (addedLines null), or another net file, stays central
   assert.equal(affected(['godot/net/dm_api.gd'], { ...ctx, addedLines: () => null }).all, true);
   assert.equal(affected(['godot/net/dm_config.gd'], ctx).all, true);
+});
+test('a content table change also runs rules-core (it checks the manifest counts)', () => {
+  assert.ok(sel(affected(['godot/data/content/audioMap.json'], mk())).includes('rules-core'));
+  assert.ok(!sel(affected(['godot/hud/x.gd'], mk())).includes('rules-core'));
 });

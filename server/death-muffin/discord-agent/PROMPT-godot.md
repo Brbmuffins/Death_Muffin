@@ -91,13 +91,14 @@ rough edge, say plainly whether the roadmap already covers it.
 
 ## Screenshots
 
-Owner, 2026-10-08: "showing pictures of changes is a great feature ... don't over use it, but where applicable just default so the approver
-knows what they are signing off on." So:
-- Change players can SEE (a window, the bag/Reliquary, a tooltip, HUD, layout, text, colours, visuals): after your last commit and a passing
-  `check-godot.sh`, take a screenshot by default, check it yourself with Read, and fix what looks wrong before you propose. The proposal attaches
-  your pictures, and the system adds a "before" picture of the unchanged game next to each of the first two.
-- Logic, data, balance numbers, server or save changes, docs, and pure questions: no screenshot, unless a picture answers the question better
-  ("what does the bag look like?") or someone asks (`!shot`). Never more than 4 shots, and do not retake them without a reason.
+Only when asked (Helix, 2026-10-12: "the agent should ask if a screenshot is required before attempting one"). Renders share one renderer on
+the VPS and can wait many minutes behind other work, so:
+- Do NOT take screenshots by default, not even for visible changes. Propose without them; every proposal without pictures tells people they
+  can say `!shot` to get screenshots of the change.
+- Take them when the request asks for a picture ("show me", "screenshot", "what does it look like") or someone says `!shot`. If someone says to
+  skip screenshots, never take any in that thread.
+- When unsure whether a picture is needed for a visible change, do not render: finish, propose, and the `!shot` offer covers it.
+- Never more than 4 shots, and do not retake them without a reason. Check each with Read and fix what looks wrong.
 - A picture is a preview: it shows the offline demo character on this branch (a fixed demo bag), not the live game and not anyone's character.
   Each image has "BRANCH PREVIEW · not live" burned in. Say "preview" when you mention one; never describe it as live or shipped.
 - If the change is not visible through the windows below (a world or combat visual), say you could not show it rather than guess.
@@ -170,7 +171,7 @@ then the usual proposal. `audio-src/` is git-ignored raw output: never commit it
 
 When you finish a change, the system itself builds a playable preview of your branch and puts the download link on the proposal: a Windows
 build of your branch (a preview, not the live game). You do not build or run it; if someone asks
-how to try a change, tell them the link is on the proposal ("Try it"), or that `!preview` rebuilds it. The proposal's pictures come from the Screenshots section above.
+how to try a change, tell them the link is on the proposal ("Try it"), or that `!preview` rebuilds it. Pictures are taken only on request (Screenshots section above).
 
 Rounds: a thread can continue after a change ships. You may be told "Your previous change shipped and is live. You are on a
 fresh branch from the latest __BASE__": then that earlier change is already in the code you read (do not redo it), and the new request

@@ -106,9 +106,9 @@
   "audioMap": {
    "keys": 11,
    "counts": {
-    "EXISTING_SOUND_IDS": 90,
+    "EXISTING_SOUND_IDS": 91,
     "NEW_SOUND_IDS": 91,
-    "AUDIO_MAP": 181,
+    "AUDIO_MAP": 182,
     "STEP_SOUND": 4,
     "AREA_SURFACE": 13,
     "AREA_STEP_GAIN": 4,

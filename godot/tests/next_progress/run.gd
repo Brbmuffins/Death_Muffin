@@ -5,7 +5,6 @@ extends SceneTree
 ## godot --headless --path godot --script res://tests/next_progress/run.gd
 
 const DT := 1.0 / 60.0
-const NEUTRAL_OMEN := {"id": "none", "name": "A Quiet Week", "icon": "art/omens/blood_moon.webp", "blurb": "Nothing stirs.", "eliteBonus": 0.0, "waveSizeMult": 1.0, "rewardMult": 1.0, "shardMult": 1.0}
 
 var passed := 0
 var failed := 0
@@ -48,7 +47,7 @@ func launch() -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	root.add_child(g)
 	events.clear()
-	await g.start(c.data, api, {"dressing": false, "persist": false, "waves": false, "audio": false, "store": store, "omen": NEUTRAL_OMEN})   # the week's Omen can change wave sizes: pin a quiet week
+	await g.start(c.data, api, {"dressing": false, "persist": false, "waves": false, "audio": false, "store": store, "omen": {"id": "none", "name": "A Quiet Week", "icon": "art/omens/blood_moon.webp", "blurb": "Nothing stirs.", "eliteBonus": 0.0, "waveSizeMult": 1.0, "rewardMult": 1.0, "shardMult": 1.0}})   # the week's real Omen would change wave sizes
 	g.progress.event.connect(func(id: String, ctx: Dictionary) -> void: events.append({"id": id, "ctx": ctx}))
 
 

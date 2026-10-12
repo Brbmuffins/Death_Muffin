@@ -1,0 +1,9 @@
+[Unit]
+Description=Check for new Death Muffin launcher releases every 10 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target

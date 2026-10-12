@@ -73,6 +73,9 @@ export function affected(changed, ctx) {
   if (gd.length > MAX_GD_FILES) return { all: true, why: `${gd.length} changed .gd files (> ${MAX_GD_FILES})` };
 
   const sel = new Set(SMOKE.filter((s) => ctx.suites.includes(s)));
+  // a content table changes the counts that godot/data/content/manifest.json records, and rules-core checks them all (2026-10-11: a sound
+  // added to audioMap.json without the manifest count shipped on a quick check that never ran rules-core)
+  if (relevant.some((f) => /^godot\/data\/content\/[^/]+\.json$/.test(f)) && ctx.suites.includes('rules-core')) sel.add('rules-core');
   const direct = new Set();   // suites chosen because their own files changed
   const suiteOf = (f) => { const m = /^godot\/tests\/([^/]+)\//.exec(f); return m ? m[1] : null; };
   for (const f of relevant) { const s = suiteOf(f); if (s && ctx.suites.includes(s)) { sel.add(s); direct.add(s); } }
