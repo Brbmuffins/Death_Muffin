@@ -92,14 +92,14 @@ func _equipped_key() -> String:
 
 
 ## Backend state adopted or a purchase made: the wave tier and the stats follow it.
-func apply_progress() -> void:
+func apply_progress(purchase := false) -> void:
 	var tier := float(prog.local["waveTierActive"])
 	shell.director.set_wave_tier(tier)
 	shell.rewards.wave_tier = tier
 	if shell.milestones != null:
 		shell.milestones.on_tier(tier)   # milestone banners, the Nightfall light
-	if shell.meta != null:
-		shell.meta.sync()   # vows, boons and the Omen reach the director, the bosses, the corpses and the rewards
+	if shell.meta != null and not purchase:
+		shell.meta.sync()   # vows, boons and the Omen reach the director, the bosses, the corpses and the rewards (an Empower / Quicken buy changes none of them)
 	refresh_stats()
 
 
@@ -122,7 +122,7 @@ func refresh_stats() -> void:
 func buy(kind: String) -> bool:
 	var ok := prog.buy_damage() if kind == "damage" else prog.buy_wave()
 	if ok:
-		apply_progress()
+		apply_progress(true)
 		sfx("click")
 	return ok
 

@@ -480,8 +480,12 @@ func _load_side_data() -> void:
 
 func _connect_hud() -> void:
 	hud.cast.connect(func(slot: int) -> void: game.cast(slot))
-	hud.buy_damage.connect(func() -> void: game.buy_upgrade("damage"))
-	hud.buy_wave.connect(func() -> void: game.buy_upgrade("wave"))
+	hud.buy_damage.connect(func() -> void:
+		game.buy_upgrade("damage")
+		_hud_at = 0)   # the new tier, cost and gold show next frame, not up to HUD_INTERVAL_MS later
+	hud.buy_wave.connect(func() -> void:
+		game.buy_upgrade("wave")
+		_hud_at = 0)
 	hud.dial_wave.connect(func(d: int) -> void: call_game("dial_wave", [d]))
 	hud.open_panel.connect(func(p: String) -> void: toggle_panel(p))
 	hud.open_grimoire.connect(open_grimoire)
