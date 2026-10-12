@@ -12,6 +12,8 @@
 const DEFS = {
   /** Workbench / Acre stations: hide recipes the player lacks the skill or materials for. */
   only_craftable: { type: 'boolean' },
+  /** Settings -> "Don't show tips": the tip cards stay off on every character and device of the account. */
+  no_tips: { type: 'boolean' },
   /** Settings -> Loot: what happens to a freshly dropped piece of gear of each rarity (archive/legacy-web:src/gameplay/lootFilter.ts). Legendaries are never sold. */
   loot_common: { type: 'enum', values: ['ground', 'auto', 'gold'] },
   loot_uncommon: { type: 'enum', values: ['ground', 'auto', 'gold'] },
