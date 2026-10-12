@@ -33809,6 +33809,38 @@
     "rot": 1.0029904611843319
    },
    {
+    "id": "acre_50",
+    "type": "bog_myrtle",
+    "x": -49.5,
+    "z": 31.8,
+    "area": "acre",
+    "rot": 0.9
+   },
+   {
+    "id": "acre_51",
+    "type": "bog_myrtle",
+    "x": -53.0,
+    "z": 31.8,
+    "area": "acre",
+    "rot": 4.1
+   },
+   {
+    "id": "acre_52",
+    "type": "drowned_lotus",
+    "x": -46.5,
+    "z": 29.8,
+    "area": "acre",
+    "rot": 2.2
+   },
+   {
+    "id": "acre_53",
+    "type": "drowned_lotus",
+    "x": -56.5,
+    "z": 31.8,
+    "area": "acre",
+    "rot": 5.6
+   },
+   {
     "id": "fen_41",
     "type": "bog_myrtle",
     "x": -55.5,

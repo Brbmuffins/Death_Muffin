@@ -138,12 +138,18 @@ func _run() -> void:
 	await launch()
 	var rules_nodes: Dictionary = DmGatherData.nodes()
 
+	# ---- every node type the Skills tab offers for AFK (gather skills) has a spot in the Acre, the only AFK area (2026-10-12: Bog Myrtle and
+	# Drowned Lotus grew only in the Fen, so Start AFK and laborers had nowhere to go for them)
+	for skill: String in DmGathering.GATHER_SKILLS:
+		for nd in DmGathering.nodes_for_skill(skill):
+			check(not first_of(String(nd["id"])).is_empty(), "AFK-able %s node %s (level %d) has a spot in the Acre" % [skill, nd["id"], int(nd["level"])])
+
 	# ---- nodes are in the world with their models, every one reachable
 	var by_area: Dictionary = {}
 	for id in gt.nodes:
 		by_area[gt.nodes[id]["area"]] = int(by_area.get(gt.nodes[id]["area"], 0)) + 1
 	check(gt.nodes.size() == DmData.world()["nodes"].size() and gt.nodes.size() >= 60, "all %d placed nodes are registered (%s)" % [gt.nodes.size(), by_area])
-	check(int(by_area.get("acre", 0)) == 41 and by_area.has("fen") and by_area.has("graves") and by_area.has("sanctum"), "nodes live in the Acre and the other areas the current game has them in")
+	check(int(by_area.get("acre", 0)) == 45 and by_area.has("fen") and by_area.has("graves") and by_area.has("sanctum"), "nodes live in the Acre and the other areas the current game has them in")
 	var shown := 0
 	for id in gt.nodes:
 		var pv: Node3D = g.world.builder.node_views.get(id)

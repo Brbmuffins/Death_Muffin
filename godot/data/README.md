@@ -16,8 +16,8 @@ The JSON here is the source of truth and is edited by hand. Keep each fact in on
 | Gathering model (skills, nodes, recipes, items subset) | `gathering/gathering.json` | `DmDb.gathering()` (wrapper `DmGatherData`, ints normalised) |
 | Covenant counsel tips | `onboarding/tips.json` | `DmDb.tips()` (wrapper `DmCounselData`) |
 | Codex rows, Gear Atlas | `panels_a/codex_rows.json`, `panels_a/atlas.json` | `DmDb.panels_a(name)` (wrapper `DmPaData`) |
-| Exact world sim (obstacles, sight blockers) | `sim/world.json` (`d:<hex>` doubles) | `DmDb.sim_world()` (decoded, fresh copy per call) |
-| Slice view-models (world layout, enemies, hero, npcs, asset list, `necro_gear.json`: which prop model shows which necromancer weapon kind, set mantle, helm tier and legendary set, with scale and grip hints) | `slice/*.json` | `DmDb.slice(name)` (wrapper `DmData`) |
+| Exact world sim (obstacles, sight blockers) | `sim/world.json` (`d:<hex>` doubles) | `DmDb.sim_world()` (decoded, fresh copy per call). The game reads only its `crypts` and `cover`; its obstacles and nodes feed the committed sim and auto-combat fixtures and stay as generated (they lack the Acre herb spots below) |
+| Slice view-models (world layout: the game's node placements; `acre_50`-`acre_53`, two Bog Myrtle and two Drowned Lotus spots in the Acre so every gathering tier has an AFK and laborer spot, are hand-added here and in `content/computed.json` `worldLayout1337` (2026-10-12), enemies, hero, npcs, asset list, `necro_gear.json`: which prop model shows which necromancer weapon kind, set mantle, helm tier and legendary set, with scale and grip hints) | `slice/*.json` | `DmDb.slice(name)` (wrapper `DmData`) |
 | World FX tables | `world_fx/fx.json` | `DmDb.world_fx()` (wrapper `DmWfxData`) |
 | Progression upgrade cost curves, start areas | `progression/extras.json` (the only progression-specific facts) | via `DmDb.progression_view()` |
 | **Loot view** (areas' loot tables, enemy gold/xp, item meta, armour sets, rune pools, legendary, depths rosters) | NO FILE: projection of `content/*` | `DmDb.loot_view()` (wrapper `DmLootData`) |
