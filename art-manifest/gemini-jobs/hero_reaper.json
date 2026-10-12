@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_hero_reaper",
+    "prompt": "3D modeling reference image of a single dark fantasy game character, full body head to toe, strict T-pose with arms straight out to the sides, both hands EMPTY and open, facing the camera, plain flat light grey background (#c8c8c8), even neutral flat lighting, no cast shadows, no ground plane, no text, no weapon, no other objects. A lean rogue-like Reaper: a skeletal skull face with dark hollow eye sockets under a deep tattered dark hood, and a short ragged cowl at the shoulders. He wears MEDIUM ARMOR, not robes: layered dark leather and blackened iron plates, overlapping scale pauldrons with small spikes, a ribbed bone-and-leather cuirass that shows the ribcage, studded leather bracers and vambraces, a wide belt with pouches, a small hourglass and a ring of old iron keys at the hip, fitted dark trousers and tall scaled leather boots. Only a few narrow torn cloth strips hang from the belt and shoulders, no long skirt and no flowing robe, so the legs and arms stay clearly readable. Muted charcoal, gunmetal and weathered brown palette with tiny acid-green accents on the belt keys and armor trim. Chunky readable silhouette, hand-crafted.",
+    "out": "art-src/concepts/hero_reaper.png",
+    "aspect": "3:4"
+  }
+]

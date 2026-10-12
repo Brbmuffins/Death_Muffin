@@ -24,7 +24,7 @@ const TOOLS := {
 const NEW_BLOOD := ["hero_hollow_knight", "hero_grave_warden", "hero_bell_monk", "hero_carrion_witch", "hero_veilwalker"]
 ## rigHeads.ts: what each rig's own head is ('covered' = hood / helmet already there: the helm shows as tint).
 const RIG_HEAD := {
-	"hero_ossuary": "covered", "hero_gravecaller": "covered", "hero_mourner": "covered", "hero_rotweaver": "covered",
+	"hero_ossuary": "covered", "hero_gravecaller": "covered", "hero_mourner": "covered", "hero_rotweaver": "covered", "hero_reaper": "covered",
 	"hero_hollow_knight": "covered", "hero_grave_warden": "covered", "hero_veilwalker": "covered", "hero_carrion_witch": "covered", "hero_bell_monk": "covered",
 	"hero_leg_colossus_mantle": "covered", "hero_leg_legion_unburied": "covered", "hero_leg_plague_choir": "covered", "hero_leg_requiem_wraiths": "covered",
 }

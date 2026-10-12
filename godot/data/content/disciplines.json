@@ -391,7 +391,7 @@
    },
    "color": "#6ee7a0",
    "portrait": "art/portraits/reaper.webp",
-   "modelSlug": "hero_mourner",
+   "modelSlug": "hero_reaper",
    "mods": {
     "thrallCap": 3,
     "thrallKind": "warrior",
@@ -813,7 +813,7 @@
    },
    "color": "#6ee7a0",
    "portrait": "art/portraits/reaper.webp",
-   "modelSlug": "hero_mourner",
+   "modelSlug": "hero_reaper",
    "mods": {
     "thrallCap": 3,
     "thrallKind": "warrior",
