@@ -3,6 +3,7 @@
     "date": "2026-10-12",
     "title": "One Character Per Account",
     "items": [
+      "Settings > Display now has a V-Sync switch. Turn it off for lower input delay and frame rates above your screen's refresh rate.",
       "Picking a discipline (including from Switch character) now switches your own character to it instead of starting a new level-1 character. Your level, gold and gear stay."
     ]
   },
