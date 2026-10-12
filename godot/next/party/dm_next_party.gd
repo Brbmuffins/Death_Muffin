@@ -654,6 +654,79 @@ func _rpc_loot(drop: Dictionary, pos: Vector3) -> void:
 		shell.joiner.on_loot(drop, pos)
 
 
+# ---- dropped gear (ground.cjs) ------------------------------------------------------------------------------------------------------------
+
+## Gear someone dropped: entry {drop_id, item, x, z, eligible: [character ids]} from the server's drop answer. The host draws it for every
+## member the server lets take it (the dropper already shows it). The server decides every pickup; this only draws.
+func share_ground(entry: Dictionary) -> void:
+	if not in_party() or not shell.session.is_active():
+		return
+	if shell.session.is_host():
+		_broadcast_ground(1, entry)
+	else:
+		_rpc_ground.rpc_id(1, entry)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_ground(entry: Dictionary) -> void:
+	if multiplayer.is_server() and shell != null and shell.rewards != null and entry.get("drop_id") is String and entry.get("eligible") is Array:
+		_broadcast_ground(multiplayer.get_remote_sender_id(), entry)
+
+
+func _broadcast_ground(from_peer: int, entry: Dictionary) -> void:
+	for m: DmRewardsMember in shell.rewards.members.values():
+		if m.peer_id == from_peer or not (entry["eligible"] as Array).has(m.character_id):
+			continue
+		if m.peer_id == multiplayer.get_unique_id():
+			_show_ground(entry)
+		else:
+			_rpc_ground_show.rpc_id(m.peer_id, entry)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_ground_show(entry: Dictionary) -> void:
+	_show_ground(entry)
+
+
+func _show_ground(entry: Dictionary) -> void:
+	var m: DmRewardsMember = shell.my_member() if shell != null else null
+	if m != null:
+		m.loot_view.shared_item(entry)
+
+
+func _hide_ground(drop_id: String) -> void:
+	var m: DmRewardsMember = shell.my_member() if shell != null else null
+	if m != null:
+		m.loot_view.remove_shared(drop_id)
+
+
+## A dropped piece was picked up: off everyone's ground.
+func share_taken(drop_id: String) -> void:
+	if not in_party() or not shell.session.is_active():
+		return
+	if shell.session.is_host():
+		_broadcast_taken(1, drop_id)
+	else:
+		_rpc_taken.rpc_id(1, drop_id)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_taken(drop_id: String) -> void:
+	if multiplayer.is_server() and shell != null:
+		_broadcast_taken(multiplayer.get_remote_sender_id(), drop_id)
+
+
+func _broadcast_taken(from_peer: int, drop_id: String) -> void:
+	_rpc_taken_show.rpc(drop_id)
+	if from_peer != 1:
+		_hide_ground(drop_id)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_taken_show(drop_id: String) -> void:
+	_hide_ground(drop_id)
+
+
 # ---- party chat ---------------------------------------------------------------------------------------------------------------------------
 
 ## Returns true when the line went to the party (false = solo: the caller shows its "nobody hears you").

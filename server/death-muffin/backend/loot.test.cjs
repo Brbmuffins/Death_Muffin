@@ -109,3 +109,25 @@ test('ownership is checked before a pooled connection is taken (concurrent rolls
   assert.equal(heldDuringOwnership, 0, 'no connection held while ownership is checked');
   assert.equal(held, 0, 'connection released');
 });
+
+test('a piece rolled inside a live party session remembers the session and when it was found (ground.cjs); outside one it remembers nothing', async () => {
+  const S = 'c'.repeat(32);
+  const live = { status: 'open', last_host_at: Date.now(), member: 'active', column: 1 };
+  const extra = (sql) => {
+    if (sql.includes('FROM party_sessions s JOIN party_session_members m')) return [live.member ? [{ status: live.status, last_host_at: live.last_host_at }] : []];
+    if (sql.includes('information_schema.COLUMNS')) return [[{ n: live.column }]];
+    return null;
+  };
+  const db = fakeDb({ extra });
+  const c = harness(mountLoot, db, { random: seeded() });
+  const r = (await c('POST /api/loot/roll-gear', { body: { characterId: 1, drops: [drop('helm_iron')], sessionId: S } })).json;
+  assert.strictEqual(r.success, true, r.error);
+  const row = db.loot.find((l) => l.id === r.data[0].instance_id);
+  assert.strictEqual(row.found_session_id, S);
+  assert.ok(Math.abs(row.found_at - Date.now()) < 5000);
+  live.member = null;   // not (or no longer) in that session
+  const r2 = (await c('POST /api/loot/roll-gear', { body: { characterId: 1, drops: [drop('helm_iron')], sessionId: S } })).json;
+  assert.strictEqual(db.loot.find((l) => l.id === r2.data[0].instance_id).found_session_id, null);
+  const r3 = (await c('POST /api/loot/roll-gear', { body: { characterId: 1, drops: [drop('helm_iron')], sessionId: 'not-a-session' } })).json;
+  assert.strictEqual(db.loot.find((l) => l.id === r3.data[0].instance_id).found_session_id, null);
+});

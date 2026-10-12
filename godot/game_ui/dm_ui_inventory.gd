@@ -13,6 +13,7 @@ var panel: DmReliquaryPanel
 var locks: DmItemLocks
 var busy := false
 var _confirm_belt_offer: Control = null
+var _confirm_drop := -1                       ## bag slot of an epic / legendary piece waiting for "Drop it" (-1 = none)
 var store: DmCounselStore
 
 
@@ -348,7 +349,19 @@ func _extra_actions(it: Dictionary) -> Array:
 	if String(row.get("item_type", "")) == "rune" and ui.is_necromancer() and DmContent.rune(id) != {}:
 		var rite := String(DmAbilities.def(String(DmContent.rune(id)["rite"]))["name"])
 		out.append({"id": "rune", "label": "Socket into %s" % rite})
+	if can_drop(row):
+		if _confirm_drop == int(row["slot_index"]):
+			out.append({"id": "drop_confirm", "label": "Drop it", "primary": true, "hint": "It lies at your feet until you leave the world, then it is gone"})
+			out.append({"id": "drop_cancel", "label": "Keep it"})
+		else:
+			out.append({"id": "drop", "label": "Drop", "hint": "Drops it at your feet until you leave the world. Party members who were with you when it dropped can pick it up"})
 	return out
+
+
+## Gear (a rolled piece) in the bag, not worn, while in the world (ground.cjs: gear only).
+func can_drop(row: Dictionary) -> bool:
+	return game.has_method("drop_gear") and row.get("instance_id") != null and not DmCombatData.truthy(row.get("equipped")) \
+		and int(row["slot_index"]) < DmLoot.bag_size()
 
 
 static func DmGathering_meals() -> Dictionary:
@@ -377,6 +390,19 @@ func _on_action(id: String, it: Dictionary) -> void:
 			adopt_charm(String(pet_for_charm(String(row["item_id"]))["id"]))
 		"rune":
 			socket_rune(row)
+		"drop":
+			var affixes: Array = row["affixes"] if row.get("affixes") is Array else []
+			if DmLootView.rarity_of({"item_id": row["item_id"], "instance": {"affixes": affixes}}) in ["epic", "legendary"]:
+				_confirm_drop = int(row["slot_index"])   # a valuable piece asks once more
+				render()
+			else:
+				drop_gear(row)
+		"drop_confirm":
+			_confirm_drop = -1
+			drop_gear(row)
+		"drop_cancel":
+			_confirm_drop = -1
+			render()
 
 
 func _on_right_click(it: Dictionary) -> void:
@@ -512,6 +538,18 @@ func socket_rune_id(rite: String, item_id: String) -> String:
 		ui.toast("%s: %s" % [rn["name"], rn["short"]], "good")
 		ui.notify("rune_socketed")
 	return ""
+
+
+func drop_gear(row: Dictionary) -> void:
+	if not _begin():
+		return
+	var err: String = await game.drop_gear(row)
+	if err != "":
+		panel.set_error(err)
+	else:
+		panel.sel_item = {}
+		ui.play("lootDrop")
+	_end()
 
 
 func socket_rune(row: Dictionary) -> void:

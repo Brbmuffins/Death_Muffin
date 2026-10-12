@@ -2151,6 +2151,14 @@ require('./runes.cjs')(app, pool, {
     return rows.length === 1;
   },
 });
+// Gear dropped from a bag onto the party session's ground; first eligible pickup wins (migration 043, DECISIONS B16).
+require('./ground.cjs').mountGround(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
 require('./loadouts.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {

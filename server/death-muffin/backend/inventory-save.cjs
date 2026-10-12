@@ -7,6 +7,7 @@
  */
 const gather = require('./gathering/gathering-rules.cjs');
 const { SaveRefusal, deleteInstances } = require('./loot-instances.cjs');
+const { onGround } = require('./ground.cjs');
 
 const LEGACY_BAG_SLOTS = 24;
 
@@ -77,6 +78,8 @@ async function resolveInstances(conn, accountId, characterId, slots, existingByS
     }
     const [inVault] = await conn.query('SELECT instance_id FROM account_vault WHERE instance_id IN (?)', [ids]);
     if (inVault.length) throw new SaveRefusal(CANT_VERIFY);
+    // A piece lying on the ground of a party session (ground.cjs) belongs to no bag until someone picks it up.
+    if ((await onGround(conn, ids)).length) throw new SaveRefusal(CANT_VERIFY);
   }
   return { bySlot: out, claimed };
 }

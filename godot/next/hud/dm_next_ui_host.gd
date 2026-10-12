@@ -133,6 +133,7 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 		m.loot_view.rune_known.connect(_on_rune_known)
 		m.loot_view.legendary_dropped.connect(_on_legendary_dropped)
 		m.loot_view.rune_resolve = Callable(self, "_resolve_rune")
+		m.loot_view.claim_requested.connect(_on_claim)
 		_load_vault_runes()
 	settings_store = DmSettings.new(DmSettings.FILE, persist)
 	settings_store.set_active_character(hero_id, character.get("auto_combat_allowed", false) == true)
@@ -817,6 +818,66 @@ func _resolve_rune(drop: Dictionary) -> Dictionary:
 		if DmRunes.is_rune_id(r.get("item_id")):
 			owned[String(r["item_id"])] = true
 	return DmLootRunes.resolve(String(drop["item_id"]), drop.get("rune_pool", []), owned)
+
+
+## Reliquary -> Drop: the gear on `row` goes onto the party session's ground at the hero's feet (ground.cjs). It stays until the session ends;
+## the server says who may take it (you, and members who were there when it was found) and the party draws it for them. "" = dropped, else why not.
+func drop_gear(row: Dictionary) -> String:
+	var b := shell.local_body()
+	var sid := shell.party_session_id()
+	if b == null or not b.alive or sid == "":
+		return "You can only drop gear while you are in the world."
+	var err := await bag_commit()   # unsaved bag edits first: the server's answer replaces the bag
+	if err != "":
+		return "Could not save the bag first: %s" % err
+	var r: DmResult = await api.ground_drop(hero_id, sid, int(row["slot_index"]), b.position.x, b.position.z)
+	if not r.ok:
+		return r.error if r.error != "" else "It would not drop."
+	inventory.replace(r.data["bag"])
+	inventory_changed.emit()
+	var entry := {"drop_id": String(r.data["dropId"]), "item": r.data["item"], "x": b.position.x, "z": b.position.z, "eligible": r.data["eligible"]}
+	show_shared_drop(entry)
+	if shell.party != null:
+		shell.party.share_ground(entry)
+	return ""
+
+
+## Draw a dropped piece (ours, or one the host relayed because the server lets us take it).
+func show_shared_drop(entry: Dictionary) -> void:
+	var m: DmRewardsMember = shell.my_member()
+	if m != null:
+		m.loot_view.shared_item(entry)
+
+
+func remove_shared_drop(drop_id: String) -> void:
+	var m: DmRewardsMember = shell.my_member()
+	if m != null:
+		m.loot_view.remove_shared(drop_id)
+
+
+## The hero reached a dropped piece: the server hands it over (or says why not). The first pickup wins; everyone else's copy goes away.
+func _on_claim(d: Dictionary) -> void:
+	if d.get("claiming", false):
+		return
+	d["claiming"] = true
+	var id := String(d["drop_id"])
+	var err := await bag_commit()
+	var r: DmResult = await api.ground_pickup(hero_id, id) if err == "" else null
+	d["claiming"] = false
+	if r != null and r.ok:
+		inventory.replace(r.data["bag"])
+		inventory_changed.emit()
+		remove_shared_drop(id)
+		if shell.party != null:
+			shell.party.share_taken(id)
+		var meta := DmContent.item(String(d["item"]["item_id"]))
+		_loot_toast(d["item"], meta)
+		_item_collected(d["item"], meta)
+		return
+	var why := err if r == null else (r.error if r.error != "" else "You could not pick that up.")
+	game_event.emit("toast", {"text": why, "kind": "err"})
+	if why.begins_with("It is gone"):
+		remove_shared_drop(id)
 
 
 ## A left click on a drop (DmNextInput): the hero walks there and takes it on arrival. False = no drop under the cursor.

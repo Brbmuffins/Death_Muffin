@@ -148,7 +148,7 @@ func on_loot(drop: Dictionary, pos: Vector3) -> void:
 		drop.erase("roll")
 		rolls_pending += 1
 		for batch in DmLootRoll.batches([drop]):
-			var r: DmResult = await shell.api.roll_loot(hero_id, DmLootRoll.request(batch, float(roll["level"]), String(roll["source"])))
+			var r: DmResult = await shell.api.roll_loot(hero_id, DmLootRoll.request(batch, float(roll["level"]), String(roll["source"])), session_id)
 			if r.ok and r.data is Array:
 				DmLootRoll.apply(batch, r.data)
 		rolls_pending -= 1

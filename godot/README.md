@@ -31,7 +31,7 @@ Start here for a request, then read the system's README. One row per feature; th
 | Grimoire, loadouts, keybinds | `ui/panels_a/dm_grimoire_window.gd`, `game_ui/dm_loadout_presets.gd`, `game_ui/dm_ui_binds.gd`, `next/next_input.gd` | `data/combat/abilities.json` | `loadouts.cjs` |
 | HUD, action bar, orbs, minimap, tips | `ui/hud/` (`dm_hud.gd`, `dm_hud_slot.gd`, `dm_hud_minimap.gd`), `next/hud/`, `game_ui/dm_hud_reveal.gd`, `game_ui/dm_hud_tips.gd` | | |
 | Settings, logout, switch character | `ui/panels/dm_settings_panel.gd`, `game_ui/dm_ui_settings.gd` | | |
-| Loot drops, item cards, tooltips | `next/rewards/`, `loot_view/`, `ui/widgets/dm_item_card.gd`, `ui/widgets/dm_item_tooltip.gd` | `rules/loot/`, `data/content/` | `loot.cjs`, `loot-instances.cjs` |
+| Loot drops, item cards, tooltips, dropped gear | `next/rewards/`, `loot_view/`, `ui/widgets/dm_item_card.gd`, `ui/widgets/dm_item_tooltip.gd`, `game_ui/dm_ui_inventory.gd` (Drop) | `rules/loot/`, `data/content/` | `loot.cjs`, `loot-instances.cjs`, `ground.cjs` |
 | Enemies, bosses | `enemies/`, `next/spawn/`, `next/bosses/`, `game/dm_boss_view.gd` | `data/combat/enemies.json`, `sim/` | `kills.cjs`, `boss-key.cjs` |
 | Hero body, avatar, death pose | `next/hero/dm_hero_body.gd`, `game/dm_avatar.gd` | | |
 | Thralls, corpses | `next/thralls/`, `next/corpses/` | | |

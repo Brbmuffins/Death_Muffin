@@ -251,3 +251,28 @@ func _end(s: Dictionary, body: Dictionary, account: String, now: int) -> Diction
 	if final != null:
 		data["final"] = final
 	return _ok(data)
+
+## The member record of an active character in a live session, or {} (dropped gear and gear found in a session: ground.cjs).
+func active_member(sid: String, cid: int, now: int) -> Dictionary:
+	var s: Variant = _sessions.get(sid)
+	if s == null or not _live(s, now):
+		return {}
+	var m: Variant = s["members"].get(cid)
+	return m if m != null and m["status"] == "active" else {}
+
+
+func is_live(sid: String, now: int) -> bool:
+	var s: Variant = _sessions.get(sid)
+	return s != null and _live(s, now)
+
+
+## Character ids of the active members who joined at or before `at` (who was there when a piece was found).
+func present_at(sid: String, at: int) -> Array:
+	var out: Array = []
+	var s: Variant = _sessions.get(sid)
+	if s != null:
+		for cid in s["members"]:
+			var m: Dictionary = s["members"][cid]
+			if m["status"] == "active" and int(m["joined_at"]) <= at:
+				out.append(int(cid))
+	return out

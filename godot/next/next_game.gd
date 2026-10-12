@@ -311,6 +311,13 @@ func _await_active(timeout: float) -> bool:
 
 
 ## The local player's rewards member: the host's own (DmSessionRewards) or a joiner's (DmNextJoiner), `null` before either exists.
+## The backend party session this player is in ("" = none: offline without sessions, or not open yet). Gear rolled and dropped here carries it.
+func party_session_id() -> String:
+	if rewards != null:
+		return rewards.session_id
+	return joiner.session_id if joiner != null else ""
+
+
 func my_member() -> DmRewardsMember:
 	if rewards != null:
 		return rewards.members.get(int(character.get("id", 0)))

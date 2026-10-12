@@ -658,7 +658,7 @@ func _land_gear(m: DmRewardsMember, at: Vector3, gear: Array, level: float, sour
 	_gear_pending += 1
 	if m.api != null:
 		for batch in DmLootRoll.batches(gear):
-			var r: DmResult = await m.api.roll_loot(m.character_id, DmLootRoll.request(batch, level, source))
+			var r: DmResult = await m.api.roll_loot(m.character_id, DmLootRoll.request(batch, level, source), session_id)
 			if r.ok and r.data is Array:
 				DmLootRoll.apply(batch, r.data)
 	_gear_pending -= 1

@@ -93,4 +93,10 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
   nothing). Runes go straight into the bag with a chat line and never repeat one the account owns (bag, sockets, Vault): a known rune
   becomes another of its source's pool the player lacks, or soul shards (1/2/3 by rarity) when they own the whole pool; the kill ledger
   credits those shards (`KNOWN_RUNE_SHARDS_MAX`). Legendaries and new runes are a chat line, for the whole party in co-op. Co-op loot stays
-  personal. Next: dropping gear from the bag for party members who were there when it was found (same session only).
+  personal.
+- **B16. Dropping gear for the party** (owner, 2026-10-12). Gear only (materials merge into stacks, runes have no instance, so neither can
+  remember where it was found). A dropped piece lies on the session's ground until the session ends, then it is gone (3 min loot expiry does
+  not apply). The dropper and members who were in the session when it was found may take it, only during that session; first pickup wins.
+  The server owns it (`ground.cjs`, migration 043): roll-gear stamps the session and time on each piece, drop and pickup are one locked
+  transaction each, a bag save cannot name a piece on the ground, and the host only relays the drawing to the members the server named.
+  Up to 20 pieces per player per session. Unclaimed pieces of an ended session are deleted.

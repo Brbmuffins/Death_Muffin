@@ -356,6 +356,8 @@ async function endSession(pool, { sessionId, accountId, body, now = Date.now(), 
           await audit(conn, { characterId: m.characterId, accountId: m.accountId, kind: 'session_kill_mismatch', mode, action: 'report', detail: { session: sessionId, accepted: m.acceptedKills, seen: m.seenKills } }, log);
         }
       }
+      // Gear still lying on this session's ground is gone with it (ground.cjs; required here, not at the top: ground.cjs requires this file).
+      await require('./ground.cjs').clearSession(conn, sessionId, log);
       return okRes({ ended: true, members: members.map(publicMember), ...(finalOut && finalOut.body.data ? { final: finalOut.body.data } : {}) });
     }, log);
     return res;

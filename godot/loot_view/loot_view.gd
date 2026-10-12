@@ -6,6 +6,8 @@ extends Node3D
 ##   clicks one (pick() + request_pickup()), walks there, and it is taken once the hero is within ITEM_PICKUP_RADIUS. Loot never flies.
 ## - Runes: drop() asks `rune_resolve` for a rune the player does not own (else soul shards) and puts it straight into the bag
 ##   (`rune_found`); a full bag leaves it on the ground like any item. Legendaries landing raise `legendary_dropped` (the chat line).
+## - Shared drops (shared_item): gear someone dropped from a bag (ground.cjs). It stays until the session ends, outside the cap, and reaching
+##   it raises `claim_requested`: the server hands it over (the first pickup wins), then the owner calls remove_shared().
 ## Past LOOT_ITEM_CAP items the oldest go early, ordinary before epic/legendary.
 ##
 ## Usage:  var lv := DmLootView.new(); add_child(lv)
@@ -22,6 +24,7 @@ signal rune_found(drop: Dictionary, pos: Vector3)             ## a rune the play
 signal rune_known(shards: int, rune_id: String, pos: Vector3)  ## every rune of the pool was owned: paid as soul shards instead (also a "shard" picked event)
 signal legendary_dropped(drop: Dictionary, pos: Vector3)      ## a legendary landed on the ground
 signal dropped_sound(sound_id: String, pos: Vector3)          ## lootDrop / lootDropRare / lootDropEpic / lootDropLegendary
+signal claim_requested(drop: Dictionary)                      ## the hero reached a shared drop (gear a party member dropped): the server decides
 
 ## Owner 2026-10-12 (team thread): gear and materials stay 3 minutes (was 60 s).
 const LOOT_EXPIRE_S := 180.0
@@ -136,14 +139,30 @@ func shard(pos: Vector3, amount: int, _exact: bool = false) -> void:
 		_credit.append({"kind": "shard", "amount": amount, "pos": pos})
 
 
-func item(pos: Vector3, d: Dictionary, exact: bool = false) -> void:
+## Gear a party member (or you) dropped from a bag: entry {drop_id, item, x, z}. Lies where it was dropped until remove_shared().
+func shared_item(entry: Dictionary) -> void:
+	for d in _drops:
+		if d.get("drop_id") == entry["drop_id"]:
+			return
+	item(Vector3(float(entry["x"]), 0, float(entry["z"])), entry["item"], true, String(entry["drop_id"]))
+
+
+## A shared drop was picked up (by anyone) or is gone: off the ground.
+func remove_shared(drop_id: String) -> void:
+	for i in _drops.size():
+		if _drops[i].get("drop_id") == drop_id:
+			_remove(i, "")
+			return
+
+
+func item(pos: Vector3, d: Dictionary, exact: bool = false, drop_id: String = "") -> void:
 	var p := Vector2(pos.x, pos.z) if exact else _scatter_apart(pos, 0.7)
 	var meta := DmContent.item(str(d["item_id"]))
 	var rarity := rarity_of(d)
 	var color := Color(RARITY_COLORS[rarity])
 	var prize := is_prize(rarity)
 	dropped_sound.emit("lootDropLegendary" if rarity == "legendary" else "lootDropEpic" if rarity == "epic" else "lootDropRare" if rarity == "rare" else "lootDrop", Vector3(p.x, 0, p.y))
-	if rarity == "legendary":
+	if rarity == "legendary" and drop_id == "":
 		legendary_dropped.emit(d, Vector3(p.x, 0, p.y))
 	var root := Node3D.new()
 	root.position = Vector3(p.x, 0, p.y)
@@ -182,8 +201,11 @@ func item(pos: Vector3, d: Dictionary, exact: bool = false) -> void:
 	glow.material_override = _glow_material(rarity, color)
 	root.add_child(glow)
 	var lab: Label3D = _make_label(root, d, meta, color) if show_labels else null
-	_drops.append({"kind": "item", "node": root, "icon": icon, "beam": beam, "label": lab, "meta": meta, "color": color, "common": rarity == "common", "x": p.x, "z": p.y, "amount": int(d.get("quantity", 1)), "item": d, "t": 0.0,
-		"ttl": LOOT_EXPIRE_S, "prize": prize, "beam_alpha": 0.5 if rarity == "legendary" else 0.35})
+	var drop := {"kind": "item", "node": root, "icon": icon, "beam": beam, "label": lab, "meta": meta, "color": color, "common": rarity == "common", "x": p.x, "z": p.y, "amount": int(d.get("quantity", 1)), "item": d, "t": 0.0,
+		"ttl": LOOT_EXPIRE_S if drop_id == "" else INF, "prize": prize, "beam_alpha": 0.5 if rarity == "legendary" else 0.35}
+	if drop_id != "":
+		drop["drop_id"] = drop_id
+	_drops.append(drop)
 
 
 func _make_label(root: Node3D, d: Dictionary, meta: Dictionary, color: Color) -> Label3D:
@@ -274,13 +296,16 @@ func tick(dt: float, hero_pos: Vector3) -> Array[Dictionary]:
 			m.albedo_color.a = pa
 	# Too many items: the oldest expire now (array is in drop order), ordinary ones before epic/legendary.
 	if _drops.size() > LOOT_ITEM_CAP:
-		var surplus := _drops.size() - LOOT_ITEM_CAP
+		var surplus := -LOOT_ITEM_CAP
+		for d in _drops:
+			if not d.has("drop_id"):
+				surplus += 1
 		for pass_ in 2:
 			var prize_too := pass_ == 1
 			var i := 0
 			while i < _drops.size() and surplus > 0:
 				var d: Dictionary = _drops[i]
-				if prize_too or not d["prize"]:
+				if not d.has("drop_id") and (prize_too or not d["prize"]):
 					_remove(i, "cap")
 					surplus -= 1
 				else:
@@ -310,6 +335,9 @@ func tick(dt: float, hero_pos: Vector3) -> Array[Dictionary]:
 			lb.visible = show
 		if is_same(d, _target) and dist < ITEM_PICKUP_RADIUS:
 			_target = {}
+			if d.has("drop_id"):
+				claim_requested.emit(d)   # the server decides; the owner removes it once it is handed over
+				continue
 			if try_take.is_null() or bool(try_take.call(d["item"])):
 				var ev := {"kind": "item", "amount": d["amount"], "item": d["item"], "pos": node.position}
 				events.append(ev)
@@ -357,7 +385,7 @@ func clear_all() -> void:
 func debug_drops() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for d in _drops:
-		out.append({"kind": d["kind"], "id": d["item"]["item_id"], "x": d["x"], "z": d["z"], "ttl": d["ttl"], "prize": d["prize"]})
+		out.append({"kind": d["kind"], "id": d["item"]["item_id"], "x": d["x"], "z": d["z"], "ttl": d["ttl"], "prize": d["prize"], "drop_id": d.get("drop_id", "")})
 	return out
 
 

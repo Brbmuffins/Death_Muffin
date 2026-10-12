@@ -43,6 +43,13 @@ test('a save cannot mint or alter a roll: affixes/ilvl in the payload are ignore
   assert.equal(JSON.stringify(db.inv), before, 'a refused save writes nothing');
 });
 
+test('a piece lying on a party session\'s ground (ground.cjs) cannot be named by a bag save until someone picks it up', async () => {
+  const db = fakeDb({ loot: [loot(1), loot(2)], ground: [2] });
+  await refused(save(db, [gear(0, 2)]));
+  await save(db, [gear(0, 1)]);
+  assert.equal(db.inv.find((r) => r.slot_index === 0).instance_id, 1);
+});
+
 test('an instance of another account, of a different item, or held elsewhere is refused', async () => {
   const db = fakeDb({
     loot: [loot(1), loot(2, 'helm_iron', { account_id: 99 }), loot(3, 'staff_oak'), loot(4), loot(5), loot(6)],

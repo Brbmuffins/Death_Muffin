@@ -29,9 +29,14 @@ function parseAffixes(raw) {
   }
 }
 
-/** Insert a (legal) instance owned by `accountId`; returns its id. */
-async function insertInstance(conn, accountId, itemId, inst) {
+/** Insert a (legal) instance owned by `accountId`; returns its id. `found` = { sessionId, at }: the party session it was found in (ground.cjs). */
+async function insertInstance(conn, accountId, itemId, inst, found = null) {
   const clean = affix.cleanInstance(inst);
+  if (found) {
+    const [res] = await conn.execute('INSERT INTO loot_instances (account_id, item_id, ilvl, affixes, found_session_id, found_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [accountId, itemId, clean.ilvl, JSON.stringify(clean.affixes), found.sessionId, found.at]);
+    return num(res.insertId);
+  }
   const [res] = await conn.execute('INSERT INTO loot_instances (account_id, item_id, ilvl, affixes) VALUES (?, ?, ?, ?)', [accountId, itemId, clean.ilvl, JSON.stringify(clean.affixes)]);
   return num(res.insertId);
 }

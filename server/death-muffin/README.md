@@ -72,6 +72,7 @@ start, so changing one needs a restart of `death-muffin-auth`.
 - **Step 2, kill ledger** (`backend/kills.cjs`, migration 036): `AUTHORITY_KILLS=off` (default) ignores kill reports, `audit` keeps the ledger and logs differences, `enforce` lets saves claim only what
   the ledger credits (and implies the step-1 clamp). Ceilings come from `server/rules/gameplay/authorityRules.ts`.
 - **Party sessions** (`backend/party-sessions.cjs`, migration 041, `backend/SESSION-REPORTS.md`): a session host reports what its members killed; each member's part goes through the same kill ledger.
+- **Dropped gear** (`backend/ground.cjs`, migration 043): `POST /api/ground/drop` and `/api/ground/pickup`. Gear dropped from a bag lies on its party session's ground until the session ends; the dropper and members who were in the session when it was found (`loot_instances.found_session_id`, stamped by roll-gear) may take it; the first pickup wins, one transaction each. A bag save may not name a piece on the ground.
 
 ```sql
 SELECT a.created_at, ac.username, a.character_id, a.kind, a.mode, a.action, a.detail

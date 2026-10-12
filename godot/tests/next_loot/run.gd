@@ -66,6 +66,31 @@ func _run() -> void:
 			break
 	var gear := {"item_id": gear_id, "quantity": 1, "instance": {"id": "t1", "ilvl": 3, "affixes": []}}
 
+	# ---- Reliquary -> Drop (ground.cjs): the piece leaves the bag and lies at your feet; reaching it asks the server and it comes back
+	var sid := g.party_session_id()
+	check(sid != "", "drop: the solo game has a backend session")
+	var rr: DmResult = await h.api.roll_loot(h.hero_id, [{"item_id": gear_id, "level": 5, "source": "kill"}], sid)
+	var piece := {"item_id": gear_id, "quantity": 1, "instance": {"id": rr.data[0]["instance_id"], "ilvl": rr.data[0]["ilvl"], "affixes": rr.data[0]["affixes"]}}
+	h.inventory.add(piece)
+	var cerr: String = await h.bag_commit()
+	check(cerr == "", "drop: the piece is saved in the bag (%s)" % cerr)
+	var prow: Dictionary = {}
+	for srow in h.inventory.slots:
+		if str(srow.get("instance_id")) == str(piece["instance"]["id"]):
+			prow = srow
+	var acts: Array = g.ui.inv._extra_actions({"row": prow})
+	check(acts.any(func(a: Dictionary) -> bool: return a["id"] == "drop"), "drop: the Reliquary offers Drop for gear")
+	var n_bag: int = h.inventory.slots.size()
+	check(await h.drop_gear(prow) == "", "drop: dropped")
+	check(h.inventory.slots.size() == n_bag - 1, "drop: it left the bag")
+	var shared: Array = lv._drops.filter(func(d: Dictionary) -> bool: return d.has("drop_id"))
+	check(shared.size() == 1, "drop: it lies on the ground")
+	h._on_claim(shared[0])   # what reaching it does
+	check(await until(func() -> bool: return h.inventory.slots.size() == n_bag, 4.0), "drop: picked back up through the server")
+	check(lv._drops.filter(func(d: Dictionary) -> bool: return d.has("drop_id")).is_empty(), "drop: off the ground")
+	events.clear()
+
+
 	var rarity_of := DmLootView.rarity_of(gear)
 	# ---- items: walking over one takes nothing; a click walks the hero there and takes it with the pickup's feedback
 	events.clear()

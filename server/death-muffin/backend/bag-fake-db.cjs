@@ -1,5 +1,5 @@
 /**
- * An in-memory stand-in for the tables vault.cjs, salvage.cjs and inventory-save.cjs touch, dispatched on the SQL text, with real
+ * An in-memory stand-in for the tables vault.cjs, salvage.cjs, inventory-save.cjs and loot.cjs touch, dispatched on the SQL text, with real
  * transaction rollback. Test helper only (not a test file).
  */
 const ITEMS = {
@@ -50,7 +50,7 @@ const ITEMS = {
   rune_requiem: { type: 'rune', rarity: 'epic', stack: 99 },
 };
 
-function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot = [], charLevel = 10, extra = null } = {}) {
+function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot = [], charLevel = 10, extra = null, ground = [] } = {}) {
   let inv = [
     ...bag.map((b, i) => ({ id: i + 1, equipped: 0, equipped_slot: null, character_id: 1, ...b })),
     ...equipped.map((e, i) => ({ id: 800 + i, equipped: 1, equipped_slot: e.equipped_slot || 'main_hand', character_id: 1, ...e })),
@@ -139,7 +139,7 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
     }
     if (sql.startsWith('SELECT account_id, level FROM characters')) return [[{ account_id: 7, level: charLevel }]];
     if (sql.startsWith('INSERT INTO loot_instances')) {
-      const row = { id: nextLoot++, account_id: p[0], item_id: p[1], ilvl: p[2], affixes: JSON.parse(p[3]), created_at: Date.now() };
+      const row = { id: nextLoot++, account_id: p[0], item_id: p[1], ilvl: p[2], affixes: JSON.parse(p[3]), created_at: Date.now(), found_session_id: p[4] ?? null, found_at: p[5] ?? null };
       lootRows.push(row);
       return [{ insertId: row.id }];
     }
@@ -185,6 +185,8 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
     if (sql.startsWith('SELECT id, account_id, item_id FROM loot_instances')) return [lootRows.filter((l) => p[0].includes(l.id)).map((l) => ({ ...l }))];
     if (sql.startsWith('SELECT instance_id, character_id, slot_index FROM inventory')) return [inv.filter((r) => p[0].includes(r.instance_id)).map((r) => ({ instance_id: r.instance_id, character_id: r.character_id, slot_index: r.slot_index }))];
     if (sql.startsWith('SELECT instance_id FROM account_vault')) return [vlt.filter((r) => p[0].includes(r.instance_id)).map((r) => ({ instance_id: r.instance_id }))];
+    // ground.cjs onGround: instance ids lying on a party session's ground (`ground` = ids).
+    if (sql.startsWith('SELECT instance_id FROM ground_drops')) return [ground.filter((id) => p[0].includes(id)).map((id) => ({ instance_id: id }))];
     if (sql.startsWith('DELETE FROM loot_instances WHERE id IN')) { for (const id of p[0]) dropInstance(id); return [{}]; }
     if (sql.startsWith('SELECT id, item_type, rarity FROM items')) return [p[0].filter((id) => ITEMS[id]).map((id) => ({ id, item_type: ITEMS[id].type, rarity: ITEMS[id].rarity }))];
     if (sql.startsWith('SELECT id, stackable')) return [p[0].filter((id) => ITEMS[id]).map((id) => ({ equipment_slot: ITEMS[id].type === 'weapon' ? 'main_hand' : ITEMS[id].type === 'offhand' ? 'off_hand' : null, two_handed: id.startsWith('staff_') ? 1 : 0, id, stackable: ITEMS[id].stack > 1 ? 1 : 0, max_stack_size: ITEMS[id].stack, item_type: ITEMS[id].type, rarity: ITEMS[id].rarity }))];

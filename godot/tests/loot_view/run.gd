@@ -18,6 +18,7 @@ func _run() -> void:
 	t_expiry_and_cap()
 	t_runes()
 	t_legendary_and_sounds()
+	t_shared()
 	await t_pick()
 	t_render_budget()
 	print("%d passed, %d failed" % [passed, failed])
@@ -161,6 +162,35 @@ func t_legendary_and_sounds() -> void:
 	var d0: Dictionary = v.debug_drops()[0]
 	var dist := Vector2(d0["x"] - 5, d0["z"] - 5).length()
 	ok(dist >= 0.3 and dist <= 1.0 + 1e-6, "scatter radius %f" % dist)
+	v.free()
+
+
+## Shared drops (gear dropped from a bag, ground.cjs): no expiry, outside the cap, reaching one asks the server (claim_requested) instead of
+## taking it; remove_shared() takes it off the ground; no legendary chat line for a piece somebody dropped.
+func t_shared() -> void:
+	var v := _view()
+	var claims := []
+	var legs := []
+	v.claim_requested.connect(func(d): claims.append(d["drop_id"]))
+	v.legendary_dropped.connect(func(d, _p): legs.append(d))
+	v.try_take = func(_d): return true
+	var entry := {"drop_id": "d1", "item": {"item_id": "leg_legion_unburied_head", "quantity": 1}, "x": 2.0, "z": 0.0}
+	v.shared_item(entry)
+	v.shared_item(entry)
+	ok(v.count() == 1 and legs.is_empty(), "a shared drop lands once, without a legendary line")
+	ok(v.debug_drops()[0]["drop_id"] == "d1" and is_inf(float(v.debug_drops()[0]["ttl"])), "it never expires")
+	for i in 61:
+		v.item(Vector3(9, 0, 9), {"item_id": "ore_copper", "quantity": 1})
+	v.tick(600.0, Vector3(99, 0, 99))
+	var shared_left := v.debug_drops().filter(func(d): return d["drop_id"] == "d1").size()
+	ok(shared_left == 1, "the cap and ten minutes leave it lying")
+	v.clear_all()
+	v.shared_item(entry)
+	v.request_pickup(v._drops[0])
+	var ev := v.tick(0.1, Vector3(2, 0, 0))
+	ok(ev.is_empty() and claims == ["d1"] and v.count() == 1, "reaching it asks the server instead of taking it")
+	v.remove_shared("d1")
+	ok(v.count() == 0, "remove_shared takes it off the ground")
 	v.free()
 
 

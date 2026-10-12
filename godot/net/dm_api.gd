@@ -232,13 +232,25 @@ func equip_item(character_id: int, slot_index: int, equipped: int) -> DmResult:
 ## data: Array of {item_id, instance_id (null for non-gear), ilvl, affixes}. drops: [{item_id, level, source}]
 ## One roll in flight per client: the route holds a DB connection while it checks ownership on the same pool, so a burst of concurrent rolls
 ## (one per kill) from a single player can occupy every connection and wedge the whole backend (seen live 2026-10-06 with 24 at once).
-func roll_loot(character_id: int, drops: Array) -> DmResult:
+## `session_id`: the party session the player is in; gear found there may later be handed to the members who were there (ground.cjs).
+func roll_loot(character_id: int, drops: Array, session_id: String = "") -> DmResult:
 	while _roll_busy:
 		await Engine.get_main_loop().process_frame
 	_roll_busy = true
-	var r := await _post("/api/loot/roll-gear", {"characterId": character_id, "drops": drops})
+	var body := {"characterId": character_id, "drops": drops}
+	if session_id != "":
+		body["sessionId"] = session_id
+	var r := await _post("/api/loot/roll-gear", body)
 	_roll_busy = false
 	return r
+
+## Drop the gear on bag slot `slot` onto the party session's ground at (x, z) (ground.cjs). data: {dropId, item, eligible: [character ids], bag}.
+func ground_drop(character_id: int, session_id: String, slot: int, x: float, z: float) -> DmResult:
+	return _decorate_keys(await _post("/api/ground/drop", {"characterId": character_id, "sessionId": session_id, "slot": slot, "x": x, "z": z}), ["bag"])
+
+## Pick a dropped piece up (the server checks who may). data: {slot, bag}.
+func ground_pickup(character_id: int, drop_id: String) -> DmResult:
+	return _decorate_keys(await _post("/api/ground/pickup", {"characterId": character_id, "dropId": drop_id}), ["bag"])
 
 func belt_tool(character_id: int, slot_index: int, equipped: int) -> DmResult:
 	return _slots(await _post("/api/inventory/belt", {"characterId": character_id, "slot_index": slot_index, "equipped": equipped}))

@@ -188,6 +188,7 @@ func _part_host_join() -> void:
 	_checks_after_join(jg)
 	await _part_chat_and_open_closed(jg)
 	await _part_rewards(jg)
+	await _part_ground(jg)
 	await _part_polish(jg)
 	await _part_kick(jg, jb)
 	await _part_private_and_full()
@@ -265,6 +266,63 @@ func _part_rewards(jg: DmNextGame) -> void:
 	var rolls: int = hm.gear_pending()
 	check(rolls == 0, "loot: the host rolled nothing for the joiner")
 	check(await until(func() -> bool: return j.rolls_pending == 0, 8.0), "loot: the joiner's own gear rolls finished")
+
+
+## Dropped gear (ground.cjs, DECISIONS B16): a piece found in the session and dropped by the host is drawn for the joiner, who picks it up
+## through the server (the host's copy goes away); a piece found outside the session never reaches the joiner.
+func _part_ground(jg: DmNextGame) -> void:
+	var gear_id := ""
+	for id in DmContent.items():
+		if DmAffixRules.is_affix_gear(String(DmContent.item(id).get("type", ""))) and DmAffixes.can_roll(id):
+			gear_id = id
+			break
+	var hcid := int(ch_h["id"])
+	var jcid := int(ch_j["id"])
+	var sid := hg.party_session_id()
+	check(sid != "" and jg.party_session_id() == sid, "ground: host and joiner share one backend session")
+	# two pieces in the host's bag: one rolled in the session, one without it
+	var rows: Array = (await api_h.get_inventory(hcid)).data
+	var bag: Array = []
+	var used := {}
+	for r in rows:
+		if int(r["slot_index"]) < DmLoot.bag_size():
+			bag.append({"slot_index": int(r["slot_index"]), "item_id": r["item_id"], "quantity": int(r["quantity"]), "instance_id": r.get("instance_id")})
+			used[int(r["slot_index"])] = true
+	var slots: Array = []
+	for pass_ in 2:
+		var roll: DmResult = await api_h.roll_loot(hcid, [{"item_id": gear_id, "level": 5, "source": "kill"}], sid if pass_ == 0 else "")
+		var free := 0
+		while used.has(free):
+			free += 1
+		used[free] = true
+		slots.append(free)
+		bag.append({"slot_index": free, "item_id": gear_id, "quantity": 1, "instance_id": roll.data[0]["instance_id"]})
+	check((await api_h.save_inventory(hcid, bag, DmLoot.bag_size())).ok, "ground: both pieces in the host's bag")
+	# the piece found in the session: dropped by the host, relayed to the joiner, picked up by the joiner through the server
+	var dr: DmResult = await api_h.ground_drop(hcid, sid, slots[0], 1.0, 2.0)
+	check(dr.ok and (dr.data["eligible"] as Array).has(jcid), "ground: the server lets the joiner take the piece found in the session", str(dr.data if dr.ok else dr.error))
+	var entry := {"drop_id": String(dr.data["dropId"]), "item": dr.data["item"], "x": 1.0, "z": 2.0, "eligible": dr.data["eligible"]}
+	hg.my_member().loot_view.shared_item(entry)
+	hg.party.share_ground(entry)
+	var jlv: DmLootView = jg.my_member().loot_view
+	var hlv: DmLootView = hg.my_member().loot_view
+	var shared := func(lv: DmLootView) -> int: return lv.debug_drops().filter(func(d: Dictionary) -> bool: return d["drop_id"] != "").size()
+	check(await until(func() -> bool: return shared.call(jlv) == 1, 5.0), "ground: the host relayed it to the joiner")
+	var pr: DmResult = await api_j.ground_pickup(jcid, entry["drop_id"])
+	check(pr.ok and (pr.data["bag"] as Array).any(func(r: Dictionary) -> bool: return r["item_id"] == gear_id), "ground: the joiner picked it up into its own bag", str(pr.error))
+	jlv.remove_shared(entry["drop_id"])
+	jg.party.share_taken(entry["drop_id"])
+	check(await until(func() -> bool: return shared.call(hlv) == 0, 5.0), "ground: the host's copy went away")
+	check(not (await api_h.ground_pickup(hcid, entry["drop_id"])).ok, "ground: a second pickup finds it gone")
+	# the piece found outside the session: only the dropper may take it, so nobody else is shown it
+	var dr2: DmResult = await api_h.ground_drop(hcid, sid, slots[1], 1.0, 2.0)
+	check(dr2.ok and dr2.data["eligible"] == [hcid], "ground: a piece found outside the session is for the dropper only")
+	var e2 := {"drop_id": String(dr2.data["dropId"]), "item": dr2.data["item"], "x": 1.0, "z": 2.0, "eligible": dr2.data["eligible"]}
+	hg.party.share_ground(e2)
+	await ticks(30)
+	check(shared.call(jlv) == 0, "ground: and the joiner is never shown it")
+	check(not (await api_j.ground_pickup(jcid, e2["drop_id"])).ok, "ground: the server refuses the joiner anyway")
+	check((await api_h.ground_pickup(hcid, e2["drop_id"])).ok, "ground: the dropper picks it back up")
 
 
 ## Co-op polish (owner playtest 2026-10-11): every peer shows every hero's level, the world scales to the party leader, a friend's rites leave

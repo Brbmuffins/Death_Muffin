@@ -37,6 +37,8 @@ var rng: Callable = Callable()
 var _last_saved := ""
 var _recipes_cache: Array = []
 var _sessions := DmOfflineSessions.new()
+var _ground: Dictionary = {}       ## dropped gear lying on a session's ground (ground.cjs): drop id -> {session, from_char, from_account, item_id, roll, x, z}
+var _ground_seq := 0
 
 func _init(path: String = "user://dm_offline_db.json") -> void:
 	persist_path = path
@@ -515,6 +517,8 @@ func _route_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 		return _loadouts_post(acc, p, body)
 	if p.begins_with("/api/vault/"):
 		return _vault_post(acc, p, body)
+	if p.begins_with("/api/ground/"):
+		return _ground_post(acc, p, body)
 	if p.begins_with("/api/labor/"):
 		return _labor_post(acc, p, body)
 	if p.begins_with("/api/garden/"):
@@ -668,8 +672,73 @@ func _roll_gear(acc: Dictionary, body: Dictionary) -> Dictionary:
 		var level := DmAffixRules.clamp_drop_level(d.get("level"), _num_or(acc["character"]["level"], 1.0))
 		var inst: Dictionary = DmAffixRules.roll_instance(String(def.get("rarity", "common")), level, source, _rand_callable())
 		var id := _mint_instance(acc, item_id, int(inst["ilvl"]), inst["affixes"])
+		var sid := String(body.get("sessionId", ""))   # found in a party session: who was there may pick it up after a drop (ground.cjs)
+		if sid != "" and not _sessions.active_member(sid, int(acc["character"]["id"]), _now()).is_empty():
+			_instances(acc)[str(id)]["found_session"] = sid
+			_instances(acc)[str(id)]["found_at"] = _now()
 		out.append({"item_id": item_id, "instance_id": id, "ilvl": inst["ilvl"], "affixes": inst["affixes"]})
 	return _ok(out)
+
+## /api/ground/drop and /api/ground/pickup, the same rules as ground.cjs: gear only, from a live session; the dropper and whoever was in the
+## session when the piece was found may take it; the first pickup wins; an ended session's ground is gone. Instance ids are per account
+## here, so a pickup mints the roll anew in the picker's account (the server keeps the id).
+func _ground_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
+	var cid := int(acc["character"]["id"])
+	var now := _now()
+	for k in _ground.keys():
+		if not _sessions.is_live(String(_ground[k]["session"]), now):
+			_ground.erase(k)
+	if p == "/api/ground/drop":
+		var sid := String(body.get("sessionId", ""))
+		if _sessions.active_member(sid, cid, now).is_empty():
+			return _fail("You can only drop gear while you are in the world.")
+		var mine := 0
+		for k in _ground:
+			if _ground[k]["session"] == sid and int(_ground[k]["from_char"]) == cid:
+				mine += 1
+		if mine >= 20:
+			return _fail("You have 20 pieces lying on the ground. Pick some up first.")
+		var s: Variant = _slot_at(acc, int(_num(body, "slot")))
+		if s == null or int(s["slot_index"]) >= BAG:
+			return _fail("That bag slot is empty.")
+		if _truthy(s.get("equipped")):
+			return _fail("Take it off first.")
+		if s.get("instance_id") == null or not _instances(acc).has(str(int(s["instance_id"]))):
+			return _fail("Only gear can be dropped.")
+		var roll: Dictionary = _instances(acc)[str(int(s["instance_id"]))]
+		_instances(acc).erase(str(int(s["instance_id"])))
+		acc["slots"] = acc["slots"].filter(func(x: Dictionary) -> bool: return not is_same(x, s))
+		_ground_seq += 1
+		var id := ("%016x%016x" % [now, _ground_seq])
+		_ground[id] = {"session": sid, "from_char": cid, "from_account": _character_owner(cid), "item_id": String(s["item_id"]), "roll": roll,
+			"x": _num(body, "x"), "z": _num(body, "z")}
+		var eligible: Array = [cid]
+		if String(roll.get("found_session", "")) == sid:
+			for c in _sessions.present_at(sid, int(roll["found_at"])):
+				if not eligible.has(c):
+					eligible.append(c)
+		return _ok({"dropId": id, "item": {"item_id": String(s["item_id"]), "quantity": 1, "instance": {"id": 0, "ilvl": roll["ilvl"], "affixes": roll["affixes"]}},
+			"eligible": eligible, "bag": _rows(acc)})
+	if p == "/api/ground/pickup":
+		var g: Variant = _ground.get(String(body.get("dropId", "")))
+		if g == null:
+			return _fail("It is gone: someone picked it up, or the session ended.")
+		var me := _sessions.active_member(String(g["session"]), cid, now)
+		if me.is_empty():
+			return _fail("Only the party it was dropped for can pick that up.")
+		var roll: Dictionary = g["roll"]
+		var was_there := String(roll.get("found_session", "")) == String(g["session"]) and int(me["joined_at"]) <= int(roll.get("found_at", 0))
+		if String(g["from_account"]) != _character_owner(cid) and not was_there:
+			return _fail("You were not in the party when this was found.")
+		var free := _free_bag_slot(acc)
+		if free < 0:
+			return _fail("Your bag is full.")
+		var iid := _mint_instance(acc, String(g["item_id"]), int(roll["ilvl"]), roll["affixes"])
+		acc["slots"].append({"slot_index": free, "item_id": String(g["item_id"]), "quantity": 1, "equipped": 0, "instance_id": iid})
+		_ground.erase(String(body.get("dropId", "")))
+		return _ok({"slot": free, "bag": _rows(acc)})
+	return _err("Offline backend: no route for POST %s" % p, 404)
+
 
 ## Same rules as the server: one item per gear slot, two-handers displace the off-hand and vice versa.
 func _equip(acc: Dictionary, body: Dictionary) -> Dictionary:
