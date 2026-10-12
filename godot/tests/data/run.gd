@@ -117,7 +117,7 @@ func _initialize() -> void:
 		if not used_models.has(m) or not ResourceLoader.exists("res://assets/slice/" + m):
 			ng_bad += 1
 			print("necro_gear model missing: ", m)
-	ok(ng_props.size() == 7 + 9 + 7 + 1 + 4 and ng_bad == 0, "necro gear table: 28 models listed in assets_used and imported")
+	ok(ng_props.size() == 7 + 8 + 7 + 1 + 5 and ng_bad == 0, "necro gear table: 28 models listed in assets_used and imported")
 	var asets: Dictionary = DmContent.get_export("armorSets", "ARMOR_SETS")
 	ok(ng["mantle_by_set_id"].has("gravecaller") and ng["mantle_by_set_id"].has("rotweaver_ascended") and asets.has("gravecaller"), "necro gear table: class and ascended mantle ids")
 	for k in ng["legendary_hero_by_set_id"]:

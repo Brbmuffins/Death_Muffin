@@ -265,6 +265,16 @@ static func legendary_slug(set_id: String) -> String:
 	return String(row.model)
 
 
+## The discipline a legendary set's body is made for ("" = not a legendary body).
+static func legendary_discipline(set_id: String) -> String:
+	return String(table().get("legendary_hero_by_set_id", {}).get(set_id, {}).get("disciplineId", ""))
+
+
+## True when set `set_id`'s legendary body already wears its helm and mantle (`covers_props`): those props hide while that body shows.
+static func body_covers_props(set_id: String) -> bool:
+	return bool(table().get("legendary_hero_by_set_id", {}).get(set_id, {}).get("covers_props", false))
+
+
 ## The discipline a legendary set belongs to ("" = none): its body is the one kept resident for that class.
 static func legendary_of_discipline(discipline_id: String) -> String:
 	for set_id: String in table().get("legendary_hero_by_set_id", {}):

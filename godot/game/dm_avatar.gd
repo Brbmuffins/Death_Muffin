@@ -27,6 +27,7 @@ const RIG_HEAD := {
 	"hero_ossuary": "covered", "hero_gravecaller": "covered", "hero_mourner": "covered", "hero_rotweaver": "covered", "hero_reaper": "covered",
 	"hero_hollow_knight": "covered", "hero_grave_warden": "covered", "hero_veilwalker": "covered", "hero_carrion_witch": "covered", "hero_bell_monk": "covered",
 	"hero_leg_colossus_mantle": "covered", "hero_leg_legion_unburied": "covered", "hero_leg_plague_choir": "covered", "hero_leg_requiem_wraiths": "covered",
+	"hero_leg_soul_harbingers": "covered",
 }
 ## The helm model is this much taller than the measured head (hood and all), and sits this far (metres) above its centre; the mantle is this much wider than the chest.
 const HELM_FIT := 1.5
@@ -268,16 +269,18 @@ func apply_gear_visibility() -> void:
 			continue
 		var hand: Variant = _default_hand.get(obj)
 		(obj as Node3D).visible = idle and not _downed and not (hand != null and _worn.has(hand))
+	var covered := body_slug != slug and DmGearModels.body_covers_props(set_id)   # a legendary body that already wears its set's helm and mantle
 	for slot in _worn:
 		var w: Dictionary = _worn[slot]
-		(w.obj as Node3D).visible = idle and not (_hide_helm() if slot == "head" else _downed)
+		var own_helm: bool = slot == "head" and covered and String(DmGearProps.armor_by_id(String(w.key)).get("setId", "")) == set_id
+		(w.obj as Node3D).visible = idle and not own_helm and not (_hide_helm() if slot == "head" else _downed)
 	c.set_head_tint(_head_tint if (idle and not _hide_helm()) else null)
 	if _aura != null:
 		_aura.visible = idle and not _downed
 	if _cape != null:
 		(_cape.obj as Node3D).visible = idle and _cape_fade > 0.01
 	if _mantle != null:
-		(_mantle.obj as Node3D).visible = idle and not _downed
+		(_mantle.obj as Node3D).visible = idle and not _downed and not (covered and _mantle.set == set_id)
 
 ## Show equipped gear on the model: weapon in the right hand, off-hand piece in the left, helm on the head, body slots as tints.
 ## `items`: slot id -> {item_id, rarity?}. Only changed slots are rebuilt.
@@ -410,7 +413,9 @@ func set_look(id_: String, pieces: int) -> void:
 
 ## The legendary hero body of the worn set look ("" = the hero's own).
 func _look_body() -> String:
-	if set_id == "" or set_pieces < SET_SCHEME_PIECES or NEW_BLOOD.has(slug) or _reaper:   # (the Reaper keeps her own body: aura and colours only)
+	if set_id == "" or set_pieces < SET_SCHEME_PIECES or NEW_BLOOD.has(slug):
+		return slug
+	if _reaper and DmGearModels.legendary_discipline(set_id) != "reaper":   # the Reaper wears only her own set's body (others: aura and colours only)
 		return slug
 	var legendary := DmGearModels.legendary_slug(set_id)
 	return legendary if legendary != "" else slug

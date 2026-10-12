@@ -2,24 +2,23 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cf8vlg14invk8"
-path.s3tc="res://.godot/imported/gear_greenbone_mantle_Color_6ddc8323-7553-471e-8125-376ad66dc4a9.webp-e05a825df3927e670549370b012bb67f.s3tc.ctex"
+uid="uid://dyne1bvt8vtfq"
+path="res://.godot/imported/character_Color_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp-cffceb56d0430375135620b454b1b4c5.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
-"vram_texture": true
+"vram_texture": false
 }
 generator_parameters={
-"md5": "7ffd0f11ee376f47cd9e0fe95a220167"
+"md5": "bdcce8f672c97f236df34f9f56509a0e"
 }
 
 [deps]
 
-source_file="res://assets/slice/models/props/gear_greenbone_mantle_Color_6ddc8323-7553-471e-8125-376ad66dc4a9.webp"
-dest_files=["res://.godot/imported/gear_greenbone_mantle_Color_6ddc8323-7553-471e-8125-376ad66dc4a9.webp-e05a825df3927e670549370b012bb67f.s3tc.ctex"]
+source_file="res://assets/slice/models/hero_leg_soul_harbingers/character_Color_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp"
+dest_files=["res://.godot/imported/character_Color_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp-cffceb56d0430375135620b454b1b4c5.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

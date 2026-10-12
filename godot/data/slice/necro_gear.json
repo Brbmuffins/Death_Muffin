@@ -384,33 +384,6 @@
      0.499
     ]
    }
-  },
-  "soul_harbingers": {
-   "prop": "gear_greenbone_mantle",
-   "width_m": 0.42,
-   "anchor_bone": "Spine02",
-   "offset_m": [
-    0.0,
-    0.0,
-    0.0
-   ],
-   "bounds": {
-    "size": [
-     0.494,
-     0.998,
-     0.916
-    ],
-    "min": [
-     -0.247,
-     -0.499,
-     -0.458
-    ],
-    "max": [
-     0.247,
-     0.499,
-     0.458
-    ]
-   }
   }
  },
  "helm_by_tier": {
@@ -629,10 +602,16 @@
    "model": "hero_leg_requiem_wraiths",
    "disciplineId": "mourner",
    "url": "models/hero_leg_requiem_wraiths/character.glb"
+  },
+  "soul_harbingers": {
+   "model": "hero_leg_soul_harbingers",
+   "disciplineId": "reaper",
+   "url": "models/hero_leg_soul_harbingers/character.glb",
+   "covers_props": true
   }
  },
  "weapon_tiers": "Weapon tiers (bone, iron, gold, hell, moon) share one mesh per kind; tint with DmGearProps.TIERS.",
- "tier_sets": "mantle_by_set_id keys are armorSets setIds (class, ascended and legendary sets). helm_by_tier also takes a set id: that set’s head piece shows its own helm. weapon_by_set_id: from `pieces` worn, weapons of `kind` show the set’s prop (the Reaper’s scythe).",
+ "tier_sets": "mantle_by_set_id keys are armorSets setIds (class and ascended sets). helm_by_tier also takes a set id: that set’s head piece shows its own helm. weapon_by_set_id: from `pieces` worn, weapons of `kind` show the set’s prop (the Reaper’s scythe). legendary_hero_by_set_id: the whole body at 3+ pieces; `covers_props` hides that set’s own helm and mantle props while it shows (the body wears them).",
  "weapon_by_set_id": {
   "soul_harbingers": {
    "kind": "scythe",

@@ -57,9 +57,10 @@ const DEFAULT_TEXTURE = 512;
  * seconds of idle lead-in/out, so each one is trimmed to its action window: `start`/`end` are source seconds and
  * `release` is the source time of the blow / cast release (hand peak speed). Hip position is stored relative to
  * the source clip's first frame (the standing pose), so the runtime keeps the crouch/leap but drops the drift.
- * Only the four necromancer discipline heroes get them. `release` ends up in clips.json as a 0..1 fraction.
+ * The necromancer discipline heroes, the Reaper and every legendary set hero (`hero_leg_*`) get them (the Reaper's rites play sweep / slam / flick / channel /
+ * summon). A hero without the four source presets borrows hero_gravecaller's (DM_TRIM_SOURCE overrides the folder; the Discord agent's build-art.sh sets it). `release` ends up in clips.json as a 0..1 fraction.
  */
-const NECRO_HEROES = new Set(['hero_gravecaller', 'hero_ossuary', 'hero_mourner', 'hero_rotweaver', 'hero_leg_colossus_mantle', 'hero_leg_legion_unburied', 'hero_leg_plague_choir', 'hero_leg_requiem_wraiths']);
+const NECRO_HEROES = new Set(['hero_gravecaller', 'hero_ossuary', 'hero_mourner', 'hero_rotweaver', 'hero_reaper']);
 const COMBAT_TRIMS = {
   slam: { preset: 'slash', start: 1.3, end: 3.3, release: 2.1 },
   sweep: { preset: 'box_03', start: 0.3, end: 1.7, release: 0.7 },
@@ -153,11 +154,13 @@ async function build(slug) {
     if (copyAnimation(srcDoc, doc, name)) names.push(name);
   }
   const release = {};
-  if (NECRO_HEROES.has(slug)) {
+  if (NECRO_HEROES.has(slug) || slug.startsWith('hero_leg_')) {
     for (const [name, trim] of Object.entries(COMBAT_TRIMS)) {
-      const c = clips.find((x) => x.preset === trim.preset);
-      if (!c) continue;
-      if (copyTrimmed(await io.read(c.file), doc, name, trim)) {
+      // A hero generated without the trim source presets borrows them: every Tripo biped rig shares one joint set (ASSET_PIPELINE.md).
+      const own = clips.find((x) => x.preset === trim.preset)?.file;
+      const file = own ?? [process.env.DM_TRIM_SOURCE, join(RAW, 'hero_gravecaller')].filter(Boolean).map((d) => join(d, `anim_${trim.preset}.glb`)).find((f) => existsSync(f));
+      if (!file) { console.warn(`  no ${trim.preset} clip for the ${name} combat clip (art-src/tripo/hero_gravecaller/ missing)`); continue; }
+      if (copyTrimmed(await io.read(file), doc, name, trim)) {
         names.push(name);
         release[name] = +((trim.release - trim.start) / (trim.end - trim.start)).toFixed(3);
       }

@@ -8261,5 +8261,20 @@
     "rawHash": "sha256:b48ef69184b864a660e424953ae44e5a76142915600553209a4b1ac07d3b9c01",
     "outHash": "sha256:8aa7b413c0e27661de5411671172471305f20164af09a257ebfea2505f29a5a7",
     "generatedAt": "2026-10-12T17:42:14.366Z"
+  },
+  "concept_hero_leg_soul_harbingers": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single dark fantasy game character, full body head to toe, strict T-pose with arms straight out to the sides, both hands EMPTY and open, facing the camera, plain flat light grey background (#c8c8c8), even neutral flat lighting, no cast shadows, no ground plane, no text, no weapon, no other objects. The Reaper in her legendary set, Soul Harbinger's Raiment: green bone MEDIUM ARMOR, not robes. A deep pointed hood of dark moss-green and charcoal cloth reinforced with curved pale bone plates along the brow and cheeks and a bone ridge down the crown; inside the hood a skeletal skull face with two empty eye sockets glowing bright acid-green. A short tattered moss-green cowl with a bone collar and two rounded bone pauldrons. The cuirass is a curved pale bone ribcage worn over dark leather, with bright acid-green light glowing between the ribs. Bone-plated bracers and gauntlets with green-lit cracks, a dark leather belt with small bone charms, fitted dark trousers with bone knee guards and shin plates, tall dark boots with bone toe caps. Only a few narrow torn cloth strips hang from the belt and shoulders, no long skirt and no flowing robe, so the legs and arms stay clearly readable. Palette: pale ivory-green bone, dark moss green, charcoal, with acid-green glow accents. One coherent outfit that fits the body closely, chunky readable silhouette, hand-crafted.",
+    "refs": [
+      "art-src/concepts/hero_mourner.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/hero_leg_soul_harbingers.png",
+    "rawHash": "sha256:4a5810f73e39e01f91af0b0e09407cf3b144b92cdc93dea4debc9197203bc6bd",
+    "outHash": "sha256:fa3fa1736106bb5e99f0fc10ff88b98244107744df869e661ebfd11c26590967",
+    "generatedAt": "2026-10-12T20:31:08.419Z"
   }
 }

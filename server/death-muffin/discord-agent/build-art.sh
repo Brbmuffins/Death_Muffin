@@ -13,7 +13,9 @@ TOP=$(git rev-parse --show-toplevel) || exit 2
 [ -d "$TOP/art-src/tripo/$ID" ] && [ ! -L "$TOP/art-src/tripo/$ID" ] || { echo "nothing generated for $ID yet (no art-src/tripo/$ID)"; exit 2; }
 [ -f "$TOP/tools/build-characters.mjs" ] && [ -d "$TOP/godot" ] || { echo "this worktree has no tools/build-characters.mjs or godot/"; exit 2; }
 export DM_SANDBOX_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sandbox-lib.sh"
-export TOP ID
+# Combat-trim source clips for a hero (build-characters.mjs COMBAT_TRIMS): the shared checkout's raw hero_gravecaller run, read-only in the sandbox.
+DM_TRIM_SOURCE="$(dirname "$(git -C "$TOP" rev-parse --path-format=absolute --git-common-dir)")/art-src/tripo/hero_gravecaller"
+export TOP ID DM_TRIM_SOURCE
 export DM_PAYLOAD='
   set -uo pipefail
   cd "$TOP"

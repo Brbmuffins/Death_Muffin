@@ -169,6 +169,15 @@
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "gear-greenbone-mantle",
+      "pattern": "gear_greenbone_mantle",
+      "reason": "removed 2026-10-12: Soul Harbinger's Raiment shows its ribcage on the full legendary body (hero_leg_soul_harbingers), not as a bolted-on prop",
+      "allow": [
+        "tools/hygiene/**",
+        "art-manifest/**"
+      ]
     }
   ],
   "allowPaths": {

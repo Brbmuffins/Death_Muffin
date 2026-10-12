@@ -424,28 +424,34 @@ func _models() -> void:
 	check(rp._staff != null and rp._staff.visible and rp.weapon_gesture() == "scythe", "Reaper: still holds her scythe")
 	rp.dispose()
 
-	# ---- Soul Harbinger's Raiment (her own legendary set): its helm and mantle per piece, its green bone scythe from 3 pieces (necro_gear.json weapon_by_set_id)
-	check(DmGearModels.helm_tier_of("leg_soul_harbingers_head") == "soul_harbingers" and DmGearModels.mantle_set_of("leg_soul_harbingers_chest") == "soul_harbingers", "Soul Harbinger: its head piece shows its own helm, its chest its mantle")
+	# ---- Soul Harbinger's Raiment (her own legendary set): its hood per piece; from 3 pieces her whole body becomes the set's (hero_leg_soul_harbingers, which
+	# wears the hood and ribcage itself, so the hood prop hides) and her scythe the green bone scythe (necro_gear.json legendary_hero_by_set_id, weapon_by_set_id)
+	check(DmGearModels.helm_tier_of("leg_soul_harbingers_head") == "soul_harbingers" and DmGearModels.mantle_set_of("leg_soul_harbingers_chest") == "", "Soul Harbinger: its head piece shows its own hood, its chest no bolted-on mantle")
 	check(DmGearModels.set_weapon_prop("soul_harbingers", 3, "scythe") == "gear_greenbone_scythe" and DmGearModels.set_weapon_prop("soul_harbingers", 2, "scythe") == "" and DmGearModels.set_weapon_prop("soul_harbingers", 5, "staff") == "", "Soul Harbinger: the set scythe from 3 pieces, scythes only")
+	check(DmGearModels.legendary_slug("soul_harbingers") == "hero_leg_soul_harbingers" and DmGearModels.legendary_discipline("soul_harbingers") == "reaper" and DmGearModels.body_covers_props("soul_harbingers") and not DmGearModels.body_covers_props("plague_choir"), "Soul Harbinger: the Reaper's legendary body, which wears its own hood")
 	check(DmSetText.describe_effect({"text": "Scythe Throw’s radius is doubled"}) == ["Scythe Throw’s radius is doubled"], "a text-only set bonus prints its own words")
 	var scythe_file := func(n: Node3D) -> String: return n.get_child(0).scene_file_path.get_file().get_basename() if n != null and n.get_child_count() > 0 else ""
 	var sh := DmAvatar.new()
-	sh.setup(root, 0x6ee7a0, false, "hero_mourner", "reaper")
+	sh.setup(root, 0x6ee7a0, false, "hero_reaper", "reaper")
 	for i in 4:
 		sh.update(1.0 / 30.0, 0, 0, 0.0, false, 0.0)
 		await process_frame
+	check(sh.c.clip_duration("sweep") > 0.0 and sh.c.clip_duration("slam") > 0.0 and sh.c.clip_duration("summon") > 0.0, "Reaper: her body carries the combat clips her rites play (sweep, slam, summon)")
 	var shg := {"chest": {"item_id": "leg_soul_harbingers_chest", "rarity": "legendary"}, "head": {"item_id": "leg_soul_harbingers_head", "rarity": "legendary"}}
 	sh.set_equipment(shg)
 	await _settle(sh)
-	check(scythe_file.call(sh._staff) == DmGearProps.SCYTHE_FILE and sh._mantle != null and sh._mantle.set == "soul_harbingers" and scythe_file.call(sh._worn.head.obj) == "gear_greenbone_helm", "Soul Harbinger, 2 pieces: green bone helm and mantle, her own scythe")
+	check(scythe_file.call(sh._staff) == DmGearProps.SCYTHE_FILE and sh._mantle == null and scythe_file.call(sh._worn.head.obj) == "gear_greenbone_helm" and sh._worn.head.obj.visible and sh.body_slug == "hero_reaper", "Soul Harbinger, 2 pieces: the green bone hood, her own body and scythe")
 	shg["legs"] = {"item_id": "leg_soul_harbingers_legs", "rarity": "legendary"}
 	sh.set_equipment(shg)
-	check(scythe_file.call(sh._staff) == "gear_greenbone_scythe" and sh._staff.visible and sh.body_slug == "hero_mourner", "Soul Harbinger, 3 pieces: the green bone scythe, her own body")
+	await _settle(sh)
+	check(sh.body_slug == "hero_leg_soul_harbingers" and scythe_file.call(sh._staff) == "gear_greenbone_scythe" and sh._staff.visible and not sh._worn.head.obj.visible, "Soul Harbinger, 3 pieces: the set's body (its own hood, no prop over it) and the green bone scythe (body %s)" % sh.body_slug)
+	check(sh.c.clip_duration("sweep") > 0.0 and sh.c.clip_duration("flick") > 0.0, "Soul Harbinger body: the Reaper's combat clips")
 	shg["main_hand"] = {"item_id": "scythe_iron", "rarity": "rare"}
 	sh.set_equipment(shg)
 	check(scythe_file.call(sh._worn.main_hand.obj) == "gear_greenbone_scythe" and not sh._staff.visible, "Soul Harbinger: an equipped scythe shows as the set's too")
 	sh.set_equipment({})
-	check(scythe_file.call(sh._staff) == DmGearProps.SCYTHE_FILE and sh._staff.visible and sh._mantle == null, "Soul Harbinger: taking the set off gives her own scythe back")
+	await _settle(sh)
+	check(sh.body_slug == "hero_reaper" and scythe_file.call(sh._staff) == DmGearProps.SCYTHE_FILE and sh._staff.visible, "Soul Harbinger: taking the set off gives her own body and scythe back")
 	sh.dispose()
 
 	# ---- tiers keep the model's texture: the dress only nudges the colour

@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://brajcmabiushc"
-path="res://.godot/imported/gear_greenbone_mantle.glb-c860108939f2475b52dd3b523672d57f.scn"
+uid="uid://dot31xgeam1w7"
+path="res://.godot/imported/character.glb-7e83b1576368a371171857ad8eef4f85.scn"
 
 [deps]
 
-source_file="res://assets/slice/models/props/gear_greenbone_mantle.glb"
-dest_files=["res://.godot/imported/gear_greenbone_mantle.glb-c860108939f2475b52dd3b523672d57f.scn"]
+source_file="res://assets/slice/models/hero_leg_soul_harbingers/character.glb"
+dest_files=["res://.godot/imported/character.glb-7e83b1576368a371171857ad8eef4f85.scn"]
 
 [params]
 

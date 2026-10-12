@@ -195,8 +195,14 @@ migration to the live database, deploys the backend and publishes the client. Th
   set change explains the difference (a legendary pick changing to another set id, nothing else), and say so in the summary.
 - *Look* (`godot/data/slice/necro_gear.json`, read by `godot/game/dm_gear_models.gd` and `godot/game/dm_avatar.gd`): `mantle_by_set_id.<setId>` (worn chest
   piece shows it), `helm_by_tier.<setId>` (its head piece shows its own helm), `weapon_by_set_id.<setId>` `{kind, prop, pieces}` (weapons of that kind show
-  the set's prop from that many pieces; the Reaper's scythe), `legendary_hero_by_set_id` (a whole rigged body at 3+ pieces; never for the Reaper). Add new
-  props to `godot/data/slice/assets_used.json`. Then the in-game screenshots of step 4.
+  the set's prop from that many pieces; the Reaper's scythe), `legendary_hero_by_set_id` (a whole rigged body at 3+ pieces; the Reaper takes only her own
+  set's; `covers_props: true` when the body already wears the set's hood/mantle). Add new models to `godot/data/slice/assets_used.json`.
+- *A legendary set NEEDS its own full body* to look right: props alone (helm + mantle on the class body) read as a pile of armor. Ask for one rigged
+  character in the same concept round as the props: a full-body T-pose concept of a hero wearing the whole set (`"rig": {"model": "v1.0-20240301",
+  "rig_type": "biped"}`, the same ten animations as `art-manifest/tripo-specs/hero_leg_plague_choir.json`, about 185 credits), id `hero_leg_<setId>`. After the
+  build (`build-art.sh` gives every `hero_leg_*` body the combat clips the class's rites play), add its row to `godot/game/view_models.json` (copy
+  `hero_leg_plague_choir`'s, or `hero_reaper`'s for a Reaper set, with the new slug and url) and to `legendary_hero_by_set_id`. Then the in-game screenshots
+  of step 4, front and back, at 3+ pieces.
 - *Decisions.* When the requester has not said where it drops or how strong it is, do not stop to ask: use the defaults above (legendary, boss drops,
   legendary stats) and state them in the proposal so they can change them in the next round. Ask only when the request contradicts itself.
 Never edit `tools/ai/`.
