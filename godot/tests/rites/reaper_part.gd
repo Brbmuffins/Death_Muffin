@@ -140,7 +140,7 @@ func _rites() -> void:
 	c.p["souls"] = 5
 	c.request_cast("reap", Vector3(8, 0, 0))
 	var plain := _lost(r1)
-	ok(int(c.p["souls"]) == 0 and plain > 0.0 and is_equal_approx(c.cooldown_left("reap"), 6000.0), "reap: 5 souls pay for it, hits 5 m out (%.1f), 6 s" % plain)
+	ok(int(c.p["souls"]) == 0 and plain > 0.0 and is_equal_approx(c.cooldown_left("reap"), 0.0), "reap: 5 souls pay for it, hits 5 m out (%.1f), no cooldown" % plain)
 	ok(is_equal_approx(plain, DmAbilities.rite_damage(sp_empty, "reap") * (1.0 + 0.12 * 5.0)), "reap: the 5 souls paid add 60%% damage")
 	_ready_cast(c)
 	c.p["souls"] = 5
@@ -172,7 +172,7 @@ func _rites() -> void:
 	var inside := _robber(w, h, spot + Vector3(1.5, 0, 0))
 	var outside := _robber(w, h, spot + Vector3(5.0, 0, 0))
 	c.request_cast("scythe_throw", spot)
-	ok(int(c.p["souls"]) == 27 and is_equal_approx(c.cooldown_left("scythe_throw"), 7000.0), "throw: 3 souls, 7 s")
+	ok(int(c.p["souls"]) == 27 and is_equal_approx(c.cooldown_left("scythe_throw"), 0.0), "throw: 3 souls, no cooldown")
 	_step(c, 2.6)
 	var ticks := _events(w, "scythe_throw", "tick").size()
 	ok(ticks >= 7 and ticks <= 8, "throw: about 8 ticks over 2 s (%d)" % ticks)
@@ -201,7 +201,7 @@ func _rites() -> void:
 	var evs := _events(w, "wraith_walk", "walk")
 	ok(evs.size() == 1, "walk: one event")
 	var ev: Dictionary = evs[0]
-	ok(is_equal_approx(c.cooldown_left("wraith_walk"), 11000.0) and int(c.p["souls"]) == 4, "walk: 4 souls (8 become 4), 11 s")
+	ok(is_equal_approx(c.cooldown_left("wraith_walk"), 5000.0) and int(c.p["souls"]) == 4, "walk: 4 souls (8 become 4), 5 s")
 	ok(Vector2(float(ev["tx"]) - float(ev["fx"]), float(ev["tz"]) - float(ev["fz"])).length() <= 9.01 and body.dashing, "walk: dashes at most 9 m and the body glides")
 	var sa := DmStatusSet.of(lane_a)
 	var sb := DmStatusSet.of(lane_b)

@@ -1,5 +1,5 @@
 extends DmRiteModule
-## Wraith Walk (the Reaper): she becomes a towering phantom and rushes up to 9 m toward the cursor (at least 2 m), 4 souls, 11 s. Everything in the
+## Wraith Walk (the Reaper): she becomes a towering phantom and rushes up to 9 m toward the cursor (at least 2 m), 4 souls, 5 s. Everything in the
 ## lane she passes through (1.6 m either side, plus the enemy's radius) burns in green flame (the `wraithfire` status, a Hemorrhage-style damage-over-time) for 5 s at power 0.7 a second, +15% a
 ## soul it costs (the bag's own +2% a soul is what is left in the bag). Host-authoritative like Veil Step: `body.phase_point`
 ## validates the way, `body.dash` glides the body (0.32 s). The lane is read once, at the cast, from where she started to where the dash ends.

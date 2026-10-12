@@ -1,5 +1,5 @@
 extends DmRiteModule
-## Reap (the Reaper, key 3rd of her kit): a huge cone toward the cursor, 150 degrees and 6.5 m, power 2.4, 5 souls, 6 s. Each soul it costs adds 12% damage
+## Reap (the Reaper, key 3rd of her kit): a huge cone toward the cursor, 150 degrees and 6.5 m, power 2.4, 5 souls, no cooldown. Each soul it costs adds 12% damage
 ## on top of the bag's own +2% a soul (what is left in the bag). Resolved at once.
 
 
