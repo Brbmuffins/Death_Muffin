@@ -216,6 +216,7 @@ Tests (not wired into test:server; ~1 min, needs git and `unshare`/`zip`/`unzip`
 The installer also copies `check-godot.sh`, `preview-godot.sh`, `shot-godot.sh`, `label-shot.py`, `art-run.sh`, `build-art.sh` and `PROMPT-godot.md`, installs the trusted art tools to `art-tools/`, and creates an empty `tripo-budget.json` if there is none (never overwritten). The live `config.json` must say `"mode": "godot", "baseBranch": "main"`; edit it and restart the service to change.
 
 ## Screenshots
+Only on request (Helix, 2026-10-12): the agent renders when the request asks for a picture or someone says `!shot`, never by default (PROMPT-godot.md); a proposal without pictures has a "Screenshots" field offering `!shot`.
 `shot-godot.sh [plan.json]` (default `.dm-shot.json`; format in `godot/main/qa_ui_shots.gd` and `PROMPT-godot.md`: up to 4 shots of windows/tooltips, `open` / `hover` / `area` / `clip` / `give`) renders the branch's own client on the dev-offline demo hero with a fixed
 representative bag. Same sandbox as `check-godot.sh` (no network, read-only filesystem, only the worktree writable, private `/tmp` and a fresh HOME); inside it imports the project if `godot/.godot` is missing
 (first run in a fresh worktree, about a minute), then `xvfb-run godot --rendering-driver opengl3 -- --world-demo --qa --shot-plan=... --shots=<worktree>/.dm-shots/.raw`. It takes the shared `qa-browser.lock` (one renderer on the VPS) and has a hard 15 minute limit

@@ -790,6 +790,8 @@ function createRunner(cfgIn, opts = {}) {
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
     const shots = proposalShots(job, committedAt);
     if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
+    // screenshots only on request (Helix, 2026-10-12): a proposal without pictures offers them
+    else if (GODOT) embed.fields.splice(embed.fields.length - 1, 0, { name: 'Screenshots', value: 'None taken. Say `!shot` to see this change.', inline: false });
     // no ping when the original approval is about to carry (it ships by itself; carryApproval pings if it cannot)
     post({ threadId: job.threadId }, { ...(job.carryApproval ? {} : pingRequester(job)), embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
     // BEFORE pictures come after, in the background: rendering waits for the shared renderer lock (other renders can hold it for many

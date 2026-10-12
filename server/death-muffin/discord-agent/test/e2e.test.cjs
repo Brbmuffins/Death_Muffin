@@ -865,6 +865,7 @@ test('godot mode: question, gameplay proposal (godot-port compare link, zip prev
   assert.match(p.payload.embeds[0].fields[0].value, /^Gameplay/);
   assert.match(field(p, 'Exact diff'), new RegExp(`compare/godot-port\\.\\.\\.discord/${id}`));
   assert.equal(field(p, 'Tests'), '✅ quick check: 2 suites — 2 passed');
+  assert.equal(field(p, 'Screenshots'), 'None taken. Say `!shot` to see this change.', 'no pictures by default; the proposal offers them');
   const calls = () => fs.readFileSync(path.join(w.tools, 'check-godot.calls'), 'utf8').trim().split('\n');
   assert.ok(calls().length >= 1 && calls().every((c) => c === ''), 'proposal checks ran QUICK (no --full)');
   // the Windows preview is built only on request (!preview); none is built with the proposal
@@ -1021,7 +1022,7 @@ test('godot mode: !shot is available, the agent may run shot-godot.sh (not shot.
   assert.ok(!allowed.includes('Read') && !allowed.includes('WebFetch'), 'no bare (any-path / any-host) grants');
   assert.ok(j.worktree && path.isAbsolute(j.worktree));
   const sp = systemPrompt(w.cfg, j); assert.match(sp, /origin\/godot-port/); assert.ok(sp.includes(`${w.tools}/check-godot.sh`) && sp.includes(`${w.tools}/shot-godot.sh`) && !sp.includes('__TOOLS__') && !/shot\.sh/.test(sp));
-  assert.match(sp, /at most 4|Never more than 4/); assert.match(sp, /BRANCH PREVIEW/); assert.match(sp, /Logic, data, balance/);
+  assert.match(sp, /at most 4|Never more than 4/); assert.match(sp, /BRANCH PREVIEW/); assert.match(sp, /Only when asked/); assert.match(sp, /Do NOT take screenshots by default/);
   // web mode is unchanged
   const wa = makeWorld(); const wj = { ...j, model: 'sonnet' }; const wargs = claudeArgs(wa.cfg, wj);
   assert.ok(wargs.includes(`Bash(${wa.tools}/shot.sh)`) && wargs.includes(`Bash(${wa.tools}/regen.sh)`) && wargs.includes(`Bash(${wa.tools}/check.sh)`) && !wargs.some((x) => /check-godot|shot-godot/.test(x)));
