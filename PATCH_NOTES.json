@@ -3,6 +3,7 @@
     "date": "2026-10-12",
     "title": "Smoother Big Fights and a Benchmark",
     "items": [
+      "Reaper set bonuses are in the code for Soul Harbinger's Raiment (the armor pieces themselves come later): 2 pieces double Scythe Throw's radius, 4 pieces turn the damage your Unleash Souls does into a shield (a new Unleash refreshes it, it never stacks), 5 pieces leave a Scythe Throw where each soul lands (up to 15).",
       "Big fights with lots of loot on the ground run much smoother: in a 30-enemy test fight the frame rate went from about 42 to 87 fps and the long freezes are gone. Soul shards no longer light the ground around them; their crystals still glow.",
       "If the game ever falls far behind, it now slows for a moment instead of freezing up.",
       "Effects, the HUD and the world do less work every frame (same look).",

@@ -42,6 +42,7 @@ static func apply_boons(base: Dictionary, boons: Dictionary, vows: Dictionary, w
 		d["mods"] = DmLegion.apply_legion_mods(d["mods"], legion)
 	# Armor set bonuses + worn affixes fold in last.
 	d["mods"] = DmSetBonuses.apply_set_mods(d["mods"], DmSetBonuses.resolve(slots)["totals"])
+	d["mods"] = DmReaperSet.apply(d["mods"], slots)   # Soul Harbinger's Raiment: rite keys, present only while worn
 	return d
 
 

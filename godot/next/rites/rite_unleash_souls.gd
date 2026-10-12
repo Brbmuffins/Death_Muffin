@@ -4,6 +4,8 @@ extends DmRiteModule
 ## out instead of overkilling one weak mob) and strike it once for power 0.45 (spell power read before the bag is emptied, so a full bag also hits harder). With nothing to hunt the wisps circle her until an enemy
 ## comes within reach (no time limit; they go when she dies). Host: `mem(id).wisps` ({a, x, z, eid, dmg}), looked after in `step`; every peer draws the wisps
 ## from the events: `release` (the burst and the circling wisps), `sync` (wisps that found a target fly off, the circle shrinks or grows), `hit`, `end`.
+## Soul Harbinger's Raiment (DmReaperSet): 4 pieces turn the damage the wisps do into her barrier (`mem.shield` is what a cast gave; the next release takes it
+## back first, so it refreshes instead of stacking); 5 pieces leave a Scythe Throw where each wisp lands (at most `soulScythes` at once).
 
 const SPEED := 16.0       ## m/s a hunting soul flies
 const OUT_SPEED := 13.0   ## m/s the ring flies outward before any wisp locks on
@@ -16,6 +18,7 @@ const ORBIT_SPEED := 2.2  ## rad/s
 const HIT_PAD := 0.5      ## m added to an enemy's radius for a soul to land
 const REFRESH_S := 50.0   ## a peer's circling sprites last 60 s; the host renews them while souls linger
 const Y := 1.2
+const _THROW := preload("res://next/rites/rite_scythe_throw.gd")
 
 
 func _init() -> void:
@@ -29,6 +32,9 @@ func resolve(c: DmRiteCaster, _intent: Dictionary) -> String:
 	var dmg := DmAbilities.rite_damage(DmAbilities.sp(c.p, c.now_ms), id)
 	var n := DmAbilities.soul_cost(c.p, id) + DmPlayerRules.bag_spend(c.p, int(c.p["souls"]))   # the price (paid by the cast) plus the rest of the bag
 	var origin := c.pos()
+	if bool(c.mods.get("soulShield", false)):   # Soul Harbinger's Raiment: a shield still standing from the last release is refreshed, never stacked
+		c.p["barrier"] = maxf(0.0, float(c.p["barrier"]) - float(m.get("shield", 0.0)))
+		m["shield"] = 0.0
 	for i in n:
 		wisps.append({"a": float(i) / float(n) * TAU, "x": origin.x, "z": origin.z, "eid": -1, "dmg": dmg, "t": OUT_T})
 	m["seek"] = 0.0
@@ -63,6 +69,8 @@ func step(c: DmRiteCaster, dt: float) -> void:
 				load[int(w["eid"])] = int(load.get(int(w["eid"]), 0)) + 1
 	var hits: Array = []
 	var dmg_each := 0.0
+	var shield := bool(c.mods.get("soulShield", false))
+	var scythe_cap := int(c.mods.get("soulScythes", 0.0))
 	var i := wisps.size() - 1
 	while i >= 0:
 		var w: Dictionary = wisps[i]
@@ -102,6 +110,11 @@ func step(c: DmRiteCaster, dt: float) -> void:
 					c.hit_resolved.emit(id, int(w["eid"]), dmg, false, float(e.get("hp")) <= 0.0)
 					hits.append(Vector3(gp.x, 0.9, gp.z))
 					dmg_each = dmg
+					if shield:   # Soul Harbinger's Raiment, 4 pieces: the damage the souls do becomes her barrier
+						c.add_barrier(dmg)
+						m["shield"] = float(m.get("shield", 0.0)) + dmg
+					if scythe_cap > 0 and _THROW.soul_scythes(c) < scythe_cap:   # 5 pieces: a Scythe Throw is left where the soul landed
+						_THROW.spawn(c, gp.x, gp.z, true)
 				wisps.remove_at(i)
 			else:
 				w["x"] = float(w["x"]) + dx / d * SPEED * dt

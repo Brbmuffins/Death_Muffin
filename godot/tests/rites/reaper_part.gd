@@ -11,6 +11,7 @@ func _initialize() -> void:
 	await _wiring()
 	await _rites()
 	await _unleash()
+	await _raiment()
 	_auto()
 	_gestures()
 	print("reaper: %d passed, %d failed" % [passed, failed])
@@ -293,6 +294,76 @@ func _unleash() -> void:
 	ok(ring.size() == 6 and _lost(near) == 0.0 and _lost(far) == 0.0, "unleash: the wisps fly outward first, nothing is struck yet")
 	_step(c, 3.0)
 	ok(_lost(near) > 0.0 and _lost(far) > 0.0 and ring.is_empty(), "unleash: the wisps are shared between both enemies (%.1f / %.1f)" % [_lost(near), _lost(far)])
+	await _teardown(s)
+
+
+# ---- Soul Harbinger's Raiment (DmReaperSet): 2 pieces double the throw, 4 shield from the souls, 5 leave scythes -----------------------------------
+
+func _worn_slots(n: int) -> Array:
+	var out: Array = []
+	for i in n:
+		var part: String = DmReaperSet.PARTS[i]
+		out.append({"slot_index": i, "equipped": true, "item_id": DmReaperSet.item_id(part), "item_type": "armor_" + part})
+	return out
+
+
+func _raiment() -> void:
+	var m0: Dictionary = DmCharacterBuild.build({"class_index": REAPER, "level": 5}, [], {})["discipline"]["mods"]
+	ok(not m0.has("scytheRadiusMult") and not m0.has("soulShield") and not m0.has("soulScythes"), "raiment: nothing worn adds no keys")
+	var m1: Dictionary = DmCharacterBuild.build({"class_index": REAPER, "level": 5}, _worn_slots(1), {})["discipline"]["mods"]
+	var m2: Dictionary = DmCharacterBuild.build({"class_index": REAPER, "level": 5}, _worn_slots(2), {})["discipline"]["mods"]
+	var m4: Dictionary = DmCharacterBuild.build({"class_index": REAPER, "level": 5}, _worn_slots(4), {})["discipline"]["mods"]
+	var m5: Dictionary = DmCharacterBuild.build({"class_index": REAPER, "level": 5}, _worn_slots(5), {})["discipline"]["mods"]
+	ok(not m1.has("scytheRadiusMult"), "raiment: one piece does nothing")
+	ok(is_equal_approx(float(m2["scytheRadiusMult"]), 2.0) and not m2.has("soulShield") and not m2.has("soulScythes"), "raiment: 2 pieces double the throw radius only")
+	ok(is_equal_approx(float(m4["scytheRadiusMult"]), 2.0) and bool(m4["soulShield"]) and not m4.has("soulScythes"), "raiment: 4 pieces add the shield")
+	ok(bool(m5["soulShield"]) and int(m5["soulScythes"]) == 15, "raiment: 5 pieces add up to 15 scythes")
+	ok(DmReaperSet.worn([{"slot_index": 0, "equipped": true, "item_id": "set_gravecaller_head", "item_type": "armor_head"}]) == 0, "raiment: another set's piece does not count")
+	var s := await _solo("RA", REAPER)
+	var c: DmRiteCaster = s["c"]
+	var w: World = s["w"]
+	var h: Node = s["h"]
+	_ready_cast(c)
+	c.request_cast("scythe_throw", Vector3(5, 0, 0))
+	var base_r := float(_events(w, "scythe_throw", "throw")[0]["r"])
+	_ready_cast(c)
+	c.mods["scytheRadiusMult"] = 2.0
+	c.request_cast("scythe_throw", Vector3(5, 0, 0))
+	var thr := _events(w, "scythe_throw", "throw")
+	ok(thr.size() == 2 and is_equal_approx(float(thr[1]["r"]), base_r * 2.0), "raiment: the thrown scythe's radius doubles (%.1f -> %.1f)" % [base_r, float(thr[1]["r"])])
+	c.mem("scythe_throw")["spins"].clear()
+	# shield: the damage the wisps do, refreshed (not stacked) by the next release
+	var foe := _robber(w, h, Vector3(6, 0, 0))
+	c.mods["soulShield"] = true
+	c.p["barrier"] = 0.0
+	_ready_cast(c)
+	c.p["souls"] = 4   # four are left once the price is paid
+	var sp4 := DmAbilities.sp(c.p, c.now_ms)
+	c.p["souls"] = 5
+	c.request_cast("unleash_souls", Vector3(0, 0, 0))
+	_step(c, 3.0)
+	var total := 5.0 * DmAbilities.rite_damage(sp4, "unleash_souls")
+	var shield1 := float(c.p["barrier"])
+	ok(shield1 > 0.0 and absf(_lost(foe) - total) < 0.01 and shield1 <= total + 0.01, "raiment: the shield is what the souls dealt (%.1f of %.1f)" % [shield1, total])
+	_ready_cast(c)
+	c.p["souls"] = 5
+	c.request_cast("unleash_souls", Vector3(0, 0, 0))
+	ok(float(c.p["barrier"]) < shield1 * 0.01 + 0.01, "raiment: a new release takes the old shield back first")
+	_step(c, 3.0)
+	ok(float(c.p["barrier"]) > 0.0 and float(c.p["barrier"]) <= total + 0.01, "raiment: the second shield refreshes, it does not stack (%.1f)" % float(c.p["barrier"]))
+	# scythes: one per landed soul, at most the cap
+	c.mods["soulShield"] = false
+	c.mods["soulScythes"] = 3.0
+	_ready_cast(c)
+	c.p["souls"] = 8
+	c.request_cast("unleash_souls", Vector3(0, 0, 0))
+	_step(c, 1.6)
+	var n := 0
+	for sp: Dictionary in c.mem("scythe_throw").get("spins", []):
+		if bool(sp.get("soul", false)):
+			n += 1
+			ok(is_equal_approx(float(sp["r"]), base_r * 2.0), "raiment: a left-behind scythe is a full Scythe Throw, doubled by the 2-piece bonus (radius %.1f)" % float(sp["r"]))
+	ok(n == 3, "raiment: 8 landed souls leave only the capped 3 scythes (%d)" % n)
 	await _teardown(s)
 
 

@@ -1,7 +1,8 @@
 extends DmRiteModule
 ## Scythe Throw (the Reaper): the scythe is hurled to the cursor (ground, clamped to 12 m) and spins there for 2 s, hitting everything within 2.6 m (+ the
 ## enemy's radius) every 0.25 s for power 0.45 each. 3 souls, 7 s. Host: `mem("scythe_throw").spins` (the damage is rolled once, at the throw); every
-## peer draws the ring from the cast event and a spray from each tick that struck something.
+## peer draws the ring from the cast event and a spray from each tick that struck something. Soul Harbinger's Raiment (DmReaperSet): 2 pieces double the
+## radius (`scytheRadiusMult`); 5 pieces let Unleash Souls leave scythes behind through `spawn(..., soul = true)`.
 
 
 func _init() -> void:
@@ -10,15 +11,29 @@ func _init() -> void:
 
 
 func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
-	var K := DmReaperRites.k()
-	var def := DmAbilities.def(id)
-	var at := DmRiteModule.clamp_reach(c.pos(), intent["aim"], float(def["range"]))
-	var m := c.mem(id)
-	var spins: Array = m.get_or_add("spins", [])
-	spins.append({"x": at.x, "z": at.z, "r": float(def["radius"]), "dmg": DmAbilities.rite_damage(DmAbilities.sp(c.p, c.now_ms), id),
-		"until": c.now_ms + float(K["throwLifeS"]) * 1000.0, "next": c.now_ms + float(K["throwTickS"]) * 1000.0})
-	c.broadcast({"t": "throw", "rite": id, "by": c.peer_id, "ox": c.pos().x, "oz": c.pos().z, "x": at.x, "z": at.z, "r": float(def["radius"]), "life": float(K["throwLifeS"])})
+	var at := DmRiteModule.clamp_reach(c.pos(), intent["aim"], float(DmAbilities.def(id)["range"]))
+	spawn(c, at.x, at.z, false)
 	return ""
+
+
+## HOST. Start a spinning scythe at (x, z): the cast itself, or (soul = true) one left behind by Soul Harbinger's Raiment (5 pieces). The radius carries the
+## 2-piece bonus (scytheRadiusMult).
+static func spawn(c: DmRiteCaster, x: float, z: float, soul: bool) -> void:
+	var K := DmReaperRites.k()
+	var r := float(DmAbilities.def("scythe_throw")["radius"]) * float(c.mods.get("scytheRadiusMult", 1.0))
+	var spins: Array = c.mem("scythe_throw").get_or_add("spins", [])
+	spins.append({"x": x, "z": z, "r": r, "dmg": DmAbilities.rite_damage(DmAbilities.sp(c.p, c.now_ms), "scythe_throw"), "soul": soul,
+		"until": c.now_ms + float(K["throwLifeS"]) * 1000.0, "next": c.now_ms + float(K["throwTickS"]) * 1000.0})
+	c.broadcast({"t": "throw", "rite": "scythe_throw", "by": c.peer_id, "ox": c.pos().x, "oz": c.pos().z, "x": x, "z": z, "r": r, "life": float(K["throwLifeS"])})
+
+
+## HOST. Scythes left behind by the set that are still spinning.
+static func soul_scythes(c: DmRiteCaster) -> int:
+	var n := 0
+	for s: Dictionary in c.mem("scythe_throw").get("spins", []):
+		if bool(s.get("soul", false)):
+			n += 1
+	return n
 
 
 func step(c: DmRiteCaster, _dt: float) -> void:
