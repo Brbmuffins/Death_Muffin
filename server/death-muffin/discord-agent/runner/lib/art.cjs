@@ -29,6 +29,9 @@ const ASPECTS = ['1:1', '3:4', '4:3', '2:3', '3:2', '9:16', '16:9'];
 const SPEC_KEYS = ['id', 'input', 'generation', 'rig', 'animations', 'animationMode'];
 const JOB_KEYS = ['id', 'prompt', 'out', 'refs', 'aspect', 'size', 'model', 'post'];
 const REQUEST_FILE = '.dm-art-request.json';
+const CONCEPT_FILE = '.dm-concept-request.json';
+const MAX_SET = 6, MAX_SET_ESTIMATE = 1200;      // one request may build an armor set (helm, mantle, weapon, hero body ...) under one ✅
+const MAX_CONCEPTS = 8;                          // concept images per concept request (Gemini only, no Tripo credits)
 const MAX_FILE = 64 * 1024, MAX_REF = 8 * 1024 * 1024;
 const IMG_MAGIC = [[0x89, 0x50, 0x4e, 0x47], [0xff, 0xd8, 0xff]];   // png, jpeg
 
@@ -67,19 +70,27 @@ function imageOk(wt, rel) {
 }
 
 // ---------- the request file ----------
-// Returns null (no request), {error} or {id, note}. The file is removed once read (like .dm-result.json).
-function readRequest(wt) {
-  const f = path.join(wt, REQUEST_FILE);
+// Returns null (no request), {error} or {id, ids, note}: {"id": "x"} or {"ids": ["x", "y"]} (1 to `max`, no repeats). The file is removed once read
+// (like .dm-result.json). Also reads the concept request (CONCEPT_FILE, up to MAX_CONCEPTS ids).
+function readRequest(wt, file = REQUEST_FILE, max = MAX_SET) {
+  const f = path.join(wt, file);
   let st; try { st = fs.lstatSync(f); } catch { return null; }
   let out;
-  if (!st.isFile() || st.size > 4096) out = { error: `${REQUEST_FILE} must be a small regular file` };
+  if (!st.isFile() || st.size > 4096) out = { error: `${file} must be a small regular file` };
   else {
     try {
-      const j = JSON.parse(fs.readFileSync(f, 'utf8')); const errs = [];
-      if (!isObj(j)) errs.push(`${REQUEST_FILE} must be a JSON object`);
-      else { onlyKeys(j, ['id', 'note'], REQUEST_FILE, errs); if (typeof j.id !== 'string' || !ID_RE.test(j.id)) errs.push('id must match [a-z0-9_]{3,40}'); }
-      out = errs.length ? { error: errs.join('; ') } : { id: j.id, note: typeof j.note === 'string' ? j.note.replace(/[\u0000-\u001f]+/g, ' ').slice(0, 300) : '' };
-    } catch { out = { error: `${REQUEST_FILE} is not valid JSON` }; }
+      const j = JSON.parse(fs.readFileSync(f, 'utf8')); const errs = []; let ids = [];
+      if (!isObj(j)) errs.push(`${file} must be a JSON object`);
+      else {
+        onlyKeys(j, ['id', 'ids', 'note'], file, errs);
+        if (j.id !== undefined && j.ids !== undefined) errs.push('give "id" or "ids", not both');
+        ids = j.ids !== undefined ? j.ids : [j.id];
+        if (!Array.isArray(ids) || ids.length < 1 || ids.length > max) errs.push(`ids must be a list of 1 to ${max} ids`);
+        else if (ids.some((x) => typeof x !== 'string' || !ID_RE.test(x))) errs.push('each id must match [a-z0-9_]{3,40}');
+        else if (new Set(ids).size !== ids.length) errs.push('ids must not repeat');
+      }
+      out = errs.length ? { error: errs.join('; ') } : { id: ids[0], ids, note: typeof j.note === 'string' ? j.note.replace(/[\u0000-\u001f]+/g, ' ').slice(0, 300) : '' };
+    } catch { out = { error: `${file} is not valid JSON` }; }
   }
   try { fs.unlinkSync(f); } catch { /* gone */ }
   return out;
@@ -124,6 +135,82 @@ async function loadCostHistory(cfg, ref) {
 }
 
 // ---------- validation ----------
+// The concept job (a one-element list, like the other files in gemini-jobs/). Pushes problems into errors; returns the canonical job or null.
+function validateGemini(wt, id, gv, info, errors) {
+  const gRel = `art-manifest/gemini-jobs/${id}.json`;
+  const job = Array.isArray(gv) ? gv[0] : gv; let gem = null;
+  if (Array.isArray(gv) && gv.length !== 1) errors.push(`${gRel} must hold exactly one job`);
+  else if (!isObj(job)) errors.push(`${gRel} must hold one job object`);
+  else {
+    onlyKeys(job, JOB_KEYS, gRel, errors);
+    if (job.id !== `concept_${id}`) errors.push(`${gRel}: job id must be "concept_${id}"`);
+    if (job.out !== `art-src/concepts/${id}.png`) errors.push(`${gRel}: out must be "art-src/concepts/${id}.png"`);
+    if (typeof job.prompt !== 'string' || job.prompt.length < 20 || job.prompt.length > 4000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(job.prompt)) errors.push('prompt must be 20 to 4000 characters of plain text');
+    if (job.aspect !== undefined && !ASPECTS.includes(job.aspect)) errors.push(`aspect must be one of ${ASPECTS.join(', ')}`);
+    if (job.size !== undefined && job.size !== '1K') errors.push('size must be "1K" when given');
+    if (job.model !== undefined && job.model !== 'gemini-3.1-flash-image') errors.push('model must be gemini-3.1-flash-image when given');
+    let refs = [];
+    if (job.refs !== undefined) {
+      if (!Array.isArray(job.refs) || job.refs.length > 3) errors.push('refs must be a list of at most 3 images');
+      else for (const r of job.refs) {
+        if (typeof r !== 'string') { errors.push('a ref is not a string'); continue; }
+        if (info.rootPngs.has(r)) { refs.push(r); continue; }       // a reference sheet that is committed on the base branch
+        if (/^art-src\/concepts\/[a-z0-9_]+\.png$/.test(r)) { const bad = imageOk(wt, r); if (bad) errors.push(`ref ${bad}`); else refs.push(r); continue; }
+        errors.push(`ref "${String(r).slice(0, 80)}" is not allowed (art-src/concepts/<name>.png or a reference sheet committed at the repo root)`);
+      }
+    }
+    let post;
+    if (job.post !== undefined) {
+      if (!isObj(job.post)) errors.push('post must be an object');
+      else {
+        onlyKeys(job.post, ['resize', 'format'], 'post', errors);
+        if (job.post.format !== undefined && job.post.format !== 'png') errors.push('post.format must be "png"');
+        if (job.post.resize !== undefined && !(Array.isArray(job.post.resize) && job.post.resize.length === 2 && job.post.resize.every((n) => Number.isInteger(n) && n >= 256 && n <= 2048))) errors.push('post.resize must be [w, h], each 256 to 2048');
+        post = { ...(job.post.resize ? { resize: job.post.resize } : {}), ...(job.post.format ? { format: 'png' } : {}) };
+      }
+    }
+    gem = { id: `concept_${id}`, prompt: job.prompt, out: `art-src/concepts/${id}.png`, aspect: job.aspect || '1:1', ...(refs.length ? { refs } : {}), ...(post && Object.keys(post).length ? { post } : {}) };
+  }
+  return gem;
+}
+
+const WRITE_PATHS = (id) => ['art-src', 'art-src/concepts', `art-src/concepts/${id}.png`, 'art-src/gemini', `art-src/gemini/concept_${id}.png`, 'art-src/tripo', `art-src/tripo/${id}`,
+  'art-manifest', 'art-manifest/images.json', 'art-manifest/tripo', `art-manifest/tripo/${id}.json`, 'art-manifest/gemini-jobs', 'art-manifest/tripo-specs', `art-manifest/gemini-jobs/${id}.json`, `art-manifest/tripo-specs/${id}.json`];
+
+// A concept request: Gemini images only (no Tripo, no credits from the budget), so people can see and steer a piece before anything is built.
+// Returns { ok, errors[], items: [{ id, gemini }] }.
+function validateConcepts({ wt, request, info }) {
+  if (!request || request.error) return { ok: false, errors: [request ? request.error : 'no request'] };
+  const errors = [], items = [];
+  for (const id of request.ids) {
+    const gRel = `art-manifest/gemini-jobs/${id}.json`; const e = [];
+    const gj = parseJson(readSmall(wt, gRel), gRel);
+    if (gj.error) { errors.push(gj.error); continue; }
+    if (info.existing.has(id)) e.push(`id "${id}" is already used by an existing model; pick a new id`);
+    const gem = validateGemini(wt, id, gj.value, info, e);
+    for (const rel of WRITE_PATHS(id)) { const iss = pathIssue(wt, rel); if (iss) e.push(iss); }
+    if (e.length || !gem) errors.push(...e.map((x) => (request.ids.length > 1 ? `${id}: ${x}` : x)));
+    else items.push({ id, gemini: gem });
+  }
+  return errors.length ? { ok: false, errors: [...new Set(errors)].slice(0, 12) } : { ok: true, errors: [], items };
+}
+
+// A model request for one or several ids (an armor set: helm, mantle, weapon, hero body ...). Each id is validated like a single request; the
+// set's total must stay under MAX_SET_ESTIMATE. Returns { ok, errors[], items: [validate() results], estimate: { total, parts } }.
+function validateSet({ wt, request, info }) {
+  if (!request || request.error) return { ok: false, errors: [request ? request.error : 'no request'] };
+  const ids = request.ids || [request.id]; const items = [], errors = [];
+  for (const id of ids) {
+    const v = validate({ wt, request: { id }, info });
+    if (v.ok) items.push(v); else errors.push(...v.errors.map((x) => (ids.length > 1 ? `${id}: ${x}` : x)));
+  }
+  if (errors.length) return { ok: false, errors: [...new Set(errors)].slice(0, 12), id: ids[0] };
+  const total = items.reduce((n, v) => n + v.estimate.total, 0);
+  if (ids.length > 1 && total > MAX_SET_ESTIMATE) return { ok: false, errors: [`the set is estimated at ${total} credits, above the ${MAX_SET_ESTIMATE} per-request ceiling; split it or ask for fewer animations`], id: ids[0] };
+  const parts = items.length === 1 ? items[0].estimate.parts : items.map((v) => ({ label: v.id, credits: v.estimate.total }));
+  return { ok: true, errors: [], id: ids[0], items, estimate: { total, parts } };
+}
+
 // Returns { ok, errors[], id, kind, spec, gemini, estimate: { total, parts: [{label, credits}] } }. Pure given its inputs (tests call it directly).
 function validate({ wt, request, info }) {
   const errors = []; const id = request && request.id;
@@ -176,44 +263,10 @@ function validate({ wt, request, info }) {
     if (gen) spec = { id, input: `art-src/concepts/${id}.png`, generation: gen, ...(rig ? { rig, animations: anims, animationMode: 'single' } : {}) };
   }
 
-  // -- gemini job (a one-element list, like the other files in gemini-jobs/)
-  const gv = gj.value; const job = Array.isArray(gv) ? gv[0] : gv; let gem = null;
-  if (Array.isArray(gv) && gv.length !== 1) errors.push(`${gRel} must hold exactly one job`);
-  else if (!isObj(job)) errors.push(`${gRel} must hold one job object`);
-  else {
-    onlyKeys(job, JOB_KEYS, gRel, errors);
-    if (job.id !== `concept_${id}`) errors.push(`${gRel}: job id must be "concept_${id}"`);
-    if (job.out !== `art-src/concepts/${id}.png`) errors.push(`${gRel}: out must be "art-src/concepts/${id}.png"`);
-    if (typeof job.prompt !== 'string' || job.prompt.length < 20 || job.prompt.length > 4000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(job.prompt)) errors.push('prompt must be 20 to 4000 characters of plain text');
-    if (job.aspect !== undefined && !ASPECTS.includes(job.aspect)) errors.push(`aspect must be one of ${ASPECTS.join(', ')}`);
-    if (job.size !== undefined && job.size !== '1K') errors.push('size must be "1K" when given');
-    if (job.model !== undefined && job.model !== 'gemini-3.1-flash-image') errors.push('model must be gemini-3.1-flash-image when given');
-    let refs = [];
-    if (job.refs !== undefined) {
-      if (!Array.isArray(job.refs) || job.refs.length > 3) errors.push('refs must be a list of at most 3 images');
-      else for (const r of job.refs) {
-        if (typeof r !== 'string') { errors.push('a ref is not a string'); continue; }
-        if (info.rootPngs.has(r)) { refs.push(r); continue; }       // a reference sheet that is committed on the base branch
-        if (/^art-src\/concepts\/[a-z0-9_]+\.png$/.test(r)) { const bad = imageOk(wt, r); if (bad) errors.push(`ref ${bad}`); else refs.push(r); continue; }
-        errors.push(`ref "${String(r).slice(0, 80)}" is not allowed (art-src/concepts/<name>.png or a reference sheet committed at the repo root)`);
-      }
-    }
-    let post;
-    if (job.post !== undefined) {
-      if (!isObj(job.post)) errors.push('post must be an object');
-      else {
-        onlyKeys(job.post, ['resize', 'format'], 'post', errors);
-        if (job.post.format !== undefined && job.post.format !== 'png') errors.push('post.format must be "png"');
-        if (job.post.resize !== undefined && !(Array.isArray(job.post.resize) && job.post.resize.length === 2 && job.post.resize.every((n) => Number.isInteger(n) && n >= 256 && n <= 2048))) errors.push('post.resize must be [w, h], each 256 to 2048');
-        post = { ...(job.post.resize ? { resize: job.post.resize } : {}), ...(job.post.format ? { format: 'png' } : {}) };
-      }
-    }
-    gem = { id: `concept_${id}`, prompt: job.prompt, out: `art-src/concepts/${id}.png`, aspect: job.aspect || '1:1', ...(refs.length ? { refs } : {}), ...(post && Object.keys(post).length ? { post } : {}) };
-  }
+  const gem = validateGemini(wt, id, gj.value, info, errors);
 
   // -- places the tools will write must not be symlinks (a symlink would send a write outside the worktree)
-  for (const rel of ['art-src', 'art-src/concepts', `art-src/concepts/${id}.png`, 'art-src/gemini', `art-src/gemini/concept_${id}.png`, 'art-src/tripo', `art-src/tripo/${id}`,
-    'art-manifest', 'art-manifest/images.json', 'art-manifest/tripo', `art-manifest/tripo/${id}.json`, 'art-manifest/gemini-jobs', 'art-manifest/tripo-specs', gRel, tRel]) {
+  for (const rel of WRITE_PATHS(id)) {
     const iss = pathIssue(wt, rel); if (iss) errors.push(iss);
   }
   const dir = path.join(wt, 'art-src', 'tripo', id);
@@ -313,6 +366,13 @@ function createArt(cfg, { audit, now = () => Date.now() } = {}) {
     const safeTail = redactText(out.trim().split('\n').filter((l) => !/^BALANCE_/.test(l)).slice(-8).join('\n'));
     return { credits, before, after, result: res ? res[1] : (r.timedOut ? 'timeout' : 'crashed'), detail: res ? res[2] : '', tail: safeTail, timedOut: !!r.timedOut, code: r.code };
   }
+  // Gemini only (no Tripo key in the environment, no balance, no lock): regenerates art-src/concepts/<id>.png from the canonical job the runner wrote.
+  async function runConcept(wt, id, { onSpawn } = {}) {
+    const keys = loadKeys();
+    const r = await G.run('bash', [P.script, '--concept', id], { cwd: wt, onSpawn, timeoutMs: 10 * 60000, env: { ...baseEnv(), GEMINI_API_KEY: keys.GEMINI_API_KEY, DM_ART_TOOLS: P.tools } });
+    const out = r.out + r.err; const res = /^RESULT: (\S+)/m.exec(out);
+    return { ok: !!res && res[1] === 'ok', result: res ? res[1] : (r.timedOut ? 'timeout' : 'crashed'), tail: redactText(out.trim().split('\n').slice(-6).join('\n')) };
+  }
   // Called at startup: runs that were 'started' but never finished (the runner died mid-run) are closed from the balance delta.
   async function reconcile() {
     const open = store.open(); if (!open.length) return 0;
@@ -325,7 +385,7 @@ function createArt(cfg, { audit, now = () => Date.now() } = {}) {
     }
     return open.length;
   }
-  return { store, paths: P, loadKeys, balance, run, reconcile, parseBalance };
+  return { store, paths: P, loadKeys, balance, run, runConcept, reconcile, parseBalance };
 }
 
-module.exports = { ID_RE, DEFAULT_COSTS, MAX_ESTIMATE, MAX_ANIMS, REQUEST_FILE, ANIMS, RIGS, readRequest, baseInfo, loadCostHistory, validate, estimate, describe, parseKeyFile, paths, createStore, createArt, pathIssue };
+module.exports = { ID_RE, DEFAULT_COSTS, MAX_ESTIMATE, MAX_ANIMS, MAX_SET, MAX_SET_ESTIMATE, MAX_CONCEPTS, REQUEST_FILE, CONCEPT_FILE, WRITE_PATHS, ANIMS, RIGS, readRequest, baseInfo, loadCostHistory, validate, validateSet, validateConcepts, estimate, describe, parseKeyFile, paths, createStore, createArt, pathIssue };

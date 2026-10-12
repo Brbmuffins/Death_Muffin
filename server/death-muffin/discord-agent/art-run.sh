@@ -1,12 +1,27 @@
 #!/usr/bin/env bash
 # Runner-only (never in the agent's allowedTools, and the agent has no shell to reach it): generate ONE approved model.
-#   art-run.sh <id>        run from the job's worktree
+#   art-run.sh <id>             run from the job's worktree
+#   art-run.sh --concept <id>   Gemini only: (re)generate art-src/concepts/<id>.png for people to look at before anything is built. Needs only
+#                               GEMINI_API_KEY and DM_ART_TOOLS; no Tripo key, balance or lock. An existing concept is reused by the full run.
 # Env (set by the runner for this one child, never written anywhere): TRIPO_API_KEY, GEMINI_API_KEY, DM_ART_TOOLS (trusted copies of tools/ai/*.mjs, installed
 # outside every worktree), DM_ART_LOCK (flock file: one Tripo run at a time, across runner restarts too).
 # The specs it runs were validated and rewritten by the runner from its own stored copy right before this starts. It never runs a tool from the worktree:
 # the agent can edit those, and these processes hold the keys. Order: lock -> read the Tripo balance (refuse to spend blind) -> Gemini concept ->
 # Tripo (resumable; a rerun never pays twice) -> balance again. The balance lines are printed even when a step fails, so the runner can ledger the real spend.
 set -uo pipefail
+if [ "${1:-}" = "--concept" ]; then
+  ID=${2:-}
+  [[ "$ID" =~ ^[a-z0-9_]{3,40}$ ]] || { echo "RESULT: bad-id"; exit 2; }
+  ART=${DM_ART_TOOLS:-}
+  [ -n "$ART" ] && [ -f "$ART/tools/ai/gemini.mjs" ] || { echo "RESULT: no-tools"; exit 2; }
+  [ -n "${GEMINI_API_KEY:-}" ] || { echo "RESULT: no-keys"; exit 2; }
+  [ -f "art-manifest/gemini-jobs/$ID.json" ] || { echo "RESULT: no-specs"; exit 2; }
+  export DM_ART_ROOT="$(pwd -P)"
+  rm -f "art-src/concepts/$ID.png"
+  node "$ART/tools/ai/gemini.mjs" "art-manifest/gemini-jobs/$ID.json" --force 2>&1
+  [ -s "art-src/concepts/$ID.png" ] || { echo "RESULT: no-concept"; exit 4; }
+  echo "RESULT: ok"; exit 0
+fi
 ID=${1:-}
 [[ "$ID" =~ ^[a-z0-9_]{3,40}$ ]] || { echo "RESULT: bad-id"; exit 2; }
 TOP=$(pwd -P)

@@ -30,6 +30,20 @@ func _init() -> void:
 	ok(DmQaUiShots.parse('{"shots":[{"hover":"item:staff_moon"}]}')["shots"][0]["hover"] == "item:staff_moon", "item hover accepted")
 	ok(DmQaUiShots.parse('{"give":["staff_oak",""],"shots":[{}]}')["give"] == ["staff_oak"], "give list parsed")
 	ok(DmQaUiShots.parse('{"shots":[{"hover":"head"}]}')["ok"] == false, "bad hover string rejected")
+	var hp := DmQaUiShots.parse('{"equip":["a","","b"],"discipline":"hero_Rotweaver","shots":[{"view":"hero","turn":180,"anim":"cast"},{"view":"game"},{"view":"hero"},{}]}')
+	ok(hp["ok"] and hp["equip"] == ["a", "b"] and hp["class_index"] == 4, "equip list and discipline parsed")
+	ok(hp["shots"][0]["view"] == "hero" and hp["shots"][0]["turn"] == 180.0 and hp["shots"][0]["anim"] == "cast", "hero view, turn and anim parsed")
+	ok(hp["shots"][1]["view"] == "game" and hp["shots"][2]["turn"] == DmQaUiShots.DEFAULT_TURN and hp["shots"][3]["view"] == "" and hp["shots"][3]["anim"] == "", "view defaults")
+	ok(DmQaUiShots.parse('{"equip":["1","2","3","4","5","6","7","8","9","10","11","12","13"],"shots":[{}]}')["equip"].size() == DmQaUiShots.MAX_EQUIP, "equip capped")
+	ok(DmQaUiShots.parse('{"discipline":11,"shots":[{}]}')["class_index"] == 11 and DmQaUiShots.parse('{"shots":[{}]}')["class_index"] == 0, "numeric discipline, none by default")
+	ok(DmQaUiShots.parse('{"discipline":"grave_warden","shots":[{}]}')["ok"] == false, "non-playable discipline rejected")
+	ok(DmQaUiShots.parse('{"shots":[{"view":"top"}]}')["ok"] == false and DmQaUiShots.parse('{"shots":[{"anim":"dance"}]}')["ok"] == false, "bad view / anim rejected")
+	var sh := FileAccess.get_file_as_string("res://../server/death-muffin/discord-agent/shot-godot.sh")
+	for nm in DmQaUiShots.DISCIPLINES:
+		ok(sh.contains('"%s": %d' % [nm, DmQaUiShots.DISCIPLINES[nm]]), "shot-godot.sh maps %s to its class index" % nm)
+	var by_index: Dictionary = DmCombatData.disciplines()["by_index"]
+	for nm in DmQaUiShots.DISCIPLINES:
+		ok(DmCharacterBuild.is_playable(float(DmQaUiShots.DISCIPLINES[nm])) and String(by_index[str(DmQaUiShots.DISCIPLINES[nm])]) == nm, "%s is a playable discipline at its class index" % nm)
 	ok(DmQaUiShots.parse('{"shots":[{"name":"x"}]}')["bag"] == "demo", "demo bag is the default")
 	# every window id the plan accepts must be one DmGameUi.toggle_panel knows
 	var known: Array = DmGameUi.PANEL_KEYS.values() + ["settings", "salvage", "shelf", "ascension", "class"]

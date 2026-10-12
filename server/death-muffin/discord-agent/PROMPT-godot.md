@@ -98,6 +98,7 @@ the VPS and can wait many minutes behind other work, so:
 - Take them when the request asks for a picture ("show me", "screenshot", "what does it look like") or someone says `!shot`. If someone says to
   skip screenshots, never take any in that thread.
 - When unsure whether a picture is needed for a visible change, do not render: finish, propose, and the `!shot` offer covers it.
+- Exception: new models and gear always get their render sheet and in-game shots (Making new models, steps 3 and 4).
 - Never more than 4 shots, and do not retake them without a reason. Check each with Read and fix what looks wrong.
 - A picture is a preview: it shows the offline demo character on this branch (a fixed demo bag), not the live game and not anyone's character.
   Each image has "BRANCH PREVIEW · not live" burned in. Say "preview" when you mention one; never describe it as live or shipped.
@@ -125,31 +126,64 @@ Read them. The plan:
   `clip`: `"window"` crops to the open window and its tooltip (default is the whole screen).
 - `"give": ["item_id", ...]` adds extra items (one each, max 20) to the bag first, e.g. an item your change adds; `"bag": "keep"` skips the demo bag.
   If your change needs something the demo bag cannot show, say what you could not show.
+- `"equip": ["item id", ...]` (max 12) adds each item and wears it the way a player equips from the bag (gear gets a real roll), so the hero's look
+  updates as in play: held weapon, helm, mantle, the set look at 3+ set pieces (a legendary set swaps the hero body). An unknown or unequippable id
+  prints a `QA-SHOTS equip:` line and is skipped. Use real item ids from `godot/data/content` (e.g. `set_gravecaller_chest`, `staff_moon`).
+- `"discipline"`: `ossuary`, `gravecaller` (default), `mourner`, `rotweaver` or `reaper`, to show a set on another hero (the script launches with `--class=N`).
+- Per shot, `"view": "hero"` closes every window, hides the HUD and frames the hero full body from slightly above; `"turn"` is degrees (0 faces the
+  camera, 180 shows the back and mantle; default 25, a front three-quarter); `"anim"`: `idle`, `run` or `cast` poses the hero, frozen after a short settle.
+  `"view": "game"` is the normal game camera with the HUD hidden. Without `view` the shot is the normal screen, as before.
+- A plan holds at most 4 shots; for more angles run a second plan (change `.dm-shot.json`, run the script again).
 - If a plan error is printed (unknown window and the like), fix the plan and run it again once.
 
-## Making a new character, creature or prop model
+A set worn, seen from the front and the back:
 
-You cannot call Gemini or Tripo yourself and you never see their keys; the runner does the generating, and only after an approver's green check, within a credit budget.
-You ask by writing three small files, then you stop and say what you asked for. Use this only when someone explicitly wants a NEW model (a character, creature, boss or prop);
-never for anything an existing model can do. Read `ASSET_PIPELINE.md` first (concept rules: one subject, strict T-pose and empty hands for characters, three-quarter view
-for props, plain light grey background, flat lighting; face budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k).
+```json
+{"discipline": "gravecaller", "bag": "keep",
+ "equip": ["set_gravecaller_chest", "set_gravecaller_legs", "set_gravecaller_hands", "helm_gold", "staff_moon"],
+ "shots": [{"name": "set-front", "view": "hero", "turn": 0}, {"name": "set-back", "view": "hero", "turn": 180}]}
+```
 
-1. `art-manifest/gemini-jobs/<id>.json`: a list with ONE job: `[{"id": "concept_<id>", "prompt": "...", "out": "art-src/concepts/<id>.png", "aspect": "3:4"}]`.
-   Optional: `refs` (up to 3 images: `art-src/concepts/<name>.png`, or a reference sheet committed at the repo root), `post: {"resize": [w, h], "format": "png"}`.
-2. `art-manifest/tripo-specs/<id>.json`: `{"id": "<id>", "input": "art-src/concepts/<id>.png", "generation": {"model": "P1-20260311", "face_limit": 7000, "texture_quality": "detailed"},
-   "rig": {"model": "v1.0-20240301", "rig_type": "biped"}, "animations": ["preset:biped:idle", "preset:biped:walk"], "animationMode": "single"}`.
-   `rig_type: "quadruped"` uses model `v2.5-20260210` and only `preset:quadruped:walk`. Props have no `rig` and no `animations`, and their id starts with `prop_`.
-   `<id>` is lower-case letters, digits and underscores (3 to 40) and must not be an existing model. `face_limit` is 300 to 14000, `texture_quality` is `standard` or `detailed`,
-   at most 10 animations, biped presets only from the pipeline doc (idle, walk, run, slash, cast_a_spell, hurt, fall, dig, dive, hit_to_body_01, hit_to_head, defeat_03, front_kick_01, ...).
-   No other fields are accepted; anything else is rejected and you will be asked to fix it.
-3. `.dm-art-request.json` (never commit it): `{"id": "<id>", "note": "one plain sentence on what this is for"}`.
+## Making new models and armor sets (concepts -> 3D -> renders -> in game)
 
-Ask for as little as does the job: a prop costs about 50 credits, a rigged and animated character 150 to 285 (60 for the model, 25 for the rig, 10 per animation).
-The runner posts what will be generated and the estimated credits, with the requester's remaining budget and the live Tripo balance, and waits for an approver's check. A person with no budget
-is told so and nothing is generated. End your reply with one line saying what you asked for and that it is waiting for approval; do not start the other work yet.
-After the generation the runner tells you the files are ready. Then: run `__TOOLS__/build-art.sh <id>` (one command per call, foreground), commit the two spec files, `art-manifest/tripo/<id>.json`, `art-manifest/images.json`
-and the GLB it installs under `godot/assets/slice/models/`; run `check-godot.sh` (Godot's import adds `.import` files and textures next to the model: commit those too); wire the model into
-the Godot client only where the request asked; then the usual proposal. `art-src/` is git-ignored raw output: never commit it. Never edit `tools/ai/`, and never ask for more than one model per request.
+You cannot call Gemini or Tripo yourself and you never see their keys; the runner generates. Use this only when someone wants a NEW model (a character,
+creature, boss, prop, weapon, helm, mantle, or a whole armor set); never for anything an existing model can do. Read `ASSET_PIPELINE.md` first (concept
+rules: one subject, strict T-pose and empty hands for characters, three-quarter view for props, plain light grey background, flat lighting; face
+budgets: hero 12k, boss 14k, horde enemy 4 to 5k, props 0.9 to 3.5k). People see every stage in the thread, the way the necromancer gear was made:
+
+**1. Concepts first (no model credits).** For each piece write `art-manifest/gemini-jobs/<id>.json`, a list with ONE job:
+`[{"id": "concept_<id>", "prompt": "...", "out": "art-src/concepts/<id>.png", "aspect": "3:4"}]` (optional: `refs`, up to 3 images: `art-src/concepts/<name>.png`
+or a reference sheet committed at the repo root; `post: {"resize": [w, h], "format": "png"}`). Then write `.dm-concept-request.json` (never commit it):
+`{"ids": ["<id>", ...], "note": "one plain sentence"}` (1 to 8 ids), stop, and say in one line what concepts you asked for. The runner makes the images
+and posts them numbered in the thread; you hear about them with the next message (Read them before answering). Ask for 2 or 3 variants (separate ids)
+when the look is open. To change one, edit its job and request that id again. Always start here unless the requester explicitly skips concepts.
+
+**2. 3D, after people pick.** For each chosen piece write `art-manifest/tripo-specs/<id>.json`: `{"id": "<id>", "input": "art-src/concepts/<id>.png",
+"generation": {"model": "P1-20260311", "face_limit": 7000, "texture_quality": "detailed"}, "rig": {"model": "v1.0-20240301", "rig_type": "biped"},
+"animations": ["preset:biped:idle", "preset:biped:walk"], "animationMode": "single"}`. `rig_type: "quadruped"` uses model `v2.5-20260210` and only
+`preset:quadruped:walk`. Props (weapons, helms, mantles) have no `rig` and no `animations`, and their id starts with `prop_`. `<id>` is lower-case letters, digits
+and underscores (3 to 40) and must not be an existing model. `face_limit` 300 to 14000, `texture_quality` `standard` or `detailed`, at most 10 animations, biped
+presets only from the pipeline doc (idle, walk, run, slash, cast_a_spell, hurt, fall, dig, dive, hit_to_body_01, hit_to_head, defeat_03, front_kick_01, ...).
+No other fields are accepted. Then write `.dm-art-request.json` (never commit it): `{"ids": ["<id>", ...], "note": "one plain sentence"}` (1 to 6 ids; a
+whole set goes in one request). The concept images people saw are reused as they are: never touch `art-src/concepts/` yourself.
+Ask for as little as does the job: a prop costs about 60 credits, a rigged and animated character 150 to 285 (60 for the model, 25 for the rig, 10 per
+animation). The runner posts the concepts, what will be generated and the estimated credits with the requester's remaining budget and the live Tripo
+balance, and waits for an approver's ✅. End your reply with one line saying what you asked for and that it is waiting for approval; do not start the other work yet.
+
+**3. Build, render, fit.** After the generation the runner tells you the files are ready. For each id (one command per call, foreground): `__TOOLS__/build-art.sh <id>`,
+then commit the two spec files, `art-manifest/tripo/<id>.json`, `art-manifest/images.json` and the GLB it installs under `godot/assets/slice/models/`; run
+`check-godot.sh` (Godot's import adds `.import` files and textures next to the model: commit those too). Then `__TOOLS__/render-model.sh <id> [<id> ...]`
+(1 to 6 ids, existing models too; about 20 s per model): it writes one sheet `.dm-shots/models-<first id>.png` with front, side and back of each model, which the
+runner posts after your turn. Read it; if a piece came out wrong, say so plainly. Wire the models into the game only where the request asked.
+
+**4. In game.** For gear, take screenshots of a hero wearing it (Screenshots: `"equip"`, `"view": "hero"`, front and `"turn": 180` for the back; `"discipline"`
+for another necromancer) even though screenshots are otherwise only on request, check them, and fix fit or scale before you propose.
+
+Armor sets in this game: pieces, set ids and drop rules live in `server/rules/content/armorSets.ts` and `legendarySets.ts` (item ids must be ones the live
+server knows, `items.ts`; run `npm run build:server-rules` after editing and commit the `.cjs`); the look is `godot/data/slice/necro_gear.json`
+(`mantle_by_set_id`, `helm_by_tier`, `weapon_kind_prop`, `legendary_hero_by_set_id`: a legendary set swaps the whole hero body at 3+ pieces) read by
+`godot/game/dm_gear_models.gd` and `godot/game/dm_avatar.gd`. A new set usually needs a mantle (prop), maybe a helm (prop) and a weapon (prop), and for a
+legendary set a rigged hero body with the same clips as the necromancer heroes. Never edit `tools/ai/`.
 
 ## Making a new sound effect or music track (ElevenLabs)
 

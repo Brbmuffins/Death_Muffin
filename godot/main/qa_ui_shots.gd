@@ -4,14 +4,29 @@ extends RefCounted
 ## Loaded by main/qa_driver.gd only when --shot-plan is given, so normal play never touches it. Opens real windows of the real DmGameUi of the rebuild
 ## (DmNextGame) on the dev-offline `tester` hero (with a representative bag), optionally shows an item tooltip, and saves one PNG per shot. No network. Used by the Discord agent's shot-godot.sh.
 ##
-## Plan: {"bag": "demo"|"keep", "give": ["item id", ...] (extra items, one each), "shots": [{"name", "open": "bag" | ["bag", ...], "hover": <bag slot 0-47> | "item:<item id>" | "worn:<equip slot>" | "belt:<tool>",
-##        "area": "<area id>", "wait_ms": 300, "clip": "window"}]}. At most MAX_SHOTS shots. "open" lists are applied in order (the game keeps one window
+## Plan: {"bag": "demo"|"keep", "give": ["item id", ...] (extra items, one each), "equip": ["item id", ...] (max 12, worn like a player equipping from the bag),
+##        "discipline": "ossuary"|"gravecaller"|"mourner"|"rotweaver"|"reaper" (or 1-4 / 11; read by shot-godot.sh, which launches with --class=N),
+##        "shots": [{"name", "open": "bag" | ["bag", ...], "hover": <bag slot 0-47> | "item:<item id>" | "worn:<equip slot>" | "belt:<tool>",
+##        "area": "<area id>", "wait_ms": 300, "clip": "window", "view": "hero" | "game", "turn": <degrees>, "anim": "idle" | "run" | "cast"}]}.
+## At most MAX_SHOTS shots per plan (run several plans for more). "open" lists are applied in order (the game keeps one window
 ## open at a time, so the last one stays). "clip": "window" crops to the open window (plus the tooltip when one is shown); default is the whole screen.
+## "equip": each id is added to the bag (gear gets a real backend roll) and equipped through the backend's equip call, then the bag reloads, so the avatar
+## updates exactly as in play (weapon in hand, helm, mantle, set look at 3+ pieces, legendary body swap). Unknown or unequippable ids print `QA-SHOTS equip:` and are skipped.
+## "view": "hero" closes every window, hides the HUD and frames the hero full body close-up from the front (`turn` degrees: 0 faces the camera, 180 shows the
+## back; `anim` poses the hero and freezes it after a short settle); "game" is the normal game camera with the HUD hidden. The camera, HUD and pose are restored after the shot.
 ## Window ids (WINDOWS): bag/reliquary/inventory, character/gear/sheet, pets/cosmetics, legion, grimoire/spellbook, vault, forge, salvage, shelf,
 ## codex, atlas, ascension, map, class, settings, professions, garden, labor, contracts.
 
 const MAX_SHOTS := 4
 const MAX_WAIT_MS := 5000
+const MAX_EQUIP := 12
+const DEFAULT_TURN := 25.0   ## a hero view without "turn" stands slightly turned (front three-quarter); "turn": 0 faces the camera
+const VIEWS := ["", "hero", "game"]
+const ANIMS := ["", "idle", "run", "cast"]
+## Playable disciplines by name -> class index (godot/data/combat/disciplines.json by_index; shot-godot.sh maps the same names to --class=N).
+const DISCIPLINES := {"ossuary": 1, "gravecaller": 2, "mourner": 3, "rotweaver": 4, "reaper": 11}
+## The hero close-up: replaces the camera config's distance / height / look-at (fov stays); the focus is the hero's position.
+const HERO_CAM := {"dist": 4.6, "heightFactor": 0.48, "backFactor": 0.9, "lookAtY": 1.0, "lookAheadZ": 0.0}
 const WINDOWS := {
 	"bag": "inventory", "reliquary": "inventory", "inventory": "inventory", "character": "sheet", "gear": "sheet", "sheet": "sheet",
 	"pets": "cosmetics", "cosmetics": "cosmetics", "legion": "legion", "grimoire": "grimoire", "spellbook": "grimoire", "vault": "vault",
@@ -29,10 +44,10 @@ const DEMO_BAG := [
 ]
 
 
-## Parses and validates plan text. Returns {"ok": bool, "error": String, "bag": String, "shots": Array[Dictionary]} with normalised shots
-## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area: String, wait_ms: int, clip: String}).
+## Parses and validates plan text. Returns {ok, error, bag, give, equip, class_index (0 = not set), shots} with normalised shots
+## ({name, open: Array[String] of canonical window ids, hover: Variant (int|String|null), area, wait_ms, clip, view, turn (degrees), anim}).
 static func parse(text: String) -> Dictionary:
-	var out := {"ok": false, "error": "", "bag": "demo", "give": [], "shots": []}
+	var out := {"ok": false, "error": "", "bag": "demo", "give": [], "equip": [], "class_index": 0, "shots": []}
 	var js := JSON.new()
 	var raw: Variant = js.data if js.parse(text) == OK else null
 	if not (raw is Dictionary):
@@ -46,6 +61,16 @@ static func parse(text: String) -> Dictionary:
 	for g in (raw.get("give", []) if raw.get("give", []) is Array else []):
 		if (out["give"] as Array).size() < 20 and String(g) != "":
 			(out["give"] as Array).append(String(g))
+	for g in (raw.get("equip", []) if raw.get("equip", []) is Array else []):
+		if (out["equip"] as Array).size() < MAX_EQUIP and String(g) != "":
+			(out["equip"] as Array).append(String(g))
+	var disc: Variant = raw.get("discipline")
+	if disc != null:
+		var ci := class_index_of(disc)
+		if ci == 0:
+			out["error"] = "unknown discipline \"%s\" (known: %s)" % [disc, ", ".join(DISCIPLINES.keys())]
+			return out
+		out["class_index"] = ci
 	var i := 0
 	for s in list:
 		if i >= MAX_SHOTS:
@@ -73,14 +98,30 @@ static func parse(text: String) -> Dictionary:
 		elif hover != null:
 			out["error"] = "shot %d: hover must be a bag slot number, \"item:<id>\", \"worn:<slot>\" or \"belt:<tool>\"" % (i + 1)
 			return out
+		var view := String(s.get("view", "")).to_lower()
+		if not VIEWS.has(view):
+			out["error"] = "shot %d: view must be \"hero\" or \"game\"" % (i + 1)
+			return out
+		var anim := String(s.get("anim", "")).to_lower()
+		if not ANIMS.has(anim):
+			out["error"] = "shot %d: anim must be idle, run or cast" % (i + 1)
+			return out
 		var nm := String(s.get("name", "shot-%d" % (i + 1))).to_lower()
 		var rx := RegEx.create_from_string("[^a-z0-9-]+")
 		nm = rx.sub(nm, "-", true).substr(0, 40)
 		(out["shots"] as Array).append({"name": nm if nm != "" else "shot-%d" % (i + 1), "open": wins, "hover": hover, "area": String(s.get("area", "")),
-			"wait_ms": clampi(int(s.get("wait_ms", 300)), 0, MAX_WAIT_MS), "clip": "window" if String(s.get("clip", "")) == "window" else ""})
+			"wait_ms": clampi(int(s.get("wait_ms", 300)), 0, MAX_WAIT_MS), "clip": "window" if String(s.get("clip", "")) == "window" else "",
+			"view": view, "turn": fmod(float(s.get("turn", DEFAULT_TURN)), 360.0), "anim": anim})
 		i += 1
 	out["ok"] = true
 	return out
+
+
+## A discipline name ("gravecaller", "hero_gravecaller") or class index (1-4, 11) -> its class index; 0 = not a playable discipline.
+static func class_index_of(v: Variant) -> int:
+	if v is float or v is int:
+		return int(v) if DISCIPLINES.values().has(int(v)) else 0
+	return int(DISCIPLINES.get(String(v).to_lower().trim_prefix("hero_"), 0))
 
 
 ## Runs the plan on a live game, then quits the tree. `root` is any node in the tree (the QA autoload).
@@ -100,20 +141,29 @@ static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String
 			if DmLootData.item(e[0]).is_empty():
 				print("QA-SHOTS demo item missing: ", e[0])
 				continue
-			var drop := {"item_id": e[0], "quantity": e[1]}
-			if int(e[2]) > 0:   # gear: a real roll from the backend (random affixes), or the bag save would refuse an instance it never minted
-				var rr: DmResult = await game.ui_host.api.roll_loot(game.ui_host.hero_id, [{"item_id": e[0], "level": e[2], "source": "boss"}])
-				if rr.ok and rr.data is Array and not (rr.data as Array).is_empty() and rr.data[0].get("instance_id") != null:
-					drop["instance"] = {"id": rr.data[0]["instance_id"], "ilvl": rr.data[0]["ilvl"], "affixes": rr.data[0]["affixes"]}
-			inventory.add(drop)
+			inventory.add(await _drop(game, e[0], e[1], e[2]))
 	for id in plan["give"]:   # plan-level "give": extra item ids (one each) so a new item can be shown
 		if DmLootData.item(id).is_empty():
 			print("QA-SHOTS give: unknown item ", id)
 		else:
 			inventory.add({"item_id": id, "quantity": 1})
+	var wear: Array = []
+	for id in plan["equip"]:   # into the bag first (gear with a real roll); equipped below, once the whole bag is saved
+		var def := DmLootData.item(id)
+		if def.is_empty():
+			print("QA-SHOTS equip: unknown item ", id)
+		elif DmGear.equip_slot_of({"item_type": def.get("type", ""), "item_equipment_slot": def.get("equipment_slot")}) == "":
+			print("QA-SHOTS equip: %s cannot be equipped (%s)" % [id, def.get("type", "?")])
+		elif not inventory.add(await _drop(game, id, 1, 20)):
+			print("QA-SHOTS equip: no bag room for ", id)
+		else:
+			wear.append(id)
 	var commit_err: String = await inventory.commit()   # flush to the offline backend now, or an area change reloads the bag without the seeded items
 	if commit_err != "":
 		print("QA-SHOTS bag commit: ", commit_err)
+	if int(plan["class_index"]) != 0 and int(plan["class_index"]) != int(game.character.get("class_index", 0)):
+		print("QA-SHOTS discipline: the game runs class %d, the plan wants %d (shot-godot.sh passes --class=N; a direct run needs it too)" % [int(game.character.get("class_index", 0)), int(plan["class_index"])])
+	await _wear(game, wear)
 	game.local_body().heal(1e6)
 	var bad := 0
 	for s in plan["shots"]:
@@ -125,7 +175,12 @@ static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String
 			await tree.process_frame
 		for w in s["open"]:
 			ui.toggle_panel(w)
+		var saved := {}
+		if s["view"] != "":
+			saved = _view_begin(game, s)
 		await tree.create_timer(maxf(0.15, float(s["wait_ms"]) / 1000.0)).timeout
+		if s["view"] == "hero":
+			await _pose(game, s)
 		var tip_rect := Rect2()
 		if s["hover"] != null:
 			tip_rect = await _hover(root, ui, s["hover"])
@@ -146,6 +201,8 @@ static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String
 					rect = r
 		if rect.size != Vector2(img.get_size()):
 			img = img.get_region(Rect2i(rect))
+		if not saved.is_empty():
+			_view_end(game, saved)
 		var file := "%s/%s.png" % [out_dir, s["name"]]
 		if img.save_png(file) == OK:
 			print("QA-SHOTS shot %s %dms" % [file, Time.get_ticks_msec() - t0])
@@ -198,3 +255,81 @@ static func _hover(root: Node, ui: DmGameUi, which: Variant) -> Rect2:
 	for _i in 3:
 		await root.get_tree().process_frame
 	return tip.content.get_global_rect() if tip.content != null else Rect2()
+
+
+## A drop dict for the bag: gear (level > 0) with a real roll from the backend, or the bag save would refuse an instance it never minted.
+static func _drop(game: DmNextGame, id: String, qty: int, level: int) -> Dictionary:
+	var drop := {"item_id": id, "quantity": qty}
+	if level > 0 and DmAffixRules.is_affix_gear(String(DmLootData.item(id).get("type", ""))):
+		var rr: DmResult = await game.ui_host.api.roll_loot(game.ui_host.hero_id, [{"item_id": id, "level": level, "source": "boss"}])
+		if rr.ok and rr.data is Array and not (rr.data as Array).is_empty() and rr.data[0].get("instance_id") != null:
+			drop["instance"] = {"id": rr.data[0]["instance_id"], "ilvl": rr.data[0]["ilvl"], "affixes": rr.data[0]["affixes"]}
+	return drop
+
+
+## Equips each id from the saved bag like the Reliquary does (backend equip call, then the bag reloads, which dresses the avatar via DmHeroLook).
+static func _wear(game: DmNextGame, ids: Array) -> void:
+	var host := game.ui_host
+	await host.refresh_inventory()
+	for id in ids:
+		var row: Dictionary = {}
+		for r: Dictionary in host.inventory.slots:
+			if String(r.get("item_id", "")) == id and int(r.get("equipped", 0)) == 0 and not DmGear.is_kit_slot(r.get("slot_index")) and DmGear.equip_slot_of(r) != "":
+				row = r
+				break
+		if row.is_empty():
+			if not DmGear.equipped_by_slot(host.inventory.slots).values().any(func(w: Dictionary) -> bool: return String(w.get("item_id", "")) == id):
+				print("QA-SHOTS equip: %s is not in the bag" % id)
+			continue
+		var res: DmResult = await host.api.equip_item(host.hero_id, int(row["slot_index"]), 1)
+		if not res.ok:
+			print("QA-SHOTS equip: %s: %s" % [id, res.error])
+			continue
+		await host.refresh_inventory()
+	for _i in 4:
+		await game.get_tree().process_frame
+
+
+## "view" shots: HUD and windows away; "hero" also frames the hero close-up and turns it. Returns what _view_end puts back.
+static func _view_begin(game: DmNextGame, s: Dictionary) -> Dictionary:
+	var body := game.local_body()
+	var saved := {"hud": game.ui.visible, "cfg": game.camera.cfg, "zoom": game.camera.zoom, "target_zoom": game.camera.target_zoom, "yaw": body.yaw}
+	game.ui.visible = false
+	if s["view"] == "hero":
+		var cfg: Dictionary = game.camera.cfg.duplicate()
+		cfg.merge(HERO_CAM, true)
+		game.camera.cfg = cfg
+		game.camera.zoom = 1.0
+		game.camera.target_zoom = 1.0
+		body.yaw = deg_to_rad(float(s["turn"]))
+		if body.avatar != null:
+			body.avatar.c.root.rotation.y = body.yaw
+		game.camera.snap(body.position)
+	return saved
+
+
+## The hero view's pose: "run" / "idle" loop, "cast" plays once; frozen after a short settle so the frame is steady.
+static func _pose(game: DmNextGame, s: Dictionary) -> void:
+	var av: DmAvatar = game.local_body().avatar
+	if av == null or s["anim"] == "":
+		return
+	if s["anim"] == "cast":
+		av.play_once("cast", 1.0)
+	else:
+		av.set_loop(s["anim"])
+	await game.get_tree().create_timer(0.4).timeout
+	av.c.ap.speed_scale = 0.0
+
+
+static func _view_end(game: DmNextGame, saved: Dictionary) -> void:
+	game.ui.visible = saved["hud"]
+	game.camera.cfg = saved["cfg"]
+	game.camera.zoom = saved["zoom"]
+	game.camera.target_zoom = saved["target_zoom"]
+	var body := game.local_body()
+	body.yaw = saved["yaw"]
+	if body.avatar != null:
+		body.avatar.release_gesture()
+		body.avatar.set_loop("idle")
+		body.avatar.c.ap.speed_scale = 1.0
+	game.camera.snap(body.position)

@@ -411,3 +411,75 @@ test('install: the trusted art tools come from the committed revision, get their
     assert.equal(fs.readFileSync(path.join(DEST, 'tripo-budget.json'), 'utf8'), '{"1":5}');
   } finally { fs.rmSync(DEST, { recursive: true, force: true }); fs.rmSync(tmp, { recursive: true, force: true }); }
 });
+
+// ---------- concepts first, then a whole set under one ✅ (2026-10-12: requesters steer armor sets in the thread without the owner) ----------
+const setOffer = (thread) => thread.sent.find((s) => s.payload && s.payload.embeds && /^New set/.test(s.payload.embeds[0].title));
+
+test('readRequest / validateSet: "ids" lists (1 to 6, no repeats), one id still works, and a set has its own ceiling', () => {
+  const wt = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-art-'));
+  try {
+    const rq = (o, file, max) => { fs.writeFileSync(path.join(wt, file || '.dm-art-request.json'), JSON.stringify(o)); return A.readRequest(wt, file, max); };
+    assert.deepEqual(rq({ ids: ['prop_a_b', 'prop_c_d'] }).ids, ['prop_a_b', 'prop_c_d']);
+    assert.deepEqual(rq({ id: 'warlock' }).ids, ['warlock']);
+    assert.match(rq({ ids: ['prop_a_b', 'prop_a_b'] }).error, /must not repeat/);
+    assert.match(rq({ ids: Array.from({ length: 7 }, (_, i) => `prop_p${i}x`) }).error, /1 to 6/);
+    assert.match(rq({ id: 'x_y_z', ids: ['x_y_z'] }).error, /not both/);
+    assert.equal(rq({ ids: Array.from({ length: 8 }, (_, i) => `prop_p${i}x`) }, A.CONCEPT_FILE, A.MAX_CONCEPTS).ids.length, 8);
+    const w = (f, c) => { fs.mkdirSync(path.dirname(path.join(wt, f)), { recursive: true }); fs.writeFileSync(path.join(wt, f), JSON.stringify(c)); };
+    for (const id of ['prop_bone_mantle', 'warlock']) { w(`art-manifest/gemini-jobs/${id}.json`, goodJob(id)); }
+    w('art-manifest/tripo-specs/prop_bone_mantle.json', { id: 'prop_bone_mantle', input: 'art-src/concepts/prop_bone_mantle.png', generation: { model: 'P1-20260311', face_limit: 2500, texture_quality: 'detailed' } });
+    w('art-manifest/tripo-specs/warlock.json', goodSpec('warlock'));
+    const v = A.validateSet({ wt, request: { ids: ['prop_bone_mantle', 'warlock'] }, info: INFO });
+    assert.equal(v.ok, true, v.errors && v.errors.join(' | ')); assert.equal(v.estimate.total, 60 + 105); assert.deepEqual(v.estimate.parts, [{ label: 'prop_bone_mantle', credits: 60 }, { label: 'warlock', credits: 105 }]);
+    const dear = A.validateSet({ wt, request: { ids: ['prop_bone_mantle', 'warlock'] }, info: { ...INFO, history: { generate: 390, rig: 25, anim: 10 } } });
+    assert.equal(dear.ok, false); assert.match(dear.errors.join(), /per-request ceiling|400 per-request/);
+    const bad = A.validateSet({ wt, request: { ids: ['prop_bone_mantle', 'missing_one'] }, info: INFO });
+    assert.equal(bad.ok, false); assert.match(bad.errors.join(), /missing_one: art-manifest/);
+    const c = A.validateConcepts({ wt, request: { ids: ['prop_bone_mantle', 'bone_golem'] }, info: INFO });
+    assert.equal(c.ok, false); assert.match(c.errors.join(), /bone_golem\.json does not exist/);
+  } finally { fs.rmSync(wt, { recursive: true, force: true }); }
+});
+
+test('flow: concepts first (Gemini only, no credits, posted numbered), then the picked pieces as ONE set request built from exactly the concepts shown', async () => {
+  const { w, d } = artWorld();
+  const thread = await ask(d, IDS.HELIX, 'GD-CONCEPT ids=prop_bone_mantle,prop_bone_helm,prop_bone_staff');
+  const posted = await until(() => thread.sent.find((s) => /Concept art/.test(s.payload.content || '')), d.ad);
+  assert.deepEqual(posted.payload.files.map((f) => f.name), ['01-prop_bone_mantle.png', '02-prop_bone_helm.png', '03-prop_bone_staff.png']);
+  assert.match(posted.payload.content, /no model credits were spent/);
+  assert.equal(calls(w).filter((c) => /^tripo/.test(c)).length, 0); assert.equal(calls(w).filter((c) => /^gemini/.test(c)).length, 3);
+  assert.deepEqual(ledger(w), []); assert.equal(balance(w), 3910);
+  const job = Object.values(w.runner.jobs())[0];
+  const conceptPath = path.join(job.worktree, 'art-src/concepts/prop_bone_mantle.png'); const before = fs.readFileSync(conceptPath);
+  await d.say(thread, IDS.HELIX, 'love 1 and 3, build those GD-SET ids=prop_bone_mantle,prop_bone_staff');
+  const offer = await until(() => setOffer(thread), d.ad); await until(() => offer.reactions.length === 2, d.ad);
+  assert.ok(texts(thread).some((t) => /Asked for the set\. CONCEPT-NOTE-SEEN/.test(t)), 'the agent heard about the concepts with the next message');
+  assert.match(offer.payload.embeds[0].title, /^New set: 2 models/);
+  assert.match(field(offer, 'Estimated cost'), /up to \*\*120 credits\*\*/);
+  const shown = thread.sent.find((s) => /Built from these concepts/.test(s.payload.content || ''));
+  assert.deepEqual(shown.payload.files.map((f) => f.name), ['concept-prop_bone_mantle.png', 'concept-prop_bone_staff.png']);
+  assert.deepEqual(await d.react(offer, IDS.OWNER, '✅'), []);
+  await until(() => texts(thread).some((t) => /Done: prop_bone_mantle, prop_bone_staff are generated/.test(t)), d.ad);
+  assert.equal(calls(w).filter((c) => /^tripo run/.test(c)).length, 2);
+  assert.ok(fs.readFileSync(conceptPath).equals(before), 'the shown concept was built from, not regenerated');
+  assert.deepEqual(ledger(w).map((e) => [e.specId, e.credits, e.status]), [['prop_bone_mantle', 60, 'done'], ['prop_bone_staff', 60, 'done']]);
+  assert.equal(balance(w), 3790);
+  await until(() => texts(thread).some((t) => /BUILD-ART-SEEN RENDER-SEEN/.test(t)), d.ad);
+  assert.equal(Object.values(w.runner.jobs())[0].artRequest, null);
+  noKeysIn(w, d, 'set');
+});
+
+test('flow: a concept that changed after it was shown is refused (nothing spent); concepts need a model budget', async () => {
+  const { w, d } = artWorld();
+  const thread = await ask(d, IDS.HELIX, 'GD-CONCEPT ids=prop_bone_mantle');
+  await until(() => thread.sent.find((s) => /Concept art/.test(s.payload.content || '')), d.ad);
+  await d.say(thread, IDS.HELIX, 'build it GD-SET ids=prop_bone_mantle');
+  const offer = await until(() => setOffer(thread) || offerOf(thread), d.ad); await until(() => offer.reactions.length === 2, d.ad);
+  const job = Object.values(w.runner.jobs())[0];
+  fs.writeFileSync(path.join(job.worktree, 'art-src/concepts/prop_bone_mantle.png'), Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.from('swapped')]));
+  assert.deepEqual(await d.react(offer, IDS.OWNER, '✅'), []);
+  await until(() => texts(thread).some((t) => /changed after it was shown/.test(t)), d.ad);
+  assert.equal(calls(w).filter((c) => /^tripo/.test(c)).length, 0); assert.deepEqual(ledger(w), []); assert.equal(balance(w), 3910);
+  const t2 = await ask(d, IDS.LIMITED, 'GD-CONCEPT ids=prop_x_lamp');
+  await until(() => texts(t2).some((t) => /has no model-generation budget, so I will not make concept art/.test(t)), d.ad);
+  assert.equal(calls(w).filter((c) => /^gemini/.test(c)).length, 1);
+});

@@ -277,7 +277,7 @@ function createRunner(cfgIn, opts = {}) {
     job.sessionId = null;
     const earlier = (job.history || []).slice(-6).map((h) => `round ${h.round || 1} ${h.discarded ? 'discarded' : `shipped${h.shipSha ? ` (${String(h.shipSha).slice(0, 7)})` : ''}`}${h.title ? `: ${clip(h.title, 90)}` : ''}`).join('; ');
     if (prev.worktree) await G.removeJobArtifacts(cfg, { ...job, ...prev }).catch(() => {});
-    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, shotsSeen: {}, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
+    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, artRequest: null, concepts: {}, conceptCount: 0, shotsSeen: {}, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
       roundNote: carry ? `New round in this thread on a fresh branch from the latest ${BB}; the earlier conversation is not carried over. Earlier rounds here: ${earlier || 'none'}. Work from the request and the code as it is now.`
         : `This thread's earlier work was on a different version of the game, so that conversation is not carried over. You are on a fresh branch from the latest ${BB}; work from the request and the code.`, lastActive: now() });
     audit.log('round', { job: job.id, round, branch: job.branch, base: w.base });
@@ -341,7 +341,7 @@ function createRunner(cfgIn, opts = {}) {
       case 'credits': case 'art': {
         if (!art) return { action: 'reply', text: 'Model generation is only available in Godot mode.' };
         const b = art.store.budgetOf(msg.userId), sp = art.store.spentBy(msg.userId);
-        const pend = job.artRequest ? ` A request for "${job.artRequest.id}" (${job.artRequest.estimate} credits) is waiting for an approver's ✅.` : '';
+        const pend = job.artRequest ? ` A request for ${labelOf(job.artRequest)} (${job.artRequest.estimate} credits) is waiting for an approver's ✅.` : '';
         const snd = sound && sound.allowed(msg.userId) ? ` Sounds (ElevenLabs): no limit, ${fmtN(sound.spentBy(msg.userId))} credits used so far.` : '';
         return { action: 'reply', text: (b > 0 ? `Model credits for ${msg.name}: ${fmtN(Math.max(0, b - sp))} left of ${fmtN(b)} (${fmtN(sp)} spent).${pend}` : `${msg.name} has no model-generation budget. The owner sets budgets.${pend}`) + snd };
       }
@@ -655,6 +655,7 @@ function createRunner(cfgIn, opts = {}) {
     }
     if (r && r.text.trim()) sayLong(job, r.text.trim());
     postNewShots(job);
+    if (art && await conceptStage(job)) return;   // concept images are being made (or were refused): people look at them before anything is built
     if (art && await artStage(job)) return;       // a model request is waiting for an approver (or was refused): nothing to verify or propose yet
     if (sound && await soundStage(job)) return;   // a sound is being generated (or was refused): the agent continues once the takes exist
     await afterTurn(job, readResult(job.worktree));
@@ -833,11 +834,88 @@ function createRunner(cfgIn, opts = {}) {
   // ---------- model generation: request -> estimate -> ✅ -> Gemini + Tripo run by the runner -> the agent builds and commits the result ----------
   // The agent only writes specs + .dm-art-request.json (it has no keys and no network tool for this). Everything below is runner code.
   const fmtN = (n) => (Number.isInteger(n) ? String(n) : String(+n.toFixed(2)));
+  // A request is one model or a set (an armor set: helm, mantle, weapon, hero body ...) approved with one ✅ and generated one model at a time.
+  const itemsOf = (q) => q.items || [{ id: q.id, kind: q.kind, spec: q.spec, gemini: q.gemini, estimate: q.estimate, parts: q.parts }];   // saved before sets existed
+  const labelOf = (q) => { const ids = itemsOf(q).map((i) => i.id); return ids.length === 1 ? `"${ids[0]}"` : `the set (${ids.join(', ')})`; };
+  const fileSha = (f) => { try { return crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex'); } catch { return null; } };
+  const conceptRel = (id) => `art-src/concepts/${id}.png`;
+  // The concept image a request will be built from (shown with the offer), pinned by hash: a ✅ approves exactly what was shown.
+  const conceptFile = (job, id) => (A.pathIssue(job.worktree, conceptRel(id)) || A.pathIssue(job.worktree, 'art-src/concepts') ? null : readImageFile(job, conceptRel(id), `concept-${id}.png`));
+  const postImages = (job, text, files) => { for (let i = 0; i < Math.max(1, files.length); i += SHOTS_PER_POST) post({ threadId: job.threadId }, { content: i === 0 ? text : `(${i / SHOTS_PER_POST + 1})`, ...(files.length ? { files: files.slice(i, i + SHOTS_PER_POST) } : {}) }); };
+
+  // ---------- concepts: Gemini images only, posted in the thread so people can steer each piece before any Tripo credit is spent ----------
+  // The agent writes art-manifest/gemini-jobs/<id>.json per piece + .dm-concept-request.json {"ids": [...], "note"}. Open to anyone with a model budget (and
+  // the owner). Gemini costs cents, so there is no budget gate, only a per-round cap. The images land in art-src/concepts/ where a later model request reuses them.
+  const MAX_CONCEPTS_PER_ROUND = 24;
+  async function conceptStage(job) {
+    for (let attempt = 0; ; attempt++) {
+      const rq = A.readRequest(job.worktree, A.CONCEPT_FILE, A.MAX_CONCEPTS);
+      if (!rq) return false;
+      const v = rq.error ? { ok: false, errors: [rq.error] } : A.validateConcepts({ wt: job.worktree, request: rq, info: await A.baseInfo(cfg, job) });
+      if (v.ok) {
+        const who = artWho(job);
+        if (!(art.store.budgetOf(who.id) > 0 || cfg.ownerIds.includes(who.id))) {
+          audit.log('concept-refused', { job: job.id, userId: who.id, why: 'no budget' });
+          say(job, `${who.name} has no model-generation budget, so I will not make concept art. The owner sets budgets. Nothing was generated.`); job.status = 'idle'; return true;
+        }
+        if ((job.conceptCount || 0) + v.items.length > MAX_CONCEPTS_PER_ROUND) {
+          audit.log('concept-refused', { job: job.id, userId: who.id, why: 'round cap' });
+          say(job, `That would pass ${MAX_CONCEPTS_PER_ROUND} concept images in this round (${job.conceptCount || 0} made so far). Pick from what is posted, or ship/discard and start a new round.`); job.status = 'idle'; return true;
+        }
+        runConcepts(job, v.items, who, rq.note).catch((e) => { console.error('concept run crashed', e); say(job, `The concept run crashed: ${clip(redactText(e.message), 300)}`); });
+        return true;
+      }
+      audit.log('concept-invalid', { job: job.id, errors: v.errors.join(' | ') });
+      if (attempt >= 2) { say(job, `The concept request still has problems, so nothing was generated:\n${v.errors.map((e) => `- ${clip(e, 200)}`).join('\n')}\nTell me what to change.`); job.status = 'idle'; return true; }
+      const r = await agentTurn(job, `The runner rejected your concept request. Fix art-manifest/gemini-jobs/<id>.json and write ${A.CONCEPT_FILE} again. Problems:\n${v.errors.map((e) => `- ${e}`).join('\n')}`);
+      if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return true; }
+      if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return true; }
+    }
+  }
+  async function runConcepts(job, items, who, note) {
+    job.running = true; job.status = 'generating'; save();
+    let ticker = null;
+    try {
+      audit.log('concept-start', { job: job.id, ids: items.map((i) => i.id), userId: who.id });
+      typing(job); ticker = setInterval(() => typing(job), 8000); ticker.unref();
+      const done = [], failed = [];
+      for (const it of items) {
+        if (job.cancelRequested || job.discardRequested) break;
+        try {   // the canonical job (validated), not whatever the worktree holds now
+          fs.mkdirSync(path.join(job.worktree, 'art-manifest', 'gemini-jobs'), { recursive: true });
+          fs.writeFileSync(path.join(job.worktree, 'art-manifest', 'gemini-jobs', `${it.id}.json`), JSON.stringify([it.gemini], null, 2) + '\n');
+        } catch (e) { failed.push(`${it.id} (${e.message})`); continue; }
+        let r; try { r = await art.runConcept(job.worktree, it.id, { onSpawn: (p) => { job.proc = p; } }); } catch (e) { r = { ok: false, result: 'crashed', tail: redactText(e.message) }; }
+        job.conceptCount = (job.conceptCount || 0) + 1;
+        const img = r.ok ? conceptFile(job, it.id) : null;
+        if (img) { job.concepts = job.concepts || {}; job.concepts[it.id] = { sha: fileSha(path.join(job.worktree, conceptRel(it.id))), at: now() }; done.push({ id: it.id, img }); }
+        else failed.push(`${it.id} (${r.result})`);
+      }
+      audit.log('concept-result', { job: job.id, userId: who.id, done: done.map((d) => d.id), failed });
+      if (job.cancelRequested || job.discardRequested) { job.cancelRequested = false; say(job, `Stopped. ${done.length} concept image(s) were made.`); return; }
+      if (!done.length) { say(job, `No concept image came back (${failed.join(', ')}). Ask again to retry, or change the description.`); return; }
+      const list = done.map((d, i) => `**${i + 1}** \`${d.id}\``).join(' · ');
+      postImages(job, `🎨 Concept art${note ? ` for ${clip(note, 150)}` : ''}: ${list}${failed.length ? `\n(Could not make: ${failed.join(', ')}.)` : ''}\n` +
+        'Nothing has been built in 3D and no model credits were spent. Reply with what to change, keep or drop, or say which ones to build and I will post the cost for a ✅.', done.map((d) => ({ ...d.img, name: `${String(done.indexOf(d) + 1).padStart(2, '0')}-${d.id}.png` })));
+      // The agent waits for people now; it hears about the images with the next message.
+      job.roundNote = (job.roundNote ? job.roundNote + '\n\n' : '') +
+        `The runner generated concept images and posted them in the thread, numbered: ${done.map((d, i) => `${i + 1} = ${d.id} (${conceptRel(d.id)})`).join(', ')}${failed.length ? `; failed: ${failed.join(', ')}` : ''}. Read the ones that matter before you answer. ` +
+        `To change one, edit its gemini job and write ${A.CONCEPT_FILE} again for that id (it is regenerated). When people pick what to build, write the Tripo specs and ${A.REQUEST_FILE} with those ids: the shown images are reused, not regenerated (do not touch art-src/concepts/).`;
+      job.lastActive = now(); save();
+    } finally {
+      if (ticker) clearInterval(ticker);
+      job.running = false; job.proc = null; if (job.status === 'generating') job.status = 'idle'; save();
+      if (job.deleteRequested) await cleanupDeleted(job).catch(() => {});
+      else if (job.discardRequested) await discard(job, job.discardRequested).catch((e) => say(job, `Discard failed: ${e.message}`));
+      pump();
+    }
+  }
+
   async function artStage(job) {
     for (let attempt = 0; ; attempt++) {
       const rq = A.readRequest(job.worktree);
       if (!rq) return false;
-      const v = rq.error ? { ok: false, errors: [rq.error] } : A.validate({ wt: job.worktree, request: rq, info: await A.baseInfo(cfg, job) });
+      const v = rq.error ? { ok: false, errors: [rq.error] } : A.validateSet({ wt: job.worktree, request: rq, info: await A.baseInfo(cfg, job) });
       if (v.ok) { job.status = 'idle'; await offerArt(job, v, rq.note); return true; }
       audit.log('art-invalid', { job: job.id, id: rq.id || '', errors: v.errors.join(' | ') });
       if (attempt >= 2) { say(job, `The model request still has problems, so nothing was offered for approval:\n${v.errors.map((e) => `- ${clip(e, 200)}`).join('\n')}\nTell me what to change.`); job.status = 'idle'; return true; }
@@ -850,37 +928,42 @@ function createRunner(cfgIn, opts = {}) {
   const artWho = (job) => { const a = job.lastAsker || { id: job.creatorId }; return { id: String(a.id), name: nameOf(a.id) !== `user ${String(a.id).slice(-4)}` ? nameOf(a.id) : (a.name || nameOf(a.id)) }; };
   // Posts the estimate + budget and waits for an approver's ✅. Refuses (no reactions, nothing stored) when the budget or the live balance cannot cover it.
   async function offerArt(job, v, note) {
-    const who = artWho(job);
+    const who = artWho(job); const label = labelOf({ items: v.items });
     const budget = art.store.budgetOf(who.id), spent = art.store.spentBy(who.id), remaining = art.store.remaining(who.id);
     const est = v.estimate.total;
     if (budget <= 0) {
       audit.log('art-refused', { job: job.id, userId: who.id, why: 'no budget' });
-      say(job, `${who.name} has no model-generation budget, so I will not generate "${v.id}". The owner sets credit budgets; ask them to give you some and then ask again. Nothing was spent.`); return;
+      say(job, `${who.name} has no model-generation budget, so I will not generate ${label}. The owner sets credit budgets; ask them to give you some and then ask again. Nothing was spent.`); return;
     }
     const bal = await art.balance();
-    if (bal == null) { say(job, `I cannot read the Tripo balance right now, so I will not start "${v.id}". Nothing was spent; try again in a few minutes.`); return; }
+    if (bal == null) { say(job, `I cannot read the Tripo balance right now, so I will not start ${label}. Nothing was spent; try again in a few minutes.`); return; }
     if (est > remaining) {
       audit.log('art-refused', { job: job.id, userId: who.id, why: 'over budget', estimate: est, remaining });
-      say(job, `"${v.id}" would cost about ${est} credits, but ${who.name} has ${fmtN(remaining)} left of ${fmtN(budget)}. Nothing was spent. Ask for something cheaper (fewer animations, no rig) or ask the owner for more budget.`); return;
+      say(job, `${label} would cost about ${est} credits, but ${who.name} has ${fmtN(remaining)} left of ${fmtN(budget)}. Nothing was spent. Ask for something cheaper (fewer pieces or animations, no rig) or ask the owner for more budget.`); return;
     }
     if (est > bal) {
       audit.log('art-refused', { job: job.id, userId: who.id, why: 'over balance', estimate: est, balance: bal });
-      say(job, `"${v.id}" would cost about ${est} credits but the Tripo account only holds ${fmtN(bal)}. Nothing was spent; the owner needs to top it up.`); return;
+      say(job, `${label} would cost about ${est} credits but the Tripo account only holds ${fmtN(bal)}. Nothing was spent; the owner needs to top it up.`); return;
     }
     const prev = job.artRequest;
-    job.artRequest = { id: v.id, kind: v.kind, userId: who.id, userName: who.name, spec: v.spec, gemini: v.gemini, estimate: est, parts: v.estimate.parts, note: String(note || '').slice(0, 300), messageId: null, createdAt: new Date(now()).toISOString() };
+    // the concept each piece will be built from, when one exists already (made by the concept stage): pinned by hash and shown with the offer
+    const items = v.items.map((x) => ({ id: x.id, kind: x.kind, spec: x.spec, gemini: x.gemini, estimate: x.estimate.total, parts: x.estimate.parts, conceptSha: conceptFile(job, x.id) ? fileSha(path.join(job.worktree, conceptRel(x.id))) : null }));
+    job.artRequest = { items, userId: who.id, userName: who.name, estimate: est, parts: v.estimate.parts, note: String(note || '').slice(0, 300), messageId: null, createdAt: new Date(now()).toISOString() };
     save();
-    audit.log('art-offered', { job: job.id, id: v.id, userId: who.id, estimate: est, remaining, balance: bal, supersedes: prev ? prev.id : '' });
+    audit.log('art-offered', { job: job.id, ids: items.map((i) => i.id), userId: who.id, estimate: est, remaining, balance: bal, supersedes: prev ? itemsOf(prev).map((i) => i.id).join(',') : '' });
     postArtOffer(job, { remaining, budget, spent, balance: bal });
   }
   function postArtOffer(job, nums) {
-    const q = job.artRequest; const approvers = [...new Set([...cfg.ownerIds, ...cfg.project.approvers.sensitive])].map(nameOf);
-    const prompt = q.gemini.prompt.replace(/\s+/g, ' ');
+    const q = job.artRequest; const its = itemsOf(q); const approvers = [...new Set([...cfg.ownerIds, ...cfg.project.approvers.sensitive])].map(nameOf);
+    const shown = its.map((i) => (i.conceptSha ? conceptFile(job, i.id) : null)).filter(Boolean);
+    if (shown.length) postImages(job, `Built from ${shown.length === 1 ? 'this concept' : 'these concepts'}:`, shown);
+    const one = its.length === 1 ? its[0] : null;
     const embed = {
-      title: clip(`New ${q.kind}: ${q.id}`, 250), color: 0x7c3aed,
-      description: (q.note ? `${q.note}\n\n` : '') + `**Concept prompt:** ${clip(prompt, 400)}`,
+      title: clip(one ? `New ${one.kind}: ${one.id}` : `New set: ${its.length} models`, 250), color: 0x7c3aed,
+      description: (q.note ? `${q.note}\n\n` : '') + (one ? `**Concept prompt:** ${clip(one.gemini.prompt.replace(/\s+/g, ' '), 400)}`
+        : its.map((i) => `• **${i.id}** (${i.kind}, ~${i.estimate}): ${clip(i.gemini.prompt.replace(/\s+/g, ' '), 140)}`).join('\n')),
       fields: [
-        { name: 'Will be generated', value: A.describe({ spec: q.spec }), inline: false },
+        { name: 'Will be generated', value: clip(one ? A.describe({ spec: one.spec }) : its.map((i) => `${i.id}: ${A.describe({ spec: i.spec }).replace(/^Concept image \(Gemini\) -> /, '')}`).join('\n'), 1000), inline: false },
         { name: 'Estimated cost', value: `up to **${q.estimate} credits** (${q.parts.map((p) => `${p.label} ${p.credits}`).join(' + ')}). A ceiling from past runs; the real spend is recorded afterwards.`, inline: false },
         { name: `${q.userName}'s budget`, value: `${fmtN(nums.remaining)} of ${fmtN(nums.budget)} credits left → ${fmtN(nums.remaining - q.estimate)} after this`, inline: true },
         { name: 'Tripo balance now', value: `${fmtN(nums.balance)} credits`, inline: true },
@@ -890,9 +973,9 @@ function createRunner(cfgIn, opts = {}) {
     post({ threadId: job.threadId }, { embed, reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.artRequest === q) { q.messageId = String(res.messageId); save(); } });
   }
   async function handleArtReaction(job, ev) {
-    const uid = String(ev.userId); const q = job.artRequest;
+    const uid = String(ev.userId); const q = job.artRequest; const ids = itemsOf(q).map((i) => i.id).join(',');
     if (ev.emoji === '✅') {
-      audit.log('art-approve-attempt', { userId: uid, job: job.id, id: q.id });
+      audit.log('art-approve-attempt', { userId: uid, job: job.id, id: ids });
       if (!auth.isFull(uid)) {
         audit.log('art-approve-refused', { userId: uid, job: job.id, why: 'not a full approver' });
         if (!job.lastRefusalAt || now() - job.lastRefusalAt > 60000) { job.lastRefusalAt = now(); say(job, `Only ${[...new Set([...cfg.ownerIds, ...cfg.project.approvers.sensitive])].map(nameOf).join(' / ')} can approve spending credits.`); }
@@ -900,30 +983,30 @@ function createRunner(cfgIn, opts = {}) {
       }
       if (job.running || job.status === 'shipping' || job.status === 'generating') { say(job, 'This thread is busy right now. React again when it is done.'); return { action: 'remove_reaction' }; }
       if (artBusy) { say(job, 'Another model is being generated (one at a time). React ✅ again when it finishes.'); return { action: 'remove_reaction' }; }
-      audit.log('art-approved', { userId: uid, job: job.id, id: q.id, estimate: q.estimate, requester: q.userId });
+      audit.log('art-approved', { userId: uid, job: job.id, id: ids, estimate: q.estimate, requester: q.userId });
       runArt(job, uid).catch((e) => { console.error('art run crashed', e); say(job, `The model run crashed: ${clip(redactText(e.message), 300)}`); });
       return { action: 'accepted' };
     }
     if (ev.emoji === '❌') {
       if (!(auth.isFull(uid) || uid === q.userId)) return { action: 'remove_reaction' };
       if (job.status === 'generating') return { action: 'ignore' };
-      job.artRequest = null; save(); audit.log('art-cancelled', { userId: uid, job: job.id, id: q.id });
-      say(job, `Cancelled the request for "${q.id}". Nothing was spent.`); return { action: 'accepted' };
+      job.artRequest = null; save(); audit.log('art-cancelled', { userId: uid, job: job.id, id: ids });
+      say(job, `Cancelled the request for ${labelOf(q)}. Nothing was spent.`); return { action: 'accepted' };
     }
     return { action: 'ignore' };
   }
   // Writes the stored, already-validated specs over whatever the worktree holds (so what runs is exactly what was approved), after re-checking the paths.
-  function writeCanonical(job, q) {
+  // A concept that was shown with the offer must still be the same image (a changed one is refused); without one, Gemini makes it in the run.
+  function writeCanonical(job, it) {
     const wt = job.worktree;
-    const bad = [];
-    for (const rel of ['art-src', 'art-src/concepts', `art-src/concepts/${q.id}.png`, 'art-src/gemini', `art-src/gemini/concept_${q.id}.png`, 'art-src/tripo', `art-src/tripo/${q.id}`, 'art-manifest', 'art-manifest/images.json', 'art-manifest/tripo', `art-manifest/tripo/${q.id}.json`, 'art-manifest/gemini-jobs', 'art-manifest/tripo-specs', `art-manifest/gemini-jobs/${q.id}.json`, `art-manifest/tripo-specs/${q.id}.json`]) {
-      const iss = A.pathIssue(wt, rel); if (iss) bad.push(iss);
-    }
-    if (bad.length) return bad[0];
+    for (const rel of A.WRITE_PATHS(it.id)) { const iss = A.pathIssue(wt, rel); if (iss) return iss; }
+    const f = path.join(wt, conceptRel(it.id));
+    if (it.conceptSha && fileSha(f) !== it.conceptSha) return `the concept image for ${it.id} changed after it was shown; ask again so the new one is shown`;
     try {
+      if (!it.conceptSha) fs.rmSync(f, { force: true });   // never build from an image nobody was shown
       for (const d of ['art-manifest/gemini-jobs', 'art-manifest/tripo-specs', 'art-src/concepts']) fs.mkdirSync(path.join(wt, d), { recursive: true });
-      fs.writeFileSync(path.join(wt, 'art-manifest', 'gemini-jobs', `${q.id}.json`), JSON.stringify([q.gemini], null, 2) + '\n');
-      fs.writeFileSync(path.join(wt, 'art-manifest', 'tripo-specs', `${q.id}.json`), JSON.stringify(q.spec, null, 2) + '\n');
+      fs.writeFileSync(path.join(wt, 'art-manifest', 'gemini-jobs', `${it.id}.json`), JSON.stringify([it.gemini], null, 2) + '\n');
+      fs.writeFileSync(path.join(wt, 'art-manifest', 'tripo-specs', `${it.id}.json`), JSON.stringify(it.spec, null, 2) + '\n');
     } catch (e) { return `could not write the specs: ${e.message}`; }
     return null;
   }
@@ -987,9 +1070,10 @@ function createRunner(cfgIn, opts = {}) {
     }
   }
 
+  // Generates each model of the approved request in turn (one ledger entry per model). A failure stops the set; what is left is offered again.
   async function runArt(job, approverId) {
-    const q = job.artRequest; artBusy = true; job.running = true; job.status = 'generating'; save();
-    let ticker = null, entryId = null, startBal = null, res = null;
+    const q = job.artRequest; const its = itemsOf(q); artBusy = true; job.running = true; job.status = 'generating'; save();
+    let ticker = null, entryId = null, entryEst = 0, startBal = null;
     const finish = async () => {
       if (ticker) clearInterval(ticker);
       artBusy = false; job.running = false; job.proc = null; if (job.status === 'generating') job.status = 'idle'; save();
@@ -1002,48 +1086,62 @@ function createRunner(cfgIn, opts = {}) {
       startBal = await art.balance();
       const remaining = art.store.remaining(q.userId);
       if (startBal == null) { say(job, 'I cannot read the Tripo balance right now, so nothing was started. React ✅ again in a few minutes.'); return; }
-      if (q.estimate > remaining) { audit.log('art-refused', { job: job.id, userId: q.userId, why: 'over budget at approval', estimate: q.estimate, remaining }); say(job, `Not started: "${q.id}" is estimated at ${q.estimate} credits but ${q.userName} only has ${fmtN(remaining)} left. Nothing was spent.`); return; }
+      if (q.estimate > remaining) { audit.log('art-refused', { job: job.id, userId: q.userId, why: 'over budget at approval', estimate: q.estimate, remaining }); say(job, `Not started: ${labelOf(q)} is estimated at ${q.estimate} credits but ${q.userName} only has ${fmtN(remaining)} left. Nothing was spent.`); return; }
       if (q.estimate > startBal) { audit.log('art-refused', { job: job.id, userId: q.userId, why: 'over balance at approval', estimate: q.estimate, balance: startBal }); say(job, `Not started: the Tripo balance is ${fmtN(startBal)}, below the estimated ${q.estimate}. Nothing was spent.`); return; }
-      const bad = writeCanonical(job, q);
-      if (bad) { audit.log('art-refused', { job: job.id, why: bad }); say(job, `Not started: ${clip(bad, 200)}. Nothing was spent.`); return; }
-      entryId = art.store.begin({ userId: q.userId, userName: q.userName, jobId: job.id, specId: q.id, estimate: q.estimate, approverId, balanceBefore: startBal });
-      audit.log('art-start', { job: job.id, id: q.id, userId: q.userId, approver: approverId, estimate: q.estimate, balance: startBal });
-      say(job, `Approved by ${nameOf(approverId)}. Generating "${q.id}": concept image, then the model${q.spec.rig ? ', rig and animations' : ''}. This takes a few minutes (up to ${q.spec.animations ? 20 : 10} or so).`);
-      typing(job); const t0 = now(); let nextUpdate = t0 + 5 * 60000;
-      ticker = setInterval(() => { typing(job); if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, `🎨 Still generating "${q.id}" · ${Math.max(1, Math.round((now() - t0) / 60000))} min (usually up to ${q.spec.animations ? 20 : 10})`); } }, 8000); ticker.unref();
-      try { res = await art.run(job.worktree, q.id, { onSpawn: (p) => { job.proc = p; } }); }
-      catch (e) { res = { credits: null, result: 'crashed', tail: redactText(e.message), before: startBal, after: null }; }
-      // the real spend: balance before - after, from the script's own readings (or a fresh reading if it was killed), else Tripo's own manifest, else the estimate
-      let credits = res.credits, note = '';
-      if (credits == null) { const after = await art.balance().catch(() => null); if (after != null) { credits = Math.max(0, +(startBal - after).toFixed(2)); res.after = after; } }
-      if (credits == null) { credits = q.estimate; note = 'balance unreadable after the run; charged the estimate'; }
-      const ok = res.result === 'ok';
-      art.store.finish(entryId, { status: ok ? 'done' : 'failed', credits, balanceBefore: res.before != null ? res.before : startBal, balanceAfter: res.after != null ? res.after : null, result: res.result, note });
-      entryId = null;
-      audit.log('art-result', { job: job.id, id: q.id, userId: q.userId, result: res.result, credits, before: res.before, after: res.after });
-      const left = art.store.remaining(q.userId), budget = art.store.budgetOf(q.userId);
-      const spentLine = `Spent **${fmtN(credits)}** credits (Tripo balance ${res.before != null ? fmtN(res.before) : '?'} → ${res.after != null ? fmtN(res.after) : '?'}). ${q.userName} has ${fmtN(left)} of ${fmtN(budget)} left.`;
-      if (job.cancelRequested || job.discardRequested) { job.cancelRequested = false; say(job, `Stopped. ${spentLine.replace(/\*\*/g, '')} Finished steps are kept, so asking again will not pay for them twice.`); return; }
-      if (!ok) {
-        const why = { 'tripo-failed': 'Tripo stopped partway', 'no-concept': 'Gemini did not return an image', busy: 'another run held the lock too long', 'no-balance': 'the balance could not be read', timeout: 'it took too long', crashed: 'the run crashed' }[res.result] || `it ended with ${res.result}`;
-        say(job, `The model run did not finish: ${why}. ${spentLine}\n${res.tail ? '```\n' + clip(res.tail, 700) + '\n```\n' : ''}Finished steps are kept and are not paid for twice. An approver can react ✅ on the new request below to resume, or ❌ to drop it.`);
-        job.artRequest = { ...q, messageId: null };
-        postArtOffer(job, { remaining: left, budget, spent: art.store.spentBy(q.userId), balance: res.after != null ? res.after : startBal });
-        return;
+      for (const it of its) { const bad = writeCanonical(job, it); if (bad) { audit.log('art-refused', { job: job.id, why: bad }); say(job, `Not started: ${clip(bad, 200)}. Nothing was spent.`); return; } }
+      const rigged = its.some((i) => i.spec.rig), mins = its.reduce((n, i) => n + (i.spec.animations ? 20 : 10), 0);
+      say(job, `Approved by ${nameOf(approverId)}. Generating ${labelOf(q)}: ${its.length > 1 ? 'one model at a time, ' : ''}${its.every((i) => i.conceptSha) ? 'from the concept shown' : 'concept image, then the model'}${rigged ? ', rig and animations' : ''}. This takes a few minutes (up to ${mins} or so).`);
+      typing(job); const t0 = now(); let nextUpdate = t0 + 5 * 60000; let current = its[0].id;
+      ticker = setInterval(() => { typing(job); if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, `🎨 Still generating "${current}" · ${Math.max(1, Math.round((now() - t0) / 60000))} min (usually up to ${mins})`); } }, 8000); ticker.unref();
+      const done = []; let total = 0, firstBefore = null, lastAfter = null, failure = null;
+      for (let k = 0; k < its.length; k++) {
+        const it = its[k]; current = it.id;
+        if (job.cancelRequested || job.discardRequested) break;
+        const bal0 = k === 0 ? startBal : (lastAfter != null ? lastAfter : await art.balance());
+        entryId = art.store.begin({ userId: q.userId, userName: q.userName, jobId: job.id, specId: it.id, estimate: it.estimate, approverId, balanceBefore: bal0 }); entryEst = it.estimate;
+        audit.log('art-start', { job: job.id, id: it.id, userId: q.userId, approver: approverId, estimate: it.estimate, balance: bal0 });
+        let res;
+        try { res = await art.run(job.worktree, it.id, { onSpawn: (p) => { job.proc = p; } }); }
+        catch (e) { res = { credits: null, result: 'crashed', tail: redactText(e.message), before: bal0, after: null }; }
+        // the real spend: balance before - after, from the script's own readings (or a fresh reading if it was killed), else Tripo's own manifest, else the estimate
+        let credits = res.credits, note = '';
+        if (credits == null) { const after = await art.balance().catch(() => null); if (after != null && bal0 != null) { credits = Math.max(0, +(bal0 - after).toFixed(2)); res.after = after; } }
+        if (credits == null) { credits = it.estimate; note = 'balance unreadable after the run; charged the estimate'; }
+        const ok = res.result === 'ok';
+        art.store.finish(entryId, { status: ok ? 'done' : 'failed', credits, balanceBefore: res.before != null ? res.before : bal0, balanceAfter: res.after != null ? res.after : null, result: res.result, note });
+        entryId = null; total += credits;
+        if (firstBefore == null) firstBefore = res.before != null ? res.before : bal0;
+        lastAfter = res.after != null ? res.after : null;
+        audit.log('art-result', { job: job.id, id: it.id, userId: q.userId, result: res.result, credits, before: res.before, after: res.after });
+        if (!ok) { failure = { it, res }; break; }
+        done.push(it);
       }
-      const files = [readImageFile(job, `art-src/concepts/${q.id}.png`, `concept-${q.id}.png`), readImageFile(job, `art-src/tripo/${q.id}/generate-preview.png`, `model-preview-${q.id}.png`)].filter(Boolean);
-      job.artRequest = null;
-      post({ threadId: job.threadId }, { content: `Done: "${q.id}" is generated. ${spentLine}\nThe agent now builds it and wires it in; you will get a normal proposal to approve.`, ...(files.length ? { files } : {}) });
-      const wire = q.kind === 'prop' ? `godot/assets/slice/models/props/${q.id.slice(5)}.glb` : `godot/assets/slice/models/${q.id}/character.glb`;
+      const left = art.store.remaining(q.userId), budget = art.store.budgetOf(q.userId);
+      const spentLine = `Spent **${fmtN(total)}** credits (Tripo balance ${firstBefore != null ? fmtN(firstBefore) : '?'} → ${lastAfter != null ? fmtN(lastAfter) : '?'}). ${q.userName} has ${fmtN(left)} of ${fmtN(budget)} left.`;
+      const rest = its.filter((i) => !done.includes(i));
+      if (job.cancelRequested || job.discardRequested) { job.cancelRequested = false; say(job, `Stopped. ${spentLine.replace(/\*\*/g, '')} Finished steps are kept, so asking again will not pay for them twice.`); }
+      else if (failure) {
+        const why = { 'tripo-failed': 'Tripo stopped partway', 'no-concept': 'Gemini did not return an image', busy: 'another run held the lock too long', 'no-balance': 'the balance could not be read', timeout: 'it took too long', crashed: 'the run crashed' }[failure.res.result] || `it ended with ${failure.res.result}`;
+        say(job, `The model run${its.length > 1 ? ` for "${failure.it.id}"` : ''} did not finish: ${why}. ${done.length ? `Done before it: ${done.map((i) => i.id).join(', ')}. ` : ''}${spentLine}\n${failure.res.tail ? '```\n' + clip(failure.res.tail, 700) + '\n```\n' : ''}Finished steps are kept and are not paid for twice. An approver can react ✅ on the new request below to resume, or ❌ to drop it.`);
+        job.artRequest = { ...q, items: rest, estimate: rest.reduce((n, i) => n + i.estimate, 0), parts: rest.length === 1 ? rest[0].parts : rest.map((i) => ({ label: i.id, credits: i.estimate })), messageId: null };
+        postArtOffer(job, { remaining: left, budget, spent: art.store.spentBy(q.userId), balance: lastAfter != null ? lastAfter : startBal });
+      }
+      if (!done.length) return;
+      if (!failure) job.artRequest = null;
+      const files = done.flatMap((i) => [i.conceptSha ? null : readImageFile(job, conceptRel(i.id), `concept-${i.id}.png`), readImageFile(job, `art-src/tripo/${i.id}/generate-preview.png`, `model-preview-${i.id}.png`)]).filter(Boolean);
+      postImages(job, `Done: ${done.length === 1 ? `"${done[0].id}" is generated` : `${done.map((i) => i.id).join(', ')} are generated`}. ${failure ? '' : spentLine}\nThe agent now builds ${done.length === 1 ? 'it' : 'them'}, renders ${done.length === 1 ? 'it' : 'them'} and fits ${done.length === 1 ? 'it' : 'them'} in game; you will get pictures and a normal proposal to approve.`, files);
+      const wireOf = (i) => (i.kind === 'prop' ? `godot/assets/slice/models/props/${i.id.slice(5)}.glb` : `godot/assets/slice/models/${i.id}/character.glb`);
+      const ids = done.map((i) => i.id);
       job.queue.push({ userId: 'runner', name: 'runner', role: 'runner', art: true, ts: now(), text:
-        `The runner generated the approved model "${q.id}" (it paid for it; you never touch keys). Files in your workspace: art-src/concepts/${q.id}.png (concept), art-src/tripo/${q.id}/ (raw Tripo outputs), and the records art-manifest/tripo/${q.id}.json and art-manifest/images.json. ` +
-        `art-src/ is git-ignored: do not commit it. Next: run ${cfg.toolsDir}/build-art.sh ${q.id} (builds the GLB and installs it at ${wire}), read what it prints, then commit the specs (art-manifest/gemini-jobs/${q.id}.json, art-manifest/tripo-specs/${q.id}.json), the two records, and the GLB. ` +
-        `Run ${CHECK}: Godot's import writes the .import file and extracted textures next to the model; commit those too (agit status shows them). Wire the model into the game only as the request asked, add a PATCH_NOTES.json item if players can see it, and keep your reply short.` });
+        `The runner generated the approved model${ids.length > 1 ? 's' : ''} ${ids.map((i) => `"${i}"`).join(', ')} (it paid for ${ids.length > 1 ? 'them' : 'it'}; you never touch keys). For each <id>: art-src/concepts/<id>.png (concept), art-src/tripo/<id>/ (raw Tripo outputs), and the records art-manifest/tripo/<id>.json and art-manifest/images.json. ` +
+        `art-src/ is git-ignored: do not commit it. Next, for each id (one command per call): run ${cfg.toolsDir}/build-art.sh <id> (builds the GLB and installs it at ${ids.map((i, n) => wireOf(done[n])).join(', ')}), read what it prints, then commit the specs (art-manifest/gemini-jobs/<id>.json, art-manifest/tripo-specs/<id>.json), the two records, and the GLB. ` +
+        `Run ${CHECK}: Godot's import writes the .import file and extracted textures next to the model; commit those too (agit status shows them). Then run ${cfg.toolsDir}/render-model.sh ${ids.join(' ')} and Read the sheet it writes (it is posted in the thread). Wire the model${ids.length > 1 ? 's' : ''} into the game only as the request asked; ` +
+        `for gear (helms, mantles, weapons, set looks) take in-game screenshots of the hero wearing it (shot plan with "equip" and "view": "hero", front and back) and check them. Add a PATCH_NOTES.json item if players can see it, and keep your reply short.` });
       job.lastActive = now(); save();
     } finally {
       if (entryId) {   // the run threw before settling: close the ledger entry from the balance delta so the spend is never lost
         let c = null; try { const after = await art.balance(); if (after != null && startBal != null) c = Math.max(0, +(startBal - after).toFixed(2)); } catch { /* unreadable */ }
-        art.store.finish(entryId, { status: 'interrupted', credits: c != null ? c : q.estimate, note: c != null ? 'run aborted; charged from the balance delta' : 'run aborted; balance unreadable, charged the estimate' });
+        art.store.finish(entryId, { status: 'interrupted', credits: c != null ? Math.min(c, entryEst || c) : entryEst, note: c != null ? 'run aborted; charged from the balance delta' : 'run aborted; balance unreadable, charged the estimate' });
       }
       await finish();
     }

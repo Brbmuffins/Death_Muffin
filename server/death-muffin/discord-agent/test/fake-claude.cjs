@@ -26,7 +26,17 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   const art = /GD-ART(?:-(\w+))? id=([a-z0-9_]+)/.exec(p);
   // a sync that hit conflicts: keep this branch's side of each conflicted file and commit the merge (a CONFLICT-ADD marker file in the worktree makes it also touch a new file)
   const conflictList = /left conflicts in:\n([\s\S]*?)\nResolve/.exec(p);
-  if (art && !/The runner generated the approved model/.test(p) && !/rejected your model request/.test(p)) {
+  // concept + set requests: GD-CONCEPT ids=a,b writes Gemini jobs + .dm-concept-request.json; GD-SET ids=a,b writes props' Tripo specs (+ jobs if missing) + one .dm-art-request.json
+  const cset = /GD-(CONCEPT|SET) ids=([a-z0-9_,]+)/.exec(p);
+  if (cset && !/The runner generated the approved model/.test(p) && !/rejected your (concept|model) request/.test(p)) {
+    const ids = cset[2].split(',');
+    for (const id of ids) if (cset[1] === 'CONCEPT' || !fs.existsSync(`art-manifest/gemini-jobs/${id}.json`)) wr(`art-manifest/gemini-jobs/${id}.json`, JSON.stringify([{ id: `concept_${id}`, prompt: `A ${id} for a necromancer armor set, three-quarter view, plain light grey background.`, out: `art-src/concepts/${id}.png`, aspect: '1:1' }]));
+    if (cset[1] === 'CONCEPT') { wr('.dm-concept-request.json', JSON.stringify({ ids, note: 'a bone armor set' })); text = 'Asked for concepts.' + (/The runner generated concept images/.test(p) ? ' CONCEPT-NOTE-SEEN' : ''); }
+    else {
+      for (const id of ids) wr(`art-manifest/tripo-specs/${id}.json`, JSON.stringify({ id, input: `art-src/concepts/${id}.png`, generation: { model: 'P1-20260311', face_limit: 2500, texture_quality: 'detailed' } }));
+      wr('.dm-art-request.json', JSON.stringify({ ids, note: 'the bone set' })); text = 'Asked for the set.' + (/The runner generated concept images/.test(p) ? ' CONCEPT-NOTE-SEEN' : '');
+    }
+  } else if (art && !/The runner generated the approved model/.test(p) && !/rejected your model request/.test(p)) {
     const kind = art[1] || '', id = art[2];
     const spec = { id, input: `art-src/concepts/${id}.png`, generation: { model: 'P1-20260311', face_limit: 7000, texture_quality: 'detailed' } };
     if (kind === 'PROP') spec.id = id; else { spec.rig = { model: 'v1.0-20240301', rig_type: 'biped' }; spec.animations = ['idle', 'walk', 'run', 'slash', 'hurt', 'fall'].map((a) => 'preset:biped:' + a); spec.animationMode = 'single'; }
@@ -53,9 +63,14 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   } else if (/The runner generated the sound "([a-z0-9_]+)"/.test(p)) {
     const id = /The runner generated the sound "([a-z0-9_]+)"/.exec(p)[1];
     wr(`godot/assets/audio/eleven/${id}.wav`, fs.readFileSync(`audio-src/eleven/${id}/v1.mp3`)); git('add', '--', `godot/assets/audio/eleven/${id}.wav`, `audio-manifest/eleven/${id}.json`); git('commit', '-q', '-m', `Add the ${id} sound`); ready(`New sound: ${id}`, [`Added ${id}`]); text = 'Built and committed.' + (/build-sound\.sh/.test(p) ? ' BUILD-SOUND-SEEN' : '');
-  } else if (/The runner generated the approved model "([a-z0-9_]+)"/.test(p)) {
-    const id = /The runner generated the approved model "([a-z0-9_]+)"/.exec(p)[1];
-    wr(`godot/assets/slice/models/${id}/character.glb`, 'glb-bytes'); git('add', '--', `godot/assets/slice/models/${id}/character.glb`, `art-manifest/gemini-jobs/${id}.json`, `art-manifest/tripo-specs/${id}.json`, `art-manifest/tripo/${id}.json`); git('commit', '-q', '-m', `Add the ${id} model`); ready(`New model: ${id}`, [`Added ${id}`]); text = 'Built and committed.' + (/build-art\.sh/.test(p) ? ' BUILD-ART-SEEN' : '');
+  } else if (/The runner generated the approved models? "/.test(p)) {
+    const ids = [.../The runner generated the approved models? ((?:"[a-z0-9_]+"(?:, )?)+)/.exec(p)[1].matchAll(/"([a-z0-9_]+)"/g)].map((m) => m[1]);
+    for (const id of ids) {
+      const glb = id.startsWith('prop_') ? `godot/assets/slice/models/props/${id.slice(5)}.glb` : `godot/assets/slice/models/${id}/character.glb`;
+      wr(glb, 'glb-bytes'); git('add', '--', glb, `art-manifest/gemini-jobs/${id}.json`, `art-manifest/tripo-specs/${id}.json`, `art-manifest/tripo/${id}.json`);
+    }
+    git('commit', '-q', '-m', `Add the ${ids.join(', ')} model${ids.length > 1 ? 's' : ''}`); ready(`New model: ${ids.join(', ')}`, ids.map((i) => `Added ${i}`));
+    text = 'Built and committed.' + (/build-art\.sh/.test(p) ? ' BUILD-ART-SEEN' : '') + (/render-model\.sh/.test(p) ? ' RENDER-SEEN' : '');
   }
   else if (conflictList) {
     const files = conflictList[1].split('\n').map((x) => x.trim()).filter(Boolean);

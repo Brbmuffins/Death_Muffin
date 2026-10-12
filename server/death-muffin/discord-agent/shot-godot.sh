@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Godot-mode counterpart of shot.sh: screenshots of the agent's branch UI. usage: shot-godot.sh [plan.json]   (default .dm-shot.json in the worktree;
-# the plan format is documented in godot/main/qa_ui_shots.gd and PROMPT-godot.md: up to 4 shots of windows / tooltips on the offline demo hero).
+# the plan format is documented in godot/main/qa_ui_shots.gd and PROMPT-godot.md: up to 4 shots of windows / tooltips / the hero wearing gear on the offline demo hero;
+# a plan "discipline" (ossuary|gravecaller|mourner|rotweaver|reaper, or the class number) picks the necromancer: it is mapped here to `--class=N`, default 2 = `--world-demo`).
 # Same sandbox as check-godot.sh (sandbox-lib.sh): fresh user/network/mount namespaces, no network (loopback only), the WHOLE filesystem read-only, a private /tmp,
 # only the worktree writable; HOME and the XDG dirs are a fresh temp dir so Godot's user:// never touches the real home. Inside: an Xvfb screen and the branch's
-# own Godot client in software GL (`--offline --world-demo --qa --shot-plan=...`) write raw PNGs to <worktree>/.dm-shots/.raw/. Outside the sandbox (this script, trusted
+# own Godot client in software GL (`--dev-offline --class=N --qa --shot-plan=...`) write raw PNGs to <worktree>/.dm-shots/.raw/. Outside the sandbox (this script, trusted
 # code), label-shot.py burns "BRANCH PREVIEW · not live · <branch>" into every one and writes <worktree>/.dm-shots/<name>.png (an image that could not be labelled is
 # never published). One renderer at a time across all agents (the VPS's software GL is heavy): the shared qa-browser.lock, and a hard 15 minute limit.
 # Env: GODOT (default /home/ubuntu/tools/godot/godot), DM_BROWSER_LOCK, DM_SHOT_LABEL_PY (tests).
@@ -16,7 +17,21 @@ case "$FILE" in /*|*..*) echo "the plan must be a file inside the worktree"; exi
 [ "$(stat -c %s "$TOP/$FILE")" -le 65536 ] || { echo "plan file is too big"; exit 2; }
 [ -d "$TOP/godot" ] || { echo "no godot/ project in this worktree"; exit 2; }
 DM_SHOT_BRANCH=$(git -C "$TOP" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
-export TOP TOOLS FILE DM_SHOT_BRANCH GODOT="${GODOT:-/home/ubuntu/tools/godot/godot}"
+# the plan's discipline -> class index (godot/data/combat/disciplines.json by_index; DmQaUiShots.DISCIPLINES is the same table), read here outside the sandbox
+DM_SHOT_CLASS=$(python3 - "$TOP/$FILE" <<'PY'
+import json, sys
+names = {"ossuary": 1, "gravecaller": 2, "mourner": 3, "rotweaver": 4, "reaper": 11}
+try:
+    d = json.load(open(sys.argv[1])).get("discipline")
+except Exception:
+    d = None
+if isinstance(d, str):
+    d = names.get(d.lower().removeprefix("hero_"))
+print(d if d in names.values() else 2)
+PY
+)
+case "$DM_SHOT_CLASS" in [0-9]|[0-9][0-9]) ;; *) DM_SHOT_CLASS=2;; esac
+export TOP TOOLS FILE DM_SHOT_BRANCH DM_SHOT_CLASS GODOT="${GODOT:-/home/ubuntu/tools/godot/godot}"
 export DM_SANDBOX_LIB="$TOOLS/sandbox-lib.sh"
 LOCK=${DM_BROWSER_LOCK:-/home/ubuntu/death-muffin/qa-browser.lock}
 RAW="$TOP/.dm-shots/.raw"
@@ -35,7 +50,7 @@ export DM_PAYLOAD='
   fi
   echo "== rendering"
   /usr/bin/time -f "render: cpu=%P wall=%es maxrss=%MKB" xvfb-run -a -s "-screen 0 1280x800x24" "$GODOT" --rendering-driver opengl3 --path godot -- \
-    --offline --world-demo --qa --shot-plan="$TOP/$FILE" --shots="$TOP/.dm-shots/.raw" > "$SCR/render.log" 2>&1
+    --dev-offline --class="$DM_SHOT_CLASS" --qa --shot-plan="$TOP/$FILE" --shots="$TOP/.dm-shots/.raw" > "$SCR/render.log" 2>&1
   rc=$?
   grep -E "QA-SHOTS|SCRIPT ERROR|Parse Error|^render:" "$SCR/render.log" | head -40
   [ $rc -eq 0 ] || { echo "godot exited $rc"; tail -15 "$SCR/render.log"; }
