@@ -127,6 +127,22 @@ func locked_slots() -> Array:
 	return locks.slots_of(bag_rows()) if locks != null else []
 
 
+## Slots a deposit leaves alone: locked items, plus the largest stack of each flask / elixir / tonic the potion belt drinks.
+func deposit_except_slots() -> Array:
+	var out := locked_slots()
+	var belted := potion_rows()
+	for slot: String in belted:
+		var best := -1
+		var best_qty := 0
+		for s: Dictionary in bag_rows():
+			if s["item_id"] == belted[slot]["item_id"] and int(s["quantity"]) > best_qty:
+				best = int(s["slot_index"])
+				best_qty = int(s["quantity"])
+		if best >= 0 and not out.has(best):
+			out.append(best)
+	return out
+
+
 ## The tab's vault stacks a "Take" button moves: everything, or materials / consumables / runes only.
 func take_slots(kind: String) -> Array:
 	var lo := tab * DmVault.VAULT_TAB_SIZE
@@ -258,9 +274,9 @@ func _build() -> void:
 	var off := busy or not loaded
 	var dep_row := DmPb.hbox(8)
 	deposit_materials_button = DmPb.button("Deposit materials", false, off, "Stores every unlocked material and consumable in the Vault")
-	deposit_materials_button.pressed.connect(func() -> void: deposit_all_requested.emit("materials", locked_slots()))
-	deposit_all_button = DmPb.button("Deposit all", false, off, "Stores everything unlocked and not worn")
-	deposit_all_button.pressed.connect(func() -> void: deposit_all_requested.emit("all", locked_slots()))
+	deposit_materials_button.pressed.connect(func() -> void: deposit_all_requested.emit("materials", deposit_except_slots()))
+	deposit_all_button = DmPb.button("Deposit all", false, off, "Stores everything unlocked and not worn; belted potions stay")
+	deposit_all_button.pressed.connect(func() -> void: deposit_all_requested.emit("all", deposit_except_slots()))
 	dep_row.add_child(deposit_materials_button)
 	dep_row.add_child(deposit_all_button)
 	var dep_outer := DmPb.hbox(12)   # the Deposit row is centered under the bag grid, not under the gear doll beside it
