@@ -213,6 +213,8 @@ func _craft(f: DmForgePanel, recipe_id: String, qty: int) -> void:
 	var err := ""
 	var made := 0
 	for i in qty:
+		if qty > 1:
+			f.set_busy(true, recipe_id, "Crafting %d/%d…" % [i + 1, qty])   # the server crafts one per request, so a big batch takes a while: show it moving
 		var r: DmResult = await game.api.craft(cid(), recipe_id)
 		if not r.ok:
 			err = r.error if r.error != "" else "Crafting failed."

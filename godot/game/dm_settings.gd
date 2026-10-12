@@ -28,7 +28,7 @@ var persist: bool = true
 static func defaults() -> Dictionary:
 	var d := {
 		"difficulty": "medium", "auto_combat": false, "auto_gather": true,
-		"graphics": "high", "window_mode": "windowed", "fps": 0, "graphics_chosen": false, "auto_res": true, "brightness": 1.0, "ui_scale": 1.0, "hud_scale": 1.0,
+		"graphics": "high", "window_mode": "windowed", "fps": 0, "vsync": true, "graphics_chosen": false, "auto_res": true, "brightness": 1.0, "ui_scale": 1.0, "hud_scale": 1.0,
 		"vol_master": 0.6, "vol_combat": 1.0, "vol_amb": 1.0, "vol_music": 0.85, "vol_ui": 1.0,
 		"reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false, "guidance": true, "guide_ping": true, "dev_access": true,
 	}
@@ -60,6 +60,7 @@ func _load() -> void:
 	if not values["graphics_chosen"]:
 		values["fps"] = 0
 	values["auto_res"] = values["auto_res"] != false
+	values["vsync"] = values["vsync"] != false
 	var br: Variant = values["brightness"]
 	values["brightness"] = clampf(float(br), BRIGHTNESS_MIN, BRIGHTNESS_MAX) if typeof(br) in [TYPE_INT, TYPE_FLOAT] else 1.0
 	values["ui_scale"] = clamp_ui_scale(values["ui_scale"])
