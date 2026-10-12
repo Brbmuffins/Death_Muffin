@@ -1,0 +1,8 @@
+[Unit]
+Description=Death Muffin launcher release notice (server/death-muffin/ops/launcher-release-notice.sh; posts new launcher-v* releases to #build-alerts)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/home/ubuntu/death-muffin/ops/launcher-release-notice.sh

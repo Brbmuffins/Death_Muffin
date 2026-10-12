@@ -1,4 +1,4 @@
-# Ops: nightly DB backup, weekly drift report, pre-push hook
+# Ops: nightly DB backup, weekly drift report, launcher release notice, pre-push hook
 
 Install or update both from a committed revision: `server/death-muffin/ops/install.sh [rev]` (copies the scripts to
 `/home/ubuntu/death-muffin/ops/`, installs the units, enables the timers). Never edit the installed copies.
@@ -35,6 +35,15 @@ Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`
 | 9 | Newest file in `~/death-muffin/backups/db/` missing or older than 36 h |
 
 Any worktree you create (including for this report's own branch) shows up in check 4 until it is removed.
+
+## Launcher release notice (timer `death-muffin-launcher-notice`, every 10 min)
+
+`launcher-release-notice.sh` posts each new GitHub Release tagged `launcher-v<version>` (built by `.github/workflows/launcher-windows.yml`)
+to #build-alerts once: the version's changelog line from `launcher/windows/README.md` on `origin/main` (else the release body) and the
+zip's download link. Public GitHub API, no token; webhook `~/death-muffin/private/discord-build-alerts-webhook.url`. Announced tags are
+kept in `~/death-muffin/ops/state/launcher-announced.txt` (the first run records the existing releases without posting). #build-alerts
+gets only these and the shipped-release notices from `announce-release.sh`: the GitHub commit feed into it (a repo webhook sharing the
+channel's old webhook) was cut on 2026-10-12 by replacing that webhook.
 
 ## Pre-push hook (`git-pre-push.sh`)
 
