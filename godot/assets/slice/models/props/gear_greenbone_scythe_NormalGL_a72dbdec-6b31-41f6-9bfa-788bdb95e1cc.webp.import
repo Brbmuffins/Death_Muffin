@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://l4lu1cy0xgnr"
-path="res://.godot/imported/gear_greenbone_scythe_NormalGL_a72dbdec-6b31-41f6-9bfa-788bdb95e1cc.webp-805c8085c8a63024226036b75c3ec4cf.ctex"
+path.s3tc="res://.godot/imported/gear_greenbone_scythe_NormalGL_a72dbdec-6b31-41f6-9bfa-788bdb95e1cc.webp-805c8085c8a63024226036b75c3ec4cf.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f3a00d278a63b9e243f8937b9019c661"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/gear_greenbone_scythe_NormalGL_a72dbdec-6b31-41f6-9bfa-788bdb95e1cc.webp"
-dest_files=["res://.godot/imported/gear_greenbone_scythe_NormalGL_a72dbdec-6b31-41f6-9bfa-788bdb95e1cc.webp-805c8085c8a63024226036b75c3ec4cf.ctex"]
+dest_files=["res://.godot/imported/gear_greenbone_scythe_NormalGL_a72dbdec-6b31-41f6-9bfa-788bdb95e1cc.webp-805c8085c8a63024226036b75c3ec4cf.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

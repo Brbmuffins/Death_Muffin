@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://djc5u2gvd3bsy"
-path="res://.godot/imported/gear_greenbone_mantle_ORM_6ddc8323-7553-471e-8125-376ad66dc4a9.webp-98cf23f63b6d1ae26ce6f184d6ae242a.ctex"
+path.s3tc="res://.godot/imported/gear_greenbone_mantle_ORM_6ddc8323-7553-471e-8125-376ad66dc4a9.webp-98cf23f63b6d1ae26ce6f184d6ae242a.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b660a2ba52ff5687a26543928a3351cd"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/gear_greenbone_mantle_ORM_6ddc8323-7553-471e-8125-376ad66dc4a9.webp"
-dest_files=["res://.godot/imported/gear_greenbone_mantle_ORM_6ddc8323-7553-471e-8125-376ad66dc4a9.webp-98cf23f63b6d1ae26ce6f184d6ae242a.ctex"]
+dest_files=["res://.godot/imported/gear_greenbone_mantle_ORM_6ddc8323-7553-471e-8125-376ad66dc4a9.webp-98cf23f63b6d1ae26ce6f184d6ae242a.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

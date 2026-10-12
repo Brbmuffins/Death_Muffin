@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c5xmqwhy7tawi"
-path="res://.godot/imported/gear_greenbone_helm_ORM_b21cafa0-9487-4400-8515-c6beb074e8fb.webp-b067eb1b40acbc8216c8c413e759212c.ctex"
+path.s3tc="res://.godot/imported/gear_greenbone_helm_ORM_b21cafa0-9487-4400-8515-c6beb074e8fb.webp-b067eb1b40acbc8216c8c413e759212c.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "08c87bbaa25a9cd8d5b011164225a768"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/props/gear_greenbone_helm_ORM_b21cafa0-9487-4400-8515-c6beb074e8fb.webp"
-dest_files=["res://.godot/imported/gear_greenbone_helm_ORM_b21cafa0-9487-4400-8515-c6beb074e8fb.webp-b067eb1b40acbc8216c8c413e759212c.ctex"]
+dest_files=["res://.godot/imported/gear_greenbone_helm_ORM_b21cafa0-9487-4400-8515-c6beb074e8fb.webp-b067eb1b40acbc8216c8c413e759212c.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
