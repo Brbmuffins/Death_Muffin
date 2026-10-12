@@ -6,6 +6,7 @@ extends SceneTree
 
 const DT := 1.0 / 60.0
 
+const NEUTRAL_OMEN := {"id": "none", "name": "A Quiet Week", "icon": "art/omens/blood_moon.webp", "blurb": "Nothing stirs.", "eliteBonus": 0.0, "waveSizeMult": 1.0, "rewardMult": 1.0, "shardMult": 1.0}   ## the week's Omen rotates by date: pinned so wave sizes are the area's own
 var passed := 0
 var failed := 0
 var g: DmNextGame
@@ -47,7 +48,7 @@ func launch() -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	root.add_child(g)
 	events.clear()
-	await g.start(c.data, api, {"dressing": false, "persist": false, "waves": false, "audio": false, "store": store})
+	await g.start(c.data, api, {"dressing": false, "persist": false, "waves": false, "audio": false, "store": store, "omen": NEUTRAL_OMEN})
 	g.progress.event.connect(func(id: String, ctx: Dictionary) -> void: events.append({"id": id, "ctx": ctx}))
 
 
