@@ -20,6 +20,7 @@ const GUIDE_S := 0.5
 const INTERACT_RANGE := 2.6                      ## interact range (m)
 const PICK_PX := 60.0                            ## interactables win over nothing within 60 px of the cursor
 const WAYSTONE_RANGE := 5.0
+const STATION_LEAVE_RANGE := 5.0                 ## walk this far (m) from a station and its window closes
 const RECALL_S := 1.5                            ## recall time (s)
 const STATIONS := {"forge": "workbench", "waystone": "waystone", "upgrades": "altar", "vault": "vault", "grinder": "grinder", "lectern": "lectern",
 	"kiln": "kiln", "sawpit": "sawpit", "fire": "fire", "cauldron": "cauldron", "alembic": "alembic", "reagents": "shelf"}
@@ -36,6 +37,8 @@ var prompt_text: Variant = null                  ## the HUD prompt (BBCode) or n
 var talking: String = ""
 var recall_active := false
 
+var _station_it: Variant = null                  ## the station whose window is open (closes when you walk away)
+var _station_wins: Array = []
 var _acc := 0.0
 var _npc_acc := 0.0
 var _guide_acc := GUIDE_S
@@ -111,6 +114,8 @@ func _tick(dt: float) -> void:
 			pending = null
 		elif _dist(pending, b) < INTERACT_RANGE:
 			interact(pending)
+	if _station_it != null:
+		_check_station_walkaway(b)
 	_npc_acc += dt
 	if _npc_acc >= NPC_REFRESH_S and npcs != null:
 		_npc_acc = 0.0
@@ -335,8 +340,37 @@ func interact(it: Dictionary) -> void:
 					_sfx("click")
 					_event(STATION_COUNSEL[kind])
 				station_interact.emit(STATIONS[kind])
+				_track_station(it)
 			else:
 				interacted.emit(it)
+
+
+## Remember the window(s) a station just opened so walking a few steps away closes them (the waystone map is not tied to the spot).
+func _track_station(it: Dictionary) -> void:
+	_station_wins.clear()
+	_station_it = null
+	if String(it["kind"]) == "waystone" or game.ui == null:
+		return
+	for w in game.ui.windows.values():
+		if (w as Control).visible:
+			_station_wins.append(w)
+	for w in [game.ui.pa.acre_win, game.ui.pa.char_win, game.ui.pa.grim_win]:
+		if w.visible:
+			_station_wins.append(w)
+	if not _station_wins.is_empty():
+		_station_it = it
+
+
+func _check_station_walkaway(b: DmHeroBody) -> void:
+	var open := false
+	for w in _station_wins:
+		if is_instance_valid(w) and (w as Control).visible:
+			open = true
+			if _dist(_station_it, b) > STATION_LEAVE_RANGE:
+				(w as DmWindow).close()
+	if not open or _dist(_station_it, b) > STATION_LEAVE_RANGE:
+		_station_wins.clear()
+		_station_it = null
 
 
 func near_grinder() -> bool:
