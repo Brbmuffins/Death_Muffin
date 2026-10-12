@@ -156,8 +156,10 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
         const t = op.target || {}; await client.channels.fetch(t.threadId || t.channelId).then((ch) => ch.sendTyping()).catch(() => {});
         continue;
       }
-      if (op.rename) {   // fire-and-forget: a thread can only be renamed ~2 times per 10 min, the runner paces them
-        const r = op.rename; await renameThread(r.threadId, r.name); continue;
+      if (op.rename) {   // fire-and-forget: a thread can only be renamed ~2 times per 10 min, the runner paces them. Never awaited: a rename
+        // held by Discord's rate limit blocked every op behind it (2026-10-12: a proposal appeared 4.5 min late after a runner restart
+        // forgot the pacing). discord.js keeps same-thread renames in order; renameThread logs and swallows its own failures.
+        const r = op.rename; renameThread(r.threadId, r.name); continue;
       }
       if (op.archive) { await archiveThread(op.archive.threadId); await call('/ack', { id: op.id, result: {}, ok: true }); continue; }
       let result; let failed = false; let sent;
