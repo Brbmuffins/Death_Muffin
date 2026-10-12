@@ -148,6 +148,7 @@ func _rules() -> void:
 	check(L.post_node(acre_nodes, "seam_tin", 3)["type"] == "seam_tin", "post node: slot wraps over same-type nodes")
 	check(L.post_node(acre_nodes, "no_such", 0).is_empty(), "post node: unknown type")
 	check(L.post_node(acre_nodes, "wheat", 0).is_empty() or true, "post node: no crash for missing skill nodes")
+	check(L.post_node(acre_nodes, "drowned_lotus", 0)["type"] == "grave_crypt", "post node: a level 45 gravedigging post (fen only) is worked at the closest lower Acre tier, not the first")
 	var herb := L.post_node(acre_nodes, "nightshade", 0)
 	check(herb.is_empty() or DmContent.get_export("gameplay_gatheringRules", "NODES")[herb["type"]]["skill"] == "alchemy" or true, "post node: fallback tolerant")
 	var rect: Dictionary = {}
