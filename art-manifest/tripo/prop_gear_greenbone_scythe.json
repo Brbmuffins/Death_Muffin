@@ -1,0 +1,38 @@
+{
+  "spec": {
+    "id": "prop_gear_greenbone_scythe",
+    "input": "art-src/concepts/prop_gear_greenbone_scythe.png",
+    "generation": {
+      "model": "P1-20260311",
+      "face_limit": 3500,
+      "texture_quality": "detailed"
+    }
+  },
+  "id": "prop_gear_greenbone_scythe",
+  "steps": {
+    "upload": {
+      "hash": "sha256:8aa7b413c0e27661de5411671172471305f20164af09a257ebfea2505f29a5a7",
+      "status": "success",
+      "input": "art-src/concepts/prop_gear_greenbone_scythe.png"
+    },
+    "generate": {
+      "taskId": "a72dbdec-6b31-41f6-9bfa-788bdb95e1cc",
+      "status": "success",
+      "request": {
+        "texture": true,
+        "pbr": true,
+        "model": "P1-20260311",
+        "face_limit": 3500,
+        "texture_quality": "detailed"
+      },
+      "createdAt": "2026-10-12T17:46:26.468Z",
+      "credits": 60,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261012/a72dbdec-6b31-41f6-9bfa-788bdb95e1cc/tripo_pbr_model_a72dbdec-6b31-41f6-9bfa-788bdb95e1cc.glb",
+        "rendered_image_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261012/a72dbdec-6b31-41f6-9bfa-788bdb95e1cc/legacy_mesh.webp"
+      },
+      "fileHash": "sha256:3b617595b69266d24bf93b1d8280f8e31f60539dc894c64e21d2742f4fd27394"
+    }
+  },
+  "totalCredits": 60
+}

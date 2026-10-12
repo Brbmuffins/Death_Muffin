@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_prop_gear_greenbone_helm",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no head or body inside it. Dark fantasy medium-armor hood-helm for a necromancer: a deep pointed cloth hood of dark moss-green and charcoal fabric reinforced with curved pale bone plates along the brow and cheeks, a bone ridge down the crown, and under the hood opening two empty eye sockets glowing bright acid-green. Small bone studs and thin green-lit cracks between the plates. Chunky readable silhouette, hand-crafted, nothing else.",
+    "out": "art-src/concepts/prop_gear_greenbone_helm.png",
+    "aspect": "1:1"
+  }
+]

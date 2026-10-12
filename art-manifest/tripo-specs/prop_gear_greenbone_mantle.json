@@ -1,0 +1,9 @@
+{
+  "id": "prop_gear_greenbone_mantle",
+  "input": "art-src/concepts/prop_gear_greenbone_mantle.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3500,
+    "texture_quality": "detailed"
+  }
+}

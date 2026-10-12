@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_prop_gear_greenbone_mantle",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, three-quarter view from slightly behind, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no body inside it. Dark fantasy medium-armor back mantle for a necromancer: a short tattered dark moss-green cloak with a bone collar and two pauldron-like bone shoulder plates, and across the back a curved bone ribcage armor piece whose ribs are separated by glowing acid-green light shining between the bones. Ragged hem, a few small hanging bone charms. Chunky readable silhouette, hand-crafted, nothing else.",
+    "out": "art-src/concepts/prop_gear_greenbone_mantle.png",
+    "aspect": "1:1"
+  }
+]

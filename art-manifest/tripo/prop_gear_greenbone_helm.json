@@ -1,0 +1,38 @@
+{
+  "spec": {
+    "id": "prop_gear_greenbone_helm",
+    "input": "art-src/concepts/prop_gear_greenbone_helm.png",
+    "generation": {
+      "model": "P1-20260311",
+      "face_limit": 3000,
+      "texture_quality": "detailed"
+    }
+  },
+  "id": "prop_gear_greenbone_helm",
+  "steps": {
+    "upload": {
+      "hash": "sha256:d863abf0f6824bda70d1ce7f3b43ca04c9ddfb5490a9a2943f6ec163d1c044be",
+      "status": "success",
+      "input": "art-src/concepts/prop_gear_greenbone_helm.png"
+    },
+    "generate": {
+      "taskId": "b21cafa0-9487-4400-8515-c6beb074e8fb",
+      "status": "success",
+      "request": {
+        "texture": true,
+        "pbr": true,
+        "model": "P1-20260311",
+        "face_limit": 3000,
+        "texture_quality": "detailed"
+      },
+      "createdAt": "2026-10-12T17:42:48.221Z",
+      "credits": 60,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261012/b21cafa0-9487-4400-8515-c6beb074e8fb/tripo_pbr_model_b21cafa0-9487-4400-8515-c6beb074e8fb.glb",
+        "rendered_image_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261012/b21cafa0-9487-4400-8515-c6beb074e8fb/legacy_mesh.webp"
+      },
+      "fileHash": "sha256:640dae3d5fb2513c6705203d074a39b3b78be73c47fe274d09d259cce8f419e2"
+    }
+  },
+  "totalCredits": 60
+}
