@@ -6,8 +6,8 @@ over new content, necromancer focus. Open gaps are listed once, in [KNOWN-GAPS.m
 
 ## Now: necromancer polish (no new content)
 
-- **Performance:** the in-game benchmark (character select -> Benchmark) is the measuring stick; experiments go out as test builds
-  (`server/death-muffin/publish-test-build.sh`). Next: HUD draw calls, then combat work over several cores (KNOWN-GAPS: Performance).
+- **Performance:** the in-game benchmark (character select -> Benchmark) is the measuring stick. Next: HUD draw calls, then combat
+  work over several cores (KNOWN-GAPS: Performance).
   Forward+/FSR only after that, behind a flag. Phase B is pulled (DECISIONS B12): bring it back one part per owner-approved test build
   from tag `archive/perf-phase-b`.
 - **Combat feel and loot** for the four disciplines: tuning from playtests, readability of rites and statuses, gear and

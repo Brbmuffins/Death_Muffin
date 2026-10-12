@@ -461,7 +461,7 @@ func _meta(user: Dictionary) -> Dictionary:
 	var ver := str(ProjectSettings.get_setting("application/config/version", ""))
 	if ver == "":
 		ver = "dev"
-	var build := str(ProjectSettings.get_setting("application/config/dm_test_build")) if ProjectSettings.has_setting("application/config/dm_test_build") else ver
+	var build := ver
 	var win := DisplayServer.window_get_size()
 	return {
 		"build": build, "version": ver, "date": Time.get_datetime_string_from_system(false, true),

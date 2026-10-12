@@ -31,8 +31,6 @@ func _ready() -> void:
 	# The window title players see. config/name in project.godot stays as it is: Godot names the user:// folder after it (the saved
 	# login, settings, tips), so renaming it would sign every player out and reset their settings.
 	get_window().title = "Death Muffin"
-	if ProjectSettings.has_setting("application/config/dm_test_build"):   # only set by publish-test-build.sh, never in the repo
-		get_window().title += " — TEST BUILD " + str(ProjectSettings.get_setting("application/config/dm_test_build"))
 	# Physics interpolation (project setting) is opt-in per body: everything is OFF by default (effects, cameras, anything placed from
 	# _process), and only what is moved in _physics_process turns itself ON (DmSessionBody on the host, DmEnemy, DmThrall).
 	get_tree().root.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF

@@ -39,7 +39,7 @@ Tests: `tests/next_perfctl/run.gd`. Rendered probe: `tests/next_perfctl/entry_pr
   V-Sync is still on (often forced in the GPU driver) instead of showing capped numbers as real.
 - Measured: average fps, average / median / p95 / p99 / worst frame ms, hitches over 50 ms, average draw calls / objects / primitives
   (`RenderingServer.get_rendering_info`), render CPU and GPU ms (`viewport_get_measured_render_time_*`), `TIME_PROCESS` / `TIME_PHYSICS_PROCESS`, enemy and thrall counts.
-  The report header has build (`dm_test_build` or the game version), GPU, renderer, resolution, preset, fps cap setting, CPU and thread count.
+  The report header has the game version, GPU, renderer, resolution, preset, fps cap setting, CPU and thread count.
 - Render breakdown (after the measured window, ~45 s; a big centred "FIGHT FROZEN ON PURPOSE" banner with the step and the time left covers it, `breakdown_step`): the fight is paused (the picture stays) and moon
   shadows, thralls, enemies, the world (ground, props, area meshes), effects and last the HUD are hidden one at a time, then everything-on is measured
   again (a drift note when the two disagree) for 5 s each (1 s settle); the table lists how many draw calls, ms of render CPU / GPU

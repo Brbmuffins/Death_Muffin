@@ -160,6 +160,15 @@
       "allow": [
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "publish-test-build",
+      "pattern": "publish-test-build",
+      "reason": "side test-build script removed 2026-10-12 (Helix: builds go straight to main)",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {
