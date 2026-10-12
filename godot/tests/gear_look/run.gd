@@ -446,12 +446,13 @@ func _models() -> void:
 	await _settle(sh)
 	check(sh.body_slug == "hero_leg_soul_harbingers" and scythe_file.call(sh._staff) == "gear_greenbone_scythe" and sh._staff.visible and not sh._worn.head.obj.visible, "Soul Harbinger, 3 pieces: the set's body (its own hood, no prop over it) and the green bone scythe (body %s)" % sh.body_slug)
 	check(sh.c.clip_duration("sweep") > 0.0 and sh.c.clip_duration("flick") > 0.0, "Soul Harbinger body: the Reaper's combat clips")
+	check(sh.c._params.has("rim") and is_equal_approx((sh.c._params["rim"] as Color).a, 0.5), "Soul Harbinger body: a soft green edge glow")
 	shg["main_hand"] = {"item_id": "scythe_iron", "rarity": "rare"}
 	sh.set_equipment(shg)
 	check(scythe_file.call(sh._worn.main_hand.obj) == "gear_greenbone_scythe" and not sh._staff.visible, "Soul Harbinger: an equipped scythe shows as the set's too")
 	sh.set_equipment({})
 	await _settle(sh)
-	check(sh.body_slug == "hero_reaper" and scythe_file.call(sh._staff) == DmGearProps.SCYTHE_FILE and sh._staff.visible, "Soul Harbinger: taking the set off gives her own body and scythe back")
+	check(sh.body_slug == "hero_reaper" and scythe_file.call(sh._staff) == DmGearProps.SCYTHE_FILE and sh._staff.visible and not sh.c._params.has("rim"), "Soul Harbinger: taking the set off gives her own body, scythe and no glow back")
 	sh.dispose()
 
 	# ---- tiers keep the model's texture: the dress only nudges the colour

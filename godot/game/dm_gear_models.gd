@@ -275,6 +275,11 @@ static func body_covers_props(set_id: String) -> bool:
 	return bool(table().get("legendary_hero_by_set_id", {}).get(set_id, {}).get("covers_props", false))
 
 
+## The soft edge glow a legendary body wears ({color, strength}, DmCreature's `rim` option), or null.
+static func legendary_rim(set_id: String) -> Variant:
+	return table().get("legendary_hero_by_set_id", {}).get(set_id, {}).get("rim")
+
+
 ## The discipline a legendary set belongs to ("" = none): its body is the one kept resident for that class.
 static func legendary_of_discipline(discipline_id: String) -> String:
 	for set_id: String in table().get("legendary_hero_by_set_id", {}):

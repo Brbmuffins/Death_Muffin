@@ -453,7 +453,12 @@ func _reseat_scythe(file: String) -> void:
 ## Rebuild the hero's body from another model (a legendary set's hero, or back), keeping what it carries: held props, helm, mantle, cape, aura, lantern, tints,
 ## position / heading and the walk / idle. A one-shot in progress (a cast) is dropped, the body returns to its loop.
 func _swap_body(new_slug: String) -> void:
-	var nc := DmCreature.new(new_slug, _opts)
+	var o := _opts
+	var rim: Variant = DmGearModels.legendary_rim(set_id) if new_slug != slug else null
+	if rim != null:   # the set's body glows softly at its edges (a uniform of the same shader: no new compile)
+		o = _opts.duplicate()
+		o["rim"] = rim
+	var nc := DmCreature.new(new_slug, o)
 	if nc.skeleton == null or nc.rig_slug != new_slug:
 		nc.dispose()   # model absent: the hero keeps the body it has
 		return

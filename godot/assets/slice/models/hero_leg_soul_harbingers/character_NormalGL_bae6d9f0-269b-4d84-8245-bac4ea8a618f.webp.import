@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bdp5a88f3mu3o"
-path="res://.godot/imported/character_NormalGL_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp-7367a4ddb6eec7527e5376ea5f2b4393.ctex"
+path.s3tc="res://.godot/imported/character_NormalGL_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp-7367a4ddb6eec7527e5376ea5f2b4393.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "92d6d0b663bd10c4e8f259797f68c641"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_leg_soul_harbingers/character_NormalGL_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp"
-dest_files=["res://.godot/imported/character_NormalGL_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp-7367a4ddb6eec7527e5376ea5f2b4393.ctex"]
+dest_files=["res://.godot/imported/character_NormalGL_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp-7367a4ddb6eec7527e5376ea5f2b4393.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

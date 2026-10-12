@@ -607,11 +607,15 @@
    "model": "hero_leg_soul_harbingers",
    "disciplineId": "reaper",
    "url": "models/hero_leg_soul_harbingers/character.glb",
-   "covers_props": true
+   "covers_props": true,
+   "rim": {
+    "color": 7268256,
+    "strength": 0.5
+   }
   }
  },
  "weapon_tiers": "Weapon tiers (bone, iron, gold, hell, moon) share one mesh per kind; tint with DmGearProps.TIERS.",
- "tier_sets": "mantle_by_set_id keys are armorSets setIds (class and ascended sets). helm_by_tier also takes a set id: that set’s head piece shows its own helm. weapon_by_set_id: from `pieces` worn, weapons of `kind` show the set’s prop (the Reaper’s scythe). legendary_hero_by_set_id: the whole body at 3+ pieces; `covers_props` hides that set’s own helm and mantle props while it shows (the body wears them).",
+ "tier_sets": "mantle_by_set_id keys are armorSets setIds (class and ascended sets). helm_by_tier also takes a set id: that set’s head piece shows its own helm. weapon_by_set_id: from `pieces` worn, weapons of `kind` show the set’s prop (the Reaper’s scythe). legendary_hero_by_set_id: the whole body at 3+ pieces; `covers_props` hides that set’s own helm and mantle props while it shows (the body wears them); `rim` {color, strength} gives that body a soft edge glow (DmCreature rim).",
  "weapon_by_set_id": {
   "soul_harbingers": {
    "kind": "scythe",

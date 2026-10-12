@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dyne1bvt8vtfq"
-path="res://.godot/imported/character_Color_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp-cffceb56d0430375135620b454b1b4c5.ctex"
+path.bptc="res://.godot/imported/character_Color_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp-cffceb56d0430375135620b454b1b4c5.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "bdcce8f672c97f236df34f9f56509a0e"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_leg_soul_harbingers/character_Color_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp"
-dest_files=["res://.godot/imported/character_Color_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp-cffceb56d0430375135620b454b1b4c5.ctex"]
+dest_files=["res://.godot/imported/character_Color_bae6d9f0-269b-4d84-8245-bac4ea8a618f.webp-cffceb56d0430375135620b454b1b4c5.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
