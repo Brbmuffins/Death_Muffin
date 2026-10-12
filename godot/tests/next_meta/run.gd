@@ -47,7 +47,10 @@ func until(cond: Callable, limit_s: float) -> bool:
 
 
 func launch(neutral: bool = true) -> void:
-	var c := await api.load_or_create_character(2)
+	# a relaunch loads the character as the game does (GET /character); a card pick (load_or_create) would switch its discipline
+	var c := await api.get_character()
+	if not c.ok:
+		c = await api.load_or_create_character(2)
 	g = load("res://next/next_game.tscn").instantiate()
 	root.add_child(g)
 	events.clear()

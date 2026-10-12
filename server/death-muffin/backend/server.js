@@ -380,13 +380,26 @@ app.post('/character', verifyJWT, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const [result] = await conn.execute(
-      `INSERT INTO characters (account_id, class_index, class_name)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), class_name = VALUES(class_name)`,
-      [req.user.accountId, class_index, CLASS_NAMES[class_index]]
+    // One character per account (owner, 2026-10-11): picking a discipline card selects the account's main character (highest level, then
+    // most experience, then oldest) and, for a necromantic discipline 1-4, switches its discipline. Only an account with no character gets a
+    // new one. Before this, cards 1-4 created a separate level-1 character per class next to a class-5 main (Helix's 631 "reset").
+    // class_index 5 stands for every discipline above 4: the client follows with POST /character/discipline.
+    const [[main]] = await conn.execute(
+      'SELECT id FROM characters WHERE account_id = ? ORDER BY level DESC, experience DESC, id ASC LIMIT 1 FOR UPDATE',
+      [req.user.accountId]
     );
-    const characterId = result.insertId;
+    let characterId, created = false;
+    if (main) {
+      characterId = main.id;
+      if (class_index >= 1 && class_index <= 4)
+        await conn.execute('UPDATE characters SET discipline_index = ? WHERE id = ? AND account_id = ?', [class_index, characterId, req.user.accountId]);
+    } else {
+      const [result] = await conn.execute(
+        'INSERT INTO characters (account_id, class_index, class_name) VALUES (?, ?, ?)',
+        [req.user.accountId, class_index, CLASS_NAMES[class_index]]
+      );
+      characterId = result.insertId; created = true;
+    }
     await conn.execute(
       'UPDATE accounts SET active_character_id = ? WHERE id = ?',
       [characterId, req.user.accountId]
@@ -403,7 +416,8 @@ app.post('/character', verifyJWT, async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
     const gear = await getGearLoadout(characterId);
-    res.status(result.affectedRows === 1 ? 201 : 200).json({
+    if (main) invalidateLeaderboard();
+    res.status(created ? 201 : 200).json({
       ...formatCharacter(character, gear, req.gmFields),
       token: characterToken,
     });

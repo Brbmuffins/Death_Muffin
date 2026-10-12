@@ -312,3 +312,33 @@ test('GET /api/me reports staff from the account row only, with no character wri
   // a name that looks like staff gives nothing: the claim's username is not consulted for the decision
   assert.equal((await check({ username: 'Brbmuffins', role: 'player', gm_enabled: 0 }, { accountId: 1, username: 'Brbmuffins' })).json.staff, false);
 });
+
+// One character per account (owner, 2026-10-11): a discipline card selects the main character instead of creating one per class.
+function characterPool(main) {
+  return fakePool({
+    onQuery: (sql, params) => {
+      if (/SELECT id FROM characters WHERE account_id = \? ORDER BY level DESC/.test(sql)) return [main ? [{ id: main }] : []];
+      if (/INSERT INTO characters/.test(sql)) return [{ insertId: 77, affectedRows: 1 }];
+      if (/SELECT \* FROM characters WHERE id = \? AND account_id = \?/.test(sql)) return [[{ id: params[0], account_id: 1, class_index: 5, level: 631 }]];
+    },
+  });
+}
+test('POST /character with a main character: a necromantic card switches its discipline, no new character', async () => {
+  const f = characterPool(129);
+  const srv = loadServer({ pool: f.pool });
+  const r = await srv.call('POST /character', { body: { class_index: 2 }, user: { accountId: 1 } });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.id, 129);
+  assert.ok(!f.log.some((q) => /INSERT INTO characters/.test(q.sql)), 'no second character');
+  assert.ok(f.log.some((q) => /UPDATE characters SET discipline_index = \?/.test(q.sql) && q.params[0] === 2 && q.params[1] === 129), 'discipline 2 on the main');
+  assert.ok(f.log.some((q) => /UPDATE accounts SET active_character_id/.test(q.sql) && q.params[0] === 129), 'the main is the active character');
+});
+test('POST /character class 5 (a discipline above 4) leaves the discipline to POST /character/discipline; no character at all creates one', async () => {
+  const f = characterPool(129);
+  await loadServer({ pool: f.pool }).call('POST /character', { body: { class_index: 5 }, user: { accountId: 1 } });
+  assert.ok(!f.log.some((q) => /discipline_index/.test(q.sql) || /INSERT INTO characters/.test(q.sql)));
+  const g = characterPool(null);
+  const r = await loadServer({ pool: g.pool }).call('POST /character', { body: { class_index: 3 }, user: { accountId: 1 } });
+  assert.equal(r.status, 201); assert.equal(r.json.id, 77);
+  assert.ok(g.log.some((q) => /INSERT INTO characters/.test(q.sql) && q.params[1] === 3));
+});

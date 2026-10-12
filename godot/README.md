@@ -8,7 +8,7 @@ Decisions: [DECISIONS.md](../DECISIONS.md). Gaps: [KNOWN-GAPS.md](../KNOWN-GAPS.
 | Folder | Contents |
 |---|---|
 | `main/` | `DmMain` (entry scene, launch args, backend choice), camera rig, F3 perf overlay, QA driver (`-- --qa`) |
-| `front/` | Login, discipline select, online gate; `DmFrontFlow` leads into the game. Settings has Logout (clears the token, login screen) and Switch character (final save, party left, select screen on the same token; login only if the server refuses it) |
+| `front/` | Login, discipline select, online gate; `DmFrontFlow` leads into the game. Settings has Logout (clears the token, login screen) and Switch character (final save, party left, select screen on the same token; login only if the server refuses it). One character per account: a discipline card selects the account's main character and switches its discipline (server `POST /character`); only an account with no character gets a new one |
 | `next/` | `DmNextGame` and the game systems; one README per system folder (`next/README.md` has the overview) |
 | `rules/<domain>/` | Pure game rules (no nodes): combat, core, dialogue, gathering, gear, inventory, loot, progression |
 | `data/` | JSON content, read through `DmDb` / `DmData`; see `data/README.md` |

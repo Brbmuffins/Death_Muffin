@@ -404,7 +404,12 @@ func _route(method: String, p: String, query: String, body: Dictionary, token: V
 		acc["character"]["class_name"] = DISCIPLINE_NAMES.get(int(index), CLASS_NAMES[int(index)] if int(index) < CLASS_NAMES.size() else acc["character"]["class_name"])
 		return {"status": 200, "body": _character_view(acc)}
 	if p == "/character" and method == "POST":
+		# One character per account (as the VPS backend): a card for a necromantic discipline 1-4 switches the existing character's discipline.
 		if acc["character"] != null:
+			var pick := _num(body, "class_index")
+			if _is_int(pick) and pick >= 1 and pick <= 4:
+				acc["character"]["class_index"] = int(pick)
+				acc["character"]["class_name"] = DISCIPLINE_NAMES.get(int(pick), CLASS_NAMES[int(pick)])
 			return {"status": 200, "body": _character_view(acc)}
 		var idxf := _num(body, "class_index")
 		if not _is_int(idxf) or idxf < 0 or idxf >= CLASS_NAMES.size():
