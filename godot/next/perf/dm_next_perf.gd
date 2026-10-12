@@ -4,7 +4,7 @@ extends Node
 ##   graphics        preset (DmGraphicsPreset: low / medium / high / ultra): moon shadows + reach + atlas + soft filter, bloom, prop lights, prop shadow range,
 ##                   MSAA / anisotropy / mesh LOD on the viewport, Vfx.quality + Binbun, the governor's resolution floor (0.6 Low, 0.85 above)
 ##   brightness      Settings -> Brightness x the preset's lift, as the builder's exposure multiplier;  ui_scale  Interface size (window content scale)
-##   fps             Engine.max_fps (0 = uncapped)
+##   fps             Engine.max_fps (0 = uncapped);  vsync  display V-Sync on / off (live, windowed builds only)
 ##   auto_res        DmResolutionGovernor on the 3D view's scaling_3d_scale (the UI stays sharp); held through loads and area entries
 ## Moon shadow casters: the nearest enemies only (DmCasterBudget, polled 2 Hz; counts per preset).
 ## `apply(settings)` runs at start and whenever Settings change (DmNextUiHost). Prop culling, streaming and the shadow range are the
@@ -44,6 +44,7 @@ func apply(s: Dictionary) -> void:
 	Engine.max_fps = fps if fps > 0 else 0
 	if enabled:
 		_apply_window_mode(DmSettings.clamp_window_mode(s.get("window_mode", "windowed")))
+		_apply_vsync(bool(s.get("vsync", true)))
 	var vfx := get_node_or_null("/root/Vfx")
 	if vfx != null:
 		vfx.quality = String(gp["fx"])
@@ -75,6 +76,13 @@ func apply(s: Dictionary) -> void:
 		governor.reset()
 		governor.hold()
 		_apply_render_scale()
+
+
+## Settings -> V-Sync (on by default): off lets frames present as soon as they are drawn (tearing possible, lower input delay). Only acts on a change.
+func _apply_vsync(on: bool) -> void:
+	var mode := DisplayServer.VSYNC_ENABLED if on else DisplayServer.VSYNC_DISABLED
+	if DisplayServer.window_get_vsync_mode() != mode:
+		DisplayServer.window_set_vsync_mode(mode)
 
 
 ## Settings -> Window mode: windowed, borderless (a frameless window covering the whole screen) or exclusive fullscreen. Only acts on a change.
