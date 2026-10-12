@@ -8196,5 +8196,18 @@
     "rawHash": "sha256:9f25daf70cadf30bd83b32df9bbc4a48aad5fce0dde61575b6e31ad8628650a3",
     "outHash": "sha256:4260d4b03ef3ffdc1f3215676579edd5681e40a5423a76d7579136da927564c5",
     "generatedAt": "2026-10-11T15:51:14.949Z"
+  },
+  "concept_hero_reaper": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single dark fantasy game character, full body head to toe, strict T-pose with arms straight out to the sides, both hands EMPTY and open, facing the camera, plain flat light grey background (#c8c8c8), even neutral flat lighting, no cast shadows, no ground plane, no text, no weapon, no other objects. A lean rogue-like Reaper: a skeletal skull face with dark hollow eye sockets under a deep tattered dark hood, and a short ragged cowl at the shoulders. He wears MEDIUM ARMOR, not robes: layered dark leather and blackened iron plates, overlapping scale pauldrons with small spikes, a ribbed bone-and-leather cuirass that shows the ribcage, studded leather bracers and vambraces, a wide belt with pouches, a small hourglass and a ring of old iron keys at the hip, fitted dark trousers and tall scaled leather boots. Only a few narrow torn cloth strips hang from the belt and shoulders, no long skirt and no flowing robe, so the legs and arms stay clearly readable. Muted charcoal, gunmetal and weathered brown palette with tiny acid-green accents on the belt keys and armor trim. Chunky readable silhouette, hand-crafted.",
+    "refs": [],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/hero_reaper.png",
+    "rawHash": "sha256:64ca2dd92f9ebae78a3f8dd952ed80753c04bd0e3e59542b10663107d00f9dd0",
+    "outHash": "sha256:9e5d3d13fe719d3de6943acef4e8c588c4a350b82dcd1f7ec99e4bcb72cf8067",
+    "generatedAt": "2026-10-12T16:19:24.420Z"
   }
 }
