@@ -124,7 +124,7 @@ func _add_compare(d: Dictionary) -> void:
 		var box := VBoxContainer.new()
 		box.add_theme_constant_override("separation", 2)
 		box.add_child(DmUi.hrule())
-		var hd := DmUi.label(String(d.get("compare_head", "Against what you wear")), "DmFaint")
+		var hd := DmUi.label(String(d.get("compare_head", "Against what you wear")), "DmFaint", true)
 		hd.add_theme_font_size_override("font_size", 12)
 		box.add_child(hd)
 		var chips := HFlowContainer.new()
