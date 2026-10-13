@@ -51,6 +51,7 @@ test('apply swaps weapon, off-hand and runes in one go and answers the bag, the 
   const db = fakeDb({
     bag: [{ slot_index: 0, item_id: 'wand_iron', quantity: 1 }, { slot_index: 1, item_id: 'grimoire_bone', quantity: 1 }, { slot_index: 2, item_id: 'rune_volley', quantity: 2 }],
     equipped: gear({ slot_index: 105, item_id: 'staff_oak', equipped_slot: 'main_hand' }, { slot_index: 130, item_id: 'rune_splinter', equipped_slot: 'rune_bone_needle' }),
+    runes: ['rune_splinter', 'rune_volley'],
   });
   await save(db, 1, preset({ weapon: { itemId: 'wand_iron', instanceId: null }, offhand: { itemId: 'grimoire_bone', instanceId: null }, runes: { bone_needle: 'rune_volley' } }));
   const r = (await apply(db, 1)).json;
@@ -62,8 +63,8 @@ test('apply swaps weapon, off-hand and runes in one go and answers the bag, the 
   assert.equal(at(db, 130).item_id, 'rune_volley');
   assert.equal(at(db, 130).equipped_slot, 'rune_bone_needle');
   assert.equal(qty(db.inv, 'staff_oak'), 1, 'the staff went back to the bag');
-  assert.equal(qty(db.inv, 'rune_splinter'), 1);
-  assert.equal(qty(db.inv, 'rune_volley'), 2);
+  assert.equal(qty(db.inv, 'rune_splinter'), 0, 'a rune leaving a socket stays learned, not an item');
+  assert.equal(qty(db.inv, 'rune_volley'), 3, 'the bag copies are untouched');
   assert.ok(db.inv.every((x) => x.slot_index !== 105 || x.equipped === 1));
   assert.equal(r.preset.name, 'Colossus');
   assert.ok(Array.isArray(r.data));
@@ -74,13 +75,14 @@ test('a rolled weapon is matched by its instance, and a missing one is skipped w
     bag: [{ slot_index: 0, item_id: 'wand_iron', quantity: 1, instance_id: 41 }, { slot_index: 2, item_id: 'rune_volley', quantity: 1 }],
     loot: [{ id: 41, item_id: 'wand_iron' }],
     equipped: gear({ slot_index: 105, item_id: 'staff_oak', equipped_slot: 'main_hand' }),
+    runes: ['rune_volley'],
   });
   await save(db, 0, preset({ weapon: { itemId: 'wand_iron', instanceId: 77 }, runes: { bone_needle: 'rune_volley', exhume: 'rune_bone_colossus' } }));
   const r = (await apply(db, 0)).json;
   assert.equal(r.success, true, r.error);
   assert.deepEqual(r.report.skipped.map((s) => [s.part, s.itemId, s.reason]), [['weapon', 'wand_iron', 'missing'], ['rune', 'rune_bone_colossus', 'missing']]);
   assert.equal(at(db, 105).item_id, 'staff_oak', 'the worn staff stayed');
-  assert.equal(at(db, 130).item_id, 'rune_volley', 'the rune that was owned went in');
+  assert.equal(at(db, 130).item_id, 'rune_volley', 'the learned rune went in; the unlearned one was skipped');
   const exact = fakeDb({ bag: [{ slot_index: 0, item_id: 'wand_iron', quantity: 1, instance_id: 41 }], loot: [{ id: 41, item_id: 'wand_iron' }] });
   await save(exact, 0, preset({ weapon: { itemId: 'wand_iron', instanceId: 41 } }));
   const ok = (await apply(exact, 0)).json;
@@ -88,28 +90,30 @@ test('a rolled weapon is matched by its instance, and a missing one is skipped w
   assert.deepEqual(ok.report.skipped, []);
 });
 
-test('a full bag loses nothing: swaps that need no new room work, the ones that do are refused and named', async () => {
-  const db = fullBag([]) && fakeDb({
-    bag: fullBag([{ slot_index: 3, item_id: 'staff_moon', quantity: 1 }, { slot_index: 5, item_id: 'rune_volley', quantity: 2 }]),
+test('a full bag loses nothing: a weapon swap that needs new room is refused and named, a rune swap needs none', async () => {
+  const db = fakeDb({
+    bag: fullBag([{ slot_index: 3, item_id: 'staff_moon', quantity: 1 }]),
     equipped: gear({ slot_index: 105, item_id: 'wand_iron', equipped_slot: 'main_hand' }, { slot_index: 106, item_id: 'grimoire_bone', equipped_slot: 'off_hand' }, { slot_index: 130, item_id: 'rune_splinter', equipped_slot: 'rune_bone_needle' }),
+    runes: ['rune_splinter', 'rune_volley'],
   });
-  const before = db.inv.reduce((n, r) => n + r.quantity, 0);
-  // two-handed staff would push the wand AND the grimoire into a bag with one vacated slot; the rune swap needs a slot the stack of two does not free.
+  const before = db.inv.filter((x) => x.slot_index < 130).reduce((n, r) => n + r.quantity, 0);
+  // two-handed staff would push the wand AND the grimoire into a bag with one vacated slot.
   await save(db, 0, preset({ weapon: { itemId: 'staff_moon', instanceId: null }, runes: { bone_needle: 'rune_volley' } }));
   const r = (await apply(db, 0)).json;
   assert.equal(r.success, true, r.error);
-  assert.deepEqual(r.report.skipped.map((s) => [s.part, s.reason]), [['weapon', 'no_room'], ['rune', 'no_room']]);
-  assert.deepEqual(r.report.applied, []);
+  assert.deepEqual(r.report.skipped.map((s) => [s.part, s.reason]), [['weapon', 'no_room']]);
+  assert.deepEqual(r.report.applied.map((a) => [a.part, a.itemId]), [['rune', 'rune_volley']]);
   assert.equal(at(db, 105).item_id, 'wand_iron');
   assert.equal(at(db, 106).item_id, 'grimoire_bone');
-  assert.equal(at(db, 130).item_id, 'rune_splinter');
-  assert.equal(db.inv.reduce((n, x) => n + x.quantity, 0), before);
+  assert.equal(at(db, 130).item_id, 'rune_volley');
+  assert.equal(db.inv.filter((x) => x.slot_index < 130).reduce((n, x) => n + x.quantity, 0), before);
 });
 
-test('a full bag: a one-for-one weapon swap and a rune swap through a vacated slot still work, and nothing is lost', async () => {
+test('a full bag: a one-for-one weapon swap and a rune swap still work, and nothing is lost', async () => {
   const db = fakeDb({
-    bag: fullBag([{ slot_index: 3, item_id: 'staff_moon', quantity: 1 }, { slot_index: 5, item_id: 'rune_volley', quantity: 1 }]),
+    bag: fullBag([{ slot_index: 3, item_id: 'staff_moon', quantity: 1 }]),
     equipped: gear({ slot_index: 105, item_id: 'staff_oak', equipped_slot: 'main_hand' }, { slot_index: 130, item_id: 'rune_splinter', equipped_slot: 'rune_bone_needle' }),
+    runes: ['rune_splinter', 'rune_volley'],
   });
   const before = db.inv.reduce((n, r) => n + r.quantity, 0);
   await save(db, 0, preset({ weapon: { itemId: 'staff_moon', instanceId: null }, runes: { bone_needle: 'rune_volley' } }));
@@ -118,7 +122,6 @@ test('a full bag: a one-for-one weapon swap and a rune swap through a vacated sl
   assert.equal(at(db, 105).item_id, 'staff_moon');
   assert.equal(at(db, 3).item_id, 'staff_oak');
   assert.equal(at(db, 130).item_id, 'rune_volley');
-  assert.equal(at(db, 5).item_id, 'rune_splinter');
   assert.equal(db.inv.reduce((n, x) => n + x.quantity, 0), before);
   assert.equal(db.inv.filter((x) => x.slot_index >= 0 && x.slot_index < 48).length, 48);
 });

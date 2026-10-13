@@ -458,26 +458,44 @@ func _grimoire() -> void:
 	g.ui.toggle_panel("grimoire")
 	await frames(3)
 	check(g.ui.is_open("grimoire"), "B: the Grimoire opens")
+	g.ui_host.counsel.last_combat_ms = -1e9   # the fights above leave the hero "in combat" for a few seconds
 	var owned: Dictionary = DmRunes.owned_runes(g.ui_host.inventory.slots)
-	check(owned.size() == 11, "B: the panel is fed the bag's %d runes" % owned.size())
+	check(owned.size() == 11, "B: the bag holds %d runes to learn" % owned.size())
 	var err: String = await g.ui.inv.socket_rune_id("bone_needle", "rune_volley")   # what the Grimoire's rune button calls
-	check(err == "", "B: socketing Volley through the panel's path works (%s)" % err)
-	check(DmAbilities.rune(caster.p, "bone_needle") == "rune_volley" and g.rite_build(1)["runes"].get("bone_needle") == "rune_volley", "B: the caster holds it at once (%s)" % str(caster.p["runes"]))
-	err = await g.ui.inv.socket_rune_id("black_litany", "rune_requiem")
+	check(err.contains("learned") and DmAbilities.rune(caster.p, "bone_needle") == "", "B: a rune not learned yet cannot be socketed (%s)" % err)
+	await _learn("rune_volley")
+	check(g.ui_host.learned_runes.has("rune_volley") and not DmRunes.owned_runes(g.ui_host.inventory.slots).has("rune_volley"), "B: Learn spends the bag's Volley and the character knows it")
+	check(DmAbilities.rune(caster.p, "bone_needle") == "rune_volley" and g.rite_build(1)["runes"].get("bone_needle") == "rune_volley", "B: the empty socket takes it and the caster holds it at once (%s)" % str(caster.p["runes"]))
+	await _learn("rune_requiem")
 	check(DmAbilities.rune(caster.p, "black_litany") == "rune_requiem" and caster.p["runes"].size() == 2, "B: a second rite takes its own rune")
-	err = await g.ui.inv.socket_rune_id("bone_needle", "rune_splinter")   # swap: Volley returns to the bag
-	check(DmAbilities.rune(caster.p, "bone_needle") == "rune_splinter" and DmRunes.owned_runes(g.ui_host.inventory.slots).get("rune_volley", 0) == 1, "B: swapping replaces it and the old rune goes back to the bag")
-	err = await g.ui.inv.socket_rune_id("black_litany", "")   # take it out
-	check(DmAbilities.rune(caster.p, "black_litany") == "" and not caster.p["runes"].has("black_litany"), "B: taking a rune out removes it from the caster")
+	await _learn("rune_splinter")
+	check(DmAbilities.rune(caster.p, "bone_needle") == "rune_volley", "B: learning a rune never replaces a socketed one")
+	err = await g.ui.inv.socket_rune_id("bone_needle", "rune_splinter")
+	check(err == "" and DmAbilities.rune(caster.p, "bone_needle") == "rune_splinter" and not DmRunes.owned_runes(g.ui_host.inventory.slots).has("rune_volley"), "B: swapping in a learned rune replaces it; the old one stays learned, not an item (%s)" % err)
+	check(g.ui_host._owns_rune({"item_id": "rune_volley"}), "B: a learned rune never drops again")
+	g.ui_host.counsel.last_combat_ms = g.ui_host.counsel.now()
+	err = await g.ui.inv.socket_rune_id("bone_needle", "rune_volley")
+	check(err.contains("fight") and DmAbilities.rune(caster.p, "bone_needle") == "rune_splinter", "B: no swaps in a fight (%s)" % err)
+	g.ui_host.counsel.last_combat_ms = -1e9
+	err = await g.ui.inv.socket_rune_id("black_litany", "")   # empty the socket
+	check(DmAbilities.rune(caster.p, "black_litany") == "" and not caster.p["runes"].has("black_litany"), "B: emptying a socket removes it from the caster")
 	err = await g.ui.inv.socket_rune_id("exhume", "rune_volley")
 	check(err != "" and DmAbilities.rune(caster.p, "exhume") == "", "B: a rune that does not fit the rite is refused (%s)" % err)
 	# the picks survive a level-up / gear refresh (rite_build reads the bag again)
 	g.progress.refresh_stats()
 	check(DmAbilities.rune(caster.p, "bone_needle") == "rune_splinter", "B: a stats refresh keeps the pick")
 	g.ui.close_panels()
-	# put the bag back
 	await g.ui.inv.socket_rune_id("bone_needle", "")
 	check(caster.p["runes"].is_empty(), "B: everything taken out again")
+
+
+## Bag -> Learn on the first bag row holding `rid` (what the Reliquary's Learn button calls).
+func _learn(rid: String) -> void:
+	for r: Dictionary in g.ui_host.inventory.slots:
+		if r["item_id"] == rid and int(r["slot_index"]) < DmLoot.bag_size():
+			await g.ui.inv.learn_rune(r)
+			return
+	check(false, "B: %s is in the bag to learn" % rid)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------- legends

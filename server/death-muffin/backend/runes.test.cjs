@@ -25,87 +25,83 @@ test('sockets: 130 needle, 131 spear, 132 exhume, 133 miasma, 134 litany, clear 
   assert.equal(rules.runeFits('rune_requiem', 'exhume'), false);
 });
 
-test('one rune moves from the stack into the socket; the stack shrinks and the socket row is equipped as rune_<rite>', async () => {
+const learn = (db, slot, opts) => harness(mountRunes, db, opts)('POST /api/inventory/rune/learn', { body: { characterId: 1, slot } });
+
+test('learn: one rune of the stack is spent, the rune is learned, and an empty socket of its rite takes it', async () => {
   const db = fakeDb({ bag: [{ slot_index: 4, item_id: 'rune_volley', quantity: 3 }] });
-  const r = (await rune(db, 'bone_needle', 'rune_volley')).json;
+  const r = (await learn(db, 4)).json;
   assert.equal(r.success, true, r.error);
   assert.equal(at(db, 4).quantity, 2);
+  assert.deepEqual(db.learned, ['rune_volley']);
+  assert.deepEqual(r.data.learned, ['rune_volley']);
+  assert.equal(r.data.rune, 'rune_volley');
+  assert.equal(r.data.socketed, true);
   assert.deepEqual([at(db, 130).item_id, at(db, 130).quantity, at(db, 130).equipped, at(db, 130).equipped_slot], ['rune_volley', 1, 1, 'rune_bone_needle']);
-  assert.ok(r.data.some((s) => s.slot_index === 130 && s.item_id === 'rune_volley'), 'the reply carries the socket row');
-  assert.equal(qty(db.inv, 'rune_volley'), 3, 'nothing created or lost');
+  assert.ok(r.data.bag.some((s) => s.slot_index === 130 && s.item_id === 'rune_volley'), 'the reply carries the socket row');
 });
 
-test('the last rune of a stack empties its bag slot', async () => {
-  const db = fakeDb({ bag: [{ slot_index: 4, item_id: 'rune_requiem', quantity: 1 }] });
-  await rune(db, 'black_litany', 'rune_requiem');
+test('learn: the last rune empties its bag slot; a filled socket keeps its rune', async () => {
+  const db = fakeDb({ bag: [{ slot_index: 4, item_id: 'rune_requiem', quantity: 1 }], equipped: [{ slot_index: 134, item_id: 'rune_hollow_choir', equipped_slot: 'rune_black_litany' }], runes: ['rune_hollow_choir'] });
+  const r = (await learn(db, 4)).json;
+  assert.equal(r.success, true, r.error);
+  assert.equal(r.data.socketed, false);
   assert.equal(at(db, 4), undefined);
-  assert.equal(at(db, 134).item_id, 'rune_requiem');
+  assert.equal(at(db, 134).item_id, 'rune_hollow_choir');
+  assert.deepEqual(r.data.learned, ['rune_hollow_choir', 'rune_requiem'], 'in rune order');
 });
 
-test('a different rune swaps in even with a full bag; the old one goes into the slot just freed, or onto its own stack', async () => {
-  // full bag, the new rune alone in its slot: the freed slot takes the old rune
-  const db = fakeDb({ bag: fullBag([{ slot_index: 9, item_id: 'rune_mass_grave', quantity: 1 }]), equipped: [{ slot_index: 132, item_id: 'rune_bone_colossus', equipped_slot: 'rune_exhume' }] });
+test('learn refusals: a rune already known (the copy stays), not a rune, an empty slot, a socket or reserved slot', async () => {
+  const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'rune_volley', quantity: 2 }, { slot_index: 1, item_id: 'sword_copper', quantity: 1 }], equipped: [{ slot_index: 130, item_id: 'rune_splinter', equipped_slot: 'rune_bone_needle' }], runes: ['rune_volley', 'rune_splinter'] });
+  assert.match((await learn(db, 0)).json.error, /already know this rune/);
+  assert.equal(at(db, 0).quantity, 2, 'the copy stays');
+  assert.match((await learn(db, 1)).json.error, /not a rune/);
+  assert.match((await learn(db, 7)).json.error, /no rune in that bag slot/);
+  assert.match((await learn(db, 130)).json.error, /no rune in that bag slot/);
+  assert.equal((await harness(mountRunes, db)('POST /api/inventory/rune/learn', { body: { characterId: 1 } })).status, 400);
+  assert.equal(db.inv.length, 3, 'nothing moved');
+});
+
+test('socket: any learned rune of the rite goes in (replacing the old one) without touching the bag, even a full one', async () => {
+  const db = fakeDb({ bag: fullBag(), equipped: [{ slot_index: 132, item_id: 'rune_bone_colossus', equipped_slot: 'rune_exhume' }], runes: ['rune_bone_colossus', 'rune_mass_grave'] });
   const r = (await rune(db, 'exhume', 'rune_mass_grave')).json;
   assert.equal(r.success, true, r.error);
   assert.equal(at(db, 132).item_id, 'rune_mass_grave');
-  assert.equal(at(db, 9).item_id, 'rune_bone_colossus');
-  assert.equal(db.inv.length, 49);
-  // an old rune that already has a stack in the bag joins it
-  const db2 = fakeDb({ bag: [{ slot_index: 0, item_id: 'rune_bone_colossus', quantity: 1 }, { slot_index: 1, item_id: 'rune_mass_grave', quantity: 2 }], equipped: [{ slot_index: 132, item_id: 'rune_bone_colossus', equipped_slot: 'rune_exhume' }] });
-  await rune(db2, 'exhume', 'rune_mass_grave');
-  assert.equal(at(db2, 0).quantity, 2);
-  assert.equal(at(db2, 1).quantity, 1);
-  assert.equal(qty(db2.inv, 'rune_bone_colossus'), 2);
+  assert.equal(db.inv.length, 49, 'the bag is untouched');
+  assert.equal(qty(db.inv, 'rune_bone_colossus'), 0, 'the old rune stays learned, not an item');
+  assert.ok(r.data.some((s) => s.slot_index === 132 && s.item_id === 'rune_mass_grave'), 'the reply is the bag with the socket row');
 });
 
-test('null takes the socketed rune back into the bag; refused with a readable error when the bag is full', async () => {
-  const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'ore_copper', quantity: 4 }], equipped: [{ slot_index: 131, item_id: 'rune_impale', equipped_slot: 'rune_marrow_spear' }] });
+test('null empties the socket without needing bag room; the rune stays learned', async () => {
+  const db = fakeDb({ bag: fullBag(), equipped: [{ slot_index: 131, item_id: 'rune_impale', equipped_slot: 'rune_marrow_spear' }], runes: ['rune_impale'] });
   const r = (await rune(db, 'marrow_spear', null)).json;
-  assert.equal(r.success, true);
+  assert.equal(r.success, true, r.error);
   assert.equal(at(db, 131), undefined);
-  assert.equal(at(db, 1).item_id, 'rune_impale');
-  const full = fakeDb({ bag: fullBag(), equipped: [{ slot_index: 131, item_id: 'rune_impale', equipped_slot: 'rune_marrow_spear' }] });
-  const bad = (await rune(full, 'marrow_spear', null)).json;
-  assert.equal(bad.success, false);
-  assert.match(bad.error, /bag is full/);
-  assert.equal(at(full, 131).item_id, 'rune_impale', 'rolled back: still socketed');
-  assert.equal(full.inv.length, 49);
-  // a full bag with room on a stack still works
-  const stack = fakeDb({ bag: fullBag([{ slot_index: 3, item_id: 'rune_impale', quantity: 5 }]), equipped: [{ slot_index: 131, item_id: 'rune_impale', equipped_slot: 'rune_marrow_spear' }] });
-  assert.equal((await rune(stack, 'marrow_spear', null)).json.success, true);
-  assert.equal(at(stack, 3).quantity, 6);
+  assert.equal(db.inv.length, 48);
+  assert.deepEqual(db.learned, ['rune_impale']);
 });
 
-test('a full stack of 99 is not overfilled: the returned rune takes a new slot', async () => {
-  const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'rune_impale', quantity: 99 }, { slot_index: 5, item_id: 'rune_ossuary_ring', quantity: 1 }], equipped: [{ slot_index: 131, item_id: 'rune_impale', equipped_slot: 'rune_marrow_spear' }] });
-  assert.equal((await rune(db, 'marrow_spear', 'rune_ossuary_ring')).json.success, true);
-  assert.equal(at(db, 0).quantity, 99);
-  assert.equal(qty(db.inv, 'rune_impale'), 100);
-});
-
-test('refusals: a rune that does not fit the rite, a rune you do not have, an unknown id, an empty socket, an unknown rite', async () => {
-  const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'rune_volley', quantity: 1 }, { slot_index: 1, item_id: 'sword_copper', quantity: 1 }] });
+test('socket refusals: a rune that does not fit the rite, a rune not learned (even one in the bag), an unknown id, an empty socket, an unknown rite', async () => {
+  const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'rune_volley', quantity: 1 }, { slot_index: 1, item_id: 'sword_copper', quantity: 1 }], runes: ['rune_splinter'] });
   assert.match((await rune(db, 'miasma', 'rune_volley')).json.error, /doesn't fit this rite/);
-  assert.match((await rune(db, 'exhume', 'rune_mass_grave')).json.error, /don't have that rune/);
+  assert.match((await rune(db, 'bone_needle', 'rune_volley')).json.error, /haven't learned that rune/);
   assert.match((await rune(db, 'exhume', 'sword_copper')).json.error, /not a rune/);
   assert.match((await rune(db, 'exhume', null)).json.error, /socket is empty/);
   assert.match((await rune(db, 'wailing_skull', 'rune_volley')).json.error, /not a rite that takes a rune/);
   assert.equal(db.inv.length, 2, 'nothing moved');
 });
 
-test('re-socketing the rune already there is a no-op; a kit weapon or equipped copy is never taken', async () => {
-  const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'rune_volley', quantity: 1 }], equipped: [{ slot_index: 130, item_id: 'rune_volley', equipped_slot: 'rune_bone_needle' }] });
-  const r = (await rune(db, 'bone_needle', 'rune_volley')).json;
-  assert.equal(r.success, true);
-  assert.equal(db.inv.length, 2);
-  // only the socket holds a copy: it is not "in the bag"
-  const only = fakeDb({ equipped: [{ slot_index: 130, item_id: 'rune_splinter', equipped_slot: 'rune_bone_needle' }] });
-  assert.match((await rune(only, 'bone_needle', 'rune_volley')).json.error, /don't have that rune/);
+test('re-socketing the rune already there is a no-op; GET answers the learned runes', async () => {
+  const db = fakeDb({ equipped: [{ slot_index: 130, item_id: 'rune_volley', equipped_slot: 'rune_bone_needle' }], runes: ['rune_volley'] });
+  assert.equal((await rune(db, 'bone_needle', 'rune_volley')).json.success, true);
+  assert.equal(db.inv.length, 1);
+  const g = (await harness(mountRunes, db)('GET /api/runes/:characterId', { params: { characterId: '1' } })).json;
+  assert.deepEqual(g, { success: true, data: { learned: ['rune_volley'] } });
 });
 
 test('a character that is not yours is refused; a malformed body is a 400', async () => {
   const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'rune_volley', quantity: 1 }] });
   const r = await rune(db, 'bone_needle', 'rune_volley', { owned: false });
+  assert.equal((await learn(db, 0, { owned: false })).status, 403);
   assert.equal(r.status, 403);
   const bad = await harness(mountRunes, db)('POST /api/inventory/rune', { body: { characterId: 1, rite: 'bone_needle' } });
   assert.equal(bad.status, 400);
@@ -173,13 +169,18 @@ test('offline sync accepts the five sockets with their own rune, and rejects a w
   const ok = [{ slot_index: 130, item_id: 'rune_volley', quantity: 1, equipped: 1 }, { slot_index: 134, item_id: 'rune_requiem', quantity: 1, equipped: 1 }, { slot_index: 2, item_id: 'rune_impale', quantity: 40 }];
   assert.doesNotThrow(() => sync.validate(save(ok), 2));
   assert.throws(() => sync.validate(save([{ slot_index: 135, item_id: 'rune_volley', quantity: 1 }]), 2), RangeError);
+  assert.doesNotThrow(() => sync.validate({ ...save(ok), runes: ['rune_volley'] }, 2));
+  assert.throws(() => sync.validate({ ...save(ok), runes: ['sword_copper'] }, 2), RangeError);
 });
 
 test('offline sync apply files socket rows as rune_<rite> and refuses a rune in the wrong rite or an item that is not a rune', async () => {
   const inserts = [];
+  const learnedIns = [];
   const conn = {
     execute: async (sql, p) => {
       if (sql.startsWith('INSERT INTO inventory')) inserts.push(p);
+      if (sql.startsWith('INSERT IGNORE INTO character_runes')) learnedIns.push(p[1]);
+      if (sql.startsWith('DELETE FROM character_runes')) throw new Error('learned runes are never deleted');
       if (sql.startsWith('SELECT account_id')) return [[{ account_id: 7 }]];
       if (sql.startsWith('SELECT instance_id')) return [[]];
       if (sql.startsWith('SELECT')) return [[]];
@@ -198,7 +199,8 @@ test('offline sync apply files socket rows as rune_<rite> and refuses a rune in 
     username: 't', character: { id: 7, class_index: 2, class_name: 'Gravecaller', level: 4, experience: 120, gold: 50, stat_str: 5, stat_agi: 5, stat_int: 8, stat_vit: 10, pos_x: 0, pos_y: 0, pos_z: 0, pos_map: 'HUB', orientation: 0 },
     slots, professions: [], necro: { ascension: 0, legionTier: 0 }, garden: {}, labor: {}, cosmetics: { cape: null, pet: null, pets: [] },
   });
-  await sync.apply(conn, 7, account([{ slot_index: 130, item_id: 'rune_volley', quantity: 1, equipped: 1 }, { slot_index: 134, item_id: 'rune_requiem', quantity: 1, equipped: 1 }]));
+  await sync.apply(conn, 7, { ...account([{ slot_index: 130, item_id: 'rune_volley', quantity: 1, equipped: 1 }, { slot_index: 134, item_id: 'rune_requiem', quantity: 1, equipped: 1 }]), runes: ['rune_impale', 'rune_volley'] });
+  assert.deepEqual(learnedIns.sort(), ['rune_impale', 'rune_requiem', 'rune_volley'], 'the save\'s learned runes and its socketed ones are learned');
   const inv = inserts.filter((p) => typeof p[1] === 'number' && p[1] >= 130);
   assert.deepEqual(inv.map((p) => [p[1], p[2], p[4], p[5]]), [[130, 'rune_volley', 1, 'rune_bone_needle'], [134, 'rune_requiem', 1, 'rune_black_litany']]);
   await assert.rejects(sync.apply(conn, 7, account([{ slot_index: 133, item_id: 'rune_volley', quantity: 1, equipped: 1 }])), RangeError);

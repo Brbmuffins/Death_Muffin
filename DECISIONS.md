@@ -91,8 +91,8 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
   piece and 6 of 14 affixes are necromancer affixes, both protected), and auto-loot covered gear only. Now gold and soul shards go straight
   to the purse; items stay on the ground 3 minutes (was 60 s) and only a click picks one up (the hero walks there; walking over takes
   nothing). Runes go straight into the bag with a chat line and never repeat one the account owns (bag, sockets, Vault): a known rune
-  becomes another of its source's pool the player lacks, or soul shards (1/2/3 by rarity) when they own the whole pool; the kill ledger
-  credits those shards (`KNOWN_RUNE_SHARDS_MAX`). Legendaries and new runes are a chat line, for the whole party in co-op. Co-op loot stays
+  becomes another of its source's pool the player lacks, or soul shards (1/2/3 by rarity) when they own the whole pool (replaced by B17:
+  a rune the player has does not drop at all). Legendaries and new runes are a chat line, for the whole party in co-op. Co-op loot stays
   personal.
 - **B16. Dropping gear for the party** (owner, 2026-10-12). Gear only (materials merge into stacks, runes have no instance, so neither can
   remember where it was found). A dropped piece lies on the session's ground until the session ends, then it is gone (3 min loot expiry does
@@ -100,3 +100,11 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
   The server owns it (`ground.cjs`, migration 043): roll-gear stamps the session and time on each piece, drop and pickup are one locked
   transaction each, a bag save cannot name a piece on the ground, and the host only relays the drawing to the members the server named.
   Up to 20 pieces per player per session. Unclaimed pieces of an ended session are deleted.
+- **B17. Learned runes** (owner, 2026-10-13). A rune still drops as an item (straight into the bag, B15), but Learn in the Reliquary spends
+  it and the character knows that rune for good (`character_runes`, migration 044, `backend/runes.cjs`); an empty socket of its rite takes
+  it at once. A socket holds a choice, not an item: any learned rune of the rite goes in or out without touching the bag, out of combat only
+  (the client's busy rule: hurt in the last 4 s, three living dead within 9 m, or a boss awake). A rune the character has (learned, bag,
+  sockets, Vault) does not drop at all: no shards, no other rune (the kill ledger's shard allowance for known runes is gone); spare copies can be kept, vaulted or ground. Loadouts apply learned runes only. Rising drop
+  chance: each elite in a rune-shedding ground that leaves no new rune (a duplicate counts as none) adds 5% of the base chance to the
+  next (at most 3x), a new rune landing starts it over; kept per character for the session (`DmRewardsMember.rune_dry`), and the authority ceiling allows the 3x peak. Migration
+  044 counts every socketed rune as learned; runes in bags and the Vault stay items to learn.

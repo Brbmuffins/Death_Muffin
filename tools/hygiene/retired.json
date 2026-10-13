@@ -187,6 +187,30 @@
         "DECISIONS.md",
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "rune-pool-tag",
+      "pattern": "\\brune_pool\\b",
+      "reason": "rune drops no longer carry their source's pool: a known rune is always soul shards (DECISIONS B17, 2026-10-13)",
+      "allow": [
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "known-rune-shards",
+      "pattern": "KNOWN_RUNE_SHARDS",
+      "reason": "a rune the player has does not drop at all, no shards (DECISIONS B17, 2026-10-13)",
+      "allow": [
+        "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "rune-resolve",
+      "pattern": "\\brune_resolve\\b|\\b_resolve_rune\\b|\\brune_known\\b",
+      "reason": "replaced by DmLootView.rune_owned: an owned rune does not drop (DECISIONS B17, 2026-10-13)",
+      "allow": [
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

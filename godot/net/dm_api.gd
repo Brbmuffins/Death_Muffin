@@ -258,9 +258,17 @@ func belt_tool(character_id: int, slot_index: int, equipped: int) -> DmResult:
 func kit_move(character_id: int, slot_index: int, equipped: int) -> DmResult:
 	return _slots(await _post("/api/inventory/kit", {"characterId": character_id, "slot_index": slot_index, "equipped": equipped}))
 
-## `item_id` empty = take the socketed rune out (sent as JSON null).
+## Put a learned rune into its rite's socket; `item_id` empty = empty the socket (sent as JSON null). data: the bag.
 func rune_socket(character_id: int, rite: String, item_id: String = "") -> DmResult:
 	return _slots(await _post("/api/inventory/rune", {"characterId": character_id, "rite": rite, "itemId": null if item_id.is_empty() else item_id}))
+
+## Learn the rune in bag slot `slot` (one is spent). data: {bag, learned: [rune ids], rune, socketed}.
+func rune_learn(character_id: int, slot: int) -> DmResult:
+	return _decorate_keys(await _post("/api/inventory/rune/learn", {"characterId": character_id, "slot": slot}), ["bag"])
+
+## The character's learned runes. data: {learned: [rune ids]}.
+func runes_learned(character_id: int) -> DmResult:
+	return await _rget("/api/runes/%d" % character_id)
 
 # --- Loadouts ----------------------------------------------------------------------------------------------------------------------
 

@@ -31,6 +31,8 @@ var take_item: Callable = Callable()
 
 # ---- bookkeeping owned by DmSessionRewards -------------------------------------------------------------------------------
 var chain := DmKillChain.new()
+## Elites in a row in rune-shedding grounds that left no rune: raises the next elite's rune chance (DmLootRunes.pity_mult); a rune landing resets it.
+var rune_dry: int = 0
 var gold_pool := {"amount": 0, "kills": 0}
 var reporter: DmKillReporter
 var pending_xp: float = 0.0

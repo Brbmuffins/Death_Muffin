@@ -2,17 +2,17 @@ class_name DmGrimoireView
 extends VBoxContainer
 ## The Grimoire (L, hotbar button, or right-click a slot; archive/legacy-web:src/ui/GrimoirePanel.ts): the left-click primary plus five rite sockets (keys 1-5, RMB on 5).
 ## Click a socket, then a rite (or a rite's slot buttons) to equip it. A rite already on another key swaps places; cooldowns stay with the rite.
-## Locked rites stay visible with their level. Relic runes: the selected rite's rune box (socket / swap / take out).
+## Locked rites stay visible with their level. Relic runes: the selected rite's rune box (every rune of the rite: learned ones go in with a click).
 ##
 ## Data in:  set_state({rites:{primary, keys:[5 ids]}, level:int, unseen:[ids], kit:{primaries:[], grimoire:[], rmb}})
-##           set_runes({sockets:{rite: rune_id}, owned:{rune_id: count}}) or leave unset for "no rune box"
+##           set_runes({sockets:{rite: rune_id}, learned:{rune_id: true}, owned:{rune_id: count in the bag}}) or leave unset for "no rune box"
 ##           open_session(select = null)  (marks this opening's NEW tags, jumps to the primary when a new primary is unseen, emits mark_seen)
 ##           `loadout_host` is an empty slot for the Loadout presets strip (LoadoutPresets.ts, necromancers; not in this track).
 ## Signals:
 ##   assign_requested(slot, id)      -> client loadout (Rites) save; the loadout presets themselves use DmApi.save_loadout / apply_loadout_preset
 ##   assign_primary_requested(id)    -> same
 ##   mark_seen(ids)                  -> client "rites seen" memory
-##   rune_socket_requested(rite, rune_id)  -> DmApi.rune_socket(character_id, rite, rune_id)  (rune_id "" = take the rune out); the host calls rune_done(error)
+##   rune_socket_requested(rite, rune_id)  -> DmApi.rune_socket(character_id, rite, rune_id)  (rune_id "" = empty the socket); the host calls rune_done(error)
 
 signal assign_requested(slot: int, id: String)
 signal assign_primary_requested(id: String)
@@ -324,6 +324,7 @@ func _rune_section(rite: String) -> Control:
 		return c
 	var rs: Dictionary = runes
 	var sockets: Dictionary = rs.get("sockets", {})
+	var learned: Dictionary = rs.get("learned", {})
 	var owned: Dictionary = rs.get("owned", {})
 	var cur := String(sockets.get(rite, ""))
 	var now := DmPa.hbox(12)
@@ -332,12 +333,12 @@ func _rune_section(rite: String) -> Control:
 		now.add_child(DmPa.icon("art/items/%s.webp" % cur, 56, cur, "◆"))
 		var tx := DmPa.vbox(4)
 		tx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tx.add_child(DmPa.text(String(def["name"]), 15, DmUi.BONE_100, "body_bold", false))
+		tx.add_child(_rune_title(def, 15, DmUi.BONE_100))
 		for l in def.get("lines", []):
 			tx.add_child(DmPa.text(String(l), 14, DmUi.TEXT_MUTED))
 		if def.get("cost") != null and String(def["cost"]) != "":
 			tx.add_child(DmPa.text(String(def["cost"]), 14, Color("e7b07a")))
-		var out := DmPa.button("Take the rune out", "small", rune_busy, "rune_out")
+		var out := DmPa.button("Empty the socket", "small", rune_busy, "rune_out")
 		out.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		out.pressed.connect(func() -> void: request_rune(rite, ""))
 		tx.add_child(out)
@@ -351,14 +352,13 @@ func _rune_section(rite: String) -> Control:
 		var tx := DmPa.vbox(2)
 		tx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tx.add_child(DmPa.text("Empty socket", 15, DmUi.BONE_100, "body_bold", false))
-		tx.add_child(DmPa.text("A rune changes how %s behaves, not how hard it hits. Choose one below." % name, 14, DmUi.TEXT_MUTED))
+		tx.add_child(DmPa.text("A rune changes how %s behaves, not how hard it hits. Choose a learned one below." % name, 14, DmUi.TEXT_MUTED))
 		now.add_child(tx)
 	b.add_child(now)
 	var sources := DmPaData.rune_sources()
 	for rid in DmPaData.runes_for(rite):
 		var def := DmContent.rune(rid)
 		var n: int = int(owned.get(rid, 0))
-		var rarity := String(def["rarity"])
 		var row := PanelContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var hl := DmPa.hbox(10)
@@ -370,13 +370,13 @@ func _rune_section(rite: String) -> Control:
 		if cur == rid:
 			mode = "on"
 			go = "Socketed"
-			tx.add_child(DmPa.text("%s  %s" % [def["name"], rarity], 14, DmUi.BONE_100, "body_bold", false))
+			tx.add_child(_rune_title(def, 14, DmUi.BONE_100))
 			tx.add_child(DmPa.text(String(def["short"]), 13, DmUi.TEXT_MUTED))
 			row.add_theme_stylebox_override("panel", DmUi.box(Color(DmUi.SPELL_400, 0.12), DmUi.BORDER_ACTIVE, 1, 0, Vector2(8, 6)))
-		elif n > 0:
-			mode = "owned"
+		elif learned.has(rid):
+			mode = "learned"
 			go = "Swap in" if cur != "" else "Socket"
-			tx.add_child(DmPa.text("%s  %s · you have %d" % [def["name"], rarity, n], 14, DmUi.BONE_100, "body_bold", false))
+			tx.add_child(_rune_title(def, 14, DmUi.BONE_100))
 			tx.add_child(DmPa.text(String(def["short"]), 13, DmUi.TEXT_MUTED))
 			row.add_theme_stylebox_override("panel", DmUi.box(Color(0, 0, 0, 0.2), DmUi.BORDER, 1, 0, Vector2(8, 6)))
 			row.set_meta("act", "rune")
@@ -386,10 +386,17 @@ func _rune_section(rite: String) -> Control:
 			row.gui_input.connect(func(ev: InputEvent) -> void:
 				if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 					request_rune(rite, rid))
+		elif n > 0:
+			mode = "in_bag"
+			go = "Learn it in the Reliquary"
+			tx.add_child(_rune_title(def, 14, DmUi.BONE_100, "in your bag"))
+			tx.add_child(DmPa.text(String(def["short"]), 13, DmUi.TEXT_MUTED))
+			row.add_theme_stylebox_override("panel", DmUi.box(Color(0, 0, 0, 0.2), DmUi.BORDER, 1, 0, Vector2(8, 6)))
+			row.tooltip_text = "Select the rune in your Reliquary (I) and click Learn."
 		else:
 			mode = "sealed"
 			go = "Not found yet"
-			tx.add_child(DmPa.text("%s  %s" % [def["name"], rarity], 14, DmUi.TEXT_MUTED, "body_bold", false))
+			tx.add_child(_rune_title(def, 14, DmUi.TEXT_MUTED, "", 0.6))
 			tx.add_child(DmPa.text(String(def["short"]), 13, DmUi.TEXT_FAINT))
 			tx.add_child(DmPa.text("Drops from %s" % sources.get(rid, ""), 12, DmUi.TEXT_FAINT))
 			row.add_theme_stylebox_override("panel", DmUi.box(Color(0, 0, 0, 0.2), DmUi.SLOT_BORDER, 1, 0, Vector2(8, 6)))
@@ -403,12 +410,25 @@ func _rune_section(rite: String) -> Control:
 		hl.add_child(tx)
 		hl.add_child(DmPa.text(go, 12, DmUi.SPELL_300, "numeric", false))
 		b.add_child(row)
-	b.add_child(DmPa.rich("This socket is already yours. <b>Runes</b> drop from elites (more often the deeper the ground), Grave Surge offerings, bosses (the first kill of each always leaves one) and Catacomb Depths chests. The Gear Atlas (<kbd>.</kbd>) lists the chances.", 13, DmUi.TEXT_FAINT))
+	b.add_child(DmPa.rich("<b>Runes</b> drop from elites (each elite without one makes the next likelier), Grave Surge offerings, bosses (the first kill of each always leaves one) and Catacomb Depths chests. <b>Learn</b> one in your bag to keep it for good; a rune you know never drops again. Swap runes out of combat. The Gear Atlas (<kbd>.</kbd>) lists the chances.", 13, DmUi.TEXT_FAINT))
 	if rune_error != "":
 		var er := DmPa.text(rune_error, 13, DmUi.DANGER)
 		er.set_meta("role", "rune_error")
 		b.add_child(er)
 	return c
+
+
+## A rune's name with its rarity as a coloured tag ("Rare"), plus an optional note; `fade` dims the tag on runes not found yet.
+func _rune_title(def: Dictionary, size: int, name_col: Color, note := "", fade := 1.0) -> Control:
+	var h := DmPa.hbox(8)
+	h.add_child(DmPa.text(String(def["name"]), size, name_col, "body_bold", false))
+	var rarity := String(def["rarity"])
+	var tag := DmPa.text("%s %s" % [DmUi.rarity_mark(rarity), rarity.capitalize()], size - 2, Color(DmUi.rarity_color(rarity), fade), "body_bold", false)
+	tag.set_meta("rune_rarity", rarity)
+	h.add_child(tag)
+	if note != "":
+		h.add_child(DmPa.text("· " + note, size - 2, DmUi.TEXT_MUTED, "body", false))
+	return h
 
 
 func request_rune(rite: String, rune_id: String) -> void:

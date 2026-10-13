@@ -490,7 +490,7 @@ func _test_grimoire() -> void:
 	v.set_runes(DmPaMock.runes())
 	v.select_socket("primary")   # bone_needle has a rune socket (splinter)
 	_check(DmPa.find_all(v, "rune_pip").size() >= 1, "rune pip badge on the socket holding one")
-	_check(DmPa.act_text(v, "rune_out").contains("TAKE THE RUNE OUT"), "socketed rune can be taken out")
+	_check(DmPa.act_text(v, "rune_out").to_upper().contains("EMPTY THE SOCKET"), "a socket can be emptied")
 	var rune_got: Array = []
 	v.rune_socket_requested.connect(func(r: String, id: String) -> void: rune_got.append([r, id]))
 	(DmPa.find_act(v, "rune_out") as Button).pressed.emit()
@@ -498,13 +498,19 @@ func _test_grimoire() -> void:
 	_check(v.rune_busy, "busy while the server answers")
 	v.rune_done("The Sexton refuses.")
 	_check(not v.rune_busy and DmPa.all_text(v).contains("The Sexton refuses."), "rune error shown and busy cleared")
-	# owned rune -> clickable row; sealed -> not
-	v.set_runes({"sockets": {}, "owned": {"rune_splinter": 1}})
-	var owned_rows := DmPa.find_all(v, "rune_row").filter(func(n: Node) -> bool: return n.get_meta("mode") == "owned")
+	# learned rune -> clickable row; one in the bag -> "learn it", not clickable; sealed -> not
+	v.set_runes({"sockets": {}, "learned": {"rune_splinter": true}, "owned": {"rune_volley": 1}})
+	var learned_rows := DmPa.find_all(v, "rune_row").filter(func(n: Node) -> bool: return n.get_meta("mode") == "learned")
+	var bag_rows := DmPa.find_all(v, "rune_row").filter(func(n: Node) -> bool: return n.get_meta("mode") == "in_bag")
 	var sealed_rows := DmPa.find_all(v, "rune_row").filter(func(n: Node) -> bool: return n.get_meta("mode") == "sealed")
-	_eq(owned_rows.size(), 1, "one owned rune row")
+	_eq(learned_rows.size(), 1, "one learned rune row")
+	_check(learned_rows[0].has_meta("act"), "a learned rune row is clickable")
+	_check(bag_rows.size() == 1 and not bag_rows[0].has_meta("act") and DmPa.all_text(v).contains("Learn it"), "a rune in the bag says to learn it")
 	_check(sealed_rows.size() >= 1 and not sealed_rows[0].has_meta("act"), "sealed rune rows are not clickable")
 	_check(DmPa.all_text(v).contains("Drops from"), "sealed rows say where the rune drops")
+	var tags := DmPa.find_all(v, "rune_rarity")
+	_eq(tags.size(), DmPaData.runes_for("bone_needle").size(), "every rune of the rite shows its rarity")
+	_check(DmPa.all_text(v).contains("Uncommon") and DmPa.all_text(v).contains("Rare"), "rarity is named (Uncommon, Rare)")
 	# a rite without runes
 	v.select_socket(4)   # corpse_explosion
 	_check(DmPa.all_text(v).contains("has no runes yet"), "rite without a rune family says so")

@@ -512,11 +512,10 @@
    }
   },
   "gameplay_killRules": {
-   "keys": 5,
+   "keys": 4,
    "counts": {
     "KILLS": 28,
     "ELITE_SHARDS_MAX": 1,
-    "KNOWN_RUNE_SHARDS_MAX": 1,
     "CHAIN_MAX": 1,
     "FLOOR_RULES": 3
    }
@@ -783,7 +782,7 @@
    }
   },
   "runes": {
-   "keys": 12,
+   "keys": 14,
    "counts": {
     "RUNE_RITES": 5,
     "RUNE_IDS": 11,
@@ -794,6 +793,8 @@
     "RUNE_WEIGHT": 3,
     "ELITE_RUNE_CHANCE_BY_AREA": 9,
     "ELITE_RUNE_CHANCE": 1,
+    "RUNE_PITY_STEP": 1,
+    "RUNE_PITY_MAX_MULT": 1,
     "SURGE_RUNE_CHANCE": 1,
     "BOSS_REPEAT_RUNE_CHANCE": 1,
     "BOSS_RUNE_POOL": 7

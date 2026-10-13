@@ -80,15 +80,16 @@ func _rune_text(row: Dictionary) -> String:
 	if r.is_empty():
 		return ""
 	var rite_name := String(DmAbilities.def(String(r["rite"]))["name"])
-	var out := "Fits %s. %s" % [rite_name, " ".join(r["lines"])]
+	var out := "For %s. %s" % [rite_name, " ".join(r["lines"])]
 	if r.get("cost") != null:
 		out += "\nCost: %s" % r["cost"]
-	var now: String = String(game_sockets().get(r["rite"], ""))
-	var sock := "Socket it in the Grimoire or with the button below."
-	if now != "":
-		sock = "Already socketed in this rite." if now == row["item_id"] else "Replaces %s, which returns to your bag." % DmContent.rune(now)["name"]
-	var src: String = String(DmPaData.rune_sources().get(row["item_id"], ""))
-	return out + "\n%s Drops from %s." % [sock, src]
+	if is_learned(String(row["item_id"])):
+		return out + "\nYou already know this rune: keep the copy, or grind it in the Bone Grinder for grave dust."
+	return out + "\nClick Learn to keep it for good: it becomes a rune choice for %s in the Spellbook (L)." % rite_name
+
+
+func is_learned(rune_id: String) -> bool:
+	return "learned_runes" in game and (game.learned_runes as Dictionary).has(rune_id)
 
 
 func game_sockets() -> Dictionary:
@@ -346,9 +347,9 @@ func _extra_actions(it: Dictionary) -> Array:
 	var pet := pet_for_charm(id)
 	if not pet.is_empty():
 		out.append({"id": "adopt", "label": "Adopt %s" % pet["name"], "hint": "The %s joins you for good and the charm is spent. Call it from Capes & Pets (N)" % pet["name"]})
-	if String(row.get("item_type", "")) == "rune" and ui.is_necromancer() and DmContent.rune(id) != {}:
+	if String(row.get("item_type", "")) == "rune" and DmContent.rune(id) != {} and not is_learned(id) and int(row["slot_index"]) < DmLoot.bag_size():
 		var rite := String(DmAbilities.def(String(DmContent.rune(id)["rite"]))["name"])
-		out.append({"id": "rune", "label": "Socket into %s" % rite})
+		out.append({"id": "learn_rune", "label": "Learn", "primary": true, "hint": "The rune is spent and you know it for good: a rune choice for %s in the Spellbook (L)" % rite})
 	if can_drop(row):
 		if _confirm_drop == int(row["slot_index"]):
 			out.append({"id": "drop_confirm", "label": "Drop it", "primary": true, "hint": "It lies at your feet until you leave the world, then it is gone"})
@@ -388,8 +389,8 @@ func _on_action(id: String, it: Dictionary) -> void:
 			ui.set_belt(String(row["item_id"]))
 		"adopt":
 			adopt_charm(String(pet_for_charm(String(row["item_id"]))["id"]))
-		"rune":
-			socket_rune(row)
+		"learn_rune":
+			learn_rune(row)
 		"drop":
 			var affixes: Array = row["affixes"] if row.get("affixes") is Array else []
 			if DmLootView.rarity_of({"item_id": row["item_id"], "instance": {"affixes": affixes}}) in ["epic", "legendary"]:
@@ -526,8 +527,10 @@ func adopt_charm(pet_id: String) -> void:
 	_end()
 
 
-## Returns a player-readable error, or "".
+## Returns a player-readable error, or "". Runes are swapped out of combat only (owner 2026-10-13).
 func socket_rune_id(rite: String, item_id: String) -> String:
+	if game.has_method("in_combat") and game.in_combat():
+		return "You can't change runes in a fight. Step away first."
 	var r: DmResult = await game.api.rune_socket(int(game.character["id"]), rite, item_id)
 	if not r.ok:
 		return r.error if r.error != "" else "The rune would not move."
@@ -552,13 +555,27 @@ func drop_gear(row: Dictionary) -> void:
 	_end()
 
 
-func socket_rune(row: Dictionary) -> void:
+## Bag -> Learn: one rune of the stack is spent and the character knows it for good (runes.cjs); an empty socket of its rite takes it.
+func learn_rune(row: Dictionary) -> void:
 	if not _begin():
 		return
-	var rn := DmContent.rune(String(row["item_id"]))
-	var err := await socket_rune_id(String(rn["rite"]), String(row["item_id"]))
+	var err: String = await game.bag_commit()   # unsaved bag edits first: the server's answer replaces the bag
 	if err != "":
-		panel.set_error(err)
+		panel.set_error("Could not save the bag first: %s" % err)
+		_end()
+		return
+	var r: DmResult = await game.api.rune_learn(int(game.character["id"]), int(row["slot_index"]))
+	if not _fail(r, "The rune would not open to you."):
+		if game.has_method("note_learned"):
+			game.note_learned(r.data["learned"])
+		await game.refresh_inventory()
+		var rn := DmContent.rune(String(r.data["rune"]))
+		var rite := String(DmAbilities.def(String(rn["rite"]))["name"])
+		ui.play("runeSocket")
+		ui.toast("Learned %s. %s" % [rn["name"], ("It is in %s's socket now." % rite) if r.data["socketed"] else ("Choose it for %s in the Spellbook (L)." % rite)], "good")
+		if r.data["socketed"]:
+			ui.notify("rune_socketed")
+		panel.sel_item = {}
 	_end()
 
 

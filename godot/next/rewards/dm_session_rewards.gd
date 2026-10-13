@@ -532,7 +532,7 @@ func on_boss_defeated(ev: Dictionary) -> void:
 			m.prog.record_prelate_kill()
 		_ground(m, {"kind": "gold", "amount": int(reward["gold"]) + int(reward["materialGold"])}, at)
 		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
-		_drop_items(m, at, reward["items"], level, "boss", DmLootRunes.boss_pool(id))
+		_drop_items(m, at, reward["items"], level, "boss")
 		if first_item != null:
 			_drop_items(m, at, [first_item], level, "first_kill")
 		m.stats["xp_applied"] += int(reward["xp"])
@@ -555,7 +555,7 @@ func on_surge_cleared(ev: Dictionary) -> void:
 		var m: DmRewardsMember = members[cid]
 		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
 			continue
-		_drop_items(m, at, [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge", DmLootRunes.area_pool(String(ev["area"])))
+		_drop_items(m, at, [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge")
 		_ground(m, {"kind": "gold", "amount": gold}, at)
 
 
@@ -587,7 +587,9 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 		if la != null:
 			loot_area = String(la)
 	m.sync_brews()   # Tonic of wisdom / Fortune brew
-	var reward: Dictionary = DmLoot.roll_kill(String(ev["def"]), loot_area, level, elite, wave_tier, rng, difficulty, 1.0 + m.fortune, Callable(), Callable(), String(m.discipline["id"]), Callable(m, "owned_ids"))
+	var reward: Dictionary = DmLoot.roll_kill(String(ev["def"]), loot_area, level, elite, wave_tier, rng, difficulty, 1.0 + m.fortune, Callable(), Callable(), String(m.discipline["id"]), Callable(m, "owned_ids"), DmLootRunes.pity_mult(m.rune_dry))
+	if elite and not DmLootRunes.area_pool(loot_area).is_empty() and not reward["items"].any(func(d: Dictionary) -> bool: return _new_rune(m, d)):
+		m.rune_dry += 1
 	var chain_mult := 1.0
 	var area_def: Dictionary = DmContent.area(area)
 	var combat: bool = not bool(area_def["safe"])
@@ -612,7 +614,7 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 	if int(reward["shards"]) > 0:
 		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
 	# Ordinary kills drop half as often, so their gear rolls at elite quality (as in the original game).
-	_drop_items(m, at, reward["items"], level, "elite", DmLootRunes.area_pool(loot_area))
+	_drop_items(m, at, reward["items"], level, "elite")
 	if combat:
 		var nb := DmEnemyStats.new_blood_xp_mult(String(m.discipline["family"]), float(m.prog.character["level"]))
 		m.reporter.kill({"area": area, "def": ev["def"], "level": level, "elite": elite, "tier": wave_tier, "diff": difficulty, "rank": ascension,
@@ -630,23 +632,31 @@ func _ground(m: DmRewardsMember, d: Dictionary, at: Vector3) -> void:
 
 
 ## Items from a source other than a kill (a Depths floor, its chest) for one member: the same landing path (gear rolled by the member's backend).
-func drop_items_for(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String, rune_pool: Array = []) -> void:
-	_drop_items(m, at, items, level, source, rune_pool)
+func drop_items_for(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String) -> void:
+	_drop_items(m, at, items, level, source)
 
 
 ## Materials land at once; gear first gets its roll from the member's own backend (server RNG online, the offline backend offline).
-## A rune carries `rune_pool` (the runes its source drops) so the owner's loot view can swap a known rune for one they lack (DmLootRunes.resolve).
-func _drop_items(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String, rune_pool: Array = []) -> void:
+## A new rune landing resets the member's rising rune chance (rune_dry).
+func _drop_items(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String) -> void:
 	var gear: Array = []
 	for d in items:
-		if DmRunes.is_rune_id(d["item_id"]):
-			d["rune_pool"] = rune_pool
+		if _new_rune(m, d):
+			m.rune_dry = 0
 		if DmAffixes.can_roll(d["item_id"]):
 			gear.append(d)
 		else:
 			_ground(m, d, at)
 	if not gear.is_empty():
 		_land_gear(m, at, gear, level, source)
+
+
+## A rune the member does not have yet. A rune the member owns does not drop (DmLootView.rune_owned) and counts as no rune for rune_dry;
+## a remote member's runes are not known here, so every rune it is dropped counts as new.
+func _new_rune(m: DmRewardsMember, d: Dictionary) -> bool:
+	if not DmRunes.is_rune_id(d["item_id"]):
+		return false
+	return m.remote or m.loot_view == null or not m.loot_view.rune_owned.is_valid() or not bool(m.loot_view.rune_owned.call(d))
 
 
 func _land_gear(m: DmRewardsMember, at: Vector3, gear: Array, level: float, source: String) -> void:

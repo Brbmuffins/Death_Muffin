@@ -1,6 +1,6 @@
 extends SceneTree
 ## Headless tests for godot/loot_view (DmLootView, loot rework 2026-10-12): gold and shards credited at once, items only taken by a pickup
-## request once the hero reaches them, 3 min expiry, the item cap, runes through rune_resolve (bag / ground / shards), legendary signal,
+## request once the hero reaches them, 3 min expiry, the item cap, runes through rune_owned (bag / ground / not dropped), legendary signal,
 ## screen picking, render budget.
 ## Run: /home/ubuntu/tools/godot/godot --headless --path godot --script res://tests/loot_view/run.gd
 
@@ -109,20 +109,9 @@ func t_expiry_and_cap() -> void:
 	v.free()
 
 
-## Runes: a new one goes straight into the bag (rune_found), a known one is swapped for an unowned one of the pool, a complete pool pays shards,
-## a full bag leaves the rune on the ground. DmLootRunes.resolve is the rule.
+## Runes: a new one goes straight into the bag (rune_found), one the player has does not drop at all, a full bag leaves the rune on the
+## ground.
 func t_runes() -> void:
-	ok(DmLootRunes.resolve("rune_splinter", ["rune_splinter", "rune_impale"], {}) == {"item_id": "rune_splinter"}, "a new rune stays itself")
-	ok(DmLootRunes.resolve("rune_splinter", ["rune_splinter", "rune_impale"], {"rune_splinter": true}) == {"item_id": "rune_impale"}, "a known rune becomes one the player lacks")
-	ok(DmLootRunes.resolve("rune_contagion", ["rune_contagion"], {"rune_contagion": true}) == {"shards": 2}, "a complete pool: a rare pays 2 shards")
-	ok(DmLootRunes.resolve("rune_requiem", ["rune_requiem"], {"rune_requiem": true}) == {"shards": 3}, "an epic pays 3")
-	ok(DmLootRunes.resolve("rune_splinter", ["rune_splinter"], {"rune_splinter": true}) == {"shards": 1}, "an uncommon pays 1")
-	var all := {}
-	for id in DmLootRunes.all_ids():
-		all[id] = true
-	all.erase("rune_volley")
-	ok(DmLootRunes.resolve("rune_splinter", [], all) == {"item_id": "rune_volley"}, "an empty pool means every rune")
-
 	var v := _view()
 	var bag: Array = []
 	var room := [true]
@@ -131,21 +120,15 @@ func t_runes() -> void:
 			bag.append(d)
 		return room[0]
 	var owned := {"rune_splinter": true}
-	v.rune_resolve = func(d): return DmLootRunes.resolve(String(d["item_id"]), d.get("rune_pool", []), owned)
+	v.rune_owned = func(d): return owned.has(String(d["item_id"]))
 	var found := []
-	var known := []
 	v.rune_found.connect(func(d, _p): found.append(d["item_id"]))
-	v.rune_known.connect(func(n, id, _p): known.append([n, id]))
-	ok(v.drop({"item_id": "rune_impale", "quantity": 1, "rune_pool": ["rune_impale"]}, Vector3.ZERO) == "auto", "new rune: into the bag")
-	ok(found == ["rune_impale"] and bag.size() == 1 and not bag[0].has("rune_pool") and v.count() == 0, "rune_found, nothing on the ground, pool tag dropped")
-	ok(v.drop({"item_id": "rune_splinter", "quantity": 1, "rune_pool": ["rune_splinter", "rune_marrow_tap"]}, Vector3.ZERO) == "auto" and found[-1] == "rune_marrow_tap", "known rune swapped for one the player lacks")
-	owned["rune_marrow_tap"] = true
-	ok(v.drop({"item_id": "rune_splinter", "quantity": 1, "rune_pool": ["rune_splinter", "rune_marrow_tap"]}, Vector3.ZERO) == "shards" and known == [[1, "rune_splinter"]], "complete pool: shards")
-	var ev := v.tick(0.016, Vector3.ZERO)
-	ok(ev.size() == 1 and ev[0]["kind"] == "shard" and int(ev[0]["amount"]) == 1, "the shards are credited like any shard %s" % [ev])
+	ok(v.drop({"item_id": "rune_impale", "quantity": 1}, Vector3.ZERO) == "auto", "new rune: into the bag")
+	ok(found == ["rune_impale"] and bag.size() == 1 and v.count() == 0, "rune_found, nothing on the ground")
+	ok(v.drop({"item_id": "rune_splinter", "quantity": 1}, Vector3.ZERO) == "owned" and found.size() == 1 and bag.size() == 1 and v.count() == 0, "a rune the player has: nothing drops")
+	ok(v.tick(0.016, Vector3.ZERO).is_empty(), "and nothing is credited instead (no shards)")
 	room[0] = false
-	ok(v.drop({"item_id": "rune_contagion", "quantity": 1, "rune_pool": ["rune_contagion"]}, Vector3.ZERO) == "ground" and v.count() == 1, "full bag: the rune waits on the ground")
-	ok(not v._drops[0]["item"].has("rune_pool"), "a grounded rune drops its pool tag")
+	ok(v.drop({"item_id": "rune_contagion", "quantity": 1}, Vector3.ZERO) == "ground" and v.count() == 1, "full bag: the rune waits on the ground")
 	v.free()
 
 

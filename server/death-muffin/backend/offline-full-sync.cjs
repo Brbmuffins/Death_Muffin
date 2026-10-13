@@ -57,6 +57,7 @@ async function capture(conn, characterId, username) {
   const [laborRows] = await conn.execute('SELECT slot, node_type, started_at FROM character_labor WHERE character_id = ? ORDER BY slot', [characterId]);
   const [[cosRow]] = await conn.execute('SELECT cape, pet FROM character_cosmetics WHERE character_id = ?', [characterId]);
   const [petRows] = await conn.execute('SELECT pet_id FROM character_pets WHERE character_id = ? ORDER BY pet_id', [characterId]);
+  const [runeRows] = await conn.execute('SELECT rune_id FROM character_runes WHERE character_id = ? ORDER BY rune_id', [characterId]);
   const today = contractRules.dayKey(Date.now());
   const doneToday = contractRows.filter((r) => r.day === today);
   return {
@@ -75,6 +76,7 @@ async function capture(conn, characterId, username) {
     garden: Object.fromEntries(gardenRows.map((r) => [r.plot, { plot: r.plot, seedId: r.seed_id, plantedAt: Number(r.planted_at), readyAt: Number(r.ready_at), composted: !!r.composted }])),
     labor: Object.fromEntries(laborRows.map((r) => [r.slot, { nodeType: r.node_type, startedAt: Number(r.started_at) }])),
     cosmetics: { cape: cosRow?.cape ?? null, pet: cosRow?.pet ?? null, pets: petRows.map((r) => r.pet_id) },
+    runes: runeRows.map((r) => r.rune_id),
   };
 }
 
@@ -95,6 +97,7 @@ function validate(account, onlineClass) {
     if (slot.inst != null && (slot.quantity !== 1 || affix.instanceProblem(slot.inst, 'weapon'))) throw new RangeError('Invalid item roll');
     occupied.add(index);
   }
+  if (account.runes != null && (!Array.isArray(account.runes) || account.runes.length > rune.RUNE_IDS.length || !account.runes.every(rune.isRuneId))) throw new RangeError('Invalid learned runes');
   if (!Array.isArray(account.professions) || account.professions.length > 12) throw new RangeError('Invalid professions');
   const skills = new Set();
   for (const row of account.professions) {
@@ -237,6 +240,10 @@ async function apply(conn, characterId, account) {
     if (!itemId(pet)) throw new RangeError('Invalid pet');
     await conn.execute('INSERT INTO character_pets (character_id, pet_id) VALUES (?, ?)', [characterId, pet]);
   }
+  // Learned runes are never forgotten: a load adds the save's learned runes and its socketed ones (saves from before 2026-10-13 carry only
+  // sockets), and keeps every rune learned since.
+  const learned = new Set([...(account.runes ?? []), ...account.slots.filter((s) => rune.isRuneSlot(s.slot_index)).map((s) => s.item_id)]);
+  for (const id of learned) await conn.execute('INSERT IGNORE INTO character_runes (character_id, rune_id) VALUES (?, ?)', [characterId, id]);
 }
 
 /** Saved versions kept per character; older ones are pruned after each load. */

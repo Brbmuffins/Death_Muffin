@@ -23,7 +23,7 @@ static func grimoire_state() -> Dictionary:
 
 
 static func runes() -> Dictionary:
-	return {"sockets": {"bone_needle": "rune_splinter"}, "owned": {"rune_marrow_tap": 1, "rune_volley": 2, "rune_splinter": 1}}
+	return {"sockets": {"bone_needle": "rune_splinter"}, "learned": {"rune_splinter": true, "rune_marrow_tap": true}, "owned": {"rune_volley": 2}}
 
 
 static func legion() -> Dictionary:

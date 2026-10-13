@@ -5,7 +5,7 @@ extends RefCounted
 ## State lives in one JSON file (user://dm_offline_db.json by default; "" = memory only), written atomically (tmp file + rename) after every
 ## request that changed it, so a relaunch finds exactly what the last reply promised. Tokens are "offline:<username>".
 ##
-## Every route the game calls works: auth, character, inventory (save/equip/belt/kit/rune), loot roll, loadouts (save/delete/apply), professions,
+## Every route the game calls works: auth, character, inventory (save/equip/belt/kit/rune/rune learn), learned runes, loot roll, loadouts (save/delete/apply), professions,
 ## recipes, craft, gather (+afk), salvage, reforge, boss-key, Ossuary Vault, labor, garden, cosmetics, contracts, chronicle, necro progression
 ## (save/purchase/summons/ascend/vows/unlock/boon/import), bug reports, prefs, session, offline snapshot/versions, leaderboard, kills/report.
 ## Rules come from the already-ported modules (rules/gathering, rules/inventory, rules/loot, rules/progression, rules/combat); the wording of every
@@ -433,7 +433,7 @@ func _route(method: String, p: String, query: String, body: Dictionary, token: V
 		return _route_post(acc, p, body)
 	return _err("Offline backend: no route for %s %s" % [method, p], 404)
 
-var _get_re: RegEx = RegEx.create_from_string("^/api/(inventory|professions|chronicle|necro-progress|loadouts|vault|labor|garden|cosmetics|contracts)/(\\d+)$")
+var _get_re: RegEx = RegEx.create_from_string("^/api/(inventory|professions|chronicle|necro-progress|loadouts|vault|labor|garden|cosmetics|contracts|runes)/(\\d+)$")
 
 func _route_get(acc: Dictionary, p: String) -> Dictionary:
 	var m := _get_re.search(p)
@@ -457,6 +457,7 @@ func _route_get(acc: Dictionary, p: String) -> Dictionary:
 			"garden": return _ok(_garden_view(acc, _now()))
 			"cosmetics": return _ok(_cos_view(acc))
 			"contracts": return _ok(_contract_view(acc)["view"])
+			"runes": return _ok({"learned": _learned(acc)})
 	match p:
 		"/api/prefs": return _ok(acc["prefs"])
 		"/api/bug-reports/mine":
@@ -542,6 +543,7 @@ func _route_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 		"/api/inventory/belt": return _belt(acc, body)
 		"/api/inventory/kit": return _kit(acc, body)
 		"/api/inventory/rune": return _rune(acc, body)
+		"/api/inventory/rune/learn": return _rune_learn(acc, body)
 		"/api/loot/roll-gear": return _roll_gear(acc, body)
 		"/api/craft": return _craft(acc, body)
 		"/api/salvage": return _salvage(acc, body)
@@ -865,20 +867,12 @@ func _kit(acc: Dictionary, body: Dictionary) -> Dictionary:
 		slot["equipped"] = 0
 	return _ok(_rows(acc))
 
-## Put one unit of an item back in the bag (onto a stack with room, else a free slot). False when there is no room.
-func _give_back_rune(acc: Dictionary, id: String) -> bool:
-	var cap := _stack_of(id, 99)
-	for s in acc["slots"]:
-		if int(s["slot_index"]) < BAG and s["item_id"] == id and not _truthy(s.get("equipped")) and s.get("instance_id") == null and int(s["quantity"]) < cap:
-			s["quantity"] = int(s["quantity"]) + 1
-			return true
-	var free := _free_bag_slot(acc)
-	if free < 0:
-		return false
-	acc["slots"].append({"slot_index": free, "item_id": id, "quantity": 1, "equipped": 0})
-	return true
+## The runes the character has learned (server table character_runes), in rune order.
+func _learned(acc: Dictionary) -> Array:
+	var have: Array = acc.get("runes", [])
+	return DmLootRunes.all_ids().filter(func(id): return have.has(id))
 
-## Relic rune sockets: the same moves as server runes.cjs.
+## Relic rune sockets: the same moves as server runes.cjs (a socket takes any learned rune of its rite; the bag is never touched).
 func _rune(acc: Dictionary, body: Dictionary) -> Dictionary:
 	var rite := String(body.get("rite", "")) if body.get("rite") != null else ""
 	var item_id: Variant = null if body.get("itemId") == null else String(body["itemId"])
@@ -892,31 +886,41 @@ func _rune(acc: Dictionary, body: Dictionary) -> Dictionary:
 		if current == null:
 			return _fail("That socket is empty.")
 		acc["slots"] = acc["slots"].filter(func(s): return not is_same(s, current))
-		if not _give_back_rune(acc, current["item_id"]):
-			acc["slots"].append(current)
-			return _fail("Your bag is full. Make room, then take the rune out.")
 		return _ok(_rows(acc))
 	if current != null and current["item_id"] == item_id:
 		return _ok(_rows(acc))
-	var from: Variant = null
-	for s in acc["slots"]:
-		if int(s["slot_index"]) < BAG and s["item_id"] == item_id and not _truthy(s.get("equipped")) and s.get("instance_id") == null and int(s["quantity"]) > 0:
-			from = s
-			break
-	if from == null:
-		return _fail("You don't have that rune.")
-	var before := _clone_slots(acc)
+	if not _learned(acc).has(item_id):
+		return _fail("You haven't learned that rune yet.")
+	if current != null:
+		acc["slots"] = acc["slots"].filter(func(s): return not is_same(s, current))
+	acc["slots"].append({"slot_index": socket_slot, "item_id": item_id, "quantity": 1, "equipped": 1})
+	return _ok(_rows(acc))
+
+## Learn the rune in a bag slot (runes.cjs learnRune): one is spent, it is known for good, an empty socket of its rite takes it.
+func _rune_learn(acc: Dictionary, body: Dictionary) -> Dictionary:
+	if not (body.get("slot") is int or body.get("slot") is float):
+		return _err("characterId and slot required", 400)
+	var slot := int(body["slot"])
+	var from: Variant = _slot_at(acc, slot) if slot >= 0 and slot < BAG else null
+	if from == null or _truthy(from.get("equipped")) or int(from["quantity"]) < 1:
+		return _fail("There is no rune in that bag slot.")
+	var id := String(from["item_id"])
+	if not DmRunes.is_rune_id(id):
+		return _fail("That is not a rune.")
+	if _learned(acc).has(id):
+		return _fail("You already know this rune. Keep the copy, or grind it in the Bone Grinder for grave dust.")
 	if int(from["quantity"]) > 1:
 		from["quantity"] = int(from["quantity"]) - 1
 	else:
 		acc["slots"] = acc["slots"].filter(func(s): return not is_same(s, from))
-	if current != null:
-		acc["slots"] = acc["slots"].filter(func(s): return not is_same(s, current))
-		if not _give_back_rune(acc, current["item_id"]):
-			acc["slots"] = before
-			return _fail("Your bag is full. Make room, then take the rune out.")
-	acc["slots"].append({"slot_index": socket_slot, "item_id": item_id, "quantity": 1, "equipped": 1})
-	return _ok(_rows(acc))
+	var have: Array = acc.get("runes", [])
+	have.append(id)
+	acc["runes"] = have
+	var rite := String(DmContent.rune(id)["rite"])
+	var socketed := _slot_at(acc, DmRunes.rune_slot_index(rite)) == null
+	if socketed:
+		acc["slots"].append({"slot_index": DmRunes.rune_slot_index(rite), "item_id": id, "quantity": 1, "equipped": 1})
+	return _ok({"bag": _rows(acc), "learned": _learned(acc), "rune": id, "socketed": socketed})
 
 # --- loadouts ----------------------------------------------------------------------------------------------------------------------
 
@@ -956,7 +960,7 @@ func _loadouts_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 			var e := _equip_slot(id)
 			es = null if e.is_empty() else e
 		return {"maxStack": _stack_cap(id), "equipSlot": es, "twoHanded": _is_two_handed(id)}
-	var res := DmOfflineLoadout.apply_loadout(rows, info, preset)
+	var res := DmOfflineLoadout.apply_loadout(rows, info, preset, _learned(acc))
 	var after: Array = []
 	for x in res["rows"]:
 		var out := {"slot_index": int(x["slot_index"]), "item_id": x["item_id"], "quantity": int(x["quantity"]), "equipped": 1 if _truthy(x.get("equipped")) else 0}
@@ -1897,7 +1901,7 @@ func _capture(acc: Dictionary) -> Dictionary:
 		slots.append(row)
 	slots.sort_custom(func(a, b): return a["slot_index"] < b["slot_index"])
 	return {"username": acc["username"], "character": acc["character"].duplicate(true), "slots": slots, "professions": acc["professions"].duplicate(true),
-		"necro": acc.get("necro", {}), "chronicle": _chron(acc).duplicate(true)}
+		"necro": acc.get("necro", {}), "chronicle": _chron(acc).duplicate(true), "runes": _learned(acc)}
 
 func _fingerprint(snap: Dictionary) -> String:
 	return JSON.stringify(snap, "", true).sha256_text()
@@ -1969,6 +1973,12 @@ func _offline_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 		acc["necro"] = incoming["necro"].duplicate(true)
 	if incoming.get("chronicle") is Dictionary:
 		acc["chronicle"] = incoming["chronicle"].duplicate(true)
+	# Learned runes are never forgotten (offline-full-sync.cjs): the save's learned and socketed runes join the ones known already.
+	var have: Array = acc.get("runes", [])
+	for id in (incoming.get("runes") if incoming.get("runes") is Array else []) + incoming["slots"].filter(func(r): return DmRunes.is_rune_slot(r.get("slot_index"))).map(func(r): return r["item_id"]):
+		if DmRunes.is_rune_id(id) and not have.has(id):
+			have.append(id)
+	acc["runes"] = have
 	var after := _capture(acc)
 	return {"status": 200, "body": {"summary": _summary(after), "fingerprint": _fingerprint(after)}}
 

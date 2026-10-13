@@ -31,6 +31,7 @@ __export(runeRules_exports, {
   ownedRunes: () => ownedRunes,
   runeEquippedSlot: () => runeEquippedSlot,
   runeFits: () => runeFits,
+  runeRiteOf: () => runeRiteOf,
   runeSlotIndex: () => runeSlotIndex,
   runeSlotRite: () => runeSlotRite,
   socketsOf: () => socketsOf,
@@ -258,6 +259,7 @@ var isRuneSlot = (slot) => Number.isInteger(slot) && slot >= RUNE_BASE && slot <
 var runeSlotRite = (slot) => isRuneSlot(slot) ? RUNE_RITES[slot - RUNE_BASE] : null;
 var runeSlotIndex = (rite) => RUNE_BASE + RUNE_RITES.indexOf(rite);
 var runeEquippedSlot = (rite) => `rune_${rite}`;
+var runeRiteOf = (runeId) => RUNES[runeId].rite;
 var runeFits = (runeId, rite) => isRuneId(runeId) && isRuneRite(rite) && RUNES[runeId].rite === rite;
 function socketsOf(rows) {
   const out = {};
@@ -284,6 +286,7 @@ var socketsSignature = (s) => RUNE_RITES.map((r) => s[r] ?? "-").join("|");
   ownedRunes,
   runeEquippedSlot,
   runeFits,
+  runeRiteOf,
   runeSlotIndex,
   runeSlotRite,
   socketsOf,

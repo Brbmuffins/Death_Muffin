@@ -104,18 +104,6 @@ class Applier:
 				out.append(i)
 		return out
 
-	func give_back(item_id: String) -> bool:
-		var cap: int = int(info.call(item_id)["maxStack"])
-		for r in rows:
-			if in_bag(r) and r["item_id"] == item_id and not r.get("equipped", 0) and inst_of(r) == null and int(r["quantity"]) < cap:
-				r["quantity"] = int(r["quantity"]) + 1
-				return true
-		var f := free_slots()
-		if f.is_empty():
-			return false
-		rows.append({"slot_index": f[0], "item_id": item_id, "quantity": 1, "equipped": 0, "equipped_slot": null, "instance_id": null})
-		return true
-
 	func snapshot() -> Array:
 		var out: Array = []
 		for r in rows:
@@ -174,7 +162,8 @@ class Applier:
 		report["applied"].append({"part": part, "rite": null, "itemId": want["itemId"]})
 		report["unchanged"] = false
 
-	func rune(rite: String, want: Variant) -> void:
+	## A socket takes any learned rune; a rune leaving one stays learned, so it needs no room (loadoutRules.ts).
+	func rune(rite: String, want: Variant, learned: Array) -> void:
 		var socket := DmRunes.rune_slot_index(rite)
 		var current: Variant = find_at(socket)
 		var cur_id: Variant = null if current == null else current["item_id"]
@@ -183,37 +172,20 @@ class Applier:
 		if want != null and not DmRunes.rune_fits(want, rite):
 			report["skipped"].append({"part": "rune", "rite": rite, "itemId": want, "reason": "wrong_slot"})
 			return
-		var snap := snapshot()
-		var reason := ""
-		if want != null:
-			var from: Variant = null
-			for r in rows:
-				if in_bag(r) and not r.get("equipped", 0) and r["item_id"] == want and inst_of(r) == null and int(r["quantity"]) > 0:
-					from = r
-					break
-			if from == null:
-				reason = "missing"
-			elif int(from["quantity"]) > 1:
-				from["quantity"] = int(from["quantity"]) - 1
-			else:
-				rows = rows.filter(func(r): return not is_same(r, from))
-		if reason == "" and current != null:
-			rows = rows.filter(func(r): return not is_same(r, current))
-			if not give_back(current["item_id"]):
-				reason = "no_room"
-		if reason == "" and want != null:
-			rows.append({"slot_index": socket, "item_id": want, "quantity": 1, "equipped": 1, "equipped_slot": "rune_" + rite, "instance_id": null})
-		if reason != "":
-			rows = snap
-			report["skipped"].append({"part": "rune", "rite": rite, "itemId": want, "reason": reason})
+		if want != null and not learned.has(want):
+			report["skipped"].append({"part": "rune", "rite": rite, "itemId": want, "reason": "missing"})
 			return
+		if current != null:
+			rows = rows.filter(func(r): return not is_same(r, current))
+		if want != null:
+			rows.append({"slot_index": socket, "item_id": want, "quantity": 1, "equipped": 1, "equipped_slot": "rune_" + rite, "instance_id": null})
 		report["applied"].append({"part": "rune", "rite": rite, "itemId": want})
 		report["unchanged"] = false
 
 
 ## Apply the gear half of a preset to the rows (pure: the input is not touched). info(item_id) -> {maxStack, equipSlot (String or null), twoHanded}.
-## Returns {rows, report}.
-static func apply_loadout(input: Array, info: Callable, preset: Dictionary) -> Dictionary:
+## `learned` = the character's learned rune ids. Returns {rows, report}.
+static func apply_loadout(input: Array, info: Callable, preset: Dictionary, learned: Array) -> Dictionary:
 	var a := Applier.new()
 	a.info = info
 	for r in input:
@@ -222,6 +194,6 @@ static func apply_loadout(input: Array, info: Callable, preset: Dictionary) -> D
 	a.hand("offhand", preset.get("offhand"), "off_hand", OFF_HAND_SLOT)
 	var runes: Dictionary = preset.get("runes", {})
 	for rite in DmRunes.rites():
-		a.rune(rite, runes.get(rite))
+		a.rune(rite, runes.get(rite), learned)
 	a.rows = DmStableSort.sorted(a.rows, func(x, y): return int(x["slot_index"]) < int(y["slot_index"]))
 	return {"rows": a.rows, "report": a.report}

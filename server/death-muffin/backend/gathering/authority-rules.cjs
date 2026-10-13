@@ -1238,6 +1238,7 @@ var ELITE_RUNE_CHANCE_BY_AREA = {
 };
 var ELITE_RUNE_CHANCE = ELITE_RUNE_CHANCE_BY_AREA.graves;
 var eliteRuneChance = (area) => ELITE_RUNE_CHANCE_BY_AREA[area] ?? ELITE_RUNE_CHANCE;
+var RUNE_PITY_MAX_MULT = 3;
 var SURGE_RUNE_CHANCE = 0.35;
 var BOSS_RUNE_POOL = {
   gravedigger: ["rune_splinter", "rune_marrow_tap", "rune_mass_grave"],
@@ -1886,7 +1887,7 @@ function buildGroundRates() {
     const poolWeight = pool.reduce((n, r) => n + RUNE_WEIGHT[RUNES[r].rarity], 0) || 1;
     for (const r of pool) {
       const share = RUNE_WEIGHT[RUNES[r].rarity] / poolWeight;
-      add(r, (kills * elite * eliteRuneChance(lootId) * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
+      add(r, (kills * elite * eliteRuneChance(lootId) * RUNE_PITY_MAX_MULT * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
     }
   };
   for (const id of AREA_ORDER) {

@@ -1078,7 +1078,8 @@ func runes_found() -> Array:
 	var raw: Variant = DmUiConfig.parse(store.get_item(key))
 	var found: Array = raw if raw is Array else []
 	var grew := false
-	for id in DmRunes.owned_runes(game.slots).keys() + DmRunes.sockets_of(game.slots).values():
+	var learned: Array = (game.learned_runes as Dictionary).keys() if "learned_runes" in game else []
+	for id in DmRunes.owned_runes(game.slots).keys() + DmRunes.sockets_of(game.slots).values() + learned:
 		if not found.has(id):
 			found.append(id)
 			grew = true

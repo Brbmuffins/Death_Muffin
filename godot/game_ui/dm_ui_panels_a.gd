@@ -228,7 +228,7 @@ func refresh_grimoire() -> void:
 	var lvl: float = ui._rite_level()
 	# Runes first without a redraw, so the grimoire is drawn once (it was drawn twice per open/refresh).
 	if ui.is_necromancer():
-		gv.set_runes({"sockets": DmRunes.sockets_of(game.slots), "owned": DmRunes.owned_runes(game.slots)}, false)
+		gv.set_runes({"sockets": DmRunes.sockets_of(game.slots), "learned": game.learned_runes if "learned_runes" in game else {}, "owned": DmRunes.owned_runes(game.slots)}, false)
 	gv.set_state({"rites": {"primary": ui.rites.primary, "keys": ui.rites.keys}, "level": lvl, "unseen": ui.rites.unseen(), "kit": ui.kit()})
 
 

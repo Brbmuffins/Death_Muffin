@@ -2,8 +2,10 @@
  * Relic runes: socketable spell modifiers (docs/agent-briefs/build-depth-aspects-runes.md §3, server/proposals/relic-runes.md).
  *
  * A rune changes HOW a rite behaves, not how hard it hits. Each of the five necromancer rites has one socket; a rune only fits
- * the rite it was made for. Runes are items (`item_type 'rune'`, stackable) that drop from elites, Grave Surges and bosses, can be
- * kept in the Vault and ground in the Bone Grinder. A socketed rune is an inventory row in a reserved slot (gameplay/runeRules.ts).
+ * the rite it was made for. Runes drop as items (`item_type 'rune'`, stackable) from elites, Grave Surges, bosses and Depths chests;
+ * clicking Learn on one in the bag spends it and the character knows that rune for good (owner 2026-10-13, `character_runes`). Only
+ * learned runes go into a socket, and a rune the character knows never drops for them again. Spare copies can be kept in the Vault or
+ * ground in the Bone Grinder. A socketed rune is an inventory row in a reserved slot (gameplay/runeRules.ts).
  *
  * Every number the sim, the cast code, the tooltips and the Codex use lives in RUNE_TUNING, so the words cannot drift from the game.
  * Item ids equal the icon file names (public/art/items/<id>.webp).
@@ -251,6 +253,13 @@ export const ELITE_RUNE_CHANCE_BY_AREA: Partial<Record<AreaId, number>> = {
 /** The first ground's chance: the floor every other ground builds on. */
 export const ELITE_RUNE_CHANCE = ELITE_RUNE_CHANCE_BY_AREA.graves!;
 export const eliteRuneChance = (area: AreaId): number => ELITE_RUNE_CHANCE_BY_AREA[area] ?? ELITE_RUNE_CHANCE;
+/**
+ * Rising drop chance (owner 2026-10-13): every elite in a rune-shedding ground that leaves no rune raises the next elite's rune chance by
+ * RUNE_PITY_STEP of the base chance, up to RUNE_PITY_MAX_MULT x the base; a rune landing starts it over. Kept per character for the session.
+ */
+export const RUNE_PITY_STEP = 0.05;
+export const RUNE_PITY_MAX_MULT = 3;
+export const runePityMult = (dry: number): number => Math.min(RUNE_PITY_MAX_MULT, 1 + Math.max(0, dry) * RUNE_PITY_STEP);
 /** The chance a Grave Surge offering is a rune instead of the area's item. */
 export const SURGE_RUNE_CHANCE = 0.35;
 /** The chance a repeat boss kill leaves a rune (the first kill, and the Prelate, always do). */

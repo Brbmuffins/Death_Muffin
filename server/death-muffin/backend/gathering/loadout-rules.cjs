@@ -313,7 +313,7 @@ function captureGear(rows) {
   }
   return { weapon: ref(MAIN_HAND_SLOT), offhand: ref(OFF_HAND_SLOT), runes };
 }
-function applyLoadout(input, info, preset) {
+function applyLoadout(input, info, preset, learned) {
   let rows = input.map((r) => ({ ...r }));
   const report = { applied: [], skipped: [], unchanged: true };
   const isEq = (r, slot) => r.slot_index === slot;
@@ -322,18 +322,6 @@ function applyLoadout(input, info, preset) {
     const out = [];
     for (let i = 0; i < BAG_SLOTS; i++) if (!used.has(i)) out.push(i);
     return out;
-  };
-  const giveBack = (itemId) => {
-    const cap = info(itemId).maxStack;
-    const stack = rows.find((r) => inBag(r) && r.item_id === itemId && !r.equipped && (r.instance_id ?? null) === null && r.quantity < cap);
-    if (stack) {
-      stack.quantity += 1;
-      return true;
-    }
-    const free = freeSlots()[0];
-    if (free === void 0) return false;
-    rows.push({ slot_index: free, item_id: itemId, quantity: 1, equipped: 0, equipped_slot: null, instance_id: null });
-    return true;
   };
   const step = (fn) => {
     const snapshot = rows.map((r) => ({ ...r }));
@@ -380,24 +368,12 @@ function applyLoadout(input, info, preset) {
       report.skipped.push({ part: "rune", rite, itemId: want, reason: "wrong_slot" });
       continue;
     }
-    const reason = step(() => {
-      if (want !== null) {
-        const from = rows.find((r) => inBag(r) && !r.equipped && r.item_id === want && (r.instance_id ?? null) === null && r.quantity > 0);
-        if (!from) return "missing";
-        if (from.quantity > 1) from.quantity -= 1;
-        else rows = rows.filter((r) => r !== from);
-      }
-      if (current) {
-        rows = rows.filter((r) => r !== current);
-        if (!giveBack(current.item_id)) return "no_room";
-      }
-      if (want !== null) rows.push({ slot_index: socket, item_id: want, quantity: 1, equipped: 1, equipped_slot: `rune_${rite}`, instance_id: null });
-      return null;
-    });
-    if (reason) {
-      report.skipped.push({ part: "rune", rite, itemId: want, reason });
+    if (want !== null && !learned.has(want)) {
+      report.skipped.push({ part: "rune", rite, itemId: want, reason: "missing" });
       continue;
     }
+    if (current) rows = rows.filter((r) => r !== current);
+    if (want !== null) rows.push({ slot_index: socket, item_id: want, quantity: 1, equipped: 1, equipped_slot: `rune_${rite}`, instance_id: null });
     report.applied.push({ part: "rune", rite, itemId: want });
     report.unchanged = false;
   }

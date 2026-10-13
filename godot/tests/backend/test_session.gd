@@ -214,7 +214,12 @@ func _run(t: SceneTree) -> void:
 	_ok(ad.ok and ad.data["adopted"] == "pet_tithe_bat", "adopt a pet", ad.error)
 
 	# --- loadouts ---
-	await api.save_inventory(cid, [_row(0, "sword_copper", 1), _row(1, "rune_splinter", 1)], 48)
+	await api.save_inventory(cid, [_row(0, "sword_copper", 1), _row(1, "rune_splinter", 2)], 48)
+	var lr := await api.rune_learn(cid, 1)
+	_ok(lr.ok and lr.data["learned"] == ["rune_splinter"] and lr.data["socketed"], "learn a rune (it fills the empty socket)", lr.error)
+	var lr2 := await api.rune_learn(cid, 1)
+	_ok(not lr2.ok and lr2.error.contains("already know"), "a known rune is not learned twice", lr2.error)
+	await api.rune_socket(cid, "bone_needle", "")
 	var lo := await api.save_loadout(cid, 0, {"name": "Session", "rites": {"primary": "bone_needle", "keys": ["a", "b", "c", "d", "e"]}, "runes": {"bone_needle": "rune_splinter"}, "weapon": {"itemId": "sword_copper"}})
 	_ok(lo.ok, "loadout save", lo.error)
 	var ap := await api.apply_loadout_preset(cid, 0)

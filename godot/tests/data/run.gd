@@ -5,7 +5,7 @@ extends SceneTree
 
 # md5 of JSON.stringify(sort_keys) of the files that were merged away (loot/content.json, progression/content.json after int
 # normalisation, combat/progression.json before its duplicated keys were dropped), recorded before they were deleted.
-const GOLD_LOOT := "8fba9415aaf06bb4b35651557047192b"   # 2026-10-12: + legendary set soul_harbingers (the Reaper's), 5 armor pieces and their items
+const GOLD_LOOT := "22eb12f5be751d010ea454490a6b8b16"   # 2026-10-13: + runes pityStep / pityMaxMult (rising rune chance)
 const GOLD_PROG := "ef52eaf07b78f1318163e29622fa56a1"
 const GOLD_COMBAT_PROG := "92bc273531f1cb361132f3bad0dfb1bf"
 

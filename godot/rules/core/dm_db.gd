@@ -225,7 +225,7 @@ static func loot_view() -> Dictionary:
 		"runes": {"order": rn.get("RUNE_ORDER"), "rarity": rarity, "weight": rn.get("RUNE_WEIGHT"), "areaPool": rn.get("AREA_RUNE_POOL"),
 			"bossPool": rn.get("BOSS_RUNE_POOL"), "eliteChanceByArea": rn.get("ELITE_RUNE_CHANCE_BY_AREA"),
 			"eliteChanceDefault": rn.get("ELITE_RUNE_CHANCE"), "surgeChance": rn.get("SURGE_RUNE_CHANCE"),
-			"bossRepeatChance": rn.get("BOSS_REPEAT_RUNE_CHANCE")},
+			"bossRepeatChance": rn.get("BOSS_REPEAT_RUNE_CHANCE"), "pityStep": rn.get("RUNE_PITY_STEP"), "pityMaxMult": rn.get("RUNE_PITY_MAX_MULT")},
 		"legendary": {"setIds": lg.get("LEGENDARY_SET_IDS"), "setDiscipline": set_disc, "drop": lg.get("LEGENDARY_DROP"),
 			"bossAreas": lg.get("LEGENDARY_BOSS_AREAS"), "starterArea": lg.get("LEGENDARY_STARTER_AREA"),
 			"bossChance": lg.get("LEGENDARY_BOSS_CHANCE"), "eliteChance": lg.get("LEGENDARY_ELITE_CHANCE")},

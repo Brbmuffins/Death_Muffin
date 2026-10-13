@@ -140,10 +140,11 @@ export function captureGear(rows: readonly { slot_index: number; item_id: string
 /**
  * Apply the gear half of a preset to the inventory rows. Pure: returns new rows (the input is not touched) and what was done and skipped.
  * Rows keep their identity fields (`id`), so a caller can persist the difference. Every step either completes or leaves the rows exactly as
- * they were and is reported as skipped, so a full bag never loses an item: whatever leaves a worn slot or a socket needs a place in the bag,
- * and without one the swap is refused ("no_room") and the old piece stays where it is.
+ * they were and is reported as skipped, so a full bag never loses an item: whatever leaves a worn slot needs a place in the bag, and without
+ * one the swap is refused ("no_room") and the old piece stays where it is. A socket takes any rune in `learned` (the character's learned
+ * runes); a rune leaving a socket stays learned, so it needs no room. A rune that is not learned is skipped as "missing".
  */
-export function applyLoadout(input: readonly Row[], info: (itemId: string) => ItemInfo, preset: Pick<LoadoutPreset, 'weapon' | 'offhand' | 'runes'>): { rows: Row[]; report: ApplyReport } {
+export function applyLoadout(input: readonly Row[], info: (itemId: string) => ItemInfo, preset: Pick<LoadoutPreset, 'weapon' | 'offhand' | 'runes'>, learned: ReadonlySet<string>): { rows: Row[]; report: ApplyReport } {
   let rows: Row[] = input.map((r) => ({ ...r }));
   const report: ApplyReport = { applied: [], skipped: [], unchanged: true };
   const isEq = (r: Row, slot: number) => r.slot_index === slot;
@@ -153,20 +154,6 @@ export function applyLoadout(input: readonly Row[], info: (itemId: string) => It
     const out: number[] = [];
     for (let i = 0; i < BAG_SLOTS; i++) if (!used.has(i)) out.push(i);
     return out;
-  };
-
-  /** Put one unit of `itemId` in the bag (onto a stack with room, else a free slot). False if there is no place. */
-  const giveBack = (itemId: string): boolean => {
-    const cap = info(itemId).maxStack;
-    const stack = rows.find((r) => inBag(r) && r.item_id === itemId && !r.equipped && (r.instance_id ?? null) === null && r.quantity < cap);
-    if (stack) {
-      stack.quantity += 1;
-      return true;
-    }
-    const free = freeSlots()[0];
-    if (free === undefined) return false;
-    rows.push({ slot_index: free, item_id: itemId, quantity: 1, equipped: 0, equipped_slot: null, instance_id: null });
-    return true;
   };
 
   /** Run a step that mutates `rows`; if it reports failure the rows are restored. */
@@ -218,24 +205,12 @@ export function applyLoadout(input: readonly Row[], info: (itemId: string) => It
       report.skipped.push({ part: 'rune', rite, itemId: want, reason: 'wrong_slot' });
       continue;
     }
-    const reason = step(() => {
-      if (want !== null) {
-        const from = rows.find((r) => inBag(r) && !r.equipped && r.item_id === want && (r.instance_id ?? null) === null && r.quantity > 0);
-        if (!from) return 'missing';
-        if (from.quantity > 1) from.quantity -= 1;
-        else rows = rows.filter((r) => r !== from);
-      }
-      if (current) {
-        rows = rows.filter((r) => r !== current);
-        if (!giveBack(current.item_id)) return 'no_room';
-      }
-      if (want !== null) rows.push({ slot_index: socket, item_id: want, quantity: 1, equipped: 1, equipped_slot: `rune_${rite}`, instance_id: null });
-      return null;
-    });
-    if (reason) {
-      report.skipped.push({ part: 'rune', rite, itemId: want, reason });
+    if (want !== null && !learned.has(want)) {
+      report.skipped.push({ part: 'rune', rite, itemId: want, reason: 'missing' });
       continue;
     }
+    if (current) rows = rows.filter((r) => r !== current);
+    if (want !== null) rows.push({ slot_index: socket, item_id: want, quantity: 1, equipped: 1, equipped_slot: `rune_${rite}`, instance_id: null });
     report.applied.push({ part: 'rune', rite, itemId: want });
     report.unchanged = false;
   }

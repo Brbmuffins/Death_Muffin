@@ -5,7 +5,7 @@ extends RefCounted
 const DB := "user://test_offline_routes.json"
 ## Every DmApi method the game / panels call. The source scan below fails when game code calls one that is not listed here (add it to the sweep).
 const SWEPT := ["register", "login", "load_or_create_character", "get_character", "change_discipline", "get_inventory", "save_inventory", "equip_item", "roll_loot",
-	"belt_tool", "kit_move", "rune_socket", "list_loadouts", "save_loadout", "delete_loadout", "apply_loadout_preset", "get_professions", "get_recipes", "craft", "gather",
+	"belt_tool", "kit_move", "rune_socket", "rune_learn", "runes_learned", "list_loadouts", "save_loadout", "delete_loadout", "apply_loadout_preset", "get_professions", "get_recipes", "craft", "gather",
 	"begin_afk_gather", "save_progress", "report_kills", "necro_get", "necro_save", "necro_purchase", "necro_summon_prelate", "necro_summon_boss", "necro_ascend",
 	"necro_vows", "necro_unlock", "necro_boon", "necro_import_local", "get_chronicle", "add_chronicle", "ascend_chronicle", "get_contracts", "deliver_contract", "get_garden",
 	"plant_garden", "harvest_garden", "get_labor", "assign_labor", "collect_labor", "get_cosmetics", "select_cosmetics", "adopt_pet", "get_vault", "vault_deposit",
@@ -80,6 +80,8 @@ func _sweep() -> void:
 	calls["belt_tool"] = await api.belt_tool(cid, 0, 0)
 	calls["kit_move"] = await api.kit_move(cid, 0, 0)
 	calls["rune_socket"] = await api.rune_socket(cid, "bone_needle", "")
+	calls["rune_learn"] = await api.rune_learn(cid, 0)
+	calls["runes_learned"] = await api.runes_learned(cid)
 	calls["list_loadouts"] = await api.list_loadouts(cid)
 	calls["save_loadout"] = await api.save_loadout(cid, 0, {"name": "x", "rites": {"primary": "bone_needle", "keys": ["a", "b", "c", "d", "e"]}})
 	calls["apply_loadout_preset"] = await api.apply_loadout_preset(cid, 0)
@@ -140,7 +142,7 @@ func _sweep() -> void:
 	for k in ["get_character", "change_discipline", "get_inventory", "save_inventory", "equip_item", "roll_loot", "list_loadouts", "save_loadout", "apply_loadout_preset",
 			"delete_loadout", "get_professions", "get_recipes", "save_progress", "report_kills", "necro_get", "necro_save", "get_chronicle", "add_chronicle", "get_contracts",
 			"get_garden", "get_labor", "assign_labor", "get_cosmetics", "select_cosmetics", "get_vault", "vault_sort", "reforge_quote", "boss_key_status", "send_bug_report",
-			"get_my_bug_reports", "get_account_prefs", "set_account_prefs", "get_leaderboard"]:
+			"get_my_bug_reports", "get_account_prefs", "set_account_prefs", "get_leaderboard", "runes_learned"]:
 		_ok(calls[k].ok, "succeeds: " + k, "%d %s" % [calls[k].status, calls[k].error])
 	_ok(not (await api.get_patch_notes()).ok, "patch notes are not served offline")
 	var claim := await api.claim_session(api.get_token())

@@ -9,11 +9,12 @@
  *
  * Apply loads the preset from the table (the client never sends the gear to wear), locks every inventory row of the character, runs the same
  * pure rules the offline mock runs (applyLoadout) and writes the difference in ONE transaction. A piece that is not in the bag (sold,
- * salvaged, in the Vault) or has no room to swap is skipped and named in `report.skipped`; the rest is applied. Rites are not stored on the
+ * salvaged, in the Vault), a rune not learned, or a swap with no room is skipped and named in `report.skipped`; the rest is applied. Rites are not stored on the
  * server's inventory; the client applies `preset.rites` itself.
  */
 const rules = require('./gathering/loadout-rules.cjs');
 const store = require('./bag-store.cjs');
+const { learnedOf } = require('./runes.cjs');
 
 const parseData = (v) => (typeof v === 'string' ? JSON.parse(v) : v);
 
@@ -65,7 +66,7 @@ async function applyPreset(conn, characterId, preset) {
   const [infoRows] = await conn.query('SELECT id, stackable, max_stack_size, equipment_slot, two_handed FROM items WHERE id IN (?)', [[...new Set(before.map((r) => r.item_id).concat([preset.weapon && preset.weapon.itemId, preset.offhand && preset.offhand.itemId].filter(Boolean), Object.values(preset.runes)))]]);
   const map = new Map(infoRows.map((r) => [r.id, { maxStack: Number(r.stackable) ? Math.max(1, Number(r.max_stack_size) || 1) : 1, equipSlot: r.equipment_slot || null, twoHanded: !!Number(r.two_handed) }]));
   const info = (id) => map.get(id) || { maxStack: 1, equipSlot: null, twoHanded: false };
-  const { rows: after, report } = rules.applyLoadout(before, info, preset);
+  const { rows: after, report } = rules.applyLoadout(before, info, preset, new Set(await learnedOf(conn, characterId, true)));
   await persist(conn, characterId, before, after);
   return report;
 }

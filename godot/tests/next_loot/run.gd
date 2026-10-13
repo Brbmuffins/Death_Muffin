@@ -123,17 +123,21 @@ func _run() -> void:
 		if seen_up and seen_not:
 			break
 	check(seen_up or seen_not, "judged some gear")
-	# ---- runes: a new one goes into the bag with a chat line; a known one becomes one the player lacks; a complete pool pays shards
+	# ---- runes: a new one goes into the bag with a chat line; one the character has (bag, Vault, learned) does not drop
 	events.clear()
 	var vault_rune := "rune_marrow_tap"
 	h.note_vault({"vault": [{"item_id": vault_rune, "quantity": 1, "slot_index": 0}]})
 	n0 = h.slots.size()
-	check(lv.drop({"item_id": "rune_splinter", "quantity": 1, "rune_pool": ["rune_splinter", vault_rune]}, b.position, true) == "auto" and h.slots.size() == n0 + 1, "a new rune goes straight into the bag")
+	check(lv.drop({"item_id": "rune_splinter", "quantity": 1}, b.position, true) == "auto" and h.slots.size() == n0 + 1, "a new rune goes straight into the bag")
 	var chat := ids("chat")
 	check(chat.size() == 1 and String(chat[0]["ctx"]["text"]).begins_with("You found the Rune of Splinters"), "a chat line names it %s" % [chat])
 	check(ids("loot").size() == 1, "and the loot toast")
-	check(lv.drop({"item_id": "rune_splinter", "quantity": 1, "rune_pool": ["rune_splinter", vault_rune]}, b.position, true) == "shards", "owned in the bag + the Vault: the pool is complete, shards instead")
-	check(String(ids("chat")[-1]["ctx"]["text"]).begins_with("Known rune"), "a chat line says why")
+	check(lv.drop({"item_id": "rune_splinter", "quantity": 1}, b.position, true) == "owned", "owned in the bag: nothing drops")
+	check(lv.drop({"item_id": vault_rune, "quantity": 1}, b.position, true) == "owned", "owned in the Vault: nothing drops")
+	h.learned_runes["rune_requiem"] = true
+	check(lv.drop({"item_id": "rune_requiem", "quantity": 1}, b.position, true) == "owned", "learned: nothing drops")
+	h.learned_runes.clear()
+	check(ids("chat").size() == 1 and ids("loot").size() == 1, "a rune that does not drop says nothing")
 	events.clear()
 	lv.drop({"item_id": "leg_legion_unburied_head", "quantity": 1}, b.position + Vector3(8, 0, 0), true)
 	check(ids("chat").size() == 1 and String(ids("chat")[0]["ctx"]["text"]).contains("(legendary)"), "a legendary landing is a chat line")

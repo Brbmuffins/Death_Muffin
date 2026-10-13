@@ -1,7 +1,7 @@
 import { RUNES, RUNE_IDS, RUNE_RITES, isRuneId, isRuneRite, type RuneId, type RuneRite } from '../content/runes';
 
 /**
- * Relic rune sockets (2026-10-02): one socket per rite, kept the way the tool belt and the Legion kit are kept: as reserved inventory
+ * Relic rune sockets (2026-10-02; learned runes 2026-10-13, backend runes.cjs): one socket per rite, kept the way the tool belt and the Legion kit are kept: as reserved inventory
  * rows outside the 48-slot bag. A socketed rune is `equipped = 1, equipped_slot = 'rune_<rite>'` in slot RUNE_BASE + the rite's index, so
  * bag saves, crafting, selling, salvage and the Vault never see it, and the live UNIQUE (character_id, equipped_slot) key gives "one rune per
  * rite" for free. Unlike server/proposals/relic-runes.md this needs no new table; the offline full sync already carries reserved rows.
@@ -16,6 +16,9 @@ export const isRuneSlot = (slot: number) => Number.isInteger(slot) && slot >= RU
 export const runeSlotRite = (slot: number): RuneRite | null => (isRuneSlot(slot) ? RUNE_RITES[slot - RUNE_BASE] : null);
 export const runeSlotIndex = (rite: RuneRite) => RUNE_BASE + RUNE_RITES.indexOf(rite);
 export const runeEquippedSlot = (rite: RuneRite) => `rune_${rite}`;
+
+/** The rite a rune is made for. */
+export const runeRiteOf = (runeId: RuneId): RuneRite => RUNES[runeId].rite;
 
 /** Does this rune belong in this rite's socket? */
 export const runeFits = (runeId: string, rite: string): boolean => isRuneId(runeId) && isRuneRite(rite) && RUNES[runeId].rite === rite;

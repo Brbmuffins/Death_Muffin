@@ -68,7 +68,8 @@ static func settle_combat_drop(d: Dictionary, keep_gems: bool = false) -> Dictio
 	var sell := float(DmLootData.item(id).get("sell", 1))
 	return {"drop": null, "gold": maxi(1, _round(sell * float(d["quantity"])))}
 
-static func roll_kill(def: String, area: String, level: float, elite: bool, wave_tier: float, rand: Callable = Callable(), difficulty: String = "medium", item_chance_mult: float = 1.0, reagent_rand: Callable = Callable(), rune_rand: Callable = Callable(), discipline_id: String = "", owned_ids: Callable = Callable()) -> Dictionary:
+## `rune_pity` multiplies an elite's rune chance (DmLootRunes.pity_mult of the member's dry elites).
+static func roll_kill(def: String, area: String, level: float, elite: bool, wave_tier: float, rand: Callable = Callable(), difficulty: String = "medium", item_chance_mult: float = 1.0, reagent_rand: Callable = Callable(), rune_rand: Callable = Callable(), discipline_id: String = "", owned_ids: Callable = Callable(), rune_pity: float = 1.0) -> Dictionary:
 	var d := DmLootData.enemy(def)
 	var a := DmLootData.area(area)
 	var mods := wave_mods(wave_tier)
@@ -94,7 +95,7 @@ static func roll_kill(def: String, area: String, level: float, elite: bool, wave
 			items.append({"item_id": lid, "quantity": 1})
 	items.append_array(roll_reagents(def, area, elite, item_chance_mult, reagent_rand))
 	if elite:
-		var rune: Variant = roll_elite_rune(area, item_chance_mult * mods["itemChanceMult"], rune_rand)
+		var rune: Variant = roll_elite_rune(area, item_chance_mult * mods["itemChanceMult"] * rune_pity, rune_rand)
 		if rune != null:
 			items.append(rune)
 	var xp := _round(float(d["xp"]) * (1.0 + 0.25 * (level - 1.0)) * mods["xpMult"] * diff * (float(DmLootData.content()["elite"]["xpMult"]) if elite else 1.0))

@@ -10,6 +10,7 @@ extends Node
 
 signal character_changed
 signal inventory_changed
+signal learned_runes_changed   ## learned_runes changed (note_learned)
 signal progress_changed
 signal area_changed(id: String)
 signal hero_died
@@ -79,6 +80,8 @@ var _got_shards := 0
 var _got_pending := false
 var _loot_tip_sent := false
 var _vault_runes: Dictionary = {}            ## rune ids in the account's Vault (note_vault): a rune drop never repeats one the player owns
+## The character's learned runes (rune id -> true; GET /api/runes, every learn): what the Grimoire offers per rite, and never dropped again.
+var learned_runes: Dictionary = {}
 var _hero_status: Dictionary = {}            ## status id -> true while the local hero has it (a float on the way in, not on every refresh)
 var _target_id := 0
 var _target_until := 0.0
@@ -130,11 +133,11 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 		m.take_item = Callable(self, "_take")   # a walked-over drop goes into the bag, which flushes to the backend
 		m.loot_view.picked.connect(_on_picked)
 		m.loot_view.rune_found.connect(_on_rune_found)
-		m.loot_view.rune_known.connect(_on_rune_known)
 		m.loot_view.legendary_dropped.connect(_on_legendary_dropped)
-		m.loot_view.rune_resolve = Callable(self, "_resolve_rune")
+		m.loot_view.rune_owned = Callable(self, "_owns_rune")
 		m.loot_view.claim_requested.connect(_on_claim)
 		_load_vault_runes()
+	_load_learned_runes()
 	settings_store = DmSettings.new(DmSettings.FILE, persist)
 	settings_store.set_active_character(hero_id, character.get("auto_combat_allowed", false) == true)
 	settings_store.changed.connect(func(_v: Dictionary) -> void: _apply_settings_side_effects())
@@ -789,13 +792,8 @@ func _on_rune_found(drop: Dictionary, _pos: Vector3) -> void:
 	var nm := String(meta.get("name", drop["item_id"]))
 	var short := String(rune.get("short", ""))
 	var reaper := shell.local_body() != null and shell.local_body().family != "necromancer"
-	_loot_chat("You found the %s%s%s." % [nm, (": " + short.substr(0, 1).to_lower() + short.substr(1)) if short != "" else "", " (a necromancer rune)" if reaper else ""],
+	_loot_chat("You found the %s%s%s. Select it in your Reliquary (I) and click Learn." % [nm, (": " + short.substr(0, 1).to_lower() + short.substr(1)) if short != "" else "", " (a necromancer rune)" if reaper else ""],
 		"{who} found the %s." % nm)
-
-
-## Every rune this source drops is already owned: it paid soul shards instead (credited as a shard pickup).
-func _on_rune_known(shards: int, rune_id: String, _pos: Vector3) -> void:
-	game_event.emit("chat", {"text": "Known rune (%s): +%d soul shard%s." % [String(DmContent.item(rune_id).get("name", rune_id)), shards, "s" if shards > 1 else ""]})
 
 
 func _on_legendary_dropped(drop: Dictionary, _pos: Vector3) -> void:
@@ -810,14 +808,15 @@ func _loot_chat(own_line: String, party_line: String) -> void:
 	game_event.emit("chat", {"text": own_line})
 
 
-## DmLootView.rune_resolve: the dropped rune if it is new, else another of its pool the account does not own, else soul shards.
-## Owned = any rune row of the character (bag, sockets) or the Vault (note_vault).
-func _resolve_rune(drop: Dictionary) -> Dictionary:
-	var owned := _vault_runes.duplicate()
+## DmLootView.rune_owned: a rune the character has learned, holds (bag, sockets) or keeps in the Vault (note_vault) does not drop again.
+func _owns_rune(drop: Dictionary) -> bool:
+	var id := String(drop["item_id"])
+	if learned_runes.has(id) or _vault_runes.has(id):
+		return true
 	for r: Dictionary in inventory.slots:
-		if DmRunes.is_rune_id(r.get("item_id")):
-			owned[String(r["item_id"])] = true
-	return DmLootRunes.resolve(String(drop["item_id"]), drop.get("rune_pool", []), owned)
+		if r.get("item_id") == id:
+			return true
+	return false
 
 
 ## Reliquary -> Drop: the gear on `row` goes onto the party session's ground at the hero's feet (ground.cjs). It stays until the session ends;
@@ -918,6 +917,30 @@ func note_vault(data: Dictionary) -> void:
 	for r: Dictionary in data["vault"]:
 		if DmRunes.is_rune_id(r.get("item_id")):
 			_vault_runes[String(r["item_id"])] = true
+
+
+## The learned runes from a server answer ([rune ids]).
+func note_learned(ids: Variant) -> void:
+	if not (ids is Array):
+		return
+	learned_runes.clear()
+	for id in ids:
+		if DmRunes.is_rune_id(id):
+			learned_runes[String(id)] = true
+	learned_runes_changed.emit()
+
+
+func _load_learned_runes() -> void:
+	if api == null or not api.has_method("runes_learned"):
+		return
+	var r: DmResult = await api.runes_learned(hero_id)
+	if r.ok and r.data is Dictionary:
+		note_learned(r.data.get("learned"))
+
+
+## In a fight (DmNextCounsel.busy: hurt in the last 4 s, three living dead within 9 m, or a boss awake): runes cannot be swapped.
+func in_combat() -> bool:
+	return counsel != null and bool(counsel.busy()["combat"])
 
 
 func _load_vault_runes() -> void:

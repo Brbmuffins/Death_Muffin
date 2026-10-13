@@ -14,7 +14,7 @@ import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SET_IDS, legendaryBossC
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, BOSS_ICHOR } from '../content/reagents';
 import { smartTable } from './smartLoot';
 import { DISCIPLINES } from '../content/disciplines';
-import { AREA_RUNE_POOL, BOSS_RUNE_POOL, RUNE_WEIGHT, eliteRuneChance, RUNES, SURGE_RUNE_CHANCE } from '../content/runes';
+import { AREA_RUNE_POOL, BOSS_RUNE_POOL, RUNE_PITY_MAX_MULT, RUNE_WEIGHT, eliteRuneChance, RUNES, SURGE_RUNE_CHANCE } from '../content/runes';
 
 // ── Experience arithmetic ─────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -196,12 +196,12 @@ function buildGroundRates(): Record<string, number> {
     for (const d of AREA_REAGENT_DROPS[lootId] ?? []) credit(d.item, d.chance, d.qty);
     for (const e of roster) for (const d of ENEMY_REAGENT_DROPS[e.id as keyof typeof ENEMY_REAGENT_DROPS] ?? []) credit(d.item, (d.chance * e.weight) / weights, d.qty);
     for (const [item, perKill] of reagentPerKill) add(item, kills * perKill);
-    // Relic runes: an elite's small chance and a Grave Surge's offering (about one surge every two minutes), split by the pool's weights.
+    // Relic runes: an elite's small chance at its rising-chance peak and a Grave Surge's offering (about one surge every two minutes), split by the pool's weights.
     const pool = AREA_RUNE_POOL[lootId] ?? [];
     const poolWeight = pool.reduce((n, r) => n + RUNE_WEIGHT[RUNES[r].rarity], 0) || 1;
     for (const r of pool) {
       const share = RUNE_WEIGHT[RUNES[r].rarity] / poolWeight;
-      add(r, (kills * elite * eliteRuneChance(lootId) * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
+      add(r, (kills * elite * eliteRuneChance(lootId) * RUNE_PITY_MAX_MULT * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
     }
   };
   for (const id of AREA_ORDER) {

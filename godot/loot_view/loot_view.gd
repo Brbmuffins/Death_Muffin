@@ -4,8 +4,8 @@ extends Node3D
 ## - Gold and soul shards never touch the ground: drop() credits them on the next tick() as "picked" events (no mesh, no magnet).
 ## - Gear and materials wait under a rarity-coloured light pillar for LOOT_EXPIRE_S (3 min). Walking over them does nothing: the player
 ##   clicks one (pick() + request_pickup()), walks there, and it is taken once the hero is within ITEM_PICKUP_RADIUS. Loot never flies.
-## - Runes: drop() asks `rune_resolve` for a rune the player does not own (else soul shards) and puts it straight into the bag
-##   (`rune_found`); a full bag leaves it on the ground like any item. Legendaries landing raise `legendary_dropped` (the chat line).
+## - Runes: drop() asks `rune_owned` whether the player has it already (then it does not drop at all: owner 2026-10-13) and puts a new
+##   one straight into the bag (`rune_found`); a full bag leaves it on the ground like any item. Legendaries landing raise `legendary_dropped` (the chat line).
 ## - Shared drops (shared_item): gear someone dropped from a bag (ground.cjs). It stays until the session ends, outside the cap, and reaching
 ##   it raises `claim_requested`: the server hands it over (the first pickup wins), then the owner calls remove_shared().
 ## Past LOOT_ITEM_CAP items the oldest go early, ordinary before epic/legendary.
@@ -21,7 +21,6 @@ extends Node3D
 signal picked(event: Dictionary)          ## gold / shard credited, or an item taken by a pickup request
 signal expired(drop: Dictionary, reason: String)  ## reason "ttl" or "cap" (removed without payout)
 signal rune_found(drop: Dictionary, pos: Vector3)             ## a rune the player did not own went straight into the bag
-signal rune_known(shards: int, rune_id: String, pos: Vector3)  ## every rune of the pool was owned: paid as soul shards instead (also a "shard" picked event)
 signal legendary_dropped(drop: Dictionary, pos: Vector3)      ## a legendary landed on the ground
 signal dropped_sound(sound_id: String, pos: Vector3)          ## lootDrop / lootDropRare / lootDropEpic / lootDropLegendary
 signal claim_requested(drop: Dictionary)                      ## the hero reached a shared drop (gear a party member dropped): the server decides
@@ -40,8 +39,8 @@ const RARITY_COLORS := {"common": "#b9b2a4", "uncommon": "#8fb98a", "rare": "#8f
 
 ## Callable(drop)->bool: put it in the bag; false when full (the item then stays until it expires).
 var try_take: Callable = Callable()
-## Callable(drop)->Dictionary for a rune drop: {"item_id": id} (a rune the player does not own) or {"shards": n} (DmLootRunes.resolve). Empty = the rune lands as dropped.
-var rune_resolve: Callable = Callable()
+## Callable(drop)->bool for a rune drop: true = the player has it already (learned, bag, sockets, Vault) and it does not drop. Empty = it drops.
+var rune_owned: Callable = Callable()
 ## Callable()->float in [0,1) used for scatter (TS Math.random). Empty = randf.
 var rand: Callable = Callable()
 var show_labels := false   ## always show every name (QA / screenshots)
@@ -90,9 +89,9 @@ func _scatter_apart(p: Vector3, r: float) -> Vector2:
 
 # ---------------------------------------------------------------- dropping
 
-## Land a drop. Item drop dict = {item_id, quantity, instance?, rune_pool?}; gold = {kind:"gold", amount}; shard = {kind:"shard", amount}.
-## `exact` skips the scatter (tests / replaying a recorded position). Returns "auto" (credited / into the bag), "shards" (a known rune paid
-## as shards) or "ground".
+## Land a drop. Item drop dict = {item_id, quantity, instance?}; gold = {kind:"gold", amount}; shard = {kind:"shard", amount}.
+## `exact` skips the scatter (tests / replaying a recorded position). Returns "auto" (credited / into the bag), "owned" (a rune the player
+## has already: nothing drops) or "ground".
 func drop(d: Dictionary, pos: Vector3, exact: bool = false) -> String:
 	var kind: String = str(d.get("kind", "item"))
 	if kind == "gold":
@@ -108,22 +107,12 @@ func drop(d: Dictionary, pos: Vector3, exact: bool = false) -> String:
 
 
 func _rune(d: Dictionary, pos: Vector3, exact: bool) -> String:
-	var it := d
-	if rune_resolve.is_valid():
-		var res: Dictionary = rune_resolve.call(d)
-		if res.has("shards"):
-			var n := int(res["shards"])
-			rune_known.emit(n, str(d["item_id"]), pos)
-			shard(pos, n, exact)
-			return "shards"
-		if str(res.get("item_id", d["item_id"])) != str(d["item_id"]):
-			it = d.duplicate()
-			it["item_id"] = res["item_id"]
-	it.erase("rune_pool")
-	if try_take.is_valid() and bool(try_take.call(it)):
-		rune_found.emit(it, pos)
+	if rune_owned.is_valid() and bool(rune_owned.call(d)):
+		return "owned"
+	if try_take.is_valid() and bool(try_take.call(d)):
+		rune_found.emit(d, pos)
 		return "auto"
-	item(pos, it, exact)   # the bag is full: it waits on the ground like any item
+	item(pos, d, exact)   # the bag is full: it waits on the ground like any item
 	return "ground"
 
 

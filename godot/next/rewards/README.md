@@ -32,7 +32,7 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
   (the node calls `DmGameRewards.boss_reward_eligible` itself, no copy). Inert defs pay nothing.
 - Per member: `DmLoot.roll_kill` (items/reagents/runes/shards/gold/xp), Kill Chain only for the killer in unsafe ground, ascension and omen
   multipliers, wisdom on XP, new-blood XP catch-up, gold pooled over `goldEveryKills` kills (elites always pay out), "elite" gear quality.
-- Gold and shards are credited at once; items wait 3 min for a click (pickup within 1.3 m), loot never flies to anyone (DmLootView). Rune drops carry `rune_pool` (their source's pool) for the owner's rune rule.
+- Gold and shards are credited at once; items wait 3 min for a click (pickup within 1.3 m), loot never flies to anyone (DmLootView). A rune the owner already has (learned, bag, sockets, Vault) does not drop at all (`DmLootView.rune_owned`). Each member's `rune_dry` (elites in rune-shedding ground without a new rune) raises the next elite's rune chance (`DmLootRunes.pity_mult`, DECISIONS B17); a new rune resets it (a remote member's runes are not known to the host: any rune resets it).
 
 ## Backend flow
 

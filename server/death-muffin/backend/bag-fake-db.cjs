@@ -50,12 +50,14 @@ const ITEMS = {
   rune_requiem: { type: 'rune', rarity: 'epic', stack: 99 },
 };
 
-function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot = [], charLevel = 10, extra = null, ground = [] } = {}) {
+function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot = [], charLevel = 10, extra = null, ground = [], runes = [] } = {}) {
   let inv = [
     ...bag.map((b, i) => ({ id: i + 1, equipped: 0, equipped_slot: null, character_id: 1, ...b })),
     ...equipped.map((e, i) => ({ id: 800 + i, equipped: 1, equipped_slot: e.equipped_slot || 'main_hand', character_id: 1, ...e })),
   ];
   let loadouts = [];
+  // character_runes (migration 044): the learned rune ids of character 1.
+  let learned = [...runes];
   let vlt = vault.map((v) => ({ account_id: 7, ...v }));
   // loot_instances: { id, account_id, item_id, ilvl, affixes, created_at }. inventory/account_vault rows point at them with instance_id.
   let lootRows = loot.map((l) => ({ account_id: 7, ilvl: 5, affixes: [], created_at: Date.now(), ...l }));
@@ -99,6 +101,9 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
       inv.push(row);
       return [{ insertId: row.id }];
     }
+    // Learned runes (runes.cjs): read (optionally locked) and learn one (the primary key makes it a no-op twice).
+    if (sql.startsWith('SELECT rune_id FROM character_runes')) return [p[0] === 1 ? learned.map((rune_id) => ({ rune_id })) : []];
+    if (sql.startsWith('INSERT IGNORE INTO character_runes')) { if (!learned.includes(p[1])) learned.push(p[1]); return [{}]; }
     // The tool belt (tool-belt.cjs): lock every row, then move rows by id (the unique key is character + slot).
     if (sql.startsWith('SELECT id, slot_index, item_id FROM inventory')) return [inv.filter((r) => r.character_id === p[0]).map((r) => ({ ...r }))];
     if (sql.startsWith('UPDATE inventory SET slot_index = ?')) {
@@ -196,12 +201,12 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
   let snap = null;
   const conn = {
     execute, query, release: () => {},
-    beginTransaction: async () => { snap = { loadouts: JSON.parse(JSON.stringify(loadouts)), inv: JSON.parse(JSON.stringify(inv)), vlt: JSON.parse(JSON.stringify(vlt)), prof: { ...prof }, loot: JSON.parse(JSON.stringify(lootRows)) }; },
+    beginTransaction: async () => { snap = { learned: [...learned], loadouts: JSON.parse(JSON.stringify(loadouts)), inv: JSON.parse(JSON.stringify(inv)), vlt: JSON.parse(JSON.stringify(vlt)), prof: { ...prof }, loot: JSON.parse(JSON.stringify(lootRows)) }; },
     commit: async () => { snap = null; },
-    rollback: async () => { if (snap) { loadouts = snap.loadouts; inv = snap.inv; vlt = snap.vlt; prof = snap.prof; lootRows = snap.loot; snap = null; } },
+    rollback: async () => { if (snap) { learned = snap.learned; loadouts = snap.loadouts; inv = snap.inv; vlt = snap.vlt; prof = snap.prof; lootRows = snap.loot; snap = null; } },
   };
   return {
-    get inv() { return inv; }, get loadouts() { return loadouts; }, get vault() { return vlt; }, get prof() { return prof; }, get loot() { return lootRows; }, calls, conn,
+    get inv() { return inv; }, get learned() { return learned; }, get loadouts() { return loadouts; }, get vault() { return vlt; }, get prof() { return prof; }, get loot() { return lootRows; }, calls, conn,
     pool: { getConnection: async () => conn, execute: (...a) => execute(...a), query },
   };
 }
