@@ -21,6 +21,11 @@ class ErrLog extends Logger:
 				out += " < %s:%d %s" % [b.get_frame_file(i).get_file(), b.get_frame_line(i), b.get_frame_function(i)]
 		return out
 	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor: bool, error_type: int, bt: Array) -> void:
+		# The headless (dummy) renderer reports 'Parameter "material" is null' from material_get_instance_shader_parameters once loot item icons (Sprite3D)
+		# lie on the ground during the crowd perf probe (since gear always lands, 8b4bdb1b). Only that renderer's storage says it; GPU renderers draw the
+		# same icons in game. Ignored only from the dummy storage.
+		if file.ends_with("dummy/storage/material_storage.cpp") and function == "material_get_instance_shader_parameters":
+			return
 		if error_type != Logger.ERROR_TYPE_WARNING:
 			var at := "?"
 			if suite != null:
