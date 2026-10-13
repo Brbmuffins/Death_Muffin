@@ -260,6 +260,11 @@ func _reinforce() -> void:
 	if r.ok:
 		_reinforce_bought = true
 		ui.play("buy")
+		# Show the new tier and gold the moment the purchase answers; the reads below (progress, character, cosmetics) are network round trips that made the window trail the click.
+		var reply: Variant = r.data.get("progress") if r.data is Dictionary else null
+		if reply is Dictionary and reply.has("legionTier"):
+			game.progress["legionTier"] = maxi(int(game.progress.get("legionTier", 0)), int(reply["legionTier"]))
+		render_legion()
 	else:
 		_reinforce_error = "Not enough gold." if r.error == "" else r.error
 	if _reinforce_pending > 0:   # purchases are served in order: re-reading progress, character and stats after every click is what lagged, so only the last one does
