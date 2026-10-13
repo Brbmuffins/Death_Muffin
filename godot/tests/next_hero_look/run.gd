@@ -233,6 +233,13 @@ func _replication(api0: DmApi, ch: Dictionary) -> void:
 	check(hb.avatar._cape != null and hb.avatar._cape.id == "cape_mining", "F: the host's cape shows on the client")
 	check(cg.look.pet_of(1) != null and cg.look.pet_of(1).id() == "pet_tithe_bat", "F: the host's pet shows on the client")
 	check(hb.avatar.lantern == null, "F: a puppet carries no lantern (one light, the local hero's)")
+	# a joiner's own body is a puppet on its client: its family (hotbar kit, HUD, auto combat) comes from the replicated discipline
+	var rp := DmHeroBody.new()
+	rp.discipline_id = "reaper"
+	root.add_child(rp)
+	check(rp.family == "reaper", "F: a Reaper puppet plays the Reaper kit (co-op joiner got necro rites)")
+	check(DmRiteHotbar.rite_for_slot(1, rp.family, rp.discipline_id) == String(DmContent.kit("reaper")["defaultLoadout"][0]), "F: ...and its hotbar slot 1 is a Reaper rite")
+	rp.free()
 	var cb := hg.body_of(cg.session.get_my_id())
 	check(await until(func() -> bool: return cb != null and cb.avatar != null and _worn(cb.avatar, "head") != null, 10.0), "F: the client's helm shows on the host's puppet of it")
 	check(hg.look.pet_of(cg.session.get_my_id()) == null and cb.avatar._cape == null, "F: the client's no-cape no-pet look is respected")

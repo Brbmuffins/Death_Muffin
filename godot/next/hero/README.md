@@ -2,6 +2,8 @@
 
 `dm_hero_body.gd` (`DmHeroBody`): the session body (DmAvatar model, vitals, navmesh mover, collider, enemy target contract). The avatar's
 lantern is the **local** hero's only (a remote puppet carries none: one light per peer).
+The host derives `family` (hotbar kit, HUD resource, auto combat) from the bound character; every other peer's puppets derive it from the
+replicated `discipline_id` (`DmHeroBody.family_of`), so a joining Reaper plays the Reaper kit on its own client.
 
 `dm_hero_look.gd` (`DmHeroLook`, child `Look` of DmNextGame, same path on every peer): worn gear, cape, pet and hero ring.
 - **Gear**: `DmAvatar.set_equipment` (weapon in hand, off-hand, helm / hide-helm, light body tints by rarity, set look) from the

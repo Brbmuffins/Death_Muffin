@@ -73,8 +73,15 @@ func _ready() -> void:
 	_make_avatar.call_deferred()
 	if simulated:
 		_init_state()   # before the caster attaches: it builds from the body's character (its discipline)
+	else:
+		family = family_of(discipline_id)   # puppets never run _init_state: a joiner's own Reaper would read the default kit (hotbar, HUD, auto combat)
 	if game != null and game.has_method("attach_caster"):
 		game.attach_caster(self)
+
+
+## The class family of a discipline id ("necromancer" for an unknown or empty one).
+static func family_of(disc: String) -> String:
+	return String(DmContent.discipline(disc).get("family", "necromancer"))
 
 
 ## Host: give the body its character. A joiner without one plays a level-1 default of its discipline.
