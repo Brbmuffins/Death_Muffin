@@ -4,11 +4,27 @@ The game is the Godot online client, necromancers plus the Reaper (a scythe clas
 over new content, necromancer focus. Open gaps are listed once, in [KNOWN-GAPS.md](KNOWN-GAPS.md); decisions in
 [DECISIONS.md](DECISIONS.md).
 
-## Now: co-op and server authority (the next update, owner plan 2026-10-13)
+## Now: server authority and co-op (the next update, owner plan 2026-10-13)
 
-Owner rule: **all player data is server-side.** A host never trusts a guest's client for level, gear, vows or progress, and
-a client's own saves are paid only what the server can back. Steps 1-3 can be built side by side; enforcement ships last.
+Owner rule: **all player data is server-side; minimise ways to cheat.** Target model (the usual one for peer-hosted co-op
+ARPGs): a player's PC may host and simulate combat, but everything with lasting value (levels, XP, gold, items, drops,
+progression) is decided by the server, from player *intents* ("I killed X", "pick up drop 12", "sell slot 4"), never from
+totals the client sends, and paid no faster than honest play could earn it. The authority audit of 2026-10-13 is kept
+privately on the VPS (`~/vps-handoffs/DeathMuffin/audit/2026-10-13-authority/`), not in this public repo. Phases ship one by one.
 
+**Phase 0: close the open doors.** Remove leftover web-era and offline-era write routes the Godot client no longer uses;
+release exports without the `--dev-offline` test backend, with pck encryption; value-granting guards fail closed. GM mode
+stays for the owner's and Helix's accounts (testing) and becomes explicit and logged (see Phase 4).
+
+**Phase 1: the server decides drops.** The server rolls drops (gear, materials, runes, gold) from its own tables for each
+accepted kill report and answers with claim-once ground drops (`backend/ground.cjs` style); the client no longer names what
+dropped.
+
+**Phase 2: intents instead of saved totals.** XP, gold and levels are paid from the kill ledger's accepted kills, not from
+claimed totals; the bag changes through operations (move, split, drop, sell, use) like the Vault; area kills, shards and seals
+come only from accepted reports; an item / currency ledger records every grant and spend with its reason.
+
+**Phase 3: co-op on the same rules.**
 1. **Guests fight at their real power.** The guest only joins the backend party session with its own login; the host fetches
    each member's build from a new host-only backend endpoint (level, class, stats, equipped gear and affixes, boons, vows,
    upgrade tiers, runes) and refetches on a level-up or gear change. The guest level cap (`MAX_LEVEL` in
@@ -16,14 +32,17 @@ a client's own saves are paid only what the server can back. Steps 1-3 can be bu
    Cellar) apply to their own hero.
 2. **Heat that adds up.** The session's heat is the host's world vows (it sets the world). Each player's reward heat is the
    session heat plus their own self vows, solo too (today the xp / gold multiplier counts world vows only); the backend's
-   reward caps use the same total, including for party reports.
+   reward caps use the same total, with the host's level and heat taken from the server's record, not the report.
 3. **Show the host's world, always.** "Heat N · Difficulty" (also "Heat 0 · Medium") in the friends list, the party invite,
    the Party window (session list and header) and the guest's HUD, which also shows its own self-vow part ("+3 yours").
    The lobby carries heat and difficulty on the session; it deploys first (manual restart with no sessions).
-4. **Fix the authority rules** found by the audit-log review (KNOWN-GAPS: Server authority), check the Depths floor rule, and
-   audit the bag save path for item minting.
-5. **Enforce** (`AUTHORITY_KILLS` and `AUTHORITY_MODE`) after the old audit rows are cleared and a few days of real solo and
-   co-op play log no new findings.
+   Items 1-3 do not depend on Phases 1-2 and can be built alongside them.
+
+**Phase 4: enforce and watch.** Fix the rule false positives (KNOWN-GAPS: Server authority), clear the old audit rows, then
+after a few days of real solo and co-op play with no new findings set `AUTHORITY_KILLS` and `AUTHORITY_MODE` to enforce.
+GM actions are logged; a Discord notice when a character trips a flag; a rollback runbook on `character_save_versions`.
+
+Not planned now: full server-side combat simulation (headless sessions); revisit if the game goes public at scale.
 
 ## Then: necromancer polish (no new content)
 

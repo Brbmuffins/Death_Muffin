@@ -22,9 +22,8 @@ these rules would cut honest players under enforce:
   (200) is below a high-level host's world.
 - **Depths floors:** one new player's floors 3-4 were rejected (`floor_invalid` "skipped floors", 1 proven); not yet known
   whether the rule or the run is wrong.
-- **Client-claimed saves:** level, xp, gold and stats (`/api/character/save-progress`) and area kills / shards
-  (necro-progress save) are the client's claim, bounded only by the guards above. Whether `/api/inventory/save` can mint items
-  is not yet checked.
+- **Client-claimed saves:** progress totals, the bag and what dropped are still the client's claim, bounded only by the
+  report-mode guards (ROADMAP: Phases 1-2).
 
 ## Disciplines
 
