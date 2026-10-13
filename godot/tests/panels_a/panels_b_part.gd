@@ -666,14 +666,14 @@ func _t_vault() -> void:
 	_check(kept.has(41) and not kept.has(40), "deposit keeps the largest stack of the belted tonic")
 	v.set_state(st)
 	await _frames(2)
-	v.bag_slots[0].pressed.emit(v.bag_slots[0])
-	_eq(ev.back(), ["dep", 0], "click a bag item deposits its slot")
-	v.bag_slots[6].pressed.emit(v.bag_slots[6])
+	v.bag_slots[0].double_clicked.emit(v.bag_slots[0])
+	_eq(ev.back(), ["dep", 0], "double-click a bag item deposits its slot")
+	v.bag_slots[6].double_clicked.emit(v.bag_slots[6])
 	await _frames(2)
 	_check(_has(v, "Equipped gear cannot be stored. Unequip it first."), "equipped gear refuses to be stored")
 	_eq(ev.size(), 1, "no deposit signal for equipped gear")
-	v.vault_slots[2].pressed.emit(v.vault_slots[2])
-	_eq(ev.back(), ["wd", 2], "click a vault item withdraws its slot")
+	v.vault_slots[2].double_clicked.emit(v.vault_slots[2])
+	_eq(ev.back(), ["wd", 2], "double-click a vault item withdraws its slot")
 	# drag and drop, and Shift+click for part of a stack
 	v.deposit_part_requested.connect(func(s: int, q: int) -> void: ev.append(["deppart", s, q]))
 	v.withdraw_part_requested.connect(func(s: int, q: int) -> void: ev.append(["wdpart", s, q]))
@@ -708,7 +708,13 @@ func _t_vault() -> void:
 	c0._gui_input(down)
 	_eq(ev.size(), n0, "pressing a Vault-window item moves nothing yet (a drag may follow)")
 	c0._gui_input(up)
-	_eq(ev.back(), ["dep", 0], "releasing without a drag deposits it")
+	_eq(ev.size(), n0, "a single click only shows the item card, it moves nothing")
+	var dbl := InputEventMouseButton.new()
+	dbl.button_index = MOUSE_BUTTON_LEFT
+	dbl.pressed = true
+	dbl.double_click = true
+	c0._gui_input(dbl)
+	_eq(ev.back(), ["dep", 0], "a real double-click deposits it")
 	var n1 := ev.size()
 	c0._gui_input(down)
 	c0.notification(Control.NOTIFICATION_DRAG_BEGIN)
@@ -722,7 +728,7 @@ func _t_vault() -> void:
 	_check(stack_slot >= 0, "the demo bag has a stack")
 	var shift_on := true
 	v.shift_probe = func() -> bool: return shift_on
-	v.bag_slots[stack_slot].pressed.emit(v.bag_slots[stack_slot])
+	v.bag_slots[stack_slot].double_clicked.emit(v.bag_slots[stack_slot])
 	await _frames(2)
 	_check(v.qty_spin != null and v.qty_move_button != null and not v.pending.is_empty(), "Shift+click on a stack asks how many")
 	var before := ev.size()
@@ -731,13 +737,13 @@ func _t_vault() -> void:
 	_eq(ev.back(), ["deppart", stack_slot, 3], "the chosen amount is deposited")
 	_eq(ev.size(), before + 1, "one signal for the part move")
 	# a typed amount (no Enter, Move takes no focus) is what moves, not the SpinBox's untouched default (the whole stack), and Enter moves it too
-	v.bag_slots[stack_slot].pressed.emit(v.bag_slots[stack_slot])
+	v.bag_slots[stack_slot].double_clicked.emit(v.bag_slots[stack_slot])
 	await _frames(2)
 	v.qty_spin.get_line_edit().text = "2"
 	v.qty_spin.get_line_edit().text_changed.emit("2")   # as typing does
 	v.qty_move_button.pressed.emit()
 	_eq(ev.back(), ["deppart", stack_slot, 2], "a typed amount moves that amount when Move is clicked")
-	v.bag_slots[stack_slot].pressed.emit(v.bag_slots[stack_slot])
+	v.bag_slots[stack_slot].double_clicked.emit(v.bag_slots[stack_slot])
 	await _frames(2)
 	v.qty_spin.get_line_edit().text = "4"
 	v.qty_spin.get_line_edit().text_changed.emit("4")

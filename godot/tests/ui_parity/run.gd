@@ -254,13 +254,13 @@ func _test_art(ui: DmGameUi) -> void:
 	var gl := DmPb.icon("rare", 36.0)
 	_check(gl.get_child(0) is Label, "DmPb.icon keeps the glyph without an id")
 	gl.free()
-	# vault cells: real art + the web's plain title, never the Reliquary card
-	var cell := DmVaultPanel.new()._cell({"item_id": "staff_oak", "name": "Oak Staff", "rarity": "rare", "item_type": "weapon", "quantity": 1, "slot_index": 0, "sell_value": 12,
-		"equipped": 0, "stat_bonus": {"stat_int": 2}}, false, "bag")
-	_check(cell.plain_tip and cell.data.get("icon") is Texture2D, "vault cell has the item art")
-	_check(cell.tooltip_text.begins_with("Oak Staff (rare weapon)\n+2 INT\nWorth 12g\nClick to store it in the Vault"), "vault title text as VaultPanel.cell (got %s)" % cell.tooltip_text.replace("\n", "|"))
-	cell.show_tip()
-	_check(not DmTip.of(ui).is_showing_for(cell), "a vault cell shows no hover card")
+	# vault cells: real art + the Reliquary's item card (never a native tooltip); the plain title text still describes the double-click move
+	var vrow := {"item_id": "staff_oak", "name": "Oak Staff", "rarity": "rare", "item_type": "weapon", "quantity": 1, "slot_index": 0, "sell_value": 12,
+		"equipped": 0, "stat_bonus": {"stat_int": 2}}
+	var cell := DmVaultPanel.new()._cell(vrow, false, "bag")
+	_check(not cell.plain_tip and cell.tooltip_text == "" and cell.data.get("icon") is Texture2D, "vault cell has the item art and the item card, no native tooltip")
+	var vtitle := DmVaultPanel.plain_title(vrow, false, "bag")
+	_check(vtitle.begins_with("Oak Staff (rare weapon)\n+2 INT\nWorth 12g\nDouble-click to store it in the Vault"), "vault title text (got %s)" % vtitle.replace("\n", "|"))
 	cell.free()
 	# symbols: the bundled face carries the glyphs the latin faces lack
 	var sym := DmUi.symbols()

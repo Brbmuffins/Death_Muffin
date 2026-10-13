@@ -1,7 +1,7 @@
 class_name DmVaultPanel
 extends DmPanelB
 ## The Ossuary Vault (archive/legacy-web:src/ui/VaultPanel.ts): a 120-slot stash shared by every character on the account, beside the 48-slot Reliquary.
-## Click an item to move its whole stack across; Shift+click (or Shift held on a drop) asks how many; drag a stack onto any bag or Vault cell to put it
+## Click an item to see its card; double-click moves its whole stack across; Shift+double-click (or Shift held on a drop) asks how many; drag a stack onto any bag or Vault cell to put it
 ## exactly there (rearranging within a side too: empty = move, same item = merge, else swap; vault.cjs /api/vault/move); worn-gear cells take Vault items into the bag. Tabs of 40 slots (DmVault.VAULT_SLOTS / VAULT_TAB_SIZE). Locked bag items are shown but
 ## never moved by the bulk buttons. Pure UI: the server reply is the truth, feed it back through set_state().
 ##
@@ -186,7 +186,7 @@ func _build() -> void:
 	var locked := locked_slots()
 	shown = {"bag_count": bag.size(), "bag_total": DmBag.BAG_SIZE, "vault_count": vault.size(), "vault_total": DmVault.VAULT_SLOTS, "tab_labels": [], "loading": not loaded,
 		"locked_hint": ("%d locked item%s stay%s put" % [locked.size(), "" if locked.size() == 1 else "s", "s" if locked.size() == 1 else ""]) if locked.size() > 0 else "Lock items in the Reliquary (I) to keep them out of the bulk buttons"}
-	add_child(DmPb.hint("One stash for every character on this account. Click an item to move its whole stack across, Shift+click to choose how many, or drag it between the Vault and your bag or worn gear. Locked items stay in your bag when you use the buttons below.", 12, DmUi.TEXT_MUTED))
+	add_child(DmPb.hint("One stash for every character on this account. Click an item to see its card, double-click to move its whole stack across, Shift+double-click to choose how many, or drag it between the Vault and your bag or worn gear. Locked items stay in your bag when you use the buttons below.", 12, DmUi.TEXT_MUTED))
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 20)
 	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -218,7 +218,7 @@ func _build() -> void:
 		var cell := _cell(row, is_locked(row) if not row.is_empty() else false)
 		if not row.is_empty():
 			cell.press_on_release = true   # click moves on release; press-and-drag drags
-			cell.pressed.connect(_on_bag_pressed.bind(row))
+			cell.double_clicked.connect(_on_bag_pressed.bind(row))
 			if int(row.get("equipped", 0)) == 0:
 				cell.drag_data = {"type": DRAG_TYPE, "from": "bag", "row": row}
 		cell.accepts = _accepts_any   # any bag cell takes a stack from the bag (rearrange) or the Vault, into exactly that slot
@@ -261,7 +261,7 @@ func _build() -> void:
 			var cell := _cell(row, false, "vault")
 			if not row.is_empty():
 				cell.press_on_release = true   # click moves on release; press-and-drag drags
-				cell.pressed.connect(_on_vault_pressed.bind(row))
+				cell.double_clicked.connect(_on_vault_pressed.bind(row))
 				cell.drag_data = {"type": DRAG_TYPE, "from": "vault", "row": row}
 			cell.accepts = _accepts_any   # any Vault cell takes a stack from the bag or the Vault (rearrange), into exactly that slot
 			cell.dropped.connect(_on_dropped_at.bind("vault", idx))
@@ -442,10 +442,8 @@ func _doll(worn: Dictionary) -> GridContainer:
 func _cell(row: Dictionary, locked: bool, kind: String = "bag") -> DmItemSlot:
 	var c := DmItemSlot.new()
 	c.custom_minimum_size = Vector2(SLOT_PX, SLOT_PX)
-	c.plain_tip = true
 	if not row.is_empty():
-		c.set_item(slot_data(row, locked))
-		c.tooltip_text = plain_title(row, locked, kind)
+		c.set_item(slot_data(row, locked))   # the Reliquary's item card on hover / click (no native tooltip)
 	return c
 
 
@@ -474,7 +472,7 @@ static func plain_title(row: Dictionary, locked: bool, kind: String) -> String:
 	elif int(row.get("equipped", 0)) != 0:
 		t += "Equipped gear cannot be stored"
 	else:
-		t += ("Click to store it in the Vault" if kind == "bag" else "Click to take it into your bag") + ", Shift+click for part, or drag it"
+		t += ("Double-click to store it in the Vault" if kind == "bag" else "Double-click to take it into your bag") + ", Shift+double-click for part, or drag it"
 	return t
 
 
