@@ -143,7 +143,8 @@ func _pump() -> void:
 		_remote_in_flight += 1
 		var r: DmResult = await c.call()
 		if r != null and r.ok and r.data is Dictionary and r.data.has("progress"):
-			prog.adopt(r.data["progress"])
+			if _queue.is_empty():   # replies are serial, so the last one already holds every earlier purchase; adopting each one while the player spams a buy flickers the tier back and redoes the stats every time
+				prog.adopt(r.data["progress"])
 		elif r != null and not r.ok:
 			error.emit(r.error if r.error != "" else "Progress could not be saved")
 			var g := await api.necro_get(character_id)
