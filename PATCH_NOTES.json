@@ -3,6 +3,7 @@
     "date": "2026-10-12",
     "title": "Drop Gear for Your Party",
     "items": [
+      "The Spellbook button on the action bar is now a square \"Spells\" button (still opens with L).",
       "Select gear in your Reliquary (I) and press Drop: it lies at your feet until you leave the world. Epic and legendary pieces ask first.",
       "In a party, anyone who was with you when that piece dropped can pick it up. Click it like any loot; the first one to grab it gets it. Gear found before someone joined stays yours alone.",
       "Only gear can be dropped, up to 20 pieces at a time. Anything left on the ground is gone when the session ends."
