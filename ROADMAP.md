@@ -12,13 +12,13 @@ progression) is decided by the server, from player *intents* ("I killed X", "pic
 totals the client sends, and paid no faster than honest play could earn it. The authority audit of 2026-10-13 is kept
 privately on the VPS (`~/vps-handoffs/DeathMuffin/audit/2026-10-13-authority/`), not in this public repo. Phases ship one by one.
 
-**Phase 0: close the open doors.** Remove leftover web-era and offline-era write routes the Godot client no longer uses;
-release exports without the `--dev-offline` test backend, with pck encryption; value-granting guards fail closed. GM mode
-stays for the owner's and Helix's accounts (testing) and becomes explicit and logged (see Phase 4).
+**Phase 0: close the open doors.** Live 2026-10-13 (DECISIONS B19). Still open: pck encryption (needs export templates built with
+an encryption key).
 
-**Phase 1: the server decides drops.** The server rolls drops (gear, materials, runes, gold) from its own tables for each
-accepted kill report and answers with claim-once ground drops (`backend/ground.cjs` style); the client no longer names what
-dropped.
+**Phase 1: the server decides drops.** The server rolls drops (gear, materials, runes, gold) from its own tables and they
+become claim-once ground drops (`backend/ground.cjs` style); the client no longer names what dropped. Owner: drops must still
+appear **instantly** on the kill, so the server hands the client its drops ahead of time (pre-rolled, single-use, tied to the
+character) and checks each one spent against the accepted kill reports.
 
 **Phase 2: intents instead of saved totals.** XP, gold and levels are paid from the kill ledger's accepted kills, not from
 claimed totals; the bag changes through operations (move, split, drop, sell, use) like the Vault; area kills, shards and seals
