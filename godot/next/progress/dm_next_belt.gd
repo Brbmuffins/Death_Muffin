@@ -209,7 +209,7 @@ func rows() -> Array:
 		_tip_hid = hid
 		_tip_total = total
 		_tip_dry = dry
-	var out: Array = [{"slot": "heal", "key": "Q", "label": "Heal", "glyph": "✚", "color": 0xe0709c, "active": false, "left": 0,
+	var out: Array = [{"slot": "heal", "key": "Q", "label": "Heal", "glyph": "✚", "item_id": hid, "color": 0xe0709c, "active": false, "left": 0,
 		"frac": (cd_left / cd_total) if (cd_left > 0.0 and hid != "") else 0.0, "count": total, "empty": hid == "", "tip": tip}]
 	var brews: Dictionary = DmContent.brews()
 	var keys: Dictionary = DmContent.get_export("brews", "BREW_KEYS")
@@ -224,7 +224,7 @@ func rows() -> Array:
 				"active": false, "left": 0, "frac": 0.0, "count": 0, "empty": true, "tip": empty_hint(slot)})
 			continue
 		var def: Dictionary = brews[shown]
-		out.append({"slot": slot, "key": key, "label": def["label"], "glyph": def["glyph"], "color": def["color"], "active": live != null,
+		out.append({"slot": slot, "key": key, "label": def["label"], "glyph": def["glyph"], "item_id": shown, "color": def["color"], "active": live != null,
 			"left": int(ceil((float(live["until"]) - now) / 1000.0)) if live != null else 0, "empty": false,
 			"frac": minf(1.0, (float(live["until"]) - now) / (float(def["seconds"]) * 1000.0)) if live != null else 0.0,
 			"count": inventory.count(belt_id) if belt_id != "" else 0, "tip": _brew_tip(shown, def, live != null)})

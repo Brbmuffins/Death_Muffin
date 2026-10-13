@@ -25,6 +25,7 @@ var tip: String = ""
 
 var _kbd: Label
 var _glyph: Label
+var _icon: TextureRect
 var _lbl: Label
 var _sub: Label
 
@@ -42,6 +43,14 @@ func _init() -> void:
 	_glyph.offset_top = 8
 	_glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_glyph)
+	_icon = TextureRect.new()
+	_icon.position = Vector2(15, 5)
+	_icon.size = Vector2(24, 24)
+	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_icon.visible = false
+	add_child(_icon)
 	_lbl = DmHudKit.lbl("", 9, DmUi.BONE_100, "display", true)
 	_lbl.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	_lbl.offset_top = 33
@@ -71,7 +80,11 @@ func apply(b: Dictionary) -> void:
 	tip = String(b.get("tip", ""))
 	tooltip_text = tip
 	_kbd.text = key_text
-	_glyph.text = glyph
+	var item_id := String(b.get("item_id", ""))
+	var tex: Texture2D = DmUiArt.item(item_id) if item_id != "" else null
+	_icon.texture = tex
+	_icon.visible = tex != null
+	_glyph.text = "" if tex != null else glyph
 	DmHudKit.set_color(_glyph, "font_color", color)
 	DmHudKit.set_color(_glyph, "font_shadow_color", Color(color, 0.0 if empty else 0.7))
 	DmHudKit.set_const(_glyph, "shadow_outline_size", 0 if empty else 6)

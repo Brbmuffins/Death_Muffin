@@ -119,7 +119,7 @@ static func brews(g) -> Array:
 		total += g.inventory.count(f)
 	var cd_left = maxf(0.0, g.actions.flask_cd_until - now)
 	var cd_total = DmBrews.heal_cooldown_ms()
-	out.append({"slot": "heal", "key": "Q", "label": "Heal", "glyph": "✚", "color": 0xe0709c, "active": false, "left": 0, "frac": (cd_left / cd_total) if (cd_left > 0.0 and hid != "") else 0.0,
+	out.append({"slot": "heal", "key": "Q", "label": "Heal", "glyph": "✚", "item_id": hid, "color": 0xe0709c, "active": false, "left": 0, "frac": (cd_left / cd_total) if (cd_left > 0.0 and hid != "") else 0.0,
 		"count": total, "empty": hid == "", "tip": ("Dry Cellar: your vow forbids healing flasks. Break it at the Altar of Ascension." if bool(g.prog.vow_fx().get("noFlasks", false)) else (("Healing: %s restores %d%% of your health (%d carried). Press Q to drink; sips are %ds apart." % [DmContent.item(hid)["name"], DmMath.js_round(float(flasks[hid]) * 100.0), total, int(cd_total / 1000.0)]) if hid != "" else g.actions.empty_hint("heal")))})
 	for slot in ["elixir", "tonic"]:
 		var act: Variant = g.p["brews"].get(slot)
@@ -132,7 +132,7 @@ static func brews(g) -> Array:
 			continue
 		var def: Dictionary = DmContent.brews()[shown]
 		var left = int(ceil((float(live["until"]) - now) / 1000.0)) if live != null else 0
-		out.append({"slot": slot, "key": key, "label": def["label"], "glyph": def["glyph"], "color": def["color"], "active": live != null, "left": left, "empty": false,
+		out.append({"slot": slot, "key": key, "label": def["label"], "glyph": def["glyph"], "item_id": shown, "color": def["color"], "active": live != null, "left": left, "empty": false,
 			"frac": minf(1.0, (float(live["until"]) - now) / (float(def["seconds"]) * 1000.0)) if live != null else 0.0,
 			"count": g.inventory.count(belt_id) if belt_id != "" else 0,
 			"tip": "%s: %s · %ds" % [def["label"], "active" if live != null else "on your belt", int(def["seconds"])]})
