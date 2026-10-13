@@ -15,7 +15,9 @@ var waystone: DmWaystonePanel
 var class_panel: DmClassPanel
 var loadouts: DmLoadoutPresets
 var grim_select: Variant = null
-var _reinforce_pending := 0   # Reinforce clicks whose purchase has not come back yet
+var _reinforce_bought := false   # at least one Reinforce in the current burst went through
+var _reinforce_error := ""       # the last failure of the burst, shown once after it
+var _reinforce_pending := 0  # Reinforce clicks whose purchase has not come back yet
 
 
 func _init(ui_: Node) -> void:
@@ -255,18 +257,26 @@ func _reinforce() -> void:
 	_reinforce_pending += 1
 	var r: DmResult = await game.psync.spend_on_server(func() -> DmResult: return await game.api.necro_purchase(cid(), "legion"))
 	_reinforce_pending -= 1
-	if not r.ok:
-		grim_win.legion.set_error("Not enough gold." if r.error == "" else r.error)
-		return
-	ui.play("buy")
+	if r.ok:
+		_reinforce_bought = true
+		ui.play("buy")
+	else:
+		_reinforce_error = "Not enough gold." if r.error == "" else r.error
 	if _reinforce_pending > 0:   # purchases are served in order: re-reading progress, character and stats after every click is what lagged, so only the last one does
 		return
-	await game.refresh_progress()
-	if _reinforce_pending > 0:
-		return
-	game.refresh_character()
-	ui.toast("The legion is bound tighter: tier %d" % int(game.progress.get("legionTier", 0)), "good")
-	render_legion()
+	var err := _reinforce_error
+	_reinforce_error = ""
+	if _reinforce_bought:   # a click that failed after earlier ones went through (max tier) still needs the refresh, or the window shows a stale tier
+		_reinforce_bought = false
+		await game.refresh_progress()
+		if _reinforce_pending > 0:
+			_reinforce_bought = true   # a newer click started meanwhile: it refreshes
+			return
+		game.refresh_character()
+		ui.toast("The legion is bound tighter: tier %d" % int(game.progress.get("legionTier", 0)), "good")
+		render_legion()
+	if err != "":
+		grim_win.legion.set_error(err)
 
 
 # --- atlas / codex ---------------------------------------------------------------------------------------------------------

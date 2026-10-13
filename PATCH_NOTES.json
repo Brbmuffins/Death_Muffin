@@ -3,6 +3,7 @@
     "date": "2026-10-13",
     "title": "Fair Loot",
     "items": [
+      "Fixed: spamming Reinforce up to the max tier left the Legion window showing an old tier and \"Already at max tier\"; it now refreshes after the last click.",
       "Spamming Reinforce in the Legion window no longer lags: the game now refreshes your stats once after the last click instead of after every one.",
       "Every drop is now decided by the server. Loot still appears the moment an enemy falls; picking an item up checks it with the server, which puts it straight into your bag.",
       "In a party, your drops are rolled for you on your own game, from the host's kills.",
