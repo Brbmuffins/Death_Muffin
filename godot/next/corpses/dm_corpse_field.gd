@@ -39,6 +39,7 @@ var _next_id := 1
 var _next_due := INF                         ## earliest expiresAt / ruptureAt: step() only scans when the clock reaches it
 var _views: Dictionary = {}                  ## id -> View
 var _fading: Array = []
+var _dying: Array = []                       ## views whose body was just queued for freeing
 var _rings := 0
 var _can_fade := DisplayServer.get_name() != "headless"   ## the dummy renderer has no materials to fade
 
@@ -377,6 +378,7 @@ func _view_gone(c: DmSimCorpse, reason: String) -> void:
 
 
 func _process(delta: float) -> void:
+	_dying.clear()   # last frame's freed bodies: their creature (and its materials) is released a frame after the node
 	for i in range(_fading.size() - 1, -1, -1):
 		var v: View = _fading[i]
 		v.t += delta
@@ -384,10 +386,11 @@ func _process(delta: float) -> void:
 		if v.t >= life:
 			if is_instance_valid(v.body):
 				v.body.queue_free()
+			_dying.append(v)
 			_fading.remove_at(i)
 		elif not v.shatter and _can_fade:
 			v.creature.set_opacity(1.0 - v.t / FADE_S)
-	if _fading.is_empty():
+	if _fading.is_empty() and _dying.is_empty():
 		set_process(false)
 
 
