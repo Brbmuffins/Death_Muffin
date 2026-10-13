@@ -3,6 +3,7 @@
     "date": "2026-10-13",
     "title": "Fair Loot",
     "items": [
+      "Spamming Reinforce in the Legion window no longer lags: the game now refreshes your stats once after the last click instead of after every one.",
       "Every drop is now decided by the server. Loot still appears the moment an enemy falls; picking an item up checks it with the server, which puts it straight into your bag.",
       "In a party, your drops are rolled for you on your own game, from the host's kills.",
       "Fixed: characters above level 255 had their kills in the level-scaled grounds ignored by the server's checks."

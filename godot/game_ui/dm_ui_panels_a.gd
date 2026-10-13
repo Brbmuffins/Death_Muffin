@@ -15,7 +15,7 @@ var waystone: DmWaystonePanel
 var class_panel: DmClassPanel
 var loadouts: DmLoadoutPresets
 var grim_select: Variant = null
-var _legion_busy := false
+var _reinforce_pending := 0   # Reinforce clicks whose purchase has not come back yet
 
 
 func _init(ui_: Node) -> void:
@@ -252,12 +252,18 @@ func _legion_result(err: Variant) -> void:
 
 func _reinforce() -> void:
 	# Through psync so the client adopts the server's gold (a plain call left it stale and the next save refunded the tier).
+	_reinforce_pending += 1
 	var r: DmResult = await game.psync.spend_on_server(func() -> DmResult: return await game.api.necro_purchase(cid(), "legion"))
+	_reinforce_pending -= 1
 	if not r.ok:
 		grim_win.legion.set_error("Not enough gold." if r.error == "" else r.error)
 		return
 	ui.play("buy")
+	if _reinforce_pending > 0:   # purchases are served in order: re-reading progress, character and stats after every click is what lagged, so only the last one does
+		return
 	await game.refresh_progress()
+	if _reinforce_pending > 0:
+		return
 	game.refresh_character()
 	ui.toast("The legion is bound tighter: tier %d" % int(game.progress.get("legionTier", 0)), "good")
 	render_legion()
