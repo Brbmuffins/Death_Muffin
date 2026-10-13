@@ -1732,10 +1732,21 @@ func float_text(screen_pos: Vector2, text: String, kind: String = "hit", color: 
 	DmFloatingNumber.spawn(float_layer, screen_pos, text, kind, color)
 
 
+## Chat line colours by kind: a party member's "[Name] text" is violet-barred bright bone, a find ("You found ...",
+## "... found ...") is gold, anything else (system notes) is a muted silver.
+static func chat_tint(text: String) -> Color:
+	if text.begins_with("["):
+		return DmUi.SPELL_400
+	if text.contains(" found "):
+		return DmUi.GOLD
+	return DmUi.SILVER_400
+
+
 func chat_line(text: String) -> void:
-	var p := DmHudKit.panel(Color(0.0275, 0.0235, 0.0392, 0.62), Color(0, 0, 0, 0), Vector4(0, 0, 0, 0), Vector4(8, 3, 8, 3))
+	var tint := chat_tint(text)
+	var p := DmHudKit.panel(Color(0.0275, 0.0235, 0.0392, 0.62), tint, Vector4(2, 0, 0, 0), Vector4(8, 3, 8, 3))
 	p.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	var l := _txt(text, 13, DmUi.BONE_300, "body", 0.0, false)
+	var l := _txt(text, 13, DmUi.BONE_100 if tint == DmUi.SPELL_400 else tint.lerp(DmUi.BONE_100, 0.25), "body", 0.0, false)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.custom_minimum_size.x = minf(l.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 2.0, 300.0)
 	p.add_child(l)

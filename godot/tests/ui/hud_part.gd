@@ -259,6 +259,7 @@ func _run() -> void:
 	for i in 10:
 		hud.chat_line("line %d" % i)
 	_check(hud.chat_log.get_child_count() == 8, "chat keeps 8 lines")
+	_check(DmHud.chat_tint("[Moth] hi") == DmUi.SPELL_400 and DmHud.chat_tint("You found the X (legendary).") == DmUi.GOLD and DmHud.chat_tint("(solo) hi") == DmUi.SILVER_400, "chat lines are tinted by kind")
 	var dv := DmHudMock.combat()
 	dv["death"] = {"show": true, "sub": "The Covenant will carry you back."}
 	hud.apply(dv)

@@ -60,8 +60,10 @@ func _events() -> void:
 	hud.loot_toast("Bone Dust", 1, "common")
 	hud.loot_toast("Bone Dust", 2, "common")
 	hud.loot_toast("Gravewrought Mantle", 1, "epic")
-	hud.chat_line("Helix: behind you!")
-	hud.chat_line("Moth: on my way")
+	hud.chat_line("[Helix] behind you!")
+	hud.chat_line("[Moth] on my way")
+	hud.chat_line("Moth found the Gravewrought Mantle (legendary).")
+	hud.chat_line("(solo) Nobody hears you in the dark.")
 	var c := get_viewport_rect().size * 0.5
 	hud.float_text(c + Vector2(-150, -90), "1,204", "crit")
 	hud.float_text(c + Vector2(-60, -30), "312", "hit")
