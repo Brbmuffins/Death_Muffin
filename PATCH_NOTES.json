@@ -3,7 +3,7 @@
     "date": "2026-10-13",
     "title": "Fair Loot",
     "items": [
-      "Party chat now plays a clear ping when another player sends a message. Your own messages stay silent, and the Interface volume slider in Settings controls it.",
+      "Party chat now tolls a bell when another player sends a message. Your own messages stay silent, and the Interface volume slider in Settings controls it.",
       "The Legion window now shows the new tier and your gold the moment a Reinforce goes through, instead of trailing behind the click.",
       "Fixed: spamming Reinforce up to the max tier left the Legion window showing an old tier and \"Already at max tier\"; it now refreshes after the last click.",
       "Spamming Reinforce in the Legion window no longer lags: the game now refreshes your stats once after the last click instead of after every one.",
