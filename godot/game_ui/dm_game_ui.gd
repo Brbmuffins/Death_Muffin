@@ -488,7 +488,11 @@ func _connect_hud() -> void:
 		_hud_at = 0)
 	hud.dial_wave.connect(func(d: int) -> void: call_game("dial_wave", [d]))
 	hud.open_panel.connect(func(p: String) -> void: toggle_panel(p))
-	hud.open_grimoire.connect(open_grimoire)
+	hud.open_grimoire.connect(func(select: Variant) -> void:
+		if select == null:
+			toggle_panel("grimoire")   # the Spells button closes the window when it is open, like L
+		else:
+			open_grimoire(select))
 	hud.swap_slot.connect(func(i: int) -> void: open_grimoire(i))
 	hud.chat_sent.connect(_on_chat)
 	hud.toggle_auto_combat.connect(toggle_auto_combat)

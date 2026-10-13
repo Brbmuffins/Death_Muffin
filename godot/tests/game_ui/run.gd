@@ -262,6 +262,16 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	await _frames(3)
 	_check(ui.is_open("grimoire"), "swap key cap opens the grimoire")
 	ui.close_panels()
+	for want_open in [true, false]:
+		for pressed in [true, false]:
+			var ev := InputEventMouseButton.new()
+			ev.button_index = MOUSE_BUTTON_LEFT
+			ev.pressed = pressed
+			ev.position = ui.hud.grim_btn.size / 2.0
+			ui.hud.grim_btn._gui_input(ev)
+		await _frames(3)
+		_check(ui.is_open("grimoire") == want_open, "Spells button click %s the grimoire" % ("opens" if want_open else "closes"))
+	ui.close_panels()
 
 	# --- belt picker + drag drop ---
 	ui.belt_picker.open("elixir")
