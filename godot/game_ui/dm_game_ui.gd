@@ -38,7 +38,7 @@ const TAB_CUES := ["tab.acre.garden", "tab.acre.labor", "tab.acre.contracts", "t
 const REVEAL_IDS := ["hud.upgrades", "hud.dial", "hud.shards", "hud.spells", "menu.atlas", "menu.skills"]
 const LOADOUT_ACTIONS := ["loadout_next", "loadout_1", "loadout_2", "loadout_3", "loadout_4", "loadout_5", "loadout_6"]
 
-const CHAT_PING_PATH := "res://assets/audio/eleven/chat_toll.wav"
+const CHAT_PING_PATH := "res://assets/audio/eleven/chat_ding.wav"
 var _chat_ping_player: AudioStreamPlayer
 var game: Node
 var store: DmCounselStore
