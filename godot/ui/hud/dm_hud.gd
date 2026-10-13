@@ -802,7 +802,9 @@ func _build_altar() -> void:
 	grim_btn.tooltip_text = "Open the Spellbook (L)"
 	var gv := VBoxContainer.new()
 	gv.add_theme_constant_override("separation", 2)
+	gv.alignment = BoxContainer.ALIGNMENT_CENTER
 	gv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gv.set_anchors_preset(Control.PRESET_FULL_RECT)
 	grim_btn.add_child(gv)
 	var gi := TextureRect.new()
 	gi.texture = DmHudKit.icon("grimoire")
