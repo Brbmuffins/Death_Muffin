@@ -153,6 +153,9 @@ const DISCIPLINE_NAMES = {
 const MAX_DISCIPLINE_INDEX = 11;
 const PLAYABLE_DISCIPLINE_INDICES = [1, 2, 3, 4, 11];
 
+// Accounts the owner granted Auto Combat without staff/GM (lowercase usernames).
+const AUTO_COMBAT_GRANTED = new Set(['bogar1']);
+
 // JWT middleware – verifies token and pre-fetches character row
 async function verifyJWT(req, res, next) {
   const auth = req.headers.authorization;
@@ -206,8 +209,9 @@ async function verifyJWT(req, res, next) {
         gm_enabled: staffRole || !!acct.gm_enabled,
         gm_level: staffRole ? Math.max(1, acct.gm_level || 0) : (acct.gm_level || 0),
         gm_permissions: acct.gm_permissions || (staffRole ? '*' : ''),
-        // Only the owner's verified Death Muffin account can use Auto Combat.
-        auto_combat_allowed: acct.username.toLowerCase() === 'brbmuffins' && (staffRole || !!acct.gm_enabled),
+        // Auto Combat: the owner's verified staff account, plus accounts the owner granted it to.
+        auto_combat_allowed: (acct.username.toLowerCase() === 'brbmuffins' && (staffRole || !!acct.gm_enabled))
+          || AUTO_COMBAT_GRANTED.has(acct.username.toLowerCase()),
       };
     } else {
       req.gmFields = { gm_enabled: 0, gm_level: 0, gm_permissions: '' };
