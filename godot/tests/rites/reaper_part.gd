@@ -140,6 +140,11 @@ func _rites() -> void:
 	ok(is_equal_approx(float(c.p["hp"]), 1.0 + maxhp * 0.08), "harvest: heals 2%% of max health for each of them (%.1f)" % float(c.p["hp"]))
 	ok(is_equal_approx(c.cooldown_left("soul_harvest"), 5000.0) and rej.is_empty(), "harvest: free, 5 s")
 	ok(not _events(w, "soul_harvest", "harvest").is_empty(), "harvest: one event")
+	ok(c.p.get("harvestAmp", false) == true, "harvest: marks her next spell for double damage")
+	var amped_sp := DmAbilities.sp(c.p, c.now_ms)
+	c.p["harvestAmp"] = false
+	ok(is_equal_approx(amped_sp, 2.0 * DmAbilities.sp(c.p, c.now_ms)), "harvest: the mark doubles spell power")
+	c.p["harvestAmp"] = true
 
 	# Reap: a cone, costs 5 souls, every soul paid adds damage
 	_ready_cast(c)
@@ -155,7 +160,8 @@ func _rites() -> void:
 	c.request_cast("reap", Vector3(8, 0, 0))
 	var plain := _lost(r1)
 	ok(int(c.p["souls"]) == 0 and plain > 0.0 and is_equal_approx(c.cooldown_left("reap"), 0.0), "reap: 5 souls pay for it, hits 5 m out (%.1f), no cooldown" % plain)
-	ok(is_equal_approx(plain, DmAbilities.rite_damage(sp_empty, "reap") * (1.0 + 0.12 * 5.0)), "reap: the 5 souls paid add 60%% damage")
+	ok(is_equal_approx(plain, DmAbilities.rite_damage(sp_empty, "reap") * (1.0 + 0.12 * 5.0)), "reap: the 5 souls paid add 60%% damage (sp_empty carries the Soul Harvest double)")
+	ok(c.p.get("harvestAmp", false) == false, "reap: the doubled spell spends the mark")
 	_ready_cast(c)
 	c.p["souls"] = 5
 	var sp_five := DmAbilities.sp(c.p, c.now_ms)
@@ -163,7 +169,7 @@ func _rites() -> void:
 	c.request_cast("reap", Vector3(8, 0, 0))
 	var second := _lost(r1) - plain
 	ok(int(c.p["souls"]) == 5, "reap: 10 souls in the bag leave 5")
-	ok(is_equal_approx(second, DmAbilities.rite_damage(sp_five, "reap") * (1.0 + 0.12 * 5.0)) and second > plain, "reap: a fuller bag hits harder (%.1f against %.1f)" % [second, plain])
+	ok(is_equal_approx(second, DmAbilities.rite_damage(sp_five, "reap") * (1.0 + 0.12 * 5.0)) and second > plain / 2.0, "reap: a fuller bag hits harder (%.1f against %.1f, the first was doubled by Soul Harvest)" % [second, plain / 2.0])
 
 	# Soul Burst: needs 6 souls, empties the bag
 	_ready_cast(c)

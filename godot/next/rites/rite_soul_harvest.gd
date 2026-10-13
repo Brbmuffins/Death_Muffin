@@ -1,6 +1,6 @@
 extends DmRiteModule
 ## Soul Harvest (the Reaper, Grimoire): leeches every living enemy within 9 m, power 0.5, free, 5 s. Each enemy struck puts 1 soul in the bag (up to its size) and
-## heals her harvestHealPerMob of her max health, at most harvestHealCap a cast. Resolved at once.
+## heals her harvestHealPerMob of her max health, at most harvestHealCap a cast, and doubles the damage of her next spell (harvestNextMult). Resolved at once.
 
 
 func _init() -> void:
@@ -20,6 +20,8 @@ func resolve(c: DmRiteCaster, _intent: Dictionary) -> String:
 		DmPlayerRules.bag_add(c.p, struck)
 		c.heal(float(c.p["stats"]["maxHp"]) * minf(float(K["harvestHealPerMob"]) * float(struck), float(K["harvestHealCap"])))
 		c.push_state()
+	c.p["harvestAmp"] = true   # her next spell hits for harvestNextMult (DmAbilities.sp); the caster clears it once that spell resolves
+	c.push_state()
 	c.broadcast({"t": "harvest", "rite": id, "by": c.peer_id, "x": origin.x, "z": origin.z, "r": r, "hits": marks, "amount": dmg})
 	return ""
 

@@ -196,6 +196,7 @@ static func revive(p: Dictionary) -> void:
 	p["bulwarkUntil"] = 0.0
 	p["bulwarkPerfectUntil"] = 0.0
 	p["unbreakableUntil"] = 0.0
+	p["harvestAmp"] = false
 	p["chilledUntil"] = 0.0
 	p["hp"] = float(p["stats"]["maxHp"])
 	p["resource"]["value"] = DmResources.on_revive(p["family"], p["resource"]["max"])

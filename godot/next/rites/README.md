@@ -12,7 +12,7 @@ worth +2% rite damage a soul in `DmAbilities.sp`. Every rite but scythe_sweep ha
 `apply_cast_cost` take (throw 3, reap 5, wraith_walk 4, harvest_spin 2, soul_burst 6 and then the rest of the bag); reap, wraith_walk and soul_burst add damage per soul paid. She fights in melee without thralls, so `DmPlayerRules.take_damage`
 cuts her damage taken (REAPER `damageTakenMult`) and refuses every blow while `p["phasedUntil"]` (Wraith Walk's rush) runs, and `DmReaperRites.strike` heals her
 `leechPerHit` of her max health per enemy struck, at most `leechSwingCap` a swing (the thrown scythe passes `leech = false`).
-An eighth Reaper rite, soul_harvest (Grimoire only, not on the default bar; free, 5 s, 9 m): every enemy struck puts 1 soul in the bag and heals `harvestHealPerMob` of max health, at most `harvestHealCap`. The necromancer rites:
+An eighth Reaper rite, soul_harvest (Grimoire only, not on the default bar; free, 5 s, 9 m): every enemy struck puts 1 soul in the bag and heals `harvestHealPerMob` of max health, at most `harvestHealCap`; it also sets `p.harvestAmp`, which makes `DmAbilities.sp` `harvestNextMult` (x2) until her next spell (not a primary, not another Soul Harvest) resolves, where `DmRiteCaster._apply_cast` clears it. The necromancer rites:
 bone_needle, bone_fan, rot_lance (primaries); miasma, marrow_spear, exhume, black_litany, corpse_explosion, grave_offering, bone_mantle, carrion_seed,
 wailing_skull, ivory_cleave, bone_storm, soul_siphon, grave_step, veil_step, grave_frost, bone_prison, grave_hands, rally_dead; signatures
 ossuary_wall, command_rend, dirge, plague_bloom. Numbers come from the shared rules (`DmAbilities`, `DmSimData`, `DmCombatData`, `abilities.json`), not from the modules.

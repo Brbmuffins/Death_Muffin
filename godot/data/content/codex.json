@@ -403,7 +403,7 @@
   "soul_harvest": {
    "fx": "reaper",
    "colour": "Soul green",
-   "tip": "Free, 5s cooldown, 9m around you: every living monster it strikes gives 1 soul and heals you. It is how you refill the bag for Reap and Soul Burst; place it from the Grimoire."
+   "tip": "Free, 5s cooldown, 9m around you: every living monster it strikes gives 1 soul and heals you, and your next spell (not your basic attack) deals double damage. It is how you refill the bag for Reap and Soul Burst; place it from the Grimoire."
   },
   "unleash_souls": {
    "fx": "reaper",

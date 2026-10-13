@@ -63,7 +63,13 @@ static func sp(p: Dictionary, now: float) -> float:
 	var oath: float = C("OATH_UNBROKEN")["damageMult"] if now < p["unbreakableUntil"] else 1.0
 	var flask := 1.0 + DmPlayerRules.brew_value(p, "damage", now)
 	var bag := 1.0 + float(C("REAPER")["damagePerSoul"]) * float(p["souls"]) if p.get("family") == "reaper" else 1.0
-	return float(p["stats"]["spellPower"]) * oath * flask * bag
+	var harvest: float = float(C("REAPER")["harvestNextMult"]) if p.get("harvestAmp", false) else 1.0
+	return float(p["stats"]["spellPower"]) * oath * flask * bag * harvest
+
+
+## The Reaper's Soul Harvest marks her next spell (not her basic attacks, not another Soul Harvest) for double damage; true if `id` is that spell.
+static func harvest_amps(id: String) -> bool:
+	return id != "soul_harvest" and id != "scythe_sweep" and not is_primary(id)
 
 
 ## NewBloodSystem.power: spell power x 1.5, x0.7 while in Veil form outside the Between Worlds window.

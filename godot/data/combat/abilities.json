@@ -915,7 +915,7 @@
    "id": "soul_harvest",
    "slot": 7,
    "name": "Soul Harvest",
-   "description": "Leech the souls from every living monster in a large area around you (9m). Each one struck gives 1 soul and heals you. Free, 5s cooldown.",
+   "description": "Leech the souls from every living monster in a large area around you (9m). Each one struck gives 1 soul and heals you, and your next spell deals double damage. Free, 5s cooldown.",
    "icon": "art/abilities/necro-soul-siphon.webp",
    "targeting": "self",
    "cooldownMs": 5000,
@@ -1446,7 +1446,8 @@
    "leechPerHit": 0.015,
    "leechSwingCap": 0.06,
    "harvestHealPerMob": 0.02,
-   "harvestHealCap": 0.12
+   "harvestHealCap": 0.12,
+   "harvestNextMult": 2
   }
  },
  "cast_flow": {

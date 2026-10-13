@@ -321,11 +321,19 @@ func _apply_cast(sender: int, rite: String, aim: Vector3, target_id: int) -> voi
 		return
 	var at := _body.position if _body != null else Vector3.ZERO
 	var snap := _cost_snapshot(rite)
+	var amped: bool = bool(p.get("harvestAmp", false)) and DmAbilities.harvest_amps(rite)   # Reaper: Soul Harvest doubled this spell's damage (in sp())
 	var emp := DmAbilities.empowered(p, rite)   # Soul Harvest: charged souls pay this cast instead of essence, and it is 1.5x as wide
 	if emp:
 		intent["mult"] = DmAbilities.soul_area_mult(true)
 	DmAbilities.apply_cast_cost(p, rite, _now_ms, emp, bool(intent.get("colossus_cast", false)))
+	var held: bool = bool(p.get("harvestAmp", false)) and not amped
+	if held:
+		p["harvestAmp"] = false   # a basic attack (or another Soul Harvest) neither carries the double nor spends it
 	why = m.resolve(self, intent)
+	if held:
+		p["harvestAmp"] = true
+	elif amped and why == "":
+		p["harvestAmp"] = false
 	if why == "" and emp and _legends != null:
 		_legends.nova()   # Requiem 5: a Soul Harvest cast sets every wisp and wraith off
 	if why != "":
