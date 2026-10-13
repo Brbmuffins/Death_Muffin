@@ -793,7 +793,8 @@ func _build_altar() -> void:
 	slots_row.add_child(DmUi.spacer(0, 12))
 	grim_btn = Button.new()
 	grim_btn.focus_mode = Control.FOCUS_NONE
-	grim_btn.custom_minimum_size = Vector2(DmHudSlot.BTN, DmHudSlot.BTN)  # same square as an ability icon
+	grim_btn.custom_minimum_size = Vector2(60, 60)
+	grim_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	grim_btn.add_theme_stylebox_override("normal", DmHudKit.style(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_STRONG, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
 	grim_btn.add_theme_stylebox_override("hover", DmHudKit.style(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_ACTIVE, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
 	grim_btn.add_theme_stylebox_override("pressed", DmHudKit.style(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_ACTIVE, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
@@ -819,23 +820,9 @@ func _build_altar() -> void:
 	grim_btn.pressed.connect(func() -> void: open_grimoire.emit(null))
 	var gvw := MarginContainer.new()
 	gvw.add_theme_constant_override("margin_left", 10)
-	gvw.size_flags_vertical = Control.SIZE_SHRINK_BEGIN  # top-aligned with the ability icons
+	gvw.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	gvw.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var gcol := VBoxContainer.new()
-	gcol.add_theme_constant_override("separation", 5)
-	gcol.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	gcol.add_child(grim_btn)
-	# key cap under the button, like the ability slots
-	var gkey := DmHudKit.panel(DmUi.INSET, DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(5, 0, 5, 0))
-	gkey.custom_minimum_size = Vector2(20, 20)
-	gkey.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	gkey.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var gkl := _txt("L", 12, DmUi.BONE_300, "numeric", 0.0, false)
-	gkl.custom_minimum_size.y = 18
-	gkl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	gkey.add_child(gkl)
-	gcol.add_child(gkey)
-	gvw.add_child(gcol)
+	gvw.add_child(grim_btn)
 	slots_row.add_child(gvw)
 	grim_btn.set_meta("host", gvw)
 	grim_pip = DmUi.new_pip("NEW")
