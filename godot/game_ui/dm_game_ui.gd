@@ -38,6 +38,8 @@ const TAB_CUES := ["tab.acre.garden", "tab.acre.labor", "tab.acre.contracts", "t
 const REVEAL_IDS := ["hud.upgrades", "hud.dial", "hud.shards", "hud.spells", "menu.atlas", "menu.skills"]
 const LOADOUT_ACTIONS := ["loadout_next", "loadout_1", "loadout_2", "loadout_3", "loadout_4", "loadout_5", "loadout_6"]
 
+const CHAT_PING_PATH := "res://assets/audio/eleven/chat_ping.wav"
+var _chat_ping_player: AudioStreamPlayer
 var game: Node
 var store: DmCounselStore
 var hud: DmHud
@@ -585,6 +587,17 @@ func _on_inventory_changed() -> void:
 		"learned_rites": learned, "rune_count": runes})
 
 
+## The ping for another player's chat line, on the Ui bus (the Interface volume slider sets it; 0 mutes it).
+func _chat_ping() -> void:
+	if _chat_ping_player == null:
+		_chat_ping_player = AudioStreamPlayer.new()
+		_chat_ping_player.stream = load(CHAT_PING_PATH)
+		_chat_ping_player.bus = &"Ui"
+		_chat_ping_player.volume_db = 3.0
+		add_child(_chat_ping_player)
+	_chat_ping_player.play()
+
+
 ## A game moment: toast / banner / loot / float / chat are drawn here; everything else is a counsel event id.
 func _on_game_event(event_id: String, ctx: Dictionary) -> void:
 	match event_id:
@@ -611,6 +624,8 @@ func _on_game_event(event_id: String, ctx: Dictionary) -> void:
 			hud.float_text(pos, String(ctx.get("text", "")), String(ctx.get("kind", "hit")), ctx.get("color", Color(0, 0, 0, 0)))
 		"chat":
 			hud.chat_line(String(ctx.get("text", "")))
+			if bool(ctx.get("ping", false)):
+				_chat_ping()
 		"gather_report":
 			pb.report.show_report(ctx.get("report", ctx))
 			pb.report.window.open()
