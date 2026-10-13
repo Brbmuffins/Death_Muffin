@@ -1836,6 +1836,15 @@ require('./bug-reports.cjs')(app, pool, {
   },
 });
 require('./prefs.cjs')(app, pool, { requireAuth: requireJWT });
+// Benchmark history. Delete = admin / gm role, whether or not GM mode is switched on (it is moderation, not a game-value write).
+require('./benchmarks.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  isStaff: async (req) => {
+    const [rows] = await pool.execute('SELECT role FROM accounts WHERE id = ? AND active = 1 LIMIT 1', [req.user.accountId]);
+    return !!rows[0] && (rows[0].role === 'admin' || rows[0].role === 'gm');
+  },
+  limiter: rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `acct:${req.user.accountId}` }),
+});
 // Per account, not per IP: the lobby reads every player's list from 127.0.0.1 (presence), with that player's own token.
 require('./friends.cjs')(app, pool, { requireAuth: requireJWT, limiter: rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `acct:${req.user.accountId}` }) });
 require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex: MAX_DISCIPLINE_INDEX, playable: PLAYABLE_DISCIPLINE_INDICES });

@@ -39,7 +39,7 @@ godot --headless --path godot --import          # first time, and after adding a
 godot --path godot                              # normal start: online, needs the live server
 godot --path godot -- --dev-offline             # testing only: local accounts in user://dm_dev_offline_db.json, no server
 godot --path godot -- --dev-offline --class=2   # skip the front flow, enter as account "tester" (1 Ossuary ... 4 Rotweaver)
-godot --path godot -- --benchmark               # the in-game benchmark (also the Benchmark button on character select); offline, ~80 s, see godot/next/perf/README.md
+godot --path godot -- --benchmark               # the in-game benchmark (also the Benchmark button on character select); offline, Standard setup ~90 s, see godot/next/perf/README.md
 ```
 
 `--world-demo` is an alias of `--dev-offline --class=2`. Older launch args (`--online`, `--offline`, `--next`) are accepted and

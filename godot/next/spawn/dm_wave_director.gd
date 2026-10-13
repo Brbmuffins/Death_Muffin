@@ -40,6 +40,8 @@ var omen: Dictionary = {}               ## DmNextMeta: the week's Omen (waveSize
 var size_extra: float = 1.0             ## omen x vow wave-size multiplier (DmNextMeta); the sim folds it into the one rounded wave size
 var spawn_min: float = SPAWN_MIN         ## wave spawn distance from the hero (the in-game benchmark brings it in for its small room)
 var spawn_max: float = SPAWN_MAX
+var fixed_stats: Dictionary = {}        ## benchmark only: {hp, dmg} every enemy gets whatever its kind, level or raiser (no elites); {} = play's scaling
+var enemy_limit: int = -1               ## bodies alive or dying at once (-1 = DmSimData.GLOBAL_ENEMY_CAP); the benchmark's Heavy fight raises it
 
 var _holder: Node3D
 var _spawner: MultiplayerSpawner
@@ -264,7 +266,8 @@ func _heroes_in_area() -> Array:
 func spawn_wave(heroes: Array, count: int = -1, roster: Array = [], lead: String = "") -> int:
 	if kinds.is_empty() or heroes.is_empty():
 		return 0
-	var n := mini(wave_size if count < 0 else count, mini(cap - alive_count() - _pending.size(), int(DmSimData.GLOBAL_ENEMY_CAP) - enemies.size() - _pending.size()))
+	var limit := enemy_limit if enemy_limit > 0 else int(DmSimData.GLOBAL_ENEMY_CAP)
+	var n := mini(wave_size if count < 0 else count, mini(cap - alive_count() - _pending.size(), limit - enemies.size() - _pending.size()))
 	var made := 0
 	_staging = true
 	while made < n:
@@ -288,6 +291,8 @@ func milestone(id: String) -> bool:
 
 ## The chance a single pick is an elite: the area's own + the Wave Speed ramp + difficulty + the Omen + Elite Surge (the sim's spawn_at_breach roll).
 func elite_chance() -> float:
+	if not fixed_stats.is_empty():
+		return 0.0
 	var ramp := float(DmWaveUpgrades.wave_modifiers(DmEnemyStats.ramp_tier(wave_tier, _since_arrival))["eliteBonus"]) if wave_tier > 0.0 else 0.0
 	return float(DmContent.area(area_id).get("eliteChance", 0.0)) + ramp + float(DmContent.difficulty(difficulty)["eliteBonus"]) \
 		+ float(omen.get("eliteBonus", 0.0)) + float(vow_fx.get("eliteBonus", 0.0))
@@ -348,6 +353,11 @@ func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false
 	var affixes: PackedStringArray = over.get("affix_list", PackedStringArray())
 	if affixes.is_empty() and elite:
 		affixes = DmAffixSet.roll(true, String(omen.get("affix", "")) if omen.get("affix") != null else "", float(over["depth"]) if spawn_area == "depths" and over.has("depth") else -1.0, 0.0, rng.randf)
+	if not fixed_stats.is_empty():   # the benchmark: every kind takes the same hits to kill and hits as hard (DmEnemy multiplies its def's hp / damage)
+		var d: Dictionary = DmSimData.ENEMIES[def_id]
+		mult = {"level": level, "hp": float(fixed_stats["hp"]) / maxf(1.0, float(d["hp"])), "dmg": float(fixed_stats["dmg"]) / maxf(1.0, float(d["damage"]))}
+		elite = false
+		affixes = PackedStringArray()
 	var data := {
 		"id": _next_id, "affix_list": affixes, "def": def_id, "pos": pos, "level": float(mult.get("level", level)), "area": spawn_area,
 		"aggro": float(over.get("aggro", 0.0)), "leash": float(over.get("leash", 0.0)), "affixes": maxi(int(over.get("affixes", 0)), affixes.size()),

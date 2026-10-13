@@ -28,13 +28,22 @@ Tests: `tests/next_perfctl/run.gd`. Rendered probe: `tests/next_perfctl/entry_pr
 
 ## Benchmark (testers: same fight on every PC)
 
-`DmBenchmark` (`dm_benchmark.gd`, UI `dm_benchmark_screen.gd`, shared fight setup `dm_bench_fight.gd`, also used by `tests/perf/fight_breakdown.gd`). Run it from the
-**Benchmark** button (bottom right of the character select screen; Back returns there) or `godot -- --benchmark` (results screen with a Quit button;
-`--bench-warm=<s> --bench-measure=<s>` shorten it for smoke runs). Esc cancels (also during the paused breakdown). The player has no control during the run: the screen sits on a layer above the HUD and takes every click, and every input callback of the fight is switched off; auto combat casts with `hold_position` (no walking) and a hero moved by a rite is put back at the centre.
+`DmBenchmark` (`dm_benchmark.gd`, setup window `dm_benchmark_setup.gd`, UI `dm_benchmark_screen.gd`, run history + upload `dm_bench_history.gd`, shared fight setup
+`dm_bench_fight.gd`, also used by `tests/perf/fight_breakdown.gd`). Run it from the **Benchmark** button (bottom right of the character select screen: the setup
+window, then the run; Back returns there) or `godot -- --benchmark` (results screen with a Quit button; `--bench-room=<area> --bench-class=<index>
+--bench-size=light|standard|heavy --bench-length=quick|full` pick the setup, `--bench-warm=<s> --bench-measure=<s>` shorten it for smoke runs).
+- Setup (`configure`, remembered per PC in `user://benchmarks/setup.json`): room = any combat area (`ROOMS`, not the Depths) with its own enemy kinds and their
+  abilities; class = the playable disciplines (`class_indices`: the four necromancers + the Reaper); size Light 15 enemies / 10 thralls, Standard 30 / 20, Heavy
+  60 / 30 (`SIZES`; the director's body limit is raised to 100 so a Heavy fight's corpses don't stall spawning); length Quick (6 s warm-up, 20 s measured, no
+  render breakdown) or Full (10 s + 30 s + breakdown). `STANDARD` (Bell Sanctum, Gravecaller, Standard, Full) is the setup that compares PCs; any other
+  is labelled custom in the window, the report and the history.
+- Same toughness everywhere: every enemy gets `standard_stats()` hp and damage whatever its kind, room or raiser (`DmWaveDirector.fixed_stats`, no elites):
+  the Bell Sanctum roster's spawn-weighted average at its level on Easy (273 hp), so the kill rate matches the old Sanctum fight and kills cost the same in
+  every room; what differs between rooms is the creatures, their abilities and the room itself. Esc cancels (also during the paused breakdown). The player has no control during the run: the screen sits on a layer above the HUD and takes every click, and every input callback of the fight is switched off; auto combat casts with `hold_position` (no walking) and a hero moved by a rite is put back at the centre.
 - Isolated: an in-memory `DmOffline` mock backend, nothing persisted, no network, the HUD's `dm_ui.json` kept in memory; the player's settings file is only read
   (graphics preset and fps cap go into the report; the run uses the preset). During the run V-Sync is off, `Engine.max_fps` 0 and auto resolution off; V-Sync, the fps cap
   and the render scale are restored afterwards (also on Esc).
-- Fight: the Bell Sanctum (36 x 28 m, small so the pack stays on screen; its seal broken for the throwaway character, since a sealed area has its navmesh off; the walkable point nearest the centre that a path joins to the doorway), the real wave director with its spawn distance brought in to 6-14 m (play: 18-30 m, which in this room is only the far corners) and its cap at 30, topped up to 30 every 0.25 s and trimmed back to 30 (raisers add Risen past the cap: the farthest extras vanish, no death or reward), natural enemy health (kills, corpses and loot drops cost what they cost in play), god-mode level 60 Gravecaller on auto combat (Easy), 20 thralls raised directly, seed 20261011,
+- Fight: the picked room (its seal broken for the throwaway character, since a sealed area has its navmesh off; the walkable point nearest the centre that a path joins to the doorway), the real wave director with its spawn distance brought in to 6-14 m (play: 18-30 m, which in a small room is only the far corners) and its cap at the size's count, topped up every 0.25 s and trimmed back (raisers add Risen past the cap: the farthest extras vanish, no death or reward), kills, corpses and loot drops costing what they cost in play, god-mode level 60 hero of the picked class on auto combat (Easy), thralls raised directly, seed 20261011,
   camera zoom 1.0. Warm-up 10 s (not measured: the first frames compile shaders), then 30 s measured. If the measured window (or the paused breakdown) runs at the screen's refresh rate the report warns that
   V-Sync is still on (often forced in the GPU driver) instead of showing capped numbers as real.
 - Measured: average fps, average / median / p95 / p99 / worst frame ms, hitches over 50 ms, average draw calls / objects / primitives
@@ -47,9 +56,17 @@ Tests: `tests/next_perfctl/run.gd`. Rendered probe: `tests/next_perfctl/entry_pr
 - Hitch log: every measured frame over 50 ms with what happened in it (kills, spawns, first-time model / effect loads from `DmModels`,
   `DmFxBinbun`, `DmGearModels` `cold_loads`), plus average loot drops and corpses on the ground. Breakdown rows whose ms rose when the part
   was hidden are marked unsteady (GPU-queue jitter), and a GPU-bound base gets a note to trust the draw-call column over the ms ones.
+- Kills per minute (measured window only) is a report row: it shows how fast a class clears, which differs by class, not by PC.
+- History: `DmBenchHistory` keeps every finished run's numbers in `user://benchmarks/history.json` (200 runs); the results table's "vs last run" column is the
+  change against the previous run of the same setup, GPU and preset (green better, red worse, faint under 2% or for rows that only describe the fight).
+  Every finished run is also queued (`pending.json`) and sent with the player's login (`DmApi.post_benchmark` -> `POST /api/benchmarks`) to the public
+  history page `muffindevelopment.com/death-muffin/benchmarks.html` (server/death-muffin/README.md). Online from character select it goes at once; a
+  `--benchmark` run uses a release build's saved login; anything that fails (no login, no network, 401/409/429/5xx) stays queued and is sent the next time
+  the player enters the world. V-Sync-capped or cancelled runs are sent flagged and left out of the page's trends. Dev-offline, tests and debug builds never send.
 - Output: the results panel (Copy to clipboard), the log (`BENCHMARK` lines) and `user://benchmarks/bench-<datetime>.txt`. Per-frame cost is one float appended to a
   preallocated array plus a few counter reads; the fight upkeep runs at 4 Hz.
-- Test: `tests/next_bench/run.gd` (short run, deterministic checks only).
+- Test: `tests/next_bench/run.gd` (two short runs: the Standard setup and a custom one; same enemy health in both rooms, history, upload queue against fake
+  servers, setup window and launch args; deterministic checks only).
 
 ## Reading the F3 overlay
 

@@ -1,6 +1,17 @@
 [
   {
     "date": "2026-10-13",
+    "title": "Benchmark Rooms",
+    "items": [
+      "The Benchmark button on character select now opens a setup window: pick the room, the class, the fight size (Light, Standard or Heavy) and the length (Quick or Full). It remembers your last pick.",
+      "Every room keeps its own creatures and their abilities, but every enemy has the same health and damage in every room, so kills cost the same everywhere.",
+      "The Bell Sanctum with a Gravecaller, Standard size, Full length is the Standard setup: the one whose numbers compare between PCs. Other picks are marked custom.",
+      "The results now show kills per minute and a \"vs last run\" column against your previous run of the same setup (green better, red worse).",
+      "Every finished run is added to the new public Benchmarks page on the website, with your name and your PC's graphics card and processor, so we can track performance across updates."
+    ]
+  },
+  {
+    "date": "2026-10-13",
     "title": "Fair Loot",
     "items": [
       "The Legion window now shows the new tier and your gold the moment a Reinforce goes through, instead of trailing behind the click.",

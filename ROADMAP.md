@@ -46,7 +46,7 @@ Not planned now: full server-side combat simulation (headless sessions); revisit
 
 ## Then: necromancer polish (no new content)
 
-- **Performance:** the in-game benchmark (character select -> Benchmark) is the measuring stick. Next: HUD draw calls, then combat
+- **Performance:** the in-game benchmark (character select -> Benchmark; every run lands on the site's Benchmarks page, DECISIONS B21) is the measuring stick. Next: HUD draw calls, then combat
   work over several cores (KNOWN-GAPS: Performance).
   Forward+/FSR only after that, behind a flag. Phase B is pulled (DECISIONS B12): bring it back one part per owner-approved test build
   from tag `archive/perf-phase-b`.

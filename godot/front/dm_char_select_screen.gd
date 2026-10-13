@@ -93,7 +93,7 @@ func _ready() -> void:
 	var bench := Button.new()
 	bench.text = "Benchmark"
 	bench.theme_type_variation = "DmButtonSmall"
-	bench.tooltip_text = "Run the same fight on this PC (about 80 seconds) to compare builds and settings. Offline; your characters are not touched."
+	bench.tooltip_text = "Pick a room, class and fight size, then run a held fight on this PC to compare builds and settings. Offline; your characters are not touched."
 	bench.pressed.connect(func() -> void: benchmark_requested.emit())
 	bench.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
 	add_child(bench)

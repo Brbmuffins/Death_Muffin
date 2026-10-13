@@ -1,14 +1,18 @@
 class_name DmBenchmarkScreen
 extends Control
 ## Benchmark UI around DmBenchmark: a progress line over the running fight (Esc cancels), then the results panel (big avg fps and p95 ms per
-## phase, the full table, Copy to clipboard, Back / Quit). Also prints the report to the log ("BENCHMARK" prefix) and saves it.
+## phase, the full table with a "vs last run" column, Copy to clipboard, Back / Quit). Also prints the report to the log ("BENCHMARK" prefix), saves it,
+## records the run in DmBenchHistory and sends the queued runs to the public history with `api` (online and logged in; else they wait).
 ## `quit_on_close` (launch arg `--benchmark`): the closing button is "Quit" and quits the game; otherwise `closed` is emitted (back to character select).
 
 signal closed
 
 var quit_on_close := false
-var warm_s := 10.0
-var measure_s := 30.0
+var setup: Dictionary = DmBenchmark.STANDARD.duplicate()
+var warm_s := -1.0               ## > 0: overrides the length's warm-up / measured seconds (`--bench-warm=` / `--bench-measure=` smoke runs)
+var measure_s := -1.0
+var api: DmApi                   ## the logged-in online api (uploads); null = the run is queued until a later session sends it
+var uploaded := -1               ## runs the server accepted after this one (-1 = not tried yet)
 var runner: DmBenchmark
 var report := ""
 var saved_path := ""
@@ -55,8 +59,11 @@ func _ready() -> void:
 
 func _run() -> void:
 	runner = DmBenchmark.new()
-	runner.warm_s = warm_s
-	runner.measure_s = measure_s
+	runner.configure(setup)
+	if warm_s > 0.0:
+		runner.warm_s = warm_s
+	if measure_s > 0.0:
+		runner.measure_s = measure_s
 	runner.progress.connect(func(t: String) -> void: _progress.text = t + "   (Esc cancels)")
 	runner.breakdown_step.connect(func(step: int, total: int, what: String) -> void:
 		_banner.visible = true
@@ -77,7 +84,27 @@ func _run() -> void:
 	DmBenchmark.log_text(report)
 	saved_path = DmBenchmark.save_text(report)
 	print("BENCHMARK saved to ", ProjectSettings.globalize_path(saved_path) if saved_path != "" else "(could not save)")
-	_show_results(r)
+	var entry := DmBenchHistory.payload(r, report)
+	var prev := DmBenchHistory.previous(entry)
+	DmBenchHistory.record(entry)
+	_show_results(r, prev)
+	_upload()
+
+
+func _upload() -> void:
+	if api == null:
+		_upload_status("Saved here; it is added to the online benchmark history the next time you log in.")
+		return
+	_upload_status("Adding the run to the online benchmark history...")
+	uploaded = await DmBenchHistory.flush(api)
+	var left := DmBenchHistory.pending_count()
+	_upload_status("Added to the online benchmark history." if left == 0 else "Could not reach the server: the run is kept and sent the next time you log in.")
+
+
+func _upload_status(t: String) -> void:
+	var l := get_node_or_null("%Upload") as Label
+	if l != null:
+		l.text = t
 
 
 func _input(e: InputEvent) -> void:
@@ -98,7 +125,7 @@ func _close() -> void:
 		closed.emit()
 
 
-func _show_results(r: Dictionary) -> void:
+func _show_results(r: Dictionary, prev: Dictionary = {}) -> void:
 	for c in get_children():
 		c.queue_free()
 	var bg := ColorRect.new()
@@ -125,6 +152,9 @@ func _show_results(r: Dictionary) -> void:
 	var title := DmFrontUi.lbl("BENCHMARK RESULTS" + ("  (cancelled)" if r.get("cancelled", false) else ""), "display", 28, DmUi.BONE_300, 4.0)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(title)
+	var setup_l := DmFrontUi.lbl(m.get("setup", ""), "body", 15, DmUi.SPELL_300, 0.0, true)
+	setup_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(setup_l)
 	for t in ["Build %s   %s" % [m["build"], m["date"]], "%s   %s   %s" % [m["gpu"], m["renderer"], m["resolution"]],
 			"%s (%d threads)   Preset %s   V-Sync %s" % [m["cpu"], m["cores"], m["preset"], m["vsync"]]]:
 		var l := DmFrontUi.lbl(t, "body", 13, DmUi.TEXT_MUTED)
@@ -148,19 +178,27 @@ func _show_results(r: Dictionary) -> void:
 	v.add_child(cards)
 	v.add_child(DmUi.hrule())
 	var grid := GridContainer.new()
-	grid.columns = 1 + ph.size()
+	var cmp := not prev.is_empty() and ph.size() == 1
+	grid.columns = 1 + ph.size() + (1 if cmp else 0)
 	grid.add_theme_constant_override("h_separation", 28)
 	grid.add_theme_constant_override("v_separation", 2)
 	v.add_child(grid)
 	grid.add_child(DmFrontUi.lbl("", "body", 14, DmUi.TEXT_MUTED))
 	for p in ph:
 		grid.add_child(DmFrontUi.lbl(p["label"], "body", 14, DmUi.SPELL_300))
+	if cmp:
+		grid.add_child(DmFrontUi.lbl("vs last run (%s)" % String(prev.get("version", "?")), "body", 14, DmUi.SPELL_300))
 	for row in DmBenchmark.ROWS:
 		var name_l := DmFrontUi.lbl(row[1], "body", 15, DmUi.TEXT_MUTED)
 		name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		grid.add_child(name_l)
 		for p in ph:
-			grid.add_child(DmFrontUi.lbl(row[2] % p[row[0]], "body", 15, DmUi.BONE_100))
+			grid.add_child(DmFrontUi.lbl(row[2] % p.get(row[0], 0), "body", 15, DmUi.BONE_100))
+		if cmp:
+			var f := DmBenchHistory.change(ph[0], prev, row[0])
+			var good := DmBenchHistory.better(row[0], f)
+			grid.add_child(DmFrontUi.lbl("" if is_nan(f) else "%+.0f%%" % (f * 100.0), "body", 15,
+				DmUi.TEXT_FAINT if good == 0 else (DmUi.UP if good > 0 else DmUi.DOWN_SOFT)))
 	var bd: Dictionary = r.get("breakdown", {})
 	if not bd.is_empty():
 		v.add_child(DmUi.hrule())
@@ -180,6 +218,12 @@ func _show_results(r: Dictionary) -> void:
 			for k in ["draws", "render_cpu_ms", "render_gpu_ms", "frame_ms"]:
 				var txt := ("%.0f" if k == "draws" else "%.2f") % -float(row[k])
 				g2.add_child(DmFrontUi.lbl(txt + ("?" if shaky and k != "draws" else ""), "body", 15, DmUi.TEXT_FAINT if shaky and k != "draws" else DmUi.BONE_100))
+	if not cmp:
+		v.add_child(DmFrontUi.lbl("No earlier run of this setup on this PC to compare with yet.", "body", 12, DmUi.TEXT_FAINT, 0.0, true))
+	var up := DmFrontUi.lbl("", "body", 12, DmUi.TEXT_FAINT, 0.0, true)
+	up.name = "Upload"
+	up.unique_name_in_owner = true
+	v.add_child(up)
 	var where := DmFrontUi.lbl("Saved to %s" % ProjectSettings.globalize_path(saved_path) if saved_path != "" else "Could not save the report", "body", 12, DmUi.TEXT_FAINT, 0.0, true)
 	v.add_child(where)
 	var btns := HBoxContainer.new()

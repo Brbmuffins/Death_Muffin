@@ -1,7 +1,7 @@
 # Death Muffin server
 
 Backend and operations for Death Muffin. The game is the Godot client (`godot/`), online only; the Windows launcher is `launcher/windows`. Public site:
-https://muffindevelopment.com/death-muffin/ (launcher download, patch notes, leaderboard).
+https://muffindevelopment.com/death-muffin/ (launcher download, patch notes, leaderboard, benchmarks).
 
 ## Services
 
@@ -24,7 +24,7 @@ Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (
 
 ## Static files (`/var/www/death-muffin/`)
 
-- `site/`: the launcher download page, About, Classes, leaderboard and patch notes. Copied to `/var/www/death-muffin/` by hand; no script publishes it.
+- `site/`: the launcher download page, About, Classes, leaderboard, benchmarks and patch notes. Copied to `/var/www/death-muffin/` by hand; no script publishes it.
 - `client/`: the Godot Windows client and `manifest.json`, written by `publish-godot-client.sh`.
 - `play/release-notes.json`, `play/patch-notes.json`: written by `announce-release.sh`; read by the launcher, the site and the client.
 
@@ -97,6 +97,12 @@ SELECT a.created_at, ac.username, a.character_id, a.kind, a.mode, a.action, a.de
 
 Settings -> Report a bug in the client posts to `POST /api/bug-reports` (10 per account per day; `GET /api/bug-reports/mine` lists the player's own; table `bug_reports`, migration 029).
 The bug agent in `bug-agent/` (every 2 minutes) triages them (`bug-agent/README.md`); `announce-release.sh` marks fixed ones released. The Discord dev agent is in `discord-agent/README.md`.
+
+## Benchmark history
+
+The client uploads every finished in-game benchmark run to `POST /api/benchmarks` (`backend/benchmarks.cjs`, table `benchmark_runs`, migration 048; reply `{ success, data: { id } }`; a repeated `clientRunId` answers the first id; 60 runs per account per day, 30 calls a minute). Everything in it is untrusted and is clamped on the way in; vsync-capped or cancelled runs are stored with `flagged` set and left out of the default list.
+Anyone can read: `GET /api/benchmarks` (filters `room`, `discipline`, `size`, `length`, `version`, `gpu`, `account`, `standard=1`, `includeFlagged=1`, `limit`, `before`) and `GET /api/benchmarks/:id` (metrics, breakdown, text report); only admin / gm accounts (GM mode or not) may `DELETE /api/benchmarks/:id`. nginx strips `/death-muffin/api`, so every route is mounted both as `/api/benchmarks` (the game's base) and `/benchmarks` (the site, like `/leaderboard`).
+The public page is `site/benchmarks.html` (`benchmarks.js`): filters, a per-version trend chart per PC, the runs table and a two-run compare.
 
 ## Tests
 

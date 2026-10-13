@@ -564,6 +564,10 @@ func boss_key_claim(character_id: int, boss: String, discipline: String, level: 
 func send_bug_report(report: Dictionary) -> DmResult:
 	return await _post("/api/bug-reports", report)
 
+## A finished in-game benchmark run (DmBenchHistory.payload) for the public benchmark history; a retry with the same clientRunId is a no-op.
+func post_benchmark(run: Dictionary) -> DmResult:
+	return await _post("/api/benchmarks", run)
+
 func get_my_bug_reports() -> DmResult:
 	return await _rget("/api/bug-reports/mine")
 

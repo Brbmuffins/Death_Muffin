@@ -2016,3 +2016,28 @@ a.enter-button { display: flex; align-items: center; justify-content: center; te
 .discipline-card__now { margin: 0 0 0.35rem; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; }
 .discipline-card__later { color: var(--bone-bright); }
 .discipline-card__now { color: var(--lilac); }
+
+/* Benchmarks page (benchmarks.html / benchmarks.js) */
+.bench-section { max-width: 1200px; }
+.bench-filters { display: flex; flex-wrap: wrap; gap: .8rem 1rem; margin: 1.5rem 0; align-items: end; }
+.bench-filters label { display: flex; flex-direction: column; gap: .25rem; font-size: .8rem; color: #c6a4ff; }
+.bench-filters select, .bench-filters input[type="text"] { background: #120f1a; color: inherit; border: 1px solid rgba(155, 92, 255, .4); border-radius: 6px; padding: .45rem .6rem; font: inherit; min-width: 9rem; }
+.bench-filters .bench-check { flex-direction: row; align-items: center; gap: .4rem; color: inherit; font-size: .9rem; }
+.bench-chart-box { border: 1px solid rgba(155, 92, 255, .3); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+.bench-chart-head { display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; align-items: center; justify-content: space-between; }
+.bench-chart-head h2 { margin: 0; font-size: 1.1rem; }
+.bench-chart-head label { margin-right: .8rem; font-size: .9rem; }
+.bench-chart svg { width: 100%; height: auto; display: block; }
+.bench-chart .axis { stroke: rgba(198, 164, 255, .35); stroke-width: 1; }
+.bench-chart .grid { stroke: rgba(198, 164, 255, .12); stroke-width: 1; }
+.bench-chart text { fill: #b9aed0; font-size: 11px; }
+.bench-legend { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; margin: .8rem 0 0; padding: 0; list-style: none; font-size: .85rem; }
+.bench-legend i { display: inline-block; width: .8rem; height: .8rem; border-radius: 2px; margin-right: .4rem; vertical-align: middle; }
+.bench-table td:first-child, .bench-table th:first-child { width: 1%; }
+.bench-badge { display: inline-block; padding: 0 .4rem; border: 1px solid #dcc38a; border-radius: 4px; color: #dcc38a; font-size: .75em; }
+.bench-compare { border: 1px solid rgba(155, 92, 255, .3); border-radius: 8px; padding: 1rem; margin: 1.5rem 0; overflow-x: auto; }
+.bench-compare table { border-collapse: collapse; width: 100%; text-align: left; }
+.bench-compare th, .bench-compare td { padding: .35rem .8rem; border-bottom: 1px solid rgba(155, 92, 255, .16); white-space: nowrap; }
+.bench-compare .better { color: #7fe39a; }
+.bench-compare .worse { color: #ff7d7d; }
+.bench-compare pre { white-space: pre-wrap; word-break: break-word; max-height: 24rem; overflow: auto; background: #0d0a14; padding: .8rem; border-radius: 6px; font-size: .8rem; }

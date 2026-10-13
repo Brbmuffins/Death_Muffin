@@ -130,3 +130,8 @@ Since B18 friends join through invites and asks; the six-digit codes have no UI 
   fixture) with facts it takes from its own records where it has them, bounds the rest, spends the tape no faster than the kill ledger
   accepts kills, and grants exactly its roll once. Gear affixes come from the same tape. Gold, XP and shards are still the client's claim
   until Phase 2.
+- **B21. Benchmark setups and a public run history** (owner, 2026-10-13). The benchmark lets the player pick the room, class, fight size and
+  length; the room keeps its own enemy kinds and abilities (their cost is part of what is measured), but every enemy has the same health and
+  damage in every room (the old Bell Sanctum average, no elites) so kills cost the same everywhere. Bell Sanctum + Gravecaller + Standard +
+  Full stays the one setup that compares PCs. Every finished run is sent automatically to the backend (`benchmark_runs`) and anyone can see the
+  history on the site; only staff (role admin / gm) can delete runs.
