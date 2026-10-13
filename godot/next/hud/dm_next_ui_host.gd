@@ -23,7 +23,8 @@ signal character_switch                           ## Settings -> "Switch charact
 signal world_restart(character: Dictionary)   ## the class panel saved a new discipline: the front rebuilds the world with it
 signal sfx(name: String)                     ## every sound the adapter forwards to the AudioDirector (tests listen here)
 signal feedback(text: String)                ## a cast was refused / unavailable (also drawn as a float over the hero)
-signal party_changed                         ## the lobby / party state changed (the Party window redraws from party_view())
+signal party_changed                         ## the lobby / party state changed (the Social window's Party tab redraws from party_view())
+signal friends_changed                       ## the friends list changed (the Social window's Friends tab redraws from friends_view())
 
 const REJECT_TEXT := {"essence": "Not enough Grave Essence", "souls": "Not enough souls (%d needed)", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
 const FEEDBACK_GAP_MS := 600
@@ -160,6 +161,9 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	if shell.party != null:
 		shell.party.changed.connect(party_changed.emit)
 		shell.party.notice.connect(func(t: String, k: String) -> void: game_event.emit("toast", {"text": t, "kind": k}))
+	if shell.friends != null:
+		shell.friends.changed.connect(friends_changed.emit)
+		shell.friends.requests_waiting.connect(_on_friend_requests)
 	shell.area_changed.connect(func(id: String) -> void: area_changed.emit(id))
 	shell.hero_died.connect(func(_b: DmHeroBody) -> void: hero_died.emit())
 	shell.hero_respawned.connect(func(_b: DmHeroBody) -> void: hero_respawned.emit())
@@ -534,7 +538,7 @@ func send_chat(text: String) -> void:
 		game_event.emit("chat", {"text": "(solo) Nobody hears you in the dark."})
 
 
-# ---- party / lobby (DmNextParty; the Party window reads party_view() and calls these) -----------------------------------------------------------------
+# ---- party / lobby (DmNextParty; the Social window's Party tab reads party_view() and calls these) ---------------------------------------------------
 
 func party_view() -> Dictionary:
 	return shell.party.view() if shell.party != null else {}
@@ -576,6 +580,34 @@ func party_kick(peer_id: int) -> void:
 
 func party_set_open(open: bool) -> void:
 	shell.party.set_open(open)
+
+
+# ---- friends (DmNextFriends; the Social window's Friends tab reads friends_view() and calls these) -----------------------------------------
+
+func friends_view() -> Dictionary:
+	return shell.friends.view() if shell.friends != null else {}
+
+
+func friends_refresh() -> void:
+	shell.friends.refresh()
+
+
+func friends_request(username: String) -> void:
+	shell.friends.send_request(username)
+
+
+func friends_accept(account_id: int) -> void:
+	shell.friends.accept(account_id)
+
+
+func friends_remove(account_id: int) -> void:
+	shell.friends.remove(account_id)
+
+
+func _on_friend_requests(names: Array) -> void:
+	var who := String(names[0]) if names.size() == 1 else "%d players" % names.size()
+	game_event.emit("toast", {"text": "%s asked to be your friend. Answer in Social (O)." % who, "kind": ""})
+	game_event.emit("friend_requests", {"count": names.size()})
 
 
 func leave_world() -> void:

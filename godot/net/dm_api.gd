@@ -303,6 +303,30 @@ func get_account_prefs() -> DmResult:
 func set_account_prefs(prefs: Dictionary) -> DmResult:
 	return await _post("/api/prefs", {"prefs": prefs})
 
+# --- Friends (backend friends.cjs) ------------------------------------------------------------------------------------------------
+
+## data: {friends: [{accountId, username, disciplineIndex, level}], incoming: [{accountId, username}], outgoing: [...]}
+func get_friends() -> DmResult:
+	return await _rget("/api/friends")
+
+## The writes answer the same list. data: {view: <as get_friends>, message: String ("" = nothing to say)}
+func friend_request(username: String) -> DmResult:
+	return await _friends_post("/api/friends/request", {"username": username})
+
+func friend_accept(account_id: int) -> DmResult:
+	return await _friends_post("/api/friends/accept", {"accountId": account_id})
+
+## Unfriend, decline their request or cancel yours.
+func friend_remove(account_id: int) -> DmResult:
+	return await _friends_post("/api/friends/remove", {"accountId": account_id})
+
+func _friends_post(path: String, body: Dictionary) -> DmResult:
+	var raw := await _request(path, "POST", body, true)
+	var r := _unwrap(raw)
+	if r.ok:
+		r.data = {"view": r.data, "message": String((raw.data as Dictionary).get("message", ""))}
+	return r
+
 # --- Professions, crafting, gathering ----------------------------------------------------------------------------------------------
 
 func get_professions(character_id: int) -> DmResult:

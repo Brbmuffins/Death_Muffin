@@ -15,7 +15,7 @@ extends RefCounted
 ## "view": "hero" closes every window, hides the HUD and frames the hero full body close-up from the front (`turn` degrees: 0 faces the camera, 180 shows the
 ## back; `anim` poses the hero and freezes it after a short settle); "game" is the normal game camera with the HUD hidden. The camera, HUD and pose are restored after the shot.
 ## Window ids (WINDOWS): bag/reliquary/inventory, character/gear/sheet, pets/cosmetics, legion, grimoire/spellbook, vault, forge, salvage, shelf,
-## codex, atlas, ascension, map, class, settings, professions, garden, labor, contracts.
+## codex, atlas, ascension, map, class, settings, professions, garden, labor, contracts, social/friends, party.
 
 const MAX_SHOTS := 4
 const MAX_WAIT_MS := 5000
@@ -32,6 +32,7 @@ const WINDOWS := {
 	"pets": "cosmetics", "cosmetics": "cosmetics", "legion": "legion", "grimoire": "grimoire", "spellbook": "grimoire", "vault": "vault",
 	"forge": "forge", "salvage": "salvage", "shelf": "shelf", "codex": "codex", "atlas": "atlas", "ascension": "ascension", "map": "map",
 	"class": "class", "settings": "settings", "professions": "professions", "garden": "garden", "labor": "labor", "contracts": "contracts",
+	"social": "friends", "friends": "friends", "party": "party",
 }
 ## The demo bag: every rarity, a set piece, affixed gear (rolled by the backend at the listed item level, so the affixes are random; the listed ones are
 ## only a fallback shape), stacks and consumables (ids the content does not know are skipped).

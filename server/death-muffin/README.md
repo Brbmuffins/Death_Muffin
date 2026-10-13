@@ -73,6 +73,8 @@ start, so changing one needs a restart of `death-muffin-auth`.
   the ledger credits (and implies the step-1 clamp). Ceilings come from `server/rules/gameplay/authorityRules.ts`.
 - **Party sessions** (`backend/party-sessions.cjs`, migration 041, `backend/SESSION-REPORTS.md`): a session host reports what its members killed; each member's part goes through the same kill ledger.
 - **Learned runes** (`backend/runes.cjs`, migration 044): `GET /api/runes/:id` lists a character's learned runes; `POST /api/inventory/rune/learn` spends a bag rune and learns it; `POST /api/inventory/rune` puts a learned rune in its rite's socket (or empties it). DECISIONS B17.
+- **Friends** (`backend/friends.cjs`, migration 045): `GET /api/friends` (friends with their active character's discipline and level, requests both ways), `POST /api/friends/request {username}`
+  (asking someone who asked you accepts), `/accept {accountId}`, `/remove {accountId}` (unfriend, decline or cancel). Mutual, one row per pair, 100 per account, 20 waiting requests; 60 calls a minute.
 - **Dropped gear** (`backend/ground.cjs`, migration 043): `POST /api/ground/drop` and `/api/ground/pickup`. Gear dropped from a bag lies on its party session's ground until the session ends; the dropper and members who were in the session when it was found (`loot_instances.found_session_id`, stamped by roll-gear) may take it; the first pickup wins, one transaction each. A bag save may not name a piece on the ground.
 
 ```sql

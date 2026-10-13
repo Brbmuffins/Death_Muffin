@@ -35,7 +35,7 @@ Start here for a request, then read the system's README. One row per feature; th
 | Enemies, bosses | `enemies/`, `next/spawn/`, `next/bosses/`, `game/dm_boss_view.gd` | `data/combat/enemies.json`, `sim/` | `kills.cjs`, `boss-key.cjs` |
 | Hero body, avatar, death pose | `next/hero/dm_hero_body.gd`, `game/dm_avatar.gd` | | |
 | Thralls, corpses | `next/thralls/`, `next/corpses/` | | |
-| Co-op party | `session/`, `net/relay/`, `next/party/`, `next/next_net.gd` | | `party-sessions.cjs` (+ `server/death-muffin/lobby/`) |
+| Co-op party, friends, Social window | `session/`, `net/relay/`, `next/party/`, `next/next_net.gd`, `ui/panels/dm_social_window.gd`, `game_ui/dm_ui_social.gd` | | `party-sessions.cjs`, `friends.cjs` (+ `server/death-muffin/lobby/`) |
 | Crafting, gathering, garden, labor | `ui/panels_b/` (forge, salvage, garden, labor, professions), `next/gathering/` | `rules/gathering/`, `data/gathering/` | `gathering/`, `garden.cjs`, `labor.cjs` |
 | F3 performance overlay | `main/perf_overlay.gd`, `next/perf/` | | |
 | Bug report window | `game_ui/dm_bug_report_view.gd` | | `bug-reports.cjs` |

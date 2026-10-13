@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-10-13",
+    "title": "Friends",
+    "items": [
+      "New Social window (O) with a Friends tab: add a friend by the name they log in with. Once they accept, you see each other in the list with the class and level each of you last played.",
+      "Friend requests wait for you in the Friends tab (Accept or Decline). If someone asked you while you were away, you get a note when you enter the world.",
+      "The Party window is now the Social window's Party tab. F still opens it, and the HUD button is called Social.",
+      "Contracts no longer have their own key (O is Social now). Open them from the Acre ledger (P)."
+    ]
+  },
+  {
+    "date": "2026-10-13",
     "title": "Learn Your Runes",
     "items": [
       "Chat is easier on the eyes: party messages get a violet edge, finds and legendary drops are gold, and system notes are a muted silver.",

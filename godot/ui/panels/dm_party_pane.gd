@@ -1,8 +1,8 @@
-class_name DmLobbyPanel
-extends DmWindow
-## Party (the lobby window, key F / the HUD's Party button): host a session, join one from the public list or with a private code, and manage the
-## party you are in. Pure UI in the ui-kit look: it draws a `view` Dictionary (DmNextParty.view()) and emits what the player asked for; the
-## integrator (game_ui/dm_ui_lobby.gd) maps the signals to the game. Nothing here talks to a socket.
+class_name DmPartyPane
+extends VBoxContainer
+## The Social window's Party tab (key F; ui/panels/dm_social_window.gd): host a session, join one from the public list or with a private code, and
+## manage the party you are in. Pure UI in the ui-kit look: it draws a `view` Dictionary (DmNextParty.view()) and emits what the player asked for; the
+## integrator (game_ui/dm_ui_social.gd) maps the signals to the game. Nothing here talks to a socket.
 ##
 ## view: {unavailable: String ("" = usable), link: off|connecting|ready|failed, mode: solo|host|client|handoff, busy: "listing"|"creating"|"joining"|"",
 ##        sessions: [{id,name,host,area,players,max,open}], listed: bool, code: String, info: {name,host,area,players,max,private,open},
@@ -51,19 +51,15 @@ var _default_name := ""
 
 
 func _init() -> void:
-	super._init()
-	title = "Party"
-	aka = "F"
-	panel_width = 580
 	_build_ui()
 
 
 func _build_ui() -> void:
-	body.add_theme_constant_override("separation", 14)
+	add_theme_constant_override("separation", 14)
 	# --- messages ---------------------------------------------------------------------------------
 	status_label = DmUi.label("", "DmMuted", true)
 	status_label.visible = false
-	body.add_child(status_label)
+	add_child(status_label)
 	error_box = PanelContainer.new()
 	error_box.theme_type_variation = "DmInsetTight"
 	var eb := (DmUi.theme().get_stylebox("panel", "DmInsetTight") as StyleBoxFlat).duplicate() as StyleBoxFlat
@@ -78,16 +74,16 @@ func _build_ui() -> void:
 	error_label.add_theme_color_override("font_color", DmUi.DANGER)
 	error_box.add_child(error_label)
 	error_box.visible = false
-	body.add_child(error_box)
+	add_child(error_box)
 	unavailable_label = DmUi.label("", "DmNote", true)
 	unavailable_label.add_theme_font_size_override("font_size", 15)
 	unavailable_label.visible = false
-	body.add_child(unavailable_label)
+	add_child(unavailable_label)
 
 	# --- not in a party: host, join by code, the public list ----------------------------------------
 	solo_box = VBoxContainer.new()
 	solo_box.add_theme_constant_override("separation", 14)
-	body.add_child(solo_box)
+	add_child(solo_box)
 
 	var host := _section(solo_box, "Host a session")
 	var nr := HBoxContainer.new()
@@ -141,7 +137,7 @@ func _build_ui() -> void:
 	party_box = VBoxContainer.new()
 	party_box.add_theme_constant_override("separation", 14)
 	party_box.visible = false
-	body.add_child(party_box)
+	add_child(party_box)
 	var ps := _section(party_box, "Your party")
 	session_label = DmUi.label("", "DmRow", true)
 	ps.add_child(session_label)

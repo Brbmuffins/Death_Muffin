@@ -231,7 +231,7 @@ static func suggestions(s: Dictionary) -> Array:
 	if contracts != null and _f(contracts["open"]) > 0.0:
 		var o := _f(contracts["open"])
 		_add(out, {"id": "contracts", "kind": "contracts", "topic": "acre", "priority": 40,
-			"text": "%s Sexton’s Contract%s for delivery (O)" % [DmJsFmt.num_str(o), " waits" if o == 1.0 else "s wait"], "data": {"open": contracts["open"], "total": contracts["total"]}})
+			"text": "%s Sexton’s Contract%s for delivery (P)" % [DmJsFmt.num_str(o), " waits" if o == 1.0 else "s wait"], "data": {"open": contracts["open"], "total": contracts["total"]}})
 	if labor != null and _f(labor["unlocked"]) > _f(labor["assigned"]):
 		_add(out, {"id": "labor-idle", "kind": "labor-idle", "topic": "acre", "priority": 35, "text": "A Grave Laborer stands idle: give them a post (H)",
 			"place": "acre", "data": {"idle": _f(labor["unlocked"]) - _f(labor["assigned"])}})

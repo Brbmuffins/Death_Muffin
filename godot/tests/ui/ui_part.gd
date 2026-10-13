@@ -187,9 +187,9 @@ func _run() -> void:
 	await _frames(2)
 	var open_btn: Button
 	for pb in sp.find_children("*", "Button", true, false):
-		if pb.is_visible_in_tree() and pb.text == "OPEN THE PARTY WINDOW":
+		if pb.is_visible_in_tree() and pb.text == "OPEN THE PARTY TAB (F)":
 			open_btn = pb
-	_check(open_btn != null, "Co-op tab has the Open the Party window button")
+	_check(open_btn != null, "Co-op tab has the Open the Party tab button")
 	if open_btn != null:
 		_tab_click(sv, open_btn.get_global_rect().get_center())
 		_check(acts.has("party_window"), "clicking it asks for the Party window")

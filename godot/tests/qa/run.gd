@@ -46,7 +46,7 @@ func _init() -> void:
 		ok(DmCharacterBuild.is_playable(float(DmQaUiShots.DISCIPLINES[nm])) and String(by_index[str(DmQaUiShots.DISCIPLINES[nm])]) == nm, "%s is a playable discipline at its class index" % nm)
 	ok(DmQaUiShots.parse('{"shots":[{"name":"x"}]}')["bag"] == "demo", "demo bag is the default")
 	# every window id the plan accepts must be one DmGameUi.toggle_panel knows
-	var known: Array = DmGameUi.PANEL_KEYS.values() + ["settings", "salvage", "shelf", "ascension", "class"]
+	var known: Array = DmGameUi.PANEL_KEYS.values() + DmGameUi.HOSTS.keys() + ["settings", "salvage", "shelf", "ascension", "class"]
 	for k in DmQaUiShots.WINDOWS:
 		ok(DmQaUiShots.WINDOWS[k] in known, "window %s maps to a real panel id" % k)
 	# the demo bag only names items the content knows, and fits the bag

@@ -27,7 +27,7 @@ const MENU_ROW := [
 	["map", "waymap", "Map", "Waystones (M)", ""],
 	["atlas", "atlas", "Atlas", "Gear Atlas (.)", "menu.atlas"],
 	["codex", "book", "Codex", "Codex (K)", ""],
-	["party", "person", "Party", "Party: host a session, join friends (F)", ""],
+	["friends", "person", "Social", "Social: friends (O) and party (F)", ""],
 	["settings", "gear", "Settings", "Settings (Esc)", ""],
 ]
 const SLOT_KEYS := ["1", "2", "3", "4", "RMB", "R"]

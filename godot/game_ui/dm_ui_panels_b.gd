@@ -72,7 +72,7 @@ func _init(ui_: Node) -> void:
 	labor = DmLaborPanel.new()
 	pa.acre_win.add_tab("labor", "Laborers", labor, "H")
 	contracts = DmContractsPanel.new()
-	pa.acre_win.add_tab("contracts", "Contracts", contracts, "O")
+	pa.acre_win.add_tab("contracts", "Contracts", contracts)
 	professions.contracts_pressed.connect(func() -> void: ui.toggle_panel("contracts"))
 	professions.garden_pressed.connect(func() -> void: ui.toggle_panel("garden"))
 	professions.labor_pressed.connect(func() -> void: ui.toggle_panel("labor"))

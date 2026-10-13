@@ -1,8 +1,10 @@
 extends SceneTree
-## The Party window (ui/panels/dm_lobby_panel.gd, game_ui/dm_ui_lobby.gd) in the real HUD, against the real local lobby service.
+## The Social window (ui/panels/dm_social_window.gd, its Party and Friends panes, game_ui/dm_ui_social.gd) in the real HUD, against the real local
+## lobby service and one shared offline backend.
 ##   godot --headless --path godot --script res://tests/next_lobby/ui_run.gd
-## Part A: the panel alone on synthetic views (every state and every error text). Part B: the HUD button / F key, the forms, host / join / leave /
-## remove through the window, and a joiner's own HUD (party frames, casting reaches the host, the window from the joiner's side).
+## Part A: the Party pane alone on synthetic views (every state and every error text), then the Friends pane. Part B: the HUD button / O and F keys,
+## the forms, host / join / leave / remove through the window, and a joiner's own HUD (party frames, casting reaches the host, the window from the
+## joiner's side). Part C: two players become friends through their windows (request, the waiting-request pip, accept, class line, remove).
 
 const DT := 1.0 / 60.0
 
@@ -42,6 +44,7 @@ func ticks(n: int) -> void:
 
 func _run() -> void:
 	await _part_a()
+	await _part_a_friends()
 	lobby = DmTestLobby.start()
 	if lobby == null:
 		print("next_lobby ui: part B SKIPPED (needs `node` and `cd server/death-muffin/lobby && npm install`)")
@@ -50,6 +53,7 @@ func _run() -> void:
 		return
 	check(await lobby.wait_ready(self), "the local lobby service is up")
 	await _part_b()
+	await _part_c()
 	lobby.stop()
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
@@ -78,9 +82,8 @@ func _buttons(n: Node, text: String, out: Array = []) -> Array:
 func _part_a() -> void:
 	var root_ui := Control.new()
 	root.add_child(root_ui)
-	var w := DmLobbyPanel.new()
+	var w := DmPartyPane.new()
 	root_ui.add_child(w)
-	w.open()
 	await ticks(3)
 	var solo := {"unavailable": "", "link": "ready", "mode": "solo", "busy": "", "sessions": [], "listed": true, "code": "", "info": {}, "error": {}, "roster": [], "open": true, "max": 4, "default_name": "Mira's crypt"}
 	w.set_view(solo)
@@ -180,6 +183,50 @@ func _part_a() -> void:
 	await ticks(2)
 
 
+func _part_a_friends() -> void:
+	var root_ui := Control.new()
+	root.add_child(root_ui)
+	var w := DmFriendsPane.new()
+	root_ui.add_child(w)
+	await ticks(2)
+	var base := {"unavailable": "", "loaded": true, "busy": false, "error": "", "message": "", "friends": [], "incoming": [], "outgoing": []}
+	w.set_view({"unavailable": "Friends need an online account. Offline characters stay on this device."})
+	check(w.unavailable_label.visible and not w.main_box.visible, "A friends: offline shows why and hides the controls")
+	w.set_view(base)
+	check(w.main_box.visible and w.empty_label.visible and not (w.requests_box.get_parent() as Control).visible, "A friends: an empty list says so, no Requests section")
+	var asked: Array = []
+	w.request_requested.connect(func(n: String) -> void: asked.append(n))
+	w.name_edit.text = "  Helix "
+	w.add_btn.pressed.emit()
+	check(asked == ["Helix"], "A friends: Send request asks with the trimmed name")
+	var v := base.duplicate(true)
+	v["message"] = "Friend request sent to Helix."
+	v["outgoing"] = [{"accountId": 2, "username": "Helix"}]
+	v["incoming"] = [{"accountId": 3, "username": "warbogar"}]
+	v["friends"] = [{"accountId": 4, "username": "Moth", "disciplineIndex": 11, "level": 631}, {"accountId": 5, "username": "Newbie", "disciplineIndex": null, "level": null}]
+	w.set_view(v)
+	check(w.name_edit.text == "" and w.message_label.visible, "A friends: a sent request clears the field and says so")
+	check(w.requests_rows.get_child_count() == 2 and _buttons(w.requests_rows, "Accept").size() == 1 and _buttons(w.requests_rows, "Decline").size() == 1 \
+		and _buttons(w.requests_rows, "Cancel").size() == 1, "A friends: theirs has Accept + Decline, mine has Cancel")
+	var t := _texts(w.friends_rows)
+	check(w.friends_rows.get_child_count() == 2 and t.has("Reaper · Lv 631") and t.has("No character yet") and w.friends_head.text == "2", "A friends: friends show class and level", str(t))
+	var acts: Array = []
+	w.accept_requested.connect(func(id: int) -> void: acts.append(["accept", id]))
+	w.remove_requested.connect(func(id: int) -> void: acts.append(["remove", id]))
+	(_buttons(w.requests_rows, "Accept")[0] as Button).pressed.emit()
+	var rm: Button = _buttons(w.friends_rows, "Remove")[0]
+	rm.pressed.emit()
+	check(acts == [["accept", 3]] and rm.text == DmUi.upper("Sure?"), "A friends: Remove asks first", str(acts))
+	rm.pressed.emit()
+	check(acts == [["accept", 3], ["remove", 4]], "A friends: the second press removes", str(acts))
+	v["error"] = "Nobody is called \"x\"."
+	v["busy"] = true
+	w.set_view(v)
+	check(w.error_label.visible and w.error_label.text.begins_with("Nobody") and w.add_btn.disabled, "A friends: a refusal is shown verbatim; busy disables Send")
+	root_ui.queue_free()
+	await ticks(2)
+
+
 # ---- B: the real HUD + the local lobby --------------------------------------------------------------------------------------------------
 
 func _branch() -> Node:
@@ -200,8 +247,12 @@ func _game(branch: Node, ch: Dictionary, api: DmApi, extra: Dictionary) -> DmNex
 	return g
 
 
+var _last_name := ""   ## the login name _account registered last
+
+
 func _account(api: DmApi, name: String) -> Dictionary:
-	var r := await api.register("%s%d" % [name, Time.get_ticks_usec() % 100000], "p@example.com", "pw1234")
+	_last_name = "%s%d" % [name, Time.get_ticks_usec() % 100000]
+	var r := await api.register(_last_name, "p@example.com", "pw1234")
 	api.set_token(r.data["token"])
 	return (await api.load_or_create_character(2)).data
 
@@ -222,22 +273,26 @@ func _part_b() -> void:
 	var hb := _branch()
 	var hg := await _game(hb, ch_h, api_h, {"name": "hostui", "lobby_token": lobby.token(201, "hostui")})
 	var ui: DmGameUi = hg.ui
-	check(ui != null and ui.windows.has("party") and ui.lobby_ui != null, "B: the HUD has a Party window")
-	var btn: Button = ui.hud.menu_btns.get("party")
-	check(btn != null and btn.tooltip_text.contains("(F)"), "B: and a Party button in the HUD's menu row")
-	var panel: DmLobbyPanel = ui.lobby_ui.panel
-	check(not panel.visible and hg.party.lobby == null, "B: closed window, no lobby socket")
+	check(ui != null and ui.windows.has("social") and ui.social_ui != null, "B: the HUD has a Social window")
+	var btn: Button = ui.hud.menu_btns.get("friends")
+	check(btn != null and btn.tooltip_text.contains("(O)") and btn.tooltip_text.contains("(F)"), "B: and a Social button in the HUD's menu row")
+	var win: DmSocialWindow = ui.social_ui.window
+	var panel: DmPartyPane = win.party
+	check(not win.visible and hg.party.lobby == null, "B: closed window, no lobby socket")
 	btn.pressed.emit()
 	await ticks(3)
-	check(panel.visible and ui.is_open("party"), "B: the HUD button opens the window")
+	check(win.visible and ui.is_open("friends") and win.friends.is_visible_in_tree(), "B: the HUD button opens the window on Friends")
 	check(await until(func() -> bool: return hg.party.link == "ready" and hg.party.listed, 6.0), "B: opening it connects the lobby and lists")
+	ui._unhandled_key_input(_key(KEY_F))
+	await ticks(2)
+	check(win.visible and ui.is_open("party") and panel.is_visible_in_tree(), "B: F switches the open window to the Party tab")
 	check(panel.empty_label.visible, "B: the empty list says so")
 	ui._unhandled_key_input(_key(KEY_F))
 	await ticks(2)
-	check(not panel.visible and hg.party.lobby == null, "B: F closes it and the idle lobby socket goes with it")
+	check(not win.visible and hg.party.lobby == null, "B: F again closes it and the idle lobby socket goes with it")
 	ui._unhandled_key_input(_key(KEY_F))
 	await ticks(2)
-	check(panel.visible, "B: F opens it")
+	check(panel.is_visible_in_tree(), "B: F opens it on Party")
 	await until(func() -> bool: return hg.party.listed, 6.0)
 	# someone else's public session shows up in the window's list, with a working Join
 	var other := DmLobbyClient.new()
@@ -276,7 +331,7 @@ func _part_b() -> void:
 	# a joiner (its own game with its own HUD) joins by the code from ITS window
 	var jb := _branch()
 	var jsolo := await _game(jb, ch_j, api_j, {"name": "joinui", "lobby_token": lobby.token(202, "joinui")})
-	var jpanel: DmLobbyPanel = jsolo.ui.lobby_ui.panel
+	var jpanel: DmPartyPane = jsolo.ui.social_ui.window.party
 	jsolo.ui.toggle_panel("party")
 	await until(func() -> bool: return jsolo.party.listed, 6.0)
 	var ready := [null]
@@ -297,7 +352,7 @@ func _part_b() -> void:
 	check(await until(func() -> bool: return panel.roster_box.get_child_count() == 2 and _buttons(panel.roster_box, "Remove").size() == 1, 6.0), "B: the host's window shows the joiner with a Remove button")
 	jg.ui.toggle_panel("party")
 	await ticks(3)
-	var jp: DmLobbyPanel = jg.ui.lobby_ui.panel
+	var jp: DmPartyPane = jg.ui.social_ui.window.party
 	check(jp.party_box.visible and jp.roster_box.get_child_count() == 2 and _buttons(jp.roster_box, "Remove").is_empty(), "B: the joiner's window shows the party without Remove buttons")
 	check(jp.code_big.text == "" and jp.end_btn.text == DmUi.upper("Leave party"), "B: and a Leave button")
 	check(jg.ui_host.party_view()["roster"].size() == 2, "B: the joiner's party view has the roster")
@@ -332,6 +387,69 @@ func _part_b() -> void:
 	check(hg.party.mode == DmNextParty.SOLO and panel.solo_box.visible and hg.local_body() == body, "B: End session returns the window to the lobby view, the game goes on")
 	ui._unhandled_key_input(_key(KEY_F))
 	await ticks(2)
-	check(not panel.visible and hg.party.lobby == null, "B: and closing the window leaves no socket behind")
+	check(not win.visible and hg.party.lobby == null, "B: and closing the window leaves no socket behind")
 	await hg.leave()
 	hg.queue_free()
+
+
+# ---- C: two players become friends through their Social windows (shared offline backend; no lobby needed) --------------------------------
+
+func _part_c() -> void:
+	var m := DmOffline.make_mock("")
+	var api_a := DmOffline.make_api(m)
+	var api_b := DmOffline.make_api(m)
+	var ch_a := await _account(api_a, "fra")
+	var ch_b := await _account(api_b, "frb")
+	var name_b := _last_name
+	var ab := _branch()
+	var ga := await _game(ab, ch_a, api_a, {"name": "fra"})
+	var ui_a: DmGameUi = ga.ui
+	var win_a: DmSocialWindow = ui_a.social_ui.window
+	ui_a._unhandled_key_input(_key(KEY_O))
+	await ticks(2)
+	check(win_a.visible and ui_a.is_open("friends"), "C: O opens the Social window on Friends")
+	check(await until(func() -> bool: return ga.friends.loaded and not ga.friends.busy, 4.0) and win_a.friends.empty_label.visible, "C: the list loads, empty")
+	check(name_b != "", "C: B's login name is known", name_b)
+	win_a.friends.name_edit.text = name_b.to_upper()
+	win_a.friends.add_btn.pressed.emit()
+	check(await until(func() -> bool: return ga.friends.outgoing.size() == 1, 4.0), "C: a request by name (any case) is sent")
+	await ticks(2)
+	check(win_a.friends.message_label.text.begins_with("Friend request sent") and _buttons(win_a.friends.requests_rows, "Cancel").size() == 1, "C: A sees it waiting with Cancel")
+	ui_a.close_panels()
+	# B enters the world: told about the request without opening anything
+	var bb := _branch()
+	var gb := await _game(bb, ch_b, api_b, {"name": "frb"})
+	var ui_b: DmGameUi = gb.ui
+	var win_b: DmSocialWindow = ui_b.social_ui.window
+	check(await until(func() -> bool: return gb.friends.incoming.size() == 1, 4.0), "C: B's game learned about the request at world entry")
+	await ticks(2)
+	var tab_b: DmTabButton = win_b._tabs["friends"]["btn"]
+	check(tab_b._pip.visible, "C: B's Friends tab has its NEW pip")
+	ui_b.hud.menu_btns.get("friends").pressed.emit()
+	await ticks(2)
+	check(not tab_b._pip.visible or not win_b.visible, "C: opening Friends clears the pip")
+	check(await until(func() -> bool: return _buttons(win_b.friends.requests_rows, "Accept").size() == 1, 4.0), "C: B sees Accept")
+	(_buttons(win_b.friends.requests_rows, "Accept")[0] as Button).pressed.emit()
+	check(await until(func() -> bool: return gb.friends.friends.size() == 1, 4.0), "C: accepted")
+	await ticks(2)
+	var tb := _texts(win_b.friends.friends_rows)
+	check(tb.has("Gravecaller · Lv 1"), "C: B sees A with A's class and level", str(tb))
+	ui_a._unhandled_key_input(_key(KEY_O))
+	check(await until(func() -> bool: return ga.friends.friends.size() == 1 and ga.friends.outgoing.is_empty(), 4.0), "C: A's list shows B as a friend on the next open")
+	await ticks(2)
+	var rm: Button = _buttons(win_a.friends.friends_rows, "Remove")[0]
+	rm.pressed.emit()
+	rm.pressed.emit()
+	check(await until(func() -> bool: return ga.friends.friends.is_empty(), 4.0), "C: Remove (twice) unfriends")
+	win_a.friends.name_edit.text = "nobody_here_at_all"
+	win_a.friends.add_btn.pressed.emit()
+	check(await until(func() -> bool: return ga.friends.error != "", 4.0), "C: an unknown name is refused")
+	await ticks(2)
+	check(win_a.friends.error_label.visible and win_a.friends.error_label.text.begins_with("Nobody is called"), "C: in words", win_a.friends.error_label.text)
+	await ga.leave()
+	ga.queue_free()
+	await gb.leave()
+	gb.queue_free()
+	ab.queue_free()
+	bb.queue_free()
+	await ticks(2)

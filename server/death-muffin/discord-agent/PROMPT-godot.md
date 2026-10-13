@@ -116,7 +116,7 @@ Read them. The plan:
 ```
 
 - `open`: windows to open, from: bag (also reliquary), character (also gear, sheet), pets, legion, grimoire (also spellbook), vault, forge,
-  salvage, shelf, codex, atlas, ascension, map, class, settings, professions, garden, labor, contracts. Only one window is open at a time, so
+  salvage, shelf, codex, atlas, ascension, map, class, settings, professions, garden, labor, contracts, social (Friends tab), party. Only one window is open at a time, so
   one window per shot (the last one stays open). The vault needs `"area": "chapterhouse"`.
 - `hover`: show the item card of `"item:<item id>"` (the first matching bag cell), a bag cell number 0 to 47, or `"worn:<slot>"` / `"belt:<tool>"`.
   The demo bag holds: staff_bone (common), scythe_iron (uncommon), staff_gold (rare, affixed), staff_moon (epic, affixed),

@@ -155,7 +155,7 @@ func _build() -> void:
 	if show_contracts or show_garden or show_labor or show_cosmetics:
 		var acts := HFlowContainer.new()
 		acts.add_theme_constant_override("h_separation", 10)
-		for spec: Array in [[show_cosmetics, "Capes", cosmetics_pressed, "Capes and pets (N)"], [show_labor, "Laborers", labor_pressed, "Grave Laborers (H)"], [show_garden, "Garden", garden_pressed, "Grave Gardening (U)"], [show_contracts, "Contracts", contracts_pressed, "Daily delivery orders (O)"]]:
+		for spec: Array in [[show_cosmetics, "Capes", cosmetics_pressed, "Capes and pets (N)"], [show_labor, "Laborers", labor_pressed, "Grave Laborers (H)"], [show_garden, "Garden", garden_pressed, "Grave Gardening (U)"], [show_contracts, "Contracts", contracts_pressed, "Daily delivery orders"]]:
 			if spec[0]:
 				var b := DmPb.button(spec[1], false, false, spec[3])
 				b.custom_minimum_size = Vector2(0, 40)

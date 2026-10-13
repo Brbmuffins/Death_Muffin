@@ -40,6 +40,7 @@ var chapterhouse: DmChapterhouse                ## child "Chapterhouse": NPCs, s
 var acre: DmNextAcre                            ## child "Acre" (host with the HUD): visible Grave Laborers, labor / garden notices, the first-hour guidance feeds (next/gathering/)
 var gather: DmNextGather                        ## child "Gather" (every peer): gathering nodes, the gather loop (host), skills, AFK (next/gathering/)
 var party: DmNextParty                          ## child "Party" (every peer): the lobby link, hosting / joining, roster controls, party chat, the host <-> joiner handshake (next/party/)
+var friends: DmNextFriends                      ## child "Friends": the account's friends and friend requests (backend friends.cjs; next/party/)
 var joiner: DmNextJoiner                        ## child "Joiner" (a party joiner only): its own character, backend session, loot and XP on its own account (next/party/)
 
 var character: Dictionary = {}
@@ -145,6 +146,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	party.name = "Party"   # before the session starts: its RPCs must exist at this path when the first packet arrives
 	add_child(party)
 	party.setup(self)
+	friends = DmNextFriends.new()
+	friends.name = "Friends"
+	add_child(friends)
+	friends.setup(self)
 	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
 	session.character_name = String(opts.get("name", "You"))
 	session.discipline_id = String(d["id"])
@@ -350,6 +355,7 @@ func _start_hud() -> void:
 			if a != null:
 				a.play_sfx(n))
 		await ui.warm()
+		friends.check_requests()   # after the loading cover: a waiting friend request is a toast + the Friends tab's pip
 		if progress != null:
 			progress.belt.load_pick(ui.belt_pick())
 		ui_host.inventory.changed.connect(func(_s: Array) -> void: sync_runes())   # a socketed / removed rune reaches the caster

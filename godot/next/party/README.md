@@ -1,13 +1,24 @@
-# godot/next/party: the lobby, hosting, joining, and the joiner's own account
+# godot/next/party: friends, the lobby, hosting, joining, and the joiner's own account
 
 Owner 2026-10-07: the lobby is private 6-digit codes plus a public list of open sessions. Host's game is authoritative (D1); a host quitting ends the session (D6).
 Files: `dm_next_party.gd` (`DmNextParty`, child `Party` of `DmNextGame`, every peer), `dm_next_joiner.gd` (`DmNextJoiner`, child `Joiner`, joiners only),
-`ui/panels/dm_lobby_panel.gd` (the Party window, pure UI), `game_ui/dm_ui_lobby.gd` (window <-> game wiring), `DmNextUiHost.party_*` (the contract), `main/main.gd` (game swap).
+`dm_next_friends.gd` (`DmNextFriends`, child `Friends`), `ui/panels/dm_social_window.gd` (the Social window, key O: tabs Friends and Party),
+`ui/panels/dm_friends_pane.gd` / `ui/panels/dm_party_pane.gd` (the tabs, pure UI), `game_ui/dm_ui_social.gd` (window <-> game wiring),
+`DmNextUiHost.party_*` / `friends_*` (the contract), `main/main.gd` (game swap).
+
+## Friends (DECISIONS B18)
+Mutual friends kept on the backend (`backend/friends.cjs`, table `friendships`, migration 045). The Friends tab (O, or the HUD's Social button) adds a
+friend by login name (any case), lists requests both ways (Accept / Decline, Cancel) and friends with the class and level of the character they last
+played (`DmNextFriends.class_line`). Asking someone who already asked you makes you friends at once. Remove asks "Sure?" first. Caps: 100 per
+account, 20 requests waiting. No socket and no per-frame work: one `GET /api/friends` after the world's loading cover (`check_requests`: waiting
+requests become a toast and the tab's NEW pip, once per run) and one per open of the tab; each write answers the whole list. Offline characters
+see why instead (same rule as the lobby: an override `lobby_url` enables it for tests). Online / offline status, joining a friend and invites are
+not built yet (ROADMAP).
 
 ## Flows
 | | what happens |
 |---|---|
-| **Solo** | nothing: no socket, no per-frame work. Opening the Party window (key F, HUD button, Settings -> Co-op tab -> Open the Party window) opens a lobby socket and lists every 10 s; closing it closes the socket again. In `--dev-offline` the window says "Online play needs an online account". |
+| **Solo** | nothing: no socket, no per-frame work. Opening the Social window (key O on Friends, key F on Party, the HUD's Social button, Settings -> Co-op tab -> Open the Party tab) opens a lobby socket and lists every 10 s; closing it closes the socket again. In `--dev-offline` the window says "Online play needs an online account". |
 | **Host** | `host_session(name, private)` -> lobby `create` -> `DmRelayPeer.host` -> `DmSession.swap_transport(relay)`: the running world, the host's body and its rewards stay; joiners come in through the normal session handshake. Private = a six-digit code to share; public = in everyone's list. Open/Closed (`set_open`) stops new players (and hides it from the list). `kick(peer)`. `leave()` or a lost lobby socket -> back to the offline peer, the game plays on solo (`hosting_changed`). |
 | **Join** | `join_session(id, code?)` / `join_by_code(code)` from a solo game: the lobby seats us (`join_ready(lobby, info)`), `main.gd` saves + frees the solo game and starts a client `DmNextGame` (`opts.lobby`) on the same socket. The joiner says hello only after its world is built (`DmRelayPeer.hold`), so the host waits `DmSession.HELLO_TIMEOUT` (90 s) for it; the joiner gives up `CLIENT_ACTIVE_S` (20 s of running frames) after its hello went out, at most `CLIENT_HARD_S` (85 s): the first frames after a build can stall for seconds on the Compatibility renderer. The join path logs `[coop]` lines with `printerr`: a release build buffers `print` output and only flushes the log file on an error or a clean exit, so plain prints never reached bug reports. A refusal (`full`, `bad_code`, `closed`, `not_found`, `rate_limit`, ...) stays a message in the window; the solo game never stopped. |
 | **Client ends** | left, removed, host gone, connection lost, handshake refused: `client_ended(reason, text)` -> `main.gd` saves the joiner, frees the client game, re-enters the player's own hub solo with the reason as a toast. |
@@ -32,5 +43,5 @@ The relay allows 600 packets/s and 1 MiB/s per connection. Frame time (headless,
 
 ## Tests
 `tests/next_lobby/run.gd` (real local lobby service, two games in-process on ONE shared offline backend: solo untouched, errors, host, list, join by id and code, chat, open/closed, kick, full, rewards + XP + loot on the joiner's account, drops, cost),
-`ui_run.gd` (the window on synthetic views + in the real HUD), `proc_run.gd` (separate processes: full `DmMain` per player over the real relay, the game swap, movement, chat, leave, host death).
+`ui_run.gd` (the Social window: both panes on synthetic views, the Party tab in the real HUD, two players befriending each other through their windows), `proc_run.gd` (separate processes: full `DmMain` per player over the real relay, the game swap, movement, chat, leave, host death).
 Each needs `node` and `cd server/death-muffin/lobby && npm install`, else prints a skip line. `shoot.gd`: rendered screenshots of the window (under the renderer lock).

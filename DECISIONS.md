@@ -108,3 +108,7 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
   chance: each elite in a rune-shedding ground that leaves no new rune (a duplicate counts as none) adds 5% of the base chance to the
   next (at most 3x), a new rune landing starts it over; kept per character for the session (`DmRewardsMember.rune_dry`), and the authority ceiling allows the 3x peak. Migration
   044 counts every socketed rune as learned; runes in bags and the Vault stay items to learn.
+- **B18. Social window and friends** (owner, 2026-10-13: "no more copy pasting invite codes to each other"). One Social window on O with a
+  Friends tab and the Party tab (F still opens Party); O was the Contracts key, Contracts keeps no key of its own (a tab of the Acre ledger, P).
+  Friends are mutual (a request the other side accepts), kept by the backend (`friends.cjs`, migration 045); no "appear offline". Coming next
+  (ROADMAP): online status and class from the lobby, then Open / Closed parties, invites and asking to join (friends may ask to join a Closed party).

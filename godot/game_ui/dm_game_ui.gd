@@ -10,11 +10,12 @@ signal left_world                          ## Settings -> "Logout"
 signal panel_changed
 
 const PANEL_KEYS := {
-	KEY_I: "inventory", KEY_B: "inventory", KEY_J: "sheet", KEY_Y: "legion", KEY_C: "forge", KEY_P: "professions", KEY_O: "contracts", KEY_U: "garden",
+	KEY_I: "inventory", KEY_B: "inventory", KEY_J: "sheet", KEY_Y: "legion", KEY_C: "forge", KEY_P: "professions", KEY_O: "friends", KEY_U: "garden",
 	KEY_H: "labor", KEY_N: "cosmetics", KEY_V: "vault", KEY_M: "map", KEY_K: "codex", KEY_PERIOD: "atlas", KEY_L: "grimoire", KEY_F: "party",
 }
 const HOSTS := {
 	"professions": ["acre", "skills"], "garden": ["acre", "garden"], "labor": ["acre", "labor"], "contracts": ["acre", "contracts"],
+	"friends": ["social", "friends"], "party": ["social", "party"],
 	"sheet": ["char", "stats"], "cosmetics": ["char", "pets"], "grimoire": ["grim", "grimoire"], "legion": ["grim", "legion"],
 }
 const CUE_TEXT := {
@@ -24,7 +25,7 @@ const CUE_TEXT := {
 	"hud.spells": "You can swap rites now: open the Grimoire (L).",
 	"menu.atlas": "Gear Atlas (.): every item, set and recipe in the game, with where to find it.",
 	"menu.skills": "The Acre ledger (P): your skills, garden, laborers and contracts in one place.",
-	"tab.acre.garden": "Garden, Laborers and Contracts are tabs of the Acre ledger now (P). U, H and O still open them.",
+	"tab.acre.garden": "Garden, Laborers and Contracts are tabs of the Acre ledger now (P). U and H still open the first two.",
 	"tab.sheet.pets": "Capes & Pets moved into the Character sheet (J). N still opens them.",
 	"tab.grimoire.legion": "The Legion now sits beside the Grimoire (L). Y still opens it.",
 }
@@ -55,7 +56,7 @@ var inv: DmUiInventory
 var pa: DmUiPanelsA
 var pb: DmUiPanelsB
 var set_ui: DmUiSettings
-var lobby_ui: DmUiLobby
+var social_ui: DmUiSocial
 var belt_picker: DmBeltPicker
 var hud_tips: DmHudTips
 var boss_key: DmBossKeyPrompt
@@ -109,7 +110,7 @@ func setup(game_: Node) -> void:
 	inv = DmUiInventory.new(self, locks, store)
 	_add_window("inventory", inv.panel)
 	set_ui = DmUiSettings.new(self)
-	lobby_ui = DmUiLobby.new(self)
+	social_ui = DmUiSocial.new(self)
 	pa = DmUiPanelsA.new(self)
 	pb = DmUiPanelsB.new(self)
 	belt_picker = DmBeltPicker.new(self)
@@ -596,6 +597,8 @@ func _on_game_event(event_id: String, ctx: Dictionary) -> void:
 	match event_id:
 		"toast":
 			hud.toast(String(ctx.get("text", "")), String(ctx.get("kind", "")))
+		"friend_requests":
+			social_ui.requests_waiting()
 		"banner":
 			hud.banner(String(ctx.get("title", "")), String(ctx.get("sub", "")), int(ctx.get("ms", 3200)))
 		"loot":
@@ -733,6 +736,8 @@ func host_of(p: String) -> Array:
 func window_for(p: String) -> DmWindow:
 	var h := host_of(p)
 	if not h.is_empty():
+		if h[0] == "social":
+			return social_ui.window
 		return pa.acre_win if h[0] == "acre" else (pa.char_win if h[0] == "char" else pa.grim_win)
 	return windows.get(p)
 
@@ -815,7 +820,10 @@ func toggle_panel(p: String) -> void:
 		win.select_tab(h[1])
 		if not win.visible:
 			win.open()
-			pa.on_open(p)
+			if h[0] == "social":
+				social_ui.on_open(p)
+			else:
+				pa.on_open(p)
 		if p == "grimoire":
 			notify("grimoire_opened", _grimoire_ctx())
 		return
@@ -825,8 +833,6 @@ func toggle_panel(p: String) -> void:
 			inv.render()
 		"settings":
 			set_ui.open()
-		"party":
-			lobby_ui.open()
 		"vault":
 			if not area_safe():
 				toast("The Vault is in the Chapterhouse", "err")

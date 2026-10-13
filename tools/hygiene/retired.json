@@ -211,6 +211,14 @@
       "allow": [
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "party-window-classes",
+      "pattern": "\\bDmLobbyPanel\\b|\\bDmUiLobby\\b|\\blobby_ui\\b|dm_lobby_panel\\.gd|dm_ui_lobby\\.gd",
+      "reason": "the Party window became the Social window's Party tab: DmPartyPane, DmSocialWindow, DmUiSocial / social_ui (DECISIONS B18, 2026-10-13)",
+      "allow": [
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

@@ -87,7 +87,7 @@ static func _sexton_greeting(s: Dictionary, news: Array, met: bool) -> Array:
 		return ["That bag of yours is groaning (%s of %s). The Grinder turns spare gear into ingots, and the Vault keeps the rest." % [_s(s["bagUsed"]), _s(s["bagSize"])]]
 	if _has(news, "contracts:open") != null and s.get("contracts") != null:
 		var o: float = float(s["contracts"]["open"])
-		return ["The board has %s %s still unfilled today. Press O to see them." % [_s(o), "order" if o == 1.0 else "orders"]]
+		return ["The board has %s %s still unfilled today. The Acre ledger (P) shows them." % [_s(o), "order" if o == 1.0 else "orders"]]
 	return [_pick(["Wood, ore, fish, bones. The Acre gives what you are patient enough to take.", "Quiet today. The dead here do not complain, which is why I like them.", "Take your time. The nodes come back, they always come back."], s["level"])]
 
 
@@ -153,7 +153,7 @@ static func _sexton_advice(sg: Variant) -> Array:
 		"labor-ready":
 			return ["%s of your laborers %s a good haul waiting. Press H to collect it and set them back to work." % [_s(d["ready"]), "has" if float(d["ready"]) == 1.0 else "have"]]
 		"contracts":
-			return ["The board has %s of %s orders unfilled today (O). Deliver from your bag for gold and sometimes an item; all three pay a bonus." % [_s(d["open"]), _s(d["total"])]]
+			return ["The board has %s of %s orders unfilled today (Acre ledger, P). Deliver from your bag for gold and sometimes an item; all three pay a bonus." % [_s(d["open"]), _s(d["total"])]]
 		"labor-idle":
 			return ["A laborer stands idle. Press H and give them a post: they gather slowly, for up to eight hours, while you hunt or sleep."]
 		"gather-intro":
@@ -307,7 +307,7 @@ static func _t_contracts(s: Dictionary) -> Array:
 			second = "Today’s board is done. A fresh one comes tomorrow; finishing all three pays a bonus and builds a streak."
 		else:
 			second = "%s of today’s %s are still open." % [_s(c["open"]), _s(c["total"])]
-	return ["Three orders a day (O), easy to hard, drawn from what your skills can make. Deliver from your bag for gold, and sometimes an item. Now and then I want gems, fragments or seals; I pay double for those.", second]
+	return ["Three orders a day (Acre ledger, P), easy to hard, drawn from what your skills can make. Deliver from your bag for gold, and sometimes an item. Now and then I want gems, fragments or seals; I pay double for those.", second]
 
 
 static func _t_brewing(s: Dictionary) -> Array:

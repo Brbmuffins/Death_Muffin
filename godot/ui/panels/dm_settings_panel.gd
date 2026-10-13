@@ -110,7 +110,7 @@ func build() -> void:
 			code.add_theme_font_size_override("font_size", 15)
 			_row(s4, "Your party code", code)
 			_note(s4, "Friends enter this code under Play together (or type /party %s) to join you. You choose who plays with you: being online at the same time never makes a party." % party_code)
-			_row(s4, "Who is here, open or close the party", _button("Open the Party window", "party_window", true))
+			_row(s4, "Who is here, open or close the party", _button("Open the Party tab (F)", "party_window", true))
 			_row(s4, "Done playing together?", _button("Leave party (play solo)", "party_leave", true))
 		else:
 			_note(s4, "You are playing solo. Make a party and share its code, or enter a friend's code. In a party you share one world and its enemies; the Catacomb Depths stay a solo descent (you step out, then rejoin).")
@@ -126,7 +126,7 @@ func build() -> void:
 			jr.add_child(le)
 			jr.add_child(_button("Join", "party_join", true))
 			_row(s4, "Join a friend", jr)
-			_row(s4, "Public sessions and the list", _button("Open the Party window", "party_window", true))
+			_row(s4, "Public sessions and the list", _button("Open the Party tab (F)", "party_window", true))
 
 	# --- Audio -----------------------------------------------------------------------------------------
 	_tab("audio", "Audio")

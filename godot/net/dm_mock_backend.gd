@@ -427,11 +427,94 @@ func _route(method: String, p: String, query: String, body: Dictionary, token: V
 	# Party sessions (same API as the VPS backend, SESSION-REPORTS.md): an offline solo session reports through the identical client path.
 	if p == "/api/sessions" or p.begins_with("/api/sessions/"):
 		return _sessions.handle(method, p, body, String(token).substr(8), Callable(self, "_character_owner"), _now())
+	if p == "/api/friends" or p.begins_with("/api/friends/"):
+		return _friends(method, p, String(token).substr(8), body)
 	if method == "GET":
 		return _route_get(acc, p)
 	if method == "POST":
 		return _route_post(acc, p, body)
 	return _err("Offline backend: no route for %s %s" % [method, p], 404)
+
+# --- friends (backend friends.cjs: one row per pair, "pending" until the other side accepts) -----------------------------------------
+
+## Account id of an account key (the mock keys accounts by username; ids are handed out on first use and kept in the save).
+func _account_id(key: String) -> int:
+	var acc: Dictionary = db["accounts"][key]
+	if not acc.has("account_id"):
+		db["next_account_id"] = int(db.get("next_account_id", 1)) + 1
+		acc["account_id"] = int(db["next_account_id"]) - 1
+	return int(acc["account_id"])
+
+func _account_key(account_id: int) -> String:
+	for k in db["accounts"]:
+		if _account_id(String(k)) == account_id:
+			return String(k)
+	return ""
+
+func _friend_row(a: String, b: String) -> Variant:
+	for r in db.get("friendships", []):
+		if (r["a"] == a and r["b"] == b) or (r["a"] == b and r["b"] == a):
+			return r
+	return null
+
+func _friends_view(me: String) -> Dictionary:
+	var out := {"friends": [], "incoming": [], "outgoing": []}
+	for r in db.get("friendships", []):
+		if r["a"] != me and r["b"] != me:
+			continue
+		var other := String(r["b"] if r["a"] == me else r["a"])
+		var who := {"accountId": _account_id(other), "username": other}
+		if r["status"] == "accepted":
+			var ch: Variant = db["accounts"][other].get("character")
+			who["disciplineIndex"] = int(ch["class_index"]) if ch != null else null
+			who["level"] = int(ch["level"]) if ch != null else null
+			out["friends"].append(who)
+		else:
+			out["outgoing" if r["requested_by"] == me else "incoming"].append(who)
+	return out
+
+func _friends(method: String, p: String, me: String, body: Dictionary) -> Dictionary:
+	if not db.has("friendships"):
+		db["friendships"] = []
+	if method == "GET" and p == "/api/friends":
+		return _ok(_friends_view(me))
+	if method != "POST":
+		return _err("Offline backend: no route for %s %s" % [method, p], 404)
+	var msg := ""
+	match p:
+		"/api/friends/request":
+			var them := ""
+			for k in db["accounts"]:
+				if String(k).to_lower() == String(body.get("username", "")).strip_edges().to_lower():
+					them = String(k)
+			if them == "":
+				return _err("Nobody is called \"%s\"." % String(body.get("username", "")).strip_edges(), 404)
+			if them == me:
+				return _err("That is you.", 400)
+			var row: Variant = _friend_row(me, them)
+			if row != null and row["status"] == "accepted":
+				return _err("%s is already your friend." % them, 409)
+			if row != null and row["requested_by"] == me:
+				return _err("You already asked %s. They need to accept." % them, 409)
+			if row != null:
+				row["status"] = "accepted"
+				msg = "You and %s are friends now." % them
+			else:
+				db["friendships"].append({"a": me, "b": them, "requested_by": me, "status": "pending"})
+				msg = "Friend request sent to %s." % them
+		"/api/friends/accept", "/api/friends/remove":
+			var them := _account_key(int(_to_num(body.get("accountId", 0))))
+			var row: Variant = _friend_row(me, them) if them != "" and them != me else null
+			if p.ends_with("/accept"):
+				if row == null or row["status"] != "pending" or row["requested_by"] == me:
+					return _err("That request is gone. They may have cancelled it.", 404)
+				row["status"] = "accepted"
+				msg = "You and %s are friends now." % them
+			elif row != null:
+				db["friendships"].erase(row)
+		_:
+			return _err("Offline backend: no route for %s %s" % [method, p], 404)
+	return {"status": 200, "body": {"success": true, "data": _friends_view(me), "message": msg}}
 
 var _get_re: RegEx = RegEx.create_from_string("^/api/(inventory|professions|chronicle|necro-progress|loadouts|vault|labor|garden|cosmetics|contracts|runes)/(\\d+)$")
 

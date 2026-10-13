@@ -203,7 +203,7 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	_check(ui.set_ui.panel.strip_slot.visible, "Back brings the tab strip back")
 	ui.set_ui.panel.action.emit("party_window")
 	await _frames(3)
-	_check(ui.is_open("party") and not ui.is_open("settings"), "Settings' Open the Party window button opens the Party window")
+	_check(ui.is_open("party") and not ui.is_open("settings"), "Settings' Open the Party tab button opens the Social window on Party")
 	ui.open_bug_report()
 	await _frames(3)
 	_check(ui.set_ui.bug_report_open(), "the HUD's Report a bug button opens it in Settings too")

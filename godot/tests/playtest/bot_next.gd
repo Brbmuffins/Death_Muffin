@@ -12,7 +12,7 @@ extends SceneTree
 const DISCS := {1: "ossuary", 2: "gravecaller", 3: "mourner", 4: "rotweaver"}
 const PLAY_BUDGET_MS := 150.0
 const LOADING_PHASES := ["boot", "front", "relaunch"]
-const PANEL_KEYS := {"inventory": KEY_I, "sheet": KEY_J, "legion": KEY_Y, "forge": KEY_C, "professions": KEY_P, "contracts": KEY_O, "garden": KEY_U,
+const PANEL_KEYS := {"inventory": KEY_I, "sheet": KEY_J, "legion": KEY_Y, "forge": KEY_C, "professions": KEY_P, "friends": KEY_O, "garden": KEY_U,
 	"labor": KEY_H, "cosmetics": KEY_N, "vault": KEY_V, "map": KEY_M, "codex": KEY_K, "atlas": KEY_PERIOD, "grimoire": KEY_L}
 
 class ErrLog extends Logger:
