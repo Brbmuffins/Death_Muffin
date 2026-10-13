@@ -37,6 +37,7 @@ const TABLE := {
 	"soul_burst": ["cast", 2.0, "soul_burst", "soul_burst"],
 	"harvest_spin": ["attack", 2.4, "harvest_spin", "harvest_spin"],
 	"unleash_souls": ["cast", 2.0, "unleash_souls", "unleash_souls"],
+	"soul_harvest": ["cast", 2.0, "soul_harvest", "soul_harvest"],
 }
 
 

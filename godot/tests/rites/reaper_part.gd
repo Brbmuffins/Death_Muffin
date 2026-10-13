@@ -127,6 +127,20 @@ func _rites() -> void:
 	ok(_lost(behind) > before_b and _lost(wide) > 0.0, "spin: hits all round her, including behind")
 	ok(int(c.p["souls"]) == 28 and is_equal_approx(c.cooldown_left("harvest_spin"), 3500.0), "spin: 2 souls, 3.5 s")
 
+	# Soul Harvest: 9 m all round, each enemy struck is 1 soul and a little health, free, 5 s
+	var far := _robber(w, h, Vector3(8, 0, 0))
+	var out := _robber(w, h, Vector3(14, 0, 0))
+	_ready_cast(c)
+	c.p["souls"] = 0
+	c.p["hp"] = 1.0
+	var maxhp := float(c.p["stats"]["maxHp"])
+	c.request_cast("soul_harvest", Vector3(0, 0, 0))
+	ok(_lost(far) > 0.0 and _lost(out) == 0.0, "harvest: reaches an enemy 8 m away, not one 14 m away")
+	ok(int(c.p["souls"]) == 4, "harvest: one soul for each of the four enemies struck (%d)" % int(c.p["souls"]))
+	ok(is_equal_approx(float(c.p["hp"]), 1.0 + maxhp * 0.08), "harvest: heals 2%% of max health for each of them (%.1f)" % float(c.p["hp"]))
+	ok(is_equal_approx(c.cooldown_left("soul_harvest"), 5000.0) and rej.is_empty(), "harvest: free, 5 s")
+	ok(not _events(w, "soul_harvest", "harvest").is_empty(), "harvest: one event")
+
 	# Reap: a cone, costs 5 souls, every soul paid adds damage
 	_ready_cast(c)
 	var r1 := _robber(w, h, Vector3(5.0, 0, 0.5))

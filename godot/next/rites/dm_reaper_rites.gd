@@ -37,7 +37,8 @@ static func cone(c: DmRiteCaster, ox: float, oz: float, dx: float, dz: float, re
 
 ## HOST. One blow of `dmg` to each target (kill credit to the caster); returns the hit marks to put in the event (at most SHOWN). With `leech`,
 ## every enemy struck heals her leechPerHit of her max health, at most leechSwingCap a swing: standing in the pack is how she stays up.
-static func strike(c: DmRiteCaster, rite: String, targets: Array, dmg: float, leech: bool = true) -> Array:
+## A caller that needs the number struck passes `count` (an array) and gets it as its one element.
+static func strike(c: DmRiteCaster, rite: String, targets: Array, dmg: float, leech: bool = true, count: Array = []) -> Array:
 	var marks: Array = []
 	var struck := 0
 	for e: DmEnemy in targets:
@@ -47,6 +48,7 @@ static func strike(c: DmRiteCaster, rite: String, targets: Array, dmg: float, le
 		c.hit_resolved.emit(rite, int(c.world.enemy_id(e)), dmg, false, float(e.get("hp")) <= 0.0)
 		if marks.size() < SHOWN:
 			marks.append(Vector3(e.global_position.x, 0.9, e.global_position.z))
+	count.assign([struck])
 	if leech and struck > 0:
 		var K := k()
 		c.heal(float(c.p["stats"]["maxHp"]) * minf(float(K["leechPerHit"]) * float(struck), float(K["leechSwingCap"])))

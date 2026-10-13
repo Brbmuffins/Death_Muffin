@@ -6,7 +6,7 @@
    "keys": 50,
    "counts": {
     "NEW_BLOOD_ABILITIES": 28,
-    "ABILITIES": 67,
+    "ABILITIES": 68,
     "SIGNATURE_LEVEL": 1,
     "SIGNATURE_BY_DISCIPLINE": 4,
     "SIGNATURE_KIND": 4,
@@ -17,7 +17,7 @@
     "PRIMARIES": 3,
     "DEFAULT_PRIMARY": 1,
     "ROLE_LABEL": 5,
-    "RITE_ROLES": 62,
+    "RITE_ROLES": 63,
     "SLOT_KEYS": 6,
     "BONE_FAN": 6,
     "ROT_LANCE": 5,
@@ -53,7 +53,7 @@
     "CORPSE_VIGIL": 2,
     "GRAVE_BRAND": 3,
     "OATH_UNBROKEN": 2,
-    "REAPER": 19,
+    "REAPER": 21,
     "SPELL_FX": 31
    }
   },
@@ -159,8 +159,8 @@
   "codex": {
    "keys": 33,
    "counts": {
-    "RITE_ORDER": 67,
-    "CODEX_RITES": 67,
+    "RITE_ORDER": 68,
+    "CODEX_RITES": 68,
     "CLASS_CHANGE_COUNSEL": 1,
     "CODEX_DISCIPLINES": 10,
     "DEAD_ORDER": 35,
@@ -197,7 +197,7 @@
   "combatFlow": {
    "keys": 1,
    "counts": {
-    "CAST_FLOW": 67
+    "CAST_FLOW": 68
    }
   },
   "computed": {
@@ -205,7 +205,7 @@
    "counts": {
     "smartTables": 13,
     "kits": 7,
-    "abilityUnlockLevels": 67,
+    "abilityUnlockLevels": 68,
     "depthRosters": 60,
     "depthLootAreas": 60,
     "depthChestRunePools": 60,
@@ -851,7 +851,7 @@
   "items": 309,
   "enemies": 28,
   "areas": 13,
-  "abilities": 67,
+  "abilities": 68,
   "disciplines": 10
  },
  "droppedFunctions": 633,
