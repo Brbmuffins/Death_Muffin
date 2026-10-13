@@ -21,7 +21,8 @@
       "Runes already in your sockets are learned for you. Runes in your bag or Vault wait for you to learn them; spare copies can still be kept or ground in the Bone Grinder.",
       "The Heal, Elixir and Tonic slots on the HUD now show the icon of the potion you actually have equipped.",
       "The boss war-drum heartbeat no longer keeps thumping after a boss fight ends in some other way than the boss dying (you die, leave the area, or the boss resets).",
-      "Co-op fix: a Reaper who joins someone else's party keeps her Reaper rites (her hotbar had switched to the necromancer's)."
+      "Co-op fix: a Reaper who joins someone else's party keeps her Reaper rites (her hotbar had switched to the necromancer's).",
+      "New Reaper spell, Soul Harvest: leech every living monster within 9m, gaining 1 soul and some health for each one hit. Free, 5 second cooldown. Place it on your bar from the Spellbook (L)."
     ]
   },
   {

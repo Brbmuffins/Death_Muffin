@@ -264,6 +264,10 @@
    "lockMs": 120,
    "gestureSeconds": 0.4
   },
+  "soul_harvest": {
+   "lockMs": 150,
+   "gestureSeconds": 0.45
+  },
   "unleash_souls": {
    "lockMs": 150,
    "gestureSeconds": 0.45

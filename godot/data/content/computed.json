@@ -13326,7 +13326,8 @@
     "scythe_throw",
     "reap",
     "wraith_walk",
-    "soul_burst"
+    "soul_burst",
+    "soul_harvest"
    ],
    "defaultLoadout": [
     "scythe_throw",
@@ -13352,6 +13353,7 @@
   "soul_burst": 1,
   "harvest_spin": 1,
   "unleash_souls": 1,
+  "soul_harvest": 1,
   "flail_swing": 1,
   "lantern_cone": 1,
   "chain_pull": 1,

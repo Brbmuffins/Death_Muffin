@@ -910,6 +910,20 @@
    "range": 0,
    "radius": 0,
    "power": 0.45
+  },
+  "soul_harvest": {
+   "id": "soul_harvest",
+   "slot": 7,
+   "name": "Soul Harvest",
+   "description": "Leech the souls from every living monster in a large area around you (9m). Each one struck gives 1 soul and heals you. Free, 5s cooldown.",
+   "icon": "art/abilities/necro-soul-siphon.webp",
+   "targeting": "self",
+   "cooldownMs": 5000,
+   "essenceCost": 0,
+   "soulCost": 0,
+   "range": 0,
+   "radius": 9,
+   "power": 0.5
   }
  },
  "constants": {
@@ -1216,6 +1230,10 @@
    ],
    "unleash_souls": [
     "damage"
+   ],
+   "soul_harvest": [
+    "damage",
+    "survival"
    ]
   },
   "SLOT_KEYS": [
@@ -1426,7 +1444,9 @@
    "burstPerSoul": 0.18,
    "damageTakenMult": 0.85,
    "leechPerHit": 0.015,
-   "leechSwingCap": 0.06
+   "leechSwingCap": 0.06,
+   "harvestHealPerMob": 0.02,
+   "harvestHealCap": 0.12
   }
  },
  "cast_flow": {
@@ -1697,6 +1717,10 @@
   "unleash_souls": {
    "lockMs": 150,
    "gestureSeconds": 0.45
+  },
+  "soul_harvest": {
+   "lockMs": 150,
+   "gestureSeconds": 0.45
   }
  },
  "kits": {
@@ -1912,7 +1936,8 @@
     "scythe_throw",
     "reap",
     "wraith_walk",
-    "soul_burst"
+    "soul_burst",
+    "soul_harvest"
    ],
    "defaultLoadout": [
     "scythe_throw",
