@@ -115,3 +115,11 @@ Since B18 friends join through invites and asks; the six-digit codes have no UI 
   shows online friends (class, level, area, party) to mutual friends only, reading each player's list from the backend with that player's own
   token, so it needs no database. Parties are Open (listed, anyone joins) or Closed (invite only; friends can ask to join). Codes were dropped
   from the UI: no more copy-pasting. In the world the game keeps one lobby socket for this, polled by a 10 Hz timer (no per-frame work).
+- **B19. Server authority, Phase 0** (owner, 2026-10-13: "I don't want any important data going untrusted"). The backend no longer
+  takes value it cannot back: the web-era reward routes are gone, adding an item by name and loading a client-made save are GM-mode
+  only, a first progress import starts blank, and a value guard that cannot run refuses the write (503, the client retries) instead of
+  saving unchecked. Release exports ignore `--dev-offline` / `--world-demo` (editor and test runs keep them). **GM mode** stays for the
+  owner's and Helix's accounts (testing): an allowed account is a normal player until it switches GM mode on (Settings -> GM mode,
+  `gm-mode.cjs`, migration 046); only then do the guards step aside. Every switch and every write in GM mode is logged, and its
+  characters carry a GM mark on the leaderboard. The rest of the plan (server-rolled drops, intents instead of totals, enforce) is
+  in ROADMAP.md.

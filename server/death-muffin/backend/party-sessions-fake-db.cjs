@@ -15,7 +15,7 @@ function sessionsFake({ characters = {}, accounts = {}, failWith = null, ...rest
     sql = sql.trim().replace(/\s+/g, ' ');
     if (failWith && /party_session/.test(sql)) throw failWith;
     if (sql.startsWith('SELECT id, account_id FROM characters WHERE id = ? FOR UPDATE')) return [characters[p[0]] ? [{ ...characters[p[0]] }] : []];
-    if (sql.startsWith('SELECT role, gm_enabled FROM accounts')) return [[{ role: 'player', gm_enabled: 0, ...(accounts[p[0]] || {}) }]];
+    if (sql.startsWith('SELECT role, gm_enabled')) return [[{ role: 'player', gm_enabled: 0, gm_active: 0, ...(accounts[p[0]] || {}) }]];
     if (sql.startsWith("UPDATE party_sessions SET status = 'ended', ended_at = ?, ended_reason = 'superseded'")) {
       for (const s of sessions.values()) if (s.host_account_id === p[1] && s.status === 'open') Object.assign(s, { status: 'ended', ended_at: p[0], ended_reason: 'superseded' });
       return [{}];

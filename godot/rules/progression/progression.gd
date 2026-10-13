@@ -445,7 +445,7 @@ func record_prelate_kill() -> void:
 func record_kill(area: String, wave_tier: float = -1.0, carried: bool = false) -> void:
 	if wave_tier < 0:
 		wave_tier = float(local["waveTierActive"])
-	# Dev access banks kills in sealed halls; without it a sealed hall cannot be entered, unless a party carries this character through it.
+	# GM mode banks kills in sealed halls; without it a sealed hall cannot be entered, unless a party carries this character through it.
 	if not carried and not dev_access and not really_unlocked(area):
 		return
 	local["areaKills"][area] = int(DmProgUtil.nn(local["areaKills"].get(area), 0)) + 1

@@ -294,15 +294,13 @@ test('enforce tells the player when kills were not counted; audit stays quiet to
   assert.equal(fake.audit[0].action, 'report');
 });
 
-test('fail open: a broken ledger table never costs the client an answer or a save', async () => {
+test('a broken ledger table: the kill report still answers (nothing is paid from it), but a save is refused, not saved unchecked', async () => {
   const fake = killsFake({ necro: NECRO, failWith: Object.assign(new Error('no table'), { code: 'ER_NO_SUCH_TABLE' }) });
   const r = await send(fake, report(T0, [group()]), T0, ENFORCE);
   assert.equal(r.status, 200);
   assert.equal(r.body.data.unavailable, true);
   const c = char();
-  const v = await saveProgress(fake, c, nextOf(c, { xp: 5000 }), T0, ENFORCE);
-  assert.equal(v.write.xp, 5000, 'credits unavailable: the save goes through unchecked');
-  assert.ok(v.log.lines.some((l) => l.includes('unavailable')));
+  await assert.rejects(saveProgress(fake, c, nextOf(c, { xp: 5000 }), T0, ENFORCE), (err) => err.unavailable === true && err.status === 503);
 });
 
 // ── Saves paid out of credits ─────────────────────────────────────────────────────────────────────────────────────────

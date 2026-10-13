@@ -136,6 +136,7 @@ module.exports = function mountChronicle(app, pool, { requireAuth, ownsCharacter
       res.json({ success: true });
     } catch (err) {
       await conn.rollback().catch(() => {});
+      if (err && err.unavailable) return res.status(503).json({ success: false, error: err.message });
       console.error('POST /api/chronicle/add:', err.code || err.message);
       if (!res.headersSent) res.status(500).json({ success: false, error: 'internal server error' });
     } finally {
@@ -177,6 +178,7 @@ module.exports = function mountChronicle(app, pool, { requireAuth, ownsCharacter
       res.json({ success: true, data: { archived } });
     } catch (err) {
       await conn.rollback().catch(() => {});
+      if (err && err.unavailable) return res.status(503).json({ success: false, error: err.message });
       console.error('POST /api/chronicle/ascend:', err.code || err.message);
       if (!res.headersSent) res.status(500).json({ success: false, error: 'internal server error' });
     } finally {

@@ -24,6 +24,13 @@ async function refreshLeaderboard() {
         cell.textContent = typeof value === 'number' ? value.toLocaleString() : value;
         row.appendChild(cell);
       }
+      if (player.gm) {   // played in GM mode (testing): marked, not hidden
+        const tag = document.createElement('span');
+        tag.className = 'gm-tag';
+        tag.textContent = 'GM';
+        tag.title = 'Played in GM mode (testing tools on)';
+        row.children[1].append(' ', tag);
+      }
       fragment.appendChild(row);
     }
     rows.replaceChildren(fragment);

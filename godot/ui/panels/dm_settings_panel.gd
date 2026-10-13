@@ -28,7 +28,7 @@ var values: Dictionary = {
 	"graphics": "high", "window_mode": "windowed", "fps": 0, "vsync": true, "auto_res": true, "brightness": 1.0, "ui_scale": 1.0, "hud_scale": 1.0,
 	"vol_master": 0.7, "vol_combat": 0.8, "vol_amb": 0.6, "vol_music": 0.5, "vol_ui": 0.8,
 	"reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false, "guidance": true, "guide_ping": true,
-	"dev_access": true,
+	"dev_access": false,
 }
 var can_auto_combat := true
 var has_dev := true
@@ -223,7 +223,7 @@ func build() -> void:
 	_page.add_child(top)
 	var s3 := _section("Character and help")
 	if has_dev:
-		_check(s3, "Dev access (preview as a normal player when off)", "dev_access")
+		_check(s3, "GM mode (testing tools; the server logs your saves and marks the character GM)", "dev_access")
 	if has_bug_report:
 		_row(s3, "Found a bug or something odd?", _button("Report a bug", "bug_report", true))
 	if has_reset_tips:

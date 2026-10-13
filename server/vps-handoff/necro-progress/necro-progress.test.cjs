@@ -8,7 +8,8 @@ const { createMemoryStore } = require('./mysql-store.cjs');
 
 function harness({ gold = 10000, owner = true, staff = false } = {}) {
   const store = createMemoryStore({ 7: gold, 8: 0 });
-  const h = createNecroProgressHandlers({ store, ownsCharacter: async (_req, id) => owner && id === 7, isStaff: async () => staff, logger: { error() {} }, perMinute: 1000 });
+  let staffNow = staff;
+  const h = createNecroProgressHandlers({ store, ownsCharacter: async (_req, id) => owner && id === 7, isStaff: async () => staffNow, logger: { error() {} }, perMinute: 1000 });
   const call = async (name, body = {}, params = {}) => {
     let status = 0;
     let json = null;
@@ -16,7 +17,14 @@ function harness({ gold = 10000, owner = true, staff = false } = {}) {
     await h[name]({ body: { characterId: 7, ...body }, params: { characterId: '7', ...params } }, res);
     return { status, json };
   };
-  return { store, call };
+  /** Test setup: a record carried over the way only GM mode may (a player's import starts blank). */
+  const seed = async (record) => {
+    staffNow = true;
+    const r = await call('importLocal', { record });
+    staffNow = staff;
+    return r;
+  };
+  return { store, call, seed };
 }
 
 test('GET creates a blank record and returns gold', async () => {
@@ -91,12 +99,12 @@ test('saves clamp deltas and open seals from kills; locked areas earn nothing', 
 });
 
 test('Prelate kills must follow a paid summon', async () => {
-  const { call } = harness();
+  const { call, seed } = harness();
   let r = await call('save', { prelateKills: 1 });
   assert.equal(r.json.data.progress.bossKills, 0, 'no summon, no kill');
   r = await call('summonPrelate');
   assert.equal(r.status, 400, 'no shards / sanctum sealed');
-  await call('importLocal', { record: { areaKills: { graves: 300, ossuary: 420, nave: 520 }, shards: 5 } });
+  await seed({ areaKills: { graves: 300, ossuary: 420, nave: 520 }, shards: 5 });
   r = await call('summonPrelate');
   assert.equal(r.status, 200);
   assert.equal(r.json.data.progress.soulShards, 0);
@@ -106,10 +114,10 @@ test('Prelate kills must follow a paid summon', async () => {
 });
 
 test('area-boss summons charge their own cost, need their area, and owe no Prelate kill', async () => {
-  const { call } = harness();
+  const { call, seed } = harness();
   let r = await call('summonBoss', { boss: 'abbess' });
   assert.equal(r.status, 400, 'no shards');
-  await call('importLocal', { record: { areaKills: { graves: 300 }, shards: 5 } });
+  await seed({ areaKills: { graves: 300 }, shards: 5 });
   r = await call('summonBoss', { boss: 'congregation' });
   assert.equal(r.status, 400, 'the Nave is still sealed');
   r = await call('summonBoss', { boss: 'gravedigger' });
@@ -141,9 +149,9 @@ test('staff (dev access) stand past every seal without their save changing; play
 });
 
 test('Ascend and boons are server rules', async () => {
-  const { call } = harness();
+  const { call, seed } = harness();
   assert.equal((await call('ascend')).status, 400);
-  await call('importLocal', { record: { areaKills: { graves: 300, ossuary: 420, nave: 520 }, shards: 5, damageTier: 9 } });
+  await seed({ areaKills: { graves: 300, ossuary: 420, nave: 520 }, shards: 5, damageTier: 9 });
   await call('summonPrelate');
   await call('save', { prelateKills: 1 });
   const a = await call('ascend');
@@ -162,8 +170,8 @@ test('Ascend and boons are server rules', async () => {
 });
 
 test('vows: sworn server-side, validated, and the run restarts only when the vows change mid-run', async () => {
-  const { call } = harness();
-  await call('importLocal', { record: { areaKills: { graves: 300, ossuary: 420, nave: 520 }, shards: 5 } });
+  const { call, seed } = harness();
+  await seed({ areaKills: { graves: 300, ossuary: 420, nave: 520 }, shards: 5 });
   assert.equal((await call('vows', { vows: { bogus: 1 } })).status, 400);
   assert.equal((await call('vows', { vows: { elder_dead: 999 } })).status, 400);
   assert.equal((await call('vows', { vows: { prelate_echo: 1 } })).status, 400, 'locked');
@@ -181,9 +189,9 @@ test('vows: sworn server-side, validated, and the run restarts only when the vow
 });
 
 test('soul shards unlock vows and boons, priced by the server', async () => {
-  const { call } = harness();
+  const { call, seed } = harness();
   assert.equal((await call('unlock', { key: 'vow:prelate_echo' })).status, 400, 'no shards');
-  await call('importLocal', { record: { areaKills: { graves: 50 }, shards: 40 } });
+  await seed({ areaKills: { graves: 50 }, shards: 40 });
   for (let i = 0; i < 25; i++) await call('save', { shards: 30 });
   assert.equal((await call('unlock', { key: 'vow:elder_dead' })).status, 400, 'free vows need no unlock');
   assert.equal((await call('unlock', { key: 'vow:nope' })).status, 400);
@@ -209,8 +217,18 @@ test('an existing row without vows loads as N steps of Elder Dead, keeping rank,
   assert.deepEqual(p.unlocks, []);
 });
 
-test('the browser import runs once and is clamped', async () => {
+test('a player\'s import starts from a blank record: the client\'s local record is not proof of play', async () => {
   const { call } = harness();
+  const r = await call('importLocal', { record: { damageTier: 9, shards: 40, ascension: 5, areaKills: { graves: 300 }, boons: { vigil: 3 } } });
+  assert.equal(r.status, 200);
+  const p = r.json.data.progress;
+  assert.deepEqual([p.damageTier, p.soulShards, p.ascension, p.areaKills.graves, p.boons.vigil], [0, 0, 0, undefined, undefined]);
+  assert.equal(p.migrated, true);
+  assert.equal((await call('importLocal', { record: {} })).status, 400, 'still once');
+});
+
+test('a GM-mode import runs once and is clamped', async () => {
+  const { call } = harness({ staff: true });
   const r = await call('importLocal', {
     record: { damageTier: 999, waveTierOwned: 99, shards: 1e6, ascension: 50, ashes: 1e9, areaKills: { graves: 50 }, unlocked: ['sanctum'], boons: { legion_pact: 1, vigil: 9 } },
   });

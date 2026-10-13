@@ -187,6 +187,11 @@ func health() -> DmResult:
 func get_me() -> DmResult:
 	return await _request("/api/me", "GET", null, true)
 
+## GM mode on / off (POST /api/gm/mode, backend gm-mode.cjs): only an account the server allows to GM may switch it on, and only while it is
+## on does the server treat the account as staff (logged). data: {active}.
+func set_gm_mode(on: bool) -> DmResult:
+	return await _post("/api/gm/mode", {"on": on})
+
 ## The public client manifest (no auth): the parsed JSON Dictionary, or {} when unreachable / not JSON. See DmOnlineGate.
 func fetch_client_manifest() -> Dictionary:
 	var resp := await _send("GET", DmConfig.CLIENT_MANIFEST_URL, {}, "")

@@ -225,8 +225,9 @@ function memberBody(entry, seq) {
 
 async function accountIsStaff(db, accountId) {
   try {
-    const [[acct]] = await db.execute('SELECT role, gm_enabled FROM accounts WHERE id = ? LIMIT 1', [accountId]);
-    return !!acct && (acct.role === 'admin' || acct.role === 'gm' || !!acct.gm_enabled);
+    // Staff only while GM mode is on (gm-mode.cjs), like server.js isStaffAccount.
+    const [[acct]] = await db.execute('SELECT role, gm_enabled, gm_active FROM accounts WHERE id = ? LIMIT 1', [accountId]);
+    return !!acct && (acct.role === 'admin' || acct.role === 'gm' || !!acct.gm_enabled) && !!acct.gm_active;
   } catch { return false; }
 }
 

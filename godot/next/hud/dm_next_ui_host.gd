@@ -145,6 +145,7 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	dev_account = _is_dev_account()   # old DmGame.setup: dev_access = dev_account and the Settings toggle; everything that reads it follows below
 	dev_access = dev_account and bool(settings["dev_access"])
 	_push_dev_access()
+	_tell_server_gm_mode()
 	if dev_access and shell.chapterhouse != null:
 		shell.chapterhouse.apply_seals()   # sealed halls stand open for the dev preview from the first frame
 	var r := DmLoadout.load_rites(hero_id, DmAbilities.rite_level(float(character.get("level", 1)), dev_access), kit, persist)
@@ -349,7 +350,7 @@ func _push_dev_access() -> void:
 		c.dev = dev_access and shell.session.is_host()   # the host validates casts: a client's flag is never trusted
 
 
-## Dev access toggle (Settings -> preview as a normal player): rites, areas and gathering tiers open or close (old DmGame._apply_dev_access).
+## GM mode toggle (Settings -> GM mode; off = a normal player): rites, areas and gathering tiers open or close, and the server follows.
 func _apply_dev_access() -> void:
 	if not dev_account:
 		return
@@ -358,13 +359,25 @@ func _apply_dev_access() -> void:
 		return
 	dev_access = on
 	_push_dev_access()
+	_tell_server_gm_mode()
 	if shell.chapterhouse != null:
 		shell.chapterhouse.apply_seals()
 	progress_changed.emit()
-	game_event.emit("toast", {"text": "Dev access on: every rite, area and gathering tier is open (nothing is saved)." if on else "Dev access off: previewing as a normal player.", "kind": "good"})
+	game_event.emit("toast", {"text": "GM mode on: every rite, area and gathering tier is open; the server logs what you save and marks this character GM." if on else "GM mode off: playing as a normal player, checked like everyone else.", "kind": "good"})
 
 
-## F9 (dev tool): break every seal. Gated exactly like the Settings toggle's effects: only a dev account with Dev access on (never a normal player or a
+## The server follows the GM mode toggle (POST /api/gm/mode, backend gm-mode.cjs): only while it is on does the server skip its checks for
+## this account, and it logs every save. A dev account only; a normal player's client never asks (the server would refuse anyway).
+func _tell_server_gm_mode() -> void:
+	if not dev_account or api == null or api.get_token().begins_with("offline:"):
+		return
+	var on := dev_access
+	var r: DmResult = await api.set_gm_mode(on)
+	if not r.ok and on:
+		game_event.emit("toast", {"text": "The server did not switch GM mode on: %s" % (r.error if r.error != "" else "try again"), "kind": "err"})
+
+
+## F9 (dev tool): break every seal. Gated exactly like the Settings toggle's effects: only a dev account with GM mode on (never a normal player or a
 ## downloadable offline profile). The seals really break (saved), the gates and navmesh follow at once. Returns how many broke.
 func dev_break_seals() -> int:
 	if not dev_access or prog == null:

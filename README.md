@@ -8,7 +8,7 @@ Coliseum, Bell Sanctum, Plague Cloister, Cinder Pyre, Mourning Fen, and the Cata
 disciplines are playable (Ossuary, Gravecaller, Mourner, Rotweaver), and so is the Reaper, a scythe fighter with a soul bag; the other
 five show greyed out as "Coming later".
 Parties of up to 4 join through a lobby and relay. Players get the game through the Windows launcher at
-https://muffindevelopment.com/death-muffin/. Offline play is not a player edition; `-- --dev-offline` exists for testing only.
+https://muffindevelopment.com/death-muffin/. Offline play is not a player edition; `-- --dev-offline` exists for testing only (editor / debug builds; release exports ignore it).
 
 Branch: `main` is the game (the only branch). The retired three.js web game is kept as tag `archive/legacy-web`; older work branches are `archive/*` tags.
 Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNOWN-GAPS.md](KNOWN-GAPS.md), [CLAUDE.md](CLAUDE.md) (agent rules).

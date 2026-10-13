@@ -127,7 +127,9 @@ function createNecroProgressHandlers({ store, ownsCharacter, isStaff, logger = c
     vows: (req, res) => mutate(req, res, (s, _g, b) => rules.swearVows(s, b.vows)),
     unlock: (req, res) => mutate(req, res, (s, _g, b) => rules.unlockEntry(s, b.key)),
     boon: (req, res) => mutate(req, res, (s, _g, b) => rules.buyBoon(s, String(b.boonId || ''))),
-    importLocal: (req, res) => mutate(req, res, (s, _g, b) => rules.importLocal(s, b.record)),
+    // A player's first contact starts from a blank record: the client's local record is not proof of play (the game is online-only,
+    // DECISIONS B1). Only an account in GM mode may carry a record over (testing).
+    importLocal: (req, res) => mutate(req, res, (s, _g, b, o) => rules.importLocal(s, o.staff ? b.record : {})),
   };
 }
 

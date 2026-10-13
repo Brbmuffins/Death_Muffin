@@ -13,6 +13,7 @@
  */
 const rules = require('./gathering/authority-rules.cjs');
 const { SaveRefusal } = require('./loot-instances.cjs');
+const { GuardUnavailable } = require('./guard-error.cjs');
 
 const A = rules.AUTHORITY;
 const MINUTE = 60_000;
@@ -186,12 +187,13 @@ async function guardProgress(db, { char, next, account, now = Date.now(), env = 
       await audit(db, { characterId: char.id, accountId: char.account_id, kind, mode: enforce1 ? 'enforce' : mode, action: enforce1 ? 'clamp' : 'report', detail }, log);
     }
     const step1 = enforce1 ? { write: out.write, message: out.message } : { write: next, message: '' };
-    // Step 2 (kills.cjs, AUTHORITY_KILLS): pay the gain out of the kill ledger's credits. Off by default; fails open on its own.
+    // Step 2 (kills.cjs, AUTHORITY_KILLS): pay the gain out of the kill ledger's credits. Off by default; fails closed (GuardUnavailable).
     const step2 = await require('./kills.cjs').creditPass(db, { char, write: step1.write, saleCredit: state.goldCredit, account, now, env, log });
     return { write: step2.write, message: [step1.message, step2.message].filter(Boolean).join(' '), findings: [...out.findings, ...step2.findings] };
   } catch (err) {
-    log.error(`[AUTHORITY] progress guard unavailable, saving unchecked: ${err.code || err.message}`);
-    return { write: next, message: '', findings: [], failedOpen: true };
+    if (err && err.unavailable) throw err;
+    log.error(`[AUTHORITY] progress guard unavailable, refusing the save: ${err.code || err.message}`);
+    throw new GuardUnavailable('progress', err);
   }
 }
 
@@ -252,7 +254,7 @@ function trimSlots(slots, itemId, excess) {
  * Called by inventory-save.replaceBag with the rows currently in the character's bag range and the slots the client sent.
  * Compares totals per item: more of an item than the bag held is "introduced", and only things that come off the ground, at the
  * pace the ground allows, may be introduced. Items that left the bag credit the gold bucket (selling). Returns the slots to write
- * (unchanged in report mode). Fails open.
+ * (unchanged in report mode). Fails closed (GuardUnavailable).
  */
 async function guardBagSave(db, { characterId, accountId, existingRows, slots, bagSize, account, now = Date.now(), env = process.env, log = console }) {
   const mode = authorityMode(env);
@@ -294,12 +296,12 @@ async function guardBagSave(db, { characterId, accountId, existingRows, slots, b
     if (mode !== 'enforce') return { slots, message: '' };
     return { slots: out, message: messages.join(' ') };
   } catch (err) {
-    log.error(`[AUTHORITY] bag guard unavailable, saving unchecked: ${err.code || err.message}`);
-    return { slots, message: '', failedOpen: true };
+    log.error(`[AUTHORITY] bag guard unavailable, refusing the save: ${err.code || err.message}`);
+    throw new GuardUnavailable('bag', err);
   }
 }
 
-/** POST /api/inventory/add-item: the same per-item allowance as a bag save. Returns { allowed: bool, message }. Fails open. */
+/** POST /api/inventory/add-item: the same per-item allowance as a bag save. Returns { allowed: bool, message }. Fails closed. */
 async function guardAddItem(db, { characterId, accountId, itemId, quantity, account, now = Date.now(), env = process.env, log = console }) {
   const mode = authorityMode(env);
   if (account && account.staff) return { allowed: true, message: '' };
@@ -316,12 +318,12 @@ async function guardAddItem(db, { characterId, accountId, itemId, quantity, acco
     if (mode !== 'enforce') return { allowed: true, message: '' };
     return { allowed: false, message: f.source === 'server-only' ? `${itemId} cannot be added to a bag directly.` : `More ${itemId} than play can explain. Try again later.` };
   } catch (err) {
-    log.error(`[AUTHORITY] add-item guard unavailable, adding unchecked: ${err.code || err.message}`);
-    return { allowed: true, message: '', failedOpen: true };
+    log.error(`[AUTHORITY] add-item guard unavailable, refusing: ${err.code || err.message}`);
+    throw new GuardUnavailable('add-item', err);
   }
 }
 
-/** POST /api/loot/roll-gear: only items that exist in a drop table can be rolled. Returns { ok, message } and logs; fails open. */
+/** POST /api/loot/roll-gear: only items that exist in a drop table can be rolled. Returns { ok, message } and logs; fails closed. */
 async function guardRollGear(db, { characterId, accountId, itemIds, account, env = process.env, log = console }) {
   const mode = authorityMode(env);
   if (account && account.staff) return { ok: true, message: '' };
@@ -332,8 +334,8 @@ async function guardRollGear(db, { characterId, accountId, itemIds, account, env
     await db.execute('UPDATE character_authority SET flags = flags + 1 WHERE character_id = ?', [characterId]).catch(() => {});
     return mode === 'enforce' ? { ok: false, message: 'That drop could not be rolled.' } : { ok: true, message: '' };
   } catch (err) {
-    log.error(`[AUTHORITY] roll-gear guard unavailable: ${err.code || err.message}`);
-    return { ok: true, message: '', failedOpen: true };
+    log.error(`[AUTHORITY] roll guard unavailable, refusing: ${err.code || err.message}`);
+    throw new GuardUnavailable('roll-gear', err);
   }
 }
 
@@ -398,8 +400,8 @@ async function guardOfflineLoad(db, { characterId, accountId, online, offline, c
     if (!needsConfirm) await db.execute('UPDATE character_authority SET flags = flags + 1 WHERE character_id = ?', [characterId]).catch(() => {});
     return { needsConfirm, message: needsConfirm ? OFFLINE_MESSAGE : '', findings: verdict.findings };
   } catch (err) {
-    log.error(`[AUTHORITY] offline guard unavailable: ${err.code || err.message}`);
-    return { needsConfirm: false, message: '', findings: [], failedOpen: true };
+    log.error(`[AUTHORITY] offline guard unavailable, refusing: ${err.code || err.message}`);
+    throw new GuardUnavailable('offline', err);
   }
 }
 
@@ -410,6 +412,6 @@ async function guardOfflineStats(db, { characterId, accountId, online, level, ex
 }
 
 module.exports = {
-  authorityMode, evaluateProgress, evaluateOffline, guardProgress, guardBagSave, guardAddItem, guardRollGear, guardOfflineLoad, guardOfflineStats,
+  GuardUnavailable, authorityMode, evaluateProgress, evaluateOffline, guardProgress, guardBagSave, guardAddItem, guardRollGear, guardOfflineLoad, guardOfflineStats,
   chargeItems, trimSlots, itemAvailable, loadState, audit, necroSummary, OFFLINE_MESSAGE, SaveRefusal,
 };

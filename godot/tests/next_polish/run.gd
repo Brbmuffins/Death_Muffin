@@ -1,6 +1,6 @@
 extends SceneTree
 ## The solo-polish pass on the rebuild: counsel events the current client raises (enemy_spawned / sanctify_near / corpse_near / auto_combat_cast),
-## progressive reveal + NEW pips, stored gather bests, the Dev access toggle's effects, F9 break seals. 
+## progressive reveal + NEW pips, stored gather bests, the GM mode toggle's effects, F9 break seals. 
 ## godot --headless --path godot --script res://tests/next_polish/run.gd
 
 var passed := 0
@@ -149,7 +149,9 @@ func _run() -> void:
 	check(int(JSON.parse_string(g.progress.store.get_item(key))[skill]["items"]) == 9, "and stores the new best")
 
 	# ---- 4. dev access (dev account)
-	check(h.dev_account and h.dev_access and h.prog.dev_access and g.gather.skills.dev_access, "dev account: dev_access on at setup (settings default on)")
+	check(h.dev_account and not h.dev_access and not h.prog.dev_access, "dev account: GM mode is off at setup (settings default off)")
+	h.settings_store.update({"dev_access": true})
+	check(h.dev_access and h.prog.dev_access and g.gather.skills.dev_access, "GM mode on: progression and gathering follow")
 	var caster := b.get_node_or_null("Rites") as DmRiteCaster
 	await until(func() -> bool: return b.get_node_or_null("Rites") != null and b.get_node_or_null("Rites").dev, 3.0)
 	caster = b.get_node_or_null("Rites") as DmRiteCaster
@@ -158,10 +160,10 @@ func _run() -> void:
 	events.clear()
 	h.settings_store.update({"dev_access": false})
 	check(not h.dev_access and not h.prog.dev_access and not g.gather.skills.dev_access and not caster.dev and not h.prog.is_unlocked("warren"), "toggle off: everything closes again")
-	check(ids("toast").any(func(x: Dictionary) -> bool: return String(x["ctx"]["text"]).begins_with("Dev access off")), "toast says so")
+	check(ids("toast").any(func(x: Dictionary) -> bool: return String(x["ctx"]["text"]).begins_with("GM mode off")), "toast says so")
 	check(h.dev_break_seals() == 0, "F9 does nothing with dev access off")
 	h.settings_store.update({"dev_access": true})
-	check(h.dev_access and h.prog.dev_access and caster.dev and ids("toast").any(func(x: Dictionary) -> bool: return String(x["ctx"]["text"]).begins_with("Dev access on")), "toggle on: effects return")
+	check(h.dev_access and h.prog.dev_access and caster.dev and ids("toast").any(func(x: Dictionary) -> bool: return String(x["ctx"]["text"]).begins_with("GM mode on")), "toggle on: effects return")
 	h.settings_store.update({"dev_access": false})
 
 	# ---- 5. F9 break seals (key path)

@@ -68,9 +68,14 @@ The client reports level, XP, gold, kills and its bag; the backend decides wheth
 start, so changing one needs a restart of `death-muffin-auth`.
 
 - **Step 1, plausibility guards** (`backend/authority.cjs`, migration 021): `AUTHORITY_MODE=report` (default) logs what it would refuse and never changes a save; `enforce` clamps what
-  is not believable and returns a readable message. Findings are written to `progress_audit` (`[AUTHORITY]` in the log). Staff accounts are exempt; guards fail open if the tables are missing.
+  is not believable and returns a readable message. Findings are written to `progress_audit` (`[AUTHORITY]` in the log). Accounts in GM mode are exempt (below); a guard that cannot run refuses the write with a 503 (the client retries), never saves unchecked.
 - **Step 2, kill ledger** (`backend/kills.cjs`, migration 036): `AUTHORITY_KILLS=off` (default) ignores kill reports, `audit` keeps the ledger and logs differences, `enforce` lets saves claim only what
   the ledger credits (and implies the step-1 clamp). Ceilings come from `server/rules/gameplay/authorityRules.ts`.
+- **GM mode** (`backend/gm-mode.cjs`, migration 046, DECISIONS B19): an account with role admin / gm or `gm_enabled` is a normal player until it sends
+  `POST /api/gm/mode {on: true}` (in game: Settings -> GM mode); only then is it staff for the guards above. Each switch (`gm_mode`) and each successful write
+  in GM mode (`gm_write`) is a `progress_audit` row, and switching on sets `characters.gm_marked` (the leaderboard's GM tag). `GET /api/me` answers `gmActive`.
+  GM-mode only: `POST /api/inventory/add-item`, `POST /api/offline/load`, `POST /api/offline/sync-stats`, and a first `POST /api/necro-progress/import`
+  carrying a record (a player's starts blank).
 - **Party sessions** (`backend/party-sessions.cjs`, migration 041, `backend/SESSION-REPORTS.md`): a session host reports what its members killed; each member's part goes through the same kill ledger.
 - **Learned runes** (`backend/runes.cjs`, migration 044): `GET /api/runes/:id` lists a character's learned runes; `POST /api/inventory/rune/learn` spends a bag rune and learns it; `POST /api/inventory/rune` puts a learned rune in its rite's socket (or empties it). DECISIONS B17.
 - **Friends** (`backend/friends.cjs`, migration 045): `GET /api/friends` (friends with their active character's discipline and level, requests both ways), `POST /api/friends/request {username}`

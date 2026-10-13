@@ -107,6 +107,7 @@ module.exports = function mountLoot(app, pool, { requireAuth, ownsCharacter, ran
     } catch (err) {
       await conn.rollback().catch(() => {});
       if (err && err.player) return res.status(200).json({ success: false, error: err.message });
+      if (err && err.unavailable) return res.status(503).json({ success: false, error: err.message });
       console.error(`${req.method} ${req.path}:`, err.code || err.message);
       if (!res.headersSent) res.status(500).json({ success: false, error: 'internal server error' });
     } finally {

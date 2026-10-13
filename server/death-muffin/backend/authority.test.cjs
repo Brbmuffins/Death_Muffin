@@ -167,16 +167,12 @@ test('staff accounts skip every guard', async () => {
   assert.equal(auth.audit.length, 0);
 });
 
-test('guards fail open: missing tables never block a save', async () => {
+test('guards fail closed: a guard that cannot run refuses the save (503, the client retries) instead of saving unchecked', async () => {
   const boom = Object.assign(new Error("Table 'character_authority' doesn't exist"), { code: 'ER_NO_SUCH_TABLE' });
   for (const [, env] of MODES) {
     const auth = authorityFake({ necro: GRAVES, failWith: boom });
     const c = char({ level: 1 });
-    const next = nextOf(c, { level: 99 });
-    const r = await save(auth, c, next, T0, env);
-    assert.deepEqual(r.write, next);
-    assert.equal(r.failedOpen, true);
-    assert.ok(r.log.lines.some((l) => l.includes('unavailable')));
+    await assert.rejects(save(auth, c, nextOf(c, { level: 99 }), T0, env), (err) => err.unavailable === true && err.status === 503);
   }
 });
 

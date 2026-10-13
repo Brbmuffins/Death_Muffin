@@ -16,7 +16,7 @@ module.exports = function mountLeaderboard(app, pool, { killsMode = () => 'off' 
       if (!cached || Date.now() - cachedAt > 30000) {
         const sql = (kills, join) => `
           SELECT a.username, COALESCE(c.discipline_index, c.class_index) AS class_index,
-                 c.discipline_index IS NOT NULL AS has_discipline, c.level,
+                 c.discipline_index IS NOT NULL AS has_discipline, c.level, c.gm_marked,
                  COALESCE(p.ascension, 0) AS ascension,
                  COALESCE(p.boss_kills, 0) AS bossKills,
                  ${kills} AS totalKills,
@@ -41,7 +41,7 @@ module.exports = function mountLeaderboard(app, pool, { killsMode = () => 'off' 
           }
         }
         if (!rows) [rows] = await pool.query(sql(PLAIN_KILLS, ''));
-        cached = rows.map((row, index) => ({ rank: index + 1, username: row.username, classIndex: row.class_index, hasDiscipline: !!row.has_discipline, level: row.level, ascension: row.ascension, bossKills: row.bossKills, totalKills: Number(row.totalKills) || 0, playSeconds: Number(row.playSeconds) || 0, runs: Number(row.runs) || 0, bestDepth: Number(row.bestDepth) || 0 }));
+        cached = rows.map((row, index) => ({ rank: index + 1, username: row.username, classIndex: row.class_index, hasDiscipline: !!row.has_discipline, level: row.level, ascension: row.ascension, bossKills: row.bossKills, totalKills: Number(row.totalKills) || 0, playSeconds: Number(row.playSeconds) || 0, runs: Number(row.runs) || 0, bestDepth: Number(row.bestDepth) || 0, gm: !!row.gm_marked }));
         cachedAt = Date.now();
       }
       res.json({ players: cached, updatedAt: new Date(cachedAt).toISOString() });

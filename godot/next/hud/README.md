@@ -31,7 +31,8 @@ opts.hud:  true (default) real HUD, also for joiners  |  "minimal" DmNextHud orb
 | guidance | `DmGameUi.guidance_state()` reads the shared progression; the adapter feeds `skills`, `bossesBeaten` (chronicle `boss.<id>`), `labor`, `contracts` (`next/gathering/dm_next_acre.gd`) and recomputes at once (`ui._guide_t = 0`). The minimap ping reads the Next-step box's suggestion |
 | elite chips | `_affix_chips` reads the replicated `dm_affix_list` meta, cached per target |
 
-**Dev access** (`_is_dev_account` / `_apply_dev_access`): a dev account plus the Settings toggle opens rites (`DmRiteCaster.dev`), sealed halls and gathering tiers;
+**GM mode** (`_is_dev_account` / `_apply_dev_access`, setting `dev_access`, off by default): a dev account plus the Settings toggle opens rites (`DmRiteCaster.dev`), sealed halls and gathering tiers,
+and tells the server (`_tell_server_gm_mode` -> `POST /api/gm/mode`), which only then skips its checks for the account, logs its saves and marks the character GM (DECISIONS B19);
 F9 = `dev_break_seals()`. `main/qa_driver.gd` (`-- --qa`) drives DmNextGame. Bug reports carry `release = godot-next-<version>`.
 
 ## Panels

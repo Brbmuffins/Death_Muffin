@@ -338,6 +338,8 @@ func _entry_flow() -> void:
 	check(DmMain.mode_for(PackedStringArray(["--offline"])) == "online", "an old launcher's --offline starts online")
 	check(DmMain.mode_for(PackedStringArray(["--online", "--next"])) == "online", "--online / --next = online")
 	check(DmMain.mode_for(PackedStringArray(["--dev-offline"])) == "dev_offline", "--dev-offline = the testing backend")
+	check(DmMain.mode_for(PackedStringArray(["--dev-offline"]), false) == "online", "a release export ignores --dev-offline")
+	check(DmMain.mode_for(PackedStringArray(["--world-demo"]), false) == "online", "a release export ignores --world-demo")
 	check(DmMain.DEV_OFFLINE_DB != DmMain.OFFLINE_EDITION_DB, "dev-offline never reuses the player's old offline save")
 	# ---- the retired offline edition is wiped (its save, its tmp file and an "offline:" token); an online token is kept
 	_write(DmMain.OFFLINE_EDITION_DB, "{}")

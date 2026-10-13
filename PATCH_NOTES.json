@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-10-13",
+    "title": "Safer Saves",
+    "items": [
+      "The server now checks more of what it saves for every character. If it cannot check a save for a moment, it keeps your progress on your PC and tries again, so nothing is lost.",
+      "Leaderboard: characters played with the team's testing tools (GM mode) now carry a GM tag."
+    ]
+  },
+  {
+    "date": "2026-10-13",
     "title": "Play With Friends",
     "items": [
       "No more party codes. The Friends tab (O) shows who is online, their class and level, where they are and whether they are in a party.",

@@ -43,7 +43,7 @@ var rejected_casts: int = 0         ## host: legitimate intents refused by the r
 var events_played: int = 0
 var gestures_played: int = 0        ## every peer: hero cast gestures played (one per accepted cast, see DmRiteGestures)
 var p: Dictionary = {}
-var dev: bool = false               ## host only: the dev account's "Dev access" setting opens every rite (DmAbilities.cast_check `dev`); set by DmNextUiHost
+var dev: bool = false               ## host only: the dev account's GM mode setting opens every rite (DmAbilities.cast_check `dev`); set by DmNextUiHost
 var peer_id: int = 0
 
 var _body: Node3D

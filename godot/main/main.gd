@@ -4,7 +4,7 @@ extends Node
 ## -> DmNextGame (godot/next). Only the four necromancer disciplines are playable (DmCharacterBuild.is_playable); a character of another
 ## discipline is sent to the discipline switch by the front flow.
 ## Launch args (after `--`): none needed. `--online` / `--offline` / `--next` from older launchers and scripts are accepted and ignored.
-## Testing only: `--dev-offline` = local accounts + progress in DEV_OFFLINE_DB (DmMockBackend, no live server); `--dev-offline --class=N`
+## Testing only (editor / debug builds; a release export ignores them): `--dev-offline` = local accounts + progress in DEV_OFFLINE_DB (DmMockBackend, no live server); `--dev-offline --class=N`
 ## skips the front flow (test account `tester`) and enters DmNextGame directly; `--world-demo` is an alias of `--dev-offline --class=2` (the screenshot QA's
 ## launch line, shot-godot.sh).
 ## `--benchmark`: runs the in-game benchmark straight away on an isolated offline game (DmBenchmark, no
@@ -75,8 +75,11 @@ static func quick_start_class(args: PackedStringArray) -> int:
 	return 2 if "--world-demo" in args else -1
 
 
-## The mode a launch gets from its user args: online unless a testing flag asks for the local dev backend.
-static func mode_for(args: PackedStringArray) -> String:
+## The mode a launch gets from its user args: online unless a testing flag asks for the local dev backend. Release exports (the players'
+## client) never honour the testing flags (owner 2026-10-13): the local backend is for the editor binary and the test suites only.
+static func mode_for(args: PackedStringArray, debug_build: bool = OS.is_debug_build()) -> String:
+	if not debug_build:
+		return "online"
 	return "dev_offline" if ("--dev-offline" in args or "--world-demo" in args) else "online"
 
 

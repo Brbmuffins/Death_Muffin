@@ -29,7 +29,7 @@ static func defaults() -> Dictionary:
 		"difficulty": "medium", "auto_combat": false, "auto_gather": true,
 		"graphics": "high", "window_mode": "windowed", "fps": 0, "vsync": true, "graphics_chosen": false, "auto_res": true, "brightness": 1.0, "ui_scale": 1.0, "hud_scale": 1.0,
 		"vol_master": 0.6, "vol_combat": 1.0, "vol_amb": 1.0, "vol_music": 0.85, "vol_ui": 1.0,
-		"reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false, "guidance": true, "guide_ping": true, "dev_access": true,
+		"reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false, "guidance": true, "guide_ping": true, "dev_access": false,
 	}
 	return d
 

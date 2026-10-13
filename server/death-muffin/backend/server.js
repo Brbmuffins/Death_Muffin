@@ -32,43 +32,6 @@ let maintenanceMode = false;
 const VALID_ZONES     = new Set(['HUB','Darkwood','Ashen Wastelands','Toujam Basin','GM Island','VoidDungeon']);
 const INSTANCED_ZONES = new Set(['VoidDungeon']);
 
-// ── Combat anti-exploit state (in-process, cleared on restart) ────────────────
-// recentHits:   `${accountId}:${charId}:${enemyInstanceId}` → { timestamp, enemyLevel, enemyCategory }
-//               Kill endpoint requires an entry here within HIT_WINDOW_MS whose
-//               enemyLevel/enemyCategory match the kill request.
-//               Entry is consumed on kill so the next kill of the same instance
-//               requires a fresh hit.
-// lastKillTime: `${charId}:${enemyInstanceId}` → last confirmed kill timestamp.
-//               Rejects rapid duplicate reports for the same corpse without
-//               discarding legitimate simultaneous kills of different enemies.
-const recentHits   = new Map();
-const lastKillTime = new Map();
-const HIT_WINDOW_MS    = 30_000; // hit must arrive within 30s before kill
-const KILL_COOLDOWN_MS =  2_000; // duplicate-report guard per enemy instance
-
-// Prune stale anti-exploit records every minute so the Maps don't grow unbounded.
-setInterval(() => {
-  const cutoff = Date.now() - HIT_WINDOW_MS;
-  for (const [key, hit] of recentHits) if (hit.timestamp < cutoff) recentHits.delete(key);
-  for (const [key, timestamp] of lastKillTime) if (timestamp < cutoff) lastKillTime.delete(key);
-}, 60_000);
-
-// ── Combat XP (level/category driven, no enemy_templates row required) ────────
-const COMBAT_XP_MULTIPLIERS = { grunt: 1, brute: 1.5, elite: 2, boss: 5 };
-
-function isValidEnemyLevel(level) {
-  return Number.isInteger(level) && level >= 1 && level <= 100;
-}
-
-function isValidEnemyCategory(category) {
-  return Object.prototype.hasOwnProperty.call(COMBAT_XP_MULTIPLIERS, category);
-}
-
-function calcXpGained(enemyLevel, enemyCategory) {
-  const baseXp = 10 * enemyLevel + 5;
-  return Math.round(baseXp * COMBAT_XP_MULTIPLIERS[enemyCategory]);
-}
-
 app.use(express.json({ limit: '512kb' }));
 // Player-facing refusals (4xx) were invisible in the journal: a bag-save 400 loop once ran for minutes unseen.
 // Log one line per refusal: method, path (ids collapsed), status and the player-readable error.
@@ -105,6 +68,10 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
 });
+
+// GM mode (gm-mode.cjs): staff powers only while an allowed account has switched them on; every write in GM mode is logged.
+const gm = require('./gm-mode.cjs').createGmMode(pool, { verifyToken: (t) => jwt.verify(t, process.env.JWT_SECRET) });
+app.use(gm.logWrites);
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
 app.post('/login', loginLimiter, async (req, res) => {
@@ -586,10 +553,11 @@ app.get('/api/session', requireJWT, async (req, res) => {
   res.json({ success: true, active: !(await session.isReplaced(pool, req.user)) });
 });
 
-// Who the server says this token is, read-only (no character load, no `online` flag write). `staff` = admin/gm role or gm_enabled, straight from
-// the account row via verifyJWT: the Godot client's staff-only online mode (client manifest online.staff) and the lobby service both ask this.
-app.get('/api/me', verifyJWT, (req, res) => {
-  res.json({ success: true, username: req.user.username, staff: !!(req.gmFields && req.gmFields.gm_enabled) });
+// Who the server says this token is, read-only (no character load, no `online` flag write). `staff` = admin/gm role or gm_enabled (may GM),
+// straight from the account row via verifyJWT: the Godot client's staff-only online mode (client manifest online.staff) and the lobby
+// service both ask this. `gmActive` = GM mode is switched on right now (gm-mode.cjs).
+app.get('/api/me', verifyJWT, async (req, res) => {
+  res.json({ success: true, username: req.user.username, staff: !!(req.gmFields && req.gmFields.gm_enabled), gmActive: await gm.isActive(req.user.accountId) });
 });
 
 function requireGameServerToken(req, res, next) {
@@ -754,7 +722,12 @@ async function loadOfflineVersion(req, res, source, account, expectedFingerprint
   } finally { conn.release(); }
 }
 
+// Loading a client-made save (or bare offline level / XP) is GM-mode only: the game is online-only (DECISIONS B1), so a client save is not
+// proof of play. Restoring one of the server's own saved versions stays open.
+const GM_ONLY = { error: 'Only the server\'s own saves can be loaded.' };
+
 app.post('/api/offline/load', offlineSyncLimiter, verifyJWT, async (req, res) => {
+  if (!(await isStaffAccount(req))) return res.status(403).json(GM_ONLY);
   await loadOfflineVersion(req, res, 'offline', req.body?.snapshot, req.body?.expectedFingerprint, req.body?.confirmImplausible === true);
 });
 
@@ -774,6 +747,7 @@ app.post('/api/offline/restore', offlineSyncLimiter, verifyJWT, async (req, res)
 
 
 app.post('/api/offline/sync-stats', offlineSyncLimiter, verifyJWT, async (req, res) => {
+  if (!(await isStaffAccount(req))) return res.status(403).json(GM_ONLY);
   if (!req.character)
     return res.status(404).json({ error: 'Create an online character before syncing offline stats.' });
   const offlineClass = req.body?.classIndex;
@@ -842,6 +816,7 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
     console.log(`[PROGRESS] ${req.user.username} char#${char.id} → Lv${updated.level} ${updated.experience}xp ${updated.gold}g`);
     res.json({ success: true, data: updated, ...(verdict.message ? { authority: { message: verdict.message } } : {}) });
   } catch (err) {
+    if (err && err.unavailable) return res.status(503).json({ success: false, error: err.message });
     console.error(`POST /api/character/save-progress char#${characterId}: ${err.message}`);
     res.status(500).json({ success: false, error: 'internal server error' });
   }
@@ -878,6 +853,9 @@ app.post('/api/inventory/add-item', requireJWT, async (req, res) => {
     });
   }
 
+  // Items come from play (drops, gathering, crafting, the server's own routes); adding one by name is a GM-mode tool.
+  if (!(await isStaffAccount(req)))
+    return res.status(403).json({ success: false, error: 'Items cannot be added directly.' });
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
@@ -1007,6 +985,7 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
   } catch (err) {
     // A save that names a relic it does not own (or one it cannot prove) is refused, readably, and nothing was written.
     if (err && err.refusal) return res.status(400).json({ success: false, error: err.message });
+    if (err && err.unavailable) return res.status(503).json({ success: false, error: err.message });
     console.error(`POST /api/inventory/save char#${characterId}: ${err.message}`);
     res.status(500).json({ success: false, error: 'internal server error' });
   }
@@ -1197,8 +1176,6 @@ app.get('/api/professions/:characterId', requireJWT, async (req, res) => {
 });
 
 
-// ── POST /api/professions/award-xp ──────────────────────────────────────────
-
 const PROFESSION_NAMES = Object.freeze({
   woodcutting: 'Woodcutting',
   fishing: 'Fishing',
@@ -1215,71 +1192,6 @@ function xpToNextLevel(currentLevel) {
   return gatheringRules.xpToNext(currentLevel);
 }
 
-// Retired for clients: it trusted a client-sent xpAmount. Skill XP now comes only
-// from POST /api/gather (server-rolled, time-budgeted) and POST /api/craft.
-app.post('/api/professions/award-xp', requireJWT, (req, res) => {
-  res.status(410).json({ success: false, error: 'Skill XP is earned by gathering and crafting now.' });
-});
-
-// The original handler, kept unreachable for reference until the route is deleted.
-async function legacyAwardXp(req, res) {
-  const { characterId, professionId, xpAmount } = req.body;
-
-  if (!characterId || professionId === undefined || !xpAmount)
-    return res.json({ success: false, error: 'Missing characterId, professionId, or xpAmount' });
-
-  const professionKey = typeof professionId === 'string' ? professionId.toLowerCase().trim() : '';
-  if (!VALID_PROFESSION_IDS.has(professionKey))
-    return res.json({ success: false, error: 'Invalid professionId' });
-
-  const xp = Math.min(Math.max(parseInt(xpAmount, 10), 1), 500);
-
-  const [chars] = await pool.query(
-    'SELECT id FROM characters WHERE id = ? AND account_id = ?',
-    [characterId, req.user.accountId]
-  );
-  if (!chars.length)
-    return res.json({ success: false, error: 'Character not found or not yours' });
-
-  // Upsert — create row if first time this profession is used
-  await pool.query(
-    `INSERT INTO professions (character_id, profession_id, skill_level, skill_xp)
-     VALUES (?, ?, 1, 0)
-     ON DUPLICATE KEY UPDATE skill_xp = skill_xp`,
-    [characterId, professionKey]
-  );
-
-  const [[prof]] = await pool.query(
-    'SELECT skill_level, skill_xp FROM professions WHERE character_id = ? AND profession_id = ?',
-    [characterId, professionKey]
-  );
-
-  let { skill_level, skill_xp } = prof;
-  skill_xp += xp;
-
-  let leveled_up = false;
-  while (skill_level < gatheringRules.LEVEL_CAP && skill_xp >= xpToNextLevel(skill_level)) {
-    skill_xp  -= xpToNextLevel(skill_level);
-    skill_level++;
-    leveled_up = true;
-  }
-
-  await pool.query(
-    `UPDATE professions SET skill_level = ?, skill_xp = ?
-     WHERE character_id = ? AND profession_id = ?`,
-    [skill_level, skill_xp, characterId, professionKey]
-  );
-
-  const profName = PROFESSION_NAMES[professionKey];
-  if (leveled_up)
-    console.log(`[PROF] char ${characterId} — ${profName} leveled to ${skill_level}`);
-
-  return res.json({
-    success: true,
-    data: { skill_level, skill_xp, leveled_up, profession_id: professionKey }
-  });
-}
-void legacyAwardXp;
 
 // ── GET /api/professions/recipes/:characterId ───────────────────────────────
 
@@ -1622,177 +1534,6 @@ app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), db, timestamp: new Date().toISOString() });
 });
 
-// The old Crossworlds reward routes (combat/kill, loot/roll, loot/drop) pay XP, gold or items for an enemy instance id the client simply makes
-// up; the browser never calls them. Report mode leaves them as they were (nothing is enforced there); enforce mode (docs/SERVER-AUTHORITY.md)
-// would otherwise have a hole next to its guards, so only staff may use them.
-async function legacyRewardAllowed(req) {
-  if (authority.authorityMode() !== 'enforce') return true;
-  return isStaffAccount(req).catch(() => false);
-}
-const LEGACY_REWARD_CLOSED = { success: false, error: 'This reward route is closed.' };
-
-// ─── Loot ────────────────────────────────────────────────────────────────────
-
-const LOOT_TABLES = {
-  grunt: [
-    { weight: 60, type: 'nothing' },
-    { weight: 30, type: 'item',   item_id: 'copper_shard', qty: [1, 2], gold: [1, 5] },
-    { weight: 10, type: 'item',   item_id: 'copper_bar',   qty: [1, 1], gold: [1, 5] },
-  ],
-  ranged: [
-    { weight: 50, type: 'nothing' },
-    { weight: 35, type: 'item',   item_id: 'copper_shard', qty: [1, 2], gold: [2, 8] },
-    { weight: 15, type: 'item',   item_id: 'copper_bar',   qty: [1, 1], gold: [2, 8] },
-  ],
-  elite: [
-    { weight: 20, type: 'nothing' },
-    { weight: 30, type: 'item',   item_id: 'copper_bar',   qty: [1, 2], gold: [10, 25] },
-    { weight: 30, type: 'item',   item_id: 'copper_shard', qty: [2, 4], gold: [10, 25] },
-    { weight: 10, type: 'equip',  pool: ['sword_copper','plate_copper','ring_copper','dagger_shadow'], qty: [1, 1], gold: [10, 25] },
-    { weight: 10, type: 'multi',  items: [{ item_id: 'copper_shard', qty: [3, 5] }, { item_id: 'copper_bar', qty: [1, 1] }], gold: [10, 25] },
-  ],
-};
-
-function rollLoot(enemyType) {
-  const table = LOOT_TABLES[enemyType];
-  if (!table) return null;
-  const total = table.reduce((s, e) => s + e.weight, 0);
-  let r = Math.random() * total;
-  for (const entry of table) {
-    r -= entry.weight;
-    if (r <= 0) return entry;
-  }
-  return table[table.length - 1];
-}
-
-function randInt(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
-
-app.post('/api/loot/roll', requireJWT, async (req, res) => {
-  const { characterId, enemyType } = req.body;
-  if (!['grunt', 'ranged', 'elite'].includes(enemyType))
-    return res.status(400).json({ success: false, error: 'enemyType must be grunt, ranged, or elite' });
-  try {
-    const char = await ownedCharacter(req, res, characterId);
-    if (!char) return;
-    if (!(await legacyRewardAllowed(req))) return res.status(403).json(LEGACY_REWARD_CLOSED);
-
-    const entry = rollLoot(enemyType);
-    if (!entry || entry.type === 'nothing')
-      return res.json({ success: true, data: { items: [], gold: 0 } });
-
-    const goldGained = randInt(entry.gold[0], entry.gold[1]);
-    const drops = [];
-
-    if (entry.type === 'item') {
-      drops.push({ item_id: entry.item_id, quantity: randInt(entry.qty[0], entry.qty[1]) });
-    } else if (entry.type === 'equip') {
-      const item_id = entry.pool[Math.floor(Math.random() * entry.pool.length)];
-      drops.push({ item_id, quantity: 1 });
-    } else if (entry.type === 'multi') {
-      for (const i of entry.items) drops.push({ item_id: i.item_id, quantity: randInt(i.qty[0], i.qty[1]) });
-    }
-
-    const [invRows] = await pool.execute(
-      'SELECT slot_index FROM inventory WHERE character_id = ?', [char.id]
-    );
-    const usedSlots = new Set(invRows.map(r => r.slot_index));
-
-    const conn = await pool.getConnection();
-    try {
-      await conn.beginTransaction();
-
-      for (const drop of drops) {
-        let slot = null;
-        for (let i = 0; i < BAG_SLOTS; i++) { if (!usedSlots.has(i)) { slot = i; usedSlots.add(i); break; } } // the bag only: 100+ are equipment, belt, kit and rune rows
-        if (slot === null) break; // inventory full — skip remaining drops silently
-        await conn.execute(
-          'INSERT INTO inventory (character_id, slot_index, item_id, quantity) VALUES (?, ?, ?, ?)',
-          [char.id, slot, drop.item_id, drop.quantity]
-        );
-      }
-
-      await conn.execute(
-        'UPDATE characters SET gold = gold + ? WHERE id = ?', [goldGained, char.id]
-      );
-
-      await conn.commit();
-    } catch (e) { await conn.rollback(); throw e; }
-    finally { conn.release(); }
-
-    for (const d of drops) console.log(`[LOOT] ${req.user.username} char#${char.id} received ${d.quantity}x${d.item_id} from ${enemyType}`);
-    if (goldGained) console.log(`[LOOT] ${req.user.username} char#${char.id} received ${goldGained}g from ${enemyType}`);
-
-    res.json({ success: true, data: { items: drops, gold: goldGained } });
-  } catch (err) {
-    console.error(`POST /api/loot/roll char#${characterId}: ${err.message}`);
-    res.status(500).json({ success: false, error: 'internal server error' });
-  }
-});
-
-// ─── Loot (DB-backed) ────────────────────────────────────────────────────────
-
-// Rolls a loot drop from loot_tables for a given source_name and, if something
-// drops, inserts it into the character's inventory. Must be called inside an
-// open transaction on `conn`. Returns the item_id string or null (no drop /
-// inventory full).
-async function rollDbLoot(conn, charId, sourceId) {
-  const [entries] = await conn.execute(
-    'SELECT new_item_id, weight, min_quantity, max_quantity FROM loot_tables WHERE source_name = ?',
-    [sourceId]
-  );
-  if (!entries.length) return null;
-
-  const total = entries.reduce((s, e) => s + e.weight, 0);
-  let r = Math.random() * total;
-  let picked = null;
-  for (const e of entries) { r -= e.weight; if (r <= 0) { picked = e; break; } }
-  if (!picked) picked = entries[entries.length - 1];
-  if (!picked.new_item_id) return null;
-
-  const [invRows] = await conn.execute(
-    'SELECT slot_index FROM inventory WHERE character_id = ?', [charId]
-  );
-  const usedSlots = new Set(invRows.map(r => r.slot_index));
-  let slot = null;
-  for (let i = 0; i < BAG_SLOTS; i++) { if (!usedSlots.has(i)) { slot = i; break; } } // the bag only: 100+ are equipment, belt, kit and rune rows
-  if (slot === null) return null;
-
-  const qty = picked.min_quantity + Math.floor(Math.random() * (picked.max_quantity - picked.min_quantity + 1));
-  await conn.execute(
-    'INSERT INTO inventory (character_id, slot_index, item_id, quantity) VALUES (?, ?, ?, ?)',
-    [charId, slot, picked.new_item_id, qty]
-  );
-  return picked.new_item_id;
-}
-
-app.post('/api/loot/drop', requireJWT, async (req, res) => {
-  const { characterId, sourceId } = req.body;
-  if (!sourceId || typeof sourceId !== 'string')
-    return res.status(400).json({ success: false, error: 'sourceId is required' });
-  try {
-    const char = await ownedCharacter(req, res, characterId);
-    if (!char) return;
-    if (!(await legacyRewardAllowed(req))) return res.status(403).json(LEGACY_REWARD_CLOSED);
-
-    const conn = await pool.getConnection();
-    let dropped = null;
-    try {
-      await conn.beginTransaction();
-      dropped = await rollDbLoot(conn, char.id, sourceId);
-      await conn.commit();
-    } catch (e) { await conn.rollback(); throw e; }
-    finally { conn.release(); }
-
-    if (dropped) console.log(`[LOOT] char#${char.id} received ${dropped} from ${sourceId}`);
-    else         console.log(`[LOOT] char#${char.id} no drop from ${sourceId}`);
-
-    res.json({ success: true, data: { dropped } });
-  } catch (err) {
-    console.error(`POST /api/loot/drop char#${characterId}: ${err.message}`);
-    res.status(500).json({ success: false, error: 'internal server error' });
-  }
-});
-
 // ─── Gold ────────────────────────────────────────────────────────────────────
 
 const GOLD_MAX = 2147483647;
@@ -1881,121 +1622,6 @@ app.get('/api/character/stats/:characterId', requireJWT, async (req, res) => {
   }
 });
 
-// ─── Combat ───────────────────────────────────────────────────────────────────
-
-app.post('/api/combat/hit', requireJWT, async (req, res) => {
-  const { characterId, enemyLevel, enemyCategory, enemyInstanceId, damageDealt } = req.body;
-  if (!isValidEnemyLevel(enemyLevel))
-    return res.status(400).json({ success: false, error: 'enemyLevel must be an integer from 1-100' });
-  if (!isValidEnemyCategory(enemyCategory))
-    return res.status(400).json({ success: false, error: 'unknown enemyCategory' });
-  if (!enemyInstanceId)
-    return res.status(400).json({ success: false, error: 'enemyInstanceId is required' });
-  if (typeof damageDealt !== 'number')
-    return res.status(400).json({ success: false, error: 'damageDealt (number) is required' });
-  try {
-    const char = await ownedCharacter(req, res, characterId);
-    if (!char) return;
-
-    // Record hit (with the validated level/category) so the kill gate can
-    // verify combat actually happened against a matching enemy.
-    const hitKey = `${req.user.accountId}:${char.id}:${enemyInstanceId}`;
-    recentHits.set(hitKey, { timestamp: Date.now(), enemyLevel, enemyCategory });
-
-    console.log(`[COMBAT] char#${char.id} hit ${enemyCategory} L${enemyLevel} (${enemyInstanceId}) for ${damageDealt}`);
-    res.json({ success: true, data: { validated: true } });
-  } catch (err) {
-    console.error(`POST /api/combat/hit char#${characterId}: ${err.message}`);
-    res.status(500).json({ success: false, error: 'internal server error' });
-  }
-});
-
-app.post('/api/combat/kill', requireJWT, async (req, res) => {
-  const { characterId, enemyLevel, enemyCategory, enemyInstanceId } = req.body;
-  if (!isValidEnemyLevel(enemyLevel))
-    return res.status(400).json({ success: false, error: 'enemyLevel must be an integer from 1-100' });
-  if (!isValidEnemyCategory(enemyCategory))
-    return res.status(400).json({ success: false, error: 'unknown enemyCategory' });
-  if (!enemyInstanceId)
-    return res.status(400).json({ success: false, error: 'enemyInstanceId is required' });
-  try {
-    const char = await ownedCharacter(req, res, characterId);
-    if (!char) return;
-    if (!(await legacyRewardAllowed(req))) return res.status(403).json(LEGACY_REWARD_CLOSED);
-
-    // ── Duplicate kill rate limiter ──────────────────────────────────────────
-    const now      = Date.now();
-    const killKey  = `${char.id}:${enemyInstanceId}`;
-    const lastKill = lastKillTime.get(killKey) || 0;
-    if (now - lastKill < KILL_COOLDOWN_MS) {
-      console.warn(`[COMBAT] char#${char.id} duplicate kill rejected for ${enemyInstanceId} (${now - lastKill}ms)`);
-      return res.status(429).json({ success: false, error: 'duplicate kill confirmation' });
-    }
-
-    // ── Hit gate ─────────────────────────────────────────────────────────────
-    const hitKey = `${req.user.accountId}:${char.id}:${enemyInstanceId}`;
-    const hit = recentHits.get(hitKey);
-    if (!hit || now - hit.timestamp > HIT_WINDOW_MS) {
-      console.warn(`[COMBAT] char#${char.id} kill rejected — no recent hit on ${enemyInstanceId}`);
-      return res.status(400).json({ success: false, error: 'no recent hit on this enemy recorded' });
-    }
-    if (hit.enemyLevel !== enemyLevel || hit.enemyCategory !== enemyCategory) {
-      console.warn(`[COMBAT] char#${char.id} kill rejected — level/category mismatch with recorded hit`);
-      return res.status(400).json({ success: false, error: 'enemyLevel/enemyCategory does not match recorded hit' });
-    }
-    recentHits.delete(hitKey); // consume gate — next kill of this instance needs a fresh hit
-    lastKillTime.set(killKey, now);
-
-    // XP is derived purely from level/category — never trust a client-supplied amount.
-    const xpGained   = calcXpGained(enemyLevel, enemyCategory);
-    const goldGained = Math.round(xpGained * 0.3 * (0.7 + Math.random() * 0.6));
-
-    const conn = await pool.getConnection();
-    let itemDropped = null;
-    let updatedProgress = null;
-    try {
-      await conn.beginTransaction();
-      const [[lockedChar]] = await conn.execute(
-        'SELECT level, experience, gold FROM characters WHERE id = ? FOR UPDATE',
-        [char.id]
-      );
-      if (!lockedChar) throw new Error('character disappeared during kill transaction');
-
-      let newLevel = Math.max(1, Number(lockedChar.level) || 1);
-      let newExperience = Math.max(0, Number(lockedChar.experience) || 0) + xpGained;
-      let xpToNext = Math.round(100 * Math.pow(newLevel + 1, 1.5));
-      while (newExperience >= xpToNext) {
-        newExperience -= xpToNext;
-        newLevel += 1;
-        xpToNext = Math.round(100 * Math.pow(newLevel + 1, 1.5));
-      }
-
-      await conn.execute(
-        'UPDATE characters SET level = ?, experience = ?, gold = gold + ? WHERE id = ?',
-        [newLevel, newExperience, goldGained, char.id]
-      );
-      itemDropped = await rollDbLoot(conn, char.id, enemyCategory);
-      updatedProgress = {
-        level: newLevel,
-        experience: newExperience,
-        xpToNext,
-        leveledUp: newLevel > (Number(lockedChar.level) || 1),
-        gold: (Number(lockedChar.gold) || 0) + goldGained,
-      };
-      await conn.commit();
-    } catch (e) { await conn.rollback(); throw e; }
-    finally { conn.release(); }
-
-    console.log(`[COMBAT] char#${char.id} killed ${enemyCategory} L${enemyLevel} (${enemyInstanceId}) +${xpGained}xp +${goldGained}g`);
-    if (itemDropped) console.log(`[LOOT]   char#${char.id} received ${itemDropped} from ${enemyCategory}`);
-
-    res.json({ success: true, data: { xpGained, goldGained, itemDropped, ...updatedProgress } });
-  } catch (err) {
-    console.error(`POST /api/combat/kill char#${characterId}: ${err.message}`);
-    res.status(500).json({ success: false, error: 'internal server error' });
-  }
-});
-
 // ─── Enemies ──────────────────────────────────────────────────────────────────
 
 app.get('/api/enemies', async (req, res) => {
@@ -2020,11 +1646,10 @@ app.get('/api/enemies/:id', async (req, res) => {
 });
 
 
-// Staff = dev access (admin / gm role or gm_enabled): skips level and area gates, never budgets or rate limits.
-const isStaffAccount = async (req) => {
-  const [[acct]] = await pool.execute('SELECT role, gm_enabled FROM accounts WHERE id = ? LIMIT 1', [req.user.accountId]);
-  return !!acct && (acct.role === 'admin' || acct.role === 'gm' || !!acct.gm_enabled);
-};
+// Staff = an account that may GM (admin / gm role or gm_enabled) AND has GM mode on (gm-mode.cjs): skips level and area gates and the
+// authority guards, never budgets or rate limits. An error reading the account counts as not staff.
+const isStaffAccount = async (req) => gm.isActive(req.user.accountId);
+gm.mount(app, { requireAuth: requireJWT });
 // Server authority, step 2 (kills.cjs, AUTHORITY_KILLS=off|audit|enforce, default off): the browser reports its kills in batches; the ledger turns the
 // believable part into credits that the save routes pay out of. 'off' acknowledges and ignores a report, so this is safe to ship before it is switched on.
 const killReportLimiter = rateLimit({ windowMs: 60 * 1000, max: 40, standardHeaders: true, legacyHeaders: false });

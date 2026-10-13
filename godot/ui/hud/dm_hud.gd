@@ -687,9 +687,9 @@ func _build_xp() -> void:
 	lvw.add_child(level_badge)
 	xp.add_child(lvw)
 	dev_chip = DmHudKit.panel(DmUi.GOLD, Color(0, 0, 0, 0), Vector4(0, 0, 0, 0), Vector4(5, 1, 5, 1), 3)
-	dev_chip.add_child(_txt("DEV", 10, Color("1a1206"), "numeric", 0.0, false))
+	dev_chip.add_child(_txt("GM", 10, Color("1a1206"), "numeric", 0.0, false))
 	dev_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	dev_chip.tooltip_text = "Dev access: every rite, area and gathering tier is open. Nothing is saved. Toggle it in Settings → Account."
+	dev_chip.tooltip_text = "GM mode: every rite, area and gathering tier is open; the server logs your saves and marks this character GM. Toggle it in Settings."
 	dev_chip.visible = false
 	xp.add_child(dev_chip)
 	var col := VBoxContainer.new()

@@ -20,6 +20,7 @@
  */
 const rules = require('./gathering/kill-rules.cjs');
 const { audit, necroSummary } = require('./authority.cjs');
+const { GuardUnavailable } = require('./guard-error.cjs');
 const authorityRules = require('./gathering/authority-rules.cjs');
 
 const K = rules.KILLS;
@@ -295,8 +296,8 @@ async function creditPass(db, { char, write, saleCredit, account, now = Date.now
     }
     return { write: mode === 'enforce' ? out : write, message: mode === 'enforce' ? messages.join(' ') : '', findings: v.findings };
   } catch (err) {
-    log.error(`[AUTHORITY] kill credits unavailable, saving unchecked: ${err.code || err.message}`);
-    return { ...none, failedOpen: true };
+    log.error(`[AUTHORITY] kill credits unavailable, refusing the save: ${err.code || err.message}`);
+    throw new GuardUnavailable('kill credits', err);
   }
 }
 
@@ -363,7 +364,9 @@ function necroGuard({ pool, ownsCharacter, isStaff, env = process.env, log = con
         consumeNecro(pool, characterId, consumeKills, consumeShards, log).catch((err) => log.error(`[AUTHORITY] necro credit consume failed: ${err.code || err.message}`));
       });
     } catch (err) {
-      log.error(`[AUTHORITY] necro guard unavailable, saving unchecked: ${err.code || err.message}`);
+      log.error(`[AUTHORITY] necro guard unavailable, refusing the save: ${err.code || err.message}`);
+      const e = new GuardUnavailable('necro', err);
+      return res.status(e.status).json({ success: false, error: e.message });
     }
     return next();
   };
@@ -439,8 +442,8 @@ async function guardChronicleAdd(db, { characterId, accountId, deltas, maxes, ac
     }
     return mode === 'enforce' ? { deltas: v.deltas, maxes: v.maxes } : same;
   } catch (err) {
-    log.error(`[AUTHORITY] chronicle guard unavailable: ${err.code || err.message}`);
-    return same;
+    log.error(`[AUTHORITY] chronicle guard unavailable, refusing: ${err.code || err.message}`);
+    throw new GuardUnavailable('chronicle', err);
   }
 }
 
@@ -457,8 +460,8 @@ async function mayArchiveRun(db, { characterId, runNo, accountId, account, env =
     if (!ok) await audit(db, { characterId, accountId, kind: 'run_count', mode, action: mode === 'enforce' ? 'refuse' : 'report', detail: { runNo, ascension: ascensionRank(necro.ascension) } }, log);
     return mode === 'enforce' ? ok : true;
   } catch (err) {
-    log.error(`[AUTHORITY] run guard unavailable: ${err.code || err.message}`);
-    return true;
+    log.error(`[AUTHORITY] run guard unavailable, refusing: ${err.code || err.message}`);
+    throw new GuardUnavailable('run', err);
   }
 }
 

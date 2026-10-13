@@ -571,8 +571,6 @@ func _route_get(acc: Dictionary, p: String) -> Dictionary:
 func _route_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 	if p.begins_with("/api/offline/"):
 		return _offline_post(acc, p, body)
-	if p == "/api/professions/award-xp":
-		return _err("Skill XP is earned by gathering and crafting now.", 410)
 	if p == "/api/prefs":
 		var prefs: Variant = body.get("prefs")
 		if not (prefs is Dictionary):
@@ -630,6 +628,7 @@ func _route_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 		"/api/loot/roll-gear": return _roll_gear(acc, body)
 		"/api/craft": return _craft(acc, body)
 		"/api/salvage": return _salvage(acc, body)
+		"/api/gm/mode": return _ok({"active": body.get("on") == true})
 	return _err("Offline backend: no route for POST %s" % p, 404)
 
 # --- character progress ------------------------------------------------------------------------------------------------------------
