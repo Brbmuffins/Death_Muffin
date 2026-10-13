@@ -204,6 +204,12 @@ static func _xz(pos: Variant) -> Variant:
 func play_sfx(sfx_name: String, pos: Variant = null, intensity: float = 1.0) -> bool:
 	if not _ready_done or _voice_count() > MAX_VOICES:
 		return false
+	# The war drum follows these two even when the sound itself is dropped (cooldown, voice cap, limiter): a dropped
+	# bossDefeat used to leave the drum thumping for good.
+	if sfx_name == "bossAwaken":
+		_set_boss_bed(true)
+	elif sfx_name == "bossDefeat":
+		_set_boss_bed(false)
 	var now := _now()
 	var prof := DmAudioMixer.profile_of(sfx_name)
 	var def := DmAudioMap.defn(sfx_name)
@@ -255,10 +261,6 @@ func play_sfx(sfx_name: String, pos: Variant = null, intensity: float = 1.0) -> 
 		_duck(prof["duck"], now)
 	var ctx := {"bus": prof["bus"], "gain": DmAudioMixer.repeat_gain(repeats), "pos": p}
 	var share := _recorded(sfx_name, def, ctx, intensity, pg)
-	if sfx_name == "bossAwaken":
-		_set_boss_bed(true)
-	elif sfx_name == "bossDefeat":
-		_set_boss_bed(false)
 	if share < 1.0:
 		sfx_played.emit(sfx_name)
 	return share < 1.0
