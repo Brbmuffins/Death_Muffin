@@ -477,6 +477,8 @@ func _apply_bed_duck(now: float) -> void:
 
 ## Enter an area: crossfades the zone bed, switches music, schedules sparse accents and (re)loads the area's packs.
 func set_area(area_id: String, force: bool = false) -> void:
+	if area_id != _want_area:
+		_set_boss_bed(false)   # the war drum belongs to the fight in the area it started in
 	_want_area = area_id
 	music.set_area(area_id)
 	if not force:
@@ -514,6 +516,8 @@ func stop_area() -> void:
 ## Boss score follows the local area's active boss (including rejoin snapshots).
 func set_boss_music(active: bool) -> void:
 	music.set_boss(active)
+	if not active:
+		_set_boss_bed(false)   # no live boss fight (died, left, boss reset): the drum ends with the boss score
 
 
 func music_cue() -> String:
