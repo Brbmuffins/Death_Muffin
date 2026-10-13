@@ -36,7 +36,8 @@ Hosting on the VPS (headless Godot) is a future option, not planned.
 **D10. Online gate.** Online was staff-first, then opened to everyone (B5). The gate code (`front/dm_online_gate.gd`, the
 manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
 
-**D11. Lobby = private codes plus a public list of open sessions** (`deathmuffin-lobby`, :5192; it follows the manifest gate).
+**D11. Lobby = a public list of Open sessions plus Closed (invite-only) parties** (`deathmuffin-lobby`, :5192; it follows the manifest gate).
+Since B18 friends join through invites and asks; the six-digit codes have no UI (the lobby still accepts them).
 
 **D12. Party-session tables (migration 041)** are part of the backend schema.
 
@@ -110,5 +111,7 @@ manifest's `online` block, `set-online.sh`) stays as the emergency off switch.
   044 counts every socketed rune as learned; runes in bags and the Vault stay items to learn.
 - **B18. Social window and friends** (owner, 2026-10-13: "no more copy pasting invite codes to each other"). One Social window on O with a
   Friends tab and the Party tab (F still opens Party); O was the Contracts key, Contracts keeps no key of its own (a tab of the Acre ledger, P).
-  Friends are mutual (a request the other side accepts), kept by the backend (`friends.cjs`, migration 045); no "appear offline". Coming next
-  (ROADMAP): online status and class from the lobby, then Open / Closed parties, invites and asking to join (friends may ask to join a Closed party).
+  Friends are mutual (a request the other side accepts), kept by the backend (`friends.cjs`, migration 045); no "appear offline". The lobby
+  shows online friends (class, level, area, party) to mutual friends only, reading each player's list from the backend with that player's own
+  token, so it needs no database. Parties are Open (listed, anyone joins) or Closed (invite only; friends can ask to join). Codes were dropped
+  from the UI: no more copy-pasting. In the world the game keeps one lobby socket for this, polled by a 10 Hz timer (no per-frame work).

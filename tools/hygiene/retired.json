@@ -219,6 +219,14 @@
       "allow": [
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "party-codes-ui",
+      "pattern": "\\bparty_code\\b|\\bclean_code\\b|\\bjoin_code_requested\\b|\\bopen_toggled\\b|\\bpublic_check\\b|\\bparty_set_open\\b|\\bcode_big\\b|\\bcopy_btn\\b|\\bparty_in\\b",
+      "reason": "party codes left the client UI: friends join by invite / ask, parties are Open or Closed (DECISIONS B18, 2026-10-13)",
+      "allow": [
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

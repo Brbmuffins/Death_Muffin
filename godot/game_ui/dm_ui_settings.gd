@@ -33,8 +33,7 @@ func _options() -> void:
 	panel.has_reset_tips = true
 	panel.has_change_class = true
 	panel.has_party = game.has_method("party_create")
-	var pc: Variant = game.get("party_code")
-	panel.party_code = String(pc) if pc != null else ""
+	panel.in_party = bool(game.get("in_party"))
 	panel.has_keybinds = ui.is_necromancer()
 	panel.binds = {}
 	for a in DmUiBinds.ACTIONS:
@@ -57,7 +56,6 @@ func open() -> void:
 	_detach_report()
 	for k in game.settings:
 		panel.values[k] = game.settings[k]
-	panel.values["party_in"] = ""
 	_options()
 	panel.build_if_changed()
 	panel.open()
@@ -94,8 +92,6 @@ func _detach_report() -> void:
 
 
 func _on_changed(key: String, value: Variant) -> void:
-	if key == "party_in":
-		return
 	ui.update_setting({key: value})
 
 
@@ -117,12 +113,12 @@ func _on_action(name: String) -> void:
 			ui.open_class_panel()
 		"party_make":
 			ui.call_game_sync("party_create")
-		"party_join":
-			ui.call_game_sync("party_join", [String(panel.values.get("party_in", "")).strip_edges()])
 		"party_leave":
 			ui.call_game_sync("party_leave")
 		"party_window":
 			ui.toggle_panel("party")
+		"social_window":
+			ui.toggle_panel("friends")
 
 
 ## Settings "Show tips again": the counsel starts over, then walks the parts of the screen the player already has (WorldScene settings callback).

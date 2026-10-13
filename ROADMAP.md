@@ -12,10 +12,6 @@ over new content, necromancer focus. Open gaps are listed once, in [KNOWN-GAPS.m
   from tag `archive/perf-phase-b`.
 - **Combat feel and loot** for the four disciplines: tuning from playtests, readability of rites and statuses, gear and
   affix legibility, the first hour (Next-step box, counsel tips, guide NPCs).
-- **Social window** (DECISIONS B18), in three ships: (1) friends list, live; (2) online / offline and each friend's class and whereabouts, pushed by
-  the lobby to accepted friends only (the lobby socket stays open while logged in, polled on a timer, measured before shipping); (3) joining
-  without codes: Open (public, anyone joins) / Closed (invite only) per party, Invite a friend (a toast with Join), Join a friend's Open party,
-  Ask to join a Closed one or a friend playing solo (accepting starts hosting on the spot); the six-digit code UI goes.
 - **Rejoin window** (D13) and the **party gaps** (KNOWN-GAPS: Party and online).
 - Fix stale text in the `godot/next/*/README.md` files as each system is touched.
 

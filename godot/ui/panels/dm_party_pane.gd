@@ -1,31 +1,29 @@
 class_name DmPartyPane
 extends VBoxContainer
-## The Social window's Party tab (key F; ui/panels/dm_social_window.gd): host a session, join one from the public list or with a private code, and
-## manage the party you are in. Pure UI in the ui-kit look: it draws a `view` Dictionary (DmNextParty.view()) and emits what the player asked for; the
+## The Social window's Party tab (key F; ui/panels/dm_social_window.gd): host an Open or Closed party, join one from the public list, and manage
+## the party you are in (Open / Closed, remove players). Friends are invited and asked from the Friends tab. Pure UI in the ui-kit look: it draws a `view` Dictionary (DmNextParty.view()) and emits what the player asked for; the
 ## integrator (game_ui/dm_ui_social.gd) maps the signals to the game. Nothing here talks to a socket.
 ##
 ## view: {unavailable: String ("" = usable), link: off|connecting|ready|failed, mode: solo|host|client|handoff, busy: "listing"|"creating"|"joining"|"",
-##        sessions: [{id,name,host,area,players,max,open}], listed: bool, code: String, info: {name,host,area,players,max,private,open},
-##        error: {code,text}, roster: [{peer_id,name,discipline,host,you,can_kick}], open: bool, max: int, host_name: String}
-## The two forms (name / code) keep their text while the view changes; only the list and the roster rows are rebuilt, and only when they changed.
+##        sessions: [{id,name,host,area,players,max,open}], listed: bool, info: {name,host,area,players,max,private,open},
+##        error: {code,text}, roster: [{peer_id,name,discipline,host,you,can_kick}], closed: bool, max: int, host_name: String}
+## The name field keeps its text while the view changes; only the list and the roster rows are rebuilt, and only when they changed.
 
 signal refresh_requested
-signal host_requested(session_name: String, is_private: bool)
+signal host_requested(session_name: String, closed: bool)
 signal join_requested(session_id: String)
-signal join_code_requested(code: String)
 signal leave_requested
 signal kick_requested(peer_id: int)
-signal open_toggled(open: bool)
+signal closed_toggled(closed: bool)
 
+const CLOSED_TEXT := "Closed: invite only (friends can ask)"
 const BUSY_TEXT := {"listing": "Looking for open sessions…", "creating": "Opening your session…", "joining": "Joining…"}
 const LINK_TEXT := {"connecting": "Connecting to the lobby…", "failed": "The lobby is unreachable right now.", "off": ""}
 
 var view: Dictionary = {}
 var name_edit: LineEdit
-var public_check: CheckBox
-var code_edit: LineEdit
+var host_closed_check: CheckBox
 var host_btn: Button
-var join_btn: Button
 var error_box: PanelContainer
 var error_label: Label
 var status_label: Label
@@ -35,14 +33,11 @@ var party_box: VBoxContainer
 var list_box: VBoxContainer
 var list_head: Label
 var roster_box: VBoxContainer
-var code_big: Label
-var copy_btn: Button
 var session_label: Label
-var open_check: CheckBox
+var closed_check: CheckBox
 var end_btn: Button
 var empty_label: Label
-var open_note: Label
-var copied_label: Label
+var closed_note: Label
 
 var _list_sig := 0
 var _roster_sig := 0
@@ -80,7 +75,7 @@ func _build_ui() -> void:
 	unavailable_label.visible = false
 	add_child(unavailable_label)
 
-	# --- not in a party: host, join by code, the public list ----------------------------------------
+	# --- not in a party: host, the public list ------------------------------------------------------
 	solo_box = VBoxContainer.new()
 	solo_box.add_theme_constant_override("separation", 14)
 	add_child(solo_box)
@@ -98,25 +93,12 @@ func _build_ui() -> void:
 	host_btn.pressed.connect(_on_host)
 	nr.add_child(host_btn)
 	host.add_child(nr)
-	public_check = CheckBox.new()
-	public_check.text = "Show it in the public list (anyone can join)"
-	public_check.focus_mode = Control.FOCUS_NONE
-	host.add_child(public_check)
-	host.add_child(_note("Without the tick it is private: you get a six-digit code to share, and only people with the code can join. You keep playing your own world while friends come in (up to 4 players)."))
-
-	var jc := _section(solo_box, "Join with a code")
-	var cr := HBoxContainer.new()
-	cr.add_theme_constant_override("separation", 8)
-	code_edit = LineEdit.new()
-	code_edit.placeholder_text = "Code, e.g. 123456"
-	code_edit.max_length = 16
-	code_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	code_edit.text_submitted.connect(func(_t: String) -> void: _on_join_code())
-	cr.add_child(code_edit)
-	join_btn = _button("Join", true)
-	join_btn.pressed.connect(_on_join_code)
-	cr.add_child(join_btn)
-	jc.add_child(cr)
+	host_closed_check = CheckBox.new()
+	host_closed_check.text = CLOSED_TEXT
+	host_closed_check.button_pressed = true
+	host_closed_check.focus_mode = Control.FOCUS_NONE
+	host.add_child(host_closed_check)
+	host.add_child(_note("Closed: only friends you invite (Friends tab) can join, and friends can ask you. Untick for an Open party anyone can join from the list below. You keep playing your own world while others come in (up to 4 players)."))
 
 	var ls := _section(solo_box, "Open sessions")
 	var lh := HBoxContainer.new()
@@ -130,10 +112,10 @@ func _build_ui() -> void:
 	list_box = VBoxContainer.new()
 	list_box.add_theme_constant_override("separation", 4)
 	ls.add_child(list_box)
-	empty_label = DmUi.label("No open sessions right now. Host one, or ask a friend for their code.", "DmNote", true)
+	empty_label = DmUi.label("No open sessions right now. Host one, or join a friend from the Friends tab.", "DmNote", true)
 	ls.add_child(empty_label)
 
-	# --- in a party: the session, its code, the roster ----------------------------------------------
+	# --- in a party: the session, Open / Closed, the roster -------------------------------------------
 	party_box = VBoxContainer.new()
 	party_box.add_theme_constant_override("separation", 14)
 	party_box.visible = false
@@ -141,35 +123,15 @@ func _build_ui() -> void:
 	var ps := _section(party_box, "Your party")
 	session_label = DmUi.label("", "DmRow", true)
 	ps.add_child(session_label)
-	var cb := HBoxContainer.new()
-	cb.add_theme_constant_override("separation", 12)
-	var cl := DmUi.label("Code to share", "DmMuted")
-	cl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	cb.add_child(cl)
-	code_big = DmUi.label("", "DmNumeric")
-	code_big.add_theme_font_size_override("font_size", 30)
-	code_big.add_theme_color_override("font_color", DmUi.GOLD)
-	code_big.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	code_big.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	code_big.mouse_filter = Control.MOUSE_FILTER_PASS
-	cb.add_child(code_big)
-	copy_btn = _button("Copy code", false)
-	copy_btn.pressed.connect(_on_copy)
-	cb.add_child(copy_btn)
-	cb.set_meta("code_row", true)
-	ps.add_child(cb)
-	copied_label = DmUi.label("", "DmFaint")
-	copied_label.visible = false
-	ps.add_child(copied_label)
-	open_check = CheckBox.new()
-	open_check.text = "Accepting new players"
-	open_check.focus_mode = Control.FOCUS_NONE
-	open_check.toggled.connect(func(on: bool) -> void:
+	closed_check = CheckBox.new()
+	closed_check.text = CLOSED_TEXT
+	closed_check.focus_mode = Control.FOCUS_NONE
+	closed_check.toggled.connect(func(on: bool) -> void:
 		if not _syncing:
-			open_toggled.emit(on))
-	ps.add_child(open_check)
-	open_note = _note("")
-	ps.add_child(open_note)
+			closed_toggled.emit(on))
+	ps.add_child(closed_check)
+	closed_note = _note("")
+	ps.add_child(closed_note)
 	var rs := _section(party_box, "Players")
 	roster_box = VBoxContainer.new()
 	roster_box.add_theme_constant_override("separation", 4)
@@ -212,7 +174,6 @@ func set_view(v: Dictionary) -> void:
 	error_box.visible = et != "" and why == ""
 	var idle := busy == "" and mode == "solo"
 	host_btn.disabled = not idle
-	join_btn.disabled = not idle
 	if name_edit.placeholder_text == "Session name" and _default_name != String(v.get("default_name", "")):
 		_default_name = String(v.get("default_name", ""))
 		if _default_name != "":
@@ -281,19 +242,14 @@ func _set_party(v: Dictionary, mode: String) -> void:
 	var count := maxi(roster.size(), int(info.get("players", roster.size())))
 	var mx := int(v.get("max", 4))
 	session_label.text = "%s  ·  %s  ·  %d / %d players" % [String(info.get("name", "Party")), "Hosted by you" if is_host else "Host: %s" % String(v.get("host_name", info.get("host", ""))), count, mx]
-	var code := String(v.get("code", ""))
-	code_big.text = code
-	(code_big.get_parent() as Control).visible = is_host and code != ""
-	copied_label.visible = copied_label.visible and is_host and code != ""
 	_syncing = true
-	open_check.visible = is_host
-	open_check.button_pressed = bool(v.get("open", true))
+	closed_check.visible = is_host
+	closed_check.button_pressed = bool(v.get("closed", false))
 	_syncing = false
-	open_note.visible = is_host
+	closed_note.visible = is_host
 	if is_host:
-		var public := not bool(info.get("private", true))
-		open_note.text = ("Anyone can see this session in the list while it is accepting players. " if public else "Only people with the code can join. ") \
-			+ "Untick to keep it as it is: nobody new can come in."
+		closed_note.text = "Only friends you invite can join; friends can ask. Invite them from the Friends tab." if bool(v.get("closed", false)) \
+			else "Open: anyone can see this party in the list and join while there is room."
 	end_btn.text = DmUi.upper("End session (keep playing solo)" if is_host else "Leave party")
 	var sig := [roster, is_host].hash()
 	if sig == _roster_sig:
@@ -345,22 +301,7 @@ func _tag(text: String, color: Color) -> Label:
 func _on_host() -> void:
 	if host_btn.disabled:
 		return
-	host_requested.emit(name_edit.text.strip_edges(), not public_check.button_pressed)
-
-
-func _on_join_code() -> void:
-	if join_btn.disabled:
-		return
-	join_code_requested.emit(code_edit.text.strip_edges())
-
-
-func _on_copy() -> void:
-	var code := String(view.get("code", ""))
-	if code == "":
-		return
-	DisplayServer.clipboard_set(code)
-	copied_label.text = "Copied. Send it to your friends: they enter it under Join with a code."
-	copied_label.visible = true
+	host_requested.emit(name_edit.text.strip_edges(), host_closed_check.button_pressed)
 
 
 # ---- builders -----------------------------------------------------------------------------------------------------------------------

@@ -26,6 +26,11 @@ const DEFAULTS = {
   badCodesWindowMs: 10 * 60 * 1000,
   quiet: false,
   accessGate: null,         // optional async (token, claims) => {ok, msg}; see gate.js (staff-only online)
+  friendsOf: null,          // optional async (token, accountId) => [accountId] (accepted friends) or null; see friends.js. Unset = no presence
+  inviteMs: 5 * 60 * 1000,  // an invite (or an accepted ask) lets that account join for this long
+  askMs: 5 * 60 * 1000,     // an unanswered ask to join expires
+  askGapMs: 30 * 1000,      // one ask per friend per this long
+  friendsFetchPerMin: 20,   // friend-list reloads one connection may cause per minute
 };
 
 const AREA_RE = /^[\w .'\-]{1,32}$/;
@@ -34,6 +39,8 @@ function cleanText(v, max) {
   const s = v.replace(/[\u0000-\u001f\u007f]/g, '').trim();
   return s.length >= 1 && s.length <= max ? s : null;
 }
+const PRESENCE_CLASS_MAX = 99;
+const PRESENCE_LEVEL_MAX = 10000;
 function sidStamp(sid) {
   const n = Number(String(sid).split('-')[0]);
   return Number.isFinite(n) && n > 0 ? n : 0;
@@ -75,6 +82,8 @@ function createLobby(userOpts = {}) {
     s.clients.clear();
     if (s.host.session === s) { s.host.session = null; s.host.peerId = 0; sendJson(s.host, { t: 'session_closed', reason }); }
     log('session closed', s.id, reason);
+    pushPresence(s.host);
+    for (const c of members) pushPresence(c);
   }
 
   function leaveSession(conn, reason) {
@@ -86,6 +95,8 @@ function createLobby(userOpts = {}) {
     conn.session = null; conn.peerId = 0;
     s.lastActivity = Date.now();
     sendJson(s.host, { t: 'peer_left', id, reason });
+    pushPresence(conn);
+    pushSession(s);
   }
 
   function dropConn(conn, code, reason) {
@@ -126,11 +137,12 @@ function createLobby(userOpts = {}) {
       dropConn(other, 4402, 'replaced');
       cleanupConn(other);
     }
-    conn.authed = true; conn.accountId = p.accountId; conn.sidStamp = stamp;
+    conn.authed = true; conn.accountId = p.accountId; conn.sidStamp = stamp; conn.token = msg.token;
     conn.username = typeof p.username === 'string' && p.username ? p.username.slice(0, 24) : `player${p.accountId}`;
     byAccount.set(conn.accountId, conn);
     clearTimeout(conn.authTimer);
-    sendJson(conn, { t: 'ready', accountId: conn.accountId, username: conn.username, maxPlayers: o.maxPlayers });
+    sendJson(conn, { t: 'ready', accountId: conn.accountId, username: conn.username, maxPlayers: o.maxPlayers, presence: !!o.friendsOf });
+    loadFriends(conn);
   }
 
   function cleanupConn(conn) {
@@ -138,6 +150,7 @@ function createLobby(userOpts = {}) {
     conn.cleaned = true;
     clearTimeout(conn.authTimer);
     leaveSession(conn, 'disconnected');
+    if (conn.authed) for (const f of friendConns(conn)) sendJson(f, { t: 'presence', accountId: conn.accountId, p: null });
     if (byAccount.get(conn.accountId) === conn) byAccount.delete(conn.accountId);
     conns.delete(conn);
   }
@@ -157,7 +170,133 @@ function createLobby(userOpts = {}) {
     return sendErr(conn, 'bad_code', 'wrong or missing code', 'join');
   }
 
+  // ---- friends: presence, invites, asks to join (README "Friends") ----------------------------------------------------------------
+  // A friend is mutual: both accounts' lists (each read from the backend with that account's own token) name the other. Presence goes only to
+  // connected mutual friends.
+  const mutual = (a, b) => a !== b && a.authed && b.authed && a.friends.has(b.accountId) && b.friends.has(a.accountId);
+  function friendConns(conn) {
+    const out = [];
+    for (const id of conn.friends) { const c = byAccount.get(id); if (c && mutual(conn, c)) out.push(c); }
+    return out;
+  }
+  function presenceOf(conn) {
+    const s = conn.session;
+    return { accountId: conn.accountId, username: conn.username, class: conn.presence.class, level: conn.presence.level, area: conn.presence.area,
+      session: s ? { id: s.id, private: s.isPrivate, open: s.open, players: 1 + s.clients.size, max: o.maxPlayers, host: s.host.username, isHost: s.host === conn } : null };
+  }
+  function pushPresence(conn) {
+    if (!conn.authed || conn.cleaned) return;
+    const p = presenceOf(conn);
+    for (const f of friendConns(conn)) sendJson(f, { t: 'presence', accountId: conn.accountId, p });
+  }
+  function pushSession(s) {
+    if (!sessions.has(s.id)) return;
+    pushPresence(s.host);
+    for (const c of s.clients.values()) pushPresence(c);
+  }
+  function allowFetch(conn) {
+    const now = Date.now();
+    conn.fetches = conn.fetches.filter((t) => now - t < 60000);
+    if (conn.fetches.length >= o.friendsFetchPerMin) return false;
+    conn.fetches.push(now);
+    return true;
+  }
+  async function loadFriends(conn) {
+    if (!o.friendsOf || !conn.token || !allowFetch(conn)) return;
+    let ids = null;
+    try { ids = await o.friendsOf(conn.token, conn.accountId); } catch { ids = null; }
+    if (conn.cleaned || !Array.isArray(ids)) return;
+    const before = conn.friends;
+    conn.friends = new Set(ids.filter(Number.isSafeInteger));
+    for (const id of before) {                     // no longer friends: they see us go
+      const c = byAccount.get(id);
+      if (c && !conn.friends.has(id) && c.friends.has(conn.accountId)) sendJson(c, { t: 'presence', accountId: conn.accountId, p: null });
+    }
+    sendJson(conn, { t: 'friends', list: friendConns(conn).map(presenceOf) });
+    pushPresence(conn);
+  }
+  const fresh = (map, id) => { const v = map.get(id); if (v && v.until > Date.now()) return v; map.delete(id); return null; };
+  function inviteInto(s, from, target, auto) {
+    s.invites.set(target.accountId, { until: Date.now() + o.inviteMs });
+    sendJson(target, { t: 'invited', from: from.username, fromId: from.accountId, session: sessionInfo(s), auto });
+    sendJson(from, { t: 'invite_sent', accountId: target.accountId, username: target.username });
+  }
+  function newCode() {
+    let code = '';
+    while (!code || [...sessions.values()].some((x) => x.isPrivate && x.code === code)) code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    return code;
+  }
+
+  function handleSocial(conn, msg) {
+    const s = conn.session;
+    const now = Date.now();
+    switch (msg.t) {
+      case 'presence': {   // what friends see: class (discipline index), level, area id
+        const cls = Number.isInteger(msg.class) && msg.class >= 0 && msg.class <= PRESENCE_CLASS_MAX ? msg.class : null;
+        const level = Number.isInteger(msg.level) && msg.level >= 1 && msg.level <= PRESENCE_LEVEL_MAX ? msg.level : null;
+        const area = typeof msg.area === 'string' && AREA_RE.test(msg.area) ? msg.area : null;
+        const p = conn.presence;
+        if (p.class === cls && p.level === level && p.area === area) return true;
+        conn.presence = { class: cls, level, area };
+        pushPresence(conn);
+        return true;
+      }
+      case 'friends_changed': {   // a friend request was answered or a friend removed: both sides reload their lists
+        loadFriends(conn);
+        const other = Number.isSafeInteger(msg.accountId) ? byAccount.get(msg.accountId) : null;
+        if (other && other !== conn) { sendJson(other, { t: 'friends_changed' }); loadFriends(other); }
+        return true;
+      }
+      case 'invite': {   // host: a friend may join this session (Closed or not) for inviteMs
+        if (!s || s.host !== conn) return sendErr(conn, 'not_host', 'only the host can invite', 'invite'), true;
+        const target = byAccount.get(msg.accountId);
+        if (!target || !mutual(conn, target)) return sendErr(conn, 'not_friend', 'you can invite friends who are online', 'invite'), true;
+        if (target.session === s) return sendErr(conn, 'already_in', 'they are already in your party', 'invite'), true;
+        inviteInto(s, conn, target, false);
+        return true;
+      }
+      case 'ask': {   // ask a friend to join them: to their session's host, or to the friend playing solo
+        const target = byAccount.get(msg.accountId);
+        if (!target || !mutual(conn, target)) return sendErr(conn, 'not_friend', 'you can ask friends who are online', 'ask'), true;
+        if (s) return sendErr(conn, 'in_session', 'leave your current session first', 'ask'), true;
+        const last = conn.askedAt.get(target.accountId) || 0;
+        if (now - last < o.askGapMs) return sendErr(conn, 'rate_limit', 'you just asked them', 'ask'), true;
+        conn.askedAt.set(target.accountId, now);
+        const to = target.session ? target.session.host : target;
+        to.asks.set(conn.accountId, { username: conn.username, until: now + o.askMs });
+        sendJson(to, { t: 'join_request', accountId: conn.accountId, username: conn.username, via: to === target ? undefined : target.username });
+        sendJson(conn, { t: 'ask_sent', accountId: target.accountId, username: target.username });
+        return true;
+      }
+      case 'answer': {   // the asked player (a host, or solo after hosting) answers an ask
+        const req = Number.isSafeInteger(msg.accountId) ? fresh(conn.asks, msg.accountId) : null;
+        const asker = req ? byAccount.get(msg.accountId) : null;
+        if (!req || !asker) return sendErr(conn, 'not_found', 'that request is gone', 'answer'), true;
+        if (msg.accept !== true) {
+          conn.asks.delete(msg.accountId);
+          sendJson(asker, { t: 'ask_declined', username: conn.username });
+          return true;
+        }
+        if (!s || s.host !== conn) return sendErr(conn, 'not_host', 'host a session first', 'answer'), true;
+        conn.asks.delete(msg.accountId);
+        if (asker.session === s) return true;
+        inviteInto(s, conn, asker, true);
+        return true;
+      }
+      case 'set_private': {   // host: Closed (invite only, not listed) or Open (listed, anyone joins)
+        if (!s || s.host !== conn) return sendErr(conn, 'not_host', 'only the host can do that', 'set_private'), true;
+        s.isPrivate = msg.private === true;
+        if (s.isPrivate && !s.code) s.code = newCode();
+        sendJson(conn, { t: 'session_updated', session: sessionInfo(s) });
+        pushSession(s);
+        return true;
+      }
+      default: return false;
+    }
+  }
+
   function handleControl(conn, msg) {
+    if (handleSocial(conn, msg)) return;
     const s = conn.session;
     switch (msg.t) {
       case 'list': {
@@ -176,15 +315,16 @@ function createLobby(userOpts = {}) {
           const taken = (c) => [...sessions.values()].some((x) => x.isPrivate && x.code === c);
           code = typeof msg.code === 'string' && /^[\w-]{4,16}$/.test(msg.code) ? msg.code : '';
           if (code && taken(code)) return sendErr(conn, 'bad_request', 'that code is already in use', 'create');
-          while (!code || taken(code)) code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');  // unique among live private sessions: join-by-code needs it
+          if (!code) code = newCode();  // unique among live private sessions: join-by-code needs it
         }
         let id;
         do { id = crypto.randomBytes(4).toString('hex'); } while (sessions.has(id));
-        const sess = { id, name, area, host: conn, isPrivate, code, clients: new Map(), nextPeerId: HOST_PEER_ID + 1, open: true, lastActivity: Date.now() };
+        const sess = { id, name, area, host: conn, isPrivate, code, clients: new Map(), nextPeerId: HOST_PEER_ID + 1, open: true, lastActivity: Date.now(), invites: new Map() };
         sessions.set(id, sess);
         conn.session = sess; conn.peerId = HOST_PEER_ID;
         log('session created', id, name);
-        return sendJson(conn, { t: 'created', session: sessionInfo(sess), code: isPrivate ? code : undefined, peerId: HOST_PEER_ID });
+        sendJson(conn, { t: 'created', session: sessionInfo(sess), code: isPrivate ? code : undefined, peerId: HOST_PEER_ID });
+        return pushPresence(conn);
       }
       case 'join': {
         if (s) return sendErr(conn, 'in_session', 'leave your current session first', 'join');
@@ -197,18 +337,21 @@ function createLobby(userOpts = {}) {
           if (!sess) return badCode(conn);
         }
         if (!sess) return sendErr(conn, 'not_found', 'no such session', 'join');
-        if (sess.isPrivate && typeof msg.id === 'string') {
+        const invited = !!fresh(sess.invites, conn.accountId);   // an invite (or an accepted ask) needs no code and passes a closed door
+        if (sess.isPrivate && typeof msg.id === 'string' && !invited) {
           if (!allowCodeTry(conn)) return sendErr(conn, 'rate_limit', 'too many wrong codes, wait a few minutes', 'join');
           if (!safeEqual(givenCode, sess.code)) return badCode(conn);
         }
-        if (!sess.open) return sendErr(conn, 'closed', 'the host is not accepting players', 'join');
+        if (!sess.open && !invited) return sendErr(conn, 'closed', 'the host is not accepting players', 'join');
         if (1 + sess.clients.size >= o.maxPlayers) return sendErr(conn, 'full', `session is full (${o.maxPlayers}/${o.maxPlayers})`, 'join');
         const pid = sess.nextPeerId++;
         sess.clients.set(pid, conn);
+        sess.invites.delete(conn.accountId);
         conn.session = sess; conn.peerId = pid;
         sess.lastActivity = Date.now();
         sendJson(conn, { t: 'joined', session: sessionInfo(sess), peerId: pid });
-        return sendJson(sess.host, { t: 'peer_joined', id: pid, name: conn.username, accountId: conn.accountId });
+        sendJson(sess.host, { t: 'peer_joined', id: pid, name: conn.username, accountId: conn.accountId });
+        return pushSession(sess);
       }
       case 'leave': {
         if (!s) return sendErr(conn, 'not_in_session', 'not in a session', 'leave');
@@ -219,7 +362,8 @@ function createLobby(userOpts = {}) {
       case 'set_open': { // host only: stop/allow new joins (used by a started or locked session)
         if (!s || s.host !== conn) return sendErr(conn, 'not_host', 'only the host can do that', 'set_open');
         s.open = msg.open !== false;
-        return sendJson(conn, { t: 'session_updated', session: sessionInfo(s) });
+        sendJson(conn, { t: 'session_updated', session: sessionInfo(s) });
+        return pushSession(s);
       }
       case 'kick': { // host only
         if (!s || s.host !== conn) return sendErr(conn, 'not_host', 'only the host can do that', 'kick');
@@ -228,7 +372,9 @@ function createLobby(userOpts = {}) {
         s.clients.delete(msg.id);
         victim.session = null; victim.peerId = 0;
         sendJson(victim, { t: 'session_closed', reason: 'kicked' });
-        return sendJson(conn, { t: 'peer_left', id: msg.id, reason: 'kicked' });
+        sendJson(conn, { t: 'peer_left', id: msg.id, reason: 'kicked' });
+        pushPresence(victim);
+        return pushSession(s);
       }
       case 'auth': return sendErr(conn, 'bad_request', 'already authenticated', 'auth');
       default: return sendErr(conn, 'bad_request', 'unknown message', msg.t);
@@ -258,7 +404,8 @@ function createLobby(userOpts = {}) {
   }
 
   wss.on('connection', (ws) => {
-    const conn = { ws, authed: false, accountId: 0, username: '', session: null, peerId: 0, alive: true, sidStamp: 0, cleaned: false,
+    const conn = { ws, authed: false, accountId: 0, username: '', session: null, peerId: 0, alive: true, sidStamp: 0, cleaned: false, token: '',
+      friends: new Set(), presence: { class: null, level: null, area: null }, asks: new Map(), askedAt: new Map(), fetches: [],
       bucket: { t: Date.now(), msgs: o.rateBurst, bytes: o.bytesBurst } };
     conns.add(conn); stats.connections++;
     conn.authTimer = setTimeout(() => { if (!conn.authed) dropConn(conn, 4401, 'auth timeout'); }, o.authTimeoutMs);

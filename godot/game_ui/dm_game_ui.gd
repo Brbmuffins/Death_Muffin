@@ -518,26 +518,19 @@ func _on_chat(text: String) -> void:
 		hud.chat_line("(solo) Nobody hears you in the dark.")
 
 
-## `/party [code]`, `/solo`, `/leave` (WorldScene.chatCommand). True when the line was a command and the game can do it.
+## `/party`, `/solo`, `/leave` (WorldScene.chatCommand). True when the line was a command and the game can do it.
 func chat_command(text: String) -> bool:
 	var c := DmChatCommand.parse(text)
 	if c.is_empty():
 		return false
-	var code := String(game.get("party_code")) if game.get("party_code") != null else ""
 	if c["cmd"] != "party":
 		if not game.has_method("party_leave"):
 			return false
 		game.party_leave()
 	elif c["arg"] != "":
-		if not game.has_method("party_join"):
-			return false
-		var clean := DmChatCommand.clean_code(String(c["arg"]))
-		if clean == "":
-			toast("Enter a party code (letters and numbers).", "err")
-		else:
-			game.party_join(clean)
-	elif code != "":
-		hud.chat_line("Your party code is %s. Friends join with /party %s. /solo leaves it." % [code, code])
+		toast("Party codes are gone: invite or join friends from Social (O).", "err")
+	elif bool(game.get("in_party")):
+		hud.chat_line("You are in a party. Invite friends from Social (O); /solo leaves it.")
 	else:
 		if not game.has_method("party_create"):
 			return false
@@ -595,10 +588,16 @@ func _on_inventory_changed() -> void:
 ## A game moment: toast / banner / loot / float / chat are drawn here; everything else is a counsel event id.
 func _on_game_event(event_id: String, ctx: Dictionary) -> void:
 	match event_id:
-		"toast":
-			hud.toast(String(ctx.get("text", "")), String(ctx.get("kind", "")))
-		"friend_requests":
-			social_ui.requests_waiting()
+		"toast":   # ctx.open: clicking the toast opens that panel (a friend's invite or ask -> Social)
+			var open_p := String(ctx.get("open", ""))
+			var click := Callable()
+			if open_p != "":
+				click = func() -> void:
+					if not is_open(open_p):
+						toggle_panel(open_p)
+			hud.toast(String(ctx.get("text", "")), String(ctx.get("kind", "")), click)
+			if open_p == "friends" and not is_open("friends"):
+				social_ui.requests_waiting()
 		"banner":
 			hud.banner(String(ctx.get("title", "")), String(ctx.get("sub", "")), int(ctx.get("ms", 3200)))
 		"loot":

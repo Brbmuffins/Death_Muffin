@@ -45,8 +45,8 @@ var signature: String = ""                   ## the discipline's signature rite 
 var in_depths := false
 var hero_id: int = 0
 var release := "godot-next-" + str(ProjectSettings.get_setting("application/config/version", "dev"))
-var party_code: String:                      ## the private code of the session we host ("" = none): DmGameUi's /party and Settings read it
-	get: return shell.party.code if shell != null and shell.party != null else ""
+var in_party: bool:                          ## hosting or joined: DmGameUi's /party, Settings and bug reports read it
+	get: return shell != null and shell.party != null and shell.party.in_party()
 var dev_account := false
 var dev_access := false
 var vm: DmNextHudVm
@@ -161,6 +161,7 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	if shell.party != null:
 		shell.party.changed.connect(party_changed.emit)
 		shell.party.notice.connect(func(t: String, k: String) -> void: game_event.emit("toast", {"text": t, "kind": k}))
+		shell.party.social_notice.connect(func(t: String) -> void: game_event.emit("toast", {"text": t, "kind": "", "open": "friends"}))
 	if shell.friends != null:
 		shell.friends.changed.connect(friends_changed.emit)
 		shell.friends.requests_waiting.connect(_on_friend_requests)
@@ -553,17 +554,12 @@ func party_refresh() -> void:
 	shell.party.refresh()
 
 
-## DmGameUi's /party and Settings' "Play together": hosts a private session (the window's Host form picks the name and public / private).
+## DmGameUi's /party and Settings' "Make a party": hosts a Closed party (the Party tab's Host form picks the name and Open / Closed).
 func party_create(session_name: String = "", is_private: bool = true) -> void:
 	if shell.party.in_party():   # already hosting (or joined): show the party instead of a refusal
 		game_event.emit("panel_toggle", {"panel": "party"})
 		return
 	shell.party.host_session(session_name, is_private)
-
-
-## A private code (Settings' field, `/party <code>`, the window's Join by code).
-func party_join(code: String) -> void:
-	shell.party.join_by_code(code)
 
 
 func party_join_id(id: String, code: String = "") -> void:
@@ -578,8 +574,8 @@ func party_kick(peer_id: int) -> void:
 	shell.party.kick(peer_id)
 
 
-func party_set_open(open: bool) -> void:
-	shell.party.set_open(open)
+func party_set_closed(closed: bool) -> void:
+	shell.party.set_closed(closed)
 
 
 # ---- friends (DmNextFriends; the Social window's Friends tab reads friends_view() and calls these) -----------------------------------------
@@ -604,10 +600,32 @@ func friends_remove(account_id: int) -> void:
 	shell.friends.remove(account_id)
 
 
+func friends_join(account_id: int) -> void:
+	shell.party.join_friend(account_id)
+
+
+func friends_ask(account_id: int) -> void:
+	shell.party.ask_to_join(account_id)
+
+
+func friends_invite(account_id: int) -> void:
+	shell.party.invite_friend(account_id)
+
+
+func invite_answer(from_id: int, accept: bool) -> void:
+	if accept:
+		shell.party.accept_invite(from_id)
+	else:
+		shell.party.decline_invite(from_id)
+
+
+func ask_answer(account_id: int, accept: bool) -> void:
+	shell.party.answer_request(account_id, accept)
+
+
 func _on_friend_requests(names: Array) -> void:
 	var who := String(names[0]) if names.size() == 1 else "%d players" % names.size()
-	game_event.emit("toast", {"text": "%s asked to be your friend. Answer in Social (O)." % who, "kind": ""})
-	game_event.emit("friend_requests", {"count": names.size()})
+	game_event.emit("toast", {"text": "%s asked to be your friend. Answer in Social (O)." % who, "kind": "", "open": "friends"})
 
 
 func leave_world() -> void:

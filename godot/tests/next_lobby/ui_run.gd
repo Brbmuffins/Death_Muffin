@@ -36,6 +36,17 @@ func until(cond: Callable, limit_s: float) -> bool:
 	return cond.call()
 
 
+## The test lobby's friend lists (DM_LOBBY_FRIENDS_FILE: {"<lobby account id>": [ids]}), read by the lobby on every lookup.
+func _friends_file() -> String:
+	return ProjectSettings.globalize_path("user://lobby_friends_test.json")
+
+
+func _write_friends(pairs: Dictionary) -> void:
+	var f := FileAccess.open(_friends_file(), FileAccess.WRITE)
+	f.store_string(JSON.stringify(pairs))
+	f.close()
+
+
 func ticks(n: int) -> void:
 	var target := Engine.get_physics_frames() + n
 	while Engine.get_physics_frames() < target:
@@ -45,7 +56,8 @@ func ticks(n: int) -> void:
 func _run() -> void:
 	await _part_a()
 	await _part_a_friends()
-	lobby = DmTestLobby.start()
+	_write_friends({})
+	lobby = DmTestLobby.start({"DM_LOBBY_FRIENDS_FILE": _friends_file()})
 	if lobby == null:
 		print("next_lobby ui: part B SKIPPED (needs `node` and `cd server/death-muffin/lobby && npm install`)")
 		print("%d passed, %d failed" % [passed, failed])
@@ -107,7 +119,7 @@ func _part_a() -> void:
 	v = solo.duplicate(true)
 	v["busy"] = "joining"
 	w.set_view(v)
-	check(w.status_label.visible and w.status_label.text == "Joining…" and w.host_btn.disabled and w.join_btn.disabled, "A: joining shows a status and locks the buttons")
+	check(w.status_label.visible and w.status_label.text == "Joining…" and w.host_btn.disabled, "A: joining shows a status and locks Host")
 	v = solo.duplicate(true)
 	v["link"] = "connecting"
 	v["listed"] = false
@@ -133,36 +145,35 @@ func _part_a() -> void:
 	# the forms
 	var asked := []
 	w.host_requested.connect(func(n: String, p: bool) -> void: asked.append([n, p]))
-	w.join_code_requested.connect(func(c: String) -> void: asked.append(c))
 	w.name_edit.text = "  My Crypt "
 	w.host_btn.pressed.emit()
-	w.public_check.button_pressed = true
+	w.host_closed_check.button_pressed = false
 	w.host_btn.pressed.emit()
-	w.code_edit.text = " 123456 "
-	w.join_btn.pressed.emit()
-	check(asked == [["My Crypt", true], ["My Crypt", false], "123456"], "A: host (private by default, public when ticked) and join-by-code requests", str(asked))
+	check(asked == [["My Crypt", true], ["My Crypt", false]], "A: host requests (Closed by default, Open when unticked)", str(asked))
+	check(_texts(w).all(func(t: String) -> bool: return not t.to_lower().contains("code")), "A: no party codes anywhere in the tab")
 	w.set_view(v.merged({"busy": "creating"}))
-	check(w.name_edit.text == "  My Crypt " and w.code_edit.text == " 123456 ", "A: typed text survives view changes")
+	check(w.name_edit.text == "  My Crypt ", "A: typed text survives view changes")
 	# in a party: host
-	var host_view := {"unavailable": "", "link": "ready", "mode": "host", "busy": "", "sessions": [], "listed": true, "code": "482913", "open": true, "max": 4,
+	var host_view := {"unavailable": "", "link": "ready", "mode": "host", "busy": "", "sessions": [], "listed": true, "closed": true, "max": 4,
 		"info": {"name": "My Crypt", "host": "Mira", "players": 2, "max": 4, "private": true, "open": true}, "error": {}, "host_name": "Mira",
 		"roster": [{"peer_id": 1, "name": "Mira", "discipline": "gravecaller", "host": true, "you": true, "can_kick": false},
 			{"peer_id": 2, "name": "Orrin", "discipline": "ossuary", "host": false, "you": false, "can_kick": true}]}
 	w.set_view(host_view)
 	check(w.party_box.visible and not w.solo_box.visible, "A: in a party the party sections replace the lobby ones")
-	check(w.code_big.text == "482913" and (w.code_big.get_parent() as Control).visible, "A: the private code is shown big")
-	check(w.roster_box.get_child_count() == 2 and w.open_check.visible and w.open_check.button_pressed, "A: host sees two rows and the open toggle")
+	check(w.roster_box.get_child_count() == 2 and w.closed_check.visible and w.closed_check.button_pressed and w.closed_note.text.contains("invite"), "A: host sees two rows and the Closed toggle, on")
 	check(_buttons(w.roster_box, "Remove").size() == 1, "A: only the other player has a Remove button")
 	var kicked := [0]
 	w.kick_requested.connect(func(p: int) -> void: kicked[0] = p)
 	(_buttons(w.roster_box, "Remove")[0] as Button).pressed.emit()
 	check(kicked[0] == 2, "A: Remove asks for that peer")
 	var toggled := []
-	w.open_toggled.connect(func(on: bool) -> void: toggled.append(on))
-	w.open_check.button_pressed = false
-	check(toggled == [false], "A: the open toggle asks the host to close")
-	w.set_view(host_view.merged({"open": true}))
-	check(toggled == [false] and w.open_check.button_pressed, "A: a redraw does not echo the toggle back as a request")
+	w.closed_toggled.connect(func(on: bool) -> void: toggled.append(on))
+	w.closed_check.button_pressed = false
+	check(toggled == [false], "A: unticking Closed asks to open the party")
+	w.set_view(host_view.merged({"closed": true}))
+	check(toggled == [false] and w.closed_check.button_pressed, "A: a redraw does not echo the toggle back as a request")
+	w.set_view(host_view.merged({"closed": false}, true))
+	check(w.closed_note.text.begins_with("Open"), "A: an Open party says anyone can join")
 	var left := [false]
 	w.leave_requested.connect(func() -> void: left[0] = true)
 	w.end_btn.pressed.emit()
@@ -170,15 +181,13 @@ func _part_a() -> void:
 	# in a party: client
 	var cv := host_view.duplicate(true)
 	cv["mode"] = "client"
-	cv["code"] = ""
 	for r in cv["roster"]:
 		r["can_kick"] = false
 	cv["roster"][1]["you"] = true
 	cv["roster"][0]["you"] = false
 	w.set_view(cv)
-	check(not (w.code_big.get_parent() as Control).visible and not w.open_check.visible and _buttons(w.roster_box, "Remove").is_empty(), "A: a joiner sees no code, no toggle, no Remove")
+	check(not w.closed_check.visible and _buttons(w.roster_box, "Remove").is_empty(), "A: a joiner sees no toggle, no Remove")
 	check(w.end_btn.text == DmUi.upper("Leave party") and w.session_label.text.contains("Host: Mira"), "A: a joiner leaves the party and sees the host's name")
-	w.copy_btn.pressed.emit() if false else null
 	root_ui.queue_free()
 	await ticks(2)
 
@@ -209,7 +218,7 @@ func _part_a_friends() -> void:
 	check(w.requests_rows.get_child_count() == 2 and _buttons(w.requests_rows, "Accept").size() == 1 and _buttons(w.requests_rows, "Decline").size() == 1 \
 		and _buttons(w.requests_rows, "Cancel").size() == 1, "A friends: theirs has Accept + Decline, mine has Cancel")
 	var t := _texts(w.friends_rows)
-	check(w.friends_rows.get_child_count() == 2 and t.has("Reaper · Lv 631") and t.has("No character yet") and w.friends_head.text == "2", "A friends: friends show class and level", str(t))
+	check(w.friends_rows.get_child_count() == 2 and t.has("Offline · last played Reaper · Lv 631") and t.has("Offline") and w.friends_head.text == "0 online of 2", "A friends: offline friends show what they last played", str(t))
 	var acts: Array = []
 	w.accept_requested.connect(func(id: int) -> void: acts.append(["accept", id]))
 	w.remove_requested.connect(func(id: int) -> void: acts.append(["remove", id]))
@@ -265,6 +274,7 @@ func _key(code: int) -> InputEventKey:
 
 
 func _part_b() -> void:
+	_write_friends({"201": [202], "202": [201]})   # host and joiner are friends: the joiner comes in through an invite
 	mock = DmOffline.make_mock("")
 	var api_h := DmOffline.make_api(mock)
 	var api_j := DmOffline.make_api(mock)
@@ -278,7 +288,8 @@ func _part_b() -> void:
 	check(btn != null and btn.tooltip_text.contains("(O)") and btn.tooltip_text.contains("(F)"), "B: and a Social button in the HUD's menu row")
 	var win: DmSocialWindow = ui.social_ui.window
 	var panel: DmPartyPane = win.party
-	check(not win.visible and hg.party.lobby == null, "B: closed window, no lobby socket")
+	check(not win.visible and hg.party.online and await until(func() -> bool: return hg.party.link == "ready", 6.0), "B: in the world the lobby link is up for friends (window closed)")
+	check(hg.party._poll_timer.wait_time == DmNextParty.POLL_EVERY and not hg.party.is_processing(), "B: it is polled by a timer, never per frame")
 	btn.pressed.emit()
 	await ticks(3)
 	check(win.visible and ui.is_open("friends") and win.friends.is_visible_in_tree(), "B: the HUD button opens the window on Friends")
@@ -289,7 +300,7 @@ func _part_b() -> void:
 	check(panel.empty_label.visible, "B: the empty list says so")
 	ui._unhandled_key_input(_key(KEY_F))
 	await ticks(2)
-	check(not win.visible and hg.party.lobby == null, "B: F again closes it and the idle lobby socket goes with it")
+	check(not win.visible and hg.party.lobby != null and hg.party.link == "ready", "B: F again closes it; the friends link stays")
 	ui._unhandled_key_input(_key(KEY_F))
 	await ticks(2)
 	check(panel.is_visible_in_tree(), "B: F opens it on Party")
@@ -312,33 +323,29 @@ func _part_b() -> void:
 	var jbtns := _buttons(panel.list_box, "Join")
 	check(jbtns.size() == 1 and not (jbtns[0] as Button).disabled, "B: the row has an enabled Join")
 	other.close()
-	# a wrong code through the window
-	panel.code_edit.text = "000000"
-	panel.join_btn.pressed.emit()
-	check(await until(func() -> bool: return panel.error_box.visible, 6.0), "B: a wrong code puts a message in the window")
-	check(panel.error_label.text == String(DmNextParty.ERROR_TEXT["bad_code"]), "B: it is the bad-code sentence")
-	# host through the window
+	# host through the window (Closed by default)
 	panel.name_edit.text = "UI Crypt"
 	panel.host_btn.pressed.emit()
 	check(await until(func() -> bool: return hg.party.mode == DmNextParty.HOST and panel.party_box.visible, 8.0), "B: Host session turns the window into the party view")
-	check(not panel.error_box.visible, "B: the old error is gone")
-	check(panel.code_big.text == hg.party.code and hg.party.code.length() == 6, "B: it shows the six-digit code (%s)" % hg.party.code)
-	panel.copy_btn.pressed.emit()
-	check(panel.copied_label.visible, "B: Copy code confirms")
+	check(bool(hg.party.info.get("private", false)) and panel.closed_check.button_pressed, "B: the party is Closed (invite only)")
 	check(panel.roster_box.get_child_count() == 1 and String(panel.session_label.text).contains("UI Crypt"), "B: the roster lists the host; the session is named")
-	check(hg.ui_host.party_code == hg.party.code, "B: the HUD adapter's party_code feeds /party and Settings")
+	check(hg.ui_host.in_party, "B: the HUD adapter's in_party feeds /party, Settings and bug reports")
 
-	# a joiner (its own game with its own HUD) joins by the code from ITS window
+	# a joiner (its own game with its own HUD) is invited and joins from ITS Friends tab
 	var jb := _branch()
 	var jsolo := await _game(jb, ch_j, api_j, {"name": "joinui", "lobby_token": lobby.token(202, "joinui")})
-	var jpanel: DmPartyPane = jsolo.ui.social_ui.window.party
-	jsolo.ui.toggle_panel("party")
-	await until(func() -> bool: return jsolo.party.listed, 6.0)
+	check(await until(func() -> bool: return hg.party.friends_online.has(202) and jsolo.party.friends_online.has(201), 6.0), "B: the two friends see each other online")
+	check(bool(jsolo.party.friends_online[201]["session"]["isHost"]) and bool(jsolo.party.friends_online[201]["session"]["private"]), "B: the joiner sees its friend hosting a Closed party")
 	var ready := [null]
 	jsolo.party.join_ready.connect(func(l: DmLobbyClient, i: Dictionary) -> void: ready[0] = [l, i])
-	jpanel.code_edit.text = hg.party.code
-	jpanel.join_btn.pressed.emit()
-	check(await until(func() -> bool: return ready[0] != null, 8.0), "B: join by code through the joiner's window")
+	hg.party.invite_friend(202)
+	check(await until(func() -> bool: return jsolo.party.invites.size() == 1, 6.0), "B: the invite reaches the joiner")
+	jsolo.ui.toggle_panel("friends")
+	await ticks(3)
+	var jf: DmFriendsPane = jsolo.ui.social_ui.window.friends
+	check((jf.offers_box.get_parent() as Control).visible and _buttons(jf.offers_rows, "Join").size() == 1, "B: its Friends tab shows the invite with Join")
+	(_buttons(jf.offers_rows, "Join")[0] as Button).pressed.emit()
+	check(await until(func() -> bool: return ready[0] != null, 8.0), "B: Join on the invite seats the joiner in the Closed party")
 	await jsolo.leave()
 	jsolo.queue_free()
 	await ticks(2)
@@ -354,7 +361,7 @@ func _part_b() -> void:
 	await ticks(3)
 	var jp: DmPartyPane = jg.ui.social_ui.window.party
 	check(jp.party_box.visible and jp.roster_box.get_child_count() == 2 and _buttons(jp.roster_box, "Remove").is_empty(), "B: the joiner's window shows the party without Remove buttons")
-	check(jp.code_big.text == "" and jp.end_btn.text == DmUi.upper("Leave party"), "B: and a Leave button")
+	check(jp.end_btn.text == DmUi.upper("Leave party") and not jp.closed_check.visible, "B: and a Leave button, no Open / Closed for a guest")
 	check(jg.ui_host.party_view()["roster"].size() == 2, "B: the joiner's party view has the roster")
 	# the joiner's HUD casts through to the host's caster for its body
 	await until(func() -> bool: return hg.body_of(2) != null and hg.body_of(2).get_node_or_null("Rites") != null and jg.local_body() != null and jg.local_body().get_node_or_null("Rites") != null, 8.0)
@@ -387,7 +394,7 @@ func _part_b() -> void:
 	check(hg.party.mode == DmNextParty.SOLO and panel.solo_box.visible and hg.local_body() == body, "B: End session returns the window to the lobby view, the game goes on")
 	ui._unhandled_key_input(_key(KEY_F))
 	await ticks(2)
-	check(not win.visible and hg.party.lobby == null, "B: and closing the window leaves no socket behind")
+	check(not win.visible and hg.party.link == "ready", "B: closing the window keeps the friends link")
 	await hg.leave()
 	hg.queue_free()
 
@@ -399,10 +406,14 @@ func _part_c() -> void:
 	var api_a := DmOffline.make_api(m)
 	var api_b := DmOffline.make_api(m)
 	var ch_a := await _account(api_a, "fra")
+	var name_a := _last_name
 	var ch_b := await _account(api_b, "frb")
 	var name_b := _last_name
+	var id_a := m._account_id(name_a)   # the lobby tokens carry the same account ids as the backend, as live
+	var id_b := m._account_id(name_b)
+	_write_friends({})
 	var ab := _branch()
-	var ga := await _game(ab, ch_a, api_a, {"name": "fra"})
+	var ga := await _game(ab, ch_a, api_a, {"name": "fra", "lobby_token": lobby.token(id_a, name_a)})
 	var ui_a: DmGameUi = ga.ui
 	var win_a: DmSocialWindow = ui_a.social_ui.window
 	ui_a._unhandled_key_input(_key(KEY_O))
@@ -418,7 +429,7 @@ func _part_c() -> void:
 	ui_a.close_panels()
 	# B enters the world: told about the request without opening anything
 	var bb := _branch()
-	var gb := await _game(bb, ch_b, api_b, {"name": "frb"})
+	var gb := await _game(bb, ch_b, api_b, {"name": "frb", "lobby_token": lobby.token(id_b, name_b)})
 	var ui_b: DmGameUi = gb.ui
 	var win_b: DmSocialWindow = ui_b.social_ui.window
 	check(await until(func() -> bool: return gb.friends.incoming.size() == 1, 4.0), "C: B's game learned about the request at world entry")
@@ -429,13 +440,46 @@ func _part_c() -> void:
 	await ticks(2)
 	check(not tab_b._pip.visible or not win_b.visible, "C: opening Friends clears the pip")
 	check(await until(func() -> bool: return _buttons(win_b.friends.requests_rows, "Accept").size() == 1, 4.0), "C: B sees Accept")
+	_write_friends({str(id_a): [id_b], str(id_b): [id_a]})   # what the backend's lists say once B accepts (the lobby reads them on the nudge)
 	(_buttons(win_b.friends.requests_rows, "Accept")[0] as Button).pressed.emit()
 	check(await until(func() -> bool: return gb.friends.friends.size() == 1, 4.0), "C: accepted")
-	await ticks(2)
+	check(await until(func() -> bool: return ga.friends.friends.size() == 1 and ga.friends.outgoing.is_empty(), 6.0), "C: A's list follows by itself (the lobby nudged A's game)",
+		"a: link=%s online=%s err=%s / b: link=%s online=%s err=%s ids %d %d" % [ga.party.link, ga.party.online, ga.party.last_error, gb.party.link, gb.party.online, gb.party.last_error, id_a, id_b])
+	check(await until(func() -> bool: return gb.party.friends_online.has(id_a) and ga.party.friends_online.has(id_b), 6.0), "C: both see each other online")
+	await ticks(3)
 	var tb := _texts(win_b.friends.friends_rows)
-	check(tb.has("Gravecaller · Lv 1"), "C: B sees A with A's class and level", str(tb))
+	check(tb.any(func(t: String) -> bool: return t.begins_with("Online · Gravecaller · Lv 1")), "C: B sees A online with A's class and level", str(tb))
+	check(win_b.friends.friends_head.text == "1 online of 1", "C: the header counts who is online", win_b.friends.friends_head.text)
+	check(_buttons(win_b.friends.friends_rows, "Invite").size() == 1 and _buttons(win_b.friends.friends_rows, "Ask to join").size() == 1, "C: both solo: Invite and Ask to join")
+	# A asks B to take them along; B accepts from the Friends tab while solo: B hosts a Closed party and A is let straight in
+	var a_ready := [null]
+	ga.party.join_ready.connect(func(l: DmLobbyClient, i: Dictionary) -> void: a_ready[0] = i)
 	ui_a._unhandled_key_input(_key(KEY_O))
-	check(await until(func() -> bool: return ga.friends.friends.size() == 1 and ga.friends.outgoing.is_empty(), 4.0), "C: A's list shows B as a friend on the next open")
+	check(await until(func() -> bool: return _buttons(win_a.friends.friends_rows, "Ask to join").size() == 1, 4.0), "C: A sees Ask to join")
+	(_buttons(win_a.friends.friends_rows, "Ask to join")[0] as Button).pressed.emit()
+	check(await until(func() -> bool: return gb.party.requests.size() == 1, 6.0), "C: B gets A's ask")
+	await ticks(3)
+	check(_buttons(win_b.friends.offers_rows, "Accept").size() == 1, "C: B's Friends tab shows it with Accept")
+	(_buttons(win_b.friends.offers_rows, "Accept")[0] as Button).pressed.emit()
+	check(await until(func() -> bool: return a_ready[0] != null, 8.0), "C: B hosted a Closed party and A was seated in it")
+	check(gb.party.mode == DmNextParty.HOST and bool(gb.party.info.get("private", false)), "C: B's party is Closed")
+	ga.party.mode = DmNextParty.SOLO   # (no game swap in this test: undo the handoff, then leave B's party from A's socket)
+	ga.party.lobby.leave()
+	gb.party.leave()
+	await ticks(3)
+	# Open: a friend's Open party offers Join
+	check(await until(func() -> bool: return not (ga.party.friends_online.get(id_b, {}).get("session") is Dictionary), 6.0), "C: B's party ended; A sees B solo again")
+	gb.party.host_session("B open", false)
+	check(await until(func() -> bool:
+		var sx: Variant = ga.party.friends_online.get(id_b, {}).get("session")
+		return sx is Dictionary and not bool(sx["private"]), 6.0), "C: A sees B hosting an Open party")
+	check(await until(func() -> bool: return gb.party.mode == DmNextParty.HOST, 6.0), "C: B is hosting")
+	var acts := DmNextFriends.actions_for(ga.party.friends_online[id_b], ga.friends.view()["party"])
+	check(acts == ["join"], "C: B's Open party offers Join", str(acts))
+	gb.party.set_closed(true)
+	check(await until(func() -> bool: return bool(ga.party.friends_online[id_b]["session"]["private"]), 6.0), "C: B closes it; A sees that")
+	check(DmNextFriends.actions_for(ga.party.friends_online[id_b], ga.friends.view()["party"]) == ["ask"], "C: a Closed party offers Ask to join")
+	gb.party.leave()
 	await ticks(2)
 	var rm: Button = _buttons(win_a.friends.friends_rows, "Remove")[0]
 	rm.pressed.emit()

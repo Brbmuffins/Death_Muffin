@@ -6,14 +6,14 @@ extends DmTabbedWindow
 ##
 ## value keys: difficulty, auto_combat, auto_gather, graphics, fps,
 ##   auto_res, vol_master, vol_combat, vol_amb, vol_music, vol_ui, reduce_motion, damage_numbers, hide_helm, no_tips,
-##   guidance, guide_ping, dev_access, party_in (the join-code field).
+##   guidance, guide_ping, dev_access.
 ## Tabs (strip under the title, in this order): Co-op, Audio, Play, Display, Controls, Account. The last tab opened is
 ## remembered for the session (`last_tab`).
-## Options: `can_auto_combat`, `has_dev`, `has_bug_report`, `has_reset_tips`, `has_change_class`, `has_party`, `party_code` ("" = solo),
+## Options: `can_auto_combat`, `has_dev`, `has_bug_report`, `has_reset_tips`, `has_change_class`, `has_party`, `in_party`,
 ##   `has_keybinds`, `binds` {action: key}, `kit_primary`, `kit_corpse`, `kit_legion`.
 
 signal changed(key: String, value: Variant)
-signal action(name: String)          # leave, switch_character, exit_game, bug_report, reset_tips, change_class, party_make, party_join, party_leave, party_window
+signal action(name: String)          # leave, switch_character, exit_game, bug_report, reset_tips, change_class, party_make, party_leave, party_window, social_window
 signal bind_requested(action_id: String)
 
 const DIFFICULTIES := [
@@ -28,7 +28,7 @@ var values: Dictionary = {
 	"graphics": "high", "window_mode": "windowed", "fps": 0, "vsync": true, "auto_res": true, "brightness": 1.0, "ui_scale": 1.0, "hud_scale": 1.0,
 	"vol_master": 0.7, "vol_combat": 0.8, "vol_amb": 0.6, "vol_music": 0.5, "vol_ui": 0.8,
 	"reduce_motion": false, "damage_numbers": true, "hide_helm": false, "no_tips": false, "guidance": true, "guide_ping": true,
-	"dev_access": true, "party_in": "",
+	"dev_access": true,
 }
 var can_auto_combat := true
 var has_dev := true
@@ -36,7 +36,7 @@ var has_bug_report := true
 var has_reset_tips := true
 var has_change_class := true
 var has_party := true
-var party_code := ""
+var in_party := false
 var has_keybinds := true
 var binds: Dictionary = {"loadout_next": "", "loadout_1": "F1", "loadout_2": "F2", "loadout_3": "", "loadout_4": "", "loadout_5": "", "loadout_6": ""}
 var kit_primary := "Bone Needle"
@@ -62,21 +62,16 @@ func _init() -> void:
 
 
 var _built_sig := 0
-var _party_le: LineEdit
 
 
-## Everything build() draws from (the join-code field is not part of it: it starts empty on every open).
+## Everything build() draws from.
 func _sig() -> int:
-	var v := values.duplicate()
-	v.erase("party_in")
-	return [v, can_auto_combat, has_dev, has_bug_report, has_reset_tips, has_change_class, has_party, party_code, has_keybinds, binds, kit_primary, kit_corpse, kit_legion].hash()
+	return [values, can_auto_combat, has_dev, has_bug_report, has_reset_tips, has_change_class, has_party, in_party, has_keybinds, binds, kit_primary, kit_corpse, kit_legion].hash()
 
 
 ## build(), unless the content on screen was built from exactly this state (opening Settings rebuilt ~430 nodes every time: ~50 ms).
 func build_if_changed() -> void:
 	if _built_sig != 0 and _sig() == _built_sig and body.get_child_count() > 0 and not _stale:
-		if _party_le != null and is_instance_valid(_party_le):
-			_party_le.text = ""
 		return
 	build()
 
@@ -93,7 +88,6 @@ var _stale := false
 func build() -> void:
 	_built_sig = _sig()
 	_stale = false
-	_party_le = null
 	_building = true
 	for c in body.get_children():
 		body.remove_child(c)
@@ -105,28 +99,15 @@ func build() -> void:
 	if has_party:
 		_tab("coop", "Co-op")
 		var s4 := _section("Play together")
-		if party_code != "":
-			var code := DmUi.label(party_code, "DmNumeric")
-			code.add_theme_font_size_override("font_size", 15)
-			_row(s4, "Your party code", code)
-			_note(s4, "Friends enter this code under Play together (or type /party %s) to join you. You choose who plays with you: being online at the same time never makes a party." % party_code)
-			_row(s4, "Who is here, open or close the party", _button("Open the Party tab (F)", "party_window", true))
+		if in_party:
+			_note(s4, "You are in a party. Invite friends from the Social window's Friends tab; the host can make the party Open or Closed in the Party tab.")
+			_row(s4, "Who is here, Open or Closed", _button("Open the Party tab (F)", "party_window", true))
 			_row(s4, "Done playing together?", _button("Leave party (play solo)", "party_leave", true))
 		else:
-			_note(s4, "You are playing solo. Make a party and share its code, or enter a friend's code. In a party you share one world and its enemies; the Catacomb Depths stay a solo descent (you step out, then rejoin).")
-			_row(s4, "Start a party", _button("Make a party", "party_make", true))
-			var jr := HBoxContainer.new()
-			jr.add_theme_constant_override("separation", 6)
-			var le := LineEdit.new()
-			le.placeholder_text = "code"
-			le.max_length = 12
-			le.custom_minimum_size.x = 110
-			le.text_changed.connect(func(t: String) -> void: _put("party_in", t))
-			_party_le = le
-			jr.add_child(le)
-			jr.add_child(_button("Join", "party_join", true))
-			_row(s4, "Join a friend", jr)
-			_row(s4, "Public sessions and the list", _button("Open the Party tab (F)", "party_window", true))
+			_note(s4, "You are playing solo. Add friends in the Social window (O): you see who is online, join their Open party, ask to come along, or invite them. In a party you share one world and its enemies; the Catacomb Depths stay a solo descent (you step out, then rejoin).")
+			_row(s4, "Friends", _button("Open the Social window (O)", "social_window", true))
+			_row(s4, "Start a party (Closed)", _button("Make a party", "party_make", true))
+			_row(s4, "Open parties and the list", _button("Open the Party tab (F)", "party_window", true))
 
 	# --- Audio -----------------------------------------------------------------------------------------
 	_tab("audio", "Audio")

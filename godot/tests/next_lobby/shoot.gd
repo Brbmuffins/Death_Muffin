@@ -2,7 +2,7 @@ extends SceneTree
 ## Rendered screenshots of the Social window's Party tab in the real HUD (under the renderer lock + xvfb, with a local lobby service):
 ##   flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 timeout 400 xvfb-run -a -s "-screen 0 1280x800x24" \
 ##     godot --rendering-driver opengl3 --path godot --script res://tests/next_lobby/shoot.gd -- --out=/some/dir
-## party-lobby.png (lobby view: host form, join by code, one open session) . party-host.png (hosting: the code, the roster) . party-error.png
+## party-lobby.png (lobby view: host form, one open session) . party-host.png (hosting: Open / Closed, the roster) . party-error.png
 
 var lobby: DmTestLobby
 
@@ -56,8 +56,7 @@ func _run() -> void:
 		await create_timer(0.1).timeout
 	print("SHOT lobby: sessions=%d rows=%d visible=%s" % [g.party.sessions.size(), g.ui.social_ui.window.party.list_box.get_child_count(), g.ui.social_ui.window.visible])
 	await _shot("party-lobby.png")
-	g.ui.social_ui.window.party.code_edit.text = "000000"
-	g.ui.social_ui.window.party.join_btn.pressed.emit()
+	g.party.join_session("deadbeef")
 	while g.party.last_error.is_empty():
 		await create_timer(0.1).timeout
 	await _shot("party-error.png")

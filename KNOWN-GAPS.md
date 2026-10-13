@@ -34,6 +34,7 @@ Shrouded suspension in the player's own Miasma, the Barrier decay, and boss-pool
   only; no flasks or brews; no Covenant Seal or Nightfall dim; a client cannot call Empowered bosses.
 - Client (non-host) peers get no full HUD feed beyond what `next/party/` provides (`next/hud/README.md`).
 - Chat is party chat in a party and local-only when solo.
+- **Friends show online only in the world:** character select and the launcher count as offline (the lobby link starts after loading).
 
 ## UI
 

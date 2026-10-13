@@ -24,6 +24,16 @@ signal session_closed(reason: String)
 signal left_session()
 signal lobby_error(code: String, message: String, request: String)
 signal disconnected(reason: String)
+## Friends (lobby README "Friends"): online mutual friends on connect / after a list change, then one line per change (p = {} : went offline).
+## p: {accountId, username, class, level, area, session: {id, private, open, players, max, host, isHost} or null}
+signal friends_snapshot(list: Array)
+signal friend_presence(account_id: int, p: Dictionary)
+signal friends_changed()                                   ## someone answered or removed us: reload the friends list
+signal invited(from_name: String, from_id: int, info: Dictionary, auto: bool)   ## auto: the answer to our own ask to join
+signal invite_sent(account_id: int, user: String)
+signal join_requested(account_id: int, user: String, via: String)   ## a friend (via: a friend of theirs in our party) asks to join us
+signal ask_sent(account_id: int, user: String)
+signal ask_declined(user: String)
 
 enum State { IDLE, CONNECTING, AUTHENTICATING, LOBBY, IN_SESSION_HOST, IN_SESSION_CLIENT, CLOSED }
 
@@ -116,6 +126,28 @@ func set_open(open: bool) -> void:
 ## Host only.
 func kick(target_peer_id: int) -> void:
 	_send({"t": "kick", "id": target_peer_id})
+
+## Host only: Closed (invite only, not listed) or Open (listed, anyone joins).
+func set_private(closed: bool) -> void:
+	_send({"t": "set_private", "private": closed})
+
+## What friends see of us: discipline index, level, area id.
+func send_presence(class_index: int, level: int, area: String) -> void:
+	_send({"t": "presence", "class": class_index, "level": level, "area": area})
+
+## We changed a friendship with `other` (0 = unknown): the lobby reloads both lists.
+func send_friends_changed(other: int) -> void:
+	_send({"t": "friends_changed", "accountId": other})
+
+## Host only: let a friend in (also through a Closed door) for a few minutes.
+func invite(friend_id: int) -> void:
+	_send({"t": "invite", "accountId": friend_id})
+
+func ask(friend_id: int) -> void:
+	_send({"t": "ask", "accountId": friend_id})
+
+func answer(asker_id: int, accept: bool) -> void:
+	_send({"t": "answer", "accountId": asker_id, "accept": accept})
 
 ## Send an opaque game packet to dst (0 = every client, host only).
 func send_packet(dst: int, mode: int, channel: int, payload: PackedByteArray) -> Error:
@@ -238,3 +270,20 @@ func _on_text(text: String) -> void:
 			lobby_error.emit(str(m.get("code", "")), str(m.get("msg", "")), str(m.get("req", "")))
 		"replaced":
 			pass # the close frame (4402) follows and is reported as disconnected("replaced")
+		"friends":
+			friends_snapshot.emit(m.get("list", []))
+		"presence":
+			var pr: Variant = m.get("p")
+			friend_presence.emit(int(m.get("accountId", 0)), pr if pr is Dictionary else {})
+		"friends_changed":
+			friends_changed.emit()
+		"invited":
+			invited.emit(str(m.get("from", "")), int(m.get("fromId", 0)), m.get("session", {}), bool(m.get("auto", false)))
+		"invite_sent":
+			invite_sent.emit(int(m.get("accountId", 0)), str(m.get("username", "")))
+		"join_request":
+			join_requested.emit(int(m.get("accountId", 0)), str(m.get("username", "")), str(m.get("via", "")) if m.get("via") != null else "")
+		"ask_sent":
+			ask_sent.emit(int(m.get("accountId", 0)), str(m.get("username", "")))
+		"ask_declined":
+			ask_declined.emit(str(m.get("username", "")))

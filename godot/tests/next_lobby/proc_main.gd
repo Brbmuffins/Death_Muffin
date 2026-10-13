@@ -122,7 +122,7 @@ func _cmd() -> bool:
 		"host":
 			ui.party_create(String(c.get("name", "")), bool(c.get("private", true)))
 		"join_code":
-			ui.party_join(String(c["code"]))
+			s.party.join_by_code(String(c["code"]))
 		"join_id":
 			ui.party_join_id(String(c["id"]), String(c.get("code", "")))
 		"list":
@@ -132,7 +132,7 @@ func _cmd() -> bool:
 		"leave":
 			ui.party_leave()
 		"open":
-			ui.party_set_open(bool(c["on"]))
+			s.party.set_open(bool(c["on"]))
 		"kick":
 			ui.party_kick(int(c["id"]))
 		"chat":

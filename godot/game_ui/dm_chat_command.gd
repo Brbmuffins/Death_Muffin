@@ -1,7 +1,8 @@
 class_name DmChatCommand
 extends RefCounted
-## WorldScene.chatCommand: `/party [code]`, `/solo`, `/leave` typed in the chat box are the chat-line way to Play together / leave the party.
-## parse() is the web's regexp; DmGameUi.chat_command routes it to game.party_create / party_join / party_leave (has_method guarded).
+## WorldScene.chatCommand: `/party`, `/solo`, `/leave` typed in the chat box are the chat-line way to make / leave a party.
+## parse() is the web's regexp; DmGameUi.chat_command routes it to game.party_create / party_leave (has_method guarded). An argument after /party
+## (an old party code) only gets a pointer to the Social window.
 
 static var _re: RegEx
 
@@ -16,11 +17,3 @@ static func parse(text: String) -> Dictionary:
 		return {}
 	return {"cmd": m.get_string(1).to_lower(), "arg": m.get_string(2)}
 
-
-## joinParty's code cleanup: lower-case, only a-z 0-9 and "-", 12 characters at most ("" = nothing usable).
-static func clean_code(raw: String) -> String:
-	var out := ""
-	for ch in raw.strip_edges().to_lower():
-		if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9") or ch == "-":
-			out += ch
-	return out.substr(0, 12)

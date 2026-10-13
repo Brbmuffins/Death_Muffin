@@ -207,23 +207,22 @@ func _test_chat(game: DmMockGame, ui: DmGameUi) -> void:
 	_check(DmChatCommand.parse("  /PARTY  Abc123 ") == {"cmd": "party", "arg": "Abc123"}, "chat: /party <code> parses, any case, trimmed")
 	_check(DmChatCommand.parse("/solo")["cmd"] == "solo" and DmChatCommand.parse("/leave")["cmd"] == "leave", "chat: /solo and /leave parse")
 	_check(DmChatCommand.parse("/party a b").is_empty() and DmChatCommand.parse("hello /party").is_empty() and DmChatCommand.parse("/partyx").is_empty(), "chat: other lines are not commands")
-	_check(DmChatCommand.clean_code("  Ab-C_9!zzzzzzzzzzzzzzz ") == "ab-c9zzzzzzz", "chat: code cleaned like joinParty (lower, a-z0-9-, 12 max)")
 	game.party_calls.clear()
 	game.chats.clear()
 	ui.hud.chat_sent.emit("/party")
 	_check(game.party_calls == [["create"]], "chat: /party with no party makes one")
 	ui.hud.chat_sent.emit("/party Xy7-k")
-	_check(game.party_calls[1] == ["join", "xy7-k"], "chat: /party <code> joins the cleaned code")
-	game.party_code = "abc123"
+	_check(game.party_calls.size() == 1, "chat: /party <old code> joins nothing (it points to the Social window)")
+	game.in_party = true
 	ui.hud.chat_sent.emit("/party")
-	_check(game.party_calls.size() == 2, "chat: /party inside a party only reports the code")
+	_check(game.party_calls.size() == 1, "chat: /party inside a party only says how to invite")
 	ui.hud.chat_sent.emit("/solo")
 	ui.hud.chat_sent.emit("/leave")
-	_check(game.party_calls.slice(2) == [["leave"], ["leave"]], "chat: /solo and /leave leave the party")
+	_check(game.party_calls.slice(1) == [["leave"], ["leave"]], "chat: /solo and /leave leave the party")
 	_check(game.chats.is_empty(), "chat: commands are not sent as chat")
 	ui.hud.chat_sent.emit("hello there")
 	_check(game.chats == ["hello there"], "chat: ordinary lines go through game.send_chat")
-	game.party_code = ""
+	game.in_party = false
 
 
 func _test_art(ui: DmGameUi) -> void:

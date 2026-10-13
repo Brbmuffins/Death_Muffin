@@ -89,7 +89,7 @@ func _run() -> void:
 	spawn("host", "hostp", 301)
 	check(await wait_for(func() -> bool: return in_world("hostp"), 150.0), "host process: in the world, solo", str(status("hostp")))
 	var h := status("hostp")
-	check(h.get("mode", "") == "solo" and bool(h.get("hud", false)) and not h.has("out"), "solo: no lobby traffic, a HUD, mode solo")
+	check(h.get("mode", "") == "solo" and bool(h.get("hud", false)) and int(h.get("out", 0)) == 0 and int(h.get("pout", 0)) == 0, "solo: no game packets (only the friends link), a HUD, mode solo")
 	spawn("joiner", "joinerp", 302)
 	check(await wait_for(func() -> bool: return in_world("joinerp"), 150.0), "joiner process: in its own world, solo")
 	var slice0 := int(status("joinerp")["slice"])

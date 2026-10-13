@@ -1,6 +1,17 @@
 [
   {
     "date": "2026-10-13",
+    "title": "Play With Friends",
+    "items": [
+      "No more party codes. The Friends tab (O) shows who is online, their class and level, where they are and whether they are in a party.",
+      "Join a friend's Open party with one click. If their party is Closed, or they are playing solo, click Ask to join: they get a note, and when they accept you go straight in.",
+      "Invite a friend from the Friends tab. If you are playing solo, inviting starts a Closed party for you. Invites and requests wait in the Friends tab for 5 minutes, and clicking the note opens it.",
+      "Parties are Open (listed, anyone can join) or Closed (only people you invite; friends can ask). Hosts switch between them in the Party tab (F).",
+      "Friend requests now arrive while you play: no need to log out and back in to see them."
+    ]
+  },
+  {
+    "date": "2026-10-13",
     "title": "Friends",
     "items": [
       "New Social window (O) with a Friends tab: add a friend by the name they log in with. Once they accept, you see each other in the list with the class and level each of you last played.",

@@ -355,7 +355,8 @@ func _start_hud() -> void:
 			if a != null:
 				a.play_sfx(n))
 		await ui.warm()
-		friends.check_requests()   # after the loading cover: a waiting friend request is a toast + the Friends tab's pip
+		party.go_online()          # after the loading cover: friends see us online, invites and asks reach us
+		friends.check_requests()   # a waiting friend request is a toast + the Friends tab's pip
 		if progress != null:
 			progress.belt.load_pick(ui.belt_pick())
 		ui_host.inventory.changed.connect(func(_s: Array) -> void: sync_runes())   # a socketed / removed rune reaches the caster

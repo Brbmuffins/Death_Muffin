@@ -1,11 +1,13 @@
 class_name DmNextParty
 extends Node
 ## Child "Party" of DmNextGame (every peer, same NodePath: its RPCs live here). The lobby side of the rebuild (REBUILD D3 / D6, owner 2026-10-07):
-## a lobby of private 6-digit codes plus a public list of open sessions, hosting that turns the running solo session into a hosted one, joining
-## that hands the player to the host's session, the roster / kick / open-closed controls, party chat, and the host <-> joiner handshake that
+## a public list of Open sessions, Closed (invite-only) parties, hosting that turns the running solo session into a hosted one, joining
+## that hands the player to the host's session, the roster / kick / Open-Closed controls, party chat, and the host <-> joiner handshake that
 ## carries a joiner's own character in (kill credit, XP and loot reach the joiner's OWN backend account, never the host's).
+## Friends over the lobby (DECISIONS B18): presence of online friends, invites, asks to join.
 ##
-##   Solo   no lobby traffic at all (no socket, no per-frame work). The window opens a lobby socket on demand (`set_watching`) and closes it again.
+##   Solo   `go_online()` (a real player's world, after loading) keeps one lobby socket for presence, polled by a 10 Hz timer (no per-frame work)
+##          and reconnected after a drop. The window's `set_watching` only adds the public list refresh. Tests without go_online() open no socket.
 ##   Host   `host_session()` -> lobby `create` -> DmRelayPeer.host -> DmSession.swap_transport(relay): the world, the body and the rewards stay.
 ##   Client `join_*()` -> lobby `join` -> `join_ready(lobby, info)`: the shell (main.gd) swaps the solo game for a client DmNextGame on that socket.
 ##
@@ -16,6 +18,8 @@ signal notice(text: String, kind: String)                         ## a toast for
 signal join_ready(lobby: DmLobbyClient, info: Dictionary)         ## solo game: we hold a seat in someone's session; main swaps the game
 signal client_ended(reason: String, text: String)                 ## client game: the session is over (text "" = we left on purpose)
 signal hosting_changed(on: bool)
+signal social_notice(text: String)                                ## a friend invited / asked / answered: a toast that opens the Social window
+signal friends_list_changed                                       ## the lobby says a friendship changed: reload the friends list
 
 const SOLO := &"solo"
 const HOST := &"host"
@@ -23,6 +27,10 @@ const CLIENT := &"client"
 const HANDOFF := &"handoff"       ## joined; the solo game is being swapped for the client game
 
 const LIST_EVERY := 10.0
+const POLL_EVERY := 0.1            ## the solo lobby link's poll (a hosted / joined session's socket is polled by its DmRelayPeer)
+const PRESENCE_EVERY := 30.0       ## presence is re-checked this often (and on every area change); unchanged presence is not sent
+const RECONNECT_S := [5.0, 15.0, 60.0, 120.0]
+const OFFER_S := 300.0             ## an invite or ask to join is shown this long (the lobby honours it as long)
 const NAME_MAX := 32
 const CHAT_MAX := 200
 const CHAT_PER_S := 4
@@ -30,7 +38,7 @@ const MAX_LEVEL := 100             ## a joiner's claimed level is clamped (it on
 
 const ERROR_TEXT := {
 	"full": "That session is full (4 of 4 players). Try another one, or ask the host to make room.",
-	"bad_code": "That code does not match any private session. Check the six digits with your host.",
+	"bad_code": "That party is invite only (or the code is wrong). Ask a friend in it to invite you, from Social (O).",
 	"closed": "The host is not taking new players right now.",
 	"not_found": "That session no longer exists. Refresh the list.",
 	"rate_limit": "Too many wrong codes. Wait a few minutes before trying again.",
@@ -40,6 +48,15 @@ const ERROR_TEXT := {
 	"busy": "The lobby is full right now. Try again in a minute.",
 	"bad_request": "The lobby could not use that. Give the session a name (1 to 32 letters) and try again.",
 	"auth": "The lobby did not accept your login. Sign in again.",
+}
+## Friends' requests (invite / ask / answer) refused by the lobby, by code.
+const SOCIAL_ERROR_TEXT := {
+	"not_friend": "They are not online right now, or not on your friends list.",
+	"not_host": "Only the party's host can invite. Ask them, or host your own party.",
+	"already_in": "They are already in your party.",
+	"in_session": "Leave your party first.",
+	"rate_limit": "You just asked them. Give them a moment.",
+	"not_found": "That request is gone: they went offline or asked someone else.",
 }
 const CLOSE_TEXT := {
 	"host_left": "The host ended the session.",
@@ -73,11 +90,27 @@ var _chat_rate: Dictionary = {}          ## host: peer id -> [second, count]
 var _url := ""
 var _profile_sent := false
 var levels: Dictionary = {}              ## every peer: peer id -> that hero's level (the host's table, replicated on join and on each level-up)
+var online := false                      ## go_online() was called: keep the link (and reconnect it)
+var friends_online: Dictionary = {}      ## account id -> presence {accountId, username, class, level, area, session: {id, private, open, players, max, host, isHost} | null}
+var invites: Array = []                  ## [{from_id, from, info, at}] parties we were invited to
+var requests: Array = []                 ## [{account_id, user, via, at}] friends asking to join us
+var _after_host: Array = []              ## Callables to run once our new session exists (invite a friend, accept an ask)
+var _poll_timer: Timer
+var _presence_t := 0.0
+var _sent_presence: Array = []
+var _reconnect_n := 0
+var _reconnect_at := 0.0
+var _nudges: Array = []                  ## friends_changed ids waiting for the link
 
 
 func setup(shell_: DmNextGame) -> void:
 	shell = shell_
 	set_process(false)
+	_poll_timer = Timer.new()
+	_poll_timer.wait_time = POLL_EVERY
+	_poll_timer.timeout.connect(func() -> void: _tick(POLL_EVERY))
+	add_child(_poll_timer)
+	shell.area_changed.connect(func(_id: String) -> void: send_presence())
 	shell.session.session_ended.connect(_on_session_ended)
 	shell.session.player_left.connect(_on_player_left)
 	shell.session.player_joined.connect(func(_id: int) -> void: changed.emit())
@@ -144,7 +177,7 @@ func in_party() -> bool:
 
 func view() -> Dictionary:
 	return {"unavailable": unavailable(), "link": link, "mode": String(mode), "busy": busy, "sessions": sessions, "listed": listed, "code": code,
-		"info": info, "error": last_error, "roster": _roster_view(), "open": bool(info.get("open", true)), "max": DmSession.MAX_PLAYERS,
+		"info": info, "error": last_error, "roster": _roster_view(), "open": bool(info.get("open", true)), "closed": bool(info.get("private", false)), "max": DmSession.MAX_PLAYERS,
 		"username": lobby.username if lobby != null else "", "area": shell.area_id, "host_name": host_name, "default_name": default_name()}
 
 
@@ -165,8 +198,17 @@ func set_watching(on: bool) -> void:
 	if on:
 		if unavailable() == "" and mode == SOLO:
 			_ensure_link(Callable(self, "_do_list"))
-	elif mode == SOLO and busy == "":
+	elif mode == SOLO and busy == "" and not online:
 		close_link()
+
+
+## A real player's world (after loading): keep a lobby link for friends' presence, invites and asks. No-op when the lobby cannot be used.
+func go_online() -> void:
+	if unavailable() != "" or online:
+		return
+	online = true
+	if mode == SOLO:
+		_ensure_link(Callable())
 
 
 func refresh() -> void:
@@ -192,6 +234,7 @@ func _ensure_link(then: Callable) -> void:
 	close_link()
 	_pending = then
 	lobby = DmLobbyClient.new()
+	_wire_social(lobby)
 	lobby.authenticated.connect(_on_authenticated)
 	lobby.connection_failed.connect(_on_connection_failed)
 	lobby.sessions_listed.connect(_on_listed)
@@ -207,7 +250,7 @@ func _ensure_link(then: Callable) -> void:
 		lobby = null
 		return
 	link = "connecting"
-	set_process(true)
+	_poll_timer.start()
 	changed.emit()
 
 
@@ -222,23 +265,47 @@ func close_link() -> void:
 	lobby = null
 	link = "off"
 	_pending = Callable()
-	set_process(false)
+	_poll_timer.stop()
+	if not friends_online.is_empty():
+		friends_online.clear()
+		changed.emit()
 
 
-func _process(dt: float) -> void:
+## The solo link's 10 Hz timer: poll the socket, refresh the public list while the window is open, re-check presence, reconnect after a drop.
+func _tick(dt: float) -> void:
 	if lobby == null:
+		if online and mode == SOLO and _reconnect_at > 0.0:
+			_reconnect_at -= dt
+			if _reconnect_at <= 0.0:
+				_reconnect_at = 0.0
+				_ensure_link(Callable())
+		else:
+			_poll_timer.stop()
 		return
 	lobby.poll()
-	if watching and mode == SOLO and link == "ready" and busy == "":
+	if link != "ready" or mode != SOLO:
+		return
+	if watching and busy == "":
 		_list_t += dt
 		if _list_t >= LIST_EVERY:
 			_list_t = 0.0
 			lobby.request_list()
+	_presence_t += dt
+	if _presence_t >= PRESENCE_EVERY:
+		_presence_t = 0.0
+		send_presence()
+		_expire_offers()
 
 
 func _on_authenticated(_id: int, _name: String) -> void:
 	link = "ready"
 	_list_t = 0.0
+	_reconnect_n = 0
+	_sent_presence = []
+	send_presence()
+	for id in _nudges:
+		lobby.send_friends_changed(int(id))
+	_nudges.clear()
 	var p := _pending
 	_pending = Callable()
 	if p.is_valid():
@@ -253,7 +320,25 @@ func _on_connection_failed(reason: String) -> void:
 	busy = ""
 	_pending = Callable()
 	lobby = null
+	if online and _pending_is_quiet():
+		_schedule_reconnect(reason)   # the background link: no error toast, try again later
+		changed.emit()
+		return
 	_fail("connect", _connection_text(reason))
+	_schedule_reconnect(reason)
+
+
+## True while nothing the player asked for is waiting on the link (only the background presence link was connecting).
+func _pending_is_quiet() -> bool:
+	return busy == "" and not watching and _after_host.is_empty()
+
+
+func _schedule_reconnect(reason: String) -> void:
+	if not online or reason.contains("4401") or reason.contains("4402") or reason.contains("4403") or reason.contains("replaced") or reason.contains("auth"):
+		return
+	_reconnect_at = float(RECONNECT_S[mini(_reconnect_n, RECONNECT_S.size() - 1)])
+	_reconnect_n += 1
+	_poll_timer.start()
 
 
 static func _connection_text(reason: String) -> String:
@@ -269,12 +354,14 @@ static func _connection_text(reason: String) -> String:
 func _on_lobby_disconnected(reason: String) -> void:
 	link = "off"
 	lobby = null
+	friends_online.clear()
 	if mode == HOST:
 		_stop_hosting("Lost the connection to the lobby. You are playing solo again.", "err")
 	elif mode == SOLO:
 		busy = ""
 		if watching:
 			_fail("connect", _connection_text(reason))
+	_schedule_reconnect(reason)
 	changed.emit()
 
 
@@ -287,7 +374,10 @@ func _on_listed(list: Array) -> void:
 	changed.emit()
 
 
-func _on_lobby_error(c: String, msg: String, _req: String) -> void:
+func _on_lobby_error(c: String, msg: String, req: String) -> void:
+	if req in ["invite", "ask", "answer", "set_private"]:
+		_fail(c, String(SOCIAL_ERROR_TEXT.get(c, ERROR_TEXT.get(c, msg))))
+		return
 	busy = "" if busy != "listing" else busy
 	_fail(c, String(ERROR_TEXT.get(c, msg if msg != "" else "The lobby refused that (%s)." % c)))
 
@@ -300,7 +390,7 @@ func _fail(c: String, text: String) -> void:
 
 # ---- hosting ------------------------------------------------------------------------------------------------------------------------------
 
-## Turn this solo session into a hosted one. Private sessions get a code to share; public ones show in everyone's list.
+## Turn this solo session into a hosted one. Closed (is_private) parties are invite only; Open ones show in everyone's list.
 func host_session(session_name: String, is_private: bool = true) -> void:
 	var why := unavailable()
 	if why != "":
@@ -347,11 +437,15 @@ func _on_created(i: Dictionary, c: String) -> void:
 	code = c
 	mode = HOST
 	last_error = {}
-	set_process(false)   # the relay peer polls the socket now
+	_poll_timer.stop()   # the relay peer polls the socket now
 	if shell.rewards != null:
 		shell.rewards.local_peer_id = 1
-	notice.emit("Hosting \"%s\"%s" % [String(i.get("name", "")), ": share code %s" % c if c != "" else ""], "good")
+	notice.emit("Hosting \"%s\" (%s)" % [String(i.get("name", "")), "Closed: invite friends from Social (O)" if bool(i.get("private", false)) else "Open: anyone can join"], "good")
 	hosting_changed.emit(true)
+	var after := _after_host
+	_after_host = []
+	for f in after:
+		(f as Callable).call()
 	changed.emit()
 
 
@@ -367,6 +461,12 @@ func set_open(open: bool) -> void:
 	_relay.refuse_new_connections = not open
 
 
+## Host: Closed (invite only, out of the public list; friends can ask) or Open (listed, anyone joins).
+func set_closed(closed: bool) -> void:
+	if mode == HOST and lobby != null:
+		lobby.set_private(closed)
+
+
 ## Host: remove a player.
 func kick(peer_id: int) -> void:
 	if mode == HOST:
@@ -376,7 +476,7 @@ func kick(peer_id: int) -> void:
 func _on_lobby_session_closed(reason: String) -> void:
 	if mode == HOST:
 		_stop_hosting(String(CLOSE_TEXT.get(reason, "The session closed.")) + " You are playing solo again.", "err")
-	elif mode == SOLO and busy != "":
+	elif mode == SOLO and busy != "" and busy != "creating":   # (the close of a party we just ended can land while the next one is created)
 		busy = ""
 		changed.emit()
 
@@ -399,8 +499,8 @@ func _stop_hosting(text: String, kind: String) -> void:
 		notice.emit(text, kind)
 	hosting_changed.emit(false)
 	if lobby != null and lobby.is_open():
-		set_process(true)
-	if not watching:
+		_poll_timer.start()
+	if not watching and not online:
 		close_link()
 	changed.emit()
 
@@ -416,7 +516,7 @@ func join_session(session_id: String, session_code: String = "") -> void:
 	_ensure_link(func() -> void: lobby.join_session(session_id, session_code))
 
 
-## The six digits (or a host-chosen code) a friend shared.
+## The lobby's code path (no UI since DECISIONS B18): the co-op tests seat players with it, and older clients may still share codes.
 func join_by_code(session_code: String) -> void:
 	var c := session_code.strip_edges()
 	if c == "":
@@ -459,7 +559,9 @@ func adopt_client(lobby_: DmLobbyClient, relay: DmRelayPeer) -> void:
 	link = "ready"
 	mode = CLIENT
 	info = lobby.session
-	set_process(false)
+	online = true
+	_wire_social(lobby)
+	send_presence()
 
 
 # ---- leaving / the session ends --------------------------------------------------------------------------------------------------
@@ -591,6 +693,7 @@ func _on_credited(cid: int, delta: Dictionary) -> void:
 	if not m.remote:
 		if int(delta.get("levels", 0)) > 0:
 			sync_levels()   # the host levelled: every joiner's party frame shows it
+			send_presence()
 		return
 	if int(delta.get("levels", 0)) > 0 and m.body != null and is_instance_valid(m.body):   # its body fights at the new level
 		var b := m.body as DmHeroBody
@@ -828,3 +931,158 @@ func _show_line(line: String) -> void:
 		chat_log.pop_front()
 	if shell.ui_host != null:
 		shell.ui_host.game_event.emit("chat", {"text": line})
+
+
+# ---- friends over the lobby: presence, invites, asks to join (DECISIONS B18) ------------------------------------------------------------
+
+func _wire_social(l: DmLobbyClient) -> void:
+	l.friends_snapshot.connect(_on_friends_snapshot)
+	l.friend_presence.connect(_on_friend_presence)
+	l.friends_changed.connect(func() -> void: friends_list_changed.emit())
+	l.invited.connect(_on_invited)
+	l.invite_sent.connect(func(_id: int, user: String) -> void: notice.emit("Invited %s. They can join from their Social window." % user, "good"))
+	l.join_requested.connect(_on_join_requested)
+	l.ask_sent.connect(func(_id: int, user: String) -> void: notice.emit("Asked %s. You join as soon as they accept." % user, "good"))
+	l.ask_declined.connect(func(user: String) -> void: social_notice.emit("%s cannot take you along right now." % user))
+
+
+## What friends see: our discipline, level and area (sent when it changed).
+func send_presence() -> void:
+	if lobby == null or link != "ready":
+		return
+	var ch := shell.character
+	var p := [int(ch.get("class_index", 0)), int(ch.get("level", 1)), String(shell.area_id)]
+	if p == _sent_presence:
+		return
+	_sent_presence = p
+	lobby.send_presence(p[0], p[1], p[2])
+
+
+## We changed a friendship (DmNextFriends): the lobby reloads both sides' lists. Kept until the link is ready (a player can answer a request
+## in the first second in the world, before the link is up).
+func friends_changed(other_id: int) -> void:
+	if lobby != null and link == "ready":
+		lobby.send_friends_changed(other_id)
+	elif online and not _nudges.has(other_id):
+		_nudges.append(other_id)
+
+
+func _on_friends_snapshot(list: Array) -> void:
+	friends_online.clear()
+	for p in list:
+		if p is Dictionary:
+			friends_online[int(p.get("accountId", 0))] = p
+	changed.emit()
+
+
+func _on_friend_presence(id: int, p: Dictionary) -> void:
+	if p.is_empty():
+		friends_online.erase(id)
+	else:
+		friends_online[id] = p
+	changed.emit()
+
+
+func _on_invited(from_name: String, from_id: int, i: Dictionary, auto: bool) -> void:
+	if auto and mode == SOLO and busy == "":   # the answer to our own ask: go
+		social_notice.emit("%s let you in. Joining…" % from_name)
+		join_session(String(i.get("id", "")))
+		return
+	for v in invites:
+		if int(v["from_id"]) == from_id:
+			invites.erase(v)
+			break
+	invites.append({"from_id": from_id, "from": from_name, "info": i, "at": Time.get_ticks_msec()})
+	social_notice.emit("%s invited you to their party. Join from Social (O)." % from_name)
+	changed.emit()
+
+
+func _on_join_requested(id: int, user: String, via: String) -> void:
+	for r in requests:
+		if int(r["account_id"]) == id:
+			requests.erase(r)
+			break
+	requests.append({"account_id": id, "user": user, "via": via, "at": Time.get_ticks_msec()})
+	social_notice.emit(("%s (a friend of %s) asks to join you. Answer in Social (O)." % [user, via]) if via != "" else "%s asks to join you. Answer in Social (O)." % user)
+	changed.emit()
+
+
+func _expire_offers() -> void:
+	var cut := Time.get_ticks_msec() - int(OFFER_S * 1000.0)
+	var n := invites.size() + requests.size()
+	invites = invites.filter(func(v: Dictionary) -> bool: return int(v["at"]) > cut)
+	requests = requests.filter(func(r: Dictionary) -> bool: return int(r["at"]) > cut)
+	if invites.size() + requests.size() != n:
+		changed.emit()
+
+
+## Invite a friend. Playing solo, this first hosts a Closed party.
+func invite_friend(id: int) -> void:
+	if mode == CLIENT:
+		_fail("not_host", String(SOCIAL_ERROR_TEXT["not_host"]))
+	elif mode == HOST:
+		if lobby != null:
+			lobby.invite(id)
+	else:
+		_host_then(func() -> void: lobby.invite(id))
+
+
+## Ask a friend to take us along (they are solo, or in a party that is not Open to us).
+func ask_to_join(id: int) -> void:
+	if mode != SOLO:
+		_fail("in_session", String(SOCIAL_ERROR_TEXT["in_session"]))
+		return
+	_ensure_link(func() -> void: lobby.ask(id))
+
+
+## Join a friend's Open party straight away.
+func join_friend(id: int) -> void:
+	var p: Dictionary = friends_online.get(id, {})
+	var sess: Variant = p.get("session")
+	if not (sess is Dictionary):
+		ask_to_join(id)
+		return
+	join_session(String((sess as Dictionary).get("id", "")))
+
+
+func accept_invite(from_id: int) -> void:
+	for v in invites:
+		if int(v["from_id"]) == from_id:
+			invites.erase(v)
+			join_session(String((v["info"] as Dictionary).get("id", "")))
+			return
+
+
+func decline_invite(from_id: int) -> void:
+	for v in invites:
+		if int(v["from_id"]) == from_id:
+			invites.erase(v)
+			changed.emit()
+			return
+
+
+## Answer a friend's ask. Accepting while solo first hosts a Closed party, then lets them in.
+func answer_request(id: int, accept: bool) -> void:
+	for r in requests:
+		if int(r["account_id"]) == id:
+			requests.erase(r)
+			break
+	changed.emit()
+	if not accept:
+		if lobby != null and link == "ready":
+			lobby.answer(id, false)
+		return
+	if mode == CLIENT:
+		_fail("not_host", String(SOCIAL_ERROR_TEXT["not_host"]))
+	elif mode == HOST:
+		lobby.answer(id, true)
+	else:
+		_host_then(func() -> void: lobby.answer(id, true))
+
+
+func _host_then(f: Callable) -> void:
+	_after_host.append(f)
+	if busy != "creating":
+		host_session("", true)
+	if mode != SOLO or busy != "creating":   # hosting was refused: drop the queued action
+		_after_host.clear()

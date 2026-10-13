@@ -40,7 +40,7 @@ var refreshes := {"character": 0, "inventory": 0, "progress": 0}
 var hud: Dictionary = {}
 var set_rites_calls: Array = []
 var hero_pos := Vector2(0, 20)
-var party_code := ""
+var in_party := false
 var party_calls: Array = []
 var chats: Array = []
 var psync := MockPsync.new()   ## spend_on_server passthrough (the real one also adopts the server gold)
@@ -124,10 +124,6 @@ func clear_calls() -> void:
 # --- contract methods ---
 func party_create() -> void:
 	party_calls.append(["create"])
-
-
-func party_join(code: String) -> void:
-	party_calls.append(["join", code])
 
 
 func party_leave() -> void:

@@ -1,11 +1,12 @@
 class_name DmUiSocial
 extends RefCounted
 ## Social window wiring (ui/panels/dm_social_window.gd <-> the game). Panel keys "friends" (O) and "party" (F) are its two tabs (DmGameUi.HOSTS).
-## Party tab, game_ui contract: `party_view()`, `party_watch(on)`, `party_refresh()`, `party_create(name, private)`, `party_join(code)`,
-## `party_join_id(id)`, `party_leave()`, `party_kick(peer)`, `party_set_open(open)`, signal `party_changed`.
-## Friends tab: `friends_view()`, `friends_refresh()`, `friends_request(name)`, `friends_accept(id)`, `friends_remove(id)`, signal `friends_changed`.
-## A game without them (the mock, a headless game) shows the tab's "not available" line. The lobby socket lives only while the window is open;
-## the friends list loads on each open of the Friends tab.
+## Party tab, game_ui contract: `party_view()`, `party_watch(on)`, `party_refresh()`, `party_create(name, closed)`, `party_join_id(id)`,
+## `party_leave()`, `party_kick(peer)`, `party_set_closed(closed)`, signal `party_changed`.
+## Friends tab: `friends_view()`, `friends_refresh()`, `friends_request(name)`, `friends_accept(id)`, `friends_remove(id)`, `friends_join(id)`,
+## `friends_ask(id)`, `friends_invite(id)`, `invite_answer(from_id, accept)`, `ask_answer(id, accept)`, signal `friends_changed`.
+## A game without them (the mock, a headless game) shows the tab's "not available" line. The window open adds the public list refresh to the lobby
+## link; the friends list loads on each open of the Friends tab.
 
 var ui: Node
 var game: Node
@@ -19,17 +20,21 @@ func _init(ui_: Node) -> void:
 	ui._add_window("social", window)
 	var party := window.party
 	party.refresh_requested.connect(func() -> void: ui.call_game_sync("party_refresh"))
-	party.host_requested.connect(func(n: String, is_private: bool) -> void: ui.call_game_sync("party_create", [n, is_private]))
+	party.host_requested.connect(func(n: String, closed: bool) -> void: ui.call_game_sync("party_create", [n, closed]))
 	party.join_requested.connect(func(id: String) -> void: ui.call_game_sync("party_join_id", [id]))
-	party.join_code_requested.connect(func(c: String) -> void: ui.call_game_sync("party_join", [DmChatCommand.clean_code(c)]))
 	party.leave_requested.connect(func() -> void: ui.call_game_sync("party_leave"))
 	party.kick_requested.connect(func(p: int) -> void: ui.call_game_sync("party_kick", [p]))
-	party.open_toggled.connect(func(on: bool) -> void: ui.call_game_sync("party_set_open", [on]))
+	party.closed_toggled.connect(func(on: bool) -> void: ui.call_game_sync("party_set_closed", [on]))
 	var friends := window.friends
 	friends.refresh_requested.connect(func() -> void: ui.call_game_sync("friends_refresh"))
 	friends.request_requested.connect(func(n: String) -> void: ui.call_game_sync("friends_request", [n]))
 	friends.accept_requested.connect(func(id: int) -> void: ui.call_game_sync("friends_accept", [id]))
 	friends.remove_requested.connect(func(id: int) -> void: ui.call_game_sync("friends_remove", [id]))
+	friends.join_friend_requested.connect(func(id: int) -> void: ui.call_game_sync("friends_join", [id]))
+	friends.ask_friend_requested.connect(func(id: int) -> void: ui.call_game_sync("friends_ask", [id]))
+	friends.invite_friend_requested.connect(func(id: int) -> void: ui.call_game_sync("friends_invite", [id]))
+	friends.invite_answered.connect(func(id: int, yes: bool) -> void: ui.call_game_sync("invite_answer", [id, yes]))
+	friends.ask_answered.connect(func(id: int, yes: bool) -> void: ui.call_game_sync("ask_answer", [id, yes]))
 	window.tab_changed.connect(_on_tab)
 	window.closed.connect(_on_closed)
 	if game.has_signal("party_changed"):

@@ -27,8 +27,24 @@ Server -> client: `ready {accountId, username, maxPlayers}`, `sessions {sessions
 `created {session, peerId:1, code?}` (private sessions get a 6-digit code unless one was supplied), `joined {session, peerId}`, `left`, `session_updated`,
 host gets `peer_joined {id,name,accountId}` / `peer_left {id, reason: left|disconnected|kicked}`, everyone else gets
 `session_closed {reason: host_left|idle|kicked|shutdown}` (the socket stays open, back in the lobby), `error {code,msg,req}`.
-Error codes: `bad_request in_session not_in_session not_found bad_code full closed not_host busy rate_limit auth`.
+Error codes: `bad_request in_session not_in_session not_found bad_code full closed not_host busy rate_limit auth` (+ Friends: `not_friend already_in`).
 Peer ids: host = 1, clients 2, 3, ... assigned in join order and never reused within a session. One session per connection.
+
+## Friends (DECISIONS B18): presence, invites, asks to join
+Friend lists come from the auth backend: `GET /api/friends` with the player's OWN token (the one the socket authenticated with; `src/friends.js`),
+at auth and on `friends_changed`, at most 20 reloads per connection per minute. Only with `DM_LOBBY_BACKEND` set (the service sets it); tests use
+`DM_LOBBY_FRIENDS_FILE` (`{"<accountId>": [ids]}`); neither = no presence (`ready.presence: false`). A friend is **mutual**: both lists name the
+other. Presence goes only to connected mutual friends. A list that cannot be read keeps the last one.
+Client -> server: `presence {class, level, area}` (bad values become null; unchanged = not sent on), `friends_changed {accountId}` (we changed a
+friendship: both lists reload and the other side gets `friends_changed`), `invite {accountId}` (host only, an online mutual friend: they may join
+this session for 5 min, also when it is Closed or not accepting), `ask {accountId}` (an online mutual friend; goes to their session's host, or to
+them when solo; one per friend per 30 s; not while in a session), `answer {accountId, accept}` (to an ask in the last 5 min; accepting needs us to
+host: the asker gets an invite with `auto: true`), `set_private {private}` (host: Closed = not listed, invite or code only; gets a code if it had none).
+Server -> client: `friends {list: [presence]}` (online mutual friends, after each list load), `presence {accountId, p}` (p = null: went offline or
+no longer a friend), `friends_changed`, `invited {from, fromId, session, auto}`, `invite_sent {accountId, username}`, `join_request {accountId,
+username, via?}` (via = the friend in our party they asked), `ask_sent {accountId, username}`, `ask_declined {username}`.
+presence = `{accountId, username, class, level, area, session: {id, private, open, players, max, host, isHost} | null}`, pushed on every change
+(presence message, create / join / leave / kick / close, Open / Closed, disconnect). Error codes added: `not_friend already_in`.
 
 ## Binary frames (game packets), 11-byte header + payload
 ```
