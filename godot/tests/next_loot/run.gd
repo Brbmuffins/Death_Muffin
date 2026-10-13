@@ -91,6 +91,35 @@ func _run() -> void:
 	events.clear()
 
 
+	# ---- server-decided drops (DECISIONS B20): kills roll from the tape at once, every drop carries its claim, and the pickup is the server's roll
+	check(m.tape != null, "tape: the local member has a drop tape")
+	check(await until(func() -> bool: return m.tape.ready_for("elite"), 4.0), "tape: seeds are dealt")
+	var before: int = lv._drops.size()
+	var tries := 0
+	while lv._drops.size() == before and tries < 200:
+		tries += 1
+		g.rewards.on_kill({"def": "robber", "area": "graves", "level": 5.0, "elite": true, "x": b.position.x + 0.5, "z": b.position.z, "killer": b})
+		await physics_frame
+	var fresh: Array = lv._drops.filter(func(d: Dictionary) -> bool: return (d["item"] as Dictionary).has("claim"))
+	check(not fresh.is_empty(), "tape: an elite kill dropped something from the tape at once (%d kills)" % tries)
+	if not fresh.is_empty():
+		var td: Dictionary = fresh[0]
+		var claim: Dictionary = td["item"]["claim"]
+		check(String(claim["expect"]) == String(td["item"]["item_id"]) and claim.has("facts") and int(claim["n"]) >= 0, "tape: the drop names its event and index")
+		if DmAffixes.can_roll(String(td["item"]["item_id"])):
+			check(td["item"].has("instance"), "tape: gear shows its roll on the ground before it is picked up")
+		var want := String(td["item"]["item_id"])
+		var had := h.inventory.count(want)
+		h._on_claim(td)
+		check(await until(func() -> bool: return h.inventory.count(want) > had, 4.0), "tape: the pickup put the server's roll (%s) in the bag" % want)
+		check(not lv._drops.any(func(d: Dictionary) -> bool: return is_same(d, td)), "tape: off the ground once the server handed it over")
+		var again: DmResult = await h.api.drops_claim(h.hero_id, claim)
+		check(not again.ok and again.error.contains("already picked up"), "tape: the same drop cannot be claimed twice (%s)" % again.error)
+	for d in lv._drops.duplicate():
+		lv.take_claimed(d)
+	await until(func() -> bool: return false, 1.6)   # the kills' gold float (GOT_WINDOW_S) lands before the next checks
+	events.clear()
+
 	var rarity_of := DmLootView.rarity_of(gear)
 	# ---- items: walking over one takes nothing; a click walks the hero there and takes it with the pickup's feedback
 	events.clear()

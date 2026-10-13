@@ -15,10 +15,10 @@ privately on the VPS (`~/vps-handoffs/DeathMuffin/audit/2026-10-13-authority/`),
 **Phase 0: close the open doors.** Live 2026-10-13 (DECISIONS B19). Still open: pck encryption (needs export templates built with
 an encryption key).
 
-**Phase 1: the server decides drops.** The server rolls drops (gear, materials, runes, gold) from its own tables and they
-become claim-once ground drops (`backend/ground.cjs` style); the client no longer names what dropped. Owner: drops must still
-appear **instantly** on the kill, so the server hands the client its drops ahead of time (pre-rolled, single-use, tied to the
-character) and checks each one spent against the accepted kill reports.
+**Phase 1: the server decides drops.** Built 2026-10-13 (DECISIONS B20): drops roll instantly from a server-dealt drop tape and every
+pickup is a server claim that grants the server's own roll; co-op guests roll their own drops from the host's events. It ships with
+`DROPS_MODE=audit`. Still to do: watch the `drop_*` audit findings, then enforce, make the bag save refuse drop items that did not come
+through a claim, and retire `/api/loot/roll-gear` with client-named items once every client rolls from the tape.
 
 **Phase 2: intents instead of saved totals.** XP, gold and levels are paid from the kill ledger's accepted kills, not from
 claimed totals; the bag changes through operations (move, split, drop, sell, use) like the Vault; area kills, shards and seals

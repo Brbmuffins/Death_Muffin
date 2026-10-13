@@ -19,7 +19,7 @@ import { CHEST_KILLS, DEPTHS, FLOOR_BONUS_KILLS, chestBonus, depthEliteBonus, de
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { ELITE, ENEMIES, WAVE_THEMES, type EnemyId } from '../content/enemies';
 import { WAVE_UPGRADE, waveModifiers } from '../content/upgrades';
-import { AREA_PEAK, AUTHORITY, DEPTHS_AUTHORITY } from './authorityRules';
+import { AREA_PEAK, AUTHORITY, DEPTHS_AUTHORITY, LEVEL_CAP } from './authorityRules';
 import { CHAIN } from './killChain';
 import { newBloodXpMult } from './newBloodTuning';
 
@@ -225,7 +225,9 @@ export function maxEnemyLevel(area: AreaId, heroLevel: number, rank: number, dee
   const a = AREAS[area];
   const aged = Math.min(ASCENSION.maxRank, rank + AUTHORITY.COOP_RANK_ALLOWANCE) * ASCENSION.levelsPerRank;
   if (area === 'depths') return depthEnemyLevel(Math.min(DEPTHS_AUTHORITY.maxDepth, deepest + DEPTHS_AUTHORITY.slack), heroLevel + KILLS.HERO_LEVEL_SLACK) + aged + KILLS.LEVEL_SLACK;
-  const base = a.scaling ? Math.max(a.scaling.minLevel, Math.min(255, heroLevel + KILLS.HERO_LEVEL_SLACK)) : a.level;
+  // Scaled grounds follow the hero up to the game's level cap (DmEnemyStats.area_level clamps at 999); the old 255 here refused every
+  // kill of a character above about 255 with little Ascension (2026-10-13 audit-log review).
+  const base = a.scaling ? Math.max(a.scaling.minLevel, Math.min(LEVEL_CAP, heroLevel + KILLS.HERO_LEVEL_SLACK)) : a.level;
   return base + aged + KILLS.LEVEL_SLACK;
 }
 

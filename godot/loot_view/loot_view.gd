@@ -23,7 +23,8 @@ signal expired(drop: Dictionary, reason: String)  ## reason "ttl" or "cap" (remo
 signal rune_found(drop: Dictionary, pos: Vector3)             ## a rune the player did not own went straight into the bag
 signal legendary_dropped(drop: Dictionary, pos: Vector3)      ## a legendary landed on the ground
 signal dropped_sound(sound_id: String, pos: Vector3)          ## lootDrop / lootDropRare / lootDropEpic / lootDropLegendary
-signal claim_requested(drop: Dictionary)                      ## the hero reached a shared drop (gear a party member dropped): the server decides
+signal claim_requested(drop: Dictionary)                      ## the hero reached a drop the server hands over itself: a shared drop (gear a party
+                                                              ## member dropped) or a drop rolled from the tape (item["claim"], DECISIONS B20)
 
 ## Owner 2026-10-12 (team thread): gear and materials stay 3 minutes (was 60 s).
 const LOOT_EXPIRE_S := 180.0
@@ -109,6 +110,10 @@ func drop(d: Dictionary, pos: Vector3, exact: bool = false) -> String:
 func _rune(d: Dictionary, pos: Vector3, exact: bool) -> String:
 	if rune_owned.is_valid() and bool(rune_owned.call(d)):
 		return "owned"
+	if d.has("claim"):   # from the tape: it still goes straight to the player, through the server's claim
+		item(pos, d, exact)
+		claim_requested.emit(_drops.back())
+		return "claim"
 	if try_take.is_valid() and bool(try_take.call(d)):
 		rune_found.emit(d, pos)
 		return "auto"
@@ -134,6 +139,14 @@ func shared_item(entry: Dictionary) -> void:
 		if d.get("drop_id") == entry["drop_id"]:
 			return
 	item(Vector3(float(entry["x"]), 0, float(entry["z"])), entry["item"], true, String(entry["drop_id"]))
+
+
+## A drop the server handed over (or refused for good) after claim_requested: off the ground.
+func take_claimed(d: Dictionary) -> void:
+	for i in _drops.size():
+		if is_same(_drops[i], d):
+			_remove(i, "")
+			return
 
 
 ## A shared drop was picked up (by anyone) or is gone: off the ground.
@@ -324,8 +337,8 @@ func tick(dt: float, hero_pos: Vector3) -> Array[Dictionary]:
 			lb.visible = show
 		if is_same(d, _target) and dist < ITEM_PICKUP_RADIUS:
 			_target = {}
-			if d.has("drop_id"):
-				claim_requested.emit(d)   # the server decides; the owner removes it once it is handed over
+			if d.has("drop_id") or (d["item"] as Dictionary).has("claim"):
+				claim_requested.emit(d)   # the server decides; the owner removes it once it is handed over (take_claimed)
 				continue
 			if try_take.is_null() or bool(try_take.call(d["item"])):
 				var ev := {"kind": "item", "amount": d["amount"], "item": d["item"], "pos": node.position}

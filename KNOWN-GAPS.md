@@ -16,8 +16,6 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
 
 Live runs `AUTHORITY_KILLS=audit` (findings in `progress_audit`, nothing clamped). The 2026-10-13 review found no cheating, but
 these rules would cut honest players under enforce:
-- **Level ceiling:** `maxEnemyLevel` (`server/rules/gameplay/killRules.ts`) caps a scaled ground at level 255; the game scales
-  to 999 (`DmEnemyStats.area_level`). Every kill of a character above about 255 with little heat fails (`kill_invalid` "level").
 - **Carried party kills:** a guest's party boss kills fail `boss_rate` (no allowance of its own), and `CARRIED_LEVEL_CEILING`
   (200) is below a high-level host's world.
 - **Depths floors:** one new player's floors 3-4 were rejected (`floor_invalid` "skipped floors", 1 proven); not yet known

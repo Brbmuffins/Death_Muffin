@@ -143,6 +143,13 @@ test('an enemy level above what the ground can serve is dropped', () => {
   assert.equal(e.findings[0].why, 'level');
 });
 
+test('a level-scaled ground follows a hero above level 255 (it used to stop at 255 and refused every kill of such a character)', () => {
+  // 2026-10-13 audit-log review: a level-272 character with no Ascension had every Plague Cloister kill refused for level.
+  assert.ok(rules.maxEnemyLevel('cloister', 272, 0) >= 272);
+  assert.ok(rules.maxEnemyLevel('cloister', 680, 0) >= 680);
+  assert.ok(rules.maxEnemyLevel('cloister', 980, 0) <= 999 + 30, 'still bounded near the level cap');
+});
+
 test('Ascension ages the dead: the level cap rises with the character\'s own rank plus the co-op allowance', () => {
   const rank0 = rules.maxEnemyLevel('graves', 10, 0);
   assert.equal(rules.maxEnemyLevel('graves', 10, 3), rank0 + 9, 'three ranks, three levels each');

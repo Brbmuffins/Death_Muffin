@@ -42,8 +42,13 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
 3. The reply decides value: XP and kill counts (and area kills) are applied only for what the backend accepted (`accepted.kills / claimed`
    share of the XP). `credited:false` -> `member_refused(reason)`; `left`/`not_member` also stop that member's rewards. A `duplicate` reply
    (lost answer) is reconciled from `session_get` counters. 403/404/409 on report = session lost (`session_failed`); transport errors retry.
-4. Gold/shards are credited to the member's purse at once; the member's own save path persists them (capped by the kill ledger from these reports). Gear is rolled
-   by `member.api.roll_loot` (server RNG online, mock backend in dev-offline); a failed roll leaves plain base gear.
+4. Gold/shards are credited to the member's purse at once; the member's own save path persists them (capped by the kill ledger from these reports).
+5. **Items are decided by the server** (DECISIONS B20). A local member has a drop tape (`m.tape`, `DmDropTape`, filled from `api.drops_tape`): each kill,
+   elite, boss or surge takes the next event of its kind and rolls it at once (`_roll_event` -> `DmLoot.roll_event` on that event's seed), gear with its
+   affixes. Every item carries `claim {kind, n, index, facts, expect}`; picking it up (`DmNextUiHost._claim_from_tape`, runes at once) is
+   `api.drops_claim`: the server rolls the same event and puts its own roll in the bag (`inventory.replace` with its rows). A remote member whose
+   client says it rolls its own drops (`rolls_own_drops`) gets the event instead (`drop_event_for`), see `next/party/README.md`. Without a tape (a
+   test that pins `rng`, the first second before the seeds arrive, an old client) the old roll runs and gear goes through `api.roll_loot`.
 
 ## Backend without `/api/sessions` (legacy ledger)
 The backend's host-session routes need migration 041 (`server/death-muffin/backend/party-sessions.cjs`); on a backend without them `session_open` answers an HTML 404 and `start()` sets `legacy_ledger` (signal `ledger_fallback`, no `session_failed`):

@@ -174,6 +174,21 @@ static func roll_boss(wave_tier: float, rand: Callable = Callable(), difficulty:
 		items.append({"item_id": DmLootData.content()["reagents"]["bossIchor"][boss], "quantity": 1})
 	return {"gold": _round(320.0 * k * mods["rewardMult"] * diff), "materialGold": material_gold, "shards": 3 if cost_shards >= 5.0 else maxi(1, int(cost_shards) - 1), "items": items, "xp": _round(900.0 * k * diff)}
 
+## The rolled instance of every gear piece in `items`, in order, from one stream: lootRules.ts rollGearInstances (server authority Phase 1:
+## the client shows it on the ground at once, the server stores the same roll when the piece is claimed). The level is clamped to the
+## character's reach first, as the server does. Returns new drops; non-gear drops come back as they were.
+static func roll_gear_instances(items: Array, level: float, character_level: float, source: String, rand: Callable) -> Array:
+	var lvl := DmAffixRules.clamp_drop_level(level, character_level)
+	var out: Array = []
+	for d: Dictionary in items:
+		if DmAffixes.can_roll(String(d["item_id"])):
+			var g := d.duplicate()
+			g["instance"] = DmAffixRules.roll_instance(str(DmLootData.item(String(d["item_id"])).get("rarity", "common")), lvl, source, rand)
+			out.append(g)
+		else:
+			out.append(d)
+	return out
+
 ## A boss's first kill per character: a guaranteed rare-or-better item.
 static func roll_first_kill_item(area: String, rand: Callable = Callable(), discipline_id: String = "") -> Dictionary:
 	var table: Array = DmLootData.area(area)["loot"]
@@ -367,3 +382,61 @@ static func to_save_payload(slots: Array) -> Array:
 			continue
 		out.append({"slot_index": idx, "item_id": s["item_id"], "quantity": int(qty), "equipped": int(s.get("equipped", 0)) if s.get("equipped") != null else 0, "instance_id": s.get("instance_id")})
 	return out
+
+
+# --- Drop events (server authority Phase 1): lootRules.ts rollEvent ---------------------------------------------------------------
+
+## The streams each drop kind draws from, in order (the server issues seed words per stream): lootRules.ts EVENT_STREAMS.
+const EVENT_STREAMS := {"kill": ["rand", "reagent", "rune", "gear"], "elite": ["rand", "reagent", "rune", "gear"], "boss": ["rand", "gear"], "surge": ["rand", "gear"]}
+
+
+## One event's streams {name: Callable} from its single seed (the tape carries one seed per event): lootRules.ts eventStreams.
+static func event_streams(kind: String, seed_words: Array) -> Dictionary:
+	var base := DmDropStream.new(seed_words)
+	var out := {}
+	for name: String in EVENT_STREAMS[kind]:
+		var w: Array = []
+		for i in 4:
+			w.append(int(floorf(base.next() * 4294967296.0)))
+		out[name] = DmDropStream.rand(w)
+	return out
+
+
+static func _tag(items: Array, source: String) -> Array:
+	var out: Array = []
+	for d: Dictionary in items:
+		var t := d.duplicate()
+		t["source"] = source
+		out.append(t)
+	return out
+
+
+## One drop event (a kill, an elite kill, a boss kill or a quelled Grave Surge) rolled from its own streams `s` {name: Callable}: exactly what the
+## server rolls when a drop of it is claimed. Returns {reward (roll_kill / roll_boss result, null for a surge), items: drops with source and,
+## for gear, instance}. `f`: area, level, characterLevel, waveTier, difficulty, disciplineId, owned ([item ids]); kill/elite: def,
+## itemChanceMult, runePity; boss: boss, costShards, first.
+static func roll_event(kind: String, f: Dictionary, s: Dictionary) -> Dictionary:
+	var owned_list: Array = f.get("owned", [])
+	var owned := func() -> Array: return owned_list
+	var disc := String(f.get("disciplineId", ""))
+	var level := float(f["level"])
+	var char_level := float(f["characterLevel"])
+	if kind == "kill" or kind == "elite":
+		var reward := roll_kill(String(f.get("def", "")), String(f["area"]), level, kind == "elite", float(f.get("waveTier", 0)), s["rand"],
+			String(f.get("difficulty", "medium")), float(f.get("itemChanceMult", 1.0)), s["reagent"], s["rune"], disc, owned, float(f.get("runePity", 1.0)))
+		return {"reward": reward, "items": _tag(roll_gear_instances(reward["items"], level, char_level, "elite", s["gear"]), "elite")}
+	if kind == "boss":
+		var boss := String(f.get("boss", ""))
+		var reward2 := roll_boss(float(f.get("waveTier", 0)), s["rand"], String(f.get("difficulty", "medium")), String(f["area"]), float(f.get("costShards", 5)), boss, disc, owned)
+		var first: bool = bool(f.get("first", false)) and boss != "prelate"
+		var first_item: Variant = roll_first_kill_item(String(f["area"]), s["rand"], disc) if first else null
+		var rune: Variant = roll_boss_rune(boss, first, s["rand"])
+		var spoils: Array = reward2["items"].duplicate()
+		if rune != null:
+			spoils.append(rune)
+		var items := _tag(roll_gear_instances(spoils, level, char_level, "boss", s["gear"]), "boss")
+		if first_item != null:
+			items.append_array(_tag(roll_gear_instances([first_item], level, char_level, "first_kill", s["gear"]), "first_kill"))
+		return {"reward": reward2, "items": items}
+	var offering := roll_surge_item(String(f["area"]), s["rand"], disc)
+	return {"reward": null, "items": _tag(roll_gear_instances([offering], level, char_level, "surge", s["gear"]), "surge")}

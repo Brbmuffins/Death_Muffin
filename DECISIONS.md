@@ -123,3 +123,10 @@ Since B18 friends join through invites and asks; the six-digit codes have no UI 
   `gm-mode.cjs`, migration 046); only then do the guards step aside. Every switch and every write in GM mode is logged, and its
   characters carry a GM mark on the leaderboard. The rest of the plan (server-rolled drops, intents instead of totals, enforce) is
   in ROADMAP.md.
+- **B20. Server-decided drops** (owner, 2026-10-13: server authority Phase 1; "instant drops is a must"). The client no longer names what
+  dropped. Each character has a drop tape per kind (kill, elite, boss, surge): one seed per event, derived from a server secret and dealt
+  to the client ahead of time, so a drop still appears the instant a kill lands (`DmLoot.roll_event`). Picking it up is a claim: the server
+  rolls the same event from the same seed (`server/rules/gameplay/lootRules.ts`, kept equal to `godot/rules/loot/loot.gd` by the parity
+  fixture) with facts it takes from its own records where it has them, bounds the rest, spends the tape no faster than the kill ledger
+  accepts kills, and grants exactly its roll once. Gear affixes come from the same tape. Gold, XP and shards are still the client's claim
+  until Phase 2.

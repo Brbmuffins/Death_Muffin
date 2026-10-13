@@ -259,9 +259,27 @@ func _part_rewards(jg: DmNextGame) -> void:
 		hm.on_kill({"def": "robber", "area": "graves", "level": 3.0, "elite": false, "x": at.x, "z": at.z, "killer": null})
 	check(await until(func() -> bool: return j.drops_received > 0, 5.0), "loot: the host sent the joiner's drops to the joiner, not to a host-side view")
 	check(m.loot_view.count() == 0, "loot: the host holds none of the joiner's drops")
+	# server-decided drops (DECISIONS B20): the joiner rolls its own drops from its own tape and claims them itself
+	check(m.rolls_own_drops, "tape: the joiner said it rolls its own drops")
+	var jlv0: DmLootView = j.member.loot_view
+	var tries := 0
+	while not jlv0._drops.any(func(d: Dictionary) -> bool: return (d["item"] as Dictionary).has("claim")) and tries < 120:
+		tries += 1
+		hm.on_kill({"def": "robber", "area": "graves", "level": 3.0, "elite": true, "x": at.x, "z": at.z, "killer": null})
+		await process_frame
+	var jd: Array = jlv0._drops.filter(func(d: Dictionary) -> bool: return (d["item"] as Dictionary).has("claim"))
+	check(not jd.is_empty(), "tape: an elite kill in the host's world dropped from the joiner's own tape (%d kills)" % tries)
+	if not jd.is_empty():
+		var want := String(jd[0]["item"]["item_id"])
+		var cr: DmResult = await j.member.api.drops_claim(key, jd[0]["item"]["claim"], j.session_id)   # what the joiner's pickup sends (no HUD here)
+		check(cr.ok and String(cr.data["item"]["item_id"]) == want, "tape: the joiner's own claim is granted the server's roll (%s, %s)" % [want, cr.error])
+		var again: DmResult = await j.member.api.drops_claim(key, jd[0]["item"]["claim"], j.session_id)
+		check(not again.ok, "tape: and only once")
+	for d in jlv0._drops.duplicate():
+		jlv0.take_claimed(d)
 	await hm.flush()
 	check(await until(func() -> bool: return int(jg.character["experience"]) > xp0 or int(jg.character["level"]) > int(ch_j["level"]) - 0 and j.member.stats["kills_accepted"] > 0, 8.0), "xp: the accepted report reached the joiner's own character")
-	check(j.member.stats["kills_accepted"] == 6 and j.kills_seen == 6, "xp: all 6 kills credited to the joiner (%d)" % j.member.stats["kills_accepted"])
+	check(j.member.stats["kills_accepted"] == 6 + tries and j.kills_seen == 6 + tries, "xp: all %d kills credited to the joiner (%d)" % [6 + tries, j.member.stats["kills_accepted"]])
 	check(await until(func() -> bool: return int(jg.character["gold"]) > gold0, 8.0), "loot: the joiner's gold went straight to its own purse (%d -> %d)" % [gold0, int(jg.character["gold"])])
 	var rolls: int = hm.gear_pending()
 	check(rolls == 0, "loot: the host rolled nothing for the joiner")

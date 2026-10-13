@@ -1,6 +1,15 @@
 [
   {
     "date": "2026-10-13",
+    "title": "Fair Loot",
+    "items": [
+      "Every drop is now decided by the server. Loot still appears the moment an enemy falls; picking an item up checks it with the server, which puts it straight into your bag.",
+      "In a party, your drops are rolled for you on your own game, from the host's kills.",
+      "Fixed: characters above level 255 had their kills in the level-scaled grounds ignored by the server's checks."
+    ]
+  },
+  {
+    "date": "2026-10-13",
     "title": "Safer Saves",
     "items": [
       "The server now checks more of what it saves for every character. If it cannot check a save for a moment, it keeps your progress on your PC and tries again, so nothing is lost.",

@@ -25,6 +25,7 @@ signal killer_paid(character_id: int, enemy_def: String, enemy: Node)        ## 
 signal chain_tier_up(character_id: int, tier: Dictionary)      ## the member's Kill Chain crossed into a new tier (banner, sound)
 signal boss_earned(character_id: int, boss_id: String, first: bool, pos: Vector3)   ## a member was paid for a boss kill
 signal loot_dropped(character_id: int, drop: Dictionary, pos: Vector3)   ## also lets a shell replicate a member's drops to its peer
+signal drop_event_for(character_id: int, kind: String, facts: Dictionary, pos: Vector3)   ## a remote member that rolls its own drops: the event to roll (DmNextParty relays it)
 signal loot_picked(character_id: int, event: Dictionary)
 signal loot_expired(character_id: int, drop: Dictionary, reason: String)
 
@@ -147,6 +148,9 @@ func add_member(m: DmRewardsMember) -> void:
 		add_child(lv)
 	lv.visible = m.peer_id == local_peer_id
 	lv.try_take = Callable(m, "try_take")
+	if m.tape == null and not m.remote and m.api != null and rng.is_null():   # tests that pin `rng` keep rolling the old way
+		m.tape = DmDropTape.new(m.api, m.character_id)
+		m.tape.refill()
 	lv.picked.connect(func(ev: Dictionary) -> void: loot_picked.emit(m.character_id, ev))
 	lv.expired.connect(func(d: Dictionary, reason: String) -> void: loot_expired.emit(m.character_id, d, reason))
 	if session_id != "" and m.character_id != host_character_id:
@@ -514,15 +518,23 @@ func on_boss_defeated(ev: Dictionary) -> void:
 		var m: DmRewardsMember = members[cid]
 		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
 			continue
-		var reward: Dictionary = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
 		var first: bool = id != "prelate" and m.claim_trophy(id)   # the Prelate has no first-kill trophy: it is the run's boss (tally + Ascend instead)
+		var rolled := _roll_event(m, "boss", {"boss": id, "area": String(def["area"]), "costShards": float(def["shards"]), "first": first, "level": level,
+			"waveTier": wave_tier, "difficulty": difficulty}, at)
+		var reward: Dictionary
 		var first_item: Variant = null
+		if not rolled.is_empty():
+			reward = rolled["reward"]
+			reward["items"] = rolled["items"]   # spoils, rune and the first-kill relic, each with its own source
+		else:
+			reward = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
+			if first:
+				first_item = DmLoot.roll_first_kill_item(String(def["area"]), rng, String(m.discipline["id"]))
+			var rune: Variant = DmLoot.roll_boss_rune(id, first, rng)
+			if rune != null:
+				reward["items"].append(rune)
 		if first:
 			reward["shards"] = int(reward["shards"]) + 2
-			first_item = DmLoot.roll_first_kill_item(String(def["area"]), rng, String(m.discipline["id"]))
-		var rune: Variant = DmLoot.roll_boss_rune(id, first, rng)
-		if rune != null:
-			reward["items"].append(rune)
 		m.stats["bosses"] += 1
 		var rep := {"boss": id, "tier": wave_tier, "diff": difficulty, "first": first}
 		if ev.get("empowered", false) and m.empower_pending == id and m.empower_summon_id != 0:
@@ -555,7 +567,8 @@ func on_surge_cleared(ev: Dictionary) -> void:
 		var m: DmRewardsMember = members[cid]
 		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
 			continue
-		_drop_items(m, at, [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge")
+		var rolled := _roll_event(m, "surge", {"area": String(ev["area"]), "level": level}, at)
+		_drop_items(m, at, rolled["items"] if not rolled.is_empty() else [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge")
 		_ground(m, {"kind": "gold", "amount": gold}, at)
 
 
@@ -587,7 +600,11 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 		if la != null:
 			loot_area = String(la)
 	m.sync_brews()   # Tonic of wisdom / Fortune brew
-	var reward: Dictionary = DmLoot.roll_kill(String(ev["def"]), loot_area, level, elite, wave_tier, rng, difficulty, 1.0 + m.fortune, Callable(), Callable(), String(m.discipline["id"]), Callable(m, "owned_ids"), DmLootRunes.pity_mult(m.rune_dry))
+	var kind := "elite" if elite else "kill"
+	var facts := {"def": String(ev["def"]), "area": loot_area, "level": level, "waveTier": wave_tier, "difficulty": difficulty, "itemChanceMult": 1.0 + m.fortune,
+		"runePity": DmLootRunes.pity_mult(m.rune_dry)}
+	var rolled := _roll_event(m, kind, facts, at)
+	var reward: Dictionary = rolled["reward"] if not rolled.is_empty() else DmLoot.roll_kill(String(ev["def"]), loot_area, level, elite, wave_tier, rng, difficulty, 1.0 + m.fortune, Callable(), Callable(), String(m.discipline["id"]), Callable(m, "owned_ids"), DmLootRunes.pity_mult(m.rune_dry))
 	if elite and not DmLootRunes.area_pool(loot_area).is_empty() and not reward["items"].any(func(d: Dictionary) -> bool: return _new_rune(m, d)):
 		m.rune_dry += 1
 	var chain_mult := 1.0
@@ -614,7 +631,7 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 	if int(reward["shards"]) > 0:
 		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
 	# Ordinary kills drop half as often, so their gear rolls at elite quality (as in the original game).
-	_drop_items(m, at, reward["items"], level, "elite")
+	_drop_items(m, at, rolled["items"] if not rolled.is_empty() else reward["items"], level, "elite")
 	if combat:
 		var nb := DmEnemyStats.new_blood_xp_mult(String(m.discipline["family"]), float(m.prog.character["level"]))
 		m.reporter.kill({"area": area, "def": ev["def"], "level": level, "elite": elite, "tier": wave_tier, "diff": difficulty, "rank": ascension,
@@ -636,14 +653,37 @@ func drop_items_for(m: DmRewardsMember, at: Vector3, items: Array, level: float,
 	_drop_items(m, at, items, level, source)
 
 
-## Materials land at once; gear first gets its roll from the member's own backend (server RNG online, the offline backend offline).
-## A new rune landing resets the member's rising rune chance (rune_dry).
+## A drop event from the member's tape (server-decided drops, DECISIONS B20): {reward, items}, every item carrying the `claim` its pickup sends
+## (the server rolls the same event again and grants its own roll). {} when the member has no tape or nothing is dealt yet: the old roll. A remote
+## member that rolls its own drops is sent the event instead (drop_event_for); the host's roll then pays only its gold and shards.
+func _roll_event(m: DmRewardsMember, kind: String, facts: Dictionary, at: Vector3) -> Dictionary:
+	if m.remote and m.rolls_own_drops:
+		drop_event_for.emit(m.character_id, kind, facts, at)
+		return {}
+	if m.tape == null:
+		return {}
+	var slot := m.tape.take(kind)
+	if slot.is_empty():
+		return {}
+	var f := facts.duplicate()
+	f.merge(m.drop_context(), true)
+	var out := DmLoot.roll_event(kind, f, DmLoot.event_streams(kind, slot["seed"]))
+	var items: Array = out["items"]
+	for i in items.size():
+		items[i]["claim"] = {"kind": kind, "n": int(slot["n"]), "index": i, "facts": facts, "expect": String(items[i]["item_id"])}
+	return out
+
+
+## Materials land at once; gear first gets its roll from the member's own backend (server RNG online, the offline backend offline), except a
+## drop from the tape, which already carries its roll. A new rune landing resets the member's rising rune chance (rune_dry).
 func _drop_items(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String) -> void:
+	if m.remote and m.rolls_own_drops:
+		return   # its own client rolls them from its tape (drop_event_for)
 	var gear: Array = []
 	for d in items:
 		if _new_rune(m, d):
 			m.rune_dry = 0
-		if DmAffixes.can_roll(d["item_id"]):
+		if DmAffixes.can_roll(d["item_id"]) and not d.has("claim"):
 			gear.append(d)
 		else:
 			_ground(m, d, at)

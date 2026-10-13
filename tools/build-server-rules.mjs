@@ -90,6 +90,11 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/loadout-rules.cjs'),
     about: 'Loadout presets (validation, capture and apply over inventory rows) shared by the web client, the offline mock and the Death Muffin backend.',
   },
+  loot: {
+    entry: 'server/rules/gameplay/lootRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/loot-rules.cjs'),
+    about: 'The loot roll and drop events (the server copy of the Godot client roll, proven equal by the loot parity fixture) for the Death Muffin backend.',
+  },
 };
 
 export const OUT = TARGETS.necro.out;

@@ -33,6 +33,9 @@ var take_item: Callable = Callable()
 var chain := DmKillChain.new()
 ## Elites in a row in rune-shedding grounds that left no rune: raises the next elite's rune chance (DmLootRunes.pity_mult); a rune landing resets it.
 var rune_dry: int = 0
+var tape: DmDropTape = null      ## server-decided drops (DECISIONS B20): this member's drop seeds; null for a remote member (its own client rolls)
+var rolls_own_drops := false     ## a remote member whose client rolls its drops from its own tape: the host sends it the drop events, not items
+var owned_legendaries: Callable = Callable()   ## -> Array of legendary item ids worn or in the bag (the server's "owned" for a legendary roll)
 var gold_pool := {"amount": 0, "kills": 0}
 var reporter: DmKillReporter
 var pending_xp: float = 0.0
@@ -88,6 +91,12 @@ func alive() -> bool:
 
 func pos() -> Vector3:
 	return body.global_position if body != null and is_instance_valid(body) and body.is_inside_tree() else (body.position if body != null and is_instance_valid(body) else Vector3(1e9, 0, 1e9))
+
+
+## The facts a drop event is rolled from that only the member knows (DmLoot.roll_event; the server reads its own copy of these).
+func drop_context() -> Dictionary:
+	var owned: Array = owned_legendaries.call() if owned_legendaries.is_valid() else []
+	return {"disciplineId": String(discipline.get("id", "")), "characterLevel": float(prog.character.get("level", 1)) if prog != null else 1.0, "owned": owned}
 
 
 func owned_ids() -> Dictionary:

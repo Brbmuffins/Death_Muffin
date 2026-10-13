@@ -132,6 +132,7 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 		inventory.changed.connect(func(_s: Array) -> void: shell.progress.request_stats())   # worn gear feeds the stats
 	if m != null:
 		m.take_item = Callable(self, "_take")   # a walked-over drop goes into the bag, which flushes to the backend
+		m.owned_legendaries = Callable(self, "_owned_legendaries")
 		m.loot_view.picked.connect(_on_picked)
 		m.loot_view.rune_found.connect(_on_rune_found)
 		m.loot_view.legendary_dropped.connect(_on_legendary_dropped)
@@ -762,6 +763,16 @@ func stat_context() -> Variant:
 
 
 ## DmLootView.try_take: the bag, or false (the drop stays on the ground) with a "Reliquary full" float now and then and, once, what to do about it.
+## Legendary pieces worn or in the bag: what a legendary roll avoids repeating (the server reads the same from its rows).
+func _owned_legendaries() -> Array:
+	var out: Array = []
+	for row in inventory.all():
+		var id := String(row.get("item_id", ""))
+		if id.begins_with("leg_") and not out.has(id):
+			out.append(id)
+	return out
+
+
 func _take(d: Dictionary) -> bool:
 	if inventory.add(d):
 		_bag_full_noticed = false   # room again: the next time something does not fit, say so once more
@@ -922,6 +933,9 @@ func _on_claim(d: Dictionary) -> void:
 	if d.get("claiming", false):
 		return
 	d["claiming"] = true
+	if not d.has("drop_id"):
+		await _claim_from_tape(d)
+		return
 	var id := String(d["drop_id"])
 	var err := await bag_commit()
 	var r: DmResult = await api.ground_pickup(hero_id, id) if err == "" else null
@@ -940,6 +954,38 @@ func _on_claim(d: Dictionary) -> void:
 	game_event.emit("toast", {"text": why, "kind": "err"})
 	if why.begins_with("It is gone"):
 		remove_shared_drop(id)
+
+
+## A drop rolled from the tape (DECISIONS B20): the server rolls the same event again and puts its own roll in the bag. The ground copy goes once the
+## server answers; it stays (and can be clicked again) only when the bag is full or the server could not be reached.
+func _claim_from_tape(d: Dictionary) -> void:
+	var m: DmRewardsMember = shell.my_member()
+	var err := await bag_commit()
+	var sid: String = shell.joiner.session_id if shell.joiner != null else (shell.rewards.session_id if shell.rewards != null else "")
+	var r: DmResult = await api.drops_claim(hero_id, d["item"]["claim"], sid) if err == "" else null
+	d["claiming"] = false
+	if r != null and r.ok:
+		inventory.replace(r.data["bag"])
+		inventory_changed.emit()
+		if m != null:
+			m.loot_view.take_claimed(d)
+			m.stats["items_picked"] += 1
+		var g: Dictionary = r.data["item"]
+		var got := {"item_id": String(g["item_id"]), "quantity": int(g.get("quantity", 1))}
+		if g.has("ilvl"):
+			got["instance"] = {"id": g.get("instance_id"), "ilvl": int(g["ilvl"]), "affixes": g.get("affixes", [])}
+		var meta := DmContent.item(String(got["item_id"]))
+		if DmRunes.is_rune_id(got["item_id"]) and m != null:
+			m.loot_view.rune_found.emit(got, Vector3(float(d["x"]), 0, float(d["z"])))
+		else:
+			_loot_toast(got, meta)
+		_item_collected(got, meta)
+		return
+	var why := err if r == null else (r.error if r.error != "" else "You could not pick that up.")
+	game_event.emit("toast", {"text": why, "kind": "err"})
+	var keep := r == null or r.status == 0 or r.status >= 500 or why.begins_with("Your bag is full")
+	if not keep and m != null:
+		m.loot_view.take_claimed(d)
 
 
 ## A left click on a drop (DmNextInput): the hero walks there and takes it on arrival. False = no drop under the cursor.

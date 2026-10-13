@@ -76,6 +76,12 @@ start, so changing one needs a restart of `death-muffin-auth`.
   in GM mode (`gm_write`) is a `progress_audit` row, and switching on sets `characters.gm_marked` (the leaderboard's GM tag). `GET /api/me` answers `gmActive`.
   GM-mode only: `POST /api/inventory/add-item`, `POST /api/offline/load`, `POST /api/offline/sync-stats`, and a first `POST /api/necro-progress/import`
   carrying a record (a player's starts blank).
+- **Server-decided drops** (`backend/drops.cjs`, migration 047, DECISIONS B20): `POST /api/drops/tape {characterId, next?}` deals each drop kind's
+  next seeds (kill 128, elite 48, boss 6, surge 6; one secret-derived seed per event); `POST /api/drops/claim {characterId, kind, n, index, facts,
+  expect?, sessionId?}` rolls that event again from its seed (`gathering/loot-rules.cjs` rollEvent, equal to the client's roll by the loot
+  parity fixture) and puts exactly that drop in the bag, once. `DROPS_MODE=audit` (default) logs broken bounds as `drop_*` rows in
+  `progress_audit` (ground not open, Wave Speed not owned, fortune, rising rune chance, a second first kill, tape spent faster than the kill
+  ledger's accepted kills, surge rate) and grants anyway; `enforce` refuses them. What drops is the server's roll in both modes.
 - **Party sessions** (`backend/party-sessions.cjs`, migration 041, `backend/SESSION-REPORTS.md`): a session host reports what its members killed; each member's part goes through the same kill ledger.
 - **Learned runes** (`backend/runes.cjs`, migration 044): `GET /api/runes/:id` lists a character's learned runes; `POST /api/inventory/rune/learn` spends a bag rune and learns it; `POST /api/inventory/rune` puts a learned rune in its rite's socket (or empties it). DECISIONS B17.
 - **Friends** (`backend/friends.cjs`, migration 045): `GET /api/friends` (friends with their active character's discipline and level, requests both ways), `POST /api/friends/request {username}`

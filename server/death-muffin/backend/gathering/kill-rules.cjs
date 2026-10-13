@@ -2586,6 +2586,7 @@ function smartTable(area, disciplineId) {
 }
 
 // server/rules/gameplay/authorityRules.ts
+var LEVEL_CAP = 999;
 var AREA_PEAK = {
   graves: { xp: 2016, gold: 2470, kills: 205 },
   ossuary: { xp: 4902, gold: 4507, kills: 239 },
@@ -2855,7 +2856,7 @@ function maxEnemyLevel(area, heroLevel, rank, deepest = 0) {
   const a = AREAS[area];
   const aged = Math.min(ASCENSION.maxRank, rank + AUTHORITY.COOP_RANK_ALLOWANCE) * ASCENSION.levelsPerRank;
   if (area === "depths") return depthEnemyLevel(Math.min(DEPTHS_AUTHORITY.maxDepth, deepest + DEPTHS_AUTHORITY.slack), heroLevel + KILLS.HERO_LEVEL_SLACK) + aged + KILLS.LEVEL_SLACK;
-  const base = a.scaling ? Math.max(a.scaling.minLevel, Math.min(255, heroLevel + KILLS.HERO_LEVEL_SLACK)) : a.level;
+  const base = a.scaling ? Math.max(a.scaling.minLevel, Math.min(LEVEL_CAP, heroLevel + KILLS.HERO_LEVEL_SLACK)) : a.level;
   return base + aged + KILLS.LEVEL_SLACK;
 }
 function maxEliteShare(area, deepest = 0) {

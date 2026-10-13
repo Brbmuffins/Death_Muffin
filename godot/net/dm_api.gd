@@ -253,6 +253,20 @@ func roll_loot(character_id: int, drops: Array, session_id: String = "") -> DmRe
 func ground_drop(character_id: int, session_id: String, slot: int, x: float, z: float) -> DmResult:
 	return _decorate_keys(await _post("/api/ground/drop", {"characterId": character_id, "sessionId": session_id, "slot": slot, "x": x, "z": z}), ["bag"])
 
+## The next drop seeds of every kind (server-decided drops, backend drops.cjs). `next` {kind: index} = where this client is.
+## data: {mode, tape: {kind: {from, seeds: [[w, w, w, w], ...]}}}.
+func drops_tape(character_id: int, next: Dictionary = {}) -> DmResult:
+	return await _post("/api/drops/tape", {"characterId": character_id, "next": next})
+
+## Pick up a drop rolled from the tape: the server rolls that event again and grants its own roll. `claim` {kind, n, index, facts, expect}.
+## data: {item, bag}.
+func drops_claim(character_id: int, claim: Dictionary, session_id: String = "") -> DmResult:
+	var body := claim.duplicate()
+	body["characterId"] = character_id
+	if session_id != "":
+		body["sessionId"] = session_id
+	return _decorate_keys(await _post("/api/drops/claim", body), ["bag"])
+
 ## Pick a dropped piece up (the server checks who may). data: {slot, bag}.
 func ground_pickup(character_id: int, drop_id: String) -> DmResult:
 	return _decorate_keys(await _post("/api/ground/pickup", {"characterId": character_id, "dropId": drop_id}), ["bag"])

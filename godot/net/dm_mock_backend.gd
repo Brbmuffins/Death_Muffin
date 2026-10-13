@@ -39,6 +39,7 @@ var _recipes_cache: Array = []
 var _sessions := DmOfflineSessions.new()
 var _ground: Dictionary = {}       ## dropped gear lying on a session's ground (ground.cjs): drop id -> {session, from_char, from_account, item_id, roll, x, z}
 var _ground_seq := 0
+var _drop_tapes: Dictionary = {}   ## server-decided drops (drops.cjs): character id -> {issued: {kind: n}, spent: {kind: n}, events: {"kind#n": {items, claimed}}}
 
 func _init(path: String = "user://dm_offline_db.json") -> void:
 	persist_path = path
@@ -599,6 +600,8 @@ func _route_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 		return _loadouts_post(acc, p, body)
 	if p.begins_with("/api/vault/"):
 		return _vault_post(acc, p, body)
+	if p.begins_with("/api/drops/"):
+		return _drops_post(acc, p, body)
 	if p.begins_with("/api/ground/"):
 		return _ground_post(acc, p, body)
 	if p.begins_with("/api/labor/"):
@@ -762,6 +765,104 @@ func _roll_gear(acc: Dictionary, body: Dictionary) -> Dictionary:
 			_instances(acc)[str(id)]["found_at"] = _now()
 		out.append({"item_id": item_id, "instance_id": id, "ilvl": inst["ilvl"], "affixes": inst["affixes"]})
 	return _ok(out)
+
+## /api/drops/tape and /api/drops/claim, the same contract as drops.cjs: seeds per event (a hash here, a secret on the server), and a claim rolls
+## the event again from its seed (DmLoot.roll_event, the client roll the server copies) and puts exactly that drop in the bag, once. The
+## offline backend believes the claim's facts (the real server bounds them).
+const DROP_AHEAD := {"kill": 128, "elite": 48, "boss": 6, "surge": 6}
+
+static func _drop_seed(cid: int, kind: String, n: int) -> Array:
+	var h := HashingContext.new()
+	h.start(HashingContext.HASH_SHA256)
+	h.update(("mock-drop|%d|%s|%d" % [cid, kind, n]).to_utf8_buffer())
+	var b := h.finish()
+	return [b.decode_u32(0), b.decode_u32(4), b.decode_u32(8), b.decode_u32(12)]
+
+func _drops_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
+	var cid := int(acc["character"]["id"])
+	var t: Dictionary = _drop_tapes.get(cid, {"issued": {}, "spent": {}, "events": {}})
+	_drop_tapes[cid] = t
+	if p == "/api/drops/tape":
+		var next: Dictionary = body.get("next", {}) if body.get("next") is Dictionary else {}
+		var tape := {}
+		for kind in DROP_AHEAD:
+			var issued := int(t["issued"].get(kind, 0))
+			var from := maxi(int(t["spent"].get(kind, 0)), clampi(int(next.get(kind, 0)), 0, issued))
+			var seeds: Array = []
+			for n in range(from, from + int(DROP_AHEAD[kind])):
+				seeds.append(_drop_seed(cid, kind, n))
+			t["issued"][kind] = maxi(issued, from + int(DROP_AHEAD[kind]))
+			tape[kind] = {"from": from, "seeds": seeds}
+		return _ok({"mode": "audit", "tape": tape})
+	if p == "/api/drops/claim":
+		var kind := String(body.get("kind", ""))
+		var n := int(_num(body, "n"))
+		var index := int(_num(body, "index"))
+		if not DROP_AHEAD.has(kind) or n < 0 or n >= int(t["issued"].get(kind, 0)):
+			return _fail("That drop was never dealt.")
+		var key := "%s#%d" % [kind, n]
+		if not t["events"].has(key):
+			var facts: Dictionary = body.get("facts", {}) if body.get("facts") is Dictionary else {}
+			var f := facts.duplicate()
+			f["characterLevel"] = float(acc["character"].get("level", 1))
+			f["disciplineId"] = String(DmCharacterBuild.discipline_for(float(acc["character"].get("class_index", 0)))["id"])
+			f["owned"] = _owned_legendaries(acc)
+			t["events"][key] = {"items": DmLoot.roll_event(kind, f, DmLoot.event_streams(kind, _drop_seed(cid, kind, n)))["items"], "claimed": []}
+			t["spent"][kind] = maxi(int(t["spent"].get(kind, 0)), n + 1)
+		var ev: Dictionary = t["events"][key]
+		if index < 0 or index >= (ev["items"] as Array).size():
+			return _fail("That drop could not be found.")
+		if (ev["claimed"] as Array).has(index):
+			return _fail("That drop was already picked up.")
+		var d: Dictionary = ev["items"][index]
+		var put: int = _drop_into_bag(acc, d)
+		if put < 0:
+			return _fail("Your bag is full.")
+		(ev["claimed"] as Array).append(index)
+		var item := {"item_id": String(d["item_id"]), "quantity": int(d.get("quantity", 1)), "source": String(d.get("source", ""))}
+		if d.has("instance"):
+			item["instance_id"] = put
+			item["ilvl"] = d["instance"]["ilvl"]
+			item["affixes"] = d["instance"]["affixes"]
+		return _ok({"item": item, "bag": _rows(acc)})
+	return _err("Offline backend: no route for POST %s" % p, 404)
+
+func _owned_legendaries(acc: Dictionary) -> Array:
+	var out: Array = []
+	for row in acc["slots"]:
+		var id := String(row.get("item_id", ""))
+		if id.begins_with("leg_") and not out.has(id):
+			out.append(id)
+	return out
+
+## One granted drop into the bag: gear as a new instance in a free slot, everything else stacked first. -1 when it does not fit, else the new
+## instance id for gear (0 for the rest).
+func _drop_into_bag(acc: Dictionary, d: Dictionary) -> int:
+	var id := String(d["item_id"])
+	if d.has("instance"):
+		var free := _free_bag_slot(acc)
+		if free < 0:
+			return -1
+		var iid := _mint_instance(acc, id, int(d["instance"]["ilvl"]), d["instance"]["affixes"])
+		acc["slots"].append({"slot_index": free, "item_id": id, "quantity": 1, "equipped": 0, "instance_id": iid})
+		return iid
+	var cap := _stack_cap(id)
+	var left := int(d.get("quantity", 1))
+	for row in acc["slots"]:
+		if left <= 0:
+			break
+		if String(row["item_id"]) == id and int(row["slot_index"]) < BAG and row.get("instance_id") == null and int(row["quantity"]) < cap:
+			var add := mini(left, cap - int(row["quantity"]))
+			row["quantity"] = int(row["quantity"]) + add
+			left -= add
+	while left > 0:
+		var free2 := _free_bag_slot(acc)
+		if free2 < 0:
+			return -1
+		var add2 := mini(left, cap)
+		acc["slots"].append({"slot_index": free2, "item_id": id, "quantity": add2, "equipped": 0})
+		left -= add2
+	return 0
 
 ## /api/ground/drop and /api/ground/pickup, the same rules as ground.cjs: gear only, from a live session; the dropper and whoever was in the
 ## session when the piece was found may take it; the first pickup wins; an ended session's ground is gone. Instance ids are per account

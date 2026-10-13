@@ -614,6 +614,7 @@ func _on_player_left(id: int) -> void:
 func attach_host() -> void:
 	shell.rewards.member_credited.connect(_on_credited)
 	shell.rewards.loot_dropped.connect(_on_loot_dropped)
+	shell.rewards.drop_event_for.connect(_on_drop_event)
 
 
 ## Client: once the session is live, tell the host who we are.
@@ -623,7 +624,7 @@ func send_profile() -> void:
 	_profile_sent = true
 	var ch := shell.character
 	_rpc_profile.rpc_id(1, {"character_id": int(ch.get("id", 0)), "class_index": int(ch.get("class_index", 0)), "level": int(ch.get("level", 1)),
-		"experience": int(ch.get("experience", 0))})
+		"experience": int(ch.get("experience", 0)), "rolls_drops": true})
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -643,6 +644,7 @@ func _rpc_profile(p: Dictionary) -> void:
 	body.bind_character({"id": cid, "class_index": ci, "level": lvl})
 	var m := DmRewardsMember.make(key, peer, body, null, lvl, {"id": d["id"], "family": d["family"]})
 	m.remote = true
+	m.rolls_own_drops = p.get("rolls_drops") == true   # its client rolls its drops from its own tape (DECISIONS B20)
 	m.prog.character["experience"] = xp
 	m.trophy_store = func(_boss: String) -> bool: return false   # a joiner's first-kill trophies are its own backend's business (later)
 	m.blocked = "pending_join" if key > 0 else "no_character"
@@ -755,6 +757,18 @@ func _on_loot_dropped(cid: int, drop: Dictionary, pos: Vector3) -> void:
 func _rpc_loot(drop: Dictionary, pos: Vector3) -> void:
 	if shell.joiner != null:
 		shell.joiner.on_loot(drop, pos)
+
+
+func _on_drop_event(cid: int, kind: String, facts: Dictionary, pos: Vector3) -> void:
+	var m: DmRewardsMember = shell.rewards.members.get(cid)
+	if m != null and m.remote:
+		_rpc_drop_event.rpc_id(m.peer_id, kind, facts, pos)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_drop_event(kind: String, facts: Dictionary, pos: Vector3) -> void:
+	if shell.joiner != null:
+		shell.joiner.on_drop_event(kind, facts, pos)
 
 
 # ---- dropped gear (ground.cjs) ------------------------------------------------------------------------------------------------------------

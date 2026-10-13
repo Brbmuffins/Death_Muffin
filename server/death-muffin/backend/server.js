@@ -1748,6 +1748,12 @@ require('./loot.cjs')(app, pool, {
     return rows.length === 1;
   },
 });
+// Server-decided drops (drops.cjs, migration 047, DECISIONS B20): the tape of drop seeds and the claim that grants the server's roll.
+require('./drops.cjs').mountDrops(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: ownsCharacterRow,
+  limiter: rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }),
+});
 require('./vault.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {

@@ -49,6 +49,8 @@ func setup(shell_: DmNextGame, persist: bool) -> void:
 	member.loot_view.visible = true
 	member.loot_view.try_take = Callable(member, "try_take")
 	member.loot_view.picked.connect(_on_picked)
+	member.tape = DmDropTape.new(shell.api, hero_id)   # this player's own drop seeds (DECISIONS B20): it rolls its drops itself
+	member.tape.refill()
 	psync = DmProgressSync.new(shell.api, prog, hero_id, persist)
 	psync.error.connect(func(msg: String) -> void: event.emit("toast", {"text": msg, "kind": "err"}))
 	await psync.connect_server()
@@ -155,6 +157,34 @@ func on_loot(drop: Dictionary, pos: Vector3) -> void:
 		if not is_instance_valid(member.loot_view) or not is_inside_tree():
 			return
 	member.loot_view.drop(drop, pos)
+
+
+## A drop event of THIS member from the host (server-decided drops, DECISIONS B20): rolled here from this player's own tape, so the drop shows at
+## once and the pickup is this player's claim (with the party session: the host's ground counts as carried). Wave Speed is this player's own
+## at most, as the server reads it.
+func on_drop_event(kind: String, facts: Dictionary, pos: Vector3) -> void:
+	drops_received += 1
+	if member.tape == null:
+		return
+	var waited := 0
+	while not member.tape.ready_for(kind) and waited < 120:   # the first seeds are still on their way (or a top-up is): at most ~2 s
+		member.tape.refill()
+		await get_tree().process_frame
+		waited += 1
+		if not is_instance_valid(member.loot_view) or not is_inside_tree():
+			return
+	var slot := member.tape.take(kind)
+	if slot.is_empty():
+		return
+	var f := facts.duplicate()
+	if f.has("waveTier"):
+		f["waveTier"] = minf(float(f["waveTier"]), float(prog.local.get("waveTierOwned", 0)))
+	var sent := f.duplicate()
+	f.merge(member.drop_context(), true)
+	var items: Array = DmLoot.roll_event(kind, f, DmLoot.event_streams(kind, slot["seed"]))["items"]
+	for i in items.size():
+		items[i]["claim"] = {"kind": kind, "n": int(slot["n"]), "index": i, "facts": sent, "expect": String(items[i]["item_id"])}
+		member.loot_view.drop(items[i], pos)
 
 
 ## Save everything this player earned (the leave path): progression and the bag; tell the backend we left.
