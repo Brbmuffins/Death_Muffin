@@ -715,6 +715,20 @@ func _test_director() -> void:
 	d.time_override = 310.0
 	d.play_sfx("bossDefeat")
 	ok(not d.boss_bed_active(), "bossDefeat ends it")
+	d.time_override = 310.1
+	d.play_sfx("bossAwaken")
+	d.time_override = 310.2
+	d.play_sfx("bossDefeat")   # back to back kills: the sound may be dropped, the drum must still end
+	ok(not d.boss_bed_active(), "a dropped bossDefeat still ends the war drum")
+	d.time_override = 320.0
+	d.play_sfx("bossAwaken")
+	d.set_boss_music(false)
+	ok(not d.boss_bed_active(), "the boss score ending (death, boss reset) ends the war drum")
+	d.time_override = 330.0
+	d.play_sfx("bossAwaken")
+	d.set_area("pyre")
+	ok(not d.boss_bed_active(), "changing area ends the war drum")
+	d.set_area("chapterhouse")
 	# combat override ducks the bed
 	d.set_combat(true)
 	for i in 30:

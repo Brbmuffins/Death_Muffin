@@ -204,6 +204,12 @@ static func _xz(pos: Variant) -> Variant:
 func play_sfx(sfx_name: String, pos: Variant = null, intensity: float = 1.0) -> bool:
 	if not _ready_done or _voice_count() > MAX_VOICES:
 		return false
+	# The war drum follows these two even when the sound itself is dropped (cooldown, voice cap, limiter): a dropped
+	# bossDefeat used to leave the drum thumping for good.
+	if sfx_name == "bossAwaken":
+		_set_boss_bed(true)
+	elif sfx_name == "bossDefeat":
+		_set_boss_bed(false)
 	var now := _now()
 	var prof := DmAudioMixer.profile_of(sfx_name)
 	var def := DmAudioMap.defn(sfx_name)
@@ -255,10 +261,6 @@ func play_sfx(sfx_name: String, pos: Variant = null, intensity: float = 1.0) -> 
 		_duck(prof["duck"], now)
 	var ctx := {"bus": prof["bus"], "gain": DmAudioMixer.repeat_gain(repeats), "pos": p}
 	var share := _recorded(sfx_name, def, ctx, intensity, pg)
-	if sfx_name == "bossAwaken":
-		_set_boss_bed(true)
-	elif sfx_name == "bossDefeat":
-		_set_boss_bed(false)
 	if share < 1.0:
 		sfx_played.emit(sfx_name)
 	return share < 1.0
@@ -477,6 +479,8 @@ func _apply_bed_duck(now: float) -> void:
 
 ## Enter an area: crossfades the zone bed, switches music, schedules sparse accents and (re)loads the area's packs.
 func set_area(area_id: String, force: bool = false) -> void:
+	if area_id != _want_area:
+		_set_boss_bed(false)   # the war drum belongs to the fight in the area it started in
 	_want_area = area_id
 	music.set_area(area_id)
 	if not force:
@@ -514,6 +518,8 @@ func stop_area() -> void:
 ## Boss score follows the local area's active boss (including rejoin snapshots).
 func set_boss_music(active: bool) -> void:
 	music.set_boss(active)
+	if not active:
+		_set_boss_bed(false)   # no live boss fight (died, left, boss reset): the drum ends with the boss score
 
 
 func music_cue() -> String:

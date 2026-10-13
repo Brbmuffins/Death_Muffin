@@ -9,7 +9,8 @@
       "A rune you already have (learned, in your bag or in the Vault) never drops for you again. Duplicates no longer turn into soul shards or other runes.",
       "Unlucky streaks end sooner: every elite that leaves no rune makes the next one likelier, up to three times the usual chance, until a rune drops.",
       "Runes already in your sockets are learned for you. Runes in your bag or Vault wait for you to learn them; spare copies can still be kept or ground in the Bone Grinder.",
-      "The Heal, Elixir and Tonic slots on the HUD now show the icon of the potion you actually have equipped."
+      "The Heal, Elixir and Tonic slots on the HUD now show the icon of the potion you actually have equipped.",
+      "The boss war-drum heartbeat no longer keeps thumping after a boss fight ends in some other way than the boss dying (you die, leave the area, or the boss resets)."
     ]
   },
   {
