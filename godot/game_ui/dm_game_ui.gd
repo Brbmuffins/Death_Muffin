@@ -1014,7 +1014,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var k := e.keycode
 	if is_necromancer() and not e.ctrl_pressed and not e.meta_pressed and not e.alt_pressed:
 		var action := DmUiBinds.action_for_key(binds, DmUiBinds.key_name(e))
-		if action != "":
+		if action != "" and action != DmUiBinds.PERF_ACTION:
 			get_viewport().set_input_as_handled()
 			if not e.echo:
 				loadout_hotkey(action)

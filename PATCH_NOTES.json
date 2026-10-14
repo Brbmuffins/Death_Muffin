@@ -3,6 +3,7 @@
     "date": "2026-10-14",
     "title": "Boss Rush",
     "items": [
+      "You can now rebind the performance overlay to another key in Settings > Controls (it stays on F3 until you change it).",
       "Summon bosses back to back as fast as you like: every boss you pay for now always drops its loot, and so does every boss your party's host summons while you are with them.",
       "Fixed: after a fast run of Prelates, boss loot could be refused when you picked it up."
     ]
