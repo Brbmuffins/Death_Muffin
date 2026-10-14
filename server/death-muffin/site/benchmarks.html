@@ -37,7 +37,7 @@
   </header>
   <main class="about-section leaderboard-section bench-section">
     <div class="section-heading"><p class="eyebrow">Measured, not guessed</p><h1>Benchmarks</h1></div>
-    <p>Every finished in-game benchmark run (Character select -> Benchmark) lands here. The Standard setup (Bell Sanctum, Gravecaller, Standard size, Full length) is the one that compares PCs.</p>
+    <p>Every finished in-game benchmark run (Character select -> Benchmark) lands here. The Standard setup (Bell Sanctum, Gravecaller, Standard size, Full length) is the one that compares PCs. Flagged runs (V-Sync still on, or cancelled) are listed but left out of the chart.</p>
     <form class="bench-filters" id="bench-filters" onsubmit="return false">
       <label>Room <select id="f-room"></select></label>
       <label>Class <select id="f-class"></select></label>
@@ -45,8 +45,8 @@
       <label>Length <select id="f-length"><option value="">Any</option><option value="quick">Quick</option><option value="full">Full</option></select></label>
       <label>PC (graphics card) <input type="text" id="f-gpu" maxlength="120" placeholder="e.g. 970" /></label>
       <label>Player <input type="text" id="f-player" maxlength="32" /></label>
-      <label class="bench-check"><input type="checkbox" id="f-standard" checked /> Standard setup only</label>
-      <label class="bench-check"><input type="checkbox" id="f-flagged" /> Show flagged runs</label>
+      <label class="bench-check"><input type="checkbox" id="f-standard" /> Standard setup only</label>
+      <label class="bench-check"><input type="checkbox" id="f-flagged" checked /> Show flagged runs</label>
     </form>
     <p id="bench-status" role="status">Reading the benchmark ledger…</p>
     <section class="bench-chart-box" aria-label="Trend by game version">
@@ -71,5 +71,5 @@
     <div class="bench-compare" id="bench-compare" hidden></div>
     <a class="about-button about-button--primary" href="index.html">Download for Windows</a>
   </main>
-  <script src="benchmarks.js?v=1"></script>
+  <script src="benchmarks.js?v=2"></script>
 </body></html>

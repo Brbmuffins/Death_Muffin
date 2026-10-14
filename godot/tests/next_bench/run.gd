@@ -73,6 +73,11 @@ func _run() -> void:
 	check(DmBenchmark._part_of(Node.new()) == "", "render breakdown: an unrelated node belongs to no part")
 	check(not DmBenchmark.at_refresh_rate(1000.0) and DmBenchmark.capped_warning({"phases": [{"capped": false}], "meta": {}}) == "", "V-Sync warning: none when not at the refresh rate")
 	check(DmBenchmark.capped_warning({"phases": [{"capped": true}], "meta": {"refresh_hz": 170.0}}).contains("170 Hz"), "V-Sync warning: names the refresh rate")
+	var hz := DisplayServer.screen_get_refresh_rate()
+	if hz > 0.0:
+		var paused_at_cap := {"phases": [{"capped": false}], "meta": {}, "breakdown": {"base": {"frame_ms": 1000.0 / hz}}}
+		check(DmBenchmark.capped_warning(paused_at_cap) == "" and DmBenchmark.breakdown_capped(paused_at_cap), "a paused breakdown at the refresh rate does not flag the fight (Helix 2026-10-14: 54 fps fight flagged as V-Sync)")
+	check(DmBenchmark.client_version() == "dev", "an editor run has no installed build version")
 	for p in ph:
 		check(p.has("capped"), "%s reports whether it ran at the refresh rate" % p["label"])
 	check(b.area_nav_on, "the benchmark area's navmesh is on (a sealed area left enemies unable to reach the hero)")

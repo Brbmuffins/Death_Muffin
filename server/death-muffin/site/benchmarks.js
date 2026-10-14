@@ -33,10 +33,6 @@ function fillSelect(sel, pairs) {
 }
 fillSelect($('f-room'), [['', 'Any'], ...Object.entries(ROOMS)]);
 fillSelect($('f-class'), [['', 'Any'], ...Object.entries(CLASSES)]);
-$('f-room').value = 'sanctum';
-$('f-class').value = '2';
-$('f-size').value = 'standard';
-$('f-length').value = 'full';
 
 let runs = [];
 let picked = [];   // ids ticked for compare, at most 2
@@ -84,12 +80,16 @@ function renderChart() {
   const chart = $('bench-chart');
   const legend = $('bench-legend');
   // Versions in order of first appearance (oldest run first); one series per PC.
-  const oldestFirst = runs.filter((r) => r[key] != null && r.version).slice().sort((a, b) => a.id - b.id);
+  // Flagged runs (V-Sync capped, cancelled) are listed in the table but kept out of the trend.
+  const oldestFirst = runs.filter((r) => r[key] != null && r.version && !r.flagged).slice().sort((a, b) => a.id - b.id);
+  // Different setups never share a line: when the filters let several through, each line is one PC on one setup.
+  const setupOf = (r) => `${roomName(r.room)}, ${className(r.discipline)}, ${cap(r.size)}, ${cap(r.length)}`;
+  const mixed = new Set(oldestFirst.map(setupOf)).size > 1;
   const versions = [];
   const series = new Map();
   for (const r of oldestFirst) {
     if (!versions.includes(r.version)) versions.push(r.version);
-    const name = `${r.gpu || 'Unknown GPU'} / ${shortCpu(r.cpu)}`;
+    const name = `${r.gpu || 'Unknown GPU'} / ${shortCpu(r.cpu)}${mixed ? ` — ${setupOf(r)}` : ''}`;
     if (!series.has(name)) series.set(name, new Map());
     const byVersion = series.get(name);
     if (!byVersion.has(r.version)) byVersion.set(r.version, []);

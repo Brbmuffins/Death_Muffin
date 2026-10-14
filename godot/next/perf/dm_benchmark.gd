@@ -552,10 +552,20 @@ static func _part_of(nd: Node) -> String:
 	return ""
 
 
-func _meta(user: Dictionary) -> Dictionary:
+## The installed build's version ("20261013.225809-36e80e1"): the launcher installs each build in a folder of its own with the manifest
+## it came from (launcher/windows/ClientInstaller.cs), so it is read from the manifest.json next to the exe; "dev" for an editor or hand-run build.
+static func client_version() -> String:
+	var mf := OS.get_executable_path().get_base_dir().path_join("manifest.json")
+	if FileAccess.file_exists(mf):
+		var j: Variant = JSON.parse_string(FileAccess.get_file_as_string(mf))
+		if j is Dictionary and j.get("version") is String and String(j["version"]) != "":
+			return String(j["version"])
 	var ver := str(ProjectSettings.get_setting("application/config/version", ""))
-	if ver == "":
-		ver = "dev"
+	return ver if ver != "" else "dev"
+
+
+func _meta(user: Dictionary) -> Dictionary:
+	var ver := client_version()
 	var build := ver
 	var win := DisplayServer.window_get_size()
 	return {
@@ -625,6 +635,8 @@ static func format_text(r: Dictionary) -> String:
 			var drift := absf(float(be["frame_ms"]) - float(b["frame_ms"]))
 			L.append("Everything on again at the end: %.0f draw calls, render CPU %.2f ms, GPU %.2f ms, frame %.2f ms%s" % [be["draws"], be["render_cpu_ms"], be["render_gpu_ms"], be["frame_ms"],
 				"   (drifted %.1f ms from the start: the ms columns are not reliable, the draw calls are)" % drift if drift > maxf(1.0, float(b["frame_ms"]) * 0.2) else ""])
+		if breakdown_capped(r):
+			L.append("(the paused picture ran at your screen's refresh rate: V-Sync is on in the GPU driver, so the ms columns are capped; the draw calls are exact)")
 		if float(b["render_gpu_ms"]) > float(b["render_cpu_ms"]) * 1.5:
 			L.append("(GPU-bound: frame times jitter with the GPU queue; the draw-call column is exact, trust the ms columns less)")
 	return "\n".join(L)
@@ -635,17 +647,20 @@ static func breakdown_unsteady(row: Dictionary) -> bool:
 	return float(row["render_cpu_ms"]) < -0.5 or float(row["frame_ms"]) < -0.5 or float(row["render_gpu_ms"]) < -0.5
 
 
-## "" or the V-Sync warning when a phase (or the paused breakdown) ran at the screen's refresh rate.
+## "" or the V-Sync warning when the measured fight ran at the screen's refresh rate (a run the history flags). The paused breakdown is
+## light enough to reach the cap on a fast PC while the fight is far below it: that only gets `breakdown_capped` (its ms columns are capped).
 static func capped_warning(r: Dictionary) -> String:
 	var capped := false
 	for p: Dictionary in r.get("phases", []):
 		capped = capped or bool(p.get("capped", false))
-	var bd: Dictionary = r.get("breakdown", {})
-	if not bd.is_empty() and float(bd["base"]["frame_ms"]) > 0.0:
-		capped = capped or at_refresh_rate(1000.0 / float(bd["base"]["frame_ms"]))
 	if not capped:
 		return ""
 	return "the frame rate sat at your screen's refresh rate (%.0f Hz): V-Sync is still on (often forced in the GPU driver: NVIDIA Control Panel -> Manage 3D settings -> Vertical sync -> Use the 3D application setting / Off). Numbers at the cap hide the real frame cost; fix it and run again." % float(r["meta"].get("refresh_hz", 0.0))
+
+
+static func breakdown_capped(r: Dictionary) -> bool:
+	var bd: Dictionary = r.get("breakdown", {})
+	return not bd.is_empty() and float(bd["base"]["frame_ms"]) > 0.0 and at_refresh_rate(1000.0 / float(bd["base"]["frame_ms"]))
 
 
 ## Writes the report to user://benchmarks/bench-<datetime>.txt; returns the path ("" on failure).

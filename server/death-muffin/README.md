@@ -102,7 +102,7 @@ The bug agent in `bug-agent/` (every 2 minutes) triages them (`bug-agent/README.
 
 The client uploads every finished in-game benchmark run to `POST /api/benchmarks` (`backend/benchmarks.cjs`, table `benchmark_runs`, migration 048; reply `{ success, data: { id } }`; a repeated `clientRunId` answers the first id; 60 runs per account per day, 30 calls a minute). Everything in it is untrusted and is clamped on the way in; vsync-capped or cancelled runs are stored with `flagged` set and left out of the default list.
 Anyone can read: `GET /api/benchmarks` (filters `room`, `discipline`, `size`, `length`, `version`, `gpu`, `account`, `standard=1`, `includeFlagged=1`, `limit`, `before`) and `GET /api/benchmarks/:id` (metrics, breakdown, text report); only admin / gm accounts (GM mode or not) may `DELETE /api/benchmarks/:id`. nginx strips `/death-muffin/api`, so every route is mounted both as `/api/benchmarks` (the game's base) and `/benchmarks` (the site, like `/leaderboard`).
-The public page is `site/benchmarks.html` (`benchmarks.js`): filters, a per-version trend chart per PC, the runs table and a two-run compare.
+The public page is `site/benchmarks.html` (`benchmarks.js`): filters (default: every run, flagged ones shown with a badge), a per-version trend chart (one line per PC, per PC and setup when several setups are shown; flagged runs left out), the runs table and a two-run compare.
 
 ## Tests
 

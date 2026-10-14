@@ -44,11 +44,12 @@ window, then the run; Back returns there) or `godot -- --benchmark` (results scr
   (graphics preset and fps cap go into the report; the run uses the preset). During the run V-Sync is off, `Engine.max_fps` 0 and auto resolution off; V-Sync, the fps cap
   and the render scale are restored afterwards (also on Esc).
 - Fight: the picked room (its seal broken for the throwaway character, since a sealed area has its navmesh off; the walkable point nearest the centre that a path joins to the doorway), the real wave director with its spawn distance brought in to 6-14 m (play: 18-30 m, which in a small room is only the far corners) and its cap at the size's count, topped up every 0.25 s and trimmed back (raisers add Risen past the cap: the farthest extras vanish, no death or reward), kills, corpses and loot drops costing what they cost in play, god-mode level 60 hero of the picked class on auto combat (Easy), thralls raised directly, seed 20261011,
-  camera zoom 1.0. Warm-up 10 s (not measured: the first frames compile shaders), then 30 s measured. If the measured window (or the paused breakdown) runs at the screen's refresh rate the report warns that
-  V-Sync is still on (often forced in the GPU driver) instead of showing capped numbers as real.
+  camera zoom 1.0. Warm-up 10 s (not measured: the first frames compile shaders), then 30 s measured. If the measured fight runs at the screen's refresh rate the report warns that
+  V-Sync is still on (often forced in the GPU driver) instead of showing capped numbers as real, and the history flags the run; a paused breakdown at the
+  refresh rate (a fast PC, light frozen picture) only notes that the breakdown's ms columns are capped.
 - Measured: average fps, average / median / p95 / p99 / worst frame ms, hitches over 50 ms, average draw calls / objects / primitives
   (`RenderingServer.get_rendering_info`), render CPU and GPU ms (`viewport_get_measured_render_time_*`), `TIME_PROCESS` / `TIME_PHYSICS_PROCESS`, enemy and thrall counts.
-  The report header has the game version, GPU, renderer, resolution, preset, fps cap setting, CPU and thread count.
+  The report header has the game version (`client_version`: the `manifest.json` the launcher installs next to the exe, "dev" otherwise), GPU, renderer, resolution, preset, fps cap setting, CPU and thread count.
 - Render breakdown (after the measured window, ~45 s; a big centred "FIGHT FROZEN ON PURPOSE" banner with the step and the time left covers it, `breakdown_step`): the fight is paused (the picture stays) and moon
   shadows, thralls, enemies, the world (ground, props, area meshes), effects and last the HUD are hidden one at a time, then everything-on is measured
   again (a drift note when the two disagree) for 5 s each (1 s settle); the table lists how many draw calls, ms of render CPU / GPU
