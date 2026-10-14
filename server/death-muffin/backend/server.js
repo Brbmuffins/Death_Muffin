@@ -72,6 +72,8 @@ const pool = mysql.createPool({
 // GM mode (gm-mode.cjs): staff powers only while an allowed account has switched them on; every write in GM mode is logged.
 const gm = require('./gm-mode.cjs').createGmMode(pool, { verifyToken: (t) => jwt.verify(t, process.env.JWT_SECRET) });
 app.use(gm.logWrites);
+// A paid summon credits its boss's drops (drops.cjs, migration 051): no limit on how fast bosses may be summoned and killed.
+app.use(require('./drops.cjs').summonCredits(pool));
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
 app.post('/login', loginLimiter, async (req, res) => {

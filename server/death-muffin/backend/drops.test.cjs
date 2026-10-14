@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const rules = require('./gathering/loot-rules.cjs');
-const { issueTape, claimDrop, seedFor, tapeKey, AHEAD } = require('./drops.cjs');
+const { issueTape, claimDrop, creditSummon, summonCredits, seedFor, tapeKey, AHEAD } = require('./drops.cjs');
 
 const ENV = { JWT_SECRET: 'test-secret', DROPS_MODE: 'audit' };
 const ENFORCE = { JWT_SECRET: 'test-secret' };   // enforce is the default
@@ -29,7 +29,7 @@ function fakeDb({ level = 30, cls = 2, unlocked = ['chapterhouse', 'graves', 'os
     if (q.startsWith('SELECT id, account_id, level, COALESCE')) return [[db.character]];
     if (q.startsWith('SELECT issued, spent')) return [db.tape ? [db.tape] : []];
     if (q.startsWith('INSERT IGNORE INTO character_drop_tape')) {
-      db.tape ??= { issued: p[1], spent: p[2], base_kills: p[3], base_bosses: p[4], base_floors: p[5], last_rune_elite: -1, last_surge_at: 0 };
+      db.tape ??= { issued: p[1], spent: p[2], base_kills: p[3], base_bosses: p[4], base_floors: p[5], boss_credit: 0, last_rune_elite: -1, last_surge_at: 0 };
       return [{}];
     }
     if (q.startsWith('UPDATE character_drop_tape')) {
@@ -279,4 +279,41 @@ test('the Catacomb Depths: a floor clear and a fifth floor\'s chest come from th
   const deep = await claim(f, { kind: 'floor', n: floorN + 1, index: 0, facts: { depth: 30, level: 20 } }, ENFORCE);
   assert.equal(deep.body.success, false, 'a floor far below what the ledger proved is refused');
   assert.ok(f.db.audit.some((a) => a.kind === 'drop_depth'));
+});
+
+test('boss drops are backed by paid summons, with no limit on how fast: a summon spree pays even when the kill ledger believed none', async () => {
+  const f = fakeDb({ bosses: 10 });
+  await issueTape(f.pool, { characterId: 1, env: ENFORCE });
+  f.db.ledger.bosses_total = 10;   // the ledger refused every Prelate of the spree (its rate), so it backs none
+  const facts = { boss: 'prelate', level: 40, waveTier: 0, difficulty: 'medium', first: false };
+  const ctx = { area: 'sanctum', costShards: 5, characterLevel: 30, disciplineId: 'gravecaller', owned: [] };
+  const pick = (n) => roll('boss', n, { ...facts, ...ctx }).length > 0;
+  let n = 5;
+  while (!pick(n)) n++;
+  const refused = await claim(f, { kind: 'boss', n, index: 0, facts }, ENFORCE);
+  assert.equal(refused.body.success, false, 'no summons yet: over budget');
+  f.db.tape.boss_credit = n + 1;   // the summons were paid (summonCredits)
+  const ok = await claim(f, { kind: 'boss', n, index: 0, facts }, ENFORCE);
+  assert.equal(ok.body.success, true, JSON.stringify(ok.body));
+});
+
+test('a paid summon credits the summoner and every active member of the live party it hosts', async () => {
+  const calls = [];
+  const pool = {
+    execute: async (sql, p) => (/FROM party_sessions s JOIN party_session_members/.test(sql) ? [[{ character_id: 20 }, { character_id: 21 }]] : [[]]),
+    query: async (sql, p) => { calls.push({ sql, p }); return [{}]; },
+  };
+  await creditSummon(pool, 10, 1_000_000, { error() {} });
+  assert.match(calls[0].sql, /SET boss_credit = boss_credit \+ 1/);
+  assert.deepEqual(calls[0].p[0], [10, 20, 21]);
+  // The middleware credits only a summon the route answered with success.
+  const seen = [];
+  const mw = summonCredits({ execute: async () => [[]], query: async (sql, p) => { seen.push(p[0]); return [{}]; } });
+  for (const success of [true, false]) {
+    const res = { statusCode: 200, json(b) { return b; } };
+    await new Promise((next) => mw({ method: 'POST', path: '/api/necro-progress/summon-prelate', body: { characterId: 7 } }, res, next));
+    res.json({ success });
+  }
+  await new Promise((r) => setTimeout(r, 5));
+  assert.deepEqual(seen, [[7]]);
 });

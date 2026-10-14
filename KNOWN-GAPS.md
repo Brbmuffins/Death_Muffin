@@ -16,6 +16,8 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
 
 Live runs `AUTHORITY_KILLS=audit` (findings in `progress_audit`, nothing clamped). The 2026-10-13 review found no cheating, but
 these rules would cut honest players under enforce:
+- **Boss kill rate:** the kill ledger still caps boss kills per minute (`boss_rate`), so a summon spree's XP and gold credits would be cut
+  under enforce; boss drops are already backed by paid summons instead (`drops.cjs` boss_credit). The ledger should back them the same way.
 - **Depths floors:** one new player's floors 3-4 were rejected (`floor_invalid` "skipped floors", 1 proven); not yet known
   whether the rule or the run is wrong.
 - **Client-claimed saves:** progress totals (level, XP, gold, area kills, shards) and the bag's non-drop items are still the client's

@@ -81,7 +81,8 @@ start, so changing one needs a restart of `death-muffin-auth`.
   {characterId, kind, n, index, facts, expect?, sessionId?}` rolls that event again from its seed (`gathering/loot-rules.cjs` rollEvent, equal
   to the client's roll by the loot parity fixture) and puts exactly that drop in the bag, once. Bounds: ground open or carried, Wave Speed
   owned, fortune, rising rune chance in roll order, one first kill per boss, a Depths floor within the ledger's proven depth (+1), chests on
-  fifth floors, each kind's tape spent no faster than the kill ledger's accepted kills / bosses / floors, a surge rate. `DROPS_MODE` (read in
+  fifth floors, each kind's tape spent no faster than the kill ledger's accepted kills / floors, a surge rate; boss drops are backed by paid
+  summons instead (migration 051 `boss_credit`: +1 per summon the character or its party host paid, no rate limit). `DROPS_MODE` (read in
   `drops-mode.cjs`): `enforce` (default) refuses a claim past a bound and keeps drop items a bag save adds out of the bag (`drop_unclaimed`);
   `audit` logs both (`drop_*` rows in `progress_audit`) and lets them through, rolled with the client's value up to the hard limits.
   A claim refused over budget answers `resync {kind, spent}`: the client rewinds that tape to the server's position (seeds re-used in order).

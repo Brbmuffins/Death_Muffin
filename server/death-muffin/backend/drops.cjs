@@ -64,7 +64,7 @@ async function ledgerTotals(conn, characterId) {
 }
 
 async function loadTape(conn, characterId) {
-  const sel = 'SELECT issued, spent, base_kills, base_bosses, base_floors, last_rune_elite, last_surge_at FROM character_drop_tape WHERE character_id = ? FOR UPDATE';
+  const sel = 'SELECT issued, spent, base_kills, base_bosses, base_floors, boss_credit, last_rune_elite, last_surge_at FROM character_drop_tape WHERE character_id = ? FOR UPDATE';
   let [[row]] = await conn.execute(sel, [characterId]);
   if (!row) {
     const t = await ledgerTotals(conn, characterId);
@@ -73,6 +73,7 @@ async function loadTape(conn, characterId) {
   }
   return {
     issued: parse(row.issued, {}) || {}, spent: parse(row.spent, {}) || {}, baseKills: num(row.base_kills), baseBosses: num(row.base_bosses), baseFloors: num(row.base_floors),
+    bossCredit: num(row.boss_credit),   // read only here: summonCredits adds to it on its own (saveTape never writes it back)
     lastRuneElite: num(row.last_rune_elite, -1), lastSurgeAt: num(row.last_surge_at),
   };
 }
@@ -213,9 +214,11 @@ function budgetFindings(kind, t, n, totals, now) {
     const allowed = totals.kills - t.baseKills + SLACK.kills;
     if (used > allowed) out.push({ kind: 'drop_budget', drops: kind, used, allowed });
   }
-  if (kind === 'boss' && totals.known) {
+  if (kind === 'boss') {
+    // Every boss is summoned, and every summon is paid on the server: a boss's drops are backed by the summons (the character's own and its
+    // party host's, summonCredits), with no limit on how fast. The kill ledger's accepted bosses still count where they are higher.
     const used = spent('boss');
-    const allowed = totals.bosses - t.baseBosses + SLACK.bosses;
+    const allowed = Math.max(t.bossCredit, totals.known ? totals.bosses - t.baseBosses : 0) + SLACK.bosses;
     if (used > allowed) out.push({ kind: 'drop_budget', drops: 'boss', used, allowed });
   }
   if ((kind === 'floor' || kind === 'chest') && totals.known) {
@@ -355,6 +358,38 @@ async function claimDrop(pool, { characterId, accountId, body, env = process.env
   }
 }
 
+/** A summon the server just took payment for (Prelate bell, area boss, boss key): one boss's drops for the summoner and for every active member of
+ * a live party it hosts (they fight the same boss). Rows a character has no tape for yet get nothing (its tape starts fresh). */
+async function creditSummon(pool, characterId, now = Date.now(), log = console) {
+  try {
+    const ids = [characterId];
+    const [rows] = await pool.execute(
+      `SELECT m.character_id FROM party_sessions s JOIN party_session_members m ON m.session_id = s.id
+        WHERE s.host_character_id = ? AND s.status = 'open' AND s.last_host_at >= ? AND m.status = 'active' AND m.character_id <> ?`,
+      [characterId, now - LIMITS.SESSION_IDLE_MS, characterId]).catch(() => [[]]);
+    for (const r of rows) ids.push(num(r.character_id));
+    await pool.query('UPDATE character_drop_tape SET boss_credit = boss_credit + 1 WHERE character_id IN (?)', [ids]);
+  } catch (err) {
+    log.error(`[drops] summon credit failed: ${err.code || err.message}`);
+  }
+}
+
+const SUMMON_PATHS = new Set(['/api/necro-progress/summon-prelate', '/api/necro-progress/summon-boss', '/api/boss-key/summon']);
+
+/** Express middleware (before the routes): a successful summon credits its boss's drops (creditSummon). */
+function summonCredits(pool, { now = () => Date.now(), log = console } = {}) {
+  return (req, res, next) => {
+    if (req.method !== 'POST' || !SUMMON_PATHS.has(req.path)) return next();
+    const json = res.json.bind(res);
+    res.json = (body) => {
+      const cid = Number(req.body && req.body.characterId);
+      if (res.statusCode < 400 && body && body.success === true && Number.isInteger(cid) && cid > 0) creditSummon(pool, cid, now(), log);
+      return json(body);
+    };
+    next();
+  };
+}
+
 function mountDrops(app, pool, { requireAuth, ownsCharacter, limiter, env = process.env, now = () => Date.now(), log = console }) {
   const pre = limiter ? [limiter] : [];
   const owned = async (req, res) => {
@@ -385,4 +420,4 @@ function mountDrops(app, pool, { requireAuth, ownsCharacter, limiter, env = proc
   });
 }
 
-module.exports = { mountDrops, issueTape, claimDrop, seedFor, tapeKey, dropsMode, AHEAD, SLACK };
+module.exports = { mountDrops, issueTape, claimDrop, creditSummon, summonCredits, seedFor, tapeKey, dropsMode, AHEAD, SLACK };

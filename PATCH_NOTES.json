@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-10-14",
+    "title": "Boss Rush",
+    "items": [
+      "Summon bosses back to back as fast as you like: every boss you pay for now always drops its loot, and so does every boss your party's host summons while you are with them.",
+      "Fixed: after a fast run of Prelates, boss loot could be refused when you picked it up."
+    ]
+  },
+  {
+    "date": "2026-10-14",
     "title": "Fair Loot, Finished",
     "items": [
       "New Reaper spell, Scythe Weave: twirl the scythe in a figure eight across the half-circle in front of you, two passes that hit everything in reach. Free, 0.9 second cooldown, and holding its key keeps you weaving. Place it on your bar from the Spellbook (L).",
