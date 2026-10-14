@@ -3,6 +3,7 @@
     "date": "2026-10-13",
     "title": "Benchmark Rooms",
     "items": [
+      "The Reaper's souls are now small glowing green skulls instead of tadpole-shaped wisps, both when they fly to you and when Unleash Souls circles you.",
       "The Benchmark button on character select now opens a setup window: pick the room, the class, the fight size (Light, Standard or Heavy) and the length (Quick or Full). It remembers your last pick.",
       "Every room keeps its own creatures and their abilities, but every enemy has the same health and damage in every room, so kills cost the same everywhere.",
       "The Bell Sanctum with a Gravecaller, Standard size, Full length is the Standard setup: the one whose numbers compare between PCs. Other picks are marked custom.",
