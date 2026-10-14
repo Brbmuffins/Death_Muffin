@@ -284,14 +284,17 @@ func _vault_state(data: Dictionary) -> void:
 func _vault(call: Callable) -> void:
 	vault.set_busy(true)
 	var r: DmResult = await call.call()
-	vault.set_busy(false)
 	if not r.ok:
+		vault.set_busy(false)
 		vault.set_error(r.error)
 		return
-	await game.refresh_inventory()
 	if r.data is Dictionary and r.data.has("bag"):
-		_vault_state(r.data)
+		_vault_state(r.data)   # draw the server's answer at once; the bag refresh runs behind it
+		vault.set_busy(false)
+		await game.refresh_inventory()
 	else:
+		vault.set_busy(false)
+		await game.refresh_inventory()
 		var g: DmResult = await game.api.get_vault(cid())
 		if g.ok:
 			_vault_state(g.data)
@@ -305,13 +308,17 @@ func _vault_sort() -> void:
 		vault.set_busy(false)
 		vault.set_error(r.error)
 		return
+	var have_vault: bool = r.data is Dictionary and r.data.has("vault")
+	if have_vault:
+		_vault_state(r.data)   # the sorted Vault shows while the bag sort is on its way
 	var err: String = await game.bag_sort(ui.locks.remap, func(s: Dictionary) -> bool: return ui.locks.is_locked(s))
-	var g: DmResult = await game.api.get_vault(cid())
 	vault.set_busy(false)
-	if g.ok:
-		_vault_state(g.data)
-	elif r.data is Dictionary and r.data.has("bag"):
-		_vault_state(r.data)
+	if have_vault:
+		_vault_state({"bag": game.slots, "vault": r.data["vault"]})   # the bag sort left the Vault alone: no second Vault fetch
+	else:
+		var g: DmResult = await game.api.get_vault(cid())
+		if g.ok:
+			_vault_state(g.data)
 	if err != "":
 		vault.set_note("Vault sorted, but the bag could not be sorted: %s" % err)
 
@@ -324,6 +331,13 @@ func _take_all(_kind: String, slots: Array) -> void:
 		note = "Took what fit. %s" % r.error
 	elif r.data is Dictionary and str(r.data.get("stopped", "")) != "":
 		note = "Took what fit. %s" % r.data["stopped"]
+	if r.ok and r.data is Dictionary and r.data.has("bag"):
+		_vault_state(r.data)   # the reply holds the new bag and Vault: draw it now, refresh the bag behind it
+		vault.set_busy(false)
+		if note != "":
+			vault.set_note(note)
+		await game.refresh_inventory()
+		return
 	vault.set_busy(false)
 	await game.refresh_inventory()
 	var g: DmResult = await game.api.get_vault(cid())

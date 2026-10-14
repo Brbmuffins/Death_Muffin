@@ -4,7 +4,8 @@
     "title": "Come Back Anytime",
     "items": [
       "Leaving a party no longer locks you out of it: rejoin and you earn XP, gold and loot again right away.",
-      "New parties are Open by default, so friends can hop straight in with Join. Tick Closed when hosting if you want invite-only."
+      "New parties are Open by default, so friends can hop straight in with Join. Tick Closed when hosting if you want invite-only.",
+      "The Vault's Sort, Take and Deposit buttons now update the window as soon as the server answers, instead of after extra refreshes."
     ]
   },
   {
