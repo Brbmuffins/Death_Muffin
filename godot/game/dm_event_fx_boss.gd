@@ -210,7 +210,7 @@ func area_boss_event(ev: Dictionary, ms: float) -> void:
 			for t in tg:
 				var x := float(t[0])
 				var z := float(t[1])
-				fx.beam(Vector3(x, 1.6, z), Vector3(ex, 2.2, ez), 0x9cc43a, 0.07, 900.0)
+				fx.beam(Vector3(x, 1.6, z), Vector3(ex, 2.2, ez), 0x9cc43a, 0.07, 0.9)
 				fx.emit({"x": x, "y": 1.4, "z": z, "count": 4, "color": 0x9cc43a, "spread": 0.3, "speed": 0.5, "up": 1.4, "life": 0.7, "size": 0.18})
 			if tg.size() > 0 and not saint_link_told:
 				saint_link_told = true
