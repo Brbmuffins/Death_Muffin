@@ -184,7 +184,7 @@ func _bank_reaper_soul(b: DmHeroBody, at: Vector3) -> void:
 	_soul_fx.shot(from, func() -> Variant:
 		var hero: Node3D = bw.get_ref() as Node3D
 		return Vector3(hero.global_position.x, 1.2, hero.global_position.z) if hero != null else null,
-		9.0, 0.0, "sprite", DmReaperRites.GREEN, {"tex": "wisp", "size": 1.0, "hover": SOUL_HOVER_S, "hover_r": 1.0,
+		9.0, 0.0, "sprite", DmReaperRites.GREEN, {"tex": "skull", "size": 0.7, "hover": SOUL_HOVER_S, "hover_r": 1.0,
 			"on_arrive": func(pos: Vector3) -> void: _soul_fx.emit(pos.x, pos.y, pos.z, 6, DmReaperRites.GREEN, 0.25, 1.4, 0.8, 0.4, 0.18)})
 
 

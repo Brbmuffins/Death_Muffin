@@ -7,7 +7,8 @@
       "Every room keeps its own creatures and their abilities, but every enemy has the same health and damage in every room, so kills cost the same everywhere.",
       "The Bell Sanctum with a Gravecaller, Standard size, Full length is the Standard setup: the one whose numbers compare between PCs. Other picks are marked custom.",
       "The results now show kills per minute and a \"vs last run\" column against your previous run of the same setup (green better, red worse).",
-      "Every finished run is added to the new public Benchmarks page on the website, with your name and your PC's graphics card and processor, so we can track performance across updates."
+      "Every finished run is added to the new public Benchmarks page on the website, with your name and your PC's graphics card and processor, so we can track performance across updates.",
+      "The Reaper's souls are now small glowing green skulls instead of tadpole-shaped wisps, both when they fly to you and when Unleash Souls circles you."
     ]
   },
   {
