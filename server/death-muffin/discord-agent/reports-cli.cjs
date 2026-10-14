@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * DB side of in-game bug reports for the Discord dev-agent runner (report threads in #manual-bugs, !report) and announce-release.sh.
+ * DB side of in-game bug reports for the Discord dev-agent runner (report threads in #in-game-reports, !report) and announce-release.sh.
  * The agent itself never touches the database.
  *
  *   node reports-cli.cjs list                   -> JSON array of 'new' reports with context and game log (oldest first, at most 25)

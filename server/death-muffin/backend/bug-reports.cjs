@@ -1,5 +1,5 @@
 /**
- * Player bug reports (Settings → Report a bug). The Discord dev agent's runner (server/death-muffin/discord-agent/) opens a #manual-bugs thread
+ * Player bug reports (Settings → Report a bug). The Discord dev agent's runner (server/death-muffin/discord-agent/) opens a #in-game-reports thread
  * for each 'new' row and sets it 'triaged' with a note for the player; announce-release.sh sets 'released' when a `Bug report #<id>:` fix ships.
  *
  *   POST /api/bug-reports        -> { category, message, characterId?, context? }   files one report

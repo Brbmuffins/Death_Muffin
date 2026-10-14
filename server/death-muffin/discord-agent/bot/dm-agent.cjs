@@ -1,6 +1,6 @@
 'use strict';
 // Death Muffin dev-agent adapter for the Muffin Core Discord bot. A dumb transport: it forwards @mentions / thread messages / ✅❌ reactions
-// in the configured channels (#death-muffin, and #manual-bugs for in-game bug reports) to the loopback runner and posts whatever the runner asks
+// in the configured channels (#death-muffin, and #in-game-reports for in-game bug reports) to the loopback runner and posts whatever the runner asks
 // it to post, including opening a thread for each new bug report. All decisions (allow-list, approver
 // gate, tiers, rate limits) live in the runner; the bot holds no authority and no secret except the shared runner secret.
 // Installed to /opt/muffin/discord/dm-agent.js. Env (from /opt/muffin/dm-agent.env): DM_AGENT_SECRET, DM_AGENT_URL, DM_AGENT_CHANNEL_ID (optional override).

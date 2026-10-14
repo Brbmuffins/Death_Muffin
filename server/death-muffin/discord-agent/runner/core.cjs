@@ -201,7 +201,7 @@ function createRunner(cfgIn, opts = {}) {
     return { id, threadId: null, channelId: ev.channelId, creatorId: String(ev.userId), branch: `discord/${id}`, worktree: null, base: null, sessionId: null,
       model: cfg.defaultModel, status: 'idle', turns: 0, createdAt: new Date(now()).toISOString(), lastActive: now(), queue: [], proposal: null, running: false, round: 1, history: [], totalTurns: 0 };
   }
-  const ourChannel = (id) => !!id && [cfg.channelId, cfg.bugChannelId].some((c) => c && String(c) === String(id));   // #death-muffin + #manual-bugs
+  const ourChannel = (id) => !!id && [cfg.channelId, cfg.bugChannelId].some((c) => c && String(c) === String(id));   // #death-muffin + #in-game-reports
   const inScope = (ev) => ourChannel(ev.threadId ? ev.parentId : ev.channelId);
 
   async function handleEvent(ev) {
@@ -1412,7 +1412,7 @@ function createRunner(cfgIn, opts = {}) {
     if (!auth.isOwner(msg.userId)) ownerPing(target, `${nameOf(msg.userId)} ran a rollback (${ok ? 'ok' : 'FAILED'}).`);
   }
 
-  // ---------- in-game bug reports -> one thread each in #manual-bugs (owner 2026-10-14) ----------
+  // ---------- in-game bug reports -> one thread each in #in-game-reports (owner 2026-10-14) ----------
   // The devs see what players report (message, context, game log as a .txt) and bring the agent in with an @-mention; nothing works on a report by
   // itself. state/report-threads.json (report id -> thread) keeps a report from being posted twice; the DB status ('triaged', "Looked at") is
   // what the player sees. At most cfg.bugThreadsPerHour threads an hour: the rest stay 'new' and are posted next hour.

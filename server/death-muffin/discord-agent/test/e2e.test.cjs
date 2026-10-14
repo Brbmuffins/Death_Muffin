@@ -329,7 +329,7 @@ test('!report lists in-game bug reports and hands one, with its game log, to the
   await until(() => texts(thread).some((t) => /LOG-MARKER-77/.test(t)), d.ad);   // fake claude echoes the prompt marker back below
 });
 
-test('bug reports: each new report opens one #manual-bugs thread with its log attached; the agent waits for an @-mention there, then gets the report', async () => {
+test('bug reports: each new report opens one #in-game-reports thread with its log attached; the agent waits for an @-mention there, then gets the report', async () => {
   const state = require('os').tmpdir() + `/dm-reports-${process.pid}-${Date.now()}`; fs.mkdirSync(state);
   const report = (id, msg) => `{"id":${id},"category":"bug","status":"new","reporter":"Dravos","createdAt":"2026-10-14T09:00:00Z","message":"${msg}","context":{"area":"graves","level":12,"coop":false,"log":"LOG-MARKER-77 SCRIPT ERROR: door"}}`;
   // fake DB: `list` = every report not yet marked posted (marks are files in $state)

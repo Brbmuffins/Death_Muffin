@@ -119,7 +119,7 @@ SELECT a.created_at, ac.username, a.character_id, a.kind, a.mode, a.action, a.de
 ## Player bug reports
 
 Settings -> Report a bug in the client posts to `POST /api/bug-reports` (10 per account per day; `GET /api/bug-reports/mine` lists the player's own; table `bug_reports`, migration 029).
-Each new report gets its own thread in #manual-bugs (message, context, game log attached), opened by the Discord dev agent's runner; the devs bring the agent in with an @-mention (`discord-agent/README.md`). `announce-release.sh` marks reports whose `Bug report #<id>:` fix went live as released.
+Each new report gets its own thread in #in-game-reports (message, context, game log attached), opened by the Discord dev agent's runner; the devs bring the agent in with an @-mention (`discord-agent/README.md`). `announce-release.sh` marks reports whose `Bug report #<id>:` fix went live as released.
 
 ## Benchmark history
 

@@ -209,9 +209,9 @@ agent turn ── build-sound.sh <id> <take> (sandboxed ffmpeg: sfx -> godot/ass
 - Config keys (optional): `soundUsers` (Discord ids), `soundKeyFile`, `soundRunScript` (`<toolsDir>/sound-run.mjs`), `soundLedgerFile`.
 - Tests: `test/sound.test.cjs` (validation, refusal, ledger, a fake ElevenLabs server for sound-run.mjs); no API is called.
 
-## In-game bug reports (#manual-bugs)
+## In-game bug reports (#in-game-reports)
 
-Every new player report (Settings -> Report a bug) gets its own thread in #manual-bugs (`bugChannelId`), so the devs see what is reported.
+Every new player report (Settings -> Report a bug) gets its own thread in #in-game-reports (`bugChannelId`), so the devs see what is reported.
 Every `bugPollMin` (2) minutes the runner reads the `new` reports (`reports-cli.cjs list`, installed beside the runner), and the bot posts each one:
 category, reporter, the message quoted, area / level / discipline / solo or co-op / client release, and `bug-report-<id>.txt` with the full
 context and game log. The post opens the thread (`🐞 #<id> <message>`, player text scrubbed of mentions and links; nobody is pinged) and the

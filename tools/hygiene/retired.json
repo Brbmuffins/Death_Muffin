@@ -239,7 +239,7 @@
     {
       "id": "bug-agent",
       "pattern": "bug-agent|run-bug-agent|bugfix/reports-",
-      "reason": "the 2-minute bug-fix agent is retired (DECISIONS B27): reports open #manual-bugs threads via the Discord agent's runner",
+      "reason": "the 2-minute bug-fix agent is retired (DECISIONS B27): reports open #in-game-reports threads via the Discord agent's runner",
       "allow": [
         "tools/hygiene/**"
       ]

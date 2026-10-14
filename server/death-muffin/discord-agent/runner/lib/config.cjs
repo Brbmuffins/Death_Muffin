@@ -2,7 +2,7 @@
 const fs = require('fs');
 const DEFAULTS = {
   channelId: '',
-  // In-game bug reports (owner 2026-10-14): each new report gets its own thread here (#manual-bugs) with the game log attached, so the devs see
+  // In-game bug reports (owner 2026-10-14): each new report gets its own thread here (#in-game-reports) with the game log attached, so the devs see
   // what is reported; the agent only works on one when someone @-mentions it in that thread. Empty = off.
   bugChannelId: '',
   bugPollMin: 2,                // how often the runner looks for new reports

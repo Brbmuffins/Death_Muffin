@@ -99,7 +99,7 @@ function makeDiscord(runner, over = {}) {
   const client = new EventEmitter(); client.user = { id: IDS.BOT };
   client.channels = { fetch: async (id) => world.chans.get(id) };
   const main = new Chan(world, IDS.CHAN);
-  const bugs = new Chan(world, IDS.BUGS);   // #manual-bugs (used when the config sets bugChannelId)
+  const bugs = new Chan(world, IDS.BUGS);   // #in-game-reports (used when the config sets bugChannelId)
   const fetchImpl = async (url, init = {}) => {
     const u = new URL(url); const body = init.body ? JSON.parse(init.body) : undefined; let out;
     if (u.pathname === '/config') out = { channelId: runner.cfg.channelId, bugChannelId: runner.cfg.bugChannelId || '' };
