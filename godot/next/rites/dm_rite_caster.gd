@@ -362,6 +362,8 @@ func _gesture_cast(rite: String) -> void:
 	if not DmRiteGestures.has(rite):
 		return
 	var tempo := _gesture_tempo(rite)
+	if rite == "scythe_weave" and int(p.get("weaveStroke", 0)) == 1:
+		rite = DmRiteGestures.WEAVE_RISE_KEY   # Scythe Weave's strokes alternate (rite_scythe_weave.gd)
 	if rite == "bone_needle" and bool(p["loadout"]["reap"]):
 		rite = DmRiteGestures.REAP_KEY   # the Scythe swings instead of casting
 	var yaw := float(_body.get("yaw")) if _body != null and _body.get("yaw") != null else 0.0
