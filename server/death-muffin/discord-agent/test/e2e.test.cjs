@@ -361,6 +361,25 @@ test('bug reports: each new report opens one #manual-bugs thread with its log at
   job.lastActive = job.seenAt = Date.now() - 49 * 3600e3; assert.equal(w.runner.archiveQuiet(), 1);
 });
 
+test('"discard this" in plain words discards like !discard: in a worked thread, and in a report thread nobody brought the agent into', async () => {
+  const fake = `case "$1" in list) echo '[{"id":9201,"category":"bug","status":"new","reporter":"Dravos","createdAt":"2026-10-14T09:00:00Z","message":"a test","context":{}}]';; posted) echo '{}';; *) echo null;; esac`;
+  const w = makeWorld({ godot: true, reportsCmd: fake, bugChannelId: IDS.BUGS }); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'what does the ascension altar do?');
+  const job = Object.values(w.runner.jobs())[0]; await until(() => !job.running && texts(thread).length >= 1, d.ad);
+  await d.say(thread, IDS.HELIX, 'should we discard this?'); await until(() => !job.running && !job.queue.length, d.ad);
+  assert.equal(job.status, 'idle', 'a question goes to the agent');
+  await d.say(thread, IDS.HELIX, 'No you can discard this as a test');
+  await until(() => texts(thread).some((t) => /^Discarded\./.test(t)), d.ad);
+  assert.equal(job.status, 'discarded'); assert.equal(job.worktree, null);
+  const again = await d.say(thread, IDS.HELIX, 'discard it');
+  assert.ok(again.replies.some((r) => /Nothing is open here to discard/.test(r.content)), 'nothing left to discard');
+  await w.runner.postReports(); const rt = await until(() => d.world.threads.find((t) => /#9201/.test(t.name || '')), d.ad);
+  const rjob = w.runner.jobs()[rt.id];
+  await d.say(rt, IDS.HELIX, 'discard this');
+  await until(() => texts(rt).some((t) => /^Discarded\./.test(t)), d.ad);
+  assert.equal(rjob.status, 'discarded'); assert.equal(rjob.round, 0, 'no round was started to discard it');
+});
+
 test('long replies are split into several messages with code blocks kept closed; huge ones become a preview plus reply.md', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.OWNER, 'LONG-REPLY please');

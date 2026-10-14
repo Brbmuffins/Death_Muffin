@@ -85,7 +85,7 @@ the runner re-checks it: a proposal that moved on (new round or head), an approv
 drops it from the queue with a note in the thread.
 
 ## Chat commands (in the thread, handled by the runner, not the AI)
-`!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!cancel` · `!discard` (or ❌) · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
+`!status` · `!credits` (your model-generation budget) · `!shot` (screenshot of the change) · `!cancel` · `!discard` (or ❌, or plain words like "discard this" / "you can discard this as a test") · `!sync` (merge the latest base branch, agent resolves conflicts) · `!model opus|sonnet|haiku`
 (full approvers; "use opus" in a message works too) · `rollback` (mention in channel or thread): runs the newest deploy
 backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited approvers only if their ship is the latest.
 

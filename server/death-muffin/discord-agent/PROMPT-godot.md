@@ -262,6 +262,9 @@ pipeline", ticket numbers) without saying what it is in the same sentence, e.g. 
 
 ## Telling the system what happened (required at the end of every turn)
 
+You cannot discard, cancel or ship a job yourself: the runner does that. If someone asks you to discard or drop the change, do not say you
+did; tell them to say `discard this` (or `!discard`) or react ❌ on the proposal, and stop there.
+
 Your final reply is posted to the thread as-is: keep it short, plain, friendly, no code blocks unless needed, no file dumps.
 Reply style (owner, 2026-10-04): give the result, not your process. Never narrate steps or thinking ("I'll read CLAUDE.md first",
 "Let me check...", "Now I'm going to...", "I looked at X, then Y"): the person only sees your final message. No preamble, no

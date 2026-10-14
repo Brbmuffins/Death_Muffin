@@ -6,6 +6,11 @@ function editDistance(a, b) {
   for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1), i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1] ? d[i - 2][j - 2] + 1 : Infinity);
   return d[a.length][b.length];
 }
+// "discard", "discard this", "no you can discard this as a test", "ok discard it please": a short plain-words discard of the whole job.
+// "should we discard the old rows?" or "discard the unused helper" are requests for the agent, not this.
+function isDiscardPhrase(text) {
+  return /^(?:<@[!&]?\d+>\s*)*(?:(?:ok(?:ay)?|no|nah|yes|yeah|yep|sure|please|pls|just|go ahead(?: and)?|you can|you may|can you|let'?s)[\s,.!]*)*discard(?:\s+(?:it|this|that|this one|the (?:change|thread|job|branch|report|test)))?(?:\s+(?:as (?:a |the )?test|it'?s (?:a |just a )?test|please|pls|now|then|for now|thanks|thx|thank you))*\s*[.!]*$/i.test(String(text || '').trim());
+}
 function cancelTypo(text) {
   const w = String(text || '').replace(/^(?:<@[!&]?\d+>\s*)*/, '').trim().toLowerCase().replace(/[.!?]+$/, '').replace(/^!/, '');
   if (!/^[a-z]{3,8}$/.test(w)) return false;
@@ -235,6 +240,14 @@ function createRunner(cfgIn, opts = {}) {
     const job = jobs[ev.threadId];
     if (!job || goneThread(job.threadId)) return { action: 'ignore' };
     if (!ev.mentioned && cfg.threadReplyRequiresMention) return { action: 'ignore' };
+    // "discard this" / "you can discard this as a test" in plain words means !discard (owner 2026-10-14: Helix asked the agent to discard a
+    // test report; the agent said it would but cannot, so the thread stayed open). Short, no question; before the report-thread mention gate.
+    if (isDiscardPhrase(text)) {
+      if (['shipped', 'discarded'].includes(job.status) && !job.worktree) return { action: 'reply', text: 'Nothing is open here to discard.' };
+      if (job.status === 'shipping') return { action: 'reply', text: 'A ship cannot be stopped halfway; it finishes (or rolls back) on its own.' };
+      audit.log('request', { userId: msg.userId, role, kind: 'thread', job: job.id, text });
+      return handleCommand(job, msg, '!discard');
+    }
     // A bug-report thread is for the devs to talk the report over: the agent starts on it only when someone @-mentions it. Once a change is
     // open there, replies go to it like in any thread (owner 2026-10-14).
     if (job.bugReportId && !ev.mentioned && !text.startsWith('!') && !job.running && job.status !== 'shipping' && !(job.worktree && fs.existsSync(job.worktree))) return { action: 'ignore' };
@@ -1504,4 +1517,4 @@ function createRunner(cfgIn, opts = {}) {
   setTimeout(() => drainShipQueue(), 0);   // ships queued before a runner restart
   return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, tidy, archiveQuiet, postReports, reportThreads: () => reportThreads, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }
-module.exports = { createRunner, progressNote, cancelTypo, failedSuites };
+module.exports = { createRunner, progressNote, cancelTypo, isDiscardPhrase, failedSuites };
