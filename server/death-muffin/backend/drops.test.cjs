@@ -38,8 +38,17 @@ function fakeDb({ level = 30, cls = 2, unlocked = ['chapterhouse', 'graves', 'os
     }
     if (q.startsWith('SELECT kills_total, bosses_total')) return [db.ledger ? [db.ledger] : []];
     if (q.startsWith('SELECT facts, items, claimed')) { const e = db.events.get(evKey(p)); return [e ? [e] : []]; }
-    if (q.startsWith('INSERT INTO character_drop_events')) { db.events.set(evKey(p), { facts: p[3], items: p[4], claimed: p[5] }); return [{}]; }
-    if (q.startsWith('UPDATE character_drop_events SET claimed')) { db.events.get(evKey([p[1], p[2], p[3]])).claimed = p[0]; return [{}]; }
+    if (q.startsWith('INSERT INTO character_drop_events')) { db.events.set(evKey(p), { facts: p[3], items: p[4], claimed: p[5], rune_claimed: 0 }); return [{}]; }
+    if (q.startsWith('UPDATE character_drop_events SET claimed')) {
+      const e = db.events.get(evKey([p[1], p[2], p[3]]));
+      e.claimed = p[0];
+      if (q.includes('rune_claimed = 1')) e.rune_claimed = 1;
+      return [{}];
+    }
+    if (q.startsWith('SELECT MAX(n) AS n FROM character_drop_events')) {
+      const ns = [...db.events.entries()].filter(([k, e]) => k.startsWith(`${p[0]}|elite|`) && e.rune_claimed === 1 && Number(k.split('|')[2]) < p[1]).map(([k]) => Number(k.split('|')[2]));
+      return [[{ n: ns.length ? Math.max(...ns) : null }]];
+    }
     if (q.startsWith('SELECT COUNT(*) AS n FROM character_drop_events')) {
       const n = [...db.events.entries()].filter(([k, e]) => k.startsWith(`${p[0]}|boss|`) && JSON.parse(e.facts).boss === p[1] && JSON.parse(e.facts).first === true).length;
       return [[{ n }]];
@@ -162,8 +171,12 @@ test('a boss\'s first-kill drop comes once per character', async () => {
   await claim(f, { kind: 'boss', n: 0, index: 0, facts });
   await claim(f, { kind: 'boss', n: 1, index: 0, facts });
   assert.ok(f.db.audit.some((a) => a.kind === 'drop_first'), 'the second "first kill" is not believed');
-  const second = JSON.parse(f.db.events.get('1|boss|1').facts);
-  assert.equal(second.first, false);
+  assert.equal(JSON.parse(f.db.events.get('1|boss|1').facts).first, true, 'audit: logged, the roll unchanged');
+  const e = fakeDb();
+  await issueTape(e.pool, { characterId: 1, env: ENFORCE });
+  await claim(e, { kind: 'boss', n: 0, index: 0, facts }, ENFORCE);
+  const refused = await claim(e, { kind: 'boss', n: 1, index: 0, facts }, ENFORCE);
+  assert.equal(refused.body.success, false, 'enforce: refused');
 });
 
 test('gear lands as a new instance carrying the server roll\'s item level and affixes', async () => {
@@ -197,4 +210,54 @@ test('a rune the character already has is not granted (it never dropped for them
   assert.equal(r.body.success, false);
   assert.match(r.body.error, /already have that rune/);
   assert.ok(!f.db.inv.some((row) => row.item_id === hit.rune));
+});
+
+/** The first elite index from `from` whose roll at full rising chance (3x) sheds a rune but would not at the bound `atPity`. */
+function runeOnlyWithPity(from, atPity, facts) {
+  const ctx = { characterLevel: 30, disciplineId: 'gravecaller', owned: [] };
+  for (let n = from; n < AHEAD.elite; n++) {
+    const hi = roll('elite', n, { ...facts, ...ctx, runePity: 3 });
+    const lo = roll('elite', n, { ...facts, ...ctx, runePity: atPity });
+    const i = hi.findIndex((d) => d.item_id.startsWith('rune_'));
+    if (i >= 0 && !lo.some((d) => d.item_id.startsWith('rune_'))) return { n, i, rune: hi[i].item_id };
+  }
+  return null;
+}
+
+test('audit never changes what dropped: a rising rune chance past the bound is logged, and the rune the client showed is granted', async () => {
+  const f = fakeDb();
+  await issueTape(f.pool, { characterId: 1, env: ENV });
+  const facts = { def: 'robber', area: 'graves', level: 12, waveTier: 0, difficulty: 'medium', itemChanceMult: 1 };
+  const hit = runeOnlyWithPity(0, rules.runePityMult(0), facts);
+  assert.ok(hit, 'some elite sheds a rune only at the higher chance');
+  // Bound for index n with no rune before it: n elites dry. Claim with 3x where the bound is lower: audit grants the client's roll.
+  const r = await claim(f, { kind: 'elite', n: hit.n, index: hit.i, facts: { ...facts, runePity: 3 }, expect: hit.rune });
+  if (rules.runePityMult(hit.n) < 3) assert.ok(f.db.audit.some((a) => a.kind === 'drop_pity'));
+  assert.equal(r.body.success, true, JSON.stringify(r.body));
+  assert.equal(r.body.data.item.item_id, hit.rune);
+  assert.ok(!f.db.audit.some((a) => a.kind === 'drop_mismatch'));
+});
+
+test('the rising rune chance follows roll order: a rune picked up later does not shorten an earlier elite\'s bound', async () => {
+  const f = fakeDb();
+  await issueTape(f.pool, { characterId: 1, env: ENFORCE });
+  const facts = { def: 'robber', area: 'graves', level: 12, waveTier: 0, difficulty: 'medium', itemChanceMult: 1 };
+  const ctx = { characterLevel: 30, disciplineId: 'gravecaller', owned: [] };
+  // A rune at a later elite, claimed first.
+  let later = null;
+  for (let n = 20; n < AHEAD.elite && !later; n++) {
+    const items = roll('elite', n, { ...facts, ...ctx, runePity: rules.runePityMult(n) });
+    const i = items.findIndex((d) => d.item_id.startsWith('rune_'));
+    if (i >= 0) later = { n, i };
+  }
+  assert.ok(later, 'a later elite sheds a rune');
+  const r1 = await claim(f, { kind: 'elite', n: later.n, index: later.i, facts: { ...facts, runePity: rules.runePityMult(later.n) } }, ENFORCE);
+  assert.equal(r1.body.success, true, JSON.stringify(r1.body));
+  // Then an earlier elite (dry 10) whose drop is picked up afterwards: its bound counts from before it, not from the later rune.
+  let early = null;
+  for (let n = 10; n < later.n && !early; n++) if (roll('elite', n, { ...facts, ...ctx, runePity: rules.runePityMult(n) }).length) early = n;
+  assert.ok(early != null);
+  const r2 = await claim(f, { kind: 'elite', n: early, index: 0, facts: { ...facts, runePity: rules.runePityMult(early) } }, ENFORCE);
+  assert.equal(r2.body.success, true, JSON.stringify(r2.body));
+  assert.ok(!f.db.audit.some((a) => a.kind === 'drop_pity'), JSON.stringify(f.db.audit));
 });

@@ -319,6 +319,28 @@ func _account_for(token: Variant) -> Variant:
 		return null
 	return db["accounts"].get(String(token).substr(8))
 
+## GET /api/sessions/:id/members/:cid/build (party-sessions.cjs memberBuild): the host reads an active member's character, worn slots and progression.
+func _member_build(p: String, account: String) -> Dictionary:
+	var parts := p.trim_prefix("/api/sessions/").split("/", false)   # sid, members, cid, build
+	if parts.size() != 4:
+		return _err("bad request", 400)
+	var sid := String(parts[0])
+	var cid := int(parts[2])
+	var s: Dictionary = _sessions._sessions.get(sid, {})
+	if s.is_empty():
+		return _err("session not found", 404)
+	if String(s["host_account"]) != account:
+		return _err("Only the host can read a member's build.", 403)
+	if _sessions.active_member(sid, cid, _now()).is_empty():
+		return _err("That character is not in the session.", 404)
+	var acc: Dictionary = db["accounts"].get(_character_owner(cid), {})
+	if acc.is_empty() or acc.get("character") == null:
+		return _err("That character is not in the session.", 404)
+	var worn: Array = _rows(acc).filter(func(r: Dictionary) -> bool: return int(r.get("slot_index", 0)) >= 100)
+	var n: Dictionary = acc.get("necro", {})
+	return _ok({"character": acc["character"].duplicate(), "slots": worn,
+		"local": {"boons": n.get("boons", {}), "vows": n.get("vows", {}), "damageTier": n.get("damageTier", 0), "legionTier": n.get("legionTier", 0)}})
+
 ## The account key that owns a character id ("" = none), for the party-session membership checks.
 func _character_owner(character_id: int) -> String:
 	for k in db["accounts"]:
@@ -426,6 +448,8 @@ func _route(method: String, p: String, query: String, body: Dictionary, token: V
 		return {"status": 200, "body": _character_view(acc)}
 
 	# Party sessions (same API as the VPS backend, SESSION-REPORTS.md): an offline solo session reports through the identical client path.
+	if method == "GET" and p.begins_with("/api/sessions/") and p.ends_with("/build"):
+		return _member_build(p, String(token).substr(8))
 	if p == "/api/sessions" or p.begins_with("/api/sessions/"):
 		return _sessions.handle(method, p, body, String(token).substr(8), Callable(self, "_character_owner"), _now())
 	if p == "/api/friends" or p.begins_with("/api/friends/"):

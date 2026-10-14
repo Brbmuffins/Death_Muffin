@@ -305,6 +305,8 @@ export interface KillContext {
   staff: boolean;
   /** A party member's report (the host sends it): kills in a ground the member has not opened still count (being carried counts) and the enemy level is the host's world's. */
   carried?: boolean;
+  /** For a carried report: the host's world as the server records it (the host character's level and Ascension rank). */
+  world?: { level: number; rank: number };
 }
 export interface Evaluation {
   credits: Credits;
@@ -350,7 +352,10 @@ export function evaluateKillReport(report: KillReport, ctx: KillContext): Evalua
     if (!isCombatGround(g.area) || !(groundOpen(g.area, ctx.unlocked) || (ctx.carried && g.area !== 'depths'))) { rejected.ground += g.n; continue; }
     const id = g.area as AreaId;
     if (!(g.def in ENEMIES) || ENEMIES[g.def as EnemyId].inert || !rosterIds(id, ctx.deepest + DEPTHS_AUTHORITY.slack).has(g.def)) { rejected.kind += g.n; continue; }
-    if (g.level > maxEnemyLevel(id, ctx.carried ? Math.max(heroLevel, CARRIED_LEVEL_CEILING) : heroLevel, ctx.ascension, ctx.deepest)) { rejected.level += g.n; continue; }
+    // A carried kill lives in the host's world: the host's level and rank, as the server records them (else the old flat ceiling).
+    const worldLevel = ctx.carried ? Math.max(heroLevel, ctx.world ? ctx.world.level : CARRIED_LEVEL_CEILING) : heroLevel;
+    const worldRank = ctx.carried && ctx.world ? Math.max(ctx.ascension, ctx.world.rank) : ctx.ascension;
+    if (g.level > maxEnemyLevel(id, worldLevel, worldRank, ctx.deepest)) { rejected.level += g.n; continue; }
     if (!isDifficulty(g.diff)) { rejected.difficulty += g.n; continue; }
     ok.push({ ...g, id, diffId: g.diff as Difficulty });
   }
@@ -415,7 +420,7 @@ export function evaluateKillReport(report: KillReport, ctx: KillContext): Evalua
   for (const b of report.bosses) {
     if (!isBoss(b.boss) || !isDifficulty(b.diff)) { findings.push({ kind: 'boss_invalid', boss: b.boss }); continue; }
     const def = BOSSES[b.boss];
-    if (!groundOpen(def.area, ctx.unlocked)) { findings.push({ kind: 'boss_invalid', boss: b.boss, why: 'ground' }); continue; }
+    if (!groundOpen(def.area, ctx.unlocked) && !(ctx.carried && def.area !== 'depths')) { findings.push({ kind: 'boss_invalid', boss: b.boss, why: 'ground' }); continue; }
     const n = Math.min(b.n, Math.max(0, bossBudget));
     if (n < b.n) findings.push({ kind: 'boss_rate', boss: b.boss, claimed: b.n, accepted: n });
     bossBudget -= n;

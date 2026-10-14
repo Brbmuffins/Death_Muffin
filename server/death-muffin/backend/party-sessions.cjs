@@ -20,7 +20,9 @@
  */
 const crypto = require('crypto');
 const kills = require('./kills.cjs');
-const { audit } = require('./authority.cjs');
+const killRules = require('./gathering/kill-rules.cjs');
+const { audit, necroSummary } = require('./authority.cjs');
+const { INV_SELECT } = require('./bag-store.cjs');
 
 const LIMITS = Object.freeze({
   MAX_MEMBERS: 4,                    // D2: party of four (host included)
@@ -211,6 +213,34 @@ async function viewSession(pool, { sessionId, accountId, now = Date.now(), log =
   } catch (err) { return unavailable(err, log, 'view'); }
 }
 
+/**
+ * A member's build as the server records it, for the session's host to build that member's hero (owner 2026-10-13: "all player data
+ * server-side"): the character row (level, class, stats), its worn slots (equipped gear, belt, kit, rune sockets: slot_index >= 100, the bag's
+ * row shape) and the progression the build reads (boons, vows, damage and legion tiers). Only the host of a live session, for an active member.
+ */
+async function memberBuild(pool, { sessionId, accountId, memberId, now = Date.now(), log = console }) {
+  const cid = Math.trunc(num(memberId));
+  if (!ID_RE.test(String(sessionId)) || !(cid > 0)) return fail(400, 'bad_request', 'invalid session or member');
+  try {
+    const s = await loadSession(pool, sessionId);
+    if (!s) return fail(404, 'no_session', 'session not found');
+    if (s.hostAccountId !== num(accountId)) return fail(403, 'not_host', 'Only the host can read a member\'s build.');
+    if (!isLive(s, now)) return fail(409, 'session_ended', 'That session has ended.');
+    const m = (await loadMembers(pool, sessionId)).find((x) => x.characterId === cid);
+    if (!m || m.status !== 'active') return fail(404, 'not_member', 'That character is not in the session.');
+    const [[c]] = await pool.execute('SELECT id, level, experience, class_index, discipline_index, stat_str, stat_agi, stat_int, stat_vit FROM characters WHERE id = ?', [cid]);
+    if (!c) return fail(404, 'not_member', 'That character is not in the session.');
+    const [rows] = await pool.execute(INV_SELECT, [cid]);
+    let local = {};
+    try {
+      const [[np]] = await pool.execute('SELECT state FROM character_necro_progress WHERE character_id = ?', [cid]);
+      const st = (np && (typeof np.state === 'string' ? JSON.parse(np.state) : np.state)) || {};
+      local = { boons: st.boons || {}, vows: st.vows || {}, damageTier: num(st.damageTier), legionTier: num(st.legionTier) };
+    } catch { /* no progression yet: the defaults */ }
+    return okRes({ character: { ...c, class_index: c.discipline_index != null ? num(c.discipline_index) : num(c.class_index) }, slots: rows.filter((r) => num(r.slot_index) >= 100), local });
+  } catch (err) { return unavailable(err, log, 'build'); }
+}
+
 // ── The report ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Shape-check one member's part and build the report body the kill ledger takes. Pure. Returns { body } or { error }. */
@@ -236,8 +266,22 @@ async function accountIsStaff(db, accountId) {
  * A member is credited only when it is an ACTIVE member, seen within the heartbeat window, and the session is live; everything the
  * ledger would refuse for that member (rate, mix, elite, level, ground, boss caps) it refuses here, per member.
  */
+/** The host's world as the server records it: its character's level and Ascension rank (a guest's kills are judged in it). null if unknown. */
+async function hostWorld(pool, session) {
+  try {
+    const [[c]] = await pool.execute('SELECT level FROM characters WHERE id = ?', [session.hostCharacterId]);
+    if (!c) return null;
+    const necro = await necroSummary(pool, session.hostCharacterId);
+    const rank = necro.ascension && typeof necro.ascension === 'object' ? killRules.vowHeat(necro.ascension) : num(necro.ascension);
+    return { level: Math.max(1, num(c.level, 1)), rank: Math.max(0, rank) };
+  } catch {
+    return null;
+  }
+}
+
 async function creditMembers(pool, { session, entries, now, env, log, isStaff }) {
   const members = await loadMembers(pool, session.id);
+  const world = await hostWorld(pool, session);
   const byId = new Map(members.map((m) => [m.characterId, m]));
   const results = [];
   for (const entry of entries) {
@@ -255,7 +299,7 @@ async function creditMembers(pool, { session, entries, now, env, log, isStaff })
     if (built.floorsDropped) r.floorsDropped = built.floorsDropped;
     const claimed = built.body.groups.reduce((n, g) => n + Math.max(0, Math.trunc(num(g && g.n))), 0);
     const out = await kills.handleReport(pool, {
-      char: { id: cid }, accountId: m.accountId, body: built.body, account: { staff: await isStaff(m.accountId) }, carried: true, now, env, log,
+      char: { id: cid }, accountId: m.accountId, body: built.body, account: { staff: await isStaff(m.accountId) }, carried: true, world, now, env, log,
     });
     if (out.status >= 400) { r.reason = 'rejected'; r.error = out.body && out.body.error; continue; }
     const d = (out.body && out.body.data) || {};
@@ -388,9 +432,10 @@ function mountPartySessions(app, pool, { requireAuth, limiter, env = process.env
   route('post', '/api/sessions/:id/report', (req) => reportBatch(pool, { ...base(req), body: req.body, env }));
   route('post', '/api/sessions/:id/end', (req) => endSession(pool, { ...base(req), body: req.body, env }));
   route('get', '/api/sessions/:id', (req) => viewSession(pool, base(req)));
+  route('get', '/api/sessions/:id/members/:cid/build', (req) => memberBuild(pool, { ...base(req), memberId: req.params && req.params.cid }));
 }
 
 module.exports = {
-  mountPartySessions, openSession, joinSession, heartbeat, leaveSession, viewSession, reportBatch, endSession,
+  mountPartySessions, openSession, joinSession, heartbeat, leaveSession, viewSession, memberBuild, reportBatch, endSession,
   parseReport, memberBody, cleanSummary, createLimiter, isLive, LIMITS,
 };

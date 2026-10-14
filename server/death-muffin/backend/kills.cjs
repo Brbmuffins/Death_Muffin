@@ -142,7 +142,7 @@ const ENFORCE_NOTICE = 'Some of your kills could not be verified against the tim
  * Judge and record one kill report. Returns { status, body }. `char` is the owned character row, `account` = { staff }.
  * Off: acknowledge, write nothing. Audit and enforce keep the same ledger (so audit shows exactly what enforce would do).
  */
-async function handleReport(pool, { char, accountId, body, account, carried = false, now = Date.now(), env = process.env, log = console }) {
+async function handleReport(pool, { char, accountId, body, account, carried = false, world = null, now = Date.now(), env = process.env, log = console }) {
   const mode = killsMode(env);
   if (mode === 'off') return { status: 200, body: { success: true, data: { mode } } };
   const report = rules.parseKillReport(body);
@@ -166,7 +166,7 @@ async function handleReport(pool, { char, accountId, body, account, carried = fa
     const buckets = refill(ledger, necro.unlocked, now);
     const rank = ascensionRank(necro.ascension);
     const ev = rules.evaluateKillReport(report, {
-      unlocked: necro.unlocked, ascension: rank, heroLevel: num(locked.level, 1), deepest: ledger.depthProved,
+      unlocked: necro.unlocked, ascension: rank, heroLevel: num(locked.level, 1), deepest: ledger.depthProved, ...(carried && world ? { world } : {}),
       killBucket: buckets.killBucket, bossBucket: buckets.bossBucket, floorBucket: buckets.floorBucket, maxCleared: ledger.maxCleared, staff: !!(account && account.staff), carried,
     });
     const credit = { ...ledger.killCredit };

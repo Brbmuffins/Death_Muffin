@@ -1,5 +1,14 @@
 [
   {
+    "date": "2026-10-14",
+    "title": "Stronger Together",
+    "items": [
+      "Co-op: when you join someone's party, your own gear, set bonuses, affixes, boons and upgrades now count in their world. Change gear mid-session and the host picks it up.",
+      "Co-op: a guest's kills in a higher-level host's world now count properly.",
+      "Fixed: a rune could vanish when you picked it up as a party guest."
+    ]
+  },
+  {
     "date": "2026-10-13",
     "title": "Benchmark Rooms",
     "items": [

@@ -17,6 +17,7 @@ import { ITEMS } from '../content/items';
 import { legendaryBossChance, legendaryEliteChance, rollLegendary } from '../content/legendarySets';
 import { AREA_REAGENT_DROPS, BOSS_ICHOR, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS } from '../content/reagents';
 import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, SURGE_RUNE_CHANCE, eliteRuneChance, pickRune } from '../content/runes';
+import { WAVE_UPGRADE } from '../content/upgrades';
 import { smartTable, type LootEntry } from './smartLoot';
 
 export type Rand = () => number;
@@ -313,3 +314,5 @@ export function disciplineIdFor(classIndex: number): string {
 }
 export const isLegendaryItem = (id: string): boolean => id.startsWith('leg_');
 export { runePityMult } from '../content/runes';
+/** The highest Wave Speed anyone can own (a hard limit on a claimed drop's facts). */
+export const MAX_WAVE_TIER: number = WAVE_UPGRADE.maxTier;

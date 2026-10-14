@@ -11,8 +11,8 @@
  *   POST /api/drops/tape  { characterId, next?: { kind: index } } -> { data: { mode, tape: { kind: { from, seeds: [[w, w, w, w], ...] } } } }
  *   POST /api/drops/claim { characterId, kind, n, index, facts, expect?, sessionId? } -> { data: { item, bag } }
  *
- * DROPS_MODE=audit (default) logs a broken bound (progress_audit `drop_*`) and lets the claim through; enforce refuses it. What an event
- * drops is the server's roll in both modes. Migration 047.
+ * DROPS_MODE=audit (default) logs a broken bound (progress_audit `drop_*`) and lets the claim through, rolled with the client's value up to the
+ * hard limits (audit never changes what dropped); enforce rolls with the bound and refuses the claim. Migrations 047, 048.
  */
 const crypto = require('crypto');
 const rules = require('./gathering/loot-rules.cjs');
@@ -142,33 +142,36 @@ async function ownsRune(conn, ch, runeId) {
 }
 
 /**
- * The facts the server rolls an event from: its own where it knows them, the client's where they are bounded. Pushes a finding for each bound the
- * client broke (the value is clamped either way, so the roll is the server's). Throws a player error for facts that name nothing.
+ * The facts the server rolls an event from: its own where it knows them (discipline, level, owned legendaries), the client's where they are
+ * bounded. A value past its bound is a finding. Enforce rolls with the bound (and refuses the claim anyway); audit must never change what
+ * dropped, so it rolls with the client's value and only stops it at the hard limits (the most any player can have). Throws a player error for
+ * facts that name nothing.
  */
-async function rollFacts(conn, kind, raw, ctx, t, n, findings) {
+async function rollFacts(conn, kind, raw, ctx, n, findings, enforce) {
   const c = raw && typeof raw === 'object' ? raw : {};
   const f = { characterLevel: ctx.level, disciplineId: ctx.disciplineId, owned: ctx.owned, level: Math.max(1, Math.min(9999, Math.trunc(num(c.level, 1)))) };
   const difficulty = DIFFICULTIES.has(c.difficulty) ? c.difficulty : 'medium';
+  const bounded = (claimed, allowed, hard, finding) => {
+    if (claimed > allowed + 1e-9) findings.push({ ...finding, claimed, allowed });
+    return enforce ? Math.min(claimed, allowed) : Math.min(claimed, hard);
+  };
   const ground = (area) => {
     if (!killRules.groundOpen(area, ctx.unlocked) && !ctx.carried) findings.push({ kind: 'drop_area', area });
   };
-  const wave = () => {
-    const w = Math.max(0, Math.trunc(num(c.waveTier)));
-    if (w > ctx.waveOwned) findings.push({ kind: 'drop_wave', claimed: w, owned: ctx.waveOwned });
-    return Math.min(w, ctx.waveOwned);
-  };
+  const wave = () => bounded(Math.max(0, Math.trunc(num(c.waveTier))), ctx.waveOwned, rules.MAX_WAVE_TIER, { kind: 'drop_wave' });
   if (kind === 'kill' || kind === 'elite') {
     if (!rules.isEnemy(String(c.def)) || !rules.isLootArea(String(c.area))) throw playerError('That drop could not be found.');
     ground(c.area);
-    let icm = num(c.itemChanceMult, 1);
-    if (icm > 1 + MAX_FORTUNE + 1e-9) { findings.push({ kind: 'drop_fortune', claimed: icm }); icm = 1 + MAX_FORTUNE; }
+    const icm = Math.max(1, bounded(num(c.itemChanceMult, 1), 1 + MAX_FORTUNE, 1 + MAX_FORTUNE, { kind: 'drop_fortune' }));
     let pity = 1;
     if (kind === 'elite') {
-      const most = rules.runePityMult(Math.max(0, n - t.lastRuneElite - 1));
-      pity = Math.max(1, num(c.runePity, 1));
-      if (pity > most + 1e-9) { findings.push({ kind: 'drop_pity', claimed: pity, allowed: most }); pity = most; }
+      // The rising rune chance counts elites since the last rune that LANDED before this one in roll order (picking drops up out of order
+      // must not shorten it): the newest elite below `n` whose rune was claimed.
+      const [[r]] = await conn.execute("SELECT MAX(n) AS n FROM character_drop_events WHERE character_id = ? AND kind = 'elite' AND rune_claimed = 1 AND n < ?", [ctx.id, n]);
+      const last = r && r.n != null ? num(r.n) : -1;
+      pity = Math.max(1, bounded(num(c.runePity, 1), rules.runePityMult(Math.max(0, n - last - 1)), rules.runePityMult(1e9), { kind: 'drop_pity' }));
     }
-    return { ...f, def: String(c.def), area: String(c.area), waveTier: wave(), difficulty, itemChanceMult: Math.max(1, icm), runePity: pity };
+    return { ...f, def: String(c.def), area: String(c.area), waveTier: wave(), difficulty, itemChanceMult: icm, runePity: pity };
   }
   if (kind === 'boss') {
     const info = rules.bossInfo(String(c.boss));
@@ -179,7 +182,10 @@ async function rollFacts(conn, kind, raw, ctx, t, n, findings) {
       const [[had]] = await conn.execute(
         "SELECT COUNT(*) AS n FROM character_drop_events WHERE character_id = ? AND kind = 'boss' AND JSON_UNQUOTE(JSON_EXTRACT(facts, '$.boss')) = ? AND JSON_EXTRACT(facts, '$.first') = true",
         [ctx.id, String(c.boss)]);
-      if (num(had.n) > 0) { findings.push({ kind: 'drop_first', boss: c.boss }); first = false; }
+      if (num(had.n) > 0) {
+        findings.push({ kind: 'drop_first', boss: c.boss });
+        if (enforce) first = false;
+      }
     }
     return { ...f, boss: String(c.boss), area: info.area, costShards: info.shards, first, waveTier: wave(), difficulty };
   }
@@ -280,7 +286,7 @@ async function claimDrop(pool, { characterId, accountId, body, env = process.env
       claimed = parse(row.claimed, []);
     } else {
       const ctx = { ...(await context(conn, ch, b.sessionId, now)), id: ch.id };
-      const facts = await rollFacts(conn, kind, b.facts, ctx, t, n, findings);
+      const facts = await rollFacts(conn, kind, b.facts, ctx, n, findings, mode === 'enforce');
       const totals = await ledgerTotals(conn, ch.id);
       if (totals.known && totals.kills < t.baseKills) t.baseKills = Math.max(0, totals.kills - num(t.spent.kill) - num(t.spent.elite));   // the ledger was rebased
       if (totals.known && totals.bosses < t.baseBosses) t.baseBosses = Math.max(0, totals.bosses - num(t.spent.boss));
@@ -298,7 +304,8 @@ async function claimDrop(pool, { characterId, accountId, body, env = process.env
     if (!d) throw playerError('That drop could not be found.');
     if (claimed.includes(index)) throw playerError('That drop was already picked up.');
     claimed.push(index);
-    if (kind === 'elite' && String(d.item_id).startsWith('rune_')) t.lastRuneElite = Math.max(t.lastRuneElite, n);
+    const runeLanded = kind === 'elite' && String(d.item_id).startsWith('rune_');
+    if (runeLanded) t.lastRuneElite = Math.max(t.lastRuneElite, n);
     let granted = false;
     let put = false;
     if (String(d.item_id).startsWith('rune_') && (await ownsRune(conn, ch, d.item_id))) {
@@ -308,7 +315,7 @@ async function claimDrop(pool, { characterId, accountId, body, env = process.env
     } else {
       granted = true;
     }
-    await conn.execute('UPDATE character_drop_events SET claimed = ? WHERE character_id = ? AND kind = ? AND n = ?', [JSON.stringify(claimed), ch.id, kind, n]);
+    await conn.execute(`UPDATE character_drop_events SET claimed = ?${runeLanded ? ', rune_claimed = 1' : ''} WHERE character_id = ? AND kind = ? AND n = ?`, [JSON.stringify(claimed), ch.id, kind, n]);
     await saveTape(conn, ch.id, t);
     await conn.commit();
     await writeFindings();

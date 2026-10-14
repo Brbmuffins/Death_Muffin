@@ -16,8 +16,6 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
 
 Live runs `AUTHORITY_KILLS=audit` (findings in `progress_audit`, nothing clamped). The 2026-10-13 review found no cheating, but
 these rules would cut honest players under enforce:
-- **Carried party kills:** a guest's party boss kills fail `boss_rate` (no allowance of its own), and `CARRIED_LEVEL_CEILING`
-  (200) is below a high-level host's world.
 - **Depths floors:** one new player's floors 3-4 were rejected (`floor_invalid` "skipped floors", 1 proven); not yet known
   whether the rule or the run is wrong.
 - **Client-claimed saves:** progress totals, the bag and what dropped are still the client's claim, bounded only by the
@@ -41,8 +39,8 @@ Shrouded suspension in the player's own Miasma, the Barrier decay, and boss-pool
 
 - **No rejoin window** (D13). A dropped client returns to its own solo game, a dropped host ends the session (D6).
 - **One area per session, Depths solo:** `godot/next/areas/README.md`, `godot/next/depths/README.md`.
-- **A joiner's own state does not reach the host's sim:** the host builds its hero from class and the client's claimed level,
-  capped at 100 (`MAX_LEVEL`); no rune sockets, gear, upgrades, boons or self vows; Colossus Mantle hooks are host-hero
+- **Part of a joiner's state does not reach the host's sim:** the host builds the joiner's hero from the server's record (level, gear,
+  set bonuses, affixes, boons, vows, upgrade tiers), but its rune sockets do not reach its rites; Colossus Mantle hooks are host-hero
   only; no flasks or brews; no Covenant Seal or Nightfall dim; a client cannot call Empowered bosses.
 - Client (non-host) peers get no full HUD feed beyond what `next/party/` provides (`next/hud/README.md`).
 - Chat is party chat in a party and local-only when solo.

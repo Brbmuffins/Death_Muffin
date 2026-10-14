@@ -80,8 +80,12 @@ start, so changing one needs a restart of `death-muffin-auth`.
   next seeds (kill 128, elite 48, boss 6, surge 6; one secret-derived seed per event); `POST /api/drops/claim {characterId, kind, n, index, facts,
   expect?, sessionId?}` rolls that event again from its seed (`gathering/loot-rules.cjs` rollEvent, equal to the client's roll by the loot
   parity fixture) and puts exactly that drop in the bag, once. `DROPS_MODE=audit` (default) logs broken bounds as `drop_*` rows in
-  `progress_audit` (ground not open, Wave Speed not owned, fortune, rising rune chance, a second first kill, tape spent faster than the kill
-  ledger's accepted kills, surge rate) and grants anyway; `enforce` refuses them. What drops is the server's roll in both modes.
+  `progress_audit` (ground not open, Wave Speed not owned, fortune, rising rune chance in roll order, a second first kill, tape spent faster
+  than the kill ledger's accepted kills, surge rate) and grants, rolled with the client's value up to the hard limits (audit never changes a
+  drop); `enforce` rolls with the bound and refuses. Migrations 047, 048.
+- **A member's build** (`GET /api/sessions/:id/members/:cid/build`, party-sessions.cjs `memberBuild`, DECISIONS B21): the session's host
+  reads an active member's level, class, stats, worn slots and progression to build that member's hero. A member's party kills are judged in
+  the host's world (the host character's level and Ascension rank).
 - **Party sessions** (`backend/party-sessions.cjs`, migration 041, `backend/SESSION-REPORTS.md`): a session host reports what its members killed; each member's part goes through the same kill ledger.
 - **Learned runes** (`backend/runes.cjs`, migration 044): `GET /api/runes/:id` lists a character's learned runes; `POST /api/inventory/rune/learn` spends a bag rune and learns it; `POST /api/inventory/rune` puts a learned rune in its rite's socket (or empties it). DECISIONS B17.
 - **Friends** (`backend/friends.cjs`, migration 045): `GET /api/friends` (friends with their active character's discipline and level, requests both ways), `POST /api/friends/request {username}`

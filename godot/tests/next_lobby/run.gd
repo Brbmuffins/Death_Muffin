@@ -252,6 +252,12 @@ func _part_rewards(jg: DmNextGame) -> void:
 	check(await until(func() -> bool: return m.blocked == "" and m.joined, 5.0), "rewards: the host started crediting the joiner after its backend join")
 	var hb := hg.body_of(2)
 	check(int(hb.character.get("level", 0)) == int(ch_j["level"]) and hb.character_id == key, "rewards: the host's body of the joiner carries the joiner's character")
+	# the joiner's build comes from the server's record of it (gear, set bonuses, boons, vows), not from its client
+	check(await until(func() -> bool: return hg.remote_builds.has(2), 5.0), "build: the host read the joiner's build from the server")
+	if hg.remote_builds.has(2):
+		var rb: Dictionary = hg.remote_builds[2]
+		check(int(rb["character"]["id"]) == key and rb["slots"] is Array and rb["local"] is Dictionary, "build: character, worn slots and progression")
+		check(hg.build_for(2)["stats"] is Dictionary, "build: the host builds the joiner's hero from it")
 	var xp0 := int(jg.character["experience"])
 	var gold0 := int(jg.character["gold"])
 	var at := hb.position

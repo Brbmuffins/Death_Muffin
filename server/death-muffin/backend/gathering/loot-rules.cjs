@@ -25,6 +25,7 @@ __export(lootRules_exports, {
   DROP_KINDS: () => DROP_KINDS,
   EVENT_STREAMS: () => EVENT_STREAMS,
   KILL_LOOT: () => KILL_LOOT,
+  MAX_WAVE_TIER: () => MAX_WAVE_TIER,
   bossInfo: () => bossInfo,
   canRoll: () => canRoll,
   disciplineIdFor: () => disciplineIdFor,
@@ -3011,6 +3012,12 @@ var HEALING_FLASKS = {
   ...ALCHEMY_HEALING
 };
 
+// server/rules/content/upgrades.ts
+var WAVE_UPGRADE = {
+  maxTier: 8,
+  cost: (tier) => Math.round(120 * Math.pow(1.75, tier))
+};
+
 // server/rules/gameplay/smartLoot.ts
 var SMART_LOOT = { ownArmorShare: 0.7, foreignWeaponMult: 1 / 3 };
 var smartCache = /* @__PURE__ */ new Map();
@@ -3264,11 +3271,13 @@ function disciplineIdFor(classIndex) {
   return "";
 }
 var isLegendaryItem = (id) => id.startsWith("leg_");
+var MAX_WAVE_TIER = WAVE_UPGRADE.maxTier;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   DROP_KINDS,
   EVENT_STREAMS,
   KILL_LOOT,
+  MAX_WAVE_TIER,
   bossInfo,
   canRoll,
   disciplineIdFor,

@@ -2920,7 +2920,9 @@ function evaluateKillReport(report, ctx) {
       rejected.kind += g.n;
       continue;
     }
-    if (g.level > maxEnemyLevel(id, ctx.carried ? Math.max(heroLevel, CARRIED_LEVEL_CEILING) : heroLevel, ctx.ascension, ctx.deepest)) {
+    const worldLevel = ctx.carried ? Math.max(heroLevel, ctx.world ? ctx.world.level : CARRIED_LEVEL_CEILING) : heroLevel;
+    const worldRank = ctx.carried && ctx.world ? Math.max(ctx.ascension, ctx.world.rank) : ctx.ascension;
+    if (g.level > maxEnemyLevel(id, worldLevel, worldRank, ctx.deepest)) {
       rejected.level += g.n;
       continue;
     }
@@ -2997,7 +2999,7 @@ function evaluateKillReport(report, ctx) {
       continue;
     }
     const def = BOSSES[b.boss];
-    if (!groundOpen(def.area, ctx.unlocked)) {
+    if (!groundOpen(def.area, ctx.unlocked) && !(ctx.carried && def.area !== "depths")) {
       findings.push({ kind: "boss_invalid", boss: b.boss, why: "ground" });
       continue;
     }

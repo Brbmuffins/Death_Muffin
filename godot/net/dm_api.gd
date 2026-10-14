@@ -409,6 +409,10 @@ func session_end(session_id: String, final_batch: Dictionary = {}, summary: Dict
 func session_get(session_id: String) -> DmResult:
 	return await _rget("/api/sessions/%s" % session_id)
 
+## Host: a member's build as the server records it (party-sessions.cjs memberBuild): data {character, slots (worn rows, decorated), local}.
+func session_member_build(session_id: String, character_id: int) -> DmResult:
+	return _decorate_keys(await _rget("/api/sessions/%s/members/%d/build" % [session_id, character_id]), ["slots"])
+
 # Necromancer progression. All replies: {progress, gold?, earned?, cost?}. A 404 on necro_get = older server, keep local storage.
 func necro_get(character_id: int) -> DmResult:
 	return await _rget("/api/necro-progress/%d" % character_id)

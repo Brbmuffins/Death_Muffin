@@ -132,17 +132,26 @@ test('finishing all three pays the day\'s bonus exactly once, and a streak build
 });
 
 test('a full bag refuses a reward and nothing is lost', async () => {
-  const db = fakeDb();
-  const call = harness(db);
-  const board = (await call('GET /api/contracts/:characterId', { params: { characterId: '1' } })).json.data.contracts;
-  const hard = board[2];
-  // The bag is packed with the ordered item plus 47 other things: taking the order frees slots, but only if it is one slot...
-  db.inv.push({ id: 700, character_id: 1, slot_index: 0, item_id: hard.itemId, quantity: hard.qty + 1, equipped: 0 });
-  for (let i = 1; i < 48; i++) db.inv.push({ id: 700 + i, character_id: 1, slot_index: i, item_id: `junk_${i}`, quantity: 1, equipped: 0 });
-  const r = (await call('POST /api/contracts/deliver', { body: { characterId: 1, slot: 2 } })).json;
-  assert.equal(r.success, false);
-  assert.match(r.error, /Make room/);
-  assert.equal(db.inv.find((x) => x.id === 700).quantity, hard.qty + 1, 'the order was rolled back, not half taken');
+  // A fixed day: the board rotates daily, and on a day whose hard order rewards the very item it asks for (2026-10-14: Grave Garnets for a
+  // Grave Garnet) the reward stacks into the leftover and the bag is never full.
+  const realNow = Date.now;
+  Date.now = () => Date.UTC(2026, 9, 13, 12);
+  try {
+    const db = fakeDb();
+    const call = harness(db);
+    const board = (await call('GET /api/contracts/:characterId', { params: { characterId: '1' } })).json.data.contracts;
+    const hard = board[2];
+    assert.ok(hard.rewardItem && hard.rewardItem.itemId !== hard.itemId, 'the fixed day\'s hard order rewards another item');
+    // The bag is packed with the ordered item plus 47 other things: taking the order frees slots, but only if it is one slot...
+    db.inv.push({ id: 700, character_id: 1, slot_index: 0, item_id: hard.itemId, quantity: hard.qty + 1, equipped: 0 });
+    for (let i = 1; i < 48; i++) db.inv.push({ id: 700 + i, character_id: 1, slot_index: i, item_id: `junk_${i}`, quantity: 1, equipped: 0 });
+    const r = (await call('POST /api/contracts/deliver', { body: { characterId: 1, slot: 2 } })).json;
+    assert.equal(r.success, false);
+    assert.match(r.error, /Make room/);
+    assert.equal(db.inv.find((x) => x.id === 700).quantity, hard.qty + 1, 'the order was rolled back, not half taken');
+  } finally {
+    Date.now = realNow;
+  }
 });
 
 test('someone else\'s character is refused', async () => {

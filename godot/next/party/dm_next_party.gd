@@ -98,6 +98,7 @@ var _after_host: Array = []              ## Callables to run once our new sessio
 var _poll_timer: Timer
 var _presence_t := 0.0
 var _sent_presence: Array = []
+var _build_asked := {}   ## host: peer -> when it last asked us to re-read its build (ms)
 var _reconnect_n := 0
 var _reconnect_at := 0.0
 var _nudges: Array = []                  ## friends_changed ids waiting for the link
@@ -682,10 +683,54 @@ func _rpc_backend(ok: bool, why: String) -> void:
 	if ok:
 		m.blocked = ""
 		m.joined = true
+		fetch_build(peer)   # its gear, set bonuses, boons, vows and level from the server, not from its client
 	else:
 		m.blocked = "join_refused"
 		shell.rewards.member_refused.emit(key, "join_refused: " + why)
 	changed.emit()
+
+
+## Host: build a member's hero from the server's record of it (DmNextGame.remote_builds), then refresh its body and caster. Called when its backend
+## join succeeds and whenever its client says what it wears changed.
+func fetch_build(peer: int) -> void:
+	var key: int = _members.get(peer, 0)
+	if key <= 0 or shell.rewards == null or shell.rewards.session_id == "" or shell.api == null:
+		return
+	var r: DmResult = await shell.api.session_member_build(shell.rewards.session_id, key)
+	if not r.ok or not (r.data is Dictionary) or not _members.has(peer):
+		return
+	shell.remote_builds[peer] = {"character": r.data["character"], "slots": r.data.get("slots", []), "local": r.data.get("local", {})}
+	var b := shell.body_of(peer)
+	if b == null or not is_instance_valid(b):
+		return
+	b.character["level"] = maxi(int(b.character.get("level", 1)), int(r.data["character"].get("level", 1)))   # the real level, past the profile clamp
+	var m: DmRewardsMember = shell.rewards.members.get(key)
+	if m != null:
+		m.prog.character["level"] = int(b.character["level"])
+	var build := shell.build_for(peer)
+	b.refresh_stats(build)
+	var c := b.get_node_or_null("Rites") as DmRiteCaster
+	if c != null:
+		c.refresh_stats(build)
+	sync_levels()
+
+
+## Client: what we wear changed (gear, belt, kit, rune sockets): the host reads our build from the server again.
+func build_changed() -> void:
+	if mode != CLIENT or not shell.session.is_active():
+		return
+	_rpc_build_changed.rpc_id(1)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_build_changed() -> void:
+	if multiplayer.is_server() and shell != null:
+		var peer := multiplayer.get_remote_sender_id()
+		var now := Time.get_ticks_msec()
+		if now - int(_build_asked.get(peer, 0)) < 1000:   # at most once a second per member
+			return
+		_build_asked[peer] = now
+		fetch_build(peer)
 
 
 func _on_credited(cid: int, delta: Dictionary) -> void:

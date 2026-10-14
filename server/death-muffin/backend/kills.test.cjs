@@ -150,6 +150,23 @@ test('a level-scaled ground follows a hero above level 255 (it used to stop at 2
   assert.ok(rules.maxEnemyLevel('cloister', 980, 0) <= 999 + 30, 'still bounded near the level cap');
 });
 
+test('a carried kill is judged in the host\'s world: the host\'s level and rank, as the server records them', () => {
+  // 2026-10-13 co-op: a level-367 guest in a level-680 host's world (Elder Dead 20) had its party kills refused for level.
+  const guest = { ...ctx(), heroLevel: 367, unlocked: ['chapterhouse', 'graves', 'cloister'], carried: true };
+  const g = (level) => report(1, [group({ area: 'cloister', def: rules.rosterIds('cloister', 0).values().next().value, level, n: 10 })]);
+  const top = rules.maxEnemyLevel('cloister', 680, 20);
+  assert.equal(rules.evaluateKillReport(rules.parseKillReport(g(top)), { ...guest, world: { level: 680, rank: 20 } }).killsAccepted, 10);
+  assert.equal(rules.evaluateKillReport(rules.parseKillReport(g(top)), guest).killsAccepted, 0, 'without the host\'s world: the old flat ceiling');
+  assert.equal(rules.evaluateKillReport(rules.parseKillReport(g(top + 1)), { ...guest, world: { level: 680, rank: 20 } }).killsAccepted, 0, 'still bounded by the host');
+});
+
+test('a carried boss kill in a ground the guest has not opened counts', () => {
+  const rep = { seq: 1, groups: [], bosses: [{ boss: 'abbess', n: 1, tier: 0, diff: 'medium' }], floors: [] };
+  const e = rules.evaluateKillReport(rules.parseKillReport(rep), { ...ctx(), carried: true, bossBucket: 5 });
+  assert.equal(e.bossesAccepted, 1);
+  assert.ok(!e.findings.some((f) => f.kind === 'boss_invalid'));
+});
+
 test('Ascension ages the dead: the level cap rises with the character\'s own rank plus the co-op allowance', () => {
   const rank0 = rules.maxEnemyLevel('graves', 10, 0);
   assert.equal(rules.maxEnemyLevel('graves', 10, 3), rank0 + 9, 'three ranks, three levels each');

@@ -179,9 +179,15 @@ func on_drop_event(kind: String, facts: Dictionary, pos: Vector3) -> void:
 	var f := facts.duplicate()
 	if f.has("waveTier"):
 		f["waveTier"] = minf(float(f["waveTier"]), float(prog.local.get("waveTierOwned", 0)))
+	if kind == "elite":   # the rising rune chance is this player's own (the host cannot see which runes it owns)
+		f["runePity"] = DmLootRunes.pity_mult(member.rune_dry)
 	var sent := f.duplicate()
 	f.merge(member.drop_context(), true)
 	var items: Array = DmLoot.roll_event(kind, f, DmLoot.event_streams(kind, slot["seed"]))["items"]
+	if kind == "elite" and not DmLootRunes.area_pool(String(f.get("area", ""))).is_empty():
+		var lv := member.loot_view
+		var fresh := items.any(func(d: Dictionary) -> bool: return DmRunes.is_rune_id(d["item_id"]) and not (lv.rune_owned.is_valid() and bool(lv.rune_owned.call(d))))
+		member.rune_dry = 0 if fresh else member.rune_dry + 1
 	for i in items.size():
 		items[i]["claim"] = {"kind": kind, "n": int(slot["n"]), "index": i, "facts": sent, "expect": String(items[i]["item_id"])}
 		member.loot_view.drop(items[i], pos)

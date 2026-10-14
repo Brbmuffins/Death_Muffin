@@ -130,6 +130,8 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	if shell.progress != null:
 		shell.progress.belt.inventory = inventory
 		inventory.changed.connect(func(_s: Array) -> void: shell.progress.request_stats())   # worn gear feeds the stats
+	if shell.joiner != null:   # a party guest: the host builds our hero from the server's record, so tell it when what we wear changed
+		inventory.changed.connect(_on_guest_inventory)
 	if m != null:
 		m.take_item = Callable(self, "_take")   # a walked-over drop goes into the bag, which flushes to the backend
 		m.owned_legendaries = Callable(self, "_owned_legendaries")
@@ -763,6 +765,20 @@ func stat_context() -> Variant:
 
 
 ## DmLootView.try_take: the bag, or false (the drop stays on the ground) with a "Reliquary full" float now and then and, once, what to do about it.
+var _worn_key := ""
+
+func _on_guest_inventory(_s: Array) -> void:
+	var parts := PackedStringArray()
+	for row in inventory.all():
+		if int(row.get("slot_index", 0)) >= 100:
+			parts.append("%s:%s:%s" % [row.get("slot_index", ""), row.get("item_id", ""), row.get("instance_id", "")])
+	var key := ",".join(parts)
+	if key != _worn_key:
+		_worn_key = key
+		if shell.party != null:
+			shell.party.build_changed()
+
+
 ## Legendary pieces worn or in the bag: what a legendary roll avoids repeating (the server reads the same from its rows).
 func _owned_legendaries() -> Array:
 	var out: Array = []

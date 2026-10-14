@@ -371,3 +371,29 @@ test('an objective group (a party kill the member was not paid for) counts kills
   assert.equal(t.fake.ledger(12).gold_credit, gold1, 'no gold');
   assert.equal(t.fake.ledger(12).shard_credit, shards1, 'no shards');
 });
+
+// ── a member's build (the host builds the guest's hero from the server's record) ─────────────────────────────────────────────────────
+
+test('only the host of a live session reads an active member\'s build: character, worn slots and progression', async () => {
+  const { memberBuild } = require('./party-sessions.cjs');
+  const SID = 'a'.repeat(32);
+  const now = 1_000_000;
+  const pool = {
+    execute: async (sql, p) => {
+      if (/FROM party_sessions WHERE id/.test(sql)) return [[{ id: SID, host_account_id: 1, host_character_id: 10, status: 'open', created_at: now - 1000, last_host_at: now - 1000, last_batch: 0, batches: 0, ended_at: null }]];
+      if (/FROM party_session_members WHERE session_id/.test(sql)) return [[{ character_id: 20, account_id: 2, status: 'active', joined_at: now - 500, last_seen_at: now - 100, last_seq: 0, seen_kills: 0, reported_kills: 0, accepted_kills: 0, accepted_bosses: 0 }]];
+      if (/FROM characters WHERE id/.test(sql)) return [[{ id: 20, level: 367, experience: 5, class_index: 0, discipline_index: 1, stat_str: 5, stat_agi: 5, stat_int: 9, stat_vit: 12 }]];
+      if (/FROM inventory inv/.test(sql)) return [[{ slot_index: 3, item_id: 'ore_copper', equipped: 0 }, { slot_index: 101, item_id: 'set_ossuary_chest', equipped: 1 }, { slot_index: 130, item_id: 'rune_splinter', equipped: 1 }]];
+      if (/FROM character_necro_progress/.test(sql)) return [[{ state: JSON.stringify({ boons: { vigil: 2 }, vows: { frail_vessel: 1 }, damageTier: 7, legionTier: 2, shards: 99 }) }]];
+      throw new Error(`unexpected ${sql}`);
+    },
+  };
+  const ok = await memberBuild(pool, { sessionId: SID, accountId: 1, memberId: 20, now, log: { error() {} } });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.data.character.level, 367);
+  assert.equal(ok.body.data.character.class_index, 1, 'the discipline index');
+  assert.deepEqual(ok.body.data.slots.map((r) => r.slot_index), [101, 130], 'worn slots only, not the bag');
+  assert.deepEqual(ok.body.data.local, { boons: { vigil: 2 }, vows: { frail_vessel: 1 }, damageTier: 7, legionTier: 2 });
+  assert.equal((await memberBuild(pool, { sessionId: SID, accountId: 2, memberId: 20, now, log: { error() {} } })).status, 403, 'a member cannot read another member');
+  assert.equal((await memberBuild(pool, { sessionId: SID, accountId: 1, memberId: 99, now, log: { error() {} } })).status, 404, 'only members');
+});

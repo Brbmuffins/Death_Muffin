@@ -33,6 +33,7 @@ signal start_failed(reason: String)             ## a joiner could not enter the 
 @onready var camera: DmCameraRig = $Camera
 var hud: DmNextHud                              ## only with opts hud = "minimal"
 var ui_host: DmNextUiHost                       ## the host-contract adapter the real HUD reads (hud mode true)
+var remote_builds := {}                         ## host: peer id -> a member's build from the server {character, slots, local} (DmNextParty.fetch_build)
 var ui: DmGameUi                                ## the existing HUD + panels
 var areas: DmAreaFlow                           ## child "Areas": entry banners + Codex, processions, Grave Surges (next/areas/)
 var perf: DmNextPerf                           ## child "Perf": graphics / fps cap / auto-resolution governor (next/perf/)
@@ -555,12 +556,18 @@ func hitstop(weight: float) -> void:
 	hitstopper.request(weight)
 
 
-## A body's DmCharacterBuild. The local host's carries its progression (damage tier, boons, vows) and its bag's gear; others get the defaults.
+## A body's DmCharacterBuild. The local host's carries its progression (damage tier, boons, vows) and its bag's gear; a party member's comes
+## from the server's record of that member (remote_builds: gear, set bonuses, boons, vows, upgrade tiers); until it arrives, the defaults.
 func build_for(peer_id: int) -> Dictionary:
 	var b := body_of(peer_id)
 	var ch: Dictionary = b.character if b != null and not b.character.is_empty() else {"class_index": 0, "level": 1}
 	if progress != null and peer_id == session.get_my_id():
 		return DmCharacterBuild.build(ch, progress.slots(), progress.prog.local)
+	var rb: Variant = remote_builds.get(peer_id)
+	if rb is Dictionary:
+		var rch: Dictionary = (rb["character"] as Dictionary).duplicate()
+		rch["level"] = maxf(float(rch.get("level", 1)), float(ch.get("level", 1)))   # a level-up the host credited since the fetch
+		return DmCharacterBuild.build(rch, rb["slots"], rb["local"])
 	return DmCharacterBuild.build(ch, [], {})
 
 

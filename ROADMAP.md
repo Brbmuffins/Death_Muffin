@@ -25,11 +25,9 @@ claimed totals; the bag changes through operations (move, split, drop, sell, use
 come only from accepted reports; an item / currency ledger records every grant and spend with its reason.
 
 **Phase 3: co-op on the same rules.**
-1. **Guests fight at their real power.** The guest only joins the backend party session with its own login; the host fetches
-   each member's build from a new host-only backend endpoint (level, class, stats, equipped gear and affixes, boons, vows,
-   upgrade tiers, runes) and refetches on a level-up or gear change. The guest level cap (`MAX_LEVEL` in
-   `godot/next/party/dm_next_party.gd`) is removed. Guests' **self vows** (Frail Vessel, Famished, Brittle Thralls, Dry
-   Cellar) apply to their own hero.
+1. **Guests fight at their real power.** Live 2026-10-14 (DECISIONS B21): the host builds each guest's hero from the server's record
+   (level, gear, set bonuses, affixes, boons, vows including self vows, upgrade tiers) and reads it again when the guest's worn
+   gear changes; a guest's party kills are judged in the host's world. Still to do: rune sockets reaching a guest's rites.
 2. **Heat that adds up.** The session's heat is the host's world vows (it sets the world). Each player's reward heat is the
    session heat plus their own self vows, solo too (today the xp / gold multiplier counts world vows only); the backend's
    reward caps use the same total, with the host's level and heat taken from the server's record, not the report.
