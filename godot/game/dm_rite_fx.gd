@@ -298,7 +298,7 @@ func soul_circle(count: int, secs: float, speed: float, radius: float, follow: C
 	if fx == null:
 		return null
 	stats["orbit"] += 1
-	return fx.orbit({"tex": "wisp", "color": DmReaperRites.GREEN, "count": count, "radius": radius, "y": 1.2, "size": 0.7, "duration": secs, "speed": speed, "follow": follow})
+	return fx.orbit({"tex": "skull", "color": DmReaperRites.GREEN, "count": count, "radius": radius, "y": 1.2, "size": 0.55, "duration": secs, "speed": speed, "follow": follow})
 
 
 ## Requiem Wraiths 5: a nova ring at each source `pts` ([[x, z]]), radius r.
