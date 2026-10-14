@@ -4,7 +4,8 @@
     "title": "Boss Rush",
     "items": [
       "Summon bosses back to back as fast as you like: every boss you pay for now always drops its loot, and so does every boss your party's host summons while you are with them.",
-      "Fixed: after a fast run of Prelates, boss loot could be refused when you picked it up."
+      "Fixed: after a fast run of Prelates, boss loot could be refused when you picked it up.",
+      "Fixed: in co-op, doors showed as shut for guests even though they could walk through them. Guests now see them open."
     ]
   },
   {
