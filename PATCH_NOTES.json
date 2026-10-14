@@ -24,7 +24,8 @@
       "Fixed: the Vault's Deposit materials and Take materials buttons no longer move potions, elixirs and tonics; they only move materials and runes.",
       "Summon bosses back to back as fast as you like: every boss you pay for now always drops its loot, and so does every boss your party's host summons while you are with them.",
       "Fixed: after a fast run of Prelates, boss loot could be refused when you picked it up.",
-      "You can now rebind the performance overlay to another key in Settings > Controls (it stays on F3 until you change it)."
+      "You can now rebind the performance overlay to another key in Settings > Controls (it stays on F3 until you change it).",
+      "Fixed: in co-op, doors showed as shut for guests even though they could walk through them. Guests now see the host's doors, open or sealed, and a seal breaking opens the door for them too."
     ]
   },
   {

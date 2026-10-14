@@ -230,7 +230,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		depths.name = "Depths"
 		add_child(depths)
 		depths.setup(self)
-	gather = DmNextGather.new()
+	gather =DmNextGather.new()
 	gather.name = "Gather"
 	add_child(gather)
 	await gather.setup(self)

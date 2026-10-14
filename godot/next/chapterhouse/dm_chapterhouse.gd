@@ -490,6 +490,8 @@ func apply_seals() -> void:
 		if prog.is_unlocked(String(id)):
 			open.append(id)
 	b.set_unlocked(open)
+	if game.party != null:
+		game.party.send_seals(open)
 
 
 ## DmGameRewards.check_unlocks: an area whose seal asks N kills in the area before it breaks (the Warren: 150 in the Graves, less with Swift Seals).
