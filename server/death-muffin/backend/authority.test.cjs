@@ -12,8 +12,10 @@ const { harness } = require('./bag-fake-db.cjs');
 
 const T0 = Date.UTC(2026, 9, 2, 12, 0, 0);
 const MIN = 60_000;
-const REPORT = { AUTHORITY_MODE: 'report' };
-const ENFORCE = { AUTHORITY_MODE: 'enforce' };
+// The bag-save item budget (ground items at a believable pace) is what a save may add while drops are only audited; with server-decided drops
+// enforced (the default) a save adds no drop item at all (the 'drop_unclaimed' tests below).
+const REPORT = { AUTHORITY_MODE: 'report', DROPS_MODE: 'audit' };
+const ENFORCE = { AUTHORITY_MODE: 'enforce', DROPS_MODE: 'audit' };
 const MODES = [['report', REPORT], ['enforce', ENFORCE]];
 
 const char = (over = {}) => ({ id: 1, account_id: 7, level: 10, experience: 0, gold: 1000, stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 10, ...over });
@@ -198,6 +200,8 @@ async function bagSave(auth, bag, slots, env, now = T0) {
   await db.conn.beginTransaction();
   const out = await replaceBag(db.conn, 1, slots, 48, 7, (rows, sent) => authority.guardBagSave(db.conn, { characterId: 1, accountId: 7, existingRows: rows, slots: sent, bagSize: 48, now, env, log }));
   await db.conn.commit();
+  // The REPORT / ENFORCE item-budget tests count only the budget's rows; a drop item's own 'drop_unclaimed' row has its own test below.
+  if (env === REPORT || env === ENFORCE) for (let i = auth.audit.length - 1; i >= 0; i--) if (auth.audit[i].kind === 'drop_unclaimed') auth.audit.splice(i, 1);
   return { db, out, log };
 }
 
@@ -270,7 +274,7 @@ test('stale 24-slot saves only judge the slots they speak for', async () => {
   await db.conn.beginTransaction();
   await replaceBag(db.conn, 1, [row(0, 'ore_copper', 3)], 24, 7, (rows, sent) => authority.guardBagSave(db.conn, { characterId: 1, accountId: 7, existingRows: rows, slots: sent, bagSize: 24, now: T0, env: ENFORCE, log: quietLog() }));
   assert.equal(qty(db.inv, 'ichor_prelate'), 5);
-  assert.equal(auth.audit.length, 0);
+  assert.equal(auth.audit.filter((x) => x.kind !== 'drop_unclaimed').length, 0, 'the item budget judges nothing (the ore is a drop item: its own row)');
 });
 
 test('add-item uses the same per-item allowance', async () => {
@@ -435,4 +439,21 @@ test('depths: the offline edition\'s deepest floor bounds the offline ceilings t
   const deepHour = (depth) => snapshot(31, 0, 500, { necro: online.necro, chronicle: { life: { playSeconds: 3600 + 3600, 'peak.depth': depth } } });
   const f = (depth) => authority.evaluateOffline({ online, offline: deepHour(depth) });
   assert.deepEqual(f(20).findings.filter((x) => x.kind === 'xp_rate'), [], 'a level in two hours of deep-floor play is believable');
+});
+
+// ── Server-decided drops: a save adds no drop item (DECISIONS B20) ───────────────────────────────────────────────────────────
+
+test('with drops enforced (the default) a drop item a save adds is left out, whatever AUTHORITY_MODE says; other items are judged as before', async () => {
+  for (const mode of ['report', 'enforce']) {
+    const auth = authorityFake();
+    const { db, out } = await bagSave(auth, [], [row(0, 'ichor_prelate', 2), row(1, 'plank_oak', 3)], { AUTHORITY_MODE: mode });
+    assert.equal(qty(db.inv, 'ichor_prelate'), 0, `${mode}: the drop item is left out`);
+    assert.ok(auth.audit.some((a) => a.kind === 'drop_unclaimed'), 'and logged');
+    assert.match(out.notice, /never picked up from a drop/);
+    assert.ok(!auth.audit.some((a) => a.kind === 'item_intro' && a.detail.item === 'ichor_prelate'), 'not judged twice');
+  }
+  const auth = authorityFake();
+  const { db } = await bagSave(auth, [], [row(0, 'ichor_prelate', 2)], { AUTHORITY_MODE: 'report', DROPS_MODE: 'audit' });
+  assert.equal(qty(db.inv, 'ichor_prelate'), 2, 'DROPS_MODE=audit: logged, kept');
+  assert.ok(auth.audit.some((a) => a.kind === 'drop_unclaimed'));
 });

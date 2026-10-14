@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-10-14",
+    "title": "Fair Loot, Finished",
+    "items": [
+      "Catacomb Depths: floor rewards and chest finds are now decided by the server too, and still appear the moment you earn them.",
+      "Loot can now only reach your bag by picking it up. If the game ever showed you something the server didn't deal, it simply won't land in your bag."
+    ]
+  },
+  {
+    "date": "2026-10-14",
     "title": "Stronger Together",
     "items": [
       "Co-op: when you join someone's party, your own gear, set bonuses, affixes, boons and upgrades now count in their world. Change gear mid-session and the host picks it up.",

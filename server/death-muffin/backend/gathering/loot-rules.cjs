@@ -31,6 +31,7 @@ __export(lootRules_exports, {
   disciplineIdFor: () => disciplineIdFor,
   dropStream: () => dropStream,
   eventStreams: () => eventStreams,
+  hasChest: () => hasChest,
   isEnemy: () => isEnemy,
   isLegendaryItem: () => isLegendaryItem,
   isLootArea: () => isLootArea,
@@ -40,9 +41,12 @@ __export(lootRules_exports, {
   randInt: () => randInt,
   rollBoss: () => rollBoss,
   rollBossRune: () => rollBossRune,
+  rollChest: () => rollChest,
   rollEliteRune: () => rollEliteRune,
   rollEvent: () => rollEvent,
   rollFirstKillItem: () => rollFirstKillItem,
+  rollFloorClear: () => rollFloorClear,
+  rollGearDrop: () => rollGearDrop,
   rollGearInstances: () => rollGearInstances,
   rollItem: () => rollItem,
   rollKill: () => rollKill,
@@ -1398,206 +1402,6 @@ var PLAYABLE_DISCIPLINES = [
   DISCIPLINES.reaper
 ];
 
-// server/rules/gameplay/affixRules.ts
-var ILVL_MAX = 99;
-var AFFIX_GEAR_TYPES = ["weapon", "offhand", "armor_head", "armor_chest", "armor_legs", "armor_feet", "armor_hands", "ring", "trinket"];
-var isAffixGear = (itemType) => AFFIX_GEAR_TYPES.includes(itemType);
-var clampInt = (x, lo, hi) => Math.max(lo, Math.min(hi, Math.round(x)));
-var around = (centre, cap, floor = 1, spread = 0.3) => {
-  const lo = clampInt(centre * (1 - spread), floor, cap);
-  return [lo, clampInt(Math.max(centre * (1 + spread), lo), lo, cap)];
-};
-var WIDE = 0.35;
-var tenths = (v) => `${+(v / 10).toFixed(1)}%`;
-var STAT_NAME = { stat_str: "STR", stat_agi: "AGI", stat_int: "INT", stat_vit: "VIT" };
-var statDef = (stat, kind, word) => ({
-  id: `${kind === "prefix" ? "p" : "s"}_${stat.slice(5)}`,
-  kind,
-  word,
-  group: stat,
-  necro: false,
-  weight: 9,
-  unit: "stat",
-  range: (L) => around(1.2 + 0.1 * Math.min(L, 25) + 0.052 * Math.max(0, L - 25), 20, 1, WIDE),
-  legacy: [(L) => around(0.8 + 0.07 * L, 14), (L) => around(0.8 + 0.07 * Math.min(L, 25) + 0.045 * Math.max(0, L - 25), 14)],
-  effect: (v) => ({ stats: { [stat]: v } }),
-  text: (v) => `+${v} ${STAT_NAME[stat]}`
-});
-var AFFIXES = [
-  statDef("stat_str", "prefix", "Brutal"),
-  statDef("stat_agi", "prefix", "Fleet"),
-  statDef("stat_int", "prefix", "Occult"),
-  statDef("stat_vit", "prefix", "Stout"),
-  statDef("stat_str", "suffix", "of the Reaver"),
-  statDef("stat_agi", "suffix", "of the Hound"),
-  statDef("stat_int", "suffix", "of the Seer"),
-  statDef("stat_vit", "suffix", "of the Tomb"),
-  {
-    id: "p_thrall_dmg",
-    kind: "prefix",
-    word: "Gravebound",
-    group: "thrall_dmg",
-    necro: true,
-    weight: 13,
-    unit: "pct",
-    range: (L) => around(10 * (9.2 + 0.1 * L), 340, 1, WIDE),
-    legacy: [(L) => around(10 * (5.5 + 0.2 * L), 300), (L) => around(10 * (6.5 + 0.1 * L), 300)],
-    effect: (v) => ({ mult: { thrallDamageMult: 1 + v / 1e3 } }),
-    text: (v) => `Thralls hit +${tenths(v)} harder`
-  },
-  {
-    id: "s_thrall_hp",
-    kind: "suffix",
-    word: "of the Legion",
-    group: "thrall_hp",
-    necro: true,
-    weight: 13,
-    unit: "pct",
-    range: (L) => around(10 * (12.5 + 0.3 * L), 540, 1, WIDE),
-    legacy: [(L) => around(10 * (10.6 + 0.38 * L), 500), (L) => around(10 * (9.5 + 0.34 * L), 500)],
-    effect: (v) => ({ mult: { thrallHpMult: 1 + v / 1e3 } }),
-    text: (v) => `Thralls have +${tenths(v)} health`
-  },
-  {
-    id: "p_essence_regen",
-    kind: "prefix",
-    word: "Whispering",
-    group: "essence_regen",
-    necro: true,
-    weight: 11,
-    unit: "pct",
-    range: (L) => around(10 * (13 + 0.55 * L), 760, 1, WIDE),
-    legacy: [(L) => around(10 * (10 + 0.42 * L), 600), (L) => around(10 * (10 + 0.5 * L), 600)],
-    effect: (v) => ({ mult: { essenceRegenMult: 1 + v / 1e3 } }),
-    text: (v) => `+${tenths(v)} essence regeneration`
-  },
-  {
-    id: "s_miasma",
-    kind: "suffix",
-    word: "of the Rotting Mist",
-    group: "miasma",
-    necro: true,
-    weight: 9,
-    unit: "pct",
-    range: (L) => around(10 * (7.6 + 0.17 * L), 550, 1, WIDE),
-    legacy: [(L) => around(10 * (5.2 + 0.22 * L), 400), (L) => around(10 * (5.2 + 0.12 * L), 400)],
-    effect: (v) => ({ mult: { miasmaRadiusMult: 1 + v / 1e3 } }),
-    text: (v) => `Miasma is +${tenths(v)} wider`
-  },
-  {
-    id: "p_withered",
-    kind: "prefix",
-    word: "Blighted",
-    group: "withered",
-    necro: true,
-    weight: 8,
-    unit: "count",
-    range: (L) => [1, clampInt(3 + Math.floor(L / 12), 3, 4)],
-    legacy: [(L) => [1, clampInt(2 + Math.floor(L / 7), 2, 6)], (L) => [1, clampInt(2 + Math.floor(L / 9), 2, 4)]],
-    effect: (v) => ({ add: { witheredMaxStacks: v } }),
-    text: (v) => `+${v} max Withered stack${v === 1 ? "" : "s"}`
-  },
-  {
-    id: "s_ward",
-    kind: "suffix",
-    word: "of the Ossuary Wall",
-    group: "ward",
-    necro: true,
-    weight: 9,
-    unit: "wardPct",
-    range: (L) => around(23 + 0.3 * L, 46, 1, WIDE),
-    legacy: [(L) => around(9 + 0.7 * L, 60), (L) => around(12 + 0.55 * L, 55)],
-    effect: (v) => ({ add: { wardPerThrall: v / 1e3 } }),
-    text: (v) => `${tenths(v)} less damage taken per thrall`
-  }
-];
-var BY_ID = new Map(AFFIXES.map((a) => [a.id, a]));
-var SOURCE_ILVL = { kill: 0, elite: 2, boss: 4, first_kill: 5, surge: 2 };
-var itemLevelFor = (level, source) => clampInt((Number(level) || 1) + (SOURCE_ILVL[source] ?? 0), 1, ILVL_MAX);
-var ILVL_REACH = 10;
-var clampDropLevel = (level, characterLevel) => clampInt(Number(level) || 1, 1, Math.min(ILVL_MAX, Math.max(1, characterLevel) + ILVL_REACH));
-var COUNT_WEIGHTS = {
-  common: [60, 30, 9, 1],
-  uncommon: [40, 38, 18, 4],
-  rare: [22, 38, 30, 10],
-  epic: [10, 30, 40, 20],
-  legendary: [0, 15, 45, 40],
-  relic: [0, 15, 45, 40]
-};
-var SOURCE_COUNT = {
-  kill: { mult: [1, 1, 1, 1], min: 0 },
-  elite: { mult: [0.6, 1, 1.4, 1.8], min: 0 },
-  surge: { mult: [0.5, 1, 1.5, 2], min: 0 },
-  boss: { mult: [0.15, 0.8, 1.6, 2.4], min: 1 },
-  first_kill: { mult: [0, 0.3, 1.6, 2.6], min: 2 }
-};
-function rollAffixCount(rarity, source, rand) {
-  const base = COUNT_WEIGHTS[rarity] ?? COUNT_WEIGHTS.common;
-  const s = SOURCE_COUNT[source] ?? SOURCE_COUNT.kill;
-  const w = base.map((x, i) => i < s.min ? 0 : x * s.mult[i]);
-  const total = w.reduce((a, b) => a + b, 0) || 1;
-  let r = rand() * total;
-  for (let i = 0; i < 4; i++) {
-    r -= w[i];
-    if (r < 0) return i;
-  }
-  return Math.max(s.min, 0);
-}
-function rollInstance(item2, level, source, rand) {
-  const ilvl = itemLevelFor(level, source);
-  const count = rollAffixCount(item2.rarity, source, rand);
-  const affixes = [];
-  const used = /* @__PURE__ */ new Set();
-  for (let n = 0; n < count; n++) {
-    const pool = AFFIXES.filter((a) => !used.has(a.group));
-    const total = pool.reduce((s, a) => s + a.weight, 0);
-    let r = rand() * total;
-    let pick = pool[pool.length - 1];
-    for (const a of pool) {
-      r -= a.weight;
-      if (r < 0) {
-        pick = a;
-        break;
-      }
-    }
-    used.add(pick.group);
-    const [lo, hi] = pick.range(ilvl);
-    affixes.push({ id: pick.id, v: lo + Math.min(hi - lo, Math.floor(rand() * (hi - lo + 1))) });
-  }
-  return { ilvl, affixes };
-}
-
-// server/rules/content/difficulty.ts
-var DIFFICULTIES = {
-  easy: {
-    id: "easy",
-    name: "Easy",
-    blurb: "The dead hit softer and fall faster. Less gold and experience.",
-    enemyHpMult: 0.75,
-    enemyDamageMult: 0.3,
-    rewardMult: 0.75,
-    eliteBonus: 0
-  },
-  medium: {
-    id: "medium",
-    name: "Medium",
-    blurb: "The intended balance.",
-    enemyHpMult: 1,
-    enemyDamageMult: 1,
-    rewardMult: 1,
-    eliteBonus: 0
-  },
-  hard: {
-    id: "hard",
-    name: "Hard",
-    blurb: "Tougher, deadlier dead and more elites. More gold and experience.",
-    enemyHpMult: 1.2,
-    enemyDamageMult: 1.3,
-    rewardMult: 1.3,
-    eliteBonus: 0.02
-  }
-};
-
 // server/rules/content/enemies.ts
 var ENEMIES = {
   robber: {
@@ -2182,6 +1986,513 @@ var ELITE = {
   shardChance: 1
 };
 
+// server/rules/content/runes.ts
+var RUNE_IDS = [
+  "rune_splinter",
+  "rune_marrow_tap",
+  "rune_volley",
+  "rune_ossuary_ring",
+  "rune_impale",
+  "rune_mass_grave",
+  "rune_bone_colossus",
+  "rune_creeping_rot",
+  "rune_contagion",
+  "rune_hollow_choir",
+  "rune_requiem"
+];
+var RUNE_TUNING = {
+  /** Bone Needle. */
+  splinter: { reach: 6, damageFrac: 0.3 },
+  marrowTap: { essenceBonus: 4, damageMult: 0.7 },
+  volley: { every: 4, needles: 3, damageFrac: 0.4, reach: 9 },
+  /** Marrow Spear: the ring bursts on the cursor, pulled back to the spear's reach. */
+  ring: { radius: 3, maxCastRange: 12, damageMult: 0.8 },
+  impale: { rootS: 1.5, damageMult: 1.5 },
+  /** Exhume. `slots` is how many legion places the colossus fills. */
+  massGrave: { count: 3, statMult: 0.75, pickRadius: 4 },
+  colossus: {
+    corpses: 5,
+    minCorpses: 3,
+    slots: 2,
+    pickRadius: 6,
+    hpPerCorpse: 0.8,
+    damagePerCorpse: 0.7,
+    cleaveRadius: 2.4,
+    cleaveFrac: 0.6,
+    range: 2.4,
+    interval: 1.2,
+    speed: 4.8,
+    /** Cooldown multiplier on Exhume's 500 ms (4 s), applied only to a cast that raised a Colossus. */
+    cooldownMult: 8
+  },
+  /** Miasma Circle. */
+  creepingRot: { speed: 1.5, radiusMult: 0.85, seekReach: 12 },
+  contagion: { neighbours: 2, reach: 4.5, minStacks: 2 },
+  /** Black Litany. */
+  hollowChoir: { powerMult: 0.6 },
+  requiem: { delayMs: 2e3, radiusMult: 1.7 }
+};
+var pct2 = (x) => `${Math.round(x * 100)}%`;
+var T2 = RUNE_TUNING;
+var RUNES = {
+  rune_splinter: {
+    id: "rune_splinter",
+    name: "Rune of Splinters",
+    rite: "bone_needle",
+    rarity: "uncommon",
+    sell: 25,
+    lore: "The needle shatters on bone and the shards keep looking.",
+    short: "Hits splinter to a second foe",
+    lines: [`When a needle hits, a splinter flies to the nearest other enemy within ${T2.splinter.reach} m for ${pct2(T2.splinter.damageFrac)} of the damage. Under a scythe, each reaping swing throws one splinter, from the nearest enemy it struck to the nearest one it missed.`],
+    cost: null
+  },
+  rune_marrow_tap: {
+    id: "rune_marrow_tap",
+    name: "Rune of Marrow-Tap",
+    rite: "bone_needle",
+    rarity: "uncommon",
+    sell: 25,
+    lore: "Every wound is a spigot.",
+    short: "More essence, softer needle",
+    lines: [`Each needle hit returns ${T2.marrowTap.essenceBonus} more Grave Essence. Under a scythe, each swing that lands returns ${T2.marrowTap.essenceBonus} more once, however many enemies it strikes.`],
+    cost: `Needles and scythe swings hit for ${pct2(1 - T2.marrowTap.damageMult)} less.`
+  },
+  rune_volley: {
+    id: "rune_volley",
+    name: "Rune of the Volley",
+    rite: "bone_needle",
+    rarity: "rare",
+    sell: 60,
+    lore: "Four breaths, then a flock.",
+    short: "Every 4th needle is a volley",
+    lines: [`Every ${T2.volley.every}th needle you throw becomes a volley of ${T2.volley.needles}, aimed at ${T2.volley.needles} different enemies within ${T2.volley.reach} m (or all at one target if it stands alone). The volley returns the essence of one needle between them. Needle only: a scythe's swing is not a volley.`],
+    cost: `Each volley needle hits for ${pct2(T2.volley.damageFrac)}.`
+  },
+  rune_ossuary_ring: {
+    id: "rune_ossuary_ring",
+    name: "Ossuary Ring Rune",
+    rite: "marrow_spear",
+    rarity: "rare",
+    sell: 60,
+    lore: "The dead rise in a circle, like a congregation.",
+    short: "Spikes erupt in a ring",
+    lines: [`Instead of a line, bone erupts in a ${T2.ring.radius} m ring at the cursor, striking everything inside and applying Fracture and Hemorrhage as usual.`],
+    cost: `It no longer reaches down a long line, and strikes for ${pct2(T2.ring.damageMult)}.`
+  },
+  rune_impale: {
+    id: "rune_impale",
+    name: "Rune of Impaling",
+    rite: "marrow_spear",
+    rarity: "uncommon",
+    sell: 25,
+    lore: "One thorn, driven deep.",
+    short: "Skewers and roots the first foe",
+    lines: [`The spear stops at the first enemy it meets, hits it for ${pct2(T2.impale.damageMult - 1)} more and roots it for ${T2.impale.rootS} s (a boss shrugs the root off but takes the hit).`],
+    cost: "It no longer pierces the line behind."
+  },
+  rune_mass_grave: {
+    id: "rune_mass_grave",
+    name: "Mass Grave Rune",
+    rite: "exhume",
+    rarity: "rare",
+    sell: 60,
+    lore: "Why dig one grave when the field is full?",
+    short: "Raise up to 3 corpses at once",
+    lines: [`Exhume raises up to ${T2.massGrave.count} corpses near the cursor at once, each with ${pct2(T2.massGrave.statMult)} of the usual thrall health and damage.`],
+    cost: "Each thrall is weaker, and it spends more corpses."
+  },
+  rune_bone_colossus: {
+    id: "rune_bone_colossus",
+    name: "Bone Colossus Rune",
+    rite: "exhume",
+    rarity: "epic",
+    sell: 150,
+    lore: "Five dead, bound as one, and it remembers being a wall.",
+    short: "Five corpses become one giant thrall",
+    lines: [
+      `When ${T2.colossus.minCorpses} or more corpses lie within ${T2.colossus.pickRadius} m of the one you name, Exhume consumes up to ${T2.colossus.corpses} of them and raises one Bone Colossus instead. With fewer, or while a Colossus stands, it raises an ordinary thrall.`,
+      `Its health is ${(T2.colossus.hpPerCorpse * T2.colossus.corpses).toFixed(1)}x and its damage ${(T2.colossus.damagePerCorpse * T2.colossus.corpses).toFixed(1)}x a thrall's with five corpses (less with fewer), and every blow cleaves ${T2.colossus.cleaveRadius} m.`,
+      `It fills ${T2.colossus.slots} legion places and you can only keep one: raising another replaces it.`
+    ],
+    cost: `Exhume takes ${500 * T2.colossus.cooldownMult / 1e3} s to ready again after raising a Colossus.`
+  },
+  rune_creeping_rot: {
+    id: "rune_creeping_rot",
+    name: "Creeping Rot Rune",
+    rite: "miasma",
+    rarity: "uncommon",
+    sell: 25,
+    lore: "Rot that has learned to walk.",
+    short: "The circle crawls toward foes",
+    lines: [`The circle drifts ${T2.creepingRot.speed} m/s toward the nearest enemy within ${T2.creepingRot.seekReach} m of it.`],
+    cost: `The circle is ${pct2(1 - T2.creepingRot.radiusMult)} narrower.`
+  },
+  rune_contagion: {
+    id: "rune_contagion",
+    name: "Contagion Rune",
+    rite: "miasma",
+    rarity: "rare",
+    sell: 60,
+    lore: "It does not stop at the grave.",
+    short: "Dying Withered foes infect others",
+    lines: [`A Withered enemy that dies spreads its Withered stacks (minus one) to the ${T2.contagion.neighbours} nearest enemies within ${T2.contagion.reach} m, and those spread it again when they die (it needs ${T2.contagion.minStacks} stacks to jump).`],
+    cost: null
+  },
+  rune_hollow_choir: {
+    id: "rune_hollow_choir",
+    name: "Hollow Choir Rune",
+    rite: "black_litany",
+    rarity: "rare",
+    sell: 60,
+    lore: "The dead sing, and are not spent.",
+    short: "Your thralls sing instead of dying",
+    lines: ["Black Litany no longer sacrifices your thralls. They still lend their voices to its power."],
+    cost: `The burst hits for ${pct2(1 - T2.hollowChoir.powerMult)} less.`
+  },
+  rune_requiem: {
+    id: "rune_requiem",
+    name: "Requiem Rune",
+    rite: "black_litany",
+    rarity: "epic",
+    sell: 150,
+    lore: "A hymn is only terrible once it is finished.",
+    short: "The burst lands 2 s later, twice as wide",
+    lines: [`Black Litany marks the ground, then bursts ${T2.requiem.delayMs / 1e3} s later over ${T2.requiem.radiusMult}x the radius. Corpses and thralls are consumed when it bursts.`],
+    cost: "Enemies can walk out of it, and it can take more of your thralls."
+  }
+};
+var RUNE_ORDER = [...RUNE_IDS];
+var byRarity = (...rarities) => RUNE_ORDER.filter((id) => rarities.includes(RUNES[id].rarity));
+var AREA_RUNE_POOL = {
+  graves: byRarity("uncommon"),
+  ossuary: byRarity("uncommon", "rare"),
+  nave: byRarity("uncommon", "rare"),
+  sanctum: byRarity("uncommon", "rare", "epic"),
+  cloister: byRarity("uncommon", "rare", "epic"),
+  pyre: byRarity("uncommon", "rare", "epic"),
+  fen: byRarity("uncommon", "rare", "epic"),
+  warren: byRarity("uncommon", "rare"),
+  coliseum: byRarity("uncommon", "rare", "epic")
+};
+var RUNE_WEIGHT = { uncommon: 3, rare: 2, epic: 1 };
+var ELITE_RUNE_CHANCE_BY_AREA = {
+  graves: 0.05,
+  warren: 0.055,
+  ossuary: 0.06,
+  nave: 0.07,
+  coliseum: 0.08,
+  sanctum: 0.09,
+  cloister: 0.1,
+  pyre: 0.11,
+  fen: 0.12
+};
+var ELITE_RUNE_CHANCE = ELITE_RUNE_CHANCE_BY_AREA.graves;
+var eliteRuneChance = (area) => ELITE_RUNE_CHANCE_BY_AREA[area] ?? ELITE_RUNE_CHANCE;
+var RUNE_PITY_STEP = 0.05;
+var RUNE_PITY_MAX_MULT = 3;
+var runePityMult = (dry) => Math.min(RUNE_PITY_MAX_MULT, 1 + Math.max(0, dry) * RUNE_PITY_STEP);
+var SURGE_RUNE_CHANCE = 0.35;
+var BOSS_REPEAT_RUNE_CHANCE = 0.5;
+var BOSS_RUNE_POOL = {
+  gravedigger: ["rune_splinter", "rune_marrow_tap", "rune_mass_grave"],
+  abbess: ["rune_ossuary_ring", "rune_impale", "rune_bone_colossus", "rune_volley"],
+  congregation: ["rune_creeping_rot", "rune_contagion", "rune_hollow_choir"],
+  prelate: ["rune_requiem", ...RUNE_ORDER],
+  saint: ["rune_creeping_rot", "rune_contagion", "rune_hollow_choir", "rune_requiem", "rune_bone_colossus"],
+  regent: [...RUNE_ORDER],
+  mire: [...RUNE_ORDER]
+};
+function pickRune(pool, rand) {
+  if (!pool.length) return null;
+  const weights = pool.map((id) => RUNE_WEIGHT[RUNES[id].rarity]);
+  let roll = rand() * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < pool.length; i++) {
+    roll -= weights[i];
+    if (roll < 0) return pool[i];
+  }
+  return pool[pool.length - 1];
+}
+
+// server/rules/content/depths.ts
+var DEPTHS = {
+  /**
+   * The spec said `max(20, player) + d`. A level-20 floor is wrong for the first visitors: the Warren opens at 150 Graves kills (level ~8-12),
+   * and enemy health grows 22% of a level-1 body per level (x5 at level 20 against x2.3 at level 12), so depth 1 would be a wall. The floor
+   * is the Warren's own entry level instead: `max(12, your level) + depth`. A level-60 hero meets level-61 dead on depth 1 (the Pyre and the
+   * Fen are level-scaled the same way) and level-80 dead on depth 20.
+   */
+  minLevel: 12,
+  /** The hero's level is read as the highest among the living players on the floor (solo only for now). */
+  levelsPerDepth: 1,
+  /** Most dead alive at once on a floor (the plan's "~24"); the global cap (72) is far above it. */
+  cap: 24,
+  /** Every Nth floor holds a chest and gives elites one more affix. */
+  chestEvery: 5,
+  extraAffixEvery: 5,
+  /** Elites carry at most this many affixes beyond their first (the pool holds four in all). */
+  maxExtraAffixes: 3,
+  /** Seconds after a floor begins before the first of the dead climbs out. */
+  firstWaveDelayS: 1.4,
+  /** A floor-clear banner stays this long (ms). */
+  bannerMs: 3200
+};
+var hasChest = (depth) => depth > 0 && depth % DEPTHS.chestEvery === 0;
+var BANDS = [
+  { from: 1, add: [{ id: "rat", weight: 30 }, { id: "robber", weight: 22 }, { id: "ghoul", weight: 14 }, { id: "bat", weight: 12 }, { id: "sac", weight: 10 }, { id: "hound", weight: 8 }] },
+  { from: 5, add: [{ id: "penitent", weight: 12 }, { id: "deacon", weight: 8 }, { id: "acolyte", weight: 6 }, { id: "wraith", weight: 6 }, { id: "moth", weight: 6 }] },
+  { from: 10, add: [{ id: "templar", weight: 8 }, { id: "censer", weight: 6 }, { id: "gargoyle", weight: 8 }, { id: "seraph", weight: 6 }, { id: "plague_doctor", weight: 8 }, { id: "flagellant", weight: 8 }] },
+  { from: 15, add: [{ id: "golem", weight: 5 }, { id: "cinder_husk", weight: 8 }, { id: "cinderhound", weight: 8 }, { id: "pyre_priest", weight: 6 }, { id: "slag_brute", weight: 5 }, { id: "bog_hag", weight: 7 }, { id: "drowned_sexton", weight: 4 }] }
+];
+function depthRoster(depth) {
+  const out = /* @__PURE__ */ new Map();
+  for (const b of BANDS) {
+    if (depth < b.from) continue;
+    for (const e of b.add) out.set(e.id, e.weight);
+  }
+  const bands = BANDS.filter((b) => depth >= b.from).length;
+  const fade = Math.pow(0.6, Math.max(0, bands - 1));
+  for (const e of BANDS[0].add) out.set(e.id, Math.max(3, Math.round(e.weight * fade)));
+  return [...out].map(([id, weight]) => ({ id, weight }));
+}
+function depthLootArea(depth) {
+  if (depth >= 30) return "fen";
+  if (depth >= 20) return "pyre";
+  if (depth >= 15) return "cloister";
+  if (depth >= 10) return "sanctum";
+  if (depth >= 5) return "coliseum";
+  return "ossuary";
+}
+function averageKill(depth, level) {
+  const roster = depthRoster(depth);
+  const total = roster.reduce((n, e) => n + e.weight, 0) || 1;
+  let gold = 0;
+  let xp = 0;
+  for (const e of roster) {
+    const d = ENEMIES[e.id];
+    gold += e.weight / total * (d.gold[0] + d.gold[1]) / 2;
+    xp += e.weight / total * d.xp;
+  }
+  return { gold: gold * (1 + 0.15 * (level - 1)), xp: xp * (1 + 0.25 * (level - 1)) };
+}
+var FLOOR_DROP_CHANCE = 0.65;
+var FLOOR_BONUS_KILLS = 5;
+var CHEST_KILLS = 14;
+function floorBonus(depth, level) {
+  const k = averageKill(depth, level);
+  return { gold: Math.round(k.gold * FLOOR_BONUS_KILLS), xp: Math.round(k.xp * FLOOR_BONUS_KILLS) };
+}
+function chestBonus(depth, level) {
+  const k = averageKill(depth, level);
+  const tier = Math.floor(depth / DEPTHS.chestEvery);
+  const mult = 1 + 0.12 * (tier - 1);
+  return { gold: Math.round(k.gold * CHEST_KILLS * mult), xp: Math.round(k.xp * CHEST_KILLS * mult) };
+}
+var chestDrops = (depth) => 3 + Math.floor(Math.max(0, depth - 5) / 10);
+var chestRuneChance = (depth) => Math.min(0.7, 0.25 + 0.04 * (Math.floor(depth / DEPTHS.chestEvery) - 1));
+function chestRunePool(depth) {
+  return RUNE_ORDER.filter((id) => RUNES[id].rarity !== "epic" || depth >= 10);
+}
+
+// server/rules/gameplay/affixRules.ts
+var ILVL_MAX = 99;
+var AFFIX_GEAR_TYPES = ["weapon", "offhand", "armor_head", "armor_chest", "armor_legs", "armor_feet", "armor_hands", "ring", "trinket"];
+var isAffixGear = (itemType) => AFFIX_GEAR_TYPES.includes(itemType);
+var clampInt = (x, lo, hi) => Math.max(lo, Math.min(hi, Math.round(x)));
+var around = (centre, cap, floor = 1, spread = 0.3) => {
+  const lo = clampInt(centre * (1 - spread), floor, cap);
+  return [lo, clampInt(Math.max(centre * (1 + spread), lo), lo, cap)];
+};
+var WIDE = 0.35;
+var tenths = (v) => `${+(v / 10).toFixed(1)}%`;
+var STAT_NAME = { stat_str: "STR", stat_agi: "AGI", stat_int: "INT", stat_vit: "VIT" };
+var statDef = (stat, kind, word) => ({
+  id: `${kind === "prefix" ? "p" : "s"}_${stat.slice(5)}`,
+  kind,
+  word,
+  group: stat,
+  necro: false,
+  weight: 9,
+  unit: "stat",
+  range: (L) => around(1.2 + 0.1 * Math.min(L, 25) + 0.052 * Math.max(0, L - 25), 20, 1, WIDE),
+  legacy: [(L) => around(0.8 + 0.07 * L, 14), (L) => around(0.8 + 0.07 * Math.min(L, 25) + 0.045 * Math.max(0, L - 25), 14)],
+  effect: (v) => ({ stats: { [stat]: v } }),
+  text: (v) => `+${v} ${STAT_NAME[stat]}`
+});
+var AFFIXES = [
+  statDef("stat_str", "prefix", "Brutal"),
+  statDef("stat_agi", "prefix", "Fleet"),
+  statDef("stat_int", "prefix", "Occult"),
+  statDef("stat_vit", "prefix", "Stout"),
+  statDef("stat_str", "suffix", "of the Reaver"),
+  statDef("stat_agi", "suffix", "of the Hound"),
+  statDef("stat_int", "suffix", "of the Seer"),
+  statDef("stat_vit", "suffix", "of the Tomb"),
+  {
+    id: "p_thrall_dmg",
+    kind: "prefix",
+    word: "Gravebound",
+    group: "thrall_dmg",
+    necro: true,
+    weight: 13,
+    unit: "pct",
+    range: (L) => around(10 * (9.2 + 0.1 * L), 340, 1, WIDE),
+    legacy: [(L) => around(10 * (5.5 + 0.2 * L), 300), (L) => around(10 * (6.5 + 0.1 * L), 300)],
+    effect: (v) => ({ mult: { thrallDamageMult: 1 + v / 1e3 } }),
+    text: (v) => `Thralls hit +${tenths(v)} harder`
+  },
+  {
+    id: "s_thrall_hp",
+    kind: "suffix",
+    word: "of the Legion",
+    group: "thrall_hp",
+    necro: true,
+    weight: 13,
+    unit: "pct",
+    range: (L) => around(10 * (12.5 + 0.3 * L), 540, 1, WIDE),
+    legacy: [(L) => around(10 * (10.6 + 0.38 * L), 500), (L) => around(10 * (9.5 + 0.34 * L), 500)],
+    effect: (v) => ({ mult: { thrallHpMult: 1 + v / 1e3 } }),
+    text: (v) => `Thralls have +${tenths(v)} health`
+  },
+  {
+    id: "p_essence_regen",
+    kind: "prefix",
+    word: "Whispering",
+    group: "essence_regen",
+    necro: true,
+    weight: 11,
+    unit: "pct",
+    range: (L) => around(10 * (13 + 0.55 * L), 760, 1, WIDE),
+    legacy: [(L) => around(10 * (10 + 0.42 * L), 600), (L) => around(10 * (10 + 0.5 * L), 600)],
+    effect: (v) => ({ mult: { essenceRegenMult: 1 + v / 1e3 } }),
+    text: (v) => `+${tenths(v)} essence regeneration`
+  },
+  {
+    id: "s_miasma",
+    kind: "suffix",
+    word: "of the Rotting Mist",
+    group: "miasma",
+    necro: true,
+    weight: 9,
+    unit: "pct",
+    range: (L) => around(10 * (7.6 + 0.17 * L), 550, 1, WIDE),
+    legacy: [(L) => around(10 * (5.2 + 0.22 * L), 400), (L) => around(10 * (5.2 + 0.12 * L), 400)],
+    effect: (v) => ({ mult: { miasmaRadiusMult: 1 + v / 1e3 } }),
+    text: (v) => `Miasma is +${tenths(v)} wider`
+  },
+  {
+    id: "p_withered",
+    kind: "prefix",
+    word: "Blighted",
+    group: "withered",
+    necro: true,
+    weight: 8,
+    unit: "count",
+    range: (L) => [1, clampInt(3 + Math.floor(L / 12), 3, 4)],
+    legacy: [(L) => [1, clampInt(2 + Math.floor(L / 7), 2, 6)], (L) => [1, clampInt(2 + Math.floor(L / 9), 2, 4)]],
+    effect: (v) => ({ add: { witheredMaxStacks: v } }),
+    text: (v) => `+${v} max Withered stack${v === 1 ? "" : "s"}`
+  },
+  {
+    id: "s_ward",
+    kind: "suffix",
+    word: "of the Ossuary Wall",
+    group: "ward",
+    necro: true,
+    weight: 9,
+    unit: "wardPct",
+    range: (L) => around(23 + 0.3 * L, 46, 1, WIDE),
+    legacy: [(L) => around(9 + 0.7 * L, 60), (L) => around(12 + 0.55 * L, 55)],
+    effect: (v) => ({ add: { wardPerThrall: v / 1e3 } }),
+    text: (v) => `${tenths(v)} less damage taken per thrall`
+  }
+];
+var BY_ID = new Map(AFFIXES.map((a) => [a.id, a]));
+var SOURCE_ILVL = { kill: 0, elite: 2, boss: 4, first_kill: 5, surge: 2 };
+var itemLevelFor = (level, source) => clampInt((Number(level) || 1) + (SOURCE_ILVL[source] ?? 0), 1, ILVL_MAX);
+var ILVL_REACH = 10;
+var clampDropLevel = (level, characterLevel) => clampInt(Number(level) || 1, 1, Math.min(ILVL_MAX, Math.max(1, characterLevel) + ILVL_REACH));
+var COUNT_WEIGHTS = {
+  common: [60, 30, 9, 1],
+  uncommon: [40, 38, 18, 4],
+  rare: [22, 38, 30, 10],
+  epic: [10, 30, 40, 20],
+  legendary: [0, 15, 45, 40],
+  relic: [0, 15, 45, 40]
+};
+var SOURCE_COUNT = {
+  kill: { mult: [1, 1, 1, 1], min: 0 },
+  elite: { mult: [0.6, 1, 1.4, 1.8], min: 0 },
+  surge: { mult: [0.5, 1, 1.5, 2], min: 0 },
+  boss: { mult: [0.15, 0.8, 1.6, 2.4], min: 1 },
+  first_kill: { mult: [0, 0.3, 1.6, 2.6], min: 2 }
+};
+function rollAffixCount(rarity, source, rand) {
+  const base = COUNT_WEIGHTS[rarity] ?? COUNT_WEIGHTS.common;
+  const s = SOURCE_COUNT[source] ?? SOURCE_COUNT.kill;
+  const w = base.map((x, i) => i < s.min ? 0 : x * s.mult[i]);
+  const total = w.reduce((a, b) => a + b, 0) || 1;
+  let r = rand() * total;
+  for (let i = 0; i < 4; i++) {
+    r -= w[i];
+    if (r < 0) return i;
+  }
+  return Math.max(s.min, 0);
+}
+function rollInstance(item2, level, source, rand) {
+  const ilvl = itemLevelFor(level, source);
+  const count = rollAffixCount(item2.rarity, source, rand);
+  const affixes = [];
+  const used = /* @__PURE__ */ new Set();
+  for (let n = 0; n < count; n++) {
+    const pool = AFFIXES.filter((a) => !used.has(a.group));
+    const total = pool.reduce((s, a) => s + a.weight, 0);
+    let r = rand() * total;
+    let pick = pool[pool.length - 1];
+    for (const a of pool) {
+      r -= a.weight;
+      if (r < 0) {
+        pick = a;
+        break;
+      }
+    }
+    used.add(pick.group);
+    const [lo, hi] = pick.range(ilvl);
+    affixes.push({ id: pick.id, v: lo + Math.min(hi - lo, Math.floor(rand() * (hi - lo + 1))) });
+  }
+  return { ilvl, affixes };
+}
+
+// server/rules/content/difficulty.ts
+var DIFFICULTIES = {
+  easy: {
+    id: "easy",
+    name: "Easy",
+    blurb: "The dead hit softer and fall faster. Less gold and experience.",
+    enemyHpMult: 0.75,
+    enemyDamageMult: 0.3,
+    rewardMult: 0.75,
+    eliteBonus: 0
+  },
+  medium: {
+    id: "medium",
+    name: "Medium",
+    blurb: "The intended balance.",
+    enemyHpMult: 1,
+    enemyDamageMult: 1,
+    rewardMult: 1,
+    eliteBonus: 0
+  },
+  hard: {
+    id: "hard",
+    name: "Hard",
+    blurb: "Tougher, deadlier dead and more elites. More gold and experience.",
+    enemyHpMult: 1.2,
+    enemyDamageMult: 1.3,
+    rewardMult: 1.3,
+    eliteBonus: 0.02
+  }
+};
+
 // server/rules/content/cosmetics.ts
 var PETS = [
   { id: "pet_tithe_bat", name: "Tithe Bat", charm: "charm_tithe_bat", skill: "woodcutting", model: "tithe_bat", scale: 0.7, fly: { height: 1.5, speed: 17, amp: 0.75, body: 0.22 }, rarity: "rare", lore: "It roosts in the coffin-oaks and follows the sound of the axe." },
@@ -2664,233 +2975,6 @@ var BASE_BREWS = {
 };
 var BREWS = { ...BASE_BREWS, ...REAGENT_BREWS };
 
-// server/rules/content/runes.ts
-var RUNE_IDS = [
-  "rune_splinter",
-  "rune_marrow_tap",
-  "rune_volley",
-  "rune_ossuary_ring",
-  "rune_impale",
-  "rune_mass_grave",
-  "rune_bone_colossus",
-  "rune_creeping_rot",
-  "rune_contagion",
-  "rune_hollow_choir",
-  "rune_requiem"
-];
-var RUNE_TUNING = {
-  /** Bone Needle. */
-  splinter: { reach: 6, damageFrac: 0.3 },
-  marrowTap: { essenceBonus: 4, damageMult: 0.7 },
-  volley: { every: 4, needles: 3, damageFrac: 0.4, reach: 9 },
-  /** Marrow Spear: the ring bursts on the cursor, pulled back to the spear's reach. */
-  ring: { radius: 3, maxCastRange: 12, damageMult: 0.8 },
-  impale: { rootS: 1.5, damageMult: 1.5 },
-  /** Exhume. `slots` is how many legion places the colossus fills. */
-  massGrave: { count: 3, statMult: 0.75, pickRadius: 4 },
-  colossus: {
-    corpses: 5,
-    minCorpses: 3,
-    slots: 2,
-    pickRadius: 6,
-    hpPerCorpse: 0.8,
-    damagePerCorpse: 0.7,
-    cleaveRadius: 2.4,
-    cleaveFrac: 0.6,
-    range: 2.4,
-    interval: 1.2,
-    speed: 4.8,
-    /** Cooldown multiplier on Exhume's 500 ms (4 s), applied only to a cast that raised a Colossus. */
-    cooldownMult: 8
-  },
-  /** Miasma Circle. */
-  creepingRot: { speed: 1.5, radiusMult: 0.85, seekReach: 12 },
-  contagion: { neighbours: 2, reach: 4.5, minStacks: 2 },
-  /** Black Litany. */
-  hollowChoir: { powerMult: 0.6 },
-  requiem: { delayMs: 2e3, radiusMult: 1.7 }
-};
-var pct2 = (x) => `${Math.round(x * 100)}%`;
-var T2 = RUNE_TUNING;
-var RUNES = {
-  rune_splinter: {
-    id: "rune_splinter",
-    name: "Rune of Splinters",
-    rite: "bone_needle",
-    rarity: "uncommon",
-    sell: 25,
-    lore: "The needle shatters on bone and the shards keep looking.",
-    short: "Hits splinter to a second foe",
-    lines: [`When a needle hits, a splinter flies to the nearest other enemy within ${T2.splinter.reach} m for ${pct2(T2.splinter.damageFrac)} of the damage. Under a scythe, each reaping swing throws one splinter, from the nearest enemy it struck to the nearest one it missed.`],
-    cost: null
-  },
-  rune_marrow_tap: {
-    id: "rune_marrow_tap",
-    name: "Rune of Marrow-Tap",
-    rite: "bone_needle",
-    rarity: "uncommon",
-    sell: 25,
-    lore: "Every wound is a spigot.",
-    short: "More essence, softer needle",
-    lines: [`Each needle hit returns ${T2.marrowTap.essenceBonus} more Grave Essence. Under a scythe, each swing that lands returns ${T2.marrowTap.essenceBonus} more once, however many enemies it strikes.`],
-    cost: `Needles and scythe swings hit for ${pct2(1 - T2.marrowTap.damageMult)} less.`
-  },
-  rune_volley: {
-    id: "rune_volley",
-    name: "Rune of the Volley",
-    rite: "bone_needle",
-    rarity: "rare",
-    sell: 60,
-    lore: "Four breaths, then a flock.",
-    short: "Every 4th needle is a volley",
-    lines: [`Every ${T2.volley.every}th needle you throw becomes a volley of ${T2.volley.needles}, aimed at ${T2.volley.needles} different enemies within ${T2.volley.reach} m (or all at one target if it stands alone). The volley returns the essence of one needle between them. Needle only: a scythe's swing is not a volley.`],
-    cost: `Each volley needle hits for ${pct2(T2.volley.damageFrac)}.`
-  },
-  rune_ossuary_ring: {
-    id: "rune_ossuary_ring",
-    name: "Ossuary Ring Rune",
-    rite: "marrow_spear",
-    rarity: "rare",
-    sell: 60,
-    lore: "The dead rise in a circle, like a congregation.",
-    short: "Spikes erupt in a ring",
-    lines: [`Instead of a line, bone erupts in a ${T2.ring.radius} m ring at the cursor, striking everything inside and applying Fracture and Hemorrhage as usual.`],
-    cost: `It no longer reaches down a long line, and strikes for ${pct2(T2.ring.damageMult)}.`
-  },
-  rune_impale: {
-    id: "rune_impale",
-    name: "Rune of Impaling",
-    rite: "marrow_spear",
-    rarity: "uncommon",
-    sell: 25,
-    lore: "One thorn, driven deep.",
-    short: "Skewers and roots the first foe",
-    lines: [`The spear stops at the first enemy it meets, hits it for ${pct2(T2.impale.damageMult - 1)} more and roots it for ${T2.impale.rootS} s (a boss shrugs the root off but takes the hit).`],
-    cost: "It no longer pierces the line behind."
-  },
-  rune_mass_grave: {
-    id: "rune_mass_grave",
-    name: "Mass Grave Rune",
-    rite: "exhume",
-    rarity: "rare",
-    sell: 60,
-    lore: "Why dig one grave when the field is full?",
-    short: "Raise up to 3 corpses at once",
-    lines: [`Exhume raises up to ${T2.massGrave.count} corpses near the cursor at once, each with ${pct2(T2.massGrave.statMult)} of the usual thrall health and damage.`],
-    cost: "Each thrall is weaker, and it spends more corpses."
-  },
-  rune_bone_colossus: {
-    id: "rune_bone_colossus",
-    name: "Bone Colossus Rune",
-    rite: "exhume",
-    rarity: "epic",
-    sell: 150,
-    lore: "Five dead, bound as one, and it remembers being a wall.",
-    short: "Five corpses become one giant thrall",
-    lines: [
-      `When ${T2.colossus.minCorpses} or more corpses lie within ${T2.colossus.pickRadius} m of the one you name, Exhume consumes up to ${T2.colossus.corpses} of them and raises one Bone Colossus instead. With fewer, or while a Colossus stands, it raises an ordinary thrall.`,
-      `Its health is ${(T2.colossus.hpPerCorpse * T2.colossus.corpses).toFixed(1)}x and its damage ${(T2.colossus.damagePerCorpse * T2.colossus.corpses).toFixed(1)}x a thrall's with five corpses (less with fewer), and every blow cleaves ${T2.colossus.cleaveRadius} m.`,
-      `It fills ${T2.colossus.slots} legion places and you can only keep one: raising another replaces it.`
-    ],
-    cost: `Exhume takes ${500 * T2.colossus.cooldownMult / 1e3} s to ready again after raising a Colossus.`
-  },
-  rune_creeping_rot: {
-    id: "rune_creeping_rot",
-    name: "Creeping Rot Rune",
-    rite: "miasma",
-    rarity: "uncommon",
-    sell: 25,
-    lore: "Rot that has learned to walk.",
-    short: "The circle crawls toward foes",
-    lines: [`The circle drifts ${T2.creepingRot.speed} m/s toward the nearest enemy within ${T2.creepingRot.seekReach} m of it.`],
-    cost: `The circle is ${pct2(1 - T2.creepingRot.radiusMult)} narrower.`
-  },
-  rune_contagion: {
-    id: "rune_contagion",
-    name: "Contagion Rune",
-    rite: "miasma",
-    rarity: "rare",
-    sell: 60,
-    lore: "It does not stop at the grave.",
-    short: "Dying Withered foes infect others",
-    lines: [`A Withered enemy that dies spreads its Withered stacks (minus one) to the ${T2.contagion.neighbours} nearest enemies within ${T2.contagion.reach} m, and those spread it again when they die (it needs ${T2.contagion.minStacks} stacks to jump).`],
-    cost: null
-  },
-  rune_hollow_choir: {
-    id: "rune_hollow_choir",
-    name: "Hollow Choir Rune",
-    rite: "black_litany",
-    rarity: "rare",
-    sell: 60,
-    lore: "The dead sing, and are not spent.",
-    short: "Your thralls sing instead of dying",
-    lines: ["Black Litany no longer sacrifices your thralls. They still lend their voices to its power."],
-    cost: `The burst hits for ${pct2(1 - T2.hollowChoir.powerMult)} less.`
-  },
-  rune_requiem: {
-    id: "rune_requiem",
-    name: "Requiem Rune",
-    rite: "black_litany",
-    rarity: "epic",
-    sell: 150,
-    lore: "A hymn is only terrible once it is finished.",
-    short: "The burst lands 2 s later, twice as wide",
-    lines: [`Black Litany marks the ground, then bursts ${T2.requiem.delayMs / 1e3} s later over ${T2.requiem.radiusMult}x the radius. Corpses and thralls are consumed when it bursts.`],
-    cost: "Enemies can walk out of it, and it can take more of your thralls."
-  }
-};
-var RUNE_ORDER = [...RUNE_IDS];
-var byRarity = (...rarities) => RUNE_ORDER.filter((id) => rarities.includes(RUNES[id].rarity));
-var AREA_RUNE_POOL = {
-  graves: byRarity("uncommon"),
-  ossuary: byRarity("uncommon", "rare"),
-  nave: byRarity("uncommon", "rare"),
-  sanctum: byRarity("uncommon", "rare", "epic"),
-  cloister: byRarity("uncommon", "rare", "epic"),
-  pyre: byRarity("uncommon", "rare", "epic"),
-  fen: byRarity("uncommon", "rare", "epic"),
-  warren: byRarity("uncommon", "rare"),
-  coliseum: byRarity("uncommon", "rare", "epic")
-};
-var RUNE_WEIGHT = { uncommon: 3, rare: 2, epic: 1 };
-var ELITE_RUNE_CHANCE_BY_AREA = {
-  graves: 0.05,
-  warren: 0.055,
-  ossuary: 0.06,
-  nave: 0.07,
-  coliseum: 0.08,
-  sanctum: 0.09,
-  cloister: 0.1,
-  pyre: 0.11,
-  fen: 0.12
-};
-var ELITE_RUNE_CHANCE = ELITE_RUNE_CHANCE_BY_AREA.graves;
-var eliteRuneChance = (area) => ELITE_RUNE_CHANCE_BY_AREA[area] ?? ELITE_RUNE_CHANCE;
-var RUNE_PITY_STEP = 0.05;
-var RUNE_PITY_MAX_MULT = 3;
-var runePityMult = (dry) => Math.min(RUNE_PITY_MAX_MULT, 1 + Math.max(0, dry) * RUNE_PITY_STEP);
-var SURGE_RUNE_CHANCE = 0.35;
-var BOSS_REPEAT_RUNE_CHANCE = 0.5;
-var BOSS_RUNE_POOL = {
-  gravedigger: ["rune_splinter", "rune_marrow_tap", "rune_mass_grave"],
-  abbess: ["rune_ossuary_ring", "rune_impale", "rune_bone_colossus", "rune_volley"],
-  congregation: ["rune_creeping_rot", "rune_contagion", "rune_hollow_choir"],
-  prelate: ["rune_requiem", ...RUNE_ORDER],
-  saint: ["rune_creeping_rot", "rune_contagion", "rune_hollow_choir", "rune_requiem", "rune_bone_colossus"],
-  regent: [...RUNE_ORDER],
-  mire: [...RUNE_ORDER]
-};
-function pickRune(pool, rand) {
-  if (!pool.length) return null;
-  const weights = pool.map((id) => RUNE_WEIGHT[RUNES[id].rarity]);
-  let roll = rand() * weights.reduce((a, b) => a + b, 0);
-  for (let i = 0; i < pool.length; i++) {
-    roll -= weights[i];
-    if (roll < 0) return pool[i];
-  }
-  return pool[pool.length - 1];
-}
-
 // server/rules/content/items.ts
 var m = (name, rarity, sell, lore, icon) => ({
   name,
@@ -3213,12 +3297,45 @@ function rollGearInstances(items, level, characterLevel, source, gearRand) {
   const lvl = clampDropLevel(level, characterLevel);
   return items.map((d) => canRoll(d.item_id) ? { ...d, instance: rollInstance({ rarity: String(itemMeta(d.item_id)?.rarity ?? "common") }, lvl, source, gearRand) } : d);
 }
-var DROP_KINDS = ["kill", "elite", "boss", "surge"];
+function rollFloorClear(depth, level, rand, disciplineId = "") {
+  const bonus = floorBonus(depth, level);
+  if (rand() >= FLOOR_DROP_CHANCE) return { gold: bonus.gold, xp: bonus.xp, materialGold: 0, drops: [] };
+  const s = settleCombatDrop(rollItem(depthLootArea(depth), rand, 1, disciplineId), true);
+  return { gold: bonus.gold, xp: bonus.xp, materialGold: s.gold, drops: s.drop ? [s.drop] : [] };
+}
+function rollGearDrop(depth, rand, disciplineId = "") {
+  const area = depthLootArea(depth);
+  for (let i = 0; i < 60; i++) {
+    const d = rollItem(area, rand, 1, disciplineId);
+    const meta = itemMeta(d.item_id);
+    if (meta && isAffixGear(String(meta.type ?? ""))) return d;
+  }
+  return { item_id: "helm_gold", quantity: 1 };
+}
+function rollChest(depth, level, rand, disciplineId = "") {
+  const bonus = chestBonus(depth, level);
+  const area = depthLootArea(depth);
+  const drops = [rollGearDrop(depth, rand, disciplineId)];
+  let materialGold = 0;
+  for (let i = 1; i < chestDrops(depth); i++) {
+    const s = settleCombatDrop(rollItem(area, rand, 1, disciplineId), true);
+    if (s.drop) drops.push(s.drop);
+    materialGold += s.gold;
+  }
+  if (rand() < chestRuneChance(depth)) {
+    const id = pickRune(chestRunePool(depth), rand);
+    if (id) drops.push({ item_id: id, quantity: 1 });
+  }
+  return { gold: bonus.gold, materialGold, xp: bonus.xp, drops };
+}
+var DROP_KINDS = ["kill", "elite", "boss", "surge", "floor", "chest"];
 var EVENT_STREAMS = {
   kill: ["rand", "reagent", "rune", "gear"],
   elite: ["rand", "reagent", "rune", "gear"],
   boss: ["rand", "gear"],
-  surge: ["rand", "gear"]
+  surge: ["rand", "gear"],
+  floor: ["rand", "gear"],
+  chest: ["rand", "gear"]
 };
 function eventStreams(kind, seed) {
   const base = dropStream(seed);
@@ -3257,6 +3374,12 @@ function rollEvent(kind, f, s) {
     if (firstItem) items.push(...tag(rollGearInstances([firstItem], f.level, f.characterLevel, "first_kill", s.gear), "first_kill"));
     return { reward, items };
   }
+  if (kind === "floor" || kind === "chest") {
+    const depth = Math.max(1, Math.trunc(f.depth ?? 1));
+    const reward = kind === "floor" ? rollFloorClear(depth, f.level, s.rand, disc) : rollChest(depth, f.level, s.rand, disc);
+    const source = kind === "floor" ? "surge" : "boss";
+    return { reward, items: tag(rollGearInstances(reward.drops, f.level, f.characterLevel, source, s.gear), source) };
+  }
   const offering = rollSurgeItem(f.area, s.rand, disc);
   return { reward: null, items: tag(rollGearInstances([offering], f.level, f.characterLevel, "surge", s.gear), "surge") };
 }
@@ -3283,6 +3406,7 @@ var MAX_WAVE_TIER = WAVE_UPGRADE.maxTier;
   disciplineIdFor,
   dropStream,
   eventStreams,
+  hasChest,
   isEnemy,
   isLegendaryItem,
   isLootArea,
@@ -3292,9 +3416,12 @@ var MAX_WAVE_TIER = WAVE_UPGRADE.maxTier;
   randInt,
   rollBoss,
   rollBossRune,
+  rollChest,
   rollEliteRune,
   rollEvent,
   rollFirstKillItem,
+  rollFloorClear,
+  rollGearDrop,
   rollGearInstances,
   rollItem,
   rollKill,

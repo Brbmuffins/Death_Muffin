@@ -14,6 +14,7 @@
 const rules = require('./gathering/authority-rules.cjs');
 const { SaveRefusal } = require('./loot-instances.cjs');
 const { GuardUnavailable } = require('./guard-error.cjs');
+const { dropsMode } = require('./drops-mode.cjs');
 
 const A = rules.AUTHORITY;
 const MINUTE = 60_000;
@@ -270,6 +271,22 @@ async function guardBagSave(db, { characterId, accountId, existingRows, slots, b
       if (d > 0) introduced[id] = d;
       else if (d < 0) removed[id] = -d;
     }
+    let out = slots;
+    const messages = [];
+    // Server-decided drops (drops.cjs): an item that drops in play reaches the bag through a claim, which the server writes itself; one a
+    // save adds is not a drop the server dealt. DROPS_MODE=enforce keeps it out whatever AUTHORITY_MODE says.
+    const dropsEnforced = dropsMode(env) === 'enforce';
+    let dropTrimmed = 0;
+    for (const [item, qty] of Object.entries(introduced)) {
+      if (!rules.isGroundItem(item)) continue;
+      await audit(db, { characterId, accountId, kind: 'drop_unclaimed', mode: dropsEnforced ? 'enforce' : 'audit', action: dropsEnforced ? 'refuse' : 'report', detail: { item, introduced: qty } }, log);
+      if (dropsEnforced) {
+        out = trimSlots(out, item, qty);
+        dropTrimmed += 1;
+        delete introduced[item];
+      }
+    }
+    if (dropTrimmed) messages.push('Some items in that save were never picked up from a drop, so the server left them out.');
     const charge = chargeItems(introduced, state.itemBudget, now);
     // Gold credit for what left the bag (sold, thrown away, spent): the most that can have been sold is what was there.
     let credit = 0;
@@ -278,8 +295,6 @@ async function guardBagSave(db, { characterId, accountId, existingRows, slots, b
       const [rows] = await db.query('SELECT id, sell_value FROM items WHERE id IN (?)', [removedIds]);
       for (const r of rows) credit += num(r.sell_value) * removed[r.id];
     }
-    let out = slots;
-    const messages = [];
     for (const f of charge.over) {
       await audit(db, { characterId, accountId, kind: 'item_intro', mode, action: mode === 'enforce' ? 'clamp' : 'report', detail: f }, log);
       if (mode === 'enforce') {
@@ -293,7 +308,7 @@ async function guardBagSave(db, { characterId, accountId, existingRows, slots, b
     await db.execute(
       'UPDATE character_authority SET item_budget = ?, last_bag_at = ?, gold_credit = LEAST(?, gold_credit + ?), flags = flags + ? WHERE character_id = ?',
       [JSON.stringify(charge.budget), now, A.SALE_CREDIT_CAP, Math.floor(credit), charge.over.length ? 1 : 0, characterId]);
-    if (mode !== 'enforce') return { slots, message: '' };
+    if (mode !== 'enforce') return { slots: dropTrimmed ? out : slots, message: dropTrimmed ? messages.join(' ') : '' };
     return { slots: out, message: messages.join(' ') };
   } catch (err) {
     log.error(`[AUTHORITY] bag guard unavailable, refusing the save: ${err.code || err.message}`);

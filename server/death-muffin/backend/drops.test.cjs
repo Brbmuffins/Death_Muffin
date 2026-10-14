@@ -5,12 +5,12 @@ const assert = require('node:assert/strict');
 const rules = require('./gathering/loot-rules.cjs');
 const { issueTape, claimDrop, seedFor, tapeKey, AHEAD } = require('./drops.cjs');
 
-const ENV = { JWT_SECRET: 'test-secret' };
-const ENFORCE = { ...ENV, DROPS_MODE: 'enforce' };
+const ENV = { JWT_SECRET: 'test-secret', DROPS_MODE: 'audit' };
+const ENFORCE = { JWT_SECRET: 'test-secret' };   // enforce is the default
 const quiet = { error() {}, warn() {} };
 
 /** An in-memory slice of the tables drops.cjs touches. */
-function fakeDb({ level = 30, cls = 2, unlocked = ['chapterhouse', 'graves', 'ossuary'], waveOwned = 0, kills = 1000, bosses = 10, ledger = true } = {}) {
+function fakeDb({ level = 30, cls = 2, unlocked = ['chapterhouse', 'graves', 'ossuary'], waveOwned = 0, kills = 1000, bosses = 10, floors = 50, depth = 12, ledger = true } = {}) {
   const db = {
     character: { id: 1, account_id: 7, level, cls },
     tape: null,
@@ -20,7 +20,7 @@ function fakeDb({ level = 30, cls = 2, unlocked = ['chapterhouse', 'graves', 'os
     vault: [],
     instances: [],
     audit: [],
-    ledger: ledger ? { kills_total: kills, bosses_total: bosses } : null,
+    ledger: ledger ? { kills_total: kills, bosses_total: bosses, floors_total: floors, depth_proved: depth } : null,
     necro: { unlockedAreas: unlocked, waveTierOwned: waveOwned, vows: {} },
   };
   const evKey = (p) => `${p[0]}|${p[1]}|${p[2]}`;
@@ -29,11 +29,11 @@ function fakeDb({ level = 30, cls = 2, unlocked = ['chapterhouse', 'graves', 'os
     if (q.startsWith('SELECT id, account_id, level, COALESCE')) return [[db.character]];
     if (q.startsWith('SELECT issued, spent')) return [db.tape ? [db.tape] : []];
     if (q.startsWith('INSERT IGNORE INTO character_drop_tape')) {
-      db.tape ??= { issued: p[1], spent: p[2], base_kills: p[3], base_bosses: p[4], last_rune_elite: -1, last_surge_at: 0 };
+      db.tape ??= { issued: p[1], spent: p[2], base_kills: p[3], base_bosses: p[4], base_floors: p[5], last_rune_elite: -1, last_surge_at: 0 };
       return [{}];
     }
     if (q.startsWith('UPDATE character_drop_tape')) {
-      Object.assign(db.tape, { issued: p[0], spent: p[1], base_kills: p[2], base_bosses: p[3], last_rune_elite: p[4], last_surge_at: p[5] });
+      Object.assign(db.tape, { issued: p[0], spent: p[1], base_kills: p[2], base_bosses: p[3], base_floors: p[4], last_rune_elite: p[5], last_surge_at: p[6] });
       return [{}];
     }
     if (q.startsWith('SELECT kills_total, bosses_total')) return [db.ledger ? [db.ledger] : []];
@@ -260,4 +260,22 @@ test('the rising rune chance follows roll order: a rune picked up later does not
   const r2 = await claim(f, { kind: 'elite', n: early, index: 0, facts: { ...facts, runePity: rules.runePityMult(early) } }, ENFORCE);
   assert.equal(r2.body.success, true, JSON.stringify(r2.body));
   assert.ok(!f.db.audit.some((a) => a.kind === 'drop_pity'), JSON.stringify(f.db.audit));
+});
+
+test('the Catacomb Depths: a floor clear and a fifth floor\'s chest come from the tape, within the floors the ledger proved', async () => {
+  const f = fakeDb({ depth: 12, floors: 40 });
+  await issueTape(f.pool, { characterId: 1, env: ENFORCE });
+  const ctx = { characterLevel: 30, disciplineId: 'gravecaller', owned: [] };
+  let floorN = -1;
+  for (let n = 0; n < AHEAD.floor && floorN < 0; n++) if (roll('floor', n, { area: 'depths', depth: 7, level: 20, ...ctx }).length) floorN = n;
+  assert.ok(floorN >= 0, 'some floor clear drops an item');
+  const r = await claim(f, { kind: 'floor', n: floorN, index: 0, facts: { depth: 7, level: 20 } }, ENFORCE);
+  assert.equal(r.body.success, true, JSON.stringify(r.body));
+  const chest = roll('chest', 0, { area: 'depths', depth: 10, level: 20, ...ctx });
+  const c = await claim(f, { kind: 'chest', n: 0, index: 0, facts: { depth: 10, level: 20 } }, ENFORCE);
+  assert.equal(c.body.data.item.item_id, chest[0].item_id, 'the chest\'s first drop is its gear');
+  assert.match((await claim(f, { kind: 'chest', n: 1, index: 0, facts: { depth: 11, level: 20 } }, ENFORCE)).body.error, /could not be found/, 'no chest on floor 11');
+  const deep = await claim(f, { kind: 'floor', n: floorN + 1, index: 0, facts: { depth: 30, level: 20 } }, ENFORCE);
+  assert.equal(deep.body.success, false, 'a floor far below what the ledger proved is refused');
+  assert.ok(f.db.audit.some((a) => a.kind === 'drop_depth'));
 });

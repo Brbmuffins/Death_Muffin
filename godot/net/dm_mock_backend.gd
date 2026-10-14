@@ -793,7 +793,7 @@ func _roll_gear(acc: Dictionary, body: Dictionary) -> Dictionary:
 ## /api/drops/tape and /api/drops/claim, the same contract as drops.cjs: seeds per event (a hash here, a secret on the server), and a claim rolls
 ## the event again from its seed (DmLoot.roll_event, the client roll the server copies) and puts exactly that drop in the bag, once. The
 ## offline backend believes the claim's facts (the real server bounds them).
-const DROP_AHEAD := {"kill": 128, "elite": 48, "boss": 6, "surge": 6}
+const DROP_AHEAD := {"kill": 128, "elite": 48, "boss": 6, "surge": 6, "floor": 8, "chest": 4}
 
 static func _drop_seed(cid: int, kind: String, n: int) -> Array:
 	var h := HashingContext.new()

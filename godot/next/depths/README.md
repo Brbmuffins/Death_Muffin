@@ -22,6 +22,7 @@ the run and takes nothing, back to the hub. Rules and numbers: `sim/depths_floor
 - Rewards: kills go through `DmSessionRewards` like any kill; `rewards.loot_area_of` (new hook) maps `depths` to the ground matching the depth (ossuary / coliseum / sanctum
   / cloister / pyre / fen at 1 / 5 / 10 / 15 / 20 / 30). A floor clear pays gold + XP (+ 65% an item); a chest pays gold, XP and 3+ drops (gear first, a rune chance) fanned out
   (`rewards.drop_items_for`, `progress.grant_xp`); both are reported on the solo path (`psync.report_floor`: session reports drop floors).
+  Their items roll from the drop tape (`rewards.roll_depths`, kinds `floor` / `chest`, DECISIONS B20) and are server claims on pickup.
 - Death: `hero_died` ends the run (`over`: stairs gone, no more waves) but the floor stays up behind the death screen; on `hero_respawned` the Depths close and the summary
   toast is told ("The descent ends at depth N · K slain · F floors cleared. What you looted is yours."). Gold, bag, gear, XP are untouched.
 - Leaving: the way up asks twice (5 s), recall / waystone out ends the run (`recalled`), a second player joining ends it (`party`); the hero returns to the Warren's stair.

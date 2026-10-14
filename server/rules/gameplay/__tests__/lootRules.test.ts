@@ -89,6 +89,14 @@ function buildCases() {
     const tape = seed();
     cases.push({ kind: 'tape_event', in: { kind, facts: f }, seeds: { tape }, out: rollEvent(kind, f, eventStreams(kind, tape)) });
   }
+  // The Catacomb Depths: a floor clear and a fifth floor's chest.
+  for (let i = 0; i < 160; i++) {
+    const kind = (i % 2 ? 'floor' : 'chest') as DropKind;
+    const depth = kind === 'chest' ? 5 * (1 + Math.floor(pick() * 8)) : 1 + Math.floor(pick() * 40);
+    const f = { area: 'depths', depth, level: 12 + Math.floor(pick() * 300), characterLevel: 1 + Math.floor(pick() * 700), disciplineId: one(discs) };
+    const tape = seed();
+    cases.push({ kind: 'tape_event', in: { kind, facts: f }, seeds: { tape }, out: rollEvent(kind, f, eventStreams(kind, tape)) });
+  }
   // The raw stream itself, so a stream bug shows as a stream bug.
   const raw = dropStream([0xdeadbeef, 0x12345678, 0x9abcdef0, 0x0badf00d]);
   return { stream: { seed: [0xdeadbeef, 0x12345678, 0x9abcdef0, 0x0badf00d], first: Array.from({ length: 16 }, () => raw()) }, cases };

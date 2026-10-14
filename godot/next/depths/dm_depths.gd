@@ -364,17 +364,23 @@ func _cleared(x: float, z: float) -> void:
 	var m := _member()
 	var mult := _reward_mult(m)
 	var win: Dictionary = DmDepthsRewards.roll_floor_clear(float(depth), level, Callable(), m.discipline["id"] if m != null else "")
+	var items: Array = [] if win["drop"] == null else [win["drop"]]
+	var rolled: Dictionary = game.rewards.roll_depths(m, "floor", depth, level) if m != null else {}   # server-decided drops (DECISIONS B20)
+	if rolled.get("reward") != null:
+		win = {"gold": rolled["reward"]["gold"], "xp": rolled["reward"]["xp"], "materialGold": rolled["reward"]["materialGold"], "drop": null}
+	if rolled.has("items"):
+		items = rolled["items"]
 	var gold := DmMath.js_round(float(win["gold"]) * mult) + int(win["materialGold"])
 	var xp := DmMath.js_round(float(win["xp"]) * mult)
 	game.progress.psync.report_floor({"depth": depth, "level": level, "clear": true, "chest": false, "mult": mult})
 	if m != null:
 		m.loot_view.gold(Vector3(x, 0, z + 1.2), gold)
-		if win["drop"] != null:
-			game.rewards.drop_items_for(m, Vector3(x, 0, z + 1.8), [win["drop"]], level, "surge")
+		if not items.is_empty():
+			game.rewards.drop_items_for(m, Vector3(x, 0, z + 1.8), items, level, "surge")
 	game.progress.grant_xp(float(xp))
 	chronicle.add("depths.floors")
 	_event("banner", {"title": "The stair opens", "ms": BANNER_MS,
-		"sub": "Depth %d cleared · +%d gold%s" % [depth, gold, " · something waits on the steps" if win["drop"] != null else ""]})
+		"sub": "Depth %d cleared · +%d gold%s" % [depth, gold, " · something waits on the steps" if not items.is_empty() else ""]})
 	_sfx("gate", x, z)
 	if _vfx != null:
 		_vfx.emit({"x": x, "y": 0.4, "z": z, "count": 60, "color": 0xffb347, "spread": 1.1, "speed": 1.2, "up": 4, "life": 1.4, "size": 0.3})
@@ -394,6 +400,11 @@ func open_chest() -> bool:
 	var level := run.enemy_level(float(game.character.get("level", 1)))
 	var m := _member()
 	var loot: Dictionary = DmDepthsRewards.roll_chest(float(depth), level, Callable(), m.discipline["id"] if m != null else "")
+	var rolled: Dictionary = game.rewards.roll_depths(m, "chest", depth, level) if m != null else {}   # server-decided drops (DECISIONS B20)
+	if rolled.get("reward") != null:
+		loot = rolled["reward"].duplicate()
+	if rolled.has("items"):
+		loot["drops"] = rolled["items"]
 	var mult := _reward_mult(m)
 	var gold := DmMath.js_round(float(loot["gold"]) * mult) + int(loot["materialGold"])
 	var c: Dictionary = run.floor_data["chest"]

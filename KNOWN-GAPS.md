@@ -18,8 +18,8 @@ Live runs `AUTHORITY_KILLS=audit` (findings in `progress_audit`, nothing clamped
 these rules would cut honest players under enforce:
 - **Depths floors:** one new player's floors 3-4 were rejected (`floor_invalid` "skipped floors", 1 proven); not yet known
   whether the rule or the run is wrong.
-- **Client-claimed saves:** progress totals, the bag and what dropped are still the client's claim, bounded only by the
-  report-mode guards (ROADMAP: Phases 1-2).
+- **Client-claimed saves:** progress totals (level, XP, gold, area kills, shards) and the bag's non-drop items are still the client's
+  claim, bounded only by the report-mode guards (ROADMAP: Phase 2). Drops are the server's (DECISIONS B20).
 
 ## Disciplines
 

@@ -1745,6 +1745,7 @@ require('./garden.cjs')(app, pool, {
 require('./loot.cjs')(app, pool, {
   requireAuth: requireJWT,
   guardRoll: async (req, db, args) => authority.guardRollGear(db, { ...args, account: { staff: await isStaffAccount(req).catch(() => false) } }),
+  allowed: isStaffAccount,
   // A horde can drop several pieces a second at most; this only stops a script hammering the roll.
   limiter: rateLimit({ windowMs: 60 * 1000, max: 600, standardHeaders: true, legacyHeaders: false }),
   ownsCharacter: async (req, characterId) => {

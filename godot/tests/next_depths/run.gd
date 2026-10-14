@@ -449,6 +449,9 @@ func _chest() -> void:
 	await until(func() -> bool: return g.rewards.gear_pending() == 0, 5.0)
 	await ticks(3)
 	check(_loot_count(m) >= loot_n0 + 2, "the chest drops its finds (gear first) on the ground (%d -> %d)" % [loot_n0, _loot_count(m)])
+	if m.tape != null:   # server-decided drops (DECISIONS B20): the chest's finds come from the tape and are claims
+		var found: Array = m.loot_view._drops.filter(func(dd: Dictionary) -> bool: return (dd["item"] as Dictionary).has("claim"))
+		check(not found.is_empty() and found.all(func(dd: Dictionary) -> bool: return String(dd["item"]["claim"]["kind"]) == "chest"), "the chest's finds are tape drops, claimed on pickup")
 	check(not d.open_chest() and d.chest_done and not d.hud_state()["chest"] and _it("depths_chest").is_empty() and d.map_floor()["chest"] == null, "a chest opens once; it leaves the HUD, the map and the clickables")
 	check(ev("banner").any(func(e: Dictionary) -> bool: return String(e["ctx"]["title"]) == "The chest opens"), "a banner reports the chest")
 	check(int(DmDepthsRewards.chest_drops(5.0)) == 3 and DmDepthsRewards.chest_drops(15.0) == 4 and DmDepthsRewards.chest_drops(4.0) == 3, "chest size: 3 at depth 5, one more every ten floors")

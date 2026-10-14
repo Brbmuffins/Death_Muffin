@@ -76,13 +76,15 @@ start, so changing one needs a restart of `death-muffin-auth`.
   in GM mode (`gm_write`) is a `progress_audit` row, and switching on sets `characters.gm_marked` (the leaderboard's GM tag). `GET /api/me` answers `gmActive`.
   GM-mode only: `POST /api/inventory/add-item`, `POST /api/offline/load`, `POST /api/offline/sync-stats`, and a first `POST /api/necro-progress/import`
   carrying a record (a player's starts blank).
-- **Server-decided drops** (`backend/drops.cjs`, migration 047, DECISIONS B20): `POST /api/drops/tape {characterId, next?}` deals each drop kind's
-  next seeds (kill 128, elite 48, boss 6, surge 6; one secret-derived seed per event); `POST /api/drops/claim {characterId, kind, n, index, facts,
-  expect?, sessionId?}` rolls that event again from its seed (`gathering/loot-rules.cjs` rollEvent, equal to the client's roll by the loot
-  parity fixture) and puts exactly that drop in the bag, once. `DROPS_MODE=audit` (default) logs broken bounds as `drop_*` rows in
-  `progress_audit` (ground not open, Wave Speed not owned, fortune, rising rune chance in roll order, a second first kill, tape spent faster
-  than the kill ledger's accepted kills, surge rate) and grants, rolled with the client's value up to the hard limits (audit never changes a
-  drop); `enforce` rolls with the bound and refuses. Migrations 047, 049.
+- **Server-decided drops** (`backend/drops.cjs`, migrations 047, 049, 050, DECISIONS B20): `POST /api/drops/tape {characterId, next?}` deals each
+  drop kind's next seeds (kill 128, elite 48, boss 6, surge 6, floor 8, chest 4; one secret-derived seed per event); `POST /api/drops/claim
+  {characterId, kind, n, index, facts, expect?, sessionId?}` rolls that event again from its seed (`gathering/loot-rules.cjs` rollEvent, equal
+  to the client's roll by the loot parity fixture) and puts exactly that drop in the bag, once. Bounds: ground open or carried, Wave Speed
+  owned, fortune, rising rune chance in roll order, one first kill per boss, a Depths floor within the ledger's proven depth (+1), chests on
+  fifth floors, each kind's tape spent no faster than the kill ledger's accepted kills / bosses / floors, a surge rate. `DROPS_MODE` (read in
+  `drops-mode.cjs`): `enforce` (default) refuses a claim past a bound and keeps drop items a bag save adds out of the bag (`drop_unclaimed`);
+  `audit` logs both (`drop_*` rows in `progress_audit`) and lets them through, rolled with the client's value up to the hard limits.
+  `POST /api/loot/roll-gear` (client-named gear) is GM-mode only.
 - **A member's build** (`GET /api/sessions/:id/members/:cid/build`, party-sessions.cjs `memberBuild`, DECISIONS B22): the session's host
   reads an active member's level, class, stats, worn slots and progression to build that member's hero. A member's party kills are judged in
   the host's world (the host character's level and Ascension rank).

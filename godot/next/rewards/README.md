@@ -47,8 +47,10 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
    elite, boss or surge takes the next event of its kind and rolls it at once (`_roll_event` -> `DmLoot.roll_event` on that event's seed), gear with its
    affixes. Every item carries `claim {kind, n, index, facts, expect}`; picking it up (`DmNextUiHost._claim_from_tape`, runes at once) is
    `api.drops_claim`: the server rolls the same event and puts its own roll in the bag (`inventory.replace` with its rows). A remote member whose
-   client says it rolls its own drops (`rolls_own_drops`) gets the event instead (`drop_event_for`), see `next/party/README.md`. Without a tape (a
-   test that pins `rng`, the first second before the seeds arrive, an old client) the old roll runs and gear goes through `api.roll_loot`.
+   client says it rolls its own drops (`rolls_own_drops`) gets the event instead (`drop_event_for`), see `next/party/README.md`. The Depths'
+   floor clears and chests take their own kinds (`roll_depths`, from `DmDepths`). With a tape but no seed dealt yet, the kill pays its gold and
+   XP and drops no item (the server keeps unclaimed drop items out of the bag). Only a member without a tape (tests that pin `rng`) rolls the
+   old way.
 
 ## Backend without `/api/sessions` (legacy ledger)
 The backend's host-session routes need migration 041 (`server/death-muffin/backend/party-sessions.cjs`); on a backend without them `session_open` answers an HTML 404 and `start()` sets `legacy_ledger` (signal `ledger_fallback`, no `session_failed`):

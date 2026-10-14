@@ -11,8 +11,9 @@
  *   POST /api/drops/tape  { characterId, next?: { kind: index } } -> { data: { mode, tape: { kind: { from, seeds: [[w, w, w, w], ...] } } } }
  *   POST /api/drops/claim { characterId, kind, n, index, facts, expect?, sessionId? } -> { data: { item, bag } }
  *
- * DROPS_MODE=audit (default) logs a broken bound (progress_audit `drop_*`) and lets the claim through, rolled with the client's value up to the
- * hard limits (audit never changes what dropped); enforce rolls with the bound and refuses the claim. Migrations 047, 049.
+ * DROPS_MODE=enforce (the default, drops-mode.cjs) rolls with the bound and refuses a claim that breaks one; DROPS_MODE=audit logs it
+ * (progress_audit `drop_*`) and lets the claim through, rolled with the client's value up to the hard limits (audit never changes what
+ * dropped). Migrations 047, 049.
  */
 const crypto = require('crypto');
 const rules = require('./gathering/loot-rules.cjs');
@@ -24,8 +25,9 @@ const { INV_SELECT } = require('./bag-store.cjs');
 const { LIMITS } = require('./party-sessions.cjs');
 
 const BAG = gather.BAG_SLOTS;
-const AHEAD = { kill: 128, elite: 48, boss: 6, surge: 6 };
-const SLACK = { kills: 60, bosses: 2 };   // claims may come before the kill report that backs them (reports flush every few seconds)
+const AHEAD = { kill: 128, elite: 48, boss: 6, surge: 6, floor: 8, chest: 4 };
+const SLACK = { kills: 60, bosses: 2, floors: 3 };   // claims may come before the kill report that backs them (reports flush every few seconds)
+const DEPTH_SLACK = 1;   // a floor's drop may be claimed just before the report that proves the floor
 const SURGE_GAP_MS = 20_000;
 const MAX_FORTUNE = 0.3;                   // the strongest fortune brew (reagents.ts: fortune <= +30%)
 const DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
@@ -37,7 +39,7 @@ const parse = (v, d) => {
   if (v == null) return d;
   try { return typeof v === 'string' ? JSON.parse(v) : v; } catch { return d; }
 };
-const dropsMode = (env = process.env) => (String(env.DROPS_MODE || '').trim().toLowerCase() === 'enforce' ? 'enforce' : 'audit');
+const { dropsMode } = require('./drops-mode.cjs');
 const playerError = (message, status = 400) => Object.assign(new Error(message), { player: true, status });
 
 /** The tape's secret, derived from the JWT secret (no new secret to keep). */
@@ -53,30 +55,31 @@ function seedFor(key, characterId, kind, n) {
 
 async function ledgerTotals(conn, characterId) {
   try {
-    const [[r]] = await conn.execute('SELECT kills_total, bosses_total FROM character_kill_ledger WHERE character_id = ?', [characterId]);
-    return r ? { known: true, kills: num(r.kills_total), bosses: num(r.bosses_total) } : { known: false, kills: 0, bosses: 0 };
+    const [[r]] = await conn.execute('SELECT kills_total, bosses_total, floors_total, depth_proved FROM character_kill_ledger WHERE character_id = ?', [characterId]);
+    return r ? { known: true, kills: num(r.kills_total), bosses: num(r.bosses_total), floors: num(r.floors_total), depth: num(r.depth_proved) }
+      : { known: false, kills: 0, bosses: 0, floors: 0, depth: 0 };
   } catch {
-    return { known: false, kills: 0, bosses: 0 };
+    return { known: false, kills: 0, bosses: 0, floors: 0, depth: 0 };
   }
 }
 
 async function loadTape(conn, characterId) {
-  const sel = 'SELECT issued, spent, base_kills, base_bosses, last_rune_elite, last_surge_at FROM character_drop_tape WHERE character_id = ? FOR UPDATE';
+  const sel = 'SELECT issued, spent, base_kills, base_bosses, base_floors, last_rune_elite, last_surge_at FROM character_drop_tape WHERE character_id = ? FOR UPDATE';
   let [[row]] = await conn.execute(sel, [characterId]);
   if (!row) {
     const t = await ledgerTotals(conn, characterId);
-    await conn.execute('INSERT IGNORE INTO character_drop_tape (character_id, issued, spent, base_kills, base_bosses) VALUES (?, ?, ?, ?, ?)', [characterId, '{}', '{}', t.kills, t.bosses]);
+    await conn.execute('INSERT IGNORE INTO character_drop_tape (character_id, issued, spent, base_kills, base_bosses, base_floors) VALUES (?, ?, ?, ?, ?, ?)', [characterId, '{}', '{}', t.kills, t.bosses, t.floors]);
     [[row]] = await conn.execute(sel, [characterId]);
   }
   return {
-    issued: parse(row.issued, {}) || {}, spent: parse(row.spent, {}) || {}, baseKills: num(row.base_kills), baseBosses: num(row.base_bosses),
+    issued: parse(row.issued, {}) || {}, spent: parse(row.spent, {}) || {}, baseKills: num(row.base_kills), baseBosses: num(row.base_bosses), baseFloors: num(row.base_floors),
     lastRuneElite: num(row.last_rune_elite, -1), lastSurgeAt: num(row.last_surge_at),
   };
 }
 
 async function saveTape(conn, characterId, t) {
-  await conn.execute('UPDATE character_drop_tape SET issued = ?, spent = ?, base_kills = ?, base_bosses = ?, last_rune_elite = ?, last_surge_at = ? WHERE character_id = ?',
-    [JSON.stringify(t.issued), JSON.stringify(t.spent), t.baseKills, t.baseBosses, t.lastRuneElite, t.lastSurgeAt, characterId]);
+  await conn.execute('UPDATE character_drop_tape SET issued = ?, spent = ?, base_kills = ?, base_bosses = ?, base_floors = ?, last_rune_elite = ?, last_surge_at = ? WHERE character_id = ?',
+    [JSON.stringify(t.issued), JSON.stringify(t.spent), t.baseKills, t.baseBosses, t.baseFloors, t.lastRuneElite, t.lastSurgeAt, characterId]);
 }
 
 /** The next seeds of every kind, from where the client says it is (never before what is already spent). */
@@ -189,6 +192,13 @@ async function rollFacts(conn, kind, raw, ctx, n, findings, enforce) {
     }
     return { ...f, boss: String(c.boss), area: info.area, costShards: info.shards, first, waveTier: wave(), difficulty };
   }
+  if (kind === 'floor' || kind === 'chest') {
+    const depth = Math.max(1, Math.trunc(num(c.depth, 1)));
+    if (kind === 'chest' && !rules.hasChest(depth)) throw playerError('That drop could not be found.');
+    // The deepest floor the kill ledger has proven, plus one (a floor's drop can be claimed just before its report lands).
+    if (ctx.depthProved != null && depth > ctx.depthProved + DEPTH_SLACK) findings.push({ kind: 'drop_depth', claimed: depth, proved: ctx.depthProved });
+    return { ...f, area: 'depths', depth };
+  }
   if (!rules.isLootArea(String(c.area))) throw playerError('That drop could not be found.');
   ground(c.area);
   return { ...f, area: String(c.area) };
@@ -207,6 +217,11 @@ function budgetFindings(kind, t, n, totals, now) {
     const used = spent('boss');
     const allowed = totals.bosses - t.baseBosses + SLACK.bosses;
     if (used > allowed) out.push({ kind: 'drop_budget', drops: 'boss', used, allowed });
+  }
+  if ((kind === 'floor' || kind === 'chest') && totals.known) {
+    const used = spent('floor') + spent('chest');
+    const allowed = totals.floors - t.baseFloors + SLACK.floors;
+    if (used > allowed) out.push({ kind: 'drop_budget', drops: 'depths', used, allowed });
   }
   if (kind === 'surge' && now - t.lastSurgeAt < SURGE_GAP_MS) out.push({ kind: 'drop_rate', drops: 'surge', gapMs: now - t.lastSurgeAt });
   return out;
@@ -285,11 +300,12 @@ async function claimDrop(pool, { characterId, accountId, body, env = process.env
       items = parse(row.items, []);
       claimed = parse(row.claimed, []);
     } else {
-      const ctx = { ...(await context(conn, ch, b.sessionId, now)), id: ch.id };
-      const facts = await rollFacts(conn, kind, b.facts, ctx, n, findings, mode === 'enforce');
       const totals = await ledgerTotals(conn, ch.id);
+      const ctx = { ...(await context(conn, ch, b.sessionId, now)), id: ch.id, depthProved: totals.known ? totals.depth : null };
+      const facts = await rollFacts(conn, kind, b.facts, ctx, n, findings, mode === 'enforce');
       if (totals.known && totals.kills < t.baseKills) t.baseKills = Math.max(0, totals.kills - num(t.spent.kill) - num(t.spent.elite));   // the ledger was rebased
       if (totals.known && totals.bosses < t.baseBosses) t.baseBosses = Math.max(0, totals.bosses - num(t.spent.boss));
+      if (totals.known && totals.floors < t.baseFloors) t.baseFloors = Math.max(0, totals.floors - num(t.spent.floor) - num(t.spent.chest));
       findings.push(...budgetFindings(kind, t, n, totals, now));
       items = rules.rollEvent(kind, facts, rules.eventStreams(kind, seedFor(key, ch.id, kind, n))).items;
       claimed = [];

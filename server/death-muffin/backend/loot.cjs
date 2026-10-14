@@ -1,5 +1,6 @@
 /**
- * Item level and affixes: the only place loot is rolled.
+ * Item level and affixes for client-named gear: a GM-mode tool since drops come from the drop tape (drops.cjs, DECISIONS B20); a player
+ * is refused (`allowed`). Kept for GM testing and the offline mock's shape.
  *
  *   POST /api/loot/roll-gear -> { characterId, drops: [{ item_id, level, source }], sessionId? }   (1-12 drops)
  *        -> data: [{ item_id, instance_id, ilvl, affixes: [{ id, v }] }] in the same order
@@ -9,7 +10,6 @@
  * affixes with its own RNG, stores one `loot_instances` row per piece of gear and answers the ids. Anything that is not gear (or
  * the client has no use for) answers instance_id null. The client then saves the bag with the instance id; it can never send affixes.
  * With `sessionId` (the party session the player is in) a piece remembers where and when it was found (migration 043, ground.cjs).
- * A friends-game trust model: the client says where a drop came from (as it always said what dropped), the server owns the rolls.
  */
 const crypto = require('crypto');
 const store = require('./loot-instances.cjs');
@@ -50,12 +50,14 @@ async function foundIn(conn, sessionId, characterId, now) {
   }
 }
 
-module.exports = function mountLoot(app, pool, { requireAuth, ownsCharacter, random = secureRandom, limiter, guardRoll }) {
+module.exports = function mountLoot(app, pool, { requireAuth, ownsCharacter, random = secureRandom, limiter, guardRoll, allowed }) {
   app.post('/api/loot/roll-gear', ...(limiter ? [limiter] : []), requireAuth, async (req, res) => {
     // Ownership first, on its own pooled query: checking it while holding a connection needs a second one, and ~10 concurrent rolls
     // (one per pool slot) then wait on each other forever and wedge every DB route (2026-10-06 incident, same rule as reforge.cjs).
     const id = parseInt(req.body && req.body.characterId, 10);
     try {
+      // Drops come from the drop tape now (drops.cjs, DECISIONS B20): naming the gear to roll is a GM-mode tool.
+      if (allowed && !(await allowed(req))) return res.status(403).json({ success: false, error: 'Drops come from the server now.' });
       if (!id || !(await ownsCharacter(req, id))) return res.status(403).json({ success: false, error: 'character not found or not owned by this account' });
     } catch (err) {
       console.error(`${req.method} ${req.path}:`, err.code || err.message);

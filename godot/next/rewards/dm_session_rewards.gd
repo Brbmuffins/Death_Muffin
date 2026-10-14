@@ -523,9 +523,12 @@ func on_boss_defeated(ev: Dictionary) -> void:
 			"waveTier": wave_tier, "difficulty": difficulty}, at)
 		var reward: Dictionary
 		var first_item: Variant = null
-		if not rolled.is_empty():
+		if rolled.get("reward") != null:
 			reward = rolled["reward"]
 			reward["items"] = rolled["items"]   # spoils, rune and the first-kill relic, each with its own source
+		elif rolled.has("items"):   # a tape with no seed yet: the boss's gold and XP, no items
+			reward = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
+			reward["items"] = []
 		else:
 			reward = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
 			if first:
@@ -568,7 +571,7 @@ func on_surge_cleared(ev: Dictionary) -> void:
 		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
 			continue
 		var rolled := _roll_event(m, "surge", {"area": String(ev["area"]), "level": level}, at)
-		_drop_items(m, at, rolled["items"] if not rolled.is_empty() else [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge")
+		_drop_items(m, at, rolled["items"] if rolled.has("items") else [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge")
 		_ground(m, {"kind": "gold", "amount": gold}, at)
 
 
@@ -604,7 +607,7 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 	var facts := {"def": String(ev["def"]), "area": loot_area, "level": level, "waveTier": wave_tier, "difficulty": difficulty, "itemChanceMult": 1.0 + m.fortune,
 		"runePity": DmLootRunes.pity_mult(m.rune_dry)}
 	var rolled := _roll_event(m, kind, facts, at)
-	var reward: Dictionary = rolled["reward"] if not rolled.is_empty() else DmLoot.roll_kill(String(ev["def"]), loot_area, level, elite, wave_tier, rng, difficulty, 1.0 + m.fortune, Callable(), Callable(), String(m.discipline["id"]), Callable(m, "owned_ids"), DmLootRunes.pity_mult(m.rune_dry))
+	var reward: Dictionary = rolled["reward"] if rolled.get("reward") != null else DmLoot.roll_kill(String(ev["def"]), loot_area, level, elite, wave_tier, rng, difficulty, 1.0 + m.fortune, Callable(), Callable(), String(m.discipline["id"]), Callable(m, "owned_ids"), DmLootRunes.pity_mult(m.rune_dry))
 	if elite and not DmLootRunes.area_pool(loot_area).is_empty() and not reward["items"].any(func(d: Dictionary) -> bool: return _new_rune(m, d)):
 		m.rune_dry += 1
 	var chain_mult := 1.0
@@ -631,7 +634,7 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 	if int(reward["shards"]) > 0:
 		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
 	# Ordinary kills drop half as often, so their gear rolls at elite quality (as in the original game).
-	_drop_items(m, at, rolled["items"] if not rolled.is_empty() else reward["items"], level, "elite")
+	_drop_items(m, at, rolled["items"] if rolled.has("items") else reward["items"], level, "elite")
 	if combat:
 		var nb := DmEnemyStats.new_blood_xp_mult(String(m.discipline["family"]), float(m.prog.character["level"]))
 		m.reporter.kill({"area": area, "def": ev["def"], "level": level, "elite": elite, "tier": wave_tier, "diff": difficulty, "rank": ascension,
@@ -648,13 +651,20 @@ func _ground(m: DmRewardsMember, d: Dictionary, at: Vector3) -> void:
 	loot_dropped.emit(m.character_id, d, at)
 
 
-## Items from a source other than a kill (a Depths floor, its chest) for one member: the same landing path (gear rolled by the member's backend).
+## Items from a source other than a kill (a Depths floor, its chest) for one member: the same landing path (tape drops carry their roll and
+## claim; others get their gear rolled by the member's backend).
 func drop_items_for(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String) -> void:
 	_drop_items(m, at, items, level, source)
 
 
+## A Depths floor clear or chest from the member's tape: {reward {gold, xp, materialGold, drops}, items with claims}, or the _roll_event forms.
+func roll_depths(m: DmRewardsMember, kind: String, depth: int, level: float) -> Dictionary:
+	return _roll_event(m, kind, {"area": "depths", "depth": depth, "level": level}, Vector3.ZERO)
+
+
 ## A drop event from the member's tape (server-decided drops, DECISIONS B20): {reward, items}, every item carrying the `claim` its pickup sends
-## (the server rolls the same event again and grants its own roll). {} when the member has no tape or nothing is dealt yet: the old roll. A remote
+## (the server rolls the same event again and grants its own roll). {} when the member has no tape (tests that pin `rng`): the old roll.
+## {reward: null, items: []} when no seed is dealt yet: the caller pays gold / XP the old way and drops no item. A remote
 ## member that rolls its own drops is sent the event instead (drop_event_for); the host's roll then pays only its gold and shards.
 func _roll_event(m: DmRewardsMember, kind: String, facts: Dictionary, at: Vector3) -> Dictionary:
 	if m.remote and m.rolls_own_drops:
@@ -663,8 +673,8 @@ func _roll_event(m: DmRewardsMember, kind: String, facts: Dictionary, at: Vector
 	if m.tape == null:
 		return {}
 	var slot := m.tape.take(kind)
-	if slot.is_empty():
-		return {}
+	if slot.is_empty():   # no seed dealt yet (the first second, a slow top-up): no item, since the server keeps unclaimed drops out of the bag
+		return {"reward": null, "items": []}
 	var f := facts.duplicate()
 	f.merge(m.drop_context(), true)
 	var out := DmLoot.roll_event(kind, f, DmLoot.event_streams(kind, slot["seed"]))

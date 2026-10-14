@@ -387,7 +387,8 @@ static func to_save_payload(slots: Array) -> Array:
 # --- Drop events (server authority Phase 1): lootRules.ts rollEvent ---------------------------------------------------------------
 
 ## The streams each drop kind draws from, in order (the server issues seed words per stream): lootRules.ts EVENT_STREAMS.
-const EVENT_STREAMS := {"kill": ["rand", "reagent", "rune", "gear"], "elite": ["rand", "reagent", "rune", "gear"], "boss": ["rand", "gear"], "surge": ["rand", "gear"]}
+const EVENT_STREAMS := {"kill": ["rand", "reagent", "rune", "gear"], "elite": ["rand", "reagent", "rune", "gear"], "boss": ["rand", "gear"], "surge": ["rand", "gear"],
+	"floor": ["rand", "gear"], "chest": ["rand", "gear"]}
 
 
 ## One event's streams {name: Callable} from its single seed (the tape carries one seed per event): lootRules.ts eventStreams.
@@ -414,7 +415,7 @@ static func _tag(items: Array, source: String) -> Array:
 ## One drop event (a kill, an elite kill, a boss kill or a quelled Grave Surge) rolled from its own streams `s` {name: Callable}: exactly what the
 ## server rolls when a drop of it is claimed. Returns {reward (roll_kill / roll_boss result, null for a surge), items: drops with source and,
 ## for gear, instance}. `f`: area, level, characterLevel, waveTier, difficulty, disciplineId, owned ([item ids]); kill/elite: def,
-## itemChanceMult, runePity; boss: boss, costShards, first.
+## itemChanceMult, runePity; boss: boss, costShards, first; floor / chest (the Catacomb Depths): depth (reward {gold, xp, materialGold, drops}).
 static func roll_event(kind: String, f: Dictionary, s: Dictionary) -> Dictionary:
 	var owned_list: Array = f.get("owned", [])
 	var owned := func() -> Array: return owned_list
@@ -438,5 +439,15 @@ static func roll_event(kind: String, f: Dictionary, s: Dictionary) -> Dictionary
 		if first_item != null:
 			items.append_array(_tag(roll_gear_instances([first_item], level, char_level, "first_kill", s["gear"]), "first_kill"))
 		return {"reward": reward2, "items": items}
+	if kind == "floor" or kind == "chest":
+		var depth := maxf(1.0, floorf(float(f.get("depth", 1))))
+		var dr: Dictionary
+		if kind == "floor":
+			var win := DmDepthsRewards.roll_floor_clear(depth, level, s["rand"], disc)
+			dr = {"gold": win["gold"], "xp": win["xp"], "materialGold": win["materialGold"], "drops": [] if win["drop"] == null else [win["drop"]]}
+		else:
+			dr = DmDepthsRewards.roll_chest(depth, level, s["rand"], disc)
+		var src := "surge" if kind == "floor" else "boss"   # the qualities DmDepths always gave them
+		return {"reward": dr, "items": _tag(roll_gear_instances(dr["drops"], level, char_level, src, s["gear"]), src)}
 	var offering := roll_surge_item(String(f["area"]), s["rand"], disc)
 	return {"reward": null, "items": _tag(roll_gear_instances([offering], level, char_level, "surge", s["gear"]), "surge")}

@@ -9,6 +9,7 @@
 import { AREAS, type AreaId } from '../content/areas';
 import { BOSSES } from '../content/bosses';
 import { DISCIPLINES } from '../content/disciplines';
+import { FLOOR_DROP_CHANCE, chestBonus, chestDrops, chestRuneChance, chestRunePool, depthLootArea, floorBonus, hasChest } from '../content/depths';
 import { clampDropLevel, isAffixGear, rollInstance, type DropSource, type ItemInstanceData } from './affixRules';
 import { ARMOR_BY_ID } from '../content/armorSets';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
@@ -240,6 +241,47 @@ export function rollGearInstances(items: readonly Drop[], level: number, charact
   return items.map((d) => (canRoll(d.item_id) ? { ...d, instance: rollInstance({ rarity: String(itemMeta(d.item_id)?.rarity ?? 'common') }, lvl, source, gearRand) } : d));
 }
 
+// ── The Catacomb Depths (DmDepthsRewards) ───────────────────────────────────────────────────────────────────────────────────
+
+export type DepthsReward = { gold: number; xp: number; materialGold: number; drops: Drop[] };
+
+/** A floor clear's gold / XP and, most of the time (FLOOR_DROP_CHANCE), an item from the depth's ground. */
+export function rollFloorClear(depth: number, level: number, rand: Rand, disciplineId = ''): DepthsReward {
+  const bonus = floorBonus(depth, level);
+  if (rand() >= FLOOR_DROP_CHANCE) return { gold: bonus.gold, xp: bonus.xp, materialGold: 0, drops: [] };
+  const s = settleCombatDrop(rollItem(depthLootArea(depth), rand, 1, disciplineId), true);
+  return { gold: bonus.gold, xp: bonus.xp, materialGold: s.gold, drops: s.drop ? [s.drop] : [] };
+}
+
+/** A piece of gear from the depth's ground (rolled until the table yields some). */
+export function rollGearDrop(depth: number, rand: Rand, disciplineId = ''): Drop {
+  const area = depthLootArea(depth);
+  for (let i = 0; i < 60; i++) {
+    const d = rollItem(area, rand, 1, disciplineId);
+    const meta = itemMeta(d.item_id);
+    if (meta && isAffixGear(String(meta.type ?? ''))) return d;
+  }
+  return { item_id: 'helm_gold', quantity: 1 };
+}
+
+/** The chest of a fifth floor: gear first, then chestDrops(depth) - 1 more from the ground, maybe a rune. */
+export function rollChest(depth: number, level: number, rand: Rand, disciplineId = ''): DepthsReward {
+  const bonus = chestBonus(depth, level);
+  const area = depthLootArea(depth);
+  const drops: Drop[] = [rollGearDrop(depth, rand, disciplineId)];
+  let materialGold = 0;
+  for (let i = 1; i < chestDrops(depth); i++) {
+    const s = settleCombatDrop(rollItem(area, rand, 1, disciplineId), true);
+    if (s.drop) drops.push(s.drop);
+    materialGold += s.gold;
+  }
+  if (rand() < chestRuneChance(depth)) {
+    const id = pickRune(chestRunePool(depth), rand);
+    if (id) drops.push({ item_id: id, quantity: 1 });
+  }
+  return { gold: bonus.gold, materialGold, xp: bonus.xp, drops };
+}
+
 // ── Drop events (server authority Phase 1) ─────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -248,14 +290,16 @@ export function rollGearInstances(items: readonly Drop[], level: number, charact
  * claimed (backend drops.cjs). `items` carry their `source` and, for gear, their `instance`. Kinds have separate counters, so an elite's
  * streams are never an ordinary kill's.
  */
-export type DropKind = 'kill' | 'elite' | 'boss' | 'surge';
-export const DROP_KINDS: readonly DropKind[] = ['kill', 'elite', 'boss', 'surge'];
+export type DropKind = 'kill' | 'elite' | 'boss' | 'surge' | 'floor' | 'chest';
+export const DROP_KINDS: readonly DropKind[] = ['kill', 'elite', 'boss', 'surge', 'floor', 'chest'];
 /** The streams each kind draws from, in this order (seed words are issued per stream). */
 export const EVENT_STREAMS: Record<DropKind, readonly string[]> = {
   kill: ['rand', 'reagent', 'rune', 'gear'],
   elite: ['rand', 'reagent', 'rune', 'gear'],
   boss: ['rand', 'gear'],
   surge: ['rand', 'gear'],
+  floor: ['rand', 'gear'],
+  chest: ['rand', 'gear'],
 };
 /** One event's streams from its single seed (the tape carries one seed per event): sub-seeds are drawn from dropStream(seed) in EVENT_STREAMS order. */
 export function eventStreams(kind: DropKind, seed: readonly [number, number, number, number]): Record<string, Rand> {
@@ -268,10 +312,11 @@ export function eventStreams(kind: DropKind, seed: readonly [number, number, num
 export type EventFacts = {
   /** kill / elite */ def?: string; itemChanceMult?: number; runePity?: number;
   /** boss */ boss?: string; costShards?: number; first?: boolean;
+  /** floor / chest (the Catacomb Depths) */ depth?: number;
   area: string; level: number; waveTier?: number; difficulty?: string; disciplineId?: string; characterLevel: number; owned?: readonly string[];
 };
 export type EventDrop = Drop & { source: DropSource };
-export type EventRoll = { reward: Reward | null; items: EventDrop[] };
+export type EventRoll = { reward: Reward | DepthsReward | null; items: EventDrop[] };
 
 const tag = (items: readonly Drop[], source: DropSource): EventDrop[] => items.map((d) => ({ ...d, source }));
 
@@ -295,6 +340,13 @@ export function rollEvent(kind: DropKind, f: EventFacts, s: Record<string, Rand>
     if (firstItem) items.push(...tag(rollGearInstances([firstItem], f.level, f.characterLevel, 'first_kill', s.gear), 'first_kill'));
     return { reward, items };
   }
+  if (kind === 'floor' || kind === 'chest') {
+    const depth = Math.max(1, Math.trunc(f.depth ?? 1));
+    const reward = kind === 'floor' ? rollFloorClear(depth, f.level, s.rand, disc) : rollChest(depth, f.level, s.rand, disc);
+    // A floor's item rolls as a surge offering, a chest's as a boss's spoils (the qualities DmDepths always gave them).
+    const source: DropSource = kind === 'floor' ? 'surge' : 'boss';
+    return { reward, items: tag(rollGearInstances(reward.drops, f.level, f.characterLevel, source, s.gear), source) };
+  }
   const offering = rollSurgeItem(f.area, s.rand, disc);
   return { reward: null, items: tag(rollGearInstances([offering], f.level, f.characterLevel, 'surge', s.gear), 'surge') };
 }
@@ -314,5 +366,6 @@ export function disciplineIdFor(classIndex: number): string {
 }
 export const isLegendaryItem = (id: string): boolean => id.startsWith('leg_');
 export { runePityMult } from '../content/runes';
+export { hasChest };
 /** The highest Wave Speed anyone can own (a hard limit on a claimed drop's facts). */
 export const MAX_WAVE_TIER: number = WAVE_UPGRADE.maxTier;

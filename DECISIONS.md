@@ -128,8 +128,9 @@ Since B18 friends join through invites and asks; the six-digit codes have no UI 
   to the client ahead of time, so a drop still appears the instant a kill lands (`DmLoot.roll_event`). Picking it up is a claim: the server
   rolls the same event from the same seed (`server/rules/gameplay/lootRules.ts`, kept equal to `godot/rules/loot/loot.gd` by the parity
   fixture) with facts it takes from its own records where it has them, bounds the rest, spends the tape no faster than the kill ledger
-  accepts kills, and grants exactly its roll once. Gear affixes come from the same tape. Gold, XP and shards are still the client's claim
-  until Phase 2.
+  accepts kills, and grants exactly its roll once. Gear affixes come from the same tape, and so do the Catacomb Depths' floor rewards and
+  chests (bounded by the floors the kill ledger proved). Enforced since 2026-10-14: a claim past a bound is refused, a bag save cannot add a
+  drop item, and naming gear to roll (`/api/loot/roll-gear`) is GM-mode only. Gold, XP and shards are still the client's claim until Phase 2.
 - **B21. Benchmark setups and a public run history** (owner, 2026-10-13). The benchmark lets the player pick the room, class, fight size and
   length; the room keeps its own enemy kinds and abilities (their cost is part of what is measured), but every enemy has the same health and
   damage in every room (the old Bell Sanctum average, no elites) so kills cost the same everywhere. Bell Sanctum + Gravecaller + Standard +
