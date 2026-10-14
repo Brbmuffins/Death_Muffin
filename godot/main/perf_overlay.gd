@@ -1,6 +1,6 @@
 class_name DmPerfOverlay
 extends CanvasLayer
-## F3 performance overlay, modelled on the web FpsOverlay: fps / avg / worst frame / hitches (>50 ms) over the last 5 s,
+## F3 (rebindable in Settings > Controls, see DmUiBinds.perf_key) performance overlay, modelled on the web FpsOverlay: fps / avg / worst frame / hitches (>50 ms) over the last 5 s,
 ## p50 frame time, logic (process + physics) vs render CPU/GPU, draw calls, objects, primitives, memory.
 ## Numbers from a software renderer (llvmpipe) are meaningless for real hardware: compare on the player's PC.
 
@@ -54,7 +54,7 @@ func set_shown(on: bool) -> void:
 		_prev_fx_us = int(vfx.prof_us)
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F3:
+	if ev is InputEventKey and ev.pressed and not ev.echo and not ev.ctrl_pressed and not ev.alt_pressed and not ev.meta_pressed and DmUiBinds.key_name(ev) == DmUiBinds.perf_key:
 		set_shown(not panel.visible)
 		get_viewport().set_input_as_handled()
 

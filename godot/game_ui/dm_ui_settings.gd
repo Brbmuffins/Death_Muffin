@@ -155,5 +155,5 @@ func capture_key(e: InputEventKey) -> void:
 	DmUiBinds.save(ui.store, ui.binds)
 	panel.set_bind(aid, DmUiBinds.label(ui.binds[aid]) if ui.binds.has(aid) else "")
 	if panel.bind_note != null:
-		panel.bind_note.text = err if err != "" else "Click an action, then press a key. Esc clears it. Keys the game already uses are refused."
+		panel.bind_note.text = err if err != "" else "Click an action, then press a key. Esc clears it (the performance overlay goes back to F3). Keys the game already uses are refused."
 	ui.pa.grimoire_changed()

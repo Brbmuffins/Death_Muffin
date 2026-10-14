@@ -21,6 +21,7 @@ const DIFFICULTIES := [
 	["medium", "Medium", "The intended balance."],
 	["hard", "Hard", "Tougher, deadlier dead and more elites. More gold and experience."],
 ]
+const PERF_ACTION := ["perf_overlay", "Performance overlay"]
 const LOADOUT_ACTIONS := [["loadout_next", "Next loadout"], ["loadout_1", "Loadout 1"], ["loadout_2", "Loadout 2"], ["loadout_3", "Loadout 3"], ["loadout_4", "Loadout 4"], ["loadout_5", "Loadout 5"], ["loadout_6", "Loadout 6"]]
 
 var values: Dictionary = {
@@ -166,10 +167,10 @@ func build() -> void:
 	# --- Controls --------------------------------------------------------------------------------------
 	_tab("controls", "Controls")
 	var s5 := _section("Controls")
-	if has_keybinds:
+	if true:
 		var hh := HBoxContainer.new()
 		hh.add_theme_constant_override("separation", 8)
-		hh.add_child(DmUi.label(DmUi.upper("Loadout hotkeys"), "DmSub"))
+		hh.add_child(DmUi.label(DmUi.upper("Loadout and overlay hotkeys" if has_keybinds else "Overlay hotkey"), "DmSub"))
 		var sm := DmUi.label("unbound until you pick a key", "DmFaint")
 		sm.add_theme_font_size_override("font_size", 11)
 		sm.size_flags_vertical = Control.SIZE_SHRINK_END
@@ -179,7 +180,9 @@ func build() -> void:
 		g.columns = 2
 		g.add_theme_constant_override("h_separation", 16)
 		g.add_theme_constant_override("v_separation", 8)
-		for a in LOADOUT_ACTIONS:
+		var shown: Array = (LOADOUT_ACTIONS.duplicate() if has_keybinds else [])
+		shown.append(PERF_ACTION)
+		for a in shown:
 			var l := DmUi.label(a[1], "DmMuted")
 			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -194,7 +197,7 @@ func build() -> void:
 			_bind_btns[aid] = b
 			_refresh_bind(aid)
 		s5.add_child(g)
-		bind_note = DmUi.label("Click an action, then press a key. Esc clears it. Keys the game already uses are refused.", "DmNote", true)
+		bind_note = DmUi.label("Click an action, then press a key. Esc clears it (the performance overlay goes back to F3). Keys the game already uses are refused.", "DmNote", true)
 		bind_note.add_theme_font_size_override("font_size", 13)
 		bind_note.add_theme_color_override("font_color", DmUi.TEXT_MUTED)
 		s5.add_child(_margin(bind_note, 8, 2))
@@ -278,7 +281,7 @@ func _keys_grid() -> Control:
 		rows.append(["Y", "Legion tab beside the Grimoire: spare weapon and armour for your thralls, and Reinforce (necromancers)"])
 	rows.append_array([
 		[".", "Gear Atlas: where every piece drops and how often, how to craft it, and what suits your discipline"],
-		["F3", "Performance overlay: frame rate, where frame time goes, and a log of recent stutters (also ?fps in the address bar)"],
+		["F3", "Performance overlay (rebind it above): frame rate, where frame time goes, and a log of recent stutters (also ?fps in the address bar)"],
 		["K", "Codex"],
 		["F", "Party: host a session, join one from the list or with a friend's code, see who is in your party"],
 		["E", "Talk to the Prior, the Sexton or the Apothecary when you stand close (or click them)"],
@@ -455,7 +458,7 @@ func _refresh_bind(aid: String) -> void:
 	if b == null:
 		return
 	var k: String = binds.get(aid, "")
-	b.text = k.to_upper() if k != "" else "—"
+	b.text = k.to_upper() if k != "" else ("F3" if aid == PERF_ACTION[0] else "—")
 
 
 func set_bind(aid: String, key: String) -> void:

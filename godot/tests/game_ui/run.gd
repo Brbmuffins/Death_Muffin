@@ -518,6 +518,11 @@ func _extras(game: DmMockGame, ui: DmGameUi) -> void:
 	# bind rules
 	_check(not DmUiBinds.check_bind({}, "loadout_1", "i")["ok"] and DmUiBinds.check_bind({}, "loadout_1", "f7")["ok"], "keybind: reserved refused, F7 ok")
 	_check(not DmUiBinds.check_bind({}, "loadout_2", "f3")["ok"], "keybind: F3 belongs to the performance overlay (a saved F3 bind is dropped on load, which uses the same check)")
+	_check(DmUiBinds.check_bind({}, "perf_overlay", "f3")["ok"] and DmUiBinds.check_bind({}, "perf_overlay", "f7")["ok"] and not DmUiBinds.check_bind({"perf_overlay": "f7"}, "loadout_1", "f7")["ok"], "keybind: the performance overlay may take F3 or another free key, and loadouts cannot take its key")
+	DmUiBinds.save(null, {"perf_overlay": "f7"})
+	_check(DmUiBinds.perf_key == "f7", "keybind: saving a perf overlay bind changes the key the overlay listens to")
+	DmUiBinds.save(null, {})
+	_check(DmUiBinds.perf_key == "f3", "keybind: clearing it returns the overlay to F3")
 	_check(DmUiBinds.next_slot([0, 2, 5], 2, -1) == 5 and DmUiBinds.next_slot([0, 2, 5], 5, -1) == 0, "next loadout wraps")
 	# clean name
 	_check(DmLoadoutPresets.clean_name("  A<b>  c \u0001") == "Ab c", "loadout name cleaned")
