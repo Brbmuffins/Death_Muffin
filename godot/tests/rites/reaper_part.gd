@@ -127,6 +127,27 @@ func _rites() -> void:
 	ok(_lost(behind) > before_b and _lost(wide) > 0.0, "spin: hits all round her, including behind")
 	ok(int(c.p["souls"]) == 28 and is_equal_approx(c.cooldown_left("harvest_spin"), 3500.0), "spin: 2 souls, 3.5 s")
 
+	# Scythe Weave: two passes over the half-circle in front of her (the second 0.35 s later), free, 0.9 s
+	_ready_cast(c)
+	c.p["souls"] = 12
+	var f0 := _lost(front)
+	var b0 := _lost(behind)
+	var w0 := _lost(wide)
+	c.request_cast("scythe_weave", Vector3(6, 0, 0))
+	var wdmg := DmAbilities.rite_damage(DmAbilities.sp(c.p, c.now_ms), "scythe_weave")
+	ok(is_equal_approx(_lost(front) - f0, wdmg) and is_equal_approx(_lost(wide) - w0, wdmg), "weave: the first pass hits the front and the side once (%.1f)" % wdmg)
+	_step(c, 0.5)
+	ok(is_equal_approx(_lost(front) - f0, 2.0 * wdmg) and is_equal_approx(_lost(wide) - w0, 2.0 * wdmg), "weave: the second pass hits them again")
+	ok(is_equal_approx(_lost(behind) - b0, 0.0), "weave: nothing behind her is touched")
+	ok(int(c.p["souls"]) == 12 and rej.is_empty(), "weave: costs no souls")
+	ok(is_equal_approx(c.cooldown_left("scythe_weave"), 400.0), "weave: 0.9 s cooldown (%.0f ms left after 0.5 s)" % c.cooldown_left("scythe_weave"))
+	ok(_events(w, "scythe_weave", "weave").size() >= 2, "weave: one event per pass")
+	_ready_cast(c)
+	c.request_cast("scythe_weave", Vector3(0, 0, 0))
+	ok(rej.size() == 1 and rej[0][1] == "no_target", "weave: refused with the cursor on her")
+	rej.clear()
+	c.p["souls"] = 28
+
 	# Soul Harvest: 9 m all round, each enemy struck is 1 soul and a little health, free, 5 s
 	var far := _robber(w, h, Vector3(8, 0, 0))
 	var out := _robber(w, h, Vector3(14, 0, 0))

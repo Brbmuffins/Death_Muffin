@@ -432,6 +432,7 @@ const REF_SOUNDS := {   ## rite -> the sfx (and "loop:"-prefixed loops) the old 
 	"harvest_spin": ["boneHit", "ivoryCleave"],
 	"unleash_souls": ["wail", "boneHit"],
 	"soul_harvest": ["boneHit", "ivoryCleave", "wail"],
+	"scythe_weave": ["boneHit", "ivoryCleave"],
 }
 
 
@@ -494,7 +495,7 @@ const OPTIONAL := ["boneHit", "needleHit", "soulRelease", "tollSmall", "toll", "
 
 func _sounds() -> void:
 	var rites: Array = DmRiteRegistry.ids()
-	check(rites.size() == 33, "D: 33 rites are registered (%d)" % rites.size())
+	check(rites.size() == 34, "D: 34 rites are registered (%d)" % rites.size())
 	var missing: Array = []
 	var extra: Array = []
 	for id: String in rites:

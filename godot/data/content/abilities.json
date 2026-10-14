@@ -1302,6 +1302,20 @@
    "range": 0,
    "radius": 9,
    "power": 0.5
+  },
+  "scythe_weave": {
+   "id": "scythe_weave",
+   "slot": 8,
+   "name": "Scythe Weave",
+   "description": "Twirl the scythe in a figure eight across the half-circle in front of you (180 degrees, 4.4m): two passes, one from each side, and anything in the middle is hit by both. Hold the key to keep weaving. Free, 0.9s cooldown.",
+   "icon": "art/abilities/monk-knell.webp",
+   "targeting": "direction",
+   "cooldownMs": 900,
+   "essenceCost": 0,
+   "soulCost": 0,
+   "range": 4.4,
+   "radius": 4.4,
+   "power": 0.8
   }
  },
  "SIGNATURE_LEVEL": 10,
@@ -1611,6 +1625,9 @@
   "soul_harvest": [
    "damage",
    "survival"
+  ],
+  "scythe_weave": [
+   "damage"
   ]
  },
  "SLOT_KEYS": [

@@ -3,6 +3,7 @@
     "date": "2026-10-14",
     "title": "Fair Loot, Finished",
     "items": [
+      "New Reaper spell, Scythe Weave: twirl the scythe in a figure eight across the half-circle in front of you, two passes that hit everything in reach. Free, 0.9 second cooldown, and holding its key keeps you weaving. Place it on your bar from the Spellbook (L).",
       "Catacomb Depths: floor rewards and chest finds are now decided by the server too, and still appear the moment you earn them.",
       "Loot can now only reach your bag by picking it up. If the game ever showed you something the server didn't deal, it simply won't land in your bag."
     ]

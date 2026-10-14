@@ -95,7 +95,7 @@ func _initialize() -> void:
 	ok(DmContent.file_names().size() > 60, "content file names")
 	ok(DmContent.get_export("areas", "AREA_ORDER").size() == 13, "content export")
 	ok(DmContent.file("items") == DmDb.content("items"), "DmContent delegates")
-	ok(DmCombatData.abilities()["abilities"].size() == 68, "combat abilities")
+	ok(DmCombatData.abilities()["abilities"].size() == 69, "combat abilities")
 	var prog: Dictionary = DmCombatData.load_json("progression")
 	ok(prog["vows"]["elder_dead"]["maxRank"] == 20 and prog["chain"]["windowMs"] == 4000 and prog["boon_order"].size() == 15, "combat progression composed")
 	ok(prog["kit"]["base"] == 120 and prog["new_blood"]["damage_mult"] == 1.5, "combat progression residual")

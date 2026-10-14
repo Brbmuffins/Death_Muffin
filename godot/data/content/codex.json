@@ -67,7 +67,8 @@
   "soul_burst",
   "harvest_spin",
   "unleash_souls",
-  "soul_harvest"
+  "soul_harvest",
+  "scythe_weave"
  ],
  "CODEX_RITES": {
   "flail_swing": {
@@ -404,6 +405,11 @@
    "fx": "reaper",
    "colour": "Soul green",
    "tip": "Free, 5s cooldown, 9m around you: every living monster it strikes gives 1 soul and heals you, and your next spell (not your basic attack) deals double damage. It is how you refill the bag for Reap and Soul Burst; place it from the Grimoire."
+  },
+  "scythe_weave": {
+   "fx": "reaper",
+   "colour": "Soul green",
+   "tip": "Free, 0.9s cooldown: the scythe twirled in a figure eight across the half-circle in front of you, two passes 4.4m long, so anything in the middle is hit twice. Hold its key and you keep weaving. It does not feed the soul bag, so use it to hold a crowd in front of you; place it from the Grimoire."
   },
   "unleash_souls": {
    "fx": "reaper",
