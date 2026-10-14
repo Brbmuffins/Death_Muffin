@@ -73,6 +73,7 @@ func _run() -> void:
 	await _t_gather_report()
 	await _t_shelf()
 	await _t_salvage()
+	await _t_salvage_scroll()
 	await _t_vault()
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)
@@ -614,6 +615,40 @@ func _t_salvage() -> void:
 	await _frames(2)
 	_check(_has(p, "You carry no gear to salvage. Worn gear never appears here."), "empty message")
 	p.queue_free()
+
+
+## Ticking a row with a real click keeps the gear list where it was scrolled (bug report #9019: every tick jumped back to the top).
+## (a SubViewport: headless windows drop mouse events, a SubViewport routes them like the real one)
+func _t_salvage_scroll() -> void:
+	var sv := SubViewport.new()
+	sv.size = Vector2i(1280, 800)
+	_root.add_child(sv)
+	var p := DmSalvagePanel.new()
+	sv.add_child(p)
+	p.set_bag(DmPbMock.salvage_bag())
+	await _frames(3)
+	p.list_scroll.scroll_vertical = 40
+	await _frames(2)
+	var at := p.list_scroll.scroll_vertical
+	_check(at > 0, "the gear list scrolls")
+	var c2: Vector2 = (p.checks[2] as Control).get_global_rect().get_center()
+	_check(p.list_scroll.get_global_rect().has_point(c2), "the third row's box is on screen")
+	var mv := InputEventMouseMotion.new()
+	mv.position = c2
+	mv.global_position = c2
+	sv.push_input(mv)
+	for pressed in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pressed
+		e.position = c2
+		e.global_position = c2
+		e.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+		sv.push_input(e)
+	await _frames(3)
+	_check(p.chosen.has(2), "a click ticks the row")
+	_eq(p.list_scroll.scroll_vertical, at, "ticking a row does not scroll the list back to the top")
+	sv.queue_free()
 
 
 # --- vault --------------------------------------------------------------------------------------------------------

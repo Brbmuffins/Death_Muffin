@@ -19,10 +19,11 @@ var keep: Callable = Callable()
 var chosen: Dictionary = {}          # slot_index -> true
 var result: Dictionary = {}
 var busy := false
-## Drawn rows: [{slot, name, rarity, locked, on, checkbox_enabled, yield_line}] plus footer state.
+## Drawn rows: [{slot, name, rarity, locked, on, checkbox_enabled, yield_line}] plus footer state. `list_scroll` is the gear list's scroller (null when empty).
 var rows: Array[Dictionary] = []
 var footer: Dictionary = {}
 var checks: Dictionary = {}
+var list_scroll: ScrollContainer
 var go_button: Button
 var below_button: Button
 
@@ -140,15 +141,21 @@ func _build() -> void:
 		xp += int(DmSalvage.preview(item_of(g))["xp"])
 
 	var list := DmPb.vbox(5)
+	# Ticking a row rebuilds the list: keep it where the player had scrolled (applied once the new list is laid out).
+	var keep_scroll := list_scroll.scroll_vertical if list_scroll != null else 0
+	list_scroll = null
 	if list_gear.is_empty():
 		add_child(DmPb.hint("You carry no gear to salvage. Worn gear never appears here."))
 	else:
 		var scroll := ScrollContainer.new()
+		list_scroll = scroll
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		scroll.custom_minimum_size = Vector2(0, minf(list_gear.size() * 49.0, 300.0))
 		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		scroll.add_child(list)
 		add_child(scroll)
+		if keep_scroll > 0:
+			scroll.sort_children.connect(func() -> void: scroll.scroll_vertical = keep_scroll, CONNECT_ONE_SHOT)
 		for g: Dictionary in list_gear:
 			_row(list, g)
 	var foot := HFlowContainer.new()
