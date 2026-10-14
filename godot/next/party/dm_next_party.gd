@@ -936,15 +936,25 @@ func _rpc_announced(text: String) -> void:
 
 
 func _show_chat(who: String, text: String) -> void:
-	_show_line("[%s] %s" % [who, text])
+	_show_line("[%s] %s" % [who, text], not _is_me(who))
 
 
-func _show_line(line: String) -> void:
+## True when `who` (a roster name) is this player: their own chat echoes back from the host without a ping.
+func _is_me(who: String) -> bool:
+	var me := multiplayer.get_unique_id()
+	for r in shell.session.get_roster():
+		if int(r["peer_id"]) == me:
+			return String(r["name"]) == who
+	return false
+
+
+## `ping`: another player's chat line, which the HUD marks with a sound.
+func _show_line(line: String, ping: bool = false) -> void:
 	chat_log.append(line)
 	if chat_log.size() > 40:
 		chat_log.pop_front()
 	if shell.ui_host != null:
-		shell.ui_host.game_event.emit("chat", {"text": line})
+		shell.ui_host.game_event.emit("chat", {"text": line, "ping": ping})
 
 
 # ---- friends over the lobby: presence, invites, asks to join (DECISIONS B18) ------------------------------------------------------------
