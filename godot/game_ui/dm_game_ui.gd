@@ -843,8 +843,8 @@ func toggle_panel(p: String) -> void:
 		return
 	match p:
 		"inventory":
+			inv.render()   # fill the cells before the window shows, so no frame draws it empty
 			inv.panel.open()
-			inv.render()
 		"settings":
 			set_ui.open()
 		"vault":
