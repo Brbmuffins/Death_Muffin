@@ -19,6 +19,7 @@ var labor: DmLaborPanel
 var contracts: DmContractsPanel
 var _forge_busy := false
 var _bonus_claimed := false
+var _vault_rows: Array = []          ## the last Vault rows the server sent: shown at once on the next open, while the fresh answer is on its way
 
 
 func _init(ui_: Node) -> void:
@@ -119,10 +120,13 @@ func open(p: String) -> void:
 	match p:
 		"vault":
 			vault.potion_pick = ui.belt_pick()
-			vault.set_state({})
+			# Show the bag, the worn gear and the last known Vault at once (locked against moves) instead of an empty window.
+			vault.set_state({"bag": game.slots, "vault": _vault_rows})
+			vault.set_busy(true)
 			vault.window.open()
 			ui.notify("vault_opened")
 			var r: DmResult = await game.api.get_vault(cid())
+			vault.set_busy(false)
 			if r.ok and r.data is Dictionary:
 				_vault_state(r.data)
 			else:
@@ -270,6 +274,8 @@ func _reforge(f: DmForgePanel, slot: int, affix: int, cost: int) -> void:
 
 ## Show the Vault and tell the game what it holds (the loot rules skip runes the account already owns, Vault included).
 func _vault_state(data: Dictionary) -> void:
+	if data.get("vault") is Array:
+		_vault_rows = data["vault"]
 	vault.set_state(data)
 	if game.has_method("note_vault"):
 		game.note_vault(data)
