@@ -17,7 +17,6 @@ const MESSAGE_MAX = 2000;
 const CONTEXT_MAX_BYTES = 4000;
 // The Godot client attaches the end of its log (the crashed session's, when there was one): kept apart from the context budget.
 const LOG_MAX = 12000;
-const DAILY_CAP = 10;
 
 /** Player-facing wording for each status (the "Your reports" list). */
 const STATUS_LABELS = {
@@ -70,11 +69,6 @@ module.exports = function mountBugReports(app, pool, { requireAuth, ownsCharacte
     let { characterId } = parsed.report;
     try {
       if (characterId && !(await ownsCharacter(req, characterId))) characterId = null;
-      const [[{ n }]] = await pool.execute(
-        'SELECT COUNT(*) AS n FROM bug_reports WHERE account_id = ? AND created_at > NOW() - INTERVAL 1 DAY',
-        [req.user.accountId],
-      );
-      if (n >= DAILY_CAP) return res.status(429).json({ success: false, error: 'Thanks! You have sent plenty of reports today. Please try again tomorrow.' });
       const [result] = await pool.execute(
         'INSERT INTO bug_reports (account_id, character_id, category, message, context) VALUES (?, ?, ?, ?, ?)',
         [req.user.accountId, characterId, category, message, JSON.stringify(context)],

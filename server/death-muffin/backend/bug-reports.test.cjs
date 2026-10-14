@@ -9,7 +9,6 @@ function harness({ owned = [7] } = {}) {
   const rows = [];
   const pool = {
     execute: async (sql, params = []) => {
-      if (sql.startsWith('SELECT COUNT(*)')) return [[{ n: rows.filter((r) => r.account_id === params[0]).length }]];
       if (sql.startsWith('INSERT INTO bug_reports')) {
         const [account_id, character_id, category, message, context] = params;
         rows.push({ id: rows.length + 1, account_id, character_id, category, message, context, status: 'new', agent_notes: null, created_at: new Date() });
@@ -66,10 +65,9 @@ test('POST files a report; a character the account does not own is dropped, not 
   assert.strictEqual(h.rows[1].character_id, 7);
 });
 
-test('POST refuses past the daily cap', async () => {
+test('POST has no daily cap', async () => {
   const h = harness();
-  for (let i = 0; i < 10; i++) assert.strictEqual((await h.call('POST /api/bug-reports', { message: `report number ${i} here` })).code, 200);
-  assert.strictEqual((await h.call('POST /api/bug-reports', { message: 'one report too many' })).code, 429);
+  for (let i = 0; i < 25; i++) assert.strictEqual((await h.call('POST /api/bug-reports', { message: `report number ${i} here` })).code, 200);
 });
 
 test('GET mine shows player-facing status and hides notes until there is a verdict', async () => {
