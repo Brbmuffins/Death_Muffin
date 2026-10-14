@@ -7,13 +7,27 @@ extends RefCounted
 
 ## ctx = DmGameUi.stat_ctx(). gear = every gear row (worn or in the bag), plus rows with no type.
 static func of(ctx: Dictionary) -> int:
+	return _key(ctx, false)
+
+
+## As of(), without the loose bag gear: what one bag row's card and verdict depend on (the worn pieces, legion kits and stat sources; never the
+## other bag rows). Selling or picking up gear leaves it unchanged, so the Reliquary keeps its cards and verdicts across a sale.
+static func worn_of(ctx: Dictionary) -> int:
+	return _key(ctx, true)
+
+
+static func _key(ctx: Dictionary, worn_only: bool) -> int:
 	var ch: Dictionary = (ctx["character"] as Dictionary).duplicate()
 	for k in ["experience", "gold", "auto_combat_allowed", "id"]:
 		ch.erase(k)
 	var gear: Array = []
 	for s: Dictionary in ctx["slots"]:
 		var t: Variant = s.get("item_type")
-		if DmCombatData.truthy(s.get("equipped")) or t == null or DmAffixRules.AFFIX_GEAR_TYPES.has(String(t)):
+		var worn := DmCombatData.truthy(s.get("equipped"))
+		var si := float(DmCombatData.nn(s.get("slot_index"), -1))
+		if worn_only and not worn and si >= 0.0 and si < DmBag.BAG_SIZE:
+			continue
+		if worn or t == null or DmAffixRules.AFFIX_GEAR_TYPES.has(String(t)):
 			var row := s.duplicate()
 			row.erase("id")
 			row["equipped"] = DmCombatData.truthy(s.get("equipped"))
@@ -35,3 +49,12 @@ static func canon(v: Variant) -> Variant:
 	if v is int:
 		return float(v)
 	return v
+
+
+## One row's identity for a cache: canonical (as `of`) without the row id, so the server's copy of an unchanged row (other id, floats, key
+## order) is the same row.
+static func row_of(row: Dictionary) -> int:
+	var r := row.duplicate()
+	r.erase("id")
+	return canon(r).hash()
+

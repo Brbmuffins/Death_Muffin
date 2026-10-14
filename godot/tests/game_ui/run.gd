@@ -135,6 +135,30 @@ func _run() -> void:
 	await _frames(3)
 	_check(not game.calls_to("/api/inventory/save").is_empty() and not game.calls_to("/api/character/save-progress").is_empty(), "sell saves the bag and credits gold")
 	_check(int(game.character["gold"]) == 1502, "sell credits gold")
+	# Selling gear in combat must not re-text every other card (each verdict is a gear-power simulation): the cards and the junk verdicts
+	# depend on what is worn, never on the other bag rows, and the server's copy of an unchanged row (new id, floats) is the same card.
+	var gear_cards: Array = []
+	for c in ui.inv.panel.bag:
+		if not c.is_empty() and c.has("verdict") and not c["locked"]:
+			gear_cards.append(c)
+	_check(gear_cards.size() >= 2, "two bag gear cards to sell one of")
+	if gear_cards.size() >= 2:
+		var keep_id := String(gear_cards[1]["item_id"])
+		var verdict0: Dictionary = _card(ui, keep_id)["verdict"]
+		ui.inv.panel.sell_requested.emit(gear_cards[0], 1)
+		await _frames(3)
+		_check(is_same(_card(ui, keep_id)["verdict"], verdict0), "selling gear keeps the other cards (no re-text)")
+		var server_copy: Array = []
+		for s in game.slots:
+			var r: Dictionary = s.duplicate(true)
+			r["id"] = int(r.get("id", 0)) + 1000
+			r["slot_index"] = float(r["slot_index"])
+			server_copy.append(r)
+		game.slots = server_copy
+		game.inventory_changed.emit()
+		await _frames(2)
+		var after := _card(ui, keep_id)
+		_check(is_same(after["verdict"], verdict0) and int(after["row"]["id"]) >= 1000, "the server's copy of a row reuses its card with the new row")
 	game.clear_calls()
 	ui.inv.panel.sort_requested.emit()
 	await _frames(3)

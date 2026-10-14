@@ -128,10 +128,13 @@ func card_of(row: Dictionary, ctx: Variant) -> Dictionary:
 	return card
 
 
+const CARDS_CAP := 400          # the caches outlive sales and pickups now: start over past this many rows
 var _render_sig := 0
 var _rendered := false
 var _cards: Dictionary = {}     # row hash -> card (item text, verdicts, compare chips: ~2 ms a row), valid while _cards_key holds
-var _cards_key := 0
+var _cards_canon: Dictionary = {}   # DmStatKey.row_of -> card, the same cards for rows that only changed id / number types
+var _keeps: Dictionary = {}     # DmStatKey.row_of -> "Sell all junk" spares it (keeps_for_you), valid while _cards_key holds
+var _cards_key := 0             # DmStatKey.worn_of: cards and verdicts never depend on the other bag rows, so a sale keeps them
 
 
 ## Cards are the cost of a render (every bag row's verdict and comparison text), and opening the bag used to draw twice (the open, then its `opened`
@@ -139,7 +142,7 @@ var _cards_key := 0
 func render() -> void:
 	var ctx: Variant = ui.stat_ctx()
 	var all := slots()
-	var key: int = DmStatKey.of(ctx) if ctx != null else 0
+	var key: int = DmStatKey.worn_of(ctx) if ctx != null else 0
 	var lock_bits: Array = []
 	for row in all:
 		lock_bits.append(locks.is_locked(row))
@@ -148,8 +151,10 @@ func render() -> void:
 		return
 	_render_sig = sig
 	_rendered = true
-	if key != _cards_key:
+	if key != _cards_key or _cards.size() > CARDS_CAP:
 		_cards.clear()
+		_cards_canon.clear()
+		_keeps.clear()
 		_cards_key = key
 	_render_now(ctx, all)
 
@@ -158,10 +163,30 @@ func _card_cached(row: Dictionary, ctx: Variant) -> Dictionary:
 	var h := row.hash()
 	var c: Variant = _cards.get(h)
 	if c == null:
-		c = card_of(row, ctx)
+		var canon := DmStatKey.row_of(row)   # the server's copy of an unchanged row (after a bag save) hashes differently: same card
+		c = _cards_canon.get(canon)
+		if c == null:
+			c = card_of(row, ctx)
+			_cards_canon[canon] = c
+		else:
+			c = (c as Dictionary).duplicate()
+			c["row"] = row
+			c["id"] = int(row.get("id", row["slot_index"]))
 		_cards[h] = c
 	(c as Dictionary)["locked"] = locks.is_locked(row)
 	return c
+
+
+## DmItemText.keeps_for_you with each row's answer kept while the worn key holds (one verdict is a full gear-power simulation, ~1 ms a row).
+func _keep_cached(ctx: Variant) -> Callable:
+	var keep := DmItemText.keeps_for_you(ctx)
+	if not keep.is_valid():
+		return keep
+	return func(row: Dictionary) -> bool:
+		var canon := DmStatKey.row_of(row)
+		if not _keeps.has(canon):
+			_keeps[canon] = keep.call(row)
+		return _keeps[canon]
 
 
 func _render_now(ctx: Variant, all: Array) -> void:
@@ -184,7 +209,7 @@ func _render_now(ctx: Variant, all: Array) -> void:
 			belt[kind] = _card_cached(row, ctx)
 	panel.potions = potion_belt(bag)
 	panel.at_grinder = ui.near_grinder()
-	var junk := DmItemLocks.junk_slots(all, locks, DmItemText.keeps_for_you(ctx))
+	var junk := DmItemLocks.junk_slots(all, locks, _keep_cached(ctx))
 	panel.junk_count = junk.size()
 	var g := 0
 	for s in junk:
@@ -635,7 +660,8 @@ func sell(it: Dictionary, qty: int) -> void:
 
 func sell_junk() -> void:
 	var ctx: Variant = ui.stat_ctx()
-	var list := DmItemLocks.junk_slots(slots(), locks, DmItemText.keeps_for_you(ctx))
+	var fresh: bool = ctx != null and DmStatKey.worn_of(ctx) == _cards_key   # the cached verdicts hold for what is worn now
+	var list := DmItemLocks.junk_slots(slots(), locks, _keep_cached(ctx) if fresh else DmItemText.keeps_for_you(ctx))
 	var gold := 0
 	var n := 0
 	for s in list:
