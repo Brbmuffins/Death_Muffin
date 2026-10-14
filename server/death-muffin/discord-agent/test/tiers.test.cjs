@@ -163,10 +163,10 @@ test('godot tiers: docs, markdown and patch notes are casual (any content), but 
   assert.equal(classifyDiff(d('godot/game/dm_game.gd', ['a'], ['b']) + d('godot/net/dm_api.gd', ['a'], ['b']), gcfg).tier, 'sensitive');
   assert.equal(classifyDiff(d('godot/README.md', ['a'], ['b']), gcfg).tier, 'casual');
 });
-test('godot tiers: forbidden paths keep the agent/bug-agent/deploy/.env/.claude rules and add godot/export_presets.cfg; web mode is unaffected by godotTiers', () => {
+test('godot tiers: forbidden paths keep the agent/deploy/.env/.claude rules and add godot/export_presets.cfg; web mode is unaffected by godotTiers', () => {
   const f = classifyDiff(d('godot/export_presets.cfg', ['a'], ['b']) + d('server/death-muffin/discord-agent/ship.sh', ['a'], ['b']) + d('godot/ok.gd', ['a'], ['b']) + d('.claude/x.json', ['a'], ['b']) + d('tools/deploy-x.sh', ['a'], ['b']), gcfg);
   assert.deepEqual(f.forbidden.sort(), ['.claude/x.json', 'godot/export_presets.cfg', 'server/death-muffin/discord-agent/ship.sh', 'tools/deploy-x.sh']);
   assert.equal(classifyDiff(d('godot/game/dm_game.gd', ['a'], ['b']), cfg).perFile[0].tier, 'sensitive', 'web tiers: godot/ is unmatched, so sensitive');
   assert.equal(classifyDiff(d('src/gameplay/a.ts', ['a'], ['b']), cfg).perFile[0].tier, 'gameplay');
-  assert.deepEqual(loadConfig(null).forbiddenPaths.slice(0, 5), ['server/death-muffin/discord-agent/**', 'server/death-muffin/bug-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**']);
+  assert.deepEqual(loadConfig(null).forbiddenPaths.slice(0, 4), ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**']);
 });

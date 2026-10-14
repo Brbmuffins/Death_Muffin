@@ -1,6 +1,7 @@
 'use strict';
 // Death Muffin dev-agent adapter for the Muffin Core Discord bot. A dumb transport: it forwards @mentions / thread messages / ✅❌ reactions
-// in ONE configured channel to the loopback runner and posts whatever the runner asks it to post. All decisions (allow-list, approver
+// in the configured channels (#death-muffin, and #manual-bugs for in-game bug reports) to the loopback runner and posts whatever the runner asks
+// it to post, including opening a thread for each new bug report. All decisions (allow-list, approver
 // gate, tiers, rate limits) live in the runner; the bot holds no authority and no secret except the shared runner secret.
 // Installed to /opt/muffin/discord/dm-agent.js. Env (from /opt/muffin/dm-agent.env): DM_AGENT_SECRET, DM_AGENT_URL, DM_AGENT_CHANNEL_ID (optional override).
 
@@ -16,7 +17,7 @@ const IMAGES_PER_MESSAGE = 4;
 const CDN = /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\//;
 
 function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25, retryDelays = [1000, 2000, 4000, 8000, 15000] }) {
-  let cachedChannel = channelIdOverride || ''; let cachedAt = 0; let stopped = false;
+  let cachedChannel = channelIdOverride || ''; let cachedBugChannel = ''; let cachedAt = 0; let stopped = false;
   const headers = { 'content-type': 'application/json', 'x-dm-secret': secret };
   // Messages, reactions and thread events are retried for ~30 s when the runner is unreachable (it restarts in a couple of seconds after an
   // update), so nothing someone types during a restart is lost. Only connection failures retry; an HTTP error answer is final.
@@ -30,11 +31,13 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
     if (!res.ok) throw new Error(`runner ${path} -> ${res.status}`);
     return res.json();
   }
-  async function channelId() {
-    if (channelIdOverride) return channelIdOverride;
-    if (Date.now() - cachedAt > 60000) { try { cachedChannel = (await call('/config')).channelId || cachedChannel; cachedAt = Date.now(); } catch { /* keep cached */ } }
-    return cachedChannel;
+  async function refresh() {
+    if (Date.now() - cachedAt <= 60000) return;
+    try { const c = await call('/config'); cachedChannel = channelIdOverride || c.channelId || cachedChannel; cachedBugChannel = c.bugChannelId || ''; cachedAt = Date.now(); } catch { /* keep cached */ }
   }
+  async function channelId() { await refresh(); return channelIdOverride || cachedChannel; }
+  // The channels the runner serves: the main one and (optional) the bug-report one.
+  async function ours(id) { await refresh(); return !!id && [channelIdOverride || cachedChannel, cachedBugChannel].some((c) => c && String(c) === String(id)); }
   const botId = () => client.user && client.user.id;
   const stripMention = (t) => String(t || '').replace(new RegExp(`<@!?${botId()}>`, 'g'), '').trim();
   // Returns the text to append; image attachments (Discord CDN only, <= 8 MB, <= 4 per message) are pushed onto `images` as { name, b64 }.
@@ -71,8 +74,8 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
     try {
       if (!msg.guild || !msg.author || msg.author.bot) return;
       const ch = msg.channel; const isThread = typeof ch.isThread === 'function' && ch.isThread();
-      const parentId = isThread ? ch.parentId : null; const chan = await channelId();
-      if (!chan || (isThread ? parentId : ch.id) !== chan) return;
+      const parentId = isThread ? ch.parentId : null;
+      if (!await ours(isThread ? parentId : ch.id)) return;
       const mentioned = !!(!!(msg.mentions && msg.mentions.users && msg.mentions.users.has(botId())) || (!!msg.guild?.members?.me?.roles?.botRole && !!msg.mentions?.roles?.has?.(msg.guild.members.me.roles.botRole.id)));   // @bot or the bot's own managed role (same name in the @ menu), never @everyone
       if (!isThread && !mentioned) return;
       const images = [];
@@ -99,7 +102,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       const emoji = reaction.emoji && reaction.emoji.name; if (emoji !== '✅' && emoji !== '❌') return;
       const m = reaction.message; if (!m.author || m.author.id !== botId()) return;
       const ch = m.channel; if (!(typeof ch.isThread === 'function' && ch.isThread())) return;
-      if (ch.parentId !== await channelId()) return;
+      if (!await ours(ch.parentId)) return;
       const r = await call('/event', { type: 'reaction', messageId: m.id, channelId: ch.parentId, threadId: ch.id, parentId: ch.parentId, userId: user.id, emoji });
       if (r.action === 'remove_reaction') await reaction.users.remove(user.id).catch(() => {});
     } catch (e) { log('[dm-agent] reaction handler error', e.message); }
@@ -108,7 +111,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
   // A thread deleted in Discord: tell the runner so it can drop the job's workspace/branch/preview right away.
   async function onThreadDelete(thread) {
     try {
-      const chan = await channelId(); if (!thread || !chan || String(thread.parentId) !== String(chan)) return;
+      if (!thread || !await ours(thread.parentId)) return;
       await call('/event', { type: 'thread-deleted', threadId: thread.id, parentId: thread.parentId, channelId: thread.parentId });
     } catch (e) { log('[dm-agent] thread delete handler error', e.message); }
   }
@@ -164,6 +167,10 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       if (op.archive) { await archiveThread(op.archive.threadId); await call('/ack', { id: op.id, result: {}, ok: true }); continue; }
       let result; let failed = false; let sent;
       try { sent = await exec(op); result = { messageId: sent.id }; } catch (e) { failed = true; result = { error: e.message }; log('[dm-agent] send failed', e.message); }
+      if (!failed && op.newThread) {   // a new bug report: the post opens its own thread (the runner records it from the ack)
+        try { const t = await sent.startThread({ name: String(op.newThread.name || 'Bug report').slice(0, 100), autoArchiveDuration: op.newThread.autoArchiveMin || 4320 }); result.threadId = t.id; }
+        catch (e) { failed = true; result.error = e.message; log('[dm-agent] report thread failed', e.message); }
+      }
       await call('/ack', { id: op.id, result, ok: !failed });       // ack BEFORE reacting so the runner knows the proposal message id first
       if (!failed && sent && op.reactions) for (const r of op.reactions) await sent.react(r).catch(() => {});
     }

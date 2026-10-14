@@ -4,7 +4,7 @@ const { createRunner } = require('../runner/core.cjs');
 const { loadConfig } = require('../runner/lib/config.cjs');
 const { createAdapter } = require('../bot/dm-agent.cjs');
 const SRC = path.resolve(__dirname, '..');
-const IDS = { OWNER: '100000000000000001', HELIX: '142812688358178816', LIMITED: '300000000000000003', STRANGER: '400000000000000004', BOT: '900000000000000009', CHAN: '700000000000000007' };
+const IDS = { OWNER: '100000000000000001', HELIX: '142812688358178816', LIMITED: '300000000000000003', STRANGER: '400000000000000004', BOT: '900000000000000009', CHAN: '700000000000000007', BUGS: '700000000000000008' };
 
 function sh(cwd, ...a) { return execFileSync('git', ['-c', 'user.name=T', '-c', 'user.email=t@t', ...a], { cwd, stdio: 'pipe' }).toString().trim(); }
 // over.godot = true: the same world but for mode 'godot': a `godot-port` branch (the base branch) holding a small godot/ tree, master keeping only the
@@ -99,9 +99,10 @@ function makeDiscord(runner, over = {}) {
   const client = new EventEmitter(); client.user = { id: IDS.BOT };
   client.channels = { fetch: async (id) => world.chans.get(id) };
   const main = new Chan(world, IDS.CHAN);
+  const bugs = new Chan(world, IDS.BUGS);   // #manual-bugs (used when the config sets bugChannelId)
   const fetchImpl = async (url, init = {}) => {
     const u = new URL(url); const body = init.body ? JSON.parse(init.body) : undefined; let out;
-    if (u.pathname === '/config') out = { channelId: runner.cfg.channelId };
+    if (u.pathname === '/config') out = { channelId: runner.cfg.channelId, bugChannelId: runner.cfg.bugChannelId || '' };
     else if (u.pathname === '/poll') out = { ops: await runner.poll(0) };
     else if (u.pathname === '/event') out = await runner.handleEvent(body);
     else if (u.pathname === '/bind') out = await runner.bind(body);
@@ -111,7 +112,7 @@ function makeDiscord(runner, over = {}) {
   const ad = createAdapter({ client, runnerUrl: 'http://x', secret: 's', fetchImpl, pollWaitSec: 0, log: () => {}, ...over });
   const say = (chan, userId, content, attachments = []) => { const m = new Msg(world, chan, userId, content); attachments.forEach((a, i) => m.attachments.set(String(i), a)); return ad.onMessage(m).then(() => m); };
   const react = async (msg, userId, emoji) => { const removed = []; const reaction = { emoji: { name: emoji }, message: msg, partial: false, users: { remove: async (id) => { removed.push(id); } } }; await ad.onReaction(reaction, { id: userId, bot: false }); return removed; };
-  return { world, client, main, ad, say, react };
+  return { world, client, main, bugs, ad, say, react };
 }
 async function until(fn, ad, ms = 30000) {
   const t0 = Date.now();

@@ -2,7 +2,7 @@ class_name DmBugReportView
 extends VBoxContainer
 ## Port of archive/legacy-web:src/ui/BugReportView.ts (Settings -> Report a bug). Like the web it renders INTO the Settings window's body (the window stays open and keeps its
 ## header and key handling; `DmUiSettings.open_bug_report` swaps the body, Back restores Settings). The form (kind, description 10-2000 chars) sends via
-## DmApi.send_bug_report with the context the web attaches, and lists the player's recent reports with the status the bug agent gave them.
+## DmApi.send_bug_report with the context the web attaches, and lists the player's recent reports with the status the team gave them.
 
 signal back_pressed
 

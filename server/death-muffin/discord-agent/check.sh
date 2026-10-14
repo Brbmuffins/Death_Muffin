@@ -13,8 +13,8 @@ export DM_PAYLOAD='
   cd "$TOP"
   npx tsc --noEmit -p .
   npx vitest run --reporter=dot --no-cache
-  npm run -s test:server > /tmp/bug-agent-server-tests.$$ 2>&1 || { tail -40 /tmp/bug-agent-server-tests.$$; exit 1; }
-  grep -E "^# (tests|pass|fail)" /tmp/bug-agent-server-tests.$$
+  npm run -s test:server > /tmp/dm-server-tests.$$ 2>&1 || { tail -40 /tmp/dm-server-tests.$$; exit 1; }
+  grep -E "^# (tests|pass|fail)" /tmp/dm-server-tests.$$
 '   # the sandboxed work; run by dm_sandbox_run inside the nested namespace (sandbox-lib.sh)
 [ -n "${NM:-}" ] && { mkdir -p "$NM/.vite" 2>/dev/null || true; }   # the sandbox mounts a scratch tmpfs over it
 exec unshare -rnm bash -c '. "$DM_SANDBOX_LIB"; dm_sandbox_run'

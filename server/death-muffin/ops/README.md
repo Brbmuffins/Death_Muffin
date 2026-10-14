@@ -24,13 +24,13 @@ Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`
 
 | # | Check |
 |---|---|
-| 1 | Installed discord-agent and bug-agent files, art tools and systemd units vs the repo |
+| 1 | Installed discord-agent files, art tools and systemd units vs the repo |
 | 2 | Live backend, gathering, necro-progress and lobby code vs the repo. Comments and blank lines are ignored; comment-only differences are a soft note, not drift |
 | 3 | Published client `rev` vs commits that change shipped client files (`godot/`, not tests or docs) merged after it |
-| 4 | Extra remote/local branches and worktrees. `discord/*` jobs are listed as info and flagged after 7 days; `bugfix/reports-*` after 3 days |
+| 4 | Extra remote/local branches and worktrees. `discord/*` jobs are listed as info and flagged after 7 days |
 | 5 | Uncommitted changes in the main checkout |
 | 6 | Unexpected files in the public docroot (allowed: the `server/death-muffin/site/` files plus `client`, `play`, `preview`; `play/` only `index.html`, `patch-notes.json`, `release-notes.json`) and secret-ish names |
-| 7 | Services active, bug-agent timer enabled, auth `/health` |
+| 7 | Services active, auth `/health` |
 | 8 | Disk over 85%, size of `wt/` and `deploy/` (`deploy/` over 2 GB is drift, with a breakdown), old `backup-pre-release-*` folders (never pruned) |
 | 9 | Newest file in `~/death-muffin/backups/db/` missing or older than 36 h |
 

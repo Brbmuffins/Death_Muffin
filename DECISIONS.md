@@ -63,6 +63,9 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B14. Performance is measured on real PCs** (Helix, 2026-10-12) with the in-game benchmark (B21); changes ship to `main` as usual, no
   side test builds. Known limits: Godot's separate render thread crashes this game (do not use it); ground loot must not add lights or
   per-item materials; physics catch-up is capped at 3 steps a frame.
+- **B27. Player bug reports go to the devs, not to an agent** (owner, 2026-10-14: "so the devs can actually see what's being reported and
+  worked on"). Each new report opens a #manual-bugs thread with its game log attached; the Discord agent works on one only when a dev
+  @-mentions it there. The bug-fix agent that ran every 2 minutes is retired. Details: `server/death-muffin/discord-agent/README.md`.
 
 ## Loot, runes, social, benchmark
 

@@ -2,6 +2,12 @@
 const fs = require('fs');
 const DEFAULTS = {
   channelId: '',
+  // In-game bug reports (owner 2026-10-14): each new report gets its own thread here (#manual-bugs) with the game log attached, so the devs see
+  // what is reported; the agent only works on one when someone @-mentions it in that thread. Empty = off.
+  bugChannelId: '',
+  bugPollMin: 2,                // how often the runner looks for new reports
+  bugThreadsPerHour: 10,        // flood cap: reports over it wait (still 'new') for the next hour
+  archiveReportAfterMin: 2880,  // a report thread nobody picked up is archived after 48 h quiet (owner 2026-10-14)
   guildId: '',
   ownerIds: [],                 // the owner: always a requester and approver for every tier; pinged (FYI) when anyone else ships or rolls back
   // Per-project access. Everyone not listed (in requesters or any approver list) is ignored. Ids are Discord user ids (digits only;
@@ -44,8 +50,8 @@ const DEFAULTS = {
   // After a PC ship goes live, ship.sh best-effort merges master into this branch and publishes phones + the offline edition (empty = off).
   mobileBranch: 'mobile',
   mobileDeployScript: 'server/death-muffin/deploy-mobile.sh',
-  // !report: read-only access to in-game bug reports through the bug agent's DB helper (reportsCmd replaces it in tests).
-  reportsCli: '/home/ubuntu/death-muffin/bug-agent/reports-cli.cjs',
+  // In-game bug reports (report threads, !report) through the DB helper installed beside the runner (reportsCmd replaces it in tests).
+  reportsCli: '/home/ubuntu/death-muffin/discord-agent/reports-cli.cjs',
   githubRepo: 'Brbmuffins/Death_Muffin',
   secretFile: '/home/ubuntu/death-muffin/discord-agent/secret',
   // The agent may WebSearch freely but WebFetch only these documentation hosts (exact host names): a fetch elsewhere could carry data out
@@ -108,7 +114,7 @@ const DEFAULTS = {
   },
   // Paths the agent may never touch (proposal refused, not even for the owner to approve): secrets, and the agent's own rules/deploy scripts.
   // They are still "sensitive" if the owner removes them from this list and makes the change by hand.
-  forbiddenPaths: ['server/death-muffin/discord-agent/**', 'server/death-muffin/bug-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'godot/export_presets.cfg'],
+  forbiddenPaths: ['server/death-muffin/discord-agent/**', '**/deploy*.sh', '**/.env*', '.claude/**', 'godot/export_presets.cfg'],
 };
 function merge(a, b) {
   if (Array.isArray(a) || typeof a !== 'object' || a === null) return b === undefined ? a : b;

@@ -1,5 +1,5 @@
--- 029-bug-reports.sql — players' in-game bug reports (Settings → Report a bug), read daily by the bug-report agent
--- (server/death-muffin/bug-agent/). Additive and idempotent. `message` is player text: anything that reads it treats it as data.
+-- 029-bug-reports.sql — players' in-game bug reports (Settings → Report a bug), posted to Discord for the devs
+-- (server/death-muffin/discord-agent/). Additive and idempotent. `message` is player text: anything that reads it treats it as data.
 
 CREATE TABLE IF NOT EXISTS bug_reports (
   id           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,

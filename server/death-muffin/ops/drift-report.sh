@@ -69,16 +69,11 @@ compare_exact() {
 section "1. Installed agent copies"
 SRC=server/death-muffin/discord-agent
 LIST="$(g ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##")
-ship.sh rollback.sh sandbox-lib.sh check.sh check-godot.sh regen.sh shot.sh shoot.cjs shot-godot.sh label-shot.py art-run.sh build-art.sh preview.sh preview-godot.sh agit wait-for-ship.sh PROMPT.md PROMPT-godot.md config.example.json death-muffin-discord-agent.service"
+ship.sh rollback.sh sandbox-lib.sh check.sh check-godot.sh regen.sh shot.sh shoot.cjs shot-godot.sh label-shot.py art-run.sh build-art.sh preview.sh preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT.md PROMPT-godot.md config.example.json death-muffin-discord-agent.service"
 for f in $(echo $LIST); do compare_exact "$SRC/$f" "$DM/discord-agent/$f" "discord-agent/$f"; done
 for f in common gemini tripo; do compare_exact "tools/ai/$f.mjs" "$DM/discord-agent/art-tools/tools/ai/$f.mjs" "discord-agent/art-tools/tools/ai/$f.mjs"; done
-BSRC=server/death-muffin/bug-agent
-for f in run-bug-agent.sh reports-cli.cjs PROMPT.md; do compare_exact "$BSRC/$f" "$DM/bug-agent/$f" "bug-agent/$f"; done
-compare_exact "$SRC/check-godot.sh" "$DM/bug-agent/check.sh" "bug-agent/check.sh (= discord-agent/check-godot.sh)"
-for f in sandbox-lib.sh agit; do compare_exact "$SRC/$f" "$DM/bug-agent/$f" "bug-agent/$f (= discord-agent/$f)"; done
 compare_exact "$SRC/death-muffin-discord-agent.service" /etc/systemd/system/death-muffin-discord-agent.service "systemd death-muffin-discord-agent.service"
 compare_exact server/death-muffin/ops/git-pre-push.sh "$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir)/hooks/pre-push" "git pre-push hook"
-for u in death-muffin-bug-agent.service death-muffin-bug-agent.timer; do compare_exact "$BSRC/$u" "/etc/systemd/system/$u" "systemd $u"; done
 
 info "$NCMP file(s)/unit(s) compared"; NCMP=0
 # 2. Backend + lobby
@@ -118,7 +113,6 @@ while read -r _ ref; do b="${ref#refs/heads/}"; [ "$b" = main ] && continue
   d="$(g log -1 --format=%ct "origin/$b" 2>/dev/null || echo "$now")"; a=$(age_days "$d")
   case "$b" in
     discord/*) info "agent job (remote): $b, ${a}d old"; [ "$a" -gt 7 ] && drift "agent job older than 7 days: origin/$b (${a}d)";;
-    bugfix/reports-*) [ "$a" -gt 3 ] && drift "unreviewed bug-fix branch: origin/$b (${a}d)" || info "bug-fix branch: origin/$b (${a}d)";;
     *) drift "remote branch other than main: $b";;
   esac
 done < <(g ls-remote --heads origin)
@@ -126,7 +120,6 @@ while read -r b; do [ "$b" = main ] && continue
   d="$(g log -1 --format=%ct "$b")"; a=$(age_days "$d")
   case "$b" in
     discord/*) info "agent job (local): $b, ${a}d old"; [ "$a" -gt 7 ] && drift "agent job older than 7 days: local $b (${a}d)";;
-    bugfix/reports-*) [ "$a" -gt 3 ] && drift "unreviewed bug-fix branch: local $b (${a}d)" || info "bug-fix branch: local $b (${a}d)";;
     *) drift "local branch other than main: $b";;
   esac
 done < <(g for-each-ref --format='%(refname:short)' refs/heads)
@@ -168,7 +161,6 @@ while IFS= read -r f; do drift "secret-ish file in docroot: ${f#$WWW/}"; done < 
 section "7. Services"
 for s in death-muffin-auth deathmuffin-lobby death-muffin-discord-agent; do
   st="$(systemctl is-active $s 2>&1)"; [ "$st" = active ] || drift "$s is $st"; done
-st="$(systemctl is-enabled death-muffin-bug-agent.timer 2>&1)"; [ "$st" = enabled ] || drift "death-muffin-bug-agent.timer is $st"
 H="$(curl -fsS -m 5 http://127.0.0.1:5190/health 2>&1)" || drift "auth /health failed: ${H:0:100}"
 [ -n "${H:-}" ] && info "auth /health: ${H:0:100}"
 

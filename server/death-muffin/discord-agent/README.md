@@ -107,8 +107,8 @@ passed the same quick check; a sensitive change still runs the full suite. **Bac
 and pushes but does not publish (`DEFER_PUBLISH=1`, `RESULT: merged`; the thread is told it goes live with the next publish). The next publish carries it:
 its notice lists both changes under both titles, and the waiting thread gets "🚀 Live" and closes (`healOtherPublishes`, logged in the ships log with
 `batchedWith`). If nothing else ships, the runner publishes the merged one by itself (`drainShipQueue`). **One test run at a time:** `check-godot.sh` takes
-`~/death-muffin/test-slot.lock` (shared with the bug agent and the ship; created by both installers) and waits for it, so parallel jobs no longer slow each
-other down. Fresh worktrees (jobs, ships, the bug agent) start from the main checkout's Godot import cache (~14 s instead of ~70 s); the
+`~/death-muffin/test-slot.lock` (shared with the ship; created by the installer) and waits for it, so parallel jobs no longer slow each
+other down. Fresh worktrees (jobs, ships) start from the main checkout's Godot import cache (~14 s instead of ~70 s); the
 client publish still imports from scratch.
 A message sent while a turn runs is handled by the next turn, and the finished turn posts no proposal for the outdated state (audit `proposal-skipped`), so one proposal comes with everything. Screenshot runs (`shot-godot.sh`, `--qa --shot-plan`) skip the game's start-up warm-up (software GL: 192 s -> 41 s per start).
 A reply to an open proposal that changes nothing (a thank-you, a question) is answered, and the proposal stays as it is: same commit and clean
@@ -208,6 +208,21 @@ agent turn ── build-sound.sh <id> <take> (sandboxed ffmpeg: sfx -> godot/ass
 - A take that already exists is not generated again, so a retry pays only for missing takes. Audit events: `sound-start`, `sound-result`, `sound-refused`, `sound-invalid`.
 - Config keys (optional): `soundUsers` (Discord ids), `soundKeyFile`, `soundRunScript` (`<toolsDir>/sound-run.mjs`), `soundLedgerFile`.
 - Tests: `test/sound.test.cjs` (validation, refusal, ledger, a fake ElevenLabs server for sound-run.mjs); no API is called.
+
+## In-game bug reports (#manual-bugs)
+
+Every new player report (Settings -> Report a bug) gets its own thread in #manual-bugs (`bugChannelId`), so the devs see what is reported.
+Every `bugPollMin` (2) minutes the runner reads the `new` reports (`reports-cli.cjs list`, installed beside the runner), and the bot posts each one:
+category, reporter, the message quoted, area / level / discipline / solo or co-op / client release, and `bug-report-<id>.txt` with the full
+context and game log. The post opens the thread (`🐞 #<id> <message>`, player text scrubbed of mentions and links; nobody is pinged) and the
+report becomes `triaged` ("Looked at", with a thank-you note for the player). `state/report-threads.json` keeps a report from being posted twice;
+at most `bugThreadsPerHour` (10) threads an hour, the rest stay `new` until the next hour.
+
+Nothing works on a report by itself (the old 2-minute bug-fix agent is retired): the devs talk it over in the thread, and the agent starts only
+when someone @-mentions Muffin Core there. Its fresh session then gets the report and log as player data (never instructions), and it runs like
+any thread: proposal, ✅ ships. A fix commit is titled `Bug report #<id>: …`, so `announce-release.sh` marks the report released ("Fixed — live
+now"). Once a change is open in the thread, replies go to it without a mention. A report thread nobody picked up is archived after 48 h quiet
+(`archiveReportAfterMin`); the 7-day sweep skips report threads that never had a workspace. `!report` / `!report <id>` still work in any thread.
 
 ## Thread names
 

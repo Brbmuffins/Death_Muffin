@@ -1,6 +1,6 @@
 /**
- * Player bug reports (Settings → Report a bug). The daily bug-report agent (server/death-muffin/bug-agent/) reads the 'new' rows,
- * fixes what it can on a branch for the owner to review, and writes its verdict back into status/agent_notes so the player sees it.
+ * Player bug reports (Settings → Report a bug). The Discord dev agent's runner (server/death-muffin/discord-agent/) opens a #manual-bugs thread
+ * for each 'new' row and sets it 'triaged' with a note for the player; announce-release.sh sets 'released' when a `Bug report #<id>:` fix ships.
  *
  *   POST /api/bug-reports        -> { category, message, characterId?, context? }   files one report
  *   GET  /api/bug-reports/mine   -> [{ id, category, message, status, note, createdAt }]  the account's latest reports
@@ -100,7 +100,7 @@ module.exports = function mountBugReports(app, pool, { requireAuth, ownsCharacte
           category: r.category,
           message: r.message.length > 160 ? `${r.message.slice(0, 157)}…` : r.message,
           status: STATUS_LABELS[r.status] || STATUS_LABELS.new,
-          // The agent's note is written for the player (see bug-agent/PROMPT.md); only shown once the report has a verdict.
+          // The note is written for the player (discord-agent/reports-cli.cjs); only shown once the report has moved past 'new'.
           note: r.status !== 'new' && r.agent_notes ? String(r.agent_notes).slice(0, 300) : null,
           createdAt: r.created_at,
         })),

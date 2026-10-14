@@ -124,7 +124,7 @@ FIXES=$(g log --no-merges --format='%s' "${RANGE[@]}" | grep -E '^Bug report #[0
 IDS=$(printf '%s\n' "$FIXES" | sed -E 's/^Bug report #([0-9]+):.*/\1/' | sort -un | paste -sd, -)
 if [ -n "${DRY_RUN:-}" ]; then echo "bug reports (dry run): would release $IDS"; exit 0; fi
 CLI="${REPORTS_CLI:-$TMP/reports-cli.cjs}"
-[ -n "${REPORTS_CLI:-}" ] || g show "$SHA:server/death-muffin/bug-agent/reports-cli.cjs" >"$CLI" 2>/dev/null
+[ -n "${REPORTS_CLI:-}" ] || g show "$SHA:server/death-muffin/discord-agent/reports-cli.cjs" >"$CLI" 2>/dev/null
 NEWLY=$(node "$CLI" release "$IDS" 2>/dev/null || echo '[]')
 echo "bug reports released: $NEWLY"
 [ "$NEWLY" != "[]" ] || exit 0

@@ -329,6 +329,38 @@ test('!report lists in-game bug reports and hands one, with its game log, to the
   await until(() => texts(thread).some((t) => /LOG-MARKER-77/.test(t)), d.ad);   // fake claude echoes the prompt marker back below
 });
 
+test('bug reports: each new report opens one #manual-bugs thread with its log attached; the agent waits for an @-mention there, then gets the report', async () => {
+  const state = require('os').tmpdir() + `/dm-reports-${process.pid}-${Date.now()}`; fs.mkdirSync(state);
+  const report = (id, msg) => `{"id":${id},"category":"bug","status":"new","reporter":"Dravos","createdAt":"2026-10-14T09:00:00Z","message":"${msg}","context":{"area":"graves","level":12,"coop":false,"log":"LOG-MARKER-77 SCRIPT ERROR: door"}}`;
+  // fake DB: `list` = every report not yet marked posted (marks are files in $state)
+  const fake = `S=${state}; case "$1" in list) printf '['; sep=''; for i in 9101 9102 9103; do [ -e $S/posted-$i ] && continue; printf '%s' "$sep"; sep=,; `
+    + `case $i in 9101) printf '%s' '${report(9101, 'I walked through a sealed door <@123456789012345678> @everyone')}';; 9102) printf '%s' '${report(9102, 'second one')}';; 9103) printf '%s' '${report(9103, 'third one')}';; esac; done; echo ']';; `
+    + `posted) touch $S/posted-$2; echo '{"changed":1}';; show) case "$2" in 9101) echo '${report(9101, 'I walked through a sealed door')}';; *) echo null;; esac;; esac`;
+  const w = makeWorld({ godot: true, reportsCmd: fake, bugChannelId: IDS.BUGS, bugThreadsPerHour: 2 }); const d = makeDiscord(w.runner);
+  assert.equal(await w.runner.postReports(), 2, 'flood cap: two threads this hour');
+  await until(() => Object.keys(w.runner.reportThreads()).every((k) => w.runner.reportThreads()[k].threadId) && d.world.threads.length === 2, d.ad);
+  const post = d.bugs.sent[0]; const thread = d.world.threads[0];
+  assert.match(post.payload.content, /🐞 \*\*Bug report #9101\*\* · bug · from \*\*Dravos\*\*/);
+  assert.match(post.payload.content, /area graves · level 12 · solo/); assert.match(post.payload.content, /📄 game log attached/);
+  assert.deepEqual(post.payload.allowedMentions, { parse: [], repliedUser: false }, 'player text pings nobody');
+  assert.equal(post.payload.files[0].name, 'bug-report-9101.txt'); assert.match(post.payload.files[0].attachment.toString('utf8'), /LOG-MARKER-77/);
+  assert.match(thread.name, /^🐞 #9101 I walked through a sealed door/); assert.doesNotMatch(thread.name, /@|<|everyone/, 'thread name scrubbed');
+  assert.ok(fs.existsSync(path.join(state, 'posted-9101')), 'player sees "Looked at"');
+  assert.equal(await w.runner.postReports(), 0, 'nothing posted twice, the third waits for next hour');
+  const job = w.runner.jobs()[thread.id]; assert.equal(job.bugReportId, 9101); assert.equal(job.worktree, null, 'no workspace until someone asks');
+  // devs talk without the bot: nothing starts
+  await d.say(thread, IDS.HELIX, 'I can repro this in co-op'); await d.ad.pollOnce();
+  assert.equal(job.round, 0); assert.equal(job.worktree, null); assert.equal(texts(thread).length, 0);
+  // an @-mention brings the agent in, with the report (and its log) in the prompt
+  await d.say(thread, IDS.HELIX, `${BOT} have a look`);
+  await until(() => texts(thread).some((t) => /Saw LOG-MARKER-77 in the report\./.test(t)), d.ad);
+  assert.equal(job.creatorId, IDS.HELIX); assert.equal(job.round, 1); assert.ok(job.worktree);
+  // archived after 48 h quiet, not 24
+  await until(() => !job.running, d.ad); job.status = 'idle'; job.proposal = null;
+  job.lastActive = job.seenAt = Date.now() - 25 * 3600e3; assert.equal(w.runner.archiveQuiet(), 0);
+  job.lastActive = job.seenAt = Date.now() - 49 * 3600e3; assert.equal(w.runner.archiveQuiet(), 1);
+});
+
 test('long replies are split into several messages with code blocks kept closed; huge ones become a preview plus reply.md', async () => {
   const w = makeWorld(); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.OWNER, 'LONG-REPLY please');
@@ -1155,23 +1187,6 @@ test('check-godot.sh: sandboxed run, per-suite lines, summary line, restores god
   assert.equal(full.status, 0, full.stdout + full.stderr); assert.match(full.stdout, /^GODOT TESTS: full \(2 suites\) — 2 passed$/m);
   assert.equal(fs.readFileSync(path.join(T, '.args-seen'), 'utf8').trim(), '', 'full mode passes no --only');
   assert.equal(spawnSync('bash', [script, '--bogus'], { cwd: T, encoding: 'utf8' }).status, 2);
-});
-
-test('the bug agent installs the Discord agent\'s check script (as check.sh): quick by default, --full runs every suite, bad flag is a usage error', () => {
-  assert.match(fs.readFileSync(path.join(__dirname, '..', '..', 'bug-agent', 'install.sh'), 'utf8'), /discord-agent\/check-godot\.sh" > "\$STATE\/check\.sh"/, 'one check script for both agents');
-  const { spawnSync, execFileSync } = require('child_process'); const os = require('os');
-  const T = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-bc-')); const wr = (f, c) => { fs.mkdirSync(path.dirname(path.join(T, f)), { recursive: true }); fs.writeFileSync(path.join(T, f), c); };
-  execFileSync('git', ['init', '-q', T]);
-  wr('tools/godot/run-all-tests.sh', '# supports --only\necho "$*" >> .args-seen\nif [ "${1:-}" = --only ]; then printf "%-18s %-16s exit=%d  %s\\n" "$2" run.gd 0 "9 passed"; else printf "%-18s %-16s exit=%d  %s\\n" game run.gd 0 "30 passed"; printf "%-18s %-16s exit=%d  %s\\n" rules run.gd 0 "5 passed"; fi\n');
-  wr('tools/godot/affected-suites.mjs', 'console.log("hud");\n');
-  const script = path.join(__dirname, '..', 'check-godot.sh');
-  const run = (...a) => spawnSync('bash', [script, ...a], { cwd: T, encoding: 'utf8', timeout: 120000 });
-  const q = run(); assert.equal(q.status, 0, q.stdout + q.stderr);
-  assert.match(q.stdout, /^GODOT TESTS: quick \(1 suites\) — 1 passed$/m); assert.equal(fs.readFileSync(path.join(T, '.args-seen'), 'utf8').trim().split('\n').pop(), '--only hud');
-  fs.rmSync(path.join(T, '.args-seen'));
-  const f = run('--full'); assert.equal(f.status, 0, f.stdout + f.stderr);
-  assert.match(f.stdout, /^GODOT TESTS: full \(2 suites\) — 2 passed$/m); assert.ok(!/--only/.test(fs.readFileSync(path.join(T, '.args-seen'), 'utf8').trim().split('\n').pop()), 'full: no --only');
-  assert.equal(run('--bogus').status, 2);
 });
 
 test('check-godot.sh waits for the shared test slot (~/death-muffin/test-slot.lock) while another check holds it', () => {

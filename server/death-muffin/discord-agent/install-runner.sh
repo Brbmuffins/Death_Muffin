@@ -10,7 +10,7 @@ REV="${1:-origin/main}"
 SRC=server/death-muffin/discord-agent
 mkdir -p "$DEST/runner/lib" "$DEST/state"
 chmod 700 "$DEST/state"
-for f in $(git -C "$REPO" ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##") ship.sh rollback.sh sandbox-lib.sh check.sh check-godot.sh regen.sh shot.sh shoot.cjs shot-godot.sh label-shot.py render-model.sh render-model.py art-run.sh build-art.sh sound-run.mjs build-sound.sh preview.sh preview-godot.sh agit wait-for-ship.sh PROMPT.md PROMPT-godot.md config.example.json death-muffin-discord-agent.service; do
+for f in $(git -C "$REPO" ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##") ship.sh rollback.sh sandbox-lib.sh check.sh check-godot.sh regen.sh shot.sh shoot.cjs shot-godot.sh label-shot.py render-model.sh render-model.py art-run.sh build-art.sh sound-run.mjs build-sound.sh preview.sh preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT.md PROMPT-godot.md config.example.json death-muffin-discord-agent.service; do
   mkdir -p "$DEST/$(dirname "$f")"; git -C "$REPO" show "$REV:$SRC/$f" > "$DEST/$f"
 done
 chmod 755 "$DEST/ship.sh" "$DEST/rollback.sh" "$DEST/check.sh" "$DEST/check-godot.sh" "$DEST/regen.sh" "$DEST/shot.sh" "$DEST/shot-godot.sh" "$DEST/label-shot.py" "$DEST/render-model.sh" "$DEST/art-run.sh" "$DEST/build-art.sh" "$DEST/build-sound.sh" "$DEST/preview.sh" "$DEST/preview-godot.sh" "$DEST/agit" "$DEST/wait-for-ship.sh"
