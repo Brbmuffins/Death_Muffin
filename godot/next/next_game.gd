@@ -230,12 +230,6 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		depths.name = "Depths"
 		add_child(depths)
 		depths.setup(self)
-	elif world.builder != null:
-		# A guest walks the host's world with no seal checks of its own, so its gates stand open too (they were drawn shut over open ground).
-		var all: Array = []
-		for id in DmContent.area_order():
-			all.append(id)
-		world.builder.set_unlocked(all)
 	gather =DmNextGather.new()
 	gather.name = "Gather"
 	add_child(gather)

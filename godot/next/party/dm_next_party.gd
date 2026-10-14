@@ -85,6 +85,7 @@ var _relay: DmRelayPeer
 var _pending: Callable = Callable()
 var _list_t := 0.0
 var _leaving := false
+var _seals: Array = []                  ## host: the open areas last sent to guests (see send_seals)
 var _members: Dictionary = {}            ## host: peer id -> the rewards member's key
 var _chat_rate: Dictionary = {}          ## host: peer id -> [second, count]
 var _url := ""
@@ -653,6 +654,7 @@ func _rpc_profile(p: Dictionary) -> void:
 	_members[peer] = key
 	sync_levels()
 	_rpc_welcome.rpc_id(peer, shell.rewards.session_id, String(shell.session.character_name))
+	_rpc_seals.rpc_id(peer, _seals)
 	changed.emit()
 
 
@@ -778,6 +780,19 @@ func sync_levels() -> void:
 	if shell.session.is_active() and not multiplayer.get_peers().is_empty():
 		_rpc_levels.rpc(t)
 		changed.emit()
+
+
+## Host: the areas whose seal is broken in the host's world. A guest's doors follow these (sent on join and whenever a seal breaks).
+func send_seals(open: Array) -> void:
+	_seals = open.duplicate()
+	if shell.session.is_host() and shell.session.is_active() and not multiplayer.get_peers().is_empty():
+		_rpc_seals.rpc(_seals)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_seals(open: Array) -> void:
+	if shell.world.builder != null:
+		shell.world.builder.set_unlocked(open)
 
 
 @rpc("authority", "call_remote", "reliable")
