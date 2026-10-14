@@ -4,15 +4,15 @@
  *
  *   const fake = killsFake({ necro: {...}, characters: { 1: { id: 1, level: 10 } } });
  *   fake.db.execute / fake.pool.getConnection()      the same fake behind both, like a mysql2 pool
- *   fake.ledger(id)  fake.audit
+ *   fake.ledger(id)  fake.audit  fake.bossCredit[id] = paid summons (character_drop_tape.boss_credit)
  */
 const { authorityFake } = require('./authority-fake-db.cjs');
 
 const COLS = ['seq', 'bucket_at', 'kill_bucket', 'boss_bucket', 'floor_bucket', 'xp_credit', 'gold_credit', 'shard_credit', 'kill_credit',
   'lump_xp', 'lump_gold', 'lump_at', 'play_bucket', 'play_at', 'depth_proved', 'max_cleared', 'kills_base', 'kills_total', 'bosses_total', 'floors_total',
-  'xp_total', 'gold_total', 'shards_total', 'xp_used', 'gold_used', 'reports'];
+  'xp_total', 'gold_total', 'shards_total', 'xp_used', 'gold_used', 'reports', 'summon_used'];
 
-function killsFake({ necro = null, chronicle = null, characters = { 1: { id: 1, level: 10 } }, failWith = null } = {}) {
+function killsFake({ necro = null, chronicle = null, characters = { 1: { id: 1, level: 10 } }, failWith = null, bossCredit = {} } = {}) {
   const base = authorityFake({ necro, chronicle });
   const ledgers = new Map();
   const blank = (id, depth = 0, kills = 0) => {
@@ -27,7 +27,7 @@ function killsFake({ necro = null, chronicle = null, characters = { 1: { id: 1, 
     if (sql.startsWith('SELECT id, level FROM characters WHERE id = ? FOR UPDATE')) return [characters[p[0]] ? [{ ...characters[p[0]] }] : []];
     if (sql.startsWith('SELECT seq, bucket_at')) return [ledgers.has(p[0]) ? [{ ...ledgers.get(p[0]) }] : []];
     if (sql.startsWith('INSERT IGNORE INTO character_kill_ledger')) {
-      if (!ledgers.has(p[0])) ledgers.set(p[0], blank(p[0], p[1], p[3]));
+      if (!ledgers.has(p[0])) ledgers.set(p[0], { ...blank(p[0], p[1], p[3]), summon_used: p[4] || 0 });
       return [{}];
     }
     if (sql.startsWith('INSERT INTO character_kill_ledger') && sql.includes('ON DUPLICATE KEY UPDATE')) {
@@ -57,6 +57,8 @@ function killsFake({ necro = null, chronicle = null, characters = { 1: { id: 1, 
       r.kill_credit = p[0]; r.shard_credit = Math.max(0, r.shard_credit - p[1]);
       return [{}];
     }
+    if (sql.startsWith('SELECT boss_credit FROM character_drop_tape')) return [bossCredit[p[0]] == null ? [] : [{ boss_credit: bossCredit[p[0]] }]];
+    if (sql.startsWith('UPDATE character_kill_ledger SET summon_used')) { ledgers.get(p[1]).summon_used += p[0]; return [{}]; }
     if (sql.startsWith('UPDATE character_kill_ledger SET play_bucket = ?')) { Object.assign(ledgers.get(p[2]), { play_bucket: p[0], play_at: p[1] }); return [{}]; }
     return base.handler(sql, p);
   };
@@ -70,7 +72,7 @@ function killsFake({ necro = null, chronicle = null, characters = { 1: { id: 1, 
   const pool = { execute: run, query: run, getConnection: async () => conn };
   return {
     db: pool, pool, audit: base.audit, authority: base,
-    ledger: (id) => ledgers.get(id),
+    ledger: (id) => ledgers.get(id), bossCredit,
     setNecro: base.setNecro, setChronicle: base.setChronicle,
   };
 }

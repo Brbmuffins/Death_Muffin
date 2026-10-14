@@ -10,6 +10,7 @@
  */
 const labor = require('./gathering/labor-rules.cjs');
 const gather = require('./gathering/gathering-rules.cjs');
+const valueLedger = require('./value-ledger.cjs');
 
 const num = (v) => Number(v) || 0;
 const GATHER = ['woodcutting', 'mining', 'fishing', 'gravedigging'];
@@ -147,6 +148,7 @@ module.exports = function mountLabor(app, pool, { requireAuth, ownsCharacter, no
     await conn.execute('UPDATE character_labor SET started_at = ? WHERE character_id = ? AND slot = ?', [now, id, slot]);
     if (roll.gold > 0) await conn.execute('UPDATE characters SET gold = LEAST(2147483647, gold + ?) WHERE id = ?', [Math.floor(roll.gold), id]);
     const [[g]] = await conn.execute('SELECT gold FROM characters WHERE id = ?', [id]);
+    await valueLedger.record(conn, { characterId: id, currency: 'gold', delta: Math.floor(roll.gold), balance: g && g.gold, reason: 'labor', ref: def.id });
     return {
       ...(await view(conn, id, now)),
       collected: { slot, node: def.id, skill: def.skill, hours: elapsed / 3_600_000, actions, items: placed.stored, gold: roll.gold, goldTotal: num(g && g.gold), xp: roll.xp, leveledUp: roll.leveled > 0 },

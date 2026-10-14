@@ -5,10 +5,11 @@ const runtimeNecro = path.join(__dirname, 'necro-progress/necro-rules.cjs');
 const necroRules = require(fs.existsSync(runtimeNecro) ? runtimeNecro : '../../vps-handoff/necro-progress/necro-rules.cjs');
 const contractRules = require('./gathering/contract-rules.cjs');
 const gather = require('./gathering/gathering-rules.cjs');
-const { LEVEL_CAP } = require('./gathering/authority-rules.cjs');
+const { LEVEL_CAP, totalXp } = require('./gathering/authority-rules.cjs');
 const legion = require('./gathering/legion-rules.cjs');
 const rune = require('./gathering/rune-rules.cjs');
 const lootInstances = require('./loot-instances.cjs');
+const valueLedger = require('./value-ledger.cjs');
 const affix = lootInstances.affix;
 
 const parse = (value, fallback = null) => {
@@ -120,6 +121,8 @@ const sqlTime = (value) => {
 async function apply(conn, characterId, account) {
   const c = account.character;
   const finitePosition = ['pos_x', 'pos_y', 'pos_z', 'orientation'].every((key) => Number.isFinite(c[key]) && Math.abs(c[key]) < 100000);
+  const read = await conn.execute('SELECT level, experience, gold FROM characters WHERE id = ?', [characterId]).catch(() => null);
+  const was = read && Array.isArray(read[0]) ? read[0][0] : null;   // for the value ledger only
   // pos_map stays as it is online; dev-offline mode has no map of its own.
   await conn.execute(
     `UPDATE characters SET level = ?, experience = ?, gold = ?, stat_str = ?, stat_agi = ?, stat_int = ?, stat_vit = ?,
@@ -128,6 +131,12 @@ async function apply(conn, characterId, account) {
       finitePosition ? c.pos_x : 0, finitePosition ? c.pos_y : 0, finitePosition ? c.pos_z : 0,
       finitePosition ? c.orientation : 0, characterId]
   );
+  if (was) {
+    await valueLedger.record(conn, [
+      { characterId, currency: 'gold', delta: Number(c.gold) - Number(was.gold), balance: c.gold, reason: 'offline-full' },
+      { characterId, currency: 'xp', delta: totalXp(c.level, c.experience) - totalXp(was.level, was.experience), balance: totalXp(c.level, c.experience), reason: 'offline-full' },
+    ]);
+  }
 
   const reservedSlots = { 100: 'head', 101: 'chest', 102: 'legs', 103: 'feet', 104: 'hands', 105: 'main_hand', 106: 'off_hand', 107: 'ring', 108: 'trinket' };
   const ids = [...new Set(account.slots.map((s) => s.item_id))];

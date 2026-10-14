@@ -9,6 +9,7 @@
  */
 const rules = require('./gathering/contract-rules.cjs');
 const gather = require('./gathering/gathering-rules.cjs');
+const valueLedger = require('./value-ledger.cjs');
 
 const BAG = gather.BAG_SLOTS;
 const num = (v) => Number(v) || 0;
@@ -182,6 +183,7 @@ module.exports = function mountContracts(app, pool, { requireAuth, ownsCharacter
       }
       await conn.execute('UPDATE characters SET gold = LEAST(2147483647, gold + ?) WHERE id = ?', [gold, id]);
       const [[g]] = await conn.execute('SELECT gold FROM characters WHERE id = ?', [id]);
+      await valueLedger.record(conn, { characterId: id, currency: 'gold', delta: gold, balance: g && g.gold, reason: 'contract', ref: day });
       await conn.commit();
       res.json({ success: true, data: { ...(await view(conn, id, now)), gold, goldTotal: num(g && g.gold), items: granted, paidBonus: bonus } });
     } catch (err) {

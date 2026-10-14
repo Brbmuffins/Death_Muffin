@@ -11,6 +11,7 @@ const gather = require('./gathering/gathering-rules.cjs');
 const affix = require('./gathering/affix-rules.cjs');
 const store = require('./loot-instances.cjs');
 const { INV_SELECT } = require('./bag-store.cjs');
+const valueLedger = require('./value-ledger.cjs');
 
 const BAG = gather.BAG_SLOTS;
 const MAX_LINES = BAG;
@@ -53,6 +54,7 @@ async function sellItems(pool, { characterId, items }) {
     if (gone.length) await store.deleteInstances(conn, gone);
     await conn.execute('UPDATE characters SET gold = LEAST(2147483647, gold + ?) WHERE id = ?', [gold, characterId]);
     const [[g]] = await conn.execute('SELECT gold FROM characters WHERE id = ?', [characterId]);
+    await valueLedger.record(conn, { characterId, currency: 'gold', delta: gold, balance: g && g.gold, reason: 'sell', ref: `items:${sold}` });
     await conn.commit();
     const [bag] = await pool.execute(INV_SELECT, [characterId]);
     return { sold, gold, goldTotal: num(g && g.gold), bag };

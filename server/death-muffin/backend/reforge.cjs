@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const store = require('./bag-store.cjs');
 const { parseAffixes, affix } = require('./loot-instances.cjs');
 const sinks = require('./gathering/gold-sink-rules.cjs');
+const valueLedger = require('./value-ledger.cjs');
 
 const num = (v) => Number(v) || 0;
 const playerError = (message) => Object.assign(new Error(message), { player: true });
@@ -95,6 +96,7 @@ module.exports = function mountReforge(app, pool, { requireAuth, ownsCharacter, 
       await conn.execute('UPDATE loot_instances SET affixes = ? WHERE id = ?', [JSON.stringify(next.affixes), inst.id]);
       await conn.execute('INSERT INTO loot_reforges (instance_id, rerolls) VALUES (?, 1) ON DUPLICATE KEY UPDATE rerolls = rerolls + 1', [inst.id]);
       await conn.execute('UPDATE characters SET gold = gold - ? WHERE id = ?', [cost, id]);
+      await valueLedger.record(conn, { characterId: id, currency: 'gold', delta: -cost, reason: 'reforge', ref: `inst:${inst.id}` });
       const [bag] = await conn.execute(store.INV_SELECT, [id]);
       await conn.commit();
       console.log(`[REFORGE] char#${id} ${row.item_id} affix ${data.affixes[index].id} ${from} -> ${to} for ${cost} gold (reforge #${rerolls + 1})`);

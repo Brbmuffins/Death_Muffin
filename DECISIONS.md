@@ -148,3 +148,9 @@ Since B18 friends join through invites and asks; the six-digit codes have no UI 
   the backend answers its totals, which the client adopts plus what it has not sent yet. So a stale save cannot overwrite gold another route
   wrote, and an inflated claim is judged against the kill ledger as a gain. Gold that is not a kill's is paid on the server: gathering,
   labor, contracts and selling (a sell route; an affixed piece sells at its affixed price), each answering the new total.
+- **B24. Every value change is on record; bosses are paid for, not rationed** (owner, 2026-10-14: server authority Phase 2; "it is totally
+  normal to spam low level bosses ... there should not be a limit"). Every server write of a character's gold, XP or soul shards adds a
+  value-ledger row with its reason (save, sell, contract, labor, gather, reforge, boss key, each necromancer route, offline sync, GM adjust),
+  in the write's own transaction; it is the record refunds and rollbacks start from, never an input to a write. The kill ledger pays boss
+  kills from paid summons first (the same credit as boss drops, B20) and only then from its per-minute allowance. A party session's reports
+  are deduplicated by their batch number and no longer move the player's own report order, so a host's own floor and boss reports count.

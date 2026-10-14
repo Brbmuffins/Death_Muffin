@@ -1,6 +1,15 @@
 [
   {
     "date": "2026-10-14",
+    "title": "Every Coin Counted",
+    "items": [
+      "Summoned bosses now always pay their full XP and gold, however fast you summon them.",
+      "Fixed: while hosting a party, Catacomb Depths floor clears and boss kills could go uncounted by the server.",
+      "The server now keeps a record of every gold, XP and soul shard change, so lost progress can be traced and given back."
+    ]
+  },
+  {
+    "date": "2026-10-14",
     "title": "Honest Gold",
     "items": [
       "Selling now happens on the server, and affixed gear sells for its full affixed price.",

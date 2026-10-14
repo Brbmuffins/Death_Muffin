@@ -21,6 +21,7 @@ const { audit } = require('./authority.cjs');
 const store = require('./bag-store.cjs');
 const loot = require('./loot-instances.cjs');
 const sinks = require('./gathering/gold-sink-rules.cjs');
+const valueLedger = require('./value-ledger.cjs');
 
 const affix = loot.affix;
 const num = (v) => Number(v) || 0;
@@ -99,6 +100,7 @@ module.exports = function mountBossKey(app, pool, { requireAuth, ownsCharacter, 
     const after = bagRows.map((r) => (r === seal ? { ...r, qty: r.qty - 1 } : r)).filter((r) => r.qty > 0);
     await store.writeBag(conn, id, bagRows, after);
     await conn.execute('UPDATE characters SET gold = gold - ? WHERE id = ?', [cost, id]);
+    await valueLedger.record(conn, { characterId: id, currency: 'gold', delta: -cost, balance: num(char.gold) - cost, reason: 'boss-key', ref: boss });
     const [made] = await conn.execute("INSERT INTO empowered_summons (character_id, boss, gold, status) VALUES (?, ?, ?, 'open')", [id, boss, cost]);
     const [bag] = await conn.execute(store.INV_SELECT, [id]);
     console.log(`[BOSSKEY] char#${id} called Empowered ${boss} for 1 seal + ${cost} gold`);
@@ -131,6 +133,7 @@ module.exports = function mountBossKey(app, pool, { requireAuth, ownsCharacter, 
     await store.writeBag(conn, id, bagRows, after);
     const gold = Math.min(GOLD_MAX, num(char.gold) + num(row.gold));
     await conn.execute('UPDATE characters SET gold = ? WHERE id = ?', [gold, id]);
+    await valueLedger.record(conn, { characterId: id, currency: 'gold', delta: gold - num(char.gold), balance: gold, reason: 'boss-key-refund', ref: `summon:${row.id}` });
     await conn.execute("UPDATE empowered_summons SET status = 'refunded', resolved_at = NOW() WHERE id = ?", [row.id]);
     const [bag] = await conn.execute(store.INV_SELECT, [id]);
     return { gold, bag };

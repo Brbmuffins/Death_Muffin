@@ -83,7 +83,7 @@ function createNecroProgressHandlers({ store, ownsCharacter, isStaff, logger = c
         outcome = r;
         if (!r.ok) return {}; // nothing written
         return { state: r.state, gold: r.gold };
-      });
+      }, String(req.path || '').split('/').pop() || 'necro');
       if (done && done.notFound) return fail(res, 404, 'Character not found');
       if (!outcome.ok) return fail(res, 400, outcome.error);
       const data = { progress: publicState(outcome.state) };

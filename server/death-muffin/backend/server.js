@@ -18,6 +18,7 @@ const authority = require('./authority.cjs');
 const kills = require('./kills.cjs');
 const session = require('./session.cjs');
 const { LEVEL_CAP: MAX_CHARACTER_LEVEL, totalXp, splitXp } = require('./gathering/authority-rules.cjs');
+const valueLedger = require('./value-ledger.cjs');
 
 const app  = express();
 const PORT = process.env.PORT || 5190;
@@ -304,6 +305,7 @@ async function normalizeCharacterProgress(char) {
       'UPDATE characters SET level = ?, experience = ? WHERE id = ?',
       [level, experience, char.id]
     );
+    await valueLedger.record(pool, { characterId: char.id, currency: 'xp', delta: totalXp(level, experience) - totalXp(char.level, char.experience), balance: totalXp(level, experience), reason: 'normalize' });
     char.level = level;
     char.experience = experience;
     console.log(`[PROGRESS] Normalized char#${char.id} -> Lv${level} ${experience}/${xpToNext}xp`);
@@ -779,6 +781,7 @@ app.post('/api/offline/sync-stats', offlineSyncLimiter, verifyJWT, async (req, r
       }
       await conn.execute('UPDATE characters SET level = ?, experience = ? WHERE id = ?',
         [merged.level, merged.experience, req.character.id]);
+      await valueLedger.record(conn, { characterId: req.character.id, currency: 'xp', delta: totalXp(merged.level, merged.experience) - totalXp(online.level, online.experience), balance: totalXp(merged.level, merged.experience), reason: 'offline' });
     }
     await conn.commit();
     res.json({ level: merged.level, experience: merged.experience, improved: merged.improved });
@@ -843,6 +846,11 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
       [w.level, w.xp, w.gold, w.stat_str, w.stat_agi, w.stat_int, w.stat_vit, char.id]
     );
     const [[updated]] = await pool.execute('SELECT * FROM characters WHERE id = ?', [char.id]);
+    const ref = gainsSeq ? `seq:${gainsSeq}` : null;
+    await valueLedger.record(pool, [
+      { characterId: char.id, currency: 'xp', delta: totalXp(updated.level, updated.experience) - totalXp(char.level, char.experience), balance: totalXp(updated.level, updated.experience), reason: staff ? 'save-gm' : 'save', ref },
+      { characterId: char.id, currency: 'gold', delta: Number(updated.gold) - Number(char.gold), balance: updated.gold, reason: staff ? 'save-gm' : 'save', ref },
+    ]);
     console.log(`[PROGRESS] ${req.user.username} char#${char.id} → Lv${updated.level} ${updated.experience}xp ${updated.gold}g`);
     res.json({ success: true, data: updated, ...(verdict.message ? { authority: { message: verdict.message } } : {}) });
   } catch (err) {
@@ -1601,6 +1609,7 @@ app.post('/api/gold/adjust', requireJWT, async (req, res) => {
         return res.status(400).json({ success: false, error: 'gold would exceed the maximum' });
       }
       await conn.execute('UPDATE characters SET gold = ? WHERE id = ?', [newGold, char.id]);
+      await valueLedger.record(conn, { characterId: char.id, currency: 'gold', delta: amount, balance: newGold, reason: amount > 0 ? 'adjust-gm' : 'adjust' });
       await conn.commit();
     } catch (e) {
       await conn.rollback().catch(() => {});
@@ -1720,7 +1729,7 @@ app.post('/api/necro-progress/import', requireJWT, (req, res, next) => {
 const { mountNecroProgress } = require('./necro-progress/necro-progress-routes.cjs');
 const { createMysqlStore } = require('./necro-progress/mysql-store.cjs');
 mountNecroProgress(app, {
-  store: createMysqlStore(pool),
+  store: createMysqlStore(pool, { record: valueLedger.record }),
   requireAuth: requireJWT,
   isStaff: isStaffAccount,
   ownsCharacter: async (req, characterId) => {

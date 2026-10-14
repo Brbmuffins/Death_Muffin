@@ -16,13 +16,14 @@ const ident = (s) => {
   return '`' + s + '`';
 };
 
-function createMysqlStore(pool, { charactersTable = 'characters', idColumn = 'id', goldColumn = 'gold' } = {}) {
+/** `record(conn, entries)` (optional, the backend's value-ledger.cjs) is called inside the transaction for each gold or soul-shard change. */
+function createMysqlStore(pool, { charactersTable = 'characters', idColumn = 'id', goldColumn = 'gold', record = null } = {}) {
   const T = ident(charactersTable);
   const ID = ident(idColumn);
   const GOLD = ident(goldColumn);
   const parse = (v) => normalise(typeof v === 'string' ? JSON.parse(v) : v);
 
-  async function tx(characterId, fn) {
+  async function tx(characterId, fn, reason = 'necro') {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
@@ -41,6 +42,15 @@ function createMysqlStore(pool, { charactersTable = 'characters', idColumn = 'id
       }
       if (out.gold !== undefined && out.gold !== gold) {
         await conn.query(`UPDATE ${T} SET ${GOLD} = ? WHERE ${ID} = ?`, [Math.max(0, Math.round(out.gold)), characterId]);
+      }
+      if (record) {
+        const after = Math.max(0, Math.round(out.gold !== undefined ? out.gold : gold));
+        const shardsBefore = Number(state.soulShards) || 0;
+        const shardsAfter = out.state ? Number(out.state.soulShards) || 0 : shardsBefore;
+        await record(conn, [
+          { characterId, currency: 'gold', delta: after - gold, balance: after, reason },
+          { characterId, currency: 'shards', delta: shardsAfter - shardsBefore, balance: shardsAfter, reason },
+        ]);
       }
       await conn.commit();
       return { ...out, state: out.state || state, gold: out.gold !== undefined ? out.gold : gold };

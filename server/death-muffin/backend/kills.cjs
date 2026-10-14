@@ -43,7 +43,7 @@ function parseJson(v, fallback) {
 
 const COLUMNS = `seq, bucket_at, kill_bucket, boss_bucket, floor_bucket, xp_credit, gold_credit, shard_credit, kill_credit,
   lump_xp, lump_gold, lump_at, play_bucket, play_at, depth_proved, max_cleared, kills_base, kills_total, bosses_total, floors_total,
-  xp_total, gold_total, shards_total, xp_used, gold_used, reports`;
+  xp_total, gold_total, shards_total, xp_used, gold_used, reports, summon_used`;
 
 function fromRow(r, now) {
   return {
@@ -57,7 +57,7 @@ function fromRow(r, now) {
     depthProved: num(r.depth_proved), maxCleared: num(r.max_cleared),
     killsBase: num(r.kills_base), killsTotal: num(r.kills_total), bossesTotal: num(r.bosses_total), floorsTotal: num(r.floors_total),
     xpTotal: num(r.xp_total), goldTotal: num(r.gold_total), shardsTotal: num(r.shards_total), xpUsed: num(r.xp_used), goldUsed: num(r.gold_used),
-    reports: num(r.reports),
+    reports: num(r.reports), summonUsed: num(r.summon_used),
     now,
   };
 }
@@ -77,12 +77,23 @@ async function baselines(db, characterId) {
   return { peak, kills };
 }
 
+/** Boss kills the character has paid summons for (character_drop_tape.boss_credit, drops.cjs creditSummon): a running total, never spent there.
+ *  0 when the character has no tape yet or the table is unavailable (the clock bucket still applies). */
+async function summonCredit(db, characterId) {
+  try {
+    const [[row]] = await db.execute('SELECT boss_credit FROM character_drop_tape WHERE character_id = ?', [characterId]);
+    return row ? num(row.boss_credit) : 0;
+  } catch { return 0; }
+}
+
 /** Read the ledger row under a lock, creating it (grandfathering what the character already has) on first sight. */
 async function loadLedger(db, characterId, now = Date.now()) {
   const [[have]] = await db.execute(`SELECT ${COLUMNS} FROM character_kill_ledger WHERE character_id = ? FOR UPDATE`, [characterId]);
   if (have) return fromRow(have, now);
   const b = await baselines(db, characterId);
-  await db.execute('INSERT IGNORE INTO character_kill_ledger (character_id, depth_proved, max_cleared, kills_base) VALUES (?, ?, ?, ?)', [characterId, b.peak, b.peak, b.kills]);
+  // Summons already paid before the ledger existed count as used, so a new ledger does not start with free boss kills.
+  await db.execute('INSERT IGNORE INTO character_kill_ledger (character_id, depth_proved, max_cleared, kills_base, summon_used) VALUES (?, ?, ?, ?, ?)',
+    [characterId, b.peak, b.peak, b.kills, await summonCredit(db, characterId)]);
   const [[row]] = await db.execute(`SELECT ${COLUMNS} FROM character_kill_ledger WHERE character_id = ? FOR UPDATE`, [characterId]);
   return fromRow(row, now);
 }
@@ -157,17 +168,22 @@ async function handleReport(pool, { char, accountId, body, account, carried = fa
     if (!locked) { await conn.rollback(); return { status: 404, body: { success: false, error: 'character not found' } }; }
     const ledger = await loadLedger(conn, char.id, now);
     const necro = await necroSummary(conn, char.id);
-    if (report.seq === ledger.seq) { await conn.commit(); return { status: 200, body: { success: true, data: { mode, duplicate: true } } }; }
-    if (report.seq < ledger.seq) {
+    // `seq` orders the player's own reports (its clock). A carried report is stamped by the server and deduplicated by the session's batch
+    // number instead, so it neither checks nor moves `seq`: moving it let a host's own floor and boss reports, a few seconds behind on the
+    // player's clock, be refused as replays (Dravos 2026-10-14, Depths floors lost while hosting).
+    if (!carried && report.seq === ledger.seq) { await conn.commit(); return { status: 200, body: { success: true, data: { mode, duplicate: true } } }; }
+    if (!carried && report.seq < ledger.seq) {
       await audit(conn, { characterId: char.id, accountId, kind: 'kill_replay', mode, action: 'report', detail: { seq: report.seq, last: ledger.seq } }, log);
       await conn.commit();
       return { status: 200, body: { success: true, data: { mode, duplicate: true } } };
     }
     const buckets = refill(ledger, necro.unlocked, now);
+    // Bosses are backed by paid summons first (owner 2026-10-14: spamming bosses has no limit), then by the clock bucket.
+    const summonsLeft = Math.max(0, (await summonCredit(conn, char.id)) - ledger.summonUsed);
     const rank = ascensionRank(necro.ascension);
     const ev = rules.evaluateKillReport(report, {
       unlocked: necro.unlocked, ascension: rank, heroLevel: num(locked.level, 1), deepest: ledger.depthProved, ...(carried && world ? { world } : {}),
-      killBucket: buckets.killBucket, bossBucket: buckets.bossBucket, floorBucket: buckets.floorBucket, maxCleared: ledger.maxCleared, staff: !!(account && account.staff), carried,
+      killBucket: buckets.killBucket, bossBucket: buckets.bossBucket + summonsLeft, floorBucket: buckets.floorBucket, maxCleared: ledger.maxCleared, staff: !!(account && account.staff), carried,
     });
     const credit = { ...ledger.killCredit };
     for (const [area, n] of Object.entries(ev.credits.kills)) credit[area] = (credit[area] || 0) + n;
@@ -175,6 +191,7 @@ async function handleReport(pool, { char, accountId, body, account, carried = fa
     if (ev.credits.prelate) credit[PRELATE_KEY] = (credit[PRELATE_KEY] || 0) + ev.credits.prelate;
     const claimedKills = report.groups.reduce((n, g) => n + g.n, 0);
     const dropped = Math.max(0, claimedKills - ev.killsAccepted);
+    const bySummon = Math.min(ev.bossesAccepted, summonsLeft);
     await conn.execute(
       `UPDATE character_kill_ledger SET seq = ?, bucket_at = ?, kill_bucket = ?, boss_bucket = ?, floor_bucket = ?,
          xp_credit = xp_credit + ?, gold_credit = gold_credit + ?, shard_credit = shard_credit + ?, kill_credit = ?,
@@ -183,10 +200,11 @@ async function handleReport(pool, { char, accountId, body, account, carried = fa
          xp_total = xp_total + ?, gold_total = gold_total + ?, shards_total = shards_total + ?, reports = reports + 1, rejected_kills = rejected_kills + ?,
          last_report_at = ?
        WHERE character_id = ?`,
-      [report.seq, now, buckets.killBucket - ev.killsAccepted, buckets.bossBucket - ev.bossesAccepted, buckets.floorBucket - ev.floorsAccepted,
+      [carried ? ledger.seq : report.seq, now, buckets.killBucket - ev.killsAccepted, Math.max(0, buckets.bossBucket - (ev.bossesAccepted - bySummon)), buckets.floorBucket - ev.floorsAccepted,
         Math.floor(ev.credits.xp), Math.floor(ev.credits.gold), Math.floor(ev.credits.shards), JSON.stringify(credit),
         ev.depthProved, ev.depthProved ? ev.depthProved - 1 : 0,
         ev.killsAccepted, ev.bossesAccepted, ev.floorsAccepted, Math.floor(ev.credits.xp), Math.floor(ev.credits.gold), Math.floor(ev.credits.shards), dropped, now, char.id]);
+    if (bySummon > 0) await conn.execute('UPDATE character_kill_ledger SET summon_used = summon_used + ? WHERE character_id = ?', [bySummon, char.id]);
     for (const f of ev.findings) {
       const { kind, ...detail } = f;
       await audit(conn, { characterId: char.id, accountId, kind, mode, action: mode === 'enforce' ? 'drop' : 'report', detail }, log);

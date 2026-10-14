@@ -82,6 +82,11 @@ start, so changing one needs a restart of `death-muffin-auth`.
   progressSeq}`. A body without `gains` is an older client's totals (the old path). Gold other routes pay is written by them: gathering,
   labor, contracts (each answers `goldTotal`) and `POST /api/inventory/sell {characterId, items: [{slot_index, quantity}]}` (`sell.cjs`:
   bag slots only, never worn gear, an affixed piece at its affixed price; answers `{sold, gold, goldTotal, bag}`).
+- **Value ledger** (`backend/value-ledger.cjs`, migration 054, DECISIONS B24): every server write of a character's gold, XP (lifetime total)
+  or soul shards adds a `value_ledger` row `{delta, balance, reason, ref}` inside the write's transaction; a failure is logged, never fails the write.
+- **Boss kills** in the kill ledger draw first on paid summons (`character_drop_tape.boss_credit` minus `character_kill_ledger.summon_used`,
+  migration 053), then on the per-minute allowance. A party session's report is deduplicated by its batch number and neither checks nor
+  moves the member's own report `seq`.
 - **Server-decided drops** (`backend/drops.cjs`, migrations 047, 049, 050, DECISIONS B20): `POST /api/drops/tape {characterId, next?}` deals each
   drop kind's next seeds (kill 128, elite 48, boss 6, surge 6, floor 8, chest 4; one secret-derived seed per event); `POST /api/drops/claim
   {characterId, kind, n, index, facts, expect?, sessionId?}` rolls that event again from its seed (`gathering/loot-rules.cjs` rollEvent, equal

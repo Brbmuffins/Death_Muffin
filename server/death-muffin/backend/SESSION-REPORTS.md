@@ -49,7 +49,7 @@ Credits land in the member's kill ledger; the member's own `save-progress` / nec
 - Caps per member, from the ledger: refilling kill/boss buckets (rate), ground unlocks, enemy level plausibility, per-kind mix, elite share,
   XP/gold/shard multiplier caps. Findings go to `progress_audit` against the member.
 - Idempotency: `batch` must strictly increase per session; a repeat/older number is acknowledged as `duplicate` and ignored. The number is claimed
-  under the session lock before crediting (a crash loses a batch rather than crediting it twice). The ledger sequence per member is server-assigned.
+  under the session lock before crediting (a crash loses a batch rather than crediting it twice). The ledger sequence per member is server-assigned and kept apart from the member's own solo report order (a carried report neither checks nor moves the ledger `seq`).
 - Bounds: <= 4 members, distinct ids, <= 80 groups and 12 bosses per member (else the whole report is a 400).
 - Limits: 30 reports/min per session, 90/min per host account, 12 session opens/hour, 30 joins/min per account, 20000 batches per session
   (in-memory sliding windows plus an express-rate-limit in front). A rate-limited batch is not consumed; the host resends it.

@@ -6,6 +6,7 @@
  * throws, nothing is written.
  */
 const rules = require('./gathering-rules.cjs');
+const valueLedger = require('../value-ledger.cjs');
 
 function createMysqlGatherStore(pool) {
   async function withCharacter(characterId, fn) {
@@ -74,6 +75,7 @@ function createMysqlGatherStore(pool) {
         },
         async addGold(n) {
           await conn.query('UPDATE characters SET gold = LEAST(2147483647, gold + ?) WHERE id = ?', [Math.max(0, Math.floor(n)), characterId]);
+          await valueLedger.record(conn, { characterId, currency: 'gold', delta: Math.floor(n), reason: 'gather' });
         },
         async goldTotal() {
           const [[row]] = await conn.query('SELECT gold FROM characters WHERE id = ?', [characterId]);

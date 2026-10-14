@@ -19,9 +19,10 @@ an encryption key).
 Depths' floors and chests) rolls instantly from a server-dealt drop tape and its pickup is a server claim that grants the server's own
 roll; a bag save cannot add a drop item; `/api/loot/roll-gear` is GM-mode only.
 
-**Phase 2: intents instead of saved totals.** XP, gold and levels are paid from the kill ledger's accepted kills, not from
-claimed totals; the bag changes through operations (move, split, drop, sell, use) like the Vault; area kills, shards and seals
-come only from accepted reports; an item / currency ledger records every grant and spend with its reason.
+**Phase 2: intents instead of saved totals.** Live 2026-10-14 (DECISIONS B23, B24): saves carry XP and gold gains, not totals; gathering,
+labor, contracts and selling pay their gold on the server; boss kills are backed by paid summons; a value ledger records every gold, XP
+and shard change with its reason. Still to do: the bag changes through operations (move, split, drop, use) like the Vault, so a bag
+save no longer carries non-drop items; area kills, shards and seals come only from accepted reports (the kill ledger's enforce).
 
 **Phase 3: co-op on the same rules.**
 1. **Guests fight at their real power.** Live 2026-10-14 (DECISIONS B22): the host builds each guest's hero from the server's record

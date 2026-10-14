@@ -786,3 +786,33 @@ for (const [name, vows] of [['no vows sworn', {}], ['vows sworn', { elder_dead: 
     assert.ok(Number.isFinite(l.gold_credit) && l.gold_credit > 0, 'gold credit is a number');
   });
 }
+
+test('paid summons back boss kills beyond the clock bucket, once each; summons paid before the ledger existed do not', async () => {
+  const fake = killsFake({ necro: NAVE, bossCredit: { 1: 4 } });
+  const boss = (n, seq) => report(seq, [], { bosses: [{ boss: 'abbess', tier: 0, diff: 'medium', first: false, n }] });
+  await send(fake, report(T0, [group({ n: 1 })]), T0, ENFORCE);
+  assert.equal(fake.ledger(1).summon_used, 4, 'the summons from before the ledger count as used');
+  fake.bossCredit[1] = 4 + 20;   // 20 Abbess summons, paid
+  const spree = await send(fake, boss(20, T0 + MIN), T0 + MIN, ENFORCE);
+  assert.equal(spree.body.data.accepted.bosses, 20);
+  assert.ok(!fake.audit.some((a) => a.kind === 'boss_rate'), 'a paid spree is not cut');
+  assert.equal(fake.ledger(1).summon_used, 24);
+  // The same summons do not back a second spree: only the clock bucket is left.
+  const again = await send(fake, boss(20, T0 + 2 * MIN), T0 + 2 * MIN, ENFORCE);
+  assert.ok(again.body.data.accepted.bosses < 20);
+  assert.ok(fake.audit.some((a) => a.kind === 'boss_rate'));
+  assert.equal(fake.ledger(1).summon_used, 24);
+});
+
+test('a carried (session) report does not move the player\'s own report order: a host\'s own floor report a little behind still counts', async () => {
+  const fake = killsFake({ necro: NAVE });
+  await send(fake, report(T0, [group({ n: 1 })]), T0, ENFORCE);
+  // The session route stamps its report with the server's clock, ahead of the player's.
+  const carried = await send(fake, report(T0 + 3000, [group({ n: 5 })]), T0 + 3000, ENFORCE, { carried: true });
+  assert.equal(carried.body.data.accepted.kills, 5);
+  assert.equal(fake.ledger(1).seq, T0);
+  const own = await send(fake, report(T0 + 1000, [], { floors: [{ depth: 1, level: 20, clear: true, chest: false, mult: 1 }] }), T0 + 3100, ENFORCE);
+  assert.equal(own.body.data.accepted.floors, 1);
+  assert.ok(!fake.audit.some((a) => a.kind === 'kill_replay'));
+  assert.equal(fake.ledger(1).max_cleared, 1);
+});

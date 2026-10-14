@@ -202,19 +202,21 @@ test('batches are idempotent: a replay or an older number credits nothing', asyn
   assert.equal((await t.view(sid, 1)).body.data.batches, 2);
 });
 
-test('batches interleave with the member\'s own solo reports (ledger sequence stays monotonic)', async () => {
+test('batches interleave with the member\'s own solo reports (each keeps its own order)', async () => {
   const { t, sid } = await party();
   const kills = require('./kills.cjs');
+  const solo = (seq) => kills.handleReport(t.fake.pool, { char: { id: 12 }, accountId: 2, body: { seq, groups: mixed(1), bosses: [], floors: [] }, account: { staff: false }, now: T0, env: ENFORCE, log: quietLog() });
+  assert.equal((await solo(T0 - 5000)).body.data.accepted.kills > 0, true);
   await t.report(sid, 1, { batch: 1, members: [entry(12, mixed(1))] });
-  const seq = t.fake.ledger(12).seq;
-  assert.ok(seq >= T0);
-  // The member's own client reports with an older seq: replay, ignored, nothing breaks.
-  const out = await kills.handleReport(t.fake.pool, { char: { id: 12 }, accountId: 2, body: { seq: seq - 1, groups: mixed(1), bosses: [], floors: [] }, account: { staff: false }, now: T0, env: ENFORCE, log: quietLog() });
-  assert.equal(out.body.data.duplicate, true);
+  // A session batch is stamped by the server and deduplicated by its batch number: it does not move the solo order.
+  assert.equal(t.fake.ledger(12).seq, T0 - 5000);
+  // The member's own client report, behind the server's clock, still counts; its own replay does not.
+  assert.equal((await solo(T0 - 1000)).body.data.duplicate, undefined);
+  assert.equal((await solo(T0 - 2000)).body.data.duplicate, true);
   t.advance(10_000);
   const r = await t.report(sid, 1, { batch: 2, members: [entry(12, mixed(1))] });
-  assert.ok(t.fake.ledger(12).seq > seq);
   assert.equal(r.body.data.members[0].credited, true);
+  assert.equal(t.fake.ledger(12).seq, T0 - 1000);
 });
 
 test('bounds: malformed, oversized and repeated-member reports are refused whole', async () => {
