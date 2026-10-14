@@ -999,6 +999,9 @@ func _claim_from_tape(d: Dictionary) -> void:
 		return
 	var why := err if r == null else (r.error if r.error != "" else "You could not pick that up.")
 	game_event.emit("toast", {"text": why, "kind": "err"})
+	if r != null and r.data is Dictionary and r.data.get("resync") is Dictionary and m != null and m.tape != null:
+		var rs: Dictionary = r.data["resync"]
+		m.tape.rewind(String(rs.get("kind", "")), int(rs.get("spent", 0)))   # the tape ran ahead of the kills the server believed
 	var keep := r == null or r.status == 0 or r.status >= 500 or why.begins_with("Your bag is full")
 	if not keep and m != null:
 		m.loot_view.take_claimed(d)

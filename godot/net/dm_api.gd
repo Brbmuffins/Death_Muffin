@@ -137,7 +137,9 @@ func _unwrap(r: DmResult) -> DmResult:
 		var msg := "Unknown server error"
 		if body is Dictionary and body.get("error") is String and not String(body["error"]).is_empty():
 			msg = body["error"]
-		return DmResult.failure(msg, 200)
+		var f := DmResult.failure(msg, 200)
+		f.data = body   # the whole `success: false` reply: some carry more than the message (a drop claim's `resync`)
+		return f
 	var authority: Variant = body.get("authority")
 	if authority is Dictionary and authority.get("message") is String and not String(authority["message"]).is_empty():
 		server_notice.emit(authority["message"])

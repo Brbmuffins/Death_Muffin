@@ -115,6 +115,15 @@ func _run() -> void:
 		check(not lv._drops.any(func(d: Dictionary) -> bool: return is_same(d, td)), "tape: off the ground once the server handed it over")
 		var again: DmResult = await h.api.drops_claim(h.hero_id, claim)
 		check(not again.ok and again.error.contains("already picked up"), "tape: the same drop cannot be claimed twice (%s)" % again.error)
+		check(again.data is Dictionary and again.data.get("success") == false, "tape: a refused claim keeps the server's whole reply")
+	# a refusal over budget sends the tape back to the server's position (a burst the server did not believe, e.g. GM-summoned bosses)
+	var kk: Dictionary = m.tape.kinds["kill"]
+	var at_from := int(kk["from"])
+	kk["next"] = at_from + 20
+	m.tape.rewind("kill", at_from + 3)
+	check(int(m.tape.kinds["kill"]["next"]) == at_from + 3, "tape: rewound within the dealt seeds")
+	m.tape.rewind("boss", -5)
+	check(not m.tape.kinds.has("boss") or int(m.tape.kinds["boss"]["next"]) >= 0, "tape: rewound out of range = fetched again from the server")
 	for d in lv._drops.duplicate():
 		lv.take_claimed(d)
 	await until(func() -> bool: return false, 1.6)   # the kills' gold float (GOT_WINDOW_S) lands before the next checks

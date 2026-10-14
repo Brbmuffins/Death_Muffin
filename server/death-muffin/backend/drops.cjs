@@ -292,6 +292,7 @@ async function claimDrop(pool, { characterId, accountId, body, env = process.env
     if (!ch) throw playerError('Character not found.', 404);
     who = ch;
     const t = await loadTape(conn, ch.id);
+    const spentBefore = num(t.spent[kind]);   // where this kind's tape stands before this claim (a refusal sends the client back here)
     if (n >= num(t.issued[kind])) throw playerError('That drop was never dealt.');
     const [[row]] = await conn.execute('SELECT facts, items, claimed FROM character_drop_events WHERE character_id = ? AND kind = ? AND n = ? FOR UPDATE', [ch.id, kind, n]);
     let items;
@@ -316,7 +317,13 @@ async function claimDrop(pool, { characterId, accountId, body, env = process.env
     const d = items[index];
     if (d && b.expect != null && String(b.expect) !== d.item_id) findings.push({ kind: 'drop_mismatch', expect: String(b.expect), rolled: d.item_id, event: `${kind}#${n}` });
     if (!d && b.expect != null) findings.push({ kind: 'drop_mismatch', expect: String(b.expect), rolled: null, event: `${kind}#${n}` });
-    if (mode === 'enforce' && findings.some((f) => f.kind !== 'drop_mismatch')) throw playerError('The server could not confirm that drop.');
+    if (mode === 'enforce' && findings.some((f) => f.kind !== 'drop_mismatch')) {
+      // Over budget: the client's tape ran ahead of the kills (bosses, floors) the ledger accepted, e.g. a host's GM-summoned bosses for a guest.
+      // Tell it where the server's tape is, so it goes back there and its next honest event pays (seeds are re-used in order: no picking).
+      const e = playerError('The server could not confirm that drop.');
+      if (findings.some((f) => f.kind === 'drop_budget')) e.resync = { kind, spent: spentBefore };
+      throw e;
+    }
     if (!d) throw playerError('That drop could not be found.');
     if (claimed.includes(index)) throw playerError('That drop was already picked up.');
     claimed.push(index);
@@ -341,7 +348,7 @@ async function claimDrop(pool, { characterId, accountId, body, env = process.env
   } catch (err) {
     await conn.rollback().catch(() => {});
     if (who) await writeFindings();   // a refused claim keeps its audit rows
-    if (err && err.player) return { status: err.status === 404 ? 404 : 200, body: { success: false, error: err.message } };
+    if (err && err.player) return { status: err.status === 404 ? 404 : 200, body: { success: false, error: err.message, ...(err.resync ? { resync: err.resync } : {}) } };
     throw err;
   } finally {
     conn.release();

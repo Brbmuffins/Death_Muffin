@@ -50,7 +50,8 @@ await rewards.end_session({"seconds": n})            # final batch + session_end
    client says it rolls its own drops (`rolls_own_drops`) gets the event instead (`drop_event_for`), see `next/party/README.md`. The Depths'
    floor clears and chests take their own kinds (`roll_depths`, from `DmDepths`). With a tape but no seed dealt yet, the kill pays its gold and
    XP and drops no item (the server keeps unclaimed drop items out of the bag). Only a member without a tape (tests that pin `rng`) rolls the
-   old way.
+   old way. A claim the server refuses over budget carries `resync`: `DmDropTape.rewind` goes back to the server's position, so the next
+   honest event pays again (e.g. after a host's GM-summoned bosses the server did not credit a guest).
 
 ## Backend without `/api/sessions` (legacy ledger)
 The backend's host-session routes need migration 041 (`server/death-muffin/backend/party-sessions.cjs`); on a backend without them `session_open` answers an HTML 404 and `start()` sets `legacy_ledger` (signal `ledger_fallback`, no `session_failed`):

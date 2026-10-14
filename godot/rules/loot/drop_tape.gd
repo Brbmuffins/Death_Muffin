@@ -42,6 +42,18 @@ func refill() -> void:
 		kinds[kind] = {"from": int(t["from"]), "seeds": t["seeds"], "next": maxi(int(t["from"]), had)}
 
 
+## The server refused a claim because this tape ran ahead of the kills it accepted (a burst it did not believe, e.g. GM-summoned bosses): go back
+## to where the server's tape is, so the next honest event pays again. The seeds from there on are re-used in order (knowing them early
+## lets nobody pick one). Out of the dealt range: forget the kind and fetch it again from the server's position.
+func rewind(kind: String, to: int) -> void:
+	var k: Variant = kinds.get(kind)
+	if k != null and to >= int(k["from"]) and to < int(k["from"]) + (k["seeds"] as Array).size():
+		k["next"] = to
+		return
+	kinds.erase(kind)
+	refill()
+
+
 ## The next event of `kind`: {n, seed}, or {} when the tape has nothing dealt for it.
 func take(kind: String) -> Dictionary:
 	if not ready_for(kind):

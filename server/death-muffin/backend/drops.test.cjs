@@ -156,6 +156,7 @@ test('the tape is spent no faster than the kill ledger accepts kills', async () 
   const r = await claim(f, { kind: 'kill', n: 100, index: 0, facts: killFacts() }, ENFORCE);   // 101 kills spent, none reported
   assert.equal(r.body.success, false);
   assert.equal(f.db.audit[0].kind, 'drop_budget');
+  assert.deepEqual(r.body.resync, { kind: 'kill', spent: 0 }, 'the client is told where the server\'s tape is, to go back there');
   f.db.ledger.kills_total = 200;   // the kill reports arrive
   const ok = firstDropping('kill', killFacts());
   const r2 = await claim(f, { kind: 'kill', n: ok.n, index: 0, facts: killFacts() }, ENFORCE);

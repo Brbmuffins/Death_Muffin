@@ -84,6 +84,7 @@ start, so changing one needs a restart of `death-muffin-auth`.
   fifth floors, each kind's tape spent no faster than the kill ledger's accepted kills / bosses / floors, a surge rate. `DROPS_MODE` (read in
   `drops-mode.cjs`): `enforce` (default) refuses a claim past a bound and keeps drop items a bag save adds out of the bag (`drop_unclaimed`);
   `audit` logs both (`drop_*` rows in `progress_audit`) and lets them through, rolled with the client's value up to the hard limits.
+  A claim refused over budget answers `resync {kind, spent}`: the client rewinds that tape to the server's position (seeds re-used in order).
   `POST /api/loot/roll-gear` (client-named gear) is GM-mode only.
 - **A member's build** (`GET /api/sessions/:id/members/:cid/build`, party-sessions.cjs `memberBuild`, DECISIONS B22): the session's host
   reads an active member's level, class, stats, worn slots and progression to build that member's hero. A member's party kills are judged in
