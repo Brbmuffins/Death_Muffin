@@ -46,7 +46,7 @@ describe('vault rules', () => {
   it('bulk deposit honours kind and exceptSlots and is all or nothing', () => {
     const bag = [row(0, 'staff'), row(1, 'ore', 5), row(2, 'flask', 3), row(3, 'ore', 4), row(4, 'ring', 1, true)];
     const mats = depositMany(bag, [], 'materials', [3], info);
-    expect(mats.ok && mats.bag.map((r) => r.slot)).toEqual([0, 3, 4]);
+    expect(mats.ok && mats.bag.map((r) => r.slot)).toEqual([0, 2, 3, 4]);   // potions stay in the bag (2026-10-14: Deposit materials moves materials and runes only)
     const all = depositMany(bag, [], 'all', [], info);
     expect(all.ok && all.bag).toEqual([row(4, 'ring', 1, true)]);
     const nearlyFull = Array.from({ length: VAULT_SLOTS - 1 }, (_, i) => row(i, 'ring'));

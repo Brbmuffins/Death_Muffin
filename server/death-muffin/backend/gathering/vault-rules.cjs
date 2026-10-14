@@ -294,7 +294,7 @@ function moveToSlot(bag, vault, fromSide, fromSlot, toSide, toSlot, qty, info) {
   }
   return done(n);
 }
-var isMaterialLike = (type) => type === "material" || type === "consumable" || type === "rune";
+var isMaterialLike = (type) => type === "material" || type === "rune";
 function depositMany(bag, vault, kind, exceptSlots, info) {
   const except = new Set(exceptSlots);
   const src = clone(bag);

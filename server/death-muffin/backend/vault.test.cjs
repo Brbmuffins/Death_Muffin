@@ -69,7 +69,7 @@ test('a deposit into a full vault is refused', async () => {
   assert.equal(qty(db.inv, 'ore_copper'), 5);
 });
 
-test('deposit-all materials takes materials and consumables, skips gear and the excepted slots', async () => {
+test('deposit-all materials takes materials, leaves potions and gear and the excepted slots', async () => {
   const db = fakeDb({ bag: [
     { slot_index: 0, item_id: 'staff_oak', quantity: 1 },
     { slot_index: 1, item_id: 'ore_copper', quantity: 30 },
@@ -79,9 +79,9 @@ test('deposit-all materials takes materials and consumables, skips gear and the 
   ] });
   const r = (await call(db)('POST /api/vault/deposit-all', { body: { characterId: 1, kind: 'materials', exceptSlots: [41] } })).json;
   assert.equal(r.success, true);
-  assert.deepEqual(db.inv.map((x) => x.slot_index).sort((a, b) => a - b), [0, 41]);
+  assert.deepEqual(db.inv.map((x) => x.slot_index).sort((a, b) => a - b), [0, 2, 41]);
   assert.equal(qty(db.vault, 'ore_copper'), 30);
-  assert.equal(qty(db.vault, 'flask_hp_minor'), 3);
+  assert.equal(qty(db.vault, 'flask_hp_minor'), 0, 'potions stay in the bag (2026-10-14)');
   assert.equal(qty(db.vault, 'log_oak'), 7, 'the locked log stack stayed');
 });
 
