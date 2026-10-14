@@ -25,6 +25,10 @@ var _queue: Array = []
 var _pumping := false
 var _local_timer := -1.0
 var _local_dirty := false
+## The gains save in flight or waiting for a retry (DECISIONS B23): {seq, xp, gold, sent}. A retry resends the same seq, so the server pays
+## it once; new gains wait in prog.xp_unsent / gold_unsent for the next save.
+var _inflight := {}
+var _seq := 0
 
 
 static func local_path(id: int) -> String:
@@ -142,6 +146,8 @@ func _pump() -> void:
 		var c: Callable = _queue.pop_front()
 		_remote_in_flight += 1
 		var r: DmResult = await c.call()
+		if r != null and r.ok and r.data is Dictionary and r.data.has("gold") and r.data.has("progress"):
+			prog.adopt_server_gold(r.data["gold"])   # a purchase / summon took (or a reply restates) the gold on the server
 		if r != null and r.ok and r.data is Dictionary and r.data.has("progress"):
 			if _queue.is_empty():   # replies are serial, so the last one already holds every earlier purchase; adopting each one while the player spams a buy flickers the tier back and redoes the stats every time
 				prog.adopt(r.data["progress"])
@@ -158,11 +164,7 @@ func _job_call(job: Dictionary) -> Callable:
 	match job["type"]:
 		"purchase":
 			return func() -> DmResult:
-				var sent := _payload()
-				sent["gold"] = maxi(0, int(job["gold_before"]))
-				var sv := await api.save_progress(sent)
-				if sv.ok:
-					_ack(sent)
+				await save_gains()   # what was earned is on the server before it prices the purchase
 				var r := await api.necro_purchase(character_id, job["upgrade"])
 				_dirty_server = true
 				prog.save_dirty = false
@@ -197,22 +199,16 @@ func spend_on_server(call: Callable) -> DmResult:
 	_queue.append(func() -> DmResult:
 		# `before` is the gold this pre-save SENDS (read before the await): a pickup landing while the save is in flight is then part of
 		# `gained`, not of `before` (reading it after the await lost that pickup when the server's gold replaced ours).
-		var sent := _payload()
-		var before := int(sent["gold"])
-		var sv := await api.save_progress(sent)
-		if not sv.ok:   # the server would price from stale gold, and its reply would overwrite our unsaved gold
+		var sv := await save_gains()
+		if not sv.ok:   # the server would price from gold that lacks what we earned
 			done[0] = sv
 			return null
-		_ack(sent)
 		var r: DmResult = await call.call()
 		if r.ok and r.data is Dictionary:
-			var gained := int(prog.character.get("gold", 0)) - before
-			prog.character["gold"] = maxi(0, int(r.data.get("gold", 0)) + gained)
+			prog.adopt_server_gold(r.data.get("gold", 0))   # the server's gold after the spend, plus what was earned meanwhile
 			if r.data.get("cost", 0):
 				if prog.chronicle != null:
 					prog.chronicle.add("gold.spent", int(r.data["cost"]))
-			if gained != 0:
-				prog.save_dirty = true
 			prog.changed.emit()
 		done[0] = r
 		return null)
@@ -224,20 +220,38 @@ func spend_on_server(call: Callable) -> DmResult:
 
 # --- saves -----------------------------------------------------------------------------------------------------------------------
 
+## The next gains save: the one in flight / waiting for a retry, else what was earned since (moved out of prog.*_unsent into _inflight).
 func _payload() -> Dictionary:
-	var c: Dictionary = prog.character
+	if _inflight.is_empty():
+		_seq = maxi(_seq + 1, int(Time.get_unix_time_from_system() * 1000.0))   # rising across sessions too
+		_inflight = {"seq": _seq, "xp": prog.xp_unsent, "gold": prog.gold_unsent, "sent": false}
+		prog.xp_unsent = 0
+		prog.gold_unsent = 0
+	var d := {"characterId": character_id, "gains": {"xp": int(_inflight["xp"]), "gold": int(_inflight["gold"])}, "seq": int(_inflight["seq"])}
 	var reports := reporter.batches()
-	var d := {
-		"characterId": character_id,
-		"level": int(c.get("level", 1)),
-		"xp": int(c.get("experience", 0)),
-		"gold": maxi(0, DmProgUtil.js_round(float(c.get("gold", 0)))),
-		"stat_str": int(c.get("stat_str", 5)), "stat_agi": int(c.get("stat_agi", 5)),
-		"stat_int": int(c.get("stat_int", 5)), "stat_vit": int(c.get("stat_vit", 5)),
-	}
 	if not reports.is_empty():
 		d["killReports"] = reports
 	return d
+
+
+## Send what was earned (DECISIONS B23) and take the server's totals. A failure keeps the gains in flight for a retry under the same seq;
+## a "duplicate" for a save never sent before means our seq is behind the server's: it is sent again under a newer one.
+func save_gains() -> DmResult:
+	var sent := _payload()
+	var r := await api.save_progress(sent)
+	if not r.ok:
+		_inflight["sent"] = true
+		return r
+	_ack(sent)
+	var raw: Variant = r.data
+	if r.data is Dictionary and r.data.get("duplicate", false) and not bool(_inflight.get("sent", false)):
+		_seq = maxi(_seq, int(r.data.get("progressSeq", _seq))) + 1
+		_inflight["seq"] = _seq
+		return await save_gains()
+	_inflight = {}
+	if raw is Dictionary and raw.has("level"):
+		prog.adopt_server_totals(raw["level"], raw.get("experience", 0), raw.get("gold", 0))
+	return r
 
 
 func _ack(sent: Dictionary) -> void:
@@ -314,11 +328,9 @@ func flush(keepalive: bool = false) -> void:
 	_in_flight = true
 	_dirty_server = false
 	_set_state("saving")
-	var sent := _payload()
-	var r := await api.save_progress(sent)
+	var r := await save_gains()
 	var ok := r.ok
 	if ok:
-		_ack(sent)
 		ok = await _send_necro()
 	if ok:
 		_retry_delay = 4.0

@@ -185,7 +185,7 @@ func _run() -> void:
 	check(ui.hud.save_lbl.text == "Saved ✓", "the chip text reaches the HUD label")
 
 	# ---- wave dial: Wave Speed active tier down / up through the HUD buttons
-	ch["gold"] = 1000000
+	set_gold(1000000)
 	h.buy_upgrade("wave")
 	await until(func() -> bool: return int(prog.local["waveTierOwned"]) >= 1, 3.0)
 	await until(func() -> bool: return not g.progress.psync._pumping and prog.outbox.is_empty(), 3.0)
@@ -201,7 +201,7 @@ func _run() -> void:
 	check(int(prog.local["waveTierActive"]) == 2, "the dial's plus is capped at the owned tier")
 	ui.hud.dial_wave.emit(-5)
 	check(int(prog.local["waveTierActive"]) == 0 and g.director.wave_tier == 0.0, "the dial cannot go below 0")
-	ch["gold"] = 0
+	set_gold(0)
 
 	# ---- sounds: forwarded once each (loot drop by rarity, coin, shard, pickup, hero hurt, low health)
 	var b := body()
@@ -266,9 +266,9 @@ func _run() -> void:
 				break
 	h.inventory.add({"item_id": tool_id, "quantity": 1})
 	check(h.counsel_tick_ctx()["has_tool"], "has_tool follows the bag")
-	ch["gold"] = 1000000
+	set_gold(1000000)
 	check(h.counsel_tick_ctx()["wave_affordable"], "wave_affordable follows gold")
-	ch["gold"] = 0
+	set_gold(0)
 	ui.counsel.reset()
 	ui.counsel.notify_tick(h.counsel_tick_ctx())
 	check(ui.counsel._queued("belt") or ui.counsel.has_seen("belt") or ui.counsel.shown_id() == "belt", "the state-based belt tip fires from the tick ctx")
@@ -299,7 +299,7 @@ func _run() -> void:
 	perf_info(tick_ms < 1.5, "the counsel poll (every 400 ms) costs %.3f ms with 25 dead around" % tick_ms)
 
 	# ---- Legion: tier bought through the same API; thrall hp / damage follow (the cap comes from boons and weapons, not the tier), standing thralls get the bump
-	ch["gold"] = 1000000
+	set_gold(1000000)
 	await save_now()   # the backend prices from ITS purse
 	var th := b.get_node("Thralls") as DmThrallHost
 	var caster := b.get_node("Rites") as DmRiteCaster
@@ -323,17 +323,17 @@ func _run() -> void:
 	check(float(caster.p["stats"]["thrallHp"]) == float(st1["thrallHp"]), "the caster's stats follow, so new thralls are raised stronger")
 	check(standing != null and standing.max_hp > t_hp0, "a thrall already standing gets the one-time bump (%.0f -> %.0f)" % [t_hp0, standing.max_hp if standing != null else 0.0])
 	check(int(h.hud_state()["thrall_cap"]) == cap0 and int(caster.mods["thrallCap"]) == cap0, "the cap is the build's (tiers do not move it; boons and weapons do): HUD, caster agree at %d" % cap0)
-	ch["gold"] = 0
+	set_gold(0)
 	await save_now()
 	var broke := await h.buy_legion()
 	check(broke != "" and int(prog.local["legionTier"]) == tier0 + 1, "buy_legion refuses without the gold (%s)" % broke)
-	ch["gold"] = 1000000
+	set_gold(1000000)
 	await save_now()
 	var pre := int(prog.local["legionTier"])
 	h.buy_upgrade("legion")
 	await until(func() -> bool: return int(prog.local["legionTier"]) == pre + 1, 3.0)
 	check(int(prog.local["legionTier"]) == pre + 1, "buy_upgrade('legion') (the DmGame entry) buys one tier")
-	ch["gold"] = 0
+	set_gold(0)
 	th.clear("test")
 
 	# ---- panels
@@ -382,11 +382,11 @@ func panels(cid: int) -> void:
 	# Legion
 	await open("legion")
 	var tier := int(h.progress["legionTier"])
-	h.character["gold"] = 1000000
+	set_gold(1000000)
 	await save_now()
 	ui.pa.grim_win.legion.reinforce_requested.emit()
 	check(await until(func() -> bool: return int(h.progress["legionTier"]) == tier + 1, 4.0), "Legion panel: Reinforce buys a tier through the API (%d -> %d)" % [tier, int(h.progress["legionTier"])])
-	h.character["gold"] = 0
+	set_gold(0)
 
 	# Forge: craft
 	await open("forge")
@@ -530,3 +530,10 @@ func panels(cid: int) -> void:
 ## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
 func perf_info(cond: bool, what: String) -> void:
 	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
+
+
+## Fund (or drain) the character as play would: the change counts as earned, so the next gains save gives it to the backend too (DECISIONS B23).
+func set_gold(n: int) -> void:
+	var p: DmProgression = g.progress.prog
+	p.gold_unsent += n - int(p.character.get("gold", 0))
+	p.character["gold"] = n

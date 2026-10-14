@@ -656,12 +656,33 @@ func _route_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 		"/api/craft": return _craft(acc, body)
 		"/api/salvage": return _salvage(acc, body)
 		"/api/gm/mode": return _ok({"active": body.get("on") == true})
+		"/api/inventory/sell": return _sell(acc, body)
 	return _err("Offline backend: no route for POST %s" % p, 404)
 
 # --- character progress ------------------------------------------------------------------------------------------------------------
 
 func _save_progress(acc: Dictionary, body: Dictionary) -> Dictionary:
 	var c: Dictionary = acc["character"]
+	if body.get("gains") is Dictionary:   # the live contract (server.js save-progress, DECISIONS B23): gains on top of the record, seq paid once
+		var seq := int(_num_or(body.get("seq"), 0.0))
+		if seq <= 0:
+			return _err("a gains save needs a positive seq", 400)
+		if seq <= int(acc.get("progress_seq", 0)):
+			var dup := c.duplicate()
+			dup["duplicate"] = true
+			dup["progressSeq"] = int(acc.get("progress_seq", 0))
+			return _ok(dup)
+		acc["progress_seq"] = seq
+		var g: Dictionary = body["gains"]
+		var lv := maxi(1, int(_num_or(c.get("level"), 1.0)))
+		var xp := maxi(0, int(_num_or(c.get("experience"), 0.0))) + maxi(0, int(_num_or(g.get("xp"), 0.0)))
+		while xp >= lv * 100:
+			xp -= lv * 100
+			lv += 1
+		c["level"] = lv
+		c["experience"] = xp
+		c["gold"] = maxi(0, _gold_now(acc) + int(_num_or(g.get("gold"), 0.0)))
+		return _ok(c.duplicate())
 	c["level"] = _tidy(_num_or(body.get("level"), float(c["level"])))
 	c["experience"] = _tidy(_num_or(body.get("xp"), 0.0))
 	c["gold"] = _tidy(maxf(0.0, _num_or(body.get("gold"), 0.0)))
@@ -858,6 +879,35 @@ func _owned_legendaries(acc: Dictionary) -> Array:
 		if id.begins_with("leg_") and not out.has(id):
 			out.append(id)
 	return out
+
+## /api/inventory/sell (sell.cjs): bag slots only, never worn gear; the whole sale or nothing; an affixed piece at its affixed price.
+func _sell(acc: Dictionary, body: Dictionary) -> Dictionary:
+	var lines: Variant = body.get("items")
+	if not (lines is Array) or (lines as Array).is_empty():
+		return _fail("Nothing to sell.")
+	var rows := _rows(acc)
+	var gold := 0
+	var sold := 0
+	var plan: Array = []
+	for it in lines:
+		var slot := int(_num_or((it as Dictionary).get("slot_index"), -1.0))
+		var qty := int(_num_or((it as Dictionary).get("quantity"), 0.0))
+		var row: Dictionary = {}
+		for r in rows:
+			if int(r["slot_index"]) == slot:
+				row = r
+		if row.is_empty() or slot >= BAG or _truthy(row.get("equipped")) or qty < 1 or qty > int(row["quantity"]):
+			return _fail("That item is no longer in your bag.")
+		gold += int(row.get("sell_value", 0)) * qty
+		sold += qty
+		plan.append([slot, qty])
+	for p in plan:
+		for x in acc["slots"]:
+			if int(x["slot_index"]) == int(p[0]):
+				x["quantity"] = int(x["quantity"]) - int(p[1])
+	acc["slots"] = acc["slots"].filter(func(x: Dictionary) -> bool: return int(x["quantity"]) > 0)
+	_set_gold(acc, _gold_now(acc) + gold)
+	return _ok({"sold": sold, "gold": gold, "goldTotal": _gold_now(acc), "bag": _rows(acc)})
 
 ## One granted drop into the bag: gear as a new instance in a free slot, everything else stacked first. -1 when it does not fit, else the new
 ## instance id for gear (0 for the rest).
@@ -1670,7 +1720,7 @@ func _gather_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 		acc["character"]["gold"] = _tidy(_num_or(acc["character"].get("gold"), 0.0) + float(batch["gold"]))
 	acc["gatherLedger"] = budget["ledger"]
 	return _ok({"node": def["id"], "skill": def["skill"], "accepted": budget["accepted"], "successes": batch["successes"], "xp": batch["xp"], "gold": batch["gold"],
-		"items": placed["stored"], "rejected": placed["rejected"], "leveledUp": int(batch["leveled"]) > 0, "toolTier": tool_tier, "skills": [prof.duplicate()]})
+		"goldTotal": _gold_now(acc), "items": placed["stored"], "rejected": placed["rejected"], "leveledUp": int(batch["leveled"]) > 0, "toolTier": tool_tier, "skills": [prof.duplicate()]})
 
 ## Write a DmGathering.place_items result back into the stored slots.
 func _apply_placed(acc: Dictionary, placed: Dictionary) -> void:
@@ -1806,7 +1856,9 @@ func _labor_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 	pr["skill_xp"] = roll["progress"]["xp"]
 	row2["startedAt"] = now
 	var view := _labor_view(acc, now)
-	view["collected"] = {"slot": int(slot_f), "node": def["id"], "skill": def["skill"], "hours": float(elapsed) / 3600000.0, "actions": actions, "items": placed["stored"], "gold": roll["gold"], "xp": roll["xp"], "leveledUp": int(roll["leveled"]) > 0}
+	_set_gold(acc, _gold_now(acc) + int(roll["gold"]))   # the laborer's gold is paid here, as labor.cjs does
+	view["collected"] = {"slot": int(slot_f), "node": def["id"], "skill": def["skill"], "hours": float(elapsed) / 3600000.0, "actions": actions, "items": placed["stored"], "gold": roll["gold"],
+		"goldTotal": _gold_now(acc), "xp": roll["xp"], "leveledUp": int(roll["leveled"]) > 0}
 	return _ok(view)
 
 # --- Grave Gardening ---------------------------------------------------------------------------------------------------------------
@@ -2060,6 +2112,8 @@ func _contracts_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary
 		paid = {"gold": b["gold"], "item": b["item"].duplicate()}
 	var out: Dictionary = _contract_view(acc)["view"]
 	out["gold"] = gold
+	_set_gold(acc, _gold_now(acc) + int(gold))   # paid here, as contracts.cjs does
+	out["goldTotal"] = _gold_now(acc)
 	out["items"] = items
 	out["paidBonus"] = paid
 	return _ok(out)

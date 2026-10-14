@@ -17,7 +17,7 @@ const inventorySave = require('./inventory-save.cjs');
 const authority = require('./authority.cjs');
 const kills = require('./kills.cjs');
 const session = require('./session.cjs');
-const { LEVEL_CAP: MAX_CHARACTER_LEVEL } = require('./gathering/authority-rules.cjs');
+const { LEVEL_CAP: MAX_CHARACTER_LEVEL, totalXp, splitXp } = require('./gathering/authority-rules.cjs');
 
 const app  = express();
 const PORT = process.env.PORT || 5190;
@@ -799,11 +799,35 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
       const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
       return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.trunc(n))) : fallback;
     };
-    const next = {
-      level: bounded(req.body.level, char.level, 1, MAX_CHARACTER_LEVEL), xp: bounded(req.body.xp, char.experience, 0, 2147483647), gold: bounded(req.body.gold, char.gold, 0, 2147483647),
-      stat_str: bounded(req.body.stat_str, char.stat_str, 0, 65535), stat_agi: bounded(req.body.stat_agi, char.stat_agi, 0, 65535),
-      stat_int: bounded(req.body.stat_int, char.stat_int, 0, 65535), stat_vit: bounded(req.body.stat_vit, char.stat_vit, 0, 65535),
-    };
+    // Gains (DECISIONS B23): the client sends what it EARNED since its last acknowledged save ({gains: {xp, gold}, seq}), never totals. The
+    // server adds them to its own record (so a stale save cannot overwrite gold another route wrote), works the level out of the XP, and
+    // drops a retried save it already applied (`seq`, character_authority.progress_seq). Older clients still send totals (the path below).
+    let next;
+    let gainsSeq = 0;
+    if (req.body.gains && typeof req.body.gains === 'object') {
+      gainsSeq = Number(req.body.seq);
+      if (!Number.isSafeInteger(gainsSeq) || gainsSeq <= 0) return res.status(400).json({ success: false, error: 'a gains save needs a positive seq' });
+      await pool.execute('INSERT IGNORE INTO character_authority (character_id) VALUES (?)', [char.id]);
+      const [claim] = await pool.execute('UPDATE character_authority SET progress_seq = ? WHERE character_id = ? AND progress_seq < ?', [gainsSeq, char.id, gainsSeq]);
+      if (!claim || !claim.affectedRows) {   // a retry of a save already applied (its answer was lost): nothing more to add
+        const [[current]] = await pool.execute('SELECT * FROM characters WHERE id = ?', [char.id]);
+        const [[seqRow]] = await pool.execute('SELECT progress_seq FROM character_authority WHERE character_id = ?', [char.id]);
+        return res.json({ success: true, data: { ...current, duplicate: true, progressSeq: Number(seqRow && seqRow.progress_seq) || 0 } });
+      }
+      const xpGain = bounded(req.body.gains.xp, 0, 0, 2147483647);
+      const goldGain = bounded(req.body.gains.gold, 0, -2147483647, 2147483647);
+      const split = splitXp(totalXp(char.level, char.experience) + xpGain);
+      next = {
+        level: split.level, xp: split.xp, gold: Math.min(2147483647, Math.max(0, (Number(char.gold) || 0) + goldGain)),
+        stat_str: char.stat_str, stat_agi: char.stat_agi, stat_int: char.stat_int, stat_vit: char.stat_vit,
+      };
+    } else {
+      next = {
+        level: bounded(req.body.level, char.level, 1, MAX_CHARACTER_LEVEL), xp: bounded(req.body.xp, char.experience, 0, 2147483647), gold: bounded(req.body.gold, char.gold, 0, 2147483647),
+        stat_str: bounded(req.body.stat_str, char.stat_str, 0, 65535), stat_agi: bounded(req.body.stat_agi, char.stat_agi, 0, 65535),
+        stat_int: bounded(req.body.stat_int, char.stat_int, 0, 65535), stat_vit: bounded(req.body.stat_vit, char.stat_vit, 0, 65535),
+      };
+    }
     // Step 2: kill reports ride along with the save (one request, so the credits are there before the gain is judged); AUTHORITY_KILLS=off ignores them.
     const staff = await isStaffAccount(req).catch(() => false);
     let reportNotice = '';
@@ -822,6 +846,11 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
     console.log(`[PROGRESS] ${req.user.username} char#${char.id} → Lv${updated.level} ${updated.experience}xp ${updated.gold}g`);
     res.json({ success: true, data: updated, ...(verdict.message ? { authority: { message: verdict.message } } : {}) });
   } catch (err) {
+    // A gains save that claimed its seq but did not land: give the seq back so the client's retry applies it.
+    const seqBack = Number(req.body && req.body.seq);
+    if (req.body && req.body.gains && Number.isSafeInteger(seqBack) && seqBack > 0) {
+      await pool.execute('UPDATE character_authority SET progress_seq = ? WHERE character_id = ? AND progress_seq = ?', [seqBack - 1, Number(characterId), seqBack]).catch(() => {});
+    }
     if (err && err.unavailable) return res.status(503).json({ success: false, error: err.message });
     console.error(`POST /api/character/save-progress char#${characterId}: ${err.message}`);
     res.status(500).json({ success: false, error: 'internal server error' });
@@ -1755,6 +1784,8 @@ require('./loot.cjs')(app, pool, {
     return rows.length === 1;
   },
 });
+// Selling (sell.cjs, DECISIONS B23): the server takes the items and pays their price.
+require('./sell.cjs')(app, pool, { requireAuth: requireJWT, ownsCharacter: ownsCharacterRow, limiter: rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false }) });
 // Server-decided drops (drops.cjs, migration 047, DECISIONS B20): the tape of drop seeds and the claim that grants the server's roll.
 require('./drops.cjs').mountDrops(app, pool, {
   requireAuth: requireJWT,

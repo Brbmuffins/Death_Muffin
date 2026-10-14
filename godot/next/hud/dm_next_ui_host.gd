@@ -308,6 +308,21 @@ func bag_sort(on_moves: Callable = Callable(), is_locked: Callable = Callable())
 	inventory.sort_bag(on_moves, is_locked)
 
 
+## Sell bag items (DECISIONS B23): the bag is saved first, then the server takes the items, pays their price and answers its bag and gold.
+## `items` [{slot_index, quantity}]. data: {sold, gold, goldTotal, bag}.
+func sell_items(items: Array) -> DmResult:
+	var err := await bag_commit()
+	if err != "":
+		return DmResult.failure(err, 0)
+	var r: DmResult = await api.sell_items(hero_id, items)
+	if r.ok and r.data is Dictionary:
+		inventory.replace(r.data["bag"])
+		inventory_changed.emit()
+		if prog != null:
+			prog.credit_server_gold(float(r.data.get("gold", 0)), r.data.get("goldTotal"))
+	return r
+
+
 ## Save the bag now. "" = the server has it; otherwise the reason (the player was told by a toast).
 func bag_commit() -> String:
 	return await inventory.commit()

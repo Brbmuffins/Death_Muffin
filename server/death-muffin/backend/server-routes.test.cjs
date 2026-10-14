@@ -292,3 +292,63 @@ test('POST /character class 5 (a discipline above 4) leaves the discipline to PO
   assert.equal(r.status, 201); assert.equal(r.json.id, 77);
   assert.ok(g.log.some((q) => /INSERT INTO characters/.test(q.sql) && q.params[1] === 3));
 });
+
+// ── save-progress: gains, not totals (DECISIONS B23) ────────────────────────────────────────────────────────────────────────
+
+test('a gains save adds to the server\'s own record, works the level out of the XP, and pays a retried seq only once', async () => {
+  const { totalXp, splitXp } = require('./gathering/authority-rules.cjs');
+  let seq = 0;
+  const f = fakePool({ character: { level: 5, experience: 10, gold: 100 }, onQuery: (sql, p) => {
+    if (/^SELECT \* FROM characters WHERE id = \?$/.test(sql)) return [[{ ...f.owned }]];
+    if (/^UPDATE character_authority SET progress_seq = \? WHERE character_id = \? AND progress_seq < \?/.test(sql)) {
+      if (seq < p[0]) { seq = p[0]; return [{ affectedRows: 1 }]; }
+      return [{ affectedRows: 0 }];
+    }
+    if (/^UPDATE characters SET level/.test(sql)) return [{ affectedRows: 1 }];
+    if (/^SELECT progress_seq FROM character_authority/.test(sql)) return [[{ progress_seq: seq }]];
+  } });
+  const srv = loadServer({ pool: f.pool });
+  const body = { characterId: 1, gains: { xp: 500, gold: 50 }, seq: 7, level: 999, xp: 0, gold: 9e8 };
+  const r = await srv.call('POST /api/character/save-progress', { body });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const w = f.log.find((q) => /^UPDATE characters SET level/.test(q.sql)).params;
+  const want = splitXp(totalXp(5, 10) + 500);
+  assert.deepEqual([w[0], w[1], w[2]], [want.level, want.xp, 150], 'gains on top of the stored record; the totals in the body are ignored');
+  const again = await srv.call('POST /api/character/save-progress', { body });
+  assert.equal(again.json.data.duplicate, true, 'the retry is recognised');
+  assert.equal(f.log.filter((q) => /^UPDATE characters SET level/.test(q.sql)).length, 1, 'and pays nothing more');
+});
+
+// ── selling (sell.cjs) ──────────────────────────────────────────────────────────────────────────────────────────────────────
+
+test('selling: the server takes the items and pays their price, an affixed piece at its affixed price; worn or missing lines refuse the sale', async () => {
+  const { sellItems } = require('./sell.cjs');
+  const affix = require('./gathering/affix-rules.cjs');
+  const affixes = [{ id: affix.AFFIXES[0].id, v: affix.affixRange(affix.AFFIXES[0].id, 20)[0] }];
+  const rows = [
+    { id: 1, slot_index: 0, item_id: 'ore_copper', quantity: 10, equipped: 0, instance_id: null, sell_value: 3 },
+    { id: 2, slot_index: 1, item_id: 'helm_iron', quantity: 1, equipped: 0, instance_id: 55, sell_value: 40, ilvl: 20, affixes: JSON.stringify(affixes) },
+    { id: 3, slot_index: 2, item_id: 'helm_gold', quantity: 1, equipped: 1, instance_id: null, sell_value: 90 },
+  ];
+  const log = [];
+  let gold = 1000;
+  const conn = {
+    execute: async (sql, p) => {
+      log.push(sql);
+      if (/^\s*SELECT inv\.id/.test(sql)) return [rows.map((r) => ({ ...r }))];
+      if (/^UPDATE characters SET gold/.test(sql)) { gold += p[0]; return [{}]; }
+      if (/^SELECT gold FROM characters/.test(sql)) return [[{ gold }]];
+      return [{}];
+    },
+    query: async () => [{}], beginTransaction: async () => {}, commit: async () => {}, rollback: async () => {}, release: () => {},
+  };
+  const pool = { getConnection: async () => conn, execute: async () => [[]] };
+  const out = await sellItems(pool, { characterId: 1, items: [{ slot_index: 0, quantity: 4 }, { slot_index: 1, quantity: 1 }] });
+  const helm = Math.floor(affix.instanceSellValue(40, { ilvl: 20, affixes }));
+  assert.ok(helm > 40, 'the affixed helm is worth more than its base');
+  assert.equal(out.gold, 4 * 3 + helm);
+  assert.equal(out.goldTotal, 1000 + 4 * 3 + helm);
+  assert.ok(log.some((q) => /UPDATE inventory SET quantity = quantity - \?/.test(q)) && log.some((q) => /DELETE FROM inventory WHERE id = \?/.test(q)));
+  await assert.rejects(sellItems(pool, { characterId: 1, items: [{ slot_index: 2, quantity: 1 }] }), /no longer in your bag/, 'worn gear is not sold');
+  await assert.rejects(sellItems(pool, { characterId: 1, items: [{ slot_index: 0, quantity: 99 }] }), /no longer in your bag/, 'not more than the stack');
+});

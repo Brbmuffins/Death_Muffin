@@ -71,6 +71,7 @@ function createGatherHandlers({ store, ownsCharacter, isStaff = async () => fals
         await tx.setSkill(def.skill, batch.progress);
         if (batch.gold > 0) await tx.addGold(batch.gold);
         await tx.setLedger(budget.ledger);
+        const goldTotal = tx.goldTotal ? await tx.goldTotal() : undefined;   // the character's gold after this batch (the client adopts it)
         return {
           node: def.id,
           skill: def.skill,
@@ -78,6 +79,7 @@ function createGatherHandlers({ store, ownsCharacter, isStaff = async () => fals
           successes: batch.successes,
           xp: batch.xp,
           gold: batch.gold,
+          ...(goldTotal !== undefined ? { goldTotal } : {}),
           items: placed.stored,
           rejected: placed.rejected,
           leveledUp: batch.leveled > 0,

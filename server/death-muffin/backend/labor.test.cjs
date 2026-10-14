@@ -8,6 +8,7 @@ const HOUR = 3_600_000;
 function fakeDb({ levels = {}, bag = [] } = {}) {
   let prof = new Map(Object.entries(levels).map(([k, v]) => [k, { level: v, xp: 0 }]));
   let inv = bag.map((b, i) => ({ id: i + 1, equipped: 0, character_id: 1, ...b }));
+  const money = { gold: 0 };   // characters.gold (the routes pay it, DECISIONS B23)
   let posts = new Map();
   let nextId = 900;
   const execute = async (sql, p = []) => {
@@ -21,6 +22,8 @@ function fakeDb({ levels = {}, bag = [] } = {}) {
     if (sql.startsWith('SELECT slot_index, item_id, quantity, equipped FROM inventory')) return [inv.filter((r) => r.slot_index <= 47).map((r) => ({ ...r }))];
     if (sql.startsWith('UPDATE inventory SET quantity = ? WHERE')) { inv.find((r) => r.slot_index === p[2]).quantity = p[0]; return [{}]; }
     if (sql.startsWith('INSERT INTO inventory')) { inv.push({ id: nextId++, character_id: p[0], slot_index: p[1], item_id: p[2], quantity: p[3], equipped: 0 }); return [{}]; }
+    if (sql.startsWith('UPDATE characters SET gold = LEAST(2147483647, gold + ?)')) { money.gold += p[0]; return [{ affectedRows: 1 }]; }
+    if (sql.startsWith('SELECT gold FROM characters')) return [[{ gold: money.gold }]];
     throw new Error(`unexpected SQL: ${sql.slice(0, 80)}`);
   };
   const query = async (sql, p) => {
@@ -34,7 +37,7 @@ function fakeDb({ levels = {}, bag = [] } = {}) {
     commit: async () => { snap = null; },
     rollback: async () => { if (snap) { prof = snap.prof; inv = snap.inv; posts = snap.posts; snap = null; } },
   };
-  return { get inv() { return inv; }, get prof() { return prof; }, get posts() { return posts; }, pool: { getConnection: async () => conn } };
+  return { get inv() { return inv; }, get prof() { return prof; }, get posts() { return posts; }, money, pool: { getConnection: async () => conn } };
 }
 
 function harness(db, { owned = true } = {}) {

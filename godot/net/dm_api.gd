@@ -269,6 +269,11 @@ func drops_claim(character_id: int, claim: Dictionary, session_id: String = "") 
 		body["sessionId"] = session_id
 	return _decorate_keys(await _post("/api/drops/claim", body), ["bag"])
 
+## Sell bag items (backend sell.cjs, DECISIONS B23): the server takes them and pays their price. `items` [{slot_index, quantity}].
+## data: {sold, gold, goldTotal, bag}.
+func sell_items(character_id: int, items: Array) -> DmResult:
+	return _decorate_keys(await _post("/api/inventory/sell", {"characterId": character_id, "items": items}), ["bag"])
+
 ## Pick a dropped piece up (the server checks who may). data: {slot, bag}.
 func ground_pickup(character_id: int, drop_id: String) -> DmResult:
 	return _decorate_keys(await _post("/api/ground/pickup", {"characterId": character_id, "dropId": drop_id}), ["bag"])

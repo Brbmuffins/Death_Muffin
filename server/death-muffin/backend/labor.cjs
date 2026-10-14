@@ -143,11 +143,13 @@ module.exports = function mountLabor(app, pool, { requireAuth, ownsCharacter, no
     }
     await conn.execute('INSERT IGNORE INTO professions (character_id, profession_id, skill_level, skill_xp) VALUES (?, ?, 1, 0)', [id, def.skill]);
     await conn.execute('UPDATE professions SET skill_level = ?, skill_xp = ? WHERE character_id = ? AND profession_id = ?', [roll.progress.level, roll.progress.xp, id, def.skill]);
-    // The laborer keeps working from now.
+    // The laborer keeps working from now. Its gold is paid here (DECISIONS B23); the client adopts the new total.
     await conn.execute('UPDATE character_labor SET started_at = ? WHERE character_id = ? AND slot = ?', [now, id, slot]);
+    if (roll.gold > 0) await conn.execute('UPDATE characters SET gold = LEAST(2147483647, gold + ?) WHERE id = ?', [Math.floor(roll.gold), id]);
+    const [[g]] = await conn.execute('SELECT gold FROM characters WHERE id = ?', [id]);
     return {
       ...(await view(conn, id, now)),
-      collected: { slot, node: def.id, skill: def.skill, hours: elapsed / 3_600_000, actions, items: placed.stored, gold: roll.gold, xp: roll.xp, leveledUp: roll.leveled > 0 },
+      collected: { slot, node: def.id, skill: def.skill, hours: elapsed / 3_600_000, actions, items: placed.stored, gold: roll.gold, goldTotal: num(g && g.gold), xp: roll.xp, leveledUp: roll.leveled > 0 },
     };
   }));
 };

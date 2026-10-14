@@ -143,3 +143,8 @@ Since B18 friends join through invites and asks; the six-digit codes have no UI 
   the member's worn gear changes. A guest's party kills are judged in the host's world as the server records it (the host character's
   level and Ascension). Audit mode never changes what a claimed drop is: past a bound it logs and rolls with the client's value up to the
   hard limits; the rising rune chance is bounded in roll order, and a guest tracks its own.
+- **B23. Progress saves are gains; the server owns every gold source** (owner, 2026-10-14: server authority Phase 2). The client never sends
+  XP or gold totals: a save carries what was earned since its last acknowledged save, under a sequence number the backend pays once, and
+  the backend answers its totals, which the client adopts plus what it has not sent yet. So a stale save cannot overwrite gold another route
+  wrote, and an inflated claim is judged against the kill ledger as a gain. Gold that is not a kill's is paid on the server: gathering,
+  labor, contracts and selling (a sell route; an affixed piece sells at its affixed price), each answering the new total.

@@ -42,7 +42,8 @@ class SlowWire extends RefCounted:
 				await tree.process_frame
 			if fail_save:
 				return {"status": 500, "text": "{}"}
-			saved_gold = int(JSON.parse_string(String(req["body"])).get("gold", -1))
+			var sent: Dictionary = JSON.parse_string(String(req["body"]))
+			saved_gold = int((sent.get("gains", {}) as Dictionary).get("gold", -1))   # what was earned, not a total (DECISIONS B23)
 			return {"status": 200, "text": JSON.stringify({"success": true, "data": {}})}
 		return {"status": 404, "text": ""}
 
@@ -70,7 +71,7 @@ func _spend_race() -> void:
 	wire.during = func() -> void: prog.add_gold(50.0)   # a pickup while the pre-save is in flight
 	var r: DmResult = await ps.spend_on_server(func() -> DmResult:
 		return DmResult.success({"gold": 70, "cost": 30}, 200))   # the server priced from the 100 it was sent
-	ok(r.ok and wire.saved_gold == 100, "pre-save carried the gold at the time of the spend", str(wire.saved_gold))
+	ok(r.ok and wire.saved_gold == 0, "the pre-save carried what was earned so far (nothing): gains, not the total", str(wire.saved_gold))
 	ok(int(prog.character["gold"]) == 120, "gold picked up during the pre-save survives the spend (100 - 30 + 50)", str(prog.character["gold"]))
 	# a pickup during the spend call itself
 	wire.during = Callable()
@@ -85,6 +86,29 @@ func _spend_race() -> void:
 		called[0] = true
 		return DmResult.success({"gold": 0, "cost": 30}, 200))
 	ok(not r.ok and not called[0] and int(prog.character["gold"]) == 95, "failed pre-save refuses the spend", str(r.error))
+
+
+## Progress saves send gains, never totals (DECISIONS B23): the backend adds them to its own record, the client takes its totals back, and a
+## repeated seq is not paid twice.
+func _gains_save() -> void:
+	var mock := DmOffline.make_mock("")
+	var api := DmOffline.make_api(mock)
+	var r0 := await api.register("gs%d" % (Time.get_ticks_usec() % 100000), "g@example.com", "pw1234")
+	api.set_token(r0.data["token"])
+	var ch: Dictionary = (await api.load_or_create_character(2)).data
+	var prog := DmProgression.new(ch, null)
+	var ps := DmProgressSync.new(api, prog, int(ch["id"]), false)
+	var gold0 := int(ch.get("gold", 0))
+	prog.add_gold(50.0)
+	prog.add_xp(250.0)   # level 1 costs 100: level 2 with 150 of its 200 (the backend works it out from the XP)
+	ch["gold"] = 999999   # a total the client "claims": never sent
+	var r := await ps.save_gains()
+	var srv: Dictionary = (await api.get_character()).data
+	ok(r.ok and int(srv["gold"]) == gold0 + 50, "the backend added the 50 earned to its own gold, not the claimed total", str(srv.get("gold")))
+	ok(int(srv["level"]) == int(prog.character["level"]) and int(srv["experience"]) == int(prog.character["experience"]), "the level is the backend's, worked out of the XP", "%s/%s" % [srv.get("level"), srv.get("experience")])
+	ok(int(prog.character["gold"]) == gold0 + 50 and prog.gold_unsent == 0, "the client took the backend's totals back", str(prog.character["gold"]))
+	var again := await api.save_progress({"characterId": int(ch["id"]), "gains": {"xp": 0, "gold": 50}, "seq": ps._seq})
+	ok(again.ok and again.data.get("duplicate", false) and int((await api.get_character()).data["gold"]) == gold0 + 50, "the same seq again pays nothing", str(again.data))
 
 
 ## roll-gear holds a DB connection per request on the live backend (a burst wedged it): one roll in flight per client.
@@ -176,6 +200,7 @@ func _ledger_fallback() -> void:
 func _main() -> void:
 	DmSimData.ensure()
 	await _spend_race()
+	await _gains_save()
 	await _roll_serialised()
 	await _ledger_fallback()
 	print("online_local: %d passed, %d failed" % [_p, _f])

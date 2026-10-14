@@ -8,6 +8,7 @@ const rules = require('./gathering/contract-rules.cjs');
 /** In-memory stand-in for the tables contracts.cjs touches, dispatched on the SQL text. */
 function fakeDb({ bag = [], levels = { woodcutting: 20, mining: 20, fishing: 20, gravedigging: 20 } } = {}) {
   const inv = bag.map((b, i) => ({ id: i + 1, equipped: 0, ...b }));
+  const money = { gold: 0 };   // characters.gold (the routes pay it, DECISIONS B23)
   let nextId = 1000;
   const contracts = [];
   const items = { gem_grave_garnet: { stackable: 1, max_stack_size: 99, name: 'Grave Garnet', rarity: 'uncommon' } };
@@ -43,6 +44,8 @@ function fakeDb({ bag = [], levels = { woodcutting: 20, mining: 20, fishing: 20,
     if (sql.startsWith('SELECT stackable')) return [[stack(p[0])]];
     if (sql.startsWith('SELECT id, slot_index, item_id, quantity FROM inventory')) return [inv.filter((r) => r.character_id === p[0] && r.slot_index <= p[1]).map((r) => ({ ...r }))];
     if (sql.startsWith('INSERT INTO inventory')) { inv.push({ id: nextId++, character_id: p[0], slot_index: p[1], item_id: p[2], quantity: p[3], equipped: 0 }); return [{}]; }
+    if (sql.startsWith('UPDATE characters SET gold = LEAST(2147483647, gold + ?)')) { money.gold += p[0]; return [{ affectedRows: 1 }]; }
+    if (sql.startsWith('SELECT gold FROM characters')) return [[{ gold: money.gold }]];
     throw new Error(`unexpected SQL: ${sql.slice(0, 80)}`);
   };
   const query = async (sql, p) => {
@@ -57,7 +60,7 @@ function fakeDb({ bag = [], levels = { woodcutting: 20, mining: 20, fishing: 20,
     commit: async () => { snap = null; },
     rollback: async () => { if (snap) { inv.splice(0, inv.length, ...snap.inv); contracts.splice(0, contracts.length, ...snap.contracts); snap = null; } },
   };
-  return { inv, contracts, pool: { getConnection: async () => conn, execute, query } };
+  return { inv, contracts, money, pool: { getConnection: async () => conn, execute, query } };
 }
 
 function harness(db, owned = true) {
@@ -108,6 +111,8 @@ test('delivering an order takes the items, pays once, and cannot be repeated', a
   const r = (await call('POST /api/contracts/deliver', { body: { characterId: 1, slot: 0 } })).json;
   assert.equal(r.success, true);
   assert.equal(r.data.gold, c.rewardGold);
+  assert.equal(db.money.gold, c.rewardGold, 'the server paid the gold itself (DECISIONS B23)');
+  assert.equal(r.data.goldTotal, c.rewardGold, 'and answered the new total');
   assert.equal(db.inv.find((x) => x.id === 900).quantity, 5, 'exactly the ordered amount was taken');
 
   const again = (await call('POST /api/contracts/deliver', { body: { characterId: 1, slot: 0 } })).json;

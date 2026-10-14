@@ -166,9 +166,44 @@ static func xp_to_next(level: int) -> int:
 	return level * 100
 
 
+## What this character earned since its last server save (DECISIONS B23: saves send gains, the server owns the totals). add_xp / add_gold
+## count here; spends the server prices (purchases, reforge, selling) do not, the server takes them itself.
+var xp_unsent: int = 0
+var gold_unsent: int = 0
+
+
+## The server's totals (a save's reply, or any route that paid or took gold) plus what is still unsent here.
+func adopt_server_totals(level: Variant, experience: Variant, gold: Variant) -> void:
+	var lv := maxi(1, int(DmProgUtil.nn(level, 1)))
+	var xp := maxi(0, int(DmProgUtil.nn(experience, 0))) + xp_unsent
+	while xp >= xp_to_next(lv):
+		xp -= xp_to_next(lv)
+		lv += 1
+	character["level"] = lv
+	character["experience"] = xp
+	adopt_server_gold(gold)
+
+
+## Gold a server route paid itself (gathering, labor, contracts, selling): it counts as earned for the Chronicle, and the server's total
+## (`total`, the route's goldTotal) replaces ours. An older server that only says the amount: add it the old way.
+func credit_server_gold(amount: float, total: Variant) -> void:
+	if total == null:
+		add_gold(amount)
+		return
+	if amount > 0 and chronicle != null:
+		chronicle.add("gold.earned", DmProgUtil.js_round(amount))
+	adopt_server_gold(total)
+
+
+func adopt_server_gold(gold: Variant) -> void:
+	character["gold"] = maxi(0, int(DmProgUtil.nn(gold, 0)) + gold_unsent)
+	changed.emit()
+
+
 ## Returns the number of levels gained.
 func add_xp(amount: float) -> int:
 	var c: Dictionary = character
+	xp_unsent += DmProgUtil.js_round(amount)
 	c["experience"] = int(DmProgUtil.nn(c.get("experience"), 0)) + DmProgUtil.js_round(amount)
 	var gained: int = 0
 	while c["experience"] >= xp_to_next(int(c["level"])):
@@ -183,6 +218,7 @@ func add_gold(amount: float) -> void:
 	if amount > 0:
 		if chronicle != null:
 			chronicle.add("gold.earned", DmProgUtil.js_round(amount))
+	gold_unsent += DmProgUtil.js_round(amount)
 	character["gold"] = int(DmProgUtil.nn(character.get("gold"), 0)) + DmProgUtil.js_round(amount)
 	_mark_server_dirty(false)
 
@@ -261,12 +297,12 @@ func buy_legion() -> bool:
 
 
 ## Server mode: gold stays client-authoritative, so the net layer first saves the gold we had BEFORE this purchase
-## (gold_before), then calls the purchase rule. Local mode just marks the save dirty.
+## first, then calls the purchase rule (which takes the gold itself). Local mode just marks the save dirty.
 func _server_purchase(upgrade: String, cost: int) -> void:
 	if mode != "server":
 		_mark_server_dirty(true)
 		return
-	outbox.append({"type": "purchase", "upgrade": upgrade, "gold_before": int(DmProgUtil.nn(character.get("gold"), 0)) + cost})
+	outbox.append({"type": "purchase", "upgrade": upgrade})
 
 
 func set_active_wave_tier(tier: float) -> void:

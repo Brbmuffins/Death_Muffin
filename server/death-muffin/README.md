@@ -76,6 +76,12 @@ start, so changing one needs a restart of `death-muffin-auth`.
   in GM mode (`gm_write`) is a `progress_audit` row, and switching on sets `characters.gm_marked` (the leaderboard's GM tag). `GET /api/me` answers `gmActive`.
   GM-mode only: `POST /api/inventory/add-item`, `POST /api/offline/load`, `POST /api/offline/sync-stats`, and a first `POST /api/necro-progress/import`
   carrying a record (a player's starts blank).
+- **Progress saves are gains** (`POST /api/character/save-progress {characterId, gains: {xp, gold}, seq, killReports?}`, migration 052, DECISIONS B23):
+  the backend adds the gains to its own record (the level is worked out of the XP; stats are its own), runs the guards above on the result
+  and answers the character row; a `seq` at or below `character_authority.progress_seq` is a retry and answers `{duplicate: true,
+  progressSeq}`. A body without `gains` is an older client's totals (the old path). Gold other routes pay is written by them: gathering,
+  labor, contracts (each answers `goldTotal`) and `POST /api/inventory/sell {characterId, items: [{slot_index, quantity}]}` (`sell.cjs`:
+  bag slots only, never worn gear, an affixed piece at its affixed price; answers `{sold, gold, goldTotal, bag}`).
 - **Server-decided drops** (`backend/drops.cjs`, migrations 047, 049, 050, DECISIONS B20): `POST /api/drops/tape {characterId, next?}` deals each
   drop kind's next seeds (kill 128, elite 48, boss 6, surge 6, floor 8, chest 4; one secret-derived seed per event); `POST /api/drops/claim
   {characterId, kind, n, index, facts, expect?, sessionId?}` rolls that event again from its seed (`gathering/loot-rules.cjs` rollEvent, equal

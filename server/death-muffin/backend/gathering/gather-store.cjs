@@ -75,6 +75,10 @@ function createMysqlGatherStore(pool) {
         async addGold(n) {
           await conn.query('UPDATE characters SET gold = LEAST(2147483647, gold + ?) WHERE id = ?', [Math.max(0, Math.floor(n)), characterId]);
         },
+        async goldTotal() {
+          const [[row]] = await conn.query('SELECT gold FROM characters WHERE id = ?', [characterId]);
+          return Number(row && row.gold) || 0;
+        },
       };
       const out = await fn(tx);
       await conn.commit();
@@ -134,6 +138,9 @@ function createMemoryGatherStore({ characters = {}, items = {} } = {}) {
         },
         async addGold(n) {
           c.gold += n;
+        },
+        async goldTotal() {
+          return c.gold;
         },
       };
       const out = await fn(tx);

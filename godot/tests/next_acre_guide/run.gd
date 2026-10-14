@@ -417,7 +417,7 @@ func reforge() -> void:
 	check(h.inventory.add(drop), "the rolled piece goes into the bag")
 	await h.inventory.flush()
 	await h.refresh_inventory()
-	h.character["gold"] = 1000000
+	set_gold(1000000)
 	h.prog.save_dirty = true
 	g.progress.psync.tick(0.0)
 	await g.progress.psync.flush()
@@ -648,3 +648,10 @@ func perf(cost: DmFrameCost, lv0: Dictionary) -> void:
 ## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
 func perf_info(cond: bool, what: String) -> void:
 	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
+
+
+## Fund (or drain) the character as play would: the change counts as earned, so the next gains save gives it to the backend too (DECISIONS B23).
+func set_gold(n: int) -> void:
+	var p: DmProgression = g.progress.prog
+	p.gold_unsent += n - int(p.character.get("gold", 0))
+	p.character["gold"] = n

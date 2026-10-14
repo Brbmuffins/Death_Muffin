@@ -170,7 +170,7 @@ func part_empowered() -> void:
 	await ticks(4)
 	check(g.bosses.active_boss() == null, "E: (baseline boss gone)")
 	var cost := DmGoldSink.empower_gold(int(DmContent.boss(BOSS)["shards"]))
-	g.character["gold"] = cost + 1234
+	set_gold(cost + 1234)
 	g.local_body().teleport(g.bosses.site_pos(BOSS) + Vector3(0, 0, 2))
 	member().prog.local["shards"] = 0
 	check(g.bosses.try_summon(g.session.get_my_id(), BOSS) == "shards", "E: with no shards a plain summon is refused")
@@ -206,7 +206,7 @@ func part_empowered() -> void:
 	check(g.boss_meta.pending == "", "E: nothing pending after the kill")
 	# A wiped Empowered fight stays bound: the next call is free.
 	g.local_body().teleport(g.bosses.site_pos(BOSS) + Vector3(0, 0, 2))
-	g.character["gold"] = cost + 50
+	set_gold(cost + 50)
 	await g.boss_meta.call_empowered(BOSS)
 	var b2 := g.bosses.active_boss()
 	check(b2 != null and b2.empowered, "E: a second Empowered call works (Seal 2 of 2)")
@@ -416,3 +416,10 @@ func part_perf() -> void:
 ## "cond" is whether the old budget would have held; it only changes the wording. Real performance is judged on real hardware (F3 overlay).
 func perf_info(cond: bool, what: String) -> void:
 	print("INFO perf: %s [%s]" % [what, "within the old budget" if cond else "over the old budget"])
+
+
+## Fund (or drain) the character as play would: the change counts as earned, so the next gains save gives it to the backend too (DECISIONS B23).
+func set_gold(n: int) -> void:
+	var p: DmProgression = g.progress.prog
+	p.gold_unsent += n - int(p.character.get("gold", 0))
+	p.character["gold"] = n

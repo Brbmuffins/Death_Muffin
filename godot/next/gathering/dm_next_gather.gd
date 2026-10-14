@@ -441,8 +441,8 @@ func _on_reply(r: Dictionary) -> void:
 	var prog: DmProgression = game.ui_host.prog if game.ui_host != null else null
 	if prog != null and prog.chronicle != null:
 		prog.chronicle.add("gathered.%s" % r["skill"], total)
-	if float(r.get("gold", 0)) > 0.0 and prog != null:
-		prog.add_gold(float(r["gold"]))
+	if prog != null and (float(r.get("gold", 0)) > 0.0 or r.has("goldTotal")):
+		prog.credit_server_gold(float(r.get("gold", 0)), r.get("goldTotal"))   # the server paid it (DECISIONS B23)
 		var b := game.local_body()
 		if b != null:
 			game.ui_host.float_text(b.position + Vector3(0, 2.1, 0), "+%dg" % int(r["gold"]), "gold")

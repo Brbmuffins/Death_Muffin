@@ -87,8 +87,8 @@ func on_collected(r: Dictionary, slot: int) -> void:
 	for it in c["items"]:
 		total += int(it["qty"])
 	var life_before := float(g.chronicle.view()["life"].get("gathered.%s" % skill, 0))
-	if float(c["gold"]) > 0.0:
-		g.prog.add_gold(float(c["gold"]))
+	if float(c["gold"]) > 0.0 or c.has("goldTotal"):
+		g.prog.credit_server_gold(float(c["gold"]), c.get("goldTotal"))   # the server paid it (DECISIONS B23)
 	g.chronicle.add("gathered.%s" % skill, total)
 	g.play_sfx("coin")
 	g.refresh_inventory()
@@ -130,11 +130,12 @@ func on_collected(r: Dictionary, slot: int) -> void:
 		panel.add_loot(slot, report)
 
 
-## onContractDelivered: the gold (the server returns it, never writes it), the chronicle, the summary and the toast. `d` = the delivery {contracts, gold, paidBonus?}.
+## onContractDelivered: the gold (the server paid it and answers the new total, DECISIONS B23), the chronicle, the summary and the toast.
+## `d` = the delivery {contracts, gold, goldTotal, paidBonus?}.
 func on_contract_delivered(d: Dictionary) -> void:
 	var gold := float(d.get("gold", 0))
 	if gold > 0.0:
-		g.prog.add_gold(gold)
+		g.prog.credit_server_gold(gold, d.get("goldTotal"))
 		g.play_sfx("coin")
 		g.float_text(g.player.x, 2.4, g.player.z, "+%sg" % _thousands(int(gold)), "gold")
 	g.chronicle.add("contracts")

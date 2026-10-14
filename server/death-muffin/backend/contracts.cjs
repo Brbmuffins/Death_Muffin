@@ -4,13 +4,14 @@
  *   GET  /api/contracts/:characterId   -> today's board, streak, reset time
  *   POST /api/contracts/deliver        -> { characterId, slot }: takes the items from the bag, pays the reward
  *
- * The server owns the bag: delivery removes the items and grants any reward item in one transaction. Gold is returned to the client
- * (which owns the gold total and saves it, exactly like a gather reply), never written here.
+ * The server owns the bag and the gold: delivery removes the items, grants any reward item and pays the gold in one transaction, and
+ * answers the character's new gold total (`goldTotal`), which the client adopts (DECISIONS B23).
  */
 const rules = require('./gathering/contract-rules.cjs');
 const gather = require('./gathering/gathering-rules.cjs');
 
 const BAG = gather.BAG_SLOTS;
+const num = (v) => Number(v) || 0;
 const BONUS_SLOT = 9;
 
 const SKILL_IDS = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening'];
@@ -179,8 +180,10 @@ module.exports = function mountContracts(app, pool, { requireAuth, ownsCharacter
           bonus = { gold: b.gold, item: b.item };
         }
       }
+      await conn.execute('UPDATE characters SET gold = LEAST(2147483647, gold + ?) WHERE id = ?', [gold, id]);
+      const [[g]] = await conn.execute('SELECT gold FROM characters WHERE id = ?', [id]);
       await conn.commit();
-      res.json({ success: true, data: { ...(await view(conn, id, now)), gold, items: granted, paidBonus: bonus } });
+      res.json({ success: true, data: { ...(await view(conn, id, now)), gold, goldTotal: num(g && g.gold), items: granted, paidBonus: bonus } });
     } catch (err) {
       await conn.rollback().catch(() => {});
       if (err && err.player) return res.status(200).json({ success: false, error: err.message });

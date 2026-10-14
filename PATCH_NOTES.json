@@ -1,6 +1,15 @@
 [
   {
     "date": "2026-10-14",
+    "title": "Honest Gold",
+    "items": [
+      "Selling now happens on the server, and affixed gear sells for its full affixed price.",
+      "Contract rewards and laborers' earnings are paid straight into your gold by the server.",
+      "Your gold and level can no longer be knocked back by a save that arrived late."
+    ]
+  },
+  {
+    "date": "2026-10-14",
     "title": "Boss Rush",
     "items": [
       "Fixed: the Vault's Deposit materials and Take materials buttons no longer move potions, elixirs and tonics; they only move materials and runes.",

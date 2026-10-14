@@ -43,6 +43,9 @@ class FakeProg extends RefCounted:
 	var gold := 0.0
 	func add_gold(a: float) -> void:
 		gold += a
+	## DmProgression.credit_server_gold: the server paid `a` and says the new total (none = an older server: add it).
+	func credit_server_gold(a: float, total: Variant) -> void:
+		gold = a + gold if total == null else float(total)
 
 class FakeLaborPanel extends RefCounted:
 	var loot: Array = []
