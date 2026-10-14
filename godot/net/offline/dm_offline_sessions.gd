@@ -118,13 +118,15 @@ func _join(s: Dictionary, body: Dictionary, account: String, owner_of: Callable,
 	if not _live(s, now):
 		return _fail(409, "session_ended", "That session has ended.")
 	var mine: Variant = s["members"].get(cid)
-	if mine != null and mine["status"] == "left":
-		return _fail(409, "left", "This character left the session and cannot rejoin it.")
-	if mine == null:
+	if mine == null or mine["status"] == "left":
 		if _active_count(s) >= MAX_MEMBERS:
 			return _fail(409, "full", "A session holds %d players." % MAX_MEMBERS)
 		_leave_all(cid, now)
-		s["members"][cid] = _member(account, now)
+		if mine == null:
+			s["members"][cid] = _member(account, now)
+		else:   # back in on its old record: the counters carry on, nothing is credited twice
+			mine["status"] = "active"
+			mine["last_seen_at"] = now
 	return _ok(_view(s, now))
 
 func _heartbeat(s: Dictionary, body: Dictionary, account: String, now: int) -> Dictionary:

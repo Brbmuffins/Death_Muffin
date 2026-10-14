@@ -95,7 +95,7 @@ func _build_ui() -> void:
 	host.add_child(nr)
 	host_closed_check = CheckBox.new()
 	host_closed_check.text = CLOSED_TEXT
-	host_closed_check.button_pressed = true
+	host_closed_check.button_pressed = false
 	host_closed_check.focus_mode = Control.FOCUS_NONE
 	host.add_child(host_closed_check)
 	host.add_child(_note("Closed: only friends you invite (Friends tab) can join, and friends can ask you. Untick for an Open party anyone can join from the list below. You keep playing your own world while others come in (up to 4 players)."))

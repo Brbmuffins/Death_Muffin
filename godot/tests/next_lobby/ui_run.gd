@@ -155,9 +155,9 @@ func _part_a() -> void:
 	w.host_requested.connect(func(n: String, p: bool) -> void: asked.append([n, p]))
 	w.name_edit.text = "  My Crypt "
 	w.host_btn.pressed.emit()
-	w.host_closed_check.button_pressed = false
+	w.host_closed_check.button_pressed = true
 	w.host_btn.pressed.emit()
-	check(asked == [["My Crypt", true], ["My Crypt", false]], "A: host requests (Closed by default, Open when unticked)", str(asked))
+	check(asked == [["My Crypt", false], ["My Crypt", true]], "A: host requests (Open by default, Closed when ticked)", str(asked))
 	check(_texts(w).all(func(t: String) -> bool: return not t.to_lower().contains("code")), "A: no party codes anywhere in the tab")
 	w.set_view(v.merged({"busy": "creating"}))
 	check(w.name_edit.text == "  My Crypt ", "A: typed text survives view changes")
@@ -332,8 +332,9 @@ func _part_b() -> void:
 	var jbtns := _buttons(panel.list_box, "Join")
 	check(jbtns.size() == 1 and not (jbtns[0] as Button).disabled, "B: the row has an enabled Join")
 	other.close()
-	# host through the window (Closed by default)
+	# host through the window, ticking Closed (Open is the default)
 	panel.name_edit.text = "UI Crypt"
+	panel.host_closed_check.button_pressed = true
 	panel.host_btn.pressed.emit()
 	check(await until(func() -> bool: return hg.party.mode == DmNextParty.HOST and panel.party_box.visible, 8.0), "B: Host session turns the window into the party view")
 	check(bool(hg.party.info.get("private", false)) and panel.closed_check.button_pressed, "B: the party is Closed (invite only)")
@@ -460,7 +461,7 @@ func _part_c() -> void:
 	check(tb.any(func(t: String) -> bool: return t.begins_with("Online · Gravecaller · Lv 1")), "C: B sees A online with A's class and level", str(tb))
 	check(win_b.friends.friends_head.text == "1 online of 1", "C: the header counts who is online", win_b.friends.friends_head.text)
 	check(_buttons(win_b.friends.friends_rows, "Invite").size() == 1 and _buttons(win_b.friends.friends_rows, "Ask to join").size() == 1, "C: both solo: Invite and Ask to join")
-	# A asks B to take them along; B accepts from the Friends tab while solo: B hosts a Closed party and A is let straight in
+	# A asks B to take them along; B accepts from the Friends tab while solo: B hosts an (Open, the default) party and A is let straight in
 	var a_ready := [null]
 	ga.party.join_ready.connect(func(l: DmLobbyClient, i: Dictionary) -> void: a_ready[0] = i)
 	ui_a._unhandled_key_input(_key(KEY_O))
@@ -470,8 +471,8 @@ func _part_c() -> void:
 	await ticks(3)
 	check(_buttons(win_b.friends.offers_rows, "Accept").size() == 1, "C: B's Friends tab shows it with Accept")
 	(_buttons(win_b.friends.offers_rows, "Accept")[0] as Button).pressed.emit()
-	check(await until(func() -> bool: return a_ready[0] != null, 8.0), "C: B hosted a Closed party and A was seated in it")
-	check(gb.party.mode == DmNextParty.HOST and bool(gb.party.info.get("private", false)), "C: B's party is Closed")
+	check(await until(func() -> bool: return a_ready[0] != null, 8.0), "C: B hosted a party and A was seated in it")
+	check(gb.party.mode == DmNextParty.HOST and not bool(gb.party.info.get("private", true)), "C: B's party is Open (the default)")
 	ga.party.mode = DmNextParty.SOLO   # (no game swap in this test: undo the handoff, then leave B's party from A's socket)
 	ga.party.lobby.leave()
 	gb.party.leave()

@@ -81,6 +81,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B18. Social window and friends** (2026-10-13: "no more copy pasting invite codes"). One Social window (O) with Friends and Party (F) tabs.
   Friends are mutual (`friends.cjs`, migration 045). The lobby shows online friends' class, level, area and party to mutual friends only,
   reading each list from the backend with that player's own token. Parties are Open (listed) or Closed (invite only; friends can ask).
+  2026-10-14 (owner): new parties are Open by default, and a player who left can rejoin a live session (backend keeps their old member row).
 - **B21. Benchmark setups and a public run history** (2026-10-13). The player picks room, class, fight size and length; every enemy has the
   same health and damage in every room. Bell Sanctum + Gravecaller + Standard + Full is the setup that compares PCs. Every finished run goes to
   the backend (`benchmark_runs`) and the site shows the history; only staff can delete runs.

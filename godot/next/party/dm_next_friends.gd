@@ -155,7 +155,7 @@ static func where_line(p: Dictionary) -> String:
 
 
 ## What a friend's row offers, in order: "join" (their Open party has room), "ask" (to be taken along: a Closed party, or they play solo),
-## "invite" (into our party; playing solo, inviting hosts a Closed one first).
+## "invite" (into our party; playing solo, inviting hosts an Open one first).
 static func actions_for(p: Dictionary, mine: Dictionary) -> Array:
 	if p.is_empty() or not bool(mine.get("linked", false)):
 		return []

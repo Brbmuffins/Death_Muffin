@@ -1,6 +1,6 @@
 # godot/next/party: friends, the lobby, hosting, joining, and the joiner's own account
 
-Parties are Open (in the public list, anyone joins) or Closed (invite only; friends can ask), DECISIONS D11 / B18. Host's game is authoritative (D1); a host quitting ends the session (D6).
+Parties are Open (in the public list, anyone joins; the default since 2026-10-14) or Closed (invite only; friends can ask), DECISIONS D11 / B18. A player who left can come back while the session lives. Host's game is authoritative (D1); a host quitting ends the session (D6).
 Files: `dm_next_party.gd` (`DmNextParty`, child `Party` of `DmNextGame`, every peer), `dm_next_joiner.gd` (`DmNextJoiner`, child `Joiner`, joiners only),
 `dm_next_friends.gd` (`DmNextFriends`, child `Friends`), `ui/panels/dm_social_window.gd` (the Social window, key O: tabs Friends and Party),
 `ui/panels/dm_friends_pane.gd` / `ui/panels/dm_party_pane.gd` (the tabs, pure UI), `game_ui/dm_ui_social.gd` (window <-> game wiring),
@@ -19,15 +19,15 @@ a toast and the tab's NEW pip, once each per run. Offline characters see why ins
 5/15/60/120 s, not after a refused login or a replaced session). It sends our presence (discipline, level, area: on connect, on area change, on
 level-up, re-checked every 30 s) and keeps `friends_online` (account id -> presence incl. party: id, Open/Closed, players, host). Rows show a
 dot, "Online · class · area · hosting 2/4" or "Offline · last played ...", and `DmNextFriends.actions_for`: **Join** (their Open party has room),
-**Ask to join** (a Closed party, or they play solo: they answer from their Friends tab; accepting while solo hosts a Closed party first, then the
-asker is let in and joins at once), **Invite** (into our party; playing solo it hosts a Closed party first). Invites and asks wait in the tab's
+**Ask to join** (a Closed party, or they play solo: they answer from their Friends tab; accepting while solo hosts an Open party first, then the
+asker is let in and joins at once), **Invite** (into our party; playing solo it hosts an Open party first). Invites and asks wait in the tab's
 "Party invites" section for 5 min (toasts open the window). Only the host invites or answers; a guest's friend's ask goes to the host.
 
 ## Flows
 | | what happens |
 |---|---|
 | **Solo** | the friends link only (above); no game packets, no per-frame work. Opening the Social window (key O on Friends, key F on Party, the HUD's Social button, Settings -> Co-op tab) also lists Open sessions every 10 s. Without `go_online()` (tests) the window opens a socket and closes it again. In `--dev-offline` the window says "Online play needs an online account". |
-| **Host** | `host_session(name, private)` -> lobby `create` -> `DmRelayPeer.host` -> `DmSession.swap_transport(relay)`: the running world, the host's body and its rewards stay; joiners come in through the normal session handshake. Closed (`host_session(name, true)`, the default; `set_closed`) = invite only, out of the list; Open = in everyone's list. `set_open(false)` (relay `refuse_new_connections`) stops new players altogether. `kick(peer)`. `leave()` or a lost lobby socket -> back to the offline peer, the game plays on solo (`hosting_changed`). |
+| **Host** | `host_session(name, private)` -> lobby `create` -> `DmRelayPeer.host` -> `DmSession.swap_transport(relay)`: the running world, the host's body and its rewards stay; joiners come in through the normal session handshake. Open (`host_session(name)`, the default) = in everyone's list; Closed (`host_session(name, true)`, `set_closed`) = invite only, out of the list. `set_open(false)` (relay `refuse_new_connections`) stops new players altogether. `kick(peer)`. `leave()` or a lost lobby socket -> back to the offline peer, the game plays on solo (`hosting_changed`). |
 | **Join** | `join_session(id)` (the list, a friend's Open party, an invite) from a solo game: the lobby seats us (`join_ready(lobby, info)`), `main.gd` saves + frees the solo game and starts a client `DmNextGame` (`opts.lobby`) on the same socket. The joiner says hello only after its world is built (`DmRelayPeer.hold`), so the host waits `DmSession.HELLO_TIMEOUT` (90 s) for it; the joiner gives up `CLIENT_ACTIVE_S` (20 s of running frames) after its hello went out, at most `CLIENT_HARD_S` (85 s): the first frames after a build can stall for seconds on the Compatibility renderer. The join path logs `[coop]` lines with `printerr`: a release build buffers `print` output and only flushes the log file on an error or a clean exit, so plain prints never reached bug reports. A refusal (`full`, `bad_code`, `closed`, `not_found`, `rate_limit`, ...) stays a message in the window; the solo game never stopped. |
 | **Client ends** | left, removed, host gone, connection lost, handshake refused: `client_ended(reason, text)` -> `main.gd` saves the joiner, frees the client game, re-enters the player's own hub solo with the reason as a toast. |
 | **A joiner appears** | next to the host (`DmSession.spawn_override`), moved onto the navmesh (`spawn_resolve`: the ring point fell off it about one time in five, and the host's mover then snapped the body back on every step), except in the Depths (Chapterhouse). The relay peer is held (`DmRelayPeer.hold`) until the client's nodes exist, so the host's first spawn / RPC packets never arrive early. |

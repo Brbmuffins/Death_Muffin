@@ -67,7 +67,10 @@ test('lifecycle: open, join, heartbeat, view, leave, end', async () => {
   assert.equal(v.body.data.status, 'open');
   assert.equal((await t.view(sid, 9)).status, 403, 'a stranger cannot read the session');
   assert.equal((await t.leave(sid, 2, 12)).status, 200);
-  assert.equal((await t.join(sid, 2, 12)).status, 409, 'a member that left cannot rejoin');
+  const back = await t.join(sid, 2, 12);
+  assert.equal(back.status, 200, 'a member that left can rejoin');
+  assert.deepEqual(back.body.data.members.map((m) => [m.characterId, m.status]), [[11, 'active'], [12, 'active']], 'its old row, active again');
+  assert.equal((await t.leave(sid, 2, 12)).status, 200);
   assert.equal((await t.end(sid, 1, {})).body.data.ended, true);
   assert.equal((await t.end(sid, 1, {})).body.data.already, true, 'ending twice is harmless');
   assert.equal((await t.join(sid, 3, 13)).status, 409, 'no joining an ended session');
@@ -127,6 +130,25 @@ test('a host cannot credit a character whose owner never joined, or who left', a
   const r2 = await t.report(sid, 1, { batch: 2, members: [entry(13, mixed(1))] });
   assert.equal(r2.body.data.members[0].reason, 'left');
   assert.equal(t.fake.ledger(13), undefined);
+});
+
+test('a member that left and rejoins keeps its counters and is paid again, once per batch', async () => {
+  const { t, sid } = await party();
+  assert.equal((await t.report(sid, 1, { batch: 1, members: [entry(13, mixed(1))] })).body.data.members[0].credited, true);
+  const before = t.fake.ledger(13).xp_credit;
+  const kills1 = (await t.view(sid, 1)).body.data.members.find((m) => m.characterId === 13).acceptedKills;
+  assert.ok(kills1 > 0);
+  await t.leave(sid, 3, 13);
+  assert.equal((await t.join(sid, 3, 13)).status, 200);
+  let v = (await t.view(sid, 1)).body.data;
+  assert.equal(v.members.filter((m) => m.characterId === 13).length, 1, 'no second row');
+  assert.equal(v.members.find((m) => m.characterId === 13).acceptedKills, kills1, 'its counters carried over');
+  assert.equal((await t.report(sid, 1, { batch: 1, members: [entry(13, mixed(1))] })).body.data.duplicate, true, 'an old batch is still ignored');
+  assert.equal(t.fake.ledger(13).xp_credit, before);
+  const r = await t.report(sid, 1, { batch: 2, members: [entry(13, mixed(1))] });
+  assert.equal(r.body.data.members[0].credited, true, 'paid again after rejoining');
+  v = (await t.view(sid, 1)).body.data;
+  assert.equal(v.members.find((m) => m.characterId === 13).acceptedKills, kills1 * 2);
 });
 
 test('only the host reports and ends', async () => {

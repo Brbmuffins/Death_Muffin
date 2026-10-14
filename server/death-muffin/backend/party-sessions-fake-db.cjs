@@ -47,6 +47,10 @@ function sessionsFake({ characters = {}, accounts = {}, failWith = null, ...rest
       Object.assign(members.find((x) => x.session_id === p[1] && x.character_id === p[2]), { status: 'left', left_at: p[0] });
       return [{}];
     }
+    if (sql.startsWith("UPDATE party_session_members SET status = 'active', left_at = NULL")) {
+      Object.assign(members.find((x) => x.session_id === p[1] && x.character_id === p[2]), { status: 'active', left_at: null, last_seen_at: p[0] });
+      return [{}];
+    }
     if (sql.startsWith('UPDATE party_sessions SET last_batch = ?')) {
       const s = sessions.get(p[2]);
       s.last_batch = p[0]; s.batches += 1; s.last_host_at = p[1];

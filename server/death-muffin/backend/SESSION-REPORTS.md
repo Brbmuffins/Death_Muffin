@@ -15,7 +15,7 @@ No rule is duplicated. `AUTHORITY_KILLS=off|audit|enforce` applies unchanged (of
 1. Host `POST /api/sessions {characterId}` (own JWT, own character) -> `sessionId` (128-bit random; the invite the lobby hands out). The host's
    previous open sessions end; the character leaves any other session. The host is member #1.
 2. Each member `POST /api/sessions/:id/join {characterId}` with ITS OWN JWT and a character its account owns. Max 4 active members (D2).
-   A member that left (or was removed by the host) cannot rejoin that session. A character is in one session at a time (newest attach wins).
+   A member that left (or was removed by the host) can rejoin while the session is live and has room: it gets its old row back, so its counters carry on and nothing is credited twice. A character is in one session at a time (newest attach wins).
 3. Members `POST /api/sessions/:id/heartbeat {characterId, kills?}` every ~10-30 s ("I was there"; min spacing 5 s, extra calls answer `throttled`).
    `kills` = the member's own cumulative count of kills it saw.
 4. Host `POST /api/sessions/:id/report {batch, members: [{characterId, groups, bosses}]}` during play. `groups`/`bosses` have the kill-report

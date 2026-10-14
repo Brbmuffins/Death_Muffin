@@ -591,8 +591,8 @@ func party_refresh() -> void:
 	shell.party.refresh()
 
 
-## DmGameUi's /party and Settings' "Make a party": hosts a Closed party (the Party tab's Host form picks the name and Open / Closed).
-func party_create(session_name: String = "", is_private: bool = true) -> void:
+## DmGameUi's /party and Settings' "Make a party": hosts an Open party (the Party tab's Host form picks the name and Open / Closed).
+func party_create(session_name: String = "", is_private: bool = false) -> void:
 	if shell.party.in_party():   # already hosting (or joined): show the party instead of a refusal
 		game_event.emit("panel_toggle", {"panel": "party"})
 		return

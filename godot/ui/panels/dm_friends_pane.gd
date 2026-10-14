@@ -211,7 +211,7 @@ func _friend_row(f: Dictionary, busy: bool, mine: Dictionary) -> Control:
 				ab.pressed.connect(func() -> void: ask_friend_requested.emit(id))
 			"invite":
 				ab = _button("Invite", String(mine.get("mode", "")) == "host")
-				ab.tooltip_text = "Invite them into your party" if String(mine.get("mode", "")) == "host" else "Host a Closed party and invite them"
+				ab.tooltip_text = "Invite them into your party" if String(mine.get("mode", "")) == "host" else "Host a party and invite them"
 				ab.pressed.connect(func() -> void: invite_friend_requested.emit(id))
 		ab.disabled = busy
 		pc.get_child(0).add_child(ab)

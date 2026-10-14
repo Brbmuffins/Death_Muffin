@@ -152,12 +152,13 @@ async function joinSession(pool, { sessionId, accountId, characterId, now = Date
       if (!isLive(s, now)) return fail(409, 'session_ended', 'That session has ended.');
       const members = await loadMembers(conn, sessionId);
       const mine = members.find((m) => m.characterId === cid);
-      if (mine && mine.status === 'left') return fail(409, 'left', 'This character left the session and cannot rejoin it.');
-      if (!mine) {
+      if (!mine || mine.status === 'left') {
         if (members.filter((m) => m.status === 'active').length >= LIMITS.MAX_MEMBERS) return fail(409, 'full', `A session holds ${LIMITS.MAX_MEMBERS} players.`);
         // One session at a time per character: the newest attach wins.
         await conn.execute("UPDATE party_session_members SET status = 'left', left_at = ? WHERE character_id = ? AND status = 'active'", [now, cid]);
-        await conn.execute('INSERT INTO party_session_members (session_id, character_id, account_id, joined_at, last_seen_at) VALUES (?, ?, ?, ?, ?)', [sessionId, cid, accountId, now, now]);
+        // A member that left and comes back gets its old row again: last_seq and the kill counters carry on, so nothing is credited twice.
+        if (mine) await conn.execute("UPDATE party_session_members SET status = 'active', left_at = NULL, last_seen_at = ? WHERE session_id = ? AND character_id = ?", [now, sessionId, cid]);
+        else await conn.execute('INSERT INTO party_session_members (session_id, character_id, account_id, joined_at, last_seen_at) VALUES (?, ?, ?, ?, ?)', [sessionId, cid, accountId, now, now]);
       }
       return okRes(publicSession(s, await loadMembers(conn, sessionId), now));
     }, log);

@@ -393,7 +393,7 @@ func _fail(c: String, text: String) -> void:
 # ---- hosting ------------------------------------------------------------------------------------------------------------------------------
 
 ## Turn this solo session into a hosted one. Closed (is_private) parties are invite only; Open ones show in everyone's list.
-func host_session(session_name: String, is_private: bool = true) -> void:
+func host_session(session_name: String, is_private: bool = false) -> void:
 	var why := unavailable()
 	if why != "":
 		_fail("unavailable", why)
@@ -1127,7 +1127,7 @@ func _expire_offers() -> void:
 		changed.emit()
 
 
-## Invite a friend. Playing solo, this first hosts a Closed party.
+## Invite a friend. Playing solo, this first hosts an Open party.
 func invite_friend(id: int) -> void:
 	if mode == CLIENT:
 		_fail("not_host", String(SOCIAL_ERROR_TEXT["not_host"]))
@@ -1172,7 +1172,7 @@ func decline_invite(from_id: int) -> void:
 			return
 
 
-## Answer a friend's ask. Accepting while solo first hosts a Closed party, then lets them in.
+## Answer a friend's ask. Accepting while solo first hosts an Open party, then lets them in.
 func answer_request(id: int, accept: bool) -> void:
 	for r in requests:
 		if int(r["account_id"]) == id:
@@ -1194,6 +1194,6 @@ func answer_request(id: int, accept: bool) -> void:
 func _host_then(f: Callable) -> void:
 	_after_host.append(f)
 	if busy != "creating":
-		host_session("", true)
+		host_session("", false)
 	if mode != SOLO or busy != "creating":   # hosting was refused: drop the queued action
 		_after_host.clear()

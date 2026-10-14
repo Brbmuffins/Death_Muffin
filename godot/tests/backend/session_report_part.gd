@@ -84,7 +84,8 @@ func _main() -> void:
 	ok((await friend.session_leave(sid, fc)).ok, "member leaves")
 	var r6 := await host.session_report(sid, 5, [{"characterId": fc, "groups": grp, "bosses": []}])
 	ok(r6.ok and r6.data["members"][0]["reason"] == "left", "a member that left is not credited")
-	ok(not (await friend.session_join(sid, fc)).ok, "cannot rejoin after leaving")
+	ok((await friend.session_join(sid, fc)).ok, "a member that left can rejoin")
+	ok((await friend.session_leave(sid, fc)).ok, "and leave again")
 	# end
 	var e := await host.session_end(sid, {"batch": 6, "members": [{"characterId": hc, "groups": grp, "bosses": []}]}, {"seconds": 600})
 	ok(e.ok and e.data["ended"] and e.data["final"]["members"][0]["accepted"]["kills"] == 30, "end with a final batch", e.error)

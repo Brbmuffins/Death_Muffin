@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-10-14",
+    "title": "Come Back Anytime",
+    "items": [
+      "Leaving a party no longer locks you out of it: rejoin and you earn XP, gold and loot again right away.",
+      "New parties are Open by default, so friends can hop straight in with Join. Tick Closed when hosting if you want invite-only."
+    ]
+  },
+  {
+    "date": "2026-10-14",
     "title": "Heat That Adds Up",
     "items": [
       "Fixed the Plague Saint's glowing green feeding beams from her Plague Doctors piling up and staying on screen for minutes; they now fade after a second.",
