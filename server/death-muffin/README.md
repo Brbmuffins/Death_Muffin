@@ -82,8 +82,8 @@ start, so changing one needs a restart of `death-muffin-auth`.
   parity fixture) and puts exactly that drop in the bag, once. `DROPS_MODE=audit` (default) logs broken bounds as `drop_*` rows in
   `progress_audit` (ground not open, Wave Speed not owned, fortune, rising rune chance in roll order, a second first kill, tape spent faster
   than the kill ledger's accepted kills, surge rate) and grants, rolled with the client's value up to the hard limits (audit never changes a
-  drop); `enforce` rolls with the bound and refuses. Migrations 047, 048.
-- **A member's build** (`GET /api/sessions/:id/members/:cid/build`, party-sessions.cjs `memberBuild`, DECISIONS B21): the session's host
+  drop); `enforce` rolls with the bound and refuses. Migrations 047, 049.
+- **A member's build** (`GET /api/sessions/:id/members/:cid/build`, party-sessions.cjs `memberBuild`, DECISIONS B22): the session's host
   reads an active member's level, class, stats, worn slots and progression to build that member's hero. A member's party kills are judged in
   the host's world (the host character's level and Ascension rank).
 - **Party sessions** (`backend/party-sessions.cjs`, migration 041, `backend/SESSION-REPORTS.md`): a session host reports what its members killed; each member's part goes through the same kill ledger.

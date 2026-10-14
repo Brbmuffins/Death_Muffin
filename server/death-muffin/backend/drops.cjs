@@ -12,7 +12,7 @@
  *   POST /api/drops/claim { characterId, kind, n, index, facts, expect?, sessionId? } -> { data: { item, bag } }
  *
  * DROPS_MODE=audit (default) logs a broken bound (progress_audit `drop_*`) and lets the claim through, rolled with the client's value up to the
- * hard limits (audit never changes what dropped); enforce rolls with the bound and refuses the claim. Migrations 047, 048.
+ * hard limits (audit never changes what dropped); enforce rolls with the bound and refuses the claim. Migrations 047, 049.
  */
 const crypto = require('crypto');
 const rules = require('./gathering/loot-rules.cjs');

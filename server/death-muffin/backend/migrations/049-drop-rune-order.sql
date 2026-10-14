@@ -1,4 +1,4 @@
--- 048-drop-rune-order.sql — the rising rune chance of a claimed elite drop is bounded by the elites since the last rune that landed BEFORE it in
+-- 049-drop-rune-order.sql — the rising rune chance of a claimed elite drop is bounded by the elites since the last rune that landed BEFORE it in
 -- roll order (drops.cjs); picking drops up out of order no longer shortens it. character_drop_events.rune_claimed marks an elite event whose
 -- rune was claimed. Additive and idempotent: safe to run twice. Rollback: ALTER TABLE character_drop_events DROP COLUMN rune_claimed;
 

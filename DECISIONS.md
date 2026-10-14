@@ -135,7 +135,7 @@ Since B18 friends join through invites and asks; the six-digit codes have no UI 
   damage in every room (the old Bell Sanctum average, no elites) so kills cost the same everywhere. Bell Sanctum + Gravecaller + Standard +
   Full stays the one setup that compares PCs. Every finished run is sent automatically to the backend (`benchmark_runs`) and anyone can see the
   history on the site; only staff (role admin / gm) can delete runs.
-- **B21. Guests' builds come from the server** (owner, 2026-10-14: "guest's gear set bonuses don't work on co-op"; the 2026-10-13 rule
+- **B22. Guests' builds come from the server** (owner, 2026-10-14: "guest's gear set bonuses don't work on co-op"; the 2026-10-13 rule
   "all player data server-side"). A host builds a party member's hero from the server's record of that member (a host-only party-session
   endpoint: level, class, stats, worn slots, boons, vows, upgrade tiers), never from what the member's client says, and reads it again when
   the member's worn gear changes. A guest's party kills are judged in the host's world as the server records it (the host character's
