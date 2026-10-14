@@ -5,13 +5,10 @@ extends RefCounted
 ## Every `rand` is a Callable returning a float in [0,1) (pass `rng.next`); an empty Callable falls back to randf() (TS: Math.random).
 ## Optional TS parameters that were `undefined` are "" (discipline_id) or an empty Callable (owned_ids).
 ## Drops are {item_id:String, quantity:int|float, instance?:{id,ilvl,affixes}}; a reward is {gold, materialGold, shards, items, xp}.
-## NOT ported (stateful network bag, belongs to the net/inventory track): the `Inventory` class (optimistic add/consume, debounced
-## saves, replace/reconcile of in-flight mutations). Its pure helpers (add_to_slots, sort_bag_slots, to_save_payload) are here.
+## The bag itself is DmInventory (game/dm_inventory.gd); its pure placement helper (add_to_slots) is here. Sorting is the server's (DECISIONS B25).
 
 const BAG_COLS := 8
 const KILL_LOOT := {"itemChanceMult": 0.5, "materialQtyMult": 2, "goldEveryKills": 4}
-const SORT_TYPES: Array[String] = ["weapon", "offhand", "armor_head", "armor_chest", "armor_legs", "armor_feet", "armor_hands", "ring", "trinket", "rune", "consumable", "material"]
-const SORT_RARITY: Array[String] = ["relic", "legendary", "epic", "rare", "uncommon", "common"]
 const NIGHTFALL_TIER := 8  # upgrades.ts WAVE_MILESTONES nightfall (checked against the wave_modifiers fixture)
 
 static func bag_size() -> int:
@@ -283,106 +280,8 @@ static func add_to_slots(slots: Array, drop: Dictionary) -> Variant:
 	out.append(DmAffixes.decorate_slot(row))
 	return out
 
-static func _rank(list: Array, v: Variant) -> int:
-	var i := list.find(v)
-	return list.size() if i < 0 else i
-
-## Sort the bag (slots 0..bag_size-1 only): merge stackable materials and runes up to their stack size, then order by type, rarity
-## (best first), item level (highest first) and name, packed from slot 0. Worn gear and belt slots are untouched.
-## `moves` (a Dictionary, optional) receives old slot -> new slot for every bag slot. `is_locked(slot)->bool` (optional Callable).
-static func sort_bag_slots(slots: Array, moves: Variant = null, is_locked: Callable = Callable()) -> Array:
-	var size := bag_size()
-	var in_bag := func(s: Dictionary) -> bool: return int(s["slot_index"]) >= 0 and int(s["slot_index"]) < size and not _is_equipped(s)
-	var bag: Array = []
-	var rest: Array = []
-	for s in slots:
-		if in_bag.call(s):
-			bag.append(s)
-		else:
-			rest.append(s)
-	bag.sort_custom(func(a, b): return int(a["slot_index"]) < int(b["slot_index"]))
-	var rows: Array = []  # {slot, from}
-	var open_row := {}
-	for s in bag:
-		var locked: bool = (not is_locked.is_null()) and bool(is_locked.call(s))
-		var iid: Variant = s.get("instance_id")
-		var has_iid: bool = iid != null and not (is_integer_zero(iid))
-		var stackable: bool = _stackable(s.get("item_type")) and not has_iid and not locked
-		if not stackable:
-			rows.append({"slot": s, "from": [int(s["slot_index"])]})
-			continue
-		var cap := INF
-		if DmLootData.item(s["item_id"]).get("stack") != null:
-			cap = float(DmLootData.item(s["item_id"])["stack"])
-		var left := float(s["quantity"])
-		var first := true
-		while left > 0.0:
-			var at: int = open_row.get(s["item_id"], -1)
-			if at < 0 or float(rows[at]["slot"]["quantity"]) >= cap:
-				at = rows.size()
-				var ns: Dictionary = s.duplicate()
-				ns["quantity"] = 0
-				rows.append({"slot": ns, "from": []})
-				open_row[s["item_id"]] = at
-			var row: Dictionary = rows[at]
-			var add := minf(left, cap - float(row["slot"]["quantity"]))
-			var upd: Dictionary = row["slot"].duplicate()
-			upd["quantity"] = float(row["slot"]["quantity"]) + add
-			row["slot"] = upd
-			if first or row["from"].is_empty():
-				row["from"].append(int(s["slot_index"]))
-			first = false
-			left -= add
-	rows.sort_custom(func(a, b): return _row_less(a, b))
-	if moves is Dictionary:
-		moves.clear()
-	var out: Array = rest
-	for i in rows.size():
-		var r: Dictionary = rows[i]
-		if moves is Dictionary:
-			for f in r["from"]:
-				moves[f] = i
-		var p: Dictionary = r["slot"].duplicate()
-		p["slot_index"] = i
-		out.append(p)
-	return out
-
 static func is_integer_zero(v: Variant) -> bool:
 	return (v is int or v is float) and float(v) == 0.0
-
-static func _row_less(a: Dictionary, b: Dictionary) -> bool:
-	var sa: Dictionary = a["slot"]
-	var sb: Dictionary = b["slot"]
-	var c := _rank(SORT_TYPES, sa.get("item_type")) - _rank(SORT_TYPES, sb.get("item_type"))
-	if c != 0: return c < 0
-	c = _rank(SORT_RARITY, sa.get("rarity")) - _rank(SORT_RARITY, sb.get("rarity"))
-	if c != 0: return c < 0
-	var ia := float(sa.get("ilvl") if sa.get("ilvl") != null else 0)
-	var ib := float(sb.get("ilvl") if sb.get("ilvl") != null else 0)
-	if ib != ia: return ib - ia < 0.0
-	var na := str(sa["name"])
-	var nb := str(sb["name"])
-	if na != nb: return na < nb
-	var qa := float(sa["quantity"])
-	var qb := float(sb["quantity"])
-	if qb != qa: return qb - qa < 0.0
-	return int(a["from"][0]) < int(b["from"][0])
-
-## Payload for POST /api/inventory/save: the bag only (slot_index 0..bag_size-1); worn gear lives in reserved slots (100+).
-## The server refuses the WHOLE save when any slot lacks a string item_id or a whole quantity of at least 1, so a consumed (quantity 0)
-## row, or a half-built row is left out here: a slot missing from the payload is an emptied slot.
-static func to_save_payload(slots: Array) -> Array:
-	var out: Array = []
-	for s in slots:
-		if not (s is Dictionary) or not (s.get("item_id") is String) or String(s["item_id"]).strip_edges().is_empty():
-			continue
-		var idx := int(s.get("slot_index", -1))
-		var qty := floorf(float(s.get("quantity", 0)))
-		if idx < 0 or idx >= bag_size() or is_nan(qty) or is_inf(qty) or qty < 1.0:
-			continue
-		out.append({"slot_index": idx, "item_id": s["item_id"], "quantity": int(qty), "equipped": int(s.get("equipped", 0)) if s.get("equipped") != null else 0, "instance_id": s.get("instance_id")})
-	return out
-
 
 # --- Drop events (server authority Phase 1): lootRules.ts rollEvent ---------------------------------------------------------------
 

@@ -15,7 +15,7 @@ func _initialize() -> void:
 	print("rng: ", _rng_script.resource_path)
 	for t in ["wave_modifiers", "affix_defs", "affix_ranges", "affix_text", "item_level", "affix_count", "affix_roll_instance", "affix_problem", "affix_misc",
 			"can_roll", "decorate_slot", "smart_table", "is_profession_material", "settle_combat_drop", "roll_item", "roll_kill", "roll_reagents",
-			"roll_elite_rune", "roll_surge_item", "roll_boss_rune", "roll_boss", "roll_first_kill", "legendary", "add_to_slots", "sort_bag",
+			"roll_elite_rune", "roll_surge_item", "roll_boss_rune", "roll_boss", "roll_first_kill", "legendary", "add_to_slots",
 			"depths", "loot_roller", "kill_loot_const"]:
 		call("t_" + t)
 	var total := passed + failed
@@ -230,23 +230,6 @@ func t_add_to_slots() -> void:
 		var res: Variant = DmLoot.add_to_slots(c["slots"], c["drop"])
 		check("add_to_slots", res, c["res"], c["drop"])
 		check("add_to_slots", JSON.stringify(c["slots"]), before, "input mutated")
-
-func t_sort_bag() -> void:
-	for c in load_json("sort_bag"):
-		var locked := {}
-		for l in c["locked"]:
-			locked[int(l)] = true
-		var moves := {}
-		var res := DmLoot.sort_bag_slots(c["slots"], moves, func(s): return locked.has(int(s["slot_index"])))
-		var want_moves := {}
-		for m in c["moves"]:
-			want_moves[int(m[0])] = int(m[1])
-		var moves0 := {}
-		var res0 := DmLoot.sort_bag_slots(c["slots"], moves0)
-		var want0 := {}
-		for m in c["moves0"]:
-			want0[int(m[0])] = int(m[1])
-		check("sort_bag", [res, moves, res0, moves0, DmLoot.to_save_payload(res)], [c["res"], want_moves, c["res0"], want0, c["payload"]], c["locked"])
 
 func t_depths() -> void:
 	for c in load_json("depths_bonus"):

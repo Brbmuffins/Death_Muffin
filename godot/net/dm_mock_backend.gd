@@ -195,7 +195,9 @@ static func catalog_from_content() -> Dictionary:
 	var items: Dictionary = DmContent.items()
 	for id in items:
 		var m: Dictionary = items[id]
-		cat[id] = {"name": m.get("name", id), "item_type": m.get("type", "material"), "rarity": m.get("rarity", "common"),
+		# What the hero drinks or eats is a consumable on the live server (its items table), whatever the content's display type says.
+		var drink := DmContent.healing_flasks().has(id) or DmContent.buff_flasks().has(id) or DmContent.brews().has(id) or DmBrews.meal(id) != null
+		cat[id] = {"name": m.get("name", id), "item_type": "consumable" if drink else m.get("type", "material"), "rarity": m.get("rarity", "common"),
 			"stat_bonus": m.get("offlineStats"), "sell_value": int(m.get("sell", 0)), "stack": m.get("stack")}
 	return cat
 
@@ -242,7 +244,8 @@ func _equip_slot(item_id: String) -> String:
 ## The vault/salvage rules' view of an item.
 func _vault_info(item_id: String) -> Dictionary:
 	var gear := _is_gear_item(item_id)
-	return {"maxStack": 1 if gear else _stack_of(item_id, 9999), "itemType": _type_of(item_id), "rarity": String(_def(item_id).get("rarity", "common"))}
+	return {"maxStack": 1 if gear else _stack_of(item_id, 9999), "itemType": _type_of(item_id), "rarity": String(_def(item_id).get("rarity", "common")),
+		"name": String(_def(item_id).get("name", item_id))}
 
 func _join(acc: Dictionary, s: Dictionary, i: int) -> Dictionary:
 	var d := _def(String(s["item_id"]))
@@ -657,6 +660,8 @@ func _route_post(acc: Dictionary, p: String, body: Dictionary) -> Dictionary:
 		"/api/salvage": return _salvage(acc, body)
 		"/api/gm/mode": return _ok({"active": body.get("on") == true})
 		"/api/inventory/sell": return _sell(acc, body)
+		"/api/inventory/sort": return _bag_sort(acc, body)
+		"/api/inventory/use": return _bag_use(acc, body)
 	return _err("Offline backend: no route for POST %s" % p, 404)
 
 # --- character progress ------------------------------------------------------------------------------------------------------------
@@ -890,7 +895,7 @@ func _sell(acc: Dictionary, body: Dictionary) -> Dictionary:
 	var sold := 0
 	var plan: Array = []
 	for it in lines:
-		var slot := int(_num_or((it as Dictionary).get("slot_index"), -1.0))
+		var slot := int(_to_num((it as Dictionary).get("slot_index"))) if (it as Dictionary).get("slot_index") != null else -1   # slot 0 is a slot
 		var qty := int(_num_or((it as Dictionary).get("quantity"), 0.0))
 		var row: Dictionary = {}
 		for r in rows:
@@ -1348,6 +1353,41 @@ func _store_bag(acc: Dictionary, rows: Array) -> void:
 				row["instance_id"] = int(r["inst"])
 			next.append(row)
 	acc["slots"] = next
+
+## The bag's own operations (bag-ops.cjs, DECISIONS B25), with the same rules (DmVault ports vaultRules.ts).
+func _bag_sort(acc: Dictionary, body: Dictionary) -> Dictionary:
+	var locked: Array = []
+	if body.get("locked") is Array:
+		for n in body["locked"]:
+			var nf := _to_num(n)
+			if _is_int(nf) and nf >= 0 and nf < BAG:
+				locked.append(int(nf))
+	var out: Dictionary = DmVault.sort_bag(_bag_rows(acc), Callable(self, "_vault_info"), locked)
+	_store_bag(acc, out["bag"])
+	return _ok({"bag": _rows(acc), "moves": out["moves"]})
+
+func _bag_use(acc: Dictionary, body: Dictionary) -> Dictionary:
+	var raw: Variant = body.get("uses")
+	if not (raw is Array) or (raw as Array).is_empty():
+		return _fail("Nothing to use.")
+	if (raw as Array).size() > DmVault.MAX_USES:
+		return _fail("At most %d uses at a time." % DmVault.MAX_USES)
+	var uses: Array = []
+	for u in raw:
+		var q := _to_num((u as Dictionary).get("quantity")) if u is Dictionary else NAN
+		if not (u is Dictionary) or not (u.get("item_id") is String) or String(u["item_id"]) == "" or not _is_int(q) or q < 1 or q > 1000:
+			return _fail("Each use needs an item and a quantity.")
+		var one := {"itemId": String(u["item_id"]), "qty": int(q)}
+		var sf := _to_num(u.get("slot_index")) if u.get("slot_index") != null else -1.0
+		if _is_int(sf) and sf >= 0 and sf < BAG:
+			one["slot"] = int(sf)
+		uses.append(one)
+	var out: Dictionary = DmVault.use_items(_bag_rows(acc), uses, Callable(self, "_vault_info"))
+	_store_bag(acc, out["bag"])
+	var used: Array = []
+	for x in out["used"]:
+		used.append({"item_id": x["itemId"], "quantity": int(x["qty"])})
+	return _ok({"bag": _rows(acc), "used": used})
 
 func _vault_view(acc: Dictionary) -> Dictionary:
 	var v: Array = acc.get("vault", []).duplicate()

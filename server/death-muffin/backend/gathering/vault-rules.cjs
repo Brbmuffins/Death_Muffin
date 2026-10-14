@@ -22,6 +22,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // server/rules/gameplay/vaultRules.ts
 var vaultRules_exports = {};
 __export(vaultRules_exports, {
+  MAX_USES: () => MAX_USES,
   VAULT_SLOTS: () => VAULT_SLOTS,
   VAULT_TAB_SIZE: () => VAULT_TAB_SIZE,
   addGrants: () => addGrants,
@@ -29,7 +30,9 @@ __export(vaultRules_exports, {
   depositStack: () => depositStack,
   moveStack: () => moveStack,
   moveToSlot: () => moveToSlot,
+  sortBag: () => sortBag,
   sortVault: () => sortVault,
+  useItems: () => useItems,
   withdrawStack: () => withdrawStack
 });
 module.exports = __toCommonJS(vaultRules_exports);
@@ -346,8 +349,74 @@ function addGrants(bag, grants, info) {
   for (const g of grants) if (put(rows, BAG_SLOTS, g.itemId, g.qty, info(g.itemId).maxStack) > 0) return null;
   return rows.sort(bySlot);
 }
+function sortBag(bag, info, locked = []) {
+  const isLocked = new Set(locked);
+  const fixed = bag.filter((r) => r.fixed);
+  const rows = [];
+  const open = /* @__PURE__ */ new Map();
+  for (const r of clone(bag.filter((x) => !x.fixed))) {
+    const cap = r.inst !== void 0 ? 1 : Math.max(1, info(r.itemId).maxStack);
+    if (cap <= 1 || isLocked.has(r.slot)) {
+      rows.push({ row: { ...r }, from: [r.slot] });
+      continue;
+    }
+    let left = r.qty;
+    let first = true;
+    while (left > 0) {
+      let at = open.get(r.itemId);
+      if (at === void 0 || rows[at].row.qty >= cap) {
+        at = rows.length;
+        rows.push({ row: { slot: r.slot, itemId: r.itemId, qty: 0 }, from: [] });
+        open.set(r.itemId, at);
+      }
+      const add = Math.min(left, cap - rows[at].row.qty);
+      rows[at].row.qty += add;
+      if (first || rows[at].from.length === 0) rows[at].from.push(r.slot);
+      first = false;
+      left -= add;
+    }
+  }
+  const nameOf = (id) => info(id).name ?? id;
+  rows.sort((a, b) => {
+    const ia = info(a.row.itemId);
+    const ib = info(b.row.itemId);
+    const na = nameOf(a.row.itemId);
+    const nb = nameOf(b.row.itemId);
+    return rank(TYPE_ORDER, ia.itemType) - rank(TYPE_ORDER, ib.itemType) || rank(RARITY_ORDER, ia.rarity) - rank(RARITY_ORDER, ib.rarity) || (b.row.ilvl ?? 0) - (a.row.ilvl ?? 0) || (na < nb ? -1 : na > nb ? 1 : 0) || b.row.qty - a.row.qty || a.from[0] - b.from[0];
+  });
+  const taken = new Set(fixed.map((r) => r.slot));
+  const moves = {};
+  const out = fixed.map((r) => ({ ...r }));
+  let slot = 0;
+  for (const { row, from } of rows) {
+    while (taken.has(slot)) slot += 1;
+    out.push({ ...row, slot });
+    for (const f of from) moves[f] = slot;
+    slot += 1;
+  }
+  return { bag: out.sort(bySlot), moves };
+}
+var MAX_USES = 40;
+function useItems(bag, uses, info) {
+  const rows = clone(bag);
+  const used = /* @__PURE__ */ new Map();
+  for (const u of uses.slice(0, MAX_USES)) {
+    if (info(u.itemId).itemType !== "consumable") continue;
+    let left = Math.max(0, Math.floor(u.qty));
+    const order = rows.filter((r) => !r.fixed && r.inst === void 0 && r.itemId === u.itemId).sort((a, b) => a.slot === u.slot ? -1 : b.slot === u.slot ? 1 : a.slot - b.slot);
+    for (const r of order) {
+      if (left <= 0) break;
+      const take = Math.min(left, r.qty);
+      r.qty -= take;
+      left -= take;
+      used.set(u.itemId, (used.get(u.itemId) ?? 0) + take);
+    }
+  }
+  return { bag: rows.filter((r) => r.qty > 0), used: [...used].map(([itemId, qty]) => ({ itemId, qty })) };
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  MAX_USES,
   VAULT_SLOTS,
   VAULT_TAB_SIZE,
   addGrants,
@@ -355,6 +424,8 @@ function addGrants(bag, grants, info) {
   depositStack,
   moveStack,
   moveToSlot,
+  sortBag,
   sortVault,
+  useItems,
   withdrawStack
 });

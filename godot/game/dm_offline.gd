@@ -5,13 +5,7 @@ extends RefCounted
 
 static func make_mock(path: String = "user://dm_offline_db.json") -> DmMockBackend:
 	var mock := DmMockBackend.new(path)
-	var cat := {}
-	var items: Dictionary = DmContent.items()
-	for id in items:
-		var m: Dictionary = items[id]
-		cat[id] = {"name": m.get("name", id), "item_type": m.get("type", "material"), "rarity": m.get("rarity", "common"),
-			"stat_bonus": m.get("offlineStats"), "sell_value": int(m.get("sell", 0))}
-	mock.catalog = cat
+	mock.catalog = DmMockBackend.catalog_from_content()
 	return mock
 
 

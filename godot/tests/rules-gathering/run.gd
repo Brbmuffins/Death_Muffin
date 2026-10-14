@@ -347,24 +347,6 @@ func _test_bag() -> void:
 	for c in fx("bag_add"):
 		var got: Variant = Bag.add_to_slots(c["slots"], c["drop"])
 		eq(got, c["out"], "add_to_slots %s" % str(c["drop"]))
-	for c in fx("bag_sort"):
-		var moves: Dictionary = {}
-		var locked: Variant = c["locked"]
-		var lk := Callable()
-		if locked != null:
-			var set_: Dictionary = {}
-			for s in locked:
-				set_[int(s)] = true
-			lk = func(s: Dictionary) -> bool: return set_.has(int(s["slot_index"]))
-		var got := Bag.sort_bag_slots(c["slots"], moves, lk)
-		eq(got, c["out"], "sort_bag_slots")
-		var mv: Dictionary = {}
-		for p in c["moves"]:
-			mv[int(p[0])] = int(p[1])
-		var mine: Dictionary = {}
-		for k in moves:
-			mine[int(k)] = int(moves[k])
-		ok(mine == mv, "sort_bag moves %s vs %s" % [str(mine), str(mv)])
 	# rolled-instance drops: instance fields land on the slot, then the injected decorate hook (loot track's decorateSlot) runs
 	var decorated: Variant = Bag.add_to_slots([], {"item_id": "helm_gold", "quantity": 1, "instance": {"id": 9, "ilvl": 12, "affixes": [{"id": "a", "v": 1}]}}, func(s: Dictionary) -> Dictionary:
 		s["decorated"] = true

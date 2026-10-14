@@ -14,7 +14,8 @@ Properties (read by the UI): `api` (`DmApi`, the authenticated session), `charac
 
 Methods the UI calls: `cast(slot)`, `use_belt(slot)`, `navigate(x, z)`, `set_auto_combat(on)`, `buy_upgrade(kind)`;
 `refresh_character()`, `refresh_inventory()`, `refresh_progress()` (re-fetch, then emit the matching signal);
-`bag_remove(slot_index, item_id, n) -> int`, `bag_sort(on_moves, is_locked)`, `bag_commit() -> String` ("" = saved, else the reason);
+`bag_sort(on_moves, is_locked) -> String` (the server sorts; "" or the reason), `sell_items(items) -> DmResult` (the server sells), `bag_commit() -> String`
+("" = queued uses reached the server, else the reason);
 `apply_settings(s)` (store, persist, push to audio / Vfx / camera); `hud_state() -> Dictionary` (live numbers: hp, essence,
 cooldowns per slot, buffs, target, boss, wave, kill chain, thralls, minimap, Depths readout; built by `DmNextHudVm`);
 `use_item(id)`, `set_belt(slot, id)`, `set_rites(primary, keys)`, `near_grinder()`, `counsel_busy()`, `counsel_tick_ctx()`,
@@ -31,7 +32,7 @@ the counsel event ids in `DmCounselEvents` (`godot/next/hud/README.md` lists whi
 
 ## Rules
 
-- The UI never assigns `slots`; bag changes go through `bag_remove` / `bag_sort` / `bag_commit`.
+- The UI never assigns `slots`; every bag change is a server operation (`bag_sort`, `sell_items`, the `api` routes), DECISIONS B25.
 - Panel actions call `game.api` and then the matching `refresh_*()`.
 - `DmGameUi` handles the panel keys itself (physical keys, no input actions); movement, rite keys and the Chapterhouse keys
   stay with the game (`DmNextInput`, `DmRiteHotbar`).

@@ -85,7 +85,7 @@ func go(x: float, z: float, area: String) -> void:
 
 
 func give(item_id: String, qty: int = 1) -> void:
-	h.inventory.add({"item_id": item_id, "quantity": qty})
+	await DmTestBag.give(h.inventory, {"item_id": item_id, "quantity": qty})
 	await h.inventory.flush()
 	await h.refresh_inventory()
 
@@ -260,7 +260,7 @@ func _run() -> void:
 			junk.append(String(id))
 	var need := 48 - int(ui.guidance_state()["bagUsed"])
 	for i in need:
-		h.inventory.add({"item_id": junk[i % junk.size()], "quantity": 1})
+		await DmTestBag.give(h.inventory, {"item_id": junk[i % junk.size()], "quantity": 1})
 	await h.inventory.flush()
 	await h.refresh_inventory()
 	check(int(ui.guidance_state()["bagUsed"]) >= 44, "the bag is nearly full (%d / 48)" % int(ui.guidance_state()["bagUsed"]))
@@ -414,7 +414,7 @@ func reforge() -> void:
 	await h.inventory.flush()
 	await h.refresh_inventory()
 	var drop := {"item_id": piece, "quantity": 1, "instance": {"id": rolled.data[0]["instance_id"], "ilvl": rolled.data[0]["ilvl"], "affixes": rolled.data[0]["affixes"]}}
-	check(h.inventory.add(drop), "the rolled piece goes into the bag")
+	check(await DmTestBag.give(h.inventory, drop), "the rolled piece goes into the bag")
 	await h.inventory.flush()
 	await h.refresh_inventory()
 	set_gold(1000000)
@@ -497,11 +497,13 @@ func reforgeable_index(roll: Dictionary) -> int:
 
 
 func clear_junk() -> void:
-	for s in h.slots.duplicate():
+	var lines: Array = []
+	for s in h.slots:
 		if int(s["slot_index"]) < 48 and int(s.get("equipped", 0)) == 0 and String(DmContent.item(String(s["item_id"])).get("type", "")) in ["weapon", "chest_armor", "helm", "boots"]:
-			while h.inventory.count(String(s["item_id"])) > 0:
-				h.inventory.consume(String(s["item_id"]))
-	await h.inventory.flush()
+			lines.append({"slot_index": int(s["slot_index"]), "quantity": int(s["quantity"])})
+	if not lines.is_empty():
+		var sold: DmResult = await h.sell_items(lines)   # the server's sale: a client never takes items out of its bag on its own (DECISIONS B25)
+		check(sold.ok, "the junk is sold (%s)" % sold.error)
 	await h.refresh_inventory()
 	check(int(ui.guidance_state()["bagUsed"]) < 40, "the bag was cleared for the crafting (%d)" % int(ui.guidance_state()["bagUsed"]))
 

@@ -154,3 +154,9 @@ Since B18 friends join through invites and asks; the six-digit codes have no UI 
   in the write's own transaction; it is the record refunds and rollbacks start from, never an input to a write. The kill ledger pays boss
   kills from paid summons first (the same credit as boss drops, B20) and only then from its per-minute allowance. A party session's reports
   are deduplicated by their batch number and no longer move the player's own report order, so a host's own floor and boss reports count.
+- **B25. Only the server writes a bag** (owner, 2026-10-14: "full rewrite ... build out the right way from the beginning"; server authority
+  Phase 2). The client never sends its bag. Every change is an operation the server applies to its own rows and answers with its bag:
+  drops and pickups (claims), gathering, crafting, moving (the Vault's move), equipping, selling, salvaging, dropping, learning runes, sorting
+  (`POST /api/inventory/sort`, the server's sort) and using a consumable (`POST /api/inventory/use`, batched sips). The client shows what the
+  server answered; a sip leaves the shown bag at once and is replayed on top of any answer that lands before its batch. The whole-bag save
+  is a GM-mode tool (tests seed bags with it); an older client that still saves its bag is told to update.

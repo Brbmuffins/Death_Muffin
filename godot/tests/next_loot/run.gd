@@ -71,7 +71,7 @@ func _run() -> void:
 	check(sid != "", "drop: the solo game has a backend session")
 	var rr: DmResult = await h.api.roll_loot(h.hero_id, [{"item_id": gear_id, "level": 5, "source": "kill"}], sid)
 	var piece := {"item_id": gear_id, "quantity": 1, "instance": {"id": rr.data[0]["instance_id"], "ilvl": rr.data[0]["ilvl"], "affixes": rr.data[0]["affixes"]}}
-	h.inventory.add(piece)
+	await DmTestBag.give(h.inventory, piece)
 	var cerr: String = await h.bag_commit()
 	check(cerr == "", "drop: the piece is saved in the bag (%s)" % cerr)
 	var prow: Dictionary = {}

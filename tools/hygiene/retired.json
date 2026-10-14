@@ -227,6 +227,15 @@
       "allow": [
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "client-bag-save",
+      "pattern": "bag_save_part|check-bag-payload|sort_bag_slots|to_save_payload|remove_from_slot|bag_remove\\b|guardBagSave|trimSlots",
+      "reason": "the client never saves or edits its bag (DECISIONS B25): bag changes are server operations (bag-ops.cjs and the other bag routes)",
+      "allow": [
+        "tools/hygiene/**",
+        "godot/tests/next_bag/run.gd"
+      ]
     }
   ],
   "allowPaths": {

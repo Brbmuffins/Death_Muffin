@@ -478,7 +478,7 @@ func _manual_tick(e: DmEnemy) -> void:
 		await tap([KEY_1, KEY_2, KEY_3, KEY_4][slot - 1], 1)
 	var b := body()
 	if b.hp < b.max_hp * 0.45 and uh.inventory.count("flask_hp_minor") == 0:
-		uh.inventory.add({"item_id": "flask_hp_minor", "quantity": 5})
+		await DmTestBag.give(uh.inventory, {"item_id": "flask_hp_minor", "quantity": 5})
 		watch["assist"] = int(watch.get("assist", 0)) + 1
 	await frames(6)
 
@@ -716,7 +716,7 @@ func _p_dps() -> void:
 
 func _p_fight() -> void:
 	phase("fight")
-	uh.inventory.add({"item_id": "flask_hp_minor", "quantity": 6})
+	await DmTestBag.give(uh.inventory, {"item_id": "flask_hp_minor", "quantity": 6})
 	var fl0 := uh.inventory.count("flask_hp_minor")
 	watch["assist"] = 0
 	var gold0 := gold()
@@ -788,7 +788,7 @@ func _p_loot_equip() -> void:
 			gear_id = id
 			break
 	if gear_id != "":
-		uh.inventory.add({"item_id": gear_id, "quantity": 1})
+		await DmTestBag.give(uh.inventory, {"item_id": gear_id, "quantity": 1})
 	await tap(KEY_I)
 	await frames(6)
 	var equippable: Dictionary = {}

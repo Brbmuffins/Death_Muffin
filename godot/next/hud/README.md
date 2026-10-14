@@ -14,7 +14,7 @@ opts.hud:  true (default) real HUD, also for joiners  |  "minimal" DmNextHud orb
 |---|---|
 | `hud_state()` | `DmNextHudVm.build()`: `DmHeroBody` (hp, essence), `DmRiteCaster` (`cooldown_left`, loadout), `DmThrallHost`, `DmStatusSet`, `DmWaveDirector.enemies` (minimap, target), `DmCorpseField`, roster (party), `world.builder` (areas / doors). Shape: `ui/hud/README.md` |
 | `character`, `progress` | the shell's character dict shared with the rewards member's `DmProgression` |
-| bag | `DmInventory` (optimistic bag + debounced `api.save_inventory`); "Reliquary full" float when full |
+| bag | `DmInventory` (the server's bag as answered; sips batched to `api.use_items`, sort via `api.sort_bag`, DECISIONS B25); "Reliquary full" float when full |
 | `settings` | `DmSettings`; `apply_settings` pushes audio, Vfx quality / reduced motion, camera |
 | loadout | `DmLoadout.load_rites` = kit `defaultLoadout` + `rmb` + the saved Grimoire choice; `set_rites()` writes it back |
 | casting | `DmNextInput.hotbar(slot, aim, enemy_id)` (LMB 0, keys 1-4, key 5 and RMB 5) -> `_on_hotbar` -> `DmRiteCaster.request_cast`. A rite missing from `DmRiteRegistry` gives a "not in the slice yet" float |

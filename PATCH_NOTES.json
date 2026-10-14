@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-10-14",
+    "title": "The Server Keeps Your Bag",
+    "items": [
+      "Your Reliquary now lives entirely on the server: sorting, drinking, selling and every other bag change is done by the server, so items can no longer vanish or come back from a save that arrived late.",
+      "Sort now merges your potions, elixirs and meals into full stacks too."
+    ]
+  },
+  {
+    "date": "2026-10-14",
     "title": "Every Coin Counted",
     "items": [
       "Summoned bosses now always pay their full XP and gold, however fast you summon them.",

@@ -299,9 +299,7 @@ func _vault_sort() -> void:
 		vault.set_busy(false)
 		vault.set_error(r.error)
 		return
-	game.bag_sort(ui.locks.remap, func(s: Dictionary) -> bool: return ui.locks.is_locked(s))
-	var err: String = await game.bag_commit()
-	await game.refresh_inventory()
+	var err: String = await game.bag_sort(ui.locks.remap, func(s: Dictionary) -> bool: return ui.locks.is_locked(s))
 	var g: DmResult = await game.api.get_vault(cid())
 	vault.set_busy(false)
 	if g.ok:
@@ -309,7 +307,7 @@ func _vault_sort() -> void:
 	elif r.data is Dictionary and r.data.has("bag"):
 		_vault_state(r.data)
 	if err != "":
-		vault.set_note("Vault sorted, but the bag could not be saved: %s" % err)
+		vault.set_note("Vault sorted, but the bag could not be sorted: %s" % err)
 
 
 func _take_all(_kind: String, slots: Array) -> void:

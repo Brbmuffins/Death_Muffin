@@ -68,9 +68,9 @@ async function loadInfo(conn, itemIds) {
   const ids = [...new Set(itemIds)];
   const map = new Map();
   if (ids.length) {
-    const [rows] = await conn.query('SELECT id, stackable, max_stack_size, item_type, rarity FROM items WHERE id IN (?)', [ids]);
+    const [rows] = await conn.query('SELECT id, name, stackable, max_stack_size, item_type, rarity FROM items WHERE id IN (?)', [ids]);
     for (const r of rows) {
-      map.set(r.id, { maxStack: num(r.stackable) ? Math.max(1, num(r.max_stack_size) || 1) : 1, itemType: r.item_type, rarity: r.rarity || 'common' });
+      map.set(r.id, { maxStack: num(r.stackable) ? Math.max(1, num(r.max_stack_size) || 1) : 1, itemType: r.item_type, rarity: r.rarity || 'common', name: r.name || r.id });
     }
   }
   return (id) => map.get(id) || { maxStack: 1, itemType: 'material', rarity: 'common' };

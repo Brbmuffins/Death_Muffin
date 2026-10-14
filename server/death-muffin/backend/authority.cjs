@@ -14,7 +14,6 @@
 const rules = require('./gathering/authority-rules.cjs');
 const { SaveRefusal } = require('./loot-instances.cjs');
 const { GuardUnavailable } = require('./guard-error.cjs');
-const { dropsMode } = require('./drops-mode.cjs');
 
 const A = rules.AUTHORITY;
 const MINUTE = 60_000;
@@ -237,85 +236,6 @@ const sumByItem = (rows) => {
   return out;
 };
 
-/** Drop `excess` units of `itemId` from the slot list, highest slot first, so earlier stacks survive. Returns a new list. */
-function trimSlots(slots, itemId, excess) {
-  const out = slots.map((s) => ({ ...s }));
-  const order = out.filter((s) => s.item_id === itemId).sort((a, b) => Number(b.slot_index) - Number(a.slot_index));
-  let left = excess;
-  for (const s of order) {
-    if (left <= 0) break;
-    const take = Math.min(left, num(s.quantity, 1));
-    s.quantity = num(s.quantity, 1) - take;
-    left -= take;
-  }
-  return out.filter((s) => num(s.quantity, 1) > 0);
-}
-
-/**
- * Called by inventory-save.replaceBag with the rows currently in the character's bag range and the slots the client sent.
- * Compares totals per item: more of an item than the bag held is "introduced", and only things that come off the ground, at the
- * pace the ground allows, may be introduced. Items that left the bag credit the gold bucket (selling). Returns the slots to write
- * (unchanged in report mode). Fails closed (GuardUnavailable).
- */
-async function guardBagSave(db, { characterId, accountId, existingRows, slots, bagSize, account, now = Date.now(), env = process.env, log = console }) {
-  const mode = authorityMode(env);
-  if (account && account.staff) return { slots, message: '' };
-  try {
-    const state = await loadState(db, characterId);
-    const before = sumByItem(existingRows.filter((r) => num(r.slot_index) >= 0 && num(r.slot_index) < bagSize));
-    const after = sumByItem(slots);
-    const introduced = {};
-    const removed = {};
-    for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
-      const d = (after[id] || 0) - (before[id] || 0);
-      if (d > 0) introduced[id] = d;
-      else if (d < 0) removed[id] = -d;
-    }
-    let out = slots;
-    const messages = [];
-    // Server-decided drops (drops.cjs): an item that drops in play reaches the bag through a claim, which the server writes itself; one a
-    // save adds is not a drop the server dealt. DROPS_MODE=enforce keeps it out whatever AUTHORITY_MODE says.
-    const dropsEnforced = dropsMode(env) === 'enforce';
-    let dropTrimmed = 0;
-    for (const [item, qty] of Object.entries(introduced)) {
-      if (!rules.isGroundItem(item)) continue;
-      await audit(db, { characterId, accountId, kind: 'drop_unclaimed', mode: dropsEnforced ? 'enforce' : 'audit', action: dropsEnforced ? 'refuse' : 'report', detail: { item, introduced: qty } }, log);
-      if (dropsEnforced) {
-        out = trimSlots(out, item, qty);
-        dropTrimmed += 1;
-        delete introduced[item];
-      }
-    }
-    if (dropTrimmed) messages.push('Some items in that save were never picked up from a drop, so the server left them out.');
-    const charge = chargeItems(introduced, state.itemBudget, now);
-    // Gold credit for what left the bag (sold, thrown away, spent): the most that can have been sold is what was there.
-    let credit = 0;
-    const removedIds = Object.keys(removed);
-    if (removedIds.length) {
-      const [rows] = await db.query('SELECT id, sell_value FROM items WHERE id IN (?)', [removedIds]);
-      for (const r of rows) credit += num(r.sell_value) * removed[r.id];
-    }
-    for (const f of charge.over) {
-      await audit(db, { characterId, accountId, kind: 'item_intro', mode, action: mode === 'enforce' ? 'clamp' : 'report', detail: f }, log);
-      if (mode === 'enforce') {
-        out = trimSlots(out, f.item, f.introduced - f.allowed);
-        messages.push(f.source === 'server-only'
-          ? `${f.item} cannot appear in your bag from a save, so the server left it out.`
-          : `More ${f.item} arrived than play can explain, so the server kept ${f.allowed}.`);
-      }
-    }
-    // In enforce mode the budget is charged for what was kept; in report mode for what the client sent (the save goes through whole).
-    await db.execute(
-      'UPDATE character_authority SET item_budget = ?, last_bag_at = ?, gold_credit = LEAST(?, gold_credit + ?), flags = flags + ? WHERE character_id = ?',
-      [JSON.stringify(charge.budget), now, A.SALE_CREDIT_CAP, Math.floor(credit), charge.over.length ? 1 : 0, characterId]);
-    if (mode !== 'enforce') return { slots: dropTrimmed ? out : slots, message: dropTrimmed ? messages.join(' ') : '' };
-    return { slots: out, message: messages.join(' ') };
-  } catch (err) {
-    log.error(`[AUTHORITY] bag guard unavailable, refusing the save: ${err.code || err.message}`);
-    throw new GuardUnavailable('bag', err);
-  }
-}
-
 /** POST /api/inventory/add-item: the same per-item allowance as a bag save. Returns { allowed: bool, message }. Fails closed. */
 async function guardAddItem(db, { characterId, accountId, itemId, quantity, account, now = Date.now(), env = process.env, log = console }) {
   const mode = authorityMode(env);
@@ -427,6 +347,6 @@ async function guardOfflineStats(db, { characterId, accountId, online, level, ex
 }
 
 module.exports = {
-  GuardUnavailable, authorityMode, evaluateProgress, evaluateOffline, guardProgress, guardBagSave, guardAddItem, guardRollGear, guardOfflineLoad, guardOfflineStats,
-  chargeItems, trimSlots, itemAvailable, loadState, audit, necroSummary, OFFLINE_MESSAGE, SaveRefusal,
+  GuardUnavailable, authorityMode, evaluateProgress, evaluateOffline, guardProgress, guardAddItem, guardRollGear, guardOfflineLoad, guardOfflineStats,
+  chargeItems, itemAvailable, loadState, audit, necroSummary, OFFLINE_MESSAGE, SaveRefusal,
 };

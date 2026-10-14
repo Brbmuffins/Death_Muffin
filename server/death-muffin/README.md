@@ -82,6 +82,10 @@ start, so changing one needs a restart of `death-muffin-auth`.
   progressSeq}`. A body without `gains` is an older client's totals (the old path). Gold other routes pay is written by them: gathering,
   labor, contracts (each answers `goldTotal`) and `POST /api/inventory/sell {characterId, items: [{slot_index, quantity}]}` (`sell.cjs`:
   bag slots only, never worn gear, an affixed piece at its affixed price; answers `{sold, gold, goldTotal, bag}`).
+- **The bag is the server's** (DECISIONS B25): `POST /api/inventory/sort {characterId, locked?}` -> `{bag, moves}` and
+  `POST /api/inventory/use {characterId, uses: [{item_id, slot_index?, quantity}]}` -> `{bag, used}` (`bag-ops.cjs`, rules in
+  `vaultRules.ts` sortBag / useItems; only consumables are used up). Every other bag change has its own route. `POST /api/inventory/save`
+  (the whole bag) is GM mode only; a player gets a 403 telling them to update.
 - **Value ledger** (`backend/value-ledger.cjs`, migration 054, DECISIONS B24): every server write of a character's gold, XP (lifetime total)
   or soul shards adds a `value_ledger` row `{delta, balance, reason, ref}` inside the write's transaction; a failure is logged, never fails the write.
 - **Boss kills** in the kill ledger draw first on paid summons (`character_drop_tape.boss_credit` minus `character_kill_ledger.summon_used`,
@@ -94,8 +98,8 @@ start, so changing one needs a restart of `death-muffin-auth`.
   owned, fortune, rising rune chance in roll order, one first kill per boss, a Depths floor within the ledger's proven depth (+1), chests on
   fifth floors, each kind's tape spent no faster than the kill ledger's accepted kills / floors, a surge rate; boss drops are backed by paid
   summons instead (migration 051 `boss_credit`: +1 per summon the character or its party host paid, no rate limit). `DROPS_MODE` (read in
-  `drops-mode.cjs`): `enforce` (default) refuses a claim past a bound and keeps drop items a bag save adds out of the bag (`drop_unclaimed`);
-  `audit` logs both (`drop_*` rows in `progress_audit`) and lets them through, rolled with the client's value up to the hard limits.
+  `drops-mode.cjs`): `enforce` (default) refuses a claim past a bound;
+  `audit` logs it (`drop_*` rows in `progress_audit`) and lets them through, rolled with the client's value up to the hard limits.
   A claim refused over budget answers `resync {kind, spent}`: the client rewinds that tape to the server's position (seeds re-used in order).
   `POST /api/loot/roll-gear` (client-named gear) is GM-mode only.
 - **A member's build** (`GET /api/sessions/:id/members/:cid/build`, party-sessions.cjs `memberBuild`, DECISIONS B22): the session's host

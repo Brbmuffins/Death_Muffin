@@ -622,28 +622,13 @@ func move_in_bag(from_slot: int, to_slot: int) -> void:
 
 func sort_bag() -> void:
 	panel.sel_item = {}
-	game.bag_sort(locks.remap, func(s: Dictionary) -> bool: return locks.is_locked(s))
-	var err: String = await game.bag_commit()
+	var err: String = await game.bag_sort(locks.remap, func(s: Dictionary) -> bool: return locks.is_locked(s))
 	if err != "":
-		panel.set_error("Could not save the sorted bag: %s" % err)
-	await game.refresh_inventory()
+		panel.set_error(err)
 	render()
 
 
-func _credit(gold: int, name: String, n: int, show_n: bool) -> void:
-	var cid := int(game.character["id"])
-	game.character["gold"] = int(game.character.get("gold", 0)) + gold
-	var ch: Dictionary = game.character
-	await game.api.save_progress({"characterId": cid, "level": ch.get("level", 1), "xp": ch.get("experience", 0), "gold": ch["gold"],
-		"stat_str": ch.get("stat_str", 5), "stat_agi": ch.get("stat_agi", 5), "stat_int": ch.get("stat_int", 5), "stat_vit": ch.get("stat_vit", 5)})
-	await game.api.add_chronicle(cid, {"sold": n}, {})
-	ui.play("coin")
-	ui.toast("Sold %s%s for %s gold" % ["%d× " % n if show_n else "", name, DmJsFmt.locale(gold)], "good")
-	game.refresh_character()
-
-
-## Sell from the bag (never equipped gear). The server takes the items and pays their price (DECISIONS B23, `game.sell_items`); a game
-## without that (UI tests' mock game) still removes them and credits the gold here.
+## Sell from the bag (never equipped gear). The server takes the items and pays their price (DECISIONS B23, `game.sell_items`).
 func sell(it: Dictionary, qty: int) -> void:
 	var row: Dictionary = it["row"]
 	if int(row.get("equipped", 0)) != 0 or locks.is_locked(row):
@@ -652,42 +637,23 @@ func sell(it: Dictionary, qty: int) -> void:
 	if n <= 0:
 		return
 	panel.sel_item = {}
-	if game.has_method("sell_items"):
-		await _sell_on_server([{"slot_index": int(row["slot_index"]), "quantity": n}], String(row["name"]), n, n > 1)
-		return
-	var sold: int = game.bag_remove(int(row["slot_index"]), String(row["item_id"]), n)
-	if sold <= 0:
-		return
-	var err: String = await game.bag_commit()
-	panel.set_error("" if err == "" else "The sale could not be saved yet: %s. It will keep retrying." % err)
-	await _credit(sold * int(row["sell_value"]), String(row["name"]), sold, sold > 1)
-	render()
+	await _sell_on_server([{"slot_index": int(row["slot_index"]), "quantity": n}], String(row["name"]), n, n > 1)
 
 
 func sell_junk() -> void:
 	var ctx: Variant = ui.stat_ctx()
 	var fresh: bool = ctx != null and DmStatKey.worn_of(ctx) == _cards_key   # the cached verdicts hold for what is worn now
 	var list := DmItemLocks.junk_slots(slots(), locks, _keep_cached(ctx) if fresh else DmItemText.keeps_for_you(ctx))
-	var gold := 0
 	var n := 0
 	var lines: Array = []
 	for s in list:
 		var q := int(s["quantity"])
-		gold += int(s["sell_value"]) * q
 		n += q
 		lines.append({"slot_index": int(s["slot_index"]), "quantity": q})
 	panel.sel_item = {}
 	if n == 0:
 		return
-	if game.has_method("sell_items"):
-		await _sell_on_server(lines, "%d junk item%s" % [n, "" if n == 1 else "s"], n, false)
-		return
-	for s in list:
-		game.bag_remove(int(s["slot_index"]), String(s["item_id"]), int(s["quantity"]))
-	var err: String = await game.bag_commit()
-	panel.set_error("" if err == "" else "The sale could not be saved yet: %s. It will keep retrying." % err)
-	await _credit(gold, "%d junk item%s" % [n, "" if n == 1 else "s"], n, false)
-	render()
+	await _sell_on_server(lines, "%d junk item%s" % [n, "" if n == 1 else "s"], n, false)
 
 
 ## The server sale: its bag and gold come back with the answer (sell_items applied them); here the sound, the toast and the Chronicle.

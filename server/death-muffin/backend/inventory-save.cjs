@@ -1,7 +1,7 @@
 /**
- * Bag saves from the client (POST /api/inventory/save), kept out of server.js so the stale-client rule is testable.
+ * The whole-bag save (POST /api/inventory/save), a GM-mode tool since players change their bag only through operations (DECISIONS B25).
  *
- * The client saves its whole bag and the server deletes bag rows missing from the payload. A browser tab still running the
+ * The save names the whole bag and the server deletes bag rows missing from the payload. A browser tab still running the
  * old 24-slot client sends only slots 0-23 and no `bagSize`: it must never be able to delete slots 24 and up, so a save only
  * ever deletes and replaces within 0..bagSize-1, where bagSize defaults to 24 when absent.
  */
@@ -86,17 +86,10 @@ async function resolveInstances(conn, accountId, characterId, slots, existingByS
 
 /**
  * Replace the bag rows 0..bagSize-1 with `slots` (inside the caller's transaction). Slots above bagSize are never touched.
- * `guard` (optional, authority.cjs) sees the rows the bag holds and the slots sent, and may return fewer units of an item it does not
- * believe; it never adds anything. Returns { notice } (a player-readable sentence, '' when the save was taken whole).
+ * The route is GM mode only (DECISIONS B25); tests use it to seed a bag.
  */
-async function replaceBag(conn, characterId, slots, bagSize, accountId, guard) {
+async function replaceBag(conn, characterId, slots, bagSize, accountId) {
   const [existingRows] = await conn.execute('SELECT slot_index, item_id, quantity, equipped, equipped_slot, instance_id FROM inventory WHERE character_id = ?', [characterId]);
-  let notice = '';
-  if (guard) {
-    const checked = await guard(existingRows, slots);
-    slots = checked.slots;
-    notice = checked.message || '';
-  }
   const incoming = slots.map((s) => parseInt(s.slot_index, 10));
   const existingBySlot = new Map(existingRows.map((row) => [Number(row.slot_index), row]));
   const { bySlot, claimed } = await resolveInstances(conn, accountId, characterId, slots, existingBySlot, bagSize);
@@ -130,7 +123,6 @@ async function replaceBag(conn, characterId, slots, bagSize, accountId, guard) {
     );
   }
   await deleteInstances(conn, detached);
-  return { notice };
 }
 
 module.exports = { LEGACY_BAG_SLOTS, saveBagSize, slotProblem, replaceBag, resolveInstances, CANT_VERIFY };

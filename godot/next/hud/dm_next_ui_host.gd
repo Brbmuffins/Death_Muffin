@@ -299,16 +299,22 @@ func do_open(key: String) -> String:
 	return ""
 
 
-## Bag edits the Reliquary makes (GAME_CONTRACT.md; as old DmGame): `slots` is for reading, these change the bag.
-func bag_remove(slot_index: int, _item_id: String, n: int) -> int:
-	return inventory.remove_from_slot(slot_index, n)
+## Bag edits the Reliquary makes (GAME_CONTRACT.md): `slots` is for reading; every change is a server operation (DECISIONS B25).
+## The server sorts the bag; `on_moves(moves)` (old slot -> new slot) runs before the answer is shown, so slot-keyed state follows its item.
+## Returns "" or the reason it did not sort.
+func bag_sort(on_moves: Callable = Callable(), is_locked: Callable = Callable()) -> String:
+	var locked: Array = []
+	for s in inventory.all():
+		if is_locked.is_valid() and bool(is_locked.call(s)):
+			locked.append(int(s["slot_index"]))
+	var r: Dictionary = await inventory.sort(locked)
+	if r["error"] == "" and on_moves.is_valid():
+		on_moves.call(r["moves"])
+	inventory_changed.emit()
+	return r["error"]
 
 
-func bag_sort(on_moves: Callable = Callable(), is_locked: Callable = Callable()) -> void:
-	inventory.sort_bag(on_moves, is_locked)
-
-
-## Sell bag items (DECISIONS B23): the bag is saved first, then the server takes the items, pays their price and answers its bag and gold.
+## Sell bag items (DECISIONS B23): queued uses reach the server first, then it takes the items, pays their price and answers its bag and gold.
 ## `items` [{slot_index, quantity}]. data: {sold, gold, goldTotal, bag}.
 func sell_items(items: Array) -> DmResult:
 	var err := await bag_commit()
@@ -323,7 +329,7 @@ func sell_items(items: Array) -> DmResult:
 	return r
 
 
-## Save the bag now. "" = the server has it; otherwise the reason (the player was told by a toast).
+## Send the queued uses now. "" = the server has them; otherwise the reason (the player was told by a toast).
 func bag_commit() -> String:
 	return await inventory.commit()
 

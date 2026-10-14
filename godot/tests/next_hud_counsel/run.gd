@@ -264,7 +264,7 @@ func _run() -> void:
 			if String(id).begins_with("tool_"):
 				tool_id = String(id)
 				break
-	h.inventory.add({"item_id": tool_id, "quantity": 1})
+	await DmTestBag.give(h.inventory, {"item_id": tool_id, "quantity": 1})
 	check(h.counsel_tick_ctx()["has_tool"], "has_tool follows the bag")
 	set_gold(1000000)
 	check(h.counsel_tick_ctx()["wave_affordable"], "wave_affordable follows gold")
@@ -348,8 +348,9 @@ func panels(cid: int) -> void:
 	await frames(2)
 	# seed the bag through the adapter's bag (it flushes to the backend like the game)
 	var weapon := item_of_type(["weapon"])
-	h.inventory.add({"item_id": weapon, "quantity": 1})
-	await h.inventory.flush()
+	var seeded: Array = (await api.get_inventory(cid)).data.filter(func(r: Dictionary) -> bool: return int(r["slot_index"]) < 48)
+	seeded.append({"slot_index": 47, "item_id": weapon, "quantity": 1})   # the bag is the server's (DECISIONS B25): seeded on the mock, as a GM would
+	await api.save_inventory(cid, seeded.map(func(r: Dictionary) -> Dictionary: return {"slot_index": int(r["slot_index"]), "item_id": r["item_id"], "quantity": int(r["quantity"]), "instance_id": r.get("instance_id")}), 48)
 	await h.refresh_inventory()
 	var meta := DmContent.item(weapon)
 
@@ -357,9 +358,8 @@ func panels(cid: int) -> void:
 	await open("inventory")
 	check(ui.is_open("inventory") and shown().contains("bag"), "Bag opens")
 	var n0 := h.slots.size()
-	h.inventory.sort_bag()
-	await until(func() -> bool: return h.inventory.state == "saved", 3.0)
-	check(h.slots.size() == n0 and (await api.get_inventory(cid)).data.size() == n0, "Bag: sorted and saved to the backend (%d rows)" % n0)
+	check((await h.bag_sort()) == "", "Bag: the server sorts it")
+	check(h.slots.size() == n0 and (await api.get_inventory(cid)).data.size() == n0, "Bag: sorted on the backend (%d rows)" % n0)
 
 	# Sheet
 	await open("sheet")
@@ -373,7 +373,7 @@ func panels(cid: int) -> void:
 	var view: Dictionary = ui.pa.char_win.cosmetics.view
 	check(ui.is_open("cosmetics") and not (view.get("pets", []) as Array).is_empty() and not (view.get("capes", []) as Array).is_empty(), "Capes & Pets opens with the backend's capes and pets")
 	var pet: Dictionary = (view["pets"] as Array)[0]
-	h.inventory.add({"item_id": String(pet["charm"]), "quantity": 1})
+	await DmTestBag.give(h.inventory, {"item_id": String(pet["charm"]), "quantity": 1})
 	await h.inventory.flush()
 	await h.refresh_inventory()
 	ui.pa.char_win.cosmetics.adopt_requested.emit(String(pet["id"]))
@@ -398,7 +398,7 @@ func panels(cid: int) -> void:
 			recipe = rc
 			break
 	for ing in recipe["ingredients"]:
-		h.inventory.add({"item_id": String(ing["item_id"]), "quantity": int(ing["quantity"]) * 2})
+		await DmTestBag.give(h.inventory, {"item_id": String(ing["item_id"]), "quantity": int(ing["quantity"]) * 2})
 	await h.inventory.flush()
 	await h.refresh_inventory()
 	var before := h.inventory.count(String(recipe["result_item_id"]))
@@ -410,7 +410,7 @@ func panels(cid: int) -> void:
 
 	# Salvage (the Bone Grinder)
 	var junk := item_of_type(["weapon", "chest_armor"], "common")
-	h.inventory.add({"item_id": junk, "quantity": 1})
+	await DmTestBag.give(h.inventory, {"item_id": junk, "quantity": 1})
 	await h.inventory.flush()
 	await h.refresh_inventory()
 	await open("salvage")
@@ -428,7 +428,7 @@ func panels(cid: int) -> void:
 
 	# Vault (Chapterhouse is safe)
 	var vault_item := item_of_type(["weapon"])
-	h.inventory.add({"item_id": vault_item, "quantity": 1})
+	await DmTestBag.give(h.inventory, {"item_id": vault_item, "quantity": 1})
 	await h.inventory.flush()
 	await h.refresh_inventory()
 	await open("vault")
@@ -450,7 +450,7 @@ func panels(cid: int) -> void:
 	var cr: DmResult = await api.get_contracts(cid)
 	check(ui.is_open("contracts") and cr.ok, "Contracts opens with the board")
 	var order: Dictionary = (cr.data["contracts"] as Array)[0]
-	h.inventory.add({"item_id": String(order["itemId"]), "quantity": int(order["qty"])})
+	await DmTestBag.give(h.inventory, {"item_id": String(order["itemId"]), "quantity": int(order["qty"])})
 	await h.inventory.flush()
 	await h.refresh_inventory()
 	var gold0 := int(h.character["gold"])
@@ -473,7 +473,7 @@ func panels(cid: int) -> void:
 
 	# Garden
 	var seed_def: Dictionary = DmGarden.seeds()[0]
-	h.inventory.add({"item_id": String(seed_def["id"]), "quantity": 2})
+	await DmTestBag.give(h.inventory, {"item_id": String(seed_def["id"]), "quantity": 2})
 	await h.inventory.flush()
 	await h.refresh_inventory()
 	await open("garden")

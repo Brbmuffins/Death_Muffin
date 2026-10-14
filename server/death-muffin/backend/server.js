@@ -968,7 +968,11 @@ app.post('/api/inventory/add-item', requireJWT, async (req, res) => {
   }
 });
 
+// The whole-bag save is a GM-mode tool (DECISIONS B25): players change their bag only through operations (bag-ops.cjs, the Vault, equip, sell,
+// salvage, drops, gathering), so the server alone decides what a bag holds. An older client that still saves its bag is told to update.
+const BAG_SAVE_RETIRED = 'This version of Death Muffin saves your bag the old way. Restart the game to update it.';
 app.post('/api/inventory/save', requireJWT, async (req, res) => {
+  if (!(await isStaffAccount(req).catch(() => false))) return res.status(403).json({ success: false, error: BAG_SAVE_RETIRED });
   const body = req.body || {};
   const { characterId } = body;
   if (!Array.isArray(body.slots))
@@ -1009,13 +1013,10 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
           error: `${s.item_id} exceeds its maximum stack size of ${maxStack}`
         });
     }
-    const staff = await isStaffAccount(req).catch(() => false);
-    let notice = '';
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
-      const guard = (existingRows, sent) => authority.guardBagSave(conn, { characterId: char.id, accountId: char.account_id, existingRows, slots: sent, bagSize, account: { staff } });
-      ({ notice } = await inventorySave.replaceBag(conn, char.id, slots, bagSize, char.account_id, guard));
+      await inventorySave.replaceBag(conn, char.id, slots, bagSize, char.account_id);
       await conn.commit();
     } catch (e) {
       await conn.rollback();
@@ -1024,7 +1025,7 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
       conn.release();
     }
     const [rows] = await pool.execute(INV_SELECT, [char.id]);
-    res.json({ success: true, data: rows, ...(notice ? { authority: { message: notice } } : {}) });
+    res.json({ success: true, data: rows });
   } catch (err) {
     // A save that names a relic it does not own (or one it cannot prove) is refused, readably, and nothing was written.
     if (err && err.refusal) return res.status(400).json({ success: false, error: err.message });
@@ -1801,6 +1802,8 @@ require('./drops.cjs').mountDrops(app, pool, {
   ownsCharacter: ownsCharacterRow,
   limiter: rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }),
 });
+// The bag's own operations (bag-ops.cjs, DECISIONS B25): sort and use; the server changes its bag and answers it.
+require('./bag-ops.cjs')(app, pool, { requireAuth: requireJWT, ownsCharacter: ownsCharacterRow, limiter: rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false }) });
 require('./vault.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {

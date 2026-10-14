@@ -159,9 +159,16 @@ static func run(root: Node, game: DmNextGame, plan_path: String, out_dir: String
 			print("QA-SHOTS equip: no bag room for ", id)
 		else:
 			wear.append(id)
-	var commit_err: String = await inventory.commit()   # flush to the offline backend now, or an area change reloads the bag without the seeded items
-	if commit_err != "":
-		print("QA-SHOTS bag commit: ", commit_err)
+	# The bag is the server's (DECISIONS B25): seed the offline backend with what was shown, as a GM would, and show its answer.
+	var seed: Array = []
+	for s in inventory.all():
+		if int(s["slot_index"]) < DmLoot.bag_size():
+			seed.append({"slot_index": int(s["slot_index"]), "item_id": s["item_id"], "quantity": int(s["quantity"]), "equipped": int(s.get("equipped", 0)), "instance_id": s.get("instance_id")})
+	var seeded: DmResult = await game.api.save_inventory(int(game.character["id"]), seed, DmLoot.bag_size())
+	if seeded.ok:
+		inventory.replace(seeded.data)
+	else:
+		print("QA-SHOTS bag seed: ", seeded.error)
 	if int(plan["class_index"]) != 0 and int(plan["class_index"]) != int(game.character.get("class_index", 0)):
 		print("QA-SHOTS discipline: the game runs class %d, the plan wants %d (shot-godot.sh passes --class=N; a direct run needs it too)" % [int(game.character.get("class_index", 0)), int(plan["class_index"])])
 	await _wear(game, wear)

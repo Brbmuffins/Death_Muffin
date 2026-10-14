@@ -283,3 +283,98 @@ static func add_grants(bag: Array, grants: Array, info: Callable) -> Variant:
 		if _put(rows, G.BAG_SLOTS, g["itemId"], int(g["qty"]), int(info.call(g["itemId"])["maxStack"])) > 0:
 			return null
 	return _by_slot(rows)
+
+
+## Port of vaultRules.sortBag (the Reliquary's Sort, decided by the server, DECISIONS B25): merge stacks (never a rolled piece or a locked
+## slot), order by type, rarity, item level (high first), name, size and old slot, packed from slot 0 around `fixed` rows.
+## info(itemId) may carry `name`. Returns {bag, moves: {old slot: new slot}}.
+static func sort_bag(bag: Array, info: Callable, locked: Array = []) -> Dictionary:
+	var rows: Array = []   # {row, from}
+	var open: Dictionary = {}
+	var fixed: Array = []
+	for r in _by_slot(_clone(bag)):
+		if bool(r.get("fixed", false)):
+			fixed.append(r)
+			continue
+		var cap := 1 if (r.has("inst") and r["inst"] != null) else maxi(1, int(info.call(r["itemId"])["maxStack"]))
+		if cap <= 1 or locked.has(int(r["slot"])):
+			rows.append({"row": r, "from": [int(r["slot"])]})
+			continue
+		var left := int(r["qty"])
+		var first := true
+		while left > 0:
+			var at: int = open.get(r["itemId"], -1)
+			if at < 0 or int(rows[at]["row"]["qty"]) >= cap:
+				at = rows.size()
+				rows.append({"row": {"slot": int(r["slot"]), "itemId": r["itemId"], "qty": 0}, "from": []})
+				open[r["itemId"]] = at
+			var add := mini(left, cap - int(rows[at]["row"]["qty"]))
+			rows[at]["row"]["qty"] = int(rows[at]["row"]["qty"]) + add
+			if first or (rows[at]["from"] as Array).is_empty():
+				rows[at]["from"].append(int(r["slot"]))
+			first = false
+			left -= add
+	var name_of := func(id: String) -> String: return String(info.call(id).get("name", id))
+	rows = Stable.sorted(rows, func(a: Dictionary, b: Dictionary) -> bool:
+		var ia: Dictionary = info.call(a["row"]["itemId"])
+		var ib: Dictionary = info.call(b["row"]["itemId"])
+		var c := _rank(TYPE_ORDER, ia["itemType"]) - _rank(TYPE_ORDER, ib["itemType"])
+		if c != 0:
+			return c < 0
+		c = _rank(RARITY_ORDER, ia["rarity"]) - _rank(RARITY_ORDER, ib["rarity"])
+		if c != 0:
+			return c < 0
+		var la := int(a["row"].get("ilvl", 0)) if a["row"].get("ilvl") != null else 0
+		var lb := int(b["row"].get("ilvl", 0)) if b["row"].get("ilvl") != null else 0
+		if la != lb:
+			return la > lb
+		var na: String = name_of.call(a["row"]["itemId"])
+		var nb: String = name_of.call(b["row"]["itemId"])
+		if na != nb:
+			return na < nb
+		if int(a["row"]["qty"]) != int(b["row"]["qty"]):
+			return int(a["row"]["qty"]) > int(b["row"]["qty"])
+		return int(a["from"][0]) < int(b["from"][0]))
+	var taken: Dictionary = {}
+	for r in fixed:
+		taken[int(r["slot"])] = true
+	var out: Array = fixed.duplicate()
+	var moves: Dictionary = {}
+	var slot := 0
+	for e in rows:
+		while taken.has(slot):
+			slot += 1
+		var r: Dictionary = e["row"].duplicate()
+		r["slot"] = slot
+		out.append(r)
+		for f in e["from"]:
+			moves[int(f)] = slot
+		slot += 1
+	return {"bag": _by_slot(out), "moves": moves}
+
+
+const MAX_USES := 40
+
+## Port of vaultRules.useItems (DECISIONS B25): take each used consumable from the named slot first, then its other stacks; anything that is
+## not a consumable, or that the bag no longer holds, is skipped. uses = [{itemId, slot?, qty}]. Returns {bag, used: [{itemId, qty}]}.
+static func use_items(bag: Array, uses: Array, info: Callable) -> Dictionary:
+	var rows := _clone(bag)
+	var used: Dictionary = {}
+	for u in uses.slice(0, MAX_USES):
+		if String(info.call(u["itemId"])["itemType"]) != "consumable":
+			continue
+		var left := maxi(0, int(u["qty"]))
+		var want := int(u.get("slot", -1))
+		var order: Array = rows.filter(func(r): return not bool(r.get("fixed", false)) and not (r.has("inst") and r["inst"] != null) and r["itemId"] == u["itemId"])
+		order.sort_custom(func(a, b): return int(a["slot"]) == want if (int(a["slot"]) == want) != (int(b["slot"]) == want) else int(a["slot"]) < int(b["slot"]))
+		for r in order:
+			if left <= 0:
+				break
+			var take := mini(left, int(r["qty"]))
+			r["qty"] = int(r["qty"]) - take
+			left -= take
+			used[u["itemId"]] = int(used.get(u["itemId"], 0)) + take
+	var out: Array = []
+	for item_id in used:
+		out.append({"itemId": item_id, "qty": used[item_id]})
+	return {"bag": rows.filter(func(r): return int(r["qty"]) > 0), "used": out}

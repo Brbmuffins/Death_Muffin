@@ -135,17 +135,21 @@ test('the web-era reward routes are gone: they paid XP, gold and items for an en
 
 // ── POST /api/inventory/save ────────────────────────────────────────────────────────────────────────────────────────────
 
-test('inventory/save: junk in the slot list is a readable 400, never a crash or a write', async () => {
+test('inventory/save is a GM-mode tool: a player is told to update and nothing is written; in GM mode junk slots are a readable 400', async () => {
   const f = fakePool();
-  const srv = loadServer({ pool: f.pool });
+  const player = await loadServer({ pool: f.pool }).call('POST /api/inventory/save', { body: { characterId: 1, slots: [], bagSize: 48 } });
+  assert.equal(player.status, 403);
+  assert.match(player.json.error, /Restart the game to update/);
+  assert.deepEqual(f.log.filter((q) => /^(INSERT|UPDATE|DELETE)/.test(q.sql)), [], 'nothing was written');
+  const gm = goldPool({ staff: true });
+  const srv = loadServer({ pool: gm.pool });
   for (const slots of [[null], [{ slot_index: 3.5, item_id: 'log_oak', quantity: 1 }], [{ slot_index: '2abc', item_id: 'log_oak', quantity: 1 }]]) {
     const r = await srv.call('POST /api/inventory/save', { body: { characterId: 1, slots, bagSize: 48 } });
     assert.equal(r.status, 400, JSON.stringify(slots));
     assert.match(r.json.error, /slot_index/);
   }
-  const noBody = await srv.call('POST /api/inventory/save', {});
-  assert.equal(noBody.status, 400, 'a request without a JSON body is a 400 too');
-  assert.equal(f.log.length, 0, 'nothing reached the database');
+  assert.equal((await srv.call('POST /api/inventory/save', {})).status, 400, 'a request without a JSON body is a 400 too');
+  assert.deepEqual(gm.log.filter((q) => /^(INSERT|UPDATE|DELETE)/.test(q.sql)), [], 'nothing was written');
 });
 
 // ── errors that escape a route ──────────────────────────────────────────────────────────────────────────────────────────

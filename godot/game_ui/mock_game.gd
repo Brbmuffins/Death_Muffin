@@ -110,7 +110,30 @@ func _transport(req: Dictionary) -> Dictionary:
 		data = r.call(body) if r is Callable else r
 	elif path.begins_with("/api/inventory/") and String(req["method"]) == "GET":
 		data = slots
+	elif path == "/api/inventory/sort":
+		data = {"bag": slots, "moves": {}}
+	elif path == "/api/inventory/sell" and body is Dictionary:
+		data = _sold(body.get("items", []))
 	return {"status": 200, "text": JSON.stringify({"success": true, "data": data}), "network_error": false}
+
+
+## The scripted sale: the listed quantities leave the bag at their sell value.
+func _sold(items: Array) -> Dictionary:
+	var left: Array = []
+	var gold := 0
+	var n := 0
+	for s in slots:
+		var c: Dictionary = s.duplicate(true)
+		for it in items:
+			if int(it["slot_index"]) == int(c["slot_index"]) and int(c.get("equipped", 0)) == 0:
+				var q := mini(int(it["quantity"]), int(c["quantity"]))
+				c["quantity"] = int(c["quantity"]) - q
+				gold += q * int(c.get("sell_value", 0))
+				n += q
+		if int(c["quantity"]) > 0:
+			left.append(c)
+	return {"sold": n, "gold": gold, "goldTotal": int(character.get("gold", 0)) + gold, "bag": left}
+
 
 
 func calls_to(path: String) -> Array:
@@ -164,34 +187,34 @@ func refresh_character() -> void:
 	character_changed.emit()
 
 
-func bag_remove(slot_index: int, _item_id: String, n: int) -> int:
-	var taken := 0
-	var out: Array = []
+## The bag's server operations (DECISIONS B25), answered by `_transport` like the live routes.
+func bag_sort(on_moves: Callable = Callable(), is_locked: Callable = Callable()) -> String:
+	var locked: Array = []
 	for s in slots:
-		if int(s["slot_index"]) == slot_index and int(s.get("equipped", 0)) == 0 and taken == 0:
-			taken = mini(n, int(s["quantity"]))
-			var c: Dictionary = s.duplicate(true)
-			c["quantity"] = int(c["quantity"]) - taken
-			if int(c["quantity"]) > 0:
-				out.append(c)
-		else:
-			out.append(s)
-	slots = out
-	inventory_changed.emit()
-	return taken
-
-
-func bag_sort(on_moves: Callable = Callable(), is_locked: Callable = Callable()) -> void:
-	var moves := {}
-	slots = DmBag.sort_bag_slots(slots, moves, is_locked)
+		if is_locked.is_valid() and bool(is_locked.call(s)):
+			locked.append(int(s["slot_index"]))
+	var r: DmResult = await api.sort_bag(int(character["id"]), locked)
+	if not r.ok:
+		return r.error
+	slots = r.data["bag"]
 	if on_moves.is_valid():
-		on_moves.call(moves)
+		on_moves.call(r.data["moves"])
 	inventory_changed.emit()
+	return ""
+
+
+func sell_items(items: Array) -> DmResult:
+	var r: DmResult = await api.sell_items(int(character["id"]), items)
+	if r.ok and r.data is Dictionary and r.data.get("bag") is Array:
+		slots = r.data["bag"]
+		character["gold"] = int(r.data.get("goldTotal", character.get("gold", 0)))
+		inventory_changed.emit()
+		character_changed.emit()
+	return r
 
 
 func bag_commit() -> String:
-	var r: DmResult = await api.save_inventory(int(character["id"]), DmBag.to_save_payload(slots), DmBag.BAG_SIZE)
-	return "" if r.ok else r.error
+	return ""
 
 
 func refresh_inventory() -> void:

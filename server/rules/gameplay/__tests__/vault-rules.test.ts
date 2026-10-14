@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BAG_SLOTS } from '../gatheringRules';
-import { VAULT_SLOTS, addGrants, depositMany, depositStack, moveToSlot, sortVault, withdrawStack, type VaultInfo, type VaultRow } from '../vaultRules';
+import { VAULT_SLOTS, addGrants, depositMany, depositStack, moveToSlot, sortBag, sortVault, useItems, withdrawStack, type VaultInfo, type VaultRow } from '../vaultRules';
 
 const TABLE: Record<string, { maxStack: number; itemType: string; rarity: string }> = {
   ore: { maxStack: 250, itemType: 'material', rarity: 'common' },
@@ -97,6 +97,32 @@ describe('vault rules', () => {
     // bounds
     expect(moveToSlot(bag, vault, 'bag', 1, 'bag', BAG_SLOTS, undefined, info).ok).toBe(false);
     expect(moveToSlot(bag, vault, 'bag', 1, 'vault', VAULT_SLOTS - 1, undefined, info).ok).toBe(true);
+  });
+});
+
+describe('bag rules (DECISIONS B25)', () => {
+  it('sort merges stacks, orders by type, rarity and item level, packs around fixed rows and reports every move', () => {
+    const bag: VaultRow[] = [row(0, 'ore', 200), row(1, 'flask', 3), { slot: 2, itemId: 'staff', qty: 1, inst: 9, ilvl: 10 }, row(3, 'ring', 1, true),
+      row(5, 'ore', 100), { slot: 7, itemId: 'staff', qty: 1, inst: 4, ilvl: 30 }, row(8, 'flask', 2)];
+    const r = sortBag(bag, info);
+    expect(r.bag).toEqual([
+      { slot: 0, itemId: 'staff', qty: 1, inst: 4, ilvl: 30 }, { slot: 1, itemId: 'staff', qty: 1, inst: 9, ilvl: 10 }, row(2, 'flask', 5),
+      row(3, 'ring', 1, true), row(4, 'ore', 250), row(5, 'ore', 50)]);
+    expect(r.moves).toEqual({ 7: 0, 2: 1, 1: 2, 8: 2, 0: 4, 5: 5 });
+    expect(bag[0]).toEqual(row(0, 'ore', 200));
+  });
+
+  it('a locked stack moves but never merges', () => {
+    const r = sortBag([row(0, 'ore', 5), row(4, 'ore', 7)], info, [4]);
+    expect(r.bag.map((x) => x.qty).sort()).toEqual([5, 7]);
+  });
+
+  it('use takes consumables only, from the named slot first, and skips what the bag lacks', () => {
+    const bag = [row(0, 'flask', 2), row(6, 'flask', 4), row(1, 'ore', 9)];
+    const r = useItems(bag, [{ itemId: 'flask', slot: 6, qty: 5 }, { itemId: 'ore', qty: 3 }, { itemId: 'flask', qty: 9 }], info);
+    expect(r.bag).toEqual([row(1, 'ore', 9)]);
+    expect(r.used).toEqual([{ itemId: 'flask', qty: 6 }]);
+    expect(useItems(bag, [{ itemId: 'flask', slot: 6, qty: 1 }], info).bag).toEqual([row(0, 'flask', 2), row(1, 'ore', 9), row(6, 'flask', 3)]);
   });
 });
 

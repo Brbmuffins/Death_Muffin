@@ -76,6 +76,22 @@ func _login(name_: String) -> void:
 	await l.submit()
 	await until(_in_world, 60.0)
 
+## Put `n` more healing flasks in the hero's bag on the offline backend (as a GM would: the bag is the server's) and show them. Returns the count.
+func _seed_flasks(g: DmNextGame, n: int) -> int:
+	var cid := int(g.character["id"])
+	var rows: Array = (await g.api.get_inventory(cid)).data.filter(func(r: Dictionary) -> bool: return int(r["slot_index"]) < 48)
+	var used := {}
+	for r in rows:
+		used[int(r["slot_index"])] = true
+	var free := 47
+	while used.has(free):
+		free -= 1
+	rows.append({"slot_index": free, "item_id": "flask_hp_minor", "quantity": n})
+	await g.api.save_inventory(cid, rows.map(func(r: Dictionary) -> Dictionary: return {"slot_index": int(r["slot_index"]), "item_id": r["item_id"], "quantity": int(r["quantity"]), "instance_id": r.get("instance_id")}), 48)
+	await g.ui_host.refresh_inventory()
+	return g.ui_host.inventory.count("flask_hp_minor")
+
+
 func _logout() -> void:
 	m.slice.ui_host.leave_world()
 	await until(func() -> bool: return _at("login"), 30.0)
@@ -113,7 +129,7 @@ func _switch_character() -> void:
 	var g: DmNextGame = m.slice
 	var tok := api.get_token()
 	var cid := int(g.character["id"])
-	g.ui_host.inventory.add({"item_id": "flask_hp_minor", "quantity": 1})
+	await DmTestBag.give(g.ui_host.inventory, {"item_id": "flask_hp_minor", "quantity": 1})
 	var flasks := g.ui_host.inventory.count("flask_hp_minor")
 	var old_size := root.size
 	root.size = Vector2i(1280, 720)   # the headless window is tiny: the Settings window needs room for the click to land on it
@@ -433,10 +449,9 @@ func _run() -> void:
 		check(m.flow == null, "%s: front screens gone" % id)
 		var bag_before: int = g.ui_host.slots.size()
 		if n == 1:
-			# persistence: a bag item + gold survive log out -> log in
-			flasks0 = g.ui_host.inventory.count("flask_hp_minor")
-			g.ui_host.inventory.add({"item_id": "flask_hp_minor", "quantity": 2})
-			ch["gold"] = int(ch.get("gold", 0)) + 0   # gold is credited by the rewards; the bag is what this probes
+			# persistence: a sip queued at log out reaches the server (the client never saves its bag, DECISIONS B25)
+			flasks0 = await _seed_flasks(g, 4)
+			check(g.ui_host.inventory.consume("flask_hp_minor"), "a sip")
 		await _logout()
 		check(m.get_node_or_null("NextGame") == null, "%s: log out frees the rebuild" % id)
 		check(api.get_token() == "", "%s: log out clears the session" % id)
@@ -444,16 +459,16 @@ func _run() -> void:
 			await _login(who)
 			var g2: DmNextGame = m.slice
 			check(g2 != null and int(g2.character["id"]) == int(ch["id"]) and int(g2.character["class_index"]) == necro[id], "re-enter: same persisted character")
-			check(g2 != null and g2.ui_host.inventory.count("flask_hp_minor") == flasks0 + 2 and g2.ui_host.slots.size() >= bag_before, "re-enter: the bag item persisted through the log out flush")
-			# quit saves
-			g2.ui_host.inventory.add({"item_id": "flask_hp_minor", "quantity": 3})
+			check(g2 != null and g2.ui_host.inventory.count("flask_hp_minor") == flasks0 - 1 and g2.ui_host.slots.size() >= bag_before, "re-enter: the sip queued at log out reached the server")
+			# quit sends what is queued
+			check(g2.ui_host.inventory.consume("flask_hp_minor") and g2.ui_host.inventory.consume("flask_hp_minor"), "two more sips")
 			await m.save_all()
 			var inv := await api.get_inventory(int(g2.character["id"]))
 			var total := 0
 			for s in inv.data:
 				if s is Dictionary and String(s.get("item_id", "")) == "flask_hp_minor":
 					total += int(s.get("quantity", 0))
-			check(total == flasks0 + 5, "quit: save_all flushed the bag to the backend (%d)" % total)
+			check(total == flasks0 - 3, "quit: save_all sent the queued sips to the backend (%d)" % total)
 			m.slice = g2   # save_all detaches it; hand it back for the clean log out
 			await _logout()
 	# ---- 3 enter/leave cycles: no growth

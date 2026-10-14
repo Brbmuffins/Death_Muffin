@@ -133,7 +133,7 @@ func _run() -> void:
 	game.clear_calls()
 	ui.inv.panel.sell_requested.emit(_card(ui, "material_copper_shard"), 1)
 	await _frames(3)
-	_check(not game.calls_to("/api/inventory/save").is_empty() and not game.calls_to("/api/character/save-progress").is_empty(), "sell saves the bag and credits gold")
+	_check(not game.calls_to("/api/inventory/sell").is_empty() and game.calls_to("/api/inventory/save").is_empty(), "sell is the server's sale, never a bag save")
 	_check(int(game.character["gold"]) == 1502, "sell credits gold")
 	# Selling gear in combat must not re-text every other card (each verdict is a gear-power simulation): the cards and the junk verdicts
 	# depend on what is worn, never on the other bag rows, and the server's copy of an unchanged row (new id, floats) is the same card.
@@ -162,7 +162,7 @@ func _run() -> void:
 	game.clear_calls()
 	ui.inv.panel.sort_requested.emit()
 	await _frames(3)
-	_check(not game.calls_to("/api/inventory/save").is_empty(), "sort saves the bag")
+	_check(not game.calls_to("/api/inventory/sort").is_empty() and game.calls_to("/api/inventory/save").is_empty(), "sort is the server's, never a bag save")
 
 	await _more(game, ui)
 	await _panels(game, ui)
@@ -467,13 +467,13 @@ func _panels(game: DmMockGame, ui: DmGameUi) -> void:
 	pb.vault.sort_requested.emit()
 	await _frames(3)
 	_check(not game.calls_to("/api/vault/sort").is_empty(), "vault sort -> DmApi")
-	_check(not game.calls_to("/api/inventory/save").is_empty(), "vault sort also sorts and saves the bag")
+	_check(not game.calls_to("/api/inventory/sort").is_empty(), "vault sort also sorts the bag (server)")
 	game.clear_calls()
 	pb.vault.move_requested.emit("bag", 4, "vault", 12, -1)
 	await _frames(3)
 	var mv: Dictionary = _last(game, "/api/vault/move")
 	_check(mv.get("from") == "bag" and int(mv.get("fromSlot", -1)) == 4 and mv.get("to") == "vault" and int(mv.get("toSlot", -1)) == 12 and not mv.has("quantity"), "a Vault-window drop on a cell -> vault_move to exactly that slot (%s)" % mv)
-	_check(not game.calls_to("/api/inventory/save").is_empty(), "unsaved bag edits are saved before the move")
+	_check(game.calls_to("/api/inventory/save").is_empty(), "a move never saves the bag")
 	game.clear_calls()
 	ui.inv.panel.bag_move_requested.emit(4, 9)
 	await _frames(3)

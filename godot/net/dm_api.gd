@@ -226,6 +226,7 @@ func change_discipline(character_id: int, class_index: int) -> DmResult:
 func get_inventory(character_id: int) -> DmResult:
 	return _slots(await _rget("/api/inventory/%d" % character_id))
 
+## The whole-bag save: a GM-mode tool on the live server (DECISIONS B25) and the tests' way to seed a bag on the mock; the game never calls it.
 ## `bag_size` < 0 = omit (the server then assumes the old 24-slot bag).
 func save_inventory(character_id: int, slots: Array, bag_size: int = -1) -> DmResult:
 	var body := {"characterId": character_id, "slots": slots}
@@ -273,6 +274,21 @@ func drops_claim(character_id: int, claim: Dictionary, session_id: String = "") 
 ## data: {sold, gold, goldTotal, bag}.
 func sell_items(character_id: int, items: Array) -> DmResult:
 	return _decorate_keys(await _post("/api/inventory/sell", {"characterId": character_id, "items": items}), ["bag"])
+
+## The Reliquary's Sort, decided by the server (DECISIONS B25): `locked` bag slots move but never merge. data: {bag, moves: {old slot: new slot}}
+## (int keys).
+func sort_bag(character_id: int, locked: Array) -> DmResult:
+	var r := _decorate_keys(await _post("/api/inventory/sort", {"characterId": character_id, "locked": locked}), ["bag"])
+	if r.ok and r.data is Dictionary and r.data.get("moves") is Dictionary:
+		var moves := {}
+		for k in r.data["moves"]:
+			moves[int(k)] = int(r.data["moves"][k])
+		r.data["moves"] = moves
+	return r
+
+## Consumables the hero used (flasks, brews, meals), batched: uses [{item_id, slot_index?, quantity}]. data: {bag, used: [{item_id, quantity}]}.
+func use_items(character_id: int, uses: Array) -> DmResult:
+	return _decorate_keys(await _post("/api/inventory/use", {"characterId": character_id, "uses": uses}), ["bag"])
 
 ## Pick a dropped piece up (the server checks who may). data: {slot, bag}.
 func ground_pickup(character_id: int, drop_id: String) -> DmResult:

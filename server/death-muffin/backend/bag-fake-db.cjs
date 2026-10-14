@@ -194,7 +194,7 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
     if (sql.startsWith('SELECT instance_id FROM ground_drops')) return [ground.filter((id) => p[0].includes(id)).map((id) => ({ instance_id: id }))];
     if (sql.startsWith('DELETE FROM loot_instances WHERE id IN')) { for (const id of p[0]) dropInstance(id); return [{}]; }
     if (sql.startsWith('SELECT id, item_type, rarity FROM items')) return [p[0].filter((id) => ITEMS[id]).map((id) => ({ id, item_type: ITEMS[id].type, rarity: ITEMS[id].rarity }))];
-    if (sql.startsWith('SELECT id, stackable')) return [p[0].filter((id) => ITEMS[id]).map((id) => ({ equipment_slot: ITEMS[id].type === 'weapon' ? 'main_hand' : ITEMS[id].type === 'offhand' ? 'off_hand' : null, two_handed: id.startsWith('staff_') ? 1 : 0, id, stackable: ITEMS[id].stack > 1 ? 1 : 0, max_stack_size: ITEMS[id].stack, item_type: ITEMS[id].type, rarity: ITEMS[id].rarity }))];
+    if (sql.startsWith('SELECT id, stackable') || sql.startsWith('SELECT id, name, stackable')) return [p[0].filter((id) => ITEMS[id]).map((id) => ({ equipment_slot: ITEMS[id].type === 'weapon' ? 'main_hand' : ITEMS[id].type === 'offhand' ? 'off_hand' : null, two_handed: id.startsWith('staff_') ? 1 : 0, id, name: id, stackable: ITEMS[id].stack > 1 ? 1 : 0, max_stack_size: ITEMS[id].stack, item_type: ITEMS[id].type, rarity: ITEMS[id].rarity }))];
     if (extra) { const r = extra(sql, p); if (r) return r; }
     throw new Error(`unexpected query: ${sql.slice(0, 80)}`);
   };
@@ -214,7 +214,7 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
 /** Mount a module on a fake express app; returns call(route, { body, params }) -> { status, json }. */
 function harness(mount, db, { owned = true, random } = {}) {
   const routes = {};
-  const app = { get: (p, _m, h) => (routes[`GET ${p}`] = h), post: (p, _m, h) => (routes[`POST ${p}`] = h) };
+  const app = { get: (p, ...hs) => (routes[`GET ${p}`] = hs[hs.length - 1]), post: (p, ...hs) => (routes[`POST ${p}`] = hs[hs.length - 1]) };
   mount(app, db.pool, { requireAuth: () => {}, ownsCharacter: async () => owned, ...(random ? { random } : {}) });
   return async (route, { body, params } = {}) => {
     let status = 200, json;

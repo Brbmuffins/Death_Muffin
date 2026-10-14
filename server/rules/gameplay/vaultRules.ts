@@ -21,6 +21,8 @@ export interface VaultRow {
   inst?: number;
   /** Sort hint for instance rows (affixRules.instancePower: affix count x 1000 + item level). */
   power?: number;
+  /** A rolled piece's item level (the bag sort orders by it). */
+  ilvl?: number;
 }
 
 export interface VaultItemInfo {
@@ -28,6 +30,8 @@ export interface VaultItemInfo {
   maxStack: number;
   itemType: string;
   rarity: string;
+  /** The item's display name (the bag sort's tie-break). */
+  name?: string;
 }
 export type VaultInfo = (itemId: string) => VaultItemInfo;
 
@@ -211,3 +215,90 @@ export function addGrants(bag: VaultRow[], grants: { itemId: string; qty: number
   for (const g of grants) if (put(rows, BAG_SLOTS, g.itemId, g.qty, info(g.itemId).maxStack) > 0) return null;
   return rows.sort(bySlot);
 }
+
+export type BagSortResult = { bag: VaultRow[]; moves: Record<number, number> };
+
+/**
+ * The Reliquary's Sort (the server's, DECISIONS B25): merge stacks (never a rolled piece or a locked slot), then order by type, rarity (best
+ * first), item level (highest first), name, size and old slot, packed from slot 0 around `fixed` rows, which keep their slots.
+ * `locked` = bag slots the player locked (they move but never merge). `moves` maps every old slot to its new one (locks follow their item).
+ */
+export function sortBag(bag: VaultRow[], info: VaultInfo, locked: number[] = []): BagSortResult {
+  const isLocked = new Set(locked);
+  const fixed = bag.filter((r) => r.fixed);
+  const rows: { row: VaultRow; from: number[] }[] = [];
+  const open = new Map<string, number>();
+  for (const r of clone(bag.filter((x) => !x.fixed))) {
+    const cap = r.inst !== undefined ? 1 : Math.max(1, info(r.itemId).maxStack);
+    if (cap <= 1 || isLocked.has(r.slot)) { rows.push({ row: { ...r }, from: [r.slot] }); continue; }
+    let left = r.qty;
+    let first = true;
+    while (left > 0) {
+      let at = open.get(r.itemId);
+      if (at === undefined || rows[at].row.qty >= cap) {
+        at = rows.length;
+        rows.push({ row: { slot: r.slot, itemId: r.itemId, qty: 0 }, from: [] });
+        open.set(r.itemId, at);
+      }
+      const add = Math.min(left, cap - rows[at].row.qty);
+      rows[at].row.qty += add;
+      if (first || rows[at].from.length === 0) rows[at].from.push(r.slot);
+      first = false;
+      left -= add;
+    }
+  }
+  const nameOf = (id: string) => info(id).name ?? id;
+  rows.sort((a, b) => {
+    const ia = info(a.row.itemId);
+    const ib = info(b.row.itemId);
+    const na = nameOf(a.row.itemId);
+    const nb = nameOf(b.row.itemId);
+    return (
+      rank(TYPE_ORDER, ia.itemType) - rank(TYPE_ORDER, ib.itemType) ||
+      rank(RARITY_ORDER, ia.rarity) - rank(RARITY_ORDER, ib.rarity) ||
+      (b.row.ilvl ?? 0) - (a.row.ilvl ?? 0) ||
+      (na < nb ? -1 : na > nb ? 1 : 0) ||
+      b.row.qty - a.row.qty ||
+      a.from[0] - b.from[0]
+    );
+  });
+  const taken = new Set(fixed.map((r) => r.slot));
+  const moves: Record<number, number> = {};
+  const out: VaultRow[] = fixed.map((r) => ({ ...r }));
+  let slot = 0;
+  for (const { row, from } of rows) {
+    while (taken.has(slot)) slot += 1;
+    out.push({ ...row, slot });
+    for (const f of from) moves[f] = slot;
+    slot += 1;
+  }
+  return { bag: out.sort(bySlot), moves };
+}
+
+export const MAX_USES = 40;
+export type ItemUse = { itemId: string; slot?: number; qty: number };
+export type UseResult = { bag: VaultRow[]; used: { itemId: string; qty: number }[] };
+
+/**
+ * Drinking, eating, a brew (DECISIONS B25): take `qty` of each used item from the bag, from the slot named first, then from its other stacks.
+ * Only consumables are used up; what the bag does not hold is skipped (the client's view was stale), never an error.
+ */
+export function useItems(bag: VaultRow[], uses: ItemUse[], info: VaultInfo): UseResult {
+  const rows = clone(bag);
+  const used = new Map<string, number>();
+  for (const u of uses.slice(0, MAX_USES)) {
+    if (info(u.itemId).itemType !== 'consumable') continue;
+    let left = Math.max(0, Math.floor(u.qty));
+    const order = rows.filter((r) => !r.fixed && r.inst === undefined && r.itemId === u.itemId)
+      .sort((a, b) => (a.slot === u.slot ? -1 : b.slot === u.slot ? 1 : a.slot - b.slot));
+    for (const r of order) {
+      if (left <= 0) break;
+      const take = Math.min(left, r.qty);
+      r.qty -= take;
+      left -= take;
+      used.set(u.itemId, (used.get(u.itemId) ?? 0) + take);
+    }
+  }
+  return { bag: rows.filter((r) => r.qty > 0), used: [...used].map(([itemId, qty]) => ({ itemId, qty })) };
+}
+

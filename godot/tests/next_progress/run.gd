@@ -170,10 +170,10 @@ func _run() -> void:
 	# ---- belt: Q flask (cooldown), Z / X brews
 	var inv := g.ui_host.inventory
 	var f0 := inv.count("flask_hp_minor")   # kills may have dropped some
-	inv.add({"item_id": "flask_hp_minor", "quantity": 3})
-	inv.add({"item_id": "flask_damage", "quantity": 2})
-	inv.add({"item_id": "flask_speed", "quantity": 1})
-	inv.add({"item_id": "meal_crypt_eel", "quantity": 1})
+	await DmTestBag.give(inv, {"item_id": "flask_hp_minor", "quantity": 3})
+	await DmTestBag.give(inv, {"item_id": "flask_damage", "quantity": 2})
+	await DmTestBag.give(inv, {"item_id": "flask_speed", "quantity": 1})
+	await DmTestBag.give(inv, {"item_id": "meal_crypt_eel", "quantity": 1})
 	b.p["hp"] = b.p["stats"]["maxHp"] * 0.2
 	b._mirror_from_state()
 	var hp0 := b.hp

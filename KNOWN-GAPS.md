@@ -16,9 +16,9 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
 
 Live runs `AUTHORITY_KILLS=audit` and the save guards in report mode (findings in `progress_audit`, nothing clamped); enforce waits for
 real play on the gains saves (ROADMAP: Phase 4).
-- **Client-claimed saves:** XP and gold arrive as gains judged against the kill ledger (DECISIONS B23), but area kills, shards and the
-  bag's non-drop items are still the client's claim, bounded only by the report-mode guards (ROADMAP: Phase 2). Drops are the server's
-  (DECISIONS B20).
+- **Client-claimed saves:** XP and gold arrive as gains judged against the kill ledger (DECISIONS B23) and the bag is the server's
+  (DECISIONS B25), but area kills and shards in the necromancer save are still the client's claim, bounded only by the report-mode guards
+  until the kill ledger enforces (ROADMAP: Phase 4).
 
 ## Disciplines
 
