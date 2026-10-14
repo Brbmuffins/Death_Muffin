@@ -127,7 +127,7 @@ func _rites() -> void:
 	ok(_lost(behind) > before_b and _lost(wide) > 0.0, "spin: hits all round her, including behind")
 	ok(int(c.p["souls"]) == 28 and is_equal_approx(c.cooldown_left("harvest_spin"), 3500.0), "spin: 2 souls, 3.5 s")
 
-	# Scythe Weave: two passes over the half-circle in front of her (the second 0.35 s later), free, 0.9 s
+	# Scythe Weave: one quick blow to the nearest enemy in the narrow cone in front of her, strokes alternating, free, 0.45 s
 	_ready_cast(c)
 	c.p["souls"] = 12
 	var f0 := _lost(front)
@@ -135,13 +135,16 @@ func _rites() -> void:
 	var w0 := _lost(wide)
 	c.request_cast("scythe_weave", Vector3(6, 0, 0))
 	var wdmg := DmAbilities.rite_damage(DmAbilities.sp(c.p, c.now_ms), "scythe_weave")
-	ok(is_equal_approx(_lost(front) - f0, wdmg) and is_equal_approx(_lost(wide) - w0, wdmg), "weave: the first pass hits the front and the side once (%.1f)" % wdmg)
-	_step(c, 0.5)
-	ok(is_equal_approx(_lost(front) - f0, 2.0 * wdmg) and is_equal_approx(_lost(wide) - w0, 2.0 * wdmg), "weave: the second pass hits them again")
+	ok(is_equal_approx(_lost(front) - f0, wdmg) and is_equal_approx(_lost(wide) - w0, 0.0), "weave: hits only the nearest enemy in front, once (%.1f)" % wdmg)
+	ok(int(c.p["weaveStroke"]) == 0, "weave: the first stroke is the overhead chop")
+	_step(c, 0.2)
+	ok(is_equal_approx(c.cooldown_left("scythe_weave"), 250.0), "weave: 0.45 s cooldown (%.0f ms left after 0.2 s)" % c.cooldown_left("scythe_weave"))
+	_step(c, 0.3)
+	c.request_cast("scythe_weave", Vector3(6, 0, 0))
+	ok(int(c.p["weaveStroke"]) == 1 and is_equal_approx(_lost(front) - f0, 2.0 * wdmg), "weave: the next press is the rising cut and hits again")
 	ok(is_equal_approx(_lost(behind) - b0, 0.0), "weave: nothing behind her is touched")
 	ok(int(c.p["souls"]) == 12 and rej.is_empty(), "weave: costs no souls")
-	ok(is_equal_approx(c.cooldown_left("scythe_weave"), 400.0), "weave: 0.9 s cooldown (%.0f ms left after 0.5 s)" % c.cooldown_left("scythe_weave"))
-	ok(_events(w, "scythe_weave", "weave").size() >= 2, "weave: one event per pass")
+	ok(_events(w, "scythe_weave", "weave").size() >= 2, "weave: one event per strike")
 	_ready_cast(c)
 	c.request_cast("scythe_weave", Vector3(0, 0, 0))
 	ok(rej.size() == 1 and rej[0][1] == "no_target", "weave: refused with the cursor on her")

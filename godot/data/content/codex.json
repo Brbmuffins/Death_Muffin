@@ -409,7 +409,7 @@
   "scythe_weave": {
    "fx": "reaper",
    "colour": "Soul green",
-   "tip": "Free, 0.9s cooldown: the scythe twirled in a figure eight across the half-circle in front of you, two passes 4.4m long, so anything in the middle is hit twice. Hold its key and you keep weaving. It does not feed the soul bag, so use it to hold a crowd in front of you; place it from the Grimoire."
+   "tip": "Free, 0.45s cooldown: your fast single-target strike. The scythe chops down from above onto the nearest enemy within 3.6m in front of you, then cuts back up through it on the next press. Hold its key and you keep striking. It does not feed the soul bag; place it from the Grimoire."
   },
   "unleash_souls": {
    "fx": "reaper",
