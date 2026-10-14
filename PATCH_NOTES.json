@@ -3,6 +3,7 @@
     "date": "2026-10-14",
     "title": "Heat That Adds Up",
     "items": [
+      "Fixed the Professions window saying you had no tool when your hatchet, pickaxe, rod or spade was on the tool belt.",
       "Self vows now pay: every vow you swear on yourself (Frail Vessel, Famished Rites, Brittle Dead, Dry Cellar) adds to your gold and XP bonus, solo and in a party.",
       "In a party you earn at the host's heat plus your own self vows, so taking on more personal handicaps pays more than your friends get.",
       "The host's heat and difficulty now show everywhere a party does: your friends list, party invites, the Party window and above the party list on your screen (with \"+N yours\" for your own self vows).",

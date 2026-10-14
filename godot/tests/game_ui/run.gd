@@ -520,6 +520,12 @@ func _extras(game: DmMockGame, ui: DmGameUi) -> void:
 	# tool belt offer: empty belt + bag tool
 	var offer := ui.inv.belt_offer()
 	_check(offer.size() == 1 and offer[0]["item_id"] == "tool_pickaxe_iron", "belt offer picks the best bag tool")
+	# a belted tool counts as owned in the Professions tool line (Bug report #9031)
+	var saved_slots: Array = game.slots
+	game.slots = [{"slot_index": DmGathering.BELT_BASE + 1, "item_id": "tool_pickaxe_iron", "quantity": 1}]
+	ui.pb._professions_data()
+	_check(ui.pb.professions.tool_line("mining").begins_with("Tool: ") and ui.pb.professions.tool_line("mining").ends_with("on belt"), "belted pickaxe shows on the Professions tool line")
+	game.slots = saved_slots
 	# reveal logic
 	_check(DmHudReveal.veteran_reveals({"level": 5, "gold": 0, "swap_ready": true, "has_gear": true}).has("menu.skills"), "veteran reveals")
 	var r := DmHudReveal.new(9, DmCounselStore.new())

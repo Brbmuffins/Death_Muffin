@@ -382,6 +382,7 @@ func _professions_data() -> void:
 	for s in game.slots:
 		if DmGathering.is_belt_slot(int(s["slot_index"])):
 			belt.append(s["item_id"])
+			held.append(s["item_id"])   # held = bag + belt: a belted tool counts as owned
 		elif int(s["slot_index"]) < 48:
 			held.append(s["item_id"])
 	professions.set_tools(held, belt)
