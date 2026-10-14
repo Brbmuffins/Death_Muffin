@@ -582,7 +582,7 @@ func _count_only(m: DmRewardsMember, ev: Dictionary) -> void:
 	var area := String(ev["area"])
 	if bool(DmContent.area(area)["safe"]):
 		return
-	m.reporter.kill({"area": area, "def": ev["def"], "level": float(ev["level"]), "elite": bool(ev["elite"]), "tier": wave_tier, "diff": difficulty, "rank": ascension,
+	m.reporter.kill({"area": area, "def": ev["def"], "level": float(ev["level"]), "elite": bool(ev["elite"]), "tier": wave_tier, "diff": difficulty, "rank": int(ascension) + m.self_heat,
 		"xpMult": 1.0, "goldMult": 1.0, "shardMult": 1.0, "objective": true})
 	m.pending_areas.append(area)
 	kill_counted.emit(m.character_id, area)
@@ -620,7 +620,7 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 		chain_mult = m.chain.mult()
 		if up != null:
 			chain_tier_up.emit(m.character_id, up)
-	var asc := DmAscension.ascension_reward_mult(ascension) * chain_mult * (m.omen_reward if combat else 1.0)
+	var asc := DmAscension.ascension_reward_mult(ascension + m.self_heat) * chain_mult * (m.omen_reward if combat else 1.0)
 	if int(reward["shards"]) > 0 and combat:
 		reward["shards"] = int(ceil(float(reward["shards"]) * m.omen_shard))
 	reward["gold"] = DmMath.js_round(float(reward["gold"]) * asc)
@@ -637,7 +637,7 @@ func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
 	_drop_items(m, at, rolled["items"] if rolled.has("items") else reward["items"], level, "elite")
 	if combat:
 		var nb := DmEnemyStats.new_blood_xp_mult(String(m.discipline["family"]), float(m.prog.character["level"]))
-		m.reporter.kill({"area": area, "def": ev["def"], "level": level, "elite": elite, "tier": wave_tier, "diff": difficulty, "rank": ascension,
+		m.reporter.kill({"area": area, "def": ev["def"], "level": level, "elite": elite, "tier": wave_tier, "diff": difficulty, "rank": int(ascension) + m.self_heat,
 			"xpMult": asc * (1.0 + m.wisdom) * nb, "goldMult": asc, "shardMult": m.omen_shard})
 		m.pending_xp += float(DmMath.js_round(float(reward["xp"]) * nb))
 		m.pending_areas.append(area)

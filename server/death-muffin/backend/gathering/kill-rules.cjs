@@ -38,8 +38,11 @@ __export(killRules_exports, {
   mixAllowance: () => mixAllowance,
   multCaps: () => multCaps,
   parseKillReport: () => parseKillReport,
+  rewardRank: () => rewardRank,
   rosterIds: () => rosterIds,
-  vowHeat: () => vowHeat
+  selfHeat: () => selfHeat,
+  vowHeat: () => vowHeat,
+  worldHeat: () => worldHeat
 });
 module.exports = __toCommonJS(killRules_exports);
 
@@ -1090,6 +1093,17 @@ function vowHeat(vows) {
   let h = 0;
   for (const id of VOW_ORDER) h += vowSteps(vows, id) * VOWS[id].heat;
   return h;
+}
+function worldVows(vows) {
+  const out = {};
+  for (const id of VOW_ORDER) if (VOWS[id].scope === "world" && vowSteps(vows, id)) out[id] = vowSteps(vows, id);
+  return out;
+}
+function worldHeat(vows) {
+  return vowHeat(worldVows(vows));
+}
+function selfHeat(vows) {
+  return vowHeat(vows) - worldHeat(vows);
 }
 
 // server/rules/content/fen.ts
@@ -2902,6 +2916,9 @@ function groundOpen(area, unlocked) {
   if (unlocked.includes(area)) return true;
   return !!a.unlock && (unlocked.includes(a.unlock.area) || !AREAS[a.unlock.area].unlock);
 }
+function rewardRank(ctx) {
+  return Math.max(0, ctx.carried && ctx.world ? ctx.world.rank + Math.max(0, ctx.selfHeat ?? 0) : ctx.ascension);
+}
 function evaluateKillReport(report, ctx) {
   const findings = [];
   const credits = emptyCredits();
@@ -2921,7 +2938,7 @@ function evaluateKillReport(report, ctx) {
       continue;
     }
     const worldLevel = ctx.carried ? Math.max(heroLevel, ctx.world ? ctx.world.level : CARRIED_LEVEL_CEILING) : heroLevel;
-    const worldRank = ctx.carried && ctx.world ? Math.max(ctx.ascension, ctx.world.rank) : ctx.ascension;
+    const worldRank = ctx.carried && ctx.world ? ctx.world.rank : ctx.ascension;
     if (g.level > maxEnemyLevel(id, worldLevel, worldRank, ctx.deepest)) {
       rejected.level += g.n;
       continue;
@@ -2969,7 +2986,7 @@ function evaluateKillReport(report, ctx) {
     if (eliteDropped > 0) findings.push({ kind: "kill_elite", area: id, dropped: eliteDropped, of: total, share: eliteShare });
   }
   let overRate = 0;
-  const caps = multCaps(Math.max(ctx.ascension, 0), heroLevel);
+  const caps = multCaps(rewardRank(ctx), heroLevel);
   const nb = newBloodXpMult("new_blood", heroLevel);
   for (const g of ok) {
     let n = allowed.get(g) ?? 0;
@@ -3035,7 +3052,7 @@ function evaluateKillReport(report, ctx) {
         continue;
       }
       floorBudget -= 1;
-      const mult = Math.min(f.mult, multCaps(ctx.ascension, heroLevel).gold / AUTHORITY.CHAIN);
+      const mult = Math.min(f.mult, multCaps(rewardRank(ctx), heroLevel).gold / AUTHORITY.CHAIN);
       if (f.clear) {
         floorsAccepted += 1;
         maxCleared = Math.max(maxCleared, f.depth);
@@ -3083,6 +3100,9 @@ var FLOOR_RULES = { FLOOR_BONUS_KILLS, CHEST_KILLS, chestEvery: DEPTHS.chestEver
   mixAllowance,
   multCaps,
   parseKillReport,
+  rewardRank,
   rosterIds,
-  vowHeat
+  selfHeat,
+  vowHeat,
+  worldHeat
 });

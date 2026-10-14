@@ -409,7 +409,7 @@ func host_session(session_name: String, is_private: bool = true) -> void:
 	last_error = {}
 	busy = "creating"
 	changed.emit()
-	_ensure_link(func() -> void: lobby.create_session(nm, shell.area_id, is_private))
+	_ensure_link(func() -> void: lobby.create_session(nm, shell.area_id, is_private, "", world()))
 
 
 func default_name() -> String:
@@ -453,6 +453,24 @@ func _on_created(i: Dictionary, c: String) -> void:
 
 func _on_updated(i: Dictionary) -> void:
 	info = i
+	changed.emit()
+
+
+## Host: our world as members and friends see it (DECISIONS B26): the heat of our world vows and our difficulty.
+func world() -> Dictionary:
+	return {"heat": int(shell.meta.heat) if shell.meta != null else 0, "difficulty": shell.meta.difficulty if shell.meta != null else "medium"}
+
+
+## Host: our vows or difficulty changed (DmNextMeta.sync / set_difficulty): tell the lobby, which tells members, friends and the list.
+func sync_world() -> void:
+	if mode != HOST or lobby == null or link != "ready":
+		return
+	var w := world()
+	if int(info.get("heat", -1)) == int(w["heat"]) and String(info.get("difficulty", "")) == String(w["difficulty"]):
+		return
+	info["heat"] = int(w["heat"])
+	info["difficulty"] = String(w["difficulty"])
+	lobby.set_world(int(w["heat"]), String(w["difficulty"]))
 	changed.emit()
 
 
@@ -563,7 +581,14 @@ func adopt_client(lobby_: DmLobbyClient, relay: DmRelayPeer) -> void:
 	info = lobby.session
 	online = true
 	_wire_social(lobby)
+	lobby.world_changed.connect(_on_world_changed)
 	send_presence()
+
+
+## A member: the host's world changed (DECISIONS B26); the lobby's session already holds it.
+func _on_world_changed(_heat: int, _difficulty: String) -> void:
+	info = lobby.session
+	changed.emit()
 
 
 # ---- leaving / the session ends --------------------------------------------------------------------------------------------------
@@ -709,11 +734,13 @@ func fetch_build(peer: int) -> void:
 	var m: DmRewardsMember = shell.rewards.members.get(key)
 	if m != null:
 		m.prog.character["level"] = int(b.character["level"])
+		m.self_heat = DmAscension.self_heat(r.data.get("local", {}).get("vows", {}))   # its own self vows pay on top of our world (DECISIONS B26)
 	var build := shell.build_for(peer)
 	b.refresh_stats(build)
 	var c := b.get_node_or_null("Rites") as DmRiteCaster
 	if c != null:
 		c.refresh_stats(build)
+		c.set_runes(shell.rune_sockets(peer))   # its socketed runes reach its rites (the server's record)
 	sync_levels()
 
 
@@ -1077,7 +1104,7 @@ func _on_invited(from_name: String, from_id: int, i: Dictionary, auto: bool) -> 
 			invites.erase(v)
 			break
 	invites.append({"from_id": from_id, "from": from_name, "info": i, "at": Time.get_ticks_msec()})
-	social_notice.emit("%s invited you to their party. Join from Social (O)." % from_name)
+	social_notice.emit("%s invited you to their party (%s). Join from Social (O)." % [from_name, DmNextFriends.world_line(i)])
 	changed.emit()
 
 

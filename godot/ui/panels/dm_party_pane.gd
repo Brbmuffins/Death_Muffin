@@ -210,7 +210,7 @@ func _session_row(s: Dictionary, idle: bool) -> Control:
 	var nm := DmUi.label(String(s.get("name", "")), "DmRow")
 	nm.clip_text = true
 	col.add_child(nm)
-	var sub := DmUi.label("%s  ·  %s" % [String(s.get("host", "")), _area_name(String(s.get("area", "")))], "DmMuted")
+	var sub := DmUi.label("%s  ·  %s  ·  %s" % [String(s.get("host", "")), _area_name(String(s.get("area", ""))), DmNextFriends.world_line(s)], "DmMuted")
 	sub.add_theme_font_size_override("font_size", 13)
 	sub.clip_text = true
 	col.add_child(sub)
@@ -241,7 +241,8 @@ func _set_party(v: Dictionary, mode: String) -> void:
 	var is_host := mode == "host"
 	var count := maxi(roster.size(), int(info.get("players", roster.size())))
 	var mx := int(v.get("max", 4))
-	session_label.text = "%s  ·  %s  ·  %d / %d players" % [String(info.get("name", "Party")), "Hosted by you" if is_host else "Host: %s" % String(v.get("host_name", info.get("host", ""))), count, mx]
+	session_label.text = "%s  ·  %s  ·  %s  ·  %d / %d players" % [String(info.get("name", "Party")), "Hosted by you" if is_host else "Host: %s" % String(v.get("host_name", info.get("host", ""))),
+		DmNextFriends.world_line(info), count, mx]
 	_syncing = true
 	closed_check.visible = is_host
 	closed_check.button_pressed = bool(v.get("closed", false))

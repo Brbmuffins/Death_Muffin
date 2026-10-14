@@ -225,7 +225,8 @@ func _friend_row(f: Dictionary, busy: bool, mine: Dictionary) -> Control:
 func _invite_row(i: Dictionary) -> Control:
 	var from := int(i.get("from_id", 0))
 	var info: Dictionary = i.get("info", {})
-	var pc := _row("%s invited you" % String(i.get("from", "")), "%s · %d/%d players" % [String(info.get("name", "Their party")), int(info.get("players", 1)), int(info.get("max", 4))])
+	var pc := _row("%s invited you" % String(i.get("from", "")), "%s · %s · %d/%d players" % [String(info.get("name", "Their party")), DmNextFriends.world_line(info),
+		int(info.get("players", 1)), int(info.get("max", 4))])
 	var j := _button("Join", true)
 	j.pressed.connect(func() -> void: invite_answered.emit(from, true))
 	pc.get_child(0).add_child(j)

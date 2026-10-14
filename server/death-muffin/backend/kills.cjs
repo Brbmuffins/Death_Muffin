@@ -181,8 +181,9 @@ async function handleReport(pool, { char, accountId, body, account, carried = fa
     // Bosses are backed by paid summons first (owner 2026-10-14: spamming bosses has no limit), then by the clock bucket.
     const summonsLeft = Math.max(0, (await summonCredit(conn, char.id)) - ledger.summonUsed);
     const rank = ascensionRank(necro.ascension);
+    const selfHeat = necro.ascension && typeof necro.ascension === 'object' ? rules.selfHeat(necro.ascension) : 0;
     const ev = rules.evaluateKillReport(report, {
-      unlocked: necro.unlocked, ascension: rank, heroLevel: num(locked.level, 1), deepest: ledger.depthProved, ...(carried && world ? { world } : {}),
+      unlocked: necro.unlocked, ascension: rank, selfHeat, heroLevel: num(locked.level, 1), deepest: ledger.depthProved, ...(carried && world ? { world } : {}),
       killBucket: buckets.killBucket, bossBucket: buckets.bossBucket + summonsLeft, floorBucket: buckets.floorBucket, maxCleared: ledger.maxCleared, staff: !!(account && account.staff), carried,
     });
     const credit = { ...ledger.killCredit };

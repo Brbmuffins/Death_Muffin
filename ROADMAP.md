@@ -24,17 +24,10 @@ gathering, labor, contracts and selling pay their gold on the server; boss kills
 gold, XP and shard change with its reason; only the server writes a bag (every bag change is a server operation, the whole-bag save is
 GM-mode only).
 
-**Phase 3: co-op on the same rules.**
-1. **Guests fight at their real power.** Live 2026-10-14 (DECISIONS B22): the host builds each guest's hero from the server's record
-   (level, gear, set bonuses, affixes, boons, vows including self vows, upgrade tiers) and reads it again when the guest's worn
-   gear changes; a guest's party kills are judged in the host's world. Still to do: rune sockets reaching a guest's rites.
-2. **Heat that adds up.** The session's heat is the host's world vows (it sets the world). Each player's reward heat is the
-   session heat plus their own self vows, solo too (today the xp / gold multiplier counts world vows only); the backend's
-   reward caps use the same total, with the host's level and heat taken from the server's record, not the report.
-3. **Show the host's world, always.** "Heat N · Difficulty" (also "Heat 0 · Medium") in the friends list, the party invite,
-   the Party window (session list and header) and the guest's HUD, which also shows its own self-vow part ("+3 yours").
-   The lobby carries heat and difficulty on the session; it deploys first (manual restart with no sessions).
-   Items 1-3 do not depend on Phases 1-2 and can be built alongside them.
+**Phase 3: co-op on the same rules.** Done 2026-10-14 (DECISIONS B22, B26): the host builds each guest's hero from the server's record
+(level, gear, set bonuses, affixes, boons, vows, upgrade tiers, rune sockets); each player's rewards run at the session's heat (the host's
+world vows) plus their own self vows, and the backend caps them the same way from the host's record; "Heat N · Difficulty" shows in the
+friends list, invites, the Party window and over the HUD's party list ("+N yours" for one's own self vows).
 
 **Phase 4: enforce and watch.** Fix the rule false positives (KNOWN-GAPS: Server authority), clear the old audit rows, then
 after a few days of real solo and co-op play with no new findings set `AUTHORITY_KILLS` and `AUTHORITY_MODE` to enforce (then area kills,

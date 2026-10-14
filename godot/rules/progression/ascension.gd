@@ -31,6 +31,12 @@ static func vow_heat(vows: Variant) -> int:
 	return h
 
 
+## The heat of the vows that curse only the one who swore them: added to the world's heat for that player's rewards (ascension.ts selfHeat,
+## DECISIONS B26).
+static func self_heat(vows: Variant) -> int:
+	return vow_heat(vows) - vow_heat(world_vows(vows))
+
+
 static func world_vows(vows: Variant) -> Dictionary:
 	var out: Dictionary = {}
 	var defs: Dictionary = DmProgContent.vows()

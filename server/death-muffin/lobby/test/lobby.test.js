@@ -96,7 +96,7 @@ test('lobby: create, list, join, leave', async () => {
     a.send({ t: 'list' });
     const l = await a.next('sessions');
     assert.equal(l.sessions.length, 1);
-    assert.deepEqual(Object.keys(l.sessions[0]).sort(), ['area', 'host', 'id', 'max', 'name', 'open', 'players', 'private']);
+    assert.deepEqual(Object.keys(l.sessions[0]).sort(), ['area', 'difficulty', 'heat', 'host', 'id', 'max', 'name', 'open', 'players', 'private']);
     assert.equal(l.sessions[0].host, 'u1');
     assert.equal(l.sessions[0].max, 4);
     a.send({ t: 'join', id: created.session.id });

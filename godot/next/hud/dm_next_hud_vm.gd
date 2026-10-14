@@ -65,7 +65,7 @@ func build() -> Dictionary:
 		"gold": int(host.character.get("gold", 0)), "shards": int(host.progress.get("shards", 0)),
 		"area_name": String(_area(g.area_id).get("name", "")), "area_progress": _area_progress(g.area_id),
 		"primary": _primary_slot(b), "slots": _slot_list(b, level),
-		"target": _target(g), "boss": _boss(g), "party": _party(g), "minimap": _minimap(g, b),
+		"target": _target(g), "boss": _boss(g), "party": _party(g), "party_world": _party_world(g), "minimap": _minimap(g, b),
 		"brews": _brews(), "death": {"show": not b.alive, "sub": "The Chapterhouse will call you back…"},
 		"damage": {"tier": host.progress["damageTier"], "pct": DmUpgrades.damage_bonus_pct(float(host.progress["damageTier"])), "cost": null if host.prog.damage_cost() == -1 else host.prog.damage_cost()},
 		"wave": {"owned": host.progress["waveTierOwned"], "active": host.progress["waveTierActive"], "pct": DmWaveUpgrades.wave_modifiers(float(host.progress["waveTierActive"]))["speedPct"],
@@ -294,6 +294,22 @@ func _affix_chips(e: DmEnemy, base_blurb: String) -> Array:
 		if not parts.is_empty():
 			_aff_blurb = " ".join(parts)
 	return _aff_chips
+
+
+var _world_key := []
+var _world_line := ""
+
+## In a party: the host's world over the party list, "Heat 5 · Hard", and our own self vows' part ("+3 yours") (DECISIONS B26). "" solo.
+## Rebuilt only when the heat, difficulty or our self vows change.
+func _party_world(g: DmNextGame) -> String:
+	if g.party == null or not g.party.in_party():
+		return ""
+	var info: Dictionary = g.party.info
+	var mine := DmAscension.self_heat(host.prog.vows()) if host.prog != null else 0
+	if _world_key.size() != 3 or _world_key[0] != info.get("heat") or _world_key[1] != info.get("difficulty") or _world_key[2] != mine:
+		_world_key = [info.get("heat"), info.get("difficulty"), mine]
+		_world_line = DmNextFriends.world_line(info) + ("  ·  +%d yours" % mine if mine > 0 else "")
+	return _world_line
 
 
 func _party(g: DmNextGame) -> Array:

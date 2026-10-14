@@ -39,11 +39,13 @@ Client -> server: `presence {class, level, area}` (bad values become null; uncha
 friendship: both lists reload and the other side gets `friends_changed`), `invite {accountId}` (host only, an online mutual friend: they may join
 this session for 5 min, also when it is Closed or not accepting), `ask {accountId}` (an online mutual friend; goes to their session's host, or to
 them when solo; one per friend per 30 s; not while in a session), `answer {accountId, accept}` (to an ask in the last 5 min; accepting needs us to
-host: the asker gets an invite with `auto: true`), `set_private {private}` (host: Closed = not listed, invite or code only; gets a code if it had none).
+host: the asker gets an invite with `auto: true`), `set_private {private}` (host: Closed = not listed, invite or code only; gets a code if it had none),
+`world {heat, difficulty}` (host: its world's heat, the world vows, 0-99, and difficulty id; also accepted on `create`; default 0 / medium; display
+only, DECISIONS B26: members get `world {heat, difficulty}`, the host `session_updated`, friends a presence push).
 Server -> client: `friends {list: [presence]}` (online mutual friends, after each list load), `presence {accountId, p}` (p = null: went offline or
-no longer a friend), `friends_changed`, `invited {from, fromId, session, auto}`, `invite_sent {accountId, username}`, `join_request {accountId,
+no longer a friend), `friends_changed`, `invited {from, fromId, session, auto}` (session info carries `heat` and `difficulty`, as in `sessions` and `joined`), `invite_sent {accountId, username}`, `join_request {accountId,
 username, via?}` (via = the friend in our party they asked), `ask_sent {accountId, username}`, `ask_declined {username}`.
-presence = `{accountId, username, class, level, area, session: {id, private, open, players, max, host, isHost} | null}`, pushed on every change
+presence = `{accountId, username, class, level, area, session: {id, private, open, players, max, host, isHost, heat, difficulty} | null}`, pushed on every change
 (presence message, create / join / leave / kick / close, Open / Closed, disconnect). Error codes added: `not_friend already_in`.
 
 ## Binary frames (game packets), 11-byte header + payload

@@ -117,6 +117,16 @@ export function worldVows(vows: VowRanks | undefined): VowRanks {
   return out;
 }
 
+/** The heat of the world vows alone: what a session's world runs at (the host's, in co-op). */
+export function worldHeat(vows: VowRanks | undefined): number {
+  return vowHeat(worldVows(vows));
+}
+
+/** The heat of the vows that curse only the one who swore them: added to the world's heat for that player's rewards (DECISIONS B26). */
+export function selfHeat(vows: VowRanks | undefined): number {
+  return vowHeat(vows) - worldHeat(vows);
+}
+
 /** Everything the vows change, flattened for the systems that apply them. */
 export interface VowEffects {
   /** Levels every enemy and boss runs older. */

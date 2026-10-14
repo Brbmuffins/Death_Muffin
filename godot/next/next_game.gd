@@ -527,12 +527,16 @@ func rite_build(peer_id: int) -> Dictionary:
 	return out
 
 
-## The runes a peer's character has socketed ({rite: rune_id}, DmRunes.sockets_of the bag). Only the local host's bag is known.
+## The runes a peer's character has socketed ({rite: rune_id}, DmRunes.sockets_of its rows): ours from our bag, a member's from the server's record
+## of it (remote_builds, DECISIONS B22), {} until that arrives.
 func rune_sockets(peer_id: int) -> Dictionary:
-	if progress == null or peer_id != session.get_my_id():
-		return {}
 	var b := body_of(peer_id)
-	return DmRunes.sockets_of(progress.slots()) if b != null and b.family == "necromancer" else {}
+	if b == null or b.family != "necromancer":
+		return {}
+	if peer_id == session.get_my_id():
+		return DmRunes.sockets_of(progress.slots()) if progress != null else {}
+	var rb: Variant = remote_builds.get(peer_id)
+	return DmRunes.sockets_of(rb["slots"]) if rb is Dictionary else {}
 
 
 ## Host: push the bag's sockets to the local caster (the bag changed, or the HUD's inventory just loaded).

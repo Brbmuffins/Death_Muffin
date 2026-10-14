@@ -23,6 +23,7 @@ var remote: bool = false
 var wisdom: float = 0.0          ## Tonic of wisdom: + share of XP
 var fortune: float = 0.0         ## Fortune brew: + share of item chance
 var omen_reward: float = 1.0
+var self_heat: int = 0            ## the heat of this player's own self vows: its rewards run at the world's heat plus this (DECISIONS B26)
 var omen_shard: float = 1.0
 var bag: Array = []
 var bag_cap: int = 24

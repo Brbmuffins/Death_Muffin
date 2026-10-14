@@ -518,7 +518,7 @@ func _member() -> DmRewardsMember:
 
 
 func _reward_mult(m: DmRewardsMember) -> float:
-	return DmAscension.ascension_reward_mult(game.rewards.ascension) * (m.omen_reward if m != null else 1.0)
+	return DmAscension.ascension_reward_mult(game.rewards.ascension + (m.self_heat if m != null else 0)) * (m.omen_reward if m != null else 1.0)
 
 
 ## The stair, the way up and the chest of this floor as things to click (the hub's list, area "depths").

@@ -72,7 +72,7 @@ test('presence: mutual friends see each other come online, change, play together
     assert.deepEqual([junk.p.class, junk.p.level, junk.p.area], [null, null, null]);
     b.send({ t: 'create', name: 'Crypt', area: 'graves', private: false });
     const hosting = await a.next('presence', (m) => m.accountId === 2 && m.p.session);
-    assert.deepEqual({ ...hosting.p.session, id: 'x' }, { id: 'x', private: false, open: true, players: 1, max: 4, host: 'u2', isHost: true });
+    assert.deepEqual({ ...hosting.p.session, id: 'x' }, { id: 'x', private: false, open: true, players: 1, max: 4, host: 'u2', isHost: true, heat: 0, difficulty: 'medium' });
     a.send({ t: 'join', id: hosting.p.session.id });   // a friend's Open party: Join from the list
     await a.next('joined');
     const two = await a.next('presence', (m) => m.accountId === 2 && m.p.session && m.p.session.players === 2);
@@ -232,6 +232,32 @@ test('set_private: Closed leaves the list (and gets a code), Open comes back; fr
     assert.equal((await f.next('sessions')).sessions.length, 1);
     f.send({ t: 'set_private', private: true });
     assert.equal((await f.next('error')).code, 'not_host');
+  } finally { await s.close(); }
+});
+
+test('the host\'s world (heat, difficulty) rides the session everywhere: list, join, invite, presence; members hear changes', async () => {
+  const s = await boot(g([[1, 2], [1, 3]]));
+  try {
+    const host = await s.connect(1);
+    const guest = await s.connect(2);
+    const friend = await s.connect(3);
+    host.send({ t: 'create', name: 'H', area: 'graves', private: false, heat: 7, difficulty: 'hard' });
+    const { session } = await host.next('created');
+    assert.deepEqual([session.heat, session.difficulty], [7, 'hard']);
+    guest.send({ t: 'list' });
+    assert.deepEqual((await guest.next('sessions')).sessions.map((x) => [x.heat, x.difficulty]), [[7, 'hard']]);
+    guest.send({ t: 'join', id: session.id });
+    assert.equal((await guest.next('joined')).session.heat, 7);
+    host.send({ t: 'world', heat: 0, difficulty: 'medium' });
+    assert.deepEqual(await guest.next('world'), { t: 'world', heat: 0, difficulty: 'medium' });
+    assert.equal((await host.next('session_updated')).session.heat, 0);
+    const p = await friend.next('presence', (m) => m.p && m.p.session && m.p.session.heat === 0 && m.p.session.difficulty === 'medium');
+    assert.equal(p.p.session.id, session.id);
+    host.send({ t: 'invite', accountId: 3 });
+    const inv = await friend.next('invited');
+    assert.deepEqual([inv.session.heat, inv.session.difficulty], [0, 'medium']);
+    guest.send({ t: 'world', heat: 30 });
+    assert.equal((await guest.next('error')).code, 'not_host');
   } finally { await s.close(); }
 });
 

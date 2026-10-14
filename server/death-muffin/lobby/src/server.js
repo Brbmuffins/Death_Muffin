@@ -41,6 +41,13 @@ function cleanText(v, max) {
 }
 const PRESENCE_CLASS_MAX = 99;
 const PRESENCE_LEVEL_MAX = 10000;
+/** The host's world, shown everywhere a session is (DECISIONS B26): the heat of its world vows and its difficulty id. Display only. */
+const HEAT_MAX = 99;
+const DIFFICULTY_RE = /^[a-z_]{1,16}$/;
+const worldOf = (msg, base = { heat: 0, difficulty: 'medium' }) => ({
+  heat: Number.isInteger(msg.heat) && msg.heat >= 0 && msg.heat <= HEAT_MAX ? msg.heat : base.heat,
+  difficulty: typeof msg.difficulty === 'string' && DIFFICULTY_RE.test(msg.difficulty) ? msg.difficulty : base.difficulty,
+});
 function sidStamp(sid) {
   const n = Number(String(sid).split('-')[0]);
   return Number.isFinite(n) && n > 0 ? n : 0;
@@ -72,7 +79,8 @@ function createLobby(userOpts = {}) {
   const sendErr = (conn, code, msg, req) => sendJson(conn, { t: 'error', code, msg, req });
 
   function sessionInfo(s) {
-    return { id: s.id, name: s.name, host: s.host.username, area: s.area, players: 1 + s.clients.size, max: o.maxPlayers, private: s.isPrivate, open: s.open };
+    return { id: s.id, name: s.name, host: s.host.username, area: s.area, players: 1 + s.clients.size, max: o.maxPlayers, private: s.isPrivate, open: s.open,
+      heat: s.world.heat, difficulty: s.world.difficulty };
   }
 
   function closeSession(s, reason) {
@@ -182,7 +190,8 @@ function createLobby(userOpts = {}) {
   function presenceOf(conn) {
     const s = conn.session;
     return { accountId: conn.accountId, username: conn.username, class: conn.presence.class, level: conn.presence.level, area: conn.presence.area,
-      session: s ? { id: s.id, private: s.isPrivate, open: s.open, players: 1 + s.clients.size, max: o.maxPlayers, host: s.host.username, isHost: s.host === conn } : null };
+      session: s ? { id: s.id, private: s.isPrivate, open: s.open, players: 1 + s.clients.size, max: o.maxPlayers, host: s.host.username, isHost: s.host === conn,
+        heat: s.world.heat, difficulty: s.world.difficulty } : null };
   }
   function pushPresence(conn) {
     if (!conn.authed || conn.cleaned) return;
@@ -283,6 +292,16 @@ function createLobby(userOpts = {}) {
         inviteInto(s, conn, asker, true);
         return true;
       }
+      case 'world': {   // host: its world's heat (world vows) and difficulty changed; members, friends and the list follow
+        if (!s || s.host !== conn) return sendErr(conn, 'not_host', 'only the host can do that', 'world'), true;
+        const next = worldOf(msg, s.world);
+        if (next.heat === s.world.heat && next.difficulty === s.world.difficulty) return true;
+        s.world = next;
+        for (const c of s.clients.values()) sendJson(c, { t: 'world', heat: next.heat, difficulty: next.difficulty });
+        sendJson(conn, { t: 'session_updated', session: sessionInfo(s) });
+        pushSession(s);
+        return true;
+      }
       case 'set_private': {   // host: Closed (invite only, not listed) or Open (listed, anyone joins)
         if (!s || s.host !== conn) return sendErr(conn, 'not_host', 'only the host can do that', 'set_private'), true;
         s.isPrivate = msg.private === true;
@@ -319,7 +338,8 @@ function createLobby(userOpts = {}) {
         }
         let id;
         do { id = crypto.randomBytes(4).toString('hex'); } while (sessions.has(id));
-        const sess = { id, name, area, host: conn, isPrivate, code, clients: new Map(), nextPeerId: HOST_PEER_ID + 1, open: true, lastActivity: Date.now(), invites: new Map() };
+        const sess = { id, name, area, host: conn, isPrivate, code, clients: new Map(), nextPeerId: HOST_PEER_ID + 1, open: true, lastActivity: Date.now(), invites: new Map(),
+          world: worldOf(msg) };
         sessions.set(id, sess);
         conn.session = sess; conn.peerId = HOST_PEER_ID;
         log('session created', id, name);

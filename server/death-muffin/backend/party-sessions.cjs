@@ -266,13 +266,14 @@ async function accountIsStaff(db, accountId) {
  * A member is credited only when it is an ACTIVE member, seen within the heartbeat window, and the session is live; everything the
  * ledger would refuse for that member (rate, mix, elite, level, ground, boss caps) it refuses here, per member.
  */
-/** The host's world as the server records it: its character's level and Ascension rank (a guest's kills are judged in it). null if unknown. */
+/** The host's world as the server records it: its character's level and the heat of its world vows (a guest's kills are judged in it, and
+ * pay at that heat plus the guest's own self vows, DECISIONS B26). null if unknown. */
 async function hostWorld(pool, session) {
   try {
     const [[c]] = await pool.execute('SELECT level FROM characters WHERE id = ?', [session.hostCharacterId]);
     if (!c) return null;
     const necro = await necroSummary(pool, session.hostCharacterId);
-    const rank = necro.ascension && typeof necro.ascension === 'object' ? killRules.vowHeat(necro.ascension) : num(necro.ascension);
+    const rank = necro.ascension && typeof necro.ascension === 'object' ? killRules.worldHeat(necro.ascension) : num(necro.ascension);
     return { level: Math.max(1, num(c.level, 1)), rank: Math.max(0, rank) };
   } catch {
     return null;

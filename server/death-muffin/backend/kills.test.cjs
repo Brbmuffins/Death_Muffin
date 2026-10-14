@@ -160,6 +160,19 @@ test('a carried kill is judged in the host\'s world: the host\'s level and rank,
   assert.equal(rules.evaluateKillReport(rules.parseKillReport(g(top + 1)), { ...guest, world: { level: 680, rank: 20 } }).killsAccepted, 0, 'still bounded by the host');
 });
 
+test('heat that adds up (DECISIONS B26): a carried kill pays at the host\'s world heat plus the guest\'s own self vows; solo, at its own', () => {
+  assert.equal(rules.worldHeat({ elder_dead: 4, frail_vessel: 2, dry_cellar: 1 }), 4);
+  assert.equal(rules.selfHeat({ elder_dead: 4, frail_vessel: 2, dry_cellar: 1 }), 4, 'Frail Vessel 2 + Dry Cellar (2 heat)');
+  assert.equal(rules.rewardRank({ ascension: 9, carried: false }), 9, 'solo: the character\'s own heat, world and self');
+  assert.equal(rules.rewardRank({ ascension: 9, carried: true, world: { level: 50, rank: 5 }, selfHeat: 3 }), 8, 'guest: host world 5 + own self 3');
+  assert.equal(rules.rewardRank({ ascension: 9, carried: true, world: { level: 50, rank: 5 } }), 5, 'a guest without self vows earns at the host\'s world');
+  // The claimed multiplier is capped at that heat (a greedy claim shows the cap): self vows raise a guest's, a host's self vows do not.
+  const guest = { ...ctx(), ascension: 0, carried: true, world: { level: 10, rank: 5 } };
+  const greedy = (c) => rules.evaluateKillReport(rules.parseKillReport(report(1, [group({ n: 1, goldMult: 20 })])), c).credits.gold;
+  assert.ok(greedy({ ...guest, selfHeat: 3 }) > greedy(guest), 'self vows raise the guest\'s cap');
+  assert.equal(greedy({ ...guest, ascension: 30 }), greedy(guest), 'the guest\'s own world vows do not count in the host\'s world');
+});
+
 test('a carried boss kill in a ground the guest has not opened counts', () => {
   const rep = { seq: 1, groups: [], bosses: [{ boss: 'abbess', n: 1, tier: 0, diff: 'medium' }], floors: [] };
   const e = rules.evaluateKillReport(rules.parseKillReport(rep), { ...ctx(), carried: true, bossBucket: 5 });

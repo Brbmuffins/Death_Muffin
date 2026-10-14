@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-10-14",
+    "title": "Heat That Adds Up",
+    "items": [
+      "Self vows now pay: every vow you swear on yourself (Frail Vessel, Famished Rites, Brittle Dead, Dry Cellar) adds to your gold and XP bonus, solo and in a party.",
+      "In a party you earn at the host's heat plus your own self vows, so taking on more personal handicaps pays more than your friends get.",
+      "The host's heat and difficulty now show everywhere a party does: your friends list, party invites, the Party window and above the party list on your screen (with \"+N yours\" for your own self vows).",
+      "Runes socketed by party members now work on their spells in your world."
+    ]
+  },
+  {
+    "date": "2026-10-14",
     "title": "The Server Keeps Your Bag",
     "items": [
       "Your Reliquary now lives entirely on the server: sorting, drinking, selling and every other bag change is done by the server, so items can no longer vanish or come back from a save that arrived late.",

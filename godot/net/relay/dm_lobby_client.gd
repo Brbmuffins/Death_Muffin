@@ -16,6 +16,7 @@ signal sessions_listed(sessions: Array)
 signal session_created(info: Dictionary, code: String)
 signal session_joined(info: Dictionary, peer_id: int)
 signal session_updated(info: Dictionary)
+signal world_changed(heat: int, difficulty: String)   ## a member: the host's world changed (DECISIONS B26); `session` already holds it
 ## Host only: a client entered / left the session (DmRelayPeer turns these into peer_connected / peer_disconnected).
 signal peer_joined(peer_id: int, peer_name: String)
 signal peer_left(peer_id: int, reason: String)
@@ -98,11 +99,20 @@ func in_session() -> bool:
 func request_list() -> void:
 	_send({"t": "list"})
 
-func create_session(session_name: String, area: String, is_private: bool = false, code: String = "") -> void:
+## `world` = {heat, difficulty}: the host's world, shown with the session everywhere (DECISIONS B26); later changes go through set_world.
+func create_session(session_name: String, area: String, is_private: bool = false, code: String = "", world: Dictionary = {}) -> void:
 	var m := {"t": "create", "name": session_name, "area": area, "private": is_private}
 	if code != "":
 		m["code"] = code
+	if world.has("heat"):
+		m["heat"] = int(world["heat"])
+	if world.has("difficulty"):
+		m["difficulty"] = String(world["difficulty"])
 	_send(m)
+
+## Host only: its world's heat (world vows) and difficulty changed; members, friends and the session list follow.
+func set_world(heat: int, difficulty: String) -> void:
+	_send({"t": "world", "heat": heat, "difficulty": difficulty})
 
 func join_session(session_id: String, code: String = "") -> void:
 	var m := {"t": "join", "id": session_id}
@@ -248,6 +258,10 @@ func _on_text(text: String) -> void:
 		"session_updated":
 			session = m.get("session", {})
 			session_updated.emit(session)
+		"world":
+			session["heat"] = int(m.get("heat", 0))
+			session["difficulty"] = str(m.get("difficulty", "medium"))
+			world_changed.emit(int(session["heat"]), String(session["difficulty"]))
 		"peer_joined":
 			peer_joined.emit(int(m.get("id", 0)), str(m.get("name", "")))
 		"peer_left":

@@ -66,6 +66,8 @@ func set_difficulty(d: String, quiet: bool = false) -> void:
 	shell.bosses.difficulty = d
 	if not quiet and was != d:
 		event.emit("toast", {"text": "Difficulty: %s — the next dead to rise feel it" % String(DmContent.difficulty(d)["name"]), "kind": "good"})
+	if shell.party != null:
+		shell.party.sync_world()   # members and friends see our world (DECISIONS B26)
 
 
 ## The character's vows / boons changed (loaded, bought, sworn, an ascension): the world follows. Called by DmNextProgress.apply_progress.
@@ -82,6 +84,8 @@ func sync() -> void:
 	d.set_wave_tier(d.wave_tier)   # the wave size follows the multipliers
 	shell.bosses.vow_fx = vow_fx
 	shell.rewards.ascension = float(heat)
+	if member != null:
+		member.self_heat = DmAscension.self_heat(prog.vows())   # the host's own self vows pay on top of its world (DECISIONS B26)
 	shell.rewards.vow_levels = float(vow_fx["levels"])
 	shell.corpses.life_mult = float(prog.boons()["corpseLifeMult"]) * float(vow_fx["corpseLifeMult"])
 	_apply_members()
@@ -89,6 +93,8 @@ func sync() -> void:
 		d.clear()   # new vows: the hunting grounds start over (every area is cleared)
 	_vow_sig = sig
 	_synced = true
+	if shell.party != null:
+		shell.party.sync_world()
 
 
 func _apply_members() -> void:

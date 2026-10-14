@@ -160,3 +160,9 @@ Since B18 friends join through invites and asks; the six-digit codes have no UI 
   (`POST /api/inventory/sort`, the server's sort) and using a consumable (`POST /api/inventory/use`, batched sips). The client shows what the
   server answered; a sip leaves the shown bag at once and is replayed on top of any answer that lands before its batch. The whole-bag save
   is a GM-mode tool (tests seed bags with it); an older client that still saves its bag is told to update.
+- **B26. Heat that adds up, shown everywhere** (owner, 2026-10-13/14: "self vows should pay ... carry them over"; "heat and difficulty,
+  always show it"). A session's heat is the host's world vows (they make the world). Each player's rewards run at that heat plus their own
+  self vows, solo too (solo: the character's world and self vows). The backend caps a carried kill at the host's world heat (from the host's
+  record, never the report) plus the member's own self vows. The lobby carries the host's heat and difficulty on the session, and the game
+  shows "Heat N · Difficulty" (also "Heat 0 · Medium") in the friends list, invites, the Party window and over the HUD's party list, with
+  "+N yours" for a player's own self vows. The lobby's copy is display only.

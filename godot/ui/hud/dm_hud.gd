@@ -1458,13 +1458,19 @@ func _apply_left_readouts(v: Dictionary) -> void:
 		omen.tooltip_text = String(om.get("blurb", ""))
 	# party (up to MAX_PARTY_SIZE = 4)
 	var party: Array = v.get("party", [])
-	var psig := ""
+	var world := String(v.get("party_world", ""))
+	var psig := world + "#"
 	for m in party:
 		psig += "%s%s%s%d|" % [m.get("id", ""), m.get("name", ""), m.get("discipline", ""), int(round(float(m.get("hp_frac", 1.0)) * 20.0))]
 	if psig != str(party_box.get_meta("sig", "")):
 		party_box.set_meta("sig", psig)
 		for ch in party_box.get_children():
 			ch.queue_free()
+		if world != "" and not party.is_empty():   # the host's world, over the party (DECISIONS B26)
+			var wl := _txt(DmUi.upper(world), 11, DmUi.SPELL_300, "body_bold", 1.0)
+			wl.tooltip_text = "The host's world: its heat (world vows) and difficulty. Your own self vows add to your rewards."
+			wl.mouse_filter = Control.MOUSE_FILTER_PASS
+			party_box.add_child(wl)
 		for i in mini(party.size(), 4):
 			party_box.add_child(_member(party[i]))
 

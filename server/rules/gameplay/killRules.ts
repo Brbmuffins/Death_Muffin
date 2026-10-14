@@ -305,8 +305,10 @@ export interface KillContext {
   staff: boolean;
   /** A party member's report (the host sends it): kills in a ground the member has not opened still count (being carried counts) and the enemy level is the host's world's. */
   carried?: boolean;
-  /** For a carried report: the host's world as the server records it (the host character's level and Ascension rank). */
+  /** For a carried report: the host's world as the server records it (the host character's level and the heat of its world vows). */
   world?: { level: number; rank: number };
+  /** The heat of the character's own self vows: a carried kill pays at the host's world heat plus this (DECISIONS B26). */
+  selfHeat?: number;
 }
 export interface Evaluation {
   credits: Credits;
@@ -337,6 +339,11 @@ export function groundOpen(area: AreaId, unlocked: readonly string[]): boolean {
  * Judge a report. Pure: no clock, no database. Everything over the character's bucket, outside the game's tables or off its mix is
  * dropped and named in `findings`; what is left is converted into credits. `staff` reports are credited whole (dev access) but still named.
  */
+/** The heat a report's rewards are capped at: solo, the character's own (world + self vows); carried, the host's world heat plus its self vows. */
+export function rewardRank(ctx: Pick<KillContext, 'ascension' | 'carried' | 'world' | 'selfHeat'>): number {
+  return Math.max(0, ctx.carried && ctx.world ? ctx.world.rank + Math.max(0, ctx.selfHeat ?? 0) : ctx.ascension);
+}
+
 export function evaluateKillReport(report: KillReport, ctx: KillContext): Evaluation {
   const findings: Finding[] = [];
   const credits = emptyCredits();
@@ -354,7 +361,7 @@ export function evaluateKillReport(report: KillReport, ctx: KillContext): Evalua
     if (!(g.def in ENEMIES) || ENEMIES[g.def as EnemyId].inert || !rosterIds(id, ctx.deepest + DEPTHS_AUTHORITY.slack).has(g.def)) { rejected.kind += g.n; continue; }
     // A carried kill lives in the host's world: the host's level and rank, as the server records them (else the old flat ceiling).
     const worldLevel = ctx.carried ? Math.max(heroLevel, ctx.world ? ctx.world.level : CARRIED_LEVEL_CEILING) : heroLevel;
-    const worldRank = ctx.carried && ctx.world ? Math.max(ctx.ascension, ctx.world.rank) : ctx.ascension;
+    const worldRank = ctx.carried && ctx.world ? ctx.world.rank : ctx.ascension;
     if (g.level > maxEnemyLevel(id, worldLevel, worldRank, ctx.deepest)) { rejected.level += g.n; continue; }
     if (!isDifficulty(g.diff)) { rejected.difficulty += g.n; continue; }
     ok.push({ ...g, id, diffId: g.diff as Difficulty });
@@ -393,7 +400,7 @@ export function evaluateKillReport(report: KillReport, ctx: KillContext): Evalua
 
   // Pass 2: the time bucket, in report order, then the value of what is left.
   let overRate = 0;
-  const caps = multCaps(Math.max(ctx.ascension, 0), heroLevel);
+  const caps = multCaps(rewardRank(ctx), heroLevel);
   const nb = newBloodXpMult('new_blood', heroLevel);
   for (const g of ok) {
     let n = allowed.get(g) ?? 0;
@@ -448,7 +455,7 @@ export function evaluateKillReport(report: KillReport, ctx: KillContext): Evalua
       if (floorBudget < 1) { findings.push({ kind: 'floor_rate', depth: f.depth }); continue; }
       if (f.level > depthEnemyLevel(f.depth, heroLevel + KILLS.HERO_LEVEL_SLACK) + ASCENSION.maxRank * ASCENSION.levelsPerRank + KILLS.LEVEL_SLACK && !ctx.staff) { findings.push({ kind: 'floor_invalid', depth: f.depth, why: 'level' }); continue; }
       floorBudget -= 1;
-      const mult = Math.min(f.mult, multCaps(ctx.ascension, heroLevel).gold / AUTHORITY.CHAIN);
+      const mult = Math.min(f.mult, multCaps(rewardRank(ctx), heroLevel).gold / AUTHORITY.CHAIN);
       if (f.clear) {
         floorsAccepted += 1;
         maxCleared = Math.max(maxCleared, f.depth);
@@ -484,4 +491,4 @@ export function bucketCaps(unlocked: readonly string[]) {
 export const FLOOR_RULES = { FLOOR_BONUS_KILLS, CHEST_KILLS, chestEvery: DEPTHS.chestEvery };
 
 /** The rank a character plays at, from its sworn vows (the backend stores vows; the ceilings above take a rank). */
-export { vowHeat } from '../content/ascension';
+export { vowHeat, worldHeat, selfHeat } from '../content/ascension';

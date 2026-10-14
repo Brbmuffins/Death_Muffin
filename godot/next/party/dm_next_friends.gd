@@ -129,7 +129,14 @@ static func class_line(f: Dictionary) -> String:
 	return nm if lv == null else "%s · Lv %d" % [nm, int(lv)]
 
 
-## Where a friend is, for the list: "Sexton's Acre · in a party 2/4" ("" offline).
+## The host's world (DECISIONS B26), shown everywhere a session is: "Heat 3 · Hard", also "Heat 0 · Medium". `d` is a session's info or presence.
+static func world_line(d: Dictionary) -> String:
+	var diff := String(d.get("difficulty", "medium")) if d.get("difficulty") != null else "medium"
+	var def := DmContent.difficulty(diff)
+	return "Heat %d · %s" % [int(d.get("heat", 0)) if d.get("heat") != null else 0, String(def.get("name", diff.capitalize())) if not def.is_empty() else diff.capitalize()]
+
+
+## Where a friend is, for the list: "Sexton's Acre · in a party 2/4 · Heat 3 · Hard" ("" offline).
 static func where_line(p: Dictionary) -> String:
 	if p.is_empty():
 		return ""
@@ -142,7 +149,8 @@ static func where_line(p: Dictionary) -> String:
 	if sess is Dictionary:
 		var sd: Dictionary = sess
 		var who := "hosting" if bool(sd.get("isHost", false)) else "in %s's party" % String(sd.get("host", ""))
-		parts.append("%s %d/%d%s" % [who, int(sd.get("players", 1)), int(sd.get("max", 4)), " · closed" if bool(sd.get("private", false)) or not bool(sd.get("open", true)) else ""])
+		parts.append("%s %d/%d%s · %s" % [who, int(sd.get("players", 1)), int(sd.get("max", 4)), " · closed" if bool(sd.get("private", false)) or not bool(sd.get("open", true)) else "",
+			world_line(sd)])
 	return " · ".join(parts)
 
 
