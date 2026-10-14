@@ -471,6 +471,8 @@ func _test_vault() -> void:
 	# move_to_slot (port of vaultRules.moveToSlot; same cases as vault-rules.test.ts)
 	var tbl := {"ore": {"maxStack": 250, "itemType": "material", "rarity": "common"}, "flask": {"maxStack": 20, "itemType": "consumable", "rarity": "common"}, "staff": {"maxStack": 1, "itemType": "weapon", "rarity": "common"}, "ring": {"maxStack": 1, "itemType": "ring", "rarity": "rare"}}
 	var mi := func(id: String) -> Dictionary: return tbl.get(id, {"maxStack": 1, "itemType": "material", "rarity": "common"})
+	var dm: Dictionary = Vault.deposit_many([{"slot": 0, "itemId": "ore", "qty": 5}, {"slot": 1, "itemId": "flask", "qty": 3}], [], "materials", [], mi)
+	ok(dm["ok"] and dm["bag"].size() == 1 and dm["bag"][0]["itemId"] == "flask", "deposit materials leaves consumables in the bag")
 	var bag := [{"slot": 0, "itemId": "ore", "qty": 100}, {"slot": 1, "itemId": "staff", "qty": 1}, {"slot": 2, "itemId": "ring", "qty": 1, "fixed": true}, {"slot": 5, "itemId": "flask", "qty": 18}]
 	var vault := [{"slot": 0, "itemId": "ore", "qty": 240}, {"slot": 3, "itemId": "flask", "qty": 5}, {"slot": 7, "itemId": "staff", "qty": 1}]
 	var slots := func(rows: Array) -> Array: return rows.map(func(r: Dictionary) -> Array: return [int(r["slot"]), r["itemId"], int(r["qty"])])

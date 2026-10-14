@@ -142,7 +142,7 @@ export function moveToSlot(bag: VaultRow[], vault: VaultRow[], fromSide: VaultSi
 }
 
 export type DepositKind = 'materials' | 'all';
-const isMaterialLike = (type: string) => type === 'material' || type === 'consumable' || type === 'rune';
+const isMaterialLike = (type: string) => type === 'material' || type === 'rune';
 
 /** Deposit every bag stack of `kind` (never equipped rows, never `exceptSlots`). All or nothing. */
 export function depositMany(bag: VaultRow[], vault: VaultRow[], kind: DepositKind, exceptSlots: number[], info: VaultInfo): VaultResult {

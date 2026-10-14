@@ -143,13 +143,13 @@ func deposit_except_slots() -> Array:
 	return out
 
 
-## The tab's vault stacks a "Take" button moves: everything, or materials / consumables / runes only.
+## The tab's vault stacks a "Take" button moves: everything, or materials / runes only.
 func take_slots(kind: String) -> Array:
 	var lo := tab * DmVault.VAULT_TAB_SIZE
 	var out: Array = []
 	for s: Dictionary in state.get("vault", []):
 		var i := int(s["slot_index"])
-		if i >= lo and i < lo + DmVault.VAULT_TAB_SIZE and (kind == "all" or ["material", "consumable", "rune"].has(s["item_type"])):
+		if i >= lo and i < lo + DmVault.VAULT_TAB_SIZE and (kind == "all" or ["material", "rune"].has(s["item_type"])):
 			out.append(i)
 	return out
 
@@ -273,7 +273,7 @@ func _build() -> void:
 
 	var off := busy or not loaded
 	var dep_row := DmPb.hbox(8)
-	deposit_materials_button = DmPb.button("Deposit materials", false, off, "Stores every unlocked material and consumable in the Vault")
+	deposit_materials_button = DmPb.button("Deposit materials", false, off, "Stores every unlocked material and rune in the Vault")
 	deposit_materials_button.pressed.connect(func() -> void: deposit_all_requested.emit("materials", deposit_except_slots()))
 	deposit_all_button = DmPb.button("Deposit all", false, off, "Stores everything unlocked and not worn; belted potions stay")
 	deposit_all_button.pressed.connect(func() -> void: deposit_all_requested.emit("all", deposit_except_slots()))
@@ -290,7 +290,7 @@ func _build() -> void:
 	take_row.custom_minimum_size.x = GRID_W
 	take_row.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	take_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	take_materials_button = DmPb.button("Take materials", false, off, "Takes every material and consumable from the open Vault tab into your bag, as far as it fits")
+	take_materials_button = DmPb.button("Take materials", false, off, "Takes every material and rune from the open Vault tab into your bag, as far as it fits")
 	take_materials_button.pressed.connect(_take.bind("materials"))
 	take_all_button = DmPb.button("Take all", false, off, "Takes everything from the open Vault tab into your bag, as far as it fits")
 	take_all_button.pressed.connect(_take.bind("all"))

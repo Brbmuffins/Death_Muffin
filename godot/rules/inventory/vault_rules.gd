@@ -190,7 +190,7 @@ static func move_to_slot(bag: Array, vault: Array, from_side: String, from_slot:
 
 
 static func _is_material_like(t: String) -> bool:
-	return t == "material" or t == "consumable" or t == "rune"
+	return t == "material" or t == "rune"
 
 
 ## Deposit every bag stack of `kind` ("materials" | "all"; never fixed rows, never except_slots). All or nothing.
