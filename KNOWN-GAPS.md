@@ -4,16 +4,8 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
 
 ## Performance
 
-- **The main thread is the limit in big fights.** Measured on Helix's PC (Ryzen 5950X, RTX 4070 SUPER, 1440p Ultra) with the in-game
-  benchmark (`next/perf/README.md`): about 87 fps in the Bell Sanctum stress fight, render CPU about 4 ms of which the HUD is more than half
-  (about 600 of 900 draw calls), scripts and physics about 10 ms; everything runs on one thread (Godot's default). The breakdown's ms
-  columns jitter on that PC (GPU / driver state), only its draw-call counts are steady. Order of work: ROADMAP "Performance".
-- **Script cost per frame, headless** (2026-10-15, `profile.py` on `fight_breakdown.gd`, Standard 30 enemies / 20 thralls, ~9.9 ms CPU a
-  frame): `DmCreature.update` ~1.1-1.3 ms (47 calls), enemy + thrall `_move` ~0.8 ms, `DmFxRuntime` ~0.7 ms, the HUD view model ~0.36 ms
-  averaged but rebuilt whole four times a second, enemy/thrall brains ~0.85 / ~0.9 ms; enemy queries (`enemies_in_radius`, `DmThrall._scan`)
-  ~0.1 ms. Physics engine (native) ~0.3 ms.
-- **Forward+ / FSR not evaluated.** The renderer is `gl_compatibility` (`project.godot`). A switch needs the owner's and Helix's
-  PCs, a Compatibility fallback and re-measured shaders and budgets.
+- **The main thread is the limit in big fights** (about 87 fps in the benchmark's stress fight on Helix's PC; scripts, physics and the HUD all
+  run on one thread). Measurements and the plan: ROADMAP "Performance".
 
 ## Server authority
 

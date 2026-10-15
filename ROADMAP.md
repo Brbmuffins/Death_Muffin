@@ -38,25 +38,53 @@ GM actions are logged.
 The model is the hybrid one (Warframe-style; owner 2026-10-15): a player's PC hosts the combat, the server owns everything of value.
 Not planned now: full server-side combat simulation (headless sessions); revisit if the game goes public at scale.
 
+## Performance (the owner's first priority)
+
+**Where it stands** (Helix's PC: Ryzen 5950X, RTX 4070 SUPER, 1440p Ultra, Compatibility renderer). About 170 fps in calm play and about 87 fps
+in the benchmark's Bell Sanctum stress fight. In that fight render CPU is about 4 ms, more than half of it the HUD (about 600 of 900 draw calls), and
+scripts plus physics about 10 ms, all on the main thread (Godot's default; only audio has its own thread). GPU time is low: the GPU is not the limit.
+Script costs measured headless on 2026-10-15 (`tools/godot/profile.py` on `tests/perf/fight_breakdown.gd`, Standard 30 enemies / 20 thralls, about
+9.9 ms CPU a frame): `DmCreature.update` 1.1-1.3 ms, enemy and thrall brains about 0.85 / 0.9 ms, enemy and thrall `_move` about 0.8 ms,
+`DmFxRuntime` about 0.7 ms, the HUD view model 0.36 ms on average but rebuilt whole four times a second (a ~1.4 ms spike each time), native
+physics about 0.3 ms, enemy queries (`enemies_in_radius`, `DmThrall._scan`) about 0.1 ms.
+
+**Rules for every change.**
+- Measure before and after, the same way: frame rate and render cost with the in-game benchmark on Helix's PC (Standard setup, character select ->
+  Benchmark; runs land on the site's Benchmarks page, DECISIONS B21); script cost headless with `profile.py` and the knock-out table of
+  `fight_breakdown.gd` at Standard and Heavy (60 / 30). `profile.py` sometimes reports an impossible row (one function above the whole frame):
+  cross-check a single row with the knock-out table before acting on it.
+- One change per release, so a result (or a crash) points at one thing. A change that does not move its number is reverted; nothing may make
+  another number worse. Tests never assert wall-clock time (B11).
+- Anything threaded or GPU-side ships behind a setting that turns it off without a new build: headless tests cannot see driver or threading
+  trouble on real PCs (Phase B crashed players' GPUs, B12).
+- Off the table: Godot's separate render thread (crashes this game at the first UI frame, B14). Combat LOD by lowering AI rate (thralls lost
+  half their hits).
+
+**Tracks, in order.** Track A and C start together (they cost different things and are measured separately); B before D.
+
+- **A. Render: HUD draw calls.** The minimap (one draw per dot and its clip mask), shadowed labels (each shadow is a second draw), the tip card's
+  RichTextLabel. Target the HUD's share of the 900 draws in the benchmark's breakdown.
+- **B. Lean scripts** (each a measured drop in its own row):
+  1. `DmCreature.update`: skip work for bodies off screen or far from the camera, touch only what changed this frame.
+  2. HUD view model: rebuild only the parts that changed instead of the whole model four times a second.
+  3. Movement and FX runtime (`DmEnemy._move`, `DmThrall._move`, `DmFxRuntime`): per-frame allocation and repeated lookups.
+  4. Spatial enemy queries: one grid rebuilt per tick for `enemies_in_radius` (about 35 rites call it, each scanning every enemy and building
+     a new list) and the thralls' target scan. Small today; it is the shared lookup the threaded work in D needs.
+- **C. Engine threading switches** (project settings, one per release, each A/B on the benchmark):
+  1. Physics on its own thread (`physics/3d/run_on_separate_thread`).
+  2. Jolt physics instead of Godot Physics (built into 4.7, uses several cores; capsule shapes for creatures with it).
+  3. Navigation off the main thread (async path queries and map updates).
+- **D. Script threading** (after B; needs thread-safe code: no scene edits from a thread, deferred calls back to the main thread):
+  1. Enemies and thralls in their own process thread groups (`process_thread_group`), so their per-frame logic runs in parallel.
+  2. Batch work on `WorkerThreadPool`: creature visual updates, steering and movement math, the spatial grid.
+- **E. GPU** (Phase B, kept in tag `archive/perf-phase-b`, one part per owner-approved release, B12): creature instance uniforms (bdcfad67),
+  GPU motes (c62e407a, 91f23b20), prop MultiMesh (9cb53d8b, 37c94978, 8f475f65), the resolution governor and the Mobile renderer (b89317ad;
+  its threading part f6715cc2 depends on it).
+- **F. Renderer:** Forward+ / FSR behind a flag, last. The game runs `gl_compatibility` (`project.godot`); a switch needs the owner's and
+  Helix's PCs, a Compatibility fallback and re-measured shaders and budgets.
+
 ## Then: necromancer polish (no new content)
 
-- **Performance** (owner: first priority; plan of 2026-10-15, costs measured in KNOWN-GAPS: Performance). Every step is measured before and
-  after: render cost with the in-game benchmark on Helix's PC (Standard setup; runs land on the site's Benchmarks page, DECISIONS B21), script
-  cost headless with `tools/godot/profile.py` on `tests/perf/fight_breakdown.gd` (Standard 30 enemies / 20 thralls and Heavy 60 / 30). A step
-  that does not move its number is reverted. In order:
-  1. **HUD draw calls** (render CPU; the HUD is about 600 of 900 draws): minimap dots and mask, shadowed labels, the tip card.
-  2. **Creature visual update** (`DmCreature.update`, the largest script cost): skip work for bodies off screen or far from the camera, and
-     only touch what changed this frame.
-  3. **HUD view model:** rebuild only what changed instead of the whole model four times a second (a ~1.4 ms spike each time).
-  4. **Movement and FX runtime** (`DmEnemy._move`, `DmThrall._move`, `DmFxRuntime`): per-frame allocation and repeated lookups.
-  5. **Spatial enemy queries** (`DmWaveDirector.enemies_in_radius`, `DmThrall._scan`): a grid rebuilt once per tick. Measured small today
-     (about 1% of a Standard fight); do it when Heavy fights or new rites make it grow, or as part of step 6.
-  6. **Combat work over several cores** (creature update, movement and queries in `WorkerThreadPool` batches), once steps 2-5 have made
-     that work lean.
-  7. Then Forward+ / FSR behind a flag. Phase B stays pulled (DECISIONS B12): its parts come back one per owner-approved build from tag
-     `archive/perf-phase-b`.
-  Tooling: `profile.py` sometimes reports an impossible row (one function above the whole frame); cross-check with `fight_breakdown.gd`'s
-  knock-out table before acting on a single row.
 - **Combat feel and loot** for the four disciplines: tuning from playtests, readability of rites and statuses, gear and
   affix legibility, the first hour (Next-step box, counsel tips, guide NPCs).
 - **Rejoin window** (D13) and the **party gaps** (KNOWN-GAPS: Party and online).
