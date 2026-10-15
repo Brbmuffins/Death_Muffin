@@ -6,7 +6,7 @@ set -u
 REPO="${REPO:-/home/ubuntu/vps-handoffs/DeathMuffin/game}"
 DM="${DM_HOME:-/home/ubuntu/death-muffin}"
 WWW="${WWW:-/var/www/death-muffin}"
-WEBHOOK_FILE="${WEBHOOK_FILE:-$DM/private/discord-deathmuffin-webhook.url}"
+WEBHOOK_FILE="${WEBHOOK_FILE:-$DM/private/discord-build-alerts-webhook.url}"   # #build-alerts
 REV=origin/main
 DISCORD=0; ALWAYS=0; JSON=0
 for a in "$@"; do case "$a" in
@@ -224,7 +224,8 @@ if [ "$DISCORD" = 1 ] && { [ "$NDRIFT" -gt 0 ] || [ "$ALWAYS" = 1 ]; }; then
 import sys, json
 n = int(sys.argv[1]); lines = [l.rstrip("\n").split("\t", 1) for l in sys.stdin]
 desc = "\n".join("- %s" % (t,) for _, t in lines) or "All clean."
-if len(desc) > 3800: desc = desc[:3780] + "\n- ...truncated"
+if len(desc) > 3700: desc = desc[:3680] + "\n- ...truncated"
+if n: desc += "\n\nDetails: `~/death-muffin/ops/drift-report.sh` on the VPS."
 title = "Death Muffin nightly check: %d things need attention" % n if n else "Death Muffin nightly check: all clean"
 print(json.dumps({"embeds": [{"title": title, "description": desc, "color": 15158332 if n else 3066993}], "allowed_mentions": {"parse": []}}))
 ' "$NDRIFT" > "$TMP/payload.json"

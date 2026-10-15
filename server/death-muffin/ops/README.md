@@ -9,18 +9,18 @@ Install or update both from a committed revision: `server/death-muffin/ops/insta
 `~/death-muffin/backups/db/daily/` (newest 14), plus the first dump of each week in `weekly/` (8) and each month in `monthly/` (12).
 Restore: `gunzip -c <file> | sudo mysql <db>` (into a scratch DB first if unsure).
 
-## Nightly drift report (timer `death-muffin-drift-report`, daily 05:00 UTC, after the 04:30 backup; report in the journal, no Discord post since 2026-10-10)
+## Nightly drift report (timer `death-muffin-drift-report`, daily 05:00 UTC, after the 04:30 backup; full report in the journal, and a #build-alerts post only when something drifted)
 
 `drift-report.sh` compares the Death Muffin deployment on this VPS with `origin/main` and lists leftovers. It is read-only: it never changes, deletes, restarts or pushes anything (it only runs `git fetch`).
 
 ```
 server/death-muffin/ops/drift-report.sh              # plain-text report; exit 0 clean, 3 drift
 server/death-muffin/ops/drift-report.sh --json       # machine output
-server/death-muffin/ops/drift-report.sh --discord    # also post an embed when there is drift (manual only; the nightly timer does not post)
+server/death-muffin/ops/drift-report.sh --discord    # also post an embed to #build-alerts when there is drift (the nightly timer runs it this way)
 server/death-muffin/ops/drift-report.sh --discord --always   # post even when clean
 ```
 
-Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`~/death-muffin`), `WWW` (`/var/www/death-muffin`). The webhook URL is read from `~/death-muffin/private/discord-deathmuffin-webhook.url` and never printed.
+Env: `REPO` (default `/home/ubuntu/vps-handoffs/DeathMuffin/game`), `DM_HOME` (`~/death-muffin`), `WWW` (`/var/www/death-muffin`). The webhook URL is read from `~/death-muffin/private/discord-build-alerts-webhook.url` (#build-alerts; `WEBHOOK_FILE` overrides) and never printed.
 
 | # | Check |
 |---|---|
