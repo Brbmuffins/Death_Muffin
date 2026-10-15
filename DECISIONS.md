@@ -113,6 +113,10 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   each player's rewards run at that heat plus their own self vows (solo: their own world and self vows). The backend caps a carried kill the
   same way from the host's record, never the report. "Heat N · Difficulty" (also "Heat 0 · Medium") shows in the friends list, invites, the
   Party window and over the HUD's party list, with "+N yours" for one's own self vows; the lobby's copy is display only.
+- **B33. The launcher updates itself** (owner, 2026-10-15). From 0.9.0 the launcher reads its own `manifest.json` (served at /death-muffin/launcher/) on our server
+  (`publish-launcher.sh`, from the CI-built GitHub release) and swaps its own exe (rename the running one to `.old`, move the verified
+  download in, restart), only while the game is neither running nor downloading. A release reaches players only when published on the VPS;
+  versions only go up. Our server instead of the GitHub API: no rate limit, a SHA-256 to check, and we choose when it goes live.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

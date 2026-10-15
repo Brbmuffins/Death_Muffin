@@ -18,6 +18,8 @@ namespace DeathMuffinLauncher
         [STAThread]
         private static void Main()
         {
+            // What a self-update left behind: the previous exe (.old) and any half download (SelfUpdate.cs).
+            SelfUpdate.CleanUp(Application.ExecutablePath);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new LauncherForm());

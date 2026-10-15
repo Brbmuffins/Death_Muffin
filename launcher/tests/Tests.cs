@@ -114,6 +114,7 @@ namespace DeathMuffinLauncher.Tests
         {
             JsonTests(); ManifestTests(); VersionTests(); HashTests(); OnlineTests(); PlayStateTests();
             InstallerTests().GetAwaiter().GetResult();
+            SelfUpdateLogicTests(); SelfUpdateFileTests().GetAwaiter().GetResult();
             return T.Done();
         }
 
@@ -406,6 +407,101 @@ namespace DeathMuffinLauncher.Tests
                 }
             }
             finally { try { Directory.Delete(tmp, true); } catch (Exception) { } }
+        }
+
+        static LauncherManifest ParseLauncher(string json, string baseUrl = "https://muffindevelopment.com/death-muffin/launcher/manifest.json")
+        {
+            LauncherManifest m; string err;
+            return LauncherManifest.TryParse(json, new Uri(baseUrl), out m, out err) ? m : null;
+        }
+
+        static string LauncherJson(string version, string url, long size, string sha)
+        {
+            return "{\"version\":\"" + version + "\",\"url\":\"" + url + "\",\"size\":" + size + ",\"sha256\":\"" + sha + "\"}";
+        }
+
+        static void SelfUpdateLogicTests()
+        {
+            string sha = new string('a', 64);
+            var m = ParseLauncher(LauncherJson("0.9.0", "0.9.0/DeathMuffinLauncher.exe", 1000, sha));
+            T.Ok(m != null && m.Version == "0.9.0" && m.Size == 1000, "launcher manifest parses");
+            T.Eq(m.Url.ToString(), "https://muffindevelopment.com/death-muffin/launcher/0.9.0/DeathMuffinLauncher.exe", "launcher url resolves against the manifest");
+            T.Ok(ParseLauncher(LauncherJson("0.9.0", "https://evil.example/x.exe", 1000, sha)) == null, "launcher url on another host refused");
+            T.Ok(ParseLauncher(LauncherJson("0.9.0", "http://muffindevelopment.com/x.exe", 1000, sha)) == null, "launcher url over http refused");
+            T.Ok(ParseLauncher(LauncherJson("0.9", "a.exe", 1000, sha)) == null, "two-part launcher version refused");
+            T.Ok(ParseLauncher(LauncherJson("0.9.0-x", "a.exe", 1000, sha)) == null, "non-numeric launcher version refused");
+            T.Ok(ParseLauncher(LauncherJson("0.9.0", "a.exe", 0, sha)) == null, "zero size refused");
+            T.Ok(ParseLauncher(LauncherJson("0.9.0", "a.exe", 1000, "abc")) == null, "bad sha refused");
+            T.Ok(ParseLauncher(LauncherJson("0.9.0", "", 1000, sha)) == null, "missing url refused");
+            T.Ok(ParseLauncher("[]") == null && ParseLauncher("{") == null, "garbage refused");
+
+            var live = ParseLauncher(LauncherJson("0.10.0", "a.exe", 10, sha));
+            T.Eq(SelfUpdate.Decide(live, "0.9.0", false, false, true, 0), SelfUpdateAction.Apply, "newer (0.10 > 0.9, numeric) applies");
+            T.Eq(SelfUpdate.Decide(live, "0.10.0", false, false, true, 0), SelfUpdateAction.None, "same version: nothing");
+            T.Eq(SelfUpdate.Decide(live, "0.11.0", false, false, true, 0), SelfUpdateAction.None, "never downgrades");
+            T.Eq(SelfUpdate.Decide(null, "0.9.0", false, false, true, 0), SelfUpdateAction.None, "no manifest: nothing");
+            T.Eq(SelfUpdate.Decide(live, "0.9.0", true, false, true, 0), SelfUpdateAction.Wait, "game running: wait");
+            T.Eq(SelfUpdate.Decide(live, "0.9.0", false, true, true, 0), SelfUpdateAction.Wait, "game downloading: wait");
+            T.Eq(SelfUpdate.Decide(live, "0.9.0", false, false, false, 0), SelfUpdateAction.LinkOnly, "folder not writable: link");
+            T.Eq(SelfUpdate.Decide(live, "0.9.0", false, false, true, SelfUpdate.MaxFailures), SelfUpdateAction.LinkOnly, "too many failures: link");
+        }
+
+        static async Task SelfUpdateFileTests()
+        {
+            string tmp = Path.Combine(Path.GetTempPath(), "dm-selfupdate-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tmp);
+            try
+            {
+                string exe = Path.Combine(tmp, LauncherManifest.ExeName);
+                byte[] oldExe = Blob(5000, 1), newExe = Blob(7000, 2);
+                File.WriteAllBytes(exe, oldExe);
+                T.Ok(SelfUpdate.FolderWritable(exe), "temp folder is writable");
+
+                using (var srv = new TestServer())
+                using (var http = new HttpClient())
+                {
+                    srv.Files["DeathMuffinLauncher.exe"] = newExe;
+                    var good = ParseLauncherAt(srv, newExe.Length, Sha(newExe));
+
+                    // A corrupt download is refused and leaves nothing to swap.
+                    srv.CorruptFirst["DeathMuffinLauncher.exe"] = 1;
+                    bool threw = false;
+                    try { await SelfUpdate.DownloadAsync(http, good, exe, CancellationToken.None); } catch (InvalidDataException) { threw = true; }
+                    T.Ok(threw && !File.Exists(SelfUpdate.NewPath(exe)), "corrupt launcher download refused, no .new left");
+
+                    // A manifest that understates the size is refused while downloading.
+                    threw = false;
+                    try { await SelfUpdate.DownloadAsync(http, ParseLauncherAt(srv, 100, Sha(newExe)), exe, CancellationToken.None); } catch (InvalidDataException) { threw = true; }
+                    T.Ok(threw && !File.Exists(SelfUpdate.NewPath(exe)), "oversized launcher download refused");
+
+                    // The good one: .new verified, then swapped in; the running exe becomes .old.
+                    await SelfUpdate.DownloadAsync(http, good, exe, CancellationToken.None);
+                    T.Ok(File.Exists(SelfUpdate.NewPath(exe)), "verified download lands as .new");
+                    SelfUpdate.Swap(exe);
+                    T.Ok(File.ReadAllBytes(exe).SequenceEqual(newExe), "new launcher in place");
+                    T.Ok(File.ReadAllBytes(SelfUpdate.OldPath(exe)).SequenceEqual(oldExe), "previous launcher kept as .old");
+                    T.Ok(!File.Exists(SelfUpdate.NewPath(exe)), ".new consumed by the swap");
+
+                    // The next start cleans up after it.
+                    File.WriteAllBytes(exe + ".new.part", new byte[3]);
+                    SelfUpdate.CleanUp(exe);
+                    T.Ok(!File.Exists(SelfUpdate.OldPath(exe)) && !File.Exists(exe + ".new.part") && File.Exists(exe), "cleanup removes .old and partials, keeps the exe");
+
+                    // Swap with nothing downloaded throws and leaves the exe alone.
+                    threw = false;
+                    try { SelfUpdate.Swap(exe); } catch (FileNotFoundException) { threw = true; }
+                    T.Ok(threw && File.ReadAllBytes(exe).SequenceEqual(newExe), "swap without a download changes nothing");
+                }
+            }
+            finally { try { Directory.Delete(tmp, true); } catch (Exception) { } }
+        }
+
+        /// <summary>A launcher manifest pointing at the test server (http on loopback, so parsed against the server's own base).</summary>
+        static LauncherManifest ParseLauncherAt(TestServer srv, long size, string sha)
+        {
+            var m = ParseLauncher(LauncherJson("9.9.9", "DeathMuffinLauncher.exe", size, sha), srv.Base + "manifest.json");
+            if (m == null) throw new Exception("test launcher manifest did not parse");
+            return m;
         }
 
         sealed class SyncProgress : IProgress<InstallProgress>

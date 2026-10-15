@@ -25,9 +25,10 @@ namespace DeathMuffinLauncher
         public const string ManifestUrl = ClientBaseUrl + "manifest.json";
         /// <summary>Every release's player notes (site page fed by play/patch-notes.json).</summary>
         public const string PatchNotesUrl = "https://muffindevelopment.com/death-muffin/patch-notes.html";
-        /// <summary>The newest launcher zip (an exe cannot replace itself, so this is the one thing that opens a browser).</summary>
+        /// <summary>The launcher's own manifest (publish-launcher.sh): the version it updates itself to (SelfUpdate.cs).</summary>
+        public const string LauncherManifestUrl = "https://muffindevelopment.com/death-muffin/launcher/manifest.json";
+        /// <summary>The newest launcher zip, for a folder the launcher cannot update in place (the one thing that opens a browser).</summary>
         public const string LauncherDownloadUrl = "https://github.com/Brbmuffins/Death_Muffin/releases/latest/download/DeathMuffinLauncher-win-x64.zip";
-        const string LatestReleaseApi = "https://api.github.com/repos/Brbmuffins/Death_Muffin/releases/latest";
 
         static readonly HttpClient Http = Create();
 
@@ -126,21 +127,15 @@ namespace DeathMuffinLauncher
             catch { return null; }
         }
 
-        /// <summary>The newest launcher version on GitHub if it is newer than this one (tag launcher-v&lt;version&gt;), else null.</summary>
-        public static async Task<string> FetchNewerLauncherAsync()
+        /// <summary>The launcher manifest, or null (not published yet, offline, or invalid).</summary>
+        public static async Task<LauncherManifest> FetchLauncherManifestAsync()
         {
             try
             {
-                string json = await Http.GetStringAsync(LatestReleaseApi).ConfigureAwait(true);
-                var d = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
-                object v;
-                if (!d.TryGetValue("tag_name", out v) || v == null) return null;
-                string tag = v.ToString();
-                if (!tag.StartsWith("launcher-v", StringComparison.Ordinal)) return null;
-                string latest = tag.Substring("launcher-v".Length);
-                Version a, b;
-                if (!Version.TryParse(latest, out a) || !Version.TryParse(Program.Version, out b)) return null;
-                return a > b ? latest : null;
+                string json = await Http.GetStringAsync(LauncherManifestUrl + "?t=" + DateTime.UtcNow.Ticks).ConfigureAwait(true);
+                LauncherManifest m;
+                string err;
+                return LauncherManifest.TryParse(json, new Uri(LauncherManifestUrl), out m, out err) ? m : null;
             }
             catch { return null; }
         }

@@ -11,5 +11,6 @@
   <ItemGroup>
     <Compile Include="..\windows\ClientLogic.cs" />
     <Compile Include="..\windows\ClientInstaller.cs" />
+    <Compile Include="..\windows\SelfUpdate.cs" />
   </ItemGroup>
 </Project>

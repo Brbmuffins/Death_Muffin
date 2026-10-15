@@ -9,8 +9,8 @@ separate runtime. It downloads, verifies, updates and starts the **Godot client*
    [latest release](https://github.com/Brbmuffins/Death_Muffin/releases/latest/download/DeathMuffinLauncher-win-x64.zip)
    and unzip it anywhere (keep the files together).
 2. Run `DeathMuffinLauncher.exe`.
-3. **Updating the launcher is manual for now:** download the new zip and replace the old folder. The *game* updates from inside
-   the launcher (below). Your saves are not in that folder.
+3. **The launcher updates itself** (0.9.0 and later; older launchers need this download once more). The *game* updates from inside
+   the launcher too (below). Your saves are not in that folder.
 
 ### What the launcher does
 
@@ -44,7 +44,12 @@ separate runtime. It downloads, verifies, updates and starts the **Godot client*
 - **Use high-performance GPU** (default on) is in the footer's **Settings** menu. It writes Windows' per-app graphics preference for the installed
   `DeathMuffin.exe` (`HKCU\Software\Microsoft\DirectX\UserGpuPreferences`, `GpuPreference=2`) just before each launch, and removes it when
   unticked. It is the same switch as Windows Settings > System > Display > Graphics.
-- The launcher checks GitHub for a newer launcher and shows a link (the only browser launch, since an exe cannot replace itself).
+- **The launcher updates itself** (`SelfUpdate.cs`, DECISIONS B33). With every check it reads the launcher `manifest.json` (served at /death-muffin/launcher/)
+  (`{version, url, size, sha256}`, written by [`publish-launcher.sh`](../../server/death-muffin/publish-launcher.sh)). For a newer version it
+  downloads `DeathMuffinLauncher.exe.new` next to itself, checks size and SHA-256, renames the running exe to `.exe.old` (Windows allows
+  renaming a running exe, not overwriting it), moves the new one in, starts it and closes; the new launcher deletes `.old` when it starts.
+  Never while the game runs or downloads (it waits for a later check). A folder it cannot write (e.g. under Program Files) or three failed
+  attempts show a "Launcher x.y.z available" link to the GitHub zip instead, the only browser launch.
 
 ### Where things live
 
@@ -97,10 +102,12 @@ Output: `launcher/windows/bin/Release/net48/DeathMuffinLauncher.exe`. The versio
 
 The [Windows launcher workflow](../../.github/workflows/launcher-windows.yml) builds on `windows-latest` for pushes touching
 `launcher/**` (and manual runs), uploads `DeathMuffinLauncher-win-x64.zip` as an artifact and, from `main` or a manual
-run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.8.0) for each new launcher release and add a changelog line.
+run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.9.0) for each new launcher release and add a changelog line. A release reaches running launchers only when it is
+published on the VPS: `server/death-muffin/publish-launcher.sh <version>` after the workflow has attached the zip (it refuses a version that is not newer).
 
 Code map: `ClientLogic.cs` (manifest parsing, version compare, hashing, online note, button state machine; no UI),
-`ClientInstaller.cs` (download/verify/resume/swap and the install folder), `Updates.cs` (server requests), `LauncherForm.cs`
+`ClientInstaller.cs` (download/verify/resume/swap and the install folder), `SelfUpdate.cs` (the launcher's own manifest, update decision,
+download and exe swap), `Updates.cs` (server requests), `LauncherForm.cs`
 (UI, launching the game), `PatchNotesWindow.cs`, `Art.cs`.
 
 ## Window
@@ -111,6 +118,8 @@ two lines) over a subtle dark backing, and a footer with version, status, Settin
 
 ### Changelog
 
+- **0.9.0** - The launcher updates itself from the launcher `manifest.json` (served at /death-muffin/launcher/) (download, SHA-256 check, exe swap, restart) when the game is not
+  running or downloading; the GitHub release check is gone.
 - **0.8.0** - Play button bottom right in every state; one footer status with a coloured dot instead of three "Game running" texts;
   GPU switch moved into a Settings menu; tidier news panel (consistent headings, two-line dispatch headline); shorter footer.
 - **0.7.0** - One play path: online. A single Download / Play / Update button; always launches with `-- --online`. An unopened online (or no internet) only adds a note under PLAY.

@@ -60,7 +60,11 @@ namespace DeathMuffinLauncher
         /// <summary>The live manifest from the server, or null if it could not be read (the play button then shows the default online note).</summary>
         ClientManifest live;
         /// <summary>The server answered the last check. Starts true so nothing flashes "no internet" before the first check.</summary>
-        bool reachable = true, checkedOnce, rechecking, launcherChecked;
+        bool reachable = true, checkedOnce, rechecking;
+        /// <summary>Self-update state (CheckLauncherAsync): one attempt at a time, and failures this session.</summary>
+        bool selfUpdating;
+        int selfUpdateFailures;
+        static readonly string ExePath = Application.ExecutablePath;
         bool installing, installFailed;
         double installProgress = -1;
         string installError;
@@ -99,7 +103,7 @@ namespace DeathMuffinLauncher
             updateLabel.Text = "Checking for updates...";
             root.Controls.Add(updateLabel);
             y += 24;
-            // Shown only when GitHub has a newer launcher. It opens the zip in the browser: an exe cannot replace itself.
+            // Shown only when a newer launcher exists but this folder cannot be updated in place (SelfUpdate.cs): it opens the zip in the browser.
             launcherLink.SetBounds(x, y, w, 18);
             StyleLink(launcherLink, new Font("Segoe UI", 9f));
             launcherLink.AutoEllipsis = true;
@@ -258,20 +262,50 @@ namespace DeathMuffinLauncher
                     else if (installed != null) Warn("No internet connection. The game needs it to sign in.", null);
                     else Warn("No internet connection. Connect to download the game.", null);
                 }
-                if (r.Reachable && !launcherChecked)
-                {
-                    launcherChecked = true;
-                    string nv = await Updates.FetchNewerLauncherAsync();
-                    if (nv != null)
-                    {
-                        launcherLink.Text = "Launcher " + nv + " available: click to download (opens your browser).";
-                        launcherLink.Links.Clear();
-                        launcherLink.Links.Add(0, launcherLink.Text.Length);
-                        launcherLink.Visible = true;
-                    }
-                }
+                if (r.Reachable) await CheckLauncherAsync();
             }
             finally { rechecking = false; }
+        }
+
+        /// <summary>
+        /// The launcher's self-update, on every check (SelfUpdate.cs): a newer launcher is downloaded and swapped in, then the new one starts and
+        /// this one closes. Never while the game runs or downloads (it waits for a later check); a folder it cannot write, or three failures,
+        /// show the download link instead.
+        /// </summary>
+        async System.Threading.Tasks.Task CheckLauncherAsync()
+        {
+            if (selfUpdating) return;
+            selfUpdating = true;
+            try
+            {
+                var m = await Updates.FetchLauncherManifestAsync();
+                bool newer = m != null && VersionCompare.Compare(m.Version, Program.Version) > 0;
+                var act = SelfUpdate.Decide(m, Program.Version, running, installing, newer && SelfUpdate.FolderWritable(ExePath), selfUpdateFailures);
+                launcherLink.Visible = act == SelfUpdateAction.LinkOnly;
+                if (act == SelfUpdateAction.LinkOnly)
+                {
+                    launcherLink.Text = "Launcher " + m.Version + " available: click to download (opens your browser).";
+                    launcherLink.Links.Clear();
+                    launcherLink.Links.Add(0, launcherLink.Text.Length);
+                }
+                if (act != SelfUpdateAction.Apply) return;
+                Flash("Updating the launcher to " + m.Version + "...", StatusLevel.Busy);
+                try
+                {
+                    using (var http = Updates.CreateDownloadClient())
+                        await SelfUpdate.DownloadAsync(http, m, ExePath, System.Threading.CancellationToken.None);
+                    if (running || installing || IsDisposed) return;   // started meanwhile: the next check downloads it again and swaps
+                    SelfUpdate.Swap(ExePath);
+                    Process.Start(new ProcessStartInfo(ExePath) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(ExePath) });
+                    Close();
+                }
+                catch (Exception ex)
+                {
+                    selfUpdateFailures++;
+                    Warn("Launcher update failed (" + ex.Message + "). It will try again.", null);
+                }
+            }
+            finally { selfUpdating = false; }
         }
 
         static string Short(string v) { return PlayStateMachine.ShortVersion(v); }
@@ -476,7 +510,7 @@ namespace DeathMuffinLauncher
 
         static bool Alive2(Form f) { return f != null && !f.IsDisposed; }
 
-        /// <summary>The only remaining browser launch: the newer launcher zip (an exe cannot replace itself).</summary>
+        /// <summary>The only browser launch: the newer launcher zip, for a folder the launcher cannot update in place.</summary>
         static void OpenExternalPage(string url)
         {
             try { Process.Start(url); } catch { }
