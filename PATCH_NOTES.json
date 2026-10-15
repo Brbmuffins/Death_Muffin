@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-10-15",
+    "title": "The Ceiling Holds",
+    "items": [
+      "Level 999 is the cap, and the game now knows it: no more \"Level 1000\" announcement popping up after every kill at 999.",
+      "Party kills in a ground you haven't opened yet now count the same in the game as on the server."
+    ]
+  },
+  {
+    "date": "2026-10-15",
     "title": "Lighter, Smoother, Safer",
     "items": [
       "Smaller updates: the game's art and sound now ship as their own file, so most future updates download about 14 MB instead of 280 MB. This update is the last big one.",
