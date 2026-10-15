@@ -1,0 +1,5 @@
+; The UDP relay service (README.md): a headless Godot process running relay_main.gd. Not the game project.
+config_version=5
+
+[application]
+config/name="Death Muffin relay"

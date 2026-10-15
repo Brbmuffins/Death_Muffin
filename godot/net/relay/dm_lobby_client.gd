@@ -47,6 +47,8 @@ var account_id: int = 0
 var username: String = ""
 var peer_id: int = 0          # 1 = host, 2+ = clients; 0 when not in a session
 var session: Dictionary = {}  # last known session info
+## The UDP relay lane for this member ({addr, port, ticket}) from `created` / `joined`; {} when the lobby has no relay (DmRelayPeer then stays on this socket).
+var relay: Dictionary = {}
 var max_players: int = 4
 var last_error: Dictionary = {}
 ## Traffic counters (game packets only, header included): a hosted session's network cost, read by the tests and the perf overlay.
@@ -248,11 +250,13 @@ func _on_text(text: String) -> void:
 		"created":
 			session = m.get("session", {})
 			peer_id = int(m.get("peerId", 1))
+			relay = m.get("relay") if m.get("relay") is Dictionary else {}
 			state = State.IN_SESSION_HOST
 			session_created.emit(session, str(m.get("code", "")))
 		"joined":
 			session = m.get("session", {})
 			peer_id = int(m.get("peerId", 0))
+			relay = m.get("relay") if m.get("relay") is Dictionary else {}
 			state = State.IN_SESSION_CLIENT
 			session_joined.emit(session, peer_id)
 		"session_updated":

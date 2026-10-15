@@ -45,8 +45,13 @@ func _ready() -> void:
 		_log("CONNECT_FAILED err %d" % err)
 		quit_at = 0.1
 
+var lane_logged := false
+
 func _process(delta: float) -> void:
 	age += delta
+	if role == "client" and peer != null and not lane_logged and peer.lane_to(1) == "udp":
+		lane_logged = true
+		_log("LANE udp")
 	if peer == null:
 		lobby.poll()
 	if quit_at >= 0.0 and age >= quit_at:
@@ -63,6 +68,7 @@ func _process(delta: float) -> void:
 	if role == "host" and not closing:
 		if dones.has(2) and dones.has(4) and left.has(3) and FileAccess.file_exists(logfile.get_base_dir().path_join("release_host")):
 			closing = true
+			_log("HOST_LANES 2=%s 4=%s udp_in=%d" % [peer.lane_to(2), peer.lane_to(4), peer.udp.received if peer.udp != null else 0])
 			_log("HOST_CLOSING")
 			peer.close()
 			quit_at = age + 0.4

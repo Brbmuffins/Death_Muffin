@@ -24,7 +24,7 @@ Failure closes with 4401; replaced = 4402; locked (staff-only mode) = 4403; rate
 ## Text frames (JSON control)
 Client -> server: `list`, `create {name(1-32), area, private?, code?}`, `join {id, code?}` or `join {code}` (private sessions are not listed: the code alone finds one; wrong codes are counted per connection, 10 per 10 min, then `rate_limit`), `leave`, host only: `set_open {open}`, `kick {id}`.
 Server -> client: `ready {accountId, username, maxPlayers}`, `sessions {sessions:[{id,name,host,area,players,max,private,open}]}` (public + open only),
-`created {session, peerId:1, code?}` (private sessions get a 6-digit code unless one was supplied), `joined {session, peerId}`, `left`, `session_updated`,
+`created {session, peerId:1, code?, relay?}` (private sessions get a 6-digit code unless one was supplied), `joined {session, peerId, relay?}` (`relay: {addr, port, ticket}` for the UDP relay when `DM_RELAY_UDP` is set, see `../relay/README.md`), `left`, `session_updated`,
 host gets `peer_joined {id,name,accountId}` / `peer_left {id, reason: left|disconnected|kicked}`, everyone else gets
 `session_closed {reason: host_left|idle|kicked|shutdown}` (the socket stays open, back in the lobby), `error {code,msg,req}`.
 Error codes: `bad_request in_session not_in_session not_found bad_code full closed not_host busy rate_limit auth` (+ Friends: `not_friend already_in`).

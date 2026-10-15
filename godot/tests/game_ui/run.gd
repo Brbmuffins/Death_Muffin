@@ -218,6 +218,23 @@ func _more(game: DmMockGame, ui: DmGameUi) -> void:
 	_check(not lt.contains("hunter2") and not lt.contains("abc.def") and lt.contains("tokens loaded"), "game log: passwords and bearer tokens blanked, ordinary words kept")
 	_check(DmBugReportView.log_errors(lt).size() == 2 and DmBugReportView.game_log_tail(40, ld).length() <= 40, "game log: error lines picked out, size capped")
 	_check(DmBugReportView.game_log_tail(11000, "user://no_such_logs") == "", "game log: no log folder, nothing attached")
+	# automatic crash reports (DmCrashWatch): a lock left by a run that never shut down becomes a pending report of that run's log
+	var prev_only := DmBugReportView.game_log_tail(11000, ld, true)
+	_check(prev_only.contains("crashed session") and prev_only.contains("CrashHandlerException") and not prev_only.contains("tokens loaded") and not prev_only.contains("hunter2"), "crash log: only the crashed session, scrubbed")
+	var lk := "user://test_session.lock"; var pd := "user://test_crash_pending.json"
+	DmCrashWatch.end(lk); DmCrashWatch.clear(pd)
+	_check(not DmCrashWatch.begin("dev", lk, pd, ld) and not FileAccess.file_exists(lk), "crash watch: a dev build writes no lock")
+	var rel := "20261015.030804-d1e8b44"
+	_check(not DmCrashWatch.begin(rel, lk, pd, ld) and FileAccess.file_exists(lk), "crash watch: a first start is not a crash, and writes the lock")
+	DmCrashWatch.end(lk)
+	_check(not DmCrashWatch.begin(rel, lk, pd, ld), "crash watch: after a normal shutdown, no crash")
+	_check(DmCrashWatch.begin(rel, lk, pd, ld) and FileAccess.file_exists(pd), "crash watch: a lock left behind = the last run crashed, report pending")
+	var crep := DmCrashWatch.pending_report(7, pd)
+	_check(crep["category"] == "bug" and crep["characterId"] == 7 and String(crep["message"]).begins_with("Automatic crash report") and String(crep["message"]).contains(rel), "crash report: says it is automatic and names the build")
+	_check(crep["context"]["crash"] == true and String(crep["context"]["log"]).contains("CrashHandlerException") and (crep["context"]["errors"] as Array).size() >= 1, "crash report: carries the crashed log and its errors")
+	DmCrashWatch.clear(pd)
+	_check(DmCrashWatch.pending_report(7, pd).is_empty(), "crash report: cleared once sent")
+	DmCrashWatch.end(lk)
 	for f in DirAccess.get_files_at(ld):
 		DirAccess.remove_absolute(ld.path_join(f))
 	DirAccess.remove_absolute(ld)

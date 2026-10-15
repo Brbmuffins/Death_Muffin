@@ -187,8 +187,9 @@ func load_list() -> void:
 
 
 ## The end of the Godot log: the previous session's (where a crash that closed the game is written) and this one's, newest last,
-## at most `max_chars`. The player's home folder becomes ~ and anything that looks like a token or password is blanked.
-static func game_log_tail(max_chars: int = 11000, dir: String = "user://logs") -> String:
+## at most `max_chars` (`previous_only`: just the previous session's, for an automatic crash report). The player's home folder becomes ~
+## and anything that looks like a token or password is blanked.
+static func game_log_tail(max_chars: int = 11000, dir: String = "user://logs", previous_only: bool = false) -> String:
 	var files := DirAccess.get_files_at(dir)
 	if files.is_empty():
 		return ""
@@ -201,6 +202,8 @@ static func game_log_tail(max_chars: int = 11000, dir: String = "user://logs") -
 				newest = t
 				previous = f
 	var parts: Array[String] = []
+	if previous_only:
+		return "" if previous == "" else _scrub("=== crashed session (%s) ===\n%s" % [previous, _tail(FileAccess.get_file_as_string(dir.path_join(previous)), max_chars)]).right(max_chars)
 	var half := max_chars / 2
 	if previous != "":
 		parts.append("=== previous session (%s) ===\n%s" % [previous, _tail(FileAccess.get_file_as_string(dir.path_join(previous)), half)])

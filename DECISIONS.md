@@ -20,7 +20,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   (move, cast, interact) to the host. The backend owns everything that persists or has value: accounts, characters, inventory, gold, shards,
   loot rolls, progression and the kill ledger. A cheating host can spoil its own session but cannot mint value (B19-B26 made this hold).
 - **D2. Party size: 4 players** (`DmSession.MAX_PLAYERS`).
-- **D3. Connectivity.** Listen-server host through the VPS relay (the lobby lists sessions and forwards packets over WebSocket; no port
+- **D3. Connectivity.** Listen-server host through the VPS relay (the lobby lists sessions and forwards packets over WebSocket, plus the UDP lane of B31; no port
   forwarding). Client side is `DmRelayPeer` (a `MultiplayerPeerExtension`); `ENetMultiplayerPeer` for LAN and tests.
 - **D4. The mock backend is for tests only** (`DmMockBackend`, `net/offline/`, behind `-- --dev-offline`; see B1).
 - **D5. Solo first.** Solo play is polished before more party features; the session structure keeps online working.
@@ -120,3 +120,19 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   (`DmUpdateCheck`) and shows one toast per newer build right away, even mid-fight (owner: "alert about a new update mid fight"). Each backend deploy must keep accepting what the previous client
   sends: add routes and fields freely, but remove or tighten one only a release after the client stopped using it. The lobby restarts only
   when no party is running (`deploy-lobby.sh`).
+- **B29. Crashes report themselves** (owner, 2026-10-15). A release build writes `user://session.lock` at start and removes it on a normal
+  shutdown (`DmCrashWatch`). A lock left at the next start means the last run never shut down (crash, killed freeze, PC off); that run's log
+  tail is sent once the player is in an online world, as a bug report (`context.crash = true`, message "Automatic crash report ..."), which
+  opens an #in-game-reports thread like any report, and the player gets a toast saying so. Built in-house rather than Sentry: no account,
+  and the reports land where the devs already look.
+- **B30. Two packs, so updates are small** (owner, 2026-10-15). `DeathMuffin.pck` holds code, data and UI (~14 MB) and changes every
+  release; `DeathMuffin.assets.pck` holds `res://assets` (art, models, audio, ~264 MB), loaded first by the `Packs` autoload
+  (`main/dm_packs.gd`). Godot's export is not byte-reproducible, so the publish reuses the last assets pack while a fingerprint of everything
+  that goes into it is unchanged; the launcher then sees the same SHA-256 and copies it from the installed build. The assets pack carries no
+  project files (`tools/godot/pck_extract.py` keeps only assets and their imported files), so an old one never overrides newer code.
+- **B31. Co-op over UDP when it can** (owner, 2026-10-15: "our own UDP relay"). Next to the lobby WebSocket, each member opens an ENet lane
+  to our relay (`deathmuffin-relay`, UDP 5193; `godot/net/relay/dm_udp_relay.gd`) with a ticket from the lobby, so unreliable packets
+  (movement) are really unreliable and a lost packet no longer stalls the rest. Same star through our server: players never see each other's
+  address (the server's own address is visible to players' games, the website stays behind Cloudflare). Each direction switches with a
+  marker on the WebSocket, so reliable packets stay in order; a lane that fails or drops falls back to the WebSocket. The lobby stays the
+  source of truth for membership. Chosen over WebRTC peer-to-peer (no third-party plugin, no shared IPs, one port).

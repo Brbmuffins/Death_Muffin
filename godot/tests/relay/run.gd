@@ -12,6 +12,9 @@ var fail_count := 0
 var pids: Array = []
 var tmp := ""
 var port := 0
+## udp_run.gd: the same session with the UDP relay (DmUdpRelay, in this process) offered by the lobby; the clients must end up on it.
+var udp_mode := false
+var relay: DmUdpRelay
 
 func ok(cond: bool, label: String, extra: String = "") -> void:
 	if cond:
@@ -84,6 +87,29 @@ func _main() -> void:
 	OS.set_environment("DM_LOBBY_PORT", str(port))
 	OS.set_environment("DM_LOBBY_HOST", HOST)
 	OS.set_environment("DM_LOBBY_QUIET", "1")
+	if udp_mode:
+		relay = DmUdpRelay.new()
+		var up := 0
+		for _i in 20:
+			up = 40000 + randi() % 10000
+			if relay.listen(up, "127.0.0.1", SECRET, true) == OK:
+				break
+			up = 0
+		ok(up != 0, "udp relay listening")
+		root.add_child(relay)
+		OS.set_environment("DM_RELAY_UDP", "%s:%d" % [HOST, up])
+		var now := int(Time.get_unix_time_from_system() * 1000.0)
+		var mac := func(s: String, p: int, e: int, key: String) -> String:
+			var c := HMACContext.new()
+			c.start(HashingContext.HASH_SHA256, key.to_utf8_buffer())
+			c.update(("dm-relay|%s|%d|%d" % [s, p, e]).to_utf8_buffer())
+			return c.finish().hex_encode()
+		ok(DmUdpRelay.verify(SECRET, "s1.2.%d.%s" % [now + 9000, mac.call("s1", 2, now + 9000, SECRET)], now) == {"sid": "s1", "pid": 2}, "relay ticket: a good one opens session s1 as peer 2")
+		ok(DmUdpRelay.verify(SECRET, "s1.2.%d.%s" % [now - 1, mac.call("s1", 2, now - 1, SECRET)], now).get("error") == "expired", "relay ticket: expired")
+		ok(DmUdpRelay.verify(SECRET, "s1.1.%d.%s" % [now + 9000, mac.call("s1", 2, now + 9000, SECRET)], now).get("error") == "bad_ticket", "relay ticket: peer changed = bad")
+		ok(DmUdpRelay.verify(SECRET, "s1.2.%d.%s" % [now + 9000, mac.call("s1", 2, now + 9000, "other")], now).get("error") == "bad_ticket", "relay ticket: other secret = bad")
+	else:
+		OS.set_environment("DM_RELAY_UDP", "")
 	var node_pid := OS.create_process("node", [lobby_dir.path_join("src/index.js")])
 	pids.append(node_pid)
 	var tok := func(id: int, name: String) -> String: return RelayTestJwt.mint(SECRET, id, name)
@@ -154,7 +180,7 @@ func _main() -> void:
 		ok(_has("host", "HELLO %d %s" % [2 + labels.find(l), l]), "client->host RPC from " + l)
 		ok(await _wait(func() -> bool: return _has(l, "WELCOME %d (sender 1)" % (2 + labels.find(l)))), "host->client rpc_id reply to " + l, _log_of(l))
 		ok(await _wait(func() -> bool: return _has(l, "BCAST 42 [1, 2, 3, 250]")), "host->all broadcast incl. PackedByteArray arg reached " + l, _log_of(l))
-	ok(await _wait(func() -> bool: return _has("host", "PING_U 7 from 4")), "unreliable_ordered RPC arrives (reliable underneath)", _log_of("host"))
+	ok(await _wait(func() -> bool: return _has("host", "PING_U 7 from 4")), "unreliable_ordered RPC arrives", _log_of("host"))
 	ok(await _wait(func() -> bool: return _has("C", "C2C from-A via-sender 2")), "client->client RPC works via Godot server relay", _log_of("C"))
 
 	# client disconnect: B leaves once released
@@ -180,6 +206,12 @@ func _main() -> void:
 	await _wait(func() -> bool: good.poll(); return listed[0] != null, 3.0)
 	ok(listed[0] != null and listed[0].size() == 0, "session is gone from the list")
 
+	if udp_mode:
+		ok(_has("A", "LANE udp") and _has("C", "LANE udp"), "clients switched to the UDP lane", _log_of("A") + _log_of("C"))
+		ok(_has("host", "HOST_LANES 2=udp 4=udp"), "the host sends to both remaining clients over UDP", _log_of("host"))
+		ok(relay.stats["attached"] >= 4 and relay.stats["forwarded"] > 0, "the relay carried the traffic", str(relay.stats))
+	else:
+		ok(not _has("A", "LANE udp") and _has("host", "HOST_LANES 2=ws 4=ws"), "without a relay everything stays on the WebSocket")
 	# everything exited cleanly
 	for l in ["host", "A", "B", "C"]:
 		ok(not _has(l, "TIMEOUT") and not _has(l, "SCRIPT ERROR"), l + " child had no timeout/script errors", _log_of(l))

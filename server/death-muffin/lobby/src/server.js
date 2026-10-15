@@ -31,6 +31,8 @@ const DEFAULTS = {
   askMs: 5 * 60 * 1000,     // an unanswered ask to join expires
   askGapMs: 30 * 1000,      // one ask per friend per this long
   friendsFetchPerMin: 20,   // friend-list reloads one connection may cause per minute
+  relayUdp: null,           // optional { addr, port }: the UDP relay (server/death-muffin/relay); members get a signed ticket for it (relayTicket)
+  relayTicketMs: 10 * 60 * 1000, // a ticket must be used this soon (it only opens the UDP lane; the lobby stays the source of truth for membership)
 };
 
 const AREA_RE = /^[\w .'\-]{1,32}$/;
@@ -48,6 +50,12 @@ const worldOf = (msg, base = { heat: 0, difficulty: 'medium' }) => ({
   heat: Number.isInteger(msg.heat) && msg.heat >= 0 && msg.heat <= HEAT_MAX ? msg.heat : base.heat,
   difficulty: typeof msg.difficulty === 'string' && DIFFICULTY_RE.test(msg.difficulty) ? msg.difficulty : base.difficulty,
 });
+/** A UDP relay ticket: "<session>.<peer>.<expires ms>.<hmac>", HMAC-SHA256 over "dm-relay|session|peer|expires" with the shared secret.
+ *  The relay (godot/net/relay/dm_udp_relay.gd) checks it the same way. */
+function relayTicket(secret, sid, peerId, expiresMs) {
+  const mac = crypto.createHmac('sha256', secret).update(`dm-relay|${sid}|${peerId}|${expiresMs}`).digest('hex');
+  return `${sid}.${peerId}.${expiresMs}.${mac}`;
+}
 function sidStamp(sid) {
   const n = Number(String(sid).split('-')[0]);
   return Number.isFinite(n) && n > 0 ? n : 0;
@@ -78,6 +86,11 @@ function createLobby(userOpts = {}) {
   };
   const sendErr = (conn, code, msg, req) => sendJson(conn, { t: 'error', code, msg, req });
 
+  /** The UDP lane for a member (undefined when no relay is configured: clients then stay on this WebSocket). */
+  function relayFor(s, peerId) {
+    if (!o.relayUdp) return undefined;
+    return { addr: o.relayUdp.addr, port: o.relayUdp.port, ticket: relayTicket(o.jwtSecret, s.id, peerId, Date.now() + o.relayTicketMs) };
+  }
   function sessionInfo(s) {
     return { id: s.id, name: s.name, host: s.host.username, area: s.area, players: 1 + s.clients.size, max: o.maxPlayers, private: s.isPrivate, open: s.open,
       heat: s.world.heat, difficulty: s.world.difficulty };
@@ -343,7 +356,7 @@ function createLobby(userOpts = {}) {
         sessions.set(id, sess);
         conn.session = sess; conn.peerId = HOST_PEER_ID;
         log('session created', id, name);
-        sendJson(conn, { t: 'created', session: sessionInfo(sess), code: isPrivate ? code : undefined, peerId: HOST_PEER_ID });
+        sendJson(conn, { t: 'created', session: sessionInfo(sess), code: isPrivate ? code : undefined, peerId: HOST_PEER_ID, relay: relayFor(sess, HOST_PEER_ID) });
         return pushPresence(conn);
       }
       case 'join': {
@@ -369,7 +382,7 @@ function createLobby(userOpts = {}) {
         sess.invites.delete(conn.accountId);
         conn.session = sess; conn.peerId = pid;
         sess.lastActivity = Date.now();
-        sendJson(conn, { t: 'joined', session: sessionInfo(sess), peerId: pid });
+        sendJson(conn, { t: 'joined', session: sessionInfo(sess), peerId: pid, relay: relayFor(sess, pid) });
         sendJson(sess.host, { t: 'peer_joined', id: pid, name: conn.username, accountId: conn.accountId });
         return pushSession(sess);
       }
@@ -479,4 +492,4 @@ function createLobby(userOpts = {}) {
   return { start, stop, sessions, stats, options: o, _sweepIdle: () => { const now = Date.now(); for (const s of [...sessions.values()]) if (now - s.lastActivity > o.idleMs) closeSession(s, 'idle'); } };
 }
 
-module.exports = { createLobby, DEFAULTS, KIND_DATA };
+module.exports = { createLobby, DEFAULTS, KIND_DATA, relayTicket };

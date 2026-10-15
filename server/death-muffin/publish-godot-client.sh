@@ -5,6 +5,10 @@
 #
 # 1. `git worktree add --detach` of <rev> into a scratch folder (removed on exit), copies in the flipbook sheets kept outside git
 #    (tools/godot/fx-sheets-sync.sh), imports the project and exports the "Windows Desktop" preset with Godot 4.7.2 (DeathMuffin.exe + DeathMuffin.pck).
+#    res://assets ships separately as DeathMuffin.assets.pck (tools/godot/assets-pack.sh, loaded by main/dm_packs.gd): it is fingerprinted
+#    (every file under godot/assets incl. the flipbook sheets, the export settings, the Godot version, the pack tools) and reused from
+#    $WORK/assets-cache/<fingerprint>.pck while unchanged, so it keeps its SHA-256 and the launcher skips it. Godot's export is not
+#    byte-reproducible, so an unchanged pack must be reused, never rebuilt. A revision without assets-pack.sh ships one pck (rollbacks).
 # 2. Hashes every file (SHA-256) and copies them to $OUT_DIR/<version>/ (a folder per build, so a player who is mid-download of the
 #    previous build never sees its files change).
 # 3. Writes $OUT_DIR/manifest.json LAST, atomically:
@@ -72,6 +76,21 @@ git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1
 "$GODOT" --headless --path "$WT/godot" --import >"$STAGE/import.log" 2>&1 || { tail -30 "$STAGE/import.log" >&2; echo "godot import failed" >&2; exit 1; }
 "$GODOT" --headless --path "$WT/godot" --export-release "$PRESET" "$STAGE/DeathMuffin.exe" >"$STAGE/export.log" 2>&1 || { tail -30 "$STAGE/export.log" >&2; echo "godot export failed" >&2; exit 1; }
 rm -f "$STAGE/import.log" "$STAGE/export.log"
+if [ -f "$WT/tools/godot/assets-pack.sh" ]; then
+  CACHE="$WORK/assets-cache"; mkdir -p "$CACHE"
+  FP=$( { (cd "$WT/godot" && find assets -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
+          (cd "$WT" && sha256sum godot/export_presets.cfg godot/project.godot tools/godot/assets-pack.sh tools/godot/pck_extract.py tools/godot/pck_pack.gd)
+          "$GODOT" --version; } | sha256sum | cut -c1-16)
+  if [ -s "$CACHE/$FP.pck" ]; then echo "== assets pack: unchanged ($FP), reused"
+  else
+    echo "== assets pack: building ($FP)"
+    bash "$WT/tools/godot/assets-pack.sh" "$WT/godot" "$CACHE/$FP.pck.tmp" "$GODOT"
+    mv -f "$CACHE/$FP.pck.tmp" "$CACHE/$FP.pck"
+  fi
+  cp "$CACHE/$FP.pck" "$STAGE/DeathMuffin.assets.pck"
+  touch "$CACHE/$FP.pck"
+  ls -1t "$CACHE"/*.pck 2>/dev/null | tail -n +4 | while read -r f; do rm -f "$f"; done   # keep the newest three
+fi
 [ -n "${INCLUDE_CONSOLE:-}" ] || rm -f "$STAGE"/*.console.exe
 
 # Sanity: a real Windows exe and a non-trivial pck, both named the way the launcher expects.

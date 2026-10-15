@@ -1,0 +1,22 @@
+[Unit]
+Description=Death Muffin UDP co-op relay (DECISIONS B31)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/death-muffin/relay
+ExecStart=/home/ubuntu/tools/godot/godot --headless --path /home/ubuntu/death-muffin/relay --script relay_main.gd
+Environment=ENV_FILE=/home/ubuntu/death-muffin/backend/.env
+Environment=DM_RELAY_PORT=5193
+Environment=HOME=/home/ubuntu/death-muffin/relay/home
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/ubuntu/death-muffin/relay
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

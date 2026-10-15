@@ -39,6 +39,7 @@ Start here for a request, then read the system's README. One row per feature; th
 | Crafting, gathering, garden, labor | `ui/panels_b/` (forge, salvage, garden, labor, professions), `next/gathering/` | `rules/gathering/`, `data/gathering/` | `gathering/`, `garden.cjs`, `labor.cjs` |
 | F3 performance overlay | `main/perf_overlay.gd`, `next/perf/` | | |
 | Bug report window | `game_ui/dm_bug_report_view.gd` | | `bug-reports.cjs` |
+| Automatic crash reports | `main/dm_crash_watch.gd`, `main/main.gd` | | `bug-reports.cjs` |
 | API calls (one function per route), offline mock | `net/dm_api.gd`, `net/dm_mock_backend.gd` | | the route's `.cjs` |
 
 ## Conventions

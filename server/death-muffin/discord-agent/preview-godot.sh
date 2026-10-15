@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Playable preview of a proposal, Godot mode: preview-godot.sh <jobid>   (run by the RUNNER from the job's worktree, never by the AI).
-# 1. Import the project and export the "Windows Desktop" preset to <worktree>/.dm-preview/DeathMuffin.exe (+ .pck), inside the same sandbox as
+# 1. Import the project and export the "Windows Desktop" preset to <worktree>/.dm-preview/DeathMuffin.exe (+ .pck, + DeathMuffin.assets.pck from
+#    tools/godot/assets-pack.sh when the branch has it: res://assets ships as its own pack), inside the same sandbox as
 #    check-godot.sh (no network, the whole filesystem read-only via sandbox-lib.sh, private /tmp, only the worktree writable, fresh HOME / XDG dirs so Godot's user:// never touches the
 #    real home; the installed export templates are re-exposed read-only through XDG_DATA_HOME).
 # 2. Outside the sandbox: zip the build with "Play Preview (offline).bat" (DeathMuffin.exe -- --dev-offline: local testing backend, nothing saves to a
@@ -33,6 +34,7 @@ export DM_PAYLOAD='
   cd "$TOP/godot"
   "$GODOT" --headless --path . --import > "$SCR/import.log" 2>&1 || { tail -15 "$SCR/import.log"; echo "godot import failed"; exit 1; }
   "$GODOT" --headless --path . --export-release "Windows Desktop" "$OUT/DeathMuffin.exe" > "$SCR/export.log" 2>&1 || { tail -15 "$SCR/export.log"; echo "godot export failed"; exit 1; }
+  [ ! -f "$TOP/tools/godot/assets-pack.sh" ] || bash "$TOP/tools/godot/assets-pack.sh" "$TOP/godot" "$OUT/DeathMuffin.assets.pck" "$GODOT" > "$SCR/assets.log" 2>&1 || { tail -15 "$SCR/assets.log"; echo "assets pack failed"; exit 1; }
 '   # the sandboxed work; run by dm_sandbox_run inside the nested namespace (sandbox-lib.sh)
 timeout -k 30 1800 unshare -rnm bash -c '. "$DM_SANDBOX_LIB"; dm_sandbox_run' || { echo "preview build failed"; exit 1; }
 rm -f "$OUT"/*.console.exe
@@ -44,7 +46,8 @@ printf '@echo off\r\ncd /d "%%~dp0"\r\nDeathMuffin.exe -- --dev-offline\r\n' > "
 printf 'PREVIEW of %s, offline edition, nothing saves to your real character\r\nUnzip everything into one folder, then run "Play Preview (offline).bat".\r\n' "$TITLE" > "$OUT/README.txt"
 ZIPNAME="DeathMuffin-Preview-$JOB-win64.zip"
 rm -f "$SCR/$ZIPNAME"
-( cd "$OUT" && zip -q -X "$SCR/$ZIPNAME" DeathMuffin.exe DeathMuffin.pck "Play Preview (offline).bat" README.txt ) || { echo "zip failed"; exit 1; }
+ASSETS=""; [ -f "$OUT/DeathMuffin.assets.pck" ] && ASSETS=DeathMuffin.assets.pck
+( cd "$OUT" && zip -q -X "$SCR/$ZIPNAME" DeathMuffin.exe DeathMuffin.pck $ASSETS "Play Preview (offline).bat" README.txt ) || { echo "zip failed"; exit 1; }
 DEST="$ROOT/$JOB"
 [ ! -L "$DEST" ] || { echo "refusing symlinked destination"; exit 2; }
 mkdir -p "$DEST"

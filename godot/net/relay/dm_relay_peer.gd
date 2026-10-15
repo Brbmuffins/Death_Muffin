@@ -10,14 +10,16 @@ extends MultiplayerPeerExtension
 ## Unique ids: host is always 1, clients are 2, 3, 4... assigned by the relay (never reused within a session).
 ## Topology: star. Clients only reach the host; client-to-client RPCs work through Godot's own server relay
 ## (SceneMultiplayer.server_relay, default on) because _is_server_relay_supported() is true.
-## Transport: one WebSocket (TCP), so EVERYTHING is delivered reliably and in order, whatever the transfer mode asks for.
-## UNRELIABLE and UNRELIABLE_ORDERED packets are sent as ordinary ordered frames (the mode and channel ride in the header and are
-## reported unchanged by get_packet_mode()/get_packet_channel()). Cost: head-of-line blocking after packet loss, so keep unreliable
-## streams (movement snapshots) small and rate-limited by the sender. The relay limits packets to 64 KiB.
+## Transport: the lobby WebSocket (TCP: everything reliable and in order, whatever the transfer mode asks for), plus a UDP lane to the
+## relay when the lobby offers one (DmUdpLane / DmUdpRelay, DECISIONS B31): ENet, so UNRELIABLE packets really are unreliable and a lost
+## movement packet no longer stalls the rest. Each direction switches on its own: the sender puts a marker (channel MARKER, empty) on the
+## WebSocket and sends over UDP from then on; the receiver holds UDP packets from that peer until the marker arrives, so a reliable stream
+## stays in order across the switch. A lane that fails or drops leaves (or puts back) everything on the WebSocket. Packets are at most 64 KiB.
 ## Events (peer_connected / peer_disconnected) are queued and emitted from _poll(), i.e. from SceneMultiplayer's poll.
 
 const MAX_PACKET := 65536
 const HOST_ID := 1
+const MARKER := 255                    ## channel of the empty "from here on over UDP" packet on the WebSocket
 
 var _lobby: DmLobbyClient
 var _status: int = MultiplayerPeer.CONNECTION_DISCONNECTED
@@ -35,6 +37,14 @@ var close_reason := ""
 ## A joiner's game builds its world after joining: while `hold` is set nothing is delivered (events and packets queue, the socket is still read),
 ## so the host's first spawn / RPC packets do not arrive before the nodes they address exist. Release it once the game is built.
 var hold := false
+## The UDP lane (null = WebSocket only). _udp_to: peers we send to over UDP (a client: {1}); _udp_open: peers whose marker arrived, their UDP
+## packets go straight in; _udp_held: UDP packets from a peer whose marker has not arrived yet; _udp_attached (host): the relay says that
+## client's lane is up.
+var udp: DmUdpLane
+var _udp_to := {}
+var _udp_open := {}
+var _udp_held := {}
+var _udp_attached := {}
 
 ## Attach as the host of the session `lobby` just created. The peer is CONNECTED at once.
 func host(lobby: DmLobbyClient) -> Error:
@@ -44,6 +54,7 @@ func host(lobby: DmLobbyClient) -> Error:
 	_server = true
 	_unique_id = HOST_ID
 	_status = MultiplayerPeer.CONNECTION_CONNECTED
+	_start_udp(lobby.relay)
 	return OK
 
 ## Attach as a client of the session `lobby` just joined. The peer is CONNECTED at once; peer_connected(1) fires on the first poll.
@@ -56,6 +67,7 @@ func join(lobby: DmLobbyClient) -> Error:
 	_events.append({"connect": true, "id": HOST_ID})
 	_peers[HOST_ID] = true
 	_attach(lobby)   # last: attaching hands over the packets that arrived while no peer was attached (they need the state above)
+	_start_udp(lobby.relay)
 	return OK
 
 func get_lobby() -> DmLobbyClient:
@@ -72,6 +84,10 @@ func _attach(lobby: DmLobbyClient) -> void:
 	lobby.disconnected.connect(_on_lobby_disconnected)
 
 func _detach() -> void:
+	if udp != null:
+		var lane := udp
+		udp = null
+		lane.close()
 	if _lobby == null:
 		return
 	_lobby.packet_sink = Callable()
@@ -86,7 +102,72 @@ func _detach() -> void:
 func _on_packet(src: int, mode: int, channel: int, payload: PackedByteArray) -> void:
 	if _status != MultiplayerPeer.CONNECTION_CONNECTED or not _peers.has(src):
 		return
+	if channel == MARKER and payload.is_empty():   # that peer sends over UDP from here on: what it already sent over UDP comes next, in order
+		_udp_open[src] = true
+		for h in _udp_held.get(src, []):
+			_inbox.append(h)
+		_udp_held.erase(src)
+		return
 	_inbox.append({"src": src, "mode": mode, "channel": channel, "data": payload})
+
+
+func _on_udp_packet(peer: int, mode: int, channel: int, payload: PackedByteArray) -> void:
+	var src := peer if _server else HOST_ID
+	if _status != MultiplayerPeer.CONNECTION_CONNECTED or not _peers.has(src):
+		return
+	var p := {"src": src, "mode": mode, "channel": channel, "data": payload}
+	if _udp_open.has(src):
+		_inbox.append(p)
+	elif (_udp_held.get(src, []) as Array).size() < 4096:
+		if not _udp_held.has(src):
+			_udp_held[src] = []
+		_udp_held[src].append(p)
+
+
+func _start_udp(r: Dictionary) -> void:
+	if r.is_empty() or String(r.get("addr", "")) == "" or int(r.get("port", 0)) <= 0:
+		return
+	var lane := DmUdpLane.new()
+	lane.on_packet = _on_udp_packet
+	lane.on_ready = func() -> void:
+		if not _server:
+			_switch_to_udp(HOST_ID)
+	lane.on_attached = func(id: int) -> void:
+		_udp_attached[id] = true
+		if _peers.has(id):
+			_switch_to_udp(id)
+	lane.on_detached = func(id: int) -> void:
+		_udp_attached.erase(id)
+		_udp_to.erase(id)
+		_udp_open.erase(id)
+		_udp_held.erase(id)
+	lane.on_closed = func(_reason: String) -> void:
+		udp = null
+		_udp_to.clear()
+		_udp_open.clear()
+		_udp_held.clear()
+		_udp_attached.clear()
+	if lane.start(String(r["addr"]), int(r["port"]), String(r.get("ticket", ""))) == OK:
+		udp = lane
+
+
+## From now on our packets to `id` go over UDP: the marker on the WebSocket tells it where its UDP packets from us belong in the order.
+func _switch_to_udp(id: int) -> void:
+	if udp == null or udp.state != DmUdpLane.State.READY or _udp_to.has(id) or _lobby == null:
+		return
+	_lobby.send_packet(id, MultiplayerPeer.TRANSFER_MODE_RELIABLE, MARKER, PackedByteArray())
+	_udp_to[id] = true
+
+
+## Which lane carries our packets to `id`.
+func lane_to(id: int) -> String:
+	return "udp" if udp != null and _udp_to.has(id) else "ws"
+
+
+func _send_to(id: int, p: PackedByteArray) -> Error:
+	if udp != null and _udp_to.has(id):
+		return udp.send(id, _mode, _channel, p)
+	return _lobby.send_packet(id, _mode, _channel, p)
 
 func _on_peer_joined(id: int, _name: String) -> void:
 	if not _server or _peers.has(id):
@@ -96,8 +177,12 @@ func _on_peer_joined(id: int, _name: String) -> void:
 		return
 	_peers[id] = true
 	_events.append({"connect": true, "id": id})
+	if _udp_attached.has(id):
+		_switch_to_udp(id)
 
 func _on_peer_left(id: int, _reason: String) -> void:
+	for d in [_udp_to, _udp_open, _udp_held, _udp_attached]:
+		d.erase(id)
 	if _peers.erase(id):
 		_events.append({"connect": false, "id": id})
 		_inbox = _inbox.filter(func(p: Dictionary) -> bool: return int(p["src"]) != id)   # SceneMultiplayer rejects packets of a peer it has dropped
@@ -125,6 +210,8 @@ var _ending := false
 func _poll() -> void:
 	if _lobby != null:
 		_lobby.poll()
+	if udp != null:
+		udp.poll()
 	if hold:
 		return
 	while not _events.is_empty():
@@ -164,17 +251,17 @@ func _put_packet_script(p_buffer: PackedByteArray) -> Error:
 		return ERR_OUT_OF_MEMORY
 	if not _server:
 		# Clients only talk to the host (the relay drops anything else; Godot's server relay forwards client-to-client RPCs).
-		return _lobby.send_packet(HOST_ID, _mode, _channel, p_buffer)
-	if _target == 0:
-		return _lobby.send_packet(0, _mode, _channel, p_buffer)
+		return _send_to(HOST_ID, p_buffer)
+	if _target == 0 and _udp_to.is_empty():
+		return _lobby.send_packet(0, _mode, _channel, p_buffer)   # one frame, the relay fans it out
 	if _target > 0:
 		if not _peers.has(_target):
 			return ERR_INVALID_PARAMETER
-		return _lobby.send_packet(_target, _mode, _channel, p_buffer)
+		return _send_to(_target, p_buffer)
 	var err := OK
-	for id in _peers.keys():   # negative target = everyone except -target
+	for id in _peers.keys():   # everyone (some over UDP), or a negative target = everyone except -target
 		if id != -_target:
-			var e := _lobby.send_packet(id, _mode, _channel, p_buffer)
+			var e := _send_to(id, p_buffer)
 			if e != OK:
 				err = e
 	return err

@@ -1,6 +1,15 @@
 [
   {
     "date": "2026-10-15",
+    "title": "Lighter, Smoother, Safer",
+    "items": [
+      "Smaller updates: the game's art and sound now ship as their own file, so most future updates download about 14 MB instead of 280 MB. This update is the last big one.",
+      "Co-op now runs over a faster connection when your network allows it, so a dropped packet no longer makes everyone stutter. If it can't connect, co-op works the way it did before.",
+      "If the game ever crashes, it now sends the devs a crash report with your game log the next time you play, and tells you it did."
+    ]
+  },
+  {
+    "date": "2026-10-15",
     "title": "Same Page",
     "items": [
       "If a new version comes out while you're playing, the game now tells you right away, so you can restart from the launcher to update.",

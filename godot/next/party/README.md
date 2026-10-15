@@ -50,7 +50,7 @@ friends' requests (invite / ask / answer / set_private) use `SOCIAL_ERROR_TEXT` 
 
 ## Cost of a hosted session (measured, `tests/next_lobby`)
 Idle host -> relay ~5 KB/s, ~50 packets/s. 25 chasing enemies ~95 KB/s, ~145 packets/s (enemy state is the bulk: 20 Hz x ~180 B each); that is ONE copy from the host, the relay fans it out, so each joiner receives about the same ~95 KB/s.
-The relay allows 600 packets/s and 1 MiB/s per connection. Frame time (headless, 25 enemies): solo 8.9 ms, hosting with nobody 8.7-8.9 ms, hosted with a joiner (client game in the same process) 9.1-9.5 ms: the relay peer polls one WebSocket per frame, nothing else runs per frame.
+The relay allows 600 packets/s and 1 MiB/s per connection. Frame time (headless, 25 enemies): solo 8.9 ms, hosting with nobody 8.7-8.9 ms, hosted with a joiner (client game in the same process) 9.1-9.5 ms: the relay peer polls one WebSocket per frame (and the UDP lane when it is up, DECISIONS B31), nothing else runs per frame.
 
 ## Tests
 `tests/next_lobby/run.gd` (real local lobby service, two games in-process on ONE shared offline backend: solo untouched, errors, host, list, join by id and code, chat, open/closed, kick, full, rewards + XP + loot on the joiner's account, drops, cost),

@@ -25,10 +25,12 @@ var _transport: DmHttpTransport
 var _transit_lobby: DmLobbyClient   ## the lobby socket a join was made on, polled here while the solo game is swapped for the client game
 var _idle_cam: Camera3D
 var _party_busy := false            ## a join / return is in progress (one at a time)
+var _crash_checked := false         ## the pending crash report (DmCrashWatch) was tried this run
 
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
+	DmCrashWatch.begin(DmBuild.version())   # a release build's lock: still there at the next start = this run crashed
 	# The window title players see. config/name in project.godot stays as it is: Godot names the user:// folder after it (the saved
 	# login, settings, tips), so renaming it would sign every player out and reset their settings.
 	get_window().title = "Death Muffin"
@@ -101,6 +103,11 @@ static func wipe_offline_edition() -> void:
 func _process(_dt: float) -> void:
 	if _transit_lobby != null:
 		_transit_lobby.poll()
+
+
+## A normal shutdown (window close, quit, benchmark end) removes the crash lock; a crash never gets here.
+func _exit_tree() -> void:
+	DmCrashWatch.end()
 
 
 ## Window close: save everything first (the web's pagehide flush), then quit.
@@ -271,6 +278,7 @@ func _enter_next(character: Dictionary, join: Dictionary = {}) -> void:
 	g.party.join_ready.connect(_on_next_join_ready)
 	g.party.client_ended.connect(_on_next_client_ended.bind(character))
 	loading.dismiss()
+	_send_crash_report(g, character)
 
 
 ## Party: the lobby seated us in a host's session. The solo game is saved and freed, a client game starts on the same lobby socket.
@@ -351,3 +359,20 @@ func _teardown_next() -> void:
 	await g.leave()   # flush_all + session end
 	g.queue_free()
 	await get_tree().process_frame
+
+
+## Once per run, in an online world: the last run's crash (DmCrashWatch) goes to the devs as a bug report, and the player is told.
+func _send_crash_report(g: DmNextGame, character: Dictionary) -> void:
+	if _crash_checked or mode != "online" or api == null:
+		return
+	_crash_checked = true
+	var rep := DmCrashWatch.pending_report(int(character.get("id", 0)))
+	if rep.is_empty():
+		return
+	var r: DmResult = await api.send_bug_report(rep)
+	if not r.ok:
+		return   # kept: tried again next run
+	DmCrashWatch.clear()
+	if is_instance_valid(g) and g.ui_host != null:
+		g.ui_host.game_event.emit("toast", {"text": "The game closed unexpectedly last time. A crash report with your game log was sent to the devs.", "kind": ""})
+

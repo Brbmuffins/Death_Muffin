@@ -3,7 +3,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
-const { createLobby } = require('../src/server');
+const { createLobby, relayTicket } = require('../src/server');
+const crypto = require('crypto');
 const { HEADER_BYTES } = require('../src/protocol');
 
 const SECRET = 'test-secret-not-real';
@@ -114,6 +115,31 @@ test('lobby: create, list, join, leave', async () => {
     h.send({ t: 'create', name: 'again', area: 'x' });
     assert.equal((await h.next('error')).code, 'in_session');
   } finally { await s.close(); }
+});
+
+test('relay: with a UDP relay configured, created and joined carry a signed ticket for that member; without one, nothing', async () => {
+  const s = await boot({ relayUdp: { addr: '203.0.113.7', port: 5193 }, relayTicketMs: 60000 });
+  try {
+    const h = await s.connect(1), a = await s.connect(2);
+    h.send({ t: 'create', name: 'Udp run', area: 'hollow-graves' });
+    const c = await h.next('created');
+    a.send({ t: 'join', id: c.session.id });
+    const j = await a.next('joined');
+    for (const [m, pid] of [[c, 1], [j, 2]]) {
+      assert.equal(m.relay.addr, '203.0.113.7'); assert.equal(m.relay.port, 5193);
+      const [sid, peer, exp, mac] = m.relay.ticket.split('.');
+      assert.deepEqual([sid, Number(peer)], [c.session.id, pid]);
+      assert.ok(Number(exp) > Date.now() && Number(exp) <= Date.now() + 60000, 'expires within relayTicketMs');
+      assert.equal(mac, crypto.createHmac('sha256', SECRET).update(`dm-relay|${sid}|${peer}|${exp}`).digest('hex'), 'HMAC with the shared secret');
+      assert.equal(m.relay.ticket, relayTicket(SECRET, sid, pid, Number(exp)));
+    }
+  } finally { await s.close(); }
+  const plain = await boot();
+  try {
+    const h = await plain.connect(1);
+    h.send({ t: 'create', name: 'Ws run', area: 'hollow-graves' });
+    assert.equal((await h.next('created')).relay, undefined);
+  } finally { await plain.close(); }
 });
 
 test('lobby: validation and private sessions', async () => {

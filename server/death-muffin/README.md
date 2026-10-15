@@ -9,8 +9,9 @@ https://muffindevelopment.com/death-muffin/ (launcher download, patch notes, lea
 |---|---|---|---|---|
 | Auth + game API | 5190 (127.0.0.1) | `backend/server.js` | `systemd/death-muffin-auth.service` | Express, MySQL database `death_muffin`, own `JWT_SECRET`. Health: `GET /health`, `GET /api/health` |
 | Lobby + packet relay | 5192 (127.0.0.1) | `lobby/` | `lobby/deathmuffin-lobby.service` | WebSocket session list and host-to-client relay for 1-4 player sessions; see `lobby/README.md` |
+| UDP co-op relay | 5193/udp (public) | `relay/`, `godot/net/relay/dm_udp_relay.gd` | `relay/deathmuffin-relay.service` | ENet lane next to the lobby WebSocket, entered with a lobby ticket; see `relay/README.md` |
 
-Ports 5193-5199 are reserved for this project (:5191 is unused).
+Ports 5194-5199 are reserved for this project (:5191 is unused).
 
 Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (copies installed by `deploy-release.sh` and `deploy-lobby.sh`), not from the git checkout.
 `.env` lives only in `/home/ubuntu/death-muffin/backend/` (template: `backend/.env.example`: `PORT`, `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, `JWT_SECRET`,
@@ -34,7 +35,7 @@ Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (
 |---|---|
 | `deploy-release.sh [--if-changed] [rev] [migration.sql ...]` | Deploys the **backend only** from a committed revision (default `HEAD`; refuses a rev that does not contain `origin/main` unless `ALLOW_BEHIND_MAIN=1`, which is how you roll back). Exports the rev with `git archive`, runs `npm run test:rules` and `npm run test:server`, dumps the database, writes a `ROLLBACK.sh`, applies the named migrations, copies the backend code to `/home/ubuntu/death-muffin/backend/`, restarts `death-muffin-auth`, checks health, then runs `announce-release.sh` in QUIET mode (`NO_ANNOUNCE=1` skips it). `--if-changed` (no migrations named) exits doing nothing when every server file the rev installs is byte-identical to the installed copy; the Discord agent's Godot ships run it that way before the client publish. Takes `~/death-muffin/deploy/.deploy.lock`. Does not publish the client and does not restart the lobby. |
 | `deploy-lobby.sh [--if-changed] [--wait MIN] [--force] [rev]` | Deploys the **lobby only** from a committed revision (default `HEAD`; refuses a rev that does not contain `origin/main` unless `ALLOW_BEHIND_MAIN=1`). Exports `server/death-muffin/lobby` with `git archive`, runs its tests and `node --check`, waits up to `--wait` minutes (default 30) for `/health` to show 0 sessions because a restart ends every party (exit 3 and nothing installed if it never empties; `--force` restarts anyway), backs up the installed copy with a `ROLLBACK.sh`, installs the lobby code, package files and README (`npm ci` only when the lockfile changed), restarts `deathmuffin-lobby` and checks `/health`. `--if-changed` exits doing nothing when the installed code and package files already match (a README-only change never restarts it); the Discord agent's Godot ships run it that way after the backend. Takes `~/death-muffin/deploy/.deploy.lock`. |
-| `publish-godot-client.sh <git-rev>` | Exports the `Windows Desktop` preset of the Godot project (Godot 4.7.2 at `/home/ubuntu/tools/godot/godot`) from a committed revision into `/var/www/death-muffin/client/<version>/`, then writes `manifest.json` last and atomically (SHA-256 of every file plus the `online` block, which is carried over from the live manifest). Keeps the newest two builds. |
+| `publish-godot-client.sh <git-rev>` | Exports the `Windows Desktop` preset of the Godot project (Godot 4.7.2 at `/home/ubuntu/tools/godot/godot`) from a committed revision into `/var/www/death-muffin/client/<version>/`, then writes `manifest.json` last and atomically (SHA-256 of every file plus the `online` block, which is carried over from the live manifest). Keeps the newest two builds. `res://assets` ships as `DeathMuffin.assets.pck` (`tools/godot/assets-pack.sh`), reused from `~/death-muffin/deploy/assets-cache/` while its fingerprint (assets, export settings, Godot version, pack tools) is unchanged, so most releases change only `DeathMuffin.pck` (~14 MB) and the launcher keeps the rest. |
 | `set-online.sh on\|staff\|off ["message"]` | Edits only the `online` block of the live `manifest.json`: `on` = everyone, `staff` = staff accounts only, `off` = nobody (the message is shown as the lock). The launcher, the game and the lobby (if `DM_LOBBY_MANIFEST` is set) re-read it within about a minute; no release needed. |
 
 ### Release flow
@@ -120,6 +121,7 @@ SELECT a.created_at, ac.username, a.character_id, a.kind, a.mode, a.action, a.de
 ## Player bug reports
 
 Settings -> Report a bug in the client posts to `POST /api/bug-reports` (10 per account per day; `GET /api/bug-reports/mine` lists the player's own; table `bug_reports`, migration 029).
+A release build also files one by itself after a crash (`DmCrashWatch`, DECISIONS B29: message "Automatic crash report ...", `context.crash`).
 Each new report gets its own thread in #in-game-reports (message, context, game log attached), opened by the Discord dev agent's runner; the devs bring the agent in with an @-mention (`discord-agent/README.md`). `announce-release.sh` marks reports whose `Bug report #<id>:` fix went live as released.
 
 ## Benchmark history
