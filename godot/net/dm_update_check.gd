@@ -3,7 +3,7 @@ extends Node
 ## Tells a running game that a newer build is out. The launcher only installs updates when it starts, so a game left open would stay
 ## on an old build all evening (and, since PROTOCOL 2, could not play co-op with friends on the new one). Reads the client manifest
 ## a minute after loading and every 5 minutes after that (one small HTTP GET on a Timer, nothing per frame) and emits
-## `update_available` once per newer version. Only for an installed release build: a dev build has nothing to compare.
+## `update_available` once per newer version (DmNextGame toasts it at once, mid-fight included). Only for an installed release build: a dev build has nothing to compare.
 
 signal update_available(version: String)
 

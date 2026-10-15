@@ -117,6 +117,6 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   every release goes live next to older running clients. Co-op: release builds only party with the same build (`DmSession.PROTOCOL` 2: the
   hello carries `DmBuild.version()`; the host refuses a different release build and the reason says which side is behind and to restart from
   the launcher; dev builds skip the check). A running release build reads the client manifest a minute after loading and every 5 minutes
-  (`DmUpdateCheck`) and shows one toast per newer build, after the fight. Each backend deploy must keep accepting what the previous client
+  (`DmUpdateCheck`) and shows one toast per newer build right away, even mid-fight (owner: "alert about a new update mid fight"). Each backend deploy must keep accepting what the previous client
   sends: add routes and fields freely, but remove or tighten one only a release after the client stopped using it. The lobby restarts only
   when no party is running (`deploy-lobby.sh`).

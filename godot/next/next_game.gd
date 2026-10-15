@@ -634,7 +634,7 @@ const UPDATE_TEXT := "A new version of Death Muffin is out. Restart the game fro
 var update_check: DmUpdateCheck
 var _update_shown := ""
 
-## An installed release build asks every few minutes whether a newer one is out (DmUpdateCheck); the toast waits until the fight is over.
+## An installed release build asks every few minutes whether a newer one is out (DmUpdateCheck) and says so at once, fight or not (owner 2026-10-15).
 func _start_update_check(installed: String) -> void:
 	if not DmBuild.is_release(installed) or api == null or not api.has_method("fetch_client_manifest"):
 		return
@@ -647,9 +647,6 @@ func _start_update_check(installed: String) -> void:
 
 func _show_update_notice() -> void:
 	if update_check == null or ui_host == null or _update_shown == update_check.notified:
-		return
-	if ui_host.in_combat():
-		get_tree().create_timer(5.0).timeout.connect(_show_update_notice)
 		return
 	_update_shown = update_check.notified
 	ui_host.game_event.emit("toast", {"text": UPDATE_TEXT, "kind": "good"})
