@@ -29,10 +29,11 @@ GM-mode only).
 world vows) plus their own self vows, and the backend caps them the same way from the host's record; "Heat N · Difficulty" shows in the
 friends list, invites, the Party window and over the HUD's party list ("+N yours" for one's own self vows).
 
-**Phase 4: enforce and watch.** Fix the rule false positives (KNOWN-GAPS: Server authority), clear the old audit rows, then
-after a few days of real solo and co-op play with no new findings set `AUTHORITY_KILLS` and `AUTHORITY_MODE` to enforce (then area kills,
-shards and seals come only from accepted reports).
-GM actions are logged; a Discord notice when a character trips a flag; a rollback runbook on `character_save_versions`.
+**Phase 4: enforce and watch.** Enforce is on since 2026-10-15 (DECISIONS B32): a save pays only the XP and gold the kill ledger and the
+per-minute ceilings back, stats never change by save, and saves without gains are refused. Still to do: watch `progress_audit` for rule false
+positives (they now hold back an honest player's gain), make area kills, shards and seals in the necromancer save come only from accepted
+reports, clear the old audit rows, a Discord notice when a character trips a flag, and a rollback runbook on `character_save_versions`.
+GM actions are logged.
 
 Not planned now: full server-side combat simulation (headless sessions); revisit if the game goes public at scale.
 

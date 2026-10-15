@@ -113,6 +113,11 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   each player's rewards run at that heat plus their own self vows (solo: their own world and self vows). The backend caps a carried kill the
   same way from the host's record, never the report. "Heat N · Difficulty" (also "Heat 0 · Medium") shows in the friends list, invites, the
   Party window and over the HUD's party list, with "+N yours" for one's own self vows; the lobby's copy is display only.
+- **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
+  `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
+  and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking
+  totals. Backend migrations are recorded in `schema_migrations` and applied by `migrate.sh` (deploy-release.sh runs it; 001-054 baselined),
+  and a backend or lobby deploy that fails after installing rolls itself back.
 - **B28. Updating while people play** (owner, 2026-10-15). A player keeps the build they started until they restart it from the launcher, so
   every release goes live next to older running clients. Co-op: release builds only party with the same build (`DmSession.PROTOCOL` 2: the
   hello carries `DmBuild.version()`; the host refuses a different release build and the reason says which side is behind and to restart from

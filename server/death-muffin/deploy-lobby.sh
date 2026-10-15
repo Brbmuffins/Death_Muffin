@@ -16,7 +16,7 @@
 # 2. Runs the lobby tests and `node --check` on that export.
 # 3. Waits until /health shows 0 sessions (or --force).
 # 4. Backs up the installed lobby, writes ROLLBACK.sh, installs the lobby code, package files and README, `npm ci` only if the lockfile changed,
-#    restarts deathmuffin-lobby and checks /health.
+#    restarts deathmuffin-lobby and checks /health. A failure after the install began runs ROLLBACK.sh --force on its own (exit 1).
 # The UDP relay's files (relay/project.godot, relay/relay_main.gd, godot/net/relay/dm_udp_relay.gd) go to $RUNTIME/relay and restart
 # `deathmuffin-relay` when they changed and the unit is installed (installed by hand, see relay/README.md). Players on the UDP lane fall
 # back to the WebSocket when it restarts; the lobby restart already waits for no running parties.
@@ -134,6 +134,21 @@ echo 'Rolled the lobby back to its pre-$SHA copy.'
 EOF
 chmod 700 "$BK/ROLLBACK.sh"
 
+# From here a failure rolls itself back: ROLLBACK.sh --force restores the backed-up lobby (and relay files) and restarts them. No sessions are
+# lost by forcing it: the lobby was empty (or --force) before the install began, and a failed restart has none.
+on_fail() {
+  local rc=$?
+  trap - ERR
+  echo "!! Lobby deploy of $SHA failed after the install began: rolling back automatically" >&2
+  if bash "$BK/ROLLBACK.sh" --force && curl --silent --fail --retry 10 --retry-delay 1 --retry-all-errors "$LOBBY_URL/health" >/dev/null; then
+    echo "!! Rolled back: the previous lobby is running and healthy." >&2
+  else
+    echo "!! ROLLBACK FAILED: the lobby is down. Run $BK/ROLLBACK.sh --force by hand." >&2
+  fi
+  exit "$rc"
+}
+trap on_fail ERR
+
 echo "== Lobby code"
 rm -rf "$LOBBY_DIR/src.new"
 cp -a "$CAND/src" "$LOBBY_DIR/src.new"
@@ -154,4 +169,5 @@ if [ -n "$RELAY_NEW" ] && $SYSTEMCTL cat "$RELAY_UNIT" >/dev/null 2>&1; then
   sleep 1
   $SYSTEMCTL is-active "$RELAY_UNIT"
 elif [ -n "$RELAY_NEW" ]; then echo "== UDP relay files installed in $RELAY_DIR; $RELAY_UNIT is not installed (relay/README.md)"; fi
+trap - ERR
 echo "Lobby $SHA installed. Rollback: $BK/ROLLBACK.sh"

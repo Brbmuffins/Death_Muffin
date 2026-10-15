@@ -25,6 +25,7 @@ function pool({ role = 'player', columnMissing = false } = {}) {
     if (/FROM characters WHERE id = \? AND account_id = \?/.test(sql)) return [[{ ...owned }]];
     if (/^SELECT \* FROM characters WHERE id = \?$/.test(sql)) return [[{ ...owned }]];
     if (/^UPDATE characters SET level/.test(sql)) { saves.push(params); return [{ affectedRows: 1 }]; }
+    if (/^UPDATE character_authority SET progress_seq/.test(sql)) return [{ affectedRows: 1 }];
     return [[]];
   };
   const conn = { execute: run, query: run, beginTransaction: async () => {}, commit: async () => {}, rollback: async () => {}, release: () => {} };
@@ -32,7 +33,8 @@ function pool({ role = 'player', columnMissing = false } = {}) {
 }
 
 const login = async (srv) => JSON.parse((await srv.call('POST /login', { body: { username: 'tester', password: 'password1' } })).json.token);
-const save = (srv, user, level = 258) => srv.call('POST /api/character/save-progress', { user, body: { characterId: 1, level, xp: 5, gold: 10 } });
+let seq = 0;
+const save = (srv, user, xp = 5) => srv.call('POST /api/character/save-progress', { user, body: { characterId: 1, seq: ++seq, gains: { xp, gold: 10 } } });
 
 test('the newest login wins: the old session is refused, the new one saves', async () => {
   const p = pool();

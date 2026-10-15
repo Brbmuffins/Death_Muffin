@@ -85,29 +85,42 @@ test('gold/adjust: staff may credit, anyone may spend, nobody can go below zero 
 
 // ── POST /api/character/save-progress ───────────────────────────────────────────────────────────────────────────────────
 
-test('save-progress: a null, blank or non-numeric field keeps the stored value instead of zeroing it', async () => {
-  // JSON.stringify turns a NaN into null, and Number(null) / Number('') / Number([]) are all 0.
-  const f = fakePool({ character: { level: 7, experience: 42, gold: 900, stat_str: 6 }, onQuery: (sql) => {
+const gainsPool = (character) => {
+  let seq = 0;
+  const f = fakePool({ character, onQuery: (sql, p) => {
     if (/^SELECT \* FROM characters WHERE id = \?$/.test(sql)) return [[{ ...f.owned }]];
+    if (/^UPDATE character_authority SET progress_seq = \? WHERE character_id = \? AND progress_seq < \?/.test(sql)) {
+      if (seq < p[0]) { seq = p[0]; return [{ affectedRows: 1 }]; }
+      return [{ affectedRows: 0 }];
+    }
     if (/^UPDATE characters SET level/.test(sql)) return [{ affectedRows: 1 }];
   } });
-  const srv = loadServer({ pool: f.pool });
-  const r = await srv.call('POST /api/character/save-progress', { body: { characterId: 1, level: 7, xp: null, gold: '', stat_str: [], stat_agi: false, stat_int: 'abc' } });
-  assert.equal(r.json.success, true);
-  const update = f.log.find((q) => /^UPDATE characters SET level/.test(q.sql));
-  // level, experience, gold, str, agi, int, vit, id
-  assert.deepEqual(update.params, [7, 42, 900, 6, 5, 5, 10, 1]);
+  return f;
+};
+
+test('save-progress: a save with totals instead of gains (clients before B23) is refused and writes nothing', async () => {
+  const f = gainsPool({ level: 7, experience: 42, gold: 900, stat_str: 6 });
+  const r = await loadServer({ pool: f.pool }).call('POST /api/character/save-progress', { body: { characterId: 1, level: 999, xp: 0, gold: 2147483647, stat_str: 65535 } });
+  assert.equal(r.status, 426);
+  assert.deepEqual(f.log.filter((q) => /^(INSERT|UPDATE|DELETE)/.test(q.sql)), [], 'nothing was written');
 });
 
-test('save-progress: levels past the old 255 cap are saved, and anything past 999 is clamped to 999', async () => {
-  for (const [sent, stored] of [[258, 258], [999, 999], [5000, 999]]) {
-    const f = fakePool({ character: { level: 255, experience: 10 }, onQuery: (sql) => {
-      if (/^SELECT \* FROM characters WHERE id = \?$/.test(sql)) return [[{ ...f.owned }]];
-      if (/^UPDATE characters SET level/.test(sql)) return [{ affectedRows: 1 }];
-    } });
-    const r = await loadServer({ pool: f.pool }).call('POST /api/character/save-progress', { body: { characterId: 1, level: sent, xp: 120 } });
+test('save-progress: a null, blank or non-numeric gain adds nothing, and stats are never taken from the body', async () => {
+  const f = gainsPool({ level: 7, experience: 42, gold: 900, stat_str: 6 });
+  const body = { characterId: 1, seq: 1, gains: { xp: null, gold: 'abc' }, stat_str: 65535, stat_agi: 999 };
+  const r = await loadServer({ pool: f.pool }).call('POST /api/character/save-progress', { body });
+  assert.equal(r.json.success, true, JSON.stringify(r.json));
+  // level, experience, gold, str, agi, int, vit, id
+  assert.deepEqual(f.log.find((q) => /^UPDATE characters SET level/.test(q.sql)).params, [7, 42, 900, 6, 5, 5, 10, 1]);
+});
+
+test('save-progress: levels past the old 255 cap are saved, and XP past level 999 stops at 999', async () => {
+  const { totalXp } = require('./gathering/authority-rules.cjs');
+  for (const [gain, stored] of [[totalXp(258, 0) - totalXp(255, 10), 258], [2147483647, 999]]) {
+    const f = gainsPool({ level: 255, experience: 10 });
+    const r = await loadServer({ pool: f.pool }).call('POST /api/character/save-progress', { body: { characterId: 1, seq: 1, gains: { xp: gain } } });
     assert.equal(r.json.success, true);
-    assert.equal(f.log.find((q) => /^UPDATE characters SET level/.test(q.sql)).params[0], stored, `level ${sent}`);
+    assert.equal(f.log.find((q) => /^UPDATE characters SET level/.test(q.sql)).params[0], stored, `gain ${gain}`);
   }
 });
 

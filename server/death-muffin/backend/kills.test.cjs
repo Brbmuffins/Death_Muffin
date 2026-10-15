@@ -671,6 +671,7 @@ test('every audit kind the ledger writes fits the progress_audit columns', () =>
 const { loadServer } = require('./server-harness.cjs');
 
 /** server.js with a pool that knows account 1 owning character 1 (level 10, no XP) on top of the ledger fake. */
+const xpOf = (c) => require('./gathering/authority-rules.cjs').totalXp(c.level, c.experience);
 function routeServer(necro = NECRO) {
   const fake = killsFake({ necro, characters: { 1: { id: 1, level: 10 } } });
   const owned = { id: 1, account_id: 1, level: 10, experience: 0, gold: 1000, stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 10 };
@@ -679,6 +680,7 @@ function routeServer(necro = NECRO) {
     if (/^SELECT \* FROM characters WHERE id = \? AND account_id = \?/.test(q)) return p[0] === 1 && p[1] === 1 ? [[{ ...owned }]] : [[]];
     if (/^SELECT \* FROM characters WHERE id = \?$/.test(q)) return [[{ ...owned }]];
     if (/FROM accounts WHERE id/.test(q)) return [[{ role: 'player', gm_enabled: 0 }]];
+    if (/^UPDATE character_authority SET progress_seq = \?/.test(q)) return [{ affectedRows: 1 }];
     if (/^UPDATE characters SET level=\?, experience=\?, gold=\?/.test(q)) { Object.assign(owned, { level: p[0], experience: p[1], gold: p[2] }); return [{}]; }
     return fake.pool.execute(sql, p);
   };
@@ -695,29 +697,29 @@ const quiet = async (fn) => { const w = console.warn; const e = console.error; c
 test('route: save-progress carries its kill reports, so the credit is there before the gain is judged', async () => {
   const { srv, owned, fake } = routeServer();
   const earned = mixedXp(2);
-  const body = { characterId: 1, level: 10, xp: earned, gold: 1400, stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 10, killReports: [report(T0, mixed(2))] };
+  const body = { characterId: 1, seq: 1, gains: { xp: earned, gold: 400 }, killReports: [report(T0, mixed(2))] };
   const r = await quiet(() => withEnv(ENFORCE, () => srv.call('POST /api/character/save-progress', { body })));
   assert.equal(r.status, 200);
-  assert.equal(owned.experience, earned, 'paid in full, in one request');
+  assert.equal(xpOf(owned) - xpOf({ level: 10, experience: 0 }), earned, 'paid in full, in one request');
   assert.equal(r.json.authority, undefined);
   assert.equal(fake.ledger(1).kills_total, 200);
 });
 
 test('route: the same save without reports is clamped in enforce, paid in audit, and exactly as before when off', async () => {
-  const claim = { characterId: 1, level: 10, xp: 80_000, gold: 9_000_000, stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 10 };
+  const claim = { characterId: 1, seq: 1, gains: { xp: 80_000, gold: 8_999_000 } };
   const enforced = routeServer();
   const e = await quiet(() => withEnv(ENFORCE, () => enforced.srv.call('POST /api/character/save-progress', { body: claim })));
-  assert.ok(enforced.owned.experience <= rules.KILLS.LUMP_XP_CAP);
+  assert.ok(xpOf(enforced.owned) - xpOf({ level: 10, experience: 0 }) <= rules.KILLS.LUMP_XP_CAP);
   assert.ok(enforced.owned.gold < 1000 + 200_000);
   assert.match(e.json.authority.message, /verified kills|Reload the page/);
   const audited = routeServer();
   await quiet(() => withEnv(AUDIT, () => audited.srv.call('POST /api/character/save-progress', { body: claim })));
-  assert.equal(audited.owned.experience, 80_000);
+  assert.equal(xpOf(audited.owned) - xpOf({ level: 10, experience: 0 }), 80_000);
   assert.equal(audited.owned.gold, 9_000_000);
   assert.ok(audited.fake.audit.some((a) => a.kind === 'unbacked_xp'));
   const off = routeServer();
   const o = await quiet(() => withEnv({}, () => off.srv.call('POST /api/character/save-progress', { body: claim })));
-  assert.equal(off.owned.experience, 80_000);
+  assert.equal(xpOf(off.owned) - xpOf({ level: 10, experience: 0 }), 80_000);
   assert.equal(o.json.authority, undefined);
   assert.equal(off.fake.ledger(1), undefined, 'off never touches the ledger');
 });

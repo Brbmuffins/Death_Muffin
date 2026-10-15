@@ -4,13 +4,16 @@
 #
 #   deploy-release.sh [--if-changed] [rev] [migration.sql ...]
 #
+# Migrations: every backend/migrations/*.sql of <rev> that the database has not recorded in schema_migrations is applied by migrate.sh, in
+# order. Naming files is optional (kept for callers that still pass them; each named file must exist in <rev>).
 # --if-changed (the Discord agent's Godot ships, before the client publish): exit 0 doing nothing ("backend: unchanged") when every server file
-# <rev> would install is byte-identical to the installed one and no migration is named. Otherwise the normal deploy below.
+# <rev> would install is byte-identical to the installed one and no migration is pending. Otherwise the normal deploy below.
 #
 # 1. Exports <rev> with `git archive` into deploy/candidate-<sha>/src.
 # 2. Runs the shared-rules and server tests on that export.
 # 3. Backs up the DB and runtime server files, and writes ROLLBACK.sh.
-# 4. Applies the named migrations (each must be additive / idempotent), installs server code, restarts auth.
+# 4. Applies the pending migrations (migrate.sh; each must be additive), installs server code, restarts auth.
+#    If anything fails after the code is installed (restart, health), ROLLBACK.sh runs on its own and the deploy exits 1.
 # 5. announce-release.sh: release notes for the launcher and site, the #build-alerts notice, fixed bug reports released.
 set -euo pipefail
 
@@ -34,10 +37,19 @@ server_files() {
     while read -r f; do echo "$f $RUNTIME/backend/${f#server/death-muffin/backend/}"; done
   for f in necro-rules.cjs necro-progress-routes.cjs mysql-store.cjs; do echo "server/vps-handoff/necro-progress/$f $RUNTIME/backend/necro-progress/$f"; done
 }
+# Migrations of <rev> the database has not recorded (migrate.sh --pending, from the rev's own copy of the runner and files).
+pending_migrations() {
+  local t; t=$(mktemp -d)
+  git -C "$REPO" archive "$SHA" server/death-muffin/migrate.sh server/death-muffin/backend/migrations | tar -x -C "$t"
+  bash "$t/server/death-muffin/migrate.sh" --pending "$t/server/death-muffin/backend/migrations"
+  rm -rf "$t"
+}
 if [ -n "$IF_CHANGED" ] && [ $# -eq 0 ]; then
   CHANGED=$(server_files | while read -r f dst; do git -C "$REPO" show "$SHA:$f" 2>/dev/null | cmp -s - "$dst" || echo "${f#server/}"; done)
-  [ -n "$CHANGED" ] || { echo "backend: unchanged at $SHA, nothing to deploy"; exit 0; }
-  echo "backend: changed at $SHA: $(echo "$CHANGED" | head -8 | paste -sd' ' -)"
+  PENDING=$(pending_migrations)
+  [ -n "$CHANGED$PENDING" ] || { echo "backend: unchanged at $SHA, nothing to deploy"; exit 0; }
+  [ -z "$PENDING" ] || echo "backend: pending migrations at $SHA: $(echo "$PENDING" | paste -sd' ' -)"
+  [ -z "$CHANGED" ] || echo "backend: changed at $SHA: $(echo "$CHANGED" | head -8 | paste -sd' ' -)"
 fi
 # Never publish a revision that is missing commits main already has (2026-10-04: a manual deploy that queued for the lock behind a Discord
 # ship published afterwards and rolled the ship back). Checked while holding the lock. ALLOW_BEHIND_MAIN=1 only for a deliberate rollback.
@@ -88,18 +100,39 @@ echo 'Rolled back to the pre-$SHA code. Full DB dump: $BK/death_muffin.sql'
 EOF
 chmod 700 "$BK/ROLLBACK.sh"
 
-for m in "$@"; do
-  echo "== Migration $m"
-  sudo mysql death_muffin < "$SRC/server/death-muffin/backend/migrations/$m"
-done
+# A failure from here on rolls itself back: before the code is installed nothing live has changed (a failed migration file is not recorded,
+# the ones before it are additive and stay); after it, ROLLBACK.sh puts the previous code back and restarts auth.
+STAGE=migrations
+on_fail() {
+  local rc=$?
+  trap - ERR
+  if [ "$STAGE" = installed ]; then
+    echo "!! Deploy of $SHA failed after the code was installed: rolling back automatically" >&2
+    if bash "$BK/ROLLBACK.sh" && curl --silent --fail --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:5190/health >/dev/null; then
+      echo "!! Rolled back: the previous backend is running and healthy. Candidate kept for a look: $CAND" >&2
+    else
+      echo "!! ROLLBACK FAILED: the backend is down. Run $BK/ROLLBACK.sh by hand; DB dump: $BK/death_muffin.sql" >&2
+    fi
+  else
+    echo "!! Deploy of $SHA failed during $STAGE: the live code was not changed. DB dump from before: $BK/death_muffin.sql" >&2
+  fi
+  exit "$rc"
+}
+trap on_fail ERR
+
+echo "== Migrations"
+bash "$SRC/server/death-muffin/migrate.sh" "$SRC/server/death-muffin/backend/migrations" "$SHA"
 
 echo "== Server code"
+STAGE=installed
 server_files | while read -r f dst; do cp "$SRC/$f" "$dst"; done
 node --check "$RUNTIME/backend/server.js"
 sudo systemctl restart death-muffin-auth.service
 curl --silent --show-error --fail --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:5190/health >/dev/null
 sudo systemctl is-active death-muffin-auth.service
 
+# The local health check passed: from here a failure (e.g. the public check through Cloudflare) stops the script but rolls nothing back.
+trap - ERR
 echo "== Verify"
 curl -sSf https://muffindevelopment.com/death-muffin/api/health; echo
 echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"

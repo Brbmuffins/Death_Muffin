@@ -14,11 +14,10 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
 
 ## Server authority
 
-Live runs `AUTHORITY_KILLS=audit` and the save guards in report mode (findings in `progress_audit`, nothing clamped); enforce waits for
-real play on the gains saves (ROADMAP: Phase 4).
-- **Client-claimed saves:** XP and gold arrive as gains judged against the kill ledger (DECISIONS B23) and the bag is the server's
-  (DECISIONS B25), but area kills and shards in the necromancer save are still the client's claim, bounded only by the report-mode guards
-  until the kill ledger enforces (ROADMAP: Phase 4).
+Live runs `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce` since 2026-10-15 (DECISIONS B32): XP and gold beyond what the kill ledger
+and ceilings back are held back with a message to the player (findings in `progress_audit`). A rule false positive therefore costs an honest
+player part of a gain until it is fixed; few real sessions ran on the gains saves before the switch.
+- **Client-claimed saves:** area kills and shards in the necromancer save are still the client's claim (ROADMAP: Phase 4).
 
 ## Disciplines
 

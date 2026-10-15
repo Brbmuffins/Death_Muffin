@@ -804,33 +804,27 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
     };
     // Gains (DECISIONS B23): the client sends what it EARNED since its last acknowledged save ({gains: {xp, gold}, seq}), never totals. The
     // server adds them to its own record (so a stale save cannot overwrite gold another route wrote), works the level out of the XP, and
-    // drops a retried save it already applied (`seq`, character_authority.progress_seq). Older clients still send totals (the path below).
-    let next;
-    let gainsSeq = 0;
-    if (req.body.gains && typeof req.body.gains === 'object') {
-      gainsSeq = Number(req.body.seq);
-      if (!Number.isSafeInteger(gainsSeq) || gainsSeq <= 0) return res.status(400).json({ success: false, error: 'a gains save needs a positive seq' });
-      await pool.execute('INSERT IGNORE INTO character_authority (character_id) VALUES (?)', [char.id]);
-      const [claim] = await pool.execute('UPDATE character_authority SET progress_seq = ? WHERE character_id = ? AND progress_seq < ?', [gainsSeq, char.id, gainsSeq]);
-      if (!claim || !claim.affectedRows) {   // a retry of a save already applied (its answer was lost): nothing more to add
-        const [[current]] = await pool.execute('SELECT * FROM characters WHERE id = ?', [char.id]);
-        const [[seqRow]] = await pool.execute('SELECT progress_seq FROM character_authority WHERE character_id = ?', [char.id]);
-        return res.json({ success: true, data: { ...current, duplicate: true, progressSeq: Number(seqRow && seqRow.progress_seq) || 0 } });
-      }
-      const xpGain = bounded(req.body.gains.xp, 0, 0, 2147483647);
-      const goldGain = bounded(req.body.gains.gold, 0, -2147483647, 2147483647);
-      const split = splitXp(totalXp(char.level, char.experience) + xpGain);
-      next = {
-        level: split.level, xp: split.xp, gold: Math.min(2147483647, Math.max(0, (Number(char.gold) || 0) + goldGain)),
-        stat_str: char.stat_str, stat_agi: char.stat_agi, stat_int: char.stat_int, stat_vit: char.stat_vit,
-      };
-    } else {
-      next = {
-        level: bounded(req.body.level, char.level, 1, MAX_CHARACTER_LEVEL), xp: bounded(req.body.xp, char.experience, 0, 2147483647), gold: bounded(req.body.gold, char.gold, 0, 2147483647),
-        stat_str: bounded(req.body.stat_str, char.stat_str, 0, 65535), stat_agi: bounded(req.body.stat_agi, char.stat_agi, 0, 65535),
-        stat_int: bounded(req.body.stat_int, char.stat_int, 0, 65535), stat_vit: bounded(req.body.stat_vit, char.stat_vit, 0, 65535),
-      };
+    // drops a retried save it already applied (`seq`, character_authority.progress_seq). A save with totals instead (clients before B23) is
+    // refused: totals let the client name its own level, gold and stats.
+    if (!req.body.gains || typeof req.body.gains !== 'object') {
+      return res.status(426).json({ success: false, error: 'This version of the game is out of date. Restart the launcher to update.' });
     }
+    const gainsSeq = Number(req.body.seq);
+    if (!Number.isSafeInteger(gainsSeq) || gainsSeq <= 0) return res.status(400).json({ success: false, error: 'a gains save needs a positive seq' });
+    await pool.execute('INSERT IGNORE INTO character_authority (character_id) VALUES (?)', [char.id]);
+    const [claim] = await pool.execute('UPDATE character_authority SET progress_seq = ? WHERE character_id = ? AND progress_seq < ?', [gainsSeq, char.id, gainsSeq]);
+    if (!claim || !claim.affectedRows) {   // a retry of a save already applied (its answer was lost): nothing more to add
+      const [[current]] = await pool.execute('SELECT * FROM characters WHERE id = ?', [char.id]);
+      const [[seqRow]] = await pool.execute('SELECT progress_seq FROM character_authority WHERE character_id = ?', [char.id]);
+      return res.json({ success: true, data: { ...current, duplicate: true, progressSeq: Number(seqRow && seqRow.progress_seq) || 0 } });
+    }
+    const xpGain = bounded(req.body.gains.xp, 0, 0, 2147483647);
+    const goldGain = bounded(req.body.gains.gold, 0, -2147483647, 2147483647);
+    const split = splitXp(totalXp(char.level, char.experience) + xpGain);
+    const next = {
+      level: split.level, xp: split.xp, gold: Math.min(2147483647, Math.max(0, (Number(char.gold) || 0) + goldGain)),
+      stat_str: char.stat_str, stat_agi: char.stat_agi, stat_int: char.stat_int, stat_vit: char.stat_vit,
+    };
     // Step 2: kill reports ride along with the save (one request, so the credits are there before the gain is judged); AUTHORITY_KILLS=off ignores them.
     const staff = await isStaffAccount(req).catch(() => false);
     let reportNotice = '';
