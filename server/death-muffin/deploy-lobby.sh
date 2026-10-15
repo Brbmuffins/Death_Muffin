@@ -14,7 +14,7 @@
 # 1. Exports <rev>'s server/death-muffin/lobby with `git archive` into deploy/candidate-lobby-<sha>.
 # 2. Runs the lobby tests and `node --check` on that export.
 # 3. Waits until /health shows 0 sessions (or --force).
-# 4. Backs up the installed lobby, writes ROLLBACK.sh, installs src/, package files and README, `npm ci` only if the lockfile changed,
+# 4. Backs up the installed lobby, writes ROLLBACK.sh, installs the lobby code, package files and README, `npm ci` only if the lockfile changed,
 #    restarts deathmuffin-lobby and checks /health.
 # Test overrides (all optional): REPO RUNTIME LOBBY_DIR LOBBY_URL LOBBY_UNIT POLL_S SYSTEMCTL
 set -euo pipefail
@@ -54,10 +54,10 @@ installed_of() { echo "$LOBBY_DIR/${1#server/death-muffin/lobby/}"; }
 if [ -n "$IF_CHANGED" ]; then
   # README.md is installed but never decides: a docs-only edit must not restart the lobby (and end parties).
   CHANGED=$(lobby_files | grep -v '/README\.md$' | while read -r f; do git -C "$REPO" show "$SHA:$f" 2>/dev/null | cmp -s - "$(installed_of "$f")" || echo "${f#server/death-muffin/lobby/}"; done)
-  # a file the installed src/ has but <rev> no longer does counts as a change too
+  # a code file the install has but <rev> no longer does counts as a change too
   for f in "$LOBBY_DIR"/src/*.js; do
     [ -e "$f" ] || continue
-    git -C "$REPO" cat-file -e "$SHA:server/death-muffin/lobby/src/$(basename "$f")" 2>/dev/null || CHANGED="$CHANGED src/$(basename "$f") (removed)"
+    git -C "$REPO" cat-file -e "$SHA:server/death-muffin/lobby/src/$(basename "$f")" 2>/dev/null || CHANGED="$CHANGED lobby/src/$(basename "$f") (removed)"
   done
   [ -n "$(echo "$CHANGED" | tr -d ' \n')" ] || { echo "lobby: unchanged at $SHA, nothing to deploy"; exit 0; }
   echo "lobby: changed at $SHA: $(echo $CHANGED | head -c 300)"
