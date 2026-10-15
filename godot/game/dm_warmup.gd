@@ -29,6 +29,9 @@ static func hero_slugs_in_play() -> Array:
 	var out: Array = ["necromancer"]
 	for d in DmContent.file("disciplines").get("PLAYABLE_DISCIPLINES", []):
 		var s := String((d as Dictionary).get("modelSlug", ""))
+		var folder := String(DmCreature.model_entry(s).get("url", "")).get_slice("/", 1)   # a row can point at another model folder (the Reaper's hero_reaper_v2a)
+		if folder != "":
+			s = folder
 		if s != "" and DmCharacterBuild.is_playable(float((d as Dictionary).get("classIndex", 0))) and not out.has(s):
 			out.append(s)
 	return out
