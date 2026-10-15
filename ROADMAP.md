@@ -60,28 +60,27 @@ physics about 0.3 ms, enemy queries (`enemies_in_radius`, `DmThrall._scan`) abou
 - Off the table: Godot's separate render thread (crashes this game at the first UI frame, B14). Combat LOD by lowering AI rate (thralls lost
   half their hits).
 
-**Tracks, in order.** Track A and C start together (they cost different things and are measured separately); B before D.
+**Steps, in order of execution.** One step per release; the next starts when the previous one is measured and kept or reverted.
 
-- **A. Render: HUD draw calls.** The minimap (one draw per dot and its clip mask), shadowed labels (each shadow is a second draw), the tip card's
-  RichTextLabel. Target the HUD's share of the 900 draws in the benchmark's breakdown.
-- **B. Lean scripts** (each a measured drop in its own row):
-  1. `DmCreature.update`: skip work for bodies off screen or far from the camera, touch only what changed this frame.
-  2. HUD view model: rebuild only the parts that changed instead of the whole model four times a second.
-  3. Movement and FX runtime (`DmEnemy._move`, `DmThrall._move`, `DmFxRuntime`): per-frame allocation and repeated lookups.
-  4. Spatial enemy queries: one grid rebuilt per tick for `enemies_in_radius` (about 35 rites call it, each scanning every enemy and building
-     a new list) and the thralls' target scan. Small today; it is the shared lookup the threaded work in D needs.
-- **C. Engine threading switches** (project settings, one per release, each A/B on the benchmark):
-  1. Physics on its own thread (`physics/3d/run_on_separate_thread`).
-  2. Jolt physics instead of Godot Physics (built into 4.7, uses several cores; capsule shapes for creatures with it).
-  3. Navigation off the main thread (async path queries and map updates).
-- **D. Script threading** (after B; needs thread-safe code: no scene edits from a thread, deferred calls back to the main thread):
-  1. Enemies and thralls in their own process thread groups (`process_thread_group`), so their per-frame logic runs in parallel.
-  2. Batch work on `WorkerThreadPool`: creature visual updates, steering and movement math, the spatial grid.
-- **E. GPU** (Phase B, kept in tag `archive/perf-phase-b`, one part per owner-approved release, B12): creature instance uniforms (bdcfad67),
-  GPU motes (c62e407a, 91f23b20), prop MultiMesh (9cb53d8b, 37c94978, 8f475f65), the resolution governor and the Mobile renderer (b89317ad;
-  its threading part f6715cc2 depends on it).
-- **F. Renderer:** Forward+ / FSR behind a flag, last. The game runs `gl_compatibility` (`project.godot`); a switch needs the owner's and
-  Helix's PCs, a Compatibility fallback and re-measured shaders and budgets.
+1. **HUD draw calls** (render). The minimap (one draw per dot and its clip mask), shadowed labels (each shadow is a second draw), the tip
+   card's RichTextLabel. Measured by the HUD's share of the 900 draws in the benchmark's breakdown.
+2. **Physics on its own thread** (`physics/3d/run_on_separate_thread`, one project setting).
+3. **Creature visual update** (`DmCreature.update`, the largest script cost): skip work for bodies off screen or far from the camera, touch only
+   what changed this frame.
+4. **Jolt physics** instead of Godot Physics (built into 4.7, uses several cores), with capsule shapes for creatures.
+5. **HUD view model:** rebuild only the parts that changed instead of the whole model four times a second.
+6. **Navigation off the main thread** (async path queries and map updates).
+7. **Movement and FX runtime** (`DmEnemy._move`, `DmThrall._move`, `DmFxRuntime`): per-frame allocation and repeated lookups.
+8. **Spatial enemy queries:** one grid rebuilt per tick for `enemies_in_radius` (about 35 rites call it, each scanning every enemy and building
+   a new list) and the thralls' target scan. Small on its own today; step 9 and 10 need it as the shared, thread-safe lookup.
+9. **Enemies and thralls in their own process thread groups** (`process_thread_group`), so their per-frame logic runs in parallel. Needs
+   thread-safe code: no scene edits from a thread, deferred calls back to the main thread.
+10. **Batch work on `WorkerThreadPool`:** creature visual updates, steering and movement math, the spatial grid.
+11. **Phase B on the GPU**, one part per owner-approved release from tag `archive/perf-phase-b` (B12), in this order: creature instance
+    uniforms (bdcfad67), GPU motes (c62e407a, 91f23b20), prop MultiMesh (9cb53d8b, 37c94978, 8f475f65), the resolution governor and the
+    Mobile renderer (b89317ad, then its threading part f6715cc2).
+12. **Forward+ / FSR** behind a flag. The game runs `gl_compatibility` (`project.godot`); a switch needs the owner's and Helix's PCs, a
+    Compatibility fallback and re-measured shaders and budgets.
 
 ## Then: necromancer polish (no new content)
 
