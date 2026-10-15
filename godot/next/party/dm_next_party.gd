@@ -68,6 +68,7 @@ const CLOSE_TEXT := {
 
 var shell: DmNextGame
 var mode: StringName = SOLO
+var _guest_meals: Dictionary = {}   ## host: peer -> {until (its body clock ms), rate (hp a second)} of a guest's meal (guest_use)
 var lobby: DmLobbyClient
 var link := "off"                        ## off | connecting | ready | failed
 var sessions: Array = []                 ## the last public list: [{id, name, host, area, players, max, open}]
@@ -742,6 +743,45 @@ func fetch_build(peer: int) -> void:
 		c.refresh_stats(build)
 		c.set_runes(shell.rune_sockets(peer))   # its socketed runes reach its rites (the server's record)
 	sync_levels()
+
+
+## Client: we drank `id` from our own bag (DmNextBelt.remote_use; the bag already paid): the host applies it to our hero, which it simulates.
+func guest_use(id: String) -> void:
+	if not shell.session.is_host() and shell.session.is_active():
+		_rpc_guest_use.rpc_id(1, id)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_guest_use(id: String) -> void:
+	if not multiplayer.is_server() or shell == null:
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var b := shell.body_of(peer)
+	if b == null or not is_instance_valid(b) or not b.alive or b.p.is_empty():
+		return
+	var meal: Variant = DmBrews.meal(id)
+	if meal != null:
+		_guest_meals[peer] = {"until": b.clock_ms() + float(meal["seconds"]) * 1000.0, "rate": b.max_hp * float(meal["healFrac"]) / float(meal["seconds"])}
+	elif DmContent.brews().has(id):
+		b.apply_brew(id)
+		var rites := b.get_node_or_null("Rites") as DmRiteCaster
+		if rites != null and not rites.shares_vitals():
+			rites.apply_brew(id)
+	elif DmContent.healing_flasks().has(id):
+		b.heal(b.max_hp * float(DmContent.healing_flasks()[id]))
+
+
+## Host: a guest's meal heals its hero over the meal's seconds (DmNextBelt.tick does the same for the host's own hero).
+func _physics_process(dt: float) -> void:
+	if _guest_meals.is_empty():
+		return
+	for peer in _guest_meals.keys():
+		var b := shell.body_of(int(peer)) if shell != null else null
+		var meal: Dictionary = _guest_meals[peer]
+		if b == null or not is_instance_valid(b) or not b.alive or b.clock_ms() >= float(meal["until"]):
+			_guest_meals.erase(peer)
+		else:
+			b.heal(float(meal["rate"]) * dt)
 
 
 ## Client: what we wear changed (gear, belt, kit, rune sockets): the host reads our build from the server again.

@@ -172,7 +172,24 @@ func request_summon_plain(boss_id: String) -> void:
 		if why != "":
 			_say("toast", {"text": why_text(why, boss_id, me), "kind": "err"})
 	else:
+		# A party guest pays with its own shards (its DmNextJoiner progression, saved on its own account): too few is refused here, the host
+		# checks the rest (far, busy, dead) and answers `_rpc_summoned`, then the shards are spent.
+		var jp := _guest_prog()
+		if jp != null and int(jp.local["shards"]) < _shard_cost(boss_id):
+			_say("toast", {"text": String(WHY["shards"]) % [DmContent.boss(boss_id)["summonLabel"], _shard_cost(boss_id), " (you have %d)" % int(jp.local["shards"])], "kind": "err"})
+			return
 		_rpc_summon.rpc_id(1, boss_id)
+
+
+## The soul shards a summon of `boss_id` costs (the Prelate's bell, else the area boss's own price).
+func _shard_cost(boss_id: String) -> int:
+	return int(DmContent.boss("prelate")["shards"]) if boss_id == "prelate" else int(DmContent.boss(boss_id)["shards"])
+
+
+## A party guest's own progression (its shards), null on the host or solo.
+func _guest_prog() -> DmProgression:
+	var j: Variant = game.get("joiner")
+	return j.prog if j != null and j.prog != null else null
 
 
 ## HOST. "" = woken; else the refusal: busy / far / shards / dead / unknown. Spends the boss's soul shards from the summoner's progression
@@ -181,7 +198,8 @@ func try_summon(peer: int, boss_id: String, empowered: bool = false) -> String:
 	var why := _check(peer, boss_id)
 	if why == "":
 		var m := member_of(peer)
-		if m != null and not empowered and not (m.prog.spend_shards(int(DmContent.boss("prelate")["shards"])) if boss_id == "prelate" else m.prog.spend_boss_shards(boss_id)):
+		# a remote member (party guest) paid with its own shards on its own client (request_summon_plain / _rpc_summoned): the host's copy of it holds none
+		if m != null and not empowered and not m.remote and not (m.prog.spend_shards(int(DmContent.boss("prelate")["shards"])) if boss_id == "prelate" else m.prog.spend_boss_shards(boss_id)):
 			why = "shards"
 	if why != "":
 		summon_refused.emit(boss_id, why, peer)
@@ -223,6 +241,19 @@ func _rpc_summon(boss_id: String) -> void:
 	var why := try_summon(from, boss_id)
 	if why != "":
 		_rpc_refused.rpc_id(from, why, boss_id)
+	else:
+		_rpc_summoned.rpc_id(from, boss_id)
+
+
+## Guest: the host woke the boss we asked for: our own shards pay for it (saved and checked by our backend, which credits the party's drops).
+@rpc("authority", "call_remote", "reliable")
+func _rpc_summoned(boss_id: String) -> void:
+	var jp := _guest_prog()
+	if jp == null:
+		return
+	var paid := jp.spend_shards(_shard_cost(boss_id)) if boss_id == "prelate" else jp.spend_boss_shards(boss_id)
+	if not paid:
+		push_warning("[coop] summoned %s but the shards were gone by the host's answer" % boss_id)
 
 
 @rpc("authority", "call_remote", "reliable")

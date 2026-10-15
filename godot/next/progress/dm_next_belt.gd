@@ -3,6 +3,8 @@ extends RefCounted
 ## The slice's belt on the host's body: Q drinks a healing flask (with the 1.5 s sip cooldown), Z / X drink the elixir / tonic on the belt,
 ## meals heal over time. The HUD rows are DmGameHud.brews.
 ## Brew state lives on the body (ward, speed) and its caster (damage, haste, essence): both are fed by `drink_buff`.
+## A party guest's belt (`remote_use` set, DmNextUiHost): the guest's own bag pays (its server-backed DmInventory), the HOST applies the effect to the
+## guest's hero (DmNextParty.guest_use: heal, brew, meal), and the guest keeps its own copy of its brews (`guest_brews`) for the chips and texts.
 
 var body: DmHeroBody
 var inventory: DmInventory
@@ -14,10 +16,19 @@ var meal_rate: float = 0.0                           ## hp per second
 var say: Callable = Callable()                       ## (text, kind, height) -> a float over the hero
 var sfx: Callable = Callable()                       ## (sound name)
 var toast: Callable = Callable()                     ## (text)
+var remote_use: Callable = Callable()                ## (item id) a party guest: the host applies what was drunk; empty = this body is simulated here
+var guest_brews: Dictionary = {}                     ## a guest's own record of its brews (DmBrews.apply_brew shape); the host holds the real ones
 
 
 func _now() -> float:
-	return body.clock_ms()
+	return float(Time.get_ticks_msec()) if remote_use.is_valid() else body.clock_ms()
+
+
+## The brews in force on the hero: the body's (host), or the guest's own record of them.
+func _brews_state() -> Dictionary:
+	if remote_use.is_valid():
+		return guest_brews
+	return body.p["brews"] if body != null and not body.p.is_empty() else {}
 
 
 func _say(text: String, kind: String, y: float) -> void:
@@ -114,14 +125,19 @@ func drink_buff(id: String) -> void:
 	var b: Variant = DmContent.brews().get(id)
 	if b == null or not _ready_to_drink() or inventory.count(id) <= 0:
 		return
-	var before: Variant = body.p["brews"].get(b["slot"])
+	var before: Variant = _brews_state().get(b["slot"])
 	var prev: Variant = DmContent.brews().get(before["id"]) if (before != null and _now() < float(before["until"])) else null
 	if not inventory.consume(id):
 		return
-	var r: Dictionary = body.apply_brew(id)
-	var rites := body.get_node_or_null("Rites") as DmRiteCaster
-	if rites != null and not rites.shares_vitals():   # a caster on the body's vitals already sees the brew
-		rites.apply_brew(id)
+	var r: Dictionary
+	if remote_use.is_valid():
+		r = DmBrews.apply_brew(guest_brews, id, _now())
+		remote_use.call(id)
+	else:
+		r = body.apply_brew(id)
+		var rites := body.get_node_or_null("Rites") as DmRiteCaster
+		if rites != null and not rites.shares_vitals():   # a caster on the body's vitals already sees the brew
+			rites.apply_brew(id)
 	var text: String
 	if r["replaced"] and prev != null:
 		text = "%s replaces %s" % [b["label"], prev["label"]]
@@ -145,6 +161,8 @@ func eat_meal(id: String) -> void:
 		return
 	meal_until = _now() + float(meal["seconds"]) * 1000.0
 	meal_rate = (body.max_hp * float(meal["healFrac"])) / float(meal["seconds"])
+	if remote_use.is_valid():
+		remote_use.call(id)   # the host heals the hero over the meal's seconds
 	_say("Well fed · +%d%% over %ds" % [DmMath.js_round(float(meal["healFrac"]) * 100.0), int(meal["seconds"])], "gold", 2.2)
 	if sfx.is_valid():
 		sfx.call("eatMeal")
@@ -168,7 +186,10 @@ func drink_flask(prefer: String = "") -> void:
 		return
 	flask_cd_until = _now() + DmBrews.heal_cooldown_ms()
 	var amount: float = body.max_hp * float(flasks[id])
-	body.heal(amount)
+	if remote_use.is_valid():
+		remote_use.call(id)
+	else:
+		body.heal(amount)
 	_say("+%d" % DmMath.js_round(amount), "heal", 2.2)
 	if sfx.is_valid():
 		sfx.call("drinkFlask")
@@ -176,7 +197,7 @@ func drink_flask(prefer: String = "") -> void:
 
 ## Host, every physics frame (cheap: one compare while no meal runs).
 func tick(dt: float) -> void:
-	if meal_until > 0.0 and body != null and body.alive:
+	if meal_until > 0.0 and body != null and body.alive and not remote_use.is_valid():
 		if _now() < meal_until:
 			body.heal(meal_rate * dt)
 		else:
@@ -214,7 +235,7 @@ func rows() -> Array:
 	var brews: Dictionary = DmContent.brews()
 	var keys: Dictionary = DmContent.get_export("brews", "BREW_KEYS")
 	for slot in ["elixir", "tonic"]:
-		var act: Variant = body.p["brews"].get(slot) if body != null and not body.p.is_empty() else null
+		var act: Variant = _brews_state().get(slot)
 		var live: Variant = act if (act != null and now < float(act["until"])) else null
 		var belt_id := belt_brew(slot)
 		var shown: String = String(live["id"]) if live != null else belt_id

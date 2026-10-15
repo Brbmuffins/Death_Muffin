@@ -190,6 +190,7 @@ func _part_host_join() -> void:
 	await _part_rewards(jg)
 	await _part_ground(jg)
 	await _part_polish(jg)
+	await _part_guest_belt_and_summon(jg)
 	await _part_kick(jg, jb)
 	await _part_private_and_full()
 	await _part_drops()
@@ -449,6 +450,59 @@ func _part_polish(jg: DmNextGame) -> void:
 	for t in mine:
 		if is_instance_valid(t):
 			t.kill("test")
+
+
+# ---- a guest's belt and boss summons: its own bag and shards pay, the host applies / wakes ----------------------------------------------
+
+func _part_guest_belt_and_summon(jg: DmNextGame) -> void:
+	var jbody := hg.body_of(2)
+	var jprog: DmProgression = jg.joiner.prog
+	# the belt: built as DmNextUiHost._make_guest_belt does (this joiner runs without a HUD), on the joiner's own bag
+	await api_j.save_inventory(int(ch_j["id"]), [{"slot_index": 0, "item_id": "flask_hp_minor", "quantity": 2, "equipped": 0},
+		{"slot_index": 1, "item_id": "flask_speed", "quantity": 1, "equipped": 0}], 48)
+	var inv := DmInventory.new(api_j, int(ch_j["id"]))
+	inv.replace((await api_j.get_inventory(int(ch_j["id"]))).data)
+	var belt := DmNextBelt.new()
+	belt.body = jg.local_body()
+	belt.inventory = inv
+	belt.prog = jprog
+	belt.remote_use = jg.party.guest_use
+	jbody.p["hp"] = 5.0
+	jbody._mirror_from_state()
+	var hp0 := float(jbody.p["hp"])
+	belt.drink_flask()
+	var want := jbody.max_hp * float(DmContent.healing_flasks()["flask_hp_minor"])
+	check(inv.count("flask_hp_minor") == 1, "guest belt: Q takes the flask from the guest's own bag")
+	check(await until(func() -> bool: return float(jbody.p["hp"]) >= hp0 + want - 0.5, 4.0), "guest belt: the host heals the guest's hero by the flask (%.1f -> %.1f, +%.1f wanted)" % [hp0, float(jbody.p["hp"]), want])
+	belt.drink_flask()
+	check(inv.count("flask_hp_minor") == 1, "guest belt: the sip cooldown holds on the guest too")
+	var slot := String(DmContent.brews()["flask_speed"]["slot"])
+	belt.drink_belt(slot)
+	check(inv.count("flask_speed") == 0 and belt.guest_brews.has(slot), "guest belt: a brew is drunk from the guest's bag and its chip shows it active")
+	check(await until(func() -> bool: return jbody.p["brews"].get(slot) != null and jbody.p["brews"][slot]["id"] == "flask_speed", 4.0), "guest belt: the brew acts on the guest's hero on the host")
+	# boss summons: the guest's own shards
+	hg.bosses.assume_area = "graves"
+	var site := hg.bosses.site_pos("gravedigger")
+	var cost := int(DmContent.boss("gravedigger")["shards"])
+	jbody.teleport(site + Vector3(0.0, 0.0, 2.0))
+	await ticks(60)   # an area change saves the progression: its reply restores the saved shards, so they are set after it
+	jbody.teleport(site + Vector3(0.0, 0.0, 2.0))
+	jprog.local["shards"] = cost - 1
+	jg.bosses.request_summon("gravedigger")
+	await ticks(30)
+	check(hg.bosses.active_boss() == null and int(jprog.local["shards"]) == cost - 1, "guest summon: too few of its own shards is refused on the guest, nothing woken")
+	for k in mock.db["accounts"]:   # the shared backend holds the guest's shards too, so its save keeps them
+		if mock.db["accounts"][k]["character"]["id"] == int(ch_j["id"]):
+			mock.db["accounts"][k]["necro"]["soulShards"] = cost + 3
+	jprog.local["shards"] = cost + 3
+	jg.bosses.request_summon("gravedigger")
+	check(await until(func() -> bool: return hg.bosses.active_boss() != null, 4.0), "guest summon: the host wakes the boss the guest called (the host's copy of the guest holds no shards)")
+	check(await until(func() -> bool: return int(jprog.local["shards"]) == 3, 4.0), "guest summon: the guest's own shards pay the boss's price (%d left)" % int(jprog.local["shards"]))
+	var boss := hg.bosses.active_boss()
+	if boss != null:
+		boss.queue_free()
+	hg.bosses.assume_area = ""
+	await ticks(10)
 
 
 func _part_kick(jg: DmNextGame, jb: Node) -> void:

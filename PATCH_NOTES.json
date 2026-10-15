@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-10-15",
+    "title": "Bring Your Own Potions",
+    "items": [
+      "Joining a friend's party, your belt now works: Q drinks a healing flask, Z / X drink your elixir and tonic, and meals heal you, all from your own bag.",
+      "A party member can now wake a boss at its altar with their own soul shards, not just the host."
+    ]
+  },
+  {
+    "date": "2026-10-15",
     "title": "The Ceiling Holds",
     "items": [
       "Level 999 is the cap, and the game now knows it: no more \"Level 1000\" announcement popping up after every kill at 999.",

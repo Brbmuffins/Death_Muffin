@@ -234,7 +234,7 @@ func _act(b: DmHeroBody, c: DmRiteCaster, ctx: Dictionary, p: Vector3, now: floa
 
 
 func _flask() -> void:
-	var belt: Variant = game.progress.belt if game.progress != null else null
+	var belt: Variant = game.belt()
 	if belt == null or belt.inventory == null or belt.prog == null or bool(belt.prog.vow_fx().get("noFlasks", false)):
 		return
 	var inv: Variant = belt.inventory

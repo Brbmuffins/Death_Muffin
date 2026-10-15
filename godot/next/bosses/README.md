@@ -18,6 +18,7 @@ DmBossHost  (node "Bosses" under DmNextGame, every peer)   summon rules, spawner
 - **Events** (`t:"boss"`) are played on the host through `DmBossFx` and sent reliably (`_rpc_event`) so every peer draws each once. `t:"hurt"` stays host-side
   (`hero.take_damage`). Rooting events (`bury`, hands, the Congregation's grasp) call `DmHeroBody.root_for`; the Congregation's flood chills via `chillMs`.
 - **Summon**: `DmBossHost.try_summon(peer, id) -> why` (`busy far shards dead unknown`); key E near the area's `summonId` interactable or a click.
+  A party guest pays with its own shards: `request_summon_plain` refuses too few on the guest, the host wakes it without charging a remote member and answers `_rpc_summoned`, then the guest spends them.
   `LIVE` lists all seven; `served_areas` = graves, ossuary, nave, sanctum, cloister, pyre, fen; `ADDS` lists the defs the brains spawn (for `warm()`).
   Cost is boss shards (King 2, Abbess 3, Congregation 4) or the Prelate's bell (5 shards). The prompt belongs to `DmChapterhouse._update_prompt`.
 - **World hooks** (`dm_boss_node_world.gd`, `extends DmBossWorld`): `corpses()` / `remove_corpse` -> `DmCorpseField` (`devoured` Abbess, `raised` Mire),

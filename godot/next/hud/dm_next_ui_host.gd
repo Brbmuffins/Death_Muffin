@@ -37,6 +37,7 @@ var api: Variant
 var character: Dictionary
 var prog: DmProgression
 var inventory: DmInventory
+var guest_belt: DmNextBelt   ## a party guest's belt: its own bag pays, the host applies the drink (DmNextBelt.remote_use); null on a host
 var settings_store: DmSettings
 var kit: Dictionary
 var primary: String = "bone_needle"
@@ -130,6 +131,8 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 	if shell.progress != null:
 		shell.progress.belt.inventory = inventory
 		inventory.changed.connect(func(_s: Array) -> void: shell.progress.request_stats())   # worn gear feeds the stats
+	elif shell.joiner != null:
+		_make_guest_belt()
 	if shell.joiner != null:   # a party guest: the host builds our hero from the server's record, so tell it when what we wear changed
 		inventory.changed.connect(_on_guest_inventory)
 	if m != null:
@@ -455,34 +458,43 @@ func set_rites(new_primary: String, new_keys: Array) -> void:
 	DmLoadout.save_rites(hero_id, {"primary": primary, "keys": keys}, persist)
 
 
-## The Q key and the Reliquary's Drink: a healing flask (the heal belt chip). Host-side vitals; a joiner's drink is a later phase.
+## The Q key and the Reliquary's Drink: a healing flask (the heal belt chip). A party guest drinks from its own bag and the host applies it.
 func use_item(item_id: String) -> void:
-	if shell.progress == null and shell.joiner != null:
-		_party_belt_note()
-		return
-	if shell.progress != null and shell.session.is_host():
-		shell.progress.belt.use(item_id)   # a flask, brew or meal, with the old game's rules (cooldown, replace / extend, Dry Cellar)
+	var belt := shell.belt()
+	if belt != null:
+		belt.use(item_id)   # a flask, brew or meal, with the old game's rules (cooldown, replace / extend, Dry Cellar)
 
 
 func use_belt(slot: String) -> void:
-	if shell.progress == null or not shell.session.is_host():
-		if shell.joiner != null:
-			_party_belt_note()
+	var belt := shell.belt()
+	if belt == null:
 		return
 	if slot == "heal":
-		shell.progress.belt.drink_flask()
+		belt.drink_flask()
 	else:
-		shell.progress.belt.drink_belt(slot)
+		belt.drink_belt(slot)
 
 
-func _party_belt_note() -> void:
-	game_event.emit("toast", {"text": "Flasks and brews work only in your own world for now.", "kind": ""})
+## A party guest's belt (DmNextBelt.remote_use): the same rules and chips as the host's, on the guest's own bag and progression.
+func _make_guest_belt() -> void:
+	guest_belt = DmNextBelt.new()
+	guest_belt.body = shell.local_body()
+	guest_belt.inventory = inventory
+	guest_belt.prog = shell.joiner.prog
+	guest_belt.remote_use = shell.party.guest_use
+	guest_belt.say = func(text: String, kind: String, y: float) -> void:
+		var b := shell.local_body()
+		if b != null:
+			game_event.emit("float", {"world": b.position + Vector3(0, y, 0), "text": text, "kind": kind})
+	guest_belt.sfx = func(sound: String) -> void: _sfx(sound)
+	guest_belt.toast = func(text: String) -> void: game_event.emit("toast", {"text": text, "kind": ""})
 
 
 ## The UI keeps the belt pick in its store and tells the game which brew a slot holds.
 func set_belt(slot: String, item_id: String) -> void:
-	if shell.progress != null:
-		shell.progress.belt.set_belt(slot, item_id)
+	var belt := shell.belt()
+	if belt != null:
+		belt.set_belt(slot, item_id)
 
 
 # ---- hub: the Chapterhouse node (next/chapterhouse/) answers these DmGameUi calls ------------------------------------------------------

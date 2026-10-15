@@ -33,7 +33,7 @@ Shrouded suspension in the player's own Miasma, the Barrier decay, and boss-pool
 - **No automatic rejoin** (D13). A dropped client returns to its own solo game and has to join again by hand (an Open party: Join; a Closed one: a new invite or Ask to join); a dropped host ends the session (D6).
 - **One area per session, Depths solo:** `godot/next/areas/README.md`, `godot/next/depths/README.md`.
 - **Part of a joiner's state does not reach the host's sim:** the host builds the joiner's hero from the server's record (level, gear,
-  set bonuses, affixes, boons, vows, upgrade tiers, rune sockets), but Colossus Mantle hooks are host-hero only; no flasks or brews; no Covenant Seal or Nightfall dim; a client cannot call Empowered bosses.
+  set bonuses, affixes, boons, vows, upgrade tiers, rune sockets), but Colossus Mantle hooks are host-hero only; no Covenant Seal or Nightfall dim; a client cannot call Empowered bosses.
 - Client (non-host) peers get no full HUD feed beyond what `next/party/` provides (`next/hud/README.md`).
 - Chat is party chat in a party and local-only when solo.
 - **Friends show online only in the world:** character select and the launcher count as offline (the lobby link starts after loading).

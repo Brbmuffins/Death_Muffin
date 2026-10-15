@@ -360,8 +360,8 @@ func _start_hud() -> void:
 		party.go_online()          # after the loading cover: friends see us online, invites and asks reach us
 		_start_update_check(String(opts.get("update_check_installed", DmBuild.version())))
 		friends.check_requests()   # a waiting friend request is a toast + the Friends tab's pip
-		if progress != null:
-			progress.belt.load_pick(ui.belt_pick())
+		if belt() != null:
+			belt().load_pick(ui.belt_pick())
 		ui_host.inventory.changed.connect(func(_s: Array) -> void: sync_runes())   # a socketed / removed rune reaches the caster
 		ui_host.inventory.changed.connect(look.set_gear_from_slots)                 # worn gear reaches the avatar (and the other peers)
 		look.set_gear_from_slots(ui_host.inventory.slots)
@@ -491,6 +491,13 @@ func _enter(pos: Vector3) -> void:
 ## The body this peer controls (null until the session spawned it).
 func local_body() -> DmHeroBody:
 	return session.get_body(session.get_my_id()) as DmHeroBody if session.is_active() else null
+
+
+## The local hero's belt: the host's own (DmNextProgress), or a party guest's (DmNextUiHost.guest_belt, its drinks applied by the host); null before the HUD.
+func belt() -> DmNextBelt:
+	if progress != null:
+		return progress.belt
+	return ui_host.guest_belt if ui_host != null else null
 
 
 func body_of(peer_id: int) -> DmHeroBody:

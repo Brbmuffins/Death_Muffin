@@ -246,8 +246,9 @@ func _omen(g: DmNextGame) -> Variant:
 # ---- belt (Q heal flask with its cooldown, Z / X brews: DmNextBelt) -------------------------------------------------------------
 
 func _brews() -> Array:
-	if host.shell.progress != null and host.shell.progress.belt.inventory != null:
-		return host.shell.progress.belt.rows()
+	var belt := host.shell.belt()
+	if belt != null and belt.inventory != null:
+		return belt.rows()
 	return []
 
 
