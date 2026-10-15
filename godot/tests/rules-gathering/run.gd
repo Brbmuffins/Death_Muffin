@@ -31,6 +31,11 @@ func _init() -> void:
 	for t in ["consts", "xp", "chance", "rolls", "budget", "tools", "place_items", "plan", "labor", "garden", "contracts", "salvage", "gold_sink", "recipes", "bag", "locks", "vault", "potion_belt", "stable_sort"]:
 		section = t
 		call("_test_" + t)
+	var par: RefCounted = load("res://tests/rules-gathering/parity_part.gd").new()  # client / server parity fixtures (the server's vitest writes them)
+	par.bind(self)
+	par._initialize()
+	pass_n += par.passed
+	fail_n += par.failed
 	print("rules-gathering: %d passed, %d failed" % [pass_n, fail_n])
 	quit(1 if fail_n > 0 else 0)
 

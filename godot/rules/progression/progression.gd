@@ -166,21 +166,29 @@ static func xp_to_next(level: int) -> int:
 	return level * 100
 
 
+## (level, xp into it) with every full level carried, up to LEVEL_CAP (server/rules/gameplay/authorityRules.ts splitXp: from level 1 they match).
+static func carry_xp(level: int, xp: int) -> Dictionary:
+	var lv := maxi(1, level)
+	var x := maxi(0, xp)
+	while lv < LEVEL_CAP and x >= xp_to_next(lv):
+		x -= xp_to_next(lv)
+		lv += 1
+	return {"level": lv, "xp": mini(x, LEVEL_CAP * 100 - 1) if lv >= LEVEL_CAP else x}
+
+
 ## What this character earned since its last server save (DECISIONS B23: saves send gains, the server owns the totals). add_xp / add_gold
 ## count here; spends the server prices (purchases, reforge, selling) do not, the server takes them itself.
 var xp_unsent: int = 0
+## The server's level cap (server/rules/gameplay/authorityRules.ts LEVEL_CAP, splitXp): no levelling past it, XP stops one short of the next.
+const LEVEL_CAP := 999
 var gold_unsent: int = 0
 
 
 ## The server's totals (a save's reply, or any route that paid or took gold) plus what is still unsent here.
 func adopt_server_totals(level: Variant, experience: Variant, gold: Variant) -> void:
-	var lv := maxi(1, int(DmProgUtil.nn(level, 1)))
-	var xp := maxi(0, int(DmProgUtil.nn(experience, 0))) + xp_unsent
-	while xp >= xp_to_next(lv):
-		xp -= xp_to_next(lv)
-		lv += 1
-	character["level"] = lv
-	character["experience"] = xp
+	var r := carry_xp(int(DmProgUtil.nn(level, 1)), maxi(0, int(DmProgUtil.nn(experience, 0))) + xp_unsent)
+	character["level"] = r["level"]
+	character["experience"] = r["xp"]
 	adopt_server_gold(gold)
 
 
@@ -204,12 +212,11 @@ func adopt_server_gold(gold: Variant) -> void:
 func add_xp(amount: float) -> int:
 	var c: Dictionary = character
 	xp_unsent += DmProgUtil.js_round(amount)
-	c["experience"] = int(DmProgUtil.nn(c.get("experience"), 0)) + DmProgUtil.js_round(amount)
-	var gained: int = 0
-	while c["experience"] >= xp_to_next(int(c["level"])):
-		c["experience"] -= xp_to_next(int(c["level"]))
-		c["level"] += 1
-		gained += 1
+	var before := int(c["level"])
+	var r := carry_xp(before, int(DmProgUtil.nn(c.get("experience"), 0)) + DmProgUtil.js_round(amount))
+	c["level"] = r["level"]
+	c["experience"] = r["xp"]
+	var gained: int = int(r["level"]) - before
 	_mark_server_dirty(gained > 0)
 	return gained
 

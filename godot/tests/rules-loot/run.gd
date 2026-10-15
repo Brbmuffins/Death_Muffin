@@ -1,5 +1,5 @@
 extends "res://tests/common/dm_suite_runner.gd"
-## rules/loot golden fixtures (loot_part) and client / server loot parity (loot_parity_part), one process.
+## rules/loot golden fixtures (loot_part), client / server loot-roll parity (loot_parity_part) and the other loot-rule parity fixtures (rules_parity_part), one process.
 ## godot --headless --path godot --script res://tests/rules-loot/run.gd
 
 
@@ -8,4 +8,4 @@ func _init() -> void:
 
 
 func parts() -> Array:
-	return ["res://tests/rules-loot/loot_part.gd", "res://tests/rules-loot/loot_parity_part.gd"]
+	return ["res://tests/rules-loot/loot_part.gd", "res://tests/rules-loot/loot_parity_part.gd", "res://tests/rules-loot/rules_parity_part.gd"]

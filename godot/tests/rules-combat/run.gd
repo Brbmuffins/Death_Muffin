@@ -19,11 +19,16 @@ func _initialize() -> void:
 		return
 	var names: Array[String] = []
 	for f in dir.get_files():
-		if f.ends_with(".json"):
+		if f.ends_with(".json") and not f.ends_with("_parity.json"):  # *_parity.json belong to parity_part.gd
 			names.append(f.get_basename())
 	names.sort()
 	for n in names:
 		run_file(n)
+	var par: RefCounted = load("res://tests/rules-combat/parity_part.gd").new()  # client / server parity fixtures (the server's vitest writes them)
+	par.bind(self)
+	par._initialize()
+	passed += par.passed
+	failed += par.failed
 	var total := passed + failed
 	print("--- rules-combat: %d / %d passed, %d failed ---" % [passed, total, failed])
 	for k in per_file:

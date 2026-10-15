@@ -35,6 +35,7 @@ positives (they now hold back an honest player's gain), make area kills, shards 
 reports, clear the old audit rows, a Discord notice when a character trips a flag, and a rollback runbook on `character_save_versions`.
 GM actions are logged.
 
+The model is the hybrid one (Warframe-style; owner 2026-10-15): a player's PC hosts the combat, the server owns everything of value.
 Not planned now: full server-side combat simulation (headless sessions); revisit if the game goes public at scale.
 
 ## Then: necromancer polish (no new content)

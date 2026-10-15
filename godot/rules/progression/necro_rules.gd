@@ -98,9 +98,13 @@ static func apply_save(state: Dictionary, input_v: Variant, opts: Variant = null
 	var budget: int = int(lim["killsPerSave"])
 	var kills: int = 0
 	var in_kills: Dictionary = DmProgUtil.dict_or_empty(input.get("areaKills"))
+	var backed: Dictionary = DmProgUtil.dict_or_empty((opts as Dictionary).get("backed")) if opts is Dictionary else {}
 	for id in DmProgContent.area_order():
 		var n: int = mini(budget, DmProgUtil.clamp_int(in_kills.get(id), 0, budget))
-		if n == 0 or DmProgContent.areas()[id]["safe"] or not _is_open(s, id, opts):
+		# Kills only count where the character can actually be, or as far as the kill ledger backs them (a party member carried through its host's world).
+		if not _is_open(s, id, opts):
+			n = mini(n, DmProgUtil.clamp_int(backed.get(id), 0, n))
+		if n == 0 or DmProgContent.areas()[id]["safe"]:
 			continue
 		s["areaKills"][id] = int(DmProgUtil.nn(s["areaKills"].get(id), 0)) + n
 		budget -= n

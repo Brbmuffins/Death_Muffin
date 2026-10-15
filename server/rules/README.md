@@ -6,10 +6,30 @@ directly: `npm run build:server-rules` bundles each rule entry into the CommonJS
 `tools/build-*-sql.mjs` / `tools/generate-necro-weapons.mjs` generators write the content migrations from `content/`.
 
 The Godot client has its own GDScript port of these rules (`godot/rules/`); a change here that players should see
-needs the matching change there. The loot roll is the strict case: `gameplay/lootRules.ts` must roll exactly what `godot/rules/loot/loot.gd`
-rolls from the same `dropStream` seed (server authority Phase 1: the server re-rolls a drop the client showed). Its test writes
-`godot/tests/rules-loot/fixtures/loot_parity.json`, which the Godot suite `rules-loot` replays; after a deliberate loot change on both sides,
-regenerate it with `UPDATE_LOOT_PARITY=1 npx vitest run server/rules/gameplay/__tests__/lootRules.test.ts`.
+needs the matching change there. Every rule module with a real GDScript counterpart is machine-checked against it by a parity fixture:
+the vitest test builds a deterministic table of representative and edge inputs from the TypeScript, the committed
+`godot/tests/<suite>/fixtures/<name>_parity.json` must equal it (the test fails when it does not), and the Godot suite replays each case through
+the port and compares (numbers within 1e-9). The loot roll is the strict case: `gameplay/lootRules.ts` must roll exactly what `godot/rules/loot/loot.gd`
+rolls from the same `dropStream` seed (server authority Phase 1: the server re-rolls a drop the client showed). Seeded rolls elsewhere use the same
+stream on both sides (`DmDropStream`). After a deliberate change made on both sides, regenerate with
+`UPDATE_<NAME>_PARITY=1 npx vitest run <test file>`; a failing Godot replay means the two sides really differ: decide which is right, never regenerate to make it pass.
+
+| Fixture (`godot/tests/<suite>/fixtures/`) | Test (`gameplay/__tests__/`) | `<NAME>` | GDScript port |
+|---|---|---|---|
+| `rules-loot/loot_parity.json` | `lootRules.test.ts` | `LOOT` | `rules/loot/loot.gd`, `drop_stream.gd` |
+| `rules-loot/affix_parity.json` | `affixRules.parity.test.ts` | `AFFIX` | `rules/loot/affix_rules.gd` |
+| `rules-combat/kill_parity.json` | `killRules.parity.test.ts` | `KILL` | `dm_enemy_stats.gd` (kill XP / gold, New Blood) |
+| `rules-combat/legion_parity.json`, `runes_parity.json` | `legionRules.parity.test.ts` | `LEGION`, `RUNES` | `dm_legion.gd`, `dm_runes.gd` |
+| `rules-combat/loadout_parity.json` | `loadoutRules.parity.test.ts` | `LOADOUT` | `net/offline/dm_offline_loadout.gd` |
+| `rules-progression/xp_parity.json` | `killRules.parity.test.ts` | `XP` | `progression.gd` (level curve, `carry_xp` up to the 999 cap) |
+| `rules-progression/necro_parity.json`, `upgrades_parity.json`, `kill_chain_parity.json` | `necroRules.parity.test.ts` | `NECRO`, `UPGRADES`, `KILL_CHAIN` | `necro_rules.gd`, `ascension.gd`, `DmUpgrades`, `kill_chain.gd` |
+| `rules-gathering/{gather,salvage,gold_sink,labor,garden,contracts}_parity.json` | `gatheringRules.parity.test.ts` | `GATHER`, `SALVAGE`, `GOLD_SINK`, `LABOR`, `GARDEN`, `CONTRACTS` | `rules/gathering/*.gd` |
+| `rules-gathering/vault_parity.json` | `vaultRules.parity.test.ts` | `VAULT` | `rules/inventory/vault_rules.gd` |
+| `rules-gathering/cosmetics_parity.json` | `loadoutRules.parity.test.ts` | `COSMETICS` | `net/offline/dm_offline_cosmetics.gd` |
+
+The shared pieces are `gameplay/__tests__/parity.ts` (case recorder and fixture check) and `godot/tests/common/dm_parity_part.gd` (replay base;
+each suite's `parity_part.gd` maps a case's `fn` to its port). Rules with no GDScript counterpart (`multCaps`, `ceilingsFor`, the kill ledger)
+are server-only. A case is never left out of a fixture: when the sides differ, fix the port (the TypeScript is the source of truth).
 
 - Change a rule or content table here, then `npm run build:server-rules` (and the matching SQL generator) and commit
   both; `node tools/build-server-rules.mjs --check` / the `--check` generators fail when a committed copy is stale.

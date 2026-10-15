@@ -19,6 +19,11 @@ func _initialize() -> void:
 	for t in ["pure", "necro_seq", "kill_chain", "chronicle_seq", "progression_seq"]:
 		_cur = t
 		call("t_" + t)
+	var par: RefCounted = load("res://tests/rules-progression/parity_part.gd").new()  # client / server parity fixtures (the server's vitest writes them)
+	par.bind(self)
+	par._initialize()
+	passed += par.passed
+	failed += par.failed
 	print("--- rules-progression: %d / %d passed, %d failed ---" % [passed, passed + failed, failed])
 	for k in per_file:
 		print("  %-18s %s" % [k, per_file[k]])
