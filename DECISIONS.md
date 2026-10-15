@@ -113,3 +113,10 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   each player's rewards run at that heat plus their own self vows (solo: their own world and self vows). The backend caps a carried kill the
   same way from the host's record, never the report. "Heat N · Difficulty" (also "Heat 0 · Medium") shows in the friends list, invites, the
   Party window and over the HUD's party list, with "+N yours" for one's own self vows; the lobby's copy is display only.
+- **B28. Updating while people play** (owner, 2026-10-15). A player keeps the build they started until they restart it from the launcher, so
+  every release goes live next to older running clients. Co-op: release builds only party with the same build (`DmSession.PROTOCOL` 2: the
+  hello carries `DmBuild.version()`; the host refuses a different release build and the reason says which side is behind and to restart from
+  the launcher; dev builds skip the check). A running release build reads the client manifest a minute after loading and every 5 minutes
+  (`DmUpdateCheck`) and shows one toast per newer build, after the fight. Each backend deploy must keep accepting what the previous client
+  sends: add routes and fields freely, but remove or tighten one only a release after the client stopped using it. The lobby restarts only
+  when no party is running (`deploy-lobby.sh`).

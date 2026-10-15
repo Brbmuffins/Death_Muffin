@@ -1,5 +1,13 @@
 [
   {
+    "date": "2026-10-15",
+    "title": "Same Page",
+    "items": [
+      "If a new version comes out while you're playing, the game now tells you (after your fight), so you can restart from the launcher to update.",
+      "Parties now need everyone on the same version. Joining a friend on a different one tells you who needs to restart from the launcher, instead of joining and acting strangely."
+    ]
+  },
+  {
     "date": "2026-10-14",
     "title": "Come Back Anytime",
     "items": [

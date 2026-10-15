@@ -183,5 +183,49 @@ func _run() -> void:
 	check(not off.online_gate and (await off._gate_allows()) and log_.is_empty(), "offline flow: gate off, no requests")
 	off.free()
 
+	# ---- build versions (DmBuild) and the update notice (DmUpdateCheck)
+	var v1 := "20261015.010203-abcdef0"; var v2 := "20261015.020000-1234567"; var v0 := "20261014.235959-7654321"
+	check(DmBuild.is_release(v1) and not DmBuild.is_release("dev") and not DmBuild.is_release("") and not DmBuild.is_release("1.0"), "build: only publish-script versions are releases")
+	check(DmBuild.newer(v2, v1) and not DmBuild.newer(v1, v2) and not DmBuild.newer(v1, v1) and DmBuild.newer(v1, v0), "build: newer compares the publish stamp")
+	check(not DmBuild.newer(v2, "dev") and not DmBuild.newer("dev", v1), "build: dev is never newer or older")
+	check(DmBuild.compatible(v1, v1) and not DmBuild.compatible(v1, v2) and DmBuild.compatible("dev", v1) and DmBuild.compatible(v1, "") , "build: same release or a dev side plays together")
+	var served := {"m": {"version": v1}}
+	var uc := DmUpdateCheck.new()
+	root.add_child(uc)
+	var heard: Array = []
+	uc.update_available.connect(func(v: String) -> void: heard.append(v))
+	uc.setup(v1, func() -> Dictionary: return served["m"], 3600.0, 3600.0)
+	await uc.check()
+	check(heard.is_empty(), "update: the installed version is not news")
+	served["m"] = {"version": v0}
+	await uc.check()
+	check(heard.is_empty(), "update: an older manifest (a rollback) is not news")
+	served["m"] = {}
+	await uc.check()
+	check(heard.is_empty(), "update: an unreadable manifest is ignored")
+	served["m"] = {"version": v2}
+	await uc.check()
+	await uc.check()
+	check(heard == [v2], "update: a newer build is announced once")
+	var v3 := "20261015.030000-89abcde"
+	served["m"] = {"version": v3}
+	await uc.check()
+	check(heard == [v2, v3], "update: and the next one again")
+	uc.queue_free()
+	var ucs := DmUpdateCheck.new()
+	root.add_child(ucs)
+	var timed: Array = []
+	ucs.update_available.connect(func(v: String) -> void: timed.append(v))
+	ucs.setup(v1, func() -> Dictionary: return {"version": v2}, 0.05, 0.05)
+	for _i in 40:
+		if not timed.is_empty():
+			break
+		await create_timer(0.05).timeout
+	check(timed == [v2], "update: the timer checks on its own")
+	ucs.queue_free()
+	# the co-op refusal says which side is behind
+	check(DmSession.version_text(v2, v1).contains("host has a newer version") and DmSession.version_text(v1, v2).contains("host is on an older version"), "build: refusal text names the side that is behind")
+	check(DmSession.version_text(v2, "").contains("newer version"), "build: a protocol-1 client hears the host is newer")
+
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)

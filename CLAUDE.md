@@ -39,6 +39,9 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 - **Loot item ids** must be ids the live server knows (`server/rules/content/items.ts`; a unit test enforces it).
 - **The backend owns value.** Gold, items, loot rolls, progression and the kill ledger are server-side (D1); a client or host
   never mints them. Server `error` strings are player-readable: show them verbatim.
+- **Old clients keep running.** Players keep their build until they restart it from the launcher: a backend change must keep accepting
+  what the previous client sends (remove or tighten a route or field only a release later), and co-op only pairs identical release builds
+  (DECISIONS B28).
 - **AI changes are propose-then-approve.** Do not widen an approval boundary (deploy, push, spend) on your own.
 
 ## Working conventions

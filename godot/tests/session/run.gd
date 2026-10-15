@@ -81,11 +81,11 @@ class Probe:
 	var left: Array = []
 
 
-func _mk(nm: String) -> Array:
+func _mk(nm: String, cls: Variant = null) -> Array:
 	var h := Node.new()
 	h.name = nm
 	root.add_child(h)
-	var s := DmSession.new()
+	var s: DmSession = cls.new() if cls != null else DmSession.new()
 	s.name = "Session"
 	h.add_child(s)
 	set_multiplayer(SceneMultiplayer.new(), NodePath("/root/" + nm))
@@ -173,6 +173,25 @@ func _part_a() -> void:
 	(cs[2][0] as DmSession).leave()
 	ok(await wait_for(func(): return hs.get_body(gone_id) == null and (cs[0][0] as DmSession).get_body(gone_id) == null and (cs[1][0] as DmSession).get_body(gone_id) == null), "A: leaver despawned everywhere")
 	ok(gone_id in hp.left and gone_id in (cs[0][1] as Probe).left, "A: player_left fired on host and peers")
+	# builds: a different release build is refused with the fix in the reason; an old protocol-1 client (3-argument hello) too; dev plays
+	hs.build_version = "20261015.020000-1234567"
+	var cv := _mk("CV")
+	(cv[0] as DmSession).build_version = "20261015.010000-abcdef0"
+	_client(cv[0])
+	ok(await wait_for(func(): return (cv[1] as Probe).ended != ""), "A: older build got session_ended")
+	ok("newer version" in (cv[1] as Probe).ended and "launcher" in (cv[1] as Probe).ended, "A: build refusal says how to fix it: '%s'" % (cv[1] as Probe).ended)
+	ok(not (cv[1] as Probe).started and hs.get_roster().size() == 3, "A: older build never started, roster unchanged")
+	var co := _mk("CO", OldHello)
+	_client(co[0])
+	ok(await wait_for(func(): return (co[1] as Probe).ended != ""), "A: protocol-1 client got session_ended")
+	ok("newer version" in (co[1] as Probe).ended, "A: protocol-1 client hears the host is newer: '%s'" % (co[1] as Probe).ended)
+	var cd := _mk("CD")
+	(cd[0] as DmSession).build_version = "dev"
+	_client(cd[0])
+	ok(await wait_for(func(): return (cd[1] as Probe).started), "A: a dev build still joins a release host")
+	(cd[0] as DmSession).leave()
+	ok(await wait_for(func(): return hs.get_roster().size() == 3), "A: dev joiner left")
+	hs.build_version = ""
 	ok(hs.get_roster().size() == 3 and (cs[0][0] as DmSession).get_roster().size() == 3, "A: rosters shrink to 3")
 	# host leaves
 	hs.leave()
@@ -326,3 +345,10 @@ func _part_c() -> void:
 	await s.leave()
 	ok(ended[0] != "" and not s.is_active(), "C: solo session ends cleanly")
 	h.queue_free()
+
+
+## A protocol-1 client (before builds were checked): its hello has three arguments.
+class OldHello extends DmSession:
+	func _on_connected_to_server() -> void:
+		_rpc_hello.rpc_id(1, 1, character_name, discipline_id)
+

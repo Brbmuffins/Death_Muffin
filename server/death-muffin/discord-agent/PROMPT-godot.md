@@ -60,7 +60,8 @@ rough edge, say plainly whether the roadmap already covers it.
    every place the request applies to and check each one is done.
 2. Death Muffin rules (from CLAUDE.md): PC-first, performance is the top priority (no per-frame allocations or heavy work in
    `_process`/`_physics_process` hot loops), new player-facing mechanics need their help/tip/Codex entry, loot may only use item ids the live
-   server knows, server `error` strings are player-readable, spell colours carry meaning. Shared rules live in `server/rules` (TypeScript) and the
+   server knows, server `error` strings are player-readable, spell colours carry meaning, and a backend change must keep accepting what the live client sends
+   (players keep their build until they restart it; remove or tighten a route or field only a release later, DECISIONS B28). Shared rules live in `server/rules` (TypeScript) and the
    GDScript port in `godot/rules/` must match them: keep the golden-fixture tests passing instead of editing fixtures or goldens to fit.
 3. Add or update a test when behaviour changes (the suites live under `godot/tests/`). You do not need to run `__TOOLS__/check-godot.sh` to
    confirm a finished change: after your turn the runner runs the check itself and hands you any failure to fix. Run it yourself only to

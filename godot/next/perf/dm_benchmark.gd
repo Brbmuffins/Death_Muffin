@@ -552,20 +552,8 @@ static func _part_of(nd: Node) -> String:
 	return ""
 
 
-## The installed build's version ("20261013.225809-36e80e1"): the launcher installs each build in a folder of its own with the manifest
-## it came from (launcher/windows/ClientInstaller.cs), so it is read from the manifest.json next to the exe; "dev" for an editor or hand-run build.
-static func client_version() -> String:
-	var mf := OS.get_executable_path().get_base_dir().path_join("manifest.json")
-	if FileAccess.file_exists(mf):
-		var j: Variant = JSON.parse_string(FileAccess.get_file_as_string(mf))
-		if j is Dictionary and j.get("version") is String and String(j["version"]) != "":
-			return String(j["version"])
-	var ver := str(ProjectSettings.get_setting("application/config/version", ""))
-	return ver if ver != "" else "dev"
-
-
 func _meta(user: Dictionary) -> Dictionary:
-	var ver := client_version()
+	var ver := DmBuild.version()
 	var build := ver
 	var win := DisplayServer.window_get_size()
 	return {

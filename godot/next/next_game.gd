@@ -154,6 +154,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
 	session.character_name = String(opts.get("name", "You"))
 	session.discipline_id = String(d["id"])
+	session.build_version = DmBuild.version()   # co-op refuses a different release build (DmSession PROTOCOL 2)
 	var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
 	session.spawn_origin = Vector3(float(ret["x"]), 0.0, float(ret["z"]))
 	session.body_factory = _make_body
@@ -357,6 +358,7 @@ func _start_hud() -> void:
 				a.play_sfx(n))
 		await ui.warm()
 		party.go_online()          # after the loading cover: friends see us online, invites and asks reach us
+		_start_update_check(String(opts.get("update_check_installed", DmBuild.version())))
 		friends.check_requests()   # a waiting friend request is a toast + the Friends tab's pip
 		if progress != null:
 			progress.belt.load_pick(ui.belt_pick())
@@ -624,3 +626,31 @@ static func _wants_warmup() -> bool:
 		if a == "--qa" or a.begins_with("--shot-plan="):
 			return false
 	return true
+
+
+# ---- update notice ----------------------------------------------------------------------------------------------------------------
+
+const UPDATE_TEXT := "A new version of Death Muffin is out. Restart the game from the launcher to update."
+var update_check: DmUpdateCheck
+var _update_shown := ""
+
+## An installed release build asks every few minutes whether a newer one is out (DmUpdateCheck); the toast waits until the fight is over.
+func _start_update_check(installed: String) -> void:
+	if not DmBuild.is_release(installed) or api == null or not api.has_method("fetch_client_manifest"):
+		return
+	update_check = DmUpdateCheck.new()
+	update_check.name = "UpdateCheck"
+	add_child(update_check)
+	update_check.update_available.connect(func(_v: String) -> void: _show_update_notice())
+	update_check.setup(installed, api.fetch_client_manifest)
+
+
+func _show_update_notice() -> void:
+	if update_check == null or ui_host == null or _update_shown == update_check.notified:
+		return
+	if ui_host.in_combat():
+		get_tree().create_timer(5.0).timeout.connect(_show_update_notice)
+		return
+	_update_shown = update_check.notified
+	ui_host.game_event.emit("toast", {"text": UPDATE_TEXT, "kind": "good"})
+

@@ -22,7 +22,9 @@ signal session_started
 signal session_ended(reason: String)
 
 const MAX_PLAYERS := 4  ## D2
-const PROTOCOL := 1
+## Bump when the session messages change shape. Since 2: the hello also carries the build version, and the host refuses a different build
+## (DmBuild.compatible), so two release builds only ever play together when they are the same build.
+const PROTOCOL := 2
 const SNAPSHOT_HZ := 20.0
 const INTERP_DELAY := 0.1
 const MOVE_SPEED := 5.0
@@ -38,6 +40,8 @@ enum State { IDLE, HOSTING, JOINING, ACTIVE, ENDING }
 
 var character_name: String = "Player"
 var discipline_id: String = ""
+## This game's build (DmBuild.version(), set by DmNextGame). "" or "dev" = no build check (editor runs, tests).
+var build_version: String = ""
 ## Seams for a game built on the session (both default to the arena behaviour): `body_factory: Callable() -> DmSessionBody` makes the
 ## player body on EVERY peer (spawner spawn_function), `spawn_origin` shifts the spawn ring (set before host()).
 var body_factory: Callable = Callable()
@@ -250,7 +254,7 @@ func _teardown(reason: String) -> void:
 
 
 func _on_connected_to_server() -> void:
-	_rpc_hello.rpc_id(1, PROTOCOL, character_name, discipline_id)
+	_rpc_hello.rpc_id(1, PROTOCOL, character_name, discipline_id, build_version)
 	hello_at_ms = Time.get_ticks_msec()
 	printerr("[coop] joiner: hello sent to the host")
 
@@ -416,17 +420,26 @@ func _apply_face(sender: int, body_id: int, yaw: float) -> void:
 	b.set_facing(yaw)
 
 
+## The refusal a joiner on another build sees (shown as "<Text>."): which side is behind, and the fix.
+static func version_text(host_build: String, joiner_build: String) -> String:
+	if DmBuild.newer(host_build, joiner_build) or joiner_build == "":
+		return "the host has a newer version of the game. Close it and start it again from the launcher to update, then join"
+	if DmBuild.newer(joiner_build, host_build):
+		return "the host is on an older version of the game. Ask them to restart it from the launcher to update, then join again"
+	return "you and the host are on different versions of the game (host %s, you %s). Restart both from the launcher to update" % [host_build, joiner_build]
+
+
 # ---- RPCs ---------------------------------------------------------------------------------------------------------------------
 
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_hello(protocol: int, nm: String, disc: String) -> void:
+func _rpc_hello(protocol: int, nm: String, disc: String, build: String = "") -> void:   # build: absent from a protocol-1 client
 	if not multiplayer.is_server() or _state != State.HOSTING:
 		return
 	var id := multiplayer.get_remote_sender_id()
 	if _roster.has(id) or _refusing.has(id):
 		return
-	if protocol != PROTOCOL:
-		_refuse(id, "version mismatch (host %d, you %d)" % [PROTOCOL, protocol])
+	if protocol != PROTOCOL or not DmBuild.compatible(build_version, build):
+		_refuse(id, version_text(build_version, build if protocol == PROTOCOL else ""))
 		return
 	if _roster.size() >= MAX_PLAYERS:
 		_refuse(id, "session is full (%d/%d players)" % [_roster.size(), MAX_PLAYERS])

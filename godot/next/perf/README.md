@@ -49,7 +49,7 @@ window, then the run; Back returns there) or `godot -- --benchmark` (results scr
   refresh rate (a fast PC, light frozen picture) only notes that the breakdown's ms columns are capped.
 - Measured: average fps, average / median / p95 / p99 / worst frame ms, hitches over 50 ms, average draw calls / objects / primitives
   (`RenderingServer.get_rendering_info`), render CPU and GPU ms (`viewport_get_measured_render_time_*`), `TIME_PROCESS` / `TIME_PHYSICS_PROCESS`, enemy and thrall counts.
-  The report header has the game version (`client_version`: the `manifest.json` the launcher installs next to the exe, "dev" otherwise), GPU, renderer, resolution, preset, fps cap setting, CPU and thread count.
+  The report header has the game version (`DmBuild.version()`: the `manifest.json` the launcher installs next to the exe, "dev" otherwise), GPU, renderer, resolution, preset, fps cap setting, CPU and thread count.
 - Render breakdown (after the measured window, ~45 s; a big centred "FIGHT FROZEN ON PURPOSE" banner with the step and the time left covers it, `breakdown_step`): the fight is paused (the picture stays) and moon
   shadows, thralls, enemies, the world (ground, props, area meshes), effects and last the HUD are hidden one at a time, then everything-on is measured
   again (a drift note when the two disagree) for 5 s each (1 s settle); the table lists how many draw calls, ms of render CPU / GPU

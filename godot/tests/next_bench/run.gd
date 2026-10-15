@@ -77,7 +77,7 @@ func _run() -> void:
 	if hz > 0.0:
 		var paused_at_cap := {"phases": [{"capped": false}], "meta": {}, "breakdown": {"base": {"frame_ms": 1000.0 / hz}}}
 		check(DmBenchmark.capped_warning(paused_at_cap) == "" and DmBenchmark.breakdown_capped(paused_at_cap), "a paused breakdown at the refresh rate does not flag the fight (Helix 2026-10-14: 54 fps fight flagged as V-Sync)")
-	check(DmBenchmark.client_version() == "dev", "an editor run has no installed build version")
+	check(DmBuild.version() == "dev", "an editor run has no installed build version")
 	for p in ph:
 		check(p.has("capped"), "%s reports whether it ran at the refresh rate" % p["label"])
 	check(b.area_nav_on, "the benchmark area's navmesh is on (a sealed area left enemies unable to reach the hero)")
