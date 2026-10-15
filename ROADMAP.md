@@ -40,10 +40,23 @@ Not planned now: full server-side combat simulation (headless sessions); revisit
 
 ## Then: necromancer polish (no new content)
 
-- **Performance:** the in-game benchmark (character select -> Benchmark; every run lands on the site's Benchmarks page, DECISIONS B21) is the measuring stick. Next: HUD draw calls, then combat
-  work over several cores (KNOWN-GAPS: Performance).
-  Forward+/FSR only after that, behind a flag. Phase B is pulled (DECISIONS B12): bring it back one part per owner-approved test build
-  from tag `archive/perf-phase-b`.
+- **Performance** (owner: first priority; plan of 2026-10-15, costs measured in KNOWN-GAPS: Performance). Every step is measured before and
+  after: render cost with the in-game benchmark on Helix's PC (Standard setup; runs land on the site's Benchmarks page, DECISIONS B21), script
+  cost headless with `tools/godot/profile.py` on `tests/perf/fight_breakdown.gd` (Standard 30 enemies / 20 thralls and Heavy 60 / 30). A step
+  that does not move its number is reverted. In order:
+  1. **HUD draw calls** (render CPU; the HUD is about 600 of 900 draws): minimap dots and mask, shadowed labels, the tip card.
+  2. **Creature visual update** (`DmCreature.update`, the largest script cost): skip work for bodies off screen or far from the camera, and
+     only touch what changed this frame.
+  3. **HUD view model:** rebuild only what changed instead of the whole model four times a second (a ~1.4 ms spike each time).
+  4. **Movement and FX runtime** (`DmEnemy._move`, `DmThrall._move`, `DmFxRuntime`): per-frame allocation and repeated lookups.
+  5. **Spatial enemy queries** (`DmWaveDirector.enemies_in_radius`, `DmThrall._scan`): a grid rebuilt once per tick. Measured small today
+     (about 1% of a Standard fight); do it when Heavy fights or new rites make it grow, or as part of step 6.
+  6. **Combat work over several cores** (creature update, movement and queries in `WorkerThreadPool` batches), once steps 2-5 have made
+     that work lean.
+  7. Then Forward+ / FSR behind a flag. Phase B stays pulled (DECISIONS B12): its parts come back one per owner-approved build from tag
+     `archive/perf-phase-b`.
+  Tooling: `profile.py` sometimes reports an impossible row (one function above the whole frame); cross-check with `fight_breakdown.gd`'s
+  knock-out table before acting on a single row.
 - **Combat feel and loot** for the four disciplines: tuning from playtests, readability of rites and statuses, gear and
   affix legibility, the first hour (Next-step box, counsel tips, guide NPCs).
 - **Rejoin window** (D13) and the **party gaps** (KNOWN-GAPS: Party and online).
