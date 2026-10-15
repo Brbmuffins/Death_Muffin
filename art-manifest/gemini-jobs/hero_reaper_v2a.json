@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_hero_reaper_v2a",
+    "prompt": "3D modeling reference image of a single dark fantasy game character, full body head to toe, strict T-pose with arms straight out to the sides, both hands EMPTY and open, facing the camera, plain flat light grey background (#c8c8c8), even neutral flat lighting, no cast shadows, no ground plane, no text, no weapon, no other objects. A grim human Reaper, a gaunt shadowed face half hidden under a deep tattered hood, with a ragged layered scarf of deep purple cloth wrapped at the neck and shoulders. He wears a long weathered dark cloth robe and torn shrouds in layers, matte and worn, with only small dull bone and leather details: a few small skulls and a little lantern hung from a wide fabric-and-leather belt with a single violet-glowing amulet, wrapped cloth bandage bracers on the forearms, torn cloth strips falling from the sleeves and hem. NO shiny metal plates, NO spikes, NO scale armor. Palette: near-black charcoal, faded dusty purple, dull brown, bone, tiny violet glow accents. Graveyard mood, hand-crafted, chunky readable silhouette, arms and legs clearly readable.",
+    "out": "art-src/concepts/hero_reaper_v2a.png",
+    "aspect": "3:4"
+  }
+]

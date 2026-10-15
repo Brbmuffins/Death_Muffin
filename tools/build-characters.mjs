@@ -60,7 +60,7 @@ const DEFAULT_TEXTURE = 512;
  * The necromancer discipline heroes, the Reaper and every legendary set hero (`hero_leg_*`) get them (the Reaper's rites play sweep / slam / flick / channel /
  * summon). A hero without the four source presets borrows hero_gravecaller's (DM_TRIM_SOURCE overrides the folder; the Discord agent's build-art.sh sets it). `release` ends up in clips.json as a 0..1 fraction.
  */
-const NECRO_HEROES = new Set(['hero_gravecaller', 'hero_ossuary', 'hero_mourner', 'hero_rotweaver', 'hero_reaper']);
+const NECRO_HEROES = new Set(['hero_gravecaller', 'hero_ossuary', 'hero_mourner', 'hero_rotweaver', 'hero_reaper', 'hero_reaper_v2a']);
 const COMBAT_TRIMS = {
   slam: { preset: 'slash', start: 1.3, end: 3.3, release: 2.1 },
   sweep: { preset: 'box_03', start: 0.3, end: 1.7, release: 0.7 },

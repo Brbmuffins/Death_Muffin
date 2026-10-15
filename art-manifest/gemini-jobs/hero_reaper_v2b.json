@@ -1,0 +1,8 @@
+[
+  {
+    "id": "concept_hero_reaper_v2b",
+    "prompt": "3D modeling reference image of a single dark fantasy game character, full body head to toe, strict T-pose with arms straight out to the sides, both hands EMPTY and open, facing the camera, plain flat light grey background (#c8c8c8), even neutral flat lighting, no cast shadows, no ground plane, no text, no weapon, no other objects. A spectral Reaper, a skull face with faint pale-green glowing eyes under a huge ragged hood, wrapped in a burial shroud: torn grave linen, frayed black cloak and hanging cloth tatters, rope belt with a few small bone charms and an hourglass, tied cloth wraps on hands and shins, bare bone fingers. Soft cloth and bone only, NO metal armor, NO plates, NO studs, NO spikes. Palette: ash black, mouldy grey-green, bone white, dull purple, subtle acid-green glow. Same eerie graveyard style as an undead necromancer game, hand-crafted, chunky readable silhouette.",
+    "out": "art-src/concepts/hero_reaper_v2b.png",
+    "aspect": "3:4"
+  }
+]

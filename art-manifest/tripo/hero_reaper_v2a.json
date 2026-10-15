@@ -1,0 +1,266 @@
+{
+  "spec": {
+    "id": "hero_reaper_v2a",
+    "input": "art-src/concepts/hero_reaper_v2a.png",
+    "generation": {
+      "model": "P1-20260311",
+      "face_limit": 12000,
+      "texture_quality": "detailed"
+    },
+    "rig": {
+      "model": "v1.0-20240301",
+      "rig_type": "biped"
+    },
+    "animations": [
+      "preset:biped:idle",
+      "preset:biped:walk",
+      "preset:biped:run",
+      "preset:biped:cast_a_spell",
+      "preset:biped:hurt",
+      "preset:biped:dig",
+      "preset:biped:fall",
+      "preset:biped:slash",
+      "preset:biped:hit_to_body_01",
+      "preset:biped:defeat_03"
+    ],
+    "animationMode": "single"
+  },
+  "id": "hero_reaper_v2a",
+  "steps": {
+    "upload": {
+      "hash": "sha256:e3808357e6dae227abdc730b38652bbfd0c3db97af60e126991043e8911cbab1",
+      "status": "success",
+      "input": "art-src/concepts/hero_reaper_v2a.png"
+    },
+    "generate": {
+      "taskId": "d6bf99f9-3e12-476f-8c08-0e8776ee19ea",
+      "status": "success",
+      "request": {
+        "texture": true,
+        "pbr": true,
+        "model": "P1-20260311",
+        "face_limit": 12000,
+        "texture_quality": "detailed"
+      },
+      "createdAt": "2026-10-15T23:48:33.113Z",
+      "credits": 60,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/d6bf99f9-3e12-476f-8c08-0e8776ee19ea/tripo_pbr_model_d6bf99f9-3e12-476f-8c08-0e8776ee19ea.glb",
+        "rendered_image_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/d6bf99f9-3e12-476f-8c08-0e8776ee19ea/legacy_mesh.webp"
+      },
+      "fileHash": "sha256:9d6f6dc84f21c91de41ede0c57ba1fa053d05b9ada32151465c1b983609bdf75"
+    },
+    "rigCheck": {
+      "taskId": "f6d7eb7d-f75a-4783-b885-0580dcd80d16",
+      "status": "success",
+      "request": {
+        "input": "d6bf99f9-3e12-476f-8c08-0e8776ee19ea"
+      },
+      "createdAt": "2026-10-15T23:49:56.284Z",
+      "credits": 0,
+      "output": {
+        "riggable": true,
+        "rig_type": "biped"
+      }
+    },
+    "rig": {
+      "taskId": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+      "status": "success",
+      "request": {
+        "input": "d6bf99f9-3e12-476f-8c08-0e8776ee19ea",
+        "out_format": "glb",
+        "spec": "tripo",
+        "model": "v1.0-20240301",
+        "rig_type": "biped"
+      },
+      "createdAt": "2026-10-15T23:50:00.208Z",
+      "credits": 25,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/e930054b-1219-4f11-a0ca-0b43a2193aa7/tripo_rigging_e930054b-1219-4f11-a0ca-0b43a2193aa7.glb",
+        "rendered_image_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/e930054b-1219-4f11-a0ca-0b43a2193aa7/legacy_mesh.webp"
+      },
+      "fileHash": "sha256:0973eb8c0fb76380574cda16ded6608e7fccb4dc937fb8e0097c481e49efa293"
+    },
+    "anim_idle": {
+      "taskId": "f29ecb8b-bf2c-4a45-b5b7-0d4d4f17449c",
+      "status": "success",
+      "request": {
+        "input": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:idle"
+      },
+      "createdAt": "2026-10-15T23:50:08.722Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/f29ecb8b-bf2c-4a45-b5b7-0d4d4f17449c/tripo_retarget_f29ecb8b-bf2c-4a45-b5b7-0d4d4f17449c.glb"
+      },
+      "fileHash": "sha256:c5b320cca29c4460dc22ca23a744166e7cf2756f74917d5ee6cc823e6f1e2269"
+    },
+    "anim_walk": {
+      "taskId": "5c7348ec-2985-4227-80c7-ef03311bee13",
+      "status": "success",
+      "request": {
+        "input": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:walk"
+      },
+      "createdAt": "2026-10-15T23:50:16.902Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/5c7348ec-2985-4227-80c7-ef03311bee13/tripo_retarget_5c7348ec-2985-4227-80c7-ef03311bee13.glb"
+      },
+      "fileHash": "sha256:f6c6337960a0c84d5c8430af39f28719f622cef54eff83245fb330950cc1a1e5"
+    },
+    "anim_run": {
+      "taskId": "b6d072c5-ad55-4f5c-a02f-8b3137572e39",
+      "status": "success",
+      "request": {
+        "input": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:run"
+      },
+      "createdAt": "2026-10-15T23:50:24.764Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/b6d072c5-ad55-4f5c-a02f-8b3137572e39/tripo_retarget_b6d072c5-ad55-4f5c-a02f-8b3137572e39.glb"
+      },
+      "fileHash": "sha256:b22799e3c05b4da8b480ee3f3258e93430da84916237a79c6f45961679c43741"
+    },
+    "anim_cast_a_spell": {
+      "taskId": "d883172d-28a3-4eb0-be38-4ba46d6382d0",
+      "status": "success",
+      "request": {
+        "input": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:cast_a_spell"
+      },
+      "createdAt": "2026-10-15T23:50:32.786Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/d883172d-28a3-4eb0-be38-4ba46d6382d0/tripo_retarget_d883172d-28a3-4eb0-be38-4ba46d6382d0.glb"
+      },
+      "fileHash": "sha256:f95b2138fdc67e92256c654f567545fbc56163af291ba0b84aacd9c015368e2f"
+    },
+    "anim_hurt": {
+      "taskId": "68fda23c-bde0-4ffb-a80f-d9565ee07619",
+      "status": "success",
+      "request": {
+        "input": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:hurt"
+      },
+      "createdAt": "2026-10-15T23:50:40.526Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/68fda23c-bde0-4ffb-a80f-d9565ee07619/tripo_retarget_68fda23c-bde0-4ffb-a80f-d9565ee07619.glb"
+      },
+      "fileHash": "sha256:e5f87cb2da7f02eed0ac41c84128fd87ec597586e767e70c9a6b21b300f8cfd1"
+    },
+    "anim_dig": {
+      "taskId": "43785daf-726c-4083-bd56-abf7121fdd7e",
+      "status": "success",
+      "request": {
+        "input": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:dig"
+      },
+      "createdAt": "2026-10-15T23:50:48.519Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/43785daf-726c-4083-bd56-abf7121fdd7e/tripo_retarget_43785daf-726c-4083-bd56-abf7121fdd7e.glb"
+      },
+      "fileHash": "sha256:d900bb01b05988049aff411e8300d791dd2eb091e5670aa8d45ba8db86c22645"
+    },
+    "anim_fall": {
+      "taskId": "5779a760-34ca-4668-ab4c-f7c3b13dc3db",
+      "status": "success",
+      "request": {
+        "input": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:fall"
+      },
+      "createdAt": "2026-10-15T23:50:56.648Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/5779a760-34ca-4668-ab4c-f7c3b13dc3db/tripo_retarget_5779a760-34ca-4668-ab4c-f7c3b13dc3db.glb"
+      },
+      "fileHash": "sha256:55b462b68e89dd46186d9e0e1f94ae2697873b9d2c82500539b57e790b5cd9d8"
+    },
+    "anim_slash": {
+      "taskId": "d479fd99-342a-4ee2-a9ac-fc7f427c3298",
+      "status": "success",
+      "request": {
+        "input": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:slash"
+      },
+      "createdAt": "2026-10-15T23:51:04.632Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/d479fd99-342a-4ee2-a9ac-fc7f427c3298/tripo_retarget_d479fd99-342a-4ee2-a9ac-fc7f427c3298.glb"
+      },
+      "fileHash": "sha256:f9116d246240735b04ab197d25dc69dd5d1e3edd3bbe638cd30aabe8db6f7284"
+    },
+    "anim_hit_to_body_01": {
+      "taskId": "1324ad8e-df87-43ec-82cd-5b7e18263da8",
+      "status": "success",
+      "request": {
+        "input": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:hit_to_body_01"
+      },
+      "createdAt": "2026-10-15T23:51:12.792Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/1324ad8e-df87-43ec-82cd-5b7e18263da8/tripo_retarget_1324ad8e-df87-43ec-82cd-5b7e18263da8.glb"
+      },
+      "fileHash": "sha256:a47ec87a52c474dfdceb81acb7c577e23e517856d6bea338c5c1929326ec3fa9"
+    },
+    "anim_defeat_03": {
+      "taskId": "dec7b692-bb96-4401-930c-aade33501a91",
+      "status": "success",
+      "request": {
+        "input": "e930054b-1219-4f11-a0ca-0b43a2193aa7",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:defeat_03"
+      },
+      "createdAt": "2026-10-15T23:51:23.686Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20261015/dec7b692-bb96-4401-930c-aade33501a91/tripo_retarget_dec7b692-bb96-4401-930c-aade33501a91.glb"
+      },
+      "fileHash": "sha256:bebc6c0a0988f145eaa1f3e69352fb1c5623bd747283eff16ba999add91f98f7"
+    }
+  },
+  "totalCredits": 185
+}
