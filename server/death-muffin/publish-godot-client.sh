@@ -15,7 +15,8 @@
 # 5. announce-release.sh: launcher news + patch notes, the #build-alerts notice, fixed bug reports released (skipped for a rollback).
 #
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
-# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS
+# Refuses a forward release while the live lobby differs from <rev>'s (run deploy-lobby.sh first; LOBBY_SKEW_OK=1 overrides).
+# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR
 set -euo pipefail
 
 REV="${1:-}"
@@ -38,6 +39,16 @@ mkdir -p "$WORK" "$OUT_DIR"
 # One publish at a time.
 exec 9>"$WORK/.publish-client.lock"
 flock -w 600 9 || { echo "another client publish holds $WORK/.publish-client.lock" >&2; exit 1; }
+
+# The live lobby must already run what <rev> has (deploy-lobby.sh first): a client can depend on new lobby messages, and a skipped lobby
+# deploy fails silently. Only for a forward release (<rev> contains origin/main): a rollback to an older client keeps the newer lobby.
+LOBBY_DIR="${LOBBY_DIR:-/home/ubuntu/death-muffin/lobby}"
+if [ -d "$LOBBY_DIR/src" ] && [ -z "${LOBBY_SKEW_OK:-}" ] && git -C "$REPO" merge-base --is-ancestor origin/main "$SHA" 2>/dev/null; then
+  for f in $(git -C "$REPO" ls-tree --name-only "$SHA" server/death-muffin/lobby/src/ | grep -E '\.js$'); do
+    git -C "$REPO" show "$SHA:$f" | cmp -s - "$LOBBY_DIR/src/$(basename "$f")" ||
+      { echo "Refusing to publish $SHA: the live lobby differs from it ($(basename "$f")). Run deploy-lobby.sh $SHA first (LOBBY_SKEW_OK=1 publishes anyway)." >&2; exit 1; }
+  done
+fi
 
 STAMP=$(date -u +%Y%m%d.%H%M%S)
 VERSION="$STAMP-${SHA:0:7}"

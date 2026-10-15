@@ -7,7 +7,7 @@ It never parses game data and holds no state beyond the live sessions.
 - Port: **5192** (reserved range 5192-5199; 5190 = auth backend). Binds 127.0.0.1; nginx terminates TLS (`nginx-lobby.conf`).
 - Env: `DM_LOBBY_JWT_SECRET` (the auth backend's `JWT_SECRET`) or `ENV_FILE` pointing at the backend `.env` (only `JWT_SECRET` is read, never logged);
   `DM_LOBBY_PORT` (5192), `DM_LOBBY_HOST` (127.0.0.1), `DM_LOBBY_IDLE_MS` (900000), `DM_LOBBY_QUIET=1`.
-- Run: `npm ci --omit=dev && node src/index.js`. Tests: `npm install && npm test`. Health: `GET /health`. `deathmuffin-lobby.service` and `nginx-lobby.conf` are installed by hand (nothing in this repo installs them; the live nginx locations are in `../nginx-locations.conf`); the unit expects the code in `/home/ubuntu/death-muffin/lobby` with `npm ci --omit=dev` run there.
+- Run: `npm ci --omit=dev && node src/index.js`. Tests: `npm install && npm test`. Health: `GET /health`. Deploy: `../deploy-lobby.sh <rev>` (tests, waits for 0 sessions, backup + `ROLLBACK.sh`, restart). `deathmuffin-lobby.service` and `nginx-lobby.conf` are installed by hand (nothing in this repo installs them; the live nginx locations are in `../nginx-locations.conf`); the unit expects the code in `/home/ubuntu/death-muffin/lobby` with `npm ci --omit=dev` run there.
 
 ## Auth
 First frame on every socket must be `{"t":"auth","token":"<JWT>"}` within 5 s (the token never goes in the URL). Verified like the backend: HS256,

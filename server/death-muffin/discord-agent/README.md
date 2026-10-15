@@ -57,7 +57,7 @@ matches the installed copy; otherwise its own server tests, DB backup and rollba
 `ROLLBACK.sh` runs that backend rollback before republishing the old client; a failure is `RESULT: deploy-failed <sha12> backend` with the client
 untouched; `backendDeployCmd` replaces it in tests, and with `deployCmd` alone the step is skipped); publish the new SHA with the saved copy (`deployCmd`
 replaces it in tests); print `Rollback: <path>`, `RESULT: live <sha12> <path>`. A deferred merge (`RESULT: merged`) gets its backend from the ship that
-publishes it. The runner
+publishes it. Then **the lobby**: `deploy-lobby.sh --if-changed --wait $LOBBY_WAIT_MIN <sha>` from the revision itself (default 30 min wait for running parties to end; `Lobby: unchanged` or `Lobby: deployed <sha12>, rollback <path>`, which the godot `ROLLBACK.sh` runs with `--force` after the backend rollback; a lobby that never empties is `RESULT: deploy-failed <sha12> lobby busy` with the client untouched; `lobbyDeployCmd` replaces it in tests, and with `deployCmd` alone the step is skipped). The runner
 accepts only exact `backup-pre-release-godot-<yyyymmddThhmmssZ>` real directories (no symlinks) with a `ROLLBACK.sh`.
 
 ## Who can do what (`config.json`, owner-edited, never by the AI)

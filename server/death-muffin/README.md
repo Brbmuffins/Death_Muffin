@@ -12,7 +12,7 @@ https://muffindevelopment.com/death-muffin/ (launcher download, patch notes, lea
 
 Ports 5193-5199 are reserved for this project (:5191 is unused).
 
-Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (copies installed by `deploy-release.sh` and by hand for the lobby), not from the git checkout.
+Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (copies installed by `deploy-release.sh` and `deploy-lobby.sh`), not from the git checkout.
 `.env` lives only in `/home/ubuntu/death-muffin/backend/` (template: `backend/.env.example`: `PORT`, `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, `JWT_SECRET`,
 `JWT_EXPIRES_IN`; optional `AUTHORITY_MODE`, `AUTHORITY_KILLS`). The unit files contain no secrets; the lobby reads `JWT_SECRET` from the same `.env`.
 
@@ -33,13 +33,14 @@ Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (
 | Script | What it does |
 |---|---|
 | `deploy-release.sh [--if-changed] [rev] [migration.sql ...]` | Deploys the **backend only** from a committed revision (default `HEAD`; refuses a rev that does not contain `origin/main` unless `ALLOW_BEHIND_MAIN=1`, which is how you roll back). Exports the rev with `git archive`, runs `npm run test:rules` and `npm run test:server`, dumps the database, writes a `ROLLBACK.sh`, applies the named migrations, copies the backend code to `/home/ubuntu/death-muffin/backend/`, restarts `death-muffin-auth`, checks health, then runs `announce-release.sh` in QUIET mode (`NO_ANNOUNCE=1` skips it). `--if-changed` (no migrations named) exits doing nothing when every server file the rev installs is byte-identical to the installed copy; the Discord agent's Godot ships run it that way before the client publish. Takes `~/death-muffin/deploy/.deploy.lock`. Does not publish the client and does not restart the lobby. |
+| `deploy-lobby.sh [--if-changed] [--wait MIN] [--force] [rev]` | Deploys the **lobby only** from a committed revision (default `HEAD`; refuses a rev that does not contain `origin/main` unless `ALLOW_BEHIND_MAIN=1`). Exports `server/death-muffin/lobby` with `git archive`, runs its tests and `node --check`, waits up to `--wait` minutes (default 30) for `/health` to show 0 sessions because a restart ends every party (exit 3 and nothing installed if it never empties; `--force` restarts anyway), backs up the installed copy with a `ROLLBACK.sh`, installs the lobby code, package files and README (`npm ci` only when the lockfile changed), restarts `deathmuffin-lobby` and checks `/health`. `--if-changed` exits doing nothing when the installed files already match; the Discord agent's Godot ships run it that way after the backend. Takes `~/death-muffin/deploy/.deploy.lock`. |
 | `publish-godot-client.sh <git-rev>` | Exports the `Windows Desktop` preset of the Godot project (Godot 4.7.2 at `/home/ubuntu/tools/godot/godot`) from a committed revision into `/var/www/death-muffin/client/<version>/`, then writes `manifest.json` last and atomically (SHA-256 of every file plus the `online` block, which is carried over from the live manifest). Keeps the newest two builds. |
 | `set-online.sh on\|staff\|off ["message"]` | Edits only the `online` block of the live `manifest.json`: `on` = everyone, `staff` = staff accounts only, `off` = nobody (the message is shown as the lock). The launcher, the game and the lobby (if `DM_LOBBY_MANIFEST` is set) re-read it within about a minute; no release needed. |
 
 ### Release flow
 
 1. Merge to `main`. For a release worth naming, add a new top entry (`title`, `items`) to `PATCH_NOTES.json`. Branches that add lines to the same entry merge cleanly: `.gitattributes` routes `PATCH_NOTES.json` through `tools/git/merge-patch-notes.mjs` (register it once per clone with `tools/git/install-merge-drivers.sh`; the VPS clone has it).
-2. Client: `publish-godot-client.sh <rev>`. Backend: `deploy-release.sh <rev> [NNN-name.sql]`. Online play is opened or closed separately with `set-online.sh`.
+2. Backend: `deploy-release.sh <rev> [NNN-name.sql]`. Lobby: `deploy-lobby.sh <rev>` when it changed. Client last: `publish-godot-client.sh <rev>`, which refuses a release while the live lobby differs from the rev's (`LOBBY_SKEW_OK=1` overrides; rollbacks to older revs are exempt). Online play is opened or closed separately with `set-online.sh`.
 3. Both scripts end with `announce-release.sh <rev>` (also callable by hand; never fails the caller; `NO_ANNOUNCE=1` skips it in the publish script). It:
    - writes the launcher/site notes: the top `PATCH_NOTES.json` entry if that file changed since the last announced release, otherwise the commit subjects;
    - posts "Death Muffin update is live" in #deathmuffin;

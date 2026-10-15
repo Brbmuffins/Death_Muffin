@@ -1220,7 +1220,7 @@ function createRunner(cfgIn, opts = {}) {
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
       RELEASE_TITLE: releaseTitle(p.title || job.title),   // #build-alerts notice title: the proposal's title (else the thread's name), joined with any batched ships' titles
       ...(defer ? { DEFER_PUBLISH: '1' } : {}),
-      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
+      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), BASE_BRANCH: BB, MODE: GODOT ? 'godot' : 'web', DEPLOY_DIR: cfg.deployDir, ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.lobbyDeployCmd ? { LOBBY_DEPLOY_CMD: cfg.lobbyDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}),
       MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 150 * 60000 }); }
@@ -1326,7 +1326,7 @@ function createRunner(cfgIn, opts = {}) {
     if (!pf.deferred || uid) say(job, uid ? `Retrying the client publish for \`${pf.sha}\` (${nameOf(uid)})…` : `Trying the client publish for \`${pf.sha}\` again by myself…`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, JOBID: job.id, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
       BASE_BRANCH: BB, MODE: 'godot', DEPLOY_DIR: cfg.deployDir, PUBLISH_ONLY: '1', PUBLISH_SHA: pf.sha, RELEASE_TITLE: pf.deferred ? releaseTitle() : releaseTitle((pf.proposal && pf.proposal.title) || job.title), ...(cfg.clientManifest ? { CLIENT_MANIFEST: cfg.clientManifest } : {}),
-      ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}) };
+      ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}), ...(cfg.backendDeployCmd ? { BACKEND_DEPLOY_CMD: cfg.backendDeployCmd } : {}), ...(cfg.lobbyDeployCmd ? { LOBBY_DEPLOY_CMD: cfg.lobbyDeployCmd } : {}), ...(cfg.publishRetrySleeps != null ? { PUBLISH_RETRY_SLEEPS: String(cfg.publishRetrySleeps) } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 60 * 60000 }); }
     finally { setBusy(false); }

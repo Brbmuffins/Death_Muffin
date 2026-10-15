@@ -981,6 +981,38 @@ test('godot mode: a failed backend deploy stops the ship before the client is pu
   assert.ok(!texts(thread).some((t) => /Live\. Release/.test(t)));
 });
 
+test('godot mode: the ship deploys the lobby (deploy-lobby.sh --if-changed) after the backend and before the client; ROLLBACK.sh undoes all three', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  const order = path.join(w.deploy, 'order.log');
+  const brb = path.join(w.deploy, 'backup-pre-release-bbbbbbbbbbbb-20261015T020000Z'), lrb = path.join(w.deploy, 'backup-lobby-bbbbbbbbbbbb-20261015T020000Z');
+  w.cfg.deployCmd = `echo client >> ${order}; ` + w.cfg.deployCmd;
+  w.cfg.backendDeployCmd = `echo backend >> ${order}; mkdir -p ${brb}; echo 'echo backend-rolled-back >> ${order}' > ${brb}/ROLLBACK.sh; echo "Rollback: ${brb}/ROLLBACK.sh"`;
+  w.cfg.lobbyDeployCmd = `echo "lobby $*" >> ${order}; mkdir -p ${lrb}; echo 'echo "lobby-rolled-back $*" >> ${order}' > ${lrb}/ROLLBACK.sh; echo "Rollback: ${lrb}/ROLLBACK.sh"`;
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread);
+  assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  const ship = shipsLog(w)[0];
+  assert.deepEqual(fs.readFileSync(order, 'utf8').trim().split('\n'), ['backend', `lobby --if-changed ${remoteHead(w, 'godot-port')}`, 'client'], 'backend, lobby, then the client');
+  const rb = fs.readFileSync(ship.rollback, 'utf8');
+  assert.match(rb, new RegExp(`\\nbash ${brb}/ROLLBACK\\.sh\\nbash ${lrb}/ROLLBACK\\.sh --force\\nexec bash \\S*/publish-godot-client\\.sh ${w.liveRev.slice(0, 12)}\\n$`));
+  await d.say(d.main, IDS.OWNER, `${BOT} rollback`);
+  await until(() => d.main.sent.some((s) => /Rolled back/.test(s.payload.content || '')), d.ad);
+  assert.match(fs.readFileSync(order, 'utf8'), /backend-rolled-back\nlobby-rolled-back --force\n$/);
+});
+
+test('godot mode: a lobby that stays busy (exit 3) stops the ship before the client is published', async () => {
+  const w = godotWorld(); const d = makeDiscord(w.runner);
+  w.cfg.lobbyDeployCmd = 'echo "Lobby still has 2 session(s) after 30 min"; exit 3';
+  const { thread } = await request(d, IDS.HELIX, 'GD-GAMEPLAY faster');
+  const p = await waitProposal(d, thread);
+  assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
+  await until(() => texts(thread).some((t) => /Not live yet/.test(t)), d.ad);
+  await until(() => !fs.existsSync(path.join(w.cfg.stateDir, 'ship-active')), d.ad);
+  assert.equal(godotBackups(w).length, 0, 'the unused client backup was removed');
+  assert.ok(!fs.existsSync(path.join(w.deploy, 'deploys.log')), 'the client was not published');
+});
+
 // A check-godot.sh stand-in whose quick check fails one suite; `--rerun` passes unless REALFAIL exists. Calls are logged next to it.
 const flakyCheck = (w) => fs.writeFileSync(path.join(w.tools, 'check-godot.sh'), '#!/usr/bin/env bash\nD=$(dirname "$0"); echo "$*" >> "$D/check-godot.calls"\n' +
   'if [ "${1:-}" = --rerun ]; then [ -e "$D/REALFAIL" ] && { echo "next_bosses        run.gd           exit=1  1 passed, 1 failed"; echo "GODOT TESTS: rerun (1 suites) — 0 passed, 1 FAILED"; exit 1; }; echo "GODOT TESTS: rerun (1 suites) — 1 passed"; exit 0; fi\n' +

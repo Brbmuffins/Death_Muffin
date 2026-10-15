@@ -157,6 +157,30 @@ if [ "$MODE" = godot ]; then
       [ -f "$BK/ROLLBACK.sh" ] && sed -i "s|^exec bash |bash $(printf %q "$BRB")\nexec bash |" "$BK/ROLLBACK.sh"
     else echo "Backend: unchanged"; fi
   fi
+  # Then the lobby, when the lobby files this revision installs differ from the installed ones (publish-godot-client.sh refuses a client the
+  # live lobby is behind). deploy-lobby.sh --if-changed is a no-op otherwise; it runs the lobby tests, backs up and writes a ROLLBACK.sh, and
+  # waits up to LOBBY_WAIT_MIN minutes for running parties to end before restarting. Test runs use LOBBY_DEPLOY_CMD or skip it, like the backend.
+  if [ -n "${LOBBY_DEPLOY_CMD:-}" ] || [ -z "${DEPLOY_CMD:-}" ]; then
+    say "checking the lobby for ${SHA:0:12}"
+    LLOG="$TOOLS/state/ship-$JOBID.lobby.log"
+    if [ -n "${LOBBY_DEPLOY_CMD:-}" ]; then bash -c "$LOBBY_DEPLOY_CMD" deploy-lobby --if-changed "$SHA" >"$LLOG" 2>&1; LDRC=$?
+    else
+      LSCRIPT=$(mktemp)
+      g -C "$REPO" show "$SHA:server/death-muffin/deploy-lobby.sh" >"$LSCRIPT" 2>/dev/null || { rm -f "$LSCRIPT"; [ -n "$BK" ] && abandon_backup; echo "RESULT: deploy-failed ${SHA:0:12} no deploy-lobby.sh"; exit 11; }
+      REPO="$REPO" bash "$LSCRIPT" --if-changed --wait "${LOBBY_WAIT_MIN:-30}" "$SHA" >"$LLOG" 2>&1; LDRC=$?
+      rm -f "$LSCRIPT"
+    fi
+    if [ $LDRC -ne 0 ]; then
+      tail -15 "$LLOG"; [ -n "$BK" ] && abandon_backup
+      [ $LDRC -eq 3 ] && { echo "RESULT: deploy-failed ${SHA:0:12} lobby busy (parties still running; the client was not published)"; exit 11; }
+      echo "RESULT: deploy-failed ${SHA:0:12} lobby (the client was not published)"; exit 11
+    fi
+    LRB=$(grep -oE 'Rollback: [^ ]+ROLLBACK\.sh' "$LLOG" | tail -1 | sed 's/^Rollback: //')
+    if [ -n "$LRB" ]; then
+      echo "Lobby: deployed ${SHA:0:12}, rollback $LRB"
+      [ -f "$BK/ROLLBACK.sh" ] && sed -i "s|^exec bash |bash $(printf %q "$LRB") --force\nexec bash |" "$BK/ROLLBACK.sh"
+    else echo "Lobby: unchanged"; fi
+  fi
   publish_once() {
     if [ -n "${DEPLOY_CMD:-}" ]; then bash -c "$DEPLOY_CMD" deploy "$SHA"     # test hook only (config.deployCmd): never set in production
     else REPO="$REPO" bash "$BK/publish-godot-client.sh" "$SHA"; fi
