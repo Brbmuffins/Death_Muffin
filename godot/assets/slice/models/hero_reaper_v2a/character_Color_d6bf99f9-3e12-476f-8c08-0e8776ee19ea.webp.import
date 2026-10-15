@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://nv3dbsahy017"
-path="res://.godot/imported/character_Color_d6bf99f9-3e12-476f-8c08-0e8776ee19ea.webp-78abd64802cf95f4a1a9ab853cfe0663.ctex"
+path.s3tc="res://.godot/imported/character_Color_d6bf99f9-3e12-476f-8c08-0e8776ee19ea.webp-78abd64802cf95f4a1a9ab853cfe0663.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6594d3574ff796aea1f68b97efb8faee"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/slice/models/hero_reaper_v2a/character_Color_d6bf99f9-3e12-476f-8c08-0e8776ee19ea.webp"
-dest_files=["res://.godot/imported/character_Color_d6bf99f9-3e12-476f-8c08-0e8776ee19ea.webp-78abd64802cf95f4a1a9ab853cfe0663.ctex"]
+dest_files=["res://.godot/imported/character_Color_d6bf99f9-3e12-476f-8c08-0e8776ee19ea.webp-78abd64802cf95f4a1a9ab853cfe0663.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
