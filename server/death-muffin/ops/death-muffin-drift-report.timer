@@ -1,8 +1,8 @@
 [Unit]
-Description=Weekly Death Muffin drift report
+Description=Nightly Death Muffin drift report
 
 [Timer]
-OnCalendar=Mon *-*-* 09:30:00 UTC
+OnCalendar=*-*-* 05:00:00 UTC
 Persistent=true
 
 [Install]

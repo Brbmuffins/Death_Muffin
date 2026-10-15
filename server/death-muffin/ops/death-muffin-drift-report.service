@@ -1,5 +1,5 @@
 [Unit]
-Description=Death Muffin weekly drift report (server/death-muffin/ops/drift-report.sh; journal only, no Discord post)
+Description=Death Muffin nightly drift report (server/death-muffin/ops/drift-report.sh; journal only, no Discord post)
 After=network-online.target
 
 [Service]

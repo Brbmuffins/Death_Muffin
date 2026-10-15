@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Death Muffin weekly drift report. READ-ONLY: compares the VPS with origin/main and prints what differs.
+# Death Muffin nightly drift report. READ-ONLY: compares the VPS with origin/main and prints what differs.
 # Exit 0 = clean, 3 = drift found.   drift-report.sh [--discord] [--always] [--json]
 # Env: REPO (checkout, default /home/ubuntu/vps-handoffs/DeathMuffin/game), DM_HOME (~/death-muffin), WWW (/var/www/death-muffin)
 set -u
@@ -66,13 +66,17 @@ compare_exact() {
 }
 
 # 1. Agents
-section "1. Installed agent copies"
+section "1. Installed agent and ops copies"
 SRC=server/death-muffin/discord-agent
 LIST="$(g ls-tree -r --name-only "$REV" -- "$SRC/runner" | sed "s#^$SRC/##")
 ship.sh rollback.sh sandbox-lib.sh check.sh check-godot.sh regen.sh shot.sh shoot.cjs shot-godot.sh label-shot.py art-run.sh build-art.sh preview.sh preview-godot.sh agit wait-for-ship.sh reports-cli.cjs PROMPT.md PROMPT-godot.md config.example.json death-muffin-discord-agent.service"
 for f in $(echo $LIST); do compare_exact "$SRC/$f" "$DM/discord-agent/$f" "discord-agent/$f"; done
 for f in common gemini tripo; do compare_exact "tools/ai/$f.mjs" "$DM/discord-agent/art-tools/tools/ai/$f.mjs" "discord-agent/art-tools/tools/ai/$f.mjs"; done
 compare_exact "$SRC/death-muffin-discord-agent.service" /etc/systemd/system/death-muffin-discord-agent.service "systemd death-muffin-discord-agent.service"
+# the ops jobs themselves (this script included: an installed copy left behind once kept reporting a retired agent)
+for f in drift-report.sh backup-db.sh launcher-release-notice.sh; do compare_exact "server/death-muffin/ops/$f" "$DM/ops/$f" "ops/$f"; done
+for u in death-muffin-drift-report.service death-muffin-drift-report.timer death-muffin-db-backup.service death-muffin-db-backup.timer death-muffin-launcher-notice.service death-muffin-launcher-notice.timer; do
+  compare_exact "server/death-muffin/ops/$u" "/etc/systemd/system/$u" "systemd $u"; done
 compare_exact server/death-muffin/ops/git-pre-push.sh "$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir)/hooks/pre-push" "git pre-push hook"
 
 info "$NCMP file(s)/unit(s) compared"; NCMP=0
@@ -88,6 +92,10 @@ for f in necro-rules.cjs necro-progress-routes.cjs mysql-store.cjs; do
   compare_code "server/vps-handoff/necro-progress/$f" "$DM/backend/necro-progress/$f" "backend/necro-progress/$f"; done
 for rp in $(g ls-tree --name-only "$REV" -- server/death-muffin/lobby/src/ | grep -E '\.js$'); do
   compare_code "$rp" "$DM/lobby/src/$(basename "$rp")" "lobby/src/$(basename "$rp")"; done
+# the UDP relay (installed by deploy-lobby.sh)
+for f in server/death-muffin/relay/project.godot server/death-muffin/relay/relay_main.gd godot/net/relay/dm_udp_relay.gd; do
+  compare_exact "$f" "$DM/relay/$(basename "$f")" "relay/$(basename "$f")"; done
+compare_exact server/death-muffin/relay/deathmuffin-relay.service /etc/systemd/system/deathmuffin-relay.service "systemd deathmuffin-relay.service"
 info "$NCMP file(s) compared"
 [ "$COMMENT_ONLY" -gt 0 ] && note "$COMMENT_ONLY file(s) differ only in comments/blank lines (normal after doc edits)"
 
@@ -159,7 +167,7 @@ while IFS= read -r f; do drift "secret-ish file in docroot: ${f#$WWW/}"; done < 
 
 # 7. Services
 section "7. Services"
-for s in death-muffin-auth deathmuffin-lobby death-muffin-discord-agent; do
+for s in death-muffin-auth deathmuffin-lobby deathmuffin-relay death-muffin-discord-agent; do
   st="$(systemctl is-active $s 2>&1)"; [ "$st" = active ] || drift "$s is $st"; done
 H="$(curl -fsS -m 5 http://127.0.0.1:5190/health 2>&1)" || drift "auth /health failed: ${H:0:100}"
 [ -n "${H:-}" ] && info "auth /health: ${H:0:100}"
@@ -217,7 +225,7 @@ import sys, json
 n = int(sys.argv[1]); lines = [l.rstrip("\n").split("\t", 1) for l in sys.stdin]
 desc = "\n".join("- %s" % (t,) for _, t in lines) or "All clean."
 if len(desc) > 3800: desc = desc[:3780] + "\n- ...truncated"
-title = "Death Muffin weekly check: %d things need attention" % n if n else "Death Muffin weekly check: all clean"
+title = "Death Muffin nightly check: %d things need attention" % n if n else "Death Muffin nightly check: all clean"
 print(json.dumps({"embeds": [{"title": title, "description": desc, "color": 15158332 if n else 3066993}], "allowed_mentions": {"parse": []}}))
 ' "$NDRIFT" > "$TMP/payload.json"
     curl -fsS -m 15 -o /dev/null -H 'Content-Type: application/json' -d @"$TMP/payload.json" "$(tr -d '\r\n' < "$WEBHOOK_FILE")" >/dev/null 2>&1 \
