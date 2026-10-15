@@ -4,7 +4,8 @@
 #
 #   deploy-lobby.sh [--if-changed] [--wait MIN] [--force] [rev]
 #
-# --if-changed  exit 0 doing nothing ("lobby: unchanged") when the lobby files <rev> would install are byte-identical to the installed ones
+# --if-changed  exit 0 doing nothing ("lobby: unchanged") when the lobby code and package files <rev> would install are byte-identical to the
+#               installed ones (README.md alone never counts)
 #               (the Discord agent's Godot ships run it that way before the client publish).
 # --wait MIN    how long to wait for the lobby to have no sessions before restarting (default 30). A restart ends every party, because the
 #               lobby keeps sessions in memory. Times out with exit 3 and changes nothing.
@@ -51,7 +52,8 @@ lobby_files() {
 }
 installed_of() { echo "$LOBBY_DIR/${1#server/death-muffin/lobby/}"; }
 if [ -n "$IF_CHANGED" ]; then
-  CHANGED=$(lobby_files | while read -r f; do git -C "$REPO" show "$SHA:$f" 2>/dev/null | cmp -s - "$(installed_of "$f")" || echo "${f#server/death-muffin/lobby/}"; done)
+  # README.md is installed but never decides: a docs-only edit must not restart the lobby (and end parties).
+  CHANGED=$(lobby_files | grep -v '/README\.md$' | while read -r f; do git -C "$REPO" show "$SHA:$f" 2>/dev/null | cmp -s - "$(installed_of "$f")" || echo "${f#server/death-muffin/lobby/}"; done)
   # a file the installed src/ has but <rev> no longer does counts as a change too
   for f in "$LOBBY_DIR"/src/*.js; do
     [ -e "$f" ] || continue
