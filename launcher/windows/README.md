@@ -102,7 +102,7 @@ Output: `launcher/windows/bin/Release/net48/DeathMuffinLauncher.exe`. The versio
 
 The [Windows launcher workflow](../../.github/workflows/launcher-windows.yml) builds on `windows-latest` for pushes touching
 `launcher/**` (and manual runs), uploads `DeathMuffinLauncher-win-x64.zip` as an artifact and, from `main` or a manual
-run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.9.0) for each new launcher release and add a changelog line. A release reaches running launchers only when it is
+run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.9.1) for each new launcher release and add a changelog line. A release reaches running launchers only when it is
 published on the VPS: `server/death-muffin/publish-launcher.sh <version>` after the workflow has attached the zip (it refuses a version that is not newer).
 
 Code map: `ClientLogic.cs` (manifest parsing, version compare, hashing, online note, button state machine; no UI),
@@ -118,6 +118,7 @@ two lines) over a subtle dark backing, and a footer with version, status, Settin
 
 ### Changelog
 
+- **0.9.1** - No code change: the first release delivered by the self-update (real-PC swap test of 0.9.0).
 - **0.9.0** - The launcher updates itself from the launcher `manifest.json` (served at /death-muffin/launcher/) (download, SHA-256 check, exe swap, restart) when the game is not
   running or downloading; the GitHub release check is gone.
 - **0.8.0** - Play button bottom right in every state; one footer status with a coloured dot instead of three "Game running" texts;
