@@ -9,12 +9,15 @@ Test build channel until then.
 - Its own user:// folder (`config/name` "Death Muffin (rebuild)"), so it never shares saved logins or settings with the live game.
 - The combat core is a C++ GDExtension built from [native/](../native/README.md) into `bin/` (built files are not committed;
   `bin/dmcore.gdextension` is).
+- Crowds are drawn from baked vertex-animation textures, one MultiMesh per creature model: [crowd/README.md](crowd/README.md).
 
 ## Set up and test
 
 ```
 bash client/setup.sh                                                       # builds the core for Linux, imports, runs the smoke test
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_smoke.gd   # the core loads and answers
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_bake.gd    # the crowd baker and shader (bakes into a scratch folder)
+bash client/tools/bake_crowd.sh                                                                # bakes the crowd models into client/crowd/baked (not committed)
 ```
 
 Run `bash client/setup.sh` once in every new checkout or worktree (it lists the extension before the first import; see the script).

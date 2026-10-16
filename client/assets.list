@@ -28,7 +28,11 @@ slice/models/props/waystone*
 slice/models/props/prop_node_burial_mound*
 slice/models/props/prop_node_coffin_oak*
 
-# ---- Later blocks (not listed yet): the Gravecaller, the Graves roster, thralls, the Gravedigger King, effects, sounds, HUD art.
+# ---- Crowd creatures (client/crowd/README.md): models the vertex-animation baker reads; the rest of the Graves roster joins with it.
+slice/models/grave_robber
+slice/models/bone_hound
+
+# ---- Later blocks (not listed yet): the Gravecaller, the rest of the Graves roster, thralls, the Gravedigger King, effects, sounds, HUD art.
 # Licensed flipbook sheets live outside git; a line under fx/sheets/ is read from $FX_SHEETS (default ~/death-muffin/private/fx-sheets)
 # and copied into the git-ignored client/assets/fx/sheets/, for example:
 # fx/sheets/hit_flash.png

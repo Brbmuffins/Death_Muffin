@@ -74,7 +74,9 @@ server (B38).
 - [ ] The first lighting bake of the Graves through Helix's helper.
 - [ ] Static batching: after the bake, merge each 12 m cell's static props into one mesh (about 250 draw calls for the Graves' 132
   prop instances today; phones and weak laptops need far fewer).
-- [ ] Crowd drawing: a vertex-animation baker for the creature models and the MultiMesh crowd renderer.
+- [x] Crowd animation: `client/crowd/` bakes each creature model's clips into vertex-animation textures (`bash client/tools/bake_crowd.sh`;
+  the robber and the hound so far) and the crowd material plays them per MultiMesh instance (`client/tests/crowd_bake.gd`).
+- [ ] Crowd drawing: the core writes each creature model's MultiMesh buffer once per rendered frame, interpolated between ticks.
 - [x] Core skeleton (native/README.md "Design"): enemy table in spawn order, heroes and bosses as external entities, tick, timers in
   doubles, seeded randomness, grid, event buffer, damage with synchronous kills, radius queries, bulk reads; `client/tests/core_api.gd`.
   Thrall, corpse and status tables come with their items.
