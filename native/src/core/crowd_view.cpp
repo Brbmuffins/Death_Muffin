@@ -605,8 +605,30 @@ void CrowdView::start_fade(View &v) {
 	v.sink_t = 0.0;
 	if (v.corpse_id != 0) {
 		by_corpse.erase(v.corpse_id);
+		v.faded_corpse = v.corpse_id;
 		v.corpse_id = 0;
 	}
+}
+
+bool CrowdView::shatter(int32_t p_corpse) {
+	const auto it = by_corpse.find(p_corpse);
+	View *v = it != by_corpse.end() ? &views[it->second] : nullptr;
+	if (v == nullptr) {
+		for (View &w : views) {
+			if (w.alive && w.mode == M_FADE && w.faded_corpse == p_corpse) {
+				v = &w;
+				break;
+			}
+		}
+	}
+	if (v == nullptr) {
+		return false;
+	}
+	if (v->mode != M_FADE) {
+		start_fade(*v);
+	}
+	v->sink_t = SINK_S + 1.0;  // over: the next frame removes it
+	return true;
 }
 
 // DmEntityViews._on_death: the body keeps where it fell and plays its death clip (or tips over); a corpse may adopt it within a moment.

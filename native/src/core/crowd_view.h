@@ -99,6 +99,7 @@ struct View {
 	double raw_speed = 0, state_t = 0, action_s = 0, scale = 1, hover = 0;
 	float tint[3] = { 1, 1, 1 };
 	int32_t glow = 0;  // glow palette slot (CrowdBody.glow)
+	int32_t faded_corpse = 0;  // the corpse it drew before it began to sink (so a late `shatter` still finds it)
 	// drawn
 	double yaw = 0, gs = 0, flash = 0, flash_v = 0;
 	bool has_gs = false;
@@ -134,6 +135,7 @@ public:
 	int32_t reserve_rows = 0;  // rows every group starts with (and new models' groups): sized at loading so a wave never grows a MultiMesh
 
 	void set_thrall_shadows(bool p_on);
+	bool shatter(int32_t p_corpse);  // Corpse Explosion blew the corpse apart: its body goes at once instead of sinking (DmEntityViews: opacity 0)
 	// Where dying bodies came to rest since the last take (DmEntityViews._landing_dust): x, z, drawn scale per landing; at most LANDINGS_MAX kept.
 	std::vector<float> landings;
 	static constexpr size_t LANDINGS_MAX = 64;  // the thralls' casting, for the thralls already drawn too (a preset change mid-game)

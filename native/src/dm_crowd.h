@@ -87,7 +87,8 @@ public:
 	// to its look's strength (DmEntityViews: 0.35).
 	void set_glows(const godot::Color &p_elite, double p_champion_add);
 	godot::PackedColorArray glow_palette() const;  // the slots, linear rgb + strength in alpha
-	godot::PackedFloat32Array take_landings();      // where dying bodies came to rest since the last call: x, z, scale per landing (empty when none)
+	godot::PackedFloat32Array take_landings();
+	bool shatter(int64_t p_corpse);                  // Corpse Explosion: the corpse's body goes at once (false when the crowd has no body for it)      // where dying bodies came to rest since the last call: x, z, scale per landing (empty when none)
 	int64_t glow_version() const;
 	// A look: model (slot), hover (m), scale, tint (linear Color), tint_fen (risen in the Fen), flyer, caster, inert, mist (bool flags).
 	void set_enemy_look(const godot::String &p_def, const godot::Dictionary &p_look);

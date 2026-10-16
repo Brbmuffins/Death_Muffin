@@ -835,6 +835,16 @@ func death_and_corpses() -> void:
 	draw(c, 45)
 	check(info(c, 1).is_empty(), "and is gone after 0.9 s")
 	check(c.stats().fading == 0, "nothing left fading")
+	# Corpse Explosion blows a corpse apart: its body goes at the next frame, whether the core still lists it or it already began to sink
+	var late := {"id": 52, "model": ROBBER, "def": 7, "x": -20.0, "z": 0.0, "facing": 0.0, "scale": 1.0, "tint": Color.WHITE}
+	feed(c, [body(2, ENEMY, ROBBER, CHASE, 14, 0, {"def": 7})], [], [far_one, late])
+	draw(c, 1)
+	feed(c, [body(2, ENEMY, ROBBER, CHASE, 14, 0, {"def": 7})], [], [far_one])   # 52 left the table: it sinks
+	check(c.view_info(52, true).is_empty() and c.stats().fading == 1, "a corpse that left the table begins to sink")
+	check(c.shatter(51) and c.shatter(52) and not c.shatter(999), "shatter finds a lying corpse and a sinking one (and not one it never drew)")
+	feed(c, [body(2, ENEMY, ROBBER, CHASE, 14, 0, {"def": 7})], [], [])
+	draw(c, 1)
+	check(c.view_info(51, true).is_empty() and c.stats().fading == 0, "both shattered bodies are gone at the next frame, nothing left to sink")
 	# no corpse arrives (kind none): the dying body crumbles after 1.4 s
 	feed(c, [body(9, ENEMY, ROBBER, CHASE, 3, 3, {"def": 3})])
 	feed(c, [body(9, ENEMY, ROBBER, DEAD, 3, 3, {"def": 3})], [[9, 100.0, 0.0, 100.0]])

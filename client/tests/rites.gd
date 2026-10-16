@@ -764,11 +764,13 @@ func t_corpse_explosion() -> void:
 	var rec := {"kind": "normal", "elite": false, "scale": 1.0}
 	var blast := DmAbilities.detonate_blast(DmAbilities.detonate_claim(sp_now()), rec)
 	var m := dmg_log.size()
+	var shatters := int(g.enemy_fx.stats["shatter"])
 	var r := cast("corpse_explosion", at(5.0))
 	if not accepted(r, "corpse_explosion"):
 		return
 	await ticks(2)
 	check(field.get_corpse(cp) == null, "corpse_explosion: the corpse is consumed (burst)")
+	check(int(g.enemy_fx.stats["shatter"]) == shatters + 1, "corpse_explosion: the body is blown apart at once, not left to sink (DmCrowd.shatter)")
 	check(near(first_blow(near_e, m), float(blast["dmg"])) and blows(far_e, m) == 0, "corpse_explosion: %.3f to the enemy within %.1f m, nothing to the one 5 m off" % [first_blow(near_e, m), float(blast["radius"])])
 	# an elite's corpse hits harder; a toxic one leaves a rot cloud
 	await reset_and_wait()

@@ -19,7 +19,8 @@ extends Node
 ## sanctified, rot while withered, bone dust while fractured, bronze motes while incensed; and the fliers' and the wraith's hover motes. The bodies looked at are
 ## only those with a status (`status_changed`) or that fly.
 ## A body underground (a ghoul's BURROW and its eruption's wind-up) has today's dirt mound over it (`_mounds`, a node each: a few at most); a dying body raises
-## dust where it comes to rest (the crowd says when: `DmCrowd.take_landings`).
+## dust where it comes to rest (the crowd says when: `DmCrowd.take_landings`); a corpse that goes plays today's puff for why, and one Corpse Explosion bursts is
+## blown apart at once (`DmCrowd.shatter`).
 ## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
 ## the elite's body glow, the censer, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the acolyte's reach ring, the Flagellant's frenzy motes.
 
@@ -48,7 +49,7 @@ var fx: DmEventFx                  ## the shared router half: telegraphs, deaths
 var host := DmEnemyFxHost.new()
 var core_host: DmCoreHost
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
-var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0}
+var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0}
 
 var _clock := 0.0                  ## ms of rendered-frame time
 var _amb_t := 0.0
@@ -72,6 +73,7 @@ var _status_fx: Dictionary = {}    ## DmContent statuses STATUS_FX: the tells' c
 var _mote_o := {"count": 1}        ## the option record every status, flier and affix mote reuses
 var _affixed := {}                 ## id -> [the affix marks' handles, the affix names, scale, head height]: an affixed body, while it lives
 var _unveiled := {}                ## id -> true once its shroud lifted (`unveil`): no more shroud smoke
+var _corpse_at := {}               ## corpse id -> Vector2: where it lies (the puff when it goes)
 var _corpse_rings := {}            ## corpse id -> [its ring's handle, when it ends (rendered-frame ms), pale]: until the corpse goes or the ring's 26 s are over
 var _px := 0.0
 var _pz := 0.0
@@ -108,8 +110,8 @@ func bind(h: DmCoreHost) -> void:
 	h.status_changed.connect(_on_status_changed)
 	h.statuses_cleared.connect(func(id: int) -> void: _statused.erase(id))
 	h.corpse_added.connect(_on_corpse_added)
-	h.corpse_gone.connect(func(id: int, _reason: String) -> void: _corpse_off(id))
-	h.corpse_consumed.connect(func(id: int, _by: int, _reason: String) -> void: _corpse_off(id))
+	h.corpse_gone.connect(_on_corpse_gone)
+	h.corpse_consumed.connect(func(id: int, _by: int, reason: String) -> void: _on_corpse_gone(id, reason, true))
 
 
 ## (Re)create the shared router against the current vfx / audio (tests swap them in before the first event).
@@ -141,6 +143,7 @@ func clear() -> void:
 	for r in _corpse_rings.values():
 		_kill(r[0])
 	_corpse_rings.clear()
+	_corpse_at.clear()
 	for id in _affixed.keys():
 		_affix_off(id)
 	_unveiled.clear()
@@ -455,6 +458,7 @@ func _mound_off(id: int) -> void:
 ## marks it for the 26 s it lasts, capped so a wipe does not add a decal per body; a resonant corpse's violet ring always shows (outside the cap); a toxic corpse's green disc for 5 s.
 func _on_corpse_added(id: int, kind: int, _def: String, _elite: bool, area: String, x: float, z: float, _facing: float, scale: float) -> void:
 	var k := DmCoreEvents.CORPSE_KINDS[kind] if kind >= 0 and kind < DmCoreEvents.CORPSE_KINDS.size() else "normal"
+	_corpse_at[id] = Vector2(x, z)
 	if k == "toxic":
 		_decal({"tex": "disc", "color": 0x6f8f3a, "x": x, "z": z, "r": 2.4 * scale, "duration": 5, "opacity": 0.35, "pulse": 6.0, "growFrom": 0.6})
 	if _corpse_rings.has(id):
@@ -469,6 +473,37 @@ func _on_corpse_added(id: int, kind: int, _def: String, _elite: bool, area: Stri
 	_corpse_rings[id] = [_decal({"tex": "ring", "color": 0xffe6b0 if marsh else 0xd8cdf2, "x": x, "z": z, "r": (1.1 if marsh else 0.8) * maxf(1.0, scale), "duration": 26,
 		"opacity": 0.85 if marsh else 0.4, "fadeIn": 0.8, "pulse": 2.0}), _clock + RING_MS, true]
 	stats["corpse_mark"] += 1
+
+
+## A corpse goes (DmEntityViews._on_corpse_gone): its ring with it, and today's puff for why. `consumed`: someone took it (Exhume's spirit, the Litany, a raise,
+## a hungry elite's meal, Corpse Explosion's burst, which blows the body apart at once: `DmCrowd.shatter`; the blast is the rite's); else it expired or burst by itself
+## (a toxic corpse's rupture: rot).
+func _on_corpse_gone(id: int, reason: String, consumed := false) -> void:
+	var at: Vector2 = _corpse_at.get(id, Vector2.INF)
+	_corpse_at.erase(id)
+	_corpse_off(id)
+	if at == Vector2.INF:
+		return
+	match reason:
+		"consumed":
+			vfx.emit({"x": at.x, "y": 0.4, "z": at.y, "count": 22, "color": fx.sp("exhume", "spirit"), "spread": 0.6, "speed": 0.8, "up": 2.6, "life": 0.9, "size": 0.35})
+		"litany":
+			vfx.emit({"x": at.x, "y": 0.4, "z": at.y, "count": 18, "color": fx.sp("litany", "core"), "spread": 0.6, "speed": 0.8, "up": 2.2, "life": 0.8, "size": 0.35})
+		"raised":
+			vfx.emit({"x": at.x, "y": 0.4, "z": at.y, "count": 18, "color": fx.sp("enemy", "rot"), "spread": 0.6, "speed": 0.8, "up": 2, "life": 1, "size": 0.35})
+		"devoured":   # torn apart and swallowed: olive gore, no spirit left to rise
+			vfx.emit({"x": at.x, "y": 0.4, "z": at.y, "count": 22, "color": _col("drool"), "spread": 0.5, "speed": 1.6, "up": 1.4, "life": 0.7, "size": 0.26, "gravity": 5})
+			vfx.emit_smoke({"x": at.x, "y": 0.3, "z": at.y, "count": 3, "color": 0x2b3317, "spread": 0.4, "speed": 0.6, "up": 0.4, "life": 1, "size": 1})
+		"burst":
+			if consumed:
+				if core_host != null and core_host.view != null:
+					core_host.view.crowd.shatter(id)
+				stats["shatter"] += 1
+			else:
+				vfx.emit({"x": at.x, "y": 0.5, "z": at.y, "count": 20, "color": fx.sp("miasma", "rot"), "spread": 0.6, "speed": 2.5, "up": 1.5, "life": 0.7, "size": 0.3})
+		_:
+			return
+	stats["corpse_gone"] += 1
 
 
 func _corpse_off(id: int) -> void:
