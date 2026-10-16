@@ -264,7 +264,7 @@ func _dress_ring(b: DmHeroBody) -> void:
 	var wg: WeakRef = weakref(game)
 	var at := func() -> Variant:
 		var hb: Variant = wb.get_ref()
-		if hb == null:
+		if hb == null or not hb.is_inside_tree():   # a session that ended takes the body out of the tree a frame before it is freed
 			return null
 		var vp: Vector3 = hb.visual_position()
 		return Vector3(vp.x, 0, vp.z)

@@ -368,7 +368,7 @@ func party_flow() -> void:
 	hq = new_branch()
 	h = await game(hq, "hostess", {"waves": false})
 	check(h.ready_ and not h.is_guest and not h.core_host.puppet and h.net != null and h.party != null, "the host's game is up (a solo run, a real core, a Net and a Party node)")
-	check(h.party.mode == DmNextParty.SOLO and h.party.lobby == null and h.party.unavailable() == "", "solo: no lobby socket yet, and the local lobby may be used")
+	check(h.party.mode == DmNextParty.SOLO and h.party.online and h.party.unavailable() == "", "solo: online for friends' presence (go_online), and the local lobby may be used")
 	hb = h.local_body()
 	h.kill_credited.connect(func(id: int, _d: String, _l: int, _e: bool, _a: String, killer: int, _x: float, _z: float) -> void:
 		kills_host[killer] = int(kills_host.get(killer, 0)) + 1

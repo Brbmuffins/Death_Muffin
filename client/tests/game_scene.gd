@@ -48,6 +48,7 @@ var zones_seen := 0
 var attack_events := 0
 var hero_died_n := 0
 var hero_respawned_n := 0
+var got_up_at := Vector3.INF            # where the hero stood when he last got up (the waves may knock him down again before a check reads him)
 var dead_hits := 0
 var hero_dead := false
 var death_tick := -1
@@ -158,8 +159,9 @@ func start_game(api: DmApi, character: Dictionary) -> void:
 		hero_died_n += 1
 		death_tick = host.ticks
 		hero_dead = true)
-	g.hero_respawned.connect(func(_b: DmHeroBody) -> void:
+	g.hero_respawned.connect(func(hb: DmHeroBody) -> void:
 		hero_respawned_n += 1
+		got_up_at = hb.position
 		hero_dead = false)
 
 
@@ -283,8 +285,8 @@ func hero_death() -> void:
 		await physics_frame
 		wait += 1
 	check(hero_respawned_n >= 1 and b.alive and not hero_dead, "the hero got up again (%d ticks after the check)" % wait)
-	check(b.hp > 0.0 and absf(b.position.x - g.respawn_point().x) < 1.0 and absf(b.position.z - g.respawn_point().z) < 1.0 or g.world.area_at(b.position.x, b.position.z) == "graves",
-		"he got up at the Graves' door, in the Graves (%s)" % str(b.position))
+	check(absf(got_up_at.x - g.respawn_point().x) < 1.0 and absf(got_up_at.z - g.respawn_point().z) < 1.0 or g.world.area_at(got_up_at.x, got_up_at.z) == "graves",
+		"he got up at the Graves' door, in the Graves (%s; the door %s)" % [str(got_up_at), str(g.respawn_point())])
 	check(died_before >= 1, "the death was counted")
 	g.director.enabled = true
 

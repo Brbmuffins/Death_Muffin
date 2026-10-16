@@ -167,8 +167,8 @@ server (B38).
   - [x] The party flow on the test lobby and relay (`DmNextParty`: host, join by code or id, invite, ask to join, answer, leave; `DmConfig` pins the test lobby and the test relay's port).
   - [x] The test lobby and relay installed and running (2026-10-16, Helix's OK; `server/death-muffin/test-server/coop/README.md`): `death-muffin-lobby-test` on 5195 behind `/death-muffin/test-lobby/`, `death-muffin-relay-test` on udp 5196,
     in the drift report's service list.
-  - [ ] A player-facing entry: the Social window (Party and Friends tabs) with the panels, and the hand-over for `join_ready` in `main/main.gd` (a few lines; kept out while the benchmark port edits that file). Until then a party is made and joined by
-    launch arguments (`--host-party`, `--join-party=<code>`).
+  - [x] The player's way in: the Social window (today's window and its Party and Friends tabs, O, F and the HUD's Social button) with its own small host until the panel host comes (`client/next/hud/dm_next_social.gd`), friends' presence over the lobby,
+    and main.gd's hand-over (join, leave, a refused join, a closed party: home with the reason); `client/tests/social.gd`.
   - [ ] Still to do beside the core: a guest's build from the server's record (B22) and the joiner's own account (rewards, XP, loot, the kill report's carried kills) with the rewards item; ground drops and the party's seals with loot and the Chapterhouse; the other six bosses'
     state with their items; a new baseline for each new area; party chat.
   - [ ] Phones join as guests only (B40): the same messages; measure the snapshot on the Mobile renderer's budget when the first phone build exists.

@@ -64,6 +64,7 @@ var hud: DmNextHud                              ## only with opts hud = true: th
 var enemy_fx: DmEnemyFx                         ## child "EnemyFx": the core's events as effects
 var look: DmHeroLook                            ## child "Look": the hero's ring and worn gear (next/hero/README.md)
 var party: DmNextParty                          ## child "Party" (every peer): the lobby link, hosting / joining, the roster controls, the guest's profile (next/party/)
+var friends: DmNextFriends                      ## child "Friends": the account's friends and friend requests (the test backend's friends routes; next/party/)
 ## Left out until their step; the code that is shared with the full game asks `x != null` and finds none.
 var ui_host: Node = null                        ## the full HUD's host-contract adapter
 var ui: Node = null                             ## the full HUD and panels
@@ -170,6 +171,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	party.name = "Party"   # before the session starts: its RPCs must exist at this path when the first packet arrives
 	add_child(party)
 	party.setup(self)
+	friends = DmNextFriends.new()
+	friends.name = "Friends"
+	add_child(friends)
+	friends.setup(self)
 	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
 	session.character_name = String(opts.get("name", "You"))
 	session.discipline_id = String(d["id"])
@@ -246,6 +251,11 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
+	if hud != null:   # a player's window (the boot's game, not a test's bare scene)
+		if String(opts.get("notice", "")) != "":   # why we are here (the session we were in ended, a join failed)
+			hud.game_event("toast", {"text": String(opts["notice"]), "kind": "err"})
+		party.go_online()          # after the loading cover: friends see us online, invites and asks reach us (no-op without a lobby the build may use)
+		friends.check_requests()   # a waiting friend request is a toast + the Friends tab's pip
 	if not guest and DmNextParty.arg("--host-party") != null:   # a trial without a panel: host a Closed party at once and say its code
 		party.hosting_changed.connect(func(on: bool) -> void:
 			if on:

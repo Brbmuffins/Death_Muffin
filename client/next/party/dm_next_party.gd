@@ -12,14 +12,15 @@ extends Node
 ## Everything a panel shows comes from `view()` (the contract of today's party pane); `changed` fires on any change. Errors are one place (`ERROR_TEXT`, `CLOSE_TEXT`).
 ## Not here yet, each with the system it belongs to: party chat, the joiner's own backend session (rewards, XP, loot), reading a guest's build from the server (DECISIONS B22: a guest's
 ## level and class come from its profile, clamped, until the rewards and progression item brings the server's record), ground drops, the party's seals, the friends list itself
-## (requests, the Friends tab: the lobby's presence of online friends is all the invites and asks need).
+## The friends list itself is DmNextFriends (the backend's friends routes, the Social window's Friends tab); a friendship it changes is announced through the lobby here (`friends_changed`).
 
 signal changed
 signal notice(text: String, kind: String)                         ## a toast for the HUD ("good" / "err" / "")
 signal join_ready(lobby: DmLobbyClient, info: Dictionary)         ## solo game: we hold a seat in someone's session; the shell swaps the game for a guest game
 signal client_ended(reason: String, text: String)                 ## guest game: the session is over (text "" = we left on purpose)
 signal hosting_changed(on: bool)
-signal social_notice(text: String)                                ## a friend invited / asked / answered
+signal social_notice(text: String)                                ## a friend invited / asked / answered: a toast that opens the Social window
+signal friends_list_changed                                       ## the lobby says a friendship changed: reload the friends list
 
 const SOLO := &"solo"
 const HOST := &"host"
@@ -36,7 +37,7 @@ const MAX_LEVEL := 100             ## a guest's claimed level is clamped (it onl
 
 const ERROR_TEXT := {
 	"full": "That session is full (4 of 4 players). Try another one, or ask the host to make room.",
-	"bad_code": "That party is invite only (or the code is wrong). Ask a friend in it to invite you.",
+	"bad_code": "That party is invite only (or the code is wrong). Ask a friend in it to invite you, from Social (O).",
 	"closed": "The host is not taking new players right now.",
 	"not_found": "That session no longer exists. Refresh the list.",
 	"rate_limit": "Too many wrong codes. Wait a few minutes before trying again.",
@@ -80,6 +81,7 @@ var online := false                      ## go_online() was called: keep the lin
 var friends_online: Dictionary = {}      ## account id -> presence {accountId, username, class, level, area, session: {id, private, open, players, max, host, isHost} | null}
 var invites: Array = []                  ## [{from_id, from, info, at}] parties we were invited to
 var requests: Array = []                 ## [{account_id, user, via, at}] friends asking to join us
+var _nudges: Array = []                  ## friends_changed ids waiting for the link
 
 var _relay: DmRelayPeer
 var _pending: Callable = Callable()
@@ -352,6 +354,9 @@ func _on_authenticated(_id: int, _name: String) -> void:
 	_reconnect_n = 0
 	_sent_presence = []
 	send_presence()
+	for id in _nudges:
+		lobby.send_friends_changed(int(id))
+	_nudges.clear()
 	var p := _pending
 	_pending = Callable()
 	if p.is_valid():
@@ -719,11 +724,21 @@ func _rpc_levels(t: Dictionary) -> void:
 func _wire_social(l: DmLobbyClient) -> void:
 	l.friends_snapshot.connect(_on_friends_snapshot)
 	l.friend_presence.connect(_on_friend_presence)
+	l.friends_changed.connect(func() -> void: friends_list_changed.emit())
 	l.invited.connect(_on_invited)
-	l.invite_sent.connect(func(_id: int, user: String) -> void: notice.emit("Invited %s. They can join from their party panel." % user, "good"))
+	l.invite_sent.connect(func(_id: int, user: String) -> void: notice.emit("Invited %s. They can join from their Social window." % user, "good"))
 	l.join_requested.connect(_on_join_requested)
 	l.ask_sent.connect(func(_id: int, user: String) -> void: notice.emit("Asked %s. You join as soon as they accept." % user, "good"))
 	l.ask_declined.connect(func(user: String) -> void: social_notice.emit("%s cannot take you along right now." % user))
+
+
+## We changed a friendship (DmNextFriends): the lobby reloads both sides' lists. Kept until the link is ready (a player can answer a request
+## in the first second in the world, before the link is up).
+func friends_changed(other_id: int) -> void:
+	if lobby != null and link == "ready":
+		lobby.send_friends_changed(other_id)
+	elif online and not _nudges.has(other_id):
+		_nudges.append(other_id)
 
 
 ## What friends see: our discipline, level and area (sent when it changed).

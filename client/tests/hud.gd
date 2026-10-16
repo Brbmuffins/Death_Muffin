@@ -218,7 +218,13 @@ func the_frame() -> void:
 	check(hud.toasts.get_child_count() == 2, "toasts stack (%d)" % hud.toasts.get_child_count())
 	var party: Array = vm["party"]
 	check(party.size() == 1 and party[0]["name"] == "tester" and hud.party_box.get_child_count() == 1, "the party list shows this hero")
-	check(not hud.menu_flow.visible and not hud.chat_col.visible and not hud.up_plate.visible, "the panels' doors (menu row, chat, Empower) stay hidden until their items")
+	var shown_btns: Array = []
+	for id in hud.menu_btns:
+		if hud.menu_btns[id].visible:
+			shown_btns.append(id)
+	check(hud.menu_flow.visible and shown_btns == ["friends"], "the menu row shows the Social button only (%s): the Social window is the one panel in this step" % str(shown_btns))
+	check(h.social != null and not h.social.is_open(), "the Social window is there, closed")
+	check(not hud.chat_col.visible and not hud.up_plate.visible, "the other panels' doors (chat, Empower) stay hidden until their items")
 	check(near(hud.hud_scale, 1.1) and hud.layout.has("map") and hud.pieces["map"].scale == Vector2(0.9, 0.9), "the game scene's hud_scale and hud_layout options reached the HUD")
 	hud.set_layout({})
 	hud.set_hud_scale(1.0)
@@ -630,11 +636,18 @@ func pieces() -> void:
 
 # ------------------------------------------------------------------------------------------------------------------ z layers
 
+## Every menu button on (the full HUD's row, for the worst case), or back to the game scene's row (the Social button only).
+## (The gated ones, Acre and Atlas, show once the feeds reveal everything: HudFeeds.full().)
+func _menu_all(on: bool) -> void:
+	for id in hud.menu_btns:
+		hud.menu_btns[id].visible = on or id == "friends"
+
+
 ## With every piece on, each visible control sits on the z layer of what it draws (DmHudKit): text above the art above the chrome above the panels, in each overlay's own
 ## hundred. A control left on the wrong layer is a draw call per panel or per label the budget does not allow.
 func layers() -> void:
 	h.feeds = HudFeeds.full()
-	hud.menu_flow.visible = true
+	_menu_all(true)
 	hud.chat_col.visible = true
 	hud.chat_line("[Helix] over here")
 	hud.chat_line("You found Bone Dust")
@@ -652,7 +665,7 @@ func layers() -> void:
 	check(bad.is_empty(), "every visible control is on the layer of what it draws (%d wrong: %s)" % [bad.size(), str(bad.slice(0, 6))])
 	check(seen["text"] > 40 and seen["icon"] > 8 and seen["panel"] > 15 and seen["art"] > 5, "and there is a lot to check: %s" % str(seen))
 	print("INFO the full HUD: %s controls on their layers; %d text layers in use" % [str(seen), DmHudKit._text_z.size()])
-	hud.menu_flow.visible = false
+	_menu_all(false)
 	hud.chat_col.visible = false
 	h.feeds = {}
 	host.damage(made, 1.0e9, hero.core_id, false)
@@ -859,7 +872,7 @@ func draw_model() -> void:
 	h.refresh()
 	await process_frame
 	var game_state := await _model_of("as the game scene shows it")
-	hud.menu_flow.visible = true
+	_menu_all(true)
 	hud.chat_col.visible = true
 	hud.chat_line("[Helix] over here")
 	hud.chat_line("You found Bone Dust")
@@ -869,7 +882,7 @@ func draw_model() -> void:
 	var full_state := await _model_of("every piece on and fed")
 	check(int(game_state["draws"]) <= 150 and int(full_state["draws"]) <= 150, "the model puts the HUD under the 150 draw calls (%d as the game shows it, %d with every piece on)" % [game_state["draws"], full_state["draws"]])
 	check(game_state["unknown"].is_empty() and full_state["unknown"].is_empty(), "every control that draws by script said what it drew (unknown: %s)" % str(full_state["unknown"]))
-	hud.menu_flow.visible = false
+	_menu_all(false)
 	hud.chat_col.visible = false
 	h.feeds = {}
 	hud.set_hud_scale(1.0)

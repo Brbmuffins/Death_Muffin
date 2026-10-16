@@ -6,7 +6,8 @@ extends CanvasLayer
 ## HUD_INTERVAL_MS), the floating numbers come from signals, and the HUD's own widgets animate themselves.
 ##
 ## What it needs besides the game scene: the character (level, XP, gold), its progression (`prog`, the server's record), and the kit's rites for the hotbar.
-## Not in this step, each until its ROADMAP item: the panels (the menu row, the Empower / Quicken panel, chat and the report button are hidden: they open nothing yet),
+## The menu row shows the Social button only: it opens the Social window (`social`, DmNextSocial: Friends and Party, O and F), the way into a party. Not in this step, each until its
+## ROADMAP item: the other panels (the rest of the menu row, the Empower / Quicken panel, chat and the report button are hidden: they open nothing yet),
 ## party frames of other players, the belt, the Kill Chain, the Omen and the Depths readout. The game scene wires the HUD with opts `hud: true`; opts `hud_scale`
 ## (0.75 to 1.3) and `hud_layout` (DmHud.set_layout) place and size its pieces.
 ##
@@ -18,12 +19,14 @@ const HERO_STATUS_TEXT := {&"chill": "Chilled", &"root": "Rooted", &"stun": "Stu
 const REJECT_TEXT := {"essence": "Not enough Grave Essence", "souls": "Not enough souls (%d needed)", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
 const FEEDBACK_GAP_MS := 600
 const HIT_KINDS := ["hit", "crit", "dot", "thrall", "hurt"]   ## the floats the "damage numbers" setting turns off
-const REVEAL := {"hud.upgrades": false, "hud.dial": false}   ## the Empower / Quicken panel and the wave dial wait for the progression item
+## The Empower / Quicken panel and the wave dial wait for the progression item; the menu row's gated buttons (Acre, Atlas) for the panels item, with the rest of the row but Social.
+const REVEAL := {"hud.upgrades": false, "hud.dial": false, "menu.skills": false, "menu.atlas": false}
 
 signal refreshed                            ## after each view-model apply (tests)
 
 var game: DmNextGame
 var hud: DmHud
+var social: DmNextSocial                    ## the Social window (when the game scene has a party: every real game does)
 var vm: DmNextHudVm
 var character: Dictionary = {}
 var prog: DmProgression
@@ -58,7 +61,8 @@ func _ready() -> void:
 	prog = DmProgression.new(character, game.server_local)
 	hud = DmHud.new()
 	add_child(hud)
-	hud.menu_flow.visible = false           # the panels open from here: not in this step
+	for id in hud.menu_btns:                 # the panels open from here: only the Social window is in this step
+		hud.menu_btns[id].visible = id == "friends"
 	hud.chat_col.visible = false
 	hud.set_hud_scale(float(game.opts.get("hud_scale", 1.0)))    # the HUD scale setting, anchors kept
 	var saved: Variant = game.opts.get("hud_layout", {})
@@ -66,6 +70,11 @@ func _ready() -> void:
 		hud.set_layout(saved)                                    # a saved layout: {piece id: {offset: Vector2, scale: float}}
 	hud.cast.connect(_on_cast)
 	hud.navigate.connect(_on_navigate)
+	if game.party != null and game.friends != null:
+		social = DmNextSocial.new()
+		add_child(social)
+		social.setup(game.party, game.friends, hud)
+		social.toast = func(text: String, kind: String) -> void: hud.toast(text, kind)
 	bind()
 
 

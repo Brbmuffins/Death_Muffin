@@ -28,6 +28,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/hud.gd     # the HUD on the core: target frame, minimap dots, hotbar and cooldowns, thrall pips, floating number caps, pools, pieces, z layers, the draw-call model (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/benchmark.gd       # the benchmark on the core: the Full Party fight held as the setup says, Easy auto combat, the report and its budget section, real launches, nothing sent but to the test API (bakes into a scratch folder; about 2 minutes)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/coop.gd    # 2-player co-op: a host and a guest in one process over a real local lobby and relay (needs `cd server/death-muffin/lobby && npm ci`; bakes into a scratch folder; about a minute)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/social.gd  # the Social window: open and close, host from the Party tab, a boot scene that joins from the list and comes home (needs the lobby's modules too; about 40 s)
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the thralls) into client/assets/crowd/baked (not committed)
 ```
@@ -67,8 +68,8 @@ uids keep working:
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The Gravedigger King"); Easy auto combat, the benchmark
   with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); and the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
   "Co-op on the core").
-- **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the Social window
-  (the friends and party panes, `DmNextFriends` and the panel host `game_ui/dm_game_ui.gd`: the panels item; the party itself is ported).
+- **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the panel host
+  (`game_ui/dm_game_ui.gd`, the panels item; the Social window, its panes and `DmNextFriends` are copies with their own small host until then, "Co-op on the core").
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
   the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step, the belt and the progress node.
   Freed by the boss ports: `next/bosses/dm_boss_meta.gd` (the Covenant Seal altar choice; it needs rewards and the backend, so nothing creates it yet).
@@ -110,7 +111,7 @@ roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`
 **input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
 wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
-Co-op is in ("Co-op on the core"). Off in this step, each until its ROADMAP item: the party's panels (the Social window), gathering, the Chapterhouse
+Co-op and the Social window are in ("Co-op on the core"). Off in this step, each until its ROADMAP item: the other panels, gathering, the Chapterhouse
 (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves; `DmNextGame.rite_hit` carries every blow of a rite for them), the panels (the HUD is there, "The HUD on the core"; its menu row, chat, Empower panel
 and loadout wait for theirs), the Reaper's rites, the graphics governor, Grave Surges. Easy auto combat is in but closed: nothing opens it until the settings come (the benchmark and the tests do). `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
@@ -308,10 +309,18 @@ party's other player is a GUEST: its game scene (`DmNextGame` joined, `is_guest`
 **Joining** (`next/party/dm_next_party.gd`, node `Party`, a port of today's): hosting turns the running solo session into a hosted one (`host_session(name, closed)`: lobby `create`, `DmRelayPeer.host`, `DmSession.swap_transport`; Open parties are listed, Closed ones
 need the code or an invite); `join_by_code` / `join_session` / `join_friend` seat a solo game in a party (`join_ready(lobby, info)`: the shell frees the solo game and starts a guest game on that socket, `opts.lobby`); `invite_friend`,
 `ask_to_join`, `answer_request`, `accept_invite` are the friends flows over the lobby's presence of online mutual friends; `view()` is the contract of today's party pane. Errors are the player-readable `ERROR_TEXT` / `CLOSE_TEXT`.
-Not in it, each with its system: party chat, the joiner's own backend session (rewards, XP, loot), reading a guest's build from the server (B22: the profile's level and class stand until progression comes), ground drops, the friends list itself (requests,
-the Friends tab), and the Social window that drives it all (the panels item). Until that window exists the entry is launch arguments, read by the game scene (any build, test lobby only): `--host-party[=name]` makes a Closed party as soon as the world is up (the
-code is in the log and in a toast), `--join-party=<code>` takes a seat before the game is built, `--lobby=<ws url>` points at a lobby on this machine (the token in `DM_LOBBY_TOKEN`). `main/main.gd` needs no change for them; the in-game hand-over for
-`join_ready` (what today's `main.gd` does with `party.join_ready`: free the solo game, start the guest game, go home on `client_ended`) is a few lines to add there when the Social window can call `join_session`.
+Not in it, each with its system: party chat, the joiner's own backend session (rewards, XP, loot), reading a guest's build from the server (B22: the profile's level and class stand until progression comes), ground drops.
+A player's world keeps a lobby link (`go_online()`, after loading) so friends see it online and invites and asks arrive. The friends list itself is `DmNextFriends` (a copy: the test backend's friends routes); a friendship it changes is announced
+through the party (`friends_changed`).
+
+**The Social window** (`next/hud/dm_next_social.gd`, `DmNextSocial`) is the player's way in: today's window and panes (copies: `ui/panels/dm_social_window.gd`, its Friends and Party tabs), opened as today (O = Friends, F = Party, the HUD's Social
+button, the one button the menu row shows in this step) and wired the way today's `game_ui/dm_ui_social.gd` and the party half of `next/hud/dm_next_ui_host.gd` wire them, straight to `party` and `friends`. The Party tab hosts an Open or Closed
+party and lists the Open ones to join; the Friends tab sends and answers friend requests and joins, asks or invites an online friend; the public list is watched only while the window is open. When the panel host comes it takes the window over
+and `DmNextSocial` goes. **`main/main.gd`** does today's hand-over: `join_ready` frees the solo game and starts a guest game on the same lobby socket (behind "Entering the host's world..."); `client_ended` and a refused or failed join put the player
+back in their own world with the reason as a toast.
+
+Launch arguments, for a trial without the window (any build, test lobby only): `--host-party[=name]` makes a Closed party as soon as the world is up (the code is in the log and in a toast), `--join-party=<code>` takes a seat before the game is built,
+`--lobby=<ws url>` points at a lobby on this machine (the token in `DM_LOBBY_TOKEN`).
 
 **The test lobby and relay are the only ones this build uses** (the API rule above): `DmConfig.LOBBY_URL`, `RELAY_PORT`, `allows_lobby_url`, `allows_relay`. The services (their own ports, the test backend's signing key) are
 `server/death-muffin/test-server/coop/` (installed 2026-10-16; its README has the steps). The lobby offers the relay's address and a ticket when a session is made or joined; without the relay a session
@@ -330,7 +339,9 @@ DM_LOBBY_TOKEN=<token> godot --path client -- --dev-offline --class=2 --lobby=ws
 more), over a REAL lobby (the node service on a free port, a test signing key) and the real `DmUdpRelay` in the process (offered by the lobby, so the packets travel the UDP lane). It runs the party flow (a wrong code, a Closed party, a join by code, an invite
 and an ask to join), the connection (both on UDP, the puppet, the ids), a still moment and a fight compared **at the snapshot's own tick** (every live body the same, every position within the 1 cm quantization, lost parts excepted), a guest cast resolved by
 the host with its damage on both, a guest Exhume simulated by the host, the King fighting both heroes to his fall, a guest-side death and respawn, the kill accounting (the host credits every kill once, the guest none), refused versions, the Full Party's
-packets and bandwidth, a leaving guest, and zero script errors. It prints INFO lines: the Full Party's bandwidth for one guest was about 28 KB/s (23 KB/s snapshots, 0.7 KB/s reliable) in 82 packets/s on the host's connection, 2.7 % and 14 % of the relay's limits (1 MiB/s, 600 packets/s); the largest game
+packets and bandwidth, a leaving guest, and zero script errors. `tests/social.gd` (`--fixed-fps 60`, about 40 s, on the same local lobby and relay, its helpers from `coop.gd`) drives the Social window: the button, O, F and Esc,
+hosting an Open party from the Party tab, a guest that is the real boot scene (`DmMain`) joining it from the list and leaving from its tab (main.gd's hand-over both ways), a refused join and a host who closes the party (the guest back home with the
+reason), a friend request sent and answered from the windows, friends' presence over the lobby, and zero script errors. It prints INFO lines: the Full Party's bandwidth for one guest was about 28 KB/s (23 KB/s snapshots, 0.7 KB/s reliable) in 82 packets/s on the host's connection, 2.7 % and 14 % of the relay's limits (1 MiB/s, 600 packets/s); the largest game
 packet was 1,231 B.
 
 ## The test server: login and character select
@@ -351,7 +362,7 @@ database and signing key, so nothing played here can touch a live character), th
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
 - **Off until their items:** rewards and the kill ledger (no kill report), progress and bag saves, the friends list, chat, gathering, the Chapterhouse, the panels (so no Log out or Switch character:
-  close the game to sign in again, and no Social window: a party is made and joined by launch arguments, "Co-op on the core"), the automatic crash report and the update notice. A hero of a
+  close the game to sign in again; the Social window has its own small host, "Co-op on the core"), the automatic crash report and the update notice. A hero of a
   discipline other than the Gravecaller has no hero model yet (`client/assets.list` carries `hero_gravecaller` only) and the rites are not ported for any of them.
 
 ### The API rule (DECISIONS B38)

@@ -14,7 +14,9 @@ extends Node
 ## window (DmBenchmarkSetup) first.
 ## `start_opts` (set before add_child; tests) are merged over DmNextGame.start's options.
 ##
-## Off until their ROADMAP items, against today's: co-op (the lobby join, the party hand-over), the automatic crash report
+## Co-op as today's: the party's `join_ready` hands the solo game over to a guest game on the same lobby socket, and a guest whose session ended (or whose join failed) is
+## put back in its own world with the reason on screen (client/README.md "Co-op on the core").
+## Off until their ROADMAP items, against today's: the automatic crash report
 ## (DmCrashWatch; a report would open a thread for a test build), and everything the full HUD owns: Log out and Switch character (close the game to sign in again), the
 ## final save (nothing is saved yet: `save_all` calls the scene's `flush_all`, which is empty).
 
@@ -29,6 +31,9 @@ var start_opts := {}
 var _mock: DmMockBackend
 var _transport: DmHttpTransport
 var _idle_cam: Camera3D
+var _build := {}                    ## the character's bag and progression of the last world entry (load_build): a party hand-over starts the next game with them
+var _transit_lobby: DmLobbyClient   ## the lobby socket a join was made on, polled here while the solo game is swapped for the guest game
+var _party_busy := false            ## a join / return is in progress (one at a time)
 
 
 func _ready() -> void:
@@ -274,8 +279,10 @@ func _enter_world(character: Dictionary, session) -> void:
 
 
 ## DmNextGame behind the same key-art loading screen (it paints before the synchronous world build; it fades out once the game is ready). A game that refuses to
-## start (an api that is not the test server's) is dropped and the login screen says why.
-func _enter_next(character: Dictionary, loading: DmLoadingScreen, build: Dictionary) -> void:
+## start (an api that is not the test server's) is dropped and the login screen says why. `join`: {lobby} starts a guest game on that seated lobby socket (a refused or
+## lost join lands the player in their own world again), {notice} is the line the new game shows on arrival.
+func _enter_next(character: Dictionary, loading: DmLoadingScreen, build: Dictionary, join: Dictionary = {}) -> void:
+	_build = build
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
@@ -283,14 +290,89 @@ func _enter_next(character: Dictionary, loading: DmLoadingScreen, build: Diction
 	slice = g
 	add_child(g)
 	var opts := {"name": token_username(api.get_token()), "hud": true, "slots": build["slots"], "local": build["local"]}
+	for k in ["lobby", "notice"]:
+		if join.has(k):
+			opts[k] = join[k]
 	opts.merge(start_opts, true)
 	var refused := [""]
-	g.start_failed.connect(func(reason: String) -> void: refused[0] = reason)
+	var join_failed := _on_next_join_failed.bind(character, loading)
+	if join.has("lobby"):
+		opts["host"] = false
+		g.start_failed.connect(join_failed, CONNECT_ONE_SHOT)
+	else:
+		g.start_failed.connect(func(reason: String) -> void: refused[0] = reason)
 	await g.start(character, api, opts)
+	if is_instance_valid(g) and g.start_failed.is_connected(join_failed):
+		g.start_failed.disconnect(join_failed)
+	if slice != g:
+		return   # a refused guest: the failure handler already swapped the game
 	if refused[0] != "":
 		slice = null
 		g.queue_free()
 		loading.dismiss()
 		_back_to_login(refused[0])
 		return
+	_transit_lobby = null
+	g.party.join_ready.connect(_on_next_join_ready)
+	g.party.client_ended.connect(_on_next_client_ended.bind(character))
 	loading.dismiss()
+
+
+func _process(_dt: float) -> void:
+	if _transit_lobby != null:
+		_transit_lobby.poll()
+
+
+## Party: the lobby seated us in a host's session. The solo game is freed and a guest game starts on the same lobby socket.
+func _on_next_join_ready(lobby: DmLobbyClient, _info: Dictionary) -> void:
+	if _party_busy or slice == null:
+		lobby.leave()
+		return
+	_party_busy = true
+	var character := slice.character
+	_transit_lobby = lobby
+	await _teardown_next()
+	await _enter_next(character, DmLoadingScreen.acquire(self, "Entering the host's world..."), _build, {"lobby": lobby})
+	_party_busy = false
+
+
+## Party: the session we joined is over (left, removed, host gone, connection lost): back to our own world, with the reason on screen.
+func _on_next_client_ended(_reason: String, text: String, character: Dictionary) -> void:
+	if _party_busy or slice == null:
+		return
+	_party_busy = true
+	var lobby: DmLobbyClient = slice.party.lobby
+	await _teardown_next()
+	if lobby != null:
+		lobby.close()
+	await _enter_next(character, DmLoadingScreen.acquire(self, "Waking the dead..."), _build, {"notice": text} if text != "" else {})
+	_party_busy = false
+
+
+## A guest the host refused or lost while loading: the half-built guest game is dropped and the player lands in their own world again.
+func _on_next_join_failed(reason: String, character: Dictionary, loading: DmLoadingScreen) -> void:
+	if slice == null:
+		return
+	var lobby: DmLobbyClient = slice.party.lobby
+	var g := slice
+	slice = null
+	_transit_lobby = null
+	g.process_mode = Node.PROCESS_MODE_DISABLED
+	g.queue_free()
+	if lobby != null:
+		lobby.close()
+	loading.dismiss()
+	await get_tree().process_frame
+	await _enter_next(character, DmLoadingScreen.acquire(self, "Waking the dead..."), _build, {"notice": "Could not join: %s" % reason})
+	_party_busy = false
+
+
+## Ends the running game: the session closes (a host's guests are told) and the scene is freed.
+func _teardown_next() -> void:
+	var g := slice
+	if g == null:
+		return
+	slice = null
+	await g.leave()   # flush_all + session end
+	g.queue_free()
+	await get_tree().process_frame
