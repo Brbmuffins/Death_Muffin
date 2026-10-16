@@ -156,7 +156,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   the test build. Details: native/README.md "Design".
 - **B43. The client layer is today's GDScript** (2026-10-16, Claude's call under B34). `client/` carries today's scripts, scenes and data at
   the same paths, so `res://` paths and class names keep working. Files that never touch a creature are copies kept identical to `godot/` by
-  `tools/rebuild/sync-code.mjs` (`client/code.list`), so a live bug fix reaches the rebuild with one command. Only the files at the seams (rites,
+  a sync tool in `tools/rebuild/` driven by a code list, so a live bug fix reaches the rebuild with one command. Only the files at the seams (rites,
   the director, bosses, views, the HUD's enemy reads: 67 today) are ported to the core; `client/ported.json` records the version of each one's
   original, and the hygiene check flags a ported file whose original changed since. The per-creature systems (`enemies/`, the per-creature parts
   of `sim/`, `next/thralls`, `next/corpses`, `next/status`, `next/affixes`, the entity views) are not copied: the core and the crowd view replace
