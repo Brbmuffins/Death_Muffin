@@ -215,8 +215,13 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   - [x] A guest's own account (B22, 2026-10-16): the host makes it a rewards member that rolls its own drops, it joins the host's backend party session with its own token
     (DmNextJoiner: its progression, saves, drop tape and bag), the host reads its build from the server (`remote_builds`, its runes too), its XP and drops are sent on, its belt
     drinks from its own bag; `client/tests/coop.gd` "the guest's own account". Ground drops between members start from the Reliquary's Drop: they come with the panels.
-- [ ] The panels on the core: the panel host (`DmGameUi`, `DmNextUiHost`), the Reliquary (bag, gear, runes), the Grimoire and loadout, Settings (the presets get their window),
+- [ ] The panels on the core (DECISIONS B46): the panel host (`DmGameUi`, `DmNextUiHost`), the Reliquary (bag, gear, runes), the Grimoire and loadout, Settings (the presets get their window),
   chat and the menu row; the Social window moves into the host.
+  - [ ] `DmNextUiHost` ported: the host contract on the core, the HUD's view-model and numbers from the core (what `DmNextHud` did), the bag from `DmNextLoot`, no counsel until tips.
+  - [ ] `DmGameUi` and `DmUiSocial` copied in; the game scene composes them as today (`_start_hud`); `DmNextHud` retires, its tests move to the adapter.
+  - [ ] The Reliquary on the server's bag (equip, sell, sort, learn, socket, drop: ground drops between members), the worn look and the runes reaching the caster on a change.
+  - [ ] The Grimoire's loadout on the hotbar; Settings applying presets, fps and window live; chat (party chat over the lobby); the menu row whole.
+  - [ ] The HUD's budget with the panels (0.5 ms, 150 draw calls; the benchmark's rounds) and a panels suite.
 - [ ] The Reaper (discipline 11) and its nine rites.
 - [ ] The other 12 areas as scenes (`client/tools/build_area.gd`, a lighting bake each through Helix's helper), their rosters baked, moving between areas.
 - [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes).

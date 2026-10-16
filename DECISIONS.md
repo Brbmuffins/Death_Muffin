@@ -174,6 +174,12 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   High and Ultra (Forward+ only), the crowd's shadow policy instead of a per-node caster budget, and FSR 1 instead of bilinear when Auto resolution lowers the 3D
   scale (sharper at no real cost). Brightness lifts stay today's until the look pass (B35's lighting calibration). The benchmark plays at the player's preset, as
   today's does, so Gate B compares like with like (`client/game/dm_graphics_preset.gd`, `client/next/perf/dm_next_perf.gd`, `client/tests/presets.gd`).
+- **B46. The panels are today's, on a ported adapter** (2026-10-16, Claude's call under B43). The rebuilt client's full UI is today's `DmGameUi` and every panel as
+  copies, on `DmNextUiHost` ported to the core (the host contract: character, bag, progression, settings, casts, the HUD's view-model), exactly as today's game
+  composes them. The adapter takes over what the rebuild's own HUD host (`DmNextHud`) did from the core (the view-model from the core's arrays, the numbers from its
+  events, the floats' caps) and the bag stays the loot node's (`DmNextLoot`), so value does not depend on the panels; `DmNextHud` retires. Chosen over keeping
+  `DmNextHud` and porting the panels onto it: every panel and the panel host stay copies (a live fix reaches the rebuild by the sync), and only one file carries
+  the difference. The HUD's budget (0.5 ms, 150 draw calls) holds the whole UI; measured with the benchmark's HUD on/off rounds.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking
