@@ -245,6 +245,14 @@
       "allow": [
         "tools/hygiene/**"
       ]
+    },
+    {
+      "id": "prepare-live-project",
+      "pattern": "prepare-live-project",
+      "reason": "the test channel publishes the rebuilt client (prepare-rebuild.sh) since Gate A passed (2026-10-16)",
+      "allow": [
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

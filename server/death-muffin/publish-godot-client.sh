@@ -21,6 +21,7 @@
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
 # Refuses a forward release while the live lobby differs from <rev>'s (run deploy-lobby.sh first; LOBBY_SKEW_OK=1 overrides).
 # Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE
+# PROJECT=client exports the rebuilt client (DECISIONS B41) instead of godot/ (the test channel: test-channel/publish-test-channel.sh).
 set -euo pipefail
 
 REV="${1:-}"
@@ -33,6 +34,7 @@ WORK="${WORK:-/home/ubuntu/death-muffin/deploy}"
 BASE_URL="${BASE_URL:-https://muffindevelopment.com/death-muffin/client}"
 KEEP_BUILDS="${KEEP_BUILDS:-2}"
 PRESET="Windows Desktop"
+PROJECT="${PROJECT:-godot}"   # the Godot project folder in the repository
 DEFAULT_MESSAGE="Online opens soon"
 
 command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 1; }
@@ -69,24 +71,25 @@ mkdir -p "$STAGE"
 
 echo "== exporting $SHA as $VERSION"
 git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1
-[ -f "$WT/godot/project.godot" ] || { echo "$SHA has no godot/project.godot" >&2; exit 1; }
-[ -f "$WT/godot/export_presets.cfg" ] || { echo "$SHA has no godot/export_presets.cfg (preset \"$PRESET\")" >&2; exit 1; }
+[ -f "$WT/$PROJECT/project.godot" ] || { echo "$SHA has no $PROJECT/project.godot" >&2; exit 1; }
+[ -f "$WT/$PROJECT/export_presets.cfg" ] || { echo "$SHA has no $PROJECT/export_presets.cfg (preset \"$PRESET\")" >&2; exit 1; }
 # The licensed flipbook sheets are not in git: copy them in before the import (fails if one is missing).
-[ ! -f "$WT/tools/godot/fx-sheets-sync.sh" ] || bash "$WT/tools/godot/fx-sheets-sync.sh" "$WT" >/dev/null
+[ "$PROJECT" != godot ] || [ ! -f "$WT/tools/godot/fx-sheets-sync.sh" ] || bash "$WT/tools/godot/fx-sheets-sync.sh" "$WT" >/dev/null   # the client takes its sheets in its PREPARE (sync-assets.mjs)
 # PREPARE=<script> (the test channel): adjusts the scratch worktree before the import, e.g. renderer and endpoints. Never the repository.
 [ -z "${PREPARE:-}" ] || bash "$PREPARE" "$WT" || { echo "prepare step failed: $PREPARE" >&2; exit 1; }
-"$GODOT" --headless --path "$WT/godot" --import >"$STAGE/import.log" 2>&1 || { tail -30 "$STAGE/import.log" >&2; echo "godot import failed" >&2; exit 1; }
-"$GODOT" --headless --path "$WT/godot" --export-release "$PRESET" "$STAGE/DeathMuffin.exe" >"$STAGE/export.log" 2>&1 || { tail -30 "$STAGE/export.log" >&2; echo "godot export failed" >&2; exit 1; }
+"$GODOT" --headless --path "$WT/$PROJECT" --import >"$STAGE/import.log" 2>&1 || { tail -30 "$STAGE/import.log" >&2; echo "godot import failed" >&2; exit 1; }
+"$GODOT" --headless --path "$WT/$PROJECT" --export-release "$PRESET" "$STAGE/DeathMuffin.exe" >"$STAGE/export.log" 2>&1 || { tail -30 "$STAGE/export.log" >&2; echo "godot export failed" >&2; exit 1; }
 rm -f "$STAGE/import.log" "$STAGE/export.log"
 if [ -f "$WT/tools/godot/assets-pack.sh" ]; then
   CACHE="$WORK/assets-cache"; mkdir -p "$CACHE"
-  FP=$( { (cd "$WT/godot" && find assets -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
-          (cd "$WT" && sha256sum godot/export_presets.cfg godot/project.godot tools/godot/assets-pack.sh tools/godot/pck_extract.py tools/godot/pck_pack.gd)
+  FP=$( { [ "$PROJECT" = godot ] || echo "$PROJECT"   # godot/'s fingerprint stays what it was, so the live pack is still reused
+          (cd "$WT/$PROJECT" && find assets -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
+          (cd "$WT" && sha256sum "$PROJECT/export_presets.cfg" "$PROJECT/project.godot" tools/godot/assets-pack.sh tools/godot/pck_extract.py tools/godot/pck_pack.gd)
           "$GODOT" --version; } | sha256sum | cut -c1-16)
   if [ -s "$CACHE/$FP.pck" ]; then echo "== assets pack: unchanged ($FP), reused"
   else
     echo "== assets pack: building ($FP)"
-    bash "$WT/tools/godot/assets-pack.sh" "$WT/godot" "$CACHE/$FP.pck.tmp" "$GODOT"
+    bash "$WT/tools/godot/assets-pack.sh" "$WT/$PROJECT" "$CACHE/$FP.pck.tmp" "$GODOT"
     mv -f "$CACHE/$FP.pck.tmp" "$CACHE/$FP.pck"
   fi
   cp "$CACHE/$FP.pck" "$STAGE/DeathMuffin.assets.pck"
