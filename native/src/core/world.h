@@ -1,18 +1,23 @@
 #pragma once
 // The core's tables and the enemy brain (native/README.md "Design"). Enemies live in spawn order: a slot only moves by stable
 // compaction when a dead body is removed, so slot order is spawn order and every scan keeps today's tie-breaks. The brain is a port of
-// godot/enemies (DmEnemy, its states and kinds) for the Graves roster; timers count in doubles the way the GDScript did.
+// godot/enemies (DmEnemy, its states and kinds) for the Graves roster; timers count in doubles the way the GDScript did. Thralls
+// (thralls.cpp) and corpses (corpses.cpp) live in the same World: heroes are enemies' targets first, then thralls in raise order.
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "body.h"
+#include "corpse.h"
 #include "events.h"
 #include "grid.h"
 #include "rng.h"
 #include "status.h"
+#include "thrall.h"
 
 namespace dm {
 
@@ -25,7 +30,7 @@ enum HitKind : int32_t { HK_MELEE = 0, HK_TOXIC, HK_BURN, HK_EMBER, HK_DUST, HK_
 // Telegraph and cue kinds (DmEnemy.telegraph / cue): append only.
 enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT };
 enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN };
-enum ZoneKind : int32_t { ZONE_DUST = 0 };
+enum ZoneKind : int32_t { ZONE_DUST = 0, ZONE_TOXIC };
 
 constexpr double TICK = 1.0 / 60.0;
 constexpr double RISE_S = 1.1;
@@ -37,7 +42,6 @@ constexpr double REPATH_S = 0.3, REPATH_MOVE_SQ = 1.0, DIRECT_RANGE_SQ = 9.0, SC
 constexpr double INCENSE_MOVE = 1.3, INCENSE_ATTACK = 1.25, PATH_DESIRED = 0.5;
 constexpr double KITE_BACK_OFF = 3.5, KITE_BACK_SPEED = 0.8, CONE_HALF_ANGLE = 30.0 * 3.14159265358979323846 / 180.0, CONE_PAD = 0.4;
 constexpr double ZONE_TARGET_PAD = 0.45, ZONE_TICK_S = 1.0, BURROW_STUCK_S = 0.8, DEFAULT_SLAM_R = 1.9;
-constexpr int PATH_MAX = 24;
 
 struct Tuning {  // data/content/enemies.json blocks
 	double elite_hp = 3.6, elite_damage = 1.5, elite_windup = 0.85, elite_cooldown = 0.8, elite_radius = 1.25;
@@ -46,6 +50,33 @@ struct Tuning {  // data/content/enemies.json blocks
 	double burrow_erupt_s_graves = 1.0, burrow_erupt_s = 0.8, burrow_dig_s = 0.8, burrow_dig_at = 0.5, burrow_travel = 8.0;
 	int32_t burrow_max_per_target = 3;
 	double frenzy_at = 0.5;
+	double elite_scale = 1.35;  // ELITE.scale: an elite's node scale, which its corpse carries
+};
+
+// Thralls, corpses and the toxic pool. Numbers come from data (World::load in DmCore): content/{abilities,fen,statuses,gameplay_legendary,
+// runes}.json, combat/enemies.json, and the constants of godot/sim/sim_consts.gd, dm_corpse_field.gd and dm_thrall.gd. The defaults are
+// today's values so a core that loads nothing still plays; core_thralls.gd asserts they equal what the data says.
+struct LegionTuning {
+	// DmSimConsts
+	double corpse_lifetime = 26.0, toxic_rupture = 5.0, thrall_leash = 13.0, thrall_teleport = 24.0, thrall_rise = 0.9;
+	double follow_arrive = 0.12, follow_seat_moving = 0.3, follow_catchup = 5.0;
+	int32_t max_corpses = 45;
+	// DmCorpseField
+	double extra_ring = 1.6, fallback_pick_range = 7.0, toxic_r = 2.4, toxic_s = 5.0, toxic_tick = 0.4, toxic_dmg = 6.0;
+	// DmThrall
+	double engage_range = 10.0, corpse_s = 1.4, weight_shield = 0.55, weight_other = 1.1;
+	// abilities.json RALLY
+	double rally_damage = 1.4, rally_attack = 1.3, rally_heal = 0.2, rally_s = 6.0, rally_bonus_s = 2.0;
+	// fen.json HAG_HEX
+	double hag_thrall_damage = 0.7;
+	// statuses.json PLAGUE_BURST
+	double plague_radius = 2.6, plague_damage = 2.5, plague_pool_radius = 2.4, plague_pool_s = 5.0, plague_pool_dps = 0.35;
+	// gameplay_legendary.json LEGEND
+	double death_burst_r = 3.0;
+	// runes.json RUNE_TUNING.colossus
+	double colossus_cleave_frac = 0.6, colossus_cleave_r = 2.4, colossus_slots = 2.0;
+	// combat/enemies.json damage_scale
+	double damage_scale_base = 1.0, damage_scale_per_level = 0.15;
 };
 
 struct EnemyDef {
@@ -53,36 +84,43 @@ struct EnemyDef {
 	double hp = 1, damage = 1, speed = 1, radius = 0.45;
 	double attack_range = 1.3, windup_s = 0.4, cooldown_s = 1.3, scale = 1, hit_run = 0, flying = 0, slam_r = DEFAULT_SLAM_R;
 	int32_t behavior = B_MELEE, blow = BLOW_MELEE, hit_kind = HK_MELEE;
+	int32_t corpse = CK_NORMAL, death_corpses = 1;  // def "corpse" kind, "deathCorpses" (extra risen corpses on a ring)
 	bool burrow = false, frenzy = false;
 };
 
-struct Enemy {
-	int32_t id = 0, def = 0, level = 1, area = 0, state = IDLE, last_source = 0, target = 0, phase = 0;
+struct Enemy : Body {
+	int32_t def = 0, level = 1, area = 0, state = IDLE, last_source = 0, target = 0, phase = 0;
 	bool elite = false, in_graves = true, dug_in = false;
 	float x = 0, z = 0, yaw = 0, home_x = 0, home_z = 0, aim_x = 0, aim_z = 0, last_x = 0, last_z = 0;
-	double hp = 1, max_hp = 1, damage = 1, speed = 1, radius = 0.45, attack_range = 1.3, windup_s = 0.4, cooldown_s = 1.3;
+	double damage = 1, speed = 1, radius = 0.45, attack_range = 1.3, windup_s = 0.4, cooldown_s = 1.3;
 	double attack_cd = 0, state_t = 0, flank_side = 1, scan_t = 0, repath_t = 0, stagger_t = 0, wander_heading = 0;
-	double hurt_s = HURT_S, erupt_s = 1.0, speed_mult = 1, attack_rate_mult = 1, incense_t = 0, taken_mult = 1;
+	double hurt_s = HURT_S, erupt_s = 1.0, incense_t = 0;
 	double want_vx = 0, want_vz = 0, ground_speed = 0, burrow_left = std::numeric_limits<double>::infinity(), stuck_t = 0;
 	bool has_nav_goal = false;
 	float nav_gx = 0, nav_gz = 0;
 	int32_t path_len = 0, path_i = 0;
 	float path[PATH_MAX * 2] = {};
 	Rng rng;
-	StatusSet st;
 };
 
 struct External {  // a hero or a boss: GDScript writes it every tick
-	int32_t id = 0, kind = 0;  // kind 0 hero, 1 boss
+	int32_t id = 0, kind = 0;  // kind 0 hero, 1 boss. A boss counts as a target for thralls while alive (false while it cannot be hurt)
 	float x = 0, z = 0;
 	double radius = 0.4, weight = 1.0;
 	bool alive = true;
 };
 
-struct Zone {  // a hostile ground zone (DmHostileZone): pulses dps x 1 s at every target within radius + 0.45
+// Something an enemy can aim at: a hero, or a living thrall (DmEnemy.TARGET_GROUP "dm_target": heroes first, then thralls in raise order).
+struct Tgt {
+	int32_t id = 0;
+	float x = 0, z = 0;
+	double radius = 0.4, weight = 1.0;
+};
+
+struct Zone {  // a hostile ground zone (DmHostileZone): pulses dps x period at every target within radius + 0.45
 	int32_t id = 0, kind = ZONE_DUST, source = 0, hit_kind = HK_DUST;
 	float x = 0, z = 0;
-	double radius = 2, lifetime = 1, dps = 1, age = 0, tick = -1;
+	double radius = 2, lifetime = 1, dps = 1, age = 0, tick = -1, period = ZONE_TICK_S;
 };
 
 // Path queries go through this hook (the Godot navigation server in DmCore; straight lines when unset, as in tests).
@@ -98,10 +136,11 @@ struct World {
 	double clock = 0;
 	bool wander_enabled = true;  // DmEnemy.wander_enabled (tests turn it off)
 	Tuning tun;
+	LegionTuning legion;
 	NavHook nav;
 	std::vector<EnemyDef> defs;
 	std::vector<StatusRule> status_rules;
-	int32_t st_stun = -1, st_frenzy = -1, st_withered = -1;
+	int32_t st_stun = -1, st_frenzy = -1, st_withered = -1, st_chill = -1, st_hex = -1, st_barrier = -1;
 	std::vector<int32_t> st_cleared;  // ids a ghoul's dig-in clears (DmStatusSet.CLEARED)
 	std::unordered_map<std::string, int32_t> def_index;
 	std::vector<std::string> areas;
@@ -116,17 +155,65 @@ struct World {
 	std::vector<int32_t> scratch;
 	std::vector<float> gx, gz;  // grid input
 
+	// Thralls, in raise order (DmThrallHost._list order; dead bodies stay 1.4 s, state DEAD).
+	std::vector<Thrall> thralls;
+	std::unordered_map<int32_t, int32_t> thrall_slot;  // id -> slot
+	std::vector<int32_t> legion_owner;                 // per owner: the Legion of the Unburied burst fraction (DmThrallHost.legend)
+	std::vector<double> legion_burst;
+	std::vector<int32_t> crumbled_out;                 // thralls the last raise_thrall made room by crumbling
+	std::vector<int32_t> room_scratch;
+	// Corpses, oldest first (DmCorpseField.corpses in insertion order). Their clock is their own: it ticks in the corpse phase of step().
+	std::vector<Corpse> corpses;
+	int32_t next_corpse_id = 1;
+	double corpse_time = 0, corpse_next_due = std::numeric_limits<double>::infinity(), corpse_life_mult = 1.0;
+	std::vector<std::string> reasons;      // corpse reasons by code (CorpseReason first, then interned)
+	std::vector<int32_t> area_levels;      // DmCorpseField.area_level per area id; today nothing sets it, so the toxic pool hurts as level 1
+	std::vector<int32_t> id_scratch;
+	std::vector<double> sep_scratch;  // thrall separation: pushed x, z per thrall
+	mutable std::vector<std::pair<double, int32_t>> hit_scratch;  // corpse queries: squared distance, id
+
+	World();
 	int32_t area_id(const std::string &p_area);
 	int32_t spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising);
 	// Damage from a cast, a thrall, a zone or a boss: a kill resolves at once (combat map section 7). Returns the amount dealt.
 	double damage_enemy(int32_t p_slot, double p_amount, int32_t p_source, bool p_allow_stagger, bool &r_killed);
 	void stun(int32_t p_slot, double p_seconds);
 	int32_t status_id(const std::string &p_name) const;
-	// DmStatusSet.apply on an enemy. `cap` < 0 = the rule's (stack cap or barrier cap), `duration` < 0 = the rule's.
-	void apply_status(int32_t p_slot, int32_t p_status, int32_t p_source, double p_stacks, double p_duration, double p_dps, double p_cap, double p_amount);
-	bool remove_status(int32_t p_slot, int32_t p_status);
+	// DmStatusSet.apply on an enemy or a thrall. `cap` < 0 = the rule's (stack cap or barrier cap), `duration` < 0 = the rule's.
+	void apply_status(Body &b, int32_t p_status, int32_t p_source, double p_stacks, double p_duration, double p_dps, double p_cap, double p_amount);
+	bool remove_status(Body &b, int32_t p_status);
+	Body *body(int32_t p_id);  // an enemy or a thrall by id, or null
+	const Body *body(int32_t p_id) const;
 	void step(double p_dt);
 	void enemies_in_radius(float p_x, float p_z, float p_r, std::vector<int32_t> &out);
+	const External *find_external(int32_t p_id) const;
+
+	// ---- thralls (thralls.cpp): the brain of DmThrall and the host parts of DmThrallHost
+	// Raises a thrall for `owner` at (x, z): makes room under `cap` (< 0 = no cap) by crumbling the oldest ordinary one first, a Colossus last,
+	// after a new Colossus replaced the old one. Returns the id, or 0 when the owner is missing or dead.
+	int32_t raise_thrall(const ThrallSpec &p_spec, int32_t p_owner, float p_x, float p_z, float p_yaw, double p_cap);
+	bool damage_thrall(int32_t p_slot, double p_amount, int32_t p_source, bool &r_killed);
+	void kill_thrall(int32_t p_slot, int32_t p_reason, int32_t p_source);
+	void rally_thralls(int32_t p_owner, double p_seconds, int32_t p_focus);
+	void rally_thrall(Thrall &t, double p_seconds, int32_t p_focus);
+	void stun_thrall(Thrall &t, double p_seconds);
+	void recall_thralls(int32_t p_owner);
+	void set_legion_burst(int32_t p_owner, double p_fraction);
+	int32_t thrall_count(int32_t p_owner) const;  // living (rising ones too); owner 0 = everyone
+	double thrall_places(int32_t p_owner) const;  // legion places used (DmThrallHost.places_used)
+	double thrall_weight(int32_t p_kind) const { return p_kind == TK_COLOSSUS ? legion.colossus_slots : 1.0; }  // DmThralls.weight
+	double thrall_target_weight(const Thrall &t) const { return t.kind == TK_SHIELDBEARER ? legion.weight_shield : legion.weight_other; }
+	void thralls_in_radius(float p_x, float p_z, float p_r, int32_t p_owner, std::vector<int32_t> &out) const;
+
+	// ---- corpses (corpses.cpp): DmCorpseField's host logic
+	int32_t add_corpse(double p_x, double p_z, int32_t p_kind, int32_t p_def, bool p_elite, double p_facing, double p_scale, int32_t p_area);
+	bool consume_corpse(int32_t p_id, int32_t p_by, int32_t p_reason);
+	int32_t pick_corpse(float p_ax, float p_az, double p_pick_r, double p_max_range, float p_fx, float p_fz, int32_t p_area) const;  // area < 0 = any
+	void corpses_in_radius(float p_x, float p_z, double p_r, int32_t p_area, std::vector<int32_t> &out) const;  // nearest first, id breaks ties
+	int32_t corpse_index(int32_t p_id) const;
+	int32_t reason_id(const std::string &p_reason);
+	int32_t area_level(int32_t p_area) const { return p_area >= 0 && p_area < int32_t(area_levels.size()) ? area_levels[p_area] : 1; }
+	double damage_scale(double p_level) const { return legion.damage_scale_base + legion.damage_scale_per_level * (p_level - 1.0); }  // DmEnemyStats.damage_scale
 
 private:
 	void change(int32_t p_slot, int32_t p_next);
@@ -138,14 +225,36 @@ private:
 	void step_zones(double p_dt);
 	void remove_dead_bodies();
 	void kill(int32_t p_slot, int32_t p_source);
-	void advance_statuses(int32_t p_slot, double p_dt);
-	void step_statuses(int32_t p_slot, double p_dt);
-	void statuses_changed(Enemy &e);
+	// statuses on any body (DmStatusSet)
+	void advance_statuses(Body &b, double p_dt);
+	void step_statuses(Body &b, double p_dt);
+	void statuses_changed(Body &b);
+	void body_died_statuses(Body &b);
+	double absorb(Body &b, double p_amount);
+	bool deal_dot(Body &b, double p_amount, int32_t p_source, bool &r_killed);
+	void stun_body(Body &b, double p_seconds);
+	// targets: heroes (kind 0 externals) then living thralls in raise order
+	bool target_at(int32_t p_id, Tgt &r_target) const;
+	template <class F>
+	void each_target(F &&f) const {
+		for (const External &x : externals) {
+			if (x.alive && x.kind == 0) {
+				f(Tgt{ x.id, x.x, x.z, x.radius, x.weight });
+			}
+		}
+		for (const Thrall &t : thralls) {
+			if (t.alive_target()) {
+				f(Tgt{ t.id, t.x, t.z, t.radius, thrall_target_weight(t) });
+			}
+		}
+	}
 	// brain helpers (DmEnemy)
 	bool scan_due(Enemy &e, double p_dt);
 	int32_t find_target(const Enemy &e, double p_range) const;
-	const External *target_ext(int32_t p_id) const;
-	bool target_valid(int32_t p_id) const { return target_ext(p_id) != nullptr; }
+	bool target_valid(int32_t p_id) const {
+		Tgt t;
+		return target_at(p_id, t);
+	}
 	void stop(Enemy &e);
 	void steer_to(Enemy &e, float p_gx, float p_gz, double p_mult, double p_dt);
 	void move_straight(Enemy &e, float p_gx, float p_gz, double p_speed);
@@ -154,12 +263,40 @@ private:
 	void begin_attack(Enemy &e);
 	void strike(Enemy &e);
 	void hit_target(Enemy &e, int32_t p_target, double p_damage, int32_t p_kind);
+	void hit_id(int32_t p_source, int32_t p_target, double p_damage, int32_t p_kind);  // a blow on a hero (event) or a thrall (applied here)
 	bool hittable(const Enemy &e) const { return e.state != BURROW && e.state != ERUPT; }
 	int32_t post_attack_state(const Enemy &e) const;
 	static double flat_dist(float ax, float az, float bx, float bz) {
 		const float dx = bx - ax, dz = bz - az;
 		return std::sqrt(double(dx) * dx + double(dz) * dz);
 	}
+	// thralls (thralls.cpp)
+	void separate_thralls();
+	void step_thralls(double p_dt);
+	void step_thrall(int32_t p_slot, double p_dt);
+	void think_thrall(Thrall &t, const External &own, double p_dt);
+	bool thrall_target_ok(const Thrall &t, float p_opx, float p_opz) const;
+	int32_t scan_thrall(const Thrall &t, float p_opx, float p_opz) const;
+	bool locate_enemy(int32_t p_id, float &r_x, float &r_z, double &r_radius, double &r_edge) const;  // enemy or boss position, radius and boss edge
+	void engage_thrall(Thrall &t, double p_dt);
+	void follow_thrall(Thrall &t, float p_opx, float p_opz, double p_dt);
+	void steer_thrall(Thrall &t, float p_gx, float p_gz, double p_mult, double p_dt);
+	void face_thrall(Thrall &t, float p_px, float p_pz, double p_dt);
+	void move_thrall(Thrall &t, double p_dt);
+	void swing_thrall(Thrall &t);
+	void thrall_hit(Thrall &t, int32_t p_target, double p_damage);
+	void cleave_thrall(Thrall &t, int32_t p_main, double p_damage);
+	void burst_thrall(Thrall &t, double p_radius, double p_damage);
+	void set_thrall_state(Thrall &t, int32_t p_state);
+	void reform_thralls(int32_t p_owner);
+	int32_t next_formation_slot(int32_t p_owner) const;
+	void make_room(int32_t p_owner, double p_cap, double p_weight);
+	void remove_dead_thralls();
+	// corpses (corpses.cpp)
+	void lay_corpses(const Enemy &e);
+	void step_corpses(double p_dt);
+	void remove_corpse(int32_t p_index, int32_t p_reason);
+	void rupture_corpse(const Corpse &c);
 };
 
 } // namespace dm

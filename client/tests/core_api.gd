@@ -11,6 +11,7 @@ const EV_STATE := 2
 const EV_DAMAGED := 3
 const EV_DIED := 4
 const EV_REMOVED := 5
+const EV_CORPSE_ADDED := 18
 
 var fails := 0
 var checks := 0
@@ -78,13 +79,14 @@ func _init() -> void:
 	check(Array(c.enemies_in_radius(Vector2(0, 0), 2.0)) == [b], "a dead body leaves queries")
 	check(c.damage(a, 5.0, 7)["dealt"] == 0.0, "a dead body takes no damage")
 	var ev := events(c)
-	check(ev.size() == 5, "events: damaged, IDLE->HURT (stagger), damaged, HURT->DEAD, died (got %d)" % ev.size())
-	if ev.size() == 5:
+	check(ev.size() == 6, "events: damaged, IDLE->HURT (stagger), damaged, HURT->DEAD, corpse added, died (got %d)" % ev.size())
+	if ev.size() == 6:
 		check(ev[0]["type"] == EV_DAMAGED and is_equal_approx(ev[0]["floats"][1], 38.0), "first damaged event carries hp 38")
 		check(ev[1]["type"] == EV_STATE and Array(ev[1]["ints"]) == [1, 4], "the first hit staggers an idle body")
 		check(ev[3]["type"] == EV_STATE and Array(ev[3]["ints"]) == [4, 6], "HURT -> DEAD state edge")
-		check(ev[4]["type"] == EV_DIED and Array(ev[4]["ints"]) == [0, 3, 0, 0, 7], "died: def, level, elite, area, source")
-		check(c.def_name(ev[4]["ints"][0]) == "robber" and c.area_name(ev[4]["ints"][3]) == "graves", "def and area names decode")
+		check(ev[4]["type"] == EV_CORPSE_ADDED and ev[4]["id"] == 1, "a def without a corpse key lays a normal corpse, before the died event")
+		check(ev[5]["type"] == EV_DIED and Array(ev[5]["ints"]) == [0, 3, 0, 0, 7], "died: def, level, elite, area, source")
+		check(c.def_name(ev[5]["ints"][0]) == "robber" and c.area_name(ev[5]["ints"][3]) == "graves", "def and area names decode")
 
 	# The rise: RISING for 1.1 s, then IDLE; the body lingers 4 s after death, counted until removed.
 	for i in 66:

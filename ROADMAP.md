@@ -81,8 +81,10 @@ server (B38).
   doubles, seeded randomness, grid, event buffer, damage with synchronous kills, radius queries, bulk reads; `client/tests/core_api.gd`.
   Thrall, corpse and status tables come with their items.
 - [ ] Core enemies: the Graves roster (robber, hound, penitent, sac, moth, bat, ghoul) with elites and affixes. The roster's brain,
-  elite stats and hostile zones are in the core (`client/tests/core_enemies.gd`); affixes come with statuses and corpses.
-- [ ] Core thralls, corpses and statuses. Statuses are in the core (`client/tests/core_status.gd`); thralls and corpses next.
+  elite stats and hostile zones are in the core (`client/tests/core_enemies.gd`); affixes are next, now that statuses and corpses are in the core.
+- [x] Core thralls, corpses and statuses: statuses (`client/tests/core_status.gd`), thralls with their brain, legion and enemy targeting
+  (`client/tests/core_thralls.gd`) and corpses with the toxic pool (`client/tests/core_corpses.gd`). Not in it: the Veilwalker's echo corpses,
+  views and co-op snapshots (their own items), and the rites that call it.
 - [ ] Client layer: login to the test server, character select, hero, camera, input, the Gravecaller's rites on the core, the
   Gravedigger King's brain as an external entity.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
@@ -115,6 +117,9 @@ combat simulation for now.
   legibility, the first hour (Next-step box, counsel tips, guide NPCs); the rejoin window (D13) and the party gaps (KNOWN-GAPS: Party and
   online).
 - **Ideas parked during the rebuild:** colours in the chat window (2026-10-13).
+- **Found during the rebuild, today's game ignores them** (kept as they are until Helix decides; the core already emits each one):
+  toxic corpse pools always hit as at level 1 (nothing sets the area level), a fallen plague bearer's pool never appears, and the
+  Mourning Bell wraith's ally heal never happens (both are signals nobody listens to).
 - **Phones:** on the Mobile renderer, following the phone rules kept since the rebuild (B40).
 
 ## Later

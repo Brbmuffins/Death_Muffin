@@ -26,6 +26,22 @@ enum EventType : int32_t {
 	EV_STATUS_DOT = 15,        // id = the body; ints: status, source, killed  floats: amount (after damage taken)
 	EV_STATUS_EXPIRED = 16,    // id = the body; ints: status
 	EV_WITHERED_DIED = 17,     // id = the body that died carrying Withered; ints: source  floats: stacks, dps (Contagion, Plague Choir)
+	// Corpses (DmCorpseField signals). The id is the corpse's own number, not an entity id.
+	EV_CORPSE_ADDED = 18,      // id = the corpse; ints: kind, enemy def (-1 = risen), elite, area   floats: x, z, facing, scale
+	EV_CORPSE_CONSUMED = 19,   // id = the corpse; ints: by (peer), reason   (fired before the gone event)
+	EV_CORPSE_GONE = 20,       // id = the corpse; ints: reason (expired, burst, consumed, litany, raised, devoured, or an interned one)
+	EV_CORPSE_RUPTURED = 21,   // id = the corpse; ints: zone id   floats: x, z, radius   (a toxic corpse burst into a pool; its EV_ZONE came just before)
+	// Thralls (DmThrall and DmThrallHost signals). id = the thrall.
+	EV_THRALL_RAISED = 22,     // ints: kind, owner, formation slot, empowered, champion   floats: x, z, yaw, max hp
+	EV_THRALL_STATE = 23,      // ints: prev, next  (ThrallState)
+	EV_THRALL_SWING = 24,      // ints: swing counter, target   floats: aim x, aim z, damage dealt (hit_dealt)
+	EV_THRALL_DAMAGED = 25,    // ints: source   floats: amount (after damage taken and barrier), hp
+	EV_THRALL_DIED = 26,       // ints: reason (DeathReason), owner, kind, source   floats: x, z
+	EV_THRALL_REMOVED = 27,    // the body is gone (1.4 s after death)
+	EV_THRALL_STATUS = 28,     // ints: target, status   floats: seconds   (status_applied: wraith chill, bone mage hex)
+	EV_THRALL_BELL_HEAL = 29,  // floats: x, z, fraction   (bell_heal: a Mourning Bell wraith hit heals allies near the point)
+	EV_THRALL_PLAGUE_POOL = 30,  // floats: x, z, radius, seconds, dps   (plague_pool: a plague bearer fell; today only a signal)
+	EV_THRALL_HIT_EXTERNAL = 31, // ints: target (a boss), thrall kind   floats: damage   (a thrall blow on a boss: GDScript routes it to the brain)
 };
 
 struct Events {

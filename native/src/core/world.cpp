@@ -7,17 +7,6 @@
 
 namespace dm {
 
-namespace {
-constexpr double PI = 3.14159265358979323846;
-constexpr double TAU = 2.0 * PI;
-
-double lerp_angle(double p_from, double p_to, double p_w) {  // Godot's lerp_angle
-	const double diff = std::fmod(p_to - p_from, TAU);
-	const double dist = std::fmod(2.0 * diff, TAU) - diff;
-	return p_from + dist * p_w;
-}
-} // namespace
-
 int32_t World::area_id(const std::string &p_area) {
 	auto it = area_index.find(p_area);
 	if (it != area_index.end()) {
@@ -33,6 +22,8 @@ int32_t World::spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level,
 	const EnemyDef &d = defs[p_def];
 	Enemy e;
 	e.id = next_id++;
+	e.slot = int32_t(enemies.size());
+	e.frenzy = d.frenzy;
 	e.rng.seed(seed, uint64_t(e.id));
 	e.def = p_def;
 	e.level = p_level;
@@ -111,9 +102,10 @@ void World::enter(Enemy &e, int32_t p_prev) {
 			break;
 		case ERUPT: {
 			stop(e);
-			const External *t = target_ext(e.target);
-			e.aim_x = t ? t->x : e.x;
-			e.aim_z = t ? t->z : e.z;
+			Tgt t;
+			const bool have = target_at(e.target, t);
+			e.aim_x = have ? t.x : e.x;
+			e.aim_z = have ? t.z : e.z;
 			e.erupt_s = (e.in_graves ? tun.burrow_erupt_s_graves : tun.burrow_erupt_s) * (e.elite ? tun.elite_windup : 1.0);
 			events.push(EV_TELEGRAPH, e.id, { TELL_ERUPT }, { e.x, e.z, e.aim_x, e.aim_z, float(tun.burrow_erupt_r), float(e.erupt_s) });
 			break;
@@ -144,11 +136,11 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 			return -1;
 		}
 		case CHASE: {  // dm_state_chase
-			const External *tg = target_ext(e.target);
-			if (!tg) {
+			Tgt tg;
+			if (!target_at(e.target, tg)) {
 				return flat_dist(e.x, e.z, e.home_x, e.home_z) > HOME_ARRIVE ? RETURN : IDLE;
 			}
-			double d = flat_dist(e.x, e.z, tg->x, tg->z);
+			double d = flat_dist(e.x, e.z, tg.x, tg.z);
 			if (d > AGGRO_RANGE * DROP_MULT || flat_dist(e.x, e.z, e.home_x, e.home_z) > LEASH) {
 				e.target = 0;
 				return RETURN;
@@ -157,11 +149,11 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 				const int32_t nearer = find_target(e, AGGRO_RANGE);
 				if (nearer != 0 && nearer != e.target) {
 					e.target = nearer;
-					tg = target_ext(nearer);
-					d = flat_dist(e.x, e.z, tg->x, tg->z);
+					target_at(nearer, tg);
+					d = flat_dist(e.x, e.z, tg.x, tg.z);
 				}
 			}
-			return engage(e, tg->x, tg->z, d, p_dt);
+			return engage(e, tg.x, tg.z, d, p_dt);
 		}
 		case ATTACK:  // dm_state_attack: wind-up, impact, 0.3 s recovery
 			if (e.phase == 0) {
@@ -183,28 +175,29 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 			steer_to(e, e.home_x, e.home_z, 1.0, p_dt);
 			return -1;
 		case FLEE: {  // dm_state_flee: run from the target for hit_run s, bent by the flank side
-			const External *tg = target_ext(e.target);
-			if (!tg) {
+			Tgt tg;
+			if (!target_at(e.target, tg)) {
 				return IDLE;
 			}
 			if (t >= defs[e.def].hit_run) {
 				return CHASE;
 			}
-			const double d = std::max(0.001, flat_dist(e.x, e.z, tg->x, tg->z));
-			const float px = float(-(tg->z - e.z) / d), pz = float((tg->x - e.x) / d);
-			steer_to(e, e.x * 2.0f - tg->x + px * 2.0f * float(e.flank_side), e.z * 2.0f - tg->z + pz * 2.0f * float(e.flank_side), 1.0, p_dt);
+			const double d = std::max(0.001, flat_dist(e.x, e.z, tg.x, tg.z));
+			const float px = float(-(tg.z - e.z) / d), pz = float((tg.x - e.x) / d);
+			steer_to(e, e.x * 2.0f - tg.x + px * 2.0f * float(e.flank_side), e.z * 2.0f - tg.z + pz * 2.0f * float(e.flank_side), 1.0, p_dt);
 			return -1;
 		}
 		case BURROW: {  // dm_state_burrow
-			const External *tg = target_ext(e.target);
-			if (!tg || scan_due(e, p_dt)) {
+			Tgt tg;
+			bool have = target_at(e.target, tg);
+			if (!have || scan_due(e, p_dt)) {
 				e.target = find_target(e, AGGRO_RANGE);
-				tg = target_ext(e.target);
+				have = target_at(e.target, tg);
 			}
-			if (!tg) {
+			if (!have) {
 				return -1;
 			}
-			const double d = flat_dist(e.x, e.z, tg->x, tg->z);
+			const double d = flat_dist(e.x, e.z, tg.x, tg.z);
 			if (d <= tun.burrow_surface_r || e.burrow_left <= 0.0) {
 				int32_t busy = 0;
 				for (const Enemy &o : enemies) {
@@ -221,9 +214,9 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 			if (e.stuck_t > BURROW_STUCK_S) {
 				return ERUPT;
 			}
-			move_straight(e, tg->x, tg->z, tun.burrow_speed);
+			move_straight(e, tg.x, tg.z, tun.burrow_speed);
 			e.burrow_left -= tun.burrow_speed * p_dt;
-			face_point(e, tg->x, tg->z, p_dt);
+			face_point(e, tg.x, tg.z, p_dt);
 			return -1;
 		}
 		case ERUPT: {  // dm_state_erupt
@@ -234,11 +227,11 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 			e.x = e.aim_x;
 			e.z = e.aim_z;
 			e.attack_cd = e.cooldown_s;
-			for (const External &x : externals) {
-				if (x.alive && x.kind == 0 && flat_dist(e.aim_x, e.aim_z, x.x, x.z) <= tun.burrow_erupt_r) {
+			each_target([&](const Tgt &x) {  // DmEnemy.targets_within: heroes, then thralls
+				if (flat_dist(e.aim_x, e.aim_z, x.x, x.z) <= tun.burrow_erupt_r) {
 					hit_target(e, x.id, dmg, defs[e.def].hit_kind);
 				}
-			}
+			});
 			events.push(EV_CUE, e.id, { CUE_ERUPT }, { e.aim_x, e.aim_z, float(tun.burrow_erupt_r) });
 			return EMERGE;
 		}
@@ -320,31 +313,53 @@ bool World::scan_due(Enemy &e, double p_dt) {
 	return true;
 }
 
-// DmEnemy.find_target: nearest alive target, squared flat distance times weight squared, strict <, heroes before thralls on ties.
+// DmEnemy.find_target: nearest alive target, squared flat distance times weight squared (thrall 1.1, shieldbearer 0.55, hero 1.0),
+// strict <, heroes before thralls in raise order on ties.
 int32_t World::find_target(const Enemy &e, double p_range) const {
 	int32_t best = 0;
 	double best_d = p_range * p_range;
-	for (const External &x : externals) {
-		if (!x.alive || x.kind != 0) {
-			continue;
-		}
+	each_target([&](const Tgt &x) {
 		const float dx = x.x - e.x, dz = x.z - e.z;
-		const double d = (double(dx) * dx + double(dz) * dz) * x.weight * x.weight;
+		double d = double(dx) * dx + double(dz) * dz;
+		d *= x.weight * x.weight;  // `d *= w * w`
 		if (d < best_d) {
 			best_d = d;
 			best = x.id;
 		}
-	}
+	});
 	return best;
 }
 
-const External *World::target_ext(int32_t p_id) const {
+// DmEnemy.target_valid for a target id: a hero in the externals, or a thrall that is neither rising nor dead.
+bool World::target_at(int32_t p_id, Tgt &r_target) const {
 	if (p_id == 0) {
-		return nullptr;
+		return false;
 	}
 	for (const External &x : externals) {
 		if (x.id == p_id) {
-			return (x.alive && x.kind == 0) ? &x : nullptr;
+			if (!x.alive || x.kind != 0) {
+				return false;
+			}
+			r_target = Tgt{ x.id, x.x, x.z, x.radius, x.weight };
+			return true;
+		}
+	}
+	const auto it = thrall_slot.find(p_id);
+	if (it == thrall_slot.end()) {
+		return false;
+	}
+	const Thrall &t = thralls[it->second];
+	if (!t.alive_target()) {
+		return false;
+	}
+	r_target = Tgt{ t.id, t.x, t.z, t.radius, thrall_target_weight(t) };
+	return true;
+}
+
+const External *World::find_external(int32_t p_id) const {
+	for (const External &x : externals) {
+		if (x.id == p_id) {
+			return &x;
 		}
 	}
 	return nullptr;
@@ -430,10 +445,10 @@ void World::wander(Enemy &e, double p_dt) {  // DmEnemy.wander
 // DmEnemy.begin_attack + announce_telegraph per kind.
 void World::begin_attack(Enemy &e) {
 	const EnemyDef &d = defs[e.def];
-	const External *tg = target_ext(e.target);
-	if (tg) {
-		e.aim_x = tg->x;
-		e.aim_z = tg->z;
+	Tgt tg;
+	if (target_at(e.target, tg)) {
+		e.aim_x = tg.x;
+		e.aim_z = tg.z;
 		face_point(e, e.aim_x, e.aim_z, 1.0);
 	} else {
 		e.aim_x = e.x + float(std::sin(double(e.yaw)));
@@ -460,9 +475,9 @@ void World::strike(Enemy &e) {
 	const EnemyDef &d = defs[e.def];
 	switch (d.blow) {
 		case BLOW_MELEE: {
-			const External *tg = target_ext(e.target);
-			if (tg && flat_dist(e.x, e.z, tg->x, tg->z) <= e.attack_range * STRIKE_REACH_MULT + STRIKE_REACH_PAD) {
-				hit_target(e, tg->id, e.damage, d.hit_kind);
+			Tgt tg;
+			if (target_at(e.target, tg) && flat_dist(e.x, e.z, tg.x, tg.z) <= e.attack_range * STRIKE_REACH_MULT + STRIKE_REACH_PAD) {
+				hit_target(e, tg.id, e.damage, d.hit_kind);
 			}
 			break;
 		}
@@ -475,27 +490,24 @@ void World::strike(Enemy &e) {
 				ln = 1.0;
 			}
 			const double reach = e.attack_range + CONE_PAD, cos_lim = std::cos(CONE_HALF_ANGLE);
-			for (const External &x : externals) {
-				if (!x.alive || x.kind != 0) {
-					continue;
-				}
+			each_target([&](const Tgt &x) {  // DmEnemy.targets_within(reach), then the angle
 				const float vx = x.x - e.x, vz = x.z - e.z;
 				const double dd = std::sqrt(double(vx) * vx + double(vz) * vz);
 				if (dd > reach) {
-					continue;
+					return;
 				}
 				if (dd < 0.001 || (double(vx) * dx + double(vz) * dz) / (dd * ln) > cos_lim) {
 					hit_target(e, x.id, e.damage, d.hit_kind);
 				}
-			}
+			});
 			break;
 		}
 		case BLOW_DUST: {
-			for (const External &x : externals) {
-				if (x.alive && x.kind == 0 && flat_dist(e.aim_x, e.aim_z, x.x, x.z) <= tun.dust_radius) {
+			each_target([&](const Tgt &x) {
+				if (flat_dist(e.aim_x, e.aim_z, x.x, x.z) <= tun.dust_radius) {
 					hit_target(e, x.id, e.damage, HK_DUST);
 				}
-			}
+			});
 			Zone z;
 			z.id = next_id++;
 			z.kind = ZONE_DUST;
@@ -511,11 +523,11 @@ void World::strike(Enemy &e) {
 			break;
 		}
 		case BLOW_SLAM: {
-			for (const External &x : externals) {
-				if (x.alive && x.kind == 0 && flat_dist(e.aim_x, e.aim_z, x.x, x.z) <= d.slam_r) {
+			each_target([&](const Tgt &x) {
+				if (flat_dist(e.aim_x, e.aim_z, x.x, x.z) <= d.slam_r) {
 					hit_target(e, x.id, e.damage, d.hit_kind);
 				}
-			}
+			});
 			events.push(EV_CUE, e.id, { CUE_SLAM }, { e.aim_x, e.aim_z, float(d.slam_r) });
 			break;
 		}
@@ -525,7 +537,18 @@ void World::strike(Enemy &e) {
 }
 
 void World::hit_target(Enemy &e, int32_t p_target, double p_damage, int32_t p_kind) {
-	events.push(EV_TARGET_HIT, e.id, { p_target, p_kind }, { float(p_damage) });
+	hit_id(e.id, p_target, p_damage, p_kind);
+}
+
+// DmEnemy.deliver: a hero's blow is an event for GDScript to apply; a thrall takes it here (dm_take_enemy_hit -> take_damage).
+void World::hit_id(int32_t p_source, int32_t p_target, double p_damage, int32_t p_kind) {
+	const auto it = thrall_slot.find(p_target);
+	if (it != thrall_slot.end()) {
+		bool killed = false;
+		damage_thrall(it->second, p_damage, p_source, killed);
+		return;
+	}
+	events.push(EV_TARGET_HIT, p_source, { p_target, p_kind }, { float(p_damage) });
 }
 
 // ---------------------------------------------------------------------------------------------------------------- damage
@@ -573,20 +596,16 @@ void World::stun(int32_t p_slot, double p_seconds) {  // DmEnemy.stun: a hard in
 	change(p_slot, HURT);
 }
 
+// DmEnemy.take_damage -> sm.change(DEAD), then the listeners of `died` in today's order: director, affixes, status set, corpse field, rewards.
+// The director and affixes are not in the core yet; the rewards are GDScript's, from the event.
 void World::kill(int32_t p_slot, int32_t p_source) {
 	Enemy &e = enemies[p_slot];
 	e.hp = 0.0;
+	e.dead = true;
 	change(p_slot, DEAD);
 	Enemy &k = enemies[p_slot];
-	// DmStatusSet._on_died: report Withered (Contagion, Plague Choir spread), then clear.
-	const int32_t w = st_withered >= 0 ? k.st.find(st_withered) : -1;
-	if (w >= 0) {
-		events.push(EV_WITHERED_DIED, k.id, { k.st.rec[w].src }, { float(k.st.rec[w].stk), float(k.st.rec[w].val) });
-	}
-	if (k.st.n > 0) {
-		k.st.n = 0;
-		statuses_changed(k);
-	}
+	body_died_statuses(k);
+	lay_corpses(k);
 	events.push(EV_ENEMY_DIED, k.id, { k.def, k.level, k.elite ? 1 : 0, k.area, p_source }, { k.x, k.z });
 }
 
@@ -601,32 +620,89 @@ int32_t World::status_id(const std::string &p_name) const {
 	return -1;
 }
 
-void World::statuses_changed(Enemy &e) {
-	e.st.recompute(status_rules);
-	e.speed_mult = e.st.move;  // DmStatusSet owns these multipliers on its body
-	e.attack_rate_mult = e.st.atk;
-	e.taken_mult = e.st.taken;
-	events.push(EV_STATUS_CHANGED, e.id, {}, {});
+Body *World::body(int32_t p_id) {
+	const auto it = enemy_slot.find(p_id);
+	if (it != enemy_slot.end()) {
+		return &enemies[it->second];
+	}
+	const auto tt = thrall_slot.find(p_id);
+	return tt != thrall_slot.end() ? &thralls[tt->second] : nullptr;
 }
 
-void World::apply_status(int32_t p_slot, int32_t p_status, int32_t p_source, double p_stacks, double p_duration, double p_dps, double p_cap, double p_amount) {
-	Enemy &e = enemies[p_slot];
-	if (e.state == DEAD || p_status < 0 || p_status >= int32_t(status_rules.size())) {
+const Body *World::body(int32_t p_id) const {
+	return const_cast<World *>(this)->body(p_id);
+}
+
+void World::statuses_changed(Body &b) {
+	b.st.recompute(status_rules);
+	b.speed_mult = b.st.move;  // DmStatusSet owns these multipliers on its body
+	b.attack_rate_mult = b.st.atk;
+	b.taken_mult = b.st.taken;
+	events.push(EV_STATUS_CHANGED, b.id, {}, {});
+}
+
+// DmStatusSet._on_died: report Withered (Contagion, Plague Choir spread), then clear.
+void World::body_died_statuses(Body &b) {
+	const int32_t w = st_withered >= 0 ? b.st.find(st_withered) : -1;
+	if (w >= 0) {
+		events.push(EV_WITHERED_DIED, b.id, { b.st.rec[w].src }, { float(b.st.rec[w].stk), float(b.st.rec[w].val) });
+	}
+	if (b.st.n > 0) {
+		b.st.n = 0;
+		statuses_changed(b);
+	}
+}
+
+// DmStatusSet.absorb: a barrier soaks damage before health (thralls and heroes; DmEnemy.take_damage does not call it).
+double World::absorb(Body &b, double p_amount) {
+	const int32_t i = st_barrier >= 0 ? b.st.find(st_barrier) : -1;
+	if (i < 0) {
+		return p_amount;
+	}
+	StatusRec &r = b.st.rec[i];
+	const double a = std::min(r.val, p_amount);
+	r.val -= a;
+	if (r.val <= 0.0) {
+		remove_status(b, st_barrier);
+	}
+	return p_amount - a;
+}
+
+// The owner's stun(): an enemy flinches into HURT for the time, a thrall stops thinking for it.
+void World::stun_body(Body &b, double p_seconds) {
+	if (b.is_thrall) {
+		stun_thrall(thralls[b.slot], p_seconds);
+	} else {
+		stun(b.slot, p_seconds);
+	}
+}
+
+// DmStatusSet._deal(..., "dot"): the owner's take_damage(amount, source, false). True when it was applied.
+bool World::deal_dot(Body &b, double p_amount, int32_t p_source, bool &r_killed) {
+	r_killed = false;
+	if (b.is_thrall) {
+		return damage_thrall(b.slot, p_amount, p_source, r_killed);
+	}
+	return damage_enemy(b.slot, p_amount, p_source, false, r_killed) > 0.0;
+}
+
+void World::apply_status(Body &b, int32_t p_status, int32_t p_source, double p_stacks, double p_duration, double p_dps, double p_cap, double p_amount) {
+	if (b.dead || p_status < 0 || p_status >= int32_t(status_rules.size())) {
 		return;
 	}
 	const StatusRule &d = status_rules[p_status];
 	const double dur = p_duration >= 0.0 ? p_duration : d.dur;
-	int32_t i = e.st.find(p_status);
+	int32_t i = b.st.find(p_status);
 	const bool fresh = i < 0;
 	if (fresh) {
-		if (e.st.n >= STATUS_MAX) {
+		if (b.st.n >= STATUS_MAX) {
 			return;
 		}
-		i = e.st.n++;
-		e.st.rec[i] = StatusRec();
-		e.st.rec[i].id = p_status;
+		i = b.st.n++;
+		b.st.rec[i] = StatusRec();
+		b.st.rec[i].id = p_status;
 	}
-	StatusRec &r = e.st.rec[i];
+	StatusRec &r = b.st.rec[i];
 	const double old_rem = r.rem, old_stk = r.stk;
 	if (d.stack) {
 		r.stk = std::min(p_cap >= 0.0 ? p_cap : d.max, old_stk + p_stacks);
@@ -655,39 +731,37 @@ void World::apply_status(int32_t p_slot, int32_t p_status, int32_t p_source, dou
 	}
 	const double new_rem = r.rem;
 	if (fresh || r.stk != old_stk) {
-		statuses_changed(e);
+		statuses_changed(b);
 	}
 	if (p_status == st_stun && new_rem > old_rem) {
-		stun(p_slot, dur);
+		stun_body(b, dur);
 	}
 }
 
-bool World::remove_status(int32_t p_slot, int32_t p_status) {
-	Enemy &e = enemies[p_slot];
-	if (!e.st.erase(p_status)) {
+bool World::remove_status(Body &b, int32_t p_status) {
+	if (!b.st.erase(p_status)) {
 		return false;
 	}
-	statuses_changed(e);
+	statuses_changed(b);
 	return true;
 }
 
 // DmStatusSet.advance: one step per 0.1 s of accumulated time, the step's dt being the whole accumulator.
-void World::advance_statuses(int32_t p_slot, double p_dt) {
-	Enemy &e = enemies[p_slot];
-	if (e.st.n == 0 && !defs[e.def].frenzy) {
+void World::advance_statuses(Body &b, double p_dt) {
+	if (b.st.n == 0 && !b.frenzy) {
 		return;
 	}
-	e.st.acc += p_dt;
-	if (e.st.acc >= STATUS_TICK_S) {
-		const double dt = e.st.acc;
-		e.st.acc = 0.0;
-		step_statuses(p_slot, dt);
+	b.st.acc += p_dt;
+	if (b.st.acc >= STATUS_TICK_S) {
+		const double dt = b.st.acc;
+		b.st.acc = 0.0;
+		step_statuses(b, dt);
 	}
 }
 
 // DmStatusSet._step
-void World::step_statuses(int32_t p_slot, double p_dt) {
-	StatusSet &s = enemies[p_slot].st;
+void World::step_statuses(Body &b, double p_dt) {
+	StatusSet &s = b.st;
 	s.flush_t += p_dt;
 	const bool flush = s.flush_t >= STATUS_FLUSH_S;
 	if (flush) {
@@ -712,52 +786,55 @@ void World::step_statuses(int32_t p_slot, double p_dt) {
 	}
 	bool dirty = false;
 	for (int32_t k = 0; k < nd; k++) {
-		const int32_t i = enemies[p_slot].st.find(dots[k]);
+		const int32_t i = b.st.find(dots[k]);
 		if (i < 0) {
 			continue;  // the body died during an earlier lump and cleared the set
 		}
-		StatusRec &r = enemies[p_slot].st.rec[i];
+		StatusRec &r = b.st.rec[i];
 		const double amt = r.acc;
 		const int32_t src = r.src;
 		r.acc = 0.0;
-		if (amt > 0.0 && enemies[p_slot].state != DEAD) {
+		if (amt > 0.0 && !b.dead) {
 			bool killed = false;
-			if (damage_enemy(p_slot, amt, src, false, killed) > 0.0) {  // no stagger from a DoT; damage taken applies inside
-				events.push(EV_STATUS_DOT, enemies[p_slot].id, { dots[k], src, killed ? 1 : 0 }, { float(amt * enemies[p_slot].st.taken) });
+			if (deal_dot(b, amt, src, killed)) {  // no stagger from a DoT; damage taken applies inside
+				events.push(EV_STATUS_DOT, b.id, { dots[k], src, killed ? 1 : 0 }, { float(amt * b.st.taken) });
 			}
 		}
 	}
-	Enemy &e = enemies[p_slot];
 	for (int32_t k = 0; k < ng; k++) {
-		if (e.st.erase(gone[k])) {
+		if (b.st.erase(gone[k])) {
 			dirty = true;
-			events.push(EV_STATUS_EXPIRED, e.id, { gone[k] }, {});
+			events.push(EV_STATUS_EXPIRED, b.id, { gone[k] }, {});
 		}
 	}
-	if (defs[e.def].frenzy && st_frenzy >= 0 && e.state != DEAD) {  // Frenzy below FRENZY.atFrac of max health
-		const bool on = e.hp < e.max_hp * tun.frenzy_at;
-		if (on != (e.st.find(st_frenzy) >= 0)) {
-			if (on && e.st.n < STATUS_MAX) {
+	if (b.frenzy && st_frenzy >= 0 && !b.dead) {  // Frenzy below FRENZY.atFrac of max health
+		const bool on = b.hp < b.max_hp * tun.frenzy_at;
+		if (on != (b.st.find(st_frenzy) >= 0)) {
+			if (on && b.st.n < STATUS_MAX) {
 				StatusRec fr;
 				fr.id = st_frenzy;
 				fr.stk = 1.0;
 				fr.rem = STATUS_FOREVER;
-				e.st.rec[e.st.n++] = fr;
+				b.st.rec[b.st.n++] = fr;
 			} else {
-				e.st.erase(st_frenzy);
+				b.st.erase(st_frenzy);
 			}
 			dirty = true;
 		}
 	}
-	if (dirty && e.state != DEAD) {
-		statuses_changed(e);
+	if (dirty && !b.dead) {
+		statuses_changed(b);
 	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------- the tick
 
+// One 60 Hz tick in today's order (combat map section 1): the thrall host's separation (it runs with the heroes, first), the enemies in spawn
+// order (each followed by its statuses), the hostile zones, the corpses, then every thrall in raise order. Enemies therefore see the
+// positions thralls ended the last tick with, and a thrall can kill an enemy that already acted this tick.
 void World::step(double p_dt) {
 	clock += p_dt;
+	separate_thralls();
 	const int32_t n = int32_t(enemies.size());
 	for (int32_t i = 0; i < n; i++) {
 		Enemy &e = enemies[i];
@@ -779,7 +856,7 @@ void World::step(double p_dt) {
 			change(i, nxt);
 		}
 		if (enemies[i].state != DEAD) {
-			advance_statuses(i, p_dt);
+			advance_statuses(enemies[i], p_dt);
 		}
 	}
 	separate();
@@ -789,6 +866,8 @@ void World::step(double p_dt) {
 		}
 	}
 	step_zones(p_dt);
+	step_corpses(p_dt);
+	step_thralls(p_dt);
 	remove_dead_bodies();
 	grid_count = int32_t(enemies.size());
 	gx.resize(grid_count);
@@ -869,17 +948,20 @@ void World::step_zones(double p_dt) {  // DmHostileZone._physics_process
 			continue;
 		}
 		if (z.tick < 0.0) {
-			z.tick = ZONE_TICK_S;
+			z.tick = z.period;
 		}
 		z.tick -= p_dt;
 		if (z.tick <= 0.0) {
-			z.tick = ZONE_TICK_S;
+			z.tick = z.period;
 			const double r = z.radius + ZONE_TARGET_PAD;
-			for (const External &x : externals) {
-				if (x.alive && x.kind == 0 && flat_dist(z.x, z.z, x.x, x.z) <= r) {
-					events.push(EV_TARGET_HIT, z.source, { x.id, z.hit_kind }, { float(z.dps * ZONE_TICK_S) });
+			const double dmg = z.dps * z.period;
+			const int32_t zs = z.source, zk = z.hit_kind;
+			const float zx = z.x, zz = z.z;
+			each_target([&](const Tgt &x) {  // every dm_target in the zone: heroes, then thralls
+				if (flat_dist(zx, zz, x.x, x.z) <= r) {
+					hit_id(zs, x.id, dmg, zk);
 				}
-			}
+			});
 			events.push(EV_ZONE_PULSE, z.id, {}, {});
 		}
 		zones[w++] = z;
@@ -898,6 +980,7 @@ void World::remove_dead_bodies() {
 		}
 		if (w != r) {  // stable compaction keeps spawn order
 			enemies[w] = enemies[r];
+			enemies[w].slot = int32_t(w);
 			enemy_slot[enemies[w].id] = int32_t(w);
 		}
 		w++;
