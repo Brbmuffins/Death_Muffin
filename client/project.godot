@@ -1,7 +1,7 @@
 ; The rebuilt Death Muffin client (ROADMAP "Now: the rebuild", DECISIONS B34-B41). Its own Godot project next to the live one in godot/.
 ; [autoload], [display], [gui] and [physics] are merged by hand from godot/project.godot for the code copied from it (client/code.list): the
 ; autoloads of copied scripts, the display and theme settings the UI layout assumes, and the 60 Hz physics settings. The name, features,
-; renderer, layer names, main scene (the dev entry, until the front flow) and import defaults are this project's own.
+; renderer, layer names, main scene (the boot scene: login and character select against the test server) and import defaults are this project's own.
 
 config_version=5
 
@@ -9,7 +9,7 @@ config_version=5
 
 config/name="Death Muffin (rebuild)"
 config/features=PackedStringArray("4.7", "Forward Plus")
-run/main_scene="res://dev/dm_dev_entry.tscn"
+run/main_scene="res://main/main.tscn"
 
 [autoload]
 

@@ -6,7 +6,8 @@
 //
 // - client/code.list: one glob per line, relative to godot/ (# starts a comment); `!glob` leaves files out (the per-creature systems the core
 //   replaces). `*` stays inside a folder, `**` crosses folders, a folder name takes it whole. Code files only (CODE below): assets go through
-//   sync-assets.mjs, READMEs stay in godot/ (one home per fact). A script's or shader's `.uid` file follows it: `!file.gd` leaves out both.
+//   sync-assets.mjs, READMEs stay in godot/ (one home per fact). A script's or shader's `.uid` file follows it: `!file.gd` leaves out both, and
+//   a ported script's uid stays with the port.
 // - Copies keep their paths (godot/<p> -> client/<p>), so res:// paths, class names and script uids keep working. A copy is never edited in
 //   client/: change godot/ and sync, or port the file.
 // - Ported files are edited in client/ to run on the core. `--port <p>` marks one (or records again that its live original's current version is
@@ -123,7 +124,7 @@ const refused = [];
 const portsBehind = [];
 let same = 0;
 for (const rel of [...wanted].sort()) {
-  if (lock.ported[rel]) continue;
+  if (lock.ported[rel] || (rel.endsWith('.uid') && lock.ported[rel.slice(0, -4)])) continue;   // a port's uid travels with the port
   const to = path.join(dstRoot, rel);
   const buf = readFileSync(path.join(srcRoot, rel));
   const id = blobId(buf);

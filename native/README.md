@@ -212,6 +212,11 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
     ring (their defs are not on the core), the corpse rings and the toxic decal. An elite keeps its ground ring, following the drawn body. The sac's toxic pool has no visual of its own, as today.
   - The core does not report what an enemy does to a hero besides damage (the Frost wraith's chill, the Drowned Sexton's hook with its root and pull): `DmHeroBody.dm_enemy_effect` is kept for them and nothing calls it yet.
   - The game reads the core's constants from this project's `data/` and `sim/`; the constants of `dm_corpse_field.gd` and `dm_thrall.gd`, whose files are not here, stay the compiled-in defaults (equal, asserted by `core_thralls`).
+- **The front flow (`client/main`, `client/net`)**: login, register, the online gate and character select are today's code on the test server (`client/README.md` "The test server"). Not the same:
+  the select screen's Benchmark button only says the benchmark comes with the Full Party fight; there is no Log out or Switch character (the full HUD owns them), no automatic crash report and no
+  update notice; the lobby join and the party hand-over are gone; a bag or progression the server fails to give sends the player back to the login screen with the server's words (today the
+  game starts with an empty bag); the game starts only on the test server or the local mock. The hero is built from the server's bag and progression, read once at the start: nothing is saved or
+  refreshed during the run, and a hero of a discipline other than the Gravecaller has no model yet.
 - **Co-op messages:** one binary snapshot with every body, thralls included, at 20 Hz replaces today's dictionaries (enemies 6 to a packet at 20 Hz, thralls at 15 Hz plus a full
   reliable copy at 1 Hz). Values are quantized: positions to 1 cm, yaw to 1.4 degrees, health to 1/65535 of the maximum, time in state to 10 ms. The animation name is not sent
   (`anim` today): the crowd view picks clips from the state and the eased speed.

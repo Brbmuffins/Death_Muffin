@@ -1,12 +1,12 @@
 class_name DmDevEntry
 extends Node
-## The dev entry of the rebuilt client until the front flow arrives (ROADMAP: login and character select): starts the game scene (DmNextGame) OFFLINE in
-## the Hollow Graves with a dev character, the way today's `--dev-offline --class=2` does. It is the project's main scene (project.godot run/main_scene).
-## Nothing here reaches a server: the backend is the local mock (DmOffline.make_mock, its accounts in user://dm_dev_offline_db.json), and DmNextGame
-## refuses any api that has a base url.
+## The dev entry of the rebuilt client: starts the game scene (DmNextGame) OFFLINE in the Hollow Graves with a dev character, the way today's `--dev-offline --class=2` does,
+## and takes the options for a crowd or a screenshot. It is not the main scene (that is the boot, main/main.tscn: login and character select against the test server); run it as a scene.
+## Nothing here reaches a server: the backend is the local mock (DmOffline.make_mock, its accounts in user://dm_dev_offline_db.json), and DmNextGame refuses any api whose base url is not the test
+## server's. DmMain reads the same options for `-- --dev-offline` (DmDevEntry.options).
 ##
-##   godot --path client                                   # the Gravecaller (class 2), level 10, the minimal HUD, waves
-##   godot --path client -- --class=1 --seed=7             # after `--`: the options below
+##   godot --path client res://dev/dm_dev_entry.tscn                       # the Gravecaller (class 2), level 10, the minimal HUD, waves
+##   godot --path client res://dev/dm_dev_entry.tscn -- --class=1 --seed=7  # after `--`: the options below
 ##
 ## He fights with the rites of today's game (client/README.md "The Gravecaller's rites"): LMB walks, or attacks the enemy under the cursor with the primary (Bone Needle; hold to
 ## repeat, Shift+LMB casts in place), keys 1-4 are the kit's default loadout (Marrow Spear, Exhume, Miasma, Black Litany), RMB is Corpse Explosion and R the signature from level 10
@@ -45,7 +45,7 @@ func _ready() -> void:
 	game = load("res://next/next_game.tscn").instantiate()
 	game.name = "NextGame"
 	add_child(game)
-	var game_opts := {"offline": true, "name": "tester", "hud": "minimal", "waves": not bool(opts["no_waves"])}
+	var game_opts := {"name": "tester", "hud": "minimal", "waves": not bool(opts["no_waves"])}
 	if opts.has("seed"):
 		game_opts["seed"] = opts["seed"]
 	if opts.has("baked"):

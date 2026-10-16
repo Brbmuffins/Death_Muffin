@@ -7,6 +7,7 @@ Test build channel until then.
 - Renderer: Forward+ (`project.godot`), Compatibility only as the automatic fallback, the Mobile renderer for phones (B35). Textures also
   import in phone formats (B40).
 - Its own user:// folder (`config/name` "Death Muffin (rebuild)"), so it never shares saved logins or settings with the live game.
+- It talks to the **test server** only (DECISIONS B38), never the live one before launch day: [The test server](#the-test-server-login-and-character-select).
 - The combat core is a C++ GDExtension built from [native/](../native/README.md) into `bin/` (built files are not committed;
   `bin/dmcore.gdextension` is).
 - Crowds are drawn from baked vertex-animation textures, one MultiMesh per creature model and level of detail, driven by the combat core through `CrowdView`:
@@ -22,6 +23,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_view.gd    # the crowd's views against today's view code, and a Full Party (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/game_scene.gd     # the game scene on the core: 60 s of an offline run in the Graves (bakes into a scratch folder; add --fixed-fps 60 before --path to run it faster than real time)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rites.gd          # the Gravecaller's rites on the core: all 25 necromancer rites against today's rules, a fight (bakes into a scratch folder; 90 s of game time, --fixed-fps 60 makes it faster)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/front.gd   # boot, login, character select and the game scene with the chosen character on the mock; the API rule; the real test server's health (bakes into a scratch folder)
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the roster's robber and hound, the thralls) into client/crowd/baked (not committed)
 ```
 
@@ -46,7 +48,7 @@ uids keep working:
 - **`project.godot` is the client's own, not a copy.** From `godot/project.godot` it takes by hand what the copies need: the autoloads of copied
   scripts (`Packs`, `AudioDirector`, `Vfx`; not `Qa`, which is left out with its seam), the display and theme settings the UI layout assumes
   (1600x900 viewport, `canvas_items` stretch, `dm_theme.tres`) and the 60 Hz physics settings (3 steps per frame, physics interpolation). The
-  renderer, name, features, main scene (the dev entry), layer names and import defaults stay the client's. Input actions are registered at run time by the copied code, and
+  renderer, name, features, main scene (the boot, `main/main.tscn`), layer names and import defaults stay the client's. Input actions are registered at run time by the copied code, and
   the only `ProjectSettings` read, `application/config/version`, has a default.
 
 ### What is left out
@@ -59,22 +61,25 @@ uids keep working:
   Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; and the Gravecaller's rites (the caster, the module base, the legends, the
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites").
 - **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the party
-  (`DmNextFriends` reads the game scene's `party`: the friends and party panes, the social window, `game_ui/dm_game_ui.gd` and the front flow's entry `main/`).
+  (`DmNextFriends` reads the game scene's `party`: the friends and party panes, the social window and `game_ui/dm_game_ui.gd`).
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only), the HUD shell `next/next_hud.gd`,
   the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step, the belt and the progress node.
+- **Ported for the test server** (not seams): the boot `main/main.gd` and `main/main.tscn` (freed from the left-out list by the front flow's port), `net/dm_config.gd` and
+  `net/dm_http_transport.gd` (below).
 
 ## The game scene and the dev entry
 
-`next/next_game.tscn` (`DmNextGame`, a port of today's) is the game on the combat core: an **offline solo run in the Hollow Graves**. `dev/dm_dev_entry.tscn` is the
-project's main scene until the front flow arrives (ROADMAP: login and character select): it starts the scene with a dev character on the local mock backend, the way
-today's `--dev-offline --class=2` does. **Nothing here reaches a server**: the backend is `DmOffline.make_mock` (accounts in this project's own `user://dm_dev_offline_db.json`),
-and `DmNextGame.start` refuses any api that has a base url. The copied net config still points at the live API; no request is ever made from the dev entry.
+`next/next_game.tscn` (`DmNextGame`, a port of today's) is the game on the combat core: a **solo run in the Hollow Graves**, with the character the front flow chose on the test server
+(below) or, from `dev/dm_dev_entry.tscn`, a dev character on the local mock backend, the way today's `--dev-offline --class=2` does. **The dev entry reaches no server**: the backend is
+`DmOffline.make_mock` (accounts in this project's own `user://dm_dev_offline_db.json`) and has no base url. `DmNextGame.start` refuses any api whose base url is not the test server's.
 
 ```
 bash client/setup.sh                                   # once per checkout: builds the core, imports
 bash client/tools/bake_crowd.sh                        # once: bakes the robber, the hound and the thralls (without them nothing is drawn; the other defs borrow these)
-/home/ubuntu/tools/godot/godot --path client            # the dev entry: the Gravecaller at level 10, the minimal HUD, waves. He fights with the rites (controls below)
-/home/ubuntu/tools/godot/godot --path client -- --class=1 --seed=7 --crowd=70      # options after `--`: --class=N --level=N (default 10) --seed=N --no-waves --crowd=N (a first wave of N bodies 6 to 12 m around the hero) --baked=<dir> --shot=<png> [--shot-after=<game s>] (rendered runs only)
+/home/ubuntu/tools/godot/godot --path client            # the boot: login and character select on the TEST server, then the game (below)
+/home/ubuntu/tools/godot/godot --path client -- --dev-offline --class=1             # the same boot with the local mock backend and no network at all: straight into the game as `tester` (--seed=N --no-waves --baked=<dir> too)
+/home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn           # the dev entry: the Gravecaller at level 10, the minimal HUD, waves. He fights with the rites (controls below)
+/home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn -- --class=1 --seed=7 --crowd=70      # options after `--`: --class=N --level=N (default 10) --seed=N --no-waves --crowd=N (a first wave of N bodies 6 to 12 m around the hero) --baked=<dir> --shot=<png> [--shot-after=<game s>] (rendered runs only)
 ```
 
 **Controls of the dev entry** (today's input and hotbar code): **LMB** on the ground walks there, on an enemy walks into range and casts the primary (Bone Needle; hold to repeat, Shift+LMB casts in place);
@@ -97,7 +102,7 @@ roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`
 **input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
 wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
-Off in this step, each until its ROADMAP item: the front flow and `main/`, bosses, party and co-op, gathering, the Chapterhouse
+Off in this step, each until its ROADMAP item: bosses, party and co-op, gathering, the Chapterhouse
 (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves; `DmNextGame.rite_hit` carries every blow of a rite for them), the full HUD (only the orbs, area name and death veil;
 so no loadout panel, no floating damage numbers), Easy auto combat, the Reaper's rites, the graphics governor, Grave Surges. `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
@@ -123,6 +128,42 @@ What a rite uses where it used nodes (all on the caster `c`; the adapters belong
 Timers stay the caster's (`c.after(ms, fn)` on the body's clock, a physics tick). Events and fx are today's: `broadcast` -> `play` -> `DmRiteFx` through the copied `Vfx` and `AudioDirector`. The hero's own statuses stay
 `DmStatusSet`. The cast flow (owner, cooldown, essence and cast lock through `DmAbilities.cast_check / apply_cast_cost`, refund on a lost corpse race) is unchanged. `client/tests/rites.gd` casts every rite
 (table-driven against the copied rules code), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, and plays a fight; `native/README.md` "Differences from today's game" lists what differs.
+
+## The test server: login and character select
+
+`main/main.tscn` (`DmMain`, a port of today's) is the project's main scene. It is today's boot and front flow (login, register, the online gate, character select, the discipline switch,
+the saved login `user://dm_jwt.txt` in this project's own user folder), pointed at the **test server** (`server/death-muffin/test-server/README.md`: copies of the team's accounts, its own
+database and signing key, so nothing played here can touch a live character), then the ported game scene with the chosen character:
+
+```
+/home/ubuntu/tools/godot/godot --path client            # login (the team's accounts were copied to the test server) or register a throwaway account there; pick a discipline
+```
+
+- A character that already exists skips the select screen (today's `resume()`); one whose discipline is not playable goes to the discipline switch. The online gate reads the test channel's
+  manifest (`https://muffindevelopment.com/death-muffin/client-test/manifest.json`, its `online` block).
+- **The character's build comes from the server**, read-only, before the game starts (`DmMain.load_build`): the bag's rows (worn gear, set bonuses, the weapon line) and the progression (damage and
+  legion tier, boons, vows). `DmNextGame.build_for` builds the hero from them as today's does from the progress node and the bag, so the hero's health, spell power and loadout follow the worn gear.
+  A bag or progression the server fails to give sends the player back to the login screen with the server's words; nothing is written, created or imported.
+- Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
+  the login screen saying "Online opens soon", as today.
+- **Off until their items:** rewards and the kill ledger (no kill report), progress and bag saves, party, friends, chat, gathering, the Chapterhouse, the full HUD (so no Log out or Switch character:
+  close the game to sign in again), the benchmark (the select screen's button says it comes with the Full Party fight), the lobby join, the automatic crash report and the update notice. A hero of a
+  discipline other than the Gravecaller has no hero model yet (`client/assets.list` carries `hero_gravecaller` only) and the rites are not ported for any of them.
+
+### The API rule (DECISIONS B38)
+
+The rebuilt client **never talks to the live server before launch day.** Where it may talk is set in **one place**, `net/dm_config.gd` (a port of the live game's config), and enforced twice:
+- `DmConfig.API_BASE` is the test API (`https://muffindevelopment.com/death-muffin/test-api`), `SITE_BASE` the test channel's folder (`.../client-test/`, the manifest), `LOBBY_URL` empty (the test lobby comes with 2-player co-op). A dev run, a
+  test run and an exported build all read these constants: there is no publish-time swap to miss.
+- `DmHttpTransport.send` (the one door to the network, a port) refuses any URL `DmConfig.allows_url` does not accept: under the test API or the test channel's folder, nothing with a `/..` that a
+  server would resolve elsewhere. It logs an error and answers like an unreachable server. `DmNextGame.start` refuses any api whose base url is not the test API or empty (the local mock).
+- `client/tests/front.gd` fails if any of it moves: the constants are the test server's and not the live API, lobby or manifest (read from `godot/net/dm_config.gd`), the allow-list refuses the live
+  addresses and lookalikes, every request the flows made stayed on the test server, and a scan of every shipped file finds no address outside `net/dm_config.gd` and no live path anywhere.
+
+**Launch day flips it** (the day `client/` becomes the game, B38/B40): in one commit, set `API_BASE` to `https://muffindevelopment.com/death-muffin/api`, `SITE_BASE` to `https://muffindevelopment.com/death-muffin/`,
+`CLIENT_MANIFEST_URL` to `SITE_BASE + "client/manifest.json"` and `LOBBY_URL` to the live lobby (the values in `godot/net/dm_config.gd` that day). The allow-list is written in those constants, so it
+follows. Then change `tests/front.gd` to pin the live addresses instead (its `TEST_API` and `LIVE_API` constants and the "never the live API" checks). Until that commit the test fails on any live
+address; after it the same test pins the live ones.
 
 ## Assets
 

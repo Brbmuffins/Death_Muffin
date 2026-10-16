@@ -1,6 +1,7 @@
 class_name DmNextGame
 extends Node3D
-## The game scene on the combat core (the rebuilt client's DmNextGame; client/code.list "Ported"): an OFFLINE solo run in the Hollow Graves. It composes
+## The game scene on the combat core (the rebuilt client's DmNextGame; client/code.list "Ported"): a solo run in the Hollow Graves, with a character from the test
+## server (the front flow) or a dev character on the local mock. It composes
 ## child nodes and owns almost no logic:
 ##   Session (DmSession)   solo = OfflineMultiplayerPeer, the same code path as a party        World (DmNextWorld)  the area scene, its navigation map, its lights
 ##   Core    (DmCoreHost)  the one owner of the combat core and the crowd that draws it        Waves (DmWaveDirector)  waves, spawned through the core
@@ -17,10 +18,12 @@ extends Node3D
 ## Off in this step, each until its ROADMAP item: the login and front
 ## flow (`main/`), bosses (`bosses` stays null), party and co-op (the session is a 1-player host; no `Net`, `Party`, `Joiner`), gathering, the Chapterhouse
 ## (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (`rewards`, `progress`, `meta` stay null: no XP, loot or
-## saves), the full HUD (`ui_host`, `ui` stay null) and the graphics governor (`perf`). `start` refuses an online api: nothing here talks to a server.
+## saves), the full HUD (`ui_host`, `ui` stay null) and the graphics governor (`perf`). `start` refuses any api whose base url is not the TEST server's
+## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). The game
+## itself sends nothing in this step; it takes the character and its build from the front flow (`slots`, `local` below).
 ##
 ##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)
-## `opts`: offline (must stay true), name, visual (true), waves (true), hud ("minimal" = DmNextHud orbs, false = none), audio (true outside a headless
+## `opts`: name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud ("minimal" = DmNextHud orbs, false = none), audio (true outside a headless
 ## run: the music, ambience and footsteps), seed (the core's random seed; default from the clock), areas (["graves"]),
 ## data_dir (res://), baked_dir / assets_dir (where the baked crowd models are), peer (a MultiplayerPeer; default OfflineMultiplayerPeer).
 
@@ -31,7 +34,7 @@ signal hero_died(body: DmHeroBody)              ## host
 signal hero_respawned(body: DmHeroBody)         ## host
 signal hero_hit(enemy_id: int, kind: String, damage: float)   ## an enemy's blow reached the hero (before the body's own damage rules)
 signal rite_hit(rite: String, enemy_id: int, amount: float, crit: bool, killed: bool)   ## host: a rite's (or a Withered DoT's) blow on an enemy, from the local caster: the kill credit / rewards hook
-signal start_failed(reason: String)             ## `start` refused to run (an online api)
+signal start_failed(reason: String)             ## `start` refused to run (an api that is not the test server's)
 
 
 @onready var session: DmSession = $Session
@@ -54,8 +57,10 @@ var progress: Node = null
 var meta: Node = null
 var perf: Node = null
 var character: Dictionary = {}
-var api: Variant = null                         ## DmApi: the offline backend (DmOffline.make_api)
-var is_offline: bool = true
+var api: Variant = null                         ## DmApi: the test server's (the front flow) or the local mock (DmOffline.make_api)
+var is_offline: bool = true                     ## the api is the local mock (no base url)
+var server_slots: Array = []                    ## the character's bag rows as the server holds them (opts.slots): what `build_for` builds from
+var server_local: Dictionary = {}               ## its progression (opts.local)
 var area_id: String = ""
 var corpses: DmCoreCorpses:                     ## the corpse field as the rites see it (the core's: atomic consume, pick, in radius)
 	get: return core_host.corpses
@@ -82,10 +87,14 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	opts = opts_
 	character = character_
 	api = api_
-	if not bool(opts.get("offline", true)) or (api_ != null and String(api_.get("base_url")) != ""):
-		push_warning("DmNextGame: the game scene on the core plays offline only in this step (no request leaves the game)")
-		start_failed.emit("This game scene is offline only.")
+	var base_url := String(api_.get("base_url")) if api_ != null else ""
+	if not DmConfig.allows_api_base(base_url):
+		push_warning("DmNextGame: refused an api that is not the test server's (DECISIONS B38)")
+		start_failed.emit("This build plays on the test server only.")
 		return
+	is_offline = base_url == ""
+	server_slots = opts.get("slots", [])
+	server_local = opts.get("local", {})
 	_visual = bool(opts.get("visual", true))
 	DmSimData.ensure()
 	input.game = self
@@ -265,10 +274,13 @@ func rite_for_slot(slot: int) -> String:
 	return DmRiteHotbar.rite_for_slot(slot, b.family, b.discipline_id) if b != null else ""
 
 
-## A body's DmCharacterBuild: the character with no bag and no progression (offline, no saves in this step), so level-1 gear and the base mods.
+## A body's DmCharacterBuild. The local hero's is built from the bag and progression the server gave (`server_slots`, `server_local`: worn gear, set bonuses, tiers,
+## boons, vows, as today's build_for takes them from the progress node); anyone else's has no bag and no progression (no party in this step): level-1 gear, the base mods.
 func build_for(peer_id: int) -> Dictionary:
 	var b := body_of(peer_id)
 	var ch: Dictionary = b.character if b != null and not b.character.is_empty() else {"class_index": 0, "level": 1}
+	if peer_id == session.get_my_id():
+		return DmCharacterBuild.build(ch, server_slots, server_local)
 	return DmCharacterBuild.build(ch, [], {})
 
 

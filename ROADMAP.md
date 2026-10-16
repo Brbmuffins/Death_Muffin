@@ -102,8 +102,8 @@ server (B38).
   - [x] Code sync: today's scripts, scenes and data copied into `client/` by `tools/rebuild/sync-code.mjs`, the hygiene rules for copies and
     ports, and the project opening without errors with the per-creature systems left out (`client/tests/code_load.gd`).
   - [x] The game scene on the core: the area scene, the core and the crowd view, the hero, camera, input, and the director spawning through
-    the core. An offline solo run in the Hollow Graves: `DmCoreHost` owns the core and the crowd and turns the event buffer into signals, `dev/dm_dev_entry.tscn` runs it (the project's main scene
-    until the front flow), `client/tests/game_scene.gd` proves it (client/README.md "The game scene and the dev entry"). Off until their items: the rites (the hero cannot attack), bosses, party,
+    the core. A solo run in the Hollow Graves: `DmCoreHost` owns the core and the crowd and turns the event buffer into signals, `dev/dm_dev_entry.tscn` runs it offline,
+    `client/tests/game_scene.gd` proves it (client/README.md "The game scene and the dev entry"). Off until their items: the rites (the hero cannot attack), bosses, party,
     gathering, the Chapterhouse, rewards, the full HUD, Grave Surges. Not in the core yet: what an enemy does to a hero besides damage (chill, root, pull) and a call that removes a living body (a hero
     who stays away 15 s used to see the area's enemies freed).
   - [x] The Gravecaller's rites ported to the core: the caster, its module base, the legends, the registry and 24 of the necromancer's 25 rites (Veil Step is a copy) are today's GDScript calling the core synchronously, so a kill
@@ -111,7 +111,11 @@ server (B38).
     thralls. `client/tests/rites.gd` casts every rite against today's formulas, the synchronous kills, the input and a fight (client/README.md "The Gravecaller's rites"). Not in it, each its own item: the Reaper's nine rites (with the Reaper), Ossuary
     Wall as a solid wall for the core's enemies (the core's movement has no dynamic obstacle), bosses in the rites' queries (the Gravedigger King), Easy auto combat, the kill-credit consumers (`DmSessionRewards`; the game scene emits `rite_hit`), floating
     damage numbers, and the loadout, rune and weapon sockets (the full HUD and the bag). The rites' pictures have run headless only: their first look is on Helix's PC.
-  - [ ] Login to the test server and character select (today's front flow, pointed at the test API).
+  - [x] Login to the test server and character select (today's front flow, pointed at the test API): the boot (`main/main.tscn`, the project's main scene) runs today's login, online gate and
+    character select against the test server, then the game scene with the chosen character, its bag and its progression read from the server. The API base is the test API in one place
+    (`net/dm_config.gd`), enforced by the transport and the game scene and pinned by `client/tests/front.gd` (client/README.md "The test server"). Proved on the mock backend and against the
+    real test server's health and manifest; no real account was used (the team's first real login there is the check left for Helix). Off until their items: rewards and the kill ledger,
+    saves, party, friends, chat, gathering, the Chapterhouse, the full HUD (no Log out, no Switch character), the benchmark, the crash report; the other disciplines' hero models.
   - [ ] The Gravedigger King's brain as an external entity.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
 - [ ] 2-player co-op (the combat core's half is built: native/README.md "Co-op", `client/tests/core_coop.gd`):

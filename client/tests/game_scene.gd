@@ -12,7 +12,7 @@ extends SceneTree
 ##     events of the core's buffer that DmEnemyFx played (scripted: one of each, close to the hero);
 ##   - the order of a tick (session and director, then the core, then the crowd) and that the host takes the event buffer once;
 ##   - the hover pick finds the enemy under the cursor through the core;
-##   - the scene refuses an online api and no HTTP request node exists;
+##   - the scene refuses an api that is not the test server's and no HTTP request node exists;
 ##   - ZERO script errors or engine errors in the log (an OS Logger counts them; warnings are not errors).
 ## Prints INFO timings: the host's step, crowd sync and event dispatch per tick, and the crowd's draw per rendered frame, with about 70 enemies.
 ## Bakes the robber and the hound into a scratch folder first (about 20 s). Run: godot --headless --path client --script res://tests/game_scene.gd
@@ -107,18 +107,19 @@ func _initialize() -> void:
 
 # ------------------------------------------------------------------------------------------------------------------ the scene
 
-## A scene started with an api that has a server address refuses to run, and its transport is never called.
+## A scene started with an api whose server address is not the test server's refuses to run, and its transport is never called (the live API and the test API: tests/front.gd).
 func refuses_online(character: Dictionary) -> void:
 	var called := [0]
 	var online := DmApi.new(func(_req: Dictionary) -> Dictionary:
 		called[0] += 1
 		return {"status": 0, "body": ""})
+	online.base_url = "https://example.invalid/api"
 	var scene: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	root.add_child(scene)
 	var refused := [""]
 	scene.start_failed.connect(func(r: String) -> void: refused[0] = r)
-	await scene.start(character, online, {"offline": true})
-	check(refused[0] != "" and not scene.ready_, "an online api (it has a base url) is refused: '%s'" % refused[0])
+	await scene.start(character, online, {})
+	check(refused[0] != "" and not scene.ready_, "an api that is not the test server's is refused: '%s'" % refused[0])
 	check(called[0] == 0, "the refused scene sent no request")
 	scene.queue_free()
 	await process_frame
@@ -128,7 +129,7 @@ func start_game(api: DmApi, character: Dictionary) -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(character, api, {"offline": true, "name": "tester", "hud": "minimal", "audio": false, "seed": 20261016, "baked_dir": OUT})
+	await g.start(character, api, {"name": "tester", "hud": "minimal", "audio": false, "seed": 20261016, "baked_dir": OUT})
 	host = g.core_host
 	check(g.ready_, "the game scene is ready")
 	check(g.world.nav_ready() and g.world.area_id == "graves" and g.area_id == "graves", "the Graves' navigation map is ready and the hero is in the Graves")

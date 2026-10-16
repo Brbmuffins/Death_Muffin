@@ -1,6 +1,6 @@
 class_name DmHttpTransport
 extends Node
-## Real transport over HTTPRequest. Add this node to the scene tree (autoload or child), then `DmApi.new(transport.request_callable())`.
+## Real transport over HTTPRequest (the rebuilt client's port: it refuses any address DmConfig does not allow). Add this node to the scene tree (autoload or child), then `DmApi.new(transport.request_callable())`.
 ## A transport is any `Callable(req: Dictionary) -> Dictionary` (may be a coroutine):
 ##   req  = {method: String, url: String, headers: Dictionary, body: String}   (body "" = none)
 ##   resp = {status: int, text: String, network_error: bool}
@@ -10,6 +10,11 @@ func request_callable() -> Callable:
 	return Callable(self, "send")
 
 func send(req: Dictionary) -> Dictionary:
+	# The rebuilt client's one door to the network (a port; DmConfig.allows_url): a request for anything but the test server never leaves the game,
+	# whoever built the address (DECISIONS B38: the live server is not touched before launch day).
+	if not DmConfig.allows_url(String(req.get("url", ""))):
+		push_error("DmHttpTransport: refused a request outside the test server: %s" % String(req.get("url", "")).get_slice("?", 0))
+		return {"status": 0, "text": "", "network_error": true}
 	var http := HTTPRequest.new()
 	http.timeout = DmConfig.REQUEST_TIMEOUT_S
 	http.accept_gzip = true
