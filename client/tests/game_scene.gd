@@ -230,6 +230,12 @@ func kinds() -> void:
 			await physics_frame
 			w += 1
 	b.restore_vitals()
+	# The waves' bodies still ring the hero: clear them, so the four kinds reach him without depending on room in a crowd (a sac behind a full ring
+	# never gets to slam: that is crowd spacing, checked in core_enemies.gd, not the kinds of blow).
+	for id in host.core.enemy_ids():
+		if host.enemy_alive(id):
+			host.damage(id, 1.0e9, b.core_id, false)
+	await ticks(3)
 	var seen_before := tells.duplicate()
 	var fx_before: Dictionary = g.enemy_fx.stats.duplicate()
 	var zones_before := zones_seen

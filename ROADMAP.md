@@ -117,6 +117,8 @@ server (B38).
     real test server's health and manifest; no real account was used (the team's first real login there is the check left for Helix). Off until their items: rewards and the kill ledger,
     saves, party, friends, chat, gathering, the Chapterhouse, the full HUD (no Log out, no Switch character), the benchmark, the crash report; the other disciplines' hero models.
   - [ ] The Gravedigger King's brain as an external entity.
+- [ ] Core obstacles: Ossuary Wall (and any later rite or boss barrier) solid for the core's enemies, a segment the core pushes bodies out of and
+  steers around, as it does the hero's circle; today it is a static body plus a navigation obstacle.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
 - [ ] 2-player co-op (the combat core's half is built: native/README.md "Co-op", `client/tests/core_coop.gd`):
   - [x] Core snapshots: `DmCore.snapshot` (20 Hz, the Full Party in about 1.2 KB), `take_reliable` and `baseline` on the host, a puppet core (`set_puppet`, `apply_snapshot`,
@@ -130,6 +132,8 @@ server (B38).
   - [ ] Still GDScript, to be replicated beside the core: the Gravedigger King and later bosses (state, phases, telegraphs), hero vitals, rite events and visuals, ground drops.
   - [ ] Phones join as guests only (B40): the same messages; measure the snapshot on the Mobile renderer's budget when the first phone build exists.
 - [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
+  It runs in the Hollow Graves on both sides (72 Graves enemies, 32 thralls, the Gravedigger King): the test build has the Graves roster, and today's
+  game runs the same fight with `--benchmark --bench-room=graves --bench-size=full_party` (or Benchmark -> Hollow Graves -> Full Party).
 
 **Working rules for the rebuild.**
 - This checklist is the only to-do list; the next unchecked item is the only work. Ideas go to "After launch day".

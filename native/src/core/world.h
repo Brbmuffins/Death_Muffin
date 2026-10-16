@@ -50,6 +50,8 @@ constexpr double KITE_BACK_OFF = 3.5, KITE_BACK_SPEED = 0.8, CONE_HALF_ANGLE = 3
 constexpr double ZONE_TARGET_PAD = 0.45, ZONE_TICK_S = 1.0, BURROW_STUCK_S = 0.8, DEFAULT_SLAM_R = 1.9;
 // Crowd spacing (World::resolve_overlaps): the share of an overlap removed per tick, and the most a body is moved by it in one tick.
 constexpr double OVERLAP_EASE = 0.3, OVERLAP_MAX_STEP = 0.15;
+constexpr double SIDESTEP = 0.6;  // a body blocked head-on slides sideways at this share of its speed (World::separate)
+constexpr int32_t SEP_TOUCH_MAX = 16;  // neighbours one body's steering keeps clear of in a tick
 // DmAffixSet: the shroud check runs every LOOK_S; a Miasma cover holds 350 ms (today wall-clock, here game time); a hungry body that found
 // nothing to eat looks again 0.5 s later; Vengeful's Risen stand on a 1.4 m ring.
 constexpr double AFFIX_LOOK_S = 0.1, MIASMA_HOLD_S = 0.35, HUNGER_RETRY_S = 0.5, VENGEFUL_RING = 1.4;

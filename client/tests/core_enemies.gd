@@ -283,3 +283,11 @@ func crowd_spacing() -> void:
 					deep += 1
 	check(near >= 20, "the crowd reached the hero (%d within 3.5 m)" % near)
 	check(deep == 0 and worst < 0.15, "after 10 s around the hero no two bodies sink into each other (%d overlap, the deepest by %d%% of their radii)" % [overlaps, int(worst * 100.0)])
+	# A body blocked head-on goes around: a hound with a stunned robber standing exactly between it and the hero reaches him and bites.
+	var d := make(5)
+	hero(d, Vector2(0, 0))
+	var wall: int = d.spawn_enemy("robber", Vector2(0, -2.0), 1, 1000.0, 0.0, false, "graves", false)
+	d.stun(wall, 30.0)
+	var hound: int = d.spawn_enemy("hound", Vector2(0, -4.0), 1, 1000.0, 0.0, false, "graves", false)
+	var r := run_until(d, func(e: Dictionary) -> bool: return e["type"] == EV_ATTACK and e["id"] == hound, 600)
+	check(r[0] > 0, "a hound blocked head-on by a standing body goes around it and bites (tick %d)" % r[0])

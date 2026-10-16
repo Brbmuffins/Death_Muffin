@@ -913,7 +913,8 @@ void World::rebuild_grid() {
 
 // Replaces Godot's RVO avoidance (B42), with resolve_overlaps() after the moves. A moving body near another (closer than their radii + 0.1)
 // does not drive into it: the part of its wanted velocity that points at that neighbour is dropped, so a crowd queues and slides around
-// instead of piling into the bodies in front; and it is pushed away in proportion to the closeness. Surface bodies only, slot order.
+// instead of piling into the bodies in front, and a body blocked head-on sidesteps; it is pushed away in proportion to the closeness.
+// Surface bodies only, slot order.
 void World::separate() {
 	const int32_t n = int32_t(enemies.size());
 	for (int32_t i = 0; i < n; i++) {
@@ -922,7 +923,9 @@ void World::separate() {
 			continue;
 		}
 		const double sp = std::sqrt(a.want_vx * a.want_vx + a.want_vz * a.want_vz);
-		double vx = a.want_vx, vz = a.want_vz, px = 0.0, pz = 0.0;
+		double vx = a.want_vx, vz = a.want_vz, px = 0.0, pz = 0.0, bx = 0.0, bz = 0.0;
+		int32_t touching = 0;
+		double tux[SEP_TOUCH_MAX], tuz[SEP_TOUCH_MAX];  // unit vectors away from the neighbours it touches
 		for (int32_t j = 0; j < n; j++) {
 			const Enemy &b = enemies[j];
 			if (j == i || !on_surface(b)) {
@@ -938,9 +941,33 @@ void World::separate() {
 				pz += uz * push;
 				const double into = -(vx * ux + vz * uz);  // speed toward b
 				if (into > 0.0) {
-					vx += ux * into;
-					vz += uz * into;
+					bx -= ux * into;  // where the blocked speed was going
+					bz -= uz * into;
 				}
+				if (touching < SEP_TOUCH_MAX) {
+					tux[touching] = ux;
+					tuz[touching] = uz;
+					touching++;
+				}
+			}
+		}
+		// Blocked nearly head-on (under 35% of its speed left once the blocked part is dropped): sidestep around the blockers on the body's own
+		// side (its flank roll), as an RVO agent picks a velocity around an obstacle instead of standing behind it.
+		const double blocked = std::sqrt(bx * bx + bz * bz);
+		if (blocked > 1e-6) {
+			const double lx = vx - bx, lz = vz - bz;
+			if (std::sqrt(lx * lx + lz * lz) < 0.35 * sp) {
+				const double side = a.flank_side >= 0.0 ? 1.0 : -1.0;
+				vx += -bz / blocked * side * SIDESTEP * sp;
+				vz += bx / blocked * side * SIDESTEP * sp;
+			}
+		}
+		// Then nothing it touches is driven into, the sidestep included.
+		for (int32_t k = 0; k < touching; k++) {
+			const double into = -(vx * tux[k] + vz * tuz[k]);
+			if (into > 0.0) {
+				vx += tux[k] * into;
+				vz += tuz[k] * into;
 			}
 		}
 		if (px != 0.0 || pz != 0.0) {

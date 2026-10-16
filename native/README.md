@@ -145,9 +145,11 @@ stale snapshots, ids not yet met, desyncs, refusals, the sizes of the buffers on
 
 Every place the core does not do exactly what today's GDScript does, so Helix can judge them in the test build (B42):
 - **Crowd spacing:** Godot's RVO avoidance (applied a tick late) is replaced by the core's own: a moving body does not drive into a neighbour
-  in its way (that part of its velocity is dropped, so a crowd queues and slides around) and is steered away from it, and after the moves every
+  in its way (that part of its velocity is dropped, so a crowd queues and slides around; one blocked head-on sidesteps on its own flank side, without
+  stepping into anyone else) and is steered away from it, and after the moves every
   overlapping pair, moving or standing, eases apart by 30% of its overlap per tick (at most 15 cm a tick, the bigger body giving way less).
-  Forty bodies closing on one hero pack around him with no pair sunk into another (`client/tests/core_enemies.gd`, crowd spacing). The one
+  Forty bodies closing on one hero pack around him with no pair sunk into another, and a hound blocked head-on by a standing body goes around it
+  (`client/tests/core_enemies.gd`, crowd spacing). The one
   planned difference in feel.
 - **Walls and the hero:** today `move_and_slide` slides a body along walls and the hero's capsule; the core moves it, pushes it out
   of the hero's circle and snaps it back onto the navmesh. Close to today on open ground, may differ in corners.
