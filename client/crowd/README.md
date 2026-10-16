@@ -92,13 +92,14 @@ view.focus = hero_xz                                                # every tick
 
 ### The rows
 
-What `sync` builds from the core, and what a co-op guest's snapshots will build instead (`DmCrowd.sync_rows`; `last_feed()` hands back the rows the last sync took, in the same
-layout): plain numbers, nothing that points into the simulation.
+What `sync` builds from the core, and what any other source can build instead (`DmCrowd.sync_rows`; `last_feed()` hands back the rows the last sync took, in the same
+layout): plain numbers, nothing that points into the simulation. A co-op guest does not need `sync_rows`: its puppet core (native/README.md "Co-op") holds the same tables and the same
+damaged events, so `sync(core)` draws it as it draws a host (`client/tests/core_coop.gd` compares the rows of both).
 
 | row | fields |
 |---|---|
 | body (7 ints, 11 floats) | id (unique over enemies and thralls), kind (0 enemy, 1 thrall), model (the slot `add_model` returned), state (the core's `EnemyState` or `ThrallState`), flags (elite, caster, inert, mist, flyer), swing (a thrall's swing counter), def; x, z, yaw, ground speed, seconds in the state, `action_s` (the seconds the state's one-shot is timed to: the wind-up, the dig, the 0.3 s recovery, a thrall's 0.12 s swing), scale, hover height, linear tint |
-| hit (4 floats) | id, damage this tick (summed), hp after, max hp: from the core's damaged events; a guest derives it from hp drops, as puppets do today |
+| hit (4 floats) | id, damage this tick (summed), hp after, max hp: from the core's damaged events (a puppet core derives them from hp drops, as puppets do today) |
 | corpse (3 ints, 7 floats) | id, model, def; x, z, facing, scale, tint |
 
 A death is the body's state becoming `DEAD` (and the corpse row that follows), not a separate list.

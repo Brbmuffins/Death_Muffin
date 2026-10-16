@@ -897,6 +897,10 @@ void World::step(double p_dt) {
 	step_thralls(p_dt);
 	remove_dead_bodies();
 	flush_spawns();
+	rebuild_grid();
+}
+
+void World::rebuild_grid() {
 	grid_count = int32_t(enemies.size());
 	gx.resize(grid_count);
 	gz.resize(grid_count);

@@ -54,12 +54,92 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
 - **Drawing:** one MultiMesh per creature model, level of detail and shadow setting, transforms and animation data written in one buffer update per
   rendered frame, interpolated between ticks; animations play from baked vertex-animation textures. `DmCrowd` does it (`dm_crowd.*`, `core/crowd_view.*`): it reads the core's
   tables and damage events right after each step without consuming the events, and keeps every creature's view state (turn, legs, clip, blend, flash, knock, death) itself, so no
-  presentation field lives in a world, enemy or thrall struct. Its input is a plain row per creature, hit and corpse, which a co-op guest can fill from snapshots instead
-  (client/crowd/README.md "Driving the crowd").
-- **Co-op:** the host core packs one snapshot (position, yaw, state, hp, aim, time in state, kind extras) at 20 Hz; a guest core runs
-  in puppet mode, eases toward snapshots and derives telegraph, attack and death events from state edges, as today's puppets do.
+  presentation field lives in a world, enemy or thrall struct. Its input is a plain row per creature, hit and corpse (client/crowd/README.md "Driving the crowd"); a co-op
+  guest's puppet core fills the same tables and damaged events, so `DmCrowd.sync(core)` draws it as it draws a host.
+- **Co-op (host-authoritative, B28, B40):** the host core packs one compact snapshot at 20 Hz and the discrete events as reliable batches; a guest's core runs in
+  puppet mode (`set_puppet(true)`): no brains and no rules, bodies that appear from spawn events, ease toward snapshots (today's puppet easing) and go on removal events,
+  and an event buffer that carries what GDScript sees on the host, derived from state edges and hp drops where today's puppets derive it. Messages carry a version and a
+  hash of the data tables, so a phone or a newer build refuses cleanly. Calls, byte layout, limits and cost: "Co-op" below.
 - **Proof of "same game":** pure rules replay today's parity and golden fixtures; behaviour is compared with seeded scenarios
   (kills, damage, time to kill, thrall uptime) between today's game and the core within stated tolerances.
+
+## Co-op: snapshots, events and the puppet core
+
+The transport (lobby, relay) is not in the core: it moves three kinds of message between two `DmCore`s, one on the host and one in puppet mode on each guest.
+
+```
+host, each tick   core.step(dt);  crowd.sync(core);  events = core.take_events()            # as in solo play
+host, every 3rd   send_unreliable(core.snapshot(tick))                                      # 20 Hz, one message, ~1.2 KB for the Full Party
+host, each tick   b = core.take_reliable(); if not b.is_empty(): send_reliable(b)           # or every 3rd tick: batches simply hold more
+host, guest joins core.set_replication(true) once; send_reliable(core.baseline()) to the new guest (the guests already in keep getting take_reliable())
+guest, setup      DmCoreData.load_all(core); core.set_area_bounds(...) as on the host; core.set_puppet(true); a new area or a new host core = a new baseline
+guest, on arrival core.apply_snapshot(bytes) / core.apply_reliable(bytes)                   # false: core.replication_error() says why
+guest, each tick  core.step(dt);  crowd.sync(core);  events = core.take_events()            # the same consumer code as the host
+guest, a refused batch ("... ask the host for a baseline")  ->  ask for core.baseline() on the host, apply it, crowd.clear() first
+```
+
+- `take_reliable()` reads the same event buffer GDScript reads, from a cursor (like `DmCrowd`'s), and never consumes it: `take_events()` encodes what the cursor has
+  not seen before it clears the buffer, so the order of the two calls does not matter. Nothing is collected until `set_replication(true)` (solo play pays nothing).
+- Batches are numbered. A guest ignores a number it already has, refuses a number that skips ahead and then waits for a baseline. A baseline (`baseline()`) is the whole present
+  as records (every live enemy and thrall as a spawn with what it is doing now, corpses, zones, statuses, the name tables); applying it replaces everything the guest knew,
+  without removal events (the caller clears its own presentation), and carries the number of the last batch it already covers. It may be taken at any time between ticks: the
+  events not yet handed out are sealed into the next batch, which the new guest ignores (the baseline's number covers it) and `take_reliable()` gives the guests already in.
+- Snapshots are unreliable and carry only what changes (the table below). The spawn facts (def, level, area, kind, owner, maximum health) travel once, in the spawn event, so
+  a snapshot record for an id the guest has not met yet is skipped (the two channels may overtake each other) and the next snapshot has it. A snapshot that is not newer than the
+  last one is ignored (`true`, counted). A dead body is never in a snapshot: deaths are events, and a late snapshot cannot raise the dead.
+- A guest is refused a message with another magic, version or data hash; `DmCore.wire_version()` is the number to put in the join handshake. Every read is bounds-checked: a cut
+  or damaged message is refused and cannot make the guest read past the buffer, and a guest holds at most 4096 enemies, 1024 thralls and 512 corpses.
+
+All numbers little-endian; `varint` is LEB128, `zigzag` a varint of a signed number. Header of every message (8 bytes): `"DM"`, kind (1 snapshot, 2 reliable batch, 3 baseline),
+format version (`WIRE_VERSION`, now 1), content hash (u32, FNV-1a over the enemy defs and the numbers a puppet derives events from, the status rule names, thrall kinds and affixes).
+
+**Snapshot** (kind 1): header, tick (u32, the caller's number), clock (f64), origin x and z (2 x f32, the middle of the area's bounds), enemy count and thrall count (varints),
+then the enemy records in spawn order and the thrall records in raise order. Positions are i16 centimetres from the origin (+-327 m).
+
+| enemy record | bytes | |
+|---|---|---|
+| id | 1-2 | zigzag, the difference from the previous record's id (3 bytes over a gap of 8,000 ids) |
+| flags | 1 | bits 0-3 state (`EnemyState`), 4 elite, 5 dug in, 6 aim follows (ATTACK, ERUPT), 7 affix byte follows |
+| affixes | 0-1 | one bit per `Affix` |
+| x, z | 4 | i16 each |
+| yaw | 1 | 256 steps of a turn (1.4 degrees) |
+| health | 2 | 1..65535 of the maximum while alive |
+| time in state | 1 | centiseconds, 255 = 2.55 s or more |
+| aim x, z | 0 or 4 | i16 each |
+
+| thrall record | bytes | |
+|---|---|---|
+| id | 1-2 | as above |
+| flags | 1 | bits 0-2 state (`ThrallState`), 3 rally, 4 aim follows (ATTACK) |
+| x, z, yaw, health, time in state | 8 | as for an enemy |
+| swing counter | 1 | modulo 256 (the attack visual fires when it changes) |
+| aim x, z | 0 or 4 | i16 each |
+
+An enemy takes 10 bytes (up to 16 with affixes, an aim and a two-byte id), a thrall 11 (up to 16): the Full Party (72 enemies, 32 thralls) is at most 1.7 KB, 1.2-1.3 KB in the
+test's fight (`client/tests/core_coop.gd`), against about 180 bytes per enemy as dictionaries today.
+
+**Reliable batch** (kind 2): header, number (u32), record count (varint), records. **Baseline** (kind 3): header, number, clock (f64), count, records. A record is a type byte and:
+- 1..32, an event of the buffer GDScript reads: entity id (varint), counts (`ints << 4 | floats`), the ints (zigzag), the floats (f32). Three have a tail: spawned (1) and thrall
+  raised (22) end with the body's state now, health (u16), yaw (u8) and time in state (u8) (22 adds the swing counter as a varint and a rally byte); status changed (14) ends
+  with a count and 4 bytes per status in the `DmCore.statuses()` layout, the set as it is when the batch is made.
+- 101, a name: table (0 area, 1 corpse reason), index, length, bytes. Areas and corpse reasons are numbers in events; the names go before their first use.
+- 102, a thrall's new maximum health: id, f32 (`set_thrall_stats` with a `maxHp`); guests know health as a fraction of the maximum.
+
+On the wire as events: spawned, died, removed, cue, zone, zone pulse, zone gone, statuses cleared, status changed, status dot, status expired, corpse added, consumed, gone and
+ruptured, thrall raised, died, removed and status, affix moment, and the bell's toll telegraph. Derived on the guest from the snapshots (so its buffer has them, once per change
+between two snapshots): enemy state, attack, the cone, slam, dust and erupt telegraphs (the place and aim of the snapshot, the wind-up less the age it showed, at least 0.05 s as in
+`dm_enemy.gd`), damaged (the hp drop, and the rest of the health at a death), thrall state, swing and damaged. Host-only, never sent: a blow on a hero (`EV_TARGET_HIT`: the host
+applies it to every member), a thrall's hit on a boss, Withered's spread, the plague pool and the bell's heal. A guest's buffer is for effects and the HUD: its GDScript must not
+run rewards, loot or the kill report from `died`.
+
+**A puppet core** (`set_puppet(true)`; switching clears every body) steps with `step(dt)`: a body eases toward its last snapshot by `1 - exp(-15 dt)` and snaps above 6 m, yaw
+likewise, its ground speed is the eased motion smoothed at 10 per second (0 below 0.3 m/s), time in state counts up and is taken from a snapshot when it differs by more than
+0.1 s, status chips count down. Queries (`enemies_in_radius`, `enemy_info`, `thralls_in_radius`, `thrall_*`, `corpse_*`, `statuses`) read the same tables as on the host. A puppet's
+`enemy_info` has `net_pos` (where the last snapshot put the body). Commands the host owns (`spawn_enemy`, `damage`, `stun`, `apply_status`, `remove_status`, `raise_thrall`,
+`kill_thrall`, `sacrifice_thralls`, `rally_thralls`, `recall_thralls`, `set_legion_burst`, `set_thrall_*`, `curse_thrall`, `strip_shroud`, `cover_miasma`, `corpse_add`,
+`corpse_consume`, `snapshot`, `take_reliable`, `baseline`, `set_replication`) are refused: they return 0, false, nothing or (`damage`) `{dealt: 0, killed: false, refused: true}`, print
+one error per command, and count in `replication_stats().commands_refused`. Heroes and bosses are brain input: `add_external` returns 0 and `set_external` does nothing on a puppet. `replication_stats()` counts both roles (messages built and applied,
+stale snapshots, ids not yet met, desyncs, refusals, the sizes of the buffers on the per-tick path, which the test holds steady).
 
 ## Differences from today's game
 
@@ -132,6 +212,21 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
     ring (their defs are not on the core), the corpse rings and the toxic decal. An elite keeps its ground ring, following the drawn body. The sac's toxic pool has no visual of its own, as today.
   - The core does not report what an enemy does to a hero besides damage (the Frost wraith's chill, the Drowned Sexton's hook with its root and pull): `DmHeroBody.dm_enemy_effect` is kept for them and nothing calls it yet.
   - The game reads the core's constants from this project's `data/` and `sim/`; the constants of `dm_corpse_field.gd` and `dm_thrall.gd`, whose files are not here, stay the compiled-in defaults (equal, asserted by `core_thralls`).
+- **Co-op messages:** one binary snapshot with every body, thralls included, at 20 Hz replaces today's dictionaries (enemies 6 to a packet at 20 Hz, thralls at 15 Hz plus a full
+  reliable copy at 1 Hz). Values are quantized: positions to 1 cm, yaw to 1.4 degrees, health to 1/65535 of the maximum, time in state to 10 ms. The animation name is not sent
+  (`anim` today): the crowd view picks clips from the state and the eased speed.
+- **A guest sees a change between snapshots once:** a state that lasts less than one interval (50 ms) is never seen, and two hits between two snapshots are one damaged event with
+  the sum, as today's puppet's hp difference is. A derived thrall swing has target 0 and damage 0 (the host's event knows both); a puppet's `enemy_info` has the def's damage and
+  speed, not the body's rolled ones, and no target or cooldowns. The telegraph's place and aim are the snapshot's, its seconds the wind-up less the age the snapshot showed.
+- **Deaths come as events, not as a state in a snapshot:** the body stops where the guest drew it (up to speed / 15 m behind the host), while its corpse lies exactly where the host laid
+  it; the guest's buffer gets `damaged` with the health the last snapshot showed, then `state`, then `died`. A guest's corpses have no lifetime: they go when the host says so.
+- **Order of a guest's buffer:** forwarded events in the host's order, the derived ones where the packet that caused them was applied; a death's state edge comes just before its `died`,
+  after the corpse events (the host's comes first).
+- **More reaches guests than today:** the slam, erupt and dig-in cues are on the wire (today only shield_block, sanctify and unbind replicate, so a guest saw no dust at a slam).
+  A snap above 6 m is not counted as walking speed (today's puppet counts it, and its walk clip sprints for a moment).
+- **Not replicated yet, stays GDScript:** bosses (state, phases, telegraphs), hero vitals and positions (the session channel), rite events and the visuals they drive, ground drops,
+  party calls and chat; guests still send their intents (move, cast requests) to the host as today. The per-kind extras of today's enemy snapshots (the deacon's `rz`, the gargoyle's
+  `dv`, the sexton's `hk`) come with those kinds' ports to the core.
 
 ## Files
 
@@ -142,7 +237,9 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   `affixes` (the elite affixes), `body` (what a status set needs from its owner, shared by enemies and thralls), `thrall` and `corpse` (their records and enums), `status` (the status
   set, a port of DmStatusSet; its rule table comes from `client/core/dm_status_rules.gd`), `grid` (dense XZ grid rebuilt per tick by counting
   sort), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity), `crowd_view` (the presentation of the crowd: one view per creature, fed plain rows,
-  writing the MultiMesh buffers; a port of the view layer of `godot/game`, which does not touch the simulation).
+  writing the MultiMesh buffers; a port of the view layer of `godot/game`, which does not touch the simulation), and the co-op pieces: `wire` (byte writer and bounds-checked reader), `replica`
+  (the format's constants and a core's co-op counters), `snapshot` (the 20 Hz message, both ways), `reliable` (event batches and the baseline, both ways) and `puppet` (a guest's step, snapshot
+  records and reliable records).
 - Tests: `client/tests/core_smoke.gd` (loads, answers), `client/tests/core_api.gd` (queries in spawn order, synchronous kills,
   events, seeded stats, the rise and the 4 s body linger) and `client/tests/core_enemies.gd` (the Graves roster against today's
   rules: bite timing, cone, dust cloud, slam, hit-and-run, tunnel and eruption, leash, stagger, stun, crowd spacing), `client/tests/core_status.gd`
@@ -151,7 +248,9 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   rules) and `client/tests/core_thralls.gd` (the rise, caps and make_room, formation and leash, the scan and the boss edge rule, the swing and its
   multipliers, kinds, enemies choosing and hurting thralls, deaths and bursts, statuses on thralls, rally, separation, tick order),
   `client/tests/core_affixes.gd` (each affix against mirrors of today's timer arithmetic, the pause while staggered, Vengeful inside a call and inside a
-  DoT tick), `client/tests/crowd_view.gd` (the crowd's views against today's view code, and a Full Party driven by a real core) and `client/tests/game_scene.gd` (the game scene on
+  DoT tick), `client/tests/core_coop.gd` (two cores: a real fight, 20 Hz snapshots and batches into puppets, loss and reordering, a late guest and a lost batch,
+  refusals, damaged messages, the commands and queries on a puppet, `DmCrowd` on one, and the Full Party's size and cost; `-- --verbose` lists every check),
+  `client/tests/crowd_view.gd` (the crowd's views against today's view code, and a Full Party driven by a real core) and `client/tests/game_scene.gd` (the game scene on
   the core: an offline run in the Graves, the director, the event signals, no node per creature, timings). Run
   `bash client/setup.sh` first in a fresh checkout: a script run in a
   project that was never imported hangs.

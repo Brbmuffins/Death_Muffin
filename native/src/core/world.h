@@ -15,6 +15,7 @@
 #include "corpse.h"
 #include "events.h"
 #include "grid.h"
+#include "replica.h"
 #include "rng.h"
 #include "status.h"
 #include "thrall.h"
@@ -199,6 +200,7 @@ struct World {
 
 	World();
 	int32_t area_id(const std::string &p_area);
+	void rebuild_grid();  // the grid over this tick's positions (step() and a puppet's step_puppet() end with it)
 	int32_t spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising, int32_t p_affixes = 0);
 	// Adds the bodies a kill queued. step() calls it last; DmCore calls it before returning from anything that can kill outside the tick.
 	void flush_spawns();
@@ -243,6 +245,30 @@ struct World {
 	int32_t reason_id(const std::string &p_reason);
 	int32_t area_level(int32_t p_area) const { return p_area >= 0 && p_area < int32_t(area_levels.size()) ? area_levels[p_area] : 1; }
 	double damage_scale(double p_level) const { return legion.damage_scale_base + legion.damage_scale_per_level * (p_level - 1.0); }  // DmEnemyStats.damage_scale
+
+	// ---- co-op (snapshot.cpp, reliable.cpp, puppet.cpp; native/README.md "Co-op"). The host builds the messages; a guest's core is a puppet that applies them.
+	bool puppet = false;  // a guest's core: no brains and no rules, the bodies are the host's
+	Replica rep;
+	uint32_t content_hash() const;  // the defs, status rules, kinds and the numbers a puppet derives events from: two builds with other data refuse each other's messages
+	// host
+	void set_replication(bool p_on);                           // start or stop collecting reliable events (the cursor starts at the end of the event buffer)
+	void write_snapshot(std::vector<uint8_t> &r_out, uint32_t p_tick);
+	void pump_reliable();                                      // encode the events since the last pump (take_events calls it before it clears the buffer)
+	bool take_reliable(std::vector<uint8_t> &r_out);           // the batch since the last one; false when nothing happened
+	void seal_pending();                                       // close the records waiting into a numbered batch that take_reliable() hands out next
+	void write_baseline(std::vector<uint8_t> &r_out);          // the whole present as reliable records, for a guest that joins late or lost a batch
+	void queue_thrall_max_hp(int32_t p_id);                    // set_thrall_stats changed a maximum: a wire record, not an event
+	// guest
+	void set_puppet(bool p_on);                                // switches the mode and forgets every body
+	bool read_snapshot(const uint8_t *p_data, size_t p_size);  // false: rep.error says why
+	bool read_reliable(const uint8_t *p_data, size_t p_size);  // a batch or a baseline
+	void step_puppet(double p_dt);
+	void clear_bodies();                                       // enemies, thralls, corpses, zones and their lookups
+	void puppet_apply_enemy(const SnapRec &p_rec);             // one snapshot record: the body eases toward it, its state edges and hp drops become events
+	void puppet_apply_thrall(const SnapRec &p_rec);
+	// One reliable record that is an event GDScript reads: it changes the tables and is re-emitted in the guest's event buffer. False: it does not fit the guest's world.
+	bool puppet_event(int32_t p_type, int32_t p_id, const int32_t *p_ints, int32_t p_ni, const float *p_floats, int32_t p_nf, const WireTail &p_tail, const uint8_t *p_status_bytes, uint32_t p_status_n);
+	void puppet_thrall_max_hp(int32_t p_id, float p_max_hp);
 
 private:
 	void change(int32_t p_slot, int32_t p_next);

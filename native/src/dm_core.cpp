@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 #include <godot_cpp/classes/navigation_server3d.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -41,6 +42,19 @@ void nav_clamp(void *p_user, float &r_x, float &r_z) {
 	r_z = q.z;
 }
 } // namespace
+
+bool DmCore::refused(const char *p_command) {
+	if (!world.puppet) {
+		return false;
+	}
+	world.rep.commands_refused++;
+	const std::string name(p_command);
+	if (std::find(refused_logged.begin(), refused_logged.end(), name) == refused_logged.end()) {  // once per command, so a loop that keeps calling it does not flood the log
+		refused_logged.push_back(name);
+		UtilityFunctions::push_error("DmCore.", p_command, ": refused on a puppet core (the host owns the simulation; a guest only shows it)");
+	}
+	return true;
+}
 
 void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("version"), &DmCore::version);
@@ -95,6 +109,17 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("corpse_positions"), &DmCore::corpse_positions);
 	ClassDB::bind_method(D_METHOD("corpse_info", "id"), &DmCore::corpse_info);
 	ClassDB::bind_method(D_METHOD("reason_name", "reason"), &DmCore::reason_name);
+	ClassDB::bind_method(D_METHOD("set_puppet", "on"), &DmCore::set_puppet);
+	ClassDB::bind_method(D_METHOD("is_puppet"), &DmCore::is_puppet);
+	ClassDB::bind_method(D_METHOD("set_replication", "on"), &DmCore::set_replication);
+	ClassDB::bind_method(D_METHOD("snapshot", "tick"), &DmCore::snapshot);
+	ClassDB::bind_method(D_METHOD("take_reliable"), &DmCore::take_reliable);
+	ClassDB::bind_method(D_METHOD("baseline"), &DmCore::baseline);
+	ClassDB::bind_method(D_METHOD("apply_snapshot", "bytes"), &DmCore::apply_snapshot);
+	ClassDB::bind_method(D_METHOD("apply_reliable", "bytes"), &DmCore::apply_reliable);
+	ClassDB::bind_method(D_METHOD("replication_error"), &DmCore::replication_error);
+	ClassDB::bind_method(D_METHOD("replication_stats"), &DmCore::replication_stats);
+	ClassDB::bind_static_method("DmCore", D_METHOD("wire_version"), &DmCore::wire_version);
 	ClassDB::bind_method(D_METHOD("step", "dt"), &DmCore::step);
 	ClassDB::bind_method(D_METHOD("take_events"), &DmCore::take_events);
 	ClassDB::bind_method(D_METHOD("enemy_count"), &DmCore::enemy_count);
@@ -382,6 +407,9 @@ void DmCore::set_area_bounds(const Vector2 &p_min, const Vector2 &p_max) {
 }
 
 int64_t DmCore::spawn_enemy(const String &p_def, const Vector2 &p_pos, int64_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, const String &p_area, bool p_rising, const PackedStringArray &p_affixes) {
+	if (refused("spawn_enemy")) {
+		return 0;
+	}
 	auto it = world.def_index.find(to_std(p_def));
 	if (it == world.def_index.end()) {
 		UtilityFunctions::push_error("DmCore.spawn_enemy: unknown enemy def ", p_def);
@@ -403,11 +431,17 @@ int64_t DmCore::spawn_enemy(const String &p_def, const Vector2 &p_pos, int64_t p
 }
 
 bool DmCore::strip_shroud(int64_t p_id) {
+	if (refused("strip_shroud")) {
+		return false;
+	}
 	const auto it = world.enemy_slot.find(int32_t(p_id));
 	return it != world.enemy_slot.end() && world.enemies[it->second].state != dm::DEAD && world.strip_shroud(it->second);
 }
 
 void DmCore::cover_miasma(int64_t p_id) {
+	if (refused("cover_miasma")) {
+		return;
+	}
 	const auto it = world.enemy_slot.find(int32_t(p_id));
 	if (it != world.enemy_slot.end()) {
 		world.enemies[it->second].miasma_at = world.clock;
@@ -416,6 +450,12 @@ void DmCore::cover_miasma(int64_t p_id) {
 
 Dictionary DmCore::damage(int64_t p_id, double p_amount, int64_t p_source, bool p_allow_stagger) {
 	Dictionary out;
+	if (refused("damage")) {
+		out["dealt"] = 0.0;
+		out["killed"] = false;
+		out["refused"] = true;
+		return out;
+	}
 	dm::Body *b = world.body(int32_t(p_id));
 	bool killed = false;
 	double dealt = 0.0;
@@ -434,6 +474,9 @@ Dictionary DmCore::damage(int64_t p_id, double p_amount, int64_t p_source, bool 
 }
 
 void DmCore::stun(int64_t p_id, double p_seconds) {
+	if (refused("stun")) {
+		return;
+	}
 	dm::Body *b = world.body(int32_t(p_id));
 	if (b && b->is_thrall) {
 		world.stun_thrall(world.thralls[b->slot], p_seconds);
@@ -443,6 +486,9 @@ void DmCore::stun(int64_t p_id, double p_seconds) {
 }
 
 void DmCore::apply_status(int64_t p_id, const String &p_status, int64_t p_source, double p_stacks, double p_duration, const Dictionary &p_params) {
+	if (refused("apply_status")) {
+		return;
+	}
 	dm::Body *b = world.body(int32_t(p_id));
 	const int32_t sid = world.status_id(to_std(p_status));
 	if (!b) {
@@ -456,6 +502,9 @@ void DmCore::apply_status(int64_t p_id, const String &p_status, int64_t p_source
 }
 
 bool DmCore::remove_status(int64_t p_id, const String &p_status) {
+	if (refused("remove_status")) {
+		return false;
+	}
 	dm::Body *b = world.body(int32_t(p_id));
 	const int32_t sid = world.status_id(to_std(p_status));
 	return b && sid >= 0 && world.remove_status(*b, sid);
@@ -506,6 +555,9 @@ PackedInt32Array DmCore::enemies_in_radius(const Vector2 &p_pos, double p_r) {
 }
 
 int64_t DmCore::add_external(int64_t p_kind, double p_radius, double p_weight) {
+	if (world.puppet) {  // heroes and bosses are brain input; a puppet has no brains, so shared host/guest code may call these quietly
+		return 0;
+	}
 	dm::External x;
 	x.id = world.next_id++;
 	x.kind = int32_t(p_kind);
@@ -516,6 +568,9 @@ int64_t DmCore::add_external(int64_t p_kind, double p_radius, double p_weight) {
 }
 
 void DmCore::set_external(int64_t p_id, const Vector2 &p_pos, bool p_alive) {
+	if (world.puppet) {
+		return;
+	}
 	for (dm::External &x : world.externals) {
 		if (x.id == int32_t(p_id)) {
 			x.x = p_pos.x;
@@ -527,6 +582,9 @@ void DmCore::set_external(int64_t p_id, const Vector2 &p_pos, bool p_alive) {
 }
 
 void DmCore::remove_external(int64_t p_id) {
+	if (world.puppet) {
+		return;
+	}
 	for (size_t i = 0; i < world.externals.size(); i++) {
 		if (world.externals[i].id == int32_t(p_id)) {
 			world.externals.erase(world.externals.begin() + int64_t(i));
@@ -536,10 +594,15 @@ void DmCore::remove_external(int64_t p_id) {
 }
 
 void DmCore::step(double p_dt) {
-	world.step(p_dt);
+	if (world.puppet) {
+		world.step_puppet(p_dt);
+	} else {
+		world.step(p_dt);
+	}
 }
 
 Array DmCore::take_events() {
+	world.pump_reliable();  // a guest's batch is made from the same buffer: encode what it has not seen before this call clears it (nothing unless replicating)
 	const dm::Events &ev = world.events;
 	ev_ints.resize(int64_t(ev.ints.size()));
 	if (!ev.ints.empty()) {
@@ -550,6 +613,7 @@ Array DmCore::take_events() {
 		memcpy(ev_floats.ptrw(), ev.floats.data(), ev.floats.size() * sizeof(float));
 	}
 	world.events.clear();
+	world.rep.ev_i = world.rep.ev_f = 0;
 	event_batches++;
 	Array out;
 	out.push_back(ev_ints);
@@ -635,6 +699,9 @@ Dictionary DmCore::enemy_info(int64_t p_id) const {
 		}
 	}
 	d["affixes"] = af;
+	if (world.puppet) {  // where the last snapshot put it (the body eases toward this)
+		d["net_pos"] = Vector2(e.net_x, e.net_z);
+	}
 	return d;
 }
 
@@ -650,9 +717,122 @@ double DmCore::clock() const {
 	return world.clock;
 }
 
+// ---------------------------------------------------------------------------------------------------------------- co-op
+
+void DmCore::set_puppet(bool p_on) {
+	world.set_puppet(p_on);
+	refused_logged.clear();
+}
+
+bool DmCore::is_puppet() const {
+	return world.puppet;
+}
+
+void DmCore::set_replication(bool p_on) {
+	if (refused("set_replication")) {
+		return;
+	}
+	world.set_replication(p_on);
+}
+
+PackedByteArray DmCore::snapshot(int64_t p_tick) {
+	PackedByteArray out;
+	if (refused("snapshot")) {
+		return out;
+	}
+	world.write_snapshot(wire_buf, uint32_t(p_tick));
+	out.resize(int64_t(wire_buf.size()));
+	std::memcpy(out.ptrw(), wire_buf.data(), wire_buf.size());
+	return out;
+}
+
+PackedByteArray DmCore::take_reliable() {
+	PackedByteArray out;
+	if (refused("take_reliable")) {
+		return out;
+	}
+	if (world.take_reliable(wire_buf)) {
+		out.resize(int64_t(wire_buf.size()));
+		std::memcpy(out.ptrw(), wire_buf.data(), wire_buf.size());
+	}
+	return out;
+}
+
+PackedByteArray DmCore::baseline() {
+	PackedByteArray out;
+	if (refused("baseline")) {
+		return out;
+	}
+	world.write_baseline(wire_buf);
+	out.resize(int64_t(wire_buf.size()));
+	std::memcpy(out.ptrw(), wire_buf.data(), wire_buf.size());
+	return out;
+}
+
+bool DmCore::apply_snapshot(const PackedByteArray &p_bytes) {
+	return world.read_snapshot(p_bytes.ptr(), size_t(p_bytes.size()));
+}
+
+bool DmCore::apply_reliable(const PackedByteArray &p_bytes) {
+	return world.read_reliable(p_bytes.ptr(), size_t(p_bytes.size()));
+}
+
+String DmCore::replication_error() const {
+	return String::utf8(world.rep.error.c_str());
+}
+
+int64_t DmCore::wire_version() {
+	return dm::WIRE_VERSION;
+}
+
+Dictionary DmCore::replication_stats() const {
+	const dm::Replica &r = world.rep;
+	Dictionary d;
+	d["puppet"] = world.puppet;
+	d["replicating"] = r.replicating;
+	d["snapshots_built"] = int64_t(r.snapshots_built);
+	d["batches_built"] = int64_t(r.batches_built);
+	d["records_built"] = int64_t(r.records_built);
+	d["reliable_bytes"] = int64_t(r.reliable_bytes);
+	d["positions_clamped"] = int64_t(r.positions_clamped);
+	d["overflows"] = int64_t(r.overflows);
+	d["seq"] = int64_t(r.seq);
+	d["snapshots_applied"] = int64_t(r.snapshots_applied);
+	d["snapshots_stale"] = int64_t(r.snapshots_stale);
+	d["snapshots_refused"] = int64_t(r.snapshots_refused);
+	d["records_unknown"] = int64_t(r.records_unknown);
+	d["records_dead"] = int64_t(r.records_dead);
+	d["desync"] = int64_t(r.desync);
+	d["batches_applied"] = int64_t(r.batches_applied);
+	d["batches_duplicate"] = int64_t(r.batches_duplicate);
+	d["batches_refused"] = int64_t(r.batches_refused);
+	d["baselines_applied"] = int64_t(r.baselines_applied);
+	d["events_derived"] = int64_t(r.events_derived);
+	d["commands_refused"] = int64_t(r.commands_refused);
+	// What the buffers on the per-tick path hold, by part (the test compares the total over a steady fight: no growth means no allocation).
+	const size_t parts[] = { wire_buf.capacity(), r.rel.capacity(), r.base.capacity(), world.events.ints.capacity() * 4, world.events.floats.capacity() * 4,
+		(world.gx.capacity() + world.gz.capacity()) * 4, world.enemies.capacity() * sizeof(dm::Enemy), world.thralls.capacity() * sizeof(dm::Thrall),
+		world.corpses.capacity() * sizeof(dm::Corpse), world.scratch.capacity() * 4 };
+	size_t held = 0;
+	Array held_parts;
+	for (const size_t v : parts) {
+		held += v;
+		held_parts.push_back(int64_t(v));
+	}
+	d["buffer_bytes"] = int64_t(held);
+	d["buffer_parts"] = held_parts;
+	d["need_baseline"] = r.need_baseline;
+	d["last_tick"] = int64_t(r.last_tick);
+	d["last_seq"] = int64_t(r.last_seq);
+	return d;
+}
+
 // ---------------------------------------------------------------------------------------------------------------- thralls
 
 int64_t DmCore::raise_thrall(const Dictionary &p_stats, int64_t p_owner, const Vector2 &p_pos, double p_yaw, double p_cap) {
+	if (refused("raise_thrall")) {
+		return 0;
+	}
 	dm::ThrallSpec sp;
 	const String kind = str(p_stats, "kind", "warrior");
 	sp.kind = -1;
@@ -690,6 +870,9 @@ PackedInt32Array DmCore::last_crumbled() const {
 }
 
 bool DmCore::kill_thrall(int64_t p_id, const String &p_reason) {
+	if (refused("kill_thrall")) {
+		return false;
+	}
 	const auto it = world.thrall_slot.find(int32_t(p_id));
 	if (it == world.thrall_slot.end() || world.thralls[it->second].dead) {
 		return false;
@@ -711,6 +894,9 @@ bool DmCore::kill_thrall(int64_t p_id, const String &p_reason) {
 
 Array DmCore::sacrifice_thralls(int64_t p_owner, int64_t p_n) {
 	Array out;
+	if (refused("sacrifice_thralls")) {
+		return out;
+	}
 	for (int32_t i = 0; i < int32_t(world.thralls.size()); i++) {
 		const dm::Thrall &t = world.thralls[i];
 		if (t.dead || t.owner != int32_t(p_owner)) {
@@ -733,14 +919,23 @@ Array DmCore::sacrifice_thralls(int64_t p_owner, int64_t p_n) {
 }
 
 void DmCore::rally_thralls(int64_t p_owner, double p_seconds, int64_t p_focus) {
+	if (refused("rally_thralls")) {
+		return;
+	}
 	world.rally_thralls(int32_t(p_owner), p_seconds, int32_t(p_focus));
 }
 
 void DmCore::recall_thralls(int64_t p_owner) {
+	if (refused("recall_thralls")) {
+		return;
+	}
 	world.recall_thralls(int32_t(p_owner));
 }
 
 void DmCore::set_legion_burst(int64_t p_owner, double p_fraction) {
+	if (refused("set_legion_burst")) {
+		return;
+	}
 	world.set_legion_burst(int32_t(p_owner), p_fraction);
 }
 
@@ -752,24 +947,36 @@ dm::Thrall *live_thrall(dm::World &p_world, int64_t p_id) {
 } // namespace
 
 void DmCore::set_thrall_target(int64_t p_id, int64_t p_target) {
+	if (refused("set_thrall_target")) {
+		return;
+	}
 	if (dm::Thrall *t = live_thrall(world, p_id)) {
 		t->target = int32_t(p_target);
 	}
 }
 
 void DmCore::set_thrall_mark(int64_t p_id, double p_mult) {
+	if (refused("set_thrall_mark")) {
+		return;
+	}
 	if (dm::Thrall *t = live_thrall(world, p_id)) {
 		t->mark_mult = p_mult;
 	}
 }
 
 void DmCore::curse_thrall(int64_t p_id, double p_seconds) {
+	if (refused("curse_thrall")) {
+		return;
+	}
 	if (dm::Thrall *t = live_thrall(world, p_id)) {
 		t->cursed_t = p_seconds;
 	}
 }
 
 void DmCore::set_thrall_pos(int64_t p_id, const Vector2 &p_pos) {
+	if (refused("set_thrall_pos")) {
+		return;
+	}
 	if (dm::Thrall *t = live_thrall(world, p_id)) {
 		t->x = p_pos.x;
 		t->z = p_pos.y;
@@ -778,12 +985,18 @@ void DmCore::set_thrall_pos(int64_t p_id, const Vector2 &p_pos) {
 }
 
 void DmCore::set_thrall_stats(int64_t p_id, const Dictionary &p_stats) {
+	if (refused("set_thrall_stats")) {
+		return;
+	}
 	if (dm::Thrall *t = live_thrall(world, p_id)) {
 		t->hp = num(p_stats, "hp", t->hp);
 		t->max_hp = num(p_stats, "maxHp", t->max_hp);
 		t->damage = num(p_stats, "damage", t->damage);
 		t->interval = num(p_stats, "attackInterval", t->interval);
 		t->attack_cd = num(p_stats, "attackCd", t->attack_cd);
+		if (p_stats.has("maxHp")) {
+			world.queue_thrall_max_hp(int32_t(p_id));  // guests know health as a fraction of the maximum
+		}
 	}
 }
 
@@ -930,6 +1143,9 @@ Dictionary DmCore::thrall_info(int64_t p_id) const {
 	d["pos"] = Vector2(t.x, t.z);
 	d["aim"] = Vector2(t.aim_x, t.aim_z);
 	d["yaw"] = t.yaw;
+	if (world.puppet) {
+		d["net_pos"] = Vector2(t.net_x, t.net_z);
+	}
 	return d;
 }
 
@@ -960,6 +1176,9 @@ void DmCore::set_area_level(const String &p_area, int64_t p_level) {
 }
 
 int64_t DmCore::corpse_add(const Vector2 &p_pos, const String &p_kind, const String &p_enemy, bool p_elite, double p_facing, double p_scale, const String &p_area) {
+	if (refused("corpse_add")) {
+		return 0;
+	}
 	int32_t kind = -1;
 	for (int32_t k = 0; k < 5; k++) {
 		if (p_kind == String(dm::CORPSE_KIND_NAMES[k])) {
@@ -1009,6 +1228,9 @@ int64_t DmCore::corpse_pick(const Vector2 &p_aim, double p_pick_r, double p_max_
 }
 
 bool DmCore::corpse_consume(int64_t p_id, int64_t p_by, const String &p_reason) {
+	if (refused("corpse_consume")) {
+		return false;
+	}
 	return world.consume_corpse(int32_t(p_id), int32_t(p_by), world.reason_id(to_std(p_reason)));
 }
 

@@ -12,6 +12,9 @@
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
+#include <string>
+#include <vector>
+
 #include "core/world.h"
 
 class DmCore : public godot::RefCounted {
@@ -24,6 +27,9 @@ class DmCore : public godot::RefCounted {
 	godot::PackedFloat32Array ev_floats;
 	friend class DmCrowd;        // the presentation reads the tables and the event buffer in place, read only (dm_crowd.h)
 	uint64_t event_batches = 0;  // take_events() calls: DmCrowd reads the buffer from where it stopped, and starts over once it was cleared
+	std::vector<uint8_t> wire_buf;               // the snapshot or batch being built (reused: no allocation once it has grown)
+	std::vector<std::string> refused_logged;     // command names already reported once as refused on a puppet
+	bool refused(const char *p_command);         // a puppet core refuses what the host owns: counts it, says so once per command, true when refused
 
 protected:
 	static void _bind_methods();
@@ -99,6 +105,20 @@ public:
 	godot::PackedFloat32Array corpse_positions() const;  // x, z, facing, scale per corpse, oldest first
 	godot::Dictionary corpse_info(int64_t p_id) const;
 	godot::String reason_name(int64_t p_reason) const;
+
+	// Co-op (native/README.md "Co-op"). The host builds the messages; a guest's core is a puppet that applies them. Messages carry a magic, a format
+	// version and a hash of the data tables; apply_* says false and replication_error() why when they do not match this build.
+	void set_puppet(bool p_on);                     // a guest's core: no brains, no rules; switching clears every body. Commands the host owns are refused with an error.
+	bool is_puppet() const;
+	void set_replication(bool p_on);                // host: collect reliable events for guests (and restart their numbering); off for solo play
+	godot::PackedByteArray snapshot(int64_t p_tick);  // host, 20 Hz: every live body's changing fields, quantized (empty on a puppet)
+	godot::PackedByteArray take_reliable();         // host, every tick: the discrete events since the last call, empty when none. Leaves the buffer take_events() reads alone
+	godot::PackedByteArray baseline();              // host: the whole present as reliable records, for a guest that joins late or asks after a gap
+	bool apply_snapshot(const godot::PackedByteArray &p_bytes);  // puppet: false = refused (see replication_error()); a late or repeated one is ignored (true)
+	bool apply_reliable(const godot::PackedByteArray &p_bytes);  // puppet: a batch or a baseline; a gap in the numbering is refused until a baseline arrives
+	godot::String replication_error() const;        // why the last apply_* said false ("" after a success)
+	godot::Dictionary replication_stats() const;    // counters of both roles
+	static int64_t wire_version();
 
 	// The tick and its outputs
 	void step(double p_dt);

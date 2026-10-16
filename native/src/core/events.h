@@ -67,6 +67,16 @@ struct Events {
 		floats.insert(floats.end(), p_floats);
 		count++;
 	}
+	// The same event from arrays (a co-op guest re-emits what the wire carried).
+	void push_raw(int32_t p_type, int32_t p_id, const int32_t *p_ints, int32_t p_ni, const float *p_floats, int32_t p_nf) {
+		ints.push_back(p_type);
+		ints.push_back(p_id);
+		ints.push_back(p_ni);
+		ints.push_back(p_nf);
+		ints.insert(ints.end(), p_ints, p_ints + p_ni);
+		floats.insert(floats.end(), p_floats, p_floats + p_nf);
+		count++;
+	}
 };
 
 } // namespace dm

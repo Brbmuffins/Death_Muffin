@@ -25,6 +25,10 @@ struct Body {
 	bool is_thrall = false, dead = false, frenzy = false;  // frenzy: the def carries Frenzy (DmStatusSet._frenzy)
 	double hp = 1, max_hp = 1, speed_mult = 1, attack_rate_mult = 1, taken_mult = 1;
 	StatusSet st;
+	// A co-op puppet only (puppet.cpp): where the last snapshot put the body (it eases toward it), the health fraction that snapshot said, and the smoothed speed.
+	float net_x = 0, net_z = 0, net_yaw = 0, speed_smooth = 0;
+	uint16_t net_hpq = 65535;
+	bool net_seen = false;
 };
 
 } // namespace dm

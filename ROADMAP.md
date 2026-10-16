@@ -88,7 +88,7 @@ server (B38).
   - [ ] Crowd cost: animation LOD (a far body at 24 or 10 Hz), cull instances outside the camera's view in the core, measure the thralls' shadows (they always cast), set the level-of-detail
     distances and the 128-instance reserve from the benchmark on Helix's PC.
   - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`) and its models synced (`client/assets.list`); the thrall and legion models; a first look on Forward+ and Mobile.
-  - [ ] Co-op guest: translate snapshots into `DmCrowd.sync_rows` (hits from hp drops).
+  - [x] Co-op guest: a puppet core is drawn by `DmCrowd.sync(core)` like a host core (its hits come from the hp drops it derives); no translation into `sync_rows` is needed.
 - [x] Core skeleton (native/README.md "Design"): enemy table in spawn order, heroes and bosses as external entities, tick, timers in
   doubles, seeded randomness, grid, event buffer, damage with synchronous kills, radius queries, bulk reads; `client/tests/core_api.gd`.
   Thrall, corpse and status tables come with their items.
@@ -97,7 +97,7 @@ server (B38).
   director, the affixes' look with the client.
 - [x] Core thralls, corpses and statuses: statuses (`client/tests/core_status.gd`), thralls with their brain, legion and enemy targeting
   (`client/tests/core_thralls.gd`) and corpses with the toxic pool (`client/tests/core_corpses.gd`). Not in it: the Veilwalker's echo corpses,
-  views and co-op snapshots (their own items), and the rites that call it.
+  views (their own item), and the rites that call it.
 - [ ] Client layer (B43), in this order:
   - [x] Code sync: today's scripts, scenes and data copied into `client/` by `tools/rebuild/sync-code.mjs`, the hygiene rules for copies and
     ports, and the project opening without errors with the per-creature systems left out (`client/tests/code_load.gd`).
@@ -110,7 +110,17 @@ server (B38).
   - [ ] Login to the test server and character select (today's front flow, pointed at the test API).
   - [ ] The Gravedigger King's brain as an external entity.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
-- [ ] 2-player co-op: a test lobby and relay, core snapshots.
+- [ ] 2-player co-op (the combat core's half is built: native/README.md "Co-op", `client/tests/core_coop.gd`):
+  - [x] Core snapshots: `DmCore.snapshot` (20 Hz, the Full Party in about 1.2 KB), `take_reliable` and `baseline` on the host, a puppet core (`set_puppet`, `apply_snapshot`,
+    `apply_reliable`) on the guest, versioned messages (B40), loss, reordering and late joins proven.
+  - [ ] Transport: the test lobby and relay carry the three messages: the snapshot unreliable and newest-wins (1.2-1.3 KB in the test fight, up to 1.7 KB: past the 1,392-byte packet the old
+    code stayed under, so ENet fragments it and a lost fragment loses that snapshot, which the next repairs; cut it by body range only if measurement says so), batches and baselines reliable and in order, a `DmCore.wire_version()` check in the join handshake that names the side to update
+    (B28, phones), and a guest's request for a baseline after a refused batch.
+  - [ ] GDScript wiring: the host calls `set_replication(true)` when the first guest joins and sends `take_reliable()` and `snapshot()` on the lane; the guest game scene builds a
+    puppet core, feeds `apply_*` from the lane, runs `CrowdView` on it, maps each host hero id to its legion (`set_owner_legion`), and runs the effects and HUD consumers on the
+    puppet's `take_events()` without rewards, loot or the kill report; a baseline (also for each new area) clears the guest's presentation first.
+  - [ ] Still GDScript, to be replicated beside the core: the Gravedigger King and later bosses (state, phases, telegraphs), hero vitals, rite events and visuals, ground drops.
+  - [ ] Phones join as guests only (B40): the same messages; measure the snapshot on the Mobile renderer's budget when the first phone build exists.
 - [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
 
 **Working rules for the rebuild.**
