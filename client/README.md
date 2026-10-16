@@ -1,6 +1,6 @@
 # The rebuilt client
 
-The rebuilt Death Muffin client (ROADMAP "Now: the rebuild", DECISIONS B34-B41): its own Godot 4.7.2 project, next to the live game in
+The rebuilt Death Muffin client (ROADMAP "Now: the rebuild", DECISIONS B34-B42): its own Godot 4.7.2 project, next to the live game in
 `godot/`, which it never changes. The live game keeps shipping from `godot/` until launch day; this project ships only to the launcher's
 Test build channel until then.
 

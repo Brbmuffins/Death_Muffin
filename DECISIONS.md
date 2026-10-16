@@ -148,6 +148,12 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   live `godot/`, not folders inside it: Godot loads every GDExtension in a project, so a shared project would make the live game and its
   tests load the new C++ core, and shared assets would flip import settings (phone formats, lightmap UVs) between the two. The rebuild gets
   its own copies of the assets it uses (git stores identical files once). On launch day `client/` becomes the game.
+- **B42. The combat core's contract** (2026-10-16, Claude's call under B34, from a map of today's runtime). The core owns enemies,
+  thralls, corpses, statuses, affixes and the spatial grid; heroes and bosses are external entities GDScript updates each tick. Rites
+  stay GDScript and call the core synchronously, so a kill still resolves inside the cast as today. Per-creature work never crosses into
+  GDScript during a tick (one ordered event buffer instead); timers accumulate in doubles like today's; randomness is seeded per entity.
+  Godot's RVO avoidance is replaced by the core's own steering and separation: the one planned difference in feel, judged by Helix in
+  the test build. Details: native/README.md "Design".
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

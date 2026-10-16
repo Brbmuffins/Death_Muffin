@@ -7,15 +7,15 @@ are listed once, in [KNOWN-GAPS.md](KNOWN-GAPS.md); decisions in [DECISIONS.md](
 ## Now: the rebuild (Helix, 2026-10-16)
 
 Death Muffin is rebuilt underneath so the same game runs smoothly on low-end PCs and laptops (phones later) and looks great on high-end
-PCs, on a simple foundation that does not need patching again (DECISIONS B34-B41). Same game: same rules, numbers and timing. Every
+PCs, on a simple foundation that does not need patching again (DECISIONS B34-B42). Same game: same rules, numbers and timing. Every
 difference from today is written down; improvements are proposed to Helix, never slipped in. Ascension leaves on launch day and comes back
 redesigned right after (B36). First-guess timing: 4 to 6 weeks of working days, re-estimated at Gate B.
 
 **The foundation (B34, B35).**
 - The rebuild is its own Godot project, `client/`, next to the live game in `godot/`, which it never changes (B41).
 - A C++ combat core (GDExtension, source in `native/`) owns every enemy and thrall in flat arrays: spatial grid,
-  movement and separation, targeting, damage, status, affix and necromancer rules. It steps once per 60 Hz tick (same timing as today),
-  with one call across the boundary per tick and one event buffer back. Think and move run in parallel on `WorkerThreadPool`; hits and
+  movement and separation, targeting, damage, status, affix and necromancer rules. It steps once per 60 Hz tick (same timing as today);
+  per-creature work never crosses into GDScript during a tick (one ordered event buffer back), while rites and bosses call it directly (B42). Think and move run in parallel on `WorkerThreadPool`; hits and
   deaths resolve in one fixed-order pass.
 - The GDScript game layer in `client/` does the HUD, menus and panels, areas, hero controls, boss scripts and flow.
 - Crowds are drawn in bulk on the GPU: one MultiMesh per creature model and LOD, animations baked into vertex-animation textures from the
@@ -52,7 +52,7 @@ server (B38).
    paths only it used go.
 
 **Prep checklist** (the current work):
-- [x] The plan in the repository (this section, DECISIONS B34-B41).
+- [x] The plan in the repository (this section, DECISIONS B34-B42).
 - [x] C++ build: `native/build.sh` builds the core for Linux (tests) and Windows (mingw-w64, static runtime) against godot-cpp pinned at
   1e79263; `client/setup.sh` imports the new project and runs `client/tests/core_smoke.gd` (the core loads and answers).
 - [x] Test build channel: `server/death-muffin/test-channel/publish-test-channel.sh <rev>` publishes to /death-muffin/client-test/ with its
@@ -64,10 +64,26 @@ server (B38).
 - [ ] Full Party benchmark fight in today's game, with before numbers on Helix's PC and in the VPS processor test.
 - [ ] First test build: today's game on Forward+, fixing only what stops it running → Gate A.
 
+**Test build checklist** (built ahead while Gate A waits; nothing from it reaches anyone before Gate A passes):
+- [ ] Assets: a sync tool copies the test build's assets from `godot/assets` into `client/assets` by a list (the Hollow Graves, the
+  Gravecaller, the Graves roster, thralls, the Gravedigger King, effects, sounds, HUD art).
+- [ ] The Hollow Graves as a scene: a converter from `godot/data/slice/world.json` (same layout, static colliders, offline-baked
+  navmesh, occluders, visibility ranges); the first lighting bake through Helix's helper.
+- [ ] Crowd drawing: a vertex-animation baker for the creature models and the MultiMesh crowd renderer.
+- [ ] Core skeleton (native/README.md "Design"): entity tables, tick order, timers, seeded randomness, grid, event buffer, query and
+  command API, unit tests.
+- [ ] Core enemies: the Graves roster (robber, hound, penitent, sac, moth, bat, ghoul) with elites and affixes.
+- [ ] Core thralls, corpses and statuses.
+- [ ] Client layer: login to the test server, character select, hero, camera, input, the Gravecaller's rites on the core, the
+  Gravedigger King's brain as an external entity.
+- [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
+- [ ] 2-player co-op: a test lobby and relay, core snapshots.
+- [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
+
 **Working rules for the rebuild.**
 - This checklist is the only to-do list; the next unchecked item is the only work. Ideas go to "After launch day".
-- Each item ends as a tested commit. Architecture rules are tests: no node or script per creature, one call per tick across the core
-  boundary, no per-frame allocations in the core, the HUD draw-call cap.
+- Each item ends as a tested commit. Architecture rules are tests: no node or script per creature, no per-creature calls across the core
+  boundary during a tick, no per-frame allocations in the core, the HUD draw-call cap.
 - Subagents work in their own worktrees, never push or deploy, and report in a few lines; the main session runs their tests and reads their
   diffs before merging.
 - Stop rules: three failed tries at one problem, an item at twice its estimate, or a plan that does not fit what the code shows → stop that
