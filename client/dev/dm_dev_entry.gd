@@ -3,7 +3,7 @@ extends Node
 ## The dev entry of the rebuilt client: starts the game scene (DmNextGame) OFFLINE in the Hollow Graves with a dev character, the way today's `--dev-offline --class=2` does,
 ## and takes the options for a crowd or a screenshot. It is not the main scene (that is the boot, main/main.tscn: login and character select against the test server); run it as a scene.
 ## Nothing here reaches a server: the backend is the local mock (DmOffline.make_mock, its accounts in user://dm_dev_offline_db.json), and DmNextGame refuses any api whose base url is not the test
-## server's. DmMain reads the same options for `-- --dev-offline` (DmDevEntry.options).
+## server's. DmMain reads the same options for `-- --dev-offline` (DmLaunchArgs, main/dm_launch_args.gd).
 ##
 ##   godot --path client res://dev/dm_dev_entry.tscn                       # the Gravecaller (class 2), level 10, the HUD, waves
 ##   godot --path client res://dev/dm_dev_entry.tscn -- --class=1 --seed=7  # after `--`: the options below
@@ -34,7 +34,7 @@ func _ready() -> void:
 	add_child(idle)
 	idle.current = true
 	var args := OS.get_cmdline_user_args()
-	var opts := options(args)
+	var opts := DmLaunchArgs.options(args)
 	mock = DmOffline.make_mock(DEV_DB)
 	api = DmOffline.make_api(mock)
 	var r := await api.register("tester", "t@example.com", "pw1234")
@@ -74,33 +74,6 @@ func _ready() -> void:
 				push_warning("the dev entry could not wake the King: " + why)
 		if opts.has("shot"):
 			_shot_after(String(opts["shot"]), float(opts["shot_after"]), float(opts.get("shot_wall", 0.0)))
-
-
-## The launch options after `--`.
-static func options(args: PackedStringArray) -> Dictionary:
-	var o := {"class": 2, "level": 10, "no_waves": false, "shot_after": 25.0}
-	for a in args:
-		if a.begins_with("--class="):
-			o["class"] = int(a.substr(8))
-		elif a.begins_with("--level="):
-			o["level"] = clampi(int(a.substr(8)), 1, 60)
-		elif a.begins_with("--seed="):
-			o["seed"] = int(a.substr(7))
-		elif a == "--no-waves":
-			o["no_waves"] = true
-		elif a == "--boss":
-			o["boss"] = true
-		elif a.begins_with("--crowd="):
-			o["crowd"] = int(a.substr(8))
-		elif a.begins_with("--baked="):
-			o["baked"] = a.substr(8)
-		elif a.begins_with("--shot="):
-			o["shot"] = a.substr(7)
-		elif a.begins_with("--shot-after="):
-			o["shot_after"] = float(a.substr(13))
-		elif a.begins_with("--shot-wall="):
-			o["shot_wall"] = float(a.substr(12))
-	return o
 
 
 ## QA: after `seconds` of game time (or `wall` real seconds, when given and first) save the viewport and quit.

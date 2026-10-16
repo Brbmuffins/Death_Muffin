@@ -14,5 +14,5 @@ if [ ! -d "$OUT" ]; then sudo mkdir -p "$OUT" && sudo chown ubuntu:ubuntu "$OUT"
 # exist on the test backend).
 [ -f "$OUT/manifest.json" ] || echo '{"online": {"enabled": true, "staff": false, "message": "Test build"}}' > "$OUT/manifest.json"
 OUT_DIR="$OUT" BASE_URL=https://muffindevelopment.com/death-muffin/client-test WORK=/home/ubuntu/death-muffin/deploy-test \
-  NO_ANNOUNCE=1 LOBBY_SKEW_OK=1 KEEP_BUILDS=2 PROJECT=client PREPARE="$HERE/prepare-rebuild.sh" \
+  NO_ANNOUNCE=1 LOBBY_SKEW_OK=1 KEEP_BUILDS=2 PROJECT=client PREPARE="$HERE/prepare-rebuild.sh" SMOKE="$HERE/smoke-rebuild.sh" \
   bash "$HERE/../publish-godot-client.sh" "$REV"

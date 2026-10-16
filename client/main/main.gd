@@ -7,6 +7,7 @@ extends Node
 ## Launch args (after `--`): none needed. Testing only (editor / debug builds; a release export ignores them): `--dev-offline` = local accounts + progress in DEV_OFFLINE_DB
 ## (DmMockBackend: no network at all); `--dev-offline --class=N` skips the front flow (test account `tester`) and enters directly, with `--seed=N`, `--no-waves` and `--baked=<dir>`
 ## as the dev entry (dev/dm_dev_entry.tscn, which stays the way to a crowd or a screenshot); `--world-demo` is an alias of `--dev-offline --class=2`.
+## `--boot-smoke`: reach the first screen, print "BOOT OK <screen>" and quit (the test channel's publish check).
 ## `--benchmark`: runs the in-game benchmark straight away on an isolated offline game (DmBenchmark, no login; `--bench-room=`, `--bench-class=`, `--bench-size=`,
 ## `--bench-length=` pick the setup, default the Standard one, `--bench-warm=` / `--bench-measure=` shorten it, `--baked=<dir>` names the baked crowd models) and stays on the
 ## results screen with a Quit button (a headless run quits by itself). The rebuilt client has the Hollow Graves and the Gravecaller only: another room or class is refused with
@@ -59,12 +60,12 @@ func _ready() -> void:
 			printerr("BENCHMARK refused: " + why)
 			get_tree().quit(2)
 			return
-		_run_benchmark(true, bench_setup_from_args(args), _arg_float(args, "--bench-warm=", -1.0), _arg_float(args, "--bench-measure=", -1.0), String(DmDevEntry.options(args).get("baked", "")))
+		_run_benchmark(true, bench_setup_from_args(args), _arg_float(args, "--bench-warm=", -1.0), _arg_float(args, "--bench-measure=", -1.0), String(DmLaunchArgs.options(args).get("baked", "")))
 		return
 	if mode == "":
 		mode = mode_for(args)
 	if mode == "dev_offline":
-		var o := DmDevEntry.options(args)
+		var o := DmLaunchArgs.options(args)
 		if o.has("seed"):
 			start_opts["seed"] = o["seed"]
 		if o.has("baked"):
@@ -86,6 +87,18 @@ func _ready() -> void:
 		await _dev_quick_start(quick)
 		return
 	_start_flow()
+	if OS.is_debug_build() and "--boot-smoke" in args:
+		_boot_smoke()
+
+
+## Testing (`--boot-smoke`, debug builds): the test channel's publish boots an exported copy and waits for this line, so a build that cannot reach its
+## first screen (2026-10-16: a boot script naming a class the export leaves out stopped every test build on a grey screen) is never published.
+func _boot_smoke() -> void:
+	var end := Time.get_ticks_msec() + 60000
+	while (flow == null or flow.current_name == "") and Time.get_ticks_msec() < end:
+		await get_tree().process_frame
+	print("BOOT OK %s" % flow.current_name if flow != null and flow.current_name != "" else "BOOT STUCK")
+	get_tree().quit(0 if flow != null and flow.current_name != "" else 1)
 
 
 ## Testing: the class a dev quick start enters with (`--class=N`; `--world-demo` = class 2), -1 = no quick start (the front flow runs).
