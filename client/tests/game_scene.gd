@@ -6,7 +6,7 @@ extends SceneTree
 ##   - NO NODE PER CREATURE: the scene tree's node count is the same with 0, 35 and 70 more idle enemies in the core, and no enemy has a node;
 ##   - enemies reach and hit the hero: the hero's health drops through the core's EV_TARGET_HIT, with kinds as today;
 ##   - the hero dies and gets up again (4 s, at the Graves' door; the core's enemies stop hitting him while he lies, and a forced death when the waves were too weak);
-##   - killing enemies with core.damage lays corpses and plays the death path (DmEnemyFx) without errors, the corpses get their rings (capped); deaths and removals leave nothing held by the fx;
+##   - killing enemies with core.damage lays corpses and plays the death path (DmEnemyFx) without errors, the corpses get their rings (capped) and dust where they land; deaths and removals leave nothing held by the fx;
 ##   - the crowd draws the creatures: the CrowdView's groups hold an instance per live body and per corpse;
 ##   - the affixed elites' standing marks and motes (gone when they fall); a status's tell (frost motes on a chilled body); the dirt mound over a ghoul underground;
 ##   - the kinds of blow (the penitent's cone, the moth's dust and cloud, the sac's slam, a hurt ghoul's dig and eruption) and the affixes' bell, meal, shroud and burst are
@@ -315,6 +315,7 @@ func killing() -> void:
 	var died_before := died
 	var deaths_fx := int(g.enemy_fx.stats["death"])
 	var marks_before := int(g.enemy_fx.stats["corpse_mark"])
+	var landings_before := int(g.enemy_fx.stats["landing"])
 	var showing_before := g.enemy_fx.corpse_marks(true)   # the pale (capped) rings; a resonant corpse's violet ring always shows
 	var kills := 0
 	for id in made:
@@ -337,6 +338,7 @@ func killing() -> void:
 	var removed_before := removed
 	await ticks(260)
 	check(removed - removed_before >= kills, "the dead bodies were removed after 4 s (%d)" % (removed - removed_before))
+	check(int(g.enemy_fx.stats["landing"]) - landings_before >= kills / 2, "dust rose where the bodies came to rest (%d of %d)" % [int(g.enemy_fx.stats["landing"]) - landings_before, kills])
 	g.director.enabled = true
 
 

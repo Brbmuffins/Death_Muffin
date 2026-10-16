@@ -94,7 +94,7 @@ view.focus = hero_xz                                                # every tick
 - **Groups:** one MultiMesh per model, level of detail and shadow setting: two `MultiMeshInstance3D` nodes per level, one without shadows and one that casts. `DmCrowd`
   owns the instances' memory (`multimesh_allocate_data`); `CrowdView` gives each MultiMesh the area's `custom_aabb`. Every group is sized for 128 instances at loading
   (`reserve`) and doubles when a crowd outgrows it, so a wave of one model does not grow a MultiMesh; a steady crowd never does. `DmCrowd.buffer(model, lod, shadow)` returns
-  exactly what was uploaded (count x 20 floats), `stats()` the counters (bodies by kind, instances drawn, capacity, regrows), `view_info(id)` one creature's view state.
+  exactly what was uploaded (count x 20 floats), `stats()` the counters (bodies by kind, instances drawn, capacity, regrows), `view_info(id)` one creature's view state, `take_landings()` where dying bodies came to rest since the last call (x, z, scale each: `DmEnemyFx` raises today's dust there).
 
 ### The rows
 

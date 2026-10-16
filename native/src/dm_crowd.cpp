@@ -57,6 +57,7 @@ void DmCrowd::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_glows", "elite", "champion_add"), &DmCrowd::set_glows);
 	ClassDB::bind_method(D_METHOD("glow_palette"), &DmCrowd::glow_palette);
 	ClassDB::bind_method(D_METHOD("glow_version"), &DmCrowd::glow_version);
+	ClassDB::bind_method(D_METHOD("take_landings"), &DmCrowd::take_landings);
 	ClassDB::bind_method(D_METHOD("set_enemy_look", "def", "look"), &DmCrowd::set_enemy_look);
 	ClassDB::bind_method(D_METHOD("set_thrall_look", "kind", "legion", "look"), &DmCrowd::set_thrall_look);
 	ClassDB::bind_method(D_METHOD("set_owner_legion", "owner", "legion"), &DmCrowd::set_owner_legion);
@@ -228,6 +229,17 @@ PackedColorArray DmCrowd::glow_palette() const {
 	for (size_t i = 0; i + 3 < glow_pal.size(); i += 4) {
 		out.push_back(Color(glow_pal[i], glow_pal[i + 1], glow_pal[i + 2], glow_pal[i + 3]));
 	}
+	return out;
+}
+
+PackedFloat32Array DmCrowd::take_landings() {
+	PackedFloat32Array out;
+	if (view.landings.empty()) {
+		return out;
+	}
+	out.resize(int64_t(view.landings.size()));
+	std::memcpy(out.ptrw(), view.landings.data(), view.landings.size() * sizeof(float));
+	view.landings.clear();
 	return out;
 }
 

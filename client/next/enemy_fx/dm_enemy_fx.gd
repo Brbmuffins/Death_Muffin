@@ -18,7 +18,8 @@ extends Node
 ## Near the hero, on the same ambient tick, today's status tells (_tick_alive): marrow drips while it bleeds, frost motes while chilled, a priest-gold glint while
 ## sanctified, rot while withered, bone dust while fractured, bronze motes while incensed; and the fliers' and the wraith's hover motes. The bodies looked at are
 ## only those with a status (`status_changed`) or that fly.
-## A body underground (a ghoul's BURROW and its eruption's wind-up) has today's dirt mound over it (`_mounds`, a node each: a few at most).
+## A body underground (a ghoul's BURROW and its eruption's wind-up) has today's dirt mound over it (`_mounds`, a node each: a few at most); a dying body raises
+## dust where it comes to rest (the crowd says when: `DmCrowd.take_landings`).
 ## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
 ## the elite's body glow, the censer, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the acolyte's reach ring, the Flagellant's frenzy motes.
 
@@ -47,7 +48,7 @@ var fx: DmEventFx                  ## the shared router half: telegraphs, deaths
 var host := DmEnemyFxHost.new()
 var core_host: DmCoreHost
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
-var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0}
+var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0}
 
 var _clock := 0.0                  ## ms of rendered-frame time
 var _amb_t := 0.0
@@ -406,6 +407,15 @@ func _on_zone_gone(id: int) -> void:
 		fx.zones_fx.zone_gone(id)
 
 
+## Dust where a dying body comes to rest (DmEntityViews._landing_dust: the crowd reports the moment, `DmCrowd.take_landings`), near the hero only.
+func _landing_dust(x: float, z: float, k: float) -> void:
+	if absf(x - _px) > NEAR_X or absf(z - _pz) > NEAR_Z:
+		return
+	vfx.emit_smoke({"x": x, "y": 0.1, "z": z, "count": 3, "color": 0x5d544a, "spread": 0.45 * k, "speed": 0.7, "up": 0.25, "life": 0.8, "size": 0.9 * k})
+	vfx.emit({"x": x, "y": 0.1, "z": z, "count": 5, "color": 0x7a6f60, "spread": 0.4 * k, "speed": 1.1, "up": 0.7, "life": 0.4, "size": 0.1, "gravity": 8})
+	stats["landing"] += 1
+
+
 ## The dirt mound over a body underground (DmEntityViews._make_mound: a flattened dark hemisphere, no shadow), so the player sees where the ghoul digs.
 func _mound_on(id: int) -> void:
 	if _mounds.has(id) or not is_inside_tree() or not get_parent() is Node3D:
@@ -561,6 +571,10 @@ func _process(dt: float) -> void:
 	fx.update(dt)
 	if _clock >= _next_due:
 		_run_due()
+	if core_host != null and core_host.view != null and core_host.view.crowd != null:
+		var lands: PackedFloat32Array = core_host.view.crowd.take_landings()
+		for i in range(0, lands.size(), 3):
+			_landing_dust(lands[i], lands[i + 1], lands[i + 2])
 	for id in _mounds:   # a mound rides over its digger (a few at most)
 		var p := core_host.enemy_position(id)
 		if p != Vector3.INF:

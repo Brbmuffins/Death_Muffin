@@ -133,7 +133,10 @@ public:
 	uint64_t seed = 1;
 	int32_t reserve_rows = 0;  // rows every group starts with (and new models' groups): sized at loading so a wave never grows a MultiMesh
 
-	void set_thrall_shadows(bool p_on);  // the thralls' casting, for the thralls already drawn too (a preset change mid-game)
+	void set_thrall_shadows(bool p_on);
+	// Where dying bodies came to rest since the last take (DmEntityViews._landing_dust): x, z, drawn scale per landing; at most LANDINGS_MAX kept.
+	std::vector<float> landings;
+	static constexpr size_t LANDINGS_MAX = 64;  // the thralls' casting, for the thralls already drawn too (a preset change mid-game)
 	int32_t add_model(const CrowdModel &p_model);
 	int32_t model_count() const { return int32_t(models.size()); }
 	const CrowdModel &model(int32_t p_slot) const { return models[p_slot]; }

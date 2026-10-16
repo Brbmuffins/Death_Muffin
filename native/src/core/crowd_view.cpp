@@ -930,6 +930,9 @@ bool CrowdView::advance(View &v, double p_dt, double p_alpha) {
 			v.has_settle = true;
 			v.settle_t = 0.0;
 			v.settle_y = v.toppled > 0.0 ? 0.0 : v.dy;
+			if (landings.size() < LANDINGS_MAX * 3) {  // the dust where it lands (DmEnemyFx reads them each frame)
+				landings.insert(landings.end(), { float(v.dx), float(v.dz), float(v.scale) });
+			}
 		}
 		if (v.has_settle) {
 			v.settle_t += p_dt;
