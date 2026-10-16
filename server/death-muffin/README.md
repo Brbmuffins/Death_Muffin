@@ -9,9 +9,10 @@ https://muffindevelopment.com/death-muffin/ (launcher download, patch notes, lea
 |---|---|---|---|---|
 | Auth + game API | 5190 (127.0.0.1) | `backend/server.js` | `systemd/death-muffin-auth.service` | Express, MySQL database `death_muffin`, own `JWT_SECRET`. Health: `GET /health`, `GET /api/health` |
 | Lobby + packet relay | 5192 (127.0.0.1) | `lobby/` | `lobby/deathmuffin-lobby.service` | WebSocket session list and host-to-client relay for 1-4 player sessions; see `lobby/README.md` |
+| Test backend (rebuild) | 5194 (127.0.0.1) | the live backend's code | `test-server/death-muffin-auth-test.service` | Database `death_muffin_test`, own user and `JWT_SECRET`, copies of the team's accounts; public at `/death-muffin/test-api/`; see `test-server/README.md` |
 | UDP co-op relay | 5193/udp (public) | `relay/`, `godot/net/relay/dm_udp_relay.gd` | `relay/deathmuffin-relay.service` | ENet lane next to the lobby WebSocket, entered with a lobby ticket; see `relay/README.md` |
 
-Ports 5194-5199 are reserved for this project (:5191 is unused).
+Ports 5195-5199 are reserved for this project (:5191 is unused).
 
 Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (copies installed by `deploy-release.sh` and `deploy-lobby.sh`), not from the git checkout.
 `.env` lives only in `/home/ubuntu/death-muffin/backend/` (template: `backend/.env.example`: `PORT`, `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, `JWT_SECRET`,

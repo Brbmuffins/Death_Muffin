@@ -59,8 +59,8 @@ server (B38).
   Forward+ from a scratch copy (the repository's `godot/project.godot` stays Compatibility).
 - [ ] Launcher Test build switch: the test build installs next to the normal game and updates itself; a test copy is checked on Helix's PC
   before the launcher release goes to everyone.
-- [ ] Test server: a second backend on its own port and database (ports checked against the live services first), with copies of the
-  team's accounts (Helix, warbogar, brbmuffins) made on request.
+- [x] Test server: `death-muffin-auth-test` on 127.0.0.1:5194, its own database and user, public at /death-muffin/test-api/, copies
+  of the team's accounts (`server/death-muffin/test-server/`). The lobby and relay for test co-op come with the test build (Gate B).
 - [ ] Full Party benchmark fight in today's game, with before numbers on Helix's PC and in the VPS processor test.
 - [ ] First test build: today's game on Forward+, fixing only what stops it running → Gate A.
 

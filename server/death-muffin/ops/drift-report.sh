@@ -167,10 +167,14 @@ while IFS= read -r f; do drift "secret-ish file in docroot: ${f#$WWW/}"; done < 
 
 # 7. Services
 section "7. Services"
-for s in death-muffin-auth deathmuffin-lobby deathmuffin-relay death-muffin-discord-agent; do
+for s in death-muffin-auth deathmuffin-lobby deathmuffin-relay death-muffin-discord-agent death-muffin-auth-test; do
   st="$(systemctl is-active $s 2>&1)"; [ "$st" = active ] || drift "$s is $st"; done
 H="$(curl -fsS -m 5 http://127.0.0.1:5190/health 2>&1)" || drift "auth /health failed: ${H:0:100}"
 [ -n "${H:-}" ] && info "auth /health: ${H:0:100}"
+if [ -f "$DM/backend-test/.env" ]; then   # the rebuild's test backend (test-server/README.md): up, and on the live server code
+  curl -fsS -m 5 http://127.0.0.1:5194/health >/dev/null 2>&1 || drift "test backend :5194 /health failed"
+  diff -rq --exclude=.env --exclude='.env.*' "$DM/backend" "$DM/backend-test" >/dev/null 2>&1 || drift "test backend code differs from live (run server/death-muffin/test-server/sync.sh)"
+fi
 
 # 8. Disk
 section "8. Disk"

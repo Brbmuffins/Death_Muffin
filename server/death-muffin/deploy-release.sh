@@ -141,5 +141,10 @@ echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
 # NO_ANNOUNCE=1 (a Godot ship: the client publish right after announces the release once).
 [ -n "${NO_ANNOUNCE:-}" ] || QUIET=1 REPO="$REPO" bash "$SRC/server/death-muffin/announce-release.sh" "$SHA" || true
 
+# The rebuild's test backend runs the same server code and migrations (test-server/README.md). Best effort: never fails the live deploy.
+if [ -f "$RUNTIME/backend-test/.env" ]; then
+  bash "$SRC/server/death-muffin/test-server/sync.sh" "$SHA" || echo "!! test backend sync failed; live is unaffected (server/death-muffin/test-server/sync.sh)" >&2
+fi
+
 # The candidate export (~330 MB) is only needed until the release is live and announced; ROLLBACK.sh uses the backup folder.
 rm -rf "$CAND"
