@@ -46,7 +46,7 @@ world_fx   # world dressing and atmosphere
 # Copied again because of them: next/perf/dm_bench_history.gd.
 # 2-player co-op (client/README.md "Co-op on the core"):
 # next/next_net.gd                         the core's snapshot (cut by body ranges to fit a packet), reliable batches and baseline over the session's peer, the heroes' ids and vitals, a guest's request for a baseline; no enemy dictionaries or cues (the core's events carry them)
-# next/party/dm_next_party.gd              the lobby link, hosting, joining, invites and asks against the TEST lobby and relay (DmConfig), friendship changes announced (friends_changed), the host's world (heat, difficulty) told to the lobby; no chat, joiner backend session or ground drops
+# next/party/dm_next_party.gd              the lobby link, hosting, joining, invites and asks against the TEST lobby and relay (DmConfig), friendship changes announced (friends_changed), the host's world (heat, difficulty) told to the lobby, the host <-> guest handshake of the guest's own account (B22); no chat or ground drops
 # session/dm_session.gd                    the hello carries the core's wire version (DmCore.wire_version(), PROTOCOL 3) and the host refuses another; `abort(reason)` for a guest the host's messages cannot be used by
 # The Gravedigger King (client/README.md "The Gravedigger King"): the boss is an external of the core (kind 1) whose brain stays GDScript; the brains of sim/bosses are copies, unchanged:
 # next/bosses/dm_boss.gd                   a plain node (no DmEnemy, no collider, no agent, no state machine) that registers as an external of the core (core_id) and takes blows through take_damage
@@ -56,7 +56,7 @@ world_fx   # world dressing and atmosphere
 # game/dm_boss_view.gd                     its own three motion helpers instead of DmEntityViews'
 # Copied again because of them: next/bosses/dm_boss_meta.gd (the Covenant Seal altar choice; it needs the panels' prompt, so nothing creates it yet).
 # Copied again because of them: next/status (DmStatusSet, for the status sets of heroes and bosses only), next/enemy_fx/dm_enemy_fx_host.gd, game/dm_event_fx_telegraph.gd,
-# game/dm_event_fx_boss.gd, next/progress/dm_next_chronicle.gd, next/areas/dm_area_flow.gd, next/gathering/dm_next_gather.gd, next/party/dm_next_joiner.gd.
+# game/dm_event_fx_boss.gd, next/progress/dm_next_chronicle.gd, next/areas/dm_area_flow.gd, next/gathering/dm_next_gather.gd.
 # The HUD on the core (client/README.md "The HUD on the core"; its draw-call budget: "The HUD's budget"):
 # next/next_hud.gd                         the HUD host (DmNextHud): today's DmHud fed by the view-model on a 20 Hz timer from the core's signals; floating numbers with the caps; banners; hud_scale and hud_layout options; the menu row shows the Social button only and brings the Social window (next/hud/dm_next_social.gd)
 # next/hud/dm_next_hud_vm.gd               the view-model from the core's bulk arrays (target frame, minimap dots, thrall count, corpses near the hero, cooldowns); no DmThrallHost, DmEnemy or DmCorpseField
@@ -81,6 +81,7 @@ world_fx   # world dressing and atmosphere
 # next/meta/dm_next_meta.gd                a kill's enemy is a core id; the Bonded Dead rise through the hero's legion on the core (DmCoreLegion.raise_bonded)
 # next/progress/dm_next_progress.gd        the bag is the loot node's (the server's rows until it exists)
 # next/areas/dm_wave_milestones.gd         the Nightfall light dims the world's lights (DmNextWorld.builder); banners through the game's `game_event`
+# next/party/dm_next_joiner.gd             a party guest's own account; its bag is the loot node's
 
 # ==== Per-creature systems the combat core and the crowd view replace: not copied (DECISIONS B42, B43)
 !enemies                      # DmEnemy, its states, kinds and scenes: the core owns enemies

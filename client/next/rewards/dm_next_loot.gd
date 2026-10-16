@@ -19,6 +19,7 @@ var game: DmNextGame
 var api: Variant
 var hero_id: int = 0
 var inventory: DmInventory
+var guest_belt: DmNextBelt                   ## a party guest's belt: its own bag pays, the host applies the drink (DmNextBelt.remote_use); null on a host
 ## The character's learned runes (rune id -> true; GET /api/runes): never dropped again.
 var learned_runes: Dictionary = {}
 
@@ -44,6 +45,9 @@ func setup(game_: DmNextGame) -> void:
 	if game.progress != null:
 		game.progress.belt.inventory = inventory
 		inventory.changed.connect(func(_s: Array) -> void: game.progress.request_stats())   # worn gear feeds the stats
+	elif game.joiner != null:
+		_make_guest_belt()
+		inventory.changed.connect(_on_guest_inventory)   # the host builds our hero from the server's record: tell it when what we wear changed
 	var m: DmRewardsMember = game.my_member()
 	if m != null:
 		m.take_item = Callable(self, "_take")
@@ -79,6 +83,36 @@ func refresh_inventory() -> void:
 	if r.ok and r.data is Array:
 		inventory.replace(r.data)
 	inventory_changed.emit()
+
+
+## A party guest's belt (DmNextBelt.remote_use): the same rules and chips as the host's, on the guest's own bag and progression.
+func _make_guest_belt() -> void:
+	guest_belt = DmNextBelt.new()
+	guest_belt.body = game.local_body()
+	guest_belt.inventory = inventory
+	guest_belt.prog = game.joiner.prog
+	guest_belt.remote_use = game.party.guest_use
+	guest_belt.say = func(text: String, kind: String, y: float) -> void:
+		var b := game.local_body()
+		if b != null:
+			event.emit("float", {"world": b.position + Vector3(0, y, 0), "text": text, "kind": kind})
+	guest_belt.sfx = func(sound: String) -> void: _sfx(sound)
+	guest_belt.toast = func(text: String) -> void: event.emit("toast", {"text": text, "kind": ""})
+
+
+var _worn_key := ""
+
+## A guest's bag changed: when what it wears changed (rows at slot 100 and up), the host reads its build from the server again.
+func _on_guest_inventory(_s: Array) -> void:
+	var parts := PackedStringArray()
+	for row in inventory.all():
+		if int(row.get("slot_index", 0)) >= 100:
+			parts.append("%s:%s:%s" % [row.get("slot_index", ""), row.get("item_id", ""), row.get("instance_id", "")])
+	var key := ",".join(parts)
+	if key != _worn_key:
+		_worn_key = key
+		if game.party != null:
+			game.party.build_changed()
 
 
 # ---- the drops: click, hover, take ------------------------------------------------------------------------------------------------------

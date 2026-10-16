@@ -83,6 +83,8 @@ var meta: DmNextMeta                            ## child "Meta" (host): difficul
 var milestones: DmWaveMilestones                ## child "Milestones" (host): the Wave Speed milestones' banners and the Nightfall light
 var chron: DmNextChronicle                      ## child "Chronicle" (host): the one Chronicle every system feeds, first-kill trophies
 var loot: DmNextLoot                            ## child "Loot": this player's drops and bag (next/rewards/dm_next_loot.gd)
+var joiner: DmNextJoiner                        ## child "Joiner" (a party guest only): its own character, backend session, XP and drops on its own account (next/party/)
+var remote_builds := {}                         ## host: peer id -> a member's build from the server {character, slots, local} (DmNextParty.fetch_build)
 var perf: DmNextPerf                           ## child "Perf": the graphics preset, the fps cap and the auto-resolution governor (next/perf/dm_next_perf.gd)
 var character: Dictionary = {}
 var api: Variant = null                         ## DmApi: the test server's (the front flow) or the local mock (DmOffline.make_api)
@@ -225,6 +227,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		if _hold != null:
 			_hold.hold = false   # every node the host addresses exists now (Session, Net, Core, Bosses, Party, Look): deliver what queued while the world was built
 			_hold = null
+		joiner = DmNextJoiner.new()   # our own account: the host's welcome hands it the party session to join (DmNextParty._rpc_welcome)
+		joiner.name = "Joiner"
+		add_child(joiner)
+		await joiner.setup(self, bool(opts.get("persist", DisplayServer.get_name() != "headless")))
 		if not await _await_active(CLIENT_ACTIVE_S):
 			return   # start_failed was emitted: the caller returns to its own world
 		var gb := local_body()
@@ -233,6 +239,9 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		camera.snap(gb.position)
 		_enter(gb.position)
 		net.refused.connect(_on_net_refused)
+		joiner.member.body = gb
+		await _start_loot()
+		joiner.event.connect(game_event)
 	else:
 		var b := local_body()
 		b.bind_character(character)
@@ -304,12 +313,19 @@ func _start_value(b: DmHeroBody) -> void:
 	progress.name = "Progress"
 	add_child(progress)
 	await progress.setup(self, rewards.members.get(cid), bool(opts.get("persist", DisplayServer.get_name() != "headless")))
+	party.attach_host()
+	await _start_loot()
+	for src: Node in [progress, meta]:
+		src.connect(&"event", game_event)   # level-ups, toasts, floats -> the HUD
+
+
+## This player's drops and bag (host or guest; after its rewards member exists). Awaited under the loading cover: it reads the bag.
+func _start_loot() -> void:
 	loot = DmNextLoot.new()
 	loot.name = "Loot"
 	add_child(loot)
 	await loot.setup(self)
-	for src: Node in [progress, meta, loot]:
-		src.connect(&"event", game_event)   # level-ups, toasts, floats, loot lines -> the HUD
+	loot.event.connect(game_event)   # toasts, floats, pickup lines -> the HUD
 
 
 ## A game moment for the player's screen (toast, banner, float, loot, chat, level_up ...): the HUD shows what it draws; the rest waits for the panels and the counsel.
@@ -496,11 +512,23 @@ func hitstop(weight: float) -> void:
 	hitstopper.request(weight)
 
 
-## The build a body's caster reads (DmRiteWorld): its DmCharacterBuild, and the runes socketed in this player's bag (a party member's: none, until the guest's own account).
+## The build a body's caster reads (DmRiteWorld): its DmCharacterBuild and its socketed runes.
 func rite_build(peer_id: int) -> Dictionary:
 	var out := build_for(peer_id)
-	out["runes"] = DmRunes.sockets_of(progress.slots()) if progress != null and peer_id == session.get_my_id() else {}
+	out["runes"] = rune_sockets(peer_id)
 	return out
+
+
+## The runes a peer's character has socketed ({rite: rune_id}, DmRunes.sockets_of its rows): ours from our bag, a member's from the server's record
+## of it (remote_builds, DECISIONS B22), {} until that arrives.
+func rune_sockets(peer_id: int) -> Dictionary:
+	var b := body_of(peer_id)
+	if b == null or b.family != "necromancer":
+		return {}
+	if peer_id == session.get_my_id():
+		return DmRunes.sockets_of(progress.slots()) if progress != null else {}
+	var rb: Variant = remote_builds.get(peer_id)
+	return DmRunes.sockets_of(rb["slots"]) if rb is Dictionary else {}
 
 
 ## The rite on a hotbar slot (0 = LMB primary, 1-4, 5 = RMB, 6 = R): the kit's mapping (no full HUD, so no loadout of the player's).
@@ -510,7 +538,8 @@ func rite_for_slot(slot: int) -> String:
 
 
 ## A body's DmCharacterBuild. The local host's carries its progression (damage tier, boons, vows) and its bag's gear (the progress node's, as today's build_for; before it
-## loaded, what the server gave: `server_slots`, `server_local`); a party member's has no bag and no progression until the guest's own account: level-1 gear, the base mods.
+## loaded, what the server gave: `server_slots`, `server_local`); a party member's comes from the server's record of that member (remote_builds: gear, set bonuses,
+## boons, vows, upgrade tiers); until it arrives, the defaults. A guest's own hero is simulated by the host: what it builds here is only what it shows itself.
 func build_for(peer_id: int) -> Dictionary:
 	var b := body_of(peer_id)
 	var ch: Dictionary = b.character if b != null and not b.character.is_empty() else {"class_index": 0, "level": 1}
@@ -518,22 +547,34 @@ func build_for(peer_id: int) -> Dictionary:
 		if progress != null:
 			return DmCharacterBuild.build(ch, progress.slots(), progress.prog.local)
 		return DmCharacterBuild.build(ch, server_slots, server_local)
+	var rb: Variant = remote_builds.get(peer_id)
+	if rb is Dictionary:
+		var rch: Dictionary = (rb["character"] as Dictionary).duplicate()
+		rch["level"] = maxf(float(rch.get("level", 1)), float(ch.get("level", 1)))   # a level-up the host credited since the fetch
+		return DmCharacterBuild.build(rch, rb["slots"], rb["local"])
 	return DmCharacterBuild.build(ch, [], {})
 
 
-## The local player's rewards member (the host's own; null on a guest until its own account, and before the rewards exist).
+## The local player's rewards member: the host's own (DmSessionRewards) or a guest's (DmNextJoiner), null before either exists.
 func my_member() -> DmRewardsMember:
-	return rewards.members.get(int(character.get("id", 0))) if rewards != null else null
+	if rewards != null:
+		return rewards.members.get(int(character.get("id", 0)))
+	return joiner.member if joiner != null else null
 
 
 ## The backend party session this player is in ("" = none: not open yet, or a backend without sessions). Claims and gear rolls carry it.
 func party_session_id() -> String:
-	return rewards.session_id if rewards != null else ""
+	if rewards != null:
+		return rewards.session_id
+	return joiner.session_id if joiner != null else ""
 
 
-## The local hero's belt (Q the healing flask, Z / X the brews): the progression's, null before it (or on a guest, until its own account).
+## The local hero's belt (Q the healing flask, Z / X the brews): the host's own (the progression's), or a guest's (the loot node's: its own bag pays, the host
+## applies the drink).
 func belt() -> DmNextBelt:
-	return progress.belt if progress != null else null
+	if progress != null:
+		return progress.belt
+	return loot.guest_belt if loot != null else null
 
 
 ## Q / Z / X (DmNextHud): drink the flask or a belt brew.
@@ -609,6 +650,8 @@ func _await_active(timeout: float) -> bool:
 
 ## Everything the character earned, saved: the session's last kill batch, the Chronicle, the progression, the bag. leave() and the window's close call it.
 func flush_all() -> void:
+	if joiner != null:
+		await joiner.flush_all()
 	if rewards != null and session.is_host() and session.is_active():
 		await rewards.end_session({})
 	if chron != null:

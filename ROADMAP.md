@@ -46,8 +46,13 @@ frame, no idle pad: this is the processor test) today's game takes 16.2 ms a fra
 **3.0 times today's speed on average, 2.7 times at p95, 1.8 at p99** (the gate asks for 2 times). In the same runs the client's budgets: combat core 2.0 ms a tick of 4 (step 1.8, crowd sync 0.05, event dispatch 0.2) PASS;
 rest of the main thread 3.4 ms a frame of 4 (3.2 to 3.9) PASS, with little room; the HUD's share cannot be told from noise headless (0.3 ms give or take 0.6, against 0.5; Helix's PC measures it with the draw calls).
 A plain headless run (no `--fixed-fps`) pads every frame to 6.9 ms (Godot waits that long when no window can draw), so the client reads 7.0 ms there against today's 16.5 (15.2 to 17.7): 2.4 times, a floor not a cost; the
-report warns and does not judge the rest of the frame then. The client's fight is cheaper than today's by what it does not have yet: rewards, loot drops and the kill ledger, the panels, the graphics presets
+report warns and does not judge the rest of the frame then. The client's fight is cheaper than today's by what it does not have yet: the panels, the graphics presets
 (today's HUD with its panels cost 2.7 ms of its 15.6 in the same fight: `tests/perf/fight_breakdown.gd --full-party --area=graves`, fixed 60; the client has the HUD, not the panels).
+**With value in** (2026-10-16, 8e621396: rewards, loot drops, the kill ledger and the progression in the client's fight too, as in today's), back to back three times each with
+`--fixed-fps 60`: today's game 14.7 ms (14.4 to 15.4; p95 22.3, p99 29.4), the rebuilt client 6.2 ms (6.0 to 6.4; p95 10.3, p99 17.6): **2.4 times on average, 2.2 at p95,
+1.7 at p99**. An A/B of the client before and after (four runs each) puts value at about 0.5 ms a frame: the value code itself is about 0.015 ms (0.44 ms a kill, 0.004 ms a
+blow), the rest is today's rules now playing in the fight (level-ups refreshing the hero, more kills and corpses), which today's game pays too. The rest of the main thread
+is now 3.8 to 4.1 ms of its 4: on the line (Gate B item below).
 
 **Phases and gates.** Gates are checked on Helix's PC and the VPS processor test; brbmuffins' and warbogar's PCs join before launch day, and
 at least one other graphics brand runs Forward+ before then. The team plays the rebuild through the launcher's Test build switch on a test
@@ -171,14 +176,16 @@ server (B38).
     in the drift report's service list.
   - [x] The player's way in: the Social window (today's window and its Party and Friends tabs, O, F and the HUD's Social button) with its own small host until the panel host comes (`client/next/hud/dm_next_social.gd`), friends' presence over the lobby,
     and main.gd's hand-over (join, leave, a refused join, a closed party: home with the reason); `client/tests/social.gd`.
-  - [ ] Still to do beside the core: a guest's build from the server's record (B22) and the joiner's own account (rewards, XP, loot, the kill report's carried kills) with the rewards item; ground drops and the party's seals with loot and the Chapterhouse; the other six bosses'
-    state with their items; a new baseline for each new area; party chat.
+  - [ ] Still to do beside the core: ground drops between members with the Reliquary (the panels) and the party's seals with the Chapterhouse; the other six bosses'
+    state with their items; a new baseline for each new area; party chat. (A guest's build from the server's record and its own account came with value on the server.)
   - [ ] Phones join as guests only (B40): the same messages; measure the snapshot on the Mobile renderer's budget when the first phone build exists.
 - [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
   It runs in the Hollow Graves on both sides (72 Graves enemies, 32 thralls, the Gravedigger King): the test build has the Graves roster, and today's
   game runs the same fight with `--benchmark --bench-room=graves --bench-size=full_party` (or Benchmark -> Hollow Graves -> Full Party).
   - [x] The fight and its budget checks in the new client: `--benchmark` and the character select's Benchmark button, Easy auto combat on the core, the report with its budget section (client/README.md "The benchmark",
-    `client/tests/benchmark.gd`); the VPS numbers are in "Before numbers" (3.0 times today's speed; the core and the rest of the main thread inside their 4 ms).
+    `client/tests/benchmark.gd`); the VPS numbers are in "Before numbers" (3.0 times today's speed without value, 2.4 with it).
+  - [ ] The rest of the main thread back inside its 4 ms with value in (3.8 to 4.1 ms on the VPS, 2026-10-16): profile the GDScript share of a Full Party frame and win back
+    headroom before the panels add theirs.
   - [ ] Helix's PC: the same fight rendered on both sides (the 2 times of Gate B), the HUD's 0.5 ms and 150 draw calls (the render breakdown's HUD row), and the warm-up looked at on a GPU (it runs in the benchmark, not yet in play).
   - [x] The seeded scenario comparison with today's game (`tools/rebuild/compare-scenarios.mjs`, native/README.md "Proof of same game", 2026-10-16): the Hollow Graves, a level-10 Gravecaller on Easy auto combat, 180 s of game time, twenty seeds on each side.
     Kills -2.3 % (tolerance 15), hero damage -3.0 % (15), thrall damage -6.5 % (20), median time to kill 0.0 % (20), thrall uptime -0.4 points (10), damage taken by the hero and his thralls -1.3 % (25): every metric inside its tolerance, and underneath it the kinds, the rites, the thralls lost
@@ -193,13 +200,15 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   (`client/assets.list`), the signature on R, Exhume's kinds, cap and health, and the discipline's rules through the ported paths (the Ossuary's health, thralls and Bone Ward; the
   Mourner's essence and the heal from a corpse; the Rotweaver's health, wider Miasma that bursts corpses and Withered up to 8), each against the Gravecaller's number and today's
   formula (`client/tests/rites.gd` "the disciplines"); the Mourner's wraiths are spectral in the crowd. The plague bearer's pools stay as today's (they do nothing: an after-launch fix).
-- [ ] Value on the server: rewards, loot drops, the kill ledger and saves from the core's kill events, against the test server (today's `DmSessionRewards` and the authority
-  flows, B32); a guest's own account in co-op (B22).
+- [x] Value on the server (2026-10-16): rewards, loot drops, the kill ledger and saves from the core's kill events, against the test server (today's `DmSessionRewards` and the
+  authority flows, B32); a guest's own account in co-op (B22).
   - [x] The host's side (2026-10-16, client/README.md "Value on the server"): today's rewards node on the game's `kill_credited` (the party session's numbered reports, XP and counts
     from what the server accepted, the drop tape, the gold pool, lifesteal on `DmCoreHost.struck`), the meta node, the milestones, the Chronicle and the progression with its saves,
     and the loot node (click to walk to a drop, tape drops claimed into the server's bag, worn gear feeding the build, the belt); the HUD's upgrades box, wave dial, belt, Kill Chain,
     Omen and save chip; the King's summon takes its soul shards. `client/tests/rewards.gd` replays today's rewards tests on the port, `client/tests/value.gd` plays it in the scene.
-  - [ ] A guest's own account (B22): its session member and drop tape, its build from the server's record, its own progression and saves, the kill report's carried kills, ground drops.
+  - [x] A guest's own account (B22, 2026-10-16): the host makes it a rewards member that rolls its own drops, it joins the host's backend party session with its own token
+    (DmNextJoiner: its progression, saves, drop tape and bag), the host reads its build from the server (`remote_builds`, its runes too), its XP and drops are sent on, its belt
+    drinks from its own bag; `client/tests/coop.gd` "the guest's own account". Ground drops between members start from the Reliquary's Drop: they come with the panels.
 - [ ] The panels on the core: the panel host (`DmGameUi`, `DmNextUiHost`), the Reliquary (bag, gear, runes), the Grimoire and loadout, Settings (the presets get their window),
   chat and the menu row; the Social window moves into the host.
 - [ ] The Reaper (discipline 11) and its nine rites.

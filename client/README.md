@@ -71,11 +71,11 @@ uids keep working:
   Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; the Gravecaller's rites (the caster, the module base, the legends, the
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The Gravedigger King"); Easy auto combat, the benchmark
   with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
-  "Co-op on the core"); and value on the server (the rewards node, the meta node, the progress node and the wave milestones; "Value on the server").
+  "Co-op on the core"); and value on the server (the rewards node, the meta node, the progress node, the wave milestones and the joiner; "Value on the server").
 - **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the panel host
   (`game_ui/dm_game_ui.gd`, the panels item; the Social window, its panes and `DmNextFriends` are copies with their own small host until then, "Co-op on the core").
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
-  the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step and the belt.
+  the chronicle, the event fx's telegraph and boss halves, the area flow and gathering. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step and the belt.
   Freed by the boss ports: `next/bosses/dm_boss_meta.gd` (the Covenant Seal altar choice; it needs the panels' prompt, so nothing creates it yet).
 - **Ported for the test server** (not seams): the boot `main/main.gd` and `main/main.tscn` (freed from the left-out list by the front flow's port), `net/dm_config.gd` and
   `net/dm_http_transport.gd` (below).
@@ -320,8 +320,13 @@ The backend owns value (DECISIONS D1, B20, B32), and the game scene on the core 
   Chain, the Omen and the save chip, and the toasts, banners, floats and pickup lines of `DmNextGame.game_event`.
 - **Saving:** `flush_all` (leave, the window's close) ends the party session with its last batch and flushes the Chronicle, the progression and the bag.
 
-Not yet, each with its item: a party guest's own account (its own session member, its own drop tape, its build from the server, ground drops between members: the guest earns nothing yet),
-the Covenant Seal's altar choice and the boss key prompt (the panels), the Codex (the panels), chat lines (a rune's or a legendary's line waits for chat).
+**A party guest earns on its own account** (DECISIONS B22, today's handshake in `DmNextParty`): the host makes it a rewards member (its character id, remote, rolling its own
+drops), its `DmNextJoiner` (`next/party/dm_next_joiner.gd`, ported for the bag) joins the host's backend party session with the guest's own token and holds its progression,
+saves and drop tape; the host reads the guest's build from the server (`remote_builds`: gear, sets, boons, vows, runes) once it joined and whenever its worn gear changes; the
+host's accepted reports, gold, shards and drop events go to the guest, which rolls its items from its own tape and claims them into its own bag; its belt drinks from its own
+bag and the host applies the drink.
+
+Not yet, each with its item: ground drops between members (they start from the Reliquary's Drop button: the panels), the Covenant Seal's altar choice and the boss key prompt (the panels), the Codex (the panels), chat lines (a rune's or a legendary's line waits for chat).
 `tests/rewards.gd` replays today's `godot/tests/rewards` on the port (a test double emits `kill_credited`); `tests/value.gd` plays the game scene on the mock: kills through the core, the accepted
 XP and counts against the server's counters, the purse, a drop claimed into the bag, brews and lifesteal, the meta, Q's flask, and the save on leave.
 
@@ -356,7 +361,7 @@ party's other player is a GUEST: its game scene (`DmNextGame` joined, `is_guest`
 **Joining** (`next/party/dm_next_party.gd`, node `Party`, a port of today's): hosting turns the running solo session into a hosted one (`host_session(name, closed)`: lobby `create`, `DmRelayPeer.host`, `DmSession.swap_transport`; Open parties are listed, Closed ones
 need the code or an invite); `join_by_code` / `join_session` / `join_friend` seat a solo game in a party (`join_ready(lobby, info)`: the shell frees the solo game and starts a guest game on that socket, `opts.lobby`); `invite_friend`,
 `ask_to_join`, `answer_request`, `accept_invite` are the friends flows over the lobby's presence of online mutual friends; `view()` is the contract of today's party pane. Errors are the player-readable `ERROR_TEXT` / `CLOSE_TEXT`.
-Not in it, each with its system: party chat, the joiner's own backend session (rewards, XP, loot), reading a guest's build from the server (B22: the profile's level and class stand until progression comes), ground drops.
+Not in it, each with its system: party chat, ground drops (the Reliquary's Drop, with the panels). The guest's own account is "Value on the server".
 A player's world keeps a lobby link (`go_online()`, after loading) so friends see it online and invites and asks arrive. The friends list itself is `DmNextFriends` (a copy: the test backend's friends routes); a friendship it changes is announced
 through the party (`friends_changed`).
 

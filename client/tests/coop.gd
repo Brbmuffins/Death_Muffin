@@ -17,6 +17,9 @@ extends SceneTree
 ##     simulates, owned by the guest's hero external, drawn on the guest;
 ##   - the Gravedigger King wakes for the guest's request and fights both heroes: both are hurt by him, the casts of both and a thrall hurt him, the guest's copy follows him;
 ##   - a guest-side death shows (vitals, the body, the HUD's veil) and the hero gets up; kills are credited by the HOST only, once each: the guest credits none;
+##   - the guest's own account (DECISIONS B22): the host makes it a rewards member (its character, rolling its own drops), it joins the host's backend party session with its own
+##     token, the host reads its build from the server; a kill near both pays the guest's XP on its account (the host's accepted report, sent on) and its drops reach it,
+##     the items rolled from its own tape; its member, bag, belt and HUD are its own account's;
 ##   - a version mismatch (the core's wire version, the release build) is refused in the words a player reads, the party is untouched;
 ##   - the Full Party (72 enemies, 32 thralls, a continuous fight): no packet over 1,392 bytes; the bandwidth and packet rate against the relay's limits (INFO);
 ##   - a leaving guest leaves a clean host (its legion goes, the collecting stops);
@@ -343,6 +346,7 @@ func _run() -> void:
 	await casts_and_thralls()
 	await the_king()
 	await guest_death()
+	await guest_account()
 	await versions()
 	await full_party()
 	await leaving()
@@ -769,8 +773,14 @@ func the_king() -> void:
 	await until(func() -> bool: return gb_g.position.distance_to(site) < 4.5, 3.0)
 	var woke := [""]
 	h.bosses.summoned.connect(func(id: String, by: int) -> void: woke[0] = "%s/%d" % [id, by])
+	var cost := int(DmContent.boss("gravedigger")["shards"])
+	g.bosses.request_summon("gravedigger")
+	await ticks(10)
+	check(woke[0] == "" and h.bosses.active_boss() == null, "a guest without the King's soul shards is refused on its own client (it pays with its own)")
+	g.joiner.prog.add_shards(cost)
 	g.bosses.request_summon("gravedigger")
 	check(await until(func() -> bool: return woke[0] != "", 4.0) and woke[0] == "gravedigger/2", "the guest's request woke the King on the host (%s)" % woke[0])
+	check(await until(func() -> bool: return int(g.joiner.prog.local["shards"]) == 0, 2.0), "the guest's own shards paid for it")
 	check(await until(func() -> bool: return h.bosses.active_boss() != null and h.bosses.active_boss().is_hittable(), 12.0), "the King is awake and can be hurt")
 	var bh := h.bosses.active_boss()
 	check(await until(func() -> bool: return g.bosses.active_boss() != null, 5.0), "the guest has his body too, awake")
@@ -833,6 +843,43 @@ func guest_death() -> void:
 	check(await until(func() -> bool: return up[0] == 1 and gb_g.alive, 8.0), "the hero got up on both sides after the respawn time")
 	await ticks(30)
 	check(not bool(g.hud.vm.build()["death"]["show"]) and gb_g.hp > 0.0, "and the veil is gone")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the guest's own account
+
+func guest_account() -> void:
+	var gcid := int(accounts["joiner"]["ch"]["id"])
+	var gm: DmRewardsMember = h.rewards.members.get(gcid)
+	check(gm != null and gm.remote and gm.rolls_own_drops and gm.peer_id == gb_h.owner_peer, "the host made the guest a rewards member: its character, remote, rolling its own drops")
+	check(await until(func() -> bool: return g.joiner != null and g.joiner.backend_ok and gm.blocked == "" and gm.joined, 5.0),
+		"the guest joined the host's backend party session with its own account")
+	check(await until(func() -> bool: return h.remote_builds.has(gb_h.owner_peer), 5.0), "the host read the guest's build from the server (B22)")
+	check(g.rewards == null and g.my_member() == g.joiner.member and g.loot != null and g.hud.prog == g.joiner.prog and g.belt() == g.loot.guest_belt,
+		"the guest's member, bag, belt and HUD are its own account's")
+	var xp0: int = int(g.joiner.member.stats["xp_applied"])
+	var drops0: int = g.joiner.drops_received
+	gb_h.teleport(hb.position + Vector3(3.0, 0.0, 0.0))   # side by side (the guest got up at the door)
+	await ticks(10)
+	var hpos := hb.position
+	var gpos := gb_h.position
+	var mid := (hpos + gpos) * 0.5
+	check(Vector2(hpos.x - gpos.x, hpos.z - gpos.z).length() < 30.0, "the two heroes stand together (%.1f m apart)" % Vector2(hpos.x - gpos.x, hpos.z - gpos.z).length())
+	for i in 3:
+		var id := h.core_host.spawn_enemy("robber", mid + Vector3(float(i), 0.0, 1.0), 1, 1.0, 0.0, true, "graves", false)
+		h.core_host.damage(id, 1.0e6, hb.core_id)
+	await ticks(3)
+	check(int(gm.stats["kills_earned"]) >= 3, "the guest's member earned the host's kills near it (%d)" % int(gm.stats["kills_earned"]))
+	check(await until(func() -> bool: return g.joiner.drops_received > drops0, 4.0), "the guest's drops reached it (%d)" % (g.joiner.drops_received - drops0))
+	await h.rewards.flush()
+	check(await until(func() -> bool: return int(g.joiner.member.stats["xp_applied"]) > xp0, 4.0) and int(g.joiner.member.stats["kills_accepted"]) >= 3,
+		"the host's accepted report paid the guest's XP and kills on its own account (%d XP)" % (int(g.joiner.member.stats["xp_applied"]) - xp0))
+	var sv: DmResult = await h.api.session_get(h.rewards.session_id)
+	var counted := 0
+	if sv.ok:
+		for e in sv.data["members"]:
+			if int(e["characterId"]) == gcid:
+				counted = int(e["acceptedKills"])
+	check(counted >= 3, "the server counted the guest's kills for its character (%d)" % counted)
 
 
 # ------------------------------------------------------------------------------------------------------------------ versions

@@ -8,6 +8,7 @@ extends Node
 ##     player's own api (`roll_loot`), the bag saved by DmInventory,
 ##   - the backend session: `session_join` with this player's own token and a heartbeat every 20 s, so the host's reports can credit this member.
 ## `member` is a real DmRewardsMember (api, prog, loot_view) so the HUD adapter treats a joiner and a host alike.
+## The rebuild's port (client/code.list "Ported"): the bag is the game's `loot` (DmNextLoot), not the panels' adapter.
 
 signal member_credited(character_id: int, delta: Dictionary)   ## the same signal the host's DmSessionRewards has (the HUD adapter listens to either)
 signal event(id: String, ctx: Dictionary)                       ## game_event shape (banner / toast), like DmNextProgress.event; the HUD adapter adds the level_up toast
@@ -197,8 +198,8 @@ func on_drop_event(kind: String, facts: Dictionary, pos: Vector3) -> void:
 func flush_all() -> void:
 	if psync != null:
 		await psync.save_before_class_change()
-	if shell.ui_host != null and shell.ui_host.inventory != null:
-		await shell.ui_host.inventory.flush()
+	if shell.loot != null and shell.loot.inventory != null:
+		await shell.loot.inventory.flush()
 	if backend_ok:
 		backend_ok = false
 		await shell.api.session_leave(session_id, hero_id)

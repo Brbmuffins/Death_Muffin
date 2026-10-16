@@ -89,7 +89,10 @@ var _list_t := 0.0
 var _leaving := false
 var _url := ""
 var _profile_sent := false
-var _members: Dictionary = {}            ## host: peer id -> true once its profile was bound
+var _members: Dictionary = {}            ## host: peer id -> the rewards member's key (its character id; -peer for one that cannot be credited)
+var backend_session := ""                ## guest: the host's backend party session (for our own session_join)
+var _guest_meals: Dictionary = {}        ## host: peer -> {until (its body clock ms), rate (hp a second)} of a guest's meal (guest_use)
+var _build_asked := {}                   ## host: peer -> when it last asked us to re-read its build (ms)
 var _after_host: Array = []              ## Callables to run once our new session exists (invite a friend, accept an ask)
 var _poll_timer: Timer
 var _presence_t := 0.0
@@ -509,6 +512,8 @@ func _on_created(i: Dictionary, c: String) -> void:
 	mode = HOST
 	last_error = {}
 	_poll_timer.stop()   # the relay peer polls the socket now
+	if shell.rewards != null:
+		shell.rewards.local_peer_id = 1
 	notice.emit("Hosting \"%s\" (%s)" % [String(i.get("name", "")), "Closed: invite friends" if bool(i.get("private", false)) else "Open: anyone can join"], "good")
 	hosting_changed.emit(true)
 	var after := _after_host
@@ -569,6 +574,10 @@ func _stop_hosting(text: String, kind: String) -> void:
 	_members.clear()
 	shell.session.swap_transport(OfflineMultiplayerPeer.new())
 	_relay = null
+	if shell.rewards != null:
+		for cid in shell.rewards.members.keys():
+			if (shell.rewards.members[cid] as DmRewardsMember).remote:
+				shell.rewards.remove_member(int(cid))
 	if text != "":
 		notice.emit(text, kind)
 	hosting_changed.emit(false)
@@ -681,35 +690,239 @@ func _on_session_ended(reason: String) -> void:
 
 
 func _on_player_left(id: int) -> void:
-	if shell.session.is_host() and _members.erase(id):
-		changed.emit()
+	if not shell.session.is_host() or not _members.has(id):
+		return
+	var key: int = _members[id]
+	_members.erase(id)
+	_guest_meals.erase(id)
+	if shell.rewards != null and shell.rewards.members.has(key):
+		shell.rewards.remove_member(key)
+	changed.emit()
 
 
-# ---- the guest's profile -----------------------------------------------------------------------------------------------------------
+# ---- the host <-> guest handshake: the guest's own account (DECISIONS B22) ----------------------------------------------------------
 
-## Guest: once the session is live, tell the host who we are (class and level). The host binds that character to our body: what ITS caster may cast follows the level.
+## Host (called once the rewards exist): a guest's rewards and loot follow the party's events.
+func attach_host() -> void:
+	shell.rewards.member_credited.connect(_on_credited)
+	shell.rewards.loot_dropped.connect(_on_loot_dropped)
+	shell.rewards.drop_event_for.connect(_on_drop_event)
+
+
+## Guest: once the session is live, tell the host who we are. The host binds that character to our body (what ITS caster may cast follows the level) and makes it a
+## rewards member, credited on OUR backend account once we joined its party session with our own token.
 func send_profile() -> void:
 	if _profile_sent or shell.session.is_host() or not shell.session.is_active():
 		return
 	_profile_sent = true
 	var ch := shell.character
-	_rpc_profile.rpc_id(1, {"character_id": int(ch.get("id", 0)), "class_index": int(ch.get("class_index", 0)), "level": int(ch.get("level", 1))})
+	_rpc_profile.rpc_id(1, {"character_id": int(ch.get("id", 0)), "class_index": int(ch.get("class_index", 0)), "level": int(ch.get("level", 1)),
+		"experience": int(ch.get("experience", 0)), "rolls_drops": true})
 
 
 @rpc("any_peer", "call_remote", "reliable")
 func _rpc_profile(p: Dictionary) -> void:
-	if not multiplayer.is_server() or shell == null:
+	if not multiplayer.is_server() or shell == null or shell.rewards == null:
 		return
 	var peer := multiplayer.get_remote_sender_id()
 	var body := shell.body_of(peer)
 	if body == null or _members.has(peer):
 		return
+	var cid := int(p.get("character_id", 0))
 	var ci := clampi(int(p.get("class_index", 0)), 0, 99)
 	var lvl := clampi(int(p.get("level", 1)), 1, MAX_LEVEL)
-	body.bind_character({"id": int(p.get("character_id", 0)), "class_index": ci, "level": lvl})
-	_members[peer] = true
+	body.bind_character({"id": cid, "class_index": ci, "level": lvl})
+	var key := cid if cid > 0 and not shell.rewards.members.has(cid) else -peer   # a clashing id (two test backends) gets a private key: never credited
+	var d := DmCharacterBuild.discipline_for(float(ci))
+	var m := DmRewardsMember.make(key, peer, body, null, lvl, {"id": d["id"], "family": d["family"]})
+	m.remote = true
+	m.rolls_own_drops = p.get("rolls_drops") == true   # its client rolls its drops from its own tape (DECISIONS B20)
+	m.prog.character["experience"] = maxi(0, int(p.get("experience", 0)))
+	m.trophy_store = func(_boss: String) -> bool: return false   # a guest's first-kill trophies are its own backend's business (later)
+	m.blocked = "pending_join" if key > 0 else "no_character"
+	shell.rewards.add_member(m)
+	_members[peer] = key
 	sync_levels()
+	_rpc_welcome.rpc_id(peer, shell.rewards.session_id)
 	changed.emit()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_welcome(session_id: String) -> void:
+	backend_session = session_id
+	if shell.joiner != null:
+		shell.joiner.begin_backend(session_id)
+	changed.emit()
+
+
+## Guest -> host: "I joined the backend session with my own account" (ok) or why not. The host starts crediting this member on ok.
+func report_backend(ok: bool, why: String) -> void:
+	if not shell.session.is_host() and shell.session.is_active():
+		_rpc_backend.rpc_id(1, ok, why)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_backend(ok: bool, why: String) -> void:
+	if not multiplayer.is_server() or shell == null or shell.rewards == null:
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var key: int = _members.get(peer, 0)
+	var m: DmRewardsMember = shell.rewards.members.get(key)
+	if m == null or key <= 0:
+		return
+	if ok:
+		m.blocked = ""
+		m.joined = true
+		fetch_build(peer)   # its gear, set bonuses, boons, vows and level from the server, not from its client
+	else:
+		m.blocked = "join_refused"
+		shell.rewards.member_refused.emit(key, "join_refused: " + why)
+	changed.emit()
+
+
+## Host: build a member's hero from the server's record of it (DmNextGame.remote_builds), then refresh its body and caster. Called when its backend
+## join succeeds and whenever its client says what it wears changed.
+func fetch_build(peer: int) -> void:
+	var key: int = _members.get(peer, 0)
+	if key <= 0 or shell.rewards == null or shell.rewards.session_id == "" or shell.api == null:
+		return
+	var r: DmResult = await shell.api.session_member_build(shell.rewards.session_id, key)
+	if not r.ok or not (r.data is Dictionary) or not _members.has(peer):
+		return
+	shell.remote_builds[peer] = {"character": r.data["character"], "slots": r.data.get("slots", []), "local": r.data.get("local", {})}
+	var b := shell.body_of(peer)
+	if b == null or not is_instance_valid(b):
+		return
+	b.character["level"] = maxi(int(b.character.get("level", 1)), int(r.data["character"].get("level", 1)))   # the real level, past the profile clamp
+	var m: DmRewardsMember = shell.rewards.members.get(key)
+	if m != null:
+		m.prog.character["level"] = int(b.character["level"])
+		m.self_heat = DmAscension.self_heat(r.data.get("local", {}).get("vows", {}))   # its own self vows pay on top of our world (DECISIONS B26)
+	var build := shell.build_for(peer)
+	b.refresh_stats(build)
+	var c := b.get_node_or_null("Rites") as DmRiteCaster
+	if c != null:
+		c.refresh_stats(build)
+		c.set_runes(shell.rune_sockets(peer))   # its socketed runes reach its rites (the server's record)
+	sync_levels()
+
+
+## Guest: we drank `id` from our own bag (DmNextBelt.remote_use; the bag already paid): the host applies it to our hero, which it simulates.
+func guest_use(id: String) -> void:
+	if not shell.session.is_host() and shell.session.is_active():
+		_rpc_guest_use.rpc_id(1, id)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_guest_use(id: String) -> void:
+	if not multiplayer.is_server() or shell == null:
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var b := shell.body_of(peer)
+	if b == null or not is_instance_valid(b) or not b.alive or b.p.is_empty():
+		return
+	var meal: Variant = DmBrews.meal(id)
+	if meal != null:
+		_guest_meals[peer] = {"until": b.clock_ms() + float(meal["seconds"]) * 1000.0, "rate": b.max_hp * float(meal["healFrac"]) / float(meal["seconds"])}
+	elif DmContent.brews().has(id):
+		b.apply_brew(id)
+		var rites := b.get_node_or_null("Rites") as DmRiteCaster
+		if rites != null and not rites.shares_vitals():
+			rites.apply_brew(id)
+	elif DmContent.healing_flasks().has(id):
+		b.heal(b.max_hp * float(DmContent.healing_flasks()[id]))
+
+
+## Host: a guest's meal heals its hero over the meal's seconds (DmNextBelt.tick does the same for the host's own hero).
+func _physics_process(dt: float) -> void:
+	if _guest_meals.is_empty():
+		return
+	for peer in _guest_meals.keys():
+		var b := shell.body_of(int(peer)) if shell != null else null
+		var meal: Dictionary = _guest_meals[peer]
+		if b == null or not is_instance_valid(b) or not b.alive or b.clock_ms() >= float(meal["until"]):
+			_guest_meals.erase(peer)
+		else:
+			b.heal(float(meal["rate"]) * dt)
+
+
+## Guest: what we wear changed (gear, belt, kit, rune sockets): the host reads our build from the server again.
+func build_changed() -> void:
+	if mode != CLIENT or not shell.session.is_active():
+		return
+	_rpc_build_changed.rpc_id(1)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_build_changed() -> void:
+	if multiplayer.is_server() and shell != null:
+		var peer := multiplayer.get_remote_sender_id()
+		var now := Time.get_ticks_msec()
+		if now - int(_build_asked.get(peer, 0)) < 1000:   # at most once a second per member
+			return
+		_build_asked[peer] = now
+		fetch_build(peer)
+
+
+## Host: an accepted report credited a member. Our own level-up reaches the party frames; a guest's credit goes to its client (its own progression applies it),
+## and its body fights at its new level here.
+func _on_credited(cid: int, delta: Dictionary) -> void:
+	var m: DmRewardsMember = shell.rewards.members.get(cid)
+	if m == null:
+		return
+	if not m.remote:
+		if int(delta.get("levels", 0)) > 0:
+			sync_levels()   # the host levelled: every guest's party frame shows it
+			send_presence()
+		return
+	if int(delta.get("levels", 0)) > 0 and m.body != null and is_instance_valid(m.body):
+		var b := m.body as DmHeroBody
+		b.character["level"] = int(m.prog.character["level"])
+		b.refresh_stats(shell.build_for(m.peer_id))
+		b.restore_vitals()
+		var c := b.get_node_or_null("Rites") as DmRiteCaster
+		if c != null:
+			c.refresh_stats(shell.build_for(m.peer_id))
+		sync_levels()
+	if _here(m.peer_id):   # a guest that left is credited by the report on its account; its client is gone
+		_rpc_credit.rpc_id(m.peer_id, delta)
+
+
+## Host: the peer is still connected (a member that left is removed only after its last report went out).
+func _here(peer: int) -> bool:
+	return multiplayer.get_peers().has(peer)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_credit(delta: Dictionary) -> void:
+	if shell.joiner != null:
+		shell.joiner.on_credit(delta)
+
+
+## Host: gold and shards the rewards dropped for a guest (its items are rolled on its own client: `_on_drop_event`).
+func _on_loot_dropped(cid: int, drop: Dictionary, pos: Vector3) -> void:
+	var m: DmRewardsMember = shell.rewards.members.get(cid)
+	if m != null and m.remote and _here(m.peer_id):
+		_rpc_loot.rpc_id(m.peer_id, drop, pos)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_loot(drop: Dictionary, pos: Vector3) -> void:
+	if shell.joiner != null:
+		shell.joiner.on_loot(drop, pos)
+
+
+## Host: a drop event a guest rolls from its own tape (DECISIONS B20).
+func _on_drop_event(cid: int, kind: String, facts: Dictionary, pos: Vector3) -> void:
+	var m: DmRewardsMember = shell.rewards.members.get(cid)
+	if m != null and m.remote and _here(m.peer_id):
+		_rpc_drop_event.rpc_id(m.peer_id, kind, facts, pos)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_drop_event(kind: String, facts: Dictionary, pos: Vector3) -> void:
+	if shell.joiner != null:
+		shell.joiner.on_drop_event(kind, facts, pos)
 
 
 ## The level a party frame shows for a hero body: the local hero's own character, else the host's replicated table, else what the body knows.
