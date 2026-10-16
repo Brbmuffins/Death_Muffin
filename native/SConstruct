@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # Builds the combat core GDExtension into client/bin/. Run through `bash native/build.sh` (fetches the pinned godot-cpp first).
+import os
+
+# Build records live next to the shared godot-cpp cache (native/build.sh), not in each checkout: a new worktree then knows the compiled
+# godot-cpp objects are current instead of rebuilding them (about 6 minutes). Builds take turns on the cache's lock, so sharing is safe.
+SConsignFile(os.path.join(os.path.realpath("thirdparty/godot-cpp"), ".sconsign-dmcore"))
 env = SConscript("thirdparty/godot-cpp/SConstruct")
 env.Append(CPPPATH=["src/"])
 library = env.SharedLibrary(

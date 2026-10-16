@@ -2625,3 +2625,9 @@ enabled = false
 start_position = Vector3(-32.6, 0, -28)
 end_position = Vector3(-32.4, 0, -28)
 metadata/door_id = "graves_warren"
+
+[node name="Lightmap" type="LightmapGI" parent="." unique_id=2894048]
+max_texture_size = 4096
+environment_mode = 3
+environment_custom_color = Color(0.2697464, 0.21509123, 0.40789327, 1)
+environment_custom_energy = 1.9

@@ -385,12 +385,47 @@ func _build(id: String) -> void:
 	_decals(decals_n)
 	_water(water_n)
 	_doors(doors_n)
+	_lightmap(area_root)
 	_bake_nav()
 
 	var path := out_dir.path_join(id + ".tscn")
 	_save_scene(area_root, path)
 	area_root.free()
 	print("build_area: %s -> %s" % [id, path])
+
+
+# ---------------------------------------------------------------- the lighting bake (client/addons/dm_bake/README.md)
+## The area's LightmapGI. What is baked: the prop lights (bake mode Static: direct and bounced light) and the area's ambient, which a lightmapped
+## surface takes from its lightmap instead of the environment, so the bake carries the same plain-colour hemisphere ambient DmWorldBuilder.set_area
+## gives the area at runtime (same constants). The moon and the rim light stay real-time as today (they live in the game scene, outside this
+## subtree). A bake made for this scene is picked up when `<id>.lmbake` sits next to it; a bake belongs to the scene it was made from.
+func _lightmap(parent: Node3D) -> void:
+	var lm := LightmapGI.new()
+	lm.quality = LightmapGI.BAKE_QUALITY_MEDIUM
+	lm.bounces = 3
+	lm.directional = false
+	lm.use_denoiser = true
+	lm.max_texture_size = 4096
+	lm.environment_mode = LightmapGI.ENVIRONMENT_MODE_CUSTOM_COLOR
+	lm.environment_custom_color = _area_ambient(world.areas[area_id])
+	lm.environment_custom_energy = float(world.lighting.hemiIntensity) * DmWorldBuilder.HEMI_K
+	var data := out_dir.path_join(area_id + ".lmbake")
+	if ResourceLoader.exists(data):
+		lm.light_data = load(data)
+	_add(parent, lm, "Lightmap")
+
+
+## DmWorldBuilder.set_area's ambient colour for an area (the hemisphere sky lifted to a floor, mixed with the lifted ground).
+func _area_ambient(a: Dictionary) -> Color:
+	var amb: Dictionary = a.ambient
+	var sky := Color.html(amb.hemiSky)
+	var peak := maxf(sky.r, maxf(sky.g, sky.b))
+	if peak > 0.01:
+		var luma := 0.2126 * sky.r + 0.7152 * sky.g + 0.0722 * sky.b
+		var boost := clampf(maxf(DmWorldBuilder.AMBIENT_FLOOR / peak, DmWorldBuilder.AMBIENT_LUMA_FLOOR / maxf(luma, 0.01)), 1.0, DmWorldBuilder.AMBIENT_MAX_BOOST)
+		sky = Color(sky.r * boost, sky.g * boost, sky.b * boost)
+	var gnd := Color.html(amb.hemiGround).lerp(sky, DmWorldBuilder.GROUND_LIFT)
+	return sky.lerp(gnd, DmWorldBuilder.AMBIENT_GROUND_MIX)
 
 
 # ---------------------------------------------------------------- floors

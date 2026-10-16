@@ -11,3 +11,6 @@ same manifest format as the live `client/`).
   It edits only the publish's scratch worktree. The first test build (ROADMAP Gate A) is today's game built this way.
 - The channel is always open online (`online.enabled` true in its manifest): only the team's accounts exist on the test backend.
 - Co-op on the test build needs a test lobby and relay; they come with the test build phase (ROADMAP).
+- `publish-bake-kit.sh <rev> [scene ...]`: the lighting bake kit for the team's bake helper, served at
+  `https://muffindevelopment.com/death-muffin/bake-kit/` (`/var/www/death-muffin/bake-kit/`, the 2 newest kits and `latest.json`). How the bake
+  works and comes back: [client/addons/dm_bake/README.md](../../../client/addons/dm_bake/README.md).

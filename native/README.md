@@ -141,7 +141,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   (`~/death-muffin/native-cache/godot-cpp-<commit>`, cloned and compiled once) at the pinned commit (1e79263, built for `api_version=4.7`) and builds
   Linux `template_debug` (what the headless tests load) and Windows `template_release` (the test build; mingw-w64, C++ runtime linked
   statically so players need no extra files). Runs at `nice -n 10` with 4 jobs; the first build of godot-cpp takes about 6 minutes, later
-  builds only recompile what changed. Builds take turns on a lock next to the cache (`<cache>.lock`): two scons runs against the
+  builds only recompile what changed, in any checkout or worktree (`SConstruct` keeps the build records next to the cache). Builds take turns on a lock next to the cache (`<cache>.lock`): two scons runs against the
   same godot-cpp break each other.
 
 ## Build machine (the VPS)

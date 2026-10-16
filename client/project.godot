@@ -35,6 +35,10 @@ theme/custom="res://ui/theme/dm_theme.tres"
 common/max_physics_steps_per_frame=3
 common/physics_interpolation=true
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/dm_bake/plugin.cfg")
+
 [rendering]
 
 renderer/rendering_method="forward_plus"

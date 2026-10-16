@@ -7,4 +7,6 @@ reloadable = false
 [libraries]
 
 linux.debug.x86_64 = "res://bin/libdmcore.linux.template_debug.x86_64.so"
+; The Windows editor (the lighting bake, client/addons/dm_bake/README.md) loads the same release library; no debug build is made for Windows.
 windows.release.x86_64 = "res://bin/libdmcore.windows.template_release.x86_64.dll"
+windows.debug.x86_64 = "res://bin/libdmcore.windows.template_release.x86_64.dll"

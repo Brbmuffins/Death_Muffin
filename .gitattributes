@@ -3,3 +3,6 @@
 
 # PATCH_NOTES.json merges entry by entry (tools/git/merge-patch-notes.mjs; register with tools/git/install-merge-drivers.sh)
 PATCH_NOTES.json merge=patchnotes
+
+# Windows batch files (the bake helper): CRLF, which cmd.exe expects.
+*.bat text eol=crlf

@@ -104,8 +104,10 @@ generated at runtime and are not converted). Output is deterministic, so regener
 - `client/areas/props/<model>.tscn`: one prefab per prop or gathering-node model: the glTF instanced with the height normalisation of `DmModels.analyze`.
   Props up to 1.5 m (the height `world_builder` stops casting shadows at) also get a 70 m visibility range.
 - `client/areas/common/ring.png`, `glow.png`: the two decal textures the live game paints at start-up.
-- Lightmaps are prepared, not baked: walls, gate stone and floors carry UV2, prop meshes get UV2 on import, everything solid is `gi_mode` static
-  and the prop lights are `BAKE_STATIC` placeholders (positions, colours and ranges as today). Occluders: tall walls (3 m, 4 m long) and large solid
+- `Lightmap`: the area's `LightmapGI`. Walls, gate stone and floors carry UV2, prop meshes get UV2 on import, everything solid is `gi_mode` static
+  and the prop lights are `BAKE_STATIC` (positions, colours and ranges as today), so the bake takes their direct and bounced light; the area's
+  ambient (`DmWorldBuilder.set_area`'s colour, same constants) is baked in too, since a lightmapped surface ignores the environment's. When
+  `client/areas/<id>.lmbake` exists (a bake from `client/addons/dm_bake/README.md`) the converter points the node at it. Occluders: tall walls (3 m, 4 m long) and large solid
   box props (the mausoleums), shrunk so they never hide what is visible past them.
 
 Not the same as today's runtime, on purpose: props are single instances of a prefab (not one MultiMesh per 12 m cell; MultiMesh cannot take
