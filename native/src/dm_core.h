@@ -7,6 +7,7 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/vector2.hpp>
@@ -46,7 +47,10 @@ public:
 	void set_area_bounds(const godot::Vector2 &p_min, const godot::Vector2 &p_max);
 
 	// Commands (casts, bosses, the director)
-	int64_t spawn_enemy(const godot::String &p_def, const godot::Vector2 &p_pos, int64_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, const godot::String &p_area, bool p_rising);
+	// `affixes`: the director's DmAffixSet.roll (bellTolled, hungering, shrouded, vengeful); the core runs their rules.
+	int64_t spawn_enemy(const godot::String &p_def, const godot::Vector2 &p_pos, int64_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, const godot::String &p_area, bool p_rising, const godot::PackedStringArray &p_affixes = godot::PackedStringArray());
+	bool strip_shroud(int64_t p_id);   // Last Light, a Warden sweep (DmSimSignatures.strip_shroud): the shroud is gone for good
+	void cover_miasma(int64_t p_id);   // a friendly Miasma covers this body now: its shroud lifts for 0.35 s of game time
 	godot::Dictionary damage(int64_t p_id, double p_amount, int64_t p_source, bool p_allow_stagger = true);
 	void stun(int64_t p_id, double p_seconds);
 	// DmStatusSet.apply: params dps (bleed, withered), cap (withered stack cap / barrier cap), amount (barrier).
@@ -116,6 +120,7 @@ public:
 	godot::Dictionary thrall_info(int64_t p_id) const;
 	godot::String thrall_kind_name(int64_t p_kind) const;
 	godot::String death_reason_name(int64_t p_reason) const;
+	godot::String affix_moment_name(int64_t p_kind) const;  // EV_AFFIX_MOMENT: tell, toll, hungering, vengeful, unveil
 	godot::String def_name(int64_t p_def) const;
 	godot::String area_name(int64_t p_area) const;
 	double clock() const;

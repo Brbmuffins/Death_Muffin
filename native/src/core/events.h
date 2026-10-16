@@ -9,7 +9,7 @@
 namespace dm {
 
 enum EventType : int32_t {
-	EV_ENEMY_SPAWNED = 1,  // ints: def, level, elite, area        floats: x, z, max_hp
+	EV_ENEMY_SPAWNED = 1,  // ints: def, level, elite, area, affixes (bit per Affix)  floats: x, z, max_hp
 	EV_ENEMY_STATE = 2,    // ints: prev, next                     floats: (none)
 	EV_ENEMY_DAMAGED = 3,  // ints: source                         floats: amount, hp
 	EV_ENEMY_DIED = 4,     // ints: def, level, elite, area, source floats: x, z
@@ -42,6 +42,10 @@ enum EventType : int32_t {
 	EV_THRALL_BELL_HEAL = 29,  // floats: x, z, fraction   (bell_heal: a Mourning Bell wraith hit heals allies near the point)
 	EV_THRALL_PLAGUE_POOL = 30,  // floats: x, z, radius, seconds, dps   (plague_pool: a plague bearer fell; today only a signal)
 	EV_THRALL_HIT_EXTERNAL = 31, // ints: target (a boss), thrall kind   floats: damage   (a thrall blow on a boss: GDScript routes it to the brain)
+	// Affixes (DmAffixSet)
+	EV_AFFIX_MOMENT = 32,  // id = the enemy; ints: AffixMoment   floats: at x, at z, to x, to z, amount
+	                       //   tell: the bell's ring starts (amount = windup s, with an EV_TELEGRAPH toll); toll: it sounds (amount = radius);
+	                       //   hungering: a corpse eaten at `to` (amount = health healed); vengeful: the body burst (amount = 1.8); unveil
 };
 
 struct Events {

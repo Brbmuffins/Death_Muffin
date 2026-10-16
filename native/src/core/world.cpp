@@ -18,17 +18,39 @@ int32_t World::area_id(const std::string &p_area) {
 	return id;
 }
 
-int32_t World::spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising) {
+int32_t World::spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising, int32_t p_affixes) {
+	const int32_t slot = int32_t(enemies.size());
+	enemies.push_back(make_enemy(p_def, p_x, p_z, p_level, p_hp_mult, p_damage_mult, p_elite, p_area, p_rising, p_affixes));
+	Enemy &e = enemies[slot];
+	e.slot = slot;
+	enemy_slot[e.id] = slot;
+	enter(e, -1);
+	return e.id;
+}
+
+void World::flush_spawns() {
+	for (Enemy &p : pending_spawns) {
+		p.slot = int32_t(enemies.size());
+		enemy_slot[p.id] = p.slot;
+		enemies.push_back(p);
+	}
+	pending_spawns.clear();
+}
+
+// A new body (DmEnemy._ready): its id, its rolls and EV_ENEMY_SPAWNED. The caller puts it in the table and runs its first enter().
+Enemy World::make_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising, int32_t p_affixes) {
 	const EnemyDef &d = defs[p_def];
 	Enemy e;
 	e.id = next_id++;
-	e.slot = int32_t(enemies.size());
 	e.frenzy = d.frenzy;
 	e.rng.seed(seed, uint64_t(e.id));
 	e.def = p_def;
 	e.level = p_level;
 	e.area = p_area;
 	e.elite = p_elite;
+	e.affixes = uint8_t(p_affixes);
+	e.hp_mult = p_hp_mult;
+	e.damage_mult = p_damage_mult;
 	e.in_graves = areas[p_area] == "graves";
 	e.x = e.home_x = e.last_x = p_x;
 	e.z = e.home_z = e.last_z = p_z;
@@ -48,12 +70,8 @@ int32_t World::spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level,
 	e.st.acc = e.rng.next_double() * STATUS_TICK_S;  // DmStatusSet spreads a crowd's 0.1 s steps across ticks
 	// initial_state(): rising bodies rise (a burrower starts underground), others start idle.
 	e.state = p_rising ? (d.burrow ? BURROW : RISING) : IDLE;
-	const int32_t slot = int32_t(enemies.size());
-	enemies.push_back(e);
-	enemy_slot[e.id] = slot;
-	events.push(EV_ENEMY_SPAWNED, e.id, { p_def, p_level, p_elite ? 1 : 0, p_area }, { p_x, p_z, float(e.max_hp) });
-	enter(enemies[slot], -1);
-	return e.id;
+	events.push(EV_ENEMY_SPAWNED, e.id, { p_def, p_level, p_elite ? 1 : 0, p_area, p_affixes }, { p_x, p_z, float(e.max_hp) });
+	return e;
 }
 
 // ---------------------------------------------------------------------------------------------------------------- state machine
@@ -596,13 +614,16 @@ void World::stun(int32_t p_slot, double p_seconds) {  // DmEnemy.stun: a hard in
 	change(p_slot, HURT);
 }
 
-// DmEnemy.take_damage -> sm.change(DEAD), then the listeners of `died` in today's order: director, affixes, status set, corpse field, rewards.
-// The director and affixes are not in the core yet; the rewards are GDScript's, from the event.
+// DmEnemy.take_damage -> sm.change(DEAD), then the listeners of `died` in today's order: director, affixes (Vengeful), status set, corpse field,
+// rewards. The director's bookkeeping and the rewards are GDScript's, from the events.
 void World::kill(int32_t p_slot, int32_t p_source) {
 	Enemy &e = enemies[p_slot];
 	e.hp = 0.0;
 	e.dead = true;
 	change(p_slot, DEAD);
+	if (enemies[p_slot].affixes & (1 << AF_VENGEFUL)) {
+		vengeance(enemies[p_slot]);
+	}
 	Enemy &k = enemies[p_slot];
 	body_died_statuses(k);
 	lay_corpses(k);
@@ -863,12 +884,16 @@ void World::step(double p_dt) {
 	for (int32_t i = 0; i < n; i++) {
 		if (enemies[i].state != DEAD) {
 			move(enemies[i], p_dt);
+			if (enemies[i].affixes) {  // the "Affixes" child runs after its body moved (and after the status set)
+				tick_affixes(i, p_dt);
+			}
 		}
 	}
 	step_zones(p_dt);
 	step_corpses(p_dt);
 	step_thralls(p_dt);
 	remove_dead_bodies();
+	flush_spawns();
 	grid_count = int32_t(enemies.size());
 	gx.resize(grid_count);
 	gz.resize(grid_count);

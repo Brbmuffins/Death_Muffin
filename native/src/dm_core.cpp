@@ -55,7 +55,9 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("tuning"), &DmCore::tuning);
 	ClassDB::bind_method(D_METHOD("set_nav_map", "map"), &DmCore::set_nav_map);
 	ClassDB::bind_method(D_METHOD("set_area_bounds", "min", "max"), &DmCore::set_area_bounds);
-	ClassDB::bind_method(D_METHOD("spawn_enemy", "def", "pos", "level", "hp_mult", "damage_mult", "elite", "area", "rising"), &DmCore::spawn_enemy);
+	ClassDB::bind_method(D_METHOD("spawn_enemy", "def", "pos", "level", "hp_mult", "damage_mult", "elite", "area", "rising", "affixes"), &DmCore::spawn_enemy, DEFVAL(PackedStringArray()));
+	ClassDB::bind_method(D_METHOD("strip_shroud", "id"), &DmCore::strip_shroud);
+	ClassDB::bind_method(D_METHOD("cover_miasma", "id"), &DmCore::cover_miasma);
 	ClassDB::bind_method(D_METHOD("damage", "id", "amount", "source", "allow_stagger"), &DmCore::damage, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("stun", "id", "seconds"), &DmCore::stun);
 	ClassDB::bind_method(D_METHOD("apply_status", "id", "status", "source", "stacks", "duration", "params"), &DmCore::apply_status, DEFVAL(1.0), DEFVAL(-1.0), DEFVAL(Dictionary()));
@@ -113,13 +115,14 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("thrall_info", "id"), &DmCore::thrall_info);
 	ClassDB::bind_method(D_METHOD("thrall_kind_name", "kind"), &DmCore::thrall_kind_name);
 	ClassDB::bind_method(D_METHOD("death_reason_name", "reason"), &DmCore::death_reason_name);
+	ClassDB::bind_method(D_METHOD("affix_moment_name", "kind"), &DmCore::affix_moment_name);
 	ClassDB::bind_method(D_METHOD("def_name", "def"), &DmCore::def_name);
 	ClassDB::bind_method(D_METHOD("area_name", "area"), &DmCore::area_name);
 	ClassDB::bind_method(D_METHOD("clock"), &DmCore::clock);
 }
 
 String DmCore::version() const {
-	return "dmcore 0.5";
+	return "dmcore 0.6";
 }
 
 int64_t DmCore::checksum(int64_t p_count) const {
@@ -211,6 +214,24 @@ void DmCore::load_tuning(const Dictionary &p_content) {
 	u.burrow_max_per_target = int32_t(num(b, "maxPerTarget", u.burrow_max_per_target));
 	const Dictionary fr = p_content.get("FRENZY", Dictionary());
 	u.frenzy_at = num(fr, "atFrac", u.frenzy_at);
+	const Dictionary af = p_content.get("AFFIX_TUNING", Dictionary());
+	const Dictionary bell = af.get("bellTolled", Dictionary());
+	u.bell_interval = num(bell, "intervalS", u.bell_interval);
+	u.bell_windup = num(bell, "windupS", u.bell_windup);
+	u.bell_r = num(bell, "r", u.bell_r);
+	u.bell_damage = num(bell, "damageMult", u.bell_damage);
+	const Dictionary hun = af.get("hungering", Dictionary());
+	u.hunger_interval = num(hun, "intervalS", u.hunger_interval);
+	u.hunger_reach = num(hun, "reach", u.hunger_reach);
+	u.hunger_heal = num(hun, "healFrac", u.hunger_heal);
+	const Dictionary ven = af.get("vengeful", Dictionary());
+	u.vengeful_risen = int32_t(num(ven, "risen", u.vengeful_risen));
+	const Array order = p_content.get("AFFIX_ORDER", Array());  // the bits of Enemy::affixes follow it
+	for (int32_t k = 0; k < order.size() && k < dm::AF_COUNT; k++) {
+		if (String(order[k]) != String(dm::AFFIX_NAMES[k])) {
+			UtilityFunctions::push_error("DmCore.load_tuning: AFFIX_ORDER changed: ", order[k], " at ", k);
+		}
+	}
 }
 
 int64_t DmCore::load_status_defs(const Array &p_rules) {
@@ -240,6 +261,7 @@ int64_t DmCore::load_status_defs(const Array &p_rules) {
 	world.st_chill = world.status_id("chill");
 	world.st_hex = world.status_id("hex");
 	world.st_barrier = world.status_id("barrier");
+	world.st_shrouded = world.status_id("shrouded");
 	world.st_cleared.clear();
 	for (const char *n : { "bleed", "wraithfire", "withered", "root", "slow", "chill" }) {  // DmStatusSet.CLEARED
 		const int32_t id = world.status_id(n);
@@ -359,13 +381,37 @@ void DmCore::set_area_bounds(const Vector2 &p_min, const Vector2 &p_max) {
 	world.grid.set_bounds(p_min.x, p_min.y, p_max.x, p_max.y, 4.0f);
 }
 
-int64_t DmCore::spawn_enemy(const String &p_def, const Vector2 &p_pos, int64_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, const String &p_area, bool p_rising) {
+int64_t DmCore::spawn_enemy(const String &p_def, const Vector2 &p_pos, int64_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, const String &p_area, bool p_rising, const PackedStringArray &p_affixes) {
 	auto it = world.def_index.find(to_std(p_def));
 	if (it == world.def_index.end()) {
 		UtilityFunctions::push_error("DmCore.spawn_enemy: unknown enemy def ", p_def);
 		return 0;
 	}
-	return world.spawn_enemy(it->second, p_pos.x, p_pos.y, int32_t(p_level), p_hp_mult, p_damage_mult, p_elite, world.area_id(to_std(p_area)), p_rising);
+	int32_t mask = 0;
+	for (int64_t i = 0; i < p_affixes.size(); i++) {
+		int32_t k = 0;
+		while (k < dm::AF_COUNT && p_affixes[i] != String(dm::AFFIX_NAMES[k])) {
+			k++;
+		}
+		if (k == dm::AF_COUNT) {
+			UtilityFunctions::push_error("DmCore.spawn_enemy: unknown affix ", p_affixes[i]);
+			continue;
+		}
+		mask |= 1 << k;
+	}
+	return world.spawn_enemy(it->second, p_pos.x, p_pos.y, int32_t(p_level), p_hp_mult, p_damage_mult, p_elite, world.area_id(to_std(p_area)), p_rising, mask);
+}
+
+bool DmCore::strip_shroud(int64_t p_id) {
+	const auto it = world.enemy_slot.find(int32_t(p_id));
+	return it != world.enemy_slot.end() && world.enemies[it->second].state != dm::DEAD && world.strip_shroud(it->second);
+}
+
+void DmCore::cover_miasma(int64_t p_id) {
+	const auto it = world.enemy_slot.find(int32_t(p_id));
+	if (it != world.enemy_slot.end()) {
+		world.enemies[it->second].miasma_at = world.clock;
+	}
 }
 
 Dictionary DmCore::damage(int64_t p_id, double p_amount, int64_t p_source, bool p_allow_stagger) {
@@ -381,6 +427,7 @@ Dictionary DmCore::damage(int64_t p_id, double p_amount, int64_t p_source, bool 
 	} else if (b) {
 		dealt = world.damage_enemy(b->slot, p_amount, int32_t(p_source), p_allow_stagger, killed);
 	}
+	world.flush_spawns();  // a kill may have queued Vengeful's Risen
 	out["dealt"] = dealt;
 	out["killed"] = killed;
 	return out;
@@ -580,6 +627,13 @@ Dictionary DmCore::enemy_info(int64_t p_id) const {
 	d["pos"] = Vector2(e.x, e.z);
 	d["aim"] = Vector2(e.aim_x, e.aim_z);
 	d["yaw"] = e.yaw;
+	PackedStringArray af;
+	for (int32_t k = 0; k < dm::AF_COUNT; k++) {
+		if (e.affixes & (1 << k)) {
+			af.push_back(dm::AFFIX_NAMES[k]);
+		}
+	}
+	d["affixes"] = af;
 	return d;
 }
 
@@ -620,7 +674,9 @@ int64_t DmCore::raise_thrall(const Dictionary &p_stats, int64_t p_owner, const V
 	sp.lifetime_s = num(p_stats, "lifetimeS", 0.0);
 	sp.empowered = bool(p_stats.get("empowered", false));
 	sp.champion = bool(p_stats.get("champion", false));
-	return world.raise_thrall(sp, int32_t(p_owner), p_pos.x, p_pos.y, float(p_yaw), p_cap);
+	const int32_t id = world.raise_thrall(sp, int32_t(p_owner), p_pos.x, p_pos.y, float(p_yaw), p_cap);
+	world.flush_spawns();  // making room can crumble a thrall whose burst kills a Vengeful elite
+	return id;
 }
 
 PackedInt32Array DmCore::last_crumbled() const {
@@ -648,6 +704,7 @@ bool DmCore::kill_thrall(int64_t p_id, const String &p_reason) {
 		return false;
 	}
 	world.kill_thrall(it->second, reason, 0);
+	world.flush_spawns();
 	return true;
 }
 
@@ -670,6 +727,7 @@ Array DmCore::sacrifice_thralls(int64_t p_owner, int64_t p_n) {
 		out.push_back(d);
 		world.kill_thrall(i, dm::DR_SACRIFICED, 0);
 	}
+	world.flush_spawns();
 	return out;
 }
 
@@ -880,6 +938,10 @@ String DmCore::thrall_kind_name(int64_t p_kind) const {
 
 String DmCore::death_reason_name(int64_t p_reason) const {
 	return (p_reason >= 0 && p_reason < 4) ? String(dm::DEATH_REASON_NAMES[p_reason]) : String();
+}
+
+String DmCore::affix_moment_name(int64_t p_kind) const {
+	return (p_kind >= 0 && p_kind <= dm::AM_UNVEIL) ? String(dm::AFFIX_MOMENT_NAMES[p_kind]) : String();
 }
 
 // ---------------------------------------------------------------------------------------------------------------- corpses

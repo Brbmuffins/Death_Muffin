@@ -112,7 +112,7 @@ func _init() -> void:
 	check(s1.enemy_info(i1)["speed"] == s2.enemy_info(i2)["speed"], "same seed, same speed roll")
 	check(s1.enemy_info(i1)["speed"] != s3.enemy_info(i3)["speed"], "other seed, other speed roll")
 	var sev := events(s1)
-	check(sev.size() == 1 and sev[0]["type"] == EV_SPAWNED and Array(sev[0]["ints"]) == [0, 1, 0, 0], "spawned event: def, level, elite, area")
+	check(sev.size() == 1 and sev[0]["type"] == EV_SPAWNED and Array(sev[0]["ints"]) == [0, 1, 0, 0, 0], "spawned event: def, level, elite, area, affixes")
 
 	if fails == 0:
 		print("PASS core_api %d checks" % checks)

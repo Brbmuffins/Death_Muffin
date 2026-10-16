@@ -80,8 +80,9 @@ server (B38).
 - [x] Core skeleton (native/README.md "Design"): enemy table in spawn order, heroes and bosses as external entities, tick, timers in
   doubles, seeded randomness, grid, event buffer, damage with synchronous kills, radius queries, bulk reads; `client/tests/core_api.gd`.
   Thrall, corpse and status tables come with their items.
-- [ ] Core enemies: the Graves roster (robber, hound, penitent, sac, moth, bat, ghoul) with elites and affixes. The roster's brain,
-  elite stats and hostile zones are in the core (`client/tests/core_enemies.gd`); affixes are next, now that statuses and corpses are in the core.
+- [x] Core enemies: the Graves roster (robber, hound, penitent, sac, moth, bat, ghoul) with elites and affixes: the brain, elite stats and hostile
+  zones (`client/tests/core_enemies.gd`), Bell-Tolled, Hungering, Shrouded and Vengeful (`client/tests/core_affixes.gd`). Rolling stays with the
+  director, the affixes' look with the client.
 - [x] Core thralls, corpses and statuses: statuses (`client/tests/core_status.gd`), thralls with their brain, legion and enemy targeting
   (`client/tests/core_thralls.gd`) and corpses with the toxic pool (`client/tests/core_corpses.gd`). Not in it: the Veilwalker's echo corpses,
   views and co-op snapshots (their own items), and the rites that call it.

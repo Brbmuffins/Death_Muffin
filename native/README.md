@@ -32,6 +32,13 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
   A corpse is laid in `kill()` after the statuses are cleared and before `EV_ENEMY_DIED` (today's listener order: director, affixes, statuses,
   corpse field, rewards); a toxic one bursts after 5 s into a hostile pool zone (per-zone pulse period, kind `ZONE_TOXIC`). `corpse_pick`,
   `corpses_in_radius` and `corpse_consume` are synchronous and atomic, so two casters on one corpse get one winner.
+- **Affixes (affixes.cpp):** `DmAffixSet`'s rules run in the core: the director rolls (`DmAffixSet.roll` stays GDScript) and passes the list to
+  `spawn_enemy`; the bell's ring and toll, Hungering's meals (the corpse field's atomic consume, reason `devoured`) and the shroud's 0.1 s check run
+  after the body's move, paused while it rises, staggers or burrows (the shroud check excepted). The client draws them from `EV_AFFIX_MOMENT`
+  (tell, toll, hungering, vengeful, unveil) and the toll `EV_TELEGRAPH`. Rites call `cover_miasma(id)` (a friendly Miasma covers the body) and
+  `strip_shroud(id)` (Last Light, a Warden sweep). Vengeful runs inside `kill()` in today's listener order: its Risen get their ids, rolls and
+  `EV_ENEMY_SPAWNED` there, but join the table in `flush_spawns()`, at the end of the tick or of the `DmCore` call that killed (a kill can happen
+  while the caller holds a reference into the table: a DoT lump, a swing that kills a bursting thrall).
 - **Numbers from data, not retyped:** `load_enemy_defs` / `load_tuning` (enemies.json), `load_status_defs`, `load_legion_tuning` (abilities RALLY, fen
   HAG_HEX, statuses PLAGUE_BURST, gameplay_legendary LEGEND, runes RUNE_TUNING.colossus, combat/enemies damage_scale) and `load_sim_consts` (the
   constants of `sim_consts.gd`, `dm_corpse_field.gd` and `dm_thrall.gd`, which `client/core/dm_core_data.gd` reads from those files).
@@ -83,6 +90,11 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 - **`damage` on a thrall returns the health lost** (after damage taken and the barrier), not the raw amount.
 - **Paths:** the core follows `NavigationServer3D` paths itself (24 points, advancing at 0.5 m like the agent's
   `path_desired_distance`) instead of a `NavigationAgent3D`.
+- **Affixes:** a Miasma cover holds the shroud off for 0.35 s of game time (today 350 ms of wall-clock time, `dm_miasma_ms`). Vengeful's ring turn
+  comes from the elite's own stream (today an unseeded `randf()`), and its Risen cannot be found by a query until the call or tick that killed the
+  elite returns (they are rising, so nothing could hurt them anyway). The bell's ring and the burst use the body's position this tick, where today
+  they read the drawn (interpolated) position. A body killed by its own toll's chain (the toll kills a bursting thrall whose burst kills the body)
+  no longer eats a corpse in that same tick (today the dead body could heal).
 
 ## Files
 
@@ -90,7 +102,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   (`client/bin/dmcore.gdextension`).
 - `native/src/core/`: the simulation, free of Godot types: `world` (tables, the enemy brain, damage and kills, queries, statuses on bodies),
   `thralls` (the thrall brain and the legion: raise, make_room, formation, separation, rally, deaths), `corpses` (the corpse field),
-  `body` (what a status set needs from its owner, shared by enemies and thralls), `thrall` and `corpse` (their records and enums), `status` (the status
+  `affixes` (the elite affixes), `body` (what a status set needs from its owner, shared by enemies and thralls), `thrall` and `corpse` (their records and enums), `status` (the status
   set, a port of DmStatusSet; its rule table comes from `client/core/dm_status_rules.gd`), `grid` (dense XZ grid rebuilt per tick by counting
   sort), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity).
 - Tests: `client/tests/core_smoke.gd` (loads, answers), `client/tests/core_api.gd` (queries in spawn order, synchronous kills,
@@ -99,7 +111,9 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   (the 0.1 s step, DoT lumps, stacking and ownership, multipliers, stun, dig-in clear, Withered on death, wire bytes),
   `client/tests/core_corpses.gd` (kinds, the order in a death, extra corpses, the cap, lifetime, toxic rupture and its pool, the pick and consume
   rules) and `client/tests/core_thralls.gd` (the rise, caps and make_room, formation and leash, the scan and the boss edge rule, the swing and its
-  multipliers, kinds, enemies choosing and hurting thralls, deaths and bursts, statuses on thralls, rally, separation, tick order). Run `bash client/setup.sh` first in a fresh checkout: a script run in a
+  multipliers, kinds, enemies choosing and hurting thralls, deaths and bursts, statuses on thralls, rally, separation, tick order) and
+  `client/tests/core_affixes.gd` (each affix against mirrors of today's timer arithmetic, the pause while staggered, Vengeful inside a call and inside a
+  DoT tick). Run `bash client/setup.sh` first in a fresh checkout: a script run in a
   project that was never imported hangs.
 - `SConstruct`: builds into `client/bin/libdmcore.<platform>.<target>.<arch>.<ext>`.
 - `build.sh`: links godot-cpp into `native/thirdparty/` (not committed) from one shared cache per commit

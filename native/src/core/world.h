@@ -28,9 +28,14 @@ enum Blow : int32_t { BLOW_MELEE = 0, BLOW_CONE, BLOW_DUST, BLOW_SLAM };
 // Damage kinds of a hit on a target (the sim's hurt `from`; GDScript maps them back to strings): append only.
 enum HitKind : int32_t { HK_MELEE = 0, HK_TOXIC, HK_BURN, HK_EMBER, HK_DUST, HK_CURSE, HK_TOLL };
 // Telegraph and cue kinds (DmEnemy.telegraph / cue): append only.
-enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT };
+enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT, TELL_TOLL };
 enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN };
 enum ZoneKind : int32_t { ZONE_DUST = 0, ZONE_TOXIC };
+// Elite affixes in DmSimData.AFFIX_ORDER (bit k of Enemy::affixes) and the one-off beats DmAffixSet.moment sends: append only.
+enum Affix : int32_t { AF_BELL_TOLLED = 0, AF_HUNGERING, AF_SHROUDED, AF_VENGEFUL, AF_COUNT };
+enum AffixMoment : int32_t { AM_TELL = 0, AM_TOLL, AM_HUNGERING, AM_VENGEFUL, AM_UNVEIL };
+constexpr const char *AFFIX_NAMES[AF_COUNT] = { "bellTolled", "hungering", "shrouded", "vengeful" };
+constexpr const char *AFFIX_MOMENT_NAMES[] = { "tell", "toll", "hungering", "vengeful", "unveil" };
 
 constexpr double TICK = 1.0 / 60.0;
 constexpr double RISE_S = 1.1;
@@ -42,6 +47,9 @@ constexpr double REPATH_S = 0.3, REPATH_MOVE_SQ = 1.0, DIRECT_RANGE_SQ = 9.0, SC
 constexpr double INCENSE_MOVE = 1.3, INCENSE_ATTACK = 1.25, PATH_DESIRED = 0.5;
 constexpr double KITE_BACK_OFF = 3.5, KITE_BACK_SPEED = 0.8, CONE_HALF_ANGLE = 30.0 * 3.14159265358979323846 / 180.0, CONE_PAD = 0.4;
 constexpr double ZONE_TARGET_PAD = 0.45, ZONE_TICK_S = 1.0, BURROW_STUCK_S = 0.8, DEFAULT_SLAM_R = 1.9;
+// DmAffixSet: the shroud check runs every LOOK_S; a Miasma cover holds 350 ms (today wall-clock, here game time); a hungry body that found
+// nothing to eat looks again 0.5 s later; Vengeful's Risen stand on a 1.4 m ring.
+constexpr double AFFIX_LOOK_S = 0.1, MIASMA_HOLD_S = 0.35, HUNGER_RETRY_S = 0.5, VENGEFUL_RING = 1.4;
 
 struct Tuning {  // data/content/enemies.json blocks
 	double elite_hp = 3.6, elite_damage = 1.5, elite_windup = 0.85, elite_cooldown = 0.8, elite_radius = 1.25;
@@ -51,6 +59,10 @@ struct Tuning {  // data/content/enemies.json blocks
 	int32_t burrow_max_per_target = 3;
 	double frenzy_at = 0.5;
 	double elite_scale = 1.35;  // ELITE.scale: an elite's node scale, which its corpse carries
+	// AFFIX_TUNING (stunMs of bellTolled is data the sim never used; shrouded's damageTakenMult lives in the status rule)
+	double bell_interval = 6.0, bell_windup = 0.9, bell_r = 3.0, bell_damage = 0.6;
+	double hunger_interval = 4.0, hunger_reach = 5.0, hunger_heal = 0.15;
+	int32_t vengeful_risen = 3;
 };
 
 // Thralls, corpses and the toxic pool. Numbers come from data (World::load in DmCore): content/{abilities,fen,statuses,gameplay_legendary,
@@ -91,6 +103,11 @@ struct EnemyDef {
 struct Enemy : Body {
 	int32_t def = 0, level = 1, area = 0, state = IDLE, last_source = 0, target = 0, phase = 0;
 	bool elite = false, in_graves = true, dug_in = false;
+	uint8_t affixes = 0;  // bit per Affix
+	double hp_mult = 1, damage_mult = 1;  // the spawn's multipliers (Vengeful's Risen are as strong as the body that fell)
+	// DmAffixSet: its own clock (runs only while the body acts), the bell and hunger countdowns (-1 = fresh), the shroud check, the last Miasma cover
+	double affix_t = 0, toll_cd = -1, toll_at = -1, hunger_cd = -1, shroud_t = 0, miasma_at = -std::numeric_limits<double>::infinity();
+	float toll_x = 0, toll_z = 0;
 	float x = 0, z = 0, yaw = 0, home_x = 0, home_z = 0, aim_x = 0, aim_z = 0, last_x = 0, last_z = 0;
 	double damage = 1, speed = 1, radius = 0.45, attack_range = 1.3, windup_s = 0.4, cooldown_s = 1.3;
 	double attack_cd = 0, state_t = 0, flank_side = 1, scan_t = 0, repath_t = 0, stagger_t = 0, wander_heading = 0;
@@ -140,13 +157,16 @@ struct World {
 	NavHook nav;
 	std::vector<EnemyDef> defs;
 	std::vector<StatusRule> status_rules;
-	int32_t st_stun = -1, st_frenzy = -1, st_withered = -1, st_chill = -1, st_hex = -1, st_barrier = -1;
+	int32_t st_stun = -1, st_frenzy = -1, st_withered = -1, st_chill = -1, st_hex = -1, st_barrier = -1, st_shrouded = -1;
 	std::vector<int32_t> st_cleared;  // ids a ghoul's dig-in clears (DmStatusSet.CLEARED)
 	std::unordered_map<std::string, int32_t> def_index;
 	std::vector<std::string> areas;
 	std::unordered_map<std::string, int32_t> area_index;
 	std::vector<Enemy> enemies;
 	std::unordered_map<int32_t, int32_t> enemy_slot;  // id -> slot
+	// Bodies born inside a kill (Vengeful's Risen): id, rolls and EV_ENEMY_SPAWNED happen at the kill in today's order, but the table only
+	// grows in flush_spawns(), because a kill can happen while a caller holds an Enemy& (a DoT lump, a swing that kills a bursting thrall).
+	std::vector<Enemy> pending_spawns;
 	std::vector<External> externals;
 	std::vector<Zone> zones;
 	Grid grid;
@@ -169,12 +189,17 @@ struct World {
 	std::vector<std::string> reasons;      // corpse reasons by code (CorpseReason first, then interned)
 	std::vector<int32_t> area_levels;      // DmCorpseField.area_level per area id; today nothing sets it, so the toxic pool hurts as level 1
 	std::vector<int32_t> id_scratch;
+	std::vector<int32_t> toll_hits;   // the bell's targets (kept apart from id_scratch, which a burst inside the toll reuses)
 	std::vector<double> sep_scratch;  // thrall separation: pushed x, z per thrall
 	mutable std::vector<std::pair<double, int32_t>> hit_scratch;  // corpse queries: squared distance, id
 
 	World();
 	int32_t area_id(const std::string &p_area);
-	int32_t spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising);
+	int32_t spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising, int32_t p_affixes = 0);
+	// Adds the bodies a kill queued. step() calls it last; DmCore calls it before returning from anything that can kill outside the tick.
+	void flush_spawns();
+	// DmAffixSet.strip_shroud (Last Light, a Warden sweep): the ward is gone for good. False when the body has none.
+	bool strip_shroud(int32_t p_slot);
 	// Damage from a cast, a thrall, a zone or a boss: a kill resolves at once (combat map section 7). Returns the amount dealt.
 	double damage_enemy(int32_t p_slot, double p_amount, int32_t p_source, bool p_allow_stagger, bool &r_killed);
 	void stun(int32_t p_slot, double p_seconds);
@@ -225,6 +250,14 @@ private:
 	void step_zones(double p_dt);
 	void remove_dead_bodies();
 	void kill(int32_t p_slot, int32_t p_source);
+	Enemy make_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising, int32_t p_affixes);
+	// affixes (affixes.cpp): DmAffixSet's host rules
+	void tick_affixes(int32_t p_slot, double p_dt);
+	void tick_bell(Enemy &e, double p_dt);
+	void tick_hunger(Enemy &e, double p_dt);
+	void tick_shroud(Enemy &e);
+	void vengeance(Enemy &e);
+	void affix_moment(const Enemy &e, int32_t p_kind, float p_ax, float p_az, float p_tx, float p_tz, float p_amount);
 	// statuses on any body (DmStatusSet)
 	void advance_statuses(Body &b, double p_dt);
 	void step_statuses(Body &b, double p_dt);
