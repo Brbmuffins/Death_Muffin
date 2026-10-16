@@ -165,8 +165,8 @@ server (B38).
     resolves them on its core (Exhume raises a thrall the host simulates, owned by the guest's hero external). The Full Party for one guest: about 28 KB/s and 82 packets/s on the host's connection (2.7 % and 14 % of the relay's limits), the largest packet 1,231 B.
   - [x] The Gravedigger King, hero vitals and the rites' events reach the guest (GDScript beside the core, as today's code sends them); the King fights both heroes in the proof.
   - [x] The party flow on the test lobby and relay (`DmNextParty`: host, join by code or id, invite, ask to join, answer, leave; `DmConfig` pins the test lobby and the test relay's port).
-  - [ ] **Waits for the owner: install the test lobby and relay** (`server/death-muffin/test-server/coop/README.md` "Install": two units on ports 5195 and 5196, an nginx location, a firewall rule, a drop-in with the server's address). Prepared, not
-    installed, not started; until then co-op runs against a lobby and relay on the same machine (`client/tools/coop_local.sh`) and the team cannot play it in the test build.
+  - [x] The test lobby and relay installed and running (2026-10-16, Helix's OK; `server/death-muffin/test-server/coop/README.md`): `death-muffin-lobby-test` on 5195 behind `/death-muffin/test-lobby/`, `death-muffin-relay-test` on udp 5196,
+    in the drift report's service list.
   - [ ] A player-facing entry: the Social window (Party and Friends tabs) with the panels, and the hand-over for `join_ready` in `main/main.gd` (a few lines; kept out while the benchmark port edits that file). Until then a party is made and joined by
     launch arguments (`--host-party`, `--join-party=<code>`).
   - [ ] Still to do beside the core: a guest's build from the server's record (B22) and the joiner's own account (rewards, XP, loot, the kill report's carried kills) with the rewards item; ground drops and the party's seals with loot and the Chapterhouse; the other six bosses'

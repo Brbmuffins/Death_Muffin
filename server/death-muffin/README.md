@@ -10,7 +10,7 @@ https://muffindevelopment.com/death-muffin/ (launcher download, patch notes, lea
 | Auth + game API | 5190 (127.0.0.1) | `backend/server.js` | `systemd/death-muffin-auth.service` | Express, MySQL database `death_muffin`, own `JWT_SECRET`. Health: `GET /health`, `GET /api/health` |
 | Lobby + packet relay | 5192 (127.0.0.1) | `lobby/` | `lobby/deathmuffin-lobby.service` | WebSocket session list and host-to-client relay for 1-4 player sessions; see `lobby/README.md` |
 | Test backend (rebuild) | 5194 (127.0.0.1) | the live backend's code | `test-server/death-muffin-auth-test.service` | Database `death_muffin_test`, own user and `JWT_SECRET`, copies of the team's accounts; public at `/death-muffin/test-api/`; see `test-server/README.md` |
-| Test lobby and relay (rebuild co-op) | 5195 (127.0.0.1), 5196/udp (public) | the live lobby's and relay's code, own copies | `test-server/coop/*.service` | Authenticate against the test backend; prepared, not installed; public at `/death-muffin/test-lobby/`; see `test-server/coop/README.md` |
+| Test lobby and relay (rebuild co-op) | 5195 (127.0.0.1), 5196/udp (public) | the live lobby's and relay's code, own copies | `test-server/coop/*.service` | Authenticate against the test backend; installed 2026-10-16 (Helix's OK); public at `/death-muffin/test-lobby/`; see `test-server/coop/README.md` |
 | UDP co-op relay | 5193/udp (public) | `relay/`, `godot/net/relay/dm_udp_relay.gd` | `relay/deathmuffin-relay.service` | ENet lane next to the lobby WebSocket, entered with a lobby ticket; see `relay/README.md` |
 
 Ports 5195-5199 are reserved for this project (:5191 is unused); 5195 and 5196 are the test lobby and relay.

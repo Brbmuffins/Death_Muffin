@@ -313,8 +313,8 @@ the Friends tab), and the Social window that drives it all (the panels item). Un
 code is in the log and in a toast), `--join-party=<code>` takes a seat before the game is built, `--lobby=<ws url>` points at a lobby on this machine (the token in `DM_LOBBY_TOKEN`). `main/main.gd` needs no change for them; the in-game hand-over for
 `join_ready` (what today's `main.gd` does with `party.join_ready`: free the solo game, start the guest game, go home on `client_ended`) is a few lines to add there when the Social window can call `join_session`.
 
-**The test lobby and relay are the only ones this build uses** (the API rule above): `DmConfig.LOBBY_URL`, `RELAY_PORT`, `allows_lobby_url`, `allows_relay`. The services (their own ports, the test backend's signing key) are prepared in
-`server/death-muffin/test-server/coop/` and **wait for the owner's OK to install**; its README has the steps. The lobby offers the relay's address and a ticket when a session is made or joined; a test build without the relay installed
+**The test lobby and relay are the only ones this build uses** (the API rule above): `DmConfig.LOBBY_URL`, `RELAY_PORT`, `allows_lobby_url`, `allows_relay`. The services (their own ports, the test backend's signing key) are
+`server/death-muffin/test-server/coop/` (installed 2026-10-16; its README has the steps). The lobby offers the relay's address and a ticket when a session is made or joined; without the relay a session
 plays over the lobby's WebSocket, which works and stalls a movement packet behind a lost one.
 
 **Try it on this machine** (no install, no network beyond loopback):

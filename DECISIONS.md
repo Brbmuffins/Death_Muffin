@@ -166,7 +166,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   its thralls are the host's bodies. The session, the relay peer, the rites' RPCs and the King's replication stay today's code; only the per-creature traffic is the core's. The snapshot (up to 1.7 KB) is cut
   by body ranges into packets of at most 1,300 B (`DmCore.snapshot_parts`), each applied by the guest as it arrives: the old rule of staying under the 1,392-byte packet, with nothing to reassemble and a lost part
   costing 50 ms of its bodies. The hello carries the core's wire version next to the build (B40), so even two dev builds refuse each other when the formats differ. The rebuild uses its own lobby and relay (ports
-  5195 and 5196, the test backend's signing key), pinned in `DmConfig` like the API (B38); they are prepared, not installed, until the owner agrees. Until the Social window comes with the panels, a party is
+  5195 and 5196, the test backend's signing key), pinned in `DmConfig` like the API (B38); they were installed on 2026-10-16 once Helix agreed. Until the Social window comes with the panels, a party is
   made and joined by launch arguments. Kill credit is the host's, once; a guest's died events draw and credit nothing.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,

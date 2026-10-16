@@ -167,7 +167,7 @@ while IFS= read -r f; do drift "secret-ish file in docroot: ${f#$WWW/}"; done < 
 
 # 7. Services
 section "7. Services"
-for s in death-muffin-auth deathmuffin-lobby deathmuffin-relay death-muffin-discord-agent death-muffin-auth-test; do
+for s in death-muffin-auth deathmuffin-lobby deathmuffin-relay death-muffin-discord-agent death-muffin-auth-test death-muffin-lobby-test death-muffin-relay-test; do
   st="$(systemctl is-active $s 2>&1)"; [ "$st" = active ] || drift "$s is $st"; done
 H="$(curl -fsS -m 5 http://127.0.0.1:5190/health 2>&1)" || drift "auth /health failed: ${H:0:100}"
 [ -n "${H:-}" ] && info "auth /health: ${H:0:100}"

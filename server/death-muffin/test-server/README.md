@@ -15,7 +15,7 @@ on it can touch a live character.
 - `copy-team.sh [username ...]`: refills the test database from live (only reads live): the live schema, every catalog table, the
   team's accounts with their characters and what belongs to them. Logs and history stay out. Replaces whatever was played on the
   test server since the last copy. Run it when the team wants their latest live characters there.
-- `coop/`: the test lobby and relay for the rebuild's 2-player co-op (units, nginx location, setup and sync scripts, the install steps that wait for the owner's OK): [coop/README.md](coop/README.md).
+- `coop/`: the test lobby and relay for the rebuild's 2-player co-op (units, nginx location, setup and sync scripts, the install steps; installed 2026-10-16): [coop/README.md](coop/README.md).
 - `sync.sh [rev]`: copies the installed live backend's code over, applies pending migrations of `rev` (default `origin/main`) to the
   test database and restarts it. `deploy-release.sh` runs it after every live deploy (best effort), and the drift report flags a test
   backend that is down or on different code.

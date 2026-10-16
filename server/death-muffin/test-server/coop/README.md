@@ -23,7 +23,7 @@ The client takes a relay the lobby offers only on port 5196 (or on the same mach
 - `sync.sh [rev] [--no-restart]`: puts the lobby's and the relay's code of a committed revision (default `origin/main`) on the test copies, `npm ci` when the lockfile changed, restarts both
   and checks `/health`. A restart ends the parties running on the test lobby.
 
-## Install (waits for the owner's OK; nothing here is installed or started yet)
+## Install (done 2026-10-16 with Helix's OK; the steps, for a reinstall on another server)
 
 1. `bash server/death-muffin/test-server/coop/setup.sh` (creates the folders, installs and enables the two units without starting them).
 2. The relay's public address, which is the server's own and so is not in git: copy the live drop-in's address and give it the test port.
@@ -38,7 +38,7 @@ The client takes a relay the lobby offers only on port 5196 (or on the same mach
 5. `sudo systemctl start death-muffin-relay-test death-muffin-lobby-test`, then:
    - `curl -s http://127.0.0.1:5195/health` answers `{"ok":true,...}` and `journalctl -u death-muffin-relay-test` shows `listening on udp *:5196`;
    - the test channel's build hosts and joins a party (client/README.md "Co-op on the core": the trial commands) with two of the team's accounts.
-6. Add both units to the service list of `server/death-muffin/ops/drift-report.sh` (line 170, where `death-muffin-auth-test` is) so a down test lobby or relay is flagged; an Uptime Kuma monitor is optional and, like every staging and test monitor, never linked to the live Discord notification.
+6. Both units are in the service list of `server/death-muffin/ops/drift-report.sh`, so a down test lobby or relay is flagged (reinstall the ops jobs with `ops/install.sh` after changing it); an Uptime Kuma monitor is optional and, like every staging and test monitor, never linked to the live Discord notification.
 
 To undo it: `sudo systemctl disable --now death-muffin-lobby-test death-muffin-relay-test`, remove the two units, the drop-in, the nginx block and the firewall rule.
 
