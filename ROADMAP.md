@@ -70,7 +70,9 @@ server (B38).
 - [x] First test build: today's game on Forward+, fixing only what stops it running → **Gate A passed** (2026-10-16, Helix's PC): it runs
   without a crash or a broken screen and is faster (Full Party, Sanctum, 1440p Ultra: 61.5 fps, p95 21.0 ms on Compatibility; 100.2 fps,
   p95 14.2 ms, worst 22 ms, no hitch on Forward+). The lighting is too bright on Forward+ (flat cream pools under every light, white glow
-  blobs): today's values were tuned for Compatibility, which clamps before tone mapping. Calibrating them is a test build item.
+  blobs): today's values were tuned for Compatibility, which clamps before tone mapping. Retuning them (light energies, falloff, ambient,
+  exposure, fog, glow and the bake's) belongs to the look pass; test builds may look off until then (Helix 2026-10-16: "if there is a looks
+  pass later we can wait").
 
 **Test build checklist** (built ahead while Gate A waits; nothing from it reaches anyone before Gate A passes):
 - [x] Assets: `tools/rebuild/sync-assets.mjs` copies the test build's assets from `godot/assets` into `client/assets` by the list
@@ -134,8 +136,6 @@ server (B38).
     progression comes), rewards (the defeat events exist: `bosses.defeated`, `brain_event`, `DmBoss.died`), the boss bar and banners (the full HUD), Easy auto combat's use of him, replicating him to guests (co-op).
 - [x] Core obstacles: Ossuary Wall solid for the core's enemies (`DmCore.add_obstacle`, a box the core keeps enemies out of and their steering
   slides along; `client/tests/core_enemies.gd` obstacles, `client/tests/rites.gd`). A later rite or boss barrier uses the same call.
-- [ ] Lighting calibration for Forward+: today's light energies, falloff, ambient, exposure, fog and glow (and the bake's) retuned so the rebuild's
-  Graves looks like today's game on Compatibility (the reference) before the first rebuild test build; improvements wait for the look pass.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
 - [ ] 2-player co-op (the combat core's half is built: native/README.md "Co-op", `client/tests/core_coop.gd`):
   - [x] Core snapshots: `DmCore.snapshot` (20 Hz, the Full Party in about 1.2 KB), `take_reliable` and `baseline` on the host, a puppet core (`set_puppet`, `apply_snapshot`,
