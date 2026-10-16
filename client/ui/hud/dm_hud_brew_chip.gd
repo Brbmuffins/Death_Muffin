@@ -2,6 +2,7 @@ class_name DmHudBrewChip
 extends Control
 ## `.brew-chip`: a 54x58 belt slot: key cap top-left, big glyph, label, sub line (count / seconds left / "+ add" / "none") and a
 ## bottom timer bar. States: on (active effect), empty (dashed + faint), cd (dimmed while its cooldown runs).
+## Ported (client/code.list): its rectangles, outlines and dashes come from the HUD atlas (DmHudKit.rect), on the chrome layer.
 
 signal clicked(slot: String)
 signal dropped(slot: String, item_id: String)   ## a brew dragged from the Reliquary (BELT_DRAG_TYPE)
@@ -31,6 +32,7 @@ var _sub: Label
 
 
 func _init() -> void:
+	z_index = DmHudKit.Z_CHROME
 	custom_minimum_size = Vector2(W, H)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_kbd = DmHudKit.lbl("", 11, DmUi.BONE_100, "numeric", false)
@@ -105,7 +107,7 @@ static func sub_text(slot_: String, empty_: bool, active_: bool, left_: float, c
 
 func _draw() -> void:
 	var r := Rect2(Vector2.ZERO, Vector2(W, H))
-	draw_rect(r, Color(0.0275, 0.0235, 0.0392, 0.66))
+	DmHudKit.rect(self, r, Color(0.0275, 0.0235, 0.0392, 0.66))
 	var strong := DmUi.BORDER_STRONG
 	var bottom := strong
 	if active:
@@ -115,27 +117,30 @@ func _draw() -> void:
 	if empty:
 		_dashed(r, strong)
 	else:
-		draw_rect(r, strong, false, 1.0)
-	draw_rect(Rect2(0, H - 3, W, 3), bottom)
+		DmHudKit.outline(self, r, strong, 1.0)
+	DmHudKit.rect(self, Rect2(0, H - 3, W, 3), bottom)
 	# timer bar
-	draw_rect(Rect2(0, H - 3, W, 3), Color(1, 1, 1, 0.08))
-	draw_rect(Rect2(0, H - 3, W * clampf(frac, 0.0, 1.0), 3), color)
+	DmHudKit.rect(self, Rect2(0, H - 3, W, 3), Color(1, 1, 1, 0.08))
+	DmHudKit.rect(self, Rect2(0, H - 3, W * clampf(frac, 0.0, 1.0), 3), color)
 	# key cap
-	draw_rect(Rect2(3, 2, maxf(14.0, _kbd.size.x), 14), Color(0, 0, 0, 0.5))
-	draw_rect(Rect2(3, 2, maxf(14.0, _kbd.size.x), 14), strong, false, 1.0)
+	var cap := Rect2(3, 2, maxf(14.0, _kbd.size.x), 14)
+	DmHudKit.rect(self, cap, Color(0, 0, 0, 0.5))
+	DmHudKit.outline(self, cap, strong, 1.0)
 
 
 func _dashed(r: Rect2, col: Color) -> void:
 	var step := 4.0
 	var x := 0.0
 	while x < r.size.x:
-		draw_line(Vector2(x, 0.5), Vector2(minf(x + 2.0, r.size.x), 0.5), col, 1.0)
-		draw_line(Vector2(x, r.size.y - 0.5), Vector2(minf(x + 2.0, r.size.x), r.size.y - 0.5), col, 1.0)
+		var w := minf(x + 2.0, r.size.x) - x
+		DmHudKit.rect(self, Rect2(x, 0.0, w, 1.0), col)
+		DmHudKit.rect(self, Rect2(x, r.size.y - 1.0, w, 1.0), col)
 		x += step
 	var y := 0.0
 	while y < r.size.y:
-		draw_line(Vector2(0.5, y), Vector2(0.5, minf(y + 2.0, r.size.y)), col, 1.0)
-		draw_line(Vector2(r.size.x - 0.5, y), Vector2(r.size.x - 0.5, minf(y + 2.0, r.size.y)), col, 1.0)
+		var h := minf(y + 2.0, r.size.y) - y
+		DmHudKit.rect(self, Rect2(0.0, y, 1.0, h), col)
+		DmHudKit.rect(self, Rect2(r.size.x - 1.0, y, 1.0, h), col)
 		y += step
 
 

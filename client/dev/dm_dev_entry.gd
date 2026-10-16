@@ -5,7 +5,7 @@ extends Node
 ## Nothing here reaches a server: the backend is the local mock (DmOffline.make_mock, its accounts in user://dm_dev_offline_db.json), and DmNextGame refuses any api whose base url is not the test
 ## server's. DmMain reads the same options for `-- --dev-offline` (DmDevEntry.options).
 ##
-##   godot --path client res://dev/dm_dev_entry.tscn                       # the Gravecaller (class 2), level 10, the minimal HUD, waves
+##   godot --path client res://dev/dm_dev_entry.tscn                       # the Gravecaller (class 2), level 10, the HUD, waves
 ##   godot --path client res://dev/dm_dev_entry.tscn -- --class=1 --seed=7  # after `--`: the options below
 ##
 ## He fights with the rites of today's game (client/README.md "The Gravecaller's rites"): LMB walks, or attacks the enemy under the cursor with the primary (Bone Needle; hold to
@@ -46,7 +46,7 @@ func _ready() -> void:
 	game = load("res://next/next_game.tscn").instantiate()
 	game.name = "NextGame"
 	add_child(game)
-	var game_opts := {"name": "tester", "hud": "minimal", "waves": not bool(opts["no_waves"])}
+	var game_opts := {"name": "tester", "hud": true, "waves": not bool(opts["no_waves"])}
 	if opts.has("seed"):
 		game_opts["seed"] = opts["seed"]
 	if opts.has("baked"):

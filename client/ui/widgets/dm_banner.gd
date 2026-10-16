@@ -2,6 +2,7 @@ class_name DmBanner
 extends VBoxContainer
 ## `.hud-banner`: the big, brief area / level banner. Title (Cormorant 700 44px, .16em, uppercase), a violet rule, italic subtitle.
 ## Fades in over 0.6 s (drifting 8 px down), holds, fades out. Centre it horizontally at ~24% of the screen height.
+## Ported (client/code.list): the rule is 40 rectangles of the HUD atlas (DmHudKit.rect).
 
 @export var hold_s: float = 3.0
 var _t: Label
@@ -57,4 +58,4 @@ class _Rule extends Control:
 			var x0 := size.x * i / n
 			var x1 := size.x * (i + 1) / n
 			var k := 1.0 - absf((i + 0.5) / n * 2.0 - 1.0)
-			draw_rect(Rect2(x0, size.y * 0.5, x1 - x0 + 0.5, 1), Color(DmUi.SPELL_300, k))
+			DmHudKit.rect(self, Rect2(x0, size.y * 0.5, x1 - x0 + 0.5, 1), Color(DmUi.SPELL_300, k))

@@ -4,6 +4,9 @@ extends VBoxContainer
 ## optional rune badge, plus the key cap under it ("1".."4", "RMB", "R", "LMB"). States: nores (dimmed), empowered (jade pulse),
 ## locked (grayscale + unlock level), alt (right-click action: ember accent + left rule).
 ## Driven by `apply(slot_dict)`; see ui/hud/README.md ("slots").
+## Ported (client/code.list): the icon and its greyed variants come from the HUD atlas (no shader material, so a dimmed slot costs no extra draw), the cooldown
+## sweep is a handful of triangles in one mesh (it was a polygon per 2 % of the sweep, up to 50 draw calls), and the border rectangles come from the atlas too,
+## on the layers of DmHudKit: icon, then the sweep, then the borders over it, then the text.
 
 signal pressed          ## left click on the icon (web: click-to-cast)
 signal swap_pressed     ## left click on the key cap while `swap` is on
@@ -29,7 +32,9 @@ var rune_path: String = ""
 
 var button: Control          ## the 62 px icon holder: the spell card's anchor
 var _icon: TextureRect
-var _over: Control
+var _art: Control    ## the cooldown sweep (Z_ART)
+var _edge: Control   ## the borders, over the sweep (Z_EDGE)
+var _sweep := DmHudMesh.new()
 var _cdtext: Label
 var _cost: Label
 var _lock: Label
@@ -40,7 +45,6 @@ var _swap_ico: Label
 var _rune: TextureRect
 var _flash: float = 0.0
 var _t: float = 0.0
-static var _desat: Shader
 
 
 func _init() -> void:
@@ -65,12 +69,20 @@ func _init() -> void:
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_icon.z_index = DmHudKit.Z_CHROME
 	holder.add_child(_icon)
-	_over = Control.new()
-	_over.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_over.draw.connect(_draw_over)
-	holder.add_child(_over)
+	_art = Control.new()
+	_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_art.z_index = DmHudKit.Z_ART
+	_art.draw.connect(_draw_art)
+	holder.add_child(_art)
+	_edge = Control.new()
+	_edge.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_edge.z_index = DmHudKit.Z_EDGE
+	_edge.draw.connect(_draw_edge)
+	holder.add_child(_edge)
 	_cdtext = DmHudKit.lbl("", 17, DmUi.BONE_100, "numeric")
 	_cdtext.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_cdtext.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -106,6 +118,7 @@ func _init() -> void:
 	_rune.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_rune.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	_rune.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rune.z_index = DmHudKit.Z_CHROME
 	_rune.visible = false
 	holder.add_child(_rune)
 	# key cap: min 20 wide, padding 0 5, 18 line + 1px border, numeric 12
@@ -132,14 +145,11 @@ func _init() -> void:
 	set_process(false)   # only while empowered or flashing (see _wake)
 
 
-func _ensure_shader() -> void:
-	if _desat == null:
-		_desat = Shader.new()
-		_desat.code = "shader_type canvas_item;\nuniform float sat = 1.0;\nuniform float bright = 1.0;\nvoid fragment(){ vec4 c = texture(TEXTURE, UV); float g = dot(c.rgb, vec3(0.299,0.587,0.114)); c.rgb = mix(vec3(g), c.rgb, sat) * bright; COLOR = c; }\n"
-
-
 ## Slot dictionary -> state. Keys: icon key cost left_ms total_ms affordable empowered locked unlock_level alt rune_icon swap.
 var _kp_alt := -1   # the key panel's style is rebuilt only when alt flips
+var _drawn_pct := -1     # the cooldown percent the sweep was last drawn for
+var _drawn_look := -1    # the border look (alt, empowered) the edge was last drawn for
+var _dim := -1      # the icon variant shown: 0 = normal, else a DmHudAtlas.DIM_* level
 
 var _last: Dictionary = {}   ## the slot dict last applied (a copy: the view-model reuses its dictionaries)
 
@@ -148,9 +158,9 @@ func apply(s: Dictionary) -> void:
 		return
 	_last = s.duplicate()
 	var new_icon: String = String(s.get("icon", ""))
-	if new_icon != icon_path:
+	var icon_changed := new_icon != icon_path
+	if icon_changed:
 		icon_path = new_icon
-		_icon.texture = DmHudKit.tex(icon_path)
 	var new_rune: String = String(s.get("rune_icon", ""))
 	if new_rune != rune_path:
 		rune_path = new_rune
@@ -178,24 +188,30 @@ func apply(s: Dictionary) -> void:
 	_swap_ico.visible = swap
 	_key_panel.tooltip_text = "Swap this rite (L)" if swap else ""
 	_icon.get_parent().tooltip_text = ""   # no hover tooltip on the bar; spell info lives in the Grimoire
-	_ensure_shader()
-	if not affordable or locked or needs != "":
-		var m := _icon.material as ShaderMaterial
-		if m == null:
-			m = ShaderMaterial.new()
-			m.shader = _desat
-			_icon.material = m
-		var soft := affordable and not locked   # only "needs": a lighter dim than out of essence
-		m.set_shader_parameter("sat", 0.0 if locked else (0.55 if soft else 0.3))
-		m.set_shader_parameter("bright", 0.7 if soft else 0.55)
-	elif _icon.material != null:
-		_icon.material = null
+	# a rite out of essence, locked, or waiting for a corpse or a legion is the same art greyed and darker (the baked variants of the atlas)
+	var dim := 0
+	if locked:
+		dim = DmHudAtlas.DIM_LOCKED
+	elif not affordable:
+		dim = DmHudAtlas.DIM_HARD
+	elif needs != "":
+		dim = DmHudAtlas.DIM_SOFT   # only "needs": a lighter dim than out of essence
+	if icon_changed or dim != _dim:
+		_dim = dim
+		_icon.texture = DmHudAtlas.dimmed(icon_path, dim) if dim != 0 else DmHudKit.tex(icon_path)
 	var alt_i := 1 if alt else 0
 	if alt_i != _kp_alt:
 		_kp_alt = alt_i
-		_key_panel.add_theme_stylebox_override("panel", DmHudKit.style(DmUi.INSET, Color(EMBER, 0.45) if alt else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(5, 0, 5, 0)))
+		_key_panel.add_theme_stylebox_override("panel", DmHudKit.plate(DmUi.INSET, Color(EMBER, 0.45) if alt else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(5, 0, 5, 0)))
 	DmHudKit.set_const(self, "separation", 5)
-	_over.queue_redraw()
+	var pct := cd_pct(left_ms, total_ms)
+	if pct != _drawn_pct:   # the sweep moves in whole percents
+		_drawn_pct = pct
+		_art.queue_redraw()
+	var look := (1 if alt else 0) | (2 if empowered else 0)
+	if look != _drawn_look:   # the borders change with the slot's kind only (the pulse and the flash redraw them in _process)
+		_drawn_look = look
+		_edge.queue_redraw()
 	_wake()
 
 
@@ -230,43 +246,58 @@ func _process(delta: float) -> void:
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta)
 	if empowered or _flash > 0.0:
-		_over.queue_redraw()
+		_edge.queue_redraw()
 	else:
 		set_process(false)
+		_edge.queue_redraw()
 
 
-func _draw_over() -> void:
-	var r := Rect2(Vector2.ZERO, Vector2(BTN, BTN))
+## The wedge of the cooldown: conic-gradient(rgba(5,4,8,.82) var(--cd), transparent 0), shaded from 12 o'clock clockwise for pct %. Its edge runs along the
+## square, so the wedge is a fan from the centre to the points where its outline turns: the start, each corner it passes, and the end (at most five triangles).
+func _draw_art() -> void:
 	var pct := cd_pct(left_ms, total_ms)
-	if pct > 0:
-		# conic-gradient(rgba(5,4,8,.82) var(--cd), transparent 0): shaded from 12 o'clock clockwise for pct %
-		var c := r.size * 0.5
-		var a1 := -PI * 0.5 + TAU * pct / 100.0
-		var n := maxi(2, int(pct / 2.0))
-		var prev := Vector2.ZERO
-		for i in n + 1:
-			var a := -PI * 0.5 + (a1 + PI * 0.5) * float(i) / n
-			var d := Vector2(cos(a), sin(a))
-			# extend to the square's edge so the wedge covers the corners
-			var k := 1.0 / maxf(absf(d.x), absf(d.y))
-			var p := c + d * k * BTN * 0.5
-			if i > 0:
-				# a triangle fan (a single polygon fails to triangulate for some angles past 180 degrees)
-				_over.draw_colored_polygon(PackedVector2Array([c, prev, p]), Color(0.0196, 0.0157, 0.0314, 0.82))
-			prev = p
-	# border + inset 2px #07060a
+	if pct <= 0:
+		return
+	var half := BTN * 0.5
+	var c := Vector2(half, half)
+	var a0 := -PI * 0.5
+	var a1 := a0 + TAU * pct / 100.0
+	_sweep.clear()
+	var prev := _square_point(a0, c, half)
+	var col := Color(0.0196, 0.0157, 0.0314, 0.82)
+	# the corners lie at -135, -45, 45, 135 degrees (and a turn on): the ones between the start and the end
+	var corner := -PI * 0.75
+	while corner < a1 - 0.0001:
+		if corner > a0 + 0.0001:
+			var q := _square_point(corner, c, half)
+			_sweep.tri(c, prev, q, col)
+			prev = q
+		corner += PI * 0.5
+	_sweep.tri(c, prev, _square_point(a1, c, half), col)
+	_sweep.submit(_art)
+
+
+## The point where the ray from `c` at angle `a` leaves the square of half side `half`.
+static func _square_point(a: float, c: Vector2, half: float) -> Vector2:
+	var d := Vector2(cos(a), sin(a))
+	return c + d * (half / maxf(absf(d.x), absf(d.y)))
+
+
+## border + inset 2px #07060a, and the empowered pulse and the cast flash over them.
+func _draw_edge() -> void:
+	var r := Rect2(Vector2.ZERO, Vector2(BTN, BTN))
 	var border := Color(DmUi.BONE_300, 0.35)
 	var inset := Color("07060a")
 	if alt:
 		border = Color(EMBER, 0.55)
 	if empowered:
 		border = JADE
-	_over.draw_rect(r.grow(-1.0), inset, false, 2.0)
-	_over.draw_rect(r, border, false, 1.0)
+	DmHudKit.outline(_edge, r.grow(-1.0), inset, 2.0)
+	DmHudKit.outline(_edge, r, border, 1.0)
 	if empowered:
 		var k := 0.5 + 0.5 * cos(_t / 1.4 * TAU)
 		for i in 4:
-			_over.draw_rect(r.grow(-1.0 - i), Color(JADE, (0.5 * k + 0.12) * (1.0 - i / 4.0) * 0.5), false, 1.0)
+			DmHudKit.outline(_edge, r.grow(-1.0 - i), Color(JADE, (0.5 * k + 0.12) * (1.0 - i / 4.0) * 0.5), 1.0)
 	if _flash > 0.0:
 		for i in 4:
-			_over.draw_rect(r.grow(-1.0 - i), Color(DmUi.SPELL_300, 0.8 * (_flash / 0.35) * (1.0 - i / 4.0)), false, 1.0)
+			DmHudKit.outline(_edge, r.grow(-1.0 - i), Color(DmUi.SPELL_300, 0.8 * (_flash / 0.35) * (1.0 - i / 4.0)), 1.0)

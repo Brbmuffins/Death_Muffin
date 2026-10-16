@@ -2,6 +2,9 @@ class_name DmHudMinimap
 extends Control
 ## `.hud-map .frame` + archive/legacy-web:src/ui/Minimap.ts: a 190 px circular north-up map centred on the player.
 ## Fed with a "minimap" Dictionary (README: "minimap"); the draw order and colours are Minimap.ts line for line.
+## Ported (client/code.list): the dots come as flat arrays (`enemies` and `allies`: x, z, elite per dot; `thralls`: x, z, yaw; `corpses`: x, z, facing, scale; the core's own
+## layouts) and are drawn by ONE MultiMesh (one draw call; a draw_circle per dot was one each, 130 in a Full Party fight), the frame, disc and edge vignette are static meshes,
+## the rectangles come from the HUD atlas, the marks and the player's arrow are one mesh: about eight draw calls in all (client/README.md "The HUD's budget").
 
 const MAP_SIZE := 190.0
 const SCALE := 2.1   ## minimapCoordinates.ts MINIMAP_SCALE (px per world unit)
@@ -43,7 +46,19 @@ var _t: float = 0.0
 var _mask: _Circle
 
 
+const MAX_DOTS := 512     ## dots one map draws at most (the MultiMesh's size): a Full Party fight shows about 170
+const ENEMY_STRIDE := 3   ## floats per dot in the lists of the view-model: enemies and allies x, z, elite; thralls x, z, yaw; corpses x, z, facing, scale
+const THRALL_STRIDE := 3
+const CORPSE_STRIDE := 4
+
+static var _frame: ArrayMesh   ## the four rings round the disc, built once
+static var _disc: ArrayMesh    ## the void disc, built once
+static var _edge: ArrayMesh    ## the dark edge fade, built once
+static var _dot: ArrayMesh     ## a unit disc, the shape of every dot
+
+
 func _init() -> void:
+	z_index = DmHudKit.Z_ART
 	custom_minimum_size = Vector2(MAP_SIZE + 4, MAP_SIZE + 4)
 	set_process(false)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -68,14 +83,17 @@ func _process(delta: float) -> void:
 	_mask.get_child(0).queue_redraw()
 
 
+## `.frame`: 2px #1c1822 border, 1px strong, 6px #0b090e, 7px border, shadow
 func _draw() -> void:
-	# `.frame`: 2px #1c1822 border, 1px strong, 6px #0b090e, 7px border, shadow
-	var c := Vector2(size.x, size.y) * 0.5
-	var r := MAP_SIZE * 0.5 + 2.0
-	draw_circle(c, r + 7.0, DmUi.BORDER)
-	draw_circle(c, r + 6.0, C_FRAME_BORDER)
-	draw_circle(c, r + 1.0, DmUi.BORDER_STRONG)
-	draw_circle(c, r, C_FRAME_INNER)
+	if _frame == null:
+		var r := MAP_SIZE * 0.5 + 2.0
+		var f := DmHudMesh.new()
+		f.disc(Vector2.ZERO, r + 7.0, DmUi.BORDER)
+		f.disc(Vector2.ZERO, r + 6.0, C_FRAME_BORDER)
+		f.disc(Vector2.ZERO, r + 1.0, DmUi.BORDER_STRONG)
+		f.disc(Vector2.ZERO, r, C_FRAME_INNER)
+		_frame = f.to_mesh()
+	DmHudKit.mesh(self, _frame, Transform2D(0.0, size * 0.5))
 
 
 func _gui_input(e: InputEvent) -> void:
@@ -130,22 +148,31 @@ class _Circle extends Control:
 		add_child(_Vignette.new())   # above the dots, drawn once
 
 	func _draw() -> void:
-		draw_circle(Vector2(MAP_SIZE, MAP_SIZE) * 0.5, MAP_SIZE * 0.5, C_VOID)
+		if DmHudMinimap._disc == null:
+			var d := DmHudMesh.new()
+			d.disc(Vector2.ZERO, MAP_SIZE * 0.5, C_VOID)
+			DmHudMinimap._disc = d.to_mesh()
+		DmHudKit.mesh(self, DmHudMinimap._disc, Transform2D(0.0, Vector2(MAP_SIZE, MAP_SIZE) * 0.5))
 
 
-## The edge fade (radial 0.72*half -> half, transparent -> 0.9 #07060a): 14 rings that never change, so drawn once, not with every refresh.
+## The edge fade (radial 0.72*half -> half, transparent -> 0.9 #07060a): 14 rings that never change, so one mesh built once.
 class _Vignette extends Control:
 	func _init() -> void:
 		size = Vector2(MAP_SIZE, MAP_SIZE)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
-		var half := MAP_SIZE * 0.5
-		var rings := 14
-		for i in rings:
-			var t0 := float(i) / rings
-			var r0 := half * (0.72 + 0.28 * t0)
-			draw_arc(Vector2(half, half), r0 + half * 0.28 / rings * 0.5, 0.0, TAU, 64, Color(0.0275, 0.0235, 0.0392, 0.9 * (t0 + 0.5 / rings)), half * 0.28 / rings + 1.0, true)
+		if DmHudMinimap._edge == null:
+			var half := MAP_SIZE * 0.5
+			var rings := 14
+			var w := half * 0.28 / rings
+			var e := DmHudMesh.new()
+			for i in rings:
+				var t0 := float(i) / rings
+				var r0 := half * (0.72 + 0.28 * t0)
+				e.ring(Vector2.ZERO, r0 - 0.5, r0 + w + 0.5, Color(0.0275, 0.0235, 0.0392, 0.9 * (t0 + 0.5 / rings)))   # the arc it was: a line w + 1 wide on the ring's middle
+			DmHudMinimap._edge = e.to_mesh()
+		DmHudKit.mesh(self, DmHudMinimap._edge, Transform2D(0.0, Vector2(MAP_SIZE, MAP_SIZE) * 0.5))
 
 
 class _Map extends Control:
@@ -153,6 +180,10 @@ class _Map extends Control:
 	## Hatch segments of a sealed area, relative to its top-left corner, per area size (areas are fixed rects): built once, drawn as one command.
 	static var _hatch := {}
 	var _view := Rect2(-4, -4, MAP_SIZE + 8, MAP_SIZE + 8)
+	var _dots: MultiMesh
+	var _under := DmHudMesh.new()   ## marks drawn before the dots (stairs, NPCs, the Depths' doors and marks)
+	var _over := DmHudMesh.new()    ## destination, ping and the player's arrow, over the dots
+	var dots_drawn := 0             ## dots in the MultiMesh at the last draw (tests)
 
 	func _init() -> void:
 		size = Vector2(MAP_SIZE, MAP_SIZE)
@@ -165,8 +196,9 @@ class _Map extends Control:
 		var px := float(f.get("px", 0.0))
 		var pz := float(f.get("pz", 0.0))
 		var half := MAP_SIZE * 0.5
-		draw_rect(Rect2(0, 0, MAP_SIZE, MAP_SIZE), C_VOID)
-		# areas (+ hatch for sealed ones); what lies outside the disc is not drawn at all
+		DmHudKit.rect(self, Rect2(0, 0, MAP_SIZE, MAP_SIZE), C_VOID)
+		# areas; what lies outside the disc is not drawn at all. Every rectangle first (one batch), then the hatches of the sealed ones (their lines are another).
+		var sealed: Array[Rect2] = []
 		for a in f.get("areas", []):
 			if bool(a.get("instance", false)):
 				continue
@@ -176,46 +208,45 @@ class _Map extends Control:
 				continue
 			var open := bool(a.get("unlocked", false))
 			var safe := bool(a.get("safe", false))
-			draw_rect(rc, C_AREA_SAFE if open and safe else (C_AREA_OPEN if open else C_AREA_SEALED))
-			draw_rect(Rect2(rc.position + Vector2(0.5, 0.5), rc.size), C_AREA_EDGE_OPEN if open else C_AREA_EDGE_SEALED, false, 1.0)
+			DmHudKit.rect(self, rc, C_AREA_SAFE if open and safe else (C_AREA_OPEN if open else C_AREA_SEALED))
+			DmHudKit.outline(self, Rect2(rc.position + Vector2(0.5, 0.5), rc.size), C_AREA_EDGE_OPEN if open else C_AREA_EDGE_SEALED, 1.0)
 			if not open:
-				draw_set_transform(rc.position)
-				draw_multiline(_hatch_for(rc.size), C_HATCH, 1.0)
-				draw_set_transform(Vector2.ZERO)
+				sealed.append(rc)
 		for d in f.get("doors", []):
 			var rd := _rect(d["rect"], px, pz, half)
 			if rd.grow(2.0).intersects(_view):
-				draw_rect(rd, C_AREA_SAFE if bool(d.get("open", false)) else C_DOOR_SEALED)
+				DmHudKit.rect(self, rd, C_AREA_SAFE if bool(d.get("open", false)) else C_DOOR_SEALED)
+		_under.clear()
 		if f.get("depths") != null:
 			_draw_depths(f["depths"], px, pz, half)
 		for w in f.get("waystones", []):
-			draw_rect(Rect2(half + (float(w["x"]) - px) * SCALE - 2, half + (float(w["z"]) - pz) * SCALE - 3, 4, 6), C_WAYSTONE)
+			DmHudKit.rect(self, Rect2(half + (float(w["x"]) - px) * SCALE - 2, half + (float(w["z"]) - pz) * SCALE - 3, 4, 6), C_WAYSTONE)
 		for st in f.get("stairs", []):
 			var sx: float = half + (float(st["x"]) - px) * SCALE
 			var sz: float = half + (float(st["z"]) - pz) * SCALE
 			if Vector2(sx - half, sz - half).length() > half - 3.0:
 				continue
-			_tri(PackedVector2Array([Vector2(sx - 4, sz - 3), Vector2(sx + 4, sz - 3), Vector2(sx, sz + 4)]), C_STAIRS)
+			_tri(_under, PackedVector2Array([Vector2(sx - 4, sz - 3), Vector2(sx + 4, sz - 3), Vector2(sx, sz + 4)]), C_STAIRS)
 		for p in f.get("npcs", []):
 			var sx2: float = half + (float(p["x"]) - px) * SCALE
 			var sz2: float = half + (float(p["z"]) - pz) * SCALE
 			if Vector2(sx2 - half, sz2 - half).length() > half - 3.0:
 				continue
-			_tri(PackedVector2Array([Vector2(sx2, sz2 - 4.5), Vector2(sx2 + 3.5, sz2), Vector2(sx2, sz2 + 4.5), Vector2(sx2 - 3.5, sz2)]), C_NPC_FRESH if bool(p.get("fresh", false)) else C_NPC)
-		_dots(f.get("corpses", []), 1.2, C_CORPSE, px, pz, half)
-		_dots(f.get("enemies", []), 1.8, C_ENEMY, px, pz, half, 3.0, C_ELITE)
-		_dots(f.get("thralls", []), 2.0, C_THRALL, px, pz, half)
-		_dots(f.get("allies", []), 3.0, C_ALLY, px, pz, half)
-		if f.get("boss") != null:
-			_dot(f["boss"], 5.0, C_BOSS, px, pz, half)
-			_dot(f["boss"], 2.5, C_BOSS_CORE, px, pz, half)
+			_tri(_under, PackedVector2Array([Vector2(sx2, sz2 - 4.5), Vector2(sx2 + 3.5, sz2), Vector2(sx2, sz2 + 4.5), Vector2(sx2 - 3.5, sz2)]), C_NPC_FRESH if bool(p.get("fresh", false)) else C_NPC)
+		for rc in sealed:
+			draw_set_transform(rc.position)
+			DmHudKit.lines(self, _hatch_for(rc.size), C_HATCH, 1.0)
+			draw_set_transform(Vector2.ZERO)
+		_under.submit(self)
+		_draw_dots(f, px, pz, half)
+		_over.clear()
 		if f.get("destination") != null:
 			var dd: Dictionary = f["destination"]
 			var x: float = half + (float(dd["x"]) - px) * SCALE
 			var z: float = half + (float(dd["z"]) - pz) * SCALE
-			draw_arc(Vector2(x, z), 4.0, 0.0, TAU, 16, C_DEST, 1.5, true)
-			draw_line(Vector2(x - 6, z), Vector2(x + 6, z), C_DEST, 1.5)
-			draw_line(Vector2(x, z - 6), Vector2(x, z + 6), C_DEST, 1.5)
+			_over.ring(Vector2(x, z), 3.25, 4.75, C_DEST, 16)
+			_over.line(Vector2(x - 6, z), Vector2(x + 6, z), 1.5, C_DEST)
+			_over.line(Vector2(x, z - 6), Vector2(x, z + 6), 1.5, C_DEST)
 		if f.get("ping") != null:
 			var pg: Dictionary = f["ping"]
 			_ping(float(pg["x"]) - px, float(pg["z"]) - pz, half)
@@ -224,7 +255,8 @@ class _Map extends Control:
 		var pts := PackedVector2Array([Vector2(0, -7), Vector2(5, 5), Vector2(0, 2.5), Vector2(-5, 5)])
 		for i in pts.size():
 			pts[i] = Vector2(half, half) + pts[i].rotated(rot)
-		_tri(pts, C_PLAYER)
+		_tri(_over, pts, C_PLAYER)
+		_over.submit(self)
 		# (the edge vignette is the static _Vignette layer above this one)
 
 	## A world rect ({x0, z0, x1, z1}) in map pixels.
@@ -250,31 +282,68 @@ class _Map extends Control:
 		_hatch[sz] = out
 		return out
 
-	func _tri(pts: PackedVector2Array, fill: Color) -> void:
-		draw_colored_polygon(pts, fill)
-		pts.append(pts[0])
-		draw_polyline(pts, C_VOID, 1.0, true)
+	## A filled polygon with a 1 px outline in the void colour, into a mesh.
+	static func _tri(into: DmHudMesh, pts: PackedVector2Array, fill: Color) -> void:
+		into.convex(pts, fill)
+		for i in pts.size():
+			var d := (pts[(i + 1) % pts.size()] - pts[i]).normalized() * 0.5
+			into.line(pts[i] - d, pts[(i + 1) % pts.size()] + d, 1.0, C_VOID)
 
-	## A whole dot list in one call (the loop and the cull inline): `elite_r` > 0 draws entries with `elite` set larger and in `elite_col`.
-	func _dots(list: Array, r: float, col: Color, px: float, pz: float, half: float, elite_r: float = 0.0, elite_col: Color = Color.WHITE) -> void:
+	## The dots of the view-model's flat lists, in one MultiMesh: corpses, enemies (an elite larger and in its own colour), thralls, allies, the boss. A dot outside the
+	## view is skipped; at most MAX_DOTS are drawn.
+	func _draw_dots(f: Dictionary, px: float, pz: float, half: float) -> void:
+		if _dots == null:
+			if DmHudMinimap._dot == null:
+				var d := DmHudMesh.new()
+				d.disc(Vector2.ZERO, 1.0, Color.WHITE, 14)
+				DmHudMinimap._dot = d.to_mesh()
+			_dots = MultiMesh.new()
+			_dots.transform_format = MultiMesh.TRANSFORM_2D
+			_dots.use_colors = true
+			_dots.mesh = DmHudMinimap._dot
+			_dots.instance_count = MAX_DOTS
+			_dots.visible_instance_count = 0
+		var n := 0
+		n = _put(f.get("corpses", PackedFloat32Array()), CORPSE_STRIDE, 1.2, C_CORPSE, px, pz, half, n, 0.0, Color.WHITE)
+		n = _put(f.get("enemies", PackedFloat32Array()), ENEMY_STRIDE, 1.8, C_ENEMY, px, pz, half, n, 3.0, C_ELITE)
+		n = _put(f.get("thralls", PackedFloat32Array()), THRALL_STRIDE, 2.0, C_THRALL, px, pz, half, n, 0.0, Color.WHITE)
+		n = _put(f.get("allies", PackedFloat32Array()), ENEMY_STRIDE, 3.0, C_ALLY, px, pz, half, n, 0.0, Color.WHITE)
+		var boss: Variant = f.get("boss")
+		if boss != null:
+			n = _put_one(float(boss["x"]), float(boss["z"]), 5.0, C_BOSS, px, pz, half, n)
+			n = _put_one(float(boss["x"]), float(boss["z"]), 2.5, C_BOSS_CORE, px, pz, half, n)
+		_dots.visible_instance_count = n
+		dots_drawn = n
+		if n > 0:
+			DmHudKit.multimesh(self, _dots)
+
+	## Dots of one list into the MultiMesh from index `n`; `elite_r` > 0 draws entries whose third float is set larger and in `elite_col`. Returns the next index.
+	func _put(list: PackedFloat32Array, stride: int, r: float, col: Color, px: float, pz: float, half: float, n: int, elite_r: float, elite_col: Color) -> int:
 		var lo := -4.0
 		var hi := MAP_SIZE + 4.0
-		for o: Dictionary in list:
-			var sx: float = half + (float(o["x"]) - px) * SCALE
-			var sz: float = half + (float(o["z"]) - pz) * SCALE
+		var count := list.size() / stride
+		for i in count:
+			if n >= MAX_DOTS:
+				return n
+			var sx: float = half + (list[i * stride] - px) * SCALE
+			var sz: float = half + (list[i * stride + 1] - pz) * SCALE
 			if sx < lo or sz < lo or sx > hi or sz > hi:
 				continue
-			if elite_r > 0.0 and o.get("elite", false):
-				draw_circle(Vector2(sx, sz), elite_r, elite_col)
-			else:
-				draw_circle(Vector2(sx, sz), r, col)
+			var big := elite_r > 0.0 and list[i * stride + 2] > 0.0
+			var rr := elite_r if big else r
+			_dots.set_instance_transform_2d(n, Transform2D(Vector2(rr, 0.0), Vector2(0.0, rr), Vector2(sx, sz)))
+			_dots.set_instance_color(n, elite_col if big else col)
+			n += 1
+		return n
 
-	func _dot(o: Dictionary, r: float, col: Color, px: float, pz: float, half: float) -> void:
-		var sx: float = half + (float(o["x"]) - px) * SCALE
-		var sz: float = half + (float(o["z"]) - pz) * SCALE
-		if sx < -4 or sz < -4 or sx > MAP_SIZE + 4 or sz > MAP_SIZE + 4:
-			return
-		draw_circle(Vector2(sx, sz), r, col)
+	func _put_one(x: float, z: float, r: float, col: Color, px: float, pz: float, half: float, n: int) -> int:
+		var sx: float = half + (x - px) * SCALE
+		var sz: float = half + (z - pz) * SCALE
+		if n >= MAX_DOTS or sx < -4 or sz < -4 or sx > MAP_SIZE + 4 or sz > MAP_SIZE + 4:
+			return n
+		_dots.set_instance_transform_2d(n, Transform2D(Vector2(r, 0.0), Vector2(0.0, r), Vector2(sx, sz)))
+		_dots.set_instance_color(n, col)
+		return n + 1
 
 	func _ping(dx: float, dz: float, half: float) -> void:
 		var pulse := 0.5 + 0.5 * sin(owner_circle._t * 1000.0 / 380.0)
@@ -283,34 +352,37 @@ class _Map extends Control:
 		var d := sqrt(px * px + pz * pz)
 		if d < half - 10.0:
 			var c := Vector2(half + px, half + pz)
-			draw_arc(c, 6.0 + 3.0 * pulse, 0.0, TAU, 24, Color(C_PING, 0.55 + 0.4 * pulse), 2.0, true)
-			draw_circle(c, 2.0, Color(C_PING, 0.55 + 0.4 * pulse))
+			var col := Color(C_PING, 0.55 + 0.4 * pulse)
+			var ra := 6.0 + 3.0 * pulse
+			_over.ring(c, ra - 1.0, ra + 1.0, col, 24)
+			_over.disc(c, 2.0, col, 14)
 		else:
 			var ang := atan2(pz, px)
 			var o := Vector2(half, half) + Vector2(cos(ang), sin(ang)) * (half - 9.0)
 			var pts := PackedVector2Array([Vector2(6, 0), Vector2(-4, -5), Vector2(-1.5, 0), Vector2(-4, 5)])
 			for i in pts.size():
 				pts[i] = o + pts[i].rotated(ang)
-			draw_colored_polygon(pts, Color(C_PING, 0.7 + 0.3 * pulse))
-			pts.append(pts[0])
-			draw_polyline(pts, C_VOID, 1.5, true)
+			_over.convex(pts, Color(C_PING, 0.7 + 0.3 * pulse))
+			for i in pts.size():
+				var dd := (pts[(i + 1) % pts.size()] - pts[i]).normalized() * 0.5
+				_over.line(pts[i] - dd, pts[(i + 1) % pts.size()] + dd, 1.5, C_VOID)
 
 	func _draw_depths(d: Dictionary, px: float, pz: float, half: float) -> void:
 		for r in d.get("rooms", []):
 			if not bool(r.get("active", true)):
 				continue
 			var rc := _rect(r, px, pz, half)
-			draw_rect(rc, C_AREA_OPEN)
-			draw_rect(Rect2(rc.position + Vector2(0.5, 0.5), rc.size), C_AREA_EDGE_OPEN, false, 1.0)
+			DmHudKit.rect(self, rc, C_AREA_OPEN)
+			DmHudKit.outline(self, Rect2(rc.position + Vector2(0.5, 0.5), rc.size), C_AREA_EDGE_OPEN, 1.0)
 		for door in d.get("doors", []):
 			var w := 4.6 * SCALE
 			var t := 3.2 * SCALE
 			var x: float = half + (float(door["x"]) - px) * SCALE
 			var z: float = half + (float(door["z"]) - pz) * SCALE
 			if String(door.get("wall", "x")) == "x":
-				draw_rect(Rect2(x - t / 2, z - w / 2, t, w), C_AREA_SAFE)
+				DmHudKit.rect(self, Rect2(x - t / 2, z - w / 2, t, w), C_AREA_SAFE)
 			else:
-				draw_rect(Rect2(x - w / 2, z - t / 2, w, t), C_AREA_SAFE)
+				DmHudKit.rect(self, Rect2(x - w / 2, z - t / 2, w, t), C_AREA_SAFE)
 		_mark(d["up"], C_DEPTH_UP, "up", px, pz, half)
 		_mark(d["down"], C_DEPTH_DOWN_OPEN if bool(d["down"].get("open", false)) else C_DEPTH_DOWN, "down", px, pz, half)
 		if d.get("chest") != null:
@@ -320,9 +392,9 @@ class _Map extends Control:
 		var sx: float = half + (float(o["x"]) - px) * SCALE
 		var sz: float = half + (float(o["z"]) - pz) * SCALE
 		match shape:
-			"box": _tri(PackedVector2Array([Vector2(sx - 3.5, sz - 3), Vector2(sx + 3.5, sz - 3), Vector2(sx + 3.5, sz + 3), Vector2(sx - 3.5, sz + 3)]), col)
-			"down": _tri(PackedVector2Array([Vector2(sx - 5, sz - 4), Vector2(sx + 5, sz - 4), Vector2(sx, sz + 5)]), col)
-			_: _tri(PackedVector2Array([Vector2(sx - 5, sz + 4), Vector2(sx + 5, sz + 4), Vector2(sx, sz - 5)]), col)
+			"box": _tri(_under, PackedVector2Array([Vector2(sx - 3.5, sz - 3), Vector2(sx + 3.5, sz - 3), Vector2(sx + 3.5, sz + 3), Vector2(sx - 3.5, sz + 3)]), col)
+			"down": _tri(_under, PackedVector2Array([Vector2(sx - 5, sz - 4), Vector2(sx + 5, sz - 4), Vector2(sx, sz + 5)]), col)
+			_: _tri(_under, PackedVector2Array([Vector2(sx - 5, sz + 4), Vector2(sx + 5, sz + 4), Vector2(sx, sz - 5)]), col)
 
 	## Liang-Barsky clip of a segment to a rect; null when outside.
 	static func _clip_line(a: Vector2, b: Vector2, r: Rect2) -> Variant:

@@ -2,12 +2,14 @@ class_name DmToast
 extends PanelContainer
 ## `.hud-toast`: a short message strip. kind: "" | "good" | "err" | "loot" | "loot_major" | "new_cue".
 ## Fades in 0.25 s, holds `hold_s`, fades out 0.5 s, then frees itself. Stack several in a VBoxContainer centred under the HUD top.
+## Ported (client/code.list): its panel is a 9-patch of the HUD atlas with the theme variation's colours (DmHudKit.plate).
 
 var hold_s: float = 8.0
 var kind: String = ""
 var on_click: Callable = Callable()   ## `.hud-toast.clickable`: a button (a NEW cue opens its panel); clicking runs it and removes the toast
 var _label: Label
 var _hover := false
+var _style: StyleBox
 
 
 static func make(text: String, kind_: String = "", hold: float = 8.0) -> DmToast:
@@ -21,11 +23,21 @@ static func make(text: String, kind_: String = "", hold: float = 8.0) -> DmToast
 func _build(text: String) -> void:
 	theme = DmUi.theme()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var edge: Color = DmUi.BORDER_STRONG
 	match kind:
-		"good": theme_type_variation = "DmToastGood"
-		"err": theme_type_variation = "DmToastErr"
-		"loot_major", "new_cue": theme_type_variation = "DmToastMajor"
-		_: theme_type_variation = "DmToast"
+		"good":
+			theme_type_variation = "DmToastGood"
+			edge = Color(DmUi.SPELL_400, 0.70)
+		"err":
+			theme_type_variation = "DmToastErr"
+			edge = Color(DmUi.DANGER, 0.60)
+		"loot_major", "new_cue":
+			theme_type_variation = "DmToastMajor"
+			edge = DmUi.GOLD
+		_:
+			theme_type_variation = "DmToast"
+	_style = DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.9), edge, Vector4(1, 1, 1, 1), Vector4(16, 8, 16, 8), 0)
+	add_theme_stylebox_override("panel", _style)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	add_child(row)
@@ -63,12 +75,9 @@ func set_clickable(cb: Callable) -> void:
 func _set_hover(on: bool) -> void:
 	_hover = on
 	if on:
-		var sb := get_theme_stylebox("panel").duplicate() as StyleBoxFlat
-		if sb != null:
-			sb.border_color = Color("e2c98f")
-			add_theme_stylebox_override("panel", sb)
+		add_theme_stylebox_override("panel", DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.9), Color("e2c98f"), Vector4(1, 1, 1, 1), Vector4(16, 8, 16, 8), 0))
 	else:
-		remove_theme_stylebox_override("panel")
+		add_theme_stylebox_override("panel", _style)
 
 
 func activate() -> void:
@@ -103,7 +112,7 @@ func _draw() -> void:
 	var col := Color(0.886, 0.788, 0.561, 0.6)
 	var x := x0
 	while x < x0 + minf(r.size.x, _label.get_minimum_size().x):
-		draw_rect(Rect2(x, y, 1.5, 1.0), col)
+		DmHudKit.rect(self, Rect2(x, y, 1.5, 1.0), col)
 		x += 3.0
 
 

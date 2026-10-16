@@ -3,6 +3,13 @@ extends Control
 ## The in-world HUD (archive/legacy-web:src/ui/HUD.ts + ui.css `.hud*`). One full-screen, mouse-transparent Control that owns every readout.
 ## State flows in through ONE Dictionary: `hud.apply(vm)` (schema in ui/hud/README.md). One-shot things (toasts, banners, floating
 ## numbers, hit flash, chat lines) are method calls. Player intent flows out as signals; nothing here touches world/ or net/.
+##
+## Ported to the rebuilt client (client/code.list "Ported"): same layout and look, drawn within a draw-call budget (client/README.md "The HUD's budget").
+##   - Pieces: every readout group is a Control of its own with its own anchor and offset in `pieces` (id -> Control); `set_piece` moves and scales one
+##     around the corner it is anchored to, `set_hud_scale` scales them all, `show_piece` hides one. Nothing else in the HUD depends on where a piece is.
+##   - Drawing: panels are 9-patches, icons and rectangles come from one atlas, vector art is one mesh per widget, text sits on a z layer per (font, size),
+##     the floating numbers are one pooled Control (DmHudKit has the layers, DmHudFloats the numbers).
+##   - The minimap's dots arrive as flat arrays (DmHudMinimap).
 
 signal cast(slot: int)                   ## 0 = LMB primary, 1..N = hotbar slot
 signal swap_slot(index: int)             ## the key cap under a rite (opens the Grimoire there)
@@ -144,7 +151,12 @@ var shard_lbl: Label
 var save_lbl: Label
 var death: Control
 var death_sub: Label
-var float_layer: Control
+var float_layer: DmHudFloats
+## The pieces (id -> Control): each is a direct child of the safe frame (or of the HUD, for the full-screen ones) with its own anchors and offsets. `layout` keeps what
+## `set_piece` was given, so a saved layout can be applied again.
+var pieces: Dictionary = {}
+var layout: Dictionary = {}
+var _home: Dictionary = {}   ## id -> {left, right, top, bottom}: the offsets the piece was built with
 var _glows: Dictionary = {}   # reveal id -> [NewGlow...]
 var _pips: Dictionary = {}    # reveal id -> [pip...]
 var _banner: DmBanner
@@ -174,11 +186,11 @@ func _build() -> void:
 	_build_altar()
 	_build_right()
 	_build_death()
-	float_layer = Control.new()
-	float_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	float_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	float_layer = DmHudFloats.new()
 	add_child(float_layer)
 	_build_safe_frame()
+	_register_pieces()
+	DmHudKit.layer_tree(self)
 
 
 ## Ultrawide: every HUD element is edge-anchored, so on a 21:9 window the party list, map and cards sit a long way from the centre.
@@ -199,6 +211,7 @@ func _build_safe_frame() -> void:
 			continue
 		remove_child(c)
 		safe.add_child(c)
+	safe.move_child(altar, 0)   # the hotbar's plate is the one panel that is not a 9-patch (its soft shadow): first in the panel layer, so it breaks nothing after it
 
 
 ## Settings -> HUD size. The whole safe frame is scaled from its top-left corner and given 1/scale of the room as its layout size, so the
@@ -244,8 +257,15 @@ func _txt(text: String, size: int, color: Color, font: String = "body", spacing:
 	return DmHudKit.lbl(text, size, color, font, shadow, spacing)
 
 
+## The gold NEW pip (.dm-pip), as a 9-patch of the atlas.
+func _new_pip() -> PanelContainer:
+	var p := DmHudKit.panel(DmUi.GOLD, Color(0, 0, 0, 0), Vector4(0, 0, 0, 0), Vector4(5, 0, 5, 0))
+	p.add_child(DmHudKit.lbl("NEW", 9, Color("1a1206"), "numeric", false))
+	return p
+
+
 func _pip_on(host: Control, id: String) -> void:
-	var pip := DmUi.new_pip("NEW")
+	var pip := _new_pip()
 	pip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	pip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	pip.offset_right = 7
@@ -383,7 +403,7 @@ func _build_target_boss() -> void:
 	# boss plate: cw-plate, min(620, 60vw)
 	boss = PanelContainer.new()
 	boss.theme_type_variation = "DmPlate"
-	boss.add_theme_stylebox_override("panel", DmHudKit.style(DmUi.PANEL, DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(16, 10, 16, 12), 3))
+	boss.add_theme_stylebox_override("panel", DmHudKit.plate(DmUi.PANEL, DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(16, 10, 16, 12), 3))
 	boss.custom_minimum_size.x = 620
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 0)
@@ -409,7 +429,7 @@ func _build_target_boss() -> void:
 	bnw.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bnw.add_child(boss_num)
 	bv.add_child(bnw)
-	boss.add_child(DmCorners.new())
+	boss.add_child(_corners())
 	boss.visible = false
 	boss.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(boss)
@@ -532,11 +552,15 @@ func _build_map_column() -> void:
 	_tip_nodes["gather"] = menu_btns["professions"]
 
 
-func _next_style() -> StyleBoxFlat:
-	var sb := DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.7), DmUi.BORDER, Vector4(2, 1, 1, 1), Vector4(10, 5, 4, 5))
-	sb.border_color = DmUi.BORDER
-	sb.border_blend = false
-	return sb
+func _next_style() -> StyleBox:
+	return DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.7), DmUi.BORDER, Vector4(2, 1, 1, 1), Vector4(10, 5, 4, 5))
+
+
+## The carved corner brackets of a plate, on the chrome layer (over the plate's 9-patch).
+func _corners() -> DmCorners:
+	var c := DmCorners.new()
+	c.z_index = DmHudKit.Z_CHROME
+	return c
 
 
 func _menu_button(id: String, icon_name: String, label: String, tip: String, gate: String) -> Button:
@@ -544,9 +568,9 @@ func _menu_button(id: String, icon_name: String, label: String, tip: String, gat
 	b.custom_minimum_size = Vector2(46, 34)
 	b.focus_mode = Control.FOCUS_NONE
 	b.tooltip_text = tip
-	b.add_theme_stylebox_override("normal", DmHudKit.style(DmUi.INSET, DmUi.BORDER))
-	b.add_theme_stylebox_override("hover", DmHudKit.style(DmUi.INSET, DmUi.BORDER_ACTIVE))
-	b.add_theme_stylebox_override("pressed", DmHudKit.style(DmUi.INSET, DmUi.BORDER_ACTIVE))
+	b.add_theme_stylebox_override("normal", DmHudKit.plate(DmUi.INSET, DmUi.BORDER))
+	b.add_theme_stylebox_override("hover", DmHudKit.plate(DmUi.INSET, DmUi.BORDER_ACTIVE))
+	b.add_theme_stylebox_override("pressed", DmHudKit.plate(DmUi.INSET, DmUi.BORDER_ACTIVE))
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -581,9 +605,11 @@ func _build_toasts_banner_prompts() -> void:
 	toasts.add_theme_constant_override("separation", 6)
 	toasts.alignment = BoxContainer.ALIGNMENT_BEGIN
 	toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toasts.z_index = DmHudKit.Z_OVERLAY
 	add_child(toasts)
 	DmHudKit.place(toasts, 0.5, 0, 0, 64, Control.GROW_DIRECTION_BOTH)
 	banner_host = Control.new()
+	banner_host.z_index = DmHudKit.Z_OVERLAY
 	banner_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner_host.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	banner_host.offset_top = 210
@@ -602,6 +628,7 @@ func _build_toasts_banner_prompts() -> void:
 	prompt_rt.add_theme_color_override("default_color", DmUi.BONE_100)
 	prompt.add_child(prompt_rt)
 	prompt.visible = false
+	prompt.z_index = DmHudKit.Z_OVERLAY
 	add_child(prompt)
 	DmHudKit.place(prompt, 0.5, 1, 0, -220, Control.GROW_DIRECTION_BOTH, Control.GROW_DIRECTION_BEGIN)
 	# `.hud-nodetip`: the hover card of a gathering node / laborer (HUD.nodeTip): max 260 wide, padding 8 12, 13 px, never takes the mouse
@@ -621,7 +648,7 @@ func _build_toasts_banner_prompts() -> void:
 	node_tip_rt.add_theme_color_override("default_color", Color("e6dccb"))   # bone-200
 	node_tip_box.add_child(node_tip_rt)
 	node_tip_box.visible = false
-	node_tip_box.z_index = 30
+	node_tip_box.z_index = DmHudKit.Z_OVERLAY + 30
 	add_child(node_tip_box)
 	hint = _txt("", 13, DmUi.TEXT_FAINT, "body")
 	add_child(hint)
@@ -645,8 +672,8 @@ func _build_chat() -> void:
 	bug_btn.add_theme_font_size_override("font_size", 11)
 	bug_btn.add_theme_color_override("font_color", DmUi.BONE_300)
 	bug_btn.add_theme_color_override("font_hover_color", DmUi.BONE_100)
-	bug_btn.add_theme_stylebox_override("normal", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.5), DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(9, 2, 9, 2), 3))
-	bug_btn.add_theme_stylebox_override("hover", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.5), DmUi.BORDER_STRONG, Vector4(1, 1, 1, 1), Vector4(9, 2, 9, 2), 3))
+	bug_btn.add_theme_stylebox_override("normal", DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.5), DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(9, 2, 9, 2), 3))
+	bug_btn.add_theme_stylebox_override("hover", DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.5), DmUi.BORDER_STRONG, Vector4(1, 1, 1, 1), Vector4(9, 2, 9, 2), 3))
 	bug_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	bug_btn.modulate.a = 0.7
 	bug_btn.pressed.connect(func() -> void: report_bug.emit())
@@ -659,8 +686,8 @@ func _build_chat() -> void:
 	chat_in.placeholder_text = "Enter to speak"
 	chat_in.max_length = 240
 	chat_in.add_theme_font_size_override("font_size", 13)
-	chat_in.add_theme_stylebox_override("normal", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.75), DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(10, 7, 10, 7)))
-	chat_in.add_theme_stylebox_override("focus", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.75), DmUi.FOCUS, Vector4(1, 1, 1, 1), Vector4(10, 7, 10, 7)))
+	chat_in.add_theme_stylebox_override("normal", DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.75), DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(10, 7, 10, 7)))
+	chat_in.add_theme_stylebox_override("focus", DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.75), DmUi.FOCUS, Vector4(1, 1, 1, 1), Vector4(10, 7, 10, 7)))
 	chat_in.modulate.a = 0.55
 	chat_in.focus_entered.connect(func() -> void: chat_in.modulate.a = 1.0)
 	chat_in.focus_exited.connect(func() -> void: chat_in.modulate.a = 0.55)
@@ -778,7 +805,8 @@ func _build_altar() -> void:
 	mid.add_child(DmUi.spacer(6))
 	# slots wrap
 	var wrap := DmHudKit.panel(Color(0.058, 0.04, 0.075, 0.95), DmUi.BORDER_STRONG, Vector4(1, 1, 1, 1), Vector4(14, 10, 14, 8), 2)
-	var wsb: StyleBoxFlat = wrap.get_theme_stylebox("panel")
+	var wsb := DmHudKit.style(Color(0.058, 0.04, 0.075, 0.95), DmUi.BORDER_STRONG, Vector4(1, 1, 1, 1), Vector4(14, 10, 14, 8), 2)   # a 9-patch has no soft shadow
+	wrap.add_theme_stylebox_override("panel", wsb)
 	wsb.shadow_color = Color(0, 0, 0, 0.6)
 	wsb.shadow_size = 20
 	wsb.shadow_offset = Vector2(0, 8)
@@ -794,9 +822,9 @@ func _build_altar() -> void:
 	grim_btn = Button.new()
 	grim_btn.focus_mode = Control.FOCUS_NONE
 	grim_btn.custom_minimum_size = Vector2(DmHudSlot.BTN, DmHudSlot.BTN)  # same square as an ability icon
-	grim_btn.add_theme_stylebox_override("normal", DmHudKit.style(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_STRONG, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
-	grim_btn.add_theme_stylebox_override("hover", DmHudKit.style(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_ACTIVE, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
-	grim_btn.add_theme_stylebox_override("pressed", DmHudKit.style(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_ACTIVE, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
+	grim_btn.add_theme_stylebox_override("normal", DmHudKit.plate(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_STRONG, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
+	grim_btn.add_theme_stylebox_override("hover", DmHudKit.plate(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_ACTIVE, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
+	grim_btn.add_theme_stylebox_override("pressed", DmHudKit.plate(Color(0.039, 0.035, 0.055, 0.85), DmUi.BORDER_ACTIVE, Vector4(1, 1, 1, 1), Vector4(10, 6, 10, 6)))
 	grim_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	grim_btn.tooltip_text = "Open the Spellbook (L)"
 	var gv := VBoxContainer.new()
@@ -838,7 +866,7 @@ func _build_altar() -> void:
 	gvw.add_child(gcol)
 	slots_row.add_child(gvw)
 	grim_btn.set_meta("host", gvw)
-	grim_pip = DmUi.new_pip("NEW")
+	grim_pip = _new_pip()
 	grim_pip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	grim_pip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	grim_pip.offset_right = 8
@@ -877,10 +905,10 @@ func _buy_button(label: String) -> Array:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(70, 40)
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_stylebox_override("normal", DmHudKit.style(DmUi.INSET, DmUi.BORDER_STRONG))
-	b.add_theme_stylebox_override("hover", DmHudKit.style(DmUi.INSET, DmUi.BORDER_ACTIVE))
-	b.add_theme_stylebox_override("pressed", DmHudKit.style(DmUi.INSET, DmUi.BORDER_ACTIVE))
-	b.add_theme_stylebox_override("disabled", DmHudKit.style(DmUi.INSET, DmUi.BORDER_STRONG))
+	b.add_theme_stylebox_override("normal", DmHudKit.plate(DmUi.INSET, DmUi.BORDER_STRONG))
+	b.add_theme_stylebox_override("hover", DmHudKit.plate(DmUi.INSET, DmUi.BORDER_ACTIVE))
+	b.add_theme_stylebox_override("pressed", DmHudKit.plate(DmUi.INSET, DmUi.BORDER_ACTIVE))
+	b.add_theme_stylebox_override("disabled", DmHudKit.plate(DmUi.INSET, DmUi.BORDER_STRONG))
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -949,15 +977,18 @@ func _up_row(icon_name: String, lbl_text: String, buy_label: String, bar_color_a
 	return [row, pct, bar, gems, buy[0], buy[1]]
 
 
+var right_col: VBoxContainer
+
 func _build_right() -> void:
 	var col := VBoxContainer.new()
+	right_col = col
 	col.add_theme_constant_override("separation", 10)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(col)
 	DmHudKit.place(col, 1, 1, -18, -18, Control.GROW_DIRECTION_BEGIN, Control.GROW_DIRECTION_BEGIN)
 	up_panel = PanelContainer.new()
 	up_panel.theme_type_variation = "DmPlate"
-	up_panel.add_theme_stylebox_override("panel", DmHudKit.style(DmUi.PANEL, DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(14, 12, 14, 12), 3))
+	up_panel.add_theme_stylebox_override("panel", DmHudKit.plate(DmUi.PANEL, DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(14, 12, 14, 12), 3))
 	up_panel.custom_minimum_size.x = 300
 	up_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	up_plate = DmHudParts.OverlayHost.new(up_panel)
@@ -1006,7 +1037,7 @@ func _build_right() -> void:
 	dial_box.add_child(dial_ms)
 	wv.add_child(dial_box)
 	uv.add_child(wv)
-	up_panel.add_child(DmCorners.new())
+	up_panel.add_child(_corners())
 	_glow_on(up_plate, "hud.upgrades")
 	_pip_on(up_plate, "hud.upgrades")
 	_tip_nodes["wave"] = up_plate
@@ -1064,20 +1095,21 @@ func _dial_button(t: String) -> Button:
 	b.add_theme_font_size_override("font_size", 13)
 	b.add_theme_color_override("font_color", DmUi.BONE_100)
 	b.add_theme_color_override("font_disabled_color", Color(DmUi.BONE_100, 0.35))
-	b.add_theme_stylebox_override("normal", DmHudKit.style(DmUi.INSET, DmUi.BORDER))
-	b.add_theme_stylebox_override("hover", DmHudKit.style(DmUi.INSET, DmUi.BORDER_ACTIVE))
-	b.add_theme_stylebox_override("pressed", DmHudKit.style(DmUi.INSET, DmUi.BORDER_ACTIVE))
-	b.add_theme_stylebox_override("disabled", DmHudKit.style(DmUi.INSET, DmUi.BORDER))
+	b.add_theme_stylebox_override("normal", DmHudKit.plate(DmUi.INSET, DmUi.BORDER))
+	b.add_theme_stylebox_override("hover", DmHudKit.plate(DmUi.INSET, DmUi.BORDER_ACTIVE))
+	b.add_theme_stylebox_override("pressed", DmHudKit.plate(DmUi.INSET, DmUi.BORDER_ACTIVE))
+	b.add_theme_stylebox_override("disabled", DmHudKit.plate(DmUi.INSET, DmUi.BORDER))
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	return b
 
 
 func _build_death() -> void:
 	death = _Wash.new()
+	death.z_index = DmHudKit.Z_OVERLAY + 50   # over the pieces, under the floating numbers
 	death.set_anchors_preset(Control.PRESET_FULL_RECT)
 	death.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	death.modulate.a = 0.0
-	death.visible = false   # its 48 rings are not drawn while it is faded out
+	death.visible = false   # its wash is not drawn while it is faded out
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_CENTER)
 	v.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -1093,17 +1125,96 @@ func _build_death() -> void:
 	add_child(death)
 
 
+## The dark wash of the death veil: radial-gradient(circle, rgba(20,4,14,.4), rgba(7,6,10,.88)) as one rectangle and 48 discs, in one mesh (built for the size it is
+## shown at, rebuilt when the window changes).
 class _Wash extends Control:
+	var _mesh := DmHudMesh.new()
+	var _built := Vector2.ZERO
+
+	func _init() -> void:
+		z_index = DmHudKit.Z_ART
+
 	func _draw() -> void:
-		# radial-gradient(circle, rgba(20,4,14,.4), rgba(7,6,10,.88))
-		var c := size * 0.5
-		var rmax := c.length()
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.0275, 0.0235, 0.0392, 0.88))
-		var n := 48
-		for i in n:
-			var t := 1.0 - float(i) / n
-			var col := Color(0.078, 0.016, 0.055, 0.4).lerp(Color(0.0275, 0.0235, 0.0392, 0.88), 1.0 - t)
-			draw_circle(c, rmax * t, col)
+		if _built != size:
+			_built = size
+			_mesh.clear()
+			var c := size * 0.5
+			var rmax := c.length()
+			_mesh.rect(Rect2(Vector2.ZERO, size), Color(0.0275, 0.0235, 0.0392, 0.88))
+			var n := 48
+			for i in n:
+				var t := 1.0 - float(i) / n
+				var col := Color(0.078, 0.016, 0.055, 0.4).lerp(Color(0.0275, 0.0235, 0.0392, 0.88), 1.0 - t)
+				_mesh.disc(c, rmax * t, col)
+		_mesh.submit(self)
+
+
+# ======================================================================== pieces (movable, scalable)
+
+## The readout groups, each a Control with its own anchors and offsets. The names are the ones to use with set_piece / show_piece.
+func _register_pieces() -> void:
+	pieces = {
+		"party": party_box, "omen": omen_host, "ward": ward, "chain": chain, "belt": brews_box, "target": target_box, "boss": boss, "map": map_col,
+		"toasts": toasts, "banner": banner_host, "prompt": prompt, "hint": hint, "chat": chat_col, "xp": xp_box, "altar": altar, "upgrades": right_col,
+	}
+	for id in pieces:
+		var c: Control = pieces[id]
+		_home[id] = {"left": c.offset_left, "right": c.offset_right, "top": c.offset_top, "bottom": c.offset_bottom}
+		c.resized.connect(_pivot.bind(c))
+
+
+## Moves piece `id` by `offset` (logical pixels, before the HUD scale) from where it was built and scales it by `scale_` (0.5 to 2) around the corner its anchor holds:
+## a piece anchored to the top right grows left and down, one at the bottom centre grows up and sideways. Its anchors and the layout inside it stay as built.
+func set_piece(id: String, offset: Vector2 = Vector2.ZERO, scale_: float = 1.0) -> void:
+	var c: Control = pieces.get(id)
+	if c == null:
+		return
+	var h: Dictionary = _home[id]
+	c.offset_left = h["left"] + offset.x
+	c.offset_right = h["right"] + offset.x
+	c.offset_top = h["top"] + offset.y
+	c.offset_bottom = h["bottom"] + offset.y
+	c.scale = Vector2.ONE * clampf(scale_, 0.5, 2.0)
+	_pivot(c)
+	layout[id] = {"offset": offset, "scale": scale_}
+
+
+## Applies a saved layout ({id: {offset: Vector2, scale: float}}); pieces it does not name go back to where they were built.
+func set_layout(l: Dictionary) -> void:
+	for id in pieces:
+		var e: Dictionary = l.get(id, {})
+		set_piece(id, e.get("offset", Vector2.ZERO), float(e.get("scale", 1.0)))
+	layout = l.duplicate(true)
+
+
+## The pieces the view-model shows and hides by what they hold (a target, a boss, a chain...): showing one again only lifts its ban.
+const DATA_DRIVEN := ["target", "boss", "belt", "ward", "chain", "omen", "prompt"]
+
+## Shows or hides a whole piece. A hidden piece stays hidden whatever the view-model says.
+func show_piece(id: String, on: bool) -> void:
+	var c: Control = pieces.get(id)
+	if c == null:
+		return
+	c.set_meta("piece_hidden", not on)
+	if not on:
+		c.visible = false
+	elif not DATA_DRIVEN.has(id):
+		c.visible = true
+
+
+## Keeps the pieces hidden by show_piece hidden after an apply.
+func _enforce_hidden() -> void:
+	for id in pieces:
+		var c: Control = pieces[id]
+		if c.has_meta("piece_hidden") and c.get_meta("piece_hidden"):
+			c.visible = false
+
+
+## The point of a piece that its anchor holds is the pivot it scales around.
+func _pivot(c: Control) -> void:
+	var fx := 0.0 if c.grow_horizontal == Control.GROW_DIRECTION_END else (1.0 if c.grow_horizontal == Control.GROW_DIRECTION_BEGIN else 0.5)
+	var fy := 0.0 if c.grow_vertical == Control.GROW_DIRECTION_END else (1.0 if c.grow_vertical == Control.GROW_DIRECTION_BEGIN else 0.5)
+	c.pivot_offset = Vector2(c.size.x * fx, c.size.y * fy)
 
 
 # ======================================================================== layout (viewport-relative widths)
@@ -1190,6 +1301,7 @@ func apply(v: Dictionary) -> void:
 	else:
 		area_lbl.tooltip_text = ""
 	_update_toast_top()
+	_enforce_hidden()
 
 
 func _apply_flags(v: Dictionary) -> void:
@@ -1293,15 +1405,15 @@ func _rebuild_slots(slots: Array) -> void:
 			var h := HBoxContainer.new()
 			h.add_theme_constant_override("separation", 0)
 			h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var rule := ColorRect.new()
+			var rule := DmHudParts.Rule.new()
 			rule.color = DmUi.BORDER
 			rule.custom_minimum_size.x = 1
-			rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			h.add_child(rule)
 			h.add_child(DmUi.spacer(0, 12))
 			h.add_child(s)
 			cell = h
 		inner.add_child(cell)
+		DmHudKit.layer_tree(cell)
 		_slots.append(s)
 		var idx := i
 		s.pressed.connect(func() -> void: cast.emit(idx + 1))
@@ -1331,7 +1443,7 @@ func _apply_souls_thralls(v: Dictionary) -> void:
 	if int(full) != _souls_full:
 		_souls_full = int(full)
 		souls_n.add_theme_color_override("font_color", Color("9ff5e0") if full else DmUi.TEXT_MUTED)
-		souls_box.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.78), Color(0.435, 0.89, 0.784, 0.6) if full else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(8, 2, 8, 2)))
+		souls_box.add_theme_stylebox_override("panel", DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.78), Color(0.435, 0.89, 0.784, 0.6) if full else DmUi.BORDER, Vector4(1, 1, 1, 1), Vector4(8, 2, 8, 2)))
 		souls_skull.modulate = Color("9ff5e0") if full else Color.WHITE
 	var thr := int(v.get("thralls", 0))
 	var cap := int(v.get("thrall_cap", 0))
@@ -1430,7 +1542,7 @@ func _apply_left_readouts(v: Dictionary) -> void:
 			chain_n.add_theme_color_override("font_color", col)
 			chain_bar.fill_a = col
 			chain_bar.fill_b = col
-			chain.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.55), col, Vector4(3, 0, 0, 0), Vector4(12, 6, 12, 8)))
+			chain.add_theme_stylebox_override("panel", DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.55), col, Vector4(3, 0, 0, 0), Vector4(12, 6, 12, 8)))
 		chain_bar.value = float(c.get("frac", 0.0))
 	var brews: Array = v.get("brews", [])
 	brews_box.visible = brews.size() > 0
@@ -1444,6 +1556,7 @@ func _apply_left_readouts(v: Dictionary) -> void:
 			chip.clicked.connect(func(s: String) -> void: belt_clicked.emit(s))
 			chip.dropped.connect(func(s: String, id: String) -> void: brew_dropped.emit(s, id))
 			brew_row.add_child(chip)
+			DmHudKit.layer_tree(chip)
 			_brew_chips[slot] = chip
 		chip.apply(b)
 	for slot in _brew_chips.keys():
@@ -1473,6 +1586,7 @@ func _apply_left_readouts(v: Dictionary) -> void:
 			party_box.add_child(wl)
 		for i in mini(party.size(), 4):
 			party_box.add_child(_member(party[i]))
+		DmHudKit.layer_tree(party_box)
 
 
 func _member(m: Dictionary) -> Control:
@@ -1549,6 +1663,7 @@ func _apply_target_boss(v: Dictionary) -> void:
 				cw.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				cw.add_child(chip)
 				target_name_row.add_child(cw)
+			DmHudKit.layer_tree(target_name_row)
 			target_blurb.text = String(t.get("blurb", ""))
 		target_bar.value = maxf(0.0, float(t.get("hp", 0)) / maxf(float(t.get("max_hp", 1)), 1.0))
 		var ssig := str(t.get("statuses", []))
@@ -1573,6 +1688,7 @@ func _apply_target_boss(v: Dictionary) -> void:
 				sh.add_child(ic)
 				sh.add_child(_txt("%s ×%d" % [s.get("label", ""), int(s.get("n", 1))], 12, DmUi.BONE_100, "numeric", 0.0, false))
 				target_stat.add_child(sp)
+			DmHudKit.layer_tree(target_stat)
 
 
 func _apply_map_column(v: Dictionary, changed: bool) -> void:
@@ -1601,7 +1717,7 @@ func _apply_map_column(v: Dictionary, changed: bool) -> void:
 		DmHudKit.set_color(depth_cue, "font_color", Color("ffcf85") if open else DmUi.TEXT_MUTED)
 		if int(open) != _depth_open:
 			_depth_open = int(open)
-			depth_box.add_theme_stylebox_override("panel", DmHudKit.style(Color(0.0275, 0.0235, 0.0392, 0.5), col if open else DmUi.BORDER_STRONG, Vector4(0, 0, 0, 2), Vector4(8, 4, 8, 5)))
+			depth_box.add_theme_stylebox_override("panel", DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.5), col if open else DmUi.BORDER_STRONG, Vector4(0, 0, 0, 2), Vector4(8, 4, 8, 5)))
 	var nx: Variant = v.get("next")
 	next_box.visible = nx != null and String(nx) != ""
 	next_txt.text = String(nx) if nx != null else ""
@@ -1610,6 +1726,7 @@ func _apply_map_column(v: Dictionary, changed: bool) -> void:
 	var avail := bool(ac.get("available", false))
 	auto_btn.disabled = not avail
 	auto_btn.text = ("Auto: On · G" if bool(ac.get("on", false)) else "Auto: Off · G") if avail else "Auto: Easy only"
+	DmHudKit.layer_text(auto_btn)
 	auto_btn.tooltip_text = "Toggle auto combat (G)" if avail else "Available on Easy difficulty"
 
 
@@ -1657,6 +1774,7 @@ func toast(text: String, kind: String = "", on_click: Callable = Callable()) -> 
 	if on_click.is_valid():
 		t.set_clickable(on_click)
 	toasts.add_child(t)
+	DmHudKit.layer_tree(t)
 	var plain := []
 	for c in toasts.get_children():
 		if not c.has_meta("loot"):
@@ -1683,6 +1801,7 @@ func loot_toast(item_name: String, qty: int, rarity: String) -> void:
 	t.set_meta("minor", minor)
 	t.set_meta("total", total)
 	toasts.add_child(t)
+	DmHudKit.layer_tree(t)
 	_loot_toasts[item_name] = t
 	# four at most with loot in the stack: the oldest minor pickup goes first, then the oldest of anything
 	while toasts.get_child_count() > 4:
@@ -1706,6 +1825,7 @@ func banner(title: String, sub: String = "", ms: int = 3200) -> void:
 	banner_host.add_child(row)
 	_banner = DmBanner.make(title, sub, 0.0)
 	row.add_child(_banner)
+	DmHudKit.layer_tree(row)
 	_banner.modulate.a = 1.0
 	row.modulate.a = 0.0
 	row.position.y = -8.0
@@ -1735,7 +1855,7 @@ func slot_flash(n: int) -> void:
 
 
 func float_text(screen_pos: Vector2, text: String, kind: String = "hit", color: Color = Color(0, 0, 0, 0)) -> void:
-	DmFloatingNumber.spawn(float_layer, screen_pos, text, kind, color)
+	float_layer.add(screen_pos, text, kind, color)
 
 
 ## Chat line colours by kind: a party member's "[Name] text" is violet-barred bright bone, a find ("You found ...",
@@ -1757,6 +1877,7 @@ func chat_line(text: String) -> void:
 	l.custom_minimum_size.x = minf(l.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 2.0, 300.0)
 	p.add_child(l)
 	chat_log.add_child(p)
+	DmHudKit.layer_tree(p)
 	while chat_log.get_child_count() > 8:
 		var o := chat_log.get_child(0)
 		chat_log.remove_child(o)

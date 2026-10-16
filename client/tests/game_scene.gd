@@ -129,7 +129,7 @@ func start_game(api: DmApi, character: Dictionary) -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(character, api, {"name": "tester", "hud": "minimal", "audio": false, "seed": 20261016, "baked_dir": OUT})
+	await g.start(character, api, {"name": "tester", "hud": true, "audio": false, "seed": 20261016, "baked_dir": OUT})
 	host = g.core_host
 	check(g.ready_, "the game scene is ready")
 	check(g.world.nav_ready() and g.world.area_id == "graves" and g.area_id == "graves", "the Graves' navigation map is ready and the hero is in the Graves")
@@ -137,8 +137,8 @@ func start_game(api: DmApi, character: Dictionary) -> void:
 	check(b != null and b.core_id > 0 and host.hero_for(b.core_id) == b, "the hero body is an external of the core (id %d)" % (b.core_id if b != null else -1))
 	check(b.alive and g.world.area_at(b.position.x, b.position.z) == "graves", "the hero stands in the Graves at %s" % str(b.position))
 	check(host.view != null and host.view.model_slots().size() >= 2, "the crowd view has its models (%s)" % str(host.view.model_slots().keys()))
-	check(g.hud != null and g.enemy_fx != null and g.look != null, "the minimal HUD, the enemy fx and the hero look are up")
-	check(g.rewards == null and g.ui_host == null and g.chapterhouse == null, "what is off stays off (rewards, full HUD, Chapterhouse)")
+	check(g.hud != null and g.enemy_fx != null and g.look != null, "the HUD, the enemy fx and the hero look are up")
+	check(g.rewards == null and g.ui_host == null and g.chapterhouse == null, "what is off stays off (rewards, panels, Chapterhouse)")
 	check(g.bosses != null and g.bosses.active_boss() == null and g.bosses.bosses.is_empty(), "the boss host is up and nothing sleeps awake (client/tests/boss.gd fights the King)")
 	host.enemy_spawned.connect(func(id: int, _def: String, _lv: int, _el: bool, _ar: String, _af: int, _x: float, _z: float, _hp: float) -> void:
 		spawned += 1

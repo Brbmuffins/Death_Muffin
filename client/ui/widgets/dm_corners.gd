@@ -2,6 +2,7 @@ class_name DmCorners
 extends Control
 ## The chipped carved corners of `.cw-plate::before/::after`: top-left and bottom-right 14px brackets. Add as the LAST child of a
 ## plate (it draws above the fill). Mouse-transparent.
+## Ported (client/code.list): the four bars are rectangles of the HUD atlas (DmHudKit.rect), which batch with the HUD's other chrome.
 
 @export var arm: float = 14.0
 @export var thickness: float = 2.0
@@ -24,10 +25,10 @@ func _draw() -> void:
 	var pc := get_parent_control()
 	var o := -position
 	var sz := pc.size if pc != null else size
-	draw_rect(Rect2(o.x, o.y, arm, thickness), color)
-	draw_rect(Rect2(o.x, o.y, thickness, arm), color)
-	draw_rect(Rect2(o.x + sz.x - arm, o.y + sz.y - thickness, arm, thickness), color)
-	draw_rect(Rect2(o.x + sz.x - thickness, o.y + sz.y - arm, thickness, arm), color)
+	DmHudKit.rect(self, Rect2(o.x, o.y, arm, thickness), color)
+	DmHudKit.rect(self, Rect2(o.x, o.y, thickness, arm), color)
+	DmHudKit.rect(self, Rect2(o.x + sz.x - arm, o.y + sz.y - thickness, arm, thickness), color)
+	DmHudKit.rect(self, Rect2(o.x + sz.x - thickness, o.y + sz.y - arm, thickness, arm), color)
 
 
 func _notification(what: int) -> void:

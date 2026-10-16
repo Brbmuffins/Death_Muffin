@@ -255,7 +255,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **Shots follow the simulation's position** of their target, where today they followed the drawn (interpolated) one.
   - **A blow of zero or less is refused** (`damage`, a boss's too); today `take_damage` applied it. No rite deals one.
   - **Spear rally's mark** is written to each thrall by the rite each tick while the mark lasts (`set_thrall_mark` from `thrall_info`'s target), not read by the thrall; legion size bounds the cost (Legion Champion 5 only).
-  - **Not ported with the rites:** the Reaper's nine (they wait for the Reaper, `client/code.list`), Easy auto combat (`next/feel/dm_next_auto.gd`), the floating hit numbers (they belong to the full HUD's host), the
+  - **Not ported with the rites:** the Reaper's nine (they wait for the Reaper, `client/code.list`), Easy auto combat (`next/feel/dm_next_auto.gd`), the
     socketed runes and the weapon line of the bag (no bag yet: the rune and weapon variants are implemented and tested with the state set by hand), the kill-credit consumers (`DmSessionRewards`; the game scene emits
     `rite_hit` and the core's `enemy_died` carries the killer).
 
@@ -268,6 +268,24 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **The hero is hurt with his core id as the source** (`DmHeroBody.take_damage(dmg, boss.core_id)`), where today it was the node: the same place of blow, and Colossus Mantle's reflect finds him through `foe(id)`.
   - **No shard cost**: the summon is free in this build (no progression to take shards from); the other rules (`far`, `unknown`, `busy`, `dead`) are today's, and only the Hollow Graves' boss is served. No boss pools: the core makes no zone for a boss.
   - **No collider, agent or state machine on his body** (`DmBoss` is a `Node3D`): nothing read them but the old `DmEnemy` code (the labels are gone, the hover pick and the chase go through the host's queries).
+- **The HUD on the core (`client/next/next_hud.gd`, `client/ui/hud`; `client/README.md` "The HUD on the core")**: the same layout, colours, fonts and numbers; drawn to fit 150 draw calls, which changes the
+  pixels a little where the same shape is drawn another way. What a player could notice:
+  - **Not there yet** (their systems are not in the game scene): the menu row, chat and the report button, the Empower / Quicken panel, party frames of other players, the belt, the Kill Chain, the Omen, the Depths readout, interaction prompts and the Next line. The Spellbook button is drawn and does nothing; the hotbar is the kit's, not the player's loadout. Gold and Soul Shards are the values
+    the test server gave at the start; XP does not move (no rewards).
+  - **Panels and borders** are pictures of the same fill, border and rounded corners (`DmHudAtlas.nine`, 16 samples a pixel) instead of `StyleBoxFlat` geometry: identical at the design size, and at other
+    UI scales the 1 px borders and the 2 and 3 px corners are filtered a little differently. The hotbar's plate keeps its soft shadow (still a `StyleBoxFlat`).
+  - **Icons** are scaled once, to at most twice the size they are shown at (ability art 256 to 128 px for a 62 px slot, portraits 480x640 to 96x128), with a Lanczos filter: slightly smoother than the file
+    drawn at that size directly. A greyed slot icon (no essence, locked, no corpse) is the same formula as the old shader, baked.
+  - **The orbs:** the dish, rings and gloss are the same discs (64 points); the liquid body has 20 steps along its arc where the polygon had 40 (0.2 px off the circle) and the surface ripple is a 2 px ribbon with a
+    half pixel feather instead of an anti-aliased polyline, redrawn 15 times a second (30 before) while it moves 10 px a second.
+  - **Cooldown sweeps** are exact to the slot's square (a fan of at most five triangles); the old fan of up to 50 chords cut the corners by a pixel.
+  - **The minimap's dots** are 14-point discs (64 before); the area fills, edges and doors are drawn first and the hatching of a sealed area after them (before, each area's hatching came between its edge and
+    the next area); a dead enemy is not a dot while the core still holds its body (4 s). Loaded areas count as unlocked and the doors between two loaded areas as open (today the world builder's).
+  - **Floating numbers** have no 1 px shadow under their 3 px outline (the outline covers it; the dark rim is 85 % where it was 98 % beside the strokes), overlapping numbers draw in pool order rather than oldest
+    first, and the thrall and DoT numbers come from the core's damage and DoT events at the enemy's position that tick. The caps (14 hit, 5 dot, 6 thrall, 22 in all) count in real milliseconds, as today.
+  - **The target frame** reads the core's status bytes (a Withered pile past 255 stacks is read from `status_stacks`); a status the HUD has no icon for is not listed, as before.
+  - **"N slain here"** counts every enemy that died in the area (no rewards yet: a solo hero's kills and his thralls', as the ledger will count them).
+  - **Pieces:** every readout group can be moved and scaled (`DmHud.set_piece`, `set_layout`; `opts.hud_layout`) and the HUD scale setting is `opts.hud_scale`; with the defaults nothing moves.
 
 ## Files
 

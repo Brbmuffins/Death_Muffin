@@ -196,7 +196,7 @@ func _enter_next(character: Dictionary, loading: DmLoadingScreen, build: Diction
 	g.name = "NextGame"
 	slice = g
 	add_child(g)
-	var opts := {"name": token_username(api.get_token()), "hud": "minimal", "slots": build["slots"], "local": build["local"]}
+	var opts := {"name": token_username(api.get_token()), "hud": true, "slots": build["slots"], "local": build["local"]}
 	opts.merge(start_opts, true)
 	var refused := [""]
 	g.start_failed.connect(func(reason: String) -> void: refused[0] = reason)

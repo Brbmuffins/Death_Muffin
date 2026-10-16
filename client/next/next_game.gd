@@ -6,7 +6,7 @@ extends Node3D
 ##   Session (DmSession)   solo = OfflineMultiplayerPeer, the same code path as a party        World (DmNextWorld)  the area scene, its navigation map, its lights
 ##   Core    (DmCoreHost)  the one owner of the combat core and the crowd that draws it        Waves (DmWaveDirector)  waves, spawned through the core
 ##   Input   (DmNextInput) click / WASD / hover pick through the core                          Camera (DmCameraRig)    the existing rig
-##   EnemyFx (DmEnemyFx)   telegraphs, strikes, deaths, voices: the core's events as effects   Hud (DmNextHud)         health + resource orbs, area name, death veil
+##   EnemyFx (DmEnemyFx)   telegraphs, strikes, deaths, voices: the core's events as effects   Hud (DmNextHud)         today's HUD fed by the core (next/next_hud.gd)
 ##   Bosses  (DmBossHost)  the Gravedigger King: summon rules, the boss body (an external of the core, its brain GDScript), its fx and music
 ## The hero is a DmHeroBody made by the session's body_factory, registered with the core as an external; the blows enemies land on it arrive as the
 ## core's EV_TARGET_HIT events (`_on_target_hit`). Enemies are ids (ints) everywhere, never nodes: `enemy_spawned` carries an id, the queries
@@ -23,12 +23,12 @@ extends Node3D
 ## Off in this step, each until its ROADMAP item: the login and front
 ## flow (`main/`), party and co-op (the session is a 1-player host; no `Net`, `Party`, `Joiner`), gathering, the Chapterhouse
 ## (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (`rewards`, `progress`, `meta` stay null: no XP, loot or
-## saves), the full HUD (`ui_host`, `ui` stay null) and the graphics governor (`perf`). `start` refuses any api whose base url is not the TEST server's
+## saves), the panels (`ui_host`, `ui` stay null: the HUD has no menu row, chat or Empower panel yet) and the graphics governor (`perf`). `start` refuses any api whose base url is not the TEST server's
 ## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). The game
 ## itself sends nothing in this step; it takes the character and its build from the front flow (`slots`, `local` below).
 ##
 ##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)
-## `opts`: name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud ("minimal" = DmNextHud orbs, false = none), audio (true outside a headless
+## `opts`: name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud (true = DmNextHud, the HUD on the core; false = none), hud_scale, hud_layout (DmNextHud), audio (true outside a headless
 ## run: the music, ambience and footsteps), seed (the core's random seed; default from the clock), areas (["graves"]),
 ## data_dir (res://), baked_dir / assets_dir (where the baked crowd models are), peer (a MultiplayerPeer; default OfflineMultiplayerPeer).
 
@@ -48,7 +48,7 @@ signal start_failed(reason: String)             ## `start` refused to run (an ap
 @onready var director: DmWaveDirector = $Waves
 @onready var input: DmNextInput = $Input
 @onready var camera: DmCameraRig = $Camera
-var hud: DmNextHud                              ## only with opts hud = "minimal"
+var hud: DmNextHud                              ## only with opts hud = true: the HUD on the core
 var enemy_fx: DmEnemyFx                         ## child "EnemyFx": the core's events as effects
 var look: DmHeroLook                            ## child "Look": the hero's ring and worn gear (next/hero/README.md)
 ## Left out until their step; the code that is shared with the full game asks `x != null` and finds none.
@@ -133,8 +133,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	bosses.fx.host.camera = camera
 	bosses.fx.host.hitstop_cb = hitstop
 	bosses.fx.player_pos = enemy_fx.player_pos
-	bosses.fx.host.sink = func(id: String, ctx: Dictionary) -> void:   # banners / toasts -> the HUD (the full HUD's host)
-		if ui_host != null:
+	bosses.fx.host.sink = func(id: String, ctx: Dictionary) -> void:   # banners / toasts -> the HUD
+		if hud != null:
+			hud.game_event(id, ctx)
+		elif ui_host != null:
 			ui_host.game_event.emit(id, ctx)
 	session.session_ended.connect(func(_r: String) -> void: set_process(false))
 	look = DmHeroLook.new()
@@ -179,7 +181,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 
 
 func _start_hud() -> void:
-	if opts.get("hud", false) is String and opts.get("hud") == "minimal":
+	if opts.get("hud", false) == true:
 		hud = DmNextHud.new()
 		hud.game = self
 		add_child(hud)

@@ -1,6 +1,7 @@
 class_name DmHudBar
 extends Control
 ## A thin HUD track: inset background, 1px border, left-to-right gradient fill, optional glow and fixed tick marks.
+## Ported (client/code.list): drawn from the HUD atlas on the chrome layer (DmHudKit), so a bar adds no draw calls of its own.
 ## Mirrors the web's `.track > .fill` pairs (xp bar, target/boss hp, chain timer, depth, upgrade bars, party hp, soul meter).
 
 var value: float = 0.0: set = set_value
@@ -18,6 +19,7 @@ var overshoot: float = 0.0  ## marks extend this many px above/below the track (
 
 
 func _init(h: float = 6.0, w: float = 0.0) -> void:
+	z_index = DmHudKit.Z_CHROME
 	custom_minimum_size = Vector2(w, h)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL if w == 0.0 else Control.SIZE_FILL
@@ -42,30 +44,27 @@ func set_value(v: float) -> void:
 
 
 func _draw() -> void:
+	# Everything is a rectangle of the HUD atlas (DmHudKit.rect), so a bar costs no draw calls of its own: it joins the one batch of the HUD's chrome.
 	var r := Rect2(Vector2.ZERO, size)
 	if bg.a > 0.0:
-		draw_rect(r, bg)
+		DmHudKit.rect(self, r, bg)
 	var inner := r.grow(-1.0)
 	var w := inner.size.x * value
 	if w > 0.0:
 		if glow.a > 0.0:
 			for i in 3:
-				draw_rect(Rect2(inner.position - Vector2(i + 1, i + 1), Vector2(w + 2 * (i + 1), inner.size.y + 2 * (i + 1))), Color(glow, glow.a * 0.18))
+				DmHudKit.rect(self, Rect2(inner.position - Vector2(i + 1, i + 1), Vector2(w + 2 * (i + 1), inner.size.y + 2 * (i + 1))), Color(glow, glow.a * 0.18))
 		# the web's gradient spans the fill element itself, so the end colour is always at the fill's right edge
 		if mid.a <= 0.0 and fill_a == fill_b:
-			# a flat fill is one batched rect, not a polygon (same pixels: neither is anti-aliased)
-			draw_rect(Rect2(inner.position, Vector2(w, inner.size.y)), fill_a)
+			DmHudKit.rect(self, Rect2(inner.position, Vector2(w, inner.size.y)), fill_a)
 		elif mid.a > 0.0:
-			var xm := inner.position.x + w * mid_at
-			var y0 := inner.position.y
-			var y1 := inner.position.y + inner.size.y
-			draw_polygon(PackedVector2Array([Vector2(inner.position.x, y0), Vector2(xm, y0), Vector2(xm, y1), Vector2(inner.position.x, y1)]), PackedColorArray([fill_a, mid, mid, fill_a]))
-			draw_polygon(PackedVector2Array([Vector2(xm, y0), Vector2(inner.position.x + w, y0), Vector2(inner.position.x + w, y1), Vector2(xm, y1)]), PackedColorArray([mid, fill_b, fill_b, mid]))
+			var wm := w * mid_at
+			DmHudKit.gradient_rect(self, Rect2(inner.position, Vector2(wm, inner.size.y)), fill_a, mid)
+			DmHudKit.gradient_rect(self, Rect2(inner.position + Vector2(wm, 0.0), Vector2(w - wm, inner.size.y)), mid, fill_b)
 		else:
-			var pts := PackedVector2Array([inner.position, inner.position + Vector2(w, 0), inner.position + Vector2(w, inner.size.y), inner.position + Vector2(0, inner.size.y)])
-			draw_polygon(pts, PackedColorArray([fill_a, fill_b, fill_b, fill_a]))
+			DmHudKit.gradient_rect(self, Rect2(inner.position, Vector2(w, inner.size.y)), fill_a, fill_b)
 	if border.a > 0.0:
-		draw_rect(r, border, false, 1.0)
+		DmHudKit.outline(self, r, border, 1.0)
 	for m in marks:
 		var x := size.x * m
-		draw_rect(Rect2(x - mark_w * 0.5, -overshoot, mark_w, size.y + overshoot * 2.0), mark_color)
+		DmHudKit.rect(self, Rect2(x - mark_w * 0.5, -overshoot, mark_w, size.y + overshoot * 2.0), mark_color)

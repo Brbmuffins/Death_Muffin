@@ -116,27 +116,34 @@ server (B38).
   - [x] The game scene on the core: the area scene, the core and the crowd view, the hero, camera, input, and the director spawning through
     the core. A solo run in the Hollow Graves: `DmCoreHost` owns the core and the crowd and turns the event buffer into signals, `dev/dm_dev_entry.tscn` runs it offline,
     `client/tests/game_scene.gd` proves it (client/README.md "The game scene and the dev entry"). Off until their items: the rites (the hero cannot attack), bosses, party,
-    gathering, the Chapterhouse, rewards, the full HUD, Grave Surges. Not in the core yet: what an enemy does to a hero besides damage (chill, root, pull) and a call that removes a living body (a hero
+    gathering, the Chapterhouse, rewards, the HUD's panels, Grave Surges. Not in the core yet: what an enemy does to a hero besides damage (chill, root, pull) and a call that removes a living body (a hero
     who stays away 15 s used to see the area's enemies freed).
   - [x] The Gravecaller's rites ported to the core: the caster, its module base, the legends, the registry and 24 of the necromancer's 25 rites (Veil Step is a copy) are today's GDScript calling the core synchronously, so a kill
     resolves inside the cast; the enemy queries, the corpse field and the legion are adapters over the core (`core/dm_foe.gd`, `dm_core_corpses.gd`, `dm_core_legion.gd`). The hero fights in the dev entry (LMB, keys 1-4, RMB, R) and the crowd draws his
     thralls. `client/tests/rites.gd` casts every rite against today's formulas, the synchronous kills, the input and a fight (client/README.md "The Gravecaller's rites"). Not in it, each its own item: the Reaper's nine rites (with the Reaper),
-    Easy auto combat, the kill-credit consumers (`DmSessionRewards`; the game scene emits `rite_hit`), floating
-    damage numbers, and the loadout, rune and weapon sockets (the full HUD and the bag). The rites' pictures have run headless only: their first look is on Helix's PC.
+    Easy auto combat, the kill-credit consumers (`DmSessionRewards`; the game scene emits `rite_hit`), and the
+    loadout, rune and weapon sockets (the panels and the bag); the floating damage numbers came with the HUD. The rites' pictures have run headless only: their first look is on Helix's PC.
   - [x] Login to the test server and character select (today's front flow, pointed at the test API): the boot (`main/main.tscn`, the project's main scene) runs today's login, online gate and
     character select against the test server, then the game scene with the chosen character, its bag and its progression read from the server. The API base is the test API in one place
     (`net/dm_config.gd`), enforced by the transport and the game scene and pinned by `client/tests/front.gd` (client/README.md "The test server"). Proved on the mock backend and against the
     real test server's health and manifest; no real account was used (the team's first real login there is the check left for Helix). Off until their items: rewards and the kill ledger,
-    saves, party, friends, chat, gathering, the Chapterhouse, the full HUD (no Log out, no Switch character), the benchmark, the crash report; the other disciplines' hero models.
+    saves, party, friends, chat, gathering, the Chapterhouse, the panels (no Log out, no Switch character), the benchmark, the crash report; the other disciplines' hero models.
   - [x] The Gravedigger King's brain as an external entity: the Hollow Graves' boss is `DmBossHost`, `DmBoss`, `DmBossNodeWorld`, `DmBossFx` and `DmBossView` ported to the core; the brains of `sim/bosses` are today's copies. His body registers as an
     external of kind 1 (position and `alive` written before every step), thralls pick him by the core's boss edge rule and their blows come back as `thrall_hit_external` into his brain, the host's queries and damage calls answer for his id so every rite
     reaches him (edge distance, his radius, after the enemies; the Scythe's arc and the needle's range count him), his statuses are his own GDScript set, his ghouls and elite robber are core bodies that leave with him through the new `DmCore.remove_enemy`,
     and his blows reach the hero and the thralls (`core.damage` on their ids). `client/tests/boss.gd` replays his six recorded scenarios against the copy of the brain and fights him: summon, phases, telegraphs, thralls, rites, wipe, defeat, a second summon
     (client/README.md "The Gravedigger King"). Not in it, each its own item: the other six bosses (their pools, niches and hooks need a core zone call for a boss and a call that sets a body's health), shards and the Covenant Seal (the summon is free until
-    progression comes), rewards (the defeat events exist: `bosses.defeated`, `brain_event`, `DmBoss.died`), the boss bar and banners (the full HUD), Easy auto combat's use of him, replicating him to guests (co-op).
+    progression comes), rewards (the defeat events exist: `bosses.defeated`, `brain_event`, `DmBoss.died`), Easy auto combat's use of him, replicating him to guests (co-op).
 - [x] Core obstacles: Ossuary Wall solid for the core's enemies (`DmCore.add_obstacle`, a box the core keeps enemies out of and their steering
   slides along; `client/tests/core_enemies.gd` obstacles, `client/tests/rites.gd`). A later rite or boss barrier uses the same call.
-- [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
+- [ ] The new HUD and the Low to Ultra presets:
+  - [ ] The HUD, same layout and look, under 150 draw calls: built, **not yet measured**. `DmNextHud` runs today's HUD in the game scene from the core (orbs, hotbar with cooldowns and the cast state, target frame
+    with statuses, minimap, thrall pips, "no corpse" dimming, floating numbers with today's caps, XP and level, area line, banners, the King's plate and map dot, the death veil), every readout group a movable, scalable piece
+    (client/README.md "The HUD on the core"). The budget is modelled at 63 draw calls as the game scene shows it and 81 with every piece on (`client/tests/hud.gd`; the model reproduces the 18 numbers a rendered run
+    counted), but ticks only when `client/tools/hud_measure.gd` has measured it in the game scene: the three 55 s runs of this item went on lavapipe's start-up (~44 s before the first frame; "The HUD's budget"). Left: that
+    run once, with a longer limit or on Helix's PC (draw calls, and the HUD's 0.5 ms there); the look on Helix's PC against today's; the panels' pieces (menu row, chat, Empower, party frames, belt) as their items
+    land, each keeping the budget.
+  - [ ] The Low to Ultra presets.
 - [ ] 2-player co-op (the combat core's half is built: native/README.md "Co-op", `client/tests/core_coop.gd`):
   - [x] Core snapshots: `DmCore.snapshot` (20 Hz, the Full Party in about 1.2 KB), `take_reliable` and `baseline` on the host, a puppet core (`set_puppet`, `apply_snapshot`,
     `apply_reliable`) on the guest, versioned messages (B40), loss, reordering and late joins proven.

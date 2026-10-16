@@ -25,6 +25,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rites.gd          # the Gravecaller's rites on the core: all 25 necromancer rites against today's rules, a fight (bakes into a scratch folder; 90 s of game time, --fixed-fps 60 makes it faster)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/boss.gd           # the Gravedigger King on the core: his brain replayed against today's scenarios, his fight, the thralls, the rites, his defeat and a new summon (bakes into a scratch folder; add --fixed-fps 60 before --path to run it faster than real time)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/front.gd   # boot, login, character select and the game scene with the chosen character on the mock; the API rule; the real test server's health (bakes into a scratch folder)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/hud.gd     # the HUD on the core: target frame, minimap dots, hotbar and cooldowns, thrall pips, floating number caps, pools, pieces, z layers, the draw-call model (bakes into a scratch folder)
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the roster's robber and hound, the thralls) into client/crowd/baked (not committed)
 ```
 
@@ -63,7 +64,7 @@ uids keep working:
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); and the boss host, body, world, fx and view ("The Gravedigger King").
 - **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the party
   (`DmNextFriends` reads the game scene's `party`: the friends and party panes, the social window and `game_ui/dm_game_ui.gd`).
-  Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only), the HUD shell `next/next_hud.gd`,
+  Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
   the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step, the belt and the progress node.
   Freed by the boss ports: `next/bosses/dm_boss_meta.gd` (the Covenant Seal altar choice; it needs rewards and the backend, so nothing creates it yet).
 - **Ported for the test server** (not seams): the boot `main/main.gd` and `main/main.tscn` (freed from the left-out list by the front flow's port), `net/dm_config.gd` and
@@ -80,13 +81,13 @@ bash client/setup.sh                                   # once per checkout: buil
 bash client/tools/bake_crowd.sh                        # once: bakes the robber, the hound and the thralls (without them nothing is drawn; the other defs borrow these)
 /home/ubuntu/tools/godot/godot --path client            # the boot: login and character select on the TEST server, then the game (below)
 /home/ubuntu/tools/godot/godot --path client -- --dev-offline --class=1             # the same boot with the local mock backend and no network at all: straight into the game as `tester` (--seed=N --no-waves --baked=<dir> too)
-/home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn           # the dev entry: the Gravecaller at level 10, the minimal HUD, waves. He fights with the rites (controls below)
+/home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn           # the dev entry: the Gravecaller at level 10, the HUD, waves. He fights with the rites (controls below)
 /home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn -- --class=1 --seed=7 --crowd=70      # options after `--`: --class=N --level=N (default 10) --seed=N --no-waves --crowd=N (a first wave of N bodies 6 to 12 m around the hero) --boss (the hero starts at the King's grave and wakes him) --baked=<dir> --shot=<png> [--shot-after=<game s>] (rendered runs only)
 ```
 
 **Controls of the dev entry** (today's input and hotbar code): **LMB** on the ground walks there, on an enemy walks into range and casts the primary (Bone Needle; hold to repeat, Shift+LMB casts in place);
 **1-4** are the kit's default loadout (Marrow Spear, Exhume, Miasma, Black Litany; hold a key to repeat), **RMB** is Corpse Explosion, **R** the signature from level 10 (Command: Rend), **WASD** walks, the wheel
-zooms. The other rites cast through `DmNextInput.cast_at(slot, aim, enemy_id, true)` or the caster's `request_cast(rite, aim)` until the loadout panel comes with the full HUD. `--level=N` sets the level the mock
+zooms. The other rites cast through `DmNextInput.cast_at(slot, aim, enemy_id, true)` or the caster's `request_cast(rite, aim)` until the loadout panel comes with the panels. `--level=N` sets the level the mock
 character is made at (R needs 10, Bone Mantle 12, Bone Storm 14; all rites unlock by 14).
 
 **`DmCoreHost`** (`core/dm_core_host.gd`, the scene's `Core` node) is the one owner of the `DmCore` and the `CrowdView`. It loads the data (`DmCoreData.load_all`: this project's `data/`; the
@@ -105,8 +106,8 @@ roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`
 wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
 Off in this step, each until its ROADMAP item: party and co-op, gathering, the Chapterhouse
-(the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves; `DmNextGame.rite_hit` carries every blow of a rite for them), the full HUD (only the orbs, area name and death veil;
-so no loadout panel, no floating damage numbers), Easy auto combat, the Reaper's rites, the graphics governor, Grave Surges. `native/README.md` "Differences from today's game" lists what behaves differently from today.
+(the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves; `DmNextGame.rite_hit` carries every blow of a rite for them), the panels (the HUD is there, "The HUD on the core"; its menu row, chat, Empower panel
+and loadout wait for theirs), Easy auto combat, the Reaper's rites, the graphics governor, Grave Surges. `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
 ## The Gravecaller's rites
 
@@ -160,6 +161,78 @@ the rites (edge distance, order, lane, cone, circle, the needle's range, the Scy
 Not in it: the other six bosses; their pools, niches and hooks (the core makes no zone for a boss, has no call that sets a body's health, and the Veilwalker's echoes are not ported); shards and rewards; the boss bar and banners (the full HUD); Easy auto combat's use of the
 boss (`dm_next_auto.gd`); replicating him to guests (the co-op step).
 
+## The HUD on the core
+
+Today's HUD (`DmHud`: orbs, hotbar with cooldowns and the cast state, target frame, minimap, thrall pips, XP and level, area line, banners, toasts, floating numbers, death veil) runs in the game scene
+(`opts.hud = true`) with the same layout and look, fed from the combat core. `DmNextHud` (`next/next_hud.gd`, a CanvasLayer) owns a `DmHud` and a `DmNextHudVm` (`next/hud/dm_next_hud_vm.gd`); both are
+ports (`client/code.list`). Nothing runs per creature per frame:
+
+| piece | where it reads |
+|---|---|
+| view-model refresh | a timer of 50 ms counted from the core's ticks (`DmCoreHost.ticked`), as `DmGameUi.HUD_INTERVAL_MS`; ~0.2 ms with a Full Party crowd, 0.06 ms per frame at 60 fps |
+| orbs, XP, level, area | the hero body (`hp`, `resource`), the character, `DmContent` |
+| hotbar, cooldowns, cast state | the hero's `DmRiteCaster` (`cooldown_left`, essence, souls); the kit's mapping (`DmRiteHotbar`) |
+| "no corpse" / "no legion" dimming | one `core.corpses_in_radius` (13 m around the hero) and `core.thrall_count` per refresh |
+| target frame | `core.enemy_info(id)`, `core.statuses(id)` (4 bytes a status: id, stacks, tenths of a second) for the one enemy under the cursor or last aimed at (held 4 s); chips from its affix list |
+| minimap dots | `enemy_ids / enemy_positions / enemy_states`, `thrall_positions / thrall_states`, `corpse_positions`: flat arrays, filtered in one pass into the packed lists the minimap takes; an elite is flagged from `enemy_spawned` |
+| thrall count, pips, red pips | `core.thrall_places`, `thrall_owners / thrall_hp / thrall_states` (under 35 % health) |
+| floating numbers | the caster's `hit_number` (the rites' own events, with the impact point), the host's `enemy_damaged` of a thrall and `status_dot`, the hero's `hurt`; `DmFloatBudget` caps them (14 hit, 5 dot, 6 thrall, 22 in all, a crit 4 past) |
+| boss plate, minimap dot | `g.bosses.active_boss()` (name, phase, hp; the King's dot on the map) |
+| notices | the first entry into an area (banner), a themed wave (banner once per area), a refused cast (an "info" number over the hero), the boss fx's banners and the summon refusals (`DmNextHud.game_event`, the sink of `bosses.fx.host`) |
+
+Not in the game scene yet, each until its ROADMAP item (the panels' host `DmNextUiHost`, `DmGameUi` and the party chain stay out, `client/code.list`): the menu row, chat and the report button, the Empower / Quicken panel and
+the wave dial, the Spellbook, party frames of other players and the social window, the belt, the Kill Chain, the Omen, the Depths readout, interaction prompts and the Next line, the counsel's
+tips, the loadout (the hotbar is the kit's). The pieces whose systems are not in the scene take their data from `DmNextHud.feeds`, which a test or a later system fills with the same view-model keys
+(`tests/hud_feeds.gd` fills all of them).
+
+**Pieces (DECISIONS B40).** Every readout group is a Control of its own with its own anchors and offsets, listed in `DmHud.pieces` (`party omen ward chain belt target boss map toasts banner prompt hint chat xp altar
+upgrades`). `set_piece(id, offset, scale)` moves one by `offset` logical pixels and scales it (0.5 to 2) around the corner its anchor holds (a piece anchored to the top right grows left and down, the hotbar up and
+sideways); `set_layout({id: {offset, scale}})` applies a saved layout (a piece it does not name goes home); `show_piece(id, false)` hides one for good; `set_hud_scale(0.75 to 1.3)` scales them all at once, as
+Settings did. The game scene takes `opts.hud_scale` and `opts.hud_layout`. There is no editor: this is the structure it will need.
+
+### The HUD's budget
+
+DECISIONS B39: the HUD at most 0.5 ms and 150 draw calls on Helix's PC. Today's HUD was about 550 draw calls (the benchmark's Compatibility numbers: ROADMAP "Before numbers"). In Godot 4.7's canvas renderer
+(`RendererCanvasRenderRD`) consecutive commands that share a texture and a kind are ONE draw call, and a rendered run measured what is not (Forward+ on lavapipe, 2026-10-16; `tools/hud_measure.gd --micro`):
+
+| drawn with | draw calls |
+|---|---|
+| rectangles (`draw_rect` filled), any number, in any items; lines (`draw_line`, thick or anti-aliased too) | 1 together |
+| icons of one texture or of regions of one atlas, with any colour; 9-patches (`StyleBoxTexture`) of one texture, other regions and colours | 1 together (a different texture, or a rectangle between icons of another texture, starts a new one) |
+| glyphs of one font and size, with or without a shadow; a Label with an outline: its outline and its fill | 1 together; 2 for every outlined label (the outline has an atlas of its own) |
+| `StyleBoxFlat` panel (fill, border, radius, shadow: any) | 1 each |
+| `draw_circle`, `draw_colored_polygon`, `draw_polyline` (3 when anti-aliased), `draw_arc` (3), `draw_rect(filled = false)`, a RichTextLabel, an item with `clip_contents` | 1 each |
+| `clip_children` (the minimap's disc) | +2 and its inside as above |
+| items with different `z_index` | sorted by z first, then tree order: the same kinds of drawing on one z layer batch even when their controls are far apart in the tree |
+
+What the HUD does with that (`ui/hud/dm_hud_kit.gd` has the layers, `next/hud/dm_hud_atlas.gd` the atlases; all of it keeps the look):
+- **Layers.** Panels (9-patches) z 0, rectangles and icons 1, vector art 2, rectangles over the art 3, text from 4 up (one layer for each font and size), toasts, banner and prompt +100, the floating numbers 200.
+  A HUD label is put on its layer when it is made; `DmHudKit.layer_tree` does the rest of a subtree.
+- **One atlas.** A runtime atlas holds every icon (ability art is kept at 128 px, shown at 62), a white block (any rectangle), the bars' gradients and, on a page of its own, every panel's 9-patch (`DmHudKit.plate`
+  makes a `StyleBoxTexture` of the picture of a `StyleBoxFlat`; `style` still gives the StyleBoxFlat the copied panels ask for). A greyed slot icon is a baked variant, not a shader.
+- **One mesh per widget.** The orbs (2 draws), cooldown sweeps (5 triangles at most), thrall pips and gems (one mesh for the row), the level badge, the minimap's frame, disc and edge fade, its marks and arrow, and the
+  death veil are triangle bags (`DmHudMesh`); the minimap's dots are one MultiMesh.
+- **Floating numbers are a pool** (`DmHudFloats`): 48 entries of two canvas items made once; a frame only moves them; the numbers of a kind are two draw calls.
+
+*Measuring.* `tools/hud_measure.gd` starts the game scene with the full HUD in a Full Party-like crowd (72 enemies, 32 thralls, numbers kept at their caps), reads
+`RenderingServer.get_rendering_info(RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)` and the canvas share of it with the HUD hidden and shown, as the game scene shows it and with every piece on, prints the HUD's CPU cost, and
+(`--micro`, `--fidelity`, the breakdown) the cost of each drawing primitive, the pixel difference of each replacement against the original, and each piece alone. It writes one JSON line per measurement as it goes:
+```
+VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 xvfb-run -a -s "-screen 0 1600x900x24" \
+  timeout 55 /home/ubuntu/tools/godot/godot --path client --rendering-driver vulkan --resolution 1280x720 --fixed-fps 60 --script res://tools/hud_measure.gd -- --out=<file.jsonl> [--shot=<png>] [--micro] [--fidelity] [--3d]
+```
+**Status (2026-10-16): the budget is modelled, not yet measured in the game scene.** On this VPS a Forward+ process needs ~21 s to reach its first script line and then ~23 s inside the first main-loop iteration (software
+Vulkan pipelines; it did not shrink with drawing switched off), so a 55 s run has about ten seconds left. The three runs allowed for this item produced the table above (the first, a bare scene) and nothing from the game scene
+(the later two reached the end of the scene's build at 50 s). Run the harness once with a longer limit (`timeout 180 ... --budget=170`) or on Helix's PC to close it.
+
+*The model.* `tests/hud_cost.gd` is a model of the batching rules in the table; `tests/hud.gd` first checks that it reproduces the 18 numbers the rendered run counted for the same trees, then asks it about the HUD in a Full Party fight
+(72 enemies, 12 thralls, casts on cooldown, a target with four statuses, toasts, numbers at their caps): 63 draw calls as the game scene shows it (26 text, 10 vector art, 8 floating numbers, 6 toasts and banner, 3 panels, 1 rectangles
+and icons, 1 borders) and 81 with every piece on and fed (41 text, 13 art). The test fails above 150, so a control left on the wrong layer or a new polygon per thing shows up in CI. Asked about logged copies of today's widgets in the same
+fight the model said about 500 for the game scene's HUD (the hotbar 188, the minimap column 160, the floating numbers 104, the target frame 18) and 630 with every piece on; the benchmark counted 544 to 564 for it in Compatibility. What looks different from today's HUD, piece by piece: native/README.md "Differences from today's game", "The HUD".
+
+*CPU.* `tests/hud.gd` prints the refresh (view-model build and apply) and a frame with the HUD against one without; `DmNextHud.refresh_us` counts the live refreshes. With 72 enemies and 32 thralls on this VPS: build 0.19 ms + apply 0.05 ms
+every 50 ms; a headless frame with the HUD costs ~0.1 to 0.2 ms more than without (no drawing: every `_process`, tween and `_draw` callback runs).
+
 ## The test server: login and character select
 
 `main/main.tscn` (`DmMain`, a port of today's) is the project's main scene. It is today's boot and front flow (login, register, the online gate, character select, the discipline switch,
@@ -177,7 +250,7 @@ database and signing key, so nothing played here can touch a live character), th
   A bag or progression the server fails to give sends the player back to the login screen with the server's words; nothing is written, created or imported.
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
-- **Off until their items:** rewards and the kill ledger (no kill report), progress and bag saves, party, friends, chat, gathering, the Chapterhouse, the full HUD (so no Log out or Switch character:
+- **Off until their items:** rewards and the kill ledger (no kill report), progress and bag saves, party, friends, chat, gathering, the Chapterhouse, the panels (so no Log out or Switch character:
   close the game to sign in again), the benchmark (the select screen's button says it comes with the Full Party fight), the lobby join, the automatic crash report and the update notice. A hero of a
   discipline other than the Gravecaller has no hero model yet (`client/assets.list` carries `hero_gravecaller` only) and the rites are not ported for any of them.
 
