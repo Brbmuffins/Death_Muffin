@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 GODOT="${GODOT:-/home/ubuntu/tools/godot/godot}"
-[ -f bin/libdmcore.linux.template_debug.x86_64.so ] || ../native/build.sh linux
+[ -f bin/libdmcore.linux.template_debug.x86_64.so ] || bash ../native/build.sh linux
 mkdir -p .godot
 grep -qx 'res://bin/dmcore.gdextension' .godot/extension_list.cfg 2>/dev/null || echo 'res://bin/dmcore.gdextension' >> .godot/extension_list.cfg
 nice -n 10 "$GODOT" --headless --path . --import >/dev/null 2>&1

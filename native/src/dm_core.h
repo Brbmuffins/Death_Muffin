@@ -1,12 +1,23 @@
 #pragma once
-
+// Godot-facing API of the combat core (native/README.md "Design"). Per-creature work stays inside; GDScript calls step() once per
+// tick, reads take_events() and the bulk arrays, and calls the query/command methods from casts and bosses.
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_float32_array.hpp>
+#include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/vector2.hpp>
 
-// The combat core: owns every enemy and thrall in flat arrays and steps them once per 60 Hz tick (ROADMAP "Now: the rebuild").
-// Prep stage: only proves the build, the load and a call across the boundary.
+#include "core/world.h"
+
 class DmCore : public godot::RefCounted {
 	GDCLASS(DmCore, godot::RefCounted)
+
+	dm::World world;
+	std::vector<int32_t> query_out;
+	godot::PackedInt32Array ev_ints;
+	godot::PackedFloat32Array ev_floats;
 
 protected:
 	static void _bind_methods();
@@ -14,4 +25,28 @@ protected:
 public:
 	godot::String version() const;
 	int64_t checksum(int64_t p_count) const;
+
+	// Setup
+	void set_seed(int64_t p_seed);
+	int64_t load_enemy_defs(const godot::Dictionary &p_enemies);  // the ENEMIES dictionary of data/content/enemies.json
+	void set_area_bounds(const godot::Vector2 &p_min, const godot::Vector2 &p_max);
+
+	// Commands (casts, bosses, the director)
+	int64_t spawn_enemy(const godot::String &p_def, const godot::Vector2 &p_pos, int64_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, const godot::String &p_area, bool p_rising);
+	godot::Dictionary damage(int64_t p_id, double p_amount, int64_t p_source);
+	godot::PackedInt32Array enemies_in_radius(const godot::Vector2 &p_pos, double p_r);
+	int64_t add_external(int64_t p_kind, double p_radius, double p_weight);
+	void set_external(int64_t p_id, const godot::Vector2 &p_pos, bool p_alive);
+
+	// The tick and its outputs
+	void step(double p_dt);
+	godot::Array take_events();  // [PackedInt32Array ints, PackedFloat32Array floats], see core/events.h; clears the buffer
+	int64_t enemy_count() const;
+	godot::PackedInt32Array enemy_ids() const;
+	godot::PackedFloat32Array enemy_positions() const;  // x, z, yaw per enemy, spawn order
+	godot::PackedInt32Array enemy_states() const;
+	godot::Dictionary enemy_info(int64_t p_id) const;  // one enemy (HUD target frame, tests); empty when gone
+	godot::String def_name(int64_t p_def) const;
+	godot::String area_name(int64_t p_area) const;
+	double clock() const;
 };

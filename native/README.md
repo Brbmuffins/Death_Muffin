@@ -37,7 +37,13 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
 
 ## Files
 
-- `native/src/`: the core. `register_types.cpp` registers the classes; entry symbol `dmcore_library_init` (`client/bin/dmcore.gdextension`).
+- `native/src/`: `dm_core.cpp` is the Godot-facing API (`DmCore`); `register_types.cpp` registers it, entry symbol `dmcore_library_init`
+  (`client/bin/dmcore.gdextension`).
+- `native/src/core/`: the simulation, free of Godot types: `world` (tables, tick, damage and kills, queries), `grid` (dense XZ grid
+  rebuilt per tick by counting sort), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity).
+- Tests: `client/tests/core_smoke.gd` (loads, answers) and `client/tests/core_api.gd` (queries in spawn order, synchronous kills,
+  events, seeded stats, the rise and the 4 s body linger). Run `bash client/setup.sh` first in a fresh checkout: a script run in a
+  project that was never imported hangs.
 - `SConstruct`: builds into `client/bin/libdmcore.<platform>.<target>.<arch>.<ext>`.
 - `build.sh`: links godot-cpp into `native/thirdparty/` (not committed) from one shared cache per commit
   (`~/death-muffin/native-cache/godot-cpp-<commit>`, cloned and compiled once) at the pinned commit (1e79263, built for `api_version=4.7`) and builds

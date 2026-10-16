@@ -13,8 +13,8 @@ Test build channel until then.
 ## Set up and test
 
 ```
-client/setup.sh                                                          # builds the core for Linux if needed, imports, runs the smoke test
+bash client/setup.sh                                                       # builds the core for Linux if needed, imports, runs the smoke test
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_smoke.gd   # the core loads and answers
 ```
 
-Run `client/setup.sh` once in every new checkout or worktree (it lists the extension before the first import; see the script).
+Run `bash client/setup.sh` once in every new checkout or worktree (it lists the extension before the first import; see the script).

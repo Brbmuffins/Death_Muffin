@@ -70,8 +70,9 @@ server (B38).
 - [ ] The Hollow Graves as a scene: a converter from `godot/data/slice/world.json` (same layout, static colliders, offline-baked
   navmesh, occluders, visibility ranges); the first lighting bake through Helix's helper.
 - [ ] Crowd drawing: a vertex-animation baker for the creature models and the MultiMesh crowd renderer.
-- [ ] Core skeleton (native/README.md "Design"): entity tables, tick order, timers, seeded randomness, grid, event buffer, query and
-  command API, unit tests.
+- [x] Core skeleton (native/README.md "Design"): enemy table in spawn order, heroes and bosses as external entities, tick, timers in
+  doubles, seeded randomness, grid, event buffer, damage with synchronous kills, radius queries, bulk reads; `client/tests/core_api.gd`.
+  Thrall, corpse and status tables come with their items.
 - [ ] Core enemies: the Graves roster (robber, hound, penitent, sac, moth, bat, ghoul) with elites and affixes.
 - [ ] Core thralls, corpses and statuses.
 - [ ] Client layer: login to the test server, character select, hero, camera, input, the Gravecaller's rites on the core, the
