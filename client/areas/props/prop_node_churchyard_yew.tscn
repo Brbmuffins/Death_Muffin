@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_churchyard_yew.glb" id="1_55008"]
+
+[node name="prop_node_churchyard_yew" type="Node3D" unique_id=192948856]
+metadata/model = "models/props/prop_node_churchyard_yew.glb"
+metadata/height = 5.4
+metadata/small = false
+
+[node name="model" parent="." unique_id=79046651 instance=ExtResource("1_55008")]
+transform = Transform3D(5.4105673, 0, 0, 0, 5.4105673, 0, 0, 0, 5.4105673, 0, 2.7, 0)
+
+[editable path="model"]

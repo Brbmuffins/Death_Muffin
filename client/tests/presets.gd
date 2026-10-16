@@ -58,7 +58,7 @@ func _run() -> void:
 	var character: Dictionary = (await api.load_or_create_character(2)).data
 	var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	root.add_child(g)
-	await g.start(character, api, {"name": "presets", "audio": false, "waves": false, "seed": 20261016, "baked_dir": OUT, "settings": {"graphics": "low"}})
+	await g.start(character, api, {"areas": ["graves"], "name": "presets", "audio": false, "waves": false, "seed": 20261016, "baked_dir": OUT, "settings": {"graphics": "low"}})
 	check(g.ready_ and g.perf != null and g.perf.preset == "low", "the game scene applies the preset it is given (opts.settings)")
 	await crowd_round(g)
 	for id in DmGraphicsPreset.IDS:

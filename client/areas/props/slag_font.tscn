@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/slag_font.glb" id="1_875f0"]
+
+[node name="slag_font" type="Node3D" unique_id=221422147]
+metadata/model = "models/props/slag_font.glb"
+metadata/height = 2.0
+metadata/small = false
+
+[node name="model" parent="." unique_id=108525656 instance=ExtResource("1_875f0")]
+transform = Transform3D(2.2408028, 0, 0, 0, 2.2408028, 0, 0, 0, 2.2408028, 0, 1, 0)
+
+[editable path="model"]

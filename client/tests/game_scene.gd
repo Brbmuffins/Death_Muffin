@@ -131,7 +131,7 @@ func start_game(api: DmApi, character: Dictionary) -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(character, api, {"name": "tester", "hud": true, "audio": false, "seed": 20261016, "baked_dir": OUT})
+	await g.start(character, api, {"name": "tester", "hud": true, "audio": false, "seed": 20261016, "baked_dir": OUT, "areas": ["graves"]})
 	host = g.core_host
 	check(g.ready_, "the game scene is ready")
 	check(g.world.nav_ready() and g.world.area_id == "graves" and g.area_id == "graves", "the Graves' navigation map is ready and the hero is in the Graves")
@@ -141,7 +141,8 @@ func start_game(api: DmApi, character: Dictionary) -> void:
 	check(host.view != null and host.view.model_slots().size() >= 2, "the crowd view has its models (%s)" % str(host.view.model_slots().keys()))
 	check(g.ui != null and g.ui_host != null and g.enemy_fx != null and g.look != null, "the HUD and panels, the enemy fx and the hero look are up")
 	check(g.rewards != null and g.progress != null and g.meta != null and g.loot != null and g.my_member() != null, "value is on: rewards, progression, meta and the bag (client/tests/value.gd)")
-	check(g.chapterhouse == null and g.gather == null, "what is off stays off (the Chapterhouse, gathering)")
+	check(g.chapterhouse != null and g.chapterhouse.npcs == null, "the Chapterhouse node runs the seals; its people stay out of a world without the Chapterhouse")
+	check(g.gather == null and g.depths == null, "what is off stays off (gathering, the Depths)")
 	check(g.bosses != null and g.bosses.active_boss() == null and g.bosses.bosses.is_empty(), "the boss host is up and nothing sleeps awake (client/tests/boss.gd fights the King)")
 	host.enemy_spawned.connect(func(id: int, _def: String, _lv: int, _el: bool, _ar: String, _af: int, _x: float, _z: float, _hp: float) -> void:
 		spawned += 1

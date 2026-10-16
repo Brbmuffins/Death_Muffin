@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/bell_altar.glb" id="1_394ab"]
+
+[node name="bell_altar" type="Node3D" unique_id=92033792]
+metadata/model = "models/props/bell_altar.glb"
+metadata/height = 3.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=259398803 instance=ExtResource("1_394ab")]
+transform = Transform3D(3.607045, 0, 0, 0, 3.607045, 0, 0, 0, 3.607045, 0, 1.8, 0)
+
+[editable path="model"]

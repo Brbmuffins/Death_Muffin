@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/alch_herb_bundle.glb" id="1_89e9c"]
+
+[node name="alch_herb_bundle" type="Node3D" unique_id=2383983]
+metadata/model = "models/props/alch_herb_bundle.glb"
+metadata/height = 0.9
+metadata/small = true
+
+[node name="model" parent="." unique_id=182047699 instance=ExtResource("1_89e9c")]
+transform = Transform3D(0.90176123, 0, 0, 0, 0.90176123, 0, 0, 0, 0.90176123, 0, 0.45, 0)
+
+[node name="tripo_node_62ad61ff-facf-42d8-8b41-eaf9532d64bf" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

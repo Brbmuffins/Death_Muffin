@@ -10,8 +10,6 @@ extends Node
 ##   Guest  `join_*()` -> lobby `join` -> `join_ready(lobby, info)`: the shell starts a guest DmNextGame (`opts.lobby`) on that socket (README "Co-op on the core", "Joining").
 ##
 ## Everything a panel shows comes from `view()` (the contract of today's party pane); `changed` fires on any change. Errors are one place (`ERROR_TEXT`, `CLOSE_TEXT`).
-## Not here yet, each with the system it belongs to: party chat, the joiner's own backend session (rewards, XP, loot), reading a guest's build from the server (DECISIONS B22: a guest's
-## level and class come from its profile, clamped, until the rewards and progression item brings the server's record), ground drops, the party's seals, the friends list itself
 ## The friends list itself is DmNextFriends (the backend's friends routes, the Social window's Friends tab); a friendship it changes is announced through the lobby here (`friends_changed`).
 
 signal changed
@@ -92,6 +90,7 @@ var _leaving := false
 var _url := ""
 var _profile_sent := false
 var _members: Dictionary = {}            ## host: peer id -> the rewards member's key (its character id; -peer for one that cannot be credited)
+var _seals: Array = []                   ## host: the open areas last sent to guests (see send_seals)
 var backend_session := ""                ## guest: the host's backend party session (for our own session_join)
 var chat_log: Array[String] = []         ## the party chat's last 40 lines, as shown
 var _chat_rate: Dictionary = {}          ## host: peer id -> [second, count]
@@ -749,6 +748,7 @@ func _rpc_profile(p: Dictionary) -> void:
 	_members[peer] = key
 	sync_levels()
 	_rpc_welcome.rpc_id(peer, shell.rewards.session_id)
+	_rpc_seals.rpc_id(peer, _seals)
 	changed.emit()
 
 
@@ -953,6 +953,18 @@ func sync_levels() -> void:
 		for peer in shell.net.guests():
 			_rpc_levels.rpc_id(peer, t)
 		changed.emit()
+
+
+## Host: the areas whose seal is broken in the host's world. A guest's doors follow these (sent on join and whenever a seal breaks).
+func send_seals(open: Array) -> void:
+	_seals = open.duplicate()
+	if shell.session.is_host() and shell.session.is_active() and not multiplayer.get_peers().is_empty():
+		_rpc_seals.rpc(_seals)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_seals(open: Array) -> void:
+	shell.world.set_unlocked(open)
 
 
 @rpc("authority", "call_remote", "reliable")

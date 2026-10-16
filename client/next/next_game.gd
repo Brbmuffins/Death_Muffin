@@ -33,15 +33,16 @@ extends Node3D
 ## walks to a drop, a tape drop is claimed (the server puts its own roll in the bag), worn gear feeds the build. `flush_all` saves everything (the last report, the
 ## Chronicle, the progression, the bag) on leave and on the window's close.
 ##
+## THE WORLD: every area but the Depths (DmNextWorld, the area scenes; `opts.areas` takes a shorter list), the hero starting and getting up in the Chapterhouse as today. The
+## Chapterhouse node (DmChapterhouse, ported) breaks the seals as kills come in and opens the doors, runs waystone travel and the recall, the stations and the people.
 ## The graphics preset, fps cap and auto-resolution are `perf` (DmNextPerf, the player's settings read from their file). Off in this step, each until its ROADMAP
-## item: gathering, the Chapterhouse (the hero starts and gets up at the Graves' door), the Depths, the Codex, the Covenant Seal's altar choice (a summon is the plain
-## soul-shard one), the panels (`ui_host`, `ui` stay null: the HUD's menu row shows the Social window only; no chat yet). `start` refuses any api whose base url is not the TEST server's
+## item: gathering, the Depths, the Covenant Seal's altar choice (a summon is the plain soul-shard one). `start` refuses any api whose base url is not the TEST server's
 ## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). It takes the
 ## character and its build from the front flow (`slots`, `local` below) until the progression and the bag have loaded theirs from the server.
 ##
 ##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)
 ## `opts`: warmup (false: the first-use warm-up of models, effects and area lighting; the benchmark forces it), name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud (true = today's HUD and panels on DmNextUiHost; false = none), audio (true outside a headless
-## run: the music, ambience and footsteps), seed (the core's random seed; default from the clock), areas (["graves"]),
+## run: the music, ambience and footsteps), seed (the core's random seed; default from the clock), areas (the area ids to load; default every one, DmNextWorld.every_area),
 ## data_dir (res://), baked_dir / assets_dir (where the baked crowd models are), peer (a MultiplayerPeer; default OfflineMultiplayerPeer).
 
 const CASTER_DELAY := 0.8                       ## the host attaches a guest's caster this long after its body spawned (the guest's spawner must have made the body first)
@@ -74,7 +75,8 @@ var friends: DmNextFriends                      ## child "Friends": the account'
 var ui_host: DmNextUiHost                       ## child "UiHost" (opts hud = true): the host-contract adapter of the HUD and the panels (DECISIONS B46)
 var ui: DmGameUi                                ## child "Ui" (opts hud = true): today's HUD and panels
 var areas: DmAreaFlow                           ## child "Areas": the entry banners and the Codex facts, the processions (next/areas/)
-var chapterhouse: Node = null                   ## NPCs, stations, waystones
+var chapterhouse: DmChapterhouse               ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
+var depths: Node = null                         ## the Depths (its ROADMAP item)
 var gather: Node = null                         ## gathering nodes
 var bosses: DmBossHost                          ## child "Bosses": summon rules, the boss body, its events and music
 var rewards: DmSessionRewards                   ## child "Rewards" (host): kill credit, the backend's party session, loot rolls (next/rewards/)
@@ -114,7 +116,7 @@ var _vfx: Node
 var _hold: DmRelayPeer                          ## a guest's relay peer, held until the world's nodes exist
 
 
-## Build and start. Host path: the character's body stands at the Graves' door and the scene is live when this returns.
+## Build and start. Host path: the character's body stands in the Chapterhouse (at the Graves' door in a world without it) and the scene is live when this returns.
 func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> void:
 	var t0 := Time.get_ticks_msec()
 	opts = opts_
@@ -141,7 +143,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	director.game = self
 	director.core_host = core_host
 	director.enabled = bool(opts.get("waves", true)) and not guest   # the host's waves: a guest's bodies come from the wire
-	world.build(opts.get("areas", ["graves"]))
+	world.build(opts.get("areas", []))
 	await world.wait_nav_ready()
 	camera.setup(world.camera_config())
 	area_id = world.area_id
@@ -150,6 +152,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		if opts.has(k):
 			core_opts[k] = opts[k]
 	core_host.setup(core_opts)
+	world.bind_core(core_host.core)
 	core_host.enemy_spawned.connect(func(id: int, _d: String, _l: int, _e: bool, _a: String, _af: int, _x: float, _z: float, _h: float) -> void: enemy_spawned.emit(id))
 	core_host.target_hit.connect(_on_target_hit)
 	core_host.enemy_died.connect(_on_enemy_died)
@@ -194,7 +197,9 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	session.build_version = String(opts["build"]) if opts.has("build") else DmBuild.version()   # tests: play as another release build
 	if opts.has("wire"):
 		session.wire = int(opts["wire"])   # tests: play as a build with another core wire version
-	session.spawn_origin = world.spawn_point() - Vector3(3.0, 0.0, 0.0)   # the host's own body starts 3 m from the origin (DmSession._spawn_point)
+	# The host's own body starts 3 m from the origin (DmSession._spawn_point): today's game puts the origin on the Chapterhouse's return point; a world without the
+	# Chapterhouse puts the body itself on the Graves' door.
+	session.spawn_origin = world.spawn_point() if world.has_area("chapterhouse") else world.spawn_point() - Vector3(3.0, 0.0, 0.0)
 	session.spawn_override = _joiner_spawn
 	session.spawn_resolve = _walkable_spawn
 	session.body_factory = _make_body
@@ -250,6 +255,18 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		await _start_value(b)
 		_enter(b.position)
 		camera.snap(b.position)
+	chapterhouse = DmChapterhouse.new()
+	chapterhouse.name = "Chapterhouse"
+	add_child(chapterhouse)
+	chapterhouse.setup(self)
+	# A click on a boss summoning site (the hub owns hover/click, the bosses host owns summoning; E at the grave already summons there).
+	chapterhouse.interacted.connect(func(it: Dictionary) -> void:
+		if String(it.get("kind", "")) == "boss":
+			var bid := chapterhouse.boss_for_summon(String(it["id"]))
+			if bid != "":
+				bosses.request_summon(bid))
+	if session.is_host():
+		chapterhouse.start_seals()
 	await _start_hud()
 	areas = DmAreaFlow.new()
 	areas.name = "Areas"
@@ -669,7 +686,7 @@ func area_of(peer_id: int) -> String:
 	return world.area_at(b.position.x, b.position.z) if b != null else ""
 
 
-## Where a fallen hero gets up (today the Chapterhouse, which is not loaded yet): the Graves' door.
+## Where a fallen hero gets up: the Chapterhouse's return point, as today (the Graves' door in a world without the Chapterhouse).
 func respawn_point() -> Vector3:
 	return world.spawn_point()
 

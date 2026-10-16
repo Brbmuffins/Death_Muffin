@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/rite_niches.glb" id="1_f730b"]
+
+[node name="rite_niches" type="Node3D" unique_id=202934640]
+metadata/model = "models/props/rite_niches.glb"
+metadata/height = 2.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=190587578 instance=ExtResource("1_f730b")]
+transform = Transform3D(2.6256013, 0, 0, 0, 2.6256013, 0, 0, 0, 2.6256013, 0, 1.3, 0)
+
+[editable path="model"]

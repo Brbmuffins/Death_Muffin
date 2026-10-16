@@ -62,7 +62,7 @@ func _main() -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(ch.data, api, {"name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "persist": false})
+	await g.start(ch.data, api, {"areas": ["graves"], "name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "persist": false})
 	host = g.core_host
 	hero = g.local_body()
 	g.kill_credited.connect(func(id: int, _d: String, _l: int, _e: bool, _a: String, peer: int, _x: float, _z: float) -> void: credited.append([id, peer]))

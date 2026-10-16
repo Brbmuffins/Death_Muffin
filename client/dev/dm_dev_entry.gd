@@ -46,7 +46,7 @@ func _ready() -> void:
 	game = load("res://next/next_game.tscn").instantiate()
 	game.name = "NextGame"
 	add_child(game)
-	var game_opts := {"name": "tester", "hud": true, "waves": not bool(opts["no_waves"])}
+	var game_opts := {"name": "tester", "hud": true, "waves": not bool(opts["no_waves"]), "areas": ["graves"]}   # the Graves alone: a quick fight (the boot plays the whole world)
 	if opts.has("seed"):
 		game_opts["seed"] = opts["seed"]
 	if opts.has("baked"):

@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_bleeding_willow.glb" id="1_ccc78"]
+
+[node name="prop_node_bleeding_willow" type="Node3D" unique_id=166288838]
+metadata/model = "models/props/prop_node_bleeding_willow.glb"
+metadata/height = 4.8
+metadata/small = false
+
+[node name="model" parent="." unique_id=148950942 instance=ExtResource("1_ccc78")]
+transform = Transform3D(4.8093934, 0, 0, 0, 4.8093934, 0, 0, 0, 4.8093934, 0, 2.4, 0)
+
+[editable path="model"]

@@ -282,13 +282,12 @@ func hand_overs(api: DmApi, shim: Shim) -> void:
 		await drop(m, shim)
 		return
 	var first := g.get_instance_id()
-	var changed: DmResult = await api.change_discipline(int(g.character["id"]), 11)
-	check(changed.ok and int(changed.data["class_index"]) == 11, "the stand-in's character is now a Reaper (%s)" % changed.error)
-	g.ui_host.class_changed(changed.data)
+	g.ui.pa._change_class(11)   # the class panel's pick: the server changes the character, then the game restarts with it
 	check(await until(func() -> bool: return m.slice != null and m.slice.get_instance_id() != first and m.slice.ready_ and DmLoadingScreen.current == null, 90.0),
 		"a discipline change from the class panel restarts the game")
 	var hero := m.slice.local_body() if m.slice != null else null
-	check(hero != null and hero.discipline_id == "reaper" and hero.p.has("souls"), "the hero is now a Reaper, with her soul bag")
+	check(m.slice != null and int(m.slice.character["class_index"]) == 11 and hero != null and hero.discipline_id == "reaper" and hero.p.has("souls"),
+		"the server changed the character and the hero is now a Reaper, with her soul bag")
 	if m.slice == null:
 		await drop(m, shim)
 		return

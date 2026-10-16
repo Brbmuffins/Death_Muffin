@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/plague_cart.glb" id="1_9d5c6"]
+
+[node name="plague_cart" type="Node3D" unique_id=194350642]
+metadata/model = "models/props/plague_cart.glb"
+metadata/height = 2.0
+metadata/small = false
+
+[node name="model" parent="." unique_id=129357395 instance=ExtResource("1_9d5c6")]
+transform = Transform3D(2.5534608, 0, 0, 0, 2.5534608, 0, 0, 0, 2.5534608, 0, 1, 0)
+
+[editable path="model"]

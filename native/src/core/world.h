@@ -15,6 +15,7 @@
 #include "corpse.h"
 #include "events.h"
 #include "grid.h"
+#include "navgrid.h"
 #include "replica.h"
 #include "rng.h"
 #include "status.h"
@@ -166,6 +167,7 @@ struct World {
 	Tuning tun;
 	LegionTuning legion;
 	NavHook nav;
+	NavGrid navgrid;  // the navmesh for keep_on_nav when GDScript gave it (DmCore.nav_add_region); else the hook's clamp
 	std::vector<EnemyDef> defs;
 	std::vector<StatusRule> status_rules;
 	int32_t st_stun = -1, st_frenzy = -1, st_withered = -1, st_chill = -1, st_hex = -1, st_barrier = -1, st_shrouded = -1;
@@ -288,6 +290,7 @@ struct World {
 	// One reliable record that is an event GDScript reads: it changes the tables and is re-emitted in the guest's event buffer. False: it does not fit the guest's world.
 	bool puppet_event(int32_t p_type, int32_t p_id, const int32_t *p_ints, int32_t p_ni, const float *p_floats, int32_t p_nf, const WireTail &p_tail, const uint8_t *p_status_bytes, uint32_t p_status_n);
 	void puppet_thrall_max_hp(int32_t p_id, float p_max_hp);
+	void keep_on_nav(float &x, float &z);  // the navmesh's closest point (NavGrid, or the hook's NavigationServer3D query)
 
 private:
 	void change(int32_t p_slot, int32_t p_next);

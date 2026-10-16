@@ -1,0 +1,1025 @@
+[gd_scene format=4]
+
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/pyre_floor.webp" id="1_8d131"]
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/stone_wall.webp" id="2_45f94"]
+[ext_resource type="PackedScene" path="res://areas/props/pillar.tscn" id="3_be89b"]
+[ext_resource type="PackedScene" path="res://areas/props/arch.tscn" id="4_c485c"]
+[ext_resource type="PackedScene" path="res://areas/props/slag_font.tscn" id="5_5cad1"]
+[ext_resource type="PackedScene" path="res://areas/props/waystone.tscn" id="6_cca26"]
+[ext_resource type="PackedScene" path="res://areas/props/cinder_obelisk.tscn" id="7_c422b"]
+[ext_resource type="PackedScene" path="res://areas/props/pyre_stack.tscn" id="8_4bf2f"]
+[ext_resource type="PackedScene" path="res://areas/props/dead_tree.tscn" id="9_f5464"]
+[ext_resource type="PackedScene" path="res://areas/props/bone_pile.tscn" id="10_35804"]
+[ext_resource type="PackedScene" path="res://areas/props/ember_altar.tscn" id="11_a1a33"]
+[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="12_bdf92"]
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="13_7607e"]
+[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="14_16348"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
+albedo_color = Color(0.84705883, 0.7058824, 0.59607846, 1)
+albedo_texture = ExtResource("1_8d131")
+roughness = 0.85
+texture_filter = 5
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_65c20"]
+_surfaces = [{
+"aabb": AABB(-20.800003, 0, -18.800003, 41.600006, 1e-05, 37.600006),
+"attribute_data": PackedByteArray("iIg4Qby7s8HZiZ2zQUyus7y7k0G8u7PBAQCAP0FMrrO8u5NBmZmBwQEAgD8BAIA/iIg4QZmZgcHZiZ2zAQCAPw=="),
+"format": 34359742519,
+"index_count": 6,
+"index_data": PackedByteArray("AAABAAIAAAACAAMA"),
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray("aGamwQAAAABoZpbBaGamQQAAAABoZpbBaGamQQAAAABoZpZBaGamwQAAAABoZpZB/3///////7//f///////v/9///////+//3///////78=")
+}]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fdc72"]
+albedo_color = Color(0.6039216, 0.57254905, 0.6431373, 1)
+albedo_texture = ExtResource("2_45f94")
+roughness = 0.92
+uv1_scale = Vector3(0.25, 0.25, 0.25)
+uv1_triplanar = true
+uv1_world_triplanar = true
+texture_filter = 5
+
+[sub_resource type="BoxMesh" id="BoxMesh_0b95e"]
+lightmap_size_hint = Vector2i(208, 276)
+add_uv2 = true
+size = Vector3(40, 7, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_f70b2"]
+lightmap_size_hint = Vector2i(208, 217)
+add_uv2 = true
+size = Vector3(40, 1.1, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_10823"]
+lightmap_size_hint = Vector2i(188, 256)
+add_uv2 = true
+size = Vector3(0.8, 7, 36)
+
+[sub_resource type="BoxMesh" id="BoxMesh_35807"]
+lightmap_size_hint = Vector2i(78, 146)
+add_uv2 = true
+size = Vector3(0.8, 7, 14)
+
+[sub_resource type="BoxMesh" id="BoxMesh_429e2"]
+lightmap_size_hint = Vector2i(78, 146)
+add_uv2 = true
+size = Vector3(0.8, 7, 14)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dce47"]
+albedo_color = Color(0.21, 0.28, 0.16, 1)
+roughness = 0.9
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_6da2d"]
+lightmap_size_hint = Vector2i(4, 6)
+add_uv2 = true
+top_radius = 0.03
+bottom_radius = 0.06
+height = 0.4
+radial_segments = 5
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_14b5d"]
+albedo_color = Color(0.8784314, 0.4392157, 0.22745098, 1)
+emission_enabled = true
+emission = Color(0.8784314, 0.4392157, 0.22745098, 1)
+emission_energy_multiplier = 0.7
+
+[sub_resource type="SphereMesh" id="SphereMesh_01334"]
+lightmap_size_hint = Vector2i(7, 4)
+add_uv2 = true
+radius = 0.16
+height = 0.26
+radial_segments = 8
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_65edd"]
+albedo_color = Color(0.21, 0.28, 0.16, 1)
+roughness = 0.9
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_87e22"]
+lightmap_size_hint = Vector2i(4, 6)
+add_uv2 = true
+top_radius = 0.03
+bottom_radius = 0.06
+height = 0.4
+radial_segments = 5
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ac1a3"]
+albedo_color = Color(0.8784314, 0.4392157, 0.22745098, 1)
+emission_enabled = true
+emission = Color(0.8784314, 0.4392157, 0.22745098, 1)
+emission_energy_multiplier = 0.7
+
+[sub_resource type="SphereMesh" id="SphereMesh_83ca8"]
+lightmap_size_hint = Vector2i(7, 4)
+add_uv2 = true
+radius = 0.16
+height = 0.26
+radial_segments = 8
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_060c7"]
+albedo_color = Color(0.21, 0.28, 0.16, 1)
+roughness = 0.9
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_cafe1"]
+lightmap_size_hint = Vector2i(4, 6)
+add_uv2 = true
+top_radius = 0.03
+bottom_radius = 0.06
+height = 0.4
+radial_segments = 5
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_13779"]
+albedo_color = Color(0.8784314, 0.4392157, 0.22745098, 1)
+emission_enabled = true
+emission = Color(0.8784314, 0.4392157, 0.22745098, 1)
+emission_energy_multiplier = 0.7
+
+[sub_resource type="SphereMesh" id="SphereMesh_f5f02"]
+lightmap_size_hint = Vector2i(7, 4)
+add_uv2 = true
+radius = 0.16
+height = 0.26
+radial_segments = 8
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_86eaa"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 0.47843137, 0.16470589, 0.3)
+albedo_texture = ExtResource("12_bdf92")
+texture_filter = 5
+
+[sub_resource type="QuadMesh" id="QuadMesh_a24bb"]
+size = Vector2(20, 20)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f0e93"]
+albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
+albedo_texture = ExtResource("13_7607e")
+roughness = 0.62
+texture_filter = 5
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_bc4f0"]
+_surfaces = [{
+"aabb": AABB(-4, 0, -4, 8, 1e-05, 8),
+"attribute_data": PackedByteArray("AAAQQZIkicEAAAAAAAAAACVJIkGSJInBAACAPwAAAAAlSSJBAACAwQAAgD8AAIA/AAAQQQAAgMEAAAAAAACAPw=="),
+"format": 34359742519,
+"index_count": 6,
+"index_data": PackedByteArray("AAABAAIAAAACAAMA"),
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray("AACAwAAAAAAAAIDAAACAQAAAAAAAAIDAAACAQAAAAAAAAIBAAACAwAAAAAAAAIBA/3///////7//f///////v/9///////+//3///////78=")
+}]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fcd29"]
+albedo_color = Color(0.5411765, 0.50980395, 0.5882353, 1)
+albedo_texture = ExtResource("2_45f94")
+roughness = 0.9
+uv1_scale = Vector3(0.25, 0.25, 0.25)
+uv1_triplanar = true
+uv1_world_triplanar = true
+texture_filter = 5
+
+[sub_resource type="BoxMesh" id="BoxMesh_d9232"]
+lightmap_size_hint = Vector2i(14, 61)
+add_uv2 = true
+size = Vector3(1, 5, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_6e5ba"]
+lightmap_size_hint = Vector2i(14, 61)
+add_uv2 = true
+size = Vector3(1, 5, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_85126"]
+lightmap_size_hint = Vector2i(59, 65)
+add_uv2 = true
+size = Vector3(10, 0.9, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_d3539"]
+albedo_color = Color(0.14117648, 0.12941177, 0.16470589, 1)
+metallic = 0.6
+roughness = 0.6
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_68bc5"]
+top_radius = 0.05
+bottom_radius = 0.05
+height = 4.8
+radial_segments = 5
+
+[sub_resource type="MultiMesh" id="MultiMesh_1b31f"]
+transform_format = 1
+instance_count = 19
+mesh = SubResource("CylinderMesh_68bc5")
+buffer = PackedFloat32Array(1, 0, 0, -4, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -3.5555556, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -3.1111112, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -2.6666667, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -2.2222223, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -1.7777778, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -1.3333334, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -0.8888889, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -0.44444445, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 0.44444445, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 0.8888889, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 1.3333334, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 1.7777778, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 2.2222223, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 2.6666667, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 3.1111112, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 3.5555556, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 4, 0, 1, 0, 2.4, 0, 0, 1, 0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_707ee"]
+size = Vector3(8, 0.08, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_a2335"]
+size = Vector3(8, 0.08, 0.1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_c4298"]
+transparency = 1
+blend_mode = 1
+cull_mode = 2
+shading_mode = 0
+albedo_color = Color(0.61, 0.36, 1, 0.9)
+albedo_texture = ExtResource("12_bdf92")
+texture_filter = 5
+
+[sub_resource type="QuadMesh" id="QuadMesh_fb593"]
+size = Vector2(7.2, 7.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0876d"]
+size = Vector3(8, 5, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e5def"]
+shading_mode = 0
+albedo_color = Color(1, 0.5909804, 0.38784313, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_9933f"]
+radius = 0.1
+height = 0.2
+radial_segments = 8
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1c5d5"]
+shading_mode = 0
+albedo_color = Color(1, 0.634902, 0.4152941, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_b595d"]
+transparency = 1
+blend_mode = 1
+cull_mode = 2
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("14_16348")
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_fcbc9"]
+_surfaces = [{
+"aabb": AABB(73.46, 0.015, -133.86, 36.42, 1e-05, 32.22),
+"attribute_data": PackedByteArray("QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/"),
+"format": 34359738393,
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 78,
+"vertex_data": PackedByteArray("cT3EQo/CdTyPwvPCj8LbQo/CdTyPwvPCj8LbQo/CdTxxPdzCcT3EQo/CdTyPwvPCj8LbQo/CdTxxPdzCcT3EQo/CdTxxPdzCrkeZQo/CdTxSuN7CUrimQo/CdTxSuN7CUrimQo/CdTyuR9HCrkeZQo/CdTxSuN7CUrimQo/CdTyuR9HCrkeZQo/CdTyuR9HCrkfBQo/CdTxSuN7CUrjOQo/CdTxSuN7CUrjOQo/CdTyuR9HCrkfBQo/CdTxSuN7CUrjOQo/CdTyuR9HCrkfBQo/CdTyuR9HCrkeZQo/CdTxSuP7CUrimQo/CdTxSuP7CUrimQo/CdTyuR/HCrkeZQo/CdTxSuP7CUrimQo/CdTyuR/HCrkeZQo/CdTyuR/HCrkfBQo/CdTxSuP7CUrjOQo/CdTxSuP7CUrjOQo/CdTyuR/HCrkfBQo/CdTxSuP7CUrjOQo/CdTyuR/HCrkfBQo/CdTyuR/HCrketQo/CdTxSuNjCUri6Qo/CdTxSuNjCUri6Qo/CdTyuR8vCrketQo/CdTxSuNjCUri6Qo/CdTyuR8vCrketQo/CdTyuR8vCrkedQo/CdTwp3AXDUriqQo/CdTwp3AXDUriqQo/CdTyuR/7CrkedQo/CdTwp3AXDUriqQo/CdTyuR/7CrkedQo/CdTyuR/7Crke9Qo/CdTwp3AXDUrjKQo/CdTwp3AXDUrjKQo/CdTyuR/7Crke9Qo/CdTwp3AXDUrjKQo/CdTyuR/7Crke9Qo/CdTyuR/7CheuSQo/CdTx7FOrCexSnQo/CdTx7FOrCexSnQo/CdTyF69XCheuSQo/CdTx7FOrCexSnQo/CdTyF69XCheuSQo/CdTyF69XCheuSQo/CdTx7FP7CexSnQo/CdTx7FP7CexSnQo/CdTyF6+nCheuSQo/CdTx7FP7CexSnQo/CdTyF6+nCheuSQo/CdTyF6+nCheu/Qo/CdTx7FOfCexTUQo/CdTx7FOfCexTUQo/CdTyF69LCheu/Qo/CdTx7FOfCexTUQo/CdTyF69LCheu/Qo/CdTyF69LCheu/Qo/CdTw9igDDexTUQo/CdTw9igDDexTUQo/CdTyF6+zCheu/Qo/CdTw9igDDexTUQo/CdTyF6+zCheu/Qo/CdTyF6+zCmpmrQo/CdTzNjALDZma8Qo/CdTzNjALDZma8Qo/CdTzNTPTCmpmrQo/CdTzNjALDZma8Qo/CdTzNTPTCmpmrQo/CdTzNTPTC")
+}]
+
+[sub_resource type="BoxOccluder3D" id="BoxOccluder3D_d58c5"]
+size = Vector3(40, 7, 0.8)
+
+[sub_resource type="BoxOccluder3D" id="BoxOccluder3D_85e52"]
+size = Vector3(0.8, 7, 36)
+
+[sub_resource type="BoxOccluder3D" id="BoxOccluder3D_a336a"]
+size = Vector3(0.8, 7, 14)
+
+[sub_resource type="BoxOccluder3D" id="BoxOccluder3D_85af8"]
+size = Vector3(0.8, 7, 14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_3ebdd"]
+size = Vector3(40, 7, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_d0761"]
+size = Vector3(40, 3, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ee9d2"]
+size = Vector3(0.8, 7, 36)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_c6b8b"]
+size = Vector3(0.8, 7, 14)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_486af"]
+height = 3.0
+radius = 0.85
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0f284"]
+size = Vector3(1, 3, 1)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_4a51a"]
+height = 3.0
+radius = 1.6
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_f3a3d"]
+height = 3.0
+radius = 0.6
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_e1e0f"]
+height = 3.0
+radius = 0.75
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_30b94"]
+height = 3.0
+radius = 1.3
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_49ab9"]
+height = 3.0
+radius = 0.55
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_b6060"]
+size = Vector3(2, 3, 1.6)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_9fe7a"]
+height = 3.0
+radius = 0.4
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_6deae"]
+vertices = PackedVector3Array(80.75, 0.5, -131, 82, 0.5, -131.75, 82, 0.5, -133.5, 70.5, 0.5, -133.5, 75.25, 0.5, -130.75, 76.75, 0.5, -130.75, 77.25, 0.5, -129, 81.25, 0.5, -129.5, 77.25, 0.5, -130.25, 70.5, 0.5, -128.25, 74.75, 0.5, -130.25, 75.25, 0.5, -128.25, 74.75, 0.5, -128.75, 88.5, 0.5, -127.75, 90, 0.5, -127.75, 90, 0.5, -128.25, 88.75, 0.5, -128.75, 88.75, 0.5, -130.25, 90, 0.5, -130.75, 90, 0.5, -133.5, 83, 0.5, -131.5, 84.25, 0.5, -130.25, 83.5, 0.5, -128.25, 83.75, 0.5, -127, 84.5, 0.5, -127, 84.25, 0.5, -128.75, 83, 0.5, -131, 85, 0.5, -125.75, 88.5, 0.5, -125.75, 95.75, 0.5, -130.25, 96.75, 0.5, -130.75, 97, 0.5, -131.5, 98, 0.5, -131.75, 98, 0.5, -133.5, 90.75, 0.5, -130.75, 91.25, 0.5, -129.5, 95.75, 0.5, -129.5, 99, 0.5, -131.5, 101.75, 0.5, -125.25, 102.25, 0.5, -124.75, 103.5, 0.5, -128.25, 102.75, 0.5, -128.75, 102.75, 0.5, -130.25, 104, 0.5, -130.75, 104, 0.5, -133.5, 97.5, 0.5, -128.25, 99, 0.5, -124.75, 99.5, 0.5, -125.25, 99.25, 0.5, -130, 105.25, 0.5, -130.25, 105.25, 0.5, -128.75, 104.75, 0.5, -128.25, 109.5, 0.5, -128.25, 109.5, 0.5, -133.5, 83, 0.5, -126.5, 82.25, 0.5, -128.25, 77.25, 0.5, -123.25, 78.75, 0.5, -123.75, 78.75, 0.5, -124.5, 81, 0.5, -125, 81.25, 0.5, -124.25, 83.25, 0.5, -125, 79.5, 0.5, -125.25, 76.5, 0.5, -128.25, 91, 0.5, -104, 90.5, 0.5, -104, 91.25, 0.5, -103.25, 90.75, 0.5, -128.25, 91.5, 0.5, -127.75, 91.25, 0.5, -102.5, 95.75, 0.5, -102.5, 88.75, 0.5, -103.25, 89.5, 0.5, -104, 88.75, 0.5, -104.5, 84.25, 0.5, -102.5, 101, 0.5, -112.25, 101, 0.5, -112.75, 100, 0.5, -113.25, 99.5, 0.5, -111.75, 100, 0.5, -114.25, 98.75, 0.5, -123.5, 91.5, 0.5, -125, 80, 0.5, -120.75, 80.25, 0.5, -112.75, 89.5, 0.5, -106.25, 100.25, 0.5, -105, 101, 0.5, -106, 100.25, 0.5, -106.75, 99, 0.5, -107, 100.5, 0.5, -114.75, 102, 0.5, -114.5, 102.25, 0.5, -114.75, 102.25, 0.5, -117, 96.25, 0.5, -128.25, 80.25, 0.5, -111.25, 79.25, 0.5, -110.25, 79.75, 0.5, -109.25, 81, 0.5, -109, 91.25, 0.5, -105.5, 96.25, 0.5, -103.75, 78.5, 0.5, -120.25, 78.5, 0.5, -113.75, 79.25, 0.5, -113.75, 81, 0.5, -123, 80.25, 0.5, -122.75, 98, 0.5, -103.5, 100.5, 0.5, -104.5, 83.75, 0.5, -103.75, 88.75, 0.5, -105.5, 84.25, 0.5, -124.75, 98.75, 0.5, -108.5, 99.5, 0.5, -109, 99.5, 0.5, -122.25, 88.5, 0.5, -125, 90.5, 0.5, -106.25, 101.5, 0.5, -121.75, 81, 0.5, -107.25, 82.5, 0.5, -103.75, 88.75, 0.5, -102.5, 76.75, 0.5, -122, 70.5, 0.5, -122, 102.75, 0.5, -123, 104.75, 0.5, -122.5, 105, 0.5, -123, 102.75, 0.5, -124.25, 106.25, 0.5, -123, 109.5, 0.5, -122.25, 106.75, 0.5, -122.25, 108.25, 0.5, -113, 109, 0.5, -112, 109.5, 0.5, -112, 104.5, 0.5, -121.75, 102.5, 0.5, -122.25, 105, 0.5, -118, 105.75, 0.5, -117.25, 106.25, 0.5, -121, 105, 0.5, -121, 103, 0.5, -118, 106, 0.5, -115.25, 104.75, 0.5, -114, 107.25, 0.5, -112.5, 70.5, 0.5, -117, 71.5, 0.5, -117, 77, 0.5, -120.75, 71.5, 0.5, -115.25, 77.25, 0.5, -113.25, 70.5, 0.5, -108, 72.5, 0.5, -108, 72.75, 0.5, -109, 74.5, 0.5, -108.75, 77, 0.5, -111, 76.75, 0.5, -112.75, 70.5, 0.5, -115, 104.75, 0.5, -103.75, 105.25, 0.5, -103.25, 105, 0.5, -104.25, 108.75, 0.5, -111.25, 106.75, 0.5, -104.75, 107, 0.5, -104, 109.5, 0.5, -104, 103, 0.5, -114, 102, 0.5, -113, 102.5, 0.5, -111.75, 107.75, 0.5, -111, 105.75, 0.5, -105, 101.75, 0.5, -108.75, 101, 0.5, -108.75, 101.25, 0.5, -107.5, 102.75, 0.5, -109.75, 102.25, 0.5, -105.75, 107, 0.5, -111.75, 103, 0.5, -103.5, 102.25, 0.5, -104.25, 78.75, 0.5, -108.5, 77.75, 0.5, -110.25, 79.75, 0.5, -102, 80.75, 0.5, -101.5, 81.75, 0.5, -102, 81.75, 0.5, -103.25, 80.5, 0.5, -106.75, 74.25, 0.5, -107, 75.5, 0.5, -103.75, 76.75, 0.5, -103.75, 77.25, 0.5, -102, 79.25, 0.5, -101.5, 77.25, 0.5, -103.25, 79, 0.5, -107, 72.75, 0.5, -107, 74.75, 0.5, -103.25, 74.75, 0.5, -101.75, 70.5, 0.5, -98.5, 74.75, 0.5, -98.5, 101, 0.5, -103.75, 102.75, 0.5, -101.75, 104, 0.5, -98.5, 104, 0.5, -101.25, 98.25, 0.5, -101.75, 97, 0.5, -98.5, 97, 0.5, -101.25, 106.25, 0.5, -103, 105.25, 0.5, -101.75, 109.5, 0.5, -98.5, 82.25, 0.5, -101.25, 80.75, 0.5, -100.25, 90, 0.5, -98.5, 90, 0.5, -101.25, 88.75, 0.5, -101.75, 83.75, 0.5, -101.25, 79, 0.5, -100.75, 76.75, 0.5, -101.25, 75.25, 0.5, -101.25, 79.75, 0.5, -100, 90.75, 0.5, -101.25, 95.75, 0.5, -101.75)
+polygons = [PackedInt32Array(1, 0, 2), PackedInt32Array(2, 0, 5), PackedInt32Array(2, 5, 4), PackedInt32Array(2, 4, 3), PackedInt32Array(8, 0, 6), PackedInt32Array(6, 0, 7), PackedInt32Array(10, 9, 4), PackedInt32Array(4, 9, 3), PackedInt32Array(0, 8, 5), PackedInt32Array(9, 12, 11), PackedInt32Array(10, 12, 9), PackedInt32Array(15, 14, 16), PackedInt32Array(16, 14, 13), PackedInt32Array(18, 17, 19), PackedInt32Array(19, 17, 21), PackedInt32Array(19, 21, 20), PackedInt32Array(19, 20, 2), PackedInt32Array(23, 22, 24), PackedInt32Array(24, 22, 25), PackedInt32Array(21, 26, 20), PackedInt32Array(13, 28, 27), PackedInt32Array(20, 1, 2), PackedInt32Array(17, 16, 13), PackedInt32Array(24, 25, 27), PackedInt32Array(27, 25, 21), PackedInt32Array(27, 21, 13), PackedInt32Array(13, 21, 17), PackedInt32Array(31, 30, 29), PackedInt32Array(33, 32, 31), PackedInt32Array(34, 18, 19), PackedInt32Array(31, 29, 33), PackedInt32Array(33, 29, 35), PackedInt32Array(33, 35, 34), PackedInt32Array(33, 34, 19), PackedInt32Array(29, 36, 35), PackedInt32Array(37, 32, 33), PackedInt32Array(39, 38, 40), PackedInt32Array(40, 38, 41), PackedInt32Array(43, 42, 44), PackedInt32Array(44, 42, 37), PackedInt32Array(44, 37, 33), PackedInt32Array(47, 46, 45), PackedInt32Array(37, 42, 48), PackedInt32Array(42, 41, 48), PackedInt32Array(48, 41, 45), PackedInt32Array(45, 41, 47), PackedInt32Array(47, 41, 38), PackedInt32Array(49, 43, 44), PackedInt32Array(52, 51, 50), PackedInt32Array(52, 50, 49), PackedInt32Array(44, 53, 49), PackedInt32Array(49, 53, 52), PackedInt32Array(23, 54, 22), PackedInt32Array(22, 54, 55), PackedInt32Array(54, 7, 55), PackedInt32Array(58, 57, 56), PackedInt32Array(60, 59, 61), PackedInt32Array(61, 59, 54), PackedInt32Array(59, 62, 54), PackedInt32Array(54, 62, 7), PackedInt32Array(7, 62, 6), PackedInt32Array(6, 62, 63), PackedInt32Array(58, 56, 62), PackedInt32Array(62, 56, 63), PackedInt32Array(66, 65, 64), PackedInt32Array(15, 67, 14), PackedInt32Array(14, 67, 68), PackedInt32Array(70, 69, 66), PackedInt32Array(72, 71, 73), PackedInt32Array(73, 71, 74), PackedInt32Array(76, 75, 77), PackedInt32Array(77, 75, 78), PackedInt32Array(80, 79, 81), PackedInt32Array(81, 79, 84), PackedInt32Array(81, 84, 83), PackedInt32Array(81, 83, 82), PackedInt32Array(86, 85, 87), PackedInt32Array(87, 85, 88), PackedInt32Array(90, 89, 91), PackedInt32Array(91, 89, 92), PackedInt32Array(67, 35, 68), PackedInt32Array(68, 35, 36), PackedInt32Array(68, 36, 93), PackedInt32Array(96, 95, 97), PackedInt32Array(97, 95, 94), PackedInt32Array(64, 98, 66), PackedInt32Array(66, 98, 70), PackedInt32Array(70, 98, 99), PackedInt32Array(102, 101, 100), PackedInt32Array(100, 82, 102), PackedInt32Array(102, 82, 83), PackedInt32Array(82, 104, 103), PackedInt32Array(79, 77, 78), PackedInt32Array(85, 106, 88), PackedInt32Array(88, 106, 105), PackedInt32Array(74, 107, 73), PackedInt32Array(73, 107, 108), PackedInt32Array(61, 109, 60), PackedInt32Array(60, 109, 103), PackedInt32Array(78, 111, 110), PackedInt32Array(89, 79, 92), PackedInt32Array(92, 79, 112), PackedInt32Array(112, 79, 80), PackedInt32Array(28, 113, 27), PackedInt32Array(27, 113, 109), PackedInt32Array(78, 110, 79), PackedInt32Array(79, 110, 114), PackedInt32Array(79, 114, 84), PackedInt32Array(112, 115, 92), PackedInt32Array(94, 83, 97), PackedInt32Array(97, 83, 107), PackedInt32Array(107, 83, 108), PackedInt32Array(108, 83, 84), PackedInt32Array(103, 109, 82), PackedInt32Array(82, 109, 113), PackedInt32Array(82, 113, 81), PackedInt32Array(105, 99, 88), PackedInt32Array(88, 99, 110), PackedInt32Array(110, 99, 98), PackedInt32Array(110, 98, 114), PackedInt32Array(117, 116, 107), PackedInt32Array(107, 116, 97), PackedInt32Array(45, 46, 93), PackedInt32Array(93, 46, 80), PackedInt32Array(93, 80, 81), PackedInt32Array(93, 81, 68), PackedInt32Array(71, 118, 74), PackedInt32Array(11, 63, 56), PackedInt32Array(56, 119, 11), PackedInt32Array(11, 119, 9), PackedInt32Array(9, 119, 120), PackedInt32Array(122, 121, 123), PackedInt32Array(123, 121, 124), PackedInt32Array(39, 51, 125), PackedInt32Array(125, 51, 52), PackedInt32Array(125, 52, 126), PackedInt32Array(124, 39, 123), PackedInt32Array(123, 39, 125), PackedInt32Array(126, 127, 125), PackedInt32Array(39, 40, 51), PackedInt32Array(130, 129, 128), PackedInt32Array(132, 121, 131), PackedInt32Array(131, 121, 122), PackedInt32Array(136, 135, 133), PackedInt32Array(133, 135, 134), PackedInt32Array(131, 136, 132), PackedInt32Array(132, 136, 115), PackedInt32Array(115, 136, 137), PackedInt32Array(115, 137, 92), PackedInt32Array(128, 140, 138), PackedInt32Array(138, 140, 139), PackedInt32Array(133, 137, 136), PackedInt32Array(135, 127, 126), PackedInt32Array(128, 138, 130), PackedInt32Array(130, 138, 134), PackedInt32Array(130, 134, 135), PackedInt32Array(130, 135, 126), PackedInt32Array(141, 120, 142), PackedInt32Array(142, 120, 143), PackedInt32Array(143, 120, 119), PackedInt32Array(145, 144, 101), PackedInt32Array(101, 144, 142), PackedInt32Array(101, 142, 143), PackedInt32Array(101, 143, 100), PackedInt32Array(148, 147, 146), PackedInt32Array(150, 149, 151), PackedInt32Array(151, 149, 148), PackedInt32Array(151, 148, 145), PackedInt32Array(145, 148, 146), PackedInt32Array(145, 146, 144), PackedInt32Array(144, 146, 152), PackedInt32Array(154, 153, 155), PackedInt32Array(129, 130, 156), PackedInt32Array(156, 130, 157), PackedInt32Array(157, 130, 158), PackedInt32Array(158, 130, 159), PackedInt32Array(91, 160, 90), PackedInt32Array(90, 160, 161), PackedInt32Array(161, 160, 162), PackedInt32Array(76, 161, 75), PackedInt32Array(75, 161, 162), PackedInt32Array(164, 163, 157), PackedInt32Array(157, 163, 156), PackedInt32Array(167, 166, 165), PackedInt32Array(167, 165, 168), PackedInt32Array(87, 167, 86), PackedInt32Array(86, 167, 169), PackedInt32Array(167, 168, 169), PackedInt32Array(169, 168, 164), PackedInt32Array(164, 168, 163), PackedInt32Array(163, 168, 170), PackedInt32Array(155, 153, 171), PackedInt32Array(140, 170, 139), PackedInt32Array(139, 170, 160), PackedInt32Array(160, 170, 162), PackedInt32Array(162, 170, 168), PackedInt32Array(172, 169, 171), PackedInt32Array(171, 169, 155), PackedInt32Array(155, 169, 164), PackedInt32Array(96, 173, 95), PackedInt32Array(95, 173, 174), PackedInt32Array(176, 175, 177), PackedInt32Array(177, 175, 178), PackedInt32Array(179, 116, 117), PackedInt32Array(182, 181, 180), PackedInt32Array(184, 183, 175), PackedInt32Array(175, 183, 185), PackedInt32Array(173, 186, 150), PackedInt32Array(150, 186, 149), PackedInt32Array(149, 186, 180), PackedInt32Array(180, 186, 182), PackedInt32Array(150, 174, 173), PackedInt32Array(117, 178, 175), PackedInt32Array(185, 182, 175), PackedInt32Array(175, 182, 186), PackedInt32Array(175, 186, 179), PackedInt32Array(175, 179, 117), PackedInt32Array(146, 147, 187), PackedInt32Array(181, 188, 180), PackedInt32Array(180, 188, 187), PackedInt32Array(188, 189, 187), PackedInt32Array(187, 189, 146), PackedInt32Array(146, 189, 190), PackedInt32Array(189, 191, 190), PackedInt32Array(172, 171, 192), PackedInt32Array(192, 171, 193), PackedInt32Array(193, 195, 194), PackedInt32Array(106, 192, 105), PackedInt32Array(105, 192, 196), PackedInt32Array(192, 193, 196), PackedInt32Array(196, 193, 194), PackedInt32Array(196, 194, 197), PackedInt32Array(197, 198, 196), PackedInt32Array(200, 154, 199), PackedInt32Array(199, 158, 159), PackedInt32Array(194, 195, 200), PackedInt32Array(199, 159, 200), PackedInt32Array(200, 159, 201), PackedInt32Array(200, 201, 194), PackedInt32Array(177, 202, 176), PackedInt32Array(176, 202, 203), PackedInt32Array(205, 204, 206), PackedInt32Array(206, 204, 207), PackedInt32Array(207, 204, 203), PackedInt32Array(184, 208, 183), PackedInt32Array(183, 208, 209), PackedInt32Array(118, 206, 74), PackedInt32Array(74, 206, 207), PackedInt32Array(191, 189, 210), PackedInt32Array(203, 202, 207), PackedInt32Array(208, 211, 209), PackedInt32Array(209, 211, 210), PackedInt32Array(210, 211, 191), PackedInt32Array(211, 203, 191), PackedInt32Array(191, 203, 204), PackedInt32Array(204, 205, 212), PackedInt32Array(198, 197, 213), PackedInt32Array(213, 197, 69), PackedInt32Array(69, 197, 212), PackedInt32Array(212, 197, 204), PackedInt32Array(69, 70, 213)]
+agent_height = 1.75
+region_min_size = 1.0
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_156e2"]
+vertices = PackedVector3Array(70.5, 0.5, -112.5, 70.5, 0.5, -115, 69.5, 0.5, -115, 63.5, 0.5, -112.5, 69.5, 0.5, -117, 70.5, 0.5, -117, 70.5, 0.5, -119.5, 63.5, 0.5, -119.5)
+polygons = [PackedInt32Array(1, 0, 2), PackedInt32Array(2, 0, 3), PackedInt32Array(5, 4, 6), PackedInt32Array(6, 4, 7), PackedInt32Array(4, 2, 7), PackedInt32Array(7, 2, 3)]
+agent_height = 1.75
+region_min_size = 1.0
+
+[node name="pyre" type="Node3D" unique_id=233132501]
+metadata/area_id = "pyre"
+metadata/area_name = "The Cinder Pyre"
+metadata/theme = "pyre"
+metadata/safe = false
+metadata/rect = [70.0, -134.0, 110.0, -98.0]
+
+[node name="Floor" type="Node3D" parent="." unique_id=88125552]
+
+[node name="ground" type="MeshInstance3D" parent="Floor" unique_id=136680512]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0, -116)
+material_override = SubResource("StandardMaterial3D_f5800")
+cast_shadow = 0
+mesh = SubResource("ArrayMesh_65c20")
+
+[node name="Walls" type="Node3D" parent="." unique_id=150073835]
+
+[node name="wall_000" type="MeshInstance3D" parent="Walls" unique_id=23992113]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 3.5, -134.4)
+material_override = SubResource("StandardMaterial3D_fdc72")
+mesh = SubResource("BoxMesh_0b95e")
+
+[node name="wall_001" type="MeshInstance3D" parent="Walls" unique_id=180250690]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0.55, -97.6)
+material_override = SubResource("StandardMaterial3D_fdc72")
+mesh = SubResource("BoxMesh_f70b2")
+
+[node name="wall_002" type="MeshInstance3D" parent="Walls" unique_id=88923270]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 110.4, 3.5, -116)
+material_override = SubResource("StandardMaterial3D_fdc72")
+mesh = SubResource("BoxMesh_10823")
+
+[node name="wall_003" type="MeshInstance3D" parent="Walls" unique_id=128018842]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.6, 3.5, -127)
+material_override = SubResource("StandardMaterial3D_fdc72")
+mesh = SubResource("BoxMesh_35807")
+
+[node name="wall_004" type="MeshInstance3D" parent="Walls" unique_id=208192594]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.6, 3.5, -105)
+material_override = SubResource("StandardMaterial3D_fdc72")
+mesh = SubResource("BoxMesh_429e2")
+
+[node name="Props" type="Node3D" parent="." unique_id=105854251]
+
+[node name="pillar_000" parent="Props" unique_id=152429596 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 76, 0, -102.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_001" parent="Props" unique_id=74280438 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 76, 0, -129.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_002" parent="Props" unique_id=264773465 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 83, 0, -102.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_003" parent="Props" unique_id=204049935 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 83, 0, -129.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_004" parent="Props" unique_id=104674045 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0, -102.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_005" parent="Props" unique_id=219152206 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0, -129.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_006" parent="Props" unique_id=126863529 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 97, 0, -102.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_007" parent="Props" unique_id=90094404 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 97, 0, -129.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_008" parent="Props" unique_id=104860955 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 0, -102.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_009" parent="Props" unique_id=113229677 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 0, -129.5)
+metadata/prop_kind = "pillar"
+
+[node name="arch_000" parent="Props" unique_id=177293998 instance=ExtResource("4_c485c")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 70.5, 0, -116)
+metadata/prop_kind = "arch"
+
+[node name="slag_font_000" parent="Props" unique_id=252275614 instance=ExtResource("5_5cad1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 0, -116)
+metadata/prop_kind = "slag_font"
+
+[node name="waystone_000" parent="Props" unique_id=239825319 instance=ExtResource("6_cca26")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 73.5, 0, -108)
+metadata/prop_kind = "waystone"
+
+[node name="cinder_obelisk_000" parent="Props" unique_id=214968388 instance=ExtResource("7_c422b")]
+transform = Transform3D(0.12631506, 0, 0.99199015, 0, 1, 0, -0.99199015, 0, 0.12631506, 80, 0, -108)
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="cinder_obelisk_001" parent="Props" unique_id=223484933 instance=ExtResource("7_c422b")]
+transform = Transform3D(0.6668943, 0, 0.7451523, 0, 1, 0, -0.7451523, 0, 0.6668943, 100, 0, -108)
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="cinder_obelisk_002" parent="Props" unique_id=266930147 instance=ExtResource("7_c422b")]
+transform = Transform3D(-0.5774158, 0, 0.81645024, 0, 1, 0, -0.81645024, 0, -0.5774158, 80, 0, -124)
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="cinder_obelisk_003" parent="Props" unique_id=243480739 instance=ExtResource("7_c422b")]
+transform = Transform3D(-0.98582006, 0, 0.16780588, 0, 1, 0, -0.16780588, 0, -0.98582006, 100, 0, -124)
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="cinder_obelisk_004" parent="Props" unique_id=28811232 instance=ExtResource("7_c422b")]
+transform = Transform3D(-0.44026467, 0, 0.89786804, 0, 1, 0, -0.89786804, 0, -0.44026467, 90, 0, -105)
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="cinder_obelisk_005" parent="Props" unique_id=3651731 instance=ExtResource("7_c422b")]
+transform = Transform3D(-0.84417516, 0, 0.5360674, 0, 1, 0, -0.5360674, 0, -0.84417516, 82, 0, -130.5)
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="cinder_obelisk_006" parent="Props" unique_id=27359256 instance=ExtResource("7_c422b")]
+transform = Transform3D(0.24364983, 0, 0.9698633, 0, 1, 0, -0.9698633, 0, 0.24364983, 98, 0, -130.5)
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="pyre_stack_000" parent="Props" unique_id=47937429 instance=ExtResource("8_4bf2f")]
+transform = Transform3D(0.9553365, 0, 0.29552022, 0, 1, 0, -0.29552022, 0, 0.9553365, 78.5, 0, -112)
+metadata/prop_kind = "pyre_stack"
+
+[node name="pyre_stack_001" parent="Props" unique_id=60361518 instance=ExtResource("8_4bf2f")]
+transform = Transform3D(-0.7373938, 0, 0.67546314, 0, 1, 0, -0.67546314, 0, -0.7373938, 78.5, 0, -122)
+metadata/prop_kind = "pyre_stack"
+
+[node name="pyre_stack_002" parent="Props" unique_id=128387757 instance=ExtResource("8_4bf2f")]
+transform = Transform3D(0.4535961, 0, 0.8912074, 0, 1, 0, -0.8912074, 0, 0.4535961, 101, 0, -110.5)
+metadata/prop_kind = "pyre_stack"
+
+[node name="pyre_stack_003" parent="Props" unique_id=114020181 instance=ExtResource("8_4bf2f")]
+transform = Transform3D(-0.57482404, 0, -0.81827706, 0, 1, 0, 0.81827706, 0, -0.57482404, 101, 0, -123.5)
+metadata/prop_kind = "pyre_stack"
+
+[node name="dead_tree_000" parent="Props" unique_id=238779804 instance=ExtResource("9_f5464")]
+transform = Transform3D(-0.33958808, 0, -0.9405742, 0, 1, 0, 0.9405742, 0, -0.33958808, 101.42422, 0, -104.86372)
+metadata/prop_kind = "dead_tree"
+
+[node name="bone_pile_000" parent="Props" unique_id=17329318 instance=ExtResource("10_35804")]
+transform = Transform3D(-0.42060152, 0, -0.90724546, 0, 1, 0, 0.90724546, 0, -0.42060152, 83.98317, 0, -125.90305)
+metadata/prop_kind = "bone_pile"
+
+[node name="dead_tree_001" parent="Props" unique_id=202732626 instance=ExtResource("9_f5464")]
+transform = Transform3D(-0.67334455, 0, -0.73932886, 0, 1, 0, 0.73932886, 0, -0.67334455, 101.0449, 0, -113.74073)
+metadata/prop_kind = "dead_tree"
+
+[node name="bone_pile_001" parent="Props" unique_id=257459566 instance=ExtResource("10_35804")]
+transform = Transform3D(-0.9108224, 0, -0.4127984, 0, 1, 0, 0.4127984, 0, -0.9108224, 105.64995, 0, -122.03616)
+metadata/prop_kind = "bone_pile"
+
+[node name="ember_altar_000" parent="Props" unique_id=208507706 instance=ExtResource("11_a1a33")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0, -126.35)
+metadata/prop_kind = "ember_altar"
+
+[node name="GatherNodes" type="Node3D" parent="." unique_id=118052868]
+
+[node name="pyre_0" type="Node3D" parent="GatherNodes" unique_id=9992459]
+transform = Transform3D(0.5492398, 0, -0.8356648, 0, 1, 0, 0.8356648, 0, 0.5492398, 106, 0.04, -104)
+metadata/node_id = "pyre_0"
+metadata/node_type = "ash_bloom_patch"
+metadata/node_kind = "herb"
+
+[node name="stem" type="MeshInstance3D" parent="GatherNodes/pyre_0" unique_id=188446665]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+material_override = SubResource("StandardMaterial3D_dce47")
+mesh = SubResource("CylinderMesh_6da2d")
+
+[node name="cap" type="MeshInstance3D" parent="GatherNodes/pyre_0" unique_id=54739345]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+material_override = SubResource("StandardMaterial3D_14b5d")
+mesh = SubResource("SphereMesh_01334")
+
+[node name="pyre_1" type="Node3D" parent="GatherNodes" unique_id=239257251]
+transform = Transform3D(0.7498031, 0, 0.66166097, 0, 1, 0, -0.66166097, 0, 0.7498031, 80, 0.04, -101)
+metadata/node_id = "pyre_1"
+metadata/node_type = "ash_bloom_patch"
+metadata/node_kind = "herb"
+
+[node name="stem" type="MeshInstance3D" parent="GatherNodes/pyre_1" unique_id=21910054]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+material_override = SubResource("StandardMaterial3D_65edd")
+mesh = SubResource("CylinderMesh_87e22")
+
+[node name="cap" type="MeshInstance3D" parent="GatherNodes/pyre_1" unique_id=43998707]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+material_override = SubResource("StandardMaterial3D_ac1a3")
+mesh = SubResource("SphereMesh_83ca8")
+
+[node name="pyre_2" type="Node3D" parent="GatherNodes" unique_id=131790218]
+transform = Transform3D(0.1925576, 0, 0.9812857, 0, 1, 0, -0.9812857, 0, 0.1925576, 108, 0.04, -112)
+metadata/node_id = "pyre_2"
+metadata/node_type = "ash_bloom_patch"
+metadata/node_kind = "herb"
+
+[node name="stem" type="MeshInstance3D" parent="GatherNodes/pyre_2" unique_id=61116088]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+material_override = SubResource("StandardMaterial3D_060c7")
+mesh = SubResource("CylinderMesh_cafe1")
+
+[node name="cap" type="MeshInstance3D" parent="GatherNodes/pyre_2" unique_id=65074720]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+material_override = SubResource("StandardMaterial3D_13779")
+mesh = SubResource("SphereMesh_f5f02")
+
+[node name="Decals" type="Node3D" parent="." unique_id=150474165]
+
+[node name="sigil_00" type="MeshInstance3D" parent="Decals" unique_id=212887681]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0.03, -116)
+material_override = SubResource("StandardMaterial3D_86eaa")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_a24bb")
+
+[node name="Water" type="Node3D" parent="." unique_id=256355246]
+
+[node name="Doors" type="Node3D" parent="." unique_id=101968175]
+
+[node name="cloister_pyre" type="Node3D" parent="Doors" unique_id=217580914]
+metadata/door_id = "cloister_pyre"
+metadata/areas = ["cloister", "pyre"]
+metadata/always_open = false
+
+[node name="floor" type="MeshInstance3D" parent="Doors/cloister_pyre" unique_id=250062297]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 67, 0.005, -116)
+material_override = SubResource("StandardMaterial3D_f0e93")
+cast_shadow = 0
+mesh = SubResource("ArrayMesh_bc4f0")
+
+[node name="gate" type="Node3D" parent="Doors/cloister_pyre" unique_id=40671690]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 67, 0, -116)
+
+[node name="post_0" type="MeshInstance3D" parent="Doors/cloister_pyre/gate" unique_id=268047404]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 2.5, 0)
+material_override = SubResource("StandardMaterial3D_fcd29")
+mesh = SubResource("BoxMesh_d9232")
+
+[node name="post_1" type="MeshInstance3D" parent="Doors/cloister_pyre/gate" unique_id=238677023]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 2.5, 0)
+material_override = SubResource("StandardMaterial3D_fcd29")
+mesh = SubResource("BoxMesh_6e5ba")
+
+[node name="lintel" type="MeshInstance3D" parent="Doors/cloister_pyre/gate" unique_id=149809241]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.2, 0)
+material_override = SubResource("StandardMaterial3D_fcd29")
+mesh = SubResource("BoxMesh_85126")
+
+[node name="bars" type="Node3D" parent="Doors/cloister_pyre/gate" unique_id=238825641]
+
+[node name="bars" type="MultiMeshInstance3D" parent="Doors/cloister_pyre/gate/bars" unique_id=89391355]
+material_override = SubResource("StandardMaterial3D_d3539")
+gi_mode = 0
+multimesh = SubResource("MultiMesh_1b31f")
+
+[node name="rail_0" type="MeshInstance3D" parent="Doors/cloister_pyre/gate/bars" unique_id=62595125]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+material_override = SubResource("StandardMaterial3D_d3539")
+gi_mode = 0
+mesh = SubResource("BoxMesh_707ee")
+
+[node name="rail_1" type="MeshInstance3D" parent="Doors/cloister_pyre/gate/bars" unique_id=244237883]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 0)
+material_override = SubResource("StandardMaterial3D_d3539")
+gi_mode = 0
+mesh = SubResource("BoxMesh_a2335")
+
+[node name="seal" type="MeshInstance3D" parent="Doors/cloister_pyre/gate/bars" unique_id=92193592]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0.12)
+material_override = SubResource("StandardMaterial3D_c4298")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_fb593")
+
+[node name="body" type="StaticBody3D" parent="Doors/cloister_pyre/gate" unique_id=261381161]
+
+[node name="collider" type="CollisionShape3D" parent="Doors/cloister_pyre/gate/body" unique_id=214062925]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
+shape = SubResource("BoxShape3D_0876d")
+
+[node name="Lights" type="Node3D" parent="." unique_id=96312550]
+
+[node name="slag_font_000" type="OmniLight3D" parent="Lights" unique_id=161542431]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 3.4, -116)
+light_color = Color(1, 0.41568628, 0.1254902, 1)
+light_energy = 1.98
+light_bake_mode = 1
+omni_range = 14.0
+omni_attenuation = 1.3
+metadata/prop_kind = "slag_font"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/slag_font_000" unique_id=78804847]
+material_override = SubResource("StandardMaterial3D_e5def")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="cinder_obelisk_000" type="OmniLight3D" parent="Lights" unique_id=246118717]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 3.4, -108)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 1.26
+light_bake_mode = 1
+omni_range = 8.0
+omni_attenuation = 1.3
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/cinder_obelisk_000" unique_id=225150999]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="cinder_obelisk_001" type="OmniLight3D" parent="Lights" unique_id=17858079]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 3.4, -108)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 1.26
+light_bake_mode = 1
+omni_range = 8.0
+omni_attenuation = 1.3
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/cinder_obelisk_001" unique_id=11654033]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="cinder_obelisk_002" type="OmniLight3D" parent="Lights" unique_id=67684277]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 3.4, -124)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 1.26
+light_bake_mode = 1
+omni_range = 8.0
+omni_attenuation = 1.3
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/cinder_obelisk_002" unique_id=164710642]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="cinder_obelisk_003" type="OmniLight3D" parent="Lights" unique_id=134624413]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 3.4, -124)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 1.26
+light_bake_mode = 1
+omni_range = 8.0
+omni_attenuation = 1.3
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/cinder_obelisk_003" unique_id=28373619]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="cinder_obelisk_004" type="OmniLight3D" parent="Lights" unique_id=155641501]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 3.4, -105)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 1.26
+light_bake_mode = 1
+omni_range = 8.0
+omni_attenuation = 1.3
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/cinder_obelisk_004" unique_id=36860777]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="cinder_obelisk_005" type="OmniLight3D" parent="Lights" unique_id=53258331]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 82, 3.4, -130.5)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 1.26
+light_bake_mode = 1
+omni_range = 8.0
+omni_attenuation = 1.3
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/cinder_obelisk_005" unique_id=89386899]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="cinder_obelisk_006" type="OmniLight3D" parent="Lights" unique_id=181840409]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 98, 3.4, -130.5)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 1.26
+light_bake_mode = 1
+omni_range = 8.0
+omni_attenuation = 1.3
+metadata/prop_kind = "cinder_obelisk"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/cinder_obelisk_006" unique_id=22771943]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="pyre_stack_000" type="OmniLight3D" parent="Lights" unique_id=24378622]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 78.5, 3.2, -112)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 2.16
+light_bake_mode = 1
+omni_range = 12.0
+omni_attenuation = 1.3
+metadata/prop_kind = "pyre_stack"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/pyre_stack_000" unique_id=134972010]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="pyre_stack_001" type="OmniLight3D" parent="Lights" unique_id=140036687]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 78.5, 3.2, -122)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 2.16
+light_bake_mode = 1
+omni_range = 12.0
+omni_attenuation = 1.3
+metadata/prop_kind = "pyre_stack"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/pyre_stack_001" unique_id=154206556]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="pyre_stack_002" type="OmniLight3D" parent="Lights" unique_id=247040974]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 101, 3.2, -110.5)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 2.16
+light_bake_mode = 1
+omni_range = 12.0
+omni_attenuation = 1.3
+metadata/prop_kind = "pyre_stack"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/pyre_stack_002" unique_id=1391654]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="pyre_stack_003" type="OmniLight3D" parent="Lights" unique_id=260016149]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 101, 3.2, -123.5)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 2.16
+light_bake_mode = 1
+omni_range = 12.0
+omni_attenuation = 1.3
+metadata/prop_kind = "pyre_stack"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/pyre_stack_003" unique_id=106549280]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="ember_altar_000" type="OmniLight3D" parent="Lights" unique_id=55600514]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 2.6, -126.35)
+light_color = Color(1, 0.47843137, 0.16470589, 1)
+light_energy = 1.44
+light_bake_mode = 1
+omni_range = 10.0
+omni_attenuation = 1.3
+metadata/prop_kind = "ember_altar"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/ember_altar_000" unique_id=81920071]
+material_override = SubResource("StandardMaterial3D_1c5d5")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_9933f")
+
+[node name="light_pools" type="MeshInstance3D" parent="Lights" unique_id=226530432]
+material_override = SubResource("StandardMaterial3D_b595d")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("ArrayMesh_fcbc9")
+
+[node name="Occluders" type="Node3D" parent="." unique_id=237683523]
+
+[node name="wall_000" type="OccluderInstance3D" parent="Occluders" unique_id=48354346]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 3.5, -134.4)
+occluder = SubResource("BoxOccluder3D_d58c5")
+
+[node name="wall_002" type="OccluderInstance3D" parent="Occluders" unique_id=260223253]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 110.4, 3.5, -116)
+occluder = SubResource("BoxOccluder3D_85e52")
+
+[node name="wall_003" type="OccluderInstance3D" parent="Occluders" unique_id=194070139]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.6, 3.5, -127)
+occluder = SubResource("BoxOccluder3D_a336a")
+
+[node name="wall_004" type="OccluderInstance3D" parent="Occluders" unique_id=155551578]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.6, 3.5, -105)
+occluder = SubResource("BoxOccluder3D_85af8")
+
+[node name="Colliders" type="StaticBody3D" parent="." unique_id=188578615]
+
+[node name="wall_000" type="CollisionShape3D" parent="Colliders" unique_id=215044125]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 3.5, -134.4)
+shape = SubResource("BoxShape3D_3ebdd")
+
+[node name="wall_001" type="CollisionShape3D" parent="Colliders" unique_id=172319715]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 1.5, -97.6)
+shape = SubResource("BoxShape3D_d0761")
+
+[node name="wall_002" type="CollisionShape3D" parent="Colliders" unique_id=23933053]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 110.4, 3.5, -116)
+shape = SubResource("BoxShape3D_ee9d2")
+
+[node name="wall_003" type="CollisionShape3D" parent="Colliders" unique_id=197580681]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.6, 3.5, -127)
+shape = SubResource("BoxShape3D_c6b8b")
+
+[node name="wall_004" type="CollisionShape3D" parent="Colliders" unique_id=262748846]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.6, 3.5, -105)
+shape = SubResource("BoxShape3D_c6b8b")
+
+[node name="pillar_000" type="CollisionShape3D" parent="Colliders" unique_id=52324171]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 76, 1.5, -102.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="pillar_001" type="CollisionShape3D" parent="Colliders" unique_id=135524775]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 76, 1.5, -129.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="pillar_002" type="CollisionShape3D" parent="Colliders" unique_id=94092589]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 83, 1.5, -102.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="pillar_003" type="CollisionShape3D" parent="Colliders" unique_id=69922899]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 83, 1.5, -129.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="pillar_004" type="CollisionShape3D" parent="Colliders" unique_id=176292841]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 1.5, -102.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="pillar_005" type="CollisionShape3D" parent="Colliders" unique_id=209430984]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 1.5, -129.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="pillar_006" type="CollisionShape3D" parent="Colliders" unique_id=9107627]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 97, 1.5, -102.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="pillar_007" type="CollisionShape3D" parent="Colliders" unique_id=167274988]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 97, 1.5, -129.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="pillar_008" type="CollisionShape3D" parent="Colliders" unique_id=131897248]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 1.5, -102.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="pillar_009" type="CollisionShape3D" parent="Colliders" unique_id=234659145]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 1.5, -129.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="arch_000" type="CollisionShape3D" parent="Colliders" unique_id=160938373]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 70.5, 1.5, -116)
+shape = SubResource("BoxShape3D_0f284")
+
+[node name="slag_font_000" type="CollisionShape3D" parent="Colliders" unique_id=68529255]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 1.5, -116)
+shape = SubResource("CylinderShape3D_4a51a")
+
+[node name="waystone_000" type="CollisionShape3D" parent="Colliders" unique_id=68000032]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 73.5, 1.5, -108)
+shape = SubResource("CylinderShape3D_f3a3d")
+
+[node name="cinder_obelisk_000" type="CollisionShape3D" parent="Colliders" unique_id=267655341]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 1.5, -108)
+shape = SubResource("CylinderShape3D_e1e0f")
+
+[node name="cinder_obelisk_001" type="CollisionShape3D" parent="Colliders" unique_id=234906655]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 1.5, -108)
+shape = SubResource("CylinderShape3D_e1e0f")
+
+[node name="cinder_obelisk_002" type="CollisionShape3D" parent="Colliders" unique_id=127444441]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 1.5, -124)
+shape = SubResource("CylinderShape3D_e1e0f")
+
+[node name="cinder_obelisk_003" type="CollisionShape3D" parent="Colliders" unique_id=249286455]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 1.5, -124)
+shape = SubResource("CylinderShape3D_e1e0f")
+
+[node name="cinder_obelisk_004" type="CollisionShape3D" parent="Colliders" unique_id=70064550]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 1.5, -105)
+shape = SubResource("CylinderShape3D_e1e0f")
+
+[node name="cinder_obelisk_005" type="CollisionShape3D" parent="Colliders" unique_id=221357012]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 82, 1.5, -130.5)
+shape = SubResource("CylinderShape3D_e1e0f")
+
+[node name="cinder_obelisk_006" type="CollisionShape3D" parent="Colliders" unique_id=78052724]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 98, 1.5, -130.5)
+shape = SubResource("CylinderShape3D_e1e0f")
+
+[node name="pyre_stack_000" type="CollisionShape3D" parent="Colliders" unique_id=57913638]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 78.5, 1.5, -112)
+shape = SubResource("CylinderShape3D_30b94")
+
+[node name="pyre_stack_001" type="CollisionShape3D" parent="Colliders" unique_id=50804045]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 78.5, 1.5, -122)
+shape = SubResource("CylinderShape3D_30b94")
+
+[node name="pyre_stack_002" type="CollisionShape3D" parent="Colliders" unique_id=149907662]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 101, 1.5, -110.5)
+shape = SubResource("CylinderShape3D_30b94")
+
+[node name="pyre_stack_003" type="CollisionShape3D" parent="Colliders" unique_id=85888778]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 101, 1.5, -123.5)
+shape = SubResource("CylinderShape3D_30b94")
+
+[node name="dead_tree_000" type="CollisionShape3D" parent="Colliders" unique_id=229740242]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 101.42422, 1.5, -104.86372)
+shape = SubResource("CylinderShape3D_49ab9")
+
+[node name="bone_pile_000" type="CollisionShape3D" parent="Colliders" unique_id=245160930]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 83.98317, 1.5, -125.90305)
+shape = SubResource("CylinderShape3D_49ab9")
+
+[node name="dead_tree_001" type="CollisionShape3D" parent="Colliders" unique_id=83248295]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 101.0449, 1.5, -113.74073)
+shape = SubResource("CylinderShape3D_49ab9")
+
+[node name="bone_pile_001" type="CollisionShape3D" parent="Colliders" unique_id=227027798]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 105.64995, 1.5, -122.03616)
+shape = SubResource("CylinderShape3D_49ab9")
+
+[node name="ember_altar_000" type="CollisionShape3D" parent="Colliders" unique_id=242101758]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 1.5, -126.35)
+shape = SubResource("BoxShape3D_b6060")
+
+[node name="pyre_0" type="CollisionShape3D" parent="Colliders" unique_id=230791258]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 106, 1.5, -104)
+shape = SubResource("CylinderShape3D_9fe7a")
+
+[node name="pyre_1" type="CollisionShape3D" parent="Colliders" unique_id=255959160]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 1.5, -101)
+shape = SubResource("CylinderShape3D_9fe7a")
+
+[node name="pyre_2" type="CollisionShape3D" parent="Colliders" unique_id=217150969]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 108, 1.5, -112)
+shape = SubResource("CylinderShape3D_9fe7a")
+
+[node name="Navigation" type="Node3D" parent="." unique_id=141706170]
+
+[node name="area_pyre" type="NavigationRegion3D" parent="Navigation" unique_id=16522745]
+navigation_mesh = SubResource("NavigationMesh_6deae")
+
+[node name="door_cloister_pyre" type="NavigationRegion3D" parent="Navigation" unique_id=4001881]
+navigation_mesh = SubResource("NavigationMesh_156e2")
+enabled = false
+metadata/door_id = "cloister_pyre"
+
+[node name="link_cloister_pyre_0" type="NavigationLink3D" parent="Navigation" unique_id=227744081]
+enabled = false
+start_position = Vector3(63.4, 0, -116)
+end_position = Vector3(63.6, 0, -116)
+metadata/door_id = "cloister_pyre"
+
+[node name="link_cloister_pyre_1" type="NavigationLink3D" parent="Navigation" unique_id=67308102]
+enabled = false
+start_position = Vector3(70.6, 0, -116)
+end_position = Vector3(70.4, 0, -116)
+metadata/door_id = "cloister_pyre"
+
+[node name="Lightmap" type="LightmapGI" parent="." unique_id=231826195]
+max_texture_size = 4096
+environment_mode = 3
+environment_custom_color = Color(0.41276968, 0.19918525, 0.100474976, 1)
+environment_custom_energy = 1.9

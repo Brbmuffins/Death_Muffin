@@ -62,7 +62,7 @@ func _main() -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(ch.data, api, {"name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "persist": false})
+	await g.start(ch.data, api, {"areas": ["graves"], "name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "persist": false})
 	hero = g.local_body()
 	check(g.ui != null and g.ui_host != null and g.ui.hud != null, "the game scene has today's HUD and panels on the adapter")
 	await _every_panel()

@@ -1,0 +1,1431 @@
+[gd_scene format=4]
+
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/wing_floor.webp" id="1_6d94a"]
+[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="2_16348"]
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/wing_wall.webp" id="3_c64c6"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_cauldron.tscn" id="4_fd667"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_bone_candles.tscn" id="5_02ee2"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_canopic_jars.tscn" id="6_92131"]
+[ext_resource type="PackedScene" path="res://areas/props/bone_pile.tscn" id="7_35804"]
+[ext_resource type="PackedScene" path="res://areas/props/candles.tscn" id="8_6d13f"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_alembic.tscn" id="9_00783"]
+[ext_resource type="PackedScene" path="res://areas/props/workbench.tscn" id="10_997d4"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_herb_bundle.tscn" id="11_814ca"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_reagent_shelf.tscn" id="12_314b4"]
+[ext_resource type="PackedScene" path="res://areas/props/covenant_lectern.tscn" id="13_4c114"]
+[ext_resource type="PackedScene" path="res://areas/props/grave_lantern.tscn" id="14_a4528"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_mortar_table.tscn" id="15_a342d"]
+[ext_resource type="PackedScene" path="res://areas/props/coffin_stack.tscn" id="16_d33a0"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_counter.tscn" id="17_4cdea"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_bubbling_vat.tscn" id="18_e6a9c"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_station_sign.tscn" id="19_7a07c"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_totem_stirrer.tscn" id="20_bdc1b"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_drying_rack.tscn" id="21_8588d"]
+[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="22_bdf92"]
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="23_7607e"]
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/stone_wall.webp" id="24_45f94"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
+albedo_color = Color(0.9098039, 0.8627451, 0.78431374, 1)
+albedo_texture = ExtResource("1_6d94a")
+roughness = 0.75
+texture_filter = 5
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_65c20"]
+_surfaces = [{
+"aabb": AABB(-13.799999, 0, -12.8, 27.599998, 1e-05, 25.599998),
+"attribute_data": PackedByteArray("zcxMQJmZmT8Ec+0yAAAAspmZ+UCZmZk/AACAPwAAALKZmflA7+6uQAAAgD8AAIA/zcxMQO/urkAEc+0yAACAPw=="),
+"format": 34359742519,
+"index_count": 6,
+"index_data": PackedByteArray("AAABAAIAAAACAAMA"),
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray("zMxcwQAAAADNzEzBzMxcQQAAAADNzEzBzMxcQQAAAADMzExBzMxcwQAAAADMzExB/3///////7//f///////v/9///////+//3///////78=")
+}]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fdc72"]
+albedo_color = Color(0.21529411, 0.08117647, 0.06352941, 0.45)
+
+[sub_resource type="QuadMesh" id="QuadMesh_a24bb"]
+lightmap_size_hint = Vector2i(43, 14)
+add_uv2 = true
+size = Vector2(8.4, 2.5)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dce47"]
+albedo_color = Color(0.38274512, 0.14431374, 0.11294118, 0.8)
+
+[sub_resource type="QuadMesh" id="QuadMesh_fb593"]
+lightmap_size_hint = Vector2i(41, 12)
+add_uv2 = true
+size = Vector2(7.9, 2)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_14b5d"]
+albedo_color = Color(0.107647054, 0.15882353, 0.10235294, 0.45)
+
+[sub_resource type="QuadMesh" id="QuadMesh_c362f"]
+lightmap_size_hint = Vector2i(25, 20)
+add_uv2 = true
+size = Vector2(4.6, 3.6)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_65edd"]
+albedo_color = Color(0.19137256, 0.28235295, 0.18196079, 0.8)
+
+[sub_resource type="QuadMesh" id="QuadMesh_1ac88"]
+lightmap_size_hint = Vector2i(22, 17)
+add_uv2 = true
+size = Vector2(4.1, 3.1)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ac1a3"]
+albedo_color = Color(0.15882353, 0.10235294, 0.074117646, 0.45)
+
+[sub_resource type="QuadMesh" id="QuadMesh_56adb"]
+lightmap_size_hint = Vector2i(19, 22)
+add_uv2 = true
+size = Vector2(3.4, 4.2)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_060c7"]
+albedo_color = Color(0.28235295, 0.18196079, 0.13176471, 0.8)
+
+[sub_resource type="QuadMesh" id="QuadMesh_44a30"]
+lightmap_size_hint = Vector2i(16, 20)
+add_uv2 = true
+size = Vector2(2.9, 3.7)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_13779"]
+transparency = 1
+albedo_color = Color(0.17254902, 0.2901961, 0.13333334, 0.8)
+albedo_texture = ExtResource("2_16348")
+
+[sub_resource type="QuadMesh" id="QuadMesh_2d8e0"]
+size = Vector2(3.4, 2.4)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_86eaa"]
+transparency = 1
+albedo_color = Color(0.101960786, 0.07058824, 0.047058824, 0.8)
+albedo_texture = ExtResource("2_16348")
+
+[sub_resource type="QuadMesh" id="QuadMesh_8b790"]
+size = Vector2(2.2, 1.8)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f0e93"]
+transparency = 1
+albedo_color = Color(0.101960786, 0.07058824, 0.047058824, 0.8)
+albedo_texture = ExtResource("2_16348")
+
+[sub_resource type="QuadMesh" id="QuadMesh_0c4be"]
+size = Vector2(2.6, 1.6)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fcd29"]
+transparency = 1
+albedo_color = Color(0.17254902, 0.2901961, 0.13333334, 0.8)
+albedo_texture = ExtResource("2_16348")
+
+[sub_resource type="QuadMesh" id="QuadMesh_eb883"]
+size = Vector2(1.5, 1.2)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_d3539"]
+albedo_color = Color(0.84705883, 0.8, 0.72156864, 1)
+albedo_texture = ExtResource("3_c64c6")
+roughness = 0.92
+uv1_scale = Vector3(0.25, 0.25, 0.25)
+uv1_triplanar = true
+uv1_world_triplanar = true
+texture_filter = 5
+
+[sub_resource type="BoxMesh" id="BoxMesh_0b95e"]
+lightmap_size_hint = Vector2i(138, 191)
+add_uv2 = true
+size = Vector3(26, 5.5, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_f70b2"]
+lightmap_size_hint = Vector2i(138, 147)
+add_uv2 = true
+size = Vector3(26, 1.1, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_10823"]
+lightmap_size_hint = Vector2i(127, 181)
+add_uv2 = true
+size = Vector3(0.8, 5.5, 24)
+
+[sub_resource type="BoxMesh" id="BoxMesh_35807"]
+lightmap_size_hint = Vector2i(53, 106)
+add_uv2 = true
+size = Vector3(0.8, 5.5, 9)
+
+[sub_resource type="BoxMesh" id="BoxMesh_429e2"]
+lightmap_size_hint = Vector2i(53, 106)
+add_uv2 = true
+size = Vector3(0.8, 5.5, 9)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_c4298"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0.43529412, 0.8156863, 0.5411765, 0.4)
+albedo_texture = ExtResource("22_bdf92")
+texture_filter = 5
+
+[sub_resource type="QuadMesh" id="QuadMesh_1bb27"]
+size = Vector2(6.8, 6.8)
+orientation = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e5def"]
+albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
+albedo_texture = ExtResource("23_7607e")
+roughness = 0.62
+texture_filter = 5
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_bc4f0"]
+_surfaces = [{
+"aabb": AABB(-4.5, 0, -3, 9, 1e-05, 6),
+"attribute_data": PackedByteArray("t23bP7dtG0AAAAAAAAAAAAAAQEC3bRtAAACAPwAAAAAAAEBAJUlSQAAAgD8AAIA/t23bPyVJUkAAAAAAAACAPw=="),
+"format": 34359742519,
+"index_count": 6,
+"index_data": PackedByteArray("AAABAAIAAAACAAMA"),
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray("AACQwAAAAAAAAEDAAACQQAAAAAAAAEDAAACQQAAAAAAAAEBAAACQwAAAAAAAAEBA/3///////7//f///////v/9///////+//3///////78=")
+}]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1c5d5"]
+albedo_color = Color(0.5411765, 0.50980395, 0.5882353, 1)
+albedo_texture = ExtResource("24_45f94")
+roughness = 0.9
+uv1_scale = Vector3(0.25, 0.25, 0.25)
+uv1_triplanar = true
+uv1_world_triplanar = true
+texture_filter = 5
+
+[sub_resource type="BoxMesh" id="BoxMesh_d9232"]
+lightmap_size_hint = Vector2i(14, 61)
+add_uv2 = true
+size = Vector3(1, 5, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_6e5ba"]
+lightmap_size_hint = Vector2i(14, 61)
+add_uv2 = true
+size = Vector3(1, 5, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_85126"]
+lightmap_size_hint = Vector2i(49, 55)
+add_uv2 = true
+size = Vector3(8, 0.9, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_b595d"]
+albedo_color = Color(0.14117648, 0.12941177, 0.16470589, 1)
+metallic = 0.6
+roughness = 0.6
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_6da2d"]
+top_radius = 0.05
+bottom_radius = 0.05
+height = 4.8
+radial_segments = 5
+
+[sub_resource type="MultiMesh" id="MultiMesh_1b31f"]
+transform_format = 1
+instance_count = 14
+mesh = SubResource("CylinderMesh_6da2d")
+buffer = PackedFloat32Array(1, 0, 0, -3, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -2.5384614, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -2.0769231, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -1.6153846, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -1.1538461, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -0.6923077, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, -0.23076923, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 0.23076923, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 0.6923077, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 1.1538461, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 1.6153846, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 2.0769231, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 2.5384614, 0, 1, 0, 2.4, 0, 0, 1, 0, 1, 0, 0, 3, 0, 1, 0, 2.4, 0, 0, 1, 0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_707ee"]
+size = Vector3(6, 0.08, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_a2335"]
+size = Vector3(6, 0.08, 0.1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6c2f2"]
+transparency = 1
+blend_mode = 1
+cull_mode = 2
+shading_mode = 0
+albedo_color = Color(0.61, 0.36, 1, 0.9)
+albedo_texture = ExtResource("22_bdf92")
+texture_filter = 5
+
+[sub_resource type="QuadMesh" id="QuadMesh_40a0d"]
+size = Vector2(5.4, 5.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0876d"]
+size = Vector3(6, 5, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_a094e"]
+shading_mode = 0
+albedo_color = Color(0.63764703, 0.914902, 0.634902, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_01334"]
+radius = 0.1
+height = 0.2
+radial_segments = 8
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_94d60"]
+shading_mode = 0
+albedo_color = Color(1, 0.7941177, 0.5937255, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_c365d"]
+shading_mode = 0
+albedo_color = Color(1, 0.76117647, 0.56352943, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_d033a"]
+shading_mode = 0
+albedo_color = Color(0.7254902, 0.93686277, 0.5909804, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_973d6"]
+shading_mode = 0
+albedo_color = Color(0.6815686, 0.93686277, 0.7227451, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cfb8b"]
+transparency = 1
+blend_mode = 1
+cull_mode = 2
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("2_16348")
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_fcbc9"]
+_surfaces = [{
+"aabb": AABB(20.08, 0.015, 6.38, 27.76, 1e-05, 27.16),
+"attribute_data": PackedByteArray("GTUc/wAAAAAAAAAAGTUc/wAAgD8AAAAAGTUc/wAAgD8AAIA/GTUc/wAAAAAAAAAAGTUc/wAAgD8AAIA/GTUc/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/HjgX/wAAAAAAAAAAHjgX/wAAgD8AAAAAHjgX/wAAgD8AAIA/HjgX/wAAAAAAAAAAHjgX/wAAgD8AAIA/HjgX/wAAAAAAAIA/HjgX/wAAAAAAAAAAHjgX/wAAgD8AAAAAHjgX/wAAgD8AAIA/HjgX/wAAAAAAAAAAHjgX/wAAgD8AAIA/HjgX/wAAAAAAAIA/GTUc/wAAAAAAAAAAGTUc/wAAgD8AAAAAGTUc/wAAgD8AAIA/GTUc/wAAAAAAAAAAGTUc/wAAgD8AAIA/GTUc/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAAAAQCoX/wAAgD8AAIA/QCoX/wAAAAAAAIA/"),
+"format": 34359738393,
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 126,
+"vertex_data": PackedByteArray("j8LpQY/CdTwfhXtBuB4TQo/CdTwfhXtBuB4TQo/CdTxxPbpBj8LpQY/CdTwfhXtBuB4TQo/CdTxxPbpBj8LpQY/CdTxxPbpBPQrfQY/CdTw9Cp9BFK4DQo/CdTw9Cp9BFK4DQo/CdTwpXMdBPQrfQY/CdTw9Cp9BFK4DQo/CdTwpXMdBPQrfQY/CdTwpXMdBuB4FQo/CdTzhemRBrkcZQo/CdTzhemRBrkcZQo/CdTxcj5pBuB4FQo/CdTzhemRBrkcZQo/CdTxcj5pBuB4FQo/CdTxcj5pBFK7/QY/CdTyuR5FBKVwXQo/CdTyuR5FBKVwXQo/CdTzsUcBBFK7/QY/CdTyuR5FBKVwXQo/CdTzsUcBBFK7/QY/CdTzsUcBBCtevQY/CdTz2KMxA9ijYQY/CdTz2KMxA9ijYQY/CdTxSuDZBCtevQY/CdTz2KMxA9ijYQY/CdTxSuDZBCtevQY/CdTxSuDZBSOHGQY/CdTxSuM5Ahev1QY/CdTxSuM5Ahev1QY/CdTykcEVBSOHGQY/CdTxSuM5Ahev1QY/CdTykcEVBSOHGQY/CdTykcEVBpHDxQY/CdTyPwtVASOEMQo/CdTyPwtVASOEMQo/CdTwfhTtBpHDxQY/CdTyPwtVASOEMQo/CdTwfhTtBpHDxQY/CdTwfhTtBrkftQY/CdTxcjypB9igOQo/CdTxcjypB9igOQo/CdTzsUYRBrkftQY/CdTxcjypB9igOQo/CdTzsUYRBrkftQY/CdTzsUYRB16PYQY/CdTxI4SpB4XoAQo/CdTxI4SpB4XoAQo/CdTwfhXtB16PYQY/CdTxI4SpB4XoAQo/CdTwfhXtB16PYQY/CdTwfhXtBH4UPQo/CdTxxPbJBFK4jQo/CdTxxPbJBFK4jQo/CdTxcj9pBH4UPQo/CdTxxPbJBFK4jQo/CdTxcj9pBH4UPQo/CdTxcj9pBUrgWQo/CdTyuRzFBSOEqQo/CdTyuRzFBSOEqQo/CdTzD9YBBUrgWQo/CdTyuRzFBSOEqQo/CdTzD9YBBUrgWQo/CdTzD9YBB7FEEQo/CdTw9Cr9B4XoYQo/CdTw9Cr9B4XoYQo/CdTwpXOdB7FEEQo/CdTw9Cr9B4XoYQo/CdTwpXOdB7FEEQo/CdTwpXOdBUrgiQo/CdTykcK1BSOE2Qo/CdTykcK1BSOE2Qo/CdTyPwtVBUrgiQo/CdTykcK1BSOE2Qo/CdTyPwtVBUrgiQo/CdTyPwtVBexTqQY/CdTyuR91BXI8MQo/CdTyuR91BXI8MQo/CdTz2KAZCexTqQY/CdTyuR91BXI8MQo/CdTz2KAZCexTqQY/CdTz2KAZCCtcnQo/CdTwUrpNBKVw/Qo/CdTwUrpNBKVw/Qo/CdTxSuMJBCtcnQo/CdTwUrpNBKVw/Qo/CdTxSuMJBCtcnQo/CdTxSuMJBXI8YQo/CdTyF68FBpHAzQo/CdTyF68FBpHAzQo/CdTwUrvdBXI8YQo/CdTyF68FBpHAzQo/CdTwUrvdBXI8YQo/CdTwUrvdBj8IHQo/CdTy4Hs1B16MiQo/CdTy4Hs1B16MiQo/CdTykcAFCj8IHQo/CdTy4Hs1B16MiQo/CdTykcAFCj8IHQo/CdTykcAFCCtfHQY/CdTzhelRB9ijwQY/CdTzhelRB9ijwQY/CdTxcj5JBCtfHQY/CdTzhelRB9ijwQY/CdTxcj5JBCtfHQY/CdTxcj5JB16OgQY/CdTzhelxBw/XIQY/CdTzhelxBw/XIQY/CdTxcj5ZB16OgQY/CdTzhelxBw/XIQY/CdTxcj5ZB16OgQY/CdTxcj5ZB16OgQY/CdTykcKlBw/XIQY/CdTykcKlBw/XIQY/CdTyPwtFB16OgQY/CdTykcKlBw/XIQY/CdTyPwtFB16OgQY/CdTyPwtFBrke1QY/CdTxI4bZB7FHkQY/CdTxI4bZB7FHkQY/CdTyF6+VBrke1QY/CdTxI4bZB7FHkQY/CdTyF6+VBrke1QY/CdTyF6+VB")
+}]
+
+[sub_resource type="BoxOccluder3D" id="BoxOccluder3D_d58c5"]
+size = Vector3(26, 5.5, 0.8)
+
+[sub_resource type="BoxOccluder3D" id="BoxOccluder3D_85e52"]
+size = Vector3(0.8, 5.5, 24)
+
+[sub_resource type="BoxOccluder3D" id="BoxOccluder3D_a336a"]
+size = Vector3(0.8, 5.5, 9)
+
+[sub_resource type="BoxOccluder3D" id="BoxOccluder3D_85af8"]
+size = Vector3(0.8, 5.5, 9)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_3ebdd"]
+size = Vector3(26, 5.5, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_d0761"]
+size = Vector3(26, 3, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ee9d2"]
+size = Vector3(0.8, 5.5, 24)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_c6b8b"]
+size = Vector3(0.8, 5.5, 9)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_486af"]
+height = 3.0
+radius = 0.72
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_4a51a"]
+height = 3.0
+radius = 0.28
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0f284"]
+size = Vector3(0.71521664, 3, 0.98316455)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_f3a3d"]
+height = 3.0
+radius = 0.3025
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_b6060"]
+size = Vector3(1.3, 3, 1.1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ad73c"]
+size = Vector3(2.8, 3, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bc238"]
+size = Vector3(0.352, 3, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_46394"]
+size = Vector3(1.8, 3, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_9683d"]
+size = Vector3(0.5726946, 3, 0.86829233)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_e1e0f"]
+height = 3.0
+radius = 0.45
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_30b94"]
+height = 3.0
+radius = 0.25
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cb5d5"]
+size = Vector3(1.0633425, 3, 1.1350107)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_67704"]
+size = Vector3(1.1304823, 3, 1.1521947)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_49ab9"]
+height = 3.0
+radius = 0.275
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cee45"]
+size = Vector3(2.0574756, 3, 1.2984587)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_65925"]
+size = Vector3(1.64, 3, 2.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cab26"]
+size = Vector3(0.44, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_a8f80"]
+size = Vector3(0.8, 3, 1.8)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_9fe7a"]
+height = 3.0
+radius = 0.65
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_ba416"]
+height = 3.0
+radius = 0.52
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_05a9b"]
+size = Vector3(2, 3, 1.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ba71c"]
+size = Vector3(0.64, 3, 1.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ea700"]
+size = Vector3(1, 3, 1.34)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5c893"]
+size = Vector3(0.72, 3, 0.9)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_15825"]
+size = Vector3(1.6, 3, 2.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_4793c"]
+size = Vector3(1, 3, 1.8)
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_6deae"]
+vertices = PackedVector3Array(29.5, 0.5, 23, 29.75, 0.5, 23, 29.5, 0.5, 22.25, 24.25, 0.5, 15.5, 23, 0.5, 15.5, 23.5, 0.5, 16.25, 20.5, 0.5, 23.5, 21.75, 0.5, 23.75, 22, 0.5, 23, 22, 0.5, 17, 21.75, 0.5, 16, 20.75, 0.5, 12.75, 22.75, 0.5, 10, 23.25, 0.5, 10, 23.25, 0.5, 8.5, 22.5, 0.5, 13, 22.5, 0.5, 12.75, 22.25, 0.5, 15.75, 23.25, 0.5, 17, 26.75, 0.5, 17, 26.75, 0.5, 15, 31.75, 0.5, 20, 32.25, 0.5, 18.5, 31.75, 0.5, 18, 30.25, 0.5, 18, 30.5, 0.5, 21.5, 27, 0.5, 25, 27.5, 0.5, 24.75, 27.5, 0.5, 23, 23.25, 0.5, 23, 23.25, 0.5, 24, 24.5, 0.5, 24.75, 30.25, 0.5, 16.75, 28.25, 0.5, 16.75, 24.25, 0.5, 15, 20.5, 0.5, 8.5, 20.75, 0.5, 10, 24.25, 0.5, 13, 28, 0.5, 14.5, 28.75, 0.5, 13.5, 29, 0.5, 12.75, 26.75, 0.5, 14.5, 27.25, 0.5, 8.5, 25.75, 0.5, 8.5, 25.75, 0.5, 10, 27.25, 0.5, 10.75, 28.75, 0.5, 10.75, 34, 0.5, 9.5, 34, 0.5, 8.5, 33.25, 0.5, 8.5, 33.5, 0.5, 9.75, 32.25, 0.5, 10, 31.25, 0.5, 10.5, 32, 0.5, 12.25, 32.25, 0.5, 8.5, 31.25, 0.5, 8.5, 35.75, 0.5, 12.5, 40, 0.5, 9.5, 36.5, 0.5, 16.25, 36.25, 0.5, 17.5, 37, 0.5, 17.5, 45.5, 0.5, 8.5, 44.5, 0.5, 8.5, 44.5, 0.5, 9.5, 35.5, 0.5, 15, 35.75, 0.5, 16, 41, 0.5, 13, 41, 0.5, 14, 42.5, 0.5, 14, 37.25, 0.5, 18, 40.5, 0.5, 16.25, 40.25, 0.5, 14.5, 39.5, 0.5, 14.25, 44.5, 0.5, 11.75, 42.5, 0.5, 15.25, 44.5, 0.5, 15.25, 45.5, 0.5, 11.75, 39.75, 0.5, 12.75, 35, 0.5, 16.25, 33.5, 0.5, 18.25, 32, 0.5, 15.75, 35.5, 0.5, 19, 35.75, 0.5, 17.5, 35, 0.5, 17.25, 34.25, 0.5, 19.25, 30, 0.5, 14, 30.25, 0.5, 15.75, 31.75, 0.5, 15, 30, 0.5, 12.5, 30.5, 0.5, 13.25, 43.75, 0.5, 23.5, 44, 0.5, 24.25, 44.5, 0.5, 24.25, 44.5, 0.5, 23.25, 39.25, 0.5, 24.5, 42.75, 0.5, 23.5, 43.75, 0.5, 21.75, 43.75, 0.5, 18.25, 44.25, 0.5, 18.25, 44.25, 0.5, 17.25, 45.5, 0.5, 17.25, 45.5, 0.5, 16.5, 44.5, 0.5, 16.5, 36.25, 0.5, 22, 36.25, 0.5, 22.75, 38, 0.5, 24, 45.5, 0.5, 23.25, 45.5, 0.5, 21.75, 37.5, 0.5, 18.5, 42.5, 0.5, 16.25, 34, 0.5, 20.25, 35.25, 0.5, 21.5, 37, 0.5, 19.25, 40.75, 0.5, 26.75, 41.75, 0.5, 26.5, 42.5, 0.5, 24.75, 39, 0.5, 25.25, 30.75, 0.5, 23.25, 29.5, 0.5, 24.75, 36, 0.5, 25.5, 36.25, 0.5, 26, 37.75, 0.5, 25.25, 37.5, 0.5, 24.75, 32.5, 0.5, 20.75, 31.25, 0.5, 22, 31.25, 0.5, 22.75, 34.5, 0.5, 22, 30.5, 0.5, 25.75, 32.5, 0.5, 25.75, 34.75, 0.5, 23, 35, 0.5, 25.75, 23, 0.5, 24.5, 22.25, 0.5, 24.5, 20.75, 0.5, 29, 22.75, 0.5, 29, 22.75, 0.5, 27.25, 24.25, 0.5, 27.25, 20.5, 0.5, 31.5, 43.5, 0.5, 25, 36.25, 0.5, 28.75, 35, 0.5, 29.25, 36, 0.5, 30, 36.75, 0.5, 30, 38.25, 0.5, 29.75, 36, 0.5, 30.75, 35.25, 0.5, 31.5, 43, 0.5, 31.5, 45.5, 0.5, 29.25, 45.5, 0.5, 28, 44.5, 0.5, 28, 43, 0.5, 29.25, 42.75, 0.5, 27.25, 42, 0.5, 28.75, 36.25, 0.5, 27, 37, 0.5, 28, 40.25, 0.5, 27.25, 38.25, 0.5, 28.25, 40.5, 0.5, 28.25, 35.25, 0.5, 27.25, 30.5, 0.5, 29.75, 31.5, 0.5, 29.25, 32.5, 0.5, 28.25, 30.25, 0.5, 28.25, 27, 0.5, 28.5, 27.25, 0.5, 29.75, 30.5, 0.5, 31.5, 31.5, 0.5, 31.5, 24.25, 0.5, 28.5, 24.25, 0.5, 29.5, 34.75, 0.5, 26.75, 22.75, 0.5, 29.5, 22.75, 0.5, 31.5, 27.25, 0.5, 31.5)
+polygons = [PackedInt32Array(2, 1, 0), PackedInt32Array(4, 3, 5), PackedInt32Array(7, 6, 8), PackedInt32Array(8, 6, 9), PackedInt32Array(9, 6, 10), PackedInt32Array(10, 6, 11), PackedInt32Array(14, 13, 12), PackedInt32Array(16, 15, 11), PackedInt32Array(11, 15, 17), PackedInt32Array(11, 17, 10), PackedInt32Array(5, 3, 18), PackedInt32Array(18, 3, 19), PackedInt32Array(19, 3, 20), PackedInt32Array(23, 22, 24), PackedInt32Array(24, 22, 21), PackedInt32Array(24, 21, 25), PackedInt32Array(24, 25, 2), PackedInt32Array(27, 26, 28), PackedInt32Array(28, 26, 31), PackedInt32Array(28, 31, 30), PackedInt32Array(28, 30, 29), PackedInt32Array(2, 0, 28), PackedInt32Array(2, 28, 24), PackedInt32Array(24, 28, 19), PackedInt32Array(19, 28, 18), PackedInt32Array(18, 28, 29), PackedInt32Array(32, 24, 33), PackedInt32Array(33, 24, 19), PackedInt32Array(9, 18, 8), PackedInt32Array(8, 18, 29), PackedInt32Array(3, 34, 20), PackedInt32Array(36, 35, 12), PackedInt32Array(12, 35, 14), PackedInt32Array(36, 11, 35), PackedInt32Array(35, 11, 6), PackedInt32Array(15, 16, 37), PackedInt32Array(37, 16, 13), PackedInt32Array(13, 16, 12), PackedInt32Array(39, 38, 40), PackedInt32Array(40, 38, 41), PackedInt32Array(43, 42, 44), PackedInt32Array(44, 42, 45), PackedInt32Array(44, 45, 13), PackedInt32Array(13, 45, 37), PackedInt32Array(37, 45, 41), PackedInt32Array(41, 45, 40), PackedInt32Array(20, 34, 41), PackedInt32Array(41, 34, 37), PackedInt32Array(45, 46, 40), PackedInt32Array(47, 50, 48), PackedInt32Array(48, 50, 49), PackedInt32Array(51, 50, 52), PackedInt32Array(52, 50, 53), PackedInt32Array(54, 51, 55), PackedInt32Array(55, 51, 52), PackedInt32Array(50, 47, 53), PackedInt32Array(53, 47, 56), PackedInt32Array(56, 47, 57), PackedInt32Array(60, 59, 58), PackedInt32Array(63, 62, 61), PackedInt32Array(58, 65, 64), PackedInt32Array(68, 67, 66), PackedInt32Array(60, 58, 69), PackedInt32Array(69, 58, 70), PackedInt32Array(70, 58, 72), PackedInt32Array(70, 72, 71), PackedInt32Array(68, 66, 73), PackedInt32Array(73, 66, 63), PackedInt32Array(63, 66, 57), PackedInt32Array(74, 68, 75), PackedInt32Array(75, 68, 73), PackedInt32Array(73, 63, 76), PackedInt32Array(76, 63, 61), PackedInt32Array(66, 77, 57), PackedInt32Array(64, 56, 58), PackedInt32Array(58, 56, 72), PackedInt32Array(72, 56, 77), PackedInt32Array(77, 56, 57), PackedInt32Array(64, 65, 78), PackedInt32Array(22, 23, 79), PackedInt32Array(79, 23, 80), PackedInt32Array(82, 81, 83), PackedInt32Array(83, 81, 84), PackedInt32Array(83, 84, 79), PackedInt32Array(39, 85, 38), PackedInt32Array(38, 85, 86), PackedInt32Array(38, 86, 32), PackedInt32Array(38, 32, 33), PackedInt32Array(78, 83, 79), PackedInt32Array(80, 87, 79), PackedInt32Array(79, 87, 78), PackedInt32Array(78, 87, 64), PackedInt32Array(88, 40, 46), PackedInt32Array(80, 86, 87), PackedInt32Array(53, 88, 52), PackedInt32Array(52, 88, 46), PackedInt32Array(85, 89, 86), PackedInt32Array(86, 89, 87), PackedInt32Array(87, 89, 53), PackedInt32Array(88, 53, 89), PackedInt32Array(91, 90, 92), PackedInt32Array(92, 90, 93), PackedInt32Array(96, 95, 94), PackedInt32Array(99, 98, 97), PackedInt32Array(101, 100, 102), PackedInt32Array(102, 100, 99), PackedInt32Array(104, 103, 105), PackedInt32Array(105, 103, 94), PackedInt32Array(90, 95, 93), PackedInt32Array(93, 95, 96), PackedInt32Array(106, 93, 107), PackedInt32Array(107, 93, 96), PackedInt32Array(108, 69, 70), PackedInt32Array(99, 97, 102), PackedInt32Array(102, 97, 109), PackedInt32Array(109, 97, 70), PackedInt32Array(84, 81, 110), PackedInt32Array(110, 81, 111), PackedInt32Array(111, 81, 103), PackedInt32Array(103, 81, 112), PackedInt32Array(114, 113, 115), PackedInt32Array(115, 113, 95), PackedInt32Array(95, 113, 94), PackedInt32Array(94, 113, 116), PackedInt32Array(74, 75, 109), PackedInt32Array(109, 75, 102), PackedInt32Array(97, 96, 70), PackedInt32Array(70, 96, 108), PackedInt32Array(108, 96, 103), PackedInt32Array(103, 96, 94), PackedInt32Array(103, 112, 108), PackedInt32Array(1, 117, 0), PackedInt32Array(0, 117, 118), PackedInt32Array(122, 121, 119), PackedInt32Array(119, 121, 120), PackedInt32Array(125, 124, 123), PackedInt32Array(111, 126, 110), PackedInt32Array(110, 126, 123), PackedInt32Array(117, 125, 118), PackedInt32Array(118, 125, 127), PackedInt32Array(127, 125, 128), PackedInt32Array(124, 25, 123), PackedInt32Array(123, 25, 21), PackedInt32Array(126, 129, 123), PackedInt32Array(123, 129, 125), PackedInt32Array(125, 129, 128), PackedInt32Array(128, 129, 130), PackedInt32Array(122, 119, 105), PackedInt32Array(105, 119, 130), PackedInt32Array(105, 130, 104), PackedInt32Array(104, 130, 129), PackedInt32Array(131, 30, 31), PackedInt32Array(7, 132, 6), PackedInt32Array(6, 132, 135), PackedInt32Array(6, 135, 134), PackedInt32Array(6, 134, 133), PackedInt32Array(131, 31, 132), PackedInt32Array(132, 31, 135), PackedInt32Array(135, 31, 136), PackedInt32Array(133, 137, 6), PackedInt32Array(138, 91, 92), PackedInt32Array(142, 141, 139), PackedInt32Array(139, 141, 140), PackedInt32Array(144, 143, 145), PackedInt32Array(145, 143, 146), PackedInt32Array(144, 141, 142), PackedInt32Array(149, 148, 147), PackedInt32Array(152, 151, 150), PackedInt32Array(150, 151, 149), PackedInt32Array(150, 149, 147), PackedInt32Array(154, 153, 120), PackedInt32Array(114, 115, 138), PackedInt32Array(116, 113, 155), PackedInt32Array(114, 138, 151), PackedInt32Array(151, 138, 92), PackedInt32Array(151, 92, 149), PackedInt32Array(144, 142, 143), PackedInt32Array(121, 116, 120), PackedInt32Array(120, 116, 154), PackedInt32Array(154, 116, 156), PackedInt32Array(156, 116, 155), PackedInt32Array(156, 155, 157), PackedInt32Array(152, 150, 157), PackedInt32Array(157, 150, 146), PackedInt32Array(157, 146, 143), PackedInt32Array(157, 143, 156), PackedInt32Array(154, 139, 153), PackedInt32Array(153, 139, 158), PackedInt32Array(160, 159, 161), PackedInt32Array(161, 159, 162), PackedInt32Array(162, 159, 164), PackedInt32Array(162, 164, 163), PackedInt32Array(165, 159, 166), PackedInt32Array(166, 159, 160), PackedInt32Array(168, 167, 163), PackedInt32Array(158, 139, 169), PackedInt32Array(169, 139, 140), PackedInt32Array(169, 140, 161), PackedInt32Array(169, 161, 128), PackedInt32Array(128, 130, 169), PackedInt32Array(171, 170, 168), PackedInt32Array(161, 140, 160), PackedInt32Array(27, 118, 26), PackedInt32Array(26, 118, 127), PackedInt32Array(26, 127, 162), PackedInt32Array(26, 162, 163), PackedInt32Array(164, 172, 163), PackedInt32Array(163, 172, 168), PackedInt32Array(168, 172, 171)]
+agent_height = 1.75
+region_min_size = 1.0
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_156e2"]
+vertices = PackedVector3Array(12.5, 0.5, 17.5, 12.5, 0.5, 22.5, 20.5, 0.5, 22.5, 20.5, 0.5, 17.5)
+polygons = [PackedInt32Array(3, 2, 0), PackedInt32Array(0, 2, 1)]
+agent_height = 1.75
+region_min_size = 1.0
+
+[node name="alchemist_wing" type="Node3D" unique_id=142119087]
+metadata/area_id = "alchemist_wing"
+metadata/area_name = "The Alchemist's Wing"
+metadata/theme = "wing"
+metadata/safe = true
+metadata/rect = [20.0, 8.0, 46.0, 32.0]
+
+[node name="Floor" type="Node3D" parent="." unique_id=959053]
+
+[node name="ground" type="MeshInstance3D" parent="Floor" unique_id=217535131]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 0, 20)
+material_override = SubResource("StandardMaterial3D_f5800")
+cast_shadow = 0
+mesh = SubResource("ArrayMesh_65c20")
+
+[node name="rug_00" type="MeshInstance3D" parent="Floor" unique_id=9470065]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.4, 0.012, 20)
+material_override = SubResource("StandardMaterial3D_fdc72")
+cast_shadow = 0
+mesh = SubResource("QuadMesh_a24bb")
+
+[node name="rug_00_trim" type="MeshInstance3D" parent="Floor" unique_id=240688073]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.4, 0.016, 20)
+material_override = SubResource("StandardMaterial3D_dce47")
+cast_shadow = 0
+mesh = SubResource("QuadMesh_fb593")
+
+[node name="rug_01" type="MeshInstance3D" parent="Floor" unique_id=236064146]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41.6, 0.012, 20)
+material_override = SubResource("StandardMaterial3D_14b5d")
+cast_shadow = 0
+mesh = SubResource("QuadMesh_c362f")
+
+[node name="rug_01_trim" type="MeshInstance3D" parent="Floor" unique_id=217906841]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41.6, 0.016, 20)
+material_override = SubResource("StandardMaterial3D_65edd")
+cast_shadow = 0
+mesh = SubResource("QuadMesh_1ac88")
+
+[node name="rug_02" type="MeshInstance3D" parent="Floor" unique_id=96934874]
+transform = Transform3D(0.99680173, 0, 0.07991469, 0, 1, 0, -0.07991469, 0, 0.99680173, 26.6, 0.012, 26.6)
+material_override = SubResource("StandardMaterial3D_ac1a3")
+cast_shadow = 0
+mesh = SubResource("QuadMesh_56adb")
+
+[node name="rug_02_trim" type="MeshInstance3D" parent="Floor" unique_id=216884581]
+transform = Transform3D(0.99680173, 0, 0.07991469, 0, 1, 0, -0.07991469, 0, 0.99680173, 26.6, 0.016, 26.6)
+material_override = SubResource("StandardMaterial3D_060c7")
+cast_shadow = 0
+mesh = SubResource("QuadMesh_44a30")
+
+[node name="stain_03" type="MeshInstance3D" parent="Floor" unique_id=185175904]
+transform = Transform3D(0.87758255, 0, 0.47942555, 0, 1, 0, -0.47942555, 0, 0.87758255, 39.6, 0.014, 28.4)
+material_override = SubResource("StandardMaterial3D_13779")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_2d8e0")
+
+[node name="stain_04" type="MeshInstance3D" parent="Floor" unique_id=57679607]
+transform = Transform3D(0.4535961, 0, 0.8912074, 0, 1, 0, -0.8912074, 0, 0.4535961, 35.2, 0.014, 22.2)
+material_override = SubResource("StandardMaterial3D_86eaa")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_8b790")
+
+[node name="stain_05" type="MeshInstance3D" parent="Floor" unique_id=245741767]
+transform = Transform3D(0.9553365, 0, -0.29552022, 0, 1, 0, 0.29552022, 0, 0.9553365, 29.6, 0.014, 11.2)
+material_override = SubResource("StandardMaterial3D_f0e93")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_0c4be")
+
+[node name="stain_06" type="MeshInstance3D" parent="Floor" unique_id=2377989]
+transform = Transform3D(-0.58850116, 0, 0.80849636, 0, 1, 0, -0.80849636, 0, -0.58850116, 33.6, 0.014, 24.2)
+material_override = SubResource("StandardMaterial3D_fcd29")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_eb883")
+
+[node name="Walls" type="Node3D" parent="." unique_id=187157269]
+
+[node name="wall_000" type="MeshInstance3D" parent="Walls" unique_id=16597979]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 2.75, 7.6)
+material_override = SubResource("StandardMaterial3D_d3539")
+mesh = SubResource("BoxMesh_0b95e")
+
+[node name="wall_001" type="MeshInstance3D" parent="Walls" unique_id=224610589]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 0.55, 32.4)
+material_override = SubResource("StandardMaterial3D_d3539")
+mesh = SubResource("BoxMesh_f70b2")
+
+[node name="wall_002" type="MeshInstance3D" parent="Walls" unique_id=255355139]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46.4, 2.75, 20)
+material_override = SubResource("StandardMaterial3D_d3539")
+mesh = SubResource("BoxMesh_10823")
+
+[node name="wall_003" type="MeshInstance3D" parent="Walls" unique_id=125309731]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.6, 2.75, 12.5)
+material_override = SubResource("StandardMaterial3D_d3539")
+mesh = SubResource("BoxMesh_35807")
+
+[node name="wall_004" type="MeshInstance3D" parent="Walls" unique_id=146819567]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.6, 2.75, 27.5)
+material_override = SubResource("StandardMaterial3D_d3539")
+mesh = SubResource("BoxMesh_429e2")
+
+[node name="Props" type="Node3D" parent="." unique_id=205990202]
+
+[node name="alch_cauldron_000" parent="Props" unique_id=38805202 instance=ExtResource("4_fd667")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 0, 19.5)
+metadata/prop_kind = "alch_cauldron"
+
+[node name="alch_bone_candles_000" parent="Props" unique_id=154552615 instance=ExtResource("5_02ee2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30.4, 0, 22.4)
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="alch_bone_candles_001" parent="Props" unique_id=51322329 instance=ExtResource("5_02ee2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.8, 0, 16.8)
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="alch_canopic_jars_000" parent="Props" unique_id=94910765 instance=ExtResource("6_92131")]
+transform = Transform3D(0.8289549, 0, 0.3504765, 0, 0.9, 0, -0.3504765, 0, 0.8289549, 31.2, 0, 16.9)
+metadata/prop_kind = "alch_canopic_jars"
+
+[node name="bone_pile_000" parent="Props" unique_id=13472771 instance=ExtResource("7_35804")]
+transform = Transform3D(0.19929674, 0, 0.5126215, 0, 0.55, 0, -0.5126215, 0, 0.19929674, 35.4, 0, 22.3)
+metadata/prop_kind = "bone_pile"
+
+[node name="candles_000" parent="Props" unique_id=133168762 instance=ExtResource("8_6d13f")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 34.9, 0, 21.1)
+metadata/prop_kind = "candles"
+
+[node name="alch_alembic_000" parent="Props" unique_id=8303649 instance=ExtResource("9_00783")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.5, 0, 8.9)
+metadata/prop_kind = "alch_alembic"
+
+[node name="workbench_000" parent="Props" unique_id=249132281 instance=ExtResource("10_997d4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.2, 0, 9.4)
+metadata/prop_kind = "workbench"
+
+[node name="candles_001" parent="Props" unique_id=56423619 instance=ExtResource("8_6d13f")]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 27.8, 1.05, 9.4)
+metadata/prop_kind = "candles"
+
+[node name="alch_canopic_jars_001" parent="Props" unique_id=137844798 instance=ExtResource("6_92131")]
+transform = Transform3D(-0.8, 0, -6.9938224e-08, 0, 0.8, 0, 6.9938224e-08, 0, -0.8, 30.6, 1.05, 9.4)
+metadata/prop_kind = "alch_canopic_jars"
+
+[node name="alch_herb_bundle_000" parent="Props" unique_id=149318127 instance=ExtResource("11_814ca")]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 27.6, 2.3, 8.4)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="alch_herb_bundle_001" parent="Props" unique_id=88169414 instance=ExtResource("11_814ca")]
+transform = Transform3D(1.2419374, 0, 0.38417625, 0, 1.3, 0, -0.38417625, 0, 1.2419374, 29.1, 2, 8.4)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="alch_herb_bundle_002" parent="Props" unique_id=78939217 instance=ExtResource("11_814ca")]
+transform = Transform3D(1.4700999, 0, -0.298004, 0, 1.5, 0, 0.298004, 0, 1.4700999, 30.6, 2.3, 8.4)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="alch_herb_bundle_003" parent="Props" unique_id=248725490 instance=ExtResource("11_814ca")]
+transform = Transform3D(1.1408572, 0, 0.62325317, 0, 1.3, 0, -0.62325317, 0, 1.1408572, 32.1, 2.1, 8.4)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="alch_bone_candles_002" parent="Props" unique_id=183946391 instance=ExtResource("5_02ee2")]
+transform = Transform3D(0.7648422, 0, 0.64421767, 0, 1, 0, -0.64421767, 0, 0.7648422, 32.7, 0, 9.2)
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="alch_reagent_shelf_000" parent="Props" unique_id=40119124 instance=ExtResource("12_314b4")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 35.5, 0, 8.45)
+metadata/prop_kind = "alch_reagent_shelf"
+
+[node name="alch_reagent_shelf_001" parent="Props" unique_id=9772522 instance=ExtResource("12_314b4")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 37.4, 0, 8.45)
+metadata/prop_kind = "alch_reagent_shelf"
+
+[node name="alch_reagent_shelf_002" parent="Props" unique_id=104975435 instance=ExtResource("12_314b4")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 39.3, 0, 8.45)
+metadata/prop_kind = "alch_reagent_shelf"
+
+[node name="alch_reagent_shelf_003" parent="Props" unique_id=91813056 instance=ExtResource("12_314b4")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 41.2, 0, 8.45)
+metadata/prop_kind = "alch_reagent_shelf"
+
+[node name="alch_reagent_shelf_004" parent="Props" unique_id=75870545 instance=ExtResource("12_314b4")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 43.1, 0, 8.45)
+metadata/prop_kind = "alch_reagent_shelf"
+
+[node name="alch_herb_bundle_004" parent="Props" unique_id=82032476 instance=ExtResource("11_814ca")]
+transform = Transform3D(1.3720932, 0, 0.27813706, 0, 1.4, 0, -0.27813706, 0, 1.3720932, 44.9, 1.7, 8.5)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="alch_herb_bundle_005" parent="Props" unique_id=57271899 instance=ExtResource("11_814ca")]
+transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 20.65, 1.7, 13.8)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="alch_herb_bundle_006" parent="Props" unique_id=36963904 instance=ExtResource("11_814ca")]
+transform = Transform3D(0.99040276, 0, 0.677571, 0, 1.2, 0, -0.677571, 0, 0.99040276, 20.65, 1.9, 15)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="alch_herb_bundle_007" parent="Props" unique_id=147409695 instance=ExtResource("11_814ca")]
+transform = Transform3D(1.2740865, 0, 0.2582701, 0, 1.3, 0, -0.2582701, 0, 1.2740865, 20.65, 1.8, 25.2)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="alch_herb_bundle_008" parent="Props" unique_id=228197595 instance=ExtResource("11_814ca")]
+transform = Transform3D(0.7564232, 0, 1.1780593, 0, 1.4, 0, -1.1780593, 0, 0.7564232, 20.65, 1.6, 26.4)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="workbench_001" parent="Props" unique_id=139464794 instance=ExtResource("10_997d4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.8, 0, 13.6)
+metadata/prop_kind = "workbench"
+
+[node name="candles_002" parent="Props" unique_id=217818572 instance=ExtResource("8_6d13f")]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 32.6, 1.05, 13.6)
+metadata/prop_kind = "candles"
+
+[node name="alch_canopic_jars_002" parent="Props" unique_id=52837635 instance=ExtResource("6_92131")]
+transform = Transform3D(0.76426923, 0, 0.23641618, 0, 0.8, 0, -0.23641618, 0, 0.76426923, 34.9, 1.05, 13.6)
+metadata/prop_kind = "alch_canopic_jars"
+
+[node name="covenant_lectern_000" parent="Props" unique_id=183700172 instance=ExtResource("13_4c114")]
+transform = Transform3D(-0.666276, 0, 0.74570525, 0, 1, 0, -0.74570525, 0, -0.666276, 36.4, 0, 18.4)
+metadata/prop_kind = "covenant_lectern"
+
+[node name="grave_lantern_000" parent="Props" unique_id=59739473 instance=ExtResource("14_a4528")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.6, 0, 13.2)
+metadata/prop_kind = "grave_lantern"
+
+[node name="grave_lantern_001" parent="Props" unique_id=80077908 instance=ExtResource("14_a4528")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.4, 0, 24.8)
+metadata/prop_kind = "grave_lantern"
+
+[node name="alch_mortar_table_000" parent="Props" unique_id=217068697 instance=ExtResource("15_a342d")]
+transform = Transform3D(0.87758255, 0, -0.47942555, 0, 1, 0, 0.47942555, 0, 0.87758255, 41.3, 0, 15.2)
+metadata/prop_kind = "alch_mortar_table"
+
+[node name="alch_bone_candles_003" parent="Props" unique_id=95112114 instance=ExtResource("5_02ee2")]
+transform = Transform3D(0.9800666, 0, 0.19866933, 0, 1, 0, -0.19866933, 0, 0.9800666, 40.2, 0, 13.6)
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="alch_mortar_table_001" parent="Props" unique_id=146653435 instance=ExtResource("15_a342d")]
+transform = Transform3D(0.7648422, 0, 0.64421767, 0, 1, 0, -0.64421767, 0, 0.7648422, 31.4, 0, 27)
+metadata/prop_kind = "alch_mortar_table"
+
+[node name="alch_bone_candles_004" parent="Props" unique_id=267922379 instance=ExtResource("5_02ee2")]
+transform = Transform3D(0.62161, 0, 0.7833269, 0, 1, 0, -0.7833269, 0, 0.62161, 35.6, 0, 26.4)
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="alch_bone_candles_005" parent="Props" unique_id=149750580 instance=ExtResource("5_02ee2")]
+transform = Transform3D(0.9553365, 0, 0.29552022, 0, 1, 0, -0.29552022, 0, 0.9553365, 43.2, 0, 24.2)
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="workbench_002" parent="Props" unique_id=197857032 instance=ExtResource("10_997d4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.4, 0, 30.6)
+metadata/prop_kind = "workbench"
+
+[node name="candles_003" parent="Props" unique_id=100610890 instance=ExtResource("8_6d13f")]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 32.2, 1.05, 30.6)
+metadata/prop_kind = "candles"
+
+[node name="bone_pile_001" parent="Props" unique_id=74430048 instance=ExtResource("7_35804")]
+transform = Transform3D(0.4605305, 0, 0.19470917, 0, 0.5, 0, -0.19470917, 0, 0.4605305, 35.2, 0, 30.4)
+metadata/prop_kind = "bone_pile"
+
+[node name="coffin_stack_000" parent="Props" unique_id=214708902 instance=ExtResource("16_d33a0")]
+transform = Transform3D(0.99875027, 0, 0.04997917, 0, 1, 0, -0.04997917, 0, 0.99875027, 28.8, 0, 30.9)
+metadata/prop_kind = "coffin_stack"
+
+[node name="alch_counter_000" parent="Props" unique_id=121677690 instance=ExtResource("17_4cdea")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.1, 0, 20)
+metadata/prop_kind = "alch_counter"
+
+[node name="alch_canopic_jars_003" parent="Props" unique_id=110246055 instance=ExtResource("6_92131")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.1, 1.2, 18.4)
+metadata/prop_kind = "alch_canopic_jars"
+
+[node name="candles_004" parent="Props" unique_id=243994902 instance=ExtResource("8_6d13f")]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 44.9, 1.2, 21.4)
+metadata/prop_kind = "candles"
+
+[node name="alch_reagent_shelf_005" parent="Props" unique_id=93099075 instance=ExtResource("12_314b4")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.4, 0, 13.2)
+metadata/prop_kind = "alch_reagent_shelf"
+
+[node name="alch_reagent_shelf_006" parent="Props" unique_id=76928993 instance=ExtResource("12_314b4")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.4, 0, 15.1)
+metadata/prop_kind = "alch_reagent_shelf"
+
+[node name="alch_reagent_shelf_007" parent="Props" unique_id=32751576 instance=ExtResource("12_314b4")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.4, 0, 24.6)
+metadata/prop_kind = "alch_reagent_shelf"
+
+[node name="alch_reagent_shelf_008" parent="Props" unique_id=90705735 instance=ExtResource("12_314b4")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.4, 0, 26.5)
+metadata/prop_kind = "alch_reagent_shelf"
+
+[node name="alch_bubbling_vat_000" parent="Props" unique_id=171977425 instance=ExtResource("18_e6a9c")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41.5, 0, 27.6)
+metadata/prop_kind = "alch_bubbling_vat"
+
+[node name="alch_bubbling_vat_001" parent="Props" unique_id=79911304 instance=ExtResource("18_e6a9c")]
+transform = Transform3D(0.6602685, 0, 0.451714, 0, 0.8, 0, -0.451714, 0, 0.6602685, 37.3, 0, 29)
+metadata/prop_kind = "alch_bubbling_vat"
+
+[node name="coffin_stack_001" parent="Props" unique_id=50159882 instance=ExtResource("16_d33a0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.6, 0, 30.5)
+metadata/prop_kind = "coffin_stack"
+
+[node name="alch_station_sign_000" parent="Props" unique_id=243479197 instance=ExtResource("19_7a07c")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 27.5, 0, 15.8)
+metadata/prop_kind = "alch_station_sign"
+
+[node name="alch_totem_stirrer_000" parent="Props" unique_id=210474195 instance=ExtResource("20_bdc1b")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 23.2, 0, 14.2)
+metadata/prop_kind = "alch_totem_stirrer"
+
+[node name="alch_bone_candles_006" parent="Props" unique_id=88987293 instance=ExtResource("5_02ee2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.6, 0, 16.3)
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="alch_bone_candles_007" parent="Props" unique_id=179632784 instance=ExtResource("5_02ee2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.6, 0, 23.7)
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="alch_mortar_table_002" parent="Props" unique_id=259837637 instance=ExtResource("15_a342d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.5, 0, 24)
+metadata/prop_kind = "alch_mortar_table"
+
+[node name="workbench_003" parent="Props" unique_id=187084192 instance=ExtResource("10_997d4")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 25.6, 0, 26.6)
+metadata/prop_kind = "workbench"
+
+[node name="candles_005" parent="Props" unique_id=213010706 instance=ExtResource("8_6d13f")]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 25.6, 1.05, 25.8)
+metadata/prop_kind = "candles"
+
+[node name="alch_canopic_jars_004" parent="Props" unique_id=226837233 instance=ExtResource("6_92131")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 23.4, 0, 28.4)
+metadata/prop_kind = "alch_canopic_jars"
+
+[node name="alch_drying_rack_000" parent="Props" unique_id=177929322 instance=ExtResource("21_8588d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.7, 0, 11.4)
+metadata/prop_kind = "alch_drying_rack"
+
+[node name="alch_drying_rack_001" parent="Props" unique_id=1407914 instance=ExtResource("21_8588d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.7, 0, 30.4)
+metadata/prop_kind = "alch_drying_rack"
+
+[node name="alch_herb_bundle_009" parent="Props" unique_id=229581435 instance=ExtResource("11_814ca")]
+transform = Transform3D(0.61463, -0.092892244, 0.7833269, 0.33641452, 0.9290718, -0.15378878, -0.7134811, 0.35804573, 0.6022856, 23.4, 0, 30.8)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="alch_herb_bundle_010" parent="Props" unique_id=84947102 instance=ExtResource("11_814ca")]
+transform = Transform3D(-0.45109394, -0.054392606, 0.7768885, -0.25882733, 0.8572399, -0.09026767, -0.73452204, -0.2686657, -0.44530445, 24.4, 0, 31)
+metadata/prop_kind = "alch_herb_bundle"
+
+[node name="GatherNodes" type="Node3D" parent="." unique_id=97029054]
+
+[node name="Decals" type="Node3D" parent="." unique_id=212560036]
+
+[node name="sigil_00" type="MeshInstance3D" parent="Decals" unique_id=57638230]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 0.03, 19.5)
+material_override = SubResource("StandardMaterial3D_c4298")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_1bb27")
+
+[node name="Water" type="Node3D" parent="." unique_id=85497031]
+
+[node name="Doors" type="Node3D" parent="." unique_id=220040105]
+
+[node name="chapter_wing" type="Node3D" parent="Doors" unique_id=225138335]
+metadata/door_id = "chapter_wing"
+metadata/areas = ["chapterhouse", "alchemist_wing"]
+metadata/always_open = false
+
+[node name="floor" type="MeshInstance3D" parent="Doors/chapter_wing" unique_id=141121000]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 0.005, 20)
+material_override = SubResource("StandardMaterial3D_e5def")
+cast_shadow = 0
+mesh = SubResource("ArrayMesh_bc4f0")
+
+[node name="gate" type="Node3D" parent="Doors/chapter_wing" unique_id=104690099]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 16.5, 0, 20)
+
+[node name="post_0" type="MeshInstance3D" parent="Doors/chapter_wing/gate" unique_id=137767862]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 2.5, 0)
+material_override = SubResource("StandardMaterial3D_1c5d5")
+mesh = SubResource("BoxMesh_d9232")
+
+[node name="post_1" type="MeshInstance3D" parent="Doors/chapter_wing/gate" unique_id=210228527]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 2.5, 0)
+material_override = SubResource("StandardMaterial3D_1c5d5")
+mesh = SubResource("BoxMesh_6e5ba")
+
+[node name="lintel" type="MeshInstance3D" parent="Doors/chapter_wing/gate" unique_id=99872796]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.2, 0)
+material_override = SubResource("StandardMaterial3D_1c5d5")
+mesh = SubResource("BoxMesh_85126")
+
+[node name="bars" type="Node3D" parent="Doors/chapter_wing/gate" unique_id=29358303]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)
+visible = false
+
+[node name="bars" type="MultiMeshInstance3D" parent="Doors/chapter_wing/gate/bars" unique_id=203693365]
+material_override = SubResource("StandardMaterial3D_b595d")
+gi_mode = 0
+multimesh = SubResource("MultiMesh_1b31f")
+
+[node name="rail_0" type="MeshInstance3D" parent="Doors/chapter_wing/gate/bars" unique_id=21846514]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+material_override = SubResource("StandardMaterial3D_b595d")
+gi_mode = 0
+mesh = SubResource("BoxMesh_707ee")
+
+[node name="rail_1" type="MeshInstance3D" parent="Doors/chapter_wing/gate/bars" unique_id=108133756]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 0)
+material_override = SubResource("StandardMaterial3D_b595d")
+gi_mode = 0
+mesh = SubResource("BoxMesh_a2335")
+
+[node name="seal" type="MeshInstance3D" parent="Doors/chapter_wing/gate/bars" unique_id=181984316]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0.12)
+material_override = SubResource("StandardMaterial3D_6c2f2")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("QuadMesh_40a0d")
+
+[node name="body" type="StaticBody3D" parent="Doors/chapter_wing/gate" unique_id=67498432]
+
+[node name="collider" type="CollisionShape3D" parent="Doors/chapter_wing/gate/body" unique_id=199126983]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
+shape = SubResource("BoxShape3D_0876d")
+disabled = true
+
+[node name="Lights" type="Node3D" parent="." unique_id=53896870]
+
+[node name="alch_cauldron_000" type="OmniLight3D" parent="Lights" unique_id=206496369]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 1.7, 19.5)
+light_color = Color(0.48235294, 0.8784314, 0.47843137, 1)
+light_energy = 1.8
+light_bake_mode = 1
+omni_range = 9.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_cauldron"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_cauldron_000" unique_id=189117289]
+material_override = SubResource("StandardMaterial3D_a094e")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_bone_candles_000" type="OmniLight3D" parent="Lights" unique_id=143553930]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30.4, 1.2, 22.4)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.63
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_bone_candles_000" unique_id=18462455]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_bone_candles_001" type="OmniLight3D" parent="Lights" unique_id=46454647]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.8, 1.2, 16.8)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.63
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_bone_candles_001" unique_id=166496707]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="candles_000" type="OmniLight3D" parent="Lights" unique_id=164086502]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.9, 0.72, 21.1)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.9
+light_bake_mode = 1
+omni_range = 7.0
+omni_attenuation = 1.3
+metadata/prop_kind = "candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/candles_000" unique_id=122223592]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_alembic_000" type="OmniLight3D" parent="Lights" unique_id=43982416]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.5, 1, 8.9)
+light_color = Color(1, 0.65882355, 0.3764706, 1)
+light_energy = 0.63
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_alembic"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_alembic_000" unique_id=249335212]
+material_override = SubResource("StandardMaterial3D_c365d")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="candles_001" type="OmniLight3D" parent="Lights" unique_id=221792208]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.8, 1.68, 9.4)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.9
+light_bake_mode = 1
+omni_range = 7.0
+omni_attenuation = 1.3
+metadata/prop_kind = "candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/candles_001" unique_id=154033898]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_bone_candles_002" type="OmniLight3D" parent="Lights" unique_id=232648382]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32.7, 1.2, 9.2)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.63
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_bone_candles_002" unique_id=3794624]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="candles_002" type="OmniLight3D" parent="Lights" unique_id=128671456]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32.6, 1.68, 13.6)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.9
+light_bake_mode = 1
+omni_range = 7.0
+omni_attenuation = 1.3
+metadata/prop_kind = "candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/candles_002" unique_id=23799672]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="grave_lantern_000" type="OmniLight3D" parent="Lights" unique_id=40389209]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.6, 2.1, 13.2)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.72
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "grave_lantern"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/grave_lantern_000" unique_id=20711499]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="grave_lantern_001" type="OmniLight3D" parent="Lights" unique_id=59177130]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.4, 2.1, 24.8)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.72
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "grave_lantern"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/grave_lantern_001" unique_id=123187528]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_bone_candles_003" type="OmniLight3D" parent="Lights" unique_id=10494325]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.2, 1.2, 13.6)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.63
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_bone_candles_003" unique_id=163266732]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_bone_candles_004" type="OmniLight3D" parent="Lights" unique_id=107667559]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.6, 1.2, 26.4)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.63
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_bone_candles_004" unique_id=245762466]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_bone_candles_005" type="OmniLight3D" parent="Lights" unique_id=37029452]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.2, 1.2, 24.2)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.63
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_bone_candles_005" unique_id=213005183]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="candles_003" type="OmniLight3D" parent="Lights" unique_id=159302858]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32.2, 1.68, 30.6)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.9
+light_bake_mode = 1
+omni_range = 7.0
+omni_attenuation = 1.3
+metadata/prop_kind = "candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/candles_003" unique_id=55691971]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="candles_004" type="OmniLight3D" parent="Lights" unique_id=131959947]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.9, 1.74, 21.4)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.9
+light_bake_mode = 1
+omni_range = 7.0
+omni_attenuation = 1.3
+metadata/prop_kind = "candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/candles_004" unique_id=68983574]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_bubbling_vat_000" type="OmniLight3D" parent="Lights" unique_id=155948348]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41.5, 1.5, 27.6)
+light_color = Color(0.60784316, 0.9098039, 0.41568628, 1)
+light_energy = 1.26
+light_bake_mode = 1
+omni_range = 8.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_bubbling_vat"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_bubbling_vat_000" unique_id=188685003]
+material_override = SubResource("StandardMaterial3D_d033a")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_bubbling_vat_001" type="OmniLight3D" parent="Lights" unique_id=94550458]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.3, 1.2, 29)
+light_color = Color(0.60784316, 0.9098039, 0.41568628, 1)
+light_energy = 1.26
+light_bake_mode = 1
+omni_range = 8.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_bubbling_vat"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_bubbling_vat_001" unique_id=160368184]
+material_override = SubResource("StandardMaterial3D_d033a")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_station_sign_000" type="OmniLight3D" parent="Lights" unique_id=193935356]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.5, 1.9, 15.8)
+light_color = Color(0.54509807, 0.9098039, 0.6039216, 1)
+light_energy = 0.54
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_station_sign"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_station_sign_000" unique_id=102486917]
+material_override = SubResource("StandardMaterial3D_973d6")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_bone_candles_006" type="OmniLight3D" parent="Lights" unique_id=87568035]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.6, 1.2, 16.3)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.63
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_bone_candles_006" unique_id=228869603]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="alch_bone_candles_007" type="OmniLight3D" parent="Lights" unique_id=204978834]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.6, 1.2, 23.7)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.63
+light_bake_mode = 1
+omni_range = 6.0
+omni_attenuation = 1.3
+metadata/prop_kind = "alch_bone_candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/alch_bone_candles_007" unique_id=43905096]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="candles_005" type="OmniLight3D" parent="Lights" unique_id=252704469]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.6, 1.68, 25.8)
+light_color = Color(1, 0.7058824, 0.41960785, 1)
+light_energy = 0.9
+light_bake_mode = 1
+omni_range = 7.0
+omni_attenuation = 1.3
+metadata/prop_kind = "candles"
+
+[node name="flame" type="MeshInstance3D" parent="Lights/candles_005" unique_id=75804043]
+material_override = SubResource("StandardMaterial3D_94d60")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("SphereMesh_01334")
+
+[node name="light_pools" type="MeshInstance3D" parent="Lights" unique_id=113471765]
+material_override = SubResource("StandardMaterial3D_cfb8b")
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("ArrayMesh_fcbc9")
+
+[node name="Occluders" type="Node3D" parent="." unique_id=127122967]
+
+[node name="wall_000" type="OccluderInstance3D" parent="Occluders" unique_id=136908440]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 2.75, 7.6)
+occluder = SubResource("BoxOccluder3D_d58c5")
+
+[node name="wall_002" type="OccluderInstance3D" parent="Occluders" unique_id=241602451]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46.4, 2.75, 20)
+occluder = SubResource("BoxOccluder3D_85e52")
+
+[node name="wall_003" type="OccluderInstance3D" parent="Occluders" unique_id=180664780]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.6, 2.75, 12.5)
+occluder = SubResource("BoxOccluder3D_a336a")
+
+[node name="wall_004" type="OccluderInstance3D" parent="Occluders" unique_id=66076639]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.6, 2.75, 27.5)
+occluder = SubResource("BoxOccluder3D_85af8")
+
+[node name="Colliders" type="StaticBody3D" parent="." unique_id=151683474]
+
+[node name="wall_000" type="CollisionShape3D" parent="Colliders" unique_id=22084902]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 2.75, 7.6)
+shape = SubResource("BoxShape3D_3ebdd")
+
+[node name="wall_001" type="CollisionShape3D" parent="Colliders" unique_id=81436563]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 1.5, 32.4)
+shape = SubResource("BoxShape3D_d0761")
+
+[node name="wall_002" type="CollisionShape3D" parent="Colliders" unique_id=13441434]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46.4, 2.75, 20)
+shape = SubResource("BoxShape3D_ee9d2")
+
+[node name="wall_003" type="CollisionShape3D" parent="Colliders" unique_id=218551778]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.6, 2.75, 12.5)
+shape = SubResource("BoxShape3D_c6b8b")
+
+[node name="wall_004" type="CollisionShape3D" parent="Colliders" unique_id=208615508]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.6, 2.75, 27.5)
+shape = SubResource("BoxShape3D_c6b8b")
+
+[node name="alch_cauldron_000" type="CollisionShape3D" parent="Colliders" unique_id=139129993]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 1.5, 19.5)
+shape = SubResource("CylinderShape3D_486af")
+
+[node name="alch_bone_candles_000" type="CollisionShape3D" parent="Colliders" unique_id=63144858]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30.4, 1.5, 22.4)
+shape = SubResource("CylinderShape3D_4a51a")
+
+[node name="alch_bone_candles_001" type="CollisionShape3D" parent="Colliders" unique_id=3819306]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.8, 1.5, 16.8)
+shape = SubResource("CylinderShape3D_4a51a")
+
+[node name="alch_canopic_jars_000" type="CollisionShape3D" parent="Colliders" unique_id=228626637]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 31.2, 1.5, 16.9)
+shape = SubResource("BoxShape3D_0f284")
+
+[node name="bone_pile_000" type="CollisionShape3D" parent="Colliders" unique_id=64584100]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.4, 1.5, 22.3)
+shape = SubResource("CylinderShape3D_f3a3d")
+
+[node name="alch_alembic_000" type="CollisionShape3D" parent="Colliders" unique_id=41418024]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.5, 1.5, 8.9)
+shape = SubResource("BoxShape3D_b6060")
+
+[node name="workbench_000" type="CollisionShape3D" parent="Colliders" unique_id=164477675]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.2, 1.5, 9.4)
+shape = SubResource("BoxShape3D_ad73c")
+
+[node name="alch_canopic_jars_001" type="CollisionShape3D" parent="Colliders" unique_id=25864684]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30.6, 1.5, 9.4)
+shape = SubResource("BoxShape3D_bc238")
+
+[node name="alch_bone_candles_002" type="CollisionShape3D" parent="Colliders" unique_id=199565905]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32.7, 1.5, 9.2)
+shape = SubResource("CylinderShape3D_4a51a")
+
+[node name="alch_reagent_shelf_000" type="CollisionShape3D" parent="Colliders" unique_id=89970447]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.5, 1.5, 8.45)
+shape = SubResource("BoxShape3D_46394")
+
+[node name="alch_reagent_shelf_001" type="CollisionShape3D" parent="Colliders" unique_id=215052405]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.4, 1.5, 8.45)
+shape = SubResource("BoxShape3D_46394")
+
+[node name="alch_reagent_shelf_002" type="CollisionShape3D" parent="Colliders" unique_id=95750697]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39.3, 1.5, 8.45)
+shape = SubResource("BoxShape3D_46394")
+
+[node name="alch_reagent_shelf_003" type="CollisionShape3D" parent="Colliders" unique_id=187434245]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41.2, 1.5, 8.45)
+shape = SubResource("BoxShape3D_46394")
+
+[node name="alch_reagent_shelf_004" type="CollisionShape3D" parent="Colliders" unique_id=114779894]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.1, 1.5, 8.45)
+shape = SubResource("BoxShape3D_46394")
+
+[node name="workbench_001" type="CollisionShape3D" parent="Colliders" unique_id=267518139]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.8, 1.5, 13.6)
+shape = SubResource("BoxShape3D_ad73c")
+
+[node name="alch_canopic_jars_002" type="CollisionShape3D" parent="Colliders" unique_id=180488694]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.9, 1.5, 13.6)
+shape = SubResource("BoxShape3D_9683d")
+
+[node name="covenant_lectern_000" type="CollisionShape3D" parent="Colliders" unique_id=83163356]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 36.4, 1.5, 18.4)
+shape = SubResource("CylinderShape3D_e1e0f")
+
+[node name="grave_lantern_000" type="CollisionShape3D" parent="Colliders" unique_id=27607703]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.6, 1.5, 13.2)
+shape = SubResource("CylinderShape3D_30b94")
+
+[node name="grave_lantern_001" type="CollisionShape3D" parent="Colliders" unique_id=164622545]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.4, 1.5, 24.8)
+shape = SubResource("CylinderShape3D_30b94")
+
+[node name="alch_mortar_table_000" type="CollisionShape3D" parent="Colliders" unique_id=65076369]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41.3, 1.5, 15.2)
+shape = SubResource("BoxShape3D_cb5d5")
+
+[node name="alch_bone_candles_003" type="CollisionShape3D" parent="Colliders" unique_id=151194159]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.2, 1.5, 13.6)
+shape = SubResource("CylinderShape3D_4a51a")
+
+[node name="alch_mortar_table_001" type="CollisionShape3D" parent="Colliders" unique_id=237934734]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 31.4, 1.5, 27)
+shape = SubResource("BoxShape3D_67704")
+
+[node name="alch_bone_candles_004" type="CollisionShape3D" parent="Colliders" unique_id=84957224]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.6, 1.5, 26.4)
+shape = SubResource("CylinderShape3D_4a51a")
+
+[node name="alch_bone_candles_005" type="CollisionShape3D" parent="Colliders" unique_id=91852195]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.2, 1.5, 24.2)
+shape = SubResource("CylinderShape3D_4a51a")
+
+[node name="workbench_002" type="CollisionShape3D" parent="Colliders" unique_id=169162867]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.4, 1.5, 30.6)
+shape = SubResource("BoxShape3D_ad73c")
+
+[node name="bone_pile_001" type="CollisionShape3D" parent="Colliders" unique_id=106901131]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.2, 1.5, 30.4)
+shape = SubResource("CylinderShape3D_49ab9")
+
+[node name="coffin_stack_000" type="CollisionShape3D" parent="Colliders" unique_id=184574544]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.8, 1.5, 30.9)
+shape = SubResource("BoxShape3D_cee45")
+
+[node name="alch_counter_000" type="CollisionShape3D" parent="Colliders" unique_id=254638659]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45.1, 1.5, 20)
+shape = SubResource("BoxShape3D_65925")
+
+[node name="alch_canopic_jars_003" type="CollisionShape3D" parent="Colliders" unique_id=65080563]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45.1, 1.5, 18.4)
+shape = SubResource("BoxShape3D_cab26")
+
+[node name="alch_reagent_shelf_005" type="CollisionShape3D" parent="Colliders" unique_id=172198868]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45.4, 1.5, 13.2)
+shape = SubResource("BoxShape3D_a8f80")
+
+[node name="alch_reagent_shelf_006" type="CollisionShape3D" parent="Colliders" unique_id=138981256]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45.4, 1.5, 15.1)
+shape = SubResource("BoxShape3D_a8f80")
+
+[node name="alch_reagent_shelf_007" type="CollisionShape3D" parent="Colliders" unique_id=100069819]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45.4, 1.5, 24.6)
+shape = SubResource("BoxShape3D_a8f80")
+
+[node name="alch_reagent_shelf_008" type="CollisionShape3D" parent="Colliders" unique_id=221616853]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45.4, 1.5, 26.5)
+shape = SubResource("BoxShape3D_a8f80")
+
+[node name="alch_bubbling_vat_000" type="CollisionShape3D" parent="Colliders" unique_id=72938034]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41.5, 1.5, 27.6)
+shape = SubResource("CylinderShape3D_9fe7a")
+
+[node name="alch_bubbling_vat_001" type="CollisionShape3D" parent="Colliders" unique_id=225430256]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.3, 1.5, 29)
+shape = SubResource("CylinderShape3D_ba416")
+
+[node name="coffin_stack_001" type="CollisionShape3D" parent="Colliders" unique_id=146795387]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.6, 1.5, 30.5)
+shape = SubResource("BoxShape3D_05a9b")
+
+[node name="alch_station_sign_000" type="CollisionShape3D" parent="Colliders" unique_id=107645678]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.5, 1.5, 15.8)
+shape = SubResource("BoxShape3D_ba71c")
+
+[node name="alch_totem_stirrer_000" type="CollisionShape3D" parent="Colliders" unique_id=17912510]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.2, 1.5, 14.2)
+shape = SubResource("BoxShape3D_ea700")
+
+[node name="alch_bone_candles_006" type="CollisionShape3D" parent="Colliders" unique_id=33491753]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.6, 1.5, 16.3)
+shape = SubResource("CylinderShape3D_4a51a")
+
+[node name="alch_bone_candles_007" type="CollisionShape3D" parent="Colliders" unique_id=261587015]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.6, 1.5, 23.7)
+shape = SubResource("CylinderShape3D_4a51a")
+
+[node name="alch_mortar_table_002" type="CollisionShape3D" parent="Colliders" unique_id=129518662]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.5, 1.5, 24)
+shape = SubResource("BoxShape3D_5c893")
+
+[node name="workbench_003" type="CollisionShape3D" parent="Colliders" unique_id=7672484]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.6, 1.5, 26.6)
+shape = SubResource("BoxShape3D_15825")
+
+[node name="alch_canopic_jars_004" type="CollisionShape3D" parent="Colliders" unique_id=233170844]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.4, 1.5, 28.4)
+shape = SubResource("BoxShape3D_cab26")
+
+[node name="alch_drying_rack_000" type="CollisionShape3D" parent="Colliders" unique_id=208161049]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.7, 1.5, 11.4)
+shape = SubResource("BoxShape3D_4793c")
+
+[node name="alch_drying_rack_001" type="CollisionShape3D" parent="Colliders" unique_id=7610804]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.7, 1.5, 30.4)
+shape = SubResource("BoxShape3D_4793c")
+
+[node name="Navigation" type="Node3D" parent="." unique_id=124533225]
+
+[node name="area_alchemist_wing" type="NavigationRegion3D" parent="Navigation" unique_id=267991044]
+navigation_mesh = SubResource("NavigationMesh_6deae")
+
+[node name="door_chapter_wing" type="NavigationRegion3D" parent="Navigation" unique_id=182792506]
+navigation_mesh = SubResource("NavigationMesh_156e2")
+metadata/door_id = "chapter_wing"
+
+[node name="link_chapter_wing_0" type="NavigationLink3D" parent="Navigation" unique_id=84334824]
+start_position = Vector3(12.4, 0, 20)
+end_position = Vector3(12.6, 0, 20)
+metadata/door_id = "chapter_wing"
+
+[node name="link_chapter_wing_1" type="NavigationLink3D" parent="Navigation" unique_id=128940471]
+start_position = Vector3(20.6, 0, 20)
+end_position = Vector3(20.4, 0, 20)
+metadata/door_id = "chapter_wing"
+
+[node name="Lightmap" type="LightmapGI" parent="." unique_id=196862132]
+max_texture_size = 4096
+environment_mode = 3
+environment_custom_color = Color(0.54764706, 0.48156863, 0.34941176, 1)
+environment_custom_energy = 1.9

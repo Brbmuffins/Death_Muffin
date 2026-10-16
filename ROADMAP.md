@@ -93,11 +93,11 @@ server (B38).
   `client/assets.list`. The Hollow Graves are in it; each later item adds its block (the Gravecaller, the Graves roster, thralls, the
   Gravedigger King, effects, sounds, HUD art).
 - [x] The Hollow Graves as a scene: `tools/rebuild/build-areas.sh graves` converts `godot/data/slice/world.json` into
-  `client/areas/graves.tscn` (same layout, static colliders, offline-baked navmesh, occluders, visibility ranges); the other 12 areas
-  use the same converter. `client/tests/area_graves.gd` proves the layout against world.json.
+  `client/areas/graves.tscn` (same layout, static colliders, offline-baked navmesh, occluders, visibility ranges); the other eleven areas that are
+  not generated at runtime are converted the same way. `client/tests/areas.gd` proves every area's layout against world.json.
 - [x] The first lighting bake of the Graves through Helix's helper (2026-10-16, RTX 4070 SUPER, 5.8 s): `client/areas/graves.lmbake` and its lightmap
   (prop lights and the area's ambient baked, the moon real-time). The helper, the editor plugin and the kit publisher: `client/addons/dm_bake/README.md`;
-  `client/tests/area_graves.gd` fails when a converter change leaves the bake stale (a baked mesh gone).
+  `client/tests/areas.gd` fails when a converter change leaves the bake stale (a baked mesh gone).
 - [ ] Static batching: after the bake, merge each 12 m cell's static props into one mesh (about 250 draw calls for the Graves' 132
   prop instances today; phones and weak laptops need far fewer).
 - [x] Crowd animation: `client/crowd/` bakes each creature model's clips into vertex-animation textures (`bash client/tools/bake_crowd.sh`;
@@ -235,9 +235,18 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
 - [x] The Reaper (discipline 11) and its nine rites: her model and the worn gear models in `client/assets.list`, the soul bag on the HUD, her kit on the hotbar; `DmReaperRites` and Scythe Weave,
   Wraith Walk and Unleash Souls ported to the core (her other five rites are copies); a kill credited to her banks a soul. `client/tests/rites.gd` "the Reaper" replays today's Reaper checks on core
   enemies (client/README.md "The Gravecaller's rites"). Her look and feel in play are Helix's PC's.
-- [ ] The other 12 areas as scenes (`client/tools/build_area.gd`, a lighting bake each through Helix's helper), their rosters baked, moving between areas.
+- [ ] The other areas: the eleven static ones as scenes, moving between them, their enemies (DECISIONS B47).
+  - [x] The eleven areas converted (`client/tools/build_area.gd`; their textures and props in `client/assets.list`); `client/tests/areas.gd` proves each against today's builder.
+  - [x] Moving between areas: every area but the Depths loads, the hero starts and gets up in the Chapterhouse; the Chapterhouse node (ported) breaks seals on kills and
+    opens their gates, runs waystone travel, the recall, the stations and the people; a guest's doors follow the host's seals. The core keeps its own copy of the
+    navmesh (`NavGrid`): its step with 72 chasing enemies went from 1.76 to 0.10 ms with the Graves alone and from 11.75 to 0.11 ms with every area loaded (VPS, one
+    run, 2026-10-16). `client/tests/world.gd`.
+  - [ ] The lighting bake of the eleven, in one run of Helix's helper (`publish-bake-kit.sh` with every scene).
+  - [ ] Their enemies in the core, kind by kind against today's (the censer, deacon, golem, acolyte, gargoyle, templar, wraith, seraph, flagellant, plague doctor, the Pyre's four
+    and the Fen's four), and their crowd models baked.
+  - [ ] The benchmark's other rooms (today's Sanctum and the rest), so Gate C can compare every room.
 - [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
-- [ ] The Depths, gathering and the Chapterhouse (stations, waystones, people).
+- [ ] The Depths and gathering (the Chapterhouse came with the areas, DECISIONS B47).
 - [ ] Tips, onboarding and sound on the core's events.
 - [ ] Gate C: every rule test matches today's, playtests OK, nothing slower than the test build.
 

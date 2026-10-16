@@ -1012,6 +1012,14 @@ void World::separate() {
 	}
 }
 
+void World::keep_on_nav(float &x, float &z) {
+	if (!navgrid.empty()) {
+		navgrid.clamp(x, z);
+	} else if (nav.clamp) {
+		nav.clamp(nav.user, x, z);
+	}
+}
+
 // DmEnemy._move: apply the wanted velocity, turn toward it, keep to the navmesh and outside heroes' bodies.
 void World::move(Enemy &e, double p_dt) {
 	const double vx = e.want_vx, vz = e.want_vz;
@@ -1025,9 +1033,7 @@ void World::move(Enemy &e, double p_dt) {
 		if (e.state != BURROW && e.state != ERUPT) {
 			keep_off_heroes(e);
 		}
-		if (nav.clamp) {
-			nav.clamp(nav.user, e.x, e.z);
-		}
+		keep_on_nav(e.x, e.z);
 		e.yaw = float(lerp_angle(e.yaw, std::atan2(vx, vz), std::min(1.0, TURN_RATE * p_dt)));
 	}
 	e.want_vx = e.want_vz = 0.0;
@@ -1174,9 +1180,7 @@ void World::resolve_overlaps() {
 		e.x += float(cx);
 		e.z += float(cz);
 		keep_off_heroes(e);
-		if (nav.clamp) {
-			nav.clamp(nav.user, e.x, e.z);
-		}
+		keep_on_nav(e.x, e.z);
 	}
 }
 

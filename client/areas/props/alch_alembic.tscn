@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/alch_alembic.glb" id="1_b0825"]
+
+[node name="alch_alembic" type="Node3D" unique_id=98123374]
+metadata/model = "models/props/alch_alembic.glb"
+metadata/height = 1.8
+metadata/small = false
+
+[node name="model" parent="." unique_id=38996033 instance=ExtResource("1_b0825")]
+transform = Transform3D(1.8035225, 0, 0, 0, 1.8035225, 0, 0, 0, 1.8035225, 0, 0.9, 0)
+
+[editable path="model"]

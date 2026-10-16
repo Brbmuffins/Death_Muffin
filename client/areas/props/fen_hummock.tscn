@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/fen_hummock.glb" id="1_5dce8"]
+
+[node name="fen_hummock" type="Node3D" unique_id=228013201]
+metadata/model = "models/props/fen_hummock.glb"
+metadata/height = 1.1
+metadata/small = true
+
+[node name="model" parent="." unique_id=262679987 instance=ExtResource("1_5dce8")]
+transform = Transform3D(2.047989, 0, 0, 0, 2.047989, 0, 0, 0, 2.047989, 0, 0.55, 0)
+
+[node name="tripo_node_de52a4e7-c369-465c-b025-d301eaaaf3cd" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

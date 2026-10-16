@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/cinder_obelisk.glb" id="1_09617"]
+
+[node name="cinder_obelisk" type="Node3D" unique_id=257449118]
+metadata/model = "models/props/cinder_obelisk.glb"
+metadata/height = 4.2
+metadata/small = false
+
+[node name="model" parent="." unique_id=216213838 instance=ExtResource("1_09617")]
+transform = Transform3D(4.208219, 0, 0, 0, 4.208219, 0, 0, 0, 4.208219, 0, 2.1, 0)
+
+[editable path="model"]

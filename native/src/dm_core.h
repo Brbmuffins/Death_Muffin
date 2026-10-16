@@ -54,6 +54,13 @@ public:
 	int64_t load_status_defs(const godot::Array &p_rules);
 	void set_nav_map(const godot::RID &p_map);                      // the area's navigation map; unset = straight lines (tests)
 	void set_area_bounds(const godot::Vector2 &p_min, const godot::Vector2 &p_max);
+	// The navmesh for the per-tick "keep to the navmesh" step (NavGrid): each region's vertices (world space) and polygons ([n, i0 .. in-1, ...]); its index.
+	// With none, the step asks the navigation map (set_nav_map). nav_closest answers the same query for GDScript (the hero's moves, spawn points).
+	int64_t nav_add_region(const godot::PackedVector3Array &p_vertices, const godot::PackedInt32Array &p_polygons, bool p_enabled);
+	void nav_set_region_enabled(int64_t p_region, bool p_enabled);
+	void nav_clear_regions();
+	godot::Vector3 nav_closest(const godot::Vector3 &p_point);
+	int64_t nav_triangle_count() const;
 
 	// Commands (casts, bosses, the director)
 	// `affixes`: the director's DmAffixSet.roll (bellTolled, hungering, shrouded, vengeful); the core runs their rules.

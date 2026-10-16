@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/saints_litter.glb" id="1_c956c"]
+
+[node name="saints_litter" type="Node3D" unique_id=40238765]
+metadata/model = "models/props/saints_litter.glb"
+metadata/height = 2.4
+metadata/small = false
+
+[node name="model" parent="." unique_id=175020985 instance=ExtResource("1_c956c")]
+transform = Transform3D(4.2222, 0, 0, 0, 4.2222, 0, 0, 0, 4.2222, 0, 1.2, 0)
+
+[editable path="model"]

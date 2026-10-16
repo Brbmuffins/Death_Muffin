@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/alch_cauldron.glb" id="1_e6fec"]
+
+[node name="alch_cauldron" type="Node3D" unique_id=215372406]
+metadata/model = "models/props/alch_cauldron.glb"
+metadata/height = 1.3
+metadata/small = true
+
+[node name="model" parent="." unique_id=117168160 instance=ExtResource("1_e6fec")]
+transform = Transform3D(1.4374882, 0, 0, 0, 1.4374882, 0, 0, 0, 1.4374882, 0, 0.65, 0)
+
+[node name="tripo_node_6cb3825b-5a82-41e7-9443-d1ebe73a70f2" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

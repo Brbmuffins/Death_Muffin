@@ -393,11 +393,11 @@ func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 			_areas.append({"id": id, "rect": a["rect"], "safe": a["safe"], "unlocked": false, "instance": a.get("instance", false)})
 		for d in DmContent.doors():
 			_doors.append({"rect": d["rect"], "open": false, "id": d["id"]})
-	# What the scene loaded is what is unlocked; a door is open when both of its areas are loaded.
+	# The world's seal state is what is unlocked / open (as today's builder's).
 	for a in _areas:
-		a["unlocked"] = g.world.loaded.has(a["id"])
+		a["unlocked"] = g.world.unlocked.has(a["id"])
 	for d in _doors:
-		d["open"] = g.world.loaded.has(String(d.get("a", ""))) and g.world.loaded.has(String(d.get("b", "")))
+		d["open"] = g.chapterhouse.door_open(String(d["id"])) if g.chapterhouse != null else bool(g.world.gates.get(String(d["id"]), {}).get("open", false))
 	var core: RefCounted = g.core_host.core
 	# the living enemies (the core's table also holds the dying), elites flagged
 	var ids: PackedInt32Array = core.enemy_ids()

@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/bone_candelabrum.glb" id="1_8372a"]
+
+[node name="bone_candelabrum" type="Node3D" unique_id=256356537]
+metadata/model = "models/props/bone_candelabrum.glb"
+metadata/height = 2.2
+metadata/small = false
+
+[node name="model" parent="." unique_id=249524604 instance=ExtResource("1_8372a")]
+transform = Transform3D(2.2043052, 0, 0, 0, 2.2043052, 0, 0, 0, 2.2043052, 0, 1.1, 0)
+
+[editable path="model"]

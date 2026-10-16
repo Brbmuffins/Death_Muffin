@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/ember_altar.glb" id="1_a8021"]
+
+[node name="ember_altar" type="Node3D" unique_id=145855002]
+metadata/model = "models/props/ember_altar.glb"
+metadata/height = 1.8
+metadata/small = false
+
+[node name="model" parent="." unique_id=162049184 instance=ExtResource("1_a8021")]
+transform = Transform3D(1.8035225, 0, 0, 0, 1.8035225, 0, 0, 0, 1.8035225, 0, 0.9, 0)
+
+[editable path="model"]

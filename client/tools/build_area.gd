@@ -26,7 +26,7 @@ const NAV_PAD := 1.5        # an obstruction is baked into a region when it lies
 const FLOOR_OUTSET := 0.8   # an area's ground extends this far past its rect
 const RING_PX := 256
 
-## Choices of this converter (client/tests/area_graves.gd reads the same constants).
+## Choices of this converter (client/tests/areas.gd reads the same constants).
 const SMALL_PROP_MAX_HEIGHT := 1.5     # props up to this tall: no shadow (as in world_builder) and a visibility range
 const SMALL_PROP_VISIBLE_END := 70.0   # metres; the camera never sees further than about 60 (zoomed out on an ultrawide)
 const OCC_WALL_MIN_HEIGHT := 3.0       # walls this tall and this long get a box occluder
@@ -704,6 +704,7 @@ func _ore_crystals(holder: Node3D, n: Dictionary) -> void:
 	vm.emission = tint
 	vm.emission_energy_multiplier = 0.9 if n.kind == "geode" else 0.55
 	var bm := BoxMesh.new()
+	bm.add_uv2 = true   # static for the bake: lightmap UVs
 	bm.size = Vector3(0.12, 0.34, 0.12)
 	var k := 0
 	for sh in [[0.2, 0.5, 0.45], [-0.25, 0.45, 0.42], [0.45, 0.35, 0.3]]:
@@ -724,6 +725,7 @@ func _node_standin(holder: Node3D, n: Dictionary) -> void:
 	if n.kind == "herb":
 		var st := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
+		cm.add_uv2 = true   # static for the bake: lightmap UVs
 		cm.top_radius = 0.03
 		cm.bottom_radius = 0.06
 		cm.height = 0.4
@@ -734,6 +736,7 @@ func _node_standin(holder: Node3D, n: Dictionary) -> void:
 		_add(holder, st, "stem")
 		var cap := MeshInstance3D.new()
 		var sm := SphereMesh.new()
+		sm.add_uv2 = true   # static for the bake: lightmap UVs
 		sm.radius = 0.16
 		sm.height = 0.26
 		sm.radial_segments = 8
@@ -767,6 +770,7 @@ func _node_standin(holder: Node3D, n: Dictionary) -> void:
 	elif n.kind == "tree":
 		var tm := MeshInstance3D.new()
 		var cm2 := CylinderMesh.new()
+		cm2.add_uv2 = true   # static for the bake: lightmap UVs
 		cm2.top_radius = 0.2
 		cm2.bottom_radius = 0.35
 		cm2.height = 2.4
@@ -885,12 +889,15 @@ func _wing_floor(parent: Node3D) -> void:
 			m.albedo_color = Color(col, 0.8)
 		var mi := _flat(parent, "%s_%02d" % [f.kind, n], Vector2(f.w, f.d), m, Vector3(f.x, 0.012 if rug else 0.014, f.z), f.rot)
 		mi.gi_mode = GeometryInstance3D.GI_MODE_STATIC if rug else GeometryInstance3D.GI_MODE_DISABLED
+		if rug:
+			(mi.mesh as QuadMesh).add_uv2 = true   # baked with the floor: lightmap UVs
 		if rug and f.alt != null:
 			var tmat := StandardMaterial3D.new()
 			tmat.roughness = 1.0
 			tmat.albedo_color = col * 0.8
 			var ti := _flat(parent, "%s_%02d_trim" % [f.kind, n], Vector2(f.w - 0.5, f.d - 0.5), tmat, Vector3(f.x, 0.016, f.z), f.rot)
 			ti.gi_mode = GeometryInstance3D.GI_MODE_STATIC
+			(ti.mesh as QuadMesh).add_uv2 = true
 		n += 1
 
 
@@ -927,10 +934,13 @@ func _hummocks(parent: Node3D) -> void:
 	mr.transform_format = MultiMesh.TRANSFORM_3D
 	mr.mesh = _hummock_ring_mesh()
 	mr.instance_count = items.size()
-	for i in items.size():
-		var h: Dictionary = items[i]
-		mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(h.r, 1.0, h.r)), Vector3(h.x, 0.17, h.z)))
-		mr.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(h.r, 1.0, h.r)), Vector3(h.x, 0.0, h.z)))
+	var mound_buf := PackedFloat32Array()
+	var rim_buf := PackedFloat32Array()
+	for h: Dictionary in items:
+		mound_buf.append_array(_mm_row(Transform3D(Basis.from_scale(Vector3(h.r, 1.0, h.r)), Vector3(h.x, 0.17, h.z))))
+		rim_buf.append_array(_mm_row(Transform3D(Basis.from_scale(Vector3(h.r, 1.0, h.r)), Vector3(h.x, 0.0, h.z))))
+	mm.buffer = mound_buf
+	mr.buffer = rim_buf
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.material_override = mat
@@ -966,7 +976,8 @@ func _hummock_ring_mesh() -> ArrayMesh:
 
 # ---------------------------------------------------------------- doors and gates
 ## Every door that touches this area: its corridor floor and, unless it is always open, its gate (posts, lintel, bars, seal, a solid body).
-## A door between two areas is in both scenes with the same id and place (the area loader keeps one copy). Gates start closed.
+## A door between two areas is in both scenes with the same id and place (the area loader keeps one copy). A gate starts as world_builder leaves it
+## after building: closed, except the doors world.json lists as open, which world_builder._apply_unlock_state opens at once.
 func _doors(parent: Node3D) -> void:
 	for d: Dictionary in world.doors:
 		if d.a != area_id and d.b != area_id:
@@ -978,10 +989,15 @@ func _doors(parent: Node3D) -> void:
 		holder.set_meta("always_open", always_open)
 		_ground(holder, "floor", d.rect.x0, d.rect.z0, d.rect.x1, d.rect.z1, "chapter", 0.005)
 		if not always_open:
-			_gate(holder, d)
+			_gate(holder, d, d.open)
 
 
-func _gate(parent: Node3D, d: Dictionary) -> void:
+## A MultiMesh transform as the 12 floats of its buffer (basis rows, origin last). The headless renderer keeps nothing set with set_instance_transform.
+func _mm_row(t: Transform3D) -> PackedFloat32Array:
+	return PackedFloat32Array([t.basis.x.x, t.basis.y.x, t.basis.z.x, t.origin.x, t.basis.x.y, t.basis.y.y, t.basis.z.y, t.origin.y, t.basis.x.z, t.basis.y.z, t.basis.z.z, t.origin.z])
+
+
+func _gate(parent: Node3D, d: Dictionary, open: bool) -> void:
 	var bar_mat: StandardMaterial3D = _shared("gate_bar", func() -> StandardMaterial3D:
 		var m := StandardMaterial3D.new()
 		m.albedo_color = Color.html("#24212a")
@@ -1044,8 +1060,10 @@ func _gate(parent: Node3D, d: Dictionary) -> void:
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = cyl
 	mm.instance_count = n + 1
+	var buf := PackedFloat32Array()
 	for i in n + 1:
-		mm.set_instance_transform(i, Transform3D(Basis.IDENTITY, Vector3(-width / 2.0 + i * width / n, 2.4, 0)))
+		buf.append_array(_mm_row(Transform3D(Basis.IDENTITY, Vector3(-width / 2.0 + i * width / n, 2.4, 0))))
+	mm.buffer = buf
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.material_override = bar_mat
@@ -1078,6 +1096,10 @@ func _gate(parent: Node3D, d: Dictionary) -> void:
 	cs.shape = _box_shape(Vector3(width, 5.0, 1.0))
 	cs.position = Vector3(0, 2.5, 0)
 	_add(body, cs, "collider")
+	if open:   # world_builder.set_door_open(id, true, instant): the bars up and hidden, the body off
+		bars.position.y = 5.0
+		bars.visible = false
+		cs.disabled = true
 
 
 # ---------------------------------------------------------------- navigation (baked here, not at start-up)
@@ -1162,15 +1184,15 @@ func _bake_region(name: String, faces: PackedVector3Array, r: Dictionary, obstac
 
 
 ## The area's region and, for every door touching it, the corridor region and the two links joining it to its rooms across the one-metre
-## overlap (both ends sit inside both regions' eroded edges). A gated door's region and links start disabled; the runtime enables them
-## when the door opens (world_builder.set_door_open).
+## overlap (both ends sit inside both regions' eroded edges). A door's region and links start enabled when world.json lists the door as open,
+## disabled otherwise; the runtime enables them when a sealed door opens (world_builder.set_door_open).
 func _bake_nav() -> void:
 	var obstacles := _all_obstacles()
 	_bake_region("area_" + area_id, _quad_faces(rect), rect, obstacles, true)
 	for d: Dictionary in world.doors:
 		if d.a != area_id and d.b != area_id:
 			continue
-		var open: bool = d.id == "chapter_graves"
+		var open: bool = d.open
 		var reg := _bake_region("door_" + String(d.id), _quad_faces(d.rect), d.rect, obstacles, open)
 		reg.set_meta("door_id", d.id)
 		var k := 0

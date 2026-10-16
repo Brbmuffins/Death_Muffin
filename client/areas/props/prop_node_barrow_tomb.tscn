@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_barrow_tomb.glb" id="1_940b4"]
+
+[node name="prop_node_barrow_tomb" type="Node3D" unique_id=265395371]
+metadata/model = "models/props/prop_node_barrow_tomb.glb"
+metadata/height = 2.0
+metadata/small = false
+
+[node name="model" parent="." unique_id=105200554 instance=ExtResource("1_940b4")]
+transform = Transform3D(4.471382, 0, 0, 0, 4.471382, 0, 0, 0, 4.471382, 0, 1, 0)
+
+[editable path="model"]

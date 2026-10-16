@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/covenant_lectern.glb" id="1_345b8"]
+
+[node name="covenant_lectern" type="Node3D" unique_id=227080410]
+metadata/model = "models/props/covenant_lectern.glb"
+metadata/height = 1.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=212494070 instance=ExtResource("1_345b8")]
+transform = Transform3D(1.6031312, 0, 0, 0, 1.6031312, 0, 0, 0, 1.6031312, 0, 0.8, 0)
+
+[editable path="model"]

@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/mire_altar.glb" id="1_3efed"]
+
+[node name="mire_altar" type="Node3D" unique_id=37527529]
+metadata/model = "models/props/mire_altar.glb"
+metadata/height = 1.3
+metadata/small = true
+
+[node name="model" parent="." unique_id=22567173 instance=ExtResource("1_3efed")]
+transform = Transform3D(2.287025, 0, 0, 0, 2.287025, 0, 0, 0, 2.287025, 0, 0.65, 0)
+
+[node name="tripo_node_0615baa1-45d3-4608-9143-cb860ba76a33" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

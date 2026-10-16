@@ -99,7 +99,7 @@ func _run() -> void:
 	DmDevMock.set_level(mock, ch.data, level)
 	g = load("res://next/next_game.tscn").instantiate()
 	root.add_child(g)
-	await g.start(ch.data, api, {"name": "parity", "hud": false, "audio": false, "waves": false, "persist": false, "omen": {}, "difficulty": difficulty, "seed": seed_n})
+	await g.start(ch.data, api, {"areas": ["graves"], "name": "parity", "hud": false, "audio": false, "waves": false, "persist": false, "omen": {}, "difficulty": difficulty, "seed": seed_n})
 	host = g.core_host
 	hero = g.local_body()
 	caster = hero.get_node("Rites")

@@ -35,6 +35,7 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/value.gd   # value on the server in the game scene: kills, accepted XP, the purse, a claimed drop, brews and lifesteal, the meta, the belt, saving ("Value on the server")
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/fx_motes.gd               # the effects' particle ring in C++ (DmMotes) against today's ring, float for float; INFO: its update time on both sides
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/panels.gd # today's panels on the core: every panel opens, the Reliquary (equip, sell, sort) on the server's bag, the loadout, Settings live, chat
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/world.gd  # the whole world: every area, seals and gates, into the Warren, waystones, the recall, the core's navmesh against the server's
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the thralls) into client/assets/crowd/baked (not committed)
 ```
@@ -85,16 +86,17 @@ uids keep working:
 
 ## The game scene and the dev entry
 
-`next/next_game.tscn` (`DmNextGame`, a port of today's) is the game on the combat core: a **solo run in the Hollow Graves**, with the character the front flow chose on the test server
-(below) or, from `dev/dm_dev_entry.tscn`, a dev character on the local mock backend, the way today's `--dev-offline --class=2` does. **The dev entry reaches no server**: the backend is
+`next/next_game.tscn` (`DmNextGame`, a port of today's) is the game on the combat core: **the whole world** (every area but the Depths; the hero starts and gets up in the Chapterhouse,
+as today), with the character the front flow chose on the test server (below) or, from `dev/dm_dev_entry.tscn`, a dev character on the local mock backend in the Hollow Graves alone (a
+quick fight), the way today's `--dev-offline --class=2` does. **The dev entry reaches no server**: the backend is
 `DmOffline.make_mock` (accounts in this project's own `user://dm_dev_offline_db.json`) and has no base url. `DmNextGame.start` refuses any api whose base url is not the test server's.
 
 ```
 bash client/setup.sh                                   # once per checkout: builds the core, imports
 bash client/tools/bake_crowd.sh                        # once: bakes the robber, the hound and the thralls (without them nothing is drawn; the other defs borrow these)
 /home/ubuntu/tools/godot/godot --path client            # the boot: login and character select on the TEST server, then the game (below)
-/home/ubuntu/tools/godot/godot --path client -- --dev-offline --class=1             # the same boot with the local mock backend and no network at all: straight into the game as `tester` (--seed=N --no-waves --baked=<dir> too)
-/home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn           # the dev entry: the Gravecaller at level 10, the HUD, waves. He fights with the rites (controls below)
+/home/ubuntu/tools/godot/godot --path client -- --dev-offline --class=1             # the same boot with the local mock backend and no network at all: straight into the whole world as `tester` (--seed=N --no-waves --baked=<dir> too)
+/home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn           # the dev entry: the Graves alone, the Gravecaller at level 10, the HUD, waves. He fights with the rites (controls below)
 /home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn -- --class=1 --seed=7 --crowd=70      # options after `--`: --class=N --level=N (default 10) --seed=N --no-waves --crowd=N (a first wave of N bodies 6 to 12 m around the hero) --boss (the hero starts at the King's grave and wakes him) --baked=<dir> --shot=<png> [--shot-after=<game s>] (rendered runs only)
 ```
 
@@ -113,15 +115,19 @@ gives it the area's navigation map and bounds, and registers each hero body as a
 **no node and no script exists per creature**: an enemy is an id (an int) everywhere, and `enemies_in_radius`, `enemy_position`, `damage` and `apply_status` are thin queries on the core.
 `CrowdView._process` draws the rendered frames with `Engine.get_physics_interpolation_fraction()`.
 
-The pieces around it (all ports, `code.list` "Ported"): the **world** (`next/next_world.gd`) loads `areas/graves.tscn` with the same small API as today's world object (`area_at`, the
-navigation helpers, `spawn_point`) and keeps a `DmWorldBuilder` for the area's lights only; the **director** (`next/spawn/dm_wave_director.gd`) spawns through `core_host.spawn_enemy` with the affix
+The pieces around it (all ports, `code.list` "Ported"): the **world** (`next/next_world.gd`) loads the area scenes (`areas/<id>.tscn`; `opts.areas` takes a shorter list, the tests' Graves) with
+the same small API as today's world object (`area_at`, the navigation helpers, `spawn_point`, the seals and gates: `set_unlocked`, `set_door_open`, `gates`, `nav_regions`), keeps a
+`DmWorldBuilder` for the area's lights only, and gives the core its copy of the navmesh (`bind_core`; DECISIONS B47); the **Chapterhouse** (`next/chapterhouse/dm_chapterhouse.gd`) breaks a seal
+when the kills in the area before it reach its count (the banner, the gate rises, the navmesh joins; a guest's doors follow the host's seals), runs waystone travel and the recall home (T),
+opens the stations' panels and animates the people; the **director** (`next/spawn/dm_wave_director.gd`) spawns through `core_host.spawn_enemy` with the affix
 roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`next/hero/dm_hero_body.gd`) takes the enemies' blows from `EV_TARGET_HIT` with the enemy's id as the source;
 **input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
 wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
 Co-op and the Social window are in ("Co-op on the core"), value on the server ("Value on the server"), today's HUD and panels ("The HUD on the core") and the Reaper ("The Gravecaller's rites").
-Off in this step, each until its ROADMAP item: gathering, the Chapterhouse (the hero starts and gets up at the Graves' door), the Depths, the graphics governor, Grave Surges. Easy auto combat is
-in and opens from Settings as today. `native/README.md` "Differences from today's game" lists what behaves differently from today.
+Off in this step, each until its ROADMAP item: gathering, the Depths, the graphics governor, Grave Surges, and the enemies of the areas past the Warren (the director skips a kind the
+core does not run yet). Easy auto combat is in and opens from Settings as today. `tests/world.gd` plays the whole world: seals, gates, walking from the Chapterhouse into the Warren, waystones,
+the recall. `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
 ## The Gravecaller's rites
 
@@ -481,32 +487,58 @@ node tools/rebuild/sync-assets.mjs [--dry-run] [--list <file>]     # copy what t
 ## Areas
 
 An area is a scene built once, offline, from `godot/data/slice/world.json`: the layout `godot/world/world_builder.gd` builds at start-up today.
+Twelve areas are converted: the Hollow Graves (`graves`), the three hubs (`chapterhouse`, `acre`, `alchemist_wing`) and `warren`, `ossuary`, `nave`,
+`coliseum`, `sanctum`, `cloister`, `pyre`, `fen`.
 
 ```
 bash tools/rebuild/build-areas.sh [area id ...]                     # sync assets, import, convert; default graves
-godot --headless --path client --script res://tests/area_graves.gd   # the Graves scene equals what world_builder.gd makes from world.json
+godot --headless --path client --script res://tests/areas.gd         # every converted scene equals what world_builder.gd makes from world.json (about 10 s)
 ```
 
 `client/tools/build_area.gd` is the one converter for every area (`--lenient` skips models not synced yet, for a smoke run; the Depths' floors are
 generated at runtime and are not converted). Output is deterministic, so regenerating changes nothing unless the data or the converter did:
 
-- `client/areas/<id>.tscn`: groups `Floor`, `Walls`, `Props`, `GatherNodes`, `Decals`, `Water`, `Doors`, `Lights`, `Occluders`, one static `Colliders` body
-  on the `world` physics layer (walls, prop and node obstacles, deep ponds; 3 m tall as today), and `Navigation` with a **baked** `NavigationRegion3D`
-  for the area, one per door touching it (starts enabled only for the always-open door) and the two `NavigationLink3D` per door. Settings and obstruction
-  rules are `world_builder._nav_mesh` / `_all_obstacles`. Gates start closed: each `Doors/<id>/gate/bars` rises when the door opens, and the
-  runtime enables the door's region and links and disables `gate/body/collider`, as `set_door_open` does.
+- `client/areas/<id>.tscn`: groups `Floor` (the ground quad, the paths whose centre lies in the area, the Alchemist Wing's rugs and stains, the Fen's
+  hummocks), `Walls`, `Props`, `GatherNodes`, `Decals` (decals and puddles), `Water` (the Nave's channels, the Fen's bog, the Acre's ponds), `Doors`, `Lights`,
+  `Occluders`, one static `Colliders` body on the `world` physics layer (walls, prop and node obstacles, deep ponds; 3 m tall as today), and `Navigation`
+  with a **baked** `NavigationRegion3D` for the area, one per door touching it and the two `NavigationLink3D` per door. Settings and obstruction
+  rules are `world_builder._nav_mesh` / `_all_obstacles`. A door starts as `world_builder` leaves it after building: a sealed door's gate is closed
+  (region and links off) and each `Doors/<id>/gate/bars` rises when it opens, which the runtime does as `set_door_open` does (region and links on,
+  `gate/body/collider` off); the doors world.json lists as `open` start open (bars up and hidden, collider off, region and links on), and
+  `chapter_graves`, the one hall `world_builder` builds without a gate, has none.
 - `client/areas/props/<model>.tscn`: one prefab per prop or gathering-node model: the glTF instanced with the height normalisation of `DmModels.analyze`.
   Props up to 1.5 m (the height `world_builder` stops casting shadows at) also get a 70 m visibility range.
 - `client/areas/common/ring.png`, `glow.png`: the two decal textures the live game paints at start-up.
 - `Lightmap`: the area's `LightmapGI`. Walls, gate stone and floors carry UV2, prop meshes get UV2 on import, everything solid is `gi_mode` static
   and the prop lights are `BAKE_STATIC` (positions, colours and ranges as today), so the bake takes their direct and bounced light; the area's
   ambient (`DmWorldBuilder.set_area`'s colour, same constants) is baked in too, since a lightmapped surface ignores the environment's. When
-  `client/areas/<id>.lmbake` exists (a bake from `client/addons/dm_bake/README.md`) the converter points the node at it. Occluders: tall walls (3 m, 4 m long) and large solid
+  `client/areas/<id>.lmbake` exists (a bake from `client/addons/dm_bake/README.md`; today the Graves') the converter points the node at it; an area
+  without one has a `LightmapGI` with no data. Occluders: tall walls (3 m, 4 m long) and large solid
   box props (the mausoleums), shrunk so they never hide what is visible past them.
+
+`client/tests/areas.gd` checks every converted area, one scene at a time (instantiate, check, free), and prints `PASS areas (N checks)` or a `FAIL areas: <id>: ...`
+line per failed check. Each expected number is computed from `world.json` the way `world_builder.gd` computes it (its constants, `DmModels.prop_parts`, its
+hummock ring mesh), never read from a scene:
+
+- the ground and every path and door floor (theme texture, tint, roughness, glow; UVs anchored to the world; lightmap UV2), walls (position, size, the
+  texture and tint `world_builder` shares per texture), props (the same meshes where `DmModels.prop_parts` puts them, shadow and visibility range), gathering
+  nodes (models, an ore's three crystals, the herb, pool and tree stand-ins), decals, puddles, water, bog and ponds, the Wing's rugs and stains, the Fen's hummocks
+  and rims, prop lights with their flames and the floor-pool mesh (the Nave's dimmer, smaller pools), colliders, occluders, the two decal textures pixel for pixel;
+- doors: each door touching the area (and no other) with its corridor floor, and each gate's posts, lintel, bars, rails, seal and body, closed or open;
+- navigation: the area's region and each door's region equal a fresh bake with `world_builder`'s settings, stop short of the walls by the agent's radius, and
+  the regions and links are enabled exactly when the door is `open`; paths cross the area, join its door mouths and bend round box props; a sealed gate blocks the
+  way to its corridor's far end and, once its region and links are enabled, the corridor is walkable to it;
+- the lighting bake: the `LightmapGI` bakes the area's ambient and points at `<id>.lmbake` when one exists, and a bake is stale (the test fails) when a mesh it
+  recorded is no longer at its path in the scene;
+- the whole: one scene per converted area, and every path, wall, prop, node, decal, puddle, water rect, hummock, wing-floor quad and door of `world.json` is in
+  exactly the scenes it belongs to.
+
+A headless Godot (the dummy renderer) keeps no `MultiMesh` instance transforms set one by one, so the converter writes the gate bars' and hummocks' `buffer`
+directly and the test reads them from the scene file. Every mesh that is static for the bake carries a lightmap UV2 (the test checks each), or the bake stops on it.
 
 Not the same as today's runtime, on purpose: props are single instances of a prefab (not one MultiMesh per 12 m cell; MultiMesh cannot take
 lightmaps); each floor is one quad (not 12 m tiles, which only limited per-object lights on Compatibility); there is no per-area light switching
 (the lights stay on; the bake takes over) and no see-through cutout shader yet (`apply_occlusion`). Not in an area scene (a later world scene
-owns them): the dark ground beyond the walls, the environment, fog, moon and rim lights, streaming. A door between two areas is in both scenes
-with the same id and place (nodes carry `door_id`); the area loader keeps one copy.
+owns them): the dark ground beyond the walls, the environment, fog, moon and rim lights; the people (`npcs`) are the Chapterhouse node's (`DmHubNpcs`). A door
+between two areas is in both scenes with the same id and place (nodes carry `door_id`); `DmNextWorld` keeps the first copy it loads.
 

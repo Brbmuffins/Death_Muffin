@@ -619,9 +619,7 @@ void World::move_thrall(Thrall &t, double p_dt) {
 		const float velx = vx + t.sep_x, velz = vz + t.sep_z;
 		t.x += float(double(velx) * p_dt);
 		t.z += float(double(velz) * p_dt);
-		if (nav.clamp) {
-			nav.clamp(nav.user, t.x, t.z);
-		}
+		keep_on_nav(t.x, t.z);
 	}
 	if (wants) {
 		t.yaw = float(lerp_angle(t.yaw, std::atan2(double(vx), double(vz)), std::min(1.0, TURN_RATE * p_dt)));

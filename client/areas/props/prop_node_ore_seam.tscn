@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_ore_seam.glb" id="1_9d1f6"]
+
+[node name="prop_node_ore_seam" type="Node3D" unique_id=15658170]
+metadata/model = "models/props/prop_node_ore_seam.glb"
+metadata/height = 1.2
+metadata/small = false
+
+[node name="model" parent="." unique_id=79970592 instance=ExtResource("1_9d1f6")]
+transform = Transform3D(1.3386344, 0, 0, 0, 1.3386344, 0, 0, 0, 1.3386344, 0, 0.6, 0)
+
+[editable path="model"]

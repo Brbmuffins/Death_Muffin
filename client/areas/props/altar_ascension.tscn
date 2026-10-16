@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/altar_ascension.glb" id="1_e1ac7"]
+
+[node name="altar_ascension" type="Node3D" unique_id=202069458]
+metadata/model = "models/props/altar_ascension.glb"
+metadata/height = 2.8
+metadata/small = false
+
+[node name="model" parent="." unique_id=114948936 instance=ExtResource("1_e1ac7")]
+transform = Transform3D(3.1929126, 0, 0, 0, 3.1929126, 0, 0, 0, 3.1929126, 0, 1.4, 0)
+
+[editable path="model"]

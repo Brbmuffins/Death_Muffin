@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/plague_well.glb" id="1_1e08d"]
+
+[node name="plague_well" type="Node3D" unique_id=177415061]
+metadata/model = "models/props/plague_well.glb"
+metadata/height = 2.4
+metadata/small = false
+
+[node name="model" parent="." unique_id=138402786 instance=ExtResource("1_1e08d")]
+transform = Transform3D(2.736782, 0, 0, 0, 2.736782, 0, 0, 0, 2.736782, 0, 1.2, 0)
+
+[editable path="model"]

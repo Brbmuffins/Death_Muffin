@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/alch_mortar_table.glb" id="1_dc324"]
+
+[node name="alch_mortar_table" type="Node3D" unique_id=55708039]
+metadata/model = "models/props/alch_mortar_table.glb"
+metadata/height = 1.0
+metadata/small = true
+
+[node name="model" parent="." unique_id=88426403 instance=ExtResource("1_dc324")]
+transform = Transform3D(1.0019569, 0, 0, 0, 1.0019569, 0, 0, 0, 1.0019569, 0.0009784736, 0.5, 0)
+
+[node name="tripo_node_89bc6743-deef-4f41-a35b-29078bea5899" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

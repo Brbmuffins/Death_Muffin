@@ -265,6 +265,14 @@
         "godot/**",
         "client/code.list"
       ]
+    },
+    {
+      "id": "area-graves-test",
+      "pattern": "area_graves\\.gd",
+      "reason": "the Graves-only area test became tests/areas.gd, which checks every converted area",
+      "allow": [
+        "tools/hygiene/**"
+      ]
     }
   ],
   "allowPaths": {

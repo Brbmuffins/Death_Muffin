@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/reliquary.glb" id="1_af791"]
+
+[node name="reliquary" type="Node3D" unique_id=16058815]
+metadata/model = "models/props/reliquary.glb"
+metadata/height = 1.2
+metadata/small = true
+
+[node name="model" parent="." unique_id=22414347 instance=ExtResource("1_af791")]
+transform = Transform3D(1.6384158, 0, 0, 0, 1.6384158, 0, 0, 0, 1.6384158, 0, 0.6, 0)
+
+[node name="tripo_node_4fdac07e-64e3-46a6-bda5-03134eb0f009" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

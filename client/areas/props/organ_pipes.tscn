@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/organ_pipes.glb" id="1_092b2"]
+
+[node name="organ_pipes" type="Node3D" unique_id=202683282]
+metadata/model = "models/props/organ_pipes.glb"
+metadata/height = 4.2
+metadata/small = false
+
+[node name="model" parent="." unique_id=110012772 instance=ExtResource("1_092b2")]
+transform = Transform3D(4.208219, 0, 0, 0, 4.208219, 0, 0, 0, 4.208219, 0, 2.1, 0)
+
+[editable path="model"]

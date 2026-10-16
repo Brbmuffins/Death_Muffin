@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/workbench.glb" id="1_14823"]
+
+[node name="workbench" type="Node3D" unique_id=36445101]
+metadata/model = "models/props/workbench.glb"
+metadata/height = 1.4
+metadata/small = true
+
+[node name="model" parent="." unique_id=137740840 instance=ExtResource("1_14823")]
+transform = Transform3D(2.5877476, 0, 0, 0, 2.5877476, 0, 0, 0, 2.5877476, 0, 0.7, 0)
+
+[node name="tripo_node_0354377d-52e0-40e0-9e69-011464e29a39" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

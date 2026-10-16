@@ -69,6 +69,11 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("tuning"), &DmCore::tuning);
 	ClassDB::bind_method(D_METHOD("set_nav_map", "map"), &DmCore::set_nav_map);
 	ClassDB::bind_method(D_METHOD("set_area_bounds", "min", "max"), &DmCore::set_area_bounds);
+	ClassDB::bind_method(D_METHOD("nav_add_region", "vertices", "polygons", "enabled"), &DmCore::nav_add_region);
+	ClassDB::bind_method(D_METHOD("nav_set_region_enabled", "region", "enabled"), &DmCore::nav_set_region_enabled);
+	ClassDB::bind_method(D_METHOD("nav_clear_regions"), &DmCore::nav_clear_regions);
+	ClassDB::bind_method(D_METHOD("nav_closest", "point"), &DmCore::nav_closest);
+	ClassDB::bind_method(D_METHOD("nav_triangle_count"), &DmCore::nav_triangle_count);
 	ClassDB::bind_method(D_METHOD("spawn_enemy", "def", "pos", "level", "hp_mult", "damage_mult", "elite", "area", "rising", "affixes"), &DmCore::spawn_enemy, DEFVAL(PackedStringArray()));
 	ClassDB::bind_method(D_METHOD("strip_shroud", "id"), &DmCore::strip_shroud);
 	ClassDB::bind_method(D_METHOD("cover_miasma", "id"), &DmCore::cover_miasma);
@@ -151,7 +156,7 @@ void DmCore::_bind_methods() {
 }
 
 String DmCore::version() const {
-	return "dmcore 0.6";
+	return "dmcore 0.7";
 }
 
 int64_t DmCore::checksum(int64_t p_count) const {
@@ -404,6 +409,33 @@ void DmCore::set_nav_map(const RID &p_map) {
 	world.nav.user = &nav_map;
 	world.nav.path = p_map.is_valid() ? nav_path : nullptr;
 	world.nav.clamp = p_map.is_valid() ? nav_clamp : nullptr;
+}
+
+int64_t DmCore::nav_add_region(const PackedVector3Array &p_vertices, const PackedInt32Array &p_polygons, bool p_enabled) {
+	std::vector<float> xz(size_t(p_vertices.size()) * 2);
+	for (int64_t i = 0; i < p_vertices.size(); i++) {
+		xz[size_t(i) * 2] = p_vertices[i].x;
+		xz[size_t(i) * 2 + 1] = p_vertices[i].z;
+	}
+	return world.navgrid.add_region(xz.data(), int32_t(p_vertices.size()), p_polygons.ptr(), int32_t(p_polygons.size()), p_enabled);
+}
+
+void DmCore::nav_set_region_enabled(int64_t p_region, bool p_enabled) {
+	world.navgrid.set_enabled(int32_t(p_region), p_enabled);
+}
+
+void DmCore::nav_clear_regions() {
+	world.navgrid.clear();
+}
+
+Vector3 DmCore::nav_closest(const Vector3 &p_point) {
+	float x = p_point.x, z = p_point.z;
+	world.keep_on_nav(x, z);
+	return Vector3(x, 0.0f, z);
+}
+
+int64_t DmCore::nav_triangle_count() const {
+	return world.navgrid.triangle_count();
 }
 
 void DmCore::set_area_bounds(const Vector2 &p_min, const Vector2 &p_max) {

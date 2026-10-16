@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/drowned_font.glb" id="1_4bdd1"]
+
+[node name="drowned_font" type="Node3D" unique_id=266778952]
+metadata/model = "models/props/drowned_font.glb"
+metadata/height = 1.7
+metadata/small = false
+
+[node name="model" parent="." unique_id=252455496 instance=ExtResource("1_4bdd1")]
+transform = Transform3D(1.7033268, 0, 0, 0, 1.7033268, 0, 0, 0, 1.7033268, 0, 0.85, 0)
+
+[editable path="model"]

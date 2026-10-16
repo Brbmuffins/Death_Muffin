@@ -3,14 +3,16 @@ extends Node3D
 ## The game's world on the rebuilt client: the area scenes built offline from godot/data/slice/world.json (client/areas/<id>.tscn, built by
 ## tools/rebuild/build-areas.sh) in place of the runtime `DmWorldBuilder` build that godot/next/next_world.gd makes. It gives the code that expects
 ## today's world object the same small API: `area_at`, the navigation helpers (`nav_ready`, `nav_path`, `nav_closest`, `nav_clamp`), `enter_area`,
-## `update`, `camera_config`, plus `nav_map()` for the combat core and `spawn_point()` for the hero.
+## `update`, `camera_config`, the seals and doors of today's builder (`set_unlocked`, `set_door_open`, `gates`, `nav_regions`, `nav_links`), plus `nav_map()` for the
+## combat core and `spawn_point()` for the hero.
 ##
 ## What an area scene does not carry (client/README.md "Areas") is made here, for now, by a `DmWorldBuilder` used for its lights only: the
 ## environment, fog, the moon and the rim light of the area, exactly as today's builder sets them (a later world scene owns them). The builder builds
 ## no floor, wall or prop (`builder` is only that light holder). No world dressing (mist, braziers, ripples) and no streaming or occlusion yet.
 ##
-## Only the areas listed in `build` exist: the Hollow Graves in this step. Doors to areas that are not loaded lead nowhere (the always-open door of the
-## Graves has navmesh to its end).
+## Every area but the Depths exists by default, as today's builder builds them all; `build` takes a shorter list (tests: the Graves alone). A door lies in the scenes of
+## both its areas: the first one loaded keeps it, the other copy is dropped before it enters the tree. Gates start closed; `set_unlocked` opens a door when both of its
+## areas are unlocked and loaded, and the area's own navmesh is on only while it is unlocked (the Graves' door to the Chapterhouse is always open).
 
 const AREA_DIR := "res://areas/"
 
@@ -24,27 +26,48 @@ var loaded: Array[String] = []         ## area ids with a scene, in world order
 ## Height of the baked navmesh above the floor, read when the map is ready. (Today it fed each enemy's NavigationAgent3D; the core steers its own bodies.)
 var nav_y: float = 0.0
 
+## Today's builder's seal state, same names (DmChapterhouse reads them): unlocked area ids, door id -> {bars, collider, open}, "area:<id>" / "door:<id>" ->
+## its NavigationRegion3D, door id -> its two NavigationLink3D.
+var unlocked: Dictionary = {}
+var gates: Dictionary = {}
+var nav_regions: Dictionary = {}
+var nav_links: Dictionary = {}
+
 var _map: RID
 var _nav_ok := false
+var _core: RefCounted                  ## the combat core once bound (bind_core): it keeps its own copy of the navmesh
+var _core_region := {}                 ## nav_regions key -> the core's region index
 var _scenes := {}                      ## area id -> its scene root
 var _rects := {}                       ## area id -> {x0, z0, x1, z1} from world.json
 
 
-## Loads the area scenes and the area lighting. `area_ids`: which areas exist in this game (world order is kept). `with_lights`: the environment and moon
-## (tests without a screen may skip them).
-func build(area_ids: Array = ["graves"], with_lights: bool = true) -> void:
+## Every converted area (all but the instanced Depths), in world order.
+static func every_area() -> Array:
+	var out: Array = []
+	for id in DmData.world()["order"]:
+		if not bool(DmData.world()["areas"][id]["instance"]):
+			out.append(String(id))
+	return out
+
+
+## Loads the area scenes and the area lighting. `area_ids`: which areas exist in this game (world order is kept; empty = every area). `with_lights`: the
+## environment and moon (tests without a screen may skip them).
+func build(area_ids: Array = [], with_lights: bool = true) -> void:
 	var t0 := Time.get_ticks_msec()
 	var data: Dictionary = DmData.world()
+	var want := area_ids if not area_ids.is_empty() else every_area()
 	for id in data["order"]:
-		if not area_ids.has(String(id)):
+		if not want.has(String(id)):
 			continue
 		var packed: PackedScene = load(AREA_DIR + "%s.tscn" % id)
 		var scene: Node3D = packed.instantiate()
 		scene.name = "area_%s" % id
+		_drop_door_copies(scene)
 		add_child(scene)
 		_scenes[String(id)] = scene
 		_rects[String(id)] = data["areas"][id]["rect"]
 		loaded.append(String(id))
+		_collect_doors(scene, String(id))
 	focus = Node3D.new()
 	focus.name = "Focus"
 	add_child(focus)
@@ -59,7 +82,117 @@ func build(area_ids: Array = ["graves"], with_lights: bool = true) -> void:
 		builder._make_environment()
 		builder.set_area(loaded[0])
 	area_id = loaded[0]
+	set_unlocked([])
 	build_ms = Time.get_ticks_msec() - t0
+
+
+## A door already kept by an earlier area's scene: drop this scene's copy (its floor and gate, its navmesh region and links) before it enters the tree.
+func _drop_door_copies(scene: Node3D) -> void:
+	for d: Node in scene.get_node("Doors").get_children():
+		var id := String(d.name)
+		if not nav_regions.has("door:" + id):
+			continue
+		d.free()
+		var nav := scene.get_node("Navigation")
+		nav.get_node("door_" + id).free()
+		for k in 2:
+			nav.get_node("link_%s_%d" % [id, k]).free()
+
+
+func _collect_doors(scene: Node3D, id: String) -> void:
+	var nav := scene.get_node("Navigation")
+	nav_regions["area:" + id] = nav.get_node("area_" + id)
+	for d: Node in scene.get_node("Doors").get_children():
+		var did := String(d.name)
+		var gate := d.get_node_or_null("gate")
+		if gate != null:
+			var col := gate.get_node("body/collider") as CollisionShape3D
+			gates[did] = {"bars": gate.get_node("bars"), "collider": col, "open": col.disabled}   # a door world.json lists as open starts open in its scene
+		nav_regions["door:" + did] = nav.get_node("door_" + did)
+		nav_links[did] = [nav.get_node("link_%s_0" % did), nav.get_node("link_%s_1" % did)]
+
+
+## The combat core keeps its own copy of every navmesh region (DmCore.nav_add_region, a grid of triangles) for its per-tick "keep to the navmesh" step and
+## for nav_closest: the navigation server's closest-point query walks every polygon of the map, and with every area loaded that cost 7x the Graves' alone.
+## Region switches (seals, doors) reach both.
+func bind_core(core: RefCounted) -> void:
+	_core = core
+	_core_region.clear()
+	core.nav_clear_regions()
+	for key: String in nav_regions:
+		var reg := nav_regions[key] as NavigationRegion3D
+		var nm := reg.navigation_mesh
+		var xf := reg.global_transform
+		var verts := PackedVector3Array()
+		for v in nm.get_vertices():
+			verts.append(xf * v)
+		var polys := PackedInt32Array()
+		for i in nm.get_polygon_count():
+			var poly := nm.get_polygon(i)
+			polys.append(poly.size())
+			polys.append_array(poly)
+		_core_region[key] = core.nav_add_region(verts, polys, reg.enabled)
+
+
+func _set_region(key: String, on: bool) -> void:
+	(nav_regions[key] as NavigationRegion3D).enabled = on
+	if _core != null and _core_region.has(key):
+		_core.nav_set_region_enabled(_core_region[key], on)
+
+
+func has_area(id: String) -> bool:
+	return _scenes.has(id)
+
+
+# ---- seals and doors (today's DmWorldBuilder.set_unlocked / set_door_open) -----------------------------------------------------
+
+## Seals: `areas` = the area ids whose seal is broken; an area with no seal is always unlocked. Only loaded areas count.
+func set_unlocked(areas: Array) -> void:
+	unlocked.clear()
+	var data: Dictionary = DmData.world()
+	for id in loaded:
+		var a: Dictionary = data["areas"][id]
+		if a["unlock"] == null or areas.has(id):
+			unlocked[id] = true
+	_apply_unlock_state()
+
+
+func _apply_unlock_state() -> void:
+	for id in loaded:
+		_set_region("area:" + id, unlocked.has(id))
+	for d: Dictionary in DmData.world()["doors"]:
+		if not nav_regions.has("door:" + String(d["id"])):
+			continue
+		if String(d["id"]) == "chapter_graves":
+			_set_region("door:chapter_graves", true)
+			for l: NavigationLink3D in nav_links["chapter_graves"]:
+				l.enabled = true
+		else:
+			set_door_open(String(d["id"]), unlocked.has(String(d["a"])) and unlocked.has(String(d["b"])), true)
+
+
+func set_door_open(id: String, open: bool, instant := false) -> void:
+	if not gates.has(id):
+		return
+	var g: Dictionary = gates[id]
+	if g.open == open:
+		return
+	g.open = open
+	(g.collider as CollisionShape3D).set_deferred("disabled", open)
+	var bars: Node3D = g.bars
+	var y := 5.0 if open else 0.0
+	if instant:
+		bars.position.y = y
+		bars.visible = not open
+	else:
+		bars.visible = true
+		var tw := create_tween()
+		tw.tween_property(bars, "position:y", y, 1.2)
+		if open:
+			tw.tween_callback(func() -> void: bars.visible = false)
+	for l: NavigationLink3D in nav_links[id]:
+		l.enabled = open
+	_set_region("door:" + id, open)
 
 
 ## The navigation server registers the baked regions and syncs the map on its own clock (a few frames to ~0.5 s the first time): wait for it
@@ -100,9 +233,12 @@ func bounds(pad: float = 12.0) -> Rect2:
 	return Rect2(lo - Vector2(pad, pad), hi - lo + Vector2(pad, pad) * 2.0)
 
 
-## A walkable point just inside the area's door to the Chapterhouse (the Chapterhouse is not loaded yet): where a hero starts, and where a fallen
-## one gets up. The door's centre across, the area's edge facing it less 3 m.
+## Where a hero starts and a fallen one gets up: today's Chapterhouse return point (areas.json CHAPTERHOUSE_RETURN) when the Chapterhouse is loaded;
+## otherwise (a test's world) a walkable point just inside the area's door to the Chapterhouse: the door's centre across, the area's edge facing it less 3 m.
 func spawn_point(id: String = "") -> Vector3:
+	if id == "" and has_area("chapterhouse"):
+		var ret: Dictionary = DmContent.get_export("areas", "CHAPTERHOUSE_RETURN")
+		return Vector3(float(ret["x"]), 0.0, float(ret["z"]))
 	var a := id if id != "" else area_id
 	var r: Dictionary = _rects[a]
 	var x := (float(r.x0) + float(r.x1)) * 0.5
@@ -162,6 +298,8 @@ func nav_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 
 ## The nearest walkable point (y forced to 0). Used both to keep the hero off walls (sliding) and to place spawns.
 func nav_closest(p: Vector3) -> Vector3:
+	if _core != null:
+		return _core.nav_closest(p)
 	var c := NavigationServer3D.map_get_closest_point(_map, p)
 	return Vector3(c.x, 0.0, c.z)
 

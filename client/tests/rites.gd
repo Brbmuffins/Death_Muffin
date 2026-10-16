@@ -102,7 +102,7 @@ func _initialize() -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(ch.data, api, {"offline": true, "name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "baked_dir": OUT})
+	await g.start(ch.data, api, {"areas": ["graves"], "offline": true, "name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "baked_dir": OUT})
 	host = g.core_host
 	core = host.core
 	hero = g.local_body()
@@ -1456,7 +1456,7 @@ func _play_as(cls: int) -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(ch.data, api_, {"offline": true, "name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "baked_dir": OUT})
+	await g.start(ch.data, api_, {"areas": ["graves"], "offline": true, "name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "baked_dir": OUT})
 	host = g.core_host
 	core = host.core
 	hero = g.local_body()

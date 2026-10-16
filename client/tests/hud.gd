@@ -85,7 +85,7 @@ func _initialize() -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(ch.data, api, {"name": "tester", "hud": true, "audio": false, "waves": false, "wander": false, "seed": 20261016, "baked_dir": OUT})
+	await g.start(ch.data, api, {"areas": ["graves"], "name": "tester", "hud": true, "audio": false, "waves": false, "wander": false, "seed": 20261016, "baked_dir": OUT})
 	h = HudShim.new(g)
 	check(g.ready_ and g.ui != null and g.ui.hud is DmHud and g.ui_host != null, "the game scene is up with today's HUD and panels on the adapter (hud: true)")
 	hud = g.ui.hud

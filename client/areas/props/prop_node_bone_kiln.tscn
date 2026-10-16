@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_bone_kiln.glb" id="1_812b8"]
+
+[node name="prop_node_bone_kiln" type="Node3D" unique_id=129342153]
+metadata/model = "models/props/prop_node_bone_kiln.glb"
+metadata/height = 2.2
+metadata/small = false
+
+[node name="model" parent="." unique_id=131587185 instance=ExtResource("1_812b8")]
+transform = Transform3D(3.4443715, 0, 0, 0, 3.4443715, 0, 0, 0, 3.4443715, 0, 1.1, 0)
+
+[editable path="model"]

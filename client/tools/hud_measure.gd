@@ -709,7 +709,7 @@ func game_stage(args: PackedStringArray) -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(ch.data, api, {"name": "tester", "hud": true, "waves": false, "audio": false, "seed": 20261016})
+	await g.start(ch.data, api, {"areas": ["graves"], "name": "tester", "hud": true, "waves": false, "audio": false, "seed": 20261016})
 	idle.queue_free()
 	hud_layer = HudShim.new(g) if g.ui != null else null
 	emit({"event": "game_started", "ms": g.load_ms, "hud": hud_layer != null, "scene_3d": use_3d})

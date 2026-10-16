@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_crypt_collapse.glb" id="1_0f591"]
+
+[node name="prop_node_crypt_collapse" type="Node3D" unique_id=145163439]
+metadata/model = "models/props/prop_node_crypt_collapse.glb"
+metadata/height = 1.2
+metadata/small = false
+
+[node name="model" parent="." unique_id=55273888 instance=ExtResource("1_0f591")]
+transform = Transform3D(2.6596467, 0, 0, 0, 2.6596467, 0, 0, 0, 2.6596467, 0, 0.6, 0)
+
+[editable path="model"]

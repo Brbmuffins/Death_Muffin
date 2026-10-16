@@ -53,7 +53,8 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
 - **Seeded randomness:** one PCG stream per entity, seeded from the director's seed and the entity id, so a seeded scenario replays
   bit for bit. Live play seeds from the clock, like today's `randomize()`.
 - **Movement:** paths from `NavigationServer3D` (batched, cached per target cell), steering and separation in the core, positions
-  clamped to the navmesh, heroes and walls pushed out as circles. This replaces Godot's RVO avoidance: crowds may flow slightly
+  kept on the navmesh by the core's own copy of it (`navgrid`: the enabled regions' triangles on a 2 m grid, about 0.7 us a body where the server's
+  closest-point query walked every polygon of the map), heroes and walls pushed out as circles. This replaces Godot's RVO avoidance: crowds may flow slightly
   differently, a difference written down for Helix to judge (B42). No physics body per creature.
 - **Drawing:** one MultiMesh per creature model, level of detail and shadow setting, transforms and animation data written in one buffer update per
   rendered frame, interpolated between ticks; animations play from baked vertex-animation textures. `DmCrowd` does it (`dm_crowd.*`, `core/crowd_view.*`): it reads the core's
@@ -209,6 +210,9 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   planned difference in feel.
 - **Walls and the hero:** today `move_and_slide` slides a body along walls and the hero's capsule; the core moves it, pushes it out
   of the hero's circle and snaps it back onto the navmesh. Close to today on open ground, may differ in corners.
+- **A sealed gate's corridor is off the navmesh:** the core keeps bodies on the enabled regions only, so a closed door's corridor and a sealed area are not
+  walkable. Today's closest-point query still counts disabled regions and the gate's collider stops a body at the bars; now it stops at the corridor's mouth.
+  With every region on, the core's closest point is the navigation server's to the millimetre (`client/tests/world.gd`).
 - **No idle LOD:** today a far idle body thinks at 10 Hz; the core runs every body at 60 Hz (cheap enough in C++). Idle wander
   changes a little; nothing a player sees.
 - **Brains first, then movement:** today each body thinks and moves before the next one thinks; the core runs every brain, then
@@ -371,7 +375,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   `thralls` (the thrall brain and the legion: raise, make_room, formation, separation, rally, deaths), `corpses` (the corpse field),
   `affixes` (the elite affixes), `body` (what a status set needs from its owner, shared by enemies and thralls), `thrall` and `corpse` (their records and enums), `status` (the status
   set, a port of DmStatusSet; its rule table comes from `client/core/dm_status_rules.gd`), `grid` (dense XZ grid rebuilt per tick by counting
-  sort), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity), `crowd_view` (the presentation of the crowd: one view per creature, fed plain rows,
+  sort), `navgrid` (the navmesh's triangles on a grid, for keeping bodies on it; DmNextWorld gives it every region and switches them with the seals), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity), `crowd_view` (the presentation of the crowd: one view per creature, fed plain rows,
   writing the MultiMesh buffers; a port of the view layer of `godot/game`, which does not touch the simulation), and the co-op pieces: `wire` (byte writer and bounds-checked reader), `replica`
   (the format's constants and a core's co-op counters), `snapshot` (the 20 Hz message, both ways), `reliable` (event batches and the baseline, both ways) and `puppet` (a guest's step, snapshot
   records and reliable records).

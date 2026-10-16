@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_bone_elder.glb" id="1_046ac"]
+
+[node name="prop_node_bone_elder" type="Node3D" unique_id=13678780]
+metadata/model = "models/props/prop_node_bone_elder.glb"
+metadata/height = 6.0
+metadata/small = false
+
+[node name="model" parent="." unique_id=100199431 instance=ExtResource("1_046ac")]
+transform = Transform3D(6.0117416, 0, 0, 0, 6.0117416, 0, 0, 0, 6.0117416, 0, 3, 0)
+
+[editable path="model"]

@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/alch_counter.glb" id="1_901d8"]
+
+[node name="alch_counter" type="Node3D" unique_id=126994925]
+metadata/model = "models/props/alch_counter.glb"
+metadata/height = 1.2
+metadata/small = true
+
+[node name="model" parent="." unique_id=230721599 instance=ExtResource("1_901d8")]
+transform = Transform3D(2.3719053, 0, 0, 0, 2.3719053, 0, 0, 0, 2.3719053, 0, 0.6, 0)
+
+[node name="tripo_node_9b6392b5-cd3e-4790-8e88-ee6e8a1303bc" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

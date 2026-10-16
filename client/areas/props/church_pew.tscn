@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/church_pew.glb" id="1_280b6"]
+
+[node name="church_pew" type="Node3D" unique_id=230115680]
+metadata/model = "models/props/church_pew.glb"
+metadata/height = 1.3
+metadata/small = true
+
+[node name="model" parent="." unique_id=56596341 instance=ExtResource("1_280b6")]
+transform = Transform3D(2.319338, 0, 0, 0, 2.319338, 0, 0, 0, 2.319338, 0, 0.65, 0)
+
+[node name="tripo_node_aa31d27e-f186-49ce-9931-396853c76a42" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

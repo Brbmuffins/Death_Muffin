@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/stained_glass.glb" id="1_e4fac"]
+
+[node name="stained_glass" type="Node3D" unique_id=60295450]
+metadata/model = "models/props/stained_glass.glb"
+metadata/height = 3.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=37157133 instance=ExtResource("1_e4fac")]
+transform = Transform3D(3.607045, 0, 0, 0, 3.607045, 0, 0, 0, 3.607045, 0, 1.8, 0)
+
+[editable path="model"]

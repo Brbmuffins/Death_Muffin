@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/alch_totem_stirrer.glb" id="1_79fa2"]
+
+[node name="alch_totem_stirrer" type="Node3D" unique_id=93447352]
+metadata/model = "models/props/alch_totem_stirrer.glb"
+metadata/height = 1.2
+metadata/small = true
+
+[node name="model" parent="." unique_id=161862700 instance=ExtResource("1_79fa2")]
+transform = Transform3D(1.3444817, 0, 0, 0, 1.3444817, 0, 0, 0, 1.3444817, 0, 0.6, 0)
+
+[node name="tripo_node_0b3ab47b-7b21-4167-8162-8a981cc1965b" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

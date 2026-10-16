@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/skull_wall.glb" id="1_9fa8f"]
+
+[node name="skull_wall" type="Node3D" unique_id=264118304]
+metadata/model = "models/props/skull_wall.glb"
+metadata/height = 1.1
+metadata/small = true
+
+[node name="model" parent="." unique_id=262261938 instance=ExtResource("1_9fa8f")]
+transform = Transform3D(2.0935788, 0, 0, 0, 2.0935788, 0, 0, 0, 2.0935788, 0, 0.55, 0)
+
+[node name="tripo_node_2dd83e5c-301f-4251-9e60-536dbfa05038" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

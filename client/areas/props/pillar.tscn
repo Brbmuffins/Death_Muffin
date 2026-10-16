@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/pillar.glb" id="1_c4627"]
+
+[node name="pillar" type="Node3D" unique_id=193824189]
+metadata/model = "models/props/pillar.glb"
+metadata/height = 6.5
+metadata/small = false
+
+[node name="model" parent="." unique_id=137746957 instance=ExtResource("1_c4627")]
+transform = Transform3D(6.51272, 0, 0, 0, 6.51272, 0, 0, 0, 6.51272, 0, 3.25, 0)
+
+[editable path="model"]

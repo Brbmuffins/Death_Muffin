@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_blackthorn.glb" id="1_524b2"]
+
+[node name="prop_node_blackthorn" type="Node3D" unique_id=210158591]
+metadata/model = "models/props/prop_node_blackthorn.glb"
+metadata/height = 4.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=182393468 instance=ExtResource("1_524b2")]
+transform = Transform3D(4.609002, 0, 0, 0, 4.609002, 0, 0, 0, 4.609002, 0, 2.3, 0)
+
+[editable path="model"]

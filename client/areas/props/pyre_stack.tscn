@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/pyre_stack.glb" id="1_34d0d"]
+
+[node name="pyre_stack" type="Node3D" unique_id=120162833]
+metadata/model = "models/props/pyre_stack.glb"
+metadata/height = 2.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=127190138 instance=ExtResource("1_34d0d")]
+transform = Transform3D(3.4941022, 0, 0, 0, 3.4941022, 0, 0, 0, 3.4941022, 0, 1.3, 0)
+
+[editable path="model"]

@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/alch_canopic_jars.glb" id="1_02e77"]
+
+[node name="alch_canopic_jars" type="Node3D" unique_id=191610122]
+metadata/model = "models/props/alch_canopic_jars.glb"
+metadata/height = 0.8
+metadata/small = true
+
+[node name="model" parent="." unique_id=658920 instance=ExtResource("1_02e77")]
+transform = Transform3D(1.0264939, 0, 0, 0, 1.0264939, 0, 0, 0, 1.0264939, 0, 0.4, 0)
+
+[node name="tripo_node_0992584b-cf75-4387-a209-8c378422c2a4" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

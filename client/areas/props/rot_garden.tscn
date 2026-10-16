@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/rot_garden.glb" id="1_ae7ef"]
+
+[node name="rot_garden" type="Node3D" unique_id=68696884]
+metadata/model = "models/props/rot_garden.glb"
+metadata/height = 1.0
+metadata/small = true
+
+[node name="model" parent="." unique_id=219568448 instance=ExtResource("1_ae7ef")]
+transform = Transform3D(1.712273, 0, 0, 0, 1.712273, 0, 0, 0, 1.712273, 0, 0.5, 0)
+
+[node name="tripo_node_36c4fd44-0b07-4bae-ab5b-0499efaee8f3" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

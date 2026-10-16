@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/alch_bone_candles.glb" id="1_659d8"]
+
+[node name="alch_bone_candles" type="Node3D" unique_id=172480969]
+metadata/model = "models/props/alch_bone_candles.glb"
+metadata/height = 1.0
+metadata/small = true
+
+[node name="model" parent="." unique_id=40052497 instance=ExtResource("1_659d8")]
+transform = Transform3D(1.0019569, 0, 0, 0, 1.0019569, 0, 0, 0, 1.0019569, 0, 0.5, 0)
+
+[node name="tripo_node_e8438f64-5ecd-4148-bd6e-1eaa84dbe2b4" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_ore_geode.glb" id="1_2526f"]
+
+[node name="prop_node_ore_geode_h150" type="Node3D" unique_id=100712175]
+metadata/model = "models/props/prop_node_ore_geode.glb"
+metadata/height = 1.5
+metadata/small = false
+
+[node name="model" parent="." unique_id=16171408 instance=ExtResource("1_2526f")]
+transform = Transform3D(1.564231, 0, 0, 0, 1.564231, 0, 0, 0, 1.564231, 0, 0.75, 0)
+
+[editable path="model"]

@@ -168,7 +168,7 @@ func _initialize() -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(ch.data, api, {"offline": true, "name": "tester", "hud": false, "audio": false, "seed": 20261016, "waves": false, "wander": false, "baked_dir": OUT})
+	await g.start(ch.data, api, {"areas": ["graves"], "offline": true, "name": "tester", "hud": false, "audio": false, "seed": 20261016, "waves": false, "wander": false, "baked_dir": OUT})
 	host = g.core_host
 	core = host.core
 	hb = g.local_body()

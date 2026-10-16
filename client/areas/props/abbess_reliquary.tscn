@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/abbess_reliquary.glb" id="1_05836"]
+
+[node name="abbess_reliquary" type="Node3D" unique_id=109364503]
+metadata/model = "models/props/abbess_reliquary.glb"
+metadata/height = 1.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=163165858 instance=ExtResource("1_05836")]
+transform = Transform3D(1.84089, 0, 0, 0, 1.84089, 0, 0, 0, 1.84089, 0, 0.8, 0)
+
+[editable path="model"]

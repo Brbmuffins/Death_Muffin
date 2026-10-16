@@ -180,6 +180,12 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   events, the floats' caps) and the bag stays the loot node's (`DmNextLoot`), so value does not depend on the panels; `DmNextHud` retires. Chosen over keeping
   `DmNextHud` and porting the panels onto it: every panel and the panel host stay copies (a live fix reaches the rebuild by the sync), and only one file carries
   the difference. The HUD's budget (0.5 ms, 150 draw calls) holds the whole UI; measured with the benchmark's HUD on/off rounds.
+- **B47. The whole world loads; the core keeps the navmesh** (2026-10-16, Claude's call under B34). The rebuilt game loads every area but the Depths at the start,
+  as today's builder builds them all, and the hero starts and gets up in the Chapterhouse. The Chapterhouse node (seals, gates, waystones, the recall, stations,
+  people) comes over with the areas rather than after the bosses: it is what opens the doors, so moving between areas needs it. The combat core keeps its own copy
+  of the navmesh (a grid of the regions' triangles, `NavGrid`) for the per-tick "keep to the navmesh" step and the hero's moves: Godot's closest-point query walks
+  every polygon of the map, which cost 7x more with every area loaded than with the Graves alone (and was most of the core's step even then). The copy follows the
+  seals and doors; a sealed region is not walkable (today's query still counts it and the gate's collider stops bodies instead).
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

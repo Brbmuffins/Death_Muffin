@@ -34,6 +34,10 @@ static func boot(parent: Node, disc: int, opts: Dictionary = {}, area: String = 
 	caster.p["stats"]["level"] = 60.0
 	g.input.auto.gate_probe = func() -> bool: return true   # Easy auto combat is on for the fight (the setting that opens it does not exist yet)
 	g.director.difficulty = "easy"
+	# A fresh character has most areas sealed, and a sealed area's navmesh is switched off: enemies inside could not path anywhere (they
+	# all walked to the doorway strip). The throwaway character breaks the area's seal through its own progression, and the world applies it.
+	if g.ui_host != null and g.ui_host.prog != null and g.ui_host.prog.unlock(area) and g.chapterhouse != null:
+		g.chapterhouse.apply_seals()
 	var rect: Dictionary = DmContent.area(area)["rect"]
 	var at := Vector3((float(rect["x0"]) + float(rect["x1"])) / 2.0, 0.0, (float(rect["z0"]) + float(rect["z1"])) / 2.0)
 	if g.world != null:

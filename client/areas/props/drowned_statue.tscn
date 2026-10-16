@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/drowned_statue.glb" id="1_bad97"]
+
+[node name="drowned_statue" type="Node3D" unique_id=96887511]
+metadata/model = "models/props/drowned_statue.glb"
+metadata/height = 2.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=244439944 instance=ExtResource("1_bad97")]
+transform = Transform3D(2.605088, 0, 0, 0, 2.605088, 0, 0, 0, 2.605088, 0, 1.3, 0)
+
+[editable path="model"]

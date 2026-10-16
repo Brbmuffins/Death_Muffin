@@ -142,9 +142,7 @@ void World::vengeance(Enemy &e) {
 		const double a = spin + double(i) / double(n) * TAU;
 		float px = at_x + float(std::cos(a)) * float(VENGEFUL_RING);
 		float pz = at_z + float(std::sin(a)) * float(VENGEFUL_RING);
-		if (nav.clamp) {
-			nav.clamp(nav.user, px, pz);
-		}
+		keep_on_nav(px, pz);
 		pending_spawns.push_back(make_enemy(it->second, px, pz, level, hp_mult, damage_mult, false, area, true, 0));
 		enter(pending_spawns.back(), -1);
 	}

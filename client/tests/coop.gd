@@ -289,7 +289,7 @@ func game(br: Node, nm: String, extra: Dictionary = {}) -> DmNextGame:
 	var gm: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	gm.name = "NextGame"
 	br.add_child(gm)
-	var o := {"hud": true, "audio": false, "baked_dir": OUT, "name": nm, "waves": false, "seed": 20261016, "lobby_url": lobby_url, "lobby_token": token(int(a["id"]), nm)}
+	var o := {"areas": ["graves"], "hud": true, "audio": false, "baked_dir": OUT, "name": nm, "waves": false, "seed": 20261016, "lobby_url": lobby_url, "lobby_token": token(int(a["id"]), nm)}
 	o.merge(extra, true)
 	gm.start_failed.connect(func(r: String) -> void: last_refusal = r)
 	await gm.start(a["ch"], a["api"], o)
@@ -857,6 +857,7 @@ func guest_account() -> void:
 	check(await until(func() -> bool: return g.joiner != null and g.joiner.backend_ok and gm.blocked == "" and gm.joined, 5.0),
 		"the guest joined the host's backend party session with its own account")
 	check(await until(func() -> bool: return h.remote_builds.has(gb_h.owner_peer), 5.0), "the host read the guest's build from the server (B22)")
+	check(g.world.unlocked.keys() == h.world.unlocked.keys() and not h.party._seals.is_empty(), "the guest's doors follow the host's seals (%s)" % str(g.world.unlocked.keys()))
 	check(g.rewards == null and g.my_member() == g.joiner.member and g.loot != null and g.ui_host.prog == g.joiner.prog and g.belt() == g.loot.guest_belt,
 		"the guest's member, bag, belt and HUD are its own account's")
 	var xp0: int = int(g.joiner.member.stats["xp_applied"])
