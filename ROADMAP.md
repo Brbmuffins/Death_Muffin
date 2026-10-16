@@ -188,6 +188,9 @@ server (B38).
   game runs the same fight with `--benchmark --bench-room=graves --bench-size=full_party` (or Benchmark -> Hollow Graves -> Full Party).
   - [x] The fight and its budget checks in the new client: `--benchmark` and the character select's Benchmark button, Easy auto combat on the core, the report with its budget section (client/README.md "The benchmark",
     `client/tests/benchmark.gd`); the VPS numbers are in "Before numbers" (3.0 times today's speed without value, 2.4 with it).
+  - [ ] The HUD's share with the panels back inside 0.5 ms on the VPS: the benchmark's HUD rounds read 0.60 to 0.85 ms (give or take 0.14 to 0.35) in the Full Party fight since today's
+    panel host came (2026-10-16, 273e7485; the HUD alone read 0.3 to 0.6). The panel host's own per-frame work is 0.17 ms (the view-model build and apply 0.12); the rest is what is now
+    drawn besides (the menu row, the chat column): find it on the canvas side. The frame did not get slower (4.65 to 5.09 ms against 5.0).
   - [x] The rest of the main thread back inside its 4 ms with value in (3.8 to 4.1 ms on the VPS, 2026-10-16): a timing of every per-frame callback in a Full Party frame found the
     effects' particle ring (today's `DmFxRing`, GDScript) at 1.15 ms a frame, the most after the core; its loop is the core's C++ now (`DmMotes`, float for float the same:
     `client/tests/fx_motes.gd`). A/B four runs each: 5.7 to 5.0 ms a frame, the rest of the main thread 3.7 to 3.1 ms. Next in line by the same timing: Easy auto combat's
