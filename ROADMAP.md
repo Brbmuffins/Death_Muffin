@@ -102,7 +102,7 @@ server (B38).
   - [ ] Crowd looks: per-creature glow (elite, risen, thrall legion and champion, wisp), the spectral wraith, thrall rims, kit armour tint and hand props, wings, the ghoul's
     mound and the Leech's wobble need a per-look material or an instance channel (decide with a measure); sinking bodies fade out only with an alpha channel.
   - [ ] Crowd effects, the rest: `DmEnemyFx` already plays the telegraphs, swings, deaths, voices, rising dust, dust clouds and the affixes' bell, meal and burst from the core's events; left are the
-    status effects, landing dust, the shattered corpse, the shrouded body's fade (the full list is in native/README.md "Differences"). Done: the corpse rings and the toxic disc, the affixes' standing marks and motes.
+    the landing dust, the shattered corpse, the shrouded body's fade (the full list is in native/README.md "Differences"). Done: the corpse rings and the toxic disc, the affixes' standing marks and motes, the status tells and the fliers' motes (their cost in the VPS Full Party fight, headless, two rounds each: 5.06 -> 5.22 ms a frame on average, the median unchanged; today pays the same effects every frame).
   - [ ] Crowd cost: animation LOD (a far body at 24 or 10 Hz), cull instances outside the camera's view in the core, measure the thralls' shadows (they always cast), set the level-of-detail
     distances and the 128-instance reserve from the benchmark on Helix's PC.
   - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`; the Graves' whole roster, robber, hound, penitent, sac, moth, bat, ghoul, rat and risen, and the thralls are baked and synced so far) and its models synced (`client/assets.list`); a first look on Forward+ and Mobile.

@@ -191,7 +191,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   the base emissive glow (an elite's purple, the risen's green, a thrall's legion and champion glow, the Fen wisp's), the spectral wraith (translucent, pale-blue glow), the thralls'
   spirit rims, gear tint of kit armour and the hand props (swords, shields, bows, staffs), the moth's, bat's and seraph's wings, the burrowed ghoul's mound, the Mire Leech's wobble,
   the Gargoyle's dive (not in the core yet), the fade-out of a sinking body (it sinks the same 0.9 s but is not faded to transparent), the drawn-body crowd separation
-  (`_separate_crowd`; the core separates bodies), the status effects, fire and fen death effects, the landing dust, a shattered corpse (Corpse Explosion), and the animation LOD (a far body
+  (`_separate_crowd`; the core separates bodies), fire and fen death effects, the landing dust, a shattered corpse (Corpse Explosion), and the animation LOD (a far body
   updates at 24 or 10 Hz today; every drawn body updates every frame). Effects need the event consumer, which is its own item.
 - **Crowd views take the live nodes' rules where they differ from `DmEntityViews`:** a flinch plays when the core enters HURT (`DmEnemy`), not on every flash; the flash decays by
   6 per second for an enemy and 5 for a thrall (`DmEnemy`, `DmThrall`), and the killing blow leaves no flash on the body; an enemy rises from 0.9 x its model's height below the ground
@@ -220,8 +220,9 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
     when its attack event is dispatched and runs on the rendered frame clock, as the node-based fx did from the state change.
   - The hover pick asks the core for the bodies within 4.5 m of where the cursor's ray crosses the plane 0.9 m above the ground and takes the one whose chest is nearest the cursor on screen within 46 px; today
     it measured every enemy. The same answer unless a tall body's chest is more than 4.5 m along the ray from that plane. A click on an enemy only names it until the rites come (no attack chase, no auto combat).
-  - The enemy fx dropped, for the "Crowd effects" item: the shrouded body's fade (the crowd has no alpha), an elite's glow, the fliers' hover motes, the censer's incense, the Pyre's and the Fen's idle effects and the acolyte's
-    reach ring (their defs are not on the core). An elite keeps its ground ring, and an affixed one its affix marks and motes, following the drawn body; the corpses get today's rings and the toxic disc
+  - The enemy fx dropped, for the "Crowd effects" item: the shrouded body's fade (the crowd has no alpha), an elite's glow, the censer's incense, the Pyre's and the Fen's idle effects, the acolyte's
+    reach ring (their defs are not on the core) and the Flagellant's frenzy motes. The status tells and the fliers' motes play near the hero on `DmEnemyFx`'s 5 Hz ambient tick at today's rates a second
+    (today rolled them every rendered frame), for the bodies with a status (`status_changed`, read from `DmCore.statuses`) and the ones that fly. An elite keeps its ground ring, and an affixed one its affix marks and motes, following the drawn body; the corpses get today's rings and the toxic disc
     (`DmEnemyFx`), their cap counted by each ring's own end (today's counted handles that turn alive a frame late, so a wipe could pass it). The sac's toxic pool has no visual of its own, as today.
   - The core does not report what an enemy does to a hero besides damage (the Frost wraith's chill, the Drowned Sexton's hook with its root and pull): `DmHeroBody.dm_enemy_effect` is kept for them and nothing calls it yet.
   - The game reads the core's constants from this project's `data/` and `sim/`; the constants of `dm_corpse_field.gd` and `dm_thrall.gd`, whose files are not here, stay the compiled-in defaults (equal, asserted by `core_thralls`).

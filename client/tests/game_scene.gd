@@ -8,7 +8,7 @@ extends SceneTree
 ##   - the hero dies and gets up again (4 s, at the Graves' door; the core's enemies stop hitting him while he lies, and a forced death when the waves were too weak);
 ##   - killing enemies with core.damage lays corpses and plays the death path (DmEnemyFx) without errors, the corpses get their rings (capped); deaths and removals leave nothing held by the fx;
 ##   - the crowd draws the creatures: the CrowdView's groups hold an instance per live body and per corpse;
-##   - the affixed elites' standing marks and motes (gone when they fall);
+##   - the affixed elites' standing marks and motes (gone when they fall); a status's tell (frost motes on a chilled body);
 ##   - the kinds of blow (the penitent's cone, the moth's dust and cloud, the sac's slam, a hurt ghoul's dig and eruption) and the affixes' bell, meal, shroud and burst are
 ##     events of the core's buffer that DmEnemyFx played (scripted: one of each, close to the hero);
 ##   - the order of a tick (session and director, then the core, then the crowd) and that the host takes the event buffer once;
@@ -413,6 +413,8 @@ func affixes() -> void:
 	host.damage(food, 1.0e6, b.core_id)            # a corpse beside the hungry one
 	host.damage(hungry, 200.0, b.core_id)          # hurt, so it wants to eat
 	check(host.core.strip_shroud(shroud), "the shroud of an elite lifts for good")
+	var status_motes := int(g.enemy_fx.stats["status_mote"])
+	host.apply_status(bell, "chill", b.core_id, 1.0, 6.0)   # a status tell near the hero: frost motes
 	var kill := host.damage(veng, 1.0e9, b.core_id)
 	check(kill["killed"], "the Vengeful elite falls")
 	await ticks(500)                               # the bell tolls every 6 s (0.9 s wind-up), the meal every 4 s
@@ -427,6 +429,7 @@ func affixes() -> void:
 	check(int(g.enemy_fx.stats["moment"]) >= 4, "the fx played them (%d)" % int(g.enemy_fx.stats["moment"]))
 	check(int(g.enemy_fx.stats["affix_mote"]) > motes_before and g.enemy_fx._unveiled.has(shroud), "near the hero they give off their motes (%d), the lifted shroud stops smoking" % (int(g.enemy_fx.stats["affix_mote"]) - motes_before))
 	check(not g.enemy_fx._affixed.has(veng), "the fallen Vengeful's mark is gone")
+	check(int(g.enemy_fx.stats["status_mote"]) > status_motes, "a chilled body near the hero gives off frost motes (%d)" % (int(g.enemy_fx.stats["status_mote"]) - status_motes))
 	for id in [bell, shroud, hungry]:
 		host.damage(id, 1.0e9, b.core_id, false)
 	await ticks(2)

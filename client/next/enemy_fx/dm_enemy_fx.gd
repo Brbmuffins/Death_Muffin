@@ -15,8 +15,11 @@ extends Node
 ## warm in the Fen), a violet one under a resonant corpse, a green disc under a toxic one for 5 s.
 ## An affixed elite's standing tells are DmEntityViews._dress_affix / _tick_affix': per affix a ground mark that follows the drawn body (the bell's ring, the hunger's
 ## glow, the shroud's haze, the vengeful cracks) and, near the hero, its motes on the ambient tick (drool, embers, shroud smoke while the shroud is up).
+## Near the hero, on the same ambient tick, today's status tells (_tick_alive): marrow drips while it bleeds, frost motes while chilled, a priest-gold glint while
+## sanctified, rot while withered, bone dust while fractured, bronze motes while incensed; and the fliers' and the wraith's hover motes. The bodies looked at are
+## only those with a status (`status_changed`) or that fly.
 ## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
-## the elite's body glow, the fliers' hover motes, the censer, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the acolyte's reach ring.
+## the elite's body glow, the censer, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the acolyte's reach ring, the Flagellant's frenzy motes.
 
 const AMBIENT_S := 0.2
 const NEAR_X := 24.0               ## ambient motes only near the hero (DmEntityViews near_fx)
@@ -30,6 +33,7 @@ const RISE_S := 1.1                ## the rise (RISING state) the spawn dust las
 const DEAD := 6                    ## DmCoreEvents.State.DEAD
 const CORPSE_MARKS_MAX := 8        ## DmEntityViews.CORPSE_MARKS_MAX: a wipe of 40 bodies does not add 40 decals
 const RING_MS := 26000.0           ## a corpse ring's life (its decal's duration)
+const HOVER := {"wraith": 0.45}    ## DmEntityViews.HOVER: the bodies that float without `flying`
 const HEAD_Y := {"humanoid": 1.3, "robed": 1.35, "quadruped": 0.75, "bloat": 1.05}   ## DmEntityViews.HEAD_Y: where a body's motes start, by rig
 const EFFECT_IDS: Array[String] = ["censer_incense", "vengeful_burst", "surge_eruption", "bonfire"]
 const SFX_IDS: Array[String] = ["eliteAggro", "eliteDeath", "enemyDeath", "tellStrike", "tollSmall", "burst", "boneHit",
@@ -42,7 +46,7 @@ var fx: DmEventFx                  ## the shared router half: telegraphs, deaths
 var host := DmEnemyFxHost.new()
 var core_host: DmCoreHost
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
-var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0}
+var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0}
 
 var _clock := 0.0                  ## ms of rendered-frame time
 var _amb_t := 0.0
@@ -57,6 +61,10 @@ var _tele_call := Callable()
 var _death_ev := {}
 var _zone := {"id": 0, "kind": "dust", "owner": "", "x": 0.0, "z": 0.0, "r": 1.0, "until": 0.0, "hostile": true, "creep": 0.0, "contagion": false}   ## scratch zone record
 var _zones := {}                   ## zone id -> true while its visual is up
+var _statused := {}                ## id -> its scale: a body that got a status (looked at on the ambient tick until it has none)
+var _hovers := {}                  ## id -> its hover height: a flier or the wraith (the motes under it)
+var _status_fx: Dictionary = {}    ## DmContent statuses STATUS_FX: the tells' colours
+var _mote_o := {"count": 1}        ## the option record every status, flier and affix mote reuses
 var _affixed := {}                 ## id -> [the affix marks' handles, the affix names, scale, head height]: an affixed body, while it lives
 var _unveiled := {}                ## id -> true once its shroud lifted (`unveil`): no more shroud smoke
 var _corpse_rings := {}            ## corpse id -> [its ring's handle, when it ends (rendered-frame ms), pale]: until the corpse goes or the ring's 26 s are over
@@ -92,6 +100,8 @@ func bind(h: DmCoreHost) -> void:
 	h.zone.connect(_on_zone)
 	h.zone_gone.connect(_on_zone_gone)
 	h.affix_moment.connect(_on_affix_moment)
+	h.status_changed.connect(_on_status_changed)
+	h.statuses_cleared.connect(func(id: int) -> void: _statused.erase(id))
 	h.corpse_added.connect(_on_corpse_added)
 	h.corpse_gone.connect(func(id: int, _reason: String) -> void: _corpse_off(id))
 	h.corpse_consumed.connect(func(id: int, _by: int, _reason: String) -> void: _corpse_off(id))
@@ -116,7 +126,7 @@ func set_backends(p_vfx: Node, p_audio: Node) -> void:
 
 ## Creatures this fx is holding something for (a swing, a rise, a burrow, an elite ring): tests assert it stays small and empties.
 func watched() -> int:
-	return _strikes.size() + _rising.size() + _burrowers.size() + _auras.size() + _affixed.size()
+	return _strikes.size() + _rising.size() + _burrowers.size() + _auras.size() + _affixed.size() + _statused.size() + _hovers.size()
 
 
 func clear() -> void:
@@ -129,6 +139,8 @@ func clear() -> void:
 	for id in _affixed.keys():
 		_affix_off(id)
 	_unveiled.clear()
+	_statused.clear()
+	_hovers.clear()
 	_strikes.clear()
 	_rising.clear()
 	_burrowers.clear()
@@ -164,6 +176,10 @@ func _on_spawned(id: int, def: String, _level: int, elite: bool, _area: String, 
 			"duration": 1e9, "opacity": 0.8, "pulse": 4.0, "follow": _drawn_pos.bind(id)})
 	if _affixes != 0:
 		_dress_affix(id, def, elite, _affixes, x, z)
+	var d: Dictionary = core_host.enemy_defs.get(def, {})
+	var hover := float(d.get("flying", HOVER.get(def, 0.0)))
+	if hover > 0.0:
+		_hovers[id] = hover
 
 
 ## The drawn ground position of a living body (null once it is dead or gone), for decals that follow it.
@@ -291,6 +307,8 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 	_kill(_auras.get(id))
 	_auras.erase(id)
 	_affix_off(id)
+	_statused.erase(id)
+	_hovers.erase(id)
 	_death_ev["id"] = id
 	_death_ev["x"] = x
 	_death_ev["z"] = z
@@ -306,6 +324,15 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 func _on_removed(id: int) -> void:
 	_health.erase(id)
 	_affix_off(id)
+	_statused.erase(id)
+	_hovers.erase(id)
+
+
+func _on_status_changed(id: int) -> void:
+	if _statused.has(id) or not _health.has(id):   # an enemy of this fx (a thrall's or a boss's statuses are not its)
+		return
+	var info: Dictionary = core_host.enemy_info(id)
+	_statused[id] = float(core_host.enemy_defs.get(String(info.get("def", "")), {}).get("scale", 1.0)) * (float(DmSimData.ELITE["scale"]) if _health[id].y > 0.0 else 1.0)
 
 
 ## An affixed body's standing tells (DmEntityViews._dress_affix): one ground mark per affix, following the drawn body, in the affix's colour.
@@ -487,7 +514,7 @@ func _process(dt: float) -> void:
 	fx.update(dt)
 	if _clock >= _next_due:
 		_run_due()
-	if not _rising.is_empty() or not _burrowers.is_empty() or not _affixed.is_empty():
+	if not _rising.is_empty() or not _burrowers.is_empty() or not _affixed.is_empty() or not _statused.is_empty() or not _hovers.is_empty():
 		_amb_t += dt
 		if _amb_t >= AMBIENT_S:
 			_ambient()
@@ -532,6 +559,79 @@ func _ambient() -> void:
 			_burst(_amb_dirt, p.x, 0.15, p.z, false)
 	for id in _affixed.keys():
 		_affix_motes(id)
+	for id in _hovers.keys():
+		var p := core_host.enemy_position(id)
+		if p != Vector3.INF and absf(p.x - _px) <= NEAR_X and absf(p.z - _pz) <= NEAR_Z and randf() < AMBIENT_S * 4.0:
+			_mote(p.x, float(_hovers[id]) + 0.2, p.z, 0xb9cbe6, 0.35, 0.1, -0.3, 0.7, 0.18, 0.0, 0.0, "hover_mote")
+	for id in _statused.keys():
+		_status_motes(id)
+
+
+## A body's status tells near the hero (DmEntityViews._tick_alive, today's rates a second, here per ambient tick). Reads the core's packed records:
+## [status id, stacks, tenths of a second left (2 bytes)] per status, in DmStatusRules.IDS order.
+func _status_motes(id: int) -> void:
+	var p := core_host.enemy_position(id)
+	if p == Vector3.INF or absf(p.x - _px) > NEAR_X or absf(p.z - _pz) > NEAR_Z:
+		return   # far bodies cost a position read only
+	var recs: PackedByteArray = core_host.core.statuses(id)
+	if recs.is_empty():
+		_statused.erase(id)
+		return
+	if _status_fx.is_empty():
+		_status_fx = DmContent.get_export("statuses", "STATUS_FX")
+	var sc := float(_statused[id])
+	for i in range(0, recs.size(), 4):
+		var sid := int(recs[i])
+		if sid >= DmStatusRules.IDS.size():
+			continue
+		var stacks := float(recs[i + 1])
+		match DmStatusRules.IDS[sid]:
+			"bleed":
+				if randf() < AMBIENT_S * 4.0:
+					_mote(p.x, 0.7 + randf() * 0.6, p.z, _st("hemorrhage", "crimson") if randf() < 0.7 else _st("hemorrhage", "ember"), 0.3, 0.1, -0.2, 0.6, 0.12, 8.0)
+			"chill":
+				if randf() < AMBIENT_S * 3.0:
+					_mote(p.x, 0.3 + randf() * 1.2, p.z, _st("chill", "frost"), 0.45, 0.15, 0.2, 0.8, 0.14, 0.0, 0.5)
+			"sanctified":
+				if randf() < AMBIENT_S * 2.0:
+					_mote(p.x, 1.9 * sc, p.z, _st("sanctified", "gold"), 0.35, 0.1, 0.5, 0.7, 0.16)
+			"withered":
+				if randf() < AMBIENT_S * (1.0 + stacks * 0.75):
+					_mote(p.x, 0.8 + randf() * 0.8, p.z, fx.sp("miasma", "rot"), 0.4, 0.2, 0.7, 0.9, 0.2)
+			"fracture":
+				if randf() < AMBIENT_S * 1.5 * stacks:
+					_mote(p.x, 1.2, p.z, fx.sp("needle", "dust"), 0.3, 0.6, 0.4, 0.5, 0.1, 5.0)
+			"incensed":
+				if randf() < AMBIENT_S * 3.0:
+					_mote(p.x, 1.2 * sc, p.z, _st("incensed", "bronze"), 0.4, 0.2, 0.6, 0.8, 0.14)
+
+
+## One mote through a reused option record (the emitter copies what it keeps): no dictionary is built per mote.
+func _mote(x: float, y: float, z: float, color: int, spread: float, speed: float, up: float, life: float, size: float, gravity := 0.0, drag := 0.0, stat := "status_mote") -> void:
+	var o := _mote_o
+	o["x"] = x
+	o["y"] = y
+	o["z"] = z
+	o["color"] = color
+	o["spread"] = spread
+	o["speed"] = speed
+	o["up"] = up
+	o["life"] = life
+	o["size"] = size
+	if gravity > 0.0:
+		o["gravity"] = gravity
+	else:
+		o.erase("gravity")
+	if drag > 0.0:
+		o["drag"] = drag
+	else:
+		o.erase("drag")
+	vfx.emit(o)
+	stats[stat] += 1
+
+
+func _st(group: String, key: String) -> int:
+	return int((_status_fx.get(group, {}) as Dictionary).get(key, 0xffffff))
 
 
 ## An affixed body's motes near the hero (DmEntityViews._tick_affix, at today's rates: drool 4, embers 3 and shroud smoke 2 a second, here per ambient tick).
@@ -550,12 +650,10 @@ func _affix_motes(id: int) -> void:
 			"hungering":
 				if randf() < AMBIENT_S * 4.0:
 					var f := float(v.get("yaw", 0.0))
-					vfx.emit({"x": p.x + sin(f) * 0.3 * sc, "y": head, "z": p.z + cos(f) * 0.3 * sc, "count": 1, "color": _col("drool"), "spread": 0.06, "speed": 0.1, "up": -0.3, "life": 0.7, "size": 0.13, "gravity": 7})
-					stats["affix_mote"] += 1
+					_mote(p.x + sin(f) * 0.3 * sc, head, p.z + cos(f) * 0.3 * sc, _col("drool"), 0.06, 0.1, -0.3, 0.7, 0.13, 7.0, 0.0, "affix_mote")
 			"vengeful":
 				if randf() < AMBIENT_S * 3.0:
-					vfx.emit({"x": p.x, "y": 0.3 + randf() * head, "z": p.z, "count": 1, "color": _col("vengeful"), "spread": 0.35 * sc, "speed": 0.2, "up": 1.1, "life": 0.7, "size": 0.12})
-					stats["affix_mote"] += 1
+					_mote(p.x, 0.3 + randf() * head, p.z, _col("vengeful"), 0.35 * sc, 0.2, 1.1, 0.7, 0.12, 0.0, 0.0, "affix_mote")
 			"shrouded":
 				if not _unveiled.has(id) and randf() < AMBIENT_S * 2.0:
 					vfx.emit_smoke({"x": p.x, "y": 0.4 + randf() * head, "z": p.z, "count": 1, "color": _col("shroud"), "spread": 0.4 * sc, "speed": 0.15, "up": 0.4, "life": 1.2, "size": 0.9, "shrink": -0.6})
