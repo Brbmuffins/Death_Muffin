@@ -711,7 +711,7 @@ func _meta(user: Dictionary) -> Dictionary:
 	}
 
 
-## The combat core's name and version ("dmcore 0.6"), "" when the extension is not there.
+## The combat core's name and version ("dmcore 0.8"), "" when the extension is not there.
 static func core_version() -> String:
 	if not ClassDB.class_exists("DmCore"):
 		return ""

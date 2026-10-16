@@ -14,9 +14,9 @@ signal area_followed(id: String)        ## host: the director moved to the comba
 signal surge_event(ev: Dictionary)      ## host: {t: surge | surgeCleared | surgeFailed, area, x, z, ...} (Grave Surges are not ported yet: never emitted)
 
 ## The defs the core's enemy brain runs (today: "has a scene at res://enemies/<id>.tscn"): the Hollow Graves' roster, the rat of the kennel
-## procession and the risen. The censer (its aura) and the other areas' kinds come with the core items that run them; a roster entry
-## outside this list is skipped like a kind without a scene was.
-const CORE_KINDS: Array[String] = ["robber", "hound", "penitent", "sac", "moth", "bat", "ghoul", "rat", "risen"]
+## procession and the risen, and the Ossuary's golem and deacon (so the whole Ossuary roster). The censer (its aura) and the other areas' kinds
+## come with the core items that run them; a roster entry outside this list is skipped like a kind without a scene was.
+const CORE_KINDS: Array[String] = ["robber", "hound", "penitent", "sac", "moth", "bat", "ghoul", "rat", "risen", "golem", "deacon"]
 const EMPTY_CLEAR_S := 15.0             ## no hero in the area this long -> the area's queued spawns are dropped
 const SPAWN_MIN := DmSimConsts.AGGRO_RANGE + 3.0   ## owner 2026-10-07: waves climb in outside aggro so the player sees them coming (+3: a group fans out 2.1 m)
 const SPAWN_MAX := 30.0                 ## farthest spawn distance (m)
@@ -278,10 +278,10 @@ func scaling_levels(heroes: Array) -> Array:
 
 ## Host: make one enemy in the core and return its id (0 while it is queued by `spawn_wave`, whose bodies are made over the next ticks). `heroes` only
 ## feeds the level / party scaling. `mult` overrides the computed scaling ({level, hp, dmg}: the hp / damage multipliers): a Risen raised by an
-## acolyte or a deacon is as strong as its raiser. `over` (optional): area (the ground the enemy counts as for level scaling; a boss's adds belong to
-## the boss's area), depth (the Depths run: its level, and full Wave Speed ramp like the sim's instance), affix_list (PackedStringArray of elite
-## affixes; an elite without one rolls its own: the Omen's forced affix, else one of four, + the Depths' extras). The affix roll is `DmAffixRoll.roll`,
-## today's, from this director's random stream.
+## acolyte is as strong as its raiser (a deacon's is made by the core itself, with its body's level and multipliers). `over` (optional): area (the ground
+## the enemy counts as for level scaling; a boss's adds belong to the boss's area), depth (the Depths run: its level, and full Wave Speed ramp like the
+## sim's instance), affix_list (PackedStringArray of elite affixes; an elite without one rolls its own: the Omen's forced affix, else one of four, + the
+## Depths' extras). The affix roll is `DmAffixRoll.roll`, today's, from this director's random stream.
 func spawn(def_id: String, pos: Vector3, heroes: Array = [], elite: bool = false, mult: Dictionary = {}, over: Dictionary = {}) -> int:
 	var levels := scaling_levels(heroes)
 	var spawn_area := String(over.get("area", "")) if String(over.get("area", "")) != "" else area_id

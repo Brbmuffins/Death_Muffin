@@ -115,7 +115,9 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 		rep.desync++;
 	}
 	e.affixes = uint8_t(s.affixes);
-	e.dug_in = s.dug_in;
+	const bool support = defs[size_t(e.def)].behavior == B_SUPPORT;
+	e.dug_in = s.dug_in && !support;       // bit 5 is a Deacon's raise in progress, not a dig
+	e.swing_raise = s.dug_in && support;
 	e.net_x = s.x;
 	e.net_z = s.z;
 	e.net_yaw = s.yaw;
@@ -164,7 +166,10 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 				case BLOW_SLAM:
 					events.push(EV_TELEGRAPH, e.id, { TELL_SLAM }, { s.x, s.z, ax, az, float(d.slam_r), left });
 					break;
-				default:
+				default:  // a Deacon's swing is a raise or a curse (bit 5 of the record); the plain melee swing has no telegraph
+					if (d.behavior == B_SUPPORT) {
+						events.push(EV_TELEGRAPH, e.id, { e.swing_raise ? TELL_RAISE : TELL_CURSE }, { s.x, s.z, ax, az, 0.0f, left });
+					}
 					break;
 			}
 			rep.events_derived += 2;
@@ -438,6 +443,11 @@ bool World::puppet_event(int32_t p_type, int32_t p_id, const int32_t *I, int32_t
 		}
 		case EV_TELEGRAPH:
 			if (I[0] != TELL_TOLL) {
+				return false;
+			}
+			break;
+		case EV_CUE:  // the effects index their name table with it
+			if (I[0] < 0 || I[0] >= CUE_COUNT) {
 				return false;
 			}
 			break;

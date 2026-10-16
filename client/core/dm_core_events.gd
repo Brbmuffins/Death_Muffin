@@ -46,8 +46,8 @@ const STATE_NAMES: Array[String] = ["rising", "idle", "chase", "attack", "hurt",
 enum ThrallState { RISING, IDLE, MOVE, ATTACK, DEAD }
 
 # ---- names by number (the core decodes defs, areas, thrall kinds, death reasons and corpse reasons itself; these are the fixed small enums)
-const TELLS: Array[StringName] = [&"cone", &"slam", &"dust", &"erupt", &"toll"]                       ## Tell
-const CUES: Array[StringName] = [&"slam", &"erupt", &"dig_in"]                                         ## Cue
+const TELLS: Array[StringName] = [&"cone", &"slam", &"dust", &"erupt", &"toll", &"raise", &"curse"]   ## Tell
+const CUES: Array[StringName] = [&"slam", &"erupt", &"dig_in", &"sanctify"]                           ## Cue
 const ZONE_KINDS: Array[StringName] = [&"dust", &"toxic"]                                              ## ZoneKind
 const HIT_KINDS: Array[String] = ["melee", "toxic", "burn", "ember", "dust", "curse", "toll"]          ## HitKind: the sim's hurt `from`
 const BLOWS: Array[StringName] = [&"melee", &"cone", &"dust", &"slam"]                                 ## Blow

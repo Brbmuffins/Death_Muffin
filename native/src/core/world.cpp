@@ -2,8 +2,8 @@
 
 #include <algorithm>
 
-// The enemy brain is a port of godot/enemies: DmEnemy (dm_enemy.gd), its states (states/*.gd) and the Graves kinds (flanker, caster,
-// hazard, burrower). Comments name the GDScript it mirrors. Differences from today are listed in native/README.md.
+// The enemy brain is a port of godot/enemies: DmEnemy (dm_enemy.gd), its states (states/*.gd) and the kinds (flanker, caster,
+// hazard, burrower; the Deacon is support.cpp). Comments name the GDScript it mirrors. Differences from today are listed in native/README.md.
 
 namespace dm {
 
@@ -88,6 +88,9 @@ Enemy World::make_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, do
 	e.scan_t = e.rng.next_double() * SCAN_S;
 	e.wander_heading = e.rng.next_double() * TAU;
 	e.st.acc = e.rng.next_double() * STATUS_TICK_S;  // DmStatusSet spreads a crowd's 0.1 s steps across ticks
+	if (d.behavior == B_SUPPORT) {
+		e.support_t = e.rng.next_double() * SCAN_S;  // DmEnemyDeacon._ready, after the base's rolls
+	}
 	// initial_state(): rising bodies rise (a burrower starts underground), others start idle.
 	e.state = p_rising ? (d.burrow ? BURROW : RISING) : IDLE;
 	events.push(EV_ENEMY_SPAWNED, e.id, { p_def, p_level, p_elite ? 1 : 0, p_area, p_affixes }, { p_x, p_z, float(e.max_hp) });
@@ -299,6 +302,21 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 // CHASE's engage() per kind: dm_state_chase (melee, hazard), dm_state_flank_chase, dm_state_kite (casters).
 int32_t World::engage(Enemy &e, float p_tx, float p_tz, double p_d, double p_dt) {
 	const EnemyDef &d = defs[e.def];
+	if (d.behavior == B_SUPPORT) {  // dm_state_cath_support: curse when the cooldown is up, in range and not silenced; keep the distance
+		if (e.attack_cd <= 0.0 && p_d <= e.attack_range && !silenced(e)) {
+			return ATTACK;
+		}
+		if (p_d > e.attack_range - 0.5) {
+			steer_to(e, p_tx, p_tz, 1.0, p_dt);
+		} else if (p_d < SUPPORT_BACK_OFF) {
+			steer_to(e, e.x * 2.0f - p_tx, e.z * 2.0f - p_tz, SUPPORT_BACK_SPEED, p_dt);
+			face_point(e, p_tx, p_tz, p_dt);
+		} else {
+			stop(e);
+			face_point(e, p_tx, p_tz, p_dt);
+		}
+		return -1;
+	}
 	if (d.behavior == B_CASTER) {
 		if (p_d <= e.attack_range - 0.5 && e.attack_cd <= 0.0) {
 			return ATTACK;
@@ -483,6 +501,17 @@ void World::wander(Enemy &e, double p_dt) {  // DmEnemy.wander
 // DmEnemy.begin_attack + announce_telegraph per kind.
 void World::begin_attack(Enemy &e) {
 	const EnemyDef &d = defs[e.def];
+	if (d.behavior == B_SUPPORT) {  // DmEnemyDeacon.begin_attack: the swing its trigger chose is a raise (aim = the corpse), else the plain curse
+		e.raise_id = e.raise_pending;
+		e.raise_pending = -1;
+		e.swing_raise = e.raise_id >= 0;
+		if (e.swing_raise) {
+			face_point(e, e.aim_x, e.aim_z, 1.0);
+			events.push(EV_ENEMY_ATTACK, e.id, { d.blow }, { e.aim_x, e.aim_z, float(e.windup_s) });
+			events.push(EV_TELEGRAPH, e.id, { TELL_RAISE }, { e.x, e.z, e.aim_x, e.aim_z, 0.0f, float(e.windup_s) });
+			return;
+		}
+	}
 	Tgt tg;
 	if (target_at(e.target, tg)) {
 		e.aim_x = tg.x;
@@ -494,6 +523,11 @@ void World::begin_attack(Enemy &e) {
 	}
 	events.push(EV_ENEMY_ATTACK, e.id, { d.blow }, { e.aim_x, e.aim_z, float(e.windup_s) });
 	switch (d.blow) {
+		case BLOW_MELEE:  // the plain melee swing has no telegraph; the Deacon's curse (DmEnemyDeacon.announce_telegraph) does
+			if (d.behavior == B_SUPPORT) {
+				events.push(EV_TELEGRAPH, e.id, { TELL_CURSE }, { e.x, e.z, e.aim_x, e.aim_z, 0.0f, float(e.windup_s) });
+			}
+			break;
 		case BLOW_CONE:
 			events.push(EV_TELEGRAPH, e.id, { TELL_CONE }, { e.x, e.z, e.aim_x, e.aim_z, 0.0f, float(e.windup_s) });
 			break;
@@ -511,6 +545,10 @@ void World::begin_attack(Enemy &e) {
 // DmEnemy.strike per kind: the blow lands at the end of the wind-up, measured from the body (melee, cone) or the fixed aim (dust, slam).
 void World::strike(Enemy &e) {
 	const EnemyDef &d = defs[e.def];
+	if (d.behavior == B_SUPPORT && e.swing_raise) {  // DmEnemyDeacon.strike: a raise lands as the corpse's end, not as a blow
+		raise_corpse(e);
+		return;
+	}
 	switch (d.blow) {
 		case BLOW_MELEE: {
 			Tgt tg;
@@ -895,6 +933,9 @@ void World::step(double p_dt) {
 		const int32_t nxt = tick_state(i, p_dt);
 		if (nxt >= 0 && nxt != enemies[i].state) {
 			change(i, nxt);
+		}
+		if (enemies[i].state != DEAD && defs[enemies[i].def].behavior == B_SUPPORT) {  // the Deacon's own _physics_process, after the base's
+			tick_support(i, p_dt);
 		}
 		if (enemies[i].state != DEAD) {
 			advance_statuses(enemies[i], p_dt);

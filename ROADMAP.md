@@ -244,7 +244,8 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
     run, 2026-10-16). `client/tests/world.gd`.
   - [ ] The lighting bake of the eleven, in one run of Helix's helper (`publish-bake-kit.sh` with every scene).
   - [ ] Their enemies in the core, kind by kind against today's (the censer, deacon, golem, acolyte, gargoyle, templar, wraith, seraph, flagellant, plague doctor, the Pyre's four
-    and the Fen's four), and their crowd models baked.
+    and the Fen's four), and their crowd models baked. Done so far (2026-10-16, `client/tests/core_kinds.gd`, the file later groups append to): the Ossuary's golem and deacon, with
+    their crowd models, so the whole Ossuary roster runs on the core.
   - [ ] The benchmark's other rooms (today's Sanctum and the rest), so Gate C can compare every room.
 - [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
 - [ ] The Depths and gathering (the Chapterhouse came with the areas, DECISIONS B47).

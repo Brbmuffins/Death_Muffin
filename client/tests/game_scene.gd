@@ -9,7 +9,7 @@ extends SceneTree
 ##   - killing enemies with core.damage lays corpses and plays the death path (DmEnemyFx) without errors, the corpses get their rings (capped) and dust where they land; deaths and removals leave nothing held by the fx;
 ##   - the crowd draws the creatures: the CrowdView's groups hold an instance per live body and per corpse;
 ##   - the affixed elites' standing marks and motes (gone when they fall); a status's tell (frost motes on a chilled body); the dirt mound over a ghoul underground;
-##   - the kinds of blow (the penitent's cone, the moth's dust and cloud, the sac's slam, a hurt ghoul's dig and eruption) and the affixes' bell, meal, shroud and burst are
+##   - the kinds of blow (the penitent's cone, the moth's dust and cloud, the sac's and the golem's slam, the deacon's curse, a hurt ghoul's dig and eruption) and the affixes' bell, meal, shroud and burst are
 ##     events of the core's buffer that DmEnemyFx played (scripted: one of each, close to the hero);
 ##   - the order of a tick (session and director, then the core, then the crowd) and that the host takes the event buffer once;
 ##   - the hover pick finds the enemy under the cursor through the core;
@@ -225,8 +225,8 @@ func the_run() -> void:
 	check(alive_ids.size() > 0 and spawned_ids.has(alive_ids[0]), "the core's bodies are the spawned ids")
 
 
-## The kinds of blow, one of each, close to a hero who stands still: the penitent's cone, the moth's dust and its cloud, the sac's slam and a hurt ghoul's dig,
-## tunnel and eruption. Each is a telegraph event, a swing and an impact for the fx.
+## The kinds of blow, one of each, close to a hero who stands still: the penitent's cone, the moth's dust and its cloud, the sac's and the golem's slam, the deacon's
+## curse and a hurt ghoul's dig, tunnel and eruption. Each is a telegraph event, a swing and an impact for the fx.
 func kinds() -> void:
 	g.director.enabled = false
 	var b := g.local_body()
@@ -251,6 +251,8 @@ func kinds() -> void:
 	ids["moth"] = host.spawn_enemy("moth", at + Vector3(5.0, 0.0, -6.0), 1, 1.0, 1.0, false, "graves", false)
 	ids["sac"] = host.spawn_enemy("sac", at + Vector3(-5.0, 0.0, -5.0), 1, 1.0, 1.0, false, "graves", false)
 	ids["ghoul"] = host.spawn_enemy("ghoul", at + Vector3(0.0, 0.0, -9.0), 1, 1.0, 1.0, false, "graves", false)
+	ids["deacon"] = host.spawn_enemy("deacon", at + Vector3(4.0, 0.0, -4.0), 1, 1.0, 1.0, false, "ossuary", false)
+	ids["golem"] = host.spawn_enemy("golem", at + Vector3(-6.0, 0.0, 4.0), 1, 1.0, 1.0, false, "ossuary", false)
 	await ticks(3)
 	host.damage(ids["ghoul"], float(host.enemy_info(ids["ghoul"])["max_hp"]) * 0.6, b.core_id)   # under half its health it digs in
 	var mound_seen := [false, false]   # [a mound while it was underground, none once it was up again]
@@ -271,13 +273,16 @@ func kinds() -> void:
 		got[k] = int(tells.get(k, 0)) - int(seen_before.get(k, 0))
 	print("INFO the kinds' telegraphs: ", got, "; fx ", g.enemy_fx.stats, "; zones ", zones_seen - zones_before)
 	check(got["cone"] >= 1 and got["dust"] >= 1 and got["slam"] >= 1, "the penitent's cone, the moth's dust and the sac's slam were announced (%s)" % str(got))
+	check(got["curse"] >= 1, "the Ossuary's deacon cursed him, and its telegraph was drawn (%d)" % got["curse"])
 	check(got["erupt"] >= 1 and g.enemy_fx.stats["dig"] > int(fx_before["dig"]) and g.enemy_fx.stats["erupt"] > int(fx_before["erupt"]), "the hurt ghoul dug in and erupted: dig, tunnel, a telegraph, the eruption's fx")
 	check(mound_seen[0] and mound_seen[1], "a dirt mound rode over the ghoul while it was underground and went when it came up (%s)" % str(mound_seen))
 	check(zones_seen > zones_before and g.enemy_fx.stats["zone"] > int(fx_before["zone"]), "the moth's dust cloud is a zone the fx drew (%d)" % (zones_seen - zones_before))
 	check(g.enemy_fx.stats["telegraph"] - int(fx_before["telegraph"]) >= 4 and g.enemy_fx.stats["strike"] - int(fx_before["strike"]) >= 3, "the fx drew the telegraphs and the strikes' impacts")
-	for id in ids.values():
-		if host.enemy_alive(id):
-			host.damage(id, 1.0e9, b.core_id, false)
+	for k: String in ids:
+		if k == "golem" or k == "deacon":
+			host.remove_enemy(ids[k])   # alive and gone: no corpses (a golem leaves three, whose rings would fade during the node count that follows)
+		elif host.enemy_alive(ids[k]):
+			host.damage(ids[k], 1.0e9, b.core_id, false)
 
 
 func hero_death() -> void:

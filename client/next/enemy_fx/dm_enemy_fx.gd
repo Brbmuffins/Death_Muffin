@@ -226,9 +226,19 @@ func _telegraph(kind: StringName, from_x: float, from_z: float, aim_x: float, ai
 	vfx.danger(_tele_call)
 
 
-## One-off cues. The core's (slam, erupt, dig_in) have no visual of their own: their telegraphs and states draw them.
-func _on_cue(_id: int, _kind: int, _x: float, _z: float, _radius: float) -> void:
+## One-off cues. The Deacon's Sanctify is today's thread and halo (DmEventFx._sanctify; the blessed body's motes are the status tells'): a pale gold line from the
+## Deacon, where it stands, to the ally (the cue's place) and a ring that settles on it. The core's other cues (slam, erupt, dig_in) have no visual of their own:
+## their telegraphs and states draw them.
+func _on_cue(id: int, kind: int, x: float, z: float, _radius: float) -> void:
 	stats["cue"] += 1
+	if DmCoreEvents.CUES[kind] != &"sanctify":
+		return
+	var p := core_host.enemy_position(id)
+	if p == Vector3.INF:
+		return
+	var gold := fx.status_fx("sanctified", "gold")
+	fx.beam(Vector3(p.x, 1.9, p.z), Vector3(x, 1.6, z), gold, 0.04, 0.5)
+	fx.decal({"tex": "ring", "color": gold, "x": x, "z": z, "r": 1.1, "duration": 0.8, "opacity": 0.8, "growFrom": 1.8})
 
 
 func _on_damaged(id: int, _source: int, amount: float, _hp: float) -> void:
@@ -606,7 +616,7 @@ func _sfx(id: String, x: float, z: float) -> void:
 func warm(at: Vector3) -> void:
 	var quiet := fx.audio
 	fx.audio = null
-	for kind in [&"cone", &"slam", &"dust", &"erupt", &"ember", &"hex", &"pulse", &"hook"]:
+	for kind in [&"cone", &"slam", &"dust", &"erupt", &"ember", &"hex", &"pulse", &"hook", &"raise", &"curse"]:
 		_telegraph(kind, at.x, at.z, at.x, at.z + 2.5, 0.0 if kind == &"cone" else 1.8, 0.3)
 	for id in ["vengeful_burst", "surge_eruption", "bonfire"]:   # the pyre's bursts and burning pools
 		var hb = fx.bb(id, at.x, at.z, {"scale": 0.5})

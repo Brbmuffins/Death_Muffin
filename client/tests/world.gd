@@ -10,6 +10,8 @@ extends SceneTree
 ##   - moving between areas: the hero walks from the Chapterhouse through the Graves into the Warren; the area changes follow (banners, lighting, the director),
 ##     and the Warren's waves are its roster;
 ##   - waystone travel and the recall home (T), with the thralls following; a fallen hero gets up in the Chapterhouse;
+##   - the Ossuary: its seal breaks with the Graves' kills, the director makes its whole roster (the golem as the Ossuary Wakes' lead), and a deacon the director made
+##     raises a corpse into a Risen at its own level and blesses a wounded ally, through the game scene's event chain (telegraph, cue, the counsel's Sanctify fact);
 ##   - ZERO script errors or engine errors in the log.
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/world.gd
 
@@ -83,6 +85,7 @@ func _main() -> void:
 	await _walking_through()
 	await _waystones_and_recall()
 	await _getting_up()
+	await _the_ossuary()
 	for e in errlog.errors:
 		printerr("ERROR in log: " + e)
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())
@@ -212,7 +215,7 @@ func _breaking_a_seal() -> void:
 	var hold := [PackedVector3Array()]
 	await until(func() -> bool:   # the navigation server merges the opened regions on its own thread, a few frames later
 		hold[0] = g.world.nav_path(from, goal)
-		return hold[0].size() > 1 and g.world.area_at(hold[0][-1].x, hold[0][-1].z) == "warren", 120)
+		return hold[0].size() > 1 and g.world.area_at(hold[0][-1].x, hold[0][-1].z) == "warren", 600)
 	var path: PackedVector3Array = hold[0]
 	check(path.size() > 1 and Vector2(path[-1].x - goal.x, path[-1].z - goal.z).length() < 0.5 and g.world.area_at(path[-1].x, path[-1].z) == "warren",
 		"a path runs from the Graves into the Warren (%d points, ends %s)" % [path.size(), str(path[-1]) if path.size() > 0 else "-"])
@@ -282,3 +285,52 @@ func _getting_up() -> void:
 	var up := await until(func() -> bool: return hero.alive, 60 * 8)
 	await ticks(2)
 	check(up and Vector2(hero.position.x - float(ret["x"]), hero.position.z - float(ret["z"])).length() < 0.05, "he gets up in the Chapterhouse, as today (%s)" % str(hero.position))
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Ossuary's kinds
+
+func _the_ossuary() -> void:
+	var prog := g.ui_host.prog
+	var u: Dictionary = DmContent.area("ossuary")["unlock"]
+	prog.local["areaKills"][String(u["area"])] = prog.unlock_kills(float(u["kills"]))
+	var broken: Array = g.chapterhouse.check_seals()
+	check(broken == ["ossuary"], "the Graves' %d kills break the Ossuary's seal (%s)" % [prog.unlock_kills(float(u["kills"])), str(broken)])
+	g.director.configure_area("ossuary")
+	var roster: Array = DmContent.area("ossuary")["enemies"].map(func(e: Dictionary) -> String: return String(e["id"]))
+	var kinds: Array = g.director.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))
+	check(kinds == roster and kinds.has("deacon") and kinds.has("golem"), "the director makes the Ossuary's whole roster (%s)" % str(kinds))
+	var theme: Dictionary = {}
+	for th: Dictionary in DmSimData.WAVE_THEMES["ossuary"]:
+		if th.get("lead") != null:
+			theme = th
+	var at := _area_mid("ossuary")
+	var made_ids: Array = []
+	g.director.rng.seed = 11   # (an elite golem could carry Hungering and eat the corpse below)
+	var made: int = g.director.spawn_group(at + Vector3(3, 0, 0), [hero], 1, String(theme["lead"]), theme["roster"], made_ids)
+	var golem: int = int(made_ids[0]) if not made_ids.is_empty() else 0
+	var info: Dictionary = g.core_host.enemy_info(golem)
+	check(made == 1 and String(theme["lead"]) == "golem" and info.get("def", "") == "golem" and info.get("area", "") == "ossuary", "%s leads with a golem, made in the Ossuary (%s)" % [String(theme["name"]), str(info.get("def", ""))])
+	# A deacon of the director's, a corpse beside it and the golem wounded: it raises the corpse into a Risen of its level, then blesses the golem.
+	var spawned: Array = []
+	var tells: Array = []
+	var cues: Array = []
+	g.core_host.enemy_spawned.connect(func(id: int, d: String, lvl: int, _e: bool, a: String, _af: int, _x: float, _z: float, _h: float) -> void: spawned.append([id, d, lvl, a]))
+	g.core_host.telegraph.connect(func(_id: int, tell: int, _fx: float, _fz: float, _ax: float, _az: float, _r: float, _s: float) -> void: tells.append(DmCoreEvents.TELLS[tell]))
+	g.core_host.cue.connect(func(_id: int, kind: int, _x: float, _z: float, _r: float) -> void: cues.append(DmCoreEvents.CUES[kind]))
+	events.clear()
+	var deacon: int = g.director.spawn("deacon", at, [hero], false, {}, {"area": "ossuary"})
+	var deacon_level := int(g.core_host.enemy_info(deacon).get("level", 0))
+	var cid: int = g.core_host.corpses.add_corpse(at.x + 2.0, at.z, "normal", "robber", false, 0.0, 1.0, "ossuary")
+	await ticks(72)   # the golem has risen (1.1 s), so a blow can wound it
+	check(not bool(g.core_host.enemy_info(golem).get("elite", true)), "(the golem is a plain one)")
+	g.core_host.damage(golem, float(g.core_host.enemy_info(golem)["max_hp"]) * 0.5, 0, false)
+	var risen := func() -> bool: return spawned.any(func(s: Array) -> bool: return s[1] == "risen")
+	var raised := await until(risen, 60 * 12)
+	check(deacon > 0 and cid > 0 and raised and tells.has(&"raise") and not tells.has(&"curse"), "the deacon raises the corpse: a raise telegraph, then a Risen (%s)" % str(tells))
+	var r: Array = spawned.filter(func(s: Array) -> bool: return s[1] == "risen")
+	check(not r.is_empty() and r[0][2] == deacon_level and r[0][3] == "ossuary", "the Risen has the deacon's level (%d) and area" % deacon_level)
+	var blessed := await until(func() -> bool: return cues.has(&"sanctify"), 60 * 14)
+	check(blessed and g.core_host.status_stacks(golem, "sanctified") == 1.0, "and blesses the wounded golem: the cue, and the status on it")
+	check(events.any(func(e: Array) -> bool: return e[0] == "sanctify_near"), "the counsel hears of the Sanctify (sanctify_near)")
+	for id in g.core_host.core.enemy_ids():
+		g.core_host.remove_enemy(id)

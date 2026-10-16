@@ -156,7 +156,7 @@ void DmCore::_bind_methods() {
 }
 
 String DmCore::version() const {
-	return "dmcore 0.7";
+	return "dmcore 0.8";
 }
 
 int64_t DmCore::checksum(int64_t p_count) const {
@@ -212,6 +212,8 @@ int64_t DmCore::load_enemy_defs(const Dictionary &p_enemies) {
 		} else if (behavior == "hazard") {
 			def.behavior = dm::B_HAZARD;
 			def.blow = dm::BLOW_SLAM;
+		} else if (behavior == "support" && !bool(d.get("ward", false)) && !bool(d.get("inert", false))) {
+			def.behavior = dm::B_SUPPORT;  // the Crypt Deacon: its curse is the plain blow (melee), its raise and Sanctify are the support scan. The Seraph (ward) and the Niche (inert) keep the melee default until they are ported.
 		}
 		auto it = world.def_index.find(def.id);
 		if (it != world.def_index.end()) {
@@ -296,6 +298,8 @@ int64_t DmCore::load_status_defs(const Array &p_rules) {
 	world.st_hex = world.status_id("hex");
 	world.st_barrier = world.status_id("barrier");
 	world.st_shrouded = world.status_id("shrouded");
+	world.st_silence = world.status_id("silence");
+	world.st_sanctified = world.status_id("sanctified");
 	world.st_cleared.clear();
 	for (const char *n : { "bleed", "wraithfire", "withered", "root", "slow", "chill" }) {  // DmStatusSet.CLEARED
 		const int32_t id = world.status_id(n);
@@ -319,6 +323,10 @@ void DmCore::load_legion_tuning(const Dictionary &p_files) {
 	const Dictionary fen = p_files.get("fen", Dictionary());
 	l.hag_thrall_damage = num(fen.get("HAG_HEX", Dictionary()), "thrallDamageMult", l.hag_thrall_damage);
 	const Dictionary st = p_files.get("statuses", Dictionary());
+	const Dictionary sa = st.get("SANCTIFIED", Dictionary());
+	world.tun.sanct_range = num(sa, "range", world.tun.sanct_range);
+	world.tun.sanct_s = num(sa, "durationS", world.tun.sanct_s);
+	world.tun.sanct_cooldown_mult = num(sa, "cooldownMult", world.tun.sanct_cooldown_mult);
 	const Dictionary pb = st.get("PLAGUE_BURST", Dictionary());
 	l.plague_radius = num(pb, "radius", l.plague_radius);
 	l.plague_damage = num(pb, "damageMult", l.plague_damage);
@@ -401,6 +409,9 @@ Dictionary DmCore::tuning() const {
 	d["damage_scale.base"] = l.damage_scale_base;
 	d["damage_scale.per_level"] = l.damage_scale_per_level;
 	d["ELITE.scale"] = world.tun.elite_scale;
+	d["SANCTIFIED.range"] = world.tun.sanct_range;
+	d["SANCTIFIED.durationS"] = world.tun.sanct_s;
+	d["SANCTIFIED.cooldownMult"] = world.tun.sanct_cooldown_mult;
 	return d;
 }
 

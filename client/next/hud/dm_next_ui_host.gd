@@ -154,7 +154,7 @@ func setup(shell_: DmNextGame, persist_: bool = true) -> void:
 
 
 ## The core host's events the HUD and the counsel hear (today's per-enemy hooks, `watch_enemy`): elites for the minimap, a thrall's blow and a DoT lump as numbers over
-## the enemy, the counsel's spawn and corpse facts (the Deacon's sanctify comes with the Deacon's area). No node and no per-frame work per creature.
+## the enemy, the counsel's spawn, corpse and Sanctify facts. No node and no per-frame work per creature.
 func _watch_core() -> void:
 	var ch := shell.core_host
 	ch.enemy_spawned.connect(_on_enemy_spawned)
@@ -166,6 +166,9 @@ func _watch_core() -> void:
 	ch.status_dot.connect(_on_status_dot)
 	ch.corpse_added.connect(func(_id: int, _k: int, _d: String, _e: bool, _a: String, x: float, z: float, _f: float, _sc: float) -> void:   # the counsel's Exhume tip
 		game_event.emit("corpse_near", {"area_safe": bool(DmContent.area(shell.area_id)["safe"]), "dist": _dist_hero(x, z)}))
+	ch.cue.connect(func(_id: int, kind: int, x: float, z: float, _r: float) -> void:   # the counsel's Sanctify tip: a Deacon blessed a body (DmEventFx._sanctify)
+		if DmCoreEvents.CUES[kind] == &"sanctify":
+			game_event.emit("sanctify_near", {"dist": _dist_hero(x, z)}))
 
 
 func _on_enemy_spawned(id: int, def: String, _level: int, elite: bool, _area: String, _affixes: int, x: float, z: float, _hp: float) -> void:

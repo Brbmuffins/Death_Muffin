@@ -1,7 +1,7 @@
 #pragma once
 // The core's tables and the enemy brain (native/README.md "Design"). Enemies live in spawn order: a slot only moves by stable
 // compaction when a dead body is removed, so slot order is spawn order and every scan keeps today's tie-breaks. The brain is a port of
-// godot/enemies (DmEnemy, its states and kinds) for the Graves roster; timers count in doubles the way the GDScript did. Thralls
+// godot/enemies (DmEnemy, its states and kinds) for the Graves roster and the Ossuary's golem and deacon; timers count in doubles the way the GDScript did. Thralls
 // (thralls.cpp) and corpses (corpses.cpp) live in the same World: heroes are enemies' targets first, then thralls in raise order.
 #include <cmath>
 #include <cstdint>
@@ -25,13 +25,13 @@ namespace dm {
 
 // Wire ids of today's enemy states (godot/enemies/states/dm_enemy_state.gd): append only.
 enum EnemyState : int32_t { RISING = 0, IDLE, CHASE, ATTACK, HURT, RETURN, DEAD, FLEE, BURROW, ERUPT, DIG, EMERGE };
-enum Behavior : int32_t { B_MELEE = 0, B_FLANK, B_CASTER, B_HAZARD };
+enum Behavior : int32_t { B_MELEE = 0, B_FLANK, B_CASTER, B_HAZARD, B_SUPPORT };  // B_SUPPORT: the Crypt Deacon (DmEnemyDeacon, DmStateCathSupport)
 enum Blow : int32_t { BLOW_MELEE = 0, BLOW_CONE, BLOW_DUST, BLOW_SLAM };
 // Damage kinds of a hit on a target (the sim's hurt `from`; GDScript maps them back to strings): append only.
 enum HitKind : int32_t { HK_MELEE = 0, HK_TOXIC, HK_BURN, HK_EMBER, HK_DUST, HK_CURSE, HK_TOLL };
 // Telegraph and cue kinds (DmEnemy.telegraph / cue): append only.
-enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT, TELL_TOLL };
-enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN };
+enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT, TELL_TOLL, TELL_RAISE, TELL_CURSE };
+enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN, CUE_SANCTIFY, CUE_COUNT };
 enum ZoneKind : int32_t { ZONE_DUST = 0, ZONE_TOXIC };
 // Elite affixes in DmSimData.AFFIX_ORDER (bit k of Enemy::affixes) and the one-off beats DmAffixSet.moment sends: append only.
 enum Affix : int32_t { AF_BELL_TOLLED = 0, AF_HUNGERING, AF_SHROUDED, AF_VENGEFUL, AF_COUNT };
@@ -49,6 +49,9 @@ constexpr double REPATH_S = 0.3, REPATH_MOVE_SQ = 1.0, DIRECT_RANGE_SQ = 9.0, SC
 constexpr double INCENSE_MOVE = 1.3, INCENSE_ATTACK = 1.25, PATH_DESIRED = 0.5;
 constexpr double KITE_BACK_OFF = 3.5, KITE_BACK_SPEED = 0.8, CONE_HALF_ANGLE = 30.0 * 3.14159265358979323846 / 180.0, CONE_PAD = 0.4;
 constexpr double ZONE_TARGET_PAD = 0.45, ZONE_TICK_S = 1.0, BURROW_STUCK_S = 0.8, DEFAULT_SLAM_R = 1.9;
+// The Crypt Deacon (dm_enemy_deacon.gd CORPSE_RANGE; dm_state_cath_support.gd BACK_OFF_DIST, BACK_OFF_SPEED): a corpse within 8 m can be raised; the caster
+// backs off at 0.7 x its speed when the target is closer than 4 m. The scan period is SCAN_S, the numbers of Sanctify are Tuning's (statuses.json SANCTIFIED).
+constexpr double SUPPORT_CORPSE_RANGE = 8.0, SUPPORT_BACK_OFF = 4.0, SUPPORT_BACK_SPEED = 0.7;
 // Crowd spacing (World::resolve_overlaps): the share of an overlap removed per tick, and the most a body is moved by it in one tick.
 constexpr double OVERLAP_EASE = 0.3, OVERLAP_MAX_STEP = 0.15;
 constexpr double SIDESTEP = 0.6;  // a body blocked head-on slides sideways at this share of its speed (World::separate)
@@ -69,6 +72,8 @@ struct Tuning {  // data/content/enemies.json blocks
 	double bell_interval = 6.0, bell_windup = 0.9, bell_r = 3.0, bell_damage = 0.6;
 	double hunger_interval = 4.0, hunger_reach = 5.0, hunger_heal = 0.15;
 	int32_t vengeful_risen = 3;
+	// statuses.json SANCTIFIED: the Deacon's blessing (the status's duration and damage taken live in its rule; the range and the cooldown factor are the Deacon's)
+	double sanct_range = 6.0, sanct_s = 5.0, sanct_cooldown_mult = 0.6;
 };
 
 // Thralls, corpses and the toxic pool. Numbers come from data (World::load in DmCore): content/{abilities,fen,statuses,gameplay_legendary,
@@ -120,6 +125,10 @@ struct Enemy : Body {
 	double hurt_s = HURT_S, erupt_s = 1.0, incense_t = 0;
 	double want_vx = 0, want_vz = 0, ground_speed = 0, burrow_left = std::numeric_limits<double>::infinity(), stuck_t = 0;
 	bool has_nav_goal = false;
+	// The Deacon (DmEnemyDeacon): its support scan countdown, whether the swing in progress is a raise, and the corpse the trigger chose (-1 none) then the swing adopted
+	double support_t = 0;
+	bool swing_raise = false;
+	int32_t raise_pending = -1, raise_id = -1;
 	float nav_gx = 0, nav_gz = 0;
 	int32_t path_len = 0, path_i = 0;
 	float path[PATH_POINTS * 2] = {};
@@ -170,7 +179,7 @@ struct World {
 	NavGrid navgrid;  // the navmesh for keep_on_nav when GDScript gave it (DmCore.nav_add_region); else the hook's clamp
 	std::vector<EnemyDef> defs;
 	std::vector<StatusRule> status_rules;
-	int32_t st_stun = -1, st_frenzy = -1, st_withered = -1, st_chill = -1, st_hex = -1, st_barrier = -1, st_shrouded = -1;
+	int32_t st_stun = -1, st_frenzy = -1, st_withered = -1, st_chill = -1, st_hex = -1, st_barrier = -1, st_shrouded = -1, st_silence = -1, st_sanctified = -1;
 	std::vector<int32_t> st_cleared;  // ids a ghoul's dig-in clears (DmStatusSet.CLEARED)
 	std::unordered_map<std::string, int32_t> def_index;
 	std::vector<std::string> areas;
@@ -350,6 +359,11 @@ private:
 	void wander(Enemy &e, double p_dt);
 	void begin_attack(Enemy &e);
 	void strike(Enemy &e);
+	// the Crypt Deacon (support.cpp)
+	void tick_support(int32_t p_slot, double p_dt);
+	int32_t sanctify_target(const Enemy &e) const;  // the slot of the most wounded unblessed other-kind ally in range, or -1
+	void raise_corpse(Enemy &e);
+	bool silenced(const Enemy &e) const { return st_silence >= 0 && e.st.find(st_silence) >= 0; }
 	void hit_target(Enemy &e, int32_t p_target, double p_damage, int32_t p_kind);
 	void hit_id(int32_t p_source, int32_t p_target, double p_damage, int32_t p_kind);  // a blow on a hero (event) or a thrall (applied here)
 	bool hittable(const Enemy &e) const { return e.state != BURROW && e.state != ERUPT; }

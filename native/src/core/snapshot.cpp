@@ -59,7 +59,7 @@ void World::put_snap_enemy(ByteWriter &w, const Enemy &e, int32_t &r_prev, doubl
 	w.svar(e.id - r_prev);
 	r_prev = e.id;
 	const bool aim = e.state == ATTACK || e.state == ERUPT;
-	w.u8(uint32_t(e.state) | (e.elite ? EF_ELITE : 0u) | (e.dug_in ? EF_DUG_IN : 0u) | (aim ? EF_AIM : 0u) | (e.affixes ? EF_AFFIXES : 0u));
+	w.u8(uint32_t(e.state) | (e.elite ? EF_ELITE : 0u) | ((e.dug_in || (e.swing_raise && e.state == ATTACK)) ? EF_DUG_IN : 0u) | (aim ? EF_AIM : 0u) | (e.affixes ? EF_AFFIXES : 0u));
 	if (e.affixes) {
 		w.u8(e.affixes);
 	}
