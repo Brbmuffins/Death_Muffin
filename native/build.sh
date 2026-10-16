@@ -9,13 +9,15 @@ cd "$(dirname "$0")"
 GODOT_CPP_COMMIT=1e7926375b62b445fa79db6851f7105b644831f2
 SCONS="${SCONS:-$HOME/.local/bin/scons}"
 JOBS="${JOBS:-4}"
-if [ ! -d thirdparty/godot-cpp/.git ]; then
-  git clone -q https://github.com/godotengine/godot-cpp thirdparty/godot-cpp
+# godot-cpp lives in one shared cache per commit (compiled once, about 6 minutes), linked into each checkout as thirdparty/godot-cpp.
+CACHE="${DM_NATIVE_CACHE:-$HOME/death-muffin/native-cache}/godot-cpp-${GODOT_CPP_COMMIT:0:7}"
+if [ ! -d "$CACHE/.git" ]; then
+  mkdir -p "$(dirname "$CACHE")"
+  git clone -q https://github.com/godotengine/godot-cpp "$CACHE"
+  git -C "$CACHE" checkout -q "$GODOT_CPP_COMMIT"
 fi
-if [ "$(git -C thirdparty/godot-cpp rev-parse HEAD)" != "$GODOT_CPP_COMMIT" ]; then
-  git -C thirdparty/godot-cpp fetch -q origin
-  git -C thirdparty/godot-cpp checkout -q "$GODOT_CPP_COMMIT"
-fi
+mkdir -p thirdparty
+[ "$(readlink thirdparty/godot-cpp 2>/dev/null)" = "$CACHE" ] || { rm -rf thirdparty/godot-cpp; ln -s "$CACHE" thirdparty/godot-cpp; }
 what="${1:-all}"
 if [ "$what" = all ] || [ "$what" = linux ]; then
   nice -n 10 "$SCONS" -Q -j"$JOBS" platform=linux target=template_debug api_version=4.7
