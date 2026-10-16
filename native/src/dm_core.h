@@ -22,6 +22,8 @@ class DmCore : public godot::RefCounted {
 	mutable std::vector<int32_t> query_out;
 	godot::PackedInt32Array ev_ints;
 	godot::PackedFloat32Array ev_floats;
+	friend class DmCrowd;        // the presentation reads the tables and the event buffer in place, read only (dm_crowd.h)
+	uint64_t event_batches = 0;  // take_events() calls: DmCrowd reads the buffer from where it stopped, and starts over once it was cleared
 
 protected:
 	static void _bind_methods();

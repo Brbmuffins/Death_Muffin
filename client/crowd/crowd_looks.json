@@ -1,0 +1,41 @@
+{
+  "about": "How the crowd dresses today's creatures: godot/game/dm_entity_views.gd (ENEMY_SLUG, ENEMY_FALLBACK, CASTERS, HOVER, LEGION, THRALL_SLUG, THRALL_LOOK, _enemy_opts, _make_thrall), ported as data. Colours are sRGB hex strings. client/crowd/README.md 'Driving the crowd'.",
+  "enemy_model": {
+    "robber": "grave_robber", "hound": "bone_hound", "penitent": "penitent", "sac": "carrion_sac", "deacon": "deacon", "risen": "skeleton_thrall",
+    "censer": "censer_bearer", "wraith": "choir_wraith", "rat": "skull_rat", "golem": "bone_golem", "gargoyle": "belfry_gargoyle",
+    "moth": "shroud_moth", "bat": "tithe_bat", "seraph": "weeping_seraph", "ghoul": "barrow_ghoul", "acolyte": "lich_acolyte",
+    "templar": "bell_templar", "niche": "skull_niche", "plague_doctor": "plague_doctor", "flagellant": "flagellant", "cinder_husk": "cinder_husk",
+    "pyre_priest": "pyre_priest", "cinderhound": "cinderhound", "slag_brute": "slag_brute", "bog_hag": "bog_hag", "mire_leech": "mire_leech",
+    "fen_wisp": "fen_wisp", "drowned_sexton": "drowned_sexton"
+  },
+  "enemy_fallback": {
+    "censer": "deacon", "wraith": "penitent", "rat": "bone_hound", "golem": "skeleton_thrall", "gargoyle": "bone_hound", "moth": "choir_wraith",
+    "bat": "skull_rat", "seraph": "deacon", "ghoul": "grave_robber", "acolyte": "deacon", "templar": "grave_robber", "plague_doctor": "deacon",
+    "flagellant": "grave_robber", "cinder_husk": "grave_robber", "pyre_priest": "deacon", "cinderhound": "bone_hound", "slag_brute": "bone_golem",
+    "bog_hag": "deacon", "mire_leech": "skull_rat", "fen_wisp": "choir_wraith", "drowned_sexton": "bone_golem"
+  },
+  "casters": ["penitent", "deacon", "wraith", "censer", "moth", "seraph", "acolyte", "plague_doctor", "pyre_priest", "bog_hag", "fen_wisp"],
+  "mist": ["wraith"],
+  "hover": {"wraith": 0.45},
+  "enemy_tint": {"risen": "8a8078", "risen_fen": "7ab0a8"},
+  "legion_order": ["ossuary", "gravecaller", "rotweaver", "mourner"],
+  "legion": {
+    "ossuary": {"slug": "thrall_sentinel", "tint": "ffffff", "emissive": "6b4a1f", "glow": 0.12, "armed": true},
+    "gravecaller": {"slug": "thrall_legionnaire", "tint": "ffffff", "emissive": "6a3fc0", "glow": 0.16, "armed": true},
+    "rotweaver": {"slug": "thrall_plague", "tint": "ffffff", "emissive": "5a6a18", "glow": 0.16, "armed": false},
+    "mourner": {"slug": "wraith_thrall"}
+  },
+  "thrall_model": {
+    "warrior": "skeleton_thrall", "shieldbearer": "skeleton_thrall", "hound": "bone_hound", "wraith": "skeleton_thrall", "archer": "skeleton_thrall",
+    "bonemage": "skeleton_thrall", "plaguebearer": "carrion_sac", "colossus": "bone_colossus"
+  },
+  "thrall_look": {
+    "archer": {"tint": "f2e6cc", "emissive": "6b4a1f", "glow": 0.25},
+    "bonemage": {"tint": "e6dccb", "emissive": "b07a2a", "glow": 0.35},
+    "plaguebearer": {"tint": "b9c48a", "emissive": "5a6a18", "glow": 0.35, "scale": 0.8, "ring": 0.7},
+    "colossus": {"tint": "ffffff", "emissive": "1f8f86", "glow": 0.1, "ring": 1.7}
+  },
+  "thrall_tint": {"default": "f4ecff", "wraith": "b9c4ff"},
+  "thrall_scale": {"shieldbearer": 1.1},
+  "thrall_hover": {"wraith": 0.25}
+}

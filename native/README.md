@@ -51,8 +51,11 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
 - **Movement:** paths from `NavigationServer3D` (batched, cached per target cell), steering and separation in the core, positions
   clamped to the navmesh, heroes and walls pushed out as circles. This replaces Godot's RVO avoidance: crowds may flow slightly
   differently, a difference written down for Helix to judge (B42). No physics body per creature.
-- **Drawing:** one MultiMesh per creature model, transforms and animation data written in one buffer update per rendered frame,
-  interpolated between ticks; animations play from baked vertex-animation textures.
+- **Drawing:** one MultiMesh per creature model, level of detail and shadow setting, transforms and animation data written in one buffer update per
+  rendered frame, interpolated between ticks; animations play from baked vertex-animation textures. `DmCrowd` does it (`dm_crowd.*`, `core/crowd_view.*`): it reads the core's
+  tables and damage events right after each step without consuming the events, and keeps every creature's view state (turn, legs, clip, blend, flash, knock, death) itself, so no
+  presentation field lives in a world, enemy or thrall struct. Its input is a plain row per creature, hit and corpse, which a co-op guest can fill from snapshots instead
+  (client/crowd/README.md "Driving the crowd").
 - **Co-op:** the host core packs one snapshot (position, yaw, state, hp, aim, time in state, kind extras) at 20 Hz; a guest core runs
   in puppet mode, eases toward snapshots and derives telegraph, attack and death events from state edges, as today's puppets do.
 - **Proof of "same game":** pure rules replay today's parity and golden fixtures; behaviour is compared with seeded scenarios
@@ -88,6 +91,22 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 - **Thrall rolls are seeded:** a thrall's repath/scan phase, its status phase and the teleport offset come from its own PCG stream, as enemies'
   do, where today `randomize()` and global `randf()` are used.
 - **`damage` on a thrall returns the health lost** (after damage taken and the barrier), not the raw amount.
+- **Crowd drawing (`DmCrowd`):** the creatures are MultiMesh instances playing baked clips, so what lived on each creature's node today is not in this pass:
+  the base emissive glow (an elite's purple, the risen's green, a thrall's legion and champion glow, the Fen wisp's), the spectral wraith (translucent, pale-blue glow), the thralls'
+  spirit rims, gear tint of kit armour and the hand props (swords, shields, bows, staffs), the moth's, bat's and seraph's wings, the burrowed ghoul's mound, the Mire Leech's wobble,
+  the Gargoyle's dive (not in the core yet), the fade-out of a sinking body (it sinks the same 0.9 s but is not faded to transparent), the drawn-body crowd separation
+  (`_separate_crowd`; the core separates bodies), the elite and affix rings, particles and status, fire and fen death effects, the landing dust, the corpse rings and the toxic decal, a shattered corpse (Corpse Explosion), and the animation LOD (a far body
+  updates at 24 or 10 Hz today; every drawn body updates every frame). Effects need the event consumer, which is its own item.
+- **Crowd views take the live nodes' rules where they differ from `DmEntityViews`:** a flinch plays when the core enters HURT (`DmEnemy`), not on every flash; the flash decays by
+  6 per second for an enemy and 5 for a thrall (`DmEnemy`, `DmThrall`), and the killing blow leaves no flash on the body; an enemy rises from 0.9 x its model's height below the ground
+  (`DmEnemy`; `DmEntityViews` says 1.7 m); a recoil starts on every hit whose flash had fallen under 0.5, at any frame rate (today at 60 fps it depends on the frame time).
+  Turn, speed smoothing, knock, settle, topple, corpse adoption and the shadow budget are `DmEntityViews`'. A fallen thrall plays its death and sinks after its 1.4 s (today the node is
+  freed then).
+- **Ground speed from the core:** the legs use the core's speed of the tick, smoothed (tau 0.18), where `DmEntityViews` measures the drawn displacement and `DmEnemy` the wanted velocity
+  (snapped to 0.25 m/s); the displayed yaw turns toward the interpolated sim yaw. A body that moves more than 3 m in one tick is drawn at its new place (a new rule).
+- **Dice:** the idle rate and start, the choice among `attack2`, `hurt3`, `death2` and the recoil's side come from each body's own seeded stream (today `randf` and `randi`).
+- **Shadows:** the thralls always cast, as today (`DmCasterBudget`); with 32 thralls that is most of the shadow cost of a Full Party, to be measured on Helix's PC. Level-of-detail meshes
+  by camera distance (32 m, 60 m) are new: today every creature is drawn at full detail.
 - **Paths:** the core follows `NavigationServer3D` paths itself (24 points, advancing at 0.5 m like the agent's
   `path_desired_distance`) instead of a `NavigationAgent3D`.
 - **Affixes:** a Miasma cover holds the shroud off for 0.35 s of game time (today 350 ms of wall-clock time, `dm_miasma_ms`). Vengeful's ring turn
@@ -98,22 +117,24 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 
 ## Files
 
-- `native/src/`: `dm_core.cpp` is the Godot-facing API (`DmCore`); `register_types.cpp` registers it, entry symbol `dmcore_library_init`
-  (`client/bin/dmcore.gdextension`).
+- `native/src/`: `dm_core.cpp` is the Godot-facing API (`DmCore`); `dm_crowd.cpp` the crowd's (`DmCrowd`: looks, the core's tables into rows, the RenderingServer);
+  `register_types.cpp` registers them, entry symbol `dmcore_library_init` (`client/bin/dmcore.gdextension`).
 - `native/src/core/`: the simulation, free of Godot types: `world` (tables, the enemy brain, damage and kills, queries, statuses on bodies),
   `thralls` (the thrall brain and the legion: raise, make_room, formation, separation, rally, deaths), `corpses` (the corpse field),
   `affixes` (the elite affixes), `body` (what a status set needs from its owner, shared by enemies and thralls), `thrall` and `corpse` (their records and enums), `status` (the status
   set, a port of DmStatusSet; its rule table comes from `client/core/dm_status_rules.gd`), `grid` (dense XZ grid rebuilt per tick by counting
-  sort), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity).
+  sort), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity), `crowd_view` (the presentation of the crowd: one view per creature, fed plain rows,
+  writing the MultiMesh buffers; a port of the view layer of `godot/game`, which does not touch the simulation).
 - Tests: `client/tests/core_smoke.gd` (loads, answers), `client/tests/core_api.gd` (queries in spawn order, synchronous kills,
   events, seeded stats, the rise and the 4 s body linger) and `client/tests/core_enemies.gd` (the Graves roster against today's
   rules: bite timing, cone, dust cloud, slam, hit-and-run, tunnel and eruption, leash, stagger, stun), `client/tests/core_status.gd`
   (the 0.1 s step, DoT lumps, stacking and ownership, multipliers, stun, dig-in clear, Withered on death, wire bytes),
   `client/tests/core_corpses.gd` (kinds, the order in a death, extra corpses, the cap, lifetime, toxic rupture and its pool, the pick and consume
   rules) and `client/tests/core_thralls.gd` (the rise, caps and make_room, formation and leash, the scan and the boss edge rule, the swing and its
-  multipliers, kinds, enemies choosing and hurting thralls, deaths and bursts, statuses on thralls, rally, separation, tick order) and
+  multipliers, kinds, enemies choosing and hurting thralls, deaths and bursts, statuses on thralls, rally, separation, tick order),
   `client/tests/core_affixes.gd` (each affix against mirrors of today's timer arithmetic, the pause while staggered, Vengeful inside a call and inside a
-  DoT tick). Run `bash client/setup.sh` first in a fresh checkout: a script run in a
+  DoT tick) and `client/tests/crowd_view.gd` (the crowd's views against today's view code, and a Full Party driven by a real core). Run
+  `bash client/setup.sh` first in a fresh checkout: a script run in a
   project that was never imported hangs.
 - `SConstruct`: builds into `client/bin/libdmcore.<platform>.<target>.<arch>.<ext>`.
 - `build.sh`: links godot-cpp into `native/thirdparty/` (not committed) from one shared cache per commit

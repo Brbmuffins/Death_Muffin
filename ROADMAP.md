@@ -76,7 +76,16 @@ server (B38).
   prop instances today; phones and weak laptops need far fewer).
 - [x] Crowd animation: `client/crowd/` bakes each creature model's clips into vertex-animation textures (`bash client/tools/bake_crowd.sh`;
   the robber and the hound so far) and the crowd material plays them per MultiMesh instance (`client/tests/crowd_bake.gd`).
-- [ ] Crowd drawing: the core writes each creature model's MultiMesh buffer once per rendered frame, interpolated between ticks.
+- [x] Crowd drawing: `DmCrowd` reads the core's tables after each step and writes each creature model's MultiMesh buffers once per rendered frame, interpolated between
+  ticks (clips, blends, flash, knock, rise, death into corpses, shadow budget, level of detail); `CrowdView` builds the nodes from the baked models
+  (`client/tests/crowd_view.gd`, `client/crowd/README.md` "Driving the crowd"). Left out on purpose, each its own item:
+  - [ ] Crowd looks: per-creature glow (elite, risen, thrall legion and champion, wisp), the spectral wraith, thrall rims, kit armour tint and hand props, wings, the ghoul's
+    mound and the Leech's wobble need a per-look material or an instance channel (decide with a measure); sinking bodies fade out only with an alpha channel.
+  - [ ] Crowd effects: affix rings and particles, status and death effects, spawn and landing dust, corpse rings, the shattered corpse, drawn on the core's event buffer.
+  - [ ] Crowd cost: animation LOD (a far body at 24 or 10 Hz), cull instances outside the camera's view in the core, measure the thralls' shadows (they always cast), set the level-of-detail
+    distances and the 128-instance reserve from the benchmark on Helix's PC.
+  - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`) and its models synced (`client/assets.list`); the thrall and legion models; a first look on Forward+ and Mobile.
+  - [ ] Co-op guest: translate snapshots into `DmCrowd.sync_rows` (hits from hp drops).
 - [x] Core skeleton (native/README.md "Design"): enemy table in spawn order, heroes and bosses as external entities, tick, timers in
   doubles, seeded randomness, grid, event buffer, damage with synchronous kills, radius queries, bulk reads; `client/tests/core_api.gd`.
   Thrall, corpse and status tables come with their items.

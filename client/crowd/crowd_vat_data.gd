@@ -26,6 +26,15 @@ const BUFFER_STRIDE := 20
 @export var clip_table := PackedVector4Array()
 ## Per clip: seconds of the source clip the frames cover (the clip's full length for a loop).
 @export var clip_seconds := PackedFloat32Array()
+## Per clip: seconds of the whole source clip (a strike or a hurt is baked only up to its follow-through; `clip_seconds` is what is baked).
+@export var clip_source_length := PackedFloat32Array()
+## Per clip: the second of the source clip where the blow lands (the model row's `timings`, DmAnimator.strike_timing's `impact`), -1 when unmeasured.
+@export var clip_impact := PackedFloat32Array()
+## Per clip: the second a death clip has come to rest (DmCreature.landing_time), -1 for the other clips.
+@export var clip_landing := PackedFloat32Array()
+## Body heights per second of walking and running (the model row's `stride`, DmAnimator.plan_loco); 0 = none measured.
+@export var stride_walk := 0.0
+@export var stride_run := 0.0
 ## Role (idle, walk, run, attack, hurt, death, ...) -> the clips that play it, the way DmCreature._resolve picks them.
 @export var roles := {}
 ## Bounds of every baked pose, in creature space (feet at the origin, +Z forward); also the meshes' custom_aabb.
@@ -44,6 +53,16 @@ func clip_index(clip_name: String) -> int:
 ## Seconds a clip covers (a loop's length, or how long until a one-shot holds its last frame).
 func clip_length(clip: int) -> float:
 	return clip_seconds[clip]
+
+
+## What `DmCrowd.add_model` reads (client/crowd/README.md "Driving the crowd"): the clip table and the numbers the views play it with.
+func crowd_data() -> Dictionary:
+	var loops := PackedInt32Array()
+	for c in clip_table:
+		loops.append(int(c.w))
+	return {"slug": slug, "height": height, "stride_walk": stride_walk, "stride_run": stride_run, "clip_names": clip_names, "clip_seconds": clip_seconds,
+		"clip_length": clip_source_length if clip_source_length.size() == clip_names.size() else clip_seconds, "clip_impact": clip_impact, "clip_landing": clip_landing,
+		"clip_loop": loops, "roles": roles}
 
 
 ## The material for this model's MultiMeshes. `albedo` is the model's colour texture (res://assets/ + albedo_path in the game).

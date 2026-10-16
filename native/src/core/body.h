@@ -17,7 +17,7 @@ inline double lerp_angle(double p_from, double p_to, double p_w) {  // Godot's l
 	return p_from + dist * p_w;
 }
 
-constexpr int PATH_MAX = 24;  // waypoints kept per body (a NavigationAgent3D path, cut to what the body walks)
+constexpr int PATH_POINTS = 24;  // waypoints kept per body (a NavigationAgent3D path, cut to what the body walks)
 
 struct Body {
 	int32_t id = 0;

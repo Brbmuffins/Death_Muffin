@@ -116,7 +116,7 @@ struct Enemy : Body {
 	bool has_nav_goal = false;
 	float nav_gx = 0, nav_gz = 0;
 	int32_t path_len = 0, path_i = 0;
-	float path[PATH_MAX * 2] = {};
+	float path[PATH_POINTS * 2] = {};
 	Rng rng;
 };
 

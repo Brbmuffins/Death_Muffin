@@ -578,7 +578,7 @@ void World::steer_thrall(Thrall &t, float p_gx, float p_gz, double p_mult, doubl
 				t.has_nav_goal = true;
 				t.nav_gx = p_gx;
 				t.nav_gz = p_gz;
-				t.path_len = nav.path(nav.user, t.x, t.z, p_gx, p_gz, t.path, PATH_MAX);
+				t.path_len = nav.path(nav.user, t.x, t.z, p_gx, p_gz, t.path, PATH_POINTS);
 				t.path_i = 0;
 			}
 		}

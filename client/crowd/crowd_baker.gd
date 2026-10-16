@@ -255,6 +255,26 @@ static func clip_range(nm: String, length: float, timings: Dictionary) -> Dictio
 	return {"name": nm, "seconds": cover, "loop": base in LOOPS}
 
 
+## DmCreature.landing_time: the second a death clip has come to rest, the first moment the Hip's height (local Z) is within 10% of its lowest point;
+## 70% of the clip when it has no Hip track. Death clips are not pinned by prep_clips, so this reads the true track.
+static func landing_time(a: Animation) -> float:
+	var t := a.length * 0.7
+	var tr := _track_of(a, "Hip", Animation.TYPE_POSITION_3D)
+	if tr >= 0 and a.track_get_key_count(tr) > 2:
+		var lo := INF
+		var hi := -INF
+		for k in a.track_get_key_count(tr):
+			var z: float = (a.track_get_key_value(tr, k) as Vector3).z
+			lo = minf(lo, z)
+			hi = maxf(hi, z)
+		if hi - lo > 1e-4:
+			for k in a.track_get_key_count(tr):
+				if (a.track_get_key_value(tr, k) as Vector3).z <= lo + 0.1 * (hi - lo):
+					t = a.track_get_key_time(tr, k)
+					break
+	return t
+
+
 ## A plan for `frames` frames over the range: a loop's frames start at 0 and the last blends into the first, a one-shot's last frame is its end.
 static func with_frames(range_: Dictionary, frames: int) -> Dictionary:
 	var plan := range_.duplicate()
@@ -459,9 +479,18 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 	data.tex_rows = rpf
 	data.total_frames = total
 	for plan in plans:
+		var src := ap.get_animation(plan.name)
+		var timing: Variant = timings.get(plan.name)
 		data.clip_names.append(plan.name)
 		data.clip_table.append(Vector4(plan.first, plan.frames, plan.fps, 1.0 if plan.loop else 0.0))
 		data.clip_seconds.append(plan.seconds)
+		data.clip_source_length.append(src.length)
+		data.clip_impact.append(float(timing[1]) if timing is Array and timing.size() > 1 else -1.0)
+		data.clip_landing.append(landing_time(src) if String(plan.name).rstrip("0123456789") == "death" else -1.0)
+	var stride: Variant = (m.row as Dictionary).get("stride")
+	if stride is Dictionary:
+		data.stride_walk = float((stride as Dictionary).get("walk", 0.0))
+		data.stride_run = float((stride as Dictionary).get("run", 0.0))
 	data.roles = roles
 	data.aabb = aabb
 	data.pos_tex = saved.pos

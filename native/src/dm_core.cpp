@@ -550,6 +550,7 @@ Array DmCore::take_events() {
 		memcpy(ev_floats.ptrw(), ev.floats.data(), ev.floats.size() * sizeof(float));
 	}
 	world.events.clear();
+	event_batches++;
 	Array out;
 	out.push_back(ev_ints);
 	out.push_back(ev_floats);

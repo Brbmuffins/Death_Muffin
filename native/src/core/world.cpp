@@ -405,7 +405,7 @@ void World::steer_to(Enemy &e, float p_gx, float p_gz, double p_mult, double p_d
 				e.has_nav_goal = true;
 				e.nav_gx = p_gx;
 				e.nav_gz = p_gz;
-				e.path_len = nav.path(nav.user, e.x, e.z, p_gx, p_gz, e.path, PATH_MAX);
+				e.path_len = nav.path(nav.user, e.x, e.z, p_gx, p_gz, e.path, PATH_POINTS);
 				e.path_i = 0;
 			}
 		}

@@ -8,6 +8,7 @@
 #include <godot_cpp/godot.hpp>
 
 #include "dm_core.h"
+#include "dm_crowd.h"
 
 using namespace godot;
 
@@ -16,6 +17,7 @@ void initialize_dmcore_module(ModuleInitializationLevel p_level) {
 		return;
 	}
 	GDREGISTER_CLASS(DmCore);
+	GDREGISTER_CLASS(DmCrowd);
 }
 
 void uninitialize_dmcore_module(ModuleInitializationLevel p_level) {

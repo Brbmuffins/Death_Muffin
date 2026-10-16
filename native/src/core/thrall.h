@@ -35,7 +35,7 @@ struct Thrall : Body {
 	double rally_t = 0, stun_t = 0, cursed_t = 0, state_t = 0, attack_cd = 0.4, age = 0, repath_t = 0, scan_t = 0;
 	double want_vx = 0, want_vz = 0, ground_speed = 0;
 	int32_t path_len = 0, path_i = 0;
-	float path[PATH_MAX * 2] = {};
+	float path[PATH_POINTS * 2] = {};
 	Rng rng;
 
 	bool alive_target() const { return !dead && state != TS_RISING; }  // DmThrall.dm_alive()

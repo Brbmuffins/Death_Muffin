@@ -9,7 +9,8 @@ Test build channel until then.
 - Its own user:// folder (`config/name` "Death Muffin (rebuild)"), so it never shares saved logins or settings with the live game.
 - The combat core is a C++ GDExtension built from [native/](../native/README.md) into `bin/` (built files are not committed;
   `bin/dmcore.gdextension` is).
-- Crowds are drawn from baked vertex-animation textures, one MultiMesh per creature model: [crowd/README.md](crowd/README.md).
+- Crowds are drawn from baked vertex-animation textures, one MultiMesh per creature model and level of detail, driven by the combat core through `CrowdView`:
+  [crowd/README.md](crowd/README.md).
 
 ## Set up and test
 
@@ -18,6 +19,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_smoke.gd   # the core loads and answers
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_bake.gd    # the crowd baker and shader (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/code_load.gd      # every copied script, scene and resource loads; no copy names a per-creature class
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_view.gd    # the crowd's views against today's view code, and a Full Party (bakes into a scratch folder)
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models into client/crowd/baked (not committed)
 ```
 
