@@ -26,3 +26,12 @@ godot/shots/
 godot/vendor_eval/
 # Licensed flipbook sheets: not redistributable in a public repo. Source ~/death-muffin/private/fx-sheets, copied in by tools/godot/fx-sheets-sync.sh and the client publish (godot/fx/README.md).
 godot/assets/fx/sheets/
+
+# Rebuilt client (client/) and its C++ core (native/): godot-cpp is fetched by native/build.sh; built libraries are not committed
+client/.godot/
+client/bin/*.so
+client/bin/*.dll
+native/thirdparty/
+native/**/*.os
+native/**/*.o
+native/.sconsign*.dblite

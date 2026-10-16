@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+# Builds the combat core GDExtension into client/bin/. Run through native/build.sh (fetches the pinned godot-cpp first).
+env = SConscript("thirdparty/godot-cpp/SConstruct")
+env.Append(CPPPATH=["src/"])
+library = env.SharedLibrary(
+    "../client/bin/libdmcore{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+    source=Glob("src/*.cpp"),
+)
+Default(library)

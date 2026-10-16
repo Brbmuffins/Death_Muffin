@@ -1,0 +1,14 @@
+; The rebuilt Death Muffin client (ROADMAP "Now: the rebuild", DECISIONS B34-B41). Its own Godot project next to the live one in godot/.
+
+config_version=5
+
+[application]
+
+config/name="Death Muffin (rebuild)"
+config/features=PackedStringArray("4.7", "Forward Plus")
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+renderer/rendering_method.mobile="mobile"
+textures/vram_compression/import_etc2_astc=true

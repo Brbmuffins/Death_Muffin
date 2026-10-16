@@ -18,6 +18,8 @@ Where to read next: [ROADMAP.md](ROADMAP.md), [DECISIONS.md](DECISIONS.md), [KNO
 | Path | What |
 |---|---|
 | `godot/` | The Godot 4.7 project. Entry `main/main.gd` (`DmMain`) -> front flow (`front/`) -> `DmNextGame` (`next/next_game.gd`). `next/` holds the game systems (each folder has a README), `rules/` and `data/` the game rules and content, `session/` + `net/relay/` multiplayer, `enemies/` enemy scenes, `tests/` the headless suites |
+| `client/` | The rebuilt client (ROADMAP "Now: the rebuild"): its own Godot 4.7.2 project, Forward+, shipped only to the launcher's Test build channel until launch day ([client/README.md](client/README.md)) |
+| `native/` | The rebuilt client's C++ combat core (GDExtension), built into `client/bin/` by `native/build.sh` ([native/README.md](native/README.md)) |
 | `server/death-muffin/backend/` | Auth and game API on 127.0.0.1:5190 (accounts, characters, bag, loot, kill ledger, sessions). Plain Node `.cjs` + MySQL, migrations in `migrations/` |
 | `server/death-muffin/lobby/` | Lobby + packet relay (WebSocket), :5192 |
 | `server/death-muffin/relay/` | UDP co-op relay (ENet), :5193/udp |

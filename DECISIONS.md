@@ -120,7 +120,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B34. The rebuild** (Helix, 2026-10-16; "i want the game built correctly, have a strong, scalable, simple foundation"). The client is
   rebuilt underneath as the same game: same rules, numbers and timing, differences written down, improvements proposed, never slipped in.
   Godot stays; the test build is the engine checkpoint (ROADMAP Gate B), the point where Unity would be reconsidered. Everything that runs
-  for every creature every tick is a C++ GDExtension core (native/); the rest is GDScript (godot/client/). Nobody on the team writes code,
+  for every creature every tick is a C++ GDExtension core (`native/`); the rest is GDScript (`client/`, B41). Nobody on the team writes code,
   so languages are chosen on merit, not on who can edit them. Replaces the step list of the old ROADMAP "Performance" section.
 - **B35. Forward+ on every PC preset** (Helix, 2026-10-16). One renderer on PC: presets turn extras on and off, never need a restart, and
   there is one look to tune. Compatibility is only the automatic fallback (`fallback_to_opengl3`, the 4.7.2 default); the Mobile renderer
@@ -133,7 +133,7 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
 - **B37. The live game during the rebuild** (Helix, 2026-10-16). Bug fixes, warbogar's armor sets (also checked in the rebuild) and server
   safety work only. Feature requests go to ROADMAP "After launch day"; the Discord agent says so.
 - **B38. A separate test build for the rebuild** (Helix, 2026-10-16: "its a huge overhaul"; the one exception to builds going straight to
-  main, B14). The rebuild's code lives on main in its own folders, left out of the live export. The launcher gets a Test build switch that
+  main, B14). The rebuild's code lives on main in its own project (B41). The launcher gets a Test build switch that
   installs the test build next to the normal game and keeps it updated; it plays on a test server with copies of the team's accounts, so it
   can never touch live characters. Team only at first.
 - **B39. Performance without a goal to stop at** (Helix, 2026-10-16: "i want to get as MUCH performance as possible"). No frame-rate target;
@@ -144,6 +144,10 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   separate phone pack), every shader and effect runs on the Mobile renderer, the HUD is built from movable, scalable pieces, phones join co-op
   but never host, co-op messages carry a version (PC co-op still pairs identical builds until phones exist, B28), presets assume a phone runs
   Low. For 2 weeks after launch day the last old build stays downloadable and the server keeps accepting it, so one command undoes the launch.
+- **B41. The rebuild is its own Godot project** (2026-10-16, Claude's call under B34). `client/` is a separate Godot project next to the
+  live `godot/`, not folders inside it: Godot loads every GDExtension in a project, so a shared project would make the live game and its
+  tests load the new C++ core, and shared assets would flip import settings (phone formats, lightmap UVs) between the two. The rebuild gets
+  its own copies of the assets it uses (git stores identical files once). On launch day `client/` becomes the game.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

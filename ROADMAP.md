@@ -7,22 +7,23 @@ are listed once, in [KNOWN-GAPS.md](KNOWN-GAPS.md); decisions in [DECISIONS.md](
 ## Now: the rebuild (Helix, 2026-10-16)
 
 Death Muffin is rebuilt underneath so the same game runs smoothly on low-end PCs and laptops (phones later) and looks great on high-end
-PCs, on a simple foundation that does not need patching again (DECISIONS B34-B40). Same game: same rules, numbers and timing. Every
+PCs, on a simple foundation that does not need patching again (DECISIONS B34-B41). Same game: same rules, numbers and timing. Every
 difference from today is written down; improvements are proposed to Helix, never slipped in. Ascension leaves on launch day and comes back
 redesigned right after (B36). First-guess timing: 4 to 6 weeks of working days, re-estimated at Gate B.
 
 **The foundation (B34, B35).**
-- A C++ combat core (GDExtension, source in native/ at the repository root) owns every enemy and thrall in flat arrays: spatial grid,
+- The rebuild is its own Godot project, `client/`, next to the live game in `godot/`, which it never changes (B41).
+- A C++ combat core (GDExtension, source in `native/`) owns every enemy and thrall in flat arrays: spatial grid,
   movement and separation, targeting, damage, status, affix and necromancer rules. It steps once per 60 Hz tick (same timing as today),
   with one call across the boundary per tick and one event buffer back. Think and move run in parallel on `WorkerThreadPool`; hits and
   deaths resolve in one fixed-order pass.
-- The GDScript game layer (godot/client/) does the HUD, menus and panels, areas, hero controls, boss scripts and flow.
+- The GDScript game layer in `client/` does the HUD, menus and panels, areas, hero controls, boss scripts and flow.
 - Crowds are drawn in bulk on the GPU: one MultiMesh per creature model and LOD, animations baked into vertex-animation textures from the
   existing GLB files. The hero and bosses keep full skeletons.
 - Areas become scenes with the same layouts, built by a tool from `godot/data/slice/world.json`, with baked navmesh, occluders, visibility
   ranges and baked lighting (`LightmapGI`, baked on Helix's PC through a one-click helper).
 - Forward+ at every PC preset; Compatibility is only the automatic fallback; the Mobile renderer is for phones.
-- The old runtime (`godot/game`, `godot/next`, `godot/sim` and the GDScript rule copies in `godot/rules`) is deleted on launch day.
+- On launch day `client/` becomes the game and `godot/` is retired.
 
 **Performance rules (B39).** No goal to stop at: as much performance as we can get with the Forward+ graphics on top, and nothing ships
 slower than what it replaces. Floors protect weaker PCs: a 2020-era laptop at Low never drops below 60 fps in normal play or 45 in the
@@ -51,11 +52,11 @@ server (B38).
    paths only it used go.
 
 **Prep checklist** (the current work):
-- [x] The plan in the repository (this section, DECISIONS B34-B40).
-- [ ] C++ build: `godot-cpp` pinned to one commit and generated from the `extension_api.json` our Godot 4.7.2 dumps; a minimal extension
-  built for Linux (tests) and Windows (mingw-w64 cross-compile, static runtime) on the VPS at `nice -n 10`, loaded by a headless test.
-- [ ] Test build export: its own user:// folder and title marker, Forward+ through a feature-tag override (or its own project folder), its
-  own manifest; the live export leaves the rebuild folders out.
+- [x] The plan in the repository (this section, DECISIONS B34-B41).
+- [x] C++ build: `native/build.sh` builds the core for Linux (tests) and Windows (mingw-w64, static runtime) against godot-cpp pinned at
+  1e79263; `client/setup.sh` imports the new project and runs `client/tests/core_smoke.gd` (the core loads and answers).
+- [ ] Test build export: exports for the Test build channel with its own manifest; the Gate A build is the live project exported with
+  Forward+ from a scratch copy (the repository's `godot/project.godot` stays Compatibility).
 - [ ] Launcher Test build switch: the test build installs next to the normal game and updates itself; a test copy is checked on Helix's PC
   before the launcher release goes to everyone.
 - [ ] Test server: a second backend on its own port and database (ports checked against the live services first), with copies of the
