@@ -128,8 +128,10 @@ run_one() {
     fi
     # On GitHub the same lines as an annotation: the checks page shows annotations to anyone, the job's log only to a signed-in account.
     if [ $code -ne 0 ] && [ -n "${GITHUB_ACTIONS:-}" ]; then
-      echo "::error title=$t/$(basename "$r") failed::$( { echo "exit=$code ${line}"; echo "$out" | grep -E '^FAIL|SCRIPT ERROR|^ERROR' | head -6; echo "load: $(cut -d' ' -f1-3 /proc/loadavg)"; } \
-        | cut -c1-300 | sed 's/%/%25/g' | awk 'BEGIN { ORS = "%0A" } { print }')"
+      # The failing checks, the first error with its GDScript backtrace, and for a timeout the suite's last lines (where it was waiting).
+      echo "::error title=$t/$(basename "$r") failed::$( { echo "exit=$code ${line}"; echo "$out" | grep -E '^FAIL|SCRIPT ERROR' | head -6
+        echo "$out" | grep -m1 -A9 -E '^(SCRIPT )?ERROR'; [ $code -eq 124 ] && { echo "-- last lines:"; echo "$out" | tail -12; }
+        echo "load: $(cut -d' ' -f1-3 /proc/loadavg)"; } | cut -c1-300 | sed 's/%/%25/g' | awk 'BEGIN { ORS = "%0A" } { print }')"
     fi
   } 9>"$T/lock"
 }
