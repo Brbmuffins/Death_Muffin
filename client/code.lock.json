@@ -156,7 +156,6 @@
   "fx/dm_fx_prims.gd.uid": "4ae48ec9a7616764183e71215f6d1306df5ad82f",
   "fx/dm_fx_rect.gd": "1a99923b9b9af85f7fa14b27750be005e1c2f8aa",
   "fx/dm_fx_rect.gd.uid": "949d297a79cefe78a5ebe713ac0c4e3e443cff81",
-  "fx/dm_fx_ring.gd": "6a7d23d75103460bdf19908152c68e5a1fac20e9",
   "fx/dm_fx_ring.gd.uid": "a133e9c1242db45f1a88555ce16842597895679b",
   "fx/dm_fx_tex.gd": "e1c20eb638cc90a2b0af83c445ad1954b6c1fb5e",
   "fx/dm_fx_tex.gd.uid": "a88b02124d0d2082f6baf5c63e16321cf460cf6e",
@@ -784,6 +783,7 @@
   "world_fx/dm_world_dressing.gd.uid": "f334b4ee57b0a86366ed3e868c331290277d742f"
  },
  "ported": {
+  "fx/dm_fx_ring.gd": "6a7d23d75103460bdf19908152c68e5a1fac20e9",
   "game/dm_avatar.gd": "dc8f66b5d6736f237beb40b6476da0e39ba9f479",
   "game/dm_boss_view.gd": "0ecc9f771581d65933f72926e6254c5f05be47f9",
   "game/dm_event_fx.gd": "fa1b7dddbdabfecb8a8e1fbd160af86c6ad45424",

@@ -364,7 +364,10 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 ## Files
 
 - `native/src/`: `dm_core.cpp` is the Godot-facing API (`DmCore`); `dm_crowd.cpp` the crowd's (`DmCrowd`: looks, the core's tables into rows, the RenderingServer);
-  `register_types.cpp` registers them, entry symbol `dmcore_library_init` (`client/bin/dmcore.gdextension`).
+  `dm_motes.cpp` the effects' particle ring loop (`DmMotes`: today's `DmFxRing` motes, aged, moved and faded with the same double-precision arithmetic and written straight to
+  the ring's MultiMesh; `client/fx/dm_fx_ring.gd` is the port that drives it, about 0.06 ms for 3,000 motes where today's GDScript loop took 2.8, and `client/tests/fx_motes.gd`
+  compares every float of its buffer with today's ring, compiled from `godot/fx/dm_fx_ring.gd` at run time); `register_types.cpp` registers them, entry symbol
+  `dmcore_library_init` (`client/bin/dmcore.gdextension`).
 - `native/src/core/`: the simulation, free of Godot types: `world` (tables, the enemy brain, damage and kills, queries, statuses on bodies),
   `thralls` (the thrall brain and the legion: raise, make_room, formation, separation, rally, deaths), `corpses` (the corpse field),
   `affixes` (the elite affixes), `body` (what a status set needs from its owner, shared by enemies and thralls), `thrall` and `corpse` (their records and enums), `status` (the status

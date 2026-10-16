@@ -2,6 +2,8 @@ class_name DmFxRing
 extends RefCounted
 ## Port of Effects.ts ParticleSystem: a CPU-simulated ring buffer of motes drawn as one MultiMesh of billboards per blend mode
 ## (additive "glow" ring of 3500, normal-blend "smoke" ring of 900). Same emit options, same alpha/size curves.
+## The rebuild's port (client/code.list "Ported"): the motes and the per-frame loop are the combat core's `DmMotes` (C++, the same arithmetic: client/tests/fx_motes.gd
+## compares the buffers with today's loop); `emit` still makes each mote's random start here, from the same randf stream.
 
 ## While at most SMALL_CAP motes are live only a small MultiMesh is drawn and uploaded (a full-ring buffer is 224 KB for the additive ring, and
 ## `MultiMesh.buffer` must always be the whole buffer). Both MultiMeshes are allocated once here and never resized; only visibility switches.
@@ -13,43 +15,20 @@ var node_small: MultiMeshInstance3D  # SMALL_CAP ring, sibling of `node` (visibi
 var mm_small: MultiMesh
 var capacity: int
 
-var _pos: PackedFloat32Array
-var _vel: PackedFloat32Array
-var _col: PackedFloat32Array
-var _life: PackedFloat32Array
-var _inv_life: PackedFloat32Array   # 1 / the mote's full life
-var _base_size: PackedFloat32Array
-var _grav: PackedFloat32Array
-var _drag: PackedFloat32Array
-var _shrink: PackedFloat32Array
-var _buf: PackedFloat32Array        # the buffer update() is writing (swapped with _buf_other while the small ring is the one drawn)
-var _buf_other: PackedFloat32Array
-var _cursor := 0
-var _active := 0
-var _list: PackedInt32Array = PackedInt32Array()  # indices of live motes
+var _m := DmMotes.new()              # the motes and their loop (the core's C++)
 var _shown := false
 var _mode := 0   # 0 neither ring shown yet, 1 full ring, 2 small ring
 
 
 func _init(cap: int, tex: Texture2D, additive: bool) -> void:
 	capacity = cap
-	_pos = PackedFloat32Array(); _pos.resize(cap * 3)
-	_vel = PackedFloat32Array(); _vel.resize(cap * 3)
-	_col = PackedFloat32Array(); _col.resize(cap * 3)
-	_life = PackedFloat32Array(); _life.resize(cap)
-	_inv_life = PackedFloat32Array(); _inv_life.resize(cap)
-	_base_size = PackedFloat32Array(); _base_size.resize(cap)
-	_grav = PackedFloat32Array(); _grav.resize(cap)
-	_drag = PackedFloat32Array(); _drag.resize(cap)
-	_shrink = PackedFloat32Array(); _shrink.resize(cap)
-	_buf = PackedFloat32Array(); _buf.resize(cap * 16)
+	_m.setup(cap, SMALL_CAP if cap > SMALL_CAP else 0)
 	var q := QuadMesh.new()
 	q.size = Vector2(1, 1)
 	var mat := DmFxTex.material("particle", additive, tex, 5)
 	mm = _make_mm(q, cap)
 	node = _make_node(mm, mat)
 	if cap > SMALL_CAP:
-		_buf_other = PackedFloat32Array(); _buf_other.resize(SMALL_CAP * 16)
 		mm_small = _make_mm(q, SMALL_CAP)
 		node_small = _make_node(mm_small, mat)
 
@@ -95,40 +74,25 @@ func emit(o: Dictionary) -> void:
 	var oy := float(o.get("y", 0.0))
 	var oz := float(o.get("z", 0.0))
 	for n in count:
-		var i := _cursor
-		_cursor = (_cursor + 1) % capacity
-		if _life[i] <= 0.0:
-			_active += 1
-			_list.append(i)
 		var a := randf() * TAU
 		var r := spread * sqrt(randf())
-		_pos[i * 3] = ox + cos(a) * r
-		_pos[i * 3 + 1] = oy + (randf() - 0.5) * spread * 0.5
-		_pos[i * 3 + 2] = oz + sin(a) * r
+		var px := ox + cos(a) * r
+		var py := oy + (randf() - 0.5) * spread * 0.5
+		var pz := oz + sin(a) * r
 		var sp := speed * (0.4 + randf() * 0.8)
 		var va := (a + PI) if inward else randf() * TAU
-		_vel[i * 3] = cos(va) * sp
-		_vel[i * 3 + 1] = up * (0.5 + randf())
-		_vel[i * 3 + 2] = sin(va) * sp
+		var vy := up * (0.5 + randf())
 		var l := life * (0.7 + randf() * 0.6)
-		_life[i] = l
-		_inv_life[i] = 1.0 / l
-		_base_size[i] = size * (0.7 + randf() * 0.6)
-		_grav[i] = gravity
-		_drag[i] = drag
-		_shrink[i] = shrink
-		_col[i * 3] = c.r
-		_col[i * 3 + 1] = c.g
-		_col[i * 3 + 2] = c.b
+		_m.put(Vector3(px, py, pz), Vector3(cos(va) * sp, vy, sin(va) * sp), c, l, size * (0.7 + randf() * 0.6), gravity, drag, shrink)
 	_shown = true   # update() picks which of the two rings is visible
 
 
 func active() -> int:
-	return _active
+	return _m.active()
 
 
 func update(dt: float) -> void:
-	if _active == 0:
+	if _m.active() == 0:
 		if _shown:   # once, not on every idle frame
 			_shown = false
 			_mode = 0
@@ -138,59 +102,10 @@ func update(dt: float) -> void:
 				node_small.visible = false
 				mm_small.visible_instance_count = 0
 		return
-	# _active bounds the packed count n, so a small ring is safe whenever it fits.
-	var small := node_small != null and _active <= SMALL_CAP
-	if small:
-		var tmp := _buf
-		_buf = _buf_other
-		_buf_other = tmp
-	var n := 0
-	var kept := 0
-	for idx in _list.size():
-		var i := _list[idx]
-		var life := _life[i] - dt
-		_life[i] = life
-		if life <= 0.0:
-			_active -= 1
-			continue
-		_list[kept] = i   # compacted in place (the live list used to be rebuilt into a fresh array every frame)
-		kept += 1
-		var t := 1.0 - life * _inv_life[i]
-		var k := maxf(0.0, 1.0 - _drag[i] * dt)
-		var p3 := i * 3
-		var vx := _vel[p3] * k
-		var vy := _vel[p3 + 1] * k - _grav[i] * dt
-		var vz := _vel[p3 + 2] * k
-		_vel[p3] = vx
-		_vel[p3 + 1] = vy
-		_vel[p3 + 2] = vz
-		var px := _pos[p3] + vx * dt
-		var py := _pos[p3 + 1] + vy * dt
-		var pz := _pos[p3 + 2] + vz * dt
-		_pos[p3] = px
-		_pos[p3 + 1] = py
-		_pos[p3 + 2] = pz
-		var alpha := t / 0.15 if t < 0.15 else 1.0 - (t - 0.15) / 0.85
-		var sh := _shrink[i]
-		var size := _base_size[i] * ((1.0 - sh * t * 0.7) if sh >= 0.0 else (1.0 + -sh * t))
-		if alpha < 0.004:
-			continue
-		# Row-major 3x4 transform + colour. The off-diagonal slots (1, 2, 4, 6, 8, 9) are always 0 and `_buf` starts zeroed, so they are
-		# never rewritten (6 of the 16 stores per mote).
-		var o := n * 16
-		_buf[o] = size
-		_buf[o + 3] = px
-		_buf[o + 5] = size
-		_buf[o + 7] = py
-		_buf[o + 10] = size
-		_buf[o + 11] = pz
-		_buf[o + 12] = _col[p3]
-		_buf[o + 13] = _col[p3 + 1]
-		_buf[o + 14] = _col[p3 + 2]
-		_buf[o + 15] = alpha
-		n += 1
-	_list.resize(kept)
-	_shown = _active > 0
+	# The live count bounds the packed count n, so a small ring is safe whenever it fits.
+	var small := node_small != null and _m.active() <= SMALL_CAP
+	var n := _m.step(dt, small)
+	_shown = _m.active() > 0
 	var mode := 2 if small else 1
 	if mode != _mode:   # switching rings: the other one stops drawing (once, not every frame)
 		_mode = mode
@@ -202,8 +117,4 @@ func update(dt: float) -> void:
 	var draw_mm := mm_small if small else mm
 	draw_mm.visible_instance_count = n
 	if n > 0:
-		draw_mm.buffer = _buf
-	if small:
-		var tmp2 := _buf
-		_buf = _buf_other
-		_buf_other = tmp2
+		_m.upload(draw_mm.get_rid(), small)

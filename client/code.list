@@ -82,6 +82,8 @@ world_fx   # world dressing and atmosphere
 # next/progress/dm_next_progress.gd        the bag is the loot node's (the server's rows until it exists)
 # next/areas/dm_wave_milestones.gd         the Nightfall light dims the world's lights (DmNextWorld.builder); banners through the game's `game_event`
 # next/party/dm_next_joiner.gd             a party guest's own account; its bag is the loot node's
+# The effects (client/README.md "The benchmark"; native/README.md "Files"):
+# fx/dm_fx_ring.gd                         the motes and the per-frame loop are the core's DmMotes (C++); the random start of each mote is still made here (client/tests/fx_motes.gd)
 
 # ==== Per-creature systems the combat core and the crowd view replace: not copied (DECISIONS B42, B43)
 !enemies                      # DmEnemy, its states, kinds and scenes: the core owns enemies

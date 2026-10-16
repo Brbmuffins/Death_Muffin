@@ -1,4 +1,4 @@
-// Registers the Death Muffin combat core (DmCore) with Godot. Entry symbol: dmcore_library_init (client/bin/dmcore.gdextension).
+// Registers the Death Muffin combat core (DmCore), the crowd (DmCrowd) and the particle ring's loop (DmMotes) with Godot. Entry symbol: dmcore_library_init (client/bin/dmcore.gdextension).
 #include "register_types.h"
 
 #include <gdextension_interface.h>
@@ -9,6 +9,7 @@
 
 #include "dm_core.h"
 #include "dm_crowd.h"
+#include "dm_motes.h"
 
 using namespace godot;
 
@@ -18,6 +19,7 @@ void initialize_dmcore_module(ModuleInitializationLevel p_level) {
 	}
 	GDREGISTER_CLASS(DmCore);
 	GDREGISTER_CLASS(DmCrowd);
+	GDREGISTER_CLASS(DmMotes);
 }
 
 void uninitialize_dmcore_module(ModuleInitializationLevel p_level) {

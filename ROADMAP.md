@@ -52,7 +52,8 @@ report warns and does not judge the rest of the frame then. The client's fight i
 `--fixed-fps 60`: today's game 14.7 ms (14.4 to 15.4; p95 22.3, p99 29.4), the rebuilt client 6.2 ms (6.0 to 6.4; p95 10.3, p99 17.6): **2.4 times on average, 2.2 at p95,
 1.7 at p99**. An A/B of the client before and after (four runs each) puts value at about 0.5 ms a frame: the value code itself is about 0.015 ms (0.44 ms a kill, 0.004 ms a
 blow), the rest is today's rules now playing in the fight (level-ups refreshing the hero, more kills and corpses), which today's game pays too. The rest of the main thread
-is now 3.8 to 4.1 ms of its 4: on the line (Gate B item below).
+is now 3.8 to 4.1 ms of its 4: on the line (Gate B item below). With the effects' particle ring in C++ (the same day, A/B four runs each): the client 5.0 ms a frame, the rest
+of the main thread 3.1 ms: about **2.9 times** today's 14.7.
 
 **Phases and gates.** Gates are checked on Helix's PC and the VPS processor test; brbmuffins' and warbogar's PCs join before launch day, and
 at least one other graphics brand runs Forward+ before then. The team plays the rebuild through the launcher's Test build switch on a test
@@ -187,8 +188,10 @@ server (B38).
   game runs the same fight with `--benchmark --bench-room=graves --bench-size=full_party` (or Benchmark -> Hollow Graves -> Full Party).
   - [x] The fight and its budget checks in the new client: `--benchmark` and the character select's Benchmark button, Easy auto combat on the core, the report with its budget section (client/README.md "The benchmark",
     `client/tests/benchmark.gd`); the VPS numbers are in "Before numbers" (3.0 times today's speed without value, 2.4 with it).
-  - [ ] The rest of the main thread back inside its 4 ms with value in (3.8 to 4.1 ms on the VPS, 2026-10-16): profile the GDScript share of a Full Party frame and win back
-    headroom before the panels add theirs.
+  - [x] The rest of the main thread back inside its 4 ms with value in (3.8 to 4.1 ms on the VPS, 2026-10-16): a timing of every per-frame callback in a Full Party frame found the
+    effects' particle ring (today's `DmFxRing`, GDScript) at 1.15 ms a frame, the most after the core; its loop is the core's C++ now (`DmMotes`, float for float the same:
+    `client/tests/fx_motes.gd`). A/B four runs each: 5.7 to 5.0 ms a frame, the rest of the main thread 3.7 to 3.1 ms. Next in line by the same timing: Easy auto combat's
+    decisions (0.5 ms, the benchmark's driver) and the enemy effects (0.15).
   - [ ] Helix's PC: the same fight rendered on both sides (the 2 times of Gate B), the HUD's 0.5 ms and 150 draw calls (the render breakdown's HUD row), and the warm-up looked at on a GPU (it runs in the benchmark, not yet in play).
   - [x] The seeded scenario comparison with today's game (`tools/rebuild/compare-scenarios.mjs`, native/README.md "Proof of same game", 2026-10-16): the Hollow Graves, a level-10 Gravecaller on Easy auto combat, 180 s of game time, twenty seeds on each side.
     Kills -2.3 % (tolerance 15), hero damage -3.0 % (15), thrall damage -6.5 % (20), median time to kill 0.0 % (20), thrall uptime -0.4 points (10), damage taken by the hero and his thralls -1.3 % (25): every metric inside its tolerance, and underneath it the kinds, the rites, the thralls lost
