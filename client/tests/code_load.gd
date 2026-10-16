@@ -7,20 +7,23 @@ extends SceneTree
 
 const LOCK := "res://code.lock.json"
 
-## Class names of the per-creature systems code.list leaves out: enemies/ (DmEnemy, its states and kinds), next/thralls, next/corpses, next/status,
-## next/affixes, next/enemy_fx, game/dm_entity_views.gd and the per-creature records of sim/. A copy must not name one, even in a string.
+## Class names of the per-creature systems code.list leaves out: enemies/ (DmEnemy, its states and kinds), next/thralls, next/corpses,
+## next/affixes, game/dm_entity_views.gd and the per-creature records of sim/. A copy must not name one, even in a string.
+## Two names came back with the game scene: DmStatusSet (next/status) is a plain copy again, for the status sets of heroes and bosses, which are
+## external entities (B42); a ported file must never call it on an enemy or a thrall, whose statuses are the core's (`apply_status`). DmEnemyFx and
+## DmEnemyFxHost (next/enemy_fx) are the event consumer that plays the core's telegraphs, strikes and deaths: a port, with no node per enemy.
 const CREATURE_CLASSES := [
 	"DmAffixSet", "DmCorpseField", "DmEnemy", "DmEnemyBurrower", "DmEnemyCaster", "DmEnemyCenser", "DmEnemyClstAcolyte", "DmEnemyClstCaster",
-	"DmEnemyClstSeraph", "DmEnemyClstTemplar", "DmEnemyDeacon", "DmEnemyFlanker", "DmEnemyFx", "DmEnemyFxHost", "DmEnemyGargoyle", "DmEnemyHazard",
+	"DmEnemyClstSeraph", "DmEnemyClstTemplar", "DmEnemyDeacon", "DmEnemyFlanker", "DmEnemyGargoyle", "DmEnemyHazard",
 	"DmEnemyNiche", "DmEnemyPfCaster", "DmEnemyPfFlanker", "DmEnemyPfHazard", "DmEnemyPfMelee", "DmEnemyState", "DmEnemyStateMachine",
 	"DmEnemyTestArena", "DmEnemyWraith", "DmEntityViews", "DmHostileZone", "DmPfUtil", "DmSimCorpse", "DmSimEnemy", "DmSimThrall", "DmSimZone",
 	"DmStateAttack", "DmStateBurrow", "DmStateCathDive", "DmStateCathDiveChase", "DmStateCathSupport", "DmStateChase", "DmStateClstKite",
 	"DmStateDead", "DmStateDig", "DmStateEmerge", "DmStateErupt", "DmStateFlankChase", "DmStateFlee", "DmStateHurt", "DmStateIdle", "DmStateKite",
-	"DmStatePfHookChase", "DmStatePfLureKite", "DmStateReturn", "DmStateRising", "DmStatusSet", "DmTargetDummy", "DmThrall", "DmThrallHost",
+	"DmStatePfHookChase", "DmStatePfLureKite", "DmStateReturn", "DmStateRising", "DmTargetDummy", "DmThrall", "DmThrallHost",
 ]
 ## Their places: a copied scene or script that names one of these paths needs a creature system that is not here.
 const CREATURE_PATHS := [
-	"res://enemies/", "res://next/thralls/", "res://next/corpses/", "res://next/status/", "res://next/affixes/", "res://next/enemy_fx/",
+	"res://enemies/", "res://next/thralls/", "res://next/corpses/", "res://next/affixes/",
 	"res://game/dm_entity_views.gd", "res://sim/sim_enemy.gd", "res://sim/sim_thrall.gd", "res://sim/sim_corpse.gd", "res://sim/sim_zone.gd",
 ]
 

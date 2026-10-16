@@ -70,7 +70,10 @@ slice/models/thrall_legionnaire
 slice/models/thrall_sentinel
 slice/models/thrall_plague
 
-# ---- Later blocks (not listed yet): the Gravecaller, the rest of the Graves roster, thralls, the Gravedigger King, the other areas' props, bosses,
+# ---- The hero of the game scene (client/next/next_game.gd): the Gravecaller, the dev entry's character
+slice/models/hero_gravecaller
+
+# ---- Later blocks (not listed yet): the other disciplines, the rest of the Graves roster, thralls, the Gravedigger King, the other areas' props, bosses,
 # the licensed flipbook sheets.
 # Licensed flipbook sheets live outside git; a line under fx/sheets/ is read from $FX_SHEETS (default ~/death-muffin/private/fx-sheets)
 # and copied into the git-ignored client/assets/fx/sheets/, for example:

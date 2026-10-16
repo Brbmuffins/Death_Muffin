@@ -1,44 +1,65 @@
 class_name DmNextWorld
 extends Node3D
-## The slice's world: the existing DmWorldBuilder (floors, walls, props, lights, fog, the per-area navmesh regions it bakes from the same
-## obstacles as godot/data/sim/world.json + its wall boxes) plus the world dressing, with the per-frame streaming/occlusion calls. Everything here is presentation + the navigation map; no gameplay.
+## The game's world on the rebuilt client: the area scenes built offline from godot/data/slice/world.json (client/areas/<id>.tscn, built by
+## tools/rebuild/build-areas.sh) in place of the runtime `DmWorldBuilder` build that godot/next/next_world.gd makes. It gives the code that expects
+## today's world object the same small API: `area_at`, the navigation helpers (`nav_ready`, `nav_path`, `nav_closest`, `nav_clamp`), `enter_area`,
+## `update`, `camera_config`, plus `nav_map()` for the combat core and `spawn_point()` for the hero.
 ##
-## Navigation: DmWorldBuilder bakes one NavigationRegion3D per area and per door corridor at build() (NavigationServer3D.bake_from_source_
-## geometry_data, projected obstructions for every wall/prop/node/pond), joined by NavigationLinks. `bake_ms` is that cost. The Chapterhouse,
-## the Hollow Graves and the door between them are always enabled.
+## What an area scene does not carry (client/README.md "Areas") is made here, for now, by a `DmWorldBuilder` used for its lights only: the
+## environment, fog, the moon and the rim light of the area, exactly as today's builder sets them (a later world scene owns them). The builder builds
+## no floor, wall or prop (`builder` is only that light holder). No world dressing (mist, braziers, ripples) and no streaming or occlusion yet.
+##
+## Only the areas listed in `build` exist: the Hollow Graves in this step. Doors to areas that are not loaded lead nowhere (the always-open door of the
+## Graves has navmesh to its end).
 
-var builder: DmWorldBuilder
-var dressing: DmWorldDressing
-var focus: Node3D            ## follows the local hero (dressing: mist, braziers, wading ripples)
+const AREA_DIR := "res://areas/"
+
+var builder: DmWorldBuilder            ## lights only (see above); not today's full builder
+var focus: Node3D                      ## follows the local hero (the world dressing's anchor when it comes)
 var build_ms: int = 0
-var bake_ms: int = 0
-var sync_ms: int = 0         ## the first navigation-map sync (wait_nav_ready)
+var bake_ms: int = 0                   ## the navmeshes are baked offline: 0
+var sync_ms: int = 0                   ## the first navigation-map sync (wait_nav_ready)
 var area_id: String = ""
+var loaded: Array[String] = []         ## area ids with a scene, in world order
+## Height of the baked navmesh above the floor, read when the map is ready. (Today it fed each enemy's NavigationAgent3D; the core steers its own bodies.)
+var nav_y: float = 0.0
 
 var _map: RID
 var _nav_ok := false
-## Height of the baked navmesh above the floor (0.5 here: agent_max_climb + cell offsets). Agents standing at y = 0 would be 0.5 m from every
-## path point, exactly their path_desired_distance, and flip between "reached" and "not reached" every tick: DmWaveDirector hands this to each
-## enemy's NavigationAgent3D.path_height_offset.
-var nav_y: float = 0.0
+var _scenes := {}                      ## area id -> its scene root
+var _rects := {}                       ## area id -> {x0, z0, x1, z1} from world.json
 
 
-func build(with_dressing: bool = true) -> void:
+## Loads the area scenes and the area lighting. `area_ids`: which areas exist in this game (world order is kept). `with_lights`: the environment and moon
+## (tests without a screen may skip them).
+func build(area_ids: Array = ["graves"], with_lights: bool = true) -> void:
 	var t0 := Time.get_ticks_msec()
-	builder = DmWorldBuilder.new()
-	builder.name = "Builder"
-	builder.npcs_enabled = false
-	add_child(builder)
-	builder.build(DmData.world())
+	var data: Dictionary = DmData.world()
+	for id in data["order"]:
+		if not area_ids.has(String(id)):
+			continue
+		var packed: PackedScene = load(AREA_DIR + "%s.tscn" % id)
+		var scene: Node3D = packed.instantiate()
+		scene.name = "area_%s" % id
+		add_child(scene)
+		_scenes[String(id)] = scene
+		_rects[String(id)] = data["areas"][id]["rect"]
+		loaded.append(String(id))
 	focus = Node3D.new()
 	focus.name = "Focus"
 	add_child(focus)
-	if with_dressing:
-		dressing = DmWorldDressing.attach(builder, focus)
 	_map = get_world_3d().navigation_map
+	if OS.get_environment("DM_SYNC_NAV") == "1":   # as the builder: tests under --fixed-fps outrun the navigation server's worker thread
+		NavigationServer3D.map_set_use_async_iterations(_map, false)
+	if with_lights:
+		builder = DmWorldBuilder.new()
+		builder.name = "Lights"
+		add_child(builder)
+		builder.world = data
+		builder._make_environment()
+		builder.set_area(loaded[0])
+	area_id = loaded[0]
 	build_ms = Time.get_ticks_msec() - t0
-	bake_ms = builder.nav_bake_ms
-	area_id = "chapterhouse"
 
 
 ## The navigation server registers the baked regions and syncs the map on its own clock (a few frames to ~0.5 s the first time): wait for it
@@ -55,41 +76,76 @@ func camera_config() -> Dictionary:
 	return DmData.world()["camera"]
 
 
+## The area at a ground point ("" = outside every loaded area, a door corridor included): the rect test of the builder's `area_at`.
 func area_at(x: float, z: float) -> String:
-	return builder.area_at(x, z) if builder != null else ""
+	for id in loaded:
+		var r: Dictionary = _rects[id]
+		if x >= r.x0 and x <= r.x1 and z >= r.z0 and z <= r.z1:
+			return id
+	return ""
 
 
+func area_rect(id: String) -> Dictionary:
+	return _rects.get(id, {})
+
+
+## The area's ground and its door corridors: the combat core's bounds (its spatial grid) and the crowd's custom bounds.
+func bounds(pad: float = 12.0) -> Rect2:
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for id in loaded:
+		var r: Dictionary = _rects[id]
+		lo = Vector2(minf(lo.x, float(r.x0)), minf(lo.y, float(r.z0)))
+		hi = Vector2(maxf(hi.x, float(r.x1)), maxf(hi.y, float(r.z1)))
+	return Rect2(lo - Vector2(pad, pad), hi - lo + Vector2(pad, pad) * 2.0)
+
+
+## A walkable point just inside the area's door to the Chapterhouse (the Chapterhouse is not loaded yet): where a hero starts, and where a fallen
+## one gets up. The door's centre across, the area's edge facing it less 3 m.
+func spawn_point(id: String = "") -> Vector3:
+	var a := id if id != "" else area_id
+	var r: Dictionary = _rects[a]
+	var x := (float(r.x0) + float(r.x1)) * 0.5
+	var z := float(r.z1) - 3.0
+	for d in DmContent.get_export("areas", "DOORS"):
+		if String(d["b"]) == a and String(d["a"]) == "chapterhouse":
+			x = (float(d["rect"]["x0"]) + float(d["rect"]["x1"])) * 0.5
+	var p := Vector3(x, 0.0, z)
+	return nav_closest(p) if nav_ready() else p
+
+
+## Today's `enter_area`: the lighting follows the hero into the area.
 func enter_area(id: String) -> void:
 	area_id = id
 	if builder != null:
 		builder.set_area(id)
 
 
-## Per frame, local hero only (streaming / occlusion for the world).
-func update(cam: DmCameraRig, hero: Vector3, dt: float) -> void:
-	if builder == null:
-		return
-	focus.position = Vector3(hero.x, 0.0, hero.z)
-	builder.update_occlusion(cam, hero)
-	builder.update_streaming(cam.focus.x, cam.focus.z)
-	builder.tick_light_lod(cam.focus.x, cam.focus.z, dt)
-	builder.update_shadow_cells(hero.x, hero.z, dt)
+## Per frame, local hero only (streaming / occlusion for the world, when they come).
+func update(_cam: DmCameraRig, hero: Vector3, _dt: float) -> void:
+	if focus != null:
+		focus.position = Vector3(hero.x, 0.0, hero.z)
 
 
 # ---- navigation -------------------------------------------------------------------------------------------------------------
 
+## The navigation map the area scenes' regions live on (the combat core's `set_nav_map`).
+func nav_map() -> RID:
+	return _map
+
+
 func nav_ready() -> bool:
 	if _nav_ok:
 		return true
-	if builder == null or not _map.is_valid() or NavigationServer3D.map_get_iteration_id(_map) == 0:
+	if loaded.is_empty() or not _map.is_valid() or NavigationServer3D.map_get_iteration_id(_map) == 0:
 		return false
 	# The server merges regions over several iterations: ready = every enabled area's centre has walkable ground within 5 m (an area that
 	# is not merged yet answers from the nearest merged one, tens of metres away).
-	for id in builder.world.order:
-		var reg: NavigationRegion3D = builder.nav_regions.get("area:" + String(id))
+	for id in loaded:
+		var reg := _scenes[id].get_node_or_null("Navigation/area_%s" % id) as NavigationRegion3D
 		if reg == null or not reg.enabled:
 			continue
-		var r: Dictionary = builder.area_rects[id]
+		var r: Dictionary = _rects[id]
 		var c := Vector3((float(r.x0) + float(r.x1)) * 0.5, 0.0, (float(r.z0) + float(r.z1)) * 0.5)
 		var q := NavigationServer3D.map_get_closest_point(_map, c)
 		if Vector2(q.x - c.x, q.z - c.z).length() > 5.0:

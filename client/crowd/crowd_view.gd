@@ -54,9 +54,10 @@ func setup(p_core: RefCounted, enemy_defs: Dictionary, area_min: Vector2, area_m
 		lod_distances = opts.lod_distances
 	_looks = JSON.parse_string(FileAccess.get_file_as_string(LOOKS_PATH))
 	_aabb = AABB(Vector3(area_min.x, AREA_HEIGHT.x, area_min.y), Vector3(area_max.x - area_min.x, AREA_HEIGHT.y - AREA_HEIGHT.x, area_max.y - area_min.y))
-	for dir in DirAccess.get_directories_at(_baked_dir):
-		if FileAccess.file_exists(_baked_dir.path_join(dir).path_join("model.tres")):
-			_baked[dir] = true
+	if DirAccess.dir_exists_absolute(_baked_dir):   # nothing baked yet (a fresh checkout): every def falls back, with its warning, and nothing is drawn
+		for dir in DirAccess.get_directories_at(_baked_dir):
+			if FileAccess.file_exists(_baked_dir.path_join(dir).path_join("model.tres")):
+				_baked[dir] = true
 	crowd = ClassDB.instantiate("DmCrowd")
 	crowd.reserve(int(opts.get("reserve", RESERVE)))
 	crowd.set_champion_scale(float(opts.get("champion_scale", 1.35)))

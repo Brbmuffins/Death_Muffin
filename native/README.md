@@ -114,6 +114,20 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   elite returns (they are rising, so nothing could hurt them anyway). The bell's ring and the burst use the body's position this tick, where today
   they read the drawn (interpolated) position. A body killed by its own toll's chain (the toll kills a bursting thrall whose burst kills the body)
   no longer eats a corpse in that same tick (today the dead body could heal).
+- **The game scene on the core (`client/next`, the ports of today's files; `client/code.list` "Ported")**:
+  - The hero is a circle in the core: the capsule collider his body had for the enemies is gone (the core pushes bodies out of him, "Walls and the hero"). He starts, and gets up after a
+    death (4 s, as today), at the Graves' door: the Chapterhouse is not loaded yet.
+  - The director makes only the defs the core runs (robber, hound, penitent, sac, moth, bat, ghoul, rat, risen); a roster entry outside the list is skipped, as one without a scene was. So the Bellringers'
+    procession has no censer to lead it (penitents and robbers), and the Kennel is hounds and rats. It passes the level to the core as an integer. The affix roll is today's function with the director's own random stream.
+  - A hero away from the area for 15 s no longer frees the area's living enemies (the core has no call that removes a body yet): the queued spawns are dropped, the bodies stay. Grave Surges are not ported.
+  - The effects of a spawn (the rising dust and smoke, the elite's ring and sound) play when the host dispatches the spawn event, at the end of the tick that made the body; a swing's impact timer starts
+    when its attack event is dispatched and runs on the rendered frame clock, as the node-based fx did from the state change.
+  - The hover pick asks the core for the bodies within 4.5 m of where the cursor's ray crosses the plane 0.9 m above the ground and takes the one whose chest is nearest the cursor on screen within 46 px; today
+    it measured every enemy. The same answer unless a tall body's chest is more than 4.5 m along the ray from that plane. A click on an enemy only names it until the rites come (no attack chase, no auto combat).
+  - The enemy fx dropped, for the "Crowd effects" item: the affixes' standing rings and motes, an elite's glow, the fliers' hover motes, the censer's incense, the Pyre's and the Fen's idle effects and the acolyte's reach
+    ring (their defs are not on the core), the corpse rings and the toxic decal. An elite keeps its ground ring, following the drawn body. The sac's toxic pool has no visual of its own, as today.
+  - The core does not report what an enemy does to a hero besides damage (the Frost wraith's chill, the Drowned Sexton's hook with its root and pull): `DmHeroBody.dm_enemy_effect` is kept for them and nothing calls it yet.
+  - The game reads the core's constants from this project's `data/` and `sim/`; the constants of `dm_corpse_field.gd` and `dm_thrall.gd`, whose files are not here, stay the compiled-in defaults (equal, asserted by `core_thralls`).
 
 ## Files
 
@@ -133,7 +147,8 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   rules) and `client/tests/core_thralls.gd` (the rise, caps and make_room, formation and leash, the scan and the boss edge rule, the swing and its
   multipliers, kinds, enemies choosing and hurting thralls, deaths and bursts, statuses on thralls, rally, separation, tick order),
   `client/tests/core_affixes.gd` (each affix against mirrors of today's timer arithmetic, the pause while staggered, Vengeful inside a call and inside a
-  DoT tick) and `client/tests/crowd_view.gd` (the crowd's views against today's view code, and a Full Party driven by a real core). Run
+  DoT tick), `client/tests/crowd_view.gd` (the crowd's views against today's view code, and a Full Party driven by a real core) and `client/tests/game_scene.gd` (the game scene on
+  the core: an offline run in the Graves, the director, the event signals, no node per creature, timings). Run
   `bash client/setup.sh` first in a fresh checkout: a script run in a
   project that was never imported hangs.
 - `SConstruct`: builds into `client/bin/libdmcore.<platform>.<target>.<arch>.<ext>`.

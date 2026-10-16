@@ -83,7 +83,8 @@ server (B38).
   (`client/tests/crowd_view.gd`, `client/crowd/README.md` "Driving the crowd"). Left out on purpose, each its own item:
   - [ ] Crowd looks: per-creature glow (elite, risen, thrall legion and champion, wisp), the spectral wraith, thrall rims, kit armour tint and hand props, wings, the ghoul's
     mound and the Leech's wobble need a per-look material or an instance channel (decide with a measure); sinking bodies fade out only with an alpha channel.
-  - [ ] Crowd effects: affix rings and particles, status and death effects, spawn and landing dust, corpse rings, the shattered corpse, drawn on the core's event buffer.
+  - [ ] Crowd effects, the rest: `DmEnemyFx` already plays the telegraphs, swings, deaths, voices, rising dust, dust clouds and the affixes' bell, meal and burst from the core's events; left are the
+    affixes' standing rings and particles, status effects, landing dust, corpse rings and the toxic decal, the shattered corpse (the full list is in native/README.md "Differences").
   - [ ] Crowd cost: animation LOD (a far body at 24 or 10 Hz), cull instances outside the camera's view in the core, measure the thralls' shadows (they always cast), set the level-of-detail
     distances and the 128-instance reserve from the benchmark on Helix's PC.
   - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`) and its models synced (`client/assets.list`); the thrall and legion models; a first look on Forward+ and Mobile.
@@ -100,8 +101,11 @@ server (B38).
 - [ ] Client layer (B43), in this order:
   - [x] Code sync: today's scripts, scenes and data copied into `client/` by `tools/rebuild/sync-code.mjs`, the hygiene rules for copies and
     ports, and the project opening without errors with the per-creature systems left out (`client/tests/code_load.gd`).
-  - [ ] The game scene on the core: the area scene, the core and the crowd view, the hero, camera, input, and the director spawning through
-    the core.
+  - [x] The game scene on the core: the area scene, the core and the crowd view, the hero, camera, input, and the director spawning through
+    the core. An offline solo run in the Hollow Graves: `DmCoreHost` owns the core and the crowd and turns the event buffer into signals, `dev/dm_dev_entry.tscn` runs it (the project's main scene
+    until the front flow), `client/tests/game_scene.gd` proves it (client/README.md "The game scene and the dev entry"). Off until their items: the rites (the hero cannot attack), bosses, party,
+    gathering, the Chapterhouse, rewards, the full HUD, Grave Surges. Not in the core yet: what an enemy does to a hero besides damage (chill, root, pull) and a call that removes a living body (a hero
+    who stays away 15 s used to see the area's enemies freed).
   - [ ] The Gravecaller's rites ported to the core.
   - [ ] Login to the test server and character select (today's front flow, pointed at the test API).
   - [ ] The Gravedigger King's brain as an external entity.

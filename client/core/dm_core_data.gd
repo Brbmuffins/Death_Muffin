@@ -13,13 +13,17 @@ static func json(path: String) -> Dictionary:
 	return JSON.parse_string(f.get_as_text())
 
 
-## The numeric `const NAME := 1.5` / `const NAME: float = 1.5` lines of the given GDScript files, by name (later files win).
+## The numeric `const NAME := 1.5` / `const NAME: float = 1.5` lines of the given GDScript files, by name (later files win). A file that is not there
+## is skipped (this project has no `next/corpses` or `next/thralls`: the core replaced them), and the core keeps the values compiled in, which are
+## today's (client/tests/core_thralls.gd asserts it against the live files).
 static func consts(godot_dir: String, files: Array = CONST_FILES) -> Dictionary:
 	var re := RegEx.new()
 	re.compile("^const\\s+([A-Z][A-Z0-9_]*)\\s*(?::\\s*\\w+\\s*=|:=|=)\\s*(-?\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)\\s*(?:#.*)?$")
 	var out := {}
 	for rel: String in files:
 		var f := FileAccess.open(godot_dir.path_join(rel), FileAccess.READ)
+		if f == null:
+			continue
 		for line in f.get_as_text().split("\n"):
 			var m := re.search(line.strip_edges(false, true))
 			if m != null:
@@ -27,7 +31,8 @@ static func consts(godot_dir: String, files: Array = CONST_FILES) -> Dictionary:
 	return out
 
 
-## Everything the enemy brain, statuses, thralls and corpses need, in the order the core wants it.
+## Everything the enemy brain, statuses, thralls and corpses need, in the order the core wants it. `godot_dir`: the folder holding data/ (and, for the
+## constants, sim/ next/corpses next/thralls): this project's `res://` in the game, the live game's folder in the core tests.
 static func load_all(core: RefCounted, godot_dir: String) -> void:
 	var content := func(name: String) -> Dictionary: return json(godot_dir.path_join("data/content/%s.json" % name))
 	var enemies: Dictionary = content.call("enemies")

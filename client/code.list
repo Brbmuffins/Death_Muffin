@@ -21,6 +21,19 @@ ui         # theme, HUD kit, panels, widgets, onboarding
 world      # world builder, model loader, occlusion shaders, animator
 world_fx   # world dressing and atmosphere
 
+# ==== Ported (client/code.lock.json "ported"; edited in client/, so the sync leaves them alone and reports one whose original changed)
+# next/next_game.gd, next/next_game.tscn   the game scene on DmCoreHost: an offline solo run in the Graves; no rites, bosses, party, gathering, Chapterhouse, rewards, full HUD
+# next/next_world.gd                       loads client/areas/<id>.tscn and its navigation map instead of the runtime DmWorldBuilder build; the same small API
+# next/next_input.gd                       the hover pick asks the core; no attack chase or auto combat until the rites
+# next/spawn/dm_wave_director.gd           spawns through the core (ids); counts from the core; no Grave Surges, no clearing of living bodies
+# next/hero/dm_hero_body.gd                an external of the core; enemy blows arrive by id (EV_TARGET_HIT); no collider; thralls counted by the core
+# next/hero/dm_hero_look.gd                the hovered-enemy ring reads the core by id
+# next/enemy_fx/dm_enemy_fx.gd             an event consumer: the core's telegraphs, strikes, deaths, zones and affix moments (no node per enemy)
+# game/dm_avatar.gd                        its own three motion helpers instead of DmEntityViews'
+# game/dm_event_fx.gd, game/dm_event_fx_zones.gd   zone and corpse records read by field name (no DmSimZone, DmSimCorpse)
+# Copied again because of them: next/status (DmStatusSet, for the status sets of heroes and bosses only), next/enemy_fx/dm_enemy_fx_host.gd, game/dm_event_fx_telegraph.gd,
+# game/dm_event_fx_boss.gd, next/next_hud.gd, next/progress/dm_next_chronicle.gd, next/areas/dm_area_flow.gd, next/gathering/dm_next_gather.gd, next/party/dm_next_joiner.gd.
+
 # ==== Per-creature systems the combat core and the crowd view replace: not copied (DECISIONS B42, B43)
 !enemies                      # DmEnemy, its states, kinds and scenes: the core owns enemies
 !sim/sim_enemy.gd             # DmSimEnemy record
@@ -29,17 +42,12 @@ world_fx   # world dressing and atmosphere
 !sim/sim_zone.gd              # DmSimZone record
 !next/thralls                 # DmThrall, DmThrallHost and the thrall scenes
 !next/corpses                 # DmCorpseField
-!next/status                  # DmStatusSet
 !next/affixes                 # DmAffixSet
-!next/enemy_fx                # DmEnemyFx, DmEnemyFxHost: per-enemy effect nodes
 !game/dm_entity_views.gd      # DmEntityViews: per-creature nodes, replaced by the crowd view
 
 # ==== Seams: ported to the core in later steps (each uses a per-creature class or scene)
-!game/dm_avatar.gd                        # uses DmEntityViews
 !game/dm_boss_view.gd                     # uses DmEntityViews
 !game/dm_caster_budget.gd                 # uses DmEnemy, DmEnemyState
-!game/dm_event_fx.gd                      # uses DmSimZone, DmSimCorpse
-!game/dm_event_fx_zones.gd                # uses DmSimZone
 !game/dm_game_hud.gd                      # uses DmSimEnemy
 !game/dm_warmup.gd                        # uses DmSimEnemy
 !main/qa_driver.gd                        # uses DmEnemy
@@ -52,14 +60,10 @@ world_fx   # world dressing and atmosphere
 !next/depths/dm_depths.gd                 # uses DmEnemy, DmEnemyState, DmThrallHost
 !next/feel/dm_combat_input.gd             # uses DmEnemy
 !next/feel/dm_next_auto.gd                # uses DmEnemy, DmEnemyState, DmStateAttack +2
-!next/hero/dm_hero_body.gd                # uses DmEnemy, DmStatusSet, DmThrallHost
-!next/hero/dm_hero_look.gd                # uses DmEnemy
 !next/hud/dm_next_counsel.gd              # uses DmEnemy, DmEnemyState, DmThrallHost
 !next/hud/dm_next_hud_vm.gd               # uses DmThrallHost, DmThrall, DmCorpseField +4
 !next/hud/dm_next_ui_host.gd              # uses DmSimCorpse, DmEnemy, DmEnemyState +3
 !next/meta/dm_next_meta.gd                # uses DmThrallHost
-!next/next_game.gd                        # uses DmEnemy, DmEnemyFx, DmCorpseField +2
-!next/next_input.gd                       # uses DmEnemy, DmEnemyState
 !next/next_net.gd                         # uses DmEnemy
 !next/perf/dm_bench_fight.gd              # uses DmThrallHost, DmEnemy, DmEnemyState
 !next/perf/dm_benchmark.gd                # uses DmEnemy, DmThrall, DmEnemyFx
@@ -97,14 +101,9 @@ world_fx   # world dressing and atmosphere
 !next/rites/rite_unleash_souls.gd         # uses DmEnemy, DmStatusSet
 !next/rites/rite_wailing_skull.gd         # uses DmStatusSet
 !next/rites/rite_wraith_walk.gd           # uses DmEnemy, DmStatusSet
-!next/spawn/dm_wave_director.gd           # uses DmEnemy, DmEnemyState, DmAffixSet
 
 # ==== Left out with a seam (game/dm_caster_budget.gd)
 !next/perf/dm_next_perf.gd                # uses DmCasterBudget
-
-# ==== Left out with a seam (game/dm_event_fx.gd)
-!game/dm_event_fx_boss.gd                 # uses DmEventFx
-!game/dm_event_fx_telegraph.gd            # uses DmEventFx
 
 # ==== Left out with a seam (main/qa_driver.gd)
 !main/qa_boot.gd                          # uses qa_driver
@@ -115,27 +114,18 @@ world_fx   # world dressing and atmosphere
 # ==== Left out with a seam (next/bosses/dm_boss_host.gd)
 !next/bosses/dm_boss_meta.gd              # uses DmBossHost
 
-# ==== Left out with a seam (next/hero/dm_hero_body.gd)
-!next/next_hud.gd                         # uses DmHeroBody
-!next/progress/dm_next_belt.gd            # uses DmHeroBody
-!next/progress/dm_next_chronicle.gd       # uses DmHeroBody
-
-# ==== Left out with a seam (next/next_game.gd)
+# ==== Left out with a seam (the game scene's party and progress, next/party/dm_next_party.gd, next/progress/dm_next_progress.gd)
 !game_ui/dm_game_ui.gd                    # uses DmUiSocial
 !game_ui/dm_ui_social.gd                  # uses DmSocialWindow
 !game_ui/shoot.gd                         # uses DmGameUi
 !game_ui/shoot.tscn                       # uses shoot
-!main/main.gd                             # uses DmNextGame
+!main/main.gd                             # uses DmBenchmark, DmBenchHistory and the party (the front flow's entry: its ROADMAP item)
 !main/main.tscn                           # uses DmMain
-!main/qa_ui_shots.gd                      # uses DmNextGame
-!next/areas/dm_area_flow.gd               # uses DmNextGame
-!next/gathering/dm_next_acre.gd           # uses DmNextGame
-!next/gathering/dm_next_gather.gd         # uses DmNextGame
-!next/next_game.tscn                      # uses DmNextGame
-!next/party/dm_next_friends.gd            # uses DmNextGame
-!next/party/dm_next_joiner.gd             # uses DmNextGame
-!next/party/dm_next_party.gd              # uses DmNextGame
-!next/progress/dm_next_progress.gd        # uses DmNextGame
+!main/qa_ui_shots.gd                      # uses DmGameUi
+!next/gathering/dm_next_acre.gd           # uses DmGameUi
+!next/party/dm_next_friends.gd            # uses DmNextParty
+!next/party/dm_next_party.gd              # uses DmRiteCaster, DmNextBelt
+!next/progress/dm_next_progress.gd        # uses DmRiteCaster, DmNextBelt
 !ui/panels/dm_friends_pane.gd             # uses DmNextFriends
 !ui/panels/dm_party_pane.gd               # uses DmNextParty
 !ui/panels/dm_social_window.gd            # uses DmFriendsPane
@@ -150,6 +140,7 @@ world_fx   # world dressing and atmosphere
 
 # ==== Left out with a seam (next/rites/dm_rite_caster.gd)
 !next/rites/dm_rite_hotbar.gd             # uses DmRiteCaster
+!next/progress/dm_next_belt.gd            # uses DmRiteCaster
 
 # ==== Left out with a seam (next/rites/dm_rite_module.gd)
 !next/rites/dm_rite_registry.gd           # uses DmRiteModule

@@ -62,6 +62,8 @@ crowd". Set a `custom_aabb` on the MultiMesh itself so the engine does not re-me
 
 ## Driving the crowd
 
+In the game scene `DmCoreHost` (`client/core/dm_core_host.gd`) owns the view: `auto_sync` off, `sync()` between the step and the events, one `take_events()` per tick (client/README.md "The game scene and the dev entry").
+
 `CrowdView` (a `Node3D`) draws the combat core's enemies and thralls as MultiMesh crowds: no node and no script per creature, no per-creature call across
 the core boundary. The view logic is C++ (`native/src/core/crowd_view.*`, free of Godot types, a port of `godot/game/dm_entity_views.gd`, `dm_creature.gd` and
 `dm_animator.gd`), reached through `DmCrowd` (`native/src/dm_crowd.*`), which reads the core and writes the MultiMeshes. It keeps its own state per creature, so nothing

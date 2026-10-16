@@ -20,6 +20,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_bake.gd    # the crowd baker and shader (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/code_load.gd      # every copied script, scene and resource loads; no copy names a per-creature class
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_view.gd    # the crowd's views against today's view code, and a Full Party (bakes into a scratch folder)
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/game_scene.gd     # the game scene on the core: 60 s of an offline run in the Graves (bakes into a scratch folder; add --fixed-fps 60 before --path to run it faster than real time)
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models into client/crowd/baked (not committed)
 ```
 
@@ -44,20 +45,54 @@ uids keep working:
 - **`project.godot` is the client's own, not a copy.** From `godot/project.godot` it takes by hand what the copies need: the autoloads of copied
   scripts (`Packs`, `AudioDirector`, `Vfx`; not `Qa`, which is left out with its seam), the display and theme settings the UI layout assumes
   (1600x900 viewport, `canvas_items` stretch, `dm_theme.tres`) and the 60 Hz physics settings (3 steps per frame, physics interpolation). The
-  renderer, name, features, layer names and import defaults stay the client's. Input actions are registered at run time by the copied code, and
+  renderer, name, features, main scene (the dev entry), layer names and import defaults stay the client's. Input actions are registered at run time by the copied code, and
   the only `ProjectSettings` read, `application/config/version`, has a default.
 
 ### What is left out
 
 `client/code.list` says why, section by section; its comments are the list:
-- **Per-creature systems** (`enemies/`, `sim/sim_enemy|thrall|corpse|zone.gd`, `next/thralls|corpses|status|affixes|enemy_fx`,
-  `game/dm_entity_views.gd`): the combat core and the crowd view replace them (native/README.md "Design").
-- **Seams** (63 files today): a file outside those systems that names one of their classes or scenes: the rites, the wave director, the bosses, the
-  hero body and look, the HUD's enemy reads, the event fx, auto combat input, the benchmark fight, the game scene itself. Each line names what it uses.
-  They are ported to the core in the later steps of the ROADMAP's client layer, and `--port` then moves them from the list into `code.lock.json`.
-- **Left out with a seam** (40 files): a file that cannot load without a seam, grouped under the seam it follows. The biggest chains: everything
-  that hangs on `DmNextGame` (the front flow's entry `main/`, the area flow, gathering, party and friends, progress, and through the social window
-  `game_ui/dm_game_ui.gd`), on `DmHeroBody` (the HUD shell `next/next_hud.gd`, belt, chronicle), and on `DmRiteModule`.
+- **Per-creature systems** (`enemies/`, `sim/sim_enemy|thrall|corpse|zone.gd`, `next/thralls|corpses|affixes`, `game/dm_entity_views.gd`): the combat core and the crowd view
+  replace them (native/README.md "Design").
+- **Seams** (55 files today): a file outside those systems that names one of their classes or scenes: the rites, the bosses, the HUD's enemy reads, auto combat input, the benchmark
+  fight. Each line names what it uses. They are ported to the core in the later steps of the ROADMAP's client layer, and `--port` then moves them from the list into `code.lock.json`.
+  Eight are ported already (the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; below).
+- **Left out with a seam** (32 files): a file that cannot load without a seam, grouped under the seam it follows. The biggest chains: `DmRiteModule` and `DmRiteCaster` (the rites'
+  registry, hotbar, belt and the party and progress nodes that call the caster) and, through them, the front flow's entry `main/` and the social window of `game_ui/dm_game_ui.gd`.
+  Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only), the HUD shell `next/next_hud.gd`,
+  the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner.
+
+## The game scene and the dev entry
+
+`next/next_game.tscn` (`DmNextGame`, a port of today's) is the game on the combat core: an **offline solo run in the Hollow Graves**. `dev/dm_dev_entry.tscn` is the
+project's main scene until the front flow arrives (ROADMAP: login and character select): it starts the scene with a dev character on the local mock backend, the way
+today's `--dev-offline --class=2` does. **Nothing here reaches a server**: the backend is `DmOffline.make_mock` (accounts in this project's own `user://dm_dev_offline_db.json`),
+and `DmNextGame.start` refuses any api that has a base url. The copied net config still points at the live API; no request is ever made from the dev entry.
+
+```
+bash client/setup.sh                                   # once per checkout: builds the core, imports
+bash client/tools/bake_crowd.sh                        # once: bakes the robber and the hound (without them nothing is drawn; the other defs borrow these two)
+/home/ubuntu/tools/godot/godot --path client            # the dev entry: the Gravecaller, the minimal HUD, waves. Click or WASD to walk; the hero cannot attack until the rites are ported
+/home/ubuntu/tools/godot/godot --path client -- --class=1 --seed=7 --crowd=70      # options after `--`: --class=N --seed=N --no-waves --crowd=N (a first wave of N bodies 6 to 12 m around the hero) --baked=<dir> --shot=<png> [--shot-after=<game s>] (rendered runs only)
+```
+
+**`DmCoreHost`** (`core/dm_core_host.gd`, the scene's `Core` node) is the one owner of the `DmCore` and the `CrowdView`. It loads the data (`DmCoreData.load_all`: this project's `data/`; the
+three constants files of the creature systems are not here, so the core keeps its compiled-in defaults, which `core_thralls` checks against the live files), seeds the core and
+gives it the area's navigation map and bounds, and registers each hero body as an external (position and alive flag written before every step). Its tick runs at
+`process_physics_priority` 100: after the session (which moves the hero bodies) and the director (which spawns), before the crowd's own 1000. A tick is `core.step`, `CrowdView.sync()`, then
+`core.take_events()` once, decoded in order into one typed signal per event kind (`enemy_spawned`, `enemy_state`, `enemy_damaged`, `enemy_died`, `enemy_attack`, `telegraph`,
+`target_hit`, `zone*`, `corpse_*`, `thrall_*`, `status_*`, `affix_moment`; `core/dm_core_events.gd` has the numbers). Systems connect to the signals; nothing polls per creature, and
+**no node and no script exists per creature**: an enemy is an id (an int) everywhere, and `enemies_in_radius`, `enemy_position`, `damage` and `apply_status` are thin queries on the core.
+`CrowdView._process` draws the rendered frames with `Engine.get_physics_interpolation_fraction()`.
+
+The pieces around it (all ports, `code.list` "Ported"): the **world** (`next/next_world.gd`) loads `areas/graves.tscn` with the same small API as today's world object (`area_at`, the
+navigation helpers, `spawn_point`) and keeps a `DmWorldBuilder` for the area's lights only; the **director** (`next/spawn/dm_wave_director.gd`) spawns through `core_host.spawn_enemy` with the affix
+roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`next/hero/dm_hero_body.gd`) takes the enemies' blows from `EV_TARGET_HIT` with the enemy's id as the source;
+**input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
+wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
+
+Off in this step, each until its ROADMAP item: the rites (the hero cannot attack, `hotbar` goes nowhere), the front flow and `main/`, bosses, party and co-op, gathering, the Chapterhouse
+(the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves), the full HUD (only the orbs, area name and death veil), the graphics
+governor, Grave Surges. `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
 ## Assets
 
