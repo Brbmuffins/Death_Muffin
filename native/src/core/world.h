@@ -139,6 +139,12 @@ struct Tgt {
 	double radius = 0.4, weight = 1.0;
 };
 
+struct Obstacle {  // a solid box enemies cannot enter (Ossuary Wall: today a StaticBody3D on the layer enemies collide with)
+	int32_t id = 0;
+	float x = 0, z = 0, ux = 1, uz = 0;  // centre, unit axis along its length
+	double half_len = 0.5, half_thick = 0.5;
+};
+
 struct Zone {  // a hostile ground zone (DmHostileZone): pulses dps x period at every target within radius + 0.45
 	int32_t id = 0, kind = ZONE_DUST, source = 0, hit_kind = HK_DUST;
 	float x = 0, z = 0;
@@ -174,6 +180,8 @@ struct World {
 	std::vector<Enemy> pending_spawns;
 	std::vector<External> externals;
 	std::vector<Zone> zones;
+	std::vector<Obstacle> obstacles;
+	int32_t next_obstacle_id = 1;
 	Grid grid;
 	int32_t grid_count = 0;  // slots the grid was built with; later spawns are scanned directly
 	Events events;
@@ -204,6 +212,9 @@ struct World {
 	int32_t area_id(const std::string &p_area);
 	void rebuild_grid();  // the grid over this tick's positions (step() and a puppet's step_puppet() end with it)
 	int32_t spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising, int32_t p_affixes = 0);
+	// A solid box from a to b, `thickness` thick: enemies on the surface are kept out of it (thralls and heroes pass, as today's layers).
+	int32_t add_obstacle(float p_ax, float p_az, float p_bx, float p_bz, double p_thickness);
+	bool remove_obstacle(int32_t p_id);
 	// Adds the bodies a kill queued. step() calls it last; DmCore calls it before returning from anything that can kill outside the tick.
 	void flush_spawns();
 	// A living body leaves without dying (a boss's adds go with the boss): no death, no corpse, no kill credit, no Vengeful. False for a dead or unknown id.
@@ -283,7 +294,7 @@ private:
 	void separate();
 	void resolve_overlaps();
 	bool on_surface(const Enemy &e) const { return e.state != DEAD && e.state != BURROW && e.state != ERUPT; }
-	void keep_off_heroes(Enemy &e) const;
+	void keep_off_heroes(Enemy &e) const;  // and out of the obstacles
 	void step_zones(double p_dt);
 	void remove_dead_bodies();
 	void kill(int32_t p_slot, int32_t p_source);

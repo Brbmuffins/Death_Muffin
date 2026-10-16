@@ -971,6 +971,21 @@ void World::separate() {
 				}
 			}
 		}
+		for (const Obstacle &o : obstacles) {  // a wall it touches: no driving into it, so it slides along it toward its goal and presses there, as a body
+			                                    // sliding on today's collider does (no sidestep: the wall is there to hold the crowd)
+			const double qx = double(a.x) - o.x, qz = double(a.z) - o.z, onx = -o.uz, onz = o.ux;
+			const double lu = qx * o.ux + qz * o.uz, lv = qx * onx + qz * onz;
+			const double du = lu - std::max(-o.half_len, std::min(o.half_len, lu)), dv = lv - std::max(-o.half_thick, std::min(o.half_thick, lv));
+			const double d = std::sqrt(du * du + dv * dv);
+			if (d < a.radius + 0.1 && d > 1e-6) {
+				const double ux = (du * o.ux + dv * onx) / d, uz = (du * o.uz + dv * onz) / d;  // away from the wall
+				if (touching < SEP_TOUCH_MAX) {
+					tux[touching] = ux;
+					tuz[touching] = uz;
+					touching++;
+				}
+			}
+		}
 		// Blocked nearly head-on (under 35% of its speed left once the blocked part is dropped): sidestep around the blockers on the body's own
 		// side (its flank roll), as an RVO agent picks a velocity around an obstacle instead of standing behind it.
 		const double blocked = std::sqrt(bx * bx + bz * bz);
@@ -990,7 +1005,7 @@ void World::separate() {
 				vz += tuz[k] * into;
 			}
 		}
-		if (px != 0.0 || pz != 0.0) {
+		if (touching > 0) {  // bodies or walls changed its course
 			a.want_vx = vx + px * sp;
 			a.want_vz = vz + pz * sp;
 		}
@@ -1001,6 +1016,9 @@ void World::separate() {
 void World::move(Enemy &e, double p_dt) {
 	const double vx = e.want_vx, vz = e.want_vz;
 	e.ground_speed = std::sqrt(vx * vx + vz * vz);
+	if (vx == 0.0 && vz == 0.0 && !obstacles.empty() && e.state != BURROW && e.state != ERUPT) {
+		keep_off_heroes(e);  // a standing body is still put out of a wall raised on it (move_and_slide's recovery does that with no motion)
+	}
 	if (vx != 0.0 || vz != 0.0) {
 		e.x += float(vx * p_dt);
 		e.z += float(vz * p_dt);
@@ -1015,7 +1033,58 @@ void World::move(Enemy &e, double p_dt) {
 	e.want_vx = e.want_vz = 0.0;
 }
 
-void World::keep_off_heroes(Enemy &e) const {  // the hero capsule blocks enemies (layer PLAYER)
+int32_t World::add_obstacle(float p_ax, float p_az, float p_bx, float p_bz, double p_thickness) {
+	Obstacle o;
+	o.id = next_obstacle_id++;
+	const double dx = double(p_bx) - p_ax, dz = double(p_bz) - p_az, len = std::sqrt(dx * dx + dz * dz);
+	o.x = float((double(p_ax) + p_bx) * 0.5);
+	o.z = float((double(p_az) + p_bz) * 0.5);
+	if (len > 1e-6) {
+		o.ux = float(dx / len);
+		o.uz = float(dz / len);
+	}
+	o.half_len = len * 0.5;
+	o.half_thick = p_thickness * 0.5;
+	obstacles.push_back(o);
+	return o.id;
+}
+
+bool World::remove_obstacle(int32_t p_id) {
+	for (size_t i = 0; i < obstacles.size(); i++) {
+		if (obstacles[i].id == p_id) {
+			obstacles.erase(obstacles.begin() + std::ptrdiff_t(i));
+			return true;
+		}
+	}
+	return false;
+}
+
+// What blocks an enemy on the surface: the hero capsules (layer PLAYER) and the obstacles (boxes on the same layer: Ossuary Wall). A body
+// overlapping a box leaves it by the nearest point (or, centre inside, through the nearest face), as a body sliding on today's collider would.
+void World::keep_off_heroes(Enemy &e) const {
+	for (const Obstacle &o : obstacles) {
+		const double px = double(e.x) - o.x, pz = double(e.z) - o.z;
+		const double nx = -o.uz, nz = o.ux;  // across the box
+		const double lu = px * o.ux + pz * o.uz, lv = px * nx + pz * nz;
+		const double qu = std::max(-o.half_len, std::min(o.half_len, lu)), qv = std::max(-o.half_thick, std::min(o.half_thick, lv));
+		const double du = lu - qu, dv = lv - qv, d = std::sqrt(du * du + dv * dv);
+		if (d >= e.radius) {
+			continue;
+		}
+		double ou, ov;  // where the centre goes, in the box's frame
+		if (d > 1e-6) {
+			ou = qu + du / d * e.radius;
+			ov = qv + dv / d * e.radius;
+		} else if (o.half_len - std::abs(lu) < o.half_thick - std::abs(lv)) {  // inside: out through the nearer end
+			ou = (lu >= 0.0 ? 1.0 : -1.0) * (o.half_len + e.radius);
+			ov = lv;
+		} else {  // or the nearer side
+			ou = lu;
+			ov = (lv >= 0.0 ? 1.0 : -1.0) * (o.half_thick + e.radius);
+		}
+		e.x = float(o.x + ou * o.ux + ov * nx);
+		e.z = float(o.z + ou * o.uz + ov * nz);
+	}
 	for (const External &x : externals) {
 		if (!x.alive || x.kind != 0) {
 			continue;

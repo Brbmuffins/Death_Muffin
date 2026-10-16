@@ -100,6 +100,7 @@ func _init() -> void:
 	leash()
 	stagger_and_stun()
 	crowd_spacing()
+	obstacles()
 	if fails == 0:
 		print("PASS core_enemies %d checks" % checks)
 	quit(1 if fails > 0 else 0)
@@ -291,3 +292,39 @@ func crowd_spacing() -> void:
 	var hound: int = d.spawn_enemy("hound", Vector2(0, -4.0), 1, 1000.0, 0.0, false, "graves", false)
 	var r := run_until(d, func(e: Dictionary) -> bool: return e["type"] == EV_ATTACK and e["id"] == hound, 600)
 	check(r[0] > 0, "a hound blocked head-on by a standing body goes around it and bites (tick %d)" % r[0])
+
+
+## A solid box (Ossuary Wall: 7 m by 0.8 m, today a body on the layer enemies collide with): an enemy never enters it, is held behind it while it stands,
+## is pushed out when the wall rises on it; the wall's removal frees the way. Heroes and thralls are not blocked (today's layers).
+func obstacles() -> void:
+	var c := make(9)
+	hero(c, Vector2(0, 0))
+	var wall: int = c.add_obstacle(Vector2(-3.5, -2.0), Vector2(3.5, -2.0), 0.8)
+	var robber: int = c.spawn_enemy("robber", Vector2(0.3, -5.0), 1, 1000.0, 0.0, false, "graves", false)
+	var r: float = float(c.enemy_info(robber)["radius"])
+	var inside := 0
+	var bit := -1
+	for t in 900:
+		c.step(DT)
+		for e in events(c):
+			if bit < 0 and e["type"] == EV_ATTACK and e["id"] == robber:
+				bit = t + 1
+		var p: Vector2 = c.enemy_info(robber)["pos"]
+		var qx := clampf(p.x, -3.5, 3.5)
+		var qz := clampf(p.y, -2.4, -1.6)
+		if Vector2(p.x - qx, p.y - qz).length() < r - 0.01:
+			inside += 1
+	check(inside == 0, "an enemy never enters the wall (%d ticks inside)" % inside)
+	check(bit < 0, "the wall holds it off the hero behind it (it slides to the spot nearest him and presses there, as on today's collider)")
+	c.remove_obstacle(wall)
+	var rr := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_ATTACK and e["id"] == robber, 300)
+	check(rr[0] > 0, "the wall gone, it reaches the hero and bites (tick %d)" % rr[0])
+	# Raised on top of a body: it is put out at once, through the nearer side.
+	var d := make(9)
+	hero(d, Vector2(0, 20))
+	var on: int = d.spawn_enemy("robber", Vector2(1.0, 0.1), 1, 1000.0, 0.0, false, "graves", false)
+	d.add_obstacle(Vector2(-3.5, 0.0), Vector2(3.5, 0.0), 0.8)
+	d.step(DT)
+	var q: Vector2 = d.enemy_info(on)["pos"]
+	check(absf(q.y) >= 0.4 + float(d.enemy_info(on)["radius"]) - 0.02 and q.y > 0.0, "a wall raised on a body puts it out through the nearer side (z %.2f)" % q.y)
+	check(not c.remove_obstacle(wall), "the wall goes once")

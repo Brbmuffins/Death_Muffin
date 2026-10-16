@@ -72,6 +72,8 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("spawn_enemy", "def", "pos", "level", "hp_mult", "damage_mult", "elite", "area", "rising", "affixes"), &DmCore::spawn_enemy, DEFVAL(PackedStringArray()));
 	ClassDB::bind_method(D_METHOD("strip_shroud", "id"), &DmCore::strip_shroud);
 	ClassDB::bind_method(D_METHOD("cover_miasma", "id"), &DmCore::cover_miasma);
+	ClassDB::bind_method(D_METHOD("add_obstacle", "a", "b", "thickness"), &DmCore::add_obstacle);
+	ClassDB::bind_method(D_METHOD("remove_obstacle", "id"), &DmCore::remove_obstacle);
 	ClassDB::bind_method(D_METHOD("damage", "id", "amount", "source", "allow_stagger"), &DmCore::damage, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("remove_enemy", "id"), &DmCore::remove_enemy);
 	ClassDB::bind_method(D_METHOD("stun", "id", "seconds"), &DmCore::stun);
@@ -437,6 +439,14 @@ bool DmCore::strip_shroud(int64_t p_id) {
 	}
 	const auto it = world.enemy_slot.find(int32_t(p_id));
 	return it != world.enemy_slot.end() && world.enemies[it->second].state != dm::DEAD && world.strip_shroud(it->second);
+}
+
+int64_t DmCore::add_obstacle(const Vector2 &p_a, const Vector2 &p_b, double p_thickness) {
+	return world.add_obstacle(p_a.x, p_a.y, p_b.x, p_b.y, p_thickness);
+}
+
+bool DmCore::remove_obstacle(int64_t p_id) {
+	return world.remove_obstacle(int32_t(p_id));
 }
 
 void DmCore::cover_miasma(int64_t p_id) {

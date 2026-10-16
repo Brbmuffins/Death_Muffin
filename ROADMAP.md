@@ -112,8 +112,8 @@ server (B38).
     who stays away 15 s used to see the area's enemies freed).
   - [x] The Gravecaller's rites ported to the core: the caster, its module base, the legends, the registry and 24 of the necromancer's 25 rites (Veil Step is a copy) are today's GDScript calling the core synchronously, so a kill
     resolves inside the cast; the enemy queries, the corpse field and the legion are adapters over the core (`core/dm_foe.gd`, `dm_core_corpses.gd`, `dm_core_legion.gd`). The hero fights in the dev entry (LMB, keys 1-4, RMB, R) and the crowd draws his
-    thralls. `client/tests/rites.gd` casts every rite against today's formulas, the synchronous kills, the input and a fight (client/README.md "The Gravecaller's rites"). Not in it, each its own item: the Reaper's nine rites (with the Reaper), Ossuary
-    Wall as a solid wall for the core's enemies (the core's movement has no dynamic obstacle), Easy auto combat, the kill-credit consumers (`DmSessionRewards`; the game scene emits `rite_hit`), floating
+    thralls. `client/tests/rites.gd` casts every rite against today's formulas, the synchronous kills, the input and a fight (client/README.md "The Gravecaller's rites"). Not in it, each its own item: the Reaper's nine rites (with the Reaper),
+    Easy auto combat, the kill-credit consumers (`DmSessionRewards`; the game scene emits `rite_hit`), floating
     damage numbers, and the loadout, rune and weapon sockets (the full HUD and the bag). The rites' pictures have run headless only: their first look is on Helix's PC.
   - [x] Login to the test server and character select (today's front flow, pointed at the test API): the boot (`main/main.tscn`, the project's main scene) runs today's login, online gate and
     character select against the test server, then the game scene with the chosen character, its bag and its progression read from the server. The API base is the test API in one place
@@ -126,8 +126,8 @@ server (B38).
     and his blows reach the hero and the thralls (`core.damage` on their ids). `client/tests/boss.gd` replays his six recorded scenarios against the copy of the brain and fights him: summon, phases, telegraphs, thralls, rites, wipe, defeat, a second summon
     (client/README.md "The Gravedigger King"). Not in it, each its own item: the other six bosses (their pools, niches and hooks need a core zone call for a boss and a call that sets a body's health), shards and the Covenant Seal (the summon is free until
     progression comes), rewards (the defeat events exist: `bosses.defeated`, `brain_event`, `DmBoss.died`), the boss bar and banners (the full HUD), Easy auto combat's use of him, replicating him to guests (co-op).
-- [ ] Core obstacles: Ossuary Wall (and any later rite or boss barrier) solid for the core's enemies, a segment the core pushes bodies out of and
-  steers around, as it does the hero's circle; today it is a static body plus a navigation obstacle.
+- [x] Core obstacles: Ossuary Wall solid for the core's enemies (`DmCore.add_obstacle`, a box the core keeps enemies out of and their steering
+  slides along; `client/tests/core_enemies.gd` obstacles, `client/tests/rites.gd`). A later rite or boss barrier uses the same call.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
 - [ ] 2-player co-op (the combat core's half is built: native/README.md "Co-op", `client/tests/core_coop.gd`):
   - [x] Core snapshots: `DmCore.snapshot` (20 Hz, the Full Party in about 1.2 KB), `take_reliable` and `baseline` on the host, a puppet core (`set_puppet`, `apply_snapshot`,

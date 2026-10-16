@@ -240,8 +240,10 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   `dv`, the sexton's `hk`) come with those kinds' ports to the core.
 - **The Gravecaller's rites on the core (`client/next/rites`, the ports of today's files; `client/README.md` "The Gravecaller's rites")**: the rites are today's GDScript and call the core synchronously, so a kill still
   resolves inside the cast (Wailing Skull's extra leap, Bone Prison skipping the dead, the Litany's loops). What is not the same:
-  - **Ossuary Wall is not solid for the core's enemies.** Today it is a static body on the layer enemies collide with plus a navigation obstacle; the core's enemies have no physics body and its movement has no
-    dynamic obstacle yet (its movement code is another change's). Only the ribs and the 6 s lifetime are ported; the wall needs the core to push bodies out of a segment, as it does out of the hero's circle.
+  - **Ossuary Wall is a core obstacle** (`DmCore.add_obstacle`: the same 7 m by 0.8 m box), where today it is a static body on the layer enemies collide with plus a navigation obstacle. The core keeps every
+    enemy on the surface out of it (one standing where it rises is put out through the nearer side, as `move_and_slide`'s recovery does) and an enemy's steering does not drive into it, so a body slides along
+    it toward its goal and presses there, as on today's collider; thralls and the hero pass. Not ported: the navigation obstacle's avoidance (RVO is not in the core), so a crowd does not curve around the
+    wall's ends before reaching it.
   - **A boss is in the rites' queries since the Gravedigger King** (see "The Gravedigger King" below): the fan, the lance, the siphon, the skull, the Scythe's arc and Colossus Mantle's reflect reach it by its id.
   - **Withered's kill credit and its hand-on come from the event buffer**, so at the end of the tick that killed (today inside the kill): the DoT's `hit_resolved`, Contagion's and Plague Choir's spread to the neighbours,
     and the corpse-consumed beat of Requiem Wraiths' wisp. A rite's own blows are known at once (`killed` in the reply of `damage`), so nothing a player sees waits for it.

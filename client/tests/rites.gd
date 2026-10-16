@@ -1082,6 +1082,15 @@ func t_ossuary_wall() -> void:
 	var len := Vector2(float(raise_ev.get("x1", 0.0)) - float(raise_ev.get("x0", 0.0)), float(raise_ev.get("z1", 0.0)) - float(raise_ev.get("z0", 0.0))).length()
 	check(near(len, float(W["length"]), 1e-4), "ossuary_wall: %.1f m of wall" % len)
 	check(c.get_node_or_null("Ribs1") != null, "ossuary_wall: its ribs stand")
+	# Solid for the core's enemies: one placed in the middle of it is put out of the 7 m by 0.8 m box.
+	var a := Vector2(float(raise_ev.get("x0", 0.0)), float(raise_ev.get("z0", 0.0)))
+	var b := Vector2(float(raise_ev.get("x1", 0.0)), float(raise_ev.get("z1", 0.0)))
+	var e := foe("robber", Vector3((a.x + b.x) / 2.0, 0.0, (a.y + b.y) / 2.0))
+	await ticks(3)
+	var info: Dictionary = host.enemy_info(e)
+	var p: Vector2 = info.get("pos", Vector2.ZERO)
+	var off := Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p)
+	check(off >= float(W["thickness"]) / 2.0 + float(info.get("radius", 0.0)) - 0.02, "ossuary_wall: an enemy inside the wall is put out of it (%.2f m from its line)" % off)
 	await secs(float(W["durationS"]) + 0.3)
 	check((c.mem("ossuary_wall").get("walls", []) as Array).is_empty() and c.get_node_or_null("Ribs1") == null, "ossuary_wall: it falls after its time and the ribs are gone")
 

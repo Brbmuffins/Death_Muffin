@@ -59,6 +59,9 @@ public:
 	int64_t spawn_enemy(const godot::String &p_def, const godot::Vector2 &p_pos, int64_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, const godot::String &p_area, bool p_rising, const godot::PackedStringArray &p_affixes = godot::PackedStringArray());
 	bool strip_shroud(int64_t p_id);   // Last Light, a Warden sweep (DmSimSignatures.strip_shroud): the shroud is gone for good
 	void cover_miasma(int64_t p_id);   // a friendly Miasma covers this body now: its shroud lifts for 0.35 s of game time
+	// A solid box from a to b, `thickness` thick, that enemies cannot enter (Ossuary Wall); thralls and heroes pass. Returns its id.
+	int64_t add_obstacle(const godot::Vector2 &p_a, const godot::Vector2 &p_b, double p_thickness);
+	bool remove_obstacle(int64_t p_id);
 	godot::Dictionary damage(int64_t p_id, double p_amount, int64_t p_source, bool p_allow_stagger = true);
 	bool remove_enemy(int64_t p_id);  // a living enemy leaves without dying (a boss's adds): no death, corpse or credit; EV_ENEMY_REMOVED with 1. False for a dead or unknown id
 	void stun(int64_t p_id, double p_seconds);

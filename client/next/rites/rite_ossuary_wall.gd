@@ -1,9 +1,9 @@
 extends DmRiteModule
 ## Ossuary Wall (the Ossuary's signature, R): a 7 m x 0.8 m wall of fused bone across the cursor line for 6 s, centred on the aim (pulled back to 10 m), standing
 ## perpendicular to the line from you to it. 30 essence, 16 s, unlocks at level 10. Numbers: DmSimData.SIGNATURE.wall + the def (sim_signatures "wall").
-## On the combat core (client/code.list "Ported"): the wall is NOT solid for the core's enemies yet. Today it is a StaticBody3D on the physics layer enemies collide with plus a
-## NavigationObstacle3D; the core's enemies have no physics body and steer by their own movement, which has no dynamic obstacle (native/README.md "Differences from today's game"),
-## so only the ribs (DmRiteFx.wall_raise, a sibling node on every peer) and the 6 s lifetime are ported. Events: `raise`, `gone`.
+## On the combat core (client/code.list "Ported"): today the wall is a StaticBody3D on the physics layer enemies collide with plus a NavigationObstacle3D; here it is a core
+## obstacle (`DmCore.add_obstacle`, the same 7 m by 0.8 m box) that keeps the core's enemies out and holds them as today's collider did, while thralls and the hero pass
+## (native/README.md "Differences from today's game"). The ribs (DmRiteFx.wall_raise, a sibling node on every peer) are the look. Events: `raise`, `gone`.
 
 
 func _init() -> void:
@@ -23,7 +23,11 @@ func resolve(c: DmRiteCaster, intent: Dictionary) -> String:
 	m["n"] = int(m.get("n", 0)) + 1
 	var wid := int(m["n"])
 	var ms := float(W["durationS"]) * 1000.0
-	walls.append({"id": wid, "until": c.now_ms + ms, "x": at.x, "z": at.z})
+	var h := c.host()
+	var ob := 0
+	if h != null:
+		ob = int(h.core.add_obstacle(Vector2(at.x - half.x, at.z - half.y), Vector2(at.x + half.x, at.z + half.y), float(W["thickness"])))
+	walls.append({"id": wid, "until": c.now_ms + ms, "x": at.x, "z": at.z, "obstacle": ob})
 	c.broadcast({"t": "raise", "rite": id, "by": c.peer_id, "id": wid, "tip": c.tip(), "x0": at.x - half.x, "z0": at.z - half.y, "x1": at.x + half.x, "z1": at.z + half.y, "ms": ms})
 	return ""
 
@@ -38,6 +42,9 @@ func step(c: DmRiteCaster, _dt: float) -> void:
 			i += 1
 			continue
 		walls.remove_at(i)
+		var h := c.host()
+		if h != null and int(w.get("obstacle", 0)) != 0:
+			h.core.remove_obstacle(int(w["obstacle"]))
 		c.broadcast({"t": "gone", "rite": id, "by": c.peer_id, "id": int(w["id"]), "x": float(w["x"]), "z": float(w["z"])})
 
 
