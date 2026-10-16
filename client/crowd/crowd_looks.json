@@ -37,5 +37,7 @@
   },
   "thrall_tint": {"default": "f4ecff", "wraith": "b9c4ff"},
   "thrall_scale": {"shieldbearer": 1.1},
-  "thrall_hover": {"wraith": 0.25}
+  "thrall_hover": {"wraith": 0.25},
+  "wings_about": "DmEntityViews.WINGS by the model the def draws with (moth: shroud_moth, bat: tithe_bat, seraph: weeping_seraph); the unrigged baker writes the beat into a loop",
+  "wings": {"shroud_moth": {"speed": 8.0, "amp": 0.55, "body": 0.16}, "tithe_bat": {"speed": 17.0, "amp": 0.75, "body": 0.22}, "weeping_seraph": {"speed": 3.2, "amp": 0.22, "body": 0.3}}
 }

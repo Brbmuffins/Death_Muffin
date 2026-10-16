@@ -31,6 +31,8 @@ func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT)
 	for slug in ["grave_robber", "bone_hound"]:
 		_test_model(slug)
+	for slug in ["shroud_moth", "tithe_bat"]:
+		_test_unrigged(slug)
 	_test_decimation()
 	_test_shader()
 	_test_packing()
@@ -363,3 +365,78 @@ func _remove_dir(path: String) -> void:
 	for d in DirAccess.get_directories_at(path):
 		_remove_dir(path.path_join(d))
 	DirAccess.remove_absolute(path)
+
+
+## An unrigged model (a prop today's shader flaps: DmCreatureMat, wingFlap.ts): one looping "fly" clip that every role plays, whose frames are
+## the shader's wing formula, mirrored here line by line from DmCreatureMat (not the baker's own function), on the placed mesh.
+func _test_unrigged(slug: String) -> void:
+	var dir := OUT.path_join(slug)
+	var r: Dictionary = Baker.bake(root, slug, dir)
+	check(r.ok, "%s: bake: %s" % [slug, r.get("error", "")])
+	if not r.ok:
+		return
+	var data: CrowdVatData = ResourceLoader.load(dir.path_join("model.tres"), "", ResourceLoader.CACHE_MODE_REPLACE)
+	check(data != null and data.clip_names == PackedStringArray(["fly"]), "%s: one baked clip, fly" % slug)
+	if data == null:
+		return
+	var roles_ok := true
+	for role in Baker.FALLBACK:
+		roles_ok = roles_ok and data.roles.get(role, []) == ["fly"]
+	check(roles_ok, "%s: every role plays the fly loop" % slug)
+	var w := Baker.wings_for(slug)
+	var period := TAU / float(w.speed)
+	check(data.clip_table[0].y == float(Baker.FLAP_FRAMES) and data.clip_table[0].w == 1.0 and absf(data.clip_seconds[0] - period) < 1e-5,
+		"%s: %d frames over one beat (%.3f s), looping" % [slug, Baker.FLAP_FRAMES, period])
+	check(data.lod_triangles[0] <= Baker.MAX_TRIANGLES and not r.over_budget, "%s: level 0 within %d triangles" % [slug, Baker.MAX_TRIANGLES])
+	var albedo := Image.load_from_file(_assets.path_join(data.albedo_path))
+	check(albedo != null and maxi(albedo.get_width(), albedo.get_height()) <= 1024, "%s: albedo found and at most 1024 px" % slug)
+	var m: Dictionary = Baker.load_model(root, slug, _assets, _rows)
+	check(m.ok and m.get("static", false), "%s: loads as an unrigged model" % slug)
+	if not m.ok:
+		return
+	var mesh: Mesh = (m.mesh_instance as MeshInstance3D).mesh
+	var arrays := mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var place: Transform3D = m.place
+	var baked: Array = data.meshes[0].surface_get_arrays(0)
+	var custom: PackedFloat32Array = baked[Mesh.ARRAY_CUSTOM0]
+	var ids := PackedInt32Array()
+	for i in verts.size():
+		ids.append(int(custom[i]))
+	var pos_img := data.pos_tex.get_image()
+	var nrm_img := data.nrm_tex.get_image()
+	# The shader's frame (DmCreature: wing_vec, wing_root, wing_axis from the mesh's own box).
+	var bb := mesh.get_aabb()
+	var axis_z := bb.size.z > bb.size.x
+	var half := (bb.size.z if axis_z else bb.size.x) / 2.0
+	var centre := (bb.position.z + bb.size.z / 2.0) if axis_z else (bb.position.x + bb.size.x / 2.0)
+	var wing := Vector4(float(w.speed), float(w.amp), half * float(w.get("body", 0.3)), half)
+	var worst := 0.0
+	for f in [0, 3, 6, 12, 18]:
+		var t := float(f) * period / float(Baker.FLAP_FRAMES)
+		var ref := PackedVector3Array()
+		for i in verts.size():
+			var v := verts[i]
+			var ws := (v.z if axis_z else v.x) - centre                       # float ws = (wing_z > 0.5 ? VERTEX.z : VERTEX.x) - wing_root.x;
+			var wd := absf(ws) - wing.z                                         # float wd = abs(ws) - wing.z;
+			if wd > 0.0:
+				var wf := smoothstep(0.0, maxf(0.001, wing.w - wing.z), wd)     # float wf = smoothstep(0.0, max(0.001, wing.w - wing.z), wd);
+				var wa := wing.y * sin(t * wing.x) * (0.35 + 0.65 * wf)         # float wa = wing.y * sin(TIME * wing.x + wing_root.y) * (...);  phase 0
+				var nv := centre + signf(ws) * (wing.z + wd * cos(wa))          # float nv = wing_root.x + sign(ws) * (wing.z + wd * cos(wa));
+				if axis_z:
+					v.z = nv
+				else:
+					v.x = nv
+				v.y += wd * sin(wa)                                             # VERTEX.y += wd * sin(wa);
+			ref.append(place * v)
+		var nr := PackedVector3Array()
+		for i in normals.size():
+			nr.append((place.basis.inverse().transposed() * normals[i]).normalized())
+		var got := _compare(data, pos_img, nrm_img, ids, f, [ref, nr])
+		worst = maxf(worst, got.x)
+		if f == 0:
+			check(got.x <= POS_TOLERANCE and got.y <= NORMAL_TOLERANCE_DEG, "%s: frame 0 is the rest pose (%.1f mm, %.1f deg)" % [slug, got.x * 1000.0, got.y])
+	print("INFO %s: unrigged, %d frames of one %.3f s wing beat, worst %.2f mm off today's shader formula" % [slug, Baker.FLAP_FRAMES, period, worst * 1000.0])
+	check(worst <= POS_TOLERANCE, "%s: every frame is today's wing beat (worst %.1f mm)" % [slug, worst * 1000.0])
+	(m.root as Node).free()

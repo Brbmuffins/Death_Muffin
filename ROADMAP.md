@@ -97,9 +97,9 @@ server (B38).
     affixes' standing rings and particles, status effects, landing dust, corpse rings and the toxic decal, the shattered corpse (the full list is in native/README.md "Differences").
   - [ ] Crowd cost: animation LOD (a far body at 24 or 10 Hz), cull instances outside the camera's view in the core, measure the thralls' shadows (they always cast), set the level-of-detail
     distances and the 128-instance reserve from the benchmark on Helix's PC.
-  - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`; the Graves' robber, hound, penitent, ghoul, rat, sac and risen and the thralls are baked and synced so far) and its models synced (`client/assets.list`); a first look on Forward+ and Mobile.
-  - [ ] Unrigged creatures (the moth, the bat, the choir wraith, the seraph: props today animated in the shader, `DmCreatureMat` wings): the baker gets a
-    static-mesh path that writes a synthetic loop (the wing flap's formula per frame, or one still frame) so they draw as crowds; until then they borrow a model.
+  - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`; the Graves' whole roster, robber, hound, penitent, sac, moth, bat, ghoul, rat and risen, and the thralls are baked and synced so far) and its models synced (`client/assets.list`); a first look on Forward+ and Mobile.
+  - [x] Unrigged creatures (props today's shader animates, `DmCreatureMat` wings): the baker's static-mesh path bakes the wing beat into a 24-frame
+    loop (moth and bat within about a millimetre of today's formula, `client/tests/crowd_bake.gd`); a model without wings gets a still pose.
   - [x] Co-op guest: a puppet core is drawn by `DmCrowd.sync(core)` like a host core (its hits come from the hp drops it derives); no translation into `sync_rows` is needed.
 - [x] Core skeleton (native/README.md "Design"): enemy table in spawn order, heroes and bosses as external entities, tick, timers in
   doubles, seeded randomness, grid, event buffer, damage with synchronous kills, radius queries, bulk reads; `client/tests/core_api.gd`.

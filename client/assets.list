@@ -34,6 +34,8 @@ slice/models/bone_hound
 slice/models/penitent
 slice/models/barrow_ghoul
 slice/models/skull_rat
+slice/models/props/shroud_moth*
+slice/models/props/tithe_bat*
 # the thralls the rites raise (client/crowd/crowd_looks.json thrall_model / legion): the Gravecaller's legionnaire, the other legions' bodies, the risen skeleton
 # (an archer, a bone mage), the plague bearer's sac and the Bone Colossus. skeleton_thrall, thrall_legionnaire, thrall_sentinel and thrall_plague are listed below with the people.
 slice/models/carrion_sac

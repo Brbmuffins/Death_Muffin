@@ -12,6 +12,7 @@ const STRIKE_MAX_SPEED := 2.2             # DmAnimator.strike_timing: the fastes
 const STRIKE_FOLLOW := 0.3                # and the follow-through every caller uses
 ## Frames a clip may have at most.
 const MAX_FRAMES := 128
+const FLAP_FRAMES := 24   ## frames per wing beat of an unrigged winged model (a sine through 24 points: under 3 mm off the true beat)
 ## A clip gets the fewest frames per second whose linear interpolation stays this close to the true pose (metres, worst vertex half-way between two
 ## frames), or MAX_FRAMES. Idle breathes slowly and needs a few frames a second, a run or a swing needs dozens.
 const ERROR_TARGET := 0.025
@@ -82,6 +83,8 @@ static func load_model(host: Node, slug: String, assets_dir: String, rows_path: 
 	var skeletons := root.find_children("*", "Skeleton3D", true, false)
 	var meshes := root.find_children("*", "MeshInstance3D", true, false)
 	var aps := root.find_children("*", "AnimationPlayer", true, false)
+	if skeletons.is_empty() and aps.is_empty() and meshes.size() == 1:
+		return _load_static(root, meshes[0], row, slug, rel_url)
 	if skeletons.size() != 1 or meshes.size() != 1 or aps.size() != 1:
 		root.free()
 		return {"ok": false, "error": "%s: needs exactly one skeleton, mesh and animation player (has %d, %d, %d)" % [slug, skeletons.size(), meshes.size(), aps.size()]}
@@ -115,6 +118,58 @@ static func load_model(host: Node, slug: String, assets_dir: String, rows_path: 
 		bones.append(b if b >= 0 else skeleton.find_bone(skin.get_bind_name(i)))
 	return {"ok": true, "root": root, "ap": ap, "skeleton": skeleton, "mesh_instance": mi, "row": row, "slug": slug, "scale": s, "offset": offset,
 		"yaw": yaw, "height": float(row.height), "place": place, "binds": binds, "bind_bones": bones, "url": rel_url}
+
+
+## An unrigged model (a prop the game animates in its shader: the moth, the bat, the choir wraith, the seraph): one mesh, no skeleton. Scaled to
+## the row's height with its feet at the origin, as DmModels does for any model. Returns the same keys as load_model plus `static`.
+static func _load_static(root: Node3D, mi: MeshInstance3D, row: Dictionary, slug: String, rel_url: String) -> Dictionary:
+	if mi.mesh == null or mi.mesh.get_surface_count() != 1:
+		root.free()
+		return {"ok": false, "error": "%s: the mesh must be one surface" % slug}
+	var local := relative_to(root, mi)
+	var bb: AABB = local * mi.mesh.get_aabb()
+	var s := float(row.height) / maxf(bb.size.y, 0.0001)
+	var c := bb.get_center()
+	var offset := Vector3(-c.x * s, -bb.position.y * s, -c.z * s)
+	var yaw := float(row.yaw)
+	var rot := Basis(Vector3.UP, yaw)
+	var place := Transform3D(rot * Basis.from_scale(Vector3.ONE * s), rot * offset) * local
+	return {"ok": true, "static": true, "root": root, "mesh_instance": mi, "row": row, "slug": slug, "scale": s, "offset": offset,
+		"yaw": yaw, "height": float(row.height), "place": place, "url": rel_url}
+
+
+## The wing beat of an unrigged model by its slug (crowd/crowd_looks.json `wings`, today's DmEntityViews.WINGS: speed, amp, body), {} = none.
+static func wings_for(slug: String) -> Dictionary:
+	var looks: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://crowd/crowd_looks.json"))
+	if looks is Dictionary:
+		return ((looks as Dictionary).get("wings", {}) as Dictionary).get(slug, {})
+	return {}
+
+
+## Today's wing flap (DmCreatureMat's vertex shader, wingFlap.ts) on mesh-local points and normals at `t` seconds (phase 0): the parts past the
+## body's half-width swing about the hinge by amp x sin(t x speed), more toward the tips. `ax` 2 = along z, 0 = along x (the longer side).
+static func flap(verts: PackedVector3Array, normals: PackedVector3Array, t: float, w: Dictionary, ax: int, center: float, half: float,
+		out_p: PackedVector3Array, out_n: PackedVector3Array) -> void:
+	var speed := float(w.speed)
+	var amp := float(w.amp)
+	var body := half * float(w.get("body", 0.3))
+	for i in verts.size():
+		var v := verts[i]
+		var n := normals[i]
+		var ws := v[ax] - center
+		var wd := absf(ws) - body
+		if wd > 0.0:
+			var wf := smoothstep(0.0, maxf(0.001, half - body), wd)
+			var wa := amp * sin(t * speed) * (0.35 + 0.65 * wf)
+			v[ax] = center + signf(ws) * (body + wd * cos(wa))
+			v.y += wd * sin(wa)
+			var th := signf(ws) * wa   # the wing part turns by this in the (side, up) plane
+			var nh := n[ax]
+			var nyv := n.y
+			n[ax] = nh * cos(th) - nyv * sin(th)
+			n.y = nh * sin(th) + nyv * cos(th)
+		out_p[i] = v
+		out_n[i] = n
 
 
 static func relative_to(root: Node, n: Node3D) -> Transform3D:
@@ -321,7 +376,7 @@ static func bake(host: Node, slug: String, out_dir: String, opts := {}) -> Dicti
 	var m := load_model(host, slug, assets_dir, opts.get("rows_path", default_rows_path()))
 	if not m.ok:
 		return m
-	var result := _bake_loaded(m, out_dir, opts, assets_dir)
+	var result := _bake_static(m, out_dir, opts, assets_dir) if m.get("static", false) else _bake_loaded(m, out_dir, opts, assets_dir)
 	(m.root as Node).free()
 	result["seconds"] = float(Time.get_ticks_msec() - started) / 1000.0
 	return result
@@ -403,6 +458,133 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 	if height > 4096:
 		return {"ok": false, "error": "%s: %d rows of baked frames (4096 at most)" % [slug, height]}
 
+	# The rest pose in creature space and each clip's source timing, then the writer the unrigged path shares.
+	var rest_p := PackedVector3Array()
+	var rest_n := PackedVector3Array()
+	rest_p.resize(vc)
+	rest_n.resize(vc)
+	skin(rest_matrices(m), verts, normals, bones, weights, per, rest_p, rest_n)
+	var meta: Array = []
+	for plan in plans:
+		var src := ap.get_animation(plan.name)
+		var timing: Variant = timings.get(plan.name)
+		meta.append({"source_length": src.length, "impact": float(timing[1]) if timing is Array and timing.size() > 1 else -1.0,
+			"landing": landing_time(src) if String(plan.name).rstrip("0123456789") == "death" else -1.0})
+	return _write(m, out_dir, opts, assets_dir, {"plans": plans, "sampled": sampled, "total": total, "uc": uc, "width": width, "rpf": rpf,
+		"ids": ids, "vc": vc, "rest_p": rest_p, "rest_n": rest_n, "uvs": uvs, "arrays": arrays, "roles": roles, "meta": meta,
+		"source_triangles": indices.size() / 3})
+
+## An unrigged model's bake: one baked loop, the wing beat for a winged model (FLAP_FRAMES frames over 2 pi / speed seconds) or a still pose
+## for the rest, playing every role (today the shader keeps beating through a fall, and the body layer does the rest).
+static func _bake_static(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir: String) -> Dictionary:
+	var slug: String = m.slug
+	var mi: MeshInstance3D = m.mesh_instance
+	var arrays := mi.mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var vc := verts.size()
+	if vc == 0 or normals.size() != vc or uvs.size() != vc or indices.is_empty():
+		return {"ok": false, "error": "%s: the mesh needs normals, UVs and indices" % slug}
+	var ids := PackedInt32Array()
+	ids.resize(vc)
+	var rep := PackedInt32Array()
+	var seen := {}
+	for i in vc:   # vertices at the same place with the same normal move alike (they differ only by UV seams)
+		var key := "%d,%d,%d,%d,%d,%d" % [roundi(verts[i].x * 1e5), roundi(verts[i].y * 1e5), roundi(verts[i].z * 1e5),
+			roundi(normals[i].x * 100.0), roundi(normals[i].y * 100.0), roundi(normals[i].z * 100.0)]
+		var id: int = seen.get(key, -1)
+		if id < 0:
+			id = rep.size()
+			seen[key] = id
+			rep.append(i)
+		ids[i] = id
+	var uc := rep.size()
+	var rv := PackedVector3Array()
+	var rn := PackedVector3Array()
+	for i in uc:
+		rv.append(verts[rep[i]])
+		rn.append(normals[rep[i]])
+	var rpf := ceili(float(uc) / MAX_WIDTH)
+	var width := ceili(float(uc) / rpf)
+	var place: Transform3D = m.place
+	var nbasis := place.basis.inverse().transposed()
+	var wing: Dictionary = opts.get("wings", wings_for(slug))
+	var bb := mi.mesh.get_aabb()   # the shader's frame: the mesh's own
+	var ax := 2 if bb.size.z > bb.size.x else 0
+	var half := bb.size[ax] / 2.0
+	var center := bb.position[ax] + half
+	var clip := "fly" if not wing.is_empty() else "rest"
+	var seconds := TAU / float(wing.speed) if not wing.is_empty() else 1.0
+	var frames := FLAP_FRAMES if not wing.is_empty() else 2
+	var plan := {"name": clip, "seconds": seconds, "loop": not wing.is_empty(), "frames": frames, "first": 0, "seam": 0.0,
+		"fps": float(frames) / seconds if not wing.is_empty() else float(frames - 1) / seconds}
+	var lp := PackedVector3Array()
+	var ln := PackedVector3Array()
+	lp.resize(uc)
+	ln.resize(uc)
+	var mid_p := PackedVector3Array()
+	var mid_n := PackedVector3Array()
+	mid_p.resize(uc)
+	mid_n.resize(uc)
+	var frames_p: Array = []
+	var frames_n: Array = []
+	var error := 0.0
+	for f in frames:
+		var t := frame_time(plan, f) if not wing.is_empty() else 0.0
+		if wing.is_empty():
+			lp = rv.duplicate()
+			ln = rn.duplicate()
+		else:
+			flap(rv, rn, t, wing, ax, center, half, lp, ln)
+		var out_p := PackedVector3Array()
+		var out_n := PackedVector3Array()
+		out_p.resize(uc)
+		out_n.resize(uc)
+		for i in uc:
+			out_p[i] = place * lp[i]
+			out_n[i] = (nbasis * ln[i]).normalized()
+		if f > 0 and not wing.is_empty():   # the straight line between two frames against the true beat half-way between them
+			flap(rv, rn, (frame_time(plan, f - 1) + t) * 0.5, wing, ax, center, half, mid_p, mid_n)
+			var prev: PackedVector3Array = frames_p[f - 1]
+			for i in uc:
+				error = maxf(error, (place * mid_p[i] - (prev[i] + out_p[i]) * 0.5).length())
+		frames_p.append(out_p)
+		frames_n.append(out_n)
+	plan["error"] = error
+	var roles := {}
+	for role in FALLBACK:
+		roles[role] = [clip]
+	var rest_p := PackedVector3Array()
+	var rest_n := PackedVector3Array()
+	rest_p.resize(vc)
+	rest_n.resize(vc)
+	for i in vc:
+		rest_p[i] = place * verts[i]
+		rest_n[i] = (nbasis * normals[i]).normalized()
+	return _write(m, out_dir, opts, assets_dir, {"plans": [plan], "sampled": [{"plan": plan, "pos": frames_p, "nrm": frames_n}], "total": frames,
+		"uc": uc, "width": width, "rpf": rpf, "ids": ids, "vc": vc, "rest_p": rest_p, "rest_n": rest_n, "uvs": uvs, "arrays": arrays,
+		"roles": roles, "meta": [{"source_length": seconds, "impact": -1.0, "landing": -1.0}], "source_triangles": indices.size() / 3})
+
+
+## The shared second half of a bake: writes the frames into the position and normal textures, the meshes (rest pose in creature space, the
+## animation id in CUSTOM0, one index list per level of detail) and the CrowdVatData. `w`: plans, sampled frames, the rest pose and per-clip
+## source timings, from the rigged path (_bake_loaded) or the unrigged one (_bake_static).
+static func _write(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir: String, w: Dictionary) -> Dictionary:
+	var slug: String = m.slug
+	var plans: Array = w.plans
+	var sampled: Array = w.sampled
+	var total: int = w.total
+	var uc: int = w.uc
+	var width: int = w.width
+	var rpf: int = w.rpf
+	var ids: PackedInt32Array = w.ids
+	var vc: int = w.vc
+	var uvs: PackedVector2Array = w.uvs
+	var arrays: Array = w.arrays
+	var roles: Dictionary = w.roles
+	var height := total * rpf
 	# Write every frame into the textures.
 	var pos := PackedFloat32Array()
 	pos.resize(height * width * 4)
@@ -433,11 +615,8 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 	var nrm_img := Image.create_from_data(width, height, false, Image.FORMAT_RG8, nrm)
 
 	# The mesh: the rest pose in creature space, the animation id of every vertex in CUSTOM0, one index list per level of detail.
-	var rest_p := PackedVector3Array()
-	var rest_n := PackedVector3Array()
-	rest_p.resize(vc)
-	rest_n.resize(vc)
-	skin(rest_matrices(m), verts, normals, bones, weights, per, rest_p, rest_n)
+	var rest_p: PackedVector3Array = w.rest_p
+	var rest_n: PackedVector3Array = w.rest_n
 	var ids_f := PackedFloat32Array()
 	ids_f.resize(vc)
 	for i in vc:
@@ -481,15 +660,14 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 	data.tex_width = width
 	data.tex_rows = rpf
 	data.total_frames = total
-	for plan in plans:
-		var src := ap.get_animation(plan.name)
-		var timing: Variant = timings.get(plan.name)
+	for c in plans.size():
+		var plan: Dictionary = plans[c]
 		data.clip_names.append(plan.name)
 		data.clip_table.append(Vector4(plan.first, plan.frames, plan.fps, 1.0 if plan.loop else 0.0))
 		data.clip_seconds.append(plan.seconds)
-		data.clip_source_length.append(src.length)
-		data.clip_impact.append(float(timing[1]) if timing is Array and timing.size() > 1 else -1.0)
-		data.clip_landing.append(landing_time(src) if String(plan.name).rstrip("0123456789") == "death" else -1.0)
+		data.clip_source_length.append(float(w.meta[c].source_length))
+		data.clip_impact.append(float(w.meta[c].impact))
+		data.clip_landing.append(float(w.meta[c].landing))
 	var stride: Variant = (m.row as Dictionary).get("stride")
 	if stride is Dictionary:
 		data.stride_walk = float((stride as Dictionary).get("walk", 0.0))
@@ -503,7 +681,7 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 	var err := ResourceSaver.save(data, out_dir.path_join("model.tres"))
 	if err != OK:
 		return {"ok": false, "error": "%s: cannot write %s (%d)" % [slug, out_dir, err]}
-	return {"ok": true, "slug": slug, "dir": dir, "triangles": tris, "source_triangles": indices.size() / 3, "over_budget": levels.over_budget,
+	return {"ok": true, "slug": slug, "dir": dir, "triangles": tris, "source_triangles": w.source_triangles, "over_budget": levels.over_budget,
 		"frames": total, "anim_vertices": uc, "vertices": vc, "texture": Vector2i(width, height), "clips": plans, "roles": roles,
 		"pos_bytes": width * height * 8, "nrm_bytes": width * height * 2, "aabb": aabb}
 

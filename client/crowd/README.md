@@ -29,6 +29,12 @@ forward, before the enemy's own `scale`. Clips are the ones `DmCreature` can pla
 clips with: per clip the whole source length, the second the blow lands and, for a death, the second the body comes to rest; the model row's stride),
 `pos.res`, `nrm.res` and `mesh_lod<N>.res`.
 
+**Unrigged models** (props today's creature shader animates: the moth, the bat, the choir wraith, the seraph; `godot/game/dm_creature_mat.gd` wings) have no
+skeleton to pose. They bake one looping clip, `fly`: the shader's wing beat (`crowd_looks.json` `wings`, today's `DmEntityViews.WINGS`) written frame by frame,
+`CrowdBaker.FLAP_FRAMES` frames over one beat (2 pi / speed seconds), positions and normals; every role plays it (today the shader keeps beating through a
+fall; the body layer does the rest). A model without wings bakes a still pose. The crowd starts each body at its own point of the loop, as today's
+per-creature phase did.
+
 - **Positions** `pos.res`: `ImageTexture`, RGBAH (half floats, xyz in creature space). **Normals** `nrm.res`: RG8, octahedral. Both saved as binary `.res`
   of raw pixels: they sample the same on Forward+ and Mobile, need no import step, and are never VRAM-compressed (that would corrupt the numbers).
   Positions are accurate to about 2 mm, normals to 1 degree.
