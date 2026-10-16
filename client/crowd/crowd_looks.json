@@ -18,6 +18,8 @@
   "mist": ["wraith"],
   "hover": {"wraith": 0.45},
   "enemy_tint": {"risen": "8a8078", "risen_fen": "7ab0a8"},
+  "enemy_glow_about": "DmEntityViews._enemy_opts: [emissive sRGB hex, emissive_intensity]; an elite's overrides the rest; the risen in the Fen use risen_fen",
+  "enemy_glow": {"elite": ["4a1f8a", 0.14], "risen": ["2a3a18", 0.3], "risen_fen": ["1f8f86", 0.4], "wraith": ["9fb6d8", 0.35], "fen_wisp": ["7fe0d0", 0.9]},
   "legion_order": ["ossuary", "gravecaller", "rotweaver", "mourner"],
   "legion": {
     "ossuary": {"slug": "thrall_sentinel", "tint": "ffffff", "emissive": "6b4a1f", "glow": 0.12, "armed": true},
@@ -36,6 +38,8 @@
     "colossus": {"tint": "ffffff", "emissive": "1f8f86", "glow": 0.1, "ring": 1.7}
   },
   "thrall_tint": {"default": "f4ecff", "wraith": "b9c4ff"},
+  "thrall_glow_about": "DmEntityViews._make_thrall: the look's or the legion's emissive and glow, else default; the wraith's own; + empowered (not the wraith) and + champion",
+  "thrall_glow": {"default": ["1f8f86", 0.18], "wraith": ["8f9ed1", 1.1], "empowered": 0.22, "champion": 0.35},
   "thrall_scale": {"shieldbearer": 1.1},
   "thrall_hover": {"wraith": 0.25},
   "wings_about": "DmEntityViews.WINGS by the model the def draws with (moth: shroud_moth, bat: tithe_bat, seraph: weeping_seraph); the unrigged baker writes the beat into a loop",

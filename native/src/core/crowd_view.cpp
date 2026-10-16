@@ -663,6 +663,7 @@ void CrowdView::apply_body(const CrowdBody &b) {
 	v.tint[0] = b.tint[0];
 	v.tint[1] = b.tint[1];
 	v.tint[2] = b.tint[2];
+	v.glow = b.glow;
 	if (first) {
 		v.px = v.cx = b.x;
 		v.pz = v.cz = b.z;
@@ -777,6 +778,7 @@ void CrowdView::apply_corpse(const CrowdCorpse &c) {
 		v.tint[0] = c.tint[0];
 		v.tint[1] = c.tint[1];
 		v.tint[2] = c.tint[2];
+		v.glow = c.glow;
 		v.px = v.cx = v.dx = c.x;
 		v.pz = v.cz = v.dz = c.z;
 		v.pyaw = v.cyaw = v.yaw = v.dyaw = c.facing;
@@ -983,7 +985,8 @@ void CrowdView::emit(const View &v, float p_cam_x, float p_cam_y, float p_cam_z)
 	w[12] = v.tint[0];
 	w[13] = v.tint[1];
 	w[14] = v.tint[2];
-	w[15] = float(std::round(std::min(1.0, std::max(0.0, v.flash_v)) * FLASH_LEVELS) / FLASH_LEVELS);  // the game's emissive lerp in 8 steps
+	// The game's emissive lerp in 8 steps, above twice the glow slot: COLOR.a = slot * 2 + flash (the shader splits them; exact in a half float up to slot 63).
+	w[15] = float(v.glow * 2) + float(std::round(std::min(1.0, std::max(0.0, v.flash_v)) * FLASH_LEVELS) / FLASH_LEVELS);
 	const int32_t clip = v.cur >= 0 ? v.cur : 0;
 	w[16] = float(clip);
 	w[17] = float(v.cur >= 0 ? v.t : 0.0);

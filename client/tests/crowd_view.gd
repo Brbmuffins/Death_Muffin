@@ -215,7 +215,7 @@ func feed(c: RefCounted, bodies: Array, hits := [], corpses := []) -> void:
 	var bi := PackedInt32Array()
 	var bf := PackedFloat32Array()
 	for b in bodies:
-		bi.append_array(PackedInt32Array([b.id, b.kind, b.model, b.state, b.flags, b.swing, b.def]))
+		bi.append_array(PackedInt32Array([b.id, b.kind, b.model, b.state, b.flags, b.swing, b.def, int(b.get("glow", 0))]))
 		bf.append_array(PackedFloat32Array([b.x, b.z, b.yaw, b.speed, b.state_t, b.action_s, b.scale, b.hover, b.tint.r, b.tint.g, b.tint.b]))
 	var hf := PackedFloat32Array()
 	for h in hits:
@@ -223,7 +223,7 @@ func feed(c: RefCounted, bodies: Array, hits := [], corpses := []) -> void:
 	var ci := PackedInt32Array()
 	var cf := PackedFloat32Array()
 	for k in corpses:
-		ci.append_array(PackedInt32Array([k.id, k.model, k.def]))
+		ci.append_array(PackedInt32Array([k.id, k.model, k.def, int(k.get("glow", 0))]))
 		cf.append_array(PackedFloat32Array([k.x, k.z, k.facing, k.scale, k.tint.r, k.tint.g, k.tint.b]))
 	c.sync_rows(bi, bf, hf, ci, cf)
 
@@ -1069,6 +1069,7 @@ func full_party() -> void:
 		if near(crowd.view_info(tid).scale, 1.35, 1e-6):
 			seen_champion = true
 	check(seen_champion, "a champion thrall is drawn 1.35x")
+	glows(view, crowd, core, ids, heroes)
 	# the time draw() takes: Full Party, the core stepping, one tick and one frame each
 	var us := PackedFloat64Array()
 	var sync_us := PackedFloat64Array()
@@ -1176,6 +1177,45 @@ func full_party() -> void:
 
 
 ## The core steps once, the crowd reads it, the guest takes the same rows, both draw the frame, then the events are taken as the game layer does.
+## Today's glows per body (DmEntityViews._enemy_opts / _make_thrall) through the palette: the slot in COLOR.a (slot * 2 + flash), the palette's colour and strength.
+func glows(view: CrowdView, crowd: RefCounted, core: RefCounted, ids: Array, heroes: Array) -> void:
+	var looks: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CrowdView.LOOKS_PATH))
+	var pal: PackedColorArray = crowd.glow_palette()
+	var glow_of := func(id: int) -> Color:
+		var r: Dictionary = row_of(crowd, id)
+		if r.is_empty():
+			return Color(-1, -1, -1, -1)
+		var slot := int(floor(float(r.color.a) * 0.5 + 0.001))
+		return pal[slot] if slot > 0 and slot < pal.size() else Color(0, 0, 0, 0)
+	var want := func(pair: Array, add := 0.0) -> Color:
+		var c := CrowdView._glow(pair)
+		c.a += add
+		return c
+	var same := func(a: Color, b: Color) -> bool: return a.is_equal_approx(b)
+	check(pal.size() >= 2 and pal[0] == Color(0, 0, 0, 0), "the glow palette has slot 0 empty and the glows in play after it (%d)" % pal.size())
+	check(same.call(glow_of.call(ids[5]), want.call(looks.enemy_glow.elite)), "an elite glows purple, as today (0x4a1f8a, 0.14): %s" % glow_of.call(ids[5]))
+	check(same.call(glow_of.call(ids[4]), want.call(looks.enemy_glow.wraith)), "a wraith glows pale blue (0x9fb6d8, 0.35): %s" % glow_of.call(ids[4]))
+	check(glow_of.call(ids[0]).a == 0.0, "a plain robber has no glow of its own")
+	# the thralls (a body in a swing is drawn lunged, away from its place): the slots their instances use
+	var tg: Dictionary = looks.thrall_glow
+	var used := {}
+	for r in rows(crowd):
+		var slot := int(floor(float(r.color.a) * 0.5 + 0.001))
+		if slot > 0 and slot < pal.size():
+			used[pal[slot]] = true
+	var has := func(c: Color) -> bool: return used.keys().any(func(k: Color) -> bool: return k.is_equal_approx(c))
+	var gc_glow: Color = want.call([looks.legion.gravecaller.emissive, looks.legion.gravecaller.glow])
+	check(has.call(gc_glow) and has.call(want.call([looks.legion.gravecaller.emissive, looks.legion.gravecaller.glow], float(tg.champion))),
+		"a Gravecaller's thralls glow violet (0x6a3fc0, 0.16), its champion stronger (+0.35)")
+	check(has.call(want.call(tg.wraith)), "a wraith thrall glows its own blue at 1.1")
+	check(has.call(want.call([looks.legion.ossuary.emissive, looks.legion.ossuary.glow])) and has.call(want.call([looks.thrall_look.bonemage.emissive, looks.thrall_look.bonemage.glow])),
+		"the Ossuary's thralls glow bronze (0x6b4a1f, 0.12), a bone mage its own (0xb07a2a, 0.35)")
+	view._push_glows()
+	var on_mat: Variant = view._materials[0].get_shader_parameter("glow_palette")
+	check(on_mat is PackedVector4Array and (on_mat as PackedVector4Array).size() == 64 and Vector4(pal[1].r, pal[1].g, pal[1].b, pal[1].a).is_equal_approx((on_mat as PackedVector4Array)[1]),
+		"every model's material has the palette")
+
+
 func lockstep(core: RefCounted, view: CrowdView, guest: RefCounted, alpha: float) -> void:
 	core.step(DT)
 	view.sync()

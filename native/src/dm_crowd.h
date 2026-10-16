@@ -10,6 +10,7 @@
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_float64_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
@@ -32,6 +33,9 @@ class DmCrowd : public godot::RefCounted {
 		int32_t model = -1, flags = 0;
 		float hover = 0, scale = 1;
 		float tint[3] = { 1, 1, 1 }, tint_fen[3] = { 1, 1, 1 };
+		float glow[4] = { 0, 0, 0, 0 }, glow_fen[4] = { 0, 0, 0, 0 };  // linear rgb + strength (DmCreature's emissive and emissive_intensity); strength 0 = none
+		float glow_emp = 0;                                               // what an empowered thrall adds to the strength (0.22; the wraith none, as today)
+		mutable int32_t slot = -1, slot_fen = -1, slot_var[4] = { -1, -1, -1, -1 };  // palette slots, found on first use (slot_var: a thrall's [plain, empowered, champion, both])
 		bool has_fen = false, set = false;
 	};
 	struct GroupRid {
@@ -49,6 +53,17 @@ class DmCrowd : public godot::RefCounted {
 	std::vector<Look> thrall_looks;  // [kind * LEGION_SLOTS + legion + 1]
 	std::unordered_map<int32_t, int32_t> owner_legion;
 	std::vector<GroupRid> rids;  // parallel to the view's groups
+	// The glow palette (the crowd shader's `glow_palette`): 4 floats a slot, linear rgb + strength; slot 0 = none (the model's own emission). Slots are added on
+	// first use and never removed, at most GLOW_SLOTS; `glow_version` counts additions so CrowdView pushes the palette to the materials only when it grew.
+	static constexpr int32_t GLOW_SLOTS = 64;
+	std::vector<float> glow_pal = { 0, 0, 0, 0 };
+	int64_t glow_ver = 0;
+	float elite_glow[4] = { 0, 0, 0, 0 };
+	int32_t elite_slot = -1;
+	float champion_add = 0.0f;
+	int32_t glow_slot(const float *p_rgbk);
+	int32_t enemy_glow(const Look &p_look, bool p_elite, bool p_drowned);         // an elite's glow over its look's (DmEntityViews._enemy_opts)
+	int32_t thrall_glow(const Look &p_look, bool p_empowered, bool p_champion);  // the look's glow, stronger when empowered or a champion (_make_thrall)
 	// the event buffer is read from where the last sync stopped (take_events clears it behind our back)
 	size_t ev_i = 0, ev_f = 0;
 	uint64_t ev_batches = 0;
@@ -68,6 +83,11 @@ public:
 	// clip_landing, clip_loop, roles. `lod_rids[i]` / `shadow_rids[i]`: the MultiMesh RIDs of level i without and with shadows; `lod_distances`:
 	// the camera distances where levels 1.. start. Returns the model slot.
 	int64_t add_model(const godot::String &p_slug, const godot::Dictionary &p_data, const godot::Array &p_lod_rids, const godot::Array &p_shadow_rids, const godot::PackedFloat32Array &p_lod_distances);
+	// Today's glows that are not a look's own: `elite` (Color, linear, alpha = strength) for every elite enemy and its corpse, and what a champion thrall adds
+	// to its look's strength (DmEntityViews: 0.35).
+	void set_glows(const godot::Color &p_elite, double p_champion_add);
+	godot::PackedColorArray glow_palette() const;  // the slots, linear rgb + strength in alpha
+	int64_t glow_version() const;
 	// A look: model (slot), hover (m), scale, tint (linear Color), tint_fen (risen in the Fen), flyer, caster, inert, mist (bool flags).
 	void set_enemy_look(const godot::String &p_def, const godot::Dictionary &p_look);
 	void set_thrall_look(const godot::String &p_kind, int64_t p_legion, const godot::Dictionary &p_look);

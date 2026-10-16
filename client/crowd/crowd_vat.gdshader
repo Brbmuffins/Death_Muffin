@@ -11,7 +11,8 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 //   INSTANCE_CUSTOM.z  previous clip index + blend weight 0..<1 of the previous pose (0 = no blend, then w is ignored)
 //   INSTANCE_CUSTOM.w  seconds into the previous clip
 //   COLOR.rgb          linear tint multiplier (white = the texture as is)
-//   COLOR.a            hit flash 0..1 (the game's emissive lerp toward the flash colour)
+//   COLOR.a            glow slot * 2 + hit flash 0..1: the slot picks the body's glow from `glow_palette` (0 = this model's own `emis`, `emis_k`), the
+//                      flash is the game's emissive lerp toward the flash colour (in eighths, so exact in a half float up to slot 63)
 // Per vertex: CUSTOM0.x = the vertex's animation id (a column of the baked textures; UV seams share one id).
 
 // The model's own textures, as DmCreatureMat takes them from the glTF material (no normal map: the crowd mesh has no tangents).
@@ -24,6 +25,8 @@ uniform bool use_orm = false;
 // Body emissive (linear), like DmCreature's emis / emis_k; the hit flash lerps it toward FLASH_COLOR.
 uniform vec3 emis = vec3(0.0);
 uniform float emis_k = 0.0;
+// Per-body glows (DmCrowd.glow_palette: linear rgb + strength): the elite's, the risen's, a legion's thralls'... Slot 0 is unused (the model's own above).
+uniform vec4 glow_palette[64];
 
 // Baked animation: positions (RGBAH, xyz in the creature's space) and normals (RG8, octahedral), one frame = rows_per_frame rows.
 uniform sampler2D vat_pos : filter_nearest, repeat_disable;
@@ -37,6 +40,7 @@ const vec3 FLASH_COLOR = vec3(1.0, 0.87137, 0.71569); // 0xfff0dc in linear, DmC
 const float FLASH_EMISSIVE = 0.16;                    // DmCreature._apply_flash: emis_k + f * 0.16
 
 varying float v_flash;
+varying flat vec4 v_glow;
 
 ivec2 vat_texel(int frame, int id) {
 	int r = id / vat_width;
@@ -92,7 +96,9 @@ void vertex() {
 	}
 	VERTEX = p;
 	NORMAL = normalize(n);
-	v_flash = COLOR.a;
+	float slot = floor(COLOR.a * 0.5 + 0.001);
+	v_flash = clamp(COLOR.a - slot * 2.0, 0.0, 1.0);
+	v_glow = slot > 0.5 ? glow_palette[clamp(int(slot), 1, 63)] : vec4(emis, emis_k);
 }
 
 void fragment() {
@@ -106,5 +112,5 @@ void fragment() {
 		ROUGHNESS = rough_f;
 		METALLIC = 0.0;
 	}
-	EMISSION = mix(emis, FLASH_COLOR, v_flash) * (emis_k + v_flash * FLASH_EMISSIVE);
+	EMISSION = mix(v_glow.rgb, FLASH_COLOR, v_flash) * (v_glow.a + v_flash * FLASH_EMISSIVE);
 }

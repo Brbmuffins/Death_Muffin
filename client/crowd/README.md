@@ -61,7 +61,7 @@ Per instance (`MultiMesh.buffer`: 20 floats, 12 transform rows, 4 colour, 4 cust
 |---|---|
 | `INSTANCE_CUSTOM.x`, `.y` | clip index (`data.clip_index("walk")`), seconds into the clip (a loop wraps, a one-shot holds its last frame) |
 | `INSTANCE_CUSTOM.z`, `.w` | previous clip + blend weight below 1 (`pack_custom`), seconds into the previous clip; weight 0 = no blend |
-| `COLOR.rgb`, `COLOR.a` | linear tint, hit flash 0..1 (the game's emissive lerp, `0xfff0dc`) |
+| `COLOR.rgb`, `COLOR.a` | linear tint; glow slot x 2 + hit flash 0..1 (the slot picks the body's glow from the material's `glow_palette`, 0 = the model's own; the flash is the game's emissive lerp, `0xfff0dc`, in eighths: exact in a half float up to slot 63, checked on Compatibility) |
 
 `DmCrowd` picks the clip from the creature's state, advances the time (walk speed matched to the ground speed) and blends over the game's fade times: "Driving the
 crowd". Set a `custom_aabb` on the MultiMesh itself so the engine does not re-measure thousands of instances.
@@ -104,9 +104,9 @@ damaged events, so `sync(core)` draws it as it draws a host (`client/tests/core_
 
 | row | fields |
 |---|---|
-| body (7 ints, 11 floats) | id (unique over enemies and thralls), kind (0 enemy, 1 thrall), model (the slot `add_model` returned), state (the core's `EnemyState` or `ThrallState`), flags (elite, caster, inert, mist, flyer), swing (a thrall's swing counter), def; x, z, yaw, ground speed, seconds in the state, `action_s` (the seconds the state's one-shot is timed to: the wind-up, the dig, the 0.3 s recovery, a thrall's 0.12 s swing), scale, hover height, linear tint |
+| body (8 ints, 11 floats) | id (unique over enemies and thralls), kind (0 enemy, 1 thrall), model (the slot `add_model` returned), state (the core's `EnemyState` or `ThrallState`), flags (elite, caster, inert, mist, flyer), swing (a thrall's swing counter), def, glow (a slot of the glow palette of the crowd that made the row; 0 none); x, z, yaw, ground speed, seconds in the state, `action_s` (the seconds the state's one-shot is timed to: the wind-up, the dig, the 0.3 s recovery, a thrall's 0.12 s swing), scale, hover height, linear tint |
 | hit (4 floats) | id, damage this tick (summed), hp after, max hp: from the core's damaged events (a puppet core derives them from hp drops, as puppets do today) |
-| corpse (3 ints, 7 floats) | id, model, def; x, z, facing, scale, tint |
+| corpse (4 ints, 7 floats) | id, model, def, glow; x, z, facing, scale, tint |
 
 A death is the body's state becoming `DEAD` (and the corpse row that follows), not a separate list.
 
@@ -168,5 +168,5 @@ Forward+ and Mobile run it the first time on a real GPU.
 
 ## Differences from the creature material (`godot/game/dm_creature_mat.gd`)
 
-No normal map (the crowd mesh has no tangents), no gear regions, wings, spectral fade or friend rim, no per-instance emissive besides the flash; two-sided like most
+No normal map (the crowd mesh has no tangents), no gear regions, spectral fade or friend rim; the per-body glow comes from a palette (`DmCrowd.glow_palette`, today's emissive colours and strengths from `crowd_looks.json`: an elite's purple, the risen's, a legion's thralls' with the empowered and champion boosts) that CrowdView pushes to every material when a new glow comes into play; two-sided like most
 of today's models. The procedural body layer (hit recoil, strike lunge, topple, rise from the ground) is not baked: `DmCrowd` writes it into the instance transform. A loop whose last key differs from its first (the robber's run, by 47 cm at the worst vertex) pops at its seam today; the baked clip blends across it.

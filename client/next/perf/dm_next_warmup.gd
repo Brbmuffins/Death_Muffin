@@ -167,7 +167,7 @@ static func _feed_crowd(game: DmNextGame, cam: DmCameraRig) -> int:
 		for gap in ROW_GAPS:
 			for kind in 2:
 				var p: Vector3 = focus + fwd * float(gap) + side * (float(col % 12) - 5.5) * 1.4 + fwd * floorf(col / 12.0) * 1.4
-				bi.append_array(PackedInt32Array([id, kind, int(slot), 1, 0, 0, 0]))   # state 1: idle (an enemy's IDLE, a thrall's IDLE)
+				bi.append_array(PackedInt32Array([id, kind, int(slot), 1, 0, 0, 0, 0]))   # state 1: idle (an enemy's IDLE, a thrall's IDLE); no glow
 				bf.append_array(PackedFloat32Array([p.x, p.z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0]))
 				id += 1
 				col += 1

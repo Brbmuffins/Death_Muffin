@@ -39,10 +39,24 @@ void tint_of(const Dictionary &p_d, const char *p_key, float *r_out) {
 		r_out[2] = c.b;
 	}
 }
+// A glow: a Color whose rgb is the linear emissive colour and whose alpha is the strength.
+void glow_of(const Dictionary &p_d, const char *p_key, float *r_out) {
+	const Variant v = p_d.get(String(p_key), Variant());
+	if (v.get_type() == Variant::COLOR) {
+		const Color c = v;
+		r_out[0] = c.r;
+		r_out[1] = c.g;
+		r_out[2] = c.b;
+		r_out[3] = c.a;
+	}
+}
 } // namespace
 
 void DmCrowd::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_model", "slug", "data", "lod_rids", "shadow_rids", "lod_distances"), &DmCrowd::add_model);
+	ClassDB::bind_method(D_METHOD("set_glows", "elite", "champion_add"), &DmCrowd::set_glows);
+	ClassDB::bind_method(D_METHOD("glow_palette"), &DmCrowd::glow_palette);
+	ClassDB::bind_method(D_METHOD("glow_version"), &DmCrowd::glow_version);
 	ClassDB::bind_method(D_METHOD("set_enemy_look", "def", "look"), &DmCrowd::set_enemy_look);
 	ClassDB::bind_method(D_METHOD("set_thrall_look", "kind", "legion", "look"), &DmCrowd::set_thrall_look);
 	ClassDB::bind_method(D_METHOD("set_owner_legion", "owner", "legion"), &DmCrowd::set_owner_legion);
@@ -137,10 +151,88 @@ void DmCrowd::set_look(Look &r_look, const Dictionary &p_look) {
 			(flag(p_look, "flyer") ? dm::BF_FLYER : 0);
 	tint_of(p_look, "tint", r_look.tint);
 	std::memcpy(r_look.tint_fen, r_look.tint, sizeof(r_look.tint));
+	glow_of(p_look, "glow", r_look.glow);
+	r_look.glow_emp = float(num(p_look, "glow_empowered", 0.0));
+	std::memcpy(r_look.glow_fen, r_look.glow, sizeof(r_look.glow));
 	if (p_look.has("tint_fen")) {
 		tint_of(p_look, "tint_fen", r_look.tint_fen);
 		r_look.has_fen = true;
 	}
+	if (p_look.has("glow_fen")) {
+		glow_of(p_look, "glow_fen", r_look.glow_fen);
+		r_look.has_fen = true;
+	}
+}
+
+// The palette slot of a glow (linear rgb + strength): 0 for none, an existing slot for the same glow, else a new one (at most GLOW_SLOTS; past that, none).
+int32_t DmCrowd::glow_slot(const float *p_rgbk) {
+	if (p_rgbk[3] <= 0.0f) {
+		return 0;
+	}
+	const int32_t n = int32_t(glow_pal.size() / 4);
+	for (int32_t i = 1; i < n; i++) {
+		const float *q = &glow_pal[size_t(i) * 4];
+		if (q[0] == p_rgbk[0] && q[1] == p_rgbk[1] && q[2] == p_rgbk[2] && q[3] == p_rgbk[3]) {
+			return i;
+		}
+	}
+	if (n >= GLOW_SLOTS) {
+		return 0;
+	}
+	glow_pal.insert(glow_pal.end(), p_rgbk, p_rgbk + 4);
+	glow_ver++;
+	return n;
+}
+
+void DmCrowd::set_glows(const Color &p_elite, double p_champion_add) {
+	elite_glow[0] = p_elite.r;
+	elite_glow[1] = p_elite.g;
+	elite_glow[2] = p_elite.b;
+	elite_glow[3] = p_elite.a;
+	elite_slot = -1;
+	champion_add = float(p_champion_add);
+	for (Look &l : thrall_looks) {
+		l.slot_var[0] = l.slot_var[1] = l.slot_var[2] = l.slot_var[3] = -1;
+	}
+}
+
+int32_t DmCrowd::enemy_glow(const Look &p_look, bool p_elite, bool p_drowned) {
+	if (p_elite) {
+		if (elite_slot < 0) {
+			elite_slot = glow_slot(elite_glow);
+		}
+		return elite_slot;
+	}
+	int32_t &slot = p_drowned ? p_look.slot_fen : p_look.slot;
+	if (slot < 0) {
+		slot = glow_slot(p_drowned ? p_look.glow_fen : p_look.glow);
+	}
+	return slot;
+}
+
+int32_t DmCrowd::thrall_glow(const Look &p_look, bool p_empowered, bool p_champion) {
+	const int32_t k = (p_empowered ? 1 : 0) + (p_champion ? 2 : 0);
+	int32_t &slot = p_look.slot_var[k];
+	if (slot < 0) {
+		float g[4] = { p_look.glow[0], p_look.glow[1], p_look.glow[2], p_look.glow[3] };
+		if (g[3] > 0.0f) {
+			g[3] += (p_empowered ? p_look.glow_emp : 0.0f) + (p_champion ? champion_add : 0.0f);
+		}
+		slot = glow_slot(g);
+	}
+	return slot;
+}
+
+PackedColorArray DmCrowd::glow_palette() const {
+	PackedColorArray out;
+	for (size_t i = 0; i + 3 < glow_pal.size(); i += 4) {
+		out.push_back(Color(glow_pal[i], glow_pal[i + 1], glow_pal[i + 2], glow_pal[i + 3]));
+	}
+	return out;
+}
+
+int64_t DmCrowd::glow_version() const {
+	return glow_ver;
 }
 
 void DmCrowd::set_enemy_look(const String &p_def, const Dictionary &p_look) {
@@ -254,10 +346,12 @@ void DmCrowd::sync(const Ref<DmCore> &p_core) {
 		b.action_s = float(e.state == dm::ATTACK ? e.windup_s : (e.state == dm::DIG ? w.tun.burrow_dig_s : (e.state == dm::EMERGE ? dm::RECOVER_S : 0.0)));
 		b.scale = float(w.defs[size_t(e.def)].scale * (e.elite ? w.tun.elite_scale : 1.0));
 		b.hover = look.hover;
-		const float *tint = (look.has_fen && e.area == fen) ? look.tint_fen : look.tint;  // a drowned risen
+		const bool drowned = look.has_fen && e.area == fen;
+		const float *tint = drowned ? look.tint_fen : look.tint;  // a drowned risen
 		b.tint[0] = tint[0];
 		b.tint[1] = tint[1];
 		b.tint[2] = tint[2];
+		b.glow = enemy_glow(look, e.elite, drowned);
 		feed.bodies.push_back(b);
 	}
 	for (const dm::Thrall &t : w.thralls) {
@@ -285,6 +379,7 @@ void DmCrowd::sync(const Ref<DmCore> &p_core) {
 		b.tint[0] = look->tint[0];
 		b.tint[1] = look->tint[1];
 		b.tint[2] = look->tint[2];
+		b.glow = thrall_glow(*look, t.empowered, t.champion);
 		feed.bodies.push_back(b);
 	}
 	// Damage, from the events: the buffer is read from where the last sync stopped, and left for take_events.
@@ -334,6 +429,7 @@ void DmCrowd::sync(const Ref<DmCore> &p_core) {
 		r.tint[0] = look.tint[0];
 		r.tint[1] = look.tint[1];
 		r.tint[2] = look.tint[2];
+		r.glow = enemy_glow(look, c.elite, look.has_fen && c.area == fen);  // the corpse keeps the body's glow, as today's body did
 		feed.corpses.push_back(r);
 	}
 	view.tick(feed);
@@ -341,7 +437,7 @@ void DmCrowd::sync(const Ref<DmCore> &p_core) {
 
 void DmCrowd::sync_rows(const PackedInt32Array &p_body_ints, const PackedFloat32Array &p_body_floats, const PackedFloat32Array &p_hits, const PackedInt32Array &p_corpse_ints,
 		const PackedFloat32Array &p_corpse_floats) {
-	constexpr int64_t BI = 7, BF = 11, HF = 4, CI = 3, CF = 7;
+	constexpr int64_t BI = 8, BF = 11, HF = 4, CI = 4, CF = 7;
 	feed.clear();
 	const int64_t nb = std::min(p_body_ints.size() / BI, p_body_floats.size() / BF);
 	for (int64_t i = 0; i < nb; i++) {
@@ -353,6 +449,7 @@ void DmCrowd::sync_rows(const PackedInt32Array &p_body_ints, const PackedFloat32
 		b.flags = p_body_ints[i * BI + 4];
 		b.swing = p_body_ints[i * BI + 5];
 		b.def = p_body_ints[i * BI + 6];
+		b.glow = p_body_ints[i * BI + 7];
 		const float *f = p_body_floats.ptr() + i * BF;
 		b.x = f[0];
 		b.z = f[1];
@@ -381,6 +478,7 @@ void DmCrowd::sync_rows(const PackedInt32Array &p_body_ints, const PackedFloat32
 		c.id = p_corpse_ints[i * CI];
 		c.model = p_corpse_ints[i * CI + 1];
 		c.def = p_corpse_ints[i * CI + 2];
+		c.glow = p_corpse_ints[i * CI + 3];
 		const float *f = p_corpse_floats.ptr() + i * CF;
 		c.x = f[0];
 		c.z = f[1];
@@ -515,14 +613,14 @@ Dictionary DmCrowd::info_of(const dm::View *p_view) const {
 	return d;
 }
 
-// The rows of the last tick in sync_rows' layout: bodies as 7 ints (id, kind, model, state, flags, swing, def) and 11 floats (x, z, yaw, speed,
-// state_t, action_s, scale, hover, tint r, g, b); hits as 4 floats (id, amount, hp, max_hp); corpses as 3 ints (id, model, def) and 7 floats
-// (x, z, facing, scale, tint r, g, b).
+// The rows of the last tick in sync_rows' layout: bodies as 8 ints (id, kind, model, state, flags, swing, def, glow) and 11 floats (x, z, yaw, speed,
+// state_t, action_s, scale, hover, tint r, g, b); hits as 4 floats (id, amount, hp, max_hp); corpses as 4 ints (id, model, def, glow) and 7 floats
+// (x, z, facing, scale, tint r, g, b). `glow` is a slot of this crowd's glow palette.
 Dictionary DmCrowd::last_feed() const {
 	PackedInt32Array bi, ci;
 	PackedFloat32Array bf, hf, cf;
 	for (const dm::CrowdBody &b : feed.bodies) {
-		for (const int32_t v : { b.id, b.kind, b.model, b.state, b.flags, b.swing, b.def }) {
+		for (const int32_t v : { b.id, b.kind, b.model, b.state, b.flags, b.swing, b.def, b.glow }) {
 			bi.push_back(v);
 		}
 		for (const float v : { b.x, b.z, b.yaw, b.speed, b.state_t, b.action_s, b.scale, b.hover, b.tint[0], b.tint[1], b.tint[2] }) {
@@ -535,7 +633,7 @@ Dictionary DmCrowd::last_feed() const {
 		}
 	}
 	for (const dm::CrowdCorpse &c : feed.corpses) {
-		for (const int32_t v : { c.id, c.model, c.def }) {
+		for (const int32_t v : { c.id, c.model, c.def, c.glow }) {
 			ci.push_back(v);
 		}
 		for (const float v : { c.x, c.z, c.facing, c.scale, c.tint[0], c.tint[1], c.tint[2] }) {

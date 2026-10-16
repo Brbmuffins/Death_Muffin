@@ -34,6 +34,7 @@ struct CrowdBody {
 	float action_s = 0;                           // seconds the state's one-shot is timed to: the wind-up, the dig, the recovery, a thrall's 0.12 swing
 	float scale = 1, hover = 0;                   // drawn size; hover height in metres (0 = on the ground)
 	float tint[3] = { 1, 1, 1 };                  // linear colour multiplier
+	int32_t glow = 0;                             // the body's glow: a slot of DmCrowd's glow palette (0 = the model's own emission)
 };
 
 struct CrowdHit {  // damage a body took this tick (summed), as the core's damaged events say; a guest derives it from hp drops
@@ -45,6 +46,7 @@ struct CrowdCorpse {  // a corpse the core holds (the dying body is adopted, els
 	int32_t id = 0, model = -1, def = 0;
 	float x = 0, z = 0, facing = 0, scale = 1;
 	float tint[3] = { 1, 1, 1 };
+	int32_t glow = 0;
 };
 
 struct CrowdFeed {
@@ -96,6 +98,7 @@ struct View {
 	double px = 0, pz = 0, pyaw = 0, cx = 0, cz = 0, cyaw = 0;
 	double raw_speed = 0, state_t = 0, action_s = 0, scale = 1, hover = 0;
 	float tint[3] = { 1, 1, 1 };
+	int32_t glow = 0;  // glow palette slot (CrowdBody.glow)
 	// drawn
 	double yaw = 0, gs = 0, flash = 0, flash_v = 0;
 	bool has_gs = false;

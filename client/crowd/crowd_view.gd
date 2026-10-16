@@ -40,6 +40,8 @@ var _data := {}           # model slug -> CrowdVatData
 var _baked := {}          # model slug -> true, found on disk
 var _enemy_defs: Dictionary
 var _last_clock := -1.0
+var _materials: Array[ShaderMaterial] = []   # every model's material (the glow palette goes to each)
+var _glow_version := -1
 
 
 ## `enemy_defs`: the ENEMIES dictionary of data/content/enemies.json (flying, inert, rig per def). `area_min`, `area_max`: the area's bounds, for the MultiMeshes'
@@ -61,6 +63,7 @@ func setup(p_core: RefCounted, enemy_defs: Dictionary, area_min: Vector2, area_m
 	crowd = ClassDB.instantiate("DmCrowd")
 	crowd.reserve(int(opts.get("reserve", RESERVE)))
 	crowd.set_champion_scale(float(opts.get("champion_scale", 1.35)))
+	crowd.set_glows(_glow(_looks.enemy_glow.elite), float(_looks.thrall_glow.champion))
 	_register_enemies()
 	_register_thralls()
 	process_physics_priority = 1000   # after the nodes that step the core
@@ -104,6 +107,8 @@ func _physics_process(_delta: float) -> void:
 func _process(delta: float) -> void:
 	if crowd == null:
 		return
+	if crowd.glow_version() != _glow_version:   # a new glow came into play (an elite, a champion...): every material learns the palette
+		_push_glows()
 	crowd.set_hitstop_scale(hitstop_scale)
 	var cam := get_viewport().get_camera_3d()
 	crowd.draw(delta, Engine.get_physics_interpolation_fraction(), cam.global_position if cam != null else Vector3(focus.x, 0.0, focus.y))
@@ -114,6 +119,27 @@ func _process(delta: float) -> void:
 static func _color(hex: String) -> Color:
 	var v := hex.hex_to_int()
 	return Color(float((v >> 16) & 255) / 255.0, float((v >> 8) & 255) / 255.0, float(v & 255) / 255.0).srgb_to_linear()
+
+
+## A glow for DmCrowd: [sRGB hex, strength] -> the linear colour with the strength in alpha (DmCreature's emissive x emissive_intensity).
+static func _glow(pair: Variant) -> Color:
+	if not pair is Array:
+		return Color(0, 0, 0, 0)
+	var c := _color(String(pair[0]))
+	c.a = float(pair[1])
+	return c
+
+
+## The palette (DmCrowd.glow_palette) on every model's material: 64 slots, unused ones dark.
+func _push_glows() -> void:
+	_glow_version = crowd.glow_version()
+	var pal: PackedColorArray = crowd.glow_palette()
+	var v := PackedVector4Array()
+	v.resize(64)
+	for i in mini(pal.size(), 64):
+		v[i] = Vector4(pal[i].r, pal[i].g, pal[i].b, pal[i].a)
+	for mat: ShaderMaterial in _materials:
+		mat.set_shader_parameter("glow_palette", v)
 
 
 func _register_enemies() -> void:
@@ -130,9 +156,12 @@ func _register_enemies() -> void:
 		if def == "risen":   # DmEntityViews._enemy_opts: the risen are grey, the drowned ones teal
 			tint = _color(_looks.enemy_tint.risen)
 			tint_fen = _color(_looks.enemy_tint.risen_fen)
-		crowd.set_enemy_look(def, {"model": _slot(slug), "hover": float(flying) if flying != null else float(_looks.hover.get(def, 0.0)),
+		var look := {"model": _slot(slug), "hover": float(flying) if flying != null else float(_looks.hover.get(def, 0.0)),
 			"flyer": flying != null, "caster": _looks.casters.has(def), "inert": bool(d.get("inert", false)), "mist": _looks.mist.has(def),
-			"tint": tint, "tint_fen": tint_fen})
+			"tint": tint, "tint_fen": tint_fen, "glow": _glow(_looks.enemy_glow.get(def))}
+		if def == "risen":   # the drowned risen of the Fen glow teal
+			look["glow_fen"] = _glow(_looks.enemy_glow.risen_fen)
+		crowd.set_enemy_look(def, look)
 
 
 ## The look of every thrall kind under every legion (DmEntityViews._make_thrall): THRALL_LOOK first, else the owner's legion, else THRALL_SLUG.
@@ -153,7 +182,12 @@ func _register_thralls() -> void:
 			var tint_hex := String(look.tint) if look != null else (String(legion.tint) if legion != null and legion.has("tint") else
 				String(_looks.thrall_tint.wraith if kind == "wraith" else _looks.thrall_tint.default))
 			var scale := float(look.scale) if look != null and look.has("scale") else float(_looks.thrall_scale.get(kind, 1.0))
-			crowd.set_thrall_look(kind, li, {"model": _slot(slug), "hover": float(_looks.thrall_hover.get(kind, 0.0)), "scale": scale, "tint": _color(tint_hex)})
+			# DmEntityViews._make_thrall: the wraith's own glow; else the look's, the legion's, or the default; + empowered (not the wraith)
+			var tg: Dictionary = _looks.thrall_glow
+			var glow := _glow(tg.wraith) if kind == "wraith" else (_glow([look.emissive, look.glow]) if look != null and look.has("emissive")
+				else (_glow([legion.emissive, legion.get("glow", tg.default[1])]) if legion != null and legion.has("emissive") else _glow(tg.default)))
+			crowd.set_thrall_look(kind, li, {"model": _slot(slug), "hover": float(_looks.thrall_hover.get(kind, 0.0)), "scale": scale, "tint": _color(tint_hex),
+				"glow": glow, "glow_empowered": 0.0 if kind == "wraith" else float(tg.empowered)})
 
 
 ## The model to draw `wanted` with: itself, else the rig fallback of today's game, else a baked model of the same rig, else any baked one.
@@ -203,6 +237,8 @@ func _slot(slug: String) -> int:
 	if albedo == null:
 		_warn("no colour texture for %s (%s): drawn white" % [slug, data.albedo_path])
 	var material := data.make_material(albedo, _texture(data.orm_path) if data.orm_path != "" else null)
+	_materials.append(material)
+	_glow_version = -1   # the new material needs the palette too
 	var plain: Array = []
 	var shadow: Array = []
 	for lod in data.meshes.size():
