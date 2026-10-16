@@ -73,7 +73,8 @@ server (B38).
 - [x] Core skeleton (native/README.md "Design"): enemy table in spawn order, heroes and bosses as external entities, tick, timers in
   doubles, seeded randomness, grid, event buffer, damage with synchronous kills, radius queries, bulk reads; `client/tests/core_api.gd`.
   Thrall, corpse and status tables come with their items.
-- [ ] Core enemies: the Graves roster (robber, hound, penitent, sac, moth, bat, ghoul) with elites and affixes.
+- [ ] Core enemies: the Graves roster (robber, hound, penitent, sac, moth, bat, ghoul) with elites and affixes. The roster's brain,
+  elite stats and hostile zones are in the core (`client/tests/core_enemies.gd`); affixes come with statuses and corpses.
 - [ ] Core thralls, corpses and statuses.
 - [ ] Client layer: login to the test server, character select, hero, camera, input, the Gravecaller's rites on the core, the
   Gravedigger King's brain as an external entity.

@@ -35,14 +35,29 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
 - **Proof of "same game":** pure rules replay today's parity and golden fixtures; behaviour is compared with seeded scenarios
   (kills, damage, time to kill, thrall uptime) between today's game and the core within stated tolerances.
 
+## Differences from today's game
+
+Every place the core does not do exactly what today's GDScript does, so Helix can judge them in the test build (B42):
+- **Crowd spacing:** Godot's RVO avoidance (applied a tick late) is replaced by a push-apart between overlapping bodies. The one
+  planned difference in feel.
+- **Walls and the hero:** today `move_and_slide` slides a body along walls and the hero's capsule; the core moves it, pushes it out
+  of the hero's circle and snaps it back onto the navmesh. Close to today on open ground, may differ in corners.
+- **No idle LOD:** today a far idle body thinks at 10 Hz; the core runs every body at 60 Hz (cheap enough in C++). Idle wander
+  changes a little; nothing a player sees.
+- **Brains first, then movement:** today each body thinks and moves before the next one thinks; the core runs every brain, then
+  every move. Bodies never read each other's positions in the same tick except for crowd spacing, which was a tick late anyway.
+- **Paths:** the core follows `NavigationServer3D` paths itself (24 points, advancing at 0.5 m like the agent's
+  `path_desired_distance`) instead of a `NavigationAgent3D`.
+
 ## Files
 
 - `native/src/`: `dm_core.cpp` is the Godot-facing API (`DmCore`); `register_types.cpp` registers it, entry symbol `dmcore_library_init`
   (`client/bin/dmcore.gdextension`).
 - `native/src/core/`: the simulation, free of Godot types: `world` (tables, tick, damage and kills, queries), `grid` (dense XZ grid
   rebuilt per tick by counting sort), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity).
-- Tests: `client/tests/core_smoke.gd` (loads, answers) and `client/tests/core_api.gd` (queries in spawn order, synchronous kills,
-  events, seeded stats, the rise and the 4 s body linger). Run `bash client/setup.sh` first in a fresh checkout: a script run in a
+- Tests: `client/tests/core_smoke.gd` (loads, answers), `client/tests/core_api.gd` (queries in spawn order, synchronous kills,
+  events, seeded stats, the rise and the 4 s body linger) and `client/tests/core_enemies.gd` (the Graves roster against today's
+  rules: bite timing, cone, dust cloud, slam, hit-and-run, tunnel and eruption, leash, stagger, stun). Run `bash client/setup.sh` first in a fresh checkout: a script run in a
   project that was never imported hangs.
 - `SConstruct`: builds into `client/bin/libdmcore.<platform>.<target>.<arch>.<ext>`.
 - `build.sh`: links godot-cpp into `native/thirdparty/` (not committed) from one shared cache per commit

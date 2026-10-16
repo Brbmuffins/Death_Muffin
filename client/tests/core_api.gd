@@ -28,6 +28,7 @@ func make(seed_: int) -> RefCounted:
 	c.set_seed(seed_)
 	check(c.load_enemy_defs(DEFS) == 2, "two defs load")
 	c.set_area_bounds(Vector2(-40, -40), Vector2(40, 40))
+	c.set_wander(false)
 	return c
 
 
@@ -77,12 +78,13 @@ func _init() -> void:
 	check(Array(c.enemies_in_radius(Vector2(0, 0), 2.0)) == [b], "a dead body leaves queries")
 	check(c.damage(a, 5.0, 7)["dealt"] == 0.0, "a dead body takes no damage")
 	var ev := events(c)
-	check(ev.size() == 4, "events: damaged, damaged, state->DEAD, died (got %d)" % ev.size())
-	if ev.size() == 4:
+	check(ev.size() == 5, "events: damaged, IDLE->HURT (stagger), damaged, HURT->DEAD, died (got %d)" % ev.size())
+	if ev.size() == 5:
 		check(ev[0]["type"] == EV_DAMAGED and is_equal_approx(ev[0]["floats"][1], 38.0), "first damaged event carries hp 38")
-		check(ev[2]["type"] == EV_STATE and Array(ev[2]["ints"]) == [1, 6], "IDLE -> DEAD state edge")
-		check(ev[3]["type"] == EV_DIED and Array(ev[3]["ints"]) == [0, 3, 0, 0, 7], "died: def, level, elite, area, source")
-		check(c.def_name(ev[3]["ints"][0]) == "robber" and c.area_name(ev[3]["ints"][3]) == "graves", "def and area names decode")
+		check(ev[1]["type"] == EV_STATE and Array(ev[1]["ints"]) == [1, 4], "the first hit staggers an idle body")
+		check(ev[3]["type"] == EV_STATE and Array(ev[3]["ints"]) == [4, 6], "HURT -> DEAD state edge")
+		check(ev[4]["type"] == EV_DIED and Array(ev[4]["ints"]) == [0, 3, 0, 0, 7], "died: def, level, elite, area, source")
+		check(c.def_name(ev[4]["ints"][0]) == "robber" and c.area_name(ev[4]["ints"][3]) == "graves", "def and area names decode")
 
 	# The rise: RISING for 1.1 s, then IDLE; the body lingers 4 s after death, counted until removed.
 	for i in 66:

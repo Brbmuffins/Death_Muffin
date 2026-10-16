@@ -7,6 +7,7 @@
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
 #include "core/world.h"
@@ -15,6 +16,7 @@ class DmCore : public godot::RefCounted {
 	GDCLASS(DmCore, godot::RefCounted)
 
 	dm::World world;
+	godot::RID nav_map;
 	std::vector<int32_t> query_out;
 	godot::PackedInt32Array ev_ints;
 	godot::PackedFloat32Array ev_floats;
@@ -28,12 +30,16 @@ public:
 
 	// Setup
 	void set_seed(int64_t p_seed);
+	void set_wander(bool p_on);
 	int64_t load_enemy_defs(const godot::Dictionary &p_enemies);  // the ENEMIES dictionary of data/content/enemies.json
+	void load_tuning(const godot::Dictionary &p_content);          // the whole enemies.json: ELITE, DUST, BURROW
+	void set_nav_map(const godot::RID &p_map);                      // the area's navigation map; unset = straight lines (tests)
 	void set_area_bounds(const godot::Vector2 &p_min, const godot::Vector2 &p_max);
 
 	// Commands (casts, bosses, the director)
 	int64_t spawn_enemy(const godot::String &p_def, const godot::Vector2 &p_pos, int64_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, const godot::String &p_area, bool p_rising);
-	godot::Dictionary damage(int64_t p_id, double p_amount, int64_t p_source);
+	godot::Dictionary damage(int64_t p_id, double p_amount, int64_t p_source, bool p_allow_stagger = true);
+	void stun(int64_t p_id, double p_seconds);
 	godot::PackedInt32Array enemies_in_radius(const godot::Vector2 &p_pos, double p_r);
 	int64_t add_external(int64_t p_kind, double p_radius, double p_weight);
 	void set_external(int64_t p_id, const godot::Vector2 &p_pos, bool p_alive);
@@ -45,6 +51,7 @@ public:
 	godot::PackedInt32Array enemy_ids() const;
 	godot::PackedFloat32Array enemy_positions() const;  // x, z, yaw per enemy, spawn order
 	godot::PackedInt32Array enemy_states() const;
+	godot::PackedFloat32Array enemy_ground_speeds() const;  // m/s each enemy walked this tick (walk/run clips)
 	godot::Dictionary enemy_info(int64_t p_id) const;  // one enemy (HUD target frame, tests); empty when gone
 	godot::String def_name(int64_t p_def) const;
 	godot::String area_name(int64_t p_area) const;
