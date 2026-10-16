@@ -86,8 +86,14 @@ server (B38).
 - [x] Core thralls, corpses and statuses: statuses (`client/tests/core_status.gd`), thralls with their brain, legion and enemy targeting
   (`client/tests/core_thralls.gd`) and corpses with the toxic pool (`client/tests/core_corpses.gd`). Not in it: the Veilwalker's echo corpses,
   views and co-op snapshots (their own items), and the rites that call it.
-- [ ] Client layer: login to the test server, character select, hero, camera, input, the Gravecaller's rites on the core, the
-  Gravedigger King's brain as an external entity.
+- [ ] Client layer (B43), in this order:
+  - [ ] Code sync: today's scripts, scenes and data copied into `client/` by `tools/rebuild/sync-code.mjs`, the hygiene rules for copies and
+    ports, and the project opening without errors with the per-creature systems left out.
+  - [ ] The game scene on the core: the area scene, the core and the crowd view, the hero, camera, input, and the director spawning through
+    the core.
+  - [ ] The Gravecaller's rites ported to the core.
+  - [ ] Login to the test server and character select (today's front flow, pointed at the test API).
+  - [ ] The Gravedigger King's brain as an external entity.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
 - [ ] 2-player co-op: a test lobby and relay, core snapshots.
 - [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
