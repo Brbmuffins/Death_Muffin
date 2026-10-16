@@ -45,9 +45,12 @@ static func default_rows_path() -> String:
 	return ProjectSettings.globalize_path("res://").path_join("../godot/game/view_models.json").simplify_path()
 
 
-## The model an enemy id is drawn with (godot/data/content/enemies.json modelSlug; the robber's model when it names none), or `name` itself
-## when it is already a model slug.
+## The model an enemy id is drawn with: the crowd's own table (crowd/crowd_looks.json enemy_model, today's DmEntityViews.ENEMY_SLUG: what CrowdView draws),
+## then godot/data/content/enemies.json modelSlug (the robber's model when it names none); `name` itself when it is already a model slug.
 static func model_for(name: String, enemies_path := "") -> String:
+	var looks: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://crowd/crowd_looks.json"))
+	if looks is Dictionary and (looks as Dictionary).get("enemy_model", {}).has(name):
+		return String((looks as Dictionary).enemy_model[name])
 	if enemies_path == "":
 		enemies_path = ProjectSettings.globalize_path("res://").path_join("../godot/data/content/enemies.json").simplify_path()
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(enemies_path))

@@ -28,9 +28,12 @@ slice/models/props/waystone*
 slice/models/props/prop_node_burial_mound*
 slice/models/props/prop_node_coffin_oak*
 
-# ---- Crowd creatures (client/crowd/README.md): models the vertex-animation baker reads; the rest of the Graves roster joins with it.
+# ---- Crowd creatures (client/crowd/README.md): models the vertex-animation baker reads. The Graves roster (crowd_looks.json enemy_model):
 slice/models/grave_robber
 slice/models/bone_hound
+slice/models/penitent
+slice/models/barrow_ghoul
+slice/models/skull_rat
 # the thralls the rites raise (client/crowd/crowd_looks.json thrall_model / legion): the Gravecaller's legionnaire, the other legions' bodies, the risen skeleton
 # (an archer, a bone mage), the plague bearer's sac and the Bone Colossus. skeleton_thrall, thrall_legionnaire, thrall_sentinel and thrall_plague are listed below with the people.
 slice/models/carrion_sac
