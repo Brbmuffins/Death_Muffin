@@ -36,6 +36,7 @@ test build, each with an automatic check): in the headless Full Party fight on t
 **Before numbers** (Standard fight, 30 enemies and 20 thralls, Compatibility): Helix's PC (Ryzen 9 5950X, RTX 4070 SUPER, 1440p Ultra)
 99 fps, GPU 2.9 of 10 ms; warbogar's PC (Core i7-8700K, Arc B580, 1080p High) 41 fps, GPU 4.5 of 25 ms. Both processor-bound; the HUD is
 about 550 of 800 draw calls; slow frames pay extra 60 Hz catch-up steps. Calm play already reaches Helix's 170 Hz.
+Full Party fight on Helix's PC (Sanctum, 1440p Ultra, today's game on Compatibility, 2026-10-16): 61.5 fps, p95 21.0 ms, about 944 draw calls.
 Full Party fight, VPS processor test (today's game at c47c35a1, headless, `--benchmark --bench-size=full_party --bench-class=2`, 2026-10-16):
 the Hollow Graves (Gate B's room) 14.3 ms a frame on average, p95 24.4, p99 33.5; the Bell Sanctum 13.6 ms, p95 22.2 (an earlier run gave
 17.2 ms: the shared VPS varies by about a fifth, so Gate B runs today's game and the test build back to back).
@@ -64,9 +65,12 @@ server (B38).
   after Helix checked a test copy on his PC; Ctrl+click Settings, launcher/windows/README.md "Test build channel").
 - [x] Test server: `death-muffin-auth-test` on 127.0.0.1:5194, its own database and user, public at /death-muffin/test-api/, copies
   of the team's accounts (`server/death-muffin/test-server/`). The lobby and relay for test co-op come with the test build (Gate B).
-- [ ] Full Party benchmark fight in today's game, with before numbers on Helix's PC and in the VPS processor test. Live since 06cccafc;
-  the VPS numbers are in "Before numbers"; Helix's PC run (the Graves and the Sanctum) is still to come.
-- [ ] First test build: today's game on Forward+, fixing only what stops it running → Gate A.
+- [x] Full Party benchmark fight in today's game, with before numbers on Helix's PC and in the VPS processor test. Live since 06cccafc;
+  the numbers are in "Before numbers" (Helix's PC: the Sanctum; the Graves comes with Gate B's back-to-back run).
+- [x] First test build: today's game on Forward+, fixing only what stops it running → **Gate A passed** (2026-10-16, Helix's PC): it runs
+  without a crash or a broken screen and is faster (Full Party, Sanctum, 1440p Ultra: 61.5 fps, p95 21.0 ms on Compatibility; 100.2 fps,
+  p95 14.2 ms, worst 22 ms, no hitch on Forward+). The lighting is too bright on Forward+ (flat cream pools under every light, white glow
+  blobs): today's values were tuned for Compatibility, which clamps before tone mapping. Calibrating them is a test build item.
 
 **Test build checklist** (built ahead while Gate A waits; nothing from it reaches anyone before Gate A passes):
 - [x] Assets: `tools/rebuild/sync-assets.mjs` copies the test build's assets from `godot/assets` into `client/assets` by the list
@@ -130,6 +134,8 @@ server (B38).
     progression comes), rewards (the defeat events exist: `bosses.defeated`, `brain_event`, `DmBoss.died`), the boss bar and banners (the full HUD), Easy auto combat's use of him, replicating him to guests (co-op).
 - [x] Core obstacles: Ossuary Wall solid for the core's enemies (`DmCore.add_obstacle`, a box the core keeps enemies out of and their steering
   slides along; `client/tests/core_enemies.gd` obstacles, `client/tests/rites.gd`). A later rite or boss barrier uses the same call.
+- [ ] Lighting calibration for Forward+: today's light energies, falloff, ambient, exposure, fog and glow (and the bake's) retuned so the rebuild's
+  Graves looks like today's game on Compatibility (the reference) before the first rebuild test build; improvements wait for the look pass.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
 - [ ] 2-player co-op (the combat core's half is built: native/README.md "Co-op", `client/tests/core_coop.gd`):
   - [x] Core snapshots: `DmCore.snapshot` (20 Hz, the Full Party in about 1.2 KB), `take_reliable` and `baseline` on the host, a puppet core (`set_puppet`, `apply_snapshot`,
