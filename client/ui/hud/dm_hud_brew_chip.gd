@@ -52,6 +52,7 @@ func _init() -> void:
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_icon.visible = false
+	_icon.z_as_relative = false   # on the chrome layer itself: the chip already sits there, and DmHudKit.layer_tree puts a TextureRect on Z_CHROME (relative, it was one too high)
 	add_child(_icon)
 	_lbl = DmHudKit.lbl("", 9, DmUi.BONE_100, "display", true)
 	_lbl.set_anchors_preset(Control.PRESET_TOP_WIDE)

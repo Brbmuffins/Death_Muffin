@@ -3,7 +3,7 @@ extends SceneTree
 ## local mock backend only (never a real server). The real scene with a Gravecaller; kills are made through the core (`DmCoreHost.damage` with the hero's id), so they
 ## take the real path: the core's EV_ENEMY_DIED -> the game's `kill_credited` (once) -> the ported DmSessionRewards. Checks:
 ##   A start: the backend's party session is open with this player's member, its drop tape filled; the progression, the Chronicle, the meta world and the bag are loaded;
-##     the HUD reads the member's progression;
+##     the HUD's adapter (DmNextUiHost) reads the member's progression;
 ##   B kills: each one credited once and earned by the member in range; the Kill Chain and Soul Harvest count the hero's own; nothing is applied before the backend accepts; a flush
 ##     applies the XP and the kill counts and the server's counters agree; a thrall's kill is its owner's; the HUD's level, XP and chain follow;
 ##   C gold and shards go straight to the purse (pooled over goldEveryKills kills, elites pay at once), and the HUD shows them; the upgrades box shows by today's rule;
@@ -107,7 +107,7 @@ func _a_start() -> void:
 	check(g.chron != null and m.trophy_store.is_valid(), "the Chronicle keeps the first-kill trophies")
 	check(g.meta != null and g.meta.member == m and not g.meta.omen.is_empty(), "the meta world: this member, the week's Omen")
 	check(g.loot != null and g.loot.inventory != null and g.loot.slots().size() == 2, "the bag is the server's (%d rows)" % (g.loot.slots().size() if g.loot != null else -1))
-	check(g.hud.prog == m.prog and g.hud.character == g.character and m.prog.character == g.character, "the HUD reads the member's progression and the game's character")
+	check(g.ui_host.prog == m.prog and g.ui_host.character == g.character and m.prog.character == g.character, "the HUD's adapter reads the member's progression and the game's character")
 	check(m.take_item.is_valid() and m.loot_view.rune_owned.is_valid() and m.loot_view.claim_requested.is_connected(g.loot._on_claim), "the loot node takes, claims and knows the runes owned")
 
 
@@ -147,8 +147,7 @@ func _b_kills() -> void:
 	check(credited.size() == 1 and int(credited[0][1]) == g.session.get_my_id(), "a thrall's kill is credited to its owner's peer (%s)" % str(credited))
 	th.clear()
 	await ticks(2)
-	g.hud.refresh()
-	var vm := g.hud.last_vm()
+	var vm := g.ui_host.hud_state()
 	check(int(vm["level"]) == int(g.character["level"]) and vm["xp"] == g.character["experience"], "the HUD shows the level and XP the server accepted")
 	check(vm["chain"] is Dictionary and int(vm["chain"]["count"]) == m.chain.count, "the HUD's Kill Chain meter counts with the member's chain")
 
@@ -174,10 +173,10 @@ func _c_purse() -> void:
 	for d in m.loot_view.debug_drops():
 		only_items = only_items and d["kind"] == "item"
 	check(only_items, "nothing but items lies on the ground (gold and shards never wait)")
-	g.hud.refresh()
-	var vm := g.hud.last_vm()
+	var vm := g.ui_host.hud_state()
 	check(int(vm["gold"]) == int(g.character["gold"]) and int(vm["shards"]) == int(m.prog.local["shards"]), "the HUD shows the purse (%d gold)" % int(vm["gold"]))
-	check(bool(vm["reveal"]["hud.upgrades"]), "the upgrades box shows once the character has earned")
+	await ticks(10)   # the HUD's next reveal tick (DmGameUi._progressive_tick: gold earned in hunting ground)
+	check(g.ui.reveal.has("hud.upgrades") and g.ui.hud.up_plate.visible, "the upgrades box shows once the character has earned")
 
 
 # ------------------------------------------------------------------------------------------------------------------ D
@@ -303,12 +302,11 @@ func _g_belt() -> void:
 	var q := InputEventKey.new()
 	q.keycode = KEY_Q
 	q.pressed = true
-	g.hud._unhandled_key_input(q)
+	g.ui_host._unhandled_key_input(q)
 	await ticks(2)
 	check(_count_of("flask_hp_minor") == flasks0 - 1, "Q drinks a flask from the bag (%d -> %d)" % [flasks0, _count_of("flask_hp_minor")])
 	check(hero.hp > hp0, "the flask heals the hero")
-	g.hud.refresh()
-	var brews: Array = g.hud.last_vm()["brews"]
+	var brews: Array = g.ui_host.hud_state()["brews"]
 	check(not brews.is_empty(), "the HUD's belt shows the flask and the brew slots (%d)" % brews.size())
 
 
@@ -326,5 +324,5 @@ func _h_saving() -> void:
 	var saved: Dictionary = cr.data if cr.ok and cr.data is Dictionary else {}
 	check(int(saved.get("level", 0)) == int(g.character["level"]) and int(saved.get("experience", -1)) == int(g.character["experience"]) and int(saved.get("gold", -1)) == int(g.character["gold"]),
 		"the backend holds the level, XP and gold earned (%s)" % str([saved.get("level"), saved.get("experience"), saved.get("gold")]))
-	check(g.hud.save_chip()["text"] == "Saved ✓", "the save chip says saved (%s)" % g.hud.save_chip()["text"])
+	check(g.ui_host.save_chip()["text"] == "Saved ✓", "the save chip says saved (%s)" % g.ui_host.save_chip()["text"])
 	await g.leave()

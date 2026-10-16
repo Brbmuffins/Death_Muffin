@@ -34,6 +34,8 @@ const RECONNECT_S := [5.0, 15.0, 60.0, 120.0]
 const OFFER_S := 300.0             ## an invite or ask to join is shown this long (the lobby honours it as long)
 const NAME_MAX := 32
 const MAX_LEVEL := 100             ## a guest's claimed level is clamped (it only decides what ITS body can cast on the host)
+const CHAT_MAX := 200               ## characters in one chat line
+const CHAT_PER_S := 4               ## host: chat lines and announcements a peer may send in one second
 
 const ERROR_TEXT := {
 	"full": "That session is full (4 of 4 players). Try another one, or ask the host to make room.",
@@ -91,6 +93,8 @@ var _url := ""
 var _profile_sent := false
 var _members: Dictionary = {}            ## host: peer id -> the rewards member's key (its character id; -peer for one that cannot be credited)
 var backend_session := ""                ## guest: the host's backend party session (for our own session_join)
+var chat_log: Array[String] = []         ## the party chat's last 40 lines, as shown
+var _chat_rate: Dictionary = {}          ## host: peer id -> [second, count]
 var _guest_meals: Dictionary = {}        ## host: peer -> {until (its body clock ms), rate (hp a second)} of a guest's meal (guest_use)
 var _build_asked := {}                   ## host: peer -> when it last asked us to re-read its build (ms)
 var _after_host: Array = []              ## Callables to run once our new session exists (invite a friend, accept an ask)
@@ -695,6 +699,7 @@ func _on_player_left(id: int) -> void:
 	var key: int = _members[id]
 	_members.erase(id)
 	_guest_meals.erase(id)
+	_chat_rate.erase(id)
 	if shell.rewards != null and shell.rewards.members.has(key):
 		shell.rewards.remove_member(key)
 	changed.emit()
@@ -954,6 +959,194 @@ func sync_levels() -> void:
 func _rpc_levels(t: Dictionary) -> void:
 	levels = t
 	changed.emit()
+
+
+# ---- ground drops between members (ground.cjs): the Reliquary's Drop, drawn for the members the server lets take it -----------------------
+
+## A member dropped gear on the party session's ground (DmNextUiHost.drop_gear): every member the server says may take it draws it.
+func share_ground(entry: Dictionary) -> void:
+	if not in_party() or not shell.session.is_active():
+		return
+	if shell.session.is_host():
+		_broadcast_ground(1, entry)
+	else:
+		_rpc_ground.rpc_id(1, entry)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_ground(entry: Dictionary) -> void:
+	if multiplayer.is_server() and shell != null and shell.rewards != null and entry.get("drop_id") is String and entry.get("eligible") is Array:
+		_broadcast_ground(multiplayer.get_remote_sender_id(), entry)
+
+
+func _broadcast_ground(from_peer: int, entry: Dictionary) -> void:
+	for m: DmRewardsMember in shell.rewards.members.values():
+		if m.peer_id == from_peer or not (entry["eligible"] as Array).has(m.character_id):
+			continue
+		if m.peer_id == multiplayer.get_unique_id():
+			_show_ground(entry)
+		elif _here(m.peer_id):
+			_rpc_ground_show.rpc_id(m.peer_id, entry)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_ground_show(entry: Dictionary) -> void:
+	_show_ground(entry)
+
+
+func _show_ground(entry: Dictionary) -> void:
+	var m: DmRewardsMember = shell.my_member() if shell != null else null
+	if m != null:
+		m.loot_view.shared_item(entry)
+
+
+func _hide_ground(drop_id: String) -> void:
+	var m: DmRewardsMember = shell.my_member() if shell != null else null
+	if m != null:
+		m.loot_view.remove_shared(drop_id)
+
+
+## Someone took a dropped piece: every other copy of it goes.
+func share_taken(drop_id: String) -> void:
+	if not in_party() or not shell.session.is_active():
+		return
+	if shell.session.is_host():
+		_broadcast_taken(1, drop_id)
+	else:
+		_rpc_taken.rpc_id(1, drop_id)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_taken(drop_id: String) -> void:
+	if multiplayer.is_server() and shell != null:
+		_broadcast_taken(multiplayer.get_remote_sender_id(), drop_id)
+
+
+func _broadcast_taken(from_peer: int, drop_id: String) -> void:
+	for p in shell.net.guests():
+		if p != from_peer:
+			_rpc_taken_show.rpc_id(p, drop_id)
+	if from_peer != 1:
+		_hide_ground(drop_id)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_taken_show(drop_id: String) -> void:
+	_hide_ground(drop_id)
+
+
+# ---- party chat ---------------------------------------------------------------------------------------------------------------------------
+
+## Returns true when the line went to the party (false = solo: the caller shows its "nobody hears you").
+func chat(text: String) -> bool:
+	var t := text.strip_edges().substr(0, CHAT_MAX)
+	if t == "" or not in_party() or not shell.session.is_active():
+		return false
+	if shell.session.is_host():
+		_broadcast_chat(1, t)
+	else:
+		_rpc_say.rpc_id(1, t)
+	return true
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_say(text: String) -> void:
+	if not multiplayer.is_server() or shell == null:
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	if _over_rate(peer):
+		return
+	var t := text.strip_edges().substr(0, CHAT_MAX)
+	if t != "":
+		_broadcast_chat(peer, t)
+
+
+## Host: more than CHAT_PER_S lines (chat + announcements) from one peer in a second are dropped.
+func _over_rate(peer: int) -> bool:
+	var now := int(Time.get_ticks_msec() / 1000)
+	var r: Array = _chat_rate.get(peer, [now, 0])
+	if int(r[0]) != now:
+		r = [now, 0]
+	r[1] = int(r[1]) + 1
+	_chat_rate[peer] = r
+	return int(r[1]) > CHAT_PER_S
+
+
+func _broadcast_chat(peer: int, text: String) -> void:
+	var who := ""
+	for r in shell.session.get_roster():
+		if int(r["peer_id"]) == peer:
+			who = String(r["name"])
+	for p in shell.net.guests():
+		_rpc_chat.rpc_id(p, who, text)
+	_show_chat(who, text)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_chat(who: String, text: String) -> void:
+	_show_chat(who, text)
+
+
+## A find the whole party reads in chat (a legendary, a new rune). `line` names the finder as "{who}"; the host fills in the roster name.
+## Returns false when not in a party (the caller shows its own line).
+func announce(line: String) -> bool:
+	var t := line.strip_edges().substr(0, CHAT_MAX)
+	if t == "" or not in_party() or not shell.session.is_active():
+		return false
+	if shell.session.is_host():
+		_broadcast_announce(1, t)
+	else:
+		_rpc_announce.rpc_id(1, t)
+	return true
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_announce(line: String) -> void:
+	if not multiplayer.is_server() or shell == null:
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	if _over_rate(peer):
+		return
+	var t := line.strip_edges().substr(0, CHAT_MAX)
+	if t != "":
+		_broadcast_announce(peer, t)
+
+
+func _broadcast_announce(peer: int, line: String) -> void:
+	var who := "Someone"
+	for r in shell.session.get_roster():
+		if int(r["peer_id"]) == peer:
+			who = String(r["name"])
+	var text := line.replace("{who}", who)
+	for p in shell.net.guests():
+		_rpc_announced.rpc_id(p, text)
+	_show_line(text)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_announced(text: String) -> void:
+	_show_line(text)
+
+
+func _show_chat(who: String, text: String) -> void:
+	_show_line("[%s] %s" % [who, text], not _is_me(who))
+
+
+## True when `who` (a roster name) is this player: their own chat echoes back from the host without a ping.
+func _is_me(who: String) -> bool:
+	var me := multiplayer.get_unique_id()
+	for r in shell.session.get_roster():
+		if int(r["peer_id"]) == me:
+			return String(r["name"]) == who
+	return false
+
+
+## `ping`: another player's chat line, which the HUD marks with a sound.
+func _show_line(line: String, ping: bool = false) -> void:
+	chat_log.append(line)
+	if chat_log.size() > 40:
+		chat_log.pop_front()
+	shell.game_event("chat", {"text": line, "ping": ping})
 
 
 # ---- friends over the lobby: presence, invites, asks to join (DECISIONS B18) ------------------------------------------------------------

@@ -159,7 +159,7 @@ server (B38).
   `client/assets/crowd/baked` and ship in the assets pack, counted by their inputs (baker, looks, models), so a code-only build is a 15 MB code
   pack and the 268 MB assets pack is reused. The first publish waits for the benchmark in the client.
 - [ ] The new HUD and the Low to Ultra presets:
-  - [ ] The HUD, same layout and look, under 150 draw calls: built, **not yet measured**. `DmNextHud` runs today's HUD in the game scene from the core (orbs, hotbar with cooldowns and the cast state, target frame
+  - [ ] The HUD, same layout and look, under 150 draw calls: built, **not yet measured**. Today's HUD runs in the game scene from the core (today's `DmGameUi` on the ported `DmNextUiHost` since the panels, DECISIONS B46) (orbs, hotbar with cooldowns and the cast state, target frame
     with statuses, minimap, thrall pips, "no corpse" dimming, floating numbers with today's caps, XP and level, area line, banners, the King's plate and map dot, the death veil), every readout group a movable, scalable piece
     (client/README.md "The HUD on the core"). The budget is modelled at 63 draw calls as the game scene shows it and 81 with every piece on (`client/tests/hud.gd`; the model reproduces the 18 numbers a rendered run
     counted), but ticks only when `client/tools/hud_measure.gd` has measured it in the game scene: the three 55 s runs of this item went on lavapipe's start-up (~44 s before the first frame; "The HUD's budget"). Left: that
@@ -178,10 +178,10 @@ server (B38).
   - [x] The party flow on the test lobby and relay (`DmNextParty`: host, join by code or id, invite, ask to join, answer, leave; `DmConfig` pins the test lobby and the test relay's port).
   - [x] The test lobby and relay installed and running (2026-10-16, Helix's OK; `server/death-muffin/test-server/coop/README.md`): `death-muffin-lobby-test` on 5195 behind `/death-muffin/test-lobby/`, `death-muffin-relay-test` on udp 5196,
     in the drift report's service list.
-  - [x] The player's way in: the Social window (today's window and its Party and Friends tabs, O, F and the HUD's Social button) with its own small host until the panel host comes (`client/next/hud/dm_next_social.gd`), friends' presence over the lobby,
+  - [x] The player's way in: the Social window (today's window and its Party and Friends tabs, O, F and the HUD's Social button) (today's `DmUiSocial` in the panel host since the panels), friends' presence over the lobby,
     and main.gd's hand-over (join, leave, a refused join, a closed party: home with the reason); `client/tests/social.gd`.
-  - [ ] Still to do beside the core: ground drops between members with the Reliquary (the panels) and the party's seals with the Chapterhouse; the other six bosses'
-    state with their items; a new baseline for each new area; party chat. (A guest's build from the server's record and its own account came with value on the server.)
+  - [ ] Still to do beside the core: the party's seals with the Chapterhouse; the other six bosses' state with their items; a new baseline for each new area. (A guest's build
+    from the server's record and its own account came with value on the server; party chat and ground drops between members with the panels.)
   - [ ] Phones join as guests only (B40): the same messages; measure the snapshot on the Mobile renderer's budget when the first phone build exists.
 - [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
   It runs in the Hollow Graves on both sides (72 Graves enemies, 32 thralls, the Gravedigger King): the test build has the Graves roster, and today's
@@ -214,17 +214,24 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
     Omen and save chip; the King's summon takes its soul shards. `client/tests/rewards.gd` replays today's rewards tests on the port, `client/tests/value.gd` plays it in the scene.
   - [x] A guest's own account (B22, 2026-10-16): the host makes it a rewards member that rolls its own drops, it joins the host's backend party session with its own token
     (DmNextJoiner: its progression, saves, drop tape and bag), the host reads its build from the server (`remote_builds`, its runes too), its XP and drops are sent on, its belt
-    drinks from its own bag; `client/tests/coop.gd` "the guest's own account". Ground drops between members start from the Reliquary's Drop: they come with the panels.
-- [ ] The panels on the core (DECISIONS B46): the panel host (`DmGameUi`, `DmNextUiHost`), the Reliquary (bag, gear, runes), the Grimoire and loadout, Settings (the presets get their window),
+    drinks from its own bag; `client/tests/coop.gd` "the guest's own account". Ground drops between members (they start from the Reliquary's Drop) came with the panels.
+- [x] The panels on the core (DECISIONS B46, 2026-10-16): the panel host (`DmGameUi`, `DmNextUiHost`), the Reliquary (bag, gear, runes), the Grimoire and loadout, Settings (the presets get their window),
   chat and the menu row; the Social window moves into the host.
-  - [ ] `DmNextUiHost` ported: the host contract on the core, the HUD's view-model and numbers from the core (what `DmNextHud` did), the bag from `DmNextLoot`, no counsel until tips.
-  - [ ] `DmGameUi` and `DmUiSocial` copied in; the game scene composes them as today (`_start_hud`); `DmNextHud` retires, its tests move to the adapter.
-  - [ ] The Reliquary on the server's bag (equip, sell, sort, learn, socket, drop: ground drops between members), the worn look and the runes reaching the caster on a change.
-  - [ ] The Grimoire's loadout on the hotbar; Settings applying presets, fps and window live; chat (party chat over the lobby); the menu row whole.
-  - [ ] The HUD's budget with the panels (0.5 ms, 150 draw calls; the benchmark's rounds) and a panels suite.
+  - [x] `DmNextUiHost` ported (2026-10-16): the host contract on the core, the HUD's view-model and numbers from the core's events, the target by id, the bag and the drops the
+    loot node's, the counsel null until tips, no Altar (B36); the Codex ported (spawns from the core).
+  - [x] `DmGameUi` and `DmUiSocial` copied in; the game scene composes them as today (`_start_hud`, today's `DmAreaFlow` for the banners); the rebuild's own HUD host and Social host
+    retired (`tools/hygiene/retired.json`), their tests moved onto today's UI (`client/tests/hud_shim.gd`).
+  - [x] The Reliquary on the server's bag (equip, sell and sort in `client/tests/panels.gd`; learning and socketing a rune are today's panel code on the adapter, not yet in a rebuild
+    test), the worn look and the runes reaching the caster on a change (`DmNextGame._start_hud`); ground drops between members (`DmNextParty.share_ground`, the loot node's claim;
+    `client/tests/coop.gd`).
+  - [x] The Grimoire's loadout on the hotbar; Settings applying presets and the rest live (the adapter's `apply_settings`); party chat and the finds the party reads (`DmNextParty.chat`,
+    `announce`); the menu row whole.
+  - [x] The HUD's budget with the panels: the draw-call model 75 as the game scene shows it and 86 with every piece on (150), the HUD and panels about 0.4 ms of a headless frame (0.5;
+    `client/tests/hud.gd`), the benchmark's HUD rounds switch the panel host; `client/tests/panels.gd` (every panel, the Reliquary, the loadout, Settings, chat). The draw calls on a
+    real GPU stay Helix's PC's (Gate B).
 - [ ] The Reaper (discipline 11) and its nine rites.
 - [ ] The other 12 areas as scenes (`client/tools/build_area.gd`, a lighting bake each through Helix's helper), their rosters baked, moving between areas.
-- [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes).
+- [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
 - [ ] The Depths, gathering and the Chapterhouse (stations, waystones, people).
 - [ ] Tips, onboarding and sound on the core's events.
 - [ ] Gate C: every rule test matches today's, playtests OK, nothing slower than the test build.

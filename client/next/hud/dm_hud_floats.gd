@@ -8,7 +8,7 @@ extends Control
 ## size) share a z layer, outlines under fills, so all the numbers of a kind are two draw calls however many are alive: a Full Party fight draws about eight.
 ##
 ##   floats.add(screen_pos, "123", "crit")      # kinds: DmFloatingNumber.STYLE (hit crit dot thrall hurt gold shard xp info big skill heal ward)
-## The caps of how many combat numbers may live at once are DmFloatBudget's (DmNextHud counts them before calling add).
+## The caps of how many combat numbers may live at once are DmFloatBudget's (DmNextUiHost counts them before the float reaches the HUD).
 
 const CAP := 48                                ## the pool: more than the 22 combat numbers + the 4 a crit may add + the words the hero's cast feedback shows
 const OUTLINE := 3                             ## `outline_size`; the old label also drew a 1 px shadow under it, which the outline covers

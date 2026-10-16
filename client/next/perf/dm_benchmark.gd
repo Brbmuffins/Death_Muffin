@@ -337,13 +337,9 @@ func _core_end() -> void:
 	_core = {"ticks": host.ticks - _core_ticks0, "step_us": host.step_us, "sync_us": host.sync_us, "dispatch_us": host.dispatch_us}
 
 
-## The HUD nodes the game has (the HUD on the core `hud`, the panels `ui` when they exist).
+## The HUD nodes the game has: today's HUD and panels (`ui`, DmGameUi on the core, DECISIONS B46).
 func _hud_nodes() -> Array:
-	var out: Array = []
-	for n in [game.hud, game.ui]:
-		if n != null and is_instance_valid(n):
-			out.append(n)
-	return out
+	return [game.ui] if game.ui != null and is_instance_valid(game.ui) else []
 
 
 ## The HUD's share of the main thread: the same fight with the HUD off and on, `hud_rounds` times over (`hud_sample_s` each after a short settle), the average frame with it less

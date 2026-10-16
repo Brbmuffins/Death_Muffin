@@ -25,7 +25,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rites.gd          # the Gravecaller's rites on the core: all 25 necromancer rites against today's rules, a fight (bakes into a scratch folder; 90 s of game time, --fixed-fps 60 makes it faster)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/boss.gd           # the Gravedigger King on the core: his brain replayed against today's scenarios, his fight, the thralls, the rites, his defeat and a new summon (bakes into a scratch folder; add --fixed-fps 60 before --path to run it faster than real time)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/front.gd   # boot, login, character select and the game scene with the chosen character on the mock; the API rule; the real test server's health (bakes into a scratch folder)
-/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/hud.gd     # the HUD on the core: target frame, minimap dots, hotbar and cooldowns, thrall pips, floating number caps, pools, pieces, z layers, the draw-call model (bakes into a scratch folder)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/hud.gd     # the HUD on the core (today's DmGameUi on DmNextUiHost, driven through tests/hud_shim.gd): target frame, minimap dots, hotbar and cooldowns, thrall pips, floating number caps, pools, pieces, z layers, the draw-call model (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/benchmark.gd       # the benchmark on the core: the Full Party fight held as the setup says, Easy auto combat, the report and its budget section, real launches, nothing sent but to the test API (bakes into a scratch folder; about 2 minutes)
 node tools/rebuild/compare-scenarios.mjs                                                       # the seeded scenario comparison with today's game: ten headless runs, one at a time, and a table against stated tolerances (about 6 minutes; "The seeded scenario")
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/coop.gd    # 2-player co-op: a host and a guest in one process over a real local lobby and relay (needs `cd server/death-muffin/lobby && npm ci`; bakes into a scratch folder; about a minute)
@@ -34,6 +34,7 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rewards.gd                # the rewards node on the core: today's tests/rewards replayed (sessions, batches, lost replies, refusals, the end, per-member loot), on the mock
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/value.gd   # value on the server in the game scene: kills, accepted XP, the purse, a claimed drop, brews and lifesteal, the meta, the belt, saving ("Value on the server")
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/fx_motes.gd               # the effects' particle ring in C++ (DmMotes) against today's ring, float for float; INFO: its update time on both sides
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/panels.gd # today's panels on the core: every panel opens, the Reliquary (equip, sell, sort) on the server's bag, the loadout, Settings live, chat
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the thralls) into client/assets/crowd/baked (not committed)
 ```
@@ -236,27 +237,28 @@ no rewards, for 180 s of game time. Everything is read from the host's signals a
 
 ## The HUD on the core
 
-Today's HUD (`DmHud`: orbs, hotbar with cooldowns and the cast state, target frame, minimap, thrall pips, XP and level, area line, banners, toasts, floating numbers, death veil) runs in the game scene
-(`opts.hud = true`) with the same layout and look, fed from the combat core. `DmNextHud` (`next/next_hud.gd`, a CanvasLayer) owns a `DmHud` and a `DmNextHudVm` (`next/hud/dm_next_hud_vm.gd`); both are
-ports (`client/code.list`). Nothing runs per creature per frame:
+Today's HUD and panels run in the game scene (`opts.hud = true`; DECISIONS B46) as today's game composes them: `DmGameUi` (`game_ui/dm_game_ui.gd`, a copy) with every panel, on the
+host-contract adapter `DmNextUiHost` (`next/hud/dm_next_ui_host.gd`, ported to the core), whose view-model is `DmNextHudVm` (`next/hud/dm_next_hud_vm.gd`, ported: it reads the core's
+arrays). `DmGameUi` applies the view-model every 50 ms (`HUD_INTERVAL_MS`) to today's `DmHud` (orbs, hotbar with cooldowns and the cast state, target frame, minimap, thrall pips, XP and
+level, area line, banners, toasts, floating numbers, death veil). The adapter hears the core host instead of each enemy (`_watch_core`). Nothing runs per creature per frame:
 
 | piece | where it reads |
 |---|---|
-| view-model refresh | a timer of 50 ms counted from the core's ticks (`DmCoreHost.ticked`), as `DmGameUi.HUD_INTERVAL_MS`; ~0.2 ms with a Full Party crowd, 0.06 ms per frame at 60 fps |
+| view-model refresh | `DmGameUi`'s 50 ms (`ui_host.hud_state()`): ~0.4 ms with a Full Party crowd with the panels' own keys merged, about 0.2 ms per frame at 60 fps (`tests/hud.gd`) |
 | orbs, XP, level, area | the hero body (`hp`, `resource`), the character, `DmContent` |
-| hotbar, cooldowns, cast state | the hero's `DmRiteCaster` (`cooldown_left`, essence, souls); the kit's mapping (`DmRiteHotbar`) |
+| hotbar, cooldowns, cast state | the hero's `DmRiteCaster` (`cooldown_left`, essence, souls); the player's loadout (`DmLoadout`, the Grimoire's) |
 | "no corpse" / "no legion" dimming | one `core.corpses_in_radius` (13 m around the hero) and `core.thrall_count` per refresh |
-| target frame | `core.enemy_info(id)`, `core.statuses(id)` (4 bytes a status: id, stacks, tenths of a second) for the one enemy under the cursor or last aimed at (held 4 s); chips from its affix list |
+| target frame | `core.enemy_info(id)`, `core.statuses(id)` (4 bytes a status: id, stacks, tenths of a second) for the one enemy under the cursor or last aimed at (held 4 s, `ui_host.target_id()`); chips from its affix list |
 | minimap dots | `enemy_ids / enemy_positions / enemy_states`, `thrall_positions / thrall_states`, `corpse_positions`: flat arrays, filtered in one pass into the packed lists the minimap takes; an elite is flagged from `enemy_spawned` |
 | thrall count, pips, red pips | `core.thrall_places`, `thrall_owners / thrall_hp / thrall_states` (under 35 % health) |
-| floating numbers | the caster's `hit_number` (the rites' own events, with the impact point), the host's `enemy_damaged` of a thrall and `status_dot`, the hero's `hurt`; `DmFloatBudget` caps them (14 hit, 5 dot, 6 thrall, 22 in all, a crit 4 past) |
+| floating numbers | the caster's `hit_number` (the rites' own events, with the impact point), the core host's `enemy_damaged` of a thrall and `status_dot`, the hero's `hurt`; `DmFloatBudget` caps them (14 hit, 5 dot, 6 thrall, 22 in all, a crit 4 past) |
 | boss plate, minimap dot | `g.bosses.active_boss()` (name, phase, hp; the King's dot on the map) |
-| notices | the first entry into an area (banner), a themed wave (banner once per area), a refused cast (an "info" number over the hero), the boss fx's banners and the summon refusals (`DmNextHud.game_event`, the sink of `bosses.fx.host`) |
+| notices | today's `DmAreaFlow` (an area's first entry, a themed wave), a refused cast (an "info" number over the hero), the boss fx's banners and the summon refusals: all `DmNextGame.game_event`, which reaches `DmGameUi` |
 
-The upgrades box (Empower, Quicken and the wave dial), the belt (Q, Z, X), the Kill Chain, the Omen, the save chip and the pickup lines come with value ("Value on the server").
-Not in the game scene yet, each until its ROADMAP item (the panels' host `DmNextUiHost`, `DmGameUi` and the party chain stay out, `client/code.list`): the menu row, chat and the report button,
-the Spellbook, party frames of other players, the Depths readout, interaction prompts and the Next line, the counsel's tips and the onboarding's NEW cues, the loadout (the hotbar is the kit's). The pieces whose systems are not in the scene take their data from `DmNextHud.feeds`, which a test or a later system fills with the same view-model keys
-(`tests/hud_feeds.gd` fills all of them).
+The upgrades box (Empower, Quicken and the wave dial), the belt (Q, Z, X), the Kill Chain, the Omen, the save chip and the pickup lines come with value ("Value on the server"); the menu row, the
+panels and the Social window with `DmGameUi`. Not in the game scene yet, each with its system: the counsel (`DmNextCounsel` reads creatures: the tips item; the adapter's counsel is null), the
+Chapterhouse's prompts, the Depths readout, gathering's and the Acre's panels, the Altar (DECISIONS B36). `tests/hud_feeds.gd` (`HudFeeds.full()`) fills every view-model key for the
+tests that draw every piece.
 
 **Pieces (DECISIONS B40).** Every readout group is a Control of its own with its own anchors and offsets, listed in `DmHud.pieces` (`party omen ward chain belt target boss map toasts banner prompt hint chat xp altar
 upgrades`). `set_piece(id, offset, scale)` moves one by `offset` logical pixels and scales it (0.5 to 2) around the corner its anchor holds (a piece anchored to the top right grows left and down, the hotbar up and
@@ -303,8 +305,9 @@ Vulkan pipelines; it did not shrink with drawing switched off), so a 55 s run ha
 and icons, 1 borders) and 81 with every piece on and fed (41 text, 13 art). The test fails above 150, so a control left on the wrong layer or a new polygon per thing shows up in CI. Asked about logged copies of today's widgets in the same
 fight the model said about 500 for the game scene's HUD (the hotbar 188, the minimap column 160, the floating numbers 104, the target frame 18) and 630 with every piece on; the benchmark counted 544 to 564 for it in Compatibility. What looks different from today's HUD, piece by piece: native/README.md "Differences from today's game", "The HUD".
 
-*CPU.* `tests/hud.gd` prints the refresh (view-model build and apply) and a frame with the HUD against one without; `DmNextHud.refresh_us` counts the live refreshes. With 72 enemies and 32 thralls on this VPS: build 0.19 ms + apply 0.05 ms
-every 50 ms; a headless frame with the HUD costs ~0.1 to 0.2 ms more than without (no drawing: every `_process`, tween and `_draw` callback runs).
+*CPU.* `tests/hud.gd` prints the refresh (view-model build and apply) and a frame with the HUD against one without. With 72 enemies and 32 thralls on this VPS and today's
+panel host (2026-10-16): build 0.42 ms (the core's view-model and `DmGameUi`'s own keys) + apply 0.14 ms every 50 ms; a headless frame with the HUD and panels costs about 0.4 ms more than
+without (no drawing: every `_process`, tween and `_draw` callback runs); the benchmark's HUD rounds measure the same share in the Full Party fight.
 
 ## Value on the server
 
@@ -332,7 +335,11 @@ saves and drop tape; the host reads the guest's build from the server (`remote_b
 host's accepted reports, gold, shards and drop events go to the guest, which rolls its items from its own tape and claims them into its own bag; its belt drinks from its own
 bag and the host applies the drink.
 
-Not yet, each with its item: ground drops between members (they start from the Reliquary's Drop button: the panels), the Covenant Seal's altar choice and the boss key prompt (the panels), the Codex (the panels), chat lines (a rune's or a legendary's line waits for chat).
+**Ground drops between members** (ground.cjs): the Reliquary's Drop (`DmNextUiHost.drop_gear`) puts a piece on the party session's ground; the party draws it for the members the server
+lets take it (`DmNextParty.share_ground`), the first pickup wins (`DmNextLoot`'s claim, `api.ground_pickup`) and the other copies go (`share_taken`). A rune's or a legendary's find is a
+chat line the party reads (`DmNextParty.announce`).
+
+Not yet, each with its item: the Covenant Seal's altar choice and the boss key prompt (`DmBossMeta`).
 `tests/rewards.gd` replays today's `godot/tests/rewards` on the port (a test double emits `kill_credited`); `tests/value.gd` plays the game scene on the mock: kills through the core, the accepted
 XP and counts against the server's counters, the purse, a drop claimed into the bag, brews and lifesteal, the meta, Q's flask, and the save on leave.
 
@@ -345,7 +352,7 @@ party's other player is a GUEST: its game scene (`DmNextGame` joined, `is_guest`
 |---|---|---|
 | core | simulates: enemies, thralls, corpses, statuses, affixes; the hero and the King are its externals | a puppet: bodies come from the wire, ease toward snapshots, events are derived from state edges and health drops |
 | waves, the King's brain, rites | the director, `DmBossHost`, the casters (every player's cast is resolved here) | none: the director is off, the King is a puppet fed by `DmBossHost`'s state, a caster only asks and plays the host's events |
-| crowd, effects, HUD | from its own events | from the puppet's events, the same consumers (`DmCrowd`, `DmEnemyFx`, `DmNextHud`) |
+| crowd, effects, HUD | from its own events | from the puppet's events, the same consumers (`DmCrowd`, `DmEnemyFx`, `DmNextUiHost`) |
 | kills | `kill_credited` (once per death, with the killer's peer: the hook of the kill report and the rewards) | nothing: its `enemy_died` events draw the death and credit no one |
 | a hero | an external of the core (`core_id`); a guest's too | `core_id` is the HOST's id for it (told in a table): the owner id in a thrall's event, the source of a blow |
 
@@ -367,14 +374,15 @@ party's other player is a GUEST: its game scene (`DmNextGame` joined, `is_guest`
 **Joining** (`next/party/dm_next_party.gd`, node `Party`, a port of today's): hosting turns the running solo session into a hosted one (`host_session(name, closed)`: lobby `create`, `DmRelayPeer.host`, `DmSession.swap_transport`; Open parties are listed, Closed ones
 need the code or an invite); `join_by_code` / `join_session` / `join_friend` seat a solo game in a party (`join_ready(lobby, info)`: the shell frees the solo game and starts a guest game on that socket, `opts.lobby`); `invite_friend`,
 `ask_to_join`, `answer_request`, `accept_invite` are the friends flows over the lobby's presence of online mutual friends; `view()` is the contract of today's party pane. Errors are the player-readable `ERROR_TEXT` / `CLOSE_TEXT`.
-Not in it, each with its system: party chat, ground drops (the Reliquary's Drop, with the panels). The guest's own account is "Value on the server".
+Party chat goes through the host (`DmNextParty.chat`: the host names the speaker, at most 4 lines a second a player, 200 characters a line). The guest's own account and the
+ground drops between members are "Value on the server".
 A player's world keeps a lobby link (`go_online()`, after loading) so friends see it online and invites and asks arrive. The friends list itself is `DmNextFriends` (a copy: the test backend's friends routes); a friendship it changes is announced
 through the party (`friends_changed`).
 
-**The Social window** (`next/hud/dm_next_social.gd`, `DmNextSocial`) is the player's way in: today's window and panes (copies: `ui/panels/dm_social_window.gd`, its Friends and Party tabs), opened as today (O = Friends, F = Party, the HUD's Social
-button, the one button the menu row shows in this step) and wired the way today's `game_ui/dm_ui_social.gd` and the party half of `next/hud/dm_next_ui_host.gd` wire them, straight to `party` and `friends`. The Party tab hosts an Open or Closed
-party and lists the Open ones to join; the Friends tab sends and answers friend requests and joins, asks or invites an online friend; the public list is watched only while the window is open. When the panel host comes it takes the window over
-and `DmNextSocial` goes. **`main/main.gd`** does today's hand-over: `join_ready` frees the solo game and starts a guest game on the same lobby socket (behind "Entering the host's world..."); `client_ended` and a refused or failed join put the player
+**The Social window** is the player's way in: today's (`game_ui/dm_ui_social.gd` in `DmGameUi`, its window and panes `ui/panels/dm_social_window.gd`), opened as today (O = Friends,
+F = Party, the HUD's Social button) and wired through the adapter's party and friends calls (`DmNextUiHost.party_view`, `friends_view`, ...) to `party` and `friends`. The Party tab
+hosts an Open or Closed party and lists the Open ones to join; the Friends tab sends and answers friend requests and joins, asks or invites an online friend; the public list is
+watched only while the window is open. **`main/main.gd`** does today's hand-over: `join_ready` frees the solo game and starts a guest game on the same lobby socket (behind "Entering the host's world..."); `client_ended` and a refused or failed join put the player
 back in their own world with the reason as a toast.
 
 Launch arguments, for a trial without the window (any build, test lobby only): `--host-party[=name]` makes a Closed party as soon as the world is up (the code is in the log and in a toast), `--join-party=<code>` takes a seat before the game is built,

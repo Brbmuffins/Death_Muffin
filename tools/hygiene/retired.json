@@ -23,7 +23,8 @@
         "godot/next/hud/README.md",
         "godot/next/hud/dm_next_ui_host.gd",
         "godot/tests/next_acre_guide/run.gd",
-        "server/death-muffin/discord-agent/runner/lib/config.cjs"
+        "server/death-muffin/discord-agent/runner/lib/config.cjs",
+        "client/next/hud/dm_next_ui_host.gd"
       ]
     },
     {
@@ -252,6 +253,17 @@
       "reason": "the test channel publishes the rebuilt client (prepare-rebuild.sh) since Gate A passed (2026-10-16)",
       "allow": [
         "tools/hygiene/**"
+      ]
+    },
+    {
+      "id": "rebuild-hud-host",
+      "pattern": "\\bDmNextHud\\b|\\bDmNextSocial\\b|next/next_hud\\.gd|dm_next_social\\.gd",
+      "reason": "the rebuilt client's own HUD host and Social host retired for today's DmGameUi on DmNextUiHost (DECISIONS B46); today's game keeps its DmNextHud",
+      "allow": [
+        "DECISIONS.md",
+        "tools/hygiene/**",
+        "godot/**",
+        "client/code.list"
       ]
     }
   ],

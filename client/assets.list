@@ -64,7 +64,8 @@ fx/art
 fx/models
 fx/binbun
 
-# Sound: the AudioDirector autoload (audio/) loads clips from these folders by the audio map; the chat ding (audio/eleven) joins with the panel host
+# Sound: the AudioDirector autoload (audio/) loads clips from these folders by the audio map; the chat ding of the panel host (DmGameUi)
+audio/eleven/chat_ding.wav
 audio/esm
 audio/ambience
 audio/world

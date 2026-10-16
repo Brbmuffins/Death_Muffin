@@ -30,7 +30,7 @@ var fails := 0
 var checks := 0
 var errlog := ErrorLog.new()
 var g: DmNextGame
-var h: DmNextHud            # the HUD host
+var h: HudShim              # the HUD as the test drives it (tests/hud_shim.gd)
 var hud: DmHud
 var host: DmCoreHost
 var core: RefCounted
@@ -85,11 +85,10 @@ func _initialize() -> void:
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
-	await g.start(ch.data, api, {"name": "tester", "hud": true, "audio": false, "waves": false, "wander": false, "seed": 20261016, "baked_dir": OUT,
-		"hud_scale": 1.1, "hud_layout": {"map": {"offset": Vector2(-20, 10), "scale": 0.9}}})
-	h = g.hud
-	check(g.ready_ and h != null and h.hud is DmHud, "the game scene is up with the HUD (hud: true)")
-	hud = h.hud
+	await g.start(ch.data, api, {"name": "tester", "hud": true, "audio": false, "waves": false, "wander": false, "seed": 20261016, "baked_dir": OUT})
+	h = HudShim.new(g)
+	check(g.ready_ and g.ui != null and g.ui.hud is DmHud and g.ui_host != null, "the game scene is up with today's HUD and panels on the adapter (hud: true)")
+	hud = g.ui.hud
 	host = g.core_host
 	core = host.core
 	hero = g.local_body()
@@ -222,11 +221,11 @@ func the_frame() -> void:
 	for id in hud.menu_btns:
 		if hud.menu_btns[id].visible:
 			shown_btns.append(id)
-	check(hud.menu_flow.visible and shown_btns == ["friends"], "the menu row shows the Social button only (%s): the Social window is the one panel in this step" % str(shown_btns))
-	check(h.social != null and not h.social.is_open(), "the Social window is there, closed")
-	check(not hud.chat_col.visible, "chat stays hidden until its item")
-	check(hud.up_plate.visible and bool(vm["reveal"]["hud.upgrades"]), "the upgrades box shows for a character that has earned (level %d: DmHudReveal.veteran_reveals)" % int(g.character["level"]))
-	check(near(hud.hud_scale, 1.1) and hud.layout.has("map") and hud.pieces["map"].scale == Vector2(0.9, 0.9), "the game scene's hud_scale and hud_layout options reached the HUD")
+	check(hud.menu_flow.visible and shown_btns.has("inventory") and shown_btns.has("friends") and shown_btns.has("settings"), "the menu row shows today's buttons: the Reliquary, Social and Settings among them (%s)" % str(shown_btns))
+	check(g.ui.social_ui != null and not g.ui.is_open("friends") and not g.ui.is_open("party"), "the Social window is there, closed")
+	check(hud.chat_col.visible, "the chat column shows")
+	check(hud.up_plate.visible and g.ui.reveal.has("hud.upgrades"), "the upgrades box shows for a character that has earned (level %d: DmHudReveal.veteran_reveals)" % int(g.character["level"]))
+	check(near(hud.hud_scale, DmSettings.clamp_hud_scale(g.ui_host.settings.get("hud_scale", 1.0))), "the HUD scale is the player's setting (%.2f)" % hud.hud_scale)
 	hud.set_layout({})
 	hud.set_hud_scale(1.0)
 
@@ -374,7 +373,7 @@ func minimap_dots() -> void:
 	var travel := [Vector2.INF]
 	h.game.input.clicked_move.connect(func(p: Vector3) -> void: travel[0] = Vector2(p.x, p.z))
 	hud.navigate.emit(hero.position.x + 3.0, hero.position.z)
-	check(travel[0] != Vector2.INF, "and the game scene walks the hero there (DmNextHud routes navigate to the input)")
+	check(travel[0] != Vector2.INF, "and the game scene walks the hero there (the adapter routes navigate to the input)")
 	# tidy: kill what was made, remove the thralls
 	for id in made:
 		if host.enemy_alive(id):
@@ -899,10 +898,10 @@ func draw_model() -> void:
 func _model_of(label: String) -> Dictionary:
 	DmHudKit.recording = true
 	DmHudKit.log.clear()
-	_redraw_all(h)
+	_redraw_all(g.ui)
 	await process_frame
 	await process_frame
-	var e := HudCost.estimate(h)
+	var e := HudCost.estimate(g.ui)
 	DmHudKit.recording = false
 	var layers_ := {}
 	for z in e["by_z"]:

@@ -26,7 +26,7 @@ var out: FileAccess
 var g: DmNextGame
 var layer: CanvasLayer          ## the micro experiments' layer
 var micro_host: Control
-var hud_layer: DmNextHud
+var hud_layer: HudShim             # today's HUD and panels as the measurement drives them (tests/hud_shim.gd)
 var fps_now_ms := 0.0           ## the game clock the floats' caps count in (each rendered frame is 1/60 s under --fixed-fps)
 var spam_n := 0
 var budget_s := 50
@@ -711,11 +711,11 @@ func game_stage(args: PackedStringArray) -> void:
 	root.add_child(g)
 	await g.start(ch.data, api, {"name": "tester", "hud": true, "waves": false, "audio": false, "seed": 20261016})
 	idle.queue_free()
-	hud_layer = g.hud
-	bd = hud_layer.hud
+	hud_layer = HudShim.new(g) if g.ui != null else null
 	emit({"event": "game_started", "ms": g.load_ms, "hud": hud_layer != null, "scene_3d": use_3d})
 	if hud_layer == null:
 		return
+	bd = hud_layer.hud
 	await setup_fight()
 	for i in 40:
 		spam()
@@ -802,7 +802,7 @@ func full_party() -> void:
 
 func first_elite() -> int:
 	for id in g.core_host.core.enemy_ids():
-		if g.hud.is_elite(id):
+		if g.ui_host.is_elite(id):
 			return id
 	return 0
 

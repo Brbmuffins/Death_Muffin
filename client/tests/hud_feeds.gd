@@ -1,7 +1,7 @@
 class_name HudFeeds
 extends RefCounted
 ## What every piece of the HUD can show at once: the view-model keys of the systems that are not in the game scene yet (belt, Kill Chain, Omen, prompt, Depths, the Next
-## line, auto combat, a party of four) and the panels' doors. Shared by the HUD test and the draw-call measurement (tools/hud_measure.gd): `DmNextHud.feeds = HudFeeds.full()`.
+## line, auto combat, a party of four) and the panels' doors. Shared by the HUD test and the draw-call measurement (tools/hud_measure.gd), merged over the view-model they apply.
 
 
 static func full() -> Dictionary:

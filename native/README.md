@@ -296,7 +296,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   after the corpse events (the host's comes first).
 - **More reaches guests than today:** the slam, erupt and dig-in cues are on the wire (today only shield_block, sanctify and unbind replicate, so a guest saw no dust at a slam).
   A snap above 6 m is not counted as walking speed (today's puppet counts it, and its walk clip sprints for a moment).
-- **Not replicated yet, stays GDScript:** bosses (state, phases, telegraphs, their statuses), hero vitals and positions (the session channel), rite events and the visuals they drive, ground drops,
+- **Not replicated yet, stays GDScript:** bosses (state, phases, telegraphs, their statuses), hero vitals and positions (the session channel), rite events and the visuals they drive, ground drops (the party relays them),
   party calls and chat; guests still send their intents (move, cast requests) to the host as today. The per-kind extras of today's enemy snapshots (the deacon's `rz`, the gargoyle's
   `dv`, the sexton's `hk`) come with those kinds' ports to the core.
 - **The Gravecaller's rites on the core (`client/next/rites`, the ports of today's files; `client/README.md` "The Gravecaller's rites")**: the rites are today's GDScript and call the core synchronously, so a kill still
@@ -329,10 +329,10 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **The hero is hurt with his core id as the source** (`DmHeroBody.take_damage(dmg, boss.core_id)`), where today it was the node: the same place of blow, and Colossus Mantle's reflect finds him through `foe(id)`.
   - **The plain soul-shard summon only**: the summon rules (`far`, `unknown`, `busy`, `dead`, `shards`) are today's, but the Covenant Seal's Empowered call waits for its prompt (the panels), and only the Hollow Graves' boss is served. No boss pools: the core makes no zone for a boss.
   - **No collider, agent or state machine on his body** (`DmBoss` is a `Node3D`): nothing read them but the old `DmEnemy` code (the labels are gone, the hover pick and the chase go through the host's queries).
-- **The HUD on the core (`client/next/next_hud.gd`, `client/ui/hud`; `client/README.md` "The HUD on the core")**: the same layout, colours, fonts and numbers; drawn to fit 150 draw calls, which changes the
-  pixels a little where the same shape is drawn another way. What a player could notice:
-  - **Not there yet** (their systems are not in the game scene): the menu row, chat and the report button, party frames of other players, the Depths readout, interaction prompts and the Next line. The Spellbook button is drawn and does nothing; the hotbar is the kit's, not the player's loadout.
-    The upgrades box and the wave dial show by today's rules but without the onboarding's NEW cue toasts (they come with the onboarding item).
+- **The HUD on the core (today's `DmGameUi` and panels on `client/next/hud/dm_next_ui_host.gd`, `client/ui/hud`; `client/README.md` "The HUD on the core")**: the same layout, colours, fonts and
+  numbers; drawn to fit 150 draw calls, which changes the pixels a little where the same shape is drawn another way. What a player could notice:
+  - **Not there yet** (their systems are not in the game scene): the counsel's tips (its fight facts read creatures), the Depths readout, the Chapterhouse's prompts and the Next line, the Acre's
+    and gathering's panels, the Altar (no Ascension: DECISIONS B36).
   - **Panels and borders** are pictures of the same fill, border and rounded corners (`DmHudAtlas.nine`, 16 samples a pixel) instead of `StyleBoxFlat` geometry: identical at the design size, and at other
     UI scales the 1 px borders and the 2 and 3 px corners are filtered a little differently. The hotbar's plate keeps its soft shadow (still a `StyleBoxFlat`).
   - **Icons** are scaled once, to at most twice the size they are shown at (ability art 256 to 128 px for a 62 px slot, portraits 480x640 to 96x128), with a Lanczos filter: slightly smoother than the file

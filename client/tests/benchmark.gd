@@ -27,18 +27,6 @@ class ErrorLog:
 			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
 
 
-## A stand-in for the panels (`game.ui`, not built): a layer that counts its frames, so the HUD share can be seen switching it off and on with the HUD on the core.
-class StubHud:
-	extends CanvasLayer
-	var frames := 0
-
-	func _process(_d: float) -> void:
-		frames += 1
-
-	func panel_open() -> bool:   # (what the game asks of its full HUD: Easy auto combat yields to an open panel)
-		return false
-
-
 var fails := 0
 var checks := 0
 var errlog := ErrorLog.new()
@@ -429,24 +417,23 @@ func breakdown_run() -> void:
 	b.hud_settle_s = 0.2
 	b.baked_dir = OUT
 	check(b.breakdown and b.enemies == 15 and b.thralls == 10 and b.boss_id == "", "configure: Light, Full length (render breakdown on)")
-	var stub := StubHud.new()
-	var stub_off := [0]
-	var stub_on := [0]
+	var ui_off := [0]
+	var ui_on := [0]
 	var steps: Array = []
 	b.breakdown_step.connect(func(step: int, _total: int, _what: String) -> void: steps.append(step))
 	b.progress.connect(func(t: String) -> void:
-		if b.game != null and b.game.ui == null and t.begins_with("Warming"):
-			b.game.ui = stub   # the panels appear (their item): the share and the breakdown handle them with the HUD on the core
-			b.game.add_child(stub)
-		if t.contains("HUD costs (off)") and not stub.visible and stub.process_mode == Node.PROCESS_MODE_DISABLED and b.game.hud != null and not b.game.hud.visible:
-			stub_off[0] += 1
-		if t.contains("HUD costs (on)") and stub.visible and stub.process_mode == Node.PROCESS_MODE_INHERIT and b.game.hud.visible:
-			stub_on[0] += 1)
+		var ui: DmGameUi = b.game.ui if b.game != null else null
+		if ui == null:
+			return
+		if t.contains("HUD costs (off)") and not ui.visible and ui.process_mode == Node.PROCESS_MODE_DISABLED:
+			ui_off[0] += 1
+		if t.contains("HUD costs (on)") and ui.visible and ui.process_mode == Node.PROCESS_MODE_INHERIT:
+			ui_on[0] += 1)
 	root.add_child(b)
 	var r: Dictionary = await b.run()
 	var ph: Dictionary = r["phases"][0]
-	check(not r["cancelled"] and b.hud_checked and ph.has("hud_ms"), "a run with stand-in panels measures the HUD's share (%.2f ms)" % float(ph.get("hud_ms", -1.0)))
-	check(stub_off[0] == b.hud_rounds and stub_on[0] == b.hud_rounds, "the HUD went off and on %d times over, and both HUD nodes switched together (%d, %d)" % [b.hud_rounds, stub_off[0], stub_on[0]])
+	check(not r["cancelled"] and b.hud_checked and ph.has("hud_ms"), "a run measures the HUD's share, the panels with it (%.2f ms)" % float(ph.get("hud_ms", -1.0)))
+	check(ui_off[0] == b.hud_rounds and ui_on[0] == b.hud_rounds, "the HUD and panels went off and on %d times over (%d, %d)" % [b.hud_rounds, ui_off[0], ui_on[0]])
 	var bd: Dictionary = r.get("breakdown", {})
 	check(not bd.is_empty() and (bd["rows"] as Array).size() == DmBenchmark.BREAK_CATS.size(), "render breakdown: one row per part (%s)" % str(DmBenchmark.BREAK_CATS))
 	check(not bd.is_empty() and not (bd["base_end"] as Dictionary).is_empty() and (bd["rows"] as Array)[-1]["what"] == "HUD", "render breakdown: the HUD measured last and everything-on measured again at the end")
@@ -462,8 +449,6 @@ func breakdown_run() -> void:
 	check("\n".join(DmBenchmark.budget_lines(drawn)).contains("HUD draw calls: 140 of 150   PASS") and "\n".join(DmBenchmark.budget_lines(drawn_miss)).contains("HUD draw calls: 151 of 150   MISS"), "the HUD's draw calls are judged against 150")
 	check("\n".join(DmBenchmark.budget_lines({"phases": [ph], "setup": {"size": "light"}})).contains("not the Full Party fight"), "a run that is not the Full Party fight says its budgets are information")
 	b.queue_free()
-	if is_instance_valid(stub):
-		stub.free()
 	await process_frame
 
 

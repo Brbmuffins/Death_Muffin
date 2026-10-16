@@ -231,7 +231,7 @@ func boot_and_register(api: DmApi, shim: Shim) -> void:
 	var want := DmCharacterBuild.build(g.character, bag.data, local_of(g.character, prog.data["progress"]))
 	check(g.build_for(g.session.get_my_id()) == want, "the hero's build is made from the server's bag and progression")
 	check(float(body.p["stats"]["maxHp"]) == float(want["stats"]["maxHp"]), "the hero's health is the build's (%s)" % body.p["stats"]["maxHp"])
-	check(g.hud != null and g.core_host.core != null, "the game scene stands on the combat core with its HUD")
+	check(g.ui != null and g.core_host.core != null, "the game scene stands on the combat core with its HUD and panels")
 	await drop(m, shim)
 
 

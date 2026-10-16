@@ -4,7 +4,8 @@ extends Node
 ## member and the bag they land in. Today's DmNextUiHost does this inside the panels' adapter; here it stands on its own, so value works before the panels
 ## exist (the panels item's adapter reads `inventory` from here). The code is today's (DmNextUiHost's take, pickup, claim and rune-ownership paths):
 ##   - a click on a drop (DmNextInput: loot_click / loot_hover / loot_cancel) walks the hero there; the drop is taken on arrival (loot never flies);
-##   - a drop from the member's tape is CLAIMED: the server rolls the same event and puts its own roll in the bag (`api.drops_claim`, DECISIONS B20);
+##   - a drop from the member's tape is CLAIMED: the server rolls the same event and puts its own roll in the bag (`api.drops_claim`, DECISIONS B20); a piece a party member
+##     dropped on the session's ground is picked up (`api.ground_pickup`: the first pickup wins, the party's other copies go);
 ##   - gold and shards are credited by the rewards node itself (their floats and sound are here, one per fight, GOT_WINDOW_S);
 ##   - a rune the character owns (learned, bag, Vault) never drops; a new one goes straight into the bag (its toast);
 ##   - the bag (DmInventory) is the server's rows; worn gear feeds the stats (DmNextProgress.request_stats) and pays for the belt.
@@ -12,6 +13,7 @@ extends Node
 
 signal event(id: String, ctx: Dictionary)
 signal inventory_changed
+signal learned_runes_changed                ## learned_runes changed (note_learned)
 
 const GOT_WINDOW_S := 1.2
 
@@ -164,12 +166,35 @@ func _take(d: Dictionary) -> bool:
 	return false
 
 
-## The hero reached a drop the server hands over itself: a drop rolled from the tape is claimed (the server's own roll goes in the bag).
+## The hero reached a drop the server hands over itself: a piece a member dropped on the party's ground (the first pickup wins; everyone else's copy goes away),
+## or a drop rolled from the tape (the server's own roll goes in the bag).
 func _on_claim(d: Dictionary) -> void:
 	if d.get("claiming", false):
 		return
 	d["claiming"] = true
-	await _claim_from_tape(d)
+	if not d.has("drop_id"):
+		await _claim_from_tape(d)
+		return
+	var id := String(d["drop_id"])
+	var err := await bag_commit()
+	var r: DmResult = await api.ground_pickup(hero_id, id) if err == "" else null
+	d["claiming"] = false
+	var m: DmRewardsMember = game.my_member()
+	if r != null and r.ok:
+		inventory.replace(r.data["bag"])
+		inventory_changed.emit()
+		if m != null:
+			m.loot_view.remove_shared(id)
+		if game.party != null:
+			game.party.share_taken(id)
+		var meta := DmContent.item(String(d["item"]["item_id"]))
+		_loot_toast(d["item"], meta)
+		_item_collected(d["item"], meta)
+		return
+	var why := err if r == null else (r.error if r.error != "" else "You could not pick that up.")
+	event.emit("toast", {"text": why, "kind": "err"})
+	if why.begins_with("It is gone") and m != null:
+		m.loot_view.remove_shared(id)
 
 
 ## A drop rolled from the tape (DECISIONS B20): the server rolls the same event again and puts its own roll in the bag. The ground copy goes once the
@@ -281,8 +306,7 @@ func _on_item_landed(sound_id: String, pos: Vector3) -> void:
 		event.emit("loot_landed", {})
 
 
-## A rune the player did not own went straight into the bag: the pickup's sound, toast and counsel facts, and a line in chat (the chat comes with the
-## panels item, and the party's copy of the line with it).
+## A rune the player did not own went straight into the bag: the pickup's sound, toast and counsel facts, and a line in chat (the party sees it too).
 func _on_rune_found(drop: Dictionary, _pos: Vector3) -> void:
 	var meta := DmContent.item(String(drop["item_id"]))
 	_loot_toast(drop, meta)
@@ -291,13 +315,20 @@ func _on_rune_found(drop: Dictionary, _pos: Vector3) -> void:
 	var nm := String(meta.get("name", drop["item_id"]))
 	var short := String(rune.get("short", ""))
 	var reaper := game.local_body() != null and game.local_body().family != "necromancer"
-	event.emit("chat", {"text": "You found the %s%s%s. Select it in your Reliquary (I) and click Learn." % [nm, (": " + short.substr(0, 1).to_lower() + short.substr(1)) if short != "" else "",
-		" (a necromancer rune)" if reaper else ""]})
+	_loot_chat("You found the %s%s%s. Select it in your Reliquary (I) and click Learn." % [nm, (": " + short.substr(0, 1).to_lower() + short.substr(1)) if short != "" else "",
+		" (a necromancer rune)" if reaper else ""], "{who} found the %s." % nm)
 
 
 func _on_legendary_dropped(drop: Dictionary, _pos: Vector3) -> void:
 	var nm := _loot_name(drop, DmContent.item(String(drop["item_id"])))
-	event.emit("chat", {"text": "You found %s (legendary)." % nm})
+	_loot_chat("You found %s (legendary)." % nm, "{who} found %s (legendary)." % nm)
+
+
+## A find worth telling: in a party every member reads `party_line` ("{who}" = the finder's roster name) in chat, solo you read `own_line`.
+func _loot_chat(own_line: String, party_line: String) -> void:
+	if game.party != null and game.party.announce(party_line):
+		return
+	event.emit("chat", {"text": own_line})
 
 
 func _item_collected(it: Dictionary, meta: Dictionary) -> void:
@@ -336,26 +367,41 @@ func _owns_rune(drop: Dictionary) -> bool:
 	return false
 
 
+## The Vault's rows (every {bag, vault} answer, and once at setup): which runes the account keeps there.
+func note_vault(data: Dictionary) -> void:
+	if not (data.get("vault") is Array):
+		return
+	_vault_runes.clear()
+	for r: Dictionary in data["vault"]:
+		if DmRunes.is_rune_id(r.get("item_id")):
+			_vault_runes[String(r["item_id"])] = true
+
+
+## The learned runes from a server answer ([rune ids]).
+func note_learned(ids: Variant) -> void:
+	if not (ids is Array):
+		return
+	learned_runes.clear()
+	for id in ids:
+		if DmRunes.is_rune_id(id):
+			learned_runes[String(id)] = true
+	learned_runes_changed.emit()
+
+
 func _load_learned_runes() -> void:
 	if api == null or not api.has_method("runes_learned"):
 		return
 	var r: DmResult = await api.runes_learned(hero_id)
-	if r.ok and r.data is Dictionary and r.data.get("learned") is Array:
-		learned_runes.clear()
-		for id in r.data["learned"]:
-			if DmRunes.is_rune_id(id):
-				learned_runes[String(id)] = true
+	if r.ok and r.data is Dictionary:
+		note_learned(r.data.get("learned"))
 
 
 func _load_vault_runes() -> void:
 	if api == null or not api.has_method("get_vault"):
 		return
 	var r: DmResult = await api.get_vault(hero_id)
-	if r.ok and r.data is Dictionary and r.data.get("vault") is Array:
-		_vault_runes.clear()
-		for row: Dictionary in r.data["vault"]:
-			if DmRunes.is_rune_id(row.get("item_id")):
-				_vault_runes[String(row["item_id"])] = true
+	if r.ok and r.data is Dictionary:
+		note_vault(r.data)
 
 
 func _audio() -> bool:

@@ -20,6 +20,8 @@ extends SceneTree
 ##   - the guest's own account (DECISIONS B22): the host makes it a rewards member (its character, rolling its own drops), it joins the host's backend party session with its own
 ##     token, the host reads its build from the server; a kill near both pays the guest's XP on its account (the host's accepted report, sent on) and its drops reach it,
 ##     the items rolled from its own tape; its member, bag, belt and HUD are its own account's;
+##   - party chat both ways (the host names the speaker); a piece of gear the guest drops from its Reliquary (found while the host was there) lies on the host's ground,
+##     the host picks it up into its own bag and the guest's copy goes;
 ##   - a version mismatch (the core's wire version, the release build) is refused in the words a player reads, the party is untouched;
 ##   - the Full Party (72 enemies, 32 thralls, a continuous fight): no packet over 1,392 bytes; the bandwidth and packet rate against the relay's limits (INFO);
 ##   - a leaving guest leaves a clean host (its legion goes, the collecting stops);
@@ -347,6 +349,7 @@ func _run() -> void:
 	await the_king()
 	await guest_death()
 	await guest_account()
+	await chat_and_ground()
 	await versions()
 	await full_party()
 	await leaving()
@@ -499,7 +502,7 @@ func connection() -> void:
 	check(int(gb_h.character.get("level", 0)) == 14 and gb_h.discipline_id == "gravecaller", "the guest's profile reached the host: its hero is a level-14 Gravecaller there (%s)" % gb_h.character)
 	check(int(g.party.levels.get(1, 0)) == 14 and int(g.party.levels.get(2, 0)) == 14, "and the guest knows the party's levels (%s)" % str(g.party.levels))
 	for gm in [h, g]:
-		var rows: Array = gm.hud.vm.build()["party"]
+		var rows: Array = gm.ui_host.hud_state()["party"]
 		var ok_rows := rows.size() == 2
 		for r in rows:
 			ok_rows = ok_rows and String(r["discipline"]).ends_with("Level 14")
@@ -834,15 +837,15 @@ func guest_death() -> void:
 	gb_h.p["hp"] = 400.0
 	gb_h._mirror_from_state()
 	await ticks(40)
-	check(gb_g.alive and not bool(g.hud.vm.build()["death"]["show"]), "the guest's hero is alive and its HUD shows no veil")
+	check(gb_g.alive and not bool(g.ui_host.hud_state()["death"]["show"]), "the guest's hero is alive and its HUD shows no veil")
 	gb_h.take_damage(1.0e9, 0)
 	check(died[0] == 1 and not gb_h.alive, "the host killed the guest's hero")
 	check(await until(func() -> bool: return not gb_g.alive, 2.0) and gb_g.hp <= 0.0, "the guest's body died on the guest: the vitals arrived")
 	await ticks(30)
-	check(bool(g.hud.vm.build()["death"]["show"]), "the guest's HUD shows the death veil")
+	check(bool(g.ui_host.hud_state()["death"]["show"]), "the guest's HUD shows the death veil")
 	check(await until(func() -> bool: return up[0] == 1 and gb_g.alive, 8.0), "the hero got up on both sides after the respawn time")
 	await ticks(30)
-	check(not bool(g.hud.vm.build()["death"]["show"]) and gb_g.hp > 0.0, "and the veil is gone")
+	check(not bool(g.ui_host.hud_state()["death"]["show"]) and gb_g.hp > 0.0, "and the veil is gone")
 
 
 # ------------------------------------------------------------------------------------------------------------------ the guest's own account
@@ -854,7 +857,7 @@ func guest_account() -> void:
 	check(await until(func() -> bool: return g.joiner != null and g.joiner.backend_ok and gm.blocked == "" and gm.joined, 5.0),
 		"the guest joined the host's backend party session with its own account")
 	check(await until(func() -> bool: return h.remote_builds.has(gb_h.owner_peer), 5.0), "the host read the guest's build from the server (B22)")
-	check(g.rewards == null and g.my_member() == g.joiner.member and g.loot != null and g.hud.prog == g.joiner.prog and g.belt() == g.loot.guest_belt,
+	check(g.rewards == null and g.my_member() == g.joiner.member and g.loot != null and g.ui_host.prog == g.joiner.prog and g.belt() == g.loot.guest_belt,
 		"the guest's member, bag, belt and HUD are its own account's")
 	var xp0: int = int(g.joiner.member.stats["xp_applied"])
 	var drops0: int = g.joiner.drops_received
@@ -880,6 +883,57 @@ func guest_account() -> void:
 			if int(e["characterId"]) == gcid:
 				counted = int(e["acceptedKills"])
 	check(counted >= 3, "the server counted the guest's kills for its character (%d)" % counted)
+
+
+# ------------------------------------------------------------------------------------------------------------------ chat and the ground
+
+func chat_and_ground() -> void:
+	h.ui_host.send_chat("over here")
+	check(await until(func() -> bool: return g.party.chat_log.any(func(l: String) -> bool: return l == "[hostess] over here"), 3.0) and h.party.chat_log.has("[hostess] over here"),
+		"the host's chat line reaches both, with its name (%s)" % str(g.party.chat_log))
+	g.ui_host.send_chat("coming")
+	check(await until(func() -> bool: return h.party.chat_log.has("[joiner] coming") and g.party.chat_log.has("[joiner] coming"), 3.0), "the guest's chat line goes through the host to both (%s / %s)" % [str(h.party.chat_log), str(g.party.chat_log)])
+	# a piece the guest found while the host was there (the server's record), dropped from its Reliquary
+	var gcid := int(accounts["joiner"]["ch"]["id"])
+	var acc: Dictionary = {}
+	for a: Dictionary in mock.db["accounts"].values():
+		if a.get("character") is Dictionary and int(a["character"]["id"]) == gcid:
+			acc = a
+	var iid := mock._mint_instance(acc, "staff_oak", 3, [])
+	var sid: String = h.rewards.session_id
+	mock._instances(acc)[str(iid)]["found_session"] = sid
+	mock._instances(acc)[str(iid)]["found_at"] = mock._now()
+	var free := mock._free_bag_slot(acc)
+	acc["slots"].append({"slot_index": free, "item_id": "staff_oak", "quantity": 1, "equipped": 0, "instance_id": iid})
+	await g.loot.refresh_inventory()
+	var row: Dictionary = {}
+	for r: Dictionary in g.loot.slots():
+		if int(r.get("slot_index", -1)) == free:
+			row = r
+	var oaks0 := _count(h, "staff_oak")
+	var err: String = await g.ui_host.drop_gear(row)
+	check(err == "" and not g.loot.slots().any(func(r: Dictionary) -> bool: return int(r.get("slot_index", -1)) == free), "the guest dropped the piece from its bag (%s)" % err)
+	var hm := h.my_member()
+	var shared := func() -> Dictionary:
+		for d: Dictionary in hm.loot_view._drops:
+			if d.has("drop_id"):
+				return d
+		return {}
+	check(await until(func() -> bool: return not shared.call().is_empty(), 3.0), "the dropped piece lies on the host's ground (the server lets the host take it)")
+	var d: Dictionary = shared.call()
+	if d.is_empty():
+		return
+	await h.loot._on_claim(d)
+	check(_count(h, "staff_oak") == oaks0 + 1, "the host picked it up into its own bag")
+	check(await until(func() -> bool: return not g.my_member().loot_view._drops.any(func(x: Dictionary) -> bool: return x.get("drop_id") == d["drop_id"]), 3.0), "and the guest's copy is gone")
+
+
+func _count(gm: DmNextGame, item_id: String) -> int:
+	var n := 0
+	for r: Dictionary in gm.loot.slots():
+		if String(r.get("item_id", "")) == item_id:
+			n += int(r.get("quantity", 1))
+	return n
 
 
 # ------------------------------------------------------------------------------------------------------------------ versions

@@ -6,7 +6,7 @@ extends Node3D
 ##   Session (DmSession)   solo = OfflineMultiplayerPeer, the same code path as a party        World (DmNextWorld)  the area scene, its navigation map, its lights
 ##   Core    (DmCoreHost)  the one owner of the combat core and the crowd that draws it        Waves (DmWaveDirector)  waves, spawned through the core
 ##   Input   (DmNextInput) click / WASD / hover pick through the core                          Camera (DmCameraRig)    the existing rig
-##   EnemyFx (DmEnemyFx)   telegraphs, strikes, deaths, voices: the core's events as effects   Hud (DmNextHud)         today's HUD fed by the core (next/next_hud.gd)
+##   EnemyFx (DmEnemyFx)   telegraphs, strikes, deaths, voices: the core's events as effects   UiHost, Ui (DmNextUiHost, DmGameUi)  today's HUD and panels (B46)
 ##   Bosses  (DmBossHost)  the Gravedigger King: summon rules, the boss body (an external of the core, its brain GDScript), its fx and music
 ## The hero is a DmHeroBody made by the session's body_factory, registered with the core as an external; the blows enemies land on it arrive as the
 ## core's EV_TARGET_HIT events (`_on_target_hit`). Enemies are ids (ints) everywhere, never nodes: `enemy_spawned` carries an id, the queries
@@ -40,7 +40,7 @@ extends Node3D
 ## character and its build from the front flow (`slots`, `local` below) until the progression and the bag have loaded theirs from the server.
 ##
 ##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)
-## `opts`: warmup (false: the first-use warm-up of models, effects and area lighting; the benchmark forces it), name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud (true = DmNextHud, the HUD on the core; false = none), hud_scale, hud_layout (DmNextHud), audio (true outside a headless
+## `opts`: warmup (false: the first-use warm-up of models, effects and area lighting; the benchmark forces it), name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud (true = today's HUD and panels on DmNextUiHost; false = none), audio (true outside a headless
 ## run: the music, ambience and footsteps), seed (the core's random seed; default from the clock), areas (["graves"]),
 ## data_dir (res://), baked_dir / assets_dir (where the baked crowd models are), peer (a MultiplayerPeer; default OfflineMultiplayerPeer).
 
@@ -66,14 +66,14 @@ signal kill_credited(enemy_id: int, def: String, level: int, elite: bool, area: 
 @onready var director: DmWaveDirector = $Waves
 @onready var input: DmNextInput = $Input
 @onready var camera: DmCameraRig = $Camera
-var hud: DmNextHud                              ## only with opts hud = true: the HUD on the core
 var enemy_fx: DmEnemyFx                         ## child "EnemyFx": the core's events as effects
 var look: DmHeroLook                            ## child "Look": the hero's ring and worn gear (next/hero/README.md)
 var party: DmNextParty                          ## child "Party" (every peer): the lobby link, hosting / joining, the roster controls, the guest's profile (next/party/)
 var friends: DmNextFriends                      ## child "Friends": the account's friends and friend requests (the test backend's friends routes; next/party/)
 ## Left out until their step; the code that is shared with the full game asks `x != null` and finds none.
-var ui_host: Node = null                        ## the full HUD's host-contract adapter
-var ui: Node = null                             ## the full HUD and panels
+var ui_host: DmNextUiHost                       ## child "UiHost" (opts hud = true): the host-contract adapter of the HUD and the panels (DECISIONS B46)
+var ui: DmGameUi                                ## child "Ui" (opts hud = true): today's HUD and panels
+var areas: DmAreaFlow                           ## child "Areas": the entry banners and the Codex facts, the processions (next/areas/)
 var chapterhouse: Node = null                   ## NPCs, stations, waystones
 var gather: Node = null                         ## gathering nodes
 var bosses: DmBossHost                          ## child "Bosses": summon rules, the boss body, its events and music
@@ -82,6 +82,7 @@ var progress: DmNextProgress                    ## child "Progress" (host): leve
 var meta: DmNextMeta                            ## child "Meta" (host): difficulty, world vows, the Omen, Soul Harvest, the Kill Chain, Bonded Dead (next/meta/)
 var milestones: DmWaveMilestones                ## child "Milestones" (host): the Wave Speed milestones' banners and the Nightfall light
 var chron: DmNextChronicle                      ## child "Chronicle" (host): the one Chronicle every system feeds, first-kill trophies
+var codex: DmNextCodex                          ## child "Codex" (host): enemies met, areas entered, bosses woken (the Codex panel's journal)
 var loot: DmNextLoot                            ## child "Loot": this player's drops and bag (next/rewards/dm_next_loot.gd)
 var joiner: DmNextJoiner                        ## child "Joiner" (a party guest only): its own character, backend session, XP and drops on its own account (next/party/)
 var remote_builds := {}                         ## host: peer id -> a member's build from the server {character, slots, local} (DmNextParty.fetch_build)
@@ -249,7 +250,11 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		await _start_value(b)
 		_enter(b.position)
 		camera.snap(b.position)
-	_start_hud()
+	await _start_hud()
+	areas = DmAreaFlow.new()
+	areas.name = "Areas"
+	add_child(areas)
+	areas.setup(self)
 	if ui_host == null:
 		DmRiteHotbar.wire(self)   # one hotbar path: the kit's mapping (LMB the primary, 1-4 the default loadout, RMB, R the signature); the full HUD's loadout replaces it
 	if bool(opts.get("audio", DisplayServer.get_name() != "headless")) and get_node_or_null("/root/AudioDirector") != null:
@@ -270,7 +275,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
-	if hud != null:   # a player's window (the boot's game, not a test's bare scene)
+	if ui != null:   # a player's window (the boot's game, not a test's bare scene)
 		if String(opts.get("notice", "")) != "":   # why we are here (the session we were in ended, a join failed)
 			game_event("toast", {"text": String(opts["notice"]), "kind": "err"})
 		party.go_online()          # after the loading cover: friends see us online, invites and asks reach us (no-op without a lobby the build may use)
@@ -314,6 +319,10 @@ func _start_value(b: DmHeroBody) -> void:
 	add_child(progress)
 	await progress.setup(self, rewards.members.get(cid), bool(opts.get("persist", DisplayServer.get_name() != "headless")))
 	party.attach_host()
+	codex = DmNextCodex.new()
+	codex.name = "Codex"
+	add_child(codex)
+	codex.setup(self, progress.store)
 	await _start_loot()
 	for src: Node in [progress, meta]:
 		src.connect(&"event", game_event)   # level-ups, toasts, floats -> the HUD
@@ -328,19 +337,53 @@ func _start_loot() -> void:
 	loot.event.connect(game_event)   # toasts, floats, pickup lines -> the HUD
 
 
-## A game moment for the player's screen (toast, banner, float, loot, chat, level_up ...): the HUD shows what it draws; the rest waits for the panels and the counsel.
+## A game moment for the player's screen (toast, banner, float, loot, chat, level_up ...): today's DmGameUi draws it or hands it to the counsel.
 func game_event(id: String, ctx: Dictionary) -> void:
-	if hud != null:
-		hud.game_event(id, ctx)
-	elif ui_host != null:
+	if ui_host != null:
 		ui_host.game_event.emit(id, ctx)
 
 
+## The panels this build has to warm: today's list less the Altar (DECISIONS B36) and the Acre's (gathering comes later).
+const WARM_PANELS := ["inventory", "sheet", "cosmetics", "legion", "forge", "grimoire", "codex", "atlas", "map", "settings", "salvage", "shelf", "party"]
+
+
+## The HUD and the panels (opts hud = true; DECISIONS B46): today's DmGameUi on the ported DmNextUiHost, as today's game composes them, built and warmed under the
+## caller's loading cover. The worn gear reaches the avatar and the socketed runes the caster whenever the bag changes.
 func _start_hud() -> void:
-	if opts.get("hud", false) == true:
-		hud = DmNextHud.new()
-		hud.game = self
-		add_child(hud)
+	if opts.get("hud", false) != true:
+		return
+	ui_host = DmNextUiHost.new()
+	ui_host.name = "UiHost"
+	add_child(ui_host)
+	await ui_host.setup(self, bool(opts.get("persist", DisplayServer.get_name() != "headless")))
+	ui = DmGameUi.new()
+	ui.name = "Ui"
+	ui.warm_panels = WARM_PANELS
+	add_child(ui)
+	ui.setup(ui_host)
+	ui.sound.connect(func(n: String) -> void:
+		var a := get_node_or_null("/root/AudioDirector")
+		if a != null:
+			a.play_sfx(n))
+	await ui.warm()
+	if codex != null:
+		codex.seed_ui()
+	if belt() != null:
+		belt().load_pick(ui.belt_pick())
+	if loot != null:
+		loot.inventory_changed.connect(sync_runes)                                      # a socketed / removed rune reaches the caster
+		loot.inventory_changed.connect(func() -> void: look.set_gear_from_slots(loot.slots()))   # worn gear reaches the avatar (and the other peers)
+		look.set_gear_from_slots(loot.slots())
+	ui_host.load_cosmetics()
+	sync_runes()
+
+
+## Host: push the bag's sockets to the local caster (the bag changed, or the HUD's inventory just loaded).
+func sync_runes() -> void:
+	var b := local_body()
+	var c := b.get_node_or_null("Rites") as DmRiteCaster if b != null else null
+	if c != null and session.is_host():
+		c.set_runes(rune_sockets(session.get_my_id()))
 
 
 ## The core's EV_TARGET_HIT: enemy `enemy_id` hit external `target`. A hero takes it through its own damage rules, with the enemy as the source.
@@ -533,6 +576,8 @@ func rune_sockets(peer_id: int) -> Dictionary:
 
 ## The rite on a hotbar slot (0 = LMB primary, 1-4, 5 = RMB, 6 = R): the kit's mapping (no full HUD, so no loadout of the player's).
 func rite_for_slot(slot: int) -> String:
+	if ui_host != null:
+		return ui_host.rite_at(slot)
 	var b := local_body()
 	return DmRiteHotbar.rite_for_slot(slot, b.family, b.discipline_id) if b != null else ""
 
@@ -588,7 +633,7 @@ func belt() -> DmNextBelt:
 	return loot.guest_belt if loot != null else null
 
 
-## Q / Z / X (DmNextHud): drink the flask or a belt brew.
+## Q / Z / X (DmNextUiHost) and the HUD's belt chips: drink the flask or a belt brew.
 func use_belt(slot: String) -> void:
 	var bl := belt()
 	if bl == null:

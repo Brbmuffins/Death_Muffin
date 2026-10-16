@@ -8,7 +8,7 @@ extends RefCounted
 ##   - the "no corpse" dimming: one `corpses_in_radius` query around the hero;
 ##   - cooldowns, essence and the cast state: the hero's caster (`DmRiteCaster`), as today;
 ##   - the belt, the Kill Chain and the Omen: the game's progression and meta (DmNextBelt.rows, the member's DmKillChain, DmNextMeta.omen), as today.
-## The minimap's dots are flat arrays (x, z and a flag per dot) rewritten in place, never a dictionary per creature. The host is the HUD node (DmNextHud): it keeps what
+## The minimap's dots are flat arrays (x, z and a flag per dot) rewritten in place, never a dictionary per creature. The host is the panels' adapter (DmNextUiHost): it keeps what
 ## the view-model needs besides the game (character, progression, the last targeted enemy, kills per area).
 
 const SLOT_KEYS := ["1", "2", "3", "4", "RMB", "R"]
@@ -28,7 +28,7 @@ const LOW_HP_ENTER := 0.35   ## a thrall under this share of its health is "hurt
 const DEAD := DmCoreEvents.State.DEAD
 const THRALL_DEAD := DmCoreEvents.ThrallState.DEAD
 
-var host: DmNextHud
+var host: DmNextUiHost
 var _corpse_near := true     ## a usable corpse lies within CORPSE_REACH of the hero (refreshed once per build, not per slot)
 var _legion_n := 1
 var _area_id := "\u0001"
@@ -59,7 +59,7 @@ var _aff_chips: Array = []
 var _aff_blurb := ""
 
 
-func _init(host_: DmNextHud) -> void:
+func _init(host_: DmNextUiHost) -> void:
 	host = host_
 
 

@@ -1,11 +1,11 @@
 extends "res://tests/coop.gd"
-## The Social window on the rebuilt client (next/hud/dm_next_social.gd, client/README.md "Co-op on the core"), headless, over the same REAL local lobby and relay as
+## The Social window on the rebuilt client (today's, in DmGameUi: game_ui/dm_ui_social.gd; client/README.md "Co-op on the core"), headless, over the same REAL local lobby and relay as
 ## tests/coop.gd (whose helpers it uses: the lobby service, the test tokens, the accounts on the in-memory mock, a SceneMultiplayer branch per player).
 ## The host is a game scene; the guest is the real boot scene (main/main.tscn, DmMain), so the party hand-over is main.gd's own.
 ##
 ## Checked, in the order of the run:
-##   - the window: the HUD's Social button and the O and F keys open it on the Friends and the Party tab, the same key again closes it, Esc closes it; the menu row shows
-##     the Social button only; the public list is watched only while the window is open;
+##   - the window: the HUD's Social button and the O and F keys open it on the Friends and the Party tab, the same key again closes it, Esc closes it; the public list
+##     is watched only while the window is open;
 ##   - the Party tab: the host makes an Open party from its Host form; the guest sees it in the list and joins it from there: main.gd hands the solo game over to a guest
 ##     game (a puppet core) on the same lobby socket, and the host has two heroes; the guest leaves from its Party tab and is back in its own world;
 ##   - a refused join (another core wire version) puts the guest back in its own world with the refusal on screen;
@@ -16,6 +16,23 @@ extends "res://tests/coop.gd"
 ##   godot --headless --fixed-fps 60 --path client --script res://tests/social.gd
 
 var m: DmMain                      # the guest's boot scene
+
+
+## A game's Social window as this test drives it: today's DmUiSocial window in the game's DmGameUi, its two tabs being the panels "friends" and "party".
+class Social:
+	var ui: DmGameUi
+	var window: DmSocialWindow:
+		get: return ui.social_ui.window
+	func _init(ui_: DmGameUi) -> void:
+		ui = ui_
+	func is_open() -> bool:
+		return ui.is_open("friends") or ui.is_open("party")
+	func toggle(tab: String) -> void:
+		ui.toggle_panel(tab)
+
+
+func soc(gm: DmNextGame) -> Social:
+	return Social.new(gm.ui) if gm != null and gm.ui != null else null
 
 
 func check(ok: bool, what: String) -> void:
@@ -73,7 +90,7 @@ func key(code: Key) -> void:
 
 func toasts_of(gm: DmNextGame) -> String:
 	var out: Array[String] = []
-	for n in gm.hud.hud.toasts.find_children("*", "Label", true, false):
+	for n in gm.ui.hud.toasts.find_children("*", "Label", true, false):
 		out.append((n as Label).text)
 	return " | ".join(out)
 
@@ -92,14 +109,10 @@ func the_window() -> void:
 	main_node.name = String(load("res://main/main.tscn").get_state().get_node_name(0))
 	hq.add_child(main_node)
 	h = await game(main_node, "hostess")
-	check(h.ready_ and h.hud != null and h.hud.social != null and h.friends != null, "the host's game has the HUD, the Social window and the friends list")
-	var s := h.hud.social
-	var shown: Array = []
-	for id in h.hud.hud.menu_btns:
-		if h.hud.hud.menu_btns[id].visible:
-			shown.append(id)
-	check(h.hud.hud.menu_flow.visible and shown == ["friends"], "the menu row shows the Social button only (%s)" % str(shown))
-	h.hud.hud.menu_btns["friends"].pressed.emit()
+	check(h.ready_ and h.ui != null and h.ui.social_ui != null and h.friends != null, "the host's game has the HUD, the Social window and the friends list")
+	var s := soc(h)
+	check(h.ui.hud.menu_flow.visible and h.ui.hud.menu_btns["friends"].visible, "the menu row shows the Social button")
+	h.ui.hud.menu_btns["friends"].pressed.emit()
 	await until(func() -> bool: return s.is_open(), 2.0)
 	check(s.is_open() and s.window.active == "friends", "the Social button opens the window on the Friends tab")
 	check(h.party.watching, "the open window watches the public list")
@@ -125,7 +138,7 @@ func the_window() -> void:
 # ------------------------------------------------------------------------------------------------------------------ the Party tab
 
 func host_and_join() -> void:
-	var s := h.hud.social
+	var s := soc(h)
 	s.toggle("party")
 	await until(func() -> bool: return s.is_open(), 2.0)
 	var hosted := [false]
@@ -145,7 +158,7 @@ func host_and_join() -> void:
 	gq.add_child(m)
 	await m._dev_quick_start(2)
 	check(await until(guest_world(false), 60.0), "the guest's boot scene is in its own world")
-	var gs := m.slice.hud.social
+	var gs := soc(m.slice)
 	gs.toggle("party")
 	var sid := String(h.party.info.get("id", ""))
 	var listed := func() -> bool:
@@ -159,10 +172,10 @@ func host_and_join() -> void:
 	if not m.slice.is_guest:
 		return
 	check(m.slice.core_host.puppet and h.body_of(2) != null and h.session.is_active(), "the guest runs a puppet core and the host has its hero")
-	check(m.slice.hud.social != null and m.slice.party.view().get("mode", "") == String(DmNextParty.CLIENT), "the guest's Social window shows the party it is in")
-	m.slice.hud.social.toggle("party")
+	check(soc(m.slice) != null and m.slice.party.view().get("mode", "") == String(DmNextParty.CLIENT), "the guest's Social window shows the party it is in")
+	soc(m.slice).toggle("party")
 	await ticks(2)
-	m.slice.hud.social.window.party.leave_requested.emit()
+	soc(m.slice).window.party.leave_requested.emit()
 	check(await until(guest_world(false), 60.0), "leaving from the Party tab puts the guest back in its own world")
 	await until(func() -> bool: return h.body_of(2) == null, 5.0)
 	check(h.body_of(2) == null and h.party.mode == DmNextParty.HOST, "the host's party goes on without it")
@@ -175,8 +188,8 @@ func refused_join() -> void:
 	m.start_opts["wire"] = 999
 	m.slice.party.join_session(String(h.party.info.get("id", "")))
 	var back := func() -> bool: return m.slice != null and m.slice.ready_ and not m.slice.is_guest and DmLoadingScreen.current == null and toasts_of(m.slice).contains("Could not join")
-	check(await until(back, 90.0), "a refused guest is put back in its own world (%s)" % (toasts_of(m.slice) if m.slice != null and m.slice.hud != null else "no game"))
-	if m.slice != null and m.slice.hud != null:
+	check(await until(back, 90.0), "a refused guest is put back in its own world (%s)" % (toasts_of(m.slice) if m.slice != null and m.slice.ui != null else "no game"))
+	if m.slice != null and m.slice.ui != null:
 		check(toasts_of(m.slice).contains("newer version") or toasts_of(m.slice).contains("older version"), "with the refusal in the player's words: %s" % toasts_of(m.slice))
 	m.start_opts.erase("wire")
 
@@ -190,11 +203,11 @@ func host_closes() -> void:
 	check(await until(guest_world(true), 60.0), "the guest joins again")
 	if not m.slice.is_guest:
 		return
-	h.hud.social.window.party.leave_requested.emit()
+	soc(h).window.party.leave_requested.emit()
 	var back := func() -> bool: return m.slice != null and m.slice.ready_ and not m.slice.is_guest and DmLoadingScreen.current == null
 	check(await until(back, 60.0), "the host closed the party: the guest is back in its own world")
 	await ticks(5)
-	check(m.slice.hud != null and toasts_of(m.slice) != "", "with the reason on screen (%s)" % (toasts_of(m.slice) if m.slice.hud != null else ""))
+	check(m.slice.ui != null and toasts_of(m.slice) != "", "with the reason on screen (%s)" % (toasts_of(m.slice) if m.slice.ui != null else ""))
 	check(h.party.mode == DmNextParty.SOLO, "and the host plays solo again")
 
 
@@ -203,8 +216,8 @@ func host_closes() -> void:
 func friends_tab() -> void:
 	if m.slice == null:
 		return
-	var hs := h.hud.social
-	var gs := m.slice.hud.social
+	var hs := soc(h)
+	var gs := soc(m.slice)
 	hs.toggle("friends")
 	gs.toggle("friends")
 	await until(func() -> bool: return hs.is_open() and gs.is_open(), 2.0)
