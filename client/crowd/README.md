@@ -11,7 +11,7 @@ The combat core writes one buffer per frame; the GPU does the rest in the vertex
   plays, skins every vertex on the CPU, and writes the files below. Headless, a few seconds per model.
 - `client/crowd/crowd_vat.gdshader`: the material. `client/crowd/crowd_vat_data.gd` (`CrowdVatData`): what a baked model loads as, plus the helpers that
   build its material and MultiMesh and pack the per-instance data.
-- `bash client/tools/bake_crowd.sh [enemy id or model slug ...]` (default `robber hound`): runs the baker at low priority.
+- `bash client/tools/bake_crowd.sh [enemy id or model slug ...]` (default: `robber hound` and the thralls the rites raise: `skeleton_thrall thrall_legionnaire thrall_sentinel thrall_plague carrion_sac bone_colossus`, 7 to 20 MB each): runs the baker at low priority.
   Output: `client/crowd/baked/<model slug>/`.
 - `client/tests/crowd_bake.gd`: the headless proof (below). `client/tests/crowd_smoke.gd`: the one rendered look (software GL).
 - `client/crowd/crowd_view.gd` (`CrowdView`): the node that draws the combat core's creatures, with `client/crowd/crowd_looks.json` (which model each enemy

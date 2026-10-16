@@ -31,6 +31,10 @@ slice/models/props/prop_node_coffin_oak*
 # ---- Crowd creatures (client/crowd/README.md): models the vertex-animation baker reads; the rest of the Graves roster joins with it.
 slice/models/grave_robber
 slice/models/bone_hound
+# the thralls the rites raise (client/crowd/crowd_looks.json thrall_model / legion): the Gravecaller's legionnaire, the other legions' bodies, the risen skeleton
+# (an archer, a bone mage), the plague bearer's sac and the Bone Colossus. skeleton_thrall, thrall_legionnaire, thrall_sentinel and thrall_plague are listed below with the people.
+slice/models/carrion_sac
+slice/models/bone_colossus
 
 # ---- Code sync (client/code.list): what the copied scripts and scenes load. `@` lines are art that lives next to the code in godot/ (not under
 # godot/assets); they land at the same path in client/. New files get a seed .import carrying the live asset's uid (tools/rebuild/sync-assets.mjs).
@@ -73,8 +77,13 @@ slice/models/thrall_plague
 # ---- The hero of the game scene (client/next/next_game.gd): the Gravecaller, the dev entry's character
 slice/models/hero_gravecaller
 
-# ---- Later blocks (not listed yet): the other disciplines, the rest of the Graves roster, thralls, the Gravedigger King, the other areas' props, bosses,
-# the licensed flipbook sheets.
-# Licensed flipbook sheets live outside git; a line under fx/sheets/ is read from $FX_SHEETS (default ~/death-muffin/private/fx-sheets)
-# and copied into the git-ignored client/assets/fx/sheets/, for example:
-# fx/sheets/hit_flash.png
+# ---- The rites' licensed flipbook sheets (godot/fx/README.md "Flipbook sheets"): read from $FX_SHEETS, copied into the git-ignored client/assets/fx/sheets/. Without them
+# the effects draw their plain look.
+fx/sheets/hit_flash.png
+fx/sheets/crit_burst.png
+fx/sheets/crush_slam.png
+fx/sheets/summon_circle.png
+fx/sheets/chain_arc.png
+fx/sheets/trail_arc.png
+
+# ---- Later blocks (not listed yet): the other disciplines, the rest of the Graves roster, the Gravedigger King, the other areas' props, bosses.
