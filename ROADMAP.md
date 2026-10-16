@@ -185,6 +185,22 @@ server (B38).
     and who hurt them agree. Seeds 1 to 5 (6 minutes) are too few for damage taken (-32.5 % against a noise band of 47 %); the verdict takes `--seeds=1-20` (23 minutes). No behaviour difference found. Not in it: bosses, rewards, loot and the other disciplines.
   - [ ] What the client's fight lacks, each with its own item: rewards, loot drops and the kill ledger, the panels, the other disciplines and rooms. The fight is cheaper than today's by these.
 
+**Bring everything over checklist** (built ahead while Gate B waits, B34's rule: nothing reaches players before its gate; Claude's order, 2026-10-16: what a player meets first,
+necromancers first; the order is easy to change). Each item is today's GDScript on the core the way the test build did it (copies where they run as they are, ports where
+they touched a creature), with today's tests replayed, and ends as a tested commit:
+- [ ] The other three necromancer disciplines: Ossuary, Mourner and Rotweaver, their kits on the hotbar, their rites on the core, their thrall kinds and looks (the Mourner's
+  spectral wraiths, the plague bearer's pools), their hero models in `client/assets.list`; `client/tests/rites.gd` over every kit.
+- [ ] Value on the server: rewards, loot drops, the kill ledger and saves from the core's kill events, against the test server (today's `DmSessionRewards` and the authority
+  flows, B32); a guest's own account in co-op (B22).
+- [ ] The panels on the core: the panel host (`DmGameUi`, `DmNextUiHost`), the Reliquary (bag, gear, runes), the Grimoire and loadout, Settings (the presets get their window),
+  chat and the menu row; the Social window moves into the host.
+- [ ] The Reaper (discipline 11) and its nine rites.
+- [ ] The other 12 areas as scenes (`client/tools/build_area.gd`, a lighting bake each through Helix's helper), their rosters baked, moving between areas.
+- [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes).
+- [ ] The Depths, gathering and the Chapterhouse (stations, waystones, people).
+- [ ] Tips, onboarding and sound on the core's events.
+- [ ] Gate C: every rule test matches today's, playtests OK, nothing slower than the test build.
+
 **Working rules for the rebuild.**
 - This checklist is the only to-do list; the next unchecked item is the only work. Ideas go to "After launch day".
 - Each item ends as a tested commit. Architecture rules are tests: no node or script per creature, no per-creature calls across the core
