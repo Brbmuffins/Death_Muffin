@@ -53,7 +53,8 @@ report warns and does not judge the rest of the frame then. The client's fight i
 1.7 at p99**. An A/B of the client before and after (four runs each) puts value at about 0.5 ms a frame: the value code itself is about 0.015 ms (0.44 ms a kill, 0.004 ms a
 blow), the rest is today's rules now playing in the fight (level-ups refreshing the hero, more kills and corpses), which today's game pays too. The rest of the main thread
 is now 3.8 to 4.1 ms of its 4: on the line (Gate B item below). With the effects' particle ring in C++ (the same day, A/B four runs each): the client 5.0 ms a frame, the rest
-of the main thread 3.1 ms: about **2.9 times** today's 14.7.
+of the main thread 3.1 ms: about **2.9 times** today's 14.7. With the core's own navmesh (ad7d68eb, DECISIONS B47; three runs each, alternating): today's game
+14.9 ms, the client 3.2 ms (p95 6.7, p99 14.2; the core 0.47 ms, the rest of the main thread 2.8 ms): **4.6 times on average, 3.3 at p95, 2.0 at p99**.
 
 **Phases and gates.** Gates are checked on Helix's PC and the VPS processor test; brbmuffins' and warbogar's PCs join before launch day, and
 at least one other graphics brand runs Forward+ before then. The team plays the rebuild through the launcher's Test build switch on a test
