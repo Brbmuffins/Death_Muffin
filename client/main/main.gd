@@ -7,15 +7,20 @@ extends Node
 ## Launch args (after `--`): none needed. Testing only (editor / debug builds; a release export ignores them): `--dev-offline` = local accounts + progress in DEV_OFFLINE_DB
 ## (DmMockBackend: no network at all); `--dev-offline --class=N` skips the front flow (test account `tester`) and enters directly, with `--seed=N`, `--no-waves` and `--baked=<dir>`
 ## as the dev entry (dev/dm_dev_entry.tscn, which stays the way to a crowd or a screenshot); `--world-demo` is an alias of `--dev-offline --class=2`.
+## `--benchmark`: runs the in-game benchmark straight away on an isolated offline game (DmBenchmark, no login; `--bench-room=`, `--bench-class=`, `--bench-size=`,
+## `--bench-length=` pick the setup, default the Standard one, `--bench-warm=` / `--bench-measure=` shorten it, `--baked=<dir>` names the baked crowd models) and stays on the
+## results screen with a Quit button (a headless run quits by itself). The rebuilt client has the Hollow Graves and the Gravecaller only: another room or class is refused with
+## a message and exit code 2. Release builds then send the run, to the TEST server, with the saved login, if any. The character select screen's Benchmark button opens the setup
+## window (DmBenchmarkSetup) first.
 ## `start_opts` (set before add_child; tests) are merged over DmNextGame.start's options.
 ##
-## Off until their ROADMAP items, against today's: the benchmark (the select screen's button says so), co-op (the lobby join, the party hand-over), the automatic crash report
+## Off until their ROADMAP items, against today's: co-op (the lobby join, the party hand-over), the automatic crash report
 ## (DmCrashWatch; a report would open a thread for a test build), and everything the full HUD owns: Log out and Switch character (close the game to sign in again), the
 ## final save (nothing is saved yet: `save_all` calls the scene's `flush_all`, which is empty).
 
 const DEV_OFFLINE_DB := "user://dm_dev_offline_db.json"    ## --dev-offline testing backend (the same file the dev entry uses)
 
-var mode := ""              ## "online" | "dev_offline" | "test" (injected api, local wording); "" = decided from the launch args in _ready
+var mode := ""              ## "online" | "dev_offline" | "test" (injected api, local wording) | "benchmark" (`--benchmark`); "" = decided from the launch args in _ready
 var flow: DmFrontFlow
 var slice: DmNextGame
 var api: DmApi              ## set before add_child (tests) to inject a backend; otherwise built from the launch args
@@ -23,6 +28,7 @@ var persist_token := true
 var start_opts := {}
 var _mock: DmMockBackend
 var _transport: DmHttpTransport
+var _idle_cam: Camera3D
 
 
 func _ready() -> void:
@@ -38,8 +44,18 @@ func _ready() -> void:
 	idle_cam.name = "IdleCamera"
 	add_child(idle_cam)
 	idle_cam.current = true
+	_idle_cam = idle_cam
 	add_child(DmPerfOverlay.new())   # F3 / ?fps overlay, as the web
 	var args := OS.get_cmdline_user_args()
+	if "--benchmark" in args:
+		mode = "benchmark"
+		var why := DmBenchmark.refusal(bench_wanted_from_args(args))
+		if why != "":
+			printerr("BENCHMARK refused: " + why)
+			get_tree().quit(2)
+			return
+		_run_benchmark(true, bench_setup_from_args(args), _arg_float(args, "--bench-warm=", -1.0), _arg_float(args, "--bench-measure=", -1.0), String(DmDevEntry.options(args).get("baked", "")))
+		return
 	if mode == "":
 		mode = mode_for(args)
 	if mode == "dev_offline":
@@ -104,16 +120,84 @@ func _start_flow() -> void:
 	flow.online_gate = mode == "online"   # the test channel's manifest online switch (DmOnlineGate; the test build is open to the team's accounts)
 	flow.name = "Front"
 	flow.enter_world.connect(_enter_world)
-	flow.benchmark_requested.connect(_on_benchmark_requested)
+	flow.benchmark_requested.connect(_open_benchmark_setup)
 	add_child(flow)
 	flow.start()
 
 
-## The character select's Benchmark button: the benchmark returns with the Full Party fight of the new client (ROADMAP), so the select screen says so.
-func _on_benchmark_requested() -> void:
-	var s := flow.current as DmCharSelectScreen if flow != null else null
-	if s != null:
-		s.error_label.text = "The benchmark comes back with the Full Party fight."
+## Shortened benchmark for smoke runs: `--bench-warm=<s>` / `--bench-measure=<s>`.
+static func _arg_float(args: PackedStringArray, prefix: String, d: float) -> float:
+	for a in args:
+		if a.begins_with(prefix):
+			return maxf(1.0, float(a.substr(prefix.length())))
+	return d
+
+
+## What a `--benchmark` launch asked for, as given (`--bench-room=graves --bench-class=2 --bench-size=full_party --bench-length=quick`): the keys that were named.
+static func bench_wanted_from_args(args: PackedStringArray) -> Dictionary:
+	var want := {}
+	for a in args:
+		for k in ["room", "class", "size", "length"]:
+			var prefix := "--bench-%s=" % k
+			if a.begins_with(prefix):
+				want["discipline" if k == "class" else k] = int(a.substr(prefix.length())) if k == "class" else a.substr(prefix.length())
+	return want
+
+
+## The benchmark setup a `--benchmark` launch asks for (what is not named, or not a setup, is the Standard setup's).
+static func bench_setup_from_args(args: PackedStringArray) -> Dictionary:
+	return DmBenchmark.normalize_setup(bench_wanted_from_args(args))
+
+
+## The character select's Benchmark button: the setup window over the select screen; Start runs the benchmark with the pick.
+func _open_benchmark_setup() -> void:
+	var w := DmBenchmarkSetup.new()
+	var top := CanvasLayer.new()
+	top.layer = 95
+	w.closed.connect(top.queue_free)
+	w.start.connect(func(setup: Dictionary) -> void:
+		top.queue_free()
+		_run_benchmark(false, setup))
+	top.add_child(w)
+	add_child(top)
+
+
+## The api the benchmark sends its runs with: the logged-in online one from the character select (the TEST server's: the transport refuses any other address, net/dm_config.gd);
+## for `--benchmark` (no login screen) a release build's saved login. null (dev-offline, tests, debug builds, never logged in) = the run waits in DmBenchHistory's queue.
+func _bench_upload_api() -> DmApi:
+	if mode == "online" and api != null:
+		return api
+	if mode != "benchmark" or OS.is_debug_build() or not FileAccess.file_exists(DmApi.TOKEN_FILE):
+		return null
+	if _transport == null:
+		_transport = DmHttpTransport.new()
+		add_child(_transport)
+	var a := DmApi.new(_transport.request_callable())
+	a.persist_token = true   # reads the saved login (get_token); nothing else is written
+	return a
+
+
+## The benchmark over whatever is on screen: from the character select (the front flow is hidden meanwhile, Back returns to it) or as the whole
+## session (`--benchmark`, Quit button). It builds its own mock-backed game; `api` and the player's characters are never used.
+func _run_benchmark(quit_on_close: bool, setup: Dictionary = DmBenchmark.STANDARD, warm_s: float = -1.0, measure_s: float = -1.0, baked_dir := "") -> void:
+	if flow != null:
+		flow.visible = false
+	var s := DmBenchmarkScreen.new()
+	s.quit_on_close = quit_on_close
+	s.setup = setup
+	s.warm_s = warm_s
+	s.measure_s = measure_s
+	s.baked_dir = baked_dir
+	s.api = _bench_upload_api()
+	var top := CanvasLayer.new()
+	top.layer = 95   # above the fight's HUD (10) and loading cover (90), under the F3 overlay (100): the screen takes every click
+	s.closed.connect(func() -> void:
+		top.queue_free()
+		_idle_cam.current = true   # the fight's camera is gone
+		if flow != null:
+			flow.visible = true)
+	top.add_child(s)
+	add_child(top)
 
 
 ## Back to the login screen with the reason on it (the token is dropped, as the front flow does when a character cannot be resumed).
@@ -171,6 +255,8 @@ static func load_build(api_: DmApi, character: Dictionary) -> Dictionary:
 
 func _enter_world(character: Dictionary, session) -> void:
 	api = session
+	if mode == "online" and DmBenchHistory.pending_count() > 0:
+		DmBenchHistory.flush(api)   # benchmark runs that could not be sent before (no login, no network), to the test server; not awaited
 	if flow != null:
 		flow.queue_free()
 		flow = null

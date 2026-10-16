@@ -26,6 +26,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/boss.gd           # the Gravedigger King on the core: his brain replayed against today's scenarios, his fight, the thralls, the rites, his defeat and a new summon (bakes into a scratch folder; add --fixed-fps 60 before --path to run it faster than real time)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/front.gd   # boot, login, character select and the game scene with the chosen character on the mock; the API rule; the real test server's health (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/hud.gd     # the HUD on the core: target frame, minimap dots, hotbar and cooldowns, thrall pips, floating number caps, pools, pieces, z layers, the draw-call model (bakes into a scratch folder)
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/benchmark.gd       # the benchmark on the core: the Full Party fight held as the setup says, Easy auto combat, the report and its budget section, real launches, nothing sent but to the test API (bakes into a scratch folder; about 2 minutes)
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the thralls) into client/assets/crowd/baked (not committed)
 ```
 
@@ -61,7 +62,8 @@ uids keep working:
 - **Seams** (55 files at the start): a file outside those systems that names one of their classes or scenes: the rites, the bosses, the HUD's enemy reads, auto combat input, the benchmark
   fight. Each line names what it uses. They are ported to the core in the later steps of the ROADMAP's client layer, and `--port` then moves them from the list into `code.lock.json`.
   Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; the Gravecaller's rites (the caster, the module base, the legends, the
-  registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); and the boss host, body, world, fx and view ("The Gravedigger King").
+  registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The Gravedigger King"); and Easy auto combat, the benchmark
+  with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark").
 - **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the party
   (`DmNextFriends` reads the game scene's `party`: the friends and party panes, the social window and `game_ui/dm_game_ui.gd`).
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
@@ -107,7 +109,7 @@ wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from
 
 Off in this step, each until its ROADMAP item: party and co-op, gathering, the Chapterhouse
 (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves; `DmNextGame.rite_hit` carries every blow of a rite for them), the panels (the HUD is there, "The HUD on the core"; its menu row, chat, Empower panel
-and loadout wait for theirs), Easy auto combat, the Reaper's rites, the graphics governor, Grave Surges. `native/README.md` "Differences from today's game" lists what behaves differently from today.
+and loadout wait for theirs), the Reaper's rites, the graphics governor, Grave Surges. Easy auto combat is in but closed: nothing opens it until the settings come (the benchmark and the tests do). `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
 ## The Gravecaller's rites
 
@@ -158,8 +160,47 @@ core's thralls act on the place it wrote, and their blows on it are given to the
 `client/tests/boss.gd` is the proof: the six recorded Gravedigger scenarios of `godot/tests/bosses` replayed tick by tick through this project's copy of the brain, the summon rules, the awaken numbers, his attacks and phases stepped by hand with today's numbers and
 timing (sweep, Burial, phases, ghouls on the rim, the elite, the pits, the double sweep, the blows on the hero and on a thrall), the wipe (adds leave silently), thralls (the edge rule, `thrall_hit_external`, credit, `alive` false while he cannot be hurt),
 the rites (edge distance, order, lane, cone, circle, the needle's range, the Scythe's arc, the Spear's rally, Fan, Lance, statuses, stun), the defeat events, a second summon, a fight on the real clock and the net state round trip.
-Not in it: the other six bosses; their pools, niches and hooks (the core makes no zone for a boss, has no call that sets a body's health, and the Veilwalker's echoes are not ported); shards and rewards; the boss bar and banners (the full HUD); Easy auto combat's use of the
-boss (`dm_next_auto.gd`); replicating him to guests (the co-op step).
+Not in it: the other six bosses; their pools, niches and hooks (the core makes no zone for a boss, has no call that sets a body's health, and the Veilwalker's echoes are not ported); shards and rewards; the boss bar and banners (the full HUD); replicating him to guests (the co-op step).
+Easy auto combat takes him as a target (`bosses.active_boss()`, his telegraphs from the boss fx).
+
+## The benchmark
+
+Today's in-game benchmark (`godot/next/perf/README.md` "Benchmark"), ported to the core: the same held fight, so the Full Party fight can be measured in this client against today's game (ROADMAP Gate B).
+
+```
+bash client/tools/bake_crowd.sh                                                                                                    # once: the crowd models the fight draws (with none baked the crowd does no view work: about 0.6 ms a frame cheaper, and the report says so)
+nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client -- --benchmark --bench-room=graves --bench-size=full_party --bench-class=2   # the VPS processor test; the report is in the log
+/home/ubuntu/tools/godot/godot --path client -- --benchmark --bench-size=full_party                                                 # on a PC: the fight in the window, then the render breakdown
+```
+
+- **Launch:** `-- --benchmark` runs it at once on an isolated offline game (no login) and stays on the results screen with a Quit button; a headless run quits by itself once the report is out (`BENCHMARK` lines in the log and
+  `user://benchmarks/bench-<datetime>.txt`). From the character select, the **Benchmark** button opens the setup window; Start runs it and Back returns. `--bench-room=`, `--bench-class=`, `--bench-size=light|standard|heavy|full_party` and
+  `--bench-length=quick|full` pick the setup (Quick: 6 s warm-up and 20 s measured; Full: 10 s and 30 s, then the render breakdown), `--bench-warm=<s>` / `--bench-measure=<s>` shorten it, `--baked=<dir>` names the baked crowd models.
+  The client has the **Hollow Graves** and the **Gravecaller** only: any other room or class is refused with a message and exit code 2 (`DmBenchmark.refusal`). The Standard setup is the Graves, Gravecaller, Standard size, Full
+  (today's is the Bell Sanctum); Gate B's Full Party fight is a custom setup, as it is today.
+- **The fight** is today's: the fixed seed 20261011, a god-mode level 60 Gravecaller on Easy auto combat holding his ground at the walkable point nearest the room's centre, no elites, every enemy on the health and damage of the Bell Sanctum
+  roster's average (272.9 hp, 10.8 damage: `DmBenchmark.STATS_ROOM`, the same in every room), waves brought in to 6 to 14 m, the count topped up and trimmed every 0.25 s, and for Full Party 72 enemies, 32 thralls and the Gravedigger King held awake
+  (woken through the real summon, again after each defeat). On the core: the director spawns through `DmCoreHost.spawn_enemy`, `trim` removes the farthest extras with `remove_enemy` (no death, no corpse, no reward), the thralls are raised
+  straight into the core without the cap, and every count is read from the core. `DmBenchFight` holds these rules.
+- **The report** is today's (the table, the hitch log, the render breakdown) with the core's name in its header, and a **budget section** that sets the ROADMAP's budgets against this run: the combat core's step, the crowd's sync and the
+  event dispatch per 60 Hz tick (`DmCoreHost.measure`, on for the measured window only) against 4 ms; the rest of the main thread per frame (the frame less the core's share, ticks a frame times its tick) against 4 ms; the HUD's main-thread
+  share against 0.5 ms (the same fight with the HUD off and on, eight times over, half a second each: a share below the printed spread, twice the standard error of the rounds, is noise) and its draw calls against 150 (from the render breakdown's HUD row, so on a PC with a renderer and a Full-length run).
+  Each line says PASS or MISS. The budgets are set for the headless Full Party fight on the VPS; another size, or a rendered run (where the rest includes drawing), prints them as information. The numbers are not asserted by any test.
+  The render breakdown's parts are Shadows, Creatures (the crowd's MultiMeshes and the boss), World, Effects and HUD.
+- **The headless frame pad:** with no window to draw, Godot waits at least 6.9 ms (`low_processor_usage_mode_sleep_usec`) after every frame, so a plain headless run shows 6.9 ms for any frame that cost less (a median within 3% of it) and hides the
+  cost under it: the report warns, and does not judge the rest of the frame. `--fixed-fps 60` before `--path` has no pad and runs one tick with every frame, which is the processor test (the repo's `tests/perf/fight_breakdown.gd` runs the same way).
+  It runs faster than real time, so a window counts seconds of fight by the engine's frame time (`--bench-warm`, `--bench-measure`; 30 s is 1,800 frames), and Easy auto combat keeps its cadence on the physics clock (`DmNextAutoCombat.clock_ms`),
+  where a wall clock would stretch it.
+- **Easy auto combat** (`next/feel/dm_next_auto.gd`) is today's decision code (`DmAutoCombat`, `DmAutoDodge`) behind an adapter that reads the core: the enemies by `enemy_ids / enemy_positions / enemy_states` (spawn order, as the nodes were walked),
+  the corpses by `corpse_ids / corpse_positions`, and what those arrays lack from small tables the host's signals keep (an enemy's radius, elite flag, health, wind-up and area from the spawn, damaged and attack events; a corpse's kind from
+  `corpse_added`; the dust clouds and toxic pools from `zone`). It emits the same intents as the keyboard (`DmNextInput.cast_at`, `request_move_dir`). Its gate (`allowed()`) is closed until the settings (not built) or `gate_probe` opens it.
+- **The warm-up** (`DmNextWarmup`, with `DmWarmup`) runs when `opts.warmup` or `--warmup` ask for it, and the benchmark does: models and effects load on worker threads (not headless: its dummy renderer fails on them), the boss's models, the effects, the gear and the telegraph shapes are drawn
+  once, every crowd model is drawn at its three levels of detail from rehearsal rows fed to the crowd (`DmCrowd.sync_rows`, with the core's tick held meanwhile so its sync does not forget them; the rows are cleared after), and the camera tours the areas
+  the game has loaded, lit, with every point light off, and with the flash light. It has not been looked at on a GPU: play does not run it yet.
+- **Sends:** the run's backend is the in-memory mock. A finished run is queued in `user://benchmarks/pending.json` and sent to the **test server** only (`net/dm_config.gd`): from the character select with the logged-in api, from `--benchmark` with a
+  release build's saved login; debug builds, `--dev-offline` and tests never send (the run waits in the queue, and goes out when a player next enters the world on the test server). `tests/benchmark.gd` pins it.
+- **Not in the fight yet** (it is cheaper than today's by these): rewards, loot drops and the kill ledger, the panels (the HUD on the core is up, and its share measured), the graphics presets and the auto-resolution governor, the other disciplines and rooms, the
+  guests' hero bodies (as today). The soul shards of the King's summon are not charged (no progression to take them from). `native/README.md` "Differences from today's game" has the rest.
 
 ## The HUD on the core
 
@@ -251,7 +292,7 @@ database and signing key, so nothing played here can touch a live character), th
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
 - **Off until their items:** rewards and the kill ledger (no kill report), progress and bag saves, party, friends, chat, gathering, the Chapterhouse, the panels (so no Log out or Switch character:
-  close the game to sign in again), the benchmark (the select screen's button says it comes with the Full Party fight), the lobby join, the automatic crash report and the update notice. A hero of a
+  close the game to sign in again), the lobby join, the automatic crash report and the update notice. A hero of a
   discipline other than the Gravecaller has no hero model yet (`client/assets.list` carries `hero_gravecaller` only) and the rites are not ported for any of them.
 
 ### The API rule (DECISIONS B38)
@@ -261,6 +302,7 @@ The rebuilt client **never talks to the live server before launch day.** Where i
   test run and an exported build all read these constants: there is no publish-time swap to miss.
 - `DmHttpTransport.send` (the one door to the network, a port) refuses any URL `DmConfig.allows_url` does not accept: under the test API or the test channel's folder, nothing with a `/..` that a
   server would resolve elsewhere. It logs an error and answers like an unreachable server. `DmNextGame.start` refuses any api whose base url is not the test API or empty (the local mock).
+- A finished benchmark run is sent (`DmApi.post_benchmark`) through the same transport to the test API's benchmark history, never anywhere else; "The benchmark" says when it is sent.
 - `client/tests/front.gd` fails if any of it moves: the constants are the test server's and not the live API, lobby or manifest (read from `godot/net/dm_config.gd`), the allow-list refuses the live
   addresses and lookalikes, every request the flows made stayed on the test server, and a scan of every shipped file finds no address outside `net/dm_config.gd` and no live path anywhere.
 

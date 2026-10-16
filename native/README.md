@@ -255,7 +255,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **Shots follow the simulation's position** of their target, where today they followed the drawn (interpolated) one.
   - **A blow of zero or less is refused** (`damage`, a boss's too); today `take_damage` applied it. No rite deals one.
   - **Spear rally's mark** is written to each thrall by the rite each tick while the mark lasts (`set_thrall_mark` from `thrall_info`'s target), not read by the thrall; legion size bounds the cost (Legion Champion 5 only).
-  - **Not ported with the rites:** the Reaper's nine (they wait for the Reaper, `client/code.list`), Easy auto combat (`next/feel/dm_next_auto.gd`), the
+  - **Not ported with the rites:** the Reaper's nine (they wait for the Reaper, `client/code.list`), the
     socketed runes and the weapon line of the bag (no bag yet: the rune and weapon variants are implemented and tested with the state set by hand), the kill-credit consumers (`DmSessionRewards`; the game scene emits
     `rite_hit` and the core's `enemy_died` carries the killer).
 
@@ -287,6 +287,19 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **"N slain here"** counts every enemy that died in the area (no rewards yet: a solo hero's kills and his thralls', as the ledger will count them).
   - **Pieces:** every readout group can be moved and scaled (`DmHud.set_piece`, `set_layout`; `opts.hud_layout`) and the HUD scale setting is `opts.hud_scale`; with the defaults nothing moves.
 
+- **Easy auto combat and the benchmark (`client/next/feel/dm_next_auto.gd`, `client/next/perf`; `client/README.md` "The benchmark")**: the decisions are today's code (`DmAutoCombat`, `DmAutoDodge`) and so are the intents it sends. What is not the same:
+  - **It reads the core, not nodes:** the enemies by the bulk arrays (`enemy_ids`, `enemy_positions`, `enemy_states`) in spawn order, the corpses by `corpse_ids` and `corpse_positions`, within 40 m and at most 256 (today's list was every corpse; the decision
+    only looks at those in range of a rite). What the arrays do not carry comes from tables its host signals keep, so it knows a body from the end of the tick that made or hurt it: the radius, elite flag, area and health (spawn and damaged
+    events), a swing's wind-up (the attack event's seconds on the wall clock, as the boss telegraphs are) and a corpse's kind (the corpse event). A burrowed or erupting body is skipped (`DmFoe.hittable`).
+  - **Its hazards are the core's zones:** the dust clouds and toxic pools from `zone` events (the group of `DmHostileZone` nodes is gone), padded by a hero's radius as before.
+  - **Its gate is closed** in the rebuilt client until the settings exist (`gate_probe` opens it: the benchmark, the tests). **It runs on the physics clock** (`DmNextAutoCombat.clock_ms`, ticks at 60 a second), where today's reads the wall clock: the same
+    cadence at real time, and the same fight when the game runs faster than real time (`--fixed-fps`, the headless processor test).
+  - **The benchmark has the Hollow Graves and the Gravecaller only** (other rooms and classes are refused); its Standard setup is the Graves. The fight is today's (seed, health, counts, rules), held through the core: the count is trimmed with `remove_enemy` (a Vengeful
+    Risen or a boss's add past the cap leaves like a node freed: no death, no corpse), the 32 thralls are raised into the core with no cap, the King is woken through the real summon (free, see above). **Not in the fight:** rewards, loot drops and the kill ledger
+    (the "Loot" row reads 0), the panels (the HUD on the core is up and its share is measured), the graphics presets and the resolution governor (the report's preset is the settings file's and is not applied), so the fight is cheaper than today's by what those cost.
+    The render breakdown's parts are Shadows, Creatures (the crowd and the boss, one MultiMesh per model not per kind), World, Effects and HUD.
+  - **The warm-up is rehearsal rows,** not bodies: every crowd model at three levels of detail from rows fed to `DmCrowd.sync_rows` with the core's tick held (its sync would forget them), then cleared. It runs on request (`opts.warmup`, `--warmup`, the benchmark), not in play.
+
 ## Files
 
 - `native/src/`: `dm_core.cpp` is the Godot-facing API (`DmCore`); `dm_crowd.cpp` the crowd's (`DmCrowd`: looks, the core's tables into rows, the RenderingServer);
@@ -311,6 +324,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   refusals, damaged messages, the commands and queries on a puppet, `DmCrowd` on one, and the Full Party's size and cost; `-- --verbose` lists every check),
   `client/tests/rites.gd` (the Gravecaller's rites on the core: every necromancer rite against today's formulas, the synchronous kills, the input, a full fight),
   `client/tests/boss.gd` (the Gravedigger King: his brain against today's scenarios, his fight by hand and on the real clock, the thralls, the rites, the defeat),
+  `client/tests/benchmark.gd` (the benchmark: the Full Party fight held as its setup says, Easy auto combat on the core's arrays, the report and its budget section, real `--benchmark` launches, nothing sent but to the test API),
   `client/tests/crowd_view.gd` (the crowd's views against today's view code, and a Full Party driven by a real core) and `client/tests/game_scene.gd` (the game scene on
   the core: an offline run in the Graves, the director, the event signals, no node per creature, timings). Run
   `bash client/setup.sh` first in a fresh checkout: a script run in a

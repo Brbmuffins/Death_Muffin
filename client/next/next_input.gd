@@ -10,7 +10,7 @@ extends Node
 ## Ported to the combat core (client/code.list "Ported"): the hover pick asks the core. The cursor's ray meets the chest-height plane, the core names the
 ## enemies near that point (`enemies_in_radius`, a handful), and the one whose chest is nearest the cursor on screen within PICK_PX wins: no loop over
 ## every enemy. The attack-target chase, hold repeat and queued casts are today's DmCombatInput (ported: it asks the caster for the enemy). Easy auto-combat
-## (DmNextAutoCombat) is not ported yet.
+## (DmNextAutoCombat, ported: it reads the core's bulk arrays) casts through `cast_at` and walks through the session's intents, gated by `auto.allowed()`.
 
 signal hotbar(slot: int, aim: Vector3, enemy_id: int)   ## slot 0 = LMB primary, 1..4 = keys, 5 = RMB, 6 = R (signature); enemy_id 0 = ground aim
 signal clicked_move(point: Vector3)
@@ -33,6 +33,7 @@ var _dir_sent := Vector3.ZERO
 var _resend: float = 0.0
 var _hover_t: float = 0.0
 var combat := DmCombatInput.new()       ## attack-target chase, hold repeat, queued casts, held keys (next/feel/)
+var auto := DmNextAutoCombat.new()      ## Easy auto-combat (next/feel/dm_next_auto.gd): closed until the settings (or a test's `gate_probe`) open it, one compare per frame when off
 var _mouse_seen := false                ## the mouse has moved / clicked: standing aim follows the cursor (not the stale default point)
 
 
@@ -106,7 +107,7 @@ func stand_face() -> bool:
 	if combat.game == null:
 		combat.setup(game, self)
 	var at: Vector3 = game.core_host.enemy_position(_hover_id) if _hover_id != 0 else Vector3.INF
-	return combat.stand_face(at if at != Vector3.INF else _aim, false)
+	return combat.stand_face(at if at != Vector3.INF else _aim, auto.aim_active)
 
 
 func _unhandled_input(ev: InputEvent) -> void:
@@ -143,7 +144,10 @@ func _physics_process(delta: float) -> void:
 		combat.clear()                      # walking by hand ends the chase and the queue (old: key_dir cancels attack_target)
 		if game.ui_host != null:
 			game.ui_host.loot_cancel()      # and the walk to a clicked drop
+	if auto.game == null:
+		auto.setup(game, self)
 	combat.tick(float(Time.get_ticks_msec()))
+	auto.tick(DmNextAutoCombat.clock_ms())   # (on the physics clock: the same cadence at real time, and when the game runs faster than real time)
 	_resend -= delta
 	if d != _dir_sent or (d != Vector3.ZERO and _resend <= 0.0):
 		_resend = RESEND_S

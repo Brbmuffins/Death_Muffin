@@ -202,7 +202,14 @@ func boot_and_register(api: DmApi, shim: Shim) -> void:
 	var sel := m.flow.current as DmCharSelectScreen
 	check(sel != null and sel.cards.size() == DmCharSelectScreen.load_disciplines().size() and sel.cards.size() >= 9, "character select shows every discipline card (%d)" % sel.cards.size())
 	sel.benchmark_requested.emit()
-	check(sel.error_label.text.to_lower().contains("benchmark"), "the Benchmark button says the benchmark comes later: '%s'" % sel.error_label.text)
+	await process_frame
+	var bench_win: Array = m.get_children().filter(func(c: Node) -> bool: return c is CanvasLayer and c.get_child_count() > 0 and c.get_child(0) is DmBenchmarkSetup)
+	check(bench_win.size() == 1 and (bench_win[0].get_child(0) as DmBenchmarkSetup)._room.item_count == 1 and not m.flow.current.error_label.text.to_lower().contains("comes"),
+		"the Benchmark button opens the benchmark's setup window (the Graves, the only room the client has)")
+	if not bench_win.is_empty():
+		(bench_win[0].get_child(0) as DmBenchmarkSetup).closed.emit()
+		await process_frame
+		check(m.get_children().filter(func(c: Node) -> bool: return c is CanvasLayer and c.get_child_count() > 0 and c.get_child(0) is DmBenchmarkSetup).is_empty() and m.flow.current == sel, "Back closes the window and the select screen is still there")
 	var refused_pick := await sel.choose(5)
 	check(not refused_pick and sel.error_label.text != "", "a discipline that is not playable is refused with a message")
 	var picked := await sel.choose(3)

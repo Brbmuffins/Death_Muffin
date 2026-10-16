@@ -40,6 +40,14 @@ Full Party fight on Helix's PC (Sanctum, 1440p Ultra, today's game on Compatibil
 Full Party fight, VPS processor test (today's game at c47c35a1, headless, `--benchmark --bench-size=full_party --bench-class=2`, 2026-10-16):
 the Hollow Graves (Gate B's room) 14.3 ms a frame on average, p95 24.4, p99 33.5; the Bell Sanctum 13.6 ms, p95 22.2 (an earlier run gave
 17.2 ms: the shared VPS varies by about a fifth, so Gate B runs today's game and the test build back to back).
+**Gate B, Full Party in the Hollow Graves, VPS processor test** (2026-10-16: today's game and the rebuilt client at aa0bca07 plus the benchmark port, headless, run back to back three times each,
+alternating, `--benchmark --bench-room=graves --bench-size=full_party --bench-class=2`, Full length; the client's own report, client/README.md "The benchmark"). With `--fixed-fps 60` before `--path` (a tick with every
+frame, no idle pad: this is the processor test) today's game takes 16.2 ms a frame on average (runs 15.7 to 16.9; p95 24.3, p99 31.1) and the rebuilt client 5.4 ms (5.1 to 5.9; p95 9.1, p99 17.4):
+**3.0 times today's speed on average, 2.7 times at p95, 1.8 at p99** (the gate asks for 2 times). In the same runs the client's budgets: combat core 2.0 ms a tick of 4 (step 1.8, crowd sync 0.05, event dispatch 0.2) PASS;
+rest of the main thread 3.4 ms a frame of 4 (3.2 to 3.9) PASS, with little room; the HUD's share cannot be told from noise headless (0.3 ms give or take 0.6, against 0.5; Helix's PC measures it with the draw calls).
+A plain headless run (no `--fixed-fps`) pads every frame to 6.9 ms (Godot waits that long when no window can draw), so the client reads 7.0 ms there against today's 16.5 (15.2 to 17.7): 2.4 times, a floor not a cost; the
+report warns and does not judge the rest of the frame then. The client's fight is cheaper than today's by what it does not have yet: rewards, loot drops and the kill ledger, the panels, the graphics presets
+(today's HUD with its panels cost 2.7 ms of its 15.6 in the same fight: `tests/perf/fight_breakdown.gd --full-party --area=graves`, fixed 60; the client has the HUD, not the panels).
 
 **Phases and gates.** Gates are checked on Helix's PC and the VPS processor test; brbmuffins' and warbogar's PCs join before launch day, and
 at least one other graphics brand runs Forward+ before then. The team plays the rebuild through the launcher's Test build switch on a test
@@ -162,6 +170,11 @@ server (B38).
 - [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
   It runs in the Hollow Graves on both sides (72 Graves enemies, 32 thralls, the Gravedigger King): the test build has the Graves roster, and today's
   game runs the same fight with `--benchmark --bench-room=graves --bench-size=full_party` (or Benchmark -> Hollow Graves -> Full Party).
+  - [x] The fight and its budget checks in the new client: `--benchmark` and the character select's Benchmark button, Easy auto combat on the core, the report with its budget section (client/README.md "The benchmark",
+    `client/tests/benchmark.gd`); the VPS numbers are in "Before numbers" (3.0 times today's speed; the core and the rest of the main thread inside their 4 ms).
+  - [ ] Helix's PC: the same fight rendered on both sides (the 2 times of Gate B), the HUD's 0.5 ms and 150 draw calls (the render breakdown's HUD row), and the warm-up looked at on a GPU (it runs in the benchmark, not yet in play).
+  - [ ] The seeded scenario comparison with today's game: kills, time to kill and thrall uptime within stated tolerances (native/README.md "Design").
+  - [ ] What the client's fight lacks, each with its own item: rewards, loot drops and the kill ledger, the panels, the graphics presets and the governor, the other disciplines and rooms. The fight is cheaper than today's by these.
 
 **Working rules for the rebuild.**
 - This checklist is the only to-do list; the next unchecked item is the only work. Ideas go to "After launch day".

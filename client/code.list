@@ -22,18 +22,25 @@ world      # world builder, model loader, occlusion shaders, animator
 world_fx   # world dressing and atmosphere
 
 # ==== Ported (client/code.lock.json "ported"; edited in client/, so the sync leaves them alone and reports one whose original changed)
-# next/next_game.gd, next/next_game.tscn   the game scene on DmCoreHost: a solo run in the Graves with a test-server character or a dev one, with the Gravecaller's rites and the Gravedigger King; refuses any api but the test server's; no party, gathering, Chapterhouse, rewards, full HUD
+# next/next_game.gd, next/next_game.tscn   the game scene on DmCoreHost: a solo run in the Graves with a test-server character or a dev one, with the Gravecaller's rites and the Gravedigger King; refuses any api but the test server's; the warm-up on request (opts.warmup); no party, gathering, Chapterhouse, rewards, full HUD
 # next/next_world.gd                       loads client/areas/<id>.tscn and its navigation map instead of the runtime DmWorldBuilder build; the same small API
-# next/next_input.gd                       the hover pick asks the core; the chase and the queued casts are today's (DmCombatInput); no Easy auto combat yet
+# next/next_input.gd                       the hover pick asks the core; the chase and the queued casts are today's (DmCombatInput); Easy auto combat is back (`auto`, closed until the settings or a gate_probe open it)
 # next/spawn/dm_wave_director.gd           spawns through the core (ids); counts from the core; no Grave Surges, no clearing of living bodies
 # next/hero/dm_hero_body.gd                an external of the core; enemy blows arrive by id (EV_TARGET_HIT); no collider; thralls counted by the core
 # next/hero/dm_hero_look.gd                the hovered-enemy ring reads the core by id
 # next/enemy_fx/dm_enemy_fx.gd             an event consumer: the core's telegraphs, strikes, deaths, zones and affix moments (no node per enemy)
 # game/dm_avatar.gd                        its own three motion helpers instead of DmEntityViews'
 # game/dm_event_fx.gd, game/dm_event_fx_zones.gd   zone and corpse records read by field name (no DmSimZone, DmSimCorpse)
-# main/main.gd, main/main.tscn             the boot (DmMain): the front flow against the TEST server, then the game scene with the chosen character, its bag and progression (DmMain.load_build); no benchmark, party hand-over, crash report, Log out or Switch character
+# main/main.gd, main/main.tscn             the boot (DmMain): the front flow against the TEST server, then the game scene with the chosen character, its bag and progression (DmMain.load_build); `--benchmark` and the Benchmark button (the run is sent to the test server only); no party hand-over, crash report, Log out or Switch character
 # net/dm_config.gd                         the TEST server's addresses and the allow-list (DmConfig.allows_url, allows_api_base); the live ones never appear (tests/front.gd)
 # net/dm_http_transport.gd                 refuses any request DmConfig does not allow
+# Easy auto combat and the benchmark (client/README.md "The benchmark"):
+# next/feel/dm_next_auto.gd                the adapter reads the core: the bulk arrays (enemy_ids / positions / states, corpse_ids / positions) and the facts the host's signals keep (radius, elite, health, wind-up, corpse kind, hostile zones); same decisions, same intents
+# next/perf/dm_benchmark.gd                the Hollow Graves and the Gravecaller only (refused otherwise); the core's step, crowd sync and event dispatch per tick timed (DmCoreHost.measure) for the report's budget section; the HUD's share; no rewards or loot
+# next/perf/dm_bench_fight.gd              boots the game scene; the counts are held through the core (top_up through the director, trim by remove_enemy, thralls raised into the core, the King summoned free)
+# next/perf/dm_benchmark_screen.gd, next/perf/dm_benchmark_setup.gd   the budget section on the results; the rooms and classes the client has; the upload note names the test server; a headless run quits by itself
+# next/perf/dm_next_warmup.gd, game/dm_warmup.gd   the boss models, effects and gear drawn once, every crowd model from rehearsal rows, the area tour; no per-creature bodies (DmWarmup's old own warm-up is gone); on request only
+# Copied again because of them: next/perf/dm_bench_history.gd.
 # The Gravedigger King (client/README.md "The Gravedigger King"): the boss is an external of the core (kind 1) whose brain stays GDScript; the brains of sim/bosses are copies, unchanged:
 # next/bosses/dm_boss.gd                   a plain node (no DmEnemy, no collider, no agent, no state machine) that registers as an external of the core (core_id) and takes blows through take_damage
 # next/bosses/dm_boss_host.gd              summon rules and events as today; the thralls' blows come from the core (thrall_hit_external); the Gravedigger's area only (served_areas); no pools
@@ -75,19 +82,14 @@ world_fx   # world dressing and atmosphere
 
 # ==== Seams: ported to the core in later steps (each uses a per-creature class or scene)
 !game/dm_caster_budget.gd                 # uses DmEnemy, DmEnemyState
-!game/dm_warmup.gd                        # uses DmSimEnemy
 !main/qa_driver.gd                        # uses DmEnemy
 !next/areas/dm_grave_surge.gd             # uses DmEnemy
 !next/chapterhouse/dm_chapterhouse.gd     # uses DmThrallHost
 !next/depths/dm_depths.gd                 # uses DmEnemy, DmEnemyState, DmThrallHost
-!next/feel/dm_next_auto.gd                # uses DmEnemy, DmEnemyState, DmStateAttack +2
 !next/hud/dm_next_counsel.gd              # uses DmEnemy, DmEnemyState, DmThrallHost
 !next/hud/dm_next_ui_host.gd              # uses DmSimCorpse, DmEnemy, DmEnemyState +3: the host-contract adapter of the panels (DmGameUi); the HUD runs without it, the panels bring it back
 !next/meta/dm_next_meta.gd                # uses DmThrallHost
 !next/next_net.gd                         # uses DmEnemy
-!next/perf/dm_bench_fight.gd              # uses DmThrallHost, DmEnemy, DmEnemyState
-!next/perf/dm_benchmark.gd                # uses DmEnemy, DmThrall, DmEnemyFx
-!next/perf/dm_next_warmup.gd              # uses DmEnemy, DmEntityViews
 !next/progress/dm_next_codex.gd           # uses DmEnemy
 !next/rewards/dm_session_rewards.gd       # uses DmStatusSet
 !next/rites/dm_reaper_rites.gd            # uses DmEnemy, DmStatusSet
@@ -116,11 +118,6 @@ world_fx   # world dressing and atmosphere
 !ui/panels/dm_friends_pane.gd             # uses DmNextFriends
 !ui/panels/dm_party_pane.gd               # uses DmNextParty
 !ui/panels/dm_social_window.gd            # uses DmFriendsPane
-
-# ==== Left out with a seam (next/perf/dm_benchmark.gd)
-!next/perf/dm_bench_history.gd            # uses DmBenchmark
-!next/perf/dm_benchmark_screen.gd         # uses DmBenchmark
-!next/perf/dm_benchmark_setup.gd          # uses DmBenchmark
 
 # ==== Left out with a seam (next/rites/dm_reaper_rites.gd): the Reaper's rites, with the Reaper
 !next/rites/rite_harvest_spin.gd          # uses DmReaperRites
