@@ -64,8 +64,54 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
   puppet mode (`set_puppet(true)`): no brains and no rules, bodies that appear from spawn events, ease toward snapshots (today's puppet easing) and go on removal events,
   and an event buffer that carries what GDScript sees on the host, derived from state edges and hp drops where today's puppets derive it. Messages carry a version and a
   hash of the data tables, so a phone or a newer build refuses cleanly. Calls, byte layout, limits and cost: "Co-op" below.
-- **Proof of "same game":** pure rules replay today's parity and golden fixtures; behaviour is compared with seeded scenarios
-  (kills, damage, time to kill, thrall uptime) between today's game and the core within stated tolerances.
+- **Proof of "same game":** pure rules replay today's parity and golden fixtures; behaviour is compared with a seeded scenario
+  (kills, damage, time to kill, thrall uptime) between today's game and the core within stated tolerances: "Proof of same game" below.
+
+## Proof of same game
+
+Two layers. The rules are replayed against today's code (`client/tests/core_*.gd`, `rites.gd`, `boss.gd`: bite timing, cones, clouds, corpses, statuses, thralls, every rite's formula). The behaviour that comes out of all of them
+together is compared by playing one seeded scenario in both games and tabulating what happened. `node tools/rebuild/compare-scenarios.mjs` runs both sides (`godot/tests/parity/scenario.gd` for today's game,
+`client/tools/parity_scenario.gd` for the rebuilt client), one Godot process at a time under `nice -n 10` with `--fixed-fps 60`, seed by seed, and prints the table. Seeds 1 to 5 take 5.7 minutes (today's game 44 s a run, the client 24 s);
+`--seeds=1-20` takes 23 minutes and is the run that settles a close call (`--level=`, `--difficulty=`, `--seconds=` change the scenario on both sides; `--from=<dir>` tabulates an earlier run).
+
+**The scenario:** the Hollow Graves, one Gravecaller (discipline 2) at level 10 on the kit's default loadout (every rite of it is unlocked; the signature, Command: Rend, comes at 10), Easy difficulty and Easy auto combat on (today's
+`DmAutoCombat` / `DmAutoDodge` decisions, which walk the hero too), the director's normal waves (cap 28, 9 a wave every 6.5 s, elites at 3.5 %, processions), 180 s of game time, the director's stream and the global stream seeded, the in-memory mock
+backend. The Graves' enemies are level 1 whatever the hero's level (the Graves have no level scaling). The hero cannot die: his health is refilled when a blow lands, and the blow is counted. Everything is read from the host's signals and
+the caster's events (the director's, the enemies', the thralls', the hero's), the legion is sampled once a tick by the tool; the game scenes get no code for it.
+- **Switched off in today's game** so both play the same rules (the client has none of these yet; "Differences from today's game"): the kill-credit consumers (XP and level-ups mid-run, Soul Harvest's free casts, the Kill Chain, loot), the weekly Omen,
+  Grave Surges and the Bellringers' censer. Easy auto combat is ticked on the physics clock on both sides: today's input ticks it with the wall clock, which a faster-than-real-time run stretches (`DmNextAutoCombat.clock_ms`).
+- **A stuck hero is set back at the door and counted.** Easy auto combat steers straight at the nearest enemy and has no path round the graves (`godot/next/feel/README.md`: no `DmNav`), so it parks the hero against pockets of tombstones, for good (around (6, -29), (-4, 1), (13, -23),
+  (3.5, -4) and (4, -20)): a run that parked kills half as many as one that did not, which drowns every other difference. A hero who moved under 1 m and cast under 4 times in 10 s is put back at the door (a player would walk him out), and `unsticks` counts it.
+  Both games park the hero at the same places and as often (1.6 and 1.4 times a run), which also says the area scene's colliders are today's.
+- **A seed is not a replay.** Runs of one seed agree for the first seconds and then drift apart, in both games (the hero's walk through a crowd); so the table averages seeds, and says how loose the average still is (the noise column: two standard errors of the difference).
+
+**Tolerances** (the means over the seeds; a change here is a change to `tools/rebuild/compare-scenarios.mjs` too):
+- kills +-15 %: how many die is the pace of the fight, and more than a seventh is a fight a player would call different.
+- hero damage dealt +-15 %: the rites' share of the work; it follows the kills, but a rite that hit too hard or too soft shows here first.
+- thrall damage dealt +-20 %: the thralls fight on their own timing and places and a few blows swing a run, so they get more room.
+- median time to kill +-20 %: spawn to death; most of a body's life is its walk to the fight, which the core's crowd spacing changes on purpose (B42), and the median ignores the tails.
+- thrall uptime +-10 percentage points (live thralls over the cap, and the time at the cap): whether the legion is up is what the class is; 10 points is half a thrall of a cap of 5.
+- damage taken by the hero and his thralls +-25 %: a few blows decide it. The hero alone is hit about twice a run (3.6 each, the thralls stand in front of him) and measures nothing; what the enemies do to the hero and the legion together is the number.
+
+**Result** (2026-10-16, `origin/main` f5f9e758 with the scenario tools; no game file differs; Hollow Graves, level 10, Easy, 180 s, seeds 1 to 20, means; today / client):
+
+| metric | today | client | difference | tolerance | noise (2 s.e.) |
+|---|---|---|---|---|---|
+| kills | 191.2 | 186.8 | -2.3 % | +-15 % | +-7.4 % |
+| hero damage dealt | 10451 | 10143 | -3.0 % | +-15 % | +-9.0 % |
+| thrall damage dealt | 2272 | 2125 | -6.5 % | +-20 % | +-16.7 % |
+| median time to kill (s) | 11.42 | 11.42 | 0.0 % | +-20 % | +-14.6 % |
+| thrall uptime (live / cap) | 95.1 % | 94.7 % | -0.4 pp | +-10 pp | +-1.0 pp |
+| time at the thrall cap | 92.9 % | 92.3 % | -0.7 pp | +-10 pp | +-1.3 pp |
+| damage taken, hero and thralls | 123 | 122 | -1.3 % | +-25 % | +-33.9 % |
+
+Every metric is inside its tolerance. Underneath, too: the share killed and the median time to kill of each of the nine kinds (how many of each kind spawn is drawn at random and wanders, rats 8.7 / 14.1 a run), the casts of each rite (209 / 201 Bone Needles, 56 / 55 Marrow Spears, 9.6 / 9.7 Exhumes, 9.3 / 9.3 Miasmas a run), the
+thralls raised (9.6 / 9.7) and lost (4.5 / 4.7, by the same enemies: ghoul 1.6 / 1.4, moth 0.7 / 0.7, penitent 0.9 / 1.1), and the blows on the thralls from each kind of enemy and from clouds and pools. Seeds 1 to 5 alone (5.7 minutes) are
+too few for the last row: its noise band is +-47 %, and that sample read -32.5 % (164 / 110) with the others inside their tolerances; seeds 1 to 20 are the verdict. At level 1 (the first-hour hero, 100 hp) it agrees as well: ten seeds read kills +0.1 %, hero damage +3.1 %, thrall damage -5.9 %,
+time to kill +2.8 %, uptime -0.1 pp, damage taken -8.8 %; an earlier twenty-seed run read damage taken +24.2 % (noise +-23.8 %), inside the tolerance and a repeat of seeds 1 to 10 the other way, which is the noise.
+
+**No behaviour difference was found** in the metrics, so none is added to "Differences from today's game". What the scenario cannot see: the hero is almost never hit (the thralls and his range keep the enemies off), so the core's attacks on a hero are proved by
+`client/tests/core_enemies.gd`, not by this table; bosses, rewards, loot and the other disciplines are not in it (their items bring their own comparisons).
 
 ## Co-op: snapshots, events and the puppet core
 

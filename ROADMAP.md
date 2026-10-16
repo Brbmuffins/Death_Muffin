@@ -180,7 +180,9 @@ server (B38).
   - [x] The fight and its budget checks in the new client: `--benchmark` and the character select's Benchmark button, Easy auto combat on the core, the report with its budget section (client/README.md "The benchmark",
     `client/tests/benchmark.gd`); the VPS numbers are in "Before numbers" (3.0 times today's speed; the core and the rest of the main thread inside their 4 ms).
   - [ ] Helix's PC: the same fight rendered on both sides (the 2 times of Gate B), the HUD's 0.5 ms and 150 draw calls (the render breakdown's HUD row), and the warm-up looked at on a GPU (it runs in the benchmark, not yet in play).
-  - [ ] The seeded scenario comparison with today's game: kills, time to kill and thrall uptime within stated tolerances (native/README.md "Design").
+  - [x] The seeded scenario comparison with today's game (`tools/rebuild/compare-scenarios.mjs`, native/README.md "Proof of same game", 2026-10-16): the Hollow Graves, a level-10 Gravecaller on Easy auto combat, 180 s of game time, twenty seeds on each side.
+    Kills -2.3 % (tolerance 15), hero damage -3.0 % (15), thrall damage -6.5 % (20), median time to kill 0.0 % (20), thrall uptime -0.4 points (10), damage taken by the hero and his thralls -1.3 % (25): every metric inside its tolerance, and underneath it the kinds, the rites, the thralls lost
+    and who hurt them agree. Seeds 1 to 5 (6 minutes) are too few for damage taken (-32.5 % against a noise band of 47 %); the verdict takes `--seeds=1-20` (23 minutes). No behaviour difference found. Not in it: bosses, rewards, loot and the other disciplines.
   - [ ] What the client's fight lacks, each with its own item: rewards, loot drops and the kill ledger, the panels, the other disciplines and rooms. The fight is cheaper than today's by these.
 
 **Working rules for the rebuild.**
