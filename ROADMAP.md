@@ -75,7 +75,7 @@ server (B38).
   Thrall, corpse and status tables come with their items.
 - [ ] Core enemies: the Graves roster (robber, hound, penitent, sac, moth, bat, ghoul) with elites and affixes. The roster's brain,
   elite stats and hostile zones are in the core (`client/tests/core_enemies.gd`); affixes come with statuses and corpses.
-- [ ] Core thralls, corpses and statuses.
+- [ ] Core thralls, corpses and statuses. Statuses are in the core (`client/tests/core_status.gd`); thralls and corpses next.
 - [ ] Client layer: login to the test server, character select, hero, camera, input, the Gravecaller's rites on the core, the
   Gravedigger King's brain as an external entity.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.

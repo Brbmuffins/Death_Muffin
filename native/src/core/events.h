@@ -22,6 +22,10 @@ enum EventType : int32_t {
 	EV_ZONE_PULSE = 11,    // id = the zone
 	EV_ZONE_GONE = 12,     // id = the zone
 	EV_STATUSES_CLEARED = 13,  // id = the enemy (a ghoul dug in: bleed, withered, root, slow, chill drop)
+	EV_STATUS_CHANGED = 14,    // id = the body; its statuses or stacks changed (HUD chips, motes, replication)
+	EV_STATUS_DOT = 15,        // id = the body; ints: status, source, killed  floats: amount (after damage taken)
+	EV_STATUS_EXPIRED = 16,    // id = the body; ints: status
+	EV_WITHERED_DIED = 17,     // id = the body that died carrying Withered; ints: source  floats: stacks, dps (Contagion, Plague Choir)
 };
 
 struct Events {

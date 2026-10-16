@@ -1,5 +1,8 @@
 #include "dm_core.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include <godot_cpp/classes/navigation_server3d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
@@ -46,11 +49,17 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_wander", "on"), &DmCore::set_wander);
 	ClassDB::bind_method(D_METHOD("load_enemy_defs", "enemies"), &DmCore::load_enemy_defs);
 	ClassDB::bind_method(D_METHOD("load_tuning", "content"), &DmCore::load_tuning);
+	ClassDB::bind_method(D_METHOD("load_status_defs", "rules"), &DmCore::load_status_defs);
 	ClassDB::bind_method(D_METHOD("set_nav_map", "map"), &DmCore::set_nav_map);
 	ClassDB::bind_method(D_METHOD("set_area_bounds", "min", "max"), &DmCore::set_area_bounds);
 	ClassDB::bind_method(D_METHOD("spawn_enemy", "def", "pos", "level", "hp_mult", "damage_mult", "elite", "area", "rising"), &DmCore::spawn_enemy);
 	ClassDB::bind_method(D_METHOD("damage", "id", "amount", "source", "allow_stagger"), &DmCore::damage, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("stun", "id", "seconds"), &DmCore::stun);
+	ClassDB::bind_method(D_METHOD("apply_status", "id", "status", "source", "stacks", "duration", "params"), &DmCore::apply_status, DEFVAL(1.0), DEFVAL(-1.0), DEFVAL(Dictionary()));
+	ClassDB::bind_method(D_METHOD("remove_status", "id", "status"), &DmCore::remove_status);
+	ClassDB::bind_method(D_METHOD("statuses", "id"), &DmCore::statuses);
+	ClassDB::bind_method(D_METHOD("status_stacks", "id", "status"), &DmCore::status_stacks);
+	ClassDB::bind_method(D_METHOD("damage_dealt_mult", "id"), &DmCore::damage_dealt_mult);
 	ClassDB::bind_method(D_METHOD("enemies_in_radius", "pos", "r"), &DmCore::enemies_in_radius);
 	ClassDB::bind_method(D_METHOD("add_external", "kind", "radius", "weight"), &DmCore::add_external);
 	ClassDB::bind_method(D_METHOD("set_external", "id", "pos", "alive"), &DmCore::set_external);
@@ -68,7 +77,7 @@ void DmCore::_bind_methods() {
 }
 
 String DmCore::version() const {
-	return "dmcore 0.3";
+	return "dmcore 0.4";
 }
 
 int64_t DmCore::checksum(int64_t p_count) const {
@@ -105,6 +114,7 @@ int64_t DmCore::load_enemy_defs(const Dictionary &p_enemies) {
 		def.flying = num(d, "flying", 0);
 		def.slam_r = num(d, "slamRadius", dm::DEFAULT_SLAM_R);
 		def.burrow = bool(d.get("burrow", false));
+		def.frenzy = bool(d.get("frenzy", false));
 		def.hit_kind = bool(d.get("rotBite", false)) ? dm::HK_TOXIC : dm::HK_MELEE;
 		const String behavior = str(d, "behavior", "melee");
 		const String attack = str(d, "attack", "cone");
@@ -149,6 +159,42 @@ void DmCore::load_tuning(const Dictionary &p_content) {
 	u.burrow_dig_at = num(b, "digAtFrac", u.burrow_dig_at);
 	u.burrow_travel = num(b, "travelM", u.burrow_travel);
 	u.burrow_max_per_target = int32_t(num(b, "maxPerTarget", u.burrow_max_per_target));
+	const Dictionary fr = p_content.get("FRENZY", Dictionary());
+	u.frenzy_at = num(fr, "atFrac", u.frenzy_at);
+}
+
+int64_t DmCore::load_status_defs(const Array &p_rules) {
+	world.status_rules.clear();
+	for (int64_t i = 0; i < p_rules.size(); i++) {
+		const Dictionary d = p_rules[i];
+		dm::StatusRule r;
+		r.name = to_std(str(d, "name", ""));
+		r.dur = num(d, "dur", 0);
+		r.move = num(d, "move", 1);
+		r.atk = num(d, "atk", 1);
+		r.taken = num(d, "taken", 1);
+		r.dealt = num(d, "dealt", 1);
+		r.tps = num(d, "tps", 0);
+		r.max = num(d, "max", 1.0e6);
+		r.slow = d.has("slow");
+		r.root = d.has("root");
+		r.dot = d.has("dot");
+		r.stack = d.has("stack");
+		r.bleed = d.has("bleed");
+		r.barrier = d.has("barrier");
+		world.status_rules.push_back(r);
+	}
+	world.st_stun = world.status_id("stun");
+	world.st_frenzy = world.status_id("frenzy");
+	world.st_withered = world.status_id("withered");
+	world.st_cleared.clear();
+	for (const char *n : { "bleed", "wraithfire", "withered", "root", "slow", "chill" }) {  // DmStatusSet.CLEARED
+		const int32_t id = world.status_id(n);
+		if (id >= 0) {
+			world.st_cleared.push_back(id);
+		}
+	}
+	return int64_t(world.status_rules.size());
 }
 
 void DmCore::set_nav_map(const RID &p_map) {
@@ -189,6 +235,60 @@ void DmCore::stun(int64_t p_id, double p_seconds) {
 	if (it != world.enemy_slot.end()) {
 		world.stun(it->second, p_seconds);
 	}
+}
+
+void DmCore::apply_status(int64_t p_id, const String &p_status, int64_t p_source, double p_stacks, double p_duration, const Dictionary &p_params) {
+	auto it = world.enemy_slot.find(int32_t(p_id));
+	const int32_t sid = world.status_id(to_std(p_status));
+	if (it == world.enemy_slot.end()) {
+		return;
+	}
+	if (sid < 0) {
+		UtilityFunctions::push_error("DmCore.apply_status: unknown status ", p_status);
+		return;
+	}
+	world.apply_status(it->second, sid, int32_t(p_source), p_stacks, p_duration, num(p_params, "dps", 0.0), num(p_params, "cap", -1.0), num(p_params, "amount", 0.0));
+}
+
+bool DmCore::remove_status(int64_t p_id, const String &p_status) {
+	auto it = world.enemy_slot.find(int32_t(p_id));
+	const int32_t sid = world.status_id(to_std(p_status));
+	return it != world.enemy_slot.end() && sid >= 0 && world.remove_status(it->second, sid);
+}
+
+PackedByteArray DmCore::statuses(int64_t p_id) const {
+	PackedByteArray b;
+	auto it = world.enemy_slot.find(int32_t(p_id));
+	if (it == world.enemy_slot.end()) {
+		return b;
+	}
+	const dm::StatusSet &s = world.enemies[it->second].st;
+	b.resize(int64_t(s.n) * 4);
+	for (int32_t i = 0; i < s.n; i++) {
+		const dm::StatusRec &r = s.rec[i];
+		const int32_t deci = r.rem >= 6.0e4 ? 65535 : std::clamp(int32_t(std::ceil(r.rem * 10.0)), 0, 65534);
+		b.set(i * 4, uint8_t(r.id));
+		b.set(i * 4 + 1, uint8_t(std::clamp(int32_t(r.stk), 0, 255)));
+		b.set(i * 4 + 2, uint8_t(deci & 255));
+		b.set(i * 4 + 3, uint8_t(deci >> 8));
+	}
+	return b;
+}
+
+double DmCore::status_stacks(int64_t p_id, const String &p_status) const {
+	auto it = world.enemy_slot.find(int32_t(p_id));
+	const int32_t sid = world.status_id(to_std(p_status));
+	if (it == world.enemy_slot.end() || sid < 0) {
+		return 0.0;
+	}
+	const dm::StatusSet &s = world.enemies[it->second].st;
+	const int32_t i = s.find(sid);
+	return i >= 0 ? s.rec[i].stk : 0.0;
+}
+
+double DmCore::damage_dealt_mult(int64_t p_id) const {
+	auto it = world.enemy_slot.find(int32_t(p_id));
+	return it != world.enemy_slot.end() ? world.enemies[it->second].st.dealt : 1.0;
 }
 
 PackedInt32Array DmCore::enemies_in_radius(const Vector2 &p_pos, double p_r) {
@@ -308,6 +408,9 @@ Dictionary DmCore::enemy_info(int64_t p_id) const {
 	d["radius"] = e.radius;
 	d["attack_cd"] = e.attack_cd;
 	d["windup_s"] = e.windup_s;
+	d["speed_mult"] = e.speed_mult;
+	d["attack_rate_mult"] = e.attack_rate_mult;
+	d["taken_mult"] = e.taken_mult;
 	d["pos"] = Vector2(e.x, e.z);
 	d["aim"] = Vector2(e.aim_x, e.aim_z);
 	return d;

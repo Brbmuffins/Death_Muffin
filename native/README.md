@@ -53,18 +53,21 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 
 - `native/src/`: `dm_core.cpp` is the Godot-facing API (`DmCore`); `register_types.cpp` registers it, entry symbol `dmcore_library_init`
   (`client/bin/dmcore.gdextension`).
-- `native/src/core/`: the simulation, free of Godot types: `world` (tables, tick, damage and kills, queries), `grid` (dense XZ grid
+- `native/src/core/`: the simulation, free of Godot types: `world` (tables, the enemy brain, damage and kills, queries, statuses on
+  bodies), `status` (the status set, a port of DmStatusSet; its rule table comes from `client/core/dm_status_rules.gd`), `grid` (dense XZ grid
   rebuilt per tick by counting sort), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity).
 - Tests: `client/tests/core_smoke.gd` (loads, answers), `client/tests/core_api.gd` (queries in spawn order, synchronous kills,
   events, seeded stats, the rise and the 4 s body linger) and `client/tests/core_enemies.gd` (the Graves roster against today's
-  rules: bite timing, cone, dust cloud, slam, hit-and-run, tunnel and eruption, leash, stagger, stun). Run `bash client/setup.sh` first in a fresh checkout: a script run in a
+  rules: bite timing, cone, dust cloud, slam, hit-and-run, tunnel and eruption, leash, stagger, stun) and `client/tests/core_status.gd`
+  (the 0.1 s step, DoT lumps, stacking and ownership, multipliers, stun, dig-in clear, Withered on death, wire bytes). Run `bash client/setup.sh` first in a fresh checkout: a script run in a
   project that was never imported hangs.
 - `SConstruct`: builds into `client/bin/libdmcore.<platform>.<target>.<arch>.<ext>`.
 - `build.sh`: links godot-cpp into `native/thirdparty/` (not committed) from one shared cache per commit
   (`~/death-muffin/native-cache/godot-cpp-<commit>`, cloned and compiled once) at the pinned commit (1e79263, built for `api_version=4.7`) and builds
   Linux `template_debug` (what the headless tests load) and Windows `template_release` (the test build; mingw-w64, C++ runtime linked
   statically so players need no extra files). Runs at `nice -n 10` with 4 jobs; the first build of godot-cpp takes about 6 minutes, later
-  builds only recompile what changed.
+  builds only recompile what changed. Builds take turns on a lock next to the cache (`<cache>.lock`): two scons runs against the
+  same godot-cpp break each other.
 
 ## Build machine (the VPS)
 

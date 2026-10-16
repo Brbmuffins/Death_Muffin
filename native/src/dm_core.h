@@ -3,6 +3,7 @@
 // tick, reads take_events() and the bulk arrays, and calls the query/command methods from casts and bosses.
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
@@ -33,6 +34,8 @@ public:
 	void set_wander(bool p_on);
 	int64_t load_enemy_defs(const godot::Dictionary &p_enemies);  // the ENEMIES dictionary of data/content/enemies.json
 	void load_tuning(const godot::Dictionary &p_content);          // the whole enemies.json: ELITE, DUST, BURROW
+	// The status rule table, one Dictionary per status IN WIRE ORDER (DmStatusSet.IDS), keys as DmStatusSet._defs plus "name".
+	int64_t load_status_defs(const godot::Array &p_rules);
 	void set_nav_map(const godot::RID &p_map);                      // the area's navigation map; unset = straight lines (tests)
 	void set_area_bounds(const godot::Vector2 &p_min, const godot::Vector2 &p_max);
 
@@ -40,6 +43,12 @@ public:
 	int64_t spawn_enemy(const godot::String &p_def, const godot::Vector2 &p_pos, int64_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, const godot::String &p_area, bool p_rising);
 	godot::Dictionary damage(int64_t p_id, double p_amount, int64_t p_source, bool p_allow_stagger = true);
 	void stun(int64_t p_id, double p_seconds);
+	// DmStatusSet.apply: params dps (bleed, withered), cap (withered stack cap / barrier cap), amount (barrier).
+	void apply_status(int64_t p_id, const godot::String &p_status, int64_t p_source, double p_stacks = 1.0, double p_duration = -1.0, const godot::Dictionary &p_params = godot::Dictionary());
+	bool remove_status(int64_t p_id, const godot::String &p_status);
+	godot::PackedByteArray statuses(int64_t p_id) const;  // DmStatusSet.encode(): 4 bytes per status (wire id, stacks, tenths of s left)
+	double status_stacks(int64_t p_id, const godot::String &p_status) const;
+	double damage_dealt_mult(int64_t p_id) const;
 	godot::PackedInt32Array enemies_in_radius(const godot::Vector2 &p_pos, double p_r);
 	int64_t add_external(int64_t p_kind, double p_radius, double p_weight);
 	void set_external(int64_t p_id, const godot::Vector2 &p_pos, bool p_alive);

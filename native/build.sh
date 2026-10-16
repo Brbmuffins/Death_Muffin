@@ -18,6 +18,9 @@ if [ ! -d "$CACHE/.git" ]; then
 fi
 mkdir -p thirdparty
 [ "$(readlink thirdparty/godot-cpp 2>/dev/null)" = "$CACHE" ] || { rm -rf thirdparty/godot-cpp; ln -s "$CACHE" thirdparty/godot-cpp; }
+# One build at a time against the shared cache: two scons runs regenerating godot-cpp together break each other (2026-10-16).
+exec 8>"$CACHE.lock"
+flock -w 1800 8 || { echo "native/build.sh: another build holds $CACHE.lock" >&2; exit 1; }
 what="${1:-all}"
 if [ "$what" = all ] || [ "$what" = linux ]; then
   nice -n 10 "$SCONS" -Q -j"$JOBS" platform=linux target=template_debug api_version=4.7

@@ -12,6 +12,7 @@
 #include "events.h"
 #include "grid.h"
 #include "rng.h"
+#include "status.h"
 
 namespace dm {
 
@@ -44,6 +45,7 @@ struct Tuning {  // data/content/enemies.json blocks
 	double burrow_speed = 4.2, burrow_surface_r = 2.5, burrow_erupt_r = 1.8, burrow_erupt_mult = 1.25, burrow_erupt_mult_graves = 1.0;
 	double burrow_erupt_s_graves = 1.0, burrow_erupt_s = 0.8, burrow_dig_s = 0.8, burrow_dig_at = 0.5, burrow_travel = 8.0;
 	int32_t burrow_max_per_target = 3;
+	double frenzy_at = 0.5;
 };
 
 struct EnemyDef {
@@ -51,7 +53,7 @@ struct EnemyDef {
 	double hp = 1, damage = 1, speed = 1, radius = 0.45;
 	double attack_range = 1.3, windup_s = 0.4, cooldown_s = 1.3, scale = 1, hit_run = 0, flying = 0, slam_r = DEFAULT_SLAM_R;
 	int32_t behavior = B_MELEE, blow = BLOW_MELEE, hit_kind = HK_MELEE;
-	bool burrow = false;
+	bool burrow = false, frenzy = false;
 };
 
 struct Enemy {
@@ -67,6 +69,7 @@ struct Enemy {
 	int32_t path_len = 0, path_i = 0;
 	float path[PATH_MAX * 2] = {};
 	Rng rng;
+	StatusSet st;
 };
 
 struct External {  // a hero or a boss: GDScript writes it every tick
@@ -97,6 +100,9 @@ struct World {
 	Tuning tun;
 	NavHook nav;
 	std::vector<EnemyDef> defs;
+	std::vector<StatusRule> status_rules;
+	int32_t st_stun = -1, st_frenzy = -1, st_withered = -1;
+	std::vector<int32_t> st_cleared;  // ids a ghoul's dig-in clears (DmStatusSet.CLEARED)
 	std::unordered_map<std::string, int32_t> def_index;
 	std::vector<std::string> areas;
 	std::unordered_map<std::string, int32_t> area_index;
@@ -115,6 +121,10 @@ struct World {
 	// Damage from a cast, a thrall, a zone or a boss: a kill resolves at once (combat map section 7). Returns the amount dealt.
 	double damage_enemy(int32_t p_slot, double p_amount, int32_t p_source, bool p_allow_stagger, bool &r_killed);
 	void stun(int32_t p_slot, double p_seconds);
+	int32_t status_id(const std::string &p_name) const;
+	// DmStatusSet.apply on an enemy. `cap` < 0 = the rule's (stack cap or barrier cap), `duration` < 0 = the rule's.
+	void apply_status(int32_t p_slot, int32_t p_status, int32_t p_source, double p_stacks, double p_duration, double p_dps, double p_cap, double p_amount);
+	bool remove_status(int32_t p_slot, int32_t p_status);
 	void step(double p_dt);
 	void enemies_in_radius(float p_x, float p_z, float p_r, std::vector<int32_t> &out);
 
@@ -128,6 +138,9 @@ private:
 	void step_zones(double p_dt);
 	void remove_dead_bodies();
 	void kill(int32_t p_slot, int32_t p_source);
+	void advance_statuses(int32_t p_slot, double p_dt);
+	void step_statuses(int32_t p_slot, double p_dt);
+	void statuses_changed(Enemy &e);
 	// brain helpers (DmEnemy)
 	bool scan_due(Enemy &e, double p_dt);
 	int32_t find_target(const Enemy &e, double p_range) const;

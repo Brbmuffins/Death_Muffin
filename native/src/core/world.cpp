@@ -54,6 +54,7 @@ int32_t World::spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level,
 	e.repath_t = e.rng.next_double() * REPATH_S;
 	e.scan_t = e.rng.next_double() * SCAN_S;
 	e.wander_heading = e.rng.next_double() * TAU;
+	e.st.acc = e.rng.next_double() * STATUS_TICK_S;  // DmStatusSet spreads a crowd's 0.1 s steps across ticks
 	// initial_state(): rising bodies rise (a burrower starts underground), others start idle.
 	e.state = p_rising ? (d.burrow ? BURROW : RISING) : IDLE;
 	const int32_t slot = int32_t(enemies.size());
@@ -246,6 +247,15 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 				return -1;
 			}
 			events.push(EV_STATUSES_CLEARED, e.id, {}, {});
+			{
+				bool any = false;
+				for (int32_t sid : st_cleared) {
+					any = e.st.erase(sid) || any;
+				}
+				if (any) {
+					statuses_changed(e);
+				}
+			}
 			e.burrow_left = tun.burrow_travel;
 			return BURROW;
 		case EMERGE:  // dm_state_emerge
@@ -568,7 +578,180 @@ void World::kill(int32_t p_slot, int32_t p_source) {
 	e.hp = 0.0;
 	change(p_slot, DEAD);
 	Enemy &k = enemies[p_slot];
+	// DmStatusSet._on_died: report Withered (Contagion, Plague Choir spread), then clear.
+	const int32_t w = st_withered >= 0 ? k.st.find(st_withered) : -1;
+	if (w >= 0) {
+		events.push(EV_WITHERED_DIED, k.id, { k.st.rec[w].src }, { float(k.st.rec[w].stk), float(k.st.rec[w].val) });
+	}
+	if (k.st.n > 0) {
+		k.st.n = 0;
+		statuses_changed(k);
+	}
 	events.push(EV_ENEMY_DIED, k.id, { k.def, k.level, k.elite ? 1 : 0, k.area, p_source }, { k.x, k.z });
+}
+
+// ---------------------------------------------------------------------------------------------------------------- statuses
+
+int32_t World::status_id(const std::string &p_name) const {
+	for (size_t i = 0; i < status_rules.size(); i++) {
+		if (status_rules[i].name == p_name) {
+			return int32_t(i);
+		}
+	}
+	return -1;
+}
+
+void World::statuses_changed(Enemy &e) {
+	e.st.recompute(status_rules);
+	e.speed_mult = e.st.move;  // DmStatusSet owns these multipliers on its body
+	e.attack_rate_mult = e.st.atk;
+	e.taken_mult = e.st.taken;
+	events.push(EV_STATUS_CHANGED, e.id, {}, {});
+}
+
+void World::apply_status(int32_t p_slot, int32_t p_status, int32_t p_source, double p_stacks, double p_duration, double p_dps, double p_cap, double p_amount) {
+	Enemy &e = enemies[p_slot];
+	if (e.state == DEAD || p_status < 0 || p_status >= int32_t(status_rules.size())) {
+		return;
+	}
+	const StatusRule &d = status_rules[p_status];
+	const double dur = p_duration >= 0.0 ? p_duration : d.dur;
+	int32_t i = e.st.find(p_status);
+	const bool fresh = i < 0;
+	if (fresh) {
+		if (e.st.n >= STATUS_MAX) {
+			return;
+		}
+		i = e.st.n++;
+		e.st.rec[i] = StatusRec();
+		e.st.rec[i].id = p_status;
+	}
+	StatusRec &r = e.st.rec[i];
+	const double old_rem = r.rem, old_stk = r.stk;
+	if (d.stack) {
+		r.stk = std::min(p_cap >= 0.0 ? p_cap : d.max, old_stk + p_stacks);
+		r.rem = dur;
+		if (d.dot) {
+			r.val = std::max(r.val, p_dps);
+			r.src = p_source;  // the last stacker owns the kill
+		}
+	} else if (d.bleed) {
+		r.stk = 1.0;
+		r.rem = dur;
+		if (fresh || p_dps >= r.val) {
+			r.val = p_dps;
+			r.src = p_source;
+		}
+	} else if (d.barrier) {
+		r.stk = 1.0;
+		r.rem = std::max(old_rem, dur);
+		r.val = std::min(p_cap >= 0.0 ? p_cap : 1.0e9, r.val + p_amount);
+	} else {
+		r.stk = 1.0;
+		r.rem = std::max(old_rem, dur);
+		if (fresh) {
+			r.src = p_source;
+		}
+	}
+	const double new_rem = r.rem;
+	if (fresh || r.stk != old_stk) {
+		statuses_changed(e);
+	}
+	if (p_status == st_stun && new_rem > old_rem) {
+		stun(p_slot, dur);
+	}
+}
+
+bool World::remove_status(int32_t p_slot, int32_t p_status) {
+	Enemy &e = enemies[p_slot];
+	if (!e.st.erase(p_status)) {
+		return false;
+	}
+	statuses_changed(e);
+	return true;
+}
+
+// DmStatusSet.advance: one step per 0.1 s of accumulated time, the step's dt being the whole accumulator.
+void World::advance_statuses(int32_t p_slot, double p_dt) {
+	Enemy &e = enemies[p_slot];
+	if (e.st.n == 0 && !defs[e.def].frenzy) {
+		return;
+	}
+	e.st.acc += p_dt;
+	if (e.st.acc >= STATUS_TICK_S) {
+		const double dt = e.st.acc;
+		e.st.acc = 0.0;
+		step_statuses(p_slot, dt);
+	}
+}
+
+// DmStatusSet._step
+void World::step_statuses(int32_t p_slot, double p_dt) {
+	StatusSet &s = enemies[p_slot].st;
+	s.flush_t += p_dt;
+	const bool flush = s.flush_t >= STATUS_FLUSH_S;
+	if (flush) {
+		s.flush_t = 0.0;
+	}
+	int32_t dots[STATUS_MAX], gone[STATUS_MAX];
+	int32_t nd = 0, ng = 0;
+	for (int32_t i = 0; i < s.n; i++) {
+		StatusRec &r = s.rec[i];
+		const StatusRule &d = status_rules[r.id];
+		const double rem = r.rem - p_dt;
+		if (d.dot) {
+			r.acc += r.stk * r.val * std::min(p_dt, r.rem);
+			if (flush || rem <= 0.0) {
+				dots[nd++] = r.id;
+			}
+		}
+		r.rem = rem;
+		if (rem <= 0.0) {
+			gone[ng++] = r.id;
+		}
+	}
+	bool dirty = false;
+	for (int32_t k = 0; k < nd; k++) {
+		const int32_t i = enemies[p_slot].st.find(dots[k]);
+		if (i < 0) {
+			continue;  // the body died during an earlier lump and cleared the set
+		}
+		StatusRec &r = enemies[p_slot].st.rec[i];
+		const double amt = r.acc;
+		const int32_t src = r.src;
+		r.acc = 0.0;
+		if (amt > 0.0 && enemies[p_slot].state != DEAD) {
+			bool killed = false;
+			if (damage_enemy(p_slot, amt, src, false, killed) > 0.0) {  // no stagger from a DoT; damage taken applies inside
+				events.push(EV_STATUS_DOT, enemies[p_slot].id, { dots[k], src, killed ? 1 : 0 }, { float(amt * enemies[p_slot].st.taken) });
+			}
+		}
+	}
+	Enemy &e = enemies[p_slot];
+	for (int32_t k = 0; k < ng; k++) {
+		if (e.st.erase(gone[k])) {
+			dirty = true;
+			events.push(EV_STATUS_EXPIRED, e.id, { gone[k] }, {});
+		}
+	}
+	if (defs[e.def].frenzy && st_frenzy >= 0 && e.state != DEAD) {  // Frenzy below FRENZY.atFrac of max health
+		const bool on = e.hp < e.max_hp * tun.frenzy_at;
+		if (on != (e.st.find(st_frenzy) >= 0)) {
+			if (on && e.st.n < STATUS_MAX) {
+				StatusRec fr;
+				fr.id = st_frenzy;
+				fr.stk = 1.0;
+				fr.rem = STATUS_FOREVER;
+				e.st.rec[e.st.n++] = fr;
+			} else {
+				e.st.erase(st_frenzy);
+			}
+			dirty = true;
+		}
+	}
+	if (dirty && e.state != DEAD) {
+		statuses_changed(e);
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------- the tick
@@ -594,6 +777,9 @@ void World::step(double p_dt) {
 		const int32_t nxt = tick_state(i, p_dt);
 		if (nxt >= 0 && nxt != enemies[i].state) {
 			change(i, nxt);
+		}
+		if (enemies[i].state != DEAD) {
+			advance_statuses(i, p_dt);
 		}
 	}
 	separate();
