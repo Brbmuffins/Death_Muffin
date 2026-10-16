@@ -39,3 +39,6 @@ native/thirdparty/
 native/**/*.os
 native/**/*.o
 native/.sconsign*.dblite
+# per-directory build records (native/SConstruct)
+native/**/.sconsign*
+client/bin/.sconsign*
