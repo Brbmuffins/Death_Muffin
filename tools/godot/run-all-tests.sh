@@ -126,6 +126,11 @@ run_one() {
       echo "$out" | grep -E '^FAIL' | head -8 | sed 's/^/    /'
       echo "    (load: $(cut -d' ' -f1-3 /proc/loadavg))"
     fi
+    # On GitHub the same lines as an annotation: the checks page shows annotations to anyone, the job's log only to a signed-in account.
+    if [ $code -ne 0 ] && [ -n "${GITHUB_ACTIONS:-}" ]; then
+      echo "::error title=$t/$(basename "$r") failed::$( { echo "exit=$code ${line}"; echo "$out" | grep -E '^FAIL|SCRIPT ERROR|^ERROR' | head -6; echo "load: $(cut -d' ' -f1-3 /proc/loadavg)"; } \
+        | cut -c1-300 | sed 's/%/%25/g' | awk 'BEGIN { ORS = "%0A" } { print }')"
+    fi
   } 9>"$T/lock"
 }
 
