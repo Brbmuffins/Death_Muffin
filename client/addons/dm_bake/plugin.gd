@@ -6,6 +6,7 @@ extends EditorPlugin
 ## (without one the button opens a save dialog; an empty one also makes a failed bake visible, since a failed bake leaves the data untouched),
 ## bakes, saves the scene, writes `--dm-bake-result=<file>` (JSON, one row per scene) and quits the editor (exit 1 when any scene failed).
 
+const TRIES := 3
 const BUTTON := "Bake Lightmaps"   ## LightmapGIEditorPlugin's toolbar button (matched in English and in the editor's language)
 
 
@@ -77,19 +78,32 @@ func _bake(scene: String) -> Dictionary:
 	if btn == null or not btn.is_visible_in_tree():
 		row["error"] = "no visible '%s' button in the editor" % BUTTON
 		return row
+	# Up to three tries: the editor once canceled a bake through its progress window (2026-10-16, one scene of eleven, fine on the run before), so a
+	# bake that produced nothing settles, gets a fresh data file and is pressed again.
 	var t0 := Time.get_ticks_msec()
-	btn.pressed.emit()   # bakes synchronously, with the editor's progress window
+	for attempt in TRIES:
+		if attempt > 0:
+			await _frames(60)
+			data = LightmapGIData.new()
+			ResourceSaver.save(data, path)
+			data.take_over_path(path)
+			lm.light_data = data
+		row["tries"] = attempt + 1
+		btn.pressed.emit()   # bakes synchronously, with the editor's progress window
+		await _frames(10)
+		data = lm.light_data
+		if data != null and not data.get_lightmap_textures().is_empty():
+			break
 	row["ms"] = Time.get_ticks_msec() - t0
-	await _frames(5)
-	data = lm.light_data
 	if data == null or data.get_lightmap_textures().is_empty():
-		row["error"] = "the bake produced no lightmap (meshes need UV2 and static global illumination; the editor showed why)"
+		row["error"] = "the bake produced no lightmap in %d tries (meshes need UV2 and static global illumination; the editor showed why)" % TRIES
 		return row
 	row["data"] = data.resource_path
 	row["textures"] = data.get_lightmap_textures().size()
 	if EditorInterface.save_scene() != OK:
 		row["error"] = "the scene could not be saved"
 		return row
+	await _frames(30)   # let the editor's progress window close before the next scene's bake opens one
 	row["ok"] = true
 	return row
 

@@ -8,7 +8,7 @@ cannot start a bake (LightmapGI has no `bake()` method), so the bake runs on a t
 - `client/addons/dm_bake/` (this plugin, enabled in `client/project.godot`): inert unless the editor starts with
   `-- --dm-bake=res://areas/graves.tscn[,...] [--dm-bake-result=<file>]`. Then, for each scene, it gives the scene's LightmapGI a fresh, empty
   `<scene>.lmbake` (without a data file the bake button opens a save dialog; an empty one also makes a failed bake visible, since a failed bake
-  leaves the data untouched), switches the editor to its 3D view and presses the **Bake Lightmaps** button there (found by its label, in English or the editor's language, waiting up to about 5 s for it to show), checks
+  leaves the data untouched), switches the editor to its 3D view and presses the **Bake Lightmaps** button there (found by its label, in English or the editor's language, waiting up to about 5 s for it to show; a bake that produced nothing is tried again, up to three times), checks
   that lightmap textures came out, saves the scene, writes the result file (JSON: `ok`, Godot version, GPU, one row per scene with the time and
   any error) and quits (exit 1 when a scene failed).
 - `server/death-muffin/test-channel/publish-bake-kit.sh <rev> [scene ...]`: builds the client at a committed revision in its own worktree, zips
