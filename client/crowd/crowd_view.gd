@@ -245,7 +245,8 @@ func _slot(slug: String) -> int:
 	var albedo := _texture(data.albedo_path)
 	if albedo == null:
 		_warn("no colour texture for %s (%s): drawn white" % [slug, data.albedo_path])
-	var material := data.make_material(albedo, _texture(data.orm_path) if data.orm_path != "" else null)
+	var spectral: bool = (_looks.get("spectral_models", []) as Array).has(slug)   # a ghost: see-through and never in the moon's shadow (DmCreature._spectral)
+	var material := data.make_material(albedo, _texture(data.orm_path) if data.orm_path != "" else null, spectral)
 	_materials.append(material)
 	_glow_version = -1   # the new material needs the palette too
 	var plain: Array = []
@@ -258,7 +259,7 @@ func _slot(slug: String) -> int:
 			mmi.name = "%s_lod%d%s" % [slug, lod, "_shadow" if casts else ""]
 			mmi.multimesh = mm
 			mmi.material_override = material
-			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts and not spectral else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			add_child(mmi)
 			(shadow if casts else plain).append(mm.get_rid())
 	var slot: int = crowd.add_model(slug, data.crowd_data(), plain, shadow, lod_distances)

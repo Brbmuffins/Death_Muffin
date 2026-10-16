@@ -234,7 +234,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   do, where today `randomize()` and global `randf()` are used.
 - **`damage` on a thrall returns the health lost** (after damage taken and the barrier), not the raw amount.
 - **Crowd drawing (`DmCrowd`):** the creatures are MultiMesh instances playing baked clips, so what lived on each creature's node today is not in this pass:
-  the spectral wraith's translucency (its pale-blue glow is drawn, as every body's glow is: `DmCrowd`'s glow palette), the thralls'
+  the thralls'
   spirit rims, gear tint of kit armour and the kit weapon's tier colour on a thrall's prop (the props themselves are baked: `client/crowd/README.md` "Hand props"), the Mire Leech's wobble,
   the Gargoyle's dive (not in the core yet), the fade-out of a sinking body (it sinks the same 0.9 s but is not faded to transparent), the drawn-body crowd separation
   (`_separate_crowd`; the core separates bodies), fire and fen death effects, and the animation LOD (a far body
@@ -276,7 +276,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   there is no Log out or Switch character (the full HUD owns them), no automatic crash report and no
   update notice; a bag or progression the server fails to give sends the player back to the login screen with the server's words (today the
   game starts with an empty bag); the game starts only on the test server or the local mock. The hero is built from the server's bag and progression, read once at the start: nothing is saved or
-  refreshed during the run, and a hero of a discipline other than the Gravecaller has no model yet.
+  refreshed during the run; the Reaper has no model or rites yet (the four necromancers play).
 - **Co-op messages:** one binary snapshot with every body, thralls included, at 20 Hz replaces today's dictionaries (enemies 6 to a packet at 20 Hz, thralls at 15 Hz plus a full
   reliable copy at 1 Hz). Values are quantized: positions to 1 cm, yaw to 1.4 degrees, health to 1/65535 of the maximum, time in state to 10 ms. The animation name is not sent
   (`anim` today): the crowd view picks clips from the state and the eased speed.

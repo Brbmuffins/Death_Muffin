@@ -383,8 +383,8 @@ database and signing key, so nothing played here can touch a live character), th
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
 - **Off until their items:** rewards and the kill ledger (no kill report), progress and bag saves, the friends list, chat, gathering, the Chapterhouse, the panels (so no Log out or Switch character:
-  close the game to sign in again; the Social window has its own small host, "Co-op on the core"), the automatic crash report and the update notice. A hero of a
-  discipline other than the Gravecaller has no hero model yet (`client/assets.list` carries `hero_gravecaller` only) and the rites are not ported for any of them.
+  close the game to sign in again; the Social window has its own small host, "Co-op on the core"), the automatic crash report and the update notice. The four
+  necromancer disciplines play (their hero models are in `client/assets.list`; `tests/rites.gd` "the disciplines"); the Reaper waits for its item.
 
 ### The API rule (DECISIONS B38)
 

@@ -1273,6 +1273,36 @@ func armed_variants() -> void:
 	check(int(view.crowd.view_info(t_bare).model) == int(slots["skeleton_thrall+warrior"]), "a warrior with no legion carries its sword and shield (the variant)")
 	check(int(view.crowd.view_info(t_rot).model) != int(slots["skeleton_thrall+warrior"]), "a Rotweaver's warrior is bare: its legion is unarmed")
 	view.queue_free()
+	# the Mourner's wraiths: a spectral model is see-through (the SPECTRAL shader) and never casts into the moon's shadow
+	var rw: Dictionary = Baker.bake(root, "wraith_thrall", OUT.path_join("wraith_thrall"), {"assets_dir": live_assets})
+	check(rw.ok, "bake wraith_thrall: %s" % rw.get("error", ""))
+	if not rw.ok:
+		return
+	var v2 := CrowdView.new()
+	v2.auto_sync = false
+	root.add_child(v2)
+	v2.setup(core, enemies_json["ENEMIES"], Vector2(-60, -60), Vector2(60, 60), {"baked_dir": OUT, "assets_dir": live_assets})
+	var mourner: int = core.add_external(0, 0.4, 1.0)
+	v2.set_owner_legion(mourner, "mourner")
+	var wb: Array = THRALL_BASE["wraith"]
+	var tw: int = core.raise_thrall({"kind": "wraith", "hp": 100.0, "maxHp": 100.0, "damage": 0.0, "attackInterval": wb[1], "range": wb[0], "speed": wb[2], "empowered": false,
+		"champion": false, "allyHeal": 0.0}, mourner, Vector2(6, 0), 0.0, 20.0)
+	for f in 3:
+		core.step(DT)
+		v2.sync()
+		v2.crowd.draw(DT, 0.0, CAM)
+		core.take_events()
+	var slot := int(v2.model_slots().get("wraith_thrall", -1))
+	check(slot >= 0 and int(v2.crowd.view_info(tw).model) == slot, "a Mourner's wraith is drawn with its own spectral model")
+	var spectral := true
+	var no_shadow := true
+	for n in v2.get_children():
+		var mmi := n as MultiMeshInstance3D
+		if mmi != null and String(mmi.name).begins_with("wraith_thrall_"):
+			spectral = spectral and (mmi.material_override as ShaderMaterial).shader.code.contains("#define SPECTRAL")
+			no_shadow = no_shadow and mmi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	check(spectral and no_shadow, "its groups use the see-through shader and cast no shadow")
+	v2.queue_free()
 
 
 func lockstep(core: RefCounted, view: CrowdView, guest: RefCounted, alpha: float) -> void:

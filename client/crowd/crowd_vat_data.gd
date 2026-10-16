@@ -72,10 +72,22 @@ func crowd_data() -> Dictionary:
 		"clip_loop": loops, "roles": roles}
 
 
-## The material for this model's MultiMeshes. `albedo` is the model's colour texture (res://assets/ + albedo_path in the game).
-func make_material(albedo: Texture2D, orm: Texture2D = null) -> ShaderMaterial:
+static var _spectral: Shader
+
+## The crowd shader with SPECTRAL defined (a spectral body: see-through, no depth write; DmCreature's fade variant), made once from the same code.
+static func spectral_shader() -> Shader:
+	if _spectral == null:
+		var base: Shader = load(SHADER_PATH)
+		_spectral = Shader.new()
+		_spectral.code = base.code.replace("shader_type spatial;", "shader_type spatial;\n#define SPECTRAL")
+	return _spectral
+
+
+## The material for this model's MultiMeshes. `albedo` is the model's colour texture (res://assets/ + albedo_path in the game). `spectral`: a ghost's body
+## (crowd_looks.json spectral_models: the wraiths), drawn with spectral_shader().
+func make_material(albedo: Texture2D, orm: Texture2D = null, spectral := false) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = load(SHADER_PATH)
+	m.shader = spectral_shader() if spectral else load(SHADER_PATH)
 	m.set_shader_parameter("albedo_tex", albedo)
 	if orm != null:
 		m.set_shader_parameter("orm_tex", orm)

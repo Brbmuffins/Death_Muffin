@@ -99,9 +99,9 @@ server (B38).
 - [x] Crowd drawing: `DmCrowd` reads the core's tables after each step and writes each creature model's MultiMesh buffers once per rendered frame, interpolated between
   ticks (clips, blends, flash, knock, rise, death into corpses, shadow budget, level of detail); `CrowdView` builds the nodes from the baked models
   (`client/tests/crowd_view.gd`, `client/crowd/README.md` "Driving the crowd"). Left out on purpose, each its own item:
-  - [ ] Crowd looks: the spectral wraith's translucency, thrall rims, kit armour tint and the kit weapon's tier colour on a thrall's prop, and the Leech's wobble need a per-look material or
+  - [ ] Crowd looks: thrall rims, kit armour tint and the kit weapon's tier colour on a thrall's prop, and the Leech's wobble need a per-look material or
     an instance channel (decide with a measure); sinking bodies fade out only with an alpha channel. Done: every body's glow (elite, risen and drowned, wraith, wisp, a legion's
-    thralls with the empowered and champion boosts) through a glow palette, no extra draw call (`client/crowd/README.md`), the wings, the dirt mound over a ghoul underground (`DmEnemyFx`), and the thralls' hand props (swords, shields, bows, staffs: "<model>+<kind>" variants, `client/crowd/README.md` "Hand props").
+    thralls with the empowered and champion boosts) through a glow palette, no extra draw call (`client/crowd/README.md`), the wings, the spectral wraiths (see-through, no shadow), the dirt mound over a ghoul underground (`DmEnemyFx`), and the thralls' hand props (swords, shields, bows, staffs: "<model>+<kind>" variants, `client/crowd/README.md` "Hand props").
   - [ ] Crowd effects, the rest: `DmEnemyFx` already plays the telegraphs, swings, deaths, voices, rising dust, dust clouds and the affixes' bell, meal and burst from the core's events; left are the
     the shrouded body's fade (the full list is in native/README.md "Differences"). Done: the thralls' ground rings, the shattered corpse (`DmCrowd.shatter`) and each corpse's puff when it goes, the landing dust (`DmCrowd.take_landings`), the corpse rings and the toxic disc, the affixes' standing marks and motes, the status tells and the fliers' motes (their cost in the VPS Full Party fight, headless, two rounds each: 5.06 -> 5.22 ms a frame on average, the median unchanged; today pays the same effects every frame).
   - [ ] Crowd cost: animation LOD (a far body at 24 or 10 Hz), cull instances outside the camera's view in the core, measure the thralls' shadows (they always cast), set the level-of-detail
@@ -188,8 +188,10 @@ server (B38).
 **Bring everything over checklist** (built ahead while Gate B waits, B34's rule: nothing reaches players before its gate; Claude's order, 2026-10-16: what a player meets first,
 necromancers first; the order is easy to change). Each item is today's GDScript on the core the way the test build did it (copies where they run as they are, ports where
 they touched a creature), with today's tests replayed, and ends as a tested commit:
-- [ ] The other three necromancer disciplines: Ossuary, Mourner and Rotweaver, their kits on the hotbar, their rites on the core, their thrall kinds and looks (the Mourner's
-  spectral wraiths, the plague bearer's pools), their hero models in `client/assets.list`; `client/tests/rites.gd` over every kit.
+- [x] The other three necromancer disciplines (2026-10-16): Ossuary, Mourner and Rotweaver play as real characters of their discipline: their hero models
+  (`client/assets.list`), the signature on R, Exhume's kinds, cap and health, and the discipline's rules through the ported paths (the Ossuary's health, thralls and Bone Ward; the
+  Mourner's essence and the heal from a corpse; the Rotweaver's health, wider Miasma that bursts corpses and Withered up to 8), each against the Gravecaller's number and today's
+  formula (`client/tests/rites.gd` "the disciplines"); the Mourner's wraiths are spectral in the crowd. The plague bearer's pools stay as today's (they do nothing: an after-launch fix).
 - [ ] Value on the server: rewards, loot drops, the kill ledger and saves from the core's kill events, against the test server (today's `DmSessionRewards` and the authority
   flows, B32); a guest's own account in co-op (B22).
 - [ ] The panels on the core: the panel host (`DmGameUi`, `DmNextUiHost`), the Reliquary (bag, gear, runes), the Grimoire and loadout, Settings (the presets get their window),

@@ -32,6 +32,7 @@ var fails := 0
 var checks := 0
 var errlog := ErrorLog.new()
 var g: DmNextGame
+var api_: DmApi   ## the mock's api: the disciplines' heroes are more characters of the same account
 var host: DmCoreHost
 var core: RefCounted
 var hero: DmHeroBody
@@ -89,6 +90,7 @@ func _initialize() -> void:
 			return
 	var mock := DmOffline.make_mock("")
 	var api := DmOffline.make_api(mock)
+	api_ = api
 	var reg := await api.register("tester", "t@example.com", "pw1234")
 	api.set_token(reg.data["token"])
 	var ch := await api.load_or_create_character(2)
@@ -140,6 +142,7 @@ func _initialize() -> void:
 	await t_dot_credit()
 	await t_chase()
 	await t_fight()
+	await t_disciplines()
 	await finish()
 
 
@@ -1355,3 +1358,135 @@ func finish() -> void:
 	else:
 		printerr("FAIL rites: %d of %d checks failed" % [fails, checks])
 		quit(1)
+
+
+
+# ------------------------------------------------------------------------------------------------------------------------ the disciplines
+
+## The other three necromancers, each a real level-20 character of its discipline in a fresh game (not mods set on the Gravecaller): its own hero model, the
+## signature on R, the thralls Exhume raises (kind, cap, health) and the discipline's rules through the ported paths, each against the Gravecaller's
+## number and today's formula (DmCharacterBuild's mods, DmLegend, DmAbilities): the Ossuary's tougher hero, thralls and Bone Ward; the Mourner's faster essence
+## and the heal from a corpse; the Rotweaver's tougher hero, wider Miasma that bursts corpses and Withered up to 8 stacks.
+func t_disciplines() -> void:
+	# the Gravecaller's numbers first, on the game the suite ran
+	await reset_and_wait()
+	var gc := {"max_hp": c.max_hp(), "thrall_hp": float(c.p["stats"]["thrallHp"]), "regen": _regen_rate(), "miasma_r": _miasma_radius()}
+	gc["withered"] = await _withered_cap()
+	for d in [[1, "ossuary"], [3, "mourner"], [4, "rotweaver"]]:
+		await _play_as(int(d[0]))
+		await ticks(2)   # the avatar is made a frame after the body enters the tree
+		var disc: String = d[1]
+		var mods: Dictionary = DmCharacterBuild.build({"class_index": float(d[0]), "level": 20}, [], {})["discipline"]["mods"]
+		check(String(hero.discipline_id) == disc and hero.avatar != null and hero.avatar.c != null and String(hero.avatar.c.rig_slug) == String(hero.avatar.c.slug)
+			and String(hero.avatar.c.slug).contains(disc), "%s: the hero is a %s in its own model (%s)" % [disc, disc, hero.avatar.c.slug if hero.avatar != null and hero.avatar.c != null else "none"])
+		check(near(c.max_hp(), float(gc.max_hp) * float(mods["maxHpMult"]), 0.5), "%s: health %.0f = the Gravecaller's %.0f x %.2f" % [disc, c.max_hp(), float(gc.max_hp), float(mods["maxHpMult"])])
+		check(near(_regen_rate(), float(gc.regen) * float(mods["essenceRegenMult"]), 0.01), "%s: essence %.2f a second = the Gravecaller's x %.2f" % [disc, _regen_rate(), float(mods["essenceRegenMult"])])
+		check(near(float(c.p["stats"]["thrallHp"]), float(gc.thrall_hp) * float(mods["thrallHpMult"]), 0.5), "%s: thrall health %.0f = the Gravecaller's x %.1f" % [disc, float(c.p["stats"]["thrallHp"]), float(mods["thrallHpMult"])])
+		# Exhume: the discipline's kind, up to its cap, at its health
+		await reset_and_wait()
+		var raised: Array = []
+		for k in int(mods["thrallCap"]) + 1:
+			var cp := corpse(at(3.0 + float(k), 1.5 * float(k % 2)))
+			var r := cast("exhume", at(3.0 + float(k), 1.5 * float(k % 2)))
+			if r["ok"]:
+				raised.append(cp)
+			await ticks(2)
+		var ids := legion().list()
+		check(ids.size() == int(mods["thrallCap"]), "%s: Exhume raises up to the cap of %d (%d)" % [disc, int(mods["thrallCap"]), ids.size()])
+		var kinds_ok := true
+		var hp_ok := true
+		for tid in ids:
+			var info: Dictionary = legion().info(tid)
+			kinds_ok = kinds_ok and String(info["kind"]) == String(mods["thrallKind"])
+			hp_ok = hp_ok and near(float(info["max_hp"]), float(c.p["stats"]["thrallHp"]), 0.5)
+		check(kinds_ok and hp_ok, "%s: every thrall is a %s at its health" % [disc, mods["thrallKind"]])
+		# the signature on R
+		var sig := g.rite_for_slot(6)
+		check(sig == DmRiteHotbar.rite_for_slot(6, "necromancer", disc) and DmRiteRegistry.has(sig), "%s: R is its signature %s" % [disc, sig])
+		var target := foe("robber", at(5.0))
+		corpse(at(4.0))
+		var rs := cast(sig, at(5.0), target)
+		check(bool(rs["ok"]) or String(rs["reason"]) not in ["unavailable", ""], "%s: the signature %s casts (or says why: %s)" % [disc, sig, rs["reason"]])
+		match disc:
+			"ossuary":   # Bone Ward: 10 % less damage a living thrall, capped
+				await reset_and_wait()
+				hero.restore_vitals()
+				var bare := hero.take_damage(100.0, 0, "melee")
+				hero.restore_vitals()
+				for k in int(mods["thrallCap"]):
+					raise_at(at(2.0 + float(k)))
+				var n := legion().count()
+				var warded := hero.take_damage(100.0, 0, "melee")
+				var want := DmLegend.damage_taken_mult(float(mods["wardPerThrall"]) * float(n), 0.0) / DmLegend.damage_taken_mult(0.0, 0.0)
+				check(n > 0 and near(warded / maxf(bare, 0.001), want, 0.01), "ossuary: Bone Ward: with %d thralls a blow lands at %.0f %% (%.1f of %.1f)" % [n, 100.0 * want, warded, bare])
+			"mourner":   # a corpse heals: Grave Offering's heal + corpseHeal
+				await reset_and_wait()
+				corpse(at(5.0))
+				c.p["hp"] = c.max_hp() * 0.5
+				var G: Dictionary = DmSimData.GRAVE_OFFERING
+				var hp0 := float(c.p["hp"])
+				var ro := cast("grave_offering", at(5.0))
+				await secs(0.6)
+				check(bool(ro["ok"]) and float(c.p["hp"]) >= hp0 + c.max_hp() * (float(G["healFrac"]) + float(mods["corpseHeal"])) - 0.01, "mourner: a corpse heals %.0f %% (healFrac + corpseHeal)" % (100.0 * (float(G["healFrac"]) + float(mods["corpseHeal"]))))
+			"rotweaver":   # a wider Miasma that bursts corpses, Withered up to 8
+				check(near(_miasma_radius(), float(gc.miasma_r) * float(mods["miasmaRadiusMult"]), 0.02), "rotweaver: Miasma's radius %.2f = the Gravecaller's x %.1f" % [_miasma_radius(), float(mods["miasmaRadiusMult"])])
+				var wc: int = await _withered_cap()
+				check(wc == int(DmLegend.effective_withered_cap(mods)) and wc > int(gc.withered), "rotweaver: Withered stacks up to %d (the Gravecaller %d)" % [wc, int(gc.withered)])
+				await reset_and_wait()
+				var cp := corpse(at(7.0, 0.5))
+				var mr := cast("miasma", at(7.0))
+				await secs(1.5)
+				check(bool(mr["ok"]) and field.get_corpse(cp) == null, "rotweaver: Miasma bursts the corpse in its cloud")
+
+
+## A fresh game with a level-20 hero of class `cls`, the suite's globals pointed at it.
+func _play_as(cls: int) -> void:
+	var ch := await api_.load_or_create_character(cls)
+	ch.data["level"] = 20
+	g.process_mode = Node.PROCESS_MODE_DISABLED
+	await g.leave()
+	g.queue_free()
+	await process_frame
+	root.multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	g = load("res://next/next_game.tscn").instantiate()
+	g.name = "NextGame"
+	root.add_child(g)
+	await g.start(ch.data, api_, {"offline": true, "name": "tester", "hud": true, "audio": false, "seed": 20261016, "waves": false, "wander": false, "baked_dir": OUT})
+	host = g.core_host
+	core = host.core
+	hero = g.local_body()
+	c = hero.get_node("Rites") as DmRiteCaster
+	field = host.corpses
+	origin = hero.position
+	base_mods = c.mods.duplicate(true)
+	c.random = func() -> float: return 0.5
+	_wire()
+	find_arena()
+
+
+## Essence a second from the necromancer's passive with these stats (DmResources).
+func _regen_rate() -> float:
+	return DmResources.passive("necromancer", {"stats": c.p["stats"], "value": 0.0, "max": c.p["resource"]["max"], "sinceHurtMs": 1e9, "sinceResourceGainMs": 1e9})
+
+
+## The radius of a Miasma cast now (DmAbilities.miasma with the hero's mods).
+func _miasma_radius() -> float:
+	var aim := at(7.0)
+	return float(DmAbilities.miasma(sp_now(), c.mods, "", 1.0, {"x": c.p["x"], "z": c.p["z"]}, {"x": aim.x, "z": aim.z})["r"])
+
+
+## The most Withered stacks this hero's Miasma puts on one enemy: two clouds over it (a stack a pulse each; one cloud's six pulses would not reach a cap of 8),
+## so the cap is what stops the count.
+func _withered_cap() -> int:
+	await reset_and_wait()
+	var id := foe("robber", at(7.0))
+	var r := cast("miasma", at(7.0))
+	if not r["ok"]:
+		return -1
+	await secs(1.0)
+	cast("miasma", at(7.0))
+	var most := 0
+	for k in 20:
+		await secs(0.5)
+		most = maxi(most, stacks_of(id, WITHERED))
+	return most

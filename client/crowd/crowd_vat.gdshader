@@ -1,5 +1,11 @@
 shader_type spatial;
+#ifdef SPECTRAL
+// A spectral body (CrowdVatData.spectral_shader: this code with SPECTRAL defined): DmCreature's fade variant, see-through at SPECTRAL_OPACITY, writing no depth.
+render_mode cull_disabled, diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_never;
+const float SPECTRAL_OPACITY = 0.55;  // DmCreature: opacity 0.55 for a spectral body
+#else
 render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
+#endif
 
 // The crowd material: plays a baked vertex animation (client/crowd/README.md) for every instance of a MultiMesh.
 // One material per creature model. Runs on Forward+, Mobile and Compatibility: vertex texture fetch, integer maths and
@@ -128,4 +134,7 @@ void fragment() {
 		}
 		EMISSION = mix(v_glow.rgb, FLASH_COLOR, v_flash) * (v_glow.a + v_flash * FLASH_EMISSIVE);
 	}
+#ifdef SPECTRAL
+	ALPHA = SPECTRAL_OPACITY;
+#endif
 }

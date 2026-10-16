@@ -182,5 +182,6 @@ shield can sit 20 to 40 degrees differently), the kit weapon's tier colour is no
 
 ## Differences from the creature material (`godot/game/dm_creature_mat.gd`)
 
-No normal map (the crowd mesh has no tangents), no gear regions, spectral fade or friend rim; the per-body glow comes from a palette (`DmCrowd.glow_palette`, today's emissive colours and strengths from `crowd_looks.json`: an elite's purple, the risen's, a legion's thralls' with the empowered and champion boosts) that CrowdView pushes to every material when a new glow comes into play; two-sided like most
+No normal map (the crowd mesh has no tangents), no gear regions or friend rim; a spectral model (`crowd_looks.json` `spectral_models`: the wraiths) gets the same shader
+with SPECTRAL defined (`CrowdVatData.spectral_shader`: 0.55 opacity, no depth write, as DmCreature's fade variant) and casts no shadow; the per-body glow comes from a palette (`DmCrowd.glow_palette`, today's emissive colours and strengths from `crowd_looks.json`: an elite's purple, the risen's, a legion's thralls' with the empowered and champion boosts) that CrowdView pushes to every material when a new glow comes into play; two-sided like most
 of today's models. The procedural body layer (hit recoil, strike lunge, topple, rise from the ground) is not baked: `DmCrowd` writes it into the instance transform. A loop whose last key differs from its first (the robber's run, by 47 cm at the worst vertex) pops at its seam today; the baked clip blends across it.

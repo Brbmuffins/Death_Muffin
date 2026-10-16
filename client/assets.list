@@ -36,6 +36,7 @@ slice/models/barrow_ghoul
 slice/models/skull_rat
 slice/models/props/shroud_moth*
 slice/models/props/tithe_bat*
+slice/models/props/wraith_thrall*   # the Mourner's spectral thralls (an unrigged prop, like the moth)
 # the thralls the rites raise (client/crowd/crowd_looks.json thrall_model / legion): the Gravecaller's legionnaire, the other legions' bodies, the risen skeleton
 # (an archer, a bone mage), the plague bearer's sac and the Bone Colossus. skeleton_thrall, thrall_legionnaire, thrall_sentinel and thrall_plague are listed below with the people.
 slice/models/carrion_sac
@@ -79,8 +80,11 @@ slice/models/thrall_legionnaire
 slice/models/thrall_sentinel
 slice/models/thrall_plague
 
-# ---- The hero of the game scene (client/next/next_game.gd): the Gravecaller, the dev entry's character
+# ---- The heroes of the game scene (client/next/next_game.gd): the four necromancer disciplines (the Gravecaller is the dev entry's character)
 slice/models/hero_gravecaller
+slice/models/hero_ossuary
+slice/models/hero_mourner
+slice/models/hero_rotweaver
 
 # ---- The rites' licensed flipbook sheets (godot/fx/README.md "Flipbook sheets"): read from $FX_SHEETS, copied into the git-ignored client/assets/fx/sheets/. Without them
 # the effects draw their plain look.
@@ -94,4 +98,4 @@ fx/sheets/trail_arc.png
 # ---- The Gravedigger King (client/next/bosses): the Hollow Graves' boss, drawn by DmBossView with the full skeleton (the model and the textures Godot extracts from it)
 slice/models/boss_gravedigger_king
 
-# ---- Later blocks (not listed yet): the other disciplines, the rest of the Graves roster, the other areas' props, the other bosses.
+# ---- Later blocks (not listed yet): the Reaper, the rest of the Graves roster, the other areas' props, the other bosses.
