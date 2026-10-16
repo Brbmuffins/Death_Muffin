@@ -81,7 +81,7 @@ func bind_character(ch: Dictionary) -> void:
 	character = ch
 	character_id = int(ch.get("id", 0))
 	_init_state()
-	var rites := get_node_or_null("Rites")   # a DmRiteCaster, when the rites are in (their ROADMAP step)
+	var rites := get_node_or_null("Rites")   # the DmRiteCaster the game scene attached
 	if rites != null:
 		rites.rebuild()   # the caster attached before the character was bound
 
@@ -201,7 +201,7 @@ func take_damage(amount: float, source: Variant = 0, kind: String = "melee") -> 
 	if _legend_hurt:   # Colossus Mantle: Bone Ward turned a share of the blow back at its source; a broken Litany barrier bursts
 		var broke := float(p["barrierBroke"])
 		p["barrierBroke"] = 0.0
-		var rites := get_node_or_null("Rites")   # the rites (a DmRiteCaster) come with their ROADMAP step; until then there is no such node
+		var rites := get_node_or_null("Rites")   # the DmRiteCaster the game scene attached
 		if rites != null:
 			rites.legend_hurt(amount, minf(float(DmLegend.L()["wardCap"]), ward), source, broke)
 	_mirror_from_state()

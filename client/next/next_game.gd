@@ -10,7 +10,11 @@ extends Node3D
 ## core's EV_TARGET_HIT events (`_on_target_hit`). Enemies are ids (ints) everywhere, never nodes: `enemy_spawned` carries an id, the queries
 ## (`enemies_in_radius`, `enemy_position`) answer ids and positions from the core. No node and no script exists per creature.
 ##
-## Off in this step, each until its ROADMAP item: the rites (the hero cannot attack: next/rites, no `Rites` node, `hotbar` goes nowhere), the login and front
+## The hero fights with the Gravecaller's rites (next/rites, ported: the `Rites` node, a DmRiteCaster, is attached to his body in `attach_caster`; LMB, keys 1-4, RMB and R go
+## through DmNextInput and DmRiteHotbar). A rite calls the core synchronously (`core_host.damage / apply_status`, `corpses`, the legion), so a kill resolves inside the cast;
+## its thralls are the core's and are drawn by the crowd. `rite_hit` carries every blow a rite or a Withered DoT lands, for the rewards seam.
+##
+## Off in this step, each until its ROADMAP item: the login and front
 ## flow (`main/`), bosses (`bosses` stays null), party and co-op (the session is a 1-player host; no `Net`, `Party`, `Joiner`), gathering, the Chapterhouse
 ## (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (`rewards`, `progress`, `meta` stay null: no XP, loot or
 ## saves), the full HUD (`ui_host`, `ui` stay null) and the graphics governor (`perf`). `start` refuses an online api: nothing here talks to a server.
@@ -26,6 +30,7 @@ signal area_changed(id: String)
 signal hero_died(body: DmHeroBody)              ## host
 signal hero_respawned(body: DmHeroBody)         ## host
 signal hero_hit(enemy_id: int, kind: String, damage: float)   ## an enemy's blow reached the hero (before the body's own damage rules)
+signal rite_hit(rite: String, enemy_id: int, amount: float, crit: bool, killed: bool)   ## host: a rite's (or a Withered DoT's) blow on an enemy, from the local caster: the kill credit / rewards hook
 signal start_failed(reason: String)             ## `start` refused to run (an online api)
 
 
@@ -52,6 +57,8 @@ var character: Dictionary = {}
 var api: Variant = null                         ## DmApi: the offline backend (DmOffline.make_api)
 var is_offline: bool = true
 var area_id: String = ""
+var corpses: DmCoreCorpses:                     ## the corpse field as the rites see it (the core's: atomic consume, pick, in radius)
+	get: return core_host.corpses
 var hitstopper := DmHitStop.new()               ## the picture's micro-freeze on heavy hits / elite deaths (DmHitStop, as the original game)
 var opts: Dictionary = {}
 var load_ms: int = 0
@@ -128,6 +135,8 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	_enter(b.position)
 	camera.snap(b.position)
 	_start_hud()
+	if ui_host == null:
+		DmRiteHotbar.wire(self)   # one hotbar path: the kit's mapping (LMB the primary, 1-4 the default loadout, RMB, R the signature); the full HUD's loadout replaces it
 	if bool(opts.get("audio", DisplayServer.get_name() != "headless")) and get_node_or_null("/root/AudioDirector") != null:
 		var hooks := DmAudioHooks.new()
 		hooks.name = "AudioHooks"
@@ -135,6 +144,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		hooks.setup(self)
 	if _visual:
 		enemy_fx.warm(b.global_position)
+		DmRiteFx.with_autoloads().warm()
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
@@ -166,9 +176,13 @@ func _make_body() -> DmSessionBody:
 	return b
 
 
-## Called by each DmHeroBody in its _ready on every peer: attaches "Statuses" (the hero's DmStatusSet, a status set on a hero body only). The rites'
-## caster ("Rites") and the thralls' host come with the rites (ROADMAP: the Gravecaller's rites ported to the core).
+## Called by each DmHeroBody in its _ready: attaches "Rites" (the DmRiteCaster, `self` is its DmRiteWorld) and "Statuses" (the hero's DmStatusSet, a status set on a hero body
+## only; the statuses of enemies and thralls are the core's). The legion is the caster's (`thralls()`, the core's thralls): there is no "Thralls" node.
 func attach_caster(body: DmHeroBody) -> void:
+	var caster := DmRiteCaster.attach(body, self)
+	if body.owner_peer == session.get_my_id():
+		caster.shake_requested.connect(camera.shake)   # the camera honours reduce_motion
+	caster.hit_resolved.connect(func(rite: String, enemy_id: int, amount: float, crit: bool, killed: bool) -> void: rite_hit.emit(rite, enemy_id, amount, crit, killed))
 	if body.get_node_or_null("Statuses") == null:
 		DmStatusSet.attach(body)
 
@@ -236,6 +250,19 @@ func aim_target_id() -> int:
 ## Ask for a picture freeze (DmHitStop: min gap, leaky budget). `weight` 0..1.
 func hitstop(weight: float) -> void:
 	hitstopper.request(weight)
+
+
+## The build a body's caster reads (DmRiteWorld): its DmCharacterBuild, and the runes socketed in the bag (none yet: the bag comes with progression).
+func rite_build(peer_id: int) -> Dictionary:
+	var out := build_for(peer_id)
+	out["runes"] = {}
+	return out
+
+
+## The rite on a hotbar slot (0 = LMB primary, 1-4, 5 = RMB, 6 = R): the kit's mapping (no full HUD, so no loadout of the player's).
+func rite_for_slot(slot: int) -> String:
+	var b := local_body()
+	return DmRiteHotbar.rite_for_slot(slot, b.family, b.discipline_id) if b != null else ""
 
 
 ## A body's DmCharacterBuild: the character with no bag and no progression (offline, no saves in this step), so level-1 gear and the base mods.

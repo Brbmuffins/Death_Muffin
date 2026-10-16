@@ -5,10 +5,14 @@ extends Node
 ## Nothing here reaches a server: the backend is the local mock (DmOffline.make_mock, its accounts in user://dm_dev_offline_db.json), and DmNextGame
 ## refuses any api that has a base url.
 ##
-##   godot --path client                                   # the Gravecaller (class 2), the minimal HUD, waves
+##   godot --path client                                   # the Gravecaller (class 2), level 10, the minimal HUD, waves
 ##   godot --path client -- --class=1 --seed=7             # after `--`: the options below
 ##
-## Options: --class=N (discipline index, default 2 = Gravecaller), --seed=N (the combat core's seed), --no-waves, --crowd=N (a first wave of N bodies 6 to 12 m
+## He fights with the rites of today's game (client/README.md "The Gravecaller's rites"): LMB walks, or attacks the enemy under the cursor with the primary (Bone Needle; hold to
+## repeat, Shift+LMB casts in place), keys 1-4 are the kit's default loadout (Marrow Spear, Exhume, Miasma, Black Litany), RMB is Corpse Explosion and R the signature from level 10
+## (Command: Rend). WASD walks. Click-to-move, camera zoom on the wheel.
+##
+## Options: --class=N (discipline index, default 2 = Gravecaller), --level=N (the character's level, default 10: R works from 10, Bone Mantle from 12, Bone Storm from 14), --seed=N (the combat core's seed), --no-waves, --crowd=N (a first wave of N bodies 6 to 12 m
 ## around the hero, and waves of N after it, up to N alive: a look at a big fight), --baked=<dir> (the baked crowd models; default res://crowd/baked: `bash client/tools/bake_crowd.sh` makes the robber and the hound),
 ## --shot=<png> [--shot-after=<game seconds, default 25>] (save a screenshot and quit: the QA hook).
 
@@ -37,6 +41,7 @@ func _ready() -> void:
 		r = await api.login("tester", "pw1234")
 	api.set_token(r.data["token"])
 	var c := await api.load_or_create_character(int(opts["class"]))
+	c.data["level"] = int(opts["level"])   # the mock's character starts at level 1; the dev entry plays at the level the signature unlocks at
 	game = load("res://next/next_game.tscn").instantiate()
 	game.name = "NextGame"
 	add_child(game)
@@ -64,10 +69,12 @@ func _ready() -> void:
 
 ## The launch options after `--`.
 static func options(args: PackedStringArray) -> Dictionary:
-	var o := {"class": 2, "no_waves": false, "shot_after": 25.0}
+	var o := {"class": 2, "level": 10, "no_waves": false, "shot_after": 25.0}
 	for a in args:
 		if a.begins_with("--class="):
 			o["class"] = int(a.substr(8))
+		elif a.begins_with("--level="):
+			o["level"] = clampi(int(a.substr(8)), 1, 60)
 		elif a.begins_with("--seed="):
 			o["seed"] = int(a.substr(7))
 		elif a == "--no-waves":

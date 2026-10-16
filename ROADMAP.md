@@ -87,7 +87,7 @@ server (B38).
     affixes' standing rings and particles, status effects, landing dust, corpse rings and the toxic decal, the shattered corpse (the full list is in native/README.md "Differences").
   - [ ] Crowd cost: animation LOD (a far body at 24 or 10 Hz), cull instances outside the camera's view in the core, measure the thralls' shadows (they always cast), set the level-of-detail
     distances and the 128-instance reserve from the benchmark on Helix's PC.
-  - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`) and its models synced (`client/assets.list`); the thrall and legion models; a first look on Forward+ and Mobile.
+  - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`; the robber, the hound and the thralls are baked and synced so far) and its models synced (`client/assets.list`); a first look on Forward+ and Mobile.
   - [x] Co-op guest: a puppet core is drawn by `DmCrowd.sync(core)` like a host core (its hits come from the hp drops it derives); no translation into `sync_rows` is needed.
 - [x] Core skeleton (native/README.md "Design"): enemy table in spawn order, heroes and bosses as external entities, tick, timers in
   doubles, seeded randomness, grid, event buffer, damage with synchronous kills, radius queries, bulk reads; `client/tests/core_api.gd`.
@@ -106,7 +106,11 @@ server (B38).
     until the front flow), `client/tests/game_scene.gd` proves it (client/README.md "The game scene and the dev entry"). Off until their items: the rites (the hero cannot attack), bosses, party,
     gathering, the Chapterhouse, rewards, the full HUD, Grave Surges. Not in the core yet: what an enemy does to a hero besides damage (chill, root, pull) and a call that removes a living body (a hero
     who stays away 15 s used to see the area's enemies freed).
-  - [ ] The Gravecaller's rites ported to the core.
+  - [x] The Gravecaller's rites ported to the core: the caster, its module base, the legends, the registry and 24 of the necromancer's 25 rites (Veil Step is a copy) are today's GDScript calling the core synchronously, so a kill
+    resolves inside the cast; the enemy queries, the corpse field and the legion are adapters over the core (`core/dm_foe.gd`, `dm_core_corpses.gd`, `dm_core_legion.gd`). The hero fights in the dev entry (LMB, keys 1-4, RMB, R) and the crowd draws his
+    thralls. `client/tests/rites.gd` casts every rite against today's formulas, the synchronous kills, the input and a fight (client/README.md "The Gravecaller's rites"). Not in it, each its own item: the Reaper's nine rites (with the Reaper), Ossuary
+    Wall as a solid wall for the core's enemies (the core's movement has no dynamic obstacle), bosses in the rites' queries (the Gravedigger King), Easy auto combat, the kill-credit consumers (`DmSessionRewards`; the game scene emits `rite_hit`), floating
+    damage numbers, and the loadout, rune and weapon sockets (the full HUD and the bag). The rites' pictures have run headless only: their first look is on Helix's PC.
   - [ ] Login to the test server and character select (today's front flow, pointed at the test API).
   - [ ] The Gravedigger King's brain as an external entity.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.

@@ -58,6 +58,7 @@ var core: RefCounted                 ## DmCore
 var view: CrowdView                  ## draws the core's creatures
 var data_dir := DEFAULT_DATA         ## where data/ (the JSON the core reads) is: this project, or the live game's folder in tests
 var enemy_defs: Dictionary = {}      ## ENEMIES of data/content/enemies.json
+var corpses: DmCoreCorpses           ## the corpse field as the rites see it (pick, in radius, atomic consume), answered by the core
 ## Counters for tests and the F3 overlay: events dispatched, ticks stepped.
 var ticks := 0
 var events_total := 0
@@ -91,6 +92,7 @@ func setup(opts: Dictionary) -> void:
 	var bounds: Rect2 = opts.get("bounds", Rect2(-60.0, -60.0, 120.0, 120.0))
 	core.set_area_bounds(bounds.position, bounds.end)
 	enemy_defs = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))["ENEMIES"]
+	corpses = DmCoreCorpses.new(self)
 	view = CrowdView.new()
 	view.name = "Crowd"
 	view.auto_sync = false                 # sync() comes from tick(), between the step and the events
@@ -295,6 +297,21 @@ func enemy_radius(id: int) -> float:
 	return float(info["radius"]) if not info.is_empty() else 0.0
 
 
+## One enemy as a cast sees it (a snapshot; null when it is gone). Allocates: for casts and the HUD, never for every creature every tick.
+func foe(id: int) -> DmFoe:
+	return DmFoe.of(core.enemy_info(id))
+
+
+## Living enemies (hp > 0: a rising or burrowed body counts) whose edge is within `r` of `pos`, in spawn order, as snapshots.
+func foes_in_radius(pos: Vector3, r: float) -> Array[DmFoe]:
+	var out: Array[DmFoe] = []
+	for id in core.enemies_in_radius(Vector2(pos.x, pos.z), r):
+		var f := DmFoe.of(core.enemy_info(id))
+		if f != null:
+			out.append(f)
+	return out
+
+
 ## Enemy damage from a cast or a test: a kill resolves inside the call (native/README.md "Design"). {dealt, killed}.
 func damage(id: int, amount: float, source: int, allow_stagger := true) -> Dictionary:
 	return core.damage(id, amount, source, allow_stagger)
@@ -303,6 +320,15 @@ func damage(id: int, amount: float, source: int, allow_stagger := true) -> Dicti
 ## DmStatusSet.apply on a core body (enemy or thrall): the only way to put a status on one. Never call DmStatusSet on an enemy or thrall.
 func apply_status(id: int, status: String, source: int, stacks := 1.0, duration := -1.0, params := {}) -> void:
 	core.apply_status(id, status, source, stacks, duration, params)
+
+
+## The stacks of a status on an enemy or a thrall (0 when it has none; a status without stacks counts 1).
+func status_stacks(id: int, status: String) -> float:
+	return float(core.status_stacks(id, status))
+
+
+func remove_status(id: int, status: String) -> bool:
+	return bool(core.remove_status(id, status))
 
 
 ## The director's spawn: the core makes the body at once, the event comes with the next tick's buffer.

@@ -21,7 +21,8 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/code_load.gd      # every copied script, scene and resource loads; no copy names a per-creature class
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_view.gd    # the crowd's views against today's view code, and a Full Party (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/game_scene.gd     # the game scene on the core: 60 s of an offline run in the Graves (bakes into a scratch folder; add --fixed-fps 60 before --path to run it faster than real time)
-bash client/tools/bake_crowd.sh                                                                # bakes the crowd models into client/crowd/baked (not committed)
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rites.gd          # the Gravecaller's rites on the core: all 25 necromancer rites against today's rules, a fight (bakes into a scratch folder; 90 s of game time, --fixed-fps 60 makes it faster)
+bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the roster's robber and hound, the thralls) into client/crowd/baked (not committed)
 ```
 
 Run `bash client/setup.sh` once in every new checkout or worktree (it lists the extension before the first import; see the script).
@@ -53,13 +54,14 @@ uids keep working:
 `client/code.list` says why, section by section; its comments are the list:
 - **Per-creature systems** (`enemies/`, `sim/sim_enemy|thrall|corpse|zone.gd`, `next/thralls|corpses|affixes`, `game/dm_entity_views.gd`): the combat core and the crowd view
   replace them (native/README.md "Design").
-- **Seams** (55 files today): a file outside those systems that names one of their classes or scenes: the rites, the bosses, the HUD's enemy reads, auto combat input, the benchmark
+- **Seams** (55 files at the start): a file outside those systems that names one of their classes or scenes: the rites, the bosses, the HUD's enemy reads, auto combat input, the benchmark
   fight. Each line names what it uses. They are ported to the core in the later steps of the ROADMAP's client layer, and `--port` then moves them from the list into `code.lock.json`.
-  Eight are ported already (the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; below).
-- **Left out with a seam** (32 files): a file that cannot load without a seam, grouped under the seam it follows. The biggest chains: `DmRiteModule` and `DmRiteCaster` (the rites'
-  registry, hotbar, belt and the party and progress nodes that call the caster) and, through them, the front flow's entry `main/` and the social window of `game_ui/dm_game_ui.gd`.
+  Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; and the Gravecaller's rites (the caster, the module base, the legends, the
+  registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites").
+- **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the party
+  (`DmNextFriends` reads the game scene's `party`: the friends and party panes, the social window, `game_ui/dm_game_ui.gd` and the front flow's entry `main/`).
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only), the HUD shell `next/next_hud.gd`,
-  the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner.
+  the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step, the belt and the progress node.
 
 ## The game scene and the dev entry
 
@@ -70,10 +72,15 @@ and `DmNextGame.start` refuses any api that has a base url. The copied net confi
 
 ```
 bash client/setup.sh                                   # once per checkout: builds the core, imports
-bash client/tools/bake_crowd.sh                        # once: bakes the robber and the hound (without them nothing is drawn; the other defs borrow these two)
-/home/ubuntu/tools/godot/godot --path client            # the dev entry: the Gravecaller, the minimal HUD, waves. Click or WASD to walk; the hero cannot attack until the rites are ported
-/home/ubuntu/tools/godot/godot --path client -- --class=1 --seed=7 --crowd=70      # options after `--`: --class=N --seed=N --no-waves --crowd=N (a first wave of N bodies 6 to 12 m around the hero) --baked=<dir> --shot=<png> [--shot-after=<game s>] (rendered runs only)
+bash client/tools/bake_crowd.sh                        # once: bakes the robber, the hound and the thralls (without them nothing is drawn; the other defs borrow these)
+/home/ubuntu/tools/godot/godot --path client            # the dev entry: the Gravecaller at level 10, the minimal HUD, waves. He fights with the rites (controls below)
+/home/ubuntu/tools/godot/godot --path client -- --class=1 --seed=7 --crowd=70      # options after `--`: --class=N --level=N (default 10) --seed=N --no-waves --crowd=N (a first wave of N bodies 6 to 12 m around the hero) --baked=<dir> --shot=<png> [--shot-after=<game s>] (rendered runs only)
 ```
+
+**Controls of the dev entry** (today's input and hotbar code): **LMB** on the ground walks there, on an enemy walks into range and casts the primary (Bone Needle; hold to repeat, Shift+LMB casts in place);
+**1-4** are the kit's default loadout (Marrow Spear, Exhume, Miasma, Black Litany; hold a key to repeat), **RMB** is Corpse Explosion, **R** the signature from level 10 (Command: Rend), **WASD** walks, the wheel
+zooms. The other rites cast through `DmNextInput.cast_at(slot, aim, enemy_id, true)` or the caster's `request_cast(rite, aim)` until the loadout panel comes with the full HUD. `--level=N` sets the level the mock
+character is made at (R needs 10, Bone Mantle 12, Bone Storm 14; all rites unlock by 14).
 
 **`DmCoreHost`** (`core/dm_core_host.gd`, the scene's `Core` node) is the one owner of the `DmCore` and the `CrowdView`. It loads the data (`DmCoreData.load_all`: this project's `data/`; the
 three constants files of the creature systems are not here, so the core keeps its compiled-in defaults, which `core_thralls` checks against the live files), seeds the core and
@@ -90,9 +97,32 @@ roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`
 **input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
 wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
-Off in this step, each until its ROADMAP item: the rites (the hero cannot attack, `hotbar` goes nowhere), the front flow and `main/`, bosses, party and co-op, gathering, the Chapterhouse
-(the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves), the full HUD (only the orbs, area name and death veil), the graphics
-governor, Grave Surges. `native/README.md` "Differences from today's game" lists what behaves differently from today.
+Off in this step, each until its ROADMAP item: the front flow and `main/`, bosses, party and co-op, gathering, the Chapterhouse
+(the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves; `DmNextGame.rite_hit` carries every blow of a rite for them), the full HUD (only the orbs, area name and death veil;
+so no loadout panel, no floating damage numbers), Easy auto combat, the Reaper's rites, the graphics governor, Grave Surges. `native/README.md` "Differences from today's game" lists what behaves differently from today.
+
+## The Gravecaller's rites
+
+Today's rites (`godot/next/rites`, DECISIONS B42) run in this project as GDScript and call the core synchronously: a rite damages with `core.damage(id, amount, source)` and reads `{dealt, killed}` at once, so Wailing Skull's
+extra leap on a kill, Bone Prison skipping the dead, and the Litany's loops work as they do today. `next/rites/` has the necromancer's 25 rites (the Reaper's nine wait for the Reaper: the registry does not list them
+and a cast of one is refused `unavailable`); 24 are ports, Veil Step is a copy. `DmNextGame.attach_caster` gives the hero his `Rites` node (a `DmRiteCaster`, the game scene is its `DmRiteWorld`) and `DmRiteHotbar.wire`
+connects the input. The numbers (spell power, cooldowns, costs, runes) are still `DmAbilities`, `DmSimData` and `abilities.json`; the thralls' stats `DmThralls.raise_stats / colossus_stats`.
+
+What a rite uses where it used nodes (all on the caster `c`; the adapters belong to the game scene's `DmCoreHost` and live in `core/`):
+
+| today | on the core |
+|---|---|
+| `c.world.enemies_in_radius`, `enemy_by_id`, an enemy's `global_position`, `radius`, `hp` | `c.foes_in_radius(pos, r)`, `c.foe(id)`: `DmFoe` snapshots (id, x, z, radius, hp, state, def, area), living, spawn order, edge distance (`core/dm_foe.gd`) |
+| `DmStatusSet.hit(e, amount, c.body)`, then `e.hp <= 0` | `c.deal(id, amount)` returns `{dealt, killed}` (`c.hit` the bool); the hero is the source |
+| `DmStatusSet.ensure(e).apply / has / stacks / remove`, `c.watch_dots(ss)` | `c.apply_status / has_status / status_stacks / remove_status`; the DoT credit and Withered's hand-on are the core's events, connected once per caster |
+| `DmCorpseField`, `DmSimCorpse` | `c.corpses()` (`DmCoreCorpses`, `core/dm_core_corpses.gd`): `pick_corpse`, `corpses_in_radius`, atomic `consume`, `add_corpse`, `notes(id)`; records are `DmCoreCorpse` snapshots |
+| `DmThrallHost` (`raise`, `rally`, `command_rend`, `near`, `list`, a `DmThrall` node) | `c.thralls()` (`DmCoreLegion`, `core/dm_core_legion.gd`): the same calls, a thrall is an id and `info(id)` is the core's record; cap, formation, swing and death are the core's |
+| lane, cone, circle, `pick_enemy` of `DmRiteModule` | the same functions, answering from the core's radius query with today's rules (edge distance, strict comparisons, spawn order, caps) |
+| `e.set_meta` (contagious, the Chain Plague gap, the shroud's cover) | by enemy id in the rite's memory; the shroud's cover is `core.cover_miasma` |
+
+Timers stay the caster's (`c.after(ms, fn)` on the body's clock, a physics tick). Events and fx are today's: `broadcast` -> `play` -> `DmRiteFx` through the copied `Vfx` and `AudioDirector`. The hero's own statuses stay
+`DmStatusSet`. The cast flow (owner, cooldown, essence and cast lock through `DmAbilities.cast_check / apply_cast_cost`, refund on a lost corpse race) is unchanged. `client/tests/rites.gd` casts every rite
+(table-driven against the copied rules code), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, and plays a fight; `native/README.md` "Differences from today's game" lists what differs.
 
 ## Assets
 

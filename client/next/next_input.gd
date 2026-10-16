@@ -9,8 +9,8 @@ extends Node
 ##
 ## Ported to the combat core (client/code.list "Ported"): the hover pick asks the core. The cursor's ray meets the chest-height plane, the core names the
 ## enemies near that point (`enemies_in_radius`, a handful), and the one whose chest is nearest the cursor on screen within PICK_PX wins: no loop over
-## every enemy. The attack-target chase and the queued casts (DmCombatInput) and Easy auto-combat (DmNextAutoCombat) come with the rites: a click
-## on an enemy only names it (`hotbar` slot 0 at its position), the hero does not attack yet.
+## every enemy. The attack-target chase, hold repeat and queued casts are today's DmCombatInput (ported: it asks the caster for the enemy). Easy auto-combat
+## (DmNextAutoCombat) is not ported yet.
 
 signal hotbar(slot: int, aim: Vector3, enemy_id: int)   ## slot 0 = LMB primary, 1..4 = keys, 5 = RMB, 6 = R (signature); enemy_id 0 = ground aim
 signal clicked_move(point: Vector3)
@@ -32,6 +32,7 @@ var _hover_id: int = 0
 var _dir_sent := Vector3.ZERO
 var _resend: float = 0.0
 var _hover_t: float = 0.0
+var combat := DmCombatInput.new()       ## attack-target chase, hold repeat, queued casts, held keys (next/feel/)
 var _mouse_seen := false                ## the mouse has moved / clicked: standing aim follows the cursor (not the stale default point)
 
 
@@ -84,18 +85,28 @@ func _process(dt: float) -> void:
 	_hover_id = pick_enemy(mp)
 	if game.ui_host != null:
 		game.ui_host.loot_hover(mp, _hover_id != 0, Input.is_key_pressed(KEY_ALT))   # the drop under the cursor shows its name; Alt shows all
+	if _mouse_seen:
+		stand_face()
 	if game.chapterhouse != null:
 		game.chapterhouse.hover_at(mp)    # stations / NPCs under the cursor (prompt + highlight)
 	if game.get("gather") != null:
 		game.gather.hover_at(mp, game.chapterhouse != null and game.chapterhouse.hover != null)   # gathering nodes (ring + card) when no station is hovered
 
 
-## Left click on an enemy: it becomes the attack target (`shift` = cast in place). Until the rites come it is only named: the primary's hotbar signal
-## carries its position.
-func attack(enemy_id: int, _shift: bool) -> void:
-	var at: Vector3 = game.core_host.enemy_position(enemy_id)
-	if at != Vector3.INF:
-		cast_at(0, at, enemy_id, true)
+## Left click on an enemy: it becomes the attack target (`shift` = cast in place); the first step is taken now, not next frame.
+func attack(enemy_id: int, shift: bool) -> void:
+	if combat.game == null:
+		combat.setup(game, self)
+	combat.set_target(enemy_id, shift)
+	combat.tick(float(Time.get_ticks_msec()))
+
+
+## Standing aim: face the hovered enemy, else the ground point under the cursor (10 Hz, from the hover pick).
+func stand_face() -> bool:
+	if combat.game == null:
+		combat.setup(game, self)
+	var at: Vector3 = game.core_host.enemy_position(_hover_id) if _hover_id != 0 else Vector3.INF
+	return combat.stand_face(at if at != Vector3.INF else _aim, false)
 
 
 func _unhandled_input(ev: InputEvent) -> void:
@@ -119,14 +130,20 @@ func _unhandled_input(ev: InputEvent) -> void:
 		for i in range(1, 7):
 			if ev.is_action_pressed(&"dm_hotbar_%d" % i):
 				press_hotbar(i)
+				combat.key_down(i, float(Time.get_ticks_msec()))
 
 
 func _physics_process(delta: float) -> void:
 	if not enabled or game == null or game.local_body() == null:
 		return
+	if combat.game == null:
+		combat.setup(game, self)
 	var d := held_direction()
-	if d != Vector3.ZERO and game.ui_host != null:
-		game.ui_host.loot_cancel()      # walking by hand ends the walk to a clicked drop
+	if d != Vector3.ZERO:
+		combat.clear()                      # walking by hand ends the chase and the queue (old: key_dir cancels attack_target)
+		if game.ui_host != null:
+			game.ui_host.loot_cancel()      # and the walk to a clicked drop
+	combat.tick(float(Time.get_ticks_msec()))
 	_resend -= delta
 	if d != _dir_sent or (d != Vector3.ZERO and _resend <= 0.0):
 		_resend = RESEND_S
@@ -157,12 +174,14 @@ func _primary_click(screen: Vector2) -> void:
 	if game.ui_host != null:
 		game.ui_host.loot_cancel()            # any click ends the walk to a drop (a click on a drop starts a new one below)
 		if Input.is_key_pressed(KEY_ALT) and game.ui_host.loot_click(screen):
+			combat.clear()
 			return                            # Alt: drops win over enemies (grab loot mid-fight)
 	_hover_id = pick_enemy(screen)
 	var shift := Input.is_key_pressed(KEY_SHIFT)
 	if _hover_id != 0:
 		attack(_hover_id, shift)              # walk into range and cast the primary; hold = repeat (Shift: in place)
 		return
+	combat.clear()
 	if shift:
 		game.session.request_move_dir(Vector3.ZERO)   # Shift on the ground stands still (old: player.stop())
 	elif game.ui_host != null and game.ui_host.loot_click(screen):
@@ -198,7 +217,10 @@ func cast_slot(slot: int, manual: bool) -> void:
 	cast_at(slot, at if at != Vector3.INF else _aim, _hover_id if at != Vector3.INF else 0, manual)
 
 
-func cast_at(slot: int, aim: Vector3, enemy_id: int, _manual: bool) -> void:
+func cast_at(slot: int, aim: Vector3, enemy_id: int, manual: bool) -> void:
+	if combat.game == null:
+		combat.setup(game, self)
+	combat.note_cast(slot, String(game.rite_for_slot(slot)), aim, enemy_id, manual)
 	hotbar.emit(slot, aim, enemy_id)
 
 
