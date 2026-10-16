@@ -158,7 +158,7 @@ if [ -n "$ST" ]; then drift "uncommitted changes in $REPO ($(echo "$ST" | wc -l)
 
 # 6. Docroot
 section "6. Public docroot $WWW"
-EXP=" client play preview $(g ls-tree --name-only "$REV" -- server/death-muffin/site/ | sed 's#.*/##' | tr '\n' ' ')"
+EXP=" client client-test launcher play preview $(g ls-tree --name-only "$REV" -- server/death-muffin/site/ | sed 's#.*/##' | tr '\n' ' ')"
 for e in "$WWW"/* "$WWW"/.[!.]*; do [ -e "$e" ] || continue; n="$(basename "$e")"
   case "$EXP" in *" $n "*) ;; *) drift "unexpected top-level entry: $n";; esac; done
 if [ -d "$WWW/play" ]; then for e in "$WWW/play"/* "$WWW/play"/.[!.]*; do [ -e "$e" ] || continue; n="$(basename "$e")"
