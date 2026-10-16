@@ -4,15 +4,15 @@ Open gaps, verified against the code on `main`. Priorities are in [ROADMAP.md](R
 
 ## Performance
 
-- **The main thread is the limit in big fights** (about 87 fps in the benchmark's stress fight on Helix's PC; scripts, physics and the HUD all
-  run on one thread). Measurements and the plan: ROADMAP "Performance".
+- **The main thread is the limit in big fights** (99 fps in the benchmark's Standard fight on Helix's PC, 41 on warbogar's; scripts,
+  physics and the HUD all run on one thread). Being fixed by the rebuild: ROADMAP "Now: the rebuild".
 
 ## Server authority
 
 Live runs `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce` since 2026-10-15 (DECISIONS B32): XP and gold beyond what the kill ledger
 and ceilings back are held back with a message to the player (findings in `progress_audit`). A rule false positive therefore costs an honest
 player part of a gain until it is fixed; few real sessions ran on the gains saves before the switch.
-- **Client-claimed saves:** area kills and shards in the necromancer save are still the client's claim (ROADMAP: Phase 4).
+- **Client-claimed saves:** area kills and shards in the necromancer save are still the client's claim (ROADMAP "The live game during the rebuild").
 
 ## Disciplines
 

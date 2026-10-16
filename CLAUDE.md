@@ -60,6 +60,8 @@ Never deploy, publish a client, or flip `set-online.sh` without passing checks f
 
 ## Working conventions
 
+- **The rebuild is on** (ROADMAP "Now: the rebuild", DECISIONS B34-B40). The live client gets bug fixes, warbogar's armor sets and server
+  safety work only (B37); feature requests go to ROADMAP "After launch day". Rebuild work follows the ROADMAP checklist and its working rules.
 - Online is the default start. For tests and screenshots use `-- --dev-offline` (`--class=N` enters directly).
 - Godot GDScript: `class_name Dm*`, one source of truth for content in `godot/data` and `godot/rules`; no speculative
   abstraction; remove temporary code. Commit the `.import` files and `.uid` files Godot generates for new assets/scripts.

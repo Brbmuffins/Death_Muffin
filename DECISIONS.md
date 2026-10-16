@@ -117,6 +117,33 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   (`publish-launcher.sh`, from the CI-built GitHub release) and swaps its own exe (rename the running one to `.old`, move the verified
   download in, restart), only while the game is neither running nor downloading. A release reaches players only when published on the VPS;
   versions only go up. Our server instead of the GitHub API: no rate limit, a SHA-256 to check, and we choose when it goes live.
+- **B34. The rebuild** (Helix, 2026-10-16; "i want the game built correctly, have a strong, scalable, simple foundation"). The client is
+  rebuilt underneath as the same game: same rules, numbers and timing, differences written down, improvements proposed, never slipped in.
+  Godot stays; the test build is the engine checkpoint (ROADMAP Gate B), the point where Unity would be reconsidered. Everything that runs
+  for every creature every tick is a C++ GDExtension core (native/); the rest is GDScript (godot/client/). Nobody on the team writes code,
+  so languages are chosen on merit, not on who can edit them. Replaces the step list of the old ROADMAP "Performance" section.
+- **B35. Forward+ on every PC preset** (Helix, 2026-10-16). One renderer on PC: presets turn extras on and off, never need a restart, and
+  there is one look to tune. Compatibility is only the automatic fallback (`fallback_to_opengl3`, the 4.7.2 default); the Mobile renderer
+  is for phones. An "Ultra Low (old PCs)" option that restarts in Compatibility is added only if laptop runs show Low on Forward+ missing
+  its floor while Compatibility meets it.
+- **B36. Ascension leaves on launch day** (Helix, 2026-10-16: "it needs to be completely redesigned"). The Altar, vows, heat, Ashes and
+  Covenant Boons are not rebuilt. Players' saved Ascension data stays on the server untouched; the redesign, the first feature after launch
+  day, decides what it becomes. Heat leaves the party list, friends list and invites; the leaderboard ranks by boss kills, then total kills,
+  then level. B26's heat rules end with it.
+- **B37. The live game during the rebuild** (Helix, 2026-10-16). Bug fixes, warbogar's armor sets (also checked in the rebuild) and server
+  safety work only. Feature requests go to ROADMAP "After launch day"; the Discord agent says so.
+- **B38. A separate test build for the rebuild** (Helix, 2026-10-16: "its a huge overhaul"; the one exception to builds going straight to
+  main, B14). The rebuild's code lives on main in its own folders, left out of the live export. The launcher gets a Test build switch that
+  installs the test build next to the normal game and keeps it updated; it plays on a test server with copies of the team's accounts, so it
+  can never touch live characters. Team only at first.
+- **B39. Performance without a goal to stop at** (Helix, 2026-10-16: "i want to get as MUCH performance as possible"). No frame-rate target;
+  floors only for weaker PCs; nothing ships slower than what it replaces; Gate B needs at least twice today's speed in the Full Party fight.
+  Each system has a time budget and each model a size budget, checked automatically (numbers in ROADMAP). Godot stays 4.7.2 until a
+  deliberate, benchmarked upgrade.
+- **B40. Ready for phones, and an undo for launch day** (Helix, 2026-10-16). From day one: textures also import in phone formats (a
+  separate phone pack), every shader and effect runs on the Mobile renderer, the HUD is built from movable, scalable pieces, phones join co-op
+  but never host, co-op messages carry a version (PC co-op still pairs identical builds until phones exist, B28), presets assume a phone runs
+  Low. For 2 weeks after launch day the last old build stays downloadable and the server keeps accepting it, so one command undoes the launch.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking
