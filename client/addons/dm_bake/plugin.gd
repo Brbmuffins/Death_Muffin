@@ -64,9 +64,16 @@ func _bake(scene: String) -> Dictionary:
 	lm.light_data = data
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(lm)
+	EditorInterface.set_main_screen_editor("3D")   # the button lives on the 3D view's toolbar; an editor that opens on another view hides it
 	EditorInterface.edit_node(lm)
-	await _frames(10)
-	var btn := _button(EditorInterface.get_base_control())
+	# Up to about 5 s: on a fresh editor the 3D view and its toolbar come up some frames after the first scene opens (2026-10-16: the first of eleven
+	# scenes found no button, the next ten did).
+	var btn: Button = null
+	for i in 300:
+		await _frames(1)
+		btn = _button(EditorInterface.get_base_control())
+		if btn != null and btn.is_visible_in_tree():
+			break
 	if btn == null or not btn.is_visible_in_tree():
 		row["error"] = "no visible '%s' button in the editor" % BUTTON
 		return row
