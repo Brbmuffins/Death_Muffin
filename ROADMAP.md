@@ -60,8 +60,8 @@ server (B38).
   1e79263; `client/setup.sh` imports the new project and runs `client/tests/core_smoke.gd` (the core loads and answers).
 - [x] Test build channel: `server/death-muffin/test-channel/publish-test-channel.sh <rev>` publishes to /death-muffin/client-test/ with its
   own work folder and asset cache; builds of the live project get Forward+, their own user folder and the test backend in a scratch copy.
-- [ ] Launcher Test build switch: the test build installs next to the normal game and updates itself; a test copy is checked on Helix's PC
-  before the launcher release goes to everyone.
+- [x] Launcher Test build switch: the test build installs next to the normal game and updates itself (launcher 0.9.2, live 2026-10-16
+  after Helix checked a test copy on his PC; Ctrl+click Settings, launcher/windows/README.md "Test build channel").
 - [x] Test server: `death-muffin-auth-test` on 127.0.0.1:5194, its own database and user, public at /death-muffin/test-api/, copies
   of the team's accounts (`server/death-muffin/test-server/`). The lobby and relay for test co-op come with the test build (Gate B).
 - [ ] Full Party benchmark fight in today's game, with before numbers on Helix's PC and in the VPS processor test. Live since 06cccafc;
