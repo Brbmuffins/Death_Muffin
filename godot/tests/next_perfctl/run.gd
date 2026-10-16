@@ -42,10 +42,19 @@ func _run() -> void:
 	api.set_token(r.data["token"])
 	character = (await api.load_or_create_character(2)).data
 	var only := OS.get_cmdline_user_args()
-	if only.is_empty() or "settings" in only: await _settings()
-	if only.is_empty() or "gov" in only: await _governor()
-	if only.is_empty() or "warm" in only: await _warmup()
-	if only.is_empty() or "casters" in only: await _casters()
+	# Each section says when it starts: a wait that never ends then shows where it is (GitHub's runner times this suite out, 2026-10-16; the VPS never does).
+	if only.is_empty() or "settings" in only:
+		print("perfctl: settings")
+		await _settings()
+	if only.is_empty() or "gov" in only:
+		print("perfctl: governor")
+		await _governor()
+	if only.is_empty() or "warm" in only:
+		print("perfctl: warm-up")
+		await _warmup()
+	if only.is_empty() or "casters" in only:
+		print("perfctl: casters")
+		await _casters()
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
