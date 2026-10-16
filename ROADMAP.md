@@ -75,9 +75,9 @@ server (B38).
 - [x] The Hollow Graves as a scene: `tools/rebuild/build-areas.sh graves` converts `godot/data/slice/world.json` into
   `client/areas/graves.tscn` (same layout, static colliders, offline-baked navmesh, occluders, visibility ranges); the other 12 areas
   use the same converter. `client/tests/area_graves.gd` proves the layout against world.json.
-- [ ] The first lighting bake of the Graves through Helix's helper. The helper, the editor plugin that presses Godot's bake button and the kit
-  publisher are ready (`client/addons/dm_bake/README.md`); the Graves scene carries its LightmapGI (prop lights and the area's ambient baked,
-  the moon real-time). Waiting for the run on Helix's PC.
+- [x] The first lighting bake of the Graves through Helix's helper (2026-10-16, RTX 4070 SUPER, 5.8 s): `client/areas/graves.lmbake` and its lightmap
+  (prop lights and the area's ambient baked, the moon real-time). The helper, the editor plugin and the kit publisher: `client/addons/dm_bake/README.md`;
+  `client/tests/area_graves.gd` fails when a converter change leaves the bake stale (a baked mesh gone).
 - [ ] Static batching: after the bake, merge each 12 m cell's static props into one mesh (about 250 draw calls for the Graves' 132
   prop instances today; phones and weak laptops need far fewer).
 - [x] Crowd animation: `client/crowd/` bakes each creature model's clips into vertex-animation textures (`bash client/tools/bake_crowd.sh`;

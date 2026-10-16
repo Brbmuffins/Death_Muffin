@@ -22,6 +22,7 @@
 [ext_resource type="PackedScene" path="res://areas/props/prop_node_burial_mound.tscn" id="20_d507d"]
 [ext_resource type="Texture2D" path="res://areas/common/glow.png" id="21_16348"]
 [ext_resource type="Texture2D" path="res://areas/common/ring.png" id="22_bdf92"]
+[ext_resource type="LightmapGIData" path="res://areas/graves.lmbake" id="23_8abee"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.72156864, 0.6666667, 0.72156864, 1)
@@ -2631,3 +2632,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.2697464, 0.21509123, 0.40789327, 1)
 environment_custom_energy = 1.9
+light_data = ExtResource("23_8abee")

@@ -106,6 +106,7 @@ func _run() -> void:
 	_test_lights()
 	_test_colliders()
 	_test_occluders()
+	_test_lightmap()
 	_test_doors(rect)
 	await _test_navigation(rect)
 	_test_bounds(rect)
@@ -678,3 +679,28 @@ func _test_bounds(rect: Dictionary) -> void:
 		var p := (k as Node3D).position
 		inside = inside and _in_area(rect, p.x, p.z)
 	_check(inside, "every prop stands inside the area's rect")
+
+
+## The area's LightmapGI (client/addons/dm_bake/README.md): when a bake sits next to the scene, the node points at it and the bake fits the scene: every
+## mesh the bake recorded is still a mesh at that place in the scene (a converter change that moves or renames them makes the bake stale: bake again).
+func _test_lightmap() -> void:
+	var found := _scene.find_children("*", "LightmapGI", true, false)
+	_check(found.size() == 1, "one LightmapGI (%d)" % found.size())
+	if found.is_empty():
+		return
+	var lm := found[0] as LightmapGI
+	var data_path := SCENE.get_basename() + ".lmbake"
+	if not ResourceLoader.exists(data_path):
+		_check(lm.light_data == null, "no bake yet: the LightmapGI has no data")
+		return
+	var data := lm.light_data
+	_check(data != null and data.resource_path == data_path, "the LightmapGI points at %s" % data_path)
+	if data == null:
+		return
+	_check(not data.get_lightmap_textures().is_empty(), "the bake has its lightmap (%d texture)" % data.get_lightmap_textures().size())
+	var missing := []
+	for i in data.get_user_count():
+		var n := lm.get_node_or_null(data.get_user_path(i))   # the bake stores each mesh's path from the LightmapGI
+		if not (n is MeshInstance3D):
+			missing.append(String(data.get_user_path(i)))
+	_check(data.get_user_count() > 0 and missing.is_empty(), "the bake fits the scene: all %d baked meshes are there (%d missing: %s)" % [data.get_user_count(), missing.size(), str(missing.slice(0, 3))])
