@@ -1,0 +1,74 @@
+{
+ "NPC_IDS": [
+  "prior",
+  "sexton",
+  "apothecary"
+ ],
+ "NPCS": {
+  "prior": {
+   "id": "prior",
+   "name": "The Prior",
+   "title": "Keeper of the Chapterhouse",
+   "area": "chapterhouse",
+   "x": -3.4,
+   "z": 15.8,
+   "rest": 0.5,
+   "blurb": "Keeper of the Chapterhouse and its seals. Ask where to hunt next, what a seal or a boss asks of you, and when the Altar of Ascension is ready.",
+   "accent": 13018367
+  },
+  "sexton": {
+   "id": "sexton",
+   "name": "The Sexton",
+   "title": "Tender of the Acre",
+   "area": "acre",
+   "x": -26,
+   "z": 23,
+   "rest": 1.5707963267948966,
+   "blurb": "Tender of the Sexton’s Acre. Ask about gathering, your Grave Laborers, the Bone Grinder, the Ossuary Vault and the day’s Contracts.",
+   "accent": 15253850
+  },
+  "apothecary": {
+   "id": "apothecary",
+   "name": "The Apothecary",
+   "title": "Brewer of the Covenant",
+   "area": "alchemist_wing",
+   "x": 42.6,
+   "z": 20,
+   "rest": -0.9,
+   "blurb": "Brews for the Covenant in the Alchemist’s Wing, through the Chapterhouse’s east door. Ask what to brew, where reagents fall, and how elixirs and tonics differ.",
+   "accent": 9425290
+  }
+ },
+ "NPC_LOOKS": {
+  "prior": {
+   "slug": "npc_prior",
+   "fallback": "deacon",
+   "scale": 1,
+   "tint": 16777215,
+   "emissive": 4927370,
+   "glow": 0.08
+  },
+  "sexton": {
+   "slug": "npc_sexton",
+   "fallback": "grave_robber",
+   "scale": 1,
+   "tint": 16777215,
+   "emissive": 7031327,
+   "glow": 0.08,
+   "held": {
+    "prop": "tool_spade",
+    "length": 1.3
+   }
+  },
+  "apothecary": {
+   "slug": "npc_apothecary",
+   "fallback": "plague_doctor",
+   "scale": 1,
+   "tint": 16777215,
+   "emissive": 3111495,
+   "glow": 0.08
+  }
+ },
+ "NPC_LOOK_RANGE": 8,
+ "NPC_TALK_RANGE": 3.4
+}

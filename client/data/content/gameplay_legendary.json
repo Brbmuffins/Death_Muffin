@@ -1,0 +1,28 @@
+{
+ "LEGEND": {
+  "deathBurstR": 3,
+  "championScale": 1.35,
+  "championDamage": 2,
+  "championHp": 2,
+  "rallyS": 4,
+  "colossusThralls": 3,
+  "wardCap": 0.6,
+  "totalCap": 0.75,
+  "shatterR": 4,
+  "wispHealFrac": 0.02,
+  "wispCap": 3,
+  "novaR": 3,
+  "novaMax": 8,
+  "spreadMax": 3,
+  "spreadR": 4,
+  "burstCdS": 1,
+  "burstClouds": 4
+ },
+ "NO_SIM_LEGEND": {
+  "thrallDeathBurst": 0,
+  "championEvery": 0,
+  "spearRally": 0,
+  "miasmaSpreadsWithered": 0,
+  "witheredBurstAt": 0
+ }
+}

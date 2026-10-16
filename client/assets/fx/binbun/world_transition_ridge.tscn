@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/7737143f2bfba0b1.gdshader" id="1_imct5"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/lib/TransitionKit/assets/TransitionKit/src/texture/transition_shape/noise/ridge_02.tres" id="2_1shxt"]
+[ext_resource type="Script" path="res://fx/dm_fx_rect.gd" id="3_g6a8f"]
+
+[sub_resource type="Gradient" id="Gradient_7mycd"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_272bh"]
+gradient = SubResource("Gradient_7mycd")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_kek77"]
+shader = ExtResource("1_imct5")
+shader_parameter/base_color = Color(0, 0, 0, 1)
+shader_parameter/node_resolution = Vector2(1152, 648)
+shader_parameter/factor = 0.41
+shader_parameter/width = 0.3
+shader_parameter/gradient_texture = SubResource("GradientTexture2D_272bh")
+shader_parameter/gradient_fixed = false
+shader_parameter/shape_texture = ExtResource("2_1shxt")
+shader_parameter/shape_tiling = 8.0
+shader_parameter/shape_rotation = 0.0
+shader_parameter/shape_scroll = Vector2(-0.1, 0)
+shader_parameter/shape_feathering = 0.0
+shader_parameter/shape_treshold = 1.0
+
+[node name="TNaturalRidge" type="ColorRect"]
+material = SubResource("ShaderMaterial_kek77")
+anchors_preset = 15
+anchor_right = 1
+anchor_bottom = 1
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_g6a8f")
+factor = 0.41
+gradient_texture = SubResource("GradientTexture2D_272bh")
+shape_texture = ExtResource("2_1shxt")
+shape_tiling = 8
+shape_scroll = Vector2(-0.1, 0)

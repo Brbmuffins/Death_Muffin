@@ -1,0 +1,20 @@
+{
+ "upgradeCosts": {
+  "damage": {
+   "costBase": 40,
+   "costGrowth": 1.5
+  },
+  "wave": {
+   "costBase": 120,
+   "costGrowth": 1.75
+  },
+  "legion": {
+   "costBase": 120,
+   "costGrowth": 1.65
+  }
+ },
+ "startAreas": [
+  "chapterhouse",
+  "graves"
+ ]
+}

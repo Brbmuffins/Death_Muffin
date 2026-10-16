@@ -1,0 +1,1006 @@
+{
+ "enemies": {
+  "robber": {
+   "id": "robber",
+   "name": "Grave Robber",
+   "behavior": "melee",
+   "hp": 68,
+   "speed": 2.6,
+   "radius": 0.45,
+   "damage": 11,
+   "attackRange": 1.3,
+   "windupMs": 420,
+   "cooldownMs": 1300,
+   "xp": 4,
+   "gold": [
+    2,
+    5
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "hound": {
+   "id": "hound",
+   "name": "Bone Hound",
+   "behavior": "flank",
+   "hp": 42,
+   "speed": 4.4,
+   "radius": 0.45,
+   "damage": 8,
+   "attackRange": 1.2,
+   "windupMs": 250,
+   "cooldownMs": 800,
+   "xp": 3,
+   "gold": [
+    1,
+    4
+   ],
+   "corpse": "swift",
+   "scale": 1,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "penitent": {
+   "id": "penitent",
+   "name": "Bellbound Penitent",
+   "behavior": "caster",
+   "hp": 78,
+   "speed": 1.9,
+   "radius": 0.5,
+   "damage": 18,
+   "attackRange": 7.5,
+   "windupMs": 1100,
+   "cooldownMs": 3200,
+   "xp": 6,
+   "gold": [
+    3,
+    7
+   ],
+   "corpse": "resonant",
+   "scale": 1.05,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "sac": {
+   "id": "sac",
+   "name": "Carrion Sac",
+   "behavior": "hazard",
+   "hp": 140,
+   "speed": 1.3,
+   "radius": 0.8,
+   "damage": 15,
+   "attackRange": 1.6,
+   "windupMs": 700,
+   "cooldownMs": 1800,
+   "xp": 8,
+   "gold": [
+    4,
+    9
+   ],
+   "corpse": "toxic",
+   "scale": 1.2,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "deacon": {
+   "id": "deacon",
+   "name": "Crypt Deacon",
+   "behavior": "support",
+   "hp": 112,
+   "speed": 2,
+   "radius": 0.5,
+   "damage": 9,
+   "attackRange": 6,
+   "windupMs": 1500,
+   "cooldownMs": 5500,
+   "xp": 9,
+   "gold": [
+    5,
+    10
+   ],
+   "corpse": "normal",
+   "scale": 1.15,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "risen": {
+   "id": "risen",
+   "name": "Risen",
+   "behavior": "melee",
+   "hp": 36,
+   "speed": 2.9,
+   "radius": 0.42,
+   "damage": 8,
+   "attackRange": 1.2,
+   "windupMs": 380,
+   "cooldownMs": 1200,
+   "xp": 2,
+   "gold": [
+    0,
+    1
+   ],
+   "corpse": "none",
+   "scale": 0.95,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "censer": {
+   "id": "censer",
+   "name": "Censer Bearer",
+   "behavior": "melee",
+   "hp": 96,
+   "speed": 2.1,
+   "radius": 0.5,
+   "damage": 7,
+   "attackRange": 1.5,
+   "windupMs": 520,
+   "cooldownMs": 1700,
+   "xp": 8,
+   "gold": [
+    4,
+    8
+   ],
+   "corpse": "normal",
+   "scale": 1.05,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "wraith": {
+   "id": "wraith",
+   "name": "Choir Wraith",
+   "behavior": "caster",
+   "hp": 58,
+   "speed": 2.5,
+   "radius": 0.45,
+   "damage": 17,
+   "attackRange": 9,
+   "windupMs": 1250,
+   "cooldownMs": 3600,
+   "xp": 7,
+   "gold": [
+    3,
+    7
+   ],
+   "corpse": "none",
+   "scale": 1.1,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "rat": {
+   "id": "rat",
+   "name": "Ossuary Skull-Rat",
+   "behavior": "flank",
+   "hp": 18,
+   "speed": 4.8,
+   "radius": 0.3,
+   "damage": 4,
+   "attackRange": 0.9,
+   "windupMs": 200,
+   "cooldownMs": 700,
+   "xp": 1,
+   "gold": [
+    0,
+    1
+   ],
+   "corpse": "none",
+   "scale": 1,
+   "pack": [
+    4,
+    6
+   ],
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "golem": {
+   "id": "golem",
+   "name": "Bone Golem",
+   "behavior": "hazard",
+   "hp": 430,
+   "speed": 1.5,
+   "radius": 1,
+   "damage": 26,
+   "attackRange": 2.1,
+   "windupMs": 950,
+   "cooldownMs": 2700,
+   "xp": 30,
+   "gold": [
+    15,
+    30
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "pack": null,
+   "deathCorpses": 3,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "gargoyle": {
+   "id": "gargoyle",
+   "name": "Belfry Gargoyle",
+   "behavior": "flank",
+   "hp": 150,
+   "speed": 3.2,
+   "radius": 0.55,
+   "damage": 14,
+   "attackRange": 1.4,
+   "windupMs": 900,
+   "cooldownMs": 3400,
+   "xp": 12,
+   "gold": [
+    6,
+    12
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "moth": {
+   "id": "moth",
+   "name": "Shroud Moth",
+   "behavior": "caster",
+   "hp": 52,
+   "speed": 2.6,
+   "radius": 0.5,
+   "damage": 10,
+   "attackRange": 7,
+   "windupMs": 950,
+   "cooldownMs": 3800,
+   "xp": 6,
+   "gold": [
+    2,
+    6
+   ],
+   "corpse": "swift",
+   "scale": 1,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "bat": {
+   "id": "bat",
+   "name": "Tithe Bat",
+   "behavior": "flank",
+   "hp": 16,
+   "speed": 5.2,
+   "radius": 0.3,
+   "damage": 4,
+   "attackRange": 0.9,
+   "windupMs": 180,
+   "cooldownMs": 900,
+   "xp": 1,
+   "gold": [
+    0,
+    2
+   ],
+   "corpse": "none",
+   "scale": 1,
+   "pack": [
+    4,
+    6
+   ],
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "seraph": {
+   "id": "seraph",
+   "name": "Weeping Seraph",
+   "behavior": "support",
+   "hp": 120,
+   "speed": 1.9,
+   "radius": 0.55,
+   "damage": 8,
+   "attackRange": 6.5,
+   "windupMs": 1300,
+   "cooldownMs": 8500,
+   "xp": 11,
+   "gold": [
+    5,
+    11
+   ],
+   "corpse": "resonant",
+   "scale": 1.05,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "ghoul": {
+   "id": "ghoul",
+   "name": "Barrow Ghoul",
+   "behavior": "melee",
+   "hp": 60,
+   "speed": 2.4,
+   "radius": 0.45,
+   "damage": 12,
+   "attackRange": 1.3,
+   "windupMs": 420,
+   "cooldownMs": 1400,
+   "xp": 5,
+   "gold": [
+    2,
+    6
+   ],
+   "corpse": "normal",
+   "scale": 1.05,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": true,
+   "frenzy": false
+  },
+  "acolyte": {
+   "id": "acolyte",
+   "name": "Lich Acolyte",
+   "behavior": "caster",
+   "hp": 92,
+   "speed": 2,
+   "radius": 0.5,
+   "damage": 14,
+   "attackRange": 8,
+   "windupMs": 900,
+   "cooldownMs": 3000,
+   "xp": 9,
+   "gold": [
+    5,
+    10
+   ],
+   "corpse": "normal",
+   "scale": 1.05,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "templar": {
+   "id": "templar",
+   "name": "Bell-Sworn Templar",
+   "behavior": "melee",
+   "hp": 180,
+   "speed": 1.9,
+   "radius": 0.55,
+   "damage": 17,
+   "attackRange": 1.6,
+   "windupMs": 650,
+   "cooldownMs": 1600,
+   "xp": 14,
+   "gold": [
+    8,
+    16
+   ],
+   "corpse": "resonant",
+   "scale": 1.1,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": true,
+   "burrow": false,
+   "frenzy": false
+  },
+  "niche": {
+   "id": "niche",
+   "name": "Skull Niche",
+   "behavior": "support",
+   "hp": 500,
+   "speed": 0.0001,
+   "radius": 0.9,
+   "damage": 0,
+   "attackRange": 0,
+   "windupMs": 1000,
+   "cooldownMs": 1000000000,
+   "xp": 0,
+   "gold": [
+    0,
+    0
+   ],
+   "corpse": "none",
+   "scale": 1,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "plague_doctor": {
+   "id": "plague_doctor",
+   "name": "Plague Doctor",
+   "behavior": "caster",
+   "hp": 90,
+   "speed": 2.1,
+   "radius": 0.5,
+   "damage": 13,
+   "attackRange": 8.5,
+   "windupMs": 1000,
+   "cooldownMs": 3600,
+   "xp": 10,
+   "gold": [
+    5,
+    11
+   ],
+   "corpse": "toxic",
+   "scale": 1.05,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "flagellant": {
+   "id": "flagellant",
+   "name": "Flagellant",
+   "behavior": "melee",
+   "hp": 120,
+   "speed": 2.7,
+   "radius": 0.45,
+   "damage": 12,
+   "attackRange": 1.3,
+   "windupMs": 380,
+   "cooldownMs": 1100,
+   "xp": 11,
+   "gold": [
+    4,
+    10
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": true
+  },
+  "cinder_husk": {
+   "id": "cinder_husk",
+   "name": "Cinder Husk",
+   "behavior": "melee",
+   "hp": 110,
+   "speed": 2.5,
+   "radius": 0.45,
+   "damage": 14,
+   "attackRange": 1.3,
+   "windupMs": 400,
+   "cooldownMs": 1200,
+   "xp": 12,
+   "gold": [
+    5,
+    11
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "pyre_priest": {
+   "id": "pyre_priest",
+   "name": "Pyre Priest",
+   "behavior": "caster",
+   "hp": 90,
+   "speed": 2.1,
+   "radius": 0.5,
+   "damage": 15,
+   "attackRange": 8.5,
+   "windupMs": 950,
+   "cooldownMs": 3400,
+   "xp": 13,
+   "gold": [
+    6,
+    13
+   ],
+   "corpse": "normal",
+   "scale": 1.05,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "cinderhound": {
+   "id": "cinderhound",
+   "name": "Cinderhound",
+   "behavior": "flank",
+   "hp": 62,
+   "speed": 4.7,
+   "radius": 0.45,
+   "damage": 11,
+   "attackRange": 1.2,
+   "windupMs": 240,
+   "cooldownMs": 780,
+   "xp": 5,
+   "gold": [
+    2,
+    6
+   ],
+   "corpse": "swift",
+   "scale": 1,
+   "pack": [
+    2,
+    3
+   ],
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "slag_brute": {
+   "id": "slag_brute",
+   "name": "Slag Brute",
+   "behavior": "hazard",
+   "hp": 520,
+   "speed": 1.5,
+   "radius": 1,
+   "damage": 28,
+   "attackRange": 2.2,
+   "windupMs": 1000,
+   "cooldownMs": 2900,
+   "xp": 34,
+   "gold": [
+    18,
+    34
+   ],
+   "corpse": "resonant",
+   "scale": 1,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "bog_hag": {
+   "id": "bog_hag",
+   "name": "Bog Hag",
+   "behavior": "caster",
+   "hp": 100,
+   "speed": 2,
+   "radius": 0.5,
+   "damage": 12,
+   "attackRange": 9.5,
+   "windupMs": 1300,
+   "cooldownMs": 4400,
+   "xp": 24,
+   "gold": [
+    6,
+    13
+   ],
+   "corpse": "normal",
+   "scale": 1.05,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "mire_leech": {
+   "id": "mire_leech",
+   "name": "Mire Leech",
+   "behavior": "flank",
+   "hp": 22,
+   "speed": 4.2,
+   "radius": 0.32,
+   "damage": 4,
+   "attackRange": 0.9,
+   "windupMs": 210,
+   "cooldownMs": 720,
+   "xp": 5,
+   "gold": [
+    0,
+    1
+   ],
+   "corpse": "none",
+   "scale": 1,
+   "pack": [
+    4,
+    6
+   ],
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "fen_wisp": {
+   "id": "fen_wisp",
+   "name": "Fen Wisp",
+   "behavior": "caster",
+   "hp": 60,
+   "speed": 3,
+   "radius": 0.4,
+   "damage": 9,
+   "attackRange": 8.5,
+   "windupMs": 1000,
+   "cooldownMs": 3300,
+   "xp": 19,
+   "gold": [
+    3,
+    8
+   ],
+   "corpse": "none",
+   "scale": 0.85,
+   "pack": null,
+   "deathCorpses": 1,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  },
+  "drowned_sexton": {
+   "id": "drowned_sexton",
+   "name": "Drowned Sexton",
+   "behavior": "hazard",
+   "hp": 560,
+   "speed": 1.6,
+   "radius": 0.95,
+   "damage": 25,
+   "attackRange": 2.2,
+   "windupMs": 1000,
+   "cooldownMs": 2900,
+   "xp": 54,
+   "gold": [
+    20,
+    36
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "pack": null,
+   "deathCorpses": 2,
+   "shield": false,
+   "burrow": false,
+   "frenzy": false
+  }
+ },
+ "constants": {
+  "CENSER": {
+   "radius": 5,
+   "hasteS": 1.5,
+   "moveMult": 1.3,
+   "attackRateMult": 1.25
+  },
+  "SCREAM": {
+   "radius": 2.2
+  },
+  "DUST": {
+   "radius": 2,
+   "cloudS": 3.5,
+   "cloudDpsMult": 0.35
+  },
+  "BURROW": {
+   "speed": 4.2,
+   "surfaceR": 2.5,
+   "eruptR": 1.8,
+   "eruptMult": 1.25,
+   "eruptMultGraves": 1,
+   "eruptMsGraves": 1000,
+   "eruptMs": 800,
+   "digS": 0.8,
+   "digAtFrac": 0.5,
+   "travelM": 8,
+   "maxPerTarget": 3
+  },
+  "UNBIND": {
+   "range": 7,
+   "delayS": 1,
+   "cooldownS": 4,
+   "maxAlive": 4
+  },
+  "TEMPLAR_SHIELD": {
+   "halfArcDeg": 60,
+   "passThrough": 0.3
+  },
+  "PLAGUE_FLASK": {
+   "radius": 1.8,
+   "poolS": 5,
+   "poolDpsMult": 0.35
+  },
+  "EMBER_BOLT": {
+   "radius": 1.7,
+   "poolS": 4,
+   "poolDpsMult": 0.4
+  },
+  "EMBER_DEATH": {
+   "radius": 1.6,
+   "poolS": 3,
+   "poolDpsMult": 0.3
+  },
+  "SLAG_POOL": {
+   "poolS": 4,
+   "poolDpsMult": 0.3
+  },
+  "FRENZY": {
+   "atFrac": 0.5,
+   "moveMult": 1.45,
+   "attackRateMult": 1.6
+  },
+  "WARD": {
+   "range": 5.5,
+   "maxTargets": 4
+  },
+  "PROCESSION": {
+   "chance": 0.3,
+   "minWave": 2
+  },
+  "ELITE": {
+   "hpMult": 3.6,
+   "damageMult": 1.5,
+   "scale": 1.35,
+   "xpMult": 4,
+   "goldMult": 5,
+   "shardChance": 1
+  },
+  "AFFIX_ORDER": [
+   "bellTolled",
+   "hungering",
+   "shrouded",
+   "vengeful"
+  ],
+  "AFFIX_TUNING": {
+   "bellTolled": {
+    "intervalS": 6,
+    "windupS": 0.9,
+    "r": 3,
+    "damageMult": 0.6,
+    "stunMs": 500
+   },
+   "hungering": {
+    "intervalS": 4,
+    "reach": 5,
+    "healFrac": 0.15
+   },
+   "shrouded": {
+    "damageTakenMult": 0.5
+   },
+   "vengeful": {
+    "risen": 3
+   }
+  },
+  "SURGE": {
+   "firstDelayS": 100,
+   "minIntervalS": 90,
+   "maxIntervalS": 150,
+   "durationS": 20,
+   "waveAtS": [
+    1.5,
+    7.5,
+    13.5
+   ],
+   "waveSizeMult": 1.2,
+   "clearFrac": 0.8
+  }
+ },
+ "hp_scale": {
+  "base": 1,
+  "per_level": 0.22
+ },
+ "damage_scale": {
+  "base": 1,
+  "per_level": 0.15
+ },
+ "difficulties": {
+  "easy": {
+   "id": "easy",
+   "name": "Easy",
+   "blurb": "The dead hit softer and fall faster. Less gold and experience.",
+   "enemyHpMult": 0.75,
+   "enemyDamageMult": 0.3,
+   "rewardMult": 0.75,
+   "eliteBonus": 0
+  },
+  "medium": {
+   "id": "medium",
+   "name": "Medium",
+   "blurb": "The intended balance.",
+   "enemyHpMult": 1,
+   "enemyDamageMult": 1,
+   "rewardMult": 1,
+   "eliteBonus": 0
+  },
+  "hard": {
+   "id": "hard",
+   "name": "Hard",
+   "blurb": "Tougher, deadlier dead and more elites. More gold and experience.",
+   "enemyHpMult": 1.2,
+   "enemyDamageMult": 1.3,
+   "rewardMult": 1.3,
+   "eliteBonus": 0.02
+  }
+ },
+ "areas": {
+  "chapterhouse": {
+   "id": "chapterhouse",
+   "safe": true,
+   "level": 1,
+   "scaling": null,
+   "cap": 0,
+   "waveSize": 0,
+   "waveIntervalMs": 0,
+   "eliteChance": 0,
+   "instance": false
+  },
+  "acre": {
+   "id": "acre",
+   "safe": true,
+   "level": 1,
+   "scaling": null,
+   "cap": 0,
+   "waveSize": 0,
+   "waveIntervalMs": 0,
+   "eliteChance": 0,
+   "instance": false
+  },
+  "graves": {
+   "id": "graves",
+   "safe": false,
+   "level": 1,
+   "scaling": null,
+   "cap": 28,
+   "waveSize": 9,
+   "waveIntervalMs": 6500,
+   "eliteChance": 0.035,
+   "instance": false
+  },
+  "ossuary": {
+   "id": "ossuary",
+   "safe": false,
+   "level": 5,
+   "scaling": null,
+   "cap": 32,
+   "waveSize": 10,
+   "waveIntervalMs": 6200,
+   "eliteChance": 0.045,
+   "instance": false
+  },
+  "nave": {
+   "id": "nave",
+   "safe": false,
+   "level": 9,
+   "scaling": null,
+   "cap": 34,
+   "waveSize": 11,
+   "waveIntervalMs": 6000,
+   "eliteChance": 0.055,
+   "instance": false
+  },
+  "sanctum": {
+   "id": "sanctum",
+   "safe": false,
+   "level": 13,
+   "scaling": null,
+   "cap": 26,
+   "waveSize": 8,
+   "waveIntervalMs": 6500,
+   "eliteChance": 0.07,
+   "instance": false
+  },
+  "cloister": {
+   "id": "cloister",
+   "safe": false,
+   "level": 20,
+   "scaling": {
+    "minLevel": 20
+   },
+   "cap": 28,
+   "waveSize": 9,
+   "waveIntervalMs": 6000,
+   "eliteChance": 0.08,
+   "instance": false
+  },
+  "pyre": {
+   "id": "pyre",
+   "safe": false,
+   "level": 30,
+   "scaling": {
+    "minLevel": 30
+   },
+   "cap": 28,
+   "waveSize": 9,
+   "waveIntervalMs": 6000,
+   "eliteChance": 0.09,
+   "instance": false
+  },
+  "alchemist_wing": {
+   "id": "alchemist_wing",
+   "safe": true,
+   "level": 1,
+   "scaling": null,
+   "cap": 0,
+   "waveSize": 0,
+   "waveIntervalMs": 0,
+   "eliteChance": 0,
+   "instance": false
+  },
+  "warren": {
+   "id": "warren",
+   "safe": false,
+   "level": 4,
+   "scaling": null,
+   "cap": 26,
+   "waveSize": 8,
+   "waveIntervalMs": 6400,
+   "eliteChance": 0.045,
+   "instance": false
+  },
+  "coliseum": {
+   "id": "coliseum",
+   "safe": false,
+   "level": 11,
+   "scaling": null,
+   "cap": 36,
+   "waveSize": 14,
+   "waveIntervalMs": 4200,
+   "eliteChance": 0.13,
+   "instance": false
+  },
+  "fen": {
+   "id": "fen",
+   "safe": false,
+   "level": 45,
+   "scaling": {
+    "minLevel": 45
+   },
+   "cap": 24,
+   "waveSize": 9,
+   "waveIntervalMs": 6200,
+   "eliteChance": 0.09,
+   "instance": false
+  },
+  "depths": {
+   "id": "depths",
+   "safe": false,
+   "level": 12,
+   "scaling": {
+    "minLevel": 12
+   },
+   "cap": 24,
+   "waveSize": 6,
+   "waveIntervalMs": 3800,
+   "eliteChance": 0.06,
+   "instance": true
+  }
+ },
+ "depths": {
+  "minLevel": 12,
+  "levelsPerDepth": 1,
+  "cap": 24,
+  "chestEvery": 5,
+  "extraAffixEvery": 5,
+  "maxExtraAffixes": 3,
+  "firstWaveDelayS": 1.4,
+  "bannerMs": 3200
+ }
+}

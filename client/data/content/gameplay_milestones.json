@@ -1,0 +1,310 @@
+{
+ "MILESTONES": [
+  {
+   "id": "kills.100",
+   "title": "100 dead",
+   "text": "100 kills across the diocese",
+   "gold": 40
+  },
+  {
+   "id": "kills.500",
+   "title": "500 dead",
+   "text": "500 kills across the diocese",
+   "gold": 150
+  },
+  {
+   "id": "kills.1000",
+   "title": "1,000 dead",
+   "text": "1,000 kills across the diocese",
+   "gold": 300
+  },
+  {
+   "id": "kills.2500",
+   "title": "2,500 dead",
+   "text": "2,500 kills across the diocese",
+   "gold": 700
+  },
+  {
+   "id": "kills.5000",
+   "title": "5,000 dead",
+   "text": "5,000 kills across the diocese",
+   "gold": 1400
+  },
+  {
+   "id": "kills.10000",
+   "title": "10,000 dead",
+   "text": "10,000 kills across the diocese",
+   "gold": 3000
+  },
+  {
+   "id": "kills.25000",
+   "title": "25,000 dead",
+   "text": "25,000 kills across the diocese",
+   "gold": 8000
+  },
+  {
+   "id": "area.graves.100",
+   "title": "The Hollow Graves: 100",
+   "text": "100 of the dead felled in The Hollow Graves",
+   "gold": 60
+  },
+  {
+   "id": "area.graves.500",
+   "title": "The Hollow Graves: 500",
+   "text": "500 of the dead felled in The Hollow Graves",
+   "gold": 250
+  },
+  {
+   "id": "area.graves.1000",
+   "title": "The Hollow Graves: 1,000",
+   "text": "1,000 of the dead felled in The Hollow Graves",
+   "gold": 500
+  },
+  {
+   "id": "area.graves.2500",
+   "title": "The Hollow Graves: 2,500",
+   "text": "2,500 of the dead felled in The Hollow Graves",
+   "gold": 1200
+  },
+  {
+   "id": "area.ossuary.100",
+   "title": "The Marrow Ossuary: 100",
+   "text": "100 of the dead felled in The Marrow Ossuary",
+   "gold": 60
+  },
+  {
+   "id": "area.ossuary.500",
+   "title": "The Marrow Ossuary: 500",
+   "text": "500 of the dead felled in The Marrow Ossuary",
+   "gold": 250
+  },
+  {
+   "id": "area.ossuary.1000",
+   "title": "The Marrow Ossuary: 1,000",
+   "text": "1,000 of the dead felled in The Marrow Ossuary",
+   "gold": 500
+  },
+  {
+   "id": "area.ossuary.2500",
+   "title": "The Marrow Ossuary: 2,500",
+   "text": "2,500 of the dead felled in The Marrow Ossuary",
+   "gold": 1200
+  },
+  {
+   "id": "area.nave.100",
+   "title": "The Drowned Nave: 100",
+   "text": "100 of the dead felled in The Drowned Nave",
+   "gold": 60
+  },
+  {
+   "id": "area.nave.500",
+   "title": "The Drowned Nave: 500",
+   "text": "500 of the dead felled in The Drowned Nave",
+   "gold": 250
+  },
+  {
+   "id": "area.nave.1000",
+   "title": "The Drowned Nave: 1,000",
+   "text": "1,000 of the dead felled in The Drowned Nave",
+   "gold": 500
+  },
+  {
+   "id": "area.nave.2500",
+   "title": "The Drowned Nave: 2,500",
+   "text": "2,500 of the dead felled in The Drowned Nave",
+   "gold": 1200
+  },
+  {
+   "id": "area.sanctum.100",
+   "title": "The Bell Sanctum: 100",
+   "text": "100 of the dead felled in The Bell Sanctum",
+   "gold": 60
+  },
+  {
+   "id": "area.sanctum.500",
+   "title": "The Bell Sanctum: 500",
+   "text": "500 of the dead felled in The Bell Sanctum",
+   "gold": 250
+  },
+  {
+   "id": "area.sanctum.1000",
+   "title": "The Bell Sanctum: 1,000",
+   "text": "1,000 of the dead felled in The Bell Sanctum",
+   "gold": 500
+  },
+  {
+   "id": "area.sanctum.2500",
+   "title": "The Bell Sanctum: 2,500",
+   "text": "2,500 of the dead felled in The Bell Sanctum",
+   "gold": 1200
+  },
+  {
+   "id": "area.cloister.100",
+   "title": "The Plague Cloister: 100",
+   "text": "100 of the dead felled in The Plague Cloister",
+   "gold": 60
+  },
+  {
+   "id": "area.cloister.500",
+   "title": "The Plague Cloister: 500",
+   "text": "500 of the dead felled in The Plague Cloister",
+   "gold": 250
+  },
+  {
+   "id": "area.cloister.1000",
+   "title": "The Plague Cloister: 1,000",
+   "text": "1,000 of the dead felled in The Plague Cloister",
+   "gold": 500
+  },
+  {
+   "id": "area.cloister.2500",
+   "title": "The Plague Cloister: 2,500",
+   "text": "2,500 of the dead felled in The Plague Cloister",
+   "gold": 1200
+  },
+  {
+   "id": "area.pyre.100",
+   "title": "The Cinder Pyre: 100",
+   "text": "100 of the dead felled in The Cinder Pyre",
+   "gold": 60
+  },
+  {
+   "id": "area.pyre.500",
+   "title": "The Cinder Pyre: 500",
+   "text": "500 of the dead felled in The Cinder Pyre",
+   "gold": 250
+  },
+  {
+   "id": "area.pyre.1000",
+   "title": "The Cinder Pyre: 1,000",
+   "text": "1,000 of the dead felled in The Cinder Pyre",
+   "gold": 500
+  },
+  {
+   "id": "area.pyre.2500",
+   "title": "The Cinder Pyre: 2,500",
+   "text": "2,500 of the dead felled in The Cinder Pyre",
+   "gold": 1200
+  },
+  {
+   "id": "area.warren.100",
+   "title": "The Catacomb Warren: 100",
+   "text": "100 of the dead felled in The Catacomb Warren",
+   "gold": 60
+  },
+  {
+   "id": "area.warren.500",
+   "title": "The Catacomb Warren: 500",
+   "text": "500 of the dead felled in The Catacomb Warren",
+   "gold": 250
+  },
+  {
+   "id": "area.warren.1000",
+   "title": "The Catacomb Warren: 1,000",
+   "text": "1,000 of the dead felled in The Catacomb Warren",
+   "gold": 500
+  },
+  {
+   "id": "area.warren.2500",
+   "title": "The Catacomb Warren: 2,500",
+   "text": "2,500 of the dead felled in The Catacomb Warren",
+   "gold": 1200
+  },
+  {
+   "id": "area.coliseum.100",
+   "title": "The Bone Coliseum: 100",
+   "text": "100 of the dead felled in The Bone Coliseum",
+   "gold": 60
+  },
+  {
+   "id": "area.coliseum.500",
+   "title": "The Bone Coliseum: 500",
+   "text": "500 of the dead felled in The Bone Coliseum",
+   "gold": 250
+  },
+  {
+   "id": "area.coliseum.1000",
+   "title": "The Bone Coliseum: 1,000",
+   "text": "1,000 of the dead felled in The Bone Coliseum",
+   "gold": 500
+  },
+  {
+   "id": "area.coliseum.2500",
+   "title": "The Bone Coliseum: 2,500",
+   "text": "2,500 of the dead felled in The Bone Coliseum",
+   "gold": 1200
+  },
+  {
+   "id": "area.fen.100",
+   "title": "The Mourning Fen: 100",
+   "text": "100 of the dead felled in The Mourning Fen",
+   "gold": 60
+  },
+  {
+   "id": "area.fen.500",
+   "title": "The Mourning Fen: 500",
+   "text": "500 of the dead felled in The Mourning Fen",
+   "gold": 250
+  },
+  {
+   "id": "area.fen.1000",
+   "title": "The Mourning Fen: 1,000",
+   "text": "1,000 of the dead felled in The Mourning Fen",
+   "gold": 500
+  },
+  {
+   "id": "area.fen.2500",
+   "title": "The Mourning Fen: 2,500",
+   "text": "2,500 of the dead felled in The Mourning Fen",
+   "gold": 1200
+  },
+  {
+   "id": "area.depths.100",
+   "title": "The Catacomb Depths: 100",
+   "text": "100 of the dead felled in The Catacomb Depths",
+   "gold": 60
+  },
+  {
+   "id": "area.depths.500",
+   "title": "The Catacomb Depths: 500",
+   "text": "500 of the dead felled in The Catacomb Depths",
+   "gold": 250
+  },
+  {
+   "id": "area.depths.1000",
+   "title": "The Catacomb Depths: 1,000",
+   "text": "1,000 of the dead felled in The Catacomb Depths",
+   "gold": 500
+  },
+  {
+   "id": "area.depths.2500",
+   "title": "The Catacomb Depths: 2,500",
+   "text": "2,500 of the dead felled in The Catacomb Depths",
+   "gold": 1200
+  },
+  {
+   "id": "chain.10",
+   "title": "Chain of 10",
+   "text": "10 kills in one unbroken chain",
+   "gold": 50
+  },
+  {
+   "id": "chain.25",
+   "title": "Chain of 25",
+   "text": "25 kills in one unbroken chain",
+   "gold": 150
+  },
+  {
+   "id": "chain.50",
+   "title": "Chain of 50",
+   "text": "50 kills in one unbroken chain",
+   "gold": 400
+  },
+  {
+   "id": "chain.100",
+   "title": "Chain of 100",
+   "text": "100 kills in one unbroken chain",
+   "gold": 1000
+  }
+ ]
+}

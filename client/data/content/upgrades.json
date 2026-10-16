@@ -1,0 +1,37 @@
+{
+ "DAMAGE_UPGRADE": {
+  "maxTier": 25,
+  "perTier": 0.08
+ },
+ "WAVE_UPGRADE": {
+  "maxTier": 8
+ },
+ "LEGION_UPGRADE": {
+  "maxTier": 12,
+  "perTier": 0.03,
+  "speedPerTier": 0.01
+ },
+ "THRALL_REFRESH_MAX": 1.25,
+ "WAVE_MILESTONES": [
+  {
+   "id": "vanguard",
+   "tier": 3,
+   "name": "Elite Vanguard",
+   "blurb": "Every other wave climbs out behind an elite."
+  },
+  {
+   "id": "restless",
+   "tier": 6,
+   "name": "Restless Crypts",
+   "blurb": "Grave Surges break open 40% sooner."
+  },
+  {
+   "id": "nightfall",
+   "tier": 8,
+   "name": "Nightfall",
+   "blurb": "The moon darkens. Half the common dead rise Shrouded (half damage outside your Miasma). +25% gold, more relics."
+  }
+ ],
+ "NIGHTFALL_SHROUD_CHANCE": 0.5,
+ "RESTLESS_SURGE_MULT": 0.6
+}

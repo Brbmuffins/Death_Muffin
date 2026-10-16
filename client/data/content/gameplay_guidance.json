@@ -1,0 +1,15 @@
+{
+ "LABOR_READY_MS": 1800000,
+ "BAG_FULL_FRACTION": 0.85,
+ "GRAVE_DUST_FOR_TONIC": 4,
+ "SIDE_AREAS": [
+  "warren",
+  "coliseum",
+  "depths"
+ ],
+ "TOPIC_OF": {
+  "prior": "route",
+  "sexton": "acre",
+  "apothecary": "brew"
+ }
+}

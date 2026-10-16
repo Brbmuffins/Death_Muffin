@@ -1,0 +1,13 @@
+[gd_resource type="NoiseTexture2D" format=3]
+
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_slf68"]
+noise_type = 2
+seed = 3
+fractal_type = 0
+fractal_octaves = 1
+cellular_distance_function = 2
+
+[resource]
+seamless = true
+noise = SubResource("FastNoiseLite_slf68")

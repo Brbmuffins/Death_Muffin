@@ -1,0 +1,7 @@
+{
+ "FLOOR_COLS": 3,
+ "FLOOR_ROWS": 3,
+ "FLOOR_WALL_H": 3.4,
+ "STAIR_R": 0.8,
+ "CHEST_R": 0.7
+}

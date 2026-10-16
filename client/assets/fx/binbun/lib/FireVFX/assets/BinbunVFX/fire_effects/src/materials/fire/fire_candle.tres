@@ -1,0 +1,38 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/dffa77973f566e56.gdshader" id="1_vq7se"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/lib/FireVFX/assets/BinbunVFX/fire_effects/src/texture/flame/flame_01.tres" id="2_8k0hr"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_vkxb0"]
+noise_type = 5
+frequency = 0.005
+fractal_octaves = 3
+domain_warp_frequency = 0.013
+domain_warp_fractal_octaves = 2
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_gpxmu"]
+seamless = true
+noise = SubResource("FastNoiseLite_vkxb0")
+
+[sub_resource type="Gradient" id="Gradient_h2yge"]
+interpolation_mode = 2
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_1bvp3"]
+gradient = SubResource("Gradient_h2yge")
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_vq7se")
+shader_parameter/noise_texture_1 = ExtResource("2_8k0hr")
+shader_parameter/noise_texture_2 = SubResource("NoiseTexture2D_gpxmu")
+shader_parameter/texture_mask = SubResource("GradientTexture2D_1bvp3")
+shader_parameter/edge_softness = 0.5
+shader_parameter/texture_scale = Vector2(0.3, 0.3)
+shader_parameter/smoke_color = Color(0.83, 0.40089, 0.2822, 1)
+shader_parameter/lightness = 0.1
+shader_parameter/mask_from = Vector2(0.5, 0.5)
+shader_parameter/mask_scale = 0.6

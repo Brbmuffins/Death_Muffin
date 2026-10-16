@@ -1,0 +1,6 @@
+[gd_resource type="Sky" format=3]
+
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/Skies/assets/BinbunSky/src/material/experimental/dark_material.tres" id="1_klfs7"]
+
+[resource]
+sky_material = ExtResource("1_klfs7")

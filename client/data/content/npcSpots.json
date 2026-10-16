@@ -1,0 +1,27 @@
+{
+ "NPC_IDS": [
+  "prior",
+  "sexton",
+  "apothecary"
+ ],
+ "NPC_SPOTS": {
+  "prior": {
+   "area": "chapterhouse",
+   "x": -3.4,
+   "z": 15.8,
+   "label": "The Prior"
+  },
+  "sexton": {
+   "area": "acre",
+   "x": -26,
+   "z": 23,
+   "label": "The Sexton"
+  },
+  "apothecary": {
+   "area": "alchemist_wing",
+   "x": 42.6,
+   "z": 20,
+   "label": "The Apothecary"
+  }
+ }
+}

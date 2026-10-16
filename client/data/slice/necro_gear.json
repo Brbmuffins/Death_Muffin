@@ -1,0 +1,626 @@
+{
+ "_doc": "Necromancer gear look props: which model shows which item. Consumed by DmGearModels (godot/game/dm_gear_models.gd) and DmAvatar. Prop GLBs are godot/assets/slice/models/props/<prop>.glb, built from art-manifest/tripo-specs/prop_necro_*.json. All props: +Y up, +X forward (the way the wearer faces), +Z is the left-right axis (mantle width, scythe/sickle blade sweep), mesh centred on the origin and normalised to about 1 unit on the longest axis (bounds below), so scale uniformly to length_m / bounds.size[1] (weapons), width_m / bounds.size[2] (mantles) or height_m / bounds.size[1] (helms). Weapons: place the prop so the point grip_t of the way up its Y extent (from bounds.min[1]) sits at the hand origin, long axis along the hand's up; tip is the +Y end. Mantles/helms: centre the prop on anchor_bone plus offset_m (metres, hero model space); weapons use length_m and grip_t (the shaft's measured position at that height is the grip); helms and mantles are sized from the head / chest measured on each rig (DmAvatar HELM_FIT, MANTLE_FIT), height_m / width_m / offset_m are only the fallback when a rig has no measurable head or chest.",
+ "axes": {
+  "up": "+Y",
+  "forward": "+X",
+  "side": "Z"
+ },
+ "weapon_kind_prop": {
+  "staff": {
+   "prop": "necro_wpn_staff",
+   "slot": "main_hand",
+   "length_m": 1.7,
+   "grip_t": 0.42,
+   "bounds": {
+    "size": [
+     0.244,
+     0.998,
+     0.193
+    ],
+    "min": [
+     -0.122,
+     -0.499,
+     -0.097
+    ],
+    "max": [
+     0.122,
+     0.499,
+     0.097
+    ]
+   }
+  },
+  "scythe": {
+   "prop": "necro_wpn_scythe",
+   "slot": "main_hand",
+   "length_m": 1.8,
+   "grip_t": 0.3,
+   "bounds": {
+    "size": [
+     0.1,
+     0.998,
+     0.502
+    ],
+    "min": [
+     -0.05,
+     -0.499,
+     -0.251
+    ],
+    "max": [
+     0.05,
+     0.499,
+     0.251
+    ]
+   }
+  },
+  "wand": {
+   "prop": "necro_wpn_wand",
+   "slot": "main_hand",
+   "length_m": 0.75,
+   "grip_t": 0.22,
+   "bounds": {
+    "size": [
+     0.221,
+     0.998,
+     0.17
+    ],
+    "min": [
+     -0.11,
+     -0.499,
+     -0.085
+    ],
+    "max": [
+     0.11,
+     0.499,
+     0.085
+    ]
+   }
+  },
+  "sickle": {
+   "prop": "necro_wpn_sickle",
+   "slot": "main_hand",
+   "length_m": 0.8,
+   "grip_t": 0.26,
+   "bounds": {
+    "size": [
+     0.119,
+     0.998,
+     0.416
+    ],
+    "min": [
+     -0.06,
+     -0.499,
+     -0.208
+    ],
+    "max": [
+     0.06,
+     0.499,
+     0.208
+    ]
+   }
+  },
+  "skull_focus": {
+   "prop": "necro_wpn_skull_focus",
+   "slot": "off_hand",
+   "length_m": 0.45,
+   "grip_t": 0.2,
+   "bounds": {
+    "size": [
+     0.553,
+     0.998,
+     0.412
+    ],
+    "min": [
+     -0.276,
+     -0.499,
+     -0.206
+    ],
+    "max": [
+     0.276,
+     0.499,
+     0.206
+    ]
+   }
+  },
+  "mourning_bell": {
+   "prop": "necro_wpn_mourning_bell",
+   "slot": "off_hand",
+   "length_m": 0.5,
+   "grip_t": 0.8,
+   "bounds": {
+    "size": [
+     0.783,
+     0.998,
+     0.639
+    ],
+    "min": [
+     -0.392,
+     -0.499,
+     -0.319
+    ],
+    "max": [
+     0.392,
+     0.499,
+     0.319
+    ]
+   }
+  },
+  "grimoire": {
+   "prop": "necro_wpn_grimoire",
+   "slot": "off_hand",
+   "length_m": 0.45,
+   "grip_t": 0.5,
+   "bounds": {
+    "size": [
+     0.647,
+     0.998,
+     0.807
+    ],
+    "min": [
+     -0.323,
+     -0.499,
+     -0.403
+    ],
+    "max": [
+     0.323,
+     0.499,
+     0.403
+    ]
+   }
+  }
+ },
+ "mantle_by_set_id": {
+  "gravecaller": {
+   "prop": "necro_mantle_gravecaller",
+   "width_m": 0.42,
+   "anchor_bone": "Spine02",
+   "offset_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.436,
+     0.74,
+     0.998
+    ],
+    "min": [
+     -0.218,
+     -0.37,
+     -0.499
+    ],
+    "max": [
+     0.218,
+     0.37,
+     0.499
+    ]
+   }
+  },
+  "gravecaller_ascended": {
+   "prop": "necro_mantle_gravecaller_asc",
+   "width_m": 0.42,
+   "anchor_bone": "Spine02",
+   "offset_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.553,
+     0.611,
+     0.998
+    ],
+    "min": [
+     -0.276,
+     -0.306,
+     -0.499
+    ],
+    "max": [
+     0.276,
+     0.306,
+     0.499
+    ]
+   }
+  },
+  "ossuary": {
+   "prop": "necro_mantle_ossuary",
+   "width_m": 0.42,
+   "anchor_bone": "Spine02",
+   "offset_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.428,
+     0.635,
+     0.998
+    ],
+    "min": [
+     -0.214,
+     -0.317,
+     -0.499
+    ],
+    "max": [
+     0.214,
+     0.317,
+     0.499
+    ]
+   }
+  },
+  "ossuary_ascended": {
+   "prop": "necro_mantle_ossuary_asc",
+   "width_m": 0.42,
+   "anchor_bone": "Spine02",
+   "offset_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.475,
+     0.705,
+     0.998
+    ],
+    "min": [
+     -0.237,
+     -0.353,
+     -0.499
+    ],
+    "max": [
+     0.237,
+     0.353,
+     0.499
+    ]
+   }
+  },
+  "mourner": {
+   "prop": "necro_mantle_mourner",
+   "width_m": 0.42,
+   "anchor_bone": "Spine02",
+   "offset_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.459,
+     0.943,
+     0.998
+    ],
+    "min": [
+     -0.229,
+     -0.472,
+     -0.499
+    ],
+    "max": [
+     0.229,
+     0.472,
+     0.499
+    ]
+   }
+  },
+  "mourner_ascended": {
+   "prop": "necro_mantle_mourner_asc",
+   "width_m": 0.42,
+   "anchor_bone": "Spine02",
+   "offset_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.486,
+     0.998,
+     0.998
+    ],
+    "min": [
+     -0.243,
+     -0.499,
+     -0.499
+    ],
+    "max": [
+     0.243,
+     0.499,
+     0.499
+    ]
+   }
+  },
+  "rotweaver": {
+   "prop": "necro_mantle_rotweaver",
+   "width_m": 0.42,
+   "anchor_bone": "Spine02",
+   "offset_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.678,
+     0.975,
+     0.998
+    ],
+    "min": [
+     -0.339,
+     -0.487,
+     -0.499
+    ],
+    "max": [
+     0.339,
+     0.487,
+     0.499
+    ]
+   }
+  },
+  "rotweaver_ascended": {
+   "prop": "necro_mantle_rotweaver_asc",
+   "width_m": 0.42,
+   "anchor_bone": "Spine02",
+   "offset_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.498,
+     0.799,
+     0.998
+    ],
+    "min": [
+     -0.249,
+     -0.399,
+     -0.499
+    ],
+    "max": [
+     0.249,
+     0.399,
+     0.499
+    ]
+   }
+  }
+ },
+ "helm_by_tier": {
+  "copper": {
+   "prop": "necro_helm_copper",
+   "height_m": 0.27,
+   "anchor_bone": "Head",
+   "offset_m": [
+    0.0,
+    0.07,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.764,
+     0.998,
+     0.795
+    ],
+    "min": [
+     -0.382,
+     -0.499,
+     -0.397
+    ],
+    "max": [
+     0.382,
+     0.499,
+     0.397
+    ]
+   }
+  },
+  "iron": {
+   "prop": "necro_helm_iron",
+   "height_m": 0.27,
+   "anchor_bone": "Head",
+   "offset_m": [
+    0.0,
+    0.07,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.627,
+     0.998,
+     0.924
+    ],
+    "min": [
+     -0.313,
+     -0.499,
+     -0.462
+    ],
+    "max": [
+     0.313,
+     0.499,
+     0.462
+    ]
+   }
+  },
+  "silver": {
+   "prop": "necro_helm_silver",
+   "height_m": 0.27,
+   "anchor_bone": "Head",
+   "offset_m": [
+    0.0,
+    0.07,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.584,
+     0.998,
+     0.814
+    ],
+    "min": [
+     -0.292,
+     -0.499,
+     -0.407
+    ],
+    "max": [
+     0.292,
+     0.499,
+     0.407
+    ]
+   }
+  },
+  "steel": {
+   "prop": "necro_helm_steel",
+   "height_m": 0.27,
+   "anchor_bone": "Head",
+   "offset_m": [
+    0.0,
+    0.07,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.877,
+     0.998,
+     0.752
+    ],
+    "min": [
+     -0.438,
+     -0.499,
+     -0.376
+    ],
+    "max": [
+     0.438,
+     0.499,
+     0.376
+    ]
+   }
+  },
+  "hellsteel": {
+   "prop": "necro_helm_hellsteel",
+   "height_m": 0.27,
+   "anchor_bone": "Head",
+   "offset_m": [
+    0.0,
+    0.07,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.764,
+     0.998,
+     0.787
+    ],
+    "min": [
+     -0.382,
+     -0.499,
+     -0.394
+    ],
+    "max": [
+     0.382,
+     0.499,
+     0.394
+    ]
+   }
+  },
+  "moonsilver": {
+   "prop": "necro_helm_moonsilver",
+   "height_m": 0.27,
+   "anchor_bone": "Head",
+   "offset_m": [
+    0.0,
+    0.07,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.666,
+     0.998,
+     0.756
+    ],
+    "min": [
+     -0.333,
+     -0.499,
+     -0.378
+    ],
+    "max": [
+     0.333,
+     0.499,
+     0.378
+    ]
+   }
+  },
+  "soul_harbingers": {
+   "prop": "gear_greenbone_helm",
+   "height_m": 0.27,
+   "anchor_bone": "Head",
+   "offset_m": [
+    0.0,
+    0.07,
+    0.0
+   ],
+   "bounds": {
+    "size": [
+     0.998,
+     0.994,
+     0.705
+    ],
+    "min": [
+     -0.499,
+     -0.497,
+     -0.353
+    ],
+    "max": [
+     0.499,
+     0.497,
+     0.353
+    ]
+   }
+  }
+ },
+ "helm_tier_alias": {
+  "hell": "hellsteel",
+  "moon": "moonsilver",
+  "gold": "silver"
+ },
+ "legendary_hero_by_set_id": {
+  "colossus_mantle": {
+   "model": "hero_leg_colossus_mantle",
+   "disciplineId": "ossuary",
+   "url": "models/hero_leg_colossus_mantle/character.glb"
+  },
+  "legion_unburied": {
+   "model": "hero_leg_legion_unburied",
+   "disciplineId": "gravecaller",
+   "url": "models/hero_leg_legion_unburied/character.glb"
+  },
+  "plague_choir": {
+   "model": "hero_leg_plague_choir",
+   "disciplineId": "rotweaver",
+   "url": "models/hero_leg_plague_choir/character.glb"
+  },
+  "requiem_wraiths": {
+   "model": "hero_leg_requiem_wraiths",
+   "disciplineId": "mourner",
+   "url": "models/hero_leg_requiem_wraiths/character.glb"
+  },
+  "soul_harbingers": {
+   "model": "hero_leg_soul_harbingers",
+   "disciplineId": "reaper",
+   "url": "models/hero_leg_soul_harbingers/character.glb",
+   "covers_props": true,
+   "rim": {
+    "color": 7268256,
+    "strength": 0.5
+   }
+  }
+ },
+ "weapon_tiers": "Weapon tiers (bone, iron, gold, hell, moon) share one mesh per kind; tint with DmGearProps.TIERS.",
+ "tier_sets": "mantle_by_set_id keys are armorSets setIds (class and ascended sets). helm_by_tier also takes a set id: that set’s head piece shows its own helm. weapon_by_set_id: from `pieces` worn, weapons of `kind` show the set’s prop (the Reaper’s scythe). legendary_hero_by_set_id: the whole body at 3+ pieces; `covers_props` hides that set’s own helm and mantle props while it shows (the body wears them); `rim` {color, strength} gives that body a soft edge glow (DmCreature rim).",
+ "weapon_by_set_id": {
+  "soul_harbingers": {
+   "kind": "scythe",
+   "prop": "gear_greenbone_scythe",
+   "pieces": 3
+  }
+ }
+}

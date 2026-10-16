@@ -1,0 +1,976 @@
+{
+ "MEALS": {
+  "meal_crypt_eel": {
+   "healFrac": 0.3,
+   "seconds": 10
+  },
+  "meal_bell_carp": {
+   "healFrac": 0.4,
+   "seconds": 10
+  },
+  "meal_drowned_pike": {
+   "healFrac": 0.5,
+   "seconds": 10
+  },
+  "meal_lanternfish": {
+   "healFrac": 0.6,
+   "seconds": 10
+  },
+  "meal_coelacanth": {
+   "healFrac": 0.75,
+   "seconds": 10
+  }
+ },
+ "PROCESSING_ITEMS": {
+  "plank_elm": {
+   "name": "Elm Plank",
+   "rarity": "common",
+   "sell": 8,
+   "lore": "Hangman-elm, straight-grained and grim.",
+   "kind": "material",
+   "stack": 250
+  },
+  "plank_willow": {
+   "name": "Willow Plank",
+   "rarity": "uncommon",
+   "sell": 16,
+   "lore": "Red-streaked where the sap bled.",
+   "kind": "material",
+   "stack": 250
+  },
+  "plank_yew": {
+   "name": "Yew Plank",
+   "rarity": "uncommon",
+   "sell": 26,
+   "lore": "Churchyard yew: springy, and it remembers.",
+   "kind": "material",
+   "stack": 250
+  },
+  "plank_blackthorn": {
+   "name": "Blackthorn Plank",
+   "rarity": "rare",
+   "sell": 42,
+   "lore": "Still thorny at the knots.",
+   "kind": "material",
+   "stack": 250
+  },
+  "plank_ghostwood": {
+   "name": "Ghostwood Plank",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "Pale, cold, and lighter than air should allow.",
+   "kind": "material",
+   "stack": 250
+  },
+  "plank_bone_elder": {
+   "name": "Bone Elder Plank",
+   "rarity": "epic",
+   "sell": 90,
+   "lore": "It clacks like bone when you stack it.",
+   "kind": "material",
+   "stack": 250
+  },
+  "meal_crypt_eel": {
+   "name": "Smoked Crypt Eel",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Smoked over coffin-wood. Heals over time.",
+   "kind": "consumable",
+   "stack": 99
+  },
+  "meal_bell_carp": {
+   "name": "Bell Carp Stew",
+   "rarity": "uncommon",
+   "sell": 20,
+   "lore": "It still rings faintly in the bowl. Heals over time.",
+   "kind": "consumable",
+   "stack": 99
+  },
+  "meal_drowned_pike": {
+   "name": "Drowned Pike Fillet",
+   "rarity": "uncommon",
+   "sell": 30,
+   "lore": "All teeth removed. Most of them. Heals over time.",
+   "kind": "consumable",
+   "stack": 99
+  },
+  "meal_lanternfish": {
+   "name": "Lanternfish Supper",
+   "rarity": "rare",
+   "sell": 48,
+   "lore": "It glows on the plate. Heals over time.",
+   "kind": "consumable",
+   "stack": 99
+  },
+  "meal_coelacanth": {
+   "name": "Coelacanth Feast",
+   "rarity": "epic",
+   "sell": 80,
+   "lore": "Older than the Covenant, and filling. Heals over time.",
+   "kind": "consumable",
+   "stack": 99
+  },
+  "bone_meal": {
+   "name": "Bone Meal",
+   "rarity": "common",
+   "sell": 4,
+   "lore": "Ground at the Bone Kiln. Mourning beds love it.",
+   "kind": "material",
+   "stack": 250
+  },
+  "tool_hatchet_copper": {
+   "name": "Copper Hatchet",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Carry it in your bag or on the tool belt: +5% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_hatchet_iron": {
+   "name": "Iron Hatchet",
+   "rarity": "common",
+   "sell": 40,
+   "lore": "Carry it in your bag or on the tool belt: +10% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_hatchet_silver": {
+   "name": "Silver Hatchet",
+   "rarity": "uncommon",
+   "sell": 90,
+   "lore": "Carry it in your bag or on the tool belt: +15% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_hatchet_steel": {
+   "name": "Steel Hatchet",
+   "rarity": "rare",
+   "sell": 160,
+   "lore": "Carry it in your bag or on the tool belt: +20% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_hatchet_hell": {
+   "name": "Hell Hatchet",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Carry it in your bag or on the tool belt: +25% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_hatchet_moon": {
+   "name": "Moon Hatchet",
+   "rarity": "epic",
+   "sell": 360,
+   "lore": "Carry it in your bag or on the tool belt: +30% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_pickaxe_copper": {
+   "name": "Copper Pickaxe",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Carry it in your bag or on the tool belt: +5% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_pickaxe_iron": {
+   "name": "Iron Pickaxe",
+   "rarity": "common",
+   "sell": 40,
+   "lore": "Carry it in your bag or on the tool belt: +10% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_pickaxe_silver": {
+   "name": "Silver Pickaxe",
+   "rarity": "uncommon",
+   "sell": 90,
+   "lore": "Carry it in your bag or on the tool belt: +15% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_pickaxe_steel": {
+   "name": "Steel Pickaxe",
+   "rarity": "rare",
+   "sell": 160,
+   "lore": "Carry it in your bag or on the tool belt: +20% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_pickaxe_hell": {
+   "name": "Hell Pickaxe",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Carry it in your bag or on the tool belt: +25% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_pickaxe_moon": {
+   "name": "Moon Pickaxe",
+   "rarity": "epic",
+   "sell": 360,
+   "lore": "Carry it in your bag or on the tool belt: +30% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_rod_copper": {
+   "name": "Copper Fishing Rod",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Carry it in your bag or on the tool belt: +5% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_rod_iron": {
+   "name": "Iron Fishing Rod",
+   "rarity": "common",
+   "sell": 40,
+   "lore": "Carry it in your bag or on the tool belt: +10% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_rod_silver": {
+   "name": "Silver Fishing Rod",
+   "rarity": "uncommon",
+   "sell": 90,
+   "lore": "Carry it in your bag or on the tool belt: +15% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_rod_steel": {
+   "name": "Steel Fishing Rod",
+   "rarity": "rare",
+   "sell": 160,
+   "lore": "Carry it in your bag or on the tool belt: +20% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_rod_hell": {
+   "name": "Hell Fishing Rod",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Carry it in your bag or on the tool belt: +25% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_rod_moon": {
+   "name": "Moon Fishing Rod",
+   "rarity": "epic",
+   "sell": 360,
+   "lore": "Carry it in your bag or on the tool belt: +30% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_spade_copper": {
+   "name": "Copper Grave Spade",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Carry it in your bag or on the tool belt: +5% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_spade_iron": {
+   "name": "Iron Grave Spade",
+   "rarity": "common",
+   "sell": 40,
+   "lore": "Carry it in your bag or on the tool belt: +10% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_spade_silver": {
+   "name": "Silver Grave Spade",
+   "rarity": "uncommon",
+   "sell": 90,
+   "lore": "Carry it in your bag or on the tool belt: +15% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_spade_steel": {
+   "name": "Steel Grave Spade",
+   "rarity": "rare",
+   "sell": 160,
+   "lore": "Carry it in your bag or on the tool belt: +20% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_spade_hell": {
+   "name": "Hell Grave Spade",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Carry it in your bag or on the tool belt: +25% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  },
+  "tool_spade_moon": {
+   "name": "Moon Grave Spade",
+   "rarity": "epic",
+   "sell": 360,
+   "lore": "Carry it in your bag or on the tool belt: +30% gathering success (the best tool you carry counts).",
+   "kind": "material",
+   "stack": 1
+  }
+ },
+ "PROCESSING_RECIPES": [
+  [
+   "mill_elm_plank",
+   "Mill Elm Plank",
+   "woodcutting",
+   5,
+   "plank_elm",
+   1,
+   [
+    [
+     "log_elm",
+     3
+    ]
+   ]
+  ],
+  [
+   "mill_willow_plank",
+   "Mill Willow Plank",
+   "woodcutting",
+   15,
+   "plank_willow",
+   1,
+   [
+    [
+     "log_willow",
+     3
+    ]
+   ]
+  ],
+  [
+   "mill_yew_plank",
+   "Mill Yew Plank",
+   "woodcutting",
+   40,
+   "plank_yew",
+   1,
+   [
+    [
+     "log_yew",
+     3
+    ]
+   ]
+  ],
+  [
+   "mill_blackthorn_plank",
+   "Mill Blackthorn Plank",
+   "woodcutting",
+   55,
+   "plank_blackthorn",
+   1,
+   [
+    [
+     "log_blackthorn",
+     3
+    ]
+   ]
+  ],
+  [
+   "mill_ghostwood_plank",
+   "Mill Ghostwood Plank",
+   "woodcutting",
+   70,
+   "plank_ghostwood",
+   1,
+   [
+    [
+     "log_ghostwood",
+     3
+    ]
+   ]
+  ],
+  [
+   "mill_bone_elder_plank",
+   "Mill Bone Elder Plank",
+   "woodcutting",
+   85,
+   "plank_bone_elder",
+   1,
+   [
+    [
+     "log_bone_elder",
+     3
+    ]
+   ]
+  ],
+  [
+   "cook_crypt_eel",
+   "Cook Smoked Crypt Eel",
+   "fishing",
+   12,
+   "meal_crypt_eel",
+   1,
+   [
+    [
+     "fish_crypt_eel",
+     2
+    ]
+   ]
+  ],
+  [
+   "cook_bell_carp",
+   "Cook Bell Carp Stew",
+   "fishing",
+   28,
+   "meal_bell_carp",
+   1,
+   [
+    [
+     "fish_bell_carp",
+     2
+    ]
+   ]
+  ],
+  [
+   "cook_drowned_pike",
+   "Cook Drowned Pike Fillet",
+   "fishing",
+   42,
+   "meal_drowned_pike",
+   1,
+   [
+    [
+     "fish_drowned_pike",
+     2
+    ]
+   ]
+  ],
+  [
+   "cook_lanternfish",
+   "Cook Lanternfish Supper",
+   "fishing",
+   60,
+   "meal_lanternfish",
+   1,
+   [
+    [
+     "fish_lanternfish",
+     2
+    ]
+   ]
+  ],
+  [
+   "cook_coelacanth",
+   "Cook Coelacanth Feast",
+   "fishing",
+   78,
+   "meal_coelacanth",
+   1,
+   [
+    [
+     "fish_coelacanth",
+     2
+    ]
+   ]
+  ],
+  [
+   "grind_bones_old",
+   "Grind Old Bones",
+   "gravedigging",
+   1,
+   "bone_meal",
+   1,
+   [
+    [
+     "bones_old",
+     4
+    ]
+   ]
+  ],
+  [
+   "grind_bones_barrow",
+   "Grind Barrow Bones",
+   "gravedigging",
+   20,
+   "bone_meal",
+   1,
+   [
+    [
+     "bones_barrow",
+     2
+    ]
+   ]
+  ],
+  [
+   "grind_bones_crypt",
+   "Grind Crypt Bones",
+   "gravedigging",
+   40,
+   "bone_meal",
+   2,
+   [
+    [
+     "bones_crypt",
+     1
+    ]
+   ]
+  ],
+  [
+   "grind_bones_ancient",
+   "Grind Ancient Bones",
+   "gravedigging",
+   70,
+   "bone_meal",
+   5,
+   [
+    [
+     "bones_ancient",
+     1
+    ]
+   ]
+  ],
+  [
+   "brew_bone_ash_flask",
+   "Brew Bone-Ash Flask",
+   "fishing",
+   10,
+   "flask_hp_major",
+   1,
+   [
+    [
+     "fish_fillet",
+     3
+    ],
+    [
+     "bone_meal",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_hatchet_copper",
+   "Forge Copper Hatchet",
+   "mining",
+   1,
+   "tool_hatchet_copper",
+   1,
+   [
+    [
+     "ingot_copper",
+     2
+    ],
+    [
+     "plank_oak",
+     1
+    ]
+   ]
+  ],
+  [
+   "smith_hatchet_iron",
+   "Forge Iron Hatchet",
+   "mining",
+   8,
+   "tool_hatchet_iron",
+   1,
+   [
+    [
+     "ingot_iron",
+     3
+    ],
+    [
+     "plank_elm",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_hatchet_silver",
+   "Forge Silver Hatchet",
+   "mining",
+   14,
+   "tool_hatchet_silver",
+   1,
+   [
+    [
+     "ingot_silver",
+     3
+    ],
+    [
+     "plank_willow",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_hatchet_steel",
+   "Forge Steel Hatchet",
+   "mining",
+   22,
+   "tool_hatchet_steel",
+   1,
+   [
+    [
+     "ingot_steel",
+     4
+    ],
+    [
+     "plank_yew",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_hatchet_hell",
+   "Forge Hell Hatchet",
+   "mining",
+   38,
+   "tool_hatchet_hell",
+   1,
+   [
+    [
+     "ingot_hell",
+     4
+    ],
+    [
+     "plank_blackthorn",
+     3
+    ]
+   ]
+  ],
+  [
+   "smith_hatchet_moon",
+   "Forge Moon Hatchet",
+   "mining",
+   52,
+   "tool_hatchet_moon",
+   1,
+   [
+    [
+     "ingot_moon",
+     5
+    ],
+    [
+     "plank_ghostwood",
+     3
+    ]
+   ]
+  ],
+  [
+   "smith_pickaxe_copper",
+   "Forge Copper Pickaxe",
+   "mining",
+   1,
+   "tool_pickaxe_copper",
+   1,
+   [
+    [
+     "ingot_copper",
+     2
+    ],
+    [
+     "plank_oak",
+     1
+    ]
+   ]
+  ],
+  [
+   "smith_pickaxe_iron",
+   "Forge Iron Pickaxe",
+   "mining",
+   8,
+   "tool_pickaxe_iron",
+   1,
+   [
+    [
+     "ingot_iron",
+     3
+    ],
+    [
+     "plank_elm",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_pickaxe_silver",
+   "Forge Silver Pickaxe",
+   "mining",
+   14,
+   "tool_pickaxe_silver",
+   1,
+   [
+    [
+     "ingot_silver",
+     3
+    ],
+    [
+     "plank_willow",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_pickaxe_steel",
+   "Forge Steel Pickaxe",
+   "mining",
+   22,
+   "tool_pickaxe_steel",
+   1,
+   [
+    [
+     "ingot_steel",
+     4
+    ],
+    [
+     "plank_yew",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_pickaxe_hell",
+   "Forge Hell Pickaxe",
+   "mining",
+   38,
+   "tool_pickaxe_hell",
+   1,
+   [
+    [
+     "ingot_hell",
+     4
+    ],
+    [
+     "plank_blackthorn",
+     3
+    ]
+   ]
+  ],
+  [
+   "smith_pickaxe_moon",
+   "Forge Moon Pickaxe",
+   "mining",
+   52,
+   "tool_pickaxe_moon",
+   1,
+   [
+    [
+     "ingot_moon",
+     5
+    ],
+    [
+     "plank_ghostwood",
+     3
+    ]
+   ]
+  ],
+  [
+   "smith_rod_copper",
+   "Forge Copper Fishing Rod",
+   "mining",
+   1,
+   "tool_rod_copper",
+   1,
+   [
+    [
+     "ingot_copper",
+     2
+    ],
+    [
+     "plank_oak",
+     1
+    ]
+   ]
+  ],
+  [
+   "smith_rod_iron",
+   "Forge Iron Fishing Rod",
+   "mining",
+   8,
+   "tool_rod_iron",
+   1,
+   [
+    [
+     "ingot_iron",
+     3
+    ],
+    [
+     "plank_elm",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_rod_silver",
+   "Forge Silver Fishing Rod",
+   "mining",
+   14,
+   "tool_rod_silver",
+   1,
+   [
+    [
+     "ingot_silver",
+     3
+    ],
+    [
+     "plank_willow",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_rod_steel",
+   "Forge Steel Fishing Rod",
+   "mining",
+   22,
+   "tool_rod_steel",
+   1,
+   [
+    [
+     "ingot_steel",
+     4
+    ],
+    [
+     "plank_yew",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_rod_hell",
+   "Forge Hell Fishing Rod",
+   "mining",
+   38,
+   "tool_rod_hell",
+   1,
+   [
+    [
+     "ingot_hell",
+     4
+    ],
+    [
+     "plank_blackthorn",
+     3
+    ]
+   ]
+  ],
+  [
+   "smith_rod_moon",
+   "Forge Moon Fishing Rod",
+   "mining",
+   52,
+   "tool_rod_moon",
+   1,
+   [
+    [
+     "ingot_moon",
+     5
+    ],
+    [
+     "plank_ghostwood",
+     3
+    ]
+   ]
+  ],
+  [
+   "smith_spade_copper",
+   "Forge Copper Grave Spade",
+   "mining",
+   1,
+   "tool_spade_copper",
+   1,
+   [
+    [
+     "ingot_copper",
+     2
+    ],
+    [
+     "plank_oak",
+     1
+    ]
+   ]
+  ],
+  [
+   "smith_spade_iron",
+   "Forge Iron Grave Spade",
+   "mining",
+   8,
+   "tool_spade_iron",
+   1,
+   [
+    [
+     "ingot_iron",
+     3
+    ],
+    [
+     "plank_elm",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_spade_silver",
+   "Forge Silver Grave Spade",
+   "mining",
+   14,
+   "tool_spade_silver",
+   1,
+   [
+    [
+     "ingot_silver",
+     3
+    ],
+    [
+     "plank_willow",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_spade_steel",
+   "Forge Steel Grave Spade",
+   "mining",
+   22,
+   "tool_spade_steel",
+   1,
+   [
+    [
+     "ingot_steel",
+     4
+    ],
+    [
+     "plank_yew",
+     2
+    ]
+   ]
+  ],
+  [
+   "smith_spade_hell",
+   "Forge Hell Grave Spade",
+   "mining",
+   38,
+   "tool_spade_hell",
+   1,
+   [
+    [
+     "ingot_hell",
+     4
+    ],
+    [
+     "plank_blackthorn",
+     3
+    ]
+   ]
+  ],
+  [
+   "smith_spade_moon",
+   "Forge Moon Grave Spade",
+   "mining",
+   52,
+   "tool_spade_moon",
+   1,
+   [
+    [
+     "ingot_moon",
+     5
+    ],
+    [
+     "plank_ghostwood",
+     3
+    ]
+   ]
+  ]
+ ]
+}

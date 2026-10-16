@@ -32,7 +32,46 @@ slice/models/props/prop_node_coffin_oak*
 slice/models/grave_robber
 slice/models/bone_hound
 
-# ---- Later blocks (not listed yet): the Gravecaller, the rest of the Graves roster, thralls, the Gravedigger King, effects, sounds, HUD art.
+# ---- Code sync (client/code.list): what the copied scripts and scenes load. `@` lines are art that lives next to the code in godot/ (not under
+# godot/assets); they land at the same path in client/. New files get a seed .import carrying the live asset's uid (tools/rebuild/sync-assets.mjs).
+
+# Fonts of the UI theme (ui/dm_ui.gd, ui/theme/dm_theme.tres), the HUD kit's icons and ability art (ui/hud/dm_hud_kit.gd), the front flow's
+# portraits and login backdrop (front/), the stained-glass window of the world dressing (world_fx/)
+@ui/fonts
+@ui/hud/art
+@front/art
+@world_fx/assets
+
+# UI art by name: items, abilities, omens, portraits, skills, status icons, the loading key art (ui/dm_ui_art.gd, ui/widgets/dm_loading_screen.gd)
+ui_art
+game/art
+
+# Effects: the Vfx autoload (fx/dm_fx.gd) reads the effect data, the flipbook and noise textures, the Binbun effect scenes and shaders, and the
+# few effect meshes. The licensed flipbook sheets (fx/sheets) join with the rites that play them.
+fx/fx_data.json
+fx/tex
+fx/art
+fx/models
+fx/binbun
+
+# Sound: the AudioDirector autoload (audio/) loads clips from these folders by the audio map; the chat ding (audio/eleven) joins with the panel host
+audio/esm
+audio/ambience
+audio/world
+audio/combat
+audio/music
+
+# People: the three Covenant NPCs (next/chapterhouse/dm_hub_npcs.gd, data/content/npcs.json) and the four labourer models (game/dm_laborer_views.gd)
+slice/models/npc_prior
+slice/models/npc_sexton
+slice/models/npc_apothecary
+slice/models/skeleton_thrall
+slice/models/thrall_legionnaire
+slice/models/thrall_sentinel
+slice/models/thrall_plague
+
+# ---- Later blocks (not listed yet): the Gravecaller, the rest of the Graves roster, thralls, the Gravedigger King, the other areas' props, bosses,
+# the licensed flipbook sheets.
 # Licensed flipbook sheets live outside git; a line under fx/sheets/ is read from $FX_SHEETS (default ~/death-muffin/private/fx-sheets)
 # and copied into the git-ignored client/assets/fx/sheets/, for example:
 # fx/sheets/hit_flash.png

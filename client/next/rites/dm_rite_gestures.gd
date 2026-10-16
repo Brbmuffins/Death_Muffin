@@ -1,0 +1,71 @@
+class_name DmRiteGestures
+extends RefCounted
+## The hero's cast / attack gesture per rite: the `_gesture(kind, seconds, flow_id, ability_id)` calls, as data. DmRiteCaster plays one per accepted cast on every peer (`avatar.cast`), once, through a separate RPC (never an
+## event: events_played stays the rites' own).
+
+## rite -> [clip kind, clip speed seconds, cast-flow id (gestureSeconds), ability id for the weapon's combat clip ("" = none)]
+const TABLE := {
+	"bone_needle": ["cast", 3.2, "bone_needle", "bone_needle"],
+	"marrow_spear": ["cast", 2.4, "marrow_spear", "marrow_spear"],
+	"exhume": ["dig", 2.6, "exhume", "exhume"],
+	"miasma": ["cast", 2.2, "miasma", "miasma"],
+	"wailing_skull": ["cast", 2.8, "wailing_skull", "wailing_skull"],
+	"grave_step": ["cast", 3.0, "grave_step", "grave_step"],
+	"grave_frost": ["cast", 2.4, "grave_frost", "grave_frost"],
+	"soul_siphon": ["cast", 2.4, "soul_siphon", "soul_siphon"],
+	"bone_prison": ["cast", 2.3, "bone_prison", "bone_prison"],
+	"grave_hands": ["dig", 2.2, "grave_hands", "grave_hands"],
+	"bone_storm": ["cast", 2.0, "bone_storm", "bone_storm"],
+	"bone_mantle": ["cast", 1.8, "bone_mantle", "bone_mantle"],
+	"bone_fan": ["cast", 3.2, "bone_fan", "bone_fan"],
+	"rot_lance": ["cast", 2.8, "rot_lance", "rot_lance"],
+	"grave_offering": ["cast", 2.4, "grave_offering", "grave_offering"],
+	"ivory_cleave": ["cast", 3.0, "ivory_cleave", "ivory_cleave"],
+	"veil_step": ["cast", 3.4, "veil_step", ""],
+	"rally_dead": ["cast", 2.0, "rally_dead", "rally_dead"],
+	"carrion_seed": ["cast", 2.4, "carrion_seed", "carrion_seed"],
+	"black_litany": ["cast", 1.6, "black_litany", "black_litany"],
+	"corpse_explosion": ["cast", 3.0, "corpse_explosion", "corpse_explosion"],
+	"ossuary_wall": ["cast", 1.8, "ossuary_wall", "ossuary_wall"],
+	"command_rend": ["cast", 1.8, "command_rend", "command_rend"],
+	"dirge": ["cast", 1.8, "dirge", "dirge"],
+	"plague_bloom": ["cast", 1.8, "plague_bloom", "plague_bloom"],
+	"scythe_sweep": ["attack", 2.6, "scythe_sweep", "scythe_sweep"],
+	"scythe_throw": ["cast", 3.0, "scythe_throw", "scythe_throw"],
+	"reap": ["attack", 2.2, "reap", "reap"],
+	"wraith_walk": ["cast", 3.4, "wraith_walk", "wraith_walk"],
+	"soul_burst": ["cast", 2.0, "soul_burst", "soul_burst"],
+	"harvest_spin": ["attack", 2.4, "harvest_spin", "harvest_spin"],
+	"unleash_souls": ["cast", 2.0, "unleash_souls", "unleash_souls"],
+	"soul_harvest": ["cast", 2.0, "soul_harvest", "soul_harvest"],
+	"scythe_weave": ["attack", 2.6, "scythe_weave", "scythe_weave"],
+}
+
+
+## The Scythe's swing replaces the needle's cast: `_gesture("attack", 2.6, "bone_needle", "", scythe.gestureSeconds)`. Sent as the pseudo-rite REAP_KEY.
+const REAP_KEY := "bone_needle:reap"
+const REAP := ["attack", 2.6, "bone_needle", ""]
+
+
+## Scythe Weave's second stroke (a rising cut instead of the overhead chop), sent as a pseudo-rite like REAP_KEY.
+const WEAVE_RISE_KEY := "scythe_weave:rise"
+const WEAVE_RISE := ["attack", 2.6, "scythe_weave", "scythe_weave_rise"]
+
+
+static func has(rite: String) -> bool:
+	return TABLE.has(rite) or rite == REAP_KEY or rite == WEAVE_RISE_KEY
+
+
+## Play `rite`'s gesture on a hero avatar facing `yaw` (the avatar's own cast(), the same call the original game makes).
+## `tempo` < 1 (a rite on a shortened cooldown: haste) plays the swing that much faster.
+static func play(avatar: Object, rite: String, yaw: float, tempo: float = 1.0) -> bool:
+	if avatar == null or not has(rite) or not avatar.has_method("cast"):
+		return false
+	var reap := rite == REAP_KEY
+	var g: Array = REAP if reap else (WEAVE_RISE if rite == WEAVE_RISE_KEY else TABLE[rite])
+	var secs := float(DmSimData.NECRO_WEAPON_TUNING["scythe"]["gestureSeconds"]) if reap else float(DmAbilities.cast_flow(String(g[2]))["gestureSeconds"])
+	if tempo < 1.0:
+		avatar.cast(String(g[0]), float(g[1]), yaw, secs * tempo, String(g[3]), tempo)
+	else:
+		avatar.cast(String(g[0]), float(g[1]), yaw, secs, String(g[3]))
+	return true

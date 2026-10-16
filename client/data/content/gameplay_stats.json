@@ -1,0 +1,14 @@
+{
+ "STAT_KEYS": [
+  "stat_str",
+  "stat_agi",
+  "stat_int",
+  "stat_vit"
+ ],
+ "STAT_LABELS": {
+  "stat_str": "STR",
+  "stat_agi": "AGI",
+  "stat_int": "INT",
+  "stat_vit": "VIT"
+ }
+}

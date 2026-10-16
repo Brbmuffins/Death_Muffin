@@ -17,6 +17,7 @@ Test build channel until then.
 bash client/setup.sh                                                       # builds the core for Linux, imports, runs the smoke test
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_smoke.gd   # the core loads and answers
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_bake.gd    # the crowd baker and shader (bakes into a scratch folder)
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/code_load.gd      # every copied script, scene and resource loads; no copy names a per-creature class
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models into client/crowd/baked (not committed)
 ```
 
@@ -26,7 +27,7 @@ Run `bash client/setup.sh` once in every new checkout or worktree (it lists the 
 
 The client runs today's scripts, scenes and data (DECISIONS B43) at the same paths as in `godot/`, so `res://` paths, class names and script
 uids keep working:
-- **Copies:** `client/code.list` names what is copied (globs relative to `godot/`, `!glob` leaves out the per-creature systems the core replaces).
+- **Copies:** `client/code.list` names what is copied (globs relative to `godot/`, `!glob` leaves files out; a script's `.uid` goes with it).
   `node tools/rebuild/sync-code.mjs` brings the copies up to date (adds, replaces, deletes copies whose original is gone); `--check` changes
   nothing and fails when anything is out of date. A copy is never edited in `client/`: the hygiene check fails when one is.
 - **Ports:** a file that has to change to run on the core (a rite, the director, a boss, a view) is ported: `node tools/rebuild/sync-code.mjs
@@ -34,12 +35,35 @@ uids keep working:
   when the live original changes (a live bug fix), with the `git diff` that shows the change; carry it over, then `--port` the file again.
 - `client/code.lock.json` (written by the tool, committed) records every copy and every port. Only files it lists as copies are ever replaced or
   deleted, so the client's own files (`core/`, `crowd/`, `areas/`, `tests/`, ...) are never touched; a copy that would land on one is refused.
+- **Proof:** `tests/code_load.gd` loads every copy through `ResourceLoader` (scripts must be able to instantiate, scenes and resources load with
+  every dependency present, JSON parses, a class name must not collide with another script) and fails when a copy names a per-creature class or
+  path in code (comments do not count). It prints the counts. A new file in a copied folder of `godot/` is copied by the next sync; if the test
+  then fails on it, it is a new seam: add it to the right section of `code.list`.
+- **`project.godot` is the client's own, not a copy.** From `godot/project.godot` it takes by hand what the copies need: the autoloads of copied
+  scripts (`Packs`, `AudioDirector`, `Vfx`; not `Qa`, which is left out with its seam), the display and theme settings the UI layout assumes
+  (1600x900 viewport, `canvas_items` stretch, `dm_theme.tres`) and the 60 Hz physics settings (3 steps per frame, physics interpolation). The
+  renderer, name, features, layer names and import defaults stay the client's. Input actions are registered at run time by the copied code, and
+  the only `ProjectSettings` read, `application/config/version`, has a default.
+
+### What is left out
+
+`client/code.list` says why, section by section; its comments are the list:
+- **Per-creature systems** (`enemies/`, `sim/sim_enemy|thrall|corpse|zone.gd`, `next/thralls|corpses|status|affixes|enemy_fx`,
+  `game/dm_entity_views.gd`): the combat core and the crowd view replace them (native/README.md "Design").
+- **Seams** (63 files today): a file outside those systems that names one of their classes or scenes: the rites, the wave director, the bosses, the
+  hero body and look, the HUD's enemy reads, the event fx, auto combat input, the benchmark fight, the game scene itself. Each line names what it uses.
+  They are ported to the core in the later steps of the ROADMAP's client layer, and `--port` then moves them from the list into `code.lock.json`.
+- **Left out with a seam** (40 files): a file that cannot load without a seam, grouped under the seam it follows. The biggest chains: everything
+  that hangs on `DmNextGame` (the front flow's entry `main/`, the area flow, gathering, party and friends, progress, and through the social window
+  `game_ui/dm_game_ui.gd`), on `DmHeroBody` (the HUD shell `next/next_hud.gd`, belt, chronicle), and on `DmRiteModule`.
 
 ## Assets
 
 The client keeps its own copies of the assets it uses, at the same relative paths as under `godot/assets/` (DECISIONS B41). `client/assets.list`
 names them, one path or glob per line (relative to `godot/assets/`, `#` comments, `*` inside a folder, `**` across folders, a folder name
-copies it whole). Each rebuild item adds its block to the list; nothing else is copied.
+copies it whole). A line starting with `@` names art that lives next to the code in `godot/` instead (`@ui/fonts`, `@ui/hud/art`, `@front/art`,
+`@world_fx/assets`): its path is relative to `godot/` and it lands at the same path in `client/`. Each rebuild item adds its block to the list;
+nothing else is copied.
 
 ```
 node tools/rebuild/sync-assets.mjs [--dry-run] [--list <file>]     # copy what the list names into client/assets
@@ -52,6 +76,8 @@ node tools/rebuild/sync-assets.mjs [--dry-run] [--list <file>]     # copy what t
   `.import` first (VRAM compressed, mipmaps, normal maps flagged), so even a headless first import is right; `npm run hygiene` checks them like
   the live game's. Models import with lightmap UV2 (`importer_defaults` in `project.godot`); a model that never gets a lightmap (creatures, the
   hero) may set `meshes/light_baking=1` in its `.import`.
+- Scenes and resources in `godot/` name assets by path, never by uid, so a client asset's new uid raises no "invalid UID" warning (0 in the
+  imports and in `code_load`). If a copied scene ever carries `uid=` references, seed the `.import` of new assets with the live asset's uid here.
 - **Licensed flipbook sheets** (`fx/sheets/`) are not in git (`godot/fx/README.md`). A list line under `fx/sheets/` (for example `fx/sheets/hit_flash.png`)
   is read from `$FX_SHEETS` (default `~/death-muffin/private/fx-sheets/`, the source of `tools/godot/fx-sheets-sync.sh`) and copied to
   `client/assets/fx/sheets/`, which the root `.gitignore` keeps out of git; the tool refuses to copy them anywhere git does not ignore.

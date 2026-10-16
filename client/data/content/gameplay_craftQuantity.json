@@ -1,0 +1,4 @@
+{
+ "MAX_CRAFT_BATCH": 100,
+ "ONLY_CRAFTABLE_KEY": "dm_only_craftable"
+}

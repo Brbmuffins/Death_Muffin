@@ -1,4 +1,7 @@
 ; The rebuilt Death Muffin client (ROADMAP "Now: the rebuild", DECISIONS B34-B41). Its own Godot project next to the live one in godot/.
+; [autoload], [display], [gui] and [physics] are merged by hand from godot/project.godot for the code copied from it (client/code.list): the
+; autoloads of copied scripts, the display and theme settings the UI layout assumes, and the 60 Hz physics settings. The name, features,
+; renderer, layer names and import defaults are this project's own.
 
 config_version=5
 
@@ -6,6 +9,31 @@ config_version=5
 
 config/name="Death Muffin (rebuild)"
 config/features=PackedStringArray("4.7", "Forward Plus")
+
+[autoload]
+
+Packs="*res://main/dm_packs.gd"
+AudioDirector="*res://audio/audio_director.gd"
+Vfx="*res://fx/dm_fx.gd"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/size/window_width_override=1280
+window/size/window_height_override=800
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/stretch/scale_mode="fractional"
+
+[gui]
+
+theme/custom="res://ui/theme/dm_theme.tres"
+
+[physics]
+
+common/max_physics_steps_per_frame=3
+common/physics_interpolation=true
 
 [rendering]
 

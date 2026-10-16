@@ -1,0 +1,25 @@
+{
+ "kit": {
+  "base": 120,
+  "ids": [
+   "weapon",
+   "armor"
+  ],
+  "rates": {
+   "weaponDamagePerPoint": 0.01,
+   "weaponDamageCap": 0.35,
+   "weaponSpeedPerPoint": 0.003,
+   "weaponSpeedCap": 0.1,
+   "armorHpPerPoint": 0.012,
+   "armorHpCap": 0.45,
+   "affixShare": 0.6
+  }
+ },
+ "new_blood": {
+  "damage_mult": 1.5,
+  "xp_catchup": {
+   "startMult": 2,
+   "fadeLevel": 15
+  }
+ }
+}

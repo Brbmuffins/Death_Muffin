@@ -1,0 +1,26 @@
+{
+ "SALVAGE_SKILL": "salvaging",
+ "SALVAGE_GEAR_TYPES": [
+  "weapon",
+  "offhand",
+  "armor_head",
+  "armor_chest",
+  "armor_legs",
+  "armor_feet",
+  "armor_hands",
+  "ring",
+  "trinket"
+ ],
+ "SALVAGE_RARITIES": [
+  "common",
+  "uncommon",
+  "rare",
+  "epic",
+  "legendary",
+  "relic"
+ ],
+ "SALVAGE_BONUS_PER_LEVEL": 0.005,
+ "SALVAGE_AFFIX_BONUS": 0.12,
+ "SALVAGE_ILVL_BONUS": 0.003,
+ "SALVAGE_AFFIX_XP": 0.15
+}

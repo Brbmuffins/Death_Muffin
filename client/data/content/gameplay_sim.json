@@ -1,0 +1,11 @@
+{
+ "BOSS_ARENA": {
+  "x": 0,
+  "z": -116,
+  "r": 13
+ },
+ "BOSS_RADIUS": 1.6,
+ "BOSS_RING_PAD": 0.4,
+ "CONE_REACH_PAD": 0.4,
+ "PLAYER_RADIUS": 0.45
+}

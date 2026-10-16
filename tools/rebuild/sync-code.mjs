@@ -6,7 +6,7 @@
 //
 // - client/code.list: one glob per line, relative to godot/ (# starts a comment); `!glob` leaves files out (the per-creature systems the core
 //   replaces). `*` stays inside a folder, `**` crosses folders, a folder name takes it whole. Code files only (CODE below): assets go through
-//   sync-assets.mjs, READMEs stay in godot/ (one home per fact).
+//   sync-assets.mjs, READMEs stay in godot/ (one home per fact). A script's or shader's `.uid` file follows it: `!file.gd` leaves out both.
 // - Copies keep their paths (godot/<p> -> client/<p>), so res:// paths, class names and script uids keep working. A copy is never edited in
 //   client/: change godot/ and sync, or port the file.
 // - Ported files are edited in client/ to run on the core. `--port <p>` marks one (or records again that its live original's current version is
@@ -111,6 +111,10 @@ for (const e of entries) {
   if (!hits.length) unmatched.push(e);
   for (const f of hits) (out ? wanted.delete(f) : wanted.add(f));
 }
+
+// A .uid file belongs to its script or shader: it is copied exactly when that file is, so a `!path/file.gd` line takes the uid with it.
+for (const f of [...wanted]) if (f.endsWith('.uid') && !wanted.has(f.slice(0, -4))) wanted.delete(f);
+for (const f of pool) if (f.endsWith('.uid') && wanted.has(f.slice(0, -4)) && !never.some((n) => n.test(f))) wanted.add(f);
 
 const added = [];
 const changed = [];

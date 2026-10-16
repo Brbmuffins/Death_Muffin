@@ -1,0 +1,51 @@
+{
+ "HEMORRHAGE": {
+  "dpsFrac": 0.12,
+  "maxFrac": 0.25,
+  "durationS": 4
+ },
+ "CHILL": {
+  "durationS": 2.5,
+  "moveMult": 0.7,
+  "attackRateMult": 0.75
+ },
+ "SANCTIFIED": {
+  "range": 6,
+  "durationS": 5,
+  "damageTakenMult": 0.7,
+  "cooldownMult": 0.6
+ },
+ "BONE_HEX": {
+  "durationS": 3,
+  "damageMult": 0.75
+ },
+ "PLAGUE_BURST": {
+  "radius": 2.6,
+  "damageMult": 2.5,
+  "poolRadius": 2.4,
+  "poolMs": 5000,
+  "poolDpsShare": 0.35
+ },
+ "STATUS_FX": {
+  "hemorrhage": {
+   "crimson": 9055292,
+   "ember": 16738858
+  },
+  "chill": {
+   "frost": 10470655,
+   "deep": 5996502
+  },
+  "sanctified": {
+   "gold": 15915402,
+   "pale": 16774095
+  },
+  "hex": {
+   "bone": 14735042,
+   "amber": 14263915
+  },
+  "incensed": {
+   "bronze": 14263361,
+   "smoke": 3812895
+  }
+ }
+}

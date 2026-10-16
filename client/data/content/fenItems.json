@@ -1,0 +1,73 @@
+{
+ "FEN_ITEMS": {
+  "herb_bog_myrtle": {
+   "name": "Bog Myrtle",
+   "rarity": "rare",
+   "sell": 34,
+   "lore": "Waxy grey leaves dug from the peat. Its smoke keeps the marsh-fever off the living.",
+   "stack": 250
+  },
+  "herb_drowned_lotus": {
+   "name": "Drowned Lotus",
+   "rarity": "epic",
+   "sell": 72,
+   "lore": "It blooms under black water and glows faintly, as if lit from below.",
+   "stack": 250
+  },
+  "seed_bog_myrtle": {
+   "name": "Bog Myrtle Seed",
+   "rarity": "rare",
+   "sell": 16,
+   "lore": "Plant it in a Mourning Bed. It grows best in damp, dark ground.",
+   "stack": 250
+  },
+  "seed_drowned_lotus": {
+   "name": "Drowned Lotus Seed",
+   "rarity": "rare",
+   "sell": 28,
+   "lore": "Plant it in a Mourning Bed and keep it patient.",
+   "stack": 250
+  },
+  "ichor_mire": {
+   "name": "Mire Ichor",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "The Mire Mother leaves this dark, silver-flecked ichor. Brew it with drowned lotus for Moonlight Elixir.",
+   "stack": 250
+  }
+ },
+ "FEN_RECIPES": [
+  [
+   "brew_myrtle_ward",
+   "Brew Myrtle Ward",
+   "alchemy",
+   52,
+   "flask_void_resist",
+   2,
+   [
+    [
+     "herb_bog_myrtle",
+     3
+    ]
+   ]
+  ],
+  [
+   "brew_lotus_moonlight",
+   "Brew Lotus Moonlight",
+   "alchemy",
+   68,
+   "elixir_moonlight",
+   1,
+   [
+    [
+     "herb_drowned_lotus",
+     3
+    ],
+    [
+     "ichor_mire",
+     1
+    ]
+   ]
+  ]
+ ]
+}

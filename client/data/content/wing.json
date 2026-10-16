@@ -1,0 +1,77 @@
+{
+ "SHELF_HERBS": [
+  "herb_mourning_moss",
+  "herb_nightshade",
+  "herb_corpse_lily",
+  "herb_wolfsbane",
+  "herb_bloodroot",
+  "herb_moonpetal",
+  "bone_meal"
+ ],
+ "SHELF_GROUPS": [
+  {
+   "title": "Garden herbs",
+   "blurb": "Grown in the Acre (Grave Gardening); bone meal comes from the Bone Kiln.",
+   "ids": [
+    "herb_mourning_moss",
+    "herb_nightshade",
+    "herb_corpse_lily",
+    "herb_wolfsbane",
+    "herb_bloodroot",
+    "herb_moonpetal",
+    "bone_meal"
+   ]
+  },
+  {
+   "title": "Dead-drops",
+   "blurb": "Shed by the dead: dust, ectoplasm, bile and ash.",
+   "ids": [
+    "reagent_grave_dust",
+    "reagent_wraith_ectoplasm",
+    "reagent_plague_bile",
+    "reagent_cinder_ash"
+   ]
+  },
+  {
+   "title": "Foraged",
+   "blurb": "Rot-cap grows in the Cloister, Ash-bloom in the Pyre.",
+   "ids": [
+    "herb_rot_cap",
+    "herb_ash_bloom"
+   ]
+  },
+  {
+   "title": "Boss ichors",
+   "blurb": "Every area boss always leaves one.",
+   "ids": [
+    "ichor_gravedigger",
+    "ichor_abbess",
+    "ichor_congregation",
+    "ichor_prelate",
+    "ichor_plague_saint",
+    "ichor_regent"
+   ]
+  }
+ ],
+ "SHELF_IDS": [
+  "herb_mourning_moss",
+  "herb_nightshade",
+  "herb_corpse_lily",
+  "herb_wolfsbane",
+  "herb_bloodroot",
+  "herb_moonpetal",
+  "bone_meal",
+  "reagent_grave_dust",
+  "reagent_wraith_ectoplasm",
+  "reagent_plague_bile",
+  "reagent_cinder_ash",
+  "herb_rot_cap",
+  "herb_ash_bloom",
+  "ichor_gravedigger",
+  "ichor_abbess",
+  "ichor_congregation",
+  "ichor_prelate",
+  "ichor_plague_saint",
+  "ichor_regent"
+ ]
+}

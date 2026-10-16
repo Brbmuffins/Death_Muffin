@@ -1,0 +1,44 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/5bb0d9a8076920ce.gdshader" id="1_xprng"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/lib/MagicOrbsVFX/assets/BinbunVFX/shared/texture/noise/cell/cell_inverted_02.tres" id="2_1tan4"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/lib/MagicOrbsVFX/assets/BinbunVFX/shared/texture/gradient/up/up_01.tres" id="3_rytkq"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_xprng")
+shader_parameter/mask1_texture = ExtResource("2_1tan4")
+shader_parameter/mask1_scroll = Vector2(-0.02, 0.1)
+shader_parameter/mask1_scale = Vector2(1, 1)
+shader_parameter/mask1_radial = false
+shader_parameter/use_mask2 = true
+shader_parameter/mask2_scroll = Vector2(0.1, 0.2)
+shader_parameter/mask2_scale = Vector2(1, 1)
+shader_parameter/mask2_strength = 0.3
+shader_parameter/mask2_blend_mode = 5
+shader_parameter/mask2_radial = false
+shader_parameter/use_mask3 = true
+shader_parameter/mask3_texture = ExtResource("3_rytkq")
+shader_parameter/mask3_scroll = Vector2(0, 0)
+shader_parameter/mask3_scale = Vector2(1, 1)
+shader_parameter/mask3_strength = 0.55
+shader_parameter/mask3_blend_mode = 5
+shader_parameter/mask3_radial = false
+shader_parameter/primary_color = Color(1, 0.882353, 0.87451, 1)
+shader_parameter/secondary_color = Color(0.466667, 0.513726, 1, 1)
+shader_parameter/tertiary_color = Color(0.25098, 0.133333, 0.890196, 1)
+shader_parameter/use_tertiary = true
+shader_parameter/color_smoothness = 1.0
+shader_parameter/billboard = false
+shader_parameter/displacement_scale = 0.1
+shader_parameter/displacement_offset = 1.0
+shader_parameter/time_scale = 1.0
+shader_parameter/texture_scale = Vector2(1, 1)
+shader_parameter/uv_alignment = 0
+shader_parameter/emission_strength = 4.0
+shader_parameter/proximity_fade = false
+shader_parameter/proximity_fade_distance = 1.0
+shader_parameter/alpha_multiplier = 1.0
+shader_parameter/alpha_mode = 0
+shader_parameter/alpha_cutoff = 0.02
+shader_parameter/dither_cutoff = 1.0

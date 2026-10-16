@@ -157,7 +157,7 @@ const tex3d = ['godot/assets/slice/models/', 'godot/assets/slice/art/textures/',
   'godot/assets/fx/binbun/tex/', 'godot/assets/fx/models/', 'godot/world_fx/assets/',
   // the rebuilt client's copies (tools/rebuild/sync-assets.mjs seeds these imports; the same rule)
   'client/assets/slice/models/', 'client/assets/slice/art/textures/', 'client/assets/fx/art/', 'client/assets/fx/tex/',
-  'client/assets/fx/binbun/tex/', 'client/assets/fx/models/'];
+  'client/assets/fx/binbun/tex/', 'client/assets/fx/models/', 'client/world_fx/assets/'];
 for (const f of files) {
   if (!f.endsWith('.import') || !tex3d.some((d) => f.startsWith(d))) continue;
   const text = read(f);

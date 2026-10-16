@@ -1,0 +1,37 @@
+{
+ "CONTRACT_SLOTS": 3,
+ "RELIC_PREMIUM": 2,
+ "RELIC_CHANCE": 0.2,
+ "RELIC_ORDERS": [
+  {
+   "itemId": "gem_grave_garnet",
+   "skill": "mining",
+   "level": 10,
+   "qty": 3
+  },
+  {
+   "itemId": "reliquary_fragment",
+   "skill": "fishing",
+   "level": 30,
+   "qty": 3
+  },
+  {
+   "itemId": "gem_bone_opal",
+   "skill": "mining",
+   "level": 30,
+   "qty": 2
+  },
+  {
+   "itemId": "gem_void_sapphire",
+   "skill": "mining",
+   "level": 60,
+   "qty": 1
+  },
+  {
+   "itemId": "covenant_seal",
+   "skill": "gravedigging",
+   "level": 70,
+   "qty": 2
+  }
+ ]
+}

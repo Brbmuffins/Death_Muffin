@@ -1,0 +1,11 @@
+{
+ "NECRO_LIMITS": {
+  "killsPerSave": 900,
+  "shardsPerSave": 30,
+  "importMaxShards": 40,
+  "importMaxAreaKills": 20000,
+  "importMaxBossKills": 200,
+  "importMaxAscension": 5,
+  "importMaxAshes": 400
+ }
+}

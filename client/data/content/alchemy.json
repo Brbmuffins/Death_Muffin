@@ -1,0 +1,159 @@
+{
+ "ALCHEMY_ITEMS": {
+  "flask_hp_grand": {
+   "name": "Grand Healing Flask",
+   "rarity": "rare",
+   "sell": 45,
+   "lore": "Bloodroot and corpse-lily, brewed until the glass runs warm. Restores 90% health. Press Q.",
+   "stack": 99,
+   "stat": {
+    "value": 150,
+    "effect": "hp_regen",
+    "duration": 60
+   }
+  },
+  "elixir_moonlight": {
+   "name": "Moonlight Elixir",
+   "rarity": "epic",
+   "sell": 120,
+   "lore": "+25% spell damage for 60 seconds. It glows faintly, and the dead lean toward it.",
+   "stack": 99,
+   "stat": {
+    "value": 0.25,
+    "effect": "damage_amp",
+    "duration": 60
+   }
+  }
+ },
+ "ALCHEMY_HEALING": {
+  "flask_hp_grand": 0.9
+ },
+ "ALCHEMY_BUFFS": {
+  "elixir_moonlight": {
+   "kind": "damage",
+   "value": 0.25,
+   "seconds": 60,
+   "label": "Moonlit"
+  }
+ },
+ "ALCHEMY_RECIPES": [
+  [
+   "brew_moss_tonic",
+   "Brew Moss Tonic",
+   "alchemy",
+   1,
+   "flask_hp_minor",
+   3,
+   [
+    [
+     "herb_mourning_moss",
+     3
+    ]
+   ]
+  ],
+  [
+   "brew_nightshade_draught",
+   "Brew Nightshade Draught",
+   "alchemy",
+   12,
+   "flask_hp_major",
+   2,
+   [
+    [
+     "herb_nightshade",
+     3
+    ],
+    [
+     "bone_meal",
+     1
+    ]
+   ]
+  ],
+  [
+   "brew_swift_tincture",
+   "Brew Swift Tincture",
+   "alchemy",
+   18,
+   "flask_speed",
+   2,
+   [
+    [
+     "herb_nightshade",
+     2
+    ],
+    [
+     "herb_mourning_moss",
+     2
+    ]
+   ]
+  ],
+  [
+   "brew_lily_tempering",
+   "Brew Lily Tempering",
+   "alchemy",
+   32,
+   "flask_damage",
+   2,
+   [
+    [
+     "herb_corpse_lily",
+     3
+    ],
+    [
+     "bone_meal",
+     2
+    ]
+   ]
+  ],
+  [
+   "brew_wolfsbane_ward",
+   "Brew Wolfsbane Ward",
+   "alchemy",
+   45,
+   "flask_void_resist",
+   2,
+   [
+    [
+     "herb_wolfsbane",
+     3
+    ]
+   ]
+  ],
+  [
+   "brew_bloodroot_grand",
+   "Brew Grand Healing Flask",
+   "alchemy",
+   58,
+   "flask_hp_grand",
+   2,
+   [
+    [
+     "herb_bloodroot",
+     3
+    ],
+    [
+     "herb_corpse_lily",
+     1
+    ]
+   ]
+  ],
+  [
+   "brew_moonpetal_elixir",
+   "Brew Moonlight Elixir",
+   "alchemy",
+   72,
+   "elixir_moonlight",
+   1,
+   [
+    [
+     "herb_moonpetal",
+     3
+    ],
+    [
+     "herb_bloodroot",
+     1
+    ]
+   ]
+  ]
+ ]
+}

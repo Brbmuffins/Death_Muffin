@@ -1,0 +1,33 @@
+{
+ "CHAIN": {
+  "windowMs": 4000,
+  "reportAt": 10,
+  "tiers": [
+   {
+    "at": 5,
+    "name": "Stirring",
+    "bonus": 0.05
+   },
+   {
+    "at": 12,
+    "name": "Rampage",
+    "bonus": 0.1
+   },
+   {
+    "at": 25,
+    "name": "Slaughter",
+    "bonus": 0.15
+   },
+   {
+    "at": 45,
+    "name": "Massacre",
+    "bonus": 0.2
+   },
+   {
+    "at": 80,
+    "name": "Requiem",
+    "bonus": 0.25
+   }
+  ]
+ }
+}

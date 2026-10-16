@@ -5,6 +5,8 @@
     "godot/tests/**/fixtures/**",
     "godot/data/**",
     "godot/assets/**",
+    "client/data/**",
+    "client/assets/**",
     "package-lock.json",
     "**/package-lock.json",
     "PATCH_NOTES.json",

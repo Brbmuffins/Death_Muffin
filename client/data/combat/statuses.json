@@ -1,0 +1,77 @@
+{
+ "HEMORRHAGE": {
+  "dpsFrac": 0.12,
+  "maxFrac": 0.25,
+  "durationS": 4
+ },
+ "CHILL": {
+  "durationS": 2.5,
+  "moveMult": 0.7,
+  "attackRateMult": 0.75
+ },
+ "SANCTIFIED": {
+  "range": 6,
+  "durationS": 5,
+  "damageTakenMult": 0.7,
+  "cooldownMult": 0.6
+ },
+ "BONE_HEX": {
+  "durationS": 3,
+  "damageMult": 0.75
+ },
+ "PLAGUE_BURST": {
+  "radius": 2.6,
+  "damageMult": 2.5,
+  "poolRadius": 2.4,
+  "poolMs": 5000,
+  "poolDpsShare": 0.35
+ },
+ "STATUS_FX": {
+  "hemorrhage": {
+   "crimson": 9055292,
+   "ember": 16738858
+  },
+  "chill": {
+   "frost": 10470655,
+   "deep": 5996502
+  },
+  "sanctified": {
+   "gold": 15915402,
+   "pale": 16774095
+  },
+  "hex": {
+   "bone": 14735042,
+   "amber": 14263915
+  },
+  "incensed": {
+   "bronze": 14263361,
+   "smoke": 3812895
+  }
+ },
+ "LEGEND": {
+  "deathBurstR": 3,
+  "championScale": 1.35,
+  "championDamage": 2,
+  "championHp": 2,
+  "rallyS": 4,
+  "colossusThralls": 3,
+  "wardCap": 0.6,
+  "totalCap": 0.75,
+  "shatterR": 4,
+  "wispHealFrac": 0.02,
+  "wispCap": 3,
+  "novaR": 3,
+  "novaMax": 8,
+  "spreadMax": 3,
+  "spreadR": 4,
+  "burstCdS": 1,
+  "burstClouds": 4
+ },
+ "HAG_HEX": {
+  "radius": 3.1,
+  "durationS": 6,
+  "thrallDamageMult": 0.7,
+  "blowMult": 0.55,
+  "chillMs": 1800
+ }
+}

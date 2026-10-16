@@ -1,0 +1,25 @@
+{
+ "DEPTHS": {
+  "minLevel": 12,
+  "levelsPerDepth": 1,
+  "cap": 24,
+  "chestEvery": 5,
+  "extraAffixEvery": 5,
+  "maxExtraAffixes": 3,
+  "firstWaveDelayS": 1.4,
+  "bannerMs": 3200
+ },
+ "DEPTH_LOOT_AREAS": [
+  "ossuary",
+  "coliseum",
+  "sanctum",
+  "cloister",
+  "pyre",
+  "fen"
+ ],
+ "FLOOR_DROP_CHANCE": 0.65,
+ "FLOOR_BONUS_KILLS": 5,
+ "CHEST_KILLS": 14,
+ "CHEST_PER_MIN_CEILING": 0.5,
+ "FLOORS_PER_MIN_CEILING": 3
+}

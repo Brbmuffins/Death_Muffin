@@ -1,0 +1,14 @@
+{
+ "BAG_SIZE": 48,
+ "BAG_COLS": 8,
+ "BAG_ROWS": 6,
+ "KILL_LOOT": {
+  "itemChanceMult": 0.5,
+  "materialQtyMult": 2,
+  "goldEveryKills": 4
+ },
+ "SMART_LOOT": {
+  "ownArmorShare": 0.7,
+  "foreignWeaponMult": 0.3333333333333333
+ }
+}

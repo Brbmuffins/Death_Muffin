@@ -1,0 +1,18 @@
+{
+ "BELT_SLOT_IDS": [
+  "heal",
+  "elixir",
+  "tonic"
+ ],
+ "BELT_KEY": {
+  "heal": "q",
+  "elixir": "z",
+  "tonic": "x"
+ },
+ "HEAL_ORDER": [
+  "flask_hp_grand",
+  "flask_hp_major",
+  "flask_hp_minor"
+ ],
+ "HEAL_COOLDOWN_S": 1.5
+}

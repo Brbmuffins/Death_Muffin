@@ -1,0 +1,81 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/64f98c0e6c00be32.gdshader" id="1_5pge1"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/lib/SmokeVFX/assets/BinbunVFX/shared/texture/noise/pingpong/pingpong_simple_02.tres" id="2_bjsuq"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_rggxn"]
+noise_type = 0
+seed = 4
+fractal_type = 3
+fractal_octaves = 2
+fractal_ping_pong_strength = 1
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_6tidj"]
+noise = SubResource("FastNoiseLite_rggxn")
+seamless = true
+invert = true
+seamless_blend_skirt = 0.2
+
+[sub_resource type="Gradient" id="Gradient_358nw"]
+interpolation_color_space = 1
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_374nh"]
+gradient = SubResource("Gradient_358nw")
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_6tidj"]
+noise_type = 0
+seed = 4
+fractal_type = 3
+fractal_octaves = 2
+fractal_ping_pong_strength = 1
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ugsnl"]
+noise = SubResource("FastNoiseLite_6tidj")
+seamless = true
+invert = true
+as_normal_map = true
+seamless_blend_skirt = 0.2
+bump_strength = 64
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_5pge1")
+shader_parameter/mask1_texture = ExtResource("2_bjsuq")
+shader_parameter/mask1_scroll = Vector2(0, -0.2)
+shader_parameter/mask1_scale = Vector2(0.5, 0.5)
+shader_parameter/use_mask2 = true
+shader_parameter/mask2_texture = SubResource("NoiseTexture2D_6tidj")
+shader_parameter/mask2_scroll = Vector2(0, -0.1)
+shader_parameter/mask2_scale = Vector2(0.3, 0.3)
+shader_parameter/mask2_strength = 0.76
+shader_parameter/mask2_blend_mode = 9
+shader_parameter/use_mask3 = true
+shader_parameter/mask3_texture = SubResource("GradientTexture2D_374nh")
+shader_parameter/mask3_scroll = Vector2(0, 0)
+shader_parameter/mask3_scale = Vector2(1, 1)
+shader_parameter/mask3_strength = 0.999999977648
+shader_parameter/mask3_blend_mode = 2
+shader_parameter/primary_color = Color(0.29586637, 0.29586664, 0.2958662, 1)
+shader_parameter/secondary_color = Color(0.29411766, 0.29411766, 0.29411766, 1)
+shader_parameter/tertiary_color = Color(0.1, 0.09285, 0.087000005, 1)
+shader_parameter/color_smoothness = 0.5
+shader_parameter/billboard = false
+shader_parameter/displacement_scale = 0.0
+shader_parameter/displacement_offset = 0.5
+shader_parameter/time_scale = 1.0
+shader_parameter/emission_strength = 1.0
+shader_parameter/proximity_fade = true
+shader_parameter/proximity_fade_distance = 1.0
+shader_parameter/edge_cutoff = Vector4(0, 0, 0, 0)
+shader_parameter/alpha_smoothness = 1.0
+shader_parameter/alpha_multiplier = 1.0
+shader_parameter/alpha_mode = 0
+shader_parameter/alpha_cutoff = 0.02
+shader_parameter/dither_cutoff = 1.0
+shader_parameter/normal_texture = SubResource("NoiseTexture2D_ugsnl")
+shader_parameter/normal_strength = 1.0
+shader_parameter/roughness = 0.8
