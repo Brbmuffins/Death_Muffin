@@ -1,8 +1,6 @@
 class_name DmRiteRegistry
 extends RefCounted
 ## THE list of rites the DmRiteCaster can cast: one line per rite. Adding a rite = a new rite_<id>.gd + one line here.
-## The necromancer's 25. The Reaper's nine (scythe_sweep, scythe_throw, reap, wraith_walk, soul_burst, harvest_spin, unleash_souls, soul_harvest, scythe_weave) come with
-## the Reaper (client/code.list: they need DmReaperRites); a cast of one is refused `unavailable` by the caster, as a rite with no module is.
 
 const MODULES := {
 	"bone_needle": preload("res://next/rites/rite_bone_needle.gd"),
@@ -30,6 +28,15 @@ const MODULES := {
 	"command_rend": preload("res://next/rites/rite_command_rend.gd"),
 	"dirge": preload("res://next/rites/rite_dirge.gd"),
 	"plague_bloom": preload("res://next/rites/rite_plague_bloom.gd"),
+	"scythe_sweep": preload("res://next/rites/rite_scythe_sweep.gd"),
+	"scythe_throw": preload("res://next/rites/rite_scythe_throw.gd"),
+	"reap": preload("res://next/rites/rite_reap.gd"),
+	"wraith_walk": preload("res://next/rites/rite_wraith_walk.gd"),
+	"soul_burst": preload("res://next/rites/rite_soul_burst.gd"),
+	"harvest_spin": preload("res://next/rites/rite_harvest_spin.gd"),
+	"unleash_souls": preload("res://next/rites/rite_unleash_souls.gd"),
+	"soul_harvest": preload("res://next/rites/rite_soul_harvest.gd"),
+	"scythe_weave": preload("res://next/rites/rite_scythe_weave.gd"),
 }
 
 static var _inst: Dictionary = {}

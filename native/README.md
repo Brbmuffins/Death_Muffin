@@ -276,7 +276,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   there is no Log out or Switch character (the full HUD owns them), no automatic crash report and no
   update notice; a bag or progression the server fails to give sends the player back to the login screen with the server's words (today the
   game starts with an empty bag); the game starts only on the test server or the local mock. The hero is built from the server's bag and progression, then from the progression and bag the
-  game loads and saves itself (`client/README.md` "Value on the server"); the Reaper has no model or rites yet (the four necromancers play).
+  game loads and saves itself (`client/README.md` "Value on the server"); the four necromancers and the Reaper play.
 - **Co-op messages:** one binary snapshot with every body, thralls included, at 20 Hz replaces today's dictionaries (enemies 6 to a packet at 20 Hz, thralls at 15 Hz plus a full
   reliable copy at 1 Hz). Values are quantized: positions to 1 cm, yaw to 1.4 degrees, health to 1/65535 of the maximum, time in state to 10 ms. The animation name is not sent
   (`anim` today): the crowd view picks clips from the state and the eased speed.
@@ -316,9 +316,8 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **Shots follow the simulation's position** of their target, where today they followed the drawn (interpolated) one.
   - **A blow of zero or less is refused** (`damage`, a boss's too); today `take_damage` applied it. No rite deals one.
   - **Spear rally's mark** is written to each thrall by the rite each tick while the mark lasts (`set_thrall_mark` from `thrall_info`'s target), not read by the thrall; legion size bounds the cost (Legion Champion 5 only).
-  - **Not ported with the rites:** the Reaper's nine (they wait for the Reaper, `client/code.list`), the
-    socketed runes and the weapon line of the bag (no bag yet: the rune and weapon variants are implemented and tested with the state set by hand), the kill-credit consumers (`DmSessionRewards`; the game scene emits
-    `rite_hit` and the core's `enemy_died` carries the killer).
+  - **Wraith Walk's green flame is the core's status** (`wraithfire`, a damage over time like Hemorrhage, its damage a second set by the cast), so its kill credit comes from the event buffer at the end of the tick, as
+    Withered's does; the Reaper's swings, harvest and wisps strike through `deal` and know their kills at once. Her life steal counts the enemies a swing struck, as today.
 
 - **The Gravedigger King (`client/next/bosses`; `client/README.md` "The Gravedigger King")**: his brain is today's GDScript, replayed against today's recorded scenarios; his body is an external of kind 1. What is not the same:
   - **A thrall's blow on him lands when the tick's events are dispatched**, after every thrall and enemy has acted (`EV_THRALL_HIT_EXTERNAL`), where today it landed inside the thrall's swing. His brain runs once a tick before the core, so it sees

@@ -4,10 +4,6 @@ extends RefCounted
 ##
 ## `fx` / `audio` are the Vfx / AudioDirector back-ends (null-safe; tests pass recording stubs). `stats` is the SAME Dictionary the owner counts
 ## into (the caster's stats), so every call is counted exactly once, here.
-##
-## Ported (client/code.list "Ported"): the Reaper's green is a constant here (`REAPER_GREEN`, DmReaperRites.GREEN's value) so this file does not need DmReaperRites, which waits for the Reaper.
-
-const REAPER_GREEN := Color("6ee7a0")   ## the Reaper's colour: souls and her energy (soul_circle)
 
 var fx: Object = null
 var audio: Object = null
@@ -302,7 +298,7 @@ func soul_circle(count: int, secs: float, speed: float, radius: float, follow: C
 	if fx == null:
 		return null
 	stats["orbit"] += 1
-	return fx.orbit({"tex": "skull", "color": REAPER_GREEN, "count": count, "radius": radius, "y": 1.2, "size": 0.55, "duration": secs, "speed": speed, "follow": follow})
+	return fx.orbit({"tex": "skull", "color": DmReaperRites.GREEN, "count": count, "radius": radius, "y": 1.2, "size": 0.55, "duration": secs, "speed": speed, "follow": follow})
 
 
 ## Requiem Wraiths 5: a nova ring at each source `pts` ([[x, z]]), radius r.

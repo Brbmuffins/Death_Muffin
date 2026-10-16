@@ -6,8 +6,7 @@ extends Node
 ##   difficulty  -> director (enemy hp / damage / elite chance), rewards (xp / gold / loot), bosses (brains)
 ##   omen        -> director (wave size, elites), every rewards member (reward / shard multipliers); the HUD chip
 ##   souls, chain: see below. `event(id, ctx)` is the game_event shape (DmNextUiHost forwards it to DmGameUi).
-## The rebuild's port (client/code.list "Ported"): a kill's enemy is a core id (the Scythe's reap window asks by id); the Reaper's soul green is DmRiteFx.REAPER_GREEN
-## (DmReaperRites waits for the Reaper). Ascension is not in the rebuild (DECISIONS B36): the world runs without vows (`vow_fx` neutral, heat 0, so the rewards' rank is 0
+## The rebuild's port (client/code.list "Ported"): a kill's enemy is a core id (the Scythe's reap window asks by id). Ascension is not in the rebuild (DECISIONS B36): the world runs without vows (`vow_fx` neutral, heat 0, so the rewards' rank is 0
 ## and the corpse lifetime the base one) and no Covenant Boon acts (the Bonded Dead do not rise); a character's saved Ascension data stays on the server, untouched.
 
 signal event(id: String, ctx: Dictionary)
@@ -170,12 +169,12 @@ func _bank_reaper_soul(b: DmHeroBody, at: Vector3) -> void:
 		_soul_fx = DmRiteFx.with_autoloads()
 	var bw: WeakRef = weakref(b)   # a WeakRef, not the body: a lambda capturing a freed Object logs an engine error on every call
 	var from := Vector3(at.x, 0.9, at.z)
-	_soul_fx.emit(at.x, 0.9, at.z, 8, DmRiteFx.REAPER_GREEN, 0.5, 1.2, 1.6, 0.7, 0.2, {"gravity": -0.4})   # the soul slips out of the body
+	_soul_fx.emit(at.x, 0.9, at.z, 8, DmReaperRites.GREEN, 0.5, 1.2, 1.6, 0.7, 0.2, {"gravity": -0.4})   # the soul slips out of the body
 	_soul_fx.shot(from, func() -> Variant:
 		var hero: Node3D = bw.get_ref() as Node3D
 		return Vector3(hero.global_position.x, 1.2, hero.global_position.z) if hero != null else null,
-		9.0, 0.0, "sprite", DmRiteFx.REAPER_GREEN, {"tex": "skull", "size": 0.7, "hover": SOUL_HOVER_S, "hover_r": 1.0,
-			"on_arrive": func(pos: Vector3) -> void: _soul_fx.emit(pos.x, pos.y, pos.z, 6, DmRiteFx.REAPER_GREEN, 0.25, 1.4, 0.8, 0.4, 0.18)})
+		9.0, 0.0, "sprite", DmReaperRites.GREEN, {"tex": "skull", "size": 0.7, "hover": SOUL_HOVER_S, "hover_r": 1.0,
+			"on_arrive": func(pos: Vector3) -> void: _soul_fx.emit(pos.x, pos.y, pos.z, 6, DmReaperRites.GREEN, 0.25, 1.4, 0.8, 0.4, 0.18)})
 
 
 func _float(b: Node3D, y: float, text: String, kind: String) -> void:

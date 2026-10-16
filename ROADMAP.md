@@ -232,7 +232,9 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   - [x] The HUD's budget with the panels: the draw-call model 75 as the game scene shows it and 86 with every piece on (150), the HUD and panels about 0.4 ms of a headless frame (0.5;
     `client/tests/hud.gd`), the benchmark's HUD rounds switch the panel host; `client/tests/panels.gd` (every panel, the Reliquary, the loadout, Settings, chat). The draw calls on a
     real GPU stay Helix's PC's (Gate B).
-- [ ] The Reaper (discipline 11) and its nine rites.
+- [x] The Reaper (discipline 11) and its nine rites: her model and the worn gear models in `client/assets.list`, the soul bag on the HUD, her kit on the hotbar; `DmReaperRites` and Scythe Weave,
+  Wraith Walk and Unleash Souls ported to the core (her other five rites are copies); a kill credited to her banks a soul. `client/tests/rites.gd` "the Reaper" replays today's Reaper checks on core
+  enemies (client/README.md "The Gravecaller's rites"). Her look and feel in play are Helix's PC's.
 - [ ] The other 12 areas as scenes (`client/tools/build_area.gd`, a lighting bake each through Helix's helper), their rosters baked, moving between areas.
 - [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
 - [ ] The Depths, gathering and the Chapterhouse (stations, waystones, people).

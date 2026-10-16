@@ -81,11 +81,23 @@ slice/models/thrall_legionnaire
 slice/models/thrall_sentinel
 slice/models/thrall_plague
 
-# ---- The heroes of the game scene (client/next/next_game.gd): the four necromancer disciplines (the Gravecaller is the dev entry's character)
+# ---- The heroes of the game scene (client/next/next_game.gd): the four necromancer disciplines (the Gravecaller is the dev entry's character) and the Reaper
+# (game/view_models.json: hero_reaper is drawn from the hero_reaper_v2a folder)
 slice/models/hero_gravecaller
 slice/models/hero_ossuary
 slice/models/hero_mourner
 slice/models/hero_rotweaver
+slice/models/hero_reaper_v2a
+
+# ---- Worn gear (next/hero/dm_hero_look.gd, data/slice/necro_gear.json): the necromancer weapons, helms and mantles, the green-bone set's pieces and the legendary
+# bodies a full legendary set swaps the hero into
+slice/models/props/necro_*
+slice/models/props/gear_greenbone_*
+slice/models/hero_leg_colossus_mantle
+slice/models/hero_leg_legion_unburied
+slice/models/hero_leg_plague_choir
+slice/models/hero_leg_requiem_wraiths
+slice/models/hero_leg_soul_harbingers
 
 # ---- The rites' licensed flipbook sheets (godot/fx/README.md "Flipbook sheets"): read from $FX_SHEETS, copied into the git-ignored client/assets/fx/sheets/. Without them
 # the effects draw their plain look.
@@ -99,4 +111,4 @@ fx/sheets/trail_arc.png
 # ---- The Gravedigger King (client/next/bosses): the Hollow Graves' boss, drawn by DmBossView with the full skeleton (the model and the textures Godot extracts from it)
 slice/models/boss_gravedigger_king
 
-# ---- Later blocks (not listed yet): the Reaper, the rest of the Graves roster, the other areas' props, the other bosses.
+# ---- Later blocks (not listed yet): the rest of the Graves roster, the other areas' props, the other bosses.

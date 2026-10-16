@@ -73,12 +73,13 @@ uids keep working:
   Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; the Gravecaller's rites (the caster, the module base, the legends, the
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The Gravedigger King"); Easy auto combat, the benchmark
   with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
-  "Co-op on the core"); and value on the server (the rewards node, the meta node, the progress node, the wave milestones and the joiner; "Value on the server").
-- **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the panel host
-  (`game_ui/dm_game_ui.gd`, the panels item; the Social window, its panes and `DmNextFriends` are copies with their own small host until then, "Co-op on the core").
+  "Co-op on the core"); value on the server (the rewards node, the meta node, the progress node, the wave milestones and the joiner; "Value on the server"); the HUD's adapter and
+  view-model ("The HUD on the core"); and the Reaper's helper and three of her rites ("The Gravecaller's rites").
+- **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows: now only the QA boot (with the QA driver).
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
   the chronicle, the event fx's telegraph and boss halves, the area flow and gathering. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step and the belt.
-  Freed by the boss ports: `next/bosses/dm_boss_meta.gd` (the Covenant Seal altar choice; it needs the panels' prompt, so nothing creates it yet).
+  Freed by the boss ports: `next/bosses/dm_boss_meta.gd` (the Covenant Seal altar choice; nothing creates it until the bosses item, with the boss key prompt). Freed by the panels
+  and the Reaper: `DmGameUi` with every panel and the Social window, the Codex, the registry and the Reaper's other rites.
 - **Ported for the test server** (not seams): the boot `main/main.gd` and `main/main.tscn` (freed from the left-out list by the front flow's port), `net/dm_config.gd` and
   `net/dm_http_transport.gd` (below).
 
@@ -99,8 +100,9 @@ bash client/tools/bake_crowd.sh                        # once: bakes the robber,
 
 **Controls of the dev entry** (today's input and hotbar code): **LMB** on the ground walks there, on an enemy walks into range and casts the primary (Bone Needle; hold to repeat, Shift+LMB casts in place);
 **1-4** are the kit's default loadout (Marrow Spear, Exhume, Miasma, Black Litany; hold a key to repeat), **RMB** is Corpse Explosion, **R** the signature from level 10 (Command: Rend), **WASD** walks, the wheel
-zooms. The other rites cast through `DmNextInput.cast_at(slot, aim, enemy_id, true)` or the caster's `request_cast(rite, aim)` until the loadout panel comes with the panels. `--level=N` sets the level the mock
-character is made at (R needs 10, Bone Mantle 12, Bone Storm 14; all rites unlock by 14).
+zooms. The Grimoire puts the other rites on the keys; tests cast through `DmNextInput.cast_at(slot, aim, enemy_id, true)` or the caster's `request_cast(rite, aim)`. `--level=N` sets the level the mock
+character is made at (R needs 10, Bone Mantle 12, Bone Storm 14; all rites unlock by 14). `--class=11` is the Reaper: **LMB** Scythe Sweep, **1-4** Scythe Throw, Reap, Wraith Walk and Soul Burst,
+**RMB** Harvest Spin, **R** Unleash Souls; every rite but the swings pays souls from her bag (10 to start, 30 at most), and every kill credited to her banks one.
 
 **`DmCoreHost`** (`core/dm_core_host.gd`, the scene's `Core` node) is the one owner of the `DmCore` and the `CrowdView`. It loads the data (`DmCoreData.load_all`: this project's `data/`; the
 three constants files of the creature systems are not here, so the core keeps its compiled-in defaults, which `core_thralls` checks against the live files), seeds the core and
@@ -117,15 +119,16 @@ roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`
 **input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
 wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
-Co-op and the Social window are in ("Co-op on the core"), and so is value on the server ("Value on the server"). Off in this step, each until its ROADMAP item: gathering, the Chapterhouse
-(the hero starts and gets up at the Graves' door), the Depths, the Codex, the panels (the HUD is there, "The HUD on the core"; its menu row, chat and loadout wait for theirs), the Reaper's rites,
-the graphics governor, Grave Surges. Easy auto combat is in but closed: nothing opens it until the settings come (the benchmark and the tests do). `native/README.md` "Differences from today's game" lists what behaves differently from today.
+Co-op and the Social window are in ("Co-op on the core"), value on the server ("Value on the server"), today's HUD and panels ("The HUD on the core") and the Reaper ("The Gravecaller's rites").
+Off in this step, each until its ROADMAP item: gathering, the Chapterhouse (the hero starts and gets up at the Graves' door), the Depths, the graphics governor, Grave Surges. Easy auto combat is
+in and opens from Settings as today. `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
 ## The Gravecaller's rites
 
 Today's rites (`godot/next/rites`, DECISIONS B42) run in this project as GDScript and call the core synchronously: a rite damages with `core.damage(id, amount, source)` and reads `{dealt, killed}` at once, so Wailing Skull's
-extra leap on a kill, Bone Prison skipping the dead, and the Litany's loops work as they do today. `next/rites/` has the necromancer's 25 rites (the Reaper's nine wait for the Reaper: the registry does not list them
-and a cast of one is refused `unavailable`); 24 are ports, Veil Step is a copy. `DmNextGame.attach_caster` gives the hero his `Rites` node (a `DmRiteCaster`, the game scene is its `DmRiteWorld`) and `DmRiteHotbar.wire`
+extra leap on a kill, Bone Prison skipping the dead, and the Litany's loops work as they do today. `next/rites/` has the necromancer's 25 rites (24 ports, Veil Step a copy) and the Reaper's nine:
+her shared helper `DmReaperRites` (the cone and circle pick, the blow with its life steal, the soul bag) and Scythe Weave, Wraith Walk and Unleash Souls are ports; her other five rites only call the helper and are
+copies. The registry lists all 34; a rite with no module (the five later classes') is refused `unavailable`. `DmNextGame.attach_caster` gives the hero his `Rites` node (a `DmRiteCaster`, the game scene is its `DmRiteWorld`) and `DmRiteHotbar.wire`
 connects the input. The numbers (spell power, cooldowns, costs, runes) are still `DmAbilities`, `DmSimData` and `abilities.json`; the thralls' stats `DmThralls.raise_stats / colossus_stats`.
 
 What a rite uses where it used nodes (all on the caster `c`; the adapters belong to the game scene's `DmCoreHost` and live in `core/`):
@@ -142,7 +145,9 @@ What a rite uses where it used nodes (all on the caster `c`; the adapters belong
 
 Timers stay the caster's (`c.after(ms, fn)` on the body's clock, a physics tick). Events and fx are today's: `broadcast` -> `play` -> `DmRiteFx` through the copied `Vfx` and `AudioDirector`. The hero's own statuses stay
 `DmStatusSet`. The cast flow (owner, cooldown, essence and cast lock through `DmAbilities.cast_check / apply_cast_cost`, refund on a lost corpse race) is unchanged. `client/tests/rites.gd` casts every rite
-(table-driven against the copied rules code), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, and plays a fight; `native/README.md` "Differences from today's game" lists what differs.
+(table-driven against the copied rules code), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, and plays a fight; then the other three necromancers and the Reaper, each a real
+character in a fresh game (her bag, souls paid and refused, every rite's damage with the souls' bonuses, the life steal, the wisps, Soul Harbinger's Raiment, a kill banking a soul, auto combat's pick);
+`native/README.md` "Differences from today's game" lists what differs.
 
 ## The Gravedigger King
 
@@ -213,14 +218,13 @@ nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path clien
 - **In the fight as today:** rewards, loot drops and the kill ledger against the run's in-memory mock (the King's soul shards are granted to the throwaway character and charged, as today's `hold_boss`),
   and today's effects (`Vfx`), with one difference: the particle ring's per-frame loop is the core's C++ (`DmMotes`, native/README.md "Files"), which won back 0.7 ms of a Full Party
   frame on the VPS (5.7 to 5.0 ms; 2026-10-16).
-- **Not in the fight yet** (it is cheaper than today's by these): the panels (the HUD on the core is up, and its share measured), the other disciplines and rooms, the
-  guests' hero bodies (as today). `native/README.md` "Differences from today's game" has the rest.
+- **Not in the fight yet** (it is cheaper than today's by these): the other rooms and the guests' hero bodies (as today); the benchmark plays the Gravecaller only. `native/README.md` "Differences from today's game" has the rest.
 
 ## Graphics presets
 
 Today's Low, Medium, High and Ultra on Forward+ (DECISIONS B45): `game/dm_graphics_preset.gd` is the table and `next/perf/dm_next_perf.gd` (`DmNextPerf`, the game scene's `perf`)
-applies it, ports of today's. The game scene reads the player's settings file at the start (read only: the Settings panel that changes it comes with the panels; it is
-the file today's game writes, so the test build plays at the player's preset), `opts.settings` in tests and the benchmark. A preset sets the moon's shadow, reach, splits
+applies it, ports of today's. The game scene reads the player's settings file at the start (the file today's game writes, so the test build plays at the player's preset) and the
+Settings panel applies a change live, `opts.settings` in tests and the benchmark. A preset sets the moon's shadow, reach, splits
 and atlas and the soft filter, bloom (`DmWfxBloom`), screen-space ambient occlusion (High and Ultra), MSAA, anisotropy and mesh LOD on the viewport, the effects quality
 and the Binbun layer, the crowd's shadow policy (`DmCrowd.set_shadow_policy`: the nearest enemies that cast, today's counts, and whether thralls cast; a change reaches the
 thralls already drawn) and the floor of Auto resolution, whose lower scales are upscaled with FSR 1. Brightness, fps cap, V-Sync, window mode and interface size are
@@ -428,9 +432,8 @@ database and signing key, so nothing played here can touch a live character), th
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
 - **Value is the test server's** ("Value on the server"): the kill reports, the drops claimed into the bag, the progression's and the bag's saves all go to the test API with the logged-in character.
-- **Off until their items:** chat, gathering, the Chapterhouse, the panels (so no Log out or Switch character:
-  close the game to sign in again; the Social window has its own small host, "Co-op on the core"), the automatic crash report and the update notice. The four
-  necromancer disciplines play (their hero models are in `client/assets.list`; `tests/rites.gd` "the disciplines"); the Reaper waits for its item.
+- **Off until their items:** gathering, the Chapterhouse, Log out, Switch character and a discipline change (their buttons do nothing yet: close the game to sign in again), the automatic
+  crash report and the update notice. The four necromancer disciplines and the Reaper play (their hero models are in `client/assets.list`; `tests/rites.gd` "the disciplines", "the Reaper").
 
 ### The API rule (DECISIONS B38)
 

@@ -1,14 +1,15 @@
 extends SceneTree
 ## The Gravecaller's rites on the combat core (ROADMAP: client layer, "The Gravecaller's rites ported to the core"): the real offline game scene (client/next/next_game.tscn)
-## with a level-20 Gravecaller, no waves, headless. Every necromancer rite is cast at least once against core enemies (static: stunned, harmless, a huge health pool unless a case
+## with a level-20 Gravecaller, no waves, headless. Every rite (the necromancer's and the Reaper's) is cast at least once against core enemies (static: stunned, harmless, a huge health pool unless a case
 ## needs a kill) and its effect is compared with today's rules, computed here with the copied rules code (DmAbilities, DmThralls, DmSimData, DmCombatData ...), never literals:
 ##   - damage numbers (the first blow on each target = the rite's formula x the target's damage-taken multiplier, here 1), who was hit and who was not (lane, cone, circle, edge distance);
 ##   - statuses with today's stacks and durations (the core's status wire: tenths of a second), DoT credit;
 ##   - corpses consumed (atomically) or kept, thralls raised with `DmThralls.raise_stats` / `colossus_stats`, rallied, sacrificed, moved, mended;
-##   - cooldown, essence cost and cast lock of every accepted cast (`DmAbilities.apply_cast_cost`), and the refusals (range, no corpse, no thralls, a Reaper rite);
+##   - cooldown, essence cost and cast lock of every accepted cast (`DmAbilities.apply_cast_cost`), and the refusals (range, no corpse, no thralls, no souls, a rite with no module);
 ##   - the synchronous-kill cases: Wailing Skull's extra leap on a kill (four hits against three), Bone Prison skipping the dead;
 ##   - the input: the kit's hotbar (LMB, 1-4, RMB, R), the click-to-attack chase;
 ##   - a short full fight where the hero clears a wave of sixteen with rites, with thralls raised, rallied and sacrificed on the way;
+##   - the other three necromancers and the Reaper, each a real character in a fresh game (t_disciplines, t_reaper);
 ##   - ZERO script errors or engine errors in the log (an OS Logger counts them; warnings are not errors).
 ## Bakes the robber, the hound and the Gravecaller's legionnaire into a scratch folder first (a few seconds). Run: godot --headless --path client --script res://tests/rites.gd
 ## It plays about 90 s of game time: it takes that long in real time, and about 30 s with the engine argument `--fixed-fps 60` before `--path`.
@@ -17,6 +18,7 @@ const OUT := "user://rites_test"
 const BAKE := ["grave_robber", "bone_hound", "thrall_legionnaire"]
 const BIG := 1000.0   ## health multiplier of a target that must survive the case
 const WITHERED := &"withered"
+const REAPER := 11
 
 
 class ErrorLog:
@@ -145,6 +147,7 @@ func _initialize() -> void:
 	await t_chase()
 	await t_fight()
 	await t_disciplines()
+	await t_reaper()
 	await finish()
 
 
@@ -334,15 +337,15 @@ func raise_at(pos: Vector3, kind := "normal", enemy := "robber", elite := false)
 
 func the_catalogue() -> void:
 	var ids := DmRiteRegistry.ids()
-	check(ids.size() == 25, "the registry holds the necromancer's 25 rites (%d)" % ids.size())
+	check(ids.size() == 34, "the registry holds the necromancer's 25 rites and the Reaper's 9 (%d)" % ids.size())
 	for reaper in ["scythe_sweep", "scythe_throw", "reap", "wraith_walk", "soul_burst", "harvest_spin", "unleash_souls", "soul_harvest", "scythe_weave"]:
-		check(not DmRiteRegistry.has(reaper), "the Reaper's %s is not registered yet" % reaper)
+		check(DmRiteRegistry.has(reaper), "the Reaper's %s is registered" % reaper)
 	for rite in ids:
 		check(DmRiteRegistry.module(rite) != null and DmRiteRegistry.module(rite).id == rite, "%s has its module" % rite)
 	check(DmRiteCaster.WITHERED_WIRE == DmStatusSet.IDS.find(&"withered"), "the caster reads Withered by its wire id")
 	await reset_and_wait()
-	var r := cast("scythe_sweep", at(2.0))
-	check(not r["ok"] and r["reason"] == "unavailable", "a Reaper rite is refused `unavailable` (%s)" % r["reason"])
+	var r := cast("flail_swing", at(2.0))
+	check(not r["ok"] and r["reason"] == "unavailable", "a rite of a kit that comes later (the Grave Warden's flail_swing) is refused `unavailable` (%s)" % r["reason"])
 	check(c.hero_id == hero.core_id and c.hero_id > 0, "the caster's hero id is the body's id in the core (%d)" % c.hero_id)
 	check(c.p["stats"]["level"] == 20.0 and String(c.body.get("discipline_id")) == "gravecaller", "the hero is a level-20 Gravecaller")
 
@@ -1346,7 +1349,7 @@ func can_cast(rite: String) -> bool:
 func finish() -> void:
 	for rite in DmRiteRegistry.ids():
 		check(int(cast_rites.get(rite, 0)) >= 1, "%s was cast at least once" % rite)
-	check(cast_rites.size() == 25, "all 25 necromancer rites were cast (%d)" % cast_rites.size())
+	check(cast_rites.size() == DmRiteRegistry.ids().size(), "all %d rites were cast (%d)" % [DmRiteRegistry.ids().size(), cast_rites.size()])
 	g.queue_free()
 	await ticks(5)
 	await process_frame
@@ -1492,3 +1495,394 @@ func _withered_cap() -> int:
 		await secs(0.5)
 		most = maxi(most, stacks_of(id, WITHERED))
 	return most
+
+
+# ------------------------------------------------------------------------------------------------------------------------ the Reaper
+
+## The Reaper (class 11), a real level-20 character in a fresh game, replaying today's godot/tests/rites/reaper_part.gd on core enemies: the class (her model,
+## the soul bag, the kit on the hotbar, more health, less damage taken, the scythe gestures), the nine rites (who is struck, the damage with the bag's and the
+## spent souls' bonuses, souls paid and refused, the life steal), Unleash Souls' wisps, Soul Harbinger's Raiment, a kill banking a soul and the easy
+## auto-combat's pick. Numbers come from the REAPER constants and DmAbilities.
+func t_reaper() -> void:
+	await _play_as(REAPER)
+	await ticks(2)   # the avatar is made a frame after the body enters the tree
+	await _reaper_class()
+	await _reaper_swings()
+	await _reaper_spenders()
+	await _reaper_walk()
+	await _reaper_unleash()
+	await _reaper_raiment()
+	await _reaper_auto()
+
+
+## Everything reset, the hero `along` metres down the arena with a full bag, no Soul Harvest mark, and in combat for good (only the in-combat trickle of
+## health regenerates, so a heal shows).
+func reaper_reset(along := 0.0) -> void:
+	await reset_and_wait()
+	hero.teleport(at(along))
+	c.p["souls"] = int(c.p["soulsMax"])
+	c.p["harvestAmp"] = false
+	c.p.erase("weaveStroke")
+	c.p["lastHurtAt"] = 1.0e12
+
+
+## The events rite `rite` played with type `t`.
+func evs(rite: String, t: String) -> Array:
+	return ev_log.filter(func(ev: Dictionary) -> bool: return String(ev.get("rite", "")) == rite and String(ev.get("t", "")) == t)
+
+
+## All the damage the core dealt enemy `id` since `mark`.
+func taken(id: int, mark := 0) -> float:
+	var sum := 0.0
+	for i in range(mark, dmg_log.size()):
+		if int(dmg_log[i][0]) == id:
+			sum += float(dmg_log[i][2])
+	return sum
+
+
+func souls() -> int:
+	return int(c.p["souls"])
+
+
+func _reaper_class() -> void:
+	var K := DmReaperRites.k()
+	check(String(hero.discipline_id) == "reaper" and hero.family == "reaper" and c.p["family"] == "reaper" and c.p["resource"]["kind"] == "reaper", "reaper: the hero is a Reaper (her family and resource)")
+	var slug := String(hero.avatar.c.slug) if hero.avatar != null and hero.avatar.c != null else "none"
+	check(slug.contains("reaper"), "reaper: she is in her own model (%s)" % slug)
+	check(souls() == int(K["soulsStart"]) and int(c.p["soulsMax"]) == int(K["soulBagMax"]), "reaper: she starts with %d souls in a bag of %d (%d of %d)" % [int(K["soulsStart"]), int(K["soulBagMax"]), souls(), int(c.p["soulsMax"])])
+	var want := ["scythe_sweep", "scythe_throw", "reap", "wraith_walk", "soul_burst", "harvest_spin", "unleash_souls"]
+	for i in want.size():
+		check(g.rite_for_slot(i) == want[i] and DmRiteRegistry.has(want[i]), "reaper: slot %d is %s (%s)" % [i, want[i], g.rite_for_slot(i)])
+	var bare: Dictionary = DmCharacterBuild.build({"class_index": float(REAPER), "level": 20}, [], {})["stats"]
+	var mourner: Dictionary = DmCharacterBuild.build({"class_index": 3.0, "level": 20}, [], {})["stats"]
+	check(near(float(bare["maxHp"]) / float(mourner["maxHp"]), 1.3, 0.02), "reaper: 30 %% more health than a Mourner (%.0f against %.0f, nothing worn)" % [float(bare["maxHp"]), float(mourner["maxHp"])])
+	var mine_hp := float(g.build_for(g.session.get_my_id())["stats"]["maxHp"])
+	check(near(c.max_hp(), mine_hp), "reaper: the hero's health is her build's (%.0f of %.0f)" % [c.max_hp(), mine_hp])
+	await reset_and_wait()
+	var mine := hero.take_damage(100.0, 0, "melee")
+	var necro := DmPlayerRules.take_damage(DmPlayerRules.new_state(c.p["stats"], "necromancer"), 100.0, 0.0, 1000.0)
+	check(near(mine, necro * float(K["damageTakenMult"]), 1e-4), "reaper: she takes %.0f %% of a blow (%.1f against a necromancer's %.1f)" % [100.0 * float(K["damageTakenMult"]), mine, necro])
+	check(hero.avatar != null and hero.avatar.weapon_gesture() == "scythe", "reaper: she gestures with the scythe")
+	var no_clip: Array = []
+	for rite: String in DmAvatar.REAPER_CLIPS:
+		if hero.avatar == null or hero.avatar._cast_clip_for("scythe", rite) == null:
+			no_clip.append(rite)
+	check(no_clip.is_empty(), "reaper: every rite plays its scythe clip on her rig (not: %s)" % str(no_clip))
+	# the bag on the HUD, a key through the hotbar, a kill banking a soul
+	await reaper_reset()
+	g.input.cast_at(1, at(8.0), 0, true)
+	check(rejected == "" and souls() == int(K["soulBagMax"]) - DmAbilities.soul_cost(c.p, "scythe_throw"), "reaper: key 1 throws the scythe through the hotbar and pays its souls (%s, %d left)" % [rejected, souls()])
+	var st := c.get_state()
+	check(int(st.get("souls", -1)) == souls() and int(st.get("soulsMax", -1)) == int(K["soulBagMax"]), "reaper: the HUD's state carries the bag (%s)" % str(st.get("souls")))
+	var hs: Dictionary = g.ui_host.hud_state()
+	check(int(hs["essence"]) == souls() and int(hs["max_essence"]) == int(K["soulBagMax"]), "reaper: her orb on the HUD is the soul bag (%s of %s)" % [str(hs["essence"]), str(hs["max_essence"])])
+	await reaper_reset(8.0)
+	c.p["souls"] = 5
+	var weak := foe("robber", at(10.0), 0.01)
+	cast("scythe_sweep", at(14.0))
+	await ticks(3)
+	check(core.enemy_info(weak).is_empty() or float(core.enemy_info(weak)["hp"]) <= 0.0, "reaper: the sweep kills the weak robber")
+	check(souls() == 6, "reaper: the kill banks one soul in her bag (%d)" % souls())
+
+
+## The free swings: Scythe Sweep, Scythe Weave, Harvest Spin, and the life steal of a swing.
+func _reaper_swings() -> void:
+	var K := DmReaperRites.k()
+	await reaper_reset(8.0)
+	var front := foe("robber", at(10.5))
+	var behind := foe("robber", at(5.5))
+	var wide := foe("robber", at(8.4, 2.9))   # 82 degrees off the aim: outside the sweep's half angle
+	var s0 := souls()
+	var dmg := DmAbilities.rite_damage(sp_now(), "scythe_sweep")
+	var m := dmg_log.size()
+	if accepted(cast("scythe_sweep", at(14.0)), "scythe_sweep"):
+		await ticks(2)   # the core reports its blows on its next tick
+		check(near(first_blow(front, m), dmg) and blows(behind, m) == 0 and blows(wide, m) == 0, "sweep: hits the enemy in front (%.1f of %.1f), not the one behind or off to the side" % [first_blow(front, m), dmg])
+		check(souls() == s0, "sweep: costs no souls")
+	c.p["souls"] = 0
+	check(bool(cast("scythe_sweep", at(14.0))["ok"]), "sweep: swings with an empty bag")
+	check(evs("scythe_sweep", "sweep").size() == 2, "sweep: one event a swing")
+	var r := cast("scythe_sweep", hero.position)
+	check(not r["ok"] and r["reason"] == "no_target", "sweep: refused with the cursor on her (%s)" % r["reason"])
+	await ticks(2)   # the last swing's blow reported
+	# Harvest Spin: the full circle, 2 souls
+	c.p["souls"] = 30
+	m = dmg_log.size()
+	if accepted(cast("harvest_spin", at(14.0)), "harvest_spin"):
+		await ticks(2)
+		check(blows(front, m) == 1 and blows(behind, m) == 1 and blows(wide, m) == 1, "spin: hits all round her, behind too (%d %d %d blows)" % [blows(front, m), blows(behind, m), blows(wide, m)])
+		check(souls() == 30 - DmAbilities.soul_cost(c.p, "harvest_spin"), "spin: pays %d souls (%d left)" % [DmAbilities.soul_cost(c.p, "harvest_spin"), souls()])
+	# Scythe Weave: the nearest enemy in the narrow cone only, the strokes alternate, free
+	var front2 := foe("robber", at(11.3))   # farther along the same line
+	c.p["souls"] = 12
+	var wd := DmAbilities.rite_damage(sp_now(), "scythe_weave")
+	m = dmg_log.size()
+	if accepted(cast("scythe_weave", at(14.0)), "scythe_weave"):
+		await ticks(2)
+		check(near(first_blow(front, m), wd) and blows(front, m) == 1 and blows(front2, m) + blows(wide, m) + blows(behind, m) == 0, "weave: one blow (%.1f) to the nearest enemy in front, nobody else" % wd)
+		check(int(c.p["weaveStroke"]) == 0, "weave: the first stroke is the overhead chop")
+	cast("scythe_weave", at(14.0))
+	await ticks(2)
+	check(int(c.p["weaveStroke"]) == 1 and blows(front, m) == 2, "weave: the next press is the rising cut and hits again")
+	check(souls() == 12 and evs("scythe_weave", "weave").size() == 2, "weave: free, one event a stroke")
+	r = cast("scythe_weave", hero.position)
+	check(not r["ok"] and r["reason"] == "no_target", "weave: refused with the cursor on her (%s)" % r["reason"])
+	# life steal: each enemy a swing strikes heals leechPerHit of her health, at most leechSwingCap a swing; the thrown scythe heals nothing
+	await reaper_reset(8.0)
+	var mx := c.max_hp()
+	foe("robber", at(10.5))
+	c.p["hp"] = mx * 0.5
+	cast("scythe_sweep", at(14.0))
+	check(near(float(c.p["hp"]), mx * (0.5 + float(K["leechPerHit"]))), "leech: one enemy struck heals %.1f %% (%.1f of %.1f)" % [100.0 * float(K["leechPerHit"]), float(c.p["hp"]), mx])
+	for i in 6:
+		foe("robber", at(8.0 + 1.5 * cos(float(i)), 1.5 * sin(float(i))))
+	c.p["hp"] = mx * 0.5
+	cast("harvest_spin", at(14.0))
+	check(near(float(c.p["hp"]), mx * (0.5 + float(K["leechSwingCap"]))), "leech: a spin through seven heals the %.0f %% cap (%.1f)" % [100.0 * float(K["leechSwingCap"]), float(c.p["hp"])])
+	await reaper_reset()
+	var t1 := foe("robber", at(9.0))
+	c.p["hp"] = mx * 0.5
+	cast("scythe_throw", at(9.0))
+	await secs(2.6)
+	var gain := float(c.p["hp"]) - mx * 0.5
+	check(blows(t1) > 0 and gain < mx * float(K["leechPerHit"]), "leech: the thrown scythe cuts but heals nothing (%.1f back: the in-combat regeneration)" % gain)
+
+
+## The rites that pay souls: Soul Harvest (fills the bag), Reap, Soul Burst, Scythe Throw; every rite but the swings refused one soul short.
+func _reaper_spenders() -> void:
+	var K := DmReaperRites.k()
+	var mx := c.max_hp()
+	# Soul Harvest: 9 m all round, a soul and a little health for each enemy struck, free; marks her next spell
+	await reaper_reset()
+	var a := foe("robber", at(2.5))
+	var b := foe("robber", at(5.0, 2.0))
+	var far := foe("robber", at(8.0))
+	var out := foe("robber", at(14.0))
+	c.p["souls"] = 0
+	c.p["hp"] = 1.0
+	var m := dmg_log.size()
+	if accepted(cast("soul_harvest", hero.position), "soul_harvest"):
+		check(souls() == 3, "harvest: one soul for each of the three struck (%d)" % souls())
+		check(near(float(c.p["hp"]), 1.0 + mx * minf(3.0 * float(K["harvestHealPerMob"]), float(K["harvestHealCap"]))), "harvest: heals %.0f %% of her health for each (%.1f)" % [100.0 * float(K["harvestHealPerMob"]), float(c.p["hp"])])
+		await ticks(2)
+		check(blows(a, m) + blows(b, m) + blows(far, m) == 3 and blows(out, m) == 0, "harvest: reaches the enemy 8 m away, not the one at 14 m")
+		check(evs("soul_harvest", "harvest").size() == 1 and bool(c.p.get("harvestAmp", false)), "harvest: one event, and her next spell is marked")
+		var amped := sp_now()
+		c.p["harvestAmp"] = false
+		check(near(amped, float(K["harvestNextMult"]) * sp_now()), "harvest: the mark doubles her spell power")
+		c.p["harvestAmp"] = true
+	# Reap: the cone, 5 souls, every soul paid adds reapPerSoul
+	var cost := DmAbilities.soul_cost(c.p, "reap")
+	var r1 := foe("robber", at(5.0, 0.5))
+	c.p["souls"] = cost - 1
+	m = dmg_log.size()
+	var r := cast("reap", at(8.0))
+	await ticks(2)
+	check(not r["ok"] and r["reason"] == "souls" and souls() == cost - 1 and blows(r1, m) == 0, "reap: refused one soul short, nothing spent (%s)" % r["reason"])
+	c.p["souls"] = 0
+	var sp_empty := sp_now()   # the bag once the price is paid, doubled by the Soul Harvest mark
+	c.p["souls"] = cost
+	m = dmg_log.size()
+	if accepted(cast("reap", at(8.0)), "reap"):
+		await ticks(2)
+		var want := DmAbilities.rite_damage(sp_empty, "reap") * (1.0 + float(K["reapPerSoul"]) * float(cost))
+		check(souls() == 0 and near(first_blow(r1, m), want), "reap: %d souls pay for it and add %.0f %% (%.1f of %.1f, doubled by Soul Harvest)" % [cost, 100.0 * float(K["reapPerSoul"]) * float(cost), first_blow(r1, m), want])
+		check(not bool(c.p.get("harvestAmp", false)), "reap: the doubled spell spends the mark")
+	c.p["souls"] = cost
+	var sp_five := sp_now()
+	c.p["souls"] = 2 * cost
+	m = dmg_log.size()
+	cast("reap", at(8.0))
+	await ticks(2)
+	check(souls() == cost and near(first_blow(r1, m), DmAbilities.rite_damage(sp_five, "reap") * (1.0 + float(K["reapPerSoul"]) * float(cost))), "reap: a fuller bag hits harder (%.1f), %d souls left" % [first_blow(r1, m), souls()])
+	# Soul Burst: needs 6, empties the bag, burstPerSoul for every soul
+	await reaper_reset()
+	cost = DmAbilities.soul_cost(c.p, "soul_burst")
+	var rb := foe("robber", at(5.5))
+	c.p["souls"] = cost - 1
+	r = cast("soul_burst", hero.position)
+	await ticks(2)
+	check(not r["ok"] and r["reason"] == "souls" and souls() == cost - 1 and blows(rb) == 0, "burst: refused one soul short (%s)" % r["reason"])
+	c.p["souls"] = 1
+	var sp1 := sp_now()   # one soul left once the price is paid
+	c.p["souls"] = cost + 1
+	m = dmg_log.size()
+	if accepted(cast("soul_burst", hero.position), "soul_burst"):
+		await ticks(2)
+		var want := DmAbilities.rite_damage(sp1, "soul_burst") * (1.0 + float(K["burstPerSoul"]) * float(cost + 1))
+		check(souls() == 0 and near(first_blow(rb, m), want), "burst: empties the bag, %d souls add %.0f %% (%.1f of %.1f), 5.5 m out" % [cost + 1, 100.0 * float(K["burstPerSoul"]) * float(cost + 1), first_blow(rb, m), want])
+	# Scythe Throw: spins where it lands, a cut every throwTickS for throwLifeS, inside its radius only; an aim past 12 m lands at 12 m
+	await reaper_reset()
+	var inside := foe("robber", at(9.0, 1.5))
+	var outside := foe("robber", at(14.0))
+	if accepted(cast("scythe_throw", at(9.0)), "scythe_throw"):
+		check(souls() == int(c.p["soulsMax"]) - DmAbilities.soul_cost(c.p, "scythe_throw"), "throw: pays %d souls" % DmAbilities.soul_cost(c.p, "scythe_throw"))
+	await secs(2.6)
+	var n := evs("scythe_throw", "tick").size()
+	var want_n := int(float(K["throwLifeS"]) / float(K["throwTickS"]))
+	check(n >= want_n - 1 and n <= want_n, "throw: about %d cuts over %.0f s (%d)" % [want_n, float(K["throwLifeS"]), n])
+	check(blows(inside) > 0 and blows(outside) == 0, "throw: cuts the enemy inside the ring, not the one outside")
+	var after := blows(inside)
+	await secs(1.0)
+	check(blows(inside) == after, "throw: the scythe is gone after %.0f s" % float(K["throwLifeS"]))
+	ev_log.clear()
+	cast("scythe_throw", at(40.0))
+	var te := evs("scythe_throw", "throw")
+	var land := Vector2(float(te[0]["x"]) - hero.position.x, float(te[0]["z"]) - hero.position.z).length() if te.size() == 1 else -1.0
+	check(near(land, float(DmAbilities.def("scythe_throw")["range"]), 1e-3), "throw: an aim past 12 m lands at 12 m (%.2f)" % land)
+	# every rite that pays souls is refused one short, and her energy plays no part
+	var short: Array = []
+	for rite in ["scythe_throw", "reap", "wraith_walk", "soul_burst", "harvest_spin", "unleash_souls"]:
+		c.p["souls"] = DmAbilities.soul_cost(c.p, rite) - 1
+		c.p["resource"]["value"] = float(c.p["resource"]["max"])
+		r = cast(rite, at(8.0))
+		if r["ok"] or r["reason"] != "souls" or souls() != DmAbilities.soul_cost(c.p, rite) - 1:
+			short.append(rite)
+	check(short.is_empty(), "every rite that pays souls is refused one short, energy or not (not: %s)" % str(short))
+	c.p["souls"] = 0
+	c.p["resource"]["value"] = 0.0
+	check(bool(cast("scythe_sweep", at(8.0))["ok"]), "sweep: needs neither energy nor souls")
+
+
+## Wraith Walk: the rush (untouchable, at most 9 m, the body glides), the green flame on the lane, 4 souls.
+func _reaper_walk() -> void:
+	var K := DmReaperRites.k()
+	await reaper_reset()
+	var la := foe("robber", at(4.0, 0.5))
+	var lb := foe("robber", at(7.0, -1.0))
+	var off := foe("robber", at(4.0, 2.9))
+	var cost := DmAbilities.soul_cost(c.p, "wraith_walk")
+	c.p["souls"] = cost
+	var dps := DmAbilities.rite_damage(sp_now(), "wraith_walk") * (1.0 + float(K["wraithPerSoul"]) * float(cost))   # the bag once the price is paid
+	c.p["souls"] = 2 * cost
+	var m := dmg_log.size()
+	var r := cast("wraith_walk", at(20.0))
+	if not accepted(r, "wraith_walk"):
+		return
+	check(near(float(c.p["phasedUntil"]), float(r["now"]) + float(K["wraithDashS"]) * 1000.0) and hero.take_damage(100.0, 0, "melee") == 0.0, "walk: untouchable for the %.2f s rush" % float(K["wraithDashS"]))
+	var we := evs("wraith_walk", "walk")
+	var dash := Vector2(float(we[0]["tx"]) - float(we[0]["fx"]), float(we[0]["tz"]) - float(we[0]["fz"])).length() if we.size() == 1 else -1.0
+	check(we.size() == 1 and dash > 0.0 and dash <= float(DmAbilities.def("wraith_walk")["range"]) + 0.01 and hero.dashing, "walk: one event, a dash of %.1f m (at most 9), the body glides" % dash)
+	check(souls() == cost, "walk: pays %d souls (%d left)" % [cost, souls()])
+	var fa := status_of(la, &"wraithfire")
+	check(not fa.is_empty() and close(float(fa["left"]), float(K["wraithCurseS"]), 0.15) and not status_of(lb, &"wraithfire").is_empty(), "walk: both enemies in the lane burn for %.0f s (%s)" % [float(K["wraithCurseS"]), str(fa)])
+	check(status_of(off, &"wraithfire").is_empty(), "walk: the one off the lane does not")
+	await secs(float(K["wraithCurseS"]) + 0.5)
+	check(taken(la, m) > 0.0 and taken(lb, m) > 0.0 and blows(off, m) == 0, "walk: the green flame burns as a damage over time, the one off the lane untouched")
+	check(close(taken(la, m), dps * float(K["wraithCurseS"]), dps * 0.6), "walk: the flame deals its %.1f a second for %.0f s (%.1f of %.1f)" % [dps, float(K["wraithCurseS"]), taken(la, m), dps * float(K["wraithCurseS"])])
+	var credited := true
+	for i in range(m, dmg_log.size()):
+		if int(dmg_log[i][0]) == la and int(dmg_log[i][1]) != hero.core_id:
+			credited = false
+	check(credited, "walk: every burn is credited to her")
+	r = cast("wraith_walk", hero.position)
+	check(not r["ok"] and r["reason"] == "no_target", "walk: the cursor on her makes no dash (%s)" % r["reason"])
+
+
+## Unleash Souls: the whole bag as wisps that fly out in a ring, circle her with nothing to hunt, then share out the enemies.
+func _reaper_unleash() -> void:
+	await reaper_reset()
+	c.p["souls"] = 0
+	var r := cast("unleash_souls", hero.position)
+	check(not r["ok"] and r["reason"] == "souls", "unleash: refused with an empty bag (%s)" % r["reason"])
+	c.p["souls"] = 7
+	var sp7 := sp_now()   # seven left once the price is paid
+	c.p["souls"] = 8
+	if not accepted(cast("unleash_souls", hero.position), "unleash_souls"):
+		return
+	var wisps: Array = c.mem("unleash_souls")["wisps"]
+	check(souls() == 0 and wisps.size() == 8 and evs("unleash_souls", "release").size() == 1, "unleash: all 8 souls leave the bag as wisps, one release event")
+	await secs(2.0)
+	check(wisps.size() == 8 and evs("unleash_souls", "hit").is_empty(), "unleash: with no enemies the 8 wisps circle her and strike nothing")
+	var f := foe("robber", at(9.0))
+	var m := dmg_log.size()
+	await secs(2.0)
+	var expect := 8.0 * DmAbilities.rite_damage(sp7, "unleash_souls")
+	check(wisps.is_empty() and near(taken(f, m), expect, 1e-4), "unleash: an enemy shows up and every wisp finds it (%.1f of %.1f)" % [taken(f, m), expect])
+	check(not evs("unleash_souls", "hit").is_empty() and not evs("unleash_souls", "end").is_empty(), "unleash: hit and end events were played")
+	await reaper_reset(9.0)
+	c.p["souls"] = 6
+	var ahead := foe("robber", at(13.0))
+	var back := foe("robber", at(0.0))
+	cast("unleash_souls", hero.position)
+	var ring: Array = c.mem("unleash_souls")["wisps"]
+	await secs(0.3)
+	check(ring.size() == 6 and blows(ahead) + blows(back) == 0, "unleash: the wisps fly outward first, nothing is struck yet")
+	await secs(3.0)
+	check(blows(ahead) > 0 and blows(back) > 0 and ring.is_empty(), "unleash: the wisps share out both enemies (%d / %d blows)" % [blows(ahead), blows(back)])
+
+
+## Soul Harbinger's Raiment (DmReaperSet): 2 pieces double the throw's radius, 4 turn the wisps' damage into a shield, 5 leave scythes where the souls land.
+func _reaper_raiment() -> void:
+	var mods_of := func(n: int) -> Dictionary:
+		var slots: Array = []
+		for i in n:
+			var part: String = DmReaperSet.PARTS[i]
+			slots.append({"slot_index": i, "equipped": true, "item_id": DmReaperSet.item_id(part), "item_type": "armor_" + part})
+		return DmCharacterBuild.build({"class_index": float(REAPER), "level": 20}, slots, {})["discipline"]["mods"]
+	var m1: Dictionary = mods_of.call(1)
+	var m2: Dictionary = mods_of.call(2)
+	var m4: Dictionary = mods_of.call(4)
+	var m5: Dictionary = mods_of.call(5)
+	check(not m1.has("scytheRadiusMult") and float(m2.get("scytheRadiusMult", 0.0)) == 2.0 and not m2.has("soulShield") and bool(m4.get("soulShield", false)) and not m4.has("soulScythes")
+		and int(m5.get("soulScythes", 0)) == 15, "raiment: 2 pieces double the throw, 4 add the shield, 5 the scythes (one piece nothing)")
+	await reaper_reset()
+	cast("scythe_throw", at(5.0))
+	var base_r := float(evs("scythe_throw", "throw")[0]["r"])
+	var mods := base_mods.duplicate(true)
+	mods["scytheRadiusMult"] = 2.0
+	c._set_mods(mods)
+	cast("scythe_throw", at(5.0))
+	var thr := evs("scythe_throw", "throw")
+	check(thr.size() == 2 and near(float(thr[1]["r"]), base_r * 2.0), "raiment: the thrown scythe's radius doubles (%.1f -> %.1f)" % [base_r, float(thr[-1]["r"])])
+	c.mem("scythe_throw")["spins"].clear()
+	# the shield: what the wisps dealt, refreshed (not stacked) by the next release
+	var f := foe("robber", at(6.0))
+	mods["soulShield"] = true
+	c._set_mods(mods)
+	c.p["barrier"] = 0.0
+	c.p["souls"] = 4
+	var sp4 := sp_now()   # four left once the price is paid
+	c.p["souls"] = 5
+	var m := dmg_log.size()
+	cast("unleash_souls", hero.position)
+	await secs(3.0)
+	var total := 5.0 * DmAbilities.rite_damage(sp4, "unleash_souls")
+	var shield1 := float(c.p["barrier"])
+	check(shield1 > 0.0 and close(taken(f, m), total, 0.01) and shield1 <= total + 0.01, "raiment: the shield is what the souls dealt (%.1f of %.1f)" % [shield1, total])
+	c.p["souls"] = 5
+	cast("unleash_souls", hero.position)
+	check(float(c.p["barrier"]) < shield1 * 0.01 + 0.01, "raiment: a new release takes the old shield back first (%.1f)" % float(c.p["barrier"]))
+	await secs(3.0)
+	check(float(c.p["barrier"]) > 0.0 and float(c.p["barrier"]) <= total + 0.01, "raiment: the second shield refreshes, it does not stack (%.1f)" % float(c.p["barrier"]))
+	# the scythes: one a landed soul, at most the cap, each a full Scythe Throw
+	mods["soulShield"] = false
+	mods["soulScythes"] = 3.0
+	c._set_mods(mods)
+	c.p["souls"] = 8
+	cast("unleash_souls", hero.position)
+	await secs(1.6)
+	var radii: Array = []
+	for sp: Dictionary in c.mem("scythe_throw").get("spins", []):
+		if bool(sp.get("soul", false)):
+			radii.append(float(sp["r"]))
+	check(radii.size() == 3 and radii.all(func(x: float) -> bool: return near(x, base_r * 2.0)), "raiment: 8 landed souls leave the capped 3 scythes, doubled by the 2-piece bonus (%s)" % str(radii))
+	c._set_mods(base_mods)
+
+
+## The easy auto-combat's pick for her (DmAutoCombat's Reaper branch, fed by the ported DmNextAutoCombat from the core's arrays).
+func _reaper_auto() -> void:
+	var auto: DmNextAutoCombat = g.input.auto
+	await reaper_reset()
+	c.p["souls"] = 0
+	foe("robber", at(2.5))
+	await ticks(2)
+	var act: Variant = DmAutoCombat.select_action(auto._fill(hero, c, hero.position, DmNextAutoCombat.clock_ms()))
+	check(act != null and String(act["id"]) == "scythe_sweep", "auto: one foe in reach and an empty bag = the free Scythe Sweep (%s)" % str(act))
+	await reaper_reset()
+	for i in 4:
+		foe("robber", at(3.0, 0.6 * float(i) - 0.9))
+	c.p["souls"] = 8
+	await ticks(2)
+	act = DmAutoCombat.select_action(auto._fill(hero, c, hero.position, DmNextAutoCombat.clock_ms()))
+	check(act != null and String(act["id"]) == "reap", "auto: a knot of four in the cone and 8 souls = Reap (%s)" % str(act))

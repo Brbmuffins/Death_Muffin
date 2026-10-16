@@ -22,7 +22,7 @@ world      # world builder, model loader, occlusion shaders, animator
 world_fx   # world dressing and atmosphere
 
 # ==== Ported (client/code.lock.json "ported"; edited in client/, so the sync leaves them alone and reports one whose original changed)
-# next/next_game.gd, next/next_game.tscn   the game scene on DmCoreHost: a solo run in the Graves with a test-server character or a dev one, with the Gravecaller's rites and the Gravedigger King; refuses any api but the test server's; the warm-up on request (opts.warmup); host or guest of a 2-player party (a puppet core on the guest), the friends list, online for friends' presence; value on the server on the host (rewards, meta, Chronicle, progression, the loot node); no gathering, Chapterhouse, Codex, full HUD
+# next/next_game.gd, next/next_game.tscn   the game scene on DmCoreHost: a solo run in the Graves with a test-server character or a dev one, with the Gravecaller's rites and the Gravedigger King; refuses any api but the test server's; the warm-up on request (opts.warmup); host or guest of a 2-player party (a puppet core on the guest), the friends list, online for friends' presence; value on the server on the host (rewards, meta, Chronicle, progression, the loot node); today's HUD and panels (DmGameUi); the four necromancers and the Reaper; no gathering or Chapterhouse
 # next/next_world.gd                       loads client/areas/<id>.tscn and its navigation map instead of the runtime DmWorldBuilder build; the same small API
 # next/next_input.gd                       the hover pick asks the core; the chase and the queued casts are today's (DmCombatInput); Easy auto combat is back (`auto`, closed until the settings or a gate_probe open it)
 # next/spawn/dm_wave_director.gd           spawns through the core (ids); counts from the core; no Grave Surges, no clearing of living bodies
@@ -54,7 +54,7 @@ world_fx   # world dressing and atmosphere
 # next/bosses/dm_boss_node_world.gd        the brain's world on the core: adds through the director's spawn, remove_enemy, the core's thralls and corpses; no pools, no set_enemy_hp
 # next/bosses/dm_boss_fx.gd                no pool_visual (the Saint's rot, with the Saint)
 # game/dm_boss_view.gd                     its own three motion helpers instead of DmEntityViews'
-# Copied again because of them: next/bosses/dm_boss_meta.gd (the Covenant Seal altar choice; it needs the panels' prompt, so nothing creates it yet).
+# Copied again because of them: next/bosses/dm_boss_meta.gd (the Covenant Seal altar choice; nothing creates it until the bosses item, with the boss key prompt).
 # Copied again because of them: next/status (DmStatusSet, for the status sets of heroes and bosses only), next/enemy_fx/dm_enemy_fx_host.gd, game/dm_event_fx_telegraph.gd,
 # game/dm_event_fx_boss.gd, next/progress/dm_next_chronicle.gd, next/areas/dm_area_flow.gd (the area and procession banners: the game scene makes it), next/gathering/dm_next_gather.gd.
 # The HUD and the panels on the core (client/README.md "The HUD on the core"; its draw-call budget: "The HUD's budget"; DECISIONS B46: DmGameUi and the panels are copies):
@@ -68,13 +68,14 @@ world_fx   # world dressing and atmosphere
 # Client-only files beside them (not copies): next/hud/dm_hud_atlas.gd (the runtime atlas), dm_hud_mesh.gd (triangle bags), dm_hud_floats.gd (the pool of floating numbers).
 # The Gravecaller's rites on the core (client/README.md "The Gravecaller's rites"): enemies are ids and DmFoe snapshots, a blow is `c.deal`, a status `c.apply_status`, the corpse field
 # is core/dm_core_corpses.gd and the legion core/dm_core_legion.gd (the core's own, not copies):
-# next/rites/dm_rite_caster.gd, dm_rite_module.gd, dm_rite_legends.gd, dm_rite_registry.gd   the plumbing; the registry lists the necromancer's 25 (the Reaper's nine wait for the Reaper)
+# next/rites/dm_rite_caster.gd, dm_rite_module.gd, dm_rite_legends.gd   the plumbing (the registry, dm_rite_registry.gd, is a copy again since the Reaper came)
 # next/rites/rite_*.gd  (24 of the 25; rite_veil_step.gd needed no change and is a copy)   black_litany, bone_fan, bone_mantle, bone_needle, bone_prison, bone_storm, carrion_seed, command_rend,
 #                                          corpse_explosion, dirge, exhume, grave_frost, grave_hands, grave_offering, grave_step, ivory_cleave, marrow_spear, miasma, ossuary_wall (the wall is not solid
 #                                          for the core's enemies yet), plague_bloom, rally_dead, rot_lance, soul_siphon, wailing_skull
-# game/dm_rite_fx.gd                       the Reaper's green is a constant of its own (the one thing it took from DmReaperRites)
 # next/feel/dm_combat_input.gd             the attack target is the core's enemy id; the caster says whether it is alive and hittable
 # Copied again because of them: next/rites/dm_rite_hotbar.gd, next/rites/rite_veil_step.gd, next/progress/dm_next_belt.gd.
+# The Reaper (client/README.md "The Gravecaller's rites"): her shared helper and three rites ported as the necromancer's (DmFoe snapshots, `c.deal`, `c.apply_status`):
+# next/rites/dm_reaper_rites.gd, rite_scythe_weave.gd, rite_wraith_walk.gd, rite_unleash_souls.gd; her other five rites are copies, and game/dm_rite_fx.gd is a copy again.
 # Value on the server (client/README.md "Value on the server"): kills are the game's `kill_credited`, the bag is the game's `loot` (client-only next/rewards/dm_next_loot.gd:
 # today's DmNextUiHost take, pickup, claim and rune-ownership paths on their own):
 # next/rewards/dm_session_rewards.gd       kills from `kill_credited` (the killer is a peer), lifesteal from DmCoreHost.struck; no watch_enemy / attach_spawner
@@ -104,10 +105,6 @@ world_fx   # world dressing and atmosphere
 !next/chapterhouse/dm_chapterhouse.gd     # uses DmThrallHost
 !next/depths/dm_depths.gd                 # uses DmEnemy, DmEnemyState, DmThrallHost
 !next/hud/dm_next_counsel.gd              # uses DmEnemy, DmEnemyState, DmThrallHost
-!next/rites/dm_reaper_rites.gd            # uses DmEnemy, DmStatusSet
-!next/rites/rite_scythe_weave.gd          # uses DmEnemy
-!next/rites/rite_unleash_souls.gd         # uses DmEnemy, DmStatusSet
-!next/rites/rite_wraith_walk.gd           # uses DmEnemy, DmStatusSet
 
 # ==== Left out with a seam (main/qa_driver.gd)
 !main/qa_boot.gd                          # uses qa_driver
@@ -124,10 +121,3 @@ world_fx   # world dressing and atmosphere
 !main/qa_ui_shots.gd                      # uses the QA driver
 !next/gathering/dm_next_acre.gd           # the Acre's labor and garden glue: with gathering
 
-# ==== Left out with a seam (next/rites/dm_reaper_rites.gd): the Reaper's rites, with the Reaper
-!next/rites/rite_harvest_spin.gd          # uses DmReaperRites
-!next/rites/rite_reap.gd                  # uses DmReaperRites
-!next/rites/rite_scythe_sweep.gd          # uses DmReaperRites
-!next/rites/rite_scythe_throw.gd          # uses DmReaperRites
-!next/rites/rite_soul_burst.gd            # uses DmReaperRites
-!next/rites/rite_soul_harvest.gd          # uses DmReaperRites
