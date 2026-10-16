@@ -186,7 +186,11 @@ func _refuse(p: ENetPacketPeer, code: String) -> void:
 	p.peer_disconnect_later()
 
 
+## A control message to `p`. Skipped for a peer that is no longer connected (a host and its client can drop in the same service batch: the client's
+## disconnect is still queued when the host's tells it "host_gone", and ENet refuses a send on a closed peer with an engine error).
 static func _ctl(p: ENetPacketPeer, m: Dictionary) -> void:
+	if p.get_state() != ENetPacketPeer.STATE_CONNECTED:
+		return
 	p.send(0, JSON.stringify(m).to_utf8_buffer(), ENetPacketPeer.FLAG_RELIABLE)
 
 
