@@ -31,7 +31,7 @@ world_fx   # world dressing and atmosphere
 # next/enemy_fx/dm_enemy_fx.gd             an event consumer: the core's telegraphs, strikes, deaths, zones and affix moments (no node per enemy)
 # game/dm_avatar.gd                        its own three motion helpers instead of DmEntityViews'
 # game/dm_event_fx.gd, game/dm_event_fx_zones.gd   zone and corpse records read by field name (no DmSimZone, DmSimCorpse)
-# main/main.gd, main/main.tscn             the boot (DmMain): the front flow against the TEST server, then the game scene with the chosen character, its bag and progression (DmMain.load_build); `--benchmark` and the Benchmark button (the run is sent to the test server only); the party hand-over (join_ready, client_ended, a failed join); no crash report, Log out or Switch character
+# main/main.gd, main/main.tscn             the boot (DmMain): the front flow against the TEST server, then the game scene with the chosen character, its bag and progression (DmMain.load_build); `--benchmark` and the Benchmark button (the run is sent to the test server only); the party hand-over (join_ready, client_ended, a failed join); the panels' Log out, Switch character and discipline change; no crash report
 # net/dm_config.gd                         the TEST server's, lobby's and relay's addresses and the allow-list (DmConfig.allows_url, allows_api_base, allows_lobby_url, allows_relay); the live ones never appear (tests/front.gd)
 # net/dm_http_transport.gd                 refuses any request DmConfig does not allow
 # Easy auto combat and the benchmark (client/README.md "The benchmark"):

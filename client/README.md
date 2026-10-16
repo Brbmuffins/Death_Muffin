@@ -432,8 +432,8 @@ database and signing key, so nothing played here can touch a live character), th
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
 - **Value is the test server's** ("Value on the server"): the kill reports, the drops claimed into the bag, the progression's and the bag's saves all go to the test API with the logged-in character.
-- **Off until their items:** gathering, the Chapterhouse, Log out, Switch character and a discipline change (their buttons do nothing yet: close the game to sign in again), the automatic
-  crash report and the update notice. The four necromancer disciplines and the Reaper play (their hero models are in `client/assets.list`; `tests/rites.gd` "the disciplines", "the Reaper").
+- **Off until their items:** gathering, the Chapterhouse, the automatic crash report and the update notice. Log out, Switch character and a discipline change (Settings, the class
+  panel) save and hand over as today's (`tests/front.gd` "hand-overs"). The four necromancer disciplines and the Reaper play (their hero models are in `client/assets.list`; `tests/rites.gd` "the disciplines", "the Reaper").
 
 ### The API rule (DECISIONS B38)
 

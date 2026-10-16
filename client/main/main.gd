@@ -16,9 +16,9 @@ extends Node
 ##
 ## Co-op as today's: the party's `join_ready` hands the solo game over to a guest game on the same lobby socket, and a guest whose session ended (or whose join failed) is
 ## put back in its own world with the reason on screen (client/README.md "Co-op on the core").
-## Off until their ROADMAP items, against today's: the automatic crash report
-## (DmCrashWatch; a report would open a thread for a test build), and everything the full HUD owns: Log out and Switch character (close the game to sign in again), the
-## final save (nothing is saved yet: `save_all` calls the scene's `flush_all`, which is empty).
+## The panels' hand-overs as today's: Log out (final save, the token dropped, the login screen), Switch character (final save, the select screen with the same token) and a
+## discipline change from the class panel (final save, the game restarts with the changed character).
+## Off until its ROADMAP item, against today's: the automatic crash report (DmCrashWatch; a report would open a thread for a test build).
 
 const DEV_OFFLINE_DB := "user://dm_dev_offline_db.json"    ## --dev-offline testing backend (the same file the dev entry uses)
 
@@ -111,7 +111,7 @@ func _notification(what: int) -> void:
 		get_tree().quit()
 
 
-## Final save of the game (also the quit path of the tests). Nothing is saved yet in the rebuild: the scene's `flush_all` is where its saves will go.
+## Final save of the game (also the quit path of the tests): the scene's `flush_all` (rewards, Chronicle, progression, bag).
 func save_all() -> void:
 	if slice != null and slice.ready_:
 		var s := slice
@@ -119,7 +119,7 @@ func save_all() -> void:
 		await s.flush_all()
 
 
-func _start_flow() -> void:
+func _start_flow(switching_character: bool = false) -> void:
 	flow = DmFrontFlow.new(api, mode != "online", mode != "online")
 	flow.persist_token = persist_token
 	flow.online_gate = mode == "online"   # the test channel's manifest online switch (DmOnlineGate; the test build is open to the team's accounts)
@@ -127,7 +127,10 @@ func _start_flow() -> void:
 	flow.enter_world.connect(_enter_world)
 	flow.benchmark_requested.connect(_open_benchmark_setup)
 	add_child(flow)
-	flow.start()
+	if switching_character:
+		flow.switch_character()
+	else:
+		flow.start()
 
 
 ## Shortened benchmark for smoke runs: `--bench-warm=<s>` / `--bench-measure=<s>`.
@@ -313,6 +316,10 @@ func _enter_next(character: Dictionary, loading: DmLoadingScreen, build: Diction
 		_back_to_login(refused[0])
 		return
 	_transit_lobby = null
+	if g.ui_host != null:
+		g.ui_host.left_world.connect(_on_next_left.bind(true))
+		g.ui_host.character_switch.connect(_on_next_switch)
+		g.ui_host.world_restart.connect(func(ch: Dictionary) -> void: _on_next_restart(ch))
 	g.party.join_ready.connect(_on_next_join_ready)
 	g.party.client_ended.connect(_on_next_client_ended.bind(character))
 	loading.dismiss()
@@ -365,6 +372,34 @@ func _on_next_join_failed(reason: String, character: Dictionary, loading: DmLoad
 	await get_tree().process_frame
 	await _enter_next(character, DmLoadingScreen.acquire(self, "Waking the dead..."), _build, {"notice": "Could not join: %s" % reason})
 	_party_busy = false
+
+
+## Log out (Settings): final save, the game freed, the token dropped, back to the login screen.
+func _on_next_left(logout: bool) -> void:
+	await _teardown_next()
+	if logout:
+		api.set_token("")
+	_start_flow()
+
+
+## Switch character (Settings): the same final save and party leave as a log out, but the token stays: the front goes straight to the select screen
+## (DmFrontFlow.switch_character; it asks for a password only when the server says the token is no longer good).
+func _on_next_switch() -> void:
+	if _party_busy or slice == null:
+		return
+	_party_busy = true
+	var lobby: DmLobbyClient = slice.party.lobby
+	await _teardown_next()
+	if lobby != null:
+		lobby.close()
+	_party_busy = false
+	_start_flow(true)
+
+
+## A discipline change (the class panel; the server changed the character already): final save, then the game again with the changed character, its bag and progression.
+func _on_next_restart(character: Dictionary) -> void:
+	await _teardown_next()
+	await _enter_world(character, api)
 
 
 ## Ends the running game: the session closes (a host's guests are told) and the scene is freed.

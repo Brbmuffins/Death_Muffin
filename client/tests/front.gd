@@ -6,6 +6,8 @@ extends SceneTree
 ##   - a new player registers, passes the online gate (the test channel's manifest), lands on character select, picks a Mourner and the game scene runs with THAT
 ##     character: its discipline, and a build made from the bag and the progression the server holds;
 ##   - a returning player (a login kept) skips the select, and the gear worn in the server's bag (a helm, a staff) is in the hero's stats and loadout;
+##   - the panels' hand-overs: a discipline change from the class panel restarts the game with the changed character (a Reaper), Switch character lands on the select
+##     screen with the same login and a pick goes back in, Log out lands on the login screen with no login kept;
 ##   - an account whose discipline is not playable is sent to the discipline switch;
 ##   - THE API RULE (DECISIONS B38): every address the client can use resolves to the TEST server, never to the live API, live lobby or live manifest (read from
 ##     godot/net/dm_config.gd): the config, DmApi's default, every request the flows made, the allow-list of the transport and of the game scene, the real transport's
@@ -113,6 +115,7 @@ func _run() -> void:
 	var api := make_api(shim)
 	await boot_and_register(api, shim)
 	await returning_player(api, shim)
+	await hand_overs(api, shim)
 	await unplayable_discipline(api, shim)
 	await unreachable_and_failing(shim)
 	await live_api_is_refused()
@@ -266,6 +269,43 @@ func returning_player(api: DmApi, shim: Shim) -> void:
 	check(b["loadout"]["main"] == "staff" and b["loadout"]["mainTier"] == "bone", "the weapon line (the loadout) is the worn staff's")
 	check(float(b["stats"]["spellPower"]) > float(plain["stats"]["spellPower"]), "the staff raises spell power")
 	check(g.build_for(9999) == DmCharacterBuild.build({"class_index": 0, "level": 1}, [], {}), "someone else's build has no bag and no progression (no party in this step)")
+	await drop(m, shim)
+
+
+## The panels' hand-overs (DmMain, as today's; each saves first): a discipline change from the class panel restarts the game with the changed character, Switch character
+## lands on the select screen with the same login, Log out on the login screen with none (the test logs in again for the cases after it).
+func hand_overs(api: DmApi, shim: Shim) -> void:
+	var m := boot(api)
+	check(await until(in_world(m), 90.0), "hand-overs: a returning player is in the game")
+	var g: DmNextGame = m.slice
+	if g == null or not g.ready_:
+		await drop(m, shim)
+		return
+	var first := g.get_instance_id()
+	var changed: DmResult = await api.change_discipline(int(g.character["id"]), 11)
+	check(changed.ok and int(changed.data["class_index"]) == 11, "the stand-in's character is now a Reaper (%s)" % changed.error)
+	g.ui_host.class_changed(changed.data)
+	check(await until(func() -> bool: return m.slice != null and m.slice.get_instance_id() != first and m.slice.ready_ and DmLoadingScreen.current == null, 90.0),
+		"a discipline change from the class panel restarts the game")
+	var hero := m.slice.local_body() if m.slice != null else null
+	check(hero != null and hero.discipline_id == "reaper" and hero.p.has("souls"), "the hero is now a Reaper, with her soul bag")
+	if m.slice == null:
+		await drop(m, shim)
+		return
+	var token := api.get_token()
+	m.slice.ui_host.switch_character()
+	check(await until(at(m, "select"), 10.0), "Switch character lands on the select screen")
+	check(api.get_token() == token, "with the same login")
+	var sel := m.flow.current as DmCharSelectScreen if m.flow != null else null
+	check(sel != null and await sel.choose(11), "picking the Reaper there ...")
+	check(await until(in_world(m), 90.0), "... goes back into the game")
+	if m.slice != null:
+		m.slice.ui_host.leave_world()
+	check(await until(at(m, "login"), 10.0) and api.get_token().is_empty(), "Log out lands on the login screen with no login kept")
+	var back: DmResult = await api.login(PLAYER, PLAYER_PASS)
+	check(back.ok, "logging in again for the next cases")
+	if back.ok:
+		api.set_token(back.data["token"])
 	await drop(m, shim)
 
 
