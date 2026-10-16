@@ -15,10 +15,14 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
   corpses, then every thrall in raise order (combat map section 1). Ties break the same way (strict `<`, then that order). The thrall host's soft
   separation runs first with the heroes, on the positions the last tick left; enemies see the positions thralls ended the last tick with.
 - **Commands from casts and bosses are synchronous:** rites stay GDScript and call `damage(id, amount, source) -> {dealt, killed}`,
-  `enemies_in_radius` (the lane, the cone and the circle of a rite are GDScript on it, `client/next/rites/dm_rite_module.gd`), `apply_status`, `corpse_pick / corpse_consume`, `raise_thrall` directly, and read the result at once,
+  `enemies_in_radius` (the lane, the cone and the circle of a rite are GDScript on it, `client/next/rites/dm_rite_module.gd`), `apply_status`, `corpse_pick / corpse_consume`, `raise_thrall`, `remove_enemy` directly, and read the result at once,
   because today a kill resolves inside the caller (Wailing Skull's extra hop, Bone Prison skipping the dead). A kill inside such a
   call runs the core's own death work at once (director count, Vengeful, statuses cleared, corpse laid) and is handed to GDScript
   (rewards) before the call returns. Kills inside `step()` (thrall swings, DoT, hazards) come out in the event buffer, in order.
+- **A living body can leave without dying (`remove_enemy`):** a boss's adds go with the boss (no death, no corpse, no kill credit, no Vengeful). The body is out of the table at
+  once (later bodies keep their ids and order, the queries see it before the next step) and the buffer gets `EV_ENEMY_REMOVED` with one int, 1, where the removal of a dead body
+  has none: the host must not count it among the dying (`DmCoreHost` does not), and a guest's core drops it on the same event. A dead or unknown id is refused (a dead body leaves
+  by itself 4 s after it fell). The crowd fades a body that vanished alive (it never played a death).
 - **No per-creature calls per tick:** per-creature work never crosses into GDScript during a tick. GDScript reads one ordered event
   buffer per tick (spawned, state edges, telegraphs, cues, damaged, died, thrall raised/died, corpse added/gone, status changes,
   zones) and bulk arrays for the HUD, minimap and auto combat. Cast-driven calls are bounded by casts, not by creature count.
@@ -135,8 +139,8 @@ run rewards, loot or the kill report from `died`.
 **A puppet core** (`set_puppet(true)`; switching clears every body) steps with `step(dt)`: a body eases toward its last snapshot by `1 - exp(-15 dt)` and snaps above 6 m, yaw
 likewise, its ground speed is the eased motion smoothed at 10 per second (0 below 0.3 m/s), time in state counts up and is taken from a snapshot when it differs by more than
 0.1 s, status chips count down. Queries (`enemies_in_radius`, `enemy_info`, `thralls_in_radius`, `thrall_*`, `corpse_*`, `statuses`) read the same tables as on the host. A puppet's
-`enemy_info` has `net_pos` (where the last snapshot put the body). Commands the host owns (`spawn_enemy`, `damage`, `stun`, `apply_status`, `remove_status`, `raise_thrall`,
-`kill_thrall`, `sacrifice_thralls`, `rally_thralls`, `recall_thralls`, `set_legion_burst`, `set_thrall_*`, `curse_thrall`, `strip_shroud`, `cover_miasma`, `corpse_add`,
+`enemy_info` has `net_pos` (where the last snapshot put the body). Commands the host owns (`spawn_enemy`, `remove_enemy`, `damage`, `stun`, `apply_status`, `remove_status`, `raise_thrall`,
+`kill_thrall`, `sacrifice_thralls`, `rally_thralls`, `recall_thralls`, `set_legion_burst`, `set_thrall_*`, `curse_thrall`, `strip_shroud`, `cover_miasma`, `remove_enemy`, `corpse_add`,
 `corpse_consume`, `snapshot`, `take_reliable`, `baseline`, `set_replication`) are refused: they return 0, false, nothing or (`damage`) `{dealt: 0, killed: false, refused: true}`, print
 one error per command, and count in `replication_stats().commands_refused`. Heroes and bosses are brain input: `add_external` returns 0 and `set_external` does nothing on a puppet. `replication_stats()` counts both roles (messages built and applied,
 stale snapshots, ids not yet met, desyncs, refusals, the sizes of the buffers on the per-tick path, which the test holds steady).
@@ -231,15 +235,14 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   after the corpse events (the host's comes first).
 - **More reaches guests than today:** the slam, erupt and dig-in cues are on the wire (today only shield_block, sanctify and unbind replicate, so a guest saw no dust at a slam).
   A snap above 6 m is not counted as walking speed (today's puppet counts it, and its walk clip sprints for a moment).
-- **Not replicated yet, stays GDScript:** bosses (state, phases, telegraphs), hero vitals and positions (the session channel), rite events and the visuals they drive, ground drops,
+- **Not replicated yet, stays GDScript:** bosses (state, phases, telegraphs, their statuses), hero vitals and positions (the session channel), rite events and the visuals they drive, ground drops,
   party calls and chat; guests still send their intents (move, cast requests) to the host as today. The per-kind extras of today's enemy snapshots (the deacon's `rz`, the gargoyle's
   `dv`, the sexton's `hk`) come with those kinds' ports to the core.
 - **The Gravecaller's rites on the core (`client/next/rites`, the ports of today's files; `client/README.md` "The Gravecaller's rites")**: the rites are today's GDScript and call the core synchronously, so a kill still
   resolves inside the cast (Wailing Skull's extra leap, Bone Prison skipping the dead, the Litany's loops). What is not the same:
   - **Ossuary Wall is not solid for the core's enemies.** Today it is a static body on the layer enemies collide with plus a navigation obstacle; the core's enemies have no physics body and its movement has no
     dynamic obstacle yet (its movement code is another change's). Only the ribs and the 6 s lifetime are ported; the wall needs the core to push bodies out of a segment, as it does out of the hero's circle.
-  - **Bosses are not in the rites' queries** (a boss is an external; the Gravedigger King's item adds it): the Scythe weapon line's arc, the fan, the lance, the siphon and the skull strike enemies only, and Colossus Mantle's
-    reflect names an enemy by its core id.
+  - **A boss is in the rites' queries since the Gravedigger King** (see "The Gravedigger King" below): the fan, the lance, the siphon, the skull, the Scythe's arc and Colossus Mantle's reflect reach it by its id.
   - **Withered's kill credit and its hand-on come from the event buffer**, so at the end of the tick that killed (today inside the kill): the DoT's `hit_resolved`, Contagion's and Plague Choir's spread to the neighbours,
     and the corpse-consumed beat of Requiem Wraiths' wisp. A rite's own blows are known at once (`killed` in the reply of `damage`), so nothing a player sees waits for it.
   - **A status on an enemy or thrall is the core's** (`apply_status`): the hero is its source, so the last stacker of a Withered owns the kill as today; the Miasma's lift of the Shrouded ward is `cover_miasma` (0.35 s of
@@ -248,11 +251,21 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **Carrion Seed's fields live in the corpse field's notes** (`DmCoreCorpses.notes`, dropped with the corpse) and its arming and expiry run on the caster's clock in ms, where today they were on the corpse record and the
     field's clock. A seed ends with its corpse as before.
   - **Shots follow the simulation's position** of their target, where today they followed the drawn (interpolated) one.
-  - **A blow of zero or less is refused** (`damage`); today `take_damage` applied it. No rite deals one.
+  - **A blow of zero or less is refused** (`damage`, a boss's too); today `take_damage` applied it. No rite deals one.
   - **Spear rally's mark** is written to each thrall by the rite each tick while the mark lasts (`set_thrall_mark` from `thrall_info`'s target), not read by the thrall; legion size bounds the cost (Legion Champion 5 only).
   - **Not ported with the rites:** the Reaper's nine (they wait for the Reaper, `client/code.list`), Easy auto combat (`next/feel/dm_next_auto.gd`), the floating hit numbers (they belong to the full HUD's host), the
     socketed runes and the weapon line of the bag (no bag yet: the rune and weapon variants are implemented and tested with the state set by hand), the kill-credit consumers (`DmSessionRewards`; the game scene emits
     `rite_hit` and the core's `enemy_died` carries the killer).
+
+- **The Gravedigger King (`client/next/bosses`; `client/README.md` "The Gravedigger King")**: his brain is today's GDScript, replayed against today's recorded scenarios; his body is an external of kind 1. What is not the same:
+  - **A thrall's blow on him lands when the tick's events are dispatched**, after every thrall and enemy has acted (`EV_THRALL_HIT_EXTERNAL`), where today it landed inside the thrall's swing. His brain runs once a tick before the core, so it sees
+    every blow of tick N when it runs in tick N + 1 either way; the hits, their order and their credit (the thrall's owner) are the same.
+  - **Enemies' support abilities do not reach him** (a Censer's aura, a Deacon's sanctify, a Seraph's ward): he is not in the core's table, where today he was in the `dm_enemy` group. The King's adds are ghouls and a robber, so none of these meets him; the later bosses' items decide it.
+  - **His adds are core bodies drawn by the crowd**: the ghoul borrows the robber's model until the roster is baked. They leave with him (defeat or wipe) by `remove_enemy`; the crowd fades a body that vanished alive where the node popped out at once.
+  - **A rite's Withered on him is not a `rite_hit` and has no `status_dot` event** (his status set is GDScript's, B42): the DoT lumps hurt him and the brain's credit is the caster as today, but the kill-credit consumers (off) will not see the lumps.
+  - **The hero is hurt with his core id as the source** (`DmHeroBody.take_damage(dmg, boss.core_id)`), where today it was the node: the same place of blow, and Colossus Mantle's reflect finds him through `foe(id)`.
+  - **No shard cost**: the summon is free in this build (no progression to take shards from); the other rules (`far`, `unknown`, `busy`, `dead`) are today's, and only the Hollow Graves' boss is served. No boss pools: the core makes no zone for a boss.
+  - **No collider, agent or state machine on his body** (`DmBoss` is a `Node3D`): nothing read them but the old `DmEnemy` code (the labels are gone, the hover pick and the chase go through the host's queries).
 
 ## Files
 
@@ -277,6 +290,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   DoT tick), `client/tests/core_coop.gd` (two cores: a real fight, 20 Hz snapshots and batches into puppets, loss and reordering, a late guest and a lost batch,
   refusals, damaged messages, the commands and queries on a puppet, `DmCrowd` on one, and the Full Party's size and cost; `-- --verbose` lists every check),
   `client/tests/rites.gd` (the Gravecaller's rites on the core: every necromancer rite against today's formulas, the synchronous kills, the input, a full fight),
+  `client/tests/boss.gd` (the Gravedigger King: his brain against today's scenarios, his fight by hand and on the real clock, the thralls, the rites, the defeat),
   `client/tests/crowd_view.gd` (the crowd's views against today's view code, and a Full Party driven by a real core) and `client/tests/game_scene.gd` (the game scene on
   the core: an offline run in the Graves, the director, the event signals, no node per creature, timings). Run
   `bash client/setup.sh` first in a fresh checkout: a script run in a

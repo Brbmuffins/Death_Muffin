@@ -244,7 +244,7 @@ func pick_enemy(screen: Vector2) -> int:
 		var p: Vector2 = info["pos"]
 		var def: Dictionary = DmSimData.ENEMIES[String(info["def"])]
 		var k := float(def.get("scale", 1.0)) * (float(DmSimData.ELITE["scale"]) if bool(info["elite"]) else 1.0)
-		var v := Vector3(p.x, 0.9 * k, p.y)
+		var v := Vector3(p.x, 1.7 if bool(info.get("boss", false)) else 0.9 * k, p.y)   # a boss's chest is higher (the model is bigger)
 		if cam.is_position_behind(v):
 			continue
 		var d := cam.unproject_position(v).distance_to(screen)

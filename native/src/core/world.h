@@ -206,6 +206,8 @@ struct World {
 	int32_t spawn_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising, int32_t p_affixes = 0);
 	// Adds the bodies a kill queued. step() calls it last; DmCore calls it before returning from anything that can kill outside the tick.
 	void flush_spawns();
+	// A living body leaves without dying (a boss's adds go with the boss): no death, no corpse, no kill credit, no Vengeful. False for a dead or unknown id.
+	bool remove_enemy(int32_t p_id);
 	// DmAffixSet.strip_shroud (Last Light, a Warden sweep): the ward is gone for good. False when the body has none.
 	bool strip_shroud(int32_t p_slot);
 	// Damage from a cast, a thrall, a zone or a boss: a kill resolves at once (combat map section 7). Returns the amount dealt.

@@ -1,6 +1,6 @@
 class_name DmFoe
 extends RefCounted
-## One enemy as a cast sees it: a snapshot of the combat core's record (`DmCore.enemy_info`), read when the cast asks. The rites keep working with plain
+## One enemy as a cast sees it: a snapshot of the combat core's record (`DmCore.enemy_info`; for a boss, DmCoreHost's record of it), read when the cast asks. The rites keep working with plain
 ## numbers and ids, so this is not a body: no node and no script exists per creature, and nothing in it is kept between ticks. `id` is the core's
 ## number; hand it back to `DmCoreHost.damage / apply_status` to act on the enemy.
 ## Positions are the simulation's (not the drawn, interpolated ones), on the ground plane.
@@ -15,6 +15,7 @@ var elite: bool = false
 var def: String = ""
 var level: int = 1
 var area: String = ""
+var boss: bool = false            ## a boss (an external of the core, DmBoss): counted from its edge, its own reach in the Scythe's arc and the needle's range
 
 
 ## The record of `info` (an empty Dictionary, an enemy that is gone, gives null).
@@ -33,6 +34,7 @@ static func of(info: Dictionary) -> DmFoe:
 	f.def = String(info["def"])
 	f.level = int(info["level"])
 	f.area = String(info["area"])
+	f.boss = bool(info.get("boss", false))
 	return f
 
 

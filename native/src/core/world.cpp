@@ -37,6 +37,26 @@ void World::flush_spawns() {
 	pending_spawns.clear();
 }
 
+// A living body leaves the table at once and silently: DmBossNodeWorld.remove_enemy frees the node today (the adds leave with their boss, no death event, no
+// corpse, no credit). EV_ENEMY_REMOVED carries 1 so the host knows it never died (it is not among the dying). Called by GDScript between ticks, never inside
+// step(), so no reference into the table is held; later slots shift down (stable compaction) and the grid is rebuilt for the queries that follow.
+bool World::remove_enemy(int32_t p_id) {
+	const auto it = enemy_slot.find(p_id);
+	if (it == enemy_slot.end() || enemies[size_t(it->second)].state == DEAD) {
+		return false;  // a dead body leaves on its own, 4 s after it fell
+	}
+	const size_t k = size_t(it->second);
+	events.push(EV_ENEMY_REMOVED, p_id, { 1 }, {});
+	enemy_slot.erase(it);
+	enemies.erase(enemies.begin() + int64_t(k));
+	for (size_t j = k; j < enemies.size(); j++) {
+		enemies[j].slot = int32_t(j);
+		enemy_slot[enemies[j].id] = int32_t(j);
+	}
+	rebuild_grid();
+	return true;
+}
+
 // A new body (DmEnemy._ready): its id, its rolls and EV_ENEMY_SPAWNED. The caller puts it in the table and runs its first enter().
 Enemy World::make_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, double p_hp_mult, double p_damage_mult, bool p_elite, int32_t p_area, bool p_rising, int32_t p_affixes) {
 	const EnemyDef &d = defs[p_def];

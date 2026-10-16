@@ -109,14 +109,19 @@ server (B38).
   - [x] The Gravecaller's rites ported to the core: the caster, its module base, the legends, the registry and 24 of the necromancer's 25 rites (Veil Step is a copy) are today's GDScript calling the core synchronously, so a kill
     resolves inside the cast; the enemy queries, the corpse field and the legion are adapters over the core (`core/dm_foe.gd`, `dm_core_corpses.gd`, `dm_core_legion.gd`). The hero fights in the dev entry (LMB, keys 1-4, RMB, R) and the crowd draws his
     thralls. `client/tests/rites.gd` casts every rite against today's formulas, the synchronous kills, the input and a fight (client/README.md "The Gravecaller's rites"). Not in it, each its own item: the Reaper's nine rites (with the Reaper), Ossuary
-    Wall as a solid wall for the core's enemies (the core's movement has no dynamic obstacle), bosses in the rites' queries (the Gravedigger King), Easy auto combat, the kill-credit consumers (`DmSessionRewards`; the game scene emits `rite_hit`), floating
+    Wall as a solid wall for the core's enemies (the core's movement has no dynamic obstacle), Easy auto combat, the kill-credit consumers (`DmSessionRewards`; the game scene emits `rite_hit`), floating
     damage numbers, and the loadout, rune and weapon sockets (the full HUD and the bag). The rites' pictures have run headless only: their first look is on Helix's PC.
   - [x] Login to the test server and character select (today's front flow, pointed at the test API): the boot (`main/main.tscn`, the project's main scene) runs today's login, online gate and
     character select against the test server, then the game scene with the chosen character, its bag and its progression read from the server. The API base is the test API in one place
     (`net/dm_config.gd`), enforced by the transport and the game scene and pinned by `client/tests/front.gd` (client/README.md "The test server"). Proved on the mock backend and against the
     real test server's health and manifest; no real account was used (the team's first real login there is the check left for Helix). Off until their items: rewards and the kill ledger,
     saves, party, friends, chat, gathering, the Chapterhouse, the full HUD (no Log out, no Switch character), the benchmark, the crash report; the other disciplines' hero models.
-  - [ ] The Gravedigger King's brain as an external entity.
+  - [x] The Gravedigger King's brain as an external entity: the Hollow Graves' boss is `DmBossHost`, `DmBoss`, `DmBossNodeWorld`, `DmBossFx` and `DmBossView` ported to the core; the brains of `sim/bosses` are today's copies. His body registers as an
+    external of kind 1 (position and `alive` written before every step), thralls pick him by the core's boss edge rule and their blows come back as `thrall_hit_external` into his brain, the host's queries and damage calls answer for his id so every rite
+    reaches him (edge distance, his radius, after the enemies; the Scythe's arc and the needle's range count him), his statuses are his own GDScript set, his ghouls and elite robber are core bodies that leave with him through the new `DmCore.remove_enemy`,
+    and his blows reach the hero and the thralls (`core.damage` on their ids). `client/tests/boss.gd` replays his six recorded scenarios against the copy of the brain and fights him: summon, phases, telegraphs, thralls, rites, wipe, defeat, a second summon
+    (client/README.md "The Gravedigger King"). Not in it, each its own item: the other six bosses (their pools, niches and hooks need a core zone call for a boss and a call that sets a body's health), shards and the Covenant Seal (the summon is free until
+    progression comes), rewards (the defeat events exist: `bosses.defeated`, `brain_event`, `DmBoss.died`), the boss bar and banners (the full HUD), Easy auto combat's use of him, replicating him to guests (co-op).
 - [ ] Core obstacles: Ossuary Wall (and any later rite or boss barrier) solid for the core's enemies, a segment the core pushes bodies out of and
   steers around, as it does the hero's circle; today it is a static body plus a navigation obstacle.
 - [ ] The new HUD (same layout and look, under 150 draw calls) and the Low to Ultra presets.
@@ -163,7 +168,8 @@ combat simulation for now.
 - **Ideas parked during the rebuild:** colours in the chat window (2026-10-13).
 - **Found during the rebuild, today's game ignores them** (kept as they are until Helix decides; the core already emits each one):
   toxic corpse pools always hit as at level 1 (nothing sets the area level), a fallen plague bearer's pool never appears, and the
-  Mourning Bell wraith's ally heal never happens (both are signals nobody listens to).
+  Mourning Bell wraith's ally heal never happens (both are signals nobody listens to). Statuses never change the blows a boss takes:
+  `DmBoss.take_damage` does not apply the status set's damage-taken multiplier, and the brain's own Fracture is never fed (a Marrow Spear's Fracture or a Sanctify on the King does nothing); kept, and so is the port.
 - **Phones:** on the Mobile renderer, following the phone rules kept since the rebuild (B40).
 
 ## Later

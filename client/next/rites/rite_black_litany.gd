@@ -83,7 +83,7 @@ func _burst(c: DmRiteCaster, at: Vector3, r: float, sp: float, spare: bool) -> v
 ## 5 - a Litany barrier that just broke bursts into shards (`litanyShatter` x its size) around the caster.
 func hurt_legend(c: DmRiteCaster, raw: float, ward: float, source: Variant, broke: float) -> void:
 	var back := DmLegend.ward_reflect_damage(raw, ward, float(c.mods.get("wardReflect", 0.0)))
-	var attacker: DmFoe = c.foe(source) if source is int and source > 0 else null   # an enemy's core id (a boss or a status is not reflected)
+	var attacker: DmFoe = c.foe(source) if source is int and source > 0 else null   # an enemy's core id, a boss's too (a status's DoT has none: not reflected)
 	if back >= 1.0 and attacker != null:
 		var res := c.deal(attacker.id, back)
 		c.hit_resolved.emit(id, attacker.id, back, false, bool(res["killed"]))

@@ -6,12 +6,18 @@ extends Node
 ##
 ## One tick (a `_physics_process` at `process_physics_priority` 100, so after the nodes that move the hero bodies and send the director's spawns:
 ## the session's `Session` node and `Waves`, priority 0, and before the crowd's own priority 1000):
-##   1. every registered hero's position and alive flag go into the core (`set_external`);
+##   1. every registered hero's and boss's position and alive flag go into the core (`set_external`);
 ##   2. `core.step(dt)`;
 ##   3. `CrowdView.sync()` reads the core's tables and the damage in the event buffer (without consuming it);
 ##   4. `core.take_events()` is read ONCE and dispatched in order, one signal per event.
 ## Per rendered frame `CrowdView._process` draws, interpolated with `Engine.get_physics_interpolation_fraction()`.
 ## Ids are the core's: enemies, thralls, heroes (externals) and bosses share one counter. A corpse's id and a zone's id are their own numbers.
+##
+## A boss is an external of kind 1 whose brain stays GDScript (DmBoss, B42): `register_boss` gives it an id, the tick writes its place and whether it can be hurt, and the
+## queries below answer for its id too, so a rite, the hover pick and a thrall's scan treat it as an enemy: `enemies_in_radius` / `foes_in_radius` append the living bosses
+## after the enemies (edge distance, its radius, as today), `enemy_info` / `foe` / `enemy_position` / `enemy_alive` / `enemy_radius` describe it, and `damage`,
+## `apply_status`, `status_stacks` and `remove_status` go to the boss's brain and its own DmStatusSet (the core knows no status or health of a boss). Its thralls' blows
+## come back as `thrall_hit_external`.
 
 const PRIORITY := 100
 const DEFAULT_DATA := "res://"
@@ -21,7 +27,7 @@ signal enemy_spawned(id: int, def: String, level: int, elite: bool, area: String
 signal enemy_state(id: int, prev: int, next: int)                                              ## DmCoreEvents.State
 signal enemy_damaged(id: int, source: int, amount: float, hp: float)
 signal enemy_died(id: int, def: String, level: int, elite: bool, area: String, source: int, x: float, z: float)
-signal enemy_removed(id: int)                                                                  ## the body is gone, 4 s after it died
+signal enemy_removed(id: int)                                                                  ## the body is gone, 4 s after it died (or at once, alive: `remove_enemy`)
 signal enemy_attack(id: int, blow: int, aim_x: float, aim_z: float, windup_s: float)           ## a swing began; its blow lands when the wind-up ends
 signal telegraph(id: int, tell: int, from_x: float, from_z: float, aim_x: float, aim_z: float, radius: float, seconds: float)
 signal cue(id: int, cue_kind: int, x: float, z: float, radius: float)
@@ -70,6 +76,8 @@ var dispatch_us := 0
 
 var _heroes: Array[Node3D] = []      ## registered hero bodies, parallel to _hero_ids (heroes are few: a handful, never per creature)
 var _hero_ids := PackedInt32Array()
+var _bosses: Array[DmBoss] = []      ## registered boss bodies, parallel to _boss_ids (one awake at a time, never per creature)
+var _boss_ids := PackedInt32Array()
 var _dying := 0                      ## bodies that died and are not removed yet: they count toward the global cap, not toward the living
 var _names := {}                     ## int -> String, the core's def and area names, fetched once
 
@@ -134,6 +142,30 @@ func hero_for(core_id: int) -> Node3D:
 	return _heroes[i] if i >= 0 else null
 
 
+## Registers a boss body as an external of kind 1 and returns its core id. From now on its place and `is_hittable()` (the external's `alive`: false while it cannot be
+## hurt) are written every tick before the step; thralls scan it by their boss rule and hit it through `thrall_hit_external`.
+func register_boss(body: DmBoss) -> int:
+	var id := int(core.add_external(1, body.radius, 1.0))
+	_bosses.append(body)
+	_boss_ids.append(id)
+	return id
+
+
+func unregister_boss(body: DmBoss) -> void:
+	var i := _bosses.find(body)
+	if i < 0:
+		return
+	core.remove_external(_boss_ids[i])
+	_bosses.remove_at(i)
+	_boss_ids.remove_at(i)
+
+
+## The boss body behind a core id (the target of an EV_THRALL_HIT_EXTERNAL, an id from the queries), null when it is not registered.
+func boss_for(core_id: int) -> DmBoss:
+	var i := _boss_ids.find(core_id)
+	return _bosses[i] if i >= 0 else null
+
+
 # ---- the tick ------------------------------------------------------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
@@ -147,6 +179,9 @@ func tick(delta: float) -> void:
 	for i in _heroes.size():
 		var b := _heroes[i]
 		core.set_external(_hero_ids[i], Vector2(b.position.x, b.position.z), bool(b.get("alive")))
+	for i in _bosses.size():
+		var bb := _bosses[i]
+		core.set_external(_boss_ids[i], Vector2(bb.global_position.x, bb.global_position.z), bb.is_hittable())
 	if not _heroes.is_empty():
 		view.focus = Vector2(_heroes[0].position.x, _heroes[0].position.z)
 	var t0 := Time.get_ticks_usec() if measure else 0
@@ -187,7 +222,8 @@ func _dispatch(raw: Array) -> void:
 				_dying += 1
 				enemy_died.emit(id, _def(ints[b]), ints[b + 1], ints[b + 2] != 0, _area(ints[b + 3]), ints[b + 4], floats[f], floats[f + 1])
 			DmCoreEvents.ENEMY_REMOVED:
-				_dying -= 1
+				if ni == 0:                  # a dead body leaving after its 4 s; one with an int (1) left alive (DmCore.remove_enemy) and was never among the dying
+					_dying -= 1
 				enemy_removed.emit(id)
 			DmCoreEvents.ENEMY_ATTACK:
 				enemy_attack.emit(id, ints[b], floats[f], floats[f + 1], floats[f + 2])
@@ -266,26 +302,36 @@ func _area(n: int) -> String:
 
 
 # ---- queries the ported code needs (Vector3 on the ground plane <-> the core's Vector2; the core's API stays the source of truth) ----------
+# Each one answers for a boss id too (above): the core's table has no boss in it.
 
-## Living enemies whose edge is within `r` of `pos` (flat), in spawn order: ids.
+## Living enemies whose edge is within `r` of `pos` (flat), in spawn order, then the living bosses (a boss counts from its edge, as the group scan did): ids.
 func enemies_in_radius(pos: Vector3, r: float) -> PackedInt32Array:
-	return core.enemies_in_radius(Vector2(pos.x, pos.z), r)
+	var out: PackedInt32Array = core.enemies_in_radius(Vector2(pos.x, pos.z), r)
+	for i in _bosses.size():
+		var b := _bosses[i]
+		if b.is_hittable() and Vector2(b.global_position.x - pos.x, b.global_position.z - pos.z).length() - b.radius <= r:
+			out.append(_boss_ids[i])
+	return out
 
 
 ## An enemy's record (empty when it is gone). Allocates a Dictionary: for casts, the HUD and tests, not for every creature every tick.
 func enemy_info(id: int) -> Dictionary:
+	if not _bosses.is_empty():
+		var b := boss_for(id)
+		if b != null:
+			return _boss_info(b, id)
 	return core.enemy_info(id)
 
 
 ## True while the enemy exists and is not dead.
 func enemy_alive(id: int) -> bool:
-	var info: Dictionary = core.enemy_info(id)
+	var info := enemy_info(id)
 	return not info.is_empty() and int(info["state"]) != DmCoreEvents.State.DEAD
 
 
 ## Where the enemy stands (the sim position, not the drawn one); Vector3.INF when it is gone.
 func enemy_position(id: int) -> Vector3:
-	var info: Dictionary = core.enemy_info(id)
+	var info := enemy_info(id)
 	if info.is_empty():
 		return Vector3.INF
 	var p: Vector2 = info["pos"]
@@ -293,42 +339,78 @@ func enemy_position(id: int) -> Vector3:
 
 
 func enemy_radius(id: int) -> float:
-	var info: Dictionary = core.enemy_info(id)
+	var info := enemy_info(id)
 	return float(info["radius"]) if not info.is_empty() else 0.0
 
 
 ## One enemy as a cast sees it (a snapshot; null when it is gone). Allocates: for casts and the HUD, never for every creature every tick.
 func foe(id: int) -> DmFoe:
-	return DmFoe.of(core.enemy_info(id))
+	return DmFoe.of(enemy_info(id))
 
 
-## Living enemies (hp > 0: a rising or burrowed body counts) whose edge is within `r` of `pos`, in spawn order, as snapshots.
+## Living enemies (hp > 0: a rising or burrowed body counts) whose edge is within `r` of `pos`, in spawn order and the bosses after them, as snapshots.
 func foes_in_radius(pos: Vector3, r: float) -> Array[DmFoe]:
 	var out: Array[DmFoe] = []
-	for id in core.enemies_in_radius(Vector2(pos.x, pos.z), r):
-		var f := DmFoe.of(core.enemy_info(id))
+	for id in enemies_in_radius(pos, r):
+		var f := DmFoe.of(enemy_info(id))
 		if f != null:
 			out.append(f)
 	return out
 
 
-## Enemy damage from a cast or a test: a kill resolves inside the call (native/README.md "Design"). {dealt, killed}.
+## What `enemy_info` says of a boss: the keys DmFoe, the hover pick and the HUD read. A boss that is not awake (not woken yet, wiped, fallen) is a DEAD body with no health, so
+## nothing picks or hits it; a sunk Mire Mother is BURROW (awake, cannot be hurt); otherwise IDLE (the brain's own states are its business).
+func _boss_info(b: DmBoss, id: int) -> Dictionary:
+	var awake := b.is_awake()
+	var state := DmCoreEvents.State.DEAD if not awake else (DmCoreEvents.State.BURROW if b.bstate.state == "sunk" else DmCoreEvents.State.IDLE)
+	return {"id": id, "boss": true, "def": b.def_id, "level": int(b.brain.state["level"]) if b.brain != null else 1, "elite": false, "area": String(DmContent.boss(b.boss_id)["area"]),
+		"state": state, "target": 0, "hp": b.hp if awake else 0.0, "max_hp": b.max_hp, "radius": b.radius,
+		"pos": Vector2(b.global_position.x, b.global_position.z), "yaw": b.rotation.y, "affixes": PackedStringArray()}
+
+
+## Enemy damage from a cast or a test: a kill resolves inside the call (native/README.md "Design"). {dealt, killed}. A boss takes it in its brain.
 func damage(id: int, amount: float, source: int, allow_stagger := true) -> Dictionary:
+	if not _bosses.is_empty():
+		var b := boss_for(id)
+		if b != null:
+			var ok := amount > 0.0 and b.take_damage(amount, hero_for(source), allow_stagger)
+			return {"dealt": amount if ok else 0.0, "killed": ok and b.hp <= 0.0}
 	return core.damage(id, amount, source, allow_stagger)
 
 
-## DmStatusSet.apply on a core body (enemy or thrall): the only way to put a status on one. Never call DmStatusSet on an enemy or thrall.
+## DmStatusSet.apply on a core body (enemy or thrall): the only way to put a status on one. Never call DmStatusSet on an enemy or a thrall. (A boss has its own set.)
 func apply_status(id: int, status: String, source: int, stacks := 1.0, duration := -1.0, params := {}) -> void:
+	if not _bosses.is_empty():
+		var b := boss_for(id)
+		if b != null:
+			DmStatusSet.ensure(b).apply(StringName(status), hero_for(source), int(stacks), duration, params)
+			return
 	core.apply_status(id, status, source, stacks, duration, params)
 
 
 ## The stacks of a status on an enemy or a thrall (0 when it has none; a status without stacks counts 1).
 func status_stacks(id: int, status: String) -> float:
+	if not _bosses.is_empty():
+		var b := boss_for(id)
+		if b != null:
+			return float(DmStatusSet.ensure(b).stacks(StringName(status)))
 	return float(core.status_stacks(id, status))
 
 
 func remove_status(id: int, status: String) -> bool:
+	if not _bosses.is_empty():
+		var b := boss_for(id)
+		if b != null:
+			var st := DmStatusSet.ensure(b)
+			var had := st.has(StringName(status))
+			st.remove(StringName(status))
+			return had
 	return bool(core.remove_status(id, status))
+
+
+## A living enemy leaves without dying (a boss's adds go with the boss): no death, corpse or credit; false for a dead or unknown id. Its `enemy_removed` comes with the next tick's buffer.
+func remove_enemy(id: int) -> bool:
+	return bool(core.remove_enemy(id))
 
 
 ## The director's spawn: the core makes the body at once, the event comes with the next tick's buffer.

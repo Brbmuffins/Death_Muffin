@@ -13,8 +13,9 @@ extends Node
 ## (Command: Rend). WASD walks. Click-to-move, camera zoom on the wheel.
 ##
 ## Options: --class=N (discipline index, default 2 = Gravecaller), --level=N (the character's level, default 10: R works from 10, Bone Mantle from 12, Bone Storm from 14), --seed=N (the combat core's seed), --no-waves, --crowd=N (a first wave of N bodies 6 to 12 m
-## around the hero, and waves of N after it, up to N alive: a look at a big fight), --baked=<dir> (the baked crowd models; default res://crowd/baked: `bash client/tools/bake_crowd.sh` makes the robber and the hound),
-## --shot=<png> [--shot-after=<game seconds, default 25>] (save a screenshot and quit: the QA hook).
+## around the hero, and waves of N after it, up to N alive: a look at a big fight), --boss (the hero starts at the King's grave and wakes the Gravedigger King: a look at his fight), --baked=<dir> (the baked crowd models; default res://crowd/baked: `bash client/tools/bake_crowd.sh` makes the robber and the hound),
+## --shot=<png> [--shot-after=<game seconds, default 25>] [--shot-wall=<real seconds, default none>] (save a screenshot and quit: the QA hook; software GL runs slower than the game, so
+## --shot-wall takes the picture when that many real seconds have gone even if the game time has not come).
 
 const DEV_DB := "user://dm_dev_offline_db.json"   ## this project's own user folder ("Death Muffin (rebuild)"), never the live game's
 
@@ -63,8 +64,15 @@ func _ready() -> void:
 			d.spawn_max = 12.0
 			d.spawn_wave([game.local_body()], crowd)
 			d.flush_spawns()
+		if bool(opts.get("boss", false)):
+			var hero := game.local_body()
+			hero.teleport(game.bosses.site_pos("gravedigger") + Vector3(0.0, 0.0, 2.0))
+			game.camera.snap(hero.position)
+			var why := game.bosses.try_summon(game.session.get_my_id(), "gravedigger")
+			if why != "":
+				push_warning("the dev entry could not wake the King: " + why)
 		if opts.has("shot"):
-			_shot_after(String(opts["shot"]), float(opts["shot_after"]))
+			_shot_after(String(opts["shot"]), float(opts["shot_after"]), float(opts.get("shot_wall", 0.0)))
 
 
 ## The launch options after `--`.
@@ -79,6 +87,8 @@ static func options(args: PackedStringArray) -> Dictionary:
 			o["seed"] = int(a.substr(7))
 		elif a == "--no-waves":
 			o["no_waves"] = true
+		elif a == "--boss":
+			o["boss"] = true
 		elif a.begins_with("--crowd="):
 			o["crowd"] = int(a.substr(8))
 		elif a.begins_with("--baked="):
@@ -87,13 +97,16 @@ static func options(args: PackedStringArray) -> Dictionary:
 			o["shot"] = a.substr(7)
 		elif a.begins_with("--shot-after="):
 			o["shot_after"] = float(a.substr(13))
+		elif a.begins_with("--shot-wall="):
+			o["shot_wall"] = float(a.substr(12))
 	return o
 
 
-## QA: after `seconds` of game time save the viewport and quit.
-func _shot_after(path: String, seconds: float) -> void:
+## QA: after `seconds` of game time (or `wall` real seconds, when given and first) save the viewport and quit.
+func _shot_after(path: String, seconds: float, wall: float = 0.0) -> void:
 	var until := Engine.get_physics_frames() + int(seconds * 60.0)
-	while Engine.get_physics_frames() < until:
+	var t0 := Time.get_ticks_msec()
+	while Engine.get_physics_frames() < until and not (wall > 0.0 and float(Time.get_ticks_msec() - t0) / 1000.0 >= wall):
 		await get_tree().physics_frame
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()

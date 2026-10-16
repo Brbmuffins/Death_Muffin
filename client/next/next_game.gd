@@ -7,6 +7,7 @@ extends Node3D
 ##   Core    (DmCoreHost)  the one owner of the combat core and the crowd that draws it        Waves (DmWaveDirector)  waves, spawned through the core
 ##   Input   (DmNextInput) click / WASD / hover pick through the core                          Camera (DmCameraRig)    the existing rig
 ##   EnemyFx (DmEnemyFx)   telegraphs, strikes, deaths, voices: the core's events as effects   Hud (DmNextHud)         health + resource orbs, area name, death veil
+##   Bosses  (DmBossHost)  the Gravedigger King: summon rules, the boss body (an external of the core, its brain GDScript), its fx and music
 ## The hero is a DmHeroBody made by the session's body_factory, registered with the core as an external; the blows enemies land on it arrive as the
 ## core's EV_TARGET_HIT events (`_on_target_hit`). Enemies are ids (ints) everywhere, never nodes: `enemy_spawned` carries an id, the queries
 ## (`enemies_in_radius`, `enemy_position`) answer ids and positions from the core. No node and no script exists per creature.
@@ -15,8 +16,12 @@ extends Node3D
 ## through DmNextInput and DmRiteHotbar). A rite calls the core synchronously (`core_host.damage / apply_status`, `corpses`, the legion), so a kill resolves inside the cast;
 ## its thralls are the core's and are drawn by the crowd. `rite_hit` carries every blow a rite or a Withered DoT lands, for the rewards seam.
 ##
+## The Hollow Graves' boss, the Gravedigger King, wakes at his grave (key E within 4 m, `bosses.request_summon`): his body is an external entity of the core (kind 1, DmBoss),
+## his brain is today's GDScript, the rites and the thralls hit him through the core's host (`enemies_in_radius`, `damage`) and the events, his adds are core bodies and his
+## defeat is `bosses.defeated` (a real kill, not a wipe; `rewards.on_boss_defeated` when the rewards item brings the rewards) (client/README.md "The Gravedigger King").
+##
 ## Off in this step, each until its ROADMAP item: the login and front
-## flow (`main/`), bosses (`bosses` stays null), party and co-op (the session is a 1-player host; no `Net`, `Party`, `Joiner`), gathering, the Chapterhouse
+## flow (`main/`), party and co-op (the session is a 1-player host; no `Net`, `Party`, `Joiner`), gathering, the Chapterhouse
 ## (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (`rewards`, `progress`, `meta` stay null: no XP, loot or
 ## saves), the full HUD (`ui_host`, `ui` stay null) and the graphics governor (`perf`). `start` refuses any api whose base url is not the TEST server's
 ## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). The game
@@ -51,7 +56,7 @@ var ui_host: Node = null                        ## the full HUD's host-contract 
 var ui: Node = null                             ## the full HUD and panels
 var chapterhouse: Node = null                   ## NPCs, stations, waystones
 var gather: Node = null                         ## gathering nodes
-var bosses: Node = null                         ## the boss host
+var bosses: DmBossHost                          ## child "Bosses": summon rules, the boss body, its events and music
 var rewards: Node = null
 var progress: Node = null
 var meta: Node = null
@@ -119,6 +124,18 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	enemy_fx.host.hitstop_cb = hitstop
 	add_child(enemy_fx)
 	enemy_fx.bind(core_host)
+	bosses = DmBossHost.new()
+	bosses.name = "Bosses"
+	bosses.game = self
+	bosses.visual = _visual
+	bosses.audio_enabled = bool(opts.get("audio", DisplayServer.get_name() != "headless"))
+	add_child(bosses)
+	bosses.fx.host.camera = camera
+	bosses.fx.host.hitstop_cb = hitstop
+	bosses.fx.player_pos = enemy_fx.player_pos
+	bosses.fx.host.sink = func(id: String, ctx: Dictionary) -> void:   # banners / toasts -> the HUD (the full HUD's host)
+		if ui_host != null:
+			ui_host.game_event.emit(id, ctx)
 	session.session_ended.connect(func(_r: String) -> void: set_process(false))
 	look = DmHeroLook.new()
 	look.name = "Look"
@@ -141,6 +158,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	b.teleport(world.spawn_point())
 	b.core_id = core_host.register_hero(b)
 	b.tree_exiting.connect(func() -> void: core_host.unregister_hero(b))
+	bosses.fx.host.self_id = str(session.get_my_id())
 	_enter(b.position)
 	camera.snap(b.position)
 	_start_hud()
@@ -153,6 +171,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		hooks.setup(self)
 	if _visual:
 		enemy_fx.warm(b.global_position)
+		bosses.warm(b.global_position)
 		DmRiteFx.with_autoloads().warm()
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0

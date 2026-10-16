@@ -60,6 +60,7 @@ public:
 	bool strip_shroud(int64_t p_id);   // Last Light, a Warden sweep (DmSimSignatures.strip_shroud): the shroud is gone for good
 	void cover_miasma(int64_t p_id);   // a friendly Miasma covers this body now: its shroud lifts for 0.35 s of game time
 	godot::Dictionary damage(int64_t p_id, double p_amount, int64_t p_source, bool p_allow_stagger = true);
+	bool remove_enemy(int64_t p_id);  // a living enemy leaves without dying (a boss's adds): no death, corpse or credit; EV_ENEMY_REMOVED with 1. False for a dead or unknown id
 	void stun(int64_t p_id, double p_seconds);
 	// DmStatusSet.apply: params dps (bleed, withered), cap (withered stack cap / barrier cap), amount (barrier).
 	void apply_status(int64_t p_id, const godot::String &p_status, int64_t p_source, double p_stacks = 1.0, double p_duration = -1.0, const godot::Dictionary &p_params = godot::Dictionary());

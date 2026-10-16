@@ -162,6 +162,7 @@ func _init() -> void:
 	fight()
 	wire_format()
 	puppet_refuses_and_answers()
+	silent_removal()
 	full_party()
 	keep.clear()
 	if fails == 0:
@@ -923,6 +924,31 @@ func wire_format() -> void:
 
 # ============================================================================================ commands and queries on a puppet
 
+## A living enemy the host removes without a death (a boss's adds leave with the boss) is gone from the guest too, by the reliable batch: the removed event.
+func silent_removal() -> void:
+	var host := make_core(31)
+	host.set_replication(true)
+	var h := hero(host, Vector2(0, 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	spawn_wave(host, rng, 6, 4.0, 14.0, false)
+	for i in 30:
+		host.step(DT)
+		events(host)
+	var g := make_puppet()
+	g.apply_reliable(host.take_reliable())
+	g.apply_snapshot(host.snapshot(30))
+	var live: Array = alive_enemies(host)
+	var gone: int = live[2]
+	var keep_ids: Array = live.filter(func(i: int) -> bool: return i != gone)
+	check(Array(g.enemy_ids()) == Array(host.enemy_ids()) and h > 0, "the guest knows the host's bodies before the removal")
+	check(host.remove_enemy(gone), "the host removes a living body")
+	check(g.apply_reliable(host.take_reliable()), "the batch with the removal is accepted")
+	check(g.enemy_info(gone).is_empty() and g.enemy_count() == host.enemy_count() and keep_ids.all(func(i: int) -> bool: return not g.enemy_info(i).is_empty()),
+		"the guest dropped exactly that body and kept the others (%d left)" % g.enemy_count())
+	check(Array(g.enemy_ids()) == Array(host.enemy_ids()), "and its table is the host's, in the same order")
+
+
 func puppet_refuses_and_answers() -> void:
 	print("INFO the ERROR lines below, one per command, are the refusals this test provokes on a puppet core")
 	var host := make_core(21)
@@ -955,6 +981,7 @@ func puppet_refuses_and_answers() -> void:
 	g.apply_status(victim, "chill", h)
 	g.apply_status(victim, "withered", h, 2.0, -1.0, {"dps": 5.0})
 	check(not g.remove_status(victim, "chill") and g.statuses(victim) == st_before and g.enemy_info(victim)["state"] == host.enemy_info(victim)["state"], "stun and the status commands are refused and change nothing")
+	check(not g.remove_enemy(victim) and not g.enemy_info(victim).is_empty(), "remove_enemy is refused on a puppet (the host owns it) and changes nothing")
 	check(g.spawn_enemy("robber", Vector2(1, 1), 1, 1.0, 1.0, false, "graves", false) == 0 and g.raise_thrall(thrall_stats("warrior"), h, Vector2(1, 1), 0.0, 8.0) == 0, "spawn_enemy and raise_thrall return 0")
 	check(not g.kill_thrall(g.thrall_ids()[0], "killed") and g.sacrifice_thralls(h, -1).is_empty() and g.corpse_add(Vector2(0, 0), "normal", "robber", false, 0.0, 1.0, "graves") == 0, "kill_thrall, sacrifice_thralls and corpse_add are refused")
 	if g.corpse_count() > 0:

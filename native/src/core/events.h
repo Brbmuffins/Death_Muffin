@@ -13,7 +13,7 @@ enum EventType : int32_t {
 	EV_ENEMY_STATE = 2,    // ints: prev, next                     floats: (none)
 	EV_ENEMY_DAMAGED = 3,  // ints: source                         floats: amount, hp
 	EV_ENEMY_DIED = 4,     // ints: def, level, elite, area, source floats: x, z
-	EV_ENEMY_REMOVED = 5,  // ints: (none)                         floats: (none)  the body is gone (4 s after death)
+	EV_ENEMY_REMOVED = 5,  // ints: (none), or 1                   floats: (none)  the body is gone (4 s after death); 1 = it was alive (DmCore.remove_enemy)
 	EV_ENEMY_ATTACK = 6,   // ints: blow                           floats: aim x, aim z, windup s   (a swing began: the aim is fixed)
 	EV_TELEGRAPH = 7,      // ints: tell                           floats: from x, from z, aim x, aim z, radius, seconds
 	EV_CUE = 8,            // ints: cue                            floats: x, z, radius

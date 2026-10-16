@@ -14,7 +14,7 @@ extends RefCounted
 ##   standing, mouse seen -> `stand_face`: the hero turns toward the cursor; Easy auto-combat is DmNextAutoCombat.
 ##
 ## Ported to the combat core (client/code.list "Ported"): the attack target is the core's enemy id; its place and whether it can be hurt come from the caster's `foe` snapshot.
-## Bosses are not targets yet (they join with the Gravedigger King item).
+## A boss is a target like any enemy (the caster's `foe` says `boss`: its radius counts in the primary's range).
 
 const QUEUE_MS := 220.0       ## a cast refused for a lock / <= 220 ms of cooldown waits this long
 const RETRY_MS := 50.0        ## minimum gap between two automatic cast requests (host refusals are cheap but an RPC for a client)
@@ -178,7 +178,7 @@ func _tick_target(c: DmRiteCaster, b: DmHeroBody, now: float) -> void:
 	_pad["x"] = b.position.x
 	_pad["z"] = b.position.z
 	_pad["loadout"] = c.p.get("loadout", DmWeaponLine.no_loadout()) if not c.p.is_empty() else DmWeaponLine.no_loadout()
-	var short := DmAbilities.shortfall(_pad, primary, {"x": ep.x, "z": ep.z, "boss": false}, DmSimConsts.BOSS_RADIUS)
+	var short := DmAbilities.shortfall(_pad, primary, {"x": ep.x, "z": ep.z, "boss": e.boss}, DmSimConsts.BOSS_RADIUS)
 	if short > 0.0:
 		if stand or _shift():
 			_halt()                           # in place: out of range is a silent wait (the host would refuse the cast anyway)

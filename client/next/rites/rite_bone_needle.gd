@@ -5,7 +5,8 @@ extends DmRiteModule
 ## (apply_cast_cost); Sickle = every needle (volley and pierce included) adds a Withered stack; Scythe = no projectile, a melee arc (`_reap`) that takes the
 ## Splinters / Marrow-Tap runes (Volley is the needle's) and leaves a 1.2 s window in which a kill of one of its victims banks an extra soul (`reaped_souls`).
 ## On the combat core (client/code.list "Ported"): the target is an id and a DmFoe snapshot, the blow is `c.deal` (the kill is known at once), the Sickle's Withered is
-## the core's status. The boss is not in the queries yet (it joins with the Gravedigger King), so the Scythe arc strikes enemies only.
+## the core's status. A boss is a foe like any (the host's queries append it after the enemies, `DmFoe.boss`): the needle's range counts its radius, and the Scythe's arc
+## counts it separately with its own reach and one of the arc's hits, as today.
 
 const SPEED := 26.0        ## sim_caster._fire_needle
 const TARGET_Y := 1.0
@@ -20,7 +21,7 @@ func validate(c: DmRiteCaster, intent: Dictionary) -> String:
 	var foe := pick_enemy(c, intent["aim"], int(intent["target_id"]), PICK_RADIUS)
 	if foe == null:
 		return "no_target"
-	if DmAbilities.shortfall(c.p, id, {"x": foe.x, "z": foe.z, "boss": false}, DmSimConsts.BOSS_RADIUS) > 0.0:
+	if DmAbilities.shortfall(c.p, id, {"x": foe.x, "z": foe.z, "boss": foe.boss}, DmSimConsts.BOSS_RADIUS) > 0.0:
 		return "range"
 	intent["foe"] = foe
 	return ""
@@ -143,11 +144,17 @@ func _reap(c: DmRiteCaster, foe: DmFoe, m: Dictionary, rn: String) -> String:
 	var caster := {"x": px, "z": pz}
 	var aim := {"x": foe.x, "z": foe.z}
 	var pool: Array = []
+	var boss: DmFoe = null
 	for n in c.foes_in_radius(Vector3(px, 0.0, pz), float(T["bossReach"]) + 6.0):
-		pool.append({"id": n.id, "x": n.x, "z": n.z, "radius": n.radius, "e": n})
+		if n.boss:
+			boss = n
+		else:
+			pool.append({"id": n.id, "x": n.x, "z": n.z, "radius": n.radius, "e": n})
 	var struck := DmWeaponLine.reap_targets(caster, aim, pool)
-	var hits: Array = struck.slice(0, maxi(0, int(T["maxHits"])))
-	var rc := DmAbilities.reap_cast(DmAbilities.sp(c.p, c.now_ms), rn, c.rand(), hits.size())
+	var hit_boss := boss != null and not DmWeaponLine.reap_targets(caster, aim, [{"x": boss.x, "z": boss.z, "radius": DmSimConsts.BOSS_RADIUS}], float(T["bossReach"])).is_empty()
+	var hits: Array = struck.slice(0, maxi(0, int(T["maxHits"]) - (1 if hit_boss else 0)))
+	var landed := hits.size() + (1 if hit_boss else 0)
+	var rc := DmAbilities.reap_cast(DmAbilities.sp(c.p, c.now_ms), rn, c.rand(), landed)
 	var dmg: float = rc["dmg"]
 	var reaped: Dictionary = m.get_or_add("reaped", {})
 	if reaped.size() > 64:
@@ -165,9 +172,15 @@ func _reap(c: DmRiteCaster, foe: DmFoe, m: Dictionary, rn: String) -> String:
 		skip.append(o)
 		spots.append(Vector3(o.x, TARGET_Y, o.z))
 		c.hit_resolved.emit(id, int(d["id"]), dmg, false, bool(r["killed"]))
-	if spots.size() > 0:
+	var boss_pos := Vector3.INF
+	if hit_boss:
+		var br := c.deal(boss.id, dmg)
+		if float(br["dealt"]) > 0.0:
+			boss_pos = Vector3(boss.x, TARGET_Y, boss.z)
+			c.hit_resolved.emit(id, boss.id, dmg, false, bool(br["killed"]))
+	if spots.size() + (1 if boss_pos != Vector3.INF else 0) > 0:
 		c.gain_essence(float(rc["essence"]))
-	c.broadcast({"t": "reap", "rite": id, "by": c.peer_id, "px": px, "pz": pz, "dx": dx, "dz": dz, "hits": spots, "boss": Vector3.INF, "amount": dmg})
+	c.broadcast({"t": "reap", "rite": id, "by": c.peer_id, "px": px, "pz": pz, "dx": dx, "dz": dz, "hits": spots, "boss": boss_pos, "amount": dmg})
 	if rn == "rune_splinter" and not skip.is_empty():
 		_splinter(c, skip[0], dmg, skip)
 	c.push_state()

@@ -102,6 +102,26 @@ func _init() -> void:
 	check(gone.size() == 1 and gone[0]["id"] == a, "one removed event, for the dead body")
 	check(Array(c.enemies_in_radius(Vector2(0, 0), 3.7)) == [b, g], "spawn order kept after compaction")
 
+	# remove_enemy: a living body leaves silently (a boss's adds go with the boss): no death, no corpse, no credit, the others keep spawn order and their ids.
+	var rc := make(11)
+	var r_a: int = rc.spawn_enemy("robber", Vector2(0, 0), 1, 1.0, 1.0, false, "graves", false)
+	var r_b: int = rc.spawn_enemy("robber", Vector2(2.0, 0), 1, 1.0, 1.0, false, "graves", false)
+	var r_c: int = rc.spawn_enemy("robber", Vector2(4.0, 0), 1, 1.0, 1.0, true, "graves", false)
+	rc.step(1.0 / 60.0)
+	events(rc)
+	check(rc.remove_enemy(r_b) and rc.enemy_count() == 2 and rc.enemy_info(r_b).is_empty(), "remove_enemy takes a living body out of the table at once")
+	check(Array(rc.enemies_in_radius(Vector2(0, 0), 9.0)) == [r_a, r_c] and rc.enemy_info(r_c)["pos"] == Vector2(4.0, 0.0), "the others keep their ids, their places and their order, and the queries see it before the next step")
+	var rev := events(rc)
+	check(rev.size() == 1 and rev[0]["type"] == EV_REMOVED and rev[0]["id"] == r_b and Array(rev[0]["ints"]) == [1], "one removed event with 1 (it was alive), no died event")
+	check(rc.corpse_count() == 0, "no corpse was laid")
+	check(not rc.remove_enemy(r_b) and not rc.remove_enemy(999), "an id that is gone is refused")
+	rc.damage(r_a, 1.0e6, 7)
+	check(not rc.remove_enemy(r_a), "a dead body is refused (it leaves on its own after 4 s)")
+	events(rc)
+	for i in 5:
+		rc.step(1.0 / 60.0)
+	check(rc.enemy_count() == 2 and rc.enemy_info(r_c)["hp"] > 0.0, "the next steps go on with the bodies that are left")
+
 	# Seeded: same seed, same stats; another seed, other stats.
 	var s1 := make(42)
 	var s2 := make(42)

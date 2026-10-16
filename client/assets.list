@@ -86,4 +86,7 @@ fx/sheets/summon_circle.png
 fx/sheets/chain_arc.png
 fx/sheets/trail_arc.png
 
-# ---- Later blocks (not listed yet): the other disciplines, the rest of the Graves roster, the Gravedigger King, the other areas' props, bosses.
+# ---- The Gravedigger King (client/next/bosses): the Hollow Graves' boss, drawn by DmBossView with the full skeleton (the model and the textures Godot extracts from it)
+slice/models/boss_gravedigger_king
+
+# ---- Later blocks (not listed yet): the other disciplines, the rest of the Graves roster, the other areas' props, the other bosses.

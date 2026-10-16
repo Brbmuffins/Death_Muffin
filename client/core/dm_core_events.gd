@@ -40,6 +40,8 @@ const AFFIX_MOMENT := 32
 # ---- an enemy's state (EnemyState)
 enum State { RISING, IDLE, CHASE, ATTACK, HURT, RETURN, DEAD, FLEE, BURROW, ERUPT, DIG, EMERGE }
 
+const STATE_NAMES: Array[String] = ["rising", "idle", "chase", "attack", "hurt", "return", "dead", "flee", "burrow", "erupt", "dig", "emerge"]   ## State by number (DmEnemyState.NAMES)
+
 # ---- a thrall's state (ThrallState)
 enum ThrallState { RISING, IDLE, MOVE, ATTACK, DEAD }
 

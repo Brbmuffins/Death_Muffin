@@ -10,7 +10,7 @@ extends DmSessionBody
 ## The host simulates (`step_host`, from DmSession intents); every peer renders. Puppets mirror the vitals the host broadcasts
 ## (`apply_vitals`). Death -> respawn in the Chapterhouse after RESPAWN_S, host side.
 
-signal hurt(amount: float, source: Variant)     ## host only: the enemy's core id (an int, 0 = none), or the Node that hurt him (a boss, a status)
+signal hurt(amount: float, source: Variant)     ## host only: the enemy's or boss's core id (an int, 0 = none), or the Node that hurt him (a status)
 signal died(body: DmHeroBody)                   ## host only
 signal respawned(body: DmHeroBody)              ## host only
 signal enemy_effect(kind: StringName)           ## host only: an enemy chilled / rooted / dragged this body (the HUD floats the word)
@@ -180,8 +180,8 @@ func dm_take_enemy_hit(damage: float, source: Variant, kind: String = "melee") -
 	take_damage(damage, source, kind)
 
 
-## Host only. Returns the damage actually taken (after Bone Ward / barrier). Death starts the respawn clock. `source`: the attacking enemy's core id (an int),
-## or a Node (a boss, a status set's DoT) as before.
+## Host only. Returns the damage actually taken (after Bone Ward / barrier). Death starts the respawn clock. `source`: the attacking enemy's or boss's core id (an int),
+## or a Node (a status set's DoT) as before.
 func take_damage(amount: float, source: Variant = 0, kind: String = "melee") -> float:
 	if p.is_empty() or not alive:
 		return 0.0

@@ -23,6 +23,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_view.gd    # the crowd's views against today's view code, and a Full Party (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/game_scene.gd     # the game scene on the core: 60 s of an offline run in the Graves (bakes into a scratch folder; add --fixed-fps 60 before --path to run it faster than real time)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rites.gd          # the Gravecaller's rites on the core: all 25 necromancer rites against today's rules, a fight (bakes into a scratch folder; 90 s of game time, --fixed-fps 60 makes it faster)
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/boss.gd           # the Gravedigger King on the core: his brain replayed against today's scenarios, his fight, the thralls, the rites, his defeat and a new summon (bakes into a scratch folder; add --fixed-fps 60 before --path to run it faster than real time)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/front.gd   # boot, login, character select and the game scene with the chosen character on the mock; the API rule; the real test server's health (bakes into a scratch folder)
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the roster's robber and hound, the thralls) into client/crowd/baked (not committed)
 ```
@@ -58,12 +59,13 @@ uids keep working:
   replace them (native/README.md "Design").
 - **Seams** (55 files at the start): a file outside those systems that names one of their classes or scenes: the rites, the bosses, the HUD's enemy reads, auto combat input, the benchmark
   fight. Each line names what it uses. They are ported to the core in the later steps of the ROADMAP's client layer, and `--port` then moves them from the list into `code.lock.json`.
-  Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; and the Gravecaller's rites (the caster, the module base, the legends, the
-  registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites").
+  Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; the Gravecaller's rites (the caster, the module base, the legends, the
+  registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); and the boss host, body, world, fx and view ("The Gravedigger King").
 - **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the party
   (`DmNextFriends` reads the game scene's `party`: the friends and party panes, the social window and `game_ui/dm_game_ui.gd`).
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only), the HUD shell `next/next_hud.gd`,
   the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step, the belt and the progress node.
+  Freed by the boss ports: `next/bosses/dm_boss_meta.gd` (the Covenant Seal altar choice; it needs rewards and the backend, so nothing creates it yet).
 - **Ported for the test server** (not seams): the boot `main/main.gd` and `main/main.tscn` (freed from the left-out list by the front flow's port), `net/dm_config.gd` and
   `net/dm_http_transport.gd` (below).
 
@@ -79,7 +81,7 @@ bash client/tools/bake_crowd.sh                        # once: bakes the robber,
 /home/ubuntu/tools/godot/godot --path client            # the boot: login and character select on the TEST server, then the game (below)
 /home/ubuntu/tools/godot/godot --path client -- --dev-offline --class=1             # the same boot with the local mock backend and no network at all: straight into the game as `tester` (--seed=N --no-waves --baked=<dir> too)
 /home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn           # the dev entry: the Gravecaller at level 10, the minimal HUD, waves. He fights with the rites (controls below)
-/home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn -- --class=1 --seed=7 --crowd=70      # options after `--`: --class=N --level=N (default 10) --seed=N --no-waves --crowd=N (a first wave of N bodies 6 to 12 m around the hero) --baked=<dir> --shot=<png> [--shot-after=<game s>] (rendered runs only)
+/home/ubuntu/tools/godot/godot --path client res://dev/dm_dev_entry.tscn -- --class=1 --seed=7 --crowd=70      # options after `--`: --class=N --level=N (default 10) --seed=N --no-waves --crowd=N (a first wave of N bodies 6 to 12 m around the hero) --boss (the hero starts at the King's grave and wakes him) --baked=<dir> --shot=<png> [--shot-after=<game s>] (rendered runs only)
 ```
 
 **Controls of the dev entry** (today's input and hotbar code): **LMB** on the ground walks there, on an enemy walks into range and casts the primary (Bone Needle; hold to repeat, Shift+LMB casts in place);
@@ -102,7 +104,7 @@ roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`
 **input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
 wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
-Off in this step, each until its ROADMAP item: bosses, party and co-op, gathering, the Chapterhouse
+Off in this step, each until its ROADMAP item: party and co-op, gathering, the Chapterhouse
 (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves; `DmNextGame.rite_hit` carries every blow of a rite for them), the full HUD (only the orbs, area name and death veil;
 so no loadout panel, no floating damage numbers), Easy auto combat, the Reaper's rites, the graphics governor, Grave Surges. `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
@@ -128,6 +130,35 @@ What a rite uses where it used nodes (all on the caster `c`; the adapters belong
 Timers stay the caster's (`c.after(ms, fn)` on the body's clock, a physics tick). Events and fx are today's: `broadcast` -> `play` -> `DmRiteFx` through the copied `Vfx` and `AudioDirector`. The hero's own statuses stay
 `DmStatusSet`. The cast flow (owner, cooldown, essence and cast lock through `DmAbilities.cast_check / apply_cast_cost`, refund on a lost corpse race) is unchanged. `client/tests/rites.gd` casts every rite
 (table-driven against the copied rules code), the refusals, the synchronous-kill cases, the kit's hotbar and the click-to-attack chase, and plays a fight; `native/README.md` "Differences from today's game" lists what differs.
+
+## The Gravedigger King
+
+The Hollow Graves' boss (`next/bosses`, `sim/bosses`, `game/dm_boss_view.gd`) runs in the game scene as DECISIONS B42 says: **an external entity of the core (kind 1) whose brain stays GDScript.** The brains of `sim/bosses` are
+copies, unchanged (the brain does not know what a core is: it asks its `DmBossWorld`); five files are ports (`code.list` "Ported"). `DmBossHost` (child `Bosses` of the game scene, `g.bosses`) has today's summon rules, spawner,
+event routing, fx and music; `DmBoss` is the body; `DmBossNodeWorld` is the brain's view of the world, answered from the core. Only the King wakes in this build (`served_areas` is the Graves): the other six bosses' brains are
+copied but need their areas, adds and pools.
+
+| today | on the core |
+|---|---|
+| `DmBoss extends DmEnemy` (a `CharacterBody3D` in the `dm_enemy` group, with a collider, a navigation agent, a state machine) | a plain `Node3D` that registers with `DmCoreHost.register_boss` (its `core_id` is an **external of kind 1**) and keeps what it took from `DmEnemy` as fields: `hp`, `max_hp`, `radius` 1.6, `damaged`, `died`, `is_hittable()` |
+| thralls scan and hit it as an enemy (group order, boss edge rule) | the host writes `set_external(id, place, is_hittable())` before every `core.step`: `alive` is false while it cannot be hurt or is not awake. Thralls scan it after the enemies by the core's boss edge rule; their blows come back as `EV_THRALL_HIT_EXTERNAL` (`thrall_hit_external`) and `DmBossHost._on_thrall_hit` gives them to `DmBoss.take_damage` with the owner as the credit |
+| `world.enemies_in_radius` appends living bosses; `enemy_by_id`; `DmStatusSet.hit(e, ...)` | `DmCoreHost.enemies_in_radius / foes_in_radius / foe / enemy_info / enemy_position / enemy_alive / enemy_radius / damage / apply_status / status_stacks / remove_status` answer for a boss id too: the living boss comes after the enemies, measured to its edge, as a `DmFoe` with `boss` true (so the caster's `c.foe`, `c.foes_in_radius`, `c.deal`, `c.apply_status` and the lane, cone and circle helpers of `DmRiteModule` reach it with no change), the hover pick finds it, and a blow on its id is `take_damage` into the brain |
+| its `DmStatusSet` | the same: statuses on a boss are the boss's GDScript set (B42); slow, root and chill show and the brain ignores them; a stun staggers it at most 0.5 s every 8 s |
+| the brain's `world.spawn_enemy / remove_enemy` | the adds are the director's spawn through the core, in the boss's area and at its level (`DmWaveDirector.spawn` returns the core id); they leave with the boss (defeat or wipe) through `DmCore.remove_enemy`: out of the table at once, no death, no corpse, no credit |
+| its blows: `hero.take_damage(dmg, boss)`; `thrall.take_damage(dmg, boss)` | `hero.take_damage(dmg, boss.core_id)` (the id is the source, like any enemy's: the hero's body finds where the blow came from, and Colossus Mantle's reflect finds him by it); `core.damage(thrall id, dmg, boss.core_id)` |
+| the Scythe's arc and the needle's range treat a `DmBoss` apart | `DmFoe.boss`: the arc counts it separately with its own reach and one of the arc's hits, the needle's range counts its radius, and the click-to-attack chase does too |
+
+What the host's `DmCoreHost.tick` does with it, in the tick's order: the boss's `_physics_process` (priority 0, with the session and the director) pumps the brain and mirrors its position, then the host writes the external and steps the core; the
+core's thralls act on the place it wrote, and their blows on it are given to the brain as the tick's events are dispatched.
+
+**Summoning** is today's: key E within 4 m of the King's grave (or `bosses.request_summon`), the refusals `far`, `unknown`, `busy`, `dead`. **Shards are not charged in this step** (there is no progression to take them from: `g.rewards` is null), so the summon is free.
+**His defeat** is the host's `defeated` signal (a real kill; `reset` for a wipe), the brain's events (`brain_event`), `DmBoss.died` and the boss sounds; `DmSessionRewards.on_boss_defeated` is called when the rewards item brings `g.rewards`. The dev entry's `--boss` starts the hero at the grave and wakes him.
+
+`client/tests/boss.gd` is the proof: the six recorded Gravedigger scenarios of `godot/tests/bosses` replayed tick by tick through this project's copy of the brain, the summon rules, the awaken numbers, his attacks and phases stepped by hand with today's numbers and
+timing (sweep, Burial, phases, ghouls on the rim, the elite, the pits, the double sweep, the blows on the hero and on a thrall), the wipe (adds leave silently), thralls (the edge rule, `thrall_hit_external`, credit, `alive` false while he cannot be hurt),
+the rites (edge distance, order, lane, cone, circle, the needle's range, the Scythe's arc, the Spear's rally, Fan, Lance, statuses, stun), the defeat events, a second summon, a fight on the real clock and the net state round trip.
+Not in it: the other six bosses; their pools, niches and hooks (the core makes no zone for a boss, has no call that sets a body's health, and the Veilwalker's echoes are not ported); shards and rewards; the boss bar and banners (the full HUD); Easy auto combat's use of the
+boss (`dm_next_auto.gd`); replicating him to guests (the co-op step).
 
 ## The test server: login and character select
 

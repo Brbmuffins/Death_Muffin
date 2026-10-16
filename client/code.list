@@ -22,7 +22,7 @@ world      # world builder, model loader, occlusion shaders, animator
 world_fx   # world dressing and atmosphere
 
 # ==== Ported (client/code.lock.json "ported"; edited in client/, so the sync leaves them alone and reports one whose original changed)
-# next/next_game.gd, next/next_game.tscn   the game scene on DmCoreHost: a solo run in the Graves with a test-server character or a dev one, with the Gravecaller's rites; refuses any api but the test server's; no bosses, party, gathering, Chapterhouse, rewards, full HUD
+# next/next_game.gd, next/next_game.tscn   the game scene on DmCoreHost: a solo run in the Graves with a test-server character or a dev one, with the Gravecaller's rites and the Gravedigger King; refuses any api but the test server's; no party, gathering, Chapterhouse, rewards, full HUD
 # next/next_world.gd                       loads client/areas/<id>.tscn and its navigation map instead of the runtime DmWorldBuilder build; the same small API
 # next/next_input.gd                       the hover pick asks the core; the chase and the queued casts are today's (DmCombatInput); no Easy auto combat yet
 # next/spawn/dm_wave_director.gd           spawns through the core (ids); counts from the core; no Grave Surges, no clearing of living bodies
@@ -34,6 +34,13 @@ world_fx   # world dressing and atmosphere
 # main/main.gd, main/main.tscn             the boot (DmMain): the front flow against the TEST server, then the game scene with the chosen character, its bag and progression (DmMain.load_build); no benchmark, party hand-over, crash report, Log out or Switch character
 # net/dm_config.gd                         the TEST server's addresses and the allow-list (DmConfig.allows_url, allows_api_base); the live ones never appear (tests/front.gd)
 # net/dm_http_transport.gd                 refuses any request DmConfig does not allow
+# The Gravedigger King (client/README.md "The Gravedigger King"): the boss is an external of the core (kind 1) whose brain stays GDScript; the brains of sim/bosses are copies, unchanged:
+# next/bosses/dm_boss.gd                   a plain node (no DmEnemy, no collider, no agent, no state machine) that registers as an external of the core (core_id) and takes blows through take_damage
+# next/bosses/dm_boss_host.gd              summon rules and events as today; the thralls' blows come from the core (thrall_hit_external); the Gravedigger's area only (served_areas); no pools
+# next/bosses/dm_boss_node_world.gd        the brain's world on the core: adds through the director's spawn, remove_enemy, the core's thralls and corpses; no pools, no set_enemy_hp
+# next/bosses/dm_boss_fx.gd                no pool_visual (the Saint's rot, with the Saint)
+# game/dm_boss_view.gd                     its own three motion helpers instead of DmEntityViews'
+# Copied again because of them: next/bosses/dm_boss_meta.gd (the Covenant Seal altar choice; it needs rewards and the backend, so nothing creates it yet).
 # Copied again because of them: next/status (DmStatusSet, for the status sets of heroes and bosses only), next/enemy_fx/dm_enemy_fx_host.gd, game/dm_event_fx_telegraph.gd,
 # game/dm_event_fx_boss.gd, next/next_hud.gd, next/progress/dm_next_chronicle.gd, next/areas/dm_area_flow.gd, next/gathering/dm_next_gather.gd, next/party/dm_next_joiner.gd.
 # The Gravecaller's rites on the core (client/README.md "The Gravecaller's rites"): enemies are ids and DmFoe snapshots, a blow is `c.deal`, a status `c.apply_status`, the corpse field
@@ -58,16 +65,11 @@ world_fx   # world dressing and atmosphere
 !game/dm_entity_views.gd      # DmEntityViews: per-creature nodes, replaced by the crowd view
 
 # ==== Seams: ported to the core in later steps (each uses a per-creature class or scene)
-!game/dm_boss_view.gd                     # uses DmEntityViews
 !game/dm_caster_budget.gd                 # uses DmEnemy, DmEnemyState
 !game/dm_game_hud.gd                      # uses DmSimEnemy
 !game/dm_warmup.gd                        # uses DmSimEnemy
 !main/qa_driver.gd                        # uses DmEnemy
 !next/areas/dm_grave_surge.gd             # uses DmEnemy
-!next/bosses/dm_boss.gd                   # uses DmEnemy, DmStatusSet, DmEnemyState +1
-!next/bosses/dm_boss_fx.gd                # uses DmEnemyFxHost, DmSimZone, DmHostileZone
-!next/bosses/dm_boss_host.gd              # uses DmPfUtil, DmHostileZone
-!next/bosses/dm_boss_node_world.gd        # uses DmEnemy, DmEnemyState, DmThrallHost +3
 !next/chapterhouse/dm_chapterhouse.gd     # uses DmThrallHost
 !next/depths/dm_depths.gd                 # uses DmEnemy, DmEnemyState, DmThrallHost
 !next/feel/dm_next_auto.gd                # uses DmEnemy, DmEnemyState, DmStateAttack +2
@@ -92,11 +94,8 @@ world_fx   # world dressing and atmosphere
 # ==== Left out with a seam (main/qa_driver.gd)
 !main/qa_boot.gd                          # uses qa_driver
 
-# ==== Left out with a seam (next/bosses/dm_boss.gd)
-!next/bosses/boss.tscn                    # uses DmBoss
-
-# ==== Left out with a seam (next/bosses/dm_boss_host.gd)
-!next/bosses/dm_boss_meta.gd              # uses DmBossHost
+# ==== Left out: the boss is a plain node in the port (next/bosses/dm_boss.gd), made by DmBossHost; this scene was a CharacterBody3D with a collider and a navigation agent
+!next/bosses/boss.tscn
 
 # ==== Left out with a seam (the game scene's party, next/party/dm_next_friends.gd: it reads `shell.party`, the co-op step)
 !game_ui/dm_game_ui.gd                    # uses DmUiSocial

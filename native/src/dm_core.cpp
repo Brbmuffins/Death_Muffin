@@ -73,6 +73,7 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("strip_shroud", "id"), &DmCore::strip_shroud);
 	ClassDB::bind_method(D_METHOD("cover_miasma", "id"), &DmCore::cover_miasma);
 	ClassDB::bind_method(D_METHOD("damage", "id", "amount", "source", "allow_stagger"), &DmCore::damage, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("remove_enemy", "id"), &DmCore::remove_enemy);
 	ClassDB::bind_method(D_METHOD("stun", "id", "seconds"), &DmCore::stun);
 	ClassDB::bind_method(D_METHOD("apply_status", "id", "status", "source", "stacks", "duration", "params"), &DmCore::apply_status, DEFVAL(1.0), DEFVAL(-1.0), DEFVAL(Dictionary()));
 	ClassDB::bind_method(D_METHOD("remove_status", "id", "status"), &DmCore::remove_status);
@@ -471,6 +472,13 @@ Dictionary DmCore::damage(int64_t p_id, double p_amount, int64_t p_source, bool 
 	out["dealt"] = dealt;
 	out["killed"] = killed;
 	return out;
+}
+
+bool DmCore::remove_enemy(int64_t p_id) {
+	if (refused("remove_enemy")) {
+		return false;
+	}
+	return world.remove_enemy(int32_t(p_id));
 }
 
 void DmCore::stun(int64_t p_id, double p_seconds) {

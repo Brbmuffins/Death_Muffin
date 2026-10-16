@@ -1,7 +1,7 @@
 extends DmRiteModule
 ## Bone Fan, an LMB primary (level 2): three slivers, each homing on a distinct enemy in a 15 degree half-cone around the one clicked (the clicked one
 ## first, then the nearest to the aim line), 24 m/s, range 8, free, 520 ms, power 0.55. Each landing gives +3 essence, up to 6 a cast. Numbers:
-## DmAbilities (def, shortfall, sp) + the BONE_FAN table; visuals: DmRiteFx.fan_cast / fan_hit. The boss does not exist in the rebuild's world yet.
+## DmAbilities (def, shortfall, sp) + the BONE_FAN table; visuals: DmRiteFx.fan_cast / fan_hit. A boss is a foe like any (the host's queries append it after the enemies).
 ## On the combat core (client/code.list "Ported"): enemies are ids and DmFoe snapshots, the blow is `c.deal` (a kill is known at once), statuses are the core's (`c.apply_status`).
 
 const TARGET_Y := 1.0
