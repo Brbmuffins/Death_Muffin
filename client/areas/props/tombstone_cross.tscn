@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/tombstone_cross.glb" id="1_7b71d"]
+
+[node name="tombstone_cross" type="Node3D" unique_id=219639468]
+metadata/model = "models/props/tombstone_cross.glb"
+metadata/height = 1.7
+metadata/small = false
+
+[node name="model" parent="." unique_id=180080746 instance=ExtResource("1_7b71d")]
+transform = Transform3D(1.7033268, 0, 0, 0, 1.7033268, 0, 0, 0, 1.7033268, 0, 0.85, 0)
+
+[editable path="model"]

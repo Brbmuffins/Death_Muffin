@@ -31,6 +31,8 @@ godot/assets/fx/sheets/
 client/.godot/
 client/bin/*.so
 client/bin/*.dll
+# Licensed flipbook sheets are not redistributable in a public repo: tools/rebuild/sync-assets.mjs copies them in from the private source (client/README.md).
+client/assets/fx/sheets/
 native/thirdparty/
 native/**/*.os
 native/**/*.o

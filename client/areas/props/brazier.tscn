@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/brazier.glb" id="1_0b9e5"]
+
+[node name="brazier" type="Node3D" unique_id=106471366]
+metadata/model = "models/props/brazier.glb"
+metadata/height = 1.3
+metadata/small = true
+
+[node name="model" parent="." unique_id=238638529 instance=ExtResource("1_0b9e5")]
+transform = Transform3D(1.6597496, 0, 0, 0, 1.6597496, 0, 0, 0, 1.6597496, 0, 0.65, 0)
+
+[node name="tripo_node_e5ca9be3-09b9-49b6-b72c-3080c186c0c5" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

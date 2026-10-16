@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/statue.glb" id="1_fba87"]
+
+[node name="statue" type="Node3D" unique_id=177368283]
+metadata/model = "models/props/statue.glb"
+metadata/height = 3.2
+metadata/small = false
+
+[node name="model" parent="." unique_id=127822501 instance=ExtResource("1_fba87")]
+transform = Transform3D(3.2062624, 0, 0, 0, 3.2062624, 0, 0, 0, 3.2062624, 0, 1.6, 0)
+
+[editable path="model"]

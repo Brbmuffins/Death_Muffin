@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/bone_pile.glb" id="1_b4c13"]
+
+[node name="bone_pile" type="Node3D" unique_id=217364438]
+metadata/model = "models/props/bone_pile.glb"
+metadata/height = 0.8
+metadata/small = true
+
+[node name="model" parent="." unique_id=3406179 instance=ExtResource("1_b4c13")]
+transform = Transform3D(1.4474208, 0, 0, 0, 1.4474208, 0, 0, 0, 1.4474208, 0, 0.4, 0)
+
+[node name="tripo_node_413831b9-4ed6-4f17-bae6-3cd8ea648c77" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/kings_grave.glb" id="1_7b754"]
+
+[node name="kings_grave" type="Node3D" unique_id=210385579]
+metadata/model = "models/props/kings_grave.glb"
+metadata/height = 1.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=204103780 instance=ExtResource("1_7b754")]
+transform = Transform3D(1.973988, 0, 0, 0, 1.973988, 0, 0, 0, 1.973988, 0, 0.8, 0)
+
+[editable path="model"]

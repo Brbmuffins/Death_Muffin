@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_burial_mound.glb" id="1_7aa1c"]
+
+[node name="prop_node_burial_mound" type="Node3D" unique_id=211334107]
+metadata/model = "models/props/prop_node_burial_mound.glb"
+metadata/height = 0.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=155732268 instance=ExtResource("1_7aa1c")]
+transform = Transform3D(1.0630693, 0, 0, 0, 1.0630693, 0, 0, 0, 1.0630693, 0, 0.3, 0)
+
+[editable path="model"]

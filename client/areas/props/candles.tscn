@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/candles.glb" id="1_1ef94"]
+
+[node name="candles" type="Node3D" unique_id=137118650]
+metadata/model = "models/props/candles.glb"
+metadata/height = 0.7
+metadata/small = true
+
+[node name="model" parent="." unique_id=248266264 instance=ExtResource("1_1ef94")]
+transform = Transform3D(0.7041204, 0, 0, 0, 0.7041204, 0, 0, 0, 0.7041204, 0, 0.35, 0)
+
+[node name="tripo_node_c3b9a99c-8e25-49e8-aee6-32a8de6b143b" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

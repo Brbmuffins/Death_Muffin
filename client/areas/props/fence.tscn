@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/fence.glb" id="1_f296e"]
+
+[node name="fence" type="Node3D" unique_id=64529752]
+metadata/model = "models/props/fence.glb"
+metadata/height = 1.6
+metadata/small = false
+
+[node name="model" parent="." unique_id=30269735 instance=ExtResource("1_f296e")]
+transform = Transform3D(2.2817218, 0, 0, 0, 2.2817218, 0, 0, 0, 2.2817218, 0, 0.8, 0)
+
+[editable path="model"]

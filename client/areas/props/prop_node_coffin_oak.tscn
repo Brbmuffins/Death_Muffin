@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/prop_node_coffin_oak.glb" id="1_4703b"]
+
+[node name="prop_node_coffin_oak" type="Node3D" unique_id=260095226]
+metadata/model = "models/props/prop_node_coffin_oak.glb"
+metadata/height = 4.4
+metadata/small = false
+
+[node name="model" parent="." unique_id=34542102 instance=ExtResource("1_4703b")]
+transform = Transform3D(4.4086103, 0, 0, 0, 4.4086103, 0, 0, 0, 4.4086103, 0, 2.2, 0)
+
+[editable path="model"]

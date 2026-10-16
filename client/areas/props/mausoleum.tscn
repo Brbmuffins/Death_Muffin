@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/mausoleum.glb" id="1_9c177"]
+
+[node name="mausoleum" type="Node3D" unique_id=53686370]
+metadata/model = "models/props/mausoleum.glb"
+metadata/height = 5.2
+metadata/small = false
+
+[node name="model" parent="." unique_id=129772376 instance=ExtResource("1_9c177")]
+transform = Transform3D(5.210176, 0, 0, 0, 5.210176, 0, 0, 0, 5.210176, 0, 2.6, 0)
+
+[editable path="model"]

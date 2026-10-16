@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/sarcophagus.glb" id="1_af9ab"]
+
+[node name="sarcophagus" type="Node3D" unique_id=161373926]
+metadata/model = "models/props/sarcophagus.glb"
+metadata/height = 1.1
+metadata/small = true
+
+[node name="model" parent="." unique_id=223030796 instance=ExtResource("1_af9ab")]
+transform = Transform3D(1.7327625, 0, 0, 0, 1.7327625, 0, 0, 0, 1.7327625, 0, 0.55, 0)
+
+[node name="tripo_node_7a7172dd-d7b1-4d2a-95a4-b93c87e6027a" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

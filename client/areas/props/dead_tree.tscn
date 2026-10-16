@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/dead_tree.glb" id="1_2668d"]
+
+[node name="dead_tree" type="Node3D" unique_id=221106820]
+metadata/model = "models/props/dead_tree.glb"
+metadata/height = 5.5
+metadata/small = false
+
+[node name="model" parent="." unique_id=80615250 instance=ExtResource("1_2668d")]
+transform = Transform3D(5.510763, 0, 0, 0, 5.510763, 0, 0, 0, 5.510763, 0, 2.75, 0)
+
+[editable path="model"]

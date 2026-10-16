@@ -1,0 +1,34 @@
+# Assets the rebuilt client copies from godot/assets/ (same relative paths), by tools/rebuild/sync-assets.mjs.
+# One path or glob per line, relative to godot/assets/. `*` stays inside a folder, `**` crosses folders, a folder name copies it whole.
+# Godot's *.import and *.uid files are never copied. Keep each block to what its scene or system uses; add a block when the next one starts.
+
+# ---- The Hollow Graves (client/areas/graves.tscn): ground and wall textures
+slice/art/textures/grave_soil.webp
+slice/art/textures/flagstone.webp
+slice/art/textures/stone_wall.webp
+
+# ---- The Hollow Graves: props. `<name>*` is the model plus the textures Godot extracts from it (<name>_Color_/_NormalGL_/_ORM_*.webp).
+slice/models/props/bone_pile*
+slice/models/props/brazier*
+slice/models/props/candles*
+slice/models/props/coffin_stack*
+slice/models/props/dead_tree*
+slice/models/props/fence*
+slice/models/props/gibbet_cage*
+slice/models/props/grave_lantern*
+slice/models/props/kings_grave*
+slice/models/props/mausoleum*
+slice/models/props/sarcophagus*
+slice/models/props/statue*
+slice/models/props/tombstone_cross*
+slice/models/props/tombstone_round*
+slice/models/props/waystone*
+
+# ---- The Hollow Graves: gathering nodes (the Coffin-Oak and the Pauper's Grave in their live look)
+slice/models/props/prop_node_burial_mound*
+slice/models/props/prop_node_coffin_oak*
+
+# ---- Later blocks (not listed yet): the Gravecaller, the Graves roster, thralls, the Gravedigger King, effects, sounds, HUD art.
+# Licensed flipbook sheets live outside git; a line under fx/sheets/ is read from $FX_SHEETS (default ~/death-muffin/private/fx-sheets)
+# and copied into the git-ignored client/assets/fx/sheets/, for example:
+# fx/sheets/hit_flash.png

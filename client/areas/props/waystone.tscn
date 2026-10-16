@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/waystone.glb" id="1_8c2c9"]
+
+[node name="waystone" type="Node3D" unique_id=57016888]
+metadata/model = "models/props/waystone.glb"
+metadata/height = 3.0
+metadata/small = false
+
+[node name="model" parent="." unique_id=39111497 instance=ExtResource("1_8c2c9")]
+transform = Transform3D(3.0058708, 0, 0, 0, 3.0058708, 0, 0, 0, 3.0058708, 0, 1.5, 0)
+
+[editable path="model"]

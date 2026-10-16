@@ -65,10 +65,15 @@ server (B38).
 - [ ] First test build: today's game on Forward+, fixing only what stops it running → Gate A.
 
 **Test build checklist** (built ahead while Gate A waits; nothing from it reaches anyone before Gate A passes):
-- [ ] Assets: a sync tool copies the test build's assets from `godot/assets` into `client/assets` by a list (the Hollow Graves, the
-  Gravecaller, the Graves roster, thralls, the Gravedigger King, effects, sounds, HUD art).
-- [ ] The Hollow Graves as a scene: a converter from `godot/data/slice/world.json` (same layout, static colliders, offline-baked
-  navmesh, occluders, visibility ranges); the first lighting bake through Helix's helper.
+- [x] Assets: `tools/rebuild/sync-assets.mjs` copies the test build's assets from `godot/assets` into `client/assets` by the list
+  `client/assets.list`. The Hollow Graves are in it; each later item adds its block (the Gravecaller, the Graves roster, thralls, the
+  Gravedigger King, effects, sounds, HUD art).
+- [x] The Hollow Graves as a scene: `tools/rebuild/build-areas.sh graves` converts `godot/data/slice/world.json` into
+  `client/areas/graves.tscn` (same layout, static colliders, offline-baked navmesh, occluders, visibility ranges); the other 12 areas
+  use the same converter. `client/tests/area_graves.gd` proves the layout against world.json.
+- [ ] The first lighting bake of the Graves through Helix's helper.
+- [ ] Static batching: after the bake, merge each 12 m cell's static props into one mesh (about 250 draw calls for the Graves' 132
+  prop instances today; phones and weak laptops need far fewer).
 - [ ] Crowd drawing: a vertex-animation baker for the creature models and the MultiMesh crowd renderer.
 - [x] Core skeleton (native/README.md "Design"): enemy table in spawn order, heroes and bosses as external entities, tick, timers in
   doubles, seeded randomness, grid, event buffer, damage with synchronous kills, radius queries, bulk reads; `client/tests/core_api.gd`.

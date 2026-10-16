@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/gibbet_cage.glb" id="1_9e7eb"]
+
+[node name="gibbet_cage" type="Node3D" unique_id=76776395]
+metadata/model = "models/props/gibbet_cage.glb"
+metadata/height = 3.4
+metadata/small = false
+
+[node name="model" parent="." unique_id=176298930 instance=ExtResource("1_9e7eb")]
+transform = Transform3D(3.4066536, 0, 0, 0, 3.4066536, 0, 0, 0, 3.4066536, 0, 1.7, 0)
+
+[editable path="model"]

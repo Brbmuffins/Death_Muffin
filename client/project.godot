@@ -11,4 +11,19 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 
 renderer/rendering_method="forward_plus"
 renderer/rendering_method.mobile="mobile"
+textures/vram_compression/import_s3tc_bptc=true
 textures/vram_compression/import_etc2_astc=true
+occlusion_culling/use_occlusion_culling=true
+
+[layer_names]
+
+3d_physics/layer_1="world"
+3d_physics/layer_2="player"
+3d_physics/layer_3="enemy"
+3d_physics/layer_4="thrall"
+
+[importer_defaults]
+
+scene={
+"meshes/light_baking": 2
+}

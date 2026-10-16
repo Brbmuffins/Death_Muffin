@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/grave_lantern.glb" id="1_4e716"]
+
+[node name="grave_lantern" type="Node3D" unique_id=67749116]
+metadata/model = "models/props/grave_lantern.glb"
+metadata/height = 2.4
+metadata/small = false
+
+[node name="model" parent="." unique_id=257381424 instance=ExtResource("1_4e716")]
+transform = Transform3D(2.4046967, 0, 0, 0, 2.4046967, 0, 0, 0, 2.4046967, 0, 1.2, 0)
+
+[editable path="model"]

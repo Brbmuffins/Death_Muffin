@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/tombstone_round.glb" id="1_36312"]
+
+[node name="tombstone_round" type="Node3D" unique_id=145640884]
+metadata/model = "models/props/tombstone_round.glb"
+metadata/height = 1.25
+metadata/small = true
+
+[node name="model" parent="." unique_id=257212304 instance=ExtResource("1_36312")]
+transform = Transform3D(1.2524462, 0, 0, 0, 1.2524462, 0, 0, 0, 1.2524462, 0, 0.625, 0)
+
+[node name="tripo_node_186b65da-2f2c-424f-b2a5-5278b2d7953c" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]
