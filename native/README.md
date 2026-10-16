@@ -189,7 +189,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 - **`damage` on a thrall returns the health lost** (after damage taken and the barrier), not the raw amount.
 - **Crowd drawing (`DmCrowd`):** the creatures are MultiMesh instances playing baked clips, so what lived on each creature's node today is not in this pass:
   the spectral wraith's translucency (its pale-blue glow is drawn, as every body's glow is: `DmCrowd`'s glow palette), the thralls'
-  spirit rims, gear tint of kit armour and the hand props (swords, shields, bows, staffs), the moth's, bat's and seraph's wings, the burrowed ghoul's mound, the Mire Leech's wobble,
+  spirit rims, gear tint of kit armour and the hand props (swords, shields, bows, staffs), the Mire Leech's wobble,
   the Gargoyle's dive (not in the core yet), the fade-out of a sinking body (it sinks the same 0.9 s but is not faded to transparent), the drawn-body crowd separation
   (`_separate_crowd`; the core separates bodies), fire and fen death effects, the landing dust, a shattered corpse (Corpse Explosion), and the animation LOD (a far body
   updates at 24 or 10 Hz today; every drawn body updates every frame). Effects need the event consumer, which is its own item.

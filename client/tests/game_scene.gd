@@ -8,7 +8,7 @@ extends SceneTree
 ##   - the hero dies and gets up again (4 s, at the Graves' door; the core's enemies stop hitting him while he lies, and a forced death when the waves were too weak);
 ##   - killing enemies with core.damage lays corpses and plays the death path (DmEnemyFx) without errors, the corpses get their rings (capped); deaths and removals leave nothing held by the fx;
 ##   - the crowd draws the creatures: the CrowdView's groups hold an instance per live body and per corpse;
-##   - the affixed elites' standing marks and motes (gone when they fall); a status's tell (frost motes on a chilled body);
+##   - the affixed elites' standing marks and motes (gone when they fall); a status's tell (frost motes on a chilled body); the dirt mound over a ghoul underground;
 ##   - the kinds of blow (the penitent's cone, the moth's dust and cloud, the sac's slam, a hurt ghoul's dig and eruption) and the affixes' bell, meal, shroud and burst are
 ##     events of the core's buffer that DmEnemyFx played (scripted: one of each, close to the hero);
 ##   - the order of a tick (session and director, then the core, then the crowd) and that the host takes the event buffer once;
@@ -251,16 +251,26 @@ func kinds() -> void:
 	ids["ghoul"] = host.spawn_enemy("ghoul", at + Vector3(0.0, 0.0, -9.0), 1, 1.0, 1.0, false, "graves", false)
 	await ticks(3)
 	host.damage(ids["ghoul"], float(host.enemy_info(ids["ghoul"])["max_hp"]) * 0.6, b.core_id)   # under half its health it digs in
+	var mound_seen := [false, false]   # [a mound while it was underground, none once it was up again]
 	for t in 720:
 		await physics_frame
 		if t % 120 == 60:
 			b.restore_vitals()   # he is only the target
+		var st := int(host.enemy_info(ids["ghoul"]).get("state", -1)) if host.enemy_alive(ids["ghoul"]) else -1
+		var under := st == DmCoreEvents.State.BURROW or st == DmCoreEvents.State.ERUPT
+		if under and g.enemy_fx._mounds.has(ids["ghoul"]):
+			var m: Node3D = g.enemy_fx._mounds[ids["ghoul"]]
+			var p := host.enemy_position(ids["ghoul"])
+			mound_seen[0] = mound_seen[0] or Vector2(m.position.x - p.x, m.position.z - p.z).length() < 0.5
+		elif mound_seen[0] and not under and st >= 0:
+			mound_seen[1] = not g.enemy_fx._mounds.has(ids["ghoul"])
 	var got := {}
 	for k in DmCoreEvents.TELLS:
 		got[k] = int(tells.get(k, 0)) - int(seen_before.get(k, 0))
 	print("INFO the kinds' telegraphs: ", got, "; fx ", g.enemy_fx.stats, "; zones ", zones_seen - zones_before)
 	check(got["cone"] >= 1 and got["dust"] >= 1 and got["slam"] >= 1, "the penitent's cone, the moth's dust and the sac's slam were announced (%s)" % str(got))
 	check(got["erupt"] >= 1 and g.enemy_fx.stats["dig"] > int(fx_before["dig"]) and g.enemy_fx.stats["erupt"] > int(fx_before["erupt"]), "the hurt ghoul dug in and erupted: dig, tunnel, a telegraph, the eruption's fx")
+	check(mound_seen[0] and mound_seen[1], "a dirt mound rode over the ghoul while it was underground and went when it came up (%s)" % str(mound_seen))
 	check(zones_seen > zones_before and g.enemy_fx.stats["zone"] > int(fx_before["zone"]), "the moth's dust cloud is a zone the fx drew (%d)" % (zones_seen - zones_before))
 	check(g.enemy_fx.stats["telegraph"] - int(fx_before["telegraph"]) >= 4 and g.enemy_fx.stats["strike"] - int(fx_before["strike"]) >= 3, "the fx drew the telegraphs and the strikes' impacts")
 	for id in ids.values():

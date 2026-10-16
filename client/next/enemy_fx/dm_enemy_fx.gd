@@ -18,6 +18,7 @@ extends Node
 ## Near the hero, on the same ambient tick, today's status tells (_tick_alive): marrow drips while it bleeds, frost motes while chilled, a priest-gold glint while
 ## sanctified, rot while withered, bone dust while fractured, bronze motes while incensed; and the fliers' and the wraith's hover motes. The bodies looked at are
 ## only those with a status (`status_changed`) or that fly.
+## A body underground (a ghoul's BURROW and its eruption's wind-up) has today's dirt mound over it (`_mounds`, a node each: a few at most).
 ## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
 ## the elite's body glow, the censer, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the acolyte's reach ring, the Flagellant's frenzy motes.
 
@@ -54,6 +55,9 @@ var _strikes: Dictionary = {}      ## id -> [due ms, blow, aim x, aim z, def, x,
 var _next_due := INF               ## the earliest due time in _strikes
 var _rising: Dictionary = {}       ## id -> [x, z, until ms]: a body climbing out of the ground (dust while it does)
 var _burrowers: Dictionary = {}    ## id -> true: tunnelling underground (dirt where it is)
+var _mounds: Dictionary = {}       ## id -> the dirt mound over a body underground (DmEntityViews._make_mound): BURROW and the eruption's wind-up
+var _mound_mesh: SphereMesh
+var _mound_mat: StandardMaterial3D
 var _auras: Dictionary = {}        ## id -> the elite ring's handle
 var _health: Dictionary = {}       ## id -> Vector2(max hp, 1 if elite): for the heavy-hit check, until the body is removed
 var _tele := {}                    ## scratch telegraph event, reused (the router reads it synchronously)
@@ -126,7 +130,7 @@ func set_backends(p_vfx: Node, p_audio: Node) -> void:
 
 ## Creatures this fx is holding something for (a swing, a rise, a burrow, an elite ring): tests assert it stays small and empties.
 func watched() -> int:
-	return _strikes.size() + _rising.size() + _burrowers.size() + _auras.size() + _affixed.size() + _statused.size() + _hovers.size()
+	return _strikes.size() + _rising.size() + _burrowers.size() + _auras.size() + _affixed.size() + _statused.size() + _hovers.size() + _mounds.size()
 
 
 func clear() -> void:
@@ -144,6 +148,8 @@ func clear() -> void:
 	_strikes.clear()
 	_rising.clear()
 	_burrowers.clear()
+	for id in _mounds.keys():
+		_mound_off(id)
 	_health.clear()
 	_next_due = INF
 	fx.clear()
@@ -241,6 +247,10 @@ func _on_state(id: int, _prev: int, next: int) -> void:
 		_burrowers[id] = true
 	else:
 		_burrowers.erase(id)
+	if next == DmCoreEvents.State.BURROW or next == DmCoreEvents.State.ERUPT:
+		_mound_on(id)
+	else:
+		_mound_off(id)
 	match next:
 		DmCoreEvents.State.EMERGE:
 			_erupt(id)
@@ -307,6 +317,7 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 	_kill(_auras.get(id))
 	_auras.erase(id)
 	_affix_off(id)
+	_mound_off(id)
 	_statused.erase(id)
 	_hovers.erase(id)
 	_death_ev["id"] = id
@@ -323,6 +334,7 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 
 func _on_removed(id: int) -> void:
 	_health.erase(id)
+	_mound_off(id)
 	_affix_off(id)
 	_statused.erase(id)
 	_hovers.erase(id)
@@ -392,6 +404,41 @@ func _on_zone(id: int, kind: int, _source: int, x: float, z: float, radius: floa
 func _on_zone_gone(id: int) -> void:
 	if _zones.erase(id):
 		fx.zones_fx.zone_gone(id)
+
+
+## The dirt mound over a body underground (DmEntityViews._make_mound: a flattened dark hemisphere, no shadow), so the player sees where the ghoul digs.
+func _mound_on(id: int) -> void:
+	if _mounds.has(id) or not is_inside_tree() or not get_parent() is Node3D:
+		return
+	if _mound_mesh == null:
+		_mound_mesh = SphereMesh.new()
+		_mound_mesh.radius = 0.55
+		_mound_mesh.height = 1.1
+		_mound_mesh.is_hemisphere = true
+		_mound_mesh.radial_segments = 14
+		_mound_mesh.rings = 5
+		_mound_mat = StandardMaterial3D.new()
+		_mound_mat.albedo_color = Color.html("33251a")
+		_mound_mat.roughness = 1.0
+	var m := MeshInstance3D.new()
+	m.name = "Mound%d" % id
+	m.mesh = _mound_mesh
+	m.material_override = _mound_mat
+	m.scale = Vector3(1.0, 0.4, 1.3)
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var p := core_host.enemy_position(id)
+	if p != Vector3.INF:
+		m.position = Vector3(p.x, 0.0, p.z)
+	get_parent().add_child(m)
+	_mounds[id] = m
+
+
+func _mound_off(id: int) -> void:
+	var m: Variant = _mounds.get(id)
+	if m != null:
+		if is_instance_valid(m):
+			(m as Node).queue_free()
+		_mounds.erase(id)
 
 
 ## A corpse on the ground (DmEntityViews._on_corpse): every fresh corpse is a necromancer's resource and a toppled body is dark on dark ground, so a faint pale ring
@@ -514,6 +561,10 @@ func _process(dt: float) -> void:
 	fx.update(dt)
 	if _clock >= _next_due:
 		_run_due()
+	for id in _mounds:   # a mound rides over its digger (a few at most)
+		var p := core_host.enemy_position(id)
+		if p != Vector3.INF:
+			(_mounds[id] as MeshInstance3D).position = Vector3(p.x, 0.0, p.z)
 	if not _rising.is_empty() or not _burrowers.is_empty() or not _affixed.is_empty() or not _statused.is_empty() or not _hovers.is_empty():
 		_amb_t += dt
 		if _amb_t >= AMBIENT_S:
