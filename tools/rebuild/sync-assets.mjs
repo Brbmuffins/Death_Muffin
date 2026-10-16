@@ -147,7 +147,7 @@ for (const rel of [...wanted.keys()].sort()) {
 for (const rel of [...wantedProject.keys()].sort()) copyOne(rel, path.join(godotRoot, rel), path.join(clientRoot, rel), '@' + rel);
 
 // Files under client/assets that no list line names (generated `.import`/`.uid` files and .gitkeep excluded). Reported, never deleted.
-const stale = walk(dstRoot).filter((f) => !skipFile(f) && !f.endsWith('.gitkeep') && !wanted.has(f))
+const stale = walk(dstRoot).filter((f) => !skipFile(f) && !f.endsWith('.gitkeep') && !f.startsWith('crowd/baked/') && !wanted.has(f))   // crowd/baked: the crowd's generated bakes
   .concat([...projectBases].flatMap((b) => walk(path.join(clientRoot, b)).map((f) => path.posix.join(b, f))).filter((f) => !skipFile(f) && !CODE.test(f) && !wantedProject.has(f)).map((f) => '@' + f));
 
 const show = (title, arr) => {

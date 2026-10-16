@@ -12,12 +12,12 @@ The combat core writes one buffer per frame; the GPU does the rest in the vertex
 - `client/crowd/crowd_vat.gdshader`: the material. `client/crowd/crowd_vat_data.gd` (`CrowdVatData`): what a baked model loads as, plus the helpers that
   build its material and MultiMesh and pack the per-instance data.
 - `bash client/tools/bake_crowd.sh [enemy id or model slug ...]` (default: `robber hound` and the thralls the rites raise: `skeleton_thrall thrall_legionnaire thrall_sentinel thrall_plague carrion_sac bone_colossus`, 7 to 20 MB each): runs the baker at low priority.
-  Output: `client/crowd/baked/<model slug>/`.
+  Output: `client/assets/crowd/baked/<model slug>/`.
 - `client/tests/crowd_bake.gd`: the headless proof (below). `client/tests/crowd_smoke.gd`: the one rendered look (software GL).
 - `client/crowd/crowd_view.gd` (`CrowdView`): the node that draws the combat core's creatures, with `client/crowd/crowd_looks.json` (which model each enemy
   def and thrall kind is drawn with) and the C++ `DmCrowd` behind it: "Driving the crowd". Proof: `client/tests/crowd_view.gd`; look: `client/tests/crowd_view_smoke.gd`.
 
-Baked files are **generated, not committed** (`client/crowd/baked/` is ignored): the robber is 11.5 MB, so the baker belongs to the build, not the
+Baked files are **generated, not committed** (`client/assets/crowd/baked/` is ignored): the robber is 11.5 MB, so the baker belongs to the build, not the
 repository. Run `bash client/tools/bake_crowd.sh` before a publish; the test bakes into a scratch folder by itself.
 
 ## What is baked
@@ -50,7 +50,7 @@ per-creature phase did.
 ## Drawing
 
 ```
-var data: CrowdVatData = load("res://crowd/baked/grave_robber/model.tres")
+var data: CrowdVatData = load("res://assets/crowd/baked/grave_robber/model.tres")
 var mm := data.make_multimesh(count, lod)            # use_colors and use_custom_data on
 mmi.material_override = data.make_material(albedo, orm)   # res://assets/ + data.albedo_path
 ```
@@ -144,7 +144,7 @@ Numbers are today's, from the file named; where the live game and `dm_entity_vie
 
 `crowd_looks.json` is today's `dm_entity_views.gd` tables as data: the model of each enemy def (`ENEMY_SLUG`) and thrall kind (`THRALL_SLUG`), the legions' models and tints, the
 thralls' own looks, the casters, the hover heights. `CrowdView.setup` turns them into `DmCrowd.set_enemy_look` and `set_thrall_look` (per kind and legion), loads each baked model it
-needs from `res://crowd/baked/<slug>/` (the `baked_dir` option) and builds its nodes. A def whose model is not baked is drawn with the nearest one that is: the rig fallback of today's
+needs from `res://assets/crowd/baked/<slug>/` (the `baked_dir` option) and builds its nodes. A def whose model is not baked is drawn with the nearest one that is: the rig fallback of today's
 game, else a baked model of the same rig (`enemies.json` `rig`), else the skeleton, else any baked model; each substitution is listed once in `CrowdView.warnings` (and `push_warning`).
 A model with no colour texture is drawn white and listed too.
 

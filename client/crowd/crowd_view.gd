@@ -11,7 +11,7 @@ extends Node3D
 ##   view.set_owner_legion(hero_core_id, "gravecaller")
 
 const LOOKS_PATH := "res://crowd/crowd_looks.json"
-const BAKED_DIR := "res://crowd/baked"
+const BAKED_DIR := "res://assets/crowd/baked"   # generated, not in git: ships in the assets pack (publish-godot-client.sh)
 ## Camera distances (metres) where a model's level of detail 1, 2 ... start. The camera sits about 22 m up and back, so a creature in view is 20 to 45 m away.
 const LOD_DISTANCES := [32.0, 60.0]
 ## Instances every group (model, level of detail, shadow) is sized for at loading: a wave of one model then never grows a MultiMesh.

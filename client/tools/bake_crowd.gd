@@ -1,8 +1,8 @@
 extends SceneTree
 ## Bakes creature models for crowd drawing. Run through tools/bake_crowd.sh, or:
 ##   godot --headless --path client --script res://tools/bake_crowd.gd -- robber hound
-## Names are enemy ids (godot/data/content/enemies.json) or model slugs. Output: res://crowd/baked/<model slug>/ (not committed).
-## Options: --out=res://crowd/baked  --assets=<folder holding slice/>  --max-triangles=5000
+## Names are enemy ids (godot/data/content/enemies.json) or model slugs. Output: res://assets/crowd/baked/<model slug>/ (not committed).
+## Options: --out=res://assets/crowd/baked  --assets=<folder holding slice/>  --max-triangles=5000
 
 const CrowdBakerScript := preload("res://crowd/crowd_baker.gd")
 
@@ -10,7 +10,7 @@ const CrowdBakerScript := preload("res://crowd/crowd_baker.gd")
 func _initialize() -> void:
 	await process_frame   # the scene tree is live from the first frame; animation players need it
 	var names: Array[String] = []
-	var out := "res://crowd/baked"
+	var out := "res://assets/crowd/baked"
 	var opts := {}
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--out="):
@@ -22,7 +22,7 @@ func _initialize() -> void:
 		else:
 			names.append(a)
 	if names.is_empty():
-		printerr("usage: bake_crowd.gd -- <enemy id or model slug>... [--out=res://crowd/baked] [--assets=dir] [--max-triangles=5000]")
+		printerr("usage: bake_crowd.gd -- <enemy id or model slug>... [--out=res://assets/crowd/baked] [--assets=dir] [--max-triangles=5000]")
 		quit(2)
 		return
 	var failed := false

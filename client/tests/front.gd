@@ -24,7 +24,7 @@ const TEST_API := "https://muffindevelopment.com/death-muffin/test-api"
 const LIVE_API := "https://muffindevelopment.com/death-muffin/api"
 const LIVE_LOBBY := "wss://muffindevelopment.com/death-muffin/lobby/"
 const SCAN_EXT := ["gd", "tscn", "tres", "json", "cfg", "godot", "gdshader", "gdshaderinc", "txt", "csv"]
-const SCAN_SKIP := ["tests", "assets", "addons", ".godot", "bin", "crowd/baked", "ui/fonts"]   # ui/fonts: the fonts' licence texts carry their authors' web addresses
+const SCAN_SKIP := ["tests", "assets", "addons", ".godot", "bin", "assets/crowd/baked", "ui/fonts"]   # ui/fonts: the fonts' licence texts carry their authors' web addresses
 
 # The throwaway player of the mock backend: made up for each run, it exists only in memory in this process. No real account, password or token appears in this suite.
 var PLAYER := "mock%d" % (100000 + randi() % 900000)

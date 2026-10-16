@@ -83,7 +83,10 @@ rm -f "$STAGE/import.log" "$STAGE/export.log"
 if [ -f "$WT/tools/godot/assets-pack.sh" ]; then
   CACHE="$WORK/assets-cache"; mkdir -p "$CACHE"
   FP=$( { [ "$PROJECT" = godot ] || echo "$PROJECT"   # godot/'s fingerprint stays what it was, so the live pack is still reused
-          (cd "$WT/$PROJECT" && find assets -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
+          # The crowd's bakes (client/assets/crowd/baked, generated: not byte-reproducible) count by their inputs, below, not their bytes.
+          (cd "$WT/$PROJECT" && find assets -path assets/crowd/baked -prune -o -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
+          [ "$PROJECT" = godot ] || (cd "$WT" && sha256sum client/crowd/crowd_baker.gd client/crowd/crowd_vat_data.gd client/crowd/crowd_looks.json \
+            client/tools/bake_crowd.gd client/tools/bake_crowd.sh godot/game/view_models.json godot/data/content/enemies.json)
           (cd "$WT" && sha256sum "$PROJECT/export_presets.cfg" "$PROJECT/project.godot" tools/godot/assets-pack.sh tools/godot/pck_extract.py tools/godot/pck_pack.gd)
           "$GODOT" --version; } | sha256sum | cut -c1-16)
   if [ -s "$CACHE/$FP.pck" ]; then echo "== assets pack: unchanged ($FP), reused"

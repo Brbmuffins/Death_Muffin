@@ -137,9 +137,9 @@ server (B38).
 - [x] Core obstacles: Ossuary Wall solid for the core's enemies (`DmCore.add_obstacle`, a box the core keeps enemies out of and their steering
   slides along; `client/tests/core_enemies.gd` obstacles, `client/tests/rites.gd`). A later rite or boss barrier uses the same call.
 - [ ] The rebuild on the test channel: `publish-test-channel.sh <rev>` exports `client/` (`publish-godot-client.sh` with `PROJECT=client`,
-  `prepare-rebuild.sh`: the combat core, the sheets, the crowd's bakes), proven in a dry run (2026-10-16: 109 MB exe, 179 MB code pack, 103 MB
-  assets pack). The first publish waits for the benchmark in the client. Then: the crowd's bakes (164 MB of the code pack) move into a pack of
-  their own or the assets pack, so a code-only build is a small download.
+  `prepare-rebuild.sh`: the combat core, the sheets, the crowd's bakes), proven in dry runs (2026-10-16). The crowd's bakes live under
+  `client/assets/crowd/baked` and ship in the assets pack, counted by their inputs (baker, looks, models), so a code-only build is a 15 MB code
+  pack and the 268 MB assets pack is reused. The first publish waits for the benchmark in the client.
 - [ ] The new HUD and the Low to Ultra presets:
   - [ ] The HUD, same layout and look, under 150 draw calls: built, **not yet measured**. `DmNextHud` runs today's HUD in the game scene from the core (orbs, hotbar with cooldowns and the cast state, target frame
     with statuses, minimap, thrall pips, "no corpse" dimming, floating numbers with today's caps, XP and level, area line, banners, the King's plate and map dot, the death veil), every readout group a movable, scalable piece

@@ -18,8 +18,8 @@ func _initialize() -> void:
 		if a.begins_with("--out="):
 			out = a.substr(6)
 	var assets := Baker.default_assets_dir()
-	var robber: CrowdVatData = load("res://crowd/baked/grave_robber/model.tres")
-	var hound: CrowdVatData = load("res://crowd/baked/bone_hound/model.tres")
+	var robber: CrowdVatData = load("res://assets/crowd/baked/grave_robber/model.tres")
+	var hound: CrowdVatData = load("res://assets/crowd/baked/bone_hound/model.tres")
 	if robber == null or hound == null:
 		printerr("FAIL crowd_smoke: bake the models first (tools/bake_crowd.sh)")
 		quit(1)

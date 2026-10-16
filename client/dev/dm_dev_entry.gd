@@ -13,7 +13,7 @@ extends Node
 ## (Command: Rend). WASD walks. Click-to-move, camera zoom on the wheel.
 ##
 ## Options: --class=N (discipline index, default 2 = Gravecaller), --level=N (the character's level, default 10: R works from 10, Bone Mantle from 12, Bone Storm from 14), --seed=N (the combat core's seed), --no-waves, --crowd=N (a first wave of N bodies 6 to 12 m
-## around the hero, and waves of N after it, up to N alive: a look at a big fight), --boss (the hero starts at the King's grave and wakes the Gravedigger King: a look at his fight), --baked=<dir> (the baked crowd models; default res://crowd/baked: `bash client/tools/bake_crowd.sh` makes the robber and the hound),
+## around the hero, and waves of N after it, up to N alive: a look at a big fight), --boss (the hero starts at the King's grave and wakes the Gravedigger King: a look at his fight), --baked=<dir> (the baked crowd models; default res://assets/crowd/baked: `bash client/tools/bake_crowd.sh` makes the robber and the hound),
 ## --shot=<png> [--shot-after=<game seconds, default 25>] [--shot-wall=<real seconds, default none>] (save a screenshot and quit: the QA hook; software GL runs slower than the game, so
 ## --shot-wall takes the picture when that many real seconds have gone even if the game time has not come).
 
