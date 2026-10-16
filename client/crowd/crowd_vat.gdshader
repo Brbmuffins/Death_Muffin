@@ -13,7 +13,8 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 //   COLOR.rgb          linear tint multiplier (white = the texture as is)
 //   COLOR.a            glow slot * 2 + hit flash 0..1: the slot picks the body's glow from `glow_palette` (0 = this model's own `emis`, `emis_k`), the
 //                      flash is the game's emissive lerp toward the flash colour (in eighths, so exact in a half float up to slot 63)
-// Per vertex: CUSTOM0.x = the vertex's animation id (a column of the baked textures; UV seams share one id).
+// Per vertex: CUSTOM0.x = the vertex's animation id (a column of the baked textures; UV seams share one id), CUSTOM0.y = its material part: 0 the
+// body (the textures above), k a hand prop's part k (a thrall variant's sword, shield, bow or staff: `part_*`, no tint, flash or glow, as today's props).
 
 // The model's own textures, as DmCreatureMat takes them from the glTF material (no normal map: the crowd mesh has no tangents).
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
@@ -27,6 +28,10 @@ uniform vec3 emis = vec3(0.0);
 uniform float emis_k = 0.0;
 // Per-body glows (DmCrowd.glow_palette: linear rgb + strength): the elite's, the risen's, a legion's thralls'... Slot 0 is unused (the model's own above).
 uniform vec4 glow_palette[64];
+// Hand props' parts (CrowdVatData.part_*): linear albedo, (metallic, roughness, -, -), linear emission.
+uniform vec4 part_albedo[8];
+uniform vec4 part_pbr[8];
+uniform vec4 part_emission[8];
 
 // Baked animation: positions (RGBAH, xyz in the creature's space) and normals (RG8, octahedral), one frame = rows_per_frame rows.
 uniform sampler2D vat_pos : filter_nearest, repeat_disable;
@@ -41,6 +46,7 @@ const float FLASH_EMISSIVE = 0.16;                    // DmCreature._apply_flash
 
 varying float v_flash;
 varying flat vec4 v_glow;
+varying flat float v_part;
 
 ivec2 vat_texel(int frame, int id) {
 	int r = id / vat_width;
@@ -99,18 +105,27 @@ void vertex() {
 	float slot = floor(COLOR.a * 0.5 + 0.001);
 	v_flash = clamp(COLOR.a - slot * 2.0, 0.0, 1.0);
 	v_glow = slot > 0.5 ? glow_palette[clamp(int(slot), 1, 63)] : vec4(emis, emis_k);
+	v_part = CUSTOM0.y;
 }
 
 void fragment() {
-	vec4 a = texture(albedo_tex, UV) * albedo_col;
-	ALBEDO = a.rgb * COLOR.rgb;
-	if (use_orm) {
-		vec3 orm = texture(orm_tex, UV).rgb;
-		ROUGHNESS = clamp(orm.g * rough_f, 0.04, 1.0);
-		METALLIC = clamp(orm.b * metal_f, 0.0, 1.0);
+	if (v_part > 0.5) {   // a hand prop: its own flat material
+		int k = clamp(int(v_part + 0.5) - 1, 0, 7);
+		ALBEDO = part_albedo[k].rgb;
+		METALLIC = part_pbr[k].x;
+		ROUGHNESS = part_pbr[k].y;
+		EMISSION = part_emission[k].rgb;
 	} else {
-		ROUGHNESS = rough_f;
-		METALLIC = 0.0;
+		vec4 a = texture(albedo_tex, UV) * albedo_col;
+		ALBEDO = a.rgb * COLOR.rgb;
+		if (use_orm) {
+			vec3 orm = texture(orm_tex, UV).rgb;
+			ROUGHNESS = clamp(orm.g * rough_f, 0.04, 1.0);
+			METALLIC = clamp(orm.b * metal_f, 0.0, 1.0);
+		} else {
+			ROUGHNESS = rough_f;
+			METALLIC = 0.0;
+		}
+		EMISSION = mix(v_glow.rgb, FLASH_COLOR, v_flash) * (v_glow.a + v_flash * FLASH_EMISSIVE);
 	}
-	EMISSION = mix(v_glow.rgb, FLASH_COLOR, v_flash) * (v_glow.a + v_flash * FLASH_EMISSIVE);
 }

@@ -166,6 +166,20 @@ function (mirrored line by line in the test) against true skeleton poses at rand
 Forward+-only or screen-dependent built-ins. Headless Godot has no renderer, so GLSL itself compiles only in `crowd_smoke.gd` (Compatibility, llvmpipe);
 Forward+ and Mobile run it the first time on a real GPU.
 
+### Hand props
+
+A thrall that holds a weapon today (DmEntityViews._make_thrall: a warrior or shieldbearer under an armed legion or none, every archer and bone mage) is drawn with a
+variant of its body, `<model>+<kind>` (`thrall_legionnaire+warrior`, `skeleton_thrall+archer` ...), baked by `bake_crowd.sh` like any model. The baker builds today's props
+(`DmGearProps.bone_sword`, `round_shield`, `bone_bow`, `bone_staff`, from `crowd_looks.json` `thrall_props`: builder, bone, `dir`, `follow`) and adds their triangles to the mesh
+with animation ids of their own, placed every baked frame the way `DmCreature.attach` holds them: calibrated on the idle pose where today's calibration runs (the body settled
+0.25 s, then 4 frames: `PROP_CALIBRATE_S`), then the hand's rotation times the calibrated one, its up pulled toward `dir` by 1 - `follow`. Their vertices carry their material
+part in `CUSTOM0.y` (0 the body), and the material reads the part's flat colour, metallic, roughness and emission from `part_albedo` / `part_pbr` / `part_emission` (`CrowdVatData`;
+no tint, flash or glow, as today's props). CrowdView picks the variant when it is baked and says once when it is not (the plain body then). A variant never stands in for another
+model. Not today's: the props cast shadows with the body (today's never did), today recalibrates a prop that drifts 25 degrees and each thrall calibrates on its own moment (a
+shield can sit 20 to 40 degrees differently), the kit weapon's tier colour is not applied, and on Compatibility the props' metal reads darker than today's material (the look pass).
+`client/tests/crowd_bake.gd` bakes `thrall_legionnaire+warrior` and checks the parts, the calibration (each prop's up along its `dir`, held at the hand) and every frame against the formula;
+`client/tests/crowd_view.gd` checks which thralls get a variant.
+
 ## Differences from the creature material (`godot/game/dm_creature_mat.gd`)
 
 No normal map (the crowd mesh has no tangents), no gear regions, spectral fade or friend rim; the per-body glow comes from a palette (`DmCrowd.glow_palette`, today's emissive colours and strengths from `crowd_looks.json`: an elite's purple, the risen's, a legion's thralls' with the empowered and champion boosts) that CrowdView pushes to every material when a new glow comes into play; two-sided like most

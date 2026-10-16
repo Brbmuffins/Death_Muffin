@@ -176,6 +176,15 @@ func _register_thralls() -> void:
 				var lid := "mourner" if kind == "wraith" else (String(_looks.legion_order[li]) if li >= 0 else "")
 				legion = _looks.legion.get(lid)
 			var wanted := String(legion.slug) if legion != null else String(_looks.thrall_model[kind])
+			# The hand props (DmEntityViews._make_thrall): a warrior or shieldbearer under an armed legion (or none), any archer or bone mage, drawn
+			# with the "<model>+<kind>" variant the baker made; without it, the plain body and a warning.
+			var armed: bool = legion == null or bool(legion.get("armed", false))
+			if _looks.get("thrall_props", {}).has(kind) and (kind == "archer" or kind == "bonemage" or armed):
+				var variant: String = wanted + "+" + String(kind)
+				if _baked.has(variant):
+					wanted = variant
+				elif _baked.has(wanted):
+					_warn("no baked variant %s: drawn without its hand props" % variant)
 			var slug := _model_for(wanted, "")
 			if slug == "":
 				continue
@@ -205,7 +214,7 @@ func _model_for(wanted: String, def: String) -> String:
 			if rig != "" and String(_enemy_defs.get(other, {}).get("rig", "")) == rig:
 				chain.append(String(_looks.enemy_model[other]))
 	chain.append("skeleton_thrall")
-	var all := _baked.keys()
+	var all := _baked.keys().filter(func(k: String) -> bool: return not k.contains("+"))   # a thrall variant carries props: never a stand-in
 	all.sort()
 	chain.append_array(all)
 	for c in chain:

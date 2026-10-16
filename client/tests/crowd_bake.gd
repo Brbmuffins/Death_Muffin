@@ -33,6 +33,7 @@ func _initialize() -> void:
 		_test_model(slug)
 	for slug in ["shroud_moth", "tithe_bat"]:
 		_test_unrigged(slug)
+	_test_props("thrall_legionnaire+warrior")
 	_test_decimation()
 	_test_shader()
 	_test_packing()
@@ -119,14 +120,17 @@ func _test_model(slug: String) -> void:
 	for l in data.meshes.size():
 		var a := data.meshes[l].surface_get_arrays(0)
 		var custom: PackedFloat32Array = a[Mesh.ARRAY_CUSTOM0]
-		check(a[Mesh.ARRAY_VERTEX].size() == verts.size() and custom.size() == verts.size(), "%s: level %d keeps the vertex array" % [slug, l])
+		check(a[Mesh.ARRAY_VERTEX].size() == verts.size() and custom.size() == verts.size() * 2, "%s: level %d keeps the vertex array (CUSTOM0: id, part)" % [slug, l])
 		check((a[Mesh.ARRAY_INDEX] as PackedInt32Array).size() / 3 == data.lod_triangles[l], "%s: level %d triangle count" % [slug, l])
 		check(_extent(a[Mesh.ARRAY_INDEX]).y < verts.size(), "%s: level %d indexes the vertex array" % [slug, l])
 		check(a[Mesh.ARRAY_TEX_UV] == src[Mesh.ARRAY_TEX_UV], "%s: level %d keeps the UVs" % [slug, l])
 		check(data.meshes[l].custom_aabb == data.aabb, "%s: level %d bounds are the baked poses'" % [slug, l])
 		if l == 0:
-			for v in custom:
-				ids.append(int(v))
+			var body := true
+			for i in verts.size():
+				ids.append(int(custom[i * 2]))
+				body = body and custom[i * 2 + 1] == 0.0
+			check(body, "%s: every vertex is the body's (part 0)" % slug)
 	check(ids.size() == verts.size() and _extent(ids) == Vector2i(0, data.anim_vertex_count - 1), "%s: animation ids cover 0..%d" % [slug, data.anim_vertex_count - 1])
 
 	# Rest pose: the glTF's inverse binds undo the rest skeleton up to one common transform (the dequantised GLBs carry a scale there), so the
@@ -403,7 +407,7 @@ func _test_unrigged(slug: String) -> void:
 	var custom: PackedFloat32Array = baked[Mesh.ARRAY_CUSTOM0]
 	var ids := PackedInt32Array()
 	for i in verts.size():
-		ids.append(int(custom[i]))
+		ids.append(int(custom[i * 2]))
 	var pos_img := data.pos_tex.get_image()
 	var nrm_img := data.nrm_tex.get_image()
 	# The shader's frame (DmCreature: wing_vec, wing_root, wing_axis from the mesh's own box).
@@ -440,3 +444,82 @@ func _test_unrigged(slug: String) -> void:
 	print("INFO %s: unrigged, %d frames of one %.3f s wing beat, worst %.2f mm off today's shader formula" % [slug, Baker.FLAP_FRAMES, period, worst * 1000.0])
 	check(worst <= POS_TOLERANCE, "%s: every frame is today's wing beat (worst %.1f mm)" % [slug, worst * 1000.0])
 	(m.root as Node).free()
+
+
+
+## A thrall variant: the warrior's sword and shield baked onto its hands (DmEntityViews._make_thrall, DmCreature.attach / _calibrate / _tick_props).
+## The body is the plain model's, the props are extra vertices with their own animation ids and material parts; at the calibration pose (PROP_CALIBRATE_S
+## into the idle loop) each prop's up is exactly its `dir` in creature space and its origin is the hand's, and every baked frame holds the props where
+## today's formula puts them for that frame's pose.
+func _test_props(variant: String) -> void:
+	var r: Dictionary = Baker.bake(root, variant, OUT.path_join(variant))
+	check(r.ok, "%s: bakes (%s)" % [variant, r.get("error", "")])
+	if not r.ok:
+		return
+	var data: CrowdVatData = ResourceLoader.load(OUT.path_join(variant).path_join("model.tres"), "", ResourceLoader.CACHE_MODE_REPLACE)
+	var plain: Dictionary = Baker.load_model(root, "thrall_legionnaire", Baker.default_assets_dir(), Baker.default_rows_path())
+	var src_vc: int = ((plain.mesh_instance as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	var specs := Baker.props_for("warrior")
+	var g := Baker._prop_geometry(specs)
+	var up: int = (g.verts as PackedVector3Array).size()
+	check(data.slug == variant and data.part_albedo.size() == 3 and data.part_pbr.size() == 3 and data.part_emission.size() == 3,
+		"%s: the sword's metal, the shield's wood and its glowing boss are its prop parts (%d)" % [variant, data.part_albedo.size()])
+	check(data.part_emission[2].v > 0.1 and data.part_emission[0].v == 0.0, "%s: only the shield boss glows, as today's" % variant)
+	var a := data.meshes[0].surface_get_arrays(0)
+	var custom: PackedFloat32Array = a[Mesh.ARRAY_CUSTOM0]
+	var vc: int = (a[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	var parts_ok := vc == src_vc + up
+	for i in vc:
+		parts_ok = parts_ok and ((custom[i * 2 + 1] == 0.0) if i < src_vc else (custom[i * 2 + 1] >= 1.0 and custom[i * 2 + 1] <= 3.0))
+	check(parts_ok, "%s: the body's %d vertices are part 0, the props' %d follow with parts 1..3" % [variant, src_vc, up])
+	# the calibration pose: each prop's up is its dir, its origin the hand bone's
+	var rig := Baker._prop_rig(plain, specs, "idle")
+	var at := PackedVector3Array()
+	var an := PackedVector3Array()
+	at.resize(up)
+	an.resize(up)
+	Baker.pose_at(plain, "idle", Baker.PROP_CALIBRATE_S)
+	Baker._place_props(plain, {"g": g, "rig": rig}, at, an, 0)
+	var sk: Skeleton3D = plain.skeleton
+	for s in specs.size():
+		var spec: Dictionary = specs[s]
+		var hand := ((plain.place as Transform3D) * sk.get_bone_global_pose(int(rig[s].bone))).origin
+		var d: Array = spec.dir
+		var dir := Vector3(float(d[0]), float(d[1]), float(d[2])).normalized()
+		# the prop's own up: a vertex at prop-space (0, y, 0) lands at hand + y * up
+		var lo := INF
+		var hi := -INF
+		var v_lo := Vector3.ZERO
+		var v_hi := Vector3.ZERO
+		for j in up:
+			if (g.owner as PackedInt32Array)[j] != s:
+				continue
+			var y := ((g.verts as PackedVector3Array)[j]).y
+			if y < lo:
+				lo = y
+				v_lo = at[j]
+			if y > hi:
+				hi = y
+				v_hi = at[j]
+		var axis := (v_hi - v_lo).normalized()
+		check(rad_to_deg(axis.angle_to(dir)) < 25.0, "%s: %s stands along its dir at calibration (%.1f deg; the prop is not a stick, so its extremes only sketch the up)" % [variant, spec.build, rad_to_deg(axis.angle_to(dir))])
+		var near_hand := INF
+		for j in up:
+			if (g.owner as PackedInt32Array)[j] == s:
+				near_hand = minf(near_hand, at[j].distance_to(hand))
+		check(near_hand < 0.6, "%s: %s is held at the hand (nearest vertex %.2f m)" % [variant, spec.build, near_hand])
+	# every frame of the texture holds the props where the formula puts them for that frame's pose
+	var pos_img := data.pos_tex.get_image()
+	var worst := 0.0
+	for c in data.clip_names.size():
+		var tb: Vector4 = data.clip_table[c]
+		for f in [0, int(tb.y) - 1]:
+			Baker.pose_at(plain, data.clip_names[c], minf(float(f) / maxf(tb.z, 0.001), data.clip_seconds[c]))
+			Baker._place_props(plain, {"g": g, "rig": rig}, at, an, 0)
+			for j in range(0, up, 7):
+				var t := _texel(data, int(tb.x) + f, data.anim_vertex_count - up + j)
+				var p := pos_img.get_pixel(t.x, t.y)
+				worst = maxf(worst, (Vector3(p.r, p.g, p.b) - at[j]).length())
+	check(worst < POS_TOLERANCE * 2.0, "%s: the baked frames hold the props where the formula puts them (worst %.1f mm)" % [variant, worst * 1000.0])
+	print("INFO %s: %d body + %d prop vertices, %d animation ids, worst prop texel %.1f mm" % [variant, src_vc, up, data.anim_vertex_count, worst * 1000.0])
+	(plain.root as Node).free()

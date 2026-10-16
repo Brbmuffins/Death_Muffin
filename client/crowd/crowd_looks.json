@@ -38,6 +38,13 @@
     "colossus": {"tint": "ffffff", "emissive": "1f8f86", "glow": 0.1, "ring": 1.7}
   },
   "thrall_tint": {"default": "f4ecff", "wraith": "b9c4ff"},
+  "thrall_props_about": "DmEntityViews._make_thrall: the props each kind holds (DmGearProps builder, its argument, the bone, DmCreature.attach's dir and follow). Warriors and shieldbearers only under an armed legion (or none); archers and bone mages always. Baked as '<model>+<kind>' variants.",
+  "thrall_props": {
+    "warrior": [{"build": "bone_sword", "bone": "R_Hand", "dir": [0, 1, 0.55], "follow": 0.6}, {"build": "round_shield", "arg": 0.32, "bone": "L_Hand", "dir": [0, 1, 0], "follow": 0.5}],
+    "shieldbearer": [{"build": "bone_sword", "bone": "R_Hand", "dir": [0, 1, 0.55], "follow": 0.6}, {"build": "round_shield", "arg": 0.5, "bone": "L_Hand", "dir": [0, 1, 0], "follow": 0.5}],
+    "archer": [{"build": "bone_bow", "bone": "L_Hand", "dir": [0, 1, 0], "follow": 0.5}],
+    "bonemage": [{"build": "bone_staff", "bone": "R_Hand", "dir": [0, 1, 0.12], "follow": 0.15}]
+  },
   "thrall_glow_about": "DmEntityViews._make_thrall: the look's or the legion's emissive and glow, else default; the wraith's own; + empowered (not the wraith) and + champion",
   "thrall_glow": {"default": ["1f8f86", 0.18], "wraith": ["8f9ed1", 1.1], "empowered": 0.22, "champion": 0.35},
   "thrall_scale": {"shieldbearer": 1.1},

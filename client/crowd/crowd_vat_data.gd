@@ -44,6 +44,13 @@ const BUFFER_STRIDE := 20
 ## Level of detail 0 first. Every level shares the vertex array (and so the animation ids), only the index list shrinks.
 @export var meshes: Array[Mesh] = []
 @export var lod_triangles := PackedInt32Array()
+## Hand props baked into a thrall variant ("<model>+<kind>"): their material parts (CUSTOM0.y = part, 1-based), linear albedo, (metallic, roughness, -, -)
+## and linear emission (x energy). Empty for a model without props.
+@export var part_albedo := PackedColorArray()
+@export var part_pbr := PackedVector4Array()
+@export var part_emission := PackedColorArray()
+
+const MAX_PARTS := 8
 
 
 func clip_index(clip_name: String) -> int:
@@ -80,6 +87,19 @@ func make_material(albedo: Texture2D, orm: Texture2D = null) -> ShaderMaterial:
 	var table := PackedVector4Array(clip_table)
 	table.resize(MAX_CLIPS)
 	m.set_shader_parameter("vat_clips", table)
+	if not part_albedo.is_empty():   # the hand props' own materials
+		var alb := PackedVector4Array()
+		var pbr := PackedVector4Array(part_pbr)
+		var emi := PackedVector4Array()
+		for i in part_albedo.size():
+			alb.append(Vector4(part_albedo[i].r, part_albedo[i].g, part_albedo[i].b, 1.0))
+			emi.append(Vector4(part_emission[i].r, part_emission[i].g, part_emission[i].b, 0.0))
+		alb.resize(MAX_PARTS)
+		pbr.resize(MAX_PARTS)
+		emi.resize(MAX_PARTS)
+		m.set_shader_parameter("part_albedo", alb)
+		m.set_shader_parameter("part_pbr", pbr)
+		m.set_shader_parameter("part_emission", emi)
 	return m
 
 

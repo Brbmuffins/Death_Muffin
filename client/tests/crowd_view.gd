@@ -48,6 +48,16 @@ const SETTLE_DEPTH := 0.06
 
 var fails := 0
 var checks := 0
+class ErrorLog:
+	extends Logger
+	var errors: Array[String] = []
+
+	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _backtraces: Array[ScriptBacktrace]) -> void:
+		if error_type != Logger.ERROR_TYPE_WARNING:
+			errors.append("%s:%d %s %s %s" % [file, line, function, code, rationale])
+
+
+var errlog := ErrorLog.new()
 var godot_dir: String
 var live_assets: String   ## where the models' sources are: skeleton_thrall is not synced into client/assets yet
 var data := {}      ## model slug -> CrowdVatData
@@ -280,6 +290,7 @@ func clip_impact(slug: String, clip: String) -> float:
 
 func _initialize() -> void:
 	await process_frame   # the scene tree is live from the first frame; animation players need it
+	OS.add_logger(errlog)
 	godot_dir = ProjectSettings.globalize_path("res://").path_join("../godot")
 	DirAccess.make_dir_recursive_absolute(OUT)
 	live_assets = godot_dir.path_join("assets")
@@ -304,7 +315,9 @@ func _initialize() -> void:
 	shadows_and_lod()
 	interpolation()
 	full_party()
+	armed_variants()
 	_remove_dir(OUT)
+	check(errlog.errors.is_empty(), "zero script errors or engine errors in the log (%d: %s)" % [errlog.errors.size(), "; ".join(errlog.errors.slice(0, 3))])
 	print("INFO crowd_view: %d checks" % checks)
 	if fails > 0:
 		printerr("FAIL crowd_view: %d of %d checks failed" % [fails, checks])
@@ -1224,6 +1237,42 @@ func glows(view: CrowdView, crowd: RefCounted, core: RefCounted, ids: Array, her
 	var on_mat: Variant = view._materials[0].get_shader_parameter("glow_palette")
 	check(on_mat is PackedVector4Array and (on_mat as PackedVector4Array).size() == 64 and Vector4(pal[1].r, pal[1].g, pal[1].b, pal[1].a).is_equal_approx((on_mat as PackedVector4Array)[1]),
 		"every model's material has the palette")
+
+
+## Thralls with hand props (DmEntityViews._make_thrall): a warrior with no legion or an armed one is drawn with the "<model>+warrior" variant when it is baked;
+## a Rotweaver's (unarmed legion) stays bare; a kind whose variant is not baked keeps its plain body and says so once. A variant is never a stand-in for another model.
+func armed_variants() -> void:
+	var r: Dictionary = Baker.bake(root, "skeleton_thrall+warrior", OUT.path_join("skeleton_thrall+warrior"), {"assets_dir": live_assets})
+	check(r.ok, "bake skeleton_thrall+warrior: %s" % r.get("error", ""))
+	if not r.ok:
+		return
+	var enemies_json: Dictionary = DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))
+	var core: RefCounted = ClassDB.instantiate("DmCore")
+	DmCoreData.load_all(core, godot_dir)
+	core.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
+	var view := CrowdView.new()
+	view.auto_sync = false
+	root.add_child(view)
+	view.setup(core, enemies_json["ENEMIES"], Vector2(-60, -60), Vector2(60, 60), {"baked_dir": OUT, "assets_dir": live_assets})
+	var slots := view.model_slots()
+	check(slots.has("skeleton_thrall+warrior"), "the warrior's variant is a model of the view (%s)" % str(slots.keys()))
+	check(not Array(view.warnings).any(func(w: String) -> bool: return w.contains("drawn as skeleton_thrall+")), "a variant is never a stand-in for another model")
+	check(view.warnings.has("no baked variant skeleton_thrall+archer: drawn without its hand props"), "an archer without its baked variant keeps its plain body, said once")
+	var bare: int = core.add_external(0, 0.4, 1.0)
+	var rot: int = core.add_external(0, 0.4, 1.0)
+	view.set_owner_legion(rot, "rotweaver")
+	var b: Array = THRALL_BASE["warrior"]
+	var stats := {"kind": "warrior", "hp": 100.0, "maxHp": 100.0, "damage": 0.0, "attackInterval": b[1], "range": b[0], "speed": b[2], "empowered": false, "champion": false, "allyHeal": 0.0}
+	var t_bare: int = core.raise_thrall(stats, bare, Vector2(0, 0), 0.0, 20.0)
+	var t_rot: int = core.raise_thrall(stats, rot, Vector2(3, 0), 0.0, 20.0)
+	for f in 3:
+		core.step(DT)
+		view.sync()
+		view.crowd.draw(DT, 0.0, CAM)
+		core.take_events()
+	check(int(view.crowd.view_info(t_bare).model) == int(slots["skeleton_thrall+warrior"]), "a warrior with no legion carries its sword and shield (the variant)")
+	check(int(view.crowd.view_info(t_rot).model) != int(slots["skeleton_thrall+warrior"]), "a Rotweaver's warrior is bare: its legion is unarmed")
+	view.queue_free()
 
 
 func lockstep(core: RefCounted, view: CrowdView, guest: RefCounted, alpha: float) -> void:
