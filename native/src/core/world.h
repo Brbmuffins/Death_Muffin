@@ -268,6 +268,10 @@ struct World {
 	// host
 	void set_replication(bool p_on);                           // start or stop collecting reliable events (the cursor starts at the end of the event buffer)
 	void write_snapshot(std::vector<uint8_t> &r_out, uint32_t p_tick);
+	size_t write_snapshot_parts(std::vector<std::vector<uint8_t>> &r_parts, uint32_t p_first_tick, size_t p_max_bytes);  // the same snapshot as messages of at most p_max_bytes
+	void put_snap_enemy(ByteWriter &w, const Enemy &e, int32_t &r_prev, double p_ox, double p_oz);
+	void put_snap_thrall(ByteWriter &w, const Thrall &t, int32_t &r_prev, double p_ox, double p_oz);
+	std::vector<uint8_t> snap_body;                            // scratch of write_snapshot_parts (the records of the part being built)
 	void pump_reliable();                                      // encode the events since the last pump (take_events calls it before it clears the buffer)
 	bool take_reliable(std::vector<uint8_t> &r_out);           // the batch since the last one; false when nothing happened
 	void seal_pending();                                       // close the records waiting into a numbered batch that take_reliable() hands out next

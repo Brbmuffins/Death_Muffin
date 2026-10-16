@@ -62,7 +62,7 @@ struct Replica {
 	// ---- both
 	std::string error;              // why the last apply_* said false ("" after a success)
 	// counters (DmCore.replication_stats)
-	uint64_t snapshots_built = 0, batches_built = 0, records_built = 0, reliable_bytes = 0, positions_clamped = 0, overflows = 0;
+	uint64_t snapshots_built = 0, snapshot_frames = 0, batches_built = 0, records_built = 0, reliable_bytes = 0, positions_clamped = 0, overflows = 0;
 	uint64_t snapshots_applied = 0, snapshots_stale = 0, snapshots_refused = 0, records_unknown = 0, records_dead = 0, desync = 0;
 	uint64_t batches_applied = 0, batches_duplicate = 0, batches_refused = 0, baselines_applied = 0, events_derived = 0, commands_refused = 0;
 	void reset_host() {

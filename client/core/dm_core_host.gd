@@ -13,6 +13,12 @@ extends Node
 ## Per rendered frame `CrowdView._process` draws, interpolated with `Engine.get_physics_interpolation_fraction()`.
 ## Ids are the core's: enemies, thralls, heroes (externals) and bosses share one counter. A corpse's id and a zone's id are their own numbers.
 ##
+## A GUEST's host (`setup({puppet: true})`, 2-player co-op, client/README.md "Co-op on the core") owns a PUPPET core: it simulates nothing. Its bodies come from the host's reliable
+## batches and snapshots (`apply_reliable`, `apply_snapshot`, called by DmNextNet), its tick is the same step / sync / events, so the crowd, the effects and the HUD run from the
+## puppet's events as they do from a host's. The ids are the host's: a hero body is `adopt_hero`ed with the id the host gave it (heroes and bosses are the host's externals, so
+## `register_hero` and `register_boss` are never called on a puppet), and every command that changes the simulation (`damage`, `spawn_enemy`, `apply_status` ...) must not be called
+## here (the core refuses and logs it): casts are the host's.
+##
 ## A boss is an external of kind 1 whose brain stays GDScript (DmBoss, B42): `register_boss` gives it an id, the tick writes its place and whether it can be hurt, and the
 ## queries below answer for its id too, so a rite, the hover pick and a thrall's scan treat it as an enemy: `enemies_in_radius` / `foes_in_radius` append the living bosses
 ## after the enemies (edge distance, its radius, as today), `enemy_info` / `foe` / `enemy_position` / `enemy_alive` / `enemy_radius` describe it, and `damage`,
@@ -61,6 +67,7 @@ signal thrall_hit_external(id: int, target: int, kind: String, damage: float)   
 signal ticked(dt: float)
 
 var core: RefCounted                 ## DmCore
+var puppet := false                  ## a guest's core (set_puppet): the bodies are the host's, applied from the wire
 var view: CrowdView                  ## draws the core's creatures
 var data_dir := DEFAULT_DATA         ## where data/ (the JSON the core reads) is: this project, or the live game's folder in tests
 var enemy_defs: Dictionary = {}      ## ENEMIES of data/content/enemies.json
@@ -78,6 +85,7 @@ var _heroes: Array[Node3D] = []      ## registered hero bodies, parallel to _her
 var _hero_ids := PackedInt32Array()
 var _bosses: Array[DmBoss] = []      ## registered boss bodies, parallel to _boss_ids (one awake at a time, never per creature)
 var _boss_ids := PackedInt32Array()
+var _focus_body: Node3D              ## puppet: the local hero, the centre of the crowd's level-of-detail (a host uses its first registered hero)
 var _dying := 0                      ## bodies that died and are not removed yet: they count toward the global cap, not toward the living
 var _names := {}                     ## int -> String, the core's def and area names, fetched once
 
@@ -94,11 +102,15 @@ func setup(opts: Dictionary) -> void:
 	core = ClassDB.instantiate("DmCore")
 	core.set_seed(int(opts["seed"]) if opts.has("seed") else randi())
 	DmCoreData.load_all(core, data_dir)
-	core.set_wander(bool(opts.get("wander", true)))
-	if opts.has("nav_map"):
-		core.set_nav_map(opts["nav_map"])
+	puppet = bool(opts.get("puppet", false))
+	if not puppet:
+		core.set_wander(bool(opts.get("wander", true)))
+		if opts.has("nav_map"):
+			core.set_nav_map(opts["nav_map"])
 	var bounds: Rect2 = opts.get("bounds", Rect2(-60.0, -60.0, 120.0, 120.0))
 	core.set_area_bounds(bounds.position, bounds.end)
+	if puppet:
+		core.set_puppet(true)               # after the bounds: the snapshots' origin is the middle of them, the same on both sides
 	enemy_defs = DmCoreData.json(data_dir.path_join("data/content/enemies.json"))["ENEMIES"]
 	corpses = DmCoreCorpses.new(self)
 	view = CrowdView.new()
@@ -127,11 +139,34 @@ func register_hero(body: Node3D, radius := 0.4, weight := 1.0) -> int:
 	return id
 
 
+## Guest: a hero body of the session (any player's) is the host's external `core_id`: the ids in the core's events (the owner of a thrall, the source of a blow) name it, and its
+## thralls look like its discipline's legion. A second call moves the body to another id. Nothing is added to the core (a puppet has no externals).
+func adopt_hero(body: Node3D, core_id: int) -> void:
+	var i := _heroes.find(body)
+	if i >= 0:
+		if _hero_ids[i] == core_id:
+			return
+		_hero_ids[i] = core_id
+	else:
+		_heroes.append(body)
+		_hero_ids.append(core_id)
+		body.tree_exiting.connect(unregister_hero.bind(body))   # a player who leaves takes its body with it
+	var disc: Variant = body.get("discipline_id")
+	if disc is String:
+		view.set_owner_legion(core_id, disc)
+
+
+## Guest: the body the crowd's level-of-detail follows (the local hero).
+func set_focus_body(body: Node3D) -> void:
+	_focus_body = body
+
+
 func unregister_hero(body: Node3D) -> void:
 	var i := _heroes.find(body)
 	if i < 0:
 		return
-	core.remove_external(_hero_ids[i])
+	if not puppet:
+		core.remove_external(_hero_ids[i])
 	_heroes.remove_at(i)
 	_hero_ids.remove_at(i)
 
@@ -176,14 +211,17 @@ func _physics_process(delta: float) -> void:
 func tick(delta: float) -> void:
 	if core == null:
 		return
-	for i in _heroes.size():
-		var b := _heroes[i]
-		core.set_external(_hero_ids[i], Vector2(b.position.x, b.position.z), bool(b.get("alive")))
-	for i in _bosses.size():
-		var bb := _bosses[i]
-		core.set_external(_boss_ids[i], Vector2(bb.global_position.x, bb.global_position.z), bb.is_hittable())
-	if not _heroes.is_empty():
-		view.focus = Vector2(_heroes[0].position.x, _heroes[0].position.z)
+	if not puppet:
+		for i in _heroes.size():
+			var b := _heroes[i]
+			core.set_external(_hero_ids[i], Vector2(b.position.x, b.position.z), bool(b.get("alive")))
+		for i in _bosses.size():
+			var bb := _bosses[i]
+			core.set_external(_boss_ids[i], Vector2(bb.global_position.x, bb.global_position.z), bb.is_hittable())
+		if not _heroes.is_empty():
+			view.focus = Vector2(_heroes[0].position.x, _heroes[0].position.z)
+	elif _focus_body != null and is_instance_valid(_focus_body):
+		view.focus = Vector2(_focus_body.position.x, _focus_body.position.z)
 	var t0 := Time.get_ticks_usec() if measure else 0
 	core.step(delta)
 	var t1 := Time.get_ticks_usec() if measure else 0

@@ -22,7 +22,7 @@ world      # world builder, model loader, occlusion shaders, animator
 world_fx   # world dressing and atmosphere
 
 # ==== Ported (client/code.lock.json "ported"; edited in client/, so the sync leaves them alone and reports one whose original changed)
-# next/next_game.gd, next/next_game.tscn   the game scene on DmCoreHost: a solo run in the Graves with a test-server character or a dev one, with the Gravecaller's rites and the Gravedigger King; refuses any api but the test server's; the warm-up on request (opts.warmup); no party, gathering, Chapterhouse, rewards, full HUD
+# next/next_game.gd, next/next_game.tscn   the game scene on DmCoreHost: a solo run in the Graves with a test-server character or a dev one, with the Gravecaller's rites and the Gravedigger King; refuses any api but the test server's; the warm-up on request (opts.warmup); host or guest of a 2-player party (a puppet core on the guest); no gathering, Chapterhouse, rewards, full HUD
 # next/next_world.gd                       loads client/areas/<id>.tscn and its navigation map instead of the runtime DmWorldBuilder build; the same small API
 # next/next_input.gd                       the hover pick asks the core; the chase and the queued casts are today's (DmCombatInput); Easy auto combat is back (`auto`, closed until the settings or a gate_probe open it)
 # next/spawn/dm_wave_director.gd           spawns through the core (ids); counts from the core; no Grave Surges, no clearing of living bodies
@@ -32,7 +32,7 @@ world_fx   # world dressing and atmosphere
 # game/dm_avatar.gd                        its own three motion helpers instead of DmEntityViews'
 # game/dm_event_fx.gd, game/dm_event_fx_zones.gd   zone and corpse records read by field name (no DmSimZone, DmSimCorpse)
 # main/main.gd, main/main.tscn             the boot (DmMain): the front flow against the TEST server, then the game scene with the chosen character, its bag and progression (DmMain.load_build); `--benchmark` and the Benchmark button (the run is sent to the test server only); no party hand-over, crash report, Log out or Switch character
-# net/dm_config.gd                         the TEST server's addresses and the allow-list (DmConfig.allows_url, allows_api_base); the live ones never appear (tests/front.gd)
+# net/dm_config.gd                         the TEST server's, lobby's and relay's addresses and the allow-list (DmConfig.allows_url, allows_api_base, allows_lobby_url, allows_relay); the live ones never appear (tests/front.gd)
 # net/dm_http_transport.gd                 refuses any request DmConfig does not allow
 # Easy auto combat and the benchmark (client/README.md "The benchmark"):
 # next/feel/dm_next_auto.gd                the adapter reads the core: the bulk arrays (enemy_ids / positions / states, corpse_ids / positions) and the facts the host's signals keep (radius, elite, health, wind-up, corpse kind, hostile zones); same decisions, same intents
@@ -41,6 +41,10 @@ world_fx   # world dressing and atmosphere
 # next/perf/dm_benchmark_screen.gd, next/perf/dm_benchmark_setup.gd   the budget section on the results; the rooms and classes the client has; the upload note names the test server; a headless run quits by itself
 # next/perf/dm_next_warmup.gd, game/dm_warmup.gd   the boss models, effects and gear drawn once, every crowd model from rehearsal rows, the area tour; no per-creature bodies (DmWarmup's old own warm-up is gone); on request only
 # Copied again because of them: next/perf/dm_bench_history.gd.
+# 2-player co-op (client/README.md "Co-op on the core"):
+# next/next_net.gd                         the core's snapshot (cut by body ranges to fit a packet), reliable batches and baseline over the session's peer, the heroes' ids and vitals, a guest's request for a baseline; no enemy dictionaries or cues (the core's events carry them)
+# next/party/dm_next_party.gd              the lobby link, hosting, joining, invites and asks against the TEST lobby and relay (DmConfig); no chat, rewards, joiner backend session, ground drops or friends list
+# session/dm_session.gd                    the hello carries the core's wire version (DmCore.wire_version(), PROTOCOL 3) and the host refuses another; `abort(reason)` for a guest the host's messages cannot be used by
 # The Gravedigger King (client/README.md "The Gravedigger King"): the boss is an external of the core (kind 1) whose brain stays GDScript; the brains of sim/bosses are copies, unchanged:
 # next/bosses/dm_boss.gd                   a plain node (no DmEnemy, no collider, no agent, no state machine) that registers as an external of the core (core_id) and takes blows through take_damage
 # next/bosses/dm_boss_host.gd              summon rules and events as today; the thralls' blows come from the core (thrall_hit_external); the Gravedigger's area only (served_areas); no pools
@@ -89,7 +93,6 @@ world_fx   # world dressing and atmosphere
 !next/hud/dm_next_counsel.gd              # uses DmEnemy, DmEnemyState, DmThrallHost
 !next/hud/dm_next_ui_host.gd              # uses DmSimCorpse, DmEnemy, DmEnemyState +3: the host-contract adapter of the panels (DmGameUi); the HUD runs without it, the panels bring it back
 !next/meta/dm_next_meta.gd                # uses DmThrallHost
-!next/next_net.gd                         # uses DmEnemy
 !next/progress/dm_next_codex.gd           # uses DmEnemy
 !next/rewards/dm_session_rewards.gd       # uses DmStatusSet
 !next/rites/dm_reaper_rites.gd            # uses DmEnemy, DmStatusSet
@@ -106,17 +109,16 @@ world_fx   # world dressing and atmosphere
 # ==== Left out: the boss is a plain node in the port (next/bosses/dm_boss.gd), made by DmBossHost; this scene was a CharacterBody3D with a collider and a navigation agent
 !next/bosses/boss.tscn
 
-# ==== Left out with a seam (the game scene's party, next/party/dm_next_friends.gd: it reads `shell.party`, the co-op step)
+# ==== Left out with a seam (the Social window and the friends list, the panels item: the party itself is ported, `next/party/dm_next_party.gd`)
 !game_ui/dm_game_ui.gd                    # uses DmUiSocial
 !game_ui/dm_ui_social.gd                  # uses DmSocialWindow
 !game_ui/shoot.gd                         # uses DmGameUi
 !game_ui/shoot.tscn                       # uses shoot
 !main/qa_ui_shots.gd                      # uses DmGameUi
 !next/gathering/dm_next_acre.gd           # uses DmGameUi
-!next/party/dm_next_friends.gd            # reads the game scene's `party` (a DmNextParty)
-!next/party/dm_next_party.gd              # uses DmNextFriends
+!next/party/dm_next_friends.gd            # the friends list and its requests (the backend's friends routes, the Friends tab); the party needs only the lobby's presence of online friends
 !ui/panels/dm_friends_pane.gd             # uses DmNextFriends
-!ui/panels/dm_party_pane.gd               # uses DmNextParty
+!ui/panels/dm_party_pane.gd               # the Party tab (the panel host brings it; it reads DmNextParty.view())
 !ui/panels/dm_social_window.gd            # uses DmFriendsPane
 
 # ==== Left out with a seam (next/rites/dm_reaper_rites.gd): the Reaper's rites, with the Reaper

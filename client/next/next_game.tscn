@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://next/next_game.gd" id="1"]
 [ext_resource type="Script" path="res://session/dm_session.gd" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://next/spawn/dm_wave_director.gd" id="5"]
 [ext_resource type="Script" path="res://next/next_input.gd" id="6"]
 [ext_resource type="Script" path="res://main/camera_rig.gd" id="7"]
+[ext_resource type="Script" path="res://next/next_net.gd" id="8"]
 
 [node name="NextGame" type="Node3D"]
 script = ExtResource("1")
@@ -22,6 +23,9 @@ script = ExtResource("4")
 
 [node name="Waves" type="Node" parent="."]
 script = ExtResource("5")
+
+[node name="Net" type="Node" parent="."]
+script = ExtResource("8")
 
 [node name="Input" type="Node" parent="."]
 script = ExtResource("6")

@@ -20,8 +20,14 @@ extends Node3D
 ## his brain is today's GDScript, the rites and the thralls hit him through the core's host (`enemies_in_radius`, `damage`) and the events, his adds are core bodies and his
 ## defeat is `bosses.defeated` (a real kill, not a wipe; `rewards.on_boss_defeated` when the rewards item brings the rewards) (client/README.md "The Gravedigger King").
 ##
+## 2-PLAYER CO-OP (client/README.md "Co-op on the core"): the same scene runs as the HOST (the default: a solo run, or hosted over the test lobby's relay once `party.host_session` swaps
+## the transport) or as a GUEST (`opts.lobby`: the lobby socket a join happened on, or `opts.peer` with `host` false). The host simulates and sends (`Net`, DmNextNet: the core's snapshot,
+## its reliable batches and a baseline, hero vitals); the guest's core is a PUPPET (`core_host.puppet`): no director, no brains, the crowd, the effects and the HUD run from the
+## puppet's events. Hero casts are intents the host resolves on its core (DmRiteCaster); a guest's hero is an external of the HOST's core (`core_id` is the host's id for it), and
+## its thralls are the host's bodies. A guest's `enemy_died` events are presentation only: kill credit (`kill_credited`) is the HOST's, once.
+##
 ## Off in this step, each until its ROADMAP item: the login and front
-## flow (`main/`), party and co-op (the session is a 1-player host; no `Net`, `Party`, `Joiner`), gathering, the Chapterhouse
+## flow (`main/`), the party panels (the party itself is `Party`, DmNextParty, driven by code), gathering, the Chapterhouse
 ## (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (`rewards`, `progress`, `meta` stay null: no XP, loot or
 ## saves), the panels (`ui_host`, `ui` stay null: the HUD has no menu row, chat or Empower panel yet) and the graphics governor (`perf`). `start` refuses any api whose base url is not the TEST server's
 ## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). The game
@@ -32,6 +38,10 @@ extends Node3D
 ## run: the music, ambience and footsteps), seed (the core's random seed; default from the clock), areas (["graves"]),
 ## data_dir (res://), baked_dir / assets_dir (where the baked crowd models are), peer (a MultiplayerPeer; default OfflineMultiplayerPeer).
 
+const CASTER_DELAY := 0.8                       ## the host attaches a guest's caster this long after its body spawned (the guest's spawner must have made the body first)
+const CLIENT_ACTIVE_S := 20.0                   ## a guest waits this long (after its hello, running frames) for the host's roster before giving up (`start_failed`)
+const CLIENT_HARD_S := 85.0                     ## ...and never longer than this in wall time (the host waits DmSession.HELLO_TIMEOUT, 90 s)
+
 signal started
 signal enemy_spawned(id: int)                   ## every enemy the core made (an id; from DmCoreHost.enemy_spawned): the rewards seam
 signal area_changed(id: String)
@@ -39,18 +49,21 @@ signal hero_died(body: DmHeroBody)              ## host
 signal hero_respawned(body: DmHeroBody)         ## host
 signal hero_hit(enemy_id: int, kind: String, damage: float)   ## an enemy's blow reached the hero (before the body's own damage rules)
 signal rite_hit(rite: String, enemy_id: int, amount: float, crit: bool, killed: bool)   ## host: a rite's (or a Withered DoT's) blow on an enemy, from the local caster: the kill credit / rewards hook
-signal start_failed(reason: String)             ## `start` refused to run (an api that is not the test server's)
+signal start_failed(reason: String)             ## `start` refused to run (an api that is not the test server's), or a guest was refused / lost the host
+signal kill_credited(enemy_id: int, def: String, level: int, elite: bool, area: String, killer_peer: int, x: float, z: float)   ## HOST only, once per kill: the kill report / rewards hook (killer_peer 0 = no hero)
 
 
 @onready var session: DmSession = $Session
 @onready var world: DmNextWorld = $World
 @onready var core_host: DmCoreHost = $Core
+@onready var net: DmNextNet = $Net
 @onready var director: DmWaveDirector = $Waves
 @onready var input: DmNextInput = $Input
 @onready var camera: DmCameraRig = $Camera
 var hud: DmNextHud                              ## only with opts hud = true: the HUD on the core
 var enemy_fx: DmEnemyFx                         ## child "EnemyFx": the core's events as effects
 var look: DmHeroLook                            ## child "Look": the hero's ring and worn gear (next/hero/README.md)
+var party: DmNextParty                          ## child "Party" (every peer): the lobby link, hosting / joining, the roster controls, the guest's profile (next/party/)
 ## Left out until their step; the code that is shared with the full game asks `x != null` and finds none.
 var ui_host: Node = null                        ## the full HUD's host-contract adapter
 var ui: Node = null                             ## the full HUD and panels
@@ -70,6 +83,7 @@ var area_id: String = ""
 var corpses: DmCoreCorpses:                     ## the corpse field as the rites see it (the core's: atomic consume, pick, in radius)
 	get: return core_host.corpses
 var hitstopper := DmHitStop.new()               ## the picture's micro-freeze on heavy hits / elite deaths (DmHitStop, as the original game)
+var is_guest := false                           ## this scene joined someone's session (opts.lobby, or opts.peer with host false): its core is a puppet
 var opts: Dictionary = {}
 var load_ms: int = 0
 var ready_ := false                             ## DmAudioHooks "main" shape: ready_, area_id, player, avatar, builder
@@ -84,6 +98,7 @@ var builder: DmWorldBuilder:
 
 var _visual := true
 var _vfx: Node
+var _hold: DmRelayPeer                          ## a guest's relay peer, held until the world's nodes exist
 
 
 ## Build and start. Host path: the character's body stands at the Graves' door and the scene is live when this returns.
@@ -101,22 +116,30 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	server_slots = opts.get("slots", [])
 	server_local = opts.get("local", {})
 	_visual = bool(opts.get("visual", true))
+	var lobby: DmLobbyClient = opts.get("lobby", null)   # a party guest: the lobby socket the join happened on
+	var join: Variant = opts.get("join", null)   # {code} / {id}: take a seat in a party by ourselves (a launch argument `--join-party=<code>`, a shell without the panels)
+	if join == null and lobby == null and opts.get("peer", null) == null and DmNextParty.arg("--join-party") != null:
+		join = {"code": String(DmNextParty.arg("--join-party"))}
+	var guest := lobby != null or join is Dictionary or (opts.get("peer", null) != null and not bool(opts.get("host", true)))
+	is_guest = guest
 	DmSimData.ensure()
 	input.game = self
+	net.game = self
 	director.game = self
 	director.core_host = core_host
-	director.enabled = bool(opts.get("waves", true))
+	director.enabled = bool(opts.get("waves", true)) and not guest   # the host's waves: a guest's bodies come from the wire
 	world.build(opts.get("areas", ["graves"]))
 	await world.wait_nav_ready()
 	camera.setup(world.camera_config())
 	area_id = world.area_id
-	var core_opts := {"nav_map": world.nav_map(), "bounds": world.bounds(), "view_parent": self}
+	var core_opts := {"nav_map": world.nav_map(), "bounds": world.bounds(), "view_parent": self, "puppet": guest}
 	for k in ["seed", "data_dir", "baked_dir", "assets_dir", "wander"]:
 		if opts.has(k):
 			core_opts[k] = opts[k]
 	core_host.setup(core_opts)
 	core_host.enemy_spawned.connect(func(id: int, _d: String, _l: int, _e: bool, _a: String, _af: int, _x: float, _z: float, _h: float) -> void: enemy_spawned.emit(id))
 	core_host.target_hit.connect(_on_target_hit)
+	core_host.enemy_died.connect(_on_enemy_died)
 	enemy_fx = DmEnemyFx.new()
 	enemy_fx.name = "EnemyFx"
 	enemy_fx.player_pos = func() -> Vector3: return local_body().global_position if local_body() != null else camera.global_position
@@ -138,31 +161,69 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 			hud.game_event(id, ctx)
 		elif ui_host != null:
 			ui_host.game_event.emit(id, ctx)
-	session.session_ended.connect(func(_r: String) -> void: set_process(false))
+	session.session_ended.connect(_on_session_ended)
 	look = DmHeroLook.new()
 	look.name = "Look"
 	add_child(look)
 	look.attach(self)
+	party = DmNextParty.new()
+	party.name = "Party"   # before the session starts: its RPCs must exist at this path when the first packet arrives
+	add_child(party)
+	party.setup(self)
 	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
 	session.character_name = String(opts.get("name", "You"))
 	session.discipline_id = String(d["id"])
-	session.build_version = DmBuild.version()
+	session.build_version = String(opts["build"]) if opts.has("build") else DmBuild.version()   # tests: play as another release build
+	if opts.has("wire"):
+		session.wire = int(opts["wire"])   # tests: play as a build with another core wire version
 	session.spawn_origin = world.spawn_point() - Vector3(3.0, 0.0, 0.0)   # the host's own body starts 3 m from the origin (DmSession._spawn_point)
+	session.spawn_override = _joiner_spawn
+	session.spawn_resolve = _walkable_spawn
 	session.body_factory = _make_body
 	session.move_half = 1000.0   # the world is larger than the session arena (areas out to x -72 / 150): click-to-move must reach them
+	session.player_joined.connect(_on_player_joined)
+	session.player_left.connect(_on_player_left)
 	var peer: MultiplayerPeer = opts.get("peer", null)
+	if lobby == null and join is Dictionary:
+		lobby = await party.seat(join)   # the world is built: the seat is taken just before the hello, so the host does not wait on a loading guest
+		if lobby == null:
+			start_failed.emit(String(party.last_error.get("text", "Could not join the party.")))
+			return
+	if lobby != null:
+		lobby.relay = DmNextParty.checked_relay(lobby.relay)   # the test relay or none, whoever made the join
+		var relay := DmRelayPeer.new()
+		# Never call inside assert(): release exports strip asserts WITH their expression, so the guest never attached and never said hello (tools/hygiene rejects calls in asserts).
+		var jerr := relay.join(lobby)
+		if jerr != OK:
+			printerr("[coop] guest: the lobby socket is not in a session (%s)" % error_string(jerr))
+		relay.hold = true   # nothing from the host is delivered until every node it addresses exists (released below)
+		_hold = relay
+		peer = relay
+		party.adopt_client(lobby, relay)
 	if peer == null:
 		peer = OfflineMultiplayerPeer.new()
-	var err := session.host(peer)
+	var err := session.join(peer) if guest else session.host(peer)
 	assert(err == OK, "DmNextGame: session start failed (%s)" % error_string(err))
-	var b := local_body()
-	b.bind_character(character)
-	b.teleport(world.spawn_point())
-	b.core_id = core_host.register_hero(b)
-	b.tree_exiting.connect(func() -> void: core_host.unregister_hero(b))
 	bosses.fx.host.self_id = str(session.get_my_id())
-	_enter(b.position)
-	camera.snap(b.position)
+	if guest:
+		session.session_started.connect(party.send_profile)
+		if _hold != null:
+			_hold.hold = false   # every node the host addresses exists now (Session, Net, Core, Bosses, Party, Look): deliver what queued while the world was built
+			_hold = null
+		if not await _await_active(CLIENT_ACTIVE_S):
+			return   # start_failed was emitted: the caller returns to its own world
+		var gb := local_body()
+		core_host.set_focus_body(gb)
+		net.apply_heroes()
+		camera.snap(gb.position)
+		_enter(gb.position)
+		net.refused.connect(_on_net_refused)
+	else:
+		var b := local_body()
+		b.bind_character(character)
+		_register_body(b)
+		_enter(b.position)
+		camera.snap(b.position)
 	_start_hud()
 	if ui_host == null:
 		DmRiteHotbar.wire(self)   # one hotbar path: the kit's mapping (LMB the primary, 1-4 the default loadout, RMB, R the signature); the full HUD's loadout replaces it
@@ -172,16 +233,26 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		add_child(hooks)
 		hooks.setup(self)
 	if _visual:
-		enemy_fx.warm(b.global_position)
-		bosses.warm(b.global_position)
+		enemy_fx.warm(local_body().global_position)
+		bosses.warm(local_body().global_position)
 		DmRiteFx.with_autoloads().warm()
 		# Every model, effect and area lighting drawn once under a cover, so no shader compiles mid-play. Off in play until it has been looked at on a GPU
 		# (client/next/perf/dm_next_warmup.gd); `opts.warmup` or `--warmup` turns it on, and the benchmark does.
 		if bool(opts.get("warmup", _wants_warmup())):
 			await DmNextWarmup.run(self)
+	party.notice.connect(func(text: String, kind: String) -> void:
+		if hud != null:
+			hud.game_event("toast", {"text": text, "kind": kind}))
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
+	if not guest and DmNextParty.arg("--host-party") != null:   # a trial without a panel: host a Closed party at once and say its code
+		party.hosting_changed.connect(func(on: bool) -> void:
+			if on:
+				printerr("[coop] hosting: the party's code is %s" % party.code)
+				if hud != null:
+					hud.game_event("toast", {"text": "Party code: %s" % party.code, "kind": "good"}))
+		party.host_session(String(DmNextParty.arg("--host-party")), true)
 
 
 func _start_hud() -> void:
@@ -202,6 +273,67 @@ func _on_target_hit(enemy_id: int, target: int, kind: int, damage: float) -> voi
 	b.dm_take_enemy_hit(damage, enemy_id, kind_name)
 
 
+## The core's EV_ENEMY_DIED. The HOST credits the kill (once): to the hero who struck it, or to the owner of the thrall whose blow it was (the event names the thrall); a death with no
+## hero behind it (a foe's own effect) has killer_peer 0. This is the kill report's and the rewards' hook (`kill_credited`).
+## A guest's puppet core emits the same event for the picture (the death, the corpse, the sound) and credits nothing: its kills are in the host's report already.
+func _on_enemy_died(id: int, def: String, level: int, elite: bool, area: String, source: int, x: float, z: float) -> void:
+	if not session.is_host():
+		return
+	var killer := core_host.hero_for(source) as DmHeroBody if source != 0 else null
+	if killer == null and source != 0:
+		killer = core_host.hero_for(int(core_host.core.thrall_info(source).get("owner", 0))) as DmHeroBody
+	kill_credited.emit(id, def, level, elite, area, killer.owner_peer if killer != null else 0, x, z)
+
+
+## Host: a hero body (any player's) is an external of the core: its id is the source of its blows and the owner of its thralls, and the guests learn it from `Net`.
+func _register_body(b: DmHeroBody) -> void:
+	b.core_id = core_host.register_hero(b)
+	b.tree_exiting.connect(func() -> void: core_host.unregister_hero(b))
+
+
+## Where a new player appears: around the host's hero (null while he lies dead).
+func _joiner_spawn() -> Variant:
+	var b := local_body()
+	if b == null or not b.alive:
+		return null
+	return b.position
+
+
+## A new player's ring point moved onto the navmesh (about one in five fell off it).
+func _walkable_spawn(pt: Vector3) -> Vector3:
+	return world.nav_clamp(pt) if world.nav_ready() else pt
+
+
+## Host: a player was accepted. Its body is an external of the core, then it gets the whole present (Net) and, once its profile arrives, its class and level (DmNextParty).
+func _on_player_joined(id: int) -> void:
+	if not session.is_host() or id == session.get_my_id():
+		return
+	var b := body_of(id)
+	if b != null and b.core_id == 0:
+		_register_body(b)
+	net.add_guest(id)
+
+
+## Host: a player left: its legion goes with it, the others learn the new table of heroes.
+func _on_player_left(id: int) -> void:
+	if not session.is_host():
+		return
+	var b := body_of(id)
+	if b != null and b.core_id != 0:
+		core_host.core.sacrifice_thralls(b.core_id)
+	net.remove_guest(id)
+	net.send_heroes()
+
+
+func _on_session_ended(_reason: String) -> void:
+	set_process(false)
+
+
+## Guest: the host's messages cannot be used (another version of the game, other data). The player reads why, as a refused join says.
+func _on_net_refused(why: String) -> void:
+	session.abort(why)
+
+
 func _make_body() -> DmSessionBody:
 	var b := DmHeroBody.new()
 	b.game = self
@@ -212,7 +344,12 @@ func _make_body() -> DmSessionBody:
 
 ## Called by each DmHeroBody in its _ready: attaches "Rites" (the DmRiteCaster, `self` is its DmRiteWorld) and "Statuses" (the hero's DmStatusSet, a status set on a hero body
 ## only; the statuses of enemies and thralls are the core's). The legion is the caster's (`thralls()`, the core's thralls): there is no "Thralls" node.
+## The host holds off for a guest's body: its caster would RPC the guest before the guest's spawner has created the body (a missing path).
 func attach_caster(body: DmHeroBody) -> void:
+	if multiplayer.is_server() and body.owner_peer != session.get_my_id():
+		await get_tree().create_timer(CASTER_DELAY).timeout
+		if not is_instance_valid(body) or not body.is_inside_tree():
+			return
 	var caster := DmRiteCaster.attach(body, self)
 	if body.owner_peer == session.get_my_id():
 		caster.shake_requested.connect(camera.shake)   # the camera honours reduce_motion
@@ -342,6 +479,31 @@ func respawn_point() -> Vector3:
 ## The warm-up runs when a launch asks for it (`--warmup`), or `opts.warmup`.
 static func _wants_warmup() -> bool:
 	return "--warmup" in OS.get_cmdline_user_args()
+
+
+## A guest: wait until the host accepted it (the roster arrived). false = the session ended or timed out first (`start_failed` emitted).
+## The clock starts when our hello goes out and counts only frames that ran: the first frames after the world build can stall for many seconds, which used up the whole
+## wait before the hello was even sent (2026-10-10 co-op report). CLIENT_HARD_S caps the wait however slow the frames are.
+func _await_active(timeout: float) -> bool:
+	var begin := Time.get_ticks_msec()
+	var waited := 0.0
+	var last := begin
+	var ended := [""]
+	var cb := func(r: String) -> void: ended[0] = r if r != "" else "ended"
+	session.session_ended.connect(cb)
+	while not session.is_active() and ended[0] == "" and waited < timeout * 1000.0 and Time.get_ticks_msec() - begin < CLIENT_HARD_S * 1000.0:
+		await get_tree().process_frame
+		var now := Time.get_ticks_msec()
+		if session.hello_at_ms > 0:
+			waited += minf(float(now - last), 250.0)   # a stalled frame counts as at most a quarter second
+		last = now
+	session.session_ended.disconnect(cb)
+	if session.is_active():
+		printerr("[coop] guest: accepted by the host after %d ms" % (Time.get_ticks_msec() - begin))
+		return true
+	printerr("[coop] guest: gave up after %d ms (hello sent: %s, ended: %s)" % [Time.get_ticks_msec() - begin, session.hello_at_ms > 0, ended[0]])
+	start_failed.emit(ended[0] if ended[0] != "" else "The host did not answer.")
+	return false
 
 
 func flush_all() -> void:

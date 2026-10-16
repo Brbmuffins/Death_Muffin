@@ -53,6 +53,44 @@ uint32_t World::content_hash() const {
 	return f.h;
 }
 
+// One enemy's or thrall's record, shared by the whole-message writer and the parts writer so the bytes are the same either way. `r_prev` is the previous record's
+// id in this list (the ids travel as differences); positions are relative to the area's middle (`p_ox`, `p_oz`).
+void World::put_snap_enemy(ByteWriter &w, const Enemy &e, int32_t &r_prev, double p_ox, double p_oz) {
+	w.svar(e.id - r_prev);
+	r_prev = e.id;
+	const bool aim = e.state == ATTACK || e.state == ERUPT;
+	w.u8(uint32_t(e.state) | (e.elite ? EF_ELITE : 0u) | (e.dug_in ? EF_DUG_IN : 0u) | (aim ? EF_AIM : 0u) | (e.affixes ? EF_AFFIXES : 0u));
+	if (e.affixes) {
+		w.u8(e.affixes);
+	}
+	w.u16(uint32_t(q_pos(e.x, p_ox, rep.positions_clamped)) & 0xffffu);
+	w.u16(uint32_t(q_pos(e.z, p_oz, rep.positions_clamped)) & 0xffffu);
+	w.u8(q_yaw(e.yaw));
+	w.u16(q_hp(e.hp, e.max_hp));
+	w.u8(q_t(e.state_t));
+	if (aim) {
+		w.u16(uint32_t(q_pos(e.aim_x, p_ox, rep.positions_clamped)) & 0xffffu);
+		w.u16(uint32_t(q_pos(e.aim_z, p_oz, rep.positions_clamped)) & 0xffffu);
+	}
+}
+
+void World::put_snap_thrall(ByteWriter &w, const Thrall &t, int32_t &r_prev, double p_ox, double p_oz) {
+	w.svar(t.id - r_prev);
+	r_prev = t.id;
+	const bool aim = t.state == TS_ATTACK;
+	w.u8(uint32_t(t.state) | (t.rally_t > 0.0 ? TF_RALLY : 0u) | (aim ? TF_AIM : 0u));
+	w.u16(uint32_t(q_pos(t.x, p_ox, rep.positions_clamped)) & 0xffffu);
+	w.u16(uint32_t(q_pos(t.z, p_oz, rep.positions_clamped)) & 0xffffu);
+	w.u8(q_yaw(t.yaw));
+	w.u16(q_hp(t.hp, t.max_hp));
+	w.u8(q_t(t.state_t));
+	w.u8(uint32_t(t.swing_n) & 255u);
+	if (aim) {
+		w.u16(uint32_t(q_pos(t.aim_x, p_ox, rep.positions_clamped)) & 0xffffu);
+		w.u16(uint32_t(q_pos(t.aim_z, p_oz, rep.positions_clamped)) & 0xffffu);
+	}
+}
+
 void World::write_snapshot(std::vector<uint8_t> &r_out, uint32_t p_tick) {
 	r_out.clear();
 	ByteWriter w(r_out);
@@ -75,47 +113,95 @@ void World::write_snapshot(std::vector<uint8_t> &r_out, uint32_t p_tick) {
 	w.uvar(nt);
 	int32_t prev = 0;
 	for (const Enemy &e : enemies) {
-		if (e.state == DEAD) {  // a death is a reliable event, not a record
-			continue;
-		}
-		w.svar(e.id - prev);
-		prev = e.id;
-		const bool aim = e.state == ATTACK || e.state == ERUPT;
-		w.u8(uint32_t(e.state) | (e.elite ? EF_ELITE : 0u) | (e.dug_in ? EF_DUG_IN : 0u) | (aim ? EF_AIM : 0u) | (e.affixes ? EF_AFFIXES : 0u));
-		if (e.affixes) {
-			w.u8(e.affixes);
-		}
-		w.u16(uint32_t(q_pos(e.x, ox, rep.positions_clamped)) & 0xffffu);
-		w.u16(uint32_t(q_pos(e.z, oz, rep.positions_clamped)) & 0xffffu);
-		w.u8(q_yaw(e.yaw));
-		w.u16(q_hp(e.hp, e.max_hp));
-		w.u8(q_t(e.state_t));
-		if (aim) {
-			w.u16(uint32_t(q_pos(e.aim_x, ox, rep.positions_clamped)) & 0xffffu);
-			w.u16(uint32_t(q_pos(e.aim_z, oz, rep.positions_clamped)) & 0xffffu);
+		if (e.state != DEAD) {  // a death is a reliable event, not a record
+			put_snap_enemy(w, e, prev, ox, oz);
 		}
 	}
 	prev = 0;
 	for (const Thrall &t : thralls) {
-		if (t.dead) {
-			continue;
-		}
-		w.svar(t.id - prev);
-		prev = t.id;
-		const bool aim = t.state == TS_ATTACK;
-		w.u8(uint32_t(t.state) | (t.rally_t > 0.0 ? TF_RALLY : 0u) | (aim ? TF_AIM : 0u));
-		w.u16(uint32_t(q_pos(t.x, ox, rep.positions_clamped)) & 0xffffu);
-		w.u16(uint32_t(q_pos(t.z, oz, rep.positions_clamped)) & 0xffffu);
-		w.u8(q_yaw(t.yaw));
-		w.u16(q_hp(t.hp, t.max_hp));
-		w.u8(q_t(t.state_t));
-		w.u8(uint32_t(t.swing_n) & 255u);
-		if (aim) {
-			w.u16(uint32_t(q_pos(t.aim_x, ox, rep.positions_clamped)) & 0xffffu);
-			w.u16(uint32_t(q_pos(t.aim_z, oz, rep.positions_clamped)) & 0xffffu);
+		if (!t.dead) {
+			put_snap_thrall(w, t, prev, ox, oz);
 		}
 	}
 	rep.snapshots_built++;
+	rep.snapshot_frames++;
+}
+
+// The same snapshot cut into messages of at most `p_max_bytes` each (a UDP packet must stay under the path's MTU or its fragments are lost together): the live enemies in
+// spawn order, then the live thralls in raise order, in as many messages as it takes. Every part is a complete snapshot message of its own (the header, the counts of ITS
+// records, ids as differences from 0), so a guest applies each as it arrives, in any order that is newer-first: the ticks of the parts are `p_first_tick`, +1, +2 ... and
+// a puppet ignores a tick that is not newer than the last one it applied. Bodies are independent records, so a lost part loses only its bodies' update for 50 ms.
+// There is always at least one part (an empty snapshot still carries the clock). Returns how many parts it made; `r_parts` keeps its inner buffers between calls.
+size_t World::write_snapshot_parts(std::vector<std::vector<uint8_t>> &r_parts, uint32_t p_first_tick, size_t p_max_bytes) {
+	const double ox = double(grid.min_x) + double(grid.nx) * double(grid.cell) * 0.5;
+	const double oz = double(grid.min_z) + double(grid.nz) * double(grid.cell) * 0.5;
+	constexpr size_t HEADER_MAX = WIRE_HEADER + 4 + 8 + 4 + 8 + 2;  // magic and version, tick, clock, origin, and both counts at most one byte more than a 2-byte varint
+	const size_t budget = p_max_bytes > HEADER_MAX + 16 ? p_max_bytes - HEADER_MAX : 16;
+	size_t parts = 0;
+	size_t ei = 0, ti = 0;
+	for (;;) {
+		uint32_t ne = 0, nt = 0;
+		snap_body.clear();
+		ByteWriter bw(snap_body);
+		int32_t prev = 0;
+		while (ei < enemies.size()) {
+			if (enemies[ei].state == DEAD) {
+				ei++;
+				continue;
+			}
+			const size_t before = snap_body.size();
+			put_snap_enemy(bw, enemies[ei], prev, ox, oz);
+			if (snap_body.size() > budget && ne + nt > 0) {  // does not fit: it opens the next part (a part always takes at least one record)
+				snap_body.resize(before);
+				break;
+			}
+			ne++;
+			ei++;
+		}
+		prev = 0;
+		const bool enemies_done = ei >= enemies.size();
+		while (enemies_done && ti < thralls.size()) {
+			if (thralls[ti].dead) {
+				ti++;
+				continue;
+			}
+			const size_t before = snap_body.size();
+			put_snap_thrall(bw, thralls[ti], prev, ox, oz);
+			if (snap_body.size() > budget && ne + nt > 0) {
+				snap_body.resize(before);
+				break;
+			}
+			nt++;
+			ti++;
+		}
+		if (r_parts.size() <= parts) {
+			r_parts.emplace_back();
+		}
+		std::vector<uint8_t> &out = r_parts[parts];
+		out.clear();
+		ByteWriter w(out);
+		write_wire_header(w, WK_SNAPSHOT, content_hash());
+		w.u32(p_first_tick + uint32_t(parts));
+		w.f64(clock);
+		w.f32(float(ox));
+		w.f32(float(oz));
+		w.uvar(ne);
+		w.uvar(nt);
+		w.bytes(snap_body.data(), snap_body.size());
+		parts++;
+		rep.snapshots_built++;
+		while (ei < enemies.size() && enemies[ei].state == DEAD) {
+			ei++;
+		}
+		while (ti < thralls.size() && thralls[ti].dead) {
+			ti++;
+		}
+		if (ei >= enemies.size() && ti >= thralls.size()) {
+			break;
+		}
+	}
+	rep.snapshot_frames++;
+	return parts;
 }
 
 namespace {

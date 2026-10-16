@@ -27,6 +27,8 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/front.gd   # boot, login, character select and the game scene with the chosen character on the mock; the API rule; the real test server's health (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/hud.gd     # the HUD on the core: target frame, minimap dots, hotbar and cooldowns, thrall pips, floating number caps, pools, pieces, z layers, the draw-call model (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/benchmark.gd       # the benchmark on the core: the Full Party fight held as the setup says, Easy auto combat, the report and its budget section, real launches, nothing sent but to the test API (bakes into a scratch folder; about 2 minutes)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/coop.gd    # 2-player co-op: a host and a guest in one process over a real local lobby and relay (needs `cd server/death-muffin/lobby && npm ci`; bakes into a scratch folder; about a minute)
+bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the thralls) into client/assets/crowd/baked (not committed)
 ```
 
@@ -62,10 +64,11 @@ uids keep working:
 - **Seams** (55 files at the start): a file outside those systems that names one of their classes or scenes: the rites, the bosses, the HUD's enemy reads, auto combat input, the benchmark
   fight. Each line names what it uses. They are ported to the core in the later steps of the ROADMAP's client layer, and `--port` then moves them from the list into `code.lock.json`.
   Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; the Gravecaller's rites (the caster, the module base, the legends, the
-  registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The Gravedigger King"); and Easy auto combat, the benchmark
-  with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark").
-- **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the party
-  (`DmNextFriends` reads the game scene's `party`: the friends and party panes, the social window and `game_ui/dm_game_ui.gd`).
+  registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The Gravedigger King"); Easy auto combat, the benchmark
+  with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); and the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
+  "Co-op on the core").
+- **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the Social window
+  (the friends and party panes, `DmNextFriends` and the panel host `game_ui/dm_game_ui.gd`: the panels item; the party itself is ported).
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
   the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step, the belt and the progress node.
   Freed by the boss ports: `next/bosses/dm_boss_meta.gd` (the Covenant Seal altar choice; it needs rewards and the backend, so nothing creates it yet).
@@ -107,7 +110,7 @@ roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`
 **input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
 wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
-Off in this step, each until its ROADMAP item: party and co-op, gathering, the Chapterhouse
+Co-op is in ("Co-op on the core"). Off in this step, each until its ROADMAP item: the party's panels (the Social window), gathering, the Chapterhouse
 (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves; `DmNextGame.rite_hit` carries every blow of a rite for them), the panels (the HUD is there, "The HUD on the core"; its menu row, chat, Empower panel
 and loadout wait for theirs), the Reaper's rites, the graphics governor, Grave Surges. Easy auto combat is in but closed: nothing opens it until the settings come (the benchmark and the tests do). `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
@@ -160,7 +163,7 @@ core's thralls act on the place it wrote, and their blows on it are given to the
 `client/tests/boss.gd` is the proof: the six recorded Gravedigger scenarios of `godot/tests/bosses` replayed tick by tick through this project's copy of the brain, the summon rules, the awaken numbers, his attacks and phases stepped by hand with today's numbers and
 timing (sweep, Burial, phases, ghouls on the rim, the elite, the pits, the double sweep, the blows on the hero and on a thrall), the wipe (adds leave silently), thralls (the edge rule, `thrall_hit_external`, credit, `alive` false while he cannot be hurt),
 the rites (edge distance, order, lane, cone, circle, the needle's range, the Scythe's arc, the Spear's rally, Fan, Lance, statuses, stun), the defeat events, a second summon, a fight on the real clock and the net state round trip.
-Not in it: the other six bosses; their pools, niches and hooks (the core makes no zone for a boss, has no call that sets a body's health, and the Veilwalker's echoes are not ported); shards and rewards; the boss bar and banners (the full HUD); replicating him to guests (the co-op step).
+Not in it: the other six bosses; their pools, niches and hooks (the core makes no zone for a boss, has no call that sets a body's health, and the Veilwalker's echoes are not ported); shards and rewards; the boss bar and banners (the full HUD); Guests see him through `DmBossHost`'s own state (20 Hz) and events, which the port kept ("Co-op on the core").
 Easy auto combat takes him as a target (`bosses.active_boss()`, his telegraphs from the boss fx).
 
 ## The benchmark
@@ -274,6 +277,62 @@ fight the model said about 500 for the game scene's HUD (the hotbar 188, the min
 *CPU.* `tests/hud.gd` prints the refresh (view-model build and apply) and a frame with the HUD against one without; `DmNextHud.refresh_us` counts the live refreshes. With 72 enemies and 32 thralls on this VPS: build 0.19 ms + apply 0.05 ms
 every 50 ms; a headless frame with the HUD costs ~0.1 to 0.2 ms more than without (no drawing: every `_process`, tween and `_draw` callback runs).
 
+## Co-op on the core
+
+2-player co-op (ROADMAP "2-player co-op"; DECISIONS B22, B26-B28, B38, B40, B42) is today's session, relay and lobby with the combat core's messages on top. One player HOSTS: the real game runs on the host's core, as in a solo run, and the
+party's other player is a GUEST: its game scene (`DmNextGame` joined, `is_guest`) holds a **puppet core** (`DmCoreHost.puppet`, `set_puppet(true)`) that shows what the host tells it. Up to 4 players fit the session; the proof is a host and one guest.
+
+| | HOST | GUEST |
+|---|---|---|
+| core | simulates: enemies, thralls, corpses, statuses, affixes; the hero and the King are its externals | a puppet: bodies come from the wire, ease toward snapshots, events are derived from state edges and health drops |
+| waves, the King's brain, rites | the director, `DmBossHost`, the casters (every player's cast is resolved here) | none: the director is off, the King is a puppet fed by `DmBossHost`'s state, a caster only asks and plays the host's events |
+| crowd, effects, HUD | from its own events | from the puppet's events, the same consumers (`DmCrowd`, `DmEnemyFx`, `DmNextHud`) |
+| kills | `kill_credited` (once per death, with the killer's peer: the hook of the kill report and the rewards) | nothing: its `enemy_died` events draw the death and credit no one |
+| a hero | an external of the core (`core_id`); a guest's too | `core_id` is the HOST's id for it (told in a table): the owner id in a thrall's event, the source of a blow |
+
+**Messages** (`next/next_net.gd`, node `Net`; the session and the rites keep their own RPCs; everything rides the session's `DmRelayPeer`: the UDP lane when the relay offers one, else the lobby's WebSocket):
+- **Snapshot**, host to guest, unreliable ordered, 20 Hz: `core.snapshot_parts(tick, 1300)`. **The split:** the Full Party's snapshot is 1.2 KB on average and reaches 1.7 KB, past the 1,392-byte packet the old code stayed under (ENet fragments
+  a bigger unreliable packet, and one lost fragment loses all of it), so it is cut **by body ranges**: the live enemies in spawn order, then the thralls, in as many messages as keep each at or under 1,300 bytes (the RPC frame and the relay's
+  6-byte header come on top: a packet stays under the 1,364 B or so that ENet sends in one datagram, and under the 1,392 B limit of the old code). Every part is a complete snapshot message of its own bodies, with its own tick (the parts of a frame are consecutive numbers, the frame id), and **the guest applies each part as it arrives**:
+  bodies are independent records, a puppet ignores a tick that is not newer, and a lost or overtaken part costs its bodies 50 ms (the next snapshot has them). Nothing is reassembled and no frame is waited for. One part is the common case.
+- **Reliable batch**, reliable, every tick with content: `core.take_reliable()`, the numbered batch of spawns, deaths, zones, statuses, corpses and thralls. A guest that sees a gap (`need_baseline`) asks for a baseline.
+- **Baseline**, reliable, once to a new guest (`core.baseline()`, the whole present) and again on request (at most once a second); the guest clears its crowd first. The host collects events only while a guest is in (`set_replication`).
+- **Hero table**, reliable, on a join and a leave: peer id to the hero's external id in the host's core. **Vitals**, unreliable ordered, 20 Hz: every hero's health, resource and alive flag. The hero positions are the session's own snapshot.
+- **Guest to host:** move intents (`DmSession`), `request_cast` (`DmRiteCaster`: the host validates the owner, the rite's rules and the aim, resolves it on its core with the guest's hero as the source, and broadcasts the rite's events, which the guest
+  plays), a baseline request, and the **profile** (class and level, clamped to 100) once the session is live: the host binds that character to the guest's body, so what its caster may cast follows the level. The guest's thralls are the
+  host's bodies, owned by the guest's hero external; they leave with the guest.
+- **Versions (B40):** the session's hello carries the build and `DmCore.wire_version()` (`DmSession.PROTOCOL` 3); a different release build, or another wire version even between dev builds (which skip the build check), is refused with the words a
+  player reads (`DmSession.version_text` / `wire_text`: which side is behind and "restart from the launcher"), and the guest's game does not start. The core's own messages also carry the wire version and a hash of the data tables: a guest whose
+  first message is refused for that (not for a gap) leaves the session with the core's words (`Net.refused`). Phones will join as guests only: the same messages (B40), measured when the first phone build exists.
+
+**Joining** (`next/party/dm_next_party.gd`, node `Party`, a port of today's): hosting turns the running solo session into a hosted one (`host_session(name, closed)`: lobby `create`, `DmRelayPeer.host`, `DmSession.swap_transport`; Open parties are listed, Closed ones
+need the code or an invite); `join_by_code` / `join_session` / `join_friend` seat a solo game in a party (`join_ready(lobby, info)`: the shell frees the solo game and starts a guest game on that socket, `opts.lobby`); `invite_friend`,
+`ask_to_join`, `answer_request`, `accept_invite` are the friends flows over the lobby's presence of online mutual friends; `view()` is the contract of today's party pane. Errors are the player-readable `ERROR_TEXT` / `CLOSE_TEXT`.
+Not in it, each with its system: party chat, the joiner's own backend session (rewards, XP, loot), reading a guest's build from the server (B22: the profile's level and class stand until progression comes), ground drops, the friends list itself (requests,
+the Friends tab), and the Social window that drives it all (the panels item). Until that window exists the entry is launch arguments, read by the game scene (any build, test lobby only): `--host-party[=name]` makes a Closed party as soon as the world is up (the
+code is in the log and in a toast), `--join-party=<code>` takes a seat before the game is built, `--lobby=<ws url>` points at a lobby on this machine (the token in `DM_LOBBY_TOKEN`). `main/main.gd` needs no change for them; the in-game hand-over for
+`join_ready` (what today's `main.gd` does with `party.join_ready`: free the solo game, start the guest game, go home on `client_ended`) is a few lines to add there when the Social window can call `join_session`.
+
+**The test lobby and relay are the only ones this build uses** (the API rule above): `DmConfig.LOBBY_URL`, `RELAY_PORT`, `allows_lobby_url`, `allows_relay`. The services (their own ports, the test backend's signing key) are prepared in
+`server/death-muffin/test-server/coop/` and **wait for the owner's OK to install**; its README has the steps. The lobby offers the relay's address and a ticket when a session is made or joined; a test build without the relay installed
+plays over the lobby's WebSocket, which works and stalls a movement packet behind a lost one.
+
+**Try it on this machine** (no install, no network beyond loopback):
+```
+cd server/death-muffin/lobby && npm ci                    # once: the lobby's modules
+bash client/tools/coop_local.sh                           # a local lobby and relay with a throwaway key; it prints the two commands below with tokens filled in
+DM_LOBBY_TOKEN=<token> godot --path client -- --dev-offline --class=2 --lobby=ws://127.0.0.1:45195 --host-party        # the host: prints "the party's code is NNNNNN"
+DM_LOBBY_TOKEN=<token> godot --path client -- --dev-offline --class=2 --lobby=ws://127.0.0.1:45195 --join-party=NNNNNN # the guest, in another window
+```
+(`--dev-offline` is the local mock backend: both windows play `tester` on it, so both heroes carry that name; the lobby accounts are the tokens'.)
+
+**The proof** is `tests/coop.gd` (`--fixed-fps 60`, about a minute): two game scenes in ONE process, each in its own `SceneMultiplayer` branch (the way a second machine would be; the alternative, two processes, needs file-driven remote control for little
+more), over a REAL lobby (the node service on a free port, a test signing key) and the real `DmUdpRelay` in the process (offered by the lobby, so the packets travel the UDP lane). It runs the party flow (a wrong code, a Closed party, a join by code, an invite
+and an ask to join), the connection (both on UDP, the puppet, the ids), a still moment and a fight compared **at the snapshot's own tick** (every live body the same, every position within the 1 cm quantization, lost parts excepted), a guest cast resolved by
+the host with its damage on both, a guest Exhume simulated by the host, the King fighting both heroes to his fall, a guest-side death and respawn, the kill accounting (the host credits every kill once, the guest none), refused versions, the Full Party's
+packets and bandwidth, a leaving guest, and zero script errors. It prints INFO lines: the Full Party's bandwidth for one guest was about 28 KB/s (23 KB/s snapshots, 0.7 KB/s reliable) in 82 packets/s on the host's connection, 2.7 % and 14 % of the relay's limits (1 MiB/s, 600 packets/s); the largest game
+packet was 1,231 B.
+
 ## The test server: login and character select
 
 `main/main.tscn` (`DmMain`, a port of today's) is the project's main scene. It is today's boot and front flow (login, register, the online gate, character select, the discipline switch,
@@ -291,23 +350,25 @@ database and signing key, so nothing played here can touch a live character), th
   A bag or progression the server fails to give sends the player back to the login screen with the server's words; nothing is written, created or imported.
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
-- **Off until their items:** rewards and the kill ledger (no kill report), progress and bag saves, party, friends, chat, gathering, the Chapterhouse, the panels (so no Log out or Switch character:
-  close the game to sign in again), the lobby join, the automatic crash report and the update notice. A hero of a
+- **Off until their items:** rewards and the kill ledger (no kill report), progress and bag saves, the friends list, chat, gathering, the Chapterhouse, the panels (so no Log out or Switch character:
+  close the game to sign in again, and no Social window: a party is made and joined by launch arguments, "Co-op on the core"), the automatic crash report and the update notice. A hero of a
   discipline other than the Gravecaller has no hero model yet (`client/assets.list` carries `hero_gravecaller` only) and the rites are not ported for any of them.
 
 ### The API rule (DECISIONS B38)
 
 The rebuilt client **never talks to the live server before launch day.** Where it may talk is set in **one place**, `net/dm_config.gd` (a port of the live game's config), and enforced twice:
-- `DmConfig.API_BASE` is the test API (`https://muffindevelopment.com/death-muffin/test-api`), `SITE_BASE` the test channel's folder (`.../client-test/`, the manifest), `LOBBY_URL` empty (the test lobby comes with 2-player co-op). A dev run, a
+- `DmConfig.API_BASE` is the test API (`https://muffindevelopment.com/death-muffin/test-api`), `SITE_BASE` the test channel's folder (`.../client-test/`, the manifest), `LOBBY_URL` the test lobby (`wss://muffindevelopment.com/death-muffin/test-lobby/`) and `RELAY_PORT` the test relay's UDP port (5196). A dev run, a
   test run and an exported build all read these constants: there is no publish-time swap to miss.
 - `DmHttpTransport.send` (the one door to the network, a port) refuses any URL `DmConfig.allows_url` does not accept: under the test API or the test channel's folder, nothing with a `/..` that a
   server would resolve elsewhere. It logs an error and answers like an unreachable server. `DmNextGame.start` refuses any api whose base url is not the test API or empty (the local mock).
+  `DmNextParty` connects only to a lobby `DmConfig.allows_lobby_url` accepts (the test lobby, or one on this machine for a trial) and keeps a relay the lobby offers only when `DmConfig.allows_relay` does (port 5196, or this
+  machine; never the live relay's 5193): a lobby that handed out the live relay is ignored and the session stays on the lobby's WebSocket.
 - A finished benchmark run is sent (`DmApi.post_benchmark`) through the same transport to the test API's benchmark history, never anywhere else; "The benchmark" says when it is sent.
 - `client/tests/front.gd` fails if any of it moves: the constants are the test server's and not the live API, lobby or manifest (read from `godot/net/dm_config.gd`), the allow-list refuses the live
   addresses and lookalikes, every request the flows made stayed on the test server, and a scan of every shipped file finds no address outside `net/dm_config.gd` and no live path anywhere.
 
 **Launch day flips it** (the day `client/` becomes the game, B38/B40): in one commit, set `API_BASE` to `https://muffindevelopment.com/death-muffin/api`, `SITE_BASE` to `https://muffindevelopment.com/death-muffin/`,
-`CLIENT_MANIFEST_URL` to `SITE_BASE + "client/manifest.json"` and `LOBBY_URL` to the live lobby (the values in `godot/net/dm_config.gd` that day). The allow-list is written in those constants, so it
+`CLIENT_MANIFEST_URL` to `SITE_BASE + "client/manifest.json"`, `LOBBY_URL` to the live lobby (the values in `godot/net/dm_config.gd` that day) and `RELAY_PORT` to the live relay's (5193). The allow-list is written in those constants, so it
 follows. Then change `tests/front.gd` to pin the live addresses instead (its `TEST_API` and `LIVE_API` constants and the "never the live API" checks). Until that commit the test fails on any live
 address; after it the same test pins the live ones.
 

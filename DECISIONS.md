@@ -161,6 +161,13 @@ D1-D13 are the rebuild (2026-10-05/07), B1-B11 the baseline (2026-10-09/10), B12
   of each port's original, and the sync tool reports a port whose original changed since, so the fix can be carried over. The per-creature systems (`enemies/`, the per-creature parts
   of `sim/`, `next/thralls`, `next/corpses`, `next/affixes`, the entity views) are not copied: the core and the crowd view replace
   them. (`next/status` is copied for the status sets of heroes and bosses, which are external entities, B42; a ported file never calls it on an enemy or a thrall.) Same game by construction: the menus, rules, network code and rites are today's code.
+- **B44. Co-op on the core** (2026-10-16, Claude's call under B34 and B40). The host plays the real game on its core; a guest holds a PUPPET core that shows what the host sends (snapshots, batches,
+  a baseline: native/README.md "Co-op"), and its hero is an external of the HOST's core, so enemies chase and hit it there, its casts are intents the host resolves (as today's rites already were) and
+  its thralls are the host's bodies. The session, the relay peer, the rites' RPCs and the King's replication stay today's code; only the per-creature traffic is the core's. The snapshot (up to 1.7 KB) is cut
+  by body ranges into packets of at most 1,300 B (`DmCore.snapshot_parts`), each applied by the guest as it arrives: the old rule of staying under the 1,392-byte packet, with nothing to reassemble and a lost part
+  costing 50 ms of its bodies. The hello carries the core's wire version next to the build (B40), so even two dev builds refuse each other when the formats differ. The rebuild uses its own lobby and relay (ports
+  5195 and 5196, the test backend's signing key), pinned in `DmConfig` like the API (B38); they are prepared, not installed, until the owner agrees. Until the Social window comes with the panels, a party is
+  made and joined by launch arguments. Kill credit is the host's, once; a guest's died events draw and credit nothing.
 - **B32. Enforce on; saves are gains only; migrations tracked** (owner, 2026-10-15, after the architecture audit). Live runs
   `AUTHORITY_KILLS=enforce` and `AUTHORITY_MODE=enforce`: a save pays only the XP and gold the kill ledger and the per-minute ceilings back,
   and stat raises by save are refused. `save-progress` without `gains` (clients before B23) answers 426 "out of date" instead of taking

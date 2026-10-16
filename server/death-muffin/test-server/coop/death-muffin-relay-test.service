@@ -1,0 +1,23 @@
+# Death Muffin TEST UDP co-op relay (the live relay's code, its own copy, UDP 5196, the TEST backend's signing key for the tickets). NOT installed by anything but coop/setup.sh.
+[Unit]
+Description=Death Muffin TEST UDP co-op relay (the rebuild's co-op)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/death-muffin/relay-test
+ExecStart=/home/ubuntu/tools/godot/godot --headless --path /home/ubuntu/death-muffin/relay-test --script relay_main.gd
+Environment=ENV_FILE=/home/ubuntu/death-muffin/backend-test/.env
+Environment=DM_RELAY_PORT=5196
+Environment=HOME=/home/ubuntu/death-muffin/relay-test/home
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/ubuntu/death-muffin/relay-test
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

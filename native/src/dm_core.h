@@ -27,6 +27,7 @@ class DmCore : public godot::RefCounted {
 	godot::PackedFloat32Array ev_floats;
 	friend class DmCrowd;        // the presentation reads the tables and the event buffer in place, read only (dm_crowd.h)
 	uint64_t event_batches = 0;  // take_events() calls: DmCrowd reads the buffer from where it stopped, and starts over once it was cleared
+	std::vector<std::vector<uint8_t>> snap_parts;  // the parts snapshot_parts builds (reused, like wire_buf)
 	std::vector<uint8_t> wire_buf;               // the snapshot or batch being built (reused: no allocation once it has grown)
 	std::vector<std::string> refused_logged;     // command names already reported once as refused on a puppet
 	bool refused(const char *p_command);         // a puppet core refuses what the host owns: counts it, says so once per command, true when refused
@@ -116,6 +117,7 @@ public:
 	bool is_puppet() const;
 	void set_replication(bool p_on);                // host: collect reliable events for guests (and restart their numbering); off for solo play
 	godot::PackedByteArray snapshot(int64_t p_tick);  // host, 20 Hz: every live body's changing fields, quantized (empty on a puppet)
+	godot::Array snapshot_parts(int64_t p_tick, int64_t p_max_bytes);  // host, 20 Hz: the snapshot as messages of at most p_max_bytes (each a snapshot of its bodies; ticks p_tick, +1 ...; the caller adds the length)
 	godot::PackedByteArray take_reliable();         // host, every tick: the discrete events since the last call, empty when none. Leaves the buffer take_events() reads alone
 	godot::PackedByteArray baseline();              // host: the whole present as reliable records, for a guest that joins late or asks after a gap
 	bool apply_snapshot(const godot::PackedByteArray &p_bytes);  // puppet: false = refused (see replication_error()); a late or repeated one is ignored (true)

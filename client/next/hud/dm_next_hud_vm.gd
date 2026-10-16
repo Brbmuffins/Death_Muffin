@@ -337,7 +337,7 @@ func _party(g: DmNextGame) -> Array:
 		if b == null:
 			continue
 		var d := DmContent.discipline(String(r["discipline"]))
-		var lvl := int(host.character.get("level", 1)) if b == g.local_body() else int(b.character.get("level", 1))
+		var lvl := g.party.level_of(b) if g.party != null else (int(host.character.get("level", 1)) if b == g.local_body() else int(b.character.get("level", 1)))
 		out.append({"id": int(r["peer_id"]), "name": String(r["name"]), "discipline": "%s · Level %d" % [d.get("name", r["discipline"]), lvl],
 			"portrait": DmGameHud.art(String(d.get("portrait", "art/portraits/%s.webp" % r["discipline"])).replace("art/", "")), "hp_frac": b.hp / maxf(b.max_hp, 1.0)})
 		if out.size() >= 4:

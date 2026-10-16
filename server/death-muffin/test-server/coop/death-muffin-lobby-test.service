@@ -1,0 +1,29 @@
+# Death Muffin TEST lobby (2-player co-op of the rebuilt client, DECISIONS B38/B40). NOT installed by anything but coop/setup.sh, which the owner runs.
+# The live lobby's code in its own copy (~/death-muffin/lobby-test), its own port, and the TEST backend's signing key: a token of the test server opens it, a live token does not.
+# The relay's public address is the server's own address, so it is not in git: coop/README.md "Install" has the drop-in that sets DM_RELAY_UDP.
+[Unit]
+Description=Death Muffin TEST lobby and packet relay (the rebuild's co-op; the test backend's accounts)
+After=network.target death-muffin-auth-test.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/death-muffin/lobby-test
+ExecStart=/usr/bin/node src/index.js
+Environment=NODE_ENV=production
+# JWT_SECRET of the TEST backend (never the live one); read, never printed.
+Environment=ENV_FILE=/home/ubuntu/death-muffin/backend-test/.env
+Environment=DM_LOBBY_HOST=127.0.0.1
+Environment=DM_LOBBY_PORT=5195
+# Friends' lists (presence, invites, asks to join) come from the test backend's copies of the team's accounts.
+Environment=DM_LOBBY_BACKEND=http://127.0.0.1:5194
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

@@ -116,6 +116,7 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_puppet"), &DmCore::is_puppet);
 	ClassDB::bind_method(D_METHOD("set_replication", "on"), &DmCore::set_replication);
 	ClassDB::bind_method(D_METHOD("snapshot", "tick"), &DmCore::snapshot);
+	ClassDB::bind_method(D_METHOD("snapshot_parts", "tick", "max_bytes"), &DmCore::snapshot_parts);
 	ClassDB::bind_method(D_METHOD("take_reliable"), &DmCore::take_reliable);
 	ClassDB::bind_method(D_METHOD("baseline"), &DmCore::baseline);
 	ClassDB::bind_method(D_METHOD("apply_snapshot", "bytes"), &DmCore::apply_snapshot);
@@ -764,6 +765,21 @@ PackedByteArray DmCore::snapshot(int64_t p_tick) {
 	return out;
 }
 
+Array DmCore::snapshot_parts(int64_t p_tick, int64_t p_max_bytes) {
+	Array out;
+	if (refused("snapshot_parts")) {
+		return out;
+	}
+	const size_t n = world.write_snapshot_parts(snap_parts, uint32_t(p_tick), size_t(p_max_bytes > 0 ? p_max_bytes : 0));
+	for (size_t i = 0; i < n; i++) {
+		PackedByteArray b;
+		b.resize(int64_t(snap_parts[i].size()));
+		std::memcpy(b.ptrw(), snap_parts[i].data(), snap_parts[i].size());
+		out.push_back(b);
+	}
+	return out;
+}
+
 PackedByteArray DmCore::take_reliable() {
 	PackedByteArray out;
 	if (refused("take_reliable")) {
@@ -809,6 +825,7 @@ Dictionary DmCore::replication_stats() const {
 	d["puppet"] = world.puppet;
 	d["replicating"] = r.replicating;
 	d["snapshots_built"] = int64_t(r.snapshots_built);
+	d["snapshot_frames"] = int64_t(r.snapshot_frames);
 	d["batches_built"] = int64_t(r.batches_built);
 	d["records_built"] = int64_t(r.records_built);
 	d["reliable_bytes"] = int64_t(r.reliable_bytes);

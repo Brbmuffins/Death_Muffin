@@ -23,6 +23,7 @@ const BAKE := ["grave_robber", "bone_hound"]
 const TEST_API := "https://muffindevelopment.com/death-muffin/test-api"
 const LIVE_API := "https://muffindevelopment.com/death-muffin/api"
 const LIVE_LOBBY := "wss://muffindevelopment.com/death-muffin/lobby/"
+const TEST_LOBBY := "wss://muffindevelopment.com/death-muffin/test-lobby/"   # the test lobby of 2-player co-op (server/death-muffin/test-server/coop)
 const SCAN_EXT := ["gd", "tscn", "tres", "json", "cfg", "godot", "gdshader", "gdshaderinc", "txt", "csv"]
 const SCAN_SKIP := ["tests", "assets", "addons", ".godot", "bin", "assets/crowd/baked", "ui/fonts"]   # ui/fonts: the fonts' licence texts carry their authors' web addresses
 
@@ -438,7 +439,10 @@ func config_is_the_test_server() -> void:
 		for u in never:
 			var v: String = pair[1]
 			check(v != u and not v.begins_with(u), "DmConfig.%s is not the live address %s" % [pair[0], u])
-	check(DmConfig.LOBBY_URL == "", "there is no lobby for the test build yet, so none is set")
+	check(DmConfig.LOBBY_URL == TEST_LOBBY, "LOBBY_URL is the test lobby: %s" % DmConfig.LOBBY_URL)
+	check(DmConfig.allows_lobby_url(TEST_LOBBY) and not DmConfig.allows_lobby_url(LIVE_LOBBY) and not DmConfig.allows_lobby_url(LIVE_LOBBY.trim_suffix("/")) and not DmConfig.allows_lobby_url("ws://muffindevelopment.com:5192"), "the lobby allow-list takes the test lobby and refuses the live one")
+	check(DmConfig.allows_lobby_url("ws://127.0.0.1:45195") and DmConfig.allows_lobby_url("ws://localhost:5195/") and not DmConfig.allows_lobby_url("ws://127.0.0.1@example.invalid/") and not DmConfig.allows_lobby_url("wss://127.0.0.1:5195") and not DmConfig.allows_lobby_url(""), "and takes a lobby on this machine (a trial), not a lookalike")
+	check(DmConfig.RELAY_PORT == 5196 and DmConfig.allows_relay("203.0.113.9", 5196) and not DmConfig.allows_relay("203.0.113.9", 5193) and not DmConfig.allows_relay("127.0.0.1", 5193) and DmConfig.allows_relay("127.0.0.1", 45196), "the relay is the test relay's port (5196) or one on this machine, never the live relay's (5193)")
 	for u in never:
 		check(not DmConfig.allows_url(u) and not DmConfig.allows_url(u + "/login") and not DmConfig.allows_url(u + "/api/health") and not DmConfig.allows_api_base(u), "the allow-list refuses %s" % u)
 	for u in [TEST_API, TEST_API + "/login", TEST_API + "/api/health", DmConfig.CLIENT_MANIFEST_URL, DmConfig.CLIENT_MANIFEST_URL + "?t=1"]:

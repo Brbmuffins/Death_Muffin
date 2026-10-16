@@ -23,8 +23,9 @@ signal session_ended(reason: String)
 
 const MAX_PLAYERS := 4  ## D2
 ## Bump when the session messages change shape. Since 2: the hello also carries the build version, and the host refuses a different build
-## (DmBuild.compatible), so two release builds only ever play together when they are the same build.
-const PROTOCOL := 2
+## (DmBuild.compatible), so two release builds only ever play together when they are the same build. Since 3 (the rebuilt client, DECISIONS B40): it carries the combat
+## core's wire version (DmCore.wire_version()) too, and the host refuses a guest that speaks another one even when both are dev builds, which skip the build check.
+const PROTOCOL := 3
 const SNAPSHOT_HZ := 20.0
 const INTERP_DELAY := 0.1
 const MOVE_SPEED := 5.0
@@ -42,6 +43,8 @@ var character_name: String = "Player"
 var discipline_id: String = ""
 ## This game's build (DmBuild.version(), set by DmNextGame). "" or "dev" = no build check (editor runs, tests).
 var build_version: String = ""
+## The core's co-op wire version this game speaks (DmCore.wire_version(); 0 = no core). Tests set another number to play an older or newer build.
+var wire: int = int(DmCore.wire_version()) if ClassDB.class_exists("DmCore") else 0
 ## Seams for a game built on the session (both default to the arena behaviour): `body_factory: Callable() -> DmSessionBody` makes the
 ## player body on EVERY peer (spawner spawn_function), `spawn_origin` shifts the spawn ring (set before host()).
 var body_factory: Callable = Callable()
@@ -165,6 +168,11 @@ func kick(peer_id: int) -> void:
 	multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 
 
+## End the session now with `reason` (a guest the host's messages cannot be used by: another version or other data, DmNextNet). Nothing is announced.
+func abort(reason: String) -> void:
+	_teardown(reason)
+
+
 ## Leave / close. The host announces the end to clients and waits a moment so it arrives; `await` is optional.
 func leave() -> void:
 	if _state == State.IDLE or _state == State.ENDING:
@@ -254,7 +262,7 @@ func _teardown(reason: String) -> void:
 
 
 func _on_connected_to_server() -> void:
-	_rpc_hello.rpc_id(1, PROTOCOL, character_name, discipline_id, build_version)
+	_rpc_hello.rpc_id(1, PROTOCOL, character_name, discipline_id, build_version, wire)
 	hello_at_ms = Time.get_ticks_msec()
 	printerr("[coop] joiner: hello sent to the host")
 
@@ -420,6 +428,13 @@ func _apply_face(sender: int, body_id: int, yaw: float) -> void:
 	b.set_facing(yaw)
 
 
+## The refusal a guest whose core speaks another wire version sees (dev builds skip the build check, so this is the one that catches them): the same words as `version_text`.
+static func wire_text(host_wire: int, guest_wire: int) -> String:
+	if guest_wire < host_wire:
+		return "the host has a newer version of the game. Close it and start it again from the launcher to update, then join"
+	return "the host is on an older version of the game. Ask them to restart it from the launcher to update, then join again"
+
+
 ## The refusal a joiner on another build sees (shown as "<Text>."): which side is behind, and the fix.
 static func version_text(host_build: String, joiner_build: String) -> String:
 	if DmBuild.newer(host_build, joiner_build) or joiner_build == "":
@@ -432,7 +447,7 @@ static func version_text(host_build: String, joiner_build: String) -> String:
 # ---- RPCs ---------------------------------------------------------------------------------------------------------------------
 
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_hello(protocol: int, nm: String, disc: String, build: String = "") -> void:   # build: absent from a protocol-1 client
+func _rpc_hello(protocol: int, nm: String, disc: String, build: String = "", guest_wire: int = 0) -> void:   # build: absent from a protocol-1 client; guest_wire: before protocol 3
 	if not multiplayer.is_server() or _state != State.HOSTING:
 		return
 	var id := multiplayer.get_remote_sender_id()
@@ -440,6 +455,9 @@ func _rpc_hello(protocol: int, nm: String, disc: String, build: String = "") -> 
 		return
 	if protocol != PROTOCOL or not DmBuild.compatible(build_version, build):
 		_refuse(id, version_text(build_version, build if protocol == PROTOCOL else ""))
+		return
+	if guest_wire != wire:
+		_refuse(id, wire_text(wire, guest_wire))
 		return
 	if _roster.size() >= MAX_PLAYERS:
 		_refuse(id, "session is full (%d/%d players)" % [_roster.size(), MAX_PLAYERS])

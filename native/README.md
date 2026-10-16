@@ -73,11 +73,11 @@ The transport (lobby, relay) is not in the core: it moves three kinds of message
 
 ```
 host, each tick   core.step(dt);  crowd.sync(core);  events = core.take_events()            # as in solo play
-host, every 3rd   send_unreliable(core.snapshot(tick))                                      # 20 Hz, one message, ~1.2 KB for the Full Party
+host, every 3rd   parts = core.snapshot_parts(tick, 1300); for p in parts: send_unreliable(p); tick += parts.size()   # 20 Hz; the Full Party's ~1.2 KB is one packet, two past 1,300 B
 host, each tick   b = core.take_reliable(); if not b.is_empty(): send_reliable(b)           # or every 3rd tick: batches simply hold more
 host, guest joins core.set_replication(true) once; send_reliable(core.baseline()) to the new guest (the guests already in keep getting take_reliable())
 guest, setup      DmCoreData.load_all(core); core.set_area_bounds(...) as on the host; core.set_puppet(true); a new area or a new host core = a new baseline
-guest, on arrival core.apply_snapshot(bytes) / core.apply_reliable(bytes)                   # false: core.replication_error() says why
+guest, on arrival core.apply_snapshot(bytes) / core.apply_reliable(bytes)                   # each snapshot part as it comes; false: core.replication_error() says why
 guest, each tick  core.step(dt);  crowd.sync(core);  events = core.take_events()            # the same consumer code as the host
 guest, a refused batch ("... ask the host for a baseline")  ->  ask for core.baseline() on the host, apply it, crowd.clear() first
 ```
@@ -88,6 +88,12 @@ guest, a refused batch ("... ask the host for a baseline")  ->  ask for core.bas
   as records (every live enemy and thrall as a spawn with what it is doing now, corpses, zones, statuses, the name tables); applying it replaces everything the guest knew,
   without removal events (the caller clears its own presentation), and carries the number of the last batch it already covers. It may be taken at any time between ticks: the
   events not yet handed out are sealed into the next batch, which the new guest ignores (the baseline's number covers it) and `take_reliable()` gives the guests already in.
+- `snapshot_parts(tick, max_bytes)` is `snapshot(tick)` cut into packets: the live enemies in spawn order, then the live thralls in raise order, in as many messages as it takes to keep each at or
+  under `max_bytes` (a UDP packet must stay under the path's MTU, 1,392 bytes in ENet, or its fragments are lost together; the Full Party's snapshot reaches 1.7 KB). Every part is a complete
+  snapshot message of its own bodies (the same header, the counts of ITS records, ids as differences from 0, the same record bytes), so a guest applies each as it arrives: nothing is reassembled and no
+  frame is waited for, and the wire format stays version 1. The parts of one call carry the ticks `tick`, `tick + 1` ... (the caller adds how many there were for the next call), which is also the frame id:
+  a hole in the ticks a guest applied is a part the network lost, and the stale rule below makes an overtaken part cost nothing. A lost or late part leaves its bodies where the last
+  snapshot put them for 50 ms (they keep easing); an empty world is one part that still carries the clock; a part always holds at least one record (about 48 B is the least `max_bytes` can mean).
 - Snapshots are unreliable and carry only what changes (the table below). The spawn facts (def, level, area, kind, owner, maximum health) travel once, in the spawn event, so
   a snapshot record for an id the guest has not met yet is skipped (the two channels may overtake each other) and the next snapshot has it. A snapshot that is not newer than the
   last one is ignored (`true`, counted). A dead body is never in a snapshot: deaths are events, and a late snapshot cannot raise the dead.
@@ -141,7 +147,7 @@ likewise, its ground speed is the eased motion smoothed at 10 per second (0 belo
 0.1 s, status chips count down. Queries (`enemies_in_radius`, `enemy_info`, `thralls_in_radius`, `thrall_*`, `corpse_*`, `statuses`) read the same tables as on the host. A puppet's
 `enemy_info` has `net_pos` (where the last snapshot put the body). Commands the host owns (`spawn_enemy`, `remove_enemy`, `damage`, `stun`, `apply_status`, `remove_status`, `raise_thrall`,
 `kill_thrall`, `sacrifice_thralls`, `rally_thralls`, `recall_thralls`, `set_legion_burst`, `set_thrall_*`, `curse_thrall`, `strip_shroud`, `cover_miasma`, `remove_enemy`, `corpse_add`,
-`corpse_consume`, `snapshot`, `take_reliable`, `baseline`, `set_replication`) are refused: they return 0, false, nothing or (`damage`) `{dealt: 0, killed: false, refused: true}`, print
+`corpse_consume`, `snapshot`, `snapshot_parts`, `take_reliable`, `baseline`, `set_replication`) are refused: they return 0, false, nothing or (`damage`) `{dealt: 0, killed: false, refused: true}`, print
 one error per command, and count in `replication_stats().commands_refused`. Heroes and bosses are brain input: `add_external` returns 0 and `set_external` does nothing on a puppet. `replication_stats()` counts both roles (messages built and applied,
 stale snapshots, ids not yet met, desyncs, refusals, the sizes of the buffers on the per-tick path, which the test holds steady).
 
@@ -226,6 +232,13 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 - **Co-op messages:** one binary snapshot with every body, thralls included, at 20 Hz replaces today's dictionaries (enemies 6 to a packet at 20 Hz, thralls at 15 Hz plus a full
   reliable copy at 1 Hz). Values are quantized: positions to 1 cm, yaw to 1.4 degrees, health to 1/65535 of the maximum, time in state to 10 ms. The animation name is not sent
   (`anim` today): the crowd view picks clips from the state and the eased speed.
+- **Snapshots are cut by body ranges, not fragmented:** the old code kept each packet under 1,392 B by sending 6 enemies a packet; the core's snapshot is `DmCore.snapshot_parts(tick, 1300)`
+  (client/next/next_net.gd), one packet in a fight under 1,300 B and two at the Full Party's largest, each part applied by the guest as it arrives. Over the UDP lane a lost part loses
+  only its bodies' 50 ms update; the WebSocket fallback loses nothing. Thralls went at 15 Hz with a reliable copy at 1 Hz and enemies' cues over their own reliable RPC: now all at 20 Hz in the one
+  snapshot, and the cues are the core's events in the reliable batches.
+- **What stays GDScript beside the core in co-op:** the hero positions (the session's own 20 Hz snapshot), hero vitals (`Net`, 20 Hz), the rites' events, states and gestures (DmRiteCaster) and the King's
+  state at 20 Hz and events (DmBossHost) travel as today, by RPC over the same relay peer. A guest's hero is an external of the HOST's core (its id is told in a table), so enemies chase and hit it there and
+  its thralls are the host's bodies; the guest's own core has no externals at all.
 - **A guest sees a change between snapshots once:** a state that lasts less than one interval (50 ms) is never seen, and two hits between two snapshots are one damaged event with
   the sum, as today's puppet's hp difference is. A derived thrall swing has target 0 and damage 0 (the host's event knows both); a puppet's `enemy_info` has the def's damage and
   speed, not the body's rolled ones, and no target or cooldowns. The telegraph's place and aim are the snapshot's, its seconds the wind-up less the age the snapshot showed.
@@ -321,7 +334,8 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   multipliers, kinds, enemies choosing and hurting thralls, deaths and bursts, statuses on thralls, rally, separation, tick order),
   `client/tests/core_affixes.gd` (each affix against mirrors of today's timer arithmetic, the pause while staggered, Vengeful inside a call and inside a
   DoT tick), `client/tests/core_coop.gd` (two cores: a real fight, 20 Hz snapshots and batches into puppets, loss and reordering, a late guest and a lost batch,
-  refusals, damaged messages, the commands and queries on a puppet, `DmCrowd` on one, and the Full Party's size and cost; `-- --verbose` lists every check),
+  refusals, damaged messages, the commands and queries on a puppet, `DmCrowd` on one, the Full Party's size and cost, and `snapshot_parts`; `-- --verbose` lists every check) and
+  `client/tests/coop.gd` (the game's half: a host and a guest game over a real local lobby and relay, client/README.md "Co-op on the core"),
   `client/tests/rites.gd` (the Gravecaller's rites on the core: every necromancer rite against today's formulas, the synchronous kills, the input, a full fight),
   `client/tests/boss.gd` (the Gravedigger King: his brain against today's scenarios, his fight by hand and on the real clock, the thralls, the rites, the defeat),
   `client/tests/benchmark.gd` (the benchmark: the Full Party fight held as its setup says, Easy auto combat on the core's arrays, the report and its budget section, real `--benchmark` launches, nothing sent but to the test API),

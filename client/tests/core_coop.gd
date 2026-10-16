@@ -164,6 +164,7 @@ func _init() -> void:
 	puppet_refuses_and_answers()
 	silent_removal()
 	full_party()
+	snapshot_parts()
 	keep.clear()
 	if fails == 0:
 		print("PASS core_coop %d checks" % checks)
@@ -1133,6 +1134,88 @@ func full_party() -> void:
 	check(pup.enemy_ids() == host.enemy_ids() and pup.thrall_ids() == host.thrall_ids(), "and the guest holds the same %d enemies and %d thralls" % [host.enemy_count(), host.thrall_total()])
 	var st: Dictionary = pup.replication_stats()
 	check(st["desync"] == 0 and st["batches_refused"] == 0 and st["snapshots_refused"] == 0, "no desync in %d batches and %d snapshots" % [st["batches_applied"], st["snapshots_applied"]])
+
+
+## `snapshot_parts` (the transport's packet limit, native/README.md "Co-op"): the Full Party's snapshot cut into messages of at most N bytes. Every part is a snapshot message of its
+## own bodies; a puppet that applies all of them ends where one that applied the whole snapshot ends, a stale or repeated part costs nothing, an empty world is one part.
+func snapshot_parts() -> void:
+	var host := make_core(91)
+	host.set_replication(true)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 23
+	var heroes := []
+	for k in 4:
+		heroes.append(hero(host, Vector2(-6.0 + 4.0 * k, 0.0)))
+	var kinds := ["warrior", "warrior", "warrior", "shieldbearer", "hound", "wraith", "archer", "bonemage"]
+	for k in 4:
+		for j in 8:
+			host.raise_thrall(thrall_stats(kinds[j], 900.0, 14.0), heroes[k], Vector2(-6.0 + 4.0 * k + float(j) - 3.0, 3.0), 0.0, 20.0)
+	spawn_wave(host, rng, 72, 8.0, 22.0, false)
+	for t in 240:   # a few seconds of fighting: states, aims, affixes and health all over the place
+		host.step(DT)
+		events(host)
+	var whole: PackedByteArray = host.snapshot(500)
+	var limits := [900, 700, 100, 1]
+	var made := {}
+	for limit in limits:
+		var parts: Array = host.snapshot_parts(1000, limit)
+		var biggest := 0
+		var bodies := 0
+		var ok_ticks := true
+		var seen := {}
+		var pup := make_puppet()
+		pup.apply_reliable(host.baseline())
+		for i in parts.size():
+			var part: PackedByteArray = parts[i]
+			biggest = maxi(biggest, part.size())
+			ok_ticks = ok_ticks and part.decode_u32(8) == 1000 + i
+			check(pup.apply_snapshot(part), "a part of %d bytes is accepted (limit %d): %s" % [part.size(), limit, pup.replication_error()])
+		made[limit] = parts
+		for id in host.enemy_ids():
+			seen[id] = true
+		check(ok_ticks, "the parts' ticks count up from the first one (limit %d)" % limit)
+		check(biggest <= maxi(limit, 48), "no part is longer than the limit %d (largest %d B, %d parts)" % [limit, biggest, parts.size()])
+		var ref := make_puppet()
+		ref.apply_reliable(host.baseline())
+		ref.apply_snapshot(whole)
+		var diff := 0
+		for id in host.enemy_ids():
+			var a: Dictionary = ref.enemy_info(id)
+			var b: Dictionary = pup.enemy_info(id)
+			if a.is_empty() != b.is_empty() or (not a.is_empty() and (a["net_pos"] != b["net_pos"] or a["hp"] != b["hp"] or a["state"] != b["state"] or a["yaw"] != b["yaw"])):
+				diff += 1
+		for id in host.thrall_ids():
+			var a2: Dictionary = ref.thrall_info(id)
+			var b2: Dictionary = pup.thrall_info(id)
+			if a2.is_empty() != b2.is_empty() or (not a2.is_empty() and (a2["net_pos"] != b2["net_pos"] or a2["hp"] != b2["hp"] or a2["state"] != b2["state"])):
+				diff += 1
+		check(diff == 0, "applying the %d parts of limit %d gives the same enemies and thralls as the whole snapshot (%d differ)" % [parts.size(), limit, diff])
+		var st: Dictionary = pup.replication_stats()
+		bodies = int(st["snapshots_applied"])
+		check(bodies == parts.size() and st["snapshots_refused"] == 0 and st["snapshots_stale"] == 0, "a puppet applied %d snapshot messages, none refused or stale" % bodies)
+	var live := 0
+	for st_e in host.enemy_states():
+		live += 1 if st_e != DEAD else 0
+	for st_t in host.thrall_states():
+		live += 1 if st_t != T_DEAD else 0
+	check(made[900].size() >= 2 and made[1].size() == live, "the Full Party needs %d parts at 900 B, one body per part at 1 B (%d parts for about %d bodies)" % [made[900].size(), made[1].size(), live])
+	print("INFO snapshot_parts: the Full Party (%d bodies) as %d parts at 900 B (whole snapshot %d B), %d at 700 B" % [live, made[900].size(), whole.size(), made[700].size()])
+	# stale and repeated parts: only a newer tick is applied; the rest of a lost part's bodies catch up with the next snapshot
+	var pup2 := make_puppet()
+	pup2.apply_reliable(host.baseline())
+	var ps: Array = host.snapshot_parts(2000, 700)
+	check(pup2.apply_snapshot(ps[1]) and pup2.apply_snapshot(ps[0]) and pup2.apply_snapshot(ps[1]), "parts that arrive out of order or twice are not an error")
+	var st2: Dictionary = pup2.replication_stats()
+	check(st2["snapshots_applied"] == 1 and st2["snapshots_stale"] == 2, "only the newest tick applied (applied %d, stale %d): the older part waits for the next snapshot" % [st2["snapshots_applied"], st2["snapshots_stale"]])
+	# an empty world is one part that still carries the clock
+	var empty := make_core(5)
+	var ep: Array = empty.snapshot_parts(1, 1300)
+	check(ep.size() == 1 and ep[0].size() <= 40, "an empty world is one small part (%d B)" % (ep[0].size() if ep.size() > 0 else -1))
+	# a guest may not build them
+	var pp := make_puppet()
+	var refused: Array = pp.snapshot_parts(1, 1300)
+	check(refused.is_empty() and pp.replication_stats()["commands_refused"] > 0, "a puppet refuses to build parts")
+	keep.append(host)
 
 
 ## What the buffers of the wire and the event buffer hold (the first six parts of buffer_parts; the body tables double at a new peak, as they always did).

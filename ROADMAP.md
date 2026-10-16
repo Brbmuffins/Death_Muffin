@@ -156,16 +156,21 @@ server (B38).
     run once, with a longer limit or on Helix's PC (draw calls, and the HUD's 0.5 ms there); the look on Helix's PC against today's; the panels' pieces (menu row, chat, Empower, party frames, belt) as their items
     land, each keeping the budget.
   - [ ] The Low to Ultra presets.
-- [ ] 2-player co-op (the combat core's half is built: native/README.md "Co-op", `client/tests/core_coop.gd`):
+- [ ] 2-player co-op (the combat core's half: native/README.md "Co-op", `client/tests/core_coop.gd`; the game's half: client/README.md "Co-op on the core", `client/tests/coop.gd`):
   - [x] Core snapshots: `DmCore.snapshot` (20 Hz, the Full Party in about 1.2 KB), `take_reliable` and `baseline` on the host, a puppet core (`set_puppet`, `apply_snapshot`,
     `apply_reliable`) on the guest, versioned messages (B40), loss, reordering and late joins proven.
-  - [ ] Transport: the test lobby and relay carry the three messages: the snapshot unreliable and newest-wins (1.2-1.3 KB in the test fight, up to 1.7 KB: past the 1,392-byte packet the old
-    code stayed under, so ENet fragments it and a lost fragment loses that snapshot, which the next repairs; cut it by body range only if measurement says so), batches and baselines reliable and in order, a `DmCore.wire_version()` check in the join handshake that names the side to update
-    (B28, phones), and a guest's request for a baseline after a refused batch.
-  - [ ] GDScript wiring: the host calls `set_replication(true)` when the first guest joins and sends `take_reliable()` and `snapshot()` on the lane; the guest game scene builds a
-    puppet core, feeds `apply_*` from the lane, runs `CrowdView` on it, maps each host hero id to its legion (`set_owner_legion`), and runs the effects and HUD consumers on the
-    puppet's `take_events()` without rewards, loot or the kill report; a baseline (also for each new area) clears the guest's presentation first.
-  - [ ] Still GDScript, to be replicated beside the core: the Gravedigger King and later bosses (state, phases, telegraphs), hero vitals, rite events and visuals, ground drops.
+  - [x] Transport and wiring, proven on a real local lobby and relay: the snapshot unreliable at 20 Hz, cut by body ranges (`DmCore.snapshot_parts`, at most 1,300 B a packet, each part applied as it arrives), batches and baselines reliable and in order, a
+    baseline asked for after a gap, the heroes' ids and vitals; the host calls `set_replication(true)` with the first guest and registers every player's hero as an external; the guest's game scene runs a puppet core (`DmCoreHost.puppet`), the crowd,
+    effects and HUD from its events, no rewards or kill report (`kill_credited` is the host's, once); the hello carries the build and `DmCore.wire_version()` and refuses a mismatch in the player's words; a guest's casts and move intents go to the host, which
+    resolves them on its core (Exhume raises a thrall the host simulates, owned by the guest's hero external). The Full Party for one guest: about 28 KB/s and 82 packets/s on the host's connection (2.7 % and 14 % of the relay's limits), the largest packet 1,231 B.
+  - [x] The Gravedigger King, hero vitals and the rites' events reach the guest (GDScript beside the core, as today's code sends them); the King fights both heroes in the proof.
+  - [x] The party flow on the test lobby and relay (`DmNextParty`: host, join by code or id, invite, ask to join, answer, leave; `DmConfig` pins the test lobby and the test relay's port).
+  - [ ] **Waits for the owner: install the test lobby and relay** (`server/death-muffin/test-server/coop/README.md` "Install": two units on ports 5195 and 5196, an nginx location, a firewall rule, a drop-in with the server's address). Prepared, not
+    installed, not started; until then co-op runs against a lobby and relay on the same machine (`client/tools/coop_local.sh`) and the team cannot play it in the test build.
+  - [ ] A player-facing entry: the Social window (Party and Friends tabs) with the panels, and the hand-over for `join_ready` in `main/main.gd` (a few lines; kept out while the benchmark port edits that file). Until then a party is made and joined by
+    launch arguments (`--host-party`, `--join-party=<code>`).
+  - [ ] Still to do beside the core: a guest's build from the server's record (B22) and the joiner's own account (rewards, XP, loot, the kill report's carried kills) with the rewards item; ground drops and the party's seals with loot and the Chapterhouse; the other six bosses'
+    state with their items; a new baseline for each new area; party chat.
   - [ ] Phones join as guests only (B40): the same messages; measure the snapshot on the Mobile renderer's budget when the first phone build exists.
 - [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
   It runs in the Hollow Graves on both sides (72 Graves enemies, 32 thralls, the Gravedigger King): the test build has the Graves roster, and today's
