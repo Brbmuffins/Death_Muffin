@@ -20,7 +20,7 @@ extends Node
 ## only those with a status (`status_changed`) or that fly.
 ## A body underground (a ghoul's BURROW and its eruption's wind-up) has today's dirt mound over it (`_mounds`, a node each: a few at most); a dying body raises
 ## dust where it comes to rest (the crowd says when: `DmCrowd.take_landings`); a corpse that goes plays today's puff for why, and one Corpse Explosion bursts is
-## blown apart at once (`DmCrowd.shatter`).
+## blown apart at once (`DmCrowd.shatter`). Every thrall stands on today's ground ring (`_thrall_rings`), the legion readable at a glance.
 ## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
 ## the elite's body glow, the censer, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the acolyte's reach ring, the Flagellant's frenzy motes.
 
@@ -49,7 +49,7 @@ var fx: DmEventFx                  ## the shared router half: telegraphs, deaths
 var host := DmEnemyFxHost.new()
 var core_host: DmCoreHost
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
-var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0}
+var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0, "thrall_ring": 0}
 
 var _clock := 0.0                  ## ms of rendered-frame time
 var _amb_t := 0.0
@@ -73,6 +73,8 @@ var _status_fx: Dictionary = {}    ## DmContent statuses STATUS_FX: the tells' c
 var _mote_o := {"count": 1}        ## the option record every status, flier and affix mote reuses
 var _affixed := {}                 ## id -> [the affix marks' handles, the affix names, scale, head height]: an affixed body, while it lives
 var _unveiled := {}                ## id -> true once its shroud lifted (`unveil`): no more shroud smoke
+var _thrall_rings := {}            ## thrall id -> its ground ring's handle (DmEntityViews._make_thrall), while it lives
+var _thrall_looks: Dictionary = {}  ## crowd_looks.json thrall_look (the plague bearer's and the colossus' larger rings)
 var _corpse_at := {}               ## corpse id -> Vector2: where it lies (the puff when it goes)
 var _corpse_rings := {}            ## corpse id -> [its ring's handle, when it ends (rendered-frame ms), pale]: until the corpse goes or the ring's 26 s are over
 var _px := 0.0
@@ -108,6 +110,9 @@ func bind(h: DmCoreHost) -> void:
 	h.zone_gone.connect(_on_zone_gone)
 	h.affix_moment.connect(_on_affix_moment)
 	h.status_changed.connect(_on_status_changed)
+	h.thrall_raised.connect(_on_thrall_raised)
+	h.thrall_died.connect(func(id: int, _r: String, _o: int, _k: String, _s: int, _x: float, _z: float) -> void: _thrall_off(id))
+	h.thrall_removed.connect(_thrall_off)
 	h.statuses_cleared.connect(func(id: int) -> void: _statused.erase(id))
 	h.corpse_added.connect(_on_corpse_added)
 	h.corpse_gone.connect(_on_corpse_gone)
@@ -144,6 +149,8 @@ func clear() -> void:
 		_kill(r[0])
 	_corpse_rings.clear()
 	_corpse_at.clear()
+	for id in _thrall_rings.keys():
+		_thrall_off(id)
 	for id in _affixed.keys():
 		_affix_off(id)
 	_unveiled.clear()
@@ -473,6 +480,41 @@ func _on_corpse_added(id: int, kind: int, _def: String, _elite: bool, area: Stri
 	_corpse_rings[id] = [_decal({"tex": "ring", "color": 0xffe6b0 if marsh else 0xd8cdf2, "x": x, "z": z, "r": (1.1 if marsh else 0.8) * maxf(1.0, scale), "duration": 26,
 		"opacity": 0.85 if marsh else 0.4, "fadeIn": 0.8, "pulse": 2.0}), _clock + RING_MS, true]
 	stats["corpse_mark"] += 1
+
+
+## A thrall's ground ring (DmEntityViews._make_thrall): the spirit colour (a champion's gold, a wraith's blue), brighter when empowered, larger for a champion, the
+## plague bearer and the colossus; an ally's thralls get the dimmer "other" ring. It follows the drawn body and goes when the thrall does.
+func _on_thrall_raised(id: int, kind: String, owner: int, _slot: int, empowered: bool, champion: bool, x: float, z: float, _yaw: float, _max_hp: float) -> void:
+	if _thrall_rings.has(id) or vfx == null:
+		return
+	if _thrall_looks.is_empty():
+		var looks: Variant = JSON.parse_string(FileAccess.get_file_as_string(CrowdView.LOOKS_PATH))
+		_thrall_looks = (looks as Dictionary).get("thrall_look", {}) if looks is Dictionary else {}
+	var look: Dictionary = _thrall_looks.get(kind, {})
+	var wraith := kind == "wraith"
+	var r := (float(look["ring"]) if look.has("ring") else (0.6 if kind == "hound" else 0.5)) * (1.3 if champion else 1.0)
+	var game := get_parent()
+	var me: Node = game.local_body() if game != null and game.has_method("local_body") else null
+	var own: Variant = null if me == null else int(me.get("core_id")) == owner
+	_thrall_rings[id] = vfx.decal({"other": own == false, "tex": "ring", "color": 0xd9a441 if champion else (0x8fb4ff if wraith else fx.sp("exhume", "spirit")),
+		"x": x, "z": z, "r": r, "duration": 1e9, "opacity": 1.0 if empowered else 0.7, "follow": _thrall_pos.bind(id)})
+	stats["thrall_ring"] += 1
+
+
+## The drawn ground position of a thrall (null once it fell or is gone), for its ring.
+func _thrall_pos(id: int) -> Variant:
+	var v: Dictionary = core_host.view.crowd.view_info(id)
+	if v.is_empty() or String(v.get("mode", "")) != "live":
+		return null
+	var p: Vector3 = v["pos"]
+	return Vector3(p.x, 0.0, p.z)
+
+
+func _thrall_off(id: int) -> void:
+	var h: Variant = _thrall_rings.get(id)
+	if h != null:
+		_kill(h)
+		_thrall_rings.erase(id)
 
 
 ## A corpse goes (DmEntityViews._on_corpse_gone): its ring with it, and today's puff for why. `consumed`: someone took it (Exhume's spirit, the Litany, a raise,

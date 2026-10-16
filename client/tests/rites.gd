@@ -566,6 +566,8 @@ func t_exhume() -> void:
 	check(field.get_corpse(cp) == null, "exhume: the corpse is consumed")
 	var ids := legion().list()
 	check(ids.size() == 1, "exhume: one thrall rises (%d)" % ids.size())
+	await ticks(2)
+	check(ids.size() == 1 and g.enemy_fx._thrall_rings.has(ids[0]), "exhume: the thrall stands on its ground ring")
 	if ids.size() == 1:
 		var t: Dictionary = legion().info(ids[0])
 		check(t["kind"] == want["kind"] and t["kind"] == "warrior", "exhume: a %s (the Gravecaller's kind)" % t["kind"])
