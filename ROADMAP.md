@@ -36,6 +36,9 @@ test build, each with an automatic check): in the headless Full Party fight on t
 **Before numbers** (Standard fight, 30 enemies and 20 thralls, Compatibility): Helix's PC (Ryzen 9 5950X, RTX 4070 SUPER, 1440p Ultra)
 99 fps, GPU 2.9 of 10 ms; warbogar's PC (Core i7-8700K, Arc B580, 1080p High) 41 fps, GPU 4.5 of 25 ms. Both processor-bound; the HUD is
 about 550 of 800 draw calls; slow frames pay extra 60 Hz catch-up steps. Calm play already reaches Helix's 170 Hz.
+Full Party fight, VPS processor test (today's game at c47c35a1, headless, `--benchmark --bench-size=full_party --bench-class=2`, 2026-10-16):
+the Hollow Graves (Gate B's room) 14.3 ms a frame on average, p95 24.4, p99 33.5; the Bell Sanctum 13.6 ms, p95 22.2 (an earlier run gave
+17.2 ms: the shared VPS varies by about a fifth, so Gate B runs today's game and the test build back to back).
 
 **Phases and gates.** Gates are checked on Helix's PC and the VPS processor test; brbmuffins' and warbogar's PCs join before launch day, and
 at least one other graphics brand runs Forward+ before then. The team plays the rebuild through the launcher's Test build switch on a test
@@ -61,7 +64,8 @@ server (B38).
   before the launcher release goes to everyone.
 - [x] Test server: `death-muffin-auth-test` on 127.0.0.1:5194, its own database and user, public at /death-muffin/test-api/, copies
   of the team's accounts (`server/death-muffin/test-server/`). The lobby and relay for test co-op come with the test build (Gate B).
-- [ ] Full Party benchmark fight in today's game, with before numbers on Helix's PC and in the VPS processor test.
+- [ ] Full Party benchmark fight in today's game, with before numbers on Helix's PC and in the VPS processor test. Live since 06cccafc;
+  the VPS numbers are in "Before numbers"; Helix's PC run (the Graves and the Sanctum) is still to come.
 - [ ] First test build: today's game on Forward+, fixing only what stops it running → Gate A.
 
 **Test build checklist** (built ahead while Gate A waits; nothing from it reaches anyone before Gate A passes):
