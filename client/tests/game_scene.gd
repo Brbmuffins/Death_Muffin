@@ -6,8 +6,9 @@ extends SceneTree
 ##   - NO NODE PER CREATURE: the scene tree's node count is the same with 0, 35 and 70 more idle enemies in the core, and no enemy has a node;
 ##   - enemies reach and hit the hero: the hero's health drops through the core's EV_TARGET_HIT, with kinds as today;
 ##   - the hero dies and gets up again (4 s, at the Graves' door; the core's enemies stop hitting him while he lies, and a forced death when the waves were too weak);
-##   - killing enemies with core.damage lays corpses and plays the death path (DmEnemyFx) without errors; deaths and removals leave nothing held by the fx;
+##   - killing enemies with core.damage lays corpses and plays the death path (DmEnemyFx) without errors, the corpses get their rings (capped); deaths and removals leave nothing held by the fx;
 ##   - the crowd draws the creatures: the CrowdView's groups hold an instance per live body and per corpse;
+##   - the affixed elites' standing marks and motes (gone when they fall);
 ##   - the kinds of blow (the penitent's cone, the moth's dust and cloud, the sac's slam, a hurt ghoul's dig and eruption) and the affixes' bell, meal, shroud and burst are
 ##     events of the core's buffer that DmEnemyFx played (scripted: one of each, close to the hero);
 ##   - the order of a tick (session and director, then the core, then the crowd) and that the host takes the event buffer once;
@@ -303,6 +304,8 @@ func killing() -> void:
 	var corpses_before := corpses_added
 	var died_before := died
 	var deaths_fx := int(g.enemy_fx.stats["death"])
+	var marks_before := int(g.enemy_fx.stats["corpse_mark"])
+	var showing_before := g.enemy_fx.corpse_marks(true)   # the pale (capped) rings; a resonant corpse's violet ring always shows
 	var kills := 0
 	for id in made:
 		var r: Dictionary = host.damage(id, 1.0e6, b.core_id)
@@ -314,6 +317,10 @@ func killing() -> void:
 	check(corpses_added - corpses_before == kills, "every kill laid a corpse (%d: a robber's is normal, a hound's swift)" % (corpses_added - corpses_before))
 	check(host.core.corpse_count() > 0, "the core holds corpses (%d)" % host.core.corpse_count())
 	check(int(g.enemy_fx.stats["death"]) - deaths_fx == kills, "the fx played the death path for each (%d)" % (int(g.enemy_fx.stats["death"]) - deaths_fx))
+	var marks := int(g.enemy_fx.stats["corpse_mark"]) - marks_before
+	var room := DmEnemyFx.CORPSE_MARKS_MAX - showing_before
+	check(marks == mini(kills, room) and g.enemy_fx.corpse_marks(true) == mini(DmEnemyFx.CORPSE_MARKS_MAX, showing_before + kills),
+		"the corpses get their pale rings up to %d at once (%d showing before, %d new, %d showing)" % [DmEnemyFx.CORPSE_MARKS_MAX, showing_before, marks, g.enemy_fx.corpse_marks(true)])
 	var st: Dictionary = host.view.stats()
 	print("INFO crowd after the kills: ", st)
 	# bodies linger 4 s, then the core removes them and the fx forgets them
@@ -394,12 +401,15 @@ func affixes() -> void:
 			risen[0] += 1
 	host.enemy_spawned.connect(spawn_cb)
 	var base := b.position + Vector3(0.0, 0.0, -14.0)
+	var marks_before := int(g.enemy_fx.stats["affix_mark"])
+	var motes_before := int(g.enemy_fx.stats["affix_mote"])
 	var bell := host.spawn_enemy("robber", base, 1, 1.0, 1.0, true, "graves", false, PackedStringArray(["bellTolled"]))
 	var shroud := host.spawn_enemy("robber", base + Vector3(6.0, 0.0, 0.0), 1, 1.0, 1.0, true, "graves", false, PackedStringArray(["shrouded"]))
 	var veng := host.spawn_enemy("robber", base + Vector3(-6.0, 0.0, 0.0), 1, 1.0, 1.0, true, "graves", false, PackedStringArray(["vengeful"]))
 	var hungry := host.spawn_enemy("robber", base + Vector3(0.0, 0.0, -6.0), 1, 1.0, 1.0, true, "graves", false, PackedStringArray(["hungering"]))
 	var food := host.spawn_enemy("robber", base + Vector3(0.5, 0.0, -6.5), 1, 1.0, 1.0, false, "graves", false)
 	await ticks(3)
+	check(int(g.enemy_fx.stats["affix_mark"]) - marks_before == 4, "each affixed elite stands on its affix's mark (%d)" % (int(g.enemy_fx.stats["affix_mark"]) - marks_before))
 	host.damage(food, 1.0e6, b.core_id)            # a corpse beside the hungry one
 	host.damage(hungry, 200.0, b.core_id)          # hurt, so it wants to eat
 	check(host.core.strip_shroud(shroud), "the shroud of an elite lifts for good")
@@ -415,8 +425,12 @@ func affixes() -> void:
 	check(moments.get("unveil", 0) == 1, "the shroud's lifting is a moment")
 	check(moments.get("hungering", 0) >= 1, "the hungry elite ate the corpse")
 	check(int(g.enemy_fx.stats["moment"]) >= 4, "the fx played them (%d)" % int(g.enemy_fx.stats["moment"]))
+	check(int(g.enemy_fx.stats["affix_mote"]) > motes_before and g.enemy_fx._unveiled.has(shroud), "near the hero they give off their motes (%d), the lifted shroud stops smoking" % (int(g.enemy_fx.stats["affix_mote"]) - motes_before))
+	check(not g.enemy_fx._affixed.has(veng), "the fallen Vengeful's mark is gone")
 	for id in [bell, shroud, hungry]:
 		host.damage(id, 1.0e9, b.core_id, false)
+	await ticks(2)
+	check(not g.enemy_fx._affixed.has(bell) and not g.enemy_fx._affixed.has(shroud) and not g.enemy_fx._affixed.has(hungry), "and every fallen elite's mark goes with it")
 
 
 ## INFO timings with about 70 enemies in a fight: the host's tick and the crowd's draw per frame.

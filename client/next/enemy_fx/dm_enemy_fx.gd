@@ -11,9 +11,12 @@ extends Node
 ## old fx did. Telegraph shapes and colours come from DmEventFxTelegraph (the same module DmEventFx.handle uses), deaths and voices from DmEventFx.
 ## No new effect ids, textures or sounds, so DmWarmup's existing pass covers everything (EFFECT_IDS lists the Binbun ids used, SFX_IDS the sounds).
 ##
-## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the affixes' standing rings and motes, the
-## elite's body glow, the fliers' hover motes, the censer, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the corpse
-## rings and the toxic decal, the acolyte's reach ring.
+## The corpses' marks are DmEntityViews' (`corpse_added` / `corpse_gone`): a faint pale ring under every fresh corpse for its 26 s (at most CORPSE_MARKS_MAX at once,
+## warm in the Fen), a violet one under a resonant corpse, a green disc under a toxic one for 5 s.
+## An affixed elite's standing tells are DmEntityViews._dress_affix / _tick_affix': per affix a ground mark that follows the drawn body (the bell's ring, the hunger's
+## glow, the shroud's haze, the vengeful cracks) and, near the hero, its motes on the ambient tick (drool, embers, shroud smoke while the shroud is up).
+## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
+## the elite's body glow, the fliers' hover motes, the censer, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the acolyte's reach ring.
 
 const AMBIENT_S := 0.2
 const NEAR_X := 24.0               ## ambient motes only near the hero (DmEntityViews near_fx)
@@ -25,6 +28,9 @@ const HEAVY_HIT_ELITE := 0.12
 const HITSTOP_RANGE := 16.0
 const RISE_S := 1.1                ## the rise (RISING state) the spawn dust lasts for
 const DEAD := 6                    ## DmCoreEvents.State.DEAD
+const CORPSE_MARKS_MAX := 8        ## DmEntityViews.CORPSE_MARKS_MAX: a wipe of 40 bodies does not add 40 decals
+const RING_MS := 26000.0           ## a corpse ring's life (its decal's duration)
+const HEAD_Y := {"humanoid": 1.3, "robed": 1.35, "quadruped": 0.75, "bloat": 1.05}   ## DmEntityViews.HEAD_Y: where a body's motes start, by rig
 const EFFECT_IDS: Array[String] = ["censer_incense", "vengeful_burst", "surge_eruption", "bonfire"]
 const SFX_IDS: Array[String] = ["eliteAggro", "eliteDeath", "enemyDeath", "tellStrike", "tollSmall", "burst", "boneHit",
 	"enemyAttackBeast", "enemyAttackHumanoid", "enemyAttackBrute", "enemyAttackSpirit",
@@ -36,7 +42,7 @@ var fx: DmEventFx                  ## the shared router half: telegraphs, deaths
 var host := DmEnemyFxHost.new()
 var core_host: DmCoreHost
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
-var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0}
+var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0}
 
 var _clock := 0.0                  ## ms of rendered-frame time
 var _amb_t := 0.0
@@ -51,6 +57,9 @@ var _tele_call := Callable()
 var _death_ev := {}
 var _zone := {"id": 0, "kind": "dust", "owner": "", "x": 0.0, "z": 0.0, "r": 1.0, "until": 0.0, "hostile": true, "creep": 0.0, "contagion": false}   ## scratch zone record
 var _zones := {}                   ## zone id -> true while its visual is up
+var _affixed := {}                 ## id -> [the affix marks' handles, the affix names, scale, head height]: an affixed body, while it lives
+var _unveiled := {}                ## id -> true once its shroud lifted (`unveil`): no more shroud smoke
+var _corpse_rings := {}            ## corpse id -> [its ring's handle, when it ends (rendered-frame ms), pale]: until the corpse goes or the ring's 26 s are over
 var _px := 0.0
 var _pz := 0.0
 var _amb_dust := {"x": 0.0, "y": 0.1, "z": 0.0, "count": 1, "color": 0x2a2230, "spread": 0.5, "speed": 0.5, "up": 0.6, "life": 1, "size": 0.9}
@@ -83,6 +92,9 @@ func bind(h: DmCoreHost) -> void:
 	h.zone.connect(_on_zone)
 	h.zone_gone.connect(_on_zone_gone)
 	h.affix_moment.connect(_on_affix_moment)
+	h.corpse_added.connect(_on_corpse_added)
+	h.corpse_gone.connect(func(id: int, _reason: String) -> void: _corpse_off(id))
+	h.corpse_consumed.connect(func(id: int, _by: int, _reason: String) -> void: _corpse_off(id))
 
 
 ## (Re)create the shared router against the current vfx / audio (tests swap them in before the first event).
@@ -104,13 +116,19 @@ func set_backends(p_vfx: Node, p_audio: Node) -> void:
 
 ## Creatures this fx is holding something for (a swing, a rise, a burrow, an elite ring): tests assert it stays small and empties.
 func watched() -> int:
-	return _strikes.size() + _rising.size() + _burrowers.size() + _auras.size()
+	return _strikes.size() + _rising.size() + _burrowers.size() + _auras.size() + _affixed.size()
 
 
 func clear() -> void:
 	for h in _auras.values():
 		_kill(h)
 	_auras.clear()
+	for r in _corpse_rings.values():
+		_kill(r[0])
+	_corpse_rings.clear()
+	for id in _affixed.keys():
+		_affix_off(id)
+	_unveiled.clear()
 	_strikes.clear()
 	_rising.clear()
 	_burrowers.clear()
@@ -144,6 +162,8 @@ func _on_spawned(id: int, def: String, _level: int, elite: bool, _area: String, 
 		# the ring follows the drawn body (the crowd's interpolated position): by id, never a lambda capturing more than the id
 		_auras[id] = vfx.decal({"danger": true, "tex": "ring", "color": ELITE_COLOR, "x": x, "z": z, "r": 1.1 * float(core_host.enemy_defs[def].get("scale", 1.0)) * float(DmSimData.ELITE["scale"]),
 			"duration": 1e9, "opacity": 0.8, "pulse": 4.0, "follow": _drawn_pos.bind(id)})
+	if _affixes != 0:
+		_dress_affix(id, def, elite, _affixes, x, z)
 
 
 ## The drawn ground position of a living body (null once it is dead or gone), for decals that follow it.
@@ -270,6 +290,7 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 	stats["death"] += 1
 	_kill(_auras.get(id))
 	_auras.erase(id)
+	_affix_off(id)
 	_death_ev["id"] = id
 	_death_ev["x"] = x
 	_death_ev["z"] = z
@@ -284,6 +305,46 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 
 func _on_removed(id: int) -> void:
 	_health.erase(id)
+	_affix_off(id)
+
+
+## An affixed body's standing tells (DmEntityViews._dress_affix): one ground mark per affix, following the drawn body, in the affix's colour.
+func _dress_affix(id: int, def: String, elite: bool, mask: int, x: float, z: float) -> void:
+	var d: Dictionary = core_host.enemy_defs.get(def, {})
+	var sc := float(d.get("scale", 1.0)) * (float(DmSimData.ELITE["scale"]) if elite else 1.0)
+	var fol := _drawn_pos.bind(id)
+	var names := DmCoreEvents.affix_list(mask)
+	var marks: Array = []
+	for a in names:
+		match a:
+			"bellTolled":
+				marks.append(vfx.decal({"danger": true, "tex": "ring", "color": _col("bell"), "x": x, "z": z, "r": 1.55 * sc, "duration": 1e9, "opacity": 0.6, "pulse": 2.5, "follow": fol}))
+			"hungering":
+				marks.append(vfx.decal({"danger": true, "tex": "glow", "color": _col("drool"), "x": x, "z": z, "r": 1.2 * sc, "duration": 1e9, "opacity": 0.45, "follow": fol}))
+			"shrouded":
+				marks.append(vfx.decal({"danger": true, "tex": "glow", "color": _col("shroud"), "x": x, "z": z, "r": 1.5 * sc, "duration": 1e9, "opacity": 0.7, "blending": "mix", "follow": fol}))
+			"vengeful":
+				marks.append(vfx.decal({"danger": true, "tex": "cracks", "color": _col("vengeful"), "x": x, "z": z, "r": 1.3 * sc, "duration": 1e9, "opacity": 0.75, "pulse": 3.0, "spin": 0.2, "follow": fol}))
+	stats["affix_mark"] += marks.size()
+	_affixed[id] = [marks, names, sc, float(HEAD_Y.get(String(d.get("rig", "humanoid")), 1.3)) * sc]
+
+
+func _affix_off(id: int) -> void:
+	var a: Variant = _affixed.get(id)
+	if a == null:
+		return
+	for h in a[0]:
+		_kill(h)
+	_affixed.erase(id)
+	_unveiled.erase(id)
+
+
+## Marks showing now (tests).
+func affix_marks() -> int:
+	var n := 0
+	for a in _affixed.values():
+		n += (a[0] as Array).size()
+	return n
 
 
 ## A dust cloud (the moth's): the router's zone visual. The toxic pool of a burst corpse has no visual of its own today either (its aura is the corpse's).
@@ -306,11 +367,56 @@ func _on_zone_gone(id: int) -> void:
 		fx.zones_fx.zone_gone(id)
 
 
+## A corpse on the ground (DmEntityViews._on_corpse): every fresh corpse is a necromancer's resource and a toppled body is dark on dark ground, so a faint pale ring
+## marks it for the 26 s it lasts, capped so a wipe does not add a decal per body; a resonant corpse's violet ring always shows (outside the cap); a toxic corpse's green disc for 5 s.
+func _on_corpse_added(id: int, kind: int, _def: String, _elite: bool, area: String, x: float, z: float, _facing: float, scale: float) -> void:
+	var k := DmCoreEvents.CORPSE_KINDS[kind] if kind >= 0 and kind < DmCoreEvents.CORPSE_KINDS.size() else "normal"
+	if k == "toxic":
+		_decal({"tex": "disc", "color": 0x6f8f3a, "x": x, "z": z, "r": 2.4 * scale, "duration": 5, "opacity": 0.35, "pulse": 6.0, "growFrom": 0.6})
+	if _corpse_rings.has(id):
+		return
+	if k == "resonant":
+		_corpse_rings[id] = [_decal({"tex": "ring", "color": 0xc6a4ff, "x": x, "z": z, "r": 1.2, "duration": 26, "opacity": 0.6, "pulse": 3.0}), _clock + RING_MS, false]
+		stats["corpse_mark"] += 1
+		return
+	if corpse_marks(true) >= CORPSE_MARKS_MAX:   # the pale rings, counted by each ring's own end (today's counted handles, which only turn alive a frame later, so a wipe slipped past)
+		return
+	var marsh := area == "fen"
+	_corpse_rings[id] = [_decal({"tex": "ring", "color": 0xffe6b0 if marsh else 0xd8cdf2, "x": x, "z": z, "r": (1.1 if marsh else 0.8) * maxf(1.0, scale), "duration": 26,
+		"opacity": 0.85 if marsh else 0.4, "fadeIn": 0.8, "pulse": 2.0}), _clock + RING_MS, true]
+	stats["corpse_mark"] += 1
+
+
+func _corpse_off(id: int) -> void:
+	var r: Variant = _corpse_rings.get(id)
+	if r != null:
+		_kill(r[0])
+		_corpse_rings.erase(id)
+
+
+## Rings showing now (`pale_only`: the capped ones, without the resonant corpses' violet rings); rings whose 26 s are over are forgotten here.
+func corpse_marks(pale_only := false) -> int:
+	var n := 0
+	for id in _corpse_rings.keys():
+		var r: Array = _corpse_rings[id]
+		if float(r[1]) <= _clock:
+			_corpse_rings.erase(id)
+		elif bool(r[2]) or not pale_only:
+			n += 1
+	return n
+
+
+func _decal(o: Dictionary) -> Variant:
+	return vfx.decal(o) if vfx != null else null
+
+
 ## The affixes' one-off beats (DmAffixSet._burst, same numbers and sounds): the bell sounds, a corpse is eaten, the body bursts. `tell` is the bell's
-## wind-up (its ring is the toll telegraph), `unveil` the shroud lifting (no standing ring is drawn yet).
-func _on_affix_moment(_id: int, moment: int, at_x: float, at_z: float, to_x: float, to_z: float, amount: float) -> void:
+## wind-up (its ring is the toll telegraph), `unveil` the shroud lifting (its smoke stops; the haze under it stays, as today's).
+func _on_affix_moment(id: int, moment: int, at_x: float, at_z: float, to_x: float, to_z: float, amount: float) -> void:
 	stats["moment"] += 1
 	match DmCoreEvents.AFFIX_MOMENTS[moment]:
+		&"unveil":
+			_unveiled[id] = true
 		&"toll":
 			var bell := _col("bell")
 			_sfx("toll", at_x, at_z)
@@ -381,7 +487,7 @@ func _process(dt: float) -> void:
 	fx.update(dt)
 	if _clock >= _next_due:
 		_run_due()
-	if not _rising.is_empty() or not _burrowers.is_empty():
+	if not _rising.is_empty() or not _burrowers.is_empty() or not _affixed.is_empty():
 		_amb_t += dt
 		if _amb_t >= AMBIENT_S:
 			_ambient()
@@ -424,6 +530,36 @@ func _ambient() -> void:
 		var p := core_host.enemy_position(id)
 		if p != Vector3.INF and absf(p.x - _px) <= NEAR_X and absf(p.z - _pz) <= NEAR_Z:
 			_burst(_amb_dirt, p.x, 0.15, p.z, false)
+	for id in _affixed.keys():
+		_affix_motes(id)
+
+
+## An affixed body's motes near the hero (DmEntityViews._tick_affix, at today's rates: drool 4, embers 3 and shroud smoke 2 a second, here per ambient tick).
+func _affix_motes(id: int) -> void:
+	var v: Dictionary = core_host.view.crowd.view_info(id)
+	if v.is_empty() or int(v["state"]) == DEAD:
+		return
+	var p: Vector3 = v["pos"]
+	if absf(p.x - _px) > NEAR_X or absf(p.z - _pz) > NEAR_Z:
+		return
+	var a: Array = _affixed[id]
+	var sc := float(a[2])
+	var head := float(a[3])
+	for name in a[1]:
+		match name:
+			"hungering":
+				if randf() < AMBIENT_S * 4.0:
+					var f := float(v.get("yaw", 0.0))
+					vfx.emit({"x": p.x + sin(f) * 0.3 * sc, "y": head, "z": p.z + cos(f) * 0.3 * sc, "count": 1, "color": _col("drool"), "spread": 0.06, "speed": 0.1, "up": -0.3, "life": 0.7, "size": 0.13, "gravity": 7})
+					stats["affix_mote"] += 1
+			"vengeful":
+				if randf() < AMBIENT_S * 3.0:
+					vfx.emit({"x": p.x, "y": 0.3 + randf() * head, "z": p.z, "count": 1, "color": _col("vengeful"), "spread": 0.35 * sc, "speed": 0.2, "up": 1.1, "life": 0.7, "size": 0.12})
+					stats["affix_mote"] += 1
+			"shrouded":
+				if not _unveiled.has(id) and randf() < AMBIENT_S * 2.0:
+					vfx.emit_smoke({"x": p.x, "y": 0.4 + randf() * head, "z": p.z, "count": 1, "color": _col("shroud"), "spread": 0.4 * sc, "speed": 0.15, "up": 0.4, "life": 1.2, "size": 0.9, "shrink": -0.6})
+					stats["affix_mote"] += 1
 
 
 func _burst(o: Dictionary, x: float, y: float, z: float, smoke: bool) -> void:
