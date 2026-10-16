@@ -1,0 +1,4 @@
+# Today's scripts, scenes and data the rebuilt client runs, copied from godot/ at the same paths by tools/rebuild/sync-code.mjs (DECISIONS B43).
+# One glob per line, relative to godot/; `!glob` leaves files out. `*` stays inside a folder, `**` crosses folders, a folder name takes it whole.
+# Code files only (scripts and their uids, scenes, resources, shaders, data); assets go through client/assets.list. Never edit a copy in
+# client/: change godot/ and sync, or port the file (--port). Left out on purpose: the per-creature systems the combat core replaces.

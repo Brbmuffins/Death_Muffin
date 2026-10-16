@@ -22,6 +22,19 @@ bash client/tools/bake_crowd.sh                                                 
 
 Run `bash client/setup.sh` once in every new checkout or worktree (it lists the extension before the first import; see the script).
 
+## Code from today's game
+
+The client runs today's scripts, scenes and data (DECISIONS B43) at the same paths as in `godot/`, so `res://` paths, class names and script
+uids keep working:
+- **Copies:** `client/code.list` names what is copied (globs relative to `godot/`, `!glob` leaves out the per-creature systems the core replaces).
+  `node tools/rebuild/sync-code.mjs` brings the copies up to date (adds, replaces, deletes copies whose original is gone); `--check` changes
+  nothing and fails when anything is out of date. A copy is never edited in `client/`: the hygiene check fails when one is.
+- **Ports:** a file that has to change to run on the core (a rite, the director, a boss, a view) is ported: `node tools/rebuild/sync-code.mjs
+  --port <path>` marks it and records the version of its original. From then on the sync tool leaves it alone and lists it under PORTS BEHIND
+  when the live original changes (a live bug fix), with the `git diff` that shows the change; carry it over, then `--port` the file again.
+- `client/code.lock.json` (written by the tool, committed) records every copy and every port. Only files it lists as copies are ever replaced or
+  deleted, so the client's own files (`core/`, `crowd/`, `areas/`, `tests/`, ...) are never touched; a copy that would land on one is refused.
+
 ## Assets
 
 The client keeps its own copies of the assets it uses, at the same relative paths as under `godot/assets/` (DECISIONS B41). `client/assets.list`

@@ -87,7 +87,7 @@ server (B38).
   (`client/tests/core_thralls.gd`) and corpses with the toxic pool (`client/tests/core_corpses.gd`). Not in it: the Veilwalker's echo corpses,
   views and co-op snapshots (their own items), and the rites that call it.
 - [ ] Client layer (B43), in this order:
-  - [ ] Code sync: today's scripts, scenes and data copied into `client/` by a sync tool in `tools/rebuild/`, the hygiene rules for copies and
+  - [ ] Code sync: today's scripts, scenes and data copied into `client/` by `tools/rebuild/sync-code.mjs`, the hygiene rules for copies and
     ports, and the project opening without errors with the per-creature systems left out.
   - [ ] The game scene on the core: the area scene, the core and the crowd view, the hero, camera, input, and the director spawning through
     the core.

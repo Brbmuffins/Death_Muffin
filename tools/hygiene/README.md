@@ -11,7 +11,8 @@ Checks (`check.mjs`, config in `retired.json`):
 4. `res://tests/<suite>/<file>.gd` and `tests/<suite>/<file>.gd` paths named in docs and scripts exist.
 5. No tracked file is larger than `maxFileMB` (20) unless listed in `bigFileAllow`.
 6. Texture `.import` files under the 3D asset folders (`check.mjs` `tex3d`, in `godot/` and in the rebuilt client's `client/assets/`) use `compress/mode=2`; normal maps also `compress/normal_map=1`. UI art stays lossless. `npm run hygiene -- --fix-textures` rewrites violating `.import` files; then re-import headless (`godot/` or `client/`).
-7. No call inside a GDScript `assert(...)` condition outside `godot/tests/`: release exports strip asserts together with their expression, so the call never runs in a shipped client.
+7. No call inside a GDScript `assert(...)` condition outside the test folders (`godot/` and `client/`): release exports strip asserts together with their expression, so the call never runs in a shipped client.
+8. The rebuilt client's copies of today's code (DECISIONS B43) are untouched: every file `client/code.lock.json` lists as a copy still has the content it recorded, and every port exists. Edit `godot/` and sync, or port the file (`node tools/rebuild/sync-code.mjs --port <path>`). A live change in `godot/` is not a violation here: `sync-code.mjs` and the test build publish catch it.
 
 ## When you delete something
 

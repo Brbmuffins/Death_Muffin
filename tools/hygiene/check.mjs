@@ -2,6 +2,7 @@
 // Repo hygiene check: docs, references and retired terms must not outlive what they point at.
 // See tools/hygiene/README.md. Plain Node, no dependencies.
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -178,12 +179,28 @@ for (const f of files) {
 // g. No calls inside GDScript assert(): release exports strip asserts together with their expression, so a call there never runs in a
 // shipped client (the co-op joiner's relay.join() did not, 2026-10-10). Tests may assert on calls; shipped code computes first, then asserts.
 for (const f of files) {
-  if (!f.startsWith('godot/') || !f.endsWith('.gd') || f.includes('/tests/')) continue;
+  if (!(f.startsWith('godot/') || f.startsWith('client/')) || !f.endsWith('.gd') || f.includes('/tests/')) continue;
   const lines = read(f).split('\n');
   lines.forEach((l, i) => {
     const m = /^\s*assert\(([^,]*)/.exec(l);
     if (m && /[A-Za-z_]\w*\s*\(/.test(m[1])) report(f, i + 1, 'call inside assert() is stripped from release builds; compute it first, then assert the result');
   });
+}
+
+// h. The rebuilt client's copies of today's code (DECISIONS B43, tools/rebuild/sync-code.mjs) are never edited in client/: each must still be
+// the content client/code.lock.json recorded. A live change in godot/ is not a violation here (the sync tool and the test build publish catch it).
+const codeLock = 'client/code.lock.json';
+if (exists(codeLock)) {
+  const lk = JSON.parse(read(codeLock));
+  const blob = (f) => { const b = readFileSync(path.join(root, f)); return createHash('sha1').update(`blob ${b.length}\0`).update(b).digest('hex'); };
+  for (const [rel, id] of Object.entries(lk.copied || {})) {
+    const f = `client/${rel}`;
+    if (!exists(f)) report(codeLock, 1, `copy ${f} is missing: run node tools/rebuild/sync-code.mjs`);
+    else if (blob(f) !== id) report(f, 1, `a copy of godot/${rel} was edited; change godot/ and sync, or port it (node tools/rebuild/sync-code.mjs --port ${rel})`);
+  }
+  for (const rel of Object.keys(lk.ported || {})) {
+    if (!exists(`client/${rel}`)) report(codeLock, 1, `ported client/${rel} is missing`);
+  }
 }
 
 if (fixed.length) console.log(`hygiene: fixed ${fixed.length} texture import(s); now run: godot --headless --path godot --import`);
