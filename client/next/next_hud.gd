@@ -5,11 +5,14 @@ extends CanvasLayer
 ## listening to the core host's signals. Nothing here runs per creature per frame: the view-model is built on a 20 Hz timer (a core tick counts the time, as DmGameUi's
 ## HUD_INTERVAL_MS), the floating numbers come from signals, and the HUD's own widgets animate themselves.
 ##
-## What it needs besides the game scene: the character (level, XP, gold), its progression (`prog`, the server's record), and the kit's rites for the hotbar.
+## What it needs besides the game scene: the character (level, XP, gold), its progression (`prog`: this player's rewards member's, which the server's accepted
+## reports and saves keep current; a guest's, the record it started with), and the kit's rites for the hotbar. The upgrades box buys Empower / Quicken and turns the
+## wave dial through the progression (DmNextProgress.buy, DmProgression.set_active_wave_tier); it and the dial show by today's rules (DmHudReveal.veteran_reveals, without
+## the onboarding's NEW cues). The belt (Q the flask, Z / X the brews), the Kill Chain, the Omen and the save chip are today's; game moments (toasts, banners, floats,
+## pickup lines) arrive through `game_event`.
 ## The menu row shows the Social button only: it opens the Social window (`social`, DmNextSocial: Friends and Party, O and F), the way into a party. Not in this step, each until its
-## ROADMAP item: the other panels (the rest of the menu row, the Empower / Quicken panel, chat and the report button are hidden: they open nothing yet),
-## party frames of other players, the belt, the Kill Chain, the Omen and the Depths readout. The game scene wires the HUD with opts `hud: true`; opts `hud_scale`
-## (0.75 to 1.3) and `hud_layout` (DmHud.set_layout) place and size its pieces.
+## ROADMAP item: the other panels (the rest of the menu row, chat and the report button are hidden: they open nothing yet), party frames of other players and the Depths
+## readout. The game scene wires the HUD with opts `hud: true`; opts `hud_scale` (0.75 to 1.3) and `hud_layout` (DmHud.set_layout) place and size its pieces.
 ##
 ##   var h := DmNextHud.new(); h.game = game_scene; game_scene.add_child(h)    # DmNextGame._start_hud
 
@@ -19,8 +22,9 @@ const HERO_STATUS_TEXT := {&"chill": "Chilled", &"root": "Rooted", &"stun": "Stu
 const REJECT_TEXT := {"essence": "Not enough Grave Essence", "souls": "Not enough souls (%d needed)", "cooldown": "%s is not ready", "locked": "%s unlocks at level %d"}
 const FEEDBACK_GAP_MS := 600
 const HIT_KINDS := ["hit", "crit", "dot", "thrall", "hurt"]   ## the floats the "damage numbers" setting turns off
-## The Empower / Quicken panel and the wave dial wait for the progression item; the menu row's gated buttons (Acre, Atlas) for the panels item, with the rest of the row but Social.
-const REVEAL := {"hud.upgrades": false, "hud.dial": false, "menu.skills": false, "menu.atlas": false}
+## The menu row's gated buttons (Acre, Atlas) wait for the panels item, with the rest of the row but Social; the upgrades box and the wave dial follow `_reveal`.
+const SAVE_CHIP := {"saved": ["Saved ✓", false], "dirty": ["Unsaved changes", false], "saving": ["Saving…", false], "retrying": ["Save failed, retrying…", true]}
+const SAVE_RANK := ["saved", "dirty", "saving", "retrying"]
 
 signal refreshed                            ## after each view-model apply (tests)
 
@@ -53,12 +57,16 @@ var _last_feedback := 0
 var _announced := {}
 var _hero_status := {}
 var _bound := false
+var _reveal := {"hud.upgrades": false, "hud.dial": false, "menu.skills": false, "menu.atlas": false}
+var _reveal_sig := []
+var _save_vm := {"text": "Saved ✓", "warn": false}
 
 
 func _ready() -> void:
 	layer = 5
 	character = game.character
-	prog = DmProgression.new(character, game.server_local)
+	var m := game.my_member()
+	prog = m.prog if m != null else DmProgression.new(character, game.server_local)   # the host's progression: credited XP and gold land in `character`
 	hud = DmHud.new()
 	add_child(hud)
 	for id in hud.menu_btns:                 # the panels open from here: only the Social window is in this step
@@ -70,6 +78,10 @@ func _ready() -> void:
 		hud.set_layout(saved)                                    # a saved layout: {piece id: {offset: Vector2, scale: float}}
 	hud.cast.connect(_on_cast)
 	hud.navigate.connect(_on_navigate)
+	hud.buy_damage.connect(_buy.bind("damage"))
+	hud.buy_wave.connect(_buy.bind("wave"))
+	hud.dial_wave.connect(_dial_wave)
+	hud.belt_clicked.connect(game.use_belt)
 	if game.party != null and game.friends != null:
 		social = DmNextSocial.new()
 		add_child(social)
@@ -132,7 +144,7 @@ func refresh() -> void:
 	_vm = vm.build()
 	if _vm.is_empty():
 		return
-	_vm["reveal"] = REVEAL
+	_vm["reveal"] = _reveals()
 	if not feeds.is_empty():
 		_vm.merge(feeds, true)
 	hud.apply(_vm)
@@ -146,8 +158,58 @@ func last_vm() -> Dictionary:
 	return _vm
 
 
+## The save chip: the worst state of the progression's saves and the bag's.
 func save_chip() -> Dictionary:
-	return {"text": "", "warn": false}      # nothing is saved in this step
+	var st := "saved"
+	for s_: String in [game.progress.psync.state if game.progress != null else "saved", game.loot.inventory.state if game.loot != null and game.loot.inventory != null else "saved"]:
+		if SAVE_RANK.find(s_) > SAVE_RANK.find(st):
+			st = s_
+	var c: Array = SAVE_CHIP[st]
+	_save_vm["text"] = c[0]
+	_save_vm["warn"] = c[1]
+	return _save_vm
+
+
+## What the HUD shows of the upgrades: the box once the character has earned (level 2, gold or a tier), the wave dial once a Wave Speed tier is owned
+## (DmHudReveal.veteran_reveals on the current record; today's NEW cue toasts come with the onboarding item).
+func _reveals() -> Dictionary:
+	var loc := progress
+	var sig := [character.get("level"), character.get("gold"), loc.get("damageTier"), loc.get("waveTierOwned")]
+	if sig != _reveal_sig:
+		_reveal_sig = sig
+		var on := DmHudReveal.veteran_reveals({"level": int(character.get("level", 1)), "gold": int(character.get("gold", 0)), "damage_tier": int(loc.get("damageTier", 0)),
+			"wave_owned": int(loc.get("waveTierOwned", 0))})
+		_reveal["hud.upgrades"] = on.has("hud.upgrades")
+		_reveal["hud.dial"] = on.has("hud.dial")
+	return _reveal
+
+
+## The upgrades box's buttons: the progression buys (the backend prices and takes the gold); the new tier shows at once.
+func _buy(kind: String) -> void:
+	if game.progress != null and game.progress.buy(kind):
+		refresh()
+
+
+## The upgrades box's wave dial: the active Wave Speed tier, 0..owned; the director and the rewards follow (today's DmNextUiHost.dial_wave).
+func _dial_wave(delta: int) -> void:
+	if game.progress == null:
+		return
+	prog.set_active_wave_tier(float(prog.local["waveTierActive"]) + delta)
+	game.progress.apply_progress()
+	refresh()
+
+
+## Q drinks the flask, Z / X the belt's brews (DmContent brews BREW_KEYS).
+func _unhandled_key_input(event: InputEvent) -> void:
+	var e := event as InputEventKey
+	if e == null or not e.pressed or e.echo or get_viewport().gui_get_focus_owner() is LineEdit:
+		return
+	if e.keycode == KEY_Q:
+		game.use_belt("heal")
+	else:
+		for slot in ["elixir", "tonic"]:   # Z / X (BREW_KEYS)
+			if e.keycode == OS.find_keycode_from_string(String(DmContent.get_export("brews", "BREW_KEYS")[slot])):
+				game.use_belt(slot)
 
 
 func kills_in(area: String) -> int:
@@ -253,13 +315,19 @@ func _feedback(text: String) -> void:
 		float_text(b.position + Vector3(0, 2.4, 0), text, "info")
 
 
-## A moment the game announces: a toast or a banner is shown (the boss fx's awaken and phase banners, the summon refusals); the rest are for the panels' host.
+## A moment the game announces: toasts and banners (the boss fx's, the level-ups, milestones, the summon refusals), floats over a world point (gold, Soul Harvest, the
+## Kill Chain) and the pickup lines; chat lines and the counsel's events wait for the panels and the counsel.
 func game_event(id: String, ctx: Dictionary) -> void:
 	match id:
 		"toast":
 			hud.toast(String(ctx.get("text", "")), String(ctx.get("kind", "")))
 		"banner":
 			hud.banner(String(ctx.get("title", "")), String(ctx.get("sub", "")), int(ctx.get("ms", 3200)))
+		"loot":
+			hud.loot_toast(String(ctx.get("name", "")), int(ctx.get("qty", 1)), String(ctx.get("rarity", "common")))
+		"float":
+			if ctx.get("world") is Vector3:
+				float_text(ctx["world"], String(ctx.get("text", "")), String(ctx.get("kind", "info")), ctx.get("color"))
 
 
 ## A hotbar press (a key or a click): the slot flashes, and the enemy it was aimed at is the target frame's for a few seconds.

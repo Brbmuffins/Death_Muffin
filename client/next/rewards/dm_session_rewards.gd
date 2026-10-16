@@ -1,0 +1,728 @@
+class_name DmSessionRewards
+extends Node
+## Host-side rewards for one party session (REBUILD D1/D4/D5; contract in godot/next/rewards/README.md). Runs ONLY on the session host.
+## The rebuild's port (client/code.list "Ported"): a kill arrives as the game scene's `kill_credited` (the host's one credit per kill, from the core's
+## EV_ENEMY_DIED; the killer is a peer, and its member's body is the killer), not as each enemy's `died`; lifesteal hears the core host's `struck` (a hero's
+## direct blow; a DoT tick or a thrall's swing never is one). Everything after that is today's code.
+##
+##  1. every credited kill -> who earned it (the original game's rule: a living member within DmGameRewards.KILL_REWARD_RANGE,
+##     each at ITS OWN multipliers; the Kill Chain only for the killer, only in unsafe ground),
+##  2. credit through the backend: session_open (host) / session_join + session_heartbeat (members, own API) / session_report (numbered
+##     batches every `flush_interval` s and at the end) / session_end. XP and kill counts are applied from what the backend ACCEPTED,
+##  3. loot: rolled with the same DmLoot rules, gear rolled by the member's own API (server RNG online, offline backend offline), landed in
+##     THAT member's own DmLootView; gold/shards credited at once, items picked up by a click, 3 min expiry, loot never flies to anyone,
+##  4. identical online/offline: the only difference is which DmApi each member carries.
+## Gold and shards go straight to the member's purse (DmLootView credits them on its next tick); their persistence is the member's save path,
+## which the backend's kill ledger caps from these same reports.
+
+signal session_opened(session_id: String)
+signal session_failed(reason: String)       ## open refused / session lost (ended, not host): rewards stop crediting
+signal session_closed
+signal ledger_fallback                      ## the backend has no /api/sessions (older server): kills go to the existing kill ledger (/api/kills/report) instead
+signal member_credited(character_id: int, delta: Dictionary)   ## {xp, kills, levels, batch}: applied from an accepted report
+signal member_refused(character_id: int, reason: String)       ## the backend did not credit this member's part of a batch
+signal batch_reported(batch: int, reply: Variant)
+signal kill_counted(character_id: int, area: String)   ## a party kill that only counts toward the member's area tally / seals (it was dead or out of range: no XP, gold or loot)
+signal kill_earned(character_id: int, enemy_def: String, pos: Vector3)
+signal killer_paid(character_id: int, enemy_def: String, enemy_id: int)      ## the member's OWN blow ended it (Soul Harvest souls, DmNextMeta); `enemy_id` 0 in tests
+signal chain_tier_up(character_id: int, tier: Dictionary)      ## the member's Kill Chain crossed into a new tier (banner, sound)
+signal boss_earned(character_id: int, boss_id: String, first: bool, pos: Vector3)   ## a member was paid for a boss kill
+signal loot_dropped(character_id: int, drop: Dictionary, pos: Vector3)   ## also lets a shell replicate a member's drops to its peer
+signal drop_event_for(character_id: int, kind: String, facts: Dictionary, pos: Vector3)   ## a remote member that rolls its own drops: the event to roll (DmNextParty relays it)
+signal loot_picked(character_id: int, event: Dictionary)
+signal loot_expired(character_id: int, drop: Dictionary, reason: String)
+
+const MAX_GROUPS := 80            ## backend bound per member per report
+const EARLY_FLUSH_GROUPS := 60    ## flush at once when a member's open batch gets this many groups
+const HEARTBEAT_S := 20.0
+
+## Seconds between kill-batch reports.
+var flush_interval: float = 5.0
+## false = the owner drives `tick(dt)` (tests); true = _process does.
+var auto_tick: bool = true
+## Rendering/pick-up peer on THIS process: a member's loot view is only visible when its peer_id matches.
+var local_peer_id: int = 1
+## World context for rewards (the shell keeps it current).
+var difficulty: String = "medium"
+var wave_tier: float = 0.0
+var ascension: float = 0.0
+var vow_levels: float = 0.0       ## Elder Dead: boss and Surge rewards roll at the area's level + this 
+var area_id: String = "graves"
+## Optional (the Depths): Callable(area: String) -> String or null, the hunting ground whose loot table a kill in `area` rolls from (null = the area itself).
+var loot_area_of: Callable = Callable()
+## Deterministic rolls for tests: Callable() -> float in [0,1). Empty = randf.
+var rng: Callable = Callable()
+var now_ms: Callable = Callable()
+
+var session_id: String = ""
+## true once session_open answered 404/503 (routes or tables absent, backend migration 041 not applied): every member with its own api
+## reports its kills to its own kill ledger and XP / kill counts are applied from that reply. No session exists then (session_id stays "").
+var legacy_ledger: bool = false
+var host_character_id: int = 0
+var ended: bool = false
+var batch_no: int = 0
+var members: Dictionary = {}        ## character_id -> DmRewardsMember
+
+var _rules := DmGameRewards.new(null)   ## the original game's proximity rule, reused as the single source
+var _core_host: DmCoreHost              ## the game's (attach_game): who a blow's source is
+var _inflight: Dictionary = {}          ## the batch sent but not confirmed: re-sent under the SAME number until the backend answers
+var _busy := false
+var _flush_t := 0.0
+var _hb_t := 0.0
+var _gear_pending := 0
+
+
+func _ready() -> void:
+	set_process(auto_tick)
+
+
+func _process(dt: float) -> void:
+	if auto_tick:
+		tick(dt)
+
+
+# ================================================================================================================ wiring
+
+## Subscribe to the game scene (DmNextGame, or a test's double with the same signal): its kill credit, and the hero blows its core host resolves.
+func attach_game(game: Object) -> void:
+	game.connect("kill_credited", _on_kill_credited)
+	_core_host = game.get("core_host") as DmCoreHost
+	if _core_host != null:
+		_core_host.struck.connect(_on_struck)
+
+
+## A direct blow a hero landed (a rite's hit on an enemy or a boss, through DmCoreHost.damage): the lifesteal elixir's input.
+func _on_struck(_id: int, source: int, dealt: float) -> void:
+	var hero := _core_host.hero_for(source) as DmHeroBody
+	if hero != null:
+		_lifesteal(dealt, hero)
+
+
+## Host: the Elixir of lifesteal. Direct hits the hero lands this frame are summed and healed once at the end of the frame, like the original game's
+## send_intent rule: DmBrews.lifesteal_heal(average hit, targets, ...) = % of damage over at most the target cap, capped per cast. DoT ticks do not heal.
+var _ls_acc: Dictionary = {}   ## hero instance id -> [hero, damage sum, hits]
+
+
+func _lifesteal(amount: float, hero: DmHeroBody) -> void:
+	if amount <= 0.0 or hero.p.is_empty() or not hero.alive:
+		return
+	var br: Dictionary = hero.p["brews"]
+	if br.get("elixir") == null and br.get("tonic") == null:
+		return
+	if _ls_acc.is_empty():
+		_flush_lifesteal.call_deferred()
+	var id := hero.get_instance_id()
+	var acc: Array = _ls_acc.get(id, [])
+	if acc.is_empty():
+		_ls_acc[id] = [hero, amount, 1]
+	else:
+		acc[1] += amount
+		acc[2] += 1
+
+
+func _flush_lifesteal() -> void:
+	for id in _ls_acc:
+		var acc: Array = _ls_acc[id]
+		var hero: DmHeroBody = acc[0] if is_instance_valid(acc[0]) else null
+		if hero == null or not hero.alive:
+			continue
+		var ls := DmPlayerRules.brew_value(hero.p, "lifesteal", hero.clock_ms())
+		if ls <= 0.0:
+			continue
+		var heal := DmBrews.lifesteal_heal(float(acc[1]) / float(acc[2]), float(acc[2]), ls, hero.max_hp)
+		if heal >= 1.0:
+			hero.heal(heal)
+	_ls_acc.clear()
+
+
+## Add a member (before or after start()). Joins the backend session when it is open.
+func add_member(m: DmRewardsMember) -> void:
+	members[m.character_id] = m
+	if m.reporter == null:
+		m.reporter = DmKillReporter.new(now_ms if now_ms.is_valid() else Callable(self, "_clock_ms"))
+	if m.loot_view == null:
+		m.loot_view = DmLootView.new()
+	var lv := m.loot_view
+	if lv.get_parent() == null:
+		add_child(lv)
+	lv.visible = m.peer_id == local_peer_id
+	lv.try_take = Callable(m, "try_take")
+	if m.tape == null and not m.remote and m.api != null and rng.is_null():   # tests that pin `rng` keep rolling the old way
+		m.tape = DmDropTape.new(m.api, m.character_id)
+		m.tape.refill()
+	lv.picked.connect(func(ev: Dictionary) -> void: loot_picked.emit(m.character_id, ev))
+	lv.expired.connect(func(d: Dictionary, reason: String) -> void: loot_expired.emit(m.character_id, d, reason))
+	if session_id != "" and m.character_id != host_character_id:
+		await _join(m)
+
+
+## A member leaves (the host removes it or it disconnects): its pending part is reported first, then it leaves the session.
+func remove_member(character_id: int) -> void:
+	var m: DmRewardsMember = members.get(character_id)
+	if m == null:
+		return
+	await flush()
+	if session_id != "" and m.api != null and character_id != host_character_id:
+		await m.api.session_leave(session_id, character_id)
+	members.erase(character_id)
+	if is_instance_valid(m.loot_view):
+		m.loot_view.queue_free()
+
+
+func _clock_ms() -> int:
+	return int(now_ms.call()) if now_ms.is_valid() else Time.get_ticks_msec()
+
+
+## The clock the Kill Chain runs on (DmNextMeta ticks the chain's break with it).
+func clock_ms() -> float:
+	return float(_clock_ms())
+
+
+func _join(m: DmRewardsMember) -> bool:
+	if m.api == null or m.joined:
+		return true
+	var r: DmResult = await m.api.session_join(session_id, m.character_id)
+	m.joined = r.ok
+	if not r.ok:
+		m.blocked = "join_refused"
+		member_refused.emit(m.character_id, "join_refused: " + r.error)
+	return r.ok
+
+
+# ================================================================================================================ session
+
+## Open the backend session with the host's character (must have been add_member'd) and join the members already present.
+func start(host_char_id: int) -> bool:
+	host_character_id = host_char_id
+	var h: DmRewardsMember = members.get(host_char_id)
+	if h == null or h.api == null:
+		session_failed.emit("no host member with an api")
+		return false
+	return await _open()
+
+
+func _open() -> bool:
+	var h: DmRewardsMember = members[host_character_id]
+	var r: DmResult = await h.api.session_open(host_character_id)
+	if not r.ok and ((r.status == 404 and r.error.begins_with("Request failed")) or r.status == 503):   # no route (an HTML 404 carries no error text) / tables missing
+		legacy_ledger = true
+		ledger_fallback.emit()
+		return true
+	if not r.ok or not (r.data is Dictionary):
+		session_failed.emit("open: " + r.error)
+		return false
+	session_id = String(r.data["sessionId"])
+	h.joined = true
+	session_opened.emit(session_id)
+	for cid in members.keys():
+		if cid != host_character_id:
+			await _join(members[cid])
+	return true
+
+
+## Report everything pending now. Re-sends an unconfirmed batch (same number) before building a new one.
+func flush() -> void:
+	while _busy:
+		await get_tree().process_frame
+	_busy = true
+	await _flush_inner()
+	_busy = false
+
+
+func _flush_inner() -> void:
+	if ended:
+		return
+	if legacy_ledger:
+		await _flush_legacy()
+		return
+	if session_id == "":
+		if members.has(host_character_id) and not await _open():
+			return
+		if legacy_ledger:
+			await _flush_legacy()
+			return
+		if session_id == "":
+			return
+	if _inflight.is_empty():
+		_inflight = _seal()
+		if _inflight.is_empty():
+			return
+	var h: DmRewardsMember = members.get(host_character_id)
+	var r: DmResult = await h.api.session_report(session_id, int(_inflight["batch"]), _inflight["entries"])
+	if not r.ok:
+		_on_call_failed(r)
+		return
+	var inflight := _inflight
+	_inflight = {}
+	for m in members.values():
+		m.reporter.ack(int(inflight["seqs"].get(m.character_id, 0)))
+	batch_reported.emit(int(inflight["batch"]), r.data)
+	await _apply(inflight, r.data)
+
+
+## Seal every member's open kills into one numbered batch: {batch, entries, claims, seqs} or {} when nothing is pending.
+func _seal() -> Dictionary:
+	var entries: Array = []
+	var claims := {}
+	var seqs := {}
+	for cid in members:
+		var m: DmRewardsMember = members[cid]
+		if not m.reporter.has_pending():
+			continue
+		var groups: Array = []
+		var bosses: Array = []
+		var seq := 0
+		for b in m.reporter.batches():
+			groups.append_array(b["groups"])
+			bosses.append_array(b["bosses"])
+			seq = maxi(seq, int(b["seq"]))
+		var n := 0
+		for g in groups:
+			n += int(g["n"])
+		if groups.size() > MAX_GROUPS:
+			push_warning("DmSessionRewards: %d groups for %d exceeds the backend bound; flush more often" % [groups.size(), cid])
+			groups = groups.slice(0, MAX_GROUPS)
+		entries.append({"characterId": cid, "groups": groups, "bosses": bosses})
+		claims[cid] = {"xp": m.pending_xp, "kills": m.pending_areas.size(), "areas": m.pending_areas.duplicate()}
+		seqs[cid] = seq
+		m.pending_xp = 0.0
+		m.pending_areas = []
+	if entries.is_empty():
+		return {}
+	batch_no += 1
+	return {"batch": batch_no, "entries": entries, "claims": claims, "seqs": seqs}
+
+
+## A failed call: transport/5xx/429 keep the batch for a retry; 403/404/409 mean the session is gone for us.
+func _on_call_failed(r: DmResult) -> void:
+	if r.status == 403 or r.status == 404 or r.status == 409:
+		_inflight = {}
+		_lose("%d %s" % [r.status, r.error])
+
+
+func _lose(reason: String) -> void:
+	if ended:
+		return
+	ended = true
+	session_failed.emit(reason)
+
+
+## Apply a reply: XP and kill counts for what the backend accepted, refusals for the rest.
+func _apply(sent: Dictionary, data: Variant) -> void:
+	if not (data is Dictionary):
+		return
+	if data.get("duplicate", false):
+		# A re-send of a batch the backend already counted: our reply was lost. What it accepted is read back from the session's
+		# per-member counters (accepted so far minus what we had already applied).
+		data = await _reconstruct(sent)
+		if data == null:
+			return
+	for e in data.get("members", []):
+		var cid := int(e["characterId"])
+		var m: DmRewardsMember = members.get(cid)
+		var claim: Variant = sent["claims"].get(cid)
+		if m == null or claim == null:
+			continue
+		if not bool(e.get("credited", false)):
+			var reason := String(e.get("reason", "refused"))
+			m.stats["refused_batches"] += 1
+			m.last_refusal = reason
+			if reason == "left" or reason == "not_member":
+				m.blocked = reason
+			member_refused.emit(cid, reason)
+			continue
+		var acc: Dictionary = e.get("accepted", {"kills": 0})
+		_credit(m, claim, clampi(int(acc.get("kills", 0)), 0, int(claim["kills"])), int(sent["batch"]))
+
+
+## Apply `kills` accepted kills of a member's claim ({xp, kills, areas}): the XP share, the kill counts, the signal.
+func _credit(m: DmRewardsMember, claim: Dictionary, kills: int, batch: int) -> void:
+	var frac := float(kills) / float(claim["kills"]) if int(claim["kills"]) > 0 else 0.0
+	var xp := DmMath.js_round(float(claim["xp"]) * frac)
+	var lv: int = m.prog.add_xp(float(xp))
+	for i in kills:
+		m.prog.record_kill(String(claim["areas"][i]), wave_tier, m.remote)
+	m.stats["kills_accepted"] += kills
+	m.backend_accepted += kills
+	m.stats["xp_applied"] += xp
+	m.stats["levels"] += lv
+	member_credited.emit(m.character_id, {"xp": xp, "kills": kills, "levels": lv, "batch": batch, "areas": (claim["areas"] as Array).slice(0, kills)})
+
+
+## legacy_ledger: each member's pending kills go to ITS OWN kill ledger (`report_kills`, the route the original game uses); the reply's accepted
+## count (audit / enforce) bounds the XP and kill counts, a reply without one (ledger off, duplicate) applies the claim whole, as the current
+## game does. A transport / 5xx failure keeps the batches and the claim for the next flush; a 400 / 404 means the server will not take them.
+func _flush_legacy() -> void:
+	for m in members.values():
+		if m.api == null or m.blocked != "" or not m.reporter.has_pending():
+			continue
+		var batches: Array = m.reporter.batches()
+		var claim := {"xp": m.pending_xp, "kills": m.pending_areas.size(), "areas": m.pending_areas}
+		m.pending_xp = 0.0
+		m.pending_areas = []
+		var r: DmResult = await m.api.report_kills(m.character_id, batches)
+		if not r.ok and r.status != 400 and r.status != 404:
+			m.pending_xp += float(claim["xp"])
+			m.pending_areas = claim["areas"] + m.pending_areas
+			continue
+		if r.ok:
+			m.reporter.ack(int(batches[batches.size() - 1]["seq"]))
+		else:
+			m.reporter.discard()
+		var kills := int(claim["kills"])
+		if r.ok and batches.size() == 1 and r.data is Dictionary and (r.data as Dictionary).get("accepted") is Dictionary:
+			kills = clampi(int(r.data["accepted"].get("kills", 0)), 0, kills)
+		batch_no += 1
+		_credit(m, claim, kills, batch_no)
+		batch_reported.emit(batch_no, r.data)
+
+
+## The accepted part of `sent` after a lost reply, as a synthetic reply, from session_get (null when it cannot be read).
+func _reconstruct(sent: Dictionary) -> Variant:
+	var h: DmRewardsMember = members.get(host_character_id)
+	var g: DmResult = await h.api.session_get(session_id)
+	if not g.ok or not (g.data is Dictionary):
+		return null
+	var out: Array = []
+	for e in g.data.get("members", []):
+		var cid := int(e["characterId"])
+		var m: DmRewardsMember = members.get(cid)
+		if m == null or not sent["claims"].has(cid):
+			continue
+		var delta := maxi(0, int(e["acceptedKills"]) - m.backend_accepted)
+		out.append({"characterId": cid, "credited": delta > 0 or String(e["status"]) == "active", "accepted": {"kills": delta, "bosses": 0}, "reason": String(e["status"])})
+	return {"members": out}
+
+
+## Close the session: final batch (judged like any other) and session_end. Idempotent.
+func end_session(summary: Dictionary = {}) -> void:
+	if ended and session_id == "":
+		return
+	while _busy:
+		await get_tree().process_frame
+	_busy = true
+	if legacy_ledger and not ended:
+		await _flush_legacy()
+	if session_id != "" and not ended:
+		var h: DmRewardsMember = members.get(host_character_id)
+		if _inflight.is_empty():
+			_inflight = _seal()
+		var final := {}
+		if not _inflight.is_empty():
+			final = {"batch": int(_inflight["batch"]), "members": _inflight["entries"]}
+		var r: DmResult = await h.api.session_end(session_id, final, summary)
+		if r.ok:
+			var fin: Variant = r.data.get("final") if r.data is Dictionary else null
+			if not _inflight.is_empty() and fin != null:
+				await _apply(_inflight, fin)
+				batch_reported.emit(int(_inflight["batch"]), fin)
+			_inflight = {}
+		else:
+			push_warning("session_end failed: %s" % r.error)
+	ended = true
+	_busy = false
+	session_closed.emit()
+
+
+# ================================================================================================================ per frame
+
+## Drive loot (pickup/expiry), the batch timer and heartbeats. `_process` calls it when auto_tick.
+func tick(dt: float) -> void:
+	for m in members.values():
+		if not m.remote:
+			_tick_loot(m, dt)
+	if session_id == "" and host_character_id == 0:
+		return
+	_flush_t += dt
+	_hb_t += dt
+	if _flush_t >= flush_interval:
+		_flush_t = 0.0
+		if not _busy:
+			flush()
+	if _hb_t >= HEARTBEAT_S:
+		_hb_t = 0.0
+		_heartbeats()
+
+
+func _heartbeats() -> void:
+	if session_id == "" or ended:
+		return
+	for m in members.values():
+		if m.character_id != host_character_id and m.api != null and m.joined and m.blocked == "":
+			m.api.session_heartbeat(session_id, m.character_id, int(m.stats["kills_earned"]))
+
+
+func _tick_loot(m: DmRewardsMember, dt: float) -> void:
+	var at := m.pos() if m.alive() else Vector3(1e9, 0, 1e9)   # a dead hero picks nothing up; drops still age
+	for ev in m.loot_view.tick(dt, at):
+		match ev["kind"]:
+			"gold":
+				m.prog.add_gold(float(ev["amount"]))
+				m.stats["gold_picked"] += int(ev["amount"])
+			"shard":
+				m.prog.add_shards(int(ev["amount"]))
+				m.stats["shards_picked"] += int(ev["amount"])
+			"item":
+				m.stats["items_picked"] += int(ev["amount"])
+
+
+# ================================================================================================================ kills
+
+## The game's credit of a kill (once, on the host): the killer is the member playing on `killer_peer` (0: no hero struck it).
+func _on_kill_credited(enemy_id: int, def: String, level: int, elite: bool, area: String, killer_peer: int, x: float, z: float) -> void:
+	var killer: Node3D = null
+	if killer_peer != 0:
+		for m: DmRewardsMember in members.values():
+			if m.peer_id == killer_peer:
+				killer = m.body
+				break
+	on_kill({"def": def, "area": area if area != "" else area_id, "level": float(level), "elite": elite, "x": x, "z": z, "killer": killer, "enemy": enemy_id})
+
+
+## Decide who earned a kill and reward each. ev: {def, area, level, elite, x, z, killer: Node|null, enemy: core id (optional)}. Public so a shell with its own
+## death pipeline can call it directly. Mirrors DmGameRewards.on_kill per eligible member.
+func on_kill(ev: Dictionary) -> void:
+	if ended:
+		return
+	if DmContent.enemy(String(ev["def"])).get("inert", false) == true:
+		return
+	var kx := float(ev["x"])
+	var kz := float(ev["z"])
+	for cid in members:
+		var m: DmRewardsMember = members[cid]
+		if m.blocked != "":
+			continue
+		var dist := DmSimMath.hypot(kx - m.pos().x, kz - m.pos().z)
+		if not _rules.boss_reward_eligible(m.alive(), dist):
+			_count_only(m, ev)
+			continue
+		_reward(m, ev, ev.get("killer") != null and ev["killer"] == m.body)
+
+
+## A boss died (the boss host calls it): ev {boss, x, z, killer: Node|null, empowered}. The normal-kill rule decides who is paid (alive, within
+## KILL_REWARD_RANGE); each gets its own roll (DmLoot.roll_boss), a first-kill bonus (+2 shards, a rare relic, a trophy), the relic rune, XP now,
+## and a boss entry in its report (the backend's kill ledger). Mirrors DmGameRewards.on_boss_defeated.
+func on_boss_defeated(ev: Dictionary) -> void:
+	var id := String(ev["boss"])
+	if ended or ev.get("killer") == null:
+		return
+	var def: Dictionary = DmContent.boss(id)
+	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
+	var level := float(DmContent.area(String(def["area"]))["level"]) + vow_levels
+	for cid in members:
+		var m: DmRewardsMember = members[cid]
+		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
+			continue
+		var first: bool = id != "prelate" and m.claim_trophy(id)   # the Prelate has no first-kill trophy: it is the run's boss (tally + Ascend instead)
+		var rolled := _roll_event(m, "boss", {"boss": id, "area": String(def["area"]), "costShards": float(def["shards"]), "first": first, "level": level,
+			"waveTier": wave_tier, "difficulty": difficulty}, at)
+		var reward: Dictionary
+		var first_item: Variant = null
+		if rolled.get("reward") != null:
+			reward = rolled["reward"]
+			reward["items"] = rolled["items"]   # spoils, rune and the first-kill relic, each with its own source
+		elif rolled.has("items"):   # a tape with no seed yet: the boss's gold and XP, no items
+			reward = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
+			reward["items"] = []
+		else:
+			reward = DmLoot.roll_boss(wave_tier, rng, difficulty, String(def["area"]), float(def["shards"]), id, String(m.discipline["id"]), Callable(m, "owned_ids"))
+			if first:
+				first_item = DmLoot.roll_first_kill_item(String(def["area"]), rng, String(m.discipline["id"]))
+			var rune: Variant = DmLoot.roll_boss_rune(id, first, rng)
+			if rune != null:
+				reward["items"].append(rune)
+		if first:
+			reward["shards"] = int(reward["shards"]) + 2
+		m.stats["bosses"] += 1
+		var rep := {"boss": id, "tier": wave_tier, "diff": difficulty, "first": first}
+		if ev.get("empowered", false) and m.empower_pending == id and m.empower_summon_id != 0:
+			rep["summon"] = m.empower_summon_id
+		m.reporter.boss(rep)
+		if id == "prelate":
+			m.prog.record_prelate_kill()
+		_ground(m, {"kind": "gold", "amount": int(reward["gold"]) + int(reward["materialGold"])}, at)
+		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
+		_drop_items(m, at, reward["items"], level, "boss")
+		if first_item != null:
+			_drop_items(m, at, [first_item], level, "first_kill")
+		m.stats["xp_applied"] += int(reward["xp"])
+		var lv: int = m.prog.add_xp(float(reward["xp"]))
+		m.stats["levels"] += lv
+		if m.remote:   # a joiner's XP lives on its own client: DmNextParty relays member_credited to it (no kills: the boss is in the report)
+			member_credited.emit(m.character_id, {"xp": int(reward["xp"]), "kills": 0, "levels": lv, "batch": 0, "areas": []})
+		boss_earned.emit(m.character_id, id, first, at)
+
+
+## A Grave Surge was quelled (DmGraveSurge): every member the normal-kill rule pays gets a guaranteed item from the area's table plus bonus gold
+## on the ground at the crypt. ev {area, x, z}. Mirrors DmGameRewards.on_surge_cleared.
+func on_surge_cleared(ev: Dictionary) -> void:
+	if ended:
+		return
+	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
+	var level := float(DmContent.area(String(ev["area"]))["level"]) + vow_levels
+	var gold := DmMath.js_round((24.0 + 10.0 * level) * float(DmWaveUpgrades.wave_modifiers(wave_tier)["rewardMult"]) * float(DmContent.difficulty(difficulty)["rewardMult"]))
+	for cid in members:
+		var m: DmRewardsMember = members[cid]
+		if m.blocked != "" or not _rules.boss_reward_eligible(m.alive(), DmSimMath.hypot(at.x - m.pos().x, at.z - m.pos().z)):
+			continue
+		var rolled := _roll_event(m, "surge", {"area": String(ev["area"]), "level": level}, at)
+		_drop_items(m, at, rolled["items"] if rolled.has("items") else [DmLoot.roll_surge_item(String(ev["area"]), rng, String(m.discipline["id"]))], level, "surge")
+		_ground(m, {"kind": "gold", "amount": gold}, at)
+
+
+## The whole party's objectives: a kill the member is not paid for (dead, or out of range) still counts toward its area tally and seals. It rides
+## the member's own report as an `objective` group (the backend credits the area kill and nothing else), and the accepted count comes back through
+## the same credit path as any kill, so the progression's counters move only for what the backend accepted.
+func _count_only(m: DmRewardsMember, ev: Dictionary) -> void:
+	var area := String(ev["area"])
+	if bool(DmContent.area(area)["safe"]):
+		return
+	m.reporter.kill({"area": area, "def": ev["def"], "level": float(ev["level"]), "elite": bool(ev["elite"]), "tier": wave_tier, "diff": difficulty, "rank": int(ascension) + m.self_heat,
+		"xpMult": 1.0, "goldMult": 1.0, "shardMult": 1.0, "objective": true})
+	m.pending_areas.append(area)
+	kill_counted.emit(m.character_id, area)
+	if m.reporter._groups.size() >= EARLY_FLUSH_GROUPS and not _busy:
+		flush()
+
+
+func _reward(m: DmRewardsMember, ev: Dictionary, is_killer: bool) -> void:
+	var at := Vector3(float(ev["x"]), 0, float(ev["z"]))
+	var area := String(ev["area"])
+	var level := float(ev["level"])
+	var elite := bool(ev["elite"])
+	m.stats["kills_earned"] += 1
+	kill_earned.emit(m.character_id, String(ev["def"]), at)
+	var loot_area := area
+	if loot_area_of.is_valid():
+		var la: Variant = loot_area_of.call(area)
+		if la != null:
+			loot_area = String(la)
+	m.sync_brews()   # Tonic of wisdom / Fortune brew
+	var kind := "elite" if elite else "kill"
+	var facts := {"def": String(ev["def"]), "area": loot_area, "level": level, "waveTier": wave_tier, "difficulty": difficulty, "itemChanceMult": 1.0 + m.fortune,
+		"runePity": DmLootRunes.pity_mult(m.rune_dry)}
+	var rolled := _roll_event(m, kind, facts, at)
+	var reward: Dictionary = rolled["reward"] if rolled.get("reward") != null else DmLoot.roll_kill(String(ev["def"]), loot_area, level, elite, wave_tier, rng, difficulty, 1.0 + m.fortune, Callable(), Callable(), String(m.discipline["id"]), Callable(m, "owned_ids"), DmLootRunes.pity_mult(m.rune_dry))
+	if elite and not DmLootRunes.area_pool(loot_area).is_empty() and not reward["items"].any(func(d: Dictionary) -> bool: return _new_rune(m, d)):
+		m.rune_dry += 1
+	var chain_mult := 1.0
+	var area_def: Dictionary = DmContent.area(area)
+	var combat: bool = not bool(area_def["safe"])
+	if is_killer:
+		killer_paid.emit(m.character_id, String(ev["def"]), int(ev.get("enemy", 0)))
+	if is_killer and combat:
+		var up: Variant = m.chain.hit(float(_clock_ms()))
+		chain_mult = m.chain.mult()
+		if up != null:
+			chain_tier_up.emit(m.character_id, up)
+	var asc := DmAscension.ascension_reward_mult(ascension + m.self_heat) * chain_mult * (m.omen_reward if combat else 1.0)
+	if int(reward["shards"]) > 0 and combat:
+		reward["shards"] = int(ceil(float(reward["shards"]) * m.omen_shard))
+	reward["gold"] = DmMath.js_round(float(reward["gold"]) * asc)
+	reward["xp"] = DmMath.js_round(float(reward["xp"]) * asc * (1.0 + m.wisdom))
+	# Gold pools over a few kills into one bigger pile; elites always pay out.
+	m.gold_pool["amount"] += int(reward["gold"]) + int(reward["materialGold"])
+	m.gold_pool["kills"] += 1
+	if elite or int(m.gold_pool["kills"]) >= int(DmLoot.KILL_LOOT["goldEveryKills"]):
+		_ground(m, {"kind": "gold", "amount": int(m.gold_pool["amount"])}, at)
+		m.gold_pool = {"amount": 0, "kills": 0}
+	if int(reward["shards"]) > 0:
+		_ground(m, {"kind": "shard", "amount": int(reward["shards"])}, at)
+	# Ordinary kills drop half as often, so their gear rolls at elite quality (as in the original game).
+	_drop_items(m, at, rolled["items"] if rolled.has("items") else reward["items"], level, "elite")
+	if combat:
+		var nb := DmEnemyStats.new_blood_xp_mult(String(m.discipline["family"]), float(m.prog.character["level"]))
+		m.reporter.kill({"area": area, "def": ev["def"], "level": level, "elite": elite, "tier": wave_tier, "diff": difficulty, "rank": int(ascension) + m.self_heat,
+			"xpMult": asc * (1.0 + m.wisdom) * nb, "goldMult": asc, "shardMult": m.omen_shard})
+		m.pending_xp += float(DmMath.js_round(float(reward["xp"]) * nb))
+		m.pending_areas.append(area)
+		if m.reporter._groups.size() >= EARLY_FLUSH_GROUPS and not _busy:
+			flush()
+
+
+func _ground(m: DmRewardsMember, d: Dictionary, at: Vector3) -> void:
+	if not m.remote:
+		m.loot_view.drop(d, at)
+	loot_dropped.emit(m.character_id, d, at)
+
+
+## Items from a source other than a kill (a Depths floor, its chest) for one member: the same landing path (tape drops carry their roll and
+## claim; others get their gear rolled by the member's backend).
+func drop_items_for(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String) -> void:
+	_drop_items(m, at, items, level, source)
+
+
+## A Depths floor clear or chest from the member's tape: {reward {gold, xp, materialGold, drops}, items with claims}, or the _roll_event forms.
+func roll_depths(m: DmRewardsMember, kind: String, depth: int, level: float) -> Dictionary:
+	return _roll_event(m, kind, {"area": "depths", "depth": depth, "level": level}, Vector3.ZERO)
+
+
+## A drop event from the member's tape (server-decided drops, DECISIONS B20): {reward, items}, every item carrying the `claim` its pickup sends
+## (the server rolls the same event again and grants its own roll). {} when the member has no tape (tests that pin `rng`): the old roll.
+## {reward: null, items: []} when no seed is dealt yet: the caller pays gold / XP the old way and drops no item. A remote
+## member that rolls its own drops is sent the event instead (drop_event_for); the host's roll then pays only its gold and shards.
+func _roll_event(m: DmRewardsMember, kind: String, facts: Dictionary, at: Vector3) -> Dictionary:
+	if m.remote and m.rolls_own_drops:
+		drop_event_for.emit(m.character_id, kind, facts, at)
+		return {}
+	if m.tape == null:
+		return {}
+	var slot := m.tape.take(kind)
+	if slot.is_empty():   # no seed dealt yet (the first second, a slow top-up): no item, since the server keeps unclaimed drops out of the bag
+		return {"reward": null, "items": []}
+	var f := facts.duplicate()
+	f.merge(m.drop_context(), true)
+	var out := DmLoot.roll_event(kind, f, DmLoot.event_streams(kind, slot["seed"]))
+	var items: Array = out["items"]
+	for i in items.size():
+		items[i]["claim"] = {"kind": kind, "n": int(slot["n"]), "index": i, "facts": facts, "expect": String(items[i]["item_id"])}
+	return out
+
+
+## Materials land at once; gear first gets its roll from the member's own backend (server RNG online, the offline backend offline), except a
+## drop from the tape, which already carries its roll. A new rune landing resets the member's rising rune chance (rune_dry).
+func _drop_items(m: DmRewardsMember, at: Vector3, items: Array, level: float, source: String) -> void:
+	if m.remote and m.rolls_own_drops:
+		return   # its own client rolls them from its tape (drop_event_for)
+	var gear: Array = []
+	for d in items:
+		if _new_rune(m, d):
+			m.rune_dry = 0
+		if DmAffixes.can_roll(d["item_id"]) and not d.has("claim"):
+			gear.append(d)
+		else:
+			_ground(m, d, at)
+	if not gear.is_empty():
+		_land_gear(m, at, gear, level, source)
+
+
+## A rune the member does not have yet. A rune the member owns does not drop (DmLootView.rune_owned) and counts as no rune for rune_dry;
+## a remote member's runes are not known here, so every rune it is dropped counts as new.
+func _new_rune(m: DmRewardsMember, d: Dictionary) -> bool:
+	if not DmRunes.is_rune_id(d["item_id"]):
+		return false
+	return m.remote or m.loot_view == null or not m.loot_view.rune_owned.is_valid() or not bool(m.loot_view.rune_owned.call(d))
+
+
+func _land_gear(m: DmRewardsMember, at: Vector3, gear: Array, level: float, source: String) -> void:
+	if m.remote:   # the joiner's own client rolls its gear with its own api: the drop leaves as plain base gear plus how to roll it
+		for item in gear:
+			item["roll"] = {"level": level, "source": source}
+			_ground(m, item, at)
+		return
+	_gear_pending += 1
+	if m.api != null:
+		for batch in DmLootRoll.batches(gear):
+			var r: DmResult = await m.api.roll_loot(m.character_id, DmLootRoll.request(batch, level, source), session_id)
+			if r.ok and r.data is Array:
+				DmLootRoll.apply(batch, r.data)
+	_gear_pending -= 1
+	if not is_instance_valid(m.loot_view) or not members.has(m.character_id):
+		return
+	for item in gear:   # a failed roll leaves plain base gear: nothing is invented client-side
+		_ground(m, item, at)
+
+
+## Gear rolls still in flight (tests wait on this).
+func gear_pending() -> int:
+	return _gear_pending

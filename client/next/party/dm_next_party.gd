@@ -459,7 +459,25 @@ func host_session(session_name: String, is_private: bool = false) -> void:
 	last_error = {}
 	busy = "creating"
 	changed.emit()
-	_ensure_link(func() -> void: lobby.create_session(nm, shell.area_id, is_private, "", {}))
+	_ensure_link(func() -> void: lobby.create_session(nm, shell.area_id, is_private, "", world()))
+
+
+## Host: our world as members and friends see it (DECISIONS B26): the heat of our world vows and our difficulty.
+func world() -> Dictionary:
+	return {"heat": int(shell.meta.heat) if shell.meta != null else 0, "difficulty": shell.meta.difficulty if shell.meta != null else "medium"}
+
+
+## Host: our vows or difficulty changed (DmNextMeta.sync / set_difficulty): tell the lobby, which tells members, friends and the list.
+func sync_world() -> void:
+	if mode != HOST or lobby == null or link != "ready":
+		return
+	var w := world()
+	if int(info.get("heat", -1)) == int(w["heat"]) and String(info.get("difficulty", "")) == String(w["difficulty"]):
+		return
+	info["heat"] = int(w["heat"])
+	info["difficulty"] = String(w["difficulty"])
+	lobby.set_world(int(w["heat"]), String(w["difficulty"]))
+	changed.emit()
 
 
 func default_name() -> String:
@@ -619,7 +637,14 @@ func adopt_client(lobby_: DmLobbyClient, relay: DmRelayPeer) -> void:
 	info = lobby.session
 	online = true
 	_wire_social(lobby)
+	lobby.world_changed.connect(_on_world_changed)
 	send_presence()
+
+
+## A member: the host's world changed (DECISIONS B26); the lobby's session already holds it.
+func _on_world_changed(_heat: int, _difficulty: String) -> void:
+	info = lobby.session
+	changed.emit()
 
 
 # ---- leaving / the session ends --------------------------------------------------------------------------------------------------

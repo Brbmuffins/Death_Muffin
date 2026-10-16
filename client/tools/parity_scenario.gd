@@ -5,7 +5,7 @@ extends SceneTree
 ##
 ## The scenario: the Hollow Graves, one Gravecaller (discipline 2) at a fixed level on the kit's default loadout, Easy difficulty and Easy auto combat ON (today's DmAutoCombat /
 ## DmAutoDodge decisions, which move the hero too), the area's normal waves from the director (no held counts: cap 28, 9 a wave every 6.5 s, elites at 3.5 %, processions), the
-## director's random stream seeded, no rewards or backend (the in-memory mock). The hero cannot die: his health is refilled when a blow lands, and what the blow cost is counted.
+## director's random stream seeded, no rewards (the kill credit is cut off from them and the Omen pinned to none, as today's side does) and the in-memory mock. The hero cannot die: his health is refilled when a blow lands, and what the blow cost is counted.
 ## A hero who stands against the graves' tombstones without fighting (under STALL_M metres and STALL_CASTS casts in STALL_S seconds) is set back at the door, as a player would walk him out,
 ## and `unsticks` counts it (both games do it at the same places). `--seconds` of game time are played (physics ticks, so `--fixed-fps 60` runs it faster than real time without changing it).
 ##   nice -n 10 godot --headless --fixed-fps 60 --path client --script res://tools/parity_scenario.gd -- --seed=1 --seconds=180 --out=/tmp/client-1.json [--level=10] [--difficulty=easy]
@@ -96,16 +96,17 @@ func _run() -> void:
 	var reg := await api.register("parity", "p@example.com", "pw1234")
 	api.set_token(reg.data["token"])
 	var ch := await api.load_or_create_character(DISCIPLINE)
-	ch.data["level"] = level
+	DmDevMock.set_level(mock, ch.data, level)
 	g = load("res://next/next_game.tscn").instantiate()
 	root.add_child(g)
-	await g.start(ch.data, api, {"name": "parity", "hud": false, "audio": false, "waves": false, "seed": seed_n})
+	await g.start(ch.data, api, {"name": "parity", "hud": false, "audio": false, "waves": false, "persist": false, "omen": {}, "difficulty": difficulty, "seed": seed_n})
 	host = g.core_host
 	hero = g.local_body()
 	caster = hero.get_node("Rites")
 	for i in 30:
 		await process_frame
 	# the scenario's rules: Easy, Easy auto combat open, the director seeded
+	g.kill_credited.disconnect(g.rewards._on_kill_credited)   # no kill reaches the rewards: no XP, no Soul Harvest, no Kill Chain, no loot (as today's side)
 	g.input.auto.gate_probe = func() -> bool: return true
 	g.director.difficulty = difficulty
 	g.director.rng.seed = seed_n

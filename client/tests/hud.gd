@@ -80,7 +80,7 @@ func _initialize() -> void:
 	var reg := await api.register("tester", "t@example.com", "pw1234")
 	api.set_token(reg.data["token"])
 	var ch := await api.load_or_create_character(2)
-	ch.data["level"] = 20
+	DmDevMock.set_level(mock, ch.data, 20)
 	ch.data["experience"] = 1234
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
@@ -224,7 +224,8 @@ func the_frame() -> void:
 			shown_btns.append(id)
 	check(hud.menu_flow.visible and shown_btns == ["friends"], "the menu row shows the Social button only (%s): the Social window is the one panel in this step" % str(shown_btns))
 	check(h.social != null and not h.social.is_open(), "the Social window is there, closed")
-	check(not hud.chat_col.visible and not hud.up_plate.visible, "the other panels' doors (chat, Empower) stay hidden until their items")
+	check(not hud.chat_col.visible, "chat stays hidden until its item")
+	check(hud.up_plate.visible and bool(vm["reveal"]["hud.upgrades"]), "the upgrades box shows for a character that has earned (level %d: DmHudReveal.veteran_reveals)" % int(g.character["level"]))
 	check(near(hud.hud_scale, 1.1) and hud.layout.has("map") and hud.pieces["map"].scale == Vector2(0.9, 0.9), "the game scene's hud_scale and hud_layout options reached the HUD")
 	hud.set_layout({})
 	hud.set_hud_scale(1.0)
@@ -569,6 +570,7 @@ func boss_plate() -> void:
 	var me := g.session.get_my_id()
 	hero.teleport(g.bosses.site_pos("gravedigger") + Vector3(0.0, 0.0, 2.0))
 	await ticks(3)
+	g.my_member().prog.add_shards(int(DmContent.boss("gravedigger")["shards"]))   # the summon's price
 	var why := g.bosses.try_summon(me, "gravedigger")
 	await ticks(12)
 	var king := g.bosses.active_boss()
@@ -586,9 +588,8 @@ func boss_plate() -> void:
 	host.damage(king.core_id, king.max_hp * 0.3, hero.core_id, false)
 	h.refresh()
 	check(near(hud.boss_bar.value, king.hp / king.max_hp, 0.001) and king.hp < king.max_hp, "the bar follows his health (%.0f of %.0f)" % [king.hp, king.max_hp])
-	var toasts0 := hud.toasts.get_child_count()
 	g.bosses.fx.host.emit_game_event("toast", {"text": "The Gravedigger King stirs", "kind": "err"})
-	check(hud.toasts.get_child_count() == toasts0 + 1, "the boss fx's toast reaches the HUD")
+	check(hud.toasts.get_children().any(func(t: Node) -> bool: return t.get_meta("text", "") == "The Gravedigger King stirs"), "the boss fx's toast reaches the HUD")
 	g.bosses.fx.host.emit_game_event("banner", {"title": "The Gravedigger King", "sub": "He wakes", "ms": 3000})
 	check(hud.banner_active(), "and its banner")
 

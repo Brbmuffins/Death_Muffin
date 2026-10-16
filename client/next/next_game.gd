@@ -26,11 +26,18 @@ extends Node3D
 ## puppet's events. Hero casts are intents the host resolves on its core (DmRiteCaster); a guest's hero is an external of the HOST's core (`core_id` is the host's id for it), and
 ## its thralls are the host's bodies. A guest's `enemy_died` events are presentation only: kill credit (`kill_credited`) is the HOST's, once.
 ##
+## VALUE ON THE SERVER (DECISIONS D1, B20, B32; client/README.md "Value on the server"): the host's `rewards` (DmSessionRewards, ported) hears `kill_credited` and pays every
+## member in range through the backend's party session (numbered kill reports, XP and kill counts applied from what the server accepted), with today's loot rolls from the
+## member's drop tape; `meta` (DmNextMeta: difficulty, world vows, the Omen, Soul Harvest, the Kill Chain, Bonded Dead), `milestones`, `chron` (the Chronicle, first-kill
+## trophies) and `progress` (DmNextProgress: levels, upgrade tiers, the belt, the backend saves) are today's. `loot` (DmNextLoot) is this player's drops and bag: a click
+## walks to a drop, a tape drop is claimed (the server puts its own roll in the bag), worn gear feeds the build. `flush_all` saves everything (the last report, the
+## Chronicle, the progression, the bag) on leave and on the window's close.
+##
 ## The graphics preset, fps cap and auto-resolution are `perf` (DmNextPerf, the player's settings read from their file). Off in this step, each until its ROADMAP
-## item: gathering, the Chapterhouse (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (`rewards`, `progress`, `meta` stay null: no
-## XP, loot or saves), the panels (`ui_host`, `ui` stay null: the HUD's menu row shows the Social window only; no chat or Empower panel yet). `start` refuses any api whose base url is not the TEST server's
-## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). The game
-## itself sends nothing in this step; it takes the character and its build from the front flow (`slots`, `local` below).
+## item: gathering, the Chapterhouse (the hero starts and gets up at the Graves' door), the Depths, the Codex, the Covenant Seal's altar choice (a summon is the plain
+## soul-shard one), the panels (`ui_host`, `ui` stay null: the HUD's menu row shows the Social window only; no chat yet). `start` refuses any api whose base url is not the TEST server's
+## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). It takes the
+## character and its build from the front flow (`slots`, `local` below) until the progression and the bag have loaded theirs from the server.
 ##
 ##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)
 ## `opts`: warmup (false: the first-use warm-up of models, effects and area lighting; the benchmark forces it), name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud (true = DmNextHud, the HUD on the core; false = none), hud_scale, hud_layout (DmNextHud), audio (true outside a headless
@@ -70,9 +77,12 @@ var ui: Node = null                             ## the full HUD and panels
 var chapterhouse: Node = null                   ## NPCs, stations, waystones
 var gather: Node = null                         ## gathering nodes
 var bosses: DmBossHost                          ## child "Bosses": summon rules, the boss body, its events and music
-var rewards: Node = null
-var progress: Node = null
-var meta: Node = null
+var rewards: DmSessionRewards                   ## child "Rewards" (host): kill credit, the backend's party session, loot rolls (next/rewards/)
+var progress: DmNextProgress                    ## child "Progress" (host): levels, upgrade tiers, the belt, the backend saves (next/progress/)
+var meta: DmNextMeta                            ## child "Meta" (host): difficulty, world vows, the Omen, Soul Harvest, the Kill Chain, Bonded Dead (next/meta/)
+var milestones: DmWaveMilestones                ## child "Milestones" (host): the Wave Speed milestones' banners and the Nightfall light
+var chron: DmNextChronicle                      ## child "Chronicle" (host): the one Chronicle every system feeds, first-kill trophies
+var loot: DmNextLoot                            ## child "Loot": this player's drops and bag (next/rewards/dm_next_loot.gd)
 var perf: DmNextPerf                           ## child "Perf": the graphics preset, the fps cap and the auto-resolution governor (next/perf/dm_next_perf.gd)
 var character: Dictionary = {}
 var api: Variant = null                         ## DmApi: the test server's (the front flow) or the local mock (DmOffline.make_api)
@@ -161,11 +171,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	bosses.fx.host.camera = camera
 	bosses.fx.host.hitstop_cb = hitstop
 	bosses.fx.player_pos = enemy_fx.player_pos
-	bosses.fx.host.sink = func(id: String, ctx: Dictionary) -> void:   # banners / toasts -> the HUD
-		if hud != null:
-			hud.game_event(id, ctx)
-		elif ui_host != null:
-			ui_host.game_event.emit(id, ctx)
+	bosses.fx.host.sink = game_event   # banners / toasts -> the HUD
 	session.session_ended.connect(_on_session_ended)
 	look = DmHeroLook.new()
 	look.name = "Look"
@@ -231,6 +237,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		var b := local_body()
 		b.bind_character(character)
 		_register_body(b)
+		await _start_value(b)
 		_enter(b.position)
 		camera.snap(b.position)
 	_start_hud()
@@ -250,24 +257,67 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		if bool(opts.get("warmup", _wants_warmup())):
 			await DmNextWarmup.run(self)
 	perf.hold()
-	party.notice.connect(func(text: String, kind: String) -> void:
-		if hud != null:
-			hud.game_event("toast", {"text": text, "kind": kind}))
+	party.notice.connect(func(text: String, kind: String) -> void: game_event("toast", {"text": text, "kind": kind}))
 	ready_ = true
 	load_ms = Time.get_ticks_msec() - t0
 	started.emit()
 	if hud != null:   # a player's window (the boot's game, not a test's bare scene)
 		if String(opts.get("notice", "")) != "":   # why we are here (the session we were in ended, a join failed)
-			hud.game_event("toast", {"text": String(opts["notice"]), "kind": "err"})
+			game_event("toast", {"text": String(opts["notice"]), "kind": "err"})
 		party.go_online()          # after the loading cover: friends see us online, invites and asks reach us (no-op without a lobby the build may use)
 		friends.check_requests()   # a waiting friend request is a toast + the Friends tab's pip
 	if not guest and DmNextParty.arg("--host-party") != null:   # a trial without a panel: host a Closed party at once and say its code
 		party.hosting_changed.connect(func(on: bool) -> void:
 			if on:
 				printerr("[coop] hosting: the party's code is %s" % party.code)
-				if hud != null:
-					hud.game_event("toast", {"text": "Party code: %s" % party.code, "kind": "good"}))
+				game_event("toast", {"text": "Party code: %s" % party.code, "kind": "good"}))
 		party.host_session(String(DmNextParty.arg("--host-party")), true)
+
+
+## Host: value on the server. The rewards session with this player's member (its open is not awaited: a failure arrives as session_failed), the meta systems, the
+## Chronicle (before the progression: it adopts it) and the progression, which reads the saved state from the backend before the first wave, then this player's
+## loot and bag. Awaited under the loading cover.
+func _start_value(b: DmHeroBody) -> void:
+	var cid := int(character.get("id", 0))
+	rewards = DmSessionRewards.new()
+	rewards.name = "Rewards"
+	rewards.local_peer_id = session.get_my_id()
+	rewards.area_id = "graves"
+	add_child(rewards)
+	rewards.attach_game(self)
+	var d := DmCharacterBuild.discipline_for(float(character.get("class_index", 0)))
+	rewards.add_member(DmRewardsMember.make(cid, session.get_my_id(), b, api, int(character.get("level", 1)), {"id": d["id"], "family": d["family"]}))
+	rewards.start(cid)
+	meta = DmNextMeta.new()
+	meta.name = "Meta"
+	add_child(meta)
+	meta.attach(self)
+	milestones = DmWaveMilestones.new()
+	milestones.name = "Milestones"
+	add_child(milestones)
+	milestones.setup(self)
+	chron = DmNextChronicle.new()
+	chron.name = "Chronicle"
+	add_child(chron)
+	await chron.setup(self)
+	progress = DmNextProgress.new()
+	progress.name = "Progress"
+	add_child(progress)
+	await progress.setup(self, rewards.members.get(cid), bool(opts.get("persist", DisplayServer.get_name() != "headless")))
+	loot = DmNextLoot.new()
+	loot.name = "Loot"
+	add_child(loot)
+	await loot.setup(self)
+	for src: Node in [progress, meta, loot]:
+		src.connect(&"event", game_event)   # level-ups, toasts, floats, loot lines -> the HUD
+
+
+## A game moment for the player's screen (toast, banner, float, loot, chat, level_up ...): the HUD shows what it draws; the rest waits for the panels and the counsel.
+func game_event(id: String, ctx: Dictionary) -> void:
+	if hud != null:
+		hud.game_event(id, ctx)
+	elif ui_host != null:
+		ui_host.game_event.emit(id, ctx)
 
 
 func _start_hud() -> void:
@@ -446,10 +496,10 @@ func hitstop(weight: float) -> void:
 	hitstopper.request(weight)
 
 
-## The build a body's caster reads (DmRiteWorld): its DmCharacterBuild, and the runes socketed in the bag (none yet: the bag comes with progression).
+## The build a body's caster reads (DmRiteWorld): its DmCharacterBuild, and the runes socketed in this player's bag (a party member's: none, until the guest's own account).
 func rite_build(peer_id: int) -> Dictionary:
 	var out := build_for(peer_id)
-	out["runes"] = {}
+	out["runes"] = DmRunes.sockets_of(progress.slots()) if progress != null and peer_id == session.get_my_id() else {}
 	return out
 
 
@@ -459,14 +509,42 @@ func rite_for_slot(slot: int) -> String:
 	return DmRiteHotbar.rite_for_slot(slot, b.family, b.discipline_id) if b != null else ""
 
 
-## A body's DmCharacterBuild. The local hero's is built from the bag and progression the server gave (`server_slots`, `server_local`: worn gear, set bonuses, tiers,
-## boons, vows, as today's build_for takes them from the progress node); anyone else's has no bag and no progression (no party in this step): level-1 gear, the base mods.
+## A body's DmCharacterBuild. The local host's carries its progression (damage tier, boons, vows) and its bag's gear (the progress node's, as today's build_for; before it
+## loaded, what the server gave: `server_slots`, `server_local`); a party member's has no bag and no progression until the guest's own account: level-1 gear, the base mods.
 func build_for(peer_id: int) -> Dictionary:
 	var b := body_of(peer_id)
 	var ch: Dictionary = b.character if b != null and not b.character.is_empty() else {"class_index": 0, "level": 1}
 	if peer_id == session.get_my_id():
+		if progress != null:
+			return DmCharacterBuild.build(ch, progress.slots(), progress.prog.local)
 		return DmCharacterBuild.build(ch, server_slots, server_local)
 	return DmCharacterBuild.build(ch, [], {})
+
+
+## The local player's rewards member (the host's own; null on a guest until its own account, and before the rewards exist).
+func my_member() -> DmRewardsMember:
+	return rewards.members.get(int(character.get("id", 0))) if rewards != null else null
+
+
+## The backend party session this player is in ("" = none: not open yet, or a backend without sessions). Claims and gear rolls carry it.
+func party_session_id() -> String:
+	return rewards.session_id if rewards != null else ""
+
+
+## The local hero's belt (Q the healing flask, Z / X the brews): the progression's, null before it (or on a guest, until its own account).
+func belt() -> DmNextBelt:
+	return progress.belt if progress != null else null
+
+
+## Q / Z / X (DmNextHud): drink the flask or a belt brew.
+func use_belt(slot: String) -> void:
+	var bl := belt()
+	if bl == null:
+		return
+	if slot == "heal":
+		bl.drink_flask()
+	else:
+		bl.drink_belt(slot)
 
 
 ## Who is in the session: [{peer_id, name, discipline, character_id, body}].
@@ -529,8 +607,16 @@ func _await_active(timeout: float) -> bool:
 	return false
 
 
+## Everything the character earned, saved: the session's last kill batch, the Chronicle, the progression, the bag. leave() and the window's close call it.
 func flush_all() -> void:
-	pass   # nothing is saved in this step
+	if rewards != null and session.is_host() and session.is_active():
+		await rewards.end_session({})
+	if chron != null:
+		await chron.flush()
+	if progress != null:
+		await progress.flush_all()
+	if loot != null and loot.inventory != null:
+		await loot.inventory.flush()
 
 
 func leave() -> void:

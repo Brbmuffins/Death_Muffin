@@ -266,7 +266,7 @@ func account(nm: String, id: int, cls: int, level: int) -> void:
 	var r := await api.register(nm, "%s@example.com" % nm, "pw1234")
 	api.set_token(r.data["token"])
 	var c := await api.load_or_create_character(cls)
-	c.data["level"] = level
+	DmDevMock.set_level(mock, c.data, level)
 	accounts[nm] = {"id": id, "api": api, "ch": c.data}
 
 

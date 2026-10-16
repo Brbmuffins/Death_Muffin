@@ -705,7 +705,7 @@ func game_stage(args: PackedStringArray) -> void:
 	var reg := await api.register("tester", "t@example.com", "pw1234")
 	api.set_token(reg.data["token"])
 	var ch := await api.load_or_create_character(2)
-	ch.data["level"] = 20
+	DmDevMock.set_level(mock, ch.data, 20)
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)

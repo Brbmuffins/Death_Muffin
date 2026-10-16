@@ -78,8 +78,8 @@ together is compared by playing one seeded scenario in both games and tabulating
 `DmAutoCombat` / `DmAutoDodge` decisions, which walk the hero too), the director's normal waves (cap 28, 9 a wave every 6.5 s, elites at 3.5 %, processions), 180 s of game time, the director's stream and the global stream seeded, the in-memory mock
 backend. The Graves' enemies are level 1 whatever the hero's level (the Graves have no level scaling). The hero cannot die: his health is refilled when a blow lands, and the blow is counted. Everything is read from the host's signals and
 the caster's events (the director's, the enemies', the thralls', the hero's), the legion is sampled once a tick by the tool; the game scenes get no code for it.
-- **Switched off in today's game** so both play the same rules (the client has none of these yet; "Differences from today's game"): the kill-credit consumers (XP and level-ups mid-run, Soul Harvest's free casts, the Kill Chain, loot), the weekly Omen,
-  Grave Surges and the Bellringers' censer. Easy auto combat is ticked on the physics clock on both sides: today's input ticks it with the wall clock, which a faster-than-real-time run stretches (`DmNextAutoCombat.clock_ms`).
+- **Switched off on both sides** so both play the same rules: the kill-credit consumers (XP and level-ups mid-run, Soul Harvest's free casts, the Kill Chain, loot: the kill credit is disconnected from the
+  rewards) and the weekly Omen (pinned to none); in today's game also Grave Surges and the Bellringers' censer, which the client has not ("Differences from today's game"). Easy auto combat is ticked on the physics clock on both sides: today's input ticks it with the wall clock, which a faster-than-real-time run stretches (`DmNextAutoCombat.clock_ms`).
 - **A stuck hero is set back at the door and counted.** Easy auto combat steers straight at the nearest enemy and has no path round the graves (`godot/next/feel/README.md`: no `DmNav`), so it parks the hero against pockets of tombstones, for good (around (6, -29), (-4, 1), (13, -23),
   (3.5, -4) and (4, -20)): a run that parked kills half as many as one that did not, which drowns every other difference. A hero who moved under 1 m and cast under 4 times in 10 s is put back at the door (a player would walk him out), and `unsticks` counts it.
   Both games park the hero at the same places and as often (1.6 and 1.4 times a run), which also says the area scene's colliders are today's.
@@ -275,8 +275,8 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 - **The front flow (`client/main`, `client/net`)**: login, register, the online gate and character select are today's code on the test server (`client/README.md` "The test server"). Not the same:
   there is no Log out or Switch character (the full HUD owns them), no automatic crash report and no
   update notice; a bag or progression the server fails to give sends the player back to the login screen with the server's words (today the
-  game starts with an empty bag); the game starts only on the test server or the local mock. The hero is built from the server's bag and progression, read once at the start: nothing is saved or
-  refreshed during the run; the Reaper has no model or rites yet (the four necromancers play).
+  game starts with an empty bag); the game starts only on the test server or the local mock. The hero is built from the server's bag and progression, then from the progression and bag the
+  game loads and saves itself (`client/README.md` "Value on the server"); the Reaper has no model or rites yet (the four necromancers play).
 - **Co-op messages:** one binary snapshot with every body, thralls included, at 20 Hz replaces today's dictionaries (enemies 6 to a packet at 20 Hz, thralls at 15 Hz plus a full
   reliable copy at 1 Hz). Values are quantized: positions to 1 cm, yaw to 1.4 degrees, health to 1/65535 of the maximum, time in state to 10 ms. The animation name is not sent
   (`anim` today): the crowd view picks clips from the state and the eased speed.
@@ -327,12 +327,12 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **His adds are core bodies drawn by the crowd**: the ghoul borrows the robber's model until the roster is baked. They leave with him (defeat or wipe) by `remove_enemy`; the crowd fades a body that vanished alive where the node popped out at once.
   - **A rite's Withered on him is not a `rite_hit` and has no `status_dot` event** (his status set is GDScript's, B42): the DoT lumps hurt him and the brain's credit is the caster as today, but the kill-credit consumers (off) will not see the lumps.
   - **The hero is hurt with his core id as the source** (`DmHeroBody.take_damage(dmg, boss.core_id)`), where today it was the node: the same place of blow, and Colossus Mantle's reflect finds him through `foe(id)`.
-  - **No shard cost**: the summon is free in this build (no progression to take shards from); the other rules (`far`, `unknown`, `busy`, `dead`) are today's, and only the Hollow Graves' boss is served. No boss pools: the core makes no zone for a boss.
+  - **The plain soul-shard summon only**: the summon rules (`far`, `unknown`, `busy`, `dead`, `shards`) are today's, but the Covenant Seal's Empowered call waits for its prompt (the panels), and only the Hollow Graves' boss is served. No boss pools: the core makes no zone for a boss.
   - **No collider, agent or state machine on his body** (`DmBoss` is a `Node3D`): nothing read them but the old `DmEnemy` code (the labels are gone, the hover pick and the chase go through the host's queries).
 - **The HUD on the core (`client/next/next_hud.gd`, `client/ui/hud`; `client/README.md` "The HUD on the core")**: the same layout, colours, fonts and numbers; drawn to fit 150 draw calls, which changes the
   pixels a little where the same shape is drawn another way. What a player could notice:
-  - **Not there yet** (their systems are not in the game scene): the menu row, chat and the report button, the Empower / Quicken panel, party frames of other players, the belt, the Kill Chain, the Omen, the Depths readout, interaction prompts and the Next line. The Spellbook button is drawn and does nothing; the hotbar is the kit's, not the player's loadout. Gold and Soul Shards are the values
-    the test server gave at the start; XP does not move (no rewards).
+  - **Not there yet** (their systems are not in the game scene): the menu row, chat and the report button, party frames of other players, the Depths readout, interaction prompts and the Next line. The Spellbook button is drawn and does nothing; the hotbar is the kit's, not the player's loadout.
+    The upgrades box and the wave dial show by today's rules but without the onboarding's NEW cue toasts (they come with the onboarding item).
   - **Panels and borders** are pictures of the same fill, border and rounded corners (`DmHudAtlas.nine`, 16 samples a pixel) instead of `StyleBoxFlat` geometry: identical at the design size, and at other
     UI scales the 1 px borders and the 2 and 3 px corners are filtered a little differently. The hotbar's plate keeps its soft shadow (still a `StyleBoxFlat`).
   - **Icons** are scaled once, to at most twice the size they are shown at (ability art 256 to 128 px for a 62 px slot, portraits 480x640 to 96x128), with a Lanczos filter: slightly smoother than the file
@@ -345,7 +345,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **Floating numbers** have no 1 px shadow under their 3 px outline (the outline covers it; the dark rim is 85 % where it was 98 % beside the strokes), overlapping numbers draw in pool order rather than oldest
     first, and the thrall and DoT numbers come from the core's damage and DoT events at the enemy's position that tick. The caps (14 hit, 5 dot, 6 thrall, 22 in all) count in real milliseconds, as today.
   - **The target frame** reads the core's status bytes (a Withered pile past 255 stacks is read from `status_stacks`); a status the HUD has no icon for is not listed, as before.
-  - **"N slain here"** counts every enemy that died in the area (no rewards yet: a solo hero's kills and his thralls', as the ledger will count them).
+  - **"N slain here"** counts every enemy that died in the area this run (today's counts the kills the rewards paid or counted for this player: the same for a solo hero, whose kills and thralls' kills are all his).
   - **Pieces:** every readout group can be moved and scaled (`DmHud.set_piece`, `set_layout`; `opts.hud_layout`) and the HUD scale setting is `opts.hud_scale`; with the defaults nothing moves.
 
 - **Easy auto combat and the benchmark (`client/next/feel/dm_next_auto.gd`, `client/next/perf`; `client/README.md` "The benchmark")**: the decisions are today's code (`DmAutoCombat`, `DmAutoDodge`) and so are the intents it sends. What is not the same:
@@ -356,8 +356,8 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **Its gate is closed** in the rebuilt client until the settings exist (`gate_probe` opens it: the benchmark, the tests). **It runs on the physics clock** (`DmNextAutoCombat.clock_ms`, ticks at 60 a second), where today's reads the wall clock: the same
     cadence at real time, and the same fight when the game runs faster than real time (`--fixed-fps`, the headless processor test).
   - **The benchmark has the Hollow Graves and the Gravecaller only** (other rooms and classes are refused); its Standard setup is the Graves. The fight is today's (seed, health, counts, rules), held through the core: the count is trimmed with `remove_enemy` (a Vengeful
-    Risen or a boss's add past the cap leaves like a node freed: no death, no corpse), the 32 thralls are raised into the core with no cap, the King is woken through the real summon (free, see above). **Not in the fight:** rewards, loot drops and the kill ledger
-    (the "Loot" row reads 0), the panels (the HUD on the core is up and its share is measured), the graphics presets and the resolution governor (the report's preset is the settings file's and is not applied), so the fight is cheaper than today's by what those cost.
+    Risen or a boss's add past the cap leaves like a node freed: no death, no corpse), the 32 thralls are raised into the core with no cap, the King is woken through the real summon (its shards granted and charged, as today). Rewards, loot drops and the kill ledger are in, against the run's mock, as today.
+    **Not in the fight:** the panels (the HUD on the core is up and its share is measured), the graphics presets and the resolution governor (the report's preset is the settings file's and is not applied), so the fight is cheaper than today's by what those cost.
     The render breakdown's parts are Shadows, Creatures (the crowd and the boss, one MultiMesh per model not per kind), World, Effects and HUD.
   - **The warm-up is rehearsal rows,** not bodies: every crowd model at three levels of detail from rows fed to `DmCrowd.sync_rows` with the core's tick held (its sync would forget them), then cleared. It runs on request (`opts.warmup`, `--warmup`, the benchmark), not in play.
 

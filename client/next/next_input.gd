@@ -11,6 +11,7 @@ extends Node
 ## enemies near that point (`enemies_in_radius`, a handful), and the one whose chest is nearest the cursor on screen within PICK_PX wins: no loop over
 ## every enemy. The attack-target chase, hold repeat and queued casts are today's DmCombatInput (ported: it asks the caster for the enemy). Easy auto-combat
 ## (DmNextAutoCombat, ported: it reads the core's bulk arrays) casts through `cast_at` and walks through the session's intents, gated by `auto.allowed()`.
+## A drop under the cursor is the game's `loot` (DmNextLoot), not the panels' adapter.
 
 signal hotbar(slot: int, aim: Vector3, enemy_id: int)   ## slot 0 = LMB primary, 1..4 = keys, 5 = RMB, 6 = R (signature); enemy_id 0 = ground aim
 signal clicked_move(point: Vector3)
@@ -84,8 +85,8 @@ func _process(dt: float) -> void:
 	if gp != null:
 		_aim = Vector3(gp.x, 0.0, gp.z)
 	_hover_id = pick_enemy(mp)
-	if game.ui_host != null:
-		game.ui_host.loot_hover(mp, _hover_id != 0, Input.is_key_pressed(KEY_ALT))   # the drop under the cursor shows its name; Alt shows all
+	if game.loot != null:
+		game.loot.loot_hover(mp, _hover_id != 0, Input.is_key_pressed(KEY_ALT))   # the drop under the cursor shows its name; Alt shows all
 	if _mouse_seen:
 		stand_face()
 	if game.chapterhouse != null:
@@ -142,8 +143,8 @@ func _physics_process(delta: float) -> void:
 	var d := held_direction()
 	if d != Vector3.ZERO:
 		combat.clear()                      # walking by hand ends the chase and the queue (old: key_dir cancels attack_target)
-		if game.ui_host != null:
-			game.ui_host.loot_cancel()      # and the walk to a clicked drop
+		if game.loot != null:
+			game.loot.loot_cancel()         # and the walk to a clicked drop
 	if auto.game == null:
 		auto.setup(game, self)
 	combat.tick(float(Time.get_ticks_msec()))
@@ -175,9 +176,9 @@ func _primary_click(screen: Vector2) -> void:
 	var gp: Variant = game.camera.ground_point(screen)
 	if gp != null:
 		_aim = Vector3(gp.x, 0.0, gp.z)
-	if game.ui_host != null:
-		game.ui_host.loot_cancel()            # any click ends the walk to a drop (a click on a drop starts a new one below)
-		if Input.is_key_pressed(KEY_ALT) and game.ui_host.loot_click(screen):
+	if game.loot != null:
+		game.loot.loot_cancel()               # any click ends the walk to a drop (a click on a drop starts a new one below)
+		if Input.is_key_pressed(KEY_ALT) and game.loot.loot_click(screen):
 			combat.clear()
 			return                            # Alt: drops win over enemies (grab loot mid-fight)
 	_hover_id = pick_enemy(screen)
@@ -188,7 +189,7 @@ func _primary_click(screen: Vector2) -> void:
 	combat.clear()
 	if shift:
 		game.session.request_move_dir(Vector3.ZERO)   # Shift on the ground stands still (old: player.stop())
-	elif game.ui_host != null and game.ui_host.loot_click(screen):
+	elif game.loot != null and game.loot.loot_click(screen):
 		pass                                  # walks to the drop and picks it up on arrival (walking over loot takes nothing)
 	elif game.chapterhouse != null and game.chapterhouse.click_at(screen):
 		pass                                  # walks to the station / NPC and uses it on arrival

@@ -31,6 +31,8 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/coop.gd    # 2-player co-op: a host and a guest in one process over a real local lobby and relay (needs `cd server/death-muffin/lobby && npm ci`; bakes into a scratch folder; about a minute)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/social.gd  # the Social window: open and close, host from the Party tab, a boot scene that joins from the list and comes home (needs the lobby's modules too; about 40 s)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd # the graphics presets on a running game: lights, environment, viewport, crowd shadows, the governor (bakes into a scratch folder)
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rewards.gd                # the rewards node on the core: today's tests/rewards replayed (sessions, batches, lost replies, refusals, the end, per-member loot), on the mock
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/value.gd   # value on the server in the game scene: kills, accepted XP, the purse, a claimed drop, brews and lifesteal, the meta, the belt, saving ("Value on the server")
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the thralls) into client/assets/crowd/baked (not committed)
 ```
@@ -68,13 +70,13 @@ uids keep working:
   fight. Each line names what it uses. They are ported to the core in the later steps of the ROADMAP's client layer, and `--port` then moves them from the list into `code.lock.json`.
   Ported already: the game scene, the director, the hero body and look, the input, the enemy fx, the avatar and the event fx; the Gravecaller's rites (the caster, the module base, the legends, the
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The Gravedigger King"); Easy auto combat, the benchmark
-  with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); and the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
-  "Co-op on the core").
+  with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
+  "Co-op on the core"); and value on the server (the rewards node, the meta node, the progress node and the wave milestones; "Value on the server").
 - **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows. The biggest chains now: `DmReaperRites` (the Reaper's nine rites) and the panel host
   (`game_ui/dm_game_ui.gd`, the panels item; the Social window, its panes and `DmNextFriends` are copies with their own small host until then, "Co-op on the core").
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
-  the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step, the belt and the progress node.
-  Freed by the boss ports: `next/bosses/dm_boss_meta.gd` (the Covenant Seal altar choice; it needs rewards and the backend, so nothing creates it yet).
+  the chronicle, the event fx's telegraph and boss halves, the area flow, gathering and the joiner. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step and the belt.
+  Freed by the boss ports: `next/bosses/dm_boss_meta.gd` (the Covenant Seal altar choice; it needs the panels' prompt, so nothing creates it yet).
 - **Ported for the test server** (not seams): the boot `main/main.gd` and `main/main.tscn` (freed from the left-out list by the front flow's port), `net/dm_config.gd` and
   `net/dm_http_transport.gd` (below).
 
@@ -113,9 +115,9 @@ roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`
 **input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
 wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
-Co-op and the Social window are in ("Co-op on the core"). Off in this step, each until its ROADMAP item: the other panels, gathering, the Chapterhouse
-(the hero starts and gets up at the Graves' door), the Depths, rewards and progression (no XP, loot or saves; `DmNextGame.rite_hit` carries every blow of a rite for them), the panels (the HUD is there, "The HUD on the core"; its menu row, chat, Empower panel
-and loadout wait for theirs), the Reaper's rites, the graphics governor, Grave Surges. Easy auto combat is in but closed: nothing opens it until the settings come (the benchmark and the tests do). `native/README.md` "Differences from today's game" lists what behaves differently from today.
+Co-op and the Social window are in ("Co-op on the core"), and so is value on the server ("Value on the server"). Off in this step, each until its ROADMAP item: gathering, the Chapterhouse
+(the hero starts and gets up at the Graves' door), the Depths, the Codex, the panels (the HUD is there, "The HUD on the core"; its menu row, chat and loadout wait for theirs), the Reaper's rites,
+the graphics governor, Grave Surges. Easy auto combat is in but closed: nothing opens it until the settings come (the benchmark and the tests do). `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
 ## The Gravecaller's rites
 
@@ -160,13 +162,14 @@ copied but need their areas, adds and pools.
 What the host's `DmCoreHost.tick` does with it, in the tick's order: the boss's `_physics_process` (priority 0, with the session and the director) pumps the brain and mirrors its position, then the host writes the external and steps the core; the
 core's thralls act on the place it wrote, and their blows on it are given to the brain as the tick's events are dispatched.
 
-**Summoning** is today's: key E within 4 m of the King's grave (or `bosses.request_summon`), the refusals `far`, `unknown`, `busy`, `dead`. **Shards are not charged in this step** (there is no progression to take them from: `g.rewards` is null), so the summon is free.
-**His defeat** is the host's `defeated` signal (a real kill; `reset` for a wipe), the brain's events (`brain_event`), `DmBoss.died` and the boss sounds; `DmSessionRewards.on_boss_defeated` is called when the rewards item brings `g.rewards`. The dev entry's `--boss` starts the hero at the grave and wakes him.
+**Summoning** is today's: key E within 4 m of the King's grave (or `bosses.request_summon`), the refusals `far`, `unknown`, `busy`, `dead` and `shards`: the summon takes the King's soul shards from the
+summoner's progression (the plain soul-shard summon; the Covenant Seal's Empowered call waits for its prompt with the panels).
+**His defeat** is the host's `defeated` signal (a real kill; `reset` for a wipe), the brain's events (`brain_event`), `DmBoss.died` and the boss sounds, and `DmSessionRewards.on_boss_defeated` pays every member in range. The dev entry's `--boss` starts the hero at the grave, grants the shards and wakes him.
 
 `client/tests/boss.gd` is the proof: the six recorded Gravedigger scenarios of `godot/tests/bosses` replayed tick by tick through this project's copy of the brain, the summon rules, the awaken numbers, his attacks and phases stepped by hand with today's numbers and
 timing (sweep, Burial, phases, ghouls on the rim, the elite, the pits, the double sweep, the blows on the hero and on a thrall), the wipe (adds leave silently), thralls (the edge rule, `thrall_hit_external`, credit, `alive` false while he cannot be hurt),
 the rites (edge distance, order, lane, cone, circle, the needle's range, the Scythe's arc, the Spear's rally, Fan, Lance, statuses, stun), the defeat events, a second summon, a fight on the real clock and the net state round trip.
-Not in it: the other six bosses; their pools, niches and hooks (the core makes no zone for a boss, has no call that sets a body's health, and the Veilwalker's echoes are not ported); shards and rewards; the boss bar and banners (the full HUD); Guests see him through `DmBossHost`'s own state (20 Hz) and events, which the port kept ("Co-op on the core").
+Not in it: the other six bosses; their pools, niches and hooks (the core makes no zone for a boss, has no call that sets a body's health, and the Veilwalker's echoes are not ported); the boss bar and banners (the full HUD); Guests see him through `DmBossHost`'s own state (20 Hz) and events, which the port kept ("Co-op on the core").
 Easy auto combat takes him as a target (`bosses.active_boss()`, his telegraphs from the boss fx).
 
 ## The benchmark
@@ -205,8 +208,9 @@ nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path clien
   the game has loaded, lit, with every point light off, and with the flash light. It has not been looked at on a GPU: play does not run it yet.
 - **Sends:** the run's backend is the in-memory mock. A finished run is queued in `user://benchmarks/pending.json` and sent to the **test server** only (`net/dm_config.gd`): from the character select with the logged-in api, from `--benchmark` with a
   release build's saved login; debug builds, `--dev-offline` and tests never send (the run waits in the queue, and goes out when a player next enters the world on the test server). `tests/benchmark.gd` pins it.
-- **Not in the fight yet** (it is cheaper than today's by these): rewards, loot drops and the kill ledger, the panels (the HUD on the core is up, and its share measured), the other disciplines and rooms, the
-  guests' hero bodies (as today). The soul shards of the King's summon are not charged (no progression to take them from). `native/README.md` "Differences from today's game" has the rest.
+- **In the fight as today:** rewards, loot drops and the kill ledger against the run's in-memory mock (the King's soul shards are granted to the throwaway character and charged, as today's `hold_boss`).
+- **Not in the fight yet** (it is cheaper than today's by these): the panels (the HUD on the core is up, and its share measured), the other disciplines and rooms, the
+  guests' hero bodies (as today). `native/README.md` "Differences from today's game" has the rest.
 
 ## Graphics presets
 
@@ -246,9 +250,9 @@ ports (`client/code.list`). Nothing runs per creature per frame:
 | boss plate, minimap dot | `g.bosses.active_boss()` (name, phase, hp; the King's dot on the map) |
 | notices | the first entry into an area (banner), a themed wave (banner once per area), a refused cast (an "info" number over the hero), the boss fx's banners and the summon refusals (`DmNextHud.game_event`, the sink of `bosses.fx.host`) |
 
-Not in the game scene yet, each until its ROADMAP item (the panels' host `DmNextUiHost`, `DmGameUi` and the party chain stay out, `client/code.list`): the menu row, chat and the report button, the Empower / Quicken panel and
-the wave dial, the Spellbook, party frames of other players and the social window, the belt, the Kill Chain, the Omen, the Depths readout, interaction prompts and the Next line, the counsel's
-tips, the loadout (the hotbar is the kit's). The pieces whose systems are not in the scene take their data from `DmNextHud.feeds`, which a test or a later system fills with the same view-model keys
+The upgrades box (Empower, Quicken and the wave dial), the belt (Q, Z, X), the Kill Chain, the Omen, the save chip and the pickup lines come with value ("Value on the server").
+Not in the game scene yet, each until its ROADMAP item (the panels' host `DmNextUiHost`, `DmGameUi` and the party chain stay out, `client/code.list`): the menu row, chat and the report button,
+the Spellbook, party frames of other players, the Depths readout, interaction prompts and the Next line, the counsel's tips and the onboarding's NEW cues, the loadout (the hotbar is the kit's). The pieces whose systems are not in the scene take their data from `DmNextHud.feeds`, which a test or a later system fills with the same view-model keys
 (`tests/hud_feeds.gd` fills all of them).
 
 **Pieces (DECISIONS B40).** Every readout group is a Control of its own with its own anchors and offsets, listed in `DmHud.pieces` (`party omen ward chain belt target boss map toasts banner prompt hint chat xp altar
@@ -298,6 +302,28 @@ fight the model said about 500 for the game scene's HUD (the hotbar 188, the min
 
 *CPU.* `tests/hud.gd` prints the refresh (view-model build and apply) and a frame with the HUD against one without; `DmNextHud.refresh_us` counts the live refreshes. With 72 enemies and 32 thralls on this VPS: build 0.19 ms + apply 0.05 ms
 every 50 ms; a headless frame with the HUD costs ~0.1 to 0.2 ms more than without (no drawing: every `_process`, tween and `_draw` callback runs).
+
+## Value on the server
+
+The backend owns value (DECISIONS D1, B20, B32), and the game scene on the core earns it through today's code. On the host (`DmNextGame._start_value`, under the loading cover):
+- **Rewards** (`next/rewards/dm_session_rewards.gd`, a port): a kill is the game's `kill_credited` (the core's EV_ENEMY_DIED, credited once, to the hero who struck it or the owner of the thrall
+  whose blow it was), not each enemy's `died`; everything after it is today's code: who earned it (alive, within 38 m), the Kill Chain for the killer, the loot roll from the member's drop tape,
+  the gold pool, and the numbered kill reports of the backend's party session, whose replies decide the XP and kill counts applied. Lifesteal hears `DmCoreHost.struck` (a hero's direct blow
+  through `damage`; a DoT tick or a thrall's swing never is one). A boss's defeat pays through `on_boss_defeated` (the boss host calls it).
+- **Meta, milestones, Chronicle, progression** are today's (`next/meta/dm_next_meta.gd` and `next/areas/dm_wave_milestones.gd` ported, the Chronicle and `DmNextProgress` as they are but for the
+  bag): difficulty, world vows, the week's Omen, Soul Harvest, Bonded Dead (raised through the hero's legion on the core), the level-ups, the upgrade tiers, the belt, and the saves through
+  `DmProgressSync`. The vows' corpse lifetime reaches the core (`DmCoreCorpses.life_mult`), and the host's world (heat, difficulty) reaches the lobby (`DmNextParty.sync_world`).
+- **The loot node** (`next/rewards/dm_next_loot.gd`, the client's own: today's take, pickup, claim and rune-ownership paths of `DmNextUiHost`, standing on their own so value works before the
+  panels): a click on a drop walks the hero there and takes it on arrival (loot never flies; walking over it takes nothing); a drop rolled from the tape is claimed, and the server puts its
+  own roll in the bag; a rune the character owns (learned, bag, Vault) never drops. The bag is the server's rows (`DmInventory`); worn gear feeds the build, and the belt drinks from it.
+- **The HUD** reads the member's progression (level, XP, gold, shards, tiers), shows the upgrades box and the wave dial by today's rules (`DmHudReveal.veteran_reveals`), the belt, the Kill
+  Chain, the Omen and the save chip, and the toasts, banners, floats and pickup lines of `DmNextGame.game_event`.
+- **Saving:** `flush_all` (leave, the window's close) ends the party session with its last batch and flushes the Chronicle, the progression and the bag.
+
+Not yet, each with its item: a party guest's own account (its own session member, its own drop tape, its build from the server, ground drops between members: the guest earns nothing yet),
+the Covenant Seal's altar choice and the boss key prompt (the panels), the Codex (the panels), chat lines (a rune's or a legendary's line waits for chat).
+`tests/rewards.gd` replays today's `godot/tests/rewards` on the port (a test double emits `kill_credited`); `tests/value.gd` plays the game scene on the mock: kills through the core, the accepted
+XP and counts against the server's counters, the purse, a drop claimed into the bag, brews and lifesteal, the meta, Q's flask, and the save on leave.
 
 ## Co-op on the core
 
@@ -382,7 +408,8 @@ database and signing key, so nothing played here can touch a live character), th
   A bag or progression the server fails to give sends the player back to the login screen with the server's words; nothing is written, created or imported.
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
-- **Off until their items:** rewards and the kill ledger (no kill report), progress and bag saves, the friends list, chat, gathering, the Chapterhouse, the panels (so no Log out or Switch character:
+- **Value is the test server's** ("Value on the server"): the kill reports, the drops claimed into the bag, the progression's and the bag's saves all go to the test API with the logged-in character.
+- **Off until their items:** chat, gathering, the Chapterhouse, the panels (so no Log out or Switch character:
   close the game to sign in again; the Social window has its own small host, "Co-op on the core"), the automatic crash report and the update notice. The four
   necromancer disciplines play (their hero models are in `client/assets.list`; `tests/rites.gd` "the disciplines"); the Reaper waits for its item.
 

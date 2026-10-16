@@ -164,7 +164,7 @@ func _initialize() -> void:
 	var reg := await api.register("tester", "t@example.com", "pw1234")
 	api.set_token(reg.data["token"])
 	var ch := await api.load_or_create_character(2)
-	ch.data["level"] = 20
+	DmDevMock.set_level(mock, ch.data, 20)
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
@@ -176,6 +176,7 @@ func _initialize() -> void:
 	me = g.session.get_my_id()
 	c.random = func() -> float: return 0.5   # no crit, the middle of the needle's jitter
 	_wire()
+	g.my_member().prog.add_shards(int(DmContent.boss("gravedigger")["shards"]) * 40)   # a summon costs the King's soul shards (t_summon checks the refusal and the price)
 	await t_summon()
 	await t_hand_fight()
 	await t_wipe()
@@ -464,6 +465,12 @@ func t_summon() -> void:
 	check(g.area_of(me) == "graves", "the hero is in the Hollow Graves")
 	check(g.bosses.site_pos("gravedigger").is_equal_approx(Vector3(-14.0, 0.0, -30.5)), "the grave is the area's kings_grave interactable")
 	check(g.bosses.site_near(hb.position, 4.0) == "gravedigger", "at the grave the site is the King's")
+	var prog := g.my_member().prog
+	var held := int(prog.local["shards"])
+	var cost := int(DmContent.boss("gravedigger")["shards"])
+	prog.local["shards"] = cost - 1
+	check(g.bosses.try_summon(me, "gravedigger") == "shards" and g.bosses.active_boss() == null, "a summon without the King's %d soul shards is refused (shards)" % cost)
+	prog.local["shards"] = held
 	# key E at the grave wakes him
 	var kev := InputEventKey.new()
 	kev.physical_keycode = KEY_E
@@ -471,6 +478,7 @@ func t_summon() -> void:
 	g.bosses._unhandled_input(kev)
 	boss = g.bosses.active_boss()
 	check(boss != null and boss.boss_id == "gravedigger", "key E at the grave wakes the King")
+	check(int(prog.local["shards"]) == held - cost, "the summon took the King's soul shards (%d -> %d)" % [held, int(prog.local["shards"])])
 	check(g.bosses.try_summon(me, "gravedigger") == "busy", "a second summon while he is awake is refused (busy)")
 	await dismiss()
 	check(g.bosses.active_boss() == null and g.bosses.bosses.is_empty(), "a freed body leaves the host")

@@ -42,7 +42,7 @@ func _ready() -> void:
 		r = await api.login("tester", "pw1234")
 	api.set_token(r.data["token"])
 	var c := await api.load_or_create_character(int(opts["class"]))
-	c.data["level"] = int(opts["level"])   # the mock's character starts at level 1; the dev entry plays at the level the signature unlocks at
+	DmDevMock.set_level(mock, c.data, int(opts["level"]))   # the mock's character starts at level 1; the dev entry plays at the level the signature unlocks at
 	game = load("res://next/next_game.tscn").instantiate()
 	game.name = "NextGame"
 	add_child(game)
@@ -68,6 +68,7 @@ func _ready() -> void:
 			var hero := game.local_body()
 			hero.teleport(game.bosses.site_pos("gravedigger") + Vector3(0.0, 0.0, 2.0))
 			game.camera.snap(hero.position)
+			game.my_member().prog.add_shards(int(DmContent.boss("gravedigger")["shards"]))   # the summon's soul shards, granted to the dev character
 			var why := game.bosses.try_summon(game.session.get_my_id(), "gravedigger")
 			if why != "":
 				push_warning("the dev entry could not wake the King: " + why)

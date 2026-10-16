@@ -32,6 +32,7 @@ const DEFAULT_DATA := "res://"
 signal enemy_spawned(id: int, def: String, level: int, elite: bool, area: String, affixes: int, x: float, z: float, max_hp: float)   ## `affixes` is a mask: DmCoreEvents.affix_list
 signal enemy_state(id: int, prev: int, next: int)                                              ## DmCoreEvents.State
 signal enemy_damaged(id: int, source: int, amount: float, hp: float)
+signal struck(id: int, source: int, dealt: float)   ## a direct blow `damage` dealt (a rite's hit on an enemy or a boss; never a DoT tick or a thrall's swing): the lifesteal hook
 signal enemy_died(id: int, def: String, level: int, elite: bool, area: String, source: int, x: float, z: float)
 signal enemy_removed(id: int)                                                                  ## the body is gone, 4 s after it died (or at once, alive: `remove_enemy`)
 signal enemy_attack(id: int, blow: int, aim_x: float, aim_z: float, windup_s: float)           ## a swing began; its blow lands when the wind-up ends
@@ -408,12 +409,16 @@ func _boss_info(b: DmBoss, id: int) -> Dictionary:
 
 ## Enemy damage from a cast or a test: a kill resolves inside the call (native/README.md "Design"). {dealt, killed}. A boss takes it in its brain.
 func damage(id: int, amount: float, source: int, allow_stagger := true) -> Dictionary:
-	if not _bosses.is_empty():
-		var b := boss_for(id)
-		if b != null:
-			var ok := amount > 0.0 and b.take_damage(amount, hero_for(source), allow_stagger)
-			return {"dealt": amount if ok else 0.0, "killed": ok and b.hp <= 0.0}
-	return core.damage(id, amount, source, allow_stagger)
+	var r: Dictionary
+	var b := boss_for(id) if not _bosses.is_empty() else null
+	if b != null:
+		var ok := amount > 0.0 and b.take_damage(amount, hero_for(source), allow_stagger)
+		r = {"dealt": amount if ok else 0.0, "killed": ok and b.hp <= 0.0}
+	else:
+		r = core.damage(id, amount, source, allow_stagger)
+	if float(r.get("dealt", 0.0)) > 0.0:
+		struck.emit(id, source, float(r["dealt"]))
+	return r
 
 
 ## DmStatusSet.apply on a core body (enemy or thrall): the only way to put a status on one. Never call DmStatusSet on an enemy or a thrall. (A boss has its own set.)

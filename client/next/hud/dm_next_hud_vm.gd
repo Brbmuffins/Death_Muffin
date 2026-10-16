@@ -6,7 +6,8 @@ extends RefCounted
 ##   - the minimap's dots: `enemy_ids / enemy_positions / enemy_states`, `thrall_ids / thrall_positions`, `corpse_positions` (flat arrays, one pass each);
 ##   - the thrall count, places and how many are hurt: `thrall_count / thrall_places` and `thrall_owners / thrall_hp / thrall_states`;
 ##   - the "no corpse" dimming: one `corpses_in_radius` query around the hero;
-##   - cooldowns, essence and the cast state: the hero's caster (`DmRiteCaster`), as today.
+##   - cooldowns, essence and the cast state: the hero's caster (`DmRiteCaster`), as today;
+##   - the belt, the Kill Chain and the Omen: the game's progression and meta (DmNextBelt.rows, the member's DmKillChain, DmNextMeta.omen), as today.
 ## The minimap's dots are flat arrays (x, z and a flag per dot) rewritten in place, never a dictionary per creature. The host is the HUD node (DmNextHud): it keeps what
 ## the view-model needs besides the game (character, progression, the last targeted enemy, kills per area).
 
@@ -44,6 +45,7 @@ var _thrall_dots := PackedFloat32Array()   ## ... living thralls x, z, yaw
 var _allies := PackedFloat32Array()        ## ... allies (none yet)
 var _none: Array = []
 var _ward_vm := {}
+var _omen_vm := {}
 var _vm := {}                  ## the view-model, kept and rewritten
 var _boss_vm := {}             ## the boss plate's dictionary, rewritten in place
 var _boss_dot := {"x": 0.0, "z": 0.0}
@@ -89,6 +91,9 @@ func build() -> Dictionary:
 	vm["souls_max"] = sp.get("soulsMax", 30 if bag else 50)
 	vm["ward"] = _ward(b)
 	vm["save"] = host.save_chip()
+	vm["brews"] = _brews(g)
+	vm["chain"] = _chain(g, b)
+	vm["omen"] = _omen(g)
 	var core: RefCounted = g.core_host.core
 	vm["thralls"] = int(core.thrall_places(b.core_id))
 	vm["thrall_hurt"] = _legion_hurt(core, b.core_id)
@@ -117,14 +122,11 @@ func _refresh_static(g: DmNextGame, b: DmHeroBody) -> void:
 	vm["shards"] = int(progress.get("shards", 0))
 	vm["area_name"] = String(_area(g.area_id).get("name", ""))
 	vm["party_world"] = ""
-	vm["brews"] = _none
 	vm["damage"] = {"tier": progress["damageTier"], "pct": DmUpgrades.damage_bonus_pct(float(progress["damageTier"])), "cost": null if host.prog.damage_cost() == -1 else host.prog.damage_cost()}
 	vm["wave"] = {"owned": progress["waveTierOwned"], "active": progress["waveTierActive"], "pct": DmWaveUpgrades.wave_modifiers(float(progress["waveTierActive"]))["speedPct"],
 		"cost": null if host.prog.wave_cost() == -1 else host.prog.wave_cost()}
 	vm["raises_thralls"] = family == "necromancer"
 	vm["soul_bag"] = bag
-	vm["chain"] = null
-	vm["omen"] = null
 	vm["prompt"] = null
 	vm["depth"] = null
 	vm["thrall_cap"] = int(b.mods.get("thrallCap", 0))
@@ -241,7 +243,7 @@ func _refresh_needs(b: DmHeroBody) -> void:
 	_corpse_near = not core.corpses_in_radius(Vector2(b.global_position.x, b.global_position.z), CORPSE_REACH, area).is_empty()
 
 
-# ---- meta feeds: Bone Ward chip -----------------------------------------------------------------------------------------------------------
+# ---- meta feeds: Bone Ward chip, Kill Chain meter, Omen chip (the DmGameHud shapes) ------------------------------------------------------
 
 ## The Ossuary's Bone Ward (wardPerThrall x living thralls, at most 60 %): {pct, thralls, per_thrall} or null.
 func _ward(b: DmHeroBody) -> Variant:
@@ -256,6 +258,36 @@ func _ward(b: DmHeroBody) -> Variant:
 	_ward_vm["thralls"] = n
 	_ward_vm["per_thrall"] = per
 	return _ward_vm
+
+
+func _chain(g: DmNextGame, b: DmHeroBody) -> Variant:
+	if g.meta == null or g.meta.member == null or not g.meta.member.chain.active() or not b.alive:
+		return null
+	var c: DmKillChain = g.meta.member.chain
+	var t: Variant = c.tier()
+	var tiers: Array = DmProgContent.get_data()["chain"]["tiers"]
+	return {"count": c.count, "name": t["name"] if t != null else "Chain", "bonus": t["bonus"] if t != null else 0.0, "frac": c.frac(g.rewards.clock_ms()),
+		"tier": (tiers.find(t) + 1) if t != null else 0}
+
+
+func _omen(g: DmNextGame) -> Variant:
+	if g.meta == null or g.meta.omen.is_empty():
+		return null
+	if _omen_vm.get("name") != g.meta.omen["name"]:   # the Omen changes with the week or a test, not per frame
+		_omen_vm["name"] = g.meta.omen["name"]
+		_omen_vm["icon"] = DmGameHud.art(String(g.meta.omen["icon"]).replace("art/", ""))
+		_omen_vm["blurb"] = g.meta.omen["blurb"]
+	_omen_vm["visible"] = not bool(_area(g.area_id)["safe"])
+	return _omen_vm
+
+
+# ---- belt (Q heal flask with its cooldown, Z / X brews: DmNextBelt) -------------------------------------------------------------
+
+func _brews(g: DmNextGame) -> Array:
+	var belt := g.belt()
+	if belt != null and belt.inventory != null:
+		return belt.rows()
+	return _none
 
 
 # ---- boss plate -------------------------------------------------------------------------------------------------------------------

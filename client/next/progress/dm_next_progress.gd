@@ -9,6 +9,7 @@ extends Node
 ## through ground pickups, and every purchase is priced by the backend's rules. This node reacts: level-ups (stats, banner, sound, Grimoire
 ## toasts), the Damage / Wave Speed tiers (stats, the wave director), seal unlocks, milestones and the belt.
 ## `event(id, ctx)` is the host game_event shape (the HUD adapter forwards it to DmGameUi).
+## The rebuild's port (client/code.list "Ported"): the bag is the game's `loot` (DmNextLoot), not the panels' adapter; before it exists, the bag the server gave.
 
 signal event(id: String, ctx: Dictionary)
 
@@ -73,9 +74,9 @@ func _process(dt: float) -> void:
 			refresh_stats()
 
 
-## The bag's rows (equipment feeds the stats); empty until the HUD's inventory exists.
+## The bag's rows (equipment feeds the stats): the loot node's bag, or the server's rows the game started with until it exists.
 func slots() -> Array:
-	return shell.ui_host.inventory.slots if shell.ui_host != null and shell.ui_host.inventory != null else []
+	return shell.loot.slots() if shell.loot != null else shell.server_slots
 
 
 ## The bag changed: re-read the stats on the next frame, only if what is worn changed.

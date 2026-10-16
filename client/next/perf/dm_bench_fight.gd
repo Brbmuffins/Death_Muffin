@@ -22,7 +22,7 @@ static func boot(parent: Node, disc: int, opts: Dictionary = {}, area: String = 
 	var c := await api.load_or_create_character(disc)
 	var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	parent.add_child(g)
-	var o := {"name": "benchmark", "warmup": true, "hud": true, "waves": true, "seed": DmBenchmark.SEED}
+	var o := {"name": "benchmark", "persist": false, "warmup": true, "hud": true, "waves": true, "seed": DmBenchmark.SEED}
 	o.merge(opts, true)
 	await g.start(c.data, api, o)
 	var tree := parent.get_tree()
@@ -146,16 +146,18 @@ static func boss_of(area: String) -> String:
 	return ""
 
 
-## Wakes `boss` when none is awake (the one that was awake was defeated): the hero stands at the boss's site for the summon, then goes back to `at`. The real summon path
-## (`try_summon`), so the boss, its adds, its fx and its brain cost what they cost in play. The soul shards a summon costs are not charged in this build (no progression to
-## take them from). Returns true when it woke one.
+## Wakes `boss` when none is awake (the one that was awake was defeated): the hero stands at the boss's site for the summon, with the soul shards
+## it costs granted to the throwaway character, then goes back to `at`. The real summon path (shards spent, `try_summon`), so the boss, its rewards
+## and drops cost what they cost in play. Returns true when it woke one.
 static func hold_boss(g: DmNextGame, hero: DmHeroBody, boss: String, at: Vector3) -> bool:
 	if g.bosses.active_boss() != null:
 		return false
 	var site: Vector3 = g.bosses.site_pos(boss)
-	if site == Vector3.INF:
+	var m := g.my_member()
+	if site == Vector3.INF or m == null:
 		return false
 	hero.teleport(site)
+	m.prog.add_shards(int(DmContent.boss(boss)["shards"]))
 	var why: String = g.bosses.try_summon(g.session.get_my_id(), boss)
 	hero.teleport(at)
 	if why != "":

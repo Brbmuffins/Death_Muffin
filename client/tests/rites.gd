@@ -33,6 +33,7 @@ var checks := 0
 var errlog := ErrorLog.new()
 var g: DmNextGame
 var api_: DmApi   ## the mock's api: the disciplines' heroes are more characters of the same account
+var mock_: DmMockBackend
 var host: DmCoreHost
 var core: RefCounted
 var hero: DmHeroBody
@@ -91,10 +92,11 @@ func _initialize() -> void:
 	var mock := DmOffline.make_mock("")
 	var api := DmOffline.make_api(mock)
 	api_ = api
+	mock_ = mock
 	var reg := await api.register("tester", "t@example.com", "pw1234")
 	api.set_token(reg.data["token"])
 	var ch := await api.load_or_create_character(2)
-	ch.data["level"] = 20
+	DmDevMock.set_level(mock, ch.data, 20)
 	g = load("res://next/next_game.tscn").instantiate()
 	g.name = "NextGame"
 	root.add_child(g)
@@ -1442,7 +1444,7 @@ func t_disciplines() -> void:
 ## A fresh game with a level-20 hero of class `cls`, the suite's globals pointed at it.
 func _play_as(cls: int) -> void:
 	var ch := await api_.load_or_create_character(cls)
-	ch.data["level"] = 20
+	DmDevMock.set_level(mock_, ch.data, 20)
 	g.process_mode = Node.PROCESS_MODE_DISABLED
 	await g.leave()
 	g.queue_free()

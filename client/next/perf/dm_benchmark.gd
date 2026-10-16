@@ -17,8 +17,8 @@ extends Node
 ## Render breakdown (`breakdown`, after the measured window): the fight is paused (the picture stays) and each of BREAK_CATS is hidden in turn for
 ## BREAK_MEASURE_S; the drop in draw calls / objects / render CPU / GPU / frame time against the everything-on sample is what that part costs
 ## on this PC. Hiding is visibility only (restored after each sample); nothing is freed or rebuilt.
-## The fight plays at the player's graphics preset (DmNextPerf, as today's: uncapped, at full resolution). Not in the rebuilt client yet, so not in the fight
-## (client/README.md "The benchmark"): rewards, loot drops and the kill ledger, the panels (the HUD on the core is up), the other disciplines and rooms.
+## The fight plays at the player's graphics preset (DmNextPerf, as today's: uncapped, at full resolution), with rewards, loot drops and the kill ledger against the run's mock as
+## today's. Not in the rebuilt client yet, so not in the fight (client/README.md "The benchmark"): the panels (the HUD on the core is up), the other disciplines and rooms.
 
 signal progress(text: String)
 signal breakdown_step(step: int, total: int, what: String)   ## the render breakdown froze the fight: step 0 = everything on, total + 1 = the re-measure
@@ -522,7 +522,7 @@ func _tick() -> void:
 		_ticks += 1
 		_en_sum += game.director.alive_count()
 		_corpse_sum += host.corpses.count()
-		if game.rewards != null:   # (no rewards in the rebuilt client yet: nothing lies on the ground, the "Loot" row reads 0)
+		if game.rewards != null:
 			for m in game.rewards.members.values():
 				if m.loot_view != null:
 					_loot_sum += m.loot_view.count()

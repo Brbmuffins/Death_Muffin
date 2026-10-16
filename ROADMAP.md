@@ -183,7 +183,8 @@ server (B38).
   - [x] The seeded scenario comparison with today's game (`tools/rebuild/compare-scenarios.mjs`, native/README.md "Proof of same game", 2026-10-16): the Hollow Graves, a level-10 Gravecaller on Easy auto combat, 180 s of game time, twenty seeds on each side.
     Kills -2.3 % (tolerance 15), hero damage -3.0 % (15), thrall damage -6.5 % (20), median time to kill 0.0 % (20), thrall uptime -0.4 points (10), damage taken by the hero and his thralls -1.3 % (25): every metric inside its tolerance, and underneath it the kinds, the rites, the thralls lost
     and who hurt them agree. Seeds 1 to 5 (6 minutes) are too few for damage taken (-32.5 % against a noise band of 47 %); the verdict takes `--seeds=1-20` (23 minutes). No behaviour difference found. Not in it: bosses, rewards, loot and the other disciplines.
-  - [ ] What the client's fight lacks, each with its own item: rewards, loot drops and the kill ledger, the panels, the other disciplines and rooms. The fight is cheaper than today's by these.
+  - [ ] What the client's fight lacks, each with its own item: the panels, the other disciplines and rooms. The fight is cheaper than today's by these (rewards, loot drops and the kill
+    ledger are in since 2026-10-16).
 
 **Bring everything over checklist** (built ahead while Gate B waits, B34's rule: nothing reaches players before its gate; Claude's order, 2026-10-16: what a player meets first,
 necromancers first; the order is easy to change). Each item is today's GDScript on the core the way the test build did it (copies where they run as they are, ports where
@@ -194,6 +195,11 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   formula (`client/tests/rites.gd` "the disciplines"); the Mourner's wraiths are spectral in the crowd. The plague bearer's pools stay as today's (they do nothing: an after-launch fix).
 - [ ] Value on the server: rewards, loot drops, the kill ledger and saves from the core's kill events, against the test server (today's `DmSessionRewards` and the authority
   flows, B32); a guest's own account in co-op (B22).
+  - [x] The host's side (2026-10-16, client/README.md "Value on the server"): today's rewards node on the game's `kill_credited` (the party session's numbered reports, XP and counts
+    from what the server accepted, the drop tape, the gold pool, lifesteal on `DmCoreHost.struck`), the meta node, the milestones, the Chronicle and the progression with its saves,
+    and the loot node (click to walk to a drop, tape drops claimed into the server's bag, worn gear feeding the build, the belt); the HUD's upgrades box, wave dial, belt, Kill Chain,
+    Omen and save chip; the King's summon takes its soul shards. `client/tests/rewards.gd` replays today's rewards tests on the port, `client/tests/value.gd` plays it in the scene.
+  - [ ] A guest's own account (B22): its session member and drop tape, its build from the server's record, its own progression and saves, the kill report's carried kills, ground drops.
 - [ ] The panels on the core: the panel host (`DmGameUi`, `DmNextUiHost`), the Reliquary (bag, gear, runes), the Grimoire and loadout, Settings (the presets get their window),
   chat and the menu row; the Social window moves into the host.
 - [ ] The Reaper (discipline 11) and its nine rites.
