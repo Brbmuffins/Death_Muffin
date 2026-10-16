@@ -26,10 +26,9 @@ extends Node3D
 ## puppet's events. Hero casts are intents the host resolves on its core (DmRiteCaster); a guest's hero is an external of the HOST's core (`core_id` is the host's id for it), and
 ## its thralls are the host's bodies. A guest's `enemy_died` events are presentation only: kill credit (`kill_credited`) is the HOST's, once.
 ##
-## Off in this step, each until its ROADMAP item: the login and front
-## flow (`main/`), the party panels (the party itself is `Party`, DmNextParty, driven by code), gathering, the Chapterhouse
-## (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (`rewards`, `progress`, `meta` stay null: no XP, loot or
-## saves), the panels (`ui_host`, `ui` stay null: the HUD has no menu row, chat or Empower panel yet) and the graphics governor (`perf`). `start` refuses any api whose base url is not the TEST server's
+## The graphics preset, fps cap and auto-resolution are `perf` (DmNextPerf, the player's settings read from their file). Off in this step, each until its ROADMAP
+## item: gathering, the Chapterhouse (the hero starts and gets up at the Graves' door), the Depths, rewards and progression (`rewards`, `progress`, `meta` stay null: no
+## XP, loot or saves), the panels (`ui_host`, `ui` stay null: the HUD's menu row shows the Social window only; no chat or Empower panel yet). `start` refuses any api whose base url is not the TEST server's
 ## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). The game
 ## itself sends nothing in this step; it takes the character and its build from the front flow (`slots`, `local` below).
 ##
@@ -74,7 +73,7 @@ var bosses: DmBossHost                          ## child "Bosses": summon rules,
 var rewards: Node = null
 var progress: Node = null
 var meta: Node = null
-var perf: Node = null
+var perf: DmNextPerf                           ## child "Perf": the graphics preset, the fps cap and the auto-resolution governor (next/perf/dm_next_perf.gd)
 var character: Dictionary = {}
 var api: Variant = null                         ## DmApi: the test server's (the front flow) or the local mock (DmOffline.make_api)
 var is_offline: bool = true                     ## the api is the local mock (no base url)
@@ -141,6 +140,11 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	core_host.enemy_spawned.connect(func(id: int, _d: String, _l: int, _e: bool, _a: String, _af: int, _x: float, _z: float, _h: float) -> void: enemy_spawned.emit(id))
 	core_host.target_hit.connect(_on_target_hit)
 	core_host.enemy_died.connect(_on_enemy_died)
+	perf = DmNextPerf.new()
+	perf.name = "Perf"
+	perf.game = self
+	add_child(perf)
+	perf.apply(opts.get("settings", _player_settings()))   # the crowd exists: its shadow policy is part of the preset
 	enemy_fx = DmEnemyFx.new()
 	enemy_fx.name = "EnemyFx"
 	enemy_fx.player_pos = func() -> Vector3: return local_body().global_position if local_body() != null else camera.global_position
@@ -245,6 +249,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 		# (client/next/perf/dm_next_warmup.gd); `opts.warmup` or `--warmup` turns it on, and the benchmark does.
 		if bool(opts.get("warmup", _wants_warmup())):
 			await DmNextWarmup.run(self)
+	perf.hold()
 	party.notice.connect(func(text: String, kind: String) -> void:
 		if hud != null:
 			hud.game_event("toast", {"text": text, "kind": kind}))
@@ -390,8 +395,16 @@ func _enter(pos: Vector3) -> void:
 	var a := world.area_at(pos.x, pos.z)
 	if a != "" and a != area_id:
 		area_id = a
+		if perf != null:
+			perf.hold()   # an area entry is a load: slow frames around it are not a GPU problem
 		world.enter_area(a)
 		area_changed.emit(a)
+
+
+## A player's window (opts.hud): the graphics, brightness, fps and window settings from the player's own file, READ only (the Settings panel that changes
+## them comes with the panels; the same file today's game writes, so the test build plays at the player's preset). A bare scene (tests): High's defaults.
+func _player_settings() -> Dictionary:
+	return DmSettings.new(DmSettings.FILE, true).values if opts.get("hud", false) == true else {}
 
 
 # ---- seams: accessors for the rites and rewards tracks ------------------------------------------------------------------------

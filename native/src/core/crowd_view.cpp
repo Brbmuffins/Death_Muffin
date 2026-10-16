@@ -827,6 +827,15 @@ void CrowdView::tick(const CrowdFeed &f) {
 
 // ---------------------------------------------------------------------------------------------------------------- the views: draw
 
+void CrowdView::set_thrall_shadows(bool p_on) {
+	thrall_shadows = p_on;
+	for (View &v : views) {
+		if (v.kind == BK_THRALL) {
+			v.shadow = p_on;  // as a new thrall gets it (every thrall casts, as today)
+		}
+	}
+}
+
 // DmEntityViews._shadow_lod: the nearest living enemies cast into the moon's shadow map, more of them while the field is not crowded.
 void CrowdView::rank_shadows() {
 	rank_scratch.clear();

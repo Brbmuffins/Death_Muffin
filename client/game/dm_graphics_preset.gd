@@ -1,35 +1,39 @@
 class_name DmGraphicsPreset
 extends RefCounted
-## Settings -> Graphics presets (Low / Medium / High / Ultra): one table, so the Settings panel, DmNextPerf, the resolution governor
-## and the tests read the same numbers. The setting value is the preset id ("low"/"medium"/"high"/"ultra"); the old two-value setting
-## ("high"/"low") is already a valid id, so saved settings migrate as they are. High keeps the old High's cost (owner: performance first) plus
-## the 0.85 floor and anisotropic textures; MSAA and the heavy extras are opt-in on Ultra until real-GPU numbers say High can carry MSAA
-## (on llvmpipe MSAA 2x made the rendered QA run time out; a real GPU is unmeasured). Anything unknown becomes High (the default for new players).
-## Renderer stays gl_compatibility; MSAA / anisotropy are set on the viewport at runtime (project.godot is not touched). Forward+ is not a preset.
-##   shadows/bloom  moon shadow + the bloom glow         lights   prop lights lit at once (DmWorldBuilder.light_near)
-##   msaa           0 / 2 / 4 / 8 samples on the 3D view  aniso    anisotropic filtering level (floor + ground-marking textures at grazing angles)
-##   floor          lowest 3D scale Auto resolution may drop to   fx   DmFx quality ("low" thins bursts and drops the Binbun layer)
-##   binbun         the premium Binbun VFX layer          shadow_size / shadow_dist / prop_shadow (props further than this stop casting) / shadow_splits / soft   directional shadow atlas size, how far the moon's
-##   shadows reach, casters / casters_crowd (enemies that cast into the moon shadow, nearest first; DmCasterBudget), PSSM splits (2 = sharper near the hero), soft-shadow filter (0 low .. 3 ultra)   lod  mesh LOD threshold (0.5 = detail holds longer)
-##   lift           exposure multiplier that keeps a preset as bright as High (fewer prop lights, no bloom: measured with tests/perf/lighting_shot.sh)
+## Settings -> Graphics presets (Low / Medium / High / Ultra) of the rebuilt client on Forward+ (a port of godot/game/dm_graphics_preset.gd, client/code.list "Ported";
+## DECISIONS B45): one table, so DmNextPerf, the resolution governor, the benchmark and the tests read the same numbers. The setting value is the preset id, the same
+## ids as today's game, so a player's saved setting carries over; anything unknown becomes High (the default for new players).
+## What changed against today's table, and why (each a cost Forward+ handles differently from Compatibility):
+##   - no `lights`: the prop lights are baked into the area's lightmap (client/areas/<id>.lmbake) and Forward+ draws the rest in clusters, so every preset keeps them all;
+##     no `prop_shadow` either (the props' shadows are in the bake).
+##   - crowd shadows are the crowd's own policy (DmCrowd.set_shadow_policy: the nearest `casters` enemies cast, `casters_crowd` once the field is crowded, thralls when
+##     `thralls_cast`), not a node budget: same counts as today's DmCasterBudget.
+##   - `ssao`: screen-space ambient occlusion, Forward+ only (0 off, 1 medium, 2 high): High and Ultra. Contact shadows where bodies stand and props meet the floor.
+##   - the governor's lower resolutions are upscaled with FSR 1 (sharpened) instead of bilinear, which Compatibility could not do.
+## The brightness lift is today's until the look pass calibrates Forward+'s lighting (ROADMAP: "Lighting calibration waits for the look pass").
+##   shadows/bloom  moon shadow + the bloom glow         msaa   0 / 2 / 4 / 8 samples on the 3D view     aniso  anisotropic filtering level
+##   floor          lowest 3D scale Auto resolution may drop to   fx   DmFx quality ("low" thins bursts and drops the Binbun layer)   binbun  the Binbun VFX layer
+##   shadow_size / shadow_dist / shadow_splits / soft   the moon's shadow atlas size, reach, PSSM splits (2 = sharper near the hero), soft-shadow filter (0 low .. 3 ultra)
+##   casters / casters_crowd / thralls_cast   the crowd's shadow policy (above)       ssao   (above)       lod   mesh LOD threshold (0.5 = detail holds longer)
+##   lift           exposure multiplier that keeps a preset as bright as High (no bloom: today's numbers)
 
 const DEFAULT := "high"
 const IDS: Array[String] = ["low", "medium", "high", "ultra"]
 const LABELS := {
 	"low": "Low (fastest)",
 	"medium": "Medium (shadows)",
-	"high": "High (bloom, sharp textures)",
-	"ultra": "Ultra (more lights, long sharp shadows, 4x smoothing)",
+	"high": "High (bloom, ambient occlusion, sharp textures)",
+	"ultra": "Ultra (long sharp shadows, 4x smoothing)",
 }
 const TABLE := {
-	"low": {"lift": 1.4, "shadows": false, "bloom": false, "lights": 3, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
-		"casters": 0, "casters_crowd": 0, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 0, "lod": 1.0},
-	"medium": {"lift": 1.38, "shadows": true, "bloom": false, "lights": 5, "msaa": 0, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
-		"casters": 8, "casters_crowd": 6, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
-	"high": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 8, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
-		"casters": 12, "casters_crowd": 8, "shadow_size": 2048, "shadow_dist": 45.0, "prop_shadow": 32.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
-	"ultra": {"lift": 1.0, "shadows": true, "bloom": true, "lights": 14, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
-		"casters": 20, "casters_crowd": 14, "shadow_size": 4096, "shadow_dist": 80.0, "prop_shadow": 56.0, "shadow_splits": 2, "soft": 3, "lod": 0.5},
+	"low": {"lift": 1.4, "shadows": false, "bloom": false, "ssao": 0, "msaa": 0, "aniso": 2, "floor": 0.6, "fx": "low", "binbun": false,
+		"casters": 0, "casters_crowd": 0, "thralls_cast": false, "shadow_size": 2048, "shadow_dist": 45.0, "shadow_splits": 1, "soft": 0, "lod": 1.0},
+	"medium": {"lift": 1.38, "shadows": true, "bloom": false, "ssao": 0, "msaa": 0, "aniso": 4, "floor": 0.85, "fx": "high", "binbun": false,
+		"casters": 8, "casters_crowd": 6, "thralls_cast": true, "shadow_size": 2048, "shadow_dist": 45.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
+	"high": {"lift": 1.0, "shadows": true, "bloom": true, "ssao": 1, "msaa": 0, "aniso": 8, "floor": 0.85, "fx": "high", "binbun": true,
+		"casters": 12, "casters_crowd": 8, "thralls_cast": true, "shadow_size": 2048, "shadow_dist": 45.0, "shadow_splits": 1, "soft": 1, "lod": 1.0},
+	"ultra": {"lift": 1.0, "shadows": true, "bloom": true, "ssao": 2, "msaa": 4, "aniso": 16, "floor": 0.85, "fx": "high", "binbun": true,
+		"casters": 20, "casters_crowd": 14, "thralls_cast": true, "shadow_size": 4096, "shadow_dist": 80.0, "shadow_splits": 2, "soft": 3, "lod": 0.5},
 }
 
 
@@ -73,12 +77,33 @@ static func aniso_mode(level: int) -> int:
 	return Viewport.ANISOTROPY_DISABLED
 
 
-## Viewport + RenderingServer side of a preset (the world / fx side is DmNextPerf.apply).
+## The soft-shadow filter quality (`soft` 0..3) as the RenderingServer's.
+static func soft_quality(level: int) -> int:
+	match level:
+		1:
+			return RenderingServer.SHADOW_QUALITY_SOFT_LOW
+		2:
+			return RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM
+		3:
+			return RenderingServer.SHADOW_QUALITY_SOFT_HIGH
+	return RenderingServer.SHADOW_QUALITY_HARD
+
+
+## Viewport + RenderingServer side of a preset (the world / crowd / fx side is DmNextPerf.apply).
 static func apply_render(vp: Viewport, id: Variant) -> void:
 	var p := get_preset(id)
 	vp.msaa_3d = msaa_mode(int(p["msaa"]))
 	vp.anisotropic_filtering_level = aniso_mode(int(p["aniso"]))
 	vp.mesh_lod_threshold = float(p["lod"])
 	RenderingServer.directional_shadow_atlas_set_size(int(p["shadow_size"]), true)
-	RenderingServer.directional_soft_shadow_filter_set_quality(int(p["soft"]) as RenderingServer.ShadowQuality)
-	RenderingServer.positional_soft_shadow_filter_set_quality(int(p["soft"]) as RenderingServer.ShadowQuality)
+	RenderingServer.directional_soft_shadow_filter_set_quality(soft_quality(int(p["soft"])))
+
+
+## The environment side: bloom (today's DmWfxBloom) and, on Forward+, screen-space ambient occlusion.
+static func apply_environment(env: Environment, id: Variant) -> void:
+	var p := get_preset(id)
+	DmWfxBloom.apply(env, bool(p["bloom"]))
+	var ssao := int(p["ssao"])
+	env.ssao_enabled = ssao > 0
+	if ssao > 0:
+		RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_HIGH if ssao >= 2 else RenderingServer.ENV_SSAO_QUALITY_MEDIUM, ssao < 2, 0.5, 2, 50.0, 300.0)

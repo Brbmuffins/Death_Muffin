@@ -179,7 +179,7 @@ void DmCrowd::set_champion_scale(double p_scale) {
 void DmCrowd::set_shadow_policy(int64_t p_casters, int64_t p_crowded_casters, bool p_thralls_cast) {
 	view.shadow_casters = int32_t(p_casters);
 	view.crowded_casters = int32_t(p_crowded_casters);
-	view.thrall_shadows = p_thralls_cast;
+	view.set_thrall_shadows(p_thralls_cast);
 }
 
 void DmCrowd::set_seed(int64_t p_seed) {

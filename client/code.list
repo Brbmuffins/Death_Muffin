@@ -40,6 +40,9 @@ world_fx   # world dressing and atmosphere
 # next/perf/dm_bench_fight.gd              boots the game scene; the counts are held through the core (top_up through the director, trim by remove_enemy, thralls raised into the core, the King summoned free)
 # next/perf/dm_benchmark_screen.gd, next/perf/dm_benchmark_setup.gd   the budget section on the results; the rooms and classes the client has; the upload note names the test server; a headless run quits by itself
 # next/perf/dm_next_warmup.gd, game/dm_warmup.gd   the boss models, effects and gear drawn once, every crowd model from rehearsal rows, the area tour; no per-creature bodies (DmWarmup's old own warm-up is gone); on request only
+# Graphics presets (client/README.md "Graphics presets", DECISIONS B45):
+# game/dm_graphics_preset.gd               today's four presets on Forward+: no prop-light count or prop shadow range (baked), ambient occlusion, the crowd's shadow policy, apply_environment
+# next/perf/dm_next_perf.gd                applies a preset to the game scene: moon, environment, viewport, the crowd's shadow policy, fx; Auto resolution upscales with FSR 1; no caster poll
 # Copied again because of them: next/perf/dm_bench_history.gd.
 # 2-player co-op (client/README.md "Co-op on the core"):
 # next/next_net.gd                         the core's snapshot (cut by body ranges to fit a packet), reliable batches and baseline over the session's peer, the heroes' ids and vitals, a guest's request for a baseline; no enemy dictionaries or cues (the core's events carry them)
@@ -99,9 +102,6 @@ world_fx   # world dressing and atmosphere
 !next/rites/rite_scythe_weave.gd          # uses DmEnemy
 !next/rites/rite_unleash_souls.gd         # uses DmEnemy, DmStatusSet
 !next/rites/rite_wraith_walk.gd           # uses DmEnemy, DmStatusSet
-
-# ==== Left out with a seam (game/dm_caster_budget.gd)
-!next/perf/dm_next_perf.gd                # uses DmCasterBudget
 
 # ==== Left out with a seam (main/qa_driver.gd)
 !main/qa_boot.gd                          # uses qa_driver

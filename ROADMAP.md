@@ -155,7 +155,8 @@ server (B38).
     counted), but ticks only when `client/tools/hud_measure.gd` has measured it in the game scene: the three 55 s runs of this item went on lavapipe's start-up (~44 s before the first frame; "The HUD's budget"). Left: that
     run once, with a longer limit or on Helix's PC (draw calls, and the HUD's 0.5 ms there); the look on Helix's PC against today's; the panels' pieces (menu row, chat, Empower, party frames, belt) as their items
     land, each keeping the budget.
-  - [ ] The Low to Ultra presets.
+  - [x] The Low to Ultra presets on Forward+ (DECISIONS B45; client/README.md "Graphics presets", `client/tests/presets.gd`): today's four, with ambient occlusion on High and Ultra, the crowd's shadow policy and FSR 1 for Auto
+    resolution; the game and the benchmark play at the player's preset. Each preset's cost on a real GPU comes from the benchmark (its report names the preset).
 - [ ] 2-player co-op (the combat core's half: native/README.md "Co-op", `client/tests/core_coop.gd`; the game's half: client/README.md "Co-op on the core", `client/tests/coop.gd`):
   - [x] Core snapshots: `DmCore.snapshot` (20 Hz, the Full Party in about 1.2 KB), `take_reliable` and `baseline` on the host, a puppet core (`set_puppet`, `apply_snapshot`,
     `apply_reliable`) on the guest, versioned messages (B40), loss, reordering and late joins proven.
@@ -179,7 +180,7 @@ server (B38).
     `client/tests/benchmark.gd`); the VPS numbers are in "Before numbers" (3.0 times today's speed; the core and the rest of the main thread inside their 4 ms).
   - [ ] Helix's PC: the same fight rendered on both sides (the 2 times of Gate B), the HUD's 0.5 ms and 150 draw calls (the render breakdown's HUD row), and the warm-up looked at on a GPU (it runs in the benchmark, not yet in play).
   - [ ] The seeded scenario comparison with today's game: kills, time to kill and thrall uptime within stated tolerances (native/README.md "Design").
-  - [ ] What the client's fight lacks, each with its own item: rewards, loot drops and the kill ledger, the panels, the graphics presets and the governor, the other disciplines and rooms. The fight is cheaper than today's by these.
+  - [ ] What the client's fight lacks, each with its own item: rewards, loot drops and the kill ledger, the panels, the other disciplines and rooms. The fight is cheaper than today's by these.
 
 **Working rules for the rebuild.**
 - This checklist is the only to-do list; the next unchecked item is the only work. Ideas go to "After launch day".

@@ -135,7 +135,7 @@ Numbers are today's, from the file named; where the live game and `dm_entity_vie
   `SETTLE_DEPTH` 0.06 m into the ground (`settle_depth`). A corpse the core has no dying body for (the extra risen ones) is laid down at the end of its death clip. A body that
   leaves the tables, or a consumed corpse, sinks 1.3 m/s for 0.9 s. A mist body (the wraith) sinks at once.
 - **Shadows** (`DmCasterBudget`, `DmEntityViews._shadow_lod`): every 10th frame the nearest 12 living enemies to the hero (8 once 32 are in the field) go into the shadow groups;
-  thralls always cast, corpses and spectral bodies never. `set_shadow_policy(casters, crowded casters, thralls cast)` changes the numbers.
+  thralls always cast, corpses and spectral bodies never. `set_shadow_policy(casters, crowded casters, thralls cast)` changes the numbers (the graphics preset's; a change reaches the thralls already drawn).
 - **Level of detail:** from the distance to the camera, `lod_distances` per model (the CrowdView default is 32 m and 60 m, a first guess for the test build). Beyond the baked
   levels the last one is drawn.
 - **Interpolation:** a body that moves more than 3 m in one tick (a teleport, a burrower surfacing) is drawn at its new place, not slid there.

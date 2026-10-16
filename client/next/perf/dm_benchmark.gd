@@ -17,8 +17,8 @@ extends Node
 ## Render breakdown (`breakdown`, after the measured window): the fight is paused (the picture stays) and each of BREAK_CATS is hidden in turn for
 ## BREAK_MEASURE_S; the drop in draw calls / objects / render CPU / GPU / frame time against the everything-on sample is what that part costs
 ## on this PC. Hiding is visibility only (restored after each sample); nothing is freed or rebuilt.
-## Not in the rebuilt client yet, so not in the fight (client/README.md "The benchmark"): rewards, loot drops and the kill ledger, the panels (the HUD on the core is up), the graphics
-## presets and the auto-resolution governor, the other disciplines and rooms.
+## The fight plays at the player's graphics preset (DmNextPerf, as today's: uncapped, at full resolution). Not in the rebuilt client yet, so not in the fight
+## (client/README.md "The benchmark"): rewards, loot drops and the kill ledger, the panels (the HUD on the core is up), the other disciplines and rooms.
 
 signal progress(text: String)
 signal breakdown_step(step: int, total: int, what: String)   ## the render breakdown froze the fight: step 0 = everything on, total + 1 = the re-measure
@@ -262,7 +262,9 @@ func run() -> Dictionary:
 	RenderingServer.viewport_set_measure_render_time(_vp, true)
 	seed(SEED)
 	progress.emit("Building the fight...")
-	var opts := {"audio": false}
+	var settings := {"graphics": DmGraphicsPreset.normalize(user.get("graphics", DmGraphicsPreset.DEFAULT)), "fps": 0, "auto_res": false,
+		"brightness": user.get("brightness", 1.0), "ui_scale": user.get("ui_scale", 1.0)}   # today's: the player's preset, uncapped, at full resolution
+	var opts := {"audio": false, "settings": settings}
 	if baked_dir != "":
 		opts["baked_dir"] = baked_dir
 	_fight = await DmBenchFight.boot(self, discipline, opts, area)
@@ -736,7 +738,7 @@ static func format_text(r: Dictionary) -> String:
 	L.append("Build: %s (game %s)   %s" % [m["build"], m["version"], m["date"]])
 	L.append("GPU: %s   Renderer: %s   Godot %s   Combat core: %s" % [m["gpu"], m["renderer"], m["godot"], m.get("core", "")])
 	L.append("CPU: %s (%d threads)   OS: %s" % [m["cpu"], m["cores"], m["os"]])
-	L.append("Resolution: %s   Graphics preset: %s (setting only: the rebuilt client has no presets yet)   Fps cap (setting): %s   V-Sync: %s" % [m["resolution"], m["preset"], str(m["fps_cap"]) if int(m["fps_cap"]) > 0 else "none", m["vsync"]])
+	L.append("Resolution: %s   Graphics preset: %s   Fps cap (setting): %s   V-Sync: %s" % [m["resolution"], m["preset"], str(m["fps_cap"]) if int(m["fps_cap"]) > 0 else "none", m["vsync"]])
 	L.append("Setup: %s" % m.get("setup", ""))
 	L.append("Fight: %s   kills during the run: %d" % [m["fight"], int(r.get("kills", 0))])
 	var bo: Dictionary = r.get("boss", {})

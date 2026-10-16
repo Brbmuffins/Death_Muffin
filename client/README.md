@@ -29,6 +29,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/benchmark.gd       # the benchmark on the core: the Full Party fight held as the setup says, Easy auto combat, the report and its budget section, real launches, nothing sent but to the test API (bakes into a scratch folder; about 2 minutes)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/coop.gd    # 2-player co-op: a host and a guest in one process over a real local lobby and relay (needs `cd server/death-muffin/lobby && npm ci`; bakes into a scratch folder; about a minute)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/social.gd  # the Social window: open and close, host from the Party tab, a boot scene that joins from the list and comes home (needs the lobby's modules too; about 40 s)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd # the graphics presets on a running game: lights, environment, viewport, crowd shadows, the governor (bakes into a scratch folder)
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the thralls) into client/assets/crowd/baked (not committed)
 ```
@@ -203,8 +204,19 @@ nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path clien
   the game has loaded, lit, with every point light off, and with the flash light. It has not been looked at on a GPU: play does not run it yet.
 - **Sends:** the run's backend is the in-memory mock. A finished run is queued in `user://benchmarks/pending.json` and sent to the **test server** only (`net/dm_config.gd`): from the character select with the logged-in api, from `--benchmark` with a
   release build's saved login; debug builds, `--dev-offline` and tests never send (the run waits in the queue, and goes out when a player next enters the world on the test server). `tests/benchmark.gd` pins it.
-- **Not in the fight yet** (it is cheaper than today's by these): rewards, loot drops and the kill ledger, the panels (the HUD on the core is up, and its share measured), the graphics presets and the auto-resolution governor, the other disciplines and rooms, the
+- **Not in the fight yet** (it is cheaper than today's by these): rewards, loot drops and the kill ledger, the panels (the HUD on the core is up, and its share measured), the other disciplines and rooms, the
   guests' hero bodies (as today). The soul shards of the King's summon are not charged (no progression to take them from). `native/README.md` "Differences from today's game" has the rest.
+
+## Graphics presets
+
+Today's Low, Medium, High and Ultra on Forward+ (DECISIONS B45): `game/dm_graphics_preset.gd` is the table and `next/perf/dm_next_perf.gd` (`DmNextPerf`, the game scene's `perf`)
+applies it, ports of today's. The game scene reads the player's settings file at the start (read only: the Settings panel that changes it comes with the panels; it is
+the file today's game writes, so the test build plays at the player's preset), `opts.settings` in tests and the benchmark. A preset sets the moon's shadow, reach, splits
+and atlas and the soft filter, bloom (`DmWfxBloom`), screen-space ambient occlusion (High and Ultra), MSAA, anisotropy and mesh LOD on the viewport, the effects quality
+and the Binbun layer, the crowd's shadow policy (`DmCrowd.set_shadow_policy`: the nearest enemies that cast, today's counts, and whether thralls cast; a change reaches the
+thralls already drawn) and the floor of Auto resolution, whose lower scales are upscaled with FSR 1. Brightness, fps cap, V-Sync, window mode and interface size are
+today's. Not today's: the prop-light count and the prop shadow range (baked into the area's lightmap). The brightness lifts are today's numbers until the look pass.
+`tests/presets.gd` (`--fixed-fps 60`, about 20 s) applies each preset to a running game and checks the lights, environment, viewport, crowd shadows and the governor.
 
 ## The HUD on the core
 
