@@ -217,6 +217,7 @@ func _governor() -> void:
 
 
 func _warmup() -> void:
+	_missing_dependencies()
 	var t0 := Time.get_ticks_msec()
 	var g := await _game({"dressing": true, "hud": false, "persist": false, "waves": false, "warmup": true})
 	var ms := Time.get_ticks_msec() - t0
@@ -274,3 +275,22 @@ func _warmup() -> void:
 		print("tour: control skipped, every model file is cached")
 	check(g.director.enemies.size() >= kinds, "tour: enemies alive in the director")
 	await _drop(g)
+
+
+## Prints every dependency of the warm-up's resources that cannot be found (GitHub's runner logs "Resource file not found:" with an empty path here and the
+## VPS does not, 2026-10-16): the lines name the resource and the missing file.
+func _missing_dependencies() -> void:
+	var paths: Array = DmWarmup._model_paths()
+	var vfx := root.get_node_or_null("/root/Vfx")
+	if vfx != null and vfx.binbun != null:
+		paths.append_array(vfx.binbun.scene_paths(DmFxData.data().get("effects", {}).keys()))
+	var bad := 0
+	for p in paths:
+		for d in ResourceLoader.get_dependencies(String(p)):
+			var dep := String(d).get_slice("::", 2) if String(d).contains("::") else String(d)
+			var uid := String(d).get_slice("::", 0) if String(d).contains("::") else ""
+			if dep == "" or not ResourceLoader.exists(dep):
+				bad += 1
+				if bad <= 12:
+					print("perfctl: missing dependency %s (uid %s) of %s" % [d, uid, p])
+	print("perfctl: %d resources checked, %d missing dependencies" % [paths.size(), bad])
