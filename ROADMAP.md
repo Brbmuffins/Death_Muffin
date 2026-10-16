@@ -55,8 +55,8 @@ server (B38).
 - [x] The plan in the repository (this section, DECISIONS B34-B41).
 - [x] C++ build: `native/build.sh` builds the core for Linux (tests) and Windows (mingw-w64, static runtime) against godot-cpp pinned at
   1e79263; `client/setup.sh` imports the new project and runs `client/tests/core_smoke.gd` (the core loads and answers).
-- [ ] Test build export: exports for the Test build channel with its own manifest; the Gate A build is the live project exported with
-  Forward+ from a scratch copy (the repository's `godot/project.godot` stays Compatibility).
+- [x] Test build channel: `server/death-muffin/test-channel/publish-test-channel.sh <rev>` publishes to /death-muffin/client-test/ with its
+  own work folder and asset cache; builds of the live project get Forward+, their own user folder and the test backend in a scratch copy.
 - [ ] Launcher Test build switch: the test build installs next to the normal game and updates itself; a test copy is checked on Helix's PC
   before the launcher release goes to everyone.
 - [x] Test server: `death-muffin-auth-test` on 127.0.0.1:5194, its own database and user, public at /death-muffin/test-api/, copies

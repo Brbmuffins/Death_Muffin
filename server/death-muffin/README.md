@@ -40,6 +40,8 @@ Both services run as `ubuntu` from `/home/ubuntu/death-muffin/{backend,lobby}` (
 | `publish-launcher.sh <version>` | Makes a launcher release live for self-update (DECISIONS B33): takes `DeathMuffinLauncher.exe` from the GitHub release `launcher-v<version>` (built by `.github/workflows/launcher-windows.yml` from `main`), copies it to `/var/www/death-muffin/launcher/<version>/` and writes the launcher `manifest.json` (served at /death-muffin/launcher/) last and atomically (`version, url, size, sha256`). Refuses a version that is not newer than the live one (a rollback is the old code under a new version). Keeps the newest two. |
 | `set-online.sh on\|staff\|off ["message"]` | Edits only the `online` block of the live `manifest.json`: `on` = everyone, `staff` = staff accounts only, `off` = nobody (the message is shown as the lock). The launcher, the game and the lobby (if `DM_LOBBY_MANIFEST` is set) re-read it within about a minute; no release needed. |
 
+Test build channel and test backend for the rebuild (DECISIONS B38): [test-channel/README.md](test-channel/README.md), [test-server/README.md](test-server/README.md).
+
 ### Release flow
 
 1. Merge to `main`. For a release worth naming, add a new top entry (`title`, `items`) to `PATCH_NOTES.json`. Branches that add lines to the same entry merge cleanly: `.gitattributes` routes `PATCH_NOTES.json` through `tools/git/merge-patch-notes.mjs` (register it once per clone with `tools/git/install-merge-drivers.sh`; the VPS clone has it).

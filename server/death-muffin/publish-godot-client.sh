@@ -20,7 +20,7 @@
 #
 # Served at https://muffindevelopment.com/death-muffin/client/ (static, see nginx-locations.conf).
 # Refuses a forward release while the live lobby differs from <rev>'s (run deploy-lobby.sh first; LOBBY_SKEW_OK=1 overrides).
-# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR
+# Test overrides (all optional): REPO GODOT OUT_DIR WORK BASE_URL INCLUDE_CONSOLE=1 KEEP_BUILDS=2 FX_SHEETS LOBBY_DIR PREPARE
 set -euo pipefail
 
 REV="${1:-}"
@@ -73,6 +73,8 @@ git -C "$REPO" worktree add -q --detach "$WT" "$SHA" >/dev/null 2>&1
 [ -f "$WT/godot/export_presets.cfg" ] || { echo "$SHA has no godot/export_presets.cfg (preset \"$PRESET\")" >&2; exit 1; }
 # The licensed flipbook sheets are not in git: copy them in before the import (fails if one is missing).
 [ ! -f "$WT/tools/godot/fx-sheets-sync.sh" ] || bash "$WT/tools/godot/fx-sheets-sync.sh" "$WT" >/dev/null
+# PREPARE=<script> (the test channel): adjusts the scratch worktree before the import, e.g. renderer and endpoints. Never the repository.
+[ -z "${PREPARE:-}" ] || bash "$PREPARE" "$WT" || { echo "prepare step failed: $PREPARE" >&2; exit 1; }
 "$GODOT" --headless --path "$WT/godot" --import >"$STAGE/import.log" 2>&1 || { tail -30 "$STAGE/import.log" >&2; echo "godot import failed" >&2; exit 1; }
 "$GODOT" --headless --path "$WT/godot" --export-release "$PRESET" "$STAGE/DeathMuffin.exe" >"$STAGE/export.log" 2>&1 || { tail -30 "$STAGE/export.log" >&2; echo "godot export failed" >&2; exit 1; }
 rm -f "$STAGE/import.log" "$STAGE/export.log"
