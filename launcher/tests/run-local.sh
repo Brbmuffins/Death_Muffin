@@ -9,7 +9,7 @@ out=${OUT:-$(mktemp -d)}
 refs=()
 for f in "$RT"/*.dll; do case "$(basename "$f")" in *Native*|mscordaccore*|clrjit*|coreclr*|hostpolicy*|libSystem*) ;; *) refs+=("-r:$f");; esac; done
 dotnet "$CSC" -nologo -nostdlib+ -langversion:9 -out:"$out/LauncherTests.dll" -target:exe "${refs[@]}" \
-  "$here/Tests.cs" "$here/../windows/ClientLogic.cs" "$here/../windows/ClientInstaller.cs" "$here/../windows/SelfUpdate.cs"
+  "$here/Tests.cs" "$here/../windows/ClientLogic.cs" "$here/../windows/ClientInstaller.cs" "$here/../windows/SelfUpdate.cs" "$here/../windows/Settings.cs"
 cat > "$out/LauncherTests.runtimeconfig.json" <<JSON
 {"runtimeOptions":{"tfm":"net8.0","framework":{"name":"Microsoft.NETCore.App","version":"${RT##*/}"}}}
 JSON

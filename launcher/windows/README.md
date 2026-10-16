@@ -56,7 +56,8 @@ separate runtime. It downloads, verifies, updates and starts the **Godot client*
 | What | Where |
 |---|---|
 | Installed game builds | `%LOCALAPPDATA%\DeathMuffin\client\<version>\` (+ `current.json` naming the active one) |
-| Launcher settings (GPU toggle) | `%LOCALAPPDATA%\DeathMuffin\launcher-settings.json` |
+| Installed test builds (team only, below) | `%LOCALAPPDATA%\DeathMuffin\client-test\<version>\` (same layout) |
+| Launcher settings (GPU toggle, `TestBuild`) | `%LOCALAPPDATA%\DeathMuffin\launcher-settings.json` |
 
 Delete the `client` folder to force a clean re-download.
 
@@ -86,6 +87,29 @@ mid-download are never served mixed files. Republishing keeps the current `onlin
 
 The launcher does not gate PLAY on `online`: the game enforces it at sign-in (`online.enabled: true` opens it to everyone).
 
+## Test build channel (team only, DECISIONS B38)
+
+The rebuild is played through a second channel that sits next to the normal game. Players never see it.
+
+| | Normal game (`Live`) | Test build (`Test`) |
+|---|---|---|
+| Install folder | `%LOCALAPPDATA%\DeathMuffin\client` | `%LOCALAPPDATA%\DeathMuffin\client-test` |
+| Manifest | `https://muffindevelopment.com/death-muffin/client/manifest.json` | `https://muffindevelopment.com/death-muffin/client-test/manifest.json` |
+| Release notes | `/death-muffin/play/release-notes.json`, `patch-notes.json` | `/death-muffin/client-test/release-notes.json`, `patch-notes.json` (same format) |
+
+- **Same code, two folders.** The manifest format, verification (SHA-256, same-host rule), resume, staging and the one-rename swap are the
+  installer's single code path, called with the channel's folder (`Channels` in `ClientLogic.cs`). Each channel prunes only its own folder,
+  so updating, failing to update or deleting one never touches the other. Both can be installed at once; the launcher plays one at a time.
+- **The switch is the `TestBuild` setting** (bool, default `false`) in `launcher-settings.json`. When on, the button, footer status, version
+  line, World Dispatch and "All patch notes" all use the test channel and PLAY starts the test install (`-- --online`, as for the game). The
+  button reads DOWNLOAD / PLAY / UPDATE TEST BUILD, the footer shows an orange **TEST BUILD** marker next to the status and the window title ends
+  with "- TEST BUILD". The launcher self-update is shared by both channels.
+- **Hidden from players.** Settings has a **Test build (team only)** checkbox only after a **Ctrl+click** on Settings, or while `TestBuild` is
+  already on (so it can be turned off again). Ticking it saves the setting and switches at once; it is disabled while the game runs or a download is
+  going. Editing `launcher-settings.json` by hand (`"TestBuild":true`) does the same.
+- Publishing the test channel (`client-test/` on the server) is not part of the launcher: until a manifest exists there the test button reads
+  TEST BUILD NOT PUBLISHED.
+
 ## Build (developers)
 
 Needs the .NET SDK (8 or newer) and NuGet access for the reference assemblies. The project targets .NET Framework 4.8 and
@@ -94,7 +118,8 @@ native dependencies.
 
 ```powershell
 dotnet build launcher/windows/DeathMuffinLauncher.csproj -c Release
-dotnet run --project launcher/tests        # logic tests (manifest, versions, hashes, button states, online note, installer)
+dotnet run --project launcher/tests        # logic tests (manifest, versions, hashes, button states, online note, installer, channels, settings)
+bash launcher/windows/build-test-copy.sh <out dir>   # on the VPS, no SDK: a Windows test copy for the team to try before a release, version stamped from the csproj
 ```
 
 Output: `launcher/windows/bin/Release/net48/DeathMuffinLauncher.exe`. The version is `<Version>` in the csproj. Without an SDK,
@@ -102,12 +127,12 @@ Output: `launcher/windows/bin/Release/net48/DeathMuffinLauncher.exe`. The versio
 
 The [Windows launcher workflow](../../.github/workflows/launcher-windows.yml) builds on `windows-latest` for pushes touching
 `launcher/**` (and manual runs), uploads `DeathMuffinLauncher-win-x64.zip` as an artifact and, from `main` or a manual
-run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.9.1) for each new launcher release and add a changelog line. A release reaches running launchers only when it is
+run, attaches it to a GitHub Release tagged `launcher-v<version>`. Releases are built from `main`. Bump `<Version>` (currently 0.9.2) for each new launcher release and add a changelog line. A release reaches running launchers only when it is
 published on the VPS: `server/death-muffin/publish-launcher.sh <version>` after the workflow has attached the zip (it refuses a version that is not newer).
 
-Code map: `ClientLogic.cs` (manifest parsing, version compare, hashing, online note, button state machine; no UI),
+Code map: `ClientLogic.cs` (channels, manifest parsing, version compare, hashing, online note, button state machine; no UI),
 `ClientInstaller.cs` (download/verify/resume/swap and the install folder), `SelfUpdate.cs` (the launcher's own manifest, update decision,
-download and exe swap), `Updates.cs` (server requests), `LauncherForm.cs`
+download and exe swap), `Settings.cs` (launcher-settings.json, no UI), `Updates.cs` (server requests), `LauncherForm.cs`
 (UI, launching the game), `PatchNotesWindow.cs`, `Art.cs`.
 
 ## Window
@@ -118,6 +143,8 @@ two lines) over a subtle dark backing, and a footer with version, status, Settin
 
 ### Changelog
 
+- **0.9.2** - Team-only Test build channel (DECISIONS B38): a second install folder and manifest (`client-test`) next to the game, switched by the
+  `TestBuild` setting; the Settings checkbox is hidden unless Ctrl+clicked; orange TEST BUILD marker in the footer. The normal game is unchanged.
 - **0.9.1** - No code change: the first release delivered by the self-update (real-PC swap test of 0.9.0).
 - **0.9.0** - The launcher updates itself from the launcher `manifest.json` (served at /death-muffin/launcher/) (download, SHA-256 check, exe swap, restart) when the game is not
   running or downloading; the GitHub release check is gone.

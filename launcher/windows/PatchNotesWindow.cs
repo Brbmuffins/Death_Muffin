@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace DeathMuffinLauncher
 {
-    /// <summary>Every release's player notes, shown inside the launcher (read from play/patch-notes.json), so no browser is needed.</summary>
+    /// <summary>Every release's player notes for one channel, shown inside the launcher (read from play/patch-notes.json, or client-test/patch-notes.json for the test build), so no browser is needed.</summary>
     internal sealed class PatchNotesWindow : Form
     {
         readonly TextBox body = new TextBox
@@ -15,9 +15,12 @@ namespace DeathMuffinLauncher
             Dock = DockStyle.Fill, WordWrap = true, BackColor = Color.FromArgb(14, 17, 31), ForeColor = Art.Ink, Font = new Font("Segoe UI", 10f),
         };
 
-        public PatchNotesWindow()
+        readonly ClientChannel channel;
+
+        public PatchNotesWindow(ClientChannel channel)
         {
-            Text = "Death Muffin - Patch notes";
+            this.channel = channel;
+            Text = channel == ClientChannel.Test ? "Death Muffin - Test build patch notes" : "Death Muffin - Patch notes";
             Icon = LauncherForm.AppIcon;
             BackColor = Art.Bg;
             ClientSize = new Size(640, 640);
@@ -31,11 +34,14 @@ namespace DeathMuffinLauncher
 
         async System.Threading.Tasks.Task LoadAsync()
         {
-            List<ReleaseNotes> all = await Updates.FetchAllNotesAsync();
+            List<ReleaseNotes> all = await Updates.FetchAllNotesAsync(channel);
             if (IsDisposed) return;
             if (all == null || all.Count == 0)
             {
-                body.Text = all == null ? "Could not load patch notes. Check your internet connection and try again." : "No patch notes have been published yet.";
+                bool test = channel == ClientChannel.Test;
+                body.Text = all == null
+                    ? (test ? "No test build notes are published yet, or the server could not be reached." : "Could not load patch notes. Check your internet connection and try again.")
+                    : (test ? "No test build notes have been published yet." : "No patch notes have been published yet.");
                 return;
             }
             var sb = new StringBuilder();

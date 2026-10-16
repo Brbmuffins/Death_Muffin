@@ -120,6 +120,40 @@ namespace DeathMuffinLauncher
         }
     }
 
+    /// <summary>Which build line the launcher installs and plays: the normal game, or the team-only test build (DECISIONS B38).</summary>
+    internal enum ClientChannel { Live, Test }
+
+    /// <summary>
+    /// Where each channel lives: its install folder and its server folder (manifest, and for the test build its patch notes). The two never share
+    /// a folder, a staging area or a manifest, so installing, updating or switching one cannot touch the other.
+    /// </summary>
+    internal static class Channels
+    {
+        public const string SiteUrl = "https://muffindevelopment.com/death-muffin/";
+        public const string TestMarker = "TEST BUILD";
+
+        public static ClientChannel Of(bool testBuild) { return testBuild ? ClientChannel.Test : ClientChannel.Live; }
+
+        /// <summary>Folder name under %LOCALAPPDATA%\DeathMuffin and under /death-muffin/ on the server.</summary>
+        public static string FolderName(ClientChannel c) { return c == ClientChannel.Test ? "client-test" : "client"; }
+
+        public static string InstallDir(string root, ClientChannel c) { return Path.Combine(root, FolderName(c)); }
+
+        /// <summary>The channel's server folder (written by publish-godot-client.sh), with a trailing slash.</summary>
+        public static string BaseUrl(ClientChannel c) { return SiteUrl + FolderName(c) + "/"; }
+
+        public static string ManifestUrl(ClientChannel c) { return BaseUrl(c) + "manifest.json"; }
+
+        /// <summary>Folder holding release-notes.json and patch-notes.json: the live game's play page, or the test channel's own folder.</summary>
+        public static string NotesBaseUrl(ClientChannel c) { return c == ClientChannel.Test ? BaseUrl(c) : SiteUrl + "play/"; }
+
+        /// <summary>Small footer marker for the test channel, empty on the normal game.</summary>
+        public static string Marker(ClientChannel c) { return c == ClientChannel.Test ? TestMarker : ""; }
+
+        /// <summary>The "Test build (team only)" menu item is hidden from players: shown on a Ctrl+click of Settings, or while the switch is on (so it can be turned off).</summary>
+        public static bool ShowTestSwitch(bool testBuildOn, bool ctrlHeld) { return testBuildOn || ctrlHeld; }
+    }
+
     internal sealed class ManifestFile
     {
         public string Path = "";
@@ -338,6 +372,8 @@ namespace DeathMuffinLauncher
         public double Progress = -1;
         public bool Failed;
         public string Error;
+        /// <summary>The build line the button is for; the test channel words the texts as "test build".</summary>
+        public ClientChannel Channel = ClientChannel.Live;
     }
 
     internal sealed class PlayUi
@@ -371,6 +407,10 @@ namespace DeathMuffinLauncher
         public static PlayUi Compute(PlayInputs i)
         {
             var ui = new PlayUi();
+            // The test channel says "test build" where the normal game says "game"; every other word and every decision is shared.
+            bool test = i.Channel == ClientChannel.Test;
+            string thing = test ? "test build" : "game";
+            string THING = test ? "TEST BUILD" : "GAME";
             bool have = i.InstalledVersion != null;
             bool canFetch = i.NetReachable && i.Live != null;
             if (i.Downloading)
@@ -385,9 +425,9 @@ namespace DeathMuffinLauncher
             }
             if (i.Running)
             {
-                ui.Text = "GAME RUNNING";
+                ui.Text = THING + " RUNNING";
                 ui.Note = "Close the game window to play or update again.";
-                ui.Status = "Game running"; ui.Level = StatusLevel.Ok;
+                ui.Status = (test ? "Test build running" : "Game running"); ui.Level = StatusLevel.Ok;
                 return ui;
             }
             if (i.Failed)
@@ -407,7 +447,7 @@ namespace DeathMuffinLauncher
                 ui.Notice = OnlineGate.Notice(i.Live, i.NetReachable);
                 if (canFetch && VersionCompare.Compare(i.Live.Version, i.InstalledVersion) > 0)
                 {
-                    ui.Text = "UPDATE GAME";
+                    ui.Text = "UPDATE " + THING;
                     ui.Enabled = true;
                     ui.Action = PlayAction.Update;
                     ui.Note = "New build available (" + Mb(i.Live.TotalBytes) + "). Installed: " + ShortVersion(i.InstalledVersion) + ".";
@@ -415,31 +455,31 @@ namespace DeathMuffinLauncher
                     ui.Status = "Update ready (" + Mb(i.Live.TotalBytes) + ")"; ui.Level = StatusLevel.Busy;
                     return ui;
                 }
-                ui.Text = "PLAY";
+                ui.Text = test ? "PLAY TEST BUILD" : "PLAY";
                 ui.Enabled = true;
                 ui.Action = PlayAction.Play;
                 ui.Note = "Build " + ShortVersion(i.InstalledVersion) + (canFetch ? ", up to date." : ".");
                 if (ui.Notice.Length > 0) { ui.Status = ui.Notice; ui.Level = StatusLevel.Warn; }
-                else { ui.Status = "Ready to play"; ui.Level = StatusLevel.Ok; }
+                else { ui.Status = test ? "Test build ready to play" : "Ready to play"; ui.Level = StatusLevel.Ok; }
                 return ui;
             }
-            ui.Text = "DOWNLOAD GAME";
+            ui.Text = "DOWNLOAD " + THING;
             if (canFetch)
             {
                 ui.Enabled = true;
                 ui.Action = PlayAction.Download;
-                ui.Note = "Saves the game to this PC (" + Mb(i.Live.TotalBytes) + "). Needs internet.";
+                ui.Note = "Saves the " + thing + " to this PC (" + Mb(i.Live.TotalBytes) + "). Needs internet.";
                 ui.Status = "Download size " + Mb(i.Live.TotalBytes); ui.Level = StatusLevel.Busy;
             }
             else if (!i.NetReachable)
             {
-                ui.Note = "No internet connection. Connect to download the game.";
+                ui.Note = "No internet connection. Connect to download the " + thing + ".";
                 ui.Status = "No internet connection"; ui.Level = StatusLevel.Warn;
             }
             else
             {
-                ui.Text = "GAME NOT AVAILABLE YET";
-                ui.Note = "The game build is not published yet. Try again later.";
+                ui.Text = test ? "TEST BUILD NOT PUBLISHED" : "GAME NOT AVAILABLE YET";
+                ui.Note = test ? "No test build is published yet. Try again later." : "The game build is not published yet. Try again later.";
                 ui.Status = "Not published yet"; ui.Level = StatusLevel.Warn;
             }
             return ui;

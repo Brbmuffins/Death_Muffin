@@ -16,13 +16,9 @@ namespace DeathMuffinLauncher
         public List<string> Items = new List<string>();
     }
 
-    /// <summary>Reads the two tiny files the deploy script publishes next to the play page.</summary>
+    /// <summary>Server requests. The client manifest and the release notes are per channel (Channels in ClientLogic.cs).</summary>
     internal static class Updates
     {
-        public const string PlayUrl = "https://muffindevelopment.com/death-muffin/play/";
-        /// <summary>Where publish-godot-client.sh puts the Godot Windows client and its manifest.json.</summary>
-        public const string ClientBaseUrl = "https://muffindevelopment.com/death-muffin/client/";
-        public const string ManifestUrl = ClientBaseUrl + "manifest.json";
         /// <summary>Every release's player notes (site page fed by play/patch-notes.json).</summary>
         public const string PatchNotesUrl = "https://muffindevelopment.com/death-muffin/patch-notes.html";
         /// <summary>The launcher's own manifest (publish-launcher.sh): the version it updates itself to (SelfUpdate.cs).</summary>
@@ -51,20 +47,21 @@ namespace DeathMuffinLauncher
             public string Error;
         }
 
-        /// <summary>Reads manifest.json (never cached). Doubles as the internet check. Any failure means the online lock stays on.</summary>
-        public static async Task<ManifestResult> FetchManifestAsync()
+        /// <summary>Reads the channel's manifest.json (never cached). Doubles as the internet check. Any failure means the online lock stays on.</summary>
+        public static async Task<ManifestResult> FetchManifestAsync(ClientChannel channel)
         {
             var r = new ManifestResult();
+            string manifestUrl = Channels.ManifestUrl(channel);
             try
             {
-                using (var resp = await Http.GetAsync(ManifestUrl + "?t=" + DateTime.UtcNow.Ticks).ConfigureAwait(true))
+                using (var resp = await Http.GetAsync(manifestUrl + "?t=" + DateTime.UtcNow.Ticks).ConfigureAwait(true))
                 {
                     r.Reachable = true;
                     if (!resp.IsSuccessStatusCode) { r.Error = "HTTP " + (int)resp.StatusCode; return r; }
                     string json = await resp.Content.ReadAsStringAsync().ConfigureAwait(true);
                     ClientManifest m;
                     string err;
-                    if (ClientManifest.TryParse(json, new Uri(ManifestUrl), out m, out err)) r.Manifest = m;
+                    if (ClientManifest.TryParse(json, new Uri(manifestUrl), out m, out err)) r.Manifest = m;
                     else r.Error = err;
                 }
             }
@@ -81,12 +78,12 @@ namespace DeathMuffinLauncher
             return c;
         }
 
-        /// <summary>The newest release-notes.json, or null (older releases or offline).</summary>
-        public static async Task<ReleaseNotes> FetchNotesAsync()
+        /// <summary>The channel's newest release-notes.json, or null (older releases, not published, or offline).</summary>
+        public static async Task<ReleaseNotes> FetchNotesAsync(ClientChannel channel)
         {
             try
             {
-                string json = await Http.GetStringAsync(PlayUrl + "release-notes.json?t=" + DateTime.UtcNow.Ticks).ConfigureAwait(true);
+                string json = await Http.GetStringAsync(Channels.NotesBaseUrl(channel) + "release-notes.json?t=" + DateTime.UtcNow.Ticks).ConfigureAwait(true);
                 var d = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
                 var n = new ReleaseNotes();
                 object v;
@@ -100,12 +97,12 @@ namespace DeathMuffinLauncher
             catch { return null; }
         }
 
-        /// <summary>The whole notes history (patch-notes.json, newest first), or null.</summary>
-        public static async Task<List<ReleaseNotes>> FetchAllNotesAsync()
+        /// <summary>The channel's whole notes history (patch-notes.json, newest first), or null.</summary>
+        public static async Task<List<ReleaseNotes>> FetchAllNotesAsync(ClientChannel channel)
         {
             try
             {
-                string json = await Http.GetStringAsync(PlayUrl + "patch-notes.json?t=" + DateTime.UtcNow.Ticks).ConfigureAwait(true);
+                string json = await Http.GetStringAsync(Channels.NotesBaseUrl(channel) + "patch-notes.json?t=" + DateTime.UtcNow.Ticks).ConfigureAwait(true);
                 var d = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
                 var list = new List<ReleaseNotes>();
                 object v;

@@ -26,7 +26,7 @@ namespace DeathMuffinLauncher
     }
 
     /// <summary>
-    /// The installed Godot client under %LOCALAPPDATA%\DeathMuffin\client: one folder per version plus current.json. Never touched in
+    /// An installed Godot client folder (one per channel: %LOCALAPPDATA%\DeathMuffin\client, or client-test for the test build): one folder per version plus current.json. Never touched in
     /// place: a new version is built in .staging-&lt;version&gt; and swapped in with one directory rename.
     /// </summary>
     internal static class ClientStore

@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Logic tests for the launcher's pure code (manifest, versions, hashes, button state machines, installer). Runs on Linux and Windows:
+  <!-- Logic tests for the launcher's pure code (manifest, versions, hashes, button state machines, installer, channels, settings). Runs on Linux and Windows:
        dotnet run --project launcher/tests    (or ./run-local.sh when only a runtime + Roslyn csc.dll are available) -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -12,5 +12,6 @@
     <Compile Include="..\windows\ClientLogic.cs" />
     <Compile Include="..\windows\ClientInstaller.cs" />
     <Compile Include="..\windows\SelfUpdate.cs" />
+    <Compile Include="..\windows\Settings.cs" />
   </ItemGroup>
 </Project>

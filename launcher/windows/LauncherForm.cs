@@ -38,6 +38,11 @@ namespace DeathMuffinLauncher
         readonly LinkLabel settingsLink = new LinkLabel();
         readonly ContextMenuStrip settingsMenu = new ContextMenuStrip { ShowImageMargin = false, ShowCheckMargin = true };
         readonly ToolStripMenuItem gpuItem = new ToolStripMenuItem("Use high-performance GPU") { CheckOnClick = true };
+        /// <summary>Team only (DECISIONS B38): hidden unless Settings is Ctrl+clicked, or the test build is already on so it can be turned off.</summary>
+        readonly ToolStripMenuItem testItem = new ToolStripMenuItem("Test build (team only)") { CheckOnClick = true };
+        /// <summary>Small footer marker, shown only while the test channel is active.</summary>
+        readonly Label channelMarker = new GlassLabel();
+        readonly Label dispatchHeading = new GlassLabel();
         /// <summary>A one-off message ("Game closed.") holds the footer status until this tick count, then the state's status returns.</summary>
         int flashUntil;
         readonly Timer flashTimer = new Timer { Interval = 6000 };
@@ -52,15 +57,19 @@ namespace DeathMuffinLauncher
         const int HeadGap = 8, SectionGap = 24;
         const int FooterTop = 584, FooterMid = 622;
         const int PlayW = 300, PlayH = 44, PlayX = 1180 - 15 - 24 - PlayW;
+        // Footer status: it moves right by MarkerW to make room for the TEST BUILD marker.
+        const int StatusX = 180, StatusW = PlayX - 180 - 130, MarkerW = 100;
         static int DividerY;
 
         // ---- Client state. Everything the play button shows is computed from these by PlayStateMachine / OnlineGate. ----
-        /// <summary>The verified installed Godot client, or null.</summary>
+        /// <summary>The build line in use (settings.TestBuild): its install folder, manifest and notes. Changes only through SwitchChannelAsync.</summary>
+        ClientChannel channel;
+        /// <summary>The verified installed Godot client of the current channel, or null.</summary>
         InstalledClient installed;
-        /// <summary>The live manifest from the server, or null if it could not be read (the play button then shows the default online note).</summary>
+        /// <summary>The current channel's manifest from the server, or null if it could not be read (the play button then shows the default online note).</summary>
         ClientManifest live;
         /// <summary>The server answered the last check. Starts true so nothing flashes "no internet" before the first check.</summary>
-        bool reachable = true, checkedOnce, rechecking;
+        bool reachable = true, checkedOnce, rechecking, recheckQueued;
         /// <summary>Self-update state (CheckLauncherAsync): one attempt at a time, and failures this session.</summary>
         bool selfUpdating;
         int selfUpdateFailures;
@@ -75,6 +84,7 @@ namespace DeathMuffinLauncher
 
         public LauncherForm()
         {
+            channel = settings.Channel;
             Text = "Death Muffin Launcher";
             Icon = AppIcon;
             // The art remains the centrepiece, with a permanent command deck below it.
@@ -113,7 +123,11 @@ namespace DeathMuffinLauncher
             y += 18 + SectionGap;
             DividerY = y - SectionGap / 2;
 
-            root.Controls.Add(Lbl("WORLD DISPATCH", heading, Gold, x, y, w, 18));
+            dispatchHeading.Text = "WORLD DISPATCH";
+            dispatchHeading.Font = heading;
+            dispatchHeading.ForeColor = Gold;
+            dispatchHeading.SetBounds(x, y, w, 18);
+            root.Controls.Add(dispatchHeading);
             y += 18 + HeadGap;
             // Two lines for the headline: long release titles wrap instead of being cut off.
             newsTitle.SetBounds(x, y, w, 46);
@@ -140,7 +154,14 @@ namespace DeathMuffinLauncher
             var small = new Font("Segoe UI", 9f);
             int line = FooterMid - 10;
             root.Controls.Add(Lbl("LAUNCHER " + Program.Version, new Font("Segoe UI", 9f, FontStyle.Bold), Muted, 44, line, 130, 20, ContentAlignment.MiddleLeft));
-            status.SetBounds(180, line, PlayX - 180 - 130, 20);
+            channelMarker.Text = Channels.TestMarker;
+            channelMarker.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            channelMarker.ForeColor = Orange;
+            channelMarker.TextAlign = ContentAlignment.MiddleLeft;
+            channelMarker.SetBounds(StatusX, line, MarkerW, 20);
+            channelMarker.Visible = false;
+            root.Controls.Add(channelMarker);
+            status.SetBounds(StatusX, line, StatusW, 20);
             status.Font = small;
             root.Controls.Add(status);
             status.Changed += () => tip.SetToolTip(status, status.Detail.Length > 0 ? status.Detail : status.Text);
@@ -150,7 +171,15 @@ namespace DeathMuffinLauncher
             settingsLink.TextAlign = ContentAlignment.MiddleRight;
             StyleLink(settingsLink, small);
             settingsLink.LinkColor = Muted;
-            settingsLink.LinkClicked += (s, e) => settingsMenu.Show(settingsLink, new Point(0, -settingsMenu.PreferredSize.Height));
+            settingsLink.LinkClicked += (s, e) =>
+            {
+                // The test build switch is for the team: a plain click never shows it (unless it is already on).
+                testItem.Visible = Channels.ShowTestSwitch(settings.TestBuild, (ModifierKeys & Keys.Control) == Keys.Control);
+                bool busy = running || installing;
+                testItem.Enabled = !busy;
+                testItem.ToolTipText = busy ? "Close the game and wait for downloads to finish before switching." : "Plays the rebuild's test build (installed next to the normal game, which is left alone).";
+                settingsMenu.Show(settingsLink, new Point(0, -settingsMenu.PreferredSize.Height));
+            };
             root.Controls.Add(settingsLink);
             gpuItem.Checked = settings.HighPerformanceGpu;
             gpuItem.ToolTipText = "Asks Windows to run the game on your dedicated graphics card.";
@@ -161,6 +190,10 @@ namespace DeathMuffinLauncher
                 if (Alive(gameProc)) Flash("GPU setting applies the next time the game starts.", StatusLevel.Busy);
             };
             settingsMenu.Items.Add(gpuItem);
+            testItem.Checked = settings.TestBuild;
+            testItem.Visible = false;
+            testItem.CheckedChanged += async (s, e) => await SwitchChannelAsync(testItem.Checked);
+            settingsMenu.Items.Add(testItem);
             settingsMenu.Renderer = new ToolStripProfessionalRenderer(new MenuColors());
             settingsMenu.ForeColor = Ink;
             settingsMenu.Font = small;
@@ -183,7 +216,8 @@ namespace DeathMuffinLauncher
             status.Click += (s, e) => { if (statusLink != null) OpenExternalPage(statusLink); };
             flashTimer.Tick += (s, e) => { flashTimer.Stop(); flashUntil = 0; ApplyUi(); };
 
-            installed = ClientStore.ReadInstalled(Settings.ClientDir);
+            installed = ClientStore.ReadInstalled(Settings.InstallDir(channel));
+            ApplyChannelChrome();
             // The check runs once a minute so a dev publishing a build or opening Online shows up without restarting the launcher.
             netTimer.Tick += async (s, e) => await RecheckAsync();
             netTimer.Enabled = true;
@@ -243,28 +277,82 @@ namespace DeathMuffinLauncher
             await news;
         }
 
-        /// <summary>Asks the server for the manifest: the internet check, the game update check, the online lock and the launcher self-check in one request.</summary>
+        /// <summary>Everything that differs between the channels besides the data: window title, footer marker, news heading.</summary>
+        void ApplyChannelChrome()
+        {
+            bool test = channel == ClientChannel.Test;
+            Text = "Death Muffin Launcher" + (test ? " - " + Channels.TestMarker : "");
+            channelMarker.Visible = test;
+            status.Left = test ? StatusX + MarkerW : StatusX;
+            status.Width = test ? StatusW - MarkerW : StatusW;
+            dispatchHeading.Text = test ? "TEST BUILD DISPATCH" : "WORLD DISPATCH";
+        }
+
+        /// <summary>
+        /// Turns the test channel on or off (the Settings checkbox). Each channel keeps its own install folder, manifest and notes, so nothing is
+        /// copied, moved or deleted: this only changes which one the button, status and Play use. Not while the game runs or a download is going.
+        /// </summary>
+        async System.Threading.Tasks.Task SwitchChannelAsync(bool test)
+        {
+            var next = Channels.Of(test);
+            if (next == channel) return;
+            if (running || installing)
+            {
+                testItem.Checked = channel == ClientChannel.Test;   // refuse: put the checkbox back (this re-enters with next == channel)
+                return;
+            }
+            settings.TestBuild = test;
+            settings.Save();
+            channel = next;
+            installed = ClientStore.ReadInstalled(Settings.InstallDir(channel));
+            live = null; reachable = true; checkedOnce = false;
+            installFailed = false; installError = null;
+            flashTimer.Stop(); flashUntil = 0; statusLink = null;
+            newsTitle.Text = "Loading...";
+            newsBody.Text = "";
+            newsLink.Visible = false;
+            if (Alive2(patchWin)) patchWin.Close();   // it shows the other channel's notes
+            ApplyChannelChrome();
+            ApplyUi();
+            if (rechecking) recheckQueued = true;
+            await InitAsync();
+        }
+
+        /// <summary>One check at a time. A channel switch during a check queues one more for the new channel.</summary>
         async System.Threading.Tasks.Task RecheckAsync()
         {
             if (rechecking || IsDisposed) return;
             rechecking = true;
             try
             {
-                var r = await Updates.FetchManifestAsync();
-                bool was = reachable, first = !checkedOnce;
-                checkedOnce = true;
-                reachable = r.Reachable;
-                live = r.Manifest;   // null on any failure: Online stays locked
-                ApplyUi();
-                if (!first && r.Reachable != was)
+                do
                 {
-                    if (r.Reachable) SetStatus("Back online.");
-                    else if (installed != null) Warn("No internet connection. The game needs it to sign in.", null);
-                    else Warn("No internet connection. Connect to download the game.", null);
+                    recheckQueued = false;
+                    await RecheckOnceAsync();
                 }
-                if (r.Reachable) await CheckLauncherAsync();
+                while (recheckQueued && !IsDisposed);
             }
             finally { rechecking = false; }
+        }
+
+        /// <summary>Asks the server for the manifest: the internet check, the game update check, the online lock and the launcher self-check in one request.</summary>
+        async System.Threading.Tasks.Task RecheckOnceAsync()
+        {
+            var asked = channel;
+            var r = await Updates.FetchManifestAsync(asked);
+            if (asked != channel) return;   // switched channel while asking: this answer is for the other one (the queued check asks again)
+            bool was = reachable, first = !checkedOnce;
+            checkedOnce = true;
+            reachable = r.Reachable;
+            live = r.Manifest;   // null on any failure: Online stays locked
+            ApplyUi();
+            if (!first && r.Reachable != was)
+            {
+                if (r.Reachable) SetStatus("Back online.");
+                else if (installed != null) Warn("No internet connection. The game needs it to sign in.", null);
+                else Warn("No internet connection. Connect to download the game.", null);
+            }
+            if (r.Reachable) await CheckLauncherAsync();
         }
 
         /// <summary>
@@ -321,15 +409,16 @@ namespace DeathMuffinLauncher
             var ui = PlayStateMachine.Compute(new PlayInputs
             {
                 InstalledVersion = installedVer, Live = live, NetReachable = reachable, Running = running,
-                Downloading = installing, Progress = installProgress, Failed = installFailed, Error = installError,
+                Downloading = installing, Progress = installProgress, Failed = installFailed, Error = installError, Channel = channel,
             });
+            bool test = channel == ClientChannel.Test;
             if (!checkedOnce && installed == null && !installing)
             {
-                ui.Text = "CHECKING FOR THE GAME...";
+                ui.Text = test ? "CHECKING FOR THE TEST BUILD..." : "CHECKING FOR THE GAME...";
                 ui.Enabled = false;
                 ui.Action = PlayAction.None;
                 ui.Note = "";
-                ui.Status = "Checking for the game...";
+                ui.Status = test ? "Checking for the test build..." : "Checking for the game...";
                 ui.Level = StatusLevel.Busy;
             }
             playBtn.Text = ui.Text;
@@ -349,10 +438,10 @@ namespace DeathMuffinLauncher
 
             if (!checkedOnce) { }
             else if (!reachable) { updateLabel.Text = "No internet connection. Updates can't be checked."; updateLabel.ForeColor = Muted; }
-            else if (live == null) { updateLabel.Text = "No game build is published yet."; updateLabel.ForeColor = Muted; }
-            else if (installed == null) { updateLabel.Text = "Build " + Short(live.Version) + " ready to download."; updateLabel.ForeColor = VioletLight; }
-            else if (VersionCompare.Compare(live.Version, installed.Version) > 0) { updateLabel.Text = "Update available: build " + Short(live.Version) + "."; updateLabel.ForeColor = VioletLight; }
-            else { updateLabel.Text = "Up to date: build " + Short(installed.Version) + "."; updateLabel.ForeColor = Muted; }
+            else if (live == null) { updateLabel.Text = test ? "No test build is published yet." : "No game build is published yet."; updateLabel.ForeColor = Muted; }
+            else if (installed == null) { updateLabel.Text = (test ? "Test build " : "Build ") + Short(live.Version) + " ready to download."; updateLabel.ForeColor = VioletLight; }
+            else if (VersionCompare.Compare(live.Version, installed.Version) > 0) { updateLabel.Text = "Update available: " + (test ? "test build " : "build ") + Short(live.Version) + "."; updateLabel.ForeColor = VioletLight; }
+            else { updateLabel.Text = "Up to date: " + (test ? "test build " : "build ") + Short(installed.Version) + "."; updateLabel.ForeColor = Muted; }
             tip.SetToolTip(updateLabel, installed != null && live != null && VersionCompare.Compare(live.Version, installed.Version) > 0 ? "Installed: build " + Short(installed.Version) : null);
         }
 
@@ -379,10 +468,12 @@ namespace DeathMuffinLauncher
 
         async System.Threading.Tasks.Task ShowNewsAsync()
         {
-            var n = await Updates.FetchNotesAsync();
+            var asked = channel;
+            var n = await Updates.FetchNotesAsync(asked);
+            if (asked != channel) return;   // switched channel meanwhile: the new channel's own news request fills the panel
             if (n == null || n.Items.Count == 0)
             {
-                newsTitle.Text = "No release notes available.";
+                newsTitle.Text = asked == ClientChannel.Test ? "No test build notes yet." : "No release notes available.";
                 return;
             }
             string d = Updates.FriendlyDate(n.Date);
@@ -394,19 +485,20 @@ namespace DeathMuffinLauncher
             newsLink.Visible = true;
         }
 
-        /// <summary>Downloads the live manifest's files with a progress bar, verifies every SHA-256 and swaps the new version in.</summary>
+        /// <summary>Downloads the current channel's manifest files with a progress bar, verifies every SHA-256 and swaps the new version in (into that channel's own folder).</summary>
         async System.Threading.Tasks.Task InstallAsync()
         {
             var manifest = live;
             if (manifest == null || installing) return;
+            string dir = Settings.InstallDir(channel);
             installing = true; installFailed = false; installError = null; installProgress = 0;
             installCts = new System.Threading.CancellationTokenSource();
             ApplyUi();
-            SetStatus("Downloading the game (" + PlayStateMachine.Mb(manifest.TotalBytes) + ").");
+            SetStatus("Downloading the " + (channel == ClientChannel.Test ? "test build" : "game") + " (" + PlayStateMachine.Mb(manifest.TotalBytes) + ").");
             var progress = new Progress<InstallProgress>(p =>
             {
                 installProgress = p.Fraction;
-                var ui = PlayStateMachine.Compute(new PlayInputs { InstalledVersion = installed != null ? installed.Version : null, Live = manifest, Downloading = true, Progress = p.Fraction });
+                var ui = PlayStateMachine.Compute(new PlayInputs { InstalledVersion = installed != null ? installed.Version : null, Live = manifest, Downloading = true, Progress = p.Fraction, Channel = channel });
                 playBtn.Text = ui.Text;
                 dlBar.Visible = true;
                 dlBar.Value = p.Fraction;
@@ -414,10 +506,10 @@ namespace DeathMuffinLauncher
             try
             {
                 using (var http = Updates.CreateDownloadClient())
-                    await new ClientInstaller(http, Settings.ClientDir).InstallAsync(manifest, installed, progress, installCts.Token);
-                installed = ClientStore.ReadInstalled(Settings.ClientDir);
+                    await new ClientInstaller(http, dir).InstallAsync(manifest, installed, progress, installCts.Token);
+                installed = ClientStore.ReadInstalled(dir);
                 if (installed == null) throw new IOException("The downloaded files did not pass the final check.");
-                SetStatus("Game downloaded. Press Play.");
+                SetStatus(channel == ClientChannel.Test ? "Test build downloaded. Press Play." : "Game downloaded. Press Play.");
             }
             catch (OperationCanceledException)
             {
@@ -447,9 +539,9 @@ namespace DeathMuffinLauncher
         {
             if (installed == null || !File.Exists(installed.ExePath))
             {
-                installed = ClientStore.ReadInstalled(Settings.ClientDir);
+                installed = ClientStore.ReadInstalled(Settings.InstallDir(channel));
                 ApplyUi();
-                if (installed == null) { Warn("The game files are missing. Download them first.", null); return; }
+                if (installed == null) { Warn(channel == ClientChannel.Test ? "The test build files are missing. Download them first." : "The game files are missing. Download them first.", null); return; }
             }
             if (Alive(gameProc)) { SetStatus("Game is already running."); return; }
             ApplyGpuPreference(installed.ExePath);
@@ -503,7 +595,7 @@ namespace DeathMuffinLauncher
         void ShowPatchNotes()
         {
             if (Alive2(patchWin)) { patchWin.Activate(); return; }
-            patchWin = new PatchNotesWindow();
+            patchWin = new PatchNotesWindow(channel);
             patchWin.FormClosed += (s, e) => patchWin = null;
             patchWin.Show(this);
         }

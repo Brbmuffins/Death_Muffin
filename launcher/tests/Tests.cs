@@ -114,6 +114,7 @@ namespace DeathMuffinLauncher.Tests
         {
             JsonTests(); ManifestTests(); VersionTests(); HashTests(); OnlineTests(); PlayStateTests();
             InstallerTests().GetAwaiter().GetResult();
+            ChannelTests(); SettingsTests(); ChannelInstallTests().GetAwaiter().GetResult();
             SelfUpdateLogicTests(); SelfUpdateFileTests().GetAwaiter().GetResult();
             return T.Done();
         }
@@ -404,6 +405,190 @@ namespace DeathMuffinLauncher.Tests
                     threw = false;
                     try { await new ClientInstaller(http, root5) { RetryDelay = TimeSpan.FromMilliseconds(5), MaxAttempts = 2 }.InstallAsync(mb, null, null, CancellationToken.None); } catch (IOException) { threw = true; }
                     T.Ok(threw && ClientStore.ReadInstalled(root5) == null, "404 fails and installs nothing");
+                }
+            }
+            finally { try { Directory.Delete(tmp, true); } catch (Exception) { } }
+        }
+
+        // ---- Channels: the normal game and the team-only test build (DECISIONS B38) ----
+
+        static void ChannelTests()
+        {
+            // Live stays exactly as it always was.
+            T.Eq(Channels.FolderName(ClientChannel.Live), "client", "live folder");
+            T.Eq(Channels.ManifestUrl(ClientChannel.Live), "https://muffindevelopment.com/death-muffin/client/manifest.json", "live manifest url unchanged");
+            T.Eq(Channels.NotesBaseUrl(ClientChannel.Live), "https://muffindevelopment.com/death-muffin/play/", "live notes url unchanged");
+            T.Eq(Channels.InstallDir(Path.Combine("a", "DeathMuffin"), ClientChannel.Live), Path.Combine("a", "DeathMuffin", "client"), "live install dir unchanged");
+            T.Eq(Channels.Marker(ClientChannel.Live), "", "live has no marker");
+            // The test channel: own folder, own manifest on the same host.
+            T.Eq(Channels.FolderName(ClientChannel.Test), "client-test", "test folder");
+            T.Eq(Channels.ManifestUrl(ClientChannel.Test), "https://muffindevelopment.com/death-muffin/client-test/manifest.json", "test manifest url");
+            T.Eq(Channels.BaseUrl(ClientChannel.Test), "https://muffindevelopment.com/death-muffin/client-test/", "test base url");
+            T.Eq(Channels.NotesBaseUrl(ClientChannel.Test), "https://muffindevelopment.com/death-muffin/client-test/", "test notes live next to the test manifest");
+            T.Eq(Channels.InstallDir(Path.Combine("a", "DeathMuffin"), ClientChannel.Test), Path.Combine("a", "DeathMuffin", "client-test"), "test install dir");
+            T.Eq(Channels.Marker(ClientChannel.Test), "TEST BUILD", "test marker");
+            T.Eq(new Uri(Channels.ManifestUrl(ClientChannel.Test)).Host, new Uri(Channels.ManifestUrl(ClientChannel.Live)).Host, "same host for both manifests");
+            // Siblings, never nested: pruning or deleting one folder cannot reach the other.
+            string liveDir = Channels.InstallDir("root", ClientChannel.Live), testDir = Channels.InstallDir("root", ClientChannel.Test);
+            T.Ok(liveDir != testDir && !testDir.StartsWith(liveDir + Path.DirectorySeparatorChar) && !liveDir.StartsWith(testDir + Path.DirectorySeparatorChar), "install dirs are separate siblings");
+            T.Ok(ClientChannel.Live == Channels.Of(false) && ClientChannel.Test == Channels.Of(true), "setting -> channel");
+            T.Ok(default(ClientChannel) == ClientChannel.Live, "a default channel is the normal game");
+
+            // The hidden switch: Ctrl+click on Settings, or already on (so it can be turned off). A plain click by a player never shows it.
+            T.Ok(!Channels.ShowTestSwitch(false, false), "plain click: switch hidden");
+            T.Ok(Channels.ShowTestSwitch(false, true), "Ctrl+click: switch shown");
+            T.Ok(Channels.ShowTestSwitch(true, false), "test build on: switch shown so it can be turned off");
+            T.Ok(Channels.ShowTestSwitch(true, true), "test build on + Ctrl: shown");
+
+            // A test manifest is parsed and verified exactly like the live one (same host rule, same checks), against its own URL.
+            var files = new Dictionary<string, byte[]> { { "DeathMuffin.exe", Blob(10, 1) }, { "DeathMuffin.pck", Blob(20, 2) } };
+            var tm = Parse(ManifestJson("20261020.100000-t1", files), Channels.ManifestUrl(ClientChannel.Test));
+            T.Ok(tm != null && tm.Files[0].Url.ToString() == "https://muffindevelopment.com/death-muffin/client-test/DeathMuffin.exe", "test manifest files resolve under client-test");
+            T.Ok(Parse(ManifestJson("v1", files, false, "x", false).Replace("\"url\":\"DeathMuffin.exe\"", "\"url\":\"https://evil.example/DeathMuffin.exe\""), Channels.ManifestUrl(ClientChannel.Test)) == null, "test manifest: cross-host url rejected too");
+            T.Ok(Parse("{\"version\":\"v1\",\"files\":[]}", Channels.ManifestUrl(ClientChannel.Test)) == null, "test manifest: empty files rejected too");
+
+            // The button, status and texts name the test build; the live wording is untouched.
+            var live = Parse(ManifestJson("20261004.120000-b", files));
+            Func<string, bool, bool, bool, bool, PlayUi> test = (inst, run, dl, failed, net) => PlayStateMachine.Compute(new PlayInputs { InstalledVersion = inst, Live = tm, NetReachable = net, Running = run, Downloading = dl, Failed = failed, Channel = ClientChannel.Test });
+            var tmOpen = Parse(ManifestJson("20261020.100000-t1", files, true), Channels.ManifestUrl(ClientChannel.Test));
+            var u = test(null, false, false, false, true);
+            T.Ok(u.Text == "DOWNLOAD TEST BUILD" && u.Enabled && u.Action == PlayAction.Download && u.Note.Contains("test build"), "test: download text");
+            u = test("20261020.100000-t1", false, false, false, true);
+            T.Ok(u.Text == "PLAY TEST BUILD" && u.Enabled && u.Action == PlayAction.Play && u.Notice == "soon", "test: play text, online note from the test manifest");
+            u = PlayStateMachine.Compute(new PlayInputs { InstalledVersion = "20261020.100000-t1", Live = tmOpen, NetReachable = true, Channel = ClientChannel.Test });
+            T.Ok(u.Text == "PLAY TEST BUILD" && u.Status == "Test build ready to play", "test: ready status");
+            u = test("20261019.100000-t0", false, false, false, true);
+            T.Ok(u.Text == "UPDATE TEST BUILD" && u.Action == PlayAction.Update && u.ShowPlayInstalledLink, "test: update text");
+            u = test("20261020.100000-t1", true, false, false, true);
+            T.Ok(u.Text == "TEST BUILD RUNNING" && !u.Enabled && u.Status == "Test build running", "test: running text");
+            u = PlayStateMachine.Compute(new PlayInputs { InstalledVersion = null, Live = null, NetReachable = true, Channel = ClientChannel.Test });
+            T.Ok(u.Text == "TEST BUILD NOT PUBLISHED" && !u.Enabled && u.Action == PlayAction.None, "test: nothing published yet");
+            foreach (var x in new[] { test(null, false, false, false, true), test("a", false, false, false, true), test("20261020.100000-t1", true, false, false, true), test(null, false, false, false, false), test(null, false, true, false, true), test(null, false, false, true, true) })
+                T.Ok(x.Text.Length <= 28 && x.Status.Length > 0 && x.Status.Length <= 40, "test texts fit the button and footer: " + x.Text + " / " + x.Status);
+            // Same decisions on both channels.
+            foreach (var inst in new string[] { null, "20261003.000000-a", "20261004.120000-b" })
+            {
+                var a = PlayStateMachine.Compute(new PlayInputs { InstalledVersion = inst, Live = live, NetReachable = true });
+                var b = PlayStateMachine.Compute(new PlayInputs { InstalledVersion = inst, Live = live, NetReachable = true, Channel = ClientChannel.Test });
+                T.Ok(a.Action == b.Action && a.Enabled == b.Enabled && a.ShowPlayInstalledLink == b.ShowPlayInstalledLink, "same action on both channels for installed=" + (inst ?? "none"));
+            }
+            var liveOpen = Parse(ManifestJson("20261004.120000-b", files, true));
+            u = PlayStateMachine.Compute(new PlayInputs { InstalledVersion = "20261004.120000-b", Live = liveOpen, NetReachable = true });
+            T.Ok(u.Text == "PLAY" && u.Status == "Ready to play", "live wording unchanged");
+        }
+
+        static void SettingsTests()
+        {
+            var d = new Settings();
+            T.Ok(d.HighPerformanceGpu && !d.TestBuild, "defaults: high-performance GPU on, test build off");
+            T.Eq(d.Channel, ClientChannel.Live, "default channel is live");
+            T.Eq(d.ToJson(), "{\"HighPerformanceGpu\":true,\"TestBuild\":false}", "default json");
+
+            string dir = Path.Combine(Path.GetTempPath(), "dm-settings-" + Guid.NewGuid().ToString("N"));
+            string file = Path.Combine(dir, "sub", "launcher-settings.json");
+            try
+            {
+                T.Ok(!Settings.Load(file).TestBuild && Settings.Load(file).HighPerformanceGpu, "no file: defaults");
+                var s = new Settings { HighPerformanceGpu = false, TestBuild = true };
+                s.Save(file);
+                T.Ok(File.Exists(file), "save creates the folder and the file");
+                var back = Settings.Load(file);
+                T.Ok(!back.HighPerformanceGpu && back.TestBuild && back.Channel == ClientChannel.Test, "round trip: both values kept");
+                new Settings { HighPerformanceGpu = true, TestBuild = false }.Save(file);
+                back = Settings.Load(file);
+                T.Ok(back.HighPerformanceGpu && !back.TestBuild, "round trip: switching back to live is saved");
+                new Settings { HighPerformanceGpu = true, TestBuild = true }.Save(file);
+                T.Ok(Settings.Load(file).TestBuild, "round trip: test build on again");
+
+                // A file written by an older launcher (no TestBuild key) keeps the player on the normal game.
+                File.WriteAllText(file, "{\"HighPerformanceGpu\":false}");
+                back = Settings.Load(file);
+                T.Ok(!back.HighPerformanceGpu && !back.TestBuild, "old settings file: gpu kept, test build off");
+                // Odd or broken files fall back to defaults, never to the test build.
+                foreach (string bad in new[] { "", "not json", "[]", "{", "{\"TestBuild\":\"true\"}", "{\"TestBuild\":1}", "{\"TestBuild\":null}", "{\"HighPerformanceGpu\":\"no\"}" })
+                {
+                    File.WriteAllText(file, bad);
+                    var r = Settings.Load(file);
+                    T.Ok(!r.TestBuild && r.HighPerformanceGpu, "unusable settings [" + bad + "] -> defaults");
+                }
+                File.WriteAllText(file, "{\"Future\":{\"a\":[1]},\"TestBuild\":true,\"HighPerformanceGpu\":true}");
+                T.Ok(Settings.Load(file).TestBuild, "unknown keys are ignored");
+                // A UTF-8 BOM from a hand edit is fine.
+                File.WriteAllText(file, "﻿{\"TestBuild\":true}");
+                T.Ok(Settings.Load(file).TestBuild, "BOM tolerated");
+            }
+            finally { try { Directory.Delete(dir, true); } catch (Exception) { } }
+            T.Eq(Settings.InstallDir(ClientChannel.Live), Path.Combine(Settings.Root, "client"), "Settings.InstallDir live");
+            T.Eq(Settings.InstallDir(ClientChannel.Test), Path.Combine(Settings.Root, "client-test"), "Settings.InstallDir test");
+        }
+
+        /// <summary>Both channels installed side by side with the real installer: each is read, updated and pruned on its own.</summary>
+        static async Task ChannelInstallTests()
+        {
+            string tmp = Path.Combine(Path.GetTempPath(), "dm-chan-" + Guid.NewGuid().ToString("N"));
+            string appRoot = Path.Combine(tmp, "DeathMuffin");
+            Directory.CreateDirectory(appRoot);
+            try
+            {
+                using (var http = new HttpClient())
+                using (var srv = new TestServer())
+                {
+                    string liveRoot = Channels.InstallDir(appRoot, ClientChannel.Live), testRoot = Channels.InstallDir(appRoot, ClientChannel.Test);
+                    Func<string, string, ClientManifest> manifest = (version, pckName) =>
+                    {
+                        var f = new Dictionary<string, byte[]> { { "DeathMuffin.exe", srv.Files["DeathMuffin.exe"] }, { "DeathMuffin.pck", srv.Files["DeathMuffin.pck"] } };
+                        ClientManifest m; string err;
+                        if (!ClientManifest.TryParse(ManifestJson(version, f), new Uri(srv.Base + "manifest.json"), out m, out err)) throw new Exception(pckName + ": " + err);
+                        return m;
+                    };
+                    Func<string, ClientInstaller> mk = root => new ClientInstaller(http, root) { RetryDelay = TimeSpan.FromMilliseconds(10), StallTimeout = TimeSpan.FromSeconds(5) };
+
+                    // The normal game, installed first.
+                    srv.Files["DeathMuffin.exe"] = Blob(50000, 51); srv.Files["DeathMuffin.pck"] = Blob(120000, 52);
+                    var live1 = manifest("20261004.120000-live1", "live1");
+                    await mk(liveRoot).InstallAsync(live1, null, null, CancellationToken.None);
+                    string liveCurrent = File.ReadAllText(Path.Combine(liveRoot, "current.json"));
+
+                    // The test build next to it: different content, different version.
+                    srv.Files["DeathMuffin.exe"] = Blob(60000, 53); srv.Files["DeathMuffin.pck"] = Blob(130000, 54);
+                    var test1 = manifest("20261020.090000-test1", "test1");
+                    T.Ok(ClientStore.ReadInstalled(testRoot) == null, "test channel starts empty while the game is installed");
+                    await mk(testRoot).InstallAsync(test1, null, null, CancellationToken.None);
+                    var li = ClientStore.ReadInstalled(liveRoot); var ti = ClientStore.ReadInstalled(testRoot);
+                    T.Ok(li != null && li.Version == live1.Version, "live install unchanged by the test install");
+                    T.Ok(ti != null && ti.Version == test1.Version, "test build installed");
+                    T.Ok(li != null && ti != null && li.Dir != ti.Dir && !ti.Dir.StartsWith(liveRoot + Path.DirectorySeparatorChar), "installs live in different folders");
+                    T.Eq(File.ReadAllText(Path.Combine(liveRoot, "current.json")), liveCurrent, "live current.json untouched");
+
+                    // Updating the test build (twice, so pruning runs) never touches the game.
+                    var test2 = manifest("20261020.100000-test2", "test2");
+                    await mk(testRoot).InstallAsync(test2, ti, null, CancellationToken.None);
+                    var test3 = manifest("20261020.110000-test3", "test3");
+                    await mk(testRoot).InstallAsync(test3, ClientStore.ReadInstalled(testRoot), null, CancellationToken.None);
+                    T.Eq(ClientStore.ReadInstalled(testRoot).Version, test3.Version, "test build updated");
+                    li = ClientStore.ReadInstalled(liveRoot);
+                    T.Ok(li != null && li.Version == live1.Version && Directory.Exists(li.Dir), "pruning the test folder leaves the game alone");
+                    T.Ok(!Directory.Exists(Path.Combine(testRoot, test1.Version)), "test folder pruned on its own");
+
+                    // Updating the game never touches the test build.
+                    srv.Files["DeathMuffin.exe"] = Blob(50000, 55); srv.Files["DeathMuffin.pck"] = Blob(121000, 56);
+                    var live2 = manifest("20261005.120000-live2", "live2");
+                    await mk(liveRoot).InstallAsync(live2, li, null, CancellationToken.None);
+                    T.Eq(ClientStore.ReadInstalled(liveRoot).Version, live2.Version, "game updated");
+                    T.Eq(ClientStore.ReadInstalled(testRoot).Version, test3.Version, "test build untouched by a game update");
+
+                    // A failed test update keeps the working test build, and the game is still fine.
+                    srv.Files["DeathMuffin.pck"] = Blob(100000, 57);
+                    var test4 = manifest("20261020.120000-test4", "test4");
+                    srv.AlwaysCorrupt = true;
+                    bool threw = false;
+                    try { await mk(testRoot).InstallAsync(test4, ClientStore.ReadInstalled(testRoot), null, CancellationToken.None); } catch (IOException) { threw = true; }
+                    srv.AlwaysCorrupt = false;
+                    T.Ok(threw && ClientStore.ReadInstalled(testRoot).Version == test3.Version && ClientStore.ReadInstalled(liveRoot).Version == live2.Version, "failed test update keeps both working");
+
+                    // Removing the test install (switching back for good) leaves the game.
+                    Directory.Delete(testRoot, true);
+                    T.Ok(ClientStore.ReadInstalled(testRoot) == null && ClientStore.ReadInstalled(liveRoot).Version == live2.Version, "deleting client-test leaves client intact");
                 }
             }
             finally { try { Directory.Delete(tmp, true); } catch (Exception) { } }
