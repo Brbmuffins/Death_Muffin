@@ -88,7 +88,8 @@ public:
 	void set_glows(const godot::Color &p_elite, double p_champion_add);
 	godot::PackedColorArray glow_palette() const;  // the slots, linear rgb + strength in alpha
 	godot::PackedFloat32Array take_landings();
-	bool shatter(int64_t p_corpse);                  // Corpse Explosion: the corpse's body goes at once (false when the crowd has no body for it)      // where dying bodies came to rest since the last call: x, z, scale per landing (empty when none)
+	bool shatter(int64_t p_corpse);
+	godot::Vector3 ground_at(int64_t p_id) const;     // where a living body is drawn on the ground (y 0), Vector3.INF when it is not (dying, gone): the cheap read for decals that follow it                  // Corpse Explosion: the corpse's body goes at once (false when the crowd has no body for it)      // where dying bodies came to rest since the last call: x, z, scale per landing (empty when none)
 	int64_t glow_version() const;
 	// A look: model (slot), hover (m), scale, tint (linear Color), tint_fen (risen in the Fen), flyer, caster, inert, mist (bool flags).
 	void set_enemy_look(const godot::String &p_def, const godot::Dictionary &p_look);

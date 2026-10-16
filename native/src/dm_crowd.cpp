@@ -59,6 +59,7 @@ void DmCrowd::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("glow_version"), &DmCrowd::glow_version);
 	ClassDB::bind_method(D_METHOD("take_landings"), &DmCrowd::take_landings);
 	ClassDB::bind_method(D_METHOD("shatter", "corpse"), &DmCrowd::shatter);
+	ClassDB::bind_method(D_METHOD("ground_at", "id"), &DmCrowd::ground_at);
 	ClassDB::bind_method(D_METHOD("set_enemy_look", "def", "look"), &DmCrowd::set_enemy_look);
 	ClassDB::bind_method(D_METHOD("set_thrall_look", "kind", "legion", "look"), &DmCrowd::set_thrall_look);
 	ClassDB::bind_method(D_METHOD("set_owner_legion", "owner", "legion"), &DmCrowd::set_owner_legion);
@@ -231,6 +232,14 @@ PackedColorArray DmCrowd::glow_palette() const {
 		out.push_back(Color(glow_pal[i], glow_pal[i + 1], glow_pal[i + 2], glow_pal[i + 3]));
 	}
 	return out;
+}
+
+Vector3 DmCrowd::ground_at(int64_t p_id) const {
+	const dm::View *v = view.find(int32_t(p_id));
+	if (v == nullptr || v->mode != dm::M_LIVE) {
+		return Vector3(INFINITY, INFINITY, INFINITY);
+	}
+	return Vector3(float(v->dx), 0.0f, float(v->dz));
 }
 
 bool DmCrowd::shatter(int64_t p_corpse) {

@@ -201,11 +201,8 @@ func _on_spawned(id: int, def: String, _level: int, elite: bool, _area: String, 
 
 ## The drawn ground position of a living body (null once it is dead or gone), for decals that follow it.
 func _drawn_pos(id: int) -> Variant:
-	var v: Dictionary = core_host.view.crowd.view_info(id)
-	if v.is_empty() or int(v["state"]) == DEAD:
-		return null
-	var p: Vector3 = v["pos"]
-	return Vector3(p.x, 0.0, p.z)
+	var p: Vector3 = core_host.view.crowd.ground_at(id)   # every frame for every mark that follows a body: the crowd's cheap read
+	return null if p == Vector3.INF else p
 
 
 ## A ground telegraph (a swing's wind-up, a ghoul's eruption, the bell's ring). The router draws the shape in the original game's colours and
@@ -497,17 +494,8 @@ func _on_thrall_raised(id: int, kind: String, owner: int, _slot: int, empowered:
 	var me: Node = game.local_body() if game != null and game.has_method("local_body") else null
 	var own: Variant = null if me == null else int(me.get("core_id")) == owner
 	_thrall_rings[id] = vfx.decal({"other": own == false, "tex": "ring", "color": 0xd9a441 if champion else (0x8fb4ff if wraith else fx.sp("exhume", "spirit")),
-		"x": x, "z": z, "r": r, "duration": 1e9, "opacity": 1.0 if empowered else 0.7, "follow": _thrall_pos.bind(id)})
+		"x": x, "z": z, "r": r, "duration": 1e9, "opacity": 1.0 if empowered else 0.7, "follow": _drawn_pos.bind(id)})
 	stats["thrall_ring"] += 1
-
-
-## The drawn ground position of a thrall (null once it fell or is gone), for its ring.
-func _thrall_pos(id: int) -> Variant:
-	var v: Dictionary = core_host.view.crowd.view_info(id)
-	if v.is_empty() or String(v.get("mode", "")) != "live":
-		return null
-	var p: Vector3 = v["pos"]
-	return Vector3(p.x, 0.0, p.z)
 
 
 func _thrall_off(id: int) -> void:
