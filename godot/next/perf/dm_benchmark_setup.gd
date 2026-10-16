@@ -53,7 +53,7 @@ func _ready() -> void:
 		_add(_class, DmBenchmark.class_name_of(i) + ("  (standard)" if i == DmBenchmark.STANDARD["discipline"] else ""), i)
 	_size = _row(grid, "Fight size")
 	for k: String in DmBenchmark.SIZES:
-		_add(_size, "%s: %d enemies, %d thralls" % [DmBenchmark.SIZE_NAMES[k], DmBenchmark.SIZES[k][0], DmBenchmark.SIZES[k][1]], k)
+		_add(_size, "%s: %d enemies, %d thralls%s" % [DmBenchmark.SIZE_NAMES[k], DmBenchmark.SIZES[k][0], DmBenchmark.SIZES[k][1], ", a boss" if DmBenchmark.BOSS_SIZES.has(k) else ""], k)
 	_length = _row(grid, "Length")
 	for k: String in DmBenchmark.LENGTHS:
 		_add(_length, DmBenchmark.LENGTH_NAMES[k] + ("" if DmBenchmark.LENGTHS[k][2] else ", no render breakdown"), k)
@@ -123,6 +123,9 @@ func _read_picks() -> void:
 func _update_note() -> void:
 	_note.text = "Standard setup: these numbers compare with any other PC's." if DmBenchmark.is_standard(setup) \
 		else "Custom setup: compare it only with runs of the same room, class, size and length."
+	if DmBenchmark.BOSS_SIZES.has(setup["size"]):
+		var boss := DmBenchFight.boss_of(String(setup["room"]))
+		_note.text += "\n" + ("The room's boss, %s, is held awake." % DmContent.boss(boss)["name"] if boss != "" else "This room has no boss: the fight runs without one.")
 
 
 func _start() -> void:

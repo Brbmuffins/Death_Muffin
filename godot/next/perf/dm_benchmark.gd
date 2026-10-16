@@ -5,7 +5,8 @@ extends Node
 ## file is only READ (graphics preset, fps cap for the report; the run itself is uncapped with V-Sync off and auto resolution off).
 ## Setup (`configure`, the setup window DmBenchmarkSetup): room (ROOMS), class, fight size (SIZES) and length (LENGTHS); STANDARD is the setup
 ## that compares PCs. Fight: the room's own enemy kinds at the walkable point nearest its centre, every enemy with the same hp / damage in every room
-## (`standard_stats`, no elites), a god-mode level 60 hero on auto combat, thralls raised directly, enemies topped up to the size's count, fixed seed and camera zoom. Warm-up (not measured; the first frames compile shaders), then the measured window, then the render breakdown.
+## (`standard_stats`, no elites), a god-mode level 60 hero on auto combat, thralls raised directly, enemies topped up to the size's count, the room's
+## boss held awake in a Full Party fight (BOSS_SIZES), fixed seed and camera zoom. Warm-up (not measured; the first frames compile shaders), then the measured window, then the render breakdown.
 ## Per-frame cost: one float appended to a preallocated PackedFloat32Array plus a handful of engine counter reads; the fight upkeep (top-up,
 ## counts, progress text) runs at TICK_S. Wiring: `var b := DmBenchmark.new(); add_child(b); var r := await b.run()`; `progress(text)` fires ~1 Hz.
 ## Text report: `format_text(results)`; `save_text(text)` writes user://benchmarks/bench-<datetime>.txt.
@@ -21,11 +22,14 @@ const SEED := 20261011
 ## The setup that compares PCs: the Bell Sanctum (36 x 28 m: a small room keeps the pack on screen and the waves coming), Gravecaller (thrall master).
 const STANDARD := {"room": "sanctum", "discipline": 2, "size": "standard", "length": "full"}
 const ROOMS := ["graves", "warren", "ossuary", "nave", "coliseum", "sanctum", "cloister", "pyre", "fen"]   ## the combat areas (not the Depths instance)
-const SIZES := {"light": [15, 10], "standard": [30, 20], "heavy": [60, 30]}   ## [enemies held, thralls]
-const SIZE_NAMES := {"light": "Light", "standard": "Standard", "heavy": "Heavy"}
+## [enemies held, thralls]. Full Party is the biggest fight the game makes: the global enemy cap (DmSimData.GLOBAL_ENEMY_CAP, a test keeps the two equal)
+## and 4 necromancers' legions (4 x 8 thralls, all raised by the one hero here), plus the room's boss (BOSS_SIZES).
+const SIZES := {"light": [15, 10], "standard": [30, 20], "heavy": [60, 30], "full_party": [72, 32]}
+const SIZE_NAMES := {"light": "Light", "standard": "Standard", "heavy": "Heavy", "full_party": "Full Party"}
+const BOSS_SIZES := ["full_party"]   ## sizes that hold the room's boss awake (DmBenchFight.boss_of; a room without one runs without)
 const LENGTHS := {"quick": [6.0, 20.0, false], "full": [10.0, 30.0, true]}   ## [warm-up s, measured s, render breakdown]
 const LENGTH_NAMES := {"quick": "Quick (about 30 s)", "full": "Full (about 90 s)"}
-const ENEMY_LIMIT := 100        ## bodies alive or dying at once (play: GLOBAL_ENEMY_CAP 72, which a Heavy fight's corpses would hit)
+const ENEMY_LIMIT := 100        ## bodies alive or dying at once (play: GLOBAL_ENEMY_CAP 72, which a Heavy or Full Party fight's corpses would hit)
 const ZOOM := 1.0
 const TICK_S := 0.25
 const DIR := "user://benchmarks"
@@ -58,6 +62,7 @@ var warm_s := 10.0
 var measure_s := 30.0
 var enemies := 30
 var thralls := 20
+var boss_id := ""               ## the boss held awake ("" = none); set by `configure` for a Full Party fight in a room that has one
 var kills_measured := 0         ## enemies killed in the measured window (kills per minute in the report)
 var game: DmNextGame
 var results: Dictionary = {}
@@ -69,6 +74,8 @@ var hitches: Array = []          ## frames over HITCH_MS in the measured window:
 var spawns := 0
 var max_drift := 0.0            ## farthest the hero got from the centre between checks (m)
 var kills := 0                  ## enemies killed during the run (proof the fight is a fight; in the report)
+var boss_summons := 0           ## times the boss was woken (again after each defeat)
+var boss_defeats := 0           ## times it was killed
 
 var _fight: Dictionary = {}
 var _state := 0                 ## 0 idle, 1 warm-up / settle, 2 measuring a phase, 3 measuring a render-breakdown sample (no frame list)
@@ -97,6 +104,7 @@ var _last_spawns := 0
 var _last_cold := 0
 var _en_min := 1 << 30
 var _th_sum := 0.0
+var _boss_ticks := 0            ## measured upkeep ticks with the boss awake
 var _label := ""
 var _shown_s := -1
 var _vp: RID
@@ -128,6 +136,7 @@ func configure(want: Dictionary) -> void:
 	discipline = setup["discipline"]
 	enemies = SIZES[setup["size"]][0]
 	thralls = SIZES[setup["size"]][1]
+	boss_id = DmBenchFight.boss_of(area) if BOSS_SIZES.has(setup["size"]) else ""
 	warm_s = LENGTHS[setup["length"]][0]
 	measure_s = LENGTHS[setup["length"]][1]
 	breakdown = LENGTHS[setup["length"]][2]
@@ -220,19 +229,15 @@ func run() -> Dictionary:
 	game = _fight["game"]
 	_hero = _fight["hero"]
 	_at = _fight["at"]
-	game.director.rng.seed = SEED
 	# The small room needs the waves close (play spawns at 18 m+, outside aggro: here that is the far corners), and tougher enemies keep
 	# the density steady instead of a god-mode legion emptying the room between top-ups. The run's director is thrown away afterwards.
-	game.director.spawn_min = SPAWN_MIN_M
-	game.director.spawn_max = SPAWN_MAX_M
-	game.director.cap = enemies
-	game.director.enemy_limit = ENEMY_LIMIT
-	game.director.fixed_stats = standard_stats()
-	game.director.enemy_died.connect(func(_e: DmEnemy) -> void: kills += 1)
-	game.director.enemy_spawned.connect(func(_e: DmEnemy) -> void: spawns += 1)
 	# Hands off: the player's mouse and keys never reach the fight (no walking, hotkeys or panels; Esc stays the screen's), and auto combat
 	# casts without walking, so the hero holds the room's centre (a dash is undone in _tick).
-	game.input.auto.hold_position = true
+	DmBenchFight.arm(game, enemies, SEED)
+	game.director.enemy_died.connect(func(_e: DmEnemy) -> void: kills += 1)
+	game.director.enemy_spawned.connect(func(_e: DmEnemy) -> void: spawns += 1)
+	game.bosses.summoned.connect(func(_b: String, _p: int) -> void: boss_summons += 1)
+	game.bosses.defeated.connect(func(_b: String, _k: int, _pos: Vector3) -> void: boss_defeats += 1)
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE   # explicit: the screen and the runner process always (Esc), the fight must still pause
 	_lock_input(game)
 	get_tree().node_added.connect(_on_node_added)
@@ -253,10 +258,13 @@ func run() -> Dictionary:
 		var ph := _summary()
 		ph["kills"] = kills_measured
 		ph["kills_per_min"] = kills_measured / maxf(measure_s, 0.001) * 60.0
+		if boss_id != "":
+			ph["boss_awake_pct"] = 100.0 * _boss_ticks / maxf(1.0, _ticks)   # (not a table row: the report's Boss line and the upload carry it)
 		results["phases"].append(ph)
 	if breakdown and not cancelled:
 		results["breakdown"] = await _breakdown()
 	results["kills"] = kills
+	results["boss"] = {"id": boss_id, "name": String(DmContent.boss(boss_id)["name"]) if boss_id != "" else "", "summons": boss_summons, "defeats": boss_defeats}
 	results["setup"] = setup.duplicate()
 	results["standard"] = is_standard(setup)
 	results["max_drift"] = max_drift
@@ -341,6 +349,7 @@ func _reset_acc() -> void:
 	_ticks = 0
 	_en_sum = 0.0
 	_th_sum = 0.0
+	_boss_ticks = 0
 
 
 func _process(_dt: float) -> void:
@@ -380,15 +389,11 @@ func _process(_dt: float) -> void:
 		_step.emit()
 
 
-## Fight upkeep + progress, at TICK_S: enemies and thralls held at their targets, the hero unkillable, the camera at the fixed zoom.
+## Fight upkeep + progress, at TICK_S: enemies, thralls and the boss held (DmBenchFight.upkeep), the hero unkillable, the camera at the fixed zoom.
 func _tick() -> void:
 	if get_tree().paused:   # the render breakdown holds the picture still
 		return
-	game.director.cap = enemies   # (configure_area resets it when the director follows the hero into the room)
-	DmBenchFight.top_up(game, _hero, enemies)
-	DmBenchFight.trim(game, _hero, enemies)
-	var host := DmBenchFight.raise_thralls(_fight["caster"], thralls, _at)
-	_hero.heal(1e6)
+	var host := DmBenchFight.upkeep(_fight, enemies, thralls, boss_id)
 	var drift := Vector2(_hero.global_position.x - _at.x, _hero.global_position.z - _at.z).length()
 	max_drift = maxf(max_drift, drift)
 	if drift > 1.5:
@@ -406,6 +411,8 @@ func _tick() -> void:
 					_loot_sum += m.loot_view.count()
 		_en_min = mini(_en_min, game.director.alive_count())
 		_th_sum += host.list().size()
+		if boss_id != "" and game.bosses.active_boss() != null:
+			_boss_ticks += 1
 	if whole != _shown_s:
 		_shown_s = whole
 		var kind := "Warming up..." if _state == 1 else "Measuring %d/%d s" % [whole, int(_target_s)]
@@ -564,8 +571,16 @@ func _meta(user: Dictionary) -> Dictionary:
 		"cpu": OS.get_processor_name(), "cores": OS.get_processor_count(), "os": OS.get_name(),
 		"godot": Engine.get_version_info()["string"], "vsync": "off during measurement", "refresh_hz": DisplayServer.screen_get_refresh_rate(),
 		"setup": setup_label(setup),
-		"fight": "%d enemies (same health and damage in every room, no elites), %d thralls, level 60 god mode, auto combat, seed %d, warm-up %d s, measured %d s" % [enemies, thralls, SEED, int(warm_s), int(measure_s)],
+		"fight": "%d enemies (same health and damage in every room, no elites), %d thralls%s, level 60 god mode, auto combat, seed %d, warm-up %d s, measured %d s" % [
+			enemies, thralls, boss_text(), SEED, int(warm_s), int(measure_s)],
 	}
+
+
+## ", <boss> held awake" for a fight with a boss, ", no boss (this room has none)" for a boss size in a room without one, else "".
+func boss_text() -> String:
+	if boss_id != "":
+		return ", %s held awake" % DmContent.boss(boss_id)["name"]
+	return ", no boss (this room has none)" if BOSS_SIZES.has(setup["size"]) else ""
 
 
 ## Plain-text report: header, then one column per phase (ON | OFF side by side when both ran).
@@ -579,6 +594,11 @@ static func format_text(r: Dictionary) -> String:
 	L.append("Resolution: %s   Graphics preset: %s   Fps cap (setting): %s   V-Sync: %s" % [m["resolution"], m["preset"], str(m["fps_cap"]) if int(m["fps_cap"]) > 0 else "none", m["vsync"]])
 	L.append("Setup: %s" % m.get("setup", ""))
 	L.append("Fight: %s   kills during the run: %d" % [m["fight"], int(r.get("kills", 0))])
+	var bo: Dictionary = r.get("boss", {})
+	if String(bo.get("id", "")) != "":
+		var awake: Array = (r["phases"] as Array).map(func(p: Dictionary) -> float: return float(p.get("boss_awake_pct", 0.0)))
+		L.append("Boss: %s   woken %d times, defeated %d times%s" % [bo["name"], int(bo["summons"]), int(bo["defeats"]),
+			", awake %.0f%% of the measured window" % awake[0] if not awake.is_empty() else ""])
 	if bool(r.get("cancelled", false)):
 		L.append("(cancelled: only finished phases are listed)")
 	var ph: Array = r["phases"]

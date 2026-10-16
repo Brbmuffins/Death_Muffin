@@ -31,12 +31,22 @@ Tests: `tests/next_perfctl/run.gd`. Rendered probe: `tests/next_perfctl/entry_pr
 `DmBenchmark` (`dm_benchmark.gd`, setup window `dm_benchmark_setup.gd`, UI `dm_benchmark_screen.gd`, run history + upload `dm_bench_history.gd`, shared fight setup
 `dm_bench_fight.gd`, also used by `tests/perf/fight_breakdown.gd`). Run it from the **Benchmark** button (bottom right of the character select screen: the setup
 window, then the run; Back returns there) or `godot -- --benchmark` (results screen with a Quit button; `--bench-room=<area> --bench-class=<index>
---bench-size=light|standard|heavy --bench-length=quick|full` pick the setup, `--bench-warm=<s> --bench-measure=<s>` shorten it for smoke runs).
+--bench-size=light|standard|heavy|full_party --bench-length=quick|full` pick the setup, `--bench-warm=<s> --bench-measure=<s>` shorten it for smoke runs).
 - Setup (`configure`, remembered per PC in `user://benchmarks/setup.json`): room = any combat area (`ROOMS`, not the Depths) with its own enemy kinds and their
   abilities; class = the playable disciplines (`class_indices`: the four necromancers + the Reaper); size Light 15 enemies / 10 thralls, Standard 30 / 20, Heavy
-  60 / 30 (`SIZES`; the director's body limit is raised to 100 so a Heavy fight's corpses don't stall spawning); length Quick (6 s warm-up, 20 s measured, no
+  60 / 30, Full Party 72 / 32 and a boss (`SIZES`; the director's body limit is raised to 100 so a Heavy or Full Party fight's corpses don't stall spawning); length Quick (6 s warm-up, 20 s measured, no
   render breakdown) or Full (10 s + 30 s + breakdown). `STANDARD` (Bell Sanctum, Gravecaller, Standard, Full) is the setup that compares PCs; any other
   is labelled custom in the window, the report and the history.
+- **Full Party** is the biggest fight today's game can make, the one the rebuild's gates are measured on: 72 enemies (the global enemy cap, `DmSimData.GLOBAL_ENEMY_CAP`;
+  the test keeps `SIZES` equal to it), 32 thralls (4 necromancers' legions of 8, all raised for the one hero), and the room's boss held awake (`BOSS_SIZES`). A boss only
+  wakes for heroes standing in its own area, so the boss is the room's own (`DmBenchFight.boss_of`): the Bell Sanctum's Bell-Sworn Prelate in the Standard room, whose
+  13 m arena fills the 36 x 28 m room; the Warren and the Coliseum have no boss and run Full Party without one (the setup window, the report and the history say so).
+  The boss is woken through the real summon (the hero stands at its site with the shards it costs granted to the throwaway character, then goes back; `DmBenchFight.hold_boss`)
+  and again after each defeat, so its brain, adds, effects, rewards and drops cost what they cost in play; the report has a Boss line (woken / defeated, share of the
+  measured window awake) and the upload carries `boss_awake_pct`. The boss keeps its own health; its adds count as enemies (held at 72 by the same trim) and have the standard health.
+  Not in it: the three co-op guests' hero bodies. A guest is a session peer with its own caster, rewards member and backend session; a body outside the session is neither
+  targeted by enemies nor counted by the boss (enemies and boss brains read `session.get_bodies()`), so a stand-in would add a skeleton but no part of a guest's load.
+  Runs upload like every other size (size id `full_party`; the backend's `SIZES` and the history page know it, so deploy the backend before the client that sends it).
 - Same toughness everywhere: every enemy gets `standard_stats()` hp and damage whatever its kind, room or raiser (`DmWaveDirector.fixed_stats`, no elites):
   the Bell Sanctum roster's spawn-weighted average at its level on Easy (273 hp), so the kill rate matches the old Sanctum fight and kills cost the same in
   every room; what differs between rooms is the creatures, their abilities and the room itself. Esc cancels (also during the paused breakdown). The player has no control during the run: the screen sits on a layer above the HUD and takes every click, and every input callback of the fight is switched off; auto combat casts with `hold_position` (no walking) and a hero moved by a rite is put back at the centre.
@@ -66,12 +76,15 @@ window, then the run; Back returns there) or `godot -- --benchmark` (results scr
   the player enters the world. V-Sync-capped or cancelled runs are sent flagged and left out of the page's trends. Dev-offline, tests and debug builds never send.
 - Output: the results panel (Copy to clipboard), the log (`BENCHMARK` lines) and `user://benchmarks/bench-<datetime>.txt`. Per-frame cost is one float appended to a
   preallocated array plus a few counter reads; the fight upkeep runs at 4 Hz.
-- Test: `tests/next_bench/run.gd` (two short runs: the Standard setup and a custom one; same enemy health in both rooms, history, upload queue against fake
-  servers, setup window and launch args; deterministic checks only).
+- Test: `tests/next_bench/run.gd` (three short runs: the Standard setup, a custom one and a Full Party fight at its real size with the Prelate; same enemy health in
+  every room, history, upload queue against fake servers, setup window and launch args; deterministic checks only).
 
 ## Reading the F3 overlay
 
 The F3 overlay splits the frame: `tick` is the game tick by system, `fx` the `Vfx` autoload, `ui` the HUD and counsel, `outside`
 the rest (engine animation, culling, draw submission, GPU wait). If `outside` dominates, look at `calls` / `objects` and `render
 cpu`; if sim or views grow with enemies, it is script cost. Only numbers from a real GPU count: the VPS runs software GL at about
-7 fps. Probes: `tests/perf/` (`fight_breakdown.gd`: a held Hollow Graves fight; main-thread CPU per frame, a knock-out table per system; `tools/godot/profile.py` runs any probe under Godot's script profiler for per-function times), `tests/next/render_probe.gd`; the `tests/next*` suites print per-system timings as `INFO perf:` lines and never assert them (only deterministic counters are checks).
+7 fps. Probes: `tests/perf/` (`fight_breakdown.gd`: a held Hollow Graves fight; main-thread CPU per frame, a knock-out table per system; `--full-party` runs the
+benchmark's Full Party fight instead (Bell Sanctum, 72 enemies, 32 thralls, the Prelate, the benchmark's own director, upkeep and enemy health: `DmBenchFight.arm` / `upkeep`) and is the
+VPS processor test: `nice -n 10 godot --headless --fixed-fps 60 --path godot --script res://tests/perf/fight_breakdown.gd -- --full-party --reps=0 --seg=1200` prints
+`FB base cpu= wall= p50= p95=` (main-thread CPU and wall ms per frame, no GPU), `--boss=none` and `--n= --thralls=` vary it, leave out `--reps=0` for the knock-out table; `tools/godot/profile.py` runs any probe under Godot's script profiler for per-function times), `tests/next/render_probe.gd`; the `tests/next*` suites print per-system timings as `INFO perf:` lines and never assert them (only deterministic counters are checks).

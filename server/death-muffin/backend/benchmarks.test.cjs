@@ -63,6 +63,7 @@ test('parseRun accepts the client body and cleans it', () => {
   assert.strictEqual(run.standard, true);
   assert.strictEqual(run.metrics.avg_fps, 144.5);
   assert.deepStrictEqual(run.breakdown.rows, [{ what: 'thralls', draws: 5, frame_ms: 1.2 }]);
+  assert.strictEqual(parseRun(good({ size: 'full_party' })).run.size, 'full_party', 'the Full Party size is accepted');
 });
 
 test('parseRun refuses bodies it cannot trust, with a readable reason', () => {
@@ -179,6 +180,7 @@ test('list filters are validated', () => {
   assert.ok(parseFilters({ room: 'Bad Room' }).error);
   assert.ok(parseFilters({ discipline: '99' }).error);
   assert.ok(parseFilters({ size: 'huge' }).error);
+  assert.ok(!parseFilters({ size: 'full_party' }).error && parseFilters({ size: 'full_party' }).params.includes('full_party'));
   assert.ok(parseFilters({ before: '1; DROP' }).error);
   assert.ok(parseFilters({ limit: '0' }).error);
   assert.ok(parseFilters({ room: ['a', 'b'] }).where, 'a repeated key is ignored, not a crash');

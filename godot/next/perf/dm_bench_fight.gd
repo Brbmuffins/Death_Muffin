@@ -2,7 +2,8 @@ class_name DmBenchFight
 extends RefCounted
 ## The held test fight shared by the in-game benchmark (DmBenchmark) and the headless probe tests/perf/fight_breakdown.gd: an isolated
 ## offline game (DmOffline mock backend with an in-memory db, nothing persisted, no network), a god-mode level-60 necromancer in the middle
-## of an area on auto combat (Easy), enemies topped up by the wave director and thralls raised directly.
+## of an area on auto combat (Easy), enemies topped up by the wave director, thralls raised directly and, in a Full Party fight, the room's boss
+## held awake. `arm` + `upkeep` are the fight's rules, so the benchmark and the probe hold the same fight.
 
 
 ## Builds the game under `parent` and returns {game, hero, caster, api, mock, stats, at}. `stats.calls` counts the requests the mock served.
@@ -49,6 +50,33 @@ static func boot(parent: Node, disc: int, opts: Dictionary = {}, settings: Dicti
 	hero.teleport(at)
 	g.camera.snap(at)
 	return {"game": g, "hero": hero, "caster": caster, "api": api, "mock": mock, "stats": stats, "at": at}
+
+
+## The director set up the way the benchmark holds a fight: waves close to the hero (a small room), the cap at `enemies`, the body limit raised so
+## corpses don't stall spawning, every enemy on the standard health, the hero holding its ground (auto combat casts without walking).
+static func arm(g: DmNextGame, enemies: int, seed_: int) -> void:
+	g.director.rng.seed = seed_
+	g.director.spawn_min = DmBenchmark.SPAWN_MIN_M
+	g.director.spawn_max = DmBenchmark.SPAWN_MAX_M
+	g.director.cap = enemies
+	g.director.enemy_limit = DmBenchmark.ENEMY_LIMIT
+	g.director.fixed_stats = DmBenchmark.standard_stats()
+	g.input.auto.hold_position = true
+
+
+## One upkeep step (the benchmark runs it every DmBenchmark.TICK_S): enemies and thralls back to their targets, the room's `boss` awake (""
+## = none), the hero unkillable. `f` is `boot`'s result. Returns the thrall host.
+static func upkeep(f: Dictionary, enemies: int, thralls: int, boss: String) -> DmThrallHost:
+	var g: DmNextGame = f["game"]
+	var hero: DmHeroBody = f["hero"]
+	g.director.cap = enemies   # (configure_area resets it when the director follows the hero into the room)
+	top_up(g, hero, enemies)
+	trim(g, hero, enemies)
+	var host := raise_thralls(f["caster"], thralls, f["at"])
+	if boss != "":
+		hold_boss(g, hero, boss, f["at"])
+	hero.heal(1e6)
+	return host
 
 
 ## The walkable point nearest `centre` that a path joins to the area's doorway (so every enemy coming in can reach it). Rings of 1.5 m
@@ -104,3 +132,31 @@ static func raise_thralls(caster: DmRiteCaster, want: int, at: Vector3) -> DmThr
 			{"kind": "normal", "enemy": "risen", "elite": false}, 1.0, i + 1, 0.0)
 		host._spawn(st, at + Vector3(randf_range(-3, 3), 0, randf_range(-3, 3)), 0.0)
 	return host
+
+
+## The boss that sleeps in `area` ("" = none: the Warren and the Coliseum have no boss). A boss only wakes for heroes standing in its own area,
+## so a room's fight holds that room's boss; the Bell Sanctum's Prelate has the whole room for its arena (radius 13 m in a 36 x 28 m room).
+static func boss_of(area: String) -> String:
+	for id: String in DmBossHost.LIVE:
+		if String(DmContent.boss(id)["area"]) == area:
+			return id
+	return ""
+
+
+## Wakes `boss` when none is awake (the one that was awake was defeated): the hero stands at the boss's site for the summon, with the soul shards
+## it costs granted to the throwaway character, then goes back to `at`. The real summon path (shards spent, `try_summon`), so the boss, its rewards
+## and drops cost what they cost in play. Returns true when it woke one.
+static func hold_boss(g: DmNextGame, hero: DmHeroBody, boss: String, at: Vector3) -> bool:
+	if g.bosses.active_boss() != null:
+		return false
+	var site: Vector3 = g.bosses.site_pos(boss)
+	var m := g.my_member()
+	if site == Vector3.INF or m == null:
+		return false
+	hero.teleport(site)
+	m.prog.add_shards(int(DmContent.boss(boss)["shards"]))
+	var why: String = g.bosses.try_summon(g.session.get_my_id(), boss)
+	hero.teleport(at)
+	if why != "":
+		push_warning("[bench] the %s did not wake: %s" % [boss, why])
+	return why == ""

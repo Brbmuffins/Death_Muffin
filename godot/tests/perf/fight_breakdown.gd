@@ -5,11 +5,19 @@ extends SceneTree
 ## inclusive cost (its own script + the physics / animation it drives). Headless = CPU only.
 ##   nice -n 10 godot --headless --fixed-fps 60 --path godot --script res://tests/perf/fight_breakdown.gd -- [--area=graves] [--n=30] [--thralls=10]
 ##     [--seg=240] [--reps=2] [--groups=<label,...>] [--classes=1]     knock-out table
+##   --full-party   the in-game benchmark's Full Party fight (DmBenchmark.SIZES: 72 enemies, 32 thralls, the room's boss held awake; the director,
+##     upkeep and enemy health are the benchmark's own, DmBenchFight.arm / upkeep): --area defaults to sanctum (the benchmark's Standard room),
+##     --n / --thralls still override the counts, --boss=<id>|none the boss. `--full-party --reps=0 --seg=600` prints the base line only.
 ## Numbers are main-thread CPU ms per frame (/proc/thread-self/schedstat): other processes' load does not move them, the fight's own
 ## ebb and flow does (compare several reps; never assert them in a test).
 
 var g: DmNextGame
 var hero: DmHeroBody
+var fight: Dictionary          ## DmBenchFight.boot's result
+var full := false              ## --full-party: the benchmark's fight rules (DmBenchFight.upkeep) instead of this probe's own top-up
+var thralls := 0
+var boss := ""
+var every := 20                ## frames between upkeeps (the benchmark's 0.25 s at 60 fps in a full-party run)
 
 
 func _initialize() -> void:
@@ -41,9 +49,12 @@ func _seg(frames: int, n: int) -> Dictionary:
 	var walls: Array = []
 	var c0 := _cpu_ns()
 	for i in frames:
-		if i % 20 == 0:
-			_top_up(n)
-			hero.heal(1e6)
+		if i % every == 0:
+			if full:
+				DmBenchFight.upkeep(fight, n, thralls, boss)
+			else:
+				_top_up(n)
+				hero.heal(1e6)
 		var f0 := Time.get_ticks_usec()
 		await process_frame
 		var w := (Time.get_ticks_usec() - f0) / 1000.0
@@ -107,22 +118,37 @@ func _set_on(nodes: Array, on: bool, saved: Dictionary, mode: String = "all") ->
 
 
 func _run() -> void:
-	var area := _arg("area", "graves")
-	var fight := await DmBenchFight.boot(root, int(_arg("disc", "2")), {}, {}, area)
+	full = OS.get_cmdline_user_args().has("--full-party")
+	var area := _arg("area", "sanctum" if full else "graves")
+	if full:
+		seed(DmBenchmark.SEED)
+	fight = await DmBenchFight.boot(root, int(_arg("disc", "2")), {}, {}, area)
 	g = fight["game"]
 	hero = fight["hero"]
 	var caster: DmRiteCaster = fight["caster"]
 	var at: Vector3 = fight["at"]
-	var n := int(_arg("n", "30"))
+	var n := int(_arg("n", str(DmBenchmark.SIZES["full_party"][0]) if full else "30"))
 	var seg := int(_arg("seg", "240"))
-	var want_thralls := int(_arg("thralls", "10"))
+	var want_thralls := int(_arg("thralls", str(DmBenchmark.SIZES["full_party"][1]) if full else "10"))
+	thralls = want_thralls
+	var summons := [0]
+	var defeats := [0]
+	if full:
+		boss = DmBenchFight.boss_of(area)
+		var b := _arg("boss", "")
+		if b != "":
+			boss = "" if b == "none" else b
+		every = 15
+		DmBenchFight.arm(g, n, DmBenchmark.SEED)
+		g.bosses.summoned.connect(func(_b: String, _p: int) -> void: summons[0] += 1)
+		g.bosses.defeated.connect(func(_b: String, _k: int, _pos: Vector3) -> void: defeats[0] += 1)
 	# warm the fight up, then fill the legion directly (the auto rotation may not raise any)
 	for k in 4:
 		await _seg(60, n)
 	var host := DmBenchFight.raise_thralls(caster, want_thralls, at)
 	for k in 4:
 		await _seg(60, n)
-	print("FB setup area=%s enemies=%d thralls=%d nodes=%d" % [area, g.director.alive_count(), host.list().size(), int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))])
+	print("FB setup area=%s enemies=%d thralls=%d boss=%s nodes=%d" % [area, g.director.alive_count(), host.list().size(), boss if boss != "" else "none", int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))])
 	print("FB physics active=%d pairs=%d islands=%d" % [Performance.get_monitor(Performance.PHYSICS_3D_ACTIVE_OBJECTS), Performance.get_monitor(Performance.PHYSICS_3D_COLLISION_PAIRS), Performance.get_monitor(Performance.PHYSICS_3D_ISLAND_COUNT)])
 	# enemy / thrall own profilers over one segment
 	DmEnemy.profile = true
@@ -183,5 +209,7 @@ func _run() -> void:
 			base = b2
 			rows.append([gr[0], nodes.size(), ref - float(off.cpu)])
 			print("FB off %-24s n=%3d  saves %.2f ms cpu  (base %.2f -> %.2f; wall %.2f)" % [gr[0], nodes.size(), ref - float(off.cpu), ref, off.cpu, off.wall])
-	print("FB done enemies=%d thralls=%d" % [g.director.alive_count(), host.list().size()])
+	var awake := g.bosses.active_boss()
+	print("FB done enemies=%d thralls=%d boss=%s woken %d defeated %d%s" % [g.director.alive_count(), host.list().size(), boss if boss != "" else "none", summons[0], defeats[0],
+		", hp %.0f%% phase %d" % [awake.hp / awake.max_hp * 100.0, awake.phase] if awake != null else ""])
 	quit(0)

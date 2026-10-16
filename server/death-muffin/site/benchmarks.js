@@ -1,6 +1,7 @@
 // Benchmark history page. Everything from the API is player/client-supplied: it is only ever put in the page with textContent / setAttribute.
 const CLASSES = { 1: 'Ossuary', 2: 'Gravecaller', 3: 'Mourner', 4: 'Rotweaver', 11: 'Reaper' };
 const ROOMS = { graves: 'The Hollow Graves', warren: 'The Catacomb Warren', ossuary: 'The Marrow Ossuary', nave: 'The Drowned Nave', coliseum: 'The Bone Coliseum', sanctum: 'The Bell Sanctum', cloister: 'The Plague Cloister', pyre: 'The Cinder Pyre', fen: 'The Mourning Fen' };
+const SIZES = { light: 'Light', standard: 'Standard', heavy: 'Heavy', full_party: 'Full Party' };
 const COLORS = ['#9b5cff', '#dcc38a', '#5ad1c4', '#ff7d7d', '#7fb4ff', '#e58bd8', '#9be37f', '#ffb066'];
 // Compare panel: which direction is better. Metrics in neither list are shown without a colour.
 const HIGHER_BETTER = new Set(['avg_fps', 'kills_per_min', 'kills']);
@@ -10,6 +11,7 @@ const $ = (id) => document.getElementById(id);
 const statusEl = $('bench-status');
 const className = (i) => CLASSES[i] || 'Unknown';
 const roomName = (r) => ROOMS[r] || r || '—';
+const sizeName = (s) => SIZES[s] || cap(s);
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
 const fmt = (v, d = 1) => (v == null || !Number.isFinite(v) ? '—' : v.toLocaleString(undefined, { maximumFractionDigits: d }));
 const shortCpu = (c) => (c || '').replace(/\((R|TM)\)/gi, '').replace(/\b(CPU|Processor|with Radeon.*|@ .*)\b.*$/i, '').replace(/\s+/g, ' ').trim().slice(0, 28) || '—';
@@ -83,7 +85,7 @@ function renderChart() {
   // Flagged runs (V-Sync capped, cancelled) are listed in the table but kept out of the trend.
   const oldestFirst = runs.filter((r) => r[key] != null && r.version && !r.flagged).slice().sort((a, b) => a.id - b.id);
   // Different setups never share a line: when the filters let several through, each line is one PC on one setup.
-  const setupOf = (r) => `${roomName(r.room)}, ${className(r.discipline)}, ${cap(r.size)}, ${cap(r.length)}`;
+  const setupOf = (r) => `${roomName(r.room)}, ${className(r.discipline)}, ${sizeName(r.size)}, ${cap(r.length)}`;
   const mixed = new Set(oldestFirst.map(setupOf)).size > 1;
   const versions = [];
   const series = new Map();
@@ -166,7 +168,7 @@ function renderRows() {
       badge.title = r.flagReason === 'vsync' ? 'Frame rate was capped by vsync, so it does not compare' : r.flagReason === 'cancelled' ? 'The run was cancelled before it finished' : 'Left out of trends by default';
       flag.append(badge);
     }
-    for (const cell of [el('td', dateOf(r)), el('td', r.username), el('td', r.version || '—'), gpuCell, el('td', roomName(r.room)), el('td', className(r.discipline)), el('td', cap(r.size)), el('td', cap(r.length)), el('td', cap(r.preset)),
+    for (const cell of [el('td', dateOf(r)), el('td', r.username), el('td', r.version || '—'), gpuCell, el('td', roomName(r.room)), el('td', className(r.discipline)), el('td', sizeName(r.size)), el('td', cap(r.length)), el('td', cap(r.preset)),
       el('td', fmt(r.avgFps)), el('td', fmt(r.p95Ms)), el('td', fmt(r.p99Ms)), el('td', fmt(r.hitches, 0)), el('td', fmt(r.drawCalls, 0)), el('td', fmt(r.killsPerMin)), flag]) tr.append(cell);
     frag.append(tr);
   }
@@ -196,7 +198,7 @@ async function renderCompare() {
   }
 }
 function describe(r) {
-  return [`#${r.id} ${r.username}`, `${r.gpu || '?'} / ${shortCpu(r.cpu)}`, `v${r.version || '?'} ${cap(r.preset)}`, `${roomName(r.room)}, ${className(r.discipline)}, ${cap(r.size)} ${cap(r.length)}`];
+  return [`#${r.id} ${r.username}`, `${r.gpu || '?'} / ${shortCpu(r.cpu)}`, `v${r.version || '?'} ${cap(r.preset)}`, `${roomName(r.room)}, ${className(r.discipline)}, ${sizeName(r.size)} ${cap(r.length)}`];
 }
 function compareView(a, b) {
   const wrap = document.createElement('div');

@@ -1,4 +1,5 @@
 2.6	godot/tests/gear_look/run.gd
+82.8	godot/tests/next_bench/run.gd
 49.4	godot/tests/next_depths/run.gd
 45.6	godot/tests/next_autocombat/run.gd
 37.8	godot/tests/next_front/run.gd
@@ -69,4 +70,3 @@
 0.8	godot/tests/rules-core/run.gd
 0.7	godot/tests/next_lobby/proc_run.gd
 0.6	godot/tests/relay/run.gd
-15.0	godot/tests/next_bench/run.gd

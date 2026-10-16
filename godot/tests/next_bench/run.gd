@@ -1,7 +1,7 @@
 extends SceneTree
 ## The in-game benchmark (godot/next/perf/dm_benchmark.gd) with a short run: godot --headless --fixed-fps 60 --path godot --script res://tests/next_bench/run.gd
-## Deterministic checks only (completes, result keys, fight targets reached, isolated backend, no settings write); timings are printed
-## as INFO and never asserted.
+## Three short runs: the Standard setup, a custom one, and a Full Party fight (72 enemies, 32 thralls, the room's boss). Deterministic checks
+## only (completes, result keys, fight targets reached, isolated backend, no settings write); timings are printed as INFO and never asserted.
 
 var passed := 0
 var failed := 0
@@ -119,6 +119,7 @@ func _run() -> void:
 	_check_hp(hp2, std, "fen")
 	c.queue_free()
 	await process_frame
+	await _full_party_checks(std)
 	_history_checks(r, text)
 	await _flush_checks(r, text)
 	_setup_checks()
@@ -158,6 +159,46 @@ func _note_hp(b: DmBenchmark, seen: Dictionary) -> void:
 	for e in b.game.director.enemies.values():
 		if is_instance_valid(e) and (e as DmEnemy).max_hp > 0.0:
 			seen[String((e as DmEnemy).def_id)] = (e as DmEnemy).max_hp
+
+
+## Full Party: the biggest fight the game makes at its real size, the Bell Sanctum's Prelate held awake, uploads under its own size id.
+func _full_party_checks(std: Dictionary) -> void:
+	var cap := int(DmSimData.GLOBAL_ENEMY_CAP)
+	check(DmBenchmark.SIZES["full_party"] == [cap, 32] and DmBenchmark.BOSS_SIZES == ["full_party"] and DmBenchmark.SIZE_NAMES["full_party"] == "Full Party",
+		"Full Party: the global enemy cap (%d) and 32 thralls, the only size with a boss" % cap)
+	check(DmBenchmark.ENEMY_LIMIT > cap, "the director's body limit leaves room for the Full Party fight's corpses")
+	for room: String in DmBenchmark.ROOMS:
+		check((DmBenchFight.boss_of(room) != "") == not (room in ["warren", "coliseum"]), "%s: a boss, except in the Warren and the Coliseum (%s)" % [room, DmBenchFight.boss_of(room)])
+	check(DmBenchFight.boss_of("sanctum") == "prelate" and DmBenchFight.boss_of("graves") == "gravedigger", "a room's boss is the one that sleeps in its area")
+	var w := DmBenchmark.new()
+	w.configure({"room": "warren", "size": "full_party"})
+	check(w.boss_id == "" and w.enemies == cap and w.boss_text().contains("no boss"), "a room without a boss runs Full Party without one and says so")
+	w.configure({"room": "sanctum", "size": "heavy"})
+	check(w.boss_id == "" and w.boss_text() == "", "the other sizes have no boss")
+	w.free()
+	var fp := DmBenchmark.new()
+	fp.configure({"room": "sanctum", "discipline": 2, "size": "full_party", "length": "quick"})
+	check(fp.enemies == cap and fp.thralls == 32 and fp.boss_id == "prelate" and not fp.breakdown and fp.boss_text().contains("Prelate"), "configure: Full Party in the Bell Sanctum holds the Prelate")
+	fp.warm_s = 2.0
+	fp.measure_s = 3.0
+	var hp := {}
+	fp.progress.connect(func(_t: String) -> void: _note_hp(fp, hp))
+	root.add_child(fp)
+	var r: Dictionary = await fp.run()
+	var text := DmBenchmark.format_text(r)
+	var ph: Dictionary = r["phases"][0]
+	check(not r["cancelled"] and not bool(r["standard"]) and r["setup"]["size"] == "full_party", "Full Party run completes and is a custom setup")
+	check(float(ph["enemies"]) >= cap * 0.85 and float(ph["thralls"]) >= 32.0 - 0.01, "Full Party: enemies (%.1f of %d) and thralls (%.1f of 32) reached" % [ph["enemies"], cap, ph["thralls"]])
+	check(fp.boss_summons >= 1 and String(r["boss"]["id"]) == "prelate" and int(r["boss"]["summons"]) == fp.boss_summons, "Full Party: the Prelate was woken (%d times, %d defeats)" % [fp.boss_summons, fp.boss_defeats])
+	check(float(ph["boss_awake_pct"]) >= 50.0, "Full Party: the boss was awake for most of the window (%.0f%%)" % float(ph["boss_awake_pct"]))
+	check(text.contains("Setup: The Bell Sanctum, Gravecaller, Full Party, Quick") and text.contains("Boss: The Bell-Sworn Prelate") and text.contains("held awake"), "the report names the size and the boss")
+	check(fp.area_nav_on, "Full Party: the room's navmesh is on")
+	_check_hp(hp, std, "sanctum (Full Party, boss adds included)")
+	var p := DmBenchHistory.payload(r, text)
+	check(p["size"] == "full_party" and p["standard"] == false and (p["metrics"] as Dictionary).has("boss_awake_pct"), "upload payload: size id full_party, the boss share in the metrics")
+	print("INFO bench Full Party fps=%.1f p95=%.2f enemies=%.1f thralls=%.1f boss woken %d defeated %d" % [ph["avg_fps"], ph["p95_ms"], ph["enemies"], ph["thralls"], fp.boss_summons, fp.boss_defeats])
+	fp.queue_free()
+	await process_frame
 
 
 func _check_hp(seen: Dictionary, std: Dictionary, room: String) -> void:
@@ -209,6 +250,8 @@ func _setup_checks() -> void:
 	var M: GDScript = load("res://main/main.gd")
 	var a: Dictionary = M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-room=pyre", "--bench-class=3", "--bench-size=heavy", "--bench-length=quick"]))
 	check(a["room"] == "pyre" and int(a["discipline"]) == 3 and a["size"] == "heavy" and a["length"] == "quick", "launch args pick the setup")
+	var fa: Dictionary = M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-size=full_party"]))
+	check(fa["size"] == "full_party" and fa["room"] == "sanctum", "--bench-size=full_party picks Full Party")
 	var w := DmBenchmarkSetup.new()
 	var got: Array = []
 	w.start.connect(func(s: Dictionary) -> void: got.append(s))
@@ -219,4 +262,13 @@ func _setup_checks() -> void:
 	w._start()
 	check(got.size() == 1 and got[0]["room"] == "cloister" and not DmBenchmark.is_standard(got[0]), "Start hands over the pick")
 	check(DmBenchmarkSetup.load_last()["room"] == "cloister", "the window remembers the last setup")
+	check(w._size.item_count == DmBenchmark.SIZES.size() and w._size.get_item_text(w._size.item_count - 1) == "Full Party: 72 enemies, 32 thralls, a boss", "the window lists Full Party with its counts and the boss (%s)" % w._size.get_item_text(w._size.item_count - 1))
+	w._size.select(DmBenchmark.SIZES.keys().find("full_party"))
+	w._size.item_selected.emit(w._size.selected)
+	check(w._note.text.contains(String(DmContent.boss("saint")["name"])), "the note names the picked room's boss (%s)" % w._note.text)
+	w._room.select(DmBenchmark.ROOMS.find("warren"))
+	w._room.item_selected.emit(w._room.selected)
+	check(w._note.text.contains("no boss"), "the note says a room without a boss runs without one")
+	w._start()
+	check(got.size() == 2 and got[1]["size"] == "full_party" and got[1]["room"] == "warren", "Start hands over Full Party")
 	w.queue_free()
