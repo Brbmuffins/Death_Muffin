@@ -314,8 +314,11 @@ The backend owns value (DECISIONS D1, B20, B32), and the game scene on the core 
   the gold pool, and the numbered kill reports of the backend's party session, whose replies decide the XP and kill counts applied. Lifesteal hears `DmCoreHost.struck` (a hero's direct blow
   through `damage`; a DoT tick or a thrall's swing never is one). A boss's defeat pays through `on_boss_defeated` (the boss host calls it).
 - **Meta, milestones, Chronicle, progression** are today's (`next/meta/dm_next_meta.gd` and `next/areas/dm_wave_milestones.gd` ported, the Chronicle and `DmNextProgress` as they are but for the
-  bag): difficulty, world vows, the week's Omen, Soul Harvest, Bonded Dead (raised through the hero's legion on the core), the level-ups, the upgrade tiers, the belt, and the saves through
-  `DmProgressSync`. The vows' corpse lifetime reaches the core (`DmCoreCorpses.life_mult`), and the host's world (heat, difficulty) reaches the lobby (`DmNextParty.sync_world`).
+  bag): difficulty, the week's Omen, Soul Harvest, the Kill Chain, the level-ups, the upgrade tiers, the belt, and the saves through
+  `DmProgressSync`. The host's world (its difficulty) reaches the lobby (`DmNextParty.sync_world`).
+- **No Ascension** (DECISIONS B36): a character's saved vows, boons and Ashes stay on the server, untouched, and do nothing here: the world runs without vows (no heat,
+  the rewards' rank 0, the base corpse lifetime), a build reads its progression without them (`DmNextGame.without_ascension`), no Covenant Boon acts (the Bonded Dead
+  do not rise) and the party's world carries no heat.
 - **The loot node** (`next/rewards/dm_next_loot.gd`, the client's own: today's take, pickup, claim and rune-ownership paths of `DmNextUiHost`, standing on their own so value works before the
   panels): a click on a drop walks the hero there and takes it on arrival (loot never flies; walking over it takes nothing); a drop rolled from the tape is claimed, and the server puts its
   own roll in the bag; a rune the character owns (learned, bag, Vault) never drops. The bag is the server's rows (`DmInventory`); worn gear feeds the build, and the belt drinks from it.

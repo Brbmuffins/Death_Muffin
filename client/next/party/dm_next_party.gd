@@ -465,12 +465,12 @@ func host_session(session_name: String, is_private: bool = false) -> void:
 	_ensure_link(func() -> void: lobby.create_session(nm, shell.area_id, is_private, "", world()))
 
 
-## Host: our world as members and friends see it (DECISIONS B26): the heat of our world vows and our difficulty.
+## Host: our world as members and friends see it (DECISIONS B26): our difficulty. No heat: Ascension is not in the rebuild (B36), so it is always 0.
 func world() -> Dictionary:
-	return {"heat": int(shell.meta.heat) if shell.meta != null else 0, "difficulty": shell.meta.difficulty if shell.meta != null else "medium"}
+	return {"heat": 0, "difficulty": shell.meta.difficulty if shell.meta != null else "medium"}
 
 
-## Host: our vows or difficulty changed (DmNextMeta.sync / set_difficulty): tell the lobby, which tells members, friends and the list.
+## Host: our difficulty changed (DmNextMeta.set_difficulty): tell the lobby, which tells members, friends and the list.
 func sync_world() -> void:
 	if mode != HOST or lobby == null or link != "ready":
 		return
@@ -797,7 +797,6 @@ func fetch_build(peer: int) -> void:
 	var m: DmRewardsMember = shell.rewards.members.get(key)
 	if m != null:
 		m.prog.character["level"] = int(b.character["level"])
-		m.self_heat = DmAscension.self_heat(r.data.get("local", {}).get("vows", {}))   # its own self vows pay on top of our world (DECISIONS B26)
 	var build := shell.build_for(peer)
 	b.refresh_stats(build)
 	var c := b.get_node_or_null("Rites") as DmRiteCaster

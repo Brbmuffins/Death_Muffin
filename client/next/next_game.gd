@@ -545,14 +545,25 @@ func build_for(peer_id: int) -> Dictionary:
 	var ch: Dictionary = b.character if b != null and not b.character.is_empty() else {"class_index": 0, "level": 1}
 	if peer_id == session.get_my_id():
 		if progress != null:
-			return DmCharacterBuild.build(ch, progress.slots(), progress.prog.local)
-		return DmCharacterBuild.build(ch, server_slots, server_local)
+			return DmCharacterBuild.build(ch, progress.slots(), without_ascension(progress.prog.local))
+		return DmCharacterBuild.build(ch, server_slots, without_ascension(server_local))
 	var rb: Variant = remote_builds.get(peer_id)
 	if rb is Dictionary:
 		var rch: Dictionary = (rb["character"] as Dictionary).duplicate()
 		rch["level"] = maxf(float(rch.get("level", 1)), float(ch.get("level", 1)))   # a level-up the host credited since the fetch
-		return DmCharacterBuild.build(rch, rb["slots"], rb["local"])
+		return DmCharacterBuild.build(rch, rb["slots"], without_ascension(rb["local"]))
 	return DmCharacterBuild.build(ch, [], {})
+
+
+## A progression record as a build reads it in the rebuild: without the vows and Covenant Boons (DECISIONS B36: Ascension is not in the rebuild; the saved
+## data stays on the server, untouched).
+static func without_ascension(local: Dictionary) -> Dictionary:
+	if not local.has("vows") and not local.has("boons"):
+		return local
+	var out := local.duplicate()
+	out.erase("vows")
+	out.erase("boons")
+	return out
 
 
 ## The local player's rewards member: the host's own (DmSessionRewards) or a guest's (DmNextJoiner), null before either exists.

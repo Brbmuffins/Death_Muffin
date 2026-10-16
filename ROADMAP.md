@@ -254,12 +254,22 @@ combat simulation for now.
 - **Necromancer polish:** combat feel and loot for the four disciplines from playtests, readability of rites and statuses, gear and affix
   legibility, the first hour (Next-step box, counsel tips, guide NPCs); the rejoin window (D13) and the party gaps (KNOWN-GAPS: Party and
   online).
-- **Ideas parked during the rebuild:** colours in the chat window (2026-10-13).
+- **For review** (Helix, 2026-10-16: issues, concerns and ideas outside the rebuild are listed here and reviewed later for other roadmap sections):
+  - Colours in the chat window (2026-10-13).
+  - Today's game: Easy auto combat parks the hero in pockets of tombstones (it steers straight at the nearest enemy, with no path round the graves; found by the
+    seeded comparison, native/README.md "Proof of same game").
+  - Today's game: quitting while models still load in the background can abort on a PC with few cores (the GitHub runner's 4: the CI's perfctl abort, 2026-10-16).
+  - Today's game: a party guest leaving with kills not yet reported makes the host send to a peer that is gone (an engine error in the log, nothing lost; the rebuild
+    skips the send).
+  - The benchmark (both games): a level-up during the fight refreshes the god-mode hero's stats from the throwaway character's real level, so the held fight changes
+    as that character levels; the benchmark could hold its XP.
 - **Found during the rebuild, today's game ignores them** (Helix 2026-10-16: fixed after launch day, in the rebuild only; until then both keep today's behaviour; the core already emits each one):
   toxic corpse pools always hit as at level 1 (nothing sets the area level), a fallen plague bearer's pool never appears, and the
   Mourning Bell wraith's ally heal never happens (both are signals nobody listens to). Statuses never change the blows a boss takes:
   `DmBoss.take_damage` does not apply the status set's damage-taken multiplier, and the brain's own Fracture is never fed (a Marrow Spear's Fracture or a Sanctify on the King does nothing); kept, and so is the port.
 - **Phones:** on the Mobile renderer, following the phone rules kept since the rebuild (B40).
+- **The asset and effects rebuild** (Helix, 2026-10-16: after the core is rebuilt, with its own roadmap and pipelines). Until then the rebuild changes effects
+  and assets only where speed needs it. Notes for it: the crowd's download size (the hand-prop variants copy their body's animation, "Test build checklist").
 
 ## Later
 

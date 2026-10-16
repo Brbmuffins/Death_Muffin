@@ -132,18 +132,6 @@ func _rec(c: DmCoreCorpse) -> Dictionary:
 	return {"id": c.id, "pos": Vector3(c.x, 0.0, c.z), "kind": c.kind, "enemy": c.enemy, "elite": c.elite, "facing": c.facing}
 
 
-## Bonded Dead boon: one thrall at the owner's feet when the legion is empty; no corpse needed.
-func raise_bonded(intent: Dictionary) -> Dictionary:
-	if not _owner_alive() or count() > 0:
-		return _fail("owner_dead" if not _owner_alive() else "not_empty")
-	_push_burst()
-	raised_n += 1
-	var st := DmThralls.raise_stats(intent, {"kind": "normal", "enemy": "risen", "elite": false}, 1.0, raised_n, float(legend.get("championEvery", 0.0)))
-	var p := _body.global_position
-	var id := int(_core().raise_thrall(st, owner_id(), Vector2(p.x, p.z), 0.0, float(intent["cap"])))
-	return {"ok": id != 0, "thralls": [id] if id != 0 else [], "crumbled": []}
-
-
 func _fail(why: String) -> Dictionary:
 	exhume_failed.emit(why)
 	return {"ok": false, "why": why, "thralls": [], "crumbled": []}

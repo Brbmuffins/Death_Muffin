@@ -12,11 +12,6 @@ signal corpse_consumed(corpse_id: int, by_peer: int, reason: String)   ## from t
 
 var _host: DmCoreHost
 var _notes: Dictionary = {}        ## corpse id -> Dictionary
-## How long a new corpse lasts against the base CORPSE_LIFETIME: corpseLifeMult x the vows' multiplier (lingering_dead +50 %, thin_graves -25 %), set by DmNextMeta.sync.
-var life_mult := 1.0:
-	set(v):
-		life_mult = v
-		_host.core.set_corpse_life_mult(v)
 
 
 func _init(host: DmCoreHost) -> void:

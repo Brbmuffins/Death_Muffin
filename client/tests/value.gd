@@ -10,7 +10,7 @@ extends SceneTree
 ##   D a drop from the tape lies on the ground: walking over it takes nothing, a click (request) and the walk claim it, and the server's roll is in the bag;
 ##   E the brews: the tonic's wisdom is read per kill; lifesteal heals on the hero's direct blows (DmCoreHost.struck) only, never on a DoT tick, a thrall's swing or a
 ##     blow with no hero behind it (today's tests/next_brews_affix B, by DmBrews.lifesteal_heal);
-##   F the meta: difficulty reaches the director, the rewards and the bosses; the Omen's multipliers the member;
+##   F the meta: difficulty reaches the director, the rewards and the bosses; the Omen's multipliers the member; saved vows and boons do nothing (B36);
 ##   G the belt: Q drinks a flask from the bag (the mock's new character carries three);
 ##   H saving: flush_all ends the session with its last batch, and the character the backend holds carries the XP, level and gold.
 ## ZERO script errors or engine errors in the log. Run: godot --headless --fixed-fps 60 --path client --script res://tests/value.gd
@@ -137,8 +137,8 @@ func _b_kills() -> void:
 	# a thrall's blow: the kill is its owner's
 	var c := hero.get_node("Rites") as DmRiteCaster
 	var th := c.thralls()
-	var r := th.raise_bonded({"kind": "normal", "cap": 3.0, "hp": 200.0, "damage": 10.0, "attackSpeedMult": 1.0})
-	var tid: int = (r["thralls"] as Array)[0] if bool(r.get("ok", false)) else 0
+	var st := DmThralls.raise_stats({"kind": "normal", "cap": 3.0, "hp": 200.0, "damage": 10.0, "attackSpeedMult": 1.0}, {"kind": "normal", "enemy": "risen", "elite": false}, 1.0, 1, 0.0)
+	var tid := int(host.core.raise_thrall(st, hero.core_id, Vector2(hero.position.x + 1.0, hero.position.z), 0.0, 3.0))
 	check(tid != 0, "a thrall stands beside the hero")
 	credited.clear()
 	var e := _enemy(4.0)
@@ -277,7 +277,20 @@ func _f_meta() -> void:
 	g.meta.set_difficulty("medium", true)
 	check(is_equal_approx(m.omen_reward, float(g.meta.omen.get("rewardMult", 1.0))) and is_equal_approx(m.omen_shard, float(g.meta.omen.get("shardMult", 1.0))),
 		"the Omen's multipliers are the member's (%s)" % String(g.meta.omen.get("name", "")))
-	check(g.rewards.ascension == float(g.meta.heat), "the world vows' heat is the rewards' rank (%d)" % g.meta.heat)
+	# Ascension is not in the rebuild (DECISIONS B36): saved vows and boons do nothing (no heat, no world vows, no boon on the hero)
+	var me := g.session.get_my_id()
+	var hp_mult := float(g.build_for(me)["discipline"]["mods"]["maxHpMult"])
+	var local: Dictionary = g.progress.prog.local
+	var saved := [local.get("vows"), local.get("boons")]
+	local["vows"] = {"iron_dead": 2, "frail_vessel": 1, "elder_dead": 3}
+	local["boons"] = {"vigil": 2, "bonded_dead": 1, "lingering_dead": 1}
+	g.progress.apply_progress()
+	check(g.meta.heat == 0 and g.rewards.ascension == 0.0 and m.self_heat == 0 and g.rewards.vow_levels == 0.0, "saved vows bring no heat and no rank (B36)")
+	check(g.director.vow_fx == DmVowsBoons.vow_effects({}) and g.bosses.vow_fx == g.director.vow_fx, "the world runs without vows: the director's and the bosses' effects are neutral")
+	check(float(g.build_for(me)["discipline"]["mods"]["maxHpMult"]) == hp_mult, "the hero's build ignores the saved vows and boons (max health x%s)" % hp_mult)
+	local["vows"] = saved[0]
+	local["boons"] = saved[1]
+	g.progress.apply_progress()
 
 
 # ------------------------------------------------------------------------------------------------------------------ G

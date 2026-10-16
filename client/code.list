@@ -78,7 +78,7 @@ world_fx   # world dressing and atmosphere
 # Value on the server (client/README.md "Value on the server"): kills are the game's `kill_credited`, the bag is the game's `loot` (client-only next/rewards/dm_next_loot.gd:
 # today's DmNextUiHost take, pickup, claim and rune-ownership paths on their own):
 # next/rewards/dm_session_rewards.gd       kills from `kill_credited` (the killer is a peer), lifesteal from DmCoreHost.struck; no watch_enemy / attach_spawner
-# next/meta/dm_next_meta.gd                a kill's enemy is a core id; the Bonded Dead rise through the hero's legion on the core (DmCoreLegion.raise_bonded)
+# next/meta/dm_next_meta.gd                a kill's enemy is a core id; no vows, heat or Covenant Boons (DECISIONS B36: no Bonded Dead)
 # next/progress/dm_next_progress.gd        the bag is the loot node's (the server's rows until it exists)
 # next/areas/dm_wave_milestones.gd         the Nightfall light dims the world's lights (DmNextWorld.builder); banners through the game's `game_event`
 # next/party/dm_next_joiner.gd             a party guest's own account; its bag is the loot node's

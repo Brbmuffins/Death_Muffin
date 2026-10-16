@@ -1,35 +1,30 @@
 class_name DmNextMeta
 extends Node
-## Host-side meta systems of the slice (child "Meta" of DmNextGame): difficulty, the sworn world vows, the week's Omen, Soul Harvest, the Kill Chain's
-## presentation, the Bonded Dead boon. It owns no rules (DmContent.difficulty, DmAscension / DmVowsBoons, DmPlayerRules souls, DmKillChain are shared
-## rules): it reads the character's progression and pushes the results to the nodes that act on them.
+## Host-side meta systems of the slice (child "Meta" of DmNextGame): difficulty, the week's Omen, Soul Harvest, the Kill Chain's presentation. It owns no
+## rules (DmContent.difficulty, DmVowsBoons, DmPlayerRules souls, DmKillChain are shared rules): it pushes the results to the nodes that act on them.
 ##
 ##   difficulty  -> director (enemy hp / damage / elite chance), rewards (xp / gold / loot), bosses (brains)
-##   world vows  -> director (levels, hp, wave size, deacon weight, elites), bosses (levels, echoes), corpse field (life), rewards (heat -> xp / gold)
 ##   omen        -> director (wave size, elites), every rewards member (reward / shard multipliers); the HUD chip
-##   souls, chain, bonded dead: see below. `event(id, ctx)` is the game_event shape (DmNextUiHost forwards it to DmGameUi).
-## The rebuild's port (client/code.list "Ported"): a kill's enemy is a core id (the Scythe's reap window asks by id), and the Bonded Dead rise through the
-## hero's legion on the core (DmRiteCaster.thralls(), DmCoreLegion.raise_bonded) instead of a DmThrallHost node; the Reaper's soul green is DmRiteFx.REAPER_GREEN
-## (DmReaperRites waits for the Reaper).
+##   souls, chain: see below. `event(id, ctx)` is the game_event shape (DmNextUiHost forwards it to DmGameUi).
+## The rebuild's port (client/code.list "Ported"): a kill's enemy is a core id (the Scythe's reap window asks by id); the Reaper's soul green is DmRiteFx.REAPER_GREEN
+## (DmReaperRites waits for the Reaper). Ascension is not in the rebuild (DECISIONS B36): the world runs without vows (`vow_fx` neutral, heat 0, so the rewards' rank is 0
+## and the corpse lifetime the base one) and no Covenant Boon acts (the Bonded Dead do not rise); a character's saved Ascension data stays on the server, untouched.
 
 signal event(id: String, ctx: Dictionary)
 
 const SOUL_HOVER_S := 1.0                ## s a Reaper's soul wisps around its dead enemy before flying to her
-const BOND_DELAY := 1.5                 ## s after entering a hunting ground
 const CHAIN_COLORS := [0xe6d3a0, 0xf0b25a, 0xf08a3a, 0xee5a2a, 0xff3a3a]
 
 var shell: DmNextGame
 var member: DmRewardsMember              ## the host's rewards member (its Kill Chain)
 var difficulty := "medium"
 var omen: Dictionary = {}                ## the week's Omen (DmContent omens), or opts.omen
-var vow_fx: Dictionary = {}              ## DmVowsBoons.vow_effects of the sworn WORLD vows (the player-scope ones reach the hero through DmCharacterBuild)
-var heat := 0                            ## the world vows' heat: the run's rank (xp / gold multiplier, kill reports)
+var vow_fx: Dictionary = DmVowsBoons.vow_effects({})   ## no vows (B36): the neutral effects the director and the bosses read
+var heat := 0                            ## no vows, no heat (B36): the run's rank is 0
 
 var _soul_fx: DmRiteFx = null            ## draws the Reaper's soul wisps (made on the first one)
-var _synced := false
-var _vow_sig := ""
-var _bond_t := 0.0
 var _chain_told := false
+var _set := false                        ## the first set_difficulty has run (the start's, quiet): later calls with the same one do nothing
 
 
 ## The weekly Omen of a clock (ms since the Unix epoch): week 0 starts on a Monday.
@@ -52,7 +47,6 @@ func attach(shell_: DmNextGame) -> void:
 	shell.rewards.kill_earned.connect(_on_kill_earned)
 	shell.rewards.chain_tier_up.connect(_on_chain_tier)
 	shell.hero_died.connect(func(_b: DmHeroBody) -> void: member.chain.reset())
-	shell.area_changed.connect(func(_id: String) -> void: _bond_t = BOND_DELAY)
 	shell.session.player_joined.connect(func(_id: int) -> void: _apply_members.call_deferred())
 	_apply_members()
 	set_process(true)
@@ -60,10 +54,11 @@ func attach(shell_: DmNextGame) -> void:
 
 ## Settings -> difficulty (and `opts.difficulty`): the next enemies to rise feel it. `quiet` = no toast.
 func set_difficulty(d: String, quiet: bool = false) -> void:
-	if not DmContent.difficulties().has(d) or d == difficulty and _synced:
+	if not DmContent.difficulties().has(d) or d == difficulty and _set:
 		return
 	var was := difficulty
 	difficulty = d
+	_set = true
 	shell.director.difficulty = d
 	shell.rewards.difficulty = d
 	shell.bosses.difficulty = d
@@ -73,29 +68,19 @@ func set_difficulty(d: String, quiet: bool = false) -> void:
 		shell.party.sync_world()   # members and friends see our world (DECISIONS B26)
 
 
-## The character's vows / boons changed (loaded, bought, sworn, an ascension): the world follows. Called by DmNextProgress.apply_progress.
+## The progression was loaded or changed: the world follows (the Omen's wave size; no vows in the rebuild, B36). Called by DmNextProgress.apply_progress.
 func sync() -> void:
-	var prog: DmProgression = shell.progress.prog
-	var world := DmAscension.world_vows(prog.vows())
-	var sig := JSON.stringify(world)
-	vow_fx = DmVowsBoons.vow_effects(world)
-	heat = DmVowsBoons.vow_heat(world)
 	var d := shell.director
 	d.vow_fx = vow_fx
 	d.size_extra = float(omen.get("waveSizeMult", 1.0)) * float(vow_fx["waveSizeMult"])
 	d.omen = omen
 	d.set_wave_tier(d.wave_tier)   # the wave size follows the multipliers
 	shell.bosses.vow_fx = vow_fx
-	shell.rewards.ascension = float(heat)
+	shell.rewards.ascension = 0.0
+	shell.rewards.vow_levels = 0.0
 	if member != null:
-		member.self_heat = DmAscension.self_heat(prog.vows())   # the host's own self vows pay on top of its world (DECISIONS B26)
-	shell.rewards.vow_levels = float(vow_fx["levels"])
-	shell.corpses.life_mult = float(prog.boons()["corpseLifeMult"]) * float(vow_fx["corpseLifeMult"])
+		member.self_heat = 0
 	_apply_members()
-	if _synced and sig != _vow_sig:
-		d.clear()   # new vows: the hunting grounds start over (every area is cleared)
-	_vow_sig = sig
-	_synced = true
 	if shell.party != null:
 		shell.party.sync_world()
 
@@ -114,10 +99,6 @@ func _process(_dt: float) -> void:
 	if broke >= int(DmProgContent.get_data()["chain"]["reportAt"]):
 		shell.progress.sfx("chainBreak")
 		_float(b, 2.6, "Chain broken: %d" % broke, "info")
-	if _bond_t > 0.0:
-		_bond_t -= _dt
-		if _bond_t <= 0.0:
-			_bonded_dead(b)
 
 
 # ---- Kill Chain -----------------------------------------------------------------------------------------------------------------------
@@ -195,23 +176,6 @@ func _bank_reaper_soul(b: DmHeroBody, at: Vector3) -> void:
 		return Vector3(hero.global_position.x, 1.2, hero.global_position.z) if hero != null else null,
 		9.0, 0.0, "sprite", DmRiteFx.REAPER_GREEN, {"tex": "skull", "size": 0.7, "hover": SOUL_HOVER_S, "hover_r": 1.0,
 			"on_arrive": func(pos: Vector3) -> void: _soul_fx.emit(pos.x, pos.y, pos.z, 6, DmRiteFx.REAPER_GREEN, 0.25, 1.4, 0.8, 0.4, 0.18)})
-
-
-# ---- Bonded Dead ----------------------------------------------------------------------------------------------------------------------
-
-## A thrall rises beside you whenever you enter a hunting ground with none (the boon; necromancers only).
-func _bonded_dead(b: DmHeroBody) -> void:
-	var caster := b.get_node_or_null("Rites") as DmRiteCaster
-	var th := caster.thralls() if caster != null else null
-	var def := DmContent.area(shell.area_id)
-	if th == null or not b.alive or b.family != "necromancer" or th.count() > 0 or bool(def["safe"]) or shell.area_id == "depths" \
-			or not bool(shell.progress.prog.boons()["bondedDead"]):
-		return
-	var m := b.mods
-	var r := th.raise_bonded({"kind": m["thrallKind"], "cap": m["thrallCap"], "hp": b.p["stats"]["thrallHp"], "damage": b.p["stats"]["thrallDamage"],
-		"attackSpeedMult": m["thrallAttackSpeedMult"]})
-	if bool(r["ok"]):
-		event.emit("toast", {"text": "Your bonded dead rises beside you", "kind": "good"})
 
 
 func _float(b: Node3D, y: float, text: String, kind: String) -> void:
