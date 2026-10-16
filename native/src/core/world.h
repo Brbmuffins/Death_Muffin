@@ -47,6 +47,8 @@ constexpr double REPATH_S = 0.3, REPATH_MOVE_SQ = 1.0, DIRECT_RANGE_SQ = 9.0, SC
 constexpr double INCENSE_MOVE = 1.3, INCENSE_ATTACK = 1.25, PATH_DESIRED = 0.5;
 constexpr double KITE_BACK_OFF = 3.5, KITE_BACK_SPEED = 0.8, CONE_HALF_ANGLE = 30.0 * 3.14159265358979323846 / 180.0, CONE_PAD = 0.4;
 constexpr double ZONE_TARGET_PAD = 0.45, ZONE_TICK_S = 1.0, BURROW_STUCK_S = 0.8, DEFAULT_SLAM_R = 1.9;
+// Crowd spacing (World::resolve_overlaps): the share of an overlap removed per tick, and the most a body is moved by it in one tick.
+constexpr double OVERLAP_EASE = 0.3, OVERLAP_MAX_STEP = 0.15;
 // DmAffixSet: the shroud check runs every LOOK_S; a Miasma cover holds 350 ms (today wall-clock, here game time); a hungry body that found
 // nothing to eat looks again 0.5 s later; Vengeful's Risen stand on a 1.4 m ring.
 constexpr double AFFIX_LOOK_S = 0.1, MIASMA_HOLD_S = 0.35, HUNGER_RETRY_S = 0.5, VENGEFUL_RING = 1.4;
@@ -191,6 +193,8 @@ struct World {
 	std::vector<int32_t> id_scratch;
 	std::vector<int32_t> toll_hits;   // the bell's targets (kept apart from id_scratch, which a burst inside the toll reuses)
 	std::vector<double> sep_scratch;  // thrall separation: pushed x, z per thrall
+	std::vector<double> overlap_scratch;  // enemy crowd spacing: correction x, z per enemy
+	std::vector<int32_t> near_scratch;
 	mutable std::vector<std::pair<double, int32_t>> hit_scratch;  // corpse queries: squared distance, id
 
 	World();
@@ -247,6 +251,9 @@ private:
 	int32_t engage(Enemy &e, float p_tx, float p_tz, double p_d, double p_dt);
 	void move(Enemy &e, double p_dt);
 	void separate();
+	void resolve_overlaps();
+	bool on_surface(const Enemy &e) const { return e.state != DEAD && e.state != BURROW && e.state != ERUPT; }
+	void keep_off_heroes(Enemy &e) const;
 	void step_zones(double p_dt);
 	void remove_dead_bodies();
 	void kill(int32_t p_slot, int32_t p_source);

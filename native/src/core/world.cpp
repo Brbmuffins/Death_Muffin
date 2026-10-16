@@ -884,9 +884,12 @@ void World::step(double p_dt) {
 	for (int32_t i = 0; i < n; i++) {
 		if (enemies[i].state != DEAD) {
 			move(enemies[i], p_dt);
-			if (enemies[i].affixes) {  // the "Affixes" child runs after its body moved (and after the status set)
-				tick_affixes(i, p_dt);
-			}
+		}
+	}
+	resolve_overlaps();
+	for (int32_t i = 0; i < n; i++) {
+		if (enemies[i].state != DEAD && enemies[i].affixes) {  // the "Affixes" child runs after its body moved (and after the status set)
+			tick_affixes(i, p_dt);
 		}
 	}
 	step_zones(p_dt);
@@ -904,33 +907,41 @@ void World::step(double p_dt) {
 	grid.rebuild(gx.data(), gz.data(), grid_count);
 }
 
-// Replaces Godot's RVO avoidance (B42): bodies that overlap push each other apart through their wanted velocity. Surface bodies only.
+// Replaces Godot's RVO avoidance (B42), with resolve_overlaps() after the moves. A moving body near another (closer than their radii + 0.1)
+// does not drive into it: the part of its wanted velocity that points at that neighbour is dropped, so a crowd queues and slides around
+// instead of piling into the bodies in front; and it is pushed away in proportion to the closeness. Surface bodies only, slot order.
 void World::separate() {
 	const int32_t n = int32_t(enemies.size());
 	for (int32_t i = 0; i < n; i++) {
 		Enemy &a = enemies[i];
-		if (a.state == DEAD || a.state == BURROW || a.state == ERUPT || (a.want_vx == 0.0 && a.want_vz == 0.0)) {
+		if (!on_surface(a) || (a.want_vx == 0.0 && a.want_vz == 0.0)) {
 			continue;
 		}
-		double px = 0.0, pz = 0.0;
+		const double sp = std::sqrt(a.want_vx * a.want_vx + a.want_vz * a.want_vz);
+		double vx = a.want_vx, vz = a.want_vz, px = 0.0, pz = 0.0;
 		for (int32_t j = 0; j < n; j++) {
 			const Enemy &b = enemies[j];
-			if (j == i || b.state == DEAD || b.state == BURROW || b.state == ERUPT) {
+			if (j == i || !on_surface(b)) {
 				continue;
 			}
 			const float dx = a.x - b.x, dz = a.z - b.z;
 			const double d = std::sqrt(double(dx) * dx + double(dz) * dz);
 			const double want = a.radius + b.radius + 0.1;
 			if (d < want && d > 1e-4) {
+				const double ux = dx / d, uz = dz / d;  // away from b
 				const double push = (want - d) / want;
-				px += dx / d * push;
-				pz += dz / d * push;
+				px += ux * push;
+				pz += uz * push;
+				const double into = -(vx * ux + vz * uz);  // speed toward b
+				if (into > 0.0) {
+					vx += ux * into;
+					vz += uz * into;
+				}
 			}
 		}
 		if (px != 0.0 || pz != 0.0) {
-			const double sp = std::sqrt(a.want_vx * a.want_vx + a.want_vz * a.want_vz);
-			a.want_vx += px * sp;
-			a.want_vz += pz * sp;
+			a.want_vx = vx + px * sp;
+			a.want_vz = vz + pz * sp;
 		}
 	}
 }
@@ -943,17 +954,7 @@ void World::move(Enemy &e, double p_dt) {
 		e.x += float(vx * p_dt);
 		e.z += float(vz * p_dt);
 		if (e.state != BURROW && e.state != ERUPT) {
-			for (const External &x : externals) {  // the hero capsule blocks enemies (layer PLAYER)
-				if (!x.alive || x.kind != 0) {
-					continue;
-				}
-				const float dx = e.x - x.x, dz = e.z - x.z;
-				const double d = std::sqrt(double(dx) * dx + double(dz) * dz), min_d = e.radius + x.radius;
-				if (d < min_d && d > 1e-4) {
-					e.x = x.x + float(dx / d * min_d);
-					e.z = x.z + float(dz / d * min_d);
-				}
-			}
+			keep_off_heroes(e);
 		}
 		if (nav.clamp) {
 			nav.clamp(nav.user, e.x, e.z);
@@ -961,6 +962,102 @@ void World::move(Enemy &e, double p_dt) {
 		e.yaw = float(lerp_angle(e.yaw, std::atan2(vx, vz), std::min(1.0, TURN_RATE * p_dt)));
 	}
 	e.want_vx = e.want_vz = 0.0;
+}
+
+void World::keep_off_heroes(Enemy &e) const {  // the hero capsule blocks enemies (layer PLAYER)
+	for (const External &x : externals) {
+		if (!x.alive || x.kind != 0) {
+			continue;
+		}
+		const float dx = e.x - x.x, dz = e.z - x.z;
+		const double d = std::sqrt(double(dx) * dx + double(dz) * dz), min_d = e.radius + x.radius;
+		if (d < min_d && d > 1e-4) {
+			e.x = x.x + float(dx / d * min_d);
+			e.z = x.z + float(dz / d * min_d);
+		}
+	}
+}
+
+// Crowd spacing, the rest of what Godot's RVO did for today's bodies (B42; native/README.md "Differences"): separate() only steers bodies that
+// want to move, so a crowd standing around its target (attacking, idle) would pile up. After everyone moved, every overlapping pair of surface
+// bodies, moving or standing, eases apart by OVERLAP_EASE of its overlap, split by size (the bigger body gives way less), each body by at most
+// OVERLAP_MAX_STEP per tick. Corrections are summed from the same positions before any is applied, so the result does not depend on slot order.
+// Neighbours come from the grid (built at the end of the last tick, so its query is padded by the most a body moves in a tick) and a scan of
+// the slots spawned since.
+void World::resolve_overlaps() {
+	const int32_t n = int32_t(enemies.size());
+	double max_r = 0.0;
+	for (const Enemy &e : enemies) {
+		max_r = std::max(max_r, e.radius);
+	}
+	overlap_scratch.assign(size_t(n) * 2, 0.0);
+	double *ox = overlap_scratch.data(), *oz = ox + n;
+	bool any = false;
+	auto pair = [&](int32_t i, int32_t j) {
+		const Enemy &a = enemies[i], &b = enemies[j];
+		const double dx = double(a.x) - double(b.x), dz = double(a.z) - double(b.z);
+		const double want = a.radius + b.radius, d2 = dx * dx + dz * dz;
+		if (d2 >= want * want) {
+			return;
+		}
+		const double d = std::sqrt(d2);
+		double ux, uz;
+		if (d > 1e-4) {
+			ux = dx / d;
+			uz = dz / d;
+		} else {  // exactly on top of each other: part along a fixed direction from the pair's ids, so it is the same on every run
+			const double ang = double((a.id * 7919 + b.id * 104729) % 360) * PI / 180.0;
+			ux = std::cos(ang);
+			uz = std::sin(ang);
+		}
+		const double pen = (want - d) * OVERLAP_EASE, wa = b.radius / want, wb = a.radius / want;
+		ox[i] += ux * pen * wa;
+		oz[i] += uz * pen * wa;
+		ox[j] -= ux * pen * wb;
+		oz[j] -= uz * pen * wb;
+		any = true;
+	};
+	const int32_t gc = std::min(grid_count, n);
+	for (int32_t i = 0; i < n; i++) {
+		const Enemy &a = enemies[i];
+		if (!on_surface(a)) {
+			continue;
+		}
+		if (i < gc) {
+			grid.query(a.x, a.z, float(a.radius + max_r + 0.5), near_scratch);
+			for (const int32_t j : near_scratch) {
+				if (j > i && j < gc && on_surface(enemies[j])) {
+					pair(i, j);
+				}
+			}
+		}
+		for (int32_t j = std::max(gc, i + 1); j < n; j++) {  // the slots spawned since the grid was built, against every body
+			if (on_surface(enemies[j])) {
+				pair(i, j);
+			}
+		}
+	}
+	if (!any) {
+		return;
+	}
+	for (int32_t i = 0; i < n; i++) {
+		double cx = ox[i], cz = oz[i];
+		if (cx == 0.0 && cz == 0.0) {
+			continue;
+		}
+		const double len = std::sqrt(cx * cx + cz * cz);
+		if (len > OVERLAP_MAX_STEP) {
+			cx *= OVERLAP_MAX_STEP / len;
+			cz *= OVERLAP_MAX_STEP / len;
+		}
+		Enemy &e = enemies[i];
+		e.x += float(cx);
+		e.z += float(cz);
+		keep_off_heroes(e);
+		if (nav.clamp) {
+			nav.clamp(nav.user, e.x, e.z);
+		}
+	}
 }
 
 void World::step_zones(double p_dt) {  // DmHostileZone._physics_process

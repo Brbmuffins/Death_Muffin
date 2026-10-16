@@ -64,14 +64,18 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
 ## Differences from today's game
 
 Every place the core does not do exactly what today's GDScript does, so Helix can judge them in the test build (B42):
-- **Crowd spacing:** Godot's RVO avoidance (applied a tick late) is replaced by a push-apart between overlapping bodies. The one
+- **Crowd spacing:** Godot's RVO avoidance (applied a tick late) is replaced by the core's own: a moving body does not drive into a neighbour
+  in its way (that part of its velocity is dropped, so a crowd queues and slides around) and is steered away from it, and after the moves every
+  overlapping pair, moving or standing, eases apart by 30% of its overlap per tick (at most 15 cm a tick, the bigger body giving way less).
+  Forty bodies closing on one hero pack around him with no pair sunk into another (`client/tests/core_enemies.gd`, crowd spacing). The one
   planned difference in feel.
 - **Walls and the hero:** today `move_and_slide` slides a body along walls and the hero's capsule; the core moves it, pushes it out
   of the hero's circle and snaps it back onto the navmesh. Close to today on open ground, may differ in corners.
 - **No idle LOD:** today a far idle body thinks at 10 Hz; the core runs every body at 60 Hz (cheap enough in C++). Idle wander
   changes a little; nothing a player sees.
 - **Brains first, then movement:** today each body thinks and moves before the next one thinks; the core runs every brain, then
-  every move. Bodies never read each other's positions in the same tick except for crowd spacing, which was a tick late anyway.
+  every move, the crowd spacing, then every affix. Bodies never read each other's positions in the same tick except for crowd spacing, which was
+  a tick late anyway.
 - **Thralls move like enemies do:** no `move_and_slide`; the core moves the body and snaps it back onto the navmesh (thralls pass through the hero
   and enemies today too: their mask is the world only). A thrall thinks and moves before the next one does, as today. The thrall agent's RVO is
   off by default today and is not ported; the host's soft separation (radius 0.4, push 6, per legion) is. Paths are followed at 1.0 m (the thrall
@@ -141,7 +145,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   writing the MultiMesh buffers; a port of the view layer of `godot/game`, which does not touch the simulation).
 - Tests: `client/tests/core_smoke.gd` (loads, answers), `client/tests/core_api.gd` (queries in spawn order, synchronous kills,
   events, seeded stats, the rise and the 4 s body linger) and `client/tests/core_enemies.gd` (the Graves roster against today's
-  rules: bite timing, cone, dust cloud, slam, hit-and-run, tunnel and eruption, leash, stagger, stun), `client/tests/core_status.gd`
+  rules: bite timing, cone, dust cloud, slam, hit-and-run, tunnel and eruption, leash, stagger, stun, crowd spacing), `client/tests/core_status.gd`
   (the 0.1 s step, DoT lumps, stacking and ownership, multipliers, stun, dig-in clear, Withered on death, wire bytes),
   `client/tests/core_corpses.gd` (kinds, the order in a death, extra corpses, the cap, lifetime, toxic rupture and its pool, the pick and consume
   rules) and `client/tests/core_thralls.gd` (the rise, caps and make_room, formation and leash, the scan and the boss edge rule, the swing and its

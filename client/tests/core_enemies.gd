@@ -1,6 +1,7 @@
 extends SceneTree
 ## The core's enemy brain against today's rules (godot/enemies, combat map sections 2 and 12): chase and bite timing, the penitent's cone,
-## the moth's dust cloud, the sac's slam, the bat's hit-and-run, the ghoul's tunnel and eruption, leash and return, stagger and stun.
+## the moth's dust cloud, the sac's slam, the bat's hit-and-run, the ghoul's tunnel and eruption, leash and return, stagger and stun, and the
+## crowd spacing that replaces RVO.
 ## Seeded and without a navmesh (straight lines). Run: godot --headless --path client --script res://tests/core_enemies.gd
 
 const EV_STATE := 2
@@ -98,6 +99,7 @@ func _init() -> void:
 	ghoul()
 	leash()
 	stagger_and_stun()
+	crowd_spacing()
 	if fails == 0:
 		print("PASS core_enemies %d checks" % checks)
 	quit(1 if fails > 0 else 0)
@@ -245,3 +247,39 @@ func stagger_and_stun() -> void:
 	check(c.enemy_info(r)["state"] == HURT, "stun: forces HURT mid-swing")
 	var hit := run_until(c, func(e: Dictionary) -> bool: return e["type"] == EV_HIT, 60)
 	check(hit[0] < 0, "stun: the cancelled swing never lands")
+
+
+## Crowd spacing (native/README.md "Differences": the core's own steering and overlap easing replace Godot's RVO). Forty bodies close on one hero
+## and stand around him attacking: they pack around him without piling into each other, as RVO kept today's crowds.
+func crowd_spacing() -> void:
+	var c := make(3)
+	hero(c, Vector2(0, 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	for i in 40:
+		var a := rng.randf() * TAU
+		var r := 6.0 + rng.randf() * 6.0
+		c.spawn_enemy("hound" if i % 2 == 0 else "robber", Vector2(cos(a) * r, sin(a) * r), 1, 1000.0, 0.0, false, "graves", false)
+	run_until(c, func(_e: Dictionary) -> bool: return false, 600)
+	var ids: PackedInt32Array = c.enemy_ids()
+	var pos: PackedFloat32Array = c.enemy_positions()
+	var rad := []
+	var near := 0
+	for i in ids.size():
+		rad.append(float(c.enemy_info(ids[i])["radius"]))
+		if Vector2(pos[i * 3], pos[i * 3 + 1]).length() < 3.5:
+			near += 1
+	var overlaps := 0
+	var deep := 0
+	var worst := 0.0
+	for i in ids.size():
+		for j in range(i + 1, ids.size()):
+			var d := Vector2(pos[i * 3] - pos[j * 3], pos[i * 3 + 1] - pos[j * 3 + 1]).length()
+			var rr: float = rad[i] + rad[j]
+			if d < rr:
+				overlaps += 1
+				worst = maxf(worst, (rr - d) / rr)
+				if d < rr * 0.5:
+					deep += 1
+	check(near >= 20, "the crowd reached the hero (%d within 3.5 m)" % near)
+	check(deep == 0 and worst < 0.15, "after 10 s around the hero no two bodies sink into each other (%d overlap, the deepest by %d%% of their radii)" % [overlaps, int(worst * 100.0)])
