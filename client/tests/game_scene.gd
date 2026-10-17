@@ -254,10 +254,11 @@ func kinds() -> void:
 	var ids := {}
 	ids["penitent"] = host.spawn_enemy("penitent", at + Vector3(0.0, 0.0, -7.0), 1, 1.0, 1.0, false, "graves", false)
 	ids["moth"] = host.spawn_enemy("moth", at + Vector3(5.0, 0.0, -6.0), 1, 1.0, 1.0, false, "graves", false)
-	ids["sac"] = host.spawn_enemy("sac", at + Vector3(-5.0, 0.0, -5.0), 1, 1.0, 1.0, false, "graves", false)
+	ids["sac"] = host.spawn_enemy("sac", at + Vector3(-1.8, 0.0, -1.2), 1, 1.0, 1.0, false, "graves", false)   # the slow hazards start at arm's length:
+	# eleven bodies ring him in this phase, and a sac (or a golem) still walking in would find no room to slam from
 	ids["ghoul"] = host.spawn_enemy("ghoul", at + Vector3(0.0, 0.0, -9.0), 1, 1.0, 1.0, false, "graves", false)
 	ids["deacon"] = host.spawn_enemy("deacon", at + Vector3(4.0, 0.0, -4.0), 1, 1.0, 1.0, false, "ossuary", false)
-	ids["golem"] = host.spawn_enemy("golem", at + Vector3(-6.0, 0.0, 4.0), 1, 1.0, 1.0, false, "ossuary", false)
+	ids["golem"] = host.spawn_enemy("golem", at + Vector3(-1.6, 0.0, 2.0), 1, 1.0, 1.0, false, "ossuary", false)
 	ids["wraith"] = host.spawn_enemy("wraith", at + Vector3(-8.0, 0.0, -3.0), 1, 1.0, 1.0, false, "nave", false)
 	ids["gargoyle"] = host.spawn_enemy("gargoyle", at + Vector3(3.0, 0.0, -8.5), 1, 1.0, 1.0, false, "nave", false)
 	ids["templar"] = host.spawn_enemy("templar", at + Vector3(0.0, 0.0, -3.0), 1, 1.0, 1.0, false, "nave", false)
