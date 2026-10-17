@@ -253,25 +253,25 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
     acolyte, gargoyle, templar and wraith, the Sanctum's and Cloister's seraph, flagellant and plague doctor, and the Cinder Pyre's husk, priest, hound and slag brute and the
     Mourning Fen's hag, leech, wisp and sexton (2026-10-17), with their crowd models: every area's roster runs on the core (the bosses' adds come with the bosses).
   - [ ] The benchmark's other rooms (today's Sanctum and the rest), so Gate C can compare every room.
-- [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
+- [x] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
   Progress (2026-10-17, client/README.md "The bosses"): all seven bosses wake in their areas (`served_areas`), their brains the copies of today's, each replayed against its recorded scenarios (44) and fought by hand against today's numbers
   (`client/tests/boss_abbess|congregation|prelate|saint|regent|mire.gd` on `boss_base.gd`, 130 to 160 checks each, with the summon at the altar, thralls, rites, wipe, defeat and rewards). The core got the `niche` kind (the Abbess's Skull Niche),
   `set_enemy_hp`, and zones for a boss (`add_zone`, `zones`: the Saint's rot, the Regent's coals), with their wire (`client/tests/core_boss.gd`); the corpses (`devoured`, `raised`), the pews and the Mire Mother's sunk state ride the core's existing
   calls. `DmBossMeta` and the HUD's boss-key prompt are in (`client/tests/boss_meta.gd`, on the mock backend). The Prelate's echoes are the world's vows, none in the rebuild (B36; native/README.md "Differences").
   Every add a boss calls is a core body now (the Cloister's, the Pyre's and the Fen's kinds are on the core): each boss suite checks its waves arrive on the rim in the boss's area, and the Saint's doctors feed her through the link as real bodies.
-  Left: the six bosses' two-player fights are not in a test yet (the state and events are `DmBossHost`'s, as the King's).
-- [ ] The Depths and gathering (the Chapterhouse came with the areas, DECISIONS B47).
+  Their two-player fights are the co-op item's ("Still to do beside the core").
+- [x] The Depths and gathering (the Chapterhouse came with the areas, DECISIONS B47).
   - [x] The Depths (2026-10-17, client/README.md "The Depths"): the instanced descent on the core: floors generated on a worker thread, baked off the main thread and handed to the core (one floor's triangles, replaced per floor), the dead
     core bodies with their own aggro, the stair, quota, chest and rewards on the server as today, the HUD's readout, map and prompt, solo, death takes nothing; every band's kinds are on the core, so the rosters are today's.
     `client/tests/depths.gd`.
   - [x] Gathering and the Acre (2026-10-17; client/README.md "Gathering and the Acre", `client/tests/gathering.gd`): the nodes of every area hovered, clicked and worked through the server (the walk, the cycle, the batches, the finds and XP the server decides, spent and
     back, Auto, AFK and its report), the professions' levels and banners, the Acre ledger's panels, the Grave Laborers as pooled views (at most four, only in the Acre), the garden, the contracts and the Sexton's and the Next box's feeds; a guest holds the nodes and cannot gather, as today.
-- [ ] Tips, onboarding and sound on the core's events.
+- [x] Tips, onboarding and sound on the core's events.
   - [x] The counsel on the core (2026-10-17, client/README.md "Tips and onboarding", `client/tests/counsel.gd`): `DmNextCounsel` ported, its fight, corpse, pack and legion facts asked of the core on the 400 ms poll (0.18 ms with 72 bodies
     and 30 corpses), the spawn, corpse, Sanctify and hurt facts the core host's events, each tip fired once on the facts of today's table; the first hour's `world_entered` (the welcome tip, the signature and Grimoire tips) was
     never raised in the game scene and is now. The build has no Altar (B36): the vows, altar_unlocks and boons tips are held back (native/README.md "Differences").
   - [x] Sound on the core's events (`client/README.md` "Sound", `client/tests/sound.gd`): the thralls' rise and death, the gate sound (an event, not a poll of every door), a scripted fight's cues against today's rules by name and count.
-    Left in it: the Depths' sounds come with the Depths.
+    The Depths play today's sounds (the stairs' gate, the chest, a refusal, the floor's level-up) from `DmDepths`.
 - [ ] Gate C: every rule test matches today's, playtests OK, nothing slower than the test build.
 
 **Working rules for the rebuild.**
