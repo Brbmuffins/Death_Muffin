@@ -36,8 +36,10 @@ func _initialize() -> void:
 		var clips := []
 		for c in r.clips:
 			clips.append("%s %d@%.1f (%.0f mm%s)" % [c.name, c.frames, c.fps, c.error * 1000.0, ", loop seam %.0f mm" % (c.seam * 1000.0) if c.seam > 0.01 else ""])
-		print("%s: %d triangles (%s), %d vertices -> %d animation ids, %d frames, textures %s (%.1f MB), %.0f s\n  clips (frames@per second, worst interpolation error): %s%s" % [
+		# A body: its position and normal textures (positions within `pos_error` of the baked ones); a thrall variant: only its hand props' track (the body's textures are the plain model's).
+		var what: String = "hand-prop track %s" % str(r.texture) if r.get("variant", false) else "textures %s, positions within %.2f mm" % [str(r.texture), float(r.pos_error) * 1000.0]
+		print("%s: %d triangles (%s), %d vertices -> %d animation ids, %d frames, %s (%.2f MB), %.0f s\n  clips (frames@per second, worst interpolation error): %s%s" % [
 			slug, r.source_triangles, ",".join(Array(r.triangles).map(func(t: int) -> String: return str(t))), r.vertices, r.anim_vertices, r.frames,
-			str(r.texture), float(r.pos_bytes + r.nrm_bytes) / 1048576.0, r.seconds, ", ".join(clips),
+			what, float(r.bytes) / 1048576.0, r.seconds, ", ".join(clips),
 			"\n  OVER BUDGET: no level of detail within the triangle budget" if r.over_budget else ""])
 	quit(1 if failed else 0)

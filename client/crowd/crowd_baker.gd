@@ -382,28 +382,45 @@ static func oct_decode(r: float, g: float) -> Vector3:
 # --------------------------------------------------------------------------------------------------------------------------------- bake
 
 ## Bakes model `slug` into `out_dir` (res:// or user://). `opts`: assets_dir, rows_path, clips (only these, for tests), max_triangles.
-## Returns {ok, error, slug, triangles (per level), frames, anim_vertices, vertices, pos_bytes, nrm_bytes, clips: [plan], seconds, over_budget}.
-## `slug` may name a variant, "<model>+<thrall kind>": the model carrying that kind's hand props (`thrall_props` in crowd_looks.json), baked as its own model.
+## Returns {ok, error, slug, triangles (per level), frames, anim_vertices, vertices, pos_bytes, nrm_bytes, bytes, clips: [plan], seconds, over_budget}.
+## `slug` may name a variant, "<model>+<thrall kind>": the plain model carrying that kind's hand props (`thrall_props` in crowd_looks.json). The variant shares the
+## plain body's textures (`<out_dir>/../<model>`, baked first when it is not there or is of another format) and adds its props' mesh and a transform track: `_bake_variant`.
 static func bake(host: Node, slug: String, out_dir: String, opts := {}) -> Dictionary:
 	var started := Time.get_ticks_msec()
 	var assets_dir: String = opts.get("assets_dir", default_assets_dir())
 	var parts := split_variant(slug)
+	var result: Dictionary
 	if String(parts[1]) != "":
-		opts = opts.duplicate()
-		opts["props"] = props_for(String(parts[1]))
-		opts["variant_slug"] = slug
-		if (opts.props as Array).is_empty():
-			return {"ok": false, "error": "%s: no hand props for the thrall kind '%s' (crowd_looks.json thrall_props)" % [slug, parts[1]]}
-	var m := load_model(host, String(parts[0]), assets_dir, opts.get("rows_path", default_rows_path()))
-	if not m.ok:
-		return m
-	if opts.has("props") and m.get("static", false):
+		result = _bake_variant(host, slug, String(parts[0]), String(parts[1]), out_dir, opts, assets_dir)
+	else:
+		var m := load_model(host, String(parts[0]), assets_dir, opts.get("rows_path", default_rows_path()))
+		if not m.ok:
+			return m
+		result = _bake_static(m, out_dir, opts, assets_dir) if m.get("static", false) else _bake_loaded(m, out_dir, opts, assets_dir)
 		(m.root as Node).free()
-		return {"ok": false, "error": "%s: hand props need a rigged model" % slug}
-	var result := _bake_static(m, out_dir, opts, assets_dir) if m.get("static", false) else _bake_loaded(m, out_dir, opts, assets_dir)
-	(m.root as Node).free()
 	result["seconds"] = float(Time.get_ticks_msec() - started) / 1000.0
 	return result
+
+
+## Animation ids: vertices that move alike (same place, normal and, for a rigged model, bones and weights; they differ only by UV seams) share one baked
+## column. Returns {ids (per vertex), rep (id -> first vertex with it)}; `per` 0 for an unrigged model.
+static func _unique_ids(verts: PackedVector3Array, normals: PackedVector3Array, bones: PackedInt32Array, weights: PackedFloat32Array, per: int) -> Dictionary:
+	var ids := PackedInt32Array()
+	ids.resize(verts.size())
+	var rep := PackedInt32Array()   # id -> first vertex with it
+	var seen := {}
+	for i in verts.size():
+		var key := "%d,%d,%d,%d,%d,%d" % [roundi(verts[i].x * 1e5), roundi(verts[i].y * 1e5), roundi(verts[i].z * 1e5),
+			roundi(normals[i].x * 100.0), roundi(normals[i].y * 100.0), roundi(normals[i].z * 100.0)]
+		for k in per:
+			key += ",%d,%d" % [bones[i * per + k], roundi(weights[i * per + k] * 1e4)]
+		var id: int = seen.get(key, -1)
+		if id < 0:
+			id = rep.size()
+			seen[key] = id
+			rep.append(i)
+		ids[i] = id
+	return {"ids": ids, "rep": rep}
 
 
 static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir: String) -> Dictionary:
@@ -421,24 +438,10 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 	if vc == 0 or normals.size() != vc or uvs.size() != vc or bones.is_empty() or indices.is_empty():
 		return {"ok": false, "error": "%s: the mesh needs normals, UVs, bone weights and indices" % slug}
 	var per := bones.size() / vc
-	var bind_count := (m.binds as Array).size()
 
-	# Animation ids: vertices that move alike (same place, bones, weights and normal; they differ only by UV seams) share one baked column.
-	var ids := PackedInt32Array()
-	ids.resize(vc)
-	var rep := PackedInt32Array()   # id -> first vertex with it
-	var seen := {}
-	for i in vc:
-		var key := "%d,%d,%d,%d,%d,%d" % [roundi(verts[i].x * 1e5), roundi(verts[i].y * 1e5), roundi(verts[i].z * 1e5),
-			roundi(normals[i].x * 100.0), roundi(normals[i].y * 100.0), roundi(normals[i].z * 100.0)]
-		for k in per:
-			key += ",%d,%d" % [bones[i * per + k], roundi(weights[i * per + k] * 1e4)]
-		var id: int = seen.get(key, -1)
-		if id < 0:
-			id = rep.size()
-			seen[key] = id
-			rep.append(i)
-		ids[i] = id
+	var unique := _unique_ids(verts, normals, bones, weights, per)
+	var ids: PackedInt32Array = unique.ids
+	var rep: PackedInt32Array = unique.rep
 	var uc := rep.size()
 	var rv := PackedVector3Array()
 	var rn := PackedVector3Array()
@@ -451,12 +454,8 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 		for k in per:
 			rb.append(bones[v * per + k])
 			rw.append(weights[v * per + k])
-	# Hand props (a variant): their own animation ids after the body's, placed rigidly on their bone every frame (_place_props).
-	var props: Array = opts.get("props", [])
-	var g := _prop_geometry(props) if not props.is_empty() else {}
-	var up: int = (g.verts as PackedVector3Array).size() if not g.is_empty() else 0
-	var rpf := ceili(float(uc + up) / MAX_WIDTH)
-	var width := ceili(float(uc + up) / rpf)
+	var rpf := ceili(float(uc) / MAX_WIDTH)
+	var width := ceili(float(uc) / rpf)
 
 	# Which clips, and how many frames.
 	var have: Array = []
@@ -472,16 +471,12 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 	if used.is_empty() or used.size() > CrowdVatData.MAX_CLIPS:
 		return {"ok": false, "error": "%s: %d clips to bake (1..%d allowed)" % [slug, used.size(), CrowdVatData.MAX_CLIPS]}
 	var timings: Dictionary = (m.row as Dictionary).get("timings", {})
-	var pr := {}
-	if up > 0:
-		var idle: Array = roles.get("idle", [])
-		pr = {"g": g, "rig": _prop_rig(m, props, String(idle[0]) if not idle.is_empty() else String(used[0])), "at": uc}
 	var plans: Array = []
 	var sampled: Array = []   # per plan: {pos: [PackedVector3Array per frame], nrm: [...]}
 	var total := 0
 	for nm in used:
 		var range_ := clip_range(nm, ap.get_animation(nm).length, timings)
-		var got := _sample_clip(m, range_, rv, rn, rb, rw, per, pr)
+		var got := _sample_clip(m, range_, rv, rn, rb, rw, per)
 		got.plan["first"] = total
 		total += int(got.plan.frames)
 		plans.append(got.plan)
@@ -496,42 +491,15 @@ static func _bake_loaded(m: Dictionary, out_dir: String, opts: Dictionary, asset
 	rest_p.resize(vc)
 	rest_n.resize(vc)
 	skin(rest_matrices(m), verts, normals, bones, weights, per, rest_p, rest_n)
-	var parts := PackedFloat32Array()   # the material part of every vertex: 0 the body, k a prop part (CUSTOM0.y)
-	parts.resize(vc)
-	if up > 0:   # the props join the mesh: their rest is where the idle pose holds them, their part, their own animation ids
-		var idle_p := PackedVector3Array()
-		var idle_n := PackedVector3Array()
-		idle_p.resize(up)
-		idle_n.resize(up)
-		pose_at(m, String((pr.rig as Array)[0].idle), PROP_CALIBRATE_S)
-		_place_props(m, pr, idle_p, idle_n, 0)
-		rest_p.append_array(idle_p)
-		rest_n.append_array(idle_n)
-		parts.append_array(g.part)
-		for j in up:
-			ids.append(uc + j)
-			uvs.append(Vector2.ZERO)
-		var merged := []
-		merged.resize(Mesh.ARRAY_MAX)
-		merged[Mesh.ARRAY_VERTEX] = rest_p
-		merged[Mesh.ARRAY_NORMAL] = rest_n
-		merged[Mesh.ARRAY_TEX_UV] = uvs
-		var idx: PackedInt32Array = (arrays[Mesh.ARRAY_INDEX] as PackedInt32Array).duplicate()
-		for k in (g.indices as PackedInt32Array):
-			idx.append(vc + k)
-		merged[Mesh.ARRAY_INDEX] = idx
-		arrays = merged
-		vc += up
 	var meta: Array = []
 	for plan in plans:
 		var src := ap.get_animation(plan.name)
 		var timing: Variant = timings.get(plan.name)
 		meta.append({"source_length": src.length, "impact": float(timing[1]) if timing is Array and timing.size() > 1 else -1.0,
 			"landing": landing_time(src) if String(plan.name).rstrip("0123456789") == "death" else -1.0})
-	return _write(m, out_dir, opts, assets_dir, {"plans": plans, "sampled": sampled, "total": total, "uc": uc + up, "width": width, "rpf": rpf,
+	return _write(m, out_dir, opts, assets_dir, {"plans": plans, "sampled": sampled, "total": total, "uc": uc, "width": width, "rpf": rpf,
 		"ids": ids, "vc": vc, "rest_p": rest_p, "rest_n": rest_n, "uvs": uvs, "arrays": arrays, "roles": roles, "meta": meta,
-		"source_triangles": indices.size() / 3, "parts": parts, "part_mats": g.get("parts", []),
-		"prop_triangles": (g.indices as PackedInt32Array).size() / 3 if not g.is_empty() else 0})
+		"source_triangles": indices.size() / 3})
 
 ## An unrigged model's bake: one baked loop, the wing beat for a winged model (FLAP_FRAMES frames over 2 pi / speed seconds) or a still pose
 ## for the rest, playing every role (today the shader keeps beating through a fall, and the body layer does the rest).
@@ -546,19 +514,9 @@ static func _bake_static(m: Dictionary, out_dir: String, opts: Dictionary, asset
 	var vc := verts.size()
 	if vc == 0 or normals.size() != vc or uvs.size() != vc or indices.is_empty():
 		return {"ok": false, "error": "%s: the mesh needs normals, UVs and indices" % slug}
-	var ids := PackedInt32Array()
-	ids.resize(vc)
-	var rep := PackedInt32Array()
-	var seen := {}
-	for i in vc:   # vertices at the same place with the same normal move alike (they differ only by UV seams)
-		var key := "%d,%d,%d,%d,%d,%d" % [roundi(verts[i].x * 1e5), roundi(verts[i].y * 1e5), roundi(verts[i].z * 1e5),
-			roundi(normals[i].x * 100.0), roundi(normals[i].y * 100.0), roundi(normals[i].z * 100.0)]
-		var id: int = seen.get(key, -1)
-		if id < 0:
-			id = rep.size()
-			seen[key] = id
-			rep.append(i)
-		ids[i] = id
+	var unique := _unique_ids(verts, normals, PackedInt32Array(), PackedFloat32Array(), 0)   # vertices at the same place with the same normal move alike
+	var ids: PackedInt32Array = unique.ids
+	var rep: PackedInt32Array = unique.rep
 	var uc := rep.size()
 	var rv := PackedVector3Array()
 	var rn := PackedVector3Array()
@@ -644,13 +602,23 @@ static func _write(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir:
 	var arrays: Array = w.arrays
 	var roles: Dictionary = w.roles
 	var height := total * rpf
-	# Write every frame into the textures.
-	var pos := PackedFloat32Array()
+	# The bounds of every pose, the radices of the position codes over them, then every frame into the textures.
+	var lo := Vector3(INF, INF, INF)
+	var hi := Vector3(-INF, -INF, -INF)
+	for c in plans.size():
+		for f in int(plans[c].frames):
+			for p: Vector3 in sampled[c].pos[f]:
+				lo = lo.min(p)
+				hi = hi.max(p)
+	var aabb := AABB(lo, hi - lo)
+	var radix := position_radix(aabb.size)
+	var step := position_step(aabb.size, radix)
+	var inv := Vector3.ONE / step
+	var pos := PackedByteArray()
 	pos.resize(height * width * 4)
 	var nrm := PackedByteArray()
 	nrm.resize(height * width * 2)
-	var lo := Vector3(INF, INF, INF)
-	var hi := Vector3(-INF, -INF, -INF)
+	var worst := 0.0   # the largest distance of a decoded position from the baked one
 	for c in plans.size():
 		for f in int(plans[c].frames):
 			var out_p: PackedVector3Array = sampled[c].pos[f]
@@ -658,65 +626,38 @@ static func _write(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir:
 			var base := (int(plans[c].first) + f) * rpf * width
 			for i in uc:
 				var p := out_p[i]
+				var code := position_code(p, lo, inv, radix)
 				var o := (base + i) * 4
-				pos[o] = p.x
-				pos[o + 1] = p.y
-				pos[o + 2] = p.z
-				pos[o + 3] = 1.0
-				lo = lo.min(p)
-				hi = hi.max(p)
+				pos[o] = code & 255
+				pos[o + 1] = (code >> 8) & 255
+				pos[o + 2] = (code >> 16) & 255
+				pos[o + 3] = (code >> 24) & 255
+				worst = maxf(worst, (lo + Vector3(code % radix.x, (code / radix.x) % radix.y, code / (radix.x * radix.y)) * step - p).length())
 				var e := oct_encode(out_n[i])
 				nrm[(base + i) * 2] = roundi(e.x * 255.0)
 				nrm[(base + i) * 2 + 1] = roundi(e.y * 255.0)
-	var aabb := AABB(lo, hi - lo)
-	var pos_img := Image.create_from_data(width, height, false, Image.FORMAT_RGBAF, pos.to_byte_array())
-	pos_img.convert(Image.FORMAT_RGBAH)
+	var pos_img := Image.create_from_data(width, height, false, Image.FORMAT_RGBA8, pos)
 	var nrm_img := Image.create_from_data(width, height, false, Image.FORMAT_RG8, nrm)
 
-	# The mesh: the rest pose in creature space, the animation id of every vertex in CUSTOM0, one index list per level of detail.
+	# The mesh: the rest pose in creature space, the animation id of every vertex in CUSTOM0 (y, the material part, 0 for the body), one index list per level.
 	var rest_p: PackedVector3Array = w.rest_p
 	var rest_n: PackedVector3Array = w.rest_n
-	var parts: PackedFloat32Array = w.get("parts", PackedFloat32Array())
-	var ids_f := PackedFloat32Array()   # CUSTOM0: x the animation id, y the material part (0 the body, k a hand prop's part)
+	var ids_f := PackedFloat32Array()
 	ids_f.resize(vc * 2)
 	for i in vc:
 		ids_f[i * 2] = float(ids[i])
-		ids_f[i * 2 + 1] = parts[i] if i < parts.size() else 0.0
-	# The budget is the body's: a variant's hand props (a few hundred triangles) come on top, so an armed body keeps the detail its bare one has.
-	var levels := _levels(arrays, int(opts.get("max_triangles", MAX_TRIANGLES)) + int(w.get("prop_triangles", 0)))
-	var meshes: Array[Mesh] = []
-	var tris := PackedInt32Array()
-	for idx in levels.indices:
-		var a := []
-		a.resize(Mesh.ARRAY_MAX)
-		a[Mesh.ARRAY_VERTEX] = rest_p
-		a[Mesh.ARRAY_NORMAL] = rest_n
-		a[Mesh.ARRAY_TEX_UV] = uvs
-		a[Mesh.ARRAY_CUSTOM0] = ids_f
-		a[Mesh.ARRAY_INDEX] = idx
-		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a, [], {}, Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
-		mesh.custom_aabb = aabb
-		meshes.append(mesh)
-		tris.append((idx as PackedInt32Array).size() / 3)
+	var levels := _levels(arrays, int(opts.get("max_triangles", MAX_TRIANGLES)))
+	var made := _make_meshes(levels, rest_p, rest_n, uvs, ids_f, aabb)
 
 	# Write: textures and meshes as binary resources, the clip table and the links as one small text resource.
 	var dir := ProjectSettings.globalize_path(out_dir) if out_dir.begins_with("res://") else out_dir
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
-	var pos_tex := ImageTexture.create_from_image(pos_img)
-	var nrm_tex := ImageTexture.create_from_image(nrm_img)
 	var saved := {}
-	saved["pos"] = _save(pos_tex, out_dir.path_join("pos.res"))
-	saved["nrm"] = _save(nrm_tex, out_dir.path_join("nrm.res"))
-	var saved_meshes: Array[Mesh] = []
-	for l in meshes.size():
-		saved_meshes.append(_save(meshes[l], out_dir.path_join("mesh_lod%d.res" % l)))
+	saved["pos"] = _save(ImageTexture.create_from_image(pos_img), out_dir.path_join("pos.res"))
+	saved["nrm"] = _save(ImageTexture.create_from_image(nrm_img), out_dir.path_join("nrm.res"))
 	var data := CrowdVatData.new()
-	data.slug = String(opts.get("variant_slug", slug))
-	for pm: Dictionary in w.get("part_mats", []):
-		data.part_albedo.append(pm.albedo)
-		data.part_pbr.append(Vector4(pm.metal, pm.rough, 0.0, 0.0))
-		data.part_emission.append(pm.emis)
+	data.format = CrowdVatData.FORMAT
+	data.slug = slug
 	var found := _texture_paths(assets_dir, m.url)
 	data.albedo_path = found.albedo
 	data.orm_path = found.orm
@@ -741,21 +682,97 @@ static func _write(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir:
 	data.roles = roles
 	data.aabb = aabb
 	data.pos_tex = saved.pos
+	data.pos_lo = lo
+	data.pos_step = step
+	data.pos_radix = radix
 	data.nrm_tex = saved.nrm
-	data.meshes = saved_meshes
-	data.lod_triangles = tris
+	data.meshes = _save_meshes(made.meshes, out_dir)
+	data.lod_triangles = made.tris
 	var err := ResourceSaver.save(data, out_dir.path_join("model.tres"))
 	if err != OK:
 		return {"ok": false, "error": "%s: cannot write %s (%d)" % [slug, out_dir, err]}
-	return {"ok": true, "slug": data.slug, "prop_parts": data.part_albedo.size(), "dir": dir, "triangles": tris, "source_triangles": w.source_triangles, "over_budget": levels.over_budget,
+	return {"ok": true, "slug": data.slug, "dir": dir, "triangles": made.tris, "source_triangles": w.source_triangles, "over_budget": levels.over_budget,
 		"frames": total, "anim_vertices": uc, "vertices": vc, "texture": Vector2i(width, height), "clips": plans, "roles": roles,
-		"pos_bytes": width * height * 8, "nrm_bytes": width * height * 2, "aabb": aabb}
+		"pos_bytes": width * height * 4, "nrm_bytes": width * height * 2, "bytes": width * height * 6, "aabb": aabb, "pos_error": worst, "pos_radix": radix}
 
+
+## One mesh per level of detail from `levels` (`_levels`): the vertex arrays every level shares (CUSTOM0: x the animation id or the prop, y the material part)
+## and its own index list; `custom_aabb` = the bounds of every baked pose. Returns {meshes, tris (per level)}.
+static func _make_meshes(levels: Dictionary, verts: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVector2Array, custom: PackedFloat32Array, aabb: AABB) -> Dictionary:
+	var meshes: Array[Mesh] = []
+	var tris := PackedInt32Array()
+	for idx in levels.indices:
+		var a := []
+		a.resize(Mesh.ARRAY_MAX)
+		a[Mesh.ARRAY_VERTEX] = verts
+		a[Mesh.ARRAY_NORMAL] = normals
+		a[Mesh.ARRAY_TEX_UV] = uvs
+		a[Mesh.ARRAY_CUSTOM0] = custom
+		a[Mesh.ARRAY_INDEX] = idx
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a, [], {}, Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
+		mesh.custom_aabb = aabb
+		meshes.append(mesh)
+		tris.append((idx as PackedInt32Array).size() / 3)
+	return {"meshes": meshes, "tris": tris}
+
+
+static func _save_meshes(meshes: Array[Mesh], out_dir: String) -> Array[Mesh]:
+	var saved: Array[Mesh] = []
+	for l in meshes.size():
+		saved.append(_save(meshes[l], out_dir.path_join("mesh_lod%d.res" % l)))
+	return saved
+
+
+# ----------------------------------------------------------------------------------------------------------------------- position codes
+
+## Levels per axis of the position codes over a box of size `extent`: three integer codes in one 32-bit texel (`n = x + rx * (y + ry * z)`, rx * ry * rz at most
+## 2^32). The shader splits the 32 bits in two halves and divides by rx, so rx is a power of two; the baker picks the one, and the finest common step for y and
+## z within the rest of the 32 bits, whose largest step over the three axes is smallest. A position is then within half a step of its code, per axis.
+static func position_radix(extent: Vector3) -> Vector3i:
+	var best := Vector3i(2, 2, 2)
+	var best_step := INF
+	for k in range(4, 17):
+		var rx := 1 << k
+		var budget := (1 << 32) / rx
+		var lo_s := 1e-7
+		var hi_s := 1e4
+		for _i in 80:   # the finest common step for y and z whose levels fit the budget
+			var s := sqrt(lo_s * hi_s)
+			if _levels_at(extent.y, s) * _levels_at(extent.z, s) <= budget:
+				hi_s = s
+			else:
+				lo_s = s
+		var ry := _levels_at(extent.y, hi_s)
+		var rz := _levels_at(extent.z, hi_s)
+		var worst_step := maxf(extent.x / float(rx - 1), maxf(extent.y / float(ry - 1), extent.z / float(rz - 1)))
+		if worst_step < best_step:
+			best_step = worst_step
+			best = Vector3i(rx, ry, rz)
+	return best
+
+
+static func _levels_at(extent: float, step: float) -> int:
+	return maxi(2, ceili(extent / step) + 1)
+
+
+## The code of a position: `n = x + rx * (y + ry * z)` for the nearest code on each axis (`inv` = 1 / `position_step`, `lo` the box's corner).
+static func position_code(p: Vector3, lo: Vector3, inv: Vector3, radix: Vector3i) -> int:
+	var qx := clampi(roundi((p.x - lo.x) * inv.x), 0, radix.x - 1)
+	var qy := clampi(roundi((p.y - lo.y) * inv.y), 0, radix.y - 1)
+	var qz := clampi(roundi((p.z - lo.z) * inv.z), 0, radix.z - 1)
+	return qx + radix.x * (qy + radix.y * qz)
+
+
+## The size of one code step per axis (1 for an axis with no extent: every code is 0).
+static func position_step(extent: Vector3, radix: Vector3i) -> Vector3:
+	return Vector3(extent.x / float(radix.x - 1) if extent.x > 0.0 else 1.0, extent.y / float(radix.y - 1) if extent.y > 0.0 else 1.0,
+		extent.z / float(radix.z - 1) if extent.z > 0.0 else 1.0)
 
 ## Skins a clip at the fewest frames per second (FPS_STEPS) that keep interpolation within ERROR_TARGET, or at MAX_FRAMES.
 ## Returns {plan (frames, fps, error, seam), pos, nrm} with the skinned positions and normals of every frame.
 static func _sample_clip(m: Dictionary, range_: Dictionary, rv: PackedVector3Array, rn: PackedVector3Array, rb: PackedInt32Array, rw: PackedFloat32Array,
-		per: int, pr := {}) -> Dictionary:
+		per: int) -> Dictionary:
 	var tried := 0
 	var got := {}
 	for fps in FPS_STEPS:
@@ -763,16 +780,15 @@ static func _sample_clip(m: Dictionary, range_: Dictionary, rv: PackedVector3Arr
 		if frames == tried:
 			continue
 		tried = frames
-		got = _skin_frames(m, with_frames(range_, frames), rv, rn, rb, rw, per, pr)
+		got = _skin_frames(m, with_frames(range_, frames), rv, rn, rb, rw, per)
 		if got.plan.error <= ERROR_TARGET or frames == MAX_FRAMES:
 			break
 	return got
 
 
-## `pr` (a variant): the props' geometry and rig, placed after the body's `uc` animation ids each frame.
 static func _skin_frames(m: Dictionary, plan: Dictionary, rv: PackedVector3Array, rn: PackedVector3Array, rb: PackedInt32Array, rw: PackedFloat32Array,
-		per: int, pr := {}) -> Dictionary:
-	var uc := rv.size() + ((pr.g.verts as PackedVector3Array).size() if not pr.is_empty() else 0)
+		per: int) -> Dictionary:
+	var uc := rv.size()
 	var frames_p: Array = []
 	var frames_n: Array = []
 	var mid_p := PackedVector3Array()
@@ -787,15 +803,11 @@ static func _skin_frames(m: Dictionary, plan: Dictionary, rv: PackedVector3Array
 		out_n.resize(uc)
 		pose_at(m, plan.name, frame_time(plan, f))
 		skin(pose_matrices(m), rv, rn, rb, rw, per, out_p, out_n)
-		if not pr.is_empty():
-			_place_props(m, pr, out_p, out_n, int(pr.at))
 		frames_p.append(out_p)
 		frames_n.append(out_n)
 		if f > 0:   # how far the straight line between this frame and the last strays from the true pose half-way between them
 			pose_at(m, plan.name, (frame_time(plan, f - 1) + frame_time(plan, f)) * 0.5)
 			skin(pose_matrices(m), rv, rn, rb, rw, per, mid_p, mid_n)
-			if not pr.is_empty():
-				_place_props(m, pr, mid_p, mid_n, int(pr.at))
 			var prev: PackedVector3Array = frames_p[f - 1]
 			for i in uc:
 				error = maxf(error, (mid_p[i] - (prev[i] + out_p[i]) * 0.5).length())
@@ -803,8 +815,6 @@ static func _skin_frames(m: Dictionary, plan: Dictionary, rv: PackedVector3Array
 	if plan.loop:   # a loop's last frame blends into its first; a clip whose last key differs from its first shows that jump (the game pops at it)
 		pose_at(m, plan.name, plan.seconds - 1e-4)
 		skin(pose_matrices(m), rv, rn, rb, rw, per, mid_p, mid_n)
-		if not pr.is_empty():
-			_place_props(m, pr, mid_p, mid_n, int(pr.at))
 		var first: PackedVector3Array = frames_p[0]
 		for i in uc:
 			seam = maxf(seam, (mid_p[i] - first[i]).length())
@@ -813,8 +823,234 @@ static func _skin_frames(m: Dictionary, plan: Dictionary, rv: PackedVector3Array
 	out["seam"] = seam
 	return {"plan": out, "pos": frames_p, "nrm": frames_n}
 
-
 # ------------------------------------------------------------------------------------------------------------------------- hand props
+
+## A thrall variant, "<model>+<kind>" (`bake`): the plain model `model_slug` carrying the hand props of `kind`. It shares the plain body's position and normal
+## textures and clip table (the plain model is baked first when `<out_dir>/../<model>` has none of this format); the props are rigid meshes in their own space,
+## drawn through a track of the hand's transform for every frame of every clip (`track.res`, a few KB). The variant's own files: `model.tres`, the meshes
+## (the body's vertices and the props') and the track.
+static func _bake_variant(host: Node, slug: String, model_slug: String, kind: String, out_dir: String, opts: Dictionary, assets_dir: String) -> Dictionary:
+	var specs := props_for(kind)
+	if specs.is_empty():
+		return {"ok": false, "error": "%s: no hand props for the thrall kind '%s' (crowd_looks.json thrall_props)" % [slug, kind]}
+	var base_dir: String = opts.get("base_dir", out_dir.get_base_dir().path_join(model_slug))
+	var base := _load_baked(base_dir)
+	if base == null or base.format != CrowdVatData.FORMAT:
+		var plain := bake(host, model_slug, base_dir, opts)
+		if not plain.ok:
+			return plain
+		base = _load_baked(base_dir)
+	var m := load_model(host, model_slug, assets_dir, opts.get("rows_path", default_rows_path()))
+	if not m.ok:
+		return m
+	var result := _write_variant(m, slug, specs, base, out_dir, opts, assets_dir)
+	(m.root as Node).free()
+	return result
+
+
+static func _load_baked(dir: String) -> CrowdVatData:
+	var path := dir.path_join("model.tres")
+	if not ResourceLoader.exists(path):
+		return null
+	return ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REPLACE) as CrowdVatData
+
+
+static func _write_variant(m: Dictionary, slug: String, specs: Array, base: CrowdVatData, out_dir: String, opts: Dictionary, assets_dir: String) -> Dictionary:
+	if m.get("static", false):
+		return {"ok": false, "error": "%s: hand props need a rigged model" % slug}
+	var mi: MeshInstance3D = m.mesh_instance
+	var arrays := mi.mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	var bones: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
+	var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var vc := verts.size()
+	if vc == 0 or normals.size() != vc or uvs.size() != vc or bones.is_empty() or indices.is_empty():
+		return {"ok": false, "error": "%s: the mesh needs normals, UVs, bone weights and indices" % slug}
+	var per := bones.size() / vc
+	var unique := _unique_ids(verts, normals, bones, weights, per)
+	var ids: PackedInt32Array = unique.ids
+	if (unique.rep as PackedInt32Array).size() != base.anim_vertex_count:
+		return {"ok": false, "error": "%s: the plain body has %d animation ids, this model %d (bake it again)" % [slug, base.anim_vertex_count, (unique.rep as PackedInt32Array).size()]}
+	var g := _prop_geometry(specs)
+	var up: int = (g.verts as PackedVector3Array).size()
+	var idle: Array = base.roles.get("idle", [])
+	var rig := _prop_rig(m, specs, String(idle[0]) if not idle.is_empty() else String(base.clip_names[0]))
+
+	# The track: every clip the plain body bakes, at least as many frames per second as the body (the props swing wider than any vertex of the body: more when
+	# a blade's tip needs them), one row per frame, three texels per prop.
+	var plans: Array = []
+	var sampled: Array = []   # per plan: the props' transforms of every frame
+	var total := 0
+	for c in base.clip_names.size():
+		var tb := base.clip_table[c]
+		var range_ := {"name": String(base.clip_names[c]), "seconds": base.clip_seconds[c], "loop": tb.w > 0.5}
+		var got := _sample_track(m, range_, int(tb.y), g, rig)
+		got.plan["first"] = total
+		total += int(got.plan.frames)
+		plans.append(got.plan)
+		sampled.append(got.xforms)
+	if total > 4096:
+		return {"ok": false, "error": "%s: %d rows of track (4096 at most)" % [slug, total]}
+	var width := 3 * specs.size()
+	var trk := PackedFloat32Array()
+	trk.resize(total * width * 4)
+	var lo := Vector3(INF, INF, INF)
+	var hi := Vector3(-INF, -INF, -INF)
+	var pv: PackedVector3Array = g.verts
+	var ow: PackedInt32Array = g.owner
+	for c in plans.size():
+		for f in int(plans[c].frames):
+			var xs: Array = sampled[c][f]
+			var row := int(plans[c].first) + f
+			for s in specs.size():
+				var x: Transform3D = xs[s]
+				for i in 3:   # the rows of the 3x4 matrix, the translation in w
+					var o := (row * width + s * 3 + i) * 4
+					trk[o] = x.basis.x[i]
+					trk[o + 1] = x.basis.y[i]
+					trk[o + 2] = x.basis.z[i]
+					trk[o + 3] = x.origin[i]
+			for j in up:
+				var p: Vector3 = (xs[ow[j]] as Transform3D) * pv[j]
+				lo = lo.min(p)
+				hi = hi.max(p)
+	var trk_img := Image.create_from_data(width, total, false, Image.FORMAT_RGBAF, trk.to_byte_array())   # full floats: a few KB, and a hand's reach is exact
+
+	# The mesh: the body's vertices at the rest pose and the props' in their own space; the idle pose holds the props where today's calibration does, for the levels of detail.
+	var rest_p := PackedVector3Array()
+	var rest_n := PackedVector3Array()
+	rest_p.resize(vc)
+	rest_n.resize(vc)
+	skin(rest_matrices(m), verts, normals, bones, weights, per, rest_p, rest_n)
+	var idle_p := PackedVector3Array()
+	var idle_n := PackedVector3Array()
+	idle_p.resize(up)
+	idle_n.resize(up)
+	pose_at(m, String((rig as Array)[0].idle), PROP_CALIBRATE_S)
+	_place_props(m, {"g": g, "rig": rig}, idle_p, idle_n, 0)
+	var lod_p := rest_p.duplicate()
+	var lod_n := rest_n.duplicate()
+	lod_p.append_array(idle_p)
+	lod_n.append_array(idle_n)
+	var lod_uv := uvs.duplicate()
+	var idx := indices.duplicate()
+	for k in (g.indices as PackedInt32Array):
+		idx.append(vc + k)
+	for j in up:
+		lod_uv.append(Vector2.ZERO)
+	var lod_arrays := []
+	lod_arrays.resize(Mesh.ARRAY_MAX)
+	lod_arrays[Mesh.ARRAY_VERTEX] = lod_p
+	lod_arrays[Mesh.ARRAY_NORMAL] = lod_n
+	lod_arrays[Mesh.ARRAY_TEX_UV] = lod_uv
+	lod_arrays[Mesh.ARRAY_INDEX] = idx
+	var prop_triangles := (g.indices as PackedInt32Array).size() / 3
+	# The budget is the body's: the props' few hundred triangles come on top, so an armed body keeps the detail its bare one has.
+	var levels := _levels(lod_arrays, int(opts.get("max_triangles", MAX_TRIANGLES)) + prop_triangles)
+	var all_p := rest_p.duplicate()
+	var all_n := rest_n.duplicate()
+	all_p.append_array(pv)
+	all_n.append_array(g.normals)
+	var custom := PackedFloat32Array()   # CUSTOM0: x the animation id (a prop: which prop), y the material part (0 the body)
+	custom.resize((vc + up) * 2)
+	for i in vc:
+		custom[i * 2] = float(ids[i])
+	for j in up:
+		custom[(vc + j) * 2] = float(ow[j])
+		custom[(vc + j) * 2 + 1] = (g.part as PackedFloat32Array)[j]
+	var aabb := base.aabb.merge(AABB(lo, hi - lo))
+	var made := _make_meshes(levels, all_p, all_n, lod_uv, custom, aabb)
+
+	var dir := ProjectSettings.globalize_path(out_dir) if out_dir.begins_with("res://") else out_dir
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
+	var data := CrowdVatData.new()
+	data.format = CrowdVatData.FORMAT
+	data.slug = slug
+	var found := _texture_paths(assets_dir, m.url)
+	data.albedo_path = found.albedo
+	data.orm_path = found.orm
+	data.height = base.height
+	data.yaw = base.yaw
+	data.anim_vertex_count = base.anim_vertex_count
+	data.tex_width = base.tex_width
+	data.tex_rows = base.tex_rows
+	data.total_frames = base.total_frames
+	data.clip_names = base.clip_names
+	data.clip_table = base.clip_table
+	data.clip_seconds = base.clip_seconds
+	data.clip_source_length = base.clip_source_length
+	data.clip_impact = base.clip_impact
+	data.clip_landing = base.clip_landing
+	data.stride_walk = base.stride_walk
+	data.stride_run = base.stride_run
+	data.roles = base.roles
+	data.aabb = aabb
+	data.pos_tex = base.pos_tex
+	data.pos_lo = base.pos_lo
+	data.pos_step = base.pos_step
+	data.pos_radix = base.pos_radix
+	data.nrm_tex = base.nrm_tex
+	data.prop_count = specs.size()
+	data.track_tex = _save(ImageTexture.create_from_image(trk_img), out_dir.path_join("track.res"))
+	for plan in plans:
+		data.track_table.append(Vector4(plan.first, plan.frames, plan.fps, 1.0 if plan.loop else 0.0))
+	for pm: Dictionary in g.parts:
+		data.part_albedo.append(pm.albedo)
+		data.part_pbr.append(Vector4(pm.metal, pm.rough, 0.0, 0.0))
+		data.part_emission.append(pm.emis)
+	data.meshes = _save_meshes(made.meshes, out_dir)
+	data.lod_triangles = made.tris
+	var err := ResourceSaver.save(data, out_dir.path_join("model.tres"))
+	if err != OK:
+		return {"ok": false, "error": "%s: cannot write %s (%d)" % [slug, out_dir, err]}
+	return {"ok": true, "slug": slug, "variant": true, "prop_parts": data.part_albedo.size(), "dir": dir, "triangles": made.tris, "source_triangles": indices.size() / 3,
+		"over_budget": levels.over_budget, "frames": total, "anim_vertices": base.anim_vertex_count, "vertices": vc + up, "texture": Vector2i(width, total), "clips": plans,
+		"roles": base.roles, "pos_bytes": 0, "nrm_bytes": 0, "bytes": width * total * 16, "aabb": aabb}
+
+
+## The hand props' transforms over a clip: the fewest frames per second (FPS_STEPS) that keep the linear blend of two frames' matrices within ERROR_TARGET
+## of the true pose half-way between them (worst prop vertex), and at least `min_frames` (the plain body's), or MAX_FRAMES.
+## Returns {plan (frames, fps, error), xforms: per frame, each prop's Transform3D}.
+static func _sample_track(m: Dictionary, range_: Dictionary, min_frames: int, g: Dictionary, rig: Array) -> Dictionary:
+	var tried := 0
+	var got := {}
+	for fps in FPS_STEPS:
+		var frames := clampi(ceili(range_.seconds * fps) + (0 if range_.loop else 1), 2, MAX_FRAMES)
+		if frames == tried or frames < min_frames:
+			continue
+		tried = frames
+		got = _track_frames(m, with_frames(range_, frames), g, rig)
+		if got.plan.error <= ERROR_TARGET or frames == MAX_FRAMES:
+			break
+	if got.is_empty():   # the body's frames are no step of ours: take them as they are
+		got = _track_frames(m, with_frames(range_, min_frames), g, rig)
+	return got
+
+
+static func _track_frames(m: Dictionary, plan: Dictionary, g: Dictionary, rig: Array) -> Dictionary:
+	var pv: PackedVector3Array = g.verts
+	var ow: PackedInt32Array = g.owner
+	var frames: Array = []
+	var error := 0.0
+	for f in int(plan.frames):
+		pose_at(m, plan.name, frame_time(plan, f))
+		frames.append(_prop_xforms(m, rig))
+		if f > 0:   # how far the blend of this frame's matrices and the last one's strays from the true pose half-way between them
+			pose_at(m, plan.name, (frame_time(plan, f - 1) + frame_time(plan, f)) * 0.5)
+			var mid := _prop_xforms(m, rig)
+			var a: Array = frames[f - 1]
+			var b: Array = frames[f]
+			for j in pv.size():
+				var s := ow[j]
+				error = maxf(error, ((mid[s] as Transform3D) * pv[j] - ((a[s] as Transform3D) * pv[j] + (b[s] as Transform3D) * pv[j]) * 0.5).length())
+	var out := plan.duplicate()
+	out["error"] = error
+	out["seam"] = 0.0
+	return {"plan": out, "xforms": frames}
+
 
 ## Today's prop builders (DmGearProps.bone_sword, round_shield, bone_bow, bone_staff) as geometry in the prop's own space: every MeshInstance3D's
 ## triangles moved by its transform in the prop, the spec each vertex belongs to, and its material part (1-based; the parts list the distinct
@@ -895,18 +1131,24 @@ static func _prop_rig(m: Dictionary, specs: Array, idle: String) -> Array:
 	return out
 
 
-## Every prop vertex where the current pose puts it (DmCreature._tick_props): the hand's rotation times the calibrated one, its up pulled toward `dir`
-## by 1 - follow, at the bone's origin; props are authored in world units, so no scale. Writes from `at` on.
-static func _place_props(m: Dictionary, pr: Dictionary, out_p: PackedVector3Array, out_n: PackedVector3Array, at: int) -> void:
+## Each prop's transform in the pose the skeleton holds (DmCreature._tick_props): the hand's rotation times the calibrated one, its up pulled toward `dir` by
+## 1 - follow, at the bone's origin; props are authored in world units, so no scale. One per spec of the rig.
+static func _prop_xforms(m: Dictionary, rig: Array) -> Array[Transform3D]:
 	var sk: Skeleton3D = m.skeleton
 	var xs: Array[Transform3D] = []
-	for r: Dictionary in pr.rig:
+	for r: Dictionary in rig:
 		var h := (m.place as Transform3D) * sk.get_bone_global_pose(int(r.bone))
 		var pq := h.basis.orthonormalized().get_rotation_quaternion()
 		var driven: Quaternion = pq * (r.base_q as Quaternion)
 		var up := driven * Vector3.UP
 		var locked := Quaternion(up.normalized(), r.dir as Vector3) * driven
 		xs.append(Transform3D(Basis(driven.slerp(locked, 1.0 - float(r.follow))), h.origin))
+	return xs
+
+
+## Every prop vertex where the current pose puts it (`_prop_xforms` on the prop's geometry): the fully placed prop the track is held against. Writes from `at` on.
+static func _place_props(m: Dictionary, pr: Dictionary, out_p: PackedVector3Array, out_n: PackedVector3Array, at: int) -> void:
+	var xs := _prop_xforms(m, pr.rig)
 	var g: Dictionary = pr.g
 	var pv: PackedVector3Array = g.verts
 	var pn: PackedVector3Array = g.normals

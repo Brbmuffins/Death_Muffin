@@ -8,8 +8,12 @@ const SHADER_PATH := "res://crowd/crowd_vat.gdshader"
 const MAX_CLIPS := 16
 ## Floats per instance in `MultiMesh.buffer` with colors and custom data: 12 transform, 4 color, 4 custom.
 const BUFFER_STRIDE := 20
+## What the baker writes and the shader reads (client/crowd/README.md "What is baked"): 2 = positions as three codes packed into one RGBA8 texel over the
+## model's bounds (`pos_lo`, `pos_step`, `pos_radix`), hand props as a transform track. A `model.tres` of another format is a stale bake.
+const FORMAT := 2
 
 @export var slug := ""
+@export var format := 0
 ## Where the model's textures live, relative to the assets folder (`res://assets/`, see client/crowd/README.md).
 @export var albedo_path := ""
 @export var orm_path := ""
@@ -39,13 +43,25 @@ const BUFFER_STRIDE := 20
 @export var roles := {}
 ## Bounds of every baked pose, in creature space (feet at the origin, +Z forward); also the meshes' custom_aabb.
 @export var aabb := AABB()
+## Positions, RGBA8: one 32-bit texel per animation id and frame (the bytes low first) holding three integer codes, `n = x + radix.x * (y + radix.y * z)`;
+## a position is `pos_lo + code * pos_step` (the bounds of every baked pose). `radix.x` is a power of two so the shader divides 32 bits in two halves.
+## A thrall variant shares its plain body's texture, and so these three.
 @export var pos_tex: Texture2D
+@export var pos_lo := Vector3.ZERO
+@export var pos_step := Vector3.ONE
+@export var pos_radix := Vector3i(2048, 2048, 1024)
+## Normals, RG8, octahedral.
 @export var nrm_tex: Texture2D
 ## Level of detail 0 first. Every level shares the vertex array (and so the animation ids), only the index list shrinks.
 @export var meshes: Array[Mesh] = []
 @export var lod_triangles := PackedInt32Array()
-## Hand props baked into a thrall variant ("<model>+<kind>"): their material parts (CUSTOM0.y = part, 1-based), linear albedo, (metallic, roughness, -, -)
-## and linear emission (x energy). Empty for a model without props.
+## Hand props of a thrall variant ("<model>+<kind>"): rigid meshes on a track of the hand's transform. The track is RGBAF, three texels (the rows of a 3x4
+## matrix, translation in w) a prop and one row a frame: `prop_count` props side by side, the frames of clip c at `track_table[c]`
+## (x first row, y rows, z rows per second, w 1 loop / 0 hold: the clip table's layout; a track may be sampled finer than the body).
+@export var track_tex: Texture2D
+@export var track_table := PackedVector4Array()
+@export var prop_count := 0
+## The props' material parts (CUSTOM0.y = part, 1-based), linear albedo, (metallic, roughness, -, -) and linear emission (x energy). Empty for a model without props.
 @export var part_albedo := PackedColorArray()
 @export var part_pbr := PackedVector4Array()
 @export var part_emission := PackedColorArray()
@@ -93,12 +109,22 @@ func make_material(albedo: Texture2D, orm: Texture2D = null, spectral := false) 
 		m.set_shader_parameter("orm_tex", orm)
 		m.set_shader_parameter("use_orm", true)
 	m.set_shader_parameter("vat_pos", pos_tex)
+	m.set_shader_parameter("vat_lo", pos_lo)
+	m.set_shader_parameter("vat_step", pos_step)
+	m.set_shader_parameter("vat_rx", pos_radix.x)
+	m.set_shader_parameter("vat_ry", pos_radix.y)
+	m.set_shader_parameter("vat_hi", 65536 / pos_radix.x)
 	m.set_shader_parameter("vat_nrm", nrm_tex)
 	m.set_shader_parameter("vat_width", tex_width)
 	m.set_shader_parameter("vat_rows", tex_rows)
 	var table := PackedVector4Array(clip_table)
 	table.resize(MAX_CLIPS)
 	m.set_shader_parameter("vat_clips", table)
+	if track_tex != null:   # the hand props' transforms
+		var trk := PackedVector4Array(track_table)
+		trk.resize(MAX_CLIPS)
+		m.set_shader_parameter("vat_track", track_tex)
+		m.set_shader_parameter("trk_clips", trk)
 	if not part_albedo.is_empty():   # the hand props' own materials
 		var alb := PackedVector4Array()
 		var pbr := PackedVector4Array(part_pbr)

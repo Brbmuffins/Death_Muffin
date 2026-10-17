@@ -6,8 +6,10 @@ extends SceneTree
 
 const Baker := preload("res://crowd/crowd_baker.gd")
 const OUT := "user://crowd_bake_test"
-## Largest tolerated errors, creature space (metres) and degrees. The textures hold positions as half floats (1 mm at 1.7 m) and normals as 8-bit octahedral pairs.
-const POS_TOLERANCE := 0.0025
+## Largest tolerated errors, creature space (metres) and degrees. The textures hold positions as three integer codes over the model's bounds (half a step per axis:
+## 0.5 to 1.5 mm for these models, `step` below) and normals as 8-bit octahedral pairs; the hand props' track holds full floats.
+const POS_TOLERANCE := 0.002
+const PROP_TOLERANCE := 0.0002
 const NORMAL_TOLERANCE_DEG := 2.0
 ## Linear interpolation between baked frames against the true pose in between: the baker's own target, with room for the one clip a model may
 ## have that reaches the frame cap, and for random times that fall near fast moments.
@@ -34,6 +36,7 @@ func _initialize() -> void:
 	for slug in ["shroud_moth", "tithe_bat"]:
 		_test_unrigged(slug)
 	_test_props("thrall_legionnaire+warrior")
+	_test_codes()
 	_test_decimation()
 	_test_shader()
 	_test_packing()
@@ -75,7 +78,9 @@ func _test_model(slug: String) -> void:
 	check(pos_img != null and nrm_img != null, "%s: texture images readable" % slug)
 	if pos_img == null or nrm_img == null:
 		return
-	check(pos_img.get_format() == Image.FORMAT_RGBAH, "%s: positions are RGBAH" % slug)
+	check(pos_img.get_format() == Image.FORMAT_RGBA8, "%s: positions are RGBA8 (three codes in 32 bits)" % slug)
+	check(data.format == CrowdVatData.FORMAT, "%s: baked in the current format" % slug)
+	_check_codes(data, slug, data.aabb)
 	check(nrm_img.get_format() == Image.FORMAT_RG8, "%s: normals are RG8" % slug)
 	check(pos_img.get_width() == data.tex_width and pos_img.get_height() == data.total_frames * data.tex_rows, "%s: position texture is %d x %d" % [slug, data.tex_width, data.total_frames * data.tex_rows])
 	check(nrm_img.get_width() == pos_img.get_width() and nrm_img.get_height() == pos_img.get_height(), "%s: normal texture matches the position texture" % slug)
@@ -183,6 +188,8 @@ func _test_model(slug: String) -> void:
 	check(inside and data.aabb.size.y > 0.5, "%s: bounds hold every checked pose" % slug)
 	check(walk_motion > 0.1, "%s: the walk clip really moves the body (%.3f m), the animation player was live" % [slug, walk_motion])
 	check(max_pos <= POS_TOLERANCE, "%s: baked positions within %.4f m (got %.5f)" % [slug, POS_TOLERANCE, max_pos])
+	check(max_pos <= 0.5 * data.pos_step.length() + 2e-4, "%s: baked positions within half a code step (%.5f of %.5f m)" % [slug, max_pos, 0.5 * data.pos_step.length()])
+	check(r.pos_error <= 0.5 * data.pos_step.length() + 1e-6, "%s: the baker's own measure of the quantisation error holds (%.5f m)" % [slug, r.pos_error])
 	check(max_nrm <= NORMAL_TOLERANCE_DEG, "%s: baked normals within %.1f deg (got %.3f)" % [slug, NORMAL_TOLERANCE_DEG, max_nrm])
 
 	# The shader's vertex function (shader_pose) at random clip times against the true pose: looping, holding, interpolating, blending.
@@ -216,6 +223,8 @@ func _test_model(slug: String) -> void:
 	var mat := data.make_material(ImageTexture.create_from_image(albedo))
 	check(mat.shader != null and mat.get_shader_parameter("vat_width") == data.tex_width and (mat.get_shader_parameter("vat_clips") as PackedVector4Array).size() == CrowdVatData.MAX_CLIPS,
 		"%s: material carries the textures and a 16-row clip table" % slug)
+	check(mat.get_shader_parameter("vat_rx") == data.pos_radix.x and mat.get_shader_parameter("vat_ry") == data.pos_radix.y and mat.get_shader_parameter("vat_hi") == 65536 / data.pos_radix.x
+		and mat.get_shader_parameter("vat_lo") == data.pos_lo and mat.get_shader_parameter("vat_step") == data.pos_step, "%s: material carries the position codes' bounds and radices" % slug)
 	var mm := data.make_multimesh(7, 0)
 	check(mm.instance_count == 7 and mm.use_colors and mm.use_custom_data and mm.mesh == data.meshes[0], "%s: multimesh has instances, colours and custom data" % slug)
 	(m.root as Node).free()
@@ -264,9 +273,8 @@ func _compare(data: CrowdVatData, pos_img: Image, nrm_img: Image, ids: PackedInt
 	var worst_n := 0.0
 	for i in ids.size():
 		var texel := _texel(data, frame, ids[i])
-		var p := pos_img.get_pixel(texel.x, texel.y)
 		var e := nrm_img.get_pixel(texel.x, texel.y)
-		worst_p = maxf(worst_p, (Vector3(p.r, p.g, p.b) - ref[0][i]).length())
+		worst_p = maxf(worst_p, (_decode_pos(data, pos_img.get_pixel(texel.x, texel.y)) - ref[0][i]).length())
 		worst_n = maxf(worst_n, rad_to_deg(Baker.oct_decode(e.r, e.g).angle_to(ref[1][i])))
 	return Vector2(worst_p, worst_n)
 
@@ -278,8 +286,8 @@ func _texel(data: CrowdVatData, frame: int, id: int) -> Vector2i:
 
 # ---- crowd_vat.gdshader's vertex(), line by line, reading the baked images ---------------------------------------------------------------
 
-func _shader_pose(data: CrowdVatData, pos_img: Image, nrm_img: Image, clip: int, time: float, id: int) -> Array:
-	var c := data.clip_table[clip]
+## vat_frames(): the two frames of a clip row around `time` and how far toward the second.
+func _frames(c: Vector4, time: float) -> Array:
 	var count := int(c.y + 0.5)
 	var f := maxf(time, 0.0) * c.z
 	var i0: int
@@ -292,16 +300,30 @@ func _shader_pose(data: CrowdVatData, pos_img: Image, nrm_img: Image, clip: int,
 		f = clampf(f, 0.0, float(count - 1))
 		i0 = int(floorf(f))
 		i1 = mini(i0 + 1, count - 1)
-	var k := f - float(i0)
+	return [i0, i1, f - float(i0)]
+
+
+## vat_decode_pos(): the four bytes of a texel (RGBA8 reads back as byte / 255) -> two halves -> the three codes -> a position.
+func _decode_pos(data: CrowdVatData, t: Color) -> Vector3:
+	var lo := int(t.r * 255.0 + 0.5) + int(t.g * 255.0 + 0.5) * 256
+	var hi := int(t.b * 255.0 + 0.5) + int(t.a * 255.0 + 0.5) * 256
+	var rx := data.pos_radix.x
+	var w := lo / rx + hi * (65536 / rx)
+	return data.pos_lo + Vector3(float(lo % rx), float(w % data.pos_radix.y), float(w / data.pos_radix.y)) * data.pos_step
+
+
+func _shader_pose(data: CrowdVatData, pos_img: Image, nrm_img: Image, clip: int, time: float, id: int) -> Array:
+	var c := data.clip_table[clip]
+	var fr := _frames(c, time)
 	var base := int(c.x + 0.5)
-	var a := _texel(data, base + i0, id)
-	var b := _texel(data, base + i1, id)
-	var pa := pos_img.get_pixel(a.x, a.y)
-	var pb := pos_img.get_pixel(b.x, b.y)
+	var a := _texel(data, base + int(fr[0]), id)
+	var b := _texel(data, base + int(fr[1]), id)
+	var pa := _decode_pos(data, pos_img.get_pixel(a.x, a.y))
+	var pb := _decode_pos(data, pos_img.get_pixel(b.x, b.y))
 	var na := nrm_img.get_pixel(a.x, a.y)
 	var nb := nrm_img.get_pixel(b.x, b.y)
-	var p := Vector3(pa.r, pa.g, pa.b).lerp(Vector3(pb.r, pb.g, pb.b), k)
-	var n := Baker.oct_decode(na.r, na.g).lerp(Baker.oct_decode(nb.r, nb.g), k)
+	var p := pa.lerp(pb, float(fr[2]))
+	var n := Baker.oct_decode(na.r, na.g).lerp(Baker.oct_decode(nb.r, nb.g), float(fr[2]))
 	return [p, n]
 
 
@@ -313,6 +335,48 @@ func _shader_vertex(data: CrowdVatData, pos_img: Image, nrm_img: Image, id: int,
 		var pn2 := _shader_pose(data, pos_img, nrm_img, clampi(int(prev), 0, 15), d.a, id)
 		pn = [(pn[0] as Vector3).lerp(pn2[0], weight), (pn[1] as Vector3).lerp(pn2[1], weight)]
 	return [pn[0], (pn[1] as Vector3).normalized()]
+
+
+## trk_pose(): the three rows of hand prop `slot` at `time` of a clip, blended between the frames.
+func _shader_track(data: CrowdVatData, trk_img: Image, clip: int, time: float, slot: int) -> Array:
+	var c := data.track_table[clip]
+	var fr := _frames(c, time)
+	var base := int(c.x + 0.5)
+	var rows := []
+	for i in 3:
+		var ra := trk_img.get_pixel(slot * 3 + i, base + int(fr[0]))
+		var rb := trk_img.get_pixel(slot * 3 + i, base + int(fr[1]))
+		rows.append(Vector4(ra.r, ra.g, ra.b, ra.a).lerp(Vector4(rb.r, rb.g, rb.b, rb.a), float(fr[2])))
+	return rows
+
+
+## The hand-prop branch of vertex(): a prop vertex (`v`, `nrm` in the prop's space, of hand prop `slot`) through the blended rows of the clip and of the previous clip.
+func _shader_prop_vertex(data: CrowdVatData, trk_img: Image, v: Vector3, nrm: Vector3, slot: int, d: Color) -> Array:
+	var rows := _shader_track(data, trk_img, clampi(int(d.r + 0.5), 0, 15), d.g, slot)
+	var prev := floorf(d.b)
+	var weight := d.b - prev
+	if weight > 0.0:
+		var other := _shader_track(data, trk_img, clampi(int(prev), 0, 15), d.a, slot)
+		for i in 3:
+			rows[i] = (rows[i] as Vector4).lerp(other[i], weight)
+	var r0: Vector4 = rows[0]
+	var r1: Vector4 = rows[1]
+	var r2: Vector4 = rows[2]
+	var p := Vector3(Vector3(r0.x, r0.y, r0.z).dot(v) + r0.w, Vector3(r1.x, r1.y, r1.z).dot(v) + r1.w, Vector3(r2.x, r2.y, r2.z).dot(v) + r2.w)
+	var n := Vector3(Vector3(r0.x, r0.y, r0.z).dot(nrm), Vector3(r1.x, r1.y, r1.z).dot(nrm), Vector3(r2.x, r2.y, r2.z).dot(nrm))
+	return [p, n.normalized()]
+
+
+## The position codes of a baked model: radices that pack in 32 bits with a power-of-two x, and the first and last code are `bounds`' corners (the baked poses' box).
+func _check_codes(data: CrowdVatData, label: String, bounds: AABB) -> void:
+	var r := data.pos_radix
+	check(r.x >= 16 and r.x <= 65536 and (r.x & (r.x - 1)) == 0 and r.y >= 2 and r.z >= 2, "%s: position radices %s: x a power of two, y and z at least 2" % [label, str(r)])
+	check(r.x * r.y * r.z <= (1 << 32) and r.y * r.z < (1 << 30), "%s: the three codes fit 32 bits (%d levels) and the shader's signed ints (%d)" % [label, r.x * r.y * r.z, r.y * r.z])
+	var top := data.pos_lo + Vector3(r.x - 1, r.y - 1, r.z - 1) * data.pos_step
+	var corners := true
+	for i in 3:
+		corners = corners and absf(data.pos_lo[i] - bounds.position[i]) < 1e-6 and (bounds.size[i] <= 0.0 or absf(top[i] - (bounds.position[i] + bounds.size[i])) < 1e-4)
+	check(corners, "%s: the first and last code are the bounds' corners (%s .. %s vs %s)" % [label, str(data.pos_lo), str(top), str(bounds)])
 
 
 # ---- the other checks ---------------------------------------------------------------------------------------------------------------------
@@ -340,8 +404,11 @@ func _test_shader() -> void:
 	re.compile("(?m)^uniform\\s+\\w+\\s+(\\w+)")
 	for mt in re.search_all(sh.code):
 		uniforms[mt.get_string(1)] = true
-	for u in ["albedo_tex", "orm_tex", "use_orm", "vat_pos", "vat_nrm", "vat_width", "vat_rows", "vat_clips"]:
+	for u in ["albedo_tex", "orm_tex", "use_orm", "vat_pos", "vat_nrm", "vat_width", "vat_rows", "vat_clips", "vat_lo", "vat_step", "vat_rx", "vat_ry", "vat_hi", "vat_track", "trk_clips"]:
 		check(uniforms.has(u), "shader declares uniform %s that CrowdVatData sets" % u)
+	check(sh.code.contains("trk_clips[%d]" % CrowdVatData.MAX_CLIPS), "shader track clip table matches MAX_CLIPS")
+	# the integer maths of the position codes stays in signed 32 bits and needs no shifts or unsigned types (Godot's shader language, Compatibility, Mobile)
+	check(not sh.code.contains("uint") and not sh.code.contains("<<") and not sh.code.contains(">>"), "shader decodes the position codes with plain ints")
 
 
 func _test_packing() -> void:
@@ -447,31 +514,86 @@ func _test_unrigged(slug: String) -> void:
 
 
 
-## A thrall variant: the warrior's sword and shield baked onto its hands (DmEntityViews._make_thrall, DmCreature.attach / _calibrate / _tick_props).
-## The body is the plain model's, the props are extra vertices with their own animation ids and material parts; at the calibration pose (PROP_CALIBRATE_S
-## into the idle loop) each prop's up is exactly its `dir` in creature space and its origin is the hand's, and every baked frame holds the props where
-## today's formula puts them for that frame's pose.
+## A thrall variant: the warrior's sword and shield on its hands (DmEntityViews._make_thrall, DmCreature.attach / _calibrate / _tick_props). The variant shares the
+## plain body's textures (baked next to it first) and holds only its props: rigid meshes in their own space and a track of the hand's transform. Held against the
+## fully placed props (Baker._place_props, today's formula on the true pose): at every kind of frame, between frames as the old baked columns interpolated, and
+## with blends.
 func _test_props(variant: String) -> void:
+	var model: String = Baker.split_variant(variant)[0]
+	var base_dir := OUT.path_join(model)
+	if DirAccess.dir_exists_absolute(base_dir):
+		_remove_dir(base_dir)   # the variant bakes the plain body it shares first
 	var r: Dictionary = Baker.bake(root, variant, OUT.path_join(variant))
 	check(r.ok, "%s: bakes (%s)" % [variant, r.get("error", "")])
 	if not r.ok:
 		return
 	var data: CrowdVatData = ResourceLoader.load(OUT.path_join(variant).path_join("model.tres"), "", ResourceLoader.CACHE_MODE_REPLACE)
-	var plain: Dictionary = Baker.load_model(root, "thrall_legionnaire", Baker.default_assets_dir(), Baker.default_rows_path())
+	var base: CrowdVatData = ResourceLoader.load(base_dir.path_join("model.tres"), "", ResourceLoader.CACHE_MODE_REPLACE)
+	check(base != null and base.format == CrowdVatData.FORMAT and base.prop_count == 0 and base.track_tex == null, "%s: the plain body was baked first, in its own folder" % variant)
+	if base == null or data == null:
+		return
+	check(data.format == CrowdVatData.FORMAT and data.slug == variant and r.get("variant", false), "%s: a variant of the current format" % variant)
+	var own := DirAccess.get_files_at(OUT.path_join(variant))
+	check(not own.has("pos.res") and not own.has("nrm.res") and own.has("track.res") and own.has("model.tres") and own.has("mesh_lod0.res"),
+		"%s: the variant holds no position or normal texture, only its track, meshes and model (%s)" % [variant, str(own)])
+	check(data.pos_tex.resource_path == base_dir.path_join("pos.res") and data.nrm_tex.resource_path == base_dir.path_join("nrm.res"),
+		"%s: it draws with the plain body's textures (%s)" % [variant, data.pos_tex.resource_path])
+	check(data.clip_names == base.clip_names and data.clip_seconds == base.clip_seconds and data.roles == base.roles and data.tex_width == base.tex_width and data.tex_rows == base.tex_rows
+		and data.total_frames == base.total_frames and data.pos_lo == base.pos_lo and data.pos_step == base.pos_step and data.pos_radix == base.pos_radix, "%s: clips, roles and position codes are the body's" % variant)
+	check(data.clip_table == base.clip_table, "%s: the body's frames are the plain body's" % variant)
+	var trk_img := data.track_tex.get_image()
+	check(trk_img.get_format() == Image.FORMAT_RGBAF and trk_img.get_width() == 3 * data.prop_count and data.prop_count == 2 and trk_img.get_height() < 4096 and not trk_img.has_mipmaps(),
+		"%s: the track is RGBAF, three texels for each of its %d props, a row a frame (%d x %d)" % [variant, data.prop_count, trk_img.get_width(), trk_img.get_height()])
+	check(data.track_table.size() == data.clip_names.size(), "%s: a track row per clip" % variant)
+	var next_row := 0
+	for c in data.clip_names.size():
+		var row := data.track_table[c]
+		check(int(row.x) == next_row and row.y >= base.clip_table[c].y and row.z >= base.clip_table[c].z - 1e-3 and row.w == base.clip_table[c].w,
+			"%s: track of %s has the body's frames or finer (%d at %.1f, the body's %d at %.1f)" % [variant, data.clip_names[c], row.y, row.z, base.clip_table[c].y, base.clip_table[c].z])
+		var covered := row.y / row.z if row.w > 0.5 else (row.y - 1.0) / row.z
+		check(absf(covered - data.clip_seconds[c]) < 1e-3, "%s: track of %s covers the clip's %.3f s" % [variant, data.clip_names[c], data.clip_seconds[c]])
+		next_row += int(row.y)
+	check(next_row == trk_img.get_height(), "%s: track rows add up" % variant)
+	for plan in r.clips:
+		check(plan.error <= Baker.ERROR_TARGET or int(plan.frames) == Baker.MAX_FRAMES, "%s: props of %s interpolate within %.0f mm (got %.0f mm at %d rows)" % [variant, plan.name, Baker.ERROR_TARGET * 1000.0, plan.error * 1000.0, plan.frames])
+	var own_bytes := 0
+	for f in own:
+		own_bytes += FileAccess.get_file_as_bytes(OUT.path_join(variant).path_join(f)).size()
+	var base_bytes := 0
+	for f in DirAccess.get_files_at(base_dir):
+		base_bytes += FileAccess.get_file_as_bytes(base_dir.path_join(f)).size()
+	print("INFO %s: %d KB of its own (track %d KB) next to the plain body's %d KB" % [variant, own_bytes / 1024, FileAccess.get_file_as_bytes(OUT.path_join(variant).path_join("track.res")).size() / 1024, base_bytes / 1024])
+	check(own_bytes < 2 * 1024 * 1024 and own_bytes < base_bytes / 4, "%s: a variant costs a mesh and a track, not a body (%d KB against %d KB)" % [variant, own_bytes / 1024, base_bytes / 1024])
+
+	var plain: Dictionary = Baker.load_model(root, model, Baker.default_assets_dir(), Baker.default_rows_path())
 	var src_vc: int = ((plain.mesh_instance as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 	var specs := Baker.props_for("warrior")
 	var g := Baker._prop_geometry(specs)
 	var up: int = (g.verts as PackedVector3Array).size()
-	check(data.slug == variant and data.part_albedo.size() == 3 and data.part_pbr.size() == 3 and data.part_emission.size() == 3,
+	check(data.part_albedo.size() == 3 and data.part_pbr.size() == 3 and data.part_emission.size() == 3,
 		"%s: the sword's metal, the shield's wood and its glowing boss are its prop parts (%d)" % [variant, data.part_albedo.size()])
 	check(data.part_emission[2].v > 0.1 and data.part_emission[0].v == 0.0, "%s: only the shield boss glows, as today's" % variant)
+	# the mesh: the body's vertices as the plain body has them (same animation ids), the props' in their own space with their prop and part
 	var a := data.meshes[0].surface_get_arrays(0)
 	var custom: PackedFloat32Array = a[Mesh.ARRAY_CUSTOM0]
-	var vc: int = (a[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
-	var parts_ok := vc == src_vc + up
-	for i in vc:
-		parts_ok = parts_ok and ((custom[i * 2 + 1] == 0.0) if i < src_vc else (custom[i * 2 + 1] >= 1.0 and custom[i * 2 + 1] <= 3.0))
-	check(parts_ok, "%s: the body's %d vertices are part 0, the props' %d follow with parts 1..3" % [variant, src_vc, up])
+	var verts: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+	var norms: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+	var base_a := base.meshes[0].surface_get_arrays(0)
+	var base_custom: PackedFloat32Array = base_a[Mesh.ARRAY_CUSTOM0]
+	var parts_ok := verts.size() == src_vc + up
+	var body_ok := true
+	var props_ok := true
+	for i in verts.size():
+		if i < src_vc:
+			body_ok = body_ok and custom[i * 2] == base_custom[i * 2] and custom[i * 2 + 1] == 0.0 and verts[i] == (base_a[Mesh.ARRAY_VERTEX] as PackedVector3Array)[i]
+		else:
+			var j := i - src_vc
+			props_ok = props_ok and verts[i] == (g.verts as PackedVector3Array)[j] and norms[i].distance_to((g.normals as PackedVector3Array)[j]) < 1e-3 \
+				and int(custom[i * 2]) == (g.owner as PackedInt32Array)[j] and custom[i * 2 + 1] == (g.part as PackedFloat32Array)[j] and custom[i * 2 + 1] >= 1.0 and custom[i * 2 + 1] <= 3.0
+	check(parts_ok and body_ok, "%s: the body's %d vertices are the plain body's (part 0, its animation ids and rest pose)" % [variant, src_vc])
+	check(props_ok, "%s: the props' %d vertices follow in their own space, each with its prop (0 or 1) and part (1..3)" % [variant, up])
+	check(data.aabb.encloses(base.aabb) and data.meshes[0].custom_aabb == data.aabb, "%s: bounds hold the body's and the props'" % variant)
+
 	# the calibration pose: each prop's up is its dir, its origin the hand bone's
 	var rig := Baker._prop_rig(plain, specs, "idle")
 	var at := PackedVector3Array()
@@ -508,18 +630,118 @@ func _test_props(variant: String) -> void:
 			if (g.owner as PackedInt32Array)[j] == s:
 				near_hand = minf(near_hand, at[j].distance_to(hand))
 		check(near_hand < 0.6, "%s: %s is held at the hand (nearest vertex %.2f m)" % [variant, spec.build, near_hand])
-	# every frame of the texture holds the props where the formula puts them for that frame's pose
-	var pos_img := data.pos_tex.get_image()
+
+	# 1. the track at the frames it holds (first, middle, last of every clip): the shader's prop branch against the fully placed props
+	var pv: PackedVector3Array = g.verts
+	var pn: PackedVector3Array = g.normals
+	var ow: PackedInt32Array = g.owner
 	var worst := 0.0
+	var worst_n := 0.0
+	var inside := true
 	for c in data.clip_names.size():
-		var tb: Vector4 = data.clip_table[c]
-		for f in [0, int(tb.y) - 1]:
-			Baker.pose_at(plain, data.clip_names[c], minf(float(f) / maxf(tb.z, 0.001), data.clip_seconds[c]))
+		var tb := data.track_table[c]
+		for f in [0, int(tb.y) / 2, int(tb.y) - 1]:
+			var t := minf(float(f) / tb.z, data.clip_seconds[c])
+			Baker.pose_at(plain, data.clip_names[c], t)
 			Baker._place_props(plain, {"g": g, "rig": rig}, at, an, 0)
-			for j in range(0, up, 7):
-				var t := _texel(data, int(tb.x) + f, data.anim_vertex_count - up + j)
-				var p := pos_img.get_pixel(t.x, t.y)
-				worst = maxf(worst, (Vector3(p.r, p.g, p.b) - at[j]).length())
-	check(worst < POS_TOLERANCE * 2.0, "%s: the baked frames hold the props where the formula puts them (worst %.1f mm)" % [variant, worst * 1000.0])
-	print("INFO %s: %d body + %d prop vertices, %d animation ids, worst prop texel %.1f mm" % [variant, src_vc, up, data.anim_vertex_count, worst * 1000.0])
+			var custom_c := CrowdVatData.pack_custom(c, t)
+			for j in up:
+				var got := _shader_prop_vertex(data, trk_img, pv[j], pn[j], ow[j], custom_c)
+				worst = maxf(worst, (got[0] - at[j]).length())
+				worst_n = maxf(worst_n, rad_to_deg((got[1] as Vector3).angle_to(an[j])))
+				inside = inside and data.aabb.grow(0.003).has_point(at[j])
+	print("INFO %s: props from the track vs the fully placed props at %d clips x 3 frames: worst %.3f mm, normals %.3f deg" % [variant, data.clip_names.size(), worst * 1000.0, worst_n])
+	check(worst <= PROP_TOLERANCE, "%s: the track holds the props where the formula puts them at its frames (worst %.3f mm, within %.1f mm)" % [variant, worst * 1000.0, PROP_TOLERANCE * 1000.0])
+	check(worst_n <= 0.5, "%s: the props' normals through the track within half a degree (%.3f)" % [variant, worst_n])
+	check(inside, "%s: the bounds hold the props at every checked frame" % variant)
+
+	# 2. random times and blends: where the old columns would have put them (the straight line between the two frames' placed props: a convex blend, as
+	# the shader's blend of matrices), and within the interpolation tolerance of the true pose
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261017
+	var worst_old := 0.0
+	var worst_true := 0.0
+	var worst_blend := 0.0
+	var scratch_a := PackedVector3Array()
+	var scratch_b := PackedVector3Array()
+	var scratch_n := PackedVector3Array()
+	scratch_a.resize(up)
+	scratch_b.resize(up)
+	scratch_n.resize(up)
+	for round_ in 24:
+		var c := rng.randi_range(0, data.clip_names.size() - 1)
+		var c2 := rng.randi_range(0, data.clip_names.size() - 1)
+		var t := rng.randf_range(0.0, data.clip_seconds[c] * 1.4)
+		var t2 := rng.randf_range(0.0, data.clip_seconds[c2] * 1.4)
+		var w := rng.randf_range(0.0, 0.999)
+		var tb := data.track_table[c]
+		var fr := _frames(tb, t)
+		var plan := {"fps": tb.z}
+		var name_c := String(data.clip_names[c])
+		Baker.pose_at(plain, name_c, Baker.frame_time(plan, int(fr[0])))
+		Baker._place_props(plain, {"g": g, "rig": rig}, scratch_a, scratch_n, 0)
+		Baker.pose_at(plain, name_c, Baker.frame_time(plan, int(fr[1])))   # a loop's last frame blends into frame 0, a one-shot holds its last
+		Baker._place_props(plain, {"g": g, "rig": rig}, scratch_b, scratch_n, 0)
+		var truth1 := _placed(plain, rig, g, name_c, _true_time(data, c, t))
+		var truth2 := _placed(plain, rig, g, String(data.clip_names[c2]), _true_time(data, c2, t2))
+		var custom_c := CrowdVatData.pack_custom(c, t)
+		var custom_b := CrowdVatData.pack_custom(c, t, c2, t2, w)
+		for j in up:
+			var got := _shader_prop_vertex(data, trk_img, pv[j], pn[j], ow[j], custom_c)
+			worst_old = maxf(worst_old, (got[0] - scratch_a[j].lerp(scratch_b[j], float(fr[2]))).length())
+			worst_true = maxf(worst_true, (got[0] - truth1[j]).length())
+			var gb := _shader_prop_vertex(data, trk_img, pv[j], pn[j], ow[j], custom_b)
+			worst_blend = maxf(worst_blend, (gb[0] - (truth1[j] as Vector3).lerp(truth2[j], w)).length())
+			check((gb[1] as Vector3).is_normalized(), "%s: a blended prop normal stays unit length" % variant)
+	print("INFO %s: props at random times: %.3f mm from the old straight line between frames, %.1f mm from the true pose, %.1f mm blended" % [variant, worst_old * 1000.0, worst_true * 1000.0, worst_blend * 1000.0])
+	check(worst_old <= PROP_TOLERANCE, "%s: between frames the props are where the baked columns interpolated them (worst %.3f mm)" % [variant, worst_old * 1000.0])
+	check(worst_true <= INTERPOLATION_TOLERANCE and worst_blend <= INTERPOLATION_TOLERANCE, "%s: props within %.2f m of the true pose at any time, blended too (%.3f, %.3f)" % [variant, INTERPOLATION_TOLERANCE, worst_true, worst_blend])
 	(plain.root as Node).free()
+
+
+## The fully placed prop vertices (today's formula on the true pose of `clip` at `t`).
+func _placed(m: Dictionary, rig: Array, g: Dictionary, clip: String, t: float) -> PackedVector3Array:
+	var out_p := PackedVector3Array()
+	var out_n := PackedVector3Array()
+	out_p.resize((g.verts as PackedVector3Array).size())
+	out_n.resize(out_p.size())
+	Baker.pose_at(m, clip, t)
+	Baker._place_props(m, {"g": g, "rig": rig}, out_p, out_n, 0)
+	return out_p
+
+
+## The position codes: radices for boxes of every size fit 32 bits and keep the step as fine as the box allows, and a position survives the baker's code and the shader's
+## decoding within half a step (an exact code comes back exactly).
+func _test_codes() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var shown := []
+	for extent in [Vector3(1.4, 1.9, 1.5), Vector3(3.4, 2.7, 2.7), Vector3(6.0, 7.0, 5.0), Vector3(0.9, 0.5, 0.0), Vector3(0.3, 0.3, 0.3), Vector3(12.0, 2.0, 20.0)]:
+		var radix := Baker.position_radix(extent)
+		var step := Baker.position_step(extent, radix)
+		var data := CrowdVatData.new()
+		data.pos_radix = radix
+		data.pos_lo = Vector3(-0.5, 0.0, -1.0)
+		data.pos_step = step
+		_check_codes(data, "box %s" % str(extent), AABB(data.pos_lo, extent))
+		var ideal_product := 1.0   # the finest common step the 32 bits allow with no power-of-two constraint (an axis with no extent costs 2 levels)
+		var live := 0
+		var coarsest := 0.0
+		for i in 3:
+			if extent[i] > 0.0:
+				ideal_product *= extent[i]
+				live += 1
+				coarsest = maxf(coarsest, step[i])
+		var ideal := pow(ideal_product / pow(2.0, 32.0 - (3 - live)), 1.0 / float(live))
+		check(coarsest <= 1.5 * ideal, "box %s: the finest step %.3f mm is within 1.5 x the ideal %.3f mm" % [str(extent), coarsest * 1000.0, ideal * 1000.0])
+		var worst := 0.0
+		var inv := Vector3.ONE / step
+		for i in 400:
+			var p := data.pos_lo + Vector3(rng.randf() * extent.x, rng.randf() * extent.y, rng.randf() * extent.z)
+			var code := Baker.position_code(p, data.pos_lo, inv, radix)
+			check(code >= 0 and code < (1 << 32), "box %s: a code is 32 bits" % str(extent))
+			var t := Color(float(code & 255) / 255.0, float((code >> 8) & 255) / 255.0, float((code >> 16) & 255) / 255.0, float((code >> 24) & 255) / 255.0)
+			worst = maxf(worst, (_decode_pos(data, t) - p).length())
+		check(worst <= 0.5 * step.length() + 1e-6, "box %s: positions come back within half a step (%.3f of %.3f mm)" % [str(extent), worst * 1000.0, 0.5 * step.length() * 1000.0])
+		shown.append("%s: %s levels, step %.2f mm, worst %.2f mm" % [str(extent), str(radix), coarsest * 1000.0, worst * 1000.0])
+	print("INFO position codes: ", " | ".join(shown))

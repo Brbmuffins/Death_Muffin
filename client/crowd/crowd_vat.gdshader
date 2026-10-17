@@ -19,8 +19,9 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 //   COLOR.rgb          linear tint multiplier (white = the texture as is)
 //   COLOR.a            glow slot * 2 + hit flash 0..1: the slot picks the body's glow from `glow_palette` (0 = this model's own `emis`, `emis_k`), the
 //                      flash is the game's emissive lerp toward the flash colour (in eighths, so exact in a half float up to slot 63)
-// Per vertex: CUSTOM0.x = the vertex's animation id (a column of the baked textures; UV seams share one id), CUSTOM0.y = its material part: 0 the
-// body (the textures above), k a hand prop's part k (a thrall variant's sword, shield, bow or staff: `part_*`, no tint, flash or glow, as today's props).
+// Per vertex: CUSTOM0.y = its material part: 0 the body, k a hand prop's part k (a thrall variant's sword, shield, bow or staff: `part_*`, no tint, flash or
+// glow, as today's props). A body vertex's CUSTOM0.x = its animation id (a column of the baked textures; UV seams share one id); a prop vertex sits in its
+// prop's own space (VERTEX, NORMAL) and its CUSTOM0.x = which prop of the variant: the prop's transform comes from the baked track of the hand.
 
 // The model's own textures, as DmCreatureMat takes them from the glTF material (no normal map: the crowd mesh has no tangents).
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
@@ -39,13 +40,25 @@ uniform vec4 part_albedo[8];
 uniform vec4 part_pbr[8];
 uniform vec4 part_emission[8];
 
-// Baked animation: positions (RGBAH, xyz in the creature's space) and normals (RG8, octahedral), one frame = rows_per_frame rows.
+// Baked animation: positions (RGBA8, xyz in the creature's space as three integer codes in 32 bits, below) and normals (RG8, octahedral), one frame =
+// rows_per_frame rows.
 uniform sampler2D vat_pos : filter_nearest, repeat_disable;
 uniform sampler2D vat_nrm : filter_nearest, repeat_disable;
 uniform int vat_width = 1;
 uniform int vat_rows = 1;
+// The codes of a position n (the four bytes, low first): x = n mod vat_rx, y = (n / vat_rx) mod vat_ry, z = n / (vat_rx * vat_ry); position = vat_lo + code * vat_step.
+// vat_rx is a power of two and vat_hi = 65536 / vat_rx: the integers stay within 32 bits signed.
+uniform vec3 vat_lo = vec3(0.0);
+uniform vec3 vat_step = vec3(1.0);
+uniform int vat_rx = 2048;
+uniform int vat_ry = 2048;
+uniform int vat_hi = 32;
 // Clip table: x first frame, y frame count, z frames per second, w 1 = loop / 0 = hold the last frame.
 uniform vec4 vat_clips[16];
+// Hand props (a thrall variant): the hand's transform for every frame, three RGBAF texels a prop (the rows of a 3x4 matrix, translation in w), one row a frame.
+// Its clip table (a track may be sampled finer than the body).
+uniform sampler2D vat_track : filter_nearest, repeat_disable;
+uniform vec4 trk_clips[16];
 
 const vec3 FLASH_COLOR = vec3(1.0, 0.87137, 0.71569); // 0xfff0dc in linear, DmCreature.FLASH_COLOR
 const float FLASH_EMISSIVE = 0.16;                    // DmCreature._apply_flash: emis_k + f * 0.16
@@ -68,12 +81,10 @@ vec3 vat_decode_normal(vec2 e) {
 	return normalize(n);
 }
 
-void vat_pose(int clip, float time, int id, out vec3 p, out vec3 n) {
-	vec4 c = vat_clips[clip];
+// The two frames around `time` of a clip row `c` and how far toward the second.
+void vat_frames(vec4 c, float time, out int i0, out int i1, out float k) {
 	int count = int(c.y + 0.5);
 	float f = max(time, 0.0) * c.z;
-	int i0;
-	int i1;
 	if (c.w > 0.5) {
 		f = mod(f, float(count));
 		i0 = min(int(floor(f)), count - 1);
@@ -83,34 +94,85 @@ void vat_pose(int clip, float time, int id, out vec3 p, out vec3 n) {
 		i0 = int(floor(f));
 		i1 = min(i0 + 1, count - 1);
 	}
-	float k = f - float(i0);
+	k = f - float(i0);
+}
+
+vec3 vat_decode_pos(vec4 t) {
+	ivec4 b = ivec4(t * 255.0 + 0.5);
+	int lo = b.r + b.g * 256;
+	int hi = b.b + b.a * 256;
+	int w = lo / vat_rx + hi * vat_hi;
+	return vat_lo + vec3(float(lo % vat_rx), float(w % vat_ry), float(w / vat_ry)) * vat_step;
+}
+
+void vat_pose(int clip, float time, int id, out vec3 p, out vec3 n) {
+	vec4 c = vat_clips[clip];
+	int i0;
+	int i1;
+	float k;
+	vat_frames(c, time, i0, i1, k);
 	int base = int(c.x + 0.5);
 	ivec2 a = vat_texel(base + i0, id);
 	ivec2 b = vat_texel(base + i1, id);
-	p = mix(texelFetch(vat_pos, a, 0).xyz, texelFetch(vat_pos, b, 0).xyz, k);
+	p = mix(vat_decode_pos(texelFetch(vat_pos, a, 0)), vat_decode_pos(texelFetch(vat_pos, b, 0)), k);
 	n = mix(vat_decode_normal(texelFetch(vat_nrm, a, 0).xy), vat_decode_normal(texelFetch(vat_nrm, b, 0).xy), k);
 }
 
+// The transform of hand prop `slot` at `time` of a clip: the three rows, interpolated between the frames as the body's positions are.
+void trk_pose(int clip, float time, int slot, out vec4 r0, out vec4 r1, out vec4 r2) {
+	vec4 c = trk_clips[clip];
+	int i0;
+	int i1;
+	float k;
+	vat_frames(c, time, i0, i1, k);
+	int base = int(c.x + 0.5);
+	ivec2 a = ivec2(slot * 3, base + i0);
+	ivec2 b = ivec2(slot * 3, base + i1);
+	r0 = mix(texelFetch(vat_track, a, 0), texelFetch(vat_track, b, 0), k);
+	r1 = mix(texelFetch(vat_track, a + ivec2(1, 0), 0), texelFetch(vat_track, b + ivec2(1, 0), 0), k);
+	r2 = mix(texelFetch(vat_track, a + ivec2(2, 0), 0), texelFetch(vat_track, b + ivec2(2, 0), 0), k);
+}
+
 void vertex() {
-	int id = int(CUSTOM0.x + 0.5);
 	vec4 d = INSTANCE_CUSTOM;
-	vec3 p;
-	vec3 n;
-	vat_pose(clamp(int(d.x + 0.5), 0, 15), d.y, id, p, n);
+	int clip = clamp(int(d.x + 0.5), 0, 15);
 	float prev = floor(d.z);
 	float weight = d.z - prev;
-	if (weight > 0.0) {
-		vec3 p2;
-		vec3 n2;
-		vat_pose(clamp(int(prev), 0, 15), d.w, id, p2, n2);
-		p = mix(p, p2, weight);
-		n = mix(n, n2, weight);
+	int prev_clip = clamp(int(prev), 0, 15);
+	vec3 p;
+	vec3 n;
+	if (CUSTOM0.y > 0.5) {   // a hand prop: its rigid mesh through the hand's transform (the same blend as the body's positions)
+		int slot = int(CUSTOM0.x + 0.5);
+		vec4 r0;
+		vec4 r1;
+		vec4 r2;
+		trk_pose(clip, d.y, slot, r0, r1, r2);
+		if (weight > 0.0) {
+			vec4 s0;
+			vec4 s1;
+			vec4 s2;
+			trk_pose(prev_clip, d.w, slot, s0, s1, s2);
+			r0 = mix(r0, s0, weight);
+			r1 = mix(r1, s1, weight);
+			r2 = mix(r2, s2, weight);
+		}
+		p = vec3(dot(r0.xyz, VERTEX) + r0.w, dot(r1.xyz, VERTEX) + r1.w, dot(r2.xyz, VERTEX) + r2.w);
+		n = vec3(dot(r0.xyz, NORMAL), dot(r1.xyz, NORMAL), dot(r2.xyz, NORMAL));
+	} else {
+		vat_pose(clip, d.y, int(CUSTOM0.x + 0.5), p, n);
+		if (weight > 0.0) {
+			vec3 p2;
+			vec3 n2;
+			vat_pose(prev_clip, d.w, int(CUSTOM0.x + 0.5), p2, n2);
+			p = mix(p, p2, weight);
+			n = mix(n, n2, weight);
+		}
 	}
 	VERTEX = p;
 	NORMAL = normalize(n);
-	float slot = floor(COLOR.a * 0.5 + 0.001);
-	v_flash = clamp(COLOR.a - slot * 2.0, 0.0, 1.0);
-	v_glow = slot > 0.5 ? glow_palette[clamp(int(slot), 1, 63)] : vec4(emis, emis_k);
+	float slot_glow = floor(COLOR.a * 0.5 + 0.001);
+	v_flash = clamp(COLOR.a - slot_glow * 2.0, 0.0, 1.0);
+	v_glow = slot_glow > 0.5 ? glow_palette[clamp(int(slot_glow), 1, 63)] : vec4(emis, emis_k);
 	v_part = CUSTOM0.y;
 }
 

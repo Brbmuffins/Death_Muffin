@@ -11,13 +11,13 @@ The combat core writes one buffer per frame; the GPU does the rest in the vertex
   plays, skins every vertex on the CPU, and writes the files below. Headless, a few seconds per model.
 - `client/crowd/crowd_vat.gdshader`: the material. `client/crowd/crowd_vat_data.gd` (`CrowdVatData`): what a baked model loads as, plus the helpers that
   build its material and MultiMesh and pack the per-instance data.
-- `bash client/tools/bake_crowd.sh [enemy id or model slug ...]` (default: the Graves roster `robber hound penitent ghoul rat moth bat`, the Ossuary's `deacon bone_golem`, the Drowned Nave's `censer acolyte gargoyle templar wraith` (the wraith, an unrigged prop, is a still pose of a few KB), the Sanctum's and Cloister's `seraph flagellant plague_doctor`, the Cinder Pyre's and the Mourning Fen's `cinder_husk pyre_priest cinderhound slag_brute bog_hag drowned_sexton fen_wisp mire_leech`, the Bone Abbess's `niche` (a still pose too), and the thralls the rites raise: `skeleton_thrall thrall_legionnaire thrall_sentinel thrall_plague carrion_sac bone_colossus`, 7 to 23 MB each): runs the baker at low priority.
-  Output: `client/assets/crowd/baked/<model slug>/`.
+- `bash client/tools/bake_crowd.sh [enemy id or model slug ...]` (default: the Graves roster `robber hound penitent ghoul rat moth bat`, the Ossuary's `deacon bone_golem`, the Drowned Nave's `censer acolyte gargoyle templar wraith` (the wraith, an unrigged prop, is a still pose of a few KB), the Sanctum's and Cloister's `seraph flagellant plague_doctor`, the Cinder Pyre's and the Mourning Fen's `cinder_husk pyre_priest cinderhound slag_brute bog_hag drowned_sexton fen_wisp mire_leech`, the Bone Abbess's `niche` (a still pose too), and the thralls the rites raise: `skeleton_thrall thrall_legionnaire thrall_sentinel thrall_plague carrion_sac bone_colossus`, then the eight hand-prop variants; 6 to 14 MB a body, under 2 MB a variant): runs the baker at low priority.
+  Output: `client/assets/crowd/baked/<model slug>/`; the whole roster is about 235 MB (positions 140, normals 70, meshes 23, tracks 0.5; 2026-10-17).
 - `client/tests/crowd_bake.gd`: the headless proof (below). `client/tests/crowd_smoke.gd`: the one rendered look (software GL).
 - `client/crowd/crowd_view.gd` (`CrowdView`): the node that draws the combat core's creatures, with `client/crowd/crowd_looks.json` (which model each enemy
   def and thrall kind is drawn with) and the C++ `DmCrowd` behind it: "Driving the crowd". Proof: `client/tests/crowd_view.gd`; look: `client/tests/crowd_view_smoke.gd`.
 
-Baked files are **generated, not committed** (`client/assets/crowd/baked/` is ignored): the robber is 11.5 MB, so the baker belongs to the build, not the
+Baked files are **generated, not committed** (`client/assets/crowd/baked/` is ignored): the robber is 7 MB, so the baker belongs to the build, not the
 repository. Run `bash client/tools/bake_crowd.sh` before a publish; the test bakes into a scratch folder by itself.
 
 ## What is baked
@@ -27,7 +27,7 @@ The creature exactly as `godot/game/dm_creature.gd` puts it in the world: the he
 forward, before the enemy's own `scale`. Clips are the ones `DmCreature` can play: idle, walk, run, attack and its variants, cast, hurt, death, dig, ...
 (its `FALLBACK` table, stored as `roles`: role -> clips). Per model one `model.tres` (clip table, roles, texture paths, bounds, and what the views play the
 clips with: per clip the whole source length, the second the blow lands and, for a death, the second the body comes to rest; the model row's stride),
-`pos.res`, `nrm.res` and `mesh_lod<N>.res`.
+`pos.res`, `nrm.res` and `mesh_lod<N>.res`. A thrall variant (below) has `track.res` and its meshes instead of the two textures.
 
 **Unrigged models** (props today's creature shader animates: the moth, the bat, the choir wraith; `godot/game/dm_creature_mat.gd` wings) have no
 skeleton to pose. They bake one looping clip, `fly`: the shader's wing beat (`crowd_looks.json` `wings`, today's `DmEntityViews.WINGS`) written frame by frame,
@@ -36,9 +36,13 @@ fall; the body layer does the rest). A model without wings bakes a still pose. T
 per-creature phase did. The Weeping Seraph is a rigged character (idle, cast, hurt, death) that today's shader also gives a wing beat (`wings` in `crowd_looks.json`
 lists it): the baker poses its clips and does not add the beat, so it hovers with still wings (native/README.md "Differences").
 
-- **Positions** `pos.res`: `ImageTexture`, RGBAH (half floats, xyz in creature space). **Normals** `nrm.res`: RG8, octahedral. Both saved as binary `.res`
-  of raw pixels: they sample the same on Forward+ and Mobile, need no import step, and are never VRAM-compressed (that would corrupt the numbers).
-  Positions are accurate to about 2 mm, normals to 1 degree.
+- **Positions** `pos.res`: `ImageTexture`, RGBA8, one 32-bit texel per animation id and frame holding three integer codes over the bounds of every baked pose
+  (`pos_lo`, `pos_step`, `pos_radix` of the model): `n = x + rx * (y + ry * z)`, position = `pos_lo` + code x `pos_step`. The baker picks the radices (`CrowdBaker.position_radix`)
+  for the finest step the 32 bits allow: `rx` a power of two (the shader splits the 32 bits in two 16-bit halves and divides with plain ints, no shifts or unsigned types),
+  `ry` and `rz` the rest. **Normals** `nrm.res`: RG8, octahedral. Both saved as binary `.res` of raw pixels: they sample the same on Forward+, Mobile and Compatibility
+  (an 8-bit texel is exact through a float: `byte / 255 * 255 + 0.5` floors back to the byte), need no import step, and are never VRAM-compressed (that would corrupt the numbers).
+  A position is within half a code step per axis of the baked one: under 1.5 mm for most models; the widest boxes (a colossus's or golem's death takes its box to 6.7 x 4.5 x 5.3 m) reach
+  2.9 mm (half floats would have a worst case of 2.4 mm in the same box); the baker prints the worst of each model. Normals are accurate to 1 degree.
 - **Layout:** one texel per animation id and frame; a frame is `tex_rows` rows of `tex_width` texels (at most 2048 wide, 4096 tall: phones). Vertices that move
   alike (same place, bones, weights and normal: UV seams only) share one id, so the robber's 5,635 vertices are 2,179 columns.
 - **Mesh:** rest pose in creature space, UVs for the albedo, the animation id in `CUSTOM0.x` (float), `custom_aabb` = bounds of every baked pose. One mesh per level
@@ -148,7 +152,7 @@ Numbers are today's, from the file named; where the live game and `dm_entity_vie
 thralls' own looks, the casters, the hover heights. `CrowdView.setup` turns them into `DmCrowd.set_enemy_look` and `set_thrall_look` (per kind and legion), loads each baked model it
 needs from `res://assets/crowd/baked/<slug>/` (the `baked_dir` option) and builds its nodes. A def whose model is not baked is drawn with the nearest one that is: the rig fallback of today's
 game, else a baked model of the same rig (`enemies.json` `rig`), else the skeleton, else any baked model; each substitution is listed once in `CrowdView.warnings` (and `push_warning`).
-A model with no colour texture is drawn white and listed too.
+A model with no colour texture is drawn white, and one baked by another version of the baker (`CrowdVatData.format`) is listed too (bake again).
 
 ### Test of the views
 
@@ -161,26 +165,41 @@ of the whole path is `client/tests/crowd_view_smoke.gd` (Compatibility, llvmpipe
 
 ## Proof
 
-`godot --headless --path client --script res://tests/crowd_bake.gd` (12 s): bakes the robber and the hound, then checks, for every clip's first, middle and
-last frame and every vertex, the textures against an independent skinning of the model (max position error 2 mm, normals 1 degree); that the rest pose skins back to
+`godot --headless --path client --script res://tests/crowd_bake.gd` (30 s): bakes the robber and the hound, then checks, for every clip's first, middle and
+last frame and every vertex, the textures against an independent skinning of the model (positions within 2 mm and within half a code step, normals 1 degree); the position codes (radices
+for boxes of every size, 32 bits, a power-of-two x, a round trip within half a step); that the rest pose skins back to
 the modelled mesh; metadata, texture size and format limits, 5,000-triangle and 1,024-pixel budgets, the over-budget path, mesh levels; the shader's vertex
-function (mirrored line by line in the test) against true skeleton poses at random clip times with blends; the instance packing; and that the shader file has no
-Forward+-only or screen-dependent built-ins. Headless Godot has no renderer, so GLSL itself compiles only in `crowd_smoke.gd` (Compatibility, llvmpipe);
+function (mirrored line by line in the test, the code decoding and the hand-prop branch included) against true skeleton poses at random clip times with blends; the instance packing; and that the shader file has no
+Forward+-only or screen-dependent built-ins, no unsigned types or shifts. Headless Godot has no renderer, so GLSL itself compiles only in `crowd_smoke.gd` (Compatibility, llvmpipe);
 Forward+ and Mobile run it the first time on a real GPU.
 
 ### Hand props
 
 A thrall that holds a weapon today (DmEntityViews._make_thrall: a warrior or shieldbearer under an armed legion or none, every archer and bone mage) is drawn with a
-variant of its body, `<model>+<kind>` (`thrall_legionnaire+warrior`, `skeleton_thrall+archer` ...), baked by `bake_crowd.sh` like any model. The baker builds today's props
-(`DmGearProps.bone_sword`, `round_shield`, `bone_bow`, `bone_staff`, from `crowd_looks.json` `thrall_props`: builder, bone, `dir`, `follow`) and adds their triangles to the mesh
-with animation ids of their own, placed every baked frame the way `DmCreature.attach` holds them: calibrated on the idle pose where today's calibration runs (the body settled
-0.25 s, then 4 frames: `PROP_CALIBRATE_S`), then the hand's rotation times the calibrated one, its up pulled toward `dir` by 1 - `follow`. Their vertices carry their material
-part in `CUSTOM0.y` (0 the body), and the material reads the part's flat colour, metallic, roughness and emission from `part_albedo` / `part_pbr` / `part_emission` (`CrowdVatData`;
-no tint, flash or glow, as today's props). CrowdView picks the variant when it is baked and says once when it is not (the plain body then). A variant never stands in for another
-model. Not today's: the props cast shadows with the body (today's never did), today recalibrates a prop that drifts 25 degrees and each thrall calibrates on its own moment (a
-shield can sit 20 to 40 degrees differently), the kit weapon's tier colour is not applied, and on Compatibility the props' metal reads darker than today's material (the look pass).
-`client/tests/crowd_bake.gd` bakes `thrall_legionnaire+warrior` and checks the parts, the calibration (each prop's up along its `dir`, held at the hand) and every frame against the formula;
-`client/tests/crowd_view.gd` checks which thralls get a variant.
+variant of its body, `<model>+<kind>` (`thrall_legionnaire+warrior`, `skeleton_thrall+archer` ...), baked by `bake_crowd.sh` after the plain bodies. The variant does not copy its
+body's animation: it **shares the plain body's `pos.res` and `nrm.res`** (its `model.tres` points at `baked/<model>/`; the baker bakes the plain body first when it is not there or is
+of another `format`, so one GPU texture serves the body and its variants) and adds only its props, a few hundred triangles and a transform track:
+
+- **Props are rigid meshes.** The baker builds today's props (`DmGearProps.bone_sword`, `round_shield`, `bone_bow`, `bone_staff`, from `crowd_looks.json` `thrall_props`: builder, bone, `dir`,
+  `follow`) and adds their triangles to the body's mesh in their own space (`VERTEX`, `NORMAL`), with `CUSTOM0.x` = which prop of the variant and `CUSTOM0.y` = their material part
+  (0 the body); the material reads the part's flat colour, metallic, roughness and emission from `part_albedo` / `part_pbr` / `part_emission` (`CrowdVatData`; no tint, flash or glow, as
+  today's props). One MultiMesh, one surface, one draw call a group, as the plain body: a variant is its own model as before, so the draw calls are today's.
+- **The track** `track.res`: `ImageTexture`, RGBAF (a few KB), one row per frame and three texels per prop: the rows of the prop's 3x4 matrix, translation in `w`. The baker places each prop every frame
+  the way `DmCreature.attach` holds it: calibrated on the idle pose where today's calibration runs (the body settled 0.25 s, then 4 frames: `PROP_CALIBRATE_S`), then the hand's rotation
+  times the calibrated one, its up pulled toward `dir` by 1 - `follow` (`CrowdBaker._prop_xforms`, the one formula the track and the test's reference share). The vertex shader blends the
+  matrices of the two frames around the time, and of the two clips of a blend, with the same weights as the body's positions: linear in the matrix, so a prop vertex lands exactly where the
+  straight line between its two placed positions does.
+- **Frames.** `track_table` is the clip table of the track: the plain body's frames or finer (`CrowdBaker._sample_track`: the fewest frames per second, from the body's, that keep the blend of
+  two frames within 25 mm of the true pose of the worst prop vertex, or 128 frames). The swing of a blade reaches further than any vertex of the body, so some clips take more track rows
+  than body frames (a warrior's attack: 128 against 114).
+- **Bounds** (`aabb`, the meshes' `custom_aabb`) hold the body and the props in every frame.
+
+CrowdView picks the variant when it is baked and says once when it is not (the plain body then). A variant never stands in for another model. Not today's: the props cast shadows with the body
+(today's never did), today recalibrates a prop that drifts 25 degrees and each thrall calibrates on its own moment (a shield can sit 20 to 40 degrees differently), the kit weapon's tier colour is
+not applied, and on Compatibility the props' metal reads darker than today's material (the look pass).
+`client/tests/crowd_bake.gd` bakes `thrall_legionnaire+warrior` (and the plain body it shares, from nothing) and checks the files and the sharing, the parts, the calibration (each prop's up along its `dir`, held at the
+hand), and the shader's prop branch (mirrored line by line) against the fully placed props (`CrowdBaker._place_props`, today's formula on the true pose): at the first, middle and last frame of every clip (0.001 mm),
+at random times against the straight line between the two frames' placed props (0.000 mm, 0.2 mm allowed), against the true pose (the interpolation tolerance), and blended; `client/tests/crowd_view.gd` checks which thralls get a variant.
 
 ## Differences from the creature material (`godot/game/dm_creature_mat.gd`)
 

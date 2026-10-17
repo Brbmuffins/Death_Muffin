@@ -109,9 +109,12 @@ server (B38).
   - [ ] Crowd looks: thrall rims, kit armour tint and the kit weapon's tier colour on a thrall's prop, and the Leech's wobble need a per-look material or
     an instance channel (decide with a measure); sinking bodies fade out only with an alpha channel. Done: every body's glow (elite, risen and drowned, wraith, wisp, a legion's
     thralls with the empowered and champion boosts) through a glow palette, no extra draw call (`client/crowd/README.md`), the wings, the spectral wraiths (see-through, no shadow), the dirt mound over a ghoul underground (`DmEnemyFx`), and the thralls' hand props (swords, shields, bows, staffs: "<model>+<kind>" variants, `client/crowd/README.md` "Hand props").
-  - [ ] Crowd download size: the eight hand-prop variants each carry a whole copy of their body's vertex animation (about 25 MB each, 200 of the test build's
-    493 MB assets pack, test build #4). A prop as a rigid mesh on a baked hand-bone track (one small texture per body), and quantized positions in the VAT, would cut the
-    crowd to a fraction (and phones need it).
+  - [ ] Crowd download size: a thrall variant (`<model>+<kind>`) shares its plain body's textures and draws its hand props as rigid meshes on a baked hand-transform track (one small
+    RGBAF texture per variant; under 2 MB a variant, it was about 25 MB), and positions are three integer codes over the model's bounds in one 32-bit texel (4 bytes, they were 8). The
+    baked crowd is 234 MB, it was 565 (the test build #4's 493 MB assets pack held 200 MB of variants); draw calls are today's (no extra MultiMesh), and the variants no longer upload their own
+    copy of the textures. Positions are within 1.5 mm for most models and 2.9 mm for the widest boxes (a colossus's; the half floats had 2.4 mm there); the props are where today's
+    formula puts them (0.001 mm): `client/crowd/README.md` "What is baked", "Hand props", `client/tests/crowd_bake.gd`. Left: the first rendered check on a real GPU
+    (`client/tests/crowd_smoke.gd`, Forward+, Mobile and Compatibility): the shader's integer decoding and its prop branch are proven in a line-by-line mirror and a GLSL compile, not yet on a renderer.
   - [ ] Crowd effects, the rest: `DmEnemyFx` already plays the telegraphs, swings, deaths, voices, rising dust, dust clouds and the affixes' bell, meal and burst from the core's events; left are the
     the shrouded body's fade (the full list is in native/README.md "Differences"). Done: the thralls' ground rings, the shattered corpse (`DmCrowd.shatter`) and each corpse's puff when it goes, the landing dust (`DmCrowd.take_landings`), the corpse rings and the toxic disc, the affixes' standing marks and motes, the status tells and the fliers' motes (their cost in the VPS Full Party fight, headless, two rounds each: 5.06 -> 5.22 ms a frame on average, the median unchanged; today pays the same effects every frame).
   - [ ] Crowd cost: animation LOD (a far body at 24 or 10 Hz), cull instances outside the camera's view in the core, measure the thralls' shadows (they always cast), set the level-of-detail
@@ -313,6 +316,9 @@ combat simulation for now.
   - Today's game's benchmark: the fight's settings carry no V-Sync, so the game scene turns it back on during the measurement; a run faster than the monitor reads its
     refresh rate (the server flags it). The rebuild keeps it off (2026-10-17).
   - Today's game: cycles gathered in the last 8 s before the player leaves or closes the window are never sent (`flush_all` does not flush the gather loop). The rebuild keeps it (2026-10-17).
+  - The rebuild's publish fingerprint (`server/death-muffin/publish-godot-client.sh`) lists the crowd bake's inputs but not `client/game/dm_gear_props.gd`, the hand props' geometry: a change
+    to it would not rebuild the assets pack (2026-10-17).
+  - The rebuild's crowd meshes repeat the vertex arrays in every level of detail's `mesh_lod<N>.res` (23 MB of the 234); one array with Godot's own mesh LODs would share it (2026-10-17).
   - The benchmark (both games): a level-up during the fight refreshes the god-mode hero's stats from the throwaway character's real level, so the held fight changes
     as that character levels; the benchmark could hold its XP.
 - **Found during the rebuild, today's game ignores them** (Helix 2026-10-16: fixed after launch day, in the rebuild only; until then both keep today's behaviour; the core already emits each one):
@@ -321,7 +327,7 @@ combat simulation for now.
   `DmBoss.take_damage` does not apply the status set's damage-taken multiplier, and the brain's own Fracture is never fed (a Marrow Spear's Fracture or a Sanctify on the King does nothing); kept, and so is the port.
 - **Phones:** on the Mobile renderer, following the phone rules kept since the rebuild (B40).
 - **The asset and effects rebuild** (Helix, 2026-10-16: after the core is rebuilt, with its own roadmap and pipelines). Until then the rebuild changes effects
-  and assets only where speed needs it. Notes for it: the crowd's download size (the hand-prop variants copy their body's animation, "Test build checklist").
+  and assets only where speed needs it. Notes for it: the crowd's download size (234 MB baked: positions 140, normals 70, level-of-detail meshes 23; "Test build checklist").
 
 ## Later
 

@@ -1303,6 +1303,17 @@ func armed_variants() -> void:
 	check(slots.has("skeleton_thrall+warrior"), "the warrior's variant is a model of the view (%s)" % str(slots.keys()))
 	check(not Array(view.warnings).any(func(w: String) -> bool: return w.contains("drawn as skeleton_thrall+")), "a variant is never a stand-in for another model")
 	check(view.warnings.has("no baked variant skeleton_thrall+archer: drawn without its hand props"), "an archer without its baked variant keeps its plain body, said once")
+	# the variant draws with its plain body's very textures (one upload for both), its props through the track, and costs no extra MultiMesh: two a level, as a body
+	var vd: CrowdVatData = view.data_of("skeleton_thrall+warrior")
+	var pd: CrowdVatData = view.data_of("skeleton_thrall")
+	var vmat := (view.get_node_or_null("skeleton_thrall+warrior_lod0") as MultiMeshInstance3D).material_override as ShaderMaterial
+	check(vd.track_tex != null and vd.prop_count == 2 and pd.track_tex == null and vd.pos_tex == pd.pos_tex and vd.nrm_tex == pd.nrm_tex, "the warrior's variant draws with the plain body's very textures and a track of its own")
+	check(vmat != null and vmat.get_shader_parameter("vat_pos") == pd.pos_tex and vmat.get_shader_parameter("vat_track") == vd.track_tex and (vmat.get_shader_parameter("trk_clips") as PackedVector4Array)[0] == vd.track_table[0],
+		"its material has the body's textures, its track and the track's clip table")
+	var groups := 0
+	for c in view.get_children():
+		groups += 1 if c.name.begins_with("skeleton_thrall+warrior_lod") else 0
+	check(groups == 2 * vd.meshes.size(), "the variant is drawn in two MultiMeshes a level of detail, as a plain body: its props add none (%d)" % groups)
 	var bare: int = core.add_external(0, 0.4, 1.0)
 	var rot: int = core.add_external(0, 0.4, 1.0)
 	view.set_owner_legion(rot, "rotweaver")

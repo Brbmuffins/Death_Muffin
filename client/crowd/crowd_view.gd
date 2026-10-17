@@ -240,6 +240,8 @@ func _slot(slug: String) -> int:
 	if _slots.has(slug):
 		return _slots[slug]
 	var data: CrowdVatData = ResourceLoader.load(_baked_dir.path_join(slug).path_join("model.tres"), "", ResourceLoader.CACHE_MODE_REUSE)
+	if data.format != CrowdVatData.FORMAT:   # a bake of an older baker would be read as noise by the shader
+		_warn("%s was baked in format %d, the shader reads %d: bash client/tools/bake_crowd.sh" % [slug, data.format, CrowdVatData.FORMAT])
 	var albedo := _texture(data.albedo_path)
 	if albedo == null:
 		_warn("no colour texture for %s (%s): drawn white" % [slug, data.albedo_path])
