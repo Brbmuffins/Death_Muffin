@@ -288,6 +288,8 @@ combat simulation for now.
   - Today's game: quitting while models still load in the background can abort on a PC with few cores (the GitHub runner's 4: the CI's perfctl abort, 2026-10-16).
   - Today's game: a party guest leaving with kills not yet reported makes the host send to a peer that is gone (an engine error in the log, nothing lost; the rebuild
     skips the send).
+  - Today's game: the Plague Doctor's flask leaves a 5 s toxic pool that hurts but draws nothing on the ground (DmEnemyFx draws only dust and ember zones);
+    the rebuild keeps it so until this is decided (2026-10-17).
   - Today's game's benchmark: the fight's settings carry no V-Sync, so the game scene turns it back on during the measurement; a run faster than the monitor reads its
     refresh rate (the server flags it). The rebuild keeps it off (2026-10-17).
   - Today's game: cycles gathered in the last 8 s before the player leaves or closes the window are never sent (`flush_all` does not flush the gather loop). The rebuild keeps it (2026-10-17).
