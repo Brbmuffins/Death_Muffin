@@ -196,12 +196,16 @@ server (B38).
     effects' particle ring (today's `DmFxRing`, GDScript) at 1.15 ms a frame, the most after the core; its loop is the core's C++ now (`DmMotes`, float for float the same:
     `client/tests/fx_motes.gd`). A/B four runs each: 5.7 to 5.0 ms a frame, the rest of the main thread 3.7 to 3.1 ms. Next in line by the same timing: Easy auto combat's
     decisions (0.5 ms, the benchmark's driver) and the enemy effects (0.15).
-  - [ ] Helix's PC: the same fight rendered on both sides (the 2 times of Gate B), the HUD's 0.5 ms and 150 draw calls (the render breakdown's HUD row), and the warm-up looked at on a GPU (it runs in the benchmark, not yet in play).
+  - [x] Helix's PC (RTX 4070 SUPER, Ryzen 9 5950X, 2560x1440, Ultra, V-Sync off, 2026-10-17): the Full Party fight in the Hollow Graves, today's game (20261016.035802, Compatibility) 77.3 fps (12.93 ms a frame,
+    p95 18.1, p99 21.0, 1,091 draw calls) against the test build 20261017.012954 (Forward+) 242.5 fps (4.12 ms, p95 5.1, p99 6.7, worst 13.3, 581 draw calls): 3.1 times today's speed (3.5 at p95), so Gate B's
+    2 times holds on a real PC as on the VPS. The HUD row: 126 draw calls (150) and 0.08 ms of the frame; no hitch through the warm-up and the fight. The test builds before da9cc529 drew no enemies or
+    thralls (the crowd looked for its models by file name, which an export changes); their runs do not count.
+  - [ ] The physics frame: the same run reads 6.5 ms of physics time (today's 8.8) while the core's step is 0.13 ms and its events 0.14: find what Godot counts there (the navigation server's sync, the
+    scripts' `_physics_process`, the hero's body) and cut what is ours.
   - [x] The seeded scenario comparison with today's game (`tools/rebuild/compare-scenarios.mjs`, native/README.md "Proof of same game", 2026-10-16): the Hollow Graves, a level-10 Gravecaller on Easy auto combat, 180 s of game time, twenty seeds on each side.
     Kills -2.3 % (tolerance 15), hero damage -3.0 % (15), thrall damage -6.5 % (20), median time to kill 0.0 % (20), thrall uptime -0.4 points (10), damage taken by the hero and his thralls -1.3 % (25): every metric inside its tolerance, and underneath it the kinds, the rites, the thralls lost
     and who hurt them agree. Seeds 1 to 5 (6 minutes) are too few for damage taken (-32.5 % against a noise band of 47 %); the verdict takes `--seeds=1-20` (23 minutes). No behaviour difference found. Not in it: bosses, rewards, loot and the other disciplines.
-  - [ ] What the client's fight lacks, each with its own item: the panels, the other disciplines and rooms. The fight is cheaper than today's by these (rewards, loot drops and the kill
-    ledger are in since 2026-10-16).
+  - [ ] What the client's fight lacks, each with its own item: the other rooms ("The benchmark's other rooms"). The panels, the other disciplines, rewards, loot drops and the kill ledger are in.
 
 **Bring everything over checklist** (built ahead while Gate B waits, B34's rule: nothing reaches players before its gate; Claude's order, 2026-10-16: what a player meets first,
 necromancers first; the order is easy to change). Each item is today's GDScript on the core the way the test build did it (copies where they run as they are, ports where
