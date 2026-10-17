@@ -1,12 +1,13 @@
 #pragma once
 // DmMotes: the per-frame loop of today's CPU particle ring (client/fx/dm_fx_ring.gd, a port of godot/fx/dm_fx_ring.gd and Effects.ts ParticleSystem) in C++.
-// The ring's motes live here as flat arrays; DmFxRing (GDScript) still makes each mote's random start (`put`, the same randf stream) and owns the
-// MultiMeshes. `step` ages, moves and fades every live mote exactly as the GDScript loop did (the same double-precision arithmetic, stored as
+// The ring's motes live here as flat arrays; `emit` makes a burst's motes (each one's random start from the global generator, drawn in the order DmFxRing.emit drew them in
+// GDScript, so the stream and every number are today's: client/tests/fx_motes.gd) and DmFxRing (GDScript) owns the MultiMeshes. `step` ages, moves and fades every live mote exactly as the GDScript loop did (the same double-precision arithmetic, stored as
 // floats) and writes the instance buffer of the ring that is drawn; `upload` hands it to the RenderingServer.
 #include <vector>
 
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/vector3.hpp>
@@ -27,6 +28,7 @@ protected:
 
 public:
 	void setup(int32_t p_capacity, int32_t p_small_cap);
+	int64_t emit(const godot::Dictionary &p_o);   // the motes made (0 for a count of 0 or less)
 	void put(const godot::Vector3 &p_pos, const godot::Vector3 &p_vel, const godot::Color &p_color, double p_life, double p_size, double p_gravity, double p_drag, double p_shrink);
 	int32_t active() const { return live; }
 	int32_t step(double p_dt, bool p_small);

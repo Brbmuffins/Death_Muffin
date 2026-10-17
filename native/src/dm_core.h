@@ -6,6 +6,7 @@
 #include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
+#include <godot_cpp/variant/packed_float64_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -90,6 +91,9 @@ public:
 	double status_stacks(int64_t p_id, const godot::String &p_status) const;
 	double damage_dealt_mult(int64_t p_id) const;
 	godot::PackedInt32Array enemies_in_radius(const godot::Vector2 &p_pos, double p_r);
+	// The living enemies `enemies_in_radius` finds, as ten numbers each (id, x, z, radius, hp, state, elite 0/1, level, def, area) in the same order: what a cast reads of every foe in reach,
+	// without the Dictionary a record each costs (`enemy_info` builds 25 entries). Doubles, so a health is the very number the record gives.
+	godot::PackedFloat64Array foes_in_radius(const godot::Vector2 &p_pos, double p_r);
 	// A hero (kind 0) or a boss (kind 1). A boss is a target for thralls while `alive` (false when dead or it cannot be hurt).
 	int64_t add_external(int64_t p_kind, double p_radius, double p_weight);
 	void set_external(int64_t p_id, const godot::Vector2 &p_pos, bool p_alive);

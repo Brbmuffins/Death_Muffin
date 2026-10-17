@@ -55,6 +55,10 @@ var _floor_region: NavigationRegion3D  ## the Depths floor's region while a floo
 var _core_floor := -1                  ## the core's region index of the Depths floor (one index, its polygons replaced per floor), -1 = none yet
 var _scenes := {}                      ## area id -> its scene root
 var _rects := {}                       ## area id -> {x0, z0, x1, z1} from world.json
+var _rect_f := PackedFloat64Array()    ## the loaded areas' rects as flat numbers, x0 x1 z0 z1 each, in `loaded` order (what area_at walks)
+var _rect_of := {}                     ## loaded area id -> its rect as PackedFloat64Array(x0, x1, z0, z1)
+var _no_rect := PackedFloat64Array()
+var _rects_apart := true               ## no two loaded areas' rects overlap (their edges may touch): a point strictly inside one is in no other
 
 
 ## Every converted area (all but the instanced Depths), in world order.
@@ -81,7 +85,15 @@ func build(area_ids: Array = [], with_lights: bool = true) -> void:
 		_drop_door_copies(scene)
 		add_child(scene)
 		_scenes[String(id)] = scene
-		_rects[String(id)] = data["areas"][id]["rect"]
+		var rect: Dictionary = data["areas"][id]["rect"]
+		_rects[String(id)] = rect
+		var flat := PackedFloat64Array([float(rect["x0"]), float(rect["x1"]), float(rect["z0"]), float(rect["z1"])])
+		for i in loaded.size():   # (rects that overlap would make the nearby test below ambiguous: it is then never used)
+			var o := _rect_f.slice(i * 4, i * 4 + 4)
+			if flat[0] < o[1] and o[0] < flat[1] and flat[2] < o[3] and o[2] < flat[3]:
+				_rects_apart = false
+		_rect_f.append_array(flat)
+		_rect_of[String(id)] = flat
 		loaded.append(String(id))
 		_collect_doors(scene, String(id))
 	_rects["depths"] = data["areas"]["depths"]["rect"]
@@ -292,15 +304,23 @@ func camera_config() -> Dictionary:
 
 ## The area at a ground point ("" = outside every loaded area, a door corridor included): the rect test of the builder's `area_at`. The Depths count while a run has them open.
 func area_at(x: float, z: float) -> String:
-	for id in loaded:
-		var r: Dictionary = _rects[id]
-		if x >= r.x0 and x <= r.x1 and z >= r.z0 and z <= r.z1:
-			return id
+	var f := _rect_f
+	var k := 0
+	for i in loaded.size():
+		if x >= f[k] and x <= f[k + 1] and z >= f[k + 2] and z <= f[k + 3]:
+			return loaded[i]
+		k += 4
 	if depths_open:
 		var d: Dictionary = _rects["depths"]
 		if x >= d.x0 and x <= d.x1 and z >= d.z0 and z <= d.z1:
 			return "depths"
 	return ""
+
+
+## The rect (x0, x1, z0, z1) of a loaded area when a point strictly inside it is in this area and no other, else empty: the loaded rects do not overlap, so a caller that asks about
+## many points (a boss brain's list of bodies) can keep the last answer and walk `area_at` only for a point outside it.
+func area_interior(id: String) -> PackedFloat64Array:
+	return _rect_of.get(id, _no_rect) if _rects_apart else _no_rect
 
 
 func area_rect(id: String) -> Dictionary:

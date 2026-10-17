@@ -93,6 +93,7 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("status_stacks", "id", "status"), &DmCore::status_stacks);
 	ClassDB::bind_method(D_METHOD("damage_dealt_mult", "id"), &DmCore::damage_dealt_mult);
 	ClassDB::bind_method(D_METHOD("enemies_in_radius", "pos", "r"), &DmCore::enemies_in_radius);
+	ClassDB::bind_method(D_METHOD("foes_in_radius", "pos", "r"), &DmCore::foes_in_radius);
 	ClassDB::bind_method(D_METHOD("add_external", "kind", "radius", "weight"), &DmCore::add_external);
 	ClassDB::bind_method(D_METHOD("set_external", "id", "pos", "alive"), &DmCore::set_external);
 	ClassDB::bind_method(D_METHOD("remove_external", "id"), &DmCore::remove_external);
@@ -163,7 +164,7 @@ void DmCore::_bind_methods() {
 }
 
 String DmCore::version() const {
-	return "dmcore 0.15";
+	return "dmcore 0.16";
 }
 
 int64_t DmCore::checksum(int64_t p_count) const {
@@ -805,6 +806,28 @@ PackedInt32Array DmCore::enemies_in_radius(const Vector2 &p_pos, double p_r) {
 		ids.set(int64_t(i), world.enemies[query_out[i]].id);
 	}
 	return ids;
+}
+
+PackedFloat64Array DmCore::foes_in_radius(const Vector2 &p_pos, double p_r) {
+	world.enemies_in_radius(p_pos.x, p_pos.y, float(p_r), query_out);
+	PackedFloat64Array a;
+	a.resize(int64_t(query_out.size()) * 10);
+	double *w = a.ptrw();
+	for (size_t i = 0; i < query_out.size(); i++) {
+		const dm::Enemy &e = world.enemies[query_out[i]];
+		double *r = w + i * 10;
+		r[0] = e.id;
+		r[1] = e.x;
+		r[2] = e.z;
+		r[3] = e.radius;
+		r[4] = e.hp;
+		r[5] = e.state;
+		r[6] = e.elite ? 1.0 : 0.0;
+		r[7] = e.level;
+		r[8] = e.def;
+		r[9] = e.area;
+	}
+	return a;
 }
 
 int64_t DmCore::add_external(int64_t p_kind, double p_radius, double p_weight) {

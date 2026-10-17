@@ -8,7 +8,8 @@ extends RefCounted
 
 const BASE := "res://assets/fx/binbun/"
 const KEYS := ["primary_color", "secondary_color", "tertiary_color"]
-const POOL_MAX := 4
+const POOL_MAX := 8             ## idle instances kept per effect id (a zone of bonfires comes and goes: 4 meant a scene built from disk-loaded resources again for every other one)
+const CULL_EVERY := 3            ## a looping effect is tested against the camera every third frame: the test keeps 4 m of margin past the frustum, a frame moves the view a few centimetres
 
 var enabled := true
 ## Hitstop / slow-mo: scales animation + particle speed (the web scales dt by hitstop.scale).
@@ -50,6 +51,7 @@ class Inst:
 	var anim_loops := false
 	var fade_cache := -1.0
 	var gain_cache := -1.0
+	var speed_set := 1.0         ## the speed_scale this instance's AnimationPlayer was last given
 	var ap: AnimationPlayer
 
 
@@ -64,6 +66,10 @@ class Live:
 	var dead := false
 	var looping := false
 	var culled := false
+	var cull_wait := 0           ## frames until the next camera test (looping effects only; see update)
+	var scale := 1.0             ## opts.scale, read once
+	var once := false            ## opts.once, read once
+	var placed := false          ## inst.root is at `pos` (it is set again only when `pos` changes)
 	var alpha_mul := 1.0
 	var pos := Vector3.ZERO
 	var follow: Callable
@@ -82,6 +88,7 @@ class Live:
 
 	func move(p: Vector3) -> void:
 		pos = p
+		placed = false
 
 	func set_alpha(a: float) -> void:
 		alpha_mul = a
@@ -241,6 +248,9 @@ func _materialize(live: Live) -> void:
 	live.inst = inst
 	live.looping = looping
 	var once: bool = o.get("once", false)
+	live.once = once
+	live.scale = float(o.get("scale", 1.0))
+	live.placed = true   # (the root is put at `pos` just below)
 	if o.has("duration"):
 		live.end = float(o["duration"])
 	elif not looping:
@@ -262,6 +272,7 @@ func _materialize(live: Live) -> void:
 		(inst.particles[i] as GPUParticles3D).emitting = inst.emit_default[i]
 	if inst.has_anim and inst.ap != null:
 		inst.ap.speed_scale = time_scale
+		inst.speed_set = time_scale
 		inst.ap.play(inst.anim_name)
 	# One shared light flash through the manager (one-shots only; loopers stay unlit).
 	if not looping and flash_cb.is_valid() and not inst.lights.is_empty():
@@ -514,9 +525,7 @@ func update(dt: float, cam: Camera3D) -> void:
 	if _live.is_empty():
 		return
 	var cam_pos := cam.global_position if cam != null else Vector3.ZERO
-	var planes: Array[Plane] = []
-	if cam != null:
-		planes.assign(cam.get_frustum())
+	var planes: Array[Plane] = []   # (fetched when a looping effect is first tested this frame)
 	var cull := float(_caps.get("cull_distance", 40)) + absf(cam_pos.y)
 	var fade_out := float(_caps.get("fade_out", 0.3))
 	for i in range(_live.size() - 1, -1, -1):
@@ -533,21 +542,31 @@ func update(dt: float, cam: Camera3D) -> void:
 		if live.follow.is_valid():
 			var at: Variant = live.follow.call()
 			if at is Vector3:
-				live.pos = at
+				if at != live.pos:   # a body that stands still does not move its effect
+					live.pos = at
+					live.placed = false
 			else:
 				live.kill()
 		live.t += dt * time_scale
-		inst.root.position = live.pos
-		var scale := float(live.opts.get("scale", 1.0))
+		if not live.placed:   # a root that stands still is not moved again every frame (each move walks the effect's whole subtree)
+			inst.root.position = live.pos
+			live.placed = true
 		if live.looping:
-			var far := Vector2(live.pos.x - cam_pos.x, live.pos.z - cam_pos.z).length() > cull
-			var visible_in_frustum := true
-			for pl in planes:
-				if pl.distance_to(live.pos + Vector3(0, 1, 0)) > 4.0 * scale + 1.0:
-					visible_in_frustum = false
-					break
-			live.culled = far or not visible_in_frustum
-			inst.root.visible = not live.culled
+			live.cull_wait -= 1
+			if live.cull_wait < 0:
+				live.cull_wait = CULL_EVERY - 1
+				if planes.is_empty() and cam != null:
+					planes.assign(cam.get_frustum())
+				var far := Vector2(live.pos.x - cam_pos.x, live.pos.z - cam_pos.z).length() > cull
+				var visible_in_frustum := true
+				var above := live.pos + Vector3(0, 1, 0)
+				var reach := 4.0 * live.scale + 1.0
+				for pl in planes:
+					if pl.distance_to(above) > reach:
+						visible_in_frustum = false
+						break
+				live.culled = far or not visible_in_frustum
+				inst.root.visible = not live.culled
 			if live.culled:
 				continue
 		var natural_end := false
@@ -566,18 +585,24 @@ func update(dt: float, cam: Camera3D) -> void:
 				live.stopped_at = live.t
 				for p in inst.particles:
 					(p as GPUParticles3D).emitting = false
-		# `once` plays the looping animation a single cycle, then holds.
-		if inst.ap != null and live.opts.get("once", false) and live.t >= inst.anim_len and inst.ap.is_playing():
-			inst.ap.pause()
-		if inst.ap != null and absf(inst.ap.speed_scale - time_scale) > 0.001:
-			inst.ap.speed_scale = time_scale
-		var ctrl_fade := inst.ctrl.fade_mult if inst.ctrl != null else 1.0
-		_push_fade(inst, fade * ctrl_fade)
-		_push_gain(inst)
-		if inst.ctrl != null and inst.ctrl.depth_mult != 1.0:
+		var ap := inst.ap
+		if ap != null:
+			# `once` plays the looping animation a single cycle, then holds.
+			if live.once and live.t >= inst.anim_len and ap.is_playing():
+				ap.pause()
+			if inst.speed_set != time_scale:
+				inst.speed_set = time_scale
+				ap.speed_scale = time_scale
+		var ctrl := inst.ctrl
+		var f_now := fade * (ctrl.fade_mult if ctrl != null else 1.0)
+		if absf(f_now - inst.fade_cache) >= 0.0005:
+			_push_fade(inst, f_now)
+		if absf(gain - inst.gain_cache) >= 0.0005:
+			_push_gain(inst)
+		if ctrl != null and ctrl.depth_mult != 1.0:
 			for k in inst.mats.size():
 				if inst.base_depth[k] >= 0.0 and inst.names[k].has("proximity_fade_distance"):
-					(inst.mats[k] as ShaderMaterial).set_shader_parameter("proximity_fade_distance", float(inst.base_depth[k]) * inst.ctrl.depth_mult)
+					(inst.mats[k] as ShaderMaterial).set_shader_parameter("proximity_fade_distance", float(inst.base_depth[k]) * ctrl.depth_mult)
 		if live.fading >= 0.0:
 			var waited := live.t - live.stopped_at
 			var wait := minf(inst.longest, 2.0) + (0.0 if natural_end else fade_out)

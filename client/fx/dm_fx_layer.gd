@@ -38,6 +38,10 @@ var _mesh: Mesh
 ## (there are ~180 of them once warmed up, and all but a handful are empty on any given frame).
 var wake: Callable
 var live := false
+## A decal layer's instances are kept by DmDecals (C++), which writes the buffer and hands it to the RenderingServer: `native_index` is the number it knows this layer by, and `show_count`
+## tells the layer how many instances were drawn. (Every other kind, and this class's own items and `flush`, work as today's.)
+var native_index := -1
+var _dec: DmDecals
 var _shown := false   # last state pushed to the MultiMesh / node (an empty layer is not re-pushed every frame)
 static var _meshes: Dictionary = {}
 
@@ -166,6 +170,32 @@ func _make() -> void:
 	node.visible = false
 	_shown = false
 	_parent.add_child(node)
+	if _dec != null:
+		_dec.bind_layer(native_index, mm.get_rid(), capacity)
+
+
+## Hands this decal layer's instances to DmDecals as layer number `index` (and again whenever its MultiMesh is made anew).
+func bind_native(dec: DmDecals, index: int) -> void:
+	_dec = dec
+	native_index = index
+	dec.bind_layer(index, mm.get_rid(), capacity)
+
+
+## The layer needs room for more instances: twice as many, in a MultiMesh made anew (DmDecals is told).
+func grow() -> void:
+	capacity *= 2
+	_make()
+
+
+## DmDecals drew `n` instances of this layer (0: it drew none, or the layer emptied).
+func show_count(n: int) -> void:
+	if n > 0:
+		mm.visible_instance_count = n
+		if not _shown:
+			_shown = true
+			node.visible = true
+	else:
+		_hide()
 
 
 func add(it: Item) -> void:

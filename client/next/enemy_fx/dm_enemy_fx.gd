@@ -51,6 +51,7 @@ const HEAD_Y := {"humanoid": 1.3, "robed": 1.35, "quadruped": 0.75, "bloat": 1.0
 const FIRE_DEFS: Array[String] = ["cinder_husk", "pyre_priest", "cinderhound", "slag_brute"]   ## the Cinder Pyre's dead: sparks, soot, ember tells
 const FEN_DEFS: Array[String] = ["fen_wisp", "bog_hag", "drowned_sexton"]                       ## the Fen's: marsh-lights and drips (the leech's wiggle is the body's own)
 const FEN_TEAL := 0x7fe0d0
+const PF_KINDS := {"cinder_husk": 0, "pyre_priest": 1, "cinderhound": 2, "slag_brute": 3, "fen_wisp": 4, "bog_hag": 5, "drowned_sexton": 6}   ## `_pfs`' kinds: 0..3 are the Pyre's (FIRE_DEFS), 4..6 the Fen's
 const EFFECT_IDS: Array[String] = ["censer_incense", "vengeful_burst", "surge_eruption", "bonfire"]
 const SFX_IDS: Array[String] = ["eliteAggro", "eliteDeath", "enemyDeath", "tellStrike", "tollSmall", "burst", "boneHit",
 	"enemyAttackBeast", "enemyAttackHumanoid", "enemyAttackBrute", "enemyAttackSpirit",
@@ -87,7 +88,7 @@ var _zone := {"id": 0, "kind": "dust", "owner": "", "x": 0.0, "z": 0.0, "r": 1.0
 var _zones := {}                   ## zone id -> true while its visual is up
 var _statused := {}                ## id -> its scale: a body that got a status (looked at on the ambient tick until it has none)
 var _hovers := {}                  ## id -> its hover height: a flier or the wraith (the motes under it)
-var _pfs := {}                     ## id -> [def, state, scale, hover height]: a Cinder Pyre or Mourning Fen body that sheds embers or marsh-lights near the hero, while it lives
+var _pfs := {}                     ## id -> [kind (PF_KINDS), state, scale, hover height]: a Cinder Pyre or Mourning Fen body that sheds embers or marsh-lights near the hero, while it lives
 var _burst_n := 0                  ## bursts made through the scratch dictionary (the tests read it as `stats.pf_mote` for the idle motes)
 var _stub := DefStub.new()         ## stands in for the sim enemy record the telegraph router looks the def up in (the Slag Brute's slam)
 var _incense := {}                 ## id -> the Censer Bearer's incense cloud (a Binbun handle), while it lives
@@ -102,6 +103,13 @@ var _corpse_at := {}               ## corpse id -> Vector2: where it lies (the p
 var _corpse_rings := {}            ## corpse id -> [its ring's handle, when it ends (rendered-frame ms), pale]: until the corpse goes or the ring's 26 s are over
 var _px := 0.0
 var _pz := 0.0
+var _body_ids := {}                ## id -> offset of its x in `_body_pos`: the core's bodies as one ambient tick found them (`_index_bodies`)
+var _body_pos := PackedFloat32Array()   ## x, z, yaw per body in the core's order
+var _bx := 0.0                     ## where `_body_xz` found a body
+var _bz := 0.0
+var _ember := 0                    ## the Pyre's shed colours (`DmEventFx.sp("enemy", ...)`, read once)
+var _ember_core := 0
+var _ember_deep := 0
 var _amb_dust := {"x": 0.0, "y": 0.1, "z": 0.0, "count": 1, "color": 0x2a2230, "spread": 0.5, "speed": 0.5, "up": 0.6, "life": 1, "size": 0.9}
 var _pf := {"x": 0.0, "y": 0.0, "z": 0.0, "count": 1, "color": 0, "spread": 0.3, "speed": 0.2, "up": 1.0, "life": 0.8, "size": 0.1, "gravity": 0.0}   ## scratch for the Templar's spark and the pyre / fen tells
 var _amb_dirt := {"x": 0.0, "y": 0.15, "z": 0.0, "count": 2, "color": 0xffffff, "spread": 0.35, "speed": 0.9, "up": 1.2, "life": 0.4, "size": 0.12, "gravity": 9}
@@ -119,9 +127,18 @@ func _ready() -> void:
 	_rebuild_router()
 
 
+func _exit_tree() -> void:
+	var prims: Variant = vfx.get("prims") if vfx != null and is_instance_valid(vfx) else null
+	if prims != null and prims.has_method("set_crowd"):
+		prims.set_crowd(null)   # (a decal that follows a body falls back to its callable)
+
+
 ## Listens to the host. One fx per game: it would play everything twice otherwise.
 func bind(h: DmCoreHost) -> void:
 	core_host = h
+	var prims: Variant = vfx.get("prims") if vfx != null else null
+	if prims != null and prims.has_method("set_crowd"):
+		prims.set_crowd(h.view.crowd)   # the decals that follow a body (`follow_body`) read the crowd's drawn place themselves, in C++
 	h.enemy_spawned.connect(_on_spawned)
 	h.enemy_state.connect(_on_state)
 	h.enemy_damaged.connect(_on_damaged)
@@ -151,6 +168,9 @@ func _rebuild_router() -> void:
 	fx.audio = audio
 	_tele_call = fx.telegraph_fx.telegraph.bind(_tele)
 	_amb_dirt["color"] = fx.sp("enemy", "dirt")
+	_ember = fx.sp("enemy", "ember")
+	_ember_core = fx.sp("enemy", "emberCore")
+	_ember_deep = fx.sp("enemy", "emberDeep")
 
 
 ## Use these instead of the autoloads (counting back-ends in tests).
@@ -221,7 +241,7 @@ func _on_spawned(id: int, def: String, _level: int, elite: bool, _area: String, 
 			fx.snd("eliteAggro", x, z)
 		# the ring follows the drawn body (the crowd's interpolated position): by id, never a lambda capturing more than the id
 		_auras[id] = vfx.decal({"danger": true, "tex": "ring", "color": ELITE_COLOR, "x": x, "z": z, "r": 1.1 * float(core_host.enemy_defs[def].get("scale", 1.0)) * float(DmSimData.ELITE["scale"]),
-			"duration": 1e9, "opacity": 0.8, "pulse": 4.0, "follow": _drawn_pos.bind(id)})
+			"duration": 1e9, "opacity": 0.8, "pulse": 4.0, "follow": _drawn_pos.bind(id), "follow_body": id})
 	if _affixes != 0:
 		_dress_affix(id, def, elite, _affixes, x, z)
 	var d: Dictionary = core_host.enemy_defs.get(def, {})
@@ -229,7 +249,7 @@ func _on_spawned(id: int, def: String, _level: int, elite: bool, _area: String, 
 	if hover > 0.0 and def != "fen_wisp":   # (the wisp's motes are its own marsh-lights)
 		_hovers[id] = hover
 	if FIRE_DEFS.has(def) or FEN_DEFS.has(def):
-		_pfs[id] = [def, state, float(d.get("scale", 1.0)) * (float(DmSimData.ELITE["scale"]) if elite else 1.0), hover]
+		_pfs[id] = [PF_KINDS[def], state, float(d.get("scale", 1.0)) * (float(DmSimData.ELITE["scale"]) if elite else 1.0), hover]
 	if bool(d.get("aura", false)):   # the Censer Bearer's incense cloud (DmEnemyFx._on_ready)
 		_incense[id] = fx.bb("censer_incense", x, z, {"follow": _drawn_pos.bind(id)})
 	if bool(d.get("unbind", false)):   # the Lich Acolyte: its reach ring comes and goes with the thralls near it (`_ambient`)
@@ -301,8 +321,8 @@ func _on_cue(id: int, kind: int, x: float, z: float, _radius: float) -> void:
 			fx.snd("raise", x, z)
 
 
-## One burst through the scratch dictionary: spread, speed, up, life, size, gravity (a drag is the caller's, in `_pf`).
-func _pf_burst(x: float, y: float, z: float, spread: float, speed: float, up: float, life: float, size: float, gravity: float, count: int = 1) -> void:
+## One burst through the scratch dictionary: spread, speed, up, life, size, gravity (a drag is the caller's: none means the emitter's own).
+func _pf_burst(x: float, y: float, z: float, spread: float, speed: float, up: float, life: float, size: float, gravity: float, count: int = 1, drag := 0.0) -> void:
 	_pf["count"] = count
 	_pf["x"] = x
 	_pf["y"] = y
@@ -313,6 +333,10 @@ func _pf_burst(x: float, y: float, z: float, spread: float, speed: float, up: fl
 	_pf["life"] = life
 	_pf["size"] = size
 	_pf["gravity"] = gravity
+	if drag > 0.0:
+		_pf["drag"] = drag
+	else:
+		_pf.erase("drag")
 	vfx.emit(_pf)
 	_burst_n += 1
 
@@ -479,13 +503,13 @@ func _dress_affix(id: int, def: String, elite: bool, mask: int, x: float, z: flo
 	for a in names:
 		match a:
 			"bellTolled":
-				marks.append(vfx.decal({"danger": true, "tex": "ring", "color": _col("bell"), "x": x, "z": z, "r": 1.55 * sc, "duration": 1e9, "opacity": 0.6, "pulse": 2.5, "follow": fol}))
+				marks.append(vfx.decal({"danger": true, "tex": "ring", "color": _col("bell"), "x": x, "z": z, "r": 1.55 * sc, "duration": 1e9, "opacity": 0.6, "pulse": 2.5, "follow": fol, "follow_body": id}))
 			"hungering":
-				marks.append(vfx.decal({"danger": true, "tex": "glow", "color": _col("drool"), "x": x, "z": z, "r": 1.2 * sc, "duration": 1e9, "opacity": 0.45, "follow": fol}))
+				marks.append(vfx.decal({"danger": true, "tex": "glow", "color": _col("drool"), "x": x, "z": z, "r": 1.2 * sc, "duration": 1e9, "opacity": 0.45, "follow": fol, "follow_body": id}))
 			"shrouded":
-				marks.append(vfx.decal({"danger": true, "tex": "glow", "color": _col("shroud"), "x": x, "z": z, "r": 1.5 * sc, "duration": 1e9, "opacity": 0.7, "blending": "mix", "follow": fol}))
+				marks.append(vfx.decal({"danger": true, "tex": "glow", "color": _col("shroud"), "x": x, "z": z, "r": 1.5 * sc, "duration": 1e9, "opacity": 0.7, "blending": "mix", "follow": fol, "follow_body": id}))
 			"vengeful":
-				marks.append(vfx.decal({"danger": true, "tex": "cracks", "color": _col("vengeful"), "x": x, "z": z, "r": 1.3 * sc, "duration": 1e9, "opacity": 0.75, "pulse": 3.0, "spin": 0.2, "follow": fol}))
+				marks.append(vfx.decal({"danger": true, "tex": "cracks", "color": _col("vengeful"), "x": x, "z": z, "r": 1.3 * sc, "duration": 1e9, "opacity": 0.75, "pulse": 3.0, "spin": 0.2, "follow": fol, "follow_body": id}))
 	stats["affix_mark"] += marks.size()
 	_affixed[id] = [marks, names, sc, float(HEAD_Y.get(String(d.get("rig", "humanoid")), 1.3)) * sc]
 
@@ -613,7 +637,7 @@ func _on_thrall_raised(id: int, kind: String, owner: int, _slot: int, empowered:
 	var me: Node = game.local_body() if game != null and game.has_method("local_body") else null
 	var own: Variant = null if me == null else int(me.get("core_id")) == owner
 	_thrall_rings[id] = vfx.decal({"other": own == false, "tex": "ring", "color": 0xd9a441 if champion else (0x8fb4ff if wraith else fx.sp("exhume", "spirit")),
-		"x": x, "z": z, "r": r, "duration": 1e9, "opacity": 1.0 if empowered else 0.7, "follow": _drawn_pos.bind(id)})
+		"x": x, "z": z, "r": r, "duration": 1e9, "opacity": 1.0 if empowered else 0.7, "follow": _drawn_pos.bind(id), "follow_body": id})
 	stats["thrall_ring"] += 1
 
 
@@ -806,8 +830,11 @@ func _dist(x: float, z: float) -> float:
 	return sqrt((x - _px) * (x - _px) + (z - _pz) * (z - _pz))
 
 
-## Dust of the bodies climbing out of the ground and dirt of the ones tunnelling, only near the hero. Only those bodies are looked at.
+## Dust of the bodies climbing out of the ground and dirt of the ones tunnelling, only near the hero. Only those bodies are looked at, and where they stand is read from the core's bulk
+## arrays once for all of them (`_index_bodies`), not from a record each.
 func _ambient() -> void:
+	if not _burrowers.is_empty() or not _hovers.is_empty() or not _statused.is_empty() or not _pfs.is_empty():
+		_index_bodies()
 	for id in _rising.keys():
 		var r: Array = _rising[id]
 		if _clock >= float(r[2]):
@@ -815,89 +842,102 @@ func _ambient() -> void:
 		elif absf(float(r[0]) - _px) <= NEAR_X and absf(float(r[1]) - _pz) <= NEAR_Z:
 			_burst(_amb_dust, float(r[0]), 0.1, float(r[1]), true)
 	for id in _burrowers.keys():
-		var p := core_host.enemy_position(id)
-		if p != Vector3.INF and absf(p.x - _px) <= NEAR_X and absf(p.z - _pz) <= NEAR_Z:
-			_burst(_amb_dirt, p.x, 0.15, p.z, false)
+		if _body_xz(id) and absf(_bx - _px) <= NEAR_X and absf(_bz - _pz) <= NEAR_Z:
+			_burst(_amb_dirt, _bx, 0.15, _bz, false)
 	for id in _affixed.keys():
 		_affix_motes(id)
 	for id in _hovers.keys():
-		var p := core_host.enemy_position(id)
-		if p != Vector3.INF and absf(p.x - _px) <= NEAR_X and absf(p.z - _pz) <= NEAR_Z and randf() < AMBIENT_S * 4.0:
-			_mote(p.x, float(_hovers[id]) + 0.2, p.z, 0xb9cbe6, 0.35, 0.1, -0.3, 0.7, 0.18, 0.0, 0.0, "hover_mote")
+		if _body_xz(id) and absf(_bx - _px) <= NEAR_X and absf(_bz - _pz) <= NEAR_Z and randf() < AMBIENT_S * 4.0:
+			_mote(_bx, float(_hovers[id]) + 0.2, _bz, 0xb9cbe6, 0.35, 0.1, -0.3, 0.7, 0.18, 0.0, 0.0, "hover_mote")
 	for id in _statused.keys():
 		_status_motes(id)
 	for id in _reach.keys():
 		_reach_ring(id)
 	var motes := _burst_n
 	for id in _pfs.keys():
-		var pf: Array = _pfs[id]
-		var p := core_host.enemy_position(id)
-		if p != Vector3.INF and absf(p.x - _px) <= NEAR_X and absf(p.z - _pz) <= NEAR_Z:
-			if FIRE_DEFS.has(pf[0]):
-				_fire_idle(String(pf[0]), int(pf[1]), p, float(pf[2]))
+		if _body_xz(id) and absf(_bx - _px) <= NEAR_X and absf(_bz - _pz) <= NEAR_Z:
+			var pf: Array = _pfs[id]
+			var kind: int = pf[0]
+			if kind < 4:
+				_fire_idle(kind, int(pf[1]), _bx, _bz, float(pf[2]))
 			else:
-				_fen_idle(String(pf[0]), int(pf[1]), p, float(pf[2]), float(pf[3]))
+				_fen_idle(kind, int(pf[1]), _bx, _bz, float(pf[2]), float(pf[3]))
 	stats["pf_mote"] += _burst_n - motes
 
 
+## The core's bodies' places as of now: one read of its bulk arrays and an id -> offset table, for the bodies an ambient tick looks at (a record per body cost 8 us each).
+func _index_bodies() -> void:
+	var c: RefCounted = core_host.core
+	var ids: PackedInt32Array = c.enemy_ids()
+	_body_pos = c.enemy_positions()
+	_body_ids.clear()
+	var k := 0
+	for id in ids:
+		_body_ids[id] = k
+		k += 3
+
+
+## Where a body of the core's table stands (the simulation's place, in `_bx`, `_bz`); false when it is gone.
+func _body_xz(id: int) -> bool:
+	var k: int = _body_ids.get(id, -1)
+	if k < 0:
+		return false
+	_bx = _body_pos[k]
+	_bz = _body_pos[k + 1]
+	return true
+
+
 ## Ember shedding of the Cinder Pyre's dead (DmEntityViews._fire_dead, same rates a second, here per ambient tick).
-func _fire_idle(def: String, st: int, p: Vector3, s: float) -> void:
-	var ember := fx.sp("enemy", "ember")
-	var core := fx.sp("enemy", "emberCore")
-	var deep := fx.sp("enemy", "emberDeep")
+func _fire_idle(kind: int, st: int, px: float, pz: float, s: float) -> void:
 	var dt := AMBIENT_S
-	_pf["drag"] = 0.5
-	match def:
-		"cinder_husk":
+	match kind:
+		0:   # cinder_husk
 			if randf() < dt * 7.0:
-				_pf["color"] = ember if randf() < 0.6 else core
-				_pf_burst(p.x, 0.9 + randf() * 0.9, p.z, 0.3, 0.15, 1.1, 0.9, 0.1, 0.0)
-		"pyre_priest":
+				_pf["color"] = _ember if randf() < 0.6 else _ember_core
+				_pf_burst(px, 0.9 + randf() * 0.9, pz, 0.3, 0.15, 1.1, 0.9, 0.1, 0.0, 1, 0.5)
+		1:   # pyre_priest
 			var wind := st == DmCoreEvents.State.ATTACK
 			if randf() < dt * (22.0 if wind else 5.0):
-				_pf["color"] = core
-				_pf_burst(p.x, 0.9 * s, p.z, 0.2, 0.2, 1.2, 0.7, 0.18 if wind else 0.11, 0.0)
+				_pf["color"] = _ember_core
+				_pf_burst(px, 0.9 * s, pz, 0.2, 0.2, 1.2, 0.7, 0.18 if wind else 0.11, 0.0, 1, 0.5)
 			if randf() < dt * 2.0:
-				_burst_smoke(p.x, 1.5, p.z, 0x8a8680, 0.3, 0.15, 0.3, 1.6, 0.7)
-		"cinderhound":
+				_burst_smoke(px, 1.5, pz, 0x8a8680, 0.3, 0.15, 0.3, 1.6, 0.7, 0.5)
+		2:   # cinderhound
 			var moving := st == DmCoreEvents.State.CHASE
 			if moving and randf() < dt * 14.0:
-				_pf["color"] = ember if randf() < 0.5 else core
-				_pf_burst(p.x, 0.35, p.z, 0.15, 0.4, 0.8, 0.55, 0.09, 2.0)
+				_pf["color"] = _ember if randf() < 0.5 else _ember_core
+				_pf_burst(px, 0.35, pz, 0.15, 0.4, 0.8, 0.55, 0.09, 2.0, 1, 0.5)
 			if moving and randf() < dt * 4.0:
-				_burst_smoke(p.x, 0.5, p.z, deep, 0.2, 0.2, 0.3, 0.8, 0.6)
-		"slag_brute":
+				_burst_smoke(px, 0.5, pz, _ember_deep, 0.2, 0.2, 0.3, 0.8, 0.6, 0.5)
+		3:   # slag_brute
 			if randf() < dt * 6.0:
-				_pf["color"] = ember
-				_pf_burst(p.x, 1.0 + randf() * 1.6, p.z, 0.6, 0.15, 1.0, 1.1, 0.16, 0.0)
+				_pf["color"] = _ember
+				_pf_burst(px, 1.0 + randf() * 1.6, pz, 0.6, 0.15, 1.0, 1.1, 0.16, 0.0, 1, 0.5)
 			if randf() < dt * 2.5:
-				_burst_smoke(p.x, 2.2, p.z, deep, 0.4, 0.2, 0.6, 1.6, 1.1)
-	_pf.erase("drag")
+				_burst_smoke(px, 2.2, pz, _ember_deep, 0.4, 0.2, 0.6, 1.6, 1.1, 0.5)
 
 
 ## The Fen's dead: the wisp's marsh-light, the hag's drips, the sexton's water (DmEntityViews._fen_dead).
-func _fen_idle(def: String, st: int, p: Vector3, s: float, hover: float) -> void:
+func _fen_idle(kind: int, st: int, px: float, pz: float, s: float, hover: float) -> void:
 	var dt := AMBIENT_S
-	match def:
-		"fen_wisp":
+	match kind:
+		4:   # fen_wisp
 			if randf() < dt * 9.0:
 				_pf["color"] = FEN_TEAL if randf() < 0.6 else 0xeaffff
-				_pf["drag"] = 0.6
-				_pf_burst(p.x, hover + 0.2 + randf() * 0.6, p.z, 0.25, 0.15, -0.2, 0.8, 0.12, 0.0)
-				_pf.erase("drag")
-		"bog_hag":
+				_pf_burst(px, hover + 0.2 + randf() * 0.6, pz, 0.25, 0.15, -0.2, 0.8, 0.12, 0.0, 1, 0.6)
+		5:   # bog_hag
 			var wind := st == DmCoreEvents.State.ATTACK
 			if randf() < dt * (20.0 if wind else 3.0):
 				_pf["color"] = fx.sp("enemy", "hex") if wind else 0x6fb4a8
-				_pf_burst(p.x, 1.0 + randf() * 0.8, p.z, 0.3, 0.2, 1.2 if wind else -0.4, 0.8, 0.14, -0.3 if wind else 5.0)
-		"drowned_sexton":
+				_pf_burst(px, 1.0 + randf() * 0.8, pz, 0.3, 0.2, 1.2 if wind else -0.4, 0.8, 0.14, -0.3 if wind else 5.0)
+		6:   # drowned_sexton
 			if randf() < dt * 6.0:
 				_pf["color"] = 0x3a5a54
-				_pf_burst(p.x + (randf() - 0.5) * 0.8, 1.6 * s, p.z + (randf() - 0.5) * 0.8, 0.1, 0.1, -0.3, 0.6, 0.1, 9.0)
+				_pf_burst(px + (randf() - 0.5) * 0.8, 1.6 * s, pz + (randf() - 0.5) * 0.8, 0.1, 0.1, -0.3, 0.6, 0.1, 9.0)
 
 
-## One smoke puff through the scratch dictionary.
-func _burst_smoke(x: float, y: float, z: float, color: int, spread: float, speed: float, up: float, life: float, size: float) -> void:
+## One smoke puff through the scratch dictionary (`drag` 0: the emitter's own).
+func _burst_smoke(x: float, y: float, z: float, color: int, spread: float, speed: float, up: float, life: float, size: float, drag := 0.0) -> void:
 	_pf["count"] = 1
 	_pf["x"] = x
 	_pf["y"] = y
@@ -910,6 +950,10 @@ func _burst_smoke(x: float, y: float, z: float, color: int, spread: float, speed
 	_pf["size"] = size
 	_pf["shrink"] = -0.5
 	_pf["gravity"] = 0.0
+	if drag > 0.0:
+		_pf["drag"] = drag
+	else:
+		_pf.erase("drag")
 	vfx.emit_smoke(_pf)
 	_pf.erase("shrink")
 	_burst_n += 1
@@ -924,7 +968,7 @@ func _reach_ring(id: int) -> void:
 		any = not core_host.core.thralls_in_radius(Vector2(p.x, p.z), float(DmSimData.UNBIND["range"]), 0).is_empty()
 	if any and ring == null:
 		_reach[id] = vfx.decal({"danger": true, "tex": "ring", "color": fx.sp("enemy", "curse"), "x": p.x, "z": p.z,
-			"r": float(DmSimData.UNBIND["range"]), "duration": 1e9, "opacity": 0.15, "pulse": 1.5, "follow": _drawn_pos.bind(id)})
+			"r": float(DmSimData.UNBIND["range"]), "duration": 1e9, "opacity": 0.15, "pulse": 1.5, "follow": _drawn_pos.bind(id), "follow_body": id})
 		stats["reach_ring"] += 1
 	elif not any and ring != null:
 		_kill(ring)
@@ -934,8 +978,7 @@ func _reach_ring(id: int) -> void:
 ## A body's status tells near the hero (DmEntityViews._tick_alive, today's rates a second, here per ambient tick). Reads the core's packed records:
 ## [status id, stacks, tenths of a second left (2 bytes)] per status, in DmStatusRules.IDS order.
 func _status_motes(id: int) -> void:
-	var p := core_host.enemy_position(id)
-	if p == Vector3.INF or absf(p.x - _px) > NEAR_X or absf(p.z - _pz) > NEAR_Z:
+	if not _body_xz(id) or absf(_bx - _px) > NEAR_X or absf(_bz - _pz) > NEAR_Z:
 		return   # far bodies cost a position read only
 	var recs: PackedByteArray = core_host.core.statuses(id)
 	if recs.is_empty():
@@ -952,25 +995,25 @@ func _status_motes(id: int) -> void:
 		match DmStatusRules.IDS[sid]:
 			"bleed":
 				if randf() < AMBIENT_S * 4.0:
-					_mote(p.x, 0.7 + randf() * 0.6, p.z, _st("hemorrhage", "crimson") if randf() < 0.7 else _st("hemorrhage", "ember"), 0.3, 0.1, -0.2, 0.6, 0.12, 8.0)
+					_mote(_bx, 0.7 + randf() * 0.6, _bz, _st("hemorrhage", "crimson") if randf() < 0.7 else _st("hemorrhage", "ember"), 0.3, 0.1, -0.2, 0.6, 0.12, 8.0)
 			"chill":
 				if randf() < AMBIENT_S * 3.0:
-					_mote(p.x, 0.3 + randf() * 1.2, p.z, _st("chill", "frost"), 0.45, 0.15, 0.2, 0.8, 0.14, 0.0, 0.5)
+					_mote(_bx, 0.3 + randf() * 1.2, _bz, _st("chill", "frost"), 0.45, 0.15, 0.2, 0.8, 0.14, 0.0, 0.5)
 			"sanctified":
 				if randf() < AMBIENT_S * 2.0:
-					_mote(p.x, 1.9 * sc, p.z, _st("sanctified", "gold"), 0.35, 0.1, 0.5, 0.7, 0.16)
+					_mote(_bx, 1.9 * sc, _bz, _st("sanctified", "gold"), 0.35, 0.1, 0.5, 0.7, 0.16)
 			"withered":
 				if randf() < AMBIENT_S * (1.0 + stacks * 0.75):
-					_mote(p.x, 0.8 + randf() * 0.8, p.z, fx.sp("miasma", "rot"), 0.4, 0.2, 0.7, 0.9, 0.2)
+					_mote(_bx, 0.8 + randf() * 0.8, _bz, fx.sp("miasma", "rot"), 0.4, 0.2, 0.7, 0.9, 0.2)
 			"fracture":
 				if randf() < AMBIENT_S * 1.5 * stacks:
-					_mote(p.x, 1.2, p.z, fx.sp("needle", "dust"), 0.3, 0.6, 0.4, 0.5, 0.1, 5.0)
+					_mote(_bx, 1.2, _bz, fx.sp("needle", "dust"), 0.3, 0.6, 0.4, 0.5, 0.1, 5.0)
 			"incensed":
 				if randf() < AMBIENT_S * 3.0:
-					_mote(p.x, 1.2 * sc, p.z, _st("incensed", "bronze"), 0.4, 0.2, 0.6, 0.8, 0.14)
+					_mote(_bx, 1.2 * sc, _bz, _st("incensed", "bronze"), 0.4, 0.2, 0.6, 0.8, 0.14)
 			"frenzy":   # the Flagellant below half health sheds blood motes (DmEntityViews: hp below half, 5 a second)
 				if randf() < AMBIENT_S * 5.0:
-					_mote(p.x, 1.1, p.z, 0x9a1b2a, 0.3, 0.4, 0.4, 0.5, 0.14, 6.0)
+					_mote(_bx, 1.1, _bz, 0x9a1b2a, 0.3, 0.4, 0.4, 0.5, 0.14, 6.0)
 
 
 ## One mote through a reused option record (the emitter copies what it keeps): no dictionary is built per mote.

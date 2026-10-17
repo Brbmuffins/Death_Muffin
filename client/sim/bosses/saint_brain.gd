@@ -41,7 +41,8 @@ func _in_rot() -> bool:
 ## Plague Doctors standing in her arena (the summoned ones and any that wandered in).
 func _linked_doctors() -> Array:
 	var out: Array = []
-	for e in world.enemies():
+	var bodies: Array = world.enemies_of("plague_doctor") if world.has_method("enemies_of") else world.enemies()   # (the core's world gives the doctors only: it was every body, every tick)
+	for e in bodies:
 		if e["def"] != "plague_doctor" or float(e["hp"]) <= 0.0 or e["area"] != def["area"]:
 			continue
 		if Geom.hyp(e["x"] - _ax(), e["z"] - _az()) <= _ar() + 2.0:

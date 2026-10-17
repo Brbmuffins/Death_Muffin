@@ -64,7 +64,7 @@ func _compare(today: GDScript, cap: int, additive: bool, tex: Texture2D, label: 
 	for f in 900:
 		if f % 3 == 0 and f < 700:
 			var o := {"x": opts.randf_range(-20, 20), "y": opts.randf_range(0, 2), "z": opts.randf_range(-20, 20), "count": opts.randi_range(1, 140 if f > 200 else 30),
-				"color": Color(opts.randf(), opts.randf(), opts.randf()), "spread": opts.randf_range(0.0, 2.0), "speed": opts.randf_range(0.0, 6.0), "up": opts.randf_range(-1.0, 3.0),
+				"color": _color(opts, f / 3), "spread": opts.randf_range(0.0, 2.0), "speed": opts.randf_range(0.0, 6.0), "up": opts.randf_range(-1.0, 3.0),
 				"life": opts.randf_range(0.2, 2.5), "size": opts.randf_range(0.05, 0.6), "gravity": opts.randf_range(-2.0, 9.0), "drag": opts.randf_range(0.0, 4.0),
 				"shrink": opts.randf_range(-1.0, 1.0), "inward": opts.randf() < 0.3}
 			seed(1000 + f)
@@ -102,6 +102,18 @@ func _compare(today: GDScript, cap: int, additive: bool, tex: Texture2D, label: 
 	check(port.active() == 0 and not port.node.visible, "%s: every mote faded and the ring hid" % label)
 	_free(ref)
 	_free(port)
+
+
+## A burst's colour in the three forms `DmFxData.to_color` takes: a Color, a 0xRRGGBB int (most of the game's bursts), a list of three or four numbers.
+static func _color(opts: RandomNumberGenerator, f: int) -> Variant:
+	match f % 5:
+		0, 1:
+			return opts.randi_range(0, 0xffffff)
+		2:
+			return [opts.randf(), opts.randf(), opts.randf()]
+		3:
+			return [opts.randf(), opts.randf(), opts.randf(), opts.randf()]
+	return Color(opts.randf(), opts.randf(), opts.randf())
 
 
 static func _free(r: Object) -> void:

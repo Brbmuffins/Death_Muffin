@@ -536,7 +536,8 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
     walkers are elite; a chasing volley of rain). With no vows the world's `vow_fx` is the neutral one, `echoes()` is 0 whoever rang the bell and whatever vows the account has saved, and the Prelate plays her plain fight. The brain's Echoes code is today's and
     replays (the three Echoes scenarios) and is fought by hand in `client/tests/boss_prelate.gd` with the world sworn to them, ready for the redesigned Ascension. The HUD is still told `can_ascend` after a kill that makes the run Ascendable; with no Altar
     and no tips yet nothing shows it.
-  - **`DmCore.version()` is "dmcore 0.13"** for these: the `inert` flag joins the content hash, record 103 joins the wire, and `add_zone`, `zones`, `set_enemy_hp` and `enemy_rows` join the API (no enum changed: the ember zone and the burn hit kind were the Pyre's).
+  - **`DmCore.version()` is "dmcore 0.16"**: `foes_in_radius(pos, r)` joins the API (the living enemies `enemies_in_radius` finds, ten numbers each in doubles: id, x, z, radius, hp, state, elite, level, def, area; `DmCoreHost.foes_in_radius` builds the rites' snapshots from it
+    where it took `enemy_info`, a 25-entry Dictionary, a body); no enum changed. "dmcore 0.13" was for these: the `inert` flag joins the content hash, record 103 joins the wire, and `add_zone`, `zones`, `set_enemy_hp` and `enemy_rows` join the API (no enum changed: the ember zone and the burn hit kind were the Pyre's).
   - **The Covenant Seal's Empowered call and the boss key prompt are in** (`DmBossMeta`, today's copy, against the backend's `/api/boss-key/*`): a boss that can be Empowered with a Seal in the bag, or a bound summon, offers the choice at its altar.
     A party guest still cannot call Empowered (its summon is the plain RPC), as today.
 - **The HUD on the core (today's `DmGameUi` and panels on `client/next/hud/dm_next_ui_host.gd`, `client/ui/hud`; `client/README.md` "The HUD on the core")**: the same layout, colours, fonts and
@@ -586,9 +587,12 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 ## Files
 
 - `native/src/`: `dm_core.cpp` is the Godot-facing API (`DmCore`); `dm_crowd.cpp` the crowd's (`DmCrowd`: looks, the core's tables into rows, the RenderingServer);
-  `dm_motes.cpp` the effects' particle ring loop (`DmMotes`: today's `DmFxRing` motes, aged, moved and faded with the same double-precision arithmetic and written straight to
-  the ring's MultiMesh; `client/fx/dm_fx_ring.gd` is the port that drives it, about 0.06 ms for 3,000 motes where today's GDScript loop took 2.8, and `client/tests/fx_motes.gd`
-  compares every float of its buffer with today's ring, compiled from `godot/fx/dm_fx_ring.gd` at run time); `register_types.cpp` registers them, entry symbol
+  `dm_motes.cpp` the effects' particle ring (`DmMotes`: today's `DmFxRing` motes, a burst's random starts (`emit`: the global generator, the numbers drawn in the order today's loop drew them) and the per-frame
+  loop with the same double-precision arithmetic, written straight to the ring's MultiMesh; `client/fx/dm_fx_ring.gd` is the port that drives it, about 0.06 ms for 3,000 motes where today's GDScript loop took 2.8, and
+  `client/tests/fx_motes.gd` compares every float of its buffer with today's ring, compiled from `godot/fx/dm_fx_ring.gd` at run time); `dm_decals.cpp` the ground decals (`DmDecals`: today's `DecalTr` and the decal half of
+  `DmFxLayer.flush`: a record per decal, aged, shaped and placed with the same arithmetic, each layer's 20-float instances written straight to its MultiMesh and handed to the RenderingServer; a decal may follow a crowd body by id, asked of
+  `DmCrowd.ground_at`, or call a GDScript callable; `client/fx/dm_fx_prims.gd` and `dm_fx_layer.gd` are the ports that drive it, about 0.04 ms for 140 decals where today's GDScript took 0.55, and `client/tests/fx_decals.gd`
+  compares every drawn float with today's, compiled from `godot/fx/dm_fx_prims.gd` at run time); `register_types.cpp` registers them, entry symbol
   `dmcore_library_init` (`client/bin/dmcore.gdextension`).
 - `native/src/core/`: the simulation, free of Godot types: `world` (tables, the enemy brain, damage and kills, queries, statuses on bodies), `niche` (the Bone Abbess's Skull Niche: the inert body's whole brain), `boss` (what a boss calls: a hostile zone, the zones of a kind, a body's health and its wire record),
   `thralls` (the thrall brain and the legion: raise, make_room, formation, separation, rally, deaths), `corpses` (the corpse field),

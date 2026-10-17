@@ -23,6 +23,9 @@ var combat_transients := 0
 var _caps := DmFxData.caps()
 var _transients: Array = []
 var _decal_layers: Dictionary = {}
+var _dec := DmDecals.new()          ## every ground decal (the core's C++: aging, size, opacity, outline, where it follows and each layer's instance buffer)
+var _dec_layers: Array[DmFxLayer] = []   ## the decal layers by the number DmDecals knows them by
+var _serial := 0                    ## creation order of the transients, so the cap can evict the oldest of the decals and the others together
 var _spikes_shown := false
 var _sprite_layers: Dictionary = {}
 var _beam_layer: DmFxLayer
@@ -37,7 +40,6 @@ var _bone_orbits: Array = []
 var _hand_mesh: MultiMeshInstance3D
 var _hand_pre := Transform3D.IDENTITY
 var _hand_fields: Array = []
-var _own_areas: Array = []
 var _danger_depth := 0
 var _time := 0.0
 var _needle_pool: Array = []
@@ -51,6 +53,7 @@ var _orb_mesh: SphereMesh
 class Tr:
 	var t := 0.0
 	var duration := 1.0
+	var serial := 0
 	var persistent := false
 	var layer_item: DmFxLayer.Item
 	var layer: DmFxLayer
@@ -74,6 +77,18 @@ class TrHandle:
 
 	func kill() -> void:
 		tr.t = tr.duration
+
+
+class DecalHandle:
+	extends DmFxHandle
+	var dec: DmDecals
+	var id := 0
+
+	func is_alive() -> bool:
+		return dec.alive(id)
+
+	func kill() -> void:
+		dec.kill(id)
 
 
 class GroupHandle:
@@ -161,7 +176,12 @@ func _init(parent: Node3D) -> void:
 # --- budgets / roles ------------------------------------------------------------------------------------------------
 
 func transient_load() -> int:
-	return combat_transients
+	return combat_transients + _dec.np_count()
+
+
+## The crowd whose bodies a decal can follow by id (`follow_body`): the game scene's, once it has one.
+func set_crowd(crowd: Object) -> void:
+	_dec.set_crowd(crowd)
 
 
 func active_hand_fields() -> int:
@@ -217,15 +237,10 @@ func emit_smoke(o: Dictionary) -> void:
 # --- transients -----------------------------------------------------------------------------------------------------
 
 func _add(tr: Tr) -> DmFxHandle:
-	if not tr.persistent and combat_transients >= int(_caps.get("combat_transients", 160)):
-		for i in _transients.size():
-			if not _transients[i].persistent:
-				var old: Tr = _transients[i]
-				_transients.remove_at(i)
-				combat_transients -= 1
-				old.t = old.duration
-				old.release()
-				break
+	_serial += 1
+	tr.serial = _serial
+	if not tr.persistent:
+		_evict_if_full()
 	tr.update(tr.t, tr.t / tr.duration, 0.0)
 	_transients.append(tr)
 	if not tr.persistent:
@@ -233,6 +248,26 @@ func _add(tr: Tr) -> DmFxHandle:
 	var h := TrHandle.new()
 	h.tr = tr
 	return h
+
+
+## At the cap of combat transients the oldest of them, whatever it is (a decal or one of the others), leaves to make room.
+func _evict_if_full() -> void:
+	if transient_load() < int(_caps.get("combat_transients", 160)):
+		return
+	var at := -1
+	for i in _transients.size():
+		if not _transients[i].persistent:
+			at = i
+			break
+	var oldest := _dec.oldest_np_serial()
+	if oldest >= 0 and (at < 0 or oldest < (_transients[at] as Tr).serial):
+		_dec.evict_oldest_np()
+	elif at >= 0:
+		var old: Tr = _transients[at]
+		_transients.remove_at(at)
+		combat_transients -= 1
+		old.t = old.duration
+		old.release()
 
 
 func _outline_of(tex_name: String) -> Variant:
@@ -286,7 +321,8 @@ func _decal_layer(tex: Texture2D, additive_blend: bool, order: int, outline: Var
 	var l: DmFxLayer = _decal_layers.get(key)
 	if l == null:
 		l = DmFxLayer.new(group, DmFxLayer.Kind.DECAL, tex, additive_blend, _footprint_of(tname), order, outline)
-		l.wake = _wake_layer
+		l.bind_native(_dec, _dec_layers.size())
+		_dec_layers.append(l)
 		_decal_layers[key] = l
 	return l
 
@@ -343,153 +379,9 @@ static func _from_hsl(h: float, s: float, l: float) -> Color:
 	return Color(_hue_to_rgb(p, q, h + 1.0 / 3.0), _hue_to_rgb(p, q, h), _hue_to_rgb(p, q, h - 1.0 / 3.0))
 
 
-class DecalTr:
-	extends Tr
-	var o: Dictionary
-	var d: DmFxLayer.Item
-	var ring_item: DmFxLayer.Item
-	var ring_layer: DmFxLayer
-	var owner: DmFxPrims
-	var via_ring := false
-	var other := false
-	var settles := false
-	var outline: Variant
-	var base := 1.0
-	var fade_in := 0.12
-	var fade_out := 0.25
-	var anchor := 0.0
-	var hidden := false
-	var outline_at := 0.6
-	var outline_fade := 0.7
-	var t_now := 0.0
-	var ended := false
-	var entry: Dictionary
-	var ring_for_disc := 1.32
-	# The option values update() reads every frame, read out of `o` once (it ran ~12 dictionary lookups per decal per frame).
-	var has_follow := false
-	var has_grow := false
-	var grow_from := 0.0
-	var r2 := 0.0
-	var mul_x := 1.0
-	var mul_z := 1.0
-	var spin_k := 0.0
-	var rot0 := 0.0
-	var pulse_k := 0.0
-	var x0 := 0.0
-	var follow_fn: Callable   # o["follow"], read once
-	var off_x := 0.0          # sin(rot) * anchor * r and cos(rot) * anchor * r: the fixed offset from the followed point
-	var off_z := 0.0
-	var off_anchor := 0.0
-	var base_y := 0.04
-	var z0 := 0.0
-	var sheet_rate := -1.0   # flipbook sheet: < 0 none, 0 = one play over the decal's life, > 0 = loops per second
-
-	func setup() -> void:
-		has_follow = o.has("follow")
-		has_grow = o.has("growFrom")
-		grow_from = float(o["growFrom"]) if has_grow else 0.0
-		r2 = float(o["r"]) * 2.0
-		mul_x = float(o.get("sx", 1.0))
-		mul_z = float(o.get("sz", 1.0))
-		spin_k = float(o["spin"]) if o.has("spin") else 0.0
-		rot0 = float(o.get("rot", 0.0))
-		pulse_k = float(o["pulse"]) if o.has("pulse") else 0.0
-		x0 = float(o.get("x", 0.0))
-		z0 = float(o.get("z", 0.0))
-		base_y = float(o.get("y", 0.04))
-		if has_follow:
-			follow_fn = o["follow"] as Callable
-
-	## `anchor` is set by decal() after setup(), so the fixed offset is computed on the first place() (and again if anchor changes).
-	func place() -> void:
-		if anchor != off_anchor:
-			off_anchor = anchor
-			off_x = sin(rot0) * anchor * (r2 * 0.5)
-			off_z = cos(rot0) * anchor * (r2 * 0.5)
-		var x := x0
-		var z := z0
-		if has_follow:
-			var f: Variant = follow_fn.call() if follow_fn.is_valid() else null
-			hidden = f == null
-			if f is Vector3:
-				x = f.x
-				z = f.z
-		d.x = x + off_x
-		d.y = base_y
-		d.z = z + off_z
-
-	func release() -> void:
-		ended = true
-		if not entry.is_empty():
-			entry["alive"] = false
-		layer.remove(d)
-		if ring_item != null:
-			ring_layer.remove(ring_item)
-		released = true
-
-	func update(t_: float, k: float, _dt: float) -> void:
-		if t_ < 0.0:
-			d.opacity = 0.0
-			return
-		t_now = t_
-		if ended:
-			return
-		if sheet_rate >= 0.0:
-			d.frame = fposmod(t_ * sheet_rate, 1.0) if sheet_rate > 0.0 else k
-		if has_follow:
-			place()
-		var grow := 1.0
-		if has_grow:
-			grow = grow_from + (1.0 - grow_from) * minf(1.0, k * 1.2)
-		var s := r2 * grow
-		d.sx = s * mul_x
-		d.sz = s * mul_z
-		var rs := ring_for_disc if (via_ring and other) else 1.0
-		if rs != 1.0:
-			d.sx *= rs
-			d.sz *= rs
-		if spin_k != 0.0:
-			d.rot_y = rot0 + spin_k * t_
-		var in_a := minf(1.0, t_ / fade_in) if fade_in > 0.0 else 1.0
-		var out_a := minf(1.0, (duration - t_) / fade_out) if fade_out > 0.0 else 1.0
-		var pulse := 1.0
-		if pulse_k != 0.0:
-			pulse = 0.75 + 0.25 * sin(t_ * pulse_k)
-		var op := 0.0 if hidden else base * maxf(0.0, minf(in_a, out_a)) * pulse
-		if other and outline != null:
-			d.rim = 1.0
-		elif settles:
-			var rim := maxf(0.0, minf(1.0, (t_ - outline_at) / outline_fade))
-			d.rim = rim
-			if pulse_k == 0.0 and rim > 0.0:
-				pulse *= 1.0 - 0.18 * rim * (0.5 + 0.5 * sin(t_ * 2.2 + x0))
-			op = 0.0 if hidden else base * maxf(0.0, minf(in_a, out_a)) * pulse
-			if rim > 0.0 and via_ring:
-				if ring_item == null:
-					ring_layer = owner._decal_layer(DmFxTex.get_tex("ring"), true, DECAL_ORDER["friendly"], null)
-					ring_item = DmFxLayer.Item.new()
-					ring_item.x = d.x
-					ring_item.y = d.y
-					ring_item.z = d.z
-					ring_item.color = d.color
-					ring_layer.add(ring_item)
-				ring_item.x = d.x
-				ring_item.y = d.y
-				ring_item.z = d.z
-				ring_item.sx = d.sx * ring_for_disc
-				ring_item.sz = d.sz * ring_for_disc
-				ring_item.opacity = op * rim
-				d.opacity = op * (1.0 - rim)
-				return
-		d.opacity = op
-
-	func force_outline() -> void:
-		outline_at = minf(outline_at, t_now)
-		outline_fade = minf(outline_fade, 0.4)
-
-
 ## o: tex (Texture2D or name), color, x, z, r, y, rot, duration, opacity, fadeIn, fadeOut, growFrom, spin, blending ("add"|"mix"),
-## sx, sz, anchor, follow (Callable -> Vector3|null), pulse, delay, persistent, danger, hero, other.
+## sx, sz, anchor, follow (Callable -> Vector3|null) or follow_body (a crowd body's id: it follows that body's drawn place), pulse, delay, persistent, danger, hero, other.
+## The decal itself lives in DmDecals (C++): this works out what it is made of (its layer, tint, how it settles into an outline) and hands it over.
 func decal(o: Dictionary) -> DmFxHandle:
 	var tex: Texture2D = null
 	var tv: Variant = o.get("tex", "disc")
@@ -500,56 +392,57 @@ func decal(o: Dictionary) -> DmFxHandle:
 	var hero := (not danger_) and bool(o.get("hero", false))
 	var order: int = DECAL_ORDER["danger"] if danger_ else (DECAL_ORDER["hero"] if (hero and not additive_blend) else DECAL_ORDER["friendly"])
 	var outline: Variant = _outline_of(tname)
-	var other := (role == "other" or bool(o.get("other", false))) and not danger_ and not bool(o.get("persistent", false)) and not hero
+	var persistent := bool(o.get("persistent", false))
+	var other := (role == "other" or bool(o.get("other", false))) and not danger_ and not persistent and not hero
 	var via_ring := outline != null and tname == "disc"
 	var layer: DmFxLayer
 	if via_ring and other:
 		layer = _decal_layer(DmFxTex.get_tex("ring"), additive_blend, order, null)
 	else:
 		layer = _decal_layer(tex, additive_blend, order, outline)
-	var tr := DecalTr.new()
-	tr.o = o
-	tr.setup()
-	tr.owner = self
-	tr.layer = layer
-	tr.d = DmFxLayer.Item.new()
-	tr.layer_item = tr.d
-	tr.d.rot_y = float(o.get("rot", 0.0))
 	var col := DmFxData.to_color(o.get("color", Color.WHITE))
-	tr.d.color = col
-	layer.add(tr.d)
 	if other:
 		var hsl := _hsl(col)
 		if hsl.y > 0.08 and hsl.z > 0.55:
-			tr.d.color = _from_hsl(hsl.x, maxf(hsl.y, 0.6), 0.5)
-	tr.via_ring = via_ring
-	tr.other = other
-	tr.outline = outline
-	tr.ring_for_disc = float(_caps.get("ring_for_disc", 1.32))
+			col = _from_hsl(hsl.x, maxf(hsl.y, 0.6), 0.5)
 	var dur := float(o["duration"])
-	tr.duration = dur
-	tr.settles = (not danger_) and (not other) and (not bool(o.get("persistent", false))) and (not hero) and outline != null and dur > float(_caps.get("long_decal_s", 1.5))
-	tr.base = float(o.get("opacity", 1.0)) * (float(_caps.get("other_decal_alpha", 0.28)) if other else 1.0)
-	tr.fade_in = float(o.get("fadeIn", 0.12))
-	tr.fade_out = float(o.get("fadeOut", 0.25))
-	tr.anchor = float(o.get("anchor", 0.0))
-	tr.outline_at = float(_caps.get("outline_after_s", 0.6))
-	tr.outline_fade = float(_caps.get("outline_fade_s", 0.7))
-	tr.persistent = bool(o.get("persistent", false))
+	var settles := (not danger_) and (not other) and (not persistent) and (not hero) and outline != null and dur > float(_caps.get("long_decal_s", 1.5))
+	var n := o.duplicate()   # the options, with what this worked out added (and the two the decal reads another way: the texture's name and the tint)
+	n["layer"] = layer.native_index
+	n["ring_layer"] = -1
+	if via_ring and settles:
+		var ring_layer := _decal_layer(DmFxTex.get_tex("ring"), true, DECAL_ORDER["friendly"], null)
+		n["ring_layer"] = ring_layer.native_index
+	n["tex"] = tname
+	n["color"] = col
+	n["via_ring"] = via_ring
+	n["other"] = other
+	n["settles"] = settles
+	n["has_outline"] = outline != null
+	n["persistent"] = persistent
+	n["base"] = float(o.get("opacity", 1.0)) * (float(_caps.get("other_decal_alpha", 0.28)) if other else 1.0)
+	n["ring_for_disc"] = float(_caps.get("ring_for_disc", 1.32))
+	n["outline_at"] = float(_caps.get("outline_after_s", 0.6))
+	n["outline_fade"] = float(_caps.get("outline_fade_s", 0.7))
 	var sh := DmFxData.sheet(tname)
-	if not sh.is_empty():
-		tr.sheet_rate = float(sh["fps"]) / float(sh["frames"]) if bool(sh["loop"]) else 0.0
-	tr.place()
-	if tr.settles:
-		var r := float(o["r"])
-		_own_areas = _own_areas.filter(func(a): return a["alive"])
-		for a in _own_areas:
-			if a["tex"] == tname and Vector2(a["x"] - tr.d.x, a["z"] - tr.d.z).length() < maxf(a["r"], r):
-				(a["tr"] as DecalTr).force_outline()
-		tr.entry = {"tex": tname, "x": tr.d.x, "z": tr.d.z, "r": r, "alive": true, "tr": tr}
-		_own_areas.append(tr.entry)
-	tr.t = -float(o.get("delay", 0.0))
-	return _add(tr)
+	n["sheet_rate"] = (float(sh["fps"]) / float(sh["frames"]) if bool(sh["loop"]) else 0.0) if not sh.is_empty() else -1.0
+	if not persistent:
+		_evict_if_full()
+	_serial += 1
+	n["serial"] = _serial
+	var h := DecalHandle.new()
+	h.dec = _dec
+	h.id = _dec.add(n)
+	_fit(layer)
+	if n["ring_layer"] >= 0:
+		_fit(_dec_layers[n["ring_layer"]])
+	return h
+
+
+## A decal layer holds as many instances as its MultiMesh was made for: when the decals (and the rings that may still come) outgrow it, it is made again twice as big.
+func _fit(l: DmFxLayer) -> void:
+	while _dec.layer_demand(l.native_index) > l.capacity:
+		l.grow()
 
 
 class FlashTr:
@@ -1107,6 +1000,9 @@ func update(dt: float, real_dt: float) -> void:
 				combat_transients -= 1
 			continue
 		tr.update(tr.t, tr.t / tr.duration, dt)
+	var drawn := _dec.step(dt)   # the decals: aged, shaped and written into their layers' buffers; the layers drawn (or emptied) are told how many
+	for j in range(0, drawn.size(), 2):
+		_dec_layers[drawn[j]].show_count(drawn[j + 1])
 	# Only layers holding items are flushed (an emptied one is flushed once more to hide, then leaves the list). Idle layers are kept, hidden
 	# (see DmFxLayer.flush): disposing them after 5 s idle meant the next wave rebuilt each one (new MultiMesh + material) on its first
 	# frame, undoing the loading-screen warm-up.
@@ -1176,9 +1072,11 @@ func clear() -> void:
 		tr.release()
 	_transients.clear()
 	combat_transients = 0
+	_dec.clear()
 
 
 func dispose() -> void:
+	_dec.clear()
 	for l in _decal_layers.values():
 		l.wake = Callable()
 		l.dispose()
@@ -1188,6 +1086,7 @@ func dispose() -> void:
 	_beam_layer.wake = Callable()
 	_beam_layer.dispose()
 	_decal_layers.clear()
+	_dec_layers.clear()
 	_sprite_layers.clear()
 	_live_layers.clear()
 	for p in _projectiles:

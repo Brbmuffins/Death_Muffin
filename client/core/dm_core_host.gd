@@ -401,13 +401,30 @@ func foe(id: int) -> DmFoe:
 	return DmFoe.of(enemy_info(id))
 
 
-## Living enemies (hp > 0: a rising or burrowed body counts) whose edge is within `r` of `pos`, in spawn order and the bosses after them, as snapshots.
+## Living enemies (hp > 0: a rising or burrowed body counts) whose edge is within `r` of `pos`, in spawn order and the bosses after them, as snapshots. The core's bodies come from one
+## call (`DmCore.foes_in_radius`, ten numbers a body), not a record each: a cast over a crowd cost 19 us a body that way.
 func foes_in_radius(pos: Vector3, r: float) -> Array[DmFoe]:
 	var out: Array[DmFoe] = []
-	for id in enemies_in_radius(pos, r):
-		var f := DmFoe.of(enemy_info(id))
-		if f != null:
-			out.append(f)
+	var rows: PackedFloat64Array = core.foes_in_radius(Vector2(pos.x, pos.z), r)
+	for k in range(0, rows.size(), 10):
+		var f := DmFoe.new()
+		f.id = int(rows[k])
+		f.x = rows[k + 1]
+		f.z = rows[k + 2]
+		f.radius = rows[k + 3]
+		f.hp = rows[k + 4]
+		f.state = int(rows[k + 5])
+		f.elite = rows[k + 6] != 0.0
+		f.level = int(rows[k + 7])
+		f.def = _def(int(rows[k + 8]))
+		f.area = _area(int(rows[k + 9]))
+		out.append(f)
+	for i in _bosses.size():
+		var b := _bosses[i]
+		if b.is_hittable() and Vector2(b.global_position.x - pos.x, b.global_position.z - pos.z).length() - b.radius <= r:
+			var bf := DmFoe.of(_boss_info(b, _boss_ids[i]))
+			if bf != null:
+				out.append(bf)
 	return out
 
 

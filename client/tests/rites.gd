@@ -586,6 +586,17 @@ func t_exhume() -> void:
 		check(int(legion().info(ids[0])["state"]) != DmCoreEvents.ThrallState.RISING, "exhume: it stands after the rise (0.9 s)")
 		var vi: Dictionary = host.view.crowd.view_info(ids[0])
 		check(not vi.is_empty(), "exhume: the crowd draws the thrall (a view of its own in the MultiMesh crowd: %s)" % str(vi.keys().slice(0, 4)))
+		# A decal that follows a body by id reads the crowd's drawn place in C++ (the callable beside it is only the fallback), and goes dark when the body is gone.
+		var prims: DmFxPrims = g.enemy_fx.vfx.prims
+		var ground: Vector3 = host.view.crowd.ground_at(ids[0])
+		var mark: DmFxHandle = prims.decal({"tex": "ring", "x": 0.0, "z": 0.0, "r": 1.0, "duration": 5.0, "follow_body": ids[0], "follow": func() -> Variant: return Vector3(500.0, 0.0, 500.0)})
+		var gone: DmFxHandle = prims.decal({"tex": "ring", "x": 0.0, "z": 0.0, "r": 1.0, "duration": 5.0, "follow_body": 999999, "follow": func() -> Variant: return Vector3(500.0, 0.0, 500.0)})
+		var at_now: Dictionary = prims._dec.item_of(mark.id)
+		var at_gone: Dictionary = prims._dec.item_of(gone.id)
+		check(ground != Vector3.INF and absf(float(at_now["x"]) - ground.x) < 0.001 and absf(float(at_now["z"]) - ground.z) < 0.001 and float(at_now["opacity"]) >= 0.0, "exhume: a decal that follows the thrall by id stands where the crowd draws it (%.2f, %.2f), not where the fallback says" % [ground.x, ground.z])
+		check(float(at_gone["opacity"]) == 0.0, "exhume: a decal that follows a body that is not there is dark")
+		mark.kill()
+		gone.kill()
 	# other corpses, other thralls
 	await reset_and_wait()
 	var specs := [["swift", "hound", false, "hound"], ["resonant", "penitent", false, "archer"], ["toxic", "sac", false, "plaguebearer"], ["normal", "robber", true, "warrior"]]

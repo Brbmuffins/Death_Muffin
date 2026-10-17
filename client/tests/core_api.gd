@@ -63,6 +63,19 @@ func _init() -> void:
 	check(Array(c.enemies_in_radius(Vector2(0, 0), 3.7)) == [a, b, g], "the elite golem's edge (5 - 1.375) is inside 3.7")
 	check(Array(c.enemies_in_radius(Vector2(0, 0), 3.6)) == [a, b], "and not inside 3.6")
 	check(Array(c.enemies_in_radius(Vector2(30, 30), 1.0)) == [far], "a RISING body counts in queries (today's alive_enemy)")
+	# `foes_in_radius` is the same query with the record's numbers in one call: ten a body (id x z radius hp state elite level def area), the very values `enemy_info` gives.
+	for q in [[Vector2(0, 0), 2.0], [Vector2(0, 0), 3.7], [Vector2(30, 30), 1.0], [Vector2(0, 0), 60.0], [Vector2(-30, 0), 1.0]]:
+		var rows: PackedFloat64Array = c.foes_in_radius(q[0], q[1])
+		var ids: Array = Array(c.enemies_in_radius(q[0], q[1]))
+		var same := rows.size() == ids.size() * 10
+		for n in mini(ids.size(), rows.size() / 10):
+			var info: Dictionary = c.enemy_info(ids[n])
+			var k := n * 10
+			var pos: Vector2 = info["pos"]
+			same = same and int(rows[k]) == ids[n] and rows[k + 1] == pos.x and rows[k + 2] == pos.y and rows[k + 3] == info["radius"] and rows[k + 4] == info["hp"] \
+				and int(rows[k + 5]) == info["state"] and (rows[k + 6] != 0.0) == info["elite"] and int(rows[k + 7]) == info["level"] \
+				and c.def_name(int(rows[k + 8])) == info["def"] and c.area_name(int(rows[k + 9])) == info["area"]
+		check(same, "foes_in_radius%s equals enemies_in_radius with each record's numbers (%d foes)" % [str(q), ids.size()])
 	var gi: Dictionary = c.enemy_info(g)
 	check(is_equal_approx(gi["max_hp"], 430.0 * 3.6) and is_equal_approx(gi["damage"], 26.0 * 1.5) and is_equal_approx(gi["radius"], 1.375), "elite stats x3.6 hp, x1.5 damage, x1.25 radius")
 	var sp: float = c.enemy_info(a)["speed"]

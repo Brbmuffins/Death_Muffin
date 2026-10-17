@@ -889,7 +889,12 @@ func _legend(ev: Dictionary) -> void:
 ## Per frame (after the sim step): fxLater timers on the scene clock, zone ambience, wading ripples, echo marks, aura cleanup.
 func update(dt: float) -> void:
 	var t := now()
-	if not fx_later.is_empty():
+	var ripe := false   # the two lists below are only made on the frame something is due (most frames nothing is)
+	for item in fx_later:
+		if float(item["at"]) <= t:
+			ripe = true
+			break
+	if ripe:
 		var due: Array = []
 		var keep: Array = []
 		for item in fx_later:

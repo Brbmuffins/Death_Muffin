@@ -42,7 +42,8 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd # the graphics presets on a running game: lights, environment, viewport, crowd shadows, the governor (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rewards.gd                # the rewards node on the core: today's tests/rewards replayed (sessions, batches, lost replies, refusals, the end, per-member loot), on the mock
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/value.gd   # value on the server in the game scene: kills, accepted XP, the purse, a claimed drop, brews and lifesteal, the meta, the belt, saving ("Value on the server")
-/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/fx_motes.gd               # the effects' particle ring in C++ (DmMotes) against today's ring, float for float; INFO: its update time on both sides
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/fx_motes.gd               # the effects' particle ring in C++ (DmMotes: the bursts' random starts and the loop) against today's ring, float for float; INFO: its update time on both sides
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/fx_decals.gd              # the ground decals in C++ (DmDecals) against today's (godot/fx/dm_fx_prims.gd compiled at run time): every drawn float, the counts and the handles over two seeded runs and the cap of 160; INFO: its update time on both sides
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/panels.gd # today's panels on the core: every panel opens, the Reliquary (equip, sell, sort) on the server's bag, the loadout, Settings live, chat
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/gathering.gd # gathering and the Acre: all 68 nodes hovered and clicked, a node worked through the server (cycles, batches, finds, XP, spent and back), the stops, AFK and its report, the Grave Laborers, a collection, the garden, a contract, the Sexton ("Gathering and the Acre"; about 25 s)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/world.gd  # the whole world: every area, seals and gates, into the Warren, waystones, the recall, the core's navmesh against the server's, the Ossuary's deacon and golem, the Nave's five, the Sanctum's, Coliseum's and Cloister's rosters (the seraph's ward, the plague doctor's flask, a frenzied flagellant) and the Pyre's and the Fen's eight in the game scene, the waves following the hero from area to area
@@ -174,7 +175,7 @@ character in a fresh game (her bag, souls paid and refused, every rite's damage 
 
 The seven bosses (`next/bosses`, `sim/bosses`, `game/dm_boss_view.gd`): the Gravedigger King (the Hollow Graves), the Bone Abbess (Ossuary), the Drowned Congregation (Nave), the Bell-Sworn Prelate (Sanctum, woken with
 the Sundered Bell), the Plague Saint (Cloister), the Cinder Regent (Pyre) and the Mire Mother (Fen) run in the game scene as DECISIONS B42 says: **an external entity of the core (kind 1) whose brain stays GDScript.** The
-brains of `sim/bosses` are copies, unchanged (a brain does not know what a core is: it asks its `DmBossWorld`); five files are ports (`code.list` "Ported"). `DmBossHost` (child `Bosses` of the game scene, `g.bosses`) has today's
+brains of `sim/bosses` are copies, unchanged (a brain does not know what a core is: it asks its `DmBossWorld`) but for the Plague Saint's, which asks for her doctors only (`enemies_of`, below); five files are ports (`code.list` "Ported"). `DmBossHost` (child `Bosses` of the game scene, `g.bosses`) has today's
 summon rules, spawner, event routing, fx and music, and serves all seven areas (`served_areas`); `DmBoss` is the body; `DmBossNodeWorld` is the brain's view of the world, answered from the core.
 
 | today | on the core |
@@ -218,7 +219,7 @@ Not in them: the boss bar and banners (the full HUD); the two-player fight of th
 on the core"; the King fights both heroes in `coop.gd`). Easy auto combat takes the awake boss as a target (`bosses.active_boss()`, its telegraphs from the boss fx).
 
 **The adds** are the director's spawn through the core (`DmWaveDirector.spawn`, in the boss's area, at its level, `runs_on_core`): the Abbess's niches, the Congregation's Choir Wraiths and Penitents, the Prelate's Risen and Penitents, the Saint's Plague Doctors,
-Flagellants and rats, the Regent's Cinder Husks, Pyre Priests and Cinderhounds, the Mire Mother's Mire Leeches, Bog Hags and Risen. The Saint's doctors' link heals her by the doctors it finds in the core's table (`enemy_rows`, read without a dictionary a body).
+Flagellants and rats, the Regent's Cinder Husks, Pyre Priests and Cinderhounds, the Mire Mother's Mire Leeches, Bog Hags and Risen. The Saint's doctors' link heals her by the doctors the world finds in the core's table: `DmBossNodeWorld.enemies_of("plague_doctor")` reads `enemy_rows` (seven numbers a body, no dictionary) and fills a row for a doctor only, each body's area the last answer while it stands strictly inside that area's rect (`DmNextWorld.area_interior`), so a tick with 70 bodies in the room costs about 0.09 ms where every body's row cost 0.3 (`enemies()` is the same list of every body, for a brain that wants it).
 
 ## The benchmark
 
@@ -276,8 +277,8 @@ nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path clien
   `DmBenchHistory.flush`, and from a script run (every test is one) it refuses a real transport. `tests/benchmark.gd` pins it: it points `DmBenchmark.dir` at a folder of its own (with its baked models, removed at the end), so another run's history,
   queue or setup can neither change a check nor be sent by it, and its uploads go to a mock that answers as the test API.
 - **In the fight as today:** rewards, loot drops and the kill ledger against the run's in-memory mock (the King's soul shards are granted to the throwaway character and charged, as today's `hold_boss`),
-  and today's effects (`Vfx`), with one difference: the particle ring's per-frame loop is the core's C++ (`DmMotes`, native/README.md "Files"), which won back 0.7 ms of a Full Party
-  frame on the VPS (5.7 to 5.0 ms; 2026-10-16).
+  and today's effects (`Vfx`), with one difference: the work that grows with what is on screen is the core's C++, particles and decals ("The effects"), which won back 0.7 ms of a Full Party
+  frame on the VPS for the particle ring (5.7 to 5.0 ms; 2026-10-16) and about 0.6 ms for the decals.
 - **The world dressing's cost** (2026-10-17, the Graves' Full Party, headless `--fixed-fps 60`, six alternating pairs in ABBA order, `--bench-dressing=off` against the default, on a shared machine whose load swung between 3.7 and 5.9): the average frame 3.86 ms
   without it (runs 3.27 to 4.35; p95 7.68, p99 10.83) and 3.96 ms with it (3.61 to 4.27; p95 8.01, p99 10.95), +0.10 ms, a fifth of the spread of either arm; the rest of the main thread 3.27 against 3.35 ms of its 4 (the combat core 0.59 and 0.60).
   The node alone costs 18 microseconds a frame ("World dressing"); what the dummy renderer cannot say is the GPU's share, which is the water's fragment loop and a dozen transparent draws: Helix's PC.
@@ -355,6 +356,17 @@ in the Graves' budget scene (`tests/draw_budget.gd`: `BUDGET_DRESSING` 8, none c
 `tests/dressing.gd` is the suite.
 
 Not wired, as in today's game: `add_ripple` and `candle_group` are called through `DmEnemyFxHost.dressing`, which the game scene does not set, so the water has no ripples and the Prelate's candles do not gutter (ROADMAP "After launch day" → "For review").
+
+## The effects
+
+The effects are today's `Vfx` (`fx/`, `DmFxRuntime`): ground decals, the two particle rings, the Binbun scenes, flashes, beams, projectiles. What grows with the number of them on screen is done in C++, each piece proved against today's GDScript; the rest is today's code.
+
+- **Particles** (`DmMotes`, native/README.md "Files"): a ring's motes, the random start of every mote of a burst and the per-frame loop. `DmFxRing.emit` hands the options over; the numbers come from the global generator in the order today's loop drew them, so a seeded run gives today's motes. `tests/fx_motes.gd` compiles today's `godot/fx/dm_fx_ring.gd` and compares both rings' buffers float for float (bursts in every colour form).
+- **Ground decals** (`DmDecals`): a decal is a record in C++, not two GDScript objects. `DmFxPrims.decal` works out what it is made of (its layer, tint, whether it settles into an outline, as today's) and hands it over; C++ ages it, shapes it (growth, spin, pulse, fades, the outline that comes up after 0.6 s and the ring a settling disc brings with it, a flipbook's frame), places it (a decal that follows a body gives its id as `follow_body`, which C++ asks the crowd for; one with a `follow` callable calls it as before) and writes each layer's instance buffer and gives it to the RenderingServer. `DmFxLayer` keeps the MultiMesh and its node (`show_count`, `grow`). The cap of 160 combat transients counts decals and the other kinds together and the oldest leaves first. `tests/fx_decals.gd` compiles today's `godot/fx/dm_fx_prims.gd` at run time and compares every drawn float, the counts and the handles with it over two seeded runs and the cap; `tests/rites.gd` checks a decal that follows a thrall by id.
+- **Binbun scenes** (`fx/dm_fx_binbun.gd`): an effect's root is moved only when it moved (every move walks the effect's subtree), a looping effect is tested against the camera every third frame (the test keeps 4 m of margin past the frustum) and 8 idle instances per effect are kept (it was 4), so a salvo of bonfires more often finds instances waiting than builds them from the scene.
+- **The enemies' effects** (`DmEnemyFx`): the ambient tick (every 0.2 s) reads the bodies' places from one read of the core's bulk arrays (`enemy_ids`, `enemy_positions`) instead of a record each, and the Pyre's colours are read once. `DmCoreHost.foes_in_radius` (every rite's query) takes one call of the core (`DmCore.foes_in_radius`, ten numbers a body) where it took a record and a snapshot each (19 us a body).
+
+Costs on the VPS (headless, cold: one call in the middle of a Full Party frame): the decals' step with 140 alive 0.04 ms (today's GDScript 0.55), the Pyre's whole effects layer 0.40 ms (1.27), the Graves' 0.16 (0.61), the Pyre's ambient tick 0.86 ms every 12th frame (2.7 ms before), a Plague Saint's look at her doctors 0.09 ms a tick (0.3), a rite's query over 40 foes 0.25 ms (0.45 to 0.9).
 
 ## Graphics presets
 

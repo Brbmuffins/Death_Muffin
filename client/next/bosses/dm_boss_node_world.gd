@@ -14,8 +14,11 @@ var t: float = 0.0                   ## room clock: the boss advances it by its 
 const WALK_SNAP_M := 2.5            ## a step more than this from the navmesh is not on it at all: leave the boss where the brain put it
 
 var _rows: Array = []                ## enemies(): the brain's list of the core's bodies, reused
+var _kind_rows: Array = []           ## enemies_of(): the rows of one kind, reused
+var _kind_flags := {}                ## def name -> PackedByteArray by the core's def number: 1 is that kind, 0 is not, 2 not looked at yet
 var _def_names := PackedStringArray()
 var _zone_rows: Array = []           ## hostile_toxic_zones(): reused
+var _zone_seen := PackedFloat32Array()   ## the core's list those rows were made from
 var _players: Array = []
 var _by_peer: Dictionary = {}        ## peer id -> reused player dict
 var _heroes: Array = []   ## the session's hero bodies this tick (the level the arena scales to is worked out when a brain asks)
@@ -126,26 +129,118 @@ func enemy_get(id: int) -> Dictionary:
 
 
 ## Every body of the core's table, in spawn order (the dead ones until they are removed): the Plague Saint reads it every tick to find her doctors. One call of the core gives seven numbers
-## a body, and the dictionaries are reused from call to call (their fields are overwritten): a brain reads them at once and keeps nothing.
+## a body, and the dictionaries are reused from call to call (their fields are overwritten): a brain reads them at once and keeps nothing. A body's area is the last answer
+## when it stands strictly inside the rect of that area (`DmNextWorld.area_interior`), else the walk over the loaded areas.
 func enemies() -> Array:
 	var f: PackedFloat32Array = core().core.enemy_rows()
 	var n := f.size() / 7
-	if _rows.size() > n:
-		_rows.resize(n)
-	while _rows.size() < n:
-		_rows.append({"id": 0, "def": "", "area": "", "x": 0.0, "z": 0.0, "hp": 0.0, "max_hp": 0.0, "state": ""})
+	var rows := _rows
+	if rows.size() > n:
+		rows.resize(n)
+	while rows.size() < n:
+		rows.append({"id": 0, "def": "", "area": "", "x": 0.0, "z": 0.0, "hp": 0.0, "max_hp": 0.0, "state": ""})
+	var names := DmCoreEvents.STATE_NAMES
+	var defs := _def_names
+	var assume := host.assume_area
+	var world: Variant = host.game.get("world")
+	var inner: bool = world != null and world.has_method("area_interior")
+	var in_area := ""                      # the area of the last point that stood in a rect, and that rect's edges (an empty one until there is one)
+	var x0 := 0.0
+	var x1 := -1.0
+	var z0 := 0.0
+	var z1 := -1.0
+	var k := 0
 	for i in n:
-		var d: Dictionary = _rows[i]
-		var k := i * 7
+		var d: Dictionary = rows[i]
+		var x := f[k + 2]
+		var z := f[k + 3]
+		var di := int(f[k + 1])
 		d["id"] = int(f[k])
-		d["def"] = _def_name(int(f[k + 1]))
-		d["x"] = f[k + 2]
-		d["z"] = f[k + 3]
-		d["area"] = host.area_at(f[k + 2], f[k + 3])
+		d["def"] = defs[di] if di < defs.size() and defs[di] != "" else _def_name(di)
+		d["x"] = x
+		d["z"] = z
+		if x > x0 and x < x1 and z > z0 and z < z1:
+			d["area"] = in_area
+		else:
+			var a: String = host.game.area_at(x, z)
+			d["area"] = a if a != "" else assume
+			x1 = -1.0
+			if inner and a != "":
+				var r: PackedFloat64Array = world.area_interior(a)
+				if r.size() == 4:
+					in_area = a
+					x0 = r[0]
+					x1 = r[1]
+					z0 = r[2]
+					z1 = r[3]
 		d["hp"] = f[k + 4]
 		d["max_hp"] = f[k + 5]
-		d["state"] = DmCoreEvents.STATE_NAMES[int(f[k + 6])]
-	return _rows
+		d["state"] = names[int(f[k + 6])]
+		k += 7
+	return rows
+
+
+## The bodies of one kind (`def_name`: "plague_doctor"), in spawn order, as `enemies()` gives them (the dead ones until they are removed): the Plague Saint looks for her doctors every tick, and
+## only the doctors need their rows. The rows are reused from call to call.
+func enemies_of(def_name: String) -> Array:
+	var f: PackedFloat32Array = core().core.enemy_rows()
+	var n := f.size() / 7
+	var flags: PackedByteArray = _kind_flags.get(def_name, PackedByteArray())
+	var out := _kind_rows
+	var assume := host.assume_area
+	var world: Variant = host.game.get("world")
+	var inner: bool = world != null and world.has_method("area_interior")
+	var in_area := ""                      # as in enemies(): the last area found and its rect, to skip the walk over the loaded areas
+	var x0 := 0.0
+	var x1 := -1.0
+	var z0 := 0.0
+	var z1 := -1.0
+	var names := DmCoreEvents.STATE_NAMES
+	var found := 0
+	var k := 0
+	for i in n:
+		var di := int(f[k + 1])
+		if di >= flags.size():
+			var from := flags.size()
+			flags.resize(di + 1)
+			for j in range(from, di + 1):
+				flags[j] = 2
+		var flag := flags[di]
+		if flag == 2:
+			flag = 1 if _def_name(di) == def_name else 0
+			flags[di] = flag
+		if flag == 1:
+			if out.size() <= found:
+				out.append({"id": 0, "def": def_name, "area": "", "x": 0.0, "z": 0.0, "hp": 0.0, "max_hp": 0.0, "state": ""})
+			var d: Dictionary = out[found]
+			found += 1
+			var x := f[k + 2]
+			var z := f[k + 3]
+			d["id"] = int(f[k])
+			d["x"] = x
+			d["z"] = z
+			if x > x0 and x < x1 and z > z0 and z < z1:
+				d["area"] = in_area
+			else:
+				var a: String = host.game.area_at(x, z)
+				d["area"] = a if a != "" else assume
+				x1 = -1.0
+				if inner and a != "":
+					var r: PackedFloat64Array = world.area_interior(a)
+					if r.size() == 4:
+						in_area = a
+						x0 = r[0]
+						x1 = r[1]
+						z0 = r[2]
+						z1 = r[3]
+			d["hp"] = f[k + 4]
+			d["max_hp"] = f[k + 5]
+			d["state"] = names[int(f[k + 6])]
+		k += 7
+	_kind_flags[def_name] = flags
+	if out.size() > found:
+		out.resize(found)
+	return out
 
 
 ## The core's def number as its name, fetched once.
@@ -221,9 +316,13 @@ func echoes() -> int:
 
 # ---- hooks of the Saint / Regent: rot pools, ember pools (core zones with the boss as their source) --------------------------------------------------
 
-## Rot the Saint stands in: every live toxic pool of the core (hers, a sac's burst corpse, a flask), as {x, z, r}. The core lists them, three floats each; the dictionaries are reused.
+## Rot the Saint stands in: every live toxic pool of the core (hers, a sac's burst corpse, a flask), as {x, z, r}. The core lists them, three floats each; the dictionaries are reused, and
+## rebuilt only when the list changed (a pool does not move or change its size: every tick between two pools coming and going has the same one).
 func hostile_toxic_zones() -> Array:
 	var f: PackedFloat32Array = core().core.zones("toxic")
+	if f == _zone_seen and _zone_rows.size() == f.size() / 3:
+		return _zone_rows
+	_zone_seen = f
 	var n := f.size() / 3
 	if _zone_rows.size() > n:
 		_zone_rows.resize(n)

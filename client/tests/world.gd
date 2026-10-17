@@ -151,6 +151,40 @@ func _the_world() -> void:
 	var prior: Dictionary = DmContent.get_export("npcs", "NPCS")["prior"]
 	var node: Node3D = g.chapterhouse.npcs.npcs["prior"]["root"]
 	check(node.position.distance_to(Vector3(float(prior["x"]), 0.0, float(prior["z"]))) < 0.01, "the Prior stands where npcs.json puts him")
+	# area_at walks the loaded rects as flat numbers; it must answer what the walk over world.json's rects answers, for points in every area, on every edge and outside them all.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261017
+	var walk := func(x: float, z: float) -> String:
+		for id: String in g.world.loaded:
+			var r: Dictionary = DmContent.area(id)["rect"]
+			if x >= float(r["x0"]) and x <= float(r["x1"]) and z >= float(r["z0"]) and z <= float(r["z1"]):
+				return id
+		return ""
+	var wrong_at := 0
+	var wrong_interior := 0
+	var edge_points: Array = []
+	for id: String in g.world.loaded:
+		var r2: Dictionary = DmContent.area(id)["rect"]
+		for ex in [float(r2["x0"]), float(r2["x1"])]:
+			for ez in [float(r2["z0"]), float(r2["z1"]), (float(r2["z0"]) + float(r2["z1"])) * 0.5]:
+				edge_points.append(Vector2(ex, ez))
+	for i in 3000:
+		edge_points.append(Vector2(rng.randf_range(-250.0, 250.0), rng.randf_range(-250.0, 250.0)))
+	for p: Vector2 in edge_points:
+		var a: String = g.world.area_at(p.x, p.y)
+		if a != walk.call(p.x, p.y):
+			wrong_at += 1
+	check(wrong_at == 0, "area_at answers what the walk over world.json's rects answers (3,000 random points and every edge; %d differ)" % wrong_at)
+	var keyed := 0
+	for id: String in g.world.loaded:
+		var inner: PackedFloat64Array = g.world.area_interior(id)
+		keyed += 1 if inner.size() == 4 else 0
+		for k in 200:
+			var x := rng.randf_range(inner[0], inner[1])
+			var z := rng.randf_range(inner[2], inner[3])
+			if x > inner[0] and x < inner[1] and z > inner[2] and z < inner[3] and (walk.call(x, z) != id or g.world.area_at(x, z) != id):
+				wrong_interior += 1
+	check(keyed == g.world.loaded.size() and wrong_interior == 0, "a point strictly inside an area's interior rect is in that area and no other (the %d loaded rects do not overlap; %d wrong)" % [keyed, wrong_interior])
 
 
 # ------------------------------------------------------------------------------------------------------------------ the seals

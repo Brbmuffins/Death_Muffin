@@ -141,6 +141,10 @@ func t_fight() -> void:
 	await ticks(2)
 	boss.world.refresh()
 	check(boss.world.enemies().filter(func(e: Dictionary) -> bool: return e["def"] == "plague_doctor" and e["area"] == "cloister").size() == 2, "the world reports the doctors in the cloister")
+	var every: Array = boss.world.enemies().duplicate(true)
+	var doctors: Array = boss.world.enemies_of("plague_doctor").duplicate(true)
+	check(doctors == every.filter(func(e: Dictionary) -> bool: return e["def"] == "plague_doctor") and doctors.size() >= 2 and boss.world.enemies_of("not_a_kind").is_empty(),
+		"the world's list of her doctors only is the list of every body filtered to them: the same rows in the same order (%d), and an unknown kind has none" % doctors.size())
 	var n_link := events("link").size()
 	step(1.0)
 	var gain2: float = float(boss.brain.state["hp"]) - base_hp
