@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // The seeded scenario comparison between today's game and the rebuilt client (ROADMAP Gate B, native/README.md "Proof of same game").
 //
-//   node tools/rebuild/compare-scenarios.mjs [--seeds=1-5] [--seconds=180] [--level=10] [--difficulty=easy] [--out=<dir>] [--from=<dir>] [--strict]
+//   node tools/rebuild/compare-scenarios.mjs [--seeds=1-5] [--seconds=180] [--level=10] [--difficulty=easy] [--discipline=2] [--area=graves] [--out=<dir>] [--from=<dir>] [--strict]
 //
 // Runs `godot/tests/parity/scenario.gd` (today's game) and `client/tools/parity_scenario.gd` (the rebuilt client) for each seed, ONE Godot process at a time under `nice -n 10`,
 // alternating the sides seed by seed so the shared machine's load drifts over both alike. Each run writes a JSON of the same keys; the sides are averaged over the seeds and
 // printed as a table: metric, today, client, difference, tolerance, noise, verdict. The tolerances are native/README.md "Proof of same game"; change them there and here together.
 // A miss is never fixed by tuning game numbers: it is investigated (a scenario mismatch is fixed in the two tool scripts; a real difference goes to native/README.md "Differences").
+//   --discipline=<index>  the hero's discipline (1 Ossuary, 2 Gravecaller, 3 Mourner, 4 Rotweaver, 11 the Reaper); --area=<id>  the hunting ground (default the Hollow Graves, `graves`)
 //   --from=<dir>   tabulate the JSON files of an earlier run (today-<seed>.json, client-<seed>.json) instead of running Godot
 //   --out=<dir>    where the JSON files go (default: a new folder under the system temp dir)
+//   --resume       keep the runs already in --out (a stopped comparison goes on where it was)
 //   --strict       exit 1 when a metric misses (default: exit 0 whenever the runs completed)
 //   --sides=today|client|both   run only one side (a table needs both; the run line is printed for each)
 //   GODOT=<path>   the Godot binary (default /home/ubuntu/tools/godot/godot)
@@ -29,7 +31,15 @@ const GODOT = process.env.GODOT || '/home/ubuntu/tools/godot/godot';
 const seconds = Number(arg('seconds', '180'));
 const level = Number(arg('level', '10'));
 const difficulty = arg('difficulty', 'easy');
+const discipline = Number(arg('discipline', '2'));
+const area = arg('area', 'graves');
+const DISCIPLINES = { 1: 'Ossuary', 2: 'Gravecaller', 3: 'Mourner', 4: 'Rotweaver', 11: 'Reaper' };
+const AREAS = { graves: 'the Hollow Graves', warren: 'the Catacomb Warren', ossuary: 'the Marrow Ossuary', nave: 'the Drowned Nave', coliseum: 'the Bone Coliseum', sanctum: 'the Bell Sanctum',
+  cloister: 'the Plague Cloister', pyre: 'the Cinder Pyre', fen: 'the Mourning Fen' };
+const heroName = (d) => DISCIPLINES[d] || `discipline ${d}`;
+const areaName = (a) => AREAS[a] || a;
 const sides = arg('sides', 'both');
+const resume = flag('resume');
 const from = arg('from', '');
 const outDir = arg('out', '');
 const seeds = parseSeeds(arg('seeds', '1-5'));
@@ -56,19 +66,30 @@ const SIDES = {
 function runSide(side, seed, dir) {
   const s = SIDES[side];
   const out = path.join(dir, `${side}-${seed}.json`);
-  const args = ['-n', '10', GODOT, '--headless', '--fixed-fps', '60', '--path', s.project, '--script', s.script, '--',
-    `--seed=${seed}`, `--seconds=${seconds}`, `--level=${level}`, `--difficulty=${difficulty}`, `--out=${out}`];
-  const t0 = Date.now();
-  const r = spawnSync('nice', args, { cwd: root, encoding: 'utf8', timeout: RUN_TIMEOUT_MS, maxBuffer: 1 << 28 });
-  const wall = (Date.now() - t0) / 1000;
-  const text = `${r.stdout || ''}\n${r.stderr || ''}`;
-  if (!existsSync(out)) {
-    const tail = text.split('\n').filter((l) => /ERROR|SCRIPT|Parse|error/i.test(l) && !/leaked|still in use|Pages in use|RID allocations/.test(l)).slice(0, 12).join('\n');
-    throw new Error(`${side} seed ${seed}: no result (exit ${r.status}, signal ${r.signal})\n${tail}`);
+  if (resume && existsSync(out)) {
+    console.log(`  ${side.padEnd(6)} seed ${seed}: kept from the earlier run`);
+    return { out, wall: 0 };
   }
-  const line = text.split('\n').find((l) => l.startsWith('PARITY '));
-  console.log(`  ${side.padEnd(6)} seed ${seed}: ${wall.toFixed(0)} s  ${line ? line.replace(/^PARITY \w+ seed=\d+ /, '') : ''}`);
-  return { out, wall };
+  const args = ['-n', '10', GODOT, '--headless', '--fixed-fps', '60', '--path', s.project, '--script', s.script, '--',
+    `--seed=${seed}`, `--seconds=${seconds}`, `--level=${level}`, `--difficulty=${difficulty}`, `--discipline=${discipline}`, `--area=${area}`, `--out=${out}`];
+  // The engine now and then aborts a headless process before the scenario ends (a crash of Godot, not a result): the whole output is kept
+  // beside the results (<side>-<seed>-crash<n>.log) and the run is made again, once; a second crash stops the comparison.
+  for (let attempt = 1; ; attempt++) {
+    const t0 = Date.now();
+    const r = spawnSync('nice', args, { cwd: root, encoding: 'utf8', timeout: RUN_TIMEOUT_MS, maxBuffer: 1 << 28 });
+    const wall = (Date.now() - t0) / 1000;
+    const text = `${r.stdout || ''}\n${r.stderr || ''}`;
+    if (existsSync(out)) {
+      const line = text.split('\n').find((l) => l.startsWith('PARITY '));
+      console.log(`  ${side.padEnd(6)} seed ${seed}: ${wall.toFixed(0)} s  ${line ? line.replace(/^PARITY \w+ seed=\d+ /, '') : ''}`);
+      return { out, wall };
+    }
+    const log = path.join(dir, `${side}-${seed}-crash${attempt}.log`);
+    writeFileSync(log, text);
+    const tail = text.split('\n').filter((l) => /ERROR|SCRIPT|Parse|error/i.test(l) && !/leaked|still in use|Pages in use|RID allocations/.test(l)).slice(0, 12).join('\n');
+    console.log(`  ${side.padEnd(6)} seed ${seed}: no result (exit ${r.status}, signal ${r.signal}); output in ${log}`);
+    if (attempt >= 2) throw new Error(`${side} seed ${seed}: no result twice (exit ${r.status}, signal ${r.signal})\n${tail}`);
+  }
 }
 
 function runAll(dir) {
@@ -115,7 +136,8 @@ const METRICS = [
   { id: 'legion_taken', name: 'damage taken by the thralls alone', kind: 'rel', tol: null, get: (r) => r.metrics.thrall_damage_taken, fmt: (v) => v.toFixed(0) },
   { id: 'casts', name: 'rite casts', kind: 'rel', tol: null, get: (r) => r.metrics.casts_total, fmt: (v) => v.toFixed(1) },
   { id: 'unsticks', name: 'times the hero was set back at the door', kind: 'rel', tol: null, get: (r) => r.metrics.unsticks, fmt: (v) => v.toFixed(1) },
-  { id: 'blows', name: 'blows that landed on the hero', kind: 'rel', tol: null, get: (r) => r.metrics.blows_landed, fmt: (v) => v.toFixed(1) },
+  // the hero's own `hurt` signal on both sides (today's `struck` and the client's `hero_hit` count different things: the client's include the clouds and pools, today's do not)
+  { id: 'blows', name: 'blows that hurt the hero', kind: 'rel', tol: null, get: (r) => r.metrics.blows_taken, fmt: (v) => v.toFixed(1) },
 ];
 
 function compare(today, client) {
@@ -226,7 +248,7 @@ let dir = from;
 let runSeconds = 0;
 if (!from) {
   dir = outDir || mkdtempSync(path.join(os.tmpdir(), 'dm-parity-'));
-  console.log(`Seeded scenario comparison: Hollow Graves, Gravecaller level ${level}, ${difficulty}, ${seconds} s of game time, seeds ${seeds.join(' ')}, results in ${dir}`);
+  console.log(`Seeded scenario comparison: ${areaName(area)}, ${heroName(discipline)} level ${level}, ${difficulty}, ${seconds} s of game time, seeds ${seeds.join(' ')}, results in ${dir}`);
   runSeconds = runAll(dir);
   console.log(`  ${seeds.length * (sides === 'both' ? 2 : 1)} runs in ${(runSeconds / 60).toFixed(1)} min`);
 }
@@ -235,11 +257,12 @@ if (sides !== 'both' && !from) process.exit(0);
 const today = load(dir, 'today');
 const client = load(dir, 'client');
 const rows = compare(today, client);
-console.log(`\nSeeded scenario comparison at ${gitRev()}: the Hollow Graves, Gravecaller level ${today[0].level}, ${today[0].difficulty || 'easy'}, ${today[0].seconds} s of game time, seeds ${seeds.join(' ')} (means over the seeds)\n`);
+const sc = { area: today[0].area || 'graves', discipline: today[0].discipline ?? 2 };   // what the runs say they played (a --from folder may be another scenario than the flags)
+console.log(`\nSeeded scenario comparison at ${gitRev()}: ${areaName(sc.area)}, ${heroName(sc.discipline)} level ${today[0].level}, ${today[0].difficulty || 'easy'}, ${today[0].seconds} s of game time, seeds ${seeds.join(' ')} (means over the seeds)\n`);
 console.log(table(rows));
 console.log('noise: two standard errors of the difference between the means over the seeds, in the unit of the difference. A miss inside it needs more seeds, not a fix.');
 console.log(`\n${perSeed(rows)}\n\n${kindsAndCasts(today, client)}`);
-const res = { rev: gitRev(), seeds, seconds: today[0].seconds, level: today[0].level, difficulty: today[0].difficulty || 'easy', run_minutes: runSeconds / 60,
+const res = { rev: gitRev(), area: sc.area, discipline: sc.discipline, seeds, seconds: today[0].seconds, level: today[0].level, difficulty: today[0].difficulty || 'easy', run_minutes: runSeconds / 60,
   rows: rows.map((r) => ({ id: r.id, name: r.name, today: r.ta, client: r.tb, diff: r.diff, tolerance: r.tol, noise: r.noise, verdict: r.verdict })) };
 writeFileSync(path.join(dir, 'compare.json'), JSON.stringify(res, null, 2));
 const misses = rows.filter((r) => r.verdict.startsWith('MISS'));

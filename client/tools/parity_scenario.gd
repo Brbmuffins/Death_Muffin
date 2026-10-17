@@ -5,20 +5,30 @@ extends SceneTree
 ##
 ## The scenario: the Hollow Graves, one Gravecaller (discipline 2) at a fixed level on the kit's default loadout, Easy difficulty and Easy auto combat ON (today's DmAutoCombat /
 ## DmAutoDodge decisions, which move the hero too), the area's normal waves from the director (no held counts: cap 28, 9 a wave every 6.5 s, elites at 3.5 %, processions), the
-## director's random stream seeded, no rewards (the kill credit is cut off from them and the Omen pinned to none, as today's side does) and the in-memory mock. The hero cannot die: his health is refilled when a blow lands, and what the blow cost is counted.
+## director's random stream seeded, no rewards (the kill credit is cut off from them and the Omen pinned to none, as today's side does; the Reaper's souls, which those kills pay, are banked by this tool, one for each enemy that
+## dies within KILL_REWARD_RANGE of her, on both sides) and the in-memory mock. The hero cannot die: his health is refilled when a blow lands, and what the blow cost is counted.
+## `--discipline=<index>` (1 Ossuary, 2 Gravecaller, 3 Mourner, 4 Rotweaver, 11 the Reaper) and `--area=<id>` (any hunting ground whose kinds the core runs) change the hero and the ground; the
+## defaults are the scenario above. In another area only that area is loaded (its seal broken, its doors shut), the hero stands where a waystone sets a traveller down (the waystone's place,
+## 1.6 m on), and the director's waves are that area's: its roster, cap, size and pace, its elites, its processions and its level (fixed by the area, or the hero's own where the area scales).
 ## A hero who stands against the graves' tombstones without fighting (under STALL_M metres and STALL_CASTS casts in STALL_S seconds) is set back at the door, as a player would walk him out,
 ## and `unsticks` counts it (both games do it at the same places). `--seconds` of game time are played (physics ticks, so `--fixed-fps 60` runs it faster than real time without changing it).
-##   nice -n 10 godot --headless --fixed-fps 60 --path client --script res://tools/parity_scenario.gd -- --seed=1 --seconds=180 --out=/tmp/client-1.json [--level=10] [--difficulty=easy]
+##   nice -n 10 godot --headless --fixed-fps 60 --path client --script res://tools/parity_scenario.gd -- --seed=1 --seconds=180 --out=/tmp/client-1.json [--level=10] [--difficulty=easy] [--discipline=2] [--area=graves]
 ## Everything is read from the host's signals and the caster's events (the tool adds no work to the game's ticks beyond its own counters; the legion is sampled once a tick by the tool).
 
-const AREA := "graves"
-const DISCIPLINE := 2
-const SPAWN_X := 0.0   ## where the hero stands when the waves begin: the Graves' door, the same point on both sides
-const SPAWN_Z := 1.0
+const GRAVES_X := 0.0   ## where the hero stands when the waves begin in the Hollow Graves: the Graves' door, the same point on both sides
+const GRAVES_Z := 1.0
+const REAPER_CASTS := ["sweep", "throw", "reap", "walk", "burst", "spin", "release", "harvest", "weave"]   ## the event types that start one of the Reaper's rites
+const REAPER_RITES := ["scythe_sweep", "scythe_throw", "reap", "wraith_walk", "soul_burst", "harvest_spin", "unleash_souls", "soul_harvest", "scythe_weave"]
+const KILL_REWARD_RANGE := 38.0   ## a kill pays a hero within this many metres (DmGameRewards.KILL_REWARD_RANGE, gameplay_killCredit.json)
+const WAYSTONE_STEP := 1.6   ## a waystone sets a traveller down this far (z) from its own place (DmChapterhouse.travel)
 const STALL_S := 10      ## a hero who moved less than STALL_M in STALL_S seconds and cast less than STALL_CASTS times is stuck against the graves, not fighting: he is set back at the door
 const STALL_M := 1.0
 const STALL_CASTS := 4
 
+var area := "graves"
+var discipline := 2
+var spawn_x := GRAVES_X   ## where the hero starts and where a stuck one is set back: the Graves' door, or the area's waystone
+var spawn_z := GRAVES_Z
 var seed_n := 1
 var seconds := 180.0
 var level := 10
@@ -84,6 +94,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	seed_n = int(_arg("seed", "1"))
+	area = _arg("area", "graves")
+	discipline = int(_arg("discipline", "2"))
 	seconds = float(_arg("seconds", "180"))
 	level = int(_arg("level", "10"))
 	difficulty = _arg("difficulty", "easy")
@@ -95,11 +107,11 @@ func _run() -> void:
 	var api := DmOffline.make_api(mock)
 	var reg := await api.register("parity", "p@example.com", "pw1234")
 	api.set_token(reg.data["token"])
-	var ch := await api.load_or_create_character(DISCIPLINE)
+	var ch := await api.load_or_create_character(discipline)
 	DmDevMock.set_level(mock, ch.data, level)
 	g = load("res://next/next_game.tscn").instantiate()
 	root.add_child(g)
-	await g.start(ch.data, api, {"areas": ["graves"], "name": "parity", "hud": false, "audio": false, "waves": false, "persist": false, "omen": {}, "difficulty": difficulty, "seed": seed_n})
+	await g.start(ch.data, api, {"areas": [area], "name": "parity", "hud": false, "audio": false, "waves": false, "persist": false, "omen": {}, "difficulty": difficulty, "seed": seed_n})
 	host = g.core_host
 	hero = g.local_body()
 	caster = hero.get_node("Rites")
@@ -111,9 +123,10 @@ func _run() -> void:
 	g.director.off["censer"] = true                           # no censer for the Bellringers' procession (today's side leaves it out: its scene is dropped), so both sides play the same rules
 	g.director.difficulty = difficulty
 	g.director.rng.seed = seed_n
+	_place_area()
 	_observe()
 	var hero_start := hero.position
-	hero.teleport(Vector3(SPAWN_X, 0.0, SPAWN_Z))
+	hero.teleport(Vector3(spawn_x, 0.0, spawn_z))
 	g.camera.snap(hero.position)
 	var setup := {"hero_start": [hero_start.x, hero_start.z], "hero_max_hp": hero.max_hp, "hero_level": float(caster.p["stats"]["level"]), "thrall_cap": _thrall_cap(), "hero_position": [hero.position.x, hero.position.z],
 		"director": {"cap": g.director.cap, "wave_size": g.director.wave_size, "wave_interval_s": g.director.wave_interval, "kinds": g.director.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))}}
@@ -150,6 +163,19 @@ func _nearest() -> String:
 	return "%.1f/%d" % [best, bs]
 
 
+## Another hunting ground than the Graves: only that area is loaded, so its seal is broken here, the hero's arrival point is its waystone, and the director deals its waves.
+## The Graves are left exactly as they were.
+func _place_area() -> void:
+	if area == "graves":
+		return
+	g.world.set_unlocked([area])
+	for it: Dictionary in DmContent.area(area)["interactables"]:
+		if String(it["kind"]) == "waystone":
+			spawn_x = float(it["x"])
+			spawn_z = float(it["z"]) + WAYSTONE_STEP
+	g.director.configure_area(area)
+
+
 func _thrall_cap() -> int:
 	return int(hero.mods.get("thrallCap", 0))
 
@@ -179,6 +205,7 @@ func _observe() -> void:
 		else:
 			m_other_damage += amount)
 	host.enemy_died.connect(func(id: int, def: String, _lv: int, elite: bool, _a: String, _source: int, _x: float, _z: float) -> void:
+		_bank_soul(_x, _z)
 		m_kills += 1
 		m_kills_by[def] = int(m_kills_by.get(def, 0)) + 1
 		if elite:
@@ -216,9 +243,23 @@ func _observe() -> void:
 		m_raw_damage += damage)
 	g.hero_died.connect(func(_b: DmHeroBody) -> void: m_hero_deaths += 1)
 	caster.event_played.connect(func(ev: Dictionary) -> void:
-		if String(ev.get("t", "")) == "cast":
+		if _is_cast(ev):
 			var r := String(ev.get("rite", ""))
 			m_casts[r] = int(m_casts.get(r, 0)) + 1)
+
+
+## The Reaper's souls come from the kills the rewards pay her (`DmNextMeta._on_kill_earned`: one soul for every enemy that dies within KILL_REWARD_RANGE of her), and the rewards are
+## off in this scenario: the same rule is applied here, on both sides, so her spenders (Reap, Soul Burst, Harvest Spin, Wraith Walk, Unleash Souls) get their souls.
+func _bank_soul(x: float, z: float) -> void:
+	if hero.family == "reaper" and hero.alive and not hero.p.is_empty() and Vector2(x - hero.position.x, z - hero.position.z).length() < KILL_REWARD_RANGE:
+		DmPlayerRules.bag_add(hero.p, 1)
+
+
+## One cast of a rite: a necromancer's rite plays one `cast` event; each of the Reaper's plays its own (a sweep, a throw, a reap, a walk, a burst, a spin, a release, a harvest, a weave;
+## the throw's `tick`s, the release's `hit`s and the rest are follow-ups of the same cast).
+static func _is_cast(ev: Dictionary) -> bool:
+	var t := String(ev.get("t", ""))
+	return t == "cast" or (REAPER_CASTS.has(t) and String(ev.get("rite", "")) in REAPER_RITES)
 
 
 ## Once a second. Easy auto combat steers straight at the nearest enemy, and the graves hold pockets of tombstones (around (3.5, -3.5) and by the door) where that walk ends
@@ -239,7 +280,7 @@ func _check_stall(t: int) -> void:
 		_cast_hist.remove_at(0)
 	if _hist[STALL_S].distance_to(_hist[0]) < STALL_M and _cast_hist[STALL_S] - _cast_hist[0] < STALL_CASTS:
 		m_unsticks.append([t, snappedf(hero.position.x, 0.1), snappedf(hero.position.z, 0.1)])
-		hero.teleport(Vector3(SPAWN_X, 0.0, SPAWN_Z))
+		hero.teleport(Vector3(spawn_x, 0.0, spawn_z))
 		_hist.clear()
 		_cast_hist.clear()
 
@@ -292,7 +333,7 @@ func _write(setup: Dictionary, wall: float) -> void:
 		by_kind[k] = _ttk_stats(m_ttk_by[k])
 		samples[k] = m_ttk_by[k].map(func(t: float) -> float: return snappedf(t, 0.1))
 	var res := {
-		"side": "client", "seed": seed_n, "seconds": seconds, "level": level, "difficulty": difficulty, "area": AREA, "discipline": DISCIPLINE, "setup": setup,
+		"side": "client", "seed": seed_n, "seconds": seconds, "level": level, "difficulty": difficulty, "area": area, "discipline": discipline, "setup": setup,
 		"metrics": {
 			"kills": m_kills, "kills_by_kind": m_kills_by, "elite_kills": m_elite_kills,
 			"spawned": m_spawned, "spawned_by_kind": m_spawned_by, "elite_spawned": m_elite_spawned, "alive_at_end": _born.size(),

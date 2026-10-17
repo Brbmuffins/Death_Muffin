@@ -422,7 +422,9 @@ Gate B's "same rules" proof (ROADMAP "Now: the rebuild", native/README.md "Proof
 plays the same one in today's game, and `tools/rebuild/compare-scenarios.mjs` runs both, one Godot process at a time at `nice -n 10`, and prints kills, damage dealt, time to kill and thrall uptime side by side against the tolerances. Seeds 1 to 5 take about 6 minutes;
 `--seeds=1-20` takes about 23 and settles a close call. The scenario is the Hollow Graves with one Gravecaller at level 10 on the kit's default loadout, Easy difficulty and Easy auto combat on (the benchmark's adapter, on the physics clock), the director's normal waves and
 no rewards, for 180 s of game time. Everything is read from the host's signals and the caster's events; the game scene gets no code for it. By hand: `nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tools/parity_scenario.gd -- --seed=1 --seconds=180 --out=/tmp/client-1.json`
-(`--trace=10` prints the hero's state every 10 s; `--level=` and `--difficulty=` change the scenario, on both sides alike).
+(`--trace=10` prints the hero's state every 10 s; `--level=` and `--difficulty=` change the scenario, on both sides alike). `--discipline=<index>` (1 Ossuary, 2 Gravecaller, 3 Mourner, 4 Rotweaver, 11 the Reaper) and `--area=<id>` (any hunting ground but the Depths: the nine
+whose kinds the core runs; only that area is loaded, its seal broken, the hero set down at its waystone) play the other disciplines and the later areas, on both sides alike: `node tools/rebuild/compare-scenarios.mjs --seeds=1-20 --discipline=11` or `--area=sanctum --level=13`
+(native/README.md "Proof of same game" holds the scenarios and their results).
 
 ## The HUD on the core
 

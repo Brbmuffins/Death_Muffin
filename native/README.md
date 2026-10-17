@@ -74,15 +74,17 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
   puppet mode (`set_puppet(true)`): no brains and no rules, bodies that appear from spawn events, ease toward snapshots (today's puppet easing) and go on removal events,
   and an event buffer that carries what GDScript sees on the host, derived from state edges and hp drops where today's puppets derive it. Messages carry a version and a
   hash of the data tables, so a phone or a newer build refuses cleanly. Calls, byte layout, limits and cost: "Co-op" below.
-- **Proof of "same game":** pure rules replay today's parity and golden fixtures; behaviour is compared with a seeded scenario
-  (kills, damage, time to kill, thrall uptime) between today's game and the core within stated tolerances: "Proof of same game" below.
+- **Proof of "same game":** pure rules replay today's parity and golden fixtures; behaviour is compared with seeded scenarios
+  (kills, damage, time to kill, thrall uptime) between today's game and the core within stated tolerances, for the four necromancers and the Reaper in the Hollow Graves and the Gravecaller
+  in the Bell Sanctum, the Cinder Pyre and the Mourning Fen: "Proof of same game" below.
 
 ## Proof of same game
 
 Two layers. The rules are replayed against today's code (`client/tests/core_*.gd`, `rites.gd`, `boss.gd`: bite timing, cones, clouds, corpses, statuses, thralls, every rite's formula). The behaviour that comes out of all of them
-together is compared by playing one seeded scenario in both games and tabulating what happened. `node tools/rebuild/compare-scenarios.mjs` runs both sides (`godot/tests/parity/scenario.gd` for today's game,
+together is compared by playing seeded scenarios in both games and tabulating what happened. `node tools/rebuild/compare-scenarios.mjs` runs both sides (`godot/tests/parity/scenario.gd` for today's game,
 `client/tools/parity_scenario.gd` for the rebuilt client), one Godot process at a time under `nice -n 10` with `--fixed-fps 60`, seed by seed, and prints the table. Seeds 1 to 5 take 5.7 minutes (today's game 44 s a run, the client 24 s);
-`--seeds=1-20` takes 23 minutes and is the run that settles a close call (`--level=`, `--difficulty=`, `--seconds=` change the scenario on both sides; `--from=<dir>` tabulates an earlier run).
+`--seeds=1-20` takes 23 minutes and is the run that settles a close call (`--level=`, `--difficulty=`, `--seconds=` change the scenario on both sides, `--discipline=<index>` and `--area=<id>` the hero and the ground ("Other disciplines and later areas" below);
+`--from=<dir>` tabulates an earlier run and `--resume` keeps the runs already in `--out`; a run the engine aborts before it ends is kept as `<side>-<seed>-crash<n>.log` and made once more).
 
 **The scenario:** the Hollow Graves, one Gravecaller (discipline 2) at level 10 on the kit's default loadout (every rite of it is unlocked; the signature, Command: Rend, comes at 10), Easy difficulty and Easy auto combat on (today's
 `DmAutoCombat` / `DmAutoDodge` decisions, which walk the hero too), the director's normal waves (cap 28, 9 a wave every 6.5 s, elites at 3.5 %, processions), 180 s of game time, the director's stream and the global stream seeded, the in-memory mock
@@ -122,7 +124,109 @@ time to kill +2.8 %, uptime -0.1 pp, damage taken -8.8 %; an earlier twenty-seed
 at the cap -0.5 pp, damage taken +7.1 % (noise +-22.7 %); its first twenty read damage taken +25.8 %, the same with the navmesh copy switched off (+26.4 %), so that was noise too.
 
 **No behaviour difference was found** in the metrics, so none is added to "Differences from today's game". What the scenario cannot see: the hero is almost never hit (the thralls and his range keep the enemies off), so the core's attacks on a hero are proved by
-`client/tests/core_enemies.gd`, not by this table; bosses, rewards, loot and the other disciplines are not in it (their items bring their own comparisons).
+`client/tests/core_enemies.gd`, not by this table (the Reaper and the deeper areas below are hit far more often); bosses, rewards and loot are not in it (their items bring their own comparisons).
+
+**Other disciplines and later areas** (2026-10-17): `--discipline=<index>` and `--area=<id>` give both sides another hero or another ground; everything else is the scenario above (its switches, the stuck-hero rule, the tolerances,
+Easy, 180 s, seeds 1 to 20 unless a row says more). The hero is a real character of the discipline (1 Ossuary, 3 Mourner, 4 Rotweaver, 11 the Reaper) on its kit's default loadout; the four of them play the Hollow Graves at level 10, where every kit's signature has come (the Reaper's nine rites need no level). In an area past the Graves its seal is broken and its doors are shut on
+both sides (the client loads that one area; today's side shuts the doors to its neighbours, so no body walks out of it), the hero arrives where a waystone sets a traveller down (the waystone's place, 1.6 m on: `DmChapterhouse.travel`) and is set back
+there when he is stuck, and the director deals the area's waves: its roster, cap, size, pace, elites and processions. The Bellringers' censer stays out on both sides (10 of the Sanctum's 153 roster weight, and a fifth to a quarter of the weight of each of its three
+processions). Enemies are level 13 in the Sanctum (fixed by the area) and the hero's own level where the area scales (`scaling.minLevel`: the Cinder Pyre's 30, the Mourning Fen's 45), so each Gravecaller is the level of his area, the first at which the
+ground is meant to be played, in no gear: the legion shows it (lost 33 times a run in the Sanctum, 51 in the Pyre and 20 in the Fen, and at its cap 84, 69 and 31 % of the time). The director's first wave of a seed
+is the same on both sides (kind, level, elite and health of each body, and in the Fen the place too; in the Pyre the places of about half the bodies differ by 2 to 4 m), so the waves are the same rules; the fights part from there. The stuck-hero rule fires about once or twice a run for the Mourner, the Rotweaver and the Reaper in the Graves (1.2 / 1.2, 1.8 / 1.1, 1.5 / 1.4) and hardly ever elsewhere (0 to 0.05).
+- **The Reaper** has no legion: her thrall rows are 0 on both sides and left out of her table, and what she takes is the number. Her casts are counted from her own events (`sweep`, `throw`, `reap`, `walk`, `burst`, `spin`, `release`, `harvest`, `weave`), which also lets the
+  stuck-hero rule see her fight. Her souls come from the kills the rewards pay her (`DmNextMeta._on_kill_earned`), and the rewards are off, so both tools bank her one soul for every enemy that dies within 38 m of her
+  (`KILL_REWARD_RANGE`, `DmPlayerRules.bag_add`): her spenders get their souls. Easy auto combat chooses Scythe Sweep (the free filler, 136 / 137 a run), Scythe Throw (50 / 51), Harvest Spin (3.6 / 3.1) and Reap (1.6 / 1.4); Soul Burst comes up once in ten runs and
+  Wraith Walk and Unleash Souls not at all, so they are proved by `client/tests/rites.gd`, not here.
+
+**The Ossuary** (Hollow Graves, level 10; 20 seeds, means; today / client):
+
+| metric | today | client | difference | tolerance | noise (2 s.e.) |
+|---|---|---|---|---|---|
+| kills | 234.8 | 227.7 | -3.1 % | +-15 % | +-6.0 % |
+| hero damage dealt | 15364 | 14800 | -3.7 % | +-15 % | +-6.6 % |
+| thrall damage dealt | 621 | 633 | +2.0 % | +-20 % | +-29.1 % |
+| median time to kill (s) | 6.55 | 7.18 | +9.7 % | +-20 % | +-25.4 % |
+| thrall uptime (live / cap) | 96.2 % | 96.0 % | -0.2 pp | +-10 pp | +-0.7 pp |
+| time at the thrall cap | 95.3 % | 95.1 % | -0.3 pp | +-10 pp | +-0.9 pp |
+| damage taken, hero and thralls | 130 | 127 | -2.6 % | +-25 % | +-33.3 % |
+
+**The Mourner** (Hollow Graves, level 10; 20 seeds):
+
+| metric | today | client | difference | tolerance | noise (2 s.e.) |
+|---|---|---|---|---|---|
+| kills | 183.3 | 178.9 | -2.4 % | +-15 % | +-5.3 % |
+| hero damage dealt | 11556 | 11335 | -1.9 % | +-15 % | +-6.4 % |
+| thrall damage dealt | 1152 | 1076 | -6.6 % | +-20 % | +-10.7 % |
+| median time to kill (s) | 11.82 | 12.24 | +3.5 % | +-20 % | +-11.8 % |
+| thrall uptime (live / cap) | 95.7 % | 95.7 % | +0.0 pp | +-10 pp | +-1.2 pp |
+| time at the thrall cap | 94.9 % | 94.8 % | -0.1 pp | +-10 pp | +-1.3 pp |
+| damage taken, hero and thralls | 99 | 103 | +3.8 % | +-25 % | +-35.8 % |
+
+**The Rotweaver** (Hollow Graves, level 10; 20 seeds):
+
+| metric | today | client | difference | tolerance | noise (2 s.e.) |
+|---|---|---|---|---|---|
+| kills | 178.7 | 187.3 | +4.8 % | +-15 % | +-11.2 % |
+| hero damage dealt | 11913 | 12363 | +3.8 % | +-15 % | +-11.4 % |
+| thrall damage dealt | 474 | 430 | -9.3 % | +-20 % | +-29.7 % |
+| median time to kill (s) | 11.10 | 11.02 | -0.8 % | +-20 % | +-9.4 % |
+| thrall uptime (live / cap) | 95.7 % | 96.0 % | +0.2 pp | +-10 pp | +-1.0 pp |
+| time at the thrall cap | 94.7 % | 95.1 % | +0.4 pp | +-10 pp | +-1.2 pp |
+| damage taken, hero and thralls | 86 | 79 | -8.9 % | +-25 % | +-35.3 % |
+
+**The Reaper** (Hollow Graves, level 10; 40 seeds):
+
+| metric | today | client | difference | tolerance | noise (2 s.e.) |
+|---|---|---|---|---|---|
+| kills | 161.1 | 161.1 | -0.0 % | +-15 % | +-4.4 % |
+| hero damage dealt | 9855 | 9736 | -1.2 % | +-15 % | +-4.4 % |
+| median time to kill (s) | 15.35 | 14.72 | -4.1 % | +-20 % | +-8.0 % |
+| damage taken, hero and thralls | 83 | 83 | +0.2 % | +-25 % | +-15.1 % |
+
+**The Gravecaller in the Bell Sanctum** (level 13, enemies level 13; 20 seeds):
+
+| metric | today | client | difference | tolerance | noise (2 s.e.) |
+|---|---|---|---|---|---|
+| kills | 162.5 | 162.2 | -0.2 % | +-15 % | +-4.7 % |
+| hero damage dealt | 40445 | 40911 | +1.2 % | +-15 % | +-3.7 % |
+| thrall damage dealt | 13669 | 13884 | +1.6 % | +-20 % | +-4.4 % |
+| median time to kill (s) | 16.23 | 16.04 | -1.2 % | +-20 % | +-8.6 % |
+| thrall uptime (live / cap) | 91.9 % | 92.0 % | +0.1 pp | +-10 pp | +-0.9 pp |
+| time at the thrall cap | 83.5 % | 84.1 % | +0.6 pp | +-10 pp | +-2.5 pp |
+| damage taken, hero and thralls | 3346 | 3372 | +0.8 % | +-25 % | +-10.7 % |
+
+**The Gravecaller in the Cinder Pyre** (level 30, enemies level 30; 40 seeds):
+
+| metric | today | client | difference | tolerance | noise (2 s.e.) |
+|---|---|---|---|---|---|
+| kills | 120.2 | 113.0 | -5.9 % | +-15 % | +-6.4 % |
+| hero damage dealt | 64076 | 61217 | -4.5 % | +-15 % | +-3.7 % |
+| thrall damage dealt | 25246 | 24005 | -4.9 % | +-20 % | +-4.4 % |
+| median time to kill (s) | 19.56 | 20.01 | +2.3 % | +-20 % | +-10.5 % |
+| thrall uptime (live / cap) | 83.7 % | 82.1 % | -1.6 pp | +-10 pp | +-3.9 pp |
+| time at the thrall cap | 69.1 % | 66.9 % | -2.1 pp | +-10 pp | +-5.8 pp |
+| damage taken, hero and thralls | 10004 | 9691 | -3.1 % | +-25 % | +-7.4 % |
+
+**The Gravecaller in the Mourning Fen** (level 45, enemies level 45; 20 seeds):
+
+| metric | today | client | difference | tolerance | noise (2 s.e.) |
+|---|---|---|---|---|---|
+| kills | 113.8 | 109.7 | -3.6 % | +-15 % | +-12.6 % |
+| hero damage dealt | 69361 | 72282 | +4.2 % | +-15 % | +-6.7 % |
+| thrall damage dealt | 18224 | 18770 | +3.0 % | +-20 % | +-12.4 % |
+| median time to kill (s) | 19.58 | 18.91 | -3.4 % | +-20 % | +-14.7 % |
+| thrall uptime (live / cap) | 60.4 % | 60.2 % | -0.2 pp | +-10 pp | +-8.1 pp |
+| time at the thrall cap | 31.0 % | 31.4 % | +0.4 pp | +-10 pp | +-10.4 pp |
+| damage taken, hero and thralls | 6050 | 6036 | -0.2 % | +-25 % | +-14.1 % |
+
+All seven are inside their tolerances, and under the tables the kinds, the rites and the legions agree as they did in the first scenario: the share of each kind killed within 9 points (but for the Rotweaver's rats, nine a run, 75 / 88 %),
+the casts of each rite (278 / 277 Bone Needles for the Ossuary, 38.1 / 38.2 Exhumes in the Sanctum, 55 / 53 in the Pyre, 24 / 23 in the Fen), the thralls raised and lost (38.1 / 38.2 and 33.4 / 33.3 in the Sanctum, 23.8 / 23.2 and 20.2 / 19.9 in the Fen) and who killed them. The largest
+differences in the tolerance rows are the Ossuary's median time to kill (+9.7 %, band +-25 %) and the Rotweaver's thrall damage (-9.3 %, +-30 %); the Sanctum is the tightest, every row within 1.6 %.
+
+Two things stay open, both inside the tolerances. **The Cinder Pyre reads about 5 % below today's in every kill and damage figure:** at forty seeds kills -5.9 % (noise +-6.4), hero damage -4.5 % (+-3.7), thrall damage -4.9 % (+-4.4), thralls raised -4.1 %, and
+the two halves of the seeds read alike (kills -5.4 % and -6.6 %). It is not the core's navmesh copy (twenty client runs without it read -7.2 %, -2.5 % and -4.7 %), not the navmesh itself (both maps give the same closest point for 4,000 points of the Pyre), not the waves' kinds, levels, elites or
+health (the first wave of a seed is the same on both sides); the cause is not found, and it is listed in ROADMAP "For review" for the Pyre's own comparison. **The hero's own hits are too few to judge** in the necromancers' scenarios (blows that hurt him a run, today / client: Ossuary 2.2 / 2.5, Mourner 4.1 / 2.1, Rotweaver 1.6 / 2.3, Sanctum 4.2 / 4.2, Pyre 6.2 / 7.8, Fen 17.2 / 18.6; the Mourner's
+is outside its noise band the other way from the rest): the Reaper, who stands in melee, is hit 23.3 / 23.4 times a run for 83 / 83 damage. No behaviour difference was found in any of them, so none is added to "Differences from today's game".
 
 ## Co-op: snapshots, events and the puppet core
 

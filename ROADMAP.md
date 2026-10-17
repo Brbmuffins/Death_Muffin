@@ -247,7 +247,9 @@ server (B38).
     runs each: Godot's physics peak 15.7 to 9.1 (one run hit by a 128 ms stall of the shared VPS left out). Helix's PC shows it with the next test build.
   - [x] The seeded scenario comparison with today's game (`tools/rebuild/compare-scenarios.mjs`, native/README.md "Proof of same game", 2026-10-16): the Hollow Graves, a level-10 Gravecaller on Easy auto combat, 180 s of game time, twenty seeds on each side.
     Kills -2.3 % (tolerance 15), hero damage -3.0 % (15), thrall damage -6.5 % (20), median time to kill 0.0 % (20), thrall uptime -0.4 points (10), damage taken by the hero and his thralls -1.3 % (25): every metric inside its tolerance, and underneath it the kinds, the rites, the thralls lost
-    and who hurt them agree. Seeds 1 to 5 (6 minutes) are too few for damage taken (-32.5 % against a noise band of 47 %); the verdict takes `--seeds=1-20` (23 minutes). No behaviour difference found. Not in it: bosses, rewards, loot and the other disciplines.
+    and who hurt them agree. Seeds 1 to 5 (6 minutes) are too few for damage taken (-32.5 % against a noise band of 47 %); the verdict takes `--seeds=1-20` (23 minutes). No behaviour difference found. Not in it: bosses, rewards and loot.
+  - [x] The comparison widened (2026-10-17, `--discipline=<index>` and `--area=<id>`, native/README.md "Proof of same game"): the Ossuary, the Mourner, the Rotweaver and the Reaper in the Hollow Graves (level 10) and the Gravecaller in the Bell Sanctum (13), the Cinder Pyre (30) and the
+    Mourning Fen (45), 20 seeds each (40 for the Reaper and the Pyre): every metric inside its tolerance in all seven, the largest difference 9.7 %; the Pyre reads about 5 % below today's in kills and damage, inside the tolerances (see "For review").
   - [ ] What the client's fight lacks, each with its own item: the other rooms ("The benchmark's other rooms"). The panels, the other disciplines, rewards, loot drops and the kill ledger are in.
 
 **Bring everything over checklist** (built ahead while Gate B waits, B34's rule: nothing reaches players before its gate; Claude's order, 2026-10-16: what a player meets first,
@@ -372,6 +374,10 @@ combat simulation for now.
   - Colours in the chat window (2026-10-13).
   - Today's game: Easy auto combat parks the hero in pockets of tombstones (it steers straight at the nearest enemy, with no path round the graves; found by the
     seeded comparison, native/README.md "Proof of same game").
+  - The rebuild: the Cinder Pyre scenario reads about 5 % below today's in kills and damage (-5.9 %, -4.5 %, -4.9 % at forty seeds, inside the tolerances); not the core's navmesh copy, the navmesh, or the first wave's
+    kinds, levels, elites and health; cause not found (native/README.md "Proof of same game").
+  - The rebuild: one headless client run in about 300 aborted before it ended (SIGABRT, "The caller thread can't call the function `propagate_notification()` on this node", `/root`; the Ossuary scenario's seed 13, clean on
+    the rerun); `compare-scenarios.mjs` keeps such a run's output and makes it once more.
   - Today's game: quitting while models still load in the background can abort on a PC with few cores (the GitHub runner's 4: the CI's perfctl abort, 2026-10-16).
   - Today's game and the rebuild: a party guest cannot use a waystone or the recall (T): `DmChapterhouse.teleport_to` moves the host's own body only, so the stone's jump and the recall do nothing for a guest
     (its waystone list also reads its own account's open areas, not the host's world). It needs a guest request the host answers by moving the guest's body (2026-10-17).
