@@ -4,6 +4,7 @@
 // (`draw`). All the view logic is in core/crowd_view.*; this class resolves looks, turns the core's tables into the feed and talks to the
 // RenderingServer.
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <godot_cpp/classes/ref.hpp>
@@ -36,7 +37,7 @@ class DmCrowd : public godot::RefCounted {
 		float tint[3] = { 1, 1, 1 }, tint_fen[3] = { 1, 1, 1 };
 		float glow[4] = { 0, 0, 0, 0 }, glow_fen[4] = { 0, 0, 0, 0 };  // linear rgb + strength (DmCreature's emissive and emissive_intensity); strength 0 = none
 		float glow_emp = 0;                                               // what an empowered thrall adds to the strength (0.22; the wraith none, as today)
-		mutable int32_t slot = -1, slot_fen = -1, slot_var[4] = { -1, -1, -1, -1 };  // palette slots, found on first use (slot_var: a thrall's [plain, empowered, champion, both])
+		mutable int32_t slot = -1, slot_fen = -1, slot_var[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };  // palette slots, found on first use (slot_var: a thrall's [plain, empowered, champion, both] x [own, an ally's])
 		bool has_fen = false, set = false;
 	};
 	struct GroupRid {
@@ -54,18 +55,23 @@ class DmCrowd : public godot::RefCounted {
 	bool looks_dirty = true;
 	std::vector<Look> thrall_looks;  // [kind * LEGION_SLOTS + legion + 1]
 	std::unordered_map<int32_t, int32_t> owner_legion;
+	std::unordered_set<int32_t> owner_ally;  // owners that are not this player: their thralls' rim is weaker (DmEntityViews THRALL_RIM_ALLY)
 	std::vector<GroupRid> rids;  // parallel to the view's groups
-	// The glow palette (the crowd shader's `glow_palette`): 4 floats a slot, linear rgb + strength; slot 0 = none (the model's own emission). Slots are added on
-	// first use and never removed, at most GLOW_SLOTS; `glow_version` counts additions so CrowdView pushes the palette to the materials only when it grew.
-	static constexpr int32_t GLOW_SLOTS = 64;
-	std::vector<float> glow_pal = { 0, 0, 0, 0 };
+	// The palette (the crowd shader's `glow_palette` and `rim_palette`): 8 floats a slot, the glow's linear rgb + strength (DmCreature's emissive and emissive_intensity)
+	// then the friend rim's (DmCreatureMat's `rim`); slot 0 = none (the model's own emission, no rim). Slots are added on first use and never removed, at most
+	// GLOW_SLOTS (COLOR.a = slot * 2 + flash stays exact in a half float up to slot 127); `glow_version` counts additions so CrowdView pushes the palette to the
+	// materials only when it grew. A thrall's slot is its look's glow with the empowered and champion boosts and its rim: whose it is and whether it is a champion.
+	static constexpr int32_t GLOW_SLOTS = 128;
+	std::vector<float> glow_pal = { 0, 0, 0, 0, 0, 0, 0, 0 };
 	int64_t glow_ver = 0;
 	float elite_glow[4] = { 0, 0, 0, 0 };
 	int32_t elite_slot = -1;
 	float champion_add = 0.0f;
-	int32_t glow_slot(const float *p_rgbk);
-	int32_t enemy_glow(const Look &p_look, bool p_elite, bool p_drowned);         // an elite's glow over its look's (DmEntityViews._enemy_opts)
-	int32_t thrall_glow(const Look &p_look, bool p_empowered, bool p_champion);  // the look's glow, stronger when empowered or a champion (_make_thrall)
+	float rim_spirit[3] = { 0, 0, 0 }, rim_champion[3] = { 0, 0, 0 };  // linear: a thrall's rim colour, and a champion's
+	float rim_own = 0.0f, rim_ally = 0.0f, rim_champion_k = 0.0f;       // the rim's strength: a thrall of this player, of another's, a champion
+	int32_t glow_slot(const float *p_rgbk, const float *p_rim = nullptr);
+	int32_t enemy_glow(const Look &p_look, bool p_elite, bool p_drowned);                          // an elite's glow over its look's (DmEntityViews._enemy_opts)
+	int32_t thrall_glow(const Look &p_look, bool p_empowered, bool p_champion, bool p_ally);      // the look's glow, stronger when empowered or a champion, and the rim (_make_thrall)
 	// the event buffer is read from where the last sync stopped (take_events clears it behind our back)
 	size_t ev_i = 0, ev_f = 0;
 	uint64_t ev_batches = 0;
@@ -88,7 +94,11 @@ public:
 	// Today's glows that are not a look's own: `elite` (Color, linear, alpha = strength) for every elite enemy and its corpse, and what a champion thrall adds
 	// to its look's strength (DmEntityViews: 0.35).
 	void set_glows(const godot::Color &p_elite, double p_champion_add);
-	godot::PackedColorArray glow_palette() const;  // the slots, linear rgb + strength in alpha
+	godot::PackedColorArray glow_palette() const;  // the slots' glows, linear rgb + strength in alpha
+	godot::PackedColorArray rim_palette() const;   // the slots' rims, the same layout (a body's slot picks both)
+	// A thrall's rim (DmEntityViews._make_thrall): `spirit` and `champion` are linear colours; the strengths are what a thrall of this player, of another's and a champion get.
+	void set_thrall_rim(const godot::Color &p_spirit, const godot::Color &p_champion, double p_own, double p_ally, double p_champion_k);
+	void set_owner_ally(int64_t p_owner, bool p_ally);  // a core hero id whose thralls belong to another player (default: this player's)
 	godot::PackedFloat32Array take_landings();
 	bool shatter(int64_t p_corpse);
 	godot::Vector3 ground_at(int64_t p_id) const;     // where a living body is drawn on the ground (y 0), Vector3.INF when it is not (dying, gone): the cheap read for decals that follow it                  // Corpse Explosion: the corpse's body goes at once (false when the crowd has no body for it)      // where dying bodies came to rest since the last call: x, z, scale per landing (empty when none)

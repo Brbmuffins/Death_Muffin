@@ -117,9 +117,16 @@ server (B38).
 - [x] Crowd drawing: `DmCrowd` reads the core's tables after each step and writes each creature model's MultiMesh buffers once per rendered frame, interpolated between
   ticks (clips, blends, flash, knock, rise, death into corpses, shadow budget, level of detail); `CrowdView` builds the nodes from the baked models
   (`client/tests/crowd_view.gd`, `client/crowd/README.md` "Driving the crowd"). Left out on purpose, each its own item:
-  - [ ] Crowd looks: thrall rims, kit armour tint and the kit weapon's tier colour on a thrall's prop, and the Leech's wobble need a per-look material or
-    an instance channel (decide with a measure); sinking bodies fade out only with an alpha channel. Done: every body's glow (elite, risen and drowned, wraith, wisp, a legion's
-    thralls with the empowered and champion boosts) through a glow palette, no extra draw call (`client/crowd/README.md`), the wings, the spectral wraiths (see-through, no shadow), the dirt mound over a ghoul underground (`DmEnemyFx`), and the thralls' hand props (swords, shields, bows, staffs: "<model>+<kind>" variants, `client/crowd/README.md` "Hand props").
+  - [ ] Crowd looks: a crowd thrall is drawn as today's (2026-10-17, `client/tests/crowd_look_smoke.gd`: the same thralls skinned and crowd-drawn in the Graves' lighting, Forward+ and Compatibility on
+    the software drivers; the lighting alone, no glow and no rim, comes within 5 levels of a colour channel of today's). The test build's "flat lavender" was the crowd material's metallic factor, 0
+    where today's glTF material has 1: armour and bone read matt and silver, +38 levels over a thrall's pixels, and without the rim and the normal map nothing broke it up. Now the glTF's factors, the normal map
+    (a frame from the derivatives, the crowd mesh has no tangents), the friend rim (0.9 for this player's thralls, 0.6 for another's, a champion's gold 1.4) and the Leech's slither. The rim rides the glow's palette
+    slot: no instance data, no draw call (a material per rim would split each model's MultiMeshes by the rims in them: 8 groups drawing in the Full Party against 10), see `client/crowd/README.md` "Differences
+    from the creature material". Not drawn: the legion kit's armour tint and weapon tier colour, which today's game never shows either (no host gives DmEntityViews a `legion_kit_for`: "For review"). Left:
+    sinking bodies fade out only with an alpha channel (a transparent material and a group of its own); the Bone Colossus's rim reads fuller than today's in the Forward+ test (a pose that differs, or the baked normals
+    at its hard edges: to look at on a real GPU). Done before: every body's glow (elite, risen and drowned, wraith, wisp, a legion's thralls with the empowered and champion boosts) through a glow palette, no extra
+    draw call (`client/crowd/README.md`), the wings, the spectral wraiths (see-through, no shadow), the dirt mound over a ghoul underground (`DmEnemyFx`), and the thralls' hand props (swords, shields, bows, staffs:
+    "<model>+<kind>" variants, `client/crowd/README.md` "Hand props").
   - [ ] Crowd download size: a thrall variant (`<model>+<kind>`) shares its plain body's textures and draws its hand props as rigid meshes on a baked hand-transform track (one small
     RGBAF texture per variant; under 2 MB a variant, it was about 25 MB), and positions are three integer codes over the model's bounds in one 32-bit texel (4 bytes, they were 8). The
     baked crowd is 234 MB, it was 565 (the test build #4's 493 MB assets pack held 200 MB of variants); draw calls are today's (no extra MultiMesh), and the variants no longer upload their own
@@ -335,6 +342,12 @@ combat simulation for now.
   - Today's game: quitting while models still load in the background can abort on a PC with few cores (the GitHub runner's 4: the CI's perfctl abort, 2026-10-16).
   - Today's game and the rebuild: a party guest cannot use a waystone or the recall (T): `DmChapterhouse.teleport_to` moves the host's own body only, so the stone's jump and the recall do nothing for a guest
     (its waystone list also reads its own account's open areas, not the host's world). It needs a guest request the host answers by moving the guest's body (2026-10-17).
+  - Today's game: a thrall never wears its Legion kit: DmEntityViews asks its host for `legion_kit_for` (the kit's armour tint on a thrall's chest and hands, the kit weapon's tier colour on its sword, bow or staff) and no host
+    has it, so `kit` is always null; the rebuild draws thralls the same until this is decided (2026-10-17).
+  - The rebuild: `client/tests/game_scene.gd`'s node checks pass about every other run under load (2026-10-17): the Covenant counsel's tip card (a 16-node `DmTipCard`, shown at the first Barrow Ghoul and dismissed on a wall-clock
+    timer) is in the scene tree for part of the run, so the nodes outside the effects vary by 19 against the 15 allowed, or `n` differs from `n0` by 14 in the 70-bodies check.
+  - The rebuild: a co-op guest's baseline clears the crowd (`DmCrowd.clear` forgets `owner_legion` and `owner_ally`) and `DmNextNet.apply_heroes` adopts a hero only when its id changed, so after a baseline the guest's
+    thralls may fall back to the plain look and the strong rim until the heroes are adopted again; read from the code, not reproduced (2026-10-17).
   - Today's game: a party guest leaving with kills not yet reported makes the host send to a peer that is gone (an engine error in the log, nothing lost; the rebuild
     skips the send).
   - Today's game: the Plague Doctor's flask leaves a 5 s toxic pool that hurts but draws nothing on the ground (DmEnemyFx draws only dust and ember zones);

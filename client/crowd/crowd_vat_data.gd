@@ -17,6 +17,7 @@ const FORMAT := 2
 ## Where the model's textures live, relative to the assets folder (`res://assets/`, see client/crowd/README.md).
 @export var albedo_path := ""
 @export var orm_path := ""
+@export var normal_path := ""   # a bake of before the normal map has none: drawn without it until baked again
 @export var height := 1.0
 @export var yaw := 0.0
 ## Animation ids: the columns of the baked textures (UV seams share one).
@@ -105,15 +106,18 @@ static func spectral_shader() -> Shader:
 	return _spectral
 
 
-## The material for this model's MultiMeshes. `albedo` is the model's colour texture (res://assets/ + albedo_path in the game). `spectral`: a ghost's body
-## (crowd_looks.json spectral_models: the wraiths), drawn with spectral_shader().
-func make_material(albedo: Texture2D, orm: Texture2D = null, spectral := false) -> ShaderMaterial:
+## The material for this model's MultiMeshes. `albedo` is the model's colour texture (res://assets/ + albedo_path in the game), `orm` and `normal` the others when it has them
+## (DmCreatureMat takes the same three from the glTF material). `spectral`: a ghost's body (crowd_looks.json spectral_models: the wraiths), drawn with spectral_shader().
+func make_material(albedo: Texture2D, orm: Texture2D = null, spectral := false, normal: Texture2D = null) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = spectral_shader() if spectral else load(SHADER_PATH)
 	m.set_shader_parameter("albedo_tex", albedo)
 	if orm != null:
 		m.set_shader_parameter("orm_tex", orm)
 		m.set_shader_parameter("use_orm", true)
+	if normal != null:
+		m.set_shader_parameter("normal_tex", normal)
+		m.set_shader_parameter("use_normal", true)
 	m.set_shader_parameter("vat_pos", pos_tex)
 	m.set_shader_parameter("vat_lo", pos_lo)
 	m.set_shader_parameter("vat_step", pos_step)

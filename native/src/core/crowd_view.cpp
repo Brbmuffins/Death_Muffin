@@ -1135,12 +1135,21 @@ float *CrowdView::slot_for(const View &v, float p_cam_x, float p_cam_y, float p_
 void CrowdView::pose_row(const CrowdModel &m, const View &v, float *w, double *r_off) const {
 	(void)m;
 	// root: yaw, then the tip-over about Z, then the scale; the model node under it: the lunge forward, the recoil's pitch and roll, the squash
-	const M3 root = mul(rot_y(v.dyaw), rot_z(PI_ * 0.5 * v.toppled));
+	M3 root = mul(rot_y(v.dyaw), rot_z(PI_ * 0.5 * v.toppled));
+	// A Mire Leech slithers (DmEntityViews._fen_dead): the root rolls 0.12 w about Z and the scale is (1 + 0.12 w, 1 - 0.09 w, 1 + 0.1 w) of its own, w = sin(t / 85 ms + id * 1.7) (a quarter as much standing).
+	double ws[3] = { 1.0, 1.0, 1.0 };
+	if ((v.flags & BF_WOBBLE) != 0 && v.mode == M_LIVE) {
+		const double sw = std::sin(clock_ms / 85.0 + double(v.id) * 1.7) * (v.moving ? 1.0 : 0.25);
+		root = mul(root, rot_z(0.12 * sw));
+		ws[0] = 1.0 + 0.12 * sw;
+		ws[1] = 1.0 - 0.09 * sw;
+		ws[2] = 1.0 + 0.1 * sw;
+	}
 	const M3 model = mul(mul(rot_x(v.pitch), rot_z(v.roll)), M3{ { { 1.0 + v.sq * 0.6, 0, 0 }, { 0, 1.0 - v.sq, 0 }, { 0, 0, 1.0 + v.sq * 0.6 } } });
 	M3 b = mul(root, model);
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
-			b.m[i][j] *= v.scale;
+			b.m[i][j] *= v.scale * ws[j];
 		}
 	}
 	const double fx = root.m[0][2] * v.scale * v.zo, fy = root.m[1][2] * v.scale * v.zo, fz = root.m[2][2] * v.scale * v.zo;
@@ -1160,7 +1169,7 @@ void CrowdView::pose_row(const CrowdModel &m, const View &v, float *w, double *r
 	w[12] = v.tint[0];
 	w[13] = v.tint[1];
 	w[14] = v.tint[2];
-	// The game's emissive lerp in 8 steps, above twice the glow slot: COLOR.a = slot * 2 + flash (the shader splits them; exact in a half float up to slot 63).
+	// The game's emissive lerp in 8 steps, above twice the glow slot: COLOR.a = slot * 2 + flash (the shader splits them; exact in a half float up to slot 127).
 	w[15] = float(v.glow * 2) + float(std::round(std::min(1.0, std::max(0.0, v.flash_v)) * FLASH_LEVELS) / FLASH_LEVELS);
 	const int32_t clip = v.cur >= 0 ? v.cur : 0;
 	w[16] = float(clip);
@@ -1212,7 +1221,7 @@ void CrowdView::draw_live(View &v, double p_dt, double p_alpha, float p_cam_x, f
 	const bool culled = !under && cost.cull && has_view && !in_view(nx, v.dy, nz, view_radius(v), v.shadow);
 	if (culled && !p_full_rate) {  // nobody sees it: the far rate
 		hz = cost.far_hz;
-	} else if (hz > 0.0 && (v.one_shot >= 0 || v.kick_t >= 0.0 || v.lunge_t >= 0.0 || v.rise_k < 1.0)) {  // a swing, a flinch, a recoil, a rise: always every frame (DmCreature.busy)
+	} else if (hz > 0.0 && (v.one_shot >= 0 || v.kick_t >= 0.0 || v.lunge_t >= 0.0 || v.rise_k < 1.0 || (v.flags & BF_WOBBLE) != 0)) {  // a swing, a flinch, a recoil, a rise, a Leech's slither: always every frame (DmCreature.busy)
 		hz = 0.0;
 	}
 	last.band[band]++;

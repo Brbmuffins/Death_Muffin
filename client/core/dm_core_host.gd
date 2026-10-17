@@ -139,6 +139,7 @@ func register_hero(body: Node3D, radius := 0.4, weight := 1.0) -> int:
 	var disc: Variant = body.get("discipline_id")
 	if disc is String:
 		view.set_owner_legion(id, disc)
+	_mark_allies()
 	return id
 
 
@@ -157,11 +158,13 @@ func adopt_hero(body: Node3D, core_id: int) -> void:
 	var disc: Variant = body.get("discipline_id")
 	if disc is String:
 		view.set_owner_legion(core_id, disc)
+	_mark_allies()
 
 
 ## Guest: the body the crowd's level-of-detail follows (the local hero).
 func set_focus_body(body: Node3D) -> void:
 	_focus_body = body
+	_mark_allies()
 
 
 func unregister_hero(body: Node3D) -> void:
@@ -172,6 +175,17 @@ func unregister_hero(body: Node3D) -> void:
 		core.remove_external(_hero_ids[i])
 	_heroes.remove_at(i)
 	_hero_ids.remove_at(i)
+	_mark_allies()
+
+
+## The thralls of every hero but this player's wear a weaker friend rim (today's `own == false`). This player's hero is a host's first registered one and a guest's focus body;
+## until it is known every hero is this player's.
+func _mark_allies() -> void:
+	if view == null or not is_instance_valid(view):   # a body leaving as the scene closes
+		return
+	var local: Node3D = _focus_body if puppet else (_heroes[0] if not _heroes.is_empty() else null)
+	for i in _heroes.size():
+		view.set_owner_ally(_hero_ids[i], local != null and _heroes[i] != local)
 
 
 ## The hero body behind a core id (the target of an EV_TARGET_HIT), null when it is not registered.

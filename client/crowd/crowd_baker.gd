@@ -661,6 +661,7 @@ static func _write(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir:
 	var found := _texture_paths(assets_dir, m.url)
 	data.albedo_path = found.albedo
 	data.orm_path = found.orm
+	data.normal_path = found.normal
 	data.height = m.height
 	data.yaw = m.yaw
 	data.anim_vertex_count = uc
@@ -972,6 +973,7 @@ static func _write_variant(m: Dictionary, slug: String, specs: Array, base: Crow
 	var found := _texture_paths(assets_dir, m.url)
 	data.albedo_path = found.albedo
 	data.orm_path = found.orm
+	data.normal_path = found.normal
 	data.height = base.height
 	data.yaw = base.yaw
 	data.anim_vertex_count = base.anim_vertex_count
@@ -1180,9 +1182,9 @@ static func _save(res: Resource, path: String) -> Resource:
 	return ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REPLACE)
 
 
-## The colour and ORM textures next to a model's glb (the sync keeps glTF's own file names), relative to the assets folder.
+## The colour, ORM and normal textures next to a model's glb (the sync keeps glTF's own file names), relative to the assets folder.
 static func _texture_paths(assets_dir: String, url: String) -> Dictionary:
-	var out := {"albedo": "", "orm": ""}
+	var out := {"albedo": "", "orm": "", "normal": ""}
 	var rel_dir := url.get_base_dir()
 	var files := DirAccess.get_files_at(assets_dir.path_join(rel_dir))
 	files.sort()
@@ -1192,4 +1194,6 @@ static func _texture_paths(assets_dir: String, url: String) -> Dictionary:
 				out.albedo = rel_dir.path_join(f)
 			elif f.contains("_ORM_") and out.orm == "":
 				out.orm = rel_dir.path_join(f)
+			elif f.contains("_Normal") and out.normal == "":
+				out.normal = rel_dir.path_join(f)
 	return out

@@ -21,6 +21,8 @@ const AREA_HEIGHT := Vector2(-4.0, 14.0)
 ## Animation levels of detail (README "Crowd cost"): a body beyond `mid_m` metres from the camera works its pose out `mid_hz` times a second, beyond `far_m` `far_hz` times (0 = every frame).
 ## The distances are the first two mesh levels' (LOD_DISTANCES); a body in view near the hero is nearer than `mid_m`. A first guess for the test build, like the levels: the benchmark records them.
 const ANIM_LOD := {"mid_m": 32.0, "mid_hz": 24.0, "far_m": 60.0, "far_hz": 10.0}
+## Slots of the glow and rim palettes (DmCrowd's GLOW_SLOTS, the shader's array sizes): COLOR.a = slot * 2 + flash stays exact in a half float up to slot 127.
+const SLOTS := 128
 
 var core: RefCounted
 var crowd: RefCounted   # DmCrowd
@@ -74,6 +76,8 @@ func setup(p_core: RefCounted, enemy_defs: Dictionary, area_min: Vector2, area_m
 	crowd.set_champion_scale(float(opts.get("champion_scale", 1.35)))
 	apply_cost(opts)
 	crowd.set_glows(_glow(_looks.enemy_glow.elite), float(_looks.thrall_glow.champion))
+	var rim: Dictionary = _looks.thrall_rim
+	crowd.set_thrall_rim(_color(rim.colour), _color(rim.champion_colour), float(rim.own), float(rim.ally), float(rim.champion))
 	_register_enemies()
 	_register_thralls()
 	process_physics_priority = 1000   # after the nodes that step the core
@@ -108,6 +112,11 @@ func set_light_direction(direction: Vector3) -> void:
 ## Sets which discipline's legion a hero's thralls look like (a core hero id; "ossuary", "gravecaller", "rotweaver", "mourner", or "" for none).
 func set_owner_legion(owner_id: int, legion: String) -> void:
 	crowd.set_owner_legion(owner_id, _looks.legion_order.find(legion))
+
+
+## Marks a hero's thralls as another player's (`ally`: their friend rim is weaker, as `_make_thrall`'s `own == false`); every hero is this player's until marked.
+func set_owner_ally(owner_id: int, ally: bool) -> void:
+	crowd.set_owner_ally(owner_id, ally)
 
 
 ## Reads the core into the crowd: right after `core.step()`, before `core.take_events()`.
@@ -171,16 +180,22 @@ static func _glow(pair: Variant) -> Color:
 	return c
 
 
-## The palette (DmCrowd.glow_palette) on every model's material: 64 slots, unused ones dark.
+## The palettes (DmCrowd.glow_palette and rim_palette) on every model's material: SLOTS slots, unused ones dark.
 func _push_glows() -> void:
 	_glow_version = crowd.glow_version()
-	var pal: PackedColorArray = crowd.glow_palette()
-	var v := PackedVector4Array()
-	v.resize(64)
-	for i in mini(pal.size(), 64):
-		v[i] = Vector4(pal[i].r, pal[i].g, pal[i].b, pal[i].a)
+	var glows := _palette(crowd.glow_palette())
+	var rims := _palette(crowd.rim_palette())
 	for mat: ShaderMaterial in _materials:
-		mat.set_shader_parameter("glow_palette", v)
+		mat.set_shader_parameter("glow_palette", glows)
+		mat.set_shader_parameter("rim_palette", rims)
+
+
+static func _palette(pal: PackedColorArray) -> PackedVector4Array:
+	var v := PackedVector4Array()
+	v.resize(SLOTS)
+	for i in mini(pal.size(), SLOTS):
+		v[i] = Vector4(pal[i].r, pal[i].g, pal[i].b, pal[i].a)
+	return v
 
 
 func _register_enemies() -> void:
@@ -198,7 +213,7 @@ func _register_enemies() -> void:
 			tint = _color(_looks.enemy_tint.risen)
 			tint_fen = _color(_looks.enemy_tint.risen_fen)
 		var look := {"model": _slot(slug), "hover": float(flying) if flying != null else float(_looks.hover.get(def, 0.0)),
-			"flyer": flying != null, "caster": _looks.casters.has(def), "inert": bool(d.get("inert", false)), "mist": _looks.mist.has(def),
+			"flyer": flying != null, "caster": _looks.casters.has(def), "inert": bool(d.get("inert", false)), "mist": _looks.mist.has(def), "wobble": _looks.wobble.has(def),
 			"tint": tint, "tint_fen": tint_fen, "glow": _glow(_looks.enemy_glow.get(def))}
 		if def == "risen":   # the drowned risen of the Fen glow teal
 			look["glow_fen"] = _glow(_looks.enemy_glow.risen_fen)
@@ -289,7 +304,7 @@ func _slot(slug: String) -> int:
 	if albedo == null:
 		_warn("no colour texture for %s (%s): drawn white" % [slug, data.albedo_path])
 	var spectral: bool = (_looks.get("spectral_models", []) as Array).has(slug)   # a ghost: see-through and never in the moon's shadow (DmCreature._spectral)
-	var material := data.make_material(albedo, _texture(data.orm_path) if data.orm_path != "" else null, spectral)
+	var material := data.make_material(albedo, _texture(data.orm_path) if data.orm_path != "" else null, spectral, _texture(data.normal_path) if data.normal_path != "" else null)
 	_materials.append(material)
 	_glow_version = -1   # the new material needs the palette too
 	var plain: Array = []

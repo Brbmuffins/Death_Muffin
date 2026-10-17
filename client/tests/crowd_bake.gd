@@ -39,6 +39,7 @@ func _initialize() -> void:
 	_test_codes()
 	_test_decimation()
 	_test_shader()
+	_test_look()
 	_test_packing()
 	_remove_dir(OUT)
 	if _failed > 0:
@@ -71,6 +72,7 @@ func _test_model(slug: String) -> void:
 	var albedo := Image.load_from_file(_assets.path_join(data.albedo_path))
 	check(albedo != null and maxi(albedo.get_width(), albedo.get_height()) <= 1024, "%s: albedo texture found and at most 1024 px" % slug)
 	check(data.orm_path != "" and FileAccess.file_exists(_assets.path_join(data.orm_path)), "%s: ORM texture found" % slug)
+	check(data.normal_path != "" and FileAccess.file_exists(_assets.path_join(data.normal_path)), "%s: normal texture found" % slug)
 
 	# Textures and the clip table.
 	var pos_img := data.pos_tex.get_image()
@@ -404,11 +406,94 @@ func _test_shader() -> void:
 	re.compile("(?m)^uniform\\s+\\w+\\s+(\\w+)")
 	for mt in re.search_all(sh.code):
 		uniforms[mt.get_string(1)] = true
-	for u in ["albedo_tex", "orm_tex", "use_orm", "vat_pos", "vat_nrm", "vat_width", "vat_rows", "vat_clips", "vat_lo", "vat_step", "vat_rx", "vat_ry", "vat_hi", "vat_track", "trk_clips"]:
+	for u in ["albedo_tex", "orm_tex", "normal_tex", "use_orm", "use_normal", "rough_f", "metal_f", "glow_palette", "rim_palette", "vat_pos", "vat_nrm", "vat_width", "vat_rows", "vat_clips",
+			"vat_lo", "vat_step", "vat_rx", "vat_ry", "vat_hi", "vat_track", "trk_clips"]:
 		check(uniforms.has(u), "shader declares uniform %s that CrowdVatData sets" % u)
 	check(sh.code.contains("trk_clips[%d]" % CrowdVatData.MAX_CLIPS), "shader track clip table matches MAX_CLIPS")
 	# the integer maths of the position codes stays in signed 32 bits and needs no shifts or unsigned types (Godot's shader language, Compatibility, Mobile)
 	check(not sh.code.contains("uint") and not sh.code.contains("<<") and not sh.code.contains(">>"), "shader decodes the position codes with plain ints")
+
+
+## What the crowd material takes from the glTF material and what it makes of the thrall's look, as DmCreatureMat does (client/crowd/README.md "Differences from the creature material").
+func _test_look() -> void:
+	var sh := load(CrowdVatData.SHADER_PATH) as Shader
+	var today := DmCreatureMat.shader(false, false, false).code
+	# the factors: every model's glTF material leaves metallic and roughness at the glTF default 1 (the ORM texture scales them) and has no base colour factor, as the shader's defaults say
+	check(sh.code.contains("uniform float metal_f = 1.0;") and sh.code.contains("uniform float rough_f = 1.0;") and today.contains("uniform float metal_f = 1.0;"),
+		"the crowd's metallic and roughness factors default to 1, as DmCreatureMat's (and the glTF's)")
+	var looks: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://crowd/crowd_looks.json"))
+	var slugs := {}
+	for d in looks.enemy_model:
+		slugs[looks.enemy_model[d]] = true
+	for k in looks.thrall_model:
+		slugs[looks.thrall_model[k]] = true
+	for l in looks.legion:
+		slugs[looks.legion[l].slug] = true
+	var checked := 0
+	for slug: String in slugs:
+		var base := _assets.path_join("slice/models")
+		var path := base.path_join(slug).path_join("character.glb")
+		if not FileAccess.file_exists(path):
+			path = base.path_join("props").path_join(slug + ".glb")
+		if not FileAccess.file_exists(path):
+			continue
+		var gltf := _glb_json(path)
+		for mat: Dictionary in gltf.get("materials", []):
+			var pbr: Dictionary = mat.get("pbrMetallicRoughness", {})
+			check(not pbr.has("metallicFactor") and not pbr.has("roughnessFactor") and not pbr.has("baseColorFactor") and not mat.has("emissiveFactor"),
+				"%s: the glTF material has the default factors (metallic and roughness 1, white, no emissive): %s" % [slug, str(mat.keys())])
+			checked += 1
+	check(checked >= 20, "the factors of %d crowd models' glTF materials were read" % checked)
+	# the friend rim: DmCreatureMat's `rim.rgb * rim.a * smoothstep(.35, .95, fres) * .9`, the crowd's `v_rim * smoothstep(.35, .95, fres)` with v_rim = rgb * (a * .9) from the palette
+	check(today.contains("rim.rgb * rim.a * smoothstep(0.35, 0.95, fres) * 0.9") and sh.code.contains("rim_palette[slot].a * 0.9") and sh.code.contains("v_rim * smoothstep(0.35, 0.95, fres)"),
+		"both shaders have the rim's formula (smoothstep(.35, .95, fres) at .9 of the strength)")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var worst := 0.0
+	for i in 200:
+		var rgb := Vector3(rng.randf(), rng.randf(), rng.randf())
+		var k := rng.randf_range(0.0, 1.5)
+		var f := rng.randf()
+		var ss := smoothstep(0.35, 0.95, f)
+		worst = maxf(worst, (rgb * k * ss * 0.9 - (rgb * (k * 0.9)) * ss).length())
+	check(worst < 1e-6, "the palette's pre-multiplied rim is DmCreatureMat's (%s)" % worst)
+	# the normal map's frame (no tangents on the crowd mesh): tangent along +U, bitangent along -V (Godot's own, the glTF's with V down), z rebuilt from xy
+	var n := Vector3(0, 0, 1)
+	var map := Vector3(0.7, 0.2, 0.0)   # the texel: x +0.4, y -0.6
+	var want := Vector3(0.4, -0.6, sqrt(1.0 - 0.16 - 0.36)).normalized()
+	var got := bumped(n, Vector3(0.01, 0, 0), Vector3(0, 0.01, 0), Vector2(0.02, 0), Vector2(0, -0.02), map)
+	check(got.distance_to(want) < 1e-5, "the normal map leans a surface the way its texel says: U to the right, V down the image (%s)" % got)
+	got = bumped(n, Vector3(0.01, 0, 0), Vector3(0, 0.01, 0), Vector2(-0.02, 0), Vector2(0, -0.02), map)
+	check(got.distance_to(Vector3(-0.4, -0.6, want.z).normalized()) < 1e-5, "a mirrored U mirrors the lean (%s)" % got)
+	var rot := Basis(Vector3(1, 2, 3).normalized(), 1.1)   # the same surface turned about: the frame turns with it
+	got = bumped(rot * n, rot * Vector3(0.01, 0, 0), rot * Vector3(0, 0.01, 0), Vector2(0.02, 0), Vector2(0, -0.02), map)
+	check(got.distance_to(rot * want) < 1e-5, "and in any orientation (%s)" % got)
+	got = bumped(n, Vector3(0.01, 0, 0), Vector3(0.02, 0, 0), Vector2.ZERO, Vector2.ZERO, map)   # UVs that do not change over the pixel: no frame, the surface keeps its normal, no NaN
+	check(is_finite(got.x) and is_finite(got.y) and is_finite(got.z) and got.distance_to(n) < 1e-5, "a degenerate frame leaves the normal as it is (%s)" % got)
+
+
+## crowd_vat.gdshader's bumped(), line by line (`dp1`, `dp2`: dFdx and dFdy of the view-space position; `du1`, `du2`: of the UV).
+func bumped(n: Vector3, dp1: Vector3, dp2: Vector3, du1: Vector2, du2: Vector2, map: Vector3) -> Vector3:
+	var m := Vector3(map.x * 2.0 - 1.0, map.y * 2.0 - 1.0, 0.0)
+	m.z = sqrt(maxf(0.0, 1.0 - (m.x * m.x + m.y * m.y)))
+	var p2 := dp2.cross(n)
+	var p1 := n.cross(dp1)
+	var t := p2 * du1.x + p1 * du2.x
+	var b := -(p2 * du1.y + p1 * du2.y)
+	var inv := 1.0 / sqrt(maxf(maxf(t.dot(t), b.dot(b)), 1e-20))
+	return (t * (inv * m.x) + b * (inv * m.y) + n * m.z).normalized()
+
+
+## The JSON chunk of a .glb.
+func _glb_json(path: String) -> Dictionary:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return {}
+	f.seek(12)
+	var length := f.get_32()
+	f.get_32()
+	var parsed: Variant = JSON.parse_string(f.get_buffer(length).get_string_from_utf8())
+	return parsed if parsed is Dictionary else {}
 
 
 func _test_packing() -> void:

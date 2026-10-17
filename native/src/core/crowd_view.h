@@ -25,6 +25,7 @@ enum BodyFlag : int32_t {
 	BF_FLYER = 16,  // hovers by its def's `flying` (bobs by 0.18 m; other hoverers bob by 0.12)
 	BF_DIVING = 32,    // the swing in its wind-up is a Gargoyle's dive: it climbs over the mark, then drops onto it (DmEnemyGargoyle._process)
 	BF_GROUNDED = 64,  // a dive that has landed: grounded (0.05 m) while it recovers
+	BF_WOBBLE = 128,   // squashes and sways as it goes (the Mire Leech's slither: DmEntityViews._fen_dead)
 };
 
 struct CrowdBody {

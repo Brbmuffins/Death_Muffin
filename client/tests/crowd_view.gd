@@ -39,6 +39,7 @@ const F_MIST := 8
 const F_FLYER := 16
 const F_DIVING := 32
 const F_GROUNDED := 64
+const F_WOBBLE := 128
 const ENEMY := 0
 const THRALL := 1
 const ROBBER := 0   ## model slots, in SLUGS order
@@ -313,6 +314,7 @@ func _initialize() -> void:
 	clips_by_state()
 	walk_run()
 	blends_and_packing()
+	wobble()
 	hits_and_flash()
 	knockback()
 	rise_hover_and_pose()
@@ -593,6 +595,33 @@ func walk_run() -> void:
 	feed(c4, [body(1, THRALL, SKELETON, T_MOVE, 0, 0, {"speed": 3.0, "scale": 1.1})])
 	draw(c4, 3)
 	check(near(info(c4, 1).speed, plan_loco(skel, 1.75 * 1.1, 3.0, true, false).timeScale, 1e-6), "a thrall's plan uses its look's scale")
+
+
+## A Mire Leech slithers (DmEntityViews._fen_dead): the root rolls 0.12 w about Z and the scale is (1 + 0.12 w, 1 - 0.09 w, 1 + 0.1 w) of its own, w = sin(t / 85 ms + id * 1.7), a quarter as
+## strong standing still; a body without the flag is drawn plain.
+func wobble() -> void:
+	for moving in [false, true]:
+		var c := new_crowd()
+		var state := CHASE if moving else IDLE
+		var spd := 3.0 if moving else 0.0
+		feed(c, [body(1, ENEMY, ROBBER, state, 1.0, 2.0, {"flags": F_WOBBLE, "yaw": 0.7, "scale": 1.2, "speed": spd}), body(2, ENEMY, ROBBER, state, 4.0, 2.0, {"yaw": 0.7, "scale": 1.2, "speed": spd})])
+		draw(c, 30)
+		var worst := 0.0
+		var worst_plain := 0.0
+		var swing := 0.0
+		for f in 40:
+			draw(c, 1)
+			var yaw: float = info(c, 1).yaw
+			var w := sin(clock_ms / 85.0 + 1.7) * (1.0 if moving else 0.25)
+			swing = maxf(swing, absf(w))
+			var want := Basis(Vector3.UP, yaw) * Basis(Vector3.BACK, 0.12 * w) * Basis.from_scale(Vector3(1.0 + 0.12 * w, 1.0 - 0.09 * w, 1.0 + 0.1 * w) * 1.2)
+			var got: Basis = row_of(c, 1).xf.basis
+			worst = maxf(worst, maxf((got.x - want.x).length(), maxf((got.y - want.y).length(), (got.z - want.z).length())))
+			var plain := Basis(Vector3.UP, float(info(c, 2).yaw)) * Basis.from_scale(Vector3.ONE * 1.2)
+			var got2: Basis = row_of(c, 2).xf.basis
+			worst_plain = maxf(worst_plain, maxf((got2.x - plain.x).length(), maxf((got2.y - plain.y).length(), (got2.z - plain.z).length())))
+		check(worst < 1e-4 and swing > 0.1, "a %s Leech rolls and squashes as today's slither (worst basis error %s, w up to %.2f)" % ["moving" if moving else "standing", worst, swing])
+		check(worst_plain < 1e-4, "a body without the flag is drawn plain (%s)" % worst_plain)
 
 
 func blends_and_packing() -> void:
@@ -1424,6 +1453,9 @@ const THRALL_BASE := {"warrior": [1.3, 1.0, 5.6], "shieldbearer": [1.3, 1.25, 5.
 	"archer": [7.5, 1.3, 5.4], "bonemage": [6.5, 1.8, 5.2], "plaguebearer": [1.3, 1.2, 4.8]}
 
 
+var ally_owners: Array = []   # core hero ids whose thralls are another player's (full_party)
+
+
 func full_party() -> void:
 	var enemies_json: Dictionary = DmCoreData.json(godot_dir.path_join("data/content/enemies.json"))
 	var core: RefCounted = ClassDB.instantiate("DmCore")
@@ -1459,6 +1491,9 @@ func full_party() -> void:
 	var kinds := ["warrior", "warrior", "warrior", "shieldbearer", "hound", "wraith", "archer", "bonemage"]
 	for h in 4:
 		view.set_owner_legion(heroes[h], legions[h])
+		view.set_owner_ally(heroes[h], h >= 2)   # the Rotweaver's and the Mourner's thralls are other players' (a weaker rim)
+		if h >= 2:
+			ally_owners.append(heroes[h])
 		for k in 8:
 			var b: Array = THRALL_BASE[kinds[k]]
 			var tid: int = core.raise_thrall({"kind": kinds[k], "hp": 1.0e6, "maxHp": 1.0e6, "damage": 0.0, "attackInterval": b[1], "range": b[0], "speed": b[2], "empowered": false,
@@ -1690,8 +1725,72 @@ func glows(view: CrowdView, crowd: RefCounted, core: RefCounted, ids: Array, her
 		"the Ossuary's thralls glow bronze (0x6b4a1f, 0.12), a bone mage its own (0xb07a2a, 0.35)")
 	view._push_glows()
 	var on_mat: Variant = view._materials[0].get_shader_parameter("glow_palette")
-	check(on_mat is PackedVector4Array and (on_mat as PackedVector4Array).size() == 64 and Vector4(pal[1].r, pal[1].g, pal[1].b, pal[1].a).is_equal_approx((on_mat as PackedVector4Array)[1]),
-		"every model's material has the palette")
+	check(on_mat is PackedVector4Array and (on_mat as PackedVector4Array).size() == CrowdView.SLOTS and Vector4(pal[1].r, pal[1].g, pal[1].b, pal[1].a).is_equal_approx((on_mat as PackedVector4Array)[1]),
+		"every model's material has the glow palette (%d slots)" % CrowdView.SLOTS)
+	rims(view, crowd, core, ids)
+
+
+## The friend rim (DmEntityViews._make_thrall, DmCreatureMat): the palette slot of every thrall's instance carries the spirit colour at 0.9 for this player's thralls, 0.6 for
+## another player's, a champion's gold at 1.4; no enemy has one; the materials have the rim palette; and the one palette slot channel does it all in the same MultiMeshes
+## (a rim in a material of its own would split each group by its rim: the count is printed).
+func rims(view: CrowdView, crowd: RefCounted, core: RefCounted, enemy_ids: Array) -> void:
+	var looks: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CrowdView.LOOKS_PATH))
+	var spirit := int(DmFxData.data()["spell_fx"]["exhume"]["spirit"])
+	check(looks.thrall_rim.colour == "%06x" % spirit, "crowd_looks.json's rim colour is the spirit ring's, SPELL_FX exhume.spirit (0x%06x)" % spirit)
+	check(looks.thrall_rim.own == 0.9 and looks.thrall_rim.ally == 0.6 and looks.thrall_rim.champion == 1.4 and looks.thrall_rim.champion_colour == "d9a441",
+		"the strengths are today's THRALL_RIM_OWN 0.9, THRALL_RIM_ALLY 0.6, a champion's gold 1.4")
+	var rim_pal: PackedColorArray = crowd.rim_palette()
+	var glow_pal: PackedColorArray = crowd.glow_palette()
+	check(rim_pal.size() == glow_pal.size() and rim_pal[0] == Color(0, 0, 0, 0), "the rim palette has the glow palette's slots, slot 0 empty (%d)" % rim_pal.size())
+	var rim_of := func(id: int) -> Color:
+		var r: Dictionary = row_of(crowd, id)
+		if r.is_empty():
+			return Color(-1, -1, -1, -1)
+		return rim_pal[int(floor(float(r.color.a) * 0.5 + 0.001))]
+	var spirit_c := CrowdView._color(looks.thrall_rim.colour)
+	var gold_c := CrowdView._color(looks.thrall_rim.champion_colour)
+	var bad := 0
+	var seen := {}
+	var drawn_thralls := 0
+	for tid in core.thrall_ids():
+		var info: Dictionary = core.thrall_info(tid)
+		var got: Color = rim_of.call(tid)
+		if got.a < 0.0:
+			continue   # hidden or sinking: not an instance
+		drawn_thralls += 1
+		var ally: bool = int(info.owner) in ally_owners
+		var want := Color(gold_c.r, gold_c.g, gold_c.b, 1.4) if bool(info.champion) else Color(spirit_c.r, spirit_c.g, spirit_c.b, 0.6 if ally else 0.9)
+		if not got.is_equal_approx(want):
+			bad += 1
+	check(drawn_thralls > 0 and bad == 0, "every thrall's instance picks its rim: %d thralls found at their drawn places, %d wrong" % [drawn_thralls, bad])
+	for r in rows(crowd):   # every instance (a thrall in a swing is drawn lunged, away from its place, and the lookup above skips it)
+		var slot := int(floor(float(r.color.a) * 0.5 + 0.001))
+		if rim_pal[slot].a > 0.0:
+			seen[roundi(rim_pal[slot].a * 100.0)] = true
+	check(seen.has(90) and seen.has(60) and seen.has(140), "all three rims are in play: this player's 0.9, another's 0.6, a champion's 1.4 (%s)" % str(seen.keys()))
+	var enemy_rims := 0
+	for id in enemy_ids:
+		var got: Color = rim_of.call(id)
+		enemy_rims += 1 if got.a > 0.0 else 0
+	check(enemy_rims == 0, "no enemy has a rim (%d do)" % enemy_rims)
+	var on_mat: Variant = view._materials[0].get_shader_parameter("rim_palette")
+	var rr := rim_pal[1]
+	check(on_mat is PackedVector4Array and (on_mat as PackedVector4Array).size() == CrowdView.SLOTS and Vector4(rr.r, rr.g, rr.b, rr.a).is_equal_approx((on_mat as PackedVector4Array)[1]),
+		"every model's material has the rim palette")
+	# The measure behind the choice of a channel: MultiMesh groups holding instances now, and what a material per rim would need (each group split by the rims in it).
+	var now := 0
+	var split := 0
+	for m in lods.size():
+		for l in lods[m]:
+			for sh in [false, true]:
+				var buf: PackedFloat32Array = crowd.buffer(m, l, sh)
+				var variants := {}
+				for i in buf.size() / 20:
+					variants[rim_pal[int(floor(buf[i * 20 + 15] * 0.5 + 0.001))]] = true
+				now += 1 if buf.size() > 0 else 0
+				split += variants.size()
+	check(split >= now, "the rim channel keeps %d MultiMeshes drawing (a material per rim would need %d, one instance float each stays the same 20)" % [now, split])
+	print("INFO rim as a channel: %d draw groups, as a material per rim: %d" % [now, split])
 
 
 ## Thralls with hand props (DmEntityViews._make_thrall): a warrior with no legion or an armed one is drawn with the "<model>+warrior" variant when it is baked;

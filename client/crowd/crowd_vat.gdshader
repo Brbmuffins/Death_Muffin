@@ -17,24 +17,31 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 //   INSTANCE_CUSTOM.z  previous clip index + blend weight 0..<1 of the previous pose (0 = no blend, then w is ignored)
 //   INSTANCE_CUSTOM.w  seconds into the previous clip
 //   COLOR.rgb          linear tint multiplier (white = the texture as is)
-//   COLOR.a            glow slot * 2 + hit flash 0..1: the slot picks the body's glow from `glow_palette` (0 = this model's own `emis`, `emis_k`), the
-//                      flash is the game's emissive lerp toward the flash colour (in eighths, so exact in a half float up to slot 63)
+//   COLOR.a            palette slot * 2 + hit flash 0..1: the slot picks the body's glow from `glow_palette` (0 = this model's own `emis`, `emis_k`) and its friend rim
+//                      from `rim_palette` (a thrall's: DmCreatureMat's `rim`), the flash is the game's emissive lerp toward the flash colour (in eighths, so exact in a
+//                      half float up to slot 127)
 // Per vertex: CUSTOM0.y = its material part: 0 the body, k a hand prop's part k (a thrall variant's sword, shield, bow or staff: `part_*`, no tint, flash or
 // glow, as today's props). A body vertex's CUSTOM0.x = its animation id (a column of the baked textures; UV seams share one id); a prop vertex sits in its
 // prop's own space (VERTEX, NORMAL) and its CUSTOM0.x = which prop of the variant: the prop's transform comes from the baked track of the hand.
 
-// The model's own textures, as DmCreatureMat takes them from the glTF material (no normal map: the crowd mesh has no tangents).
+// The model's own textures and factors, as DmCreatureMat takes them from the glTF material (the glTF's own defaults: both factors 1, the ORM texture scales them).
+// The crowd mesh has no tangents: the normal map gets its frame from the screen-space derivatives of the position and the UVs (`bumped`).
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D orm_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform vec4 albedo_col : source_color = vec4(1.0);
 uniform float rough_f = 1.0;
-uniform float metal_f = 0.0;
+uniform float metal_f = 1.0;
 uniform bool use_orm = false;
+uniform bool use_normal = false;
 // Body emissive (linear), like DmCreature's emis / emis_k; the hit flash lerps it toward FLASH_COLOR.
 uniform vec3 emis = vec3(0.0);
 uniform float emis_k = 0.0;
 // Per-body glows (DmCrowd.glow_palette: linear rgb + strength): the elite's, the risen's, a legion's thralls'... Slot 0 is unused (the model's own above).
-uniform vec4 glow_palette[64];
+uniform vec4 glow_palette[128];
+// Per-body friend rims (DmCrowd.rim_palette: linear rgb + strength), the same slots: a thrall's spirit rim, weaker on another player's, a champion's gold. DmCreatureMat's
+// `emissive += rim.rgb * strength * smoothstep(.35, .95, fresnel) * .9`. Slot 0 and every enemy: none.
+uniform vec4 rim_palette[128];
 // Hand props' parts (CrowdVatData.part_*): linear albedo, (metallic, roughness, -, -), linear emission.
 uniform vec4 part_albedo[8];
 uniform vec4 part_pbr[8];
@@ -65,6 +72,7 @@ const float FLASH_EMISSIVE = 0.16;                    // DmCreature._apply_flash
 
 varying float v_flash;
 varying flat vec4 v_glow;
+varying flat vec3 v_rim;   // the rim's colour x strength x 0.9
 varying flat float v_part;
 
 ivec2 vat_texel(int frame, int id) {
@@ -172,8 +180,27 @@ void vertex() {
 	NORMAL = normalize(n);
 	float slot_glow = floor(COLOR.a * 0.5 + 0.001);
 	v_flash = clamp(COLOR.a - slot_glow * 2.0, 0.0, 1.0);
-	v_glow = slot_glow > 0.5 ? glow_palette[clamp(int(slot_glow), 1, 63)] : vec4(emis, emis_k);
+	int slot = clamp(int(slot_glow), 1, 127);
+	v_glow = slot_glow > 0.5 ? glow_palette[slot] : vec4(emis, emis_k);
+	v_rim = slot_glow > 0.5 ? rim_palette[slot].rgb * (rim_palette[slot].a * 0.9) : vec3(0.0);
 	v_part = CUSTOM0.y;
+}
+
+// The normal map's frame from the screen-space derivatives (no tangent attribute): `map` is the sampled texel, `n` the view-space normal. Godot's own frame points its
+// tangent along +U and its bitangent along -V (the glTF convention: OpenGL normal maps with V down), and reconstructs z from xy as it does for NORMAL_MAP.
+vec3 bumped(vec3 n, vec3 pos, vec2 uv, vec3 map) {
+	vec3 m = vec3(map.xy * 2.0 - 1.0, 0.0);
+	m.z = sqrt(max(0.0, 1.0 - dot(m.xy, m.xy)));
+	vec3 dp1 = dFdx(pos);
+	vec3 dp2 = dFdy(pos);
+	vec2 du1 = dFdx(uv);
+	vec2 du2 = dFdy(uv);
+	vec3 p2 = cross(dp2, n);
+	vec3 p1 = cross(n, dp1);
+	vec3 t = p2 * du1.x + p1 * du2.x;
+	vec3 b = -(p2 * du1.y + p1 * du2.y);
+	float inv = inversesqrt(max(max(dot(t, t), dot(b, b)), 1e-20));
+	return normalize(t * (inv * m.x) + b * (inv * m.y) + n * m.z);
 }
 
 void fragment() {
@@ -194,7 +221,12 @@ void fragment() {
 			ROUGHNESS = rough_f;
 			METALLIC = 0.0;
 		}
-		EMISSION = mix(v_glow.rgb, FLASH_COLOR, v_flash) * (v_glow.a + v_flash * FLASH_EMISSIVE);
+		vec3 n = normalize(NORMAL);
+		float fres = 1.0 - clamp(dot(n, normalize(VIEW)), 0.0, 1.0);   // from the geometric normal, as DmCreatureMat's rim reads NORMAL before the normal map
+		EMISSION = mix(v_glow.rgb, FLASH_COLOR, v_flash) * (v_glow.a + v_flash * FLASH_EMISSIVE) + v_rim * smoothstep(0.35, 0.95, fres);
+		if (use_normal) {
+			NORMAL = bumped(n, VERTEX, UV, texture(normal_tex, UV).rgb);
+		}
 	}
 #ifdef SPECTRAL
 	ALPHA = SPECTRAL_OPACITY;
