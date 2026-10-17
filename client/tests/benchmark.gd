@@ -952,8 +952,16 @@ func _remove_stale_runs() -> void:
 		return
 	for d in DirAccess.get_directories_at(SCRATCH_ROOT):
 		var pid := d.get_slice("_", 0)
-		if pid.is_valid_int() and d.contains("_") and int(pid) != OS.get_process_id() and not OS.is_process_running(int(pid)):
+		if pid.is_valid_int() and d.contains("_") and int(pid) != OS.get_process_id() and not _pid_alive(int(pid)):
 			_remove_tree(ProjectSettings.globalize_path(SCRATCH_ROOT.path_join(d)))
+
+
+## Whether process `pid` still runs. Not OS.is_process_running: for a process that is not this one's child (another worktree's run of this suite, which
+## shares user://) Godot logs an engine error. /proc where there is one; elsewhere the folder is kept.
+static func _pid_alive(pid: int) -> bool:
+	if not DirAccess.dir_exists_absolute("/proc/self"):
+		return true
+	return DirAccess.dir_exists_absolute("/proc/%d" % pid)
 
 
 func _remove_tree(path: String) -> void:
