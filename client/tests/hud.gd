@@ -10,7 +10,10 @@ extends SceneTree
 ##   - NO NODE PER CREATURE: the scene's node count is the same with 0 and with 100 more enemies, 30 more thralls and 40 floating numbers alive;
 ##   - the boss plate and his dot on the map while the Gravedigger King is awake, and the fx's banners and toasts (the sink of `bosses.fx.host`);
 ##   - the pieces: each readout group has its anchors, moves and scales around its corner, hides for good; the HUD scale;
-##   - the atlas and the drawing helpers: 9-patch pixels against what StyleBoxFlat draws, regions and their padding, the z layers of text, the meshes, the sweep.
+##   - the atlas and the drawing helpers: 9-patch pixels against what StyleBoxFlat draws, regions and their padding, the z layers of text, the meshes, the sweep;
+##   - the per-frame work kept small ("The HUD's budget", CPU): a NEW glow's and an empowered slot's pulse and a cast flash fade a layer drawn once (no redraw per frame, the same
+##     strength at every instant), a rite on cooldown changes its text and sweep and nothing else, a mesh appended again at the same place is one array copy, the readouts are applied
+##     by section (a moving Kill Chain meter does not apply the belt), the counsel's timers wait for the earliest one due.
 ## Prints INFO costs: the view-model build and apply (the refresh), per frame at the 20 Hz refresh, the minimap's dots, and a frame with the HUD against one without.
 ## Bakes the robber and the hound into a scratch folder first (about 20 s). Run: godot --headless --path client --script res://tests/hud.gd   (--fixed-fps 60 before --path is faster)
 
@@ -106,6 +109,7 @@ func _initialize() -> void:
 	await death_veil()
 	pieces()
 	await layers()
+	await per_frame_work()
 	await draw_model()
 	await costs()
 	await boss_plate()
@@ -715,6 +719,200 @@ func _abs_z(n: Node) -> int:
 				break
 		c = c.get_parent()
 	return z
+
+
+# ------------------------------------------------------------------------------------------------------------------ the per-frame work
+
+## The pulse and the flash of the HUD's animated edges are layers drawn once and faded (their alpha is the animation), so a frame costs a property, not a redraw of 16 to 24 rectangles.
+func per_frame_work() -> void:
+	var redraws := [0]
+	var count := func() -> void: redraws[0] += 1
+	# a NEW glow: halo alpha = the pulse 0.5 + 0.5 sin(t / 1.6 TAU), the edge drawn once
+	var host := Control.new()
+	host.size = Vector2(80, 30)
+	root.add_child(host)
+	var glow := DmHudParts.NewGlow.new()
+	host.add_child(glow)
+	check(not glow.visible, "a NEW glow is hidden until its element is new")
+	glow.active = true
+	await process_frame
+	await process_frame
+	glow.connect("draw", count)
+	glow._halo.connect("draw", count)
+	redraws[0] = 0
+	var wrong := 0
+	for i in 40:
+		await process_frame
+		if not near(glow._halo.modulate.a, 0.5 + 0.5 * sin(glow._t / 1.6 * TAU), 1.0e-4):
+			wrong += 1
+	check(glow.visible and glow._halo.visible and glow._t > 0.5 and wrong == 0, "the glow's halo fades with the pulse, frame by frame (%d of 40 off, t = %.2f)" % [wrong, glow._t])
+	check(redraws[0] == 0, "and nothing is redrawn for it (%d redraws in 40 frames)" % redraws[0])
+	glow.active = false
+	check(not glow.visible, "a glow switched off is hidden again")
+	host.queue_free()
+	# an empowered slot's pulse and a cast flash
+	var slot := DmHudSlot.new()
+	root.add_child(slot)
+	var base := {"icon": "", "key": "1", "cost": 10, "left_ms": 0.0, "total_ms": 4000.0, "affordable": true, "empowered": false, "locked": false, "unlock_level": 1,
+		"needs": "", "alt": false, "swap": false, "rune_icon": ""}
+	slot.apply(base)
+	await process_frame
+	await process_frame
+	check(not slot._pulse.visible and not slot._flashfx.visible, "a plain slot shows neither pulse nor flash")
+	slot._edge.connect("draw", count)
+	slot._pulse.connect("draw", count)
+	slot._flashfx.connect("draw", count)
+	var emp := base.duplicate()
+	emp["empowered"] = true
+	slot.apply(emp)
+	slot.flash()   # (the first show of each layer draws it)
+	await process_frame
+	await process_frame
+	slot.set_process(false)   # driven by hand from here
+	slot._flash = 0.0
+	slot._fade()
+	check(slot._pulse.visible and not slot._flashfx.visible, "an empowered slot pulses")
+	redraws[0] = 0
+	slot._process(0.35)
+	var want := (0.5 * (0.5 + 0.5 * cos(slot._t / 1.4 * TAU)) + 0.12) / 0.62
+	check(near(slot._pulse.modulate.a, want, 1.0e-4), "the pulse is %.3f of its strongest rings at t = %.2f (%.3f)" % [want, slot._t, slot._pulse.modulate.a])
+	slot.flash()
+	slot._process(0.1)
+	check(slot._flashfx.visible and slot._pulse.visible and near(slot._flashfx.modulate.a, (0.35 - 0.1) / 0.35, 1.0e-4), "a flash fades from full over 0.35 s, over the pulse (%.3f)" % slot._flashfx.modulate.a)
+	for i in 20:
+		slot._process(0.0167)
+		await process_frame
+	check(not slot._flashfx.visible and slot._pulse.visible, "the flash is gone after 0.35 s, the pulse goes on")
+	check(redraws[0] <= 1, "and the 22 frames of it redraw one layer once, when it is shown, not the borders (%d redraws)" % redraws[0])
+	slot.apply(base)
+	await process_frame
+	check(not slot._pulse.visible and not slot.is_processing(), "a slot that is no longer empowered stops pulsing")
+	# a rite on cooldown: only the seconds, the note and the sweep move; the result is the slot a full apply of the same state gives
+	var needy := base.duplicate()
+	needy["needs"] = "corpse"
+	var fresh_slot := DmHudSlot.new()
+	root.add_child(fresh_slot)
+	var a := needy.duplicate()
+	a["left_ms"] = 2500.0
+	var b := needy.duplicate()
+	b["left_ms"] = 0.0
+	var mismatch := PackedStringArray()
+	for pair in [[needy, a], [a, b], [b, a]]:
+		slot.apply(pair[0])
+		slot.apply(pair[1])
+		fresh_slot._last = {}
+		fresh_slot.apply(pair[1])
+		for prop in ["left_ms", "_drawn_pct", "needs", "locked", "affordable", "_dim", "swap", "key_text"]:
+			if slot.get(prop) != fresh_slot.get(prop):
+				mismatch.append("%s %s/%s" % [prop, str(slot.get(prop)), str(fresh_slot.get(prop))])
+		if slot._cdtext.text != fresh_slot._cdtext.text or slot._need.text != fresh_slot._need.text or slot._cost.text != fresh_slot._cost.text:
+			mismatch.append("text '%s' '%s' / '%s' '%s'" % [slot._cdtext.text, slot._need.text, fresh_slot._cdtext.text, fresh_slot._need.text])
+	check(mismatch.is_empty(), "a rite that only moved along its cooldown ends up as a full apply makes it (%s)" % str(mismatch))
+	slot.apply(a)
+	slot.apply(b)
+	check(slot._last == b and slot._cdtext.text == "", "the state kept is the new one (a ready rite shows no seconds)")
+	var changed := a.duplicate()
+	changed["cost"] = 99
+	slot.apply(a)
+	check(not slot._only_cooldown_moved(changed), "another change besides the cooldown takes the whole apply")
+	slot.queue_free()
+	fresh_slot.queue_free()
+	# the low-health wash eases while it moves and rests, not processing, once it has settled; a hit wakes it
+	var wash := DmHudParts.Vignette.new()
+	root.add_child(wash)
+	await process_frame
+	await process_frame
+	check(near(wash.strength, 0.0) and not wash.is_processing(), "a wash at rest does not process")
+	wash.low = true
+	check(wash.is_processing(), "low health wakes the wash")
+	for i in 60:
+		await process_frame
+	check(near(wash.strength, 0.45) and not wash.is_processing(), "and it settles at 0.45 and rests again (%.2f)" % wash.strength)
+	wash.flash()
+	await process_frame
+	check(wash.is_processing() and near(wash.strength, 0.55), "a hit flashes it to 0.55")
+	wash.low = false
+	for i in 90:
+		await process_frame
+	check(near(wash.strength, 0.0) and not wash.is_processing(), "and health back lets it fade away and rest (%.2f)" % wash.strength)
+	wash.queue_free()
+	var commas_ok := DmHudKit.commas(0) == "0" and DmHudKit.commas(999) == "999" and DmHudKit.commas(1000) == "1,000" and DmHudKit.commas(1234567) == "1,234,567" and DmHudKit.commas(-1234) == "-1,234"
+	for i in 700:
+		commas_ok = commas_ok and DmHudKit.commas(float(i * 1013)) == (str(i * 1013) if i * 1013 < 1000 else str(i * 1013).insert(str(i * 1013).length() - 3, ",") if i * 1013 < 1000000 else str(i * 1013).insert(str(i * 1013).length() - 3, ",").insert(str(i * 1013).length() - 6, ","))
+	check(commas_ok and DmHudKit.commas(1234567.0) == "1,234,567", "the thousands separators are right, from the kept text and after it was dropped")
+	# a mesh appended again at the same place: the same indices as a loop would make, kept
+	var stat := DmHudMesh.new()
+	stat.disc(Vector2.ZERO, 5.0, Color.WHITE, 12)
+	var m := DmHudMesh.new()
+	m.tri(Vector2.ZERO, Vector2(1, 0), Vector2(0, 1), Color.RED)
+	m.append(stat)
+	m.append(stat)
+	var base2 := 3 + stat.pts.size()
+	var ok := m.idx.size() == 3 + 2 * stat.idx.size()
+	for k in stat.idx.size():
+		ok = ok and m.idx[3 + k] == stat.idx[k] + 3 and m.idx[3 + stat.idx.size() + k] == stat.idx[k] + base2
+	var again := DmHudMesh.new()
+	again.tri(Vector2.ZERO, Vector2(1, 0), Vector2(0, 1), Color.RED)
+	again.append(stat)
+	again.append(stat)
+	check(ok and again.idx == m.idx and stat._moved.size() == 2, "a bag appended at a start it was appended at before gives the same indices (%d starts kept)" % stat._moved.size())
+	stat.clear()
+	check(stat._moved.is_empty(), "and a cleared bag forgets them")
+	# the readouts are applied by section (the panel host's own refresh waits meanwhile)
+	g.ui.set_process(false)
+	var chips0: Dictionary = hud._brew_chips
+	for slot_id in chips0:
+		(chips0[slot_id] as DmHudBrewChip).connect("draw", count)
+	var vm0 := h.last_vm().duplicate(true)
+	vm0["chain"] = {"count": 3, "name": "Chain", "bonus": 0.1, "frac": 0.5, "tier": 1}
+	hud.apply(vm0)
+	await process_frame
+	redraws[0] = 0
+	var vm1 := vm0.duplicate(true)
+	vm1["chain"]["frac"] = 0.4
+	hud.apply(vm1)
+	await process_frame
+	await process_frame
+	check(near(hud.chain_bar.value, 0.4) and redraws[0] == 0, "a moving Kill Chain meter moves the meter and applies none of the belt (%d chip redraws)" % redraws[0])
+	vm1["chain"] = null
+	hud.apply(vm1)
+	check(not hud.chain.visible, "and the chain readout goes with its data")
+	g.ui.set_process(true)
+	h.refresh()
+	# the counsel card's draining line is drawn once and squeezed by what is left of the time
+	var card := DmTipCard.new()
+	root.add_child(card)
+	card.set_tip("Test", "A tip", 8000)
+	card.size = Vector2(360, 120)
+	await process_frame
+	await process_frame
+	var line_draws := [0]
+	card._timer_rect.connect("draw", func() -> void: line_draws[0] += 1)
+	var line_off := 0
+	for i in 30:
+		card._process(0.1)   # (0.1 s of the card's own clock a frame)
+		await process_frame
+		if absf(card._line_k - maxf(clampf(1.0 - card._t / 8000.0, 0.0, 1.0), 0.0001)) > 1.0e-4:
+			line_off += 1
+	check(card._line.is_valid() and line_off == 0 and card._line_k < 0.65, "the card's line is what is left of its 8 s (%.2f after %.1f s; %d frames off)" % [card._line_k, card._t / 1000.0, line_off])
+	check(line_draws[0] == 0, "and nothing redraws it per frame (%d draws)" % line_draws[0])
+	card.queue_free()
+	# the counsel's timers: the clock runs every frame, the timers only when one is due
+	var c := DmCounsel.new(7, DmCounselStore.new(""), 0.0)
+	var fired := PackedStringArray()
+	c._later(func() -> void: fired.append("b"), 300.0)
+	c._later(func() -> void: fired.append("a"), 100.0)
+	var gone := c._later(func() -> void: fired.append("x"), 200.0)
+	c._cancel(gone)
+	c.tick(0.05)
+	check(fired.is_empty() and near(c.now_ms, 50.0, 1.0e-6), "the counsel's clock runs with no timer due")
+	c.tick(0.06)
+	check(fired == PackedStringArray(["a"]), "a timer fires when its time comes (%s)" % str(fired))
+	c.tick(0.5)
+	check(fired == PackedStringArray(["a", "b"]) and near(c.now_ms, 610.0, 1.0e-6), "in order, a cancelled one never (%s, clock %.0f)" % [str(fired), c.now_ms])
+	c._later(func() -> void: fired.append("c"), 10.0)
+	c.tick(0.02)
+	check(fired.size() == 3, "and one set later is not missed by the wait for the earliest")
 
 
 # ------------------------------------------------------------------------------------------------------------------ the draw-call model

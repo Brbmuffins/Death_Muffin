@@ -10,12 +10,17 @@ const CIRCLE_SEGMENTS := 64   ## CanvasItem.draw_circle's own count: the shapes 
 var pts := PackedVector2Array()
 var cols := PackedColorArray()
 var idx := PackedInt32Array()
+var _moved: Dictionary = {}   ## first vertex -> this bag's indices moved to start there (`append`)
+
+const MOVED_KEEP := 64   ## starts kept per bag (the orb's ripple moves the gloss's start with its point count: a few dozen)
 
 
 func clear() -> void:
 	pts.resize(0)
 	cols.resize(0)
 	idx.resize(0)
+	if not _moved.is_empty():
+		_moved.clear()
 
 
 func is_empty() -> bool:
@@ -125,15 +130,27 @@ func convex(points: PackedVector2Array, col: Color) -> void:
 		idx.append(i + k + 1)
 
 
-## Appends another bag's triangles (art that never changes is built once and appended to the part that does).
+## Appends another bag's triangles (art that never changes is built once and appended to the part that does). The appended bag's indices, moved to where its
+## vertices now start, are kept per start (`_moved`): the same art appended at the same place again is one array copy, not a loop over every index.
 func append(o: DmHudMesh) -> void:
 	var base := pts.size()
 	pts.append_array(o.pts)
 	cols.append_array(o.cols)
-	var n := idx.size()
-	idx.append_array(o.idx)
-	for k in range(n, idx.size()):
-		idx[k] += base
+	idx.append_array(o._indices_from(base))
+
+
+func _indices_from(base: int) -> PackedInt32Array:
+	if base == 0:
+		return idx
+	var moved: Variant = _moved.get(base)
+	if moved != null:
+		return moved
+	var out := idx.duplicate()
+	for k in out.size():
+		out[k] += base
+	if _moved.size() < MOVED_KEEP:
+		_moved[base] = out   # (`clear` drops them)
+	return out
 
 
 ## Draws the bag as one command on `item` (call inside its `_draw`).

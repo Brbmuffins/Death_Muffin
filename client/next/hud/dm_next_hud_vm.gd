@@ -57,6 +57,10 @@ var _aff_id := 0                ## the target whose elite-affix chips are cached
 var _aff_n := -1                ## ... and how many affixes it bore then (the Shrouded one can be stripped)
 var _aff_chips: Array = []
 var _aff_blurb := ""
+var _caster: DmRiteCaster       ## the hero's caster and soul state of this refresh (every slot reads them)
+var _sp: Dictionary = {}
+var _charged := false
+var _rite_lvl := 1.0
 
 
 func _init(host_: DmNextUiHost) -> void:
@@ -71,6 +75,10 @@ func build() -> Dictionary:
 	if b == null:
 		return {}
 	var sp := soul_state(b)
+	_caster = b.get_node_or_null("Rites") as DmRiteCaster   # (read by every slot below: looked up once per refresh)
+	_sp = sp
+	_charged = sp.has("soulsMax") and DmPlayerRules.souls_charged(sp)   # Soul Harvest's skull is full (no rite can be free before)
+	_rite_lvl = DmAbilities.rite_level(float(host.character.get("level", 1)), host.dev_access)
 	var bag := b.family == "reaper"   # the Reaper's energy orb IS her soul bag
 	var souls := int(sp.get("souls", 0))
 	var vm := _vm
@@ -186,9 +194,9 @@ func _slot_list(b: DmHeroBody, level: float) -> Array:
 
 
 ## Cost, cooldown sweep, affordable / locked flags of one rite. Cooldown comes from the caster's state (the host's numbers).
-func _fill(s: Dictionary, id: String, b: DmHeroBody, level: float, key: String) -> void:
+func _fill(s: Dictionary, id: String, b: DmHeroBody, _level: float, key: String) -> void:
 	var d := _rite(id)
-	var caster := b.get_node_or_null("Rites") as DmRiteCaster
+	var caster := _caster
 	var base: float = d["cd"]
 	var total := base
 	if caster != null and caster.p.has("loadout"):
@@ -198,11 +206,11 @@ func _fill(s: Dictionary, id: String, b: DmHeroBody, level: float, key: String) 
 	s["cost"] = d["soul"] if souls_rite else d["essence"]
 	s["left_ms"] = caster.cooldown_left(id) if caster != null else 0.0
 	s["total_ms"] = total
-	var sp := soul_state(b)
-	var emp := sp.has("soulsMax") and DmAbilities.empowered(sp, id)   # Soul Harvest: charged souls make this rite free
+	var sp := _sp
+	var emp := _charged and DmAbilities.empowered(sp, id)   # Soul Harvest: charged souls make this rite free
 	s["empowered"] = emp
 	s["affordable"] = (int(sp.get("souls", 0)) >= int(s["cost"])) if souls_rite else (emp or b.resource >= float(d["essence"]))
-	s["locked"] = DmAbilities.rite_level(level, host.dev_access) < float(d["unlock"])
+	s["locked"] = _rite_lvl < float(d["unlock"])
 	s["unlock_level"] = d["unlock"]
 	s["needs"] = needs_of(id, _corpse_near, _legion_n)
 
@@ -407,11 +415,13 @@ func _minimap(g: DmNextGame, b: DmHeroBody) -> Dictionary:
 	var states: PackedInt32Array = core.enemy_states()
 	_enemy_dots.resize(ids.size() * 3)
 	var ne := 0
+	var elite := host.elites()
+	var elites := not elite.is_empty()
 	for i in ids.size():
 		if states[i] != DEAD:
 			_enemy_dots[ne * 3] = pos[i * 3]
 			_enemy_dots[ne * 3 + 1] = pos[i * 3 + 1]
-			_enemy_dots[ne * 3 + 2] = 1.0 if host.is_elite(ids[i]) else 0.0
+			_enemy_dots[ne * 3 + 2] = 1.0 if (elites and elite.has(ids[i])) else 0.0
 			ne += 1
 	_enemy_dots.resize(ne * 3)
 	var tpos: PackedFloat32Array = core.thrall_positions()

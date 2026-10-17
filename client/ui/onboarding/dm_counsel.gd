@@ -43,6 +43,7 @@ var _key: String
 var _busy: Dictionary = DmCounselCadence.not_busy()
 var _seq := 0
 var _timers: Dictionary = {}
+var _next_due := INF   ## no timer is due before this (a cancelled timer can leave it early: the next run sets it right); the clock runs every frame, the timers rarely
 var _timer_seq := 0
 var _pump_timer := 0
 var _hide_timer := 0
@@ -78,6 +79,9 @@ func tick(delta_s: float, busy_state: Variant = null) -> void:
 
 ## Run every timer due up to `t` in (due, creation) order, setting the clock to each one's due time.
 func advance_to(t: float) -> void:
+	if t < _next_due:
+		now_ms = maxf(now_ms, t)
+		return
 	while true:
 		var best := 0
 		var bd := INF
@@ -92,12 +96,17 @@ func advance_to(t: float) -> void:
 		_timers.erase(best)
 		now_ms = maxf(now_ms, bd)
 		cb.call()
+	_next_due = INF
+	for id in _timers:
+		_next_due = minf(_next_due, float(_timers[id]["due"]))
 	now_ms = maxf(now_ms, t)
 
 
 func _later(cb: Callable, ms: float) -> int:
 	_timer_seq += 1
-	_timers[_timer_seq] = {"due": now_ms + maxf(0.0, ms), "cb": cb}
+	var due := now_ms + maxf(0.0, ms)
+	_timers[_timer_seq] = {"due": due, "cb": cb}
+	_next_due = minf(_next_due, due)
 	return _timer_seq
 
 
@@ -285,7 +294,8 @@ func _pump() -> void:
 		queue = kept
 	if _has_card and not shown.is_empty() and not shown_entry.is_empty():
 		var s := _cadence()
-		var waiting := DmCounselCadence.pick_next(queue, _cadence(-INF))
+		# only an urgent or a danger tip can take the place of a card on screen (should_preempt): the line is not searched for the best of the others
+		var waiting := DmCounselCadence.pick_next(queue, _cadence(-INF)) if _preemptable(queue) else {}
 		if DmCounselCadence.should_preempt(shown, waiting, s) and not waiting.is_empty():
 			# The urgent tip takes the place at once (it must not wait out the gap the swap itself starts, or the old card would return).
 			_send_back()
@@ -300,6 +310,14 @@ func _pump() -> void:
 			_present(nxt)
 	if not queue.is_empty():
 		_pump_timer = _later(func() -> void: _pump(), float(DmCounselData.c("PUMP_MS")))
+
+
+## Whether any waiting tip is urgent or a danger (the kinds that can step in front of a card that is up).
+static func _preemptable(line: Array) -> bool:
+	for t in line:
+		if t["kind"] == "urgent" or t["kind"] == "danger":
+			return true
+	return false
 
 
 ## The card on screen leaves before it was read (a fight began, something urgent came): it returns at the front of the line.

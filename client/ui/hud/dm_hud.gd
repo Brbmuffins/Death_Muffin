@@ -1258,7 +1258,11 @@ const SECTIONS := {
 	"souls": ["souls", "souls_max", "soul_bag", "thralls", "thrall_cap", "raises_thralls", "thrall_hurt"],
 	"economy": ["gold", "shards", "save"],
 	"upgrades": ["gold", "damage", "wave"],
-	"left": ["ward", "chain", "brews", "omen", "party"],
+	"ward": ["ward"],
+	"chain": ["chain"],   # (its meter moves with every refresh while a chain runs: the other readouts must not be applied with it)
+	"brews": ["brews"],
+	"omen": ["omen"],
+	"party": ["party"],
 	"target": ["boss", "target"],
 	"column": ["area_name", "area_progress", "depth", "next", "auto_combat"],
 	"misc": ["prompt", "hint", "death"],
@@ -1291,8 +1295,16 @@ func apply(v: Dictionary) -> void:
 		_apply_economy(v)
 	if _changed("upgrades", v):
 		_apply_upgrades(v)
-	if _changed("left", v):
-		_apply_left_readouts(v)
+	if _changed("ward", v):
+		_apply_ward(v)
+	if _changed("chain", v):
+		_apply_chain(v)
+	if _changed("brews", v):
+		_apply_brews(v)
+	if _changed("omen", v):
+		_apply_omen(v)
+	if _changed("party", v):
+		_apply_party(v)
 	if _changed("target", v):
 		_apply_target_boss(v)
 	_apply_map_column(v, _changed("column", v))
@@ -1522,12 +1534,15 @@ static func wave_milestone_text(active_tier: int) -> Array:
 
 var _chain_tier := -1
 
-func _apply_left_readouts(v: Dictionary) -> void:
+func _apply_ward(v: Dictionary) -> void:
 	var w: Variant = v.get("ward")
 	ward.visible = w != null and int((w as Dictionary).get("pct", 0)) > 0
 	if ward.visible:
 		ward_n.text = "−%d%%" % int(w["pct"])
 		ward.tooltip_text = "Each active thrall shields you from %d%% of incoming damage (you have %d; the most it gives is 60%%)." % [int(round(float(w.get("per_thrall", 0.0)) * 100.0)), int(w.get("thralls", 0))]
+
+
+func _apply_chain(v: Dictionary) -> void:
 	var c: Variant = v.get("chain")
 	chain.visible = c != null
 	if c != null:
@@ -1544,6 +1559,9 @@ func _apply_left_readouts(v: Dictionary) -> void:
 			chain_bar.fill_b = col
 			chain.add_theme_stylebox_override("panel", DmHudKit.plate(Color(0.0275, 0.0235, 0.0392, 0.55), col, Vector4(3, 0, 0, 0), Vector4(12, 6, 12, 8)))
 		chain_bar.value = float(c.get("frac", 0.0))
+
+
+func _apply_brews(v: Dictionary) -> void:
 	var brews: Array = v.get("brews", [])
 	brews_box.visible = brews.size() > 0
 	var seen := {}
@@ -1563,12 +1581,18 @@ func _apply_left_readouts(v: Dictionary) -> void:
 		if not seen.has(slot):
 			_brew_chips[slot].queue_free()
 			_brew_chips.erase(slot)
+
+
+func _apply_omen(v: Dictionary) -> void:
 	var om: Variant = v.get("omen")
 	omen_host.visible = om != null and bool((om as Dictionary).get("visible", true))
 	if om != null:
 		omen_img.texture = DmHudKit.tex(String(om.get("icon", "")))
 		omen_name.text = DmUi.upper(String(om.get("name", "")))
 		omen.tooltip_text = String(om.get("blurb", ""))
+
+
+func _apply_party(v: Dictionary) -> void:
 	# party (up to MAX_PARTY_SIZE = 4)
 	var party: Array = v.get("party", [])
 	var world := String(v.get("party_world", ""))

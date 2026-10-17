@@ -91,7 +91,7 @@ class Vignette extends Control:
 	var _target: float = 0.0
 	var _rate: float = 3.0
 	var hit_left: float = 0.0
-	var low: bool = false
+	var low: bool = false: set = _set_low
 
 	func _init() -> void:
 		z_index = -1   # behind every panel
@@ -99,13 +99,21 @@ class Vignette extends Control:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _set_strength(v: float) -> void:
+		if v == strength:
+			return   # (the easing sets it every frame: a settled wash repaints nothing)
 		strength = v
 		queue_redraw()
 
+	func _set_low(v: bool) -> void:
+		if v != low:
+			low = v
+			set_process(true)
+
 	func flash() -> void:
 		hit_left = 0.09
+		set_process(true)
 
-	## Target strength for the current state: hit 0.55 > low-hp 0.45 > none; eases at `transition: box-shadow .3s`.
+	## Target strength for the current state: hit 0.55 > low-hp 0.45 > none; eases at `transition: box-shadow .3s`. Runs while it is moving, not while it rests.
 	func _process(delta: float) -> void:
 		if hit_left > 0.0:
 			hit_left = maxf(0.0, hit_left - delta)
@@ -113,6 +121,8 @@ class Vignette extends Control:
 			return
 		_target = 0.45 if low else 0.0
 		strength = move_toward(strength, _target, delta / 0.3 * 0.55)
+		if strength == _target:
+			set_process(false)
 
 	func _draw() -> void:
 		if strength <= 0.003:
@@ -143,33 +153,48 @@ class Rule extends Control:
 		DmHudKit.rect(self, Rect2(Vector2.ZERO, size), color)
 
 
-## `.dm-glow`: a gold edge + soft halo that pulses while a NEW element has not been used yet.
+## `.dm-glow`: a gold edge + soft halo that pulses while a NEW element has not been used yet. The edge is drawn once; the halo is a child drawn once at full strength
+## and faded by its `modulate.a` (the pulse), so a pulse costs one property per frame where it was a redraw of 24 rectangles.
 class NewGlow extends Control:
 	var active: bool = false: set = _set_active
 	var _t: float = 0.0
+	var _halo: Control
 
 	func _init() -> void:
 		z_index = DmHudKit.Z_EDGE
 		set_anchors_preset(Control.PRESET_FULL_RECT)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		visible = false
+		_halo = Halo.new()
+		add_child(_halo)
 
 	func _set_active(a: bool) -> void:
 		active = a
 		visible = a
 		set_process(a)
+		_halo.modulate = Color(1.0, 1.0, 1.0, _k())
 		queue_redraw()
+
+	func _k() -> float:
+		return 0.5 + 0.5 * sin(_t / 1.6 * TAU)
 
 	func _process(delta: float) -> void:
 		_t += delta
-		queue_redraw()
+		_halo.modulate = Color(1.0, 1.0, 1.0, _k())
 
 	func _draw() -> void:
-		var r := Rect2(Vector2.ZERO, size)
-		var k := 0.5 + 0.5 * sin(_t / 1.6 * TAU)
-		DmHudKit.outline(self, r, DmUi.GOLD, 1.0)
-		for i in 5:
-			DmHudKit.outline(self, r.grow(1.0 + i * 2.0), Color(DmUi.GOLD, 0.55 * k * (1.0 - i / 5.0) * 0.4), 2.0)
+		DmHudKit.outline(self, Rect2(Vector2.ZERO, size), DmUi.GOLD, 1.0)
+
+	## The soft halo at the pulse's peak: five rings of falling strength (the pulse scales them all by `k`).
+	class Halo extends Control:
+		func _init() -> void:
+			set_anchors_preset(Control.PRESET_FULL_RECT)
+			mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+		func _draw() -> void:
+			var r := Rect2(Vector2.ZERO, size)
+			for i in 5:
+				DmHudKit.outline(self, r.grow(1.0 + i * 2.0), Color(DmUi.GOLD, 0.55 * (1.0 - i / 5.0) * 0.4), 2.0)
 
 
 ## A PanelContainer forces every child to fill it, so overlays (NEW pip, glow) cannot be children of a panel. This plain Control

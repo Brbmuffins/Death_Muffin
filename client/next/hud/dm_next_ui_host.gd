@@ -199,6 +199,11 @@ func is_elite(id: int) -> bool:
 	return _elite.has(id)
 
 
+## Every living elite's core id (the minimap's pass over the enemies asks about each one: the dictionary itself, not a call per enemy).
+func elites() -> Dictionary:
+	return _elite
+
+
 ## The enemy the target frame shows: the one under the cursor, else the last one a cast was aimed at for a few seconds; 0 = none.
 func target_id() -> int:
 	var tid := shell.input.hovered_enemy_id()
@@ -232,6 +237,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func hud_state() -> Dictionary:
 	return vm.build()
+
+
+## The hero's legion as the view-model counts it (`thralls`), without building the view-model: the counsel asks it while its "first thrall" card waits.
+func thralls_now() -> int:
+	var b := shell.local_body()
+	return int(shell.core_host.core.thrall_places(b.core_id)) if b != null else 0
 
 
 func build_cache() -> Dictionary:

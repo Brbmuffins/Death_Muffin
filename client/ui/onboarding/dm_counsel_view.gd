@@ -169,7 +169,7 @@ func _process(delta: float) -> void:
 		return
 	# the timer line mirrors the counsel's clock (pausing on hover/drag)
 	_card._t = _counsel.card_elapsed_ms()
-	_card._timer_rect.queue_redraw()
+	_card.show_timer()
 	# dragging (the kit card moves itself): pause while the pointer holds it, remember where it was dropped
 	if _placed:
 		if not _dragging and _card.position != _last_pos and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -190,5 +190,10 @@ func _process(delta: float) -> void:
 			hide_it = true
 		if b["panel"] and _kind != "urgent" and _kind != "asked":
 			hide_it = true
-	_card.modulate.a = move_toward(_card.modulate.a, 0.0 if hide_it else 1.0, delta / 0.2)
-	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE if hide_it else Control.MOUSE_FILTER_STOP
+	var want := 0.0 if hide_it else 1.0
+	var shown := _card.modulate.a
+	if shown != want:   # (a settled card is left alone: a modulate set repaints it)
+		_card.modulate.a = move_toward(shown, want, delta / 0.2)
+	var filter := Control.MOUSE_FILTER_IGNORE if hide_it else Control.MOUSE_FILTER_STOP
+	if _card.mouse_filter != filter:
+		_card.mouse_filter = filter

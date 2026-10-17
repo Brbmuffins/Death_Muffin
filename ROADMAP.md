@@ -207,9 +207,14 @@ server (B38).
   game runs the same fight with `--benchmark --bench-room=graves --bench-size=full_party` (or Benchmark -> Hollow Graves -> Full Party).
   - [x] The fight and its budget checks in the new client: `--benchmark` and the character select's Benchmark button, Easy auto combat on the core, the report with its budget section (client/README.md "The benchmark",
     `client/tests/benchmark.gd`); the VPS numbers are in "Before numbers" (3.0 times today's speed without value, 2.4 with it).
-  - [ ] The HUD's share with the panels back inside 0.5 ms on the VPS: the benchmark's HUD rounds read 0.60 to 0.85 ms (give or take 0.14 to 0.35) in the Full Party fight since today's
-    panel host came (2026-10-16, 273e7485; the HUD alone read 0.3 to 0.6). The panel host's own per-frame work is 0.17 ms (the view-model build and apply 0.12); the rest is what is now
-    drawn besides (the menu row, the chat column): find it on the canvas side. The frame did not get slower (4.65 to 5.09 ms against 5.0).
+  - [ ] The HUD's share with the panels back inside 0.5 ms on the VPS: about 0.5 now, from 0.9 to 1.0 on main at d625161f (2026-10-17; the panels, then the counsel's tips on the core, had taken it from 0.3 to 0.6). Seventy on/off
+    rounds in CPU time: 0.96 to 1.01 before, 0.42 to 0.57 now; the benchmark's own readout (eight rounds, give or take 0.3 to 0.85) 0.88 to 1.97 before and 0.15 to 0.67 now (median 0.51), too coarse to say which side of 0.5 a
+    share of 0.5 is on. What it cost and what removed it (client/README.md "The HUD's budget", CPU): pulses and flashes redrawn every frame (the NEW glows, the hotbar's empowered edges and cast flashes: 0.15 ms) are layers drawn once and
+    faded; a slot on cooldown changes its seconds and sweep only; the orbs' appended art is re-indexed once per place; the Kill Chain meter no longer applies the belt and the party with it; the panel host answers
+    `panel_open()`, `area_safe()` and the Ascension guidance without scans or a progression; the belt counts the bag in one pass; the counsel's first-thrall check built a whole view-model each time it looked (0.06 ms a
+    frame in this fight), its pump compares only the urgent tips with the card, its poll reads static facts once, its card's line is drawn once. Left: the refresh itself (the view-model and its apply, about 1.5 ms every 50 ms of
+    wall time, so 0.12 ms a frame on the VPS and 0.3 to 0.5 on a PC at 60 to 100 fps: Helix's PC is where it counts) with the minimap's dots and the hotbar's fill in the core as the next step (about 0.25 ms of it), the orbs'
+    ripple (0.06 ms), and about a third of the share that is in no script callback. Open until Helix's PC reads it, or the benchmark's HUD rounds are made to tell 0.45 from 0.55 (more rounds, or the slowest frames left out).
   - [x] The rest of the main thread back inside its 4 ms with value in (3.8 to 4.1 ms on the VPS, 2026-10-16): a timing of every per-frame callback in a Full Party frame found the
     effects' particle ring (today's `DmFxRing`, GDScript) at 1.15 ms a frame, the most after the core; its loop is the core's C++ now (`DmMotes`, float for float the same:
     `client/tests/fx_motes.gd`). A/B four runs each: 5.7 to 5.0 ms a frame, the rest of the main thread 3.7 to 3.1 ms. Next in line by the same timing: Easy auto combat's

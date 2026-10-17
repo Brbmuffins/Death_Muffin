@@ -260,16 +260,25 @@ static func place(c: Control, ax: float, ay: float, ox: float, oy: float, gh: in
 	c.offset_bottom = oy
 
 
-## 1234567 -> "1,234,567" (JS toLocaleString, en-US integers).
+## 1234567 -> "1,234,567" (JS toLocaleString, en-US integers). The same few numbers come up every refresh (health, XP, gold): their text is kept.
+static var _commas := {}
+
 static func commas(n: float) -> String:
 	var v := int(n)
+	var kept: Variant = _commas.get(v)
+	if kept != null:
+		return kept
 	var s := str(absi(v))
 	var out := ""
 	for i in s.length():
 		if i > 0 and (s.length() - i) % 3 == 0:
 			out += ","
 		out += s[i]
-	return ("-" if v < 0 else "") + out
+	out = ("-" if v < 0 else "") + out
+	if _commas.size() >= 512:
+		_commas.clear()
+	_commas[v] = out
+	return out
 
 
 static func html(c: Color) -> String:

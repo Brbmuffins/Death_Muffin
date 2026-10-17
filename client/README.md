@@ -304,7 +304,7 @@ level, area line, banners, toasts, floating numbers, death veil). The adapter he
 
 | piece | where it reads |
 |---|---|
-| view-model refresh | `DmGameUi`'s 50 ms (`ui_host.hud_state()`): ~0.4 ms with a Full Party crowd with the panels' own keys merged, about 0.2 ms per frame at 60 fps (`tests/hud.gd`) |
+| view-model refresh | `DmGameUi`'s 50 ms of wall time (`ui_host.hud_state()`): ~0.4 ms hot with a Full Party crowd and the panels' own keys merged (`tests/hud.gd`), about 0.9 ms in the fight with the caches cold; "The HUD's budget" (CPU) says what that costs a frame |
 | orbs, XP, level, area | the hero body (`hp`, `resource`), the character, `DmContent` |
 | hotbar, cooldowns, cast state | the hero's `DmRiteCaster` (`cooldown_left`, essence, souls); the player's loadout (`DmLoadout`, the Grimoire's) |
 | "no corpse" / "no legion" dimming | one `core.corpses_in_radius` (13 m around the hero) and `core.thrall_count` per refresh |
@@ -364,13 +364,45 @@ Vulkan pipelines; it did not shrink with drawing switched off), so a 55 s run ha
 and icons, 1 borders) and 81 with every piece on and fed (41 text, 13 art). The test fails above 150, so a control left on the wrong layer or a new polygon per thing shows up in CI. Asked about logged copies of today's widgets in the same
 fight the model said about 500 for the game scene's HUD (the hotbar 188, the minimap column 160, the floating numbers 104, the target frame 18) and 630 with every piece on; the benchmark counted 544 to 564 for it in Compatibility. What looks different from today's HUD, piece by piece: native/README.md "Differences from today's game", "The HUD".
 
-*CPU.* `tests/hud.gd` prints the refresh (view-model build and apply) and a frame with the HUD against one without. With 72 enemies and 32 thralls on this VPS and today's
-panel host (2026-10-16): build 0.42 ms (the core's view-model and `DmGameUi`'s own keys) + apply 0.14 ms every 50 ms; a headless frame with the HUD and panels costs about 0.4 ms more than
-without (no drawing: every `_process`, tween and `_draw` callback runs); the benchmark's HUD rounds measure the same share in the Full Party fight.
+*CPU.* The HUD's work on the main thread is of two kinds. **Per frame:** what animates (the orbs' ripple, 15 times a second, the floating numbers, the counsel's card, the cooldown edges and sweeps) and the panel host's clocks
+(counsel, guidance, cues). **Per refresh:** the view-model build and its apply, every 50 ms of **wall** time (`DmGameUi.HUD_INTERVAL_MS`, 20 Hz), so a refresh falls on every 12th frame of the VPS's 4 ms headless frame, every 5th
+of a 10 ms frame (Helix's 99 fps) and every 3rd at 60 fps. It costs about 1.5 ms in the Full Party fight (the caches cold: 0.4 ms hot in `tests/hud.gd`), which is 0.12 ms a frame on the VPS, 0.3 on a 10 ms frame and 0.5 at 60 fps:
+**the VPS's share leaves most of the refresh out**, and Helix's PC pays it in full (the ROADMAP's Helix's PC item measures it there).
+
+What the share was and is, on this VPS in the Full Party fight (2026-10-17, main at d625161f; `--benchmark --bench-room=graves --bench-size=full_party --bench-class=2`, headless, `--fixed-fps 60`, a new character with its tips).
+The benchmark's own HUD readout is eight rounds of half a second (give or take 0.3 to 0.85 on a busy machine), too coarse to tell 0.45 from 0.55: five runs of each build alternated read **0.88 to 1.97 before (median 1.07) and
+0.15 to 0.67 now (median 0.51)**. The same on/off rounds, seventy of them, in CPU time with the slowest 3 % of frames left out (give or take 0.1 to 0.15 each), builds alternated: **0.96 to 1.01 before, 0.42 to 0.57 now** (four
+runs; 0.37 to 0.63 over every run of the last three versions on a machine with a load of 5 to 15). The rest of the main thread in the same fight went from 3.4 to 4.6 ms to 3.0 to 3.2 (5.7 in one busy minute). `tests/hud.gd` hot (three runs each): the
+refresh's build 0.44 to 0.51 ms before, 0.36 to 0.48 now; its apply 0.15 to 0.18, now 0.11 to 0.14; a headless frame with the HUD 0.41 to 0.55 ms over one without, now 0.21 to 0.41.
+
+Where it went, and the rules that keep it there (every `_process`, `_draw` and the refresh's parts timed in a scratch copy of the project, never committed; a call costs two to four times in the game what it costs in a loop,
+because the refresh finds its code and data cold):
+- **An animation that only changes an alpha is a layer drawn once and faded by `modulate`:** the NEW glow's halo (three on a new character), a hotbar slot's empowered pulse and its cast flash redrew 24 and 16 rectangles every
+  frame (0.15 ms of the fight: 80 us for the glows, 65 for the slots' edges); a frame now sets one property for each, and a layer is drawn when it is shown. Same rings, same strength at every instant. The low-health wash
+  processes only while it moves.
+- **A rite on cooldown changes its seconds and its sweep and nothing else** (`DmHudSlot.apply` compares the slot with the last one natively and takes a short path when only `left_ms` differs).
+- **Static art appended to a mesh is moved to its place once per place** (`DmHudMesh.append`): the orbs' gloss and dish were re-indexed by a loop over 1,150 indices at every redraw.
+- **Sections:** `DmHud.apply` hashes each section's keys and applies a section that changed. The Kill Chain meter moves with every refresh while a chain runs, and the belt, omen, party and ward shared its section: they are
+  sections of their own now, so a moving meter applies none of them (and redraws no belt chip).
+- **The panel host asks nothing it can keep:** `panel_open()` (asked by the counsel and by the combat input a dozen times a second) answers from a flag the windows' own visibility changes set; `area_safe()` per area; the
+  Ascension guidance asks the Prelate count before it builds a progression and keeps the Swift Seals share and the parsed trophies until their sources change; the belt's chips count the bag in one pass and only when the bag
+  was replaced, a pick changed or the vows did (it was thirty passes, 0.2 ms of every refresh); the view-model looks the hero's caster, soul state and rite level up once a refresh; `DmHudKit.commas` keeps the text of the
+  numbers it formats.
+- **The counsel (a new character's tips: a card up, ten waiting) costs about 80 us of the frame in this fight, a veteran's with the tips seen about half of that:** the first-thrall card asked `hud_state()` whether a thrall lived, a whole view-model
+  (a millisecond) every time the line was looked at; it asks the host's `thralls_now()` now. The line is looked at five times a second: a card on screen is only compared with the urgent and danger tips waiting (the only
+  ones that can take its place), the clock waits for the earliest timer instead of scanning them every frame, and the poll reads the bosses' summon sites and the doors' rects once. The card's draining line (24 rectangles
+  every frame) is drawn once on a canvas item of its own and squeezed by that item's transform (`DmTipCard.show_timer`).
+- `tests/hud.gd` pins these (no redraw per frame for a pulse or the line, the strength at every instant, the short path against a full apply, the kept indices, the sections, the counsel's timers), `tests/panels.gd` the flag
+  and the guidance, `tests/value.gd` the belt chips against the bag.
+
+What is left by the same timing (us a frame at the VPS's refresh rate): the refresh 100 (its slots 27, minimap dots 17, target frame and party 10, belt 6) and the minimap's draw 22, the orbs 56 (the ripple's mesh at 15 Hz,
+60 to 75 us a build), the counsel 80 of which the card 20, floats 17, the panel host's clocks 25, the pulses 15; and about a third of the A/B share is not in any script callback (text shaping and redraws the refresh
+starts, and the caches its working set empties for the rest of the frame). Next in line: the minimap's dots and the hotbar's fill in the core (`enemy_ids / enemy_positions / enemy_states` already are its arrays: about
+0.25 ms of every refresh, 0.05 ms a frame on a 10 ms frame), and the orbs' ripple.
 
 ## Tips and onboarding
 
-The counsel is today's: `DmCounsel` (the tip queue in `ui/onboarding`: kinds, groups, places, cadence, the card and its glow) is a copy that `DmGameUi` owns, fed through `DmNextUiHost.game_event` and polled every
+The counsel is today's: `DmCounsel` (the tip queue in `ui/onboarding`: kinds, groups, places, cadence, the card and its glow), owned by `DmGameUi`, ported only in how it waits ("The HUD's budget", CPU: the clock waits for its earliest timer, a card on screen is compared with the urgent tips alone, the card's line is drawn once), fed through `DmNextUiHost.game_event` and polled every
 400 ms; `data/onboarding/tips.json` has the 120 tips and `DmCounselEvents` the table from a fact to its tips. What reads creatures is the counsel's host side, `DmNextCounsel` (ported), and the few facts the old
 per-enemy hooks raised. Neither has a node or a call per creature: both are the core host's events and one timer.
 

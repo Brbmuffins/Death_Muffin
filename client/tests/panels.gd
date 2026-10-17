@@ -7,6 +7,8 @@ extends SceneTree
 ##   - the Grimoire's loadout: set_rites puts another rite on key 1 (the game's rite_for_slot follows) and a press on key 1 casts it;
 ##   - Settings: a graphics preset applied live reaches the game (DmNextPerf); damage numbers off keeps the hit numbers away;
 ##   - chat: a solo line says nobody hears;
+##   - the questions the combat input and the counsel ask a dozen times a second: panel_open() follows the windows' own visibility (a flag they set, no scan), the Ascension
+##     guidance asks the Prelate count before it builds a progression (the same answer as the progression's);
 ##   - ZERO script errors or engine errors in the log.
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/panels.gd
 
@@ -91,11 +93,30 @@ func _every_panel() -> void:
 		if not opened or g.ui.is_open(p):
 			closed.append(p)
 	check(closed.is_empty(), "every panel this build warms opens and closes (%d panels; not: %s)" % [g.ui.warm_panels.size(), str(closed)])
+	g.ui.close_panels()
+	await ticks(2)
+	check(not g.ui.panel_open(), "with every window closed, panel_open() says so")
 	g.ui.hud.menu_btns["inventory"].pressed.emit()
 	await ticks(2)
 	check(g.ui.is_open("inventory"), "the menu row's Reliquary button opens the Reliquary")
+	check(g.ui.panel_open(), "and panel_open() follows it")
 	g.ui.close_panels()
 	await ticks(2)
+	check(not g.ui.panel_open(), "and follows it closing")
+	g.ui.toggle_panel("grimoire")
+	await ticks(2)
+	check(g.ui.panel_open(), "a window of the panel files (the Grimoire) counts too")
+	g.ui.close_panels()
+	await ticks(2)
+	check(not g.ui.panel_open(), "and stops counting when it closes")
+	var run: Dictionary = g.ui_host.progress.get("run", {})
+	var kills0: Variant = run.get("prelateKills")
+	for kills in [0, 1, 2]:
+		run["prelateKills"] = kills
+		var full := DmProgression.new(g.character, g.ui_host.progress).ashes_on_ascend()
+		check(g.ui._ashes_on_ascend() == full and g.ui._can_ascend() == (full > 0) and bool(g.ui.guidance_state()["canAscend"]) == (full > 0),
+			"the Ascension guidance agrees with the progression with %d Prelate kills (%d ashes)" % [kills, full])
+	run["prelateKills"] = kills0
 
 
 # ------------------------------------------------------------------------------------------------------------------ the Reliquary

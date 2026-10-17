@@ -34,6 +34,8 @@ var button: Control          ## the 62 px icon holder: the spell card's anchor
 var _icon: TextureRect
 var _art: Control    ## the cooldown sweep (Z_ART)
 var _edge: Control   ## the borders, over the sweep (Z_EDGE)
+var _pulse: Control  ## the empowered pulse: its four rings drawn once at their strongest, over the borders, faded by `modulate.a`
+var _flashfx: Control   ## the cast flash: its four rings drawn once at their strongest, over the pulse, faded by `modulate.a`
 var _sweep := DmHudMesh.new()
 var _cdtext: Label
 var _cost: Label
@@ -83,6 +85,8 @@ func _init() -> void:
 	_edge.z_index = DmHudKit.Z_EDGE
 	_edge.draw.connect(_draw_edge)
 	holder.add_child(_edge)
+	_pulse = _ring_layer(_draw_pulse)
+	_flashfx = _ring_layer(_draw_flash)
 	_cdtext = DmHudKit.lbl("", 17, DmUi.BONE_100, "numeric")
 	_cdtext.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_cdtext.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -145,6 +149,17 @@ func _init() -> void:
 	set_process(false)   # only while empowered or flashing (see _wake)
 
 
+## A full-slot overlay (a child of the borders, so on their layer and drawn after them) that draws its rings once, when it is first shown, and is faded by its alpha.
+func _ring_layer(draw_fn: Callable) -> Control:
+	var c := Control.new()
+	c.set_anchors_preset(Control.PRESET_FULL_RECT)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.visible = false
+	c.draw.connect(draw_fn)
+	_edge.add_child(c)
+	return c
+
+
 ## Slot dictionary -> state. Keys: icon key cost left_ms total_ms affordable empowered locked unlock_level alt rune_icon swap.
 var _kp_alt := -1   # the key panel's style is rebuilt only when alt flips
 var _drawn_pct := -1     # the cooldown percent the sweep was last drawn for
@@ -155,6 +170,16 @@ var _last: Dictionary = {}   ## the slot dict last applied (a copy: the view-mod
 
 func apply(s: Dictionary) -> void:
 	if s == _last:
+		return
+	if _only_cooldown_moved(s):   # a rite on cooldown changes this and nothing else at each refresh: the text and the sweep, not the whole slot
+		_last["left_ms"] = s["left_ms"]
+		left_ms = float(s["left_ms"])
+		_cdtext.text = cd_text(left_ms)
+		_need.text = ("no " + needs) if needs != "" and not locked and left_ms <= 0.0 else ""
+		var moved := cd_pct(left_ms, total_ms)
+		if moved != _drawn_pct:
+			_drawn_pct = moved
+			_art.queue_redraw()
 		return
 	_last = s.duplicate()
 	var new_icon: String = String(s.get("icon", ""))
@@ -209,10 +234,22 @@ func apply(s: Dictionary) -> void:
 		_drawn_pct = pct
 		_art.queue_redraw()
 	var look := (1 if alt else 0) | (2 if empowered else 0)
-	if look != _drawn_look:   # the borders change with the slot's kind only (the pulse and the flash redraw them in _process)
+	if look != _drawn_look:   # the borders change with the slot's kind only (the pulse and the flash are layers of their own)
 		_drawn_look = look
 		_edge.queue_redraw()
 	_wake()
+
+
+var _probe := {}   ## `s` with the old cooldown put in, to be compared with `_last` natively (a loop over its keys in script costs several times as much)
+
+## True when `s` is the slot last applied but for its cooldown left (`left_ms`).
+func _only_cooldown_moved(s: Dictionary) -> bool:
+	if _last.is_empty() or s.size() != _last.size() or not s.has("left_ms") or not _last.has("left_ms"):
+		return false
+	_probe.clear()
+	_probe.merge(s)
+	_probe["left_ms"] = _last["left_ms"]
+	return _probe == _last
 
 
 ## `s.left >= 1000 ? Math.ceil(s.left/1000) : (s.left/1000).toFixed(1)`; empty when ready.
@@ -239,17 +276,30 @@ func flash() -> void:
 ## The pulse and the flash are the only per-frame animations; the cooldown sweep follows the 20 Hz view-model.
 func _wake() -> void:
 	set_process(empowered or _flash > 0.0)
+	_fade()
 
 
 func _process(delta: float) -> void:
 	_t += delta
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta)
-	if empowered or _flash > 0.0:
-		_edge.queue_redraw()
-	else:
+	if not (empowered or _flash > 0.0):
 		set_process(false)
-		_edge.queue_redraw()
+	_fade()
+
+
+## The pulse and the flash at this instant: shown while they last, faded to their strength (the rings are drawn once, at full).
+func _fade() -> void:
+	if empowered:
+		_pulse.visible = true
+		_pulse.modulate = Color(1.0, 1.0, 1.0, (0.5 * (0.5 + 0.5 * cos(_t / 1.4 * TAU)) + 0.12) / 0.62)   # the rings' alpha 0.5 k + 0.12 against their 0.62 at k = 1
+	elif _pulse.visible:
+		_pulse.visible = false
+	if _flash > 0.0:
+		_flashfx.visible = true
+		_flashfx.modulate = Color(1.0, 1.0, 1.0, _flash / 0.35)
+	elif _flashfx.visible:
+		_flashfx.visible = false
 
 
 ## The wedge of the cooldown: conic-gradient(rgba(5,4,8,.82) var(--cd), transparent 0), shaded from 12 o'clock clockwise for pct %. Its edge runs along the
@@ -283,7 +333,7 @@ static func _square_point(a: float, c: Vector2, half: float) -> Vector2:
 	return c + d * (half / maxf(absf(d.x), absf(d.y)))
 
 
-## border + inset 2px #07060a, and the empowered pulse and the cast flash over them.
+## border + inset 2px #07060a. The empowered pulse and the cast flash are the layers over it.
 func _draw_edge() -> void:
 	var r := Rect2(Vector2.ZERO, Vector2(BTN, BTN))
 	var border := Color(DmUi.BONE_300, 0.35)
@@ -294,10 +344,17 @@ func _draw_edge() -> void:
 		border = JADE
 	DmHudKit.outline(_edge, r.grow(-1.0), inset, 2.0)
 	DmHudKit.outline(_edge, r, border, 1.0)
-	if empowered:
-		var k := 0.5 + 0.5 * cos(_t / 1.4 * TAU)
-		for i in 4:
-			DmHudKit.outline(_edge, r.grow(-1.0 - i), Color(JADE, (0.5 * k + 0.12) * (1.0 - i / 4.0) * 0.5), 1.0)
-	if _flash > 0.0:
-		for i in 4:
-			DmHudKit.outline(_edge, r.grow(-1.0 - i), Color(DmUi.SPELL_300, 0.8 * (_flash / 0.35) * (1.0 - i / 4.0)), 1.0)
+
+
+## The pulse's four rings at their strongest (k = 1).
+func _draw_pulse() -> void:
+	var r := Rect2(Vector2.ZERO, Vector2(BTN, BTN))
+	for i in 4:
+		DmHudKit.outline(_pulse, r.grow(-1.0 - i), Color(JADE, 0.62 * (1.0 - i / 4.0) * 0.5), 1.0)
+
+
+## The flash's four rings at their strongest (the flash just began).
+func _draw_flash() -> void:
+	var r := Rect2(Vector2.ZERO, Vector2(BTN, BTN))
+	for i in 4:
+		DmHudKit.outline(_flashfx, r.grow(-1.0 - i), Color(DmUi.SPELL_300, 0.8 * (1.0 - i / 4.0)), 1.0)

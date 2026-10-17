@@ -82,25 +82,53 @@ func set_tip(kicker_title: String, body_markup: String, ms: int = 8000) -> void:
 	_t = 0.0
 	_running = ms > 0
 	set_process(_running)
+	show_timer()
 
 
 func _process(delta: float) -> void:
 	if not _running:
 		return
 	_t += delta * 1000.0
-	_timer_rect.queue_redraw()
+	show_timer()
 	if _t >= show_ms:
 		_running = false
 		dismissed.emit()
 
 
+static var _timer_cols := PackedColorArray()   ## the line's 24 steps, veil to spell: the same colours at every draw
+var _line := RID()      ## the draining line's canvas item, a child of the control's own: drawn when the control gets its size, squeezed by its transform each frame
+var _line_k := 1.0      ## what is left of the time, as the line shows it
+
+
+## The draining line (.timer): drawn once, whole, in 24 steps, on an item of its own; what is left of the time squeezes that item (the steps shrink with it, as they did when every
+## frame drew the line again), so a frame sets one transform where it drew 24 rectangles.
+func show_timer() -> void:
+	_line_k = maxf(clampf(1.0 - _t / maxf(1.0, float(show_ms)), 0.0, 1.0), 0.0001)
+	if _line.is_valid():
+		RenderingServer.canvas_item_set_transform(_line, Transform2D(Vector2(_line_k, 0.0), Vector2(0.0, 1.0), Vector2.ZERO))
+
+
 func _draw_timer() -> void:
-	var k := clampf(1.0 - _t / maxf(1.0, float(show_ms)), 0.0, 1.0)
-	var w := _timer_rect.size.x * k
+	if not _line.is_valid():
+		_line = RenderingServer.canvas_item_create()
+		RenderingServer.canvas_item_set_parent(_line, _timer_rect.get_canvas_item())
+	if _timer_cols.is_empty():
+		_timer_cols.resize(24)
+		for i in 24:
+			_timer_cols[i] = DmUi.VEIL_500.lerp(DmUi.SPELL_300, i / 23.0)
+	RenderingServer.canvas_item_clear(_line)
+	var w := _timer_rect.size.x
+	var y := _timer_rect.size.y - 2.0
 	for i in 24:
 		var x0 := w * i / 24.0
-		var x1 := w * (i + 1) / 24.0
-		_timer_rect.draw_rect(Rect2(x0, _timer_rect.size.y - 2.0, x1 - x0 + 0.5, 2.0), DmUi.VEIL_500.lerp(DmUi.SPELL_300, i / 23.0))
+		RenderingServer.canvas_item_add_rect(_line, Rect2(x0, y, w * (i + 1) / 24.0 - x0 + 0.5, 2.0), _timer_cols[i])
+	show_timer()
+
+
+func _exit_tree() -> void:
+	if _line.is_valid():
+		RenderingServer.free_rid(_line)
+		_line = RID()
 
 
 func _gui_input(event: InputEvent) -> void:

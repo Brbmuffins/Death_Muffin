@@ -308,6 +308,16 @@ func _g_belt() -> void:
 	check(hero.hp > hp0, "the flask heals the hero")
 	var brews: Array = g.ui_host.hud_state()["brews"]
 	check(not brews.is_empty(), "the HUD's belt shows the flask and the brew slots (%d)" % brews.size())
+	var carried := 0
+	for f: String in DmContent.healing_flasks():
+		carried += _count_of(f)
+	check(int(brews[0]["slot"] == "heal" and brews[0]["count"] == carried) == 1, "the flask chip counts what the bag holds (%d, the bag %d)" % [int(brews[0]["count"]), carried])
+	var bag: Array = g.ui_host.inventory.slots
+	g.ui_host.inventory.slots = bag.filter(func(r: Dictionary) -> bool: return not DmContent.healing_flasks().has(String(r["item_id"])))
+	var empty_chip: Dictionary = g.ui_host.hud_state()["brews"][0]
+	check(bool(empty_chip["empty"]) and int(empty_chip["count"]) == 0 and String(empty_chip["item_id"]) == "", "a bag with no flask empties the chip at once (the numbers follow the bag, not a stale copy)")
+	g.ui_host.inventory.slots = bag
+	check(int(g.ui_host.hud_state()["brews"][0]["count"]) == carried, "and putting them back fills it again")
 
 
 # ------------------------------------------------------------------------------------------------------------------ H

@@ -106,25 +106,39 @@ func tick_ctx() -> Dictionary:
 	}
 
 
+## Where each boss's summon object stands in an area (static content, made once per area): [[boss id, Vector2], ...] in the order the poll walks them.
+var _boss_sites := {}
+var _gate_rects: Array = []   ## the doors, as [id, x0, z0, x1, z1] (static content, made once)
+
+
 func _boss_near(bp: Vector2) -> Array:
+	var area: String = host.shell.area_id
+	var sites: Variant = _boss_sites.get(area)
+	if sites == null:
+		sites = []
+		for id in BOSS_IDS:
+			var def: Dictionary = DmContent.boss(id)
+			if area != String(def["area"]):
+				continue
+			for it in DmContent.area(String(def["area"]))["interactables"]:
+				if it["id"] == def["summonId"]:
+					sites.append([id, Vector2(float(it["x"]), float(it["z"]))])
+		_boss_sites[area] = sites
 	var out: Array = []
-	for id in BOSS_IDS:
-		var def: Dictionary = DmContent.boss(id)
-		if host.shell.area_id != String(def["area"]):
-			continue
-		for it in DmContent.area(String(def["area"]))["interactables"]:
-			if it["id"] == def["summonId"] and Vector2(float(it["x"]), float(it["z"])).distance_to(bp) < 12.0:
-				out.append(id)
+	for site in sites:
+		if (site[1] as Vector2).distance_to(bp) < 12.0:
+			out.append(site[0])
 	return out
 
 
 func _gate_near(bp: Vector2) -> bool:
+	if _gate_rects.is_empty():
+		for d in DmContent.doors():
+			var r: Dictionary = d["rect"]
+			_gate_rects.append([String(d["id"]), float(r["x0"]), float(r["z0"]), float(r["x1"]), float(r["z1"])])
 	var ch := host.shell.chapterhouse
-	for d in DmContent.doors():
-		if ch != null and ch.door_open(String(d["id"])):
-			continue
-		var r: Dictionary = d["rect"]
-		if Vector2(maxf(maxf(float(r["x0"]) - bp.x, 0.0), bp.x - float(r["x1"])), maxf(maxf(float(r["z0"]) - bp.y, 0.0), bp.y - float(r["z1"]))).length() < 6.0:
+	for g in _gate_rects:
+		if Vector2(maxf(maxf(g[1] - bp.x, 0.0), bp.x - g[3]), maxf(maxf(g[2] - bp.y, 0.0), bp.y - g[4])).length() < 6.0 and not (ch != null and ch.door_open(g[0])):
 			return true
 	return false
 

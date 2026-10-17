@@ -229,8 +229,15 @@ func toast(text: String, kind: String = "") -> void:
 	hud.toast(text, kind)
 
 
+var _safe_area := "\u0001"   ## the area `_safe` was read for
+var _safe := false
+
 func area_safe() -> bool:
-	return bool(DmContent.area(String(game.area_id)).get("safe", false))
+	var id := String(game.area_id)
+	if id != _safe_area:   # (asked several times a second; an area's definition never changes)
+		_safe_area = id
+		_safe = bool(DmContent.area(id).get("safe", false))
+	return _safe
 
 
 func near_grinder() -> bool:
@@ -278,7 +285,7 @@ func _build_counsel() -> void:
 		var i := rites.keys.find(ability)
 		return str(i + 1) if i >= 0 else ""
 	counsel.stale = func(id: String) -> bool:
-		return id == "thrall" and int(game.hud_state().get("thralls", 0)) <= 0
+		return id == "thrall" and _thralls_now() <= 0
 	counsel.tips_disabled.connect(func() -> void: update_setting({"no_tips": true}))
 	counsel.card_shown.connect(func(_id: String, _k: String, _t: String, _b: String, _ms: int) -> void: sound.emit("counselCard"))
 	counsel_view = DmCounselView.new()
@@ -288,6 +295,14 @@ func _build_counsel() -> void:
 	add_child(counsel_view)
 	counsel_view.setup(counsel, hud, store)
 	_restore_no_tips()
+
+
+## How many thralls the hero has now, for the "first thrall" card's staleness (asked every second while that card waits): the host answers without building the view-model, which
+## `hud_state()` does (a whole 20 Hz refresh, about a millisecond).
+func _thralls_now() -> int:
+	if game.has_method("thralls_now"):
+		return int(game.thralls_now())
+	return int(game.hud_state().get("thralls", 0))
 
 
 ## "Don't show tips" follows the account: the saved account value wins over this device's copy (pushed up when the account has none and tips are off here).
@@ -437,23 +452,48 @@ func guidance_state() -> Dictionary:
 				dust += int(s["quantity"])
 	var unlocked: Array = loc.get("unlocked", []).duplicate()
 	var run: Dictionary = loc.get("run", {})
-	var boons := DmAscension.boon_effects(loc.get("boons", {}))
+	var ashes := _ashes_on_ascend()
 	return {"level": int(game.character.get("level", 1)), "area": String(game.area_id), "ascension": int(loc.get("ascension", 0)),
-		"canAscend": _can_ascend(), "ashesOnAscend": _ashes_on_ascend(), "shards": int(loc.get("shards", 0)), "unlocked": unlocked,
-		"areaKills": loc.get("areaKills", {}), "unlockMult": float(boons.get("unlockKillsMult", 1.0)),
-		"bossesBeaten": DmGuidance.parse_trophies(store.get_item(DmGuidance.boss_trophy_key(float(game.character["id"])))),
+		"canAscend": ashes > 0, "ashesOnAscend": ashes, "shards": int(loc.get("shards", 0)), "unlocked": unlocked,
+		"areaKills": loc.get("areaKills", {}), "unlockMult": _unlock_mult(loc.get("boons", {})),
+		"bossesBeaten": _trophies(store.get_item(DmGuidance.boss_trophy_key(float(game.character["id"])))),
 		"prelateThisRun": int(run.get("prelateKills", 0)) > 0, "totalKills": int(loc.get("totalKills", 0)), "skills": skills.duplicate(),
 		"bagUsed": bag, "bagSize": 48, "dust": dust, "labor": labor_summary, "contracts": contract_summary}
 
 
 func _can_ascend() -> bool:
-	var p := DmProgression.new(game.character, game.progress)
-	return p.can_ascend()
+	return _ashes_on_ascend() > 0
 
 
+## Ashes an Ascension would pay now. A run that has not slain the Prelate yet pays none, which the run's own count says without building a progression
+## (a copy of the whole save, twice a second).
 func _ashes_on_ascend() -> int:
-	var p := DmProgression.new(game.character, game.progress)
-	return p.ashes_on_ascend()
+	var run: Variant = game.progress.get("run")
+	if run is Dictionary and (run as Dictionary).has("prelateKills") and typeof(run["prelateKills"]) in [TYPE_INT, TYPE_FLOAT] \
+			and float(run["prelateKills"]) < float(DmProgContent.ascension()["prelateKillsRequired"]):
+		return 0
+	return DmProgression.new(game.character, game.progress).ashes_on_ascend()
+
+
+var _boons_seen: Variant = null     ## the boon ranks `_boons_unlock` was worked out for (a copy)
+var _boons_unlock := 1.0
+var _trophy_raw: Variant = null      ## the stored trophy list `_trophy_list` was parsed from
+var _trophy_list: Array = []
+
+## The Swift Seals share of the boons, worked out again only when the ranks change.
+func _unlock_mult(boons: Variant) -> float:
+	if _boons_seen == null or boons != _boons_seen:
+		_boons_seen = (boons as Dictionary).duplicate() if boons is Dictionary else boons
+		_boons_unlock = float(DmAscension.boon_effects(boons).get("unlockKillsMult", 1.0))
+	return _boons_unlock
+
+
+## The bosses beaten, parsed again only when the stored text changes. A fresh copy each time: the state is compared and kept by the guidance line.
+func _trophies(raw: Variant) -> Array:
+	if _trophy_raw == null or raw != _trophy_raw:
+		_trophy_raw = raw
+		_trophy_list = DmGuidance.parse_trophies(raw)
+	return _trophy_list.duplicate()
 
 
 func _tick_guidance(dt: float) -> void:
@@ -756,13 +796,43 @@ func window_for(p: String) -> DmWindow:
 	return windows.get(p)
 
 
+## Whether any window or the dialogue is open: asked by the counsel and by every hand-off of the combat input (a dozen times a second), answered from a flag that the windows'
+## own visibility changes set, so a question touches no window. `windows` is also filled by the panel files: a size that moved wires the new ones.
+var _panels_dirty := true
+var _panels_open := false
+var _panels_wired := -1
+var _dialogue_wired := false
+
 func panel_open() -> bool:
-	for k in windows:
-		if (windows[k] as Control).visible:
-			return true
-	for w in [pa.acre_win, pa.char_win, pa.grim_win]:
+	if windows.size() != _panels_wired or (dialogue != null and not _dialogue_wired):
+		_wire_panels()
+	if _panels_dirty:
+		_panels_dirty = false
+		_panels_open = _scan_panels()
+	return _panels_open
+
+
+func _mark_panels() -> void:
+	_panels_dirty = true
+
+
+func _wire_panels() -> void:
+	_panels_wired = windows.size()
+	_dialogue_wired = dialogue != null
+	var all: Array = windows.values()
+	all.append_array([pa.acre_win, pa.char_win, pa.grim_win, dialogue])
+	for w: Variant in all:
+		if w != null and not (w as Control).visibility_changed.is_connected(_mark_panels):
+			(w as Control).visibility_changed.connect(_mark_panels)
+	_panels_dirty = true
+
+
+func _scan_panels() -> bool:
+	for w: Control in windows.values():
 		if w.visible:
 			return true
+	if pa.acre_win.visible or pa.char_win.visible or pa.grim_win.visible:
+		return true
 	return dialogue != null and dialogue.visible
 
 
