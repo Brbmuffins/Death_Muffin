@@ -76,10 +76,12 @@ func nodes() -> int:
 	return int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 
 
-## The nodes outside the effects: the Vfx autoload's pools and its Binbun effects come and go with the fighting (a burst, a cloud), not with the crowd.
+## The nodes outside the effects and the UI: the Vfx autoload's pools and its Binbun effects come and go with the fighting (a burst, a cloud), the UI's
+## with time (a tip card shown at the first ghoul and dismissed by a wall-clock timer, a toast); neither follows the crowd.
 func scene_nodes() -> int:
 	var vfx := root.get_node_or_null("Vfx")
-	return nodes() - (_subtree(vfx) if vfx != null else 0)
+	var ui: Variant = g.get("ui") if g != null else null
+	return nodes() - (_subtree(vfx) if vfx != null else 0) - (_subtree(ui) if ui is Node and is_instance_valid(ui) else 0)
 
 
 func _subtree(n: Node) -> int:
@@ -411,7 +413,7 @@ func killing() -> void:
 func no_nodes_per_creature() -> void:
 	g.director.enabled = false
 	await ticks(90)
-	var n0 := nodes()
+	var n0 := scene_nodes()
 	var b0 := host.enemy_total()
 	var ids: Array = []
 	for round in 2:
@@ -419,8 +421,8 @@ func no_nodes_per_creature() -> void:
 			var p := Vector3(-22.0 + float((i * 7) % 44), 0.0, -33.0 + float(i % 5) * 1.6 + float(round) * 1.0)
 			ids.append(host.spawn_enemy("robber", p, 1, 1.0, 1.0, false, "graves", false))
 		await ticks(20)
-		var n := nodes()
-		check(absi(n - n0) <= 3, "%d bodies more in the core: the scene tree holds %d nodes, was %d" % [host.enemy_total() - b0, n, n0])
+		var n := scene_nodes()
+		check(absi(n - n0) <= 3, "%d bodies more in the core: the scene tree holds %d nodes outside the effects and the UI, was %d" % [host.enemy_total() - b0, n, n0])
 	check(host.enemy_total() - b0 == 70, "the core holds the 70 (%d)" % (host.enemy_total() - b0))
 	check(get_nodes_in_group("dm_enemy").is_empty(), "no node is in an enemy group")
 	var named := 0
@@ -439,8 +441,8 @@ func no_nodes_per_creature() -> void:
 		hi = maxi(hi, int(s[1]))
 		all_lo = mini(all_lo, int(s[2]))
 		all_hi = maxi(all_hi, int(s[2]))
-	print("INFO nodes over the run, outside the effects: %d to %d (with the effects %d to %d; enemies alive %d at most); the scene tree has %d nodes" % [lo, hi, all_lo, all_hi, max_alive, nodes()])
-	check(hi - lo <= 15, "the nodes outside the effects vary by %d over the run, the crowd up to %d bodies (a ghoul's dirt mound is a node: a few at most; the effects' own nodes, %d to %d here, come and go with the fighting)" % [hi - lo, max_alive, all_lo, all_hi])
+	print("INFO nodes over the run, outside the effects and the UI: %d to %d (with the effects %d to %d; enemies alive %d at most); the scene tree has %d nodes" % [lo, hi, all_lo, all_hi, max_alive, nodes()])
+	check(hi - lo <= 15, "the nodes outside the effects and the UI vary by %d over the run, the crowd up to %d bodies (a ghoul's dirt mound is a node: a few at most; the effects' own nodes, %d to %d here, come and go with the fighting)" % [hi - lo, max_alive, all_lo, all_hi])
 	var http := root.find_children("*", "HTTPRequest", true, false)
 	check(http.is_empty(), "no HTTP request node exists")
 	g.director.enabled = true
