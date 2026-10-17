@@ -29,7 +29,7 @@ const COLUMNS := {
 	"nometal_bare": {"at": Vector2(3.3, 4.4), "crowd": true, "bare": true, "nometal": true, "row": "bare"},
 	"debug_fres": {"at": Vector2(9.9, 4.4), "crowd": true, "debug": "fres", "row": "debug"},
 }
-## The cast of one column. `o`: whose thrall ("A": this player's, Gravecaller legion; "B": another player's, no legion).
+## The cast of one column. `o`: whose thrall ("A": this player's, "B": another player's; neither has a legion, as in today's game).
 const CAST := [
 	{"k": "warrior", "o": "A"}, {"k": "shieldbearer", "o": "A"}, {"k": "wraith", "o": "A"},
 	{"k": "bonemage", "o": "B"}, {"k": "hound", "o": "B", "champion": true}, {"k": "plaguebearer", "o": "B"}, {"k": "colossus", "o": "B"},
@@ -173,7 +173,7 @@ func _column(world: Node3D, at: Vector2, godot_dir: String, enemies: Dictionary)
 	for o: String in ["A", "B"]:
 		var id: int = core.add_external(0, 0.4, 1.0)
 		core.set_external(id, HERO[o], true)
-		view.set_owner_legion(id, "gravecaller" if o == "A" else "")
+		view.set_owner_legion(id, "")   # no legion, as the game gives none (today's game never shows one: DmCoreHost.register_hero)
 		view.set_owner_ally(id, o == "B")
 		owners[o] = id
 	var ids := []
@@ -231,7 +231,7 @@ func _today(c: Dictionary, bare: bool) -> DmCreature:
 	var look: Variant = LOOK.get(kind)
 	var legion: Variant = null
 	if look == null:
-		legion = LEGION.get("mourner" if wraith else ("gravecaller" if c.o == "A" else ""))
+		legion = LEGION.get("mourner" if wraith else "")   # today's _legion_of: no host has discipline_id_for
 	var slug: String = String(legion.slug) if legion != null else String(SLUG.get(kind, "skeleton_thrall"))
 	var glow_base: float = 1.1 if wraith else (float(look.glow) if look != null else (float(legion.get("glow", 0.18)) if legion != null else 0.18)) + (0.22 if c.get("empowered", false) else 0.0)
 	var spirit := int(DmFxData.data()["spell_fx"]["exhume"]["spirit"])
