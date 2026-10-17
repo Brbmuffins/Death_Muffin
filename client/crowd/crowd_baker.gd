@@ -21,6 +21,14 @@ const FPS_STEPS := [4.0, 6.0, 8.0, 12.0, 16.0, 20.0, 24.0, 30.0, 40.0, 50.0, 60.
 const MAX_WIDTH := 2048
 ## Crowd models at most this many triangles (ROADMAP "Performance rules").
 const MAX_TRIANGLES := 5000
+## Models allowed more, with why: the Bone Colossus is one large body (a thrall of the legion's, a few at most) whose 5,663 triangles Godot's simplified level
+## halves into a shapeless lump (Helix, 2026-10-17: "the model for the colossus is extremely bad"); its own levels of detail still serve it at a distance.
+const MAX_TRIANGLES_OF := {"bone_colossus": 6000}
+
+
+## The triangle budget of model `slug`'s level 0.
+static func max_triangles_of(slug: String) -> int:
+	return int(MAX_TRIANGLES_OF.get(slug, MAX_TRIANGLES))
 const PROP_CALIBRATE_S := 0.25 + 4.0 / 60.0   ## DmCreature: props calibrate once the body has stood 0.25 s, 4 frames later
 const LOOPS := ["idle", "walk", "run", "channel"]
 const STRIKES := ["attack", "cast", "slam", "sweep", "flick", "summon", "chop"]
@@ -646,7 +654,7 @@ static func _write(m: Dictionary, out_dir: String, opts: Dictionary, assets_dir:
 	ids_f.resize(vc * 2)
 	for i in vc:
 		ids_f[i * 2] = float(ids[i])
-	var levels := _levels(arrays, int(opts.get("max_triangles", MAX_TRIANGLES)))
+	var levels := _levels(arrays, int(opts.get("max_triangles", max_triangles_of(slug))))
 	var made := _make_meshes(levels, rest_p, rest_n, uvs, ids_f, aabb)
 
 	# Write: textures and meshes as binary resources, the clip table and the links as one small text resource.

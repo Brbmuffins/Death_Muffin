@@ -64,8 +64,8 @@ func _test_model(slug: String) -> void:
 		slug, r.source_triangles, str(r.triangles), r.vertices, r.anim_vertices, r.frames, data.clip_names.size(), str(r.texture),
 		float(r.pos_bytes + r.nrm_bytes) / 1048576.0, r.seconds])
 
-	# Budgets (ROADMAP "Performance rules"): crowd models at most 5,000 triangles and 1024-pixel textures.
-	check(data.lod_triangles.size() >= 1 and data.lod_triangles[0] <= Baker.MAX_TRIANGLES and not r.over_budget, "%s: level 0 within %d triangles" % [slug, Baker.MAX_TRIANGLES])
+	# Budgets (ROADMAP "Performance rules"): crowd models at most 5,000 triangles (Baker.MAX_TRIANGLES_OF: the Bone Colossus 6,000) and 1024-pixel textures.
+	check(data.lod_triangles.size() >= 1 and data.lod_triangles[0] <= Baker.max_triangles_of(slug) and not r.over_budget, "%s: level 0 within %d triangles" % [slug, Baker.max_triangles_of(slug)])
 	for l in range(1, data.lod_triangles.size()):
 		check(data.lod_triangles[l] < data.lod_triangles[l - 1], "%s: levels of detail shrink" % slug)
 	check(data.meshes.size() == data.lod_triangles.size(), "%s: one mesh per level" % slug)
@@ -543,7 +543,7 @@ func _test_unrigged(slug: String) -> void:
 	var period := TAU / float(w.speed)
 	check(data.clip_table[0].y == float(Baker.FLAP_FRAMES) and data.clip_table[0].w == 1.0 and absf(data.clip_seconds[0] - period) < 1e-5,
 		"%s: %d frames over one beat (%.3f s), looping" % [slug, Baker.FLAP_FRAMES, period])
-	check(data.lod_triangles[0] <= Baker.MAX_TRIANGLES and not r.over_budget, "%s: level 0 within %d triangles" % [slug, Baker.MAX_TRIANGLES])
+	check(data.lod_triangles[0] <= Baker.max_triangles_of(slug) and not r.over_budget, "%s: level 0 within %d triangles" % [slug, Baker.max_triangles_of(slug)])
 	var albedo := Image.load_from_file(_assets.path_join(data.albedo_path))
 	check(albedo != null and maxi(albedo.get_width(), albedo.get_height()) <= 1024, "%s: albedo found and at most 1024 px" % slug)
 	var m: Dictionary = Baker.load_model(root, slug, _assets, _rows)

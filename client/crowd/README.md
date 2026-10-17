@@ -47,7 +47,7 @@ lists it): the baker poses its clips and does not add the beat, so it hovers wit
 - **Layout:** one texel per animation id and frame; a frame is `tex_rows` rows of `tex_width` texels (at most 2048 wide, 4096 tall: phones). Vertices that move
   alike (same place, bones, weights and normal: UV seams only) share one id, so the robber's 5,635 vertices are 2,179 columns.
 - **Mesh:** rest pose in creature space, UVs for the albedo, the animation id in `CUSTOM0.x` (float), `custom_aabb` = bounds of every baked pose. One mesh per level
-  of detail; all levels share the vertex array, so one pair of textures serves them all. A model over 5,000 triangles takes Godot's own simplified level
+  of detail; all levels share the vertex array, so one pair of textures serves them all. A model over its budget (5,000 triangles; the Bone Colossus 6,000, `CrowdBaker.MAX_TRIANGLES_OF`: Godot's simplified level made it a lump) takes Godot's own simplified level
   (`ImporterMesh.generate_lods`) as level 0, and is reported when none is small enough.
 - **Frames:** each clip gets the fewest frames per second (4 to 60, at most 128 frames) whose linear interpolation stays within 25 mm of the true pose
   (measured half-way between frames; the baker prints it). A strike is baked up to the follow-through of its latest impact (`DmAnimator.strike_timing`), a hurt up to the
