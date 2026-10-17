@@ -720,7 +720,7 @@ Twelve areas are converted: the Hollow Graves (`graves`), the three hubs (`chapt
 
 ```
 bash tools/rebuild/build-areas.sh [area id ...]                     # sync assets, import, convert; default graves
-godot --headless --path client --script res://tests/areas.gd         # every converted scene equals what world_builder.gd makes from world.json (about 10 s); prints the props' draw calls
+godot --headless --path client --script res://tests/areas.gd         # every converted scene equals what world_builder.gd makes from world.json (about 10 s)
 ```
 
 `client/tools/build_area.gd` is the one converter for every area (`--lenient` skips models not synced yet, for a smoke run; the Depths' floors are
@@ -734,35 +734,15 @@ generated at runtime and are not converted: "The Depths"). Output is determinist
   (region and links off) and each `Doors/<id>/gate/bars` rises when it opens, which the runtime does as `set_door_open` does (region and links on,
   `gate/body/collider` off); the doors world.json lists as `open` start open (bars up and hidden, collider off, region and links on), and
   `chapter_graves`, the one hall `world_builder` builds without a gate, has none.
-- `client/areas/props/<model>.tscn`: one prefab per gathering-node model and per prop model that stands alone in some cell: the glTF instanced with the height
-  normalisation of `DmModels.analyze`. Props up to 1.5 m (the height `world_builder` stops casting shadows at) also get a 70 m visibility range.
-- Static batching, `Props`: a model that stands twice or more in one 12 m cell (`floor(x / 12), floor(z / 12)`, as `world_builder`'s `PROP_CELL`) and size class is merged
-  with the cell's other repeated models into one mesh, `Props/cell_<x>_<z>_<small|tall>`, a MeshInstance3D at the cell's centre (`client/areas/batches/<id>/cell_<x>_<z>_<small|tall>.res`;
-  its `props` metadata lists the labels merged). Its vertices are every prop's mesh under the prop's placement (position, yaw, tilt, scale) and the prefab's normalisation, with one
-  surface for each material, so a cell costs one draw call for each model it repeats and a prop that stands alone stays an instance of its prefab (one draw call
-  either way; merging it would only copy its triangles). The two size classes are two meshes because a mesh has one shadow setting and one visibility range: tall
-  props (over 1.5 m) cast the moon's shadow, small ones have none and the 70 m range plus 10 m (the cell's centre lies up to 8.5 m from a prop in it). Collision, navigation,
-  occluders, lights and the gathering nodes are made from `world.json` and do not move; nothing in the game touches a prop's mesh. The material of each model is a file shared by
-  every cell mesh of every area, `client/areas/props/materials/<model>.tres`, a copy of the glTF's own (a scene cannot reference a material inside an imported glb).
-  Lightmap UV2: each prop keeps the lightmap rect the importer unwrapped for its mesh (`mesh.lightmap_size_hint` texels; the bake gives an instance exactly that, whatever its scale),
-  and the converter packs these rects side by side, 2 texels apart, into the cell mesh's own UV2 and `lightmap_size_hint`, so the bake lights every prop at the density it had
-  as an instance. The packing is integer arithmetic over the committed `.unwrap_cache` UV2, so every machine makes the same files.
-  Mesh LODs: level i of a merged surface is every prop's level i (the importer's own simplified triangles of that prop, its index array moved to where the prop's vertices start;
-  the base level, vertices and UV2 are untouched, so the bake layout does not depend on them). Godot picks a level from the mesh's distance and scale by comparing the level's
-  `edge_length`, so each level gets the largest `edge_length` of the props' scaled by their own scale: no prop leaves a level for the next sooner than it would as an instance.
-  The distance is the cell mesh's, not the prop's, so a cell changes level all at once; a model whose glTF has no LODs (candles, dead trees, statues, mausoleums, ...) has none in the cell
-  mesh either (76 of the 104 surfaces carry LODs, 98 levels). Over the twelve areas the props draw 903,206 triangles at the finest level and 477,541 at the coarsest (the cell meshes
-  397,162 and 216,975; `areas.gd` prints each area's), the same as without merging. Cost: the 273 merged props' triangles are
-  copied into the cell meshes (649,000 vertices, 27 MB of `.res` files, 0.9 MB of it the LODs; lone props still share their model's mesh), and loading all twelve scenes takes
-  about 0.05 to 0.15 s longer (760 to 850 ms against 710 ms; VPS, dummy renderer, nothing cached, noisy). `BATCH_MIN` in the converter is the dial: 3 would leave 441 draw calls
-  instead of 372 for 11 MB instead of 27.
+- `client/areas/props/<model>.tscn`: one prefab per prop or gathering-node model: the glTF instanced with the height normalisation of `DmModels.analyze`.
+  Props up to 1.5 m (the height `world_builder` stops casting shadows at) also get a 70 m visibility range.
 - `client/areas/common/ring.png`, `glow.png`: the two decal textures the live game paints at start-up.
 - `Lightmap`: the area's `LightmapGI`. Walls, gate stone and floors carry UV2, prop meshes get UV2 on import, everything solid is `gi_mode` static
   and the prop lights are `BAKE_STATIC` (positions, colours and ranges as today), so the bake takes their direct and bounced light; the area's
   ambient (`DmWorldBuilder.set_area`'s colour, same constants) is baked in too, since a lightmapped surface ignores the environment's. When
-  `client/areas/<id>.lmbake` exists (a bake from `client/addons/dm_bake/README.md`) the converter points the node at it; an area
-  without one has a `LightmapGI` with no data, and `tests/areas.gd` lists it as pending. All twelve are baked (Helix's RTX 4070 SUPER, 2026-10-17, with the merged props); a change to an
-  area's meshes makes its bake stale, and that README says how to bake again. Occluders: tall walls (3 m, 4 m long) and large solid
+  `client/areas/<id>.lmbake` exists (a bake from `client/addons/dm_bake/README.md`; all twelve are baked, on Helix's RTX 4070 SUPER) the converter points the node at it; an area
+  without one has a `LightmapGI` with no data. The props stay instances of their prefab scenes: Forward+ and Mobile draw identical meshes instanced,
+  so merging them would add draw calls (ROADMAP "Static batching"). Occluders: tall walls (3 m, 4 m long) and large solid
   box props (the mausoleums), shrunk so they never hide what is visible past them.
 
 `client/tests/areas.gd` checks every converted area, one scene at a time (instantiate, check, free), and prints `PASS areas (N checks)` or a `FAIL areas: <id>: ...`
@@ -770,10 +750,7 @@ line per failed check. Each expected number is computed from `world.json` the wa
 hummock ring mesh), never read from a scene:
 
 - the ground and every path and door floor (theme texture, tint, roughness, glow; UVs anchored to the world; lightmap UV2), walls (position, size, the
-  texture and tint `world_builder` shares per texture), props (the standing ones as instances of `DmModels.prop_parts`' meshes where `world_builder` puts them, shadow and
-  visibility range; the merged ones: which cell mesh holds each, and in it every vertex, normal, tangent, UV and index against the prop's mesh under its placement, one surface and
-  one shared material file for each material, each prop's lightmap rect (whole texels inside the mesh's lightmap, apart from the others) and density, and every mesh LOD level
-  against the props' own), gathering
+  texture and tint `world_builder` shares per texture), props (the same meshes where `DmModels.prop_parts` puts them, shadow and visibility range), gathering
   nodes (models, an ore's three crystals, the herb, pool and tree stand-ins), decals, puddles, water, bog and ponds, the Wing's rugs and stains, the Fen's hummocks
   and rims, prop lights with their flames and the floor-pool mesh (the Nave's dimmer, smaller pools), colliders, occluders, the two decal textures pixel for pixel;
 - doors: each door touching the area (and no other) with its corridor floor, and each gate's posts, lintel, bars, rails, seal and body, closed or open;
@@ -781,23 +758,15 @@ hummock ring mesh), never read from a scene:
   the regions and links are enabled exactly when the door is `open`; paths cross the area, join its door mouths and bend round box props; a sealed gate blocks the
   way to its corridor's far end and, once its region and links are enabled, the corridor is walkable to it;
 - the lighting bake: the `LightmapGI` bakes the area's ambient and points at `<id>.lmbake` when one exists, and a bake is stale (the test fails) when a mesh it
-  recorded is no longer at its path in the scene; an area without one is listed as pending;
-- the props' draw calls (INFO lines, and the test fails if merging ever adds one): per area and over all twelve, the surfaces drawn in the main pass, the moon-shadow casters
-  among them and the mesh instances, for every prop as an instance of its own mesh (worked out from `world.json`) against what the scene holds, and the average number of
-  surfaces whose bounds meet the default camera's ground footprint (48 m wide, 18 m ahead of the hero and 7 m behind, over hero places 4 m apart). Over the twelve areas:
-  541 draw calls become 372 (the Graves 130 to 64), 311 shadow casters 206 and 541 mesh instances 355; in view 21.0 becomes 15.6 on average. Walls, decals, puddles and flame
-  spheres are not props and still cost one draw call each (the Graves: 14, 23 and 18). The props' triangles at the finest and the coarsest mesh LOD are printed too and must equal
-  what the unmerged props draw;
-- no leftovers: `areas/props` holds the prefabs some scene instances and nothing else, `areas/props/materials` the materials some cell mesh uses, `areas/batches` a folder
-  for each area that merges props with one file for each cell mesh;
+  recorded is no longer at its path in the scene;
 - the whole: one scene per converted area, and every path, wall, prop, node, decal, puddle, water rect, hummock, wing-floor quad and door of `world.json` is in
   exactly the scenes it belongs to.
 
 A headless Godot (the dummy renderer) keeps no `MultiMesh` instance transforms set one by one, so the converter writes the gate bars' and hummocks' `buffer`
 directly and the test reads them from the scene file. Every mesh that is static for the bake carries a lightmap UV2 (the test checks each), or the bake stops on it.
 
-Not the same as today's runtime, on purpose: a prop that stands alone in its cell is an instance of a prefab and the repeated ones are merged into a cell mesh (not one
-MultiMesh per kind and cell; a MultiMesh cannot take lightmaps); each floor is one quad (not 12 m tiles, which only limited per-object lights on Compatibility); there is no per-area light switching
+Not the same as today's runtime, on purpose: props are single instances of a prefab (not one MultiMesh per 12 m cell; MultiMesh cannot take
+lightmaps); each floor is one quad (not 12 m tiles, which only limited per-object lights on Compatibility); there is no per-area light switching
 (the lights stay on; the bake takes over) and no see-through cutout shader yet (`apply_occlusion`). Not in an area scene (a later world scene
 owns them): the dark ground beyond the walls, the environment, fog, moon and rim lights; the people (`npcs`) are the Chapterhouse node's (`DmHubNpcs`). A door
 between two areas is in both scenes with the same id and place (nodes carry `door_id`); `DmNextWorld` keeps the first copy it loads.

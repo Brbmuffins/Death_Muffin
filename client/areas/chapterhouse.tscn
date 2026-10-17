@@ -12,14 +12,9 @@
 [ext_resource type="PackedScene" path="res://areas/props/brazier.tscn" id="10_912ce"]
 [ext_resource type="PackedScene" path="res://areas/props/candles.tscn" id="11_6d13f"]
 [ext_resource type="PackedScene" path="res://areas/props/bone_pile.tscn" id="12_35804"]
-[ext_resource type="ArrayMesh" path="res://areas/batches/chapterhouse/cell_-1_1_small.res" id="13_95227"]
-[ext_resource type="ArrayMesh" path="res://areas/batches/chapterhouse/cell_-1_1_tall.res" id="14_604c3"]
-[ext_resource type="ArrayMesh" path="res://areas/batches/chapterhouse/cell_-1_2_small.res" id="15_54f75"]
-[ext_resource type="ArrayMesh" path="res://areas/batches/chapterhouse/cell_0_1_small.res" id="16_13d21"]
-[ext_resource type="ArrayMesh" path="res://areas/batches/chapterhouse/cell_0_1_tall.res" id="17_4ab11"]
-[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="18_bdf92"]
-[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="19_16348"]
-[ext_resource type="LightmapGIData" path="res://areas/chapterhouse.lmbake" id="20_9b8a1"]
+[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="13_bdf92"]
+[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="14_16348"]
+[ext_resource type="LightmapGIData" path="res://areas/chapterhouse.lmbake" id="15_9b8a1"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
@@ -118,7 +113,7 @@ size = Vector3(7, 1.3, 0.3)
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.60784316, 0.36078432, 1, 0.7)
-albedo_texture = ExtResource("18_bdf92")
+albedo_texture = ExtResource("13_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_a24bb"]
@@ -204,7 +199,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 albedo_color = Color(0.61, 0.36, 1, 0.9)
-albedo_texture = ExtResource("18_bdf92")
+albedo_texture = ExtResource("13_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_fb593"]
@@ -282,7 +277,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 vertex_color_use_as_albedo = true
-albedo_texture = ExtResource("19_16348")
+albedo_texture = ExtResource("14_16348")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_00763"]
 _surfaces = [{
@@ -466,8 +461,32 @@ mesh = SubResource("BoxMesh_4009d")
 
 [node name="Props" type="Node3D" parent="." unique_id=12387782]
 
+[node name="pillar_000" parent="Props" unique_id=204007613 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 12)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_001" parent="Props" unique_id=24073083 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 17.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_002" parent="Props" unique_id=259490419 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 23)
+metadata/prop_kind = "pillar"
+
 [node name="pillar_003" parent="Props" unique_id=254081164 instance=ExtResource("3_be89b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 28.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_004" parent="Props" unique_id=122271279 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 12)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_005" parent="Props" unique_id=172209433 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 17.5)
+metadata/prop_kind = "pillar"
+
+[node name="pillar_006" parent="Props" unique_id=207974451 instance=ExtResource("3_be89b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 23)
 metadata/prop_kind = "pillar"
 
 [node name="pillar_007" parent="Props" unique_id=116512430 instance=ExtResource("3_be89b")]
@@ -522,8 +541,36 @@ metadata/prop_kind = "candles"
 transform = Transform3D(0.3681874, 0, 0.92975163, 0, 1, 0, -0.92975163, 0, 0.3681874, 10.5, 0, 11)
 metadata/prop_kind = "candles"
 
+[node name="candles_002" parent="Props" unique_id=13154263 instance=ExtResource("11_6d13f")]
+transform = Transform3D(0.37088028, 0, -0.92868066, 0, 1, 0, 0.92868066, 0, 0.37088028, -11, 0, 15.8)
+metadata/prop_kind = "candles"
+
+[node name="candles_003" parent="Props" unique_id=61683744 instance=ExtResource("11_6d13f")]
+transform = Transform3D(-0.6190998, 0, -0.78531235, 0, 1, 0, 0.78531235, 0, -0.6190998, 10.5, 0, 20)
+metadata/prop_kind = "candles"
+
+[node name="candles_004" parent="Props" unique_id=9959498 instance=ExtResource("11_6d13f")]
+transform = Transform3D(-0.9068886, 0, 0.42137048, 0, 1, 0, -0.42137048, 0, -0.9068886, -2, 0, 21.5)
+metadata/prop_kind = "candles"
+
+[node name="candles_005" parent="Props" unique_id=249654712 instance=ExtResource("11_6d13f")]
+transform = Transform3D(-0.73345137, 0, 0.6797419, 0, 1, 0, -0.6797419, 0, -0.73345137, 2, 0, 21.5)
+metadata/prop_kind = "candles"
+
+[node name="candles_006" parent="Props" unique_id=44024338 instance=ExtResource("11_6d13f")]
+transform = Transform3D(-0.9861048, 0, -0.16612436, 0, 1, 0, 0.16612436, 0, -0.9861048, -7.2, 0, 26.8)
+metadata/prop_kind = "candles"
+
+[node name="candles_007" parent="Props" unique_id=108665691 instance=ExtResource("11_6d13f")]
+transform = Transform3D(-0.95376366, 0, -0.30055755, 0, 1, 0, 0.30055755, 0, -0.95376366, -10.8, 0, 25.5)
+metadata/prop_kind = "candles"
+
 [node name="candles_008" parent="Props" unique_id=857874 instance=ExtResource("11_6d13f")]
 transform = Transform3D(-0.9620192, 0, -0.27298185, 0, 1, 0, 0.27298185, 0, -0.9620192, 1.8, 0, 28.6)
+metadata/prop_kind = "candles"
+
+[node name="candles_009" parent="Props" unique_id=30239660 instance=ExtResource("11_6d13f")]
+transform = Transform3D(-0.9626706, 0, -0.2706755, 0, 1, 0, 0.2706755, 0, -0.9626706, -1.8, 0, 28.6)
 metadata/prop_kind = "candles"
 
 [node name="bone_pile_000" parent="Props" unique_id=139790038 instance=ExtResource("12_35804")]
@@ -533,37 +580,6 @@ metadata/prop_kind = "bone_pile"
 [node name="bone_pile_001" parent="Props" unique_id=169731570 instance=ExtResource("12_35804")]
 transform = Transform3D(0.36406815, 0, 0.9313723, 0, 1, 0, -0.9313723, 0, 0.36406815, 11.2, 0, 30.3)
 metadata/prop_kind = "bone_pile"
-
-[node name="cell_-1_1_small" type="MeshInstance3D" parent="Props" unique_id=25187867]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 18)
-cast_shadow = 0
-visibility_range_end = 80.0
-mesh = ExtResource("13_95227")
-metadata/props = ["candles_002", "candles_004"]
-
-[node name="cell_-1_1_tall" type="MeshInstance3D" parent="Props" unique_id=127271487]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 18)
-mesh = ExtResource("14_604c3")
-metadata/props = ["pillar_000", "pillar_001", "pillar_002"]
-
-[node name="cell_-1_2_small" type="MeshInstance3D" parent="Props" unique_id=228396894]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 30)
-cast_shadow = 0
-visibility_range_end = 80.0
-mesh = ExtResource("15_54f75")
-metadata/props = ["candles_006", "candles_007", "candles_009"]
-
-[node name="cell_0_1_small" type="MeshInstance3D" parent="Props" unique_id=160647176]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 18)
-cast_shadow = 0
-visibility_range_end = 80.0
-mesh = ExtResource("16_13d21")
-metadata/props = ["candles_003", "candles_005"]
-
-[node name="cell_0_1_tall" type="MeshInstance3D" parent="Props" unique_id=10244443]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 18)
-mesh = ExtResource("17_4ab11")
-metadata/props = ["pillar_004", "pillar_005", "pillar_006"]
 
 [node name="GatherNodes" type="Node3D" parent="." unique_id=223202540]
 
@@ -1149,4 +1165,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.29164574, 0.20750755, 0.40719262, 1)
 environment_custom_energy = 1.9
-light_data = ExtResource("20_9b8a1")
+light_data = ExtResource("15_9b8a1")

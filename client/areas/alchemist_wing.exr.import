@@ -2,7 +2,7 @@
 
 importer="2d_array_texture"
 type="CompressedTexture2DArray"
-uid="uid://bmd7ppe2qlpcb"
+uid="uid://8bdsu2iuxfxk"
 path.bptc="res://.godot/imported/alchemist_wing.exr-bb3846ed771a5453f61fa360d415aa23.bptc.ctexarray"
 path.astc="res://.godot/imported/alchemist_wing.exr-bb3846ed771a5453f61fa360d415aa23.astc.ctexarray"
 metadata={
@@ -27,4 +27,4 @@ compress/channel_pack=1
 mipmaps/generate=false
 mipmaps/limit=-1
 slices/horizontal=1
-slices/vertical=3
+slices/vertical=12

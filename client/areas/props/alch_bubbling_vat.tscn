@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/slice/models/props/alch_bubbling_vat.glb" id="1_e823a"]
+
+[node name="alch_bubbling_vat" type="Node3D" unique_id=108053922]
+metadata/model = "models/props/alch_bubbling_vat.glb"
+metadata/height = 1.1
+metadata/small = true
+
+[node name="model" parent="." unique_id=100193908 instance=ExtResource("1_e823a")]
+transform = Transform3D(1.2543585, 0, 0, 0, 1.2543585, 0, 0, 0, 1.2543585, 0, 0.55, 0)
+
+[node name="tripo_node_a97f3a0b-b660-44a0-94ab-be268fa8ca7a" parent="model" index="0"]
+cast_shadow = 0
+visibility_range_end = 70.0
+
+[editable path="model"]

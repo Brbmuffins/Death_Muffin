@@ -14,26 +14,22 @@
 [ext_resource type="PackedScene" path="res://areas/props/tombstone_round.tscn" id="12_36f50"]
 [ext_resource type="PackedScene" path="res://areas/props/tombstone_cross.tscn" id="13_2e4ce"]
 [ext_resource type="PackedScene" path="res://areas/props/fence.tscn" id="14_c1a63"]
-[ext_resource type="ArrayMesh" path="res://areas/batches/acre/cell_-6_0_tall.res" id="15_87a5e"]
-[ext_resource type="ArrayMesh" path="res://areas/batches/acre/cell_-6_2_tall.res" id="16_38ca3"]
-[ext_resource type="ArrayMesh" path="res://areas/batches/acre/cell_-4_3_small.res" id="17_225f9"]
-[ext_resource type="ArrayMesh" path="res://areas/batches/acre/cell_-4_3_tall.res" id="18_43ffe"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_ore_seam.tscn" id="19_8fdf2"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_ore_geode_h150.tscn" id="20_1b4da"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_ore_geode_h160.tscn" id="21_60a09"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_coffin_oak.tscn" id="22_27ea5"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_hangman_elm.tscn" id="23_e6d81"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_bleeding_willow.tscn" id="24_9b029"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_churchyard_yew.tscn" id="25_78a11"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_blackthorn.tscn" id="26_924d5"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_ghostwood.tscn" id="27_53b06"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_bone_elder.tscn" id="28_090e5"]
-[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="29_bdf92"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_burial_mound.tscn" id="30_d507d"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_crypt_collapse.tscn" id="31_0cc24"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_barrow_tomb.tscn" id="32_adc2d"]
-[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="33_16348"]
-[ext_resource type="LightmapGIData" path="res://areas/acre.lmbake" id="34_b0878"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_ore_seam.tscn" id="15_8fdf2"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_ore_geode_h150.tscn" id="16_1b4da"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_ore_geode_h160.tscn" id="17_60a09"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_coffin_oak.tscn" id="18_27ea5"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_hangman_elm.tscn" id="19_e6d81"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_bleeding_willow.tscn" id="20_9b029"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_churchyard_yew.tscn" id="21_78a11"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_blackthorn.tscn" id="22_924d5"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_ghostwood.tscn" id="23_53b06"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_bone_elder.tscn" id="24_090e5"]
+[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="25_bdf92"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_burial_mound.tscn" id="26_d507d"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_crypt_collapse.tscn" id="27_0cc24"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_barrow_tomb.tscn" id="28_adc2d"]
+[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="29_16348"]
+[ext_resource type="LightmapGIData" path="res://areas/acre.lmbake" id="30_b0878"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.9019608, 0.9411765, 0.83137256, 1)
@@ -260,7 +256,7 @@ size = Vector3(0.12, 0.34, 0.12)
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.34509805, 0.5803922, 0.6431373, 0.28)
-albedo_texture = ExtResource("29_bdf92")
+albedo_texture = ExtResource("25_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_a24bb"]
@@ -271,7 +267,7 @@ orientation = 1
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.34509805, 0.5803922, 0.6431373, 0.28)
-albedo_texture = ExtResource("29_bdf92")
+albedo_texture = ExtResource("25_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_fb593"]
@@ -282,7 +278,7 @@ orientation = 1
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.38431373, 0.627451, 0.49411765, 0.28)
-albedo_texture = ExtResource("29_bdf92")
+albedo_texture = ExtResource("25_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_c362f"]
@@ -293,7 +289,7 @@ orientation = 1
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.7058824, 0.7058824, 0.4392157, 0.28)
-albedo_texture = ExtResource("29_bdf92")
+albedo_texture = ExtResource("25_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_1ac88"]
@@ -304,7 +300,7 @@ orientation = 1
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.28235295, 0.5019608, 0.5803922, 0.28)
-albedo_texture = ExtResource("29_bdf92")
+albedo_texture = ExtResource("25_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_56adb"]
@@ -315,7 +311,7 @@ orientation = 1
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.45490196, 0.83137256, 0.7058824, 0.28)
-albedo_texture = ExtResource("29_bdf92")
+albedo_texture = ExtResource("25_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_44a30"]
@@ -326,7 +322,7 @@ orientation = 1
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.20392157, 0.34509805, 0.53333336, 0.28)
-albedo_texture = ExtResource("29_bdf92")
+albedo_texture = ExtResource("25_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_2d8e0"]
@@ -337,7 +333,7 @@ orientation = 1
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.43529412, 0.68235296, 0.47843137, 0.35)
-albedo_texture = ExtResource("29_bdf92")
+albedo_texture = ExtResource("25_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_8b790"]
@@ -425,7 +421,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 albedo_color = Color(0.61, 0.36, 1, 0.9)
-albedo_texture = ExtResource("29_bdf92")
+albedo_texture = ExtResource("25_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_0c4be"]
@@ -458,7 +454,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 vertex_color_use_as_albedo = true
-albedo_texture = ExtResource("33_16348")
+albedo_texture = ExtResource("29_16348")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_00763"]
 _surfaces = [{
@@ -658,6 +654,14 @@ metadata/prop_kind = "bone_pile"
 transform = Transform3D(-0.4743497, 0, 0.8803365, 0, 1, 0, -0.8803365, 0, -0.4743497, -44.6, 0, 36.8)
 metadata/prop_kind = "bone_pile"
 
+[node name="dead_tree_000" parent="Props" unique_id=161533066 instance=ExtResource("11_f5464")]
+transform = Transform3D(0.14345267, 0, 0.71706617, 0, 0.7312746, 0, -0.71706617, 0, 0.14345267, -60.8, 0, 30.5)
+metadata/prop_kind = "dead_tree"
+
+[node name="dead_tree_001" parent="Props" unique_id=161627786 instance=ExtResource("11_f5464")]
+transform = Transform3D(0.49323255, 0, 0.6882107, 0, 0.8467068, 0, -0.6882107, 0, 0.49323255, -60.8, 0, 33.5)
+metadata/prop_kind = "dead_tree"
+
 [node name="dead_tree_002" parent="Props" unique_id=123935746 instance=ExtResource("11_f5464")]
 transform = Transform3D(-0.80162483, 0, -0.07191837, 0, 0.80484444, 0, 0.07191837, 0, -0.80162483, -26.8, 0, 37)
 metadata/prop_kind = "dead_tree"
@@ -674,6 +678,22 @@ metadata/prop_kind = "tombstone_round"
 transform = Transform3D(0.7451861, 0.019476932, -0.0825729, -0.015983647, 0.7491269, 0.03245499, 0.083319604, -0.03048692, 0.74473375, -34.1, 0, 37.1)
 metadata/prop_kind = "tombstone_cross"
 
+[node name="tombstone_round_001" parent="Props" unique_id=94748072 instance=ExtResource("12_36f50")]
+transform = Transform3D(0.7492886, -0.008901623, 0.031420957, 0.009529726, 0.7497927, -0.014835419, -0.031236194, 0.015220594, 0.7491947, -37.3, 0, 37.1)
+metadata/prop_kind = "tombstone_round"
+
+[node name="tombstone_cross_001" parent="Props" unique_id=28116024 instance=ExtResource("13_2e4ce")]
+transform = Transform3D(0.7417836, 0.03205306, 0.105970256, -0.039907396, 0.7470319, 0.053392254, -0.10326905, -0.058445994, 0.74055356, -40.5, 0, 37.1)
+metadata/prop_kind = "tombstone_cross"
+
+[node name="tombstone_cross_002" parent="Props" unique_id=61785759 instance=ExtResource("13_2e4ce")]
+transform = Transform3D(0.7485632, 0.016740724, 0.04327755, -0.018369062, 0.7492559, 0.027897075, -0.042611923, -0.028903589, 0.7482304, -43.7, 0, 37.1)
+metadata/prop_kind = "tombstone_cross"
+
+[node name="tombstone_round_002" parent="Props" unique_id=173344828 instance=ExtResource("12_36f50")]
+transform = Transform3D(0.7447799, -0.029986903, 0.08308862, 0.03566874, 0.747484, -0.04995419, -0.0808126, 0.05355806, 0.7437075, -46.9, 0, 37.1)
+metadata/prop_kind = "tombstone_round"
+
 [node name="tombstone_cross_003" parent="Props" unique_id=56749883 instance=ExtResource("13_2e4ce")]
 transform = Transform3D(0.748732, -0.007420101, 0.04295825, 0.008140742, 0.74985385, -0.012366474, -0.04282753, 0.012811849, 0.74866664, -50.1, 0, 37.1)
 metadata/prop_kind = "tombstone_cross"
@@ -682,31 +702,37 @@ metadata/prop_kind = "tombstone_cross"
 transform = Transform3D(0.7473088, 0.043537155, -0.046196073, -0.038949106, 0.74547184, 0.07248913, 0.050125122, -0.069829956, 0.7450579, -53.3, 0, 37.1)
 metadata/prop_kind = "tombstone_round"
 
+[node name="fence_000" parent="Props" unique_id=197288602 instance=ExtResource("14_c1a63")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -61.4, 0, 7.5)
+metadata/prop_kind = "fence"
+
+[node name="fence_001" parent="Props" unique_id=264060874 instance=ExtResource("14_c1a63")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -61.4, 0, 9.9)
+metadata/prop_kind = "fence"
+
+[node name="fence_002" parent="Props" unique_id=147211308 instance=ExtResource("14_c1a63")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -61.4, 0, 24.3)
+metadata/prop_kind = "fence"
+
+[node name="fence_003" parent="Props" unique_id=1019960 instance=ExtResource("14_c1a63")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -61.4, 0, 26.7)
+metadata/prop_kind = "fence"
+
+[node name="fence_004" parent="Props" unique_id=102751899 instance=ExtResource("14_c1a63")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -61.4, 0, 29.1)
+metadata/prop_kind = "fence"
+
+[node name="fence_005" parent="Props" unique_id=232508341 instance=ExtResource("14_c1a63")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -61.4, 0, 31.5)
+metadata/prop_kind = "fence"
+
+[node name="fence_006" parent="Props" unique_id=20748319 instance=ExtResource("14_c1a63")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -61.4, 0, 33.9)
+metadata/prop_kind = "fence"
+
 [node name="fence_007" parent="Props" unique_id=45618983 instance=ExtResource("14_c1a63")]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -61.4, 0, 36.3)
 metadata/prop_kind = "fence"
-
-[node name="cell_-6_0_tall" type="MeshInstance3D" parent="Props" unique_id=156871586]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -66, 0, 6)
-mesh = ExtResource("15_87a5e")
-metadata/props = ["fence_000", "fence_001"]
-
-[node name="cell_-6_2_tall" type="MeshInstance3D" parent="Props" unique_id=185109720]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -66, 0, 30)
-mesh = ExtResource("16_38ca3")
-metadata/props = ["dead_tree_000", "dead_tree_001", "fence_002", "fence_003", "fence_004", "fence_005", "fence_006"]
-
-[node name="cell_-4_3_small" type="MeshInstance3D" parent="Props" unique_id=30209007]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42, 0, 42)
-cast_shadow = 0
-visibility_range_end = 80.0
-mesh = ExtResource("17_225f9")
-metadata/props = ["tombstone_round_001", "tombstone_round_002"]
-
-[node name="cell_-4_3_tall" type="MeshInstance3D" parent="Props" unique_id=241604152]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42, 0, 42)
-mesh = ExtResource("18_43ffe")
-metadata/props = ["tombstone_cross_001", "tombstone_cross_002"]
 
 [node name="GatherNodes" type="Node3D" parent="." unique_id=257248032]
 
@@ -716,7 +742,7 @@ metadata/node_id = "acre_0"
 metadata/node_type = "seam_copper"
 metadata/node_kind = "seam"
 
-[node name="model" parent="GatherNodes/acre_0" unique_id=20913876 instance=ExtResource("19_8fdf2")]
+[node name="model" parent="GatherNodes/acre_0" unique_id=20913876 instance=ExtResource("15_8fdf2")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_0" unique_id=96143755]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -739,7 +765,7 @@ metadata/node_id = "acre_1"
 metadata/node_type = "seam_tin"
 metadata/node_kind = "seam"
 
-[node name="model" parent="GatherNodes/acre_1" unique_id=72705366 instance=ExtResource("19_8fdf2")]
+[node name="model" parent="GatherNodes/acre_1" unique_id=72705366 instance=ExtResource("15_8fdf2")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_1" unique_id=187262479]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -762,7 +788,7 @@ metadata/node_id = "acre_2"
 metadata/node_type = "seam_copper"
 metadata/node_kind = "seam"
 
-[node name="model" parent="GatherNodes/acre_2" unique_id=7188481 instance=ExtResource("19_8fdf2")]
+[node name="model" parent="GatherNodes/acre_2" unique_id=7188481 instance=ExtResource("15_8fdf2")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_2" unique_id=148626584]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -785,7 +811,7 @@ metadata/node_id = "acre_3"
 metadata/node_type = "seam_tin"
 metadata/node_kind = "seam"
 
-[node name="model" parent="GatherNodes/acre_3" unique_id=219823900 instance=ExtResource("19_8fdf2")]
+[node name="model" parent="GatherNodes/acre_3" unique_id=219823900 instance=ExtResource("15_8fdf2")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_3" unique_id=4859745]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -808,7 +834,7 @@ metadata/node_id = "acre_4"
 metadata/node_type = "seam_iron"
 metadata/node_kind = "seam"
 
-[node name="model" parent="GatherNodes/acre_4" unique_id=40901435 instance=ExtResource("19_8fdf2")]
+[node name="model" parent="GatherNodes/acre_4" unique_id=40901435 instance=ExtResource("15_8fdf2")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_4" unique_id=182969571]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -831,7 +857,7 @@ metadata/node_id = "acre_5"
 metadata/node_type = "seam_iron"
 metadata/node_kind = "seam"
 
-[node name="model" parent="GatherNodes/acre_5" unique_id=195611373 instance=ExtResource("19_8fdf2")]
+[node name="model" parent="GatherNodes/acre_5" unique_id=195611373 instance=ExtResource("15_8fdf2")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_5" unique_id=189823442]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -854,7 +880,7 @@ metadata/node_id = "acre_6"
 metadata/node_type = "seam_bronze"
 metadata/node_kind = "seam"
 
-[node name="model" parent="GatherNodes/acre_6" unique_id=205480199 instance=ExtResource("19_8fdf2")]
+[node name="model" parent="GatherNodes/acre_6" unique_id=205480199 instance=ExtResource("15_8fdf2")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_6" unique_id=250572963]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -877,7 +903,7 @@ metadata/node_id = "acre_7"
 metadata/node_type = "seam_silver"
 metadata/node_kind = "seam"
 
-[node name="model" parent="GatherNodes/acre_7" unique_id=119198739 instance=ExtResource("19_8fdf2")]
+[node name="model" parent="GatherNodes/acre_7" unique_id=119198739 instance=ExtResource("15_8fdf2")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_7" unique_id=137781531]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -900,7 +926,7 @@ metadata/node_id = "acre_8"
 metadata/node_type = "seam_gold"
 metadata/node_kind = "seam"
 
-[node name="model" parent="GatherNodes/acre_8" unique_id=227741610 instance=ExtResource("19_8fdf2")]
+[node name="model" parent="GatherNodes/acre_8" unique_id=227741610 instance=ExtResource("15_8fdf2")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_8" unique_id=197231411]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -923,7 +949,7 @@ metadata/node_id = "acre_9"
 metadata/node_type = "seam_steel"
 metadata/node_kind = "seam"
 
-[node name="model" parent="GatherNodes/acre_9" unique_id=23468615 instance=ExtResource("19_8fdf2")]
+[node name="model" parent="GatherNodes/acre_9" unique_id=23468615 instance=ExtResource("15_8fdf2")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_9" unique_id=160840693]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -946,7 +972,7 @@ metadata/node_id = "acre_10"
 metadata/node_type = "geode_hell"
 metadata/node_kind = "geode"
 
-[node name="model" parent="GatherNodes/acre_10" unique_id=220777448 instance=ExtResource("20_1b4da")]
+[node name="model" parent="GatherNodes/acre_10" unique_id=220777448 instance=ExtResource("16_1b4da")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_10" unique_id=18652544]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -969,7 +995,7 @@ metadata/node_id = "acre_11"
 metadata/node_type = "geode_moon"
 metadata/node_kind = "geode"
 
-[node name="model" parent="GatherNodes/acre_11" unique_id=69937864 instance=ExtResource("21_60a09")]
+[node name="model" parent="GatherNodes/acre_11" unique_id=69937864 instance=ExtResource("17_60a09")]
 
 [node name="crystal_0" type="MeshInstance3D" parent="GatherNodes/acre_11" unique_id=28909843]
 transform = Transform3D(0.84203446, -0.00043174624, 0.5394236, 0.18979606, 0.9362934, -0.29552022, -0.5049311, 0.3512187, 0.78847325, 0.2, 0.3, 0.18)
@@ -992,7 +1018,7 @@ metadata/node_id = "acre_12"
 metadata/node_type = "coffin_oak"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_12" unique_id=17868781 instance=ExtResource("22_27ea5")]
+[node name="model" parent="GatherNodes/acre_12" unique_id=17868781 instance=ExtResource("18_27ea5")]
 
 [node name="acre_13" type="Node3D" parent="GatherNodes" unique_id=98401196]
 transform = Transform3D(-0.11519549, 0, -0.9933428, 0, 1, 0, 0.9933428, 0, -0.11519549, -33.5, 0.04, 17)
@@ -1000,7 +1026,7 @@ metadata/node_id = "acre_13"
 metadata/node_type = "coffin_oak"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_13" unique_id=58694920 instance=ExtResource("22_27ea5")]
+[node name="model" parent="GatherNodes/acre_13" unique_id=58694920 instance=ExtResource("18_27ea5")]
 
 [node name="acre_14" type="Node3D" parent="GatherNodes" unique_id=260709289]
 transform = Transform3D(-0.14619833, 0, -0.9892553, 0, 1, 0, 0.9892553, 0, -0.14619833, -27.5, 0.04, 13.5)
@@ -1008,7 +1034,7 @@ metadata/node_id = "acre_14"
 metadata/node_type = "coffin_oak"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_14" unique_id=151804767 instance=ExtResource("22_27ea5")]
+[node name="model" parent="GatherNodes/acre_14" unique_id=151804767 instance=ExtResource("18_27ea5")]
 
 [node name="acre_15" type="Node3D" parent="GatherNodes" unique_id=93477699]
 transform = Transform3D(0.36194068, 0, 0.93220115, 0, 1, 0, -0.93220115, 0, 0.36194068, -37.5, 0.04, 14)
@@ -1016,7 +1042,7 @@ metadata/node_id = "acre_15"
 metadata/node_type = "hangman_elm"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_15" unique_id=196015243 instance=ExtResource("23_e6d81")]
+[node name="model" parent="GatherNodes/acre_15" unique_id=196015243 instance=ExtResource("19_e6d81")]
 
 [node name="acre_16" type="Node3D" parent="GatherNodes" unique_id=29652834]
 transform = Transform3D(0.7183919, 0, 0.6956386, 0, 1, 0, -0.6956386, 0, 0.7183919, -41.5, 0.04, 14)
@@ -1024,7 +1050,7 @@ metadata/node_id = "acre_16"
 metadata/node_type = "hangman_elm"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_16" unique_id=151995563 instance=ExtResource("23_e6d81")]
+[node name="model" parent="GatherNodes/acre_16" unique_id=151995563 instance=ExtResource("19_e6d81")]
 
 [node name="acre_17" type="Node3D" parent="GatherNodes" unique_id=82416234]
 transform = Transform3D(-0.45935437, 0, -0.8882531, 0, 1, 0, 0.8882531, 0, -0.45935437, -45.5, 0.04, 14)
@@ -1032,7 +1058,7 @@ metadata/node_id = "acre_17"
 metadata/node_type = "bleeding_willow"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_17" unique_id=124756597 instance=ExtResource("24_9b029")]
+[node name="model" parent="GatherNodes/acre_17" unique_id=124756597 instance=ExtResource("20_9b029")]
 
 [node name="acre_18" type="Node3D" parent="GatherNodes" unique_id=26448856]
 transform = Transform3D(0.4121528, 0, 0.91111475, 0, 1, 0, -0.91111475, 0, 0.4121528, -49.5, 0.04, 14)
@@ -1040,7 +1066,7 @@ metadata/node_id = "acre_18"
 metadata/node_type = "bleeding_willow"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_18" unique_id=12946322 instance=ExtResource("24_9b029")]
+[node name="model" parent="GatherNodes/acre_18" unique_id=12946322 instance=ExtResource("20_9b029")]
 
 [node name="acre_19" type="Node3D" parent="GatherNodes" unique_id=216843774]
 transform = Transform3D(-0.03456189, 0, -0.9994026, 0, 1, 0, 0.9994026, 0, -0.03456189, -53.5, 0.04, 14)
@@ -1048,7 +1074,7 @@ metadata/node_id = "acre_19"
 metadata/node_type = "churchyard_yew"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_19" unique_id=195891978 instance=ExtResource("25_78a11")]
+[node name="model" parent="GatherNodes/acre_19" unique_id=195891978 instance=ExtResource("21_78a11")]
 
 [node name="acre_20" type="Node3D" parent="GatherNodes" unique_id=17721245]
 transform = Transform3D(0.30332583, 0, 0.9528869, 0, 1, 0, -0.9528869, 0, 0.30332583, -57.2, 0.04, 15.2)
@@ -1056,7 +1082,7 @@ metadata/node_id = "acre_20"
 metadata/node_type = "churchyard_yew"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_20" unique_id=96670840 instance=ExtResource("25_78a11")]
+[node name="model" parent="GatherNodes/acre_20" unique_id=96670840 instance=ExtResource("21_78a11")]
 
 [node name="acre_21" type="Node3D" parent="GatherNodes" unique_id=247858583]
 transform = Transform3D(0.32495722, 0, -0.9457287, 0, 1, 0, 0.9457287, 0, 0.32495722, -46.5, 0.04, 25.2)
@@ -1064,7 +1090,7 @@ metadata/node_id = "acre_21"
 metadata/node_type = "blackthorn"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_21" unique_id=100843168 instance=ExtResource("26_924d5")]
+[node name="model" parent="GatherNodes/acre_21" unique_id=100843168 instance=ExtResource("22_924d5")]
 
 [node name="acre_22" type="Node3D" parent="GatherNodes" unique_id=34980444]
 transform = Transform3D(0.9769604, 0, 0.21342044, 0, 1, 0, -0.21342044, 0, 0.9769604, -50.3, 0.04, 25.2)
@@ -1072,7 +1098,7 @@ metadata/node_id = "acre_22"
 metadata/node_type = "blackthorn"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_22" unique_id=68759694 instance=ExtResource("26_924d5")]
+[node name="model" parent="GatherNodes/acre_22" unique_id=68759694 instance=ExtResource("22_924d5")]
 
 [node name="acre_23" type="Node3D" parent="GatherNodes" unique_id=162758926]
 transform = Transform3D(-0.9196076, 0, -0.39283824, 0, 1, 0, 0.39283824, 0, -0.9196076, -54, 0.04, 25.2)
@@ -1080,7 +1106,7 @@ metadata/node_id = "acre_23"
 metadata/node_type = "ghostwood"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_23" unique_id=122744710 instance=ExtResource("27_53b06")]
+[node name="model" parent="GatherNodes/acre_23" unique_id=122744710 instance=ExtResource("23_53b06")]
 
 [node name="acre_24" type="Node3D" parent="GatherNodes" unique_id=19949868]
 transform = Transform3D(-0.9202258, 0, 0.3913879, 0, 1, 0, -0.3913879, 0, -0.9202258, -57.6, 0.04, 25.6)
@@ -1088,7 +1114,7 @@ metadata/node_id = "acre_24"
 metadata/node_type = "ghostwood"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_24" unique_id=116451623 instance=ExtResource("27_53b06")]
+[node name="model" parent="GatherNodes/acre_24" unique_id=116451623 instance=ExtResource("23_53b06")]
 
 [node name="acre_25" type="Node3D" parent="GatherNodes" unique_id=249457793]
 transform = Transform3D(-0.75811815, 0, 0.6521172, 0, 1, 0, -0.6521172, 0, -0.75811815, -59, 0.04, 20)
@@ -1096,7 +1122,7 @@ metadata/node_id = "acre_25"
 metadata/node_type = "bone_elder"
 metadata/node_kind = "tree"
 
-[node name="model" parent="GatherNodes/acre_25" unique_id=225455827 instance=ExtResource("28_090e5")]
+[node name="model" parent="GatherNodes/acre_25" unique_id=225455827 instance=ExtResource("24_090e5")]
 
 [node name="acre_26" type="Node3D" parent="GatherNodes" unique_id=2234686]
 transform = Transform3D(-0.14446238, 0, 0.9895103, 0, 1, 0, -0.9895103, 0, -0.14446238, -31.5, 0.04, 28.2)
@@ -1195,7 +1221,7 @@ metadata/node_id = "acre_33"
 metadata/node_type = "grave_pauper"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_33" unique_id=249382513 instance=ExtResource("30_d507d")]
+[node name="model" parent="GatherNodes/acre_33" unique_id=249382513 instance=ExtResource("26_d507d")]
 
 [node name="acre_34" type="Node3D" parent="GatherNodes" unique_id=252467410]
 transform = Transform3D(-0.93853194, 0, 0.34519246, 0, 1, 0, -0.34519246, 0, -0.93853194, -32.5, 0.04, 35.6)
@@ -1203,7 +1229,7 @@ metadata/node_id = "acre_34"
 metadata/node_type = "grave_pauper"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_34" unique_id=119641145 instance=ExtResource("30_d507d")]
+[node name="model" parent="GatherNodes/acre_34" unique_id=119641145 instance=ExtResource("26_d507d")]
 
 [node name="acre_35" type="Node3D" parent="GatherNodes" unique_id=147683166]
 transform = Transform3D(-0.9841763, 0, 0.17719212, 0, 1, 0, -0.17719212, 0, -0.9841763, -35.5, 0.04, 35.6)
@@ -1211,7 +1237,7 @@ metadata/node_id = "acre_35"
 metadata/node_type = "grave_pauper"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_35" unique_id=81240477 instance=ExtResource("30_d507d")]
+[node name="model" parent="GatherNodes/acre_35" unique_id=81240477 instance=ExtResource("26_d507d")]
 
 [node name="acre_36" type="Node3D" parent="GatherNodes" unique_id=78090512]
 transform = Transform3D(0.6340881, 0, -0.77326083, 0, 1, 0, 0.77326083, 0, 0.6340881, -39.5, 0.04, 35.6)
@@ -1219,7 +1245,7 @@ metadata/node_id = "acre_36"
 metadata/node_type = "grave_mound"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_36" unique_id=240562927 instance=ExtResource("30_d507d")]
+[node name="model" parent="GatherNodes/acre_36" unique_id=240562927 instance=ExtResource("26_d507d")]
 
 [node name="acre_37" type="Node3D" parent="GatherNodes" unique_id=204420134]
 transform = Transform3D(0.9642409, 0, -0.26502723, 0, 1, 0, 0.26502723, 0, 0.9642409, -43, 0.04, 35.6)
@@ -1227,7 +1253,7 @@ metadata/node_id = "acre_37"
 metadata/node_type = "grave_mound"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_37" unique_id=218345293 instance=ExtResource("30_d507d")]
+[node name="model" parent="GatherNodes/acre_37" unique_id=218345293 instance=ExtResource("26_d507d")]
 
 [node name="acre_38" type="Node3D" parent="GatherNodes" unique_id=161238049]
 transform = Transform3D(-0.3940549, 0, -0.91908693, 0, 1, 0, 0.91908693, 0, -0.3940549, -47.5, 0.04, 35.6)
@@ -1235,7 +1261,7 @@ metadata/node_id = "acre_38"
 metadata/node_type = "grave_crypt"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_38" unique_id=102946686 instance=ExtResource("31_0cc24")]
+[node name="model" parent="GatherNodes/acre_38" unique_id=102946686 instance=ExtResource("27_0cc24")]
 
 [node name="acre_39" type="Node3D" parent="GatherNodes" unique_id=245324053]
 transform = Transform3D(0.9625228, 0, 0.27120066, 0, 1, 0, -0.27120066, 0, 0.9625228, -51.5, 0.04, 35.6)
@@ -1243,7 +1269,7 @@ metadata/node_id = "acre_39"
 metadata/node_type = "grave_crypt"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_39" unique_id=202012272 instance=ExtResource("31_0cc24")]
+[node name="model" parent="GatherNodes/acre_39" unique_id=202012272 instance=ExtResource("27_0cc24")]
 
 [node name="acre_40" type="Node3D" parent="GatherNodes" unique_id=74048564]
 transform = Transform3D(0.5377835, 0, 0.84308296, 0, 1, 0, -0.84308296, 0, 0.5377835, -57, 0.04, 35.6)
@@ -1251,7 +1277,7 @@ metadata/node_id = "acre_40"
 metadata/node_type = "grave_barrow_king"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_40" unique_id=120308752 instance=ExtResource("32_adc2d")]
+[node name="model" parent="GatherNodes/acre_40" unique_id=120308752 instance=ExtResource("28_adc2d")]
 
 [node name="acre_50" type="Node3D" parent="GatherNodes" unique_id=197143277]
 transform = Transform3D(0.62161, 0, 0.7833269, 0, 1, 0, -0.7833269, 0, 0.62161, -49.5, 0.04, 31.8)
@@ -1259,7 +1285,7 @@ metadata/node_id = "acre_50"
 metadata/node_type = "bog_myrtle"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_50" unique_id=137989701 instance=ExtResource("30_d507d")]
+[node name="model" parent="GatherNodes/acre_50" unique_id=137989701 instance=ExtResource("26_d507d")]
 
 [node name="acre_51" type="Node3D" parent="GatherNodes" unique_id=30420427]
 transform = Transform3D(-0.57482404, 0, -0.81827706, 0, 1, 0, 0.81827706, 0, -0.57482404, -53, 0.04, 31.8)
@@ -1267,7 +1293,7 @@ metadata/node_id = "acre_51"
 metadata/node_type = "bog_myrtle"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_51" unique_id=6204178 instance=ExtResource("30_d507d")]
+[node name="model" parent="GatherNodes/acre_51" unique_id=6204178 instance=ExtResource("26_d507d")]
 
 [node name="acre_52" type="Node3D" parent="GatherNodes" unique_id=134898181]
 transform = Transform3D(-0.58850116, 0, 0.80849636, 0, 1, 0, -0.80849636, 0, -0.58850116, -46.5, 0.04, 29.8)
@@ -1275,7 +1301,7 @@ metadata/node_id = "acre_52"
 metadata/node_type = "drowned_lotus"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_52" unique_id=118015365 instance=ExtResource("30_d507d")]
+[node name="model" parent="GatherNodes/acre_52" unique_id=118015365 instance=ExtResource("26_d507d")]
 
 [node name="acre_53" type="Node3D" parent="GatherNodes" unique_id=158595394]
 transform = Transform3D(0.7755658, 0, -0.6312667, 0, 1, 0, 0.6312667, 0, 0.7755658, -56.5, 0.04, 31.8)
@@ -1283,7 +1309,7 @@ metadata/node_id = "acre_53"
 metadata/node_type = "drowned_lotus"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/acre_53" unique_id=218388320 instance=ExtResource("30_d507d")]
+[node name="model" parent="GatherNodes/acre_53" unique_id=218388320 instance=ExtResource("26_d507d")]
 
 [node name="Decals" type="Node3D" parent="." unique_id=250898300]
 
@@ -1725,4 +1751,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.37333333, 0.44215685, 0.49313727, 1)
 environment_custom_energy = 1.9
-light_data = ExtResource("34_b0878")
+light_data = ExtResource("30_b0878")

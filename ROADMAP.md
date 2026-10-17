@@ -104,14 +104,12 @@ server (B38).
 - [x] The Hollow Graves as a scene: `tools/rebuild/build-areas.sh graves` converts `godot/data/slice/world.json` into
   `client/areas/graves.tscn` (same layout, static colliders, offline-baked navmesh, occluders, visibility ranges); the other eleven areas that are
   not generated at runtime are converted the same way. `client/tests/areas.gd` proves every area's layout against world.json.
-- [x] The first lighting bake of the Graves through Helix's helper (2026-10-16, RTX 4070 SUPER, 5.8 s): an area's `<id>.lmbake` and its lightmap
+- [x] The first lighting bake of the Graves through Helix's helper (2026-10-16, RTX 4070 SUPER, 5.8 s): `client/areas/graves.lmbake` and its lightmap
   (prop lights and the area's ambient baked, the moon real-time). The helper, the editor plugin and the kit publisher: `client/addons/dm_bake/README.md`;
-  `client/tests/areas.gd` fails when a converter change leaves the bake stale (a baked mesh gone) and lists the areas whose bake is pending.
-- [x] Static batching: each 12 m cell's repeated props merged into one mesh (the 541 prop draw calls of the twelve areas become 372, the Graves' 130 become 64, the moon-shadow
-  casters 311 become 206, the props' mesh LODs kept level by level). Built in the converter, before the bake, so the cell mesh gets its own lightmap (`client/README.md` "Areas"; `client/tests/areas.gd` proves every vertex, material and
-  lightmap rect against `world.json` and prints the counts). The twelve areas are baked again with the merged meshes (Helix's helper, 3.8 min, 2026-10-17); the frame time on a real PC comes with the next
-  benchmark run (the Graves, Full Party). Not done, and why: fewer than one draw call per model and cell needs the props' textures in one atlas (a look question for the asset rebuild); walls,
-  decals, puddles and flame spheres (the Graves: 14, 23 and 18 draw calls) are not props.
+  `client/tests/areas.gd` fails when a converter change leaves the bake stale (a baked mesh gone).
+- [x] Static batching, measured and not kept (2026-10-17): Forward+ and Mobile already draw identical prop meshes as one instanced draw, so merging each 12 m cell's
+  props into unique meshes raised the Graves' world draw calls (33 to 56 in a rendered count; Helix's World row 123 to 153) for 25 MB more and a slower load. The props
+  stay prefab instances; what cuts draws further is fewer distinct meshes and materials (the asset rebuild).
 - [x] Crowd animation: `client/crowd/` bakes each creature model's clips into vertex-animation textures (`bash client/tools/bake_crowd.sh`;
   the robber and the hound so far) and the crowd material plays them per MultiMesh instance (`client/tests/crowd_bake.gd`).
 - [x] Crowd drawing: `DmCrowd` reads the core's tables after each step and writes each creature model's MultiMesh buffers once per rendered frame, interpolated between
@@ -282,7 +280,7 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
     navmesh (`NavGrid`): its step with 72 chasing enemies went from 1.76 to 0.10 ms with the Graves alone and from 11.75 to 0.11 ms with every area loaded (VPS, one
     run, 2026-10-16). `client/tests/world.gd`.
   - [x] The lighting bake of the eleven (Helix's helper, RTX 4070 SUPER, 0.8 min, 2026-10-17); the helper waits for the editor's first scene, its 3D toolbar
-    and each lightmap, retries a bake and gives a failed scene a second pass (three runs found those snags). Those bakes are pending again until the static batching item's re-bake.
+    and each lightmap, retries a bake and gives a failed scene a second pass (three runs found those snags).
   - [x] Their enemies in the core, kind by kind against today's (`client/tests/core_kinds.gd`): the Ossuary's golem and deacon (2026-10-16), the Drowned Nave's censer,
     acolyte, gargoyle, templar and wraith, the Sanctum's and Cloister's seraph, flagellant and plague doctor, and the Cinder Pyre's husk, priest, hound and slag brute and the
     Mourning Fen's hag, leech, wisp and sexton (2026-10-17), with their crowd models: every area's roster runs on the core (the bosses' adds come with the bosses).
@@ -360,8 +358,8 @@ combat simulation for now.
   - The rebuild's crowd meshes repeat the vertex arrays in every level of detail's `mesh_lod<N>.res` (23 MB of the 234); one array with Godot's own mesh LODs would share it (2026-10-17).
   - The benchmark (both games): a level-up during the fight refreshes the god-mode hero's stats from the throwaway character's real level, so the held fight changes
     as that character levels; the benchmark could hold its XP.
-  - The rebuild's area scenes: tall props always cast the moon's shadow; today's runtime stops it beyond 32 m of the hero (`SHADOW_RANGE`), which the cell meshes could do with one flag each.
-    Also not props, so not batched: decals and puddles (unlit quads, one draw call each: the Graves 23), the flame spheres (18) and the walls (14).
+  - The rebuild's area scenes: props always cast the moon's shadow; today's runtime stops it beyond 32 m of the hero (`SHADOW_RANGE`). Decals and puddles are unique quads the renderer
+    cannot draw instanced (one draw call each: the Graves 23), and so are the flame spheres (18).
   - The rebuild's crowd: a casting body outside the camera's view is kept for its shadow and drawn in the main pass too (one MultiMesh does both); a shadows-only MultiMesh per model and level would
     send it to the shadow map alone. Worth doing if Helix's PC shows the kept casters cost something (2026-10-17).
   - The benchmark's held Full Party keeps the whole pack inside the camera's view and within 32 m of it, so the crowd's culling and animation bands barely engage in it (1 of 148 bodies culled);
