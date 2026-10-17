@@ -481,11 +481,12 @@ func _prog() -> DmProgression:
 	return m.prog if m != null else null
 
 
-## The areas whose seal is broken, applied to the world's gates and navmesh regions.
+## The areas whose seal is broken, applied to the world's gates and navmesh regions, and told to the party's guests. A guest has no seals of its own to apply: the party plays in
+## the host's world, whose seals reach it through DmNextParty (`send_seals`), so its own account's never open or close a door there.
 func apply_seals() -> void:
 	var prog := _prog()
 	var b: DmNextWorld = game.world
-	if prog == null or b == null:
+	if prog == null or b == null or game.is_guest:
 		return
 	var open: Array = []
 	for id in DmContent.area_order():
@@ -493,7 +494,7 @@ func apply_seals() -> void:
 			open.append(id)
 	b.set_unlocked(open)
 	if game.party != null:
-		game.party.send_seals(open)
+		game.party.send_seals()
 
 
 ## DmGameRewards.check_unlocks: an area whose seal asks N kills in the area before it breaks (the Warren: 150 in the Graves, less with Swift Seals).
@@ -501,7 +502,7 @@ func apply_seals() -> void:
 func check_seals() -> Array:
 	var prog := _prog()
 	var out: Array = []
-	if prog == null:
+	if prog == null or game.is_guest:
 		return out
 	for id in DmContent.area_order():
 		var u: Variant = DmContent.area(String(id)).get("unlock")
@@ -510,12 +511,8 @@ func check_seals() -> Array:
 		if prog.kills(String(u["area"])) >= prog.unlock_kills(float(u["kills"])) and prog.unlock(String(id)):
 			out.append(String(id))
 			apply_seals()
-			var door: Variant = null
-			for d in DmContent.doors():
-				if d["b"] == id:
-					door = d
-					break
-			_event("banner", {"title": "A seal breaks", "sub": "%s lies open%s" % [DmContent.area(String(id))["name"], (" · " + door_direction(door)) if door != null else ""], "ms": 4800})
+			announce_seal(String(id))
+			var door: Variant = door_into(String(id))
 			if door != null:
 				_sfx("gate", (float(door["rect"]["x0"]) + float(door["rect"]["x1"])) / 2.0, (float(door["rect"]["z0"]) + float(door["rect"]["z1"])) / 2.0)
 			game.camera.shake(0.3)
@@ -523,6 +520,20 @@ func check_seals() -> Array:
 			if game.ui_host != null:
 				game.ui_host.progress_changed.emit()
 	return out
+
+
+## The banner of a seal that broke: the area and which way its door lies. The host's own (check_seals) and a guest's, when the host's seal breaks while it is in the party.
+func announce_seal(id: String) -> void:
+	var door: Variant = door_into(id)
+	_event("banner", {"title": "A seal breaks", "sub": "%s lies open%s" % [DmContent.area(id)["name"], (" · " + door_direction(door)) if door != null else ""], "ms": 4800})
+
+
+## The door that leads into an area (null if none).
+func door_into(id: String) -> Variant:
+	for d in DmContent.doors():
+		if d["b"] == id:
+			return d
+	return null
 
 
 ## Which way a door lies from the hall it leaves.

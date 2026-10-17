@@ -21,6 +21,8 @@ extends SceneTree
 ##     token, the host reads its build from the server; a kill near both pays the guest's XP on its account (the host's accepted report, sent on) and its drops reach it,
 ##     the items rolled from its own tape; its member, bag, belt and HUD are its own account's;
 ##   - gathering is the host's: the guest has the Gather node at the same path with the nodes and their views and no loop, and a node the host spends is spent on the guest too and comes back, and a late joiner is told the spent set;
+##   - the party's seals follow the host (the Warren is in every game): a seal that breaks on the host opens its door on the guest (the gate, the navmesh, one `door_opened`
+##     for the gate sound, the banner), the guest's own account never opens or closes a door in the host's world, and a player who joins afterwards finds the door open without a sound;
 ##   - party chat both ways (the host names the speaker); a piece of gear the guest drops from its Reliquary (found while the host was there) lies on the host's ground,
 ##     the host picks it up into its own bag and the guest's copy goes;
 ##   - a version mismatch (the core's wire version, the release build) is refused in the words a player reads, the party is untouched;
@@ -150,6 +152,7 @@ var kills_guest := 0               # kills credited by the guest (must stay 0)
 var died_host := 0                 # enemy_died events on each core
 var died_guest := 0
 var rng := RandomNumberGenerator.new()
+var doors_log := {}                # a game -> the ids of the doors that rose in its world (`door_opened`: the gate sound's event)
 
 
 func check(ok: bool, what: String) -> void:
@@ -290,7 +293,10 @@ func game(br: Node, nm: String, extra: Dictionary = {}) -> DmNextGame:
 	var gm: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	gm.name = "NextGame"
 	br.add_child(gm)
-	var o := {"areas": ["graves"], "hud": true, "audio": false, "baked_dir": OUT, "name": nm, "waves": false, "seed": 20261016, "lobby_url": lobby_url, "lobby_token": token(int(a["id"]), nm)}
+	var rose := []
+	doors_log[gm] = rose
+	gm.world.door_opened.connect(func(id: String) -> void: rose.append(id))
+	var o := {"areas": ["graves", "warren"], "hud": true, "audio": false, "baked_dir": OUT, "name": nm, "waves": false, "seed": 20261016, "lobby_url": lobby_url, "lobby_token": token(int(a["id"]), nm)}
 	o.merge(extra, true)
 	gm.start_failed.connect(func(r: String) -> void: last_refusal = r)
 	await gm.start(a["ch"], a["api"], o)
@@ -352,6 +358,7 @@ func _run() -> void:
 	await guest_account()
 	await gathering()
 	await chat_and_ground()
+	await seals()
 	await versions()
 	await full_party()
 	await leaving()
@@ -862,7 +869,7 @@ func guest_account() -> void:
 	check(await until(func() -> bool: return g.joiner != null and g.joiner.backend_ok and gm.blocked == "" and gm.joined, 5.0),
 		"the guest joined the host's backend party session with its own account")
 	check(await until(func() -> bool: return h.remote_builds.has(gb_h.owner_peer), 5.0), "the host read the guest's build from the server (B22)")
-	check(g.world.unlocked.keys() == h.world.unlocked.keys() and not h.party._seals.is_empty(), "the guest's doors follow the host's seals (%s)" % str(g.world.unlocked.keys()))
+	check(g.world.unlocked.keys() == h.world.unlocked.keys() and g.world.unlocked.has("graves"), "the guest's open areas are the host's (%s)" % str(g.world.unlocked.keys()))
 	check(g.rewards == null and g.my_member() == g.joiner.member and g.loot != null and g.ui_host.prog == g.joiner.prog and g.belt() == g.loot.guest_belt,
 		"the guest's member, bag, belt and HUD are its own account's")
 	var xp0: int = int(g.joiner.member.stats["xp_applied"])
@@ -914,6 +921,83 @@ func gathering() -> void:
 	check(await until(func() -> bool: return g.gather.depleted.has("graves_1"), 4.0), "a late joiner gets the host's whole spent set")
 	h.gather._set_state("graves_1", true)
 	check(await until(func() -> bool: return not g.gather.depleted.has("graves_1"), 3.0) and h.gather.depleted.is_empty(), "(and it is back)")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the party's seals follow the host
+
+## "open" when a gate is up on every count (the flag, the bars hidden, the collider off, the navmesh region and both links on), "closed" when every count is the other way.
+func _gate(gm: DmNextGame, id: String) -> String:
+	var gt: Dictionary = gm.world.gates[id]
+	var on: Array = [bool(gt.open), not (gt.bars as Node3D).visible, (gt.collider as CollisionShape3D).disabled, (gm.world.nav_regions["door:" + id] as NavigationRegion3D).enabled]
+	for l: NavigationLink3D in gm.world.nav_links[id]:
+		on.append(l.enabled)
+	if on.all(func(x: bool) -> bool: return x):
+		return "open"
+	return "closed" if on.all(func(x: bool) -> bool: return not x) else "mixed %s" % str(on)
+
+
+## The party plays in the host's world: a seal that breaks on the host opens its door on the guest too, with the event the gate sound plays on and the banner; the guest's own account
+## (GM mode included) never opens or closes a door in that world; a player who joins afterwards finds the door open, silently.
+func seals() -> void:
+	var door := "graves_warren"
+	var hp: DmProgression = h.ui_host.prog
+	var gp: DmProgression = g.ui_host.prog
+	check(h.world.loaded == g.world.loaded and h.world.loaded.has("warren") and h.world.gates.has(door), "both worlds have the Graves and the Warren and the door between them (%s)" % str(h.world.loaded))
+	check(_gate(h, door) == "closed" and _gate(g, door) == "closed" and not h.world.unlocked.has("warren") and not g.world.unlocked.has("warren"), "the Warren is sealed on both: its gate is down (host %s, guest %s)" % [_gate(h, door), _gate(g, door)])
+	check(doors_log[h].is_empty() and doors_log[g].is_empty(), "no door has risen on either side so far")
+	# a guest on GM mode would open every area in its own world: in the host's it opens nothing
+	gp.dev_access = true
+	g.chapterhouse.apply_seals()
+	gp.dev_access = false
+	await ticks(10)
+	check(_gate(g, door) == "closed" and not g.world.unlocked.has("warren") and g.chapterhouse.check_seals().is_empty(), "the guest's own GM mode opens no door in the host's world")
+	# the seal breaks on the host: the Graves' kills reach the Warren's count
+	var gevents := []
+	g.ui_host.game_event.connect(func(id: String, ctx: Dictionary) -> void: gevents.append([id, ctx]))
+	var u: Dictionary = DmContent.area("warren")["unlock"]
+	check(hp.kills(String(u["area"])) < hp.unlock_kills(float(u["kills"])), "(the host's own kills have not broken it yet: %d of %d)" % [hp.kills(String(u["area"])), hp.unlock_kills(float(u["kills"]))])
+	hp.local["areaKills"][String(u["area"])] = hp.unlock_kills(float(u["kills"]))
+	var broken: Array = h.chapterhouse.check_seals()
+	check(broken == ["warren"], "the Graves' kills break the Warren's seal on the host (%s)" % str(broken))
+	check(await until(func() -> bool: return _gate(h, door) == "open", 3.0), "its gate is up on the host (%s)" % _gate(h, door))   # (the collider switches off a frame later)
+	check(await until(func() -> bool: return g.world.unlocked.has("warren") and _gate(g, door) == "open", 3.0), "and on the guest: the Warren is open and its gate is up (%s)" % _gate(g, door))
+	check(h.world.unlocked.keys() == g.world.unlocked.keys(), "the guest's open areas are the host's (%s)" % str(g.world.unlocked.keys()))
+	check(doors_log[h] == [door] and doors_log[g] == [door], "the door rose once on each side, the event the gate sound plays on (host %s, guest %s)" % [str(doors_log[h]), str(doors_log[g])])
+	var banners := gevents.filter(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "A seal breaks")
+	check(banners.size() == 1 and String(banners[0][1]["sub"]).contains("Warren"), "the guest saw the banner of the broken seal (%s)" % str(banners.map(func(e: Array) -> String: return String(e[1]["sub"]))))
+	var from := g.world.nav_closest(Vector3(0.0, 0.0, -16.0))
+	var goal := g.world.nav_closest(Vector3(-52.0, 0.0, -30.0))
+	var way := [PackedVector3Array()]
+	await until(func() -> bool:   # the navigation server merges the opened regions on its own thread, a few frames later
+		way[0] = g.world.nav_path(from, goal)
+		return way[0].size() > 1 and g.world.area_at(way[0][-1].x, way[0][-1].z) == "warren", 10.0)
+	check(way[0].size() > 1 and g.world.area_at(way[0][-1].x, way[0][-1].z) == "warren", "a path runs from the Graves into the Warren on the guest (%d points)" % way[0].size())
+	# the guest's own account has not broken it: that changes nothing in the host's world, and the same message again changes nothing
+	check(not gp.really_unlocked("warren"), "(the guest's own account still has the Warren sealed)")
+	g.chapterhouse.apply_seals()
+	h.chapterhouse.apply_seals()
+	await ticks(10)
+	check(_gate(g, door) == "open" and g.world.unlocked.has("warren") and doors_log[g] == [door] and gevents.filter(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "A seal breaks").size() == 1,
+		"the guest's own seals do not close the door, and a repeat of the host's state raises nothing again")
+
+	# a player who joins now finds the door open, without a sound or a banner
+	var br := new_branch()
+	var late := await game(br, "third")
+	var got: Array = await seat(late, func() -> void: late.party.join_by_code(h.party.code))
+	check(got.size() == 2, "a third player joins the running party by its code")
+	if got.size() != 2:
+		return
+	var lg := await hand_over(late, br, "third", got[0])
+	check(lg.ready_ and lg.is_guest and lg.world.loaded == h.world.loaded, "its guest game is up")
+	if not lg.ready_:
+		return
+	check(await until(func() -> bool: return lg.world.unlocked.has("warren") and _gate(lg, door) == "open", 4.0), "it finds the Warren open and the gate up as the host has them (%s)" % _gate(lg, door))
+	check(lg.world.unlocked.keys() == h.world.unlocked.keys() and (doors_log[lg] as Array).is_empty(), "with the host's open areas and no door rising for it (the gate sound is for a seal breaking: %s)" % str(doors_log[lg]))
+	lg.party.leave()
+	check(await until(func() -> bool: return h.session.get_roster().size() == 2 and h.net.guests() == [2], 6.0), "it leaves again: the host's roster is the one guest's")
+	lg.process_mode = Node.PROCESS_MODE_DISABLED
+	lg.queue_free()
+	await ticks(30)
 
 
 # ------------------------------------------------------------------------------------------------------------------ chat and the ground

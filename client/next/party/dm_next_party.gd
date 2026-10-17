@@ -90,7 +90,6 @@ var _leaving := false
 var _url := ""
 var _profile_sent := false
 var _members: Dictionary = {}            ## host: peer id -> the rewards member's key (its character id; -peer for one that cannot be credited)
-var _seals: Array = []                   ## host: the open areas last sent to guests (see send_seals)
 var backend_session := ""                ## guest: the host's backend party session (for our own session_join)
 var chat_log: Array[String] = []         ## the party chat's last 40 lines, as shown
 var _chat_rate: Dictionary = {}          ## host: peer id -> [second, count]
@@ -748,7 +747,6 @@ func _rpc_profile(p: Dictionary) -> void:
 	_members[peer] = key
 	sync_levels()
 	_rpc_welcome.rpc_id(peer, shell.rewards.session_id)
-	_rpc_seals.rpc_id(peer, _seals)
 	changed.emit()
 
 
@@ -955,16 +953,31 @@ func sync_levels() -> void:
 		changed.emit()
 
 
-## Host: the areas whose seal is broken in the host's world. A guest's doors follow these (sent on join and whenever a seal breaks).
-func send_seals(open: Array) -> void:
-	_seals = open.duplicate()
-	if shell.session.is_host() and shell.session.is_active() and not multiplayer.get_peers().is_empty():
-		_rpc_seals.rpc(_seals)
+## Host: the party plays in the host's world, so a guest's seals, doors and open areas are the host's (the world's `unlocked`; what a guest's own account has broken is its own
+## business in its own world). Told to a guest as it joins (`to` = its peer id: the doors just stand open for it, silently) and to every guest whenever the host's seals change.
+func send_seals(to := 0) -> void:
+	if not shell.session.is_host() or not shell.session.is_active():
+		return
+	var open: Array = shell.world.unlocked.keys()
+	if to != 0:
+		_rpc_seals.rpc_id(to, open, true)
+		return
+	for peer in shell.net.guests():
+		_rpc_seals.rpc_id(peer, open, false)
 
 
+## Guest: the host's seals. A seal that breaks while we are in the party opens its door in front of us (the world's `door_opened`: the gate sound) and says so on the banner the host
+## sees; the state we are given on joining sets the doors without either.
 @rpc("authority", "call_remote", "reliable")
-func _rpc_seals(open: Array) -> void:
-	shell.world.set_unlocked(open)
+func _rpc_seals(open: Array, joining: bool) -> void:
+	var w := shell.world
+	var was: Dictionary = w.unlocked.duplicate()
+	w.set_unlocked(open, joining)
+	if joining or shell.chapterhouse == null:
+		return
+	for id: String in w.unlocked:
+		if not was.has(id):
+			shell.chapterhouse.announce_seal(id)
 
 
 @rpc("authority", "call_remote", "reliable")

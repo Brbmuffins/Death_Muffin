@@ -497,6 +497,7 @@ func _on_player_joined(id: int) -> void:
 	if b != null and b.core_id == 0:
 		_register_body(b)
 	net.add_guest(id)
+	party.send_seals(id)   # the host's seals and doors (the baseline above is the core's present; the world's is told here)
 
 
 ## Host: a player left: its legion goes with it, the others learn the new table of heroes.

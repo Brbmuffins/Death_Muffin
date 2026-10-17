@@ -181,7 +181,9 @@ server (B38).
     in the drift report's service list.
   - [x] The player's way in: the Social window (today's window and its Party and Friends tabs, O, F and the HUD's Social button) (today's `DmUiSocial` in the panel host since the panels), friends' presence over the lobby,
     and main.gd's hand-over (join, leave, a refused join, a closed party: home with the reason); `client/tests/social.gd`.
-  - [ ] Still to do beside the core: the party's seals with the Chapterhouse; the other six bosses' state with their items; a new baseline for each new area. (A guest's build
+  - [x] The party's seals: the party plays in the host's world, so a guest's seals, doors and open areas are the host's (told to a guest as it joins, silently, and to every guest when they change: the gate rises
+    with its sound and the banner); its own account's seals never open or close a door there (client/README.md "Co-op on the core", `client/tests/coop.gd`).
+  - [ ] Still to do beside the core: the other six bosses' state with their items; a new baseline for each new area. (A guest's build
     from the server's record and its own account came with value on the server; party chat and ground drops between members with the panels.)
   - [ ] Phones join as guests only (B40): the same messages; measure the snapshot on the Mobile renderer's budget when the first phone build exists.
 - [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
@@ -297,6 +299,8 @@ combat simulation for now.
   - Today's game: Easy auto combat parks the hero in pockets of tombstones (it steers straight at the nearest enemy, with no path round the graves; found by the
     seeded comparison, native/README.md "Proof of same game").
   - Today's game: quitting while models still load in the background can abort on a PC with few cores (the GitHub runner's 4: the CI's perfctl abort, 2026-10-16).
+  - Today's game and the rebuild: a party guest cannot use a waystone or the recall (T): `DmChapterhouse.teleport_to` moves the host's own body only, so the stone's jump and the recall do nothing for a guest
+    (its waystone list also reads its own account's open areas, not the host's world). It needs a guest request the host answers by moving the guest's body (2026-10-17).
   - Today's game: a party guest leaving with kills not yet reported makes the host send to a peer that is gone (an engine error in the log, nothing lost; the rebuild
     skips the send).
   - Today's game: the Plague Doctor's flask leaves a 5 s toxic pool that hurts but draws nothing on the ground (DmEnemyFx draws only dust and ember zones);

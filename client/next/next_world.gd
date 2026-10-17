@@ -19,7 +19,7 @@ extends Node3D
 ## floor's navmesh region to the combat core (its own copy, replaced floor by floor) the way `bind_core` gave it the others. The floor's picture is drawn into `depths_root`
 ## by the lights builder's `build_depths_floor` (no see-through cutout yet, like the other areas).
 
-signal door_opened(id: String)         ## a door rose (a seal broke, a waystone, or a guest's doors followed the host's): the gate sound is DmAudioHooks'
+signal door_opened(id: String)         ## a door rose (a seal broke here, or on the host while a guest is in its party): the gate sound is DmAudioHooks'; never at a quiet load
 
 const AREA_DIR := "res://areas/"
 
@@ -218,18 +218,19 @@ func detach_floor() -> void:
 
 # ---- seals and doors (today's DmWorldBuilder.set_unlocked / set_door_open) -----------------------------------------------------
 
-## Seals: `areas` = the area ids whose seal is broken; an area with no seal is always unlocked. Only loaded areas count.
-func set_unlocked(areas: Array) -> void:
+## Seals: `areas` = the area ids whose seal is broken; an area with no seal is always unlocked. Only loaded areas count. `quiet`: the doors that open say nothing
+## (`door_opened` stays silent): the state a game is given as it loads or as a guest joins, not a seal breaking in front of the player.
+func set_unlocked(areas: Array, quiet := false) -> void:
 	unlocked.clear()
 	var data: Dictionary = DmData.world()
 	for id in loaded:
 		var a: Dictionary = data["areas"][id]
 		if a["unlock"] == null or areas.has(id):
 			unlocked[id] = true
-	_apply_unlock_state()
+	_apply_unlock_state(quiet)
 
 
-func _apply_unlock_state() -> void:
+func _apply_unlock_state(quiet := false) -> void:
 	for id in loaded:
 		_set_region("area:" + id, unlocked.has(id))
 	for d: Dictionary in DmData.world()["doors"]:
@@ -240,10 +241,10 @@ func _apply_unlock_state() -> void:
 			for l: NavigationLink3D in nav_links["chapter_graves"]:
 				l.enabled = true
 		else:
-			set_door_open(String(d["id"]), unlocked.has(String(d["a"])) and unlocked.has(String(d["b"])), true)
+			set_door_open(String(d["id"]), unlocked.has(String(d["a"])) and unlocked.has(String(d["b"])), true, quiet)
 
 
-func set_door_open(id: String, open: bool, instant := false) -> void:
+func set_door_open(id: String, open: bool, instant := false, quiet := false) -> void:
 	if not gates.has(id):
 		return
 	var g: Dictionary = gates[id]
@@ -265,7 +266,7 @@ func set_door_open(id: String, open: bool, instant := false) -> void:
 	for l: NavigationLink3D in nav_links[id]:
 		l.enabled = open
 	_set_region("door:" + id, open)
-	if open:
+	if open and not quiet:
 		door_opened.emit(id)
 
 

@@ -222,7 +222,6 @@ func _breaking_a_seal() -> void:
 	var banner := events.filter(func(e: Array) -> bool: return e[0] == "banner" and String(e[1].get("title", "")) == "A seal breaks")
 	check(banner.size() == 1 and String(banner[0][1]["sub"]).contains("Warren"), "the banner says so (%s)" % str(banner))
 	check(_gate_open("graves_warren") and (g.world.nav_regions["area:warren"] as NavigationRegion3D).enabled, "the Warren's gate is up and its navmesh joins")
-	check(g.party._seals.has("warren"), "the party is told (a guest's doors follow the host's seals)")
 	var goal := g.world.nav_closest(_area_mid("warren"))
 	var from := g.world.nav_closest(_area_mid("graves"))
 	var hold := [PackedVector3Array()]
