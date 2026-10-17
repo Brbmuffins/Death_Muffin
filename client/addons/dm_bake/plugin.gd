@@ -27,6 +27,7 @@ func _run(scenes: PackedStringArray, result: String) -> void:
 	await _frames(30)
 	while EditorInterface.get_resource_filesystem().is_scanning():
 		await _frames(1)
+	await _stand_in_images(scenes)
 	for scene in scenes:
 		rows.append(await _bake(scene))
 	# A second pass over the scenes that failed: the first scene of a fresh editor has failed in two ways on Helix's PC (2026-10-16: no 3D toolbar
@@ -135,6 +136,40 @@ func _button(n: Node) -> Button:
 		if b:
 			return b
 	return null
+
+
+## Godot 4.7.2's bake writes each lightmap image, imports it and loads it back (LightmapGI::_save_and_reimport_atlas_textures); an image the editor
+## has never seen does not load back, so the first bake of every scene failed with a "Failed creating lightmap images" warning window and the second
+## worked (2026-10-17, Helix's PC: twelve scenes, two tries and a warning each). So every scene without an image gets a 4x4 stand-in `<scene>.exr` with
+## the import settings the bake writes, registered and imported by the editor before any bake: the first bake then overwrites a known image.
+func _stand_in_images(scenes: PackedStringArray) -> void:
+	var made := PackedStringArray()
+	for scene in scenes:
+		var exr := scene.get_basename() + ".exr"
+		if FileAccess.file_exists(exr):
+			continue
+		if Image.create_empty(4, 4, false, Image.FORMAT_RGBAH).save_exr(exr, false) != OK:
+			continue
+		var cfg := ConfigFile.new()
+		cfg.set_value("remap", "importer", "2d_array_texture")
+		cfg.set_value("remap", "type", "CompressedTexture2DArray")
+		cfg.set_value("params", "compress/mode", 2)
+		cfg.set_value("params", "compress/channel_pack", 1)
+		cfg.set_value("params", "mipmaps/generate", false)
+		cfg.set_value("params", "slices/horizontal", 1)
+		cfg.set_value("params", "slices/vertical", 1)
+		cfg.save(exr + ".import")
+		made.append(exr)
+	if made.is_empty():
+		return
+	# Up to about 30 s for the editor to find and import them (a scan runs on its own thread and may start a few frames late).
+	var fs := EditorInterface.get_resource_filesystem()
+	fs.scan()
+	var until := Time.get_ticks_msec() + 30000
+	while Time.get_ticks_msec() < until:
+		await _frames(1)
+		if not fs.is_scanning() and Array(made).all(func(exr: String) -> bool: return fs.get_file_type(exr) != "" and ResourceLoader.exists(exr)):
+			break
 
 
 func _frames(n: int) -> void:
