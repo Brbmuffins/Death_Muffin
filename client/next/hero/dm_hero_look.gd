@@ -293,6 +293,9 @@ func _dress_ring(b: DmHeroBody) -> void:
 				var info: Dictionary = gm.core_host.enemy_info(id) if id > 0 else {}   # the core's enemy, by id (client/code.list "Ported")
 				if info.is_empty() or int(info["state"]) == DmCoreEvents.State.DEAD:
 					return null
+				var drawn: Vector3 = gm.core_host.view.crowd.ground_at(id) if gm.core_host.view != null else Vector3.INF   # the drawn body, every frame (a boss: its own place)
+				if drawn != Vector3.INF:
+					return drawn
 				var ep: Vector2 = info["pos"]
 				return Vector3(ep.x, 0, ep.y)}),
 	]

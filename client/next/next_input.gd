@@ -71,19 +71,19 @@ func hovered_enemy_id() -> int:
 
 
 func _process(dt: float) -> void:
-	_hover_t -= dt
-	if _hover_t > 0.0:
-		return
-	_hover_t = HOVER_S
 	if game == null or game.camera == null or not enabled or DisplayServer.get_name() == "headless":
 		return
 	var vp := get_viewport()
 	if vp == null or vp.get_camera_3d() != game.camera:
 		return
 	var mp := vp.get_mouse_position()
-	var gp: Variant = game.camera.ground_point(mp)
+	var gp: Variant = game.camera.ground_point(mp)   # every frame (one ray and a plane): the cursor's reticle follows it
 	if gp != null:
 		_aim = Vector3(gp.x, 0.0, gp.z)
+	_hover_t -= dt
+	if _hover_t > 0.0:
+		return
+	_hover_t = HOVER_S
 	_hover_id = pick_enemy(mp)
 	if game.loot != null:
 		game.loot.loot_hover(mp, _hover_id != 0, Input.is_key_pressed(KEY_ALT))   # the drop under the cursor shows its name; Alt shows all
