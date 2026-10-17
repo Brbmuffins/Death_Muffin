@@ -293,7 +293,7 @@ func _warn(msg: String) -> void:
 # ----------------------------------------------------------------------------------------------------------------------------------- models
 
 ## The DmCrowd slot of a baked model, made on first use: its CrowdVatData, a material, and per level of detail two MultiMeshInstance3D nodes (without
-## and with shadows) whose MultiMeshes DmCrowd fills.
+## and with shadows) whose MultiMeshes DmCrowd fills. The nodes start hidden and DmCrowd shows each while its group holds instances (`set_group_nodes`).
 func _slot(slug: String) -> int:
 	if _slots.has(slug):
 		return _slots[slug]
@@ -309,6 +309,8 @@ func _slot(slug: String) -> int:
 	_glow_version = -1   # the new material needs the palette too
 	var plain: Array = []
 	var shadow: Array = []
+	var plain_nodes: Array = []
+	var shadow_nodes: Array = []
 	for lod in data.meshes.size():
 		for casts in [false, true]:
 			var mm := data.make_multimesh(0, lod)   # DmCrowd allocates its instances
@@ -320,7 +322,9 @@ func _slot(slug: String) -> int:
 			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts and not spectral else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			add_child(mmi)
 			(shadow if casts else plain).append(mm.get_rid())
+			(shadow_nodes if casts else plain_nodes).append(mmi)
 	var slot: int = crowd.add_model(slug, data.crowd_data(), plain, shadow, lod_distances)
+	crowd.set_group_nodes(slot, plain_nodes, shadow_nodes)   # the crowd shows a group while it holds instances: a MultiMesh with none still costs its draw calls
 	_slots[slug] = slot
 	_data[slug] = data
 	return slot

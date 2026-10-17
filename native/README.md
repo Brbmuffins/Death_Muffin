@@ -66,6 +66,8 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
   presentation field lives in a world, enemy or thrall struct. Its input is a plain row per creature, hit and corpse (client/crowd/README.md "Driving the crowd"); a co-op
   guest's puppet core fills the same tables and damaged events, so `DmCrowd.sync(core)` draws it as it draws a host. The frame's cost is the view's to cut, in the one `draw` call: the camera's
   view-projection comes in with it (bodies outside it are not written), and a body far from the camera works its pose out less often, never the position (`client/crowd/README.md` "Crowd cost").
+  A group (model, level of detail, shadow setting) is drawn only while it holds instances: the renderer draws a MultiMesh with none all the same, so `draw` shows the group's `MultiMeshInstance3D` the frame it gets its first instance and
+  hides it after half a second without one (`set_group_nodes`; `dmcore 0.14`, no enum or wire change; `client/README.md` "The draw budget").
 - **Co-op (host-authoritative, B28, B40):** the host core packs one compact snapshot at 20 Hz and the discrete events as reliable batches; a guest's core runs in
   puppet mode (`set_puppet(true)`): no brains and no rules, bodies that appear from spawn events, ease toward snapshots (today's puppet easing) and go on removal events,
   and an event buffer that carries what GDScript sees on the host, derived from state edges and hp drops where today's puppets derive it. Messages carry a version and a

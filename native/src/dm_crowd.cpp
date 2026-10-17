@@ -16,6 +16,7 @@ using namespace godot;
 
 namespace {
 constexpr int32_t LEGION_SLOTS = 9;      // legion ids -1..7
+constexpr float HIDE_AFTER_S = 0.5f;      // an empty group stays drawn this long before its node is hidden: one that is empty and full by turns would otherwise rebuild its instance every few frames
 constexpr double THRALL_SWING_IN = 0.12;  // a thrall's blow lands the instant its swing starts: the clip opens just before its impact (DmEntityViews)
 
 std::string to_std(const String &p_s) {
@@ -54,6 +55,7 @@ void glow_of(const Dictionary &p_d, const char *p_key, float *r_out) {
 
 void DmCrowd::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_model", "slug", "data", "lod_rids", "shadow_rids", "lod_distances"), &DmCrowd::add_model);
+	ClassDB::bind_method(D_METHOD("set_group_nodes", "model", "plain_nodes", "shadow_nodes"), &DmCrowd::set_group_nodes);
 	ClassDB::bind_method(D_METHOD("set_glows", "elite", "champion_add"), &DmCrowd::set_glows);
 	ClassDB::bind_method(D_METHOD("glow_palette"), &DmCrowd::glow_palette);
 	ClassDB::bind_method(D_METHOD("rim_palette"), &DmCrowd::rim_palette);
@@ -157,6 +159,26 @@ int64_t DmCrowd::add_model(const String &p_slug, const Dictionary &p_data, const
 		rids[size_t(added.group0 + l * 2 + 1)].rid = l < p_shadow_rids.size() ? RID(p_shadow_rids[l]) : RID();
 	}
 	return slot;
+}
+
+void DmCrowd::set_group_nodes(int64_t p_model, const Array &p_plain_nodes, const Array &p_shadow_nodes) {
+	if (p_model < 0 || p_model >= view.model_count()) {
+		return;
+	}
+	const dm::CrowdModel &m = view.model(int32_t(p_model));
+	for (int32_t l = 0; l < m.lods; l++) {
+		for (int32_t s = 0; s < 2; s++) {
+			const Array &nodes = s == 0 ? p_plain_nodes : p_shadow_nodes;
+			GroupRid &r = rids[size_t(m.group0 + l * 2 + s)];
+			Object *o = l < nodes.size() ? static_cast<Object *>(nodes[l]) : nullptr;
+			r.node = o != nullptr ? o->get_instance_id() : 0;
+			r.shown = false;
+			r.idle_s = 0.0f;
+			if (o != nullptr) {
+				o->set("visible", false);
+			}
+		}
+	}
 }
 
 void DmCrowd::set_look(Look &r_look, const Dictionary &p_look) {
@@ -607,6 +629,15 @@ void DmCrowd::sync_rows(const PackedInt32Array &p_body_ints, const PackedFloat32
 
 // ---------------------------------------------------------------------------------------------------------------- the frame
 
+void DmCrowd::set_node_visible(GroupRid &r_group, bool p_visible) {
+	r_group.shown = p_visible;
+	r_group.idle_s = 0.0f;
+	Object *o = ObjectDB::get_instance(r_group.node);
+	if (o != nullptr) {
+		o->set("visible", p_visible);
+	}
+}
+
 void DmCrowd::draw(double p_dt, double p_alpha, const Vector3 &p_camera, const Projection &p_view_projection) {
 	float vp[16];
 	for (int c = 0; c < 4; c++) {
@@ -631,6 +662,19 @@ void DmCrowd::draw(double p_dt, double p_alpha, const Vector3 &p_camera, const P
 			r.packed.resize(int64_t(g.cap) * dm::STRIDE);
 			r.cap = g.cap;
 			r.last = -1;
+		}
+		if (r.node != 0) {  // a group with a node is drawn only while it holds instances (a MultiMesh with none costs its draw calls all the same)
+			if (g.count > 0) {
+				r.idle_s = 0.0f;
+				if (!r.shown) {
+					set_node_visible(r, true);
+				}
+			} else if (r.shown) {
+				r.idle_s += float(p_dt);
+				if (r.idle_s >= HIDE_AFTER_S) {
+					set_node_visible(r, false);
+				}
+			}
 		}
 		if (g.count == 0 && r.last == 0) {
 			continue;

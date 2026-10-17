@@ -326,8 +326,8 @@ func _initialize() -> void:
 	culling_and_packing()
 	shadow_reach()
 	animation_bands()
-	full_party()
-	armed_variants()
+	await full_party()
+	await armed_variants()
 	cam.get_parent().queue_free()
 	_remove_dir(OUT)
 	check(errlog.errors.is_empty(), "zero script errors or engine errors in the log (%d: %s)" % [errlog.errors.size(), "; ".join(errlog.errors.slice(0, 3))])
@@ -1631,6 +1631,7 @@ func full_party() -> void:
 	await process_frame
 	check(crowd.stats().bodies == bodies0 + 1, "the node syncs by itself after the core's step (%d bodies, one more)" % crowd.stats().bodies)
 	check(crowd.stats().frames > frames0, "and draws every rendered frame")
+	groups_follow_instances(view, crowd)
 	view.queue_free()
 	await process_frame
 
@@ -1868,6 +1869,51 @@ func armed_variants() -> void:
 			no_shadow = no_shadow and mmi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	check(spectral and no_shadow, "its groups use the see-through shader and cast no shadow")
 	v2.queue_free()
+
+
+## A group is drawn only while it holds instances (`DmCrowd.set_group_nodes`): the renderer draws a MultiMesh with none all the same, one draw call, and one for every shadow cascade a caster meets.
+## Its node is shown the frame its first instance is written and hidden once it has been empty for half a second (a body crossing a level of detail back and forth does not rebuild the instance).
+func groups_follow_instances(view: CrowdView, crowd: RefCounted) -> void:
+	var slots := view.model_slots()
+	var groups: Array = []
+	for c in view.get_children():
+		if c is MultiMeshInstance3D:
+			var parts := String(c.name).split("_lod")
+			groups.append({"node": c, "model": int(slots[parts[0]]), "lod": int(parts[1]), "shadow": String(parts[1]).ends_with("_shadow")})
+	var holding := 0
+	var shown := 0
+	var empty_shown := 0
+	var holding_hidden := 0
+	for g: Dictionary in groups:
+		var n: int = crowd.instance_count(g.model, g.lod, g.shadow)
+		holding += 1 if n > 0 else 0
+		shown += 1 if g.node.visible else 0
+		empty_shown += 1 if n == 0 and g.node.visible else 0
+		holding_hidden += 1 if n > 0 and not g.node.visible else 0
+	check(groups.size() == 12 and holding > 0 and holding < groups.size(), "the party's models have %d groups (3 models: 2 + 1 + 3 levels, with and without shadows) and %d of them hold instances" % [groups.size(), holding])
+	check(holding_hidden == 0 and empty_shown <= 2 and shown == holding + empty_shown, "a group is shown while it holds instances, and only the ones emptied within the last half second are shown empty (%d shown, %d hold, %d hold and hide, %d empty and shown)" % [shown, holding, holding_hidden, empty_shown])
+	view.clear()   # every body forgotten: every group empties
+	for f in 20:
+		crowd.draw(DT, 0.5, CAM)
+	var still := 0
+	for g: Dictionary in groups:
+		still += 1 if g.node.visible else 0
+	check(still == shown, "an emptied group stays drawn for half a second (%d of %d shown after a third of a second)" % [still, shown])
+	for f in 20:
+		crowd.draw(DT, 0.5, CAM)
+	var left := 0
+	for g: Dictionary in groups:
+		left += 1 if g.node.visible else 0
+	check(left == 0, "and goes after that (%d shown after a second)" % left)
+	view.sync()   # the core still holds the party: the views come back with it
+	crowd.draw(DT, 0.5, CAM)
+	var back := 0
+	var back_hidden := 0
+	for g: Dictionary in groups:
+		var n: int = crowd.instance_count(g.model, g.lod, g.shadow)
+		back += 1 if g.node.visible else 0
+		back_hidden += 1 if n > 0 and not g.node.visible else 0
+	check(back > 0 and back_hidden == 0, "a group is shown the frame its first instance is written (%d shown, %d holding and hidden)" % [back, back_hidden])
 
 
 func lockstep(core: RefCounted, view: CrowdView, guest: RefCounted, alpha: float) -> void:

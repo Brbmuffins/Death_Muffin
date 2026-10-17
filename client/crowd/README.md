@@ -99,7 +99,11 @@ view.focus = hero_xz                                                # every tick
   is not written, and each group's buffer is written and uploaded with `RenderingServer.multimesh_set_buffer` and `multimesh_set_visible_instances`. `view.hitstop_scale` is the picture clock of
   a struck enemy (`Vfx.hitstop_scale`), written each frame.
 - **Groups:** one MultiMesh per model, level of detail and shadow setting: two `MultiMeshInstance3D` nodes per level, one without shadows and one that casts. `DmCrowd`
-  owns the instances' memory (`multimesh_allocate_data`); `CrowdView` gives each MultiMesh the area's `custom_aabb`. Every group is sized for 128 instances at loading
+  owns the instances' memory (`multimesh_allocate_data`); `CrowdView` gives each MultiMesh the area's `custom_aabb`. **A group is drawn only while it holds instances:** the renderer draws a MultiMesh with
+  none all the same (one draw call, and one more for each moon cascade a caster meets: the roster's 202 groups cost 396 draw calls with 15 of them in use), so `CrowdView` hands the crowd each group's node
+  (`DmCrowd.set_group_nodes`, dmcore 0.14), the nodes start hidden, and `draw` shows a group the frame it gets its first instance and hides it once it has held none for half a second (`HIDE_AFTER_S`, so a body
+  crossing a level of detail back and forth does not rebuild the instance every few frames; it is a handful of node flips a second, no work for a group that stays as it is). `client/tests/crowd_view.gd`
+  holds it, `client/tests/draw_budget.gd` counts what it saves (client/README.md "The draw budget"). Every group is sized for 128 instances at loading
   (`reserve`) and doubles when a crowd outgrows it, so a wave of one model does not grow a MultiMesh; a steady crowd never does. `DmCrowd.buffer(model, lod, shadow)` returns
   exactly what was uploaded (count x 20 floats), `stats()` the counters (bodies by kind, instances drawn, capacity, regrows), `view_info(id)` one creature's view state, `take_landings()` where dying bodies came to rest since the last call (x, z, scale each: `DmEnemyFx` raises today's dust there), `shatter(corpse)` a corpse Corpse Explosion blew apart: its body goes at the next frame instead of sinking, `ground_at(id)` where a living body is drawn (`Vector3.INF` otherwise): the cheap read every frame for the rings and marks that follow a body.
 
@@ -179,6 +183,9 @@ in force, and the benchmark's report records them (client/README.md "The benchma
 - **Reserve and levels of detail:** `reserve` (instances every group starts with, 128) and `lod_distances` (32 and 60 m) are setup options too and are recorded in every benchmark report. They stay as they were: they can only be set
   from a run on a real GPU. A bigger reserve hands more bytes over a frame for a small crowd (`multimesh_set_buffer` takes the whole buffer, the reserve long) and a smaller one regrows a MultiMesh when a wave of one model outgrows
   it (a `multimesh_allocate_data`, the hitch the reserve exists to avoid); nearer level distances draw fewer triangles and show the simpler mesh sooner.
+- **Draw calls:** the crowd's cost in draw calls is the groups in use: a main-pass draw for each shown group and two (one for each cascade of Ultra's moon) for each that casts. The Full Party in the Graves, rendered
+  (2026-10-17): 41 draw calls (17 main, 24 shadow) with the empty groups hidden, 396 with every one of the 202 shown. Thrall shadows (above) are now the cost of the groups they keep in use; culling and the bands do not change a group's
+  draw calls (the draw is per group, not per instance), only its instances' vertex work.
 
 ### Models and looks
 

@@ -137,7 +137,7 @@ server (B38).
     view not written (a casting body kept while its shadow falls in), the thrall shadows counted (instances, MultiMeshes and triangles in the shadow pass) and switchable for a run, and the level-of-detail distances (32 and 60 m) and the
     128-instance reserve as settings the benchmark records; `-- --bench-crowd=...` changes them for a run. Measured on the VPS (headless): the crowd's whole CPU is 30 to 50 us a frame at Full Party, so the saving is on the GPU.
     Left for Helix's PC (the Full Party, a few alternating runs each way): what culling and the bands save in the render CPU and GPU columns; whether the thralls' shadows (4 of 5 casting instances) are worth their triangles, kept or
-    capped; the level-of-detail distances and the reserve, from the draw calls, triangles and upload. Then tick this.
+    capped; the level-of-detail distances and the reserve, from the draw calls, triangles and upload. Then tick this. (The crowd's draw calls are the groups in use: `client/crowd/README.md` "Crowd cost".)
   - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`; the Graves' whole roster, robber, hound, penitent, sac, moth, bat, ghoul, rat and risen, and the thralls are baked and synced so far) and its models synced (`client/assets.list`); a first look on Forward+ and Mobile.
   - [x] Unrigged creatures (props today's shader animates, `DmCreatureMat` wings): the baker's static-mesh path bakes the wing beat into a 24-frame
     loop (moth and bat within about a millimetre of today's formula, `client/tests/crowd_bake.gd`); a model without wings gets a still pose.
@@ -228,6 +228,12 @@ server (B38).
     p95 18.1, p99 21.0, 1,091 draw calls) against the test build 20261017.012954 (Forward+) 242.5 fps (4.12 ms, p95 5.1, p99 6.7, worst 13.3, 581 draw calls): 3.1 times today's speed (3.5 at p95), so Gate B's
     2 times holds on a real PC as on the VPS. The HUD row: 126 draw calls (150) and 0.08 ms of the frame; no hitch through the warm-up and the fight. The test builds before da9cc529 drew no enemies or
     thralls (the crowd looked for its models by file name, which an export changes); their runs do not count.
+  - [x] The draw calls (2026-10-17): the next test build (20261017.025239, 8913127) drew 725 where the one before drew 581 (Creatures 280 to 396, World 123 to 153, Shadows 227 to 301, HUD 126 to 121), when static batching was to cut
+    them. Counted from data and checked in a rendered Forward+ run (client/README.md "The draw budget", `client/tests/draw_budget.gd`, `client/tools/draw_measure.gd`): the renderer draws a MultiMesh with no instance all the same, one draw
+    call and one more for each moon cascade it casts into, and the crowd keeps a group for every model, level of detail and shadow setting of the roster, 202 of which the Graves' party left empty but 15; the 12 models of the other areas
+    (29 levels) added 58 groups to the main pass and 29 casting groups to both cascades: Creatures +116 exactly, 58 of the Shadows row's +74. The crowd now shows a group only while it holds instances (`DmCrowd.set_group_nodes`, dmcore
+    0.14): the crowd's 396 draw calls are 41 in the rendered run. The other +30 (16 of them in the Shadows row) was static batching, which cost draw calls in Forward+ and is taken out again (the Static batching item above). The Graves' Full
+    Party should come to about 340 (725 less 355 less 30), under the 581; the next benchmark on Helix's PC confirms it, and `client/tests/draw_budget.gd` holds the crowd, the world and the whole inside budgets from now on.
   - [x] The physics frame (2026-10-17): the 6.5 ms was not what a frame costs. Godot's `TIME_PHYSICS_PROCESS` (and `TIME_PROCESS`, the 5.6) is the slowest single tick (frame) of each second, refreshed once a second, so it read above the 4.1 ms average
     frame; the average physics part is a few tenths of a millisecond a frame at 0.25 ticks a frame. The slow tick of each second was Easy auto combat's choice (`DmAutoCombat.select_action`, the web game's TypeScript line for line: a lambda calling a field reader for
     every pair of bodies, a merge sort with a lambda; 3 ms on the VPS, 7 when it ends in Corpse Explosion, once every eleven ticks), then a rite's cast with its effects (2 to 4 ms) and a big kill's event handlers. Not in it: the core's step, the physics and navigation
@@ -361,6 +367,9 @@ combat simulation for now.
   - The rebuild's crowd meshes repeat the vertex arrays in every level of detail's `mesh_lod<N>.res` (23 MB of the 234); one array with Godot's own mesh LODs would share it (2026-10-17).
   - The benchmark (both games): a level-up during the fight refreshes the god-mode hero's stats from the throwaway character's real level, so the held fight changes
     as that character levels; the benchmark could hold its XP.
+  - Today's game and the rebuild: `Vfx` (`DmFxRuntime`) leaves some pooled MultiMeshes visible with no instance (4 of its 20 in a Full Party fight, 2026-10-17); each costs a draw call, as an empty crowd group did (client/README.md "The draw budget").
+  - The draw model counts the rendered Graves (world and crowd) a few draws under the engine, but Helix's World row is about 40 over the same stage (153 and 123 there against 107 and 84 rendered at the room's middle): the real fight draws something the stage
+    does not (the hero's place, the effects, the boss); a rendered run of the real Full Party needs ~3 minutes of boot on the VPS (2026-10-17).
   - The rebuild's area scenes: props always cast the moon's shadow; today's runtime stops it beyond 32 m of the hero (`SHADOW_RANGE`). Decals and puddles are unique quads the renderer
     cannot draw instanced (one draw call each: the Graves 23), and so are the flame spheres (18).
   - The rebuild's crowd: a casting body outside the camera's view is kept for its shadow and drawn in the main pass too (one MultiMesh does both); a shadows-only MultiMesh per model and level would

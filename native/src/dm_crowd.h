@@ -44,6 +44,9 @@ class DmCrowd : public godot::RefCounted {
 		godot::RID rid;
 		int32_t cap = 0, last = -1;
 		godot::PackedFloat32Array packed;
+		uint64_t node = 0;       // the MultiMeshInstance3D drawing this group (its object id), 0 = none: the crowd shows it while it holds instances (set_group_nodes)
+		bool shown = false;      // what the node's `visible` was last set to by the crowd
+		float idle_s = 0.0f;     // seconds the group has been empty while shown
 	};
 
 	dm::CrowdView view;
@@ -76,6 +79,7 @@ class DmCrowd : public godot::RefCounted {
 	size_t ev_i = 0, ev_f = 0;
 	uint64_t ev_batches = 0;
 
+	void set_node_visible(GroupRid &r_group, bool p_visible);
 	void rebuild_looks(const dm::World &p_world);
 	const Look *thrall_look(int32_t p_kind, int32_t p_legion) const;
 	void set_look(Look &r_look, const godot::Dictionary &p_look);
@@ -91,6 +95,10 @@ public:
 	// clip_landing, clip_loop, roles. `lod_rids[i]` / `shadow_rids[i]`: the MultiMesh RIDs of level i without and with shadows; `lod_distances`:
 	// the camera distances where levels 1.. start. Returns the model slot.
 	int64_t add_model(const godot::String &p_slug, const godot::Dictionary &p_data, const godot::Array &p_lod_rids, const godot::Array &p_shadow_rids, const godot::PackedFloat32Array &p_lod_distances);
+	// The nodes that draw a model's groups (`plain_nodes[i]` / `shadow_nodes[i]`: the MultiMeshInstance3D of level i without and with shadows). The renderer draws a MultiMesh with no
+	// instance all the same (one draw call, and one more for each shadow cascade a caster meets), so a group is shown (`visible`) the frame it gets its first instance and hidden
+	// once it has had none for HIDE_AFTER_S seconds; the nodes start hidden. Without this call a group's node is never touched.
+	void set_group_nodes(int64_t p_model, const godot::Array &p_plain_nodes, const godot::Array &p_shadow_nodes);
 	// Today's glows that are not a look's own: `elite` (Color, linear, alpha = strength) for every elite enemy and its corpse, and what a champion thrall adds
 	// to its look's strength (DmEntityViews: 0.35).
 	void set_glows(const godot::Color &p_elite, double p_champion_add);

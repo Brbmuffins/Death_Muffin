@@ -22,6 +22,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_bake.gd    # the crowd baker and shader (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/code_load.gd      # every copied script, scene and resource loads; no copy names a per-creature class
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_view.gd    # the crowd's views against today's view code, its cost (culling against the engine's frustum, the animation bands, the shadow counters), and a Full Party (bakes into a scratch folder)
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/draw_budget.gd    # the 3D draw calls of the Graves' Full Party counted from data (the crowd shows only the groups that hold instances, the world and the whole inside their budgets; "The draw budget"; bakes into a scratch folder, about a minute)
 # RENDERED, not headless (software GL, one run at a time; the header of tests/crowd_look_smoke.gd has the command for Compatibility and for Forward+): the crowd's thralls next to today's skinned ones in the Graves' lighting, with the mean colour of each
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/game_scene.gd     # the game scene on the core: 60 s of an offline run in the Graves (bakes into a scratch folder; add --fixed-fps 60 before --path to run it faster than real time)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rites.gd          # the Gravecaller's rites on the core: all 25 necromancer rites against today's rules, a fight (bakes into a scratch folder; 90 s of game time, --fixed-fps 60 makes it faster)
@@ -244,7 +245,7 @@ nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path clien
   event dispatch per 60 Hz tick (`DmCoreHost.measure`, on for the measured window only) against 4 ms; the rest of the main thread per frame (the frame less the core's share, ticks a frame times its tick) against 4 ms; the HUD's main-thread
   share against 0.5 ms (the same fight with the HUD off and on, eight times over, half a second each: a share below the printed spread, twice the standard error of the rounds, is noise) and its draw calls against 150 (from the render breakdown's HUD row, so on a PC with a renderer and a Full-length run).
   Each line says PASS or MISS. The budgets are set for the headless Full Party fight on the VPS; another size, or a rendered run (where the rest includes drawing), prints them as information. The numbers are not asserted by any test.
-  The render breakdown's parts are Shadows, Creatures (the crowd's MultiMeshes and the boss), World, Effects and HUD.
+  The render breakdown's parts are Shadows, Creatures (the crowd's MultiMeshes, in the main pass and in the shadow passes), World, Effects and HUD; they overlap (hiding the world also takes its shadow draws out), and what the rows count is explained in "The draw budget".
 - **The crowd's cost** is in the report (client/crowd/README.md "Crowd cost"): a `Crowd:` line under the setup names what was in force (the mesh levels' distances, the instances a group starts with, the animation bands, culling, whether thralls cast, the
   enemies that cast), and `Crowd per frame` under the budgets gives the measured window's averages from `DmCrowd.stats()`, sampled with the fight's other counters (bodies, drawn with their MultiMeshes and triangles, outside the view, the instances that cast
   shadows with the thralls among them and the triangles the shadow pass takes again, poses worked out against the living, the bands). Those counters are deterministic: they read the same on any PC, so a run on Helix's PC and a run on the VPS compare
@@ -276,6 +277,49 @@ nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path clien
   and today's effects (`Vfx`), with one difference: the particle ring's per-frame loop is the core's C++ (`DmMotes`, native/README.md "Files"), which won back 0.7 ms of a Full Party
   frame on the VPS (5.7 to 5.0 ms; 2026-10-16).
 - **Not in the fight yet** (it is cheaper than today's by these): the guests' hero bodies, as today. `native/README.md` "Differences from today's game" has the rest.
+
+## The draw budget
+
+The 3D draw calls of the Graves' Full Party fight (72 enemies, 32 thralls, the camera over the middle of the room, Ultra's moon with two cascades), counted from data so a test can hold them
+(`tests/draw_budget.gd`: a draw call is what the budget counts and a headless run draws nothing) and checked against a rendered run (`tools/draw_measure.gd`). `DmDrawModel` (`next/perf/dm_draw_model.gd`) is the
+count, `DmDrawScene` (`next/perf/dm_draw_scene.gd`) the scene both build: the room's area scene, the game's camera, the Ultra preset's moon, the combat core with four necromancers' thralls and 72 enemies; no hero, HUD or effects.
+
+**What Forward+ draws,** measured with the engine's own counters (`Viewport.get_render_info`, the main pass and the shadow passes; Forward+ on lavapipe, 2026-10-17) and found again in Helix's two benchmark runs:
+- An instance is an *object* in the main pass when its bounds meet the camera's frustum, and in a shadow pass once for each moon cascade whose volume its bounds meet, when it casts. A *draw call* is one surface of an object.
+  The Ultra preset has two cascades (0 to 8 m from the camera, 8 to 80 m: the first holds nothing but air at this camera, and still draws every MultiMesh that casts, whose bounds are the whole area).
+- **Identical meshes are instanced by the renderer:** the instances of one mesh, surface and material that a pass meets are ONE draw call. The Graves' 130 props as prefab instances cost 33 draw calls (15 in the main pass, 18 in the shadow
+  passes); a mesh that stands once costs its surfaces, and so does a mesh that merges many props.
+- **A MultiMesh with no instance costs its draw calls all the same:** one in the main pass and one in each cascade it meets when it casts (+1 draw call in the main pass and +2 in the shadow passes when it casts, whether it holds 0 or 4 instances). A MultiMesh is never merged with another.
+- Occlusion culling (the Graves' occluders), the sky and the lights' own work are not counted: the model runs a few draws under the engine (the Graves' world from the camera's middle: 75 against 84 rendered; with the merged cell meshes of ROADMAP "Static batching" it was 105 against 107), so a budget is set a little over the model's number.
+
+**The benchmark's rows,** from those rules (the rows overlap: hiding the world takes its shadow draws too, and the Shadows row is every shadow draw, the crowd's too):
+
+| Helix's PC, the Full Party in the Graves | 20261017.012954 (da9cc52) | 20261017.025239 (8913127) | explained by |
+|---|---|---|---|
+| Creatures | 280 | 396 | every group drawn: 144 groups + 2 cascades x 68 casting groups, then 202 + 2 x 97 (12 models, 29 levels, joined: +58 in the main pass, +58 in the shadow passes) |
+| Shadows | 227 | 301 | +58 the same groups, +16 the world's shadow draws |
+| World | 123 | 153 | +14 main pass, +16 shadow passes: static batching lost the instancing of the props (taken out again) |
+| HUD | 126 | 121 | |
+| total | 581 | 725 | |
+
+Of the 202 groups (41 models x levels of detail x with and without shadows) the Graves' party used 15: the other 187 were drawn empty, 396 draw calls for 41 that mattered.
+
+**The crowd draws what is in view, not what is registered.** `DmCrowd.set_group_nodes` (dmcore 0.14; `CrowdView` calls it for every model) hands the crowd the `MultiMeshInstance3D` of each group: the nodes start hidden, a group is shown
+the frame its first instance is written and hidden once it has held none for half a second (a body crossing a level of detail back and forth does not rebuild the instance every few frames). The party's draws no longer grow with the roster:
+the crowd of the Full Party costs 41 draw calls (17 main, 24 shadow) in the rendered run, 396 with every group shown, and the Graves' whole fight about 340 where it was 725 (with the batching out as well; the benchmark on Helix's PC will say). A model's first appearance
+shows a group the frame it is needed; the models share the crowd's shader, so that costs a material's uniform set and no compile (the warm-up draws every model once all the same).
+
+**Static batching is not in the areas** (ROADMAP "Static batching"): merging a cell's repeated props into one mesh was no saving in draw calls, because the instances it replaced were already one draw call per mesh and a cell mesh is unique.
+The Graves' world from the camera's middle and four places round it, rendered (`tools/draw_measure.gd --compare=<another version of the room's scene>`): 107, 112, 112, 93 and 116 draw calls merged, 84, 94, 91, 80 and 99 as prefab
+instances (13 to 23 more merged; +30 on Helix's PC); the props alone 56 against 33; the merge saved objects (171 in the main and shadow passes to 129). The lightmap does not change the count (110 with it, 109 with it hidden). What cuts the
+world's draws further is fewer distinct meshes and materials, which is the asset rebuild's.
+
+**The test** (`tests/draw_budget.gd`, 50 s, bakes twelve crowd models into a scratch folder) builds the scene, lets the party fight for two seconds and counts: the crowd's groups (a group that holds instances is shown, at most two empty ones are shown, most
+groups are idle), the crowd's, the world's and the whole's draw calls against `BUDGET_CROWD` (30), `BUDGET_WORLD` (85) and `BUDGET_TOTAL` (110; the model counts 22, 75 and 97), and that the model sees a crowd with every group shown (120 draws with only
+twelve models; 396 with the roster). A change that adds draw calls fails here and not on Helix's PC; raising a budget is a decision. Rows by group are printed.
+
+**The measurement** (`tools/draw_measure.gd`, rendered, about 200 s on the VPS; the command and its options are in the file's header) writes JSON lines: the world from five camera places and each group of its geometry hidden alone, the same for
+another version of the scene (`--compare`), a MultiMesh with and without instances, and the crowd as the crowd shows it, with every group shown and hidden, each beside the model's number for the same frame.
 
 ## Graphics presets
 
