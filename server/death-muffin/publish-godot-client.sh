@@ -85,8 +85,10 @@ if [ -f "$WT/tools/godot/assets-pack.sh" ]; then
   FP=$( { [ "$PROJECT" = godot ] || echo "$PROJECT"   # godot/'s fingerprint stays what it was, so the live pack is still reused
           # The crowd's bakes (client/assets/crowd/baked, generated: not byte-reproducible) count by their inputs, below, not their bytes.
           (cd "$WT/$PROJECT" && find assets -path assets/crowd/baked -prune -o -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
+          # Every file the baker reads: its own, the creature, model, animator and hand-prop code it poses with, and the model rows.
           [ "$PROJECT" = godot ] || (cd "$WT" && sha256sum client/crowd/crowd_baker.gd client/crowd/crowd_vat_data.gd client/crowd/crowd_looks.json \
-            client/tools/bake_crowd.gd client/tools/bake_crowd.sh godot/game/view_models.json godot/data/content/enemies.json)
+            client/tools/bake_crowd.gd client/tools/bake_crowd.sh client/game/dm_creature.gd client/game/dm_creature_mat.gd client/game/dm_gear_props.gd \
+            client/world/dm_models.gd client/world/dm_animator.gd client/game/view_models.json godot/game/view_models.json godot/data/content/enemies.json)
           (cd "$WT" && sha256sum "$PROJECT/export_presets.cfg" "$PROJECT/project.godot" tools/godot/assets-pack.sh tools/godot/pck_extract.py tools/godot/pck_pack.gd)
           "$GODOT" --version; } | sha256sum | cut -c1-16)
   if [ -s "$CACHE/$FP.pck" ]; then echo "== assets pack: unchanged ($FP), reused"

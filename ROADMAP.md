@@ -316,8 +316,6 @@ combat simulation for now.
   - Today's game's benchmark: the fight's settings carry no V-Sync, so the game scene turns it back on during the measurement; a run faster than the monitor reads its
     refresh rate (the server flags it). The rebuild keeps it off (2026-10-17).
   - Today's game: cycles gathered in the last 8 s before the player leaves or closes the window are never sent (`flush_all` does not flush the gather loop). The rebuild keeps it (2026-10-17).
-  - The rebuild's publish fingerprint (`server/death-muffin/publish-godot-client.sh`) lists the crowd bake's inputs but not `client/game/dm_gear_props.gd`, the hand props' geometry: a change
-    to it would not rebuild the assets pack (2026-10-17).
   - The rebuild's crowd meshes repeat the vertex arrays in every level of detail's `mesh_lod<N>.res` (23 MB of the 234); one array with Godot's own mesh LODs would share it (2026-10-17).
   - The benchmark (both games): a level-up during the fight refreshes the god-mode hero's stats from the throwaway character's real level, so the held fight changes
     as that character levels; the benchmark could hold its XP.
