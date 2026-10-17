@@ -21,8 +21,11 @@ extends Node
 ## A body underground (a ghoul's BURROW and its eruption's wind-up) has today's dirt mound over it (`_mounds`, a node each: a few at most); a dying body raises
 ## dust where it comes to rest (the crowd says when: `DmCrowd.take_landings`); a corpse that goes plays today's puff for why, and one Corpse Explosion bursts is
 ## blown apart at once (`DmCrowd.shatter`). Every thrall stands on today's ground ring (`_thrall_rings`), the legion readable at a glance.
+## The Drowned Nave's kinds: the Censer Bearer's incense cloud (`censer_incense`, following the drawn body; the ring and smoke under it and the hasted bodies' motes are the
+## status tells'), the Lich Acolyte's crimson reach ring (drawn while a thrall stands within Unbind's range) and its Unbind thread and sigil, the Templar's shield glance (a
+## spark and a chime), the Choir Wraith's mist when it falls (it leaves no body) and the Gargoyle's dive and the wraith's scream (telegraphs of the router).
 ## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
-## the elite's body glow, the censer, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the acolyte's reach ring, the Flagellant's frenzy motes.
+## the elite's body glow, the Pyre's and the Fen's idle motes (those defs are not on the core yet), the Flagellant's frenzy motes.
 
 const AMBIENT_S := 0.2
 const NEAR_X := 24.0               ## ambient motes only near the hero (DmEntityViews near_fx)
@@ -49,7 +52,7 @@ var fx: DmEventFx                  ## the shared router half: telegraphs, deaths
 var host := DmEnemyFxHost.new()
 var core_host: DmCoreHost
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
-var stats := {"spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0, "thrall_ring": 0}
+var stats := {"reach_ring": 0, "spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0, "thrall_ring": 0}
 
 var _clock := 0.0                  ## ms of rendered-frame time
 var _amb_t := 0.0
@@ -69,6 +72,8 @@ var _zone := {"id": 0, "kind": "dust", "owner": "", "x": 0.0, "z": 0.0, "r": 1.0
 var _zones := {}                   ## zone id -> true while its visual is up
 var _statused := {}                ## id -> its scale: a body that got a status (looked at on the ambient tick until it has none)
 var _hovers := {}                  ## id -> its hover height: a flier or the wraith (the motes under it)
+var _incense := {}                 ## id -> the Censer Bearer's incense cloud (a Binbun handle), while it lives
+var _reach := {}                   ## id -> the Lich Acolyte's reach ring (a decal handle, null while no thrall stands in it), while it lives
 var _status_fx: Dictionary = {}    ## DmContent statuses STATUS_FX: the tells' colours
 var _mote_o := {"count": 1}        ## the option record every status, flier and affix mote reuses
 var _affixed := {}                 ## id -> [the affix marks' handles, the affix names, scale, head height]: an affixed body, while it lives
@@ -80,6 +85,7 @@ var _corpse_rings := {}            ## corpse id -> [its ring's handle, when it e
 var _px := 0.0
 var _pz := 0.0
 var _amb_dust := {"x": 0.0, "y": 0.1, "z": 0.0, "count": 1, "color": 0x2a2230, "spread": 0.5, "speed": 0.5, "up": 0.6, "life": 1, "size": 0.9}
+var _pf := {"x": 0.0, "y": 0.0, "z": 0.0, "count": 1, "color": 0, "spread": 0.3, "speed": 0.2, "up": 1.0, "life": 0.8, "size": 0.1, "gravity": 0.0}   ## scratch for the Templar's spark
 var _amb_dirt := {"x": 0.0, "y": 0.15, "z": 0.0, "count": 2, "color": 0xffffff, "spread": 0.35, "speed": 0.9, "up": 1.2, "life": 0.4, "size": 0.12, "gravity": 9}
 var _sp: Dictionary = {}           ## DmFxData spell_fx.affix: the affixes' colours
 
@@ -138,13 +144,19 @@ func set_backends(p_vfx: Node, p_audio: Node) -> void:
 
 ## Creatures this fx is holding something for (a swing, a rise, a burrow, an elite ring): tests assert it stays small and empties.
 func watched() -> int:
-	return _strikes.size() + _rising.size() + _burrowers.size() + _auras.size() + _affixed.size() + _statused.size() + _hovers.size() + _mounds.size()
+	return _strikes.size() + _rising.size() + _burrowers.size() + _auras.size() + _affixed.size() + _statused.size() + _hovers.size() + _mounds.size() + _incense.size() + _reach.size()
 
 
 func clear() -> void:
 	for h in _auras.values():
 		_kill(h)
 	_auras.clear()
+	for h in _incense.values():
+		_kill(h)
+	_incense.clear()
+	for h in _reach.values():
+		_kill(h)
+	_reach.clear()
 	for r in _corpse_rings.values():
 		_kill(r[0])
 	_corpse_rings.clear()
@@ -197,6 +209,10 @@ func _on_spawned(id: int, def: String, _level: int, elite: bool, _area: String, 
 	var hover := float(d.get("flying", HOVER.get(def, 0.0)))
 	if hover > 0.0:
 		_hovers[id] = hover
+	if bool(d.get("aura", false)):   # the Censer Bearer's incense cloud (DmEnemyFx._on_ready)
+		_incense[id] = fx.bb("censer_incense", x, z, {"follow": _drawn_pos.bind(id)})
+	if bool(d.get("unbind", false)):   # the Lich Acolyte: its reach ring comes and goes with the thralls near it (`_ambient`)
+		_reach[id] = null
 
 
 ## The drawn ground position of a living body (null once it is dead or gone), for decals that follow it.
@@ -226,19 +242,46 @@ func _telegraph(kind: StringName, from_x: float, from_z: float, aim_x: float, ai
 	vfx.danger(_tele_call)
 
 
-## One-off cues. The Deacon's Sanctify is today's thread and halo (DmEventFx._sanctify; the blessed body's motes are the status tells'): a pale gold line from the
-## Deacon, where it stands, to the ally (the cue's place) and a ring that settles on it. The core's other cues (slam, erupt, dig_in) have no visual of their own:
-## their telegraphs and states draw them.
+## One-off cues, each a reliable event of the core (a guest draws them too). The Deacon's Sanctify is today's thread and halo (DmEventFx._sanctify; the blessed body's
+## motes are the status tells'): a pale gold line from the Deacon, where it stands, to the ally (the cue's place) and a ring that settles on it. The Templar's shield
+## glance is a spark off its front and a small chime; the Lich Acolyte's Unbind is a thread from it to the fallen thrall's place, a sigil there for the delay and the
+## raise sound. The core's other cues (slam, erupt, dig_in, scream) have no visual of their own: their telegraphs and states draw them.
 func _on_cue(id: int, kind: int, x: float, z: float, _radius: float) -> void:
 	stats["cue"] += 1
-	if DmCoreEvents.CUES[kind] != &"sanctify":
-		return
 	var p := core_host.enemy_position(id)
 	if p == Vector3.INF:
 		return
-	var gold := fx.status_fx("sanctified", "gold")
-	fx.beam(Vector3(p.x, 1.9, p.z), Vector3(x, 1.6, z), gold, 0.04, 0.5)
-	fx.decal({"tex": "ring", "color": gold, "x": x, "z": z, "r": 1.1, "duration": 0.8, "opacity": 0.8, "growFrom": 1.8})
+	match DmCoreEvents.CUES[kind]:
+		&"sanctify":
+			var gold := fx.status_fx("sanctified", "gold")
+			fx.beam(Vector3(p.x, 1.9, p.z), Vector3(x, 1.6, z), gold, 0.04, 0.5)
+			fx.decal({"tex": "ring", "color": gold, "x": x, "z": z, "r": 1.1, "duration": 0.8, "opacity": 0.8, "growFrom": 1.8})
+		&"shield_block":
+			var yaw := float(core_host.enemy_info(id).get("yaw", 0.0))
+			_pf["color"] = fx.sp("enemy", "toll")
+			_pf_burst(p.x + sin(yaw) * 0.6, 1.1, p.z + cos(yaw) * 0.6, 0.15, 2.6, 0.8, 0.3, 0.12, 6.0, 8)
+			fx.snd("tollSmall", p.x, p.z)
+		&"unbind":
+			var curse := fx.sp("enemy", "curse")
+			var delay := float(DmSimData.UNBIND["delayS"])
+			fx.beam(Vector3(p.x, 1.6, p.z), Vector3(x, 0.3, z), curse, 0.06, delay)
+			fx.decal({"tex": "sigil", "color": curse, "x": x, "z": z, "r": 1.0, "duration": delay + 0.3, "opacity": 0.85, "spin": 2.5, "fadeOut": 0.3})
+			fx.snd("raise", x, z)
+
+
+## One burst through the scratch dictionary: spread, speed, up, life, size, gravity (drag stays 0).
+func _pf_burst(x: float, y: float, z: float, spread: float, speed: float, up: float, life: float, size: float, gravity: float, count: int = 1) -> void:
+	_pf["count"] = count
+	_pf["x"] = x
+	_pf["y"] = y
+	_pf["z"] = z
+	_pf["spread"] = spread
+	_pf["speed"] = speed
+	_pf["up"] = up
+	_pf["life"] = life
+	_pf["size"] = size
+	_pf["gravity"] = gravity
+	vfx.emit(_pf)
 
 
 func _on_damaged(id: int, _source: int, amount: float, _hp: float) -> void:
@@ -309,7 +352,7 @@ func _impact(s: Array) -> void:
 			var dust := fx.sp("enemy", "dust")
 			vfx.emit({"x": ax, "y": 0.4, "z": az, "count": 18, "color": dust, "spread": r2 * 0.5, "speed": 1.6, "up": 0.9, "life": 0.7, "size": 0.2, "drag": 0.5})
 			vfx.decal({"tex": "ring", "color": dust, "x": ax, "z": az, "r": r2 * 1.2, "duration": 0.45, "opacity": 0.9, "growFrom": 0.3})
-		&"cone":   # the penitent's cone has no beat of its own beyond its telegraph
+		&"cone", &"curse", &"scream":   # the casters' blows (the penitent's cone, the acolyte's curse, the wraith's scream) have no beat of their own beyond their telegraph
 			pass
 		_:
 			vfx.emit_smoke({"x": ax, "y": 0.3, "z": az, "count": 2, "color": 0x3a3340, "spread": 0.3, "speed": 0.8, "up": 0.3, "life": 0.5, "size": 0.6})
@@ -334,6 +377,7 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 	stats["death"] += 1
 	_kill(_auras.get(id))
 	_auras.erase(id)
+	_incense_off(id)
 	_affix_off(id)
 	_mound_off(id)
 	_statused.erase(id)
@@ -344,6 +388,9 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 	_death_ev["elite"] = elite
 	_death_ev["def"] = def
 	fx._death(_death_ev)   # death + elite-death sound, death voice (<= 26 m), elite hitstop, water ripple, fire-death flare
+	if def == "wraith":   # leaves no body: it thins to mist (the crowd sinks it) and nothing else is drawn
+		vfx.emit({"x": x, "y": 1.4, "z": z, "count": 22, "color": 0xb9cbe6, "spread": 0.6, "speed": 0.9, "up": 1.2, "life": 1.1, "size": 0.3, "drag": 1})
+		return
 	vfx.emit_smoke({"x": x, "y": 0.3, "z": z, "count": 6, "color": 0x3b3440, "spread": 0.6, "speed": 0.8, "up": 0.4, "life": 1, "size": 1})
 	if elite:
 		vfx.emit({"x": x, "y": 1, "z": z, "count": 40, "color": 0xb58cff, "spread": 0.8, "speed": 3, "up": 2, "life": 1.1, "size": 0.35})
@@ -352,10 +399,19 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 
 func _on_removed(id: int) -> void:
 	_health.erase(id)
+	_incense_off(id)
 	_mound_off(id)
 	_affix_off(id)
 	_statused.erase(id)
 	_hovers.erase(id)
+
+
+## The Censer Bearer's cloud and the Lich Acolyte's ring go with the body.
+func _incense_off(id: int) -> void:
+	_kill(_incense.get(id))
+	_incense.erase(id)
+	_kill(_reach.get(id))
+	_reach.erase(id)
 
 
 func _on_status_changed(id: int) -> void:
@@ -616,7 +672,7 @@ func _sfx(id: String, x: float, z: float) -> void:
 func warm(at: Vector3) -> void:
 	var quiet := fx.audio
 	fx.audio = null
-	for kind in [&"cone", &"slam", &"dust", &"erupt", &"ember", &"hex", &"pulse", &"hook", &"raise", &"curse"]:
+	for kind in [&"cone", &"slam", &"dust", &"erupt", &"ember", &"hex", &"pulse", &"hook", &"raise", &"curse", &"scream", &"dive"]:
 		_telegraph(kind, at.x, at.z, at.x, at.z + 2.5, 0.0 if kind == &"cone" else 1.8, 0.3)
 	for id in ["vengeful_burst", "surge_eruption", "bonfire"]:   # the pyre's bursts and burning pools
 		var hb = fx.bb(id, at.x, at.z, {"scale": 0.5})
@@ -627,7 +683,11 @@ func warm(at: Vector3) -> void:
 	vfx.decal({"tex": "cracks", "color": 0x7c3aed, "x": at.x, "z": at.z, "r": 1.1, "duration": 0.3, "opacity": 0.8, "growFrom": 0.3})
 	vfx.decal({"danger": true, "tex": "ring", "color": ELITE_COLOR, "x": at.x, "z": at.z, "r": 1.1, "duration": 0.3, "opacity": 0.8, "pulse": 4.0})
 	vfx.light_flash(Vector3(at.x, 1.5, at.z), DmFxData.hex(0xa26bff), 25.0, 0.3)
-	vfx.decal({"tex": "sigil", "color": 0xffffff, "x": at.x, "z": at.z, "r": 1.0, "duration": 0.3, "opacity": 0.5, "spin": 2.5})
+	var incense = fx.bb("censer_incense", at.x, at.z)   # the censer's cloud
+	if incense != null:
+		incense.kill()
+	vfx.decal({"tex": "sigil", "color": 0xffffff, "x": at.x, "z": at.z, "r": 1.0, "duration": 0.3, "opacity": 0.5, "spin": 2.5})   # the Unbind sigil + thread
+	fx.beam(Vector3(at.x, 1.6, at.z), Vector3(at.x + 1.0, 0.3, at.z), 0xffffff, 0.04, 0.2)
 	fx.audio = quiet
 	stats["telegraph"] = 0
 
@@ -654,7 +714,7 @@ func _process(dt: float) -> void:
 		var p := core_host.enemy_position(id)
 		if p != Vector3.INF:
 			(_mounds[id] as MeshInstance3D).position = Vector3(p.x, 0.0, p.z)
-	if not _rising.is_empty() or not _burrowers.is_empty() or not _affixed.is_empty() or not _statused.is_empty() or not _hovers.is_empty():
+	if not _rising.is_empty() or not _burrowers.is_empty() or not _affixed.is_empty() or not _statused.is_empty() or not _hovers.is_empty() or not _reach.is_empty():
 		_amb_t += dt
 		if _amb_t >= AMBIENT_S:
 			_ambient()
@@ -705,6 +765,24 @@ func _ambient() -> void:
 			_mote(p.x, float(_hovers[id]) + 0.2, p.z, 0xb9cbe6, 0.35, 0.1, -0.3, 0.7, 0.18, 0.0, 0.0, "hover_mote")
 	for id in _statused.keys():
 		_status_motes(id)
+	for id in _reach.keys():
+		_reach_ring(id)
+
+
+## The Lich Acolyte's crimson reach (DmEntityViews): drawn only while a thrall stands inside Unbind's range (the core says which are near), following the drawn body, near the hero.
+func _reach_ring(id: int) -> void:
+	var p := core_host.enemy_position(id)
+	var ring: Variant = _reach.get(id)
+	var any := false
+	if p != Vector3.INF and absf(p.x - _px) <= NEAR_X and absf(p.z - _pz) <= NEAR_Z:
+		any = not core_host.core.thralls_in_radius(Vector2(p.x, p.z), float(DmSimData.UNBIND["range"]), 0).is_empty()
+	if any and ring == null:
+		_reach[id] = vfx.decal({"danger": true, "tex": "ring", "color": fx.sp("enemy", "curse"), "x": p.x, "z": p.z,
+			"r": float(DmSimData.UNBIND["range"]), "duration": 1e9, "opacity": 0.15, "pulse": 1.5, "follow": _drawn_pos.bind(id)})
+		stats["reach_ring"] += 1
+	elif not any and ring != null:
+		_kill(ring)
+		_reach[id] = null
 
 
 ## A body's status tells near the hero (DmEntityViews._tick_alive, today's rates a second, here per ambient tick). Reads the core's packed records:

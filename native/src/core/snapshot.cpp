@@ -33,7 +33,9 @@ uint32_t World::content_hash() const {
 	Fnv f;
 	for (const EnemyDef &d : defs) {
 		f.str(d.id);
-		for (const double v : { d.hp, d.damage, d.speed, d.radius, d.attack_range, d.windup_s, d.cooldown_s, d.scale, d.slam_r, double(d.blow), double(d.behavior), d.frenzy ? 1.0 : 0.0 }) {
+		for (const double v : { d.hp, d.damage, d.speed, d.radius, d.attack_range, d.windup_s, d.cooldown_s, d.scale, d.slam_r, double(d.blow), double(d.behavior), d.frenzy ? 1.0 : 0.0,
+					 // the Nave's kinds: what a guest draws a dive's telegraph with, and the flags that make a def the Censer, the Templar, the Acolyte or a silenceable caster
+					 d.has_dive ? d.dive_r : 0.0, d.aura ? 1.0 : 0.0, d.shield ? 1.0 : 0.0, d.unbind ? 1.0 : 0.0, d.silence_aware ? 1.0 : 0.0 }) {
 			f.num(v);
 		}
 	}
@@ -47,7 +49,7 @@ uint32_t World::content_hash() const {
 		f.str(n);
 	}
 	for (const double v : { tun.elite_windup, tun.elite_radius, tun.elite_damage, tun.elite_scale, tun.dust_radius, tun.burrow_erupt_r, tun.burrow_erupt_s,
-				 tun.burrow_erupt_s_graves, tun.burrow_dig_s, tun.bell_r, tun.bell_windup }) {
+				 tun.burrow_erupt_s_graves, tun.burrow_dig_s, tun.bell_r, tun.bell_windup, tun.scream_r }) {
 		f.num(v);
 	}
 	return f.h;
@@ -59,7 +61,7 @@ void World::put_snap_enemy(ByteWriter &w, const Enemy &e, int32_t &r_prev, doubl
 	w.svar(e.id - r_prev);
 	r_prev = e.id;
 	const bool aim = e.state == ATTACK || e.state == ERUPT;
-	w.u8(uint32_t(e.state) | (e.elite ? EF_ELITE : 0u) | ((e.dug_in || (e.swing_raise && e.state == ATTACK)) ? EF_DUG_IN : 0u) | (aim ? EF_AIM : 0u) | (e.affixes ? EF_AFFIXES : 0u));
+	w.u8(uint32_t(e.state) | (e.elite ? EF_ELITE : 0u) | ((e.dug_in || ((e.swing_raise || e.diving) && e.state == ATTACK)) ? EF_DUG_IN : 0u) | (aim ? EF_AIM : 0u) | (e.affixes ? EF_AFFIXES : 0u));
 	if (e.affixes) {
 		w.u8(e.affixes);
 	}

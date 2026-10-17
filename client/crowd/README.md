@@ -11,7 +11,7 @@ The combat core writes one buffer per frame; the GPU does the rest in the vertex
   plays, skins every vertex on the CPU, and writes the files below. Headless, a few seconds per model.
 - `client/crowd/crowd_vat.gdshader`: the material. `client/crowd/crowd_vat_data.gd` (`CrowdVatData`): what a baked model loads as, plus the helpers that
   build its material and MultiMesh and pack the per-instance data.
-- `bash client/tools/bake_crowd.sh [enemy id or model slug ...]` (default: the Graves roster `robber hound penitent ghoul rat moth bat`, the Ossuary's `deacon bone_golem`, and the thralls the rites raise: `skeleton_thrall thrall_legionnaire thrall_sentinel thrall_plague carrion_sac bone_colossus`, 7 to 23 MB each): runs the baker at low priority.
+- `bash client/tools/bake_crowd.sh [enemy id or model slug ...]` (default: the Graves roster `robber hound penitent ghoul rat moth bat`, the Ossuary's `deacon bone_golem`, the Drowned Nave's `censer acolyte gargoyle templar wraith` (the wraith, an unrigged prop, is a still pose of a few KB), and the thralls the rites raise: `skeleton_thrall thrall_legionnaire thrall_sentinel thrall_plague carrion_sac bone_colossus`, 7 to 23 MB each): runs the baker at low priority.
   Output: `client/assets/crowd/baked/<model slug>/`.
 - `client/tests/crowd_bake.gd`: the headless proof (below). `client/tests/crowd_smoke.gd`: the one rendered look (software GL).
 - `client/crowd/crowd_view.gd` (`CrowdView`): the node that draws the combat core's creatures, with `client/crowd/crowd_looks.json` (which model each enemy
@@ -104,7 +104,7 @@ damaged events, so `sync(core)` draws it as it draws a host (`client/tests/core_
 
 | row | fields |
 |---|---|
-| body (8 ints, 11 floats) | id (unique over enemies and thralls), kind (0 enemy, 1 thrall), model (the slot `add_model` returned), state (the core's `EnemyState` or `ThrallState`), flags (elite, caster, inert, mist, flyer), swing (a thrall's swing counter), def, glow (a slot of the glow palette of the crowd that made the row; 0 none); x, z, yaw, ground speed, seconds in the state, `action_s` (the seconds the state's one-shot is timed to: the wind-up, the dig, the 0.3 s recovery, a thrall's 0.12 s swing), scale, hover height, linear tint |
+| body (8 ints, 11 floats) | id (unique over enemies and thralls), kind (0 enemy, 1 thrall), model (the slot `add_model` returned), state (the core's `EnemyState` or `ThrallState`), flags (elite, caster, inert, mist, flyer, diving, grounded), swing (a thrall's swing counter), def, glow (a slot of the glow palette of the crowd that made the row; 0 none); x, z, yaw, ground speed, seconds in the state, `action_s` (the seconds the state's one-shot is timed to: the wind-up, the dig, the 0.3 s recovery, a thrall's 0.12 s swing), scale, hover height, linear tint |
 | hit (4 floats) | id, damage this tick (summed), hp after, max hp: from the core's damaged events (a puppet core derives them from hp drops, as puppets do today) |
 | corpse (4 ints, 7 floats) | id, model, def, glow; x, z, facing, scale, tint |
 
@@ -120,7 +120,7 @@ Numbers are today's, from the file named; where the live game and `dm_entity_vie
   (over 0.2 m/s) plays `walk` or `run` by the stride plan (`plan_loco`: the model row's stride x height x scale; run above 2.0 x the walking pace, back below 1.6 x; time scale
   at least 0.4, at most `walk_cap` or 2.4; a walk and a run swap in the same phase of the step cycle). ATTACK and EMERGE play a strike (`attack`, or `cast` for casters) whose
   impact lands when the wind-up ends (`strike_timing`), HURT a flinch (the first 0.5 s of a hurt clip at 1.35x), DIG the dig clip over the dig time, DEAD the death clip held
-  on its last frame. A role the model lacks resolves like `DmCreature.FALLBACK` (the baked `roles`); variants (`attack2`, `hurt3`, `death2`) are picked from the body's own dice.
+  on its last frame. A Gargoyle's dive (flag `diving`, set while the swing winds up) plays the `dive` clip over the wind-up and a fifth more, with no lunge. A role the model lacks resolves like `DmCreature.FALLBACK` (the baked `roles`); variants (`attack2`, `hurt3`, `death2`) are picked from the body's own dice.
   The hound has no attack, hurt or death clip: it lunges and bites with the body, recoils, and tips over.
 - **Blends:** a change of clip blends the old pose out over today's fade times (loop changes 0.28 s, back from a one-shot 0.2 s, a strike 0.3 x the wind-up between 0.06 and 0.14 s,
   a flinch 0.09 s, a death 0.12 s, other one-shots 0.1 s). At most two clips blend; a third started mid-blend drops the oldest.
@@ -129,7 +129,8 @@ Numbers are today's, from the file named; where the live game and `dm_entity_vie
 - **Hit flash:** 1 on a hit, then down by 6 per second (enemies) or 5 (thralls); drawn in eighths, as the game's emissive lerp. **Knock** (enemies only): `knock_impulse` away from the
   hero for a hit near the hero (24 x 20 m), a spring (`step_knock`) on the drawn position only.
 - **Rise:** RISING climbs from 0.9 x the model's height (thralls 1.8 m) below the ground over 1.1 s (thralls 0.9 s), leaning in. **Hover:** a def's `flying` height (or the
-  wraith's 0.45, a floating thrall's 0.25) with the bob of `DmEntityViews.sync`. BURROW and ERUPT are underground: not drawn.
+  wraith's 0.45, a floating thrall's 0.25) with the bob of `DmEntityViews.sync`. A diving body (the Gargoyle; `DmEnemyGargoyle._process`) climbs over the mark for the first half of the
+  wind-up (hover + 3 m x progress), drops onto it ((hover + 1.5) x (1 - 2 x (progress - 0.5))^2) and sits at 0.05 m (flag `grounded`) while it recovers. BURROW and ERUPT are underground: not drawn.
 - **Death:** the body keeps where it fell. A corpse of the same def within 1.2 m takes the dying body over (`CORPSE_ANIM_S` 6 s, `CORPSE_REST_S` 0.35 s: the clip stops 0.35 s
   after it has landed); with none, the body crumbles after 1.4 s. After the fall (the baked landing second, or the tip-over reaching 0.8 for a model with no death clip) it eases
   `SETTLE_DEPTH` 0.06 m into the ground (`settle_depth`). A corpse the core has no dying body for (the extra risen ones) is laid down at the end of its death clip. A body that

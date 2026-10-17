@@ -18,7 +18,7 @@ Test build channel until then.
 ```
 bash client/setup.sh                                                       # builds the core for Linux, imports, runs the smoke test
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_smoke.gd   # the core loads and answers
-/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_kinds.gd   # the kinds the other areas add, against today's rules: the Ossuary's golem (slam) and deacon (keep-away, curse, raise, Sanctify, silence), their co-op wire, the roster, a seeded replay
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_kinds.gd   # the kinds the other areas add, against today's rules: the Ossuary's golem (slam) and deacon (keep-away, curse, raise, Sanctify, silence) and the Drowned Nave's censer (incense), acolyte (curse, Unbind), gargoyle (dive), templar (shield) and wraith (scream), their co-op wire, the rosters, seeded replays
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_bake.gd    # the crowd baker and shader (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/code_load.gd      # every copied script, scene and resource loads; no copy names a per-creature class
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_view.gd    # the crowd's views against today's view code, and a Full Party (bakes into a scratch folder)
@@ -36,9 +36,9 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/value.gd   # value on the server in the game scene: kills, accepted XP, the purse, a claimed drop, brews and lifesteal, the meta, the belt, saving ("Value on the server")
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/fx_motes.gd               # the effects' particle ring in C++ (DmMotes) against today's ring, float for float; INFO: its update time on both sides
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/panels.gd # today's panels on the core: every panel opens, the Reliquary (equip, sell, sort) on the server's bag, the loadout, Settings live, chat
-/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/world.gd  # the whole world: every area, seals and gates, into the Warren, waystones, the recall, the core's navmesh against the server's, the Ossuary's deacon and golem in the game scene
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/world.gd  # the whole world: every area, seals and gates, into the Warren, waystones, the recall, the core's navmesh against the server's, the Ossuary's deacon and golem and the Nave's five in the game scene
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
-bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the Ossuary's deacon and golem, the thralls) into client/assets/crowd/baked (not committed)
+bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the Ossuary's deacon and golem, the Nave's five, the thralls) into client/assets/crowd/baked (not committed)
 ```
 
 Run `bash client/setup.sh` once in every new checkout or worktree (it lists the extension before the first import; see the script).

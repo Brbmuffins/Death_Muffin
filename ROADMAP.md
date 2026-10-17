@@ -245,8 +245,8 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   - [x] The lighting bake of the eleven (Helix's helper, RTX 4070 SUPER, 0.8 min, 2026-10-17); the helper waits for the editor's first scene, its 3D toolbar
     and each lightmap, retries a bake and gives a failed scene a second pass (three runs found those snags).
   - [ ] Their enemies in the core, kind by kind against today's (the censer, deacon, golem, acolyte, gargoyle, templar, wraith, seraph, flagellant, plague doctor, the Pyre's four
-    and the Fen's four), and their crowd models baked. Done so far (2026-10-16, `client/tests/core_kinds.gd`, the file later groups append to): the Ossuary's golem and deacon, with
-    their crowd models, so the whole Ossuary roster runs on the core.
+    and the Fen's four), and their crowd models baked. Done so far (`client/tests/core_kinds.gd`, the file later groups append to): the Ossuary's golem and deacon (2026-10-16), and the Drowned Nave's censer,
+    acolyte, gargoyle, templar and wraith (2026-10-17), with their crowd models, so the whole Ossuary and Nave rosters run on the core.
   - [ ] The benchmark's other rooms (today's Sanctum and the rest), so Gate C can compare every room.
 - [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
 - [ ] The Depths and gathering (the Chapterhouse came with the areas, DECISIONS B47).

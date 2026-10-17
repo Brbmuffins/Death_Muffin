@@ -583,6 +583,12 @@ void CrowdView::edge(View &v, int32_t p_prev, int32_t p_state) {
 	const int32_t swing = (v.flags & BF_CASTER) ? RL_CAST : RL_ATTACK;
 	switch (p_state) {
 		case ATTACK:  // dm_state_attack: the swing's impact frame lands when the wind-up ends
+			if (v.flags & (BF_DIVING | BF_GROUNDED)) {  // DmEnemyGargoyle.play_attack: a dive plays its clip over the wind-up and a fifth more, no lunge
+				play_once(m, v, RL_DIVE, 1.0, v.action_s * 1.2, FADE_ONCE);
+				break;
+			}
+			play_strike(m, v, swing, v.action_s);
+			break;
 		case EMERGE:  // dm_state_emerge: 0.3 s of recovery after a surfacing, swung like an attack
 			play_strike(m, v, swing, v.action_s);
 			break;
@@ -928,6 +934,13 @@ bool CrowdView::advance(View &v, double p_dt, double p_alpha) {
 		double lift = 0.0;
 		if (v.hover > 0.0) {  // the hover bob (DmEntityViews.sync)
 			lift = enemy ? v.hover + std::sin(clock_ms / 520.0 + v.id) * ((v.flags & BF_FLYER) ? 0.18 : 0.12) : v.hover + std::sin(clock_ms / 400.0 + v.id) * 0.1;
+		}
+		if (enemy && v.state == ATTACK && (v.flags & (BF_DIVING | BF_GROUNDED))) {  // DmEnemyGargoyle._process: climb over the mark for the first half of the wind-up, drop onto it, then sit grounded
+			const double kk = (v.flags & BF_GROUNDED) || v.action_s <= 0.0 ? 1.0 : (v.state_t + p_alpha * TICK) / v.action_s;
+			lift = 0.05;
+			if (kk < 1.0) {
+				lift = kk < 0.5 ? v.hover + kk * 3.0 : (v.hover + 1.5) * std::pow(1.0 - (kk - 0.5) * 2.0, 2.0);
+			}
 		}
 		const double sink = enemy ? (v.flags & BF_FLYER ? 0.0 : ENEMY_SINK * m.height) : THRALL_SINK;
 		v.dy = -sink * (1.0 - rise) * (1.0 - rise) + lift;

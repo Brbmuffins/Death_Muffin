@@ -30,8 +30,8 @@ constexpr double POS_QUANTUM = 0.01;  // metres: int16 offsets from the area's c
 constexpr uint32_t HP_ONE = 65535;    // health is a fraction of the maximum, 1..65535 while alive
 constexpr uint32_t T_SATURATED = 255; // time in state in centiseconds; 255 = 2.55 s or more
 // Enemy record flag byte: bits 0..3 state, then elite, dug in, has aim, has affix byte. Thrall: bits 0..2 state, rally, has aim.
-// Bit 5 means dug in for a burrower and, for a Deacon (EnemyDef behavior support), a raise in progress (its ATTACK is a raise, not a curse): the guest's
-// telegraph differs (the swing_raise of DmEnemyDeacon, replicated as `rz` today).
+// Bit 5 means dug in for a burrower; for a Deacon (EnemyDef behavior support), a raise in progress (its ATTACK is a raise, not a curse); for a Gargoyle (EnemyDef dive),
+// a dive in progress (its ATTACK is a drop, not a bite): the guest's telegraph differs (the swing_raise of DmEnemyDeacon and the `dv` of DmEnemyGargoyle, replicated today).
 constexpr uint32_t EF_ELITE = 0x10, EF_DUG_IN = 0x20, EF_AIM = 0x40, EF_AFFIXES = 0x80;
 constexpr uint32_t TF_RALLY = 0x08, TF_AIM = 0x10;
 
@@ -39,6 +39,7 @@ constexpr uint32_t TF_RALLY = 0x08, TF_AIM = 0x10;
 constexpr double PUPPET_EASE = 15.0, PUPPET_SPEED_RATE = 10.0, PUPPET_TELEPORT_SQ = 36.0, PUPPET_MIN_SPEED = 0.3;
 constexpr double PUPPET_MIN_TELL_S = 0.05;   // dm_enemy.gd: announce_telegraph(maxf(0.05, windup_s - net_age))
 constexpr double PUPPET_T_RESYNC_S = 0.1;    // the time in state is taken from a snapshot only when it is this far from the guest's own count
+constexpr double PUPPET_PHASE_SLACK_S = 0.3; // a swing's count that falls back counts as its blow only when the guest's own had come this near the end of the wind-up
 // What a guest accepts from the wire (a damaged or hostile message cannot make it grow without bound).
 constexpr size_t PUPPET_MAX_ENEMIES = 4096, PUPPET_MAX_THRALLS = 1024, PUPPET_MAX_CORPSES = 512;
 // A host that keeps collecting reliable events and never takes them (a guest left, set_replication(false) was forgotten) drops them at this size and

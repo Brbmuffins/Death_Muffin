@@ -54,6 +54,7 @@ void World::clear_bodies() {
 	enemies.clear();
 	enemy_slot.clear();
 	pending_spawns.clear();
+	unbinds.clear();
 	thralls.clear();
 	thrall_slot.clear();
 	corpses.clear();
@@ -115,9 +116,11 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 		rep.desync++;
 	}
 	e.affixes = uint8_t(s.affixes);
-	const bool support = defs[size_t(e.def)].behavior == B_SUPPORT;
-	e.dug_in = s.dug_in && !support;       // bit 5 is a Deacon's raise in progress, not a dig
+	const EnemyDef &kd = defs[size_t(e.def)];
+	const bool support = kd.behavior == B_SUPPORT;
+	e.dug_in = s.dug_in && !support && !kd.has_dive;   // bit 5 is a Deacon's raise in progress, or a Gargoyle's dive, not a dig
 	e.swing_raise = s.dug_in && support;
+	e.diving = s.dug_in && kd.has_dive;
 	e.net_x = s.x;
 	e.net_z = s.z;
 	e.net_yaw = s.yaw;
@@ -154,9 +157,11 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 			const float ax = s.has_aim ? s.aim_x : e.x, az = s.has_aim ? s.aim_z : e.z;
 			e.aim_x = ax;
 			e.aim_z = az;
-			events.push(EV_ENEMY_ATTACK, e.id, { d.blow }, { ax, az, float(e.windup_s) });
+			const int32_t blow = e.diving ? BLOW_DIVE : d.blow;   // a Gargoyle's swing is a dive when bit 5 of its record says so (its `dv`)
+			e.phase = 0;
+			events.push(EV_ENEMY_ATTACK, e.id, { blow }, { ax, az, float(e.windup_s) });
 			const float left = float(std::max(PUPPET_MIN_TELL_S, e.windup_s - t));  // dm_enemy.gd: announce_telegraph(maxf(0.05, windup_s - net_age))
-			switch (d.blow) {
+			switch (blow) {
 				case BLOW_CONE:
 					events.push(EV_TELEGRAPH, e.id, { TELL_CONE }, { s.x, s.z, ax, az, 0.0f, left });
 					break;
@@ -165,6 +170,15 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 					break;
 				case BLOW_SLAM:
 					events.push(EV_TELEGRAPH, e.id, { TELL_SLAM }, { s.x, s.z, ax, az, float(d.slam_r), left });
+					break;
+				case BLOW_CURSE:
+					events.push(EV_TELEGRAPH, e.id, { TELL_CURSE }, { s.x, s.z, ax, az, 0.0f, left });
+					break;
+				case BLOW_SCREAM:
+					events.push(EV_TELEGRAPH, e.id, { TELL_SCREAM }, { s.x, s.z, ax, az, float(tun.scream_r), left });
+					break;
+				case BLOW_DIVE:
+					events.push(EV_TELEGRAPH, e.id, { TELL_DIVE }, { s.x, s.z, ax, az, float(d.dive_r), left });
 					break;
 				default:  // a Deacon's swing is a raise or a curse (bit 5 of the record); the plain melee swing has no telegraph
 					if (d.behavior == B_SUPPORT) {
@@ -180,6 +194,9 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 			rep.events_derived++;
 		}
 	} else if (s.t < T_SATURATED && std::fabs(e.state_t - t) > PUPPET_T_RESYNC_S) {
+		if (e.state == ATTACK && e.phase == 0 && t < e.state_t && e.state_t > e.windup_s - PUPPET_PHASE_SLACK_S) {
+			e.phase = 1;  // the host restarted the count at the blow: a dive has landed and sits grounded (the crowd draws it so)
+		}
 		e.state_t = t;  // the host restarted the count (a swing's wind-up ended) or the guest drifted
 	}
 }

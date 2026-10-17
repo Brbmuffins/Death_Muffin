@@ -29,6 +29,7 @@ struct Thrall : Body {
 	int32_t kind = TK_WARRIOR, owner = 0, formation_slot = 0, formation_rank = 0, formation_count = 3;
 	int32_t state = TS_RISING, target = 0, swing_n = 0, dead_reason = -1, last_source = 0;
 	bool empowered = false, champion = false, has_nav_goal = false, has_seat_prev = false;
+	bool unbind_claimed = false;  // a Lich Acolyte claimed its fall (the `clst_claimed` meta): no other acolyte may
 	float x = 0, z = 0, yaw = 0, aim_x = 0, aim_z = 0, sep_x = 0, sep_z = 0, nav_gx = 0, nav_gz = 0, seat_px = 0, seat_pz = 0;
 	double damage = 1, interval = 1, attack_range = 1.3, speed = 5, radius = 0.4, ally_heal = 0, lifetime_s = 0;
 	double death_burst_frac = 0, mark_mult = 1, born_at = 0;

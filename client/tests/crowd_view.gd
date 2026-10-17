@@ -4,7 +4,7 @@ extends SceneTree
 ## per creature and writes the MultiMesh buffers, which `buffer()` hands back exactly as they would be uploaded.
 ## Mirrors of today's pure helpers sit below, line by line (turn_toward, smooth_speed, knock_impulse, step_knock, settle_depth, strike_timing, the
 ## stride plan, the body layer's pose); the C++ is held against them on random inputs and on the views' own clocks. Then: the clip of every state
-## and the walk/run switch, the blends and the packing, the hit flash, the knock, the death into a corpse, the rise, the hover, the shadow group,
+## and the walk/run switch, the blends and the packing, the hit flash, the knock, the death into a corpse, the rise, the hover, the Gargoyle's dive, the shadow group,
 ## the level-of-detail split, interpolation, a Full Party crowd driven by a real DmCore (events not consumed, rows equal for a guest, no growth)
 ## and the time draw() takes (INFO only). Bakes the models it needs into a scratch folder (about 25 s).
 ## Run: godot --headless --path client --script res://tests/crowd_view.gd
@@ -35,6 +35,8 @@ const F_CASTER := 2
 const F_INERT := 4
 const F_MIST := 8
 const F_FLYER := 16
+const F_DIVING := 32
+const F_GROUNDED := 64
 const ENEMY := 0
 const THRALL := 1
 const ROBBER := 0   ## model slots, in SLUGS order
@@ -310,6 +312,7 @@ func _initialize() -> void:
 	hits_and_flash()
 	knockback()
 	rise_hover_and_pose()
+	the_dive()
 	death_and_corpses()
 	the_hound()
 	shadows_and_lod()
@@ -792,6 +795,48 @@ func rise_hover_and_pose() -> void:
 	var want := Transform3D(root_basis * model_basis, Vector3(ii.pos) + root_basis * Vector3(0, 0, pose.w))   # (the hit shoved it a little: pos has the knock)
 	var r := row_at(q, want.origin.x, want.origin.z)
 	check(not r.is_empty() and r.xf.is_equal_approx(want), "the instance is root(yaw, scale) x model(pitch, roll, squash, forward) as Godot's Node3D tree composes it")
+
+
+## The Belfry Gargoyle's dive (DmEnemyGargoyle._process and play_attack): the swing in its wind-up climbs over the mark for the first half (hover + 3 m x progress), drops onto
+## it ((hover + 1.5) x (1 - 2 x (progress - 0.5))^2) and, once the wind-up is over or the blow has landed, sits grounded at 0.05 m; the dive plays its clip over the wind-up and a
+## fifth more with no lunge (the robber has no dive clip: its role resolves to its attack); a swing that is not a dive keeps the hover.
+func the_dive() -> void:
+	var c := new_crowd()
+	var hover := 1.1
+	var w := 0.9
+	feed(c, [body(1, ENEMY, ROBBER, CHASE, 0, 0, {"flags": F_FLYER, "hover": hover}), body(2, ENEMY, ROBBER, CHASE, 6, 0, {"flags": F_FLYER, "hover": hover})])
+	draw(c, 2)
+	feed(c, [body(1, ENEMY, ROBBER, ATTACK, 0, 0, {"flags": F_FLYER | F_DIVING, "hover": hover, "action_s": w}), body(2, ENEMY, ROBBER, ATTACK, 6, 0, {"flags": F_FLYER, "hover": hover, "action_s": w})])
+	var i := info(c, 1)
+	check(i.one_shot.begins_with("attack") and near(i.speed, clip_len("grave_robber", i.one_shot) / (w * 1.2), 1e-6) and i.lunge_t == -1.0 and i.time == 0.0,
+		"DIVE: the dive clip (%s) over the wind-up and a fifth more (%.3f x), no lunge" % [i.one_shot, i.speed])
+	check(info(c, 2).lunge_t >= 0.0, "and a bite from the same body is a plain strike, with its lunge")
+	var worst := 0.0
+	var ok := true
+	for k in 70:
+		var t := float(k) * DT
+		feed(c, [body(1, ENEMY, ROBBER, ATTACK, 0, 0, {"flags": F_FLYER | F_DIVING, "hover": hover, "action_s": w, "state_t": t})])
+		draw(c, 1)
+		var kk := t / w
+		var want := 0.05
+		if kk < 1.0:
+			want = hover + kk * 3.0 if kk < 0.5 else (hover + 1.5) * pow(1.0 - (kk - 0.5) * 2.0, 2.0)
+		worst = maxf(worst, absf(info(c, 1).pos.y - want))
+		ok = ok and absf(info(c, 1).pos.y - want) < 1e-5
+	check(ok, "DIVE: climbs over the mark for the first half, drops onto it, and is grounded (0.05 m) when the wind-up is over (worst %.6f m off)" % worst)
+	var peak := 0.0
+	for k in 28:
+		feed(c, [body(1, ENEMY, ROBBER, ATTACK, 0, 0, {"flags": F_FLYER | F_DIVING, "hover": hover, "action_s": w, "state_t": float(k) * DT})])
+		draw(c, 1)
+		peak = maxf(peak, info(c, 1).pos.y)
+	check(peak > hover + 1.2, "DIVE: the climb is high (%.2f m over a hover of %.1f)" % [peak, hover])
+	# The blow has landed (the sim restarts the swing's clock; the flag says so): grounded however the clock reads, then the hover again once the dive is over.
+	feed(c, [body(1, ENEMY, ROBBER, ATTACK, 0, 0, {"flags": F_FLYER | F_GROUNDED, "hover": hover, "action_s": w, "state_t": 0.1})])
+	draw(c, 1)
+	check(near(info(c, 1).pos.y, 0.05, 1e-6), "DIVE: after the blow it sits grounded while it recovers")
+	feed(c, [body(1, ENEMY, ROBBER, CHASE, 0, 0, {"flags": F_FLYER, "hover": hover})])
+	draw(c, 1)
+	check(near(info(c, 1).pos.y, hover + sin(clock_ms / 520.0 + 1.0) * 0.18, 1e-4), "DIVE: and when it hunts again it hovers")
 
 
 func death_and_corpses() -> void:

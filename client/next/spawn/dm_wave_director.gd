@@ -14,9 +14,10 @@ signal area_followed(id: String)        ## host: the director moved to the comba
 signal surge_event(ev: Dictionary)      ## host: {t: surge | surgeCleared | surgeFailed, area, x, z, ...} (Grave Surges are not ported yet: never emitted)
 
 ## The defs the core's enemy brain runs (today: "has a scene at res://enemies/<id>.tscn"): the Hollow Graves' roster, the rat of the kennel
-## procession and the risen, and the Ossuary's golem and deacon (so the whole Ossuary roster). The censer (its aura) and the other areas' kinds
-## come with the core items that run them; a roster entry outside this list is skipped like a kind without a scene was.
-const CORE_KINDS: Array[String] = ["robber", "hound", "penitent", "sac", "moth", "bat", "ghoul", "rat", "risen", "golem", "deacon"]
+## procession and the risen, the Ossuary's golem and deacon (so the whole Ossuary roster) and the Drowned Nave's censer, acolyte, gargoyle, templar and wraith
+## (so the whole Nave roster). The other areas' kinds come with the core items that run them; a roster entry outside this list is skipped like a kind without
+## a scene was.
+const CORE_KINDS: Array[String] = ["robber", "hound", "penitent", "sac", "moth", "bat", "ghoul", "rat", "risen", "golem", "deacon", "censer", "acolyte", "gargoyle", "templar", "wraith"]
 const EMPTY_CLEAR_S := 15.0             ## no hero in the area this long -> the area's queued spawns are dropped
 const SPAWN_MIN := DmSimConsts.AGGRO_RANGE + 3.0   ## owner 2026-10-07: waves climb in outside aggro so the player sees them coming (+3: a group fans out 2.1 m)
 const SPAWN_MAX := 30.0                 ## farthest spawn distance (m)
@@ -48,6 +49,7 @@ var _empty_t: float = 0.0
 var _base := [6.5, 9, 28]               ## the area's own interval / size / cap, before the tier
 var follow_areas := true                ## host: when no hero is in `area_id`, move to the combat area one is in (DmNextGame: every area has a roster)
 var surge = null                        ## Grave Surges (next/areas/dm_grave_surge.gd) are not ported yet
+var off: Dictionary = {}                ## defs the director leaves out as if the core did not run them (def id -> true): the parity scenario drops the Bellringers' censer, as today's side does
 var _first_wave := true                 ## the first wave of a visit is 1.3 x the area's wave size (the sim's spawn_wave first)
 var _wave_n: int = 0                    ## waves since arrival (processions start at PROCESSION.minWave)
 var _vanguard := false                  ## this wave carries the Elite Vanguard (every other wave): its first plain pick is an elite
@@ -82,7 +84,7 @@ func configure_area(id: String) -> void:
 		set_wave_tier(wave_tier)
 	kinds.clear()
 	for e in def.get("enemies", []):
-		if runs_on_core(String(e["id"])):
+		if makes(String(e["id"])):
 			kinds.append({"id": String(e["id"]), "weight": float(e["weight"])})
 	_wave_t = first_wave_delay
 	_first_wave = true
@@ -92,6 +94,11 @@ func configure_area(id: String) -> void:
 ## True when the combat core runs this def's brain (see CORE_KINDS).
 static func runs_on_core(def_id: String) -> bool:
 	return CORE_KINDS.has(def_id)
+
+
+## True when this director makes the def: the core runs it and `off` does not leave it out.
+func makes(def_id: String) -> bool:
+	return CORE_KINDS.has(def_id) and not off.has(def_id)
 
 
 # ---- queries (the seam for rites / rewards) -------------------------------------------------------------------------------------
@@ -238,7 +245,7 @@ func elite_chance() -> float:
 ## One pick (a pack for bats / rats: sim [min, max]) around `pos`, at most `room` bodies. Elites are single picks. Returns how many spawned;
 ## `ids` collects the new enemies' core ids (-1 for a body that is queued, which a wave's are).
 func spawn_group(pos: Vector3, heroes: Array, room: int, lead: String = "", roster: Array = [], ids: Array = []) -> int:
-	var kind := lead if lead != "" and runs_on_core(lead) else _pick_kind(roster)
+	var kind := lead if lead != "" and makes(lead) else _pick_kind(roster)
 	var pack: Variant = DmSimData.ENEMIES[kind].get("pack")
 	var k := 1
 	if pack is Array:
@@ -277,8 +284,8 @@ func scaling_levels(heroes: Array) -> Array:
 
 
 ## Host: make one enemy in the core and return its id (0 while it is queued by `spawn_wave`, whose bodies are made over the next ticks). `heroes` only
-## feeds the level / party scaling. `mult` overrides the computed scaling ({level, hp, dmg}: the hp / damage multipliers): a Risen raised by an
-## acolyte is as strong as its raiser (a deacon's is made by the core itself, with its body's level and multipliers). `over` (optional): area (the ground
+## feeds the level / party scaling. `mult` overrides the computed scaling ({level, hp, dmg}: the hp / damage multipliers; a Risen raised by a
+## deacon or unbound by an acolyte is made by the core itself, with its raiser's level and multipliers). `over` (optional): area (the ground
 ## the enemy counts as for level scaling; a boss's adds belong to the boss's area), depth (the Depths run: its level, and full Wave Speed ramp like the
 ## sim's instance), affix_list (PackedStringArray of elite affixes; an elite without one rolls its own: the Omen's forced affix, else one of four, + the
 ## Depths' extras). The affix roll is `DmAffixRoll.roll`, today's, from this director's random stream.
@@ -321,7 +328,7 @@ func _pick_kind(roster: Array = []) -> String:
 	var roll := rng.randf() * total
 	for k in from:
 		roll -= float(k["weight"]) * (dm if k["id"] == "deacon" else 1.0)
-		if roll <= 0.0 and runs_on_core(String(k["id"])):
+		if roll <= 0.0 and makes(String(k["id"])):
 			return String(k["id"])
 	return String(kinds[0]["id"])
 

@@ -1,6 +1,6 @@
 extends SceneTree
 ## The kinds the other areas add to the combat core, against today's rules (godot/enemies): so far the Marrow Ossuary's two, the Bone Golem and the
-## Crypt Deacon. Later area groups append their kinds here.
+## Crypt Deacon, and the Drowned Nave's five, the Censer Bearer, Lich Acolyte, Belfry Gargoyle, Bell-Sworn Templar and Choir Wraith. Later area groups append their kinds here.
 ##   - the golem (dm_enemy_hazard.gd, the sac's script): its slam (radius, wind-up, cooldown, damage, the aim fixed at the wind-up's start, who it reaches), its
 ##     stats and the three corpses it falls into;
 ##   - the deacon (dm_enemy_deacon.gd, dm_state_cath_support.gd): the keep-away walk, the curse (wind-up, reach at the blow, damage), the raise (the corpse chosen,
@@ -9,6 +9,16 @@ extends SceneTree
 ##     cadence, silence and stun, an elite deacon;
 ##   - the wire: a guest's puppet shows the deacon's telegraphs and Sanctify, and the Risen it raised;
 ##   - the roster: the whole Ossuary roster runs on the core, and a seeded run replays bit for bit.
+## The Nave (a section per kind, after the Ossuary's):
+##   - the censer (dm_enemy_censer.gd): the one-second pulse, who it reaches (the radius, itself, the rising, not the fallen), the haste (x1.3 feet, x1.25 blows, 1.5 s), its own
+##     blows hasted by its own incense, a melee body otherwise;
+##   - the acolyte (dm_enemy_clst_acolyte.gd, dm_state_clst_kite.gd): the caster set's walk, the cast gate, the curse (wind-up, the homing reach, kind curse), silence that holds the
+##     cast back, and Unbind (a thrall KILLED in range after the acolyte's look, the cue, the delay, the Risen with the acolyte's level and multipliers, the cooldown, the cap of four);
+##   - the gargoyle (dm_enemy_gargoyle.gd, dm_state_cath_dive_chase.gd, dm_state_cath_dive.gd): the dive (range window, sight line, the aim fixed at the start, hanging still then the
+##     ease-in drop, the blow in the radius, the grounded spell, a stun), the bite inside the window;
+##   - the templar (dm_enemy_clst_templar.gd): the shield's arc, who it stops, Fracture, DoT ticks, the glance cue and its rate, a melee body with a resonant corpse;
+##   - the wraith (dm_enemy_wraith.gd, DmEnemyCaster): the scream ring at the aim fixed at the wind-up's start, the caster set's walk, no silence check, no corpse;
+##   - the wire: a guest sees the dive, the scream, the curse, Unbind's cue and its Risen, the glance and the incense; the roster and a seeded replay of the five.
 ## The expected ticks come from mirrors of today's arithmetic (countdowns that lose 1/60 s a tick in doubles, clocks that gain it), the numbers from today's data and
 ## from the scripts' own `const` lines. Seeded, no navmesh (straight lines). Run: godot --headless --path client --script res://tests/core_kinds.gd [-- --verbose]
 
@@ -26,11 +36,24 @@ const EV_STATUS_EXPIRED := 16
 const EV_CORPSE_ADDED := 18
 const EV_CORPSE_CONSUMED := 19
 const EV_CORPSE_GONE := 20
+const HK_CURSE := 5
+const NAVE := "nave"
+const NAVE_KINDS: Array[String] = ["censer", "acolyte", "gargoyle", "templar", "wraith"]
+const KITE_PARAMS: Array[float] = [0.5, 1.5, 3.5, 0.8]   ## dm_enemy_clst_caster.gd kite_params(): cast pad, near pad, back-off distance, back-off speed (pinned against the file)
 const TELL_SLAM := 1
 const TELL_RAISE := 5
 const TELL_CURSE := 6
+const TELL_SCREAM := 7
+const TELL_DIVE := 8
+const BLOW_SLAM := 3
+const BLOW_CURSE := 4
+const BLOW_SCREAM := 5
+const BLOW_DIVE := 6
 const CUE_SLAM := 0
 const CUE_SANCTIFY := 3
+const CUE_SHIELD_BLOCK := 4
+const CUE_UNBIND := 5
+const CUE_SCREAM := 6
 const CR_RAISED := 4
 const RISING := 0
 const IDLE := 1
@@ -42,7 +65,9 @@ const DT := 1.0 / 60.0
 const ELITE_WINDUP := 0.85    ## dm_enemy.gd _ready: an elite's wind-up and cooldown factors
 const ELITE_COOLDOWN := 0.8
 const FAR := Vector2(40.0, 0.0)   ## a hero out of the deacon's sight (aggro 15 m)
-const SCRIPTS: Array[String] = ["enemies/dm_enemy.gd", "enemies/kinds/dm_enemy_deacon.gd", "enemies/states/dm_state_cath_support.gd", "next/corpses/dm_corpse_field.gd"]
+const SCRIPTS: Array[String] = ["enemies/dm_enemy.gd", "enemies/kinds/dm_enemy_deacon.gd", "enemies/states/dm_state_cath_support.gd", "next/corpses/dm_corpse_field.gd",
+	"enemies/kinds/dm_enemy_clst_acolyte.gd", "enemies/kinds/dm_enemy_clst_templar.gd", "enemies/kinds/dm_enemy_wraith.gd", "enemies/states/dm_state_cath_dive_chase.gd",
+	"enemies/states/dm_state_attack.gd", "enemies/states/dm_state_rising.gd"]
 
 var fails := 0
 var checks := 0
@@ -50,7 +75,8 @@ var verbose := false
 var godot_dir: String
 var content: Dictionary
 var statuses: Dictionary
-var K: Dictionary        ## the scripts' `const` lines (CORPSE_RANGE, BACK_OFF_DIST, SCAN_S, STRIKE_REACH_MULT ...)
+var K: Dictionary        ## the scripts' `const` lines (CORPSE_RANGE, BACK_OFF_DIST, SCAN_S, STRIKE_REACH_MULT, WATCH_S, LOS_S ...)
+var KITE: Dictionary     ## dm_state_kite.gd's (the caster set's BACK_OFF_DIST and BACK_OFF_SPEED; the deacon's own, in K, are different)
 var S: Dictionary        ## statuses.json SANCTIFIED
 var tick := 0
 var keep := []
@@ -179,6 +205,7 @@ func _init() -> void:
 	statuses = DmCoreData.json(godot_dir.path_join("data/content/statuses.json"))
 	S = statuses["SANCTIFIED"]
 	K = DmCoreData.consts(godot_dir, SCRIPTS)
+	KITE = DmCoreData.consts(godot_dir, ["enemies/states/dm_state_kite.gd"])
 	names_and_tables()
 	golem_slam()
 	golem_stats_and_corpses()
@@ -195,6 +222,27 @@ func _init() -> void:
 	deacon_elite()
 	deacon_on_the_wire()
 	the_roster_and_a_replay()
+	nave_defs()
+	censer_pulse()
+	censer_haste_in_play()
+	censer_melee()
+	acolyte_kite()
+	acolyte_curse()
+	acolyte_silence_and_stun()
+	acolyte_unbind()
+	acolyte_unbind_edges()
+	gargoyle_dive()
+	gargoyle_aim_and_stun()
+	gargoyle_edges_and_sight()
+	gargoyle_sight_on_the_navmesh()
+	templar_shield()
+	templar_glance_cue()
+	templar_fights()
+	wraith_scream()
+	wraith_walk()
+	wraith_no_corpse()
+	nave_on_the_wire()
+	the_nave_roster_and_a_replay()
 	keep.clear()
 	if fails == 0:
 		print("PASS core_kinds %d checks" % checks)
@@ -205,12 +253,16 @@ func _init() -> void:
 
 ## The tables GDScript decodes events with end in the new names, append only, and the scripts' constants are the ones this suite reads.
 func names_and_tables() -> void:
-	check(DmCoreEvents.TELLS.size() == 7 and DmCoreEvents.TELLS[TELL_SLAM] == &"slam" and DmCoreEvents.TELLS[TELL_RAISE] == &"raise" and DmCoreEvents.TELLS[TELL_CURSE] == &"curse", "the telegraph names: raise and curse appended after toll")
-	check(DmCoreEvents.CUES.size() == 4 and DmCoreEvents.CUES[CUE_SLAM] == &"slam" and DmCoreEvents.CUES[CUE_SANCTIFY] == &"sanctify", "the cue names: sanctify appended after dig_in")
+	check(DmCoreEvents.TELLS.size() == 9 and DmCoreEvents.TELLS[TELL_SLAM] == &"slam" and DmCoreEvents.TELLS[TELL_RAISE] == &"raise" and DmCoreEvents.TELLS[TELL_CURSE] == &"curse"
+		and DmCoreEvents.TELLS[TELL_SCREAM] == &"scream" and DmCoreEvents.TELLS[TELL_DIVE] == &"dive", "the telegraph names: raise and curse appended after toll, then scream and dive (append only)")
+	check(DmCoreEvents.CUES.size() == 7 and DmCoreEvents.CUES[CUE_SLAM] == &"slam" and DmCoreEvents.CUES[CUE_SANCTIFY] == &"sanctify" and DmCoreEvents.CUES[CUE_SHIELD_BLOCK] == &"shield_block"
+		and DmCoreEvents.CUES[CUE_UNBIND] == &"unbind" and DmCoreEvents.CUES[CUE_SCREAM] == &"scream", "the cue names: sanctify appended after dig_in, then shield_block, unbind and scream")
+	check(DmCoreEvents.BLOWS.size() == 7 and DmCoreEvents.BLOWS[BLOW_SLAM] == &"slam" and DmCoreEvents.BLOWS[BLOW_CURSE] == &"curse" and DmCoreEvents.BLOWS[BLOW_SCREAM] == &"scream"
+		and DmCoreEvents.BLOWS[BLOW_DIVE] == &"dive", "the blow names: curse, scream and dive appended after slam")
 	check(K.has("CORPSE_RANGE") and K.has("BACK_OFF_DIST") and K.has("BACK_OFF_SPEED") and K.has("SCAN_S") and K.has("STRIKE_REACH_MULT") and K.has("EXTRA_RING"),
 		"the scripts' own constants are read (%s)" % str(K.keys()))
 	var c := make()
-	check(String(c.version()) == "dmcore 0.8", "the core's version names this step")
+	check(String(c.version()) == "dmcore 0.9", "the core's version names this step")
 	var t: Dictionary = c.tuning()
 	check(t["SANCTIFIED.range"] == float(S["range"]) and t["SANCTIFIED.durationS"] == float(S["durationS"]) and t["SANCTIFIED.cooldownMult"] == float(S["cooldownMult"]),
 		"Sanctify's range, duration and cooldown factor are statuses.json's")
@@ -1078,3 +1130,1129 @@ func the_roster_and_a_replay() -> void:
 						c.damage(id, 25.0, 0, false)
 		logs.append([rec, recf, c.enemy_count(), c.corpse_count()])
 	check(logs[0][0] == logs[1][0] and logs[0][1] == logs[1][1] and logs[0][0].size() > 200, "replay: a seeded fight of 2 deacons, a golem and a crowd replays event for event (%d ints)" % logs[0][0].size())
+
+
+# ================================================================================================================== the Drowned Nave
+#
+# Its five kinds (godot/enemies/kinds: dm_enemy_censer, dm_enemy_clst_acolyte, dm_enemy_gargoyle, dm_enemy_clst_templar, dm_enemy_wraith; the states dm_state_clst_kite,
+# dm_state_cath_dive_chase, dm_state_cath_dive and the base classes DmEnemyClstCaster and DmEnemyCaster). Numbers come from enemies.json and the scripts' const lines;
+# the expected ticks from mirrors of the scripts' arithmetic.
+
+## A hero-proof body: a robber that does no damage and stays where it is (nobody near it to fight).
+func harmless(c: RefCounted, at: Vector2, rising := false) -> int:
+	return c.spawn_enemy("robber", at, 1, 1.0, 0.0, false, NAVE, rising)
+
+
+func root(c: RefCounted, id: int) -> void:
+	c.apply_status(id, "root", 0, 1.0, 1000.0)
+
+
+## The seconds left on a body's status (DmCore.statuses: id, stacks and tenths of a second per status), or -1.0 when it has none.
+func status_left(c: RefCounted, id: int, name: String) -> float:
+	var sid := DmStatusRules.IDS.find(name)
+	var b: PackedByteArray = c.statuses(id)
+	for i in range(0, b.size(), 4):
+		if int(b[i]) == sid:
+			return float(int(b[i + 2]) | (int(b[i + 3]) << 8)) / 10.0
+	return -1.0
+
+
+## Ticks until a countdown that starts at `v` and loses DT x `rate` a tick (a double, as the brain subtracts it) is <= 0.
+func to_zero_rate(v: float, rate: float) -> int:
+	var n := 0
+	while v > 0.0:
+		v -= DT * rate
+		n += 1
+	return n
+
+
+## A thrall of the hero's that stays where it is: stunned for good (so it never gets past its rise: it can fall, and be claimed, but nobody targets it), a lot of health, no
+## damage. `hold` false leaves it free, to rise and take its seat (the caller stuns it then).
+func thrall(c: RefCounted, owner: int, at: Vector2, hp := 1.0e6, hold := true) -> int:
+	var t: int = c.raise_thrall({"kind": "warrior", "hp": hp, "maxHp": hp, "damage": 0.0, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false, "allyHeal": 0.0}, owner, at, 0.0, 99.0)
+	if hold:
+		c.stun(t, 1.0e6)
+	return t
+
+
+func spawn_acolyte(c: RefCounted, at: Vector2, level := 1, hp_mult := 1.0, dmg_mult := 1.0, elite := false, rising := false) -> int:
+	return c.spawn_enemy("acolyte", at, level, hp_mult, dmg_mult, elite, NAVE, rising)
+
+
+func nave_defs() -> void:
+	var el: Dictionary = content["ELITE"]
+	for id in NAVE_KINDS:
+		var d := def(id)
+		var c := make(201)
+		hero(c, FAR)
+		var e: int = c.spawn_enemy(id, Vector2(0, 0), 6, 2.0, 1.5, false, NAVE, false)
+		var info: Dictionary = c.enemy_info(e)
+		check(is_equal_approx(info["max_hp"], float(d["hp"]) * 2.0) and is_equal_approx(info["damage"], float(d["damage"]) * 1.5) and info["radius"] == float(d["radius"])
+			and is_equal_approx(info["windup_s"], float(d["windupMs"]) / 1000.0) and info["level"] == 6 and info["area"] == NAVE,
+			"%s: hp, damage, radius and wind-up from the def, the spawn's multipliers and level" % id)
+		var spd := float(info["speed"])
+		check(spd >= float(d["speed"]) * 0.92 - 1e-6 and spd <= float(d["speed"]) * 1.08 + 1e-6, "%s: speed %.2f within the +-8%% roll of %.1f" % [id, spd, float(d["speed"])])
+		var ee: int = c.spawn_enemy(id, Vector2(5, 5), 1, 1.0, 1.0, true, NAVE, false)
+		var ei: Dictionary = c.enemy_info(ee)
+		check(is_equal_approx(ei["max_hp"], float(d["hp"]) * float(el["hpMult"])) and is_equal_approx(ei["windup_s"], float(d["windupMs"]) / 1000.0 * ELITE_WINDUP) and is_equal_approx(ei["damage"], float(d["damage"]) * float(el["damageMult"])),
+			"%s: an elite has x%.1f health, x%.1f damage and a x%.2f wind-up" % [id, float(el["hpMult"]), float(el["damageMult"]), ELITE_WINDUP])
+	var t: Dictionary = make().tuning()
+	var C: Dictionary = content["CENSER"]
+	var U: Dictionary = content["UNBIND"]
+	var S2: Dictionary = content["TEMPLAR_SHIELD"]
+	check(t["CENSER.radius"] == float(C["radius"]) and t["CENSER.hasteS"] == float(C["hasteS"]) and t["SCREAM.radius"] == float(content["SCREAM"]["radius"])
+		and t["TEMPLAR_SHIELD.halfArcDeg"] == float(S2["halfArcDeg"]) and t["TEMPLAR_SHIELD.passThrough"] == float(S2["passThrough"])
+		and t["UNBIND.range"] == float(U["range"]) and t["UNBIND.delayS"] == float(U["delayS"]) and t["UNBIND.cooldownS"] == float(U["cooldownS"]) and t["UNBIND.maxAlive"] == float(U["maxAlive"]),
+		"the Nave's numbers are enemies.json's: CENSER, SCREAM, TEMPLAR_SHIELD, UNBIND")
+	var kite: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_clst_caster.gd"))
+	var censer_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_censer.gd"))
+	var kite_state: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/states/dm_state_kite.gd"))
+	check(kite.contains("return [0.5, 1.5, 3.5, 0.8]") and kite_state.contains("d <= enemy.attack_range - 0.5 and enemy.attack_cd <= 0.0") and kite_state.contains("d > enemy.attack_range - 1.5") and censer_src.contains("_aura_cd = 1.0")
+		and float(KITE["BACK_OFF_DIST"]) == 3.5 and float(KITE["BACK_OFF_SPEED"]) == 0.8,
+		"the walk of the caster set [cast at attackRange - 0.5, walk in beyond - 1.5, back off under 3.5 m at 0.8] and the censer's one-second pulse are the scripts' own numbers")
+	check(K.has("WATCH_S") and K.has("BLOCK_FX_GAP_MS") and K.has("LOS_S") and K.has("RECOVER_TIME") and K.has("HOVER") and K.has("RISE_TIME"), "the Nave's scripts' own constants are read (%s)" % str(K.keys()))
+
+
+# ------------------------------------------------------------------------------------------------------------------ the censer
+
+## Every second the censer's incense hastes every enemy within CENSER.radius that is not fallen (itself, the rising too), refreshing hasteS; the first pulse comes the
+## first tick it is not rising; a rising censer pulses when it has risen; the fallen censer stops; the haste outlasts its last pulse by hasteS.
+func censer_pulse() -> void:
+	var C: Dictionary = content["CENSER"]
+	var r := float(C["radius"])
+	var haste := float(C["hasteS"])
+	var c := make(211)
+	hero(c, FAR)
+	var id: int = c.spawn_enemy("censer", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	var inside := harmless(c, Vector2(3, 0))
+	var edge := harmless(c, Vector2(r, 0))             # exactly on the radius: inside (<=)
+	var past := harmless(c, Vector2(r + 0.05, 0))
+	var far := harmless(c, Vector2(0, -9))
+	var rising := harmless(c, Vector2(0, 2), true)     # a body rising out of the ground is hasted too: only the fallen are not
+	var fallen := harmless(c, Vector2(2, 2))
+	c.damage(fallen, 1.0e6, 0, false)
+	var log := []
+	drain(c, log)
+	run(c, 1, log)
+	var hasted := func(i: int) -> bool: return c.status_stacks(i, "incensed") == 1.0
+	check([id, inside, edge, rising].all(hasted), "censer: its first pulse, on the first tick, reaches itself and the bodies within %.0f m (one on the radius, one still rising)" % r)
+	check(not hasted.call(past) and not hasted.call(far) and not hasted.call(fallen), "censer: and not the one %.2f m away, the one 9 m away, or the fallen" % (r + 0.05))
+	var left := status_left(c, inside, "incensed")
+	check(left >= haste - 0.2 and left <= haste + 1e-9, "censer: the haste lasts hasteS = %.1f s (%.1f s left)" % [haste, left])
+	var info: Dictionary = c.enemy_info(inside)
+	check(is_equal_approx(info["speed_mult"], float(C["moveMult"])) and is_equal_approx(info["attack_rate_mult"], float(C["attackRateMult"])), "censer: x%.1f the feet, x%.2f the blows" % [float(C["moveMult"]), float(C["attackRateMult"])])
+	# One second apart: a body that comes within reach between two pulses is hasted at the next one.
+	var n1 := to_zero(1.0)
+	var late := harmless(c, Vector2(0, 3))
+	run_to(c, n1, log)
+	check(c.status_stacks(late, "incensed") == 0.0, "censer: a body that came near after the first pulse has nothing on tick %d" % n1)
+	run_to(c, 1 + n1, log)
+	check(c.status_stacks(late, "incensed") == 1.0, "censer: the second pulse is one second (%d ticks) after the first: tick %d" % [n1, 1 + n1])
+	var late2 := harmless(c, Vector2(0, -3))
+	run_to(c, 2 * n1, log)
+	check(c.status_stacks(late2, "incensed") == 0.0, "censer: and the third is one second after the second")
+	run_to(c, 1 + 2 * n1, log)
+	check(c.status_stacks(late2, "incensed") == 1.0, "censer: (tick %d)" % (1 + 2 * n1))
+	# The censer falls: nothing is hasted after it, and what it hasted ends hasteS after its last pulse.
+	var p3 := tick
+	c.damage(id, 1.0e6, 0, false)
+	drain(c, log)
+	var late3 := harmless(c, Vector2(1, 1))
+	run_to(c, p3 + 2 * n1 + 5, log)
+	check(c.status_stacks(late3, "incensed") == 0.0, "censer: a fallen censer pulses no more")
+	var gone := of(log, EV_STATUS_EXPIRED, inside)
+	var want := int(haste / DT)
+	var after := int(gone[0]["tick"]) - p3 if not gone.is_empty() else -1
+	check(gone.size() == 1 and after >= want - 8 and after <= want + 14, "censer: what it hasted ends %d ticks after its last pulse (%.1f s = %d ticks, the status steps every 0.1 s)" % [after, haste, want])
+	check(is_equal_approx(float(c.enemy_info(inside)["speed_mult"]), 1.0) and is_equal_approx(float(c.enemy_info(inside)["attack_rate_mult"]), 1.0), "censer: and the feet and blows are the body's own again")
+	# A censer that rises pulses the tick it has risen (the first tick it is not RISING), not before.
+	var rc := make(212)
+	hero(rc, FAR)
+	var rid: int = rc.spawn_enemy("censer", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, true)
+	var sib := harmless(rc, Vector2(2, 0))
+	var lg := []
+	var k_up := to_reach(float(K["RISE_TIME"]))
+	run_to(rc, k_up - 1, lg)
+	check(rc.status_stacks(sib, "incensed") == 0.0 and rc.enemy_info(rid)["state"] == RISING, "censer: while it is rising it pulses nothing (tick %d)" % (k_up - 1))
+	run_to(rc, k_up, lg)
+	check(first_tick(state_edges(lg, rid, IDLE)) == k_up and rc.status_stacks(sib, "incensed") == 1.0 and rc.status_stacks(rid, "incensed") == 1.0, "censer: it has risen on tick %d (%.1f s) and pulses on it" % [k_up, float(K["RISE_TIME"])])
+
+
+## What the haste does in play: the feet cover x1.3 the ground a tick, and the attack cooldown runs x1.25.
+func censer_haste_in_play() -> void:
+	var C: Dictionary = content["CENSER"]
+	var c := make(213)
+	hero(c, Vector2(2, 14))
+	c.spawn_enemy("censer", Vector2(0, -3), 1, 1.0, 0.0, false, NAVE, false)
+	var rid := harmless(c, Vector2(2, 0))
+	var log := []
+	run(c, 5, log)
+	var cd5 := float(c.enemy_info(rid)["attack_cd"])
+	run(c, 1, log)
+	var cd6 := float(c.enemy_info(rid)["attack_cd"])
+	check(absf((cd5 - cd6) - DT * float(C["attackRateMult"])) < 1e-9, "censer: a hasted body's cooldown runs x%.2f (%.6f s a tick)" % [float(C["attackRateMult"]), cd5 - cd6])
+	run(c, 14, log)
+	var spd := float(c.enemy_info(rid)["speed"])
+	var p0: Vector2 = c.enemy_info(rid)["pos"]
+	run(c, 1, log)
+	var p1: Vector2 = c.enemy_info(rid)["pos"]
+	check(absf((p1.y - p0.y) - spd * float(C["moveMult"]) * DT) < 1e-4 and c.enemy_info(rid)["state"] == CHASE, "censer: and it walks x%.1f as fast (%.4f m a tick, %.4f unhasted)" % [float(C["moveMult"]), p1.y - p0.y, spd * DT])
+
+
+## It is a melee body (a robber's rules on its numbers) that incenses itself: its own cooldown runs x1.25 from the tick after its first pulse.
+func censer_melee() -> void:
+	var d := def("censer")
+	var C: Dictionary = content["CENSER"]
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var rate := float(C["attackRateMult"])
+	var reach := float(d["attackRange"]) * float(K["STRIKE_REACH_MULT"]) + float(K["STRIKE_REACH_PAD"])
+	var c := make(214)
+	var h := hero(c, Vector2(1.0, 0))
+	var id: int = c.spawn_enemy("censer", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var v := cd0 - DT      # tick 1: the cooldown loses a plain tick (the pulse that hastes the body comes after its brain)
+	var k0 := 1
+	while v > 0.0:
+		v -= DT * rate
+		k0 += 1
+	var log := []
+	run(c, 400, log)
+	var att := of(log, EV_ATTACK, id)
+	check(att.size() >= 2 and int(att[0]["tick"]) == k0 and att[0]["ints"][0] == 0, "censer: its first swing is the plain blow on the tick its cooldown (%.2f s, hasted by its own incense from tick 2) is up: tick %d" % [cd0, k0])
+	var ks := k0 + to_reach(windup)
+	var hits := of(log, EV_HIT, id)
+	check(hits.size() >= 2 and int(hits[0]["tick"]) == ks and hits[0]["ints"][0] == h and hits[0]["ints"][1] == 0 and hits[0]["floats"][0] == float(d["damage"]),
+		"censer: the blow lands %d ticks (%.2f s) later for %d, melee" % [ks - k0, windup, int(d["damage"])])
+	check(of(log, EV_TELEGRAPH, id).is_empty(), "censer: a plain swing has no telegraph")
+	var k1 := ks + to_zero_rate(cooldown, rate)
+	check(att.size() >= 2 and int(att[1]["tick"]) == k1, "censer: the next swing is one cooldown (%.1f s / %.2f = %d ticks) after the blow: tick %d" % [cooldown, rate, k1 - ks, int(att[1]["tick"]) if att.size() > 1 else -1])
+	# The reach is measured at the blow: a target past attackRange x 1.35 + 0.4 when it lands is not hit.
+	var e := make(215)
+	var hh := hero(e, Vector2(1.0, 0))
+	var eid: int = e.spawn_enemy("censer", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	var lg := []
+	for i in 400:
+		run(e, 1, lg)
+		if not of(lg, EV_ATTACK, eid).is_empty():
+			break
+	e.set_external(hh, Vector2(reach + 0.2, 0), true)
+	var rest := []
+	run(e, to_reach(windup) + 2, rest)
+	check(of(rest, EV_HIT, eid).is_empty(), "censer: a target %.2f m away at the blow is missed (the reach is %.2f m)" % [reach + 0.2, reach])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the acolyte: kiting, the curse
+
+## The caster set's walk (dm_state_clst_kite, parameters [0.5, 1.5, 3.5, 0.8]): walk in beyond attackRange - 1.5, cast at attackRange - 0.5, back off at 0.8 x under 3.5 m.
+func acolyte_kite() -> void:
+	var d := def("acolyte")
+	var range_ := float(d["attackRange"])
+	var cast_at := range_ - float(KITE_PARAMS[0])
+	var walk_in := range_ - float(KITE_PARAMS[1])
+	var back := float(KITE_PARAMS[2])
+	var back_speed := float(KITE_PARAMS[3])
+	var c := make(221)
+	var h := hero(c, Vector2(12, 0))
+	var id := spawn_acolyte(c, Vector2(0, 0))
+	var spd := float(c.enemy_info(id)["speed"])
+	silence(c, id)
+	var log := []
+	var xs := []
+	for i in 400:
+		run(c, 1, log)
+		var p: Vector2 = c.enemy_info(id)["pos"]
+		xs.append(p.x)
+		if Vector2(12, 0).distance_to(p) <= walk_in and i > 10:
+			break
+	var step_ok := true
+	for i in range(40, mini(100, xs.size() - 1)):
+		step_ok = step_ok and absf((xs[i + 1] - xs[i]) - spd * DT) < 2e-4
+	check(step_ok, "acolyte: walks in at full speed (%.2f m/s) while the target is farther than %.1f m" % [spd, walk_in])
+	run(c, 60, log)
+	var rest: Vector2 = c.enemy_info(id)["pos"]
+	var dist := Vector2(12, 0).distance_to(rest)
+	check(dist <= walk_in + 1e-3 and dist > walk_in - spd * DT * 1.5, "acolyte: stops %.2f m from the target (%.1f - one step)" % [dist, walk_in])
+	run(c, 60, log)
+	check(Vector2(c.enemy_info(id)["pos"]).distance_to(rest) < 1e-4 and c.enemy_info(id)["state"] == CHASE and of(log, EV_ATTACK, id).is_empty(), "acolyte: stands still between %.1f and %.1f m, and silenced it never casts" % [back, walk_in])
+	c.set_external(h, Vector2(rest.x + 2.0, rest.y), true)
+	var from := Vector2(c.enemy_info(id)["pos"]).x
+	run(c, 1, log)
+	var x1 := Vector2(c.enemy_info(id)["pos"]).x
+	check(absf((from - x1) - spd * back_speed * DT) < 2e-4, "acolyte: backs off at %.1f x its speed (%.4f m a tick)" % [back_speed, from - x1])
+	run(c, 200, log)
+	var d2 := Vector2(c.enemy_info(id)["pos"]).distance_to(Vector2(rest.x + 2.0, rest.y))
+	check(d2 >= back - 1e-3 and d2 < back + spd * back_speed * DT * 1.5, "acolyte: stops backing off at %.2f m (%.1f m)" % [d2, back])
+	# The cast gate: rooted, so it cannot close in; a target on attackRange - 0.5 is cast at, one 2 cm past it is not.
+	for trial in [[cast_at, true], [cast_at + 0.02, false]]:
+		var e := make(222)
+		hero(e, Vector2(float(trial[0]), 0))
+		var eid := spawn_acolyte(e, Vector2(0, 0))
+		root(e, eid)
+		var lg := []
+		run(e, 600, lg)
+		check(of(lg, EV_ATTACK, eid).is_empty() == (not bool(trial[1])), "acolyte: a target %.2f m away is %s (it casts at attackRange - %.1f = %.1f m)" % [float(trial[0]), "cast at" if trial[1] else "not cast at", float(KITE_PARAMS[0]), cast_at])
+
+
+## The curse: with the cooldown up and the target within attackRange - 0.5 it winds up for windupMs (telegraph "curse" on the target), and a blow of the def's damage, hit kind
+## curse, lands on the CURRENT target if it is within attackRange x 1.35 + 0.4 of the body at that moment (walking out of the ring does not dodge it).
+func acolyte_curse() -> void:
+	var d := def("acolyte")
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var reach := float(d["attackRange"]) * float(K["STRIKE_REACH_MULT"]) + float(K["STRIKE_REACH_PAD"])
+	var c := make(231)
+	var h := hero(c, Vector2(5, 0))
+	var id := spawn_acolyte(c, Vector2(0, 0))
+	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var log := []
+	run(c, 700, log)
+	var tell := of(log, EV_TELEGRAPH, id, TELL_CURSE)
+	var att := of(log, EV_ATTACK, id)
+	check(tell.size() >= 2 and att.size() >= 2, "acolyte: a curse telegraph and a swing, more than once")
+	if tell.size() < 2:
+		return
+	var k0 := int(tell[0]["tick"])
+	check(k0 == to_zero(cd0), "acolyte: the first curse comes on the tick the cooldown is up (tick %d)" % k0)
+	var f: PackedFloat32Array = tell[0]["floats"]
+	check(is_equal_approx(f[2], 5.0) and is_equal_approx(f[3], 0.0) and f[4] == 0.0 and is_equal_approx(f[5], windup), "acolyte: the ring is on the target and lasts the wind-up (%.2f s)" % f[5])
+	check(att[0]["ints"][0] == BLOW_CURSE and is_equal_approx(att[0]["floats"][2], windup), "acolyte: the swing is a curse")
+	var ks := k0 + to_reach(windup)
+	var hits := of(log, EV_HIT, id)
+	check(hits.size() >= 1 and int(hits[0]["tick"]) == ks and hits[0]["ints"][0] == h and hits[0]["ints"][1] == HK_CURSE and hits[0]["floats"][0] == float(d["damage"]),
+		"acolyte: the blow lands %d ticks (%.2f s) later for %d, kind curse, on the target" % [ks - k0, windup, int(d["damage"])])
+	check(int(tell[1]["tick"]) == ks + to_zero(cooldown), "acolyte: the next one a cooldown (%.1f s) after the blow (tick %d)" % [cooldown, int(tell[1]["tick"])])
+	# The reach is measured at the blow, from the body: the target who walks to the edge of it is still cursed, one who is past it is not.
+	for trial in [[reach - 0.2, true], [reach + 0.2, false]]:
+		var e := make(232)
+		var hh := hero(e, Vector2(5, 0))
+		var did := spawn_acolyte(e, Vector2(0, 0))
+		var lg := []
+		for i in 700:
+			run(e, 1, lg)
+			if not of(lg, EV_TELEGRAPH, did, TELL_CURSE).is_empty():
+				break
+		var p: Vector2 = e.enemy_info(did)["pos"]
+		e.set_external(hh, Vector2(p.x + float(trial[0]), p.y), true)
+		var rest := []
+		run(e, to_reach(windup) + 2, rest)
+		check(of(rest, EV_HIT, did).size() == (1 if trial[1] else 0), "acolyte: a target %.2f m away at the blow is %s (the reach is %.2f m)" % [float(trial[0]), "cursed" if trial[1] else "missed", reach])
+
+
+## Silence stops the cast (a silenced scan never starts one; the cloister casters' state checks it) and not a swing begun; stun cancels the swing.
+func acolyte_silence_and_stun() -> void:
+	var d := def("acolyte")
+	var windup := float(d["windupMs"]) / 1000.0
+	var c := make(234)
+	var h := hero(c, Vector2(5, 0))
+	var id := spawn_acolyte(c, Vector2(0, 0))
+	silence(c, id)
+	var log := []
+	run(c, 600, log)
+	check(of(log, EV_ATTACK, id).is_empty() and c.enemy_info(id)["state"] == CHASE, "silence: a silenced acolyte does not cast in 10 s, with the target in range")
+	check(c.remove_status(id, "silence"), "silence: it lifts")
+	run(c, 1, log)
+	var t0 := tick
+	check(first_tick(state_edges(log, id, ATTACK)) == t0 and of(log, EV_TELEGRAPH, id, TELL_CURSE).size() == 1, "silence: the curse starts on the next tick (the cooldown was up)")
+	silence(c, id)
+	var ks := t0 + to_reach(windup)
+	run_to(c, ks, log)
+	var hits := of(log, EV_HIT, id)
+	check(hits.size() == 1 and hits[0]["ints"][0] == h and int(hits[0]["tick"]) == ks, "silence: a curse already winding up lands all the same, on tick %d" % ks)
+	# A stun in the wind-up cancels the curse (and starts no cooldown).
+	var e := make(235)
+	hero(e, Vector2(5, 0))
+	var eid := spawn_acolyte(e, Vector2(0, 0))
+	var lg := []
+	for i in 700:
+		run(e, 1, lg)
+		if not of(lg, EV_TELEGRAPH, eid, TELL_CURSE).is_empty():
+			break
+	var s0 := tick
+	run(e, 20, lg)
+	e.stun(eid, 2.0)
+	drain(e, lg)
+	run(e, to_reach(windup) + 4, lg)
+	check(of(lg, EV_HIT, eid).is_empty() and e.enemy_info(eid)["state"] == HURT, "stun: a stun in the wind-up cancels the curse (nothing lands at tick %d)" % (s0 + to_reach(windup)))
+
+
+# ------------------------------------------------------------------------------------------------------------------ the acolyte: Unbind
+
+## UNBIND: a thrall of the player's that is KILLED within UNBIND.range of an acolyte that has looked at it is claimed (one acolyte per fall), UNBIND.delayS later a Risen
+## climbs out of the place with the acolyte's level and multipliers; the cue says where; UNBIND.cooldownS between claims; at most UNBIND.maxAlive claimed Risen alive or pending.
+func acolyte_unbind() -> void:
+	var U: Dictionary = content["UNBIND"]
+	var rs := def("risen")
+	var delay := float(U["delayS"])
+	var cooldown := float(U["cooldownS"])
+	var rng_ := float(U["range"])
+	var max_alive := int(U["maxAlive"])
+	var c := make(241)
+	var h := hero(c, FAR)
+	var a := spawn_acolyte(c, Vector2(0, 0), 5, 2.0, 1.5)
+	root(c, a)
+	silence(c, a)
+	var t_blind := thrall(c, h, Vector2(1, 1))
+	var log := []
+	check(Array(c.unbind_info(a)["seen"]).is_empty(), "unbind: before its first look the acolyte has seen no thrall")
+	c.kill_thrall(t_blind, "killed")
+	drain(c, log)
+	check(of(log, EV_CUE, a).is_empty() and Array(c.unbind_info(a)["pending"]).is_empty(), "unbind: a thrall that fell before the acolyte had looked is not claimed")
+	var t_crumb := thrall(c, h, Vector2(2, 0))
+	var t_far := thrall(c, h, Vector2(rng_ + 0.05, 0))
+	var t_sac := thrall(c, h, Vector2(0, 2))
+	var t_ok := thrall(c, h, Vector2(2, 3))
+	var t_two := thrall(c, h, Vector2(-2, 3))
+	var spare := []
+	for i in 8:
+		spare.append(thrall(c, h, Vector2(-3 + float(i) * 0.4, -2)))
+	run(c, 40, log)       # the acolyte looks every WATCH_S (0.5 s)
+	var seen := Array(c.unbind_info(a)["seen"])
+	check(seen.size() == 13 and seen.has(t_ok) and not seen.has(t_blind), "unbind: it has looked at the thralls alive: %d (not the one that fell)" % seen.size())
+	drain(c, log)
+	c.kill_thrall(t_crumb, "crumbled")
+	c.kill_thrall(t_sac, "sacrificed")
+	c.kill_thrall(t_far, "killed")
+	drain(c, log)
+	check(of(log, EV_CUE, a).is_empty() and Array(c.unbind_info(a)["pending"]).is_empty() and float(c.unbind_info(a)["cooldown"]) <= 0.0,
+		"unbind: a crumbled or sacrificed thrall, and one killed %.2f m away (the range is %.0f m), are not claimed" % [rng_ + 0.05, rng_])
+	# A killed one within range: claimed. The cue is at its place; the cooldown starts; the fall is waiting.
+	var T0 := tick
+	c.kill_thrall(t_ok, "killed")
+	c.kill_thrall(t_two, "killed")      # at once, in the cooldown: not claimed
+	drain(c, log)
+	var cue := of(log, EV_CUE, a, CUE_UNBIND)
+	check(cue.size() == 1 and is_equal_approx(cue[0]["floats"][0], 2.0) and is_equal_approx(cue[0]["floats"][1], 3.0), "unbind: a killed thrall within range is claimed: the cue names its place (2, 3)")
+	var ui: Dictionary = c.unbind_info(a)
+	check(Array(ui["pending"]).size() == 1 and is_equal_approx(float(ui["cooldown"]), cooldown), "unbind: the fall is waiting and the cooldown is %.1f s; the second fall, at once, is not claimed" % cooldown)
+	# The Risen climbs out delayS later, rising, with the acolyte's level, area and multipliers (a plain body).
+	var n1 := to_zero(delay)
+	run_to(c, T0 + n1 - 1, log)
+	check(of(log, EV_SPAWNED).filter(func(e: Dictionary) -> bool: return c.def_name(e["ints"][0]) == "risen").is_empty(), "unbind: nothing climbs out before %.1f s" % delay)
+	run_to(c, T0 + n1, log)
+	var sp := of(log, EV_SPAWNED).filter(func(e: Dictionary) -> bool: return c.def_name(e["ints"][0]) == "risen")
+	check(sp.size() == 1 and int(sp[0]["tick"]) == T0 + n1, "unbind: a Risen climbs out %d ticks (%.1f s) after the claim" % [n1, delay])
+	if sp.size() != 1:
+		return
+	var rid: int = sp[0]["id"]
+	var ri: Dictionary = c.enemy_info(rid)
+	check(sp[0]["ints"][1] == 5 and not bool(ri["elite"]) and c.area_name(sp[0]["ints"][3]) == NAVE and ri["state"] == RISING, "unbind: at the acolyte's level (5), in its area, rising, not elite")
+	check(is_equal_approx(ri["max_hp"], float(rs["hp"]) * 2.0) and is_equal_approx(ri["damage"], float(rs["damage"]) * 1.5), "unbind: with the acolyte's multipliers (hp x2 = %.0f, damage x1.5 = %.0f)" % [ri["max_hp"], ri["damage"]])
+	check(is_equal_approx(sp[0]["floats"][0], 2.0) and is_equal_approx(sp[0]["floats"][1], 3.0) and Array(c.unbind_info(a)["pending"]).is_empty() and Array(c.unbind_info(a)["unbound"]) == [rid],
+		"unbind: where the thrall fell, and the acolyte counts it")
+	# The cooldown: a fall one tick before it is over is not claimed; the next tick it is.
+	var n4 := to_zero(cooldown)
+	run_to(c, T0 + n4 - 1, log)
+	c.kill_thrall(spare[0], "killed")
+	drain(c, log)
+	check(Array(c.unbind_info(a)["pending"]).is_empty(), "unbind: %d ticks (%.1f s) after a claim the cooldown is still on" % [n4 - 1, cooldown])
+	run_to(c, T0 + n4, log)
+	c.kill_thrall(spare[1], "killed")
+	drain(c, log)
+	check(Array(c.unbind_info(a)["pending"]).size() == 1, "unbind: and %d ticks after it, it is over: the next fall is claimed" % n4)
+	# Four claims over time: four Risen; the fifth fall is not claimed; a Risen that falls frees a slot.
+	for k in 2:
+		run(c, n4, log)
+		c.kill_thrall(spare[2 + k], "killed")
+		drain(c, log)
+	run(c, n1 + 2, log)
+	var ub: Array = Array(c.unbind_info(a)["unbound"])
+	check(ub.size() == max_alive and Array(c.unbind_info(a)["pending"]).is_empty(), "unbind: %d claimed Risen alive, none waiting" % ub.size())
+	run(c, n4, log)
+	var cues_before := of(log, EV_CUE, a, CUE_UNBIND).size()
+	c.kill_thrall(spare[4], "killed")
+	drain(c, log)
+	check(of(log, EV_CUE, a, CUE_UNBIND).size() == cues_before and Array(c.unbind_info(a)["pending"]).is_empty(), "unbind: at most %d claimed Risen alive per acolyte: the fifth fall is not claimed" % max_alive)
+	c.damage(int(ub[0]), 1.0e6, 0, false)
+	c.kill_thrall(spare[5], "killed")
+	drain(c, log)
+	check(Array(c.unbind_info(a)["pending"]).size() == 1 and of(log, EV_CUE, a, CUE_UNBIND).size() == cues_before + 1, "unbind: a freed slot (a Risen fell) can be claimed again")
+
+
+## The edges: the range is inclusive, one claim per fall across acolytes (each ready one in turn), a rising or fallen acolyte claims nothing and does not look, and a thrall
+## raised after a look is seen at the next one, WATCH_S later.
+func acolyte_unbind_edges() -> void:
+	var U: Dictionary = content["UNBIND"]
+	var rng_ := float(U["range"])
+	# The range is a distance from the acolyte's centre to the fall, inclusive.
+	for trial in [[rng_, true], [rng_ + 0.02, false]]:
+		var c := make(251)
+		var h := hero(c, FAR)
+		var a := spawn_acolyte(c, Vector2(0, 0))
+		root(c, a)
+		silence(c, a)
+		var t := thrall(c, h, Vector2(float(trial[0]), 0))
+		run(c, 40, [])
+		c.kill_thrall(t, "killed")
+		check(Array(c.unbind_info(a)["pending"]).size() == (1 if trial[1] else 0), "unbind: a fall %.2f m away is %s (the range is %.0f m, inclusive)" % [float(trial[0]), "claimed" if trial[1] else "not claimed", rng_])
+	# Two acolytes in range of two falls: each fall is claimed once, and the second goes to the acolyte that is not on its cooldown.
+	var c2 := make(252)
+	var h2 := hero(c2, FAR)
+	var a1 := spawn_acolyte(c2, Vector2(-1, 0))
+	var a2 := spawn_acolyte(c2, Vector2(1, 0))
+	for a in [a1, a2]:
+		root(c2, a)
+		silence(c2, a)
+	var f1 := thrall(c2, h2, Vector2(0, 3))
+	var f2 := thrall(c2, h2, Vector2(0, -3))
+	var lg := []
+	run(c2, 40, lg)
+	drain(c2, lg)
+	c2.kill_thrall(f1, "killed")
+	c2.kill_thrall(f2, "killed")
+	drain(c2, lg)
+	var cues := of(lg, EV_CUE, 0, CUE_UNBIND)
+	check(cues.size() == 2 and cues[0]["id"] != cues[1]["id"], "unbind: two falls, two acolytes: each ready one claims one, none claims twice (%s)" % str(cues.map(func(e: Dictionary) -> int: return e["id"])))
+	# Rising and fallen acolytes: nothing claimed, and a rising one has not looked at anything yet.
+	var c3 := make(253)
+	var h3 := hero(c3, FAR)
+	var ra := spawn_acolyte(c3, Vector2(0, 0), 1, 1.0, 1.0, false, true)
+	var da := spawn_acolyte(c3, Vector2(0, 5))
+	root(c3, ra)
+	silence(c3, ra)
+	root(c3, da)
+	silence(c3, da)
+	var t3 := thrall(c3, h3, Vector2(2, 2))
+	var t4 := thrall(c3, h3, Vector2(2, 6))
+	run(c3, 40, [])
+	check(c3.enemy_info(ra)["state"] == RISING and Array(c3.unbind_info(ra)["seen"]).is_empty(), "unbind: a rising acolyte looks at nothing")
+	check(Array(c3.unbind_info(da)["seen"]).size() == 2, "unbind: (a standing one has)")
+	c3.damage(da, 1.0e6, 0, false)
+	c3.kill_thrall(t4, "killed")
+	check(Array(c3.unbind_info(da)["pending"]).is_empty(), "unbind: a fallen acolyte claims nothing")
+	c3.kill_thrall(t3, "killed")
+	check(Array(c3.unbind_info(ra)["pending"]).is_empty(), "unbind: nor does a rising one")
+	# The look: a thrall raised right after a look is seen at the next one, WATCH_S (0.5 s) later.
+	var c4 := make(254)
+	var h4 := hero(c4, FAR)
+	var a4 := spawn_acolyte(c4, Vector2(0, 0))
+	root(c4, a4)
+	silence(c4, a4)
+	var first := thrall(c4, h4, Vector2(1, 1))
+	var look := 0
+	for i in 60:
+		run(c4, 1, [])
+		if Array(c4.unbind_info(a4)["seen"]).has(first):
+			look = tick
+			break
+	var late := thrall(c4, h4, Vector2(2, 1))
+	var n := to_zero(float(K["WATCH_S"]))
+	run_to(c4, look + n - 1, [])
+	check(look > 0 and not Array(c4.unbind_info(a4)["seen"]).has(late), "unbind: a thrall raised after a look is not seen before the next one (tick %d)" % (look + n - 1))
+	run_to(c4, look + n, [])
+	check(Array(c4.unbind_info(a4)["seen"]).has(late), "unbind: it is seen %d ticks (%.1f s) after the look, on tick %d" % [n, float(K["WATCH_S"]), look + n])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the gargoyle
+
+## A rooted gargoyle (so that it cannot walk) with a hero 7 m away: with the cooldown up it marks the hero's place, hangs still for the first half of the wind-up, drops onto
+## the mark along an ease-in curve, and everything within the dive's radius of it takes the blow as it lands; then it sits grounded for 0.3 s + groundedS and hunts again.
+func gargoyle_dive() -> void:
+	var d := def("gargoyle")
+	var D: Dictionary = d["dive"]
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var radius := float(D["radius"])
+	var c := make(261)
+	var h := hero(c, Vector2(7, 0))
+	var inside := hero(c, Vector2(7, radius - 0.1))     # in the circle, but farther from the gargoyle than the target
+	var outside := hero(c, Vector2(7, radius + 0.1))
+	var id: int = c.spawn_enemy("gargoyle", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	root(c, id)
+	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var log := []
+	var k0 := to_zero(cd0)
+	run_to(c, k0 - 1, log)
+	check(of(log, EV_TELEGRAPH, id).is_empty() and not bool(c.enemy_info(id)["diving"]), "dive: nothing while the cooldown runs (%d ticks)" % (k0 - 1))
+	run_to(c, k0, log)
+	var tell := of(log, EV_TELEGRAPH, id, TELL_DIVE)
+	check(tell.size() == 1 and int(tell[0]["tick"]) == k0 and bool(c.enemy_info(id)["diving"]), "dive: the telegraph on the tick the cooldown is up (tick %d), and the body is diving" % k0)
+	if tell.is_empty():
+		return
+	var f: PackedFloat32Array = tell[0]["floats"]
+	check(is_equal_approx(f[0], 0.0) and is_equal_approx(f[1], 0.0) and is_equal_approx(f[2], 7.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], radius) and is_equal_approx(f[5], windup),
+		"dive: a mark of %.0f m under the hero for the %.1f s wind-up" % [radius, windup])
+	var att := of(log, EV_ATTACK, id)
+	check(att.size() == 1 and att[0]["ints"][0] == BLOW_DIVE and is_equal_approx(att[0]["floats"][0], 7.0) and is_equal_approx(att[0]["floats"][2], windup), "dive: the swing is a dive, aimed at the hero's place")
+	# The path: still for the first half of the wind-up, then from + (aim - from) x k^2 (k the second half's progress), step by step.
+	var t := 0.0
+	var path_ok := true
+	var worst := 0.0
+	var ks := k0 + to_reach(windup)
+	for k in range(k0 + 1, ks + 1):
+		t += DT
+		var kk := clampf((t - windup * 0.5) / (windup * 0.5), 0.0, 1.0)
+		var want := 7.0 * kk * kk
+		run_to(c, k, log)
+		var p: Vector2 = c.enemy_info(id)["pos"]
+		worst = maxf(worst, absf(p.x - want))
+		path_ok = path_ok and absf(p.x - want) < 1e-4 and absf(p.y) < 1e-6
+	check(path_ok, "dive: hangs over its start for %.2f s, then drops onto the mark along k^2 (worst %.6f m off)" % [windup * 0.5, worst])
+	var hits := of(log, EV_HIT, id)
+	var who := {}
+	for e in hits:
+		who[int(e["ints"][0])] = [e["floats"][0], e["ints"][1], int(e["tick"])]
+	check(who.has(h) and who.has(inside) and not who.has(outside) and hits.size() == 2, "dive: the blow reaches the two heroes within %.0f m of the mark, not the one outside (%s)" % [radius, str(who.keys())])
+	check(who.has(h) and who[h][0] == float(d["damage"]) and who[h][1] == 0 and who[h][2] == ks, "dive: %d damage, melee, on tick %d (%d ticks after the telegraph)" % [int(d["damage"]), ks, ks - k0])
+	var cues := of(log, EV_CUE, id, CUE_SLAM)
+	check(cues.size() == 1 and int(cues[0]["tick"]) == ks and is_equal_approx(cues[0]["floats"][0], 7.0) and is_equal_approx(cues[0]["floats"][2], radius), "dive: the stone lands with a slam cue on the mark")
+	check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown), "dive: the cooldown is the def's %.1f s from the landing" % cooldown)
+	# Grounded: still in the swing for 0.3 s + groundedS from the landing, then it hunts.
+	var recover := float(K["RECOVER_TIME"]) + float(D["groundedS"])
+	var ke := ks + to_reach(recover)
+	run_to(c, ke - 1, log)
+	check(c.enemy_info(id)["state"] == ATTACK and bool(c.enemy_info(id)["diving"]), "dive: still grounded %.2f s after the landing" % (float(ke - 1 - ks) * DT))
+	run_to(c, ke, log)
+	check(first_tick(state_edges(log, id, CHASE).filter(func(e: Dictionary) -> bool: return int(e["tick"]) > ks)) == ke and not bool(c.enemy_info(id)["diving"]), "dive: back on the hunt %d ticks (%.1f s = %.1f + %.1f) after the landing, on tick %d" % [ke - ks, recover, float(K["RECOVER_TIME"]), float(D["groundedS"]), ke])
+	# The next dive, once the cooldown is over (the hero stepped away to 5 m so that it is within range): the sight line is not cast again before its 0.25 s.
+	c.set_external(h, Vector2(12.0, 0), true)
+	c.set_external(inside, Vector2(40.0, 40.0), true)      # (the others go far away: the nearest hero is the target)
+	c.set_external(outside, Vector2(-40.0, 40.0), true)
+	var k2 := ks + to_zero(cooldown)
+	run_to(c, k2 - 1, log)
+	check(of(log, EV_TELEGRAPH, id, TELL_DIVE).size() == 1, "dive: no second dive before the cooldown is up")
+	run_to(c, k2, log)
+	var second := of(log, EV_TELEGRAPH, id, TELL_DIVE)
+	check(second.size() == 2 and int(second[1]["tick"]) == k2 and is_equal_approx(second[1]["floats"][2], 12.0), "dive: the second dive is a cooldown (%d ticks) after the first landing, on the hero's new place (tick %d)" % [k2 - ks, k2])
+
+
+## The aim is fixed when the wind-up begins (stepping out of the mark dodges the dive), and a stun mid-dive ends it where the body is.
+func gargoyle_aim_and_stun() -> void:
+	var d := def("gargoyle")
+	var windup := float(d["windupMs"]) / 1000.0
+	var radius := float(d["dive"]["radius"])
+	var c := make(262)
+	var h := hero(c, Vector2(7, 0))
+	var near := hero(c, Vector2(7, radius - 0.1))
+	var id: int = c.spawn_enemy("gargoyle", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	root(c, id)
+	var log := []
+	run_to(c, to_zero(float(c.enemy_info(id)["attack_cd"])), log)
+	c.set_external(h, Vector2(7, 5), true)       # steps out
+	run(c, to_reach(windup) + 1, log)
+	var hits := of(log, EV_HIT, id)
+	check(hits.size() == 1 and hits[0]["ints"][0] == near, "dive: the mark stays where it was drawn: the hero who stepped out is not hit, the one who stayed is (%s)" % str(hits.map(func(e: Dictionary) -> int: return e["ints"][0])))
+	# Stun at 0.3 s into the wind-up: no landing, no blow, no cooldown; it hangs where it was, and dives again when it is up.
+	var s := make(263)
+	hero(s, Vector2(7, 0))
+	var sid: int = s.spawn_enemy("gargoyle", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	root(s, sid)
+	var sl := []
+	var s0 := to_zero(float(s.enemy_info(sid)["attack_cd"]))
+	run_to(s, s0 + 18, sl)
+	var before: Vector2 = s.enemy_info(sid)["pos"]
+	s.stun(sid, 1.0)
+	drain(s, sl)
+	check(s.enemy_info(sid)["state"] == HURT and not bool(s.enemy_info(sid)["diving"]) and float(s.enemy_info(sid)["attack_cd"]) <= 0.0, "dive: a stun ends the dive and starts no cooldown")
+	var flinch_end := s0 + 18 + to_reach(1.0)
+	run_to(s, flinch_end + 3, sl)
+	check(of(sl, EV_HIT, sid).is_empty() and of(sl, EV_CUE, sid).is_empty() and Vector2(s.enemy_info(sid)["pos"]).distance_to(before) < 1e-6, "dive: nothing landed, and the body is where the stun found it")
+	var again := of(sl, EV_TELEGRAPH, sid, TELL_DIVE)
+	check(again.size() == 2 and int(again[1]["tick"]) <= flinch_end + 2, "dive: it dives again as soon as it is back on the hunt (tick %d, the flinch ends at %d)" % [int(again[1]["tick"]) if again.size() > 1 else -1, flinch_end])
+
+
+## The distances: a target closer than minRange or farther than range is not dived at (inclusive both ends), a target within bite range is bitten (no telegraph), and the
+## sight line is cast at most every LOS_S: a wall between blocks the dive, and it is looked at again 0.25 s later.
+func gargoyle_edges_and_sight() -> void:
+	var d := def("gargoyle")
+	var D: Dictionary = d["dive"]
+	var windup := float(d["windupMs"]) / 1000.0
+	for trial in [[float(D["minRange"]) - 0.1, false], [float(D["minRange"]), true], [float(D["range"]), true], [float(D["range"]) + 0.05, false]]:
+		var c := make(264)
+		hero(c, Vector2(float(trial[0]), 0))
+		var id: int = c.spawn_enemy("gargoyle", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+		root(c, id)
+		var log := []
+		run(c, 400, log)
+		check(of(log, EV_TELEGRAPH, id, TELL_DIVE).is_empty() == (not bool(trial[1])), "dive: a target %.2f m away is %s (minRange %.1f, range %.0f)" % [float(trial[0]), "dived at" if trial[1] else "not dived at", float(D["minRange"]), float(D["range"])])
+		if float(trial[0]) < float(D["minRange"]) or float(trial[0]) > float(D["range"]):
+			check(of(log, EV_ATTACK, id).is_empty(), "dive: and out of bite range (rooted) it does nothing at all")
+	# Inside minRange and bite range: the plain bite, no telegraph, its own wind-up, the def's damage.
+	var b := make(265)
+	var bh := hero(b, Vector2(1.2, 0))
+	var bid: int = b.spawn_enemy("gargoyle", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	var bl := []
+	var cd0 := float(b.enemy_info(bid)["attack_cd"])
+	run(b, 400, bl)
+	var att := of(bl, EV_ATTACK, bid)
+	check(not att.is_empty() and att[0]["ints"][0] == 0 and of(bl, EV_TELEGRAPH, bid).is_empty() and int(att[0]["tick"]) == to_zero(cd0), "bite: a target at 1.2 m is bitten (a plain swing, no telegraph) on the tick the cooldown is up (%d)" % to_zero(cd0))
+	var hits := of(bl, EV_HIT, bid)
+	check(not hits.is_empty() and int(hits[0]["tick"]) == int(att[0]["tick"]) + to_reach(windup) and hits[0]["ints"][0] == bh and hits[0]["floats"][0] == float(d["damage"]), "bite: it lands %.1f s later for %d" % [windup, int(d["damage"])])
+	# A wall between (the Ossuary Wall as an obstacle): no dive; the sight line is cast again LOS_S later, and the dive comes then.
+	var w := make(266)
+	hero(w, Vector2(7, 0))
+	var wid: int = w.spawn_enemy("gargoyle", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	root(w, wid)
+	var wall: int = w.add_obstacle(Vector2(3.5, -4), Vector2(3.5, 4), 0.5)
+	var wl := []
+	var w0 := to_zero(float(w.enemy_info(wid)["attack_cd"]))
+	run_to(w, w0 + 5, wl)
+	check(of(wl, EV_TELEGRAPH, wid).is_empty() and not bool(w.enemy_info(wid)["diving"]), "sight: no dive through a wall")
+	check(w.remove_obstacle(wall), "sight: the wall goes")
+	var n := to_zero(float(K["LOS_S"]))
+	run_to(w, w0 + n - 1, wl)
+	check(of(wl, EV_TELEGRAPH, wid).is_empty(), "sight: the line is not cast again before %.2f s: still nothing on tick %d" % [float(K["LOS_S"]), w0 + n - 1])
+	run_to(w, w0 + n, wl)
+	check(first_tick(of(wl, EV_TELEGRAPH, wid, TELL_DIVE)) == w0 + n, "sight: %d ticks (%.2f s) after the blocked cast it is clear, and the dive begins (tick %d)" % [n, float(K["LOS_S"]), w0 + n])
+	# A wall that does not reach the line (it ends before the line passes) does not block it.
+	var s2 := make(267)
+	hero(s2, Vector2(7, 0))
+	var sid2: int = s2.spawn_enemy("gargoyle", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	root(s2, sid2)
+	s2.add_obstacle(Vector2(3.5, 0.6), Vector2(3.5, 6), 0.5)
+	var sl2 := []
+	run(s2, 400, sl2)
+	check(not of(sl2, EV_TELEGRAPH, sid2, TELL_DIVE).is_empty(), "sight: a wall beside the line does not block it")
+
+
+## The navmesh as the world's walls: a gap in it across the line is a wall; a crack under the pad is not; a region switched off (a sealed gate) is one.
+func gargoyle_sight_on_the_navmesh() -> void:
+	var trials := [["a stretch of 1.2 m with no navmesh across the line", 1.2, true, false], ["a crack of 0.5 m", 0.5, false, false], ["a gate that is shut", 0.0, false, true]]
+	for t in trials:
+		var gap := float(t[1])
+		var c := make(268)
+		hero(c, Vector2(7, 0))
+		var id: int = c.spawn_enemy("gargoyle", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+		root(c, id)
+		var verts := PackedVector3Array([Vector3(-5, 0, -6), Vector3(3, 0, -6), Vector3(3, 0, 6), Vector3(-5, 0, 6), Vector3(3 + gap, 0, -6), Vector3(12, 0, -6), Vector3(12, 0, 6), Vector3(3 + gap, 0, 6)])
+		var polys := PackedInt32Array([4, 0, 1, 2, 3, 4, 4, 5, 6, 7])
+		if gap == 0.0:
+			verts = PackedVector3Array([Vector3(-5, 0, -6), Vector3(12, 0, -6), Vector3(12, 0, 6), Vector3(-5, 0, 6)])
+			polys = PackedInt32Array([4, 0, 1, 2, 3])
+		var region: int = c.nav_add_region(verts, polys, true)
+		if bool(t[3]):
+			c.nav_set_region_enabled(region, false)
+			c.nav_add_region(PackedVector3Array([Vector3(-5, 0, -6), Vector3(-4, 0, -6), Vector3(-4, 0, 6), Vector3(-5, 0, 6)]), PackedInt32Array([4, 0, 1, 2, 3]), true)
+		var log := []
+		run(c, 300, log)
+		var blocked := bool(t[2]) or bool(t[3])
+		check(of(log, EV_TELEGRAPH, id, TELL_DIVE).is_empty() == blocked, "sight: %s %s the dive" % [t[0], "stops" if blocked else "does not stop"])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the templar
+
+## What a blow from `from` costs the templar (facing +z at the start), in a fresh core: a hero, a thrall, a boss or another enemy as the source, damage 100.
+func glance(from: Vector2, source := "hero", allow := true, status := "", rising := false) -> Dictionary:
+	var c := make(271)
+	var h := hero(c, FAR)
+	var id: int = c.spawn_enemy("templar", Vector2(0, 0), 1, 100.0, 1.0, false, NAVE, rising)
+	if status != "":
+		c.apply_status(id, status, 0, 1.0, 100.0)
+	var src := 0
+	match source:
+		"hero":
+			src = hero(c, from)
+		"thrall":
+			src = thrall(c, h, from)
+		"boss":
+			src = c.add_external(1, 1.6, 1.0)
+			c.set_external(src, from, true)
+		"enemy":
+			src = harmless(c, from)
+	var before := float(c.enemy_info(id)["hp"])
+	var log := []
+	drain(c, log)
+	var r: Dictionary = c.damage(id, 100.0, src, allow)
+	drain(c, log)
+	var info: Dictionary = c.enemy_info(id)
+	return {"cost": before - float(info["hp"]), "cues": of(log, EV_CUE, id, CUE_SHIELD_BLOCK), "taken": float(info["taken_mult"]), "dealt": float(r["dealt"])}
+
+
+func at_angle(deg: float, dist := 4.0) -> Vector2:
+	return Vector2(sin(deg_to_rad(deg)) * dist, cos(deg_to_rad(deg)) * dist)
+
+
+## TEMPLAR_SHIELD: a blow from a body within halfArcDeg of where the templar faces passes `passThrough` of its damage; the sides, the back, a Fractured shield, a blow with no
+## source body or from a DoT tick (allow_stagger false) pass all of it; the damage taken once, by the base.
+func templar_shield() -> void:
+	var S2: Dictionary = content["TEMPLAR_SHIELD"]
+	var pass_ := float(S2["passThrough"])
+	var arc := float(S2["halfArcDeg"])
+	var full := 100.0
+	var cost := func(spec: Dictionary) -> float: return float(spec["cost"])
+	check(is_equal_approx(cost.call(glance(Vector2(0, 4))), full * pass_), "shield: a blow from straight ahead costs %.0f of %.0f" % [full * pass_, full])
+	check(is_equal_approx(cost.call(glance(at_angle(arc - 1.0))), full * pass_) and is_equal_approx(cost.call(glance(at_angle(-(arc - 1.0)))), full * pass_), "shield: and from %.0f degrees to either side (the arc is %.0f)" % [arc - 1.0, arc])
+	check(is_equal_approx(cost.call(glance(at_angle(arc + 1.0))), full) and is_equal_approx(cost.call(glance(at_angle(-(arc + 1.0)))), full), "shield: %.0f degrees round it takes all of it" % (arc + 1.0))
+	check(is_equal_approx(cost.call(glance(at_angle(90.0))), full) and is_equal_approx(cost.call(glance(at_angle(180.0))), full), "shield: and from the side or behind")
+	check(is_equal_approx(cost.call(glance(Vector2(0, 0.001))), full), "shield: a blow from a body on top of it has no direction: all of it")
+	check(is_equal_approx(cost.call(glance(Vector2(0, 4), "hero", false)), full), "shield: a DoT tick (allow_stagger false, undirected) ignores the shield")
+	var c := make(272)
+	var id: int = c.spawn_enemy("templar", Vector2(0, 0), 1, 100.0, 1.0, false, NAVE, false)
+	var before := float(c.enemy_info(id)["hp"])
+	c.damage(id, 100.0, 0, true)
+	c.damage(id, 100.0, 9999, true)
+	check(is_equal_approx(before - float(c.enemy_info(id)["hp"]), 2.0 * full), "shield: a blow with no source, or from a body that is not there, is not directed")
+	var fr := glance(Vector2(0, 4), "hero", true, "fracture")
+	check(is_equal_approx(fr["cost"], full * float(fr["taken"])) and float(fr["taken"]) > 1.0 and fr["cues"].is_empty(), "shield: a Fractured templar takes the whole blow x the Fracture multiplier (%.2f), once, and shows no glance" % float(fr["taken"]))
+	var sa := glance(Vector2(0, 4), "hero", true, "sanctified")
+	check(is_equal_approx(sa["cost"], full * pass_ * float(sa["taken"])) and float(sa["taken"]) < 1.0, "shield: and damage taken still applies after the shield: %.1f = 100 x %.1f x %.1f" % [sa["cost"], pass_, float(sa["taken"])])
+	# Whoever the source is: a thrall, a boss or another enemy glances off from the front, not from behind.
+	for kind in ["thrall", "boss", "enemy"]:
+		check(is_equal_approx(cost.call(glance(Vector2(0, 4), kind)), full * pass_) and is_equal_approx(cost.call(glance(Vector2(0, -4), kind)), full), "shield: a %s in front is stopped, behind it is not" % kind)
+	var g := glance(Vector2(0, 4))
+	check(is_equal_approx(g["dealt"], full * pass_), "shield: DmCore.damage says it dealt %.0f" % float(g["dealt"]))
+	# As today (the shield works before the base's refusals): a rising templar takes nothing but still glances.
+	var rg := glance(Vector2(0, 4), "hero", true, "", true)
+	check(is_equal_approx(rg["cost"], 0.0) and rg["cues"].size() == 1, "shield: a templar that is still rising takes nothing, and the blow still glances (as today's)")
+
+
+## Each glance is a cue at the templar's place, at most one every BLOCK_FX_GAP_MS (250 ms of game time).
+func templar_glance_cue() -> void:
+	var gap := float(K["BLOCK_FX_GAP_MS"]) / 1000.0
+	var c := make(273)
+	var h := hero(c, Vector2(0, 4))
+	var id: int = c.spawn_enemy("templar", Vector2(0, 0), 1, 100.0, 1.0, false, NAVE, false)
+	var log := []
+	drain(c, log)
+	var blow := func() -> void:
+		c.damage(id, 10.0, h, true)
+		drain(c, log)
+	blow.call()                         # clock 0: the first glance always shows
+	run(c, 3, log)
+	blow.call()
+	run(c, 11, log)
+	blow.call()                         # 14 ticks = 0.233 s: not yet
+	var n := of(log, EV_CUE, id, CUE_SHIELD_BLOCK).size()
+	check(n == 1, "glance: four blows in 0.23 s show one glance (%d)" % n)
+	run(c, 3, log)
+	blow.call()                         # 17 ticks = 0.283 s since the first: the gap is over
+	var cues := of(log, EV_CUE, id, CUE_SHIELD_BLOCK)
+	check(cues.size() == 2 and gap == 0.25, "glance: the next one a quarter second after the first (%d glances, gap %.2f s)" % [cues.size(), gap])
+	var p: Vector2 = c.enemy_info(id)["pos"]
+	check(cues.size() == 2 and is_equal_approx(cues[0]["floats"][0], p.x) and is_equal_approx(cues[0]["floats"][1], p.y) and cues[0]["floats"][2] == 0.0, "glance: at the templar's own place")
+
+
+## A templar is a melee body (a robber's rules on its numbers) and its corpse is resonant.
+func templar_fights() -> void:
+	var d := def("templar")
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var c := make(274)
+	var h := hero(c, Vector2(0, 1.2))
+	var id: int = c.spawn_enemy("templar", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var log := []
+	run(c, 500, log)
+	var att := of(log, EV_ATTACK, id)
+	var k0 := to_zero(cd0)
+	check(att.size() >= 2 and int(att[0]["tick"]) == k0 and att[0]["ints"][0] == 0 and of(log, EV_TELEGRAPH, id).is_empty(), "templar: a plain swing on the tick its cooldown is up (%d), no telegraph" % k0)
+	var hits := of(log, EV_HIT, id)
+	check(hits.size() >= 2 and int(hits[0]["tick"]) == k0 + to_reach(windup) and hits[0]["ints"][0] == h and hits[0]["floats"][0] == float(d["damage"]), "templar: %.2f s later it hits for %d" % [windup, int(d["damage"])])
+	check(att.size() >= 2 and int(att[1]["tick"]) == k0 + to_reach(windup) + to_zero(cooldown), "templar: the next swing one cooldown (%.1f s) after the blow" % cooldown)
+	events(c)
+	c.damage(id, 1.0e6, h, false)
+	var added := of(events(c), EV_CORPSE_ADDED)
+	check(added.size() == 1 and added[0]["ints"][0] == 2 and c.def_name(added[0]["ints"][1]) == "templar", "templar: it falls into a resonant corpse")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the wraith
+
+## The wraith is the caster set (dm_state_kite: walk in beyond attackRange - 1.5, cast at attackRange - 0.5, back off under 3.5 m at 0.8) with a scream: a ring of SCREAM.radius at
+## the place its target stood when the wind-up began, damage to everything inside (heroes and thralls) when it ends; stepping out of the ring dodges it.
+func wraith_scream() -> void:
+	var d := def("wraith")
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var r := float(content["SCREAM"]["radius"])
+	var cast_at := float(d["attackRange"]) - 0.5      # dm_state_kite: cast at attackRange - 0.5 (pinned in nave_defs)
+	for stay in [true, false]:
+		var c := make(281)
+		var a := hero(c, Vector2(14, 0))
+		var b := hero(c, Vector2(14.0 + r - 0.05, 0))     # inside the ring, behind the target
+		var o := hero(c, Vector2(14.0 + r + 0.05, 0))     # just outside it
+		var th := thrall(c, a, Vector2(14, -1.9), 100.0, false)  # on its seat beside its owner (1.9 m, inside the ring); it rises, then is held
+		var log := []
+		run(c, to_reach(0.9) + 2, log)
+		c.stun(th, 1.0e6)
+		var id: int = c.spawn_enemy("wraith", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+		drain(c, log)
+		var xs: Array = []
+		var k0 := -1
+		for i in 700:
+			run(c, 1, log)
+			xs.append(Vector2(c.enemy_info(id)["pos"]))
+			if not of(log, EV_TELEGRAPH, id, TELL_SCREAM).is_empty():
+				k0 = tick
+				break
+		check(k0 > 0, "scream: it casts")
+		if k0 < 0:
+			return
+		var tell := of(log, EV_TELEGRAPH, id, TELL_SCREAM)
+		var f: PackedFloat32Array = tell[0]["floats"]
+		var from: Vector2 = xs[xs.size() - 2]
+		check(absf(f[0] - from.x) < 1e-5 and is_equal_approx(f[2], 14.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup), "scream: song-lines from the singer to a ring of %.1f m on the target for %.2f s" % [r, windup])
+		var d_start := Vector2(14, 0).distance_to(xs[xs.size() - 2])
+		check(d_start <= cast_at and d_start > cast_at - float(c.enemy_info(id)["speed"]) * DT * 1.5, "scream: cast from %.2f m (attackRange - 0.5 = %.1f)" % [d_start, cast_at])
+		var att := of(log, EV_ATTACK, id)
+		check(att.size() == 1 and att[0]["ints"][0] == BLOW_SCREAM, "scream: the swing is a scream")
+		if not stay:
+			c.set_external(a, Vector2(14.0 + 4.0, 0), true)    # steps out of the ring
+		var ks := k0 + to_reach(windup)
+		run_to(c, ks - 1, log)
+		check(of(log, EV_HIT, id).is_empty() and float(c.thrall_info(th)["hp"]) == 100.0, "scream: nothing lands before the wind-up ends")
+		run_to(c, ks, log)
+		var hits := of(log, EV_HIT, id)
+		var got := hits.map(func(e: Dictionary) -> int: return e["ints"][0])
+		got.sort()
+		var want: Array = [a, b] if stay else [b]
+		want.sort()
+		check(got == want and hits.all(func(e: Dictionary) -> bool: return e["floats"][0] == float(d["damage"]) and e["ints"][1] == 0 and int(e["tick"]) == ks),
+			"scream: %s: the ring takes the heroes inside it (%s) for %d on tick %d, not the one just outside it" % ["standing in it" if stay else "stepping out", str(got), int(d["damage"]), ks])
+		check(is_equal_approx(float(c.thrall_info(th)["hp"]), 100.0 - float(d["damage"])), "scream: and a thrall inside it too (%.0f of 100 left)" % float(c.thrall_info(th)["hp"]))
+		var cues := of(log, EV_CUE, id, CUE_SCREAM)
+		check(cues.size() == 1 and int(cues[0]["tick"]) == ks and is_equal_approx(cues[0]["floats"][0], 14.0) and is_equal_approx(cues[0]["floats"][2], r), "scream: the cue is on the ring (not on the singer)")
+		check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown), "scream: the cooldown is %.1f s from the blow" % cooldown)
+		if stay:
+			run_to(c, ks + to_zero(cooldown), log)
+			var tl := of(log, EV_TELEGRAPH, id, TELL_SCREAM)
+			check(tl.size() == 2 and int(tl[1]["tick"]) == ks + to_zero(cooldown), "scream: the next one a cooldown after the blow (tick %d)" % (ks + to_zero(cooldown)))
+	# The wraith's state is the plain kite: silence does not stop it (the cloister casters' does).
+	var e := make(282)
+	hero(e, Vector2(6, 0))
+	var eid: int = e.spawn_enemy("wraith", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	silence(e, eid)
+	var lg := []
+	run(e, 400, lg)
+	check(not of(lg, EV_TELEGRAPH, eid, TELL_SCREAM).is_empty(), "scream: a silenced wraith still sings (its walk is dm_state_kite, which does not look)")
+
+
+## The walk of the caster set: walk in at full speed beyond attackRange - 1.5 m, stand between, back off at 0.8 x under 3.5 m (the scream is cast on the way, at attackRange - 0.5;
+## the cooldown it starts keeps the next one away while the walk is measured).
+func wraith_walk() -> void:
+	var d := def("wraith")
+	var walk_in := float(d["attackRange"]) - 1.5
+	var windup := float(d["windupMs"]) / 1000.0
+	var c := make(284)
+	var h := hero(c, Vector2(14.9, 0))
+	var id: int = c.spawn_enemy("wraith", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	var spd := float(c.enemy_info(id)["speed"])
+	var log := []
+	run(c, 30, log)
+	var p0: Vector2 = c.enemy_info(id)["pos"]
+	run(c, 1, log)
+	var p1: Vector2 = c.enemy_info(id)["pos"]
+	check(absf((p1.x - p0.x) - spd * DT) < 2e-4 and Vector2(14.9, 0).distance_to(p0) > walk_in, "walk: %.4f m a tick (full speed %.4f) while the target is beyond %.1f m" % [p1.x - p0.x, spd * DT, walk_in])
+	for i in 400:
+		run(c, 1, log)
+		if not of(log, EV_TELEGRAPH, id, TELL_SCREAM).is_empty():
+			break
+	var ks := tick + to_reach(windup)
+	run_to(c, ks + 100, log)       # the blow, the 0.3 s recovery, and the walk on from the casting range to the holding one
+	var rest: Vector2 = c.enemy_info(id)["pos"]
+	var dist := Vector2(14.9, 0).distance_to(rest)
+	check(dist <= walk_in + 1e-3 and dist > walk_in - spd * DT * 1.5, "walk: holds at %.2f m (%.1f - one step)" % [dist, walk_in])
+	run(c, 20, log)
+	check(Vector2(c.enemy_info(id)["pos"]).distance_to(rest) < 1e-4 and c.enemy_info(id)["state"] == CHASE, "walk: and stands still between %.1f and %.1f m" % [float(KITE["BACK_OFF_DIST"]), walk_in])
+	# The hero steps in to 2 m (the cooldown, 3.6 s from the blow, is still running): it backs off at 0.8 x its speed until 3.5 m.
+	c.set_external(h, Vector2(rest.x + 2.0, rest.y), true)
+	var x0 := Vector2(c.enemy_info(id)["pos"]).x
+	run(c, 1, log)
+	var x1 := Vector2(c.enemy_info(id)["pos"]).x
+	check(absf((x0 - x1) - spd * float(KITE["BACK_OFF_SPEED"]) * DT) < 2e-4, "walk: backs off at %.1f x its speed (%.4f m a tick)" % [float(KITE["BACK_OFF_SPEED"]), x0 - x1])
+	run(c, 50, log)
+	var dd := Vector2(c.enemy_info(id)["pos"]).distance_to(Vector2(rest.x + 2.0, rest.y))
+	check(dd >= float(KITE["BACK_OFF_DIST"]) - 1e-3 and dd < float(KITE["BACK_OFF_DIST"]) + spd * float(KITE["BACK_OFF_SPEED"]) * DT * 1.5, "walk: and stops at %.2f m (%.1f m)" % [dd, float(KITE["BACK_OFF_DIST"])])
+
+
+## It leaves no corpse (def corpse none), where a robber leaves one; the crowd thins it to mist.
+func wraith_no_corpse() -> void:
+	var c := make(285)
+	var h := hero(c, FAR)
+	var w: int = c.spawn_enemy("wraith", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	var r := harmless(c, Vector2(4, 0))
+	events(c)
+	c.damage(w, 1.0e6, h, false)
+	check(of(events(c), EV_CORPSE_ADDED).is_empty() and c.corpse_count() == 0, "wraith: it dies without a corpse")
+	c.damage(r, 1.0e6, h, false)
+	check(c.corpse_count() == 1, "wraith: (a robber beside it leaves one)")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Nave on the wire
+
+## A guest sees each kind's telegraphs, cues and statuses: the dive (bit 5 of the record), the scream, the curse, Unbind's cue and its Risen, the shield's glance and the incense.
+func nave_on_the_wire() -> void:
+	# The Gargoyle's dive.
+	var d := def("gargoyle")
+	var windup := float(d["windupMs"]) / 1000.0
+	var radius := float(d["dive"]["radius"])
+	var host := make(291)
+	host.set_replication(true)
+	hero(host, Vector2(7, 0))
+	var id: int = host.spawn_enemy("gargoyle", Vector2(0, 0), 3, 2.0, 1.5, false, NAVE, false)
+	root(host, id)
+	var guest := puppet()
+	var hl := []
+	var gl := []
+	var t := join(host, guest, hl, gl)
+	var k0 := to_zero(float(host.enemy_info(id)["attack_cd"]))
+	t = lockstep(host, guest, hl, gl, t, k0 + 12)
+	var ht := of(hl, EV_TELEGRAPH, id, TELL_DIVE)
+	var gt := of(gl, EV_TELEGRAPH, id, TELL_DIVE)
+	check(ht.size() == 1 and gt.size() == 1, "wire: the guest sees the dive's telegraph once (host %d, guest %d)" % [ht.size(), gt.size()])
+	if gt.size() == 1:
+		var f: PackedFloat32Array = gt[0]["floats"]
+		check(absf(f[2] - 7.0) < 0.02 and absf(f[3]) < 0.02 and is_equal_approx(f[4], radius) and f[5] >= 0.05 and f[5] <= windup + 1e-4, "wire: aimed at the mark, %.0f m wide, for what is left of the %.1f s (%.2f s)" % [radius, windup, f[5]])
+		check(int(gt[0]["tick"]) - int(ht[0]["tick"]) <= 6, "wire: within two snapshots of the host's (%d ticks later)" % (int(gt[0]["tick"]) - int(ht[0]["tick"])))
+	check(bool(guest.enemy_info(id)["diving"]) and of(gl, EV_ATTACK, id).size() == 1 and of(gl, EV_ATTACK, id)[0]["ints"][0] == BLOW_DIVE, "wire: and its body is diving on the guest, a dive swing")
+	var ks := k0 + to_reach(windup)
+	t = lockstep(host, guest, hl, gl, t, ks + 30)
+	var pos_h: Vector2 = host.enemy_info(id)["pos"]
+	var pos_g: Vector2 = guest.enemy_info(id)["pos"]
+	check(pos_h.distance_to(Vector2(7, 0)) < 1e-4 and pos_g.distance_to(pos_h) < 0.35, "wire: the guest's body has come down onto the mark with it (%.2f m apart)" % pos_g.distance_to(pos_h))
+	check(bool(guest.enemy_info(id)["diving"]) and of(hl, EV_CUE, id, CUE_SLAM).size() == 1 and of(gl, EV_CUE, id, CUE_SLAM).size() == 1, "wire: grounded, still diving on both, and the slam cue reached the guest once")
+	check(of(hl, EV_HIT, id).size() >= 1 and of(gl, EV_HIT).is_empty(), "wire: the blow on the hero is the host's alone")
+	var ke := ks + to_reach(float(K["RECOVER_TIME"]) + float(d["dive"]["groundedS"]))
+	t = lockstep(host, guest, hl, gl, t, ke + 10)
+	check(not bool(guest.enemy_info(id)["diving"]) and not bool(host.enemy_info(id)["diving"]), "wire: and when it hunts again neither is diving")
+	# A bite is not a dive on the guest.
+	var h2 := make(292)
+	h2.set_replication(true)
+	hero(h2, Vector2(1.2, 0))
+	var bid: int = h2.spawn_enemy("gargoyle", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	var g2 := puppet()
+	var hl2 := []
+	var gl2 := []
+	t = join(h2, g2, hl2, gl2)
+	lockstep(h2, g2, hl2, gl2, t, to_zero(float(h2.enemy_info(bid)["attack_cd"])) + 20)
+	check(of(gl2, EV_TELEGRAPH, bid).is_empty() and of(gl2, EV_ATTACK, bid).size() == 1 and of(gl2, EV_ATTACK, bid)[0]["ints"][0] == 0, "wire: a bite reaches the guest as a plain swing, with no telegraph")
+	# The wraith's scream and the cue on the ring.
+	var wd := def("wraith")
+	var w := make(293)
+	w.set_replication(true)
+	hero(w, Vector2(6, 0))
+	var wid: int = w.spawn_enemy("wraith", Vector2(0, 0), 1, 1.0, 1.0, false, NAVE, false)
+	var wg := puppet()
+	var wl := []
+	var wgl := []
+	t = join(w, wg, wl, wgl)
+	var wk := to_zero(float(w.enemy_info(wid)["attack_cd"]))
+	lockstep(w, wg, wl, wgl, t, wk + to_reach(float(wd["windupMs"]) / 1000.0) + 20)
+	var st := of(wgl, EV_TELEGRAPH, wid, TELL_SCREAM)
+	check(st.size() == 1 and of(wl, EV_TELEGRAPH, wid, TELL_SCREAM).size() == 1 and absf(st[0]["floats"][4] - float(content["SCREAM"]["radius"])) < 1e-5 and of(wgl, EV_ATTACK, wid)[0]["ints"][0] == BLOW_SCREAM,
+		"wire: the scream's ring reaches the guest once, %.1f m wide" % (st[0]["floats"][4] if st.size() > 0 else -1.0))
+	check(of(wgl, EV_CUE, wid, CUE_SCREAM).size() == 1, "wire: and its cue")
+	# The acolyte's curse, Unbind's cue and the Risen it raised.
+	var a := make(294)
+	a.set_replication(true)
+	var ah := hero(a, Vector2(5, 0))
+	var ac := spawn_acolyte(a, Vector2(0, 0), 4, 2.0, 1.5)
+	var th := thrall(a, ah, Vector2(-6, 0))      # (farther from the acolyte than the hero is, so that the hero is its target)
+	var ag := puppet()
+	var al := []
+	var agl := []
+	t = join(a, ag, al, agl)
+	var ak := to_zero(float(a.enemy_info(ac)["attack_cd"]))
+	t = lockstep(a, ag, al, agl, t, ak + 12)
+	var ct := of(agl, EV_TELEGRAPH, ac, TELL_CURSE)
+	check(ct.size() == 1 and of(al, EV_TELEGRAPH, ac, TELL_CURSE).size() == 1 and absf(ct[0]["floats"][2] - 5.0) < 0.02 and of(agl, EV_ATTACK, ac)[0]["ints"][0] == BLOW_CURSE, "wire: the curse's ring reaches the guest once, on the target")
+	a.kill_thrall(th, "killed")
+	t = lockstep(a, ag, al, agl, t, t + to_zero(1.0) + 12)
+	var uc := of(agl, EV_CUE, ac, CUE_UNBIND)
+	var risen_h := of(al, EV_SPAWNED).filter(func(e: Dictionary) -> bool: return a.def_name(e["ints"][0]) == "risen")
+	var risen_g := of(agl, EV_SPAWNED).filter(func(e: Dictionary) -> bool: return ag.def_name(e["ints"][0]) == "risen")
+	check(uc.size() == 1 and absf(uc[0]["floats"][0] + 6.0) < 1e-4, "wire: Unbind's cue reaches the guest once, at the thrall's place")
+	check(risen_h.size() == 1 and risen_g.size() == 1 and risen_g[0]["id"] == risen_h[0]["id"] and risen_g[0]["ints"][1] == 4, "wire: and so does the Risen, with the host's id and the acolyte's level")
+	# The templar's glance, the censer's incense.
+	var s := make(295)
+	s.set_replication(true)
+	var sh := hero(s, Vector2(0, 4))
+	var tid: int = s.spawn_enemy("templar", Vector2(0, 0), 1, 100.0, 1.0, false, NAVE, false)
+	var cid: int = s.spawn_enemy("censer", Vector2(8, 0), 1, 1.0, 0.0, false, NAVE, false)
+	var rb := harmless(s, Vector2(10, 0))
+	var sg := puppet()
+	var sl := []
+	var sgl := []
+	t = join(s, sg, sl, sgl)
+	s.damage(tid, 10.0, sh, true)
+	drain(s, sl)
+	t = lockstep(s, sg, sl, sgl, t, t + 12)
+	check(of(sl, EV_CUE, tid, CUE_SHIELD_BLOCK).size() == 1 and of(sgl, EV_CUE, tid, CUE_SHIELD_BLOCK).size() == 1, "wire: the shield's glance reaches the guest once")
+	check(s.status_stacks(rb, "incensed") == 1.0 and sg.status_stacks(rb, "incensed") == 1.0 and sg.status_stacks(cid, "incensed") == 1.0 and is_equal_approx(float(sg.enemy_info(rb)["speed_mult"]), float(content["CENSER"]["moveMult"])),
+		"wire: and the censer's incense is on the guest's bodies too, with its multipliers")
+	# A guest that does not know the dive, or the scream, refuses the host's messages (the defs and the numbers are in the content hash).
+	for change in [["gargoyle", "dive radius"], ["wraith", "scream radius"], ["acolyte", "attack"], ["templar", "shield"]]:
+		var odd: RefCounted = ClassDB.instantiate("DmCore")
+		var defs: Dictionary = content["ENEMIES"].duplicate(true)
+		var tun_content: Dictionary = content.duplicate(true)
+		match String(change[1]):
+			"dive radius":
+				defs["gargoyle"]["dive"]["radius"] = 3.0
+			"scream radius":
+				tun_content["SCREAM"]["radius"] = 3.0
+			"attack":
+				defs["acolyte"]["attack"] = "cone"
+			"shield":
+				defs["templar"].erase("shield")
+		odd.load_enemy_defs(defs)
+		odd.load_tuning(tun_content)
+		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
+		odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
+		odd.set_puppet(true)
+		check(not odd.apply_snapshot(s.snapshot(900)) and "data" in str(odd.replication_error()), "wire: a guest with another %s of the %s refuses the host's snapshot (%s)" % [change[1], change[0], odd.replication_error()])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the roster and a replay
+
+## The whole Nave roster (its enemy table and its procession themes, lead included) is made by the core, the models are drawn by the crowd, and a seeded run replays event for event.
+func the_nave_roster_and_a_replay() -> void:
+	var areas := DmCoreData.json(godot_dir.path_join("data/content/areas.json"))
+	var ids := {}
+	for e in areas["AREAS"]["nave"]["enemies"]:
+		ids[String(e["id"])] = true
+	for th in content["WAVE_THEMES"]["nave"]:
+		for e in th["roster"]:
+			ids[String(e["id"])] = true
+		if th.get("lead") != null:
+			ids[String(th["lead"])] = true
+	var missing := []
+	for id: String in ids:
+		if not DmWaveDirector.runs_on_core(id):
+			missing.append(id)
+	var all_five := true
+	for id in NAVE_KINDS:
+		all_five = all_five and ids.has(id)
+	check(all_five and missing.is_empty(), "roster: every kind of the Nave's waves and processions runs on the core (%d kinds, missing %s)" % [ids.size(), str(missing)])
+	var looks := DmCoreData.json("res://crowd/crowd_looks.json")
+	var drawn := true
+	for id in NAVE_KINDS:
+		var slug := String(looks["enemy_model"].get(id, ""))
+		var path := "res://assets/slice/models/props/%s.glb" % slug if id == "wraith" else "res://assets/slice/models/%s/character.glb" % slug
+		drawn = drawn and slug != "" and FileAccess.file_exists(path)
+	check(drawn and looks["casters"].has("acolyte") and looks["casters"].has("wraith") and looks["casters"].has("censer") and not looks["casters"].has("templar") and not looks["casters"].has("gargoyle"),
+		"roster: the crowd draws them (their models; the acolyte, wraith and censer as casters)")
+	check(looks["mist"].has("wraith") and is_equal_approx(float(looks["hover"]["wraith"]), float(K["HOVER"])) and float(def("gargoyle")["flying"]) == 1.1, "roster: the wraith hovers %.2f m and thins to mist, the gargoyle flies at %.1f m" % [float(K["HOVER"]), float(def("gargoyle")["flying"])])
+	# The director can leave a def out as if it had no scene (the parity scenario drops the Bellringers' censer, as today's side does).
+	var dir := DmWaveDirector.new()
+	dir.off["censer"] = true
+	check(dir.makes("deacon") and dir.makes("wraith") and not dir.makes("censer") and DmWaveDirector.runs_on_core("censer") and not dir.makes("seraph"), "roster: the director's `off` leaves the censer out; the core still runs it")
+	dir.free()
+	var logs := []
+	for round in 2:
+		var c := make(301)
+		var h1 := hero(c, Vector2(0, 0))
+		hero(c, Vector2(2, -3))
+		thrall(c, h1, Vector2(-2, 2), 400.0)
+		thrall(c, h1, Vector2(3, 3), 400.0)
+		c.spawn_enemy("censer", Vector2(9, 3), 4, 1.5, 1.2, false, NAVE, false)
+		c.spawn_enemy("acolyte", Vector2(-10, 4), 4, 1.5, 1.2, true, NAVE, false)
+		c.spawn_enemy("gargoyle", Vector2(-9, -8), 4, 1.5, 1.2, false, NAVE, false)
+		c.spawn_enemy("templar", Vector2(8, -9), 4, 1.5, 1.2, false, NAVE, false)
+		c.spawn_enemy("wraith", Vector2(12, 11), 4, 1.5, 1.2, false, NAVE, false)
+		for i in 6:
+			c.spawn_enemy("robber" if i % 2 == 0 else "hound", Vector2(12 - i * 4, 13), 4, 1.5, 1.2, false, NAVE, false)
+		var rec := PackedInt32Array()
+		var recf := PackedFloat32Array()
+		for i in 1800:
+			c.step(DT)
+			var raw: Array = c.take_events()
+			rec.append_array(raw[0])
+			recf.append_array(raw[1])
+			if i == 400:
+				for id in c.enemy_ids():
+					if c.enemy_info(id)["def"] == "robber":
+						c.damage(id, 25.0, 0, true)
+			if i == 700:
+				for tid in c.thrall_ids():
+					c.kill_thrall(tid, "killed")
+		logs.append([rec, recf, c.enemy_count(), c.corpse_count()])
+	check(logs[0][0] == logs[1][0] and logs[0][1] == logs[1][1] and logs[0][0].size() > 300, "replay: a seeded fight of the Nave's five kinds and a crowd replays event for event (%d ints)" % logs[0][0].size())

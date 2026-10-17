@@ -137,6 +137,7 @@ void DmCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("enemy_states"), &DmCore::enemy_states);
 	ClassDB::bind_method(D_METHOD("enemy_ground_speeds"), &DmCore::enemy_ground_speeds);
 	ClassDB::bind_method(D_METHOD("enemy_info", "id"), &DmCore::enemy_info);
+	ClassDB::bind_method(D_METHOD("unbind_info", "id"), &DmCore::unbind_info);
 	ClassDB::bind_method(D_METHOD("thrall_total"), &DmCore::thrall_total);
 	ClassDB::bind_method(D_METHOD("thrall_ids"), &DmCore::thrall_ids);
 	ClassDB::bind_method(D_METHOD("thrall_positions"), &DmCore::thrall_positions);
@@ -156,7 +157,7 @@ void DmCore::_bind_methods() {
 }
 
 String DmCore::version() const {
-	return "dmcore 0.8";
+	return "dmcore 0.9";
 }
 
 int64_t DmCore::checksum(int64_t p_count) const {
@@ -208,12 +209,24 @@ int64_t DmCore::load_enemy_defs(const Dictionary &p_enemies) {
 			def.behavior = dm::B_FLANK;
 		} else if (behavior == "caster") {
 			def.behavior = dm::B_CASTER;
-			def.blow = attack == "dust" ? dm::BLOW_DUST : dm::BLOW_CONE;
+			def.blow = attack == "dust" ? dm::BLOW_DUST : (attack == "curse" ? dm::BLOW_CURSE : (attack == "scream" ? dm::BLOW_SCREAM : dm::BLOW_CONE));
+			def.silence_aware = attack == "curse";  // the cloister casters (DmEnemyClstCaster) walk with dm_state_clst_kite: a silenced one never starts a cast
 		} else if (behavior == "hazard") {
 			def.behavior = dm::B_HAZARD;
 			def.blow = dm::BLOW_SLAM;
 		} else if (behavior == "support" && !bool(d.get("ward", false)) && !bool(d.get("inert", false))) {
 			def.behavior = dm::B_SUPPORT;  // the Crypt Deacon: its curse is the plain blow (melee), its raise and Sanctify are the support scan. The Seraph (ward) and the Niche (inert) keep the melee default until they are ported.
+		}
+		def.aura = bool(d.get("aura", false));      // the Censer Bearer's incense
+		def.shield = bool(d.get("shield", false));  // the Bell-Sworn Templar's shield
+		def.unbind = bool(d.get("unbind", false));  // the Lich Acolyte's Unbind
+		if (d.has("dive")) {                        // the Belfry Gargoyle's dive
+			const Dictionary dv = d["dive"];
+			def.has_dive = true;
+			def.dive_min = num(dv, "minRange", def.dive_min);
+			def.dive_range = num(dv, "range", def.dive_range);
+			def.dive_r = num(dv, "radius", def.dive_r);
+			def.dive_grounded_s = num(dv, "groundedS", def.dive_grounded_s);
 		}
 		auto it = world.def_index.find(def.id);
 		if (it != world.def_index.end()) {
@@ -250,6 +263,19 @@ void DmCore::load_tuning(const Dictionary &p_content) {
 	u.burrow_max_per_target = int32_t(num(b, "maxPerTarget", u.burrow_max_per_target));
 	const Dictionary fr = p_content.get("FRENZY", Dictionary());
 	u.frenzy_at = num(fr, "atFrac", u.frenzy_at);
+	const Dictionary ce = p_content.get("CENSER", Dictionary());
+	u.censer_r = num(ce, "radius", u.censer_r);
+	u.censer_haste_s = num(ce, "hasteS", u.censer_haste_s);
+	u.scream_r = num(Dictionary(p_content.get("SCREAM", Dictionary())), "radius", u.scream_r);
+	const Dictionary ts = p_content.get("TEMPLAR_SHIELD", Dictionary());
+	u.shield_arc_deg = num(ts, "halfArcDeg", u.shield_arc_deg);
+	u.shield_cos = std::cos(u.shield_arc_deg * dm::PI / 180.0);  // _ready: cos(deg_to_rad(halfArcDeg))
+	u.shield_pass = num(ts, "passThrough", u.shield_pass);
+	const Dictionary ub = p_content.get("UNBIND", Dictionary());
+	u.unbind_range = num(ub, "range", u.unbind_range);
+	u.unbind_delay_s = num(ub, "delayS", u.unbind_delay_s);
+	u.unbind_cooldown_s = num(ub, "cooldownS", u.unbind_cooldown_s);
+	u.unbind_max = int32_t(num(ub, "maxAlive", u.unbind_max));
 	const Dictionary af = p_content.get("AFFIX_TUNING", Dictionary());
 	const Dictionary bell = af.get("bellTolled", Dictionary());
 	u.bell_interval = num(bell, "intervalS", u.bell_interval);
@@ -300,6 +326,8 @@ int64_t DmCore::load_status_defs(const Array &p_rules) {
 	world.st_shrouded = world.status_id("shrouded");
 	world.st_silence = world.status_id("silence");
 	world.st_sanctified = world.status_id("sanctified");
+	world.st_incensed = world.status_id("incensed");
+	world.st_fracture = world.status_id("fracture");
 	world.st_cleared.clear();
 	for (const char *n : { "bleed", "wraithfire", "withered", "root", "slow", "chill" }) {  // DmStatusSet.CLEARED
 		const int32_t id = world.status_id(n);
@@ -412,6 +440,15 @@ Dictionary DmCore::tuning() const {
 	d["SANCTIFIED.range"] = world.tun.sanct_range;
 	d["SANCTIFIED.durationS"] = world.tun.sanct_s;
 	d["SANCTIFIED.cooldownMult"] = world.tun.sanct_cooldown_mult;
+	d["CENSER.radius"] = world.tun.censer_r;
+	d["CENSER.hasteS"] = world.tun.censer_haste_s;
+	d["SCREAM.radius"] = world.tun.scream_r;
+	d["TEMPLAR_SHIELD.halfArcDeg"] = world.tun.shield_arc_deg;
+	d["TEMPLAR_SHIELD.passThrough"] = world.tun.shield_pass;
+	d["UNBIND.range"] = world.tun.unbind_range;
+	d["UNBIND.delayS"] = world.tun.unbind_delay_s;
+	d["UNBIND.cooldownS"] = world.tun.unbind_cooldown_s;
+	d["UNBIND.maxAlive"] = world.tun.unbind_max;
 	return d;
 }
 
@@ -754,6 +791,7 @@ Dictionary DmCore::enemy_info(int64_t p_id) const {
 	d["pos"] = Vector2(e.x, e.z);
 	d["aim"] = Vector2(e.aim_x, e.aim_z);
 	d["yaw"] = e.yaw;
+	d["diving"] = e.diving;
 	PackedStringArray af;
 	for (int32_t k = 0; k < dm::AF_COUNT; k++) {
 		if (e.affixes & (1 << k)) {
@@ -763,6 +801,36 @@ Dictionary DmCore::enemy_info(int64_t p_id) const {
 	d["affixes"] = af;
 	if (world.puppet) {  // where the last snapshot put it (the body eases toward this)
 		d["net_pos"] = Vector2(e.net_x, e.net_z);
+	}
+	return d;
+}
+
+Dictionary DmCore::unbind_info(int64_t p_id) const {
+	Dictionary d;
+	for (const dm::Unbind &u : world.unbinds) {
+		if (u.id != p_id) {
+			continue;
+		}
+		d["cooldown"] = u.cd;
+		d["watch"] = u.watch_t;
+		Array pending;
+		for (const dm::Unbind::Claim &c : u.pending) {
+			Array one;
+			one.push_back(c.left);
+			one.push_back(c.x);
+			one.push_back(c.z);
+			pending.push_back(one);
+		}
+		d["pending"] = pending;
+		PackedInt32Array unbound, seen;
+		for (const int32_t id : u.unbound) {
+			unbound.push_back(id);
+		}
+		for (const dm::Unbind::Seen &s : u.seen) {
+			seen.push_back(s.thrall);
+		}
+		d["unbound"] = unbound;
+		d["seen"] = seen;
 	}
 	return d;
 }

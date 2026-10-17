@@ -9,7 +9,8 @@ extends SceneTree
 ##   - killing enemies with core.damage lays corpses and plays the death path (DmEnemyFx) without errors, the corpses get their rings (capped) and dust where they land; deaths and removals leave nothing held by the fx;
 ##   - the crowd draws the creatures: the CrowdView's groups hold an instance per live body and per corpse;
 ##   - the affixed elites' standing marks and motes (gone when they fall); a status's tell (frost motes on a chilled body); the dirt mound over a ghoul underground;
-##   - the kinds of blow (the penitent's cone, the moth's dust and cloud, the sac's and the golem's slam, the deacon's curse, a hurt ghoul's dig and eruption) and the affixes' bell, meal, shroud and burst are
+##   - the kinds of blow (the penitent's cone, the moth's dust and cloud, the sac's and the golem's slam, the deacon's and the acolyte's curse, the wraith's scream, the gargoyle's dive, a hurt ghoul's
+##     dig and eruption), the templar's glance and the censer's incense (its cloud, its haste) and the affixes' bell, meal, shroud and burst are
 ##     events of the core's buffer that DmEnemyFx played (scripted: one of each, close to the hero);
 ##   - the order of a tick (session and director, then the core, then the crowd) and that the host takes the event buffer once;
 ##   - the hover pick finds the enemy under the cursor through the core;
@@ -45,6 +46,7 @@ var removed := 0
 var corpses_added := 0
 var tele_events := 0
 var tells := {}   # DmCoreEvents.TELLS name -> telegraph events
+var cue_seen := {}   # DmCoreEvents.CUES name -> cue events
 var zones_seen := 0
 var attack_events := 0
 var hero_died_n := 0
@@ -153,6 +155,7 @@ func start_game(api: DmApi, character: Dictionary) -> void:
 	host.telegraph.connect(func(_id: int, t: int, _a: float, _b: float, _c: float, _d: float, _r: float, _s: float) -> void:
 		tele_events += 1
 		tells[DmCoreEvents.TELLS[t]] = int(tells.get(DmCoreEvents.TELLS[t], 0)) + 1)
+	host.cue.connect(func(_id: int, k: int, _x: float, _z: float, _r: float) -> void: cue_seen[DmCoreEvents.CUES[k]] = int(cue_seen.get(DmCoreEvents.CUES[k], 0)) + 1)
 	host.zone.connect(func(_id: int, _k: int, _s: int, _x: float, _z: float, _r: float, _t: float) -> void: zones_seen += 1)
 	host.enemy_attack.connect(func(_id: int, _b: int, _x: float, _z: float, _w: float) -> void: attack_events += 1)
 	host.target_hit.connect(func(_id: int, _t: int, _k: int, _d: float) -> void:
@@ -226,7 +229,8 @@ func the_run() -> void:
 
 
 ## The kinds of blow, one of each, close to a hero who stands still: the penitent's cone, the moth's dust and its cloud, the sac's and the golem's slam, the deacon's
-## curse and a hurt ghoul's dig, tunnel and eruption. Each is a telegraph event, a swing and an impact for the fx.
+## and the acolyte's curse, the wraith's scream, the gargoyle's dive and a hurt ghoul's dig, tunnel and eruption; the templar's glance (a blow from the front) and the
+## censer's incense. Each is a telegraph event, a swing and an impact for the fx.
 func kinds() -> void:
 	g.director.enabled = false
 	var b := g.local_body()
@@ -243,6 +247,7 @@ func kinds() -> void:
 			host.damage(id, 1.0e9, b.core_id, false)
 	await ticks(3)
 	var seen_before := tells.duplicate()
+	var cues_before := cue_seen.duplicate()
 	var fx_before: Dictionary = g.enemy_fx.stats.duplicate()
 	var zones_before := zones_seen
 	var at := b.position
@@ -253,13 +258,27 @@ func kinds() -> void:
 	ids["ghoul"] = host.spawn_enemy("ghoul", at + Vector3(0.0, 0.0, -9.0), 1, 1.0, 1.0, false, "graves", false)
 	ids["deacon"] = host.spawn_enemy("deacon", at + Vector3(4.0, 0.0, -4.0), 1, 1.0, 1.0, false, "ossuary", false)
 	ids["golem"] = host.spawn_enemy("golem", at + Vector3(-6.0, 0.0, 4.0), 1, 1.0, 1.0, false, "ossuary", false)
+	ids["wraith"] = host.spawn_enemy("wraith", at + Vector3(-8.0, 0.0, -3.0), 1, 1.0, 1.0, false, "nave", false)
+	ids["gargoyle"] = host.spawn_enemy("gargoyle", at + Vector3(3.0, 0.0, -8.5), 1, 1.0, 1.0, false, "nave", false)
+	ids["templar"] = host.spawn_enemy("templar", at + Vector3(0.0, 0.0, -3.0), 1, 1.0, 1.0, false, "nave", false)
+	ids["censer"] = host.spawn_enemy("censer", at + Vector3(6.0, 0.0, -3.0), 1, 1.0, 1.0, false, "nave", false)
+	ids["acolyte"] = host.spawn_enemy("acolyte", at + Vector3(-8.0, 0.0, -6.0), 1, 1.0, 1.0, false, "nave", false)
 	await ticks(3)
+	var waited := 0
+	while int(host.enemy_info(ids["templar"]).get("state", -1)) != DmCoreEvents.State.CHASE and waited < 90:   # it faces him once it hunts him
+		await physics_frame
+		waited += 1
+	await ticks(8)
+	host.damage(ids["templar"], 20.0, b.core_id)    # from the front, as it faces him: a glance
+	var incense_seen := false
 	host.damage(ids["ghoul"], float(host.enemy_info(ids["ghoul"])["max_hp"]) * 0.6, b.core_id)   # under half its health it digs in
 	var mound_seen := [false, false]   # [a mound while it was underground, none once it was up again]
 	for t in 720:
 		await physics_frame
 		if t % 120 == 60:
 			b.restore_vitals()   # he is only the target
+		if t == 90:
+			incense_seen = host.enemy_alive(ids["censer"]) and host.status_stacks(ids["censer"], "incensed") == 1.0 and g.enemy_fx._incense.has(ids["censer"])
 		var st := int(host.enemy_info(ids["ghoul"]).get("state", -1)) if host.enemy_alive(ids["ghoul"]) else -1
 		var under := st == DmCoreEvents.State.BURROW or st == DmCoreEvents.State.ERUPT
 		if under and g.enemy_fx._mounds.has(ids["ghoul"]):
@@ -273,13 +292,20 @@ func kinds() -> void:
 		got[k] = int(tells.get(k, 0)) - int(seen_before.get(k, 0))
 	print("INFO the kinds' telegraphs: ", got, "; fx ", g.enemy_fx.stats, "; zones ", zones_seen - zones_before)
 	check(got["cone"] >= 1 and got["dust"] >= 1 and got["slam"] >= 1, "the penitent's cone, the moth's dust and the sac's slam were announced (%s)" % str(got))
-	check(got["curse"] >= 1, "the Ossuary's deacon cursed him, and its telegraph was drawn (%d)" % got["curse"])
+	check(got["curse"] >= 2, "the Ossuary's deacon and the Nave's acolyte cursed him, and the telegraphs were drawn (%d)" % got["curse"])
+	var cues_got := {}
+	for k in DmCoreEvents.CUES:
+		cues_got[k] = int(cue_seen.get(k, 0)) - int(cues_before.get(k, 0))
+	check(got["scream"] >= 1 and cues_got["scream"] >= 1, "the wraith sang its scream: the ring was drawn, and the cue came (%d, %d)" % [got["scream"], cues_got["scream"]])
+	check(got["dive"] >= 1 and cues_got["slam"] >= 1, "the gargoyle dived: the mark was drawn, and the stone landed (%d, %d)" % [got["dive"], cues_got["slam"]])
+	check(cues_got["shield_block"] >= 1, "the templar's shield glanced the blow from the front (%d)" % cues_got["shield_block"])
+	check(incense_seen, "the censer's cloud is up while it lives, and it is hasted by its own incense")
 	check(got["erupt"] >= 1 and g.enemy_fx.stats["dig"] > int(fx_before["dig"]) and g.enemy_fx.stats["erupt"] > int(fx_before["erupt"]), "the hurt ghoul dug in and erupted: dig, tunnel, a telegraph, the eruption's fx")
 	check(mound_seen[0] and mound_seen[1], "a dirt mound rode over the ghoul while it was underground and went when it came up (%s)" % str(mound_seen))
 	check(zones_seen > zones_before and g.enemy_fx.stats["zone"] > int(fx_before["zone"]), "the moth's dust cloud is a zone the fx drew (%d)" % (zones_seen - zones_before))
 	check(g.enemy_fx.stats["telegraph"] - int(fx_before["telegraph"]) >= 4 and g.enemy_fx.stats["strike"] - int(fx_before["strike"]) >= 3, "the fx drew the telegraphs and the strikes' impacts")
 	for k: String in ids:
-		if k == "golem" or k == "deacon":
+		if k in ["golem", "deacon", "wraith", "gargoyle", "templar", "censer", "acolyte"]:
 			host.remove_enemy(ids[k])   # alive and gone: no corpses (a golem leaves three, whose rings would fade during the node count that follows)
 		elif host.enemy_alive(ids[k]):
 			host.damage(ids[k], 1.0e9, b.core_id, false)
@@ -378,7 +404,7 @@ func no_nodes_per_creature() -> void:
 		lo = mini(lo, int(s[1]))
 		hi = maxi(hi, int(s[1]))
 	print("INFO nodes over the run: %d to %d (enemies alive %d at most); the scene tree has %d nodes" % [lo, hi, max_alive, nodes()])
-	check(hi - lo <= 40, "the node count over the run varies by %d (effects, not creatures)" % (hi - lo))
+	check(hi - lo <= 50, "the node count over the run varies by %d (effects, not creatures: 35 before the Bellringers' censer, whose incense cloud is a Binbun effect of about eight nodes, led a procession)" % (hi - lo))
 	var http := root.find_children("*", "HTTPRequest", true, false)
 	check(http.is_empty(), "no HTTP request node exists")
 	g.director.enabled = true

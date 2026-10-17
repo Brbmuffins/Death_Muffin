@@ -362,7 +362,7 @@ void DmCrowd::sync(const Ref<DmCore> &p_core) {
 		b.kind = dm::BK_ENEMY;
 		b.model = look.model;
 		b.state = e.state;
-		b.flags = look.flags | (e.elite ? dm::BF_ELITE : 0);
+		b.flags = look.flags | (e.elite ? dm::BF_ELITE : 0) | (e.diving && e.state == dm::ATTACK ? (e.phase == 0 ? dm::BF_DIVING : dm::BF_GROUNDED) : 0);   // a Gargoyle's dive and its landing
 		b.def = e.def;
 		b.x = e.x;
 		b.z = e.z;

@@ -23,6 +23,8 @@ enum BodyFlag : int32_t {
 	BF_INERT = 4,   // never shoved by a hit
 	BF_MIST = 8,    // leaves no body: thins away when it dies (the wraith)
 	BF_FLYER = 16,  // hovers by its def's `flying` (bobs by 0.18 m; other hoverers bob by 0.12)
+	BF_DIVING = 32,    // the swing in its wind-up is a Gargoyle's dive: it climbs over the mark, then drops onto it (DmEnemyGargoyle._process)
+	BF_GROUNDED = 64,  // a dive that has landed: grounded (0.05 m) while it recovers
 };
 
 struct CrowdBody {
@@ -63,8 +65,8 @@ struct CrowdFeed {
 // ---- models: what a baked model (CrowdVatData) tells the view
 
 // The roles DmCreature.FALLBACK resolves a clip for that the crowd plays.
-enum Role : int32_t { RL_IDLE = 0, RL_WALK, RL_RUN, RL_ATTACK, RL_CAST, RL_HURT, RL_DEATH, RL_DIG, RL_COUNT };
-constexpr const char *ROLE_NAMES[RL_COUNT] = { "idle", "walk", "run", "attack", "cast", "hurt", "death", "dig" };
+enum Role : int32_t { RL_IDLE = 0, RL_WALK, RL_RUN, RL_ATTACK, RL_CAST, RL_HURT, RL_DEATH, RL_DIG, RL_DIVE, RL_COUNT };
+constexpr const char *ROLE_NAMES[RL_COUNT] = { "idle", "walk", "run", "attack", "cast", "hurt", "death", "dig", "dive" };
 
 struct CrowdModel {
 	std::string slug;

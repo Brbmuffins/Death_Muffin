@@ -186,8 +186,8 @@ void World::set_thrall_state(Thrall &t, int32_t p_state) {  // DmThrall._set_sta
 	t.state_t = 0.0;
 }
 
-// DmThrall.kill: the fall, the host's listener (the legion shrinks, seats are dealt again), the status set's (cleared), then a plague
-// bearer's rupture (not when it crumbled) and the Legion of the Unburied burst (only when it was killed).
+// DmThrall.kill: the fall, the host's listener (the legion shrinks, seats are dealt again), the status set's (cleared), the Lich Acolytes' that watched it
+// (Unbind), then a plague bearer's rupture (not when it crumbled) and the Legion of the Unburied burst (only when it was killed).
 void World::kill_thrall(int32_t p_slot, int32_t p_reason, int32_t p_source) {
 	Thrall &t = thralls[p_slot];
 	if (t.dead) {
@@ -199,6 +199,7 @@ void World::kill_thrall(int32_t p_slot, int32_t p_reason, int32_t p_source) {
 	events.push(EV_THRALL_DIED, t.id, { p_reason, t.owner, t.kind, p_source }, { t.x, t.z });
 	reform_thralls(t.owner);
 	body_died_statuses(t);
+	thrall_fell(t);  // the Lich Acolytes that were watching it (dm_enemy_clst_acolyte.gd), after the host's and the status set's listeners
 	if (t.kind == TK_PLAGUEBEARER && p_reason != DR_CRUMBLED) {
 		burst_thrall(t, legion.plague_radius, t.damage * legion.plague_damage);
 		events.push(EV_THRALL_PLAGUE_POOL, t.id, {}, { t.x, t.z, float(legion.plague_pool_radius), float(legion.plague_pool_s), float(t.damage * legion.plague_pool_dps) });

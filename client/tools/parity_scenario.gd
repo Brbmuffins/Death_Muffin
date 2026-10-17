@@ -108,6 +108,7 @@ func _run() -> void:
 	# the scenario's rules: Easy, Easy auto combat open, the director seeded
 	g.kill_credited.disconnect(g.rewards._on_kill_credited)   # no kill reaches the rewards: no XP, no Soul Harvest, no Kill Chain, no loot (as today's side)
 	g.input.auto.gate_probe = func() -> bool: return true
+	g.director.off["censer"] = true                           # no censer for the Bellringers' procession (today's side leaves it out: its scene is dropped), so both sides play the same rules
 	g.director.difficulty = difficulty
 	g.director.rng.seed = seed_n
 	_observe()

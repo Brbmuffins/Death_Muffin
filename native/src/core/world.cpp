@@ -3,7 +3,7 @@
 #include <algorithm>
 
 // The enemy brain is a port of godot/enemies: DmEnemy (dm_enemy.gd), its states (states/*.gd) and the kinds (flanker, caster,
-// hazard, burrower; the Deacon is support.cpp). Comments name the GDScript it mirrors. Differences from today are listed in native/README.md.
+// hazard, burrower; the Deacon is support.cpp, the Nave's five are nave.cpp). Comments name the GDScript it mirrors. Differences from today are listed in native/README.md.
 
 namespace dm {
 
@@ -47,6 +47,9 @@ bool World::remove_enemy(int32_t p_id) {
 	}
 	const size_t k = size_t(it->second);
 	events.push(EV_ENEMY_REMOVED, p_id, { 1 }, {});
+	if (defs[enemies[k].def].unbind) {
+		drop_unbind(p_id);
+	}
 	enemy_slot.erase(it);
 	enemies.erase(enemies.begin() + int64_t(k));
 	for (size_t j = k; j < enemies.size(); j++) {
@@ -91,6 +94,12 @@ Enemy World::make_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, do
 	if (d.behavior == B_SUPPORT) {
 		e.support_t = e.rng.next_double() * SCAN_S;  // DmEnemyDeacon._ready, after the base's rolls
 	}
+	if (d.unbind) {  // DmEnemyClstAcolyte._ready: `_watch_t = rng.randf() * WATCH_S`, after the base's rolls
+		Unbind u;
+		u.id = e.id;
+		u.watch_t = e.rng.next_double() * WATCH_S;
+		unbinds.push_back(u);
+	}
 	// initial_state(): rising bodies rise (a burrower starts underground), others start idle.
 	e.state = p_rising ? (d.burrow ? BURROW : RISING) : IDLE;
 	events.push(EV_ENEMY_SPAWNED, e.id, { p_def, p_level, p_elite ? 1 : 0, p_area, p_affixes }, { p_x, p_z, float(e.max_hp) });
@@ -102,6 +111,9 @@ Enemy World::make_enemy(int32_t p_def, float p_x, float p_z, int32_t p_level, do
 void World::change(int32_t p_slot, int32_t p_next) {
 	Enemy &e = enemies[p_slot];
 	const int32_t prev = e.state;
+	if (prev == ATTACK) {
+		e.diving = false;  // DmStateCathDive.exit: a stun mid-dive ends the dive where the body is
+	}
 	e.state = p_next;
 	e.state_t = 0.0;
 	events.push(EV_ENEMY_STATE, e.id, { prev, p_next }, {});
@@ -120,6 +132,9 @@ void World::enter(Enemy &e, int32_t p_prev) {
 			e.phase = 0;
 			stop(e);
 			begin_attack(e);
+			e.recover_s = RECOVER_S;  // DmStateCathDive.enter: where the drop starts, and the plain recovery (a dive lengthens it when it lands)
+			e.dive_x = e.x;
+			e.dive_z = e.z;
 			break;
 		case HURT:
 		case DIG:
@@ -198,15 +213,25 @@ int32_t World::tick_state(int32_t p_slot, double p_dt) {
 		}
 		case ATTACK:  // dm_state_attack: wind-up, impact, 0.3 s recovery
 			if (e.phase == 0) {
+				if (e.diving) {  // dm_state_cath_dive: hang for the first half of the wind-up, then drop onto the mark along an ease-in (k^2) curve
+					const double w = e.windup_s;
+					const double k = std::clamp((t - w * 0.5) / (w * 0.5), 0.0, 1.0);
+					const double ease = k * k;
+					e.x = float(double(e.dive_x) + (double(e.aim_x) - double(e.dive_x)) * ease);
+					e.z = float(double(e.dive_z) + (double(e.aim_z) - double(e.dive_z)) * ease);
+				}
 				if (t >= e.windup_s) {
 					e.attack_cd = e.cooldown_s;
 					strike(e);
 					e.phase = 1;
 					e.state_t = 0.0;
+					if (e.diving) {
+						e.recover_s = RECOVER_S + defs[e.def].dive_grounded_s;  // grounded: the window to punish it
+					}
 				}
 				return -1;
 			}
-			return t >= RECOVER_S ? post_attack_state(e) : -1;
+			return t >= e.recover_s ? post_attack_state(e) : -1;
 		case HURT:  // dm_state_hurt
 			return t >= e.hurt_s ? (target_valid(e.target) ? CHASE : IDLE) : -1;
 		case RETURN:  // dm_state_return
@@ -317,8 +342,8 @@ int32_t World::engage(Enemy &e, float p_tx, float p_tz, double p_d, double p_dt)
 		}
 		return -1;
 	}
-	if (d.behavior == B_CASTER) {
-		if (p_d <= e.attack_range - 0.5 && e.attack_cd <= 0.0) {
+	if (d.behavior == B_CASTER) {  // dm_state_kite; the cloister casters' dm_state_clst_kite is the same walk, but a silenced body never starts a cast
+		if (p_d <= e.attack_range - 0.5 && e.attack_cd <= 0.0 && !(d.silence_aware && silenced(e))) {
 			return ATTACK;
 		}
 		if (p_d > e.attack_range - 1.5) {
@@ -331,6 +356,17 @@ int32_t World::engage(Enemy &e, float p_tx, float p_tz, double p_d, double p_dt)
 			face_point(e, p_tx, p_tz, p_dt);
 		}
 		return -1;
+	}
+	if (d.has_dive && e.attack_cd <= 0.0 && p_d >= d.dive_min && p_d <= d.dive_range) {  // dm_state_cath_dive_chase: with the cooldown up and the target between minRange and range, dive
+		e.los_t -= p_dt;
+		if (e.los_t <= 0.0) {
+			e.los_t = DIVE_LOS_S;
+			e.los_ok = line_clear(e.x, e.z, p_tx, p_tz);
+		}
+		if (e.los_ok) {
+			e.diving = true;
+			return ATTACK;
+		}
 	}
 	if (p_d <= e.attack_range + ATTACK_TRIGGER_PAD && e.attack_cd <= 0.0) {
 		return ATTACK;
@@ -512,6 +548,16 @@ void World::begin_attack(Enemy &e) {
 			return;
 		}
 	}
+	if (e.diving) {  // DmEnemyGargoyle.begin_attack: the mark is under the target (under itself without one); the swing is the drop, with its telegraph
+		Tgt under;
+		const bool have = target_at(e.target, under);
+		e.aim_x = have ? under.x : e.x;
+		e.aim_z = have ? under.z : e.z;
+		face_point(e, e.aim_x, e.aim_z, 1.0);
+		events.push(EV_ENEMY_ATTACK, e.id, { BLOW_DIVE }, { e.aim_x, e.aim_z, float(e.windup_s) });
+		events.push(EV_TELEGRAPH, e.id, { TELL_DIVE }, { e.x, e.z, e.aim_x, e.aim_z, float(d.dive_r), float(e.windup_s) });
+		return;
+	}
 	Tgt tg;
 	if (target_at(e.target, tg)) {
 		e.aim_x = tg.x;
@@ -537,6 +583,12 @@ void World::begin_attack(Enemy &e) {
 		case BLOW_SLAM:
 			events.push(EV_TELEGRAPH, e.id, { TELL_SLAM }, { e.x, e.z, e.aim_x, e.aim_z, float(d.slam_r), float(e.windup_s) });
 			break;
+		case BLOW_CURSE:  // DmEnemyClstCaster.announce_telegraph: a ring on the target
+			events.push(EV_TELEGRAPH, e.id, { TELL_CURSE }, { e.x, e.z, e.aim_x, e.aim_z, 0.0f, float(e.windup_s) });
+			break;
+		case BLOW_SCREAM:  // DmEnemyWraith.announce_telegraph: song-lines to a ring on the aim
+			events.push(EV_TELEGRAPH, e.id, { TELL_SCREAM }, { e.x, e.z, e.aim_x, e.aim_z, float(tun.scream_r), float(e.windup_s) });
+			break;
 		default:
 			break;
 	}
@@ -547,6 +599,15 @@ void World::strike(Enemy &e) {
 	const EnemyDef &d = defs[e.def];
 	if (d.behavior == B_SUPPORT && e.swing_raise) {  // DmEnemyDeacon.strike: a raise lands as the corpse's end, not as a blow
 		raise_corpse(e);
+		return;
+	}
+	if (e.diving) {  // DmEnemyGargoyle.strike: everything within the dive's radius of the mark, and the stone lands
+		each_target([&](const Tgt &x) {
+			if (flat_dist(e.aim_x, e.aim_z, x.x, x.z) <= d.dive_r) {
+				hit_target(e, x.id, e.damage, d.hit_kind);
+			}
+		});
+		events.push(EV_CUE, e.id, { CUE_SLAM }, { e.aim_x, e.aim_z, float(d.dive_r) });
 		return;
 	}
 	switch (d.blow) {
@@ -607,6 +668,21 @@ void World::strike(Enemy &e) {
 			events.push(EV_CUE, e.id, { CUE_SLAM }, { e.aim_x, e.aim_z, float(d.slam_r) });
 			break;
 		}
+		case BLOW_CURSE: {  // DmEnemyClstCaster.strike: the CURRENT target, if within the sim's reach of the body at the blow (walking out of the telegraph does not dodge it)
+			Tgt tg;
+			if (target_at(e.target, tg) && flat_dist(e.x, e.z, tg.x, tg.z) <= e.attack_range * STRIKE_REACH_MULT + STRIKE_REACH_PAD) {
+				hit_target(e, tg.id, e.damage, HK_CURSE);
+			}
+			break;
+		}
+		case BLOW_SCREAM:  // DmEnemyWraith.strike: the ring at the aim fixed when the wind-up began
+			each_target([&](const Tgt &x) {
+				if (flat_dist(e.aim_x, e.aim_z, x.x, x.z) <= tun.scream_r) {
+					hit_target(e, x.id, e.damage, d.hit_kind);
+				}
+			});
+			events.push(EV_CUE, e.id, { CUE_SCREAM }, { e.aim_x, e.aim_z, float(tun.scream_r) });
+			break;
 		default:
 			break;
 	}
@@ -632,6 +708,9 @@ void World::hit_id(int32_t p_source, int32_t p_target, double p_damage, int32_t 
 double World::damage_enemy(int32_t p_slot, double p_amount, int32_t p_source, bool p_allow_stagger, bool &r_killed) {
 	r_killed = false;
 	Enemy &e = enemies[p_slot];
+	if (p_allow_stagger && defs[e.def].shield) {  // DmEnemyClstTemplar.take_damage: before the base's refusals, as today (a glance off a rising body shows too)
+		p_amount = shield(e, p_source, p_amount);
+	}
 	if (e.state == DEAD || e.state == RISING || !hittable(e) || p_amount <= 0.0) {  // DmEnemy.take_damage refusals
 		return 0.0;
 	}
@@ -934,8 +1013,17 @@ void World::step(double p_dt) {
 		if (nxt >= 0 && nxt != enemies[i].state) {
 			change(i, nxt);
 		}
-		if (enemies[i].state != DEAD && defs[enemies[i].def].behavior == B_SUPPORT) {  // the Deacon's own _physics_process, after the base's
-			tick_support(i, p_dt);
+		if (enemies[i].state != DEAD) {  // the kinds' own _physics_process, after the base's: the Deacon's scan, the Censer's pulse, the Acolyte's claims
+			const EnemyDef &kd = defs[enemies[i].def];
+			if (kd.behavior == B_SUPPORT) {
+				tick_support(i, p_dt);
+			}
+			if (kd.aura) {
+				tick_aura(i, p_dt);
+			}
+			if (kd.unbind) {
+				tick_unbind(i, p_dt);
+			}
 		}
 		if (enemies[i].state != DEAD) {
 			advance_statuses(enemies[i], p_dt);
@@ -1263,6 +1351,9 @@ void World::remove_dead_bodies() {
 		if (e.state == DEAD && e.state_t >= BODY_LINGER_S) {
 			events.push(EV_ENEMY_REMOVED, e.id, {}, {});
 			enemy_slot.erase(e.id);
+			if (defs[e.def].unbind) {
+				drop_unbind(e.id);
+			}
 			continue;
 		}
 		if (w != r) {  // stable compaction keeps spawn order

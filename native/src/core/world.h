@@ -1,7 +1,8 @@
 #pragma once
 // The core's tables and the enemy brain (native/README.md "Design"). Enemies live in spawn order: a slot only moves by stable
 // compaction when a dead body is removed, so slot order is spawn order and every scan keeps today's tie-breaks. The brain is a port of
-// godot/enemies (DmEnemy, its states and kinds) for the Graves roster and the Ossuary's golem and deacon; timers count in doubles the way the GDScript did. Thralls
+// godot/enemies (DmEnemy, its states and kinds) for the Graves roster, the Ossuary's golem and deacon and the Drowned Nave's five (censer, acolyte, gargoyle,
+// templar, wraith: nave.cpp); timers count in doubles the way the GDScript did. Thralls
 // (thralls.cpp) and corpses (corpses.cpp) live in the same World: heroes are enemies' targets first, then thralls in raise order.
 #include <cmath>
 #include <cstdint>
@@ -26,12 +27,13 @@ namespace dm {
 // Wire ids of today's enemy states (godot/enemies/states/dm_enemy_state.gd): append only.
 enum EnemyState : int32_t { RISING = 0, IDLE, CHASE, ATTACK, HURT, RETURN, DEAD, FLEE, BURROW, ERUPT, DIG, EMERGE };
 enum Behavior : int32_t { B_MELEE = 0, B_FLANK, B_CASTER, B_HAZARD, B_SUPPORT };  // B_SUPPORT: the Crypt Deacon (DmEnemyDeacon, DmStateCathSupport)
-enum Blow : int32_t { BLOW_MELEE = 0, BLOW_CONE, BLOW_DUST, BLOW_SLAM };
+// BLOW_CURSE: the Lich Acolyte's homing curse (the plain reach, hit kind curse); BLOW_SCREAM: the Choir Wraith's ring at the aim; BLOW_DIVE: the Belfry Gargoyle's drop.
+enum Blow : int32_t { BLOW_MELEE = 0, BLOW_CONE, BLOW_DUST, BLOW_SLAM, BLOW_CURSE, BLOW_SCREAM, BLOW_DIVE };
 // Damage kinds of a hit on a target (the sim's hurt `from`; GDScript maps them back to strings): append only.
 enum HitKind : int32_t { HK_MELEE = 0, HK_TOXIC, HK_BURN, HK_EMBER, HK_DUST, HK_CURSE, HK_TOLL };
 // Telegraph and cue kinds (DmEnemy.telegraph / cue): append only.
-enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT, TELL_TOLL, TELL_RAISE, TELL_CURSE };
-enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN, CUE_SANCTIFY, CUE_COUNT };
+enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT, TELL_TOLL, TELL_RAISE, TELL_CURSE, TELL_SCREAM, TELL_DIVE };
+enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN, CUE_SANCTIFY, CUE_SHIELD_BLOCK, CUE_UNBIND, CUE_SCREAM, CUE_COUNT };
 enum ZoneKind : int32_t { ZONE_DUST = 0, ZONE_TOXIC };
 // Elite affixes in DmSimData.AFFIX_ORDER (bit k of Enemy::affixes) and the one-off beats DmAffixSet.moment sends: append only.
 enum Affix : int32_t { AF_BELL_TOLLED = 0, AF_HUNGERING, AF_SHROUDED, AF_VENGEFUL, AF_COUNT };
@@ -52,6 +54,10 @@ constexpr double ZONE_TARGET_PAD = 0.45, ZONE_TICK_S = 1.0, BURROW_STUCK_S = 0.8
 // The Crypt Deacon (dm_enemy_deacon.gd CORPSE_RANGE; dm_state_cath_support.gd BACK_OFF_DIST, BACK_OFF_SPEED): a corpse within 8 m can be raised; the caster
 // backs off at 0.7 x its speed when the target is closer than 4 m. The scan period is SCAN_S, the numbers of Sanctify are Tuning's (statuses.json SANCTIFIED).
 constexpr double SUPPORT_CORPSE_RANGE = 8.0, SUPPORT_BACK_OFF = 4.0, SUPPORT_BACK_SPEED = 0.7;
+// The Drowned Nave's kinds (nave.cpp). AURA_PULSE_S: dm_enemy_censer.gd `_aura_cd = 1.0`; WATCH_S: dm_enemy_clst_acolyte.gd WATCH_S (it looks for new thralls to watch every 0.5 s);
+// SHIELD_GAP_S: dm_enemy_clst_templar.gd BLOCK_FX_GAP_MS (250); DIVE_LOS_S: dm_state_cath_dive_chase.gd LOS_S (the sight line is cast at most every 0.25 s).
+// LOS_STEP / LOS_NAV_PAD are the core's own (no collision world: "a wall between" is a stretch of the straight line off the navmesh; native/README.md).
+constexpr double AURA_PULSE_S = 1.0, WATCH_S = 0.5, SHIELD_GAP_S = 0.25, DIVE_LOS_S = 0.25, LOS_STEP = 0.4, LOS_NAV_PAD = 0.35;
 // Crowd spacing (World::resolve_overlaps): the share of an overlap removed per tick, and the most a body is moved by it in one tick.
 constexpr double OVERLAP_EASE = 0.3, OVERLAP_MAX_STEP = 0.15;
 constexpr double SIDESTEP = 0.6;  // a body blocked head-on slides sideways at this share of its speed (World::separate)
@@ -74,6 +80,10 @@ struct Tuning {  // data/content/enemies.json blocks
 	int32_t vengeful_risen = 3;
 	// statuses.json SANCTIFIED: the Deacon's blessing (the status's duration and damage taken live in its rule; the range and the cooldown factor are the Deacon's)
 	double sanct_range = 6.0, sanct_s = 5.0, sanct_cooldown_mult = 0.6;
+	// enemies.json CENSER (radius, hasteS), SCREAM (radius), TEMPLAR_SHIELD (halfArcDeg, passThrough), UNBIND (range, delayS, cooldownS, maxAlive)
+	double censer_r = 5.0, censer_haste_s = 1.5, scream_r = 2.2, shield_arc_deg = 60.0, shield_cos = 0.5, shield_pass = 0.3;
+	double unbind_range = 7.0, unbind_delay_s = 1.0, unbind_cooldown_s = 4.0;
+	int32_t unbind_max = 4;
 };
 
 // Thralls, corpses and the toxic pool. Numbers come from data (World::load in DmCore): content/{abilities,fen,statuses,gameplay_legendary,
@@ -109,6 +119,10 @@ struct EnemyDef {
 	int32_t behavior = B_MELEE, blow = BLOW_MELEE, hit_kind = HK_MELEE;
 	int32_t corpse = CK_NORMAL, death_corpses = 1;  // def "corpse" kind, "deathCorpses" (extra risen corpses on a ring)
 	bool burrow = false, frenzy = false;
+	// The Nave's kinds: the Censer's aura, the Templar's shield, the Lich Acolyte's Unbind and a caster that cannot cast silenced (the cloister casters' DmStateClstKite),
+	// and the Gargoyle's dive (def `dive`: minRange, range, radius, groundedS)
+	bool aura = false, shield = false, unbind = false, silence_aware = false, has_dive = false;
+	double dive_min = 3.5, dive_range = 9.0, dive_r = 2.0, dive_grounded_s = 1.4;
 };
 
 struct Enemy : Body {
@@ -129,10 +143,33 @@ struct Enemy : Body {
 	double support_t = 0;
 	bool swing_raise = false;
 	int32_t raise_pending = -1, raise_id = -1;
+	// The Nave's kinds: the Censer's pulse countdown (_aura_cd); the Gargoyle's dive (`diving`, where it began: DmStateCathDive._from; the sight line's countdown and last answer:
+	// DmStateCathDiveChase._los_t / _los_ok; the recovery this swing needs: DmStateCathDive._recover); the Templar's glance cue not before this game time (_block_at_ms)
+	double aura_t = 0, los_t = 0, recover_s = RECOVER_S, block_at = -std::numeric_limits<double>::infinity();
+	bool diving = false, los_ok = false;
+	float dive_x = 0, dive_z = 0;
 	float nav_gx = 0, nav_gz = 0;
 	int32_t path_len = 0, path_i = 0;
 	float path[PATH_POINTS * 2] = {};
 	Rng rng;
+};
+
+// A Lich Acolyte's claims (DmEnemyClstAcolyte): kept beside the table, by the acolyte's id. It watches the thralls it has seen (the signals it connected to, in the order
+// it did so: `seq`), and a killed one within range is claimed: a Risen climbs out of its place `delay` later.
+struct Unbind {
+	struct Claim {
+		double left;
+		float x, z;
+	};
+	struct Seen {
+		int32_t thrall;
+		int64_t seq;
+	};
+	int32_t id = 0;
+	double cd = 0, watch_t = 0;
+	std::vector<Claim> pending;   // claimed falls waiting to rise, [seconds left, place]
+	std::vector<int32_t> unbound; // the Risen raised from its claims, in order
+	std::vector<Seen> seen;
 };
 
 struct External {  // a hero or a boss: GDScript writes it every tick
@@ -179,7 +216,7 @@ struct World {
 	NavGrid navgrid;  // the navmesh for keep_on_nav when GDScript gave it (DmCore.nav_add_region); else the hook's clamp
 	std::vector<EnemyDef> defs;
 	std::vector<StatusRule> status_rules;
-	int32_t st_stun = -1, st_frenzy = -1, st_withered = -1, st_chill = -1, st_hex = -1, st_barrier = -1, st_shrouded = -1, st_silence = -1, st_sanctified = -1;
+	int32_t st_stun = -1, st_frenzy = -1, st_withered = -1, st_chill = -1, st_hex = -1, st_barrier = -1, st_shrouded = -1, st_silence = -1, st_sanctified = -1, st_incensed = -1, st_fracture = -1;
 	std::vector<int32_t> st_cleared;  // ids a ghoul's dig-in clears (DmStatusSet.CLEARED)
 	std::unordered_map<std::string, int32_t> def_index;
 	std::vector<std::string> areas;
@@ -190,6 +227,9 @@ struct World {
 	// grows in flush_spawns(), because a kill can happen while a caller holds an Enemy& (a DoT lump, a swing that kills a bursting thrall).
 	std::vector<Enemy> pending_spawns;
 	std::vector<External> externals;
+	std::vector<Unbind> unbinds;  // the Lich Acolytes alive, by id
+	int64_t unbind_seq = 0;       // the number of the next thrall signal an acolyte connects to
+	std::vector<std::pair<int64_t, int32_t>> unbind_order;  // scratch: the acolytes watching a fallen thrall, in the order they connected
 	std::vector<Zone> zones;
 	std::vector<Obstacle> obstacles;
 	int32_t next_obstacle_id = 1;
@@ -364,6 +404,17 @@ private:
 	int32_t sanctify_target(const Enemy &e) const;  // the slot of the most wounded unblessed other-kind ally in range, or -1
 	void raise_corpse(Enemy &e);
 	bool silenced(const Enemy &e) const { return st_silence >= 0 && e.st.find(st_silence) >= 0; }
+	// the Drowned Nave's kinds (nave.cpp)
+	void tick_aura(int32_t p_slot, double p_dt);    // Censer Bearer
+	void tick_unbind(int32_t p_slot, double p_dt);  // Lich Acolyte
+	void thrall_fell(Thrall &t);                    // every acolyte watching it hears a thrall die
+	void unbind_heard(Unbind &u, Thrall &t);
+	int32_t alive_unbound(Unbind &u);
+	Unbind *unbind_of(int32_t p_id);
+	void drop_unbind(int32_t p_id);
+	double shield(Enemy &e, int32_t p_source, double p_amount);  // Bell-Sworn Templar: a directed blow from the front passes only `passThrough` of its damage
+	bool body_place(int32_t p_id, float &r_x, float &r_z) const;  // a hero, boss, thrall or enemy by id
+	bool line_clear(float p_ax, float p_az, float p_bx, float p_bz);  // Belfry Gargoyle: no wall between (obstacles, and the straight line staying on the navmesh)
 	void hit_target(Enemy &e, int32_t p_target, double p_damage, int32_t p_kind);
 	void hit_id(int32_t p_source, int32_t p_target, double p_damage, int32_t p_kind);  // a blow on a hero (event) or a thrall (applied here)
 	bool hittable(const Enemy &e) const { return e.state != BURROW && e.state != ERUPT; }

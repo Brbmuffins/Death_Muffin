@@ -12,6 +12,9 @@ extends SceneTree
 ##   - waystone travel and the recall home (T), with the thralls following; a fallen hero gets up in the Chapterhouse;
 ##   - the Ossuary: its seal breaks with the Graves' kills, the director makes its whole roster (the golem as the Ossuary Wakes' lead), and a deacon the director made
 ##     raises a corpse into a Risen at its own level and blesses a wounded ally, through the game scene's event chain (telegraph, cue, the counsel's Sanctify fact);
+##   - the Drowned Nave: its seal breaks with the Ossuary's kills, the director makes its whole roster (the gargoyle leads the Belfry, the acolyte the Unbound), and in the game scene
+##     the censer's incense hastes the bodies near it and its cloud is drawn, the wraith's scream and the gargoyle's dive are announced and land, the templar's shield glances, and an
+##     acolyte that sees the hero's thrall killed claims the fall: Unbind's cue and thread, a Risen of the acolyte's level, its reach ring while a thrall stands in it;
 ##   - ZERO script errors or engine errors in the log.
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/world.gd
 
@@ -86,6 +89,7 @@ func _main() -> void:
 	await _waystones_and_recall()
 	await _getting_up()
 	await _the_ossuary()
+	await _the_nave()
 	for e in errlog.errors:
 		printerr("ERROR in log: " + e)
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())
@@ -334,3 +338,106 @@ func _the_ossuary() -> void:
 	check(events.any(func(e: Array) -> bool: return e[0] == "sanctify_near"), "the counsel hears of the Sanctify (sanctify_near)")
 	for id in g.core_host.core.enemy_ids():
 		g.core_host.remove_enemy(id)
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Nave's kinds
+
+func _the_nave() -> void:
+	var prog := g.ui_host.prog
+	var u: Dictionary = DmContent.area("nave")["unlock"]
+	prog.local["areaKills"][String(u["area"])] = prog.unlock_kills(float(u["kills"]))
+	var broken: Array = g.chapterhouse.check_seals()
+	var opened: Array = []     # every area the Ossuary's kills open at that count (the Nave's seal and the Coliseum's)
+	for id in DmContent.area_order():
+		var un: Variant = DmContent.area(String(id)).get("unlock")
+		if un != null and String(un["area"]) == String(u["area"]) and float(un["kills"]) <= float(u["kills"]):
+			opened.append(String(id))
+	broken.sort()
+	opened.sort()
+	check(broken.has("nave") and broken == opened, "the Ossuary's %d kills break the Nave's seal (%s)" % [prog.unlock_kills(float(u["kills"])), str(broken)])
+	g.director.configure_area("nave")
+	var roster: Array = DmContent.area("nave")["enemies"].map(func(e: Dictionary) -> String: return String(e["id"]))
+	var kinds: Array = g.director.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))
+	check(kinds == roster and ["censer", "acolyte", "gargoyle", "templar", "wraith"].all(func(k: String) -> bool: return kinds.has(k)), "the director makes the Nave's whole roster (%s)" % str(kinds))
+	var at := _area_mid("nave")
+	var leads := {}
+	var n := 0
+	g.director.rng.seed = 11
+	for th: Dictionary in DmSimData.WAVE_THEMES["nave"]:
+		if th.get("lead") == null:
+			continue
+		var made_ids: Array = []
+		var made: int = g.director.spawn_group(at + Vector3(3.0 + 6.0 * n, 0, 0), [hero], 1, String(th["lead"]), th["roster"], made_ids)
+		var info: Dictionary = g.core_host.enemy_info(int(made_ids[0])) if not made_ids.is_empty() else {}
+		leads[String(th["lead"])] = [made, String(info.get("def", "")), String(info.get("area", "")), String(th["name"])]
+		n += 1
+	check(leads.get("gargoyle", []).slice(0, 3) == [1, "gargoyle", "nave"] and leads.get("acolyte", []).slice(0, 3) == [1, "acolyte", "nave"], "the Belfry Stirs leads with a gargoyle and the Unbound with an acolyte, made in the Nave (%s)" % str(leads))
+	for id in g.core_host.core.enemy_ids():
+		g.core_host.remove_enemy(id)
+	# The waystone takes him to the Nave now, to its stone on the open floor near the door.
+	g.chapterhouse.travel("nave")
+	await ticks(3)
+	check(g.area_id == "nave", "the waystone takes him to the Nave, whose seal is broken (%s)" % g.area_id)
+	var host := g.core_host
+	var hp: Vector3 = hero.position
+	var tells: Array = []
+	var cues: Array = []
+	var spawned: Array = []
+	var corpses: Array = []
+	host.telegraph.connect(func(_id: int, tell: int, _fx: float, _fz: float, _ax: float, _az: float, _r: float, _s: float) -> void: tells.append(DmCoreEvents.TELLS[tell]))
+	host.cue.connect(func(_id: int, kind: int, _x: float, _z: float, _r: float) -> void: cues.append(DmCoreEvents.CUES[kind]))
+	host.enemy_spawned.connect(func(id: int, d: String, lvl: int, _e: bool, a: String, _af: int, _x: float, _z: float, _h: float) -> void: spawned.append([id, d, lvl, a]))
+	host.corpse_added.connect(func(id: int, _k: int, d: String, _e: bool, _a: String, _x: float, _z: float, _f: float, _s: float) -> void: corpses.append([id, d]))
+	hero.restore_vitals()
+	# The censer: its incense hastes the robber beside it and its cloud is up; the cloud goes with it.
+	var censer: int = host.spawn_enemy("censer", hp + Vector3(-6.0, 0, -6.0), 1, 1.0, 0.0, false, "nave", false)
+	var robber: int = host.spawn_enemy("robber", hp + Vector3(-8.0, 0, -7.0), 1, 1.0, 0.0, false, "nave", false)
+	await ticks(4)
+	check(host.status_stacks(robber, "incensed") == 1.0 and host.status_stacks(censer, "incensed") == 1.0 and g.enemy_fx._incense.has(censer), "the censer hastes the robber beside it and itself, and its cloud is drawn")
+	host.damage(censer, 1.0e9, hero.core_id, false)
+	await ticks(2)
+	check(not g.enemy_fx._incense.has(censer), "its cloud goes with it")
+	host.remove_enemy(robber)
+	# The wraith sings at him and leaves no corpse; the gargoyle dives onto his place.
+	hero.restore_vitals()
+	var wraith: int = host.spawn_enemy("wraith", hp + Vector3(-2.0, 0, -8.0), 1, 1.0, 0.0, false, "nave", false)
+	var gargoyle: int = host.spawn_enemy("gargoyle", hp + Vector3(-6.0, 0, -6.7), 1, 1.0, 0.0, false, "nave", false)
+	var seen := await until(func() -> bool: return cues.has(&"scream") and cues.has(&"slam"), 60 * 12)
+	check(seen and tells.has(&"scream") and tells.has(&"dive"), "the wraith's scream and the gargoyle's dive were announced, and both landed (%s)" % str(tells))
+	check(host.enemy_alive(wraith) and host.enemy_alive(gargoyle), "(both stand)")
+	host.damage(wraith, 1.0e9, hero.core_id, false)
+	await ticks(3)
+	check(not corpses.any(func(c: Array) -> bool: return c[1] == "wraith"), "and the wraith leaves no corpse")
+	host.remove_enemy(gargoyle)
+	# The templar: a blow from the front glances.
+	var templar: int = host.spawn_enemy("templar", hp + Vector3(-1.0, 0, -5.0), 1, 1.0, 0.0, false, "nave", false)
+	cues.clear()
+	var before := float(host.enemy_info(templar)["hp"])
+	host.damage(templar, 20.0, hero.core_id)
+	await ticks(2)
+	check(cues.has(&"shield_block") and absf((before - float(host.enemy_info(templar)["hp"])) - 20.0 * 0.3) < 1e-6, "the templar's shield glances a blow from the front: it costs 30%% (%.1f of 20)" % (before - float(host.enemy_info(templar)["hp"])))
+	host.remove_enemy(templar)
+	# The acolyte: the hero's thrall falls near it, killed; the acolyte claims the fall and a Risen climbs out of it with its level.
+	hero.restore_vitals()
+	var c := hero.get_node("Rites") as DmRiteCaster
+	var ex := {"kind": c.mods["thrallKind"], "cap": c.mods["thrallCap"], "hp": c.p["stats"]["thrallHp"], "damage": c.p["stats"]["thrallDamage"], "attackSpeedMult": c.mods["thrallAttackSpeedMult"], "r": 0.8}
+	host.corpses.add_corpse(hp.x - 1.0, hp.z - 1.0, "normal", "robber", false, 0.0, 1.0, "nave")    # (a rite raises from a corpse)
+	var raised: Dictionary = c.thralls().raise(ex, hp + Vector3(-6.0, 0, -2.0))
+	var acolyte: int = host.spawn_enemy("acolyte", hp + Vector3(-9.0, 0, -3.0), 3, 1.0, 0.0, false, "nave", false)
+	var tid := int((raised["thralls"] as Array)[0]) if bool(raised["ok"]) else 0
+	await ticks(60)           # the thrall has risen (0.9 s)
+	host.core.stun(tid, 1.0e6)
+	await ticks(40)           # the acolyte has looked at it (every half second)
+	cues.clear()
+	spawned.clear()
+	var ring_before := int(g.enemy_fx.stats["reach_ring"])
+	host.core.kill_thrall(tid, "killed")
+	var claimed := await until(func() -> bool: return cues.has(&"unbind"), 30)
+	check(tid != 0 and acolyte > 0 and claimed, "the acolyte claims the thrall that was killed near it: Unbind's cue")
+	var rose := await until(func() -> bool: return spawned.any(func(s: Array) -> bool: return s[1] == "risen"), 60 * 3)
+	var r: Array = spawned.filter(func(s: Array) -> bool: return s[1] == "risen")
+	check(rose and r[0][2] == 3 and r[0][3] == "nave", "and a Risen climbs out of it, at the acolyte's level (3), in the Nave")
+	check(int(g.enemy_fx.stats["reach_ring"]) > ring_before or ring_before > 0, "the acolyte's reach ring was drawn while the thrall stood in it (%d)" % int(g.enemy_fx.stats["reach_ring"]))
+	for id in g.core_host.core.enemy_ids():
+		g.core_host.remove_enemy(id)
+	await ticks(2)
