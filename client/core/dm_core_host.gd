@@ -131,20 +131,19 @@ func setup(opts: Dictionary) -> void:
 # ---- heroes ------------------------------------------------------------------------------------------------------------------------
 
 ## Registers a hero body (a Node3D with `alive` and `discipline_id`) as an external of kind 0 and returns its core id. From now on its position and
-## alive flag are written every tick before the step. Its thralls look like its discipline's legion.
+## alive flag are written every tick before the step. Its thralls wear today's look, whatever its discipline: today's DmEntityViews asks its host for
+## `discipline_id_for`, which no host of today's game has, so the legion looks (crowd_looks.json `legions`, `CrowdView.set_owner_legion`) never show there
+## and do not here (ROADMAP "For review").
 func register_hero(body: Node3D, radius := 0.4, weight := 1.0) -> int:
 	var id := int(core.add_external(0, radius, weight))
 	_heroes.append(body)
 	_hero_ids.append(id)
-	var disc: Variant = body.get("discipline_id")
-	if disc is String:
-		view.set_owner_legion(id, disc)
 	_mark_allies()
 	return id
 
 
-## Guest: a hero body of the session (any player's) is the host's external `core_id`: the ids in the core's events (the owner of a thrall, the source of a blow) name it, and its
-## thralls look like its discipline's legion. A second call moves the body to another id. Nothing is added to the core (a puppet has no externals).
+## Guest: a hero body of the session (any player's) is the host's external `core_id`: the ids in the core's events (the owner of a thrall, the source of a blow) name it; its
+## thralls wear today's look (register_hero). A second call moves the body to another id. Nothing is added to the core (a puppet has no externals).
 func adopt_hero(body: Node3D, core_id: int) -> void:
 	var i := _heroes.find(body)
 	if i >= 0:
@@ -155,9 +154,6 @@ func adopt_hero(body: Node3D, core_id: int) -> void:
 		_heroes.append(body)
 		_hero_ids.append(core_id)
 		body.tree_exiting.connect(unregister_hero.bind(body))   # a player who leaves takes its body with it
-	var disc: Variant = body.get("discipline_id")
-	if disc is String:
-		view.set_owner_legion(core_id, disc)
 	_mark_allies()
 
 

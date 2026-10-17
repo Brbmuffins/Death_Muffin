@@ -342,6 +342,9 @@ combat simulation for now.
     (its waystone list also reads its own account's open areas, not the host's world). It needs a guest request the host answers by moving the guest's body (2026-10-17).
   - Today's game: a thrall never wears its Legion kit: DmEntityViews asks its host for `legion_kit_for` (the kit's armour tint on a thrall's chest and hands, the kit weapon's tier colour on its sword, bow or staff) and no host
     has it, so `kit` is always null; the rebuild draws thralls the same until this is decided (2026-10-17).
+  - Today's game: a thrall never wears its discipline's legion look either (the Ossuary's sentinel, the Gravecaller's legionnaire, the Rotweaver's plague thrall, their tints and glows):
+    `DmEntityViews._legion_of` asks its host for `discipline_id_for`, which no host has, so every thrall is the default bone skeleton with the teal glow. The rebuild draws the same
+    (`DmCoreHost` gives the crowd no legion; `CrowdView.set_owner_legion` and crowd_looks.json `legions` are kept for when the team wants them) (2026-10-17).
   - The rebuild: `client/tests/game_scene.gd`'s node checks pass about every other run under load (2026-10-17): the Covenant counsel's tip card (a 16-node `DmTipCard`, shown at the first Barrow Ghoul and dismissed on a wall-clock
     timer) is in the scene tree for part of the run, so the nodes outside the effects vary by 19 against the 15 allowed, or `n` differs from `n0` by 14 in the 70-bodies check.
   - The rebuild: a co-op guest's baseline clears the crowd (`DmCrowd.clear` forgets `owner_legion` and `owner_ally`) and `DmNextNet.apply_heroes` adopts a hero only when its id changed, so after a baseline the guest's
