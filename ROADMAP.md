@@ -92,7 +92,7 @@ server (B38).
 - [x] Test build channel: `server/death-muffin/test-channel/publish-test-channel.sh <rev>` publishes to /death-muffin/client-test/ with its
   own work folder and asset cache; builds of the live project get Forward+, their own user folder and the test backend in a scratch copy.
 - [x] Launcher Test build switch: the test build installs next to the normal game and updates itself (launcher 0.9.2, live 2026-10-16
-  after Helix checked a test copy on his PC; Ctrl+click Settings, launcher/windows/README.md "Test build channel").
+  after Helix checked a test copy on their PC; Ctrl+click Settings, launcher/windows/README.md "Test build channel").
 - [x] Test server: `death-muffin-auth-test` on 127.0.0.1:5194, its own database and user, public at /death-muffin/test-api/, copies
   of the team's accounts (`server/death-muffin/test-server/`). The lobby and relay for test co-op come with the test build (Gate B).
 - [x] Full Party benchmark fight in today's game, with before numbers on Helix's PC and in the VPS processor test. Live since 06cccafc;
@@ -164,7 +164,7 @@ server (B38).
 - [x] Core thralls, corpses and statuses: statuses (`client/tests/core_status.gd`), thralls with their brain, legion and enemy targeting
   (`client/tests/core_thralls.gd`) and corpses with the toxic pool (`client/tests/core_corpses.gd`). Not in it: the Veilwalker's echo corpses,
   views (their own item), and the rites that call it.
-- [ ] Client layer (B43), in this order:
+- [x] Client layer (B43), in this order:
   - [x] Code sync: today's scripts, scenes and data copied into `client/` by `tools/rebuild/sync-code.mjs`, the hygiene rules for copies and
     ports, and the project opening without errors with the per-creature systems left out (`client/tests/code_load.gd`).
   - [x] The game scene on the core: the area scene, the core and the crowd view, the hero, camera, input, and the director spawning through
@@ -189,10 +189,11 @@ server (B38).
     (client/README.md "The bosses"). The other six bosses and the Covenant Seal's call are the "Bring everything over" item below.
 - [x] Core obstacles: Ossuary Wall solid for the core's enemies (`DmCore.add_obstacle`, a box the core keeps enemies out of and their steering
   slides along; `client/tests/core_enemies.gd` obstacles, `client/tests/rites.gd`). A later rite or boss barrier uses the same call.
-- [ ] The rebuild on the test channel: `publish-test-channel.sh <rev>` exports `client/` (`publish-godot-client.sh` with `PROJECT=client`,
+- [x] The rebuild on the test channel: `publish-test-channel.sh <rev>` exports `client/` (`publish-godot-client.sh` with `PROJECT=client`,
   `prepare-rebuild.sh`: the combat core, the sheets, the crowd's bakes), proven in dry runs (2026-10-16). The crowd's bakes live under
   `client/assets/crowd/baked` and ship in the assets pack, counted by their inputs (baker, looks, models), so a code-only build is a 15 MB code
-  pack and the 268 MB assets pack is reused. The first publish waits for the benchmark in the client.
+  pack and the 268 MB assets pack is reused. First published 2026-10-16 (20261016.130736); every publish since boots a Linux export headless first and refuses
+  unless it logs in and counts every crowd model (`smoke-rebuild.sh`).
 - [x] The new HUD and the Low to Ultra presets:
   - [x] The HUD, same layout and look, under 150 draw calls: measured on Helix's PC (2026-10-17, below). Today's HUD runs in the game scene from the core (today's `DmGameUi` on the ported `DmNextUiHost` since the panels, DECISIONS B46) (orbs, hotbar with cooldowns and the cast state, target frame
     with statuses, minimap, thrall pips, "no corpse" dimming, floating numbers with today's caps, XP and level, area line, banners, the King's plate and map dot, the death veil), every readout group a movable, scalable piece
@@ -223,22 +224,22 @@ server (B38).
     and main.gd's hand-over (join, leave, a refused join, a closed party: home with the reason); `client/tests/social.gd`.
   - [x] The party's seals: the party plays in the host's world, so a guest's seals, doors and open areas are the host's (told to a guest as it joins, silently, and to every guest when they change: the gate rises
     with its sound and the banner); its own account's seals never open or close a door there (client/README.md "Co-op on the core", `client/tests/coop.gd`).
-  - [ ] Still to do beside the core: a new baseline for each new area. (A guest's build
+  - [x] A new baseline for each new area: not needed, the areas share one core (DECISIONS B47) and moving between them reaches a guest in the numbered batches (a guest walks from the Graves into the Warren in `client/tests/coop.gd`, the party fights in six areas in `coop_bosses.gd`); a new host core sends one (`DmNextNet.add_guest`). (A guest's build
     from the server's record and its own account came with value on the server; party chat and ground drops between members with the panels.)
   - [ ] Phones join as guests only (B40): the same messages; measure the snapshot on the Mobile renderer's budget when the first phone build exists.
-- [ ] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
+- [x] The Full Party fight in the new client with the budget checks, and a seeded scenario comparison with today's game → Gate B.
   It runs in the Hollow Graves on both sides (72 Graves enemies, 32 thralls, the Gravedigger King): the test build has the Graves roster, and today's
   game runs the same fight with `--benchmark --bench-room=graves --bench-size=full_party` (or Benchmark -> Hollow Graves -> Full Party).
   - [x] The fight and its budget checks in the new client: `--benchmark` and the character select's Benchmark button, Easy auto combat on the core, the report with its budget section (client/README.md "The benchmark",
     `client/tests/benchmark.gd`); the VPS numbers are in "Before numbers" (3.0 times today's speed without value, 2.4 with it).
-  - [ ] The HUD's share with the panels back inside 0.5 ms on the VPS: about 0.5 now, from 0.9 to 1.0 on main at d625161f (2026-10-17; the panels, then the counsel's tips on the core, had taken it from 0.3 to 0.6). Seventy on/off
+  - [x] The HUD's share with the panels back inside 0.5 ms on the VPS: about 0.5 now, from 0.9 to 1.0 on main at d625161f (2026-10-17; the panels, then the counsel's tips on the core, had taken it from 0.3 to 0.6). Seventy on/off
     rounds in CPU time: 0.96 to 1.01 before, 0.42 to 0.57 now; the benchmark's own readout (eight rounds, give or take 0.3 to 0.85) 0.88 to 1.97 before and 0.15 to 0.67 now (median 0.51), too coarse to say which side of 0.5 a
     share of 0.5 is on. What it cost and what removed it (client/README.md "The HUD's budget", CPU): pulses and flashes redrawn every frame (the NEW glows, the hotbar's empowered edges and cast flashes: 0.15 ms) are layers drawn once and
     faded; a slot on cooldown changes its seconds and sweep only; the orbs' appended art is re-indexed once per place; the Kill Chain meter no longer applies the belt and the party with it; the panel host answers
     `panel_open()`, `area_safe()` and the Ascension guidance without scans or a progression; the belt counts the bag in one pass; the counsel's first-thrall check built a whole view-model each time it looked (0.06 ms a
     frame in this fight), its pump compares only the urgent tips with the card, its poll reads static facts once, its card's line is drawn once. Left: the refresh itself (the view-model and its apply, about 1.5 ms every 50 ms of
     wall time, so 0.12 ms a frame on the VPS and 0.3 to 0.5 on a PC at 60 to 100 fps: Helix's PC is where it counts) with the minimap's dots and the hotbar's fill in the core as the next step (about 0.25 ms of it), the orbs'
-    ripple (0.06 ms), and about a third of the share that is in no script callback. Open until Helix's PC reads it, or the benchmark's HUD rounds are made to tell 0.45 from 0.55 (more rounds, or the slowest frames left out).
+    ripple (0.06 ms), and about a third of the share that is in no script callback. Helix's PC read it (2026-10-17, test build 20261017.140709, the Bell Sanctum's Full Party, eight rounds): 0.08 ms (give or take 0.02) on Low and 0.07 (give or take 0.11) on High.
   - [x] The rest of the main thread back inside its 4 ms with value in (3.8 to 4.1 ms on the VPS, 2026-10-16): a timing of every per-frame callback in a Full Party frame found the
     effects' particle ring (today's `DmFxRing`, GDScript) at 1.15 ms a frame, the most after the core; its loop is the core's C++ now (`DmMotes`, float for float the same:
     `client/tests/fx_motes.gd`). A/B four runs each: 5.7 to 5.0 ms a frame, the rest of the main thread 3.7 to 3.1 ms. Next in line by the same timing: Easy auto combat's
@@ -271,7 +272,7 @@ server (B38).
     and who hurt them agree. Seeds 1 to 5 (6 minutes) are too few for damage taken (-32.5 % against a noise band of 47 %); the verdict takes `--seeds=1-20` (23 minutes). No behaviour difference found. Not in it: bosses, rewards and loot.
   - [x] The comparison widened (2026-10-17, `--discipline=<index>` and `--area=<id>`, native/README.md "Proof of same game"): the Ossuary, the Mourner, the Rotweaver and the Reaper in the Hollow Graves (level 10) and the Gravecaller in the Bell Sanctum (13), the Cinder Pyre (30) and the
     Mourning Fen (45), 20 seeds each (40 for the Reaper and the Pyre): every metric inside its tolerance in all seven, the largest difference 9.7 %; the Pyre reads about 5 % below today's in kills and damage, inside the tolerances (see "For review").
-  - [ ] What the client's fight lacks, each with its own item: the other rooms ("The benchmark's other rooms"). The panels, the other disciplines, rewards, loot drops and the kill ledger are in.
+  - [x] What the client's fight lacks, each with its own item: the other rooms ("The benchmark's other rooms and classes", done 2026-10-17). The panels, the other disciplines, rewards, loot drops and the kill ledger are in.
 
 **Bring everything over checklist** (built ahead while Gate B waits, B34's rule: nothing reaches players before its gate; Claude's order, 2026-10-16: what a player meets first,
 necromancers first; the order is easy to change). Each item is today's GDScript on the core the way the test build did it (copies where they run as they are, ports where
@@ -306,7 +307,7 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
 - [x] The Reaper (discipline 11) and its nine rites: her model and the worn gear models in `client/assets.list`, the soul bag on the HUD, her kit on the hotbar; `DmReaperRites` and Scythe Weave,
   Wraith Walk and Unleash Souls ported to the core (her other five rites are copies); a kill credited to her banks a soul. `client/tests/rites.gd` "the Reaper" replays today's Reaper checks on core
   enemies (client/README.md "The Gravecaller's rites"). Her look and feel in play are Helix's PC's.
-- [ ] The other areas: the eleven static ones as scenes, moving between them, their enemies (DECISIONS B47).
+- [x] The other areas: the eleven static ones as scenes, moving between them, their enemies (DECISIONS B47).
   - [x] The eleven areas converted (`client/tools/build_area.gd`; their textures and props in `client/assets.list`); `client/tests/areas.gd` proves each against today's builder.
   - [x] Moving between areas: every area but the Depths loads, the hero starts and gets up in the Chapterhouse; the Chapterhouse node (ported) breaks seals on kills and
     opens their gates, runs waystone travel, the recall, the stations and the people; a guest's doors follow the host's seals. The core keeps its own copy of the
@@ -370,7 +371,7 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   past it comes out of the tonemapper as (7, 6, 10) (`DmCompatAlbedo.void_color`, set whenever the exposure changes); the Binbun scenes' own shaders read their particle's colour converted from sRGB through a patched copy (`DmFxBinbun`).
 - [ ] Low and Medium: today's draw blended effects in sRGB space when bloom is off (half-transparent white over black: 131; with bloom, 205), Forward+ blends in linear light on every preset;
   the lifts are the Ultra measurement's, Low's factor (0.96) and Medium's (1) are not measured; the Depths' walls keep Forward+'s darker tint (its floor is lifted in `DmWorldBuilder._floor_mat`) and its lift is the old 1.2, not measured (the probe cannot stand in the instance).
-- [ ] Every area's look signed off by Helix on his PC (the brightness of all twelve is measured against today's; the look itself, the hero in the dark areas and the Fen above all, is his to judge).
+- [ ] Every area's look signed off by Helix on their PC (the brightness of all twelve is measured against today's; the look itself, the hero in the dark areas and the Fen above all, is Helix's to judge).
 
 **Working rules for the rebuild.**
 - This checklist is the only to-do list; the next unchecked item is the only work. Ideas go to "After launch day".
