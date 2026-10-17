@@ -56,10 +56,8 @@ func setup(p_core: RefCounted, enemy_defs: Dictionary, area_min: Vector2, area_m
 		lod_distances = opts.lod_distances
 	_looks = JSON.parse_string(FileAccess.get_file_as_string(LOOKS_PATH))
 	_aabb = AABB(Vector3(area_min.x, AREA_HEIGHT.x, area_min.y), Vector3(area_max.x - area_min.x, AREA_HEIGHT.y - AREA_HEIGHT.x, area_max.y - area_min.y))
-	if DirAccess.dir_exists_absolute(_baked_dir):   # nothing baked yet (a fresh checkout): every def falls back, with its warning, and nothing is drawn
-		for dir in DirAccess.get_directories_at(_baked_dir):
-			if FileAccess.file_exists(_baked_dir.path_join(dir).path_join("model.tres")):
-				_baked[dir] = true
+	for slug in baked_models(_baked_dir):   # nothing baked yet (a fresh checkout): every def falls back, with its warning, and nothing is drawn
+		_baked[slug] = true
 	crowd = ClassDB.instantiate("DmCrowd")
 	crowd.reserve(int(opts.get("reserve", RESERVE)))
 	crowd.set_champion_scale(float(opts.get("champion_scale", 1.35)))
@@ -266,6 +264,17 @@ func _slot(slug: String) -> int:
 	_slots[slug] = slot
 	_data[slug] = data
 	return slot
+
+
+## The models baked under `dir` (their slugs). Asks the resource loader, not the file system: an export stores `model.tres` converted, under
+## another name (2026-10-17: a file check found none in the test build, which drew no enemy and no thrall). The export boot smoke counts them.
+static func baked_models(dir: String = BAKED_DIR) -> PackedStringArray:
+	var out := PackedStringArray()
+	if DirAccess.dir_exists_absolute(dir):
+		for d in DirAccess.get_directories_at(dir):
+			if ResourceLoader.exists(dir.path_join(d).path_join("model.tres")):
+				out.append(d)
+	return out
 
 
 ## The model's colour (or ORM) texture: the imported asset when there is one, else the file next to the glTF.

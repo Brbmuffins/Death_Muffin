@@ -92,11 +92,13 @@ func _ready() -> void:
 
 
 ## Testing (`--boot-smoke`, debug builds): the test channel's publish boots an exported copy and waits for this line, so a build that cannot reach its
-## first screen (2026-10-16: a boot script naming a class the export leaves out stopped every test build on a grey screen) is never published.
+## first screen (2026-10-16: a boot script naming a class the export leaves out stopped every test build on a grey screen) is never published. It also
+## prints how many crowd models the export finds (2026-10-17: none were found, and the enemies and thralls were invisible).
 func _boot_smoke() -> void:
 	var end := Time.get_ticks_msec() + 60000
 	while (flow == null or flow.current_name == "") and Time.get_ticks_msec() < end:
 		await get_tree().process_frame
+	print("CROWD %d" % CrowdView.baked_models().size())   # the crowd's baked models as the export sees them (smoke-rebuild.sh compares)
 	print("BOOT OK %s" % flow.current_name if flow != null and flow.current_name != "" else "BOOT STUCK")
 	get_tree().quit(0 if flow != null and flow.current_name != "" else 1)
 
