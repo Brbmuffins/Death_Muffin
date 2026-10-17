@@ -29,6 +29,14 @@ func _run(scenes: PackedStringArray, result: String) -> void:
 		await _frames(1)
 	for scene in scenes:
 		rows.append(await _bake(scene))
+	# A second pass over the scenes that failed: the first scene of a fresh editor has failed in two ways on Helix's PC (2026-10-16: no 3D toolbar
+	# yet, then "did not open" in time) while every later one baked; by the second pass the editor is warm.
+	for i in rows.size():
+		if not rows[i]["ok"]:
+			await _frames(60)
+			var again: Dictionary = await _bake(String(rows[i]["scene"]))
+			again["first_error"] = rows[i]["error"]
+			rows[i] = again
 	var ok := rows.all(func(r: Dictionary) -> bool: return r["ok"])
 	if result != "":
 		var f := FileAccess.open(result, FileAccess.WRITE)
@@ -45,8 +53,14 @@ func _bake(scene: String) -> Dictionary:
 		row["error"] = "no such scene"
 		return row
 	EditorInterface.open_scene_from_path(scene)
-	await _frames(10)
-	var root := EditorInterface.get_edited_scene_root()
+	var root: Node = null
+	for i in 600:   # up to about 10 s: a fresh editor opens its first scene late
+		await _frames(1)
+		root = EditorInterface.get_edited_scene_root()
+		if root != null and root.scene_file_path == scene:
+			break
+		if i == 300:
+			EditorInterface.open_scene_from_path(scene)
 	if root == null or root.scene_file_path != scene:
 		row["error"] = "scene did not open"
 		return row
