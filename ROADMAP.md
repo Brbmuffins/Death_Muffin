@@ -344,7 +344,8 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   - [x] Rule tests: every suite against today's code passes (45 suites before each merge), and the seeded scenario comparison holds for every discipline and four areas (native/README.md "Proof of same game").
   - [x] Helix's playtest (2026-10-17, RTX 4070 SUPER, test build 20261017.140709): "The game looks good and is running good, I don't see any issues at all vs live build"; the look is good enough
     until the maps are revamped after launch day (Helix, the same day).
-  - [x] Nothing slower: Helix's PC, the Bell Sanctum's Full Party fight, 2560x1440: Low 594 fps (p99 2.9 ms), High 343 (4.6), Ultra 224 (6.2) against today's game's 61 (Ultra, p99 24.8); every benchmark
+  - [x] Nothing slower: Helix's PC, the Bell Sanctum's Full Party fight, 2560x1440: Low 594 fps (p99 2.9 ms), High 343 (4.6), Ultra 224 (6.2) against today's game's 61 (Ultra, p99 24.8); warbogar's PC (i7-8700K, Arc B580, 1920x1009 High, test build
+    20261017.161453): 342 fps (p99 4.1 to 5.4 ms, no hitch, one frame of 32 to 36 ms a run) on the Full Party against today's 41 (p99 34.7) on the lighter Standard fight; every benchmark
     room inside its frame budget on the VPS.
   - [ ] Co-op on two real PCs (the automated two-instance suites pass: `client/tests/coop.gd`, `coop_bosses.gd`).
   - [ ] A weaker PC's benchmark (the Medium floor: a GTX 970-class PC at 60 fps), if one is to hand.
