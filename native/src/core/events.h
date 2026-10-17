@@ -46,6 +46,8 @@ enum EventType : int32_t {
 	EV_AFFIX_MOMENT = 32,  // id = the enemy; ints: AffixMoment   floats: at x, at z, to x, to z, amount
 	                       //   tell: the bell's ring starts (amount = windup s, with an EV_TELEGRAPH toll); toll: it sounds (amount = radius);
 	                       //   hungering: a corpse eaten at `to` (amount = health healed); vengeful: the body burst (amount = 1.8); unveil
+	// What an enemy does to a hero besides damage (host only, never sent: the host applies it to the hero's body, like EV_TARGET_HIT)
+	EV_TARGET_EFFECT = 33, // id = the enemy; ints: target, effect (TargetEffect: chill, root, pull)  floats: seconds, x, z (a pull: where the target is dragged to)
 };
 
 struct Events {

@@ -31,7 +31,8 @@ constexpr uint32_t HP_ONE = 65535;    // health is a fraction of the maximum, 1.
 constexpr uint32_t T_SATURATED = 255; // time in state in centiseconds; 255 = 2.55 s or more
 // Enemy record flag byte: bits 0..3 state, then elite, dug in, has aim, has affix byte. Thrall: bits 0..2 state, rally, has aim.
 // Bit 5 means dug in for a burrower; for a Deacon (EnemyDef behavior support), a raise in progress (its ATTACK is a raise, not a curse); for a Gargoyle (EnemyDef dive),
-// a dive in progress (its ATTACK is a drop, not a bite): the guest's telegraph differs (the swing_raise of DmEnemyDeacon and the `dv` of DmEnemyGargoyle, replicated today).
+// a dive in progress (its ATTACK is a drop, not a bite); for a Drowned Sexton (EnemyDef hook), a chain in progress (its ATTACK is the hook, not the slam): the guest's telegraph
+// differs (the swing_raise of DmEnemyDeacon, the `dv` of DmEnemyGargoyle and the `hk` of DmEnemyPfHazard, replicated today).
 constexpr uint32_t EF_ELITE = 0x10, EF_DUG_IN = 0x20, EF_AIM = 0x40, EF_AFFIXES = 0x80;
 constexpr uint32_t TF_RALLY = 0x08, TF_AIM = 0x10;
 

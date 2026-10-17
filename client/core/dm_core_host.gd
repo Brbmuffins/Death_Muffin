@@ -39,6 +39,7 @@ signal enemy_attack(id: int, blow: int, aim_x: float, aim_z: float, windup_s: fl
 signal telegraph(id: int, tell: int, from_x: float, from_z: float, aim_x: float, aim_z: float, radius: float, seconds: float)
 signal cue(id: int, cue_kind: int, x: float, z: float, radius: float)
 signal target_hit(id: int, target: int, kind: int, damage: float)                              ## enemy `id` hit external `target` (a hero) with a DmCoreEvents.HIT_KINDS blow
+signal target_effect(id: int, target: int, effect: int, seconds: float, x: float, z: float)    ## enemy `id` chilled, rooted or dragged external `target` (a hero): a DmCoreEvents.EFFECTS (a pull carries where to, x and z)
 signal zone(id: int, kind: int, source: int, x: float, z: float, radius: float, seconds: float)
 signal zone_pulse(id: int)
 signal zone_gone(id: int)
@@ -318,6 +319,8 @@ func _dispatch(raw: Array) -> void:
 				thrall_hit_external.emit(id, ints[b], core.thrall_kind_name(ints[b + 1]), floats[f])
 			DmCoreEvents.AFFIX_MOMENT:
 				affix_moment.emit(id, ints[b], floats[f], floats[f + 1], floats[f + 2], floats[f + 3], floats[f + 4])
+			DmCoreEvents.TARGET_EFFECT:
+				target_effect.emit(id, ints[b], ints[b + 1], floats[f], floats[f + 1], floats[f + 2])
 		i = b + ni
 		f += nf
 		events_total += 1

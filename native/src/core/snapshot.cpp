@@ -54,6 +54,15 @@ uint32_t World::content_hash() const {
 				 tun.burrow_erupt_s_graves, tun.burrow_dig_s, tun.bell_r, tun.bell_windup, tun.scream_r, tun.flask_r }) {
 		f.num(v);
 	}
+	// the Pyre's and the Fen's kinds: the flags that make a def the Husk, the Slag Brute, the Sexton or the Wisp, and the rings and the chain a guest draws telegraphs with
+	for (const EnemyDef &d : defs) {
+		for (const double v : { d.pf.ember_death ? 1.0 : 0.0, d.pf.slam_pool ? 1.0 : 0.0, d.pf.hook ? 1.0 : 0.0, d.pf.lure ? 1.0 : 0.0 }) {
+			f.num(v);
+		}
+	}
+	for (const double v : { tun.pf.ember_r, tun.pf.hex_r, tun.pf.pulse_r, tun.pf.hook_range }) {
+		f.num(v);
+	}
 	return f.h;
 }
 
@@ -63,7 +72,7 @@ void World::put_snap_enemy(ByteWriter &w, const Enemy &e, int32_t &r_prev, doubl
 	w.svar(e.id - r_prev);
 	r_prev = e.id;
 	const bool aim = e.state == ATTACK || e.state == ERUPT;
-	w.u8(uint32_t(e.state) | (e.elite ? EF_ELITE : 0u) | ((e.dug_in || ((e.swing_raise || e.diving) && e.state == ATTACK)) ? EF_DUG_IN : 0u) | (aim ? EF_AIM : 0u) | (e.affixes ? EF_AFFIXES : 0u));
+	w.u8(uint32_t(e.state) | (e.elite ? EF_ELITE : 0u) | ((e.dug_in || ((e.swing_raise || e.diving || e.pf.hooking) && e.state == ATTACK)) ? EF_DUG_IN : 0u) | (aim ? EF_AIM : 0u) | (e.affixes ? EF_AFFIXES : 0u));
 	if (e.affixes) {
 		w.u8(e.affixes);
 	}

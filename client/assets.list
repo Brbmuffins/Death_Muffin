@@ -114,6 +114,15 @@ slice/models/props/choir_wraith*
 slice/models/weeping_seraph
 slice/models/plague_doctor
 slice/models/flagellant
+# the Cinder Pyre's and the Mourning Fen's eight (the husk, the priest, the hound, the brute, the hag and the sexton are rigged; the wisp and the leech are unrigged props like the moth)
+slice/models/cinder_husk
+slice/models/pyre_priest
+slice/models/cinderhound
+slice/models/slag_brute
+slice/models/bog_hag
+slice/models/drowned_sexton
+slice/models/props/fen_wisp*
+slice/models/props/mire_leech*
 slice/models/props/shroud_moth*
 slice/models/props/tithe_bat*
 slice/models/props/wraith_thrall*   # the Mourner's spectral thralls (an unrigged prop, like the moth)

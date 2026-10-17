@@ -118,9 +118,10 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 	e.affixes = uint8_t(s.affixes);
 	const EnemyDef &kd = defs[size_t(e.def)];
 	const bool support = kd.behavior == B_SUPPORT;
-	e.dug_in = s.dug_in && !support && !kd.has_dive;   // bit 5 is a Deacon's raise in progress, or a Gargoyle's dive, not a dig
+	e.dug_in = s.dug_in && !support && !kd.has_dive && !kd.pf.hook;   // bit 5 is a Deacon's raise in progress, a Gargoyle's dive or a Sexton's chain, not a dig
 	e.swing_raise = s.dug_in && support;
 	e.diving = s.dug_in && kd.has_dive;
+	e.pf.hooking = s.dug_in && kd.pf.hook;
 	e.net_x = s.x;
 	e.net_z = s.z;
 	e.net_yaw = s.yaw;
@@ -157,7 +158,7 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 			const float ax = s.has_aim ? s.aim_x : e.x, az = s.has_aim ? s.aim_z : e.z;
 			e.aim_x = ax;
 			e.aim_z = az;
-			const int32_t blow = e.diving ? BLOW_DIVE : d.blow;   // a Gargoyle's swing is a dive when bit 5 of its record says so (its `dv`)
+			const int32_t blow = e.diving ? BLOW_DIVE : (e.pf.hooking ? BLOW_HOOK : d.blow);   // a Gargoyle's swing is a dive, a Sexton's a chain, when bit 5 of its record says so (their `dv` and `hk`)
 			e.phase = 0;
 			events.push(EV_ENEMY_ATTACK, e.id, { blow }, { ax, az, float(e.windup_s) });
 			const float left = float(std::max(PUPPET_MIN_TELL_S, e.windup_s - t));  // dm_enemy.gd: announce_telegraph(maxf(0.05, windup_s - net_age))
@@ -182,6 +183,18 @@ void World::puppet_apply_enemy(const SnapRec &s) {
 					break;
 				case BLOW_FLASK:
 					events.push(EV_TELEGRAPH, e.id, { TELL_FLASK }, { s.x, s.z, ax, az, float(tun.flask_r), left });
+					break;
+				case BLOW_EMBER:
+					events.push(EV_TELEGRAPH, e.id, { TELL_EMBER }, { s.x, s.z, ax, az, float(tun.pf.ember_r), left });
+					break;
+				case BLOW_HEX:
+					events.push(EV_TELEGRAPH, e.id, { TELL_HEX }, { s.x, s.z, ax, az, float(tun.pf.hex_r), left });
+					break;
+				case BLOW_PULSE:
+					events.push(EV_TELEGRAPH, e.id, { TELL_PULSE }, { s.x, s.z, ax, az, float(tun.pf.pulse_r), left });
+					break;
+				case BLOW_HOOK:
+					events.push(EV_TELEGRAPH, e.id, { TELL_HOOK }, { s.x, s.z, ax, az, float(tun.pf.hook_range), left });
 					break;
 				default:  // a Deacon's swing is a raise or a curse (bit 5 of the record); the plain melee swing has no telegraph
 					if (d.behavior == B_SUPPORT) {

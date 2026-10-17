@@ -1,8 +1,8 @@
 #pragma once
 // The core's tables and the enemy brain (native/README.md "Design"). Enemies live in spawn order: a slot only moves by stable
 // compaction when a dead body is removed, so slot order is spawn order and every scan keeps today's tie-breaks. The brain is a port of
-// godot/enemies (DmEnemy, its states and kinds) for the Graves roster, the Ossuary's golem and deacon and the Drowned Nave's five (censer, acolyte, gargoyle,
-// templar, wraith: nave.cpp); timers count in doubles the way the GDScript did. Thralls
+// godot/enemies (DmEnemy, its states and kinds) for the Graves roster, the Ossuary's golem and deacon, the Drowned Nave's five (censer, acolyte, gargoyle,
+// templar, wraith: nave.cpp) and the Cinder Pyre's and the Mourning Fen's eight (pyre_fen.cpp); timers count in doubles the way the GDScript did. Thralls
 // (thralls.cpp) and corpses (corpses.cpp) live in the same World: heroes are enemies' targets first, then thralls in raise order.
 #include <cmath>
 #include <cstdint>
@@ -17,6 +17,7 @@
 #include "events.h"
 #include "grid.h"
 #include "navgrid.h"
+#include "pyre_fen.h"
 #include "replica.h"
 #include "rng.h"
 #include "status.h"
@@ -28,14 +29,15 @@ namespace dm {
 enum EnemyState : int32_t { RISING = 0, IDLE, CHASE, ATTACK, HURT, RETURN, DEAD, FLEE, BURROW, ERUPT, DIG, EMERGE };
 enum Behavior : int32_t { B_MELEE = 0, B_FLANK, B_CASTER, B_HAZARD, B_SUPPORT };  // B_SUPPORT: the Crypt Deacon (DmEnemyDeacon, DmStateCathSupport)
 // BLOW_CURSE: the Lich Acolyte's homing curse (the plain reach, hit kind curse); BLOW_SCREAM: the Choir Wraith's ring at the aim; BLOW_DIVE: the Belfry Gargoyle's drop;
-// BLOW_FLASK: the Plague Doctor's lobbed flask (a ring at the aim, hit kind toxic, and a toxic pool).
-enum Blow : int32_t { BLOW_MELEE = 0, BLOW_CONE, BLOW_DUST, BLOW_SLAM, BLOW_CURSE, BLOW_SCREAM, BLOW_DIVE, BLOW_FLASK };
+// BLOW_FLASK: the Plague Doctor's lobbed flask (a ring at the aim, hit kind toxic, and a toxic pool);
+// BLOW_EMBER (the Pyre Priest's coal), BLOW_HEX (the Bog Hag's ring on the thickest knot of thralls), BLOW_PULSE (the Fen Wisp's ring of cold), BLOW_HOOK (the Drowned Sexton's chain, a swing that is a hook).
+enum Blow : int32_t { BLOW_MELEE = 0, BLOW_CONE, BLOW_DUST, BLOW_SLAM, BLOW_CURSE, BLOW_SCREAM, BLOW_DIVE, BLOW_FLASK, BLOW_EMBER, BLOW_HEX, BLOW_PULSE, BLOW_HOOK };
 // Damage kinds of a hit on a target (the sim's hurt `from`; GDScript maps them back to strings): append only.
 enum HitKind : int32_t { HK_MELEE = 0, HK_TOXIC, HK_BURN, HK_EMBER, HK_DUST, HK_CURSE, HK_TOLL };
 // Telegraph and cue kinds (DmEnemy.telegraph / cue): append only.
-enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT, TELL_TOLL, TELL_RAISE, TELL_CURSE, TELL_SCREAM, TELL_DIVE, TELL_FLASK };
-enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN, CUE_SANCTIFY, CUE_SHIELD_BLOCK, CUE_UNBIND, CUE_SCREAM, CUE_FLASK, CUE_COUNT };
-enum ZoneKind : int32_t { ZONE_DUST = 0, ZONE_TOXIC };
+enum Tell : int32_t { TELL_CONE = 0, TELL_SLAM, TELL_DUST, TELL_ERUPT, TELL_TOLL, TELL_RAISE, TELL_CURSE, TELL_SCREAM, TELL_DIVE, TELL_FLASK, TELL_EMBER, TELL_HEX, TELL_PULSE, TELL_HOOK };
+enum Cue : int32_t { CUE_SLAM = 0, CUE_ERUPT, CUE_DIG_IN, CUE_SANCTIFY, CUE_SHIELD_BLOCK, CUE_UNBIND, CUE_SCREAM, CUE_FLASK, CUE_HOOK, CUE_COUNT };
+enum ZoneKind : int32_t { ZONE_DUST = 0, ZONE_TOXIC, ZONE_EMBER };
 // Elite affixes in DmSimData.AFFIX_ORDER (bit k of Enemy::affixes) and the one-off beats DmAffixSet.moment sends: append only.
 enum Affix : int32_t { AF_BELL_TOLLED = 0, AF_HUNGERING, AF_SHROUDED, AF_VENGEFUL, AF_COUNT };
 enum AffixMoment : int32_t { AM_TELL = 0, AM_TOLL, AM_HUNGERING, AM_VENGEFUL, AM_UNVEIL };
@@ -90,6 +92,7 @@ struct Tuning {  // data/content/enemies.json blocks
 	// enemies.json WARD (range, maxTargets: the Weeping Seraph) and PLAGUE_FLASK (radius, poolS, poolDpsMult: the Plague Doctor's flask)
 	double ward_range = 5.5, flask_r = 1.8, flask_pool_s = 5.0, flask_pool_dps = 0.35;
 	int32_t ward_max = 4;
+	PfTuning pf;  // the Pyre's and the Fen's effects: EMBER_BOLT, EMBER_DEATH, SLAG_POOL (enemies.json), HAG_HEX, WISP_PULSE, SEXTON_HOOK, FEN_LURE (fen.json)
 };
 
 // Thralls, corpses and the toxic pool. Numbers come from data (World::load in DmCore): content/{abilities,fen,statuses,gameplay_legendary,
@@ -130,6 +133,7 @@ struct EnemyDef {
 	bool aura = false, shield = false, unbind = false, silence_aware = false, has_dive = false;
 	bool ward = false;  // the Weeping Seraph (behavior support with `ward`): it keeps the Deacon's distance, casts the curse, and blesses allies (DmEnemyClstSeraph)
 	double dive_min = 3.5, dive_range = 9.0, dive_r = 2.0, dive_grounded_s = 1.4;
+	PfDef pf;  // the Cinder Pyre's and the Mourning Fen's kinds (pyre_fen.h)
 };
 
 struct Enemy : Body {
@@ -156,6 +160,7 @@ struct Enemy : Body {
 	double ward_t = 0;  // the Weeping Seraph's retry countdown (_ward_t): not before it is up does it look for allies to bless again
 	bool diving = false, los_ok = false;
 	float dive_x = 0, dive_z = 0;
+	PfState pf;  // the Drowned Sexton's chain: in its wind-up, and its own cooldown (pyre_fen.h)
 	float nav_gx = 0, nav_gz = 0;
 	int32_t path_len = 0, path_i = 0;
 	float path[PATH_POINTS * 2] = {};
@@ -428,6 +433,15 @@ private:
 	void tick_ward(int32_t p_slot, double p_dt);   // Weeping Seraph: before the base's tick
 	void ward(int32_t p_slot);                     // ... blesses up to maxTargets of the most wounded unblessed bodies in range, or tries again in WARD_RETRY_S
 	void strike_flask(Enemy &e);                   // Plague Doctor: the flask lands
+	// the Cinder Pyre's and the Mourning Fen's kinds (pyre_fen.cpp)
+	void ember_pool(Enemy &e, float p_x, float p_z, double p_r, double p_seconds, double p_dps);  // DmPfUtil.ember_pool: burning ground (kind ember, hurts as burn)
+	void pf_strike(Enemy &e);                                      // the blows of the late areas: the coal, the hex, the pulse, the chain, the slag brute's pool
+	void hex_aim(Enemy &e);                                        // DmEnemyPfCaster.hex_aim: the centre of the thickest knot of thralls within reach, else the target
+	void hook_strike(Enemy &e);                                    // DmEnemyPfHazard._hook_strike
+	bool hook_ready(const Enemy &e, double p_d, float p_tx, float p_tz);  // DmEnemyPfHazard.hook_ready
+	void lure_goal(const Enemy &e, float p_tx, float p_tz, double p_d, float &r_gx, float &r_gz) const;  // DmStatePfLureKite.engage: where the wisp backs off to
+	void target_effect(Enemy &e, int32_t p_target, int32_t p_effect, double p_seconds, float p_x, float p_z);  // EV_TARGET_EFFECT (a hero is chilled, rooted or dragged)
+	void pull_target(Enemy &e, const Tgt &p_target, float p_tox, float p_toz, double p_m, double p_root_s);  // DmPfUtil.pull
 	void hit_target(Enemy &e, int32_t p_target, double p_damage, int32_t p_kind);
 	void hit_id(int32_t p_source, int32_t p_target, double p_damage, int32_t p_kind);  // a blow on a hero (event) or a thrall (applied here)
 	bool hittable(const Enemy &e) const { return e.state != BURROW && e.state != ERUPT; }

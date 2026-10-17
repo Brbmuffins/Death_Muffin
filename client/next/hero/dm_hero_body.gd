@@ -215,8 +215,8 @@ func take_damage(amount: float, source: Variant = 0, kind: String = "melee") -> 
 
 
 ## Host: what an enemy does to a hero besides damage: `chill` / `root` {seconds, from} are statuses (the set owns the move multiplier and
-## replicates them), `pull` {to, from} drags the body through the dash glide (navmesh-resolved, keeps its facing). The core does not report these yet
-## (the Frost wraith's chill, the Drowned Sexton's hook), so nothing calls it in this step; `from` is an enemy id and the status has no source node.
+## replicates them), `pull` {to, from} drags the body through the dash glide (navmesh-resolved, keeps its facing). The core reports them as EV_TARGET_EFFECT
+## (the Bog Hag's and the Fen Wisp's chill, the Drowned Sexton's chain: DmNextGame._on_target_effect); `from` is an enemy id and the status has no source node.
 func dm_enemy_effect(kind: StringName, params: Dictionary) -> void:
 	if p.is_empty() or not alive:
 		return

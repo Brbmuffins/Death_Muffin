@@ -3,7 +3,7 @@
 #include <algorithm>
 
 // The enemy brain is a port of godot/enemies: DmEnemy (dm_enemy.gd), its states (states/*.gd) and the kinds (flanker, caster,
-// hazard, burrower; the Deacon is support.cpp, the Nave's five are nave.cpp). Comments name the GDScript it mirrors. Differences from today are listed in native/README.md.
+// hazard, burrower; the Deacon is support.cpp, the Nave's five are nave.cpp, the Pyre's and the Fen's eight are pyre_fen.cpp). Comments name the GDScript it mirrors. Differences from today are listed in native/README.md.
 
 namespace dm {
 
@@ -113,6 +113,7 @@ void World::change(int32_t p_slot, int32_t p_next) {
 	const int32_t prev = e.state;
 	if (prev == ATTACK) {
 		e.diving = false;  // DmStateCathDive.exit: a stun mid-dive ends the dive where the body is
+		e.pf.hooking = false;  // DmEnemyPfHazard: an interrupted chain does not turn the next slam into a hook (the sim left the flag set)
 	}
 	e.state = p_next;
 	e.state_t = 0.0;
@@ -349,13 +350,22 @@ int32_t World::engage(Enemy &e, float p_tx, float p_tz, double p_d, double p_dt)
 		if (p_d > e.attack_range - 1.5) {
 			steer_to(e, p_tx, p_tz, 1.0, p_dt);
 		} else if (p_d < KITE_BACK_OFF) {
-			steer_to(e, e.x * 2.0f - p_tx, e.z * 2.0f - p_tz, KITE_BACK_SPEED, p_dt);
+			float gx = e.x * 2.0f - p_tx, gz = e.z * 2.0f - p_tz;
+			if (d.pf.lure) {  // dm_state_pf_lure_kite: backs off toward the open water, not straight away
+				lure_goal(e, p_tx, p_tz, p_d, gx, gz);
+			}
+			steer_to(e, gx, gz, KITE_BACK_SPEED, p_dt);
 			face_point(e, p_tx, p_tz, p_dt);
 		} else {
 			stop(e);
 			face_point(e, p_tx, p_tz, p_dt);
 		}
 		return -1;
+	}
+	if (d.pf.hook && hook_ready(e, p_d, p_tx, p_tz)) {  // dm_state_pf_hook_chase: a hero in the chain's reach with a clear line gets the chain before the slam
+		e.pf.hooking = true;
+		e.pf.hook_cd = tun.pf.hook_cooldown;
+		return ATTACK;
 	}
 	if (d.has_dive && e.attack_cd <= 0.0 && p_d >= d.dive_min && p_d <= d.dive_range) {  // dm_state_cath_dive_chase: with the cooldown up and the target between minRange and range, dive
 		e.los_t -= p_dt;
@@ -559,7 +569,10 @@ void World::begin_attack(Enemy &e) {
 		return;
 	}
 	Tgt tg;
-	if (target_at(e.target, tg)) {
+	if (d.blow == BLOW_HEX) {  // DmEnemyPfCaster.begin_attack: the thickest knot of thralls, and it always turns to it
+		hex_aim(e);
+		face_point(e, e.aim_x, e.aim_z, 1.0);
+	} else if (target_at(e.target, tg)) {
 		e.aim_x = tg.x;
 		e.aim_z = tg.z;
 		face_point(e, e.aim_x, e.aim_z, 1.0);
@@ -567,8 +580,9 @@ void World::begin_attack(Enemy &e) {
 		e.aim_x = e.x + float(std::sin(double(e.yaw)));
 		e.aim_z = e.z + float(std::cos(double(e.yaw)));
 	}
-	events.push(EV_ENEMY_ATTACK, e.id, { d.blow }, { e.aim_x, e.aim_z, float(e.windup_s) });
-	switch (d.blow) {
+	const int32_t blow = e.pf.hooking ? BLOW_HOOK : d.blow;  // the Drowned Sexton's swing is the chain while `hooking` (DmEnemyPfHazard.announce_telegraph)
+	events.push(EV_ENEMY_ATTACK, e.id, { blow }, { e.aim_x, e.aim_z, float(e.windup_s) });
+	switch (blow) {
 		case BLOW_MELEE:  // the plain melee swing has no telegraph; the Deacon's curse (DmEnemyDeacon.announce_telegraph) does
 			if (d.behavior == B_SUPPORT) {
 				events.push(EV_TELEGRAPH, e.id, { TELL_CURSE }, { e.x, e.z, e.aim_x, e.aim_z, 0.0f, float(e.windup_s) });
@@ -592,6 +606,18 @@ void World::begin_attack(Enemy &e) {
 		case BLOW_FLASK:  // DmEnemyClstCaster.announce_telegraph: a rot-green ring where the flask will land
 			events.push(EV_TELEGRAPH, e.id, { TELL_FLASK }, { e.x, e.z, e.aim_x, e.aim_z, float(tun.flask_r), float(e.windup_s) });
 			break;
+		case BLOW_EMBER:  // DmEnemyPfCaster.announce_telegraph: the coal's ring, the hex's, the pulse's; the chain's strip is its range long
+			events.push(EV_TELEGRAPH, e.id, { TELL_EMBER }, { e.x, e.z, e.aim_x, e.aim_z, float(tun.pf.ember_r), float(e.windup_s) });
+			break;
+		case BLOW_HEX:
+			events.push(EV_TELEGRAPH, e.id, { TELL_HEX }, { e.x, e.z, e.aim_x, e.aim_z, float(tun.pf.hex_r), float(e.windup_s) });
+			break;
+		case BLOW_PULSE:
+			events.push(EV_TELEGRAPH, e.id, { TELL_PULSE }, { e.x, e.z, e.aim_x, e.aim_z, float(tun.pf.pulse_r), float(e.windup_s) });
+			break;
+		case BLOW_HOOK:
+			events.push(EV_TELEGRAPH, e.id, { TELL_HOOK }, { e.x, e.z, e.aim_x, e.aim_z, float(tun.pf.hook_range), float(e.windup_s) });
+			break;
 		default:
 			break;
 	}
@@ -602,6 +628,11 @@ void World::strike(Enemy &e) {
 	const EnemyDef &d = defs[e.def];
 	if (d.behavior == B_SUPPORT && e.swing_raise) {  // DmEnemyDeacon.strike: a raise lands as the corpse's end, not as a blow
 		raise_corpse(e);
+		return;
+	}
+	if (e.pf.hooking) {  // DmEnemyPfHazard.strike: the chain, not the slam
+		e.pf.hooking = false;
+		hook_strike(e);
 		return;
 	}
 	if (e.diving) {  // DmEnemyGargoyle.strike: everything within the dive's radius of the mark, and the stone lands
@@ -669,8 +700,16 @@ void World::strike(Enemy &e) {
 				}
 			});
 			events.push(EV_CUE, e.id, { CUE_SLAM }, { e.aim_x, e.aim_z, float(d.slam_r) });
+			if (d.pf.slam_pool) {  // DmEnemyPfHazard.strike: the Slag Brute's slam leaves burning ground on the aim
+				ember_pool(e, e.aim_x, e.aim_z, d.slam_r, tun.pf.slag_pool_s, e.damage * tun.pf.slag_pool_dps);
+			}
 			break;
 		}
+		case BLOW_EMBER:
+		case BLOW_HEX:
+		case BLOW_PULSE:
+			pf_strike(e);
+			break;
 		case BLOW_CURSE: {  // DmEnemyClstCaster.strike: the CURRENT target, if within the sim's reach of the body at the blow (walking out of the telegraph does not dodge it)
 			Tgt tg;
 			if (target_at(e.target, tg) && flat_dist(e.x, e.z, tg.x, tg.z) <= e.attack_range * STRIKE_REACH_MULT + STRIKE_REACH_PAD) {
@@ -771,6 +810,9 @@ void World::kill(int32_t p_slot, int32_t p_source) {
 	body_died_statuses(k);
 	lay_corpses(k);
 	events.push(EV_ENEMY_DIED, k.id, { k.def, k.level, k.elite ? 1 : 0, k.area, p_source }, { k.x, k.z });
+	if (defs[k.def].pf.ember_death) {  // DmEnemyPfMelee.on_death: after `died` has gone to its listeners, the body bursts into a burning pool where it fell
+		ember_pool(k, k.x, k.z, tun.pf.death_r, tun.pf.death_pool_s, k.damage * tun.pf.death_pool_dps);
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------- statuses
@@ -1010,6 +1052,7 @@ void World::step(double p_dt) {
 			tick_ward(i, p_dt);
 		}
 		// DmEnemy._physics_process order: attack cooldown, incense, stagger, the state machine, then movement.
+		e.pf.hook_cd -= p_dt;  // DmEnemyPfHazard._physics_process: the chain's own cooldown, before the base's (it only matters to the Drowned Sexton)
 		if (e.state != HURT && e.state != RISING) {
 			e.attack_cd -= p_dt * e.attack_rate_mult * (e.incense_t > 0.0 ? INCENSE_ATTACK : 1.0);
 		}
@@ -1325,7 +1368,7 @@ void World::resolve_overlaps() {
 void World::step_zones(double p_dt) {  // DmHostileZone._physics_process
 	size_t w = 0;
 	for (size_t i = 0; i < zones.size(); i++) {
-		Zone &z = zones[i];
+		Zone z = zones[i];  // a copy: a blow of this pulse can kill a body that leaves a pool (a Husk a plague bearer's burst reaches) and the vector may move
 		z.age += p_dt;
 		if (z.age >= z.lifetime) {
 			events.push(EV_ZONE_GONE, z.id, {}, {});

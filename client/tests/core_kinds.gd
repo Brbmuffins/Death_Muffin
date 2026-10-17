@@ -1,6 +1,7 @@
 extends SceneTree
 ## The kinds the other areas add to the combat core, against today's rules (godot/enemies): so far the Marrow Ossuary's two, the Bone Golem and the
-## Crypt Deacon, and the Drowned Nave's five, the Censer Bearer, Lich Acolyte, Belfry Gargoyle, Bell-Sworn Templar and Choir Wraith. Later area groups append their kinds here.
+## Crypt Deacon, the Drowned Nave's five, the Censer Bearer, Lich Acolyte, Belfry Gargoyle, Bell-Sworn Templar and Choir Wraith, and the Cinder Pyre's and the Mourning Fen's eight (their section
+## opens with its own banner, at the end of the file). Later area groups append their kinds here.
 ##   - the golem (dm_enemy_hazard.gd, the sac's script): its slam (radius, wind-up, cooldown, damage, the aim fixed at the wind-up's start, who it reaches), its
 ##     stats and the three corpses it falls into;
 ##   - the deacon (dm_enemy_deacon.gd, dm_state_cath_support.gd): the keep-away walk, the curse (wind-up, reach at the blow, damage), the raise (the corpse chosen,
@@ -215,6 +216,7 @@ func _init() -> void:
 	S = statuses["SANCTIFIED"]
 	K = DmCoreData.consts(godot_dir, SCRIPTS)
 	KITE = DmCoreData.consts(godot_dir, ["enemies/states/dm_state_kite.gd"])
+	fen = DmCoreData.json(godot_dir.path_join("data/content/fen.json"))
 	names_and_tables()
 	golem_slam()
 	golem_stats_and_corpses()
@@ -270,6 +272,25 @@ func _init() -> void:
 	flagellant_blows()
 	cloister_on_the_wire()
 	cloister_rosters_and_a_replay()
+	pf_names_defs_and_numbers()
+	husk_embers()
+	husk_melee()
+	priest_coal()
+	priest_walk()
+	hound_and_leech()
+	slag_slam_and_pool()
+	hag_hex()
+	hag_aim()
+	wisp_pulse()
+	wisp_lure()
+	sexton_chain()
+	sexton_pull_limits()
+	sexton_gates()
+	sexton_slam_and_corpses()
+	sexton_hexed()
+	pf_stun_cancels()
+	pf_on_the_wire()
+	pf_roster_and_a_replay()
 	keep.clear()
 	if fails == 0:
 		print("PASS core_kinds %d checks" % checks)
@@ -2361,6 +2382,118 @@ func cloister_defs() -> void:
 		var spd := float(info["speed"])
 		check(spd >= float(d["speed"]) * 0.92 - 1e-6 and spd <= float(d["speed"]) * 1.08 + 1e-6, "%s: speed %.2f within the +-8%% roll of %.1f" % [id, spd, float(d["speed"])])
 		var ee: int = c.spawn_enemy(id, Vector2(5, 5), 1, 1.0, 1.0, true, SANCTUM, false)
+# ================================================================================================================== the Cinder Pyre and the Mourning Fen
+#
+# Their eight kinds, the "pf" family of godot/enemies/kinds: dm_enemy_pf_melee (the Cinder Husk), dm_enemy_pf_flanker (the Cinderhound, the Mire Leech), dm_enemy_pf_caster (the Pyre
+# Priest, the Bog Hag, the Fen Wisp), dm_enemy_pf_hazard (the Slag Brute, the Drowned Sexton), dm_pf_util and the states dm_state_pf_hook_chase and dm_state_pf_lure_kite.
+#   - the Husk: a melee body that bursts into a burning pool (EMBER_DEATH) where it falls, after `died`; nothing when it leaves alive;
+#   - the Priest: the caster set's walk, the coal (EMBER_BOLT: the ring at the aim fixed at the wind-up, kind ember, and the pool), the blow softened by Bone Hex;
+#   - the Hound: a flanker (a swift corpse, no pool); the Leech: a flanker whose bite is toxic, with no corpse;
+#   - the Slag Brute: the slam of the hazards with a burning pool on the aim (SLAG_POOL), which Bone Hex does not soften;
+#   - the Hag: the hex (HAG_HEX) aimed at the thickest knot of thralls, thralls cursed, heroes chilled; the Wisp: the pulse (WISP_PULSE), the chill, the retreat toward the lure;
+#   - the Sexton: the chain (SEXTON_HOOK: the window, the clear line, its own cooldown, the strip, the pull and the root, never a thrall), the slam otherwise;
+#   - the wire: a guest sees the coal, the hex, the pulse and the chain, the pools and the chain's cue; what a hero is made to suffer besides damage stays the host's;
+#   - the rosters: the whole Pyre and Fen waves run on the core, the models are drawn, and a seeded run replays bit for bit.
+
+const PYRE := "pyre"
+const FEN := "fen"
+const PF_KINDS: Array[String] = ["cinder_husk", "pyre_priest", "cinderhound", "slag_brute", "bog_hag", "drowned_sexton", "fen_wisp", "mire_leech"]
+const PF_EV_ZONE := 10
+const PF_EV_ZONE_PULSE := 11
+const PF_EV_ZONE_GONE := 12
+const PF_EV_EFFECT := 33
+const PF_TELL_EMBER := 10
+const PF_TELL_HEX := 11
+const PF_TELL_PULSE := 12
+const PF_TELL_HOOK := 13
+const PF_BLOW_EMBER := 8
+const PF_BLOW_HEX := 9
+const PF_BLOW_PULSE := 10
+const PF_BLOW_HOOK := 11
+const PF_CUE_HOOK := 8
+const PF_ZONE_EMBER := 2
+const PF_HK_MELEE := 0
+const PF_HK_TOXIC := 1
+const PF_HK_BURN := 2
+const PF_HK_EMBER := 3
+const PF_HK_DUST := 4
+const PF_TE_CHILL := 0
+const PF_TE_ROOT := 1
+const PF_TE_PULL := 2
+const PF_CK_NORMAL := 0
+const PF_CK_SWIFT := 1
+const PF_CK_RESONANT := 2
+const PF_CK_NONE := 4
+
+var fen: Dictionary       ## fen.json (HAG_HEX, WISP_PULSE, SEXTON_HOOK, FEN_LURE)
+
+
+## A body that does no damage and stays where it is: a stand-in for "something else in the area", in the Pyre.
+func pf_dummy(c: RefCounted, at: Vector2) -> int:
+	return c.spawn_enemy("robber", at, 1, 1.0, 0.0, false, PYRE, false)
+
+
+## Ticks in which a hostile zone pulses: a mirror of DmHostileZone._physics_process (age gains DT a tick, the zone ends when it reaches its life; the first countdown starts at
+## the first tick and a pulse is the tick it falls to zero).
+func pf_pulse_ticks(lifetime: float, period: float) -> Array:
+	var out := []
+	var age := 0.0
+	var cd := -1.0
+	var k := 0
+	while true:
+		k += 1
+		age += DT
+		if age >= lifetime:
+			break
+		if cd < 0.0:
+			cd = period
+		cd -= DT
+		if cd <= 0.0:
+			cd = period
+			out.append(k)
+	return out
+
+
+## The ticks (counted from the log's first tick) of the hits a zone dealt to hero `who`, with their damage and kind.
+func pf_zone_hits(log: Array, source: int, who: int) -> Array:
+	return log.filter(func(e: Dictionary) -> bool: return e["type"] == EV_HIT and e["id"] == source and e["ints"][0] == who)
+
+
+## A held thrall of `owner`: it rises, is stunned where it stands and put at `at` (it never moves), so that it counts as a target and a victim.
+func pf_thralls(c: RefCounted, owner: int, spots: Array, hp := 100.0) -> Array:
+	var ids := []
+	for at in spots:
+		ids.append(c.raise_thrall({"kind": "warrior", "hp": hp, "maxHp": hp, "damage": 0.0, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false, "allyHeal": 0.0}, owner, at, 0.0, 99.0))
+	var log := []
+	run(c, to_reach(0.9) + 2, log)
+	for i in ids.size():
+		c.stun(ids[i], 1.0e6)
+		c.set_thrall_pos(ids[i], spots[i])
+	drain(c, log)
+	return ids
+
+
+func pf_names_defs_and_numbers() -> void:
+	check(DmCoreEvents.TELLS.size() >= 14 and DmCoreEvents.TELLS[PF_TELL_EMBER] == &"ember" and DmCoreEvents.TELLS[PF_TELL_HEX] == &"hex" and DmCoreEvents.TELLS[PF_TELL_PULSE] == &"pulse"
+		and DmCoreEvents.TELLS[PF_TELL_HOOK] == &"hook", "the telegraph names: ember, hex, pulse and hook appended after flask (append only)")
+	check(DmCoreEvents.BLOWS.size() >= 12 and DmCoreEvents.BLOWS[PF_BLOW_EMBER] == &"ember" and DmCoreEvents.BLOWS[PF_BLOW_HEX] == &"hex" and DmCoreEvents.BLOWS[PF_BLOW_PULSE] == &"pulse"
+		and DmCoreEvents.BLOWS[PF_BLOW_HOOK] == &"hook", "the blow names: ember, hex, pulse and hook appended after flask")
+	check(DmCoreEvents.CUES.size() >= 9 and DmCoreEvents.CUES[PF_CUE_HOOK] == &"hook" and DmCoreEvents.ZONE_KINDS.size() >= 3 and DmCoreEvents.ZONE_KINDS[PF_ZONE_EMBER] == &"ember"
+		and DmCoreEvents.TARGET_EFFECT == PF_EV_EFFECT and DmCoreEvents.EFFECTS == [&"chill", &"root", &"pull"], "the cue hook, the zone kind ember and the hero effects chill, root, pull are appended")
+	var el: Dictionary = content["ELITE"]
+	for id in PF_KINDS:
+		var d := def(id)
+		var c := make(401)
+		hero(c, FAR)
+		var area := FEN if id in ["bog_hag", "drowned_sexton", "fen_wisp", "mire_leech"] else PYRE
+		var e: int = c.spawn_enemy(id, Vector2(0, 0), 6, 2.0, 1.5, false, area, false)
+		var info: Dictionary = c.enemy_info(e)
+		check(is_equal_approx(info["max_hp"], float(d["hp"]) * 2.0) and is_equal_approx(info["damage"], float(d["damage"]) * 1.5) and info["radius"] == float(d["radius"])
+			and is_equal_approx(info["windup_s"], float(d["windupMs"]) / 1000.0) and info["level"] == 6 and info["area"] == area,
+			"%s: hp, damage, radius and wind-up from the def, the spawn's multipliers and level" % id)
+		var spd := float(info["speed"])
+		check(spd >= float(d["speed"]) * 0.92 - 1e-6 and spd <= float(d["speed"]) * 1.08 + 1e-6, "%s: speed %.2f within the +-8%% roll of %.1f" % [id, spd, float(d["speed"])])
+		var ee: int = c.spawn_enemy(id, Vector2(5, 5), 1, 1.0, 1.0, true, area, false)
 		var ei: Dictionary = c.enemy_info(ee)
 		check(is_equal_approx(ei["max_hp"], float(d["hp"]) * float(el["hpMult"])) and is_equal_approx(ei["windup_s"], float(d["windupMs"]) / 1000.0 * ELITE_WINDUP) and is_equal_approx(ei["damage"], float(d["damage"]) * float(el["damageMult"])),
 			"%s: an elite has x%.1f health, x%.1f damage and a x%.2f wind-up" % [id, float(el["hpMult"]), float(el["damageMult"]), ELITE_WINDUP])
@@ -2386,7 +2519,7 @@ func cloister_defs() -> void:
 		"the flagellant is the plain base (no script of its own): a melee body whose def says frenzy")
 	check(float(FR["atFrac"]) == 0.5 and float(FR["moveMult"]) == 1.45 and float(FR["attackRateMult"]) == 1.6, "frenzy: below %.0f%% health, x%.2f feet, x%.1f blows (enemies.json FRENZY)" % [float(FR["atFrac"]) * 100.0, float(FR["moveMult"]), float(FR["attackRateMult"])])
 	check(DmCoreEvents.TELLS.size() >= 10 and DmCoreEvents.TELLS[TELL_FLASK] == &"flask" and DmCoreEvents.CUES.size() >= 8 and DmCoreEvents.CUES[CUE_FLASK] == &"flask" and DmCoreEvents.BLOWS.size() >= 8 and DmCoreEvents.BLOWS[BLOW_FLASK] == &"flask",
-		"the name tables end in flask: a telegraph, a cue and a blow, appended after dive, scream and dive (append only)")
+		"flask is a telegraph, a cue and a blow, appended after dive, scream and dive (append only)")
 
 
 # ------------------------------------------------------------------------------------------------------------------ the seraph: walking, the curse
@@ -3236,6 +3369,789 @@ func cloister_on_the_wire() -> void:
 	host.set_replication(true)
 	hero(host, Vector2(6, 0))
 	var id := spawn_doctor(host, Vector2(0, 0), 3, 2.0, 1.5)
+	var EB: Dictionary = content["EMBER_BOLT"]
+	var ED: Dictionary = content["EMBER_DEATH"]
+	var SP: Dictionary = content["SLAG_POOL"]
+	var HX: Dictionary = fen["HAG_HEX"]
+	var WP: Dictionary = fen["WISP_PULSE"]
+	var SH: Dictionary = fen["SEXTON_HOOK"]
+	check(t["EMBER_BOLT.radius"] == float(EB["radius"]) and t["EMBER_BOLT.poolS"] == float(EB["poolS"]) and t["EMBER_BOLT.poolDpsMult"] == float(EB["poolDpsMult"])
+		and t["EMBER_DEATH.radius"] == float(ED["radius"]) and t["EMBER_DEATH.poolS"] == float(ED["poolS"]) and t["EMBER_DEATH.poolDpsMult"] == float(ED["poolDpsMult"])
+		and t["SLAG_POOL.poolS"] == float(SP["poolS"]) and t["SLAG_POOL.poolDpsMult"] == float(SP["poolDpsMult"]), "the Pyre's numbers are enemies.json's: EMBER_BOLT, EMBER_DEATH, SLAG_POOL")
+	check(t["HAG_HEX.radius"] == float(HX["radius"]) and t["HAG_HEX.durationS"] == float(HX["durationS"]) and t["HAG_HEX.blowMult"] == float(HX["blowMult"]) and is_equal_approx(t["HAG_HEX.chillS"], float(HX["chillMs"]) / 1000.0)
+		and t["HAG_HEX.thrallDamageMult"] == float(HX["thrallDamageMult"]) and t["WISP_PULSE.radius"] == float(WP["radius"]) and is_equal_approx(t["WISP_PULSE.chillS"], float(WP["chillMs"]) / 1000.0)
+		and t["SEXTON_HOOK.minRange"] == float(SH["minRange"]) and t["SEXTON_HOOK.range"] == float(SH["range"]) and t["SEXTON_HOOK.halfWidth"] == float(SH["halfWidth"])
+		and t["SEXTON_HOOK.cooldownS"] == float(SH["cooldownS"]) and t["SEXTON_HOOK.pullM"] == float(SH["pullM"]) and t["SEXTON_HOOK.blowMult"] == float(SH["blowMult"])
+		and is_equal_approx(t["SEXTON_HOOK.rootS"], float(SH["rootMs"]) / 1000.0) and t["FEN_LURE.x"] == float(fen["FEN_LURE"]["x"]) and t["FEN_LURE.z"] == float(fen["FEN_LURE"]["z"]),
+		"the Fen's numbers are fen.json's: HAG_HEX, WISP_PULSE, SEXTON_HOOK, FEN_LURE")
+	# The scripts' own literals (the chain's strip, the drag's limits, the lure's heading) are the ones the core compiles in.
+	var hazard_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_pf_hazard.gd"))
+	var util_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_pf_util.gd"))
+	var lure_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/states/dm_state_pf_lure_kite.gd"))
+	var caster_src: String = FileAccess.get_file_as_string(godot_dir.path_join("enemies/kinds/dm_enemy_pf_caster.gd"))
+	check(hazard_src.contains('var reach := float(H["range"]) + 0.6') and hazard_src.contains('var half := float(H["halfWidth"]) + 0.3') and hazard_src.contains("hook_cd -= delta")
+		and util_src.contains("maxf(0.0, len - 1.6)") and util_src.contains("if step > 0.05:") and lure_src.contains("(ax * 0.55 + lx / ll * 0.45) * 3.0") and lure_src.contains("steer_to(goal, BACK_OFF_SPEED)")
+		and caster_src.contains("if flat_dist_to(t) > attack_range:") and caster_src.contains("if cnt > best_n:"), "the late scripts' own literals (the strip's 0.6 and 0.3, the pull's 1.6 and 0.05, the lure's 0.55, 0.45 and 3 m, the hex's reach and knot) are the ones compiled in")
+	check(lure_src.contains("extends DmStateKite") and float(KITE["BACK_OFF_DIST"]) == 3.5 and float(KITE["BACK_OFF_SPEED"]) == 0.8, "the lure kite is dm_state_kite with another back-off (the walk's 3.5 m and 0.8 x are dm_state_kite's)")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Cinder Husk
+
+## It falls into a burning pool: EMBER_DEATH radius for poolS seconds at 0.3 x its damage a second, where it fell, owned by it, told after `died`; it hurts once a second (as burn)
+## whoever stands within radius + 0.45 m; a body that leaves alive (a boss's add) leaves no pool.
+func husk_embers() -> void:
+	var d := def("cinder_husk")
+	var ED: Dictionary = content["EMBER_DEATH"]
+	var r := float(ED["radius"])
+	var c := make(411)
+	var far := hero(c, FAR)
+	var inside := hero(c, Vector2(5.0 + r - 0.5, 5.0))
+	var out := hero(c, Vector2(5.0 + r + 0.45 + 0.05, 5.0))    # just outside the pool and its 0.45 m of a body
+	var rim := hero(c, Vector2(5.0, 5.0 + r + 0.45 - 0.02))    # just inside it
+	var id: int = c.spawn_enemy("cinder_husk", Vector2(5, 5), 4, 2.0, 1.5, false, PYRE, false)
+	events(c)
+	c.damage(id, 1.0e9, far, false)
+	var log := []
+	drain(c, log)
+	var died := of(log, EV_DIED, id)
+	var zones := of(log, PF_EV_ZONE)
+	check(died.size() == 1 and zones.size() == 1 and log.find(zones[0]) > log.find(died[0]), "husk: one pool, told after `died`")
+	if zones.is_empty():
+		return
+	var z: Dictionary = zones[0]
+	var dmg := float(d["damage"]) * 1.5
+	check(z["ints"][0] == PF_ZONE_EMBER and z["ints"][1] == id and is_equal_approx(z["floats"][0], 5.0) and is_equal_approx(z["floats"][1], 5.0) and is_equal_approx(z["floats"][2], r) and is_equal_approx(z["floats"][3], float(ED["poolS"])),
+		"husk: a pool of kind ember, owned by the husk, at its place, r %.1f for %.0f s" % [r, float(ED["poolS"])])
+	var zid: int = z["id"]
+	var dps := dmg * float(ED["poolDpsMult"])
+	run(c, 200, log)
+	var ticks := pf_pulse_ticks(float(ED["poolS"]), 1.0)
+	var mine := pf_zone_hits(log, id, inside)
+	check(mine.size() == ticks.size() and mine.size() >= 2 and mine.all(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], dps) and e["ints"][1] == PF_HK_BURN),
+		"husk: %d burns of %.2f (0.3 x %.0f x the spawn's 1.5) as burn, once a second for %.0f s" % [ticks.size(), dps, float(d["damage"]), float(ED["poolS"])])
+	check(mine.map(func(e: Dictionary) -> int: return int(e["tick"])) == ticks, "husk: on ticks %s" % str(ticks))
+	check(pf_zone_hits(log, id, out).is_empty() and pf_zone_hits(log, id, rim).size() == ticks.size() and pf_zone_hits(log, id, far).is_empty(), "husk: the rim (radius + 0.45 m) burns, a hero a step beyond it does not")
+	check(of(log, PF_EV_ZONE_PULSE, zid).size() == ticks.size() and of(log, PF_EV_ZONE_GONE, zid).size() == 1, "husk: a pulse event each second, and the zone is gone at its end")
+	# An elite doubles... x1.5 on top; its pool follows the body's damage.
+	var e2 := make(412)
+	var f2 := hero(e2, FAR)
+	var eid: int = e2.spawn_enemy("cinder_husk", Vector2(0, 0), 1, 1.0, 2.0, true, PYRE, false)
+	events(e2)
+	e2.damage(eid, 1.0e9, f2, false)
+	var l2 := []
+	drain(e2, l2)
+	var ez := of(l2, PF_EV_ZONE)
+	check(ez.size() == 1, "husk: an elite falls into a pool too")
+	var elog := []
+	hero(e2, Vector2(0.3, 0))
+	run(e2, 70, elog)
+	var eh := of(elog, EV_HIT, eid)
+	check(not eh.is_empty() and is_equal_approx(eh[0]["floats"][0], float(d["damage"]) * 2.0 * float(content["ELITE"]["damageMult"]) * float(ED["poolDpsMult"])), "husk: its pool follows level and elite damage (%.2f)" % (eh[0]["floats"][0] if not eh.is_empty() else -1.0))
+	# A body that leaves alive (a boss's adds go with the boss) leaves nothing.
+	var g := make(413)
+	hero(g, FAR)
+	var gid: int = g.spawn_enemy("cinder_husk", Vector2(3, 3), 1, 1.0, 1.0, false, PYRE, false)
+	events(g)
+	check(g.remove_enemy(gid), "husk: removed alive")
+	var gl := []
+	drain(g, gl)
+	check(of(gl, PF_EV_ZONE).is_empty() and of(gl, EV_DIED).is_empty(), "husk: and no pool, no death")
+
+
+## Otherwise a melee body: no telegraph, the blow after its wind-up for the def's damage as melee, hasted by nothing.
+func husk_melee() -> void:
+	var d := def("cinder_husk")
+	var c := make(414)
+	var h := hero(c, Vector2(3, 0))
+	var id: int = c.spawn_enemy("cinder_husk", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
+	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var log := []
+	run(c, 400, log)
+	var att := of(log, EV_ATTACK, id)
+	check(not att.is_empty() and att[0]["ints"][0] == 0 and of(log, EV_TELEGRAPH, id).is_empty() and int(att[0]["tick"]) >= to_zero(cd0), "husk: a plain swing with no telegraph, not before its cooldown (tick %d of %d)" % [int(att[0]["tick"]) if not att.is_empty() else -1, to_zero(cd0)])
+	var hits := of(log, EV_HIT, id)
+	check(not hits.is_empty() and int(hits[0]["tick"]) == int(att[0]["tick"]) + to_reach(float(d["windupMs"]) / 1000.0) and hits[0]["floats"][0] == float(d["damage"]) and hits[0]["ints"][1] == PF_HK_MELEE and hits[0]["ints"][0] == h,
+		"husk: it lands %.1f s later for %d, as melee" % [float(d["windupMs"]) / 1000.0, int(d["damage"])])
+	check(c.enemy_info(id)["state"] != DEAD and is_equal_approx(float(d["cooldownMs"]) / 1000.0, 1.2), "husk: the cooldown is the def's %.1f s" % [float(d["cooldownMs"]) / 1000.0])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Pyre Priest
+
+## The caster set (dm_state_kite: cast at attackRange - 0.5, walk in beyond - 1.5, no silence check) with a coal: the ring of EMBER_BOLT.radius at the place its target stood when the wind-up
+## began, everything inside it takes the blow as "ember" at the end of it, and the ground burns there (a pool, 0.4 x the blow a second for poolS). Stepping out of the ring dodges the blow, not the pool.
+func priest_coal() -> void:
+	var d := def("pyre_priest")
+	var EB: Dictionary = content["EMBER_BOLT"]
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var r := float(EB["radius"])
+	var cast_at := float(d["attackRange"]) - 0.5
+	for stay in [true, false]:
+		var c := make(421)
+		var a := hero(c, Vector2(14, 0))
+		var b := hero(c, Vector2(14.0 + r - 0.05, 0))     # inside the ring, behind the target
+		var o := hero(c, Vector2(14.0 + r + 0.05, 0))     # just outside it
+		var th: int = pf_thralls(c, a, [Vector2(14, -1.5)])[0]
+		var log := []
+		var id: int = c.spawn_enemy("pyre_priest", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
+		drain(c, log)
+		var xs: Array = []
+		var k0 := -1
+		for i in 900:
+			run(c, 1, log)
+			xs.append(Vector2(c.enemy_info(id)["pos"]))
+			if not of(log, EV_TELEGRAPH, id, PF_TELL_EMBER).is_empty():
+				k0 = tick
+				break
+		check(k0 > 0, "coal: it casts")
+		if k0 < 0:
+			return
+		var tell := of(log, EV_TELEGRAPH, id, PF_TELL_EMBER)
+		var f: PackedFloat32Array = tell[0]["floats"]
+		var from: Vector2 = xs[xs.size() - 2]
+		check(absf(f[0] - from.x) < 1e-5 and is_equal_approx(f[2], 14.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup), "coal: a ring of %.1f m on the target for %.2f s" % [r, windup])
+		var d_start := Vector2(14, 0).distance_to(xs[xs.size() - 2])
+		check(d_start <= cast_at and d_start > cast_at - float(c.enemy_info(id)["speed"]) * DT * 1.5, "coal: cast from %.2f m (attackRange - 0.5 = %.1f)" % [d_start, cast_at])
+		var att := of(log, EV_ATTACK, id)
+		check(att.size() == 1 and att[0]["ints"][0] == PF_BLOW_EMBER, "coal: the swing is a coal")
+		if not stay:
+			c.set_external(a, Vector2(14.0 + 4.0, 0), true)    # steps out of the ring
+		var ks := k0 + to_reach(windup)
+		run_to(c, ks - 1, log)
+		check(of(log, EV_HIT, id).is_empty() and of(log, PF_EV_ZONE).is_empty() and float(c.thrall_info(th)["hp"]) == 100.0, "coal: nothing lands before the wind-up ends")
+		run_to(c, ks, log)
+		var hits := of(log, EV_HIT, id).filter(func(e: Dictionary) -> bool: return int(e["tick"]) == ks)
+		var got := hits.map(func(e: Dictionary) -> int: return e["ints"][0])
+		got.sort()
+		var want: Array = [a, b] if stay else [b]
+		want.sort()
+		check(got == want and hits.all(func(e: Dictionary) -> bool: return e["floats"][0] == float(d["damage"]) and e["ints"][1] == PF_HK_EMBER),
+			"coal: %s: the ring takes the heroes inside it (%s) for %d as ember on tick %d, not the one just outside it" % ["standing in it" if stay else "stepping out", str(got), int(d["damage"]), ks])
+		check(is_equal_approx(float(c.thrall_info(th)["hp"]), 100.0 - float(d["damage"])), "coal: and a thrall inside it (%.0f of 100 left)" % float(c.thrall_info(th)["hp"]))
+		var zones := of(log, PF_EV_ZONE)
+		check(zones.size() == 1 and int(zones[0]["tick"]) == ks and zones[0]["ints"][0] == PF_ZONE_EMBER and zones[0]["ints"][1] == id and is_equal_approx(zones[0]["floats"][0], 14.0)
+			and is_equal_approx(zones[0]["floats"][1], 0.0) and is_equal_approx(zones[0]["floats"][2], r) and is_equal_approx(zones[0]["floats"][3], float(EB["poolS"])), "coal: the ground burns at the aim (r %.1f for %.0f s), told after the blows" % [r, float(EB["poolS"])])
+		check(log.find(zones[0]) > log.find(hits[hits.size() - 1]), "coal: (after the last blow in the buffer)")
+		check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown), "coal: the cooldown is %.1f s from the blow" % cooldown)
+		run_to(c, ks + 250, log)      # (the pool's four seconds; the next coal is a cooldown and a wind-up away)
+		var dps := float(d["damage"]) * float(EB["poolDpsMult"])
+		var ticks := pf_pulse_ticks(float(EB["poolS"]), 1.0)
+		var burns := pf_zone_hits(log, id, b).filter(func(e: Dictionary) -> bool: return e["ints"][1] == PF_HK_BURN)
+		check(burns.size() == ticks.size() and burns.all(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], dps)), "coal: the pool burns the hero in it %d times for %.1f (0.4 x %d)%s" % [ticks.size(), dps, int(d["damage"]), " (the one who stepped out was spared the blow, not the ground)" if not stay else ""])
+	# Bone Hex softens the coal and its pool (DmPfUtil.blow: the body's damage x its status set's damage dealt); the pool is made of the softened blow.
+	var h := make(422)
+	var hh := hero(h, Vector2(8, 0))
+	var hid: int = h.spawn_enemy("pyre_priest", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
+	h.apply_status(hid, "hex", 0, 1.0, 1000.0)
+	var soft := float(statuses["BONE_HEX"]["damageMult"])
+	check(is_equal_approx(h.damage_dealt_mult(hid), soft), "coal: Bone Hex is x%.2f on what it deals" % soft)
+	var hl := []
+	run(h, to_zero(float(h.enemy_info(hid)["attack_cd"])) + to_reach(windup) + 70, hl)
+	var hb := of(hl, EV_HIT, hid)
+	check(not hb.is_empty() and is_equal_approx(hb[0]["floats"][0], float(d["damage"]) * soft) and hb[0]["ints"][0] == hh, "coal: a hexed priest's coal is %.2f, not %d" % [hb[0]["floats"][0] if not hb.is_empty() else -1.0, int(d["damage"])])
+	var pb := hb.filter(func(e: Dictionary) -> bool: return e["ints"][1] == PF_HK_BURN)
+	check(not pb.is_empty() and is_equal_approx(pb[0]["floats"][0], float(d["damage"]) * soft * float(EB["poolDpsMult"])), "coal: and its pool %.2f a second" % [pb[0]["floats"][0] if not pb.is_empty() else -1.0])
+	# Silence does not stop it: its walk is dm_state_kite, which does not look (the cloister casters' does).
+	var s := make(423)
+	hero(s, Vector2(6, 0))
+	var sid: int = s.spawn_enemy("pyre_priest", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
+	silence(s, sid)
+	var sl := []
+	run(s, 400, sl)
+	check(not of(sl, EV_TELEGRAPH, sid, PF_TELL_EMBER).is_empty(), "coal: a silenced priest still throws (its walk does not look)")
+
+
+## The walk of the caster set for the priest: walk in at full speed beyond attackRange - 1.5, hold between, back off at 0.8 x under 3.5 m.
+func priest_walk() -> void:
+	var d := def("pyre_priest")
+	var walk_in := float(d["attackRange"]) - 1.5
+	var windup := float(d["windupMs"]) / 1000.0
+	var c := make(424)
+	var h := hero(c, Vector2(14.9, 0))
+	var id: int = c.spawn_enemy("pyre_priest", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
+	var spd := float(c.enemy_info(id)["speed"])
+	var log := []
+	run(c, 30, log)
+	var p0: Vector2 = c.enemy_info(id)["pos"]
+	run(c, 1, log)
+	var p1: Vector2 = c.enemy_info(id)["pos"]
+	check(absf((p1.x - p0.x) - spd * DT) < 2e-4 and Vector2(14.9, 0).distance_to(p0) > walk_in, "walk: %.4f m a tick (full speed %.4f) while the target is beyond %.1f m" % [p1.x - p0.x, spd * DT, walk_in])
+	for i in 600:
+		run(c, 1, log)
+		if not of(log, EV_TELEGRAPH, id, PF_TELL_EMBER).is_empty():
+			break
+	var ks := tick + to_reach(windup)
+	run_to(c, ks + 80, log)
+	var rest: Vector2 = c.enemy_info(id)["pos"]
+	var dist := Vector2(14.9, 0).distance_to(rest)
+	check(dist <= walk_in + 1e-3 and dist > walk_in - spd * DT * 1.5, "walk: holds at %.2f m (%.1f - one step)" % [dist, walk_in])
+	c.set_external(h, Vector2(rest.x + 2.0, rest.y), true)
+	var x0 := Vector2(c.enemy_info(id)["pos"]).x
+	run(c, 1, log)
+	var x1 := Vector2(c.enemy_info(id)["pos"]).x
+	check(absf((x0 - x1) - spd * float(KITE["BACK_OFF_SPEED"]) * DT) < 2e-4, "walk: backs off at %.1f x its speed (%.4f m a tick) when the hero comes within 3.5 m" % [float(KITE["BACK_OFF_SPEED"]), x0 - x1])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Cinderhound and the Mire Leech
+
+## The flank kinds: the goal is offset sideways by min(3, d x 0.45) beyond 2.5 m (a wide arc to a hero 14 m away), a plain bite after its wind-up with no telegraph; the hound's corpse is
+## swift and it leaves no pool; the leech's bite is toxic, it is tiny and leaves no corpse.
+func hound_and_leech() -> void:
+	for id_name in ["cinderhound", "mire_leech"]:
+		var d := def(id_name)
+		var area := PYRE if id_name == "cinderhound" else FEN
+		var c := make(431)
+		var h := hero(c, Vector2(14, 0))
+		var id: int = c.spawn_enemy(id_name, Vector2(0, 0), 1, 1.0, 1.0, false, area, false)
+		var log := []
+		var widest := 0.0
+		for i in 900:
+			run(c, 1, log)
+			widest = maxf(widest, absf(Vector2(c.enemy_info(id)["pos"]).y))
+			if not of(log, EV_ATTACK, id).is_empty():
+				break
+		var att := of(log, EV_ATTACK, id)
+		check(widest > 1.0 and widest < 3.2, "%s: flanks wide on the way in (%.2f m off the line, at most min(3, 0.45 d) = 3 m)" % [id_name, widest])
+		check(att.size() == 1 and att[0]["ints"][0] == 0 and of(log, EV_TELEGRAPH, id).is_empty(), "%s: a plain swing, no telegraph" % id_name)
+		var dd := Vector2(c.enemy_info(id)["pos"]).distance_to(Vector2(14, 0))
+		check(dd <= float(d["attackRange"]) + float(K["ATTACK_TRIGGER_PAD"]) + 0.1, "%s: it swings from %.2f m (attack range %.1f + %.2f)" % [id_name, dd, float(d["attackRange"]), float(K["ATTACK_TRIGGER_PAD"])])
+		var ks := int(att[0]["tick"]) + to_reach(float(d["windupMs"]) / 1000.0)
+		run_to(c, ks, log)
+		check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), float(d["cooldownMs"]) / 1000.0), "%s: the cooldown is the def's %.2f s from the blow" % [id_name, float(d["cooldownMs"]) / 1000.0])
+		var hits := of(log, EV_HIT, id)
+		var want_kind := PF_HK_TOXIC if id_name == "mire_leech" else PF_HK_MELEE
+		check(not hits.is_empty() and int(hits[0]["tick"]) == int(att[0]["tick"]) + to_reach(float(d["windupMs"]) / 1000.0) and hits[0]["floats"][0] == float(d["damage"]) and hits[0]["ints"][1] == want_kind and hits[0]["ints"][0] == h,
+			"%s: it bites %.2f s later for %d as %s" % [id_name, float(d["windupMs"]) / 1000.0, int(d["damage"]), "toxic (a rot bite)" if want_kind == PF_HK_TOXIC else "melee"])
+		# The fall.
+		events(c)
+		c.damage(id, 1.0e9, h, false)
+		var dl := []
+		drain(c, dl)
+		var corpses := of(dl, EV_CORPSE_ADDED)
+		if id_name == "cinderhound":
+			check(corpses.size() == 1 and corpses[0]["ints"][0] == PF_CK_SWIFT and of(dl, PF_EV_ZONE).is_empty(), "cinderhound: it falls leaving a swift corpse and no pool")
+		else:
+			check(corpses.is_empty() and c.corpse_count() == 0 and of(dl, PF_EV_ZONE).is_empty(), "leech: it falls leaving no corpse")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Slag Brute
+
+## The slam of the hazards (radius slamRadius, the aim fixed when the wind-up starts) with a burning pool on the aim: SLAG_POOL poolS seconds at 0.3 x its damage a second, of the slam's
+## radius, told after the blows and the cue. Its fall is its own corpse and no pool; Bone Hex does not soften the slam or its pool (the hazard's strike uses `damage`).
+func slag_slam_and_pool() -> void:
+	var d := def("slag_brute")
+	var SP: Dictionary = content["SLAG_POOL"]
+	var r := float(d["slamRadius"])
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	for hexed in [false, true]:
+		var c := make(441)
+		var a := hero(c, Vector2(4, 0))
+		var inside := hero(c, Vector2(4, r - 0.1))
+		var outside := hero(c, Vector2(4, r + 0.1))
+		var id: int = c.spawn_enemy("slag_brute", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
+		if hexed:
+			c.apply_status(id, "hex", 0, 1.0, 1000.0)
+		var log := []
+		for i in 1500:
+			run(c, 1, log)
+			if not of(log, EV_TELEGRAPH, id, TELL_SLAM).is_empty():
+				break
+		var tell := of(log, EV_TELEGRAPH, id, TELL_SLAM)
+		check(tell.size() == 1, "slag: a slam telegraph (hexed %s)" % str(hexed))
+		if tell.is_empty():
+			return
+		var k0 := int(tell[0]["tick"])
+		var f: PackedFloat32Array = tell[0]["floats"]
+		check(is_equal_approx(f[2], 4.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup), "slag: the circle (r %.1f) at the hero's place for %.1f s" % [r, windup])
+		var ks := k0 + to_reach(windup)
+		run_to(c, ks, log)
+		var hits := of(log, EV_HIT, id)
+		var who := {}
+		for e in hits:
+			who[int(e["ints"][0])] = [e["floats"][0], e["ints"][1], int(e["tick"])]
+		check(who.has(a) and who.has(inside) and not who.has(outside) and hits.size() == 2, "slag: the slam reaches the two heroes within %.1f m of the aim, not the one beyond (%s)" % [r, str(who.keys())])
+		check(who.has(a) and who[a][0] == float(d["damage"]) and who[a][1] == PF_HK_MELEE and who[a][2] == ks, "slag: %d damage%s, melee, on tick %d" % [int(d["damage"]), " (Bone Hex does not soften it)" if hexed else "", ks])
+		var cue := of(log, EV_CUE, id, CUE_SLAM)
+		var zones := of(log, PF_EV_ZONE)
+		check(cue.size() == 1 and zones.size() == 1 and log.find(zones[0]) > log.find(cue[0]) and log.find(cue[0]) > log.find(hits[hits.size() - 1]), "slag: the blows, the slam cue, then the pool")
+		var z: Dictionary = zones[0]
+		check(z["ints"][0] == PF_ZONE_EMBER and z["ints"][1] == id and is_equal_approx(z["floats"][0], 4.0) and is_equal_approx(z["floats"][1], 0.0) and is_equal_approx(z["floats"][2], r) and is_equal_approx(z["floats"][3], float(SP["poolS"])),
+			"slag: a pool on the aim, r %.1f (the slam's) for %.0f s" % [r, float(SP["poolS"])])
+		check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown), "slag: the cooldown is %.1f s" % cooldown)
+		run_to(c, ks + 250, log)      # (the pool's four seconds; the next slam is a cooldown and a wind-up away)
+		var dps := float(d["damage"]) * float(SP["poolDpsMult"])
+		var ticks := pf_pulse_ticks(float(SP["poolS"]), 1.0)
+		var burns := pf_zone_hits(log, id, a).filter(func(e: Dictionary) -> bool: return e["ints"][1] == PF_HK_BURN)
+		check(burns.size() == ticks.size() and burns.all(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], dps)), "slag: the pool burns %d times for %.1f (0.3 x %d)" % [ticks.size(), dps, int(d["damage"])])
+		check(not pf_zone_hits(log, id, outside).is_empty(), "slag: (and the rim, %.2f m from the centre, burns too)" % (r + 0.1))
+		if hexed:
+			continue
+		# Its fall: a resonant corpse and no pool.
+		events(c)
+		var before: int = c.corpse_count()
+		c.damage(id, 1.0e9, a, false)
+		var dl := []
+		drain(c, dl)
+		var corpses := of(dl, EV_CORPSE_ADDED)
+		check(of(dl, PF_EV_ZONE).is_empty() and corpses.size() == 1 and corpses[0]["ints"][0] == PF_CK_RESONANT and c.corpse_count() == before + 1, "slag: it falls leaving a resonant corpse and no pool of its own")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Bog Hag
+
+## The hex: the ring of HAG_HEX.radius is aimed at the thrall in the thickest knot of thralls (most living thralls within the radius, itself included) among those within attackRange of the
+## hag, the first in raise order on a tie, a far thrall counting as a neighbour but not as a candidate; with none, at the target. At the end of the wind-up everything inside takes
+## blowMult x the blow as "curse", thralls are cursed for durationS (and a thrall the blow killed is not), heroes are chilled for chillMs.
+func hag_hex() -> void:
+	var d := def("bog_hag")
+	var H: Dictionary = fen["HAG_HEX"]
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var r := float(H["radius"])
+	var c := make(451)
+	var a := hero(c, Vector2(1.5, 23))
+	var ths := pf_thralls(c, a, [Vector2(0, 22), Vector2(1, 22), Vector2(3.4, 22.5), Vector2(-8, 20)])   # three in a knot (the middle one the centre of it), one out of the hag's reach
+	var id: int = c.spawn_enemy("bog_hag", Vector2(0, 14), 1, 1.0, 1.0, false, FEN, false)
+	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var t0 := tick
+	var log := []
+	run_to(c, t0 + to_zero(cd0), log)
+	var tell := of(log, EV_TELEGRAPH, id, PF_TELL_HEX)
+	check(tell.size() == 1 and int(tell[0]["tick"]) == t0 + to_zero(cd0), "hex: the telegraph on the tick the cooldown is up (%d ticks after it appeared)" % to_zero(cd0))
+	if tell.is_empty():
+		return
+	var f: PackedFloat32Array = tell[0]["floats"]
+	check(is_equal_approx(f[2], 1.0) and is_equal_approx(f[3], 22.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup), "hex: a ring of %.1f m on the thrall at the centre of the knot (1, 22), for %.1f s" % [r, windup])
+	var att := of(log, EV_ATTACK, id)
+	check(att.size() == 1 and att[0]["ints"][0] == PF_BLOW_HEX and is_equal_approx(att[0]["floats"][0], 1.0) and is_equal_approx(att[0]["floats"][1], 22.0), "hex: the swing is a hex, aimed at the knot")
+	check(absf(angle_difference(float(c.enemy_info(id)["yaw"]), atan2(1.0, 8.0))) < 1e-4, "hex: and the hag turns to face it")
+	var ks: int = int(tell[0]["tick"]) + to_reach(windup)
+	c.set_thrall_pos(ths[0], Vector2(0, 22))
+	run_to(c, ks - 1, log)
+	check(of(log, EV_HIT, id).is_empty() and of(log, PF_EV_EFFECT).is_empty() and float(c.thrall_info(ths[0])["cursed_t"]) == 0.0, "hex: nothing lands before the wind-up ends")
+	run_to(c, ks, log)
+	var dmg := float(d["damage"]) * float(H["blowMult"])
+	var hits := of(log, EV_HIT, id)
+	check(hits.size() == 1 and hits[0]["ints"][0] == a and hits[0]["ints"][1] == HK_CURSE and is_equal_approx(hits[0]["floats"][0], dmg) and int(hits[0]["tick"]) == ks, "hex: the hero in the ring takes %.1f (x%.2f) as curse on tick %d" % [dmg, float(H["blowMult"]), ks])
+	for k in 3:
+		check(is_equal_approx(float(c.thrall_info(ths[k])["hp"]), 100.0 - dmg), "hex: thrall %d in the ring takes %.1f" % [k + 1, dmg])
+		check(is_equal_approx(float(c.thrall_info(ths[k])["cursed_t"]), float(H["durationS"]) - DT), "hex: and is cursed for %.0f s (one tick of it gone: it counts down in its own step)" % float(H["durationS"]))
+	check(float(c.thrall_info(ths[3])["hp"]) == 100.0 and float(c.thrall_info(ths[3])["cursed_t"]) == 0.0, "hex: the thrall outside the ring is untouched")
+	var fx := of(log, PF_EV_EFFECT, id)
+	check(fx.size() == 1 and fx[0]["ints"][0] == a and fx[0]["ints"][1] == PF_TE_CHILL and is_equal_approx(fx[0]["floats"][0], float(H["chillMs"]) / 1000.0) and log.find(fx[0]) > log.find(hits[0]),
+		"hex: the hero is chilled for %.1f s (after the blow), the thralls are not" % (float(H["chillMs"]) / 1000.0))
+	check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown), "hex: the cooldown is %.1f s from the blow" % cooldown)
+	# The cursed count runs out in its seconds (the hag falls so that it does not hex again).
+	c.damage(id, 1.0e9, a, false)
+	run(c, to_reach(float(H["durationS"]) - 0.5), log)
+	check(float(c.thrall_info(ths[0])["cursed_t"]) > 0.0, "hex: the curse is still on half a second before its %.0f s are over" % float(H["durationS"]))
+	run(c, to_reach(0.5) + 2, log)
+	check(float(c.thrall_info(ths[0])["cursed_t"]) == 0.0, "hex: and it is over after %.0f s" % float(H["durationS"]))
+
+
+## The knot: a tie goes to the first thrall raised; a far thrall counts toward a knot but is not itself a candidate; with no thrall in reach the target is the aim; a thrall the hex kills is
+## not cursed; a Bone Hex-softened hag hexes softer.
+func hag_aim() -> void:
+	var d := def("bog_hag")
+	var H: Dictionary = fen["HAG_HEX"]
+	var reach := float(d["attackRange"])
+	# 1. Two equal knots of two: the first thrall raised.
+	var c := make(452)
+	var a := hero(c, Vector2(5, 30))
+	pf_thralls(c, a, [Vector2(0, 22), Vector2(1, 22), Vector2(10, 22), Vector2(9, 22)])
+	var id: int = c.spawn_enemy("bog_hag", Vector2(5, 14), 1, 1.0, 1.0, false, FEN, false)
+	root(c, id)     # (it stays where it is: the knots are measured from here)
+	var log := []
+	run(c, to_zero(float(c.enemy_info(id)["attack_cd"])) + 1, log)
+	var t1 := of(log, EV_TELEGRAPH, id, PF_TELL_HEX)
+	check(t1.size() == 1 and is_equal_approx(t1[0]["floats"][2], 0.0) and is_equal_approx(t1[0]["floats"][3], 22.0), "hex aim: two knots of two: the first thrall raised, at (0, 22) (%s)" % str(t1[0]["floats"].slice(2, 4) if t1.size() == 1 else "none"))
+	# 2. A thrall out of reach is a neighbour, not a candidate: the knot at +x has the most thralls though it is raised second.
+	var c2 := make(453)
+	var a2 := hero(c2, Vector2(0, 30))
+	pf_thralls(c2, a2, [Vector2(-9.0, 0), Vector2(9.0, 0), Vector2(11.9, 0)])
+	var id2: int = c2.spawn_enemy("bog_hag", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	root(c2, id2)
+	var l2 := []
+	run(c2, to_zero(float(c2.enemy_info(id2)["attack_cd"])) + 1, l2)
+	var t2 := of(l2, EV_TELEGRAPH, id2, PF_TELL_HEX)
+	check(t2.size() == 1 and is_equal_approx(t2[0]["floats"][2], 9.0) and is_equal_approx(t2[0]["floats"][3], 0.0) and Vector2(11.9, 0).length() > reach,
+		"hex aim: a thrall at 11.9 m (beyond the hag's %.1f m) counts toward the knot at (9, 0), which has the most, and is not a candidate (%s)" % [reach, str(t2[0]["floats"].slice(2, 4) if t2.size() == 1 else "none")])
+	# 3. No thrall within reach: the target.
+	var c3 := make(454)
+	var a3 := hero(c3, Vector2(0, 9))
+	pf_thralls(c3, a3, [Vector2(0, -10.0)])
+	var id3: int = c3.spawn_enemy("bog_hag", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	root(c3, id3)
+	var l3 := []
+	run(c3, to_zero(float(c3.enemy_info(id3)["attack_cd"])) + 1, l3)
+	var t3 := of(l3, EV_TELEGRAPH, id3, PF_TELL_HEX)
+	check(t3.size() == 1 and is_equal_approx(t3[0]["floats"][2], 0.0) and is_equal_approx(t3[0]["floats"][3], 9.0), "hex aim: no thrall within reach (the one at 10 m is beyond): the ring is on the hero it hunts (%s)" % str(t3[0]["floats"].slice(2, 4) if t3.size() == 1 else "none"))
+	# 4. A thrall the hex kills is not cursed; a hexed hag hexes softer (blowMult x the softened blow).
+	var c4 := make(455)
+	var a4 := hero(c4, Vector2(0, 30))
+	var weak: int = pf_thralls(c4, a4, [Vector2(0, 9)], 3.0)[0]
+	var id4: int = c4.spawn_enemy("bog_hag", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	c4.apply_status(id4, "hex", 0, 1.0, 1000.0)
+	var l4 := []
+	run(c4, to_zero(float(c4.enemy_info(id4)["attack_cd"])) + to_reach(float(d["windupMs"]) / 1000.0) + 2, l4)
+	var soft := float(d["damage"]) * float(statuses["BONE_HEX"]["damageMult"]) * float(H["blowMult"])
+	var died := of(l4, 26, weak)    # EV_THRALL_DIED
+	check(died.size() == 1 and soft > 3.0 and float(c4.thrall_info(weak)["cursed_t"]) == 0.0, "hex aim: a thrall the hex kills (%.2f against 3 health) is not cursed" % soft)
+	var c5 := make(456)
+	var a5 := hero(c5, Vector2(0, 8))
+	var id5: int = c5.spawn_enemy("bog_hag", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	c5.apply_status(id5, "hex", 0, 1.0, 1000.0)
+	var l5 := []
+	run(c5, to_zero(float(c5.enemy_info(id5)["attack_cd"])) + to_reach(float(d["windupMs"]) / 1000.0) + 2, l5)
+	var h5 := of(l5, EV_HIT, id5)
+	check(not h5.is_empty() and h5[0]["ints"][0] == a5 and is_equal_approx(h5[0]["floats"][0], soft), "hex aim: a hexed hag's blow on a hero is %.2f (%d x %.2f x %.2f)" % [soft, int(d["damage"]), float(statuses["BONE_HEX"]["damageMult"]), float(H["blowMult"])])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Fen Wisp
+
+## The pulse: the ring of WISP_PULSE.radius at the aim fixed at the wind-up, everything inside takes the blow as "dust", heroes are chilled for chillMs (thralls are not), no zone is left.
+func wisp_pulse() -> void:
+	var d := def("fen_wisp")
+	var W: Dictionary = fen["WISP_PULSE"]
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var r := float(W["radius"])
+	var cast_at := float(d["attackRange"]) - 0.5
+	var c := make(461)
+	var a := hero(c, Vector2(14, 0))
+	var b := hero(c, Vector2(14.0 + r - 0.05, 0))
+	var o := hero(c, Vector2(14.0 + r + 0.05, 0))
+	var th: int = pf_thralls(c, a, [Vector2(14, -1.5)])[0]
+	var log := []
+	var id: int = c.spawn_enemy("fen_wisp", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	drain(c, log)
+	var xs: Array = []
+	var k0 := -1
+	for i in 900:
+		run(c, 1, log)
+		xs.append(Vector2(c.enemy_info(id)["pos"]))
+		if not of(log, EV_TELEGRAPH, id, PF_TELL_PULSE).is_empty():
+			k0 = tick
+			break
+	check(k0 > 0, "pulse: it casts")
+	if k0 < 0:
+		return
+	var f: PackedFloat32Array = of(log, EV_TELEGRAPH, id, PF_TELL_PULSE)[0]["floats"]
+	check(is_equal_approx(f[2], 14.0) and is_equal_approx(f[3], 0.0) and is_equal_approx(f[4], r) and is_equal_approx(f[5], windup), "pulse: a ring of %.1f m on the target for %.1f s" % [r, windup])
+	var d_start := Vector2(14, 0).distance_to(xs[xs.size() - 2])
+	check(d_start <= cast_at and d_start > cast_at - float(c.enemy_info(id)["speed"]) * DT * 1.5, "pulse: cast from %.2f m (attackRange - 0.5 = %.1f)" % [d_start, cast_at])
+	check(of(log, EV_ATTACK, id)[0]["ints"][0] == PF_BLOW_PULSE, "pulse: the swing is a pulse")
+	var ks := k0 + to_reach(windup)
+	run_to(c, ks, log)
+	var hits := of(log, EV_HIT, id)
+	var got := hits.map(func(e: Dictionary) -> int: return e["ints"][0])
+	got.sort()
+	check(got == [a, b] and hits.all(func(e: Dictionary) -> bool: return e["floats"][0] == float(d["damage"]) and e["ints"][1] == PF_HK_DUST and int(e["tick"]) == ks) and not got.has(o),
+		"pulse: the ring takes the two heroes inside it for %d as dust on tick %d, not the one just outside" % [int(d["damage"]), ks])
+	check(is_equal_approx(float(c.thrall_info(th)["hp"]), 100.0 - float(d["damage"])), "pulse: and the thrall inside it (%.0f of 100 left)" % float(c.thrall_info(th)["hp"]))
+	var fx := of(log, PF_EV_EFFECT, id)
+	var chilled := fx.map(func(e: Dictionary) -> int: return e["ints"][0])
+	chilled.sort()
+	check(chilled == [a, b] and fx.all(func(e: Dictionary) -> bool: return e["ints"][1] == PF_TE_CHILL and is_equal_approx(e["floats"][0], float(W["chillMs"]) / 1000.0)),
+		"pulse: both heroes are chilled for %.1f s, the thrall is not" % (float(W["chillMs"]) / 1000.0))
+	check(of(log, PF_EV_ZONE).is_empty() and of(log, EV_CUE, id).is_empty(), "pulse: it leaves no zone, and has no cue")
+	check(is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown), "pulse: the cooldown is %.1f s from the blow" % cooldown)
+	check(of(events(c), EV_CORPSE_ADDED).is_empty() and c.corpse_count() == 0, "pulse: (no corpse yet)")
+	c.damage(id, 1.0e9, a, false)
+	check(of(events(c), EV_CORPSE_ADDED).is_empty() and c.corpse_count() == 0, "pulse: it falls leaving no corpse")
+
+
+## The lure (dm_state_pf_lure_kite): when its target is inside 3.5 m and the cast is not ready it backs off at 0.8 x its speed toward the open water, the heading 0.55 away from the
+## target and 0.45 toward FEN_LURE, not straight away; when the cast is ready it casts; the lure is data.
+func wisp_lure() -> void:
+	var d := def("fen_wisp")
+	var L: Dictionary = fen["FEN_LURE"]
+	for lure: Vector2 in [Vector2(float(L["x"]), float(L["z"])), Vector2(44.0, 79.0)]:
+		var c := make(462)
+		if lure != Vector2(float(L["x"]), float(L["z"])):
+			c.load_legion_tuning({"fen": {"FEN_LURE": {"x": lure.x, "z": lure.y}}})
+		var h := hero(c, Vector2(2, 0))
+		var id: int = c.spawn_enemy("fen_wisp", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+		var cd0 := float(c.enemy_info(id)["attack_cd"])
+		var log := []
+		var k := -1
+		for i in 60:
+			run(c, 1, log)
+			if c.enemy_info(id)["state"] == CHASE:
+				k = tick
+				break
+		check(k > 0, "lure: it hunts")
+		var p0: Vector2 = c.enemy_info(id)["pos"]
+		var spd := float(c.enemy_info(id)["speed"])
+		run(c, 1, log)
+		var p1: Vector2 = c.enemy_info(id)["pos"]
+		var away := (p0 - Vector2(2, 0)).normalized()
+		var toward := (lure - p0).normalized()
+		var heading := (away * 0.55 + toward * 0.45)
+		var want := heading.normalized() * spd * float(KITE["BACK_OFF_SPEED"]) * DT
+		check((p1 - p0).distance_to(want) < 2e-4, "lure: %s: backs off at %.1f x its speed along %.2f x away + %.2f x toward the lure (%.4f, %.4f against %.4f, %.4f)" % [str(lure), float(KITE["BACK_OFF_SPEED"]), 0.55, 0.45, (p1 - p0).x, (p1 - p0).y, want.x, want.y])
+		check(absf((p1 - p0).y) > 0.002 and (p1 - p0).dot(toward) > 0.0 and (p1 - p0).x < 0.0, "lure: not straight away from the hero: it drifts toward the water")
+		# The cast comes first when it is ready: the telegraph on the tick the cooldown is up, 2 m from the hero.
+		run_to(c, to_zero(cd0), log)
+		check(first_tick(of(log, EV_TELEGRAPH, id, PF_TELL_PULSE)) == to_zero(cd0), "lure: and when the cast is ready it casts, however close the hero is (tick %d)" % to_zero(cd0))
+		if lure == Vector2(44.0, 79.0):
+			check(((p1 - p0).y > 0.0) and (p1 - p0).x < 0.0, "lure: the water is data: another FEN_LURE bends the retreat the other way")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Drowned Sexton
+
+## The chain (dm_state_pf_hook_chase, dm_enemy_pf_hazard): a hero between minRange and range away (both inclusive) with a clear line, when the swing's cooldown and the chain's own are both up,
+## gets the chain before the slam: a telegraph along the line (range long), the aim fixed at the start, the chain's own cooldown starting then. At the end of the wind-up everything in the
+## strip (reach range + 0.6 m, half a width halfWidth + 0.3 m) takes blowMult x the blow; a hero is dragged pullM toward the sexton (never closer than 1.6 m, nothing under 5 cm) and rooted;
+## a thrall is hit and never pulled. The cue is told at the aim.
+func sexton_chain() -> void:
+	var d := def("drowned_sexton")
+	var H: Dictionary = fen["SEXTON_HOOK"]
+	var windup := float(d["windupMs"]) / 1000.0
+	var cooldown := float(d["cooldownMs"]) / 1000.0
+	var reach := float(H["range"]) + 0.6
+	var half := float(H["halfWidth"]) + 0.3
+	var c := make(471)
+	var a := hero(c, Vector2(0, 7))                      # the target, 7 m out
+	var near := hero(c, Vector2(half - 0.05, 7.01))      # on the edge of the strip
+	var off := hero(c, Vector2(half + 0.05, 7.02))       # just beside it
+	var behind := hero(c, Vector2(0, reach - 0.05))      # at the far end of the reach
+	var past := hero(c, Vector2(0, reach + 0.05))        # just beyond it
+	var th: int = pf_thralls(c, a, [Vector2(0, 8)])[0]   # in the strip, but a thrall (and farther than the hero, so the hero stays the target)
+	var id: int = c.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	root(c, id)
+	var cd0 := float(c.enemy_info(id)["attack_cd"])
+	var t0 := tick
+	var log := []
+	run_to(c, t0 + to_zero(cd0) - 1, log)
+	check(of(log, EV_TELEGRAPH, id).is_empty() and not bool(c.enemy_info(id)["hooking"]), "chain: nothing while the cooldown runs (%d ticks)" % (to_zero(cd0) - 1))
+	run_to(c, t0 + to_zero(cd0), log)
+	var tell := of(log, EV_TELEGRAPH, id, PF_TELL_HOOK)
+	check(tell.size() == 1 and int(tell[0]["tick"]) == t0 + to_zero(cd0) and bool(c.enemy_info(id)["hooking"]), "chain: the telegraph on the tick the cooldown is up (tick %d), and the sexton is hooking" % (t0 + to_zero(cd0)))
+	if tell.is_empty():
+		return
+	var k0 := int(tell[0]["tick"])
+	var f: PackedFloat32Array = tell[0]["floats"]
+	check(is_equal_approx(f[0], 0.0) and is_equal_approx(f[1], 0.0) and is_equal_approx(f[2], 0.0) and is_equal_approx(f[3], 7.0) and is_equal_approx(f[4], float(H["range"])) and is_equal_approx(f[5], windup),
+		"chain: a strip along the line to the hero, %.1f m long, for the swing's %.1f s" % [float(H["range"]), windup])
+	var att := of(log, EV_ATTACK, id)
+	check(att.size() == 1 and att[0]["ints"][0] == PF_BLOW_HOOK and is_equal_approx(att[0]["floats"][1], 7.0), "chain: the swing is a hook, aimed at the hero's place")
+	check(is_equal_approx(float(c.enemy_info(id)["hook_cd"]), float(H["cooldownS"])), "chain: its own cooldown of %.1f s starts at the wind-up" % float(H["cooldownS"]))
+	var ks := k0 + to_reach(windup)
+	run_to(c, ks - 1, log)
+	check(of(log, EV_HIT, id).is_empty() and of(log, PF_EV_EFFECT).is_empty() and float(c.thrall_info(th)["hp"]) == 100.0, "chain: nothing lands before the wind-up ends")
+	run_to(c, ks, log)
+	var dmg := float(d["damage"]) * float(H["blowMult"])
+	var hits := of(log, EV_HIT, id)
+	var got := hits.map(func(e: Dictionary) -> int: return e["ints"][0])
+	check(got == [a, near, behind] and hits.all(func(e: Dictionary) -> bool: return is_equal_approx(e["floats"][0], dmg) and e["ints"][1] == PF_HK_MELEE and int(e["tick"]) == ks),
+		"chain: the strip takes the three heroes in it for %.1f (x%.1f) on tick %d, not the ones beside it or past its reach (%s)" % [dmg, float(H["blowMult"]), ks, str(got)])
+	check(not got.has(off) and not got.has(past) and is_equal_approx(float(c.thrall_info(th)["hp"]), 100.0 - dmg), "chain: and the thrall in it too (%.1f of 100 left)" % float(c.thrall_info(th)["hp"]))
+	var fx := of(log, PF_EV_EFFECT, id)
+	var pulls := {}
+	var roots := {}
+	for e in fx:
+		if e["ints"][1] == PF_TE_PULL:
+			pulls[int(e["ints"][0])] = Vector2(e["floats"][1], e["floats"][2])
+		elif e["ints"][1] == PF_TE_ROOT:
+			roots[int(e["ints"][0])] = e["floats"][0]
+	var drag := float(H["pullM"])
+	var want_pull := {}
+	for who in [[a, Vector2(0, 7)], [near, Vector2(half - 0.05, 7.01)], [behind, Vector2(0, reach - 0.05)]]:
+		var p: Vector2 = who[1]
+		want_pull[who[0]] = p + (Vector2.ZERO - p) / p.length() * drag
+	var pull_ok := pulls.size() == 3
+	for who in want_pull:
+		pull_ok = pull_ok and pulls.has(who) and pulls[who].distance_to(want_pull[who]) < 1e-3
+	check(pull_ok, "chain: each is dragged %.1f m toward the sexton (%s)" % [drag, str(pulls)])
+	var root_ok := roots.size() == 3
+	for who in roots:
+		root_ok = root_ok and is_equal_approx(roots[who], float(H["rootMs"]) / 1000.0)
+	check(root_ok and not pulls.has(th) and not roots.has(th) and not roots.has(off), "chain: and rooted for %.1f s; the thrall is neither dragged nor rooted" % (float(H["rootMs"]) / 1000.0))
+	# Order: a hero's blow, then its drag, then its root; the cue comes last, on the aim.
+	var order_ok := true
+	for who in [a, near, behind]:
+		var i_hit := -1
+		var i_pull := -1
+		var i_root := -1
+		for i in log.size():
+			var e: Dictionary = log[i]
+			if e["type"] == EV_HIT and e["ints"][0] == who:
+				i_hit = i
+			elif e["type"] == PF_EV_EFFECT and e["ints"][0] == who and e["ints"][1] == PF_TE_PULL:
+				i_pull = i
+			elif e["type"] == PF_EV_EFFECT and e["ints"][0] == who and e["ints"][1] == PF_TE_ROOT:
+				i_root = i
+		order_ok = order_ok and i_hit >= 0 and i_hit < i_pull and i_pull < i_root
+	var cue := of(log, EV_CUE, id, PF_CUE_HOOK)
+	check(order_ok and cue.size() == 1 and log.find(cue[0]) == log.size() - 1 and is_equal_approx(cue[0]["floats"][0], 0.0) and is_equal_approx(cue[0]["floats"][1], 7.0) and is_equal_approx(cue[0]["floats"][2], float(H["range"])),
+		"chain: blow, drag, root for each, then the hook cue on the aim")
+	check(not bool(c.enemy_info(id)["hooking"]) and is_equal_approx(float(c.enemy_info(id)["attack_cd"]), cooldown), "chain: the flag is down at the blow, and the swing's cooldown (%.1f s) starts" % cooldown)
+	# The next chain waits for its own cooldown, not the swing's.
+	var k2 := k0 + to_zero(float(H["cooldownS"]))
+	run_to(c, k2 - 1, log)
+	check(of(log, EV_TELEGRAPH, id, PF_TELL_HOOK).size() == 1, "chain: no second chain before its %.1f s are up (swing cooldown %.1f s)" % [float(H["cooldownS"]), cooldown])
+	run_to(c, k2, log)
+	var second := of(log, EV_TELEGRAPH, id, PF_TELL_HOOK)
+	check(second.size() == 2 and int(second[1]["tick"]) == k2, "chain: the second chain at %d ticks (%.1f s) after the first wind-up began (tick %d)" % [k2 - k0, float(H["cooldownS"]), k2])
+
+
+## The pull's limits: never closer than 1.6 m to the sexton, nothing under 5 cm.
+func sexton_pull_limits() -> void:
+	var d := def("drowned_sexton")
+	var H: Dictionary = fen["SEXTON_HOOK"]
+	var c := make(472)
+	var a := hero(c, Vector2(0, 6.2))
+	var close := hero(c, Vector2(0.0, 3.0))      # in the strip, 3 m out: dragged to 1.6 m, not past it (1.4 m of the 4.5)
+	var snug := hero(c, Vector2(0.0, 1.65))      # 1.65 m out: 5 cm to go, which is not enough to move
+	var inside := hero(c, Vector2(0.0, 1.7))     # 1.7 m out: 10 cm to the limit
+	var id: int = c.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	root(c, id)
+	for h in [close, snug, inside]:      # (the target is the nearest hero: the near ones wait out of the way until the chain has begun, then stand in its strip)
+		c.set_external(h, Vector2(30, 30), true)
+	var log := []
+	run(c, to_zero(float(c.enemy_info(id)["attack_cd"])) + 2, log)
+	check(not of(log, EV_TELEGRAPH, id, PF_TELL_HOOK).is_empty(), "pull: the chain begins on the hero at 6.2 m")
+	c.set_external(close, Vector2(0.0, 3.0), true)
+	c.set_external(snug, Vector2(0.0, 1.65), true)
+	c.set_external(inside, Vector2(0.0, 1.7), true)
+	run(c, to_reach(float(d["windupMs"]) / 1000.0) + 2, log)
+	var pulls := {}
+	var roots := {}
+	for e in of(log, PF_EV_EFFECT, id):
+		if e["ints"][1] == PF_TE_PULL:
+			pulls[int(e["ints"][0])] = Vector2(e["floats"][1], e["floats"][2])
+		elif e["ints"][1] == PF_TE_ROOT:
+			roots[int(e["ints"][0])] = true
+	check(pulls.has(close) and pulls[close].distance_to(Vector2(0, 1.6)) < 1e-3, "pull: a hero 3 m out is dragged to 1.6 m from the sexton, not through it (%s)" % str(pulls.get(close)))
+	check(pulls.has(inside) and pulls[inside].distance_to(Vector2(0, 1.6)) < 1e-3, "pull: a hero 1.7 m out is dragged the 10 cm that remain")
+	check(not pulls.has(snug) and roots.has(snug), "pull: a hero at 1.65 m is not dragged (5 cm is nothing) and is rooted all the same")
+	check(pulls.has(a) and pulls[a].distance_to(Vector2(0, 6.2 - float(H["pullM"]))) < 1e-3, "pull: the target, 6.2 m out, is dragged the full %.1f m (to 1.7 m)" % float(H["pullM"]))
+
+
+## When the chain is not for it: a thrall is never hooked; closer than minRange or farther than range is not; a wall between blocks it; the slam is the swing at close quarters; an
+## interrupted chain does not make the next slam a chain.
+func sexton_gates() -> void:
+	var d := def("drowned_sexton")
+	var H: Dictionary = fen["SEXTON_HOOK"]
+	var windup := float(d["windupMs"]) / 1000.0
+	# The window: both ends inclusive.
+	for trial in [[float(H["minRange"]) - 0.1, false], [float(H["minRange"]), true], [float(H["range"]), true], [float(H["range"]) + 0.05, false]]:
+		var c := make(473)
+		hero(c, Vector2(0, float(trial[0])))
+		var id: int = c.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+		root(c, id)
+		var log := []
+		run(c, 300, log)
+		check(of(log, EV_TELEGRAPH, id, PF_TELL_HOOK).is_empty() == (not bool(trial[1])), "chain: a hero %.2f m away is %s (minRange %.1f, range %.1f)" % [float(trial[0]), "hooked" if trial[1] else "not hooked", float(H["minRange"]), float(H["range"])])
+		if not bool(trial[1]):
+			check(of(log, EV_ATTACK, id).is_empty(), "chain: and out of slam reach (rooted) it does nothing at all")
+	# A thrall is never hooked, whatever the distance: only a hero.
+	var t := make(474)
+	var owner := hero(t, FAR)
+	pf_thralls(t, owner, [Vector2(0, 7)])
+	var tid: int = t.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	root(t, tid)
+	var tl := []
+	run(t, 300, tl)
+	check(of(tl, EV_TELEGRAPH, tid).is_empty(), "chain: a thrall 7 m away is never hooked")
+	# A wall between (the Ossuary Wall as an obstacle) blocks the line; without it the chain comes.
+	var w := make(475)
+	hero(w, Vector2(0, 7))
+	var wid: int = w.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	root(w, wid)
+	var wall: int = w.add_obstacle(Vector2(-4, 3.5), Vector2(4, 3.5), 0.5)
+	var wl := []
+	var w0 := to_zero(float(w.enemy_info(wid)["attack_cd"]))
+	run_to(w, w0 + 20, wl)
+	check(of(wl, EV_TELEGRAPH, wid).is_empty(), "chain: a wall in the line blocks it")
+	check(w.remove_obstacle(wall), "chain: the wall goes")
+	run(w, 1, wl)
+	check(first_tick(of(wl, EV_TELEGRAPH, wid, PF_TELL_HOOK)) == tick, "chain: and the very next tick (nothing caches the line) the chain begins")
+	# A wall that is not in the way does not block it, and a wall in the way of one hero only blocks the blow on him (the strip is checked per target).
+	var w2 := make(476)
+	var wa := hero(w2, Vector2(0, 7))
+	var wb := hero(w2, Vector2(1.1, 9.0))      # in the strip, behind a short wall
+	var wid2: int = w2.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	root(w2, wid2)
+	w2.add_obstacle(Vector2(0.3, 6.0), Vector2(1.2, 6.0), 0.4)       # across the line to the second hero (it passes x 0.73 at z 6), not across the line up the axis to the first
+	var w2l := []
+	run(w2, to_zero(float(w2.enemy_info(wid2)["attack_cd"])) + to_reach(windup) + 2, w2l)
+	var w2h := of(w2l, EV_HIT, wid2).map(func(e: Dictionary) -> int: return e["ints"][0])
+	check(w2h == [wa] and not of(w2l, PF_EV_EFFECT, wid2).filter(func(e: Dictionary) -> bool: return e["ints"][0] == wb).size() > 0, "chain: a wall across one hero's line spares him; the other is hit (%s)" % str(w2h))
+	# At close quarters it slams (the plain brute chase); an interrupted chain leaves no hook behind for the slam.
+	var s := make(477)
+	var sh := hero(s, Vector2(0, 7))
+	var sid: int = s.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	root(s, sid)
+	var sl := []
+	var s0 := to_zero(float(s.enemy_info(sid)["attack_cd"]))
+	run_to(s, s0 + 18, sl)
+	check(bool(s.enemy_info(sid)["hooking"]), "chain: (the chain is under way)")
+	s.stun(sid, 1.0)
+	drain(s, sl)
+	check(s.enemy_info(sid)["state"] == HURT and not bool(s.enemy_info(sid)["hooking"]) and float(s.enemy_info(sid)["hook_cd"]) > 6.0, "chain: a stun ends the chain, and its cooldown has been spent all the same")
+	var flinch_end := tick + to_reach(1.0)
+	s.set_external(sh, Vector2(0, 2.0), true)        # now at slam range
+	run_to(s, flinch_end + 5, sl)
+	var slam := of(sl, EV_TELEGRAPH, sid, TELL_SLAM)
+	check(slam.size() == 1 and of(sl, EV_TELEGRAPH, sid, PF_TELL_HOOK).size() == 1 and of(sl, EV_ATTACK, sid).back()["ints"][0] == BLOW_SLAM, "chain: back on the hunt it slams the hero at 2 m: not a chain (the flag did not survive)")
+	if not slam.is_empty():
+		check(is_equal_approx(slam[0]["floats"][4], float(d["slamRadius"])) and is_equal_approx(slam[0]["floats"][5], windup), "slam: a ring of %.1f m for %.1f s" % [float(d["slamRadius"]), windup])
+
+
+## Its slam (r 2.5, 25) when the hero is close and the chain is not for him, and its fall: its own corpse and one risen on the ring (deathCorpses 2).
+func sexton_slam_and_corpses() -> void:
+	var d := def("drowned_sexton")
+	var c := make(478)
+	var h := hero(c, Vector2(2.0, 0))
+	var id: int = c.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	var log := []
+	for i in 600:
+		run(c, 1, log)
+		if not of(log, EV_HIT, id).is_empty():
+			break
+	var hits := of(log, EV_HIT, id)
+	check(not hits.is_empty() and hits[0]["floats"][0] == float(d["damage"]) and hits[0]["ints"][0] == h and hits[0]["ints"][1] == PF_HK_MELEE and of(log, PF_EV_ZONE).is_empty(),
+		"slam: %d damage, melee, and no pool (the sexton's slam leaves none; the Slag Brute's does)" % int(d["damage"]))
+	var cue := of(log, EV_CUE, id, CUE_SLAM)
+	check(cue.size() == 1 and is_equal_approx(cue[0]["floats"][2], float(d["slamRadius"])), "slam: the cue is the slam's, %.1f m" % float(d["slamRadius"]))
+	events(c)
+	c.damage(id, 1.0e9, h, false)
+	var added := of(events(c), EV_CORPSE_ADDED)
+	check(added.size() == int(d["deathCorpses"]) and added.size() == 2 and c.def_name(added[0]["ints"][1]) == "drowned_sexton" and c.def_name(added[1]["ints"][1]) == "risen" and added.all(func(e: Dictionary) -> bool: return e["ints"][0] == PF_CK_NORMAL),
+		"sexton: it dies into its own corpse and one risen on the ring (deathCorpses %d), normal" % int(d["deathCorpses"]))
+
+
+## Bone Hex softens the chain (the blow is the body's damage x its status set's damage dealt, then blowMult), not the slam beside it.
+func sexton_hexed() -> void:
+	var d := def("drowned_sexton")
+	var H: Dictionary = fen["SEXTON_HOOK"]
+	var c := make(479)
+	var a := hero(c, Vector2(0, 7))
+	var id: int = c.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	root(c, id)
+	c.apply_status(id, "hex", 0, 1.0, 1000.0)
+	var log := []
+	run(c, to_zero(float(c.enemy_info(id)["attack_cd"])) + to_reach(float(d["windupMs"]) / 1000.0) + 2, log)
+	var hits := of(log, EV_HIT, id)
+	var soft := float(statuses["BONE_HEX"]["damageMult"])
+	check(hits.size() == 1 and hits[0]["ints"][0] == a and is_equal_approx(hits[0]["floats"][0], float(d["damage"]) * soft * float(H["blowMult"])), "chain: a hexed sexton's chain is %.3f (%d x %.2f x %.1f)" % [hits[0]["floats"][0] if not hits.is_empty() else -1.0, int(d["damage"]), soft, float(H["blowMult"])])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the Pyre and the Fen on the wire
+
+## A guest sees each kind's telegraphs, zones and cues: the coal (and its pool), the hex, the pulse, the chain (bit 5 of the record, as the dive is) and its cue, the Husk's embers and the
+## Slag Brute's pool as reliable zone events; what a hero is made to suffer besides damage (chill, root, drag) is the host's alone, as the blow is.
+func pf_on_the_wire() -> void:
+	# The Pyre Priest's coal and its pool.
+	var d := def("pyre_priest")
+	var EB: Dictionary = content["EMBER_BOLT"]
+	var windup := float(d["windupMs"]) / 1000.0
+	var host := make(481)
+	host.set_replication(true)
+	hero(host, Vector2(7, 0))
+	var id: int = host.spawn_enemy("pyre_priest", Vector2(0, 0), 3, 2.0, 1.5, false, PYRE, false)
 	var guest := puppet()
 	var hl := []
 	var gl := []
@@ -3371,6 +4287,199 @@ func cloister_rosters_and_a_replay() -> void:
 			c.spawn_enemy("flagellant", Vector2(12 - i * 6, 12), 4, 1.5, 1.2, i == 2, CLOISTER, false)
 		for i in 6:
 			c.spawn_enemy("robber" if i % 2 == 0 else "hound", Vector2(12 - i * 4, 13), 4, 1.5, 1.2, false, SANCTUM, false)
+	t = lockstep(host, guest, hl, gl, t, t + k0 + 12)
+	var ht := of(hl, EV_TELEGRAPH, id, PF_TELL_EMBER)
+	var gt := of(gl, EV_TELEGRAPH, id, PF_TELL_EMBER)
+	check(ht.size() == 1 and gt.size() == 1, "wire: the guest sees the coal's telegraph once (host %d, guest %d)" % [ht.size(), gt.size()])
+	if gt.size() == 1:
+		var f: PackedFloat32Array = gt[0]["floats"]
+		check(absf(f[2] - 7.0) < 0.02 and absf(f[3]) < 0.02 and is_equal_approx(f[4], float(EB["radius"])) and f[5] >= 0.05 and f[5] <= windup + 1e-4, "wire: a ring of %.1f m on the hero, for what is left of the %.2f s (%.2f s)" % [float(EB["radius"]), windup, f[5]])
+		check(int(gt[0]["tick"]) - int(ht[0]["tick"]) <= 6, "wire: within two snapshots of the host's (%d ticks later)" % (int(gt[0]["tick"]) - int(ht[0]["tick"])))
+	check(of(gl, EV_ATTACK, id).size() == 1 and of(gl, EV_ATTACK, id)[0]["ints"][0] == PF_BLOW_EMBER, "wire: and the swing is a coal on the guest")
+	t = lockstep(host, guest, hl, gl, t, t + to_reach(windup) + 10)
+	var hz := of(hl, PF_EV_ZONE)
+	var gz := of(gl, PF_EV_ZONE)
+	check(hz.size() == 1 and gz.size() == 1 and gz[0]["id"] == hz[0]["id"] and gz[0]["ints"][0] == PF_ZONE_EMBER and gz[0]["ints"][1] == id and is_equal_approx(gz[0]["floats"][3], float(EB["poolS"])),
+		"wire: the pool reaches the guest once, kind ember, with the host's id and its %.0f s" % float(EB["poolS"]))
+	check(of(hl, EV_HIT, id).size() >= 1 and of(gl, EV_HIT).is_empty(), "wire: the blow on the hero is the host's alone")
+	t = lockstep(host, guest, hl, gl, t, t + 70)
+	check(of(gl, PF_EV_ZONE_PULSE, hz[0]["id"]).size() == 1 and of(hl, PF_EV_ZONE_PULSE, hz[0]["id"]).size() == 1, "wire: and so does its first pulse")
+	# The Husk's embers and the Slag Brute's pool: a body that falls on the host, a slam on the host.
+	var h2 := make(482)
+	h2.set_replication(true)
+	var f2 := hero(h2, Vector2(4, 0))
+	var husk: int = h2.spawn_enemy("cinder_husk", Vector2(12, 12), 1, 1.0, 1.0, false, PYRE, false)
+	var slag: int = h2.spawn_enemy("slag_brute", Vector2(0, 0), 1, 1.0, 1.0, false, PYRE, false)
+	var g2 := puppet()
+	var hl2 := []
+	var gl2 := []
+	t = join(h2, g2, hl2, gl2)
+	h2.damage(husk, 1.0e9, f2, false)
+	drain(h2, hl2)
+	t = lockstep(h2, g2, hl2, gl2, t, t + to_zero(float(h2.enemy_info(slag)["attack_cd"])) + to_reach(float(def("slag_brute")["windupMs"]) / 1000.0) + 70)
+	var hz2 := of(hl2, PF_EV_ZONE)
+	var gz2 := of(gl2, PF_EV_ZONE)
+	check(hz2.size() == 2 and gz2.size() == 2 and gz2.all(func(e: Dictionary) -> bool: return e["ints"][0] == PF_ZONE_EMBER) and gz2.map(func(e: Dictionary) -> int: return e["ints"][1]) == [husk, slag],
+		"wire: the Husk's embers and the Slag Brute's pool reach the guest, in the host's order (%d, %d)" % [hz2.size(), gz2.size()])
+	check(of(gl2, EV_DIED, husk).size() == 1 and of(gl2, EV_TELEGRAPH, slag, TELL_SLAM).size() == 1, "wire: and the husk's death and the slam's telegraph")
+	# The hex.
+	var hd := def("bog_hag")
+	var H: Dictionary = fen["HAG_HEX"]
+	var h3 := make(483)
+	h3.set_replication(true)
+	var a3 := hero(h3, Vector2(1.5, 23))
+	pf_thralls(h3, a3, [Vector2(0, 22), Vector2(1, 22), Vector2(3.4, 22.5)])
+	var hag: int = h3.spawn_enemy("bog_hag", Vector2(0, 14), 1, 1.0, 1.0, false, FEN, false)
+	root(h3, hag)
+	var g3 := puppet()
+	var hl3 := []
+	var gl3 := []
+	g3.apply_reliable(h3.baseline())
+	g3.apply_snapshot(h3.snapshot(tick))
+	drain(g3, gl3)
+	t = tick
+	t = lockstep(h3, g3, hl3, gl3, t, t + to_zero(float(h3.enemy_info(hag)["attack_cd"])) + 12)
+	var hx := of(gl3, EV_TELEGRAPH, hag, PF_TELL_HEX)
+	check(hx.size() == 1 and of(hl3, EV_TELEGRAPH, hag, PF_TELL_HEX).size() == 1 and absf(hx[0]["floats"][2] - 1.0) < 0.02 and absf(hx[0]["floats"][3] - 22.0) < 0.02 and is_equal_approx(hx[0]["floats"][4], float(H["radius"])) and of(gl3, EV_ATTACK, hag)[0]["ints"][0] == PF_BLOW_HEX,
+		"wire: the hex's ring reaches the guest once, %.1f m wide on the thrall at the knot's centre" % float(H["radius"]))
+	t = lockstep(h3, g3, hl3, gl3, t, t + to_reach(float(hd["windupMs"]) / 1000.0) + 6)
+	check(not of(hl3, PF_EV_EFFECT, hag).is_empty() and of(gl3, PF_EV_EFFECT).is_empty() and of(gl3, EV_HIT).is_empty(), "wire: and the hero's chill is the host's alone, as the blow is (host %d, guest %d)" % [of(hl3, PF_EV_EFFECT, hag).size(), of(gl3, PF_EV_EFFECT).size()])
+	# The pulse.
+	var wd := def("fen_wisp")
+	var h4 := make(484)
+	h4.set_replication(true)
+	hero(h4, Vector2(6, 0))
+	var wisp: int = h4.spawn_enemy("fen_wisp", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	var g4 := puppet()
+	var hl4 := []
+	var gl4 := []
+	t = join(h4, g4, hl4, gl4)
+	t = lockstep(h4, g4, hl4, gl4, t, t + to_zero(float(h4.enemy_info(wisp)["attack_cd"])) + 12)
+	var pt := of(gl4, EV_TELEGRAPH, wisp, PF_TELL_PULSE)
+	check(pt.size() == 1 and of(h4.take_events() if false else hl4, EV_TELEGRAPH, wisp, PF_TELL_PULSE).size() == 1 and is_equal_approx(pt[0]["floats"][4], float(fen["WISP_PULSE"]["radius"])) and of(gl4, EV_ATTACK, wisp)[0]["ints"][0] == PF_BLOW_PULSE,
+		"wire: the pulse's ring reaches the guest once, %.1f m wide" % float(fen["WISP_PULSE"]["radius"]))
+	# The chain: bit 5 of the record says so, the cue is a reliable event; a slam is not a chain on the guest.
+	var sd := def("drowned_sexton")
+	var SH: Dictionary = fen["SEXTON_HOOK"]
+	var h5 := make(485)
+	h5.set_replication(true)
+	var a5 := hero(h5, Vector2(0, 7))
+	var sext: int = h5.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	root(h5, sext)
+	var g5 := puppet()
+	var hl5 := []
+	var gl5 := []
+	t = join(h5, g5, hl5, gl5)
+	var s0 := to_zero(float(h5.enemy_info(sext)["attack_cd"]))
+	t = lockstep(h5, g5, hl5, gl5, t, t + s0 + 12)
+	var ct := of(gl5, EV_TELEGRAPH, sext, PF_TELL_HOOK)
+	check(ct.size() == 1 and of(hl5, EV_TELEGRAPH, sext, PF_TELL_HOOK).size() == 1 and of(gl5, EV_TELEGRAPH, sext, TELL_SLAM).is_empty(), "wire: the guest sees the chain's telegraph once, and no slam (host %d, guest %d)" % [of(hl5, EV_TELEGRAPH, sext, PF_TELL_HOOK).size(), ct.size()])
+	if ct.size() == 1:
+		var f: PackedFloat32Array = ct[0]["floats"]
+		check(absf(f[2]) < 0.02 and absf(f[3] - 7.0) < 0.02 and is_equal_approx(f[4], float(SH["range"])) and f[5] >= 0.05 and f[5] <= float(sd["windupMs"]) / 1000.0 + 1e-4, "wire: along the line to the hero, %.1f m long, for what is left of the %.1f s" % [float(SH["range"]), float(sd["windupMs"]) / 1000.0])
+	check(bool(g5.enemy_info(sext)["hooking"]) and of(gl5, EV_ATTACK, sext).size() == 1 and of(gl5, EV_ATTACK, sext)[0]["ints"][0] == PF_BLOW_HOOK, "wire: and its body is hooking on the guest, a hook swing")
+	t = lockstep(h5, g5, hl5, gl5, t, t + to_reach(float(sd["windupMs"]) / 1000.0) + 12)
+	check(of(hl5, EV_CUE, sext, PF_CUE_HOOK).size() == 1 and of(gl5, EV_CUE, sext, PF_CUE_HOOK).size() == 1, "wire: the hook cue reaches the guest once")
+	check(of(hl5, EV_HIT, sext).size() == 1 and of(hl5, EV_HIT, sext)[0]["ints"][0] == a5 and of(gl5, EV_HIT).is_empty() and not of(hl5, PF_EV_EFFECT, sext).is_empty() and of(gl5, PF_EV_EFFECT).is_empty(),
+		"wire: the blow and the drag and the root on the hero are the host's alone")
+	check(not bool(g5.enemy_info(sext)["hooking"]) and not bool(h5.enemy_info(sext)["hooking"]), "wire: and when the chain has flown neither is hooking")
+	# The slam of the same body is a slam on the guest.
+	var h6 := make(486)
+	h6.set_replication(true)
+	hero(h6, Vector2(2.0, 0))
+	var sl: int = h6.spawn_enemy("drowned_sexton", Vector2(0, 0), 1, 1.0, 1.0, false, FEN, false)
+	var g6 := puppet()
+	var hl6 := []
+	var gl6 := []
+	t = join(h6, g6, hl6, gl6)
+	t = lockstep(h6, g6, hl6, gl6, t, t + to_zero(float(h6.enemy_info(sl)["attack_cd"])) + 30)
+	check(of(gl6, EV_TELEGRAPH, sl, TELL_SLAM).size() == 1 and of(gl6, EV_TELEGRAPH, sl, PF_TELL_HOOK).is_empty() and of(gl6, EV_ATTACK, sl)[0]["ints"][0] == BLOW_SLAM, "wire: a slam at close quarters is a slam on the guest, not a chain")
+	# A guest that does not know the Pyre's or the Fen's flags, rings or chain refuses the host's messages (the defs and the numbers are in the content hash).
+	var hh := make(487)
+	hero(hh, FAR)
+	for k in PF_KINDS:
+		hh.spawn_enemy(k, Vector2(float(PF_KINDS.find(k)) * 3.0, 0), 1, 1.0, 1.0, false, FEN, false)
+	var snap: PackedByteArray = hh.snapshot(900)
+	var control: RefCounted = ClassDB.instantiate("DmCore")
+	control.load_enemy_defs(content["ENEMIES"])
+	control.load_tuning(content)
+	control.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
+	control.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
+	control.set_puppet(true)
+	check(control.apply_snapshot(snap), "wire: (a guest with the same data takes the snapshot: %s)" % control.replication_error())
+	for change in [["cinder_husk", "emberDeath"], ["slag_brute", "slamPool"], ["drowned_sexton", "hook"], ["fen_wisp", "lure"], ["pyre_priest", "EMBER_BOLT"], ["bog_hag", "HAG_HEX"], ["fen_wisp", "WISP_PULSE"], ["drowned_sexton", "SEXTON_HOOK"]]:
+		var odd: RefCounted = ClassDB.instantiate("DmCore")
+		var defs: Dictionary = content["ENEMIES"].duplicate(true)
+		var tun_content: Dictionary = content.duplicate(true)
+		var fen_changed: Dictionary = fen.duplicate(true)
+		match String(change[1]):
+			"emberDeath", "slamPool", "hook", "lure":
+				defs[change[0]].erase(change[1])
+			"EMBER_BOLT":
+				tun_content["EMBER_BOLT"]["radius"] = 2.5
+			"HAG_HEX":
+				fen_changed["HAG_HEX"]["radius"] = 4.0
+			"WISP_PULSE":
+				fen_changed["WISP_PULSE"]["radius"] = 3.0
+			"SEXTON_HOOK":
+				fen_changed["SEXTON_HOOK"]["range"] = 9.0
+		odd.load_enemy_defs(defs)
+		odd.load_tuning(tun_content)
+		odd.load_legion_tuning({"fen": fen_changed})
+		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
+		odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
+		odd.set_puppet(true)
+		check(not odd.apply_snapshot(snap) and "data" in str(odd.replication_error()), "wire: a guest with another %s of the %s refuses the host's snapshot (%s)" % [change[1], change[0], odd.replication_error()])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the roster and a replay
+
+## The whole Pyre and Fen rosters (their enemy tables and the Fen's procession themes, leads included) are made by the core, the models are drawn by the crowd, and a seeded run replays
+## event for event, with the pools and the effects on heroes in it.
+func pf_roster_and_a_replay() -> void:
+	var areas := DmCoreData.json(godot_dir.path_join("data/content/areas.json"))
+	var ids := {}
+	for area in [PYRE, FEN]:
+		for e in areas["AREAS"][area]["enemies"]:
+			ids[String(e["id"])] = true
+	for th in content["WAVE_THEMES"][FEN]:
+		for e in th["roster"]:
+			ids[String(e["id"])] = true
+		if th.get("lead") != null:
+			ids[String(th["lead"])] = true
+	var missing := []
+	for id: String in ids:
+		if not DmWaveDirector.runs_on_core(id):
+			missing.append(id)
+	var all_eight := true
+	for id in PF_KINDS:
+		all_eight = all_eight and ids.has(id)
+	check(all_eight and missing.is_empty(), "roster: every kind of the Pyre's and the Fen's waves and processions runs on the core (%d kinds, missing %s)" % [ids.size(), str(missing)])
+	var looks := DmCoreData.json("res://crowd/crowd_looks.json")
+	var drawn := true
+	for id in PF_KINDS:
+		var slug := String(looks["enemy_model"].get(id, ""))
+		var path := "res://assets/slice/models/props/%s.glb" % slug if id in ["fen_wisp", "mire_leech"] else "res://assets/slice/models/%s/character.glb" % slug
+		drawn = drawn and slug != "" and FileAccess.file_exists(path)
+	check(drawn and looks["casters"].has("pyre_priest") and looks["casters"].has("bog_hag") and looks["casters"].has("fen_wisp") and not looks["casters"].has("cinder_husk") and not looks["casters"].has("slag_brute"),
+		"roster: the crowd draws them (their models; the priest, hag and wisp as casters)")
+	check(float(def("fen_wisp")["flying"]) == 1.5 and looks["enemy_glow"].has("fen_wisp"), "roster: the wisp hovers %.1f m and glows" % float(def("fen_wisp")["flying"]))
+	var logs := []
+	for round in 2:
+		var c := make(491)
+		var h1 := hero(c, Vector2(0, 0))
+		hero(c, Vector2(2, -3))
+		pf_thralls(c, h1, [Vector2(-2, 2), Vector2(3, 3)], 400.0)
+		var area := FEN
+		c.spawn_enemy("cinder_husk", Vector2(9, 3), 4, 1.5, 1.2, false, PYRE, false)
+		c.spawn_enemy("pyre_priest", Vector2(-10, 4), 4, 1.5, 1.2, true, PYRE, false)
+		c.spawn_enemy("cinderhound", Vector2(-9, -8), 4, 1.5, 1.2, false, PYRE, false)
+		c.spawn_enemy("slag_brute", Vector2(8, -9), 4, 1.5, 1.2, false, PYRE, false)
+		c.spawn_enemy("bog_hag", Vector2(12, 11), 4, 1.5, 1.2, false, area, false)
+		c.spawn_enemy("drowned_sexton", Vector2(-12, 10), 4, 1.5, 1.2, false, area, false)
+		c.spawn_enemy("fen_wisp", Vector2(6, 12), 4, 1.5, 1.2, false, area, false)
+		for i in 6:
+			c.spawn_enemy("mire_leech" if i % 2 == 0 else "cinder_husk", Vector2(12 - i * 4, 13), 4, 1.5, 1.2, false, area, false)
 		var rec := PackedInt32Array()
 		var recf := PackedFloat32Array()
 		for i in 1800:
@@ -3386,3 +4495,36 @@ func cloister_rosters_and_a_replay() -> void:
 						c.damage(id, 60.0, 0, true)
 		logs.append([rec, recf, c.enemy_count(), c.corpse_count()])
 	check(logs[0][0] == logs[1][0] and logs[0][1] == logs[1][1] and logs[0][0].size() > 300, "replay: a seeded fight of the seraphs, the doctors, the flagellants and a crowd replays event for event (%d ints)" % logs[0][0].size())
+					if c.enemy_info(id)["def"] == "cinder_husk":
+						c.damage(id, 25.0, 0, true)
+			if i == 700:
+				for tid in c.thrall_ids():
+					c.kill_thrall(tid, "killed")
+		var kinds_seen := {}
+		var i2 := 0
+		while i2 < rec.size():
+			kinds_seen[rec[i2]] = true
+			i2 += 4 + rec[i2 + 2]
+		logs.append([rec, recf, c.enemy_count(), c.corpse_count(), kinds_seen])
+	check(logs[0][0] == logs[1][0] and logs[0][1] == logs[1][1] and logs[0][0].size() > 300, "replay: a seeded fight of the Pyre's and the Fen's eight kinds and a crowd replays event for event (%d ints)" % logs[0][0].size())
+	check(logs[0][4].has(PF_EV_ZONE) and logs[0][4].has(PF_EV_EFFECT) and logs[0][4].has(EV_HIT) and logs[0][4].has(EV_TELEGRAPH), "replay: with pools, hero effects, blows and telegraphs in it")
+
+
+## A stun is a hard interrupt (DmEnemy.stun): a swing in its wind-up is cancelled, so no coal, hex, pulse or slam lands, no pool is made, no chill is given and no cooldown starts.
+func pf_stun_cancels() -> void:
+	for trial in [["pyre_priest", PYRE, Vector2(7, 0), PF_TELL_EMBER], ["bog_hag", FEN, Vector2(7, 0), PF_TELL_HEX], ["fen_wisp", FEN, Vector2(6, 0), PF_TELL_PULSE], ["slag_brute", PYRE, Vector2(2, 0), TELL_SLAM]]:
+		var c := make(495)
+		hero(c, trial[2])
+		var id: int = c.spawn_enemy(trial[0], Vector2(0, 0), 1, 1.0, 1.0, false, trial[1], false)
+		var log := []
+		for i in 600:
+			run(c, 1, log)
+			if not of(log, EV_TELEGRAPH, id, trial[3]).is_empty():
+				break
+		check(not of(log, EV_TELEGRAPH, id, trial[3]).is_empty(), "%s: it winds up" % trial[0])
+		run(c, 15, log)
+		c.stun(id, 3.0)
+		drain(c, log)
+		run(c, to_reach(float(def(trial[0])["windupMs"]) / 1000.0) - 15 + 5, log)      # (five ticks past the moment the blow would have landed; the flinch lasts three seconds)
+		check(c.enemy_info(id)["state"] == HURT and of(log, EV_HIT, id).is_empty() and of(log, PF_EV_ZONE).is_empty() and of(log, PF_EV_EFFECT).is_empty() and float(c.enemy_info(id)["attack_cd"]) <= 0.0,
+			"%s: a stun in the wind-up cancels the swing: no blow, no pool, no effect, no cooldown" % trial[0])

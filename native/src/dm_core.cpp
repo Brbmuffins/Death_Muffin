@@ -232,6 +232,13 @@ int64_t DmCore::load_enemy_defs(const Dictionary &p_enemies) {
 			def.dive_r = num(dv, "radius", def.dive_r);
 			def.dive_grounded_s = num(dv, "groundedS", def.dive_grounded_s);
 		}
+		def.pf.ember_death = bool(d.get("emberDeath", false));  // the Cinder Pyre's and the Mourning Fen's kinds: the Husk's last embers,
+		def.pf.slam_pool = bool(d.get("slamPool", false));      // the Slag Brute's burning slam, the Drowned Sexton's chain and the Fen Wisp's retreat to the water
+		def.pf.hook = bool(d.get("hook", false));
+		def.pf.lure = bool(d.get("lure", false));
+		if (def.behavior == dm::B_CASTER) {                     // the Pyre Priest's coal, the Bog Hag's hex and the Fen Wisp's pulse are the caster's `attack`
+			def.blow = attack == "ember" ? dm::BLOW_EMBER : (attack == "hex" ? dm::BLOW_HEX : (attack == "pulse" ? dm::BLOW_PULSE : def.blow));
+		}
 		auto it = world.def_index.find(def.id);
 		if (it != world.def_index.end()) {
 			world.defs[it->second] = def;
@@ -287,6 +294,18 @@ void DmCore::load_tuning(const Dictionary &p_content) {
 	u.flask_r = num(pf, "radius", u.flask_r);
 	u.flask_pool_s = num(pf, "poolS", u.flask_pool_s);
 	u.flask_pool_dps = num(pf, "poolDpsMult", u.flask_pool_dps);
+	dm::PfTuning &pf = u.pf;  // EMBER_BOLT, EMBER_DEATH, SLAG_POOL: the Pyre's burning ground
+	const Dictionary eb = p_content.get("EMBER_BOLT", Dictionary());
+	pf.ember_r = num(eb, "radius", pf.ember_r);
+	pf.ember_pool_s = num(eb, "poolS", pf.ember_pool_s);
+	pf.ember_pool_dps = num(eb, "poolDpsMult", pf.ember_pool_dps);
+	const Dictionary ed = p_content.get("EMBER_DEATH", Dictionary());
+	pf.death_r = num(ed, "radius", pf.death_r);
+	pf.death_pool_s = num(ed, "poolS", pf.death_pool_s);
+	pf.death_pool_dps = num(ed, "poolDpsMult", pf.death_pool_dps);
+	const Dictionary sp = p_content.get("SLAG_POOL", Dictionary());
+	pf.slag_pool_s = num(sp, "poolS", pf.slag_pool_s);
+	pf.slag_pool_dps = num(sp, "poolDpsMult", pf.slag_pool_dps);
 	const Dictionary af = p_content.get("AFFIX_TUNING", Dictionary());
 	const Dictionary bell = af.get("bellTolled", Dictionary());
 	u.bell_interval = num(bell, "intervalS", u.bell_interval);
@@ -361,6 +380,26 @@ void DmCore::load_legion_tuning(const Dictionary &p_files) {
 	l.rally_heal = num(rl, "healFrac", l.rally_heal);
 	const Dictionary fen = p_files.get("fen", Dictionary());
 	l.hag_thrall_damage = num(fen.get("HAG_HEX", Dictionary()), "thrallDamageMult", l.hag_thrall_damage);
+	dm::PfTuning &pf = world.tun.pf;  // HAG_HEX, WISP_PULSE, SEXTON_HOOK, FEN_LURE: the Fen's effects
+	const Dictionary hx = fen.get("HAG_HEX", Dictionary());
+	pf.hex_r = num(hx, "radius", pf.hex_r);
+	pf.hex_s = num(hx, "durationS", pf.hex_s);
+	pf.hex_blow = num(hx, "blowMult", pf.hex_blow);
+	pf.hex_chill_s = num(hx, "chillMs", pf.hex_chill_s * 1000.0) / 1000.0;
+	const Dictionary wp = fen.get("WISP_PULSE", Dictionary());
+	pf.pulse_r = num(wp, "radius", pf.pulse_r);
+	pf.pulse_chill_s = num(wp, "chillMs", pf.pulse_chill_s * 1000.0) / 1000.0;
+	const Dictionary sh = fen.get("SEXTON_HOOK", Dictionary());
+	pf.hook_min = num(sh, "minRange", pf.hook_min);
+	pf.hook_range = num(sh, "range", pf.hook_range);
+	pf.hook_half = num(sh, "halfWidth", pf.hook_half);
+	pf.hook_cooldown = num(sh, "cooldownS", pf.hook_cooldown);
+	pf.hook_pull = num(sh, "pullM", pf.hook_pull);
+	pf.hook_blow = num(sh, "blowMult", pf.hook_blow);
+	pf.hook_root_s = num(sh, "rootMs", pf.hook_root_s * 1000.0) / 1000.0;
+	const Dictionary fl = fen.get("FEN_LURE", Dictionary());
+	pf.lure_x = num(fl, "x", pf.lure_x);
+	pf.lure_z = num(fl, "z", pf.lure_z);
 	const Dictionary st = p_files.get("statuses", Dictionary());
 	const Dictionary sa = st.get("SANCTIFIED", Dictionary());
 	world.tun.sanct_range = num(sa, "range", world.tun.sanct_range);
@@ -465,6 +504,30 @@ Dictionary DmCore::tuning() const {
 	d["PLAGUE_FLASK.radius"] = world.tun.flask_r;
 	d["PLAGUE_FLASK.poolS"] = world.tun.flask_pool_s;
 	d["PLAGUE_FLASK.poolDpsMult"] = world.tun.flask_pool_dps;
+	const dm::PfTuning &pf = world.tun.pf;
+	d["EMBER_BOLT.radius"] = pf.ember_r;
+	d["EMBER_BOLT.poolS"] = pf.ember_pool_s;
+	d["EMBER_BOLT.poolDpsMult"] = pf.ember_pool_dps;
+	d["EMBER_DEATH.radius"] = pf.death_r;
+	d["EMBER_DEATH.poolS"] = pf.death_pool_s;
+	d["EMBER_DEATH.poolDpsMult"] = pf.death_pool_dps;
+	d["SLAG_POOL.poolS"] = pf.slag_pool_s;
+	d["SLAG_POOL.poolDpsMult"] = pf.slag_pool_dps;
+	d["HAG_HEX.radius"] = pf.hex_r;
+	d["HAG_HEX.durationS"] = pf.hex_s;
+	d["HAG_HEX.blowMult"] = pf.hex_blow;
+	d["HAG_HEX.chillS"] = pf.hex_chill_s;
+	d["WISP_PULSE.radius"] = pf.pulse_r;
+	d["WISP_PULSE.chillS"] = pf.pulse_chill_s;
+	d["SEXTON_HOOK.minRange"] = pf.hook_min;
+	d["SEXTON_HOOK.range"] = pf.hook_range;
+	d["SEXTON_HOOK.halfWidth"] = pf.hook_half;
+	d["SEXTON_HOOK.cooldownS"] = pf.hook_cooldown;
+	d["SEXTON_HOOK.pullM"] = pf.hook_pull;
+	d["SEXTON_HOOK.blowMult"] = pf.hook_blow;
+	d["SEXTON_HOOK.rootS"] = pf.hook_root_s;
+	d["FEN_LURE.x"] = pf.lure_x;
+	d["FEN_LURE.z"] = pf.lure_z;
 	return d;
 }
 
@@ -809,6 +872,8 @@ Dictionary DmCore::enemy_info(int64_t p_id) const {
 	d["yaw"] = e.yaw;
 	d["diving"] = e.diving;
 	d["ward_t"] = e.ward_t;
+	d["hooking"] = e.pf.hooking;
+	d["hook_cd"] = e.pf.hook_cd;
 	PackedStringArray af;
 	for (int32_t k = 0; k < dm::AF_COUNT; k++) {
 		if (e.affixes & (1 << k)) {

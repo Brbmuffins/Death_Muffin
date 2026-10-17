@@ -36,6 +36,7 @@ const THRALL_BELL_HEAL := 29
 const THRALL_PLAGUE_POOL := 30
 const THRALL_HIT_EXTERNAL := 31
 const AFFIX_MOMENT := 32
+const TARGET_EFFECT := 33
 
 # ---- an enemy's state (EnemyState)
 enum State { RISING, IDLE, CHASE, ATTACK, HURT, RETURN, DEAD, FLEE, BURROW, ERUPT, DIG, EMERGE }
@@ -46,11 +47,12 @@ const STATE_NAMES: Array[String] = ["rising", "idle", "chase", "attack", "hurt",
 enum ThrallState { RISING, IDLE, MOVE, ATTACK, DEAD }
 
 # ---- names by number (the core decodes defs, areas, thrall kinds, death reasons and corpse reasons itself; these are the fixed small enums)
-const TELLS: Array[StringName] = [&"cone", &"slam", &"dust", &"erupt", &"toll", &"raise", &"curse", &"scream", &"dive", &"flask"]   ## Tell
-const CUES: Array[StringName] = [&"slam", &"erupt", &"dig_in", &"sanctify", &"shield_block", &"unbind", &"scream", &"flask"]    ## Cue
-const ZONE_KINDS: Array[StringName] = [&"dust", &"toxic"]                                              ## ZoneKind
+const TELLS: Array[StringName] = [&"cone", &"slam", &"dust", &"erupt", &"toll", &"raise", &"curse", &"scream", &"dive", &"flask", &"ember", &"hex", &"pulse", &"hook"]   ## Tell
+const CUES: Array[StringName] = [&"slam", &"erupt", &"dig_in", &"sanctify", &"shield_block", &"unbind", &"scream", &"flask", &"hook"]   ## Cue
+const ZONE_KINDS: Array[StringName] = [&"dust", &"toxic", &"ember"]                                    ## ZoneKind
 const HIT_KINDS: Array[String] = ["melee", "toxic", "burn", "ember", "dust", "curse", "toll"]          ## HitKind: the sim's hurt `from`
-const BLOWS: Array[StringName] = [&"melee", &"cone", &"dust", &"slam", &"curse", &"scream", &"dive", &"flask"]  ## Blow
+const BLOWS: Array[StringName] = [&"melee", &"cone", &"dust", &"slam", &"curse", &"scream", &"dive", &"flask", &"ember", &"hex", &"pulse", &"hook"]  ## Blow
+const EFFECTS: Array[StringName] = [&"chill", &"root", &"pull"]                                      ## TargetEffect: what an enemy does to a hero besides damage
 const CORPSE_KINDS: Array[String] = ["normal", "swift", "resonant", "toxic", "none"]                   ## CorpseKind
 const AFFIXES: Array[String] = ["bellTolled", "hungering", "shrouded", "vengeful"]                     ## Affix: the bit order of EV_ENEMY_SPAWNED's mask
 const AFFIX_MOMENTS: Array[StringName] = [&"tell", &"toll", &"hungering", &"vengeful", &"unveil"]      ## AffixMoment

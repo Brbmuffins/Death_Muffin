@@ -160,6 +160,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	world.bind_core(core_host.core)
 	core_host.enemy_spawned.connect(func(id: int, _d: String, _l: int, _e: bool, _a: String, _af: int, _x: float, _z: float, _h: float) -> void: enemy_spawned.emit(id))
 	core_host.target_hit.connect(_on_target_hit)
+	core_host.target_effect.connect(_on_target_effect)
 	core_host.enemy_died.connect(_on_enemy_died)
 	perf = DmNextPerf.new()
 	perf.name = "Perf"
@@ -426,6 +427,19 @@ func _on_target_hit(enemy_id: int, target: int, kind: int, damage: float) -> voi
 	hits_taken[kind_name] = int(hits_taken.get(kind_name, 0)) + 1
 	hero_hit.emit(enemy_id, kind_name, damage)
 	b.dm_take_enemy_hit(damage, enemy_id, kind_name)
+
+
+## The core's EV_TARGET_EFFECT: enemy `enemy_id` chilled, rooted or dragged external `target` (the Bog Hag's and the Fen Wisp's cold, the Drowned Sexton's chain). A hero takes it as the
+## body's own `dm_enemy_effect` (a status, or the pull through the dash glide); a dead one refuses it.
+func _on_target_effect(enemy_id: int, target: int, effect: int, seconds: float, x: float, z: float) -> void:
+	var b := core_host.hero_for(target) as DmHeroBody
+	if b == null:
+		return
+	var kind: StringName = DmCoreEvents.EFFECTS[effect]
+	if kind == &"pull":
+		b.dm_enemy_effect(kind, {"to": Vector3(x, b.position.y, z), "from": enemy_id})
+	else:
+		b.dm_enemy_effect(kind, {"seconds": seconds, "from": enemy_id})
 
 
 ## The core's EV_ENEMY_DIED. The HOST credits the kill (once): to the hero who struck it, or to the owner of the thrall whose blow it was (the event names the thrall); a death with no

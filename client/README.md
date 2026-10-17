@@ -18,7 +18,7 @@ Test build channel until then.
 ```
 bash client/setup.sh                                                       # builds the core for Linux, imports, runs the smoke test
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_smoke.gd   # the core loads and answers
-/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_kinds.gd   # the kinds the other areas add, against today's rules: the Ossuary's golem (slam) and deacon (keep-away, curse, raise, Sanctify, silence), the Drowned Nave's censer (incense), acolyte (curse, Unbind), gargoyle (dive), templar (shield) and wraith (scream) and the Sanctum's and Cloister's seraph (curse, ward), plague doctor (flask, pool) and flagellant (frenzy), their co-op wire, the rosters, seeded replays
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/core_kinds.gd   # the kinds the other areas add, against today's rules: the Ossuary's golem (slam) and deacon (keep-away, curse, raise, Sanctify, silence), the Drowned Nave's censer (incense), acolyte (curse, Unbind), gargoyle (dive), templar (shield) and wraith (scream), the Sanctum's and Cloister's seraph (curse, ward), plague doctor (flask, pool) and flagellant (frenzy), and the Cinder Pyre's and the Mourning Fen's husk (embers), priest (coal), hound, slag brute (slam pool), hag (hex), leech, wisp (pulse, lure) and sexton (chain), their co-op wire, the rosters, seeded replays
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_bake.gd    # the crowd baker and shader (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/code_load.gd      # every copied script, scene and resource loads; no copy names a per-creature class
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/crowd_view.gd    # the crowd's views against today's view code, and a Full Party (bakes into a scratch folder)
@@ -37,9 +37,9 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/fx_motes.gd               # the effects' particle ring in C++ (DmMotes) against today's ring, float for float; INFO: its update time on both sides
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/panels.gd # today's panels on the core: every panel opens, the Reliquary (equip, sell, sort) on the server's bag, the loadout, Settings live, chat
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/gathering.gd # gathering and the Acre: all 68 nodes hovered and clicked, a node worked through the server (cycles, batches, finds, XP, spent and back), the stops, AFK and its report, the Grave Laborers, a collection, the garden, a contract, the Sexton ("Gathering and the Acre"; about 25 s)
-/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/world.gd  # the whole world: every area, seals and gates, into the Warren, waystones, the recall, the core's navmesh against the server's, the Ossuary's deacon and golem, the Nave's five and the Sanctum's, Coliseum's and Cloister's rosters (the seraph's ward, the plague doctor's flask, a frenzied flagellant) in the game scene
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/world.gd  # the whole world: every area, seals and gates, into the Warren, waystones, the recall, the core's navmesh against the server's, the Ossuary's deacon and golem, the Nave's five, the Sanctum's, Coliseum's and Cloister's rosters (the seraph's ward, the plague doctor's flask, a frenzied flagellant) and the Pyre's and the Fen's eight in the game scene
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
-bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the Ossuary's deacon and golem, the Nave's five, the Cloister's three, the thralls) into client/assets/crowd/baked (not committed)
+bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the Ossuary's deacon and golem, the Nave's five, the Cloister's three, the Pyre's and the Fen's eight, the thralls) into client/assets/crowd/baked (not committed)
 ```
 
 Run `bash client/setup.sh` once in every new checkout or worktree (it lists the extension before the first import; see the script).
@@ -113,7 +113,7 @@ three constants files of the creature systems are not here, so the core keeps it
 gives it the area's navigation map and bounds, and registers each hero body as an external (position and alive flag written before every step). Its tick runs at
 `process_physics_priority` 100: after the session (which moves the hero bodies) and the director (which spawns), before the crowd's own 1000. A tick is `core.step`, `CrowdView.sync()`, then
 `core.take_events()` once, decoded in order into one typed signal per event kind (`enemy_spawned`, `enemy_state`, `enemy_damaged`, `enemy_died`, `enemy_attack`, `telegraph`,
-`target_hit`, `zone*`, `corpse_*`, `thrall_*`, `status_*`, `affix_moment`; `core/dm_core_events.gd` has the numbers). Systems connect to the signals; nothing polls per creature, and
+`target_hit`, `target_effect`, `zone*`, `corpse_*`, `thrall_*`, `status_*`, `affix_moment`; `core/dm_core_events.gd` has the numbers). Systems connect to the signals; nothing polls per creature, and
 **no node and no script exists per creature**: an enemy is an id (an int) everywhere, and `enemies_in_radius`, `enemy_position`, `damage` and `apply_status` are thin queries on the core.
 `CrowdView._process` draws the rendered frames with `Engine.get_physics_interpolation_fraction()`.
 
@@ -122,9 +122,9 @@ the same small API as today's world object (`area_at`, the navigation helpers, `
 `DmWorldBuilder` for the area's lights only, and gives the core its copy of the navmesh (`bind_core`; DECISIONS B47); the **Chapterhouse** (`next/chapterhouse/dm_chapterhouse.gd`) breaks a seal
 when the kills in the area before it reach its count (the banner, the gate rises, the navmesh joins; a guest's doors follow the host's seals), runs waystone travel and the recall home (T),
 opens the stations' panels and animates the people; the **director** (`next/spawn/dm_wave_director.gd`) spawns through `core_host.spawn_enemy` with the affix
-roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`next/hero/dm_hero_body.gd`) takes the enemies' blows from `EV_TARGET_HIT` with the enemy's id as the source;
+roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`next/hero/dm_hero_body.gd`) takes the enemies' blows from `EV_TARGET_HIT` with the enemy's id as the source, and their chills, roots and drags (the Hag's, the Wisp's, the Sexton's chain) from `EV_TARGET_EFFECT`;
 **input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
-wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
+wind-up), deaths, voices, dust clouds and burning ground and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
 Co-op and the Social window are in ("Co-op on the core"), value on the server ("Value on the server"), today's HUD and panels ("The HUD on the core"), the Reaper ("The Gravecaller's rites") and
 gathering with the Acre ("Gathering and the Acre").

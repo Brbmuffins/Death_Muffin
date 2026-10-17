@@ -18,6 +18,10 @@ extends SceneTree
 ##   - the Bell Sanctum, the Bone Coliseum and the Plague Cloister: their seals break (the Nave's and the Sanctum's kills; the Coliseum's broke with the Ossuary's), the director makes each
 ##     one's whole roster (the Sanctum's processions lead with a seraph, a golem and a templar), and in the game scene the seraph's ward blesses its neighbour (its cue, the status, the counsel
 ##     hears the Sanctify), the plague doctor's flask is announced and lands with its pool, and a wounded flagellant is frenzied (the status, the blood motes);
+##   - the Cinder Pyre and the Mourning Fen: their seals break with the Cloister's and the Pyre's kills, the director makes their whole rosters (the hag leads Corpse-Candles, the sexton
+##     the Sexton's Round), and in the game scene the Husk's embers are a pool that burns him and burns out, the Priest's coal, the Slag Brute's slam, the Hag's hex, the Wisp's pulse and
+##     the Sexton's chain are announced and reach him (as ember, curse, dust and melee blows, a chill, a drag and a root on his body), the Leech's bite is toxic, and the kinds shed
+##     embers and marsh-lights near him;
 ##   - ZERO script errors or engine errors in the log.
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/world.gd
 
@@ -94,6 +98,7 @@ func _main() -> void:
 	await _the_ossuary()
 	await _the_nave()
 	await _the_late_areas()
+	await _the_pyre_and_fen()
 	for e in errlog.errors:
 		printerr("ERROR in log: " + e)
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())
@@ -552,3 +557,151 @@ func _break_seal(area: String) -> void:
 	var u: Dictionary = DmContent.area(area)["unlock"]
 	prog.local["areaKills"][String(u["area"])] = prog.unlock_kills(float(u["kills"]))
 	g.chapterhouse.check_seals()
+# ------------------------------------------------------------------------------------------------------------------ the Pyre's and the Fen's kinds
+
+func _the_pyre_and_fen() -> void:
+	# Home first (the recall is T; its arrival is a progress sync), then the seals.
+	g.chapterhouse.start_recall()
+	await until(func() -> bool: return not g.chapterhouse.recall_active, 60 * 120)
+	await ticks(3)
+	var prog := g.ui_host.prog
+	var pu: Dictionary = DmContent.area("pyre")["unlock"]
+	prog.local["areaKills"][String(pu["area"])] = prog.unlock_kills(float(pu["kills"]))
+	var broken: Array = g.chapterhouse.check_seals()
+	check(broken.has("pyre"), "the Cloister's %d kills break the Pyre's seal (%s)" % [prog.unlock_kills(float(pu["kills"])), str(broken)])
+	var fu: Dictionary = DmContent.area("fen")["unlock"]
+	prog.local["areaKills"][String(fu["area"])] = prog.unlock_kills(float(fu["kills"]))
+	broken = g.chapterhouse.check_seals()
+	check(broken.has("fen"), "the Pyre's %d kills break the Fen's seal (%s)" % [prog.unlock_kills(float(fu["kills"])), str(broken)])
+	# The director makes both rosters whole (the Fen's includes the Nave's wraith), and leads the Fen's processions with the hag and the sexton.
+	var pyre_kinds := ["cinder_husk", "pyre_priest", "cinderhound", "slag_brute"]
+	var fen_kinds := ["bog_hag", "mire_leech", "fen_wisp", "drowned_sexton", "wraith"]
+	for area: String in ["pyre", "fen"]:
+		g.director.configure_area(area)
+		var roster: Array = DmContent.area(area)["enemies"].map(func(e: Dictionary) -> String: return String(e["id"]))
+		var kinds: Array = g.director.kinds.map(func(k: Dictionary) -> String: return String(k["id"]))
+		check(kinds == roster and (pyre_kinds if area == "pyre" else fen_kinds).all(func(k: String) -> bool: return kinds.has(k)), "the director makes the %s's whole roster (%s)" % [area, str(kinds)])
+	var at := _area_mid("fen")
+	var leads := {}
+	var n := 0
+	g.director.rng.seed = 11
+	for th: Dictionary in DmSimData.WAVE_THEMES["fen"]:
+		if th.get("lead") == null:
+			continue
+		var made_ids: Array = []
+		var made: int = g.director.spawn_group(at + Vector3(3.0 + 6.0 * n, 0, 0), [hero], 1, String(th["lead"]), th["roster"], made_ids)
+		var info: Dictionary = g.core_host.enemy_info(int(made_ids[0])) if not made_ids.is_empty() else {}
+		leads[String(th["lead"])] = [made, String(info.get("def", "")), String(info.get("area", ""))]
+		n += 1
+	check(leads.get("bog_hag", []) == [1, "bog_hag", "fen"] and leads.get("drowned_sexton", []) == [1, "drowned_sexton", "fen"], "Corpse-Candles leads with a hag and the Sexton's Round with the sexton, made in the Fen (%s)" % str(leads))
+	for id in g.core_host.core.enemy_ids():
+		g.core_host.remove_enemy(id)
+	# The waystone to the Pyre.
+	g.chapterhouse.travel("pyre")
+	await ticks(3)
+	check(g.area_id == "pyre", "the waystone takes him to the Pyre, whose seal is broken (%s)" % g.area_id)
+	var host := g.core_host
+	var tells: Array = []
+	var zones: Array = []
+	var effects: Array = []
+	host.telegraph.connect(func(_id: int, tell: int, _fx: float, _fz: float, _ax: float, _az: float, _r: float, _s: float) -> void: tells.append(DmCoreEvents.TELLS[tell]))
+	host.zone.connect(func(id: int, kind: int, source: int, _x: float, _z: float, _r: float, _s: float) -> void: zones.append([id, DmCoreEvents.ZONE_KINDS[kind], source]))
+	host.target_effect.connect(func(_id: int, _target: int, effect: int, seconds: float, x: float, z: float) -> void: effects.append([DmCoreEvents.EFFECTS[effect], seconds, Vector2(x, z)]))
+	var hp: Vector3 = hero.position
+	hero.restore_vitals()
+	# The Husk falls beside him: its embers burst, the pool is drawn and burns him once a second, and burns out.
+	var burn0 := int(g.hits_taken.get("burn", 0))
+	var zone0 := int(g.enemy_fx.stats["zone"])
+	var husk: int = host.spawn_enemy("cinder_husk", hp + Vector3(1.0, 0, 0), 1, 1.0, 1.0, false, "pyre", false)
+	await ticks(2)
+	host.damage(husk, 1.0e9, hero.core_id, false)
+	await ticks(3)
+	check(zones.any(func(z: Array) -> bool: return z[1] == &"ember" and z[2] == husk) and int(g.enemy_fx.stats["zone"]) == zone0 + 1 and g.enemy_fx._zones.size() == 1, "the Husk's last embers are a pool of kind ember, and the fx drew it")
+	await ticks(130)
+	check(int(g.hits_taken.get("burn", 0)) >= burn0 + 2, "and it burns him once a second (%d burns in 2 s)" % (int(g.hits_taken.get("burn", 0)) - burn0))
+	check(await until(func() -> bool: return g.enemy_fx._zones.is_empty(), 60 * 5), "and burns out: the pool's visual goes with it")
+	# The Priest throws a coal at him: the ring, the blow as ember, and a pool where it landed.
+	hero.restore_vitals()
+	zones.clear()
+	tells.clear()
+	var ember0 := int(g.hits_taken.get("ember", 0))
+	var priest: int = host.spawn_enemy("pyre_priest", hp + Vector3(0.0, 0, -7.5), 1, 1.0, 1.0, false, "pyre", false)
+	var threw := await until(func() -> bool: return zones.any(func(z: Array) -> bool: return z[2] == priest), 60 * 12)
+	check(threw and tells.has(&"ember") and int(g.hits_taken.get("ember", 0)) > ember0, "the Priest's coal was announced, hit him as ember and left a pool (%s)" % str(tells))
+	host.remove_enemy(priest)
+	# The Slag Brute slams: a molten ring, the blow, and a pool on the ring.
+	hero.restore_vitals()
+	zones.clear()
+	tells.clear()
+	var brute: int = host.spawn_enemy("slag_brute", hp + Vector3(3.0, 0, 0), 1, 1.0, 1.0, false, "pyre", false)
+	var slammed := await until(func() -> bool: return zones.any(func(z: Array) -> bool: return z[2] == brute), 60 * 12)
+	check(slammed and tells.has(&"slam"), "the Slag Brute's slam was announced and left a pool (%s)" % str(tells))
+	host.remove_enemy(brute)
+	# The Pyre's dead shed embers near him (the idle tells).
+	for id in g.core_host.core.enemy_ids():
+		host.remove_enemy(id)
+	hero.restore_vitals()
+	var motes0 := int(g.enemy_fx.stats["pf_mote"])
+	for k in pyre_kinds:
+		host.spawn_enemy(k, hp + Vector3(6.0 + 0.5 * pyre_kinds.find(k), 0, 6.0), 1, 1.0, 0.0, false, "pyre", false)
+	await ticks(150)
+	check(int(g.enemy_fx.stats["pf_mote"]) > motes0 + 8, "the Pyre's four shed embers and soot near him (%d motes in 2.5 s)" % (int(g.enemy_fx.stats["pf_mote"]) - motes0))
+	for id in g.core_host.core.enemy_ids():
+		host.remove_enemy(id)
+	await ticks(2)
+	check(g.enemy_fx._pfs.is_empty(), "and the fx holds nothing for them once they are gone")
+	# The Fen, from the Pyre's stone.
+	g.chapterhouse.travel("fen")
+	await ticks(3)
+	check(g.area_id == "fen", "the waystone takes him to the Fen, whose seal is broken (%s)" % g.area_id)
+	hp = hero.position
+	hero.restore_vitals()
+	var st: DmStatusSet = DmStatusSet.ensure(hero)
+	# The Hag hexes him: the ring, the curse, and a chill on him.
+	tells.clear()
+	effects.clear()
+	var curse0 := int(g.hits_taken.get("curse", 0))
+	var hag: int = host.spawn_enemy("bog_hag", hp + Vector3(0.0, 0, -8.0), 1, 1.0, 1.0, false, "fen", false)
+	var hexed := await until(func() -> bool: return effects.any(func(e: Array) -> bool: return e[0] == &"chill"), 60 * 12)
+	check(hexed and tells.has(&"hex") and int(g.hits_taken.get("curse", 0)) > curse0 and st.has(&"chill"), "the Hag's hex was announced, cursed him and chilled him (%s)" % str(tells))
+	check(absf(float(effects.filter(func(e: Array) -> bool: return e[0] == &"chill")[0][1]) - float(DmSimData.HAG_HEX["chillMs"]) / 1000.0) < 1e-4, "for the hex's %.1f s" % (float(DmSimData.HAG_HEX["chillMs"]) / 1000.0))
+	host.remove_enemy(hag)
+	# The Wisp pulses: the ring, the cold, and a chill on him. (It keeps its distance and backs off toward the water.)
+	hero.restore_vitals()
+	st.remove(&"chill")
+	tells.clear()
+	effects.clear()
+	var dust0 := int(g.hits_taken.get("dust", 0))
+	var wisp: int = host.spawn_enemy("fen_wisp", hp + Vector3(0.0, 0, -7.5), 1, 1.0, 1.0, false, "fen", false)
+	var pulsed := await until(func() -> bool: return effects.any(func(e: Array) -> bool: return e[0] == &"chill"), 60 * 12)
+	check(pulsed and tells.has(&"pulse") and int(g.hits_taken.get("dust", 0)) > dust0 and st.has(&"chill"), "the Wisp's pulse was announced, hit him and chilled him (%s)" % str(tells))
+	host.remove_enemy(wisp)
+	# The Sexton throws the chain: along the line, the blow, the drag toward it and the root.
+	hero.restore_vitals()
+	st.remove(&"chill")
+	tells.clear()
+	effects.clear()
+	var sexton: int = host.spawn_enemy("drowned_sexton", hp + Vector3(-7.0, 0, 0.0), 1, 1.0, 1.0, false, "fen", false)    # (west, along the land: the line between them must stay on the navmesh)
+	host.core.apply_status(sexton, "root", 0, 1.0, 1000.0)    # (it stands, so the drag is measured from where it is)
+	var before := hero.position
+	var hooked := await until(func() -> bool: return effects.any(func(e: Array) -> bool: return e[0] == &"pull"), 60 * 12)
+	check(hooked and tells.has(&"hook") and effects.any(func(e: Array) -> bool: return e[0] == &"root"), "the Sexton's chain was announced and dragged and rooted him (%s)" % str(effects.map(func(e: Array) -> StringName: return e[0])))
+	check(st.has(&"root"), "he is rooted (the status is on his body)")
+	await ticks(40)
+	var sx: Vector3 = hp + Vector3(-7.0, 0, 0.0)
+	check(hero.position.distance_to(sx) < before.distance_to(sx) - 2.0, "he was dragged toward it: %.1f m from the sexton, from %.1f" % [hero.position.distance_to(sx), before.distance_to(sx)])
+	host.remove_enemy(sexton)
+	# The Leech bites with rot.
+	hero.restore_vitals()
+	var toxic0 := int(g.hits_taken.get("toxic", 0))
+	var leech: int = host.spawn_enemy("mire_leech", hp + Vector3(0.0, 0, -4.0), 1, 1.0, 1.0, false, "fen", false)
+	check(await until(func() -> bool: return int(g.hits_taken.get("toxic", 0)) > toxic0, 60 * 8), "the Leech's bite reaches him as toxic")
+	host.remove_enemy(leech)
+	var motes1 := int(g.enemy_fx.stats["pf_mote"])
+	for k in ["fen_wisp", "bog_hag", "drowned_sexton", "mire_leech"]:
+		host.spawn_enemy(k, hp + Vector3(6.0, 0, 6.0 + 0.5 * ["fen_wisp", "bog_hag", "drowned_sexton", "mire_leech"].find(k)), 1, 1.0, 0.0, false, "fen", false)
+	await ticks(150)
+	check(int(g.enemy_fx.stats["pf_mote"]) > motes1 + 5, "the Fen's dead shed marsh-lights and drips near him (%d motes in 2.5 s)" % (int(g.enemy_fx.stats["pf_mote"]) - motes1))
+	for id in g.core_host.core.enemy_ids():
+		host.remove_enemy(id)
+	await ticks(2)

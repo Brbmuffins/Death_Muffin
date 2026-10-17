@@ -24,8 +24,11 @@ extends Node
 ## The Drowned Nave's kinds: the Censer Bearer's incense cloud (`censer_incense`, following the drawn body; the ring and smoke under it and the hasted bodies' motes are the
 ## status tells'), the Lich Acolyte's crimson reach ring (drawn while a thrall stands within Unbind's range) and its Unbind thread and sigil, the Templar's shield glance (a
 ## spark and a chime), the Choir Wraith's mist when it falls (it leaves no body) and the Gargoyle's dive and the wraith's scream (telegraphs of the router).
+## The Cinder Pyre's and the Mourning Fen's kinds: the sparks of the Husk's, the hound's and the Slag Brute's blows, the Husk's last embers, the burning ground (a zone of kind ember:
+## the coal's, the slam's, the Husk's), the molten slam of the Slag Brute (the router picks it by the def of the body that swings), and the embers and marsh-lights they shed near the
+## hero on the ambient tick (`_pfs`: the bodies that have such motes, with their state).
 ## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
-## the elite's body glow, the Pyre's and the Fen's idle motes (those defs are not on the core yet).
+## the elite's body glow, the Flagellant's frenzy motes, the Pyre's and the Fen's idle motes.
 ## The Weeping Seraph's blessing is the Deacon's cue (`sanctify`, a thread and a halo per ally), the Plague Doctor's flask is the router's telegraph (a rot-green ring and the lobbed
 ## flask, `flask`); its toxic pool has no visual of its own, as today (today's `DmEnemyFx` draws the dust and ember zones only).
 
@@ -43,10 +46,18 @@ const CORPSE_MARKS_MAX := 8        ## DmEntityViews.CORPSE_MARKS_MAX: a wipe of 
 const RING_MS := 26000.0           ## a corpse ring's life (its decal's duration)
 const HOVER := {"wraith": 0.45}    ## DmEntityViews.HOVER: the bodies that float without `flying`
 const HEAD_Y := {"humanoid": 1.3, "robed": 1.35, "quadruped": 0.75, "bloat": 1.05}   ## DmEntityViews.HEAD_Y: where a body's motes start, by rig
+const FIRE_DEFS: Array[String] = ["cinder_husk", "pyre_priest", "cinderhound", "slag_brute"]   ## the Cinder Pyre's dead: sparks, soot, ember tells
+const FEN_DEFS: Array[String] = ["fen_wisp", "bog_hag", "drowned_sexton"]                       ## the Fen's: marsh-lights and drips (the leech's wiggle is the body's own)
+const FEN_TEAL := 0x7fe0d0
 const EFFECT_IDS: Array[String] = ["censer_incense", "vengeful_burst", "surge_eruption", "bonfire"]
 const SFX_IDS: Array[String] = ["eliteAggro", "eliteDeath", "enemyDeath", "tellStrike", "tollSmall", "burst", "boneHit",
 	"enemyAttackBeast", "enemyAttackHumanoid", "enemyAttackBrute", "enemyAttackSpirit",
 	"enemyDeathBeast", "enemyDeathHumanoid", "enemyDeathBrute", "enemyDeathSpirit", "emberThrow", "emberBurst", "slagSlam", "curse", "raise", "toll"]
+
+class DefStub:
+	extends RefCounted
+	var def: String = ""
+
 
 var vfx: Node                      ## the Vfx autoload (tests pass a counting stub)
 var audio: Node                    ## the AudioDirector autoload (ditto)
@@ -54,7 +65,7 @@ var fx: DmEventFx                  ## the shared router half: telegraphs, deaths
 var host := DmEnemyFxHost.new()
 var core_host: DmCoreHost
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
-var stats := {"reach_ring": 0, "spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0, "thrall_ring": 0}
+var stats := {"pf_mote": 0, "reach_ring": 0, "spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0, "thrall_ring": 0}
 
 var _clock := 0.0                  ## ms of rendered-frame time
 var _amb_t := 0.0
@@ -74,6 +85,9 @@ var _zone := {"id": 0, "kind": "dust", "owner": "", "x": 0.0, "z": 0.0, "r": 1.0
 var _zones := {}                   ## zone id -> true while its visual is up
 var _statused := {}                ## id -> its scale: a body that got a status (looked at on the ambient tick until it has none)
 var _hovers := {}                  ## id -> its hover height: a flier or the wraith (the motes under it)
+var _pfs := {}                     ## id -> [def, state, scale, hover height]: a Cinder Pyre or Mourning Fen body that sheds embers or marsh-lights near the hero, while it lives
+var _burst_n := 0                  ## bursts made through the scratch dictionary (the tests read it as `stats.pf_mote` for the idle motes)
+var _stub := DefStub.new()         ## stands in for the sim enemy record the telegraph router looks the def up in (the Slag Brute's slam)
 var _incense := {}                 ## id -> the Censer Bearer's incense cloud (a Binbun handle), while it lives
 var _reach := {}                   ## id -> the Lich Acolyte's reach ring (a decal handle, null while no thrall stands in it), while it lives
 var _status_fx: Dictionary = {}    ## DmContent statuses STATUS_FX: the tells' colours
@@ -87,7 +101,7 @@ var _corpse_rings := {}            ## corpse id -> [its ring's handle, when it e
 var _px := 0.0
 var _pz := 0.0
 var _amb_dust := {"x": 0.0, "y": 0.1, "z": 0.0, "count": 1, "color": 0x2a2230, "spread": 0.5, "speed": 0.5, "up": 0.6, "life": 1, "size": 0.9}
-var _pf := {"x": 0.0, "y": 0.0, "z": 0.0, "count": 1, "color": 0, "spread": 0.3, "speed": 0.2, "up": 1.0, "life": 0.8, "size": 0.1, "gravity": 0.0}   ## scratch for the Templar's spark
+var _pf := {"x": 0.0, "y": 0.0, "z": 0.0, "count": 1, "color": 0, "spread": 0.3, "speed": 0.2, "up": 1.0, "life": 0.8, "size": 0.1, "gravity": 0.0}   ## scratch for the Templar's spark and the pyre / fen tells
 var _amb_dirt := {"x": 0.0, "y": 0.15, "z": 0.0, "count": 2, "color": 0xffffff, "spread": 0.35, "speed": 0.9, "up": 1.2, "life": 0.4, "size": 0.12, "gravity": 9}
 var _sp: Dictionary = {}           ## DmFxData spell_fx.affix: the affixes' colours
 
@@ -146,7 +160,7 @@ func set_backends(p_vfx: Node, p_audio: Node) -> void:
 
 ## Creatures this fx is holding something for (a swing, a rise, a burrow, an elite ring): tests assert it stays small and empties.
 func watched() -> int:
-	return _strikes.size() + _rising.size() + _burrowers.size() + _auras.size() + _affixed.size() + _statused.size() + _hovers.size() + _mounds.size() + _incense.size() + _reach.size()
+	return _strikes.size() + _rising.size() + _burrowers.size() + _auras.size() + _affixed.size() + _statused.size() + _hovers.size() + _mounds.size() + _incense.size() + _reach.size() + _pfs.size()
 
 
 func clear() -> void:
@@ -170,6 +184,7 @@ func clear() -> void:
 	_unveiled.clear()
 	_statused.clear()
 	_hovers.clear()
+	_pfs.clear()
 	_strikes.clear()
 	_rising.clear()
 	_burrowers.clear()
@@ -209,8 +224,10 @@ func _on_spawned(id: int, def: String, _level: int, elite: bool, _area: String, 
 		_dress_affix(id, def, elite, _affixes, x, z)
 	var d: Dictionary = core_host.enemy_defs.get(def, {})
 	var hover := float(d.get("flying", HOVER.get(def, 0.0)))
-	if hover > 0.0:
+	if hover > 0.0 and def != "fen_wisp":   # (the wisp's motes are its own marsh-lights)
 		_hovers[id] = hover
+	if FIRE_DEFS.has(def) or FEN_DEFS.has(def):
+		_pfs[id] = [def, state, float(d.get("scale", 1.0)) * (float(DmSimData.ELITE["scale"]) if elite else 1.0), hover]
 	if bool(d.get("aura", false)):   # the Censer Bearer's incense cloud (DmEnemyFx._on_ready)
 		_incense[id] = fx.bb("censer_incense", x, z, {"follow": _drawn_pos.bind(id)})
 	if bool(d.get("unbind", false)):   # the Lich Acolyte: its reach ring comes and goes with the thralls near it (`_ambient`)
@@ -225,8 +242,19 @@ func _drawn_pos(id: int) -> Variant:
 
 ## A ground telegraph (a swing's wind-up, a ghoul's eruption, the bell's ring). The router draws the shape in the original game's colours and
 ## schedules its own landing flourishes; the sound is its `tellStrike` / `tollSmall`.
-func _on_telegraph(_id: int, tell: int, from_x: float, from_z: float, aim_x: float, aim_z: float, radius: float, seconds: float) -> void:
-	_telegraph(DmCoreEvents.TELLS[tell], from_x, from_z, aim_x, aim_z, radius, seconds)
+func _on_telegraph(id: int, tell: int, from_x: float, from_z: float, aim_x: float, aim_z: float, radius: float, seconds: float) -> void:
+	var kind := DmCoreEvents.TELLS[tell]
+	if kind == &"slam":   # the router picks the Slag Brute's molten slam by the swinging body's def: lend it a stub for this synchronous call (the attack event came just before)
+		var s: Variant = _strikes.get(id)
+		if s != null:
+			_stub.def = String(s[4])
+			_tele["id"] = -7
+			host.mirror.enemies[-7] = _stub
+			_telegraph(kind, from_x, from_z, aim_x, aim_z, radius, seconds)
+			host.mirror.enemies.erase(-7)
+			_tele.erase("id")
+			return
+	_telegraph(kind, from_x, from_z, aim_x, aim_z, radius, seconds)
 
 
 func _telegraph(kind: StringName, from_x: float, from_z: float, aim_x: float, aim_z: float, radius: float, seconds: float) -> void:
@@ -271,7 +299,7 @@ func _on_cue(id: int, kind: int, x: float, z: float, _radius: float) -> void:
 			fx.snd("raise", x, z)
 
 
-## One burst through the scratch dictionary: spread, speed, up, life, size, gravity (drag stays 0).
+## One burst through the scratch dictionary: spread, speed, up, life, size, gravity (a drag is the caller's, in `_pf`).
 func _pf_burst(x: float, y: float, z: float, spread: float, speed: float, up: float, life: float, size: float, gravity: float, count: int = 1) -> void:
 	_pf["count"] = count
 	_pf["x"] = x
@@ -284,6 +312,7 @@ func _pf_burst(x: float, y: float, z: float, spread: float, speed: float, up: fl
 	_pf["size"] = size
 	_pf["gravity"] = gravity
 	vfx.emit(_pf)
+	_burst_n += 1
 
 
 func _on_damaged(id: int, _source: int, amount: float, _hp: float) -> void:
@@ -304,6 +333,9 @@ static func _hitstop_seconds(weight: float) -> float:
 
 func _on_state(id: int, _prev: int, next: int) -> void:
 	_strikes.erase(id)   # any change interrupts a swing in flight (stun, death); the swing's own end is the timer
+	var pf: Variant = _pfs.get(id)
+	if pf != null:
+		pf[1] = next
 	if next != DmCoreEvents.State.RISING:
 		_rising.erase(id)
 	if next == DmCoreEvents.State.BURROW:
@@ -344,7 +376,7 @@ func _impact(s: Array) -> void:
 	var def: String = s[4]
 	fx.foe_voice("attack", def, float(s[5]), float(s[6]), 18.0)
 	match DmCoreEvents.BLOWS[blow]:
-		&"slam":   # the hazards (sac, golem): a puff of smoke and chips where the fist lands
+		&"slam", &"hook":   # the hazards (sac, golem, the Slag Brute, the Drowned Sexton's slam and chain): a puff of smoke and chips where the fist lands
 			var r := float(core_host.enemy_defs[def]["slamRadius"]) if core_host.enemy_defs[def].has("slamRadius") else 1.9
 			vfx.emit_smoke({"x": ax, "y": 0.3, "z": az, "count": 4, "color": 0x3b3440, "spread": r * 0.45, "speed": 1.2, "up": 0.5, "life": 0.8, "size": 1.0})
 			vfx.emit({"x": ax, "y": 0.2, "z": az, "count": 10, "color": 0x8a8378, "spread": 0.8, "speed": 2.2, "up": 1.8, "life": 0.5, "size": 0.13, "gravity": 9})
@@ -354,10 +386,13 @@ func _impact(s: Array) -> void:
 			var dust := fx.sp("enemy", "dust")
 			vfx.emit({"x": ax, "y": 0.4, "z": az, "count": 18, "color": dust, "spread": r2 * 0.5, "speed": 1.6, "up": 0.9, "life": 0.7, "size": 0.2, "drag": 0.5})
 			vfx.decal({"tex": "ring", "color": dust, "x": ax, "z": az, "r": r2 * 1.2, "duration": 0.45, "opacity": 0.9, "growFrom": 0.3})
-		&"cone", &"curse", &"scream", &"flask":   # the casters' blows (the penitent's cone, the acolyte's curse, the wraith's scream, the plague doctor's flask) have no beat of their own beyond their telegraph
+		&"cone", &"curse", &"scream", &"flask", &"ember", &"hex", &"pulse":   # the casters' blows (the penitent's cone, the acolyte's curse, the wraith's scream, the plague doctor's flask, the priest's coal, the hag's hex, the wisp's pulse) have no beat of their own beyond their telegraph
 			pass
 		_:
 			vfx.emit_smoke({"x": ax, "y": 0.3, "z": az, "count": 2, "color": 0x3a3340, "spread": 0.3, "speed": 0.8, "up": 0.3, "life": 0.5, "size": 0.6})
+	if def == "cinder_husk" or def == "cinderhound" or def == "slag_brute":   # the Pyre's dead strike in a shower of sparks (DmEventFx._melee)
+		_pf["color"] = fx.sp("enemy", "emberCore")
+		_pf_burst(ax, 0.9, az, 0.3, 3.0, 1.6, 0.4, 0.1, 8.0, 12 if def == "slag_brute" else 7)
 
 
 func _erupt(id: int) -> void:
@@ -384,12 +419,19 @@ func _on_died(id: int, def: String, _level: int, elite: bool, _area: String, _so
 	_mound_off(id)
 	_statused.erase(id)
 	_hovers.erase(id)
+	_pfs.erase(id)
 	_death_ev["id"] = id
 	_death_ev["x"] = x
 	_death_ev["z"] = z
 	_death_ev["elite"] = elite
 	_death_ev["def"] = def
 	fx._death(_death_ev)   # death + elite-death sound, death voice (<= 26 m), elite hitstop, water ripple, fire-death flare
+	if bool(core_host.enemy_defs.get(def, {}).get("emberDeath", false)):   # the Cinder Husk's last embers (the pool itself is a zone event)
+		_death_ev["kind"] = "ember"
+		_death_ev["r"] = float(DmSimData.EMBER_DEATH["radius"])
+		fx._burst(_death_ev)
+		_death_ev.erase("kind")
+		_death_ev.erase("r")
 	if def == "wraith":   # leaves no body: it thins to mist (the crowd sinks it) and nothing else is drawn
 		vfx.emit({"x": x, "y": 1.4, "z": z, "count": 22, "color": 0xb9cbe6, "spread": 0.6, "speed": 0.9, "up": 1.2, "life": 1.1, "size": 0.3, "drag": 1})
 		return
@@ -406,6 +448,7 @@ func _on_removed(id: int) -> void:
 	_affix_off(id)
 	_statused.erase(id)
 	_hovers.erase(id)
+	_pfs.erase(id)
 
 
 ## The Censer Bearer's cloud and the Lich Acolyte's ring go with the body.
@@ -462,13 +505,15 @@ func affix_marks() -> int:
 	return n
 
 
-## A dust cloud (the moth's): the router's zone visual. The toxic pool of a burst corpse has no visual of its own today either (its aura is the corpse's).
+## A dust cloud (the moth's) or burning ground (the coal's, the slag slam's, the Husk's embers): the router's zone visual. The toxic pool of a burst corpse has no visual of its own
+## today either (its aura is the corpse's).
 func _on_zone(id: int, kind: int, _source: int, x: float, z: float, radius: float, seconds: float) -> void:
-	if DmCoreEvents.ZONE_KINDS[kind] != &"dust":
+	var zk := DmCoreEvents.ZONE_KINDS[kind]
+	if zk != &"dust" and zk != &"ember":
 		return
 	stats["zone"] += 1
 	_zone["id"] = id
-	_zone["kind"] = "dust"
+	_zone["kind"] = String(zk)
 	_zone["x"] = x
 	_zone["z"] = z
 	_zone["r"] = radius
@@ -716,7 +761,7 @@ func _process(dt: float) -> void:
 		var p := core_host.enemy_position(id)
 		if p != Vector3.INF:
 			(_mounds[id] as MeshInstance3D).position = Vector3(p.x, 0.0, p.z)
-	if not _rising.is_empty() or not _burrowers.is_empty() or not _affixed.is_empty() or not _statused.is_empty() or not _hovers.is_empty() or not _reach.is_empty():
+	if not _rising.is_empty() or not _burrowers.is_empty() or not _affixed.is_empty() or not _statused.is_empty() or not _hovers.is_empty() or not _reach.is_empty() or not _pfs.is_empty():
 		_amb_t += dt
 		if _amb_t >= AMBIENT_S:
 			_ambient()
@@ -769,6 +814,91 @@ func _ambient() -> void:
 		_status_motes(id)
 	for id in _reach.keys():
 		_reach_ring(id)
+	var motes := _burst_n
+	for id in _pfs.keys():
+		var pf: Array = _pfs[id]
+		var p := core_host.enemy_position(id)
+		if p != Vector3.INF and absf(p.x - _px) <= NEAR_X and absf(p.z - _pz) <= NEAR_Z:
+			if FIRE_DEFS.has(pf[0]):
+				_fire_idle(String(pf[0]), int(pf[1]), p, float(pf[2]))
+			else:
+				_fen_idle(String(pf[0]), int(pf[1]), p, float(pf[2]), float(pf[3]))
+	stats["pf_mote"] += _burst_n - motes
+
+
+## Ember shedding of the Cinder Pyre's dead (DmEntityViews._fire_dead, same rates a second, here per ambient tick).
+func _fire_idle(def: String, st: int, p: Vector3, s: float) -> void:
+	var ember := fx.sp("enemy", "ember")
+	var core := fx.sp("enemy", "emberCore")
+	var deep := fx.sp("enemy", "emberDeep")
+	var dt := AMBIENT_S
+	_pf["drag"] = 0.5
+	match def:
+		"cinder_husk":
+			if randf() < dt * 7.0:
+				_pf["color"] = ember if randf() < 0.6 else core
+				_pf_burst(p.x, 0.9 + randf() * 0.9, p.z, 0.3, 0.15, 1.1, 0.9, 0.1, 0.0)
+		"pyre_priest":
+			var wind := st == DmCoreEvents.State.ATTACK
+			if randf() < dt * (22.0 if wind else 5.0):
+				_pf["color"] = core
+				_pf_burst(p.x, 0.9 * s, p.z, 0.2, 0.2, 1.2, 0.7, 0.18 if wind else 0.11, 0.0)
+			if randf() < dt * 2.0:
+				_burst_smoke(p.x, 1.5, p.z, 0x8a8680, 0.3, 0.15, 0.3, 1.6, 0.7)
+		"cinderhound":
+			var moving := st == DmCoreEvents.State.CHASE
+			if moving and randf() < dt * 14.0:
+				_pf["color"] = ember if randf() < 0.5 else core
+				_pf_burst(p.x, 0.35, p.z, 0.15, 0.4, 0.8, 0.55, 0.09, 2.0)
+			if moving and randf() < dt * 4.0:
+				_burst_smoke(p.x, 0.5, p.z, deep, 0.2, 0.2, 0.3, 0.8, 0.6)
+		"slag_brute":
+			if randf() < dt * 6.0:
+				_pf["color"] = ember
+				_pf_burst(p.x, 1.0 + randf() * 1.6, p.z, 0.6, 0.15, 1.0, 1.1, 0.16, 0.0)
+			if randf() < dt * 2.5:
+				_burst_smoke(p.x, 2.2, p.z, deep, 0.4, 0.2, 0.6, 1.6, 1.1)
+	_pf.erase("drag")
+
+
+## The Fen's dead: the wisp's marsh-light, the hag's drips, the sexton's water (DmEntityViews._fen_dead).
+func _fen_idle(def: String, st: int, p: Vector3, s: float, hover: float) -> void:
+	var dt := AMBIENT_S
+	match def:
+		"fen_wisp":
+			if randf() < dt * 9.0:
+				_pf["color"] = FEN_TEAL if randf() < 0.6 else 0xeaffff
+				_pf["drag"] = 0.6
+				_pf_burst(p.x, hover + 0.2 + randf() * 0.6, p.z, 0.25, 0.15, -0.2, 0.8, 0.12, 0.0)
+				_pf.erase("drag")
+		"bog_hag":
+			var wind := st == DmCoreEvents.State.ATTACK
+			if randf() < dt * (20.0 if wind else 3.0):
+				_pf["color"] = fx.sp("enemy", "hex") if wind else 0x6fb4a8
+				_pf_burst(p.x, 1.0 + randf() * 0.8, p.z, 0.3, 0.2, 1.2 if wind else -0.4, 0.8, 0.14, -0.3 if wind else 5.0)
+		"drowned_sexton":
+			if randf() < dt * 6.0:
+				_pf["color"] = 0x3a5a54
+				_pf_burst(p.x + (randf() - 0.5) * 0.8, 1.6 * s, p.z + (randf() - 0.5) * 0.8, 0.1, 0.1, -0.3, 0.6, 0.1, 9.0)
+
+
+## One smoke puff through the scratch dictionary.
+func _burst_smoke(x: float, y: float, z: float, color: int, spread: float, speed: float, up: float, life: float, size: float) -> void:
+	_pf["count"] = 1
+	_pf["x"] = x
+	_pf["y"] = y
+	_pf["z"] = z
+	_pf["color"] = color
+	_pf["spread"] = spread
+	_pf["speed"] = speed
+	_pf["up"] = up
+	_pf["life"] = life
+	_pf["size"] = size
+	_pf["shrink"] = -0.5
+	_pf["gravity"] = 0.0
+	vfx.emit_smoke(_pf)
+	_pf.erase("shrink")
+	_burst_n += 1
 
 
 ## The Lich Acolyte's crimson reach (DmEntityViews): drawn only while a thrall stands inside Unbind's range (the core says which are near), following the drawn body, near the hero.

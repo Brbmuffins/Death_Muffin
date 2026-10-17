@@ -157,7 +157,7 @@ then the enemy records in spawn order and the thrall records in raise order. Pos
 | enemy record | bytes | |
 |---|---|---|
 | id | 1-2 | zigzag, the difference from the previous record's id (3 bytes over a gap of 8,000 ids) |
-| flags | 1 | bits 0-3 state (`EnemyState`), 4 elite, 5 dug in (a Deacon: its swing is a raise; a Gargoyle: its swing is a dive), 6 aim follows (ATTACK, ERUPT), 7 affix byte follows |
+| flags | 1 | bits 0-3 state (`EnemyState`), 4 elite, 5 dug in (a Deacon: its swing is a raise; a Gargoyle: its swing is a dive; a Drowned Sexton: its swing is the chain), 6 aim follows (ATTACK, ERUPT), 7 affix byte follows |
 | affixes | 0-1 | one bit per `Affix` |
 | x, z | 4 | i16 each |
 | yaw | 1 | 256 steps of a turn (1.4 degrees) |
@@ -185,9 +185,9 @@ test's fight (`client/tests/core_coop.gd`), against about 180 bytes per enemy as
 
 On the wire as events: spawned, died, removed, cue, zone, zone pulse, zone gone, statuses cleared, status changed, status dot, status expired, corpse added, consumed, gone and
 ruptured, thrall raised, died, removed and status, affix moment, and the bell's toll telegraph. Derived on the guest from the snapshots (so its buffer has them, once per change
-between two snapshots): enemy state, attack, the cone, slam, dust, erupt, raise, curse, scream and dive telegraphs (the place and aim of the snapshot, the wind-up less the age it showed, at least 0.05 s as in
+between two snapshots): enemy state, attack, the cone, slam, dust, erupt, raise, curse, scream, dive, ember, hex, pulse and hook telegraphs (the place and aim of the snapshot, the wind-up less the age it showed, at least 0.05 s as in
 `dm_enemy.gd`; a Deacon's swing is a raise or a curse, and a Gargoyle's a dive or a bite, by bit 5 of its record), damaged (the hp drop, and the rest of the health at a death), thrall state, swing and damaged. Host-only, never sent: a blow on a hero (`EV_TARGET_HIT`: the host
-applies it to every member), a thrall's hit on a boss, Withered's spread, the plague pool and the bell's heal. A guest's buffer is for effects and the HUD: its GDScript must not
+applies it to every member), what an enemy does to a hero besides (`EV_TARGET_EFFECT`: a chill, a root, a drag), a thrall's hit on a boss, Withered's spread, the plague pool and the bell's heal. A guest's buffer is for effects and the HUD: its GDScript must not
 run rewards, loot or the kill report from `died`.
 
 **A puppet core** (`set_puppet(true)`; switching clears every body) steps with `step(dt)`: a body eases toward its last snapshot by `1 - exp(-15 dt)` and snaps above 6 m, yaw
@@ -229,8 +229,8 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   order; only exact ties in distance could notice. A boss is an external: `alive` must be false while it cannot be hurt (Mire Mother sunk).
 - **Status on a dead body:** a blow that kills (a wraith's chill, a bone mage's hex) still reports `status_applied`, but the dead body keeps
   no status (today the dead body's set takes it, unseen).
-- **Hostile zones step with the enemies:** the toxic pool made by a bursting corpse steps in the enemy phase, before corpses and thralls. Today its
-  place among the thrall bodies depends on when it was made, so a pulse can come one tick earlier or later relative to a thrall's brain.
+- **Hostile zones step with the enemies:** the toxic pool made by a bursting corpse, the moth's cloud and the Pyre's burning ground step in the enemy phase, before corpses and thralls. Today their
+  place among the thrall bodies depends on when they were made, so a pulse can come one tick earlier or later relative to a thrall's brain; a pool made in the enemy phase (a coal landing, a slam) takes its first step the same tick.
 - **Corpses:** the Veilwalker's echo corpses are not ported (they come with the Veilwalker). `corpses_in_radius` has no filter callback: GDScript
   filters the ids it returns. The extra "risen" corpses are not snapped to the navmesh, and the toxic pool's damage level is 1 unless GDScript calls
   `set_area_level` (today the field's `area_level` callback is never set, so pools hurt as level 1; kept).
@@ -243,7 +243,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   the thralls'
   spirit rims, gear tint of kit armour and the kit weapon's tier colour on a thrall's prop (the props themselves are baked: `client/crowd/README.md` "Hand props"), the Mire Leech's wobble,
   the fade-out of a sinking body (it sinks the same 0.9 s but is not faded to transparent), the drawn-body crowd separation
-  (`_separate_crowd`; the core separates bodies), fire and fen death effects, and the animation LOD (a far body
+  (`_separate_crowd`; the core separates bodies), and the animation LOD (a far body
   updates at 24 or 10 Hz today; every drawn body updates every frame). Effects need the event consumer, which is its own item.
 - **Crowd views take the live nodes' rules where they differ from `DmEntityViews`:** a flinch plays when the core enters HURT (`DmEnemy`), not on every flash; the flash decays by
   6 per second for an enemy and 5 for a thrall (`DmEnemy`, `DmThrall`), and the killing blow leaves no flash on the body; an enemy rises from 0.9 x its model's height below the ground
@@ -265,17 +265,19 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 - **The game scene on the core (`client/next`, the ports of today's files; `client/code.list` "Ported")**:
   - The hero is a circle in the core: the capsule collider his body had for the enemies is gone (the core pushes bodies out of him, "Walls and the hero"). He starts, and gets up after a
     death (4 s, as today), at the Graves' door: the Chapterhouse is not loaded yet.
-  - The director makes only the defs the core runs (robber, hound, penitent, sac, moth, bat, ghoul, rat, risen, the Ossuary's golem and deacon and the Drowned Nave's censer, acolyte, gargoyle, templar and wraith); a roster
+  - The director makes only the defs the core runs (robber, hound, penitent, sac, moth, bat, ghoul, rat, risen, the Ossuary's golem and deacon, the Drowned Nave's censer, acolyte, gargoyle, templar and wraith and the
+    Cinder Pyre's and the Mourning Fen's cinder_husk, pyre_priest, cinderhound, slag_brute, bog_hag, drowned_sexton, fen_wisp and mire_leech); a roster
     entry outside the list is skipped, as one without a scene was. So the Bellringers' procession is led by a censer again (its incense cloud is a Binbun effect of about eight nodes in the scene while the censer lives). It passes the level to the core as an integer. The affix roll is today's function with the director's own random stream.
   - A hero away from the area for 15 s no longer frees the area's living enemies (the core has no call that removes a body yet): the queued spawns are dropped, the bodies stay. Grave Surges are not ported.
   - The effects of a spawn (the rising dust and smoke, the elite's ring and sound) play when the host dispatches the spawn event, at the end of the tick that made the body; a swing's impact timer starts
     when its attack event is dispatched and runs on the rendered frame clock, as the node-based fx did from the state change.
   - The hover pick asks the core for the bodies within 4.5 m of where the cursor's ray crosses the plane 0.9 m above the ground and takes the one whose chest is nearest the cursor on screen within 46 px; today
     it measured every enemy. The same answer unless a tall body's chest is more than 4.5 m along the ray from that plane. A click on an enemy only names it until the rites come (no attack chase, no auto combat).
-  - The enemy fx dropped, for the "Crowd effects" item: the shrouded body's fade (the crowd has no alpha), an elite's glow, the Pyre's and the Fen's idle effects (their defs are not on the core). The status tells and the fliers' motes play near the hero on `DmEnemyFx`'s 5 Hz ambient tick at today's rates a second
+  - The enemy fx dropped, for the "Crowd effects" item: the shrouded body's fade (the crowd has no alpha), an elite's glow. The status tells and the fliers' motes play near the hero on `DmEnemyFx`'s 5 Hz ambient tick at today's rates a second
     (today rolled them every rendered frame), for the bodies with a status (`status_changed`, read from `DmCore.statuses`) and the ones that fly. An elite keeps its ground ring, and an affixed one its affix marks and motes, following the drawn body; every thrall stands on today's ground ring (champion gold, an ally's dimmer); the corpses get today's rings and the toxic disc
     (`DmEnemyFx`), their cap counted by each ring's own end (today's counted handles that turn alive a frame late, so a wipe could pass it). The sac's toxic pool has no visual of its own, as today.
-  - The core does not report what an enemy does to a hero besides damage (the Frost wraith's chill, the Drowned Sexton's hook with its root and pull): `DmHeroBody.dm_enemy_effect` is kept for them and nothing calls it yet.
+  - What an enemy does to a hero besides damage (the Bog Hag's and the Fen Wisp's chill, the Drowned Sexton's root and pull) is `EV_TARGET_EFFECT`, host only like a blow (`EV_TARGET_HIT`): `DmNextGame._on_target_effect` hands it to
+    `DmHeroBody.dm_enemy_effect`, which applies it when the tick's events are dispatched (today at the strike); a hero the blow killed refuses it, as today. A boss's chill or root (the Flood Hymn, the Mire Mother's Drowned Hands) is the boss host's.
   - The game reads the core's constants from this project's `data/` and `sim/`; the constants of `dm_corpse_field.gd` and `dm_thrall.gd`, whose files are not here, stay the compiled-in defaults (equal, asserted by `core_thralls`).
 - **The front flow (`client/main`, `client/net`)**: login, register, the online gate and character select are today's code on the test server (`client/README.md` "The test server"). Not the same:
   there is no Log out or Switch character (the full HUD owns them), no automatic crash report and no
@@ -299,12 +301,13 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   it; the guest's buffer gets `damaged` with the health the last snapshot showed, then `state`, then `died`. A guest's corpses have no lifetime: they go when the host says so.
 - **Order of a guest's buffer:** forwarded events in the host's order, the derived ones where the packet that caused them was applied; a death's state edge comes just before its `died`,
   after the corpse events (the host's comes first).
-- **More reaches guests than today:** the slam, erupt, dig-in and scream cues are on the wire (today only shield_block, sanctify and unbind replicate, so a guest saw no dust at a slam).
+- **More reaches guests than today:** the slam, erupt, dig-in, scream and hook cues are on the wire (today only shield_block, sanctify and unbind replicate, so a guest saw no dust at a slam). A burning pool (the Husk's embers,
+  the coal's, the slam's) reaches a guest as the host's zone event, when the host made it; today a guest's puppet drew its own visual-only copy when its own copy of the body died or at its impact timer.
   A snap above 6 m is not counted as walking speed (today's puppet counts it, and its walk clip sprints for a moment).
 - **Not replicated yet, stays GDScript:** bosses (state, phases, telegraphs, their statuses), hero vitals and positions (the session channel), rite events and the visuals they drive, ground drops (the party relays them),
-  party calls and chat; guests still send their intents (move, cast requests) to the host as today. The per-kind extras of today's enemy snapshots (the sexton's
-  `hk`) come with that kind's port to the core; the deacon's `rz` and the gargoyle's `dv` are bit 5 of the snapshot record.
-- **The kinds of the other areas (`world.cpp`, `support.cpp`, `nave.cpp`, `cloister.cpp`; `client/tests/core_kinds.gd`)**: each against its own script and state, numbers from the def and the scripts' `const` lines. The Bone Golem is the sac's script
+  party calls and chat; guests still send their intents (move, cast requests) to the host as today. The per-kind extras of today's enemy snapshots are bit 5 of the snapshot record
+  (the deacon's `rz`, the gargoyle's `dv`, the sexton's `hk`).
+- **The kinds of the other areas (`world.cpp`, `support.cpp`, `nave.cpp`, `cloister.cpp`, `pyre_fen.cpp`; `client/tests/core_kinds.gd`)**: each against its own script and state, numbers from the def and the scripts' `const` lines. The Bone Golem is the sac's script
   (`dm_enemy_hazard.gd`) on other numbers and runs on the generic hazard rules: no difference found (its slam radius 2.8 m, 0.95 s wind-up, 2.7 s cooldown, 26 damage, three corpses). The Crypt Deacon:
   - **Its Risen are made by the core**, not by the wave director answering a `raised` signal: at the end of the channel the corpse is consumed ("raised", by peer 1) and a Risen is made on the spot where it lay, rising, at the
     deacon's level, hp and damage multipliers (a plain body, not an elite), with its id and spawn event at once and its place in the table at the end of the tick (Vengeful's way). It belongs to the deacon's area (today's director
@@ -351,6 +354,27 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
     - **Flagellant** (the plain `dm_enemy.gd`): nothing of its own in the brain. Its def's `frenzy` is the status set's: at its 0.1 s step, with the health strictly under FRENZY.atFrac of the maximum, the body has the status `frenzy` for good (x1.45 feet, x1.6
       blows, the cooldown running x1.6 as fast), and loses it above. The core had this for the def flag already; `core_kinds.gd` now proves it against today's arithmetic. `DmEnemyFx` sheds its blood motes (5 a second, near the hero) from the status.
     - The new telegraph, cue and blow `flask` are appended to the name tables; the content hash covers the seraph's `ward` flag and the flask's radius.
+- **The Cinder Pyre's and the Mourning Fen's eight (`pyre_fen.cpp`, `world.cpp`; `client/tests/core_kinds.gd`)**, the "pf" family of `godot/enemies/kinds` (`dm_enemy_pf_melee`, `_flanker`, `_caster`, `_hazard`, `dm_pf_util`) and the states
+  `dm_state_pf_hook_chase` and `dm_state_pf_lure_kite`, numbers from the def, `enemies.json` (EMBER_BOLT, EMBER_DEATH, SLAG_POOL), `fen.json` (HAG_HEX, WISP_PULSE, SEXTON_HOOK, FEN_LURE) and the scripts' literals:
+  - **Burning ground is a zone of kind `ember`** (hurts as `burn`, once a second to every hero and thrall within its radius + 0.45 m, like the moth's cloud). The **Cinder Husk** leaves one where it falls (EMBER_DEATH: 1.6 m, 3 s,
+    0.3 x its damage a second), told after `died` and not when it leaves alive (a boss's add); the **Pyre Priest**'s coal (a ring of EMBER_BOLT.radius on the aim fixed when the wind-up began: everything inside takes the blow as `ember`)
+    leaves one on the aim (0.4 x the blow a second for 4 s); the **Slag Brute**'s slam leaves one of the slam's radius (SLAG_POOL: 0.3 x its damage, 4 s). The casters' and the chain's blows are the body's damage x its status set's damage dealt
+    (Bone Hex softens them and the coal's pool), where the slam, the plain bites and the Husk's pool use the plain damage, as the scripts do.
+  - **Bog Hag** (the caster set's walk, no silence check): the hex's ring is aimed at the thrall in the thickest knot (most living thralls within HAG_HEX.radius of it, itself included) among the ones within attackRange of the hag, the first
+    in raise order on a tie, a far thrall counting as a neighbour but not as a candidate; with none, at its target. Everything inside takes 0.55 x the blow as `curse`; a thrall is cursed for 6 s (`cursed_t`, set unless the blow killed it, and
+    already one tick down when the tick ends: it counts down in its own step), a hero is chilled for 1.8 s.
+  - **Fen Wisp** (the caster set, hovering 1.5 m): the pulse is a ring of WISP_PULSE.radius, damage as `dust`, a chill on heroes; it leaves no zone and no corpse. When its target is inside 3.5 m and the cast is not ready it backs off at 0.8 x its
+    speed along 0.55 x away from the target + 0.45 x toward the open water (FEN_LURE), aimed 3 m ahead, where the others back straight away.
+  - **Drowned Sexton** (a hazard): a hero between SEXTON_HOOK.minRange and range away (both inclusive) with a clear line, when the swing's cooldown and the chain's own (6.5 s from the moment the wind-up begins, counted down every tick the
+    body acts) are both up, gets the chain before the slam; a thrall never does. The chain is a telegraph along the line (its range long), the aim fixed at the start, and winds up for the def's `windupMs` like the slam (SEXTON_HOOK's own `windupMs` is data the script never reads); at the end of the wind-up every body in the strip (range + 0.6 m long, halfWidth +
+    0.3 m either side) with a clear line takes 0.7 x the blow as melee, a hero is dragged 4.5 m toward the sexton (never closer than 1.6 m, nothing under 5 cm) and rooted 0.5 s, and the cue `hook` is told at the aim. A stun ends the chain and spends
+    its cooldown; the next slam is a slam. **The clear line** is the Gargoyle's (above): an obstacle across the line, or a stretch of it more than 0.35 m off the navmesh (a prop cut out of it), where today a ray at chest height meets the world's
+    colliders; it is looked at on every tick the chain could begin (the Sexton does not cache it, as the Gargoyle does) and once per body in the strip at the blow.
+  - **Cinderhound, Mire Leech** are the flank kinds on the generic rules (the leech's bite is `toxic`, it is tiny and leaves no corpse). Today's leech has no latch, and none is added; its squash-and-sway wiggle is a view effect that the crowd does not draw
+    (the model is an unrigged pose); the Wisp's glow and the fallback rigs are `crowd_looks.json`'s.
+  - **On a guest** the chain is bit 5 of the Sexton's record (today's `hk`); the coal's, hex's, pulse's and chain's telegraphs are derived from the ATTACK edge like the others; the pools and the hook cue are reliable events; the chill, root and drag
+    are the host's alone (`EV_TARGET_EFFECT`). The content hash covers the four flags (`emberDeath`, `slamPool`, `hook`, `lure`) and the four radii.
+  - New names appended: blows `ember`, `hex`, `pulse`, `hook`; telegraphs the same; cue `hook`; zone kind `ember`; event 33 `EV_TARGET_EFFECT` (chill, root, pull).
 - **The Gravecaller's rites on the core (`client/next/rites`, the ports of today's files; `client/README.md` "The Gravecaller's rites")**: the rites are today's GDScript and call the core synchronously, so a kill still
   resolves inside the cast (Wailing Skull's extra leap, Bone Prison skipping the dead, the Litany's loops). What is not the same:
   - **Ossuary Wall is a core obstacle** (`DmCore.add_obstacle`: the same 7 m by 0.8 m box), where today it is a static body on the layer enemies collide with plus a navigation obstacle. The core keeps every
@@ -424,7 +448,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   `dmcore_library_init` (`client/bin/dmcore.gdextension`).
 - `native/src/core/`: the simulation, free of Godot types: `world` (tables, the enemy brain, damage and kills, queries, statuses on bodies),
   `thralls` (the thrall brain and the legion: raise, make_room, formation, separation, rally, deaths), `corpses` (the corpse field),
-  `affixes` (the elite affixes), `support` (the Crypt Deacon's raise, Sanctify and curse), `nave` (the Censer Bearer's pulse, the Lich Acolyte's Unbind, the Templar's shield, the Gargoyle's sight line), `cloister` (the Weeping Seraph's ward with Godot's sort, the Plague Doctor's flask and pool), `body` (what a status set needs from its owner, shared by enemies and thralls), `thrall` and `corpse` (their records and enums), `status` (the status
+  `affixes` (the elite affixes), `support` (the Crypt Deacon's raise, Sanctify and curse), `nave` (the Censer Bearer's pulse, the Lich Acolyte's Unbind, the Templar's shield, the Gargoyle's sight line), `cloister` (the Weeping Seraph's ward with Godot's sort, the Plague Doctor's flask and pool), `pyre_fen` (the Cinder Pyre's and the Mourning Fen's burning ground, coal, hex, pulse, lure and chain), `body` (what a status set needs from its owner, shared by enemies and thralls), `thrall` and `corpse` (their records and enums), `status` (the status
   set, a port of DmStatusSet; its rule table comes from `client/core/dm_status_rules.gd`), `grid` (dense XZ grid rebuilt per tick by counting
   sort), `navgrid` (the navmesh's triangles on a grid, for keeping bodies on it; DmNextWorld gives it every region and switches them with the seals), `events` (the per-tick event buffer and its type numbers), `rng` (PCG32 per entity), `crowd_view` (the presentation of the crowd: one view per creature, fed plain rows,
   writing the MultiMesh buffers; a port of the view layer of `godot/game`, which does not touch the simulation), and the co-op pieces: `wire` (byte writer and bounds-checked reader), `replica`
@@ -437,7 +461,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   `client/tests/core_corpses.gd` (kinds, the order in a death, extra corpses, the cap, lifetime, toxic rupture and its pool, the pick and consume
   rules) and `client/tests/core_thralls.gd` (the rise, caps and make_room, formation and leash, the scan and the boss edge rule, the swing and its
   multipliers, kinds, enemies choosing and hurting thralls, deaths and bursts, statuses on thralls, rally, separation, tick order),
-  `client/tests/core_kinds.gd` (the kinds the other areas add, against today's: the Ossuary's golem and deacon, the Drowned Nave's censer, acolyte, gargoyle, templar and wraith and the Sanctum's and Cloister's seraph, plague doctor and flagellant, their wire, the rosters, seeded replays; later area groups append to it),
+  `client/tests/core_kinds.gd` (the kinds the other areas add, against today's: the Ossuary's golem and deacon, the Drowned Nave's censer, acolyte, gargoyle, templar and wraith and the Sanctum's and Cloister's seraph, plague doctor and flagellant and the Cinder Pyre's and the Mourning Fen's eight, their wire, the rosters, seeded replays; later area groups append to it),
   `client/tests/core_affixes.gd` (each affix against mirrors of today's timer arithmetic, the pause while staggered, Vengeful inside a call and inside a
   DoT tick), `client/tests/core_coop.gd` (two cores: a real fight, 20 Hz snapshots and batches into puppets, loss and reordering, a late guest and a lost batch,
   refusals, damaged messages, the commands and queries on a puppet, `DmCrowd` on one, the Full Party's size and cost, and `snapshot_parts`; `-- --verbose` lists every check) and
