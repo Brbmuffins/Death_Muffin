@@ -54,8 +54,8 @@ void glow_of(const Dictionary &p_d, const char *p_key, float *r_out) {
 } // namespace
 
 void DmCrowd::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("add_model", "slug", "data", "lod_rids", "shadow_rids", "lod_distances"), &DmCrowd::add_model);
-	ClassDB::bind_method(D_METHOD("set_group_nodes", "model", "plain_nodes", "shadow_nodes"), &DmCrowd::set_group_nodes);
+	ClassDB::bind_method(D_METHOD("add_model", "slug", "data", "lod_rids", "shadow_rids", "lod_distances", "fade_rids"), &DmCrowd::add_model, DEFVAL(Array()));
+	ClassDB::bind_method(D_METHOD("set_group_nodes", "model", "plain_nodes", "shadow_nodes", "fade_nodes"), &DmCrowd::set_group_nodes, DEFVAL(Array()));
 	ClassDB::bind_method(D_METHOD("set_glows", "elite", "champion_add"), &DmCrowd::set_glows);
 	ClassDB::bind_method(D_METHOD("glow_palette"), &DmCrowd::glow_palette);
 	ClassDB::bind_method(D_METHOD("rim_palette"), &DmCrowd::rim_palette);
@@ -82,8 +82,8 @@ void DmCrowd::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("sync", "core"), &DmCrowd::sync);
 	ClassDB::bind_method(D_METHOD("sync_rows", "body_ints", "body_floats", "hits", "corpse_ints", "corpse_floats"), &DmCrowd::sync_rows);
 	ClassDB::bind_method(D_METHOD("draw", "dt", "alpha", "camera", "view_projection"), &DmCrowd::draw, DEFVAL(Projection(Vector4(), Vector4(), Vector4(), Vector4())));
-	ClassDB::bind_method(D_METHOD("buffer", "model", "lod", "shadow"), &DmCrowd::buffer, DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("instance_count", "model", "lod", "shadow"), &DmCrowd::instance_count, DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("buffer", "model", "lod", "shadow", "fade"), &DmCrowd::buffer, DEFVAL(false), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("instance_count", "model", "lod", "shadow", "fade"), &DmCrowd::instance_count, DEFVAL(false), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("stats"), &DmCrowd::stats);
 	ClassDB::bind_method(D_METHOD("view_info", "id", "corpse"), &DmCrowd::view_info, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("last_feed"), &DmCrowd::last_feed);
@@ -101,9 +101,11 @@ DmCrowd::DmCrowd() {
 
 // ---------------------------------------------------------------------------------------------------------------- setup
 
-int64_t DmCrowd::add_model(const String &p_slug, const Dictionary &p_data, const Array &p_lod_rids, const Array &p_shadow_rids, const PackedFloat32Array &p_lod_distances) {
+int64_t DmCrowd::add_model(const String &p_slug, const Dictionary &p_data, const Array &p_lod_rids, const Array &p_shadow_rids, const PackedFloat32Array &p_lod_distances, const Array &p_fade_rids) {
 	dm::CrowdModel m;
 	m.slug = to_std(p_slug);
+	m.alpha = flag(p_data, "spectral");   // see-through already: a fading body stays in its plain group
+	m.fade = !m.alpha && p_fade_rids.size() > 0;
 	m.height = num(p_data, "height", 1.0);
 	m.radius = num(p_data, "radius", 0.0);
 	m.stride_walk = p_data.has("stride_walk") && num(p_data, "stride_walk", 0.0) > 0.0 ? num(p_data, "stride_walk", 0.7) : 0.7;  // DmAnimator.DEFAULT_WALK
@@ -155,21 +157,22 @@ int64_t DmCrowd::add_model(const String &p_slug, const Dictionary &p_data, const
 	rids.resize(size_t(view.group_count()));
 	const dm::CrowdModel &added = view.model(slot);
 	for (int32_t l = 0; l < added.lods; l++) {
-		rids[size_t(added.group0 + l * 2)].rid = l < p_lod_rids.size() ? RID(p_lod_rids[l]) : RID();
-		rids[size_t(added.group0 + l * 2 + 1)].rid = l < p_shadow_rids.size() ? RID(p_shadow_rids[l]) : RID();
+		rids[size_t(added.group0 + l * dm::GROUPS_PER_LOD)].rid = l < p_lod_rids.size() ? RID(p_lod_rids[l]) : RID();
+		rids[size_t(added.group0 + l * dm::GROUPS_PER_LOD + 1)].rid = l < p_shadow_rids.size() ? RID(p_shadow_rids[l]) : RID();
+		rids[size_t(added.group0 + l * dm::GROUPS_PER_LOD + 2)].rid = (added.fade && l < p_fade_rids.size()) ? RID(p_fade_rids[l]) : RID();
 	}
 	return slot;
 }
 
-void DmCrowd::set_group_nodes(int64_t p_model, const Array &p_plain_nodes, const Array &p_shadow_nodes) {
+void DmCrowd::set_group_nodes(int64_t p_model, const Array &p_plain_nodes, const Array &p_shadow_nodes, const Array &p_fade_nodes) {
 	if (p_model < 0 || p_model >= view.model_count()) {
 		return;
 	}
 	const dm::CrowdModel &m = view.model(int32_t(p_model));
 	for (int32_t l = 0; l < m.lods; l++) {
-		for (int32_t s = 0; s < 2; s++) {
-			const Array &nodes = s == 0 ? p_plain_nodes : p_shadow_nodes;
-			GroupRid &r = rids[size_t(m.group0 + l * 2 + s)];
+		for (int32_t s = 0; s < dm::GROUPS_PER_LOD; s++) {
+			const Array &nodes = s == 0 ? p_plain_nodes : (s == 1 ? p_shadow_nodes : p_fade_nodes);
+			GroupRid &r = rids[size_t(m.group0 + l * dm::GROUPS_PER_LOD + s)];
 			Object *o = l < nodes.size() ? static_cast<Object *>(nodes[l]) : nullptr;
 			r.node = o != nullptr ? o->get_instance_id() : 0;
 			r.shown = false;
@@ -472,6 +475,9 @@ void DmCrowd::sync(const Ref<DmCore> &p_core) {
 		b.model = look.model;
 		b.state = e.state;
 		b.flags = look.flags | (e.elite ? dm::BF_ELITE : 0) | (e.diving && e.state == dm::ATTACK ? (e.phase == 0 ? dm::BF_DIVING : dm::BF_GROUNDED) : 0);   // a Gargoyle's dive and its landing
+		if ((e.affixes & (1 << dm::AF_SHROUDED)) != 0 && w.st_shrouded >= 0 && e.st.find(w.st_shrouded) >= 0) {   // the Shrouded ward is up (the status DmAffixSet's 10 Hz check puts on and takes off): the body is see-through
+			b.flags |= dm::BF_SHROUDED;
+		}
 		b.def = e.def;
 		b.x = e.x;
 		b.z = e.z;
@@ -688,9 +694,9 @@ void DmCrowd::draw(double p_dt, double p_alpha, const Vector3 &p_camera, const P
 	}
 }
 
-PackedFloat32Array DmCrowd::buffer(int64_t p_model, int64_t p_lod, bool p_shadow) const {
+PackedFloat32Array DmCrowd::buffer(int64_t p_model, int64_t p_lod, bool p_shadow, bool p_fade) const {
 	PackedFloat32Array out;
-	const int32_t gi = view.group_of(int32_t(p_model), int32_t(p_lod), p_shadow);
+	const int32_t gi = view.group_of(int32_t(p_model), int32_t(p_lod), p_shadow, p_fade);
 	if (gi < 0) {
 		return out;
 	}
@@ -702,8 +708,8 @@ PackedFloat32Array DmCrowd::buffer(int64_t p_model, int64_t p_lod, bool p_shadow
 	return out;
 }
 
-int64_t DmCrowd::instance_count(int64_t p_model, int64_t p_lod, bool p_shadow) const {
-	const int32_t gi = view.group_of(int32_t(p_model), int32_t(p_lod), p_shadow);
+int64_t DmCrowd::instance_count(int64_t p_model, int64_t p_lod, bool p_shadow, bool p_fade) const {
+	const int32_t gi = view.group_of(int32_t(p_model), int32_t(p_lod), p_shadow, p_fade);
 	return gi < 0 ? 0 : view.group(gi).count;
 }
 
@@ -721,6 +727,8 @@ Dictionary DmCrowd::stats() const {
 	d["casting_thralls"] = s.casting_thralls;
 	d["groups_used"] = s.groups_used;
 	d["groups_casting"] = s.groups_casting;
+	d["faded"] = s.faded;
+	d["groups_faded"] = s.groups_faded;
 	d["triangles"] = s.triangles;
 	d["casting_triangles"] = s.casting_triangles;
 	d["band_near"] = s.band[0];
@@ -770,6 +778,9 @@ Dictionary DmCrowd::info_of(const dm::View *p_view) const {
 	d["die_t"] = v.die_t;
 	d["rest_t"] = v.rest_t;
 	d["sink_t"] = v.sink_t;
+	d["opacity"] = v.opacity;
+	d["fade_q"] = v.fade_q;
+	d["veiled"] = (v.flags & dm::BF_SHROUDED) != 0;   // the Shrouded ward is up
 	d["settle_t"] = v.settle_t;
 	d["has_settle"] = v.has_settle;
 	d["shadow"] = v.shadow;

@@ -18,6 +18,8 @@ const BAKE := ["grave_robber", "bone_hound", "barrow_ghoul", "choir_wraith", "sk
 const BUDGET_CROWD := 30
 const BUDGET_WORLD := 85
 const BUDGET_TOTAL := 110
+## What the fade groups may add to a fight with two dozen bodies sinking and three shrouded elites: a main-pass draw for each model and level that has one fading (client/crowd/README.md "The alpha path").
+const BUDGET_FADE := 8
 
 class ErrorLog:
 	extends Logger
@@ -105,11 +107,71 @@ func the_budget() -> void:
 	print("INFO with every one of the %d groups shown the crowd would cost %d draw calls (%d shown: %d)" % [groups.size(), DmDrawModel.draws(lcrowd), shown.size(), DmDrawModel.draws(crowd)])
 	check(DmDrawModel.draws(lcrowd) > 4 * DmDrawModel.draws(crowd), "the model sees a crowd with every group shown: %d draws against %d" % [DmDrawModel.draws(lcrowd), DmDrawModel.draws(crowd)])
 	check(DmDrawModel.draws(lres.total) > BUDGET_TOTAL, "and the total budget would not hold it (%d of %d)" % [DmDrawModel.draws(lres.total), BUDGET_TOTAL])
+	await the_fading(stage, host, res, recs.size())
 	# the world and the whole
 	check(DmDrawModel.draws(world) <= BUDGET_WORLD, "the Graves' world stays inside %d draw calls (%d)" % [BUDGET_WORLD, DmDrawModel.draws(world)])
 	check(total <= BUDGET_TOTAL, "and the whole inside %d (%d)" % [BUDGET_TOTAL, total])
 	stage.queue_free()
 	await process_frame
+
+
+## The alpha path (client/crowd/README.md "The alpha path"): bodies sinking away and bodies under the Shrouded ward draw through their model's fade group. Two dozen of the party's enemies
+## leave (they sink for 0.9 s) and three shrouded elites join (they ease to 0.38): the model counts what the fade groups add to the same fight, in the main pass only, and the budget holds.
+func the_fading(stage: DmDrawScene.Stage, host: DmCoreHost, before: Dictionary, n_before: int) -> void:
+	var core: RefCounted = host.core
+	var gone := 0
+	for id: int in core.enemy_ids():
+		if gone < 24 and core.enemy_info(id).get("def", "") in ["robber", "hound"]:
+			core.remove_enemy(id)
+			gone += 1
+	check(gone == 24, "24 of the party's robbers and hounds leave (%d)" % gone)
+	var area := String(stage.world.area_id)
+	for k in 3:
+		var p := Vector3(stage.focus.x + float(k) * 2.0 - 2.0, 0.0, stage.focus.z + 3.0)
+		check(host.spawn_enemy(["robber", "robber", "hound"][k], p, 1, 1000.0, 0.0, true, area, false, PackedStringArray(["shrouded"])) > 0, "a shrouded elite %d stands among them" % k)
+	var frames := Engine.get_physics_frames() + 20   # a third of a second: the sinking bodies are half way, the shrouded have begun to fade
+	while Engine.get_physics_frames() < frames:
+		await physics_frame
+	await process_frame
+	var recs := DmDrawModel.records(stage, stage)
+	var facts := DmDrawModel.facts(stage, stage.camera)
+	var res := DmDrawModel.count(recs, facts)
+	var crowd := parts(res, "crowd")
+	var fade := parts_of(res, ":fade:used")
+	var st: Dictionary = host.view.crowd.stats()
+	print("INFO sinking: %d instances fade in %d fade groups: crowd %d draws (main %d, shadow %d), fade groups %d main and %d shadow; the standing party's %d" % [
+		st.faded, st.groups_faded, DmDrawModel.draws(crowd), crowd.main_draws, crowd.shadow_draws, fade.main_draws, fade.shadow_draws, DmDrawModel.draws(parts(before, "crowd"))])
+	for g: String in res.groups:
+		if g.begins_with("crowd") and ":fade:" in g:
+			var c: Dictionary = res.groups[g]
+			print("INFO   %-34s %3d instances: main %3d objects %3d draws, shadow %3d objects %3d draws" % [g, c.instances, c.main_objs, c.main_draws, c.shadow_objs, c.shadow_draws])
+	var fade_groups := recs.filter(func(r: Dictionary) -> bool: return String(r["grp"]).contains(":fade:"))
+	var holding := fade_groups.filter(func(r: Dictionary) -> bool: return int(r["n"]) > 0)
+	var shown_empty := fade_groups.filter(func(r: Dictionary) -> bool: return bool(r["vis"]) and int(r["n"]) == 0)
+	check(int(st.faded) >= 24 and int(st.groups_faded) >= 1, "bodies fade through the fade groups: %d instances in %d groups" % [st.faded, st.groups_faded])
+	check(int(st.groups_faded) <= 4 and holding.size() == int(st.groups_faded), "one group a model and level, not one a body: %d groups hold %d instances (%d fade groups exist)" % [st.groups_faded, st.faded, fade_groups.size()])
+	check(shown_empty.size() <= 2, "a fade group is shown while it holds instances (%d shown empty)" % shown_empty.size())
+	check(fade.shadow_draws == 0 and fade.shadow_objs == 0, "and a fade group is never drawn into a shadow pass (%d draws)" % fade.shadow_draws)
+	check(DmDrawModel.draws(crowd) <= BUDGET_CROWD + BUDGET_FADE, "the crowd with its fade groups stays inside %d draw calls (%d)" % [BUDGET_CROWD + BUDGET_FADE, DmDrawModel.draws(crowd)])
+	check(DmDrawModel.draws(res.total) <= BUDGET_TOTAL + BUDGET_FADE, "and the whole inside %d (%d)" % [BUDGET_TOTAL + BUDGET_FADE, DmDrawModel.draws(res.total)])
+	check(recs.size() >= n_before, "(%d geometry instances, %d before)" % [recs.size(), n_before])
+	# once they have sunk the fade groups empty and are hidden again: the fight costs what it did
+	frames = Engine.get_physics_frames() + 40
+	while Engine.get_physics_frames() < frames:
+		await physics_frame
+	await process_frame
+	st = host.view.crowd.stats()
+	check(int(st.fading) == 0 and int(st.faded) >= 3 and int(st.faded) <= 3, "the sunk are gone and the three shrouded elites are still see-through (%d fading, %d faded)" % [st.fading, st.faded])
+
+
+## The counts of the groups whose name contains `part`, added up.
+func parts_of(res: Dictionary, part: String) -> Dictionary:
+	var out := {"main_objs": 0, "main_draws": 0, "shadow_objs": 0, "shadow_draws": 0}
+	for g: String in res.groups:
+		if g.begins_with("crowd") and part in g:
+			for k: String in out:
+				out[k] += int(res.groups[g][k])
+	return out
 
 
 ## The counts of the groups whose name starts with `prefix`, added up.

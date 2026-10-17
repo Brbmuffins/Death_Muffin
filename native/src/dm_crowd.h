@@ -94,11 +94,14 @@ public:
 	// Setup. A model's `data` (CrowdVatData.crowd_data()): slug, height, stride_walk, stride_run, clip_names, clip_seconds, clip_length, clip_impact,
 	// clip_landing, clip_loop, roles. `lod_rids[i]` / `shadow_rids[i]`: the MultiMesh RIDs of level i without and with shadows; `lod_distances`:
 	// the camera distances where levels 1.. start. Returns the model slot.
-	int64_t add_model(const godot::String &p_slug, const godot::Dictionary &p_data, const godot::Array &p_lod_rids, const godot::Array &p_shadow_rids, const godot::PackedFloat32Array &p_lod_distances);
+	// `fade_rids[i]` (optional): the MultiMesh of level i's fade group, drawn with the alpha shader: a body that is not solid (it sinks away, or the Shrouded ward has it) is written there for
+	// as long as it is not, and casts no shadow; without it such a body stays opaque in its plain group. A spectral model (`data.spectral`, see-through already) needs none.
+	int64_t add_model(const godot::String &p_slug, const godot::Dictionary &p_data, const godot::Array &p_lod_rids, const godot::Array &p_shadow_rids, const godot::PackedFloat32Array &p_lod_distances,
+			const godot::Array &p_fade_rids = godot::Array());
 	// The nodes that draw a model's groups (`plain_nodes[i]` / `shadow_nodes[i]`: the MultiMeshInstance3D of level i without and with shadows). The renderer draws a MultiMesh with no
 	// instance all the same (one draw call, and one more for each shadow cascade a caster meets), so a group is shown (`visible`) the frame it gets its first instance and hidden
 	// once it has had none for HIDE_AFTER_S seconds; the nodes start hidden. Without this call a group's node is never touched.
-	void set_group_nodes(int64_t p_model, const godot::Array &p_plain_nodes, const godot::Array &p_shadow_nodes);
+	void set_group_nodes(int64_t p_model, const godot::Array &p_plain_nodes, const godot::Array &p_shadow_nodes, const godot::Array &p_fade_nodes = godot::Array());
 	// Today's glows that are not a look's own: `elite` (Color, linear, alpha = strength) for every elite enemy and its corpse, and what a champion thrall adds
 	// to its look's strength (DmEntityViews: 0.35).
 	void set_glows(const godot::Color &p_elite, double p_champion_add);
@@ -140,8 +143,8 @@ public:
 	void draw(double p_dt, double p_alpha, const godot::Vector3 &p_camera, const godot::Projection &p_view_projection = godot::Projection(godot::Vector4(), godot::Vector4(), godot::Vector4(), godot::Vector4()));
 
 	// Reads (tests, the HUD's counters).
-	godot::PackedFloat32Array buffer(int64_t p_model, int64_t p_lod, bool p_shadow = false) const;  // exactly what was uploaded: count * 20 floats
-	int64_t instance_count(int64_t p_model, int64_t p_lod, bool p_shadow = false) const;
+	godot::PackedFloat32Array buffer(int64_t p_model, int64_t p_lod, bool p_shadow = false, bool p_fade = false) const;  // exactly what was uploaded: count * 20 floats
+	int64_t instance_count(int64_t p_model, int64_t p_lod, bool p_shadow = false, bool p_fade = false) const;
 	godot::Dictionary stats() const;
 	godot::Dictionary view_info(int64_t p_id, bool p_corpse = false) const;
 	godot::Dictionary last_feed() const;  // the rows the last sync or sync_rows took, in sync_rows' layout (a co-op guest builds the same)

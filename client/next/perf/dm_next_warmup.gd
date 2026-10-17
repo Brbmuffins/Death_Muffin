@@ -16,6 +16,7 @@ extends RefCounted
 const TOUR_FRAMES := 3
 const ROW_ID := 900000                 ## ids of the rehearsal rows (the core's ids are small)
 const ROW_GAPS := [0.0, 26.0, 56.0]    ## metres from the camera's focus: the three levels of detail (32 m and 60 m from the camera, which hangs up and back)
+const SHROUDED := 256                  ## CrowdBody flag BF_SHROUDED: the Shrouded ward is up, the body eases to see-through and is drawn in its model's fade group
 
 static var last_ms := 0
 static var models := 0
@@ -149,7 +150,8 @@ static func _bodies(stage: Node3D, at: Vector3, served: Array) -> Array:
 
 
 ## The rehearsal rows into the crowd: every model slot as an enemy and as a thrall, standing, at three distances along the camera's ground heading (the nearest
-## also cast shadows, the farther two use the coarser meshes). Fed again every frame, so the rows stay alive; returns how many.
+## also cast shadows, the farther two use the coarser meshes). The enemy rows stand under the Shrouded ward (`DmCrowd`'s shrouded flag, 256): they ease into their model's
+## fade group, so the alpha shader and each model's fade material are drawn now too. Fed again every frame, so the rows stay alive; returns how many.
 static func _feed_crowd(game: DmNextGame, cam: DmCameraRig) -> int:
 	var view: CrowdView = game.core_host.view
 	if view == null or view.crowd == null:
@@ -167,7 +169,7 @@ static func _feed_crowd(game: DmNextGame, cam: DmCameraRig) -> int:
 		for gap in ROW_GAPS:
 			for kind in 2:
 				var p: Vector3 = focus + fwd * float(gap) + side * (float(col % 12) - 5.5) * 1.4 + fwd * floorf(col / 12.0) * 1.4
-				bi.append_array(PackedInt32Array([id, kind, int(slot), 1, 0, 0, 0, 0]))   # state 1: idle (an enemy's IDLE, a thrall's IDLE); no glow
+				bi.append_array(PackedInt32Array([id, kind, int(slot), 1, SHROUDED if kind == 0 else 0, 0, 0, 0]))   # state 1: idle (an enemy's IDLE, a thrall's IDLE); no glow
 				bf.append_array(PackedFloat32Array([p.x, p.z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0]))
 				id += 1
 				col += 1

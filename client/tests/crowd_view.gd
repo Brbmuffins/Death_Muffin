@@ -7,7 +7,8 @@ extends SceneTree
 ## and the walk/run switch, the blends and the packing, the hit flash, the knock, the death into a corpse, the rise, the hover, the Gargoyle's dive, the shadow group,
 ## the level-of-detail split, interpolation, a Full Party crowd driven by a real DmCore (events not consumed, rows equal for a guest, no growth)
 ## and the time draw() takes (INFO only); the crowd's cost (README "Crowd cost"): bodies outside the camera's view not written (against the engine's own frustum planes, the drawn
-## range packed, a caster kept while its shadow falls in), the animation bands (poses worked out per second per band, the same bytes near the hero), the shadow counters.
+## range packed, a caster kept while its shadow falls in), the animation bands (poses worked out per second per band, the same bytes near the hero), the shadow counters;
+## and the alpha path (README "The alpha path"): a sinking body and a shrouded one drawn in the model's fade group at today's opacity, nothing else about their rows changed.
 ## Bakes the models it needs into a scratch folder (about 25 s).
 ## Run: godot --headless --path client --script res://tests/crowd_view.gd
 
@@ -40,6 +41,7 @@ const F_FLYER := 16
 const F_DIVING := 32
 const F_GROUNDED := 64
 const F_WOBBLE := 128
+const F_SHROUDED := 256
 const ENEMY := 0
 const THRALL := 1
 const ROBBER := 0   ## model slots, in SLUGS order
@@ -198,8 +200,9 @@ static func fx_pose(i: Dictionary) -> Vector4:
 
 # ---------------------------------------------------------------------------------------------------------------------- fixtures
 
-## A DmCrowd with the three baked models (robber 2 levels of detail, hound 1, skeleton 3), levels starting at 30 m and 60 m.
-func new_crowd() -> RefCounted:
+## A DmCrowd with the three baked models (robber 2 levels of detail, hound 1, skeleton 3), levels starting at 30 m and 60 m, each with its fade groups. `o`: "no_fade" (models with no
+## alpha groups, as a caller of the older add_model had), "spectral" (slugs drawn as ghosts: their plain group is the see-through one).
+func new_crowd(o := {}) -> RefCounted:
 	var c: RefCounted = ClassDB.instantiate("DmCrowd")
 	clock_ms = 0.0
 	if lods.is_empty():
@@ -208,14 +211,20 @@ func new_crowd() -> RefCounted:
 	for slug in SLUGS:
 		var plain: Array = []
 		var shadow: Array = []
+		var fade: Array = []
 		for lod in data[slug].meshes.size():
 			var a: MultiMesh = data[slug].make_multimesh(0, lod)
 			var b: MultiMesh = data[slug].make_multimesh(0, lod)
+			var f: MultiMesh = data[slug].make_multimesh(0, lod)
 			keep.append(a)
 			keep.append(b)
+			keep.append(f)
 			plain.append(a.get_rid())
 			shadow.append(b.get_rid())
-		c.add_model(slug, data[slug].crowd_data(), plain, shadow, PackedFloat32Array([30.0, 60.0]))
+			fade.append(f.get_rid())
+		var cd: Dictionary = data[slug].crowd_data()
+		cd["spectral"] = (o.get("spectral", []) as Array).has(slug)
+		c.add_model(slug, cd, plain, shadow, PackedFloat32Array([30.0, 60.0]), [] if bool(o.get("no_fade", false)) else fade)
 	return c
 
 
@@ -250,18 +259,18 @@ func draw(c: RefCounted, n: int, dt: float = DT, alpha: float = 0.0) -> void:
 		clock_ms += dt * 1000.0
 
 
-## Every instance in every group, decoded: {model, lod, shadow, xf, color, custom}.
+## Every instance in every group (plain, shadow, fade), decoded: {model, lod, shadow, fade, xf, color, custom}.
 func rows(c: RefCounted) -> Array:
 	var out := []
 	for m in lods.size():
 		for l in lods[m]:
-			for s in [false, true]:
-				var buf: PackedFloat32Array = c.buffer(m, l, s)
-				check(buf.size() == c.instance_count(m, l, s) * 20, "buffer(%d, %d, %s) holds count x 20 floats" % [m, l, s])
+			for g in [[false, false], [true, false], [false, true]]:
+				var buf: PackedFloat32Array = c.buffer(m, l, g[0], g[1])
+				check(buf.size() == c.instance_count(m, l, g[0], g[1]) * 20, "buffer(%d, %d, %s, %s) holds count x 20 floats" % [m, l, g[0], g[1]])
 				for i in buf.size() / 20:
 					var o := i * 20
 					var rows_ := Basis(Vector3(buf[o], buf[o + 1], buf[o + 2]), Vector3(buf[o + 4], buf[o + 5], buf[o + 6]), Vector3(buf[o + 8], buf[o + 9], buf[o + 10])).transposed()
-					out.append({"model": m, "lod": l, "shadow": s, "xf": Transform3D(rows_, Vector3(buf[o + 3], buf[o + 7], buf[o + 11])),
+					out.append({"model": m, "lod": l, "shadow": g[0], "fade": g[1], "xf": Transform3D(rows_, Vector3(buf[o + 3], buf[o + 7], buf[o + 11])),
 						"color": Color(buf[o + 12], buf[o + 13], buf[o + 14], buf[o + 15]), "custom": Color(buf[o + 16], buf[o + 17], buf[o + 18], buf[o + 19])})
 	return out
 
@@ -320,6 +329,7 @@ func _initialize() -> void:
 	rise_hover_and_pose()
 	the_dive()
 	death_and_corpses()
+	fades()
 	the_hound()
 	shadows_and_lod()
 	interpolation()
@@ -960,6 +970,219 @@ func death_and_corpses() -> void:
 	check(info(c, 11).mode == "fading", "and sinks away after 1.4 s")
 
 
+## What an instance row says of its opacity (crowd_vat.gdshader under FADE, line by line): INSTANCE_CUSTOM.x = the clip index + q / 64, q = (1 - opacity) in 63rds.
+func fade_of(r: Dictionary) -> Dictionary:
+	var x: float = r.custom.r
+	var clip_f := floorf(x + 0.001)
+	return {"clip": int(clip_f), "q": roundi((x - clip_f) * 64.0), "opacity": clampf(1.0 - (x - clip_f) * (64.0 / 63.0), 0.0, 1.0)}
+
+
+## The alpha path (README "The alpha path"): a body that sinks away, and a body under the Shrouded ward, is drawn in its model's fade group at today's opacity and casts no shadow; nothing
+## else about its row changes; a model with no fade group, or a ghost's, falls back as described; and a crowd of them costs one group a model and level, not one an instance.
+func fades() -> void:
+	var half := 0.5 / 63.0 + 1e-6   # one step of the instance's opacity is 1/63: the row is within half a step of the view's
+	var c := new_crowd()
+	c.set_focus(Vector2(0, 0))
+	feed(c, [body(1, ENEMY, ROBBER, CHASE, 6, 0, {"def": 7}), body(2, ENEMY, ROBBER, CHASE, 9, 0, {"def": 7})])
+	draw(c, 4)
+	var solid := row_of(c, 2)
+	check(not solid.is_empty() and not solid.fade and solid.custom.r == floorf(solid.custom.r) and info(c, 2).opacity == 1.0 and info(c, 2).fade_q == 0,
+		"a solid body's row has a whole clip index and sits in a plain or shadow group")
+	# --- a corpse the core no longer holds sinks for 0.9 s (DmEntityViews: set_opacity(max(0, 1 - sink_t / 0.9)), 1.3 m/s)
+	var corpse := {"id": 50, "model": ROBBER, "def": 7, "x": 6.0, "z": 0.0, "facing": 0.0, "scale": 1.0, "tint": Color.WHITE}
+	var dead_row := body(1, ENEMY, ROBBER, DEAD, 6, 0, {"def": 7})
+	var other := body(2, ENEMY, ROBBER, CHASE, 9, 0, {"def": 7})
+	feed(c, [dead_row, other], [[1, 100.0, 0.0, 100.0]], [corpse])
+	draw(c, 120)
+	check(info(c, 1).mode == "corpse" and info(c, 1).opacity == 1.0 and not row_of(c, 1).fade, "a corpse lying there is solid, in a plain group")
+	feed(c, [dead_row, other], [], [])
+	check(info(c, 1).mode == "fading" and c.stats().fading == 1, "a corpse the core no longer holds sinks")
+	var frames := 0
+	var seen := 0
+	var in_fade := 0
+	var worst := 0.0
+	var exact := true
+	var no_shadow := true
+	var clip_kept := true
+	var y_ok := true
+	for f in 60:
+		draw(c, 1)
+		var inf := info(c, 1)
+		if inf.is_empty() or inf.mode != "fading":
+			break
+		frames += 1
+		var want := maxf(0.0, 1.0 - float(inf.sink_t) / 0.9)
+		exact = exact and near(inf.opacity, want, 1e-9) and inf.fade_q == roundi((1.0 - want) * 63.0)
+		var r := row_of(c, 1)
+		if r.is_empty():
+			continue   # (sunk to nothing: not written)
+		seen += 1
+		in_fade += 1 if r.fade else 0
+		no_shadow = no_shadow and not r.shadow
+		worst = maxf(worst, absf(fade_of(r).opacity - want))
+		clip_kept = clip_kept and fade_of(r).clip == int(inf.clip_index)
+		y_ok = y_ok and near(r.xf.origin.y, Vector3(inf.pos).y, 1e-5)
+	check(frames >= 52 and frames <= 56 and exact, "it sinks for 0.9 s (%d frames) and the view's opacity is 1 - sink_t / 0.9 on every one, as today's" % frames)
+	check(seen >= frames - 2 and in_fade == seen and no_shadow, "every frame it is written it is in the fade group and never in a shadow group (%d of %d frames; a body sunk to nothing is not written)" % [in_fade, frames])
+	check(worst <= half, "its row carries that opacity within half a step of a 63rd (worst %.4f)" % worst)
+	check(clip_kept and y_ok, "and the clip index and the place of the row are the body's own")
+	draw(c, 3)
+	check(info(c, 1).is_empty() or info(c, 1).mode != "fading", "it is gone after the 0.9 s")
+	check(c.stats().fading == 0 and c.stats().faded == 0 and c.stats().groups_faded == 0, "nothing is left in the fade groups once it has sunk")
+	# --- a body that leaves the rows (the area cleared) sinks the same way, through the same group
+	feed(c, [body(5, ENEMY, ROBBER, CHASE, 3, 0, {"def": 7}), other])
+	draw(c, 3)
+	feed(c, [other])
+	draw(c, 20)
+	var swept := row_at(c, 3.0, 0.0)
+	check(c.stats().fading == 1 and c.stats().faded == 1 and not swept.is_empty() and swept.fade and absf(fade_of(swept).opacity - (1.0 - 20.0 * DT / 0.9)) <= half,
+		"a body that left the rows fades the same way (%.2f after a third of a second, 1 - 0.33 / 0.9)" % fade_of(swept).opacity)
+	draw(c, 60)
+	# --- a thrall casts while it lies there, and not once it sinks
+	c = new_crowd()
+	c.set_focus(Vector2(0, 0))
+	other = body(2, ENEMY, ROBBER, CHASE, 9, 0, {"def": 7})
+	feed(c, [body(3, THRALL, SKELETON, T_MOVE, -8, 0, {"speed": 3.0}), other])
+	draw(c, 3)
+	feed(c, [body(3, THRALL, SKELETON, T_DEAD, -8, 0), other])
+	draw(c, 60)
+	var shadows := func() -> int:
+		var n := 0
+		for l in lods[SKELETON]:
+			n += c.instance_count(SKELETON, l, true)
+		return n
+	check(info(c, 3).mode == "dying" and shadows.call() == 1 and c.stats().casting_thralls == 1 and c.stats().faded == 0, "a fallen thrall still casts while it lies there (it is in a shadow group)")
+	draw(c, 30)
+	check(info(c, 3).mode == "fading" and shadows.call() == 0 and c.stats().casting_thralls == 0 and c.stats().faded == 1 and c.stats().groups_faded == 1,
+		"once it sinks it has left the shadow group for the fade group (%d casting, %d faded)" % [c.stats().casting_thralls, c.stats().faded])
+	# --- the Shrouded ward: the body eases to 0.38 at 6 a second while it is up, and back to solid when it is down (DmEntityViews._tick_affix)
+	c = new_crowd()
+	c.set_focus(Vector2(0, 0))
+	var veiled := body(1, ENEMY, ROBBER, IDLE, 5, 2, {"def": 7, "flags": F_SHROUDED})
+	var plain_one := body(2, ENEMY, ROBBER, IDLE, 8, 2, {"def": 7})
+	feed(c, [veiled, plain_one])
+	var o := 1.0
+	var mirror_ok := true
+	var groups_ok := true
+	var worst_s := 0.0
+	var first_fade := -1
+	for f in 150:
+		draw(c, 1)
+		o += (0.38 - o) * minf(1.0, DT * 6.0)
+		var inf := info(c, 1)
+		mirror_ok = mirror_ok and near(inf.opacity, o, 1e-12)
+		var q := roundi((1.0 - o) * 63.0)
+		var r := row_of(c, 1)
+		groups_ok = groups_ok and r.fade == (q > 0) and not (r.fade and r.shadow) and fade_of(r).q == q
+		worst_s = maxf(worst_s, absf(fade_of(r).opacity - o))
+		if first_fade < 0 and r.fade:
+			first_fade = f
+	check(mirror_ok, "the ward's ease is today's: opacity += (0.38 - opacity) x min(1, 6 dt) every frame (%.4f after 2.5 s)" % info(c, 1).opacity)
+	check(groups_ok and first_fade == 0 and worst_s <= half, "the body is in the fade group from its first see-through frame, at the opacity of the view within half a step (%.4f)" % worst_s)
+	check(info(c, 1).veiled and info(c, 1).opacity > 0.379 and info(c, 1).opacity < 0.381 and not info(c, 2).veiled and info(c, 2).opacity == 1.0, "it settles at 0.38; a plain body next to it stays solid")
+	check(c.stats().faded == 1 and c.stats().groups_faded == 1 and c.stats().casting == 1, "one instance in one fade group; the plain body is the only one casting (%d faded, %d casting)" % [c.stats().faded, c.stats().casting])
+	feed(c, [body(1, ENEMY, ROBBER, IDLE, 5, 2, {"def": 7}), plain_one])   # a Miasma covers it (or the ward is stripped): the bit goes
+	var back_at := -1
+	mirror_ok = true
+	for f in 120:
+		draw(c, 1)
+		o += (1.0 - o) * minf(1.0, DT * 6.0)
+		o = 1.0 if o > 0.999 else o
+		mirror_ok = mirror_ok and near(info(c, 1).opacity, o, 1e-12)
+		if back_at < 0 and not row_of(c, 1).fade:
+			back_at = f
+	check(mirror_ok and not info(c, 1).veiled and info(c, 1).opacity == 1.0 and info(c, 1).fade_q == 0, "with the ward down it eases back to exactly solid")
+	check(back_at > 30 and back_at < 55, "and is drawn solid again from frame %d (a step under half a percent), %.2f s after the ward went" % [back_at, float(back_at) * DT])
+	var again := row_of(c, 1)
+	check(not again.fade and again.custom.r == floorf(again.custom.r) and c.stats().faded == 0 and c.stats().casting == 2, "back in a plain or shadow group with a whole clip index, casting again (%d casting)" % c.stats().casting)
+	# a ward that holds when a shrouded body dies: it falls solid (DmEntityViews._on_death sets the opacity back to 1)
+	feed(c, [veiled, plain_one])
+	draw(c, 40)
+	check(info(c, 1).opacity < 0.5 and row_of(c, 1).fade, "the ward is up again")
+	feed(c, [body(1, ENEMY, ROBBER, DEAD, 5, 2, {"def": 7, "flags": F_SHROUDED}), plain_one])
+	check(info(c, 1).mode == "dying" and info(c, 1).opacity == 1.0 and info(c, 1).fade_q == 0, "a shrouded body that dies is solid where it falls")
+	draw(c, 2)
+	var fell := row_of(c, 1)
+	check(not fell.is_empty() and not fell.fade and fell.custom.r == floorf(fell.custom.r), "and its row is in a solid group")
+	# --- the same rows with and without the ward: the fade group's row is the solid group's, but for the opacity
+	var a := new_crowd()
+	var b := new_crowd()
+	a.set_focus(Vector2(0, 0))
+	b.set_focus(Vector2(0, 0))
+	feed(a, [body(1, ENEMY, ROBBER, CHASE, 5, 2, {"def": 7, "speed": 3.0, "state_t": 1.0}), body(2, THRALL, SKELETON, T_MOVE, -6, 2, {"speed": 3.0})])
+	feed(b, [body(1, ENEMY, ROBBER, CHASE, 5, 2, {"def": 7, "speed": 3.0, "state_t": 1.0, "flags": F_SHROUDED}), body(2, THRALL, SKELETON, T_MOVE, -6, 2, {"speed": 3.0})])
+	var same_rows := true
+	var compared := 0
+	for f in 40:
+		a.draw(DT, 0.0, CAM)
+		b.draw(DT, 0.0, CAM)
+		clock_ms += DT * 1000.0
+		var ra := row_of(a, 1)
+		var rb := row_of(b, 1)
+		compared += 1
+		same_rows = same_rows and not ra.is_empty() and not rb.is_empty() and rb.fade and ra.xf.is_equal_approx(rb.xf) and ra.color == rb.color \
+			and ra.custom.g == rb.custom.g and ra.custom.b == rb.custom.b and ra.custom.a == rb.custom.a and fade_of(rb).clip == fade_of(ra).clip
+	check(same_rows and compared == 40, "a body under the ward is drawn exactly as without it (transform, tint and glow, flash, clip times and blend), but for the opacity (%d frames)" % compared)
+	var thrall_same := true
+	for l in lods[SKELETON]:
+		thrall_same = thrall_same and a.buffer(SKELETON, l, true) == b.buffer(SKELETON, l, true) and a.buffer(SKELETON, l, false) == b.buffer(SKELETON, l, false)
+	check(thrall_same and a.stats().drawn == b.stats().drawn, "and the thrall beside it is the same bytes (%d instances in both)" % a.stats().drawn)
+	# --- animation bands: the ward's ease is by time, so a far body reaches the same place
+	var far := new_crowd()
+	far.set_anim_lod(true, 5.0, 24.0, 10.0, 10.0)
+	far.set_focus(Vector2(0, 0))
+	feed(far, [body(1, ENEMY, ROBBER, IDLE, 40, 0, {"def": 7, "flags": F_SHROUDED})])
+	for f in 180:
+		far.draw(DT, 0.0, CAM)
+	check(info(far, 1).band == 2 and absf(float(info(far, 1).opacity) - 0.38) < 0.01 and row_of(far, 1).fade and absf(fade_of(row_of(far, 1)).opacity - 0.38) <= 0.01, "a body in the far band (10 poses a second) is at 0.38 after 3 s all the same (%.3f)" % info(far, 1).opacity)
+	# --- no fade group (an older caller of add_model), and a ghost's model: the fallbacks
+	var plain_only := new_crowd({"no_fade": true})
+	plain_only.set_focus(Vector2(0, 0))
+	feed(plain_only, [body(1, ENEMY, ROBBER, IDLE, 5, 2, {"def": 7, "flags": F_SHROUDED}), body(2, ENEMY, ROBBER, CHASE, 9, 0, {"def": 7})])
+	draw(plain_only, 30)
+	feed(plain_only, [body(1, ENEMY, ROBBER, IDLE, 5, 2, {"def": 7, "flags": F_SHROUDED})])
+	draw(plain_only, 10)
+	var all_whole := true
+	for r in rows(plain_only):
+		all_whole = all_whole and not r.fade and r.custom.r == floorf(r.custom.r)
+	check(plain_only.stats().fading == 1 and info(plain_only, 1).fade_q == 0 and all_whole and plain_only.stats().faded == 0 and plain_only.stats().drawn == 2,
+		"a model with no fade group keeps drawing its shrouded and sinking bodies solid, in its plain groups (%d drawn)" % plain_only.stats().drawn)
+	var ghost := new_crowd({"spectral": ["grave_robber"]})
+	ghost.set_focus(Vector2(0, 0))
+	feed(ghost, [body(1, ENEMY, ROBBER, CHASE, 5, 2, {"def": 4, "flags": F_MIST}), body(2, ENEMY, ROBBER, CHASE, 9, 0, {"def": 7})])
+	draw(ghost, 4)
+	check(fade_of(row_of(ghost, 1)).q == 0 and ghost.instance_count(ROBBER, 0, false, true) == 0, "a ghost's live row is a whole clip index (its own 0.55 is the material's)")
+	feed(ghost, [body(1, ENEMY, ROBBER, DEAD, 5, 2, {"def": 4, "flags": F_MIST}), body(2, ENEMY, ROBBER, CHASE, 9, 0, {"def": 7})])
+	draw(ghost, 20)
+	var gr := row_of(ghost, 1)
+	var gwant := maxf(0.0, 1.0 - float(info(ghost, 1).sink_t) / 0.9)
+	check(info(ghost, 1).mode == "fading" and not gr.fade and absf(fade_of(gr).opacity - gwant) <= half and fade_of(gr).q > 0 and ghost.stats().groups_faded == 0,
+		"a ghost that thins away stays in its plain group, whose shader is see-through already, and carries the opacity there (%.3f)" % fade_of(gr).opacity)
+	# --- the cost: bodies sinking together share one fade group a model and level
+	var many := new_crowd()
+	many.set_focus(Vector2(0, 0))
+	var crowd_rows: Array = []
+	for k in 12:
+		crowd_rows.append(body(100 + k, ENEMY, ROBBER, IDLE, -5.0 + 0.8 * k, 1, {"def": 7}))
+	for k in 6:
+		crowd_rows.append(body(200 + k, ENEMY, HOUND, IDLE, -4.0 + 1.1 * k, 4, {"def": 3}))
+	for k in 8:
+		crowd_rows.append(body(300 + k, THRALL, SKELETON, T_IDLE, -4.0 + k, -3))
+	feed(many, crowd_rows)
+	draw(many, 12)
+	var used_solid: int = many.stats().groups_used
+	check(many.stats().faded == 0 and used_solid >= 3, "26 solid bodies of three models: %d groups drawing (plain and shadow ones)" % used_solid)
+	feed(many, [])
+	draw(many, 10)
+	check(many.stats().faded == 26 and many.stats().groups_faded == 3 and many.stats().groups_used == 3 and many.stats().casting == 0,
+		"26 bodies sinking together draw %d groups, one fade group a model and level (%d instances), none casting" % [many.stats().groups_faded, many.stats().faded])
+	feed(many, crowd_rows.slice(0, 12))   # twelve robbers stand again (new views) while the 26 are still sinking
+	draw(many, 2)
+	check(many.stats().groups_faded == 3 and many.stats().groups_used > 3 and many.stats().faded == 26, "a standing group and the sinking ones draw side by side (%d groups, %d sinking)" % [many.stats().groups_used, many.stats().faded])
+	draw(many, 60)
+	check(many.stats().fading == 0 and many.stats().groups_faded == 0, "and the fade groups empty once the bodies are gone")
+
+
 func the_hound() -> void:
 	# the hound has no attack, hurt or death clip: the body does it alone
 	var c := new_crowd()
@@ -1513,7 +1736,7 @@ func full_party() -> void:
 	var drawn := 0
 	for m in 3:
 		for l in lods[m]:
-			drawn += crowd.instance_count(m, l, false) + crowd.instance_count(m, l, true)
+			drawn += crowd.instance_count(m, l, false) + crowd.instance_count(m, l, true) + crowd.instance_count(m, l, false, true)
 	var hidden := 0
 	for id in ids:
 		hidden += 1 if crowd.view_info(id).hidden else 0
@@ -1813,7 +2036,7 @@ func armed_variants() -> void:
 	check(slots.has("skeleton_thrall+warrior"), "the warrior's variant is a model of the view (%s)" % str(slots.keys()))
 	check(not Array(view.warnings).any(func(w: String) -> bool: return w.contains("drawn as skeleton_thrall+")), "a variant is never a stand-in for another model")
 	check(view.warnings.has("no baked variant skeleton_thrall+archer: drawn without its hand props"), "an archer without its baked variant keeps its plain body, said once")
-	# the variant draws with its plain body's very textures (one upload for both), its props through the track, and costs no extra MultiMesh: two a level, as a body
+	# the variant draws with its plain body's very textures (one upload for both), its props through the track, and costs no extra MultiMesh: three a level (plain, shadow, fade), as a body
 	var vd: CrowdVatData = view.data_of("skeleton_thrall+warrior")
 	var pd: CrowdVatData = view.data_of("skeleton_thrall")
 	var vmat := (view.get_node_or_null("skeleton_thrall+warrior_lod0") as MultiMeshInstance3D).material_override as ShaderMaterial
@@ -1823,7 +2046,7 @@ func armed_variants() -> void:
 	var groups := 0
 	for c in view.get_children():
 		groups += 1 if c.name.begins_with("skeleton_thrall+warrior_lod") else 0
-	check(groups == 2 * vd.meshes.size(), "the variant is drawn in two MultiMeshes a level of detail, as a plain body: its props add none (%d)" % groups)
+	check(groups == 3 * vd.meshes.size(), "the variant is drawn in three MultiMeshes a level of detail (plain, shadow, fade), as a plain body: its props add none (%d)" % groups)
 	var bare: int = core.add_external(0, 0.4, 1.0)
 	var rot: int = core.add_external(0, 0.4, 1.0)
 	view.set_owner_legion(rot, "rotweaver")
@@ -1868,6 +2091,10 @@ func armed_variants() -> void:
 			spectral = spectral and (mmi.material_override as ShaderMaterial).shader.code.contains("#define SPECTRAL")
 			no_shadow = no_shadow and mmi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	check(spectral and no_shadow, "its groups use the see-through shader and cast no shadow")
+	var fades := 0
+	for n in v2.get_children():
+		fades += 1 if String(n.name).begins_with("wraith_thrall_") and String(n.name).ends_with("_fade") else 0
+	check(fades == 0, "and it has no fade group: its plain group is see-through already (%d)" % fades)
 	v2.queue_free()
 
 
@@ -1879,19 +2106,31 @@ func groups_follow_instances(view: CrowdView, crowd: RefCounted) -> void:
 	for c in view.get_children():
 		if c is MultiMeshInstance3D:
 			var parts := String(c.name).split("_lod")
-			groups.append({"node": c, "model": int(slots[parts[0]]), "lod": int(parts[1]), "shadow": String(parts[1]).ends_with("_shadow")})
+			groups.append({"node": c, "model": int(slots[parts[0]]), "lod": int(parts[1]), "shadow": String(parts[1]).ends_with("_shadow"), "fade": String(parts[1]).ends_with("_fade")})
 	var holding := 0
 	var shown := 0
 	var empty_shown := 0
 	var holding_hidden := 0
 	for g: Dictionary in groups:
-		var n: int = crowd.instance_count(g.model, g.lod, g.shadow)
+		var n: int = crowd.instance_count(g.model, g.lod, g.shadow, g.fade)
 		holding += 1 if n > 0 else 0
 		shown += 1 if g.node.visible else 0
 		empty_shown += 1 if n == 0 and g.node.visible else 0
 		holding_hidden += 1 if n > 0 and not g.node.visible else 0
-	check(groups.size() == 12 and holding > 0 and holding < groups.size(), "the party's models have %d groups (3 models: 2 + 1 + 3 levels, with and without shadows) and %d of them hold instances" % [groups.size(), holding])
+	check(groups.size() == 18 and holding > 0 and holding < groups.size(), "the party's models have %d groups (3 models: 2 + 1 + 3 levels, plain, with shadows and the fade group) and %d of them hold instances" % [groups.size(), holding])
 	check(holding_hidden == 0 and empty_shown <= 2 and shown == holding + empty_shown, "a group is shown while it holds instances, and only the ones emptied within the last half second are shown empty (%d shown, %d hold, %d hold and hide, %d empty and shown)" % [shown, holding, holding_hidden, empty_shown])
+	# the fade groups: the alpha shader (the same material parameters as the solid one's), no shadow, and the closed bodies' cull-back variant
+	var fade_nodes := 0
+	var fade_ok := true
+	for c in view.get_children():
+		if c is MultiMeshInstance3D and String(c.name).ends_with("_fade"):
+			fade_nodes += 1
+			var fm := (c as MultiMeshInstance3D).material_override as ShaderMaterial
+			var sm := (view.get_node(String(c.name).trim_suffix("_fade")) as MultiMeshInstance3D).material_override as ShaderMaterial
+			fade_ok = fade_ok and fm.shader == CrowdVatData.fade_shader(false) and fm.shader.code.contains("#define FADE") and not fm.shader.code.contains("#define SPECTRAL") \
+				and (c as MultiMeshInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and fm != sm and fm.get_shader_parameter("vat_pos") == sm.get_shader_parameter("vat_pos") \
+				and fm.get_shader_parameter("albedo_tex") == sm.get_shader_parameter("albedo_tex") and (fm.get_shader_parameter("vat_clips") as PackedVector4Array) == (sm.get_shader_parameter("vat_clips") as PackedVector4Array)
+	check(fade_nodes == 6 and fade_ok, "each level of each model has a fade node: the fade shader on the model's own textures and clips, casting no shadow (%d nodes)" % fade_nodes)
 	view.clear()   # every body forgotten: every group empties
 	for f in 20:
 		crowd.draw(DT, 0.5, CAM)
@@ -1910,7 +2149,7 @@ func groups_follow_instances(view: CrowdView, crowd: RefCounted) -> void:
 	var back := 0
 	var back_hidden := 0
 	for g: Dictionary in groups:
-		var n: int = crowd.instance_count(g.model, g.lod, g.shadow)
+		var n: int = crowd.instance_count(g.model, g.lod, g.shadow, g.fade)
 		back += 1 if g.node.visible else 0
 		back_hidden += 1 if n > 0 and not g.node.visible else 0
 	check(back > 0 and back_hidden == 0, "a group is shown the frame its first instance is written (%d shown, %d holding and hidden)" % [back, back_hidden])
@@ -1930,8 +2169,8 @@ func lockstep(core: RefCounted, view: CrowdView, guest: RefCounted, alpha: float
 func buffers_equal(a: RefCounted, b: RefCounted) -> bool:
 	for m in lods.size():
 		for l in lods[m]:
-			for s in [false, true]:
-				if a.buffer(m, l, s) != b.buffer(m, l, s):
+			for g in [[false, false], [true, false], [false, true]]:
+				if a.buffer(m, l, g[0], g[1]) != b.buffer(m, l, g[0], g[1]):
 					return false
 	return true
 
@@ -1944,14 +2183,21 @@ func new_crowd_from(view: CrowdView) -> RefCounted:
 		var d: CrowdVatData = view.data_of(slug)
 		var plain: Array = []
 		var shadow: Array = []
+		var fade: Array = []
 		for lod in d.meshes.size():
 			var a: MultiMesh = d.make_multimesh(0, lod)
 			var b: MultiMesh = d.make_multimesh(0, lod)
+			var f: MultiMesh = d.make_multimesh(0, lod)
 			keep.append(a)
 			keep.append(b)
+			keep.append(f)
 			plain.append(a.get_rid())
 			shadow.append(b.get_rid())
-		var slot: int = g.add_model(slug, d.crowd_data(), plain, shadow, view.lod_distances)
+			fade.append(f.get_rid())
+		var cd: Dictionary = d.crowd_data()
+		var ghost: bool = (view._looks.get("spectral_models", []) as Array).has(slug)
+		cd["spectral"] = ghost
+		var slot: int = g.add_model(slug, cd, plain, shadow, view.lod_distances, [] if ghost else fade)
 		check(slot == slots[slug], "the guest's model slot of %s equals the view's" % slug)
 	var cost: Dictionary = view.crowd.settings()   # the same cost settings: the rows decide everything, the animation bands among it
 	g.set_anim_lod(cost.anim_lod, cost.anim_mid_m, cost.anim_mid_hz, cost.anim_far_m, cost.anim_far_hz)

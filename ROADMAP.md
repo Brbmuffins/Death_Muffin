@@ -120,8 +120,9 @@ server (B38).
     (a frame from the derivatives, the crowd mesh has no tangents), the friend rim (0.9 for this player's thralls, 0.6 for another's, a champion's gold 1.4) and the Leech's slither. The rim rides the glow's palette
     slot: no instance data, no draw call (a material per rim would split each model's MultiMeshes by the rims in them: 8 groups drawing in the Full Party against 10), see `client/crowd/README.md` "Differences
     from the creature material". Not drawn: the legion kit's armour tint and weapon tier colour, which today's game never shows either (no host gives DmEntityViews a `legion_kit_for`: "For review"). Left:
-    sinking bodies fade out only with an alpha channel (a transparent material and a group of its own); the Bone Colossus's rim reads fuller than today's in the Forward+ test (a pose that differs, or the baked normals
-    at its hard edges: to look at on a real GPU). Done before: every body's glow (elite, risen and drowned, wraith, wisp, a legion's thralls with the empowered and champion boosts) through a glow palette, no extra
+    the Bone Colossus's rim reads fuller than today's in the Forward+ test (a pose that differs, or the baked normals
+    at its hard edges: to look at on a real GPU). Done (2026-10-17): sinking bodies fade out as they sink, and the Shrouded ward's body is see-through, through the crowd's alpha path (the "Crowd effects, the rest" item below).
+    Done before: every body's glow (elite, risen and drowned, wraith, wisp, a legion's thralls with the empowered and champion boosts) through a glow palette, no extra
     draw call (`client/crowd/README.md`), the wings, the spectral wraiths (see-through, no shadow), the dirt mound over a ghoul underground (`DmEnemyFx`), and the thralls' hand props (swords, shields, bows, staffs:
     "<model>+<kind>" variants, `client/crowd/README.md` "Hand props").
   - [ ] Crowd download size: a thrall variant (`<model>+<kind>`) shares its plain body's textures and draws its hand props as rigid meshes on a baked hand-transform track (one small
@@ -130,8 +131,12 @@ server (B38).
     copy of the textures. Positions are within 1.5 mm for most models and 2.9 mm for the widest boxes (a colossus's; the half floats had 2.4 mm there); the props are where today's
     formula puts them (0.001 mm): `client/crowd/README.md` "What is baked", "Hand props", `client/tests/crowd_bake.gd`. Left: the first rendered check on a real GPU
     (`client/tests/crowd_smoke.gd`, Forward+, Mobile and Compatibility): the shader's integer decoding and its prop branch are proven in a line-by-line mirror and a GLSL compile, not yet on a renderer.
-  - [ ] Crowd effects, the rest: `DmEnemyFx` already plays the telegraphs, swings, deaths, voices, rising dust, dust clouds and the affixes' bell, meal and burst from the core's events; left are the
-    the shrouded body's fade (the full list is in native/README.md "Differences"). Done: the thralls' ground rings, the shattered corpse (`DmCrowd.shatter`) and each corpse's puff when it goes, the landing dust (`DmCrowd.take_landings`), the corpse rings and the toxic disc, the affixes' standing marks and motes, the status tells and the fliers' motes (their cost in the VPS Full Party fight, headless, two rounds each: 5.06 -> 5.22 ms a frame on average, the median unchanged; today pays the same effects every frame).
+  - [x] Crowd effects, the rest (2026-10-17): `DmEnemyFx` plays the telegraphs, swings, deaths, voices, rising dust, dust clouds and the affixes' bell, meal and burst from the core's events, and the status
+    and idle motes on its 5 Hz ambient tick (the Flagellant's frenzy, the Pyre's and the Fen's: `client/tests/world.gd`); the last of native/README.md "Differences", the fade of a sinking body and of the Shrouded
+    ward's, is the crowd's alpha path: a fade group a model and level (MultiMesh, alpha shader, no shadow), a body in it only while it is not solid (opacity `1 - sink_t / 0.9` as it sinks, the ward eased to 0.38 at 6 a second and
+    solid where the body falls), the opacity in the clip index's fraction (no instance float more), closed bodies cull their back faces in it as today's fade variant does, a ghost needs no group; the Full Party with 24 bodies
+    sinking and three shrouded elites draws two crowd draw calls more (22 to 24, `client/tests/draw_budget.gd`), rendered once on llvmpipe (`client/tests/crowd_fade_smoke.gd`: `client/crowd/README.md` "The alpha path");
+    Forward+ and Mobile not yet seen (a look for Helix's PC). Done: the thralls' ground rings, the shattered corpse (`DmCrowd.shatter`) and each corpse's puff when it goes, the landing dust (`DmCrowd.take_landings`), the corpse rings and the toxic disc, the affixes' standing marks and motes, the status tells and the fliers' motes (their cost in the VPS Full Party fight, headless, two rounds each: 5.06 -> 5.22 ms a frame on average, the median unchanged; today pays the same effects every frame).
   - [ ] Crowd cost. In the crowd (`client/crowd/README.md` "Crowd cost"): animation bands (a body beyond 32 m of the camera works its pose out 24 times a second, beyond 60 m 10 times; always placed every frame), bodies outside the camera's
     view not written (a casting body kept while its shadow falls in), the thrall shadows counted (instances, MultiMeshes and triangles in the shadow pass) and switchable for a run, and the level-of-detail distances (32 and 60 m) and the
     128-instance reserve as settings the benchmark records; `-- --bench-crowd=...` changes them for a run. Measured on the VPS (headless): the crowd's whole CPU is 30 to 50 us a frame at Full Party, so the saving is on the GPU.
@@ -380,6 +385,9 @@ combat simulation for now.
     skips the send).
   - Today's game: the Plague Doctor's flask leaves a 5 s toxic pool that hurts but draws nothing on the ground (DmEnemyFx draws only dust and ember zones);
     the rebuild keeps it so until this is decided (2026-10-17).
+  - Today's game: the Shrouded body's opacity has two writers that disagree: `DmEntityViews._tick_affix` writes it every frame toward 0.38 unless `e.slowT > 0`, a field nothing ever sets, and `DmStatusSet._visual_state`
+    sets 0.38 and 1.0 at once as the `shrouded` status comes and goes (a Miasma lifts it); which one a player sees depends on the order they run. The rebuild draws the status's state, eased at `_tick_affix`'s rate (2026-10-17).
+  - Today's game: a sinking thrall's hand props (sword, shield, bow, staff) are bone-attached nodes the body's opacity does not reach, so they float solid while the body fades; the rebuild's props fade with it (2026-10-17).
   - Today's game: the Reaper's soul wisp bursts on arrival through a lambda that reads the meta node (`DmNextMeta._soul_fx`), so a wisp still flying when the game is left logs a script error
     (the benchmark's Reaper run found it; the rebuild's port reads a local, 2026-10-17).
   - Today's game's benchmark: the fight's settings carry no V-Sync, so the game scene turns it back on during the measurement; a run faster than the monitor reads its

@@ -96,6 +96,8 @@ func bounding_radius() -> float:
 
 
 static var _spectral: Shader
+static var _fade: Shader
+static var _fade_back: Shader
 
 ## The crowd shader with SPECTRAL defined (a spectral body: see-through, no depth write; DmCreature's fade variant), made once from the same code.
 static func spectral_shader() -> Shader:
@@ -106,11 +108,33 @@ static func spectral_shader() -> Shader:
 	return _spectral
 
 
+## The crowd shader with FADE defined (the alpha path: blend_mix, no depth write, the opacity of each instance in INSTANCE_CUSTOM.x; DmCreature's fade variant), made once from the same code.
+## `cull_back`: a closed body (DmCreatureMat.CULL_BACK_SLUGS), whose far side would show through the near one in a pass that writes no depth.
+static func fade_shader(cull_back := false) -> Shader:
+	if cull_back:
+		if _fade_back == null:
+			var base: Shader = load(SHADER_PATH)
+			_fade_back = Shader.new()
+			_fade_back.code = base.code.replace("shader_type spatial;", "shader_type spatial;\n#define FADE\n#define CULL_BACK")
+		return _fade_back
+	if _fade == null:
+		var base: Shader = load(SHADER_PATH)
+		_fade = Shader.new()
+		_fade.code = base.code.replace("shader_type spatial;", "shader_type spatial;\n#define FADE")
+	return _fade
+
+
+## INSTANCE_CUSTOM.x for clip `clip` at `opacity` (the alpha path): the clip index, and over it (1 - opacity) in 63rds / 64, the way the crowd writes it. 1 is the clip index alone.
+static func pack_clip(clip: int, opacity := 1.0) -> float:
+	return float(clip) + float(clampi(roundi((1.0 - opacity) * 63.0), 0, 63)) / 64.0
+
+
 ## The material for this model's MultiMeshes. `albedo` is the model's colour texture (res://assets/ + albedo_path in the game), `orm` and `normal` the others when it has them
-## (DmCreatureMat takes the same three from the glTF material). `spectral`: a ghost's body (crowd_looks.json spectral_models: the wraiths), drawn with spectral_shader().
-func make_material(albedo: Texture2D, orm: Texture2D = null, spectral := false, normal: Texture2D = null) -> ShaderMaterial:
+## (DmCreatureMat takes the same three from the glTF material). `spectral`: a ghost's body (crowd_looks.json spectral_models: the wraiths), drawn with spectral_shader(). `fade`: the
+## material of the model's fade groups (fade_shader(): bodies sinking away or under the Shrouded ward), `cull_back` for a closed body's.
+func make_material(albedo: Texture2D, orm: Texture2D = null, spectral := false, normal: Texture2D = null, fade := false, cull_back := false) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = spectral_shader() if spectral else load(SHADER_PATH)
+	m.shader = spectral_shader() if spectral else (fade_shader(cull_back) if fade else load(SHADER_PATH))
 	m.set_shader_parameter("albedo_tex", albedo)
 	if orm != null:
 		m.set_shader_parameter("orm_tex", orm)

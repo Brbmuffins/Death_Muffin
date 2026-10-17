@@ -1,10 +1,20 @@
 shader_type spatial;
 #ifdef SPECTRAL
-// A spectral body (CrowdVatData.spectral_shader: this code with SPECTRAL defined): DmCreature's fade variant, see-through at SPECTRAL_OPACITY, writing no depth.
+#define FADE
+#endif
+#ifdef FADE
+// The alpha path (CrowdVatData.fade_shader, and spectral_shader with SPECTRAL defined as well): DmCreature's fade variant, blend_mix and no depth write, the opacity of each instance read from
+// INSTANCE_CUSTOM.x (below). A model's fade group draws with it: a body sinking away, or the Shrouded ward's, only while it is not solid (client/crowd/README.md "The alpha path").
+#ifdef CULL_BACK
+render_mode cull_back, diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_never;   // a closed body (DmCreatureMat.CULL_BACK_SLUGS): its far side must not show through the near one
+#else
 render_mode cull_disabled, diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_never;
-const float SPECTRAL_OPACITY = 0.55;  // DmCreature: opacity 0.55 for a spectral body
+#endif
 #else
 render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
+#endif
+#ifdef SPECTRAL
+const float SPECTRAL_OPACITY = 0.55;  // DmCreature: opacity 0.55 for a spectral body (a ghost's group is always the alpha one; the instance's own opacity multiplies it)
 #endif
 
 // The crowd material: plays a baked vertex animation (client/crowd/README.md) for every instance of a MultiMesh.
@@ -12,7 +22,7 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 // per-instance data only (no screen or depth textures, no Forward+-only built-ins).
 //
 // Per instance (MultiMesh with use_colors and use_custom_data):
-//   INSTANCE_CUSTOM.x  clip index (the model's clip table)
+//   INSTANCE_CUSTOM.x  clip index (the model's clip table); with FADE the opacity rides in the fraction over it: clip + q / 64, q = (1 - opacity) * 63 rounded (0 = solid)
 //   INSTANCE_CUSTOM.y  seconds into that clip (the clip's own time; a loop wraps, a one-shot holds its last frame)
 //   INSTANCE_CUSTOM.z  previous clip index + blend weight 0..<1 of the previous pose (0 = no blend, then w is ignored)
 //   INSTANCE_CUSTOM.w  seconds into the previous clip
@@ -74,6 +84,9 @@ varying float v_flash;
 varying flat vec4 v_glow;
 varying flat vec3 v_rim;   // the rim's colour x strength x 0.9
 varying flat float v_part;
+#ifdef FADE
+varying flat float v_alpha;   // the instance's opacity
+#endif
 
 ivec2 vat_texel(int frame, int id) {
 	int r = id / vat_width;
@@ -143,7 +156,13 @@ void trk_pose(int clip, float time, int slot, out vec4 r0, out vec4 r1, out vec4
 
 void vertex() {
 	vec4 d = INSTANCE_CUSTOM;
+#ifdef FADE
+	float clip_f = floor(d.x + 0.001);   // (the fraction over the clip index is below 63 / 64: the floor cannot reach the next clip)
+	int clip = clamp(int(clip_f), 0, 15);
+	v_alpha = clamp(1.0 - (d.x - clip_f) * (64.0 / 63.0), 0.0, 1.0);
+#else
 	int clip = clamp(int(d.x + 0.5), 0, 15);
+#endif
 	float prev = floor(d.z);
 	float weight = d.z - prev;
 	int prev_clip = clamp(int(prev), 0, 15);
@@ -228,7 +247,11 @@ void fragment() {
 			NORMAL = bumped(n, VERTEX, UV, texture(normal_tex, UV).rgb);
 		}
 	}
+#ifdef FADE
 #ifdef SPECTRAL
-	ALPHA = SPECTRAL_OPACITY;
+	ALPHA = SPECTRAL_OPACITY * v_alpha;
+#else
+	ALPHA = v_alpha;
+#endif
 #endif
 }

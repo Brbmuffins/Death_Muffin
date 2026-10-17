@@ -412,6 +412,42 @@ func _test_shader() -> void:
 	check(sh.code.contains("trk_clips[%d]" % CrowdVatData.MAX_CLIPS), "shader track clip table matches MAX_CLIPS")
 	# the integer maths of the position codes stays in signed 32 bits and needs no shifts or unsigned types (Godot's shader language, Compatibility, Mobile)
 	check(not sh.code.contains("uint") and not sh.code.contains("<<") and not sh.code.contains(">>"), "shader decodes the position codes with plain ints")
+	_test_fade(sh)
+
+
+## The alpha path (client/crowd/README.md "The alpha path"): the solid shader is untouched, the fade shader is DmCreatureMat's fade variant (blend_mix, no depth write) and reads an
+## instance's opacity from the fraction over the clip index in INSTANCE_CUSTOM.x, the spectral one multiplies its own 0.55 by it; and the packing survives a half float (what a
+## MultiMesh may keep an instance's custom data in): every clip index with every opacity step reads back as itself.
+func _test_fade(sh: Shader) -> void:
+	var solid := sh.code
+	check(not solid.contains("blend_mix") or solid.contains("#ifdef FADE"), "the solid shader draws opaque: its blend_mix sits behind FADE")
+	var fade := CrowdVatData.fade_shader()
+	check(fade.code.begins_with("shader_type spatial;\n#define FADE") and fade.code.length() > solid.length(), "fade_shader is the same code with FADE defined")
+	check(CrowdVatData.fade_shader() == fade and CrowdVatData.spectral_shader() != fade, "made once, and not the spectral one")
+	check(CrowdVatData.spectral_shader().code.contains("#define SPECTRAL") and solid.contains("#ifdef SPECTRAL\n#define FADE\n#endif"), "a ghost's shader is the fade shader with its own 0.55")
+	check(solid.contains("render_mode cull_disabled, diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_never;") and solid.contains("ALPHA = v_alpha;") and solid.contains("ALPHA = SPECTRAL_OPACITY * v_alpha;"),
+		"the fade variant is DmCreatureMat's: blend_mix, depth_draw_never, ALPHA from the instance (a ghost's times 0.55)")
+	var back := CrowdVatData.fade_shader(true)
+	check(back != fade and back.code.contains("#define FADE\n#define CULL_BACK") and solid.contains("render_mode cull_back, diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_never;") and CrowdVatData.fade_shader(true) == back,
+		"a closed body's fade shader culls back faces, as DmCreatureMat's fade variant does for CULL_BACK_SLUGS (made once)")
+	check(CrowdView.fade_cull_back("thrall_sentinel") and CrowdView.fade_cull_back("thrall_sentinel+warrior") and CrowdView.fade_cull_back("bone_colossus") and not CrowdView.fade_cull_back("grave_robber") and not CrowdView.fade_cull_back("skeleton_thrall+archer"),
+		"the cull-back bodies are DmCreatureMat's, a thrall's hand-prop variant its body's")
+	check(solid.contains("float clip_f = floor(d.x + 0.001);") and solid.contains("v_alpha = clamp(1.0 - (d.x - clip_f) * (64.0 / 63.0), 0.0, 1.0);"), "and reads the opacity back from the fraction over the clip index")
+	var img := Image.create(1, 1, false, Image.FORMAT_RH)   # a half float, as a MultiMesh may keep custom data
+	var wrong := 0
+	var worst := 0.0
+	for clip in CrowdVatData.MAX_CLIPS:
+		for q in 64:
+			var x := CrowdVatData.pack_clip(clip, 1.0 - float(q) / 63.0)
+			img.set_pixel(0, 0, Color(x, 0, 0))
+			var h := img.get_pixel(0, 0).r   # the shader's decode, line by line (clip_f, v_alpha), on what the half float kept
+			var clip_f := floorf(h + 0.001)
+			var alpha := clampf(1.0 - (h - clip_f) * (64.0 / 63.0), 0.0, 1.0)
+			wrong += 0 if int(clip_f) == clip and absf(alpha - (1.0 - float(q) / 63.0)) < 1e-6 else 1
+			worst = maxf(worst, absf(alpha - (1.0 - float(q) / 63.0)))
+	check(wrong == 0, "every clip index with every opacity step survives a half float (%d of %d wrong, worst %s)" % [wrong, CrowdVatData.MAX_CLIPS * 64, str(worst)])
+	check(CrowdVatData.pack_clip(5, 1.0) == 5.0 and CrowdVatData.pack_clip(5, 0.0) == 5.0 + 63.0 / 64.0 and CrowdVatData.pack_clip(5, 1.4) == 5.0, "a solid body's x is the clip index alone, none is brighter than solid, see-through is 63/64 over it")
+	check(CrowdVatData.pack_clip(5, 0.5) == 5.0 + 32.0 / 64.0 and CrowdVatData.pack_clip(5, 0.38) == 5.0 + 39.0 / 64.0, "opacity 0.5 is step 32 (31.5 rounds up) and the ward's 0.38 is step 39 of 63")
 
 
 ## What the crowd material takes from the glTF material and what it makes of the thrall's look, as DmCreatureMat does (client/crowd/README.md "Differences from the creature material").

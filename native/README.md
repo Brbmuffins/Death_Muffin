@@ -60,14 +60,16 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
   closest-point query walked every polygon of the map; `nav_replace_region` swaps one region's polygons, which is how a Depths floor changing leaves no old triangles behind), heroes and walls pushed out as circles.
   Every body notices a target at 15 m and strays 30 m from home; `set_enemy_aggro` gives one body its own (the Depths' hunters: 36 and 90), with the same drop rule (aggro x 1.5). (`dmcore 0.12`: `nav_replace_region`, `set_enemy_aggro` and `aggro` / `leash` in `enemy_info`; the wire layout is unchanged.) This replaces Godot's RVO avoidance: crowds may flow slightly
   differently, a difference written down for Helix to judge (B42). No physics body per creature.
-- **Drawing:** one MultiMesh per creature model, level of detail and shadow setting, transforms and animation data written in one buffer update per
+- **Drawing:** one MultiMesh per creature model, level of detail and kind (plain, shadow, fade), transforms and animation data written in one buffer update per
   rendered frame, interpolated between ticks; animations play from baked vertex-animation textures. `DmCrowd` does it (`dm_crowd.*`, `core/crowd_view.*`): it reads the core's
   tables and damage events right after each step without consuming the events, and keeps every creature's view state (turn, legs, clip, blend, flash, knock, death) itself, so no
   presentation field lives in a world, enemy or thrall struct. Its input is a plain row per creature, hit and corpse (client/crowd/README.md "Driving the crowd"); a co-op
   guest's puppet core fills the same tables and damaged events, so `DmCrowd.sync(core)` draws it as it draws a host. The frame's cost is the view's to cut, in the one `draw` call: the camera's
   view-projection comes in with it (bodies outside it are not written), and a body far from the camera works its pose out less often, never the position (`client/crowd/README.md` "Crowd cost").
-  A group (model, level of detail, shadow setting) is drawn only while it holds instances: the renderer draws a MultiMesh with none all the same, so `draw` shows the group's `MultiMeshInstance3D` the frame it gets its first instance and
-  hides it after half a second without one (`set_group_nodes`; `dmcore 0.14`, no enum or wire change; `client/README.md` "The draw budget").
+  A group (model, level of detail, kind) is drawn only while it holds instances: the renderer draws a MultiMesh with none all the same, so `draw` shows the group's `MultiMeshInstance3D` the frame it gets its first instance and
+  hides it after half a second without one (`set_group_nodes`; `dmcore 0.14`, no enum or wire change; `client/README.md` "The draw budget"). A body that is not solid (it sinks away, or the Shrouded ward has it: body flag
+  `BF_SHROUDED`, set from the affix and the `shrouded` status) is written to its model's fade group instead, drawn with the alpha shader, for as long as it is not (`add_model`'s and `set_group_nodes`' last argument, `buffer` and
+  `instance_count`'s `fade`, `stats().faded`; `dmcore 0.15`, no enum or wire change; `client/crowd/README.md` "The alpha path").
 - **Co-op (host-authoritative, B28, B40):** the host core packs one compact snapshot at 20 Hz and the discrete events as reliable batches; a guest's core runs in
   puppet mode (`set_puppet(true)`): no brains and no rules, bodies that appear from spawn events, ease toward snapshots (today's puppet easing) and go on removal events,
   and an event buffer that carries what GDScript sees on the host, derived from state edges and hp drops where today's puppets derive it. Messages carry a version and a
@@ -247,12 +249,16 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 - **Thrall rolls are seeded:** a thrall's repath/scan phase, its status phase and the teleport offset come from its own PCG stream, as enemies'
   do, where today `randomize()` and global `randf()` are used.
 - **`damage` on a thrall returns the health lost** (after damage taken and the barrier), not the raw amount.
-- **Crowd drawing (`DmCrowd`):** the creatures are MultiMesh instances playing baked clips, so what lived on each creature's node today is not in this pass:
-  the thralls'
-  spirit rims, gear tint of kit armour and the kit weapon's tier colour on a thrall's prop (the props themselves are baked: `client/crowd/README.md` "Hand props"), the Mire Leech's wobble,
-  the fade-out of a sinking body (it sinks the same 0.9 s but is not faded to transparent), the drawn-body crowd separation
-  (`_separate_crowd`; the core separates bodies). Effects need the event consumer, which is its own item. The animation LOD (a far body updates at 24 or 10 Hz today) and the culling of what the camera
+- **Crowd drawing (`DmCrowd`):** the creatures are MultiMesh instances playing baked clips, so what lived on each creature's node today is drawn another way or not at all:
+  the gear tint of kit armour and the kit weapon's tier colour on a thrall's prop are not drawn (today's game never shows them either: the props themselves are baked, `client/crowd/README.md` "Hand props"),
+  nor is the drawn-body crowd separation
+  (`_separate_crowd`; the core separates bodies). The animation LOD (a far body updates at 24 or 10 Hz today) and the culling of what the camera
   cannot see (the engine does it per node today) are the crowd's own: the bands count from the camera's distance, where today's count from a box around the hero (`client/crowd/README.md` "Crowd cost").
+- **See-through bodies (`client/crowd/README.md` "The alpha path"):** a body that sinks away fades to nothing in the same 0.9 s and the Shrouded elite fades to 0.38 at today's rate, in a fade group of
+  its model. Three things differ from today's nodes, for Helix to judge: a see-through body casts no shadow (today's thrall keeps its full shadow as it sinks, a shrouded elite while it is see-through);
+  the ward's change is eased at `_tick_affix`'s 6 a second both ways (`DmStatusSet._visual_state` sets 0.38 and 1.0 at once when the `shrouded` status comes and goes, and `_tick_affix`, which writes the same opacity
+  every frame, never lifts it: its `slowT` is never set), so the body is solid while a Miasma covers it or it is stripped and the shroud's smoke stops with it; and a thrall's hand props fade with its body (today's props are
+  nodes the body's opacity does not reach, and float solid as it sinks).
 - **Crowd views take the live nodes' rules where they differ from `DmEntityViews`:** a flinch plays when the core enters HURT (`DmEnemy`), not on every flash; the flash decays by
   6 per second for an enemy and 5 for a thrall (`DmEnemy`, `DmThrall`), and the killing blow leaves no flash on the body; an enemy rises from 0.9 x its model's height below the ground
   (`DmEnemy`; `DmEntityViews` says 1.7 m); a recoil starts on every hit whose flash had fallen under 0.5, at any frame rate (today at 60 fps it depends on the frame time).
@@ -281,7 +287,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
     when its attack event is dispatched and runs on the rendered frame clock, as the node-based fx did from the state change.
   - The hover pick asks the core for the bodies within 4.5 m of where the cursor's ray crosses the plane 0.9 m above the ground and takes the one whose chest is nearest the cursor on screen within 46 px; today
     it measured every enemy. The same answer unless a tall body's chest is more than 4.5 m along the ray from that plane. A click on an enemy only names it until the rites come (no attack chase, no auto combat).
-  - The enemy fx dropped, for the "Crowd effects" item: the shrouded body's fade (the crowd has no alpha), an elite's glow. The status tells and the fliers' motes play near the hero on `DmEnemyFx`'s 5 Hz ambient tick at today's rates a second
+  - The shrouded body's fade and an elite's glow are the crowd's (the alpha path and the glow palette), not the enemy fx's. The status tells and the fliers' motes play near the hero on `DmEnemyFx`'s 5 Hz ambient tick at today's rates a second
     (today rolled them every rendered frame), for the bodies with a status (`status_changed`, read from `DmCore.statuses`) and the ones that fly. An elite keeps its ground ring, and an affixed one its affix marks and motes, following the drawn body; every thrall stands on today's ground ring (champion gold, an ally's dimmer); the corpses get today's rings and the toxic disc
     (`DmEnemyFx`), their cap counted by each ring's own end (today's counted handles that turn alive a frame late, so a wipe could pass it). The sac's toxic pool has no visual of its own, as today.
   - What an enemy does to a hero besides damage (the Bog Hag's and the Fen Wisp's chill, the Drowned Sexton's root and pull) is `EV_TARGET_EFFECT`, host only like a blow (`EV_TARGET_HIT`): `DmNextGame._on_target_effect` hands it to

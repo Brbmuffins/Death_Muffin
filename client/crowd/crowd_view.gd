@@ -292,8 +292,8 @@ func _warn(msg: String) -> void:
 
 # ----------------------------------------------------------------------------------------------------------------------------------- models
 
-## The DmCrowd slot of a baked model, made on first use: its CrowdVatData, a material, and per level of detail two MultiMeshInstance3D nodes (without
-## and with shadows) whose MultiMeshes DmCrowd fills. The nodes start hidden and DmCrowd shows each while its group holds instances (`set_group_nodes`).
+## The DmCrowd slot of a baked model, made on first use: its CrowdVatData, its materials, and per level of detail three MultiMeshInstance3D nodes (without shadows, with shadows, and the
+## alpha group's, which a ghost does without) whose MultiMeshes DmCrowd fills. The nodes start hidden and DmCrowd shows each while its group holds instances (`set_group_nodes`).
 func _slot(slug: String) -> int:
 	if _slots.has(slug):
 		return _slots[slug]
@@ -304,14 +304,34 @@ func _slot(slug: String) -> int:
 	if albedo == null:
 		_warn("no colour texture for %s (%s): drawn white" % [slug, data.albedo_path])
 	var spectral: bool = (_looks.get("spectral_models", []) as Array).has(slug)   # a ghost: see-through and never in the moon's shadow (DmCreature._spectral)
-	var material := data.make_material(albedo, _texture(data.orm_path) if data.orm_path != "" else null, spectral, _texture(data.normal_path) if data.normal_path != "" else null)
+	var orm := _texture(data.orm_path) if data.orm_path != "" else null
+	var normal := _texture(data.normal_path) if data.normal_path != "" else null
+	var material := data.make_material(albedo, orm, spectral, normal)
 	_materials.append(material)
+	# The alpha path: a second material (the fade shader) for the model's fade groups, where a body is drawn only while it is not solid (sinking away, under the Shrouded ward). A ghost's own
+	# material is see-through already and takes the opacity itself.
+	var fade_material: ShaderMaterial = null if spectral else data.make_material(albedo, orm, false, normal, true, fade_cull_back(slug))
+	if fade_material != null:
+		_materials.append(fade_material)
 	_glow_version = -1   # the new material needs the palette too
 	var plain: Array = []
 	var shadow: Array = []
+	var fade: Array = []
 	var plain_nodes: Array = []
 	var shadow_nodes: Array = []
+	var fade_nodes: Array = []
 	for lod in data.meshes.size():
+		if fade_material != null:
+			var fm := data.make_multimesh(0, lod)
+			fm.custom_aabb = _aabb
+			var fmi := MultiMeshInstance3D.new()
+			fmi.name = "%s_lod%d_fade" % [slug, lod]
+			fmi.multimesh = fm
+			fmi.material_override = fade_material
+			fmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF   # a see-through body casts no shadow
+			add_child(fmi)
+			fade.append(fm.get_rid())
+			fade_nodes.append(fmi)
 		for casts in [false, true]:
 			var mm := data.make_multimesh(0, lod)   # DmCrowd allocates its instances
 			mm.custom_aabb = _aabb                  # the whole area: the engine never re-measures instances
@@ -323,11 +343,19 @@ func _slot(slug: String) -> int:
 			add_child(mmi)
 			(shadow if casts else plain).append(mm.get_rid())
 			(shadow_nodes if casts else plain_nodes).append(mmi)
-	var slot: int = crowd.add_model(slug, data.crowd_data(), plain, shadow, lod_distances)
-	crowd.set_group_nodes(slot, plain_nodes, shadow_nodes)   # the crowd shows a group while it holds instances: a MultiMesh with none still costs its draw calls
+	var model_data := data.crowd_data()
+	model_data["spectral"] = spectral
+	var slot: int = crowd.add_model(slug, model_data, plain, shadow, lod_distances, fade)
+	crowd.set_group_nodes(slot, plain_nodes, shadow_nodes, fade_nodes)   # the crowd shows a group while it holds instances: a MultiMesh with none still costs its draw calls
 	_slots[slug] = slot
 	_data[slug] = data
 	return slot
+
+
+## Whether a model's fade material culls back faces: today's fade variant does for the closed bodies (DmCreatureMat.CULL_BACK_SLUGS: a hand-prop variant "<model>+<kind>" is its body's),
+## so the far side of a sinking golem does not show through the near one. The other models are two-sided, as their solid material is.
+static func fade_cull_back(slug: String) -> bool:
+	return DmCreatureMat.CULL_BACK_SLUGS.has(slug.split("+")[0])
 
 
 ## The models baked under `dir` (their slugs). Asks the resource loader, not the file system: an export stores `model.tres` converted, under

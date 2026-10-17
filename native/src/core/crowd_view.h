@@ -26,6 +26,7 @@ enum BodyFlag : int32_t {
 	BF_DIVING = 32,    // the swing in its wind-up is a Gargoyle's dive: it climbs over the mark, then drops onto it (DmEnemyGargoyle._process)
 	BF_GROUNDED = 64,  // a dive that has landed: grounded (0.05 m) while it recovers
 	BF_WOBBLE = 128,   // squashes and sways as it goes (the Mire Leech's slither: DmEntityViews._fen_dead)
+	BF_SHROUDED = 256, // the Shrouded affix's ward is up: the body fades to SHROUD_OPACITY (DmEntityViews._tick_affix); the bit goes when a Miasma covers it or the ward is stripped, and it fades back in
 };
 
 struct CrowdBody {
@@ -71,6 +72,8 @@ constexpr const char *ROLE_NAMES[RL_COUNT] = { "idle", "walk", "run", "attack", 
 
 struct CrowdModel {
 	std::string slug;
+	bool fade = false;                         // its groups include the alpha group (fading bodies are drawn there); without it a fading body is drawn opaque in its plain group
+	bool alpha = false;                        // a spectral model: its plain group is already see-through, so a fading body stays there and the opacity rides in its instance data
 	double height = 1.0;                       // the model row's height in metres
 	double radius = 0.0;                       // metres: a sphere about the feet that holds every baked pose (0 = unknown: 1.2 x the height)
 	double stride_walk = 0.7, stride_run = 0.0;  // body heights per second (the row's `stride`; DmAnimator.DEFAULT_WALK when none)
@@ -84,11 +87,14 @@ struct CrowdModel {
 	int32_t c_walk = -1, c_run = -1, c_hurt = -1, c_idle = -1;  // clips literally named walk, run, hurt, idle (DmCreature.has)
 };
 
-// One level-of-detail, shadow-or-not MultiMesh worth of instances: 20 floats each (12 transform, 4 colour, 4 custom data, CrowdVatData.BUFFER_STRIDE).
+// One level-of-detail MultiMesh worth of instances: 20 floats each (12 transform, 4 colour, 4 custom data, CrowdVatData.BUFFER_STRIDE). A model has three groups a level:
+// plain (no shadow), shadow (casts into the moon's) and fade (the alpha group: a body is there only while it is not fully opaque, and never casts).
 constexpr int32_t STRIDE = 20;
+constexpr int32_t GROUPS_PER_LOD = 3;
+constexpr int32_t FADE_LEVELS = 63;  // an opacity is carried as q = (1 - opacity) in 63rds, written as q / 64 over the clip index in INSTANCE_CUSTOM.x (exact in a half float for clips up to 15)
 struct CrowdGroup {
 	int32_t model = 0, lod = 0;
-	bool shadow = false;
+	bool shadow = false, fade = false;
 	int32_t count = 0, cap = 0;
 	std::vector<float> buf;  // cap * STRIDE
 };
@@ -119,6 +125,8 @@ struct View {
 	double pitch = 0, roll = 0, sq = 0, zo = 0;
 	// death (DmEntityViews)
 	double toppled = 0, die_t = 0, rest_t = 0, sink_t = 0, settle_t = 0, settle_y = 0;
+	double opacity = 1.0;  // how solid it is drawn: the Shrouded ward's ease while it lives (1 otherwise), 1 - sink_t / 0.9 while it sinks
+	int32_t fade_q = 0;    // opacity as the instance row carries it: (1 - opacity) in FADE_LEVELS, 0 = opaque (the plain or shadow group), more = the alpha group
 	bool has_settle = false, no_settle = false;
 	bool shadow = true, hidden = false, alive = false, row_tied = false, moving = false;
 	// crowd cost (client/crowd/README.md "Crowd cost"): the last pose row (everything but where the body stands) and when the pose is next worked out
@@ -138,6 +146,7 @@ struct CrowdStats {
 	int32_t culled = 0;                        // bodies outside the camera's view (and their shadows' reach): not written, so the GPU never sees them
 	int32_t casting = 0, casting_thralls = 0;  // instances in the shadow groups, and how many of them are thralls
 	int32_t groups_used = 0, groups_casting = 0;  // MultiMeshes with an instance this frame (draw calls), and the shadow ones among them (also drawn into the moon's shadow map)
+	int32_t faded = 0, groups_faded = 0;          // instances drawn through the alpha path this frame (a sinking body, a shrouded one), and the alpha groups holding them (draw calls, none of them in a shadow pass)
 	int64_t triangles = 0, casting_triangles = 0;  // triangles of the drawn instances at their level of detail, and of the casting ones (drawn a second time into the shadow map)
 	int32_t band[3] = { 0, 0, 0 };             // live bodies per animation band (drawn or not)
 	int32_t pose_updates = 0;                  // live bodies whose pose was worked out this frame (the rest reused their last pose row, placed afresh)
@@ -188,7 +197,7 @@ public:
 
 	int32_t group_count() const { return int32_t(groups.size()); }
 	const CrowdGroup &group(int32_t p_index) const { return groups[p_index]; }
-	int32_t group_of(int32_t p_model, int32_t p_lod, bool p_shadow) const;
+	int32_t group_of(int32_t p_model, int32_t p_lod, bool p_shadow, bool p_fade = false) const;
 	const View *find(int32_t p_id) const;
 	const View *find_corpse(int32_t p_corpse) const;
 	CrowdStats stats() const;
@@ -238,9 +247,11 @@ private:
 	void emit(View &v, float p_cam_x, float p_cam_y, float p_cam_z);
 	void pose_row(const CrowdModel &m, const View &v, float *w, double *r_off) const;
 	float *slot_for(const View &v, float p_cam_x, float p_cam_y, float p_cam_z);
+	bool casts(const View &v) const;   // in a shadow group: a see-through body (in the fade group) casts nothing
 	double view_radius(const View &v) const;
-	CrowdGroup &group_for(int32_t p_model, int32_t p_lod, bool p_shadow);
+	CrowdGroup &group_for(int32_t p_model, int32_t p_lod, bool p_shadow, bool p_fade);
 	void grow(CrowdGroup &g);
+	void set_opacity(View &v, double p_opacity);
 
 	// the creature (DmCreature / DmAnimator): clips
 	int32_t resolve(const CrowdModel &m, View &v, int32_t p_role);

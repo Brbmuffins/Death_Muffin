@@ -25,6 +25,8 @@ constexpr double TOPPLE_RATE = 3.0, TOPPLE_Y = 0.2, MAX_STEP = 3.0, MOVING_SPEED
 // Rise: the sim's times (RISE_S in world.h, thrall_rise 0.9) and how far down the body starts (dm_enemy.gd, dm_thrall.gd).
 constexpr double ENEMY_RISE_S = 1.1, THRALL_RISE_S = 0.9, ENEMY_SINK = 0.9, THRALL_SINK = 1.8;
 constexpr double FLASH_DECAY_ENEMY = 6.0, FLASH_DECAY_THRALL = 5.0;
+// The Shrouded affix (DmEntityViews._tick_affix): the body eases toward this opacity at this rate a second while the ward is up, and back to solid when it is down.
+constexpr double SHROUD_OPACITY = 0.38, SHROUD_RATE = 6.0;
 constexpr int32_t RERANK_EVERY = 10;
 // Crowd cost: a body's bounding sphere is taken this much bigger (the lunge, the squash, a knock), and a shadow is followed this far along the light.
 constexpr double CULL_SLACK = 0.75, SHADOW_RUN_MAX = 40.0;
@@ -161,11 +163,12 @@ int32_t CrowdView::add_model(const CrowdModel &p_model) {
 	m.lods = std::max<int32_t>(1, m.lods);
 	m.group0 = int32_t(groups.size());
 	for (int32_t l = 0; l < m.lods; l++) {
-		for (int32_t s = 0; s < 2; s++) {
+		for (int32_t s = 0; s < GROUPS_PER_LOD; s++) {   // plain, shadow, fade
 			CrowdGroup g;
 			g.model = int32_t(models.size());
 			g.lod = l;
 			g.shadow = s == 1;
+			g.fade = s == 2;
 			g.cap = reserve_rows;
 			g.buf.resize(size_t(g.cap) * STRIDE);
 			groups.push_back(g);
@@ -187,15 +190,15 @@ int32_t CrowdView::add_model(const CrowdModel &p_model) {
 	return int32_t(models.size()) - 1;
 }
 
-int32_t CrowdView::group_of(int32_t p_model, int32_t p_lod, bool p_shadow) const {
+int32_t CrowdView::group_of(int32_t p_model, int32_t p_lod, bool p_shadow, bool p_fade) const {
 	if (p_model < 0 || p_model >= int32_t(models.size()) || p_lod < 0 || p_lod >= models[p_model].lods) {
 		return -1;
 	}
-	return models[p_model].group0 + p_lod * 2 + (p_shadow ? 1 : 0);
+	return models[p_model].group0 + p_lod * GROUPS_PER_LOD + (p_fade ? 2 : (p_shadow ? 1 : 0));
 }
 
-CrowdGroup &CrowdView::group_for(int32_t p_model, int32_t p_lod, bool p_shadow) {
-	return groups[models[p_model].group0 + p_lod * 2 + (p_shadow ? 1 : 0)];
+CrowdGroup &CrowdView::group_for(int32_t p_model, int32_t p_lod, bool p_shadow, bool p_fade) {
+	return groups[models[p_model].group0 + p_lod * GROUPS_PER_LOD + (p_fade ? 2 : (p_shadow ? 1 : 0))];
 }
 
 void CrowdView::reserve(int32_t p_rows) {
@@ -248,6 +251,8 @@ CrowdStats CrowdView::stats() const {
 	s.casting_thralls = last.casting_thralls;
 	s.groups_used = last.groups_used;
 	s.groups_casting = last.groups_casting;
+	s.faded = last.faded;
+	s.groups_faded = last.groups_faded;
 	s.triangles = last.triangles;
 	s.casting_triangles = last.casting_triangles;
 	for (int i = 0; i < 3; i++) {
@@ -628,6 +633,14 @@ void CrowdView::edge(View &v, int32_t p_prev, int32_t p_state) {
 	}
 }
 
+// How solid the body is drawn: the instance row carries it as q = (1 - opacity) in FADE_LEVELS. A model with no alpha path (no fade group and not spectral) stays opaque, as the crowd drew
+// before it had one. A body with q > 0 is drawn in its model's fade group (a spectral model's plain group is see-through already: the opacity just multiplies its own).
+void CrowdView::set_opacity(View &v, double p_opacity) {
+	v.opacity = p_opacity;
+	const CrowdModel &m = models[v.model];
+	v.fade_q = (m.fade || m.alpha) ? std::max(0, std::min(FADE_LEVELS, int32_t(std::lround((1.0 - p_opacity) * FADE_LEVELS)))) : 0;
+}
+
 void CrowdView::start_fade(View &v) {
 	v.mode = M_FADE;
 	v.sink_t = 0.0;
@@ -665,6 +678,7 @@ void CrowdView::die(View &v) {
 	v.flash_v = 0.0;
 	v.moving = false;
 	v.hidden = false;
+	set_opacity(v, 1.0);   // a shrouded body is solid again where it falls (DmEntityViews._on_death)
 	if (v.flags & BF_MIST) {  // a wraith leaves no body: it thins to mist and sinks away
 		start_fade(v);
 		return;
@@ -936,6 +950,7 @@ bool CrowdView::advance(View &v, double p_dt, double p_alpha) {
 	if (v.mode == M_FADE) {
 		v.sink_t += p_dt;
 		v.dy -= p_dt * SINK_SPEED;
+		set_opacity(v, std::max(0.0, 1.0 - v.sink_t / SINK_S));   // DmEntityViews: set_opacity(max(0, 1 - sink_t / 0.9)) as it sinks
 		return v.sink_t <= SINK_S;
 	}
 	// dying and corpses: still where they fell
@@ -1004,6 +1019,11 @@ void CrowdView::advance_live(const CrowdModel &m, View &v, double p_dt, double p
 	}
 	if (std::fabs(v.flash - v.flash_v) >= 0.02) {  // DmCreature.set_flash ignores smaller changes
 		v.flash_v = v.flash;
+	}
+	if ((v.flags & BF_SHROUDED) != 0 || v.opacity < 1.0) {   // the Shrouded ward (DmEntityViews._tick_affix): ease toward see-through while it is up, and back to solid when it is down
+		const double target = (v.flags & BF_SHROUDED) != 0 ? SHROUD_OPACITY : 1.0;
+		const double o = v.opacity + (target - v.opacity) * std::min(1.0, p_dt * SHROUD_RATE);
+		set_opacity(v, target == 1.0 && o > 0.999 ? 1.0 : o);
 	}
 	if (enemy && (v.kx != 0.0 || v.kz != 0.0 || v.kvx != 0.0 || v.kvz != 0.0)) {
 		step_knock(v.kx, v.kz, v.kvx, v.kvz, dt_eff);
@@ -1097,6 +1117,11 @@ bool CrowdView::in_view(double p_x, double p_y, double p_z, double p_r, bool p_c
 	return true;
 }
 
+// Whether the body is in a shadow group: a see-through body (in its model's fade group) casts nothing, as a spectral one never did.
+bool CrowdView::casts(const View &v) const {
+	return v.shadow && !(v.fade_q > 0 && models[v.model].fade);
+}
+
 // A body's bounding radius: its model's sphere about the feet, at the body's size, and a little over for the body layer's lunge and squash.
 double CrowdView::view_radius(const View &v) const {
 	const CrowdModel &m = models[v.model];
@@ -1116,13 +1141,16 @@ float *CrowdView::slot_for(const View &v, float p_cam_x, float p_cam_y, float p_
 			lod = l + 1;
 		}
 	}
-	CrowdGroup &g = group_for(v.model, lod, v.shadow);
+	const bool faded = v.fade_q > 0 && m.fade;   // a body that is not solid draws in the alpha group: no shadow, one draw call a model and level however many fade
+	CrowdGroup &g = group_for(v.model, lod, v.shadow && !faded, faded);
 	if (g.count >= g.cap) {
 		grow(g);
 	}
 	const int32_t tris = lod < int32_t(m.lod_tris.size()) ? m.lod_tris[lod] : 0;
 	last.triangles += tris;
-	if (v.shadow) {
+	if (faded) {
+		last.faded++;
+	} else if (v.shadow) {
 		last.casting++;
 		last.casting_thralls += v.kind == BK_THRALL ? 1 : 0;
 		last.casting_triangles += tris;
@@ -1172,7 +1200,7 @@ void CrowdView::pose_row(const CrowdModel &m, const View &v, float *w, double *r
 	// The game's emissive lerp in 8 steps, above twice the glow slot: COLOR.a = slot * 2 + flash (the shader splits them; exact in a half float up to slot 127).
 	w[15] = float(v.glow * 2) + float(std::round(std::min(1.0, std::max(0.0, v.flash_v)) * FLASH_LEVELS) / FLASH_LEVELS);
 	const int32_t clip = v.cur >= 0 ? v.cur : 0;
-	w[16] = float(clip);
+	w[16] = float(clip) + float(v.fade_q) / 64.0f;   // the clip index, and over it (1 - opacity) in 63rds / 64: the fade shaders read it back (an opaque group's x is the whole clip index)
 	w[17] = float(v.cur >= 0 ? v.t : 0.0);
 	if (v.prev >= 0 && v.blend_d > 0.0) {  // CrowdVatData.pack_custom: previous clip + the weight of its pose below 1
 		const double weight = std::min(0.999, std::max(0.0, 1.0 - v.blend_t / v.blend_d));
@@ -1186,10 +1214,10 @@ void CrowdView::pose_row(const CrowdModel &m, const View &v, float *w, double *r
 
 // A body that is not alive any more (dying, a corpse, sinking): outside the view it is not written, else its row goes into its group.
 void CrowdView::emit(View &v, float p_cam_x, float p_cam_y, float p_cam_z) {
-	if (v.hidden || v.model < 0) {
+	if (v.hidden || v.model < 0 || (v.mode == M_FADE && v.opacity <= 0.0)) {   // (a body sunk to nothing is not drawn)
 		return;
 	}
-	if (cost.cull && has_view && !in_view(v.dx, v.dy, v.dz, view_radius(v), v.shadow)) {
+	if (cost.cull && has_view && !in_view(v.dx, v.dy, v.dz, view_radius(v), casts(v))) {
 		last.culled++;
 		return;
 	}
@@ -1218,7 +1246,7 @@ void CrowdView::draw_live(View &v, double p_dt, double p_alpha, float p_cam_x, f
 		}
 	}
 	const bool under = enemy && (v.state == BURROW || v.state == ERUPT);
-	const bool culled = !under && cost.cull && has_view && !in_view(nx, v.dy, nz, view_radius(v), v.shadow);
+	const bool culled = !under && cost.cull && has_view && !in_view(nx, v.dy, nz, view_radius(v), casts(v));
 	if (culled && !p_full_rate) {  // nobody sees it: the far rate
 		hz = cost.far_hz;
 	} else if (hz > 0.0 && (v.one_shot >= 0 || v.kick_t >= 0.0 || v.lunge_t >= 0.0 || v.rise_k < 1.0 || (v.flags & BF_WOBBLE) != 0)) {  // a swing, a flinch, a recoil, a rise, a Leech's slither: always every frame (DmCreature.busy)
@@ -1312,6 +1340,7 @@ void CrowdView::draw(double p_dt, double p_alpha, float p_cam_x, float p_cam_y, 
 		if (g.count > 0) {
 			last.groups_used++;
 			last.groups_casting += g.shadow ? 1 : 0;
+			last.groups_faded += g.fade ? 1 : 0;
 		}
 	}
 }

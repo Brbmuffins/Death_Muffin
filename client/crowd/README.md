@@ -16,7 +16,7 @@ The combat core writes one buffer per frame; the GPU does the rest in the vertex
 - `client/tests/crowd_bake.gd`: the headless proof (below). `client/tests/crowd_smoke.gd`: the one rendered look (software GL). `client/tests/crowd_look_smoke.gd`: the crowd's thralls next to today's
   skinned ones, in the world's own lighting, with the mean colour of each ("Differences from the creature material").
 - `client/crowd/crowd_view.gd` (`CrowdView`): the node that draws the combat core's creatures, with `client/crowd/crowd_looks.json` (which model each enemy
-  def and thrall kind is drawn with) and the C++ `DmCrowd` behind it: "Driving the crowd". Proof: `client/tests/crowd_view.gd`; look: `client/tests/crowd_view_smoke.gd`.
+  def and thrall kind is drawn with) and the C++ `DmCrowd` behind it: "Driving the crowd". Proof: `client/tests/crowd_view.gd`; look: `client/tests/crowd_view_smoke.gd`, and for the alpha path `client/tests/crowd_fade_smoke.gd` ("The alpha path").
 
 Baked files are **generated, not committed** (`client/assets/crowd/baked/` is ignored): the robber is 7 MB, so the baker belongs to the build, not the
 repository. Run `bash client/tools/bake_crowd.sh` before a publish; the test bakes into a scratch folder by itself.
@@ -98,14 +98,15 @@ view.focus = hero_xz                                                # every tick
   last two ticks by `alpha`, every view advances by `delta` (at its band's rate: "Crowd cost"), the level of detail comes from the distance to the camera, a body outside the camera's view
   is not written, and each group's buffer is written and uploaded with `RenderingServer.multimesh_set_buffer` and `multimesh_set_visible_instances`. `view.hitstop_scale` is the picture clock of
   a struck enemy (`Vfx.hitstop_scale`), written each frame.
-- **Groups:** one MultiMesh per model, level of detail and shadow setting: two `MultiMeshInstance3D` nodes per level, one without shadows and one that casts. `DmCrowd`
+- **Groups:** one MultiMesh per model, level of detail and kind: three `MultiMeshInstance3D` nodes per level, `<model>_lod<N>` (no shadows), `<model>_lod<N>_shadow` (casts) and
+  `<model>_lod<N>_fade` (the alpha group, "The alpha path"; a ghost's model has none). `DmCrowd`
   owns the instances' memory (`multimesh_allocate_data`); `CrowdView` gives each MultiMesh the area's `custom_aabb`. **A group is drawn only while it holds instances:** the renderer draws a MultiMesh with
   none all the same (one draw call, and one more for each moon cascade a caster meets: the roster's 202 groups cost 396 draw calls with 15 of them in use), so `CrowdView` hands the crowd each group's node
   (`DmCrowd.set_group_nodes`, dmcore 0.14), the nodes start hidden, and `draw` shows a group the frame it gets its first instance and hides it once it has held none for half a second (`HIDE_AFTER_S`, so a body
   crossing a level of detail back and forth does not rebuild the instance every few frames; it is a handful of node flips a second, no work for a group that stays as it is). `client/tests/crowd_view.gd`
   holds it, `client/tests/draw_budget.gd` counts what it saves (client/README.md "The draw budget"). Every group is sized for 128 instances at loading
-  (`reserve`) and doubles when a crowd outgrows it, so a wave of one model does not grow a MultiMesh; a steady crowd never does. `DmCrowd.buffer(model, lod, shadow)` returns
-  exactly what was uploaded (count x 20 floats), `stats()` the counters (bodies by kind, instances drawn, capacity, regrows), `view_info(id)` one creature's view state, `take_landings()` where dying bodies came to rest since the last call (x, z, scale each: `DmEnemyFx` raises today's dust there), `shatter(corpse)` a corpse Corpse Explosion blew apart: its body goes at the next frame instead of sinking, `ground_at(id)` where a living body is drawn (`Vector3.INF` otherwise): the cheap read every frame for the rings and marks that follow a body.
+  (`reserve`) and doubles when a crowd outgrows it, so a wave of one model does not grow a MultiMesh; a steady crowd never does. `DmCrowd.buffer(model, lod, shadow, fade)` returns
+  exactly what was uploaded (count x 20 floats), `stats()` the counters (bodies by kind, instances drawn, capacity, regrows, `faded` and `groups_faded`), `view_info(id)` one creature's view state, `take_landings()` where dying bodies came to rest since the last call (x, z, scale each: `DmEnemyFx` raises today's dust there), `shatter(corpse)` a corpse Corpse Explosion blew apart: its body goes at the next frame instead of sinking, `ground_at(id)` where a living body is drawn (`Vector3.INF` otherwise): the cheap read every frame for the rings and marks that follow a body.
 
 ### The rows
 
@@ -145,9 +146,9 @@ Numbers are today's, from the file named; where the live game and `dm_entity_vie
 - **Death:** the body keeps where it fell. A corpse of the same def within 1.2 m takes the dying body over (`CORPSE_ANIM_S` 6 s, `CORPSE_REST_S` 0.35 s: the clip stops 0.35 s
   after it has landed); with none, the body crumbles after 1.4 s. After the fall (the baked landing second, or the tip-over reaching 0.8 for a model with no death clip) it eases
   `SETTLE_DEPTH` 0.06 m into the ground (`settle_depth`). A corpse the core has no dying body for (the extra risen ones) is laid down at the end of its death clip. A body that
-  leaves the tables, or a consumed corpse, sinks 1.3 m/s for 0.9 s. A mist body (the wraith) sinks at once.
+  leaves the tables, or a consumed corpse, sinks 1.3 m/s for 0.9 s, fading as it goes (opacity `1 - sink_t / 0.9`: "The alpha path"). A mist body (the wraith) sinks at once.
 - **Shadows** (`DmCasterBudget`, `DmEntityViews._shadow_lod`): every 10th frame the nearest 12 living enemies to the hero (8 once 32 are in the field) go into the shadow groups;
-  thralls always cast, corpses and spectral bodies never. `set_shadow_policy(casters, crowded casters, thralls cast)` changes the numbers (the graphics preset's; a change reaches the thralls already drawn).
+  thralls always cast, corpses and spectral bodies never, nor does a body that is see-through (it is in the fade group: "The alpha path"). `set_shadow_policy(casters, crowded casters, thralls cast)` changes the numbers (the graphics preset's; a change reaches the thralls already drawn).
   The Full Party's 8 enemies and 32 thralls cast: the thralls are 4 of 5 casting instances (`stats().casting_thralls`); "Crowd cost" has what that costs the shadow pass and how the benchmark switches it.
 - **Level of detail:** from the distance to the camera, `lod_distances` per model (the CrowdView default is 32 m and 60 m, a first guess for the test build). Beyond the baked
   levels the last one is drawn. The animation bands ("Crowd cost") start at the same two distances.
@@ -185,7 +186,41 @@ in force, and the benchmark's report records them (client/README.md "The benchma
   it (a `multimesh_allocate_data`, the hitch the reserve exists to avoid); nearer level distances draw fewer triangles and show the simpler mesh sooner.
 - **Draw calls:** the crowd's cost in draw calls is the groups in use: a main-pass draw for each shown group and two (one for each cascade of Ultra's moon) for each that casts. The Full Party in the Graves, rendered
   (2026-10-17): 41 draw calls (17 main, 24 shadow) with the empty groups hidden, 396 with every one of the 202 shown. Thrall shadows (above) are now the cost of the groups they keep in use; culling and the bands do not change a group's
-  draw calls (the draw is per group, not per instance), only its instances' vertex work.
+  draw calls (the draw is per group, not per instance), only its instances' vertex work. A body that fades adds a main-pass draw for its model's fade group (no shadow pass) while it does, however many
+  fade together ("The alpha path").
+
+### The alpha path
+
+Two things make a body see-through, as today's `DmCreature.set_opacity` does with its fade variant of `DmCreatureMat` (blend_mix, depth_draw_never, `ALPHA = opacity`): a body that sinks away
+(a corpse the core no longer holds, a thrall 1.4 s after it fell, a body that left the rows, a wraith as it thins: opacity `max(0, 1 - sink_t / 0.9)`, `DmEntityViews.sync`) and a body under the
+Shrouded affix's ward (opacity eases toward 0.38 at `min(1, 6 dt)` a frame while the ward holds, back to 1 when it is down, and is 1 again where the body falls: `_tick_affix`, `_on_death`).
+
+- **One more group a model and level, used only while something fades.** A model has a third MultiMesh a level, `<model>_lod<N>_fade`, drawn with the fade shader (`CrowdVatData.fade_shader()`, the solid
+  shader with `FADE` defined: `blend_mix, depth_draw_never`, `ALPHA` from the instance; the model's second material, `CrowdVatData.make_material(..., fade = true)`). A body is written there only
+  while its opacity is under 1 and back in its plain or shadow group when it is solid, so a crowd of bodies sinking together is one group a model and level (a draw call each, in the main pass only), however
+  many there are, and a fight with nothing fading draws no fade group at all (the group is hidden while it is empty, "Groups"). `client/tests/crowd_view.gd` counts it: 26 bodies of three models
+  sinking draw 3 groups; `client/tests/draw_budget.gd` counts the fight's.
+- **No shadow.** A see-through body casts none (a ghost never did): a thrall leaves the shadow group when it begins to sink, and a shrouded elite does not cast while the ward is up. Today's bodies keep
+  casting their full shadow as they fade (listed in native/README.md "Differences").
+- **The opacity rides in `INSTANCE_CUSTOM.x`**, the clip index: `clip + q / 64`, `q = round((1 - opacity) * 63)` (`CrowdVatData.pack_clip`); 0 is the clip index alone, which is what every solid group's x
+  is. The fade shader reads `floor(x + 0.001)` for the clip and `1 - fraction * 64 / 63` for the opacity. No instance float is added (the buffer stays 20), the tint, the glow slot and the flash are
+  untouched, and sixty-four steps are a 1.6% step in 0.9 s: invisible. Every clip index (0 to 15) with every step survives a half float (`crowd_bake.gd` rounds it through one).
+- **The solid case is unchanged.** A body at opacity 1 writes exactly the row it always did, in the group it was in. `client/tests/crowd_view.gd` draws the same rows with and without the ward and compares
+  every float of the body's row but the opacity.
+- **The ward** is the core's: `DmCrowd.sync` sets the body flag `BF_SHROUDED` (256) on an enemy with the Shrouded affix and the `shrouded` status, the status `DmAffixSet`'s 10 Hz check puts on and
+  takes off (a Miasma's `cover_miasma` lifts it for 350 ms, `strip_shroud` for good), so a guest's puppet draws it too. The view eases in `advance_live` (so it follows the animation band's step). The target is
+  the ward's state, as `DmStatusSet._visual_state` has it (0.38 while the `shrouded` status holds, 1 when it goes) at `_tick_affix`'s rate; `_tick_affix`'s own `slowT` branch never runs today
+  (native/README.md "Differences"). `view_info(id)` has `veiled`, `opacity` and `fade_q`; `DmEnemyFx` stops the shroud's smoke with the ward.
+- **Closed bodies cull their back faces in the fade pass**, as today's fade variant does (`DmCreatureMat.CULL_BACK_SLUGS`, `CrowdView.fade_cull_back`; the shader's `CULL_BACK` define,
+  `CrowdVatData.fade_shader(true)`): a pass that writes no depth would show the far side of a golem through its near side. The open meshes (the robber, the skeleton, hair, cloth) are two-sided in both, so
+  their far side shows through, as it does today: in the rendered look (`client/tests/crowd_fade_smoke.gd`) a robber at 0.38 keeps 0.64 of a solid one's ink, not 0.38.
+- **A ghost** (`crowd_looks.json` `spectral_models`) has no fade group: its plain group's material is see-through already, so a ghost thinning away stays there and the opacity multiplies its 0.55
+  (`ALPHA = SPECTRAL_OPACITY * opacity`). A model added with no fade group (an older caller of `DmCrowd.add_model`) keeps drawing a fading body solid in its plain group, as the crowd did.
+- **Warm-up:** `DmNextWarmup` feeds its rehearsal enemy rows with the ward up, so each model's fade group draws, and the alpha shader compiles, while the game loads.
+- Hand props of a thrall variant fade with the body (they are in the same MultiMesh); today's props are separate nodes that the creature's opacity does not reach.
+- **Rendered** (2026-10-17, `client/tests/crowd_fade_smoke.gd`, Compatibility on llvmpipe): the fade shader compiles and draws; a solid robber, one under the ward (0.38) and one sinking side by side
+  show the see-through bodies with the ground through them and no shadow under them, the sinking one lower and paler (opacity 0.65 a third of the way in: 0.83 of its solid ink, 0.30 at 0.21), the one under the ward
+  0.64 of a solid one's. Forward+ and Mobile have not run it; a real GPU's look is for Helix's PC.
 
 ### Models and looks
 
@@ -204,7 +239,9 @@ body-only moves, the shadow group and the level-of-detail split, interpolation; 
 left for `take_events`, a crowd fed only the rows draws the same buffers, the buffers do not grow in a steady crowd, and `draw()` and `sync()` times are printed. The crowd's cost: against the engine's own frustum planes
 on 240 random bodies (a body in view is always drawn, one beyond its sphere never, the drawn range packed, the counters adding up), a caster kept while its shadow falls in and culled when it does not, the thrall shadow
 counters, the bands' update rates on 120 frames (120, 48 and 21 pose updates; 30 bodies spread, at most 13 in a frame), the written time never ahead of the full-rate body's, a swing or a hit shown on the frame its
-tick says so, the same bytes near the hero with the bands on or off, and a body outside the view kept at the far rate and up to date on its way back. The first rendered check
+tick says so, the same bytes near the hero with the bands on or off, and a body outside the view kept at the far rate and up to date on its way back; the alpha path ("The alpha path"): a corpse
+sinking at 1 - sink_t / 0.9 in the fade group and no other, a thrall leaving the shadow group for it, the ward's ease against today's formula frame by frame (and back, and solid where the body falls), the same rows with and
+without the ward equal but for the opacity, a far band reaching the same place, the fallbacks (a model with no fade group, a ghost's), and 26 bodies of three models sinking in 3 groups. The first rendered check
 of the whole path is `client/tests/crowd_view_smoke.gd` (Compatibility, llvmpipe; Mobile runs it the first time on a real GPU; Forward+ has run `crowd_look_smoke.gd` on the software Vulkan driver, 2026-10-17: the shader compiles and draws there).
 
 ## Proof
@@ -266,10 +303,10 @@ software Vulkan driver; the lighting alone, a thrall with no glow and no rim, co
 Not drawn, and why: the legion kit's armour tint and its weapon's tier colour. Today's game never draws them either: DmEntityViews asks its host for `legion_kit_for`, and no host has it, so a
 thrall is drawn plain. They need the gear regions baked per vertex (chest and hands, from the skin weights) and a kit per owner in the palette, and belong with whatever gives thralls a kit to show
 (ROADMAP "After launch day"). Nor the legions' own looks (the sentinel, legionnaire and plague thrall, their tints and glows): today's DmEntityViews asks its host for
-`discipline_id_for`, which no host has, so every thrall wears the default bone skeleton and teal glow; `DmCoreHost` gives the crowd no legion either (`set_owner_legion` is kept). Sinking bodies fade out only with an alpha channel (a transparent material and its own group), so they sink under the ground.
+`discipline_id_for`, which no host has, so every thrall wears the default bone skeleton and teal glow; `DmCoreHost` gives the crowd no legion either (`set_owner_legion` is kept).
 
 A spectral model (`crowd_looks.json` `spectral_models`: the wraiths) gets the same shader with SPECTRAL defined (`CrowdVatData.spectral_shader`: 0.55 opacity, no depth write, as DmCreature's fade variant) and
-casts no shadow; the per-body glow comes from the palette (`DmCrowd.glow_palette`, today's emissive colours and strengths from `crowd_looks.json`: an elite's purple, the risen's, a legion's thralls' with the
+casts no shadow (a sinking body and the Shrouded ward are "The alpha path"); the per-body glow comes from the palette (`DmCrowd.glow_palette`, today's emissive colours and strengths from `crowd_looks.json`: an elite's purple, the risen's, a legion's thralls' with the
 empowered and champion boosts) that CrowdView pushes to every material when a new glow comes into play; two-sided like most of today's models. The procedural body layer (hit recoil, strike lunge, topple,
 rise from the ground) is not baked: `DmCrowd` writes it into the instance transform. A loop whose last key differs from its first (the robber's run, by 47 cm at the worst vertex) pops at its seam today;
 the baked clip blends across it.

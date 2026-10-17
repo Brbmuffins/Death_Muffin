@@ -494,6 +494,7 @@ func affixes() -> void:
 	var food := host.spawn_enemy("robber", base + Vector3(0.5, 0.0, -6.5), 1, 1.0, 1.0, false, "graves", false)
 	await ticks(3)
 	check(int(g.enemy_fx.stats["affix_mark"]) - marks_before == 4, "each affixed elite stands on its affix's mark (%d)" % (int(g.enemy_fx.stats["affix_mark"]) - marks_before))
+	await shroud_ward(shroud)
 	host.damage(food, 1.0e6, b.core_id)            # a corpse beside the hungry one
 	host.damage(hungry, 200.0, b.core_id)          # hurt, so it wants to eat
 	check(host.core.strip_shroud(shroud), "the shroud of an elite lifts for good")
@@ -518,6 +519,28 @@ func affixes() -> void:
 		host.damage(id, 1.0e9, b.core_id, false)
 	await ticks(2)
 	check(not g.enemy_fx._affixed.has(bell) and not g.enemy_fx._affixed.has(shroud) and not g.enemy_fx._affixed.has(hungry), "and every fallen elite's mark goes with it")
+
+
+## The Shrouded ward is the crowd's see-through (client/crowd/README.md "The alpha path"): the elite is drawn at 0.38 in the fade group while the ward holds, solid under a Miasma
+## (`cover_miasma`, which the rite calls on every scan), and see-through again 350 ms after; its smoke follows the ward.
+func shroud_ward(id: int) -> void:
+	var crowd: RefCounted = host.view.crowd
+	await ticks(90)
+	var vi: Dictionary = crowd.view_info(id)
+	check(bool(vi.veiled) and float(vi.opacity) < 0.42 and int(vi.fade_q) > 0 and int(crowd.stats().faded) >= 1 and int(crowd.stats().groups_faded) >= 1,
+		"a shrouded elite is drawn see-through (%.2f) in the crowd's fade group (%d instances there)" % [float(vi.opacity), int(crowd.stats().faded)])
+	var smoke0 := int(g.enemy_fx.stats["shroud_smoke"])
+	for i in 50:   # the Miasma's scan covers the body ten times a second
+		host.core.cover_miasma(id)
+		await ticks(1)
+	vi = crowd.view_info(id)
+	check(not bool(vi.veiled) and float(vi.opacity) > 0.9, "under a Miasma the ward is down and the body is solid again (%.2f)" % float(vi.opacity))
+	var covered_smoke := int(g.enemy_fx.stats["shroud_smoke"]) - smoke0
+	check(covered_smoke <= 2, "and its smoke stops with the ward (%d puffs in the first 0.8 s, which holds 0.4 s of the old ward's)" % covered_smoke)
+	await ticks(300)   # the cloud is gone: the ward is back after 350 ms, and the body fades again; the smoke comes back at two puffs a second
+	vi = crowd.view_info(id)
+	check(bool(vi.veiled) and float(vi.opacity) < 0.42, "with the Miasma gone the ward holds again and the body is see-through (%.2f)" % float(vi.opacity))
+	check(int(g.enemy_fx.stats["shroud_smoke"]) - smoke0 - covered_smoke >= 1, "and smokes again (%d puffs in 5 s)" % (int(g.enemy_fx.stats["shroud_smoke"]) - smoke0 - covered_smoke))
 
 
 ## INFO timings with about 70 enemies in a fight: the host's tick and the crowd's draw per frame.
@@ -585,7 +608,7 @@ func timings() -> void:
 	var crowd: RefCounted = view.crowd
 	for m in view.model_slots().values():
 		for l in 3:
-			drawn += int(crowd.instance_count(m, l, false)) + int(crowd.instance_count(m, l, true))
+			drawn += int(crowd.instance_count(m, l, false)) + int(crowd.instance_count(m, l, true)) + int(crowd.instance_count(m, l, false, true))
 	check(drawn > 0 and drawn >= int(st.get("bodies", 0)) / 3, "the crowd draws the creatures: %d instances for %d bodies" % [drawn, int(st.get("bodies", 0))])
 
 

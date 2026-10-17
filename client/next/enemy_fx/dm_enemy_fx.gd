@@ -29,8 +29,8 @@ extends Node
 ## hero on the ambient tick (`_pfs`: the bodies that have such motes, with their state).
 ## The thralls' sounds are DmThrall's: `thrallRise` when one stands up (every `thrall_raised`, a guest's too) and `thrallDeath` when one is killed (`thrall_died` with reason
 ## "killed"; not one that crumbled at the cap, was sacrificed or decayed).
-## Left out of this port (the ROADMAP's "Crowd looks" and "Crowd effects" items, native/README.md "Differences"): the shrouded body's fade (the crowd has no alpha yet),
-## the elite's body glow, the Flagellant's frenzy motes, the Pyre's and the Fen's idle motes.
+## Not this node's: the shrouded body's fade (the crowd's alpha path: the body eases to 0.38 while the ward is up, `DmCrowd` flag BF_SHROUDED) and the elite's body glow (the crowd's glow
+## palette); the shroud's smoke here follows the same ward (`view_info(id).veiled`: it stops while a Miasma covers the body and when the shroud is stripped).
 ## The Weeping Seraph's blessing is the Deacon's cue (`sanctify`, a thread and a halo per ally), the Plague Doctor's flask is the router's telegraph (a rot-green ring and the lobbed
 ## flask, `flask`); its toxic pool has no visual of its own, as today (today's `DmEnemyFx` draws the dust and ember zones only).
 
@@ -67,7 +67,7 @@ var fx: DmEventFx                  ## the shared router half: telegraphs, deaths
 var host := DmEnemyFxHost.new()
 var core_host: DmCoreHost
 var player_pos := Callable()       ## () -> Vector3, the local hero; default: the camera's ground point
-var stats := {"pf_mote": 0, "reach_ring": 0, "spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0, "thrall_ring": 0, "thrall_sound": 0}
+var stats := {"pf_mote": 0, "reach_ring": 0, "spawn": 0, "telegraph": 0, "strike": 0, "hit": 0, "death": 0, "erupt": 0, "dig": 0, "zone": 0, "cue": 0, "moment": 0, "corpse_mark": 0, "affix_mark": 0, "affix_mote": 0, "shroud_smoke": 0, "status_mote": 0, "hover_mote": 0, "landing": 0, "corpse_gone": 0, "shatter": 0, "thrall_ring": 0, "thrall_sound": 0}
 
 var _clock := 0.0                  ## ms of rendered-frame time
 var _amb_t := 0.0
@@ -1001,7 +1001,8 @@ func _st(group: String, key: String) -> int:
 	return int((_status_fx.get(group, {}) as Dictionary).get(key, 0xffffff))
 
 
-## An affixed body's motes near the hero (DmEntityViews._tick_affix, at today's rates: drool 4, embers 3 and shroud smoke 2 a second, here per ambient tick).
+## An affixed body's motes near the hero (DmEntityViews._tick_affix, at today's rates: drool 4, embers 3 and shroud smoke 2 a second, here per ambient tick; the smoke only while the
+## ward is up, as today's `target < 1.0`).
 func _affix_motes(id: int) -> void:
 	var v: Dictionary = core_host.view.crowd.view_info(id)
 	if v.is_empty() or int(v["state"]) == DEAD:
@@ -1022,9 +1023,10 @@ func _affix_motes(id: int) -> void:
 				if randf() < AMBIENT_S * 3.0:
 					_mote(p.x, 0.3 + randf() * head, p.z, _col("vengeful"), 0.35 * sc, 0.2, 1.1, 0.7, 0.12, 0.0, 0.0, "affix_mote")
 			"shrouded":
-				if not _unveiled.has(id) and randf() < AMBIENT_S * 2.0:
+				if bool(v.get("veiled", true)) and not _unveiled.has(id) and randf() < AMBIENT_S * 2.0:
 					vfx.emit_smoke({"x": p.x, "y": 0.4 + randf() * head, "z": p.z, "count": 1, "color": _col("shroud"), "spread": 0.4 * sc, "speed": 0.15, "up": 0.4, "life": 1.2, "size": 0.9, "shrink": -0.6})
 					stats["affix_mote"] += 1
+					stats["shroud_smoke"] += 1
 
 
 func _burst(o: Dictionary, x: float, y: float, z: float, smoke: bool) -> void:

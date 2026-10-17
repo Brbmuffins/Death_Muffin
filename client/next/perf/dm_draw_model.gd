@@ -31,11 +31,11 @@ static func record(nd: GeometryInstance3D, game: Node) -> Dictionary:
 			local = mm.custom_aabb   # (a headless run keeps no instance data to measure)
 		var view := nd.get_parent() as CrowdView
 		if view != null:
-			var parts := nd.name.split("_lod")   # "<slug>_lod<N>[_shadow]"
+			var parts := nd.name.split("_lod")   # "<slug>_lod<N>[_shadow|_fade]"
 			if parts.size() == 2 and view.model_slots().has(String(parts[0])):
 				rec["model"] = String(parts[0])
 				rec["lod"] = int(parts[1])
-				rec["n"] = int(view.crowd.instance_count(int(view.model_slots()[String(parts[0])]), int(parts[1]), String(parts[1]).ends_with("_shadow")))   # (what the crowd drew)
+				rec["n"] = int(view.crowd.instance_count(int(view.model_slots()[String(parts[0])]), int(parts[1]), String(parts[1]).ends_with("_shadow"), String(parts[1]).ends_with("_fade")))   # (what the crowd drew)
 	var ab := nd.global_transform * local
 	rec["ab"] = [ab.position.x, ab.position.y, ab.position.z, ab.size.x, ab.size.y, ab.size.z]
 	if mesh != null:
@@ -53,7 +53,7 @@ static func record(nd: GeometryInstance3D, game: Node) -> Dictionary:
 ## The group a record belongs to, for a budget's rows and a measurement's steps: "crowd:lod0:shadow:used", "world:Props", "other:<first two path segments>", ...
 static func _group(nd: GeometryInstance3D, rec: Dictionary) -> String:
 	if nd.get_parent() is CrowdView:
-		return "crowd:lod%d:%s:%s" % [int(rec.get("lod", 0)), "shadow" if String(nd.name).ends_with("_shadow") else "plain", "used" if int(rec["n"]) > 0 else "empty"]
+		return "crowd:lod%d:%s:%s" % [int(rec.get("lod", 0)), "shadow" if String(nd.name).ends_with("_shadow") else ("fade" if String(nd.name).ends_with("_fade") else "plain"), "used" if int(rec["n"]) > 0 else "empty"]
 	var path := String(rec["p"])
 	if rec["cat"] == "World":
 		var i := path.find("area_")   # area_graves/Props/...: the segment below the area
