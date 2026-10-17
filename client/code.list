@@ -129,9 +129,6 @@ world_fx   # world dressing and atmosphere
 #                                          (client/tests/fx_decals.gd compares every drawn float with today's, compiled from godot/fx/dm_fx_prims.gd at run time)
 # fx/dm_fx_binbun.gd                       an effect is moved only when it moved, a looping one is tested against the camera every third frame (its margin is 4 m), an idle instance is kept 8 deep per effect (it was 4)
 
-# Threads (client/README.md "Threads"): the mixer thread reads the bus layout while a bus is added:
-# audio/audio_director.gd                  every bus added and every bus send changed holds the mixer's lock (`_add_bus`, `_set_bus_send`): AudioServer.add_bus and set_bus_send take none, and an edit that lands in the middle of a mix step can crash the mixer thread (also in today's game)
-
 # ==== Per-creature systems the combat core and the crowd view replace: not copied (DECISIONS B42, B43)
 !enemies                      # DmEnemy, its states, kinds and scenes: the core owns enemies
 !sim/sim_enemy.gd             # DmSimEnemy record

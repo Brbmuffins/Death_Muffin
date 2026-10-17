@@ -399,8 +399,6 @@ combat simulation for now.
     the rerun). That line is the crash handler's own message when a thread other than the main one crashes, not a node touched from a thread; no worker of the client touches the tree (client/README.md "Threads"). The crash itself was not
     caught (that run's log is gone); the one log of that message with frames (today's game, 2026-10-07, headless) is the audio mixer thread, in the step that reads the bus layout while the main thread adds a bus without the audio lock. The
     client's director now holds the lock for every bus it adds or re-routes; if the message comes back, `compare-scenarios.mjs` keeps the run's whole output and names the signal.
-  - Today's game: `AudioDirector` (godot/audio/audio_director.gd) adds its ~55 buses at start and re-routes a voice's send as sounds play without the audio lock (`AudioServer.add_bus` and `set_bus_send` take none), so the mixer thread can
-    crash in the middle of a mix step (one headless crash in about 40 runs, 2026-10-07, the same message). The rebuilt client has the fix (`_add_bus` and `_set_bus_send`, client/code.list "Threads"); the live game needs the same two helpers.
   - Today's game: quitting while models still load in the background can abort on a PC with few cores (the GitHub runner's 4: the CI's perfctl abort, 2026-10-16).
   - Today's game and the rebuild: a party guest cannot use a waystone or the recall (T): `DmChapterhouse.teleport_to` moves the host's own body only, so the stone's jump and the recall do nothing for a guest
     (its waystone list also reads its own account's open areas, not the host's world). It needs a guest request the host answers by moving the guest's body (2026-10-17).

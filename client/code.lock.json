@@ -2,6 +2,7 @@
  "copied": {
   "audio/audio_ambience.gd": "c874e173ebb4a7d6044c127d2ed3c90a9aa2a1fb",
   "audio/audio_ambience.gd.uid": "e4ce8786f53f4b63c88c92c4ab20a5fceb054658",
+  "audio/audio_director.gd": "e9f799d078a1b3a7cc957485386c0f4689cf2b26",
   "audio/audio_director.gd.uid": "774ddc4a59362d3659309d2f0ee0eb0ef869abee",
   "audio/audio_footsteps.gd": "1e5f93970c2eb0d9b371f83d320f7e021e4d637a",
   "audio/audio_footsteps.gd.uid": "15b36a04f0d57922f2210a2f0621db1d75841b85",
@@ -778,7 +779,6 @@
   "world_fx/dm_world_dressing.gd.uid": "f334b4ee57b0a86366ed3e868c331290277d742f"
  },
  "ported": {
-  "audio/audio_director.gd": "152ba8624d77b2f74944e9eaa967445adac673e6",
   "fx/dm_fx_binbun.gd": "6e0960784ddf15aa0a07dc947cbfd94afe0c207c",
   "fx/dm_fx_layer.gd": "158674fd941d438a343556b053ce656533f2c05d",
   "fx/dm_fx_prims.gd": "963c919fddcbecbef0e3d1564e1c2fe2a0f455d3",
