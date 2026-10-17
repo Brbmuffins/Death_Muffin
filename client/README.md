@@ -57,6 +57,10 @@ bash client/tools/bake_crowd.sh                                                 
 
 Run `bash client/setup.sh` once in every new checkout or worktree (it lists the extension before the first import; see the script).
 
+A suite that asks for paths in a region enabled moments before (a seal broken, a floor baked) sets `DM_SYNC_NAV` first (`OS.set_environment("DM_SYNC_NAV", "1")` in `_initialize`, as `tests/world.gd` does):
+the navigation server merges a new region on a worker thread of its own and a game under `--fixed-fps` outruns it on a loaded machine, so a path asked before the merge ends on the nearest ground
+that is merged and a body walks away from where it was sent. The variable makes the merges synchronous, in step with game time (never set in the game).
+
 ## Code from today's game
 
 The client runs today's scripts, scenes and data (DECISIONS B43) at the same paths as in `godot/`, so `res://` paths, class names and script

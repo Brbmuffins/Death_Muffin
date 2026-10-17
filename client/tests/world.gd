@@ -24,6 +24,9 @@ extends SceneTree
 ##     embers and marsh-lights near him;
 ##   - waves follow the hero from area to area (the Graves, the Ossuary, the Nave, the Graves again), and the ground left behind is cleared, as today's director does;
 ##   - ZERO script errors or engine errors in the log.
+## The navigation server merges a region that was just enabled on a worker thread of its own, and a game under --fixed-fps outruns it on a loaded machine: a path asked before the
+## merge ends in the nearest ground that is merged, and a body walks away from where it was sent. The suite makes the merges synchronous (DM_SYNC_NAV, as tools/godot/run-all-tests.sh does
+## for today's suites), so every path in it is the same on every run.
 ## Run: godot --headless --fixed-fps 60 --path client --script res://tests/world.gd
 
 class ErrorLog:
@@ -66,6 +69,7 @@ func until(cond: Callable, limit_ticks: int) -> bool:
 
 
 func _initialize() -> void:
+	OS.set_environment("DM_SYNC_NAV", "1")   # (DmNextWorld reads it when the game starts)
 	OS.add_logger(errlog)
 	_main.call_deferred()
 
@@ -106,6 +110,12 @@ func _main() -> void:
 	check(errlog.errors.is_empty(), "no script or engine errors in the log (%d)" % errlog.errors.size())
 	print("%s world %d checks%s" % ["PASS" if fails == 0 else "FAIL", checks, "" if fails == 0 else " (%d failed)" % fails])
 	quit(1 if fails > 0 else 0)
+
+
+## True when the navigation server's map has the ground between two points joined: its path ends where asked (not on the nearest ground that is merged).
+func _nav_joins(from: Vector3, to: Vector3) -> bool:
+	var path := g.world.nav_path(from, to)
+	return path.size() > 1 and Vector2(path[path.size() - 1].x - to.x, path[path.size() - 1].z - to.z).length() < 0.5
 
 
 func _door(id: String) -> Dictionary:
@@ -465,9 +475,13 @@ func _the_nave() -> void:
 	hero.restore_vitals()
 	var c := hero.get_node("Rites") as DmRiteCaster
 	var ex := {"kind": c.mods["thrallKind"], "cap": c.mods["thrallCap"], "hp": c.p["stats"]["thrallHp"], "damage": c.p["stats"]["thrallDamage"], "attackSpeedMult": c.mods["thrallAttackSpeedMult"], "r": 0.8}
-	host.corpses.add_corpse(hp.x - 1.0, hp.z - 1.0, "normal", "robber", false, 0.0, 1.0, "nave")    # (a rite raises from a corpse)
-	var raised: Dictionary = c.thralls().raise(ex, hp + Vector3(-6.0, 0, -2.0))
-	var acolyte: int = host.spawn_enemy("acolyte", hp + Vector3(-9.0, 0, -3.0), 3, 1.0, 0.0, false, "nave", false)
+	var fall := hp + Vector3(-6.0, 0, -2.0)           # a thrall rises where its corpse lies (not at the rite's aim): the corpse is here, 3.2 m from the acolyte, inside Unbind's 7 m
+	var acolyte_at := hp + Vector3(-9.0, 0, -3.0)
+	host.corpses.add_corpse(fall.x, fall.z, "normal", "robber", false, 0.0, 1.0, "nave")    # (a rite raises from a corpse)
+	var joined := await until(func() -> bool: return _nav_joins(acolyte_at, fall), 60 * 5)
+	check(joined, "the Nave's ground is in the navigation server's map: a path from the acolyte's place reaches the thrall's")
+	var raised: Dictionary = c.thralls().raise(ex, fall)
+	var acolyte: int = host.spawn_enemy("acolyte", acolyte_at, 3, 1.0, 0.0, false, "nave", false)
 	var tid := int((raised["thralls"] as Array)[0]) if bool(raised["ok"]) else 0
 	await ticks(60)           # the thrall has risen (0.9 s)
 	host.core.stun(tid, 1.0e6)
