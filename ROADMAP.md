@@ -250,6 +250,8 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   - [ ] The benchmark's other rooms (today's Sanctum and the rest), so Gate C can compare every room.
 - [ ] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
 - [ ] The Depths and gathering (the Chapterhouse came with the areas, DECISIONS B47).
+  - [x] Gathering and the Acre (2026-10-17; client/README.md "Gathering and the Acre", `client/tests/gathering.gd`): the nodes of every area hovered, clicked and worked through the server (the walk, the cycle, the batches, the finds and XP the server decides, spent and
+    back, Auto, AFK and its report), the professions' levels and banners, the Acre ledger's panels, the Grave Laborers as pooled views (at most four, only in the Acre), the garden, the contracts and the Sexton's and the Next box's feeds; a guest holds the nodes and cannot gather, as today.
 - [ ] Tips, onboarding and sound on the core's events.
 - [ ] Gate C: every rule test matches today's, playtests OK, nothing slower than the test build.
 
@@ -287,6 +289,7 @@ combat simulation for now.
     skips the send).
   - Today's game's benchmark: the fight's settings carry no V-Sync, so the game scene turns it back on during the measurement; a run faster than the monitor reads its
     refresh rate (the server flags it). The rebuild keeps it off (2026-10-17).
+  - Today's game: cycles gathered in the last 8 s before the player leaves or closes the window are never sent (`flush_all` does not flush the gather loop). The rebuild keeps it (2026-10-17).
   - The benchmark (both games): a level-up during the fight refreshes the god-mode hero's stats from the throwaway character's real level, so the held fight changes
     as that character levels; the benchmark could hold its XP.
 - **Found during the rebuild, today's game ignores them** (Helix 2026-10-16: fixed after launch day, in the rebuild only; until then both keep today's behaviour; the core already emits each one):

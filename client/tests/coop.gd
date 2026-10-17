@@ -20,6 +20,7 @@ extends SceneTree
 ##   - the guest's own account (DECISIONS B22): the host makes it a rewards member (its character, rolling its own drops), it joins the host's backend party session with its own
 ##     token, the host reads its build from the server; a kill near both pays the guest's XP on its account (the host's accepted report, sent on) and its drops reach it,
 ##     the items rolled from its own tape; its member, bag, belt and HUD are its own account's;
+##   - gathering is the host's: the guest has the Gather node at the same path with the nodes and their views and no loop, and a node the host spends is spent on the guest too and comes back, and a late joiner is told the spent set;
 ##   - party chat both ways (the host names the speaker); a piece of gear the guest drops from its Reliquary (found while the host was there) lies on the host's ground,
 ##     the host picks it up into its own bag and the guest's copy goes;
 ##   - a version mismatch (the core's wire version, the release build) is refused in the words a player reads, the party is untouched;
@@ -349,6 +350,7 @@ func _run() -> void:
 	await the_king()
 	await guest_death()
 	await guest_account()
+	await gathering()
 	await chat_and_ground()
 	await versions()
 	await full_party()
@@ -884,6 +886,31 @@ func guest_account() -> void:
 			if int(e["characterId"]) == gcid:
 				counted = int(e["acceptedKills"])
 	check(counted >= 3, "the server counted the guest's kills for its character (%d)" % counted)
+
+
+# ------------------------------------------------------------------------------------------------------------------ gathering
+
+## Gathering is the host's (the loop, the yields, the respawn clock, the backend calls); every peer holds the node set and its views, and the depleted set reaches the guest as the
+## host's RPCs on the same path ("Gather"), which a guest must have before the host's first message is delivered (client/tests/gathering.gd plays the host's gathering).
+func gathering() -> void:
+	check(h.gather != null and h.gather.loop != null and h.acre != null and g.gather != null and g.gather.loop == null and g.gather.views != null and g.acre == null,
+		"gathering is the host's: the guest has the Gather node, the nodes and their views, but no loop and no Acre glue")
+	check(g.gather.nodes.size() == h.gather.nodes.size() and g.gather.depleted.is_empty(), "the guest knows the same %d nodes, none spent" % g.gather.nodes.size())
+	h.gather._set_state("graves_0", false)   # the host's node runs out
+	check(await until(func() -> bool: return g.gather.depleted.has("graves_0") and not g.gather.node_live("graves_0"), 3.0), "a node the host spent is spent on the guest too (the host's RPC on the same path)")
+	var kids_hidden := true
+	for k in g.gather.views._live_kids["graves_0"]:
+		kids_hidden = kids_hidden and not (k as Node3D).visible
+	check(kids_hidden and (g.gather.views._spent["graves_0"] as Node3D).visible, "and shows its spent model there")
+	h.gather._set_state("graves_0", true)
+	check(await until(func() -> bool: return not g.gather.depleted.has("graves_0") and g.gather.node_live("graves_0"), 3.0), "and comes back there when it does on the host")
+	# a player who joins late is told the whole spent set once (a second after it joined)
+	h.gather._apply_state("graves_1", false)   # (spent on the host without the push: what a joiner has missed)
+	check(not g.gather.depleted.has("graves_1"), "(the guest has not heard)")
+	h.gather._on_player_joined(gb_h.owner_peer)
+	check(await until(func() -> bool: return g.gather.depleted.has("graves_1"), 4.0), "a late joiner gets the host's whole spent set")
+	h.gather._set_state("graves_1", true)
+	check(await until(func() -> bool: return not g.gather.depleted.has("graves_1"), 3.0) and h.gather.depleted.is_empty(), "(and it is back)")
 
 
 # ------------------------------------------------------------------------------------------------------------------ chat and the ground

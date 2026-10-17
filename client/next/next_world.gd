@@ -8,7 +8,7 @@ extends Node3D
 ##
 ## What an area scene does not carry (client/README.md "Areas") is made here, for now, by a `DmWorldBuilder` used for its lights only: the
 ## environment, fog, the moon and the rim light of the area, exactly as today's builder sets them (a later world scene owns them). The builder builds
-## no floor, wall or prop (`builder` is only that light holder). No world dressing (mist, braziers, ripples) and no streaming or occlusion yet.
+## no floor, wall or prop (`builder` is only that light holder, and carries `area_nodes` and `node_views` for the gathering views). No world dressing (mist, braziers, ripples) and no streaming or occlusion yet.
 ##
 ## Every area but the Depths exists by default, as today's builder builds them all; `build` takes a shorter list (tests: the Graves alone). A door lies in the scenes of
 ## both its areas: the first one loaded keeps it, the other copy is dropped before it enters the tree. Gates start closed; `set_unlocked` opens a door when both of its
@@ -81,9 +81,20 @@ func build(area_ids: Array = [], with_lights: bool = true) -> void:
 		builder.world = data
 		builder._make_environment()
 		builder.set_area(loaded[0])
+		_register_nodes()
 	area_id = loaded[0]
 	set_unlocked([])
 	build_ms = Time.get_ticks_msec() - t0
+
+
+## The two members of today's builder that the copied gathering views read (`DmNodeViews.setup`): `area_nodes` (area id -> its root) and `node_views` (gathering node
+## id -> its holder under the scene's `GatherNodes`), so a node swaps to its spent look on the area scene's own props.
+func _register_nodes() -> void:
+	for id: String in loaded:
+		var scene: Node3D = _scenes[id]
+		builder.area_nodes[id] = scene
+		for holder: Node in scene.get_node("GatherNodes").get_children():
+			builder.node_views[String(holder.name)] = holder
 
 
 ## A door already kept by an earlier area's scene: drop this scene's copy (its floor and gate, its navmesh region and links) before it enters the tree.

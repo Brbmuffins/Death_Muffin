@@ -36,6 +36,7 @@ node tools/rebuild/compare-scenarios.mjs                                        
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/value.gd   # value on the server in the game scene: kills, accepted XP, the purse, a claimed drop, brews and lifesteal, the meta, the belt, saving ("Value on the server")
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/fx_motes.gd               # the effects' particle ring in C++ (DmMotes) against today's ring, float for float; INFO: its update time on both sides
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/panels.gd # today's panels on the core: every panel opens, the Reliquary (equip, sell, sort) on the server's bag, the loadout, Settings live, chat
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/gathering.gd # gathering and the Acre: all 68 nodes hovered and clicked, a node worked through the server (cycles, batches, finds, XP, spent and back), the stops, AFK and its report, the Grave Laborers, a collection, the garden, a contract, the Sexton ("Gathering and the Acre"; about 25 s)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/world.gd  # the whole world: every area, seals and gates, into the Warren, waystones, the recall, the core's navmesh against the server's, the Ossuary's deacon and golem and the Nave's five in the game scene
 bash client/tools/coop_local.sh                                                                # a local lobby and relay for a trial with two game windows (prints the commands; "Co-op on the core")
 bash client/tools/bake_crowd.sh                                                                # bakes the crowd models (the Graves roster, the Ossuary's deacon and golem, the Nave's five, the thralls) into client/assets/crowd/baked (not committed)
@@ -76,7 +77,7 @@ uids keep working:
   registry, 24 of the necromancer's 25 rites, the rite fx, the combat input; "The Gravecaller's rites"); the boss host, body, world, fx and view ("The Gravedigger King"); Easy auto combat, the benchmark
   with its screen, setup window and warm-up, and the boot's `--benchmark` and Benchmark button ("The benchmark"); the co-op pieces (`next/next_net.gd`, `next/party/dm_next_party.gd` and the session's hello;
   "Co-op on the core"); value on the server (the rewards node, the meta node, the progress node, the wave milestones and the joiner; "Value on the server"); the HUD's adapter and
-  view-model ("The HUD on the core"); and the Reaper's helper and three of her rites ("The Gravecaller's rites").
+  view-model ("The HUD on the core"); the Reaper's helper and three of her rites ("The Gravecaller's rites"); and the Acre's glue ("Gathering and the Acre").
 - **Left out with a seam**: a file that cannot load without a seam, grouped under the seam it follows: now only the QA boot (with the QA driver).
   Freed by the game scene's port and copied again: `next/status` (`DmStatusSet`, for the status sets of heroes and bosses only),
   the chronicle, the event fx's telegraph and boss halves, the area flow and gathering. Freed by the rites' ports: the hotbar (`dm_rite_hotbar.gd`), Veil Step and the belt.
@@ -125,8 +126,9 @@ roll of today (`core/dm_affix_roll.gd`), counting from the core; the **hero** (`
 **input** (`next/next_input.gd`) picks the hovered enemy by asking the core for the bodies near the cursor's ray; **enemy effects** (`next/enemy_fx/dm_enemy_fx.gd`) play the telegraphs, strikes (timed from the
 wind-up), deaths, voices, dust clouds and the affixes' bell, meal and burst from the host's signals, through the same router and the `Vfx` and `AudioDirector` autoloads.
 
-Co-op and the Social window are in ("Co-op on the core"), value on the server ("Value on the server"), today's HUD and panels ("The HUD on the core") and the Reaper ("The Gravecaller's rites").
-Off in this step, each until its ROADMAP item: gathering, the Depths, the graphics governor, Grave Surges, and the enemies of the areas past the Warren (the director skips a kind the
+Co-op and the Social window are in ("Co-op on the core"), value on the server ("Value on the server"), today's HUD and panels ("The HUD on the core"), the Reaper ("The Gravecaller's rites") and
+gathering with the Acre ("Gathering and the Acre").
+Off in this step, each until its ROADMAP item: the Depths, the graphics governor, Grave Surges, and the enemies of the areas past the Warren (the director skips a kind the
 core does not run yet). Easy auto combat is in and opens from Settings as today. `tests/world.gd` plays the whole world: seals, gates, walking from the Chapterhouse into the Warren, waystones,
 the recall. `native/README.md` "Differences from today's game" lists what behaves differently from today.
 
@@ -268,7 +270,7 @@ level, area line, banners, toasts, floating numbers, death veil). The adapter he
 
 The upgrades box (Empower, Quicken and the wave dial), the belt (Q, Z, X), the Kill Chain, the Omen, the save chip and the pickup lines come with value ("Value on the server"); the menu row, the
 panels and the Social window with `DmGameUi`. Not in the game scene yet, each with its system: the counsel (`DmNextCounsel` reads creatures: the tips item; the adapter's counsel is null), the
-Chapterhouse's prompts, the Depths readout, gathering's and the Acre's panels, the Altar (DECISIONS B36). `tests/hud_feeds.gd` (`HudFeeds.full()`) fills every view-model key for the
+Chapterhouse's prompts, the Depths readout, the Altar (DECISIONS B36). The Acre ledger's panels (Skills, Garden, Laborers, Contracts) and the node and laborer cards are in ("Gathering and the Acre"). `tests/hud_feeds.gd` (`HudFeeds.full()`) fills every view-model key for the
 tests that draw every piece.
 
 **Pieces (DECISIONS B40).** Every readout group is a Control of its own with its own anchors and offsets, listed in `DmHud.pieces` (`party omen ward chain belt target boss map toasts banner prompt hint chat xp altar
@@ -353,6 +355,40 @@ chat line the party reads (`DmNextParty.announce`).
 Not yet, each with its item: the Covenant Seal's altar choice and the boss key prompt (`DmBossMeta`).
 `tests/rewards.gd` replays today's `godot/tests/rewards` on the port (a test double emits `kill_credited`); `tests/value.gd` plays the game scene on the mock: kills through the core, the accepted
 XP and counts against the server's counters, the purse, a drop claimed into the bag, brews and lifesteal, the meta, Q's flask, and the save on leave.
+
+## Gathering and the Acre
+
+Gathering (the nodes of the world, the professions, AFK) and the Acre (the Grave Laborers, the garden, the Sexton's contracts) are today's code on the game scene (DECISIONS B43, B46): the rules, the loop, the
+value path and the panels are copies, so a live fix reaches them with the sync. The rebuild changes where the pieces stand, not what they do.
+
+| piece | here |
+|---|---|
+| the nodes | the 68 of `world.json` are props of the area scenes (group `GatherNodes`, one holder named by the node's id, placed and turned as the data says). `DmNextWorld` hands the lights-only builder their holders (`node_views`) and each area's root (`area_nodes`), the two members the copied `DmNodeViews` reads. It swaps a node between its live look (the scene's prop) and its spent look (the pipeline's spent model, built the first time a node is spent, or the stand-in), draws the hover and selected rings and the progress arc under the hero, and makes a rich node a little bigger with a glow disc |
+| the Gather node | `DmNextGather` (a copy; child `Gather` of `DmNextGame` on every peer at the same path, made right after the session starts so a guest has it before its relay hold is released). The host runs the loop for its own hero, owns each node's yield (`1.5 x` for a rich node) and respawn clock (half for a rich node) and credits through the backend; every peer holds the spent set, replicated as the host's RPCs (`_rpc_state`, and `_rpc_full` for a joiner) |
+| hover, click | `DmNextInput` asks the node 10 times a second (`hover_at`) unless a station or a person is under the cursor; a click that is not on a drop, an enemy, a station or a person walks to the node (`click_at`). Cost: the nodes of the current area within 26 x 22 m of the hero, about 0.1 ms a pick; nothing is built by hovering |
+| a cycle | `ticks x 600 ms` (the node's `ticks`; 2.4 s for a first-tier node). The client rolls each cycle for feel (the gesture, the floating XP, the sound); a success takes one off the node's yield; at none the node is spent (its model swaps, the card says "Spent. It will return soon.") and Auto (the Settings toggle, on by default) walks to the next live node of its kind or waits beside it for the respawn; Auto off ends with "The X is spent." |
+| the server | the cycles go to `POST /api/gather` in batches (8 s, 40 cycles, or when the work stops), after the bag is saved. The server decides what was found, the XP and the level from its own dice and its time budget (a burst of 3 beyond what the time allows, 1,800 cycles an hour); the client adopts its answer: the bag, the professions (`skills.adopt`), the gold, the Chronicle's `gathered.<skill>` count, a "Found: ..." toast for each extra, the level-up banner and the counsel's `skill_up`, the rare-find banner for a pet charm. A refusal is shown in the server's words and the cycles are dropped; offline or a 5xx keeps them and tries again 10 s later. The client's own rolls never mint a thing: cycles it rolled as failures are paid too |
+| stops | walking by hand, a click on the ground, a panel, a rite, death, a full bag ("Your bag is full." before it starts); a level the skill has not reached is refused in the rules' words ("Requires ...") and GM mode opens every tier to the client's gate |
+| AFK | from the Skills tab (P), in the Acre only ("Visit the Sexton's Acre for safe AFK gathering."): `begin_afk_gather`, then the loop with no burst; stopping shows the report (`gather_report`) and keeps the best session in the counsel store under the original key |
+| the Acre's glue | `DmNextAcre` (ported, one line: it reads the world's lights-only builder where today's reads the game's; child `Acre` of the host, with the real HUD) is the host object `DmLaborerViews` and `DmGameLabor` talk to: the garden check 4 s after the game is ready and every 60 s ("N plots are ready / still growing in your garden (U)"), the labor check 6 s after and every 5 min ("Your laborers have gathered about N finds (H)" after 30 minutes of work, "A laborer has filled up"), the panels' results (`on_labor_collected`, `on_garden_result`, `on_contract_delivered`: the gold the server paid, the Chronicle, the report hung under the laborer, "Harvested N x ...", "Grave Gardening N", "Order filled"), and the feeds the Sexton and the Next box read (`labor_summary`, `contract_summary`, the skills' levels, the bosses beaten) |
+| the panels | the Acre ledger (Skills P, Garden U, Laborers H, Contracts), the AFK report and the node and laborer cards are today's `DmGameUi` panels, warmed with the others (`DmNextGame.WARM_PANELS`); `DmNextUiHost` forwards their calls to the Gather node and the Acre |
+
+**The Grave Laborers are views, not bodies of the core.** Up to four pooled `DmCreature` models (the legion's art, `skeleton_thrall` and its kin) stand at their posts in the Acre and chop, dig or fish; each is a full skeleton with
+a tool in its hand, none is a thrall of anyone's legion, and none exists outside the Acre: they are made on the first visit and hidden, not updated and not fetched anywhere else. A crowd goes in the core's arrays; four
+characters are the same kind of thing as the hub's three people, so they stay nodes, and the count is capped by the labor rules (`DmLabor.MAX_SLOTS`, 4). A laborer competes with the nodes for the hover by screen distance
+(an 18 px bonus), and a click on one opens the Laborers (H).
+
+*Cost.* An idle frame of the Gather node and the Acre's glue is about 4 us (`tests/gathering.gd` prints it): the Gather node accumulates a clock, ticks at 10 Hz (the views' pulse, the loop's update), and while a loop runs it ticks every frame for
+the progress arc; the respawn check runs at 4 Hz only while a node is spent; the Acre's glue is three timers and, in the Acre only, up to four laborers within 48 m. No node or script exists per creature, and nothing is scanned across all nodes.
+
+*Tests.* `tests/gathering.gd` plays it on the local mock with a game clock the mock follows (the whole world, the HUD and panels, no real server): the nodes in the scenes and their views, all 68 hovered and clicked (a level refused in the
+rules' words), a node worked from the click to the server's answer and to spent and back (the walk, the cycle's length, the batch, the bag, the XP, the Chronicle, the respawn), the stops, Auto off, the server's dice
+(a level-up, the extras, a charm, the burst, a spent hour), AFK and its report, the laborers (none built outside the Acre, three at their posts, the hover card, a click, three hours of work, a collection with its gold), the garden (plant,
+harvest, a level), a contract, the Sexton's greeting and the guidance feeds. `tests/coop.gd` checks that a node the host spends is spent on the guest.
+
+*Differences, and gaps kept from today's game.* A node's live look is the area scene's prop, which the lighting bake lit; its spent model is built at run time, so it is lit by the area's real-time light and ambient, and the bake's light of the live model
+stays on the ground around it. Never looked at on a GPU. The laborers' models are first built on the first Acre visit (`DmNextWarmup` does not draw them yet, so the first look at their materials on a GPU is unmeasured). Gathering is the host's, as today: a guest holds the nodes and their views but has no loop (its character has no backend api on the host), so it cannot gather, and it does not see the host's laborers or the tool in
+a gatherer's hand. Cycles worked in the last 8 s before the window closes or the player leaves are not sent, as today (`flush_all` does not flush the loop).
 
 ## Co-op on the core
 
@@ -439,7 +475,7 @@ database and signing key, so nothing played here can touch a live character), th
 - Server errors are shown as today shows them ("Cannot reach server — check your connection", the server's own `error`, "Request failed: 502"); a stored login with the server unreachable lands on
   the login screen saying "Online opens soon", as today.
 - **Value is the test server's** ("Value on the server"): the kill reports, the drops claimed into the bag, the progression's and the bag's saves all go to the test API with the logged-in character.
-- **Off until their items:** gathering, the Chapterhouse, the automatic crash report and the update notice. Log out, Switch character and a discipline change (Settings, the class
+- **Off until their items:** the automatic crash report and the update notice. Log out, Switch character and a discipline change (Settings, the class
   panel) save and hand over as today's (`tests/front.gd` "hand-overs"). The four necromancer disciplines and the Reaper play (their hero models are in `client/assets.list`; `tests/rites.gd` "the disciplines", "the Reaper").
 
 ### The API rule (DECISIONS B38)

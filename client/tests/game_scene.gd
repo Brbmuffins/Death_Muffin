@@ -144,7 +144,7 @@ func start_game(api: DmApi, character: Dictionary) -> void:
 	check(g.ui != null and g.ui_host != null and g.enemy_fx != null and g.look != null, "the HUD and panels, the enemy fx and the hero look are up")
 	check(g.rewards != null and g.progress != null and g.meta != null and g.loot != null and g.my_member() != null, "value is on: rewards, progression, meta and the bag (client/tests/value.gd)")
 	check(g.chapterhouse != null and g.chapterhouse.npcs == null, "the Chapterhouse node runs the seals; its people stay out of a world without the Chapterhouse")
-	check(g.gather == null and g.depths == null, "what is off stays off (gathering, the Depths)")
+	check(g.gather != null and g.acre != null and g.gather.loop != null and g.depths == null, "gathering is up (the nodes, the loop, the Acre's glue), the Depths stay off")
 	check(g.bosses != null and g.bosses.active_boss() == null and g.bosses.bosses.is_empty(), "the boss host is up and nothing sleeps awake (client/tests/boss.gd fights the King)")
 	host.enemy_spawned.connect(func(id: int, _def: String, _lv: int, _el: bool, _ar: String, _af: int, _x: float, _z: float, _hp: float) -> void:
 		spawned += 1

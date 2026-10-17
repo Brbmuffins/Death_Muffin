@@ -364,8 +364,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **No collider, agent or state machine on his body** (`DmBoss` is a `Node3D`): nothing read them but the old `DmEnemy` code (the labels are gone, the hover pick and the chase go through the host's queries).
 - **The HUD on the core (today's `DmGameUi` and panels on `client/next/hud/dm_next_ui_host.gd`, `client/ui/hud`; `client/README.md` "The HUD on the core")**: the same layout, colours, fonts and
   numbers; drawn to fit 150 draw calls, which changes the pixels a little where the same shape is drawn another way. What a player could notice:
-  - **Not there yet** (their systems are not in the game scene): the counsel's tips (its fight facts read creatures), the Depths readout, the Chapterhouse's prompts and the Next line, the Acre's
-    and gathering's panels, the Altar (no Ascension: DECISIONS B36).
+  - **Not there yet** (their systems are not in the game scene): the counsel's tips (its fight facts read creatures), the Depths readout, the Chapterhouse's prompts and the Next line, the Altar (no Ascension: DECISIONS B36).
   - **Panels and borders** are pictures of the same fill, border and rounded corners (`DmHudAtlas.nine`, 16 samples a pixel) instead of `StyleBoxFlat` geometry: identical at the design size, and at other
     UI scales the 1 px borders and the 2 and 3 px corners are filtered a little differently. The hotbar's plate keeps its soft shadow (still a `StyleBoxFlat`).
   - **Icons** are scaled once, to at most twice the size they are shown at (ability art 256 to 128 px for a 62 px slot, portraits 480x640 to 96x128), with a Lanczos filter: slightly smoother than the file
@@ -393,6 +392,10 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
     **Not in the fight:** the panels (the HUD on the core is up and its share is measured), the graphics presets and the resolution governor (the report's preset is the settings file's and is not applied), so the fight is cheaper than today's by what those cost.
     The render breakdown's parts are Shadows, Creatures (the crowd and the boss, one MultiMesh per model not per kind), World, Effects and HUD.
   - **The warm-up is rehearsal rows,** not bodies: every crowd model at three levels of detail from rows fed to `DmCrowd.sync_rows` with the core's tick held (its sync would forget them), then cleared. It runs on request (`opts.warmup`, `--warmup`, the benchmark), not in play.
+- **Gathering and the Acre (`client/next/gathering`; `client/README.md` "Gathering and the Acre")**: today's code on the area scenes; the rules, the loop, the server calls, the timings and the numbers are today's, and the Grave Laborers are
+  the same pooled views (never bodies of the core). What is not the same:
+  - **A spent node's model is not in the bake.** A node's live look is the area scene's prop, which the lighting bake lit; its spent look (the stump, the spent ore, the dug grave) is built at run time, as today, and is lit by the area's real-time light
+    and ambient, and the bounce light the live model gave the ground around it stays after it is hidden. Rendering is Helix's PC's to judge.
 
 ## Files
 

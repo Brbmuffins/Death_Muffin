@@ -35,8 +35,12 @@ extends Node3D
 ##
 ## THE WORLD: every area but the Depths (DmNextWorld, the area scenes; `opts.areas` takes a shorter list), the hero starting and getting up in the Chapterhouse as today. The
 ## Chapterhouse node (DmChapterhouse, ported) breaks the seals as kills come in and opens the doors, runs waystone travel and the recall, the stations and the people.
-## The graphics preset, fps cap and auto-resolution are `perf` (DmNextPerf, the player's settings read from their file). Off in this step, each until its ROADMAP
-## item: gathering, the Depths, the Covenant Seal's altar choice (a summon is the plain soul-shard one). `start` refuses any api whose base url is not the TEST server's
+## The graphics preset, fps cap and auto-resolution are `perf` (DmNextPerf, the player's settings read from their file).
+##
+## GATHERING (client/README.md "Gathering and the Acre"): `gather` (DmNextGather, a copy: the nodes of every area, hover and click, the loop that walks, works and batches to the backend, the skills) is a child of every
+## peer at the same path (its depleted nodes reach a guest as RPCs); `acre` (DmNextAcre, ported: the visible Grave Laborers and the labor, garden and contract notices) is the host's, with the real HUD.
+##
+## Off in this step, each until its ROADMAP item: the Depths, the Covenant Seal's altar choice (a summon is the plain soul-shard one). `start` refuses any api whose base url is not the TEST server's
 ## (DmConfig.allows_api_base: the local mock has none): the rebuilt client never plays against the live server before launch day (DECISIONS B38). It takes the
 ## character and its build from the front flow (`slots`, `local` below) until the progression and the bag have loaded theirs from the server.
 ##
@@ -77,7 +81,8 @@ var ui: DmGameUi                                ## child "Ui" (opts hud = true):
 var areas: DmAreaFlow                           ## child "Areas": the entry banners and the Codex facts, the processions (next/areas/)
 var chapterhouse: DmChapterhouse               ## child "Chapterhouse": NPCs, stations, waystones, seals, hover + prompts (next/chapterhouse/)
 var depths: Node = null                         ## the Depths (its ROADMAP item)
-var gather: Node = null                         ## gathering nodes
+var gather: DmNextGather                        ## child "Gather" (every peer): gathering nodes, the gather loop (host), skills, AFK (next/gathering/)
+var acre: DmNextAcre                            ## child "Acre" (host, with the HUD): visible Grave Laborers, labor / garden notices, the first-hour guidance feeds (next/gathering/)
 var bosses: DmBossHost                          ## child "Bosses": summon rules, the boss body, its events and music
 var rewards: DmSessionRewards                   ## child "Rewards" (host): kill credit, the backend's party session, loot rolls (next/rewards/)
 var progress: DmNextProgress                    ## child "Progress" (host): levels, upgrade tiers, the belt, the backend saves (next/progress/)
@@ -228,6 +233,10 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	var err := session.join(peer) if guest else session.host(peer)
 	assert(err == OK, "DmNextGame: session start failed (%s)" % error_string(err))
 	bosses.fx.host.self_id = str(session.get_my_id())
+	gather = DmNextGather.new()   # every peer, the same path: the host's depleted nodes arrive as RPCs, so it exists before a guest's hold is released below
+	gather.name = "Gather"
+	add_child(gather)
+	await gather.setup(self)
 	if guest:
 		session.session_started.connect(party.send_profile)
 		if _hold != null:
@@ -360,8 +369,8 @@ func game_event(id: String, ctx: Dictionary) -> void:
 		ui_host.game_event.emit(id, ctx)
 
 
-## The panels this build has to warm: today's list less the Altar (DECISIONS B36) and the Acre's (gathering comes later).
-const WARM_PANELS := ["inventory", "sheet", "cosmetics", "legion", "forge", "grimoire", "codex", "atlas", "map", "settings", "salvage", "shelf", "party"]
+## The panels this build has to warm: today's list less the Altar (DECISIONS B36).
+const WARM_PANELS := ["inventory", "sheet", "cosmetics", "legion", "forge", "professions", "garden", "labor", "contracts", "grimoire", "codex", "atlas", "map", "settings", "salvage", "shelf", "party"]
 
 
 ## The HUD and the panels (opts hud = true; DECISIONS B46): today's DmGameUi on the ported DmNextUiHost, as today's game composes them, built and warmed under the
@@ -393,6 +402,11 @@ func _start_hud() -> void:
 		look.set_gear_from_slots(loot.slots())
 	ui_host.load_cosmetics()
 	sync_runes()
+	if session.is_host():   # the Acre's labor / garden glue runs on the host's own character
+		acre = DmNextAcre.new()
+		acre.name = "Acre"
+		add_child(acre)
+		acre.setup(self)
 
 
 ## Host: push the bag's sockets to the local caster (the bag changed, or the HUD's inventory just loaded).

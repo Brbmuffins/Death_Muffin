@@ -79,7 +79,7 @@ slice/models/props/slag_font*
 slice/models/props/stained_glass*
 slice/models/props/workbench*
 
-# ---- The other eleven areas: gathering nodes (their live look; gathering itself comes with its item)
+# ---- The other eleven areas: gathering nodes (their live look, and the three spent looks the gathering views build when a node is spent)
 slice/models/props/prop_node_barrow_tomb*
 slice/models/props/prop_node_blackthorn*
 slice/models/props/prop_node_bleeding_willow*
