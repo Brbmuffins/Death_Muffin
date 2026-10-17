@@ -157,7 +157,7 @@ void DmCore::_bind_methods() {
 }
 
 String DmCore::version() const {
-	return "dmcore 0.10";
+	return "dmcore 0.11";
 }
 
 int64_t DmCore::checksum(int64_t p_count) const {

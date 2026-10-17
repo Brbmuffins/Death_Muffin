@@ -206,7 +206,7 @@ func spawn_data() -> void:
 	var ev := of(events(c), EV_SPAWNED)
 	check(ev.size() == 1 and ev[0]["ints"].size() == 5 and ev[0]["ints"][4] == 0b1010, "spawned event carries the affix bits (hungering 2, vengeful 8)")
 	check(c.enemy_info(e)["affixes"] == PackedStringArray(["hungering", "vengeful"]), "enemy_info lists the affixes in AFFIX_ORDER")
-	check(c.version() == "dmcore 0.10", "core version")
+	check(c.version() == "dmcore 0.11", "core version")
 
 
 func bell() -> void:

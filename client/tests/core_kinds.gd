@@ -310,7 +310,7 @@ func names_and_tables() -> void:
 	check(K.has("CORPSE_RANGE") and K.has("BACK_OFF_DIST") and K.has("BACK_OFF_SPEED") and K.has("SCAN_S") and K.has("STRIKE_REACH_MULT") and K.has("EXTRA_RING"),
 		"the scripts' own constants are read (%s)" % str(K.keys()))
 	var c := make()
-	check(String(c.version()) == "dmcore 0.10", "the core's version names this step")
+	check(String(c.version()) == "dmcore 0.11", "the core's version names this step")
 	var t: Dictionary = c.tuning()
 	check(t["SANCTIFIED.range"] == float(S["range"]) and t["SANCTIFIED.durationS"] == float(S["durationS"]) and t["SANCTIFIED.cooldownMult"] == float(S["cooldownMult"]),
 		"Sanctify's range, duration and cooldown factor are statuses.json's")
