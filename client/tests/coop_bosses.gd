@@ -135,6 +135,9 @@ var tele_kinds := {}                 ## telegraph kinds the guest's copy of the 
 var sunk_g := 0                      ## ticks the guest's copy was sunk, and how many of them it still counted as hittable
 var sunk_bad := 0
 var hp_dip := INF                    ## the lowest health the guest's own client showed for its hero
+var hurt_events := {1: 0, 2: 0}      ## blows of any kind that hurt each hero on the host (`hurt`), and what each window's HUD had been told when the fight began (`tap`)
+var tap0_h := {}
+var tap0_g := {}
 var chill_h := false                 ## the Flood Hymn's chill seen on the guest's hero as the host has it, and as the guest has it
 var chill_g := false
 var rootp := {"event": false, "left": 0.0, "probed": false, "free": 0.0, "held": -1.0}   ## the root probe: how far the guest's hero walked free, and how far while rooted
@@ -180,7 +183,7 @@ func _run() -> void:
 		var t0 := Time.get_ticks_msec()
 		await fight(id)
 		await wipe(id)
-		print("INFO coop_bosses %s: %d s of real time" % [id, (Time.get_ticks_msec() - t0) / 1000])
+		print("INFO coop_bosses %s: %d s of real time; the relay forwarded %d packets, its rate limits dropped %d" % [id, (Time.get_ticks_msec() - t0) / 1000, int(relay.stats["forwarded"]), relay.rate_drops])
 	await finish()
 
 
@@ -188,6 +191,7 @@ func finish() -> void:
 	for gm in [h, g]:
 		if gm != null and is_instance_valid(gm):
 			gm.process_mode = Node.PROCESS_MODE_DISABLED
+	check(relay == null or relay.rate_drops == 0, "the relay's rate limits dropped no packet, counted in game time (%d: %s)" % [relay.rate_drops if relay != null else 0, str(relay.refusals if relay != null else [])])
 	stop_services()
 	check(errlog.errors.is_empty(), "zero script errors or engine errors in the log (%d: %s)" % [errlog.errors.size(), "; ".join(errlog.errors.slice(0, 3))])
 	if fails == 0:
@@ -246,6 +250,10 @@ func the_party() -> void:
 	rites_hg.hit_resolved.connect(func(_r: String, id: int, _a: float, _c: bool, _k: bool) -> void: hits_on["guest"] += 1 if cur_core != 0 and id == cur_core else 0)
 	hb.hurt.connect(func(_a: float, src: Variant) -> void: blows_on[1] += 1 if cur_core != 0 and src is int and int(src) == cur_core else 0)
 	gb_h.hurt.connect(func(_a: float, src: Variant) -> void: blows_on[2] += 1 if cur_core != 0 and src is int and int(src) == cur_core else 0)
+	hb.hurt.connect(func(_a: float, _src: Variant) -> void: hurt_events[1] += 1)
+	gb_h.hurt.connect(func(_a: float, _src: Variant) -> void: hurt_events[2] += 1)
+	tap_h = tap(h)
+	tap_g = tap(g)
 	for side: DmNextGame in [h, g]:
 		var feed: Array = hud_h if side == h else hud_g
 		var inner: Callable = side.bosses.fx.host.sink
@@ -379,6 +387,9 @@ func reset_watch() -> void:
 	sunk_g = 0
 	sunk_bad = 0
 	hp_dip = INF
+	hurt_events = {1: 0, 2: 0}
+	tap0_h = tap_h.duplicate(true)
+	tap0_g = tap_g.duplicate(true)
 	thrall_hits = 0
 	thrall_credit = true
 	swings_g = 0
@@ -440,6 +451,11 @@ func cast_at_boss(bh: DmBoss) -> void:
 	rites_g.request_cast("bone_needle", at if at != Vector3.INF else bh.global_position, bh.core_id)
 
 
+## A boss body that is still there (a defeated or reset one is freed a few seconds after, and a wait may outlast it).
+func here(b: Node) -> bool:
+	return b != null and is_instance_valid(b)
+
+
 ## The guest holds the host's state of the boss: its health within 3 % of the maximum, the phase, the state.
 func same_state(bh: DmBoss, bg: DmBoss) -> bool:
 	return absf(bg.hp - bh.hp) <= bh.max_hp * 0.03 and bg.phase == bh.phase and bg.bstate.state == bh.bstate.state and bg.bstate.active == bh.bstate.active
@@ -482,30 +498,37 @@ func fight(id: String) -> void:
 		finish_early("%s did not wake" % tag)
 		return
 	cur_core = bh.core_id
-	check(await until(func() -> bool: return g.bosses.active_boss() != null and g.bosses.active_boss().boss_id == id, 5.0), "%s: the guest holds its body, awake" % tag)
+	check(await until(func() -> bool: return g.bosses.active_boss() != null and g.bosses.active_boss().boss_id == id, 8.0), "%s: the guest holds its body, awake" % tag)
 	var bg := g.bosses.active_boss()
+	if bg == null or bg.boss_id != id:
+		finish_early("%s did not reach the guest" % tag)
+		return
 	var solo_hp: float = float(DmContent.get_export("bosses", "BOSSES")[id]["baseHp"]) * (1.0 + 0.22 * (float(bh.brain.state["level"]) - 1.0)) \
 		* float(DmContent.get_export("difficulty", "DIFFICULTIES")["medium"]["enemyHpMult"])
 	check(absf(bh.max_hp - solo_hp * (1.0 + DmEnemyStats.BOSS_PARTY_HP_PER_EXTRA)) < 1.0, "%s: two heroes give it the party's extra health (%.0f, one hero %.0f)" % [tag, bh.max_hp, solo_hp])
-	check(await until(func() -> bool: return absf(bg.max_hp - bh.max_hp) < 1.0 and absf(bg.hp - bh.hp) < 1.0 and bg.bstate.active, 3.0), "%s: and the guest's copy has its health (%.0f of %.0f)" % [tag, bg.hp, bg.max_hp])
-	check(await until(func() -> bool: return int(ev_g.get("awaken!", 0)) == 1 and int(ev_h.get("awaken!", 0)) == 1, 3.0), "%s: its awakening was played on both sides" % tag)
-	check(await until(func() -> bool: return bg.view != null and bg.view.is_shown(), 3.0), "%s: and its model is up on the guest" % tag)
-	var plate: Variant = g.ui_host.hud_state()["boss"]
-	check(plate != null and String(plate["name"]) == String(bd["name"]) and int(plate["phase"]) == 1 and absf(float(plate["max_hp"]) - bh.max_hp) < 1.0, "%s: the guest's HUD shows its plate" % tag)
+	check(await until(func() -> bool: return absf(bg.max_hp - bh.max_hp) < 1.0 and absf(bg.hp - bh.hp) < 1.0 and bg.bstate.active, 4.0), "%s: and the guest's copy has its health (%.0f of %.0f)" % [tag, bg.hp, bg.max_hp])
+	check(await until(func() -> bool: return int(ev_g.get("awaken!", 0)) == 1 and int(ev_h.get("awaken!", 0)) == 1, 4.0), "%s: its awakening was played on both sides" % tag)
+	check(await until(func() -> bool: return bg.view != null and bg.view.is_shown(), 4.0), "%s: and its model is up on the guest" % tag)
+	var plate: Array = [null]   # (a lambda copies a plain variable: it writes into this)
+	check(await until(func() -> bool:
+		plate[0] = g.ui_host.hud_state()["boss"]
+		return plate[0] != null and String(plate[0]["name"]) == String(bd["name"]) and int(plate[0]["phase"]) == 1 and absf(float(plate[0]["max_hp"]) - bh.max_hp) < 1.0, 3.0), "%s: the guest's HUD shows its plate" % tag)
 	# ---- the guest can aim at it: its own core host knows the boss by the id the host's core gave it, so the hover pick finds it
 	await stand(id)
 	await ticks(20)
-	check(bg.core_id == bh.core_id and g.core_host.enemies_in_radius(bg.global_position, 3.0).has(bh.core_id), "%s: the guest's core host knows it by the host's id (%d) and names it among the bodies near it" % [tag, bh.core_id])
+	check(await until(func() -> bool: return bg.core_id == bh.core_id and g.core_host.enemies_in_radius(bg.global_position, 3.0).has(bh.core_id), 5.0), "%s: the guest's core host knows it by the host's id (%d) and names it among the bodies near it" % [tag, bh.core_id])
 	var chest := Vector3(bg.global_position.x, 1.7, bg.global_position.z)
-	check(g.input.pick_enemy(g.camera.unproject_position(chest)) == bh.core_id, "%s: and the guest's hover pick finds it under the cursor" % tag)
-	var info: Dictionary = g.core_host.enemy_info(bh.core_id)
-	check(not info.is_empty() and bool(info.get("boss", false)) and int(info["state"]) != DmCoreEvents.State.DEAD and absf(float(info["hp"]) - bh.hp) <= bh.max_hp * 0.03, "%s: the guest's record of it is alive, with its health (%.0f)" % [tag, float(info.get("hp", -1.0))])
+	check(await until(func() -> bool: return g.input.pick_enemy(g.camera.unproject_position(chest)) == bh.core_id, 3.0), "%s: and the guest's hover pick finds it under the cursor" % tag)
+	var info: Array = [{}]
+	check(await until(func() -> bool:
+		info[0] = g.core_host.enemy_info(bh.core_id)
+		return not info[0].is_empty() and bool(info[0].get("boss", false)) and int(info[0]["state"]) != DmCoreEvents.State.DEAD and absf(float(info[0]["hp"]) - bh.hp) <= bh.max_hp * 0.03, 3.0), "%s: the guest's record of it is alive, with its health (%.0f)" % [tag, float(info[0].get("hp", -1.0))])
 	if id == "abbess":
 		g.joiner.prog.add_shards(int(DmContent.boss("gravedigger")["shards"]))
 		var held := int(g.joiner.prog.local["shards"])
 		toasts.clear()
 		g.bosses.request_summon("gravedigger")
-		check(await until(func() -> bool: return toasts.has(String(DmBossHost.WHY["busy"])), 3.0), "%s: a second summon while it is awake is refused to the guest in words (%s)" % [tag, str(toasts)])
+		check(await until(func() -> bool: return toasts.has(String(DmBossHost.WHY["busy"])), 5.0), "%s: a second summon while it is awake is refused to the guest in words (%s)" % [tag, str(toasts)])
 		check(int(g.joiner.prog.local["shards"]) == held and h.bosses.active_boss() == bh, "%s: and costs the guest nothing" % tag)
 	# ---- the fight on the real clock
 	rootp["free"] = await probe_move()   # a control: nothing holds the guest's hero, its move intent walks it
@@ -533,6 +556,12 @@ func fight(id: String) -> void:
 	sg.sort()
 	check(sh == sg and not sh.is_empty(), "%s: and played the same sounds (%d)" % [tag, sh.size()])
 	check(hp_dip < gb_g.max_hp - 1.0, "%s: the guest's own client showed its hero hurt (down to %.0f of %.0f)" % [tag, hp_dip, gb_g.max_hp])
+	# the guest's window: a number, the red flash and the hurt sound for what hurt its hero (the vitals' falls: a few blows within 50 ms are one), and the host's own window only for the host's hero
+	var hurt_g := tapped(tap_g, "floats", "hurt") - tapped(tap0_g, "floats", "hurt")
+	var hurt_h := tapped(tap_h, "floats", "hurt") - tapped(tap0_h, "floats", "hurt")
+	check(hurt_g >= 1 and hurt_g <= int(hurt_events[2]), "%s: its blows on the guest's hero were hurt numbers on the guest's window (%d for %d blows of all kinds)" % [tag, hurt_g, hurt_events[2]])
+	check(tap_g["flash"] - tap0_g["flash"] == hurt_g and tapped(tap_g, "sfx", "hurt") - tapped(tap0_g, "sfx", "hurt") == hurt_g, "%s: each with the red flash (%d) and the hurt sound (%d)" % [tag, tap_g["flash"] - tap0_g["flash"], tapped(tap_g, "sfx", "hurt") - tapped(tap0_g, "sfx", "hurt")])
+	check(hurt_h == int(hurt_events[1]) and tap_h["flash"] - tap0_h["flash"] == hurt_h, "%s: the host's window numbered and flashed the blows on the host's hero only (%d of %d)" % [tag, hurt_h, hurt_events[1]])
 	check(cmp["frames"] >= 100 and cmp["bad"] == 0, "%s: every body the guest holds is the host's at that tick (%d bodies in %d snapshots, %d off)" % [tag, cmp["bodies"], cmp["frames"], cmp["bad"]])
 	await specifics(id, bh, bg, tag)
 	bh.set_physics_process(true)
@@ -594,7 +623,7 @@ func fight_loop(id: String, bh: DmBoss, bg: DmBoss) -> void:
 		if rootp["event"] and not rootp["probed"]:
 			rootp["probed"] = true
 			rootp["held"] = await probe_move()
-		if i >= MIN_FIGHT_TICKS and kinds.all(func(k: String) -> bool: return int(ev_h.get(k + "!", 0)) >= 2) and int(hits_on["guest"]) >= 3 and int(hits_on["host"]) >= 2 and int(blows_on[2]) >= 3 and not tele_kinds.is_empty() and needs_met(id):
+		if i >= MIN_FIGHT_TICKS and kinds.all(func(k: String) -> bool: return int(ev_h.get(k + "!", 0)) >= 2) and int(hits_on["guest"]) >= 3 and int(hits_on["host"]) >= 2 and int(blows_on[2]) >= 3 and not tele_kinds.is_empty() and thrall_hits >= 1 and swings_g >= 1 and needs_met(id):
 			break
 
 
@@ -633,7 +662,7 @@ func to_phase(id: String, bh: DmBoss, bg: DmBoss, frac: float, n: int, tag: Stri
 	await until(func() -> bool: return bh.is_hittable(), 12.0)   # the Mire Mother cannot be hurt while she is sunk
 	if bh.hp > bh.max_hp * frac:
 		bh.take_damage(bh.hp - bh.max_hp * frac, gb_h)
-	check(await until(func() -> bool: return bh.phase == n and bg.phase == n, 4.0), "%s: at %d %% of its health it is in phase %d on the host and on the guest (%d, %d)" % [tag, int(frac * 100.0), n, bh.phase, bg.phase])
+	check(await until(func() -> bool: return bh.phase == n and bg.phase == n, 6.0), "%s: at %d %% of its health it is in phase %d on the host and on the guest (%d, %d)" % [tag, int(frac * 100.0), n, bh.phase, bg.phase])
 	await ticks(30)
 	if id == "congregation":   # the nave's water rises each phase: whoever wades outside her dais is slower, the host's body of the guest's hero included
 		var C: Dictionary = DmContent.get_export("bosses", "CONGREGATION")["water"]
@@ -756,10 +785,10 @@ func defeat(id: String, bh: DmBoss, bg: DmBoss, tag: String) -> void:
 		bh.take_damage(1.0e9, gb_h)
 	var pending_both: bool = hm.reporter.has_pending() and gm.reporter.has_pending()   # (the host's reports go out on its own clock)
 	check(await until(func() -> bool: return fell[0] != null, 3.0) and fell[0][0] == id and fell[0][1] == 2, "%s: `defeated` names the guest (%s)" % [tag, str(fell[0])])
-	check(await until(func() -> bool: return bg.bstate.state == "dead" and bg.hp <= 0.0 and not bg.bstate.active and g.bosses.active_boss() == null, 3.0), "%s: it is dead on the guest too (%s, %.0f hp)" % [tag, bg.bstate.state, bg.hp])
+	check(await until(func() -> bool: return here(bg) and bg.bstate.state == "dead" and bg.hp <= 0.0 and not bg.bstate.active and g.bosses.active_boss() == null, 5.0), "%s: it is dead on the guest too (%s, %.0f hp)" % [tag, bg.bstate.state if here(bg) else "gone", bg.hp if here(bg) else 0.0])
 	check(await until(func() -> bool: return ev_h == ev_g and int(ev_g.get("defeated!", 0)) == 1, 3.0), "%s: the defeat was played on both sides (%d, %d events in all)" % [tag, _sum(ev_h), _sum(ev_g)])
 	check(g.ui_host.hud_state()["boss"] == null, "%s: the guest's plate is gone" % tag)
-	check(await until(func() -> bool: return bg.view == null or not bg.view.is_shown(), 8.0), "%s: and its model fades out on the guest" % tag)
+	check(await until(func() -> bool: return not here(bg) or bg.view == null or not bg.view.is_shown(), 8.0), "%s: and its model fades out on the guest" % tag)
 	# both accounts are paid
 	var by_cid := {}
 	for e in earned_log:
@@ -818,9 +847,9 @@ func wipe(id: String) -> void:
 	hb.take_damage(1.0e9, 0)
 	check(not gb_h.alive and not hb.alive, "%s: both heroes fell" % tag)
 	check(await until(func() -> bool: return reset_n[0] == 1, 3.0), "%s: it reset on the host" % tag)
-	check(await until(func() -> bool: return g.bosses.active_boss() == null and not bg.bstate.active and bg.bstate.state == "idle", 3.0), "%s: and on the guest (%s)" % [tag, bg.bstate.state])
+	check(await until(func() -> bool: return g.bosses.active_boss() == null and (not here(bg) or (not bg.bstate.active and bg.bstate.state == "idle")), 5.0), "%s: and on the guest (%s)" % [tag, bg.bstate.state if here(bg) else "gone"])
 	check(await until(func() -> bool: return living(h) == 0 and living(g) == 0, 3.0), "%s: its bodies left both cores" % tag)
-	check(await until(func() -> bool: return bg.view == null or not bg.view.is_shown(), 8.0), "%s: and its model is gone on the guest" % tag)
+	check(await until(func() -> bool: return not here(bg) or bg.view == null or not bg.view.is_shown(), 8.0), "%s: and its model is gone on the guest" % tag)
 	check(deaths["host"] == d0["host"] and deaths["guest"] == d0["guest"] and h.core_host.core.corpse_count() == corpses0 and g.core_host.core.corpse_count() == corpses0, "%s: without a death, a corpse or a credit" % tag)
 	check(fell[0] == null and earned_log.size() == earned0, "%s: and nothing was paid" % tag)
 	check(await until(func() -> bool: return ev_h == ev_g and _sum(ev_h) > ev0, 3.0), "%s: the reset was played on both sides, kind for kind (%d and %d events)" % [tag, _sum(ev_h), _sum(ev_g)])

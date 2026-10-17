@@ -8,12 +8,12 @@ extends DmSessionBody
 ##
 ## The avatar is parented to the game node (the session's Players node may only hold bodies), at world scale, and follows the body.
 ## The host simulates (`step_host`, from DmSession intents); every peer renders. Puppets mirror the vitals the host broadcasts
-## (`apply_vitals`). Death -> respawn in the Chapterhouse after RESPAWN_S, host side.
+## (`apply_vitals`: a fall in them is the puppet's `hurt`). Death -> respawn in the Chapterhouse after RESPAWN_S, host side.
 
-signal hurt(amount: float, source: Variant)     ## host only: the enemy's or boss's core id (an int, 0 = none), or the Node that hurt him (a status)
+signal hurt(amount: float, source: Variant)     ## the host's blow: the enemy's or boss's core id (an int, 0 = none), or the Node that hurt him (a status). A puppet's: the health the vitals took away, source 0
 signal died(body: DmHeroBody)                   ## host only
 signal respawned(body: DmHeroBody)              ## host only
-signal enemy_effect(kind: StringName)           ## host only: an enemy chilled / rooted / dragged this body (the HUD floats the word)
+signal enemy_effect(kind: StringName)           ## an enemy chilled / rooted / dragged this body (the HUD floats the word); a puppet's: the drag the host told (`DmNextNet.hero_effect`)
 
 const RESPAWN_S := 4.0                          ## old DmGame.RESPAWN_MS
 const MAX_STEP := 0.25                          ## clamp host dt (a hitch must not teleport the body through a wall)
@@ -48,6 +48,7 @@ var _path_i: int = 0
 var _clock_ms: float = 0.0
 var _dead_t: float = 0.0
 var _last_hp: float = -1.0
+var _vitals_seen := false                       ## puppet: the first vitals only adopt (the body's own defaults are not a health it lost)
 var _hurt_cd: float = 0.0
 var _was_alive: bool = true
 var _prev_pos := Vector3.ZERO
@@ -284,12 +285,18 @@ func vitals() -> Array:
 	return [hp, max_hp, resource, resource_max, alive]
 
 
+## Puppet: the host's vitals (20 Hz). Health that fell between two of them, in a body that was alive and whose maximum did not change (a level, a piece of gear), is the blow the host
+## dealt: `hurt` is emitted once for the sum, as the HUD hears it from the host's `take_damage` (a blow that killed counts; the respawn and every heal raise health and are not one).
 func apply_vitals(v: Array) -> void:
+	var lost := hp - float(v[0]) if _vitals_seen and alive and float(v[1]) == max_hp else 0.0
+	_vitals_seen = true
 	hp = float(v[0])
 	max_hp = float(v[1])
 	resource = float(v[2])
 	resource_max = float(v[3])
 	alive = bool(v[4])
+	if lost > 0.01:
+		hurt.emit(lost, 0)   # (after the new state is in, as the host's take_damage emits it)
 
 
 # ---- movement (host) ----------------------------------------------------------------------------------------------------------

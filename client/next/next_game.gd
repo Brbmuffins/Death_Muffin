@@ -460,7 +460,10 @@ func _on_target_effect(enemy_id: int, target: int, effect: int, seconds: float, 
 		return
 	var kind: StringName = DmCoreEvents.EFFECTS[effect]
 	if kind == &"pull":
+		var was_alive := b.alive
 		b.dm_enemy_effect(kind, {"to": Vector3(x, b.position.y, z), "from": enemy_id})
+		if was_alive and b.owner_peer != session.get_my_id():
+			net.hero_effect(b.owner_peer, kind)   # a guest's own HUD floats "Dragged!" (the chill and the root are statuses: they replicate)
 	else:
 		b.dm_enemy_effect(kind, {"seconds": seconds, "from": enemy_id})
 

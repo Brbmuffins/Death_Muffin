@@ -851,7 +851,8 @@ func _dist_hero(x: float, z: float) -> float:
 	return Vector2(b.position.x - x, b.position.z - z).length() if b != null else 99.0
 
 
-## Connect every body's caster / hurt signals once (casters of party members attach 0.8 s after the body spawns).
+## Connect every body's caster / hurt signals once (casters of party members attach 0.8 s after the body spawns). The numbers of every member's rites; the local hero's own hurt (number, flash,
+## sounds, counsel) and drag, on the host and on a guest alike: a guest's body emits them from the host's messages (`DmHeroBody.apply_vitals`, `DmNextNet.hero_effect`).
 func _bind_bodies() -> void:
 	if shell == null or not shell.session.is_active():
 		return
@@ -871,9 +872,8 @@ func _bind_bodies() -> void:
 			var hs := DmStatusSet.of(b)
 			if hs != null:
 				hs.changed.connect(_on_hero_statuses.bind(hs))   # replicated: a client's own hero would show them too
-			if shell.session.is_host():
-				b.hurt.connect(_on_hurt)
-				b.enemy_effect.connect(_on_hero_effect)
+			b.hurt.connect(_on_hurt)                 # the blow on the hero: the host's `take_damage`, a guest's fall in the vitals the host sends (DmHeroBody.apply_vitals)
+			b.enemy_effect.connect(_on_hero_effect)  # a drag: the host's, or the one it told a guest (DmNextNet.hero_effect)
 
 
 # ---- HUD / counsel feeds (parity items 8 and 10): save chip, wave dial, sounds, counsel facts, Legion -----------------------------------

@@ -414,6 +414,9 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
 - **What stays GDScript beside the core in co-op:** the hero positions (the session's own 20 Hz snapshot), hero vitals (`Net`, 20 Hz), the rites' events, states and gestures (DmRiteCaster) and the King's
   state at 20 Hz and events (DmBossHost) travel as today, by RPC over the same relay peer. A guest's hero is an external of the HOST's core (its id is told in a table), so enemies chase and hit it there and
   its thralls are the host's bodies; the guest's own core has no externals at all.
+- **A guest's window shows its hero's hurt and a DoT's lumps** (client/README.md "The HUD on the core"; today's guest shows neither: the HUD binds the hero's `hurt` and `enemy_effect` on the host only and the status set ticks on the host only). The guest's hero is hurt on the host; the guest gets
+  the health the host's vitals take away (20 Hz) and its HUD shows it as the host's shows its own: a number, the red flash, the hurt sound, the low-health sound under 30 %. Blows within 50 ms are one number with the sum, a blow that killed is the health it took (the host's
+  number counts the overkill), and an enemy's drag of the guest's hero is told in a message of its own ("Dragged!"). A DoT's lumps are the status events of the reliable batches, so they are numbers on the guest too.
 - **A guest sees a change between snapshots once:** a state that lasts less than one interval (50 ms) is never seen, and two hits between two snapshots are one damaged event with
   the sum, as today's puppet's hp difference is. A derived thrall swing has target 0 and damage 0 (the host's event knows both); a puppet's `enemy_info` has the def's damage and
   speed, not the body's rolled ones, and no target or cooldowns. The telegraph's place and aim are the snapshot's, its seconds the wind-up less the age the snapshot showed.

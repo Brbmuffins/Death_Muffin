@@ -15,7 +15,9 @@ extends Node
 ##   baseline   `_rpc_baseline`   reliable, once to a new guest and again on request: `core.baseline()`, the whole present as records. The guest clears its presentation first.
 ##   heroes     `_rpc_heroes`     reliable: {peer id: the hero's external id in the host's core}, on every join and leave. The ids in the events (the owner of a thrall, the source of a
 ##              blow) are the host's; a guest's hero bodies adopt them (`DmCoreHost.adopt_hero`).
-##   vitals     `_rpc_vitals`     unreliable_ordered, 20 Hz: every hero's [hp, max, resource, resource max, alive], as today.
+##   vitals     `_rpc_vitals`     unreliable_ordered, 20 Hz: every hero's [hp, max, resource, resource max, alive], as today. A fall in a guest's own health is its `hurt` (the damage number,
+##              the flash and the sounds: DmHeroBody.apply_vitals); today's guest shows none of that.
+##   effect     `_rpc_effect`     reliable: an enemy dragged the guest's hero (`hero_effect`): the guest's "Dragged!" and camera shake. A chill and a root are statuses, which replicate.
 ##   The hero positions are the session's own snapshot (DmSession, 20 Hz), the King's state and events are DmBossHost's, the rites' events DmRiteCaster's: all as today.
 ## GUEST -> HOST: move intents (DmSession), `request_cast` (DmRiteCaster) and `_rpc_need_baseline` (a batch went missing). The host resolves a guest's rites on its core; the guest's
 ## thralls are the host's bodies, owned by the guest's hero external.
@@ -88,6 +90,12 @@ func remove_guest(peer: int) -> void:
 
 func guests() -> Array:
 	return _guests.keys()
+
+
+## Host: an enemy dragged the hero of guest `peer`: the guest's own HUD floats the word and shakes the camera, as the host's does for its own hero. Nothing for a peer that is not a guest.
+func hero_effect(peer: int, kind: StringName) -> void:
+	if _is_host() and _guests.has(peer):
+		_rpc_effect.rpc_id(peer, String(kind))
 
 
 ## Host: the table of hero external ids, to every guest (on a join, a leave, a respawn that re-registered a body).
@@ -247,6 +255,14 @@ func _rpc_heroes(table: Dictionary) -> void:
 		return
 	_heroes_table = table
 	apply_heroes()
+
+
+## Guest: the host's word of a drag on the local hero (the only effect the HUD acts on): the body says it as the host's does.
+@rpc("authority", "call_remote", "reliable")
+func _rpc_effect(kind: String) -> void:
+	var b: DmHeroBody = game.local_body() if _guest_core() != null else null
+	if b != null and kind == "pull":
+		b.enemy_effect.emit(&"pull")
 
 
 @rpc("authority", "call_remote", "unreliable_ordered")

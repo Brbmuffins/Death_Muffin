@@ -18,6 +18,10 @@ extends SceneTree
 ##   - the Gravedigger King wakes for the guest's request and fights both heroes: both are hurt by him, the casts of both and a thrall hurt him, the guest's copy follows him and its core host knows him
 ##     (the other six bosses fight a party in tests/coop_bosses.gd);
 ##   - a guest-side death shows (vitals, the body, the HUD's veil) and the hero gets up; kills are credited by the HOST only, once each: the guest credits none;
+##   - the guest's window shows the fight as the host's does (client/README.md "The HUD on the core"): an enemy's hit flash on both crowds, a number for every hit of either hero's rites (the
+##     guest's crits too, which travel as the rites' events) and for a DoT's lumps; its own hero's hurt from the health the host's vitals take away (a number, the red flash, the hurt sound, the
+##     low-health sound under 30 %, the counsel's hurt flag; a blow in the same 50 ms is one with the sum; a heal, a respawn and a new maximum are none; the killing blow counts) and a drag by an
+##     enemy ("Dragged!"); the host's own HUD ignores the guest's hurt, the guest's ignores the host's, and the host's own hurt is as it was;
 ##   - the guest's own account (DECISIONS B22): the host makes it a rewards member (its character, rolling its own drops), it joins the host's backend party session with its own
 ##     token, the host reads its build from the server; a kill near both pays the guest's XP on its account (the host's accepted report, sent on) and its drops reach it,
 ##     the items rolled from its own tape; its member, bag, belt and HUD are its own account's;
@@ -59,6 +63,8 @@ class TapRelay:
 	var tally := {}   ## peer id -> {in_packets, in_bytes, out_packets, out_bytes}
 	var max_in := 0
 	var max_out := 0
+	var rate_drops := 0                ## packets the rate limits dropped (the relay's `dropped` also counts a packet for a player who is not there)
+	var refusals: Array[String] = []   ## the first of them (the suites print them)
 
 	func _tap(pid: int, dir: String, n: int) -> void:
 		var t: Dictionary = tally.get(pid, {"in_packets": 0, "in_bytes": 0, "out_packets": 0, "out_bytes": 0})
@@ -81,6 +87,22 @@ class TapRelay:
 		if w != null:
 			_tap(int(w["pid"]), "out", data.size())
 		super(to, mode, data)
+
+	## The relay's rate limits (a second's worth: RATE_PACKETS, RATE_BYTES) are counted in GAME time here, 60 ticks a second as in play. The suites run their ticks as fast as the machine
+	## allows (`--fixed-fps` does not wait), 10 to 20 times faster than a player's, and a wall-clock budget dropped the packets of that burst: reliable ones too, since the relay drops after
+	## ENet has acknowledged them, so a guest lost its batches and never caught up (coop_bosses from the Prelate on). A run that exceeds the limits in game time still drops, and the suites check it did not.
+	func _spend(w: Dictionary, n: int, _now: int) -> bool:
+		var gt := float(Engine.get_physics_frames()) * (1000.0 / 60.0)
+		var dt := (gt - float(w.get("gt", gt))) / 1000.0
+		w["gt"] = gt
+		w["bytes"] = minf(float(RATE_BYTES * 2), float(w["bytes"]) + dt * RATE_BYTES) - n
+		w["packets"] = minf(float(RATE_PACKETS * 2), float(w["packets"]) + dt * RATE_PACKETS) - 1.0
+		var ok := float(w["bytes"]) >= 0.0 and float(w["packets"]) >= 0.0
+		if not ok:
+			rate_drops += 1
+			if refusals.size() < 6:
+				refusals.append("tick %d: %d B, budget %.0f B / %.0f packets" % [Engine.get_physics_frames(), n, float(w["bytes"]) + n, float(w["packets"]) + 1.0])
+		return ok
 
 	func mark() -> Dictionary:
 		return tally.duplicate(true)
@@ -154,6 +176,8 @@ var died_host := 0                 # enemy_died events on each core
 var died_guest := 0
 var rng := RandomNumberGenerator.new()
 var doors_log := {}                # a game -> the ids of the doors that rose in its world (`door_opened`: the gate sound's event)
+var tap_h := {}                    # what the host's HUD was told and played (`tap`), and the guest's
+var tap_g := {}
 
 
 func check(ok: bool, what: String) -> void:
@@ -163,16 +187,52 @@ func check(ok: bool, what: String) -> void:
 		printerr("FAIL coop: " + what)
 
 
+## What a game's HUD was told and played, from now on: the floats by kind (the hurt ones and the "info" words with their text), the red flashes, the sounds by id and the casters' announced numbers.
+func tap(gm: DmNextGame) -> Dictionary:
+	var t := {"floats": {}, "hurt_text": [], "info_text": [], "flash": 0, "sfx": {}}
+	gm.ui_host.game_event.connect(func(id: String, ctx: Dictionary) -> void:
+		if id == "float":
+			var k := String(ctx["kind"])
+			t["floats"][k] = int(t["floats"].get(k, 0)) + 1
+			if k == "hurt":
+				t["hurt_text"].append(String(ctx["text"]))
+			elif k == "info":
+				t["info_text"].append(String(ctx["text"]))
+		elif id == "hit_flash":
+			t["flash"] += 1)
+	gm.ui_host.sfx.connect(func(n: String) -> void: t["sfx"][n] = int(t["sfx"].get(n, 0)) + 1)
+	return t
+
+
+## One counter of a tap: `kind` of "floats" or "sfx".
+func tapped(t: Dictionary, group: String, kind: String) -> int:
+	return int((t[group] as Dictionary).get(kind, 0))
+
+
+## The numbers every caster of a game announces (both heroes' rites play on both sides): `n` and, of those, the crits.
+func numbers(gm: DmNextGame) -> Dictionary:
+	var c := {"n": 0, "crit": 0}
+	for peer in [1, 2]:
+		var rites := gm.body_of(peer).get_node("Rites") as DmRiteCaster
+		rites.hit_number.connect(func(_p: Vector3, _a: float, crit: bool) -> void:
+			c["n"] += 1
+			c["crit"] += 1 if crit else 0)
+	return c
+
+
 func ticks(n: int) -> void:
 	var target := Engine.get_physics_frames() + n
 	while Engine.get_physics_frames() < target:
 		await physics_frame
 
 
-## Waits (game time: a physics tick is 1/60 s) until `cond` holds, at most `limit_s`.
+## Waits until `cond` holds, at most `limit_s` of game time (a physics tick is 1/60 s) AND at least twice that (plus two seconds) of real time. `--fixed-fps` runs ticks several times faster than a
+## player's, and the sockets, ENet's timers and the lobby keep real time, so on a busy machine a guest's answer that is a few ticks late in a quiet run can be a second behind in game time. Only a wait
+## that fails lasts the whole limit: one that holds returns at once.
 func until(cond: Callable, limit_s: float) -> bool:
 	var end := Engine.get_physics_frames() + int(limit_s * 60.0)
-	while Engine.get_physics_frames() < end:
+	var wall_end := Time.get_ticks_msec() + int((limit_s * 2.0 + 2.0) * 1000.0)
+	while Engine.get_physics_frames() < end or Time.get_ticks_msec() < wall_end:
 		if cond.call():
 			return true
 		await physics_frame
@@ -356,6 +416,7 @@ func _run() -> void:
 	await casts_and_thralls()
 	await the_king()
 	await guest_death()
+	await guest_window()
 	await guest_account()
 	await gathering()
 	await chat_and_ground()
@@ -370,6 +431,7 @@ func finish() -> void:
 	for gm in [h, g]:
 		if gm != null and is_instance_valid(gm):
 			gm.process_mode = Node.PROCESS_MODE_DISABLED
+	check(relay == null or relay.rate_drops == 0, "the relay's rate limits dropped no packet, counted in game time (%d: %s)" % [relay.rate_drops if relay != null else 0, str(relay.refusals if relay != null else [])])
 	stop_services()
 	check(errlog.errors.is_empty(), "zero script errors or engine errors in the log (%d: %s)" % [errlog.errors.size(), "; ".join(errlog.errors.slice(0, 3))])
 	if fails == 0:
@@ -520,6 +582,8 @@ func connection() -> void:
 	var st: Dictionary = g.core_host.core.replication_stats()
 	check(int(st["baselines_applied"]) == 1 and st["need_baseline"] == false and g.net.stats["applied_baselines"] == 1, "the guest started from the host's baseline")
 	check(h.core_host.core.replication_stats()["replicating"] == true, "the host collects events for a guest now")
+	tap_h = tap(h)
+	tap_g = tap(g)
 
 
 # ------------------------------------------------------------------------------------------------------------------ comparing the guest's copy with the host's
@@ -809,8 +873,9 @@ func the_king() -> void:
 	var rej := {}
 	rites_h.cast_rejected.connect(func(r: String, why: String) -> void: rej["h:" + r + ":" + why] = int(rej.get("h:" + r + ":" + why, 0)) + 1)
 	rites_g.cast_rejected.connect(func(r: String, why: String) -> void: rej["g:" + r + ":" + why] = int(rej.get("g:" + r + ":" + why, 0)) + 1)
-	rites_h.hit_resolved.connect(func(_r: String, id: int, _a: float, _c: bool, _k: bool) -> void: king_hits["host"] += 1 if id == bh.core_id else 0)
-	rites_h_for_g.hit_resolved.connect(func(_r: String, id: int, _a: float, _c: bool, _k: bool) -> void: king_hits["guest"] += 1 if id == bh.core_id else 0)
+	var king_id := bh.core_id   # (not the body: it is freed after his fall, and the casters go on)
+	rites_h.hit_resolved.connect(func(_r: String, id: int, _a: float, _c: bool, _k: bool) -> void: king_hits["host"] += 1 if id == king_id else 0)
+	rites_h_for_g.hit_resolved.connect(func(_r: String, id: int, _a: float, _c: bool, _k: bool) -> void: king_hits["guest"] += 1 if id == king_id else 0)
 	var tele := [0]
 	var phases := {}
 	for i in 2400:
@@ -860,6 +925,164 @@ func guest_death() -> void:
 	check(await until(func() -> bool: return up[0] == 1 and gb_g.alive, 8.0), "the hero got up on both sides after the respawn time")
 	await ticks(30)
 	check(not bool(g.ui_host.hud_state()["death"]["show"]) and gb_g.hp > 0.0, "and the veil is gone")
+
+
+# ------------------------------------------------------------------------------------------------------------------ the guest's window: its hits and its hero's hurt
+
+## The highest hit flash a body showed on a side's crowd in the next `n` ticks (0: it never flashed; the hit sets it to 1 and it fades at 6 a second).
+func flash_in(gms: Array, id: int, n: int) -> Array:
+	var best := [0.0, 0.0]
+	for i in n:
+		await physics_frame
+		for k in gms.size():
+			var vi: Dictionary = (gms[k] as DmNextGame).core_host.view.crowd.view_info(id)
+			best[k] = maxf(best[k], float(vi.get("flash", 0.0)))
+	return best
+
+
+## The guest's HUD (client/README.md "The HUD on the core") shows what a player in the host's world sees: the enemies' flash and the numbers of both heroes' hits and of a DoT, from its own
+## puppet's events and the rites' events; and its own hero's hurt from the vitals the host sends, the way the host's HUD hears its own hero's `take_damage`.
+func guest_window() -> void:
+	h.director.enabled = false
+	for id in h.core_host.core.enemy_ids():
+		h.core_host.remove_enemy(id)
+	await ticks(30)
+	var rites_h := hb.get_node("Rites") as DmRiteCaster
+	var rites_g := gb_g.get_node("Rites") as DmRiteCaster
+	var rites_hg := gb_h.get_node("Rites") as DmRiteCaster
+	hb.teleport(gb_h.position + Vector3(2.0, 0.0, 0.0))
+	await ticks(30)
+	# a body that cannot die or hurt anyone, 5 m from both heroes
+	var at := h.world.nav_clamp(gb_h.position + Vector3(0.0, 0.0, 5.0))
+	var victim: int = h.core_host.spawn_enemy("robber", at, 1, 400.0, 0.0, false, "graves", false)
+	check(await until(func() -> bool: return g.core_host.core.enemy_count() >= 1 and h.core_host.core.enemy_count() >= 1, 4.0), "a foe stands in front of both heroes on both cores")
+	await ticks(60)
+	var vpos := h.core_host.enemy_position(victim)
+
+	# ---- the enemy's hit flash, on both crowds (the crowd reads the hit from the damaged events, the guest's derived from the hp drop in the snapshots)
+	h.core_host.damage(victim, 3.0, gb_h.core_id)
+	var flash: Array = await flash_in([h, g], victim, 40)
+	check(flash[0] > 0.5 and flash[1] > 0.5, "a blow on a foe flashes its body on the host's crowd (%.2f) and on the guest's (%.2f)" % [flash[0], flash[1]])
+
+	# ---- the numbers of both heroes' hits: every one the rites announce is a float on the HUD, the guest's crits too (they are the rites' events)
+	rites_hg.random = func() -> float: return 0.0   # the guest's needles crit (the host resolves them)
+	var nh := numbers(h)
+	var ng := numbers(g)
+	var f0_h := tap_h.duplicate(true)
+	var f0_g := tap_g.duplicate(true)
+	var dropped := 0
+	for i in 6:
+		# (the HUD's budget of numbers on screen counts real time, 850 ms a number: a fresh one for each round keeps this run's count the same on a quick machine and a slow one)
+		h.ui_host.floats = DmFloatBudget.new()
+		g.ui_host.floats = DmFloatBudget.new()
+		vpos = h.core_host.enemy_position(victim)
+		rites_g.request_cast("bone_needle", vpos, victim)
+		await ticks(20)
+		rites_h.request_cast("bone_needle", vpos, victim)
+		await ticks(45)
+		dropped += h.ui_host.floats.dropped + g.ui_host.floats.dropped
+	rites_hg.random = Callable()
+	var hit_h := tapped(tap_h, "floats", "hit") + tapped(tap_h, "floats", "crit") - tapped(f0_h, "floats", "hit") - tapped(f0_h, "floats", "crit")
+	var hit_g := tapped(tap_g, "floats", "hit") + tapped(tap_g, "floats", "crit") - tapped(f0_g, "floats", "hit") - tapped(f0_g, "floats", "crit")
+	var crit_h := tapped(tap_h, "floats", "crit") - tapped(f0_h, "floats", "crit")
+	var crit_g := tapped(tap_g, "floats", "crit") - tapped(f0_g, "floats", "crit")
+	check(ng["n"] >= 8 and nh["n"] >= 8, "both heroes' needles hurt the foe and the rites announced the numbers on both sides (the guest's window %d, the host's %d)" % [ng["n"], nh["n"]])
+	check(dropped == 0 and hit_g == ng["n"] and hit_h == nh["n"], "and each is a float on its HUD: the guest's %d of %d, the host's %d of %d (%d dropped by the budget)" % [hit_g, ng["n"], hit_h, nh["n"], dropped])
+	check(crit_g >= 3 and crit_g == crit_h and crit_g == ng["crit"], "the guest's crits are crit floats on both windows (%d on the guest's, %d on the host's, %d announced)" % [crit_g, crit_h, ng["crit"]])
+
+	# ---- a DoT: its lumps are numbers over the foe on both windows (the status events ride the reliable batches)
+	h.ui_host.floats = DmFloatBudget.new()
+	g.ui_host.floats = DmFloatBudget.new()
+	var d0_h := tapped(tap_h, "floats", "dot")
+	var d0_g := tapped(tap_g, "floats", "dot")
+	h.core_host.apply_status(victim, "withered", gb_h.core_id, 1.0, 2.2, {"dps": 20.0})
+	await ticks(200)
+	var dots_h := tapped(tap_h, "floats", "dot") - d0_h
+	var dots_g := tapped(tap_g, "floats", "dot") - d0_g
+	check(dots_h >= 2 and dots_g == dots_h, "a DoT's lumps are numbers on the guest's window as on the host's (%d and %d)" % [dots_g, dots_h])
+	print("INFO coop the guest's window: thrall numbers on the host's HUD %d, on the guest's %d (only a killing blow: the died event names its killer; today's guest shows none)" % [tapped(tap_h, "floats", "thrall"), tapped(tap_g, "floats", "thrall")])
+
+	# ---- the guest's own hero is hurt: a number, the red flash and the sounds, from the health the host's vitals take away
+	h.core_host.remove_enemy(victim)
+	await ticks(30)
+	gb_h.p["stats"]["maxHp"] = 400.0
+	gb_h.p["hp"] = 400.0
+	gb_h._mirror_from_state()
+	await ticks(20)
+	var base_h := tap_h.duplicate(true)
+	var base_g := tap_g.duplicate(true)
+	var hurt_ms: float = h.ui_host.counsel.last_hurt_ms
+	var texts: Array = []
+	for i in 5:
+		texts.append("-%d" % DmMath.js_round(gb_h.take_damage(20.0, 0)))
+		await ticks(12)   # (more than one vitals message apart: five blows, five feedbacks)
+	await ticks(6)
+	var hurt_g: Array = (tap_g["hurt_text"] as Array).slice((base_g["hurt_text"] as Array).size())
+	check(hurt_g == texts and tapped(tap_g, "floats", "hurt") - tapped(base_g, "floats", "hurt") == 5, "five blows on the guest's hero are five hurt numbers on its window, the damage taken (%s)" % str(hurt_g))
+	check(tap_g["flash"] - base_g["flash"] == 5 and tapped(tap_g, "sfx", "hurt") - tapped(base_g, "sfx", "hurt") == 5, "five red flashes and five hurt sounds")
+	check(tapped(tap_g, "sfx", "lowHealth") == tapped(base_g, "sfx", "lowHealth") and gb_g.hp > gb_g.max_hp * 0.3, "no low-health sound at %.0f of %.0f" % [gb_g.hp, gb_g.max_hp])
+	check(bool(g.ui_host.counsel_busy()["hurt"]) and h.ui_host.counsel.last_hurt_ms == hurt_ms, "the guest's counsel knows its hero was hurt (a fight: no tips, no rune swaps), the host's heard nothing of it")
+	check(tap_h["hurt_text"] == base_h["hurt_text"] and tap_h["flash"] == base_h["flash"] and tapped(tap_h, "sfx", "hurt") == tapped(base_h, "sfx", "hurt"), "the host's window ignores a blow on the guest's hero")
+	# two blows in the same tick reach the guest as one drop in the vitals: one feedback, with the sum
+	var pair_a := gb_h.take_damage(10.0, 0)
+	var pair_b := gb_h.take_damage(15.0, 0)
+	await ticks(20)
+	check(tap_g["hurt_text"].size() == base_g["hurt_text"].size() + 6 and tap_g["hurt_text"][-1] == "-%d" % DmMath.js_round(pair_a + pair_b), "two blows within the vitals' 50 ms are one number with the sum (%s)" % str(tap_g["hurt_text"][-1]))
+	# under 30 %: the low-health sound with the hurt sound
+	var low_before := tapped(tap_g, "sfx", "lowHealth")
+	var hurt_before := tapped(tap_g, "sfx", "hurt")
+	for k in 4:
+		if gb_h.hp > 110.0:
+			gb_h.take_damage(gb_h.hp - 100.0, 0)   # (the same tick: one drop for the guest)
+	await ticks(20)
+	check(tapped(tap_g, "sfx", "lowHealth") == low_before + 1 and tapped(tap_g, "sfx", "hurt") == hurt_before + 1, "a blow that leaves 100 of 400 plays the hurt sound and the low-health sound")
+	# a heal, a new maximum and a rise are no hurt
+	var calm := tap_g.duplicate(true)
+	gb_h.heal(250.0)
+	await ticks(20)
+	gb_h.p["stats"]["maxHp"] = 300.0   # a piece of gear lowering the maximum takes health with it: not a blow
+	gb_h.p["hp"] = minf(float(gb_h.p["hp"]), 300.0)
+	gb_h._mirror_from_state()
+	await ticks(30)
+	check(gb_g.max_hp == 300.0 and tap_g["hurt_text"] == calm["hurt_text"] and tap_g["flash"] == calm["flash"] and tapped(tap_g, "sfx", "hurt") == tapped(calm, "sfx", "hurt"), "a heal and a lower maximum are no feedback (%.0f of %.0f)" % [gb_g.hp, gb_g.max_hp])
+
+	# ---- the host's own hero: as it was, and the guest's window does not hear it
+	var gbase := tap_g.duplicate(true)
+	var hbase := tap_h.duplicate(true)
+	var taken_h := hb.take_damage(30.0, 0)
+	await ticks(20)
+	check(tap_h["hurt_text"].size() == hbase["hurt_text"].size() + 1 and tap_h["hurt_text"][-1] == "-%d" % DmMath.js_round(taken_h) and tap_h["flash"] == hbase["flash"] + 1 and tapped(tap_h, "sfx", "hurt") == tapped(hbase, "sfx", "hurt") + 1, "a blow on the host's own hero: its number, flash and sound, as before")
+	check(tap_g["hurt_text"] == gbase["hurt_text"] and tap_g["flash"] == gbase["flash"] and tapped(tap_g, "sfx", "hurt") == tapped(gbase, "sfx", "hurt"), "and the guest's window ignores it")
+
+	# ---- a drag by an enemy (the Drowned Sexton's chain): the word over the dragged hero's own window, and nowhere else
+	var pull: int = DmCoreEvents.EFFECTS.find(&"pull")
+	var w_g := (tap_g["info_text"] as Array).count("Dragged!")
+	var w_h := (tap_h["info_text"] as Array).count("Dragged!")
+	h._on_target_effect(0, gb_h.core_id, pull, 0.0, gb_h.position.x + 3.0, gb_h.position.z)
+	await ticks(20)
+	check((tap_g["info_text"] as Array).count("Dragged!") == w_g + 1 and (tap_h["info_text"] as Array).count("Dragged!") == w_h, "an enemy's drag of the guest's hero is a \"Dragged!\" on its window only")
+	h._on_target_effect(0, hb.core_id, pull, 0.0, hb.position.x - 3.0, hb.position.z)
+	await ticks(20)
+	check((tap_h["info_text"] as Array).count("Dragged!") == w_h + 1 and (tap_g["info_text"] as Array).count("Dragged!") == w_g + 1, "and of the host's hero on the host's window only")
+
+	# ---- the killing blow is a hurt too (once); the respawn, which raises the health, is none
+	await until(func() -> bool: return hb.alive and gb_h.alive, 10.0)
+	gb_h.p["stats"]["maxHp"] = 400.0
+	gb_h.p["hp"] = 400.0
+	gb_h._mirror_from_state()
+	await ticks(20)
+	var kb := tap_g.duplicate(true)
+	var up := [0]
+	h.hero_respawned.connect(func(b: DmHeroBody) -> void: up[0] += 1 if b == gb_h else 0)
+	var hp_before := gb_h.hp
+	gb_h.take_damage(1.0e9, 0)
+	check(await until(func() -> bool: return not gb_g.alive, 2.0), "the guest's hero fell")
+	await ticks(10)
+	check(tap_g["hurt_text"].size() == kb["hurt_text"].size() + 1 and tap_g["hurt_text"][-1] == "-%d" % DmMath.js_round(hp_before) and tap_g["flash"] == kb["flash"] + 1 and tapped(tap_g, "sfx", "lowHealth") == tapped(kb, "sfx", "lowHealth"), "the blow that killed is a number (the health it took, %s) and a flash, with no low-health sound" % str(tap_g["hurt_text"][-1]))
+	var dead_at := tap_g.duplicate(true)
+	check(await until(func() -> bool: return up[0] == 1 and gb_g.alive, 8.0), "and it got up")
+	await ticks(30)
+	check(tap_g["hurt_text"].size() == dead_at["hurt_text"].size() and tap_g["flash"] == dead_at["flash"], "getting up is no hurt")
 
 
 # ------------------------------------------------------------------------------------------------------------------ the guest's own account
