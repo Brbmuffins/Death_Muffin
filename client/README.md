@@ -38,6 +38,7 @@ bash client/setup.sh                                                       # bui
 node tools/rebuild/compare-scenarios.mjs                                                       # the seeded scenario comparison with today's game: ten headless runs, one at a time, and a table against stated tolerances (about 6 minutes; "The seeded scenario")
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/coop.gd    # 2-player co-op: a host and a guest in one process over a real local lobby and relay (needs `cd server/death-muffin/lobby && npm ci`; bakes into a scratch folder; about a minute)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/social.gd  # the Social window: open and close, host from the Party tab, a boot scene that joins from the list and comes home (needs the lobby's modules too; about 40 s)
+/home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/dressing.gd # the world dressing on the area scenes: its pieces in the loaded areas, the stand-ins gone from the scenes, the area by event, the brazier fire's closed form against the web's step, the mist's rate, the earth beyond the walls, the Binbun shaders' colour (about 15 s; "World dressing")
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/presets.gd # the graphics presets on a running game: lights, environment, viewport, crowd shadows, the governor (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --path client --script res://tests/rewards.gd                # the rewards node on the core: today's tests/rewards replayed (sessions, batches, lost replies, refusals, the end, per-member loot), on the mock
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/value.gd   # value on the server in the game scene: kills, accepted XP, the purse, a claimed drop, brews and lifesteal, the meta, the belt, saving ("Value on the server")
@@ -277,6 +278,9 @@ nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path clien
 - **In the fight as today:** rewards, loot drops and the kill ledger against the run's in-memory mock (the King's soul shards are granted to the throwaway character and charged, as today's `hold_boss`),
   and today's effects (`Vfx`), with one difference: the particle ring's per-frame loop is the core's C++ (`DmMotes`, native/README.md "Files"), which won back 0.7 ms of a Full Party
   frame on the VPS (5.7 to 5.0 ms; 2026-10-16).
+- **The world dressing's cost** (2026-10-17, the Graves' Full Party, headless `--fixed-fps 60`, six alternating pairs in ABBA order, `--bench-dressing=off` against the default, on a shared machine whose load swung between 3.7 and 5.9): the average frame 3.86 ms
+  without it (runs 3.27 to 4.35; p95 7.68, p99 10.83) and 3.96 ms with it (3.61 to 4.27; p95 8.01, p99 10.95), +0.10 ms, a fifth of the spread of either arm; the rest of the main thread 3.27 against 3.35 ms of its 4 (the combat core 0.59 and 0.60).
+  The node alone costs 18 microseconds a frame ("World dressing"); what the dummy renderer cannot say is the GPU's share, which is the water's fragment loop and a dozen transparent draws: Helix's PC.
 - **Not in the fight yet** (it is cheaper than today's by these): the guests' hero bodies, as today. `native/README.md` "Differences from today's game" has the rest.
 
 ## The draw budget
@@ -326,6 +330,32 @@ twelve models; 396 with the roster). A change that adds draw calls fails here an
 **The measurement** (`tools/draw_measure.gd`, rendered, about 200 s on the VPS; the command and its options are in the file's header) writes JSON lines: the world from five camera places and each group of its geometry hidden alone, the same for
 another version of the scene (`--compare`), a MultiMesh with and without instances, and the crowd as the crowd shows it, with every group shown and hidden, each beside the model's number for the same frame.
 
+## World dressing
+
+Today's `DmWorldDressing` (`client/world_fx/`, data in `godot/data/world_fx/fx.json`, ported: client/code.list) is attached by `DmNextWorld.build` to the areas the world holds, so the rebuilt world draws what the live
+one does around the static scenes. `DmNextWorld.dressing` is the node (null in a world built with no lights), `enter_area` tells it the hero's area (the weather and the water follow by event), `DmNextPerf.apply` thins the
+weather on Low (`atmosphere.quality_low`, today's), and the graphics preset owns the bloom (`DmGraphicsPreset.apply_environment`, "Glow" below); the dressing no longer touches the environment. The area scenes carry none of what it draws:
+the converter leaves out the flame spheres (a sphere floated above each candle and, with the glow, read as a white blob), the water planes and the puddle quads, so nothing is hidden at run time.
+
+| Piece | What it is | How it is drawn and what a frame pays |
+|---|---|---|
+| Candle flames, 347 in 8 areas | additive billboards at the wicks, flicker and bob, the Sanctum's candle groups | one MultiMesh in each loaded area that has candles (a draw call when in view), the flicker in the vertex shader: nothing per frame |
+| Brazier fire (21 braziers) | violet wisps and amber embers 30 x 28 m round the hero | one ring MultiMesh. A particle is written once, when it is emitted (a roll every 0.05 s, the web's 10 wisps and 1.5 embers a second a brazier); its place, size and fade are closed forms of its age in the vertex shader (`DmWfxParticles.pose` is the same function in GDScript and the test holds it against the web's frame-by-frame step). Today's GDScript stepped every live particle every frame |
+| Ground mist, 220 puffs | big soft puffs at knee height drifting over the world | one MultiMesh; the web's wrap rule stepped 4 times a second (today's: 15), 55 microseconds a step |
+| Weather, 13 profiles | ash, leaves, bone dust, drips, embers round the hero | one mesh drawn from a clock by its vertex shader; an area's mesh is built the first time it is asked for and kept (4.8 ms in GDScript for the Nave's), the starting area's during loading |
+| Windows, 4 | stained glass and a slanted shaft of light | a pane and a shaft under the nearest area's scene (the Nave's three, the Sanctum's one), static |
+| Silhouettes, 70 | far spires, dead trees, fallen walls | one merged mesh |
+| Water | the Nave's channels, the Fen's bog, the Acre's ponds, the puddles | one mesh, fresnel, the moon's glint, up to 16 ripple rings in the fragment shader; Low keeps today's flat sheet only through `quality` |
+
+The brazier fire, the mist, the weather and the water are the only things that move on the CPU, and `DmWorldDressing._process` is a clock, an emission roll every third frame, a mist step every fifteenth and a few shader uniforms:
+**18 microseconds a frame** (measured with the dummy renderer, the node alone in a Graves world, 3,000 frames; the weather 0.8, the water 0.4, the roll 16 each time and a mist step 55). Today's mist (14 a frame) and brazier fire (44 with 26 live particles) took 58 between them.
+Building an area's weather in GDScript costs 4.8 ms (the Nave's), which an area entry used to pay each time: now every loaded area's is built while the world loads. The six objects (water, weather, brazier fire, silhouettes, mist and the area's flames) are six draw calls
+in the Graves' budget scene (`tests/draw_budget.gd`: `BUDGET_DRESSING` 8, none cast shadows) and replace the eight draws the stand-ins cost: the Graves' world, the dressing and the crowd are 96 draw calls with the earth beyond the walls (1), against 97 before.
+`DmDrawModel` counts the dressing's pieces apart ("dressing:<piece>"). `--bench-dressing=off` (or `mist,water,...`) switches pieces off for a benchmark run and the report says which were off (`World dressing:`); the A/B is in "The benchmark".
+`tests/dressing.gd` is the suite.
+
+Not wired, as in today's game: `add_ripple` and `candle_group` are called through `DmEnemyFxHost.dressing`, which the game scene does not set, so the water has no ripples and the Prelate's candles do not gutter (ROADMAP "After launch day" → "For review").
+
 ## Graphics presets
 
 Today's Low, Medium, High and Ultra on Forward+ (DECISIONS B45): `game/dm_graphics_preset.gd` is the table and `next/perf/dm_next_perf.gd` (`DmNextPerf`, the game scene's `perf`)
@@ -351,8 +381,9 @@ software renderers, the same camera in the Chapterhouse, the Hollow Graves and t
 | a vertex colour (a light pool's 0.25 / 0.17 / 0.09, a particle's colour, a gear mote) | read as sRGB: the pool's centre (82, 49, 24) | read as linear: (203, 175, 130), 9 times the light | `vertex_color_is_srgb` on the pools (`build_area._light_pools`, `DmWorldBuilder._light_pools`), the gear motes (`DmGearFx`) and the Binbun particles' materials (`DmFxBinbun`): (79, 48, 24) |
 | a colour an effect's shader writes to `ALBEDO` (`COLOR.rgb` of the Fx layer, the world mist and particles) | converted from sRGB after the shader multiplied it | taken as linear | the shaders convert it (`dm_srgb` in `DmFxTex`, `DmWfxParticles`, `DmWfxMist`): (191, 155, 114) for today's (191, 156, 114) |
 | a tinted dark texture (every floor, every wall, the gate posts) | tint x texel multiplied in sRGB, the product converted once | each converted, then multiplied: 1.04 to 1.6 times darker | the area converter lifts the tint by the measured ratio (`DmCompatAlbedo`, `client/next/look/`): the Graves' ground tint 0.72 / 0.67 / 0.72 becomes 0.80 / 0.77 / 0.81 |
-| the glow of a very bright thing (an HDR quad on a dark plane) | (115, 97, 67) 140 px out, nothing 260 px out | (255, 255, 249) 140 px out, (155, 134, 49) 260 px out | not changed (open) |
-| the void beyond the walls | the background colour shown as it is, (7, 6, 10) | through the exposure and the tonemapper: (1, 1, 3) | not changed (open) |
+| the glow of a very bright thing (an HDR quad of albedo 2 and a small emission of energy 6 on a dark plane, the glow part of the probe, 1280x720, red channel every 6 px past the edge) | 247, 189, 103, 41, 15, then the background at 30 px (the quad's edge pixel 62 of 255) | five mips: 255, 255, 251, 232, 213, 191 ... still 88 at 66 px | `DmWfxBloom`: the two finest mips at 0.8 of the web's strength: 255, 210, 104, 15, nothing at 24 px; threshold 0.85, scale 2 and cap 12 unchanged |
+| a Binbun scene's own shader reading its particle's `COLOR` (`.rgb` as a colour or a mask offset) | the vertex colour converted from sRGB | taken as it is | `DmFxBinbun` reads it through a patched copy of each such shader (`dm_COLOR`: rgb converted, alpha as it is) |
+| the beyond the walls | one 420 m field of grave soil under the fog (196 tiles); the background colour past it, (7, 6, 10) | nothing drawn: black, (1, 1, 3) through the tonemapper | the field as one quad (`DmWorldBuilder.build_outside`, the soil's tint lifted by `DmCompatAlbedo`); the background colour past it is never in view (the field reaches 80 m past every area) and stays black |
 
 Measured on the frame without the hero's box (the mean luminance in 0 to 255; share of red / green / blue):
 
@@ -363,21 +394,24 @@ Measured on the frame without the hero's box (the mean luminance in 0 to 255; sh
 | now, lift 1.0 | 35.2, 0.279 / 0.234 / 0.487 | 30.1, 0.273 / 0.228 / 0.499 | 34.9, 0.358 / 0.255 / 0.387 |
 | now, lift 1.2 (the frames' exposure raised in software by inverting the tonemapper) | 40.7 | 35.6 | 40.4 |
 
+With the world dressing, the tuned glow and the earth beyond the walls on (2026-10-17, rendered at the lift of 1.2, 1280x720, the same frames' mean luminance; the table above was software-scaled from frames at lift 1.0): the
+Chapterhouse 37.9 (today's 40.5), the Graves 38.7 (35.1), the Ossuary 41.7 (41.1); with the dressing off 37.2, 37.4 and 41.1, so the dressing adds 1 to 3 %. The lifts that would put each area on today's mean are 1.30, 1.08 and 1.18
+(the frames' pixels taken back through the tonemapper and exposed again): they differ by area because the baked ground does (ROADMAP "Baked lighting": the Graves' baked ambient is too bright, the Chapterhouse's pools too flat), and their
+mean, 1.19, is the 1.2 that stays (`DmGraphicsPreset.LIFT`); the lift is measured again after the bake.
+
 The first build's mean was higher than today's only because its pools were 9 times too bright; its ground, walls and props were darker and less blue. A candle's pool, the box left of the
 altar: today (122, 77, 124), first build (180, 143, 159), now (111, 72, 123).
 
-**Still not today's** (each one a line in ROADMAP "Look pass"): the rebuilt world has no world dressing at all (`DmWorldDressing`, today's `DmNextWorld.build` attaches it: ground mist, the
-weather of each area, the stained-glass windows with their light shafts, the candle flames and brazier fire as sprites, the far silhouettes, the water's ripples and glint; the code is
-copied, not attached, and the flames are the converter's plain spheres); the candles' light on the floor is baked at 0.43 m a texel (the Chapterhouse's ground is 64 x 64 texels of its
+**Still not today's** (each one a line in ROADMAP "Look pass"): the candles' light on the floor is baked at 0.43 m a texel (the Chapterhouse's ground is 64 x 64 texels of its
 lightmap), which flattens a candle's peak: the baked light is about a quarter of the real-time one 0.3 m from a candle and half of it at 1 m, so a pool reads about half as bright half-way
-out (a denser floor lightmap, `gi_lightmap_texel_scale` on the ground quads, and a bake would fix it); the glow of very bright HDR things (a bright quad bloomed much wider than today's); the void beyond the walls; the Depths' walls keep
+out (a denser floor lightmap, `gi_lightmap_texel_scale` on the ground quads, and a bake would fix it); the Depths' walls keep
 Forward+'s darker tint (its floor is lifted, `DmWorldBuilder._floor_mat`); Low and Medium: today's draw blended effects in sRGB space when bloom is off (an alpha sprite half-way over black: 131, with bloom on 205), Forward+ always blends
-in linear light; the Binbun scenes' own shaders read a particle's `COLOR` as it is; the Acre's and the Wing's brighter live ambient is not in the bake. The lightmap's ambient is an sRGB
+in linear light; the Acre's and the Wing's brighter live ambient is not in the bake. The lightmap's ambient is an sRGB
 colour the bake reads as linear (`environment_custom_color` is taken as it is): the baked ground's irradiance is about three times the real-time ambient today's game uses (the Chapterhouse's
 lightmap: a median of 0.31 against 0.095), so shadows are filled in more than today's; linearising it is one `srgb_to_linear()` in `build_area._lightmap` and a bake, and the lift would then
 be measured again (it is not done: it changes every baked area and cannot be checked before the bake).
 
-The probe starts the real game scene at a fixed spot of each area and shoots variants of its light (`--plan`), and the calibration part prints one pixel line per test object; run it
+The probe starts the real game scene at a fixed spot of each area and shoots variants of its light (`--plan`; `nodress` takes the world dressing off, `before` is the first test builds' look: no dressing, a sphere at every light, the five-mip glow), the glow part (`--part=glow --glow="name:lv=a/b,int=..;..."`) prints the glow's profile of two bright things under each setting of a list, and the calibration part prints one pixel line per test object; run it
 on both projects (the header of the script has the commands; today's game takes 3 to 4 minutes to start on the VPS, the rebuild half a minute). It is not a pass/fail suite: the checked
 values are `tests/areas.gd` (the pools' flag, the tint table against its textures) and `tests/presets.gd` (the lift and the environment). `client/tools/compat_albedo.gd` prints the tint
 table of `DmCompatAlbedo`.
@@ -821,7 +855,7 @@ godot --headless --path client --script res://tests/areas.gd         # every con
 generated at runtime and are not converted: "The Depths"). Output is deterministic, so regenerating changes nothing unless the data or the converter did:
 
 - `client/areas/<id>.tscn`: groups `Floor` (the ground quad, the paths whose centre lies in the area, the Alchemist Wing's rugs and stains, the Fen's
-  hummocks), `Walls`, `Props`, `GatherNodes`, `Decals` (decals and puddles), `Water` (the Nave's channels, the Fen's bog, the Acre's ponds), `Doors`, `Lights`,
+  hummocks), `Walls`, `Props`, `GatherNodes`, `Decals`, `Doors`, `Lights` (the prop lights and the pool mesh),
   `Occluders`, one static `Colliders` body on the `world` physics layer (walls, prop and node obstacles, deep ponds; 3 m tall as today), and `Navigation`
   with a **baked** `NavigationRegion3D` for the area, one per door touching it and the two `NavigationLink3D` per door. Settings and obstruction
   rules are `world_builder._nav_mesh` / `_all_obstacles`. A door starts as `world_builder` leaves it after building: a sealed door's gate is closed
@@ -846,15 +880,15 @@ hummock ring mesh), never read from a scene:
 - the ground and every path and door floor (theme texture, tint, roughness, glow; UVs anchored to the world; lightmap UV2), walls (position, size, the
   texture and tint `world_builder` shares per texture; the tints are lifted by `DmCompatAlbedo` to the albedo today's renderer makes of them, and the test measures its table against the
   textures again: "The look against today's game"), props (the same meshes where `DmModels.prop_parts` puts them, shadow and visibility range), gathering
-  nodes (models, an ore's three crystals, the herb, pool and tree stand-ins), decals, puddles, water, bog and ponds, the Wing's rugs and stains, the Fen's hummocks
-  and rims, prop lights with their flames and the floor-pool mesh (the Nave's dimmer, smaller pools; its vertex colours read as sRGB, as today's renderer reads them), colliders, occluders, the two decal textures pixel for pixel;
+  nodes (models, an ore's three crystals, the herb, pool and tree stand-ins), decals, the Wing's rugs and stains, the Fen's hummocks
+  and rims, prop lights (with no flame sphere) and the floor-pool mesh (the Nave's dimmer, smaller pools; its vertex colours read as sRGB, as today's renderer reads them), colliders, occluders, the two decal textures pixel for pixel; and that the scenes hold none of what the world dressing draws (no flame sphere, water plane or puddle quad), whose water rects and puddles are world.json's;
 - doors: each door touching the area (and no other) with its corridor floor, and each gate's posts, lintel, bars, rails, seal and body, closed or open;
 - navigation: the area's region and each door's region equal a fresh bake with `world_builder`'s settings, stop short of the walls by the agent's radius, and
   the regions and links are enabled exactly when the door is `open`; paths cross the area, join its door mouths and bend round box props; a sealed gate blocks the
   way to its corridor's far end and, once its region and links are enabled, the corridor is walkable to it;
 - the lighting bake: the `LightmapGI` bakes the area's ambient and points at `<id>.lmbake` when one exists, and a bake is stale (the test fails) when a mesh it
   recorded is no longer at its path in the scene;
-- the whole: one scene per converted area, and every path, wall, prop, node, decal, puddle, water rect, hummock, wing-floor quad and door of `world.json` is in
+- the whole: one scene per converted area, and every path, wall, prop, node, decal, hummock, wing-floor quad and door of `world.json` is in
   exactly the scenes it belongs to.
 
 A headless Godot (the dummy renderer) keeps no `MultiMesh` instance transforms set one by one, so the converter writes the gate bars' and hummocks' `buffer`
@@ -863,6 +897,6 @@ directly and the test reads them from the scene file. Every mesh that is static 
 Not the same as today's runtime, on purpose: props are single instances of a prefab (not one MultiMesh per 12 m cell; MultiMesh cannot take
 lightmaps); each floor is one quad (not 12 m tiles, which only limited per-object lights on Compatibility); there is no per-area light switching
 (the lights stay on; the bake takes over) and no see-through cutout shader yet (`apply_occlusion`). Not in an area scene (a later world scene
-owns them): the dark ground beyond the walls, the environment, fog, moon and rim lights; the people (`npcs`) are the Chapterhouse node's (`DmHubNpcs`). A door
+owns them; `DmNextWorld`'s lights builder makes them): the dark earth beyond the walls (one quad), the environment, fog, moon and rim lights, and the world dressing ("World dressing"); the people (`npcs`) are the Chapterhouse node's (`DmHubNpcs`). A door
 between two areas is in both scenes with the same id and place (nodes carry `door_id`); `DmNextWorld` keeps the first copy it loads.
 

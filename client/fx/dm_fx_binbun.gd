@@ -435,6 +435,7 @@ func _own_material(inst: Inst, gi: GeometryInstance3D) -> void:
 	if m is ShaderMaterial:
 		var sm := m as ShaderMaterial
 		sm.render_priority = 6
+		sm.shader = _srgb_color(sm.shader)
 		var names := {}
 		if sm.shader != null:
 			for u in sm.shader.get_shader_uniform_list():
@@ -447,6 +448,51 @@ func _own_material(inst: Inst, gi: GeometryInstance3D) -> void:
 		var std := m as StandardMaterial3D
 		std.vertex_color_is_srgb = true   # the particles' colours: Compatibility reads vertex colours as sRGB, Forward+ as linear (client/README.md "Graphics presets")
 		inst.std_mats.append([std, std.albedo_color])
+
+
+static var _srgb_shaders := {}   ## Shader -> the copy that converts the particle's colour (or the shader itself when it has nothing to convert)
+
+const SRGB_HELPER := """
+// The particle's colour is an sRGB value: Compatibility hands a shader its COLOR converted to linear, Forward+ as it is (client/README.md "Graphics presets").
+vec3 dm_srgb(vec3 c) {
+	return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c * 0.0773993808, lessThan(c, vec3(0.04045)));
+}
+"""
+
+## A Binbun scene's own shader reads its particle's COLOR (its colour in `.rgb`, its fade in `.a`). The copy of the shader reads the converted colour in fragment(): `dm_COLOR` is
+## COLOR with its rgb converted from sRGB, which is what Compatibility gave the shader; a shader that writes COLOR, or reads none in fragment(), is left as it is. One copy a shader.
+static func _srgb_color(sh: Shader) -> Shader:
+	if sh == null:
+		return sh
+	if _srgb_shaders.has(sh):
+		return _srgb_shaders[sh]
+	var out := sh
+	var code := sh.code
+	var at := code.find("void fragment()")
+	var open := code.find("{", at) if at >= 0 else -1
+	if open >= 0 and code.contains("shader_type spatial"):
+		var depth := 0
+		var close := -1
+		for i in range(open, code.length()):
+			var ch := code.unicode_at(i)
+			if ch == 123:
+				depth += 1
+			elif ch == 125:
+				depth -= 1
+				if depth == 0:
+					close = i
+					break
+		var body := code.substr(open + 1, close - open - 1) if close > open else ""
+		var re := RegEx.new()
+		re.compile("\\bCOLOR\\b")
+		var writes := RegEx.new()
+		writes.compile("\\bCOLOR\\s*(\\.[rgbastpq]+)?\\s*[-+*/]?=[^=]")
+		if re.search(body) != null and writes.search(body) == null:
+			body = re.sub(body, "dm_COLOR", true)
+			out = Shader.new()
+			out.code = code.substr(0, at) + SRGB_HELPER + code.substr(at, open + 1 - at) + "\n\tvec4 dm_COLOR = vec4(dm_srgb(COLOR.rgb), COLOR.a);" + body + code.substr(close)
+	_srgb_shaders[sh] = out
+	return out
 
 
 func _reset(inst: Inst) -> void:

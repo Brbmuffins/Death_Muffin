@@ -371,7 +371,6 @@ func _build(id: String) -> void:
 	var props_n := _group(area_root, "Props")
 	var nodes_n := _group(area_root, "GatherNodes")
 	var decals_n := _group(area_root, "Decals")
-	var water_n := _group(area_root, "Water")
 	var doors_n := _group(area_root, "Doors")
 	var lights_n := _group(area_root, "Lights")
 	var occ_n := _group(area_root, "Occluders")
@@ -383,7 +382,7 @@ func _build(id: String) -> void:
 	_props(props_n, lights_n, occ_n)
 	_gather_nodes(nodes_n)
 	_decals(decals_n)
-	_water(water_n)
+	_water()
 	_doors(doors_n)
 	_lightmap(area_root)
 	_bake_nav()
@@ -611,25 +610,7 @@ func _prop_light(parent: Node3D, p: Dictionary, L: Dictionary, label: String) ->
 	light.position = Vector3(p.x, float(L.y) * float(p.scale) + float(p.y), p.z)
 	light.set_meta("prop_kind", p.prop)
 	_add(parent, light, label)
-	# The flame itself (the web draws point sprites): a small unshaded glow.
-	var sm: SphereMesh = _shared("flame_mesh", func() -> SphereMesh:
-		var s := SphereMesh.new()
-		s.radius = 0.1
-		s.height = 0.2
-		s.radial_segments = 8
-		s.rings = 4
-		return s)
-	var fm: StandardMaterial3D = _shared("flame_mat:%s" % col.to_html(), func() -> StandardMaterial3D:
-		var m := StandardMaterial3D.new()
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		m.albedo_color = col.lightened(0.3)
-		return m)
-	var fi := MeshInstance3D.new()
-	fi.mesh = sm
-	fi.material_override = fm
-	fi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	fi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
-	_add(light, fi, "flame")
+	# The flame itself is not here: the web draws point sprites and the world dressing draws them at the wicks (DmWfxFlames: client/README.md "World dressing").
 
 
 ## Floor light pools under every flame (WorldView.buildPools): one vertex-coloured additive mesh per area.
@@ -821,56 +802,15 @@ func _decals(parent: Node3D) -> void:
 			return m)
 		_flat(parent, "%s_%02d" % [d.kind, n], Vector2(d.r * 2.0, d.r * 2.0), mat, Vector3(d.x, 0.03 if sigil else 0.02, d.z), d.rot)
 		n += 1
-	n = 0
-	for p: Dictionary in world.puddles:
-		if p.area != area_id:
-			continue
-		var pm: StandardMaterial3D = _shared("puddle_mat", func() -> StandardMaterial3D:
-			var m := StandardMaterial3D.new()
-			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			m.albedo_texture = _glow_tex
-			m.albedo_color = Color(0.06, 0.07, 0.14, 0.75)
-			return m)
-		_flat(parent, "puddle_%02d" % n, Vector2(p.r * 2.0 * float(p.sx), p.r * 2.0), pm, Vector3(p.x, 0.025, p.z), p.rot)
-		n += 1
+	# The puddles are the world dressing's (DmWfxWater draws them with the water, one mesh): no quad of their own.
 
 
-func _water_plane(parent: Node3D, name: String, r: Dictionary, color: Color, alpha: float) -> void:
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(r.x1 - r.x0, r.z1 - r.z0)
-	var m: StandardMaterial3D = _shared("water:%s:%s" % [color.to_html(), alpha], func() -> StandardMaterial3D:
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(color, alpha)
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.roughness = 0.16
-		mat.metallic = 0.1
-		return mat)
-	var mi := MeshInstance3D.new()
-	mi.mesh = pm
-	mi.material_override = m
-	mi.position = Vector3((r.x0 + r.x1) / 2.0, 0.06, (r.z0 + r.z1) / 2.0)
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
-	_add(parent, mi, name)
-
-
-## world_builder._water: `water` is the Nave's channels, `bog` the Fen's, `ponds` the Acre's (deep: they block feet). Each lies in its area's rect.
-func _water(parent: Node3D) -> void:
+## world_builder._water: `water` is the Nave's channels, `bog` the Fen's, `ponds` the Acre's (deep: they block feet). Each lies in its area's rect. The water is drawn by the world dressing
+## (DmWfxWater: one mesh with the fresnel, the moon's glint and the ripples), so a pond is only its collider here.
+func _water() -> void:
 	var n := 0
-	for r: Dictionary in world.water:
-		if _area_of_rect(r) == area_id:
-			_water_plane(parent, "water_%02d" % n, r, Color.html("#15142a"), 0.72)
-			n += 1
-	n = 0
-	for r: Dictionary in world.bog:
-		if _area_of_rect(r) == area_id:
-			_water_plane(parent, "bog_%02d" % n, r, Color.html("#0f2a2a"), 0.82)
-			n += 1
-	n = 0
 	for r: Dictionary in world.ponds:
 		if _area_of_rect(r) == area_id:
-			_water_plane(parent, "pond_%02d" % n, r, Color.html("#15142a"), 0.72)
 			_body(Vector3((r.x0 + r.x1) / 2.0, 1.5, (r.z0 + r.z1) / 2.0), _box_shape(Vector3(r.x1 - r.x0, 3.0, r.z1 - r.z0)), "pond_%02d" % n)
 			n += 1
 

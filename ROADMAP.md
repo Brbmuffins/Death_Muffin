@@ -325,17 +325,20 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   on the pools, the gear motes and the Binbun particles, the Fx layer's and the world particles' and mist shaders convert their colour, the area converter lifts the floor, wall and gate-post
   tints (`DmCompatAlbedo`, checked by `client/tests/areas.gd`), and a brightness lift of 1.2 (`DmGraphicsPreset.LIFT`, checked by `client/tests/presets.gd`) puts the mean luminance of the Chapterhouse, the
   Graves and the Ossuary within 3 % of today's (measured on frames at lift 1.0 and raised in software; not re-rendered). The tinted-floor change needs no bake; the pools' fix is in the area scenes.
-- [ ] World dressing on the area scenes: today's `DmNextWorld.build` attaches `DmWorldDressing` (ground mist, each area's weather, the stained-glass windows and their light shafts, candle
-  flames and brazier fire as sprites, the far silhouettes, the water's ripples and glint, and the area's bloom settings); the rebuilt `DmNextWorld` does not, so none of it is drawn and the
-  flames are the converter's plain spheres. Attach it, measure its draw calls and frame cost with the benchmark, and compare the look with `look_probe.gd`; the lift above was measured without it and
-  is measured again after (a rebuilt frame with mist may need less).
+- [x] World dressing on the area scenes (2026-10-17, client/README.md "World dressing", `client/tests/dressing.gd`): today's `DmWorldDressing` (ground mist, each area's weather, the stained-glass windows and their light shafts, candle flames
+  and brazier fire as sprites, the far silhouettes, the water's glint) is attached to the loaded areas by `DmNextWorld.build`; the converter no longer writes the flame spheres, the water planes or the puddle quads it replaces.
+  Ported to cost less than today's: the brazier fire is a ring of emission records drawn from their age by its vertex shader (written once, never stepped), the mist steps 4 times a second instead of 15, the weather's mesh is built once
+  an area, the area arrives by event. A frame costs the node 18 microseconds (today's mist and fire alone cost 58), six objects are six draw calls in the Graves' budget scene (`BUDGET_DRESSING` 8) in place of the eight the stand-ins cost
+  (the Graves' world 95 draw calls with it, 97 before), and the benchmark's Full Party in the Graves reads +0.10 ms an average frame on a spread of a whole millisecond (six alternating pairs, 3.86 against 3.96 ms; `--bench-dressing=off`; client/README.md "The benchmark"). Looked at against today's frames with the probe: the
+  candle flames sit on the wicks instead of a ball floating above each candle, the brazier fire, mist and weather are there. The brightness lift was measured again with it on: 1.30, 1.08 and 1.18 would match today's Chapterhouse, Graves and
+  Ossuary, mean 1.19, so 1.2 stays until the bake. Water ripples and the Prelate's candle groups are not wired, as in today's game ("For review").
 - [ ] Baked lighting, one bake for these (Helix's helper): the bake reads the area's ambient (an sRGB colour) as linear light, so baked shadows are filled about three times brighter than today's
   real-time ambient (`environment_custom_color`: `srgb_to_linear()` in `build_area._lightmap`); the big floors' lightmap is 0.43 m a texel, which flattens a candle's pool to a quarter of the
   real-time light at 0.3 m (`gi_lightmap_texel_scale` on the ground quads); the Acre's and the Alchemist Wing's live ambient and moon are brighter than the other areas' (`DmGameRewards`) and are not in
   their bakes. Measure the lift again after.
-- [ ] Glow and the void: a very bright HDR thing glows much wider than in today's game (Compatibility's glow is small: 115 against 255 at 140 px, 11 against 155 at 260 px; tune the glow's
-  threshold, scale and luminance cap), the background colour beyond the walls is black on Forward+ where today's shows (7, 6, 10), and the Binbun scenes' own shaders read a particle's `COLOR`
-  as it is.
+- [x] Glow and the void (2026-10-17, client/README.md "The look against today's game"): the glow is today's width (`DmWfxBloom`: the two finest mips at 0.8 of the web's strength; five mips glowed to 66 px past an edge, today's is gone by 30, and a candle's
+  sphere or a Binbun effect became the soft white blob Helix saw: the same Chapterhouse frame has none now); the dark earth beyond the walls is one quad (`DmWorldBuilder.build_outside`, today's 196 tiles) and the background colour
+  past it comes out of the tonemapper as (7, 6, 10) (`DmCompatAlbedo.void_color`, set whenever the exposure changes); the Binbun scenes' own shaders read their particle's colour converted from sRGB through a patched copy (`DmFxBinbun`).
 - [ ] Low and Medium: today's draw blended effects in sRGB space when bloom is off (half-transparent white over black: 131; with bloom, 205), Forward+ blends in linear light on every preset;
   the lift of Low (1.15) and Medium (1.2) is the High and Ultra number, not measured; the Depths' walls keep Forward+'s darker tint (its floor is lifted in `DmWorldBuilder._floor_mat`).
 - [ ] Every area's look signed off by Helix on his PC (Acre, Alchemist Wing, Warren, Nave, Coliseum, Sanctum, Cloister, Pyre and Fen were not measured: one frame each is in the probe's plan).
@@ -381,6 +384,8 @@ combat simulation for now.
     timer) is in the scene tree for part of the run, so the nodes outside the effects vary by 19 against the 15 allowed, or `n` differs from `n0` by 14 in the 70-bodies check.
   - The rebuild: a co-op guest's baseline clears the crowd (`DmCrowd.clear` forgets `owner_legion` and `owner_ally`) and `DmNextNet.apply_heroes` adopts a hero only when its id changed, so after a baseline the guest's
     thralls may fall back to the plain look and the strong rim until the heroes are adopted again; read from the code, not reproduced (2026-10-17).
+  - Today's game and the rebuild: the world dressing's water ripples and the Prelate's candle groups never happen: `DmEventFx.add_ripple` and `set_candle_group` call `game.dressing`, which no game scene has (`DmEnemyFxHost.dressing` is never
+    set), so the Nave's and the Fen's water has no ripples under the hero, the Mire Mother's rings or the Wisp's pulse, and the Sanctum's candles do not gutter as the Prelate's phases pass; the rebuild matches (2026-10-17).
   - Today's game: a party guest leaving with kills not yet reported makes the host send to a peer that is gone (an engine error in the log, nothing lost; the rebuild
     skips the send).
   - Today's game: the Plague Doctor's flask leaves a 5 s toxic pool that hurts but draws nothing on the ground (DmEnemyFx draws only dust and ember zones);

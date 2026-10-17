@@ -14,8 +14,6 @@ const EPS := 0.0005
 ## that names none (`_water`, `_wing_floor`, `_hummocks`).
 const ALWAYS_OPEN_DOOR := "chapter_graves"
 const DRAWN_BY := {"water": "nave", "bog": "fen", "ponds": "acre", "wingFloor": "alchemist_wing", "hummocks": "fen"}
-## world_builder._water: colour and opacity of the three kinds of water.
-const WATER_LOOK := {"water": ["#15142a", 0.72, "water"], "bog": ["#0f2a2a", 0.82, "bog"], "ponds": ["#15142a", 0.72, "pond"]}
 
 var _pass := 0
 var _fail := 0
@@ -186,6 +184,7 @@ func _test_world_first(ids: Array[String]) -> void:
 	var want := ids.duplicate()
 	_check(_sorted(have) == _sorted(want), "client/areas holds one scene per converted area (%d: %s); found %s" % [want.size(), ", ".join(want), ", ".join(have)])
 	_check(ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false) == true, "occlusion culling is on in the project")
+	_test_dressing_data()
 	# world.json's `open` is what world_builder opens at start (_apply_unlock_state): a door is open when neither room has a seal and neither is an instance.
 	var open_ok := true
 	for d: Dictionary in _world.doors:
@@ -229,6 +228,7 @@ func _test_compat_albedo() -> void:
 	for w: Dictionary in _world.walls:
 		used[DmCompatAlbedo.key(String(w.texture), _hex(w.color))] = [String(w.texture), _hex(w.color)]
 	used[DmCompatAlbedo.key("stone_wall", Color.html("#8a8296"))] = ["stone_wall", Color.html("#8a8296")]
+	used[DmCompatAlbedo.key(DmWorldBuilder.OUTSIDE_TEX, Color.html(DmWorldBuilder.OUTSIDE_TINT))] = [DmWorldBuilder.OUTSIDE_TEX, Color.html(DmWorldBuilder.OUTSIDE_TINT)]   # the dark earth beyond the walls
 	var missing: Array[String] = []
 	for key: String in used:
 		if not DmCompatAlbedo.TABLE.has(key):
@@ -249,8 +249,8 @@ func _test_compat_albedo() -> void:
 	var lifts_ok := true
 	for key: String in DmCompatAlbedo.TABLE:
 		var r: Vector3 = DmCompatAlbedo.TABLE[key]
-		lifts_ok = lifts_ok and r.x >= 1.0 and r.y >= 1.0 and r.z >= 1.0 and r.x < 2.0 and r.y < 2.0 and r.z < 2.0
-	_check(lifts_ok, "every albedo lift is between 1 and 2")
+		lifts_ok = lifts_ok and r.x >= 1.0 and r.y >= 1.0 and r.z >= 1.0 and r.x < 5.0 and r.y < 5.0 and r.z < 5.0   # (the earth beyond the walls is the darkest tint, 3.4 to 4.4; the floors and walls 1.0 to 1.6)
+	_check(lifts_ok, "every albedo lift is between 1 and 5")
 
 
 ## world_builder._walls: one material per texture for the whole world, made from the first wall that names it (areas in order of first appearance).
@@ -276,8 +276,9 @@ func _test_root(a: Dictionary) -> void:
 		"root carries the name '%s', the theme '%s' and safe = %s" % [a.name, a.theme, a.safe])
 	var m: Array = _scene.get_meta("rect", [])
 	_check(m.size() == 4 and _near(m[0], r.x0) and _near(m[1], r.z0) and _near(m[2], r.x1) and _near(m[3], r.z1), "root carries the rect")
-	for g in ["Floor", "Walls", "Props", "GatherNodes", "Decals", "Water", "Doors", "Lights", "Occluders", "Colliders", "Navigation", "Lightmap"]:
+	for g in ["Floor", "Walls", "Props", "GatherNodes", "Decals", "Doors", "Lights", "Occluders", "Colliders", "Navigation", "Lightmap"]:
 		_check(_scene.has_node(g), "group %s exists" % g)
+	_check(not _scene.has_node("Water"), "no Water group: the water is the world dressing's (DmWfxWater), the scene keeps only the ponds' colliders")
 
 
 # ---------------------------------------------------------------- floors
@@ -603,7 +604,7 @@ func _standin(holder: Node3D, n: Dictionary) -> int:
 	return 0   # world_builder draws nothing for any other kind without a model
 
 
-# ---------------------------------------------------------------- decals and puddles
+# ---------------------------------------------------------------- decals
 func _flat_ok(mi: MeshInstance3D) -> bool:
 	var qm := mi.mesh as QuadMesh
 	return qm != null and qm.orientation == PlaneMesh.FACE_Y and mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -619,7 +620,6 @@ func _mat_sig(m: StandardMaterial3D) -> Array:
 func _test_decals() -> void:
 	var expect: Array[String] = []
 	var kinds: Dictionary = {}
-	var puddles: Array[String] = []
 	for d: Dictionary in _world.decals:
 		if d.area != _id:
 			continue
@@ -629,11 +629,8 @@ func _test_decals() -> void:
 		var tex := COMMON + ("ring.png" if sigil else "glow.png")
 		expect.append(_sig([d.kind, d.x, 0.03 if sigil else 0.02, d.z, d.r * 2.0, sin(d.rot), cos(d.rot)] + _mat_sig_of(tex, c)))
 		kinds[d.kind] = int(kinds.get(d.kind, 0)) + 1
-	for p: Dictionary in _world.puddles:
-		if p.area == _id:
-			puddles.append(_sig([p.x, 0.025, p.z, p.r * 2.0 * float(p.sx), p.r * 2.0, sin(p.rot), cos(p.rot)] + _mat_sig_of(COMMON + "glow.png", Color(0.06, 0.07, 0.14, 0.75))))
 	var got: Array[String] = []
-	var got_p: Array[String] = []
+	var puddle_quads := 0
 	var flat_ok := true
 	var filter_ok := true
 	for k in _kids("Decals"):
@@ -642,7 +639,7 @@ func _test_decals() -> void:
 		flat_ok = flat_ok and _flat_ok(mi) and mi.gi_mode == GeometryInstance3D.GI_MODE_DISABLED
 		var m := mi.material_override as StandardMaterial3D
 		if String(k.name).begins_with("puddle_"):
-			got_p.append(_sig([mi.position.x, mi.position.y, mi.position.z, qm.size.x, qm.size.y, sin(mi.rotation.y), cos(mi.rotation.y)] + _mat_sig(m)))
+			puddle_quads += 1
 		else:
 			filter_ok = filter_ok and m != null and m.texture_filter == DmWorldBuilder.SHARP
 			got.append(_sig([String(k.name).rsplit("_", true, 1)[0], mi.position.x, mi.position.y, mi.position.z, qm.size.x, sin(mi.rotation.y), cos(mi.rotation.y)] + _mat_sig(m)))
@@ -650,10 +647,9 @@ func _test_decals() -> void:
 	for kd: String in kinds:
 		summary.append("%d %s" % [kinds[kd], kd])
 	_check(_sorted(expect) == _sorted(got), "%d decals (%s) match world.json (kind, place, size, yaw, texture, colour, opacity)" % [expect.size(), ", ".join(summary)])
-	_check(_sorted(puddles) == _sorted(got_p), "%d puddles match world.json (place, size, yaw, look)" % puddles.size())
-	_check(flat_ok and filter_ok, "decals and puddles are flat unshaded quads that cast no shadow and take no light bake")
+	_check(puddle_quads == 0, "no puddle quad: the puddles are the world dressing's (DmWfxWater draws them with the water, one mesh)")
+	_check(flat_ok and filter_ok, "decals are flat unshaded quads that cast no shadow and take no light bake")
 	_see("decals", got.size())
-	_see("puddles", got_p.size())
 
 
 func _mat_sig_of(tex: String, c: Color) -> Array:
@@ -661,28 +657,33 @@ func _mat_sig_of(tex: String, c: Color) -> Array:
 
 
 # ---------------------------------------------------------------- water, bog and ponds
+## The water is the world dressing's (DmWfxWater draws the Nave's channels, the Fen's bog, the Acre's ponds and the puddles as one mesh): the scene holds no plane of it. The ponds'
+## colliders are checked with the colliders, and `_test_dressing_data` holds the dressing's rects and puddles against world.json.
 func _test_water() -> void:
+	var planes := 0
+	for k in _scene.get_children():
+		planes += 1 if (k is MeshInstance3D and String(k.name).begins_with("water_")) else 0
+	_check(planes == 0, "no water plane in the scene")
+
+
+## What the dressing draws that the scenes used to carry is world.json's: its water rects are `water`, `bog` and `ponds`, its puddles are `puddles`.
+func _test_dressing_data() -> void:
+	var water: Dictionary = DmWfxData.get_data().water
 	var expect: Array[String] = []
-	for list_name: String in WATER_LOOK:
-		if DRAWN_BY[list_name] != _id:
-			continue
-		var look: Array = WATER_LOOK[list_name]
-		var col := Color.html(look[0])
+	for list_name: String in ["water", "bog", "ponds"]:
 		for r: Dictionary in _world[list_name]:
-			expect.append(_sig([look[2], (r.x0 + r.x1) / 2.0, 0.06, (r.z0 + r.z1) / 2.0, r.x1 - r.x0, r.z1 - r.z0, col.r, col.g, col.b, look[1]]))
+			expect.append(_sig([r.x0, r.z0, r.x1, r.z1]))
 	var got: Array[String] = []
-	var look_ok := true
-	for k in _kids("Water"):
-		var mi := k as MeshInstance3D
-		var pm := mi.mesh as PlaneMesh
-		var m := mi.material_override as StandardMaterial3D
-		look_ok = look_ok and pm != null and pm.orientation == PlaneMesh.FACE_Y and mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and m != null \
-			and m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA and _near(m.roughness, 0.16) and _near(m.metallic, 0.1) and m.albedo_texture == null
-		if pm != null and m != null:
-			got.append(_sig([String(k.name).rsplit("_", true, 1)[0], mi.position.x, mi.position.y, mi.position.z, pm.size.x, pm.size.y, m.albedo_color.r, m.albedo_color.g, m.albedo_color.b, m.albedo_color.a]))
-	_check(_sorted(expect) == _sorted(got), "%d water planes match world.json (the area that draws water, bog or ponds: place, size, colour, opacity)" % expect.size())
-	_check(look_ok, "water planes are glossy alpha planes that cast no shadow")
-	_see("water planes", got.size())
+	for r: Dictionary in water.rects:
+		got.append(_sig([r.x0, r.z0, r.x1, r.z1]))
+	_check(_sorted(expect) == _sorted(got), "the dressing's %d water rects are world.json's water, bog and ponds" % expect.size())
+	var puddles: Array[String] = []
+	var drawn: Array[String] = []
+	for p: Dictionary in _world.puddles:
+		puddles.append(_sig([p.x, p.z, p.r, p.sx, p.rot]))
+	for p: Dictionary in water.puddles:
+		drawn.append(_sig([p.x, p.z, p.r, p.sx, p.rot]))
+	_check(_sorted(puddles) == _sorted(drawn), "the dressing's %d puddles are world.json's" % puddles.size())
 
 
 # ---------------------------------------------------------------- the alchemist wing's rugs and stains
@@ -864,18 +865,13 @@ func _test_lights() -> void:
 			var l := k as OmniLight3D
 			got.append(_sig([l.position.x, l.position.y, l.position.z, l.omni_range, l.light_energy, l.light_color.r, l.light_color.g, l.light_color.b]))
 			bake_ok = bake_ok and l.light_bake_mode == Light3D.BAKE_STATIC and _near(l.omni_attenuation, 1.3)
-			# The flame (world_builder._prop_light): a small unshaded glow at the light.
-			var fi := l.get_node_or_null("flame") as MeshInstance3D
-			var sm: SphereMesh = fi.mesh as SphereMesh if fi != null else null
-			var fm: StandardMaterial3D = fi.material_override as StandardMaterial3D if fi != null else null
-			flame_ok = flame_ok and sm != null and _near(sm.radius, 0.1) and _near(sm.height, 0.2) and sm.radial_segments == 8 and sm.rings == 4 and fi.position.is_zero_approx() \
-				and fm != null and fm.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED and fm.albedo_color.is_equal_approx(l.light_color.lightened(0.3)) \
-				and fi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			# The flame (world_builder._prop_light's small unshaded sphere) is the world dressing's sprite: the light has no child.
+			flame_ok = flame_ok and l.get_child_count() == 0
 		elif String(k.name) == "light_pools":
 			pool_meshes += 1
 	_check(_sorted(expect) == _sorted(got), "%d prop lights match world.json (place, range, energy, colour)" % lights)
 	_check(bake_ok, "prop lights are static-bake placeholders with world_builder's attenuation")
-	_check(flame_ok, "each light carries world_builder's flame sphere (0.1 m radius, unshaded, the light's colour lightened)")
+	_check(flame_ok, "no light carries a flame sphere: the candle flames and the brazier fire are the world dressing's sprites")
 	_check(_kids("Lights").size() == lights + pool_meshes and pool_meshes == (1 if lights > 0 else 0), "%d lights and %s light-pool mesh, nothing else" % [lights, "one" if lights > 0 else "no"])
 	_see("lights", lights)
 	if lights == 0:
@@ -1478,8 +1474,8 @@ func _test_bounds(a: Dictionary) -> void:
 # ---------------------------------------------------------------- what the scenes hold together
 ## Everything world.json lists is in exactly the scenes it belongs to: nothing is left out and nothing is drawn twice.
 func _test_totals(ids: Array[String]) -> void:
-	var want := {"paths": _world.paths.size(), "walls": 0, "props": 0, "nodes": 0, "decals": 0, "puddles": 0, "lights": 0, "pond colliders": _world.ponds.size(),
-		"hummocks": _world.hummocks.size(), "wing floor quads": 0, "water planes": _world.water.size() + _world.bog.size() + _world.ponds.size()}
+	var want := {"paths": _world.paths.size(), "walls": 0, "props": 0, "nodes": 0, "decals": 0, "lights": 0, "pond colliders": _world.ponds.size(),
+		"hummocks": _world.hummocks.size(), "wing floor quads": 0}
 	for w: Dictionary in _world.walls:
 		want["walls"] += 1 if ids.has(w.area) else 0
 	for p: Dictionary in _world.props:
@@ -1490,8 +1486,6 @@ func _test_totals(ids: Array[String]) -> void:
 		want["nodes"] += 1 if ids.has(n.area) else 0
 	for d: Dictionary in _world.decals:
 		want["decals"] += 1 if ids.has(d.area) else 0
-	for p: Dictionary in _world.puddles:
-		want["puddles"] += 1 if ids.has(p.area) else 0
 	for f: Dictionary in _world.wingFloor:
 		want["wing floor quads"] += 2 if (f.kind == "rug" and f.alt != null) else 1
 	for k: String in want:

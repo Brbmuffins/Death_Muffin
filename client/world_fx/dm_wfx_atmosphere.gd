@@ -5,6 +5,8 @@ extends Node3D
 ## vertex shader from a seed + time and wraps around the focus. The CPU only touches the mesh when the area changes (cross-fade 1.6/s out,
 ## 0.8/s in, like the web). Profiles are in data/world_fx/fx.json; per-particle seeds replay the web's
 ## mulberry32(area.length * 977 + charCode(area[0])) call order exactly.
+## Ported (client/code.list): an area's particle mesh is built the first time the weather is asked for and kept (`_meshes`), so an area entry swaps a mesh instead of drawing three
+## hundred particles' attributes in GDScript (about 20 ms), and `warm(id)` builds the starting area's during loading.
 
 const SHADER_CODE := """
 shader_type spatial;
@@ -72,6 +74,7 @@ var time := 0.0
 var count := 0
 var _mi: MeshInstance3D
 var _mat: ShaderMaterial
+var _meshes: Dictionary = {}      ## "<area id>|<low>" -> its particle mesh and count, [ArrayMesh, int]
 
 func setup(data: Dictionary) -> void:
 	var a: Dictionary = data.atmosphere
@@ -110,8 +113,23 @@ func counts_for(id: String) -> int:
 		s += int(ceil(float(kind.count) / 2.0)) if quality_low else int(kind.count)
 	return s
 
-## Rebuild the particle arrays for an area: the web's Atmosphere.fill, same call order on mulberry32.
+## The weather of an area (the web's Atmosphere.fill, same call order on mulberry32): its mesh is built once and kept. `quality_low` halves the particles, as the web does.
 func fill(id: String) -> void:
+	var key := "%s|%s" % [id, quality_low]
+	if not _meshes.has(key):
+		_meshes[key] = _build(id)
+	var built: Array = _meshes[key]
+	_mi.mesh = built[0]
+	count = built[1]
+	area = id
+
+## Builds `id`'s mesh during loading, so the first area entry does not.
+func warm(id: String) -> void:
+	var key := "%s|%s" % [id, quality_low]
+	if not _meshes.has(key):
+		_meshes[key] = _build(id)
+
+func _build(id: String) -> Array:
 	var rng := DmRng.new(id.length() * 977 + id.unicode_at(0))
 	var c0 := PackedFloat32Array()
 	var c1 := PackedFloat32Array()
@@ -138,9 +156,7 @@ func fill(id: String) -> void:
 			var cc := DmWfxData.hex(colors[int(floor(rng.next() * colors.size()))]).srgb_to_linear()
 			c3.append_array([cc.r, cc.g, cc.b, 1.0])
 			n += 1
-	count = n
-	_mi.mesh = DmWfxQuads.build(n, c0, c1, c2, c3)
-	area = id
+	return [DmWfxQuads.build(n, c0, c1, c2, c3), n]
 
 static func _lerp(r: Array, rng: DmRng) -> float:
 	return float(r[0]) + rng.next() * (float(r[1]) - float(r[0]))

@@ -211,7 +211,8 @@ func _make_environment() -> void:
 	var L: Dictionary = world.lighting
 	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color.html(L.background)
+	_void = Color.html(L.background)
+	env.background_color = _void
 	# Hemisphere light: plain-colour ambient (set per area in set_area from the hemisphere's sky and ground colours); no Sky resource is rendered.
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_energy = float(L.hemiIntensity) * HEMI_K
@@ -255,9 +256,12 @@ func set_preset_lift(v: float) -> void:
 	preset_lift = v
 	_apply_exposure()
 
+var _void := Color.BLACK   # what today's Compatibility shows where nothing is drawn: the world's background colour, as it is
+
 func _apply_exposure() -> void:
 	if env != null:
 		env.tonemap_exposure = base_exposure * brightness * area_exposure * preset_lift
+		env.background_color = DmCompatAlbedo.void_color(_void, env.tonemap_exposure)   # Forward+ tonemaps the background like a pixel: this is the colour that comes out as `_void`
 
 ## Per-area ambient (AREAS[*].ambient): fog colour + density multiplier, hemisphere sky/ground, moon colour.
 func set_area(id: String) -> void:
@@ -342,6 +346,30 @@ func _plane(parent: Node3D, x0: float, z0: float, x1: float, z1: float, theme_ke
 			parent.add_child(mi)
 			last = mi
 	return last
+
+## The dark earth beyond the walls (`_floors`' "outside"), the rebuilt client's way: ONE quad over the 420 m field where `_floors` lays 196 tiles with a draw call each. The soil repeats every 7 m,
+## as the tiles' does; the tint is the converter's (`DmCompatAlbedo`), and the area scenes' floors lie on it 0.06 m up. Called by DmNextWorld, which builds no `_floors`; without it the camera sees the
+## background colour past the walls, which is black on Forward+.
+const OUTSIDE_TEX := "grave_soil"
+const OUTSIDE_TINT := "#3a3440"
+func build_outside() -> void:
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = _tex(OUTSIDE_TEX)
+	m.texture_filter = SHARP
+	m.albedo_color = DmCompatAlbedo.tint(OUTSIDE_TEX, Color.html(OUTSIDE_TINT))
+	m.roughness = 1.0
+	m.uv1_scale = Vector3(60.0, 60.0, 1.0)
+	var qm := QuadMesh.new()
+	qm.size = Vector2(420.0, 420.0)
+	qm.orientation = PlaneMesh.FACE_Y
+	var mi := MeshInstance3D.new()
+	mi.name = "outside"
+	mi.mesh = qm
+	mi.material_override = m
+	mi.position = Vector3(20.0, -0.06, -60.0)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	add_child(mi)
 
 func _floors() -> void:
 	# Beyond the walls: dark earth swallowed by fog.

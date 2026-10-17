@@ -18,6 +18,7 @@ const TABLE := {
 	"flagstone|9a86aa": Vector3(1.297, 1.419, 1.178),
 	"flagstone|9a92a8": Vector3(1.297, 1.343, 1.184),
 	"grave_soil|b8aab8": Vector3(1.274, 1.388, 1.278),
+	"grave_soil|3a3440": Vector3(3.775, 4.370, 3.441),
 	"grave_soil|e6f0d4": Vector3(1.074, 1.045, 1.142),
 	"ossuary_floor|b0a4ae": Vector3(1.193, 1.269, 1.183),
 	"pyre_floor|d8b498": Vector3(1.067, 1.168, 1.298),
@@ -71,3 +72,31 @@ static func tint(tex: String, color: Color) -> Color:
 ## `color` with its linear light multiplied by `r` (clamped to 1), back in sRGB.
 static func lifted(color: Color, r: Vector3) -> Color:
 	return Color(_lin_back(minf(_lin(color.r) * r.x, 1.0)), _lin_back(minf(_lin(color.g) * r.y, 1.0)), _lin_back(minf(_lin(color.b) * r.z, 1.0)), color.a)
+
+
+## The background beyond everything (past the earth beyond the walls): today's Compatibility draws `background_color` as it is, (7, 6, 10) for #07060a, where Forward+ puts it through the exposure and
+## the tonemapper like any other pixel (a black (1, 1, 3)). `void_color` is the colour that comes out of Forward+'s tonemap as `target` (an sRGB colour) at `exposure`: the fixed point of
+## c = c x want / aces(c x exposure), which converges because the curve rises with each channel. The builder sets it whenever the exposure changes.
+const ACES_BIAS := 1.8
+const ACES_IN := [Vector3(0.59719, 0.35458, 0.04823), Vector3(0.07600, 0.90834, 0.01566), Vector3(0.02840, 0.13383, 0.83777)]
+const ACES_OUT := [Vector3(1.60475, -0.53108, -0.07367), Vector3(-0.10208, 1.10813, -0.00605), Vector3(-0.00327, -0.07276, 1.07602)]
+
+
+## Forward+'s ACES (tonemap.glsl: the fitted curve between Godot's input and output matrices, exposure already applied), in linear light, clamped to 0..1.
+static func aces(c: Vector3) -> Vector3:
+	var v := Vector3(ACES_IN[0].dot(c), ACES_IN[1].dot(c), ACES_IN[2].dot(c)) * ACES_BIAS
+	v = Vector3(_aces_curve(v.x), _aces_curve(v.y), _aces_curve(v.z))
+	return Vector3(clampf(ACES_OUT[0].dot(v), 0.0, 1.0), clampf(ACES_OUT[1].dot(v), 0.0, 1.0), clampf(ACES_OUT[2].dot(v), 0.0, 1.0))
+
+
+static func _aces_curve(x: float) -> float:
+	return (x * (x + 0.0245786) - 0.000090537) / (x * (0.983729 * x + 0.4329510) + 0.238081)
+
+
+static func void_color(target: Color, exposure: float) -> Color:
+	var want := Vector3(_lin(target.r), _lin(target.g), _lin(target.b))
+	var c := want / maxf(exposure, 0.01) * 3.0
+	for i in 16:
+		var f := aces(c * exposure)
+		c = Vector3(c.x * want.x / maxf(f.x, 1.0e-6), c.y * want.y / maxf(f.y, 1.0e-6), c.z * want.z / maxf(f.z, 1.0e-6))
+	return Color(_lin_back(c.x), _lin_back(c.y), _lin_back(c.z))

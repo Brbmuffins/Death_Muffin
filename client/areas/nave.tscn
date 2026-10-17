@@ -152,21 +152,6 @@ size = Vector2(3.4, 3.4)
 orientation = 1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_65edd"]
-transparency = 1
-albedo_color = Color(0.08235294, 0.078431375, 0.16470589, 0.72)
-metallic = 0.1
-roughness = 0.16
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_44a24"]
-size = Vector2(11.2, 38.5)
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_9f023"]
-size = Vector2(5.6, 44)
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_9459d"]
-size = Vector2(5.6, 44)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ac1a3"]
 albedo_color = Color(0.67933136, 0.6545985, 0.7108683, 1)
 albedo_texture = ExtResource("1_7607e")
 roughness = 0.62
@@ -185,7 +170,7 @@ _surfaces = [{
 "vertex_data": PackedByteArray("AACAwAAAAAAAAKDAAACAQAAAAAAAAKDAAACAQAAAAAAAAKBAAACAwAAAAAAAAKBA/3///////7//f///////v/9///////+//3///////78=")
 }]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_060c7"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ac1a3"]
 albedo_color = Color(0.6296748, 0.6068347, 0.6590789, 1)
 albedo_texture = ExtResource("2_45f94")
 roughness = 0.9
@@ -209,7 +194,7 @@ lightmap_size_hint = Vector2i(59, 65)
 add_uv2 = true
 size = Vector3(10, 0.9, 1)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_13779"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_060c7"]
 albedo_color = Color(0.14117648, 0.12941177, 0.16470589, 1)
 metallic = 0.6
 roughness = 0.6
@@ -232,7 +217,7 @@ size = Vector3(8, 0.08, 0.1)
 [sub_resource type="BoxMesh" id="BoxMesh_9c57c"]
 size = Vector3(8, 0.08, 0.1)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_86eaa"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_13779"]
 transparency = 1
 blend_mode = 1
 cull_mode = 2
@@ -345,21 +330,7 @@ size = Vector3(8, 0.08, 0.1)
 [sub_resource type="QuadMesh" id="QuadMesh_40a0d"]
 size = Vector2(7.2, 7.2)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f0e93"]
-shading_mode = 0
-albedo_color = Color(0.7556863, 0.5937255, 1, 1)
-
-[sub_resource type="SphereMesh" id="SphereMesh_01334"]
-radius = 0.1
-height = 0.2
-radial_segments = 8
-rings = 4
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fcd29"]
-shading_mode = 0
-albedo_color = Color(1, 0.7941177, 0.5937255, 1)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_d3539"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_86eaa"]
 transparency = 1
 blend_mode = 1
 cull_mode = 2
@@ -837,29 +808,6 @@ cast_shadow = 0
 gi_mode = 0
 mesh = SubResource("QuadMesh_0c4be")
 
-[node name="Water" type="Node3D" parent="." unique_id=140729149]
-
-[node name="water_00" type="MeshInstance3D" parent="Water" unique_id=224175131]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, -69.75)
-material_override = SubResource("StandardMaterial3D_65edd")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("PlaneMesh_44a24")
-
-[node name="water_01" type="MeshInstance3D" parent="Water" unique_id=48409194]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.6, 0.06, -71.5)
-material_override = SubResource("StandardMaterial3D_65edd")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("PlaneMesh_9f023")
-
-[node name="water_02" type="MeshInstance3D" parent="Water" unique_id=266393108]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.6, 0.06, -71.5)
-material_override = SubResource("StandardMaterial3D_65edd")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("PlaneMesh_9459d")
-
 [node name="Doors" type="Node3D" parent="." unique_id=128983869]
 
 [node name="graves_nave" type="Node3D" parent="Doors" unique_id=169349776]
@@ -869,7 +817,7 @@ metadata/always_open = false
 
 [node name="floor" type="MeshInstance3D" parent="Doors/graves_nave" unique_id=81564811]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.005, -40)
-material_override = SubResource("StandardMaterial3D_ac1a3")
+material_override = SubResource("StandardMaterial3D_65edd")
 cast_shadow = 0
 mesh = SubResource("ArrayMesh_bc4f0")
 
@@ -878,41 +826,41 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -40)
 
 [node name="post_0" type="MeshInstance3D" parent="Doors/graves_nave/gate" unique_id=159569868]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 2.5, 0)
-material_override = SubResource("StandardMaterial3D_060c7")
+material_override = SubResource("StandardMaterial3D_ac1a3")
 mesh = SubResource("BoxMesh_49ac3")
 
 [node name="post_1" type="MeshInstance3D" parent="Doors/graves_nave/gate" unique_id=235287027]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 2.5, 0)
-material_override = SubResource("StandardMaterial3D_060c7")
+material_override = SubResource("StandardMaterial3D_ac1a3")
 mesh = SubResource("BoxMesh_4009d")
 
 [node name="lintel" type="MeshInstance3D" parent="Doors/graves_nave/gate" unique_id=207338595]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.2, 0)
-material_override = SubResource("StandardMaterial3D_060c7")
+material_override = SubResource("StandardMaterial3D_ac1a3")
 mesh = SubResource("BoxMesh_f0f6e")
 
 [node name="bars" type="Node3D" parent="Doors/graves_nave/gate" unique_id=172185984]
 
 [node name="bars" type="MultiMeshInstance3D" parent="Doors/graves_nave/gate/bars" unique_id=2437229]
-material_override = SubResource("StandardMaterial3D_13779")
+material_override = SubResource("StandardMaterial3D_060c7")
 gi_mode = 0
 multimesh = SubResource("MultiMesh_1b31f")
 
 [node name="rail_0" type="MeshInstance3D" parent="Doors/graves_nave/gate/bars" unique_id=150952283]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
-material_override = SubResource("StandardMaterial3D_13779")
+material_override = SubResource("StandardMaterial3D_060c7")
 gi_mode = 0
 mesh = SubResource("BoxMesh_ad590")
 
 [node name="rail_1" type="MeshInstance3D" parent="Doors/graves_nave/gate/bars" unique_id=115512695]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 0)
-material_override = SubResource("StandardMaterial3D_13779")
+material_override = SubResource("StandardMaterial3D_060c7")
 gi_mode = 0
 mesh = SubResource("BoxMesh_9c57c")
 
 [node name="seal" type="MeshInstance3D" parent="Doors/graves_nave/gate/bars" unique_id=117076785]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0.12)
-material_override = SubResource("StandardMaterial3D_86eaa")
+material_override = SubResource("StandardMaterial3D_13779")
 cast_shadow = 0
 gi_mode = 0
 mesh = SubResource("QuadMesh_eb883")
@@ -930,7 +878,7 @@ metadata/always_open = false
 
 [node name="floor" type="MeshInstance3D" parent="Doors/nave_sanctum" unique_id=166456966]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.005, -99)
-material_override = SubResource("StandardMaterial3D_ac1a3")
+material_override = SubResource("StandardMaterial3D_65edd")
 cast_shadow = 0
 mesh = SubResource("ArrayMesh_fcbc9")
 
@@ -939,41 +887,41 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -99)
 
 [node name="post_0" type="MeshInstance3D" parent="Doors/nave_sanctum/gate" unique_id=52944070]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 2.5, 0)
-material_override = SubResource("StandardMaterial3D_060c7")
+material_override = SubResource("StandardMaterial3D_ac1a3")
 mesh = SubResource("BoxMesh_ea649")
 
 [node name="post_1" type="MeshInstance3D" parent="Doors/nave_sanctum/gate" unique_id=135219075]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 2.5, 0)
-material_override = SubResource("StandardMaterial3D_060c7")
+material_override = SubResource("StandardMaterial3D_ac1a3")
 mesh = SubResource("BoxMesh_14221")
 
 [node name="lintel" type="MeshInstance3D" parent="Doors/nave_sanctum/gate" unique_id=79311107]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.2, 0)
-material_override = SubResource("StandardMaterial3D_060c7")
+material_override = SubResource("StandardMaterial3D_ac1a3")
 mesh = SubResource("BoxMesh_89637")
 
 [node name="bars" type="Node3D" parent="Doors/nave_sanctum/gate" unique_id=69476014]
 
 [node name="bars" type="MultiMeshInstance3D" parent="Doors/nave_sanctum/gate/bars" unique_id=61111425]
-material_override = SubResource("StandardMaterial3D_13779")
+material_override = SubResource("StandardMaterial3D_060c7")
 gi_mode = 0
 multimesh = SubResource("MultiMesh_6f365")
 
 [node name="rail_0" type="MeshInstance3D" parent="Doors/nave_sanctum/gate/bars" unique_id=120532460]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
-material_override = SubResource("StandardMaterial3D_13779")
+material_override = SubResource("StandardMaterial3D_060c7")
 gi_mode = 0
 mesh = SubResource("BoxMesh_af720")
 
 [node name="rail_1" type="MeshInstance3D" parent="Doors/nave_sanctum/gate/bars" unique_id=190561237]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 0)
-material_override = SubResource("StandardMaterial3D_13779")
+material_override = SubResource("StandardMaterial3D_060c7")
 gi_mode = 0
 mesh = SubResource("BoxMesh_fbc02")
 
 [node name="seal" type="MeshInstance3D" parent="Doors/nave_sanctum/gate/bars" unique_id=80748659]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0.12)
-material_override = SubResource("StandardMaterial3D_86eaa")
+material_override = SubResource("StandardMaterial3D_13779")
 cast_shadow = 0
 gi_mode = 0
 mesh = SubResource("QuadMesh_1bb27")
@@ -991,7 +939,7 @@ metadata/always_open = false
 
 [node name="floor" type="MeshInstance3D" parent="Doors/nave_fen" unique_id=117709959]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.5, 0.005, -77)
-material_override = SubResource("StandardMaterial3D_ac1a3")
+material_override = SubResource("StandardMaterial3D_65edd")
 cast_shadow = 0
 mesh = SubResource("ArrayMesh_1ab1f")
 
@@ -1000,41 +948,41 @@ transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -18.
 
 [node name="post_0" type="MeshInstance3D" parent="Doors/nave_fen/gate" unique_id=240828048]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 2.5, 0)
-material_override = SubResource("StandardMaterial3D_060c7")
+material_override = SubResource("StandardMaterial3D_ac1a3")
 mesh = SubResource("BoxMesh_19a7d")
 
 [node name="post_1" type="MeshInstance3D" parent="Doors/nave_fen/gate" unique_id=109792075]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 2.5, 0)
-material_override = SubResource("StandardMaterial3D_060c7")
+material_override = SubResource("StandardMaterial3D_ac1a3")
 mesh = SubResource("BoxMesh_47a3a")
 
 [node name="lintel" type="MeshInstance3D" parent="Doors/nave_fen/gate" unique_id=144344349]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.2, 0)
-material_override = SubResource("StandardMaterial3D_060c7")
+material_override = SubResource("StandardMaterial3D_ac1a3")
 mesh = SubResource("BoxMesh_89575")
 
 [node name="bars" type="Node3D" parent="Doors/nave_fen/gate" unique_id=140059455]
 
 [node name="bars" type="MultiMeshInstance3D" parent="Doors/nave_fen/gate/bars" unique_id=112173964]
-material_override = SubResource("StandardMaterial3D_13779")
+material_override = SubResource("StandardMaterial3D_060c7")
 gi_mode = 0
 multimesh = SubResource("MultiMesh_ea8a0")
 
 [node name="rail_0" type="MeshInstance3D" parent="Doors/nave_fen/gate/bars" unique_id=56776695]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
-material_override = SubResource("StandardMaterial3D_13779")
+material_override = SubResource("StandardMaterial3D_060c7")
 gi_mode = 0
 mesh = SubResource("BoxMesh_0e4ee")
 
 [node name="rail_1" type="MeshInstance3D" parent="Doors/nave_fen/gate/bars" unique_id=67102915]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 0)
-material_override = SubResource("StandardMaterial3D_13779")
+material_override = SubResource("StandardMaterial3D_060c7")
 gi_mode = 0
 mesh = SubResource("BoxMesh_ab4f4")
 
 [node name="seal" type="MeshInstance3D" parent="Doors/nave_fen/gate/bars" unique_id=44114293]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0.12)
-material_override = SubResource("StandardMaterial3D_86eaa")
+material_override = SubResource("StandardMaterial3D_13779")
 cast_shadow = 0
 gi_mode = 0
 mesh = SubResource("QuadMesh_40a0d")
@@ -1056,12 +1004,6 @@ omni_range = 11.0
 omni_attenuation = 1.3
 metadata/prop_kind = "brazier"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/brazier_000" unique_id=232270929]
-material_override = SubResource("StandardMaterial3D_f0e93")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="brazier_001" type="OmniLight3D" parent="Lights" unique_id=71659437]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1.6, -91.5)
 light_color = Color(0.6509804, 0.41960785, 1, 1)
@@ -1070,12 +1012,6 @@ light_bake_mode = 1
 omni_range = 11.0
 omni_attenuation = 1.3
 metadata/prop_kind = "brazier"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/brazier_001" unique_id=142155304]
-material_override = SubResource("StandardMaterial3D_f0e93")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="brazier_002" type="OmniLight3D" parent="Lights" unique_id=40471632]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 1.6, -60)
@@ -1086,12 +1022,6 @@ omni_range = 11.0
 omni_attenuation = 1.3
 metadata/prop_kind = "brazier"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/brazier_002" unique_id=3271281]
-material_override = SubResource("StandardMaterial3D_f0e93")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="brazier_003" type="OmniLight3D" parent="Lights" unique_id=133714705]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 1.6, -60)
 light_color = Color(0.6509804, 0.41960785, 1, 1)
@@ -1100,12 +1030,6 @@ light_bake_mode = 1
 omni_range = 11.0
 omni_attenuation = 1.3
 metadata/prop_kind = "brazier"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/brazier_003" unique_id=173205138]
-material_override = SubResource("StandardMaterial3D_f0e93")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="brazier_004" type="OmniLight3D" parent="Lights" unique_id=254821608]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 1.6, -80)
@@ -1116,12 +1040,6 @@ omni_range = 11.0
 omni_attenuation = 1.3
 metadata/prop_kind = "brazier"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/brazier_004" unique_id=250451037]
-material_override = SubResource("StandardMaterial3D_f0e93")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="brazier_005" type="OmniLight3D" parent="Lights" unique_id=85137080]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 1.6, -80)
 light_color = Color(0.6509804, 0.41960785, 1, 1)
@@ -1130,12 +1048,6 @@ light_bake_mode = 1
 omni_range = 11.0
 omni_attenuation = 1.3
 metadata/prop_kind = "brazier"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/brazier_005" unique_id=22528712]
-material_override = SubResource("StandardMaterial3D_f0e93")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="candles_000" type="OmniLight3D" parent="Lights" unique_id=223406332]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.2, 0.9, -48.8)
@@ -1146,12 +1058,6 @@ omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_000" unique_id=98798194]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="candles_001" type="OmniLight3D" parent="Lights" unique_id=19260313]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.2, 0.9, -51.2)
 light_color = Color(1, 0.7058824, 0.41960785, 1)
@@ -1160,12 +1066,6 @@ light_bake_mode = 1
 omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_001" unique_id=38075442]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="candles_002" type="OmniLight3D" parent="Lights" unique_id=116589641]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.2, 0.9, -68.3)
@@ -1176,12 +1076,6 @@ omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_002" unique_id=64093577]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="candles_003" type="OmniLight3D" parent="Lights" unique_id=200229574]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.2, 0.9, -70.7)
 light_color = Color(1, 0.7058824, 0.41960785, 1)
@@ -1190,12 +1084,6 @@ light_bake_mode = 1
 omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_003" unique_id=65537985]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="candles_004" type="OmniLight3D" parent="Lights" unique_id=107172632]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.2, 0.9, -74.8)
@@ -1206,12 +1094,6 @@ omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_004" unique_id=38025177]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="candles_005" type="OmniLight3D" parent="Lights" unique_id=62658858]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.2, 0.9, -77.2)
 light_color = Color(1, 0.7058824, 0.41960785, 1)
@@ -1220,12 +1102,6 @@ light_bake_mode = 1
 omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_005" unique_id=151181245]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="candles_006" type="OmniLight3D" parent="Lights" unique_id=221063485]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.2, 0.9, -81.3)
@@ -1236,12 +1112,6 @@ omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_006" unique_id=16796486]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="candles_007" type="OmniLight3D" parent="Lights" unique_id=69166882]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.2, 0.9, -83.7)
 light_color = Color(1, 0.7058824, 0.41960785, 1)
@@ -1250,12 +1120,6 @@ light_bake_mode = 1
 omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_007" unique_id=45755136]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="candles_008" type="OmniLight3D" parent="Lights" unique_id=234766743]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.2, 0.9, -87.8)
@@ -1266,12 +1130,6 @@ omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_008" unique_id=230937127]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="candles_009" type="OmniLight3D" parent="Lights" unique_id=103448689]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.2, 0.9, -90.2)
 light_color = Color(1, 0.7058824, 0.41960785, 1)
@@ -1281,14 +1139,8 @@ omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_009" unique_id=81033303]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="light_pools" type="MeshInstance3D" parent="Lights" unique_id=63470548]
-material_override = SubResource("StandardMaterial3D_d3539")
+material_override = SubResource("StandardMaterial3D_86eaa")
 cast_shadow = 0
 gi_mode = 0
 mesh = SubResource("ArrayMesh_00763")

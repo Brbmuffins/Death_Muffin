@@ -7,8 +7,10 @@ extends Node3D
 ## combat core and `spawn_point()` for the hero.
 ##
 ## What an area scene does not carry (client/README.md "Areas") is made here, for now, by a `DmWorldBuilder` used for its lights only: the
-## environment, fog, the moon and the rim light of the area, exactly as today's builder sets them (a later world scene owns them). The builder builds
-## no floor, wall or prop (`builder` is only that light holder, and carries `area_nodes` and `node_views` for the gathering views). No world dressing (mist, braziers, ripples) and no streaming or occlusion yet.
+## environment, fog, the moon and the rim light of the area, exactly as today's builder sets them (a later world scene owns them), and the dark earth beyond the walls (`build_outside`: one quad). The builder builds
+## no floor, wall or prop (`builder` is only that light holder, and carries `area_nodes` and `node_views` for the gathering views). The world dressing (`dressing`: ground mist, each area's
+## weather, the stained-glass windows, the candle flames and brazier fire as sprites, the far silhouettes, the water; client/README.md "World dressing") is attached to the loaded areas
+## with the lights. No streaming or occlusion yet.
 ##
 ## Every area but the Depths exists by default, as today's builder builds them all; `build` takes a shorter list (tests: the Graves alone). A door lies in the scenes of
 ## both its areas: the first one loaded keeps it, the other copy is dropped before it enters the tree. Gates start closed; `set_unlocked` opens a door when both of its
@@ -24,7 +26,8 @@ signal door_opened(id: String)         ## a door rose (a seal broke here, or on 
 const AREA_DIR := "res://areas/"
 
 var builder: DmWorldBuilder            ## lights only (see above); not today's full builder
-var focus: Node3D                      ## follows the local hero (the world dressing's anchor when it comes)
+var focus: Node3D                      ## follows the local hero (the world dressing's anchor: the mist, the weather and the brazier fire follow it)
+var dressing: DmWorldDressing          ## today's world dressing on the loaded areas (null in a world built with no lights)
 var build_ms: int = 0
 var bake_ms: int = 0                   ## the navmeshes are baked offline: 0
 var sync_ms: int = 0                   ## the first navigation-map sync (wait_nav_ready)
@@ -95,6 +98,7 @@ func build(area_ids: Array = [], with_lights: bool = true) -> void:
 		builder.world = data
 		builder.occlusion_enabled = false   # the see-through cutout comes with the look pass (client/README.md "Areas")
 		builder._make_environment()
+		builder.build_outside()
 		builder.set_area(loaded[0])
 		_register_nodes()
 		depths_root = Node3D.new()
@@ -102,6 +106,8 @@ func build(area_ids: Array = [], with_lights: bool = true) -> void:
 		add_child(depths_root)
 		builder.area_nodes["depths"] = depths_root
 	area_id = loaded[0]
+	if with_lights:
+		dressing = DmWorldDressing.attach(self, focus)
 	set_unlocked([])
 	build_ms = Time.get_ticks_msec() - t0
 
@@ -337,6 +343,8 @@ func enter_area(id: String) -> void:
 	area_id = id
 	if builder != null:
 		builder.set_area(id)
+	if dressing != null:
+		dressing.set_area(id)
 
 
 ## Per frame, local hero only (streaming / occlusion for the world, when they come).

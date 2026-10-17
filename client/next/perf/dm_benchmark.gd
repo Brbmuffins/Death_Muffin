@@ -75,6 +75,9 @@ const HUD_SETTLE_S := 0.1
 ## it for a run (A against B on the same PC): cull (on/off), anim (on/off: the animation levels of detail), mid_m, mid_hz, far_m, far_hz (the bands), thrall_shadows (on/off, over the preset),
 ## lod (the mesh levels' distances in metres, "32/60"), reserve (instances a group starts with).
 const CROWD_KEYS := ["cull", "anim", "thrall_shadows", "mid_m", "mid_hz", "far_m", "far_hz", "lod", "reserve"]
+## The world dressing's pieces (DmWorldDressing.FEATURES) a run can switch off to see what each costs: `--bench-dressing=off` (all of them) or `--bench-dressing=mist,water,...`.
+## The report says which were off.
+var dressing_off: Array = []     ## the dressing's pieces switched off for this run (tests; empty = the launch's `--bench-dressing=`)
 ## The per-frame counters of DmCrowd.stats() the report averages over the measured window (sampled at TICK_S with the fight's other counters).
 const CROWD_COUNTERS := ["bodies", "drawn", "culled", "casting", "casting_thralls", "pose_updates", "band_near", "band_mid", "band_far", "groups_used", "groups_casting", "triangles", "casting_triangles"]
 
@@ -254,6 +257,24 @@ static func parse_crowd(args: PackedStringArray) -> Dictionary:
 	return {"opts": opts, "unknown": unknown}
 
 
+## `--bench-dressing=off` or `--bench-dressing=mist,water` of a launch: the dressing's pieces to switch off ("off" = all), and the tokens that are no piece.
+static func parse_dressing(args: PackedStringArray) -> Dictionary:
+	var off: Array = []
+	var unknown: Array = []
+	for a in args:
+		if not a.begins_with("--bench-dressing="):
+			continue
+		for tok in a.substr(17).split(",", false):
+			if tok == "off":
+				off = DmWorldDressing.FEATURES.duplicate()
+			elif DmWorldDressing.FEATURES.has(tok):
+				if not off.has(tok):
+					off.append(tok)
+			else:
+				unknown.append(tok)
+	return {"off": off, "unknown": unknown}
+
+
 ## The crowd's settings as one line of the report (DmCrowd.settings()).
 static func crowd_line(c: Dictionary) -> String:
 	if c.is_empty():
@@ -358,8 +379,15 @@ func run() -> Dictionary:
 	for t: String in asked["unknown"]:
 		printerr("BENCHMARK ignored --bench-crowd setting '%s' (%s)" % [t, ", ".join(CROWD_KEYS)])
 	opts.merge(asked["opts"], true)   # (the crowd's cost: levels of detail, reserve, culling, animation bands, thrall shadows)
+	var dress := parse_dressing(OS.get_cmdline_user_args())
+	for t: String in dress["unknown"]:
+		printerr("BENCHMARK ignored --bench-dressing piece '%s' (off, %s)" % [t, ", ".join(DmWorldDressing.FEATURES)])
+	var off: Array = dressing_off if not dressing_off.is_empty() else dress["off"]
 	_fight = await DmBenchFight.boot(self, discipline, opts, area)
 	game = _fight["game"]
+	if game.world.dressing != null:
+		for f: String in off:
+			game.world.dressing.set_feature(f, false)
 	game.perf.apply(settings)   # the HUD applied the player's own settings while the game started (their V-Sync included): the run's win
 	host = game.core_host
 	_hero = _fight["hero"]
@@ -819,9 +847,19 @@ func _meta(user: Dictionary) -> Dictionary:
 		"core": core_version(),
 		"crowd_models": host.view.model_slots().size() if host != null and host.view != null else 0,
 		"crowd": host.view.crowd.settings() if host != null and host.view != null and host.view.crowd != null else {},
+		"dressing": _dressing_line(),
 		"fight": "%d enemies (same health and damage in every room, no elites), %d thralls%s, level 60 god mode, auto combat, seed %d, warm-up %d s, measured %d s" % [
 			enemies, thralls, boss_text(), SEED, int(warm_s), int(measure_s)],
 	}
+
+
+## The world dressing's state as one line of the report: every piece on, or the ones switched off.
+func _dressing_line() -> String:
+	if game == null or game.world.dressing == null:
+		return "none"
+	var d: DmWorldDressing = game.world.dressing
+	var off: Array = DmWorldDressing.FEATURES.filter(func(f: String) -> bool: return not d.enabled or not bool(d.features.get(f, true)))
+	return "all on" if off.is_empty() else "off: " + ", ".join(off)
 
 
 ## The combat core's name and version ("dmcore 0.9"), "" when the extension is not there.
@@ -849,7 +887,7 @@ static func format_text(r: Dictionary) -> String:
 	L.append("CPU: %s (%d threads)   OS: %s" % [m["cpu"], m["cores"], m["os"]])
 	L.append("Resolution: %s   Graphics preset: %s   Fps cap (setting): %s   V-Sync: %s" % [m["resolution"], m["preset"], str(m["fps_cap"]) if int(m["fps_cap"]) > 0 else "none", m["vsync"]])
 	L.append("Setup: %s" % m.get("setup", ""))
-	L.append("Crowd: %s" % crowd_line(m.get("crowd", {})))
+	L.append("Crowd: %s   World dressing: %s" % [crowd_line(m.get("crowd", {})), m.get("dressing", "")])
 	L.append("Fight: %s   kills during the run: %d" % [m["fight"], int(r.get("kills", 0))])
 	var bo: Dictionary = r.get("boss", {})
 	if String(bo.get("id", "")) != "":

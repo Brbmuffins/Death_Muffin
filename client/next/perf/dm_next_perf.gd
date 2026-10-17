@@ -59,6 +59,9 @@ func apply(s: Dictionary) -> void:
 		b.set_brightness(float(s.get("brightness", 1.0)))          # Settings -> Brightness
 		if b.env != null:
 			DmGraphicsPreset.apply_environment(b.env, preset)
+	var dressing: DmWorldDressing = world.get("dressing") if world != null else null
+	if dressing != null and dressing.atmosphere != null:
+		dressing.atmosphere.quality_low = String(gp["fx"]) == "low"   # the weather thins on Low, as today's
 	var host: Node = game.get("core_host") if game != null else null
 	var view: CrowdView = host.get("view") if host != null else null
 	if view != null and view.crowd != null:

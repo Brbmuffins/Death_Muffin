@@ -6,8 +6,8 @@ extends SceneTree
 ##   - the crowd costs what is in view and not what is registered: a MultiMesh group is shown while it holds instances and hidden when it does not, so the Full Party's draws are the
 ##     used groups' (a few dozen) and not those of every baked model's groups (the 8913127 test build drew 396 for the crowd, 280 before the roster grew, 41 now);
 ##   - the model sees that regression: with every group shown the crowd counts several times its draws;
-##   - the world and the whole stay inside their budgets (BUDGET_*), so a change that adds draw calls (a prop merged so that it no longer instances, a group left shown) fails here and not
-##     on Helix's PC.
+##   - the world, the world dressing (mist, weather, water, silhouettes, flames and brazier fire: client/README.md "World dressing") and the whole stay inside their budgets (BUDGET_*),
+##     so a change that adds draw calls (a prop merged so that it no longer instances, a group left shown, one more piece of dressing) fails here and not on Helix's PC.
 ## INFO lines print the rows by group. Bakes the Graves' roster (and three models the party does not use) into a scratch folder first (about a minute).
 ## Run: godot --headless --path client --script res://tests/draw_budget.gd   (--fixed-fps 60 before --path is faster)
 
@@ -17,6 +17,7 @@ const BAKE := ["grave_robber", "bone_hound", "barrow_ghoul", "choir_wraith", "sk
 ## The model's draw calls for the Graves' Full Party at the benchmark's camera, both passes, a little over what the model counts (client/README.md "The draw budget" has the figures).
 const BUDGET_CROWD := 30
 const BUDGET_WORLD := 85
+const BUDGET_DRESSING := 8   ## the dressing's six objects (water, weather, brazier fire, silhouettes, mist, the area's flames), a window's pane and shaft more where one is in view
 const BUDGET_TOTAL := 110
 ## What the fade groups may add to a fight with two dozen bodies sinking and three shrouded elites: a main-pass draw for each model and level that has one fading (client/crowd/README.md "The alpha path").
 const BUDGET_FADE := 8
@@ -77,10 +78,11 @@ func the_budget() -> void:
 	check(res.cascades == 2, "the Ultra preset's moon has two cascades (%d)" % res.cascades)
 	var crowd := parts(res, "crowd")
 	var world := parts(res, "world")
+	var dressing := parts(res, "dressing")
 	var rest := parts(res, "other")
 	var total := DmDrawModel.draws(res.total)
-	print("INFO draw calls the model counts for the Graves' Full Party (%d recorded instances): crowd %d (main %d, shadow %d), world %d (main %d, shadow %d), the rest %d; %d in all" % [
-		recs.size(), DmDrawModel.draws(crowd), crowd.main_draws, crowd.shadow_draws, DmDrawModel.draws(world), world.main_draws, world.shadow_draws, DmDrawModel.draws(rest), total])
+	print("INFO draw calls the model counts for the Graves' Full Party (%d recorded instances): crowd %d (main %d, shadow %d), world %d (main %d, shadow %d), dressing %d, the rest %d; %d in all" % [
+		recs.size(), DmDrawModel.draws(crowd), crowd.main_draws, crowd.shadow_draws, DmDrawModel.draws(world), world.main_draws, world.shadow_draws, DmDrawModel.draws(dressing), DmDrawModel.draws(rest), total])
 	for g: String in res.groups:
 		var c: Dictionary = res.groups[g]
 		print("INFO   %-34s %3d instances: main %3d objects %3d draws, shadow %3d objects %3d draws" % [g, c.instances, c.main_objs, c.main_draws, c.shadow_objs, c.shadow_draws])
@@ -110,6 +112,8 @@ func the_budget() -> void:
 	await the_fading(stage, host, res, recs.size())
 	# the world and the whole
 	check(DmDrawModel.draws(world) <= BUDGET_WORLD, "the Graves' world stays inside %d draw calls (%d)" % [BUDGET_WORLD, DmDrawModel.draws(world)])
+	check(DmDrawModel.draws(dressing) >= 5 and DmDrawModel.draws(dressing) <= BUDGET_DRESSING, "the world dressing stays inside %d draw calls, none cast shadows (%d, shadow passes %d)" % [BUDGET_DRESSING, DmDrawModel.draws(dressing), dressing.shadow_draws])
+	check(dressing.shadow_draws == 0 and rest.main_draws + rest.shadow_draws == 0, "and nothing else is drawn outside the world, the dressing and the crowd")
 	check(total <= BUDGET_TOTAL, "and the whole inside %d (%d)" % [BUDGET_TOTAL, total])
 	stage.queue_free()
 	await process_frame

@@ -7,11 +7,13 @@ extends SceneTree
 ##   today's game (Compatibility, OpenGL on llvmpipe; the script is read from the client's folder, nothing is copied; its start takes 3 to 4 minutes):
 ##     flock -w 900 /home/ubuntu/death-muffin/qa-browser.lock nice -n 10 xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 \
 ##       /home/ubuntu/tools/godot/godot --rendering-method gl_compatibility --rendering-driver opengl3 --resolution 1280x720 --path godot --script /abs/path/client/tools/look_probe.gd -- --out=/abs/dir --tag=today --part=game
-## --part=game|calib|both (default both), --plan="chapterhouse:base,nomoon;graves:base" (an area, then the variants to shoot: base, unfix, unlift, unpool, nomoon, norim, noshadow, noglow, nossao, nofog),
+## --part=game|calib|glow|both (default both), --plan="chapterhouse:base,nomoon;graves:base" (an area, then the variants to shoot: base, unfix, unlift, unpool, nomoon, norim, noshadow, noglow, nossao, nofog, nodress: the world dressing off, before: what the first test builds drew: no dressing, a plain sphere at every light and the glow of the time),
 ## --frames=N (frames to wait after a change, 3), --warm=N (after the hero's move, 12). The game part starts the real game scene offline at Ultra with the hero at a fixed spot of each area,
 ## saves <tag>_<area>_<variant>.png and prints a STAT line each (mean colour, luminance and its 10th, 50th and 90th percentile, the colour shares; the hero's own box left out). The calibration part
 ## shows one test object at a time on a grey plane under the game's environment (fog, specular, vertex colours, HDR, blends, emission) and prints a CAL2 line each: the same lines from both
-## projects say where the renderers differ. The rebuilt-client-only variants (unfix, unlift, unpool) need next/look/dm_compat_albedo.gd and are skipped on today's game.
+## projects say where the renderers differ. `--part=glow --glow="<name>:<key>=<v>,<key>=<v>;<name>:..."` shoots the two bright things of the calibration (the HDR albedo quad, a small bright emission) under each glow setting of the
+## list and prints a GLOW line each: the sRGB along the row through the thing, from its edge outwards (keys: lv the seven level weights "a/b/c/d/e/f/g", int, thr, scale, cap, strength, off=1 for no glow; an unnamed key keeps the game's `DmWfxBloom`
+## value); "game" is the game's own setting. Compare the lines with the same part run on today's game. The rebuilt-client-only variants (unfix, unlift, unpool) need next/look/dm_compat_albedo.gd and are skipped on today's game; `before` and the glow's keys other than `game` are for the rebuilt client too.
 
 
 const SPOTS := {
@@ -129,6 +131,8 @@ func _game() -> void:
 	var e: Environment = b.env
 	print("ENV tonemap=%d exposure=%.3f ambient_color=%s energy=%.3f glow=%s fog_end=%.1f moon=(%s %.3f shadow %s) rim=(%s %.3f)" % [e.tonemap_mode, e.tonemap_exposure, e.ambient_light_color, e.ambient_light_energy, e.glow_enabled, e.fog_depth_end, b.moon.light_color, b.moon.light_energy, b.moon.shadow_enabled, b.rim.light_color, b.rim.light_energy])
 	var lifted := _lifted_mats(g.world)
+	var spheres: Array = []
+	env = e
 	print("lifted materials: %d" % lifted.size())
 	var hb := g.local_body()
 	await _frames(20)
@@ -143,6 +147,12 @@ func _game() -> void:
 		for v in variants:
 			# restore
 			e.glow_enabled = true
+			DmWfxBloom.apply(e, true)
+			if g.world.dressing != null:
+				g.world.dressing.set_enabled(true)
+			for sp in spheres:
+				sp.queue_free()
+			spheres.clear()
 			if e.get("ssao_enabled") != null:
 				e.set("ssao_enabled", ssao_on)
 			b.moon.visible = true
@@ -172,6 +182,26 @@ func _game() -> void:
 						e.set("ssao_enabled", false)
 				"nofog":
 					e.fog_enabled = false
+				"nodress":
+					g.world.dressing.set_enabled(false)
+				"before":
+					g.world.dressing.set_enabled(false)
+					_glow_apply({"lv": ".56/.58/.6/.62/.64", "int": "0.75", "thr": "0.85", "scale": "2", "cap": "12", "strength": "1"})   # (the first test builds' glow)
+					for l in g.world.find_children("*", "OmniLight3D", true, false):
+						var sph := MeshInstance3D.new()
+						var sm := SphereMesh.new()
+						sm.radius = 0.1
+						sm.height = 0.2
+						sm.radial_segments = 8
+						sm.rings = 4
+						sph.mesh = sm
+						var fm := StandardMaterial3D.new()
+						fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+						fm.albedo_color = (l as OmniLight3D).light_color.lightened(0.3)
+						sph.material_override = fm
+						sph.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+						l.add_child(sph)
+						spheres.append(sph)
 			await _frames(frames_per)
 			var img := root.get_viewport().get_texture().get_image()
 			e.fog_enabled = true
@@ -249,7 +279,8 @@ func _vc_mesh(col: Color, size: float) -> ArrayMesh:
 const VC_SHADER := "shader_type spatial;\nrender_mode unshaded;\nvoid fragment() { ALBEDO = COLOR.rgb; }\n"
 
 
-func _calib() -> void:
+## The calibration stage: the game's environment (fog, ambient, ACES at the game's exposure), camera, moon and rim light over a grey plane.
+func _calib_stage() -> void:
 	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color.html("#07060a")
@@ -285,6 +316,10 @@ func _calib() -> void:
 	plane_mat.roughness = 0.62
 	plane.material_override = plane_mat
 	root.add_child(plane)
+
+
+func _calib() -> void:
+	_calib_stage()
 	var screen_rows := [Vector2i(640, 700), Vector2i(640, 560), Vector2i(640, 420), Vector2i(640, 330), Vector2i(640, 260), Vector2i(640, 200), Vector2i(640, 150), Vector2i(640, 110), Vector2i(640, 80)]
 	var centre := [Vector2i(640, 360), Vector2i(700, 360), Vector2i(780, 360), Vector2i(900, 360)]
 	await _frames(2)
@@ -441,6 +476,88 @@ func _calib() -> void:
 	print("calib part done")
 
 
+# ---------------------------------------------------------------- part 3: the glow's reach
+func _glow_cfg(spec: String) -> Dictionary:
+	var kv := {}
+	for tok in spec.split(",", false):
+		var p := tok.split("=", false, 1)
+		if p.size() == 2:
+			kv[p[0]] = p[1]
+	return kv
+
+
+## The glow of `env` as the game sets it (DmWfxBloom), then the keys of `kv` over it.
+func _glow_apply(kv: Dictionary) -> void:
+	DmWfxBloom.apply(env, not kv.has("off"))
+	if kv.has("int"):
+		env.glow_intensity = float(kv["int"])
+	if kv.has("strength"):
+		env.glow_strength = float(kv["strength"])
+	if kv.has("thr"):
+		env.glow_hdr_threshold = float(kv["thr"])
+	if kv.has("scale"):
+		env.glow_hdr_scale = float(kv["scale"])
+	if kv.has("cap"):
+		env.glow_hdr_luminance_cap = float(kv["cap"])
+	if kv.has("lv"):
+		var w := String(kv["lv"]).split("/", false)
+		for i in 7:
+			env.set_glow_level(i, float(w[i]) if i < w.size() else 0.0)
+
+
+func _row(img: Image, y: int, x0: int, n: int, step: int) -> String:
+	var s := ""
+	for i in n:
+		var c := img.get_pixel(clampi(x0 + i * step, 0, img.get_width() - 1), y)
+		s += "%d,%d,%d " % [255.0 * c.r, 255.0 * c.g, 255.0 * c.b]
+	return s.strip_edges()
+
+
+func _glow() -> void:
+	_calib_stage()
+	await _frames(2)
+	plane.visible = false
+	moon.visible = false
+	rim.visible = false
+	env.ambient_light_energy = 0.0
+	env.fog_enabled = false
+	var list := _arg("glow", "game").split(";", false)
+	for entry in list:
+		var name := entry.get_slice(":", 0)
+		var kv := _glow_cfg(entry.get_slice(":", 1)) if entry.contains(":") else {}
+		for scene in ["h0", "e2"]:
+			var mi: MeshInstance3D = _quad(6.0, 0.02)
+			var m := StandardMaterial3D.new()
+			if scene == "h0":
+				m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				m.albedo_color = Color(2, 1.77, 0.81)
+			else:
+				m.albedo_color = Color(0, 0, 0)
+				m.emission_enabled = true
+				m.emission = Color(1, 0.9, 0.7)
+				m.emission_energy_multiplier = 6.0
+				mi.scale = Vector3(0.15, 1, 0.15)
+			mi.material_override = m
+			holder.add_child(mi)
+			_glow_apply(kv)
+			await _frames(3)
+			var img := root.get_viewport().get_texture().get_image()
+			if img == null or img.is_empty():
+				print("no image")
+				continue
+			img.convert(Image.FORMAT_RGB8)
+			var k := float(img.get_width()) / 1280.0
+			# the row through the thing's middle (h0: its right edge at x 790, e2: x 661), outwards
+			var y := int((389.0 if scene == "h0" else 381.0) * k)
+			var x0 := int((790.0 if scene == "h0" else 661.0) * k)
+			print("GLOW %s %s %s y=%d x0=%d step=%d: %s" % [tag, name, scene, y, x0, 2, _row(img, y, x0, 40 if scene == "h0" else 36, 2)])
+			if _arg("save", "") == name:
+				img.save_png("%s/%s_glow_%s_%s.png" % [out, tag, name, scene])
+			mi.queue_free()
+			await process_frame
+	print("glow part done")
+
+
 func _run() -> void:
 	out = _arg("out", "/tmp")
 	tag = _arg("tag", "x")
@@ -452,5 +569,7 @@ func _run() -> void:
 		await _game()
 	if part == "calib" or part == "both":
 		await _calib()
+	if part == "glow":
+		await _glow()
 	print("look_probe done")
 	quit()

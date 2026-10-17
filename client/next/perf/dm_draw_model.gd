@@ -23,6 +23,9 @@ static func record(nd: GeometryInstance3D, game: Node) -> Dictionary:
 	var mesh: Mesh = null
 	if nd is MeshInstance3D:
 		mesh = (nd as MeshInstance3D).mesh
+		var am := mesh as ArrayMesh
+		if am != null and am.custom_aabb.size != Vector3.ZERO:
+			local = am.custom_aabb   # (the weather's mesh keeps its vertices at the origin and says how far they reach)
 	elif nd is MultiMeshInstance3D and (nd as MultiMeshInstance3D).multimesh != null:
 		var mm := (nd as MultiMeshInstance3D).multimesh
 		mesh = mm.mesh
@@ -36,7 +39,7 @@ static func record(nd: GeometryInstance3D, game: Node) -> Dictionary:
 				rec["model"] = String(parts[0])
 				rec["lod"] = int(parts[1])
 				rec["n"] = int(view.crowd.instance_count(int(view.model_slots()[String(parts[0])]), int(parts[1]), String(parts[1]).ends_with("_shadow"), String(parts[1]).ends_with("_fade")))   # (what the crowd drew)
-	var ab := nd.global_transform * local
+	var ab := nd.global_transform * local.grow(nd.extra_cull_margin)
 	rec["ab"] = [ab.position.x, ab.position.y, ab.position.z, ab.size.x, ab.size.y, ab.size.z]
 	if mesh != null:
 		rec["s"] = mesh.get_surface_count()
@@ -52,6 +55,8 @@ static func record(nd: GeometryInstance3D, game: Node) -> Dictionary:
 
 ## The group a record belongs to, for a budget's rows and a measurement's steps: "crowd:lod0:shadow:used", "world:Props", "other:<first two path segments>", ...
 static func _group(nd: GeometryInstance3D, rec: Dictionary) -> String:
+	if _is_dressing(nd):
+		return "dressing:" + String(nd.name)
 	if nd.get_parent() is CrowdView:
 		return "crowd:lod%d:%s:%s" % [int(rec.get("lod", 0)), "shadow" if String(nd.name).ends_with("_shadow") else ("fade" if String(nd.name).ends_with("_fade") else "plain"), "used" if int(rec["n"]) > 0 else "empty"]
 	var path := String(rec["p"])
@@ -62,6 +67,18 @@ static func _group(nd: GeometryInstance3D, rec: Dictionary) -> String:
 			return "world:" + String(rest[1]) if rest.size() >= 2 else "world:area"
 		return "world:" + "/".join(path.split("/").slice(0, 2))
 	return "other:" + "/".join(path.split("/").slice(0, 2))
+
+
+## The world dressing's own pieces (DmWorldDressing's children and the flames and windows it puts under the area scenes, which it marks): group "dressing:<piece>", counted apart from the area.
+static func _is_dressing(nd: Node) -> bool:
+	if nd.has_meta("dressing"):
+		return true
+	var p := nd.get_parent()
+	while p != null:
+		if p is DmWorldDressing:
+			return true
+		p = p.get_parent()
+	return false
 
 
 ## Every geometry instance under `root`, as records.

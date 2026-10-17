@@ -3,10 +3,11 @@ extends Node3D
 ## Ground mist (WorldView.buildMist + the "Drift mist" loop in update): 220 big soft smoke puffs at knee height, area-weighted over the
 ## whole world, each drifting at its own velocity. Exactly the web's CPU rule: a puff more than 45 m (x) / 40 m (z) from the focus is moved
 ## to focus -+ 44 (x) / 39 (z) on the opposite side, so the far world's puffs pile onto the box edge and the density near the hero is the web's.
-## One MultiMesh draw call. The 220-puff loop runs every 4th frame with the accumulated dt (drift is <= 0.35 m/s, i.e. 2 cm per step).
+## One MultiMesh draw call. The 220-puff loop runs at 4 Hz (`STEP_SECONDS`) with the accumulated dt: drift is <= 0.35 m/s, so a step moves a puff 9 cm at most, under a puff's
+## own size of metres (today's ran every 4th frame, 15 times a second at 60 fps, and cost 4 times as much; client/code.list "Ported").
 ## Puff world diameter = aSize (web gl_PointSize = aSize * scale / depth px); alpha = smoke.a * aAlpha * 1.4, colour 0x3d3350.
 
-const STEP_FRAMES := 4
+const STEP_SECONDS := 0.25
 
 const SHADER_CODE := """
 shader_type spatial;
@@ -39,8 +40,8 @@ var pos := PackedVector3Array()
 var vel := PackedVector2Array()
 var mmi: MultiMeshInstance3D
 var _mm: MultiMesh
-var _acc := 0.0
-var _frame := 0
+var steps := 0                ## steps taken so far (the tests count them)
+var _acc := STEP_SECONDS      ## the first tick steps at once (the far puffs are put at the box's edge before the first frame is drawn)
 
 ## mist = fx.json "mist".
 func setup(mist: Dictionary) -> void:
@@ -65,6 +66,7 @@ func setup(mist: Dictionary) -> void:
 		_mm.set_instance_color(i, col)
 		_mm.set_instance_custom_data(i, Color(float(mist.size[i]), float(mist.alpha[i]), 0, 0))
 	mmi = MultiMeshInstance3D.new()
+	mmi.name = "Puffs"
 	mmi.multimesh = _mm
 	if _shader == null:
 		_shader = Shader.new()
@@ -80,6 +82,7 @@ func setup(mist: Dictionary) -> void:
 
 ## One web update step with `dt` seconds (WorldView.update "Drift mist").
 func step(dt: float, focus: Vector3) -> void:
+	steps += 1
 	for i in count:
 		var p := pos[i]
 		var v := vel[i]
@@ -92,11 +95,10 @@ func step(dt: float, focus: Vector3) -> void:
 		pos[i] = p
 		_mm.set_instance_transform(i, Transform3D(Basis.IDENTITY, p))
 
-## Per-frame hook: steps every STEP_FRAMES-th frame with the dt accumulated since the last step.
+## Per-frame hook: steps once STEP_SECONDS have passed, with the time accumulated since the last step.
 func tick(dt: float, focus: Vector3) -> void:
 	_acc += dt
-	_frame += 1
-	if _frame % STEP_FRAMES != 1 and _frame > 1:
+	if _acc < STEP_SECONDS:
 		return
 	step(_acc, focus)
 	_acc = 0.0

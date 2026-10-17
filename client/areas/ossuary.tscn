@@ -311,20 +311,6 @@ size = Vector3(8, 0.08, 0.1)
 size = Vector2(7.2, 7.2)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fcd29"]
-shading_mode = 0
-albedo_color = Color(1, 0.7941177, 0.5937255, 1)
-
-[sub_resource type="SphereMesh" id="SphereMesh_01334"]
-radius = 0.1
-height = 0.2
-radial_segments = 8
-rings = 4
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_d3539"]
-shading_mode = 0
-albedo_color = Color(0.7556863, 0.5937255, 1, 1)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_c4298"]
 transparency = 1
 blend_mode = 1
 cull_mode = 2
@@ -783,8 +769,6 @@ cast_shadow = 0
 gi_mode = 0
 mesh = SubResource("QuadMesh_8b790")
 
-[node name="Water" type="Node3D" parent="." unique_id=86207577]
-
 [node name="Doors" type="Node3D" parent="." unique_id=161855198]
 
 [node name="graves_ossuary" type="Node3D" parent="Doors" unique_id=122661040]
@@ -920,12 +904,6 @@ omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_000" unique_id=9173147]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="candles_001" type="OmniLight3D" parent="Lights" unique_id=112136507]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.83838, 1.0442458, -29.799702)
 light_color = Color(1, 0.7058824, 0.41960785, 1)
@@ -934,12 +912,6 @@ light_bake_mode = 1
 omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_001" unique_id=246062589]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="candles_002" type="OmniLight3D" parent="Lights" unique_id=18494004]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.21628, 0.8962417, -30.139626)
@@ -950,12 +922,6 @@ omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_002" unique_id=82430225]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="candles_003" type="OmniLight3D" parent="Lights" unique_id=176333822]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 47.702892, 1.1605663, -3.6761038)
 light_color = Color(1, 0.7058824, 0.41960785, 1)
@@ -964,12 +930,6 @@ light_bake_mode = 1
 omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_003" unique_id=174825988]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="candles_004" type="OmniLight3D" parent="Lights" unique_id=6392960]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.43124, 0.9504035, -20.060743)
@@ -980,12 +940,6 @@ omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_004" unique_id=166331984]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="candles_005" type="OmniLight3D" parent="Lights" unique_id=262550645]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54.277702, 0.81702644, -12.484402)
 light_color = Color(1, 0.7058824, 0.41960785, 1)
@@ -994,12 +948,6 @@ light_bake_mode = 1
 omni_range = 7.0
 omni_attenuation = 1.3
 metadata/prop_kind = "candles"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/candles_005" unique_id=96048601]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="brazier_000" type="OmniLight3D" parent="Lights" unique_id=91015543]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.8, 1.6, -20)
@@ -1010,12 +958,6 @@ omni_range = 11.0
 omni_attenuation = 1.3
 metadata/prop_kind = "brazier"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/brazier_000" unique_id=115656399]
-material_override = SubResource("StandardMaterial3D_d3539")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="brazier_001" type="OmniLight3D" parent="Lights" unique_id=55159195]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 62, 1.6, -4)
 light_color = Color(0.6509804, 0.41960785, 1, 1)
@@ -1024,12 +966,6 @@ light_bake_mode = 1
 omni_range = 11.0
 omni_attenuation = 1.3
 metadata/prop_kind = "brazier"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/brazier_001" unique_id=144641025]
-material_override = SubResource("StandardMaterial3D_d3539")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="brazier_002" type="OmniLight3D" parent="Lights" unique_id=220745715]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 62, 1.6, -36)
@@ -1040,12 +976,6 @@ omni_range = 11.0
 omni_attenuation = 1.3
 metadata/prop_kind = "brazier"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/brazier_002" unique_id=141269951]
-material_override = SubResource("StandardMaterial3D_d3539")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="brazier_003" type="OmniLight3D" parent="Lights" unique_id=190639383]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 1.6, -4)
 light_color = Color(0.6509804, 0.41960785, 1, 1)
@@ -1054,12 +984,6 @@ light_bake_mode = 1
 omni_range = 11.0
 omni_attenuation = 1.3
 metadata/prop_kind = "brazier"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/brazier_003" unique_id=111745426]
-material_override = SubResource("StandardMaterial3D_d3539")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="bone_candelabrum_000" type="OmniLight3D" parent="Lights" unique_id=61448562]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 36.2, 2, -21.6)
@@ -1070,12 +994,6 @@ omni_range = 6.0
 omni_attenuation = 1.3
 metadata/prop_kind = "bone_candelabrum"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/bone_candelabrum_000" unique_id=100774891]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="bone_candelabrum_001" type="OmniLight3D" parent="Lights" unique_id=182192989]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.6, 2, -14.2)
 light_color = Color(1, 0.7058824, 0.41960785, 1)
@@ -1084,12 +1002,6 @@ light_bake_mode = 1
 omni_range = 6.0
 omni_attenuation = 1.3
 metadata/prop_kind = "bone_candelabrum"
-
-[node name="flame" type="MeshInstance3D" parent="Lights/bone_candelabrum_001" unique_id=228830546]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
 
 [node name="bone_candelabrum_002" type="OmniLight3D" parent="Lights" unique_id=99668518]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.2, 2, -21.8)
@@ -1100,14 +1012,8 @@ omni_range = 6.0
 omni_attenuation = 1.3
 metadata/prop_kind = "bone_candelabrum"
 
-[node name="flame" type="MeshInstance3D" parent="Lights/bone_candelabrum_002" unique_id=62891827]
-material_override = SubResource("StandardMaterial3D_fcd29")
-cast_shadow = 0
-gi_mode = 0
-mesh = SubResource("SphereMesh_01334")
-
 [node name="light_pools" type="MeshInstance3D" parent="Lights" unique_id=197909233]
-material_override = SubResource("StandardMaterial3D_c4298")
+material_override = SubResource("StandardMaterial3D_fcd29")
 cast_shadow = 0
 gi_mode = 0
 mesh = SubResource("ArrayMesh_00763")

@@ -110,6 +110,14 @@ func applied(g: DmNextGame, id: String) -> void:
 	check(b.moon.shadow_enabled == bool(p["shadows"]) and is_equal_approx(b.moon.directional_shadow_max_distance, float(p["shadow_dist"])), "%s: the moon's shadow and its reach" % id)
 	check(b.moon.directional_shadow_mode == (DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(p["shadow_splits"]) == 2 else DirectionalLight3D.SHADOW_ORTHOGONAL), "%s: the shadow splits" % id)
 	check(b.env.glow_enabled == bool(p["bloom"]) and b.env.ssao_enabled == (int(p["ssao"]) > 0), "%s: bloom %s, ambient occlusion %s" % [id, b.env.glow_enabled, b.env.ssao_enabled])
+	if bool(p["bloom"]):   # the glow reaches as far as today's does (DmWfxBloom): the two finest mips, today's threshold, scale and cap, 0.8 of the web's strength
+		var weights := DmWfxBloom.mip_weights(float(DmWfxData.get_data().bloom.radius))
+		var mips_ok := true
+		for i in 7:
+			mips_ok = mips_ok and is_equal_approx(b.env.get_glow_level(i), float(weights[i]) if i < DmWfxBloom.LEVELS else 0.0)
+		check(mips_ok and DmWfxBloom.LEVELS == 2 and is_equal_approx(b.env.glow_intensity, float(DmWfxData.get_data().bloom.strength) * DmWfxBloom.GAIN) and is_equal_approx(b.env.glow_hdr_threshold, 0.85)
+			and is_equal_approx(b.env.glow_hdr_scale, 2.0) and is_equal_approx(b.env.glow_hdr_luminance_cap, 12.0) and b.env.glow_blend_mode == Environment.GLOW_BLEND_MODE_ADDITIVE,
+			"%s: the glow is today's reach (the two finest mips), threshold, scale and luminance cap" % id)
 	check(vp.msaa_3d == DmGraphicsPreset.msaa_mode(int(p["msaa"])) and vp.anisotropic_filtering_level == DmGraphicsPreset.aniso_mode(int(p["aniso"])) and is_equal_approx(vp.mesh_lod_threshold, float(p["lod"])),
 		"%s: MSAA, anisotropy and mesh LOD on the viewport" % id)
 	check(is_equal_approx(g.perf.governor.floor_scale, float(p["floor"])), "%s: the governor's floor %.2f" % [id, float(p["floor"])])
@@ -132,6 +140,13 @@ func environment(g: DmNextGame, id: String) -> void:
 	check(is_equal_approx(e.tonemap_exposure, float(L.exposure) * DmWorldBuilder.EXPOSURE_K * b.area_exposure * float(p["lift"]) * b.brightness), "%s: the exposure is the world's x %.1f, the area's easing, the lift and the brightness (%.3f)" % [id, DmWorldBuilder.EXPOSURE_K, e.tonemap_exposure])
 	check(e.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR and is_equal_approx(e.ambient_light_energy, float(L.hemiIntensity) * DmWorldBuilder.HEMI_K), "%s: the plain-colour ambient at the hemisphere's energy" % id)
 	check(e.fog_enabled and e.fog_mode == Environment.FOG_MODE_DEPTH and is_equal_approx(e.fog_density, 1.0), "%s: the depth fog" % id)
+	# the background past everything comes out of the tonemapper as today's Compatibility shows it, the world's colour as it is (#07060a: 7, 6, 10)
+	var lin := e.background_color.srgb_to_linear()
+	var out := DmCompatAlbedo.aces(Vector3(lin.r, lin.g, lin.b) * e.tonemap_exposure)
+	var shown := Color(out.x, out.y, out.z).linear_to_srgb()
+	var want_bg := Color.html(str(L.background))
+	check(absf(shown.r - want_bg.r) < 1.0 / 255.0 and absf(shown.g - want_bg.g) < 1.0 / 255.0 and absf(shown.b - want_bg.b) < 1.0 / 255.0,
+		"%s: the background beyond everything shows as %s after the tonemapper (%d, %d, %d)" % [id, str(L.background), roundi(shown.r * 255.0), roundi(shown.g * 255.0), roundi(shown.b * 255.0)])
 	check(is_equal_approx(b.moon.light_energy, float(L.moonIntensity) * DmWorldBuilder.MOON_K) and is_equal_approx(b.rim.light_energy, float(L.rimIntensity) * DmWorldBuilder.RIM_K) and not b.rim.shadow_enabled,
 		"%s: the moon and the rim light at today's energies, the rim without a shadow" % id)
 
