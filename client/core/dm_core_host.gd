@@ -98,7 +98,8 @@ func _init() -> void:
 
 ## Builds the core and the crowd. `opts`: `data_dir` (res:// : this project's data/), `seed` (default: from the clock, like today's randomize()),
 ## `nav_map` (RID of the area's navigation map), `bounds` (Rect2: the area, with its door corridors), `view_parent` (Node3D the crowd's nodes go under),
-## `baked_dir` / `assets_dir` (where the baked crowd models and their textures are; CrowdView's defaults otherwise), `wander` (idle wander, default on).
+## `baked_dir` / `assets_dir` (where the baked crowd models and their textures are; CrowdView's defaults otherwise), `lod_distances`, `reserve`, `cull`, `anim_lod`, `thrall_shadows`
+## (the crowd's cost: CrowdView.setup, client/crowd/README.md "Crowd cost"), `wander` (idle wander, default on).
 func setup(opts: Dictionary) -> void:
 	data_dir = String(opts.get("data_dir", DEFAULT_DATA))
 	core = ClassDB.instantiate("DmCore")
@@ -121,7 +122,7 @@ func setup(opts: Dictionary) -> void:
 	var parent: Node = opts.get("view_parent", self)
 	parent.add_child(view)
 	var vopts := {}
-	for k in ["baked_dir", "assets_dir", "lod_distances", "reserve"]:
+	for k in ["baked_dir", "assets_dir", "lod_distances", "reserve", "cull", "anim_lod", "thrall_shadows"]:
 		if opts.has(k):
 			vopts[k] = opts[k]
 	view.setup(core, enemy_defs, bounds.position, bounds.end, vopts)

@@ -48,7 +48,8 @@ extends Node3D
 ##   var g: DmNextGame = load("res://next/next_game.tscn").instantiate(); add_child(g); await g.start(character, api, opts)
 ## `opts`: warmup (false: the first-use warm-up of models, effects and area lighting; the benchmark forces it), name, slots (the character's bag rows from the server: worn gear feeds the build), local (its progression: damage and legion tier, boons, vows; DmMain.load_build), visual (true), waves (true), hud (true = today's HUD and panels on DmNextUiHost; false = none), audio (true outside a headless
 ## run: the music, ambience and footsteps), seed (the core's random seed; default from the clock), areas (the area ids to load; default every one, DmNextWorld.every_area),
-## data_dir (res://), baked_dir / assets_dir (where the baked crowd models are), peer (a MultiplayerPeer; default OfflineMultiplayerPeer).
+## data_dir (res://), baked_dir / assets_dir (where the baked crowd models are), lod_distances / reserve / cull / anim_lod / thrall_shadows (the crowd's cost: CrowdView.setup),
+## peer (a MultiplayerPeer; default OfflineMultiplayerPeer).
 
 const CASTER_DELAY := 0.8                       ## the host attaches a guest's caster this long after its body spawned (the guest's spawner must have made the body first)
 const CLIENT_ACTIVE_S := 20.0                   ## a guest waits this long (after its hello, running frames) for the host's roster before giving up (`start_failed`)
@@ -155,7 +156,7 @@ func start(character_: Dictionary, api_: Variant, opts_: Dictionary = {}) -> voi
 	camera.setup(world.camera_config())
 	area_id = world.area_id
 	var core_opts := {"nav_map": world.nav_map(), "bounds": world.bounds(), "view_parent": self, "puppet": guest}
-	for k in ["seed", "data_dir", "baked_dir", "assets_dir", "wander"]:
+	for k in ["seed", "data_dir", "baked_dir", "assets_dir", "wander", "lod_distances", "reserve", "cull", "anim_lod", "thrall_shadows"]:
 		if opts.has(k):
 			core_opts[k] = opts[k]
 	core_host.setup(core_opts)

@@ -70,6 +70,12 @@ const BUDGET_HUD_DRAWS := 150
 const HUD_ROUNDS := 8           ## the HUD's share: the fight with the HUD off, then on, this many times over ...
 const HUD_SAMPLE_S := 0.5       ## ... each sample this long, after a short settle: the fight's own slow swings (a boss attack, a wave) fall on both kinds alike
 const HUD_SETTLE_S := 0.1
+## The crowd's cost, recorded in the report so a run on another PC tells what to set (client/crowd/README.md "Crowd cost"). `--bench-crowd=key=value,...` after `--` changes
+## it for a run (A against B on the same PC): cull (on/off), anim (on/off: the animation levels of detail), mid_m, mid_hz, far_m, far_hz (the bands), thrall_shadows (on/off, over the preset),
+## lod (the mesh levels' distances in metres, "32/60"), reserve (instances a group starts with).
+const CROWD_KEYS := ["cull", "anim", "thrall_shadows", "mid_m", "mid_hz", "far_m", "far_hz", "lod", "reserve"]
+## The per-frame counters of DmCrowd.stats() the report averages over the measured window (sampled at TICK_S with the fight's other counters).
+const CROWD_COUNTERS := ["bodies", "drawn", "culled", "casting", "casting_thralls", "pose_updates", "band_near", "band_mid", "band_far", "groups_used", "groups_casting", "triangles", "casting_triangles"]
 
 ## Where a run keeps its files. Tests and `--bench-dir=` point it at a folder of their own, so a run never reads or leaves behind another run's history, queue or setup.
 static var dir := DIR
@@ -94,6 +100,7 @@ var hud_sample_s := HUD_SAMPLE_S
 var hud_settle_s := HUD_SETTLE_S
 var hud_checked := false        ## the HUD share ran (tests)
 var results: Dictionary = {}
+var crowd_opts := {}            ## the crowd's cost settings for this run (CrowdView.apply_cost keys; tests); empty = the launch's `--bench-crowd=`, else the game's
 var cancelled := false
 var backend_calls := 0
 var area_nav_on := false        ## the fight area's navmesh was enabled (its seal broken for the throwaway character)
@@ -145,6 +152,8 @@ var _at := Vector3.ZERO
 var _core_ticks0 := 0           ## the host's tick count when the measured window began
 var _core := {}                 ## the measured window's core timing: {ticks, step_us, sync_us, dispatch_us}
 var _held_thralls := 0          ## the legion's size at the last upkeep
+var _crowd := {}                ## sums of CROWD_COUNTERS over the measured window's upkeep ticks
+var _crowd_n := 0
 
 
 func _ready() -> void:
@@ -189,6 +198,75 @@ static func normalize_setup(want: Dictionary) -> Dictionary:
 static func is_standard(s: Dictionary) -> bool:
 	return String(s.get("room", "")) == STANDARD["room"] and int(s.get("discipline", 0)) == STANDARD["discipline"] \
 		and String(s.get("size", "")) == STANDARD["size"] and String(s.get("length", "")) == STANDARD["length"]
+
+
+## `--bench-crowd=cull=off,anim=off,...` of a launch (CROWD_KEYS) as {opts: CrowdView.apply_cost / setup keys, unknown: the tokens that are not a setting}.
+static func parse_crowd(args: PackedStringArray) -> Dictionary:
+	var opts := {}
+	var unknown: Array = []
+	var bands := {}
+	var anim := ""
+	for a in args:
+		if not a.begins_with("--bench-crowd="):
+			continue
+		for tok in a.substr(14).split(",", false):
+			var kv := tok.split("=", false, 1)
+			if kv.size() != 2 or not CROWD_KEYS.has(kv[0]):
+				unknown.append(tok)
+				continue
+			var v: String = kv[1]
+			var flag := v in ["on", "off"]
+			match kv[0]:
+				"cull", "thrall_shadows":
+					if flag:
+						opts["cull" if kv[0] == "cull" else "thrall_shadows"] = v == "on"
+					else:
+						unknown.append(tok)
+				"anim":
+					if flag:
+						anim = v
+					else:
+						unknown.append(tok)
+				"mid_m", "mid_hz", "far_m", "far_hz":
+					if v.is_valid_float():
+						bands[kv[0]] = float(v)
+					else:
+						unknown.append(tok)
+				"lod":
+					var d := v.split("/", false)
+					if d.size() >= 1 and d.size() <= 2 and d.size() == Array(d).filter(func(x: String) -> bool: return x.is_valid_float()).size():
+						opts["lod_distances"] = PackedFloat32Array(Array(d).map(func(x: String) -> float: return float(x)))
+					else:
+						unknown.append(tok)
+				"reserve":
+					if v.is_valid_int() and int(v) > 0:
+						opts["reserve"] = int(v)
+					else:
+						unknown.append(tok)
+	if anim == "off":
+		opts["anim_lod"] = false
+	elif not bands.is_empty():
+		opts["anim_lod"] = bands
+	elif anim == "on":
+		opts["anim_lod"] = true
+	return {"opts": opts, "unknown": unknown}
+
+
+## The crowd's settings as one line of the report (DmCrowd.settings()).
+static func crowd_line(c: Dictionary) -> String:
+	if c.is_empty():
+		return "not in this build"
+	var lod: PackedFloat32Array = c.get("lod_distances", PackedFloat32Array())
+	var lods: PackedStringArray = []
+	for x in lod:
+		lods.append("%d" % roundi(x))
+	var anim := "off (every body every frame)"
+	if bool(c.get("anim_lod", false)):
+		anim = "%s Hz beyond %d m, %s Hz beyond %d m" % [str(c["anim_mid_hz"]), roundi(float(c["anim_mid_m"])), str(c["anim_far_hz"]), roundi(float(c["anim_far_m"]))]
+	var kept := "" if not bool(c.get("culling", false)) else ("; a caster outside the view stays %s" % ("while the moon's light carries its shadow in" if bool(c.get("light_known", false)) else "within 12 m of the view's edge (the moon's direction is not known)"))
+	return "mesh levels at %s m; %d instances reserved a group; animation %s; culling %s; thralls %s shadows; the nearest %d enemies cast (%d once crowded)%s" % [
+		" / ".join(lods) if not lods.is_empty() else "-", int(c.get("reserve", 0)), anim, "on" if bool(c.get("culling", false)) else "off",
+		"cast" if bool(c.get("thrall_shadows", true)) else "do not cast", int(c.get("shadow_casters", 0)), int(c.get("shadow_casters_crowded", 0)), kept]
 
 
 ## The playable disciplines' indices (the four necromancers + the Reaper), in the character select's order.
@@ -271,6 +349,10 @@ func run() -> Dictionary:
 	var opts := {"audio": false, "settings": settings}
 	if baked_dir != "":
 		opts["baked_dir"] = baked_dir
+	var asked: Dictionary = {"opts": crowd_opts, "unknown": []} if not crowd_opts.is_empty() else parse_crowd(OS.get_cmdline_user_args())
+	for t: String in asked["unknown"]:
+		printerr("BENCHMARK ignored --bench-crowd setting '%s' (%s)" % [t, ", ".join(CROWD_KEYS)])
+	opts.merge(asked["opts"], true)   # (the crowd's cost: levels of detail, reserve, culling, animation bands, thrall shadows)
 	_fight = await DmBenchFight.boot(self, discipline, opts, area)
 	game = _fight["game"]
 	game.perf.apply(settings)   # the HUD applied the player's own settings while the game started (their V-Sync included): the run's win
@@ -468,6 +550,8 @@ func _reset_acc() -> void:
 	_en_sum = 0.0
 	_th_sum = 0.0
 	_boss_ticks = 0
+	_crowd.clear()
+	_crowd_n = 0
 
 
 func _process(dt: float) -> void:
@@ -529,6 +613,11 @@ func _tick() -> void:
 					_loot_sum += m.loot_view.count()
 		_en_min = mini(_en_min, game.director.alive_count())
 		_th_sum += _held_thralls
+		if host != null and host.view != null and host.view.crowd != null:
+			var cs: Dictionary = host.view.crowd.stats()
+			for k: String in CROWD_COUNTERS:
+				_crowd[k] = float(_crowd.get(k, 0.0)) + float(cs[k])
+			_crowd_n += 1
 		if boss_id != "" and game.bosses.active_boss() != null:
 			_boss_ticks += 1
 	if whole != _shown_s:
@@ -557,7 +646,11 @@ func _summary() -> Dictionary:
 	var sync_ms := float(_core.get("sync_us", 0)) / 1000.0 / ticks
 	var events_ms := float(_core.get("dispatch_us", 0)) / 1000.0 / ticks
 	var per_frame := float(_core.get("ticks", 0)) / d   # 60 Hz ticks per rendered frame: under 1 on a fast frame, 2 or 3 on a slow one (catch-up)
+	var crowd := {}
+	for k: String in _crowd:
+		crowd[k] = float(_crowd[k]) / maxf(1.0, _crowd_n)
 	return {
+		"crowd": crowd,
 		"label": "Fight", "frames": _n,
 		"avg_fps": 1000.0 / maxf(avg, 0.001), "avg_ms": avg, "median_ms": sorted[n / 2] if n > 0 else 0.0,
 		"p95_ms": sorted[mini(n - 1, int(n * 0.95))] if n > 0 else 0.0, "p99_ms": sorted[mini(n - 1, int(n * 0.99))] if n > 0 else 0.0,
@@ -711,6 +804,7 @@ func _meta(user: Dictionary) -> Dictionary:
 		"setup": setup_label(setup),
 		"core": core_version(),
 		"crowd_models": host.view.model_slots().size() if host != null and host.view != null else 0,
+		"crowd": host.view.crowd.settings() if host != null and host.view != null and host.view.crowd != null else {},
 		"fight": "%d enemies (same health and damage in every room, no elites), %d thralls%s, level 60 god mode, auto combat, seed %d, warm-up %d s, measured %d s" % [
 			enemies, thralls, boss_text(), SEED, int(warm_s), int(measure_s)],
 	}
@@ -741,6 +835,7 @@ static func format_text(r: Dictionary) -> String:
 	L.append("CPU: %s (%d threads)   OS: %s" % [m["cpu"], m["cores"], m["os"]])
 	L.append("Resolution: %s   Graphics preset: %s   Fps cap (setting): %s   V-Sync: %s" % [m["resolution"], m["preset"], str(m["fps_cap"]) if int(m["fps_cap"]) > 0 else "none", m["vsync"]])
 	L.append("Setup: %s" % m.get("setup", ""))
+	L.append("Crowd: %s" % crowd_line(m.get("crowd", {})))
 	L.append("Fight: %s   kills during the run: %d" % [m["fight"], int(r.get("kills", 0))])
 	var bo: Dictionary = r.get("boss", {})
 	if String(bo.get("id", "")) != "":
@@ -771,6 +866,12 @@ static func format_text(r: Dictionary) -> String:
 	if not bl.is_empty():
 		L.append("")
 		L.append_array(bl)
+	if not ph.is_empty() and not (ph[0] as Dictionary).get("crowd", {}).is_empty():
+		var c: Dictionary = ph[0]["crowd"]
+		L.append("")
+		L.append("Crowd per frame (average over the measured window, sampled %d times a second): %.0f bodies, %.0f drawn (%.0f MultiMeshes, %.0f k triangles) and %.0f outside the view; %.0f instances cast shadows (%.0f of them thralls; %.0f MultiMeshes, %.0f k triangles again in the shadow pass); %.0f of the living worked out their pose (bands near / mid / far: %.0f / %.0f / %.0f)" % [
+			roundi(1.0 / TICK_S), c["bodies"], c["drawn"], c["groups_used"], c["triangles"] / 1000.0, c["culled"], c["casting"], c["casting_thralls"], c["groups_casting"], c["casting_triangles"] / 1000.0,
+			c["pose_updates"], c["band_near"], c["band_mid"], c["band_far"]])
 	var hl: Array = r.get("hitches", [])
 	if not hl.is_empty():
 		var with_k := 0

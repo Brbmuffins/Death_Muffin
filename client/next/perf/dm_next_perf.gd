@@ -60,10 +60,11 @@ func apply(s: Dictionary) -> void:
 		if b.env != null:
 			DmGraphicsPreset.apply_environment(b.env, preset)
 	var host: Node = game.get("core_host") if game != null else null
-	var view: Node = host.get("view") if host != null else null
-	var crowd: RefCounted = view.get("crowd") if view != null else null
-	if crowd != null:
-		crowd.set_shadow_policy(int(gp["casters"]), int(gp["casters_crowd"]), bool(gp["thralls_cast"]))
+	var view: CrowdView = host.get("view") if host != null else null
+	if view != null and view.crowd != null:
+		view.set_shadow_policy(int(gp["casters"]), int(gp["casters_crowd"]), bool(gp["thralls_cast"]))   # (the benchmark may override whether thralls cast)
+		if b != null and b.moon != null and b.moon.is_inside_tree():
+			view.set_light_direction(-b.moon.global_transform.basis.z)   # the crowd keeps a casting body just outside the view while its shadow falls in
 	var vp := get_viewport()
 	if vp != null:
 		DmGraphicsPreset.apply_render(vp, preset)

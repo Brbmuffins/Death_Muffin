@@ -6,7 +6,9 @@ extends SceneTree
 ## stride plan, the body layer's pose); the C++ is held against them on random inputs and on the views' own clocks. Then: the clip of every state
 ## and the walk/run switch, the blends and the packing, the hit flash, the knock, the death into a corpse, the rise, the hover, the Gargoyle's dive, the shadow group,
 ## the level-of-detail split, interpolation, a Full Party crowd driven by a real DmCore (events not consumed, rows equal for a guest, no growth)
-## and the time draw() takes (INFO only). Bakes the models it needs into a scratch folder (about 25 s).
+## and the time draw() takes (INFO only); the crowd's cost (README "Crowd cost"): bodies outside the camera's view not written (against the engine's own frustum planes, the drawn
+## range packed, a caster kept while its shadow falls in), the animation bands (poses worked out per second per band, the same bytes near the hero), the shadow counters.
+## Bakes the models it needs into a scratch folder (about 25 s).
 ## Run: godot --headless --path client --script res://tests/crowd_view.gd
 
 const Baker := preload("res://crowd/crowd_baker.gd")
@@ -61,6 +63,7 @@ class ErrorLog:
 
 var errlog := ErrorLog.new()
 var godot_dir: String
+var cam: Camera3D      ## the game's camera, for the crowd cost sections
 var live_assets: String   ## where the models' sources are: skeleton_thrall is not synced into client/assets yet
 var data := {}      ## model slug -> CrowdVatData
 var keep := []      ## MultiMeshes the RIDs belong to
@@ -303,6 +306,7 @@ func _initialize() -> void:
 			quit(1)
 			return
 		data[slug] = ResourceLoader.load(OUT.path_join(slug).path_join("model.tres"), "", ResourceLoader.CACHE_MODE_REPLACE)
+	make_camera()
 	baked_data()
 	pure_helpers()
 	turning_and_legs()
@@ -317,8 +321,12 @@ func _initialize() -> void:
 	the_hound()
 	shadows_and_lod()
 	interpolation()
+	culling_and_packing()
+	shadow_reach()
+	animation_bands()
 	full_party()
 	armed_variants()
+	cam.get_parent().queue_free()
 	_remove_dir(OUT)
 	check(errlog.errors.is_empty(), "zero script errors or engine errors in the log (%d: %s)" % [errlog.errors.size(), "; ".join(errlog.errors.slice(0, 3))])
 	print("INFO crowd_view: %d checks" % checks)
@@ -1064,6 +1072,352 @@ func interpolation() -> void:
 	check(absf(sin(info(c, 4).yaw)) < 0.3, "yaw is interpolated across pi (%.2f)" % info(c, 4).yaw)
 
 
+# ---------------------------------------------------------------------------------------------------------------------- crowd cost
+
+## The game's camera (world.json: fov 40, near 0.5, far 260, 22 m away at 0.82 up and 0.6 back, looking just past the hero): a real Camera3D, so the view the crowd gets and the planes
+## it is held against are the engine's own, as CrowdView passes them.
+func make_camera() -> void:
+	var screen := SubViewport.new()   # a 16:9 screen (the headless window is square)
+	screen.size = Vector2i(1280, 720)
+	root.add_child(screen)
+	cam = Camera3D.new()
+	cam.fov = 40.0
+	cam.near = 0.5
+	cam.far = 260.0
+	cam.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF   # as DmCameraRig: it is moved from _process, and its transform is its place
+	screen.add_child(cam)
+	cam.global_position = Vector3(0.0, 22.0 * 0.82, 22.0 * 0.6)
+	cam.look_at(Vector3(0.0, 0.6, -1.5), Vector3.UP)
+
+
+func cam_xf() -> Transform3D:
+	return cam.get_camera_transform()
+
+
+## What CrowdView hands DmCrowd.draw: the camera's projection times the inverse of its transform.
+func view_proj() -> Projection:
+	return cam.get_camera_projection() * Projection(cam.get_camera_transform().affine_inverse())
+
+
+## draw() with the game camera's view, `n` frames.
+func draw_view(c: RefCounted, n: int, dt: float = DT, alpha: float = 0.0) -> void:
+	var vp := view_proj()
+	var at := cam_xf().origin
+	for i in n:
+		c.draw(dt, alpha, at, vp)
+		clock_ms += dt * 1000.0
+
+
+## The position a row is drawn at, as a key (centimetres): rows carry no id.
+func spot(x: float, z: float) -> Vector2i:
+	return Vector2i(roundi(x * 100.0), roundi(z * 100.0))
+
+
+## The worst (largest) distance beyond any of the engine's frustum planes: <= 0 inside, > 0 outside by that much.
+func outside_by(planes: Array, p: Vector3) -> float:
+	var worst := -INF
+	for pl: Plane in planes:
+		worst = maxf(worst, pl.distance_to(p))
+	return worst
+
+
+## Bodies outside the camera's view are not written: against the engine's own frustum planes on random bodies (a body inside is always drawn, one farther out than its bounding
+## sphere never is), the drawn range packed (buffer() holds exactly the drawn rows), the counters adding up, and no view or culling off drawing everything.
+func culling_and_packing() -> void:
+	var planes: Array = cam.get_frustum()
+	check(planes.size() == 6 and planes.all(func(pl: Plane) -> bool: return pl.distance_to(Vector3(0.0, 0.6, -1.5)) <= 0.0), "the engine's frustum planes face outward (the look-at point is inside all six)")
+	var c := new_crowd()
+	c.set_shadow_policy(0, 0, false)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 424242
+	var bodies := []
+	var spots: Array[Vector2] = []
+	for i in 240:
+		var p := Vector2(rng.randf_range(-45.0, 45.0), rng.randf_range(-45.0, 45.0))
+		spots.append(p)
+		bodies.append(body(1000 + i, ENEMY, ROBBER, IDLE, p.x, p.y))
+	feed(c, bodies)
+	draw_view(c, 12)   # past the first ranking: nobody casts
+	var rr: float = data["grave_robber"].bounding_radius() + 0.75   # the body's sphere at scale 1, and the slack for its body layer
+	var drawn_at := {}
+	for r in rows(c):
+		drawn_at[spot(r.xf.origin.x, r.xf.origin.z)] = true
+	var inside := 0
+	var beyond := 0
+	var margin := 0
+	var wrong := 0
+	for p in spots:
+		var d := outside_by(planes, Vector3(p.x, 0.0, p.y))
+		var drawn: bool = drawn_at.has(spot(p.x, p.y))
+		if d <= 0.0:
+			inside += 1
+			wrong += 0 if drawn else 1
+		elif d > rr + 0.01:
+			beyond += 1
+			wrong += 1 if drawn else 0
+		else:
+			margin += 1
+	var st: Dictionary = c.stats()
+	check(wrong == 0, "no body in view is culled and none beyond its sphere is drawn (%d wrong)" % wrong)
+	check(inside >= 10 and beyond >= 100 and margin >= 5, "the random field has bodies inside (%d), beyond the margin (%d) and in it (%d)" % [inside, beyond, margin])
+	check(st.drawn == drawn_at.size() and st.drawn + st.culled == 240 and st.culled >= beyond, "drawn %d + culled %d = 240 bodies, none lost (%d beyond the margin)" % [st.drawn, st.culled, beyond])
+	var counted := 0
+	for l in lods[ROBBER]:
+		counted += c.instance_count(ROBBER, l, false)
+		check(c.buffer(ROBBER, l, false).size() == c.instance_count(ROBBER, l, false) * 20, "level %d: the buffer holds exactly its drawn rows (packed, no gap)" % l)
+	check(counted == st.drawn, "the groups hold the %d drawn instances" % st.drawn)
+	var tris := 0
+	var used := 0
+	for l in lods[ROBBER]:
+		tris += c.instance_count(ROBBER, l, false) * int(data["grave_robber"].lod_triangles[l])
+		used += 1 if c.instance_count(ROBBER, l, false) > 0 else 0
+	check(st.triangles == tris and st.casting_triangles == 0 and st.groups_used == used and st.groups_casting == 0 and tris > 0, "the counters name the triangles (%d) and the MultiMeshes (%d) drawn, none casting" % [st.triangles, st.groups_used])
+	print("INFO culling: %d of 240 random bodies drawn (%d inside the frustum, %d in the margin)" % [st.drawn, inside, margin])
+	# no view: everything is drawn; culling off: the view is ignored
+	c.draw(DT, 0.0, cam_xf().origin)
+	check(c.stats().drawn == 240 and c.stats().culled == 0, "a draw without a view writes every body")
+	c.set_culling(false)
+	draw_view(c, 1)
+	check(c.stats().drawn == 240 and c.stats().culled == 0, "culling off writes every body whatever the view")
+	c.set_culling(true)
+	draw_view(c, 1)
+	check(c.stats().drawn == drawn_at.size(), "culling back on culls again")
+	# a body walks out of the view and back: it is not drawn while out, and drawn again at once
+	var w := new_crowd()
+	w.set_shadow_policy(0, 0, false)
+	feed(w, [body(1, ENEMY, ROBBER, IDLE, 0.0, 0.0)])
+	draw_view(w, 12)
+	check(w.instance_count(ROBBER, 0) + w.instance_count(ROBBER, 1) == 1, "a body in front of the camera is drawn")
+	feed(w, [body(1, ENEMY, ROBBER, IDLE, 90.0, 0.0)])   # 90 m to the side in one tick (a teleport: not glided)
+	draw_view(w, 1)
+	check(w.stats().drawn == 0 and w.stats().culled == 1, "a body 90 m to the side is not drawn")
+	feed(w, [body(1, ENEMY, ROBBER, IDLE, 0.0, 0.0)])
+	draw_view(w, 1)
+	check(w.stats().drawn == 1 and w.stats().culled == 0, "and drawn again the frame it is back")
+	# a model's bounding sphere: the baked bounds' farthest corner from the feet
+	for slug in SLUGS:
+		var d: CrowdVatData = data[slug]
+		var lo := d.aabb.position
+		var hi := d.aabb.end
+		var far := Vector3(maxf(absf(lo.x), absf(hi.x)), maxf(absf(lo.y), absf(hi.y)), maxf(absf(lo.z), absf(hi.z))).length()
+		check(near(d.bounding_radius(), far, 1e-5) and near(d.crowd_data().radius, far, 1e-5) and d.bounding_radius() >= d.height * 0.5, "%s: bounding radius %.2f m (height %.2f m, bounds %s)" % [slug, d.bounding_radius(), d.height, d.aabb])
+
+
+## A shadow caster just outside the view stays while its shadow falls in: the light-space test (the sphere swept along the light to the ground), and the margin when the
+## light's direction is not known. A body that does not cast is culled as any other.
+func shadow_reach() -> void:
+	var planes: Array = cam.get_frustum()
+	var rr: float = data["grave_robber"].bounding_radius() + 0.75
+	var spot_x := -32.0   # well beyond the left edge of the view at the hero's depth (about -14 m)
+	check(outside_by(planes, Vector3(spot_x, 0.0, 0.0)) > rr + 4.0, "the test spot is outside the view by more than its sphere (%.1f m)" % outside_by(planes, Vector3(spot_x, 0.0, 0.0)))
+	var cases := [
+		{"what": "the light travels toward the view", "light": Vector3(1.0, -0.15, 0.0), "casts": true, "drawn": true},
+		{"what": "the light travels away from the view", "light": Vector3(-1.0, -0.15, 0.0), "casts": true, "drawn": false},
+		{"what": "the same light, a body that does not cast", "light": Vector3(1.0, -0.15, 0.0), "casts": false, "drawn": false},
+		{"what": "a light from straight above", "light": Vector3(0.0, -1.0, 0.0), "casts": true, "drawn": false},
+	]
+	for k in cases:
+		var c := new_crowd()
+		c.set_focus(Vector2(spot_x, 0.0))
+		c.set_shadow_policy(1 if k.casts else 0, 1 if k.casts else 0, false)
+		c.set_shadow_light(k.light)
+		feed(c, [body(1, ENEMY, ROBBER, IDLE, spot_x, 0.0)])
+		draw_view(c, 12)
+		check(info(c, 1).shadow == k.casts, "%s: the body %s" % [k.what, "casts" if k.casts else "does not cast"])
+		check((c.stats().drawn == 1) == k.drawn, "%s: the body is %s (%d drawn)" % [k.what, "drawn" if k.drawn else "culled", c.stats().drawn])
+		if k.casts and k.drawn:
+			check(c.instance_count(ROBBER, 0, true) + c.instance_count(ROBBER, 1, true) == 1 and c.stats().casting == 1, "%s: it is drawn in a shadow group" % k.what)
+	# the light's direction is not known: a caster is kept within 12 m past the edge, culled beyond it
+	for k in [{"x": -20.0, "drawn": true}, {"x": -50.0, "drawn": false}]:
+		var c := new_crowd()
+		c.set_focus(Vector2(k.x, 0.0))
+		c.set_shadow_policy(1, 1, false)
+		feed(c, [body(1, ENEMY, ROBBER, IDLE, k.x, 0.0)])
+		draw_view(c, 12)
+		check(info(c, 1).shadow and (c.stats().drawn == 1) == k.drawn, "no light known: a caster %.0f m to the side is %s (outside by %.1f m)" % [k.x, "kept" if k.drawn else "culled", outside_by(planes, Vector3(k.x, 0.0, 0.0))])
+	# the thralls that always cast: counted, and the setting takes them out
+	var c := new_crowd()
+	var thr := []
+	for i in 12:
+		thr.append(body(10 + i, THRALL, SKELETON, T_IDLE, float(i) - 6.0, 2.0))
+	feed(c, thr)
+	draw_view(c, 12)
+	check(c.stats().casting == 12 and c.stats().casting_thralls == 12, "12 thralls cast: the counter says %d (%d thralls)" % [c.stats().casting, c.stats().casting_thralls])
+	var per_thrall: int = data["skeleton_thrall"].lod_triangles[0]
+	check(c.stats().casting_triangles == 12 * per_thrall and c.stats().triangles == 12 * per_thrall and c.stats().groups_casting == 1 and c.stats().groups_used == 1,
+		"and the shadow pass takes their %d triangles in %d MultiMesh" % [c.stats().casting_triangles, c.stats().groups_casting])
+	c.set_shadow_policy(12, 8, false)
+	draw_view(c, 1)
+	check(c.stats().casting == 0 and c.stats().casting_thralls == 0 and c.stats().casting_triangles == 0 and c.stats().groups_casting == 0 and c.stats().triangles == 12 * per_thrall,
+		"thralls set not to cast: the counter says %d, and the same %d triangles are drawn" % [c.stats().casting, c.stats().triangles])
+	check(not c.settings().thrall_shadows and c.settings().shadow_casters == 12 and c.settings().shadow_casters_crowded == 8, "the settings say what is in force")
+	c.set_shadow_policy(12, 8, true)
+	draw_view(c, 1)
+	check(c.stats().casting == 12, "and back on: %d cast" % c.stats().casting)
+
+
+## The pose of a body far from the camera is worked out less often: 24 times a second beyond 32 m, 10 beyond 60 m, every frame nearer; the body is placed every frame
+## whatever its band; a tick that changes its state, look or health shows at once; one that was outside the view keeps the far rate and is brought up to date on its way back.
+func animation_bands() -> void:
+	var near_z := -5.0    # distance to the camera (0, 22, 14): 29 m, 40 m, 63 m
+	var mid_z := -20.0
+	var far_z := -45.0
+	check(Vector3(0.0, 22.0, near_z - 14.0).length() < 32.0 and Vector3(0.0, 22.0, mid_z - 14.0).length() > 32.0 and Vector3(0.0, 22.0, mid_z - 14.0).length() < 60.0 and Vector3(0.0, 22.0, far_z - 14.0).length() > 60.0, "the three test spots are in the near, mid and far band")
+	var c := new_crowd()
+	c.set_shadow_policy(0, 0, false)
+	c.set_anim_lod(true, 32.0, 24.0, 60.0, 10.0)
+	var twin := new_crowd()   # the same bodies with the bands off: every frame, as ever
+	twin.set_shadow_policy(0, 0, false)
+	feed(c, [body(1, ENEMY, ROBBER, IDLE, 0.0, near_z), body(2, ENEMY, ROBBER, IDLE, 3.0, mid_z), body(3, ENEMY, ROBBER, IDLE, 6.0, far_z)])
+	feed(twin, [body(1, ENEMY, ROBBER, IDLE, 0.0, near_z), body(2, ENEMY, ROBBER, IDLE, 3.0, mid_z), body(3, ENEMY, ROBBER, IDLE, 6.0, far_z)])
+	var frames := 120
+	var times := {1: [], 2: [], 3: []}
+	var twin_times := {1: [], 2: [], 3: []}
+	var place := {1: Vector2(0.0, near_z), 2: Vector2(3.0, mid_z), 3: Vector2(6.0, far_z)}
+	var bands_ok := true
+	for f in frames:
+		c.draw(DT, 0.0, CAM)
+		twin.draw(DT, 0.0, CAM)
+		clock_ms += DT * 1000.0
+		bands_ok = bands_ok and c.stats().band_near == 1 and c.stats().band_mid == 1 and c.stats().band_far == 1
+		for id in place:
+			times[id].append(row_at(c, place[id].x, place[id].y).custom.g)
+			twin_times[id].append(row_at(twin, place[id].x, place[id].y).custom.g)
+	check(bands_ok, "one live body in each band, every frame")
+	var steps := {}
+	for id in [1, 2, 3]:
+		var n := 0
+		for i in range(1, frames):
+			n += 1 if not is_equal_approx(times[id][i], times[id][i - 1]) else 0
+		steps[id] = n
+	var upd := {1: info(c, 1).pose_updates, 2: info(c, 2).pose_updates, 3: info(c, 3).pose_updates}
+	check(upd[1] == frames, "the near body works its pose out every frame (%d of %d)" % [upd[1], frames])
+	check(upd[2] >= 48 and upd[2] <= 50, "the mid body 24 times a second: %d pose updates in %d frames at 60 Hz (48 + its first)" % [upd[2], frames])
+	check(upd[3] >= 20 and upd[3] <= 22, "the far body 10 times a second: %d pose updates in %d frames (20 + its first)" % [upd[3], frames])
+	check(steps[1] == frames - 1 and absi(steps[2] - 48) <= 2 and absi(steps[3] - 20) <= 2, "the time written to the instance steps %d, %d and %d times (every frame, 24 Hz, 10 Hz)" % [steps[1], steps[2], steps[3]])
+	# the time a throttled body writes is the time the full-rate twin had at that moment, a little behind: never ahead, and by less than the gap between its updates
+	var lag := {2: 0.0, 3: 0.0}
+	var ahead := false
+	for id in [2, 3]:
+		for i in frames:
+			var gap: float = twin_times[id][i] - times[id][i]
+			if absf(gap) > 5.0:   # a loop wrapped between the two
+				continue
+			ahead = ahead or gap < -1e-4
+			lag[id] = maxf(lag[id], gap)
+	print("INFO animation bands over %d frames at 60 Hz: pose updates near %d, mid %d, far %d; the written time lags at most %.3f s (mid), %.3f s (far)" % [frames, upd[1], upd[2], upd[3], lag[2], lag[3]])
+	check(not ahead and lag[2] <= 0.06 and lag[3] <= 0.12 and lag[3] > 0.0, "a throttled body's time is never ahead of the full-rate body's and lags by at most %.3f s (24 Hz) and %.3f s (10 Hz)" % [lag[2], lag[3]])
+	# the number of poses worked out a frame is spread, not bunched: 30 mid bodies, a tick of frames
+	var m := new_crowd()
+	m.set_shadow_policy(0, 0, false)
+	m.set_anim_lod(true, 32.0, 24.0, 60.0, 10.0)
+	var herd := []
+	for i in 30:
+		herd.append(body(100 + i, ENEMY, ROBBER, IDLE, float(i) * 1.5 - 20.0, mid_z))
+	feed(m, herd)
+	m.draw(DT, 0.0, CAM)
+	check(m.stats().pose_updates == 30, "the first frame brings every body's pose up (%d)" % m.stats().pose_updates)
+	var peak := 0
+	var total := 0
+	for f in 120:
+		m.draw(DT, 0.0, CAM)
+		peak = maxi(peak, m.stats().pose_updates)
+		total += m.stats().pose_updates
+	print("INFO 30 mid-band bodies: %d pose updates in 120 frames, at most %d in one frame" % [total, peak])
+	check(peak <= 18 and absi(total - 30 * 48) <= 30 * 2, "30 mid bodies: at most %d poses a frame (of 30), %d over 120 frames (30 x 48 = 1440)" % [peak, total])
+	# placed every frame: a far body walking draws at its interpolated place each frame, its pose rate notwithstanding
+	var p := new_crowd()
+	p.set_shadow_policy(0, 0, false)
+	p.set_anim_lod(true, 32.0, 24.0, 60.0, 10.0)
+	feed(p, [body(1, ENEMY, ROBBER, CHASE, 0.0, far_z, {"speed": 3.0})])
+	feed(p, [body(1, ENEMY, ROBBER, CHASE, 0.05, far_z, {"speed": 3.0})])
+	var smooth := true
+	var pose_steps := 0
+	var last_t := -1.0
+	for f in 24:
+		p.draw(DT, float(f % 4) / 4.0, CAM)
+		var want := 0.05 * float(f % 4) / 4.0
+		smooth = smooth and near(info(p, 1).pos.x, want, 1e-5)
+		var r := row_at(p, want, far_z)
+		smooth = smooth and not r.is_empty()
+		if not r.is_empty():
+			pose_steps += 1 if not is_equal_approx(r.custom.g, last_t) else 0
+			last_t = r.custom.g
+	check(smooth and pose_steps < 12, "a far walking body is drawn at its interpolated place every frame while its pose steps %d times in 24 frames" % pose_steps)
+	# a tick that changes the state shows at once: a swing begins, a hit flashes
+	var e := new_crowd()
+	e.set_shadow_policy(0, 0, false)
+	e.set_anim_lod(true, 32.0, 24.0, 60.0, 10.0)
+	feed(e, [body(1, ENEMY, ROBBER, IDLE, 0.0, far_z), body(2, ENEMY, ROBBER, IDLE, 4.0, far_z)])
+	e.draw(DT, 0.0, CAM)
+	for f in 7:   # settle on an off-beat frame of the 10 Hz band
+		e.draw(DT, 0.0, CAM)
+	feed(e, [body(1, ENEMY, ROBBER, ATTACK, 0.0, far_z, {"action_s": 0.5}), body(2, ENEMY, ROBBER, IDLE, 4.0, far_z)], [[2, 5.0, 20.0, 30.0]])
+	e.draw(DT, 0.0, CAM)
+	var swing_clip: int = data["grave_robber"].clip_index(info(e, 1).clip)
+	check(info(e, 1).clip.begins_with("attack") and int(row_at(e, 0.0, far_z).custom.r) == swing_clip, "a far body's swing is in the buffer on the frame its tick says so (%s, clip %d)" % [info(e, 1).clip, swing_clip])
+	check(near(row_at(e, 4.0, far_z).color.a, 0.875, 1e-6), "and a far body's hit flashes on that frame, worn down by that frame only (%.3f)" % row_at(e, 4.0, far_z).color.a)
+	# a swing, a flinch, a recoil is always every frame (DmCreature.busy), and the rate comes back when it is over
+	var u0: int = info(e, 1).pose_updates
+	for f in 24:
+		e.draw(DT, 0.0, CAM)
+	check(info(e, 1).one_shot != "" and info(e, 1).pose_updates - u0 == 24, "a far body in a swing works its pose out every frame (%d of 24)" % (info(e, 1).pose_updates - u0))
+	for f in 120:
+		e.draw(DT, 0.0, CAM)
+	u0 = info(e, 1).pose_updates
+	for f in 60:
+		e.draw(DT, 0.0, CAM)
+	check(info(e, 1).one_shot == "" and info(e, 1).pose_updates - u0 == 10, "and 10 times a second again once the swing is over (%d in 60 frames)" % (info(e, 1).pose_updates - u0))
+	# near the hero nothing changes: the bands on or off write the same bytes
+	var a := new_crowd()
+	var b := new_crowd()
+	a.set_shadow_policy(0, 0, false)
+	b.set_shadow_policy(0, 0, false)
+	a.set_anim_lod(true, 32.0, 24.0, 60.0, 10.0)
+	var act := [body(1, ENEMY, ROBBER, CHASE, 0.0, -2.0, {"speed": 3.0}), body(2, THRALL, SKELETON, T_MOVE, 4.0, -8.0, {"speed": 4.0}), body(3, ENEMY, ROBBER, IDLE, -6.0, -6.0)]
+	feed(a, act)
+	feed(b, act)
+	var same := true
+	for f in 90:
+		if f == 30:
+			act[0].state = ATTACK
+			act[0].action_s = 0.4
+			feed(a, act, [[3, 4.0, 10.0, 30.0]])
+			feed(b, act, [[3, 4.0, 10.0, 30.0]])
+		clock_ms += 0.0
+		a.draw(DT, float(f % 4) / 4.0, CAM)
+		b.draw(DT, float(f % 4) / 4.0, CAM)
+		same = same and buffers_equal(a, b)
+	check(same and a.stats().band_near == 3, "bodies in the near band write the same buffers with the bands on or off (90 frames, a swing and a hit)")
+	# outside the view: the far rate, and brought up to date on the way back
+	var o := new_crowd()
+	var ref := new_crowd()
+	for q in [o, ref]:
+		q.set_shadow_policy(0, 0, false)
+	o.set_anim_lod(true, 32.0, 24.0, 60.0, 10.0)
+	var away := [body(1, ENEMY, ROBBER, IDLE, 90.0, 0.0), body(2, ENEMY, ROBBER, IDLE, 0.0, -5.0)]
+	feed(o, away)
+	feed(ref, away)
+	var vp := view_proj()
+	var at := cam_xf().origin
+	for f in 120:
+		o.draw(DT, 0.0, at, vp)
+		ref.draw(DT, 0.0, at)   # (no view, no bands: every body, every frame)
+		clock_ms += DT * 1000.0
+	check(o.stats().culled == 1 and o.stats().drawn == 1, "one body in view, one outside (%d drawn, %d culled)" % [o.stats().drawn, o.stats().culled])
+	check(info(o, 1).pose_updates >= 20 and info(o, 1).pose_updates <= 22 and info(o, 2).pose_updates == 120, "outside the view: %d pose updates in 120 frames (the far rate, 10 a second); in view: %d" % [info(o, 1).pose_updates, info(o, 2).pose_updates])
+	feed(o, [body(1, ENEMY, ROBBER, IDLE, 0.0, -4.0), body(2, ENEMY, ROBBER, IDLE, 0.0, -5.0)])
+	feed(ref, [body(1, ENEMY, ROBBER, IDLE, 0.0, -4.0), body(2, ENEMY, ROBBER, IDLE, 0.0, -5.0)])
+	o.draw(DT, 0.0, at, vp)
+	ref.draw(DT, 0.0, at)
+	check(o.stats().culled == 0 and o.stats().drawn == 2 and near(info(o, 1).time, info(ref, 1).time, 1e-4), "back in view: drawn at once, its clip time up to date (%.4f against %.4f)" % [info(o, 1).time, info(ref, 1).time])
+	# the setting round trip and CrowdView's defaults
+	var s: Dictionary = o.settings()
+	check(s.anim_lod and s.culling and s.anim_mid_m == 32.0 and s.anim_mid_hz == 24.0 and s.anim_far_m == 60.0 and s.anim_far_hz == 10.0, "the settings say what is in force: %s" % str(s))
+	var bare := new_crowd()
+	check(not bare.settings().anim_lod and bare.settings().culling, "a bare DmCrowd draws every body every frame (the bands are CrowdView's to switch on)")
+
+
 # ---------------------------------------------------------------------------------------------------------------------- the Full Party
 
 const THRALL_BASE := {"warrior": [1.3, 1.0, 5.6], "shieldbearer": [1.3, 1.25, 5.2], "hound": [1.2, 0.7, 7.2], "wraith": [5.5, 1.1, 5.8],
@@ -1186,6 +1540,8 @@ func full_party() -> void:
 		crowd.draw([DT, 0.004, 0.03, 0.0][f % 4], float(f % 7) / 7.0, CAM)
 	var after: Dictionary = crowd.stats()
 	check(after.capacity_floats == before.capacity_floats and after.regrows == before.regrows and after.drawn == before.drawn, "no growth in the buffers over 300 steady frames (%d floats, %d regrows)" % [after.capacity_floats, after.regrows])
+	crowd_cost_in_the_party(crowd)
+	cost_options(view)
 	# sync reads the events and leaves them for take_events
 	core.step(DT)
 	core.damage(ids[3], 30.0, heroes[0])
@@ -1242,6 +1598,60 @@ func full_party() -> void:
 	check(crowd.stats().frames > frames0, "and draws every rendered frame")
 	view.queue_free()
 	await process_frame
+
+
+## The Full Party at the game's camera, and with the camera 10 m to the side (a part of the party out of the view): what culling and the thralls' shadows do to the counts
+## (deterministic; the same numbers on any machine).
+func crowd_cost_in_the_party(crowd: RefCounted) -> void:
+	var xf := cam_xf()
+	var aside := Transform3D(xf.basis, xf.origin + Vector3(10.0, 0.0, 0.0))
+	var vp_aside := cam.get_camera_projection() * Projection(aside.affine_inverse())
+	crowd.draw(DT, 0.0, xf.origin)
+	var all: Dictionary = crowd.stats()
+	crowd.draw(DT, 0.0, xf.origin, view_proj())
+	var home: Dictionary = crowd.stats()
+	check(home.drawn + home.culled == all.drawn and all.culled == 0, "the Full Party at the game's camera: %d of %d bodies drawn, %d outside the view" % [home.drawn, all.drawn, home.culled])
+	crowd.draw(DT, 0.0, aside.origin, vp_aside)
+	var cut: Dictionary = crowd.stats()
+	check(cut.culled > 0 and cut.drawn > 0 and cut.drawn + cut.culled == all.drawn, "the camera 10 m to the side: %d of %d bodies drawn, %d outside the view" % [cut.drawn, all.drawn, cut.culled])
+	var shadow_rows := 0
+	for m in 3:
+		for l in lods[m]:
+			shadow_rows += crowd.instance_count(m, l, true)
+	check(cut.casting == shadow_rows and cut.casting_thralls <= 32 and cut.casting >= cut.casting_thralls, "the casting counter (%d, %d of them thralls) is the shadow groups' instances (%d)" % [cut.casting, cut.casting_thralls, shadow_rows])
+	check(all.casting == 40 and all.casting_thralls == 32, "uncut, 8 enemies and 32 thralls cast (%d, %d thralls)" % [all.casting, all.casting_thralls])
+	crowd.set_shadow_policy(12, 8, false)
+	crowd.draw(DT, 0.0, xf.origin)
+	var bare: Dictionary = crowd.stats()
+	check(bare.casting_thralls == 0 and bare.casting == all.casting - all.casting_thralls and bare.drawn == all.drawn, "thralls not casting: %d instances cast (%d with them), the same %d drawn" % [bare.casting, all.casting, bare.drawn])
+	crowd.set_shadow_policy(12, 8, true)
+	crowd.draw(DT, 0.0, xf.origin)
+	check(crowd.stats().casting == all.casting, "and casting again: %d" % crowd.stats().casting)
+	print("INFO Full Party: %d bodies; at the game's camera %d drawn, %d outside; the camera 10 m aside %d drawn, %d outside; %d instances cast shadows (%d thralls), %d without the thralls'; poses worked out %d of %d (bands near/mid/far %d/%d/%d)" % [
+		all.bodies, home.drawn, home.culled, cut.drawn, cut.culled, all.casting, all.casting_thralls, bare.casting, cut.pose_updates, cut.band_near + cut.band_mid + cut.band_far, cut.band_near, cut.band_mid, cut.band_far])
+	print("INFO Full Party shadows: %d MultiMeshes of %d, %d k triangles drawn and %d k of them again in the shadow pass; the thralls' shadows are %d k of those, %d MultiMeshes" % [
+		all.groups_casting, all.groups_used, all.triangles / 1000, all.casting_triangles / 1000, (all.casting_triangles - bare.casting_triangles) / 1000, all.groups_casting - bare.groups_casting])
+
+
+## CrowdView's cost options (setup, or a benchmark's `--bench-crowd`): each key changes the crowd's settings, a key that is not there takes its default, and the thrall shadows
+## override beats the graphics preset's whether thralls cast.
+func cost_options(view: CrowdView) -> void:
+	var s: Dictionary = view.crowd.settings()
+	check(s.culling and s.anim_lod and s.anim_mid_m == 32.0 and s.anim_mid_hz == 24.0 and s.anim_far_m == 60.0 and s.anim_far_hz == 10.0 and s.thrall_shadows and s.reserve == CrowdView.RESERVE and view.thrall_shadows == -1,
+		"CrowdView's defaults: culling on, the bands 24 Hz from 32 m and 10 Hz from 60 m, the preset's thrall shadows, %d reserved (%s)" % [CrowdView.RESERVE, str(s)])
+	view.apply_cost({"cull": false, "anim_lod": {"mid_hz": 12.0, "far_m": 80.0}, "thrall_shadows": false})
+	s = view.crowd.settings()
+	check(not s.culling and not view.cull and s.anim_lod and s.anim_mid_hz == 12.0 and s.anim_far_m == 80.0 and s.anim_far_hz == 10.0 and s.anim_mid_m == 32.0 and view.thrall_shadows == 0, "options: no culling, a 12 Hz mid band to 80 m (%s)" % str(s))
+	view.set_shadow_policy(12, 8, true)   # the preset says thralls cast; the override says no
+	check(not view.crowd.settings().thrall_shadows, "the thrall shadows override beats the graphics preset")
+	view.apply_cost({"anim_lod": false})
+	s = view.crowd.settings()
+	check(view.cull and s.culling and not s.anim_lod and view.thrall_shadows == -1, "anim_lod false switches the bands off; a key that is not there takes its default (culling back on, the preset's thrall shadows)")
+	view.set_shadow_policy(12, 8, true)
+	check(view.crowd.settings().thrall_shadows, "and the preset decides the thrall shadows again")
+	view.set_light_direction(Vector3(0.4, -0.86, -0.34))
+	check(view.crowd.settings().light_known, "the moon's direction is known to the crowd")
+	view.apply_cost({})
 
 
 ## The core steps once, the crowd reads it, the guest takes the same rows, both draw the frame, then the events are taken as the game layer does.
@@ -1398,6 +1808,9 @@ func new_crowd_from(view: CrowdView) -> RefCounted:
 			shadow.append(b.get_rid())
 		var slot: int = g.add_model(slug, d.crowd_data(), plain, shadow, view.lod_distances)
 		check(slot == slots[slug], "the guest's model slot of %s equals the view's" % slug)
+	var cost: Dictionary = view.crowd.settings()   # the same cost settings: the rows decide everything, the animation bands among it
+	g.set_anim_lod(cost.anim_lod, cost.anim_mid_m, cost.anim_mid_hz, cost.anim_far_m, cost.anim_far_hz)
+	g.set_culling(cost.culling)
 	return g
 
 

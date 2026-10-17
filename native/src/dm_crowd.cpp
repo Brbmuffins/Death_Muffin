@@ -68,11 +68,15 @@ void DmCrowd::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_champion_scale", "scale"), &DmCrowd::set_champion_scale);
 	ClassDB::bind_method(D_METHOD("set_shadow_policy", "casters", "crowded_casters", "thralls_cast"), &DmCrowd::set_shadow_policy);
 	ClassDB::bind_method(D_METHOD("set_seed", "seed"), &DmCrowd::set_seed);
+	ClassDB::bind_method(D_METHOD("set_culling", "on"), &DmCrowd::set_culling);
+	ClassDB::bind_method(D_METHOD("set_anim_lod", "on", "mid_m", "mid_hz", "far_m", "far_hz"), &DmCrowd::set_anim_lod);
+	ClassDB::bind_method(D_METHOD("set_shadow_light", "direction"), &DmCrowd::set_shadow_light);
+	ClassDB::bind_method(D_METHOD("settings"), &DmCrowd::settings);
 	ClassDB::bind_method(D_METHOD("reserve", "rows"), &DmCrowd::reserve);
 	ClassDB::bind_method(D_METHOD("clear"), &DmCrowd::clear);
 	ClassDB::bind_method(D_METHOD("sync", "core"), &DmCrowd::sync);
 	ClassDB::bind_method(D_METHOD("sync_rows", "body_ints", "body_floats", "hits", "corpse_ints", "corpse_floats"), &DmCrowd::sync_rows);
-	ClassDB::bind_method(D_METHOD("draw", "dt", "alpha", "camera"), &DmCrowd::draw);
+	ClassDB::bind_method(D_METHOD("draw", "dt", "alpha", "camera", "view_projection"), &DmCrowd::draw, DEFVAL(Projection(Vector4(), Vector4(), Vector4(), Vector4())));
 	ClassDB::bind_method(D_METHOD("buffer", "model", "lod", "shadow"), &DmCrowd::buffer, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("instance_count", "model", "lod", "shadow"), &DmCrowd::instance_count, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("stats"), &DmCrowd::stats);
@@ -96,6 +100,7 @@ int64_t DmCrowd::add_model(const String &p_slug, const Dictionary &p_data, const
 	dm::CrowdModel m;
 	m.slug = to_std(p_slug);
 	m.height = num(p_data, "height", 1.0);
+	m.radius = num(p_data, "radius", 0.0);
 	m.stride_walk = p_data.has("stride_walk") && num(p_data, "stride_walk", 0.0) > 0.0 ? num(p_data, "stride_walk", 0.7) : 0.7;  // DmAnimator.DEFAULT_WALK
 	m.stride_run = num(p_data, "stride_run", 0.0);
 	const PackedStringArray names = p_data.get("clip_names", PackedStringArray());
@@ -104,6 +109,10 @@ int64_t DmCrowd::add_model(const String &p_slug, const Dictionary &p_data, const
 	const PackedFloat32Array impact = p_data.get("clip_impact", PackedFloat32Array());
 	const PackedFloat32Array landing = p_data.get("clip_landing", PackedFloat32Array());
 	const PackedInt32Array loop = p_data.get("clip_loop", PackedInt32Array());
+	const PackedInt32Array tris = p_data.get("lod_triangles", PackedInt32Array());
+	for (int64_t i = 0; i < tris.size(); i++) {
+		m.lod_tris.push_back(tris[i]);
+	}
 	const int64_t n = names.size();
 	for (int64_t i = 0; i < n; i++) {
 		m.clip_names.push_back(to_std(names[i]));
@@ -129,6 +138,9 @@ int64_t DmCrowd::add_model(const String &p_slug, const Dictionary &p_data, const
 				}
 			}
 		}
+	}
+	if (p_lod_distances.size() > lod_cfg.size()) {  // (the levels' distances CrowdView was given: the report names them)
+		lod_cfg = p_lod_distances;
 	}
 	m.lods = int32_t(std::max<int64_t>(1, p_lod_rids.size()));
 	for (int32_t l = 0; l + 1 < m.lods && l < p_lod_distances.size(); l++) {
@@ -302,6 +314,40 @@ void DmCrowd::set_shadow_policy(int64_t p_casters, int64_t p_crowded_casters, bo
 
 void DmCrowd::set_seed(int64_t p_seed) {
 	view.seed = uint64_t(p_seed);
+}
+
+void DmCrowd::set_culling(bool p_on) {
+	view.cost.cull = p_on;
+}
+
+void DmCrowd::set_anim_lod(bool p_on, double p_mid_m, double p_mid_hz, double p_far_m, double p_far_hz) {
+	view.cost.anim_lod = p_on;
+	view.cost.mid_m = std::max(0.0, p_mid_m);
+	view.cost.mid_hz = std::max(0.0, p_mid_hz);
+	view.cost.far_m = std::max(view.cost.mid_m, p_far_m);
+	view.cost.far_hz = std::max(0.0, p_far_hz);
+}
+
+void DmCrowd::set_shadow_light(const Vector3 &p_direction) {
+	view.set_light(p_direction.x, p_direction.y, p_direction.z);
+}
+
+Dictionary DmCrowd::settings() const {
+	Dictionary d;
+	d["culling"] = view.cost.cull;
+	d["anim_lod"] = view.cost.anim_lod;
+	d["anim_mid_m"] = view.cost.mid_m;
+	d["anim_mid_hz"] = view.cost.mid_hz;
+	d["anim_far_m"] = view.cost.far_m;
+	d["anim_far_hz"] = view.cost.far_hz;
+	d["shadow_casters"] = view.shadow_casters;
+	d["shadow_casters_crowded"] = view.crowded_casters;
+	d["shadow_crowded_at"] = view.crowded_at;
+	d["thrall_shadows"] = view.thrall_shadows;
+	d["light_known"] = view.has_light_dir();
+	d["reserve"] = view.reserve_rows;
+	d["lod_distances"] = lod_cfg;
+	return d;
 }
 
 void DmCrowd::reserve(int64_t p_rows) {
@@ -520,7 +566,14 @@ void DmCrowd::sync_rows(const PackedInt32Array &p_body_ints, const PackedFloat32
 
 // ---------------------------------------------------------------------------------------------------------------- the frame
 
-void DmCrowd::draw(double p_dt, double p_alpha, const Vector3 &p_camera) {
+void DmCrowd::draw(double p_dt, double p_alpha, const Vector3 &p_camera, const Projection &p_view_projection) {
+	float vp[16];
+	for (int c = 0; c < 4; c++) {
+		for (int r = 0; r < 4; r++) {
+			vp[c * 4 + r] = float(p_view_projection.columns[c][r]);
+		}
+	}
+	view.set_view(vp);  // (all zeros is no camera: nothing is culled)
 	view.draw(p_dt, p_alpha, p_camera.x, p_camera.y, p_camera.z);
 	RenderingServer *rs = RenderingServer::get_singleton();
 	if (rs == nullptr) {
@@ -578,6 +631,18 @@ Dictionary DmCrowd::stats() const {
 	d["corpses"] = s.corpses;
 	d["fading"] = s.fading;
 	d["drawn"] = s.drawn;
+	d["culled"] = s.culled;
+	d["casting"] = s.casting;
+	d["casting_thralls"] = s.casting_thralls;
+	d["groups_used"] = s.groups_used;
+	d["groups_casting"] = s.groups_casting;
+	d["triangles"] = s.triangles;
+	d["casting_triangles"] = s.casting_triangles;
+	d["band_near"] = s.band[0];
+	d["band_mid"] = s.band[1];
+	d["band_far"] = s.band[2];
+	d["pose_updates"] = s.pose_updates;
+	d["pose_updates_total"] = s.pose_updates_total;
 	d["groups"] = s.groups;
 	d["capacity_floats"] = s.capacity_floats;
 	d["regrows"] = s.regrows;
@@ -623,6 +688,8 @@ Dictionary DmCrowd::info_of(const dm::View *p_view) const {
 	d["settle_t"] = v.settle_t;
 	d["has_settle"] = v.has_settle;
 	d["shadow"] = v.shadow;
+	d["band"] = v.band;
+	d["pose_updates"] = v.pose_updates;
 	d["hidden"] = v.hidden;
 	d["scale"] = v.scale;
 	d["rise_k"] = v.rise_k;

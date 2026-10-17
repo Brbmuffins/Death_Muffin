@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 #include "world.h"
 
@@ -25,6 +26,14 @@ constexpr double TOPPLE_RATE = 3.0, TOPPLE_Y = 0.2, MAX_STEP = 3.0, MOVING_SPEED
 constexpr double ENEMY_RISE_S = 1.1, THRALL_RISE_S = 0.9, ENEMY_SINK = 0.9, THRALL_SINK = 1.8;
 constexpr double FLASH_DECAY_ENEMY = 6.0, FLASH_DECAY_THRALL = 5.0;
 constexpr int32_t RERANK_EVERY = 10;
+// Crowd cost: a body's bounding sphere is taken this much bigger (the lunge, the squash, a knock), and a shadow is followed this far along the light.
+constexpr double CULL_SLACK = 0.75, SHADOW_RUN_MAX = 40.0;
+
+// 0..1, from the body's id alone (no dice are thrown, so nothing else a body does changes): where in its band's period a body's pose updates fall.
+double phase_of(int32_t p_id) {
+	const double x = double(p_id) * 0.6180339887498949;
+	return x - std::floor(x);
+}
 
 double wrap_pi(double d) {
 	while (d > PI_) {
@@ -234,6 +243,18 @@ CrowdStats CrowdView::stats() const {
 	s.groups = int32_t(groups.size());
 	s.regrows = regrows;
 	s.frames = frames;
+	s.culled = last.culled;
+	s.casting = last.casting;
+	s.casting_thralls = last.casting_thralls;
+	s.groups_used = last.groups_used;
+	s.groups_casting = last.groups_casting;
+	s.triangles = last.triangles;
+	s.casting_triangles = last.casting_triangles;
+	for (int i = 0; i < 3; i++) {
+		s.band[i] = last.band[i];
+	}
+	s.pose_updates = last.pose_updates;
+	s.pose_updates_total = pose_total;
 	return s;
 }
 
@@ -245,6 +266,7 @@ void CrowdView::clear_views() {
 	for (CrowdGroup &g : groups) {
 		g.count = 0;
 	}
+	last = CrowdStats();
 }
 
 View &CrowdView::make_view(int32_t p_id, int32_t p_kind, int32_t p_model) {
@@ -660,6 +682,16 @@ void CrowdView::die(View &v) {
 	}
 }
 
+// A body that works its pose out less often is brought up to the present before a tick changes what drives it (a hit, a new state, a new look): the change then starts from
+// where the body is now, not from where its last pose update left it, and the flash a hit sets is not worn down by the time before the hit.
+void CrowdView::catch_up(const CrowdModel &m, View &v) {
+	if (v.mode != M_LIVE || v.acc <= 0.0) {
+		return;
+	}
+	advance_live(m, v, v.acc, 1.0);
+	v.acc = 0.0;
+}
+
 void CrowdView::apply_body(const CrowdBody &b) {
 	if (b.model < 0 || b.model >= int32_t(models.size())) {
 		return;
@@ -686,6 +718,11 @@ void CrowdView::apply_body(const CrowdBody &b) {
 		return;
 	}
 	const CrowdModel &m = models[v.model];
+	const bool look = b.flags != v.flags || b.scale != v.scale || b.hover != v.hover || b.glow != v.glow || b.tint[0] != v.tint[0] || b.tint[1] != v.tint[1] || b.tint[2] != v.tint[2];
+	if (!first && (look || b.state != v.state || (b.kind == BK_THRALL && b.swing != v.swing))) {
+		catch_up(m, v);
+		v.force = true;  // a new look, state or swing: the pose row is written anew on the next frame, whatever the body's pose rate
+	}
 	v.def = b.def;
 	v.flags = b.flags;
 	v.scale = b.scale;
@@ -757,6 +794,8 @@ void CrowdView::apply_hit(const CrowdHit &h) {
 		return;
 	}
 	const CrowdModel &m = models[v.model];
+	catch_up(m, v);
+	v.force = true;  // the flash and the recoil show on the next frame whatever the body's pose rate
 	v.flash = 1.0;
 	if (v.flash_v < 0.5) {  // every fresh hit recoils the body, whoever flashed it (DmCreature.set_flash)
 		react(m, v, 1.0);
@@ -860,7 +899,7 @@ void CrowdView::tick(const CrowdFeed &f) {
 	}
 }
 
-// ---------------------------------------------------------------------------------------------------------------- the views: draw
+// ---------------------------------------------------------------------------------------------------------------- the views: advance
 
 void CrowdView::set_thrall_shadows(bool p_on) {
 	thrall_shadows = p_on;
@@ -888,8 +927,9 @@ void CrowdView::rank_shadows() {
 	}
 }
 
-// Returns false once the view is gone (it has finished sinking).
+// Returns false once the view is gone (it has finished sinking). A living body is `advance_live`'s.
 bool CrowdView::advance(View &v, double p_dt, double p_alpha) {
+	(void)p_alpha;
 	const CrowdModel &m = models[v.model];
 	const bool enemy = v.kind == BK_ENEMY;
 	const double dt_eff = enemy ? p_dt * hitstop_scale : p_dt;  // the picture clock of a struck enemy honours the hitstop
@@ -897,59 +937,6 @@ bool CrowdView::advance(View &v, double p_dt, double p_alpha) {
 		v.sink_t += p_dt;
 		v.dy -= p_dt * SINK_SPEED;
 		return v.sink_t <= SINK_S;
-	}
-	if (v.mode == M_LIVE) {
-		v.hidden = enemy && (v.state == BURROW || v.state == ERUPT);
-		v.yaw = turn_toward(v.yaw, lerp_ang(v.pyaw, v.cyaw, p_alpha), p_dt, TURN_GAIN, ENEMY_TURN_RATE);
-		// the legs: the core's ground speed, smoothed (DmEntityViews._measure_speed); walking starts at the pace the sim moves the body
-		const bool moving = v.raw_speed > MOVING_SPEED;
-		if (moving && !v.moving) {
-			v.gs = v.raw_speed;
-			v.has_gs = true;
-		}
-		v.moving = moving;
-		v.gs = smooth_speed(v.has_gs ? v.gs : v.raw_speed, v.raw_speed, p_dt, SPEED_TAU);
-		v.has_gs = true;
-		// DmEnemy._loco / DmThrall: a swing, a flinch, a death or a dig-in keeps its clip
-		const bool free = enemy ? !(v.state == ATTACK || v.state == HURT || v.state == DEAD || v.state == ERUPT || v.state == DIG || v.state == BURROW)
-								: !(v.state == TS_ATTACK || v.state == TS_DEAD);
-		if (free) {
-			if (moving) {
-				set_ground_speed(m, v, v.gs);
-			} else {
-				set_loop(m, v, RL_IDLE, 1.0);
-			}
-		}
-		if (v.flash > 0.0) {
-			v.flash = std::max(0.0, v.flash - p_dt * (enemy ? FLASH_DECAY_ENEMY : FLASH_DECAY_THRALL));
-		}
-		if (std::fabs(v.flash - v.flash_v) >= 0.02) {  // DmCreature.set_flash ignores smaller changes
-			v.flash_v = v.flash;
-		}
-		if (enemy && (v.kx != 0.0 || v.kz != 0.0 || v.kvx != 0.0 || v.kvz != 0.0)) {
-			step_knock(v.kx, v.kz, v.kvx, v.kvz, dt_eff);
-		}
-		const bool rising = v.state == (enemy ? int32_t(RISING) : int32_t(TS_RISING));
-		const double rise = rising ? std::min(1.0, (v.state_t + p_alpha * TICK) / (enemy ? ENEMY_RISE_S : THRALL_RISE_S)) : 1.0;
-		v.rise_k = rise;
-		update_clips(m, v, dt_eff);
-		v.dx = v.px + (v.cx - v.px) * p_alpha + v.kx;
-		v.dz = v.pz + (v.cz - v.pz) * p_alpha + v.kz;
-		v.dyaw = v.yaw;
-		double lift = 0.0;
-		if (v.hover > 0.0) {  // the hover bob (DmEntityViews.sync)
-			lift = enemy ? v.hover + std::sin(clock_ms / 520.0 + v.id) * ((v.flags & BF_FLYER) ? 0.18 : 0.12) : v.hover + std::sin(clock_ms / 400.0 + v.id) * 0.1;
-		}
-		if (enemy && v.state == ATTACK && (v.flags & (BF_DIVING | BF_GROUNDED))) {  // DmEnemyGargoyle._process: climb over the mark for the first half of the wind-up, drop onto it, then sit grounded
-			const double kk = (v.flags & BF_GROUNDED) || v.action_s <= 0.0 ? 1.0 : (v.state_t + p_alpha * TICK) / v.action_s;
-			lift = 0.05;
-			if (kk < 1.0) {
-				lift = kk < 0.5 ? v.hover + kk * 3.0 : (v.hover + 1.5) * std::pow(1.0 - (kk - 0.5) * 2.0, 2.0);
-			}
-		}
-		const double sink = enemy ? (v.flags & BF_FLYER ? 0.0 : ENEMY_SINK * m.height) : THRALL_SINK;
-		v.dy = -sink * (1.0 - rise) * (1.0 - rise) + lift;
-		return true;
 	}
 	// dying and corpses: still where they fell
 	v.die_t += p_dt;
@@ -986,11 +973,140 @@ bool CrowdView::advance(View &v, double p_dt, double p_alpha) {
 	return true;
 }
 
-// One instance row (CrowdVatData's packers): 12 transform, 4 colour, 4 custom data, into the group of the body's level of detail and shadow.
-void CrowdView::emit(const View &v, float p_cam_x, float p_cam_y, float p_cam_z) {
-	if (v.hidden || v.model < 0) {
+// A living body's pose: the turn, the legs, the clip, the flash, the knock, the rise and the hover, over `p_dt` seconds (a frame, or every frame since the last
+// pose update when the body works its pose out less often) and where it stands at the interpolation `p_alpha`.
+void CrowdView::advance_live(const CrowdModel &m, View &v, double p_dt, double p_alpha) {
+	const bool enemy = v.kind == BK_ENEMY;
+	const double dt_eff = enemy ? p_dt * hitstop_scale : p_dt;  // the picture clock of a struck enemy honours the hitstop
+	v.hidden = enemy && (v.state == BURROW || v.state == ERUPT);
+	v.yaw = turn_toward(v.yaw, lerp_ang(v.pyaw, v.cyaw, p_alpha), p_dt, TURN_GAIN, ENEMY_TURN_RATE);
+	// the legs: the core's ground speed, smoothed (DmEntityViews._measure_speed); walking starts at the pace the sim moves the body
+	const bool moving = v.raw_speed > MOVING_SPEED;
+	if (moving && !v.moving) {
+		v.gs = v.raw_speed;
+		v.has_gs = true;
+	}
+	v.moving = moving;
+	v.gs = smooth_speed(v.has_gs ? v.gs : v.raw_speed, v.raw_speed, p_dt, SPEED_TAU);
+	v.has_gs = true;
+	// DmEnemy._loco / DmThrall: a swing, a flinch, a death or a dig-in keeps its clip
+	const bool free = enemy ? !(v.state == ATTACK || v.state == HURT || v.state == DEAD || v.state == ERUPT || v.state == DIG || v.state == BURROW)
+							: !(v.state == TS_ATTACK || v.state == TS_DEAD);
+	if (free) {
+		if (moving) {
+			set_ground_speed(m, v, v.gs);
+		} else {
+			set_loop(m, v, RL_IDLE, 1.0);
+		}
+	}
+	if (v.flash > 0.0) {
+		v.flash = std::max(0.0, v.flash - p_dt * (enemy ? FLASH_DECAY_ENEMY : FLASH_DECAY_THRALL));
+	}
+	if (std::fabs(v.flash - v.flash_v) >= 0.02) {  // DmCreature.set_flash ignores smaller changes
+		v.flash_v = v.flash;
+	}
+	if (enemy && (v.kx != 0.0 || v.kz != 0.0 || v.kvx != 0.0 || v.kvz != 0.0)) {
+		step_knock(v.kx, v.kz, v.kvx, v.kvz, dt_eff);
+	}
+	const bool rising = v.state == (enemy ? int32_t(RISING) : int32_t(TS_RISING));
+	const double rise = rising ? std::min(1.0, (v.state_t + p_alpha * TICK) / (enemy ? ENEMY_RISE_S : THRALL_RISE_S)) : 1.0;
+	v.rise_k = rise;
+	update_clips(m, v, dt_eff);
+	v.dx = v.px + (v.cx - v.px) * p_alpha + v.kx;
+	v.dz = v.pz + (v.cz - v.pz) * p_alpha + v.kz;
+	v.dyaw = v.yaw;
+	double lift = 0.0;
+	if (v.hover > 0.0) {  // the hover bob (DmEntityViews.sync)
+		lift = enemy ? v.hover + std::sin(clock_ms / 520.0 + v.id) * ((v.flags & BF_FLYER) ? 0.18 : 0.12) : v.hover + std::sin(clock_ms / 400.0 + v.id) * 0.1;
+	}
+	if (enemy && v.state == ATTACK && (v.flags & (BF_DIVING | BF_GROUNDED))) {  // DmEnemyGargoyle._process: climb over the mark for the first half of the wind-up, drop onto it, then sit grounded
+		const double kk = (v.flags & BF_GROUNDED) || v.action_s <= 0.0 ? 1.0 : (v.state_t + p_alpha * TICK) / v.action_s;
+		lift = 0.05;
+		if (kk < 1.0) {
+			lift = kk < 0.5 ? v.hover + kk * 3.0 : (v.hover + 1.5) * std::pow(1.0 - (kk - 0.5) * 2.0, 2.0);
+		}
+	}
+	const double sink = enemy ? (v.flags & BF_FLYER ? 0.0 : ENEMY_SINK * m.height) : THRALL_SINK;
+	v.dy = -sink * (1.0 - rise) * (1.0 - rise) + lift;
+}
+
+// ---------------------------------------------------------------------------------------------------------------- the views: the camera's view
+
+void CrowdView::set_view(const float *p_view_projection) {
+	has_view = false;
+	if (p_view_projection == nullptr) {
 		return;
 	}
+	const float *m = p_view_projection;  // column-major: row r, column c is m[c * 4 + r]
+	for (int k = 0; k < 6; k++) {  // left, right, bottom, top, near, far: row 3 plus or minus row 0, 1 or 2 (Gribb and Hartmann)
+		const int row = k / 2;
+		const float sign = (k % 2 == 0) ? 1.0f : -1.0f;
+		float p[4];
+		for (int c = 0; c < 4; c++) {
+			p[c] = m[c * 4 + 3] + sign * m[c * 4 + row];
+		}
+		const float len = std::sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
+		if (!(len > 1e-9f)) {  // not a camera (all zero, a NaN): no culling
+			return;
+		}
+		for (int c = 0; c < 4; c++) {
+			planes[k][c] = p[c] / len;
+		}
+	}
+	has_view = true;
+}
+
+void CrowdView::set_light(double p_x, double p_y, double p_z) {
+	const double len = std::sqrt(p_x * p_x + p_y * p_y + p_z * p_z);
+	has_light = len > 1e-9;
+	light[0] = has_light ? p_x / len : 0.0;
+	light[1] = has_light ? p_y / len : 0.0;
+	light[2] = has_light ? p_z / len : 0.0;
+}
+
+// A body is drawn when its bounding sphere touches the view. A shadow caster outside the view is kept while its shadow can fall into it: with the light's
+// direction known, the shadow is the sphere swept from the body to where the light's ray through it meets the ground (at most SHADOW_RUN_MAX metres on),
+// and the body goes only when that whole run lies outside one plane; unknown, the sphere is `cost.shadow_reach` metres bigger.
+bool CrowdView::in_view(double p_x, double p_y, double p_z, double p_r, bool p_caster) const {
+	if (!has_view) {
+		return true;
+	}
+	double r = p_r, ex = p_x, ey = p_y, ez = p_z;
+	bool run = false;
+	if (p_caster) {
+		if (has_light) {
+			run = true;
+			const double s = light[1] < -0.05 ? std::min(SHADOW_RUN_MAX, std::max(0.0, (p_y + p_r) / -light[1])) : SHADOW_RUN_MAX;
+			ex += light[0] * s;
+			ey += light[1] * s;
+			ez += light[2] * s;
+		} else {
+			r += cost.shadow_reach;
+		}
+	}
+	for (int k = 0; k < 6; k++) {
+		const float *q = planes[k];
+		if (q[0] * p_x + q[1] * p_y + q[2] * p_z + q[3] >= -r) {
+			continue;
+		}
+		if (run && q[0] * ex + q[1] * ey + q[2] * ez + q[3] >= -r) {
+			continue;
+		}
+		return false;
+	}
+	return true;
+}
+
+// A body's bounding radius: its model's sphere about the feet, at the body's size, and a little over for the body layer's lunge and squash.
+double CrowdView::view_radius(const View &v) const {
+	const CrowdModel &m = models[v.model];
+	return (m.radius > 0.0 ? m.radius : m.height * 1.2) * v.scale + CULL_SLACK;
+}
+
+// ---------------------------------------------------------------------------------------------------------------- the views: draw
+
+// The next free instance of the group a body belongs in: its level of detail by the distance to the camera, and the shadow setting.
+float *CrowdView::slot_for(const View &v, float p_cam_x, float p_cam_y, float p_cam_z) {
 	const CrowdModel &m = models[v.model];
 	const double cdx = v.dx - p_cam_x, cdz = v.dz - p_cam_z;
 	const double dist = std::sqrt(cdx * cdx + double(p_cam_y) * p_cam_y + cdz * cdz);
@@ -1004,6 +1120,20 @@ void CrowdView::emit(const View &v, float p_cam_x, float p_cam_y, float p_cam_z)
 	if (g.count >= g.cap) {
 		grow(g);
 	}
+	const int32_t tris = lod < int32_t(m.lod_tris.size()) ? m.lod_tris[lod] : 0;
+	last.triangles += tris;
+	if (v.shadow) {
+		last.casting++;
+		last.casting_thralls += v.kind == BK_THRALL ? 1 : 0;
+		last.casting_triangles += tris;
+	}
+	return &g.buf[size_t(g.count++) * STRIDE];
+}
+
+// One instance row (CrowdVatData's packers): 12 transform, 4 colour, 4 custom data. `r_off` (optional) gets the lunge's share of the translation, so a body
+// that is placed again without working its pose out anew (the cached row) can follow where it stands.
+void CrowdView::pose_row(const CrowdModel &m, const View &v, float *w, double *r_off) const {
+	(void)m;
 	// root: yaw, then the tip-over about Z, then the scale; the model node under it: the lunge forward, the recoil's pitch and roll, the squash
 	const M3 root = mul(rot_y(v.dyaw), rot_z(PI_ * 0.5 * v.toppled));
 	const M3 model = mul(mul(rot_x(v.pitch), rot_z(v.roll)), M3{ { { 1.0 + v.sq * 0.6, 0, 0 }, { 0, 1.0 - v.sq, 0 }, { 0, 0, 1.0 + v.sq * 0.6 } } });
@@ -1013,18 +1143,20 @@ void CrowdView::emit(const View &v, float p_cam_x, float p_cam_y, float p_cam_z)
 			b.m[i][j] *= v.scale;
 		}
 	}
-	const double ox = v.dx + root.m[0][2] * v.scale * v.zo;
-	const double oy = v.dy + root.m[1][2] * v.scale * v.zo;
-	const double oz = v.dz + root.m[2][2] * v.scale * v.zo;
-	float *w = &g.buf[size_t(g.count) * STRIDE];
+	const double fx = root.m[0][2] * v.scale * v.zo, fy = root.m[1][2] * v.scale * v.zo, fz = root.m[2][2] * v.scale * v.zo;
+	if (r_off != nullptr) {
+		r_off[0] = fx;
+		r_off[1] = fy;
+		r_off[2] = fz;
+	}
 	for (int i = 0; i < 3; i++) {
 		w[i * 4] = float(b.m[i][0]);
 		w[i * 4 + 1] = float(b.m[i][1]);
 		w[i * 4 + 2] = float(b.m[i][2]);
 	}
-	w[3] = float(ox);
-	w[7] = float(oy);
-	w[11] = float(oz);
+	w[3] = float(v.dx + fx);
+	w[7] = float(v.dy + fy);
+	w[11] = float(v.dz + fz);
 	w[12] = v.tint[0];
 	w[13] = v.tint[1];
 	w[14] = v.tint[2];
@@ -1041,7 +1173,104 @@ void CrowdView::emit(const View &v, float p_cam_x, float p_cam_y, float p_cam_z)
 		w[18] = 0.0f;
 		w[19] = 0.0f;
 	}
-	g.count++;
+}
+
+// A body that is not alive any more (dying, a corpse, sinking): outside the view it is not written, else its row goes into its group.
+void CrowdView::emit(View &v, float p_cam_x, float p_cam_y, float p_cam_z) {
+	if (v.hidden || v.model < 0) {
+		return;
+	}
+	if (cost.cull && has_view && !in_view(v.dx, v.dy, v.dz, view_radius(v), v.shadow)) {
+		last.culled++;
+		return;
+	}
+	pose_row(models[v.model], v, slot_for(v, p_cam_x, p_cam_y, p_cam_z), nullptr);
+}
+
+// A living body, once a frame. It is placed every frame (the interpolation between the last two ticks), but works its pose out (turn, legs, clip time,
+// flash, knock, hover and the instance row) at its band's rate: every frame near the camera, `cost.mid_hz` beyond `cost.mid_m`, `cost.far_hz` beyond `cost.far_m`
+// (client/crowd/README.md "Crowd cost"). Between updates the last pose row is written again with the body's new place in it. A body outside the view is not written
+// and keeps the far rate; one coming back into view, or whose state, hit or look changed on a tick (`force`), works its pose out at once.
+void CrowdView::draw_live(View &v, double p_dt, double p_alpha, float p_cam_x, float p_cam_y, float p_cam_z, bool p_full_rate) {
+	const CrowdModel &m = models[v.model];
+	const bool enemy = v.kind == BK_ENEMY;
+	const double nx = v.px + (v.cx - v.px) * p_alpha + v.kx;  // where it stands this frame (advance_live computes the same)
+	const double nz = v.pz + (v.cz - v.pz) * p_alpha + v.kz;
+	const double bx = nx - p_cam_x, bz = nz - p_cam_z, d2 = bx * bx + double(p_cam_y) * p_cam_y + bz * bz;
+	int32_t band = 0;
+	double hz = 0.0;
+	if (!p_full_rate) {
+		if (d2 >= cost.far_m * cost.far_m) {
+			band = 2;
+			hz = cost.far_hz;
+		} else if (d2 >= cost.mid_m * cost.mid_m) {
+			band = 1;
+			hz = cost.mid_hz;
+		}
+	}
+	const bool under = enemy && (v.state == BURROW || v.state == ERUPT);
+	const bool culled = !under && cost.cull && has_view && !in_view(nx, v.dy, nz, view_radius(v), v.shadow);
+	if (culled && !p_full_rate) {  // nobody sees it: the far rate
+		hz = cost.far_hz;
+	} else if (hz > 0.0 && (v.one_shot >= 0 || v.kick_t >= 0.0 || v.lunge_t >= 0.0 || v.rise_k < 1.0)) {  // a swing, a flinch, a recoil, a rise: always every frame (DmCreature.busy)
+		hz = 0.0;
+	}
+	last.band[band]++;
+	last.culled += culled ? 1 : 0;
+	v.band = band;
+	if (!culled && v.was_culled) {  // coming back into view: its pose is brought up to date before it is drawn
+		v.force = true;
+	}
+	v.was_culled = culled;
+	v.acc += p_dt;
+	bool due = true;
+	if (hz > 0.0) {
+		const double period = 1.0 / hz;
+		if (v.force || !v.crow_ok) {
+			v.credit = period * phase_of(v.id);  // joins its band spread over the period, not all on the same frame
+		} else {
+			v.credit += p_dt;
+			due = v.credit >= period - 1e-9;
+			if (due) {
+				v.credit = std::min(period, v.credit - period);
+			}
+		}
+	}
+	if (due) {
+		const double step = v.acc;
+		v.acc = 0.0;
+		advance_live(m, v, step, p_alpha);
+		v.force = false;
+		v.pose_updates++;
+		pose_total++;
+		last.pose_updates++;
+		if (hz > 0.0) {
+			pose_row(m, v, v.crow, v.crow_off);
+			v.crow_ok = true;
+		} else {
+			v.crow_ok = false;
+		}
+		if (culled || v.hidden) {
+			return;
+		}
+		float *w = slot_for(v, p_cam_x, p_cam_y, p_cam_z);
+		if (hz > 0.0) {
+			std::memcpy(w, v.crow, sizeof(v.crow));
+		} else {
+			pose_row(m, v, w, nullptr);
+		}
+		return;
+	}
+	v.dx = nx;
+	v.dz = nz;
+	if (culled || v.hidden) {
+		return;
+	}
+	float *w = slot_for(v, p_cam_x, p_cam_y, p_cam_z);
+	std::memcpy(w, v.crow, sizeof(v.crow));
+	w[3] = float(v.dx + v.crow_off[0]);
+	w[7] = float(v.dy + v.crow_off[1]);
+	w[11] = float(v.dz + v.crow_off[2]);
 }
 
 void CrowdView::draw(double p_dt, double p_alpha, float p_cam_x, float p_cam_y, float p_cam_z) {
@@ -1050,12 +1279,18 @@ void CrowdView::draw(double p_dt, double p_alpha, float p_cam_x, float p_cam_y, 
 	for (CrowdGroup &g : groups) {
 		g.count = 0;
 	}
+	last = CrowdStats();
 	if (frames % RERANK_EVERY == 0) {
 		rank_shadows();
 	}
+	const bool full_rate = !cost.anim_lod || hitstop_scale != 1.0;  // a hit stop freezes the struck bodies' picture clock: every body keeps up with it meanwhile
 	for (int32_t i = 0; i < int32_t(views.size()); i++) {
 		View &v = views[i];
 		if (!v.alive) {
+			continue;
+		}
+		if (v.mode == M_LIVE) {
+			draw_live(v, p_dt, p_alpha, p_cam_x, p_cam_y, p_cam_z, full_rate);
 			continue;
 		}
 		if (!advance(v, p_dt, p_alpha)) {  // finished sinking
@@ -1063,6 +1298,12 @@ void CrowdView::draw(double p_dt, double p_alpha, float p_cam_x, float p_cam_y, 
 			continue;
 		}
 		emit(v, p_cam_x, p_cam_y, p_cam_z);
+	}
+	for (const CrowdGroup &g : groups) {
+		if (g.count > 0) {
+			last.groups_used++;
+			last.groups_casting += g.shadow ? 1 : 0;
+		}
 	}
 }
 

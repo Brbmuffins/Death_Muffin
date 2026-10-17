@@ -92,10 +92,10 @@ view.focus = hero_xz                                                # every tick
   `_physics_process` (priority 1000, after the nodes that step the core) syncs whenever the core's clock moved. `sync` reads the core's enemy, thrall and corpse tables and
   the damage in the event buffer **without consuming it**: it remembers how far it read, and starts over once `take_events()` cleared the buffer. Calling `take_events()`
   before `sync` in the same tick loses that tick's hits for the crowd.
-- **Per rendered frame:** `crowd.draw(delta, Engine.get_physics_interpolation_fraction(), camera_position)` (`CrowdView._process`): positions are interpolated between the
-  last two ticks by `alpha`, every view advances by `delta`, the level of detail comes from the distance to the camera, and each group's buffer is written and
-  uploaded with `RenderingServer.multimesh_set_buffer` and `multimesh_set_visible_instances`. `view.hitstop_scale` is the picture clock of a struck enemy
-  (`Vfx.hitstop_scale`), written each frame.
+- **Per rendered frame:** `crowd.draw(delta, Engine.get_physics_interpolation_fraction(), camera_position, view_projection)` (`CrowdView._process`): positions are interpolated between the
+  last two ticks by `alpha`, every view advances by `delta` (at its band's rate: "Crowd cost"), the level of detail comes from the distance to the camera, a body outside the camera's view
+  is not written, and each group's buffer is written and uploaded with `RenderingServer.multimesh_set_buffer` and `multimesh_set_visible_instances`. `view.hitstop_scale` is the picture clock of
+  a struck enemy (`Vfx.hitstop_scale`), written each frame.
 - **Groups:** one MultiMesh per model, level of detail and shadow setting: two `MultiMeshInstance3D` nodes per level, one without shadows and one that casts. `DmCrowd`
   owns the instances' memory (`multimesh_allocate_data`); `CrowdView` gives each MultiMesh the area's `custom_aabb`. Every group is sized for 128 instances at loading
   (`reserve`) and doubles when a crowd outgrows it, so a wave of one model does not grow a MultiMesh; a steady crowd never does. `DmCrowd.buffer(model, lod, shadow)` returns
@@ -142,9 +142,41 @@ Numbers are today's, from the file named; where the live game and `dm_entity_vie
   leaves the tables, or a consumed corpse, sinks 1.3 m/s for 0.9 s. A mist body (the wraith) sinks at once.
 - **Shadows** (`DmCasterBudget`, `DmEntityViews._shadow_lod`): every 10th frame the nearest 12 living enemies to the hero (8 once 32 are in the field) go into the shadow groups;
   thralls always cast, corpses and spectral bodies never. `set_shadow_policy(casters, crowded casters, thralls cast)` changes the numbers (the graphics preset's; a change reaches the thralls already drawn).
+  The Full Party's 8 enemies and 32 thralls cast: the thralls are 4 of 5 casting instances (`stats().casting_thralls`); "Crowd cost" has what that costs the shadow pass and how the benchmark switches it.
 - **Level of detail:** from the distance to the camera, `lod_distances` per model (the CrowdView default is 32 m and 60 m, a first guess for the test build). Beyond the baked
-  levels the last one is drawn.
+  levels the last one is drawn. The animation bands ("Crowd cost") start at the same two distances.
 - **Interpolation:** a body that moves more than 3 m in one tick (a teleport, a burrower surfacing) is drawn at its new place, not slid there.
+
+### Crowd cost
+
+What the crowd costs a frame, and the four settings that cut it. All four are `CrowdView.setup` options (the game scene and the benchmark pass them through `DmCoreHost.setup`), `DmCrowd.settings()` says what is
+in force, and the benchmark's report records them (client/README.md "The benchmark"). The defaults are today's look: nothing near the hero changes (`client/tests/crowd_view.gd` writes the same bytes with the bands on or off).
+
+- **What was measured (the VPS, headless, the debug build the tests load, 2026-10-17):** a Full Party frame costs the crowd 30 to 50 us of CPU in `DmCrowd.draw` (104 bodies: 22 to 30 us in the views, 16 us in the buffer
+  copies and the RenderingServer calls), under 0.3% of a 16.7 ms frame. The per-body work is the view logic (turn, legs, clip time, flash, knock, hover) and the 3 x 3 matrices of the instance row, about 0.2 us a body;
+  the clip time itself is not CPU work (the shader samples the baked frames from the time in each instance's data). So the CPU side has little to give, and the value of the settings is on the GPU: bodies the
+  camera cannot see no longer reach the vertex shader (each vertex fetches its baked position and normal, twice while blending), and the shadow pass takes fewer triangles. What the GPU saves is for Helix's PC to say.
+  The headless Full Party benchmark cannot see it either: its held pack stands inside the view and inside 32 m of the camera (1 or 2 of 150 bodies are outside it), and five alternating pairs of runs with the defaults
+  and with culling and the bands off (`--bench-crowd=cull=off,anim=off`) gave frames of 4.54 ms (4.20 to 5.09) and 4.50 ms (3.94 to 5.24), no difference: two identical runs differ by 0.3 to 0.7 ms.
+- **Animation bands** (`cost.anim_lod`, `CrowdView.ANIM_LOD`): a body works its pose out (turn, ground speed, clip choice and time, blend, flash, knock, hover, the instance row) every frame within 32 m of the camera,
+  24 times a second from 32 m, 10 times a second from 60 m (the first two mesh levels' distances: a body that small on the screen is also drawn with a simpler mesh). Between its updates a body is **placed every frame**
+  (the interpolation between ticks, so it glides) and its last row is written again with the new place in it; the clip time in that row steps at the band's rate, never ahead of the true time and behind it by about 1/24 s or 1/10 s at most (0.03 s and 0.09 s in the test).
+  Time is never lost: a pose update advances every second since the last one. Rates are time-based with a per-body phase (from its id, no dice), so the updates spread over the frames, not all on one. A body in a swing, a
+  flinch, a recoil or the climb out of the ground (today's `DmCreature.busy`) is every frame whatever its band, a tick that changes a body's state, swing, hit or look catches its pose up to the present first and updates it on the next
+  frame, a hit stop puts every body back to every frame meanwhile, and a body coming back into view is brought up to date before it is drawn. Today's game throttles the same way (`animLod.ts`: 24 and 10 Hz; there from a box
+  around the hero, here from the camera, like the mesh levels). `stats()`: `band_near/mid/far` (living bodies per band), `pose_updates` (this frame), `pose_updates_total`; `view_info(id)`: `band`, `pose_updates`.
+- **Culling** (`CrowdView.cull`, on): `draw` takes the camera's view-projection matrix (`Camera3D.get_camera_projection() * Projection(get_camera_transform().affine_inverse())`: one argument, no call per creature) and a body
+  whose bounding sphere is outside any of the six frustum planes is not written, so the groups' drawn range stays contiguous and the GPU never sees it. The sphere is about the feet and holds every baked pose
+  (`CrowdVatData.bounding_radius()`: the farthest corner of the baked bounds, 3.4 m for the robber) at the body's scale, plus 0.75 m for the lunge and the squash. A body outside the view still animates, at the far rate,
+  and is brought up to date the frame it is back. **Shadows:** a casting body just outside the view can still cast into it. With the light's direction known (`set_light_direction`, from the moon, set by `DmNextPerf.apply`) the caster
+  is kept while the sphere swept along the light to the ground (at most 40 m on) touches the view, and goes only when that whole run is outside one plane; unknown, it is kept within 12 m of the edge (`cost.shadow_reach`).
+  A kept caster is drawn in the main pass too (one MultiMesh does both), a few bodies. `stats()`: `culled` (bodies not written this frame).
+- **Thrall shadows:** the counters are `stats().casting` (instances in the shadow groups), `casting_thralls`, `groups_casting` (MultiMeshes drawn into the shadow map), `casting_triangles` (triangles drawn a second time into it)
+  and `triangles` (all drawn), `groups_used`: the same numbers on any machine. In the Full Party at the Graves' camera 40 instances cast (8 enemies, 32 thralls), 80% of them thralls. `CrowdView.thrall_shadows` (-1 the graphics
+  preset's, 0 never, 1 always; the setup option `thrall_shadows`, the benchmark's `--bench-crowd=thrall_shadows=off`) overrides the preset's `thralls_cast` so a run can compare on and off. The default is unchanged: thralls cast.
+- **Reserve and levels of detail:** `reserve` (instances every group starts with, 128) and `lod_distances` (32 and 60 m) are setup options too and are recorded in every benchmark report. They stay as they were: they can only be set
+  from a run on a real GPU. A bigger reserve hands more bytes over a frame for a small crowd (`multimesh_set_buffer` takes the whole buffer, the reserve long) and a smaller one regrows a MultiMesh when a wave of one model outgrows
+  it (a `multimesh_allocate_data`, the hitch the reserve exists to avoid); nearer level distances draw fewer triangles and show the simpler mesh sooner.
 
 ### Models and looks
 
@@ -160,7 +192,10 @@ A model with no colour texture is drawn white, and one baked by another version 
 today's code on random inputs; the yaw, the speed, the clip of every state, the walk and run switch with its hysteresis and phase, the blends, the packing against
 `CrowdVatData`'s packers, the flash, the recoil and lunge poses, the knock spring, the rise, the hover, the death into a corpse (landing, settle, mixer stop, sinking), the hound's
 body-only moves, the shadow group and the level-of-detail split, interpolation; then a Full Party (72 enemies, 32 thralls) in a real `DmCore` through `CrowdView`: the events are
-left for `take_events`, a crowd fed only the rows draws the same buffers, the buffers do not grow in a steady crowd, and `draw()` and `sync()` times are printed. The first rendered check
+left for `take_events`, a crowd fed only the rows draws the same buffers, the buffers do not grow in a steady crowd, and `draw()` and `sync()` times are printed. The crowd's cost: against the engine's own frustum planes
+on 240 random bodies (a body in view is always drawn, one beyond its sphere never, the drawn range packed, the counters adding up), a caster kept while its shadow falls in and culled when it does not, the thrall shadow
+counters, the bands' update rates on 120 frames (120, 48 and 21 pose updates; 30 bodies spread, at most 13 in a frame), the written time never ahead of the full-rate body's, a swing or a hit shown on the frame its
+tick says so, the same bytes near the hero with the bands on or off, and a body outside the view kept at the far rate and up to date on its way back. The first rendered check
 of the whole path is `client/tests/crowd_view_smoke.gd` (Compatibility, llvmpipe; Forward+ and Mobile run it the first time on a real GPU).
 
 ## Proof

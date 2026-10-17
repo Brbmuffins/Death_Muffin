@@ -14,6 +14,7 @@
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_float64_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
+#include <godot_cpp/variant/projection.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/vector2.hpp>
@@ -46,6 +47,7 @@ class DmCrowd : public godot::RefCounted {
 
 	dm::CrowdView view;
 	dm::CrowdFeed feed;
+	godot::PackedFloat32Array lod_cfg;  // the level-of-detail distances the models were added with (settings())
 	std::unordered_map<std::string, Look> enemy_looks;
 	std::vector<Look> def_looks;  // by the core's def index, rebuilt when looks or defs change
 	Look risen_look;
@@ -100,6 +102,13 @@ public:
 	void set_champion_scale(double p_scale);
 	void set_shadow_policy(int64_t p_casters, int64_t p_crowded_casters, bool p_thralls_cast);
 	void set_seed(int64_t p_seed);
+	// Crowd cost (client/crowd/README.md "Crowd cost"). `set_culling`: bodies outside the camera's view are not written (needs the view-projection matrix in `draw`).
+	// `set_anim_lod`: far bodies work out their pose less often; bodies beyond `mid_m` metres from the camera at `mid_hz` times a second, beyond `far_m` at `far_hz`
+	// (a rate of 0 = every frame). `set_shadow_light`: the direction the moon's light travels, so a shadow caster just outside the view stays while its shadow falls in.
+	void set_culling(bool p_on);
+	void set_anim_lod(bool p_on, double p_mid_m, double p_mid_hz, double p_far_m, double p_far_hz);
+	void set_shadow_light(const godot::Vector3 &p_direction);
+	godot::Dictionary settings() const;  // what is in force: culling, the animation bands, the shadow policy, whether the light is known, the reserve and the levels of detail the models were given
 	void reserve(int64_t p_rows);  // every group starts with room for this many instances (the MultiMeshes are sized when the first frame draws)
 	void clear();  // forget every creature (a new core, a new area)
 
@@ -108,7 +117,9 @@ public:
 	void sync_rows(const godot::PackedInt32Array &p_body_ints, const godot::PackedFloat32Array &p_body_floats, const godot::PackedFloat32Array &p_hits,
 			const godot::PackedInt32Array &p_corpse_ints, const godot::PackedFloat32Array &p_corpse_floats);
 	// The frame: interpolate by `alpha` (Engine.get_physics_interpolation_fraction()), advance the views by `dt`, write the MultiMeshes.
-	void draw(double p_dt, double p_alpha, const godot::Vector3 &p_camera);
+	// `view_projection`: the camera's projection times the inverse of its transform (Camera3D.get_camera_projection() * Projection(get_camera_transform().affine_inverse())),
+	// for the culling; all zeros (the default) draws everything.
+	void draw(double p_dt, double p_alpha, const godot::Vector3 &p_camera, const godot::Projection &p_view_projection = godot::Projection(godot::Vector4(), godot::Vector4(), godot::Vector4(), godot::Vector4()));
 
 	// Reads (tests, the HUD's counters).
 	godot::PackedFloat32Array buffer(int64_t p_model, int64_t p_lod, bool p_shadow = false) const;  // exactly what was uploaded: count * 20 floats

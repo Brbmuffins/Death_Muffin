@@ -71,10 +71,12 @@ constexpr const char *ROLE_NAMES[RL_COUNT] = { "idle", "walk", "run", "attack", 
 struct CrowdModel {
 	std::string slug;
 	double height = 1.0;                       // the model row's height in metres
+	double radius = 0.0;                       // metres: a sphere about the feet that holds every baked pose (0 = unknown: 1.2 x the height)
 	double stride_walk = 0.7, stride_run = 0.0;  // body heights per second (the row's `stride`; DmAnimator.DEFAULT_WALK when none)
 	std::vector<std::string> clip_names;
 	std::vector<double> seconds, length, impact, landing;  // per clip: baked seconds, source length, impact second (-1: unmeasured), death landing second (-1: none)
 	std::vector<uint8_t> loop;
+	std::vector<int32_t> lod_tris;             // triangles of each mesh level (the benchmark's counters; empty = unknown)
 	std::vector<int32_t> pool[RL_COUNT];       // clips that play a role, variants included (DmCreature._resolve)
 	std::vector<double> lod_dist;              // camera distance where level i + 1 starts (levels - 1 numbers)
 	int32_t lods = 1, group0 = 0;
@@ -118,12 +120,36 @@ struct View {
 	double toppled = 0, die_t = 0, rest_t = 0, sink_t = 0, settle_t = 0, settle_y = 0;
 	bool has_settle = false, no_settle = false;
 	bool shadow = true, hidden = false, alive = false, row_tied = false, moving = false;
+	// crowd cost (client/crowd/README.md "Crowd cost"): the last pose row (everything but where the body stands) and when the pose is next worked out
+	double crow_off[3] = { 0, 0, 0 };  // the lunge's offset inside the row's translation, which the placement adds to where the body stands
+	double acc = 0, credit = 0;        // seconds since the last pose update; the band's rate credit (a body updates when it has a period's worth)
+	float crow[20] = {};               // the pose row as the last pose update wrote it (CrowdGroup layout)
+	bool crow_ok = false, force = true, was_culled = false;
+	int32_t band = 0;                  // the animation band of the last frame: 0 every frame, 1 the mid rate, 2 the far rate
+	int64_t pose_updates = 0;          // pose updates so far (tests)
 	Rng rng;
 };
 
 struct CrowdStats {
 	int32_t bodies = 0, live = 0, dying = 0, corpses = 0, fading = 0, drawn = 0, groups = 0;
 	int64_t capacity_floats = 0, regrows = 0, frames = 0;
+	// the last frame's crowd cost (client/crowd/README.md "Crowd cost"): deterministic counters, nothing timed
+	int32_t culled = 0;                        // bodies outside the camera's view (and their shadows' reach): not written, so the GPU never sees them
+	int32_t casting = 0, casting_thralls = 0;  // instances in the shadow groups, and how many of them are thralls
+	int32_t groups_used = 0, groups_casting = 0;  // MultiMeshes with an instance this frame (draw calls), and the shadow ones among them (also drawn into the moon's shadow map)
+	int64_t triangles = 0, casting_triangles = 0;  // triangles of the drawn instances at their level of detail, and of the casting ones (drawn a second time into the shadow map)
+	int32_t band[3] = { 0, 0, 0 };             // live bodies per animation band (drawn or not)
+	int32_t pose_updates = 0;                  // live bodies whose pose was worked out this frame (the rest reused their last pose row, placed afresh)
+	int64_t pose_updates_total = 0;            // ... since the crowd was made
+};
+
+// How much work the crowd does per body, and for which bodies (client/crowd/README.md "Crowd cost").
+struct CrowdCost {
+	bool anim_lod = false;                 // far bodies work out their pose less often (off here, so a bare DmCrowd draws as it always did; CrowdView turns it on)
+	double mid_m = 32.0, far_m = 60.0;     // camera distance where the mid and far bands start (the first two mesh levels' distances)
+	double mid_hz = 24.0, far_hz = 10.0;   // pose updates a second in each band (0 = every frame)
+	bool cull = true;                      // bodies outside the camera's view are not written
+	double shadow_reach = 12.0;            // metres a shadow caster is kept past the view's edge when the light's direction is not known
 };
 
 class CrowdView {
@@ -136,7 +162,16 @@ public:
 	uint64_t seed = 1;
 	int32_t reserve_rows = 0;  // rows every group starts with (and new models' groups): sized at loading so a wave never grows a MultiMesh
 
+	CrowdCost cost;
 	void set_thrall_shadows(bool p_on);
+	// The camera's view for the next draw: its view-projection matrix, column-major (16 floats; clip = M * (x, y, z, 1), OpenGL clip space as
+	// Camera3D.get_camera_projection() gives it), or null for no culling in that draw.
+	void set_view(const float *p_view_projection);
+	// The direction the moon's light travels (any length; all zero = unknown): a shadow caster outside the view stays while its shadow reaches in.
+	void set_light(double p_x, double p_y, double p_z);
+	// True when a body of bounding radius `p_r` (a sphere about its feet) at (x, y, z) is inside the view `set_view` set, or a caster's shadow reaches in.
+	bool in_view(double p_x, double p_y, double p_z, double p_r, bool p_caster) const;
+	bool has_light_dir() const { return has_light; }
 	bool shatter(int32_t p_corpse);  // Corpse Explosion blew the corpse apart: its body goes at once instead of sinking (DmEntityViews: opacity 0)
 	// Where dying bodies came to rest since the last take (DmEntityViews._landing_dust): x, z, drawn scale per landing; at most LANDINGS_MAX kept.
 	std::vector<float> landings;
@@ -178,8 +213,13 @@ private:
 	std::vector<std::pair<double, int32_t>> rank_scratch;
 	std::vector<int32_t> gone_scratch;
 	int32_t epoch = 0;
-	int64_t frames = 0, regrows = 0;
+	int64_t frames = 0, regrows = 0, pose_total = 0;
 	double clock_ms = 0;
+	float planes[6][4] = {};  // the view's planes, unit normals pointing in: n . p + d >= 0 is inside
+	bool has_view = false;
+	double light[3] = { 0, 0, 0 };  // unit, the direction the light travels
+	bool has_light = false;
+	CrowdStats last;  // the last draw's counters (stats() adds the rest)
 
 	View &make_view(int32_t p_id, int32_t p_kind, int32_t p_model);
 	void drop_view(int32_t p_index);
@@ -190,8 +230,14 @@ private:
 	void die(View &v);
 	void start_fade(View &v);
 	bool advance(View &v, double p_dt, double p_alpha);
+	void advance_live(const CrowdModel &m, View &v, double p_dt, double p_alpha);
+	void catch_up(const CrowdModel &m, View &v);
 	void rank_shadows();
-	void emit(const View &v, float p_cam_x, float p_cam_y, float p_cam_z);
+	void draw_live(View &v, double p_dt, double p_alpha, float p_cam_x, float p_cam_y, float p_cam_z, bool p_full_rate);
+	void emit(View &v, float p_cam_x, float p_cam_y, float p_cam_z);
+	void pose_row(const CrowdModel &m, const View &v, float *w, double *r_off) const;
+	float *slot_for(const View &v, float p_cam_x, float p_cam_y, float p_cam_z);
+	double view_radius(const View &v) const;
 	CrowdGroup &group_for(int32_t p_model, int32_t p_lod, bool p_shadow);
 	void grow(CrowdGroup &g);
 

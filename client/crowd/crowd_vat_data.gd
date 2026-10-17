@@ -83,9 +83,15 @@ func crowd_data() -> Dictionary:
 	var loops := PackedInt32Array()
 	for c in clip_table:
 		loops.append(int(c.w))
-	return {"slug": slug, "height": height, "stride_walk": stride_walk, "stride_run": stride_run, "clip_names": clip_names, "clip_seconds": clip_seconds,
+	return {"slug": slug, "height": height, "radius": bounding_radius(), "stride_walk": stride_walk, "stride_run": stride_run, "clip_names": clip_names, "clip_seconds": clip_seconds,
 		"clip_length": clip_source_length if clip_source_length.size() == clip_names.size() else clip_seconds, "clip_impact": clip_impact, "clip_landing": clip_landing,
-		"clip_loop": loops, "roles": roles}
+		"clip_loop": loops, "roles": roles, "lod_triangles": lod_triangles}
+
+
+## Radius (metres) of a sphere about the feet (the creature's origin) that holds every baked pose: the farthest corner of `aabb`. The crowd culls a body by it.
+func bounding_radius() -> float:
+	var far := Vector3(maxf(absf(aabb.position.x), absf(aabb.end.x)), maxf(absf(aabb.position.y), absf(aabb.end.y)), maxf(absf(aabb.position.z), absf(aabb.end.z)))
+	return far.length()
 
 
 static var _spectral: Shader

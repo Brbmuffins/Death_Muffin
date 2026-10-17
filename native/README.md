@@ -64,7 +64,8 @@ Today's runtime it replaces is mapped in the private audit `~/vps-handoffs/Death
   rendered frame, interpolated between ticks; animations play from baked vertex-animation textures. `DmCrowd` does it (`dm_crowd.*`, `core/crowd_view.*`): it reads the core's
   tables and damage events right after each step without consuming the events, and keeps every creature's view state (turn, legs, clip, blend, flash, knock, death) itself, so no
   presentation field lives in a world, enemy or thrall struct. Its input is a plain row per creature, hit and corpse (client/crowd/README.md "Driving the crowd"); a co-op
-  guest's puppet core fills the same tables and damaged events, so `DmCrowd.sync(core)` draws it as it draws a host.
+  guest's puppet core fills the same tables and damaged events, so `DmCrowd.sync(core)` draws it as it draws a host. The frame's cost is the view's to cut, in the one `draw` call: the camera's
+  view-projection comes in with it (bodies outside it are not written), and a body far from the camera works its pose out less often, never the position (`client/crowd/README.md` "Crowd cost").
 - **Co-op (host-authoritative, B28, B40):** the host core packs one compact snapshot at 20 Hz and the discrete events as reliable batches; a guest's core runs in
   puppet mode (`set_puppet(true)`): no brains and no rules, bodies that appear from spawn events, ease toward snapshots (today's puppet easing) and go on removal events,
   and an event buffer that carries what GDScript sees on the host, derived from state edges and hp drops where today's puppets derive it. Messages carry a version and a
@@ -248,8 +249,8 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   the thralls'
   spirit rims, gear tint of kit armour and the kit weapon's tier colour on a thrall's prop (the props themselves are baked: `client/crowd/README.md` "Hand props"), the Mire Leech's wobble,
   the fade-out of a sinking body (it sinks the same 0.9 s but is not faded to transparent), the drawn-body crowd separation
-  (`_separate_crowd`; the core separates bodies), and the animation LOD (a far body
-  updates at 24 or 10 Hz today; every drawn body updates every frame). Effects need the event consumer, which is its own item.
+  (`_separate_crowd`; the core separates bodies). Effects need the event consumer, which is its own item. The animation LOD (a far body updates at 24 or 10 Hz today) and the culling of what the camera
+  cannot see (the engine does it per node today) are the crowd's own: the bands count from the camera's distance, where today's count from a box around the hero (`client/crowd/README.md` "Crowd cost").
 - **Crowd views take the live nodes' rules where they differ from `DmEntityViews`:** a flinch plays when the core enters HURT (`DmEnemy`), not on every flash; the flash decays by
   6 per second for an enemy and 5 for a thrall (`DmEnemy`, `DmThrall`), and the killing blow leaves no flash on the body; an enemy rises from 0.9 x its model's height below the ground
   (`DmEnemy`; `DmEntityViews` says 1.7 m); a recoil starts on every hit whose flash had fallen under 0.5, at any frame rate (today at 60 fps it depends on the frame time).
@@ -502,7 +503,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   `client/tests/core_boss.gd` (the core's half of the bosses: the Skull Niche against its script, a body's health, a boss's zones and their query, the wire of all three) and `client/tests/boss_abbess.gd`, `boss_congregation.gd`, `boss_prelate.gd`, `boss_saint.gd`, `boss_regent.gd` and
   `boss_mire.gd` on `boss_base.gd` (the other six bosses on the core: recorded scenarios, the generic parts, each fight by hand) and `boss_meta.gd` (the Covenant Seal on the mock backend),
   `client/tests/benchmark.gd` (the benchmark: the Full Party fight held as its setup says, Easy auto combat on the core's arrays, the report and its budget section, every room and class, real `--benchmark` launches, nothing sent anywhere, the suite's files in a folder of its own),
-  `client/tests/crowd_view.gd` (the crowd's views against today's view code, and a Full Party driven by a real core) and `client/tests/game_scene.gd` (the game scene on
+  `client/tests/crowd_view.gd` (the crowd's views against today's view code, their cost, and a Full Party driven by a real core) and `client/tests/game_scene.gd` (the game scene on
   the core: an offline run in the Graves, the director, the event signals, no node per creature, timings). Run
   `bash client/setup.sh` first in a fresh checkout: a script run in a
   project that was never imported hangs.

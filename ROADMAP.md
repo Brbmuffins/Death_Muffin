@@ -128,8 +128,11 @@ server (B38).
     (`client/tests/crowd_smoke.gd`, Forward+, Mobile and Compatibility): the shader's integer decoding and its prop branch are proven in a line-by-line mirror and a GLSL compile, not yet on a renderer.
   - [ ] Crowd effects, the rest: `DmEnemyFx` already plays the telegraphs, swings, deaths, voices, rising dust, dust clouds and the affixes' bell, meal and burst from the core's events; left are the
     the shrouded body's fade (the full list is in native/README.md "Differences"). Done: the thralls' ground rings, the shattered corpse (`DmCrowd.shatter`) and each corpse's puff when it goes, the landing dust (`DmCrowd.take_landings`), the corpse rings and the toxic disc, the affixes' standing marks and motes, the status tells and the fliers' motes (their cost in the VPS Full Party fight, headless, two rounds each: 5.06 -> 5.22 ms a frame on average, the median unchanged; today pays the same effects every frame).
-  - [ ] Crowd cost: animation LOD (a far body at 24 or 10 Hz), cull instances outside the camera's view in the core, measure the thralls' shadows (they always cast), set the level-of-detail
-    distances and the 128-instance reserve from the benchmark on Helix's PC.
+  - [ ] Crowd cost. In the crowd (`client/crowd/README.md` "Crowd cost"): animation bands (a body beyond 32 m of the camera works its pose out 24 times a second, beyond 60 m 10 times; always placed every frame), bodies outside the camera's
+    view not written (a casting body kept while its shadow falls in), the thrall shadows counted (instances, MultiMeshes and triangles in the shadow pass) and switchable for a run, and the level-of-detail distances (32 and 60 m) and the
+    128-instance reserve as settings the benchmark records; `-- --bench-crowd=...` changes them for a run. Measured on the VPS (headless): the crowd's whole CPU is 30 to 50 us a frame at Full Party, so the saving is on the GPU.
+    Left for Helix's PC (the Full Party, a few alternating runs each way): what culling and the bands save in the render CPU and GPU columns; whether the thralls' shadows (4 of 5 casting instances) are worth their triangles, kept or
+    capped; the level-of-detail distances and the reserve, from the draw calls, triangles and upload. Then tick this.
   - [ ] The whole roster baked (`bash client/tools/bake_crowd.sh`; the Graves' whole roster, robber, hound, penitent, sac, moth, bat, ghoul, rat and risen, and the thralls are baked and synced so far) and its models synced (`client/assets.list`); a first look on Forward+ and Mobile.
   - [x] Unrigged creatures (props today's shader animates, `DmCreatureMat` wings): the baker's static-mesh path bakes the wing beat into a 24-frame
     loop (moth and bat within about a millimetre of today's formula, `client/tests/crowd_bake.gd`); a model without wings gets a still pose.
@@ -337,6 +340,10 @@ combat simulation for now.
     as that character levels; the benchmark could hold its XP.
   - The rebuild's area scenes: tall props always cast the moon's shadow; today's runtime stops it beyond 32 m of the hero (`SHADOW_RANGE`), which the cell meshes could do with one flag each.
     Also not props, so not batched: decals and puddles (unlit quads, one draw call each: the Graves 23), the flame spheres (18) and the walls (14).
+  - The rebuild's crowd: a casting body outside the camera's view is kept for its shadow and drawn in the main pass too (one MultiMesh does both); a shadows-only MultiMesh per model and level would
+    send it to the shadow map alone. Worth doing if Helix's PC shows the kept casters cost something (2026-10-17).
+  - The benchmark's held Full Party keeps the whole pack inside the camera's view and within 32 m of it, so the crowd's culling and animation bands barely engage in it (1 of 148 bodies culled);
+    their saving shows in play (F3) or in a looser fight (2026-10-17).
 - **Found during the rebuild, today's game ignores them** (Helix 2026-10-16: fixed after launch day, in the rebuild only; until then both keep today's behaviour; the core already emits each one):
   toxic corpse pools always hit as at level 1 (nothing sets the area level), a fallen plague bearer's pool never appears, and the
   Mourning Bell wraith's ally heal never happens (both are signals nobody listens to). Statuses never change the blows a boss takes:

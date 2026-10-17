@@ -18,6 +18,9 @@ const LOD_DISTANCES := [32.0, 60.0]
 const RESERVE := 128
 ## How far above and below the ground a creature (a hover, a sinking corpse, a tall elite) can be drawn.
 const AREA_HEIGHT := Vector2(-4.0, 14.0)
+## Animation levels of detail (README "Crowd cost"): a body beyond `mid_m` metres from the camera works its pose out `mid_hz` times a second, beyond `far_m` `far_hz` times (0 = every frame).
+## The distances are the first two mesh levels' (LOD_DISTANCES); a body in view near the hero is nearer than `mid_m`. A first guess for the test build, like the levels: the benchmark records them.
+const ANIM_LOD := {"mid_m": 32.0, "mid_hz": 24.0, "far_m": 60.0, "far_hz": 10.0}
 
 var core: RefCounted
 var crowd: RefCounted   # DmCrowd
@@ -30,6 +33,14 @@ var auto_sync := true
 ## Models the bake did not have, with what drew instead (each listed once).
 var warnings := PackedStringArray()
 var lod_distances := PackedFloat32Array(LOD_DISTANCES)
+## Bodies outside the camera's view are not written (README "Crowd cost"). A casting body just outside stays while its shadow falls in.
+var cull := true:
+	set(v):
+		cull = v
+		if crowd != null:
+			crowd.set_culling(v)
+## Over the graphics preset: whether thralls cast shadows (-1 = the preset's, 0 = never, 1 = always). The benchmark's `--bench-crowd=thrall_shadows=off` sets it.
+var thrall_shadows := -1
 
 var _looks: Dictionary
 var _baked_dir := BAKED_DIR
@@ -46,7 +57,7 @@ var _glow_version := -1
 
 ## `enemy_defs`: the ENEMIES dictionary of data/content/enemies.json (flying, inert, rig per def). `area_min`, `area_max`: the area's bounds, for the MultiMeshes'
 ## custom_aabb (the game layer sets the core's own with `core.set_area_bounds`). `opts`: baked_dir, assets_dir (where the models' textures
-## are when they are not imported), lod_distances, reserve, champion_scale (LEGEND.championScale).
+## are when they are not imported), lod_distances, reserve, champion_scale (LEGEND.championScale), and the crowd's cost (`apply_cost`): cull, anim_lod, thrall_shadows.
 func setup(p_core: RefCounted, enemy_defs: Dictionary, area_min: Vector2, area_max: Vector2, opts := {}) -> void:
 	core = p_core
 	_enemy_defs = enemy_defs
@@ -61,10 +72,37 @@ func setup(p_core: RefCounted, enemy_defs: Dictionary, area_min: Vector2, area_m
 	crowd = ClassDB.instantiate("DmCrowd")
 	crowd.reserve(int(opts.get("reserve", RESERVE)))
 	crowd.set_champion_scale(float(opts.get("champion_scale", 1.35)))
+	apply_cost(opts)
 	crowd.set_glows(_glow(_looks.enemy_glow.elite), float(_looks.thrall_glow.champion))
 	_register_enemies()
 	_register_thralls()
 	process_physics_priority = 1000   # after the nodes that step the core
+
+
+## The crowd's cost settings (README "Crowd cost"), from a setup's options or a benchmark's: `cull` (bool), `anim_lod` (bool, or a dictionary with any of ANIM_LOD's keys),
+## `thrall_shadows` (bool, over the graphics preset's). A key that is not there takes its default: culling on, the bands on at ANIM_LOD, the preset's thrall shadows.
+func apply_cost(opts: Dictionary) -> void:
+	cull = bool(opts.get("cull", true))
+	var on := true
+	var bands := ANIM_LOD.duplicate()
+	var a: Variant = opts.get("anim_lod", true)
+	if a is Dictionary:
+		bands.merge(a, true)
+	else:
+		on = bool(a)
+	crowd.set_anim_lod(on, float(bands.mid_m), float(bands.mid_hz), float(bands.far_m), float(bands.far_hz))
+	thrall_shadows = (1 if bool(opts["thrall_shadows"]) else 0) if opts.has("thrall_shadows") else -1
+
+
+## The graphics preset's crowd shadows (DmNextPerf.apply): the nearest `casters` enemies cast (`crowded` once the field is crowded), thralls when `thralls_cast`
+## unless `thrall_shadows` says otherwise.
+func set_shadow_policy(casters: int, crowded: int, thralls_cast: bool) -> void:
+	crowd.set_shadow_policy(casters, crowded, thralls_cast if thrall_shadows < 0 else thrall_shadows == 1)
+
+
+## The direction the moon's light travels, once the area's light is up (DmNextPerf.apply): a casting body just outside the view stays while its shadow falls in.
+func set_light_direction(direction: Vector3) -> void:
+	crowd.set_shadow_light(direction)
 
 
 ## Sets which discipline's legion a hero's thralls look like (a core hero id; "ossuary", "gravecaller", "rotweaver", "mourner", or "" for none).
@@ -109,7 +147,12 @@ func _process(delta: float) -> void:
 		_push_glows()
 	crowd.set_hitstop_scale(hitstop_scale)
 	var cam := get_viewport().get_camera_3d()
-	crowd.draw(delta, Engine.get_physics_interpolation_fraction(), cam.global_position if cam != null else Vector3(focus.x, 0.0, focus.y))
+	if cam == null:
+		crowd.draw(delta, Engine.get_physics_interpolation_fraction(), Vector3(focus.x, 0.0, focus.y))
+	elif cull:   # the view (the camera's projection times its inverse transform) goes in with the camera's place: one call, the culling is the core's
+		crowd.draw(delta, Engine.get_physics_interpolation_fraction(), cam.global_position, cam.get_camera_projection() * Projection(cam.get_camera_transform().affine_inverse()))
+	else:
+		crowd.draw(delta, Engine.get_physics_interpolation_fraction(), cam.global_position)
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------- looks

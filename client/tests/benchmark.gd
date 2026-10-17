@@ -168,6 +168,16 @@ func the_setup() -> void:
 	var unbaked := {"meta": {"crowd_models": 0, "build": "dev", "version": "dev", "date": "", "gpu": "", "renderer": "", "godot": "", "cpu": "", "cores": 1, "os": "", "resolution": "", "preset": "high", "fps_cap": 0, "vsync": "", "setup": "", "fight": ""},
 		"phases": [], "kills": 0}
 	check(DmBenchmark.format_text(unbaked).contains("WARNING: no crowd model is baked") and not DmBenchmark.format_text(unbaked.merged({"meta": unbaked["meta"].merged({"crowd_models": 3}, true)}, true)).contains("no crowd model is baked"), "a crowd with nothing baked is warned about")
+	# the crowd's cost settings a launch can change (--bench-crowd=...) and the line that records them
+	var pc := DmBenchmark.parse_crowd(PackedStringArray(["--benchmark", "--bench-crowd=cull=off,anim=off,thrall_shadows=off,reserve=64,lod=40/80"]))
+	check(pc.opts == {"cull": false, "anim_lod": false, "thrall_shadows": false, "reserve": 64, "lod_distances": PackedFloat32Array([40.0, 80.0])} and pc.unknown.is_empty(), "--bench-crowd: culling, the bands, the thralls' shadows, the reserve and the levels (%s)" % str(pc.opts))
+	pc = DmBenchmark.parse_crowd(PackedStringArray(["--bench-crowd=mid_hz=12,far_m=70,thrall_shadows=on"]))
+	check(pc.opts == {"anim_lod": {"mid_hz": 12.0, "far_m": 70.0}, "thrall_shadows": true}, "--bench-crowd: band numbers switch the bands on with them (%s)" % str(pc.opts))
+	pc = DmBenchmark.parse_crowd(PackedStringArray(["--bench-crowd=anim=on,cull=maybe,bogus=1,reserve=0,lod=a/b,mid_hz=x,novalue"]))
+	check(pc.opts == {"anim_lod": true} and pc.unknown.size() == 6, "--bench-crowd: what is not a setting is listed, not applied (%s)" % str(pc.unknown))
+	check(DmBenchmark.parse_crowd(PackedStringArray(["--benchmark"])).opts.is_empty(), "no --bench-crowd, no change: the game's own settings")
+	check(DmBenchmark.crowd_line({}) == "not in this build" and DmBenchmark.crowd_line({"anim_lod": false, "culling": true, "thrall_shadows": true, "reserve": 128, "lod_distances": PackedFloat32Array([32.0, 60.0]),
+		"shadow_casters": 12, "shadow_casters_crowded": 8}).contains("mesh levels at 32 / 60 m; 128 instances reserved a group; animation off") , "the crowd line names the levels, the reserve and the bands")
 	var M: GDScript = load("res://main/main.gd")
 	var a: Dictionary = M.bench_setup_from_args(PackedStringArray(["--benchmark", "--bench-room=graves", "--bench-class=2", "--bench-size=heavy", "--bench-length=quick"]))
 	check(a["room"] == "graves" and int(a["discipline"]) == 2 and a["size"] == "heavy" and a["length"] == "quick", "launch args pick the setup")
@@ -399,6 +409,15 @@ func full_party_run() -> void:
 	check(root.find_children("*", "HTTPRequest", true, false).is_empty() and not has_script_class(root, "DmHttpTransport"), "no network node was created")
 	check(DmUiConfig.dir == "user://" and DmBuild.version() == "dev", "the UI config dir is restored")
 	check(lines.size() >= 2 and lines[0].begins_with("Building"), "progress lines were emitted")
+	# the crowd's settings and counters are in the report: the game's own defaults here (nothing asked for)
+	var cs: Dictionary = r["meta"]["crowd"]
+	check(cs.anim_lod and cs.culling and cs.thrall_shadows and cs.reserve == CrowdView.RESERVE and cs.lod_distances == PackedFloat32Array(CrowdView.LOD_DISTANCES) and cs.anim_mid_hz == 24.0 and cs.anim_far_hz == 10.0,
+		"the report records the crowd's settings: %s" % str(cs))
+	var cc: Dictionary = ph["crowd"]
+	for k in DmBenchmark.CROWD_COUNTERS:
+		check(cc.has(k), "the phase has the crowd counter %s" % k)
+	check(cc.bodies > 0.0 and cc.drawn > 0.0 and cc.drawn <= cc.bodies and cc.casting_thralls > 0.0 and cc.casting >= cc.casting_thralls and cc.band_near > 0.0, "the crowd counters are sane: %s" % str(cc))
+	print("INFO crowd per frame: %s" % str(cc))
 	# the core's budget: the numbers exist and add up
 	check(float(ph["core_ms"]) > 0.0 and absf(float(ph["core_ms"]) - (float(ph["core_step_ms"]) + float(ph["core_sync_ms"]) + float(ph["core_events_ms"]))) < 1e-6, "the core's tick is its step + crowd sync + event dispatch (%.2f ms)" % float(ph["core_ms"]))
 	check(float(ph["ticks_per_frame"]) > 0.0 and absf(float(ph["core_frame_ms"]) - float(ph["core_ms"]) * float(ph["ticks_per_frame"])) < 1e-6, "the core's cost a frame is its tick times the ticks a frame ran (%.2f x %.2f)" % [float(ph["core_ms"]), float(ph["ticks_per_frame"])])
@@ -407,7 +426,8 @@ func full_party_run() -> void:
 	# the report
 	var text := DmBenchmark.format_text(r)
 	for needle in ["Death Muffin benchmark", "Average fps", "Frame ms (p95)", "V-Sync: off during measurement", "Combat core: dmcore", "Setup: The Hollow Graves, Gravecaller, Full Party, Quick (custom",
-			"Boss: The Gravedigger King", "held awake", "seed 20261011"]:
+			"Boss: The Gravedigger King", "held awake", "seed 20261011", "Crowd: mesh levels at 32 / 60 m; 128 instances reserved a group; animation 24.0 Hz beyond 32 m, 10.0 Hz beyond 60 m; culling on; thralls cast shadows",
+			"Crowd per frame (average over the measured window"]:
 		check(text.contains(needle), "the report has '%s'" % needle)
 	var budget := DmBenchmark.budget_lines(r)
 	var btext := "\n".join(budget)
@@ -600,6 +620,9 @@ func every_room() -> void:
 			check(DmBenchmark.format_text(r).contains("no boss (this room has none)") and not DmBenchmark.format_text(r).contains("Boss:"), "%s: the report says the room has none" % room)
 		var text := DmBenchmark.format_text(r)
 		check(text.contains("Setup: %s, Gravecaller, Full Party, Quick (custom" % DmBenchmark.room_name(room)) and text.contains("Budgets (ROADMAP") and text.contains("Combat core per tick"), "%s: the report names the room and has its budget section" % room)
+		var cc: Dictionary = ph.get("crowd", {})
+		check(text.contains("Crowd: mesh levels at") and text.contains("Crowd per frame (average over the measured window") and not cc.is_empty() and float(cc["bodies"]) > 0.0 and float(cc["drawn"]) <= float(cc["bodies"]) and float(cc["casting_thralls"]) > 0.0
+			and float(cc["triangles"]) > 0.0 and r["meta"]["crowd"].culling and r["meta"]["crowd"].anim_lod, "%s: the report records the crowd's settings and counters (%.0f bodies, %.0f drawn, %.0f outside the view, %.0f casting)" % [room, float(cc.get("bodies", 0.0)), float(cc.get("drawn", 0.0)), float(cc.get("culled", 0.0)), float(cc.get("casting", 0.0))])
 		print("INFO bench room %s (%s): %d bodies of %d kinds, boss awake %.0f%% (woken %d, defeated %d, hittable in %d of %d looks), outside the roster %s, avg %.2f ms, core %.2f ms, run took %.1f s" % [
 			room, boss if boss != "" else "no boss", b.spawns, w.defs.size(), float(ph.get("boss_awake_pct", 0.0)), b.boss_summons, b.boss_defeats, w.boss_hittable, w.looks, str(outside),
 			float(ph.get("avg_ms", 0.0)), float(ph.get("core_ms", 0.0)), float(o["ms"]) / 1000.0])
@@ -830,6 +853,14 @@ func real_launches() -> void:
 	var queued_runs: Array = JSON.parse_string(FileAccess.get_file_as_string(DmBenchHistory.pending_file())) if FileAccess.file_exists(DmBenchHistory.pending_file()) else []
 	var rooms_queued := queued_runs.map(func(q: Dictionary) -> String: return "%s/%d" % [q["room"], int(q["discipline"])])
 	check(rooms_queued.has("graves/2") and rooms_queued.has("fen/11"), "the two launches queued their runs in the folder they were given and sent nothing (%s)" % str(rooms_queued))
+	# the crowd's cost settings from the launch: the report records what was in force, and a setting that is not one is said to be ignored
+	var o3: Array = []
+	var c3 := OS.execute(exe, ["--headless", "--fixed-fps", "60", "--path", proj, "--", "--benchmark", "--bench-room=graves", "--bench-class=2", "--bench-size=full_party", "--bench-length=quick", "--bench-warm=2",
+		"--bench-measure=4", "--baked=" + ProjectSettings.globalize_path(scratch), "--bench-dir=" + own, "--bench-crowd=cull=off,anim=off,thrall_shadows=off,reserve=64,lod=40/80,bogus=1"], o3, true)
+	var t3 := "\n".join(PackedStringArray(o3))
+	check(c3 == 0 and t3.contains("BENCHMARK Crowd: mesh levels at 40 / 80 m; 64 instances reserved a group; animation off (every body every frame); culling off; thralls do not cast shadows"), "a launch with --bench-crowd records its settings in the report (%d)" % c3)
+	check(t3.contains("ignored --bench-crowd setting 'bogus=1'") and not t3.contains("SCRIPT ERROR"), "and says what it ignored")
+	check(t3.contains("(0 of them thralls; 0 MultiMeshes, 0 k triangles again in the shadow pass)") or t3.contains("(0 of them thralls;"), "and no thrall cast")
 	for pair in [["--bench-room=depths", "'depths'", "graves"], ["--bench-room=nowhere", "'nowhere'", "fen"], ["--bench-class=5", "class 5", "2 Gravecaller"]]:
 		var o2: Array = []
 		var c2 := OS.execute(exe, ["--headless", "--path", proj, "--", "--benchmark", pair[0]], o2, true)
