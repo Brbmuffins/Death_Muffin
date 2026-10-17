@@ -11,10 +11,14 @@
 [ext_resource type="PackedScene" path="res://areas/props/dead_tree.tscn" id="9_f5464"]
 [ext_resource type="PackedScene" path="res://areas/props/bone_pile.tscn" id="10_35804"]
 [ext_resource type="PackedScene" path="res://areas/props/ember_altar.tscn" id="11_a1a33"]
-[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="12_bdf92"]
-[ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="13_7607e"]
-[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="14_16348"]
-[ext_resource type="LightmapGIData" path="res://areas/pyre.lmbake" id="15_6d4bd"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/pyre/cell_6_-11_tall.res" id="12_da814"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/pyre/cell_6_-9_tall.res" id="13_88743"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/pyre/cell_8_-11_tall.res" id="14_5f201"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/pyre/cell_8_-9_tall.res" id="15_c4371"]
+[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="16_bdf92"]
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="17_7607e"]
+[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="18_16348"]
+[ext_resource type="LightmapGIData" path="res://areas/pyre.lmbake" id="19_6d4bd"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.84705883, 0.7058824, 0.59607846, 1)
@@ -151,7 +155,7 @@ rings = 4
 transparency = 1
 shading_mode = 0
 albedo_color = Color(1, 0.47843137, 0.16470589, 0.3)
-albedo_texture = ExtResource("12_bdf92")
+albedo_texture = ExtResource("16_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_a24bb"]
@@ -160,7 +164,7 @@ orientation = 1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f0e93"]
 albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
-albedo_texture = ExtResource("13_7607e")
+albedo_texture = ExtResource("17_7607e")
 roughness = 0.62
 texture_filter = 5
 
@@ -230,7 +234,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 albedo_color = Color(0.61, 0.36, 1, 0.9)
-albedo_texture = ExtResource("12_bdf92")
+albedo_texture = ExtResource("16_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_fb593"]
@@ -259,7 +263,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 vertex_color_use_as_albedo = true
-albedo_texture = ExtResource("14_16348")
+albedo_texture = ExtResource("18_16348")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_fcbc9"]
 _surfaces = [{
@@ -386,44 +390,12 @@ mesh = SubResource("BoxMesh_429e2")
 
 [node name="Props" type="Node3D" parent="." unique_id=105854251]
 
-[node name="pillar_000" parent="Props" unique_id=152429596 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 76, 0, -102.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_001" parent="Props" unique_id=74280438 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 76, 0, -129.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_002" parent="Props" unique_id=264773465 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 83, 0, -102.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_003" parent="Props" unique_id=204049935 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 83, 0, -129.5)
-metadata/prop_kind = "pillar"
-
 [node name="pillar_004" parent="Props" unique_id=104674045 instance=ExtResource("3_be89b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0, -102.5)
 metadata/prop_kind = "pillar"
 
 [node name="pillar_005" parent="Props" unique_id=219152206 instance=ExtResource("3_be89b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0, -129.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_006" parent="Props" unique_id=126863529 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 97, 0, -102.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_007" parent="Props" unique_id=90094404 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 97, 0, -129.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_008" parent="Props" unique_id=104860955 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 0, -102.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_009" parent="Props" unique_id=113229677 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 0, -129.5)
 metadata/prop_kind = "pillar"
 
 [node name="arch_000" parent="Props" unique_id=177293998 instance=ExtResource("4_c485c")]
@@ -446,24 +418,8 @@ metadata/prop_kind = "cinder_obelisk"
 transform = Transform3D(0.6668943, 0, 0.7451523, 0, 1, 0, -0.7451523, 0, 0.6668943, 100, 0, -108)
 metadata/prop_kind = "cinder_obelisk"
 
-[node name="cinder_obelisk_002" parent="Props" unique_id=266930147 instance=ExtResource("7_c422b")]
-transform = Transform3D(-0.5774158, 0, 0.81645024, 0, 1, 0, -0.81645024, 0, -0.5774158, 80, 0, -124)
-metadata/prop_kind = "cinder_obelisk"
-
-[node name="cinder_obelisk_003" parent="Props" unique_id=243480739 instance=ExtResource("7_c422b")]
-transform = Transform3D(-0.98582006, 0, 0.16780588, 0, 1, 0, -0.16780588, 0, -0.98582006, 100, 0, -124)
-metadata/prop_kind = "cinder_obelisk"
-
 [node name="cinder_obelisk_004" parent="Props" unique_id=28811232 instance=ExtResource("7_c422b")]
 transform = Transform3D(-0.44026467, 0, 0.89786804, 0, 1, 0, -0.89786804, 0, -0.44026467, 90, 0, -105)
-metadata/prop_kind = "cinder_obelisk"
-
-[node name="cinder_obelisk_005" parent="Props" unique_id=3651731 instance=ExtResource("7_c422b")]
-transform = Transform3D(-0.84417516, 0, 0.5360674, 0, 1, 0, -0.5360674, 0, -0.84417516, 82, 0, -130.5)
-metadata/prop_kind = "cinder_obelisk"
-
-[node name="cinder_obelisk_006" parent="Props" unique_id=27359256 instance=ExtResource("7_c422b")]
-transform = Transform3D(0.24364983, 0, 0.9698633, 0, 1, 0, -0.9698633, 0, 0.24364983, 98, 0, -130.5)
 metadata/prop_kind = "cinder_obelisk"
 
 [node name="pyre_stack_000" parent="Props" unique_id=47937429 instance=ExtResource("8_4bf2f")]
@@ -501,6 +457,26 @@ metadata/prop_kind = "bone_pile"
 [node name="ember_altar_000" parent="Props" unique_id=208507706 instance=ExtResource("11_a1a33")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0, -126.35)
 metadata/prop_kind = "ember_altar"
+
+[node name="cell_6_-11_tall" type="MeshInstance3D" parent="Props" unique_id=260771732]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 78, 0, -126)
+mesh = ExtResource("12_da814")
+metadata/props = ["pillar_001", "pillar_003", "cinder_obelisk_002", "cinder_obelisk_005"]
+
+[node name="cell_6_-9_tall" type="MeshInstance3D" parent="Props" unique_id=109959853]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 78, 0, -102)
+mesh = ExtResource("13_88743")
+metadata/props = ["pillar_000", "pillar_002"]
+
+[node name="cell_8_-11_tall" type="MeshInstance3D" parent="Props" unique_id=41111108]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 102, 0, -126)
+mesh = ExtResource("14_5f201")
+metadata/props = ["pillar_007", "pillar_009", "cinder_obelisk_003", "cinder_obelisk_006"]
+
+[node name="cell_8_-9_tall" type="MeshInstance3D" parent="Props" unique_id=175806736]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 102, 0, -102)
+mesh = ExtResource("15_c4371")
+metadata/props = ["pillar_006", "pillar_008"]
 
 [node name="GatherNodes" type="Node3D" parent="." unique_id=118052868]
 
@@ -1024,4 +1000,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.41276968, 0.19918525, 0.100474976, 1)
 environment_custom_energy = 1.9
-light_data = ExtResource("15_6d4bd")
+light_data = ExtResource("19_6d4bd")

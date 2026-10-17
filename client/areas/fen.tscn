@@ -6,16 +6,22 @@
 [ext_resource type="PackedScene" path="res://areas/props/grave_lantern.tscn" id="4_a4528"]
 [ext_resource type="PackedScene" path="res://areas/props/drowned_statue.tscn" id="5_e086a"]
 [ext_resource type="PackedScene" path="res://areas/props/fen_hummock.tscn" id="6_1f960"]
-[ext_resource type="PackedScene" path="res://areas/props/tombstone_round.tscn" id="7_36f50"]
-[ext_resource type="PackedScene" path="res://areas/props/tombstone_cross.tscn" id="8_2e4ce"]
+[ext_resource type="PackedScene" path="res://areas/props/tombstone_cross.tscn" id="7_2e4ce"]
+[ext_resource type="PackedScene" path="res://areas/props/tombstone_round.tscn" id="8_36f50"]
 [ext_resource type="PackedScene" path="res://areas/props/dead_tree.tscn" id="9_f5464"]
 [ext_resource type="PackedScene" path="res://areas/props/church_pew.tscn" id="10_fc904"]
 [ext_resource type="PackedScene" path="res://areas/props/mire_altar.tscn" id="11_7e966"]
-[ext_resource type="PackedScene" path="res://areas/props/prop_node_burial_mound.tscn" id="12_d507d"]
-[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="13_bdf92"]
-[ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="14_7607e"]
-[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="15_16348"]
-[ext_resource type="LightmapGIData" path="res://areas/fen.lmbake" id="16_c6ca6"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/fen/cell_-5_-8_small.res" id="12_7cdef"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/fen/cell_-5_-8_tall.res" id="13_05409"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/fen/cell_-5_-7_small.res" id="14_683b1"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/fen/cell_-5_-6_tall.res" id="15_36633"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/fen/cell_-4_-9_tall.res" id="16_78fd1"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/fen/cell_-4_-7_small.res" id="17_a5448"]
+[ext_resource type="PackedScene" path="res://areas/props/prop_node_burial_mound.tscn" id="18_d507d"]
+[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="19_bdf92"]
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="20_7607e"]
+[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="21_16348"]
+[ext_resource type="LightmapGIData" path="res://areas/fen.lmbake" id="22_c6ca6"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.65882355, 0.7529412, 0.7372549, 1)
@@ -117,7 +123,7 @@ size = Vector3(0.8, 3.2, 40)
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.37254903, 0.76862746, 0.7058824, 0.22)
-albedo_texture = ExtResource("13_bdf92")
+albedo_texture = ExtResource("19_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_a24bb"]
@@ -141,7 +147,7 @@ size = Vector2(8.4, 9.4)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_060c7"]
 albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
-albedo_texture = ExtResource("14_7607e")
+albedo_texture = ExtResource("20_7607e")
 roughness = 0.62
 texture_filter = 5
 
@@ -211,7 +217,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 albedo_color = Color(0.61, 0.36, 1, 0.9)
-albedo_texture = ExtResource("13_bdf92")
+albedo_texture = ExtResource("19_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_fb593"]
@@ -240,7 +246,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 vertex_color_use_as_albedo = true
-albedo_texture = ExtResource("15_16348")
+albedo_texture = ExtResource("21_16348")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_1ab1f"]
 _surfaces = [{
@@ -437,36 +443,8 @@ metadata/prop_kind = "drowned_statue"
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -29.5, 0, -67.5)
 metadata/prop_kind = "drowned_statue"
 
-[node name="fen_hummock_000" parent="Props" unique_id=133268334 instance=ExtResource("6_1f960")]
-transform = Transform3D(-0.74931455, 0, -0.83584046, 0, 1.1225424, 0, 0.83584046, 0, -0.74931455, -41.94428, 0, -73.46354)
-metadata/prop_kind = "fen_hummock"
-
-[node name="fen_hummock_001" parent="Props" unique_id=228605524 instance=ExtResource("6_1f960")]
-transform = Transform3D(1.0795466, 0, -0.4945093, 0, 1.1874175, 0, 0.4945093, 0, 1.0795466, -36.192097, 0, -76.93379)
-metadata/prop_kind = "fen_hummock"
-
-[node name="fen_hummock_002" parent="Props" unique_id=36941024 instance=ExtResource("6_1f960")]
-transform = Transform3D(1.1665665, 0, -0.16933006, 0, 1.1787918, 0, 0.16933006, 0, 1.1665665, -36.30514, 0, -83.260666)
-metadata/prop_kind = "fen_hummock"
-
-[node name="fen_hummock_003" parent="Props" unique_id=51596843 instance=ExtResource("6_1f960")]
-transform = Transform3D(0.33069846, 0, 1.0339447, 0, 1.0855428, 0, -1.0339447, 0, 0.33069846, -48.02477, 0, -82.996765)
-metadata/prop_kind = "fen_hummock"
-
-[node name="fen_hummock_004" parent="Props" unique_id=266357923 instance=ExtResource("6_1f960")]
-transform = Transform3D(0.7945407, 0, 0.30661583, 0, 0.8516503, 0, -0.30661583, 0, 0.7945407, -47.577126, 0, -76.32309)
-metadata/prop_kind = "fen_hummock"
-
-[node name="fen_hummock_005" parent="Props" unique_id=150006569 instance=ExtResource("6_1f960")]
-transform = Transform3D(-0.86938465, 0, 0.1935539, 0, 0.8906698, 0, -0.1935539, 0, -0.86938465, -55.255917, 0, -95.17621)
-metadata/prop_kind = "fen_hummock"
-
 [node name="fen_hummock_006" parent="Props" unique_id=47462308 instance=ExtResource("6_1f960")]
 transform = Transform3D(-0.3061428, 0, 1.0367751, 0, 1.0810301, 0, -1.0367751, 0, -0.3061428, -32.79807, 0, -95.46471)
-metadata/prop_kind = "fen_hummock"
-
-[node name="fen_hummock_007" parent="Props" unique_id=218492969 instance=ExtResource("6_1f960")]
-transform = Transform3D(-0.2968476, 0, -0.8705151, 0, 0.9197364, 0, 0.8705151, 0, -0.2968476, -56.09018, 0, -81.65189)
 metadata/prop_kind = "fen_hummock"
 
 [node name="fen_hummock_008" parent="Props" unique_id=244277098 instance=ExtResource("6_1f960")]
@@ -481,52 +459,28 @@ metadata/prop_kind = "fen_hummock"
 transform = Transform3D(-0.18471536, 0, -1.1117731, 0, 1.1270134, 0, 1.1117731, 0, -0.18471536, -33.7138, 0, -65.684494)
 metadata/prop_kind = "fen_hummock"
 
-[node name="fen_hummock_011" parent="Props" unique_id=94532924 instance=ExtResource("6_1f960")]
-transform = Transform3D(0.73470813, 0, 0.68655956, 0, 1.0055646, 0, -0.68655956, 0, 0.73470813, -52.022327, 0, -90.29424)
-metadata/prop_kind = "fen_hummock"
-
-[node name="tombstone_round_000" parent="Props" unique_id=235298702 instance=ExtResource("7_36f50")]
-transform = Transform3D(0.18731032, -0.002489922, 0.7777588, 0.027858218, 0.799504, -0.004149653, -0.77726364, 0.028055305, 0.1872809, -55.07383, 0, -93.2306)
-metadata/prop_kind = "tombstone_round"
-
-[node name="tombstone_cross_000" parent="Props" unique_id=183924306 instance=ExtResource("8_2e4ce")]
+[node name="tombstone_cross_000" parent="Props" unique_id=183924306 instance=ExtResource("7_2e4ce")]
 transform = Transform3D(0.11979555, -0.013801805, 0.7908594, 0.23918174, 0.7630643, -0.022913357, -0.7539504, 0.23988004, 0.11839106, -32.736214, 0, -93.77)
 metadata/prop_kind = "tombstone_cross"
 
-[node name="tombstone_round_001" parent="Props" unique_id=47043906 instance=ExtResource("7_36f50")]
+[node name="tombstone_round_001" parent="Props" unique_id=47043906 instance=ExtResource("8_36f50")]
 transform = Transform3D(-0.03509404, 0.0012034916, 0.799229, 0.07298463, 0.79666126, 0.002005121, -0.79589045, 0.07300225, -0.035057377, -56.079887, 0, -80.181755)
 metadata/prop_kind = "tombstone_round"
 
-[node name="tombstone_round_002" parent="Props" unique_id=176424949 instance=ExtResource("7_36f50")]
+[node name="tombstone_round_002" parent="Props" unique_id=176424949 instance=ExtResource("8_36f50")]
 transform = Transform3D(-0.20267287, -0.0025983101, 0.7738973, -0.02678535, 0.79953974, -0.004330306, -0.7734379, -0.02700843, -0.20264328, -55.443382, 0, -66.8071)
 metadata/prop_kind = "tombstone_round"
 
-[node name="tombstone_round_003" parent="Props" unique_id=213938734 instance=ExtResource("7_36f50")]
+[node name="tombstone_round_003" parent="Props" unique_id=213938734 instance=ExtResource("8_36f50")]
 transform = Transform3D(-0.09620005, -0.00017888352, 0.7941949, -0.003948911, 0.7999902, -0.00029813888, -0.7941851, -0.003956107, -0.09619975, -47.20202, 0, -62.83219)
 metadata/prop_kind = "tombstone_round"
 
-[node name="tombstone_cross_001" parent="Props" unique_id=5467804 instance=ExtResource("8_2e4ce")]
+[node name="tombstone_cross_001" parent="Props" unique_id=5467804 instance=ExtResource("7_2e4ce")]
 transform = Transform3D(0.008759845, -0.0008711975, 0.79995155, 0.20901, 0.7722129, -0.0014477692, -0.7721645, 0.20901322, 0.008683193, -33.980743, 0, -63.750107)
 metadata/prop_kind = "tombstone_cross"
 
-[node name="tombstone_round_004" parent="Props" unique_id=116777861 instance=ExtResource("7_36f50")]
-transform = Transform3D(0.17965429, 0.009008455, 0.77951473, -0.10485869, 0.79295623, 0.015002926, -0.77248234, -0.105542794, 0.17925324, -51.637993, 0, -88.93123)
-metadata/prop_kind = "tombstone_round"
-
 [node name="dead_tree_000" parent="Props" unique_id=187045491 instance=ExtResource("9_f5464")]
 transform = Transform3D(-0.9764997, 0, -0.63174516, 0, 1.1630363, 0, 0.63174516, 0, -0.9764997, -50.93489, 0, -98.4)
-metadata/prop_kind = "dead_tree"
-
-[node name="dead_tree_001" parent="Props" unique_id=157267897 instance=ExtResource("9_f5464")]
-transform = Transform3D(0.06480649, 0, 0.989073, 0, 0.99119383, 0, -0.989073, 0, 0.06480649, -51.1322, 0, -61.6)
-metadata/prop_kind = "dead_tree"
-
-[node name="dead_tree_002" parent="Props" unique_id=61579660 instance=ExtResource("9_f5464")]
-transform = Transform3D(0.51265913, 0, -0.6233059, 0, 0.80705, 0, 0.6233059, 0, 0.51265913, -44.299088, 0, -98.4)
-metadata/prop_kind = "dead_tree"
-
-[node name="dead_tree_003" parent="Props" unique_id=135619975 instance=ExtResource("9_f5464")]
-transform = Transform3D(-0.124538645, 0, -1.1694511, 0, 1.1760637, 0, 1.1694511, 0, -0.124538645, -37.39565, 0, -98.4)
 metadata/prop_kind = "dead_tree"
 
 [node name="dead_tree_004" parent="Props" unique_id=57442062 instance=ExtResource("9_f5464")]
@@ -541,20 +495,8 @@ metadata/prop_kind = "dead_tree"
 transform = Transform3D(-0.40835938, 0, 0.99623424, 0, 1.0766801, 0, -0.99623424, 0, -0.40835938, -31.25576, 0, -61.6)
 metadata/prop_kind = "dead_tree"
 
-[node name="dead_tree_007" parent="Props" unique_id=118024910 instance=ExtResource("9_f5464")]
-transform = Transform3D(0.5996316, 0, -0.5856127, 0, 0.83815295, 0, 0.5856127, 0, 0.5996316, -58.4, 0, -94)
-metadata/prop_kind = "dead_tree"
-
-[node name="dead_tree_008" parent="Props" unique_id=36573824 instance=ExtResource("9_f5464")]
-transform = Transform3D(0.753956, 0, -0.2928241, 0, 0.8088236, 0, 0.2928241, 0, 0.753956, -58.4, 0, -87)
-metadata/prop_kind = "dead_tree"
-
 [node name="dead_tree_009" parent="Props" unique_id=154561115 instance=ExtResource("9_f5464")]
 transform = Transform3D(-0.794902, 0, -0.71106106, 0, 1.0665257, 0, 0.71106106, 0, -0.794902, -58.4, 0, -73)
-metadata/prop_kind = "dead_tree"
-
-[node name="dead_tree_010" parent="Props" unique_id=19151829 instance=ExtResource("9_f5464")]
-transform = Transform3D(0.6728767, 0, -0.8502349, 0, 1.0842798, 0, 0.8502349, 0, 0.6728767, -58.4, 0, -66)
 metadata/prop_kind = "dead_tree"
 
 [node name="church_pew_000" parent="Props" unique_id=30661791 instance=ExtResource("10_fc904")]
@@ -565,6 +507,42 @@ metadata/prop_kind = "church_pew"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42, 0, -90.2)
 metadata/prop_kind = "mire_altar"
 
+[node name="cell_-5_-8_small" type="MeshInstance3D" parent="Props" unique_id=93494151]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0, -90)
+cast_shadow = 0
+visibility_range_end = 80.0
+mesh = ExtResource("12_7cdef")
+metadata/props = ["fen_hummock_005", "fen_hummock_011", "tombstone_round_000", "tombstone_round_004"]
+
+[node name="cell_-5_-8_tall" type="MeshInstance3D" parent="Props" unique_id=192381803]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0, -90)
+mesh = ExtResource("13_05409")
+metadata/props = ["dead_tree_007", "dead_tree_008"]
+
+[node name="cell_-5_-7_small" type="MeshInstance3D" parent="Props" unique_id=120333005]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0, -78)
+cast_shadow = 0
+visibility_range_end = 80.0
+mesh = ExtResource("14_683b1")
+metadata/props = ["fen_hummock_003", "fen_hummock_007"]
+
+[node name="cell_-5_-6_tall" type="MeshInstance3D" parent="Props" unique_id=225082591]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0, -66)
+mesh = ExtResource("15_36633")
+metadata/props = ["dead_tree_001", "dead_tree_010"]
+
+[node name="cell_-4_-9_tall" type="MeshInstance3D" parent="Props" unique_id=115042692]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42, 0, -102)
+mesh = ExtResource("16_78fd1")
+metadata/props = ["dead_tree_002", "dead_tree_003"]
+
+[node name="cell_-4_-7_small" type="MeshInstance3D" parent="Props" unique_id=80403693]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42, 0, -78)
+cast_shadow = 0
+visibility_range_end = 80.0
+mesh = ExtResource("17_a5448")
+metadata/props = ["fen_hummock_000", "fen_hummock_001", "fen_hummock_002", "fen_hummock_004"]
+
 [node name="GatherNodes" type="Node3D" parent="." unique_id=101930953]
 
 [node name="fen_41" type="Node3D" parent="GatherNodes" unique_id=215484552]
@@ -573,7 +551,7 @@ metadata/node_id = "fen_41"
 metadata/node_type = "bog_myrtle"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/fen_41" unique_id=158357415 instance=ExtResource("12_d507d")]
+[node name="model" parent="GatherNodes/fen_41" unique_id=158357415 instance=ExtResource("18_d507d")]
 
 [node name="fen_42" type="Node3D" parent="GatherNodes" unique_id=252969564]
 transform = Transform3D(-0.72182477, 0, -0.6920759, 0, 1, 0, 0.6920759, 0, -0.72182477, -56, 0.04, -83.43)
@@ -581,7 +559,7 @@ metadata/node_id = "fen_42"
 metadata/node_type = "bog_myrtle"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/fen_42" unique_id=212805338 instance=ExtResource("12_d507d")]
+[node name="model" parent="GatherNodes/fen_42" unique_id=212805338 instance=ExtResource("18_d507d")]
 
 [node name="fen_43" type="Node3D" parent="GatherNodes" unique_id=252272087]
 transform = Transform3D(-0.99641675, 0, -0.084579, 0, 1, 0, 0.084579, 0, -0.99641675, -47, 0.04, -65.82)
@@ -589,7 +567,7 @@ metadata/node_id = "fen_43"
 metadata/node_type = "bog_myrtle"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/fen_43" unique_id=1285772 instance=ExtResource("12_d507d")]
+[node name="model" parent="GatherNodes/fen_43" unique_id=1285772 instance=ExtResource("18_d507d")]
 
 [node name="fen_44" type="Node3D" parent="GatherNodes" unique_id=206248478]
 transform = Transform3D(0.9516792, 0, -0.30709395, 0, 1, 0, 0.30709395, 0, 0.9516792, -34, 0.04, -66.875)
@@ -597,7 +575,7 @@ metadata/node_id = "fen_44"
 metadata/node_type = "bog_myrtle"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/fen_44" unique_id=257593710 instance=ExtResource("12_d507d")]
+[node name="model" parent="GatherNodes/fen_44" unique_id=257593710 instance=ExtResource("18_d507d")]
 
 [node name="fen_45" type="Node3D" parent="GatherNodes" unique_id=62386387]
 transform = Transform3D(-0.99025077, 0, -0.13929611, 0, 1, 0, 0.13929611, 0, -0.99025077, -33, 0.04, -96.875)
@@ -605,7 +583,7 @@ metadata/node_id = "fen_45"
 metadata/node_type = "bog_myrtle"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/fen_45" unique_id=147480883 instance=ExtResource("12_d507d")]
+[node name="model" parent="GatherNodes/fen_45" unique_id=147480883 instance=ExtResource("18_d507d")]
 
 [node name="fen_46" type="Node3D" parent="GatherNodes" unique_id=258742038]
 transform = Transform3D(-0.999999, 0, -0.0014255916, 0, 1, 0, 0.0014255916, 0, -0.999999, -50, 0.04, -74.5)
@@ -613,7 +591,7 @@ metadata/node_id = "fen_46"
 metadata/node_type = "drowned_lotus"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/fen_46" unique_id=239566387 instance=ExtResource("12_d507d")]
+[node name="model" parent="GatherNodes/fen_46" unique_id=239566387 instance=ExtResource("18_d507d")]
 
 [node name="fen_47" type="Node3D" parent="GatherNodes" unique_id=153876202]
 transform = Transform3D(-0.8872869, 0, -0.4612179, 0, 1, 0, 0.4612179, 0, -0.8872869, -38.5, 0.04, -69)
@@ -621,7 +599,7 @@ metadata/node_id = "fen_47"
 metadata/node_type = "drowned_lotus"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/fen_47" unique_id=167615160 instance=ExtResource("12_d507d")]
+[node name="model" parent="GatherNodes/fen_47" unique_id=167615160 instance=ExtResource("18_d507d")]
 
 [node name="fen_48" type="Node3D" parent="GatherNodes" unique_id=45392178]
 transform = Transform3D(-0.048242476, 0, 0.9988357, 0, 1, 0, -0.9988357, 0, -0.048242476, -47.5, 0.04, -96.5)
@@ -629,7 +607,7 @@ metadata/node_id = "fen_48"
 metadata/node_type = "drowned_lotus"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/fen_48" unique_id=24609395 instance=ExtResource("12_d507d")]
+[node name="model" parent="GatherNodes/fen_48" unique_id=24609395 instance=ExtResource("18_d507d")]
 
 [node name="fen_49" type="Node3D" parent="GatherNodes" unique_id=105805735]
 transform = Transform3D(0.9995974, 0, 0.028374145, 0, 1, 0, -0.028374145, 0, 0.9995974, -31.5, 0.04, -91)
@@ -637,7 +615,7 @@ metadata/node_id = "fen_49"
 metadata/node_type = "drowned_lotus"
 metadata/node_kind = "grave"
 
-[node name="model" parent="GatherNodes/fen_49" unique_id=156488871 instance=ExtResource("12_d507d")]
+[node name="model" parent="GatherNodes/fen_49" unique_id=156488871 instance=ExtResource("18_d507d")]
 
 [node name="Decals" type="Node3D" parent="." unique_id=105984640]
 
@@ -990,4 +968,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.20376971, 0.36028337, 0.39985293, 1)
 environment_custom_energy = 1.9
-light_data = ExtResource("16_c6ca6")
+light_data = ExtResource("22_c6ca6")

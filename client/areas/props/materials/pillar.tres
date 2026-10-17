@@ -1,0 +1,17 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/pillar_Color_d495a5cc-e12e-4ecb-8615-1919cb35f3cf.webp" id="1_01a64"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/pillar_ORM_d495a5cc-e12e-4ecb-8615-1919cb35f3cf.webp" id="2_34015"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/pillar_NormalGL_d495a5cc-e12e-4ecb-8615-1919cb35f3cf.webp" id="3_719de"]
+
+[resource]
+resource_name = "tripo_material_d495a5cc-e12e-4ecb-8615-1919cb35f3cf"
+albedo_texture = ExtResource("1_01a64")
+metallic = 1.0
+metallic_texture = ExtResource("2_34015")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("2_34015")
+roughness_texture_channel = 1
+normal_enabled = true
+normal_texture = ExtResource("3_719de")
+metadata/_gltf_primary_texture_coord = 0

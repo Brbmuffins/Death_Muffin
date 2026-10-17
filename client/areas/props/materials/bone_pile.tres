@@ -1,0 +1,18 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/bone_pile_Color_413831b9-4ed6-4f17-bae6-3cd8ea648c77.webp" id="1_12e0e"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/bone_pile_ORM_413831b9-4ed6-4f17-bae6-3cd8ea648c77.webp" id="2_c398c"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/bone_pile_NormalGL_413831b9-4ed6-4f17-bae6-3cd8ea648c77.webp" id="3_17528"]
+
+[resource]
+resource_name = "tripo_material_413831b9-4ed6-4f17-bae6-3cd8ea648c77"
+cull_mode = 2
+albedo_texture = ExtResource("1_12e0e")
+metallic = 1.0
+metallic_texture = ExtResource("2_c398c")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("2_c398c")
+roughness_texture_channel = 1
+normal_enabled = true
+normal_texture = ExtResource("3_17528")
+metadata/_gltf_primary_texture_coord = 0

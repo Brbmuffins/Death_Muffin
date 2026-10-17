@@ -1,0 +1,18 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/alch_mortar_table_Color_89bc6743-deef-4f41-a35b-29078bea5899.webp" id="1_86f8c"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/alch_mortar_table_ORM_89bc6743-deef-4f41-a35b-29078bea5899.webp" id="2_6f33a"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/alch_mortar_table_NormalGL_89bc6743-deef-4f41-a35b-29078bea5899.webp" id="3_c0ba5"]
+
+[resource]
+resource_name = "tripo_material_89bc6743-deef-4f41-a35b-29078bea5899"
+cull_mode = 2
+albedo_texture = ExtResource("1_86f8c")
+metallic = 1.0
+metallic_texture = ExtResource("2_6f33a")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("2_6f33a")
+roughness_texture_channel = 1
+normal_enabled = true
+normal_texture = ExtResource("3_c0ba5")
+metadata/_gltf_primary_texture_coord = 0

@@ -1,0 +1,17 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/tombstone_cross_Color_74601b94-cf66-42da-bd0d-4adfd1e5603b.webp" id="1_1d25b"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/tombstone_cross_ORM_74601b94-cf66-42da-bd0d-4adfd1e5603b.webp" id="2_4f371"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/tombstone_cross_NormalGL_74601b94-cf66-42da-bd0d-4adfd1e5603b.webp" id="3_c7742"]
+
+[resource]
+resource_name = "tripo_material_74601b94-cf66-42da-bd0d-4adfd1e5603b"
+albedo_texture = ExtResource("1_1d25b")
+metallic = 1.0
+metallic_texture = ExtResource("2_4f371")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("2_4f371")
+roughness_texture_channel = 1
+normal_enabled = true
+normal_texture = ExtResource("3_c7742")
+metadata/_gltf_primary_texture_coord = 0

@@ -2,7 +2,7 @@
 
 importer="2d_array_texture"
 type="CompressedTexture2DArray"
-uid="uid://bpxxlapu36mlh"
+uid="uid://bo1i5q1y8il3n"
 path.bptc="res://.godot/imported/chapterhouse.exr-2ecf49f089930149a0a4ca5b75dd0eef.bptc.ctexarray"
 path.astc="res://.godot/imported/chapterhouse.exr-2ecf49f089930149a0a4ca5b75dd0eef.astc.ctexarray"
 metadata={
@@ -27,4 +27,4 @@ compress/channel_pack=1
 mipmaps/generate=false
 mipmaps/limit=-1
 slices/horizontal=1
-slices/vertical=6
+slices/vertical=3

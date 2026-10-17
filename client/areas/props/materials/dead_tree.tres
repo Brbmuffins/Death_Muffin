@@ -1,0 +1,18 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/dead_tree_Color_20bb1445-c473-4e97-ba6c-87be3e8c3bc1.webp" id="1_69e63"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/dead_tree_ORM_20bb1445-c473-4e97-ba6c-87be3e8c3bc1.webp" id="2_800a2"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/dead_tree_NormalGL_20bb1445-c473-4e97-ba6c-87be3e8c3bc1.webp" id="3_b9a24"]
+
+[resource]
+resource_name = "tripo_material_20bb1445-c473-4e97-ba6c-87be3e8c3bc1"
+cull_mode = 2
+albedo_texture = ExtResource("1_69e63")
+metallic = 1.0
+metallic_texture = ExtResource("2_800a2")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("2_800a2")
+roughness_texture_channel = 1
+normal_enabled = true
+normal_texture = ExtResource("3_b9a24")
+metadata/_gltf_primary_texture_coord = 0

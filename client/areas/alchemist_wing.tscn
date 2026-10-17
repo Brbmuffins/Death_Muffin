@@ -4,27 +4,35 @@
 [ext_resource type="Texture2D" path="res://areas/common/glow.png" id="2_16348"]
 [ext_resource type="Texture2D" path="res://assets/slice/art/textures/wing_wall.webp" id="3_c64c6"]
 [ext_resource type="PackedScene" path="res://areas/props/alch_cauldron.tscn" id="4_fd667"]
-[ext_resource type="PackedScene" path="res://areas/props/alch_bone_candles.tscn" id="5_02ee2"]
-[ext_resource type="PackedScene" path="res://areas/props/alch_canopic_jars.tscn" id="6_92131"]
-[ext_resource type="PackedScene" path="res://areas/props/bone_pile.tscn" id="7_35804"]
+[ext_resource type="PackedScene" path="res://areas/props/bone_pile.tscn" id="5_35804"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_alembic.tscn" id="6_00783"]
+[ext_resource type="PackedScene" path="res://areas/props/workbench.tscn" id="7_997d4"]
 [ext_resource type="PackedScene" path="res://areas/props/candles.tscn" id="8_6d13f"]
-[ext_resource type="PackedScene" path="res://areas/props/alch_alembic.tscn" id="9_00783"]
-[ext_resource type="PackedScene" path="res://areas/props/workbench.tscn" id="10_997d4"]
-[ext_resource type="PackedScene" path="res://areas/props/alch_herb_bundle.tscn" id="11_814ca"]
-[ext_resource type="PackedScene" path="res://areas/props/alch_reagent_shelf.tscn" id="12_314b4"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_canopic_jars.tscn" id="9_92131"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_bone_candles.tscn" id="10_02ee2"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_reagent_shelf.tscn" id="11_314b4"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_herb_bundle.tscn" id="12_814ca"]
 [ext_resource type="PackedScene" path="res://areas/props/covenant_lectern.tscn" id="13_4c114"]
 [ext_resource type="PackedScene" path="res://areas/props/grave_lantern.tscn" id="14_a4528"]
 [ext_resource type="PackedScene" path="res://areas/props/alch_mortar_table.tscn" id="15_a342d"]
 [ext_resource type="PackedScene" path="res://areas/props/coffin_stack.tscn" id="16_d33a0"]
 [ext_resource type="PackedScene" path="res://areas/props/alch_counter.tscn" id="17_4cdea"]
-[ext_resource type="PackedScene" path="res://areas/props/alch_bubbling_vat.tscn" id="18_e6a9c"]
-[ext_resource type="PackedScene" path="res://areas/props/alch_station_sign.tscn" id="19_7a07c"]
-[ext_resource type="PackedScene" path="res://areas/props/alch_totem_stirrer.tscn" id="20_bdc1b"]
-[ext_resource type="PackedScene" path="res://areas/props/alch_drying_rack.tscn" id="21_8588d"]
-[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="22_bdf92"]
-[ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="23_7607e"]
-[ext_resource type="Texture2D" path="res://assets/slice/art/textures/stone_wall.webp" id="24_45f94"]
-[ext_resource type="LightmapGIData" path="res://areas/alchemist_wing.lmbake" id="25_c3867"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_station_sign.tscn" id="18_7a07c"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_totem_stirrer.tscn" id="19_bdc1b"]
+[ext_resource type="PackedScene" path="res://areas/props/alch_drying_rack.tscn" id="20_8588d"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/alchemist_wing/cell_1_1_small.res" id="21_650e9"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/alchemist_wing/cell_1_2_small.res" id="22_52f66"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/alchemist_wing/cell_2_0_small.res" id="23_2bc00"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/alchemist_wing/cell_2_1_small.res" id="24_21d52"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/alchemist_wing/cell_2_2_small.res" id="25_ee7fe"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/alchemist_wing/cell_3_0_tall.res" id="26_5d03b"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/alchemist_wing/cell_3_1_tall.res" id="27_c5148"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/alchemist_wing/cell_3_2_small.res" id="28_d4996"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/alchemist_wing/cell_3_2_tall.res" id="29_eea53"]
+[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="30_bdf92"]
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="31_7607e"]
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/stone_wall.webp" id="32_45f94"]
+[ext_resource type="LightmapGIData" path="res://areas/alchemist_wing.lmbake" id="33_c3867"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.9098039, 0.8627451, 0.78431374, 1)
@@ -173,7 +181,7 @@ size = Vector3(0.8, 5.5, 9)
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.43529412, 0.8156863, 0.5411765, 0.4)
-albedo_texture = ExtResource("22_bdf92")
+albedo_texture = ExtResource("30_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_1bb27"]
@@ -182,7 +190,7 @@ orientation = 1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e5def"]
 albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
-albedo_texture = ExtResource("23_7607e")
+albedo_texture = ExtResource("31_7607e")
 roughness = 0.62
 texture_filter = 5
 
@@ -201,7 +209,7 @@ _surfaces = [{
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1c5d5"]
 albedo_color = Color(0.5411765, 0.50980395, 0.5882353, 1)
-albedo_texture = ExtResource("24_45f94")
+albedo_texture = ExtResource("32_45f94")
 roughness = 0.9
 uv1_scale = Vector3(0.25, 0.25, 0.25)
 uv1_triplanar = true
@@ -252,7 +260,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 albedo_color = Color(0.61, 0.36, 1, 0.9)
-albedo_texture = ExtResource("22_bdf92")
+albedo_texture = ExtResource("30_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_40a0d"]
@@ -540,31 +548,15 @@ mesh = SubResource("BoxMesh_429e2")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 0, 19.5)
 metadata/prop_kind = "alch_cauldron"
 
-[node name="alch_bone_candles_000" parent="Props" unique_id=154552615 instance=ExtResource("5_02ee2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30.4, 0, 22.4)
-metadata/prop_kind = "alch_bone_candles"
-
-[node name="alch_bone_candles_001" parent="Props" unique_id=51322329 instance=ExtResource("5_02ee2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.8, 0, 16.8)
-metadata/prop_kind = "alch_bone_candles"
-
-[node name="alch_canopic_jars_000" parent="Props" unique_id=94910765 instance=ExtResource("6_92131")]
-transform = Transform3D(0.8289549, 0, 0.3504765, 0, 0.9, 0, -0.3504765, 0, 0.8289549, 31.2, 0, 16.9)
-metadata/prop_kind = "alch_canopic_jars"
-
-[node name="bone_pile_000" parent="Props" unique_id=13472771 instance=ExtResource("7_35804")]
+[node name="bone_pile_000" parent="Props" unique_id=13472771 instance=ExtResource("5_35804")]
 transform = Transform3D(0.19929674, 0, 0.5126215, 0, 0.55, 0, -0.5126215, 0, 0.19929674, 35.4, 0, 22.3)
 metadata/prop_kind = "bone_pile"
 
-[node name="candles_000" parent="Props" unique_id=133168762 instance=ExtResource("8_6d13f")]
-transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 34.9, 0, 21.1)
-metadata/prop_kind = "candles"
-
-[node name="alch_alembic_000" parent="Props" unique_id=8303649 instance=ExtResource("9_00783")]
+[node name="alch_alembic_000" parent="Props" unique_id=8303649 instance=ExtResource("6_00783")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.5, 0, 8.9)
 metadata/prop_kind = "alch_alembic"
 
-[node name="workbench_000" parent="Props" unique_id=249132281 instance=ExtResource("10_997d4")]
+[node name="workbench_000" parent="Props" unique_id=249132281 instance=ExtResource("7_997d4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.2, 0, 9.4)
 metadata/prop_kind = "workbench"
 
@@ -572,81 +564,25 @@ metadata/prop_kind = "workbench"
 transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 27.8, 1.05, 9.4)
 metadata/prop_kind = "candles"
 
-[node name="alch_canopic_jars_001" parent="Props" unique_id=137844798 instance=ExtResource("6_92131")]
+[node name="alch_canopic_jars_001" parent="Props" unique_id=137844798 instance=ExtResource("9_92131")]
 transform = Transform3D(-0.8, 0, -6.9938224e-08, 0, 0.8, 0, 6.9938224e-08, 0, -0.8, 30.6, 1.05, 9.4)
 metadata/prop_kind = "alch_canopic_jars"
 
-[node name="alch_herb_bundle_000" parent="Props" unique_id=149318127 instance=ExtResource("11_814ca")]
-transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 27.6, 2.3, 8.4)
-metadata/prop_kind = "alch_herb_bundle"
-
-[node name="alch_herb_bundle_001" parent="Props" unique_id=88169414 instance=ExtResource("11_814ca")]
-transform = Transform3D(1.2419374, 0, 0.38417625, 0, 1.3, 0, -0.38417625, 0, 1.2419374, 29.1, 2, 8.4)
-metadata/prop_kind = "alch_herb_bundle"
-
-[node name="alch_herb_bundle_002" parent="Props" unique_id=78939217 instance=ExtResource("11_814ca")]
-transform = Transform3D(1.4700999, 0, -0.298004, 0, 1.5, 0, 0.298004, 0, 1.4700999, 30.6, 2.3, 8.4)
-metadata/prop_kind = "alch_herb_bundle"
-
-[node name="alch_herb_bundle_003" parent="Props" unique_id=248725490 instance=ExtResource("11_814ca")]
-transform = Transform3D(1.1408572, 0, 0.62325317, 0, 1.3, 0, -0.62325317, 0, 1.1408572, 32.1, 2.1, 8.4)
-metadata/prop_kind = "alch_herb_bundle"
-
-[node name="alch_bone_candles_002" parent="Props" unique_id=183946391 instance=ExtResource("5_02ee2")]
+[node name="alch_bone_candles_002" parent="Props" unique_id=183946391 instance=ExtResource("10_02ee2")]
 transform = Transform3D(0.7648422, 0, 0.64421767, 0, 1, 0, -0.64421767, 0, 0.7648422, 32.7, 0, 9.2)
 metadata/prop_kind = "alch_bone_candles"
 
-[node name="alch_reagent_shelf_000" parent="Props" unique_id=40119124 instance=ExtResource("12_314b4")]
+[node name="alch_reagent_shelf_000" parent="Props" unique_id=40119124 instance=ExtResource("11_314b4")]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 35.5, 0, 8.45)
 metadata/prop_kind = "alch_reagent_shelf"
 
-[node name="alch_reagent_shelf_001" parent="Props" unique_id=9772522 instance=ExtResource("12_314b4")]
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 37.4, 0, 8.45)
-metadata/prop_kind = "alch_reagent_shelf"
-
-[node name="alch_reagent_shelf_002" parent="Props" unique_id=104975435 instance=ExtResource("12_314b4")]
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 39.3, 0, 8.45)
-metadata/prop_kind = "alch_reagent_shelf"
-
-[node name="alch_reagent_shelf_003" parent="Props" unique_id=91813056 instance=ExtResource("12_314b4")]
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 41.2, 0, 8.45)
-metadata/prop_kind = "alch_reagent_shelf"
-
-[node name="alch_reagent_shelf_004" parent="Props" unique_id=75870545 instance=ExtResource("12_314b4")]
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 43.1, 0, 8.45)
-metadata/prop_kind = "alch_reagent_shelf"
-
-[node name="alch_herb_bundle_004" parent="Props" unique_id=82032476 instance=ExtResource("11_814ca")]
+[node name="alch_herb_bundle_004" parent="Props" unique_id=82032476 instance=ExtResource("12_814ca")]
 transform = Transform3D(1.3720932, 0, 0.27813706, 0, 1.4, 0, -0.27813706, 0, 1.3720932, 44.9, 1.7, 8.5)
 metadata/prop_kind = "alch_herb_bundle"
 
-[node name="alch_herb_bundle_005" parent="Props" unique_id=57271899 instance=ExtResource("11_814ca")]
-transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 20.65, 1.7, 13.8)
-metadata/prop_kind = "alch_herb_bundle"
-
-[node name="alch_herb_bundle_006" parent="Props" unique_id=36963904 instance=ExtResource("11_814ca")]
-transform = Transform3D(0.99040276, 0, 0.677571, 0, 1.2, 0, -0.677571, 0, 0.99040276, 20.65, 1.9, 15)
-metadata/prop_kind = "alch_herb_bundle"
-
-[node name="alch_herb_bundle_007" parent="Props" unique_id=147409695 instance=ExtResource("11_814ca")]
-transform = Transform3D(1.2740865, 0, 0.2582701, 0, 1.3, 0, -0.2582701, 0, 1.2740865, 20.65, 1.8, 25.2)
-metadata/prop_kind = "alch_herb_bundle"
-
-[node name="alch_herb_bundle_008" parent="Props" unique_id=228197595 instance=ExtResource("11_814ca")]
-transform = Transform3D(0.7564232, 0, 1.1780593, 0, 1.4, 0, -1.1780593, 0, 0.7564232, 20.65, 1.6, 26.4)
-metadata/prop_kind = "alch_herb_bundle"
-
-[node name="workbench_001" parent="Props" unique_id=139464794 instance=ExtResource("10_997d4")]
+[node name="workbench_001" parent="Props" unique_id=139464794 instance=ExtResource("7_997d4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.8, 0, 13.6)
 metadata/prop_kind = "workbench"
-
-[node name="candles_002" parent="Props" unique_id=217818572 instance=ExtResource("8_6d13f")]
-transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 32.6, 1.05, 13.6)
-metadata/prop_kind = "candles"
-
-[node name="alch_canopic_jars_002" parent="Props" unique_id=52837635 instance=ExtResource("6_92131")]
-transform = Transform3D(0.76426923, 0, 0.23641618, 0, 0.8, 0, -0.23641618, 0, 0.76426923, 34.9, 1.05, 13.6)
-metadata/prop_kind = "alch_canopic_jars"
 
 [node name="covenant_lectern_000" parent="Props" unique_id=183700172 instance=ExtResource("13_4c114")]
 transform = Transform3D(-0.666276, 0, 0.74570525, 0, 1, 0, -0.74570525, 0, -0.666276, 36.4, 0, 18.4)
@@ -664,31 +600,19 @@ metadata/prop_kind = "grave_lantern"
 transform = Transform3D(0.87758255, 0, -0.47942555, 0, 1, 0, 0.47942555, 0, 0.87758255, 41.3, 0, 15.2)
 metadata/prop_kind = "alch_mortar_table"
 
-[node name="alch_bone_candles_003" parent="Props" unique_id=95112114 instance=ExtResource("5_02ee2")]
+[node name="alch_bone_candles_003" parent="Props" unique_id=95112114 instance=ExtResource("10_02ee2")]
 transform = Transform3D(0.9800666, 0, 0.19866933, 0, 1, 0, -0.19866933, 0, 0.9800666, 40.2, 0, 13.6)
 metadata/prop_kind = "alch_bone_candles"
 
-[node name="alch_mortar_table_001" parent="Props" unique_id=146653435 instance=ExtResource("15_a342d")]
-transform = Transform3D(0.7648422, 0, 0.64421767, 0, 1, 0, -0.64421767, 0, 0.7648422, 31.4, 0, 27)
-metadata/prop_kind = "alch_mortar_table"
-
-[node name="alch_bone_candles_004" parent="Props" unique_id=267922379 instance=ExtResource("5_02ee2")]
+[node name="alch_bone_candles_004" parent="Props" unique_id=267922379 instance=ExtResource("10_02ee2")]
 transform = Transform3D(0.62161, 0, 0.7833269, 0, 1, 0, -0.7833269, 0, 0.62161, 35.6, 0, 26.4)
 metadata/prop_kind = "alch_bone_candles"
 
-[node name="alch_bone_candles_005" parent="Props" unique_id=149750580 instance=ExtResource("5_02ee2")]
+[node name="alch_bone_candles_005" parent="Props" unique_id=149750580 instance=ExtResource("10_02ee2")]
 transform = Transform3D(0.9553365, 0, 0.29552022, 0, 1, 0, -0.29552022, 0, 0.9553365, 43.2, 0, 24.2)
 metadata/prop_kind = "alch_bone_candles"
 
-[node name="workbench_002" parent="Props" unique_id=197857032 instance=ExtResource("10_997d4")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.4, 0, 30.6)
-metadata/prop_kind = "workbench"
-
-[node name="candles_003" parent="Props" unique_id=100610890 instance=ExtResource("8_6d13f")]
-transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 32.2, 1.05, 30.6)
-metadata/prop_kind = "candles"
-
-[node name="bone_pile_001" parent="Props" unique_id=74430048 instance=ExtResource("7_35804")]
+[node name="bone_pile_001" parent="Props" unique_id=74430048 instance=ExtResource("5_35804")]
 transform = Transform3D(0.4605305, 0, 0.19470917, 0, 0.5, 0, -0.19470917, 0, 0.4605305, 35.2, 0, 30.4)
 metadata/prop_kind = "bone_pile"
 
@@ -700,7 +624,7 @@ metadata/prop_kind = "coffin_stack"
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.1, 0, 20)
 metadata/prop_kind = "alch_counter"
 
-[node name="alch_canopic_jars_003" parent="Props" unique_id=110246055 instance=ExtResource("6_92131")]
+[node name="alch_canopic_jars_003" parent="Props" unique_id=110246055 instance=ExtResource("9_92131")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.1, 1.2, 18.4)
 metadata/prop_kind = "alch_canopic_jars"
 
@@ -708,81 +632,90 @@ metadata/prop_kind = "alch_canopic_jars"
 transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 44.9, 1.2, 21.4)
 metadata/prop_kind = "candles"
 
-[node name="alch_reagent_shelf_005" parent="Props" unique_id=93099075 instance=ExtResource("12_314b4")]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.4, 0, 13.2)
-metadata/prop_kind = "alch_reagent_shelf"
-
-[node name="alch_reagent_shelf_006" parent="Props" unique_id=76928993 instance=ExtResource("12_314b4")]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.4, 0, 15.1)
-metadata/prop_kind = "alch_reagent_shelf"
-
-[node name="alch_reagent_shelf_007" parent="Props" unique_id=32751576 instance=ExtResource("12_314b4")]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.4, 0, 24.6)
-metadata/prop_kind = "alch_reagent_shelf"
-
-[node name="alch_reagent_shelf_008" parent="Props" unique_id=90705735 instance=ExtResource("12_314b4")]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 45.4, 0, 26.5)
-metadata/prop_kind = "alch_reagent_shelf"
-
-[node name="alch_bubbling_vat_000" parent="Props" unique_id=171977425 instance=ExtResource("18_e6a9c")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41.5, 0, 27.6)
-metadata/prop_kind = "alch_bubbling_vat"
-
-[node name="alch_bubbling_vat_001" parent="Props" unique_id=79911304 instance=ExtResource("18_e6a9c")]
-transform = Transform3D(0.6602685, 0, 0.451714, 0, 0.8, 0, -0.451714, 0, 0.6602685, 37.3, 0, 29)
-metadata/prop_kind = "alch_bubbling_vat"
-
 [node name="coffin_stack_001" parent="Props" unique_id=50159882 instance=ExtResource("16_d33a0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.6, 0, 30.5)
 metadata/prop_kind = "coffin_stack"
 
-[node name="alch_station_sign_000" parent="Props" unique_id=243479197 instance=ExtResource("19_7a07c")]
+[node name="alch_station_sign_000" parent="Props" unique_id=243479197 instance=ExtResource("18_7a07c")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 27.5, 0, 15.8)
 metadata/prop_kind = "alch_station_sign"
 
-[node name="alch_totem_stirrer_000" parent="Props" unique_id=210474195 instance=ExtResource("20_bdc1b")]
+[node name="alch_totem_stirrer_000" parent="Props" unique_id=210474195 instance=ExtResource("19_bdc1b")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 23.2, 0, 14.2)
 metadata/prop_kind = "alch_totem_stirrer"
 
-[node name="alch_bone_candles_006" parent="Props" unique_id=88987293 instance=ExtResource("5_02ee2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.6, 0, 16.3)
-metadata/prop_kind = "alch_bone_candles"
-
-[node name="alch_bone_candles_007" parent="Props" unique_id=179632784 instance=ExtResource("5_02ee2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.6, 0, 23.7)
-metadata/prop_kind = "alch_bone_candles"
-
-[node name="alch_mortar_table_002" parent="Props" unique_id=259837637 instance=ExtResource("15_a342d")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.5, 0, 24)
-metadata/prop_kind = "alch_mortar_table"
-
-[node name="workbench_003" parent="Props" unique_id=187084192 instance=ExtResource("10_997d4")]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 25.6, 0, 26.6)
-metadata/prop_kind = "workbench"
-
-[node name="candles_005" parent="Props" unique_id=213010706 instance=ExtResource("8_6d13f")]
-transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 25.6, 1.05, 25.8)
-metadata/prop_kind = "candles"
-
-[node name="alch_canopic_jars_004" parent="Props" unique_id=226837233 instance=ExtResource("6_92131")]
+[node name="alch_canopic_jars_004" parent="Props" unique_id=226837233 instance=ExtResource("9_92131")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 23.4, 0, 28.4)
 metadata/prop_kind = "alch_canopic_jars"
 
-[node name="alch_drying_rack_000" parent="Props" unique_id=177929322 instance=ExtResource("21_8588d")]
+[node name="alch_drying_rack_000" parent="Props" unique_id=177929322 instance=ExtResource("20_8588d")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.7, 0, 11.4)
 metadata/prop_kind = "alch_drying_rack"
 
-[node name="alch_drying_rack_001" parent="Props" unique_id=1407914 instance=ExtResource("21_8588d")]
+[node name="alch_drying_rack_001" parent="Props" unique_id=1407914 instance=ExtResource("20_8588d")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.7, 0, 30.4)
 metadata/prop_kind = "alch_drying_rack"
 
-[node name="alch_herb_bundle_009" parent="Props" unique_id=229581435 instance=ExtResource("11_814ca")]
-transform = Transform3D(0.61463, -0.092892244, 0.7833269, 0.33641452, 0.9290718, -0.15378878, -0.7134811, 0.35804573, 0.6022856, 23.4, 0, 30.8)
-metadata/prop_kind = "alch_herb_bundle"
-
-[node name="alch_herb_bundle_010" parent="Props" unique_id=84947102 instance=ExtResource("11_814ca")]
+[node name="alch_herb_bundle_010" parent="Props" unique_id=84947102 instance=ExtResource("12_814ca")]
 transform = Transform3D(-0.45109394, -0.054392606, 0.7768885, -0.25882733, 0.8572399, -0.09026767, -0.73452204, -0.2686657, -0.44530445, 24.4, 0, 31)
 metadata/prop_kind = "alch_herb_bundle"
+
+[node name="cell_1_1_small" type="MeshInstance3D" parent="Props" unique_id=261285610]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, 18)
+cast_shadow = 0
+visibility_range_end = 80.0
+mesh = ExtResource("21_650e9")
+metadata/props = ["alch_herb_bundle_005", "alch_herb_bundle_006", "alch_bone_candles_006", "alch_bone_candles_007"]
+
+[node name="cell_1_2_small" type="MeshInstance3D" parent="Props" unique_id=40327907]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, 30)
+cast_shadow = 0
+visibility_range_end = 80.0
+mesh = ExtResource("22_52f66")
+metadata/props = ["alch_herb_bundle_007", "alch_herb_bundle_008", "alch_herb_bundle_009"]
+
+[node name="cell_2_0_small" type="MeshInstance3D" parent="Props" unique_id=36633578]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 6)
+cast_shadow = 0
+visibility_range_end = 80.0
+mesh = ExtResource("23_2bc00")
+metadata/props = ["alch_herb_bundle_000", "alch_herb_bundle_001", "alch_herb_bundle_002", "alch_herb_bundle_003"]
+
+[node name="cell_2_1_small" type="MeshInstance3D" parent="Props" unique_id=56373857]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 18)
+cast_shadow = 0
+visibility_range_end = 80.0
+mesh = ExtResource("24_21d52")
+metadata/props = ["alch_bone_candles_000", "alch_bone_candles_001", "alch_canopic_jars_000", "candles_000", "candles_002", "alch_canopic_jars_002"]
+
+[node name="cell_2_2_small" type="MeshInstance3D" parent="Props" unique_id=116960895]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 30)
+cast_shadow = 0
+visibility_range_end = 80.0
+mesh = ExtResource("25_ee7fe")
+metadata/props = ["alch_mortar_table_001", "workbench_002", "candles_003", "alch_mortar_table_002", "workbench_003", "candles_005"]
+
+[node name="cell_3_0_tall" type="MeshInstance3D" parent="Props" unique_id=28489233]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, 6)
+mesh = ExtResource("26_5d03b")
+metadata/props = ["alch_reagent_shelf_001", "alch_reagent_shelf_002", "alch_reagent_shelf_003", "alch_reagent_shelf_004"]
+
+[node name="cell_3_1_tall" type="MeshInstance3D" parent="Props" unique_id=263416429]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, 18)
+mesh = ExtResource("27_c5148")
+metadata/props = ["alch_reagent_shelf_005", "alch_reagent_shelf_006"]
+
+[node name="cell_3_2_small" type="MeshInstance3D" parent="Props" unique_id=253543873]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, 30)
+cast_shadow = 0
+visibility_range_end = 80.0
+mesh = ExtResource("28_d4996")
+metadata/props = ["alch_bubbling_vat_000", "alch_bubbling_vat_001"]
+
+[node name="cell_3_2_tall" type="MeshInstance3D" parent="Props" unique_id=141317617]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, 30)
+mesh = ExtResource("29_eea53")
+metadata/props = ["alch_reagent_shelf_007", "alch_reagent_shelf_008"]
 
 [node name="GatherNodes" type="Node3D" parent="." unique_id=97029054]
 
@@ -1430,4 +1363,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.54764706, 0.48156863, 0.34941176, 1)
 environment_custom_energy = 1.9
-light_data = ExtResource("25_c3867")
+light_data = ExtResource("33_c3867")

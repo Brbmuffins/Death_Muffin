@@ -6,7 +6,9 @@ extends SceneTree
 ##
 ## Normally run through tools/rebuild/build-areas.sh (it syncs the assets and imports first). Output, all deterministic:
 ##   <out>/<id>.tscn            the area
-##   <out>/props/<model>.tscn   one prefab per prop or gathering-node model (the glTF, normalised to its height; small props get a visibility range)
+##   <out>/props/<model>.tscn   one prefab per prop or gathering-node model that an area instances (the glTF, normalised to its height; small props get a visibility range)
+##   <out>/props/materials/<model>.tres   the glTF's material, one per model, shared by every merged prop mesh of every area
+##   <out>/batches/<id>/cell_<x>_<z>_<small|tall>.res   a 12 m cell's repeated props merged into one mesh (see "static batching" below)
 ##   res://areas/common/ring.png, glow.png   the two generated decal textures (the live game draws them at start-up)
 ## `--lenient` skips models whose files are not in client/assets (smoke runs on areas that are not synced yet) instead of failing.
 ## Exit codes: 0 done, 1 failed, 3 wrote a generated texture that needs an import first (build-areas.sh imports and runs again).
@@ -34,6 +36,12 @@ const OCC_WALL_MIN_LENGTH := 4.0
 const OCC_PROP_MIN_HEIGHT := 3.0       # solid box-collider props at least this tall and wide get one (the mausoleums)
 const OCC_PROP_MIN_SIDE := 3.0
 const OCC_PROP_SHRINK := 0.7           # occluders are the collider box scaled down so they never hide what is visible past a prop
+## Static batching (client/README.md "Areas"): the props that stand twice or more in a 12 m cell are merged into the cell's one mesh.
+const CELL := 12.0                     # world_builder.PROP_CELL: the cell a prop belongs to is floor(x / 12), floor(z / 12)
+const BATCH_MIN := 2                   # a model that stands this often in a cell (and size class) is merged; a lone prop stays an instance of its prefab
+const CELL_RANGE_PAD := 10.0           # a small-prop cell mesh's visibility range is the props' 70 m plus this: the cell's centre is up to 8.5 m from a prop in it
+const LIGHTMAP_MAX := 4096             # LightmapGI.max_texture_size: a cell mesh's lightmap rect must fit it
+const LIGHTMAP_GUTTER := 2             # texels left between the lightmap rects of the props merged into one mesh
 
 var world: Dictionary
 var out_dir := DEFAULT_OUT
@@ -47,7 +55,10 @@ var rect: Dictionary
 
 var _tex_cache: Dictionary = {}
 var _res_cache: Dictionary = {}       # materials, meshes, shapes shared inside one area, by key
-var _models: Dictionary = {}          # "url@height" -> {path, norm}
+var _models: Dictionary = {}          # "url@height" -> {name, url, height, norm, parts}
+var _prefabs: Dictionary = {}         # "url@height" -> {path, packed}: the prefabs written so far
+var _prop_mats: Dictionary = {}       # a glTF material's resource path -> the shared copy in <out>/props/materials
+var _batch_stats := [0, 0, 0]         # of the area being built: cell meshes, props merged into them, props left as instances
 var _variants: Dictionary = {}        # url -> distinct heights over the whole world
 var _ring_tex: Texture2D
 var _glow_tex: Texture2D
@@ -228,8 +239,10 @@ func _model_name(url: String, height: float) -> String:
 	return base if (_variants[url] as Array).size() == 1 else "%s_h%d" % [base, roundi(height * 100.0)]
 
 
-## DmModels.analyze: the transform that stands a glTF on the ground, centred on x/z, scaled to `height`. Returns {path, norm} or {} (lenient, missing).
-func _model(url: String, height: float, is_prop: bool) -> Dictionary:
+## DmModels.analyze: the transform that stands a glTF on the ground, centred on x/z, scaled to `height`, and the glTF's meshes under it.
+## Returns {name, url, height, norm, parts: [{mesh, local}]} (`local` as DmModels.prop_parts has it: the normalisation times the mesh's own transform
+## in the glTF) or {} (lenient, missing). Nothing is written: a prefab is made by `_prefab`, only when an area instances the model.
+func _model(url: String, height: float) -> Dictionary:
 	var key := "%s@%s" % [url, height]
 	if _models.has(key):
 		return _models[key]
@@ -245,6 +258,7 @@ func _model(url: String, height: float, is_prop: bool) -> Dictionary:
 	var tmp: Node3D = ps.instantiate()
 	var bb := AABB()
 	var first := true
+	var meshes: Array = []
 	for n in tmp.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
 		if mi.mesh == null:
@@ -258,21 +272,35 @@ func _model(url: String, height: float, is_prop: bool) -> Dictionary:
 		var box: AABB = xf * mi.mesh.get_aabb()
 		bb = box if first else bb.merge(box)
 		first = false
+		meshes.append({"mesh": mi.mesh, "xf": xf, "own_material": mi.material_override != null})
 	tmp.free()
 	var s := height / maxf(bb.size.y, 0.0001)
 	var c := bb.get_center()
 	var norm := Transform3D(Basis.from_scale(Vector3.ONE * s), Vector3(-c.x * s, -bb.position.y * s, -c.z * s))
-	# The prefab: the glTF instanced with the normalising transform; small props lose their shadow and get a visibility range.
-	var name := _model_name(url, height)
-	var small := is_prop and height <= SMALL_PROP_MAX_HEIGHT
+	var parts: Array = []
+	for m: Dictionary in meshes:
+		parts.append({"mesh": m.mesh, "local": norm * (m.xf as Transform3D), "own_material": m.own_material})
+	var info := {"name": _model_name(url, height), "url": url, "height": height, "norm": norm, "parts": parts}
+	_models[key] = info
+	return info
+
+
+## The prefab of a model (client/areas/props/<name>.tscn): the glTF instanced with the normalising transform; small props lose their shadow and get a
+## visibility range. Written the first time an area instances it, and returned as the packed scene read back from the file.
+func _prefab(m: Dictionary, is_prop: bool) -> PackedScene:
+	var key := "%s@%s" % [m.url, m.height]
+	if _prefabs.has(key):
+		return _prefabs[key].packed
+	var ps: PackedScene = load(ASSET_BASE + String(m.url))
+	var small := is_prop and float(m.height) <= SMALL_PROP_MAX_HEIGHT
 	var holder := Node3D.new()
-	holder.name = name
-	holder.set_meta("model", url)
-	holder.set_meta("height", height)
+	holder.name = m.name
+	holder.set_meta("model", m.url)
+	holder.set_meta("height", m.height)
 	holder.set_meta("small", small)
 	var inst := ps.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE) as Node3D
 	inst.name = "model"
-	inst.transform = norm
+	inst.transform = m.norm
 	holder.add_child(inst)
 	inst.owner = holder
 	holder.set_editable_instance(inst, true)
@@ -282,14 +310,13 @@ func _model(url: String, height: float, is_prop: bool) -> Dictionary:
 			var mi2 := n as MeshInstance3D
 			mi2.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			mi2.visibility_range_end = SMALL_PROP_VISIBLE_END
-	var path := out_dir.path_join("props").path_join(name + ".tscn")
+	var path := out_dir.path_join("props").path_join(String(m.name) + ".tscn")
 	_save_scene(holder, path)
 	holder.free()
 	# Instances must come from the file (a scene that knows its path), or the area would copy the nodes instead of referencing the prefab.
 	var packed := ResourceLoader.load(path, "PackedScene", ResourceLoader.CACHE_MODE_REPLACE) as PackedScene
-	var info := {"path": path, "norm": norm, "packed": packed}
-	_models[key] = info
-	return info
+	_prefabs[key] = {"path": path, "packed": packed}
+	return packed
 
 
 # ---------------------------------------------------------------- saving
@@ -391,7 +418,7 @@ func _build(id: String) -> void:
 	var path := out_dir.path_join(id + ".tscn")
 	_save_scene(area_root, path)
 	area_root.free()
-	print("build_area: %s -> %s" % [id, path])
+	print("build_area: %s -> %s (%d cell meshes merge %d props, %d stand alone)" % [id, path, _batch_stats[0], _batch_stats[1], _batch_stats[2]])
 
 
 # ---------------------------------------------------------------- the lighting bake (client/addons/dm_bake/README.md)
@@ -549,9 +576,15 @@ func _walls(parent: Node3D, occ: Node3D) -> void:
 
 
 # ---------------------------------------------------------------- props
+## The area's props with a model. A model that stands BATCH_MIN times or more in one 12 m cell (and size class: tall props cast the moon's shadow, small ones
+## do not and have a visibility range, which a mesh has only one of) is merged with the other repeated models of its cell into the cell's one mesh
+## (`_cell_mesh`, "static batching"). A prop that stands alone in its cell stays an instance of its prefab: merging it would save no draw call and only
+## copy its triangles. Colliders, lights and occluders are the same either way: they are made from world.json here, never from the meshes.
 func _props(parent: Node3D, lights: Node3D, occ: Node3D) -> void:
 	var counts: Dictionary = {}
 	var pool_pos: Array = []
+	var placed: Array = []   # the props with a model, in world.json order: {p, label, model, small, cell, group}
+	var group_size: Dictionary = {}
 	for p: Dictionary in world.props:
 		if p.area != area_id:
 			continue
@@ -567,19 +600,268 @@ func _props(parent: Node3D, lights: Node3D, occ: Node3D) -> void:
 			else:
 				_body(Vector3((o.x0 + o.x1) / 2.0, 1.5, (o.z0 + o.z1) / 2.0), _box_shape(Vector3(o.x1 - o.x0, 3.0, o.z1 - o.z0)), label)
 		if spec.url != null:
-			var m := _model(spec.url, float(spec.height), true)
+			var m := _model(spec.url, float(spec.height))
 			if not m.is_empty():
-				var tilt: float = p.tilt
-				var basis := Basis.from_euler(Vector3(tilt, p.rot, tilt * 0.6), EULER_ORDER_XYZ) * Basis.from_scale(Vector3.ONE * float(p.scale))
-				var inst := (m.packed as PackedScene).instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE) as Node3D
-				inst.transform = Transform3D(basis, Vector3(p.x, p.y, p.z))
-				inst.set_meta("prop_kind", kind)
-				_add(parent, inst, label)
+				var small := float(spec.height) <= SMALL_PROP_MAX_HEIGHT
+				var cell := Vector2i(floori(float(p.x) / CELL), floori(float(p.z) / CELL))
+				var group := "%d|%d|%d|%s" % [cell.x, cell.y, int(small), m.name]
+				group_size[group] = int(group_size.get(group, 0)) + 1
+				placed.append({"p": p, "label": label, "model": m, "small": small, "cell": cell, "group": group})
 		if spec.has("light") and spec.light != null:
 			_prop_light(lights, p, spec.light, label)
 			pool_pos.append({"x": p.x, "z": p.z, "L": spec.light})
 		_prop_occluder(occ, p, spec, label)
 	_light_pools(lights, pool_pos)
+	var cells: Dictionary = {}   # "cx|cz|small" -> {cell, small, props: Array of placed}
+	_batch_stats = [0, 0, 0]
+	for e: Dictionary in placed:
+		var p: Dictionary = e.p
+		if int(group_size[e.group]) < BATCH_MIN:
+			_batch_stats[2] += 1
+			var inst := _prefab(e.model, true).instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE) as Node3D
+			inst.transform = Transform3D(_placement_basis(p), Vector3(p.x, p.y, p.z))
+			inst.set_meta("prop_kind", p.prop)
+			_add(parent, inst, e.label)
+			continue
+		var key := "%d|%d|%d" % [e.cell.x, e.cell.y, int(e.small)]
+		if not cells.has(key):
+			cells[key] = {"cell": e.cell, "small": e.small, "props": []}
+		(cells[key].props as Array).append(e)
+		_batch_stats[1] += 1
+	_batch_stats[0] = cells.size()
+	var keys := cells.keys()
+	keys.sort_custom(func(a: String, b: String) -> bool:
+		var ca: Dictionary = cells[a]
+		var cb: Dictionary = cells[b]
+		if ca.cell.x != cb.cell.x:
+			return ca.cell.x < cb.cell.x
+		if ca.cell.y != cb.cell.y:
+			return ca.cell.y < cb.cell.y
+		return int(ca.small) > int(cb.small))
+	for key: String in keys:
+		_cell_mesh(parent, cells[key])
+
+
+## world_builder._prop_batch's placement: the prop's own turn, tilt and scale.
+func _placement_basis(p: Dictionary) -> Basis:
+	var tilt: float = p.tilt
+	return Basis.from_euler(Vector3(tilt, p.rot, tilt * 0.6), EULER_ORDER_XYZ) * Basis.from_scale(Vector3.ONE * float(p.scale))
+
+
+## One cell's merged mesh: a MeshInstance3D standing at the cell's centre, its mesh holding every merged prop of the cell (one size class of it) with its
+## vertices placed (the placement from world.json times the part's transform from the prefab's normalisation) and one surface for each material. The
+## material is the model's own, shared as a file (`_prop_material`). Each prop keeps the lightmap rect the importer unwrapped for its mesh
+## (`mesh.lightmap_size_hint` texels, UV2 over 0..1); the rects are packed side by side (`_pack_rects`) into the cell mesh's own lightmap, so the next bake
+## gives every prop the texel density it had as an instance. The mesh LODs of the props are merged level by level (`_merge_lods`). The node is named
+## `cell_<x>_<z>_<small|tall>`; its `props` metadata lists the labels merged.
+func _cell_mesh(parent: Node3D, c: Dictionary) -> void:
+	var cell: Vector2i = c.cell
+	var small: bool = c.small
+	var name := "cell_%d_%d_%s" % [cell.x, cell.y, "small" if small else "tall"]
+	var origin := Vector3((cell.x + 0.5) * CELL, 0.0, (cell.y + 0.5) * CELL)
+	# The units: one for each mesh of each merged prop (a prop may be several meshes), each with its own lightmap rect.
+	var units: Array = []
+	var labels: Array = []
+	for e: Dictionary in c.props:
+		labels.append(e.label)
+		var p: Dictionary = e.p
+		var at := Transform3D(Basis.IDENTITY, -origin) * Transform3D(_placement_basis(p), Vector3(p.x, p.y, p.z))
+		for part: Dictionary in e.model.parts:
+			var mesh := part.mesh as ArrayMesh
+			if part.own_material or mesh.lightmap_size_hint.x <= 0 or mesh.lightmap_size_hint.y <= 0:
+				errors.append("%s: %s cannot be merged (its glTF has a material override, or its mesh carries no lightmap size hint)" % [area_id, e.model.url])
+				return
+			units.append({"mesh": mesh, "xf": at * (part.local as Transform3D), "model": e.model})
+	var sizes: Array[Vector2i] = []
+	for u: Dictionary in units:
+		sizes.append((u.mesh as ArrayMesh).lightmap_size_hint)
+	var packed := _pack_rects(sizes)
+	var atlas: Vector2i = packed.size
+	if atlas.x > LIGHTMAP_MAX or atlas.y > LIGHTMAP_MAX:
+		errors.append("%s: %s needs a %s lightmap, over the bake's %d texel limit" % [area_id, name, atlas, LIGHTMAP_MAX])
+		return
+	var surfaces: Array = []   # {material, verts, normals, tangents, uv, uv2, index}
+	var by_material: Dictionary = {}
+	for i in units.size():
+		var u: Dictionary = units[i]
+		var mesh: ArrayMesh = u.mesh
+		var xf: Transform3D = u.xf
+		var scale := xf.basis.get_scale()
+		if xf.basis.determinant() <= 0.0 or absf(scale.x - scale.y) > 0.001 * scale.x or absf(scale.x - scale.z) > 0.001 * scale.x:
+			errors.append("%s: %s is mirrored or scaled unevenly, which the merge does not carry into normals" % [area_id, u.model.url])
+			return
+		var rot := Transform3D(xf.basis.orthonormalized(), Vector3.ZERO)
+		var at: Vector2i = packed.pos[i]
+		var hint: Vector2i = mesh.lightmap_size_hint
+		var uv2_map := Transform2D(Vector2(float(hint.x) / atlas.x, 0.0), Vector2(0.0, float(hint.y) / atlas.y), Vector2(float(at.x) / atlas.x, float(at.y) / atlas.y))
+		for si in mesh.get_surface_count():
+			var src := mesh.surface_get_arrays(si)
+			for k in Mesh.ARRAY_MAX:
+				if src[k] != null and not [Mesh.ARRAY_VERTEX, Mesh.ARRAY_NORMAL, Mesh.ARRAY_TANGENT, Mesh.ARRAY_TEX_UV, Mesh.ARRAY_TEX_UV2, Mesh.ARRAY_INDEX].has(k):
+					errors.append("%s: %s has vertex data the merge does not carry (array %d)" % [area_id, u.model.url, k])
+					return
+			if mesh.surface_get_material(si) == null:
+				errors.append("%s: %s has a surface without a material" % [area_id, u.model.url])
+				return
+			var material := _prop_material(mesh.surface_get_material(si), u.model, si, mesh.get_surface_count())
+			var surf: Dictionary
+			if by_material.has(material.resource_path):
+				surf = by_material[material.resource_path]
+			else:
+				surf = {"material": material, "verts": PackedVector3Array(), "normals": PackedVector3Array(), "tangents": PackedFloat32Array(), "uv": PackedVector2Array(),
+					"uv2": PackedVector2Array(), "index": PackedInt32Array(), "lods": null}
+				by_material[material.resource_path] = surf
+				surfaces.append(surf)
+			var base: int = surf.verts.size()
+			if not _merge_lods(surf, mesh, si, base, xf.basis.get_scale().x):
+				errors.append("%s: the props merged into %s do not agree on their mesh LODs (%s)" % [area_id, name, u.model.url])
+				return
+			surf.verts.append_array(xf * (src[Mesh.ARRAY_VERTEX] as PackedVector3Array))
+			surf.normals.append_array(rot * (src[Mesh.ARRAY_NORMAL] as PackedVector3Array))
+			var tan: PackedFloat32Array = src[Mesh.ARRAY_TANGENT]
+			for t in range(0, tan.size(), 4):
+				var rt := rot * Vector3(tan[t], tan[t + 1], tan[t + 2])
+				surf.tangents.append(rt.x)
+				surf.tangents.append(rt.y)
+				surf.tangents.append(rt.z)
+				surf.tangents.append(tan[t + 3])
+			surf.uv.append_array(src[Mesh.ARRAY_TEX_UV])
+			surf.uv2.append_array(uv2_map * (src[Mesh.ARRAY_TEX_UV2] as PackedVector2Array))
+			for v in (src[Mesh.ARRAY_INDEX] as PackedInt32Array):
+				surf.index.append(v + base)
+	var mesh_out := ArrayMesh.new()
+	for surf: Dictionary in surfaces:
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = surf.verts
+		arrays[Mesh.ARRAY_NORMAL] = surf.normals
+		arrays[Mesh.ARRAY_TANGENT] = surf.tangents
+		arrays[Mesh.ARRAY_TEX_UV] = surf.uv
+		arrays[Mesh.ARRAY_TEX_UV2] = surf.uv2
+		arrays[Mesh.ARRAY_INDEX] = surf.index
+		var lods := {}
+		for level: Dictionary in (surf.lods if surf.lods != null else []):
+			if lods.has(level.edge):
+				errors.append("%s: %s has two mesh LODs of the same size" % [area_id, name])
+				return
+			lods[level.edge] = level.index
+		mesh_out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], lods)
+		mesh_out.surface_set_material(mesh_out.get_surface_count() - 1, surf.material)
+	mesh_out.lightmap_size_hint = atlas
+	mesh_out.set_scene_unique_id("cell")   # the id Godot would draw at random for the mesh inside its own file
+	var path := out_dir.path_join("batches").path_join(area_id).path_join(name + ".res")
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var err := ResourceSaver.save(mesh_out, path)
+	if err != OK:
+		errors.append("cannot save %s (error %d)" % [path, err])
+		return
+	var mi := MeshInstance3D.new()
+	mi.mesh = ResourceLoader.load(path, "ArrayMesh", ResourceLoader.CACHE_MODE_REPLACE)
+	mi.position = origin
+	if small:   # the same no-shadow and visibility range the prefab gives a small prop
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.visibility_range_end = SMALL_PROP_VISIBLE_END + CELL_RANGE_PAD
+	mi.set_meta("props", labels)
+	_add(parent, mi, name)
+
+
+## The mesh LODs of a prop's surface added to the merged surface's, level by level: level i of the merged surface is every member's level i (its index array,
+## moved to where the member's vertices start), and its size (`edge_length`, the error the importer measured on the prop's own mesh, which Godot scales by the
+## instance's scale when it picks a level) is the largest of the members' once each is scaled by the member's own scale, so no prop leaves a level for the next
+## sooner than it would as an instance. Members of one material are one model, so they agree on how many levels there are. Returns false when they do not.
+func _merge_lods(surf: Dictionary, mesh: ArrayMesh, si: int, base: int, scale: float) -> bool:
+	var sd := RenderingServer.mesh_get_surface(mesh.get_rid(), si)
+	var src: Array = sd.get("lods", [])
+	if surf.lods == null:
+		surf.lods = []
+		for i in src.size():
+			(surf.lods as Array).append({"edge": 0.0, "index": PackedInt32Array()})
+	elif (surf.lods as Array).size() != src.size():
+		return false
+	var wide := int(sd.index_data.size()) == int(sd.index_count) * 4
+	for i in src.size():
+		var level: Dictionary = (surf.lods as Array)[i]
+		level.edge = maxf(level.edge, float(src[i].edge_length) * scale)
+		var data: PackedByteArray = src[i].index_data
+		if wide:
+			for v in data.to_int32_array():
+				level.index.append(v + base)
+		else:
+			for k in range(0, data.size(), 2):
+				level.index.append(data.decode_u16(k) + base)
+	return true
+
+
+## The lightmap rects of one mesh's props packed into rows (shelves), tallest first, `LIGHTMAP_GUTTER` texels apart. The row width is the one (a width at which
+## some row would end) that gives the smallest atlas side, then the smallest area. Integer arithmetic only, so every machine places them alike.
+## Returns {pos: Array[Vector2i] (in the order of `sizes`), size: Vector2i}.
+func _pack_rects(sizes: Array[Vector2i]) -> Dictionary:
+	var order: Array = range(sizes.size())
+	order.sort_custom(func(a: int, b: int) -> bool:
+		if sizes[a].y != sizes[b].y:
+			return sizes[a].y > sizes[b].y
+		if sizes[a].x != sizes[b].x:
+			return sizes[a].x > sizes[b].x
+		return a < b)
+	var widest := 0
+	for s: Vector2i in sizes:
+		widest = maxi(widest, s.x)
+	var widths: Array[int] = []
+	var run := 0
+	for i: int in order:
+		run += sizes[i].x + LIGHTMAP_GUTTER
+		var w := maxi(run - LIGHTMAP_GUTTER, widest)
+		if not widths.has(w):
+			widths.append(w)
+	widths.sort()
+	var best: Dictionary = {}
+	for row_w in widths:
+		var r := _shelf_pack(sizes, order, row_w)
+		var side: int = maxi(r.size.x, r.size.y)
+		var area: int = r.size.x * r.size.y
+		if best.is_empty() or side < best.side or (side == best.side and area < best.area):
+			best = {"pos": r.pos, "size": r.size, "side": side, "area": area}
+	return best
+
+
+## `sizes` placed left to right in rows no wider than `row_w`, in `order`.
+func _shelf_pack(sizes: Array[Vector2i], order: Array, row_w: int) -> Dictionary:
+	var pos: Array[Vector2i] = []
+	pos.resize(sizes.size())
+	var x := 0
+	var y := 0
+	var row_h := 0
+	var used_w := 0
+	for i: int in order:
+		var s := sizes[i]
+		if x > 0 and x + s.x > row_w:
+			y += row_h + LIGHTMAP_GUTTER
+			x = 0
+			row_h = 0
+		pos[i] = Vector2i(x, y)
+		x += s.x + LIGHTMAP_GUTTER
+		row_h = maxi(row_h, s.y)
+		used_w = maxi(used_w, x - LIGHTMAP_GUTTER)
+	return {"pos": pos, "size": Vector2i(used_w, y + row_h)}
+
+
+## The model's material as a file shared by every merged mesh of every area: `<out>/props/materials/<model>.tres`, a copy of the glTF's own (which a scene
+## cannot reference: it is a sub-resource of the imported glb). One material per model, as the instances have.
+func _prop_material(glb_mat: Material, model: Dictionary, surface: int, surfaces: int) -> Material:
+	var key := glb_mat.resource_path
+	if _prop_mats.has(key):
+		return _prop_mats[key]
+	var base := String(model.url).get_file().get_basename()
+	var path := out_dir.path_join("props/materials").path_join((base if surfaces == 1 else "%s_%d" % [base, surface]) + ".tres")
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var err := ResourceSaver.save(glb_mat.duplicate(), path)
+	if err != OK:
+		errors.append("cannot save %s (error %d)" % [path, err])
+		return glb_mat
+	_stabilise_ids(path)
+	var mat := ResourceLoader.load(path, "Material", ResourceLoader.CACHE_MODE_REPLACE)
+	_prop_mats[key] = mat
+	return mat
 
 
 ## Solid box-collider props that are big enough to hide things behind them (the mausoleums) get an occluder: the collider box, rotated
@@ -682,9 +964,9 @@ func _gather_nodes(parent: Node3D) -> void:
 		holder.set_meta("node_kind", n.kind)
 		_add(parent, holder, String(n.id))
 		if n.model != null:
-			var m := _model(n.model, float(n.modelHeight), false)
+			var m := _model(n.model, float(n.modelHeight))
 			if not m.is_empty():
-				var inst := (m.packed as PackedScene).instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE) as Node3D
+				var inst := _prefab(m, false).instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE) as Node3D
 				_add(holder, inst, "model")
 			if n.kind == "seam" or n.kind == "geode":
 				_ore_crystals(holder, n)

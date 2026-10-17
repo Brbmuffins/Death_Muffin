@@ -2,19 +2,27 @@
 
 [ext_resource type="Texture2D" path="res://assets/slice/art/textures/cloister_floor.webp" id="1_d8873"]
 [ext_resource type="Texture2D" path="res://assets/slice/art/textures/stone_wall.webp" id="2_45f94"]
-[ext_resource type="PackedScene" path="res://areas/props/pillar.tscn" id="3_be89b"]
-[ext_resource type="PackedScene" path="res://areas/props/arch.tscn" id="4_c485c"]
-[ext_resource type="PackedScene" path="res://areas/props/plague_well.tscn" id="5_ce1c6"]
-[ext_resource type="PackedScene" path="res://areas/props/waystone.tscn" id="6_cca26"]
-[ext_resource type="PackedScene" path="res://areas/props/rot_garden.tscn" id="7_688e6"]
-[ext_resource type="PackedScene" path="res://areas/props/plague_cart.tscn" id="8_c499e"]
-[ext_resource type="PackedScene" path="res://areas/props/candles.tscn" id="9_6d13f"]
-[ext_resource type="PackedScene" path="res://areas/props/dead_tree.tscn" id="10_f5464"]
-[ext_resource type="PackedScene" path="res://areas/props/saints_litter.tscn" id="11_1e223"]
-[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="12_bdf92"]
-[ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="13_7607e"]
-[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="14_16348"]
-[ext_resource type="LightmapGIData" path="res://areas/cloister.lmbake" id="15_c20b3"]
+[ext_resource type="PackedScene" path="res://areas/props/arch.tscn" id="3_c485c"]
+[ext_resource type="PackedScene" path="res://areas/props/plague_well.tscn" id="4_ce1c6"]
+[ext_resource type="PackedScene" path="res://areas/props/waystone.tscn" id="5_cca26"]
+[ext_resource type="PackedScene" path="res://areas/props/rot_garden.tscn" id="6_688e6"]
+[ext_resource type="PackedScene" path="res://areas/props/plague_cart.tscn" id="7_c499e"]
+[ext_resource type="PackedScene" path="res://areas/props/candles.tscn" id="8_6d13f"]
+[ext_resource type="PackedScene" path="res://areas/props/dead_tree.tscn" id="9_f5464"]
+[ext_resource type="PackedScene" path="res://areas/props/saints_litter.tscn" id="10_1e223"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/cloister/cell_2_-11_tall.res" id="11_37611"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/cloister/cell_2_-10_tall.res" id="12_8035c"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/cloister/cell_2_-9_tall.res" id="13_629a0"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/cloister/cell_3_-11_tall.res" id="14_8d45c"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/cloister/cell_3_-9_tall.res" id="15_68f9b"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/cloister/cell_4_-11_tall.res" id="16_2060c"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/cloister/cell_4_-10_tall.res" id="17_7d6ec"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/cloister/cell_4_-9_small.res" id="18_23f38"]
+[ext_resource type="ArrayMesh" path="res://areas/batches/cloister/cell_4_-9_tall.res" id="19_41673"]
+[ext_resource type="Texture2D" path="res://areas/common/ring.png" id="20_bdf92"]
+[ext_resource type="Texture2D" path="res://assets/slice/art/textures/flagstone.webp" id="21_7607e"]
+[ext_resource type="Texture2D" path="res://areas/common/glow.png" id="22_16348"]
+[ext_resource type="LightmapGIData" path="res://areas/cloister.lmbake" id="23_c20b3"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f5800"]
 albedo_color = Color(0.65882355, 0.7058824, 0.627451, 1)
@@ -166,7 +174,7 @@ rings = 4
 transparency = 1
 shading_mode = 0
 albedo_color = Color(0.43529412, 0.56078434, 0.13333334, 0.26)
-albedo_texture = ExtResource("12_bdf92")
+albedo_texture = ExtResource("20_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_a24bb"]
@@ -175,7 +183,7 @@ orientation = 1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f0e93"]
 albedo_color = Color(0.6039216, 0.57254905, 0.65882355, 1)
-albedo_texture = ExtResource("13_7607e")
+albedo_texture = ExtResource("21_7607e")
 roughness = 0.62
 texture_filter = 5
 
@@ -245,7 +253,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 albedo_color = Color(0.61, 0.36, 1, 0.9)
-albedo_texture = ExtResource("12_bdf92")
+albedo_texture = ExtResource("20_bdf92")
 texture_filter = 5
 
 [sub_resource type="QuadMesh" id="QuadMesh_fb593"]
@@ -319,7 +327,7 @@ blend_mode = 1
 cull_mode = 2
 shading_mode = 0
 vertex_color_use_as_albedo = true
-albedo_texture = ExtResource("14_16348")
+albedo_texture = ExtResource("22_16348")
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_1ab1f"]
 _surfaces = [{
@@ -480,153 +488,112 @@ mesh = SubResource("BoxMesh_85126")
 
 [node name="Props" type="Node3D" parent="." unique_id=245124651]
 
-[node name="pillar_000" parent="Props" unique_id=98182929 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29, 0, -102.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_001" parent="Props" unique_id=82247508 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29, 0, -129.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_002" parent="Props" unique_id=93524350 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, -102.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_003" parent="Props" unique_id=36738594 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, -129.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_004" parent="Props" unique_id=91393 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41, 0, -102.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_005" parent="Props" unique_id=216165222 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41, 0, -129.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_006" parent="Props" unique_id=165506437 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 47, 0, -102.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_007" parent="Props" unique_id=62251853 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 47, 0, -129.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_008" parent="Props" unique_id=134956201 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53, 0, -102.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_009" parent="Props" unique_id=77518649 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53, 0, -129.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_010" parent="Props" unique_id=162215688 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59, 0, -102.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_011" parent="Props" unique_id=146240660 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59, 0, -129.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_012" parent="Props" unique_id=132006624 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.5, 0, -123.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_013" parent="Props" unique_id=169972451 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.5, 0, -123.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_014" parent="Props" unique_id=265042594 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.5, 0, -118.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_015" parent="Props" unique_id=121352468 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.5, 0, -118.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_016" parent="Props" unique_id=197479536 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.5, 0, -113.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_017" parent="Props" unique_id=166929172 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.5, 0, -113.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_018" parent="Props" unique_id=70974923 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.5, 0, -108.5)
-metadata/prop_kind = "pillar"
-
-[node name="pillar_019" parent="Props" unique_id=202063704 instance=ExtResource("3_be89b")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.5, 0, -108.5)
-metadata/prop_kind = "pillar"
-
-[node name="arch_000" parent="Props" unique_id=190875589 instance=ExtResource("4_c485c")]
+[node name="arch_000" parent="Props" unique_id=190875589 instance=ExtResource("3_c485c")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 0, -102.5)
 metadata/prop_kind = "arch"
 
-[node name="arch_001" parent="Props" unique_id=261264072 instance=ExtResource("4_c485c")]
+[node name="arch_001" parent="Props" unique_id=261264072 instance=ExtResource("3_c485c")]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 59.5, 0, -116)
 metadata/prop_kind = "arch"
 
-[node name="plague_well_000" parent="Props" unique_id=96937273 instance=ExtResource("5_ce1c6")]
+[node name="plague_well_000" parent="Props" unique_id=96937273 instance=ExtResource("4_ce1c6")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 0, -107.5)
 metadata/prop_kind = "plague_well"
 
-[node name="waystone_000" parent="Props" unique_id=133963006 instance=ExtResource("6_cca26")]
+[node name="waystone_000" parent="Props" unique_id=133963006 instance=ExtResource("5_cca26")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.5, 0, -111)
 metadata/prop_kind = "waystone"
 
-[node name="rot_garden_000" parent="Props" unique_id=78401043 instance=ExtResource("7_688e6")]
+[node name="rot_garden_000" parent="Props" unique_id=78401043 instance=ExtResource("6_688e6")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, -110)
 metadata/prop_kind = "rot_garden"
 
-[node name="rot_garden_001" parent="Props" unique_id=255296746 instance=ExtResource("7_688e6")]
+[node name="rot_garden_001" parent="Props" unique_id=255296746 instance=ExtResource("6_688e6")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 53, 0, -110)
 metadata/prop_kind = "rot_garden"
 
-[node name="rot_garden_002" parent="Props" unique_id=256974235 instance=ExtResource("7_688e6")]
+[node name="rot_garden_002" parent="Props" unique_id=256974235 instance=ExtResource("6_688e6")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, -122)
 metadata/prop_kind = "rot_garden"
 
-[node name="rot_garden_003" parent="Props" unique_id=255021060 instance=ExtResource("7_688e6")]
+[node name="rot_garden_003" parent="Props" unique_id=255021060 instance=ExtResource("6_688e6")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 53, 0, -122)
 metadata/prop_kind = "rot_garden"
 
-[node name="plague_cart_000" parent="Props" unique_id=92364039 instance=ExtResource("8_c499e")]
+[node name="plague_cart_000" parent="Props" unique_id=92364039 instance=ExtResource("7_c499e")]
 transform = Transform3D(0.921061, 0, 0.38941833, 0, 1, 0, -0.38941833, 0, 0.921061, 31, 0, -104.5)
 metadata/prop_kind = "plague_cart"
 
-[node name="plague_cart_001" parent="Props" unique_id=173332170 instance=ExtResource("8_c499e")]
+[node name="plague_cart_001" parent="Props" unique_id=173332170 instance=ExtResource("7_c499e")]
 transform = Transform3D(-0.8568887, 0, 0.51550144, 0, 1, 0, -0.51550144, 0, -0.8568887, 57, 0, -127.5)
 metadata/prop_kind = "plague_cart"
 
-[node name="plague_cart_002" parent="Props" unique_id=150854442 instance=ExtResource("8_c499e")]
+[node name="plague_cart_002" parent="Props" unique_id=150854442 instance=ExtResource("7_c499e")]
 transform = Transform3D(-0.12884454, 0, 0.9916648, 0, 1, 0, -0.9916648, 0, -0.12884454, 61, 0, -106)
 metadata/prop_kind = "plague_cart"
 
-[node name="candles_000" parent="Props" unique_id=30347769 instance=ExtResource("9_6d13f")]
+[node name="candles_000" parent="Props" unique_id=30347769 instance=ExtResource("8_6d13f")]
 transform = Transform3D(-0.0731672, 0, -0.9973197, 0, 1, 0, 0.9973197, 0, -0.0731672, 40, 0, -104)
 metadata/prop_kind = "candles"
 
-[node name="candles_001" parent="Props" unique_id=50701541 instance=ExtResource("9_6d13f")]
-transform = Transform3D(-0.5910335, 0, -0.806647, 0, 1, 0, 0.806647, 0, -0.5910335, 48, 0, -104)
-metadata/prop_kind = "candles"
-
-[node name="candles_002" parent="Props" unique_id=112303083 instance=ExtResource("9_6d13f")]
+[node name="candles_002" parent="Props" unique_id=112303083 instance=ExtResource("8_6d13f")]
 transform = Transform3D(0.88793665, 0, -0.45996574, 0, 1, 0, 0.45996574, 0, 0.88793665, 31, 0, -127)
 metadata/prop_kind = "candles"
 
-[node name="candles_003" parent="Props" unique_id=1234113 instance=ExtResource("9_6d13f")]
-transform = Transform3D(0.9160043, 0, -0.4011684, 0, 1, 0, 0.4011684, 0, 0.9160043, 57, 0, -104.5)
-metadata/prop_kind = "candles"
-
-[node name="dead_tree_000" parent="Props" unique_id=56482327 instance=ExtResource("10_f5464")]
+[node name="dead_tree_000" parent="Props" unique_id=56482327 instance=ExtResource("9_f5464")]
 transform = Transform3D(0.96983343, 0, 0.24376866, 0, 1, 0, -0.24376866, 0, 0.96983343, 40.2834, 0, -108.4062)
 metadata/prop_kind = "dead_tree"
 
-[node name="saints_litter_000" parent="Props" unique_id=106212414 instance=ExtResource("11_1e223")]
+[node name="saints_litter_000" parent="Props" unique_id=106212414 instance=ExtResource("10_1e223")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 0, -129.5)
 metadata/prop_kind = "saints_litter"
+
+[node name="cell_2_-11_tall" type="MeshInstance3D" parent="Props" unique_id=175862942]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, -126)
+mesh = ExtResource("11_37611")
+metadata/props = ["pillar_001", "pillar_003", "pillar_012"]
+
+[node name="cell_2_-10_tall" type="MeshInstance3D" parent="Props" unique_id=57953500]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, -114)
+mesh = ExtResource("12_8035c")
+metadata/props = ["pillar_014", "pillar_016", "pillar_018"]
+
+[node name="cell_2_-9_tall" type="MeshInstance3D" parent="Props" unique_id=265754305]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, -102)
+mesh = ExtResource("13_629a0")
+metadata/props = ["pillar_000", "pillar_002"]
+
+[node name="cell_3_-11_tall" type="MeshInstance3D" parent="Props" unique_id=57081036]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, -126)
+mesh = ExtResource("14_8d45c")
+metadata/props = ["pillar_005", "pillar_007"]
+
+[node name="cell_3_-9_tall" type="MeshInstance3D" parent="Props" unique_id=41697705]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, -102)
+mesh = ExtResource("15_68f9b")
+metadata/props = ["pillar_004", "pillar_006"]
+
+[node name="cell_4_-11_tall" type="MeshInstance3D" parent="Props" unique_id=165332417]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0, -126)
+mesh = ExtResource("16_2060c")
+metadata/props = ["pillar_009", "pillar_011", "pillar_013"]
+
+[node name="cell_4_-10_tall" type="MeshInstance3D" parent="Props" unique_id=195008867]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0, -114)
+mesh = ExtResource("17_7d6ec")
+metadata/props = ["pillar_015", "pillar_017", "pillar_019"]
+
+[node name="cell_4_-9_small" type="MeshInstance3D" parent="Props" unique_id=119536376]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0, -102)
+cast_shadow = 0
+visibility_range_end = 80.0
+mesh = ExtResource("18_23f38")
+metadata/props = ["candles_001", "candles_003"]
+
+[node name="cell_4_-9_tall" type="MeshInstance3D" parent="Props" unique_id=154693008]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0, -102)
+mesh = ExtResource("19_41673")
+metadata/props = ["pillar_008", "pillar_010"]
 
 [node name="GatherNodes" type="Node3D" parent="." unique_id=208477927]
 
@@ -1125,4 +1092,4 @@ max_texture_size = 4096
 environment_mode = 3
 environment_custom_color = Color(0.300142, 0.39632353, 0.24492902, 1)
 environment_custom_energy = 1.9
-light_data = ExtResource("15_c20b3")
+light_data = ExtResource("23_c20b3")

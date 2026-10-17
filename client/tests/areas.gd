@@ -10,6 +10,14 @@ const WORLD_JSON := "../godot/data/slice/world.json"
 const TEX := "res://assets/slice/art/textures/%s.webp"
 const COMMON := "res://areas/common/"
 const EPS := 0.0005
+const BATCH_DIR := "res://areas/batches/"
+const MAT_DIR := "res://areas/props/materials/"
+## The default camera's ground footprint round the hero, in metres (world.json `camera`: 22 m away, 0.82 high and 0.6 back, 40 degrees, 16:9, zoom 1): the
+## width of its far edge to each side, how far ahead (toward -z) and behind it reaches; the hero places the draw-call model walks across an area are VIEW_STEP apart.
+const VIEW_X := 24.0
+const VIEW_FAR := 18.0
+const VIEW_NEAR := 7.0
+const VIEW_STEP := 4.0
 ## What world_builder hard-codes: the one hall with no gate, always open (`_gates`, `_apply_unlock_state`), and the area that draws each list
 ## that names none (`_water`, `_wing_floor`, `_hummocks`).
 const ALWAYS_OPEN_DOOR := "chapter_graves"
@@ -29,6 +37,10 @@ var _uv2_cache: Dictionary = {}
 var _seen: Dictionary = {}        # category -> how many of its things the scenes hold, against world.json in _test_totals
 var _door_seen: Dictionary = {}   # door id -> scenes it is in
 var _mm_files: Dictionary = {}    # scene file -> its MultiMesh table (_multimeshes_of_file)
+var _prefabs_used: Dictionary = {}    # prefab file names (no extension) some scene instances
+var _materials_used: Dictionary = {}  # shared prop material files some cell mesh uses
+var _draws: Dictionary = {}           # the props' draw calls summed over the areas (_test_prop_draws)
+var _pending_bakes: Array[String] = []   # areas with no lighting bake yet
 
 
 func _check(ok: bool, what: String) -> void:
@@ -372,7 +384,10 @@ func _meshes_of(n: Node) -> Array[MeshInstance3D]:
 func _has_uv2(mesh: Mesh) -> bool:
 	var key := mesh.get_instance_id()
 	if not _uv2_cache.has(key):
-		_uv2_cache[key] = mesh.get_surface_count() > 0 and (mesh.surface_get_arrays(0)[Mesh.ARRAY_TEX_UV2] as PackedVector2Array).size() > 0
+		var ok := mesh.get_surface_count() > 0
+		for si in mesh.get_surface_count():
+			ok = ok and (mesh.surface_get_arrays(si)[Mesh.ARRAY_TEX_UV2] as PackedVector2Array).size() > 0
+		_uv2_cache[key] = ok
 	return _uv2_cache[key]
 
 
@@ -390,19 +405,75 @@ func _test_bake_ready() -> void:
 	_check(n > 0 and missing.is_empty(), "every one of the %d meshes static for the bake carries a lightmap UV2 (not: %s)" % [n, str(missing.slice(0, 4))])
 
 
-func _test_props() -> void:
-	var list: Array = []
-	var by_kind: Dictionary = {}
+## The area's props, as world.json lists them (the converter's rule, written out here again from world.json alone): a model that stands `Build.BATCH_MIN` times or
+## more in one 12 m cell and size class is merged into that cell's mesh, every other prop is an instance of its prefab. Returns the props with a model, in
+## world.json order: {p, label, spec, parts, small, cell, group, merged}.
+func _prop_entries() -> Array:
+	var out: Array = []
+	var idx: Dictionary = {}
+	var sizes: Dictionary = {}
 	for p: Dictionary in _world.props:
-		if p.area == _id:
-			list.append(p)
-			if _world.propSpecs[p.prop].url != null:
-				by_kind[p.prop] = int(by_kind.get(p.prop, 0)) + 1
+		if p.area != _id:
+			continue
+		var i: int = idx.get(p.prop, 0)
+		idx[p.prop] = i + 1
+		var spec: Dictionary = _world.propSpecs[p.prop]
+		if spec.url == null:
+			continue
+		var cell := Vector2i(floori(float(p.x) / Build.CELL), floori(float(p.z) / Build.CELL))
+		var small: bool = float(spec.height) <= Build.SMALL_PROP_MAX_HEIGHT
+		var group := "%d|%d|%d|%s|%s" % [cell.x, cell.y, int(small), spec.url, spec.height]
+		sizes[group] = int(sizes.get(group, 0)) + 1
+		out.append({"p": p, "label": "%s_%03d" % [p.prop, i], "spec": spec, "small": small, "cell": cell, "group": group, "merged": false})
+	for e: Dictionary in out:
+		e.merged = int(sizes[e.group]) >= Build.BATCH_MIN
+	return out
+
+
+func _cell_name(cell: Vector2i, small: bool) -> String:
+	return "cell_%d_%d_%s" % [cell.x, cell.y, "small" if small else "tall"]
+
+
+## The merged props of an area by cell mesh: cell node name -> {cell, small, entries: Array of _prop_entries in world.json order}.
+func _expected_cells(entries: Array) -> Dictionary:
+	var cells: Dictionary = {}
+	for e: Dictionary in entries:
+		if not e.merged:
+			continue
+		var name := _cell_name(e.cell, e.small)
+		if not cells.has(name):
+			cells[name] = {"cell": e.cell, "small": e.small, "entries": []}
+		cells[name].entries.append(e)
+	return cells
+
+
+func _surfaces_of(n: Node) -> int:
+	var s := 0
+	for m in _meshes_of(n):
+		s += m.mesh.get_surface_count()
+	return s
+
+
+func _test_props() -> void:
+	var entries := _prop_entries()
+	var singles: Array = entries.filter(func(e: Dictionary) -> bool: return not e.merged)
+	var cells := _expected_cells(entries)
+	var by_kind: Dictionary = {}
+	for e: Dictionary in singles:
+		by_kind[e.p.prop] = int(by_kind.get(e.p.prop, 0)) + 1
 	var got_kind: Dictionary = {}
+	var got_cells: Array[String] = []
+	var strays: Array[String] = []
 	for k in _kids("Props"):
-		var kind := String(k.get_meta("prop_kind", ""))
-		got_kind[kind] = int(got_kind.get(kind, 0)) + 1
-	_check(got_kind == by_kind, "prop count per kind matches world.json (%d kinds, %d props with a model)" % [by_kind.size(), _sum(by_kind)])
+		if k is MeshInstance3D and String(k.name).begins_with("cell_"):
+			got_cells.append(String(k.name))
+		elif k.has_meta("prop_kind"):
+			var kind := String(k.get_meta("prop_kind", ""))
+			got_kind[kind] = int(got_kind.get(kind, 0)) + 1
+		else:
+			strays.append(String(k.name))
+	var merged_n := entries.size() - singles.size()
+	_check(got_kind == by_kind and strays.is_empty(), "%d props stand alone as instances of their prefab (%d kinds), the other %d are merged; nothing else is under Props (stray: %s)" % [singles.size(), by_kind.size(), merged_n, str(strays)])
 	var idx: Dictionary = {}
 	var place_ok := true
 	var prefab_ok := true
@@ -412,27 +483,23 @@ func _test_props() -> void:
 	var uv2_ok := true
 	var small_n := 0
 	var meshes_n := 0
-	for p: Dictionary in list:
-		var kind: String = p.prop
-		var i: int = idx.get(kind, 0)
-		idx[kind] = i + 1
-		var spec: Dictionary = _world.propSpecs[kind]
-		if spec.url == null:
-			continue
-		var node := _scene.get_node_or_null("Props/%s_%03d" % [kind, i]) as Node3D
+	for e: Dictionary in singles:
+		var p: Dictionary = e.p
+		var spec: Dictionary = e.spec
+		var node := _scene.get_node_or_null("Props/%s" % e.label) as Node3D
 		if node == null:
 			place_ok = false
-			printerr("  missing prop node ", kind, i)
+			printerr("  missing prop node ", e.label)
 			continue
 		var want := _placement(p)
 		place_ok = place_ok and _near_t(node.transform, want)
 		prefab_ok = prefab_ok and node.scene_file_path.begins_with("res://areas/props/")
+		_prefabs_used[node.scene_file_path.get_file().get_basename()] = true
 		# world_builder._prop_batch: DmModels.prop_parts, each part under the placement.
 		var parts: Array = DmModels.prop_parts(spec.url, float(spec.height))
 		var meshes := _meshes_of(node)
 		mesh_ok = mesh_ok and meshes.size() == parts.size()
-		var small: bool = float(spec.height) <= Build.SMALL_PROP_MAX_HEIGHT
-		if small:
+		if e.small:
 			small_n += 1
 		for j in mini(meshes.size(), parts.size()):
 			var mi := meshes[j]
@@ -441,24 +508,339 @@ func _test_props() -> void:
 			static_ok = static_ok and mi.gi_mode == GeometryInstance3D.GI_MODE_STATIC
 			uv2_ok = uv2_ok and _has_uv2(mi.mesh)
 			# world_builder: only props taller than 1.5 m cast the moon's shadow; the converter adds the visibility range to the others.
-			if small:
+			if e.small:
 				range_ok = range_ok and _near(mi.visibility_range_end, Build.SMALL_PROP_VISIBLE_END) and mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			else:
 				range_ok = range_ok and mi.visibility_range_end == 0.0 and mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	_check(place_ok, "every prop is placed with world_builder's transform (position, yaw, tilt, scale)")
-	_check(prefab_ok, "props are instances of the per-model prefabs in areas/props")
-	_check(mesh_ok, "%d prop meshes are DmModels.prop_parts' meshes, where world_builder puts them (placement x normalisation x the part's own transform)" % meshes_n)
-	_check(range_ok, "%d props up to %s m have a visibility range and no shadow, the %d taller ones none and a shadow" % [small_n, Build.SMALL_PROP_MAX_HEIGHT, _with_model(list) - small_n])
-	_check(static_ok and uv2_ok, "prop meshes are static for baked lighting and carry lightmap UV2")
-	_see("props", _sum(got_kind))
+	_check(place_ok, "every standing prop is placed with world_builder's transform (position, yaw, tilt, scale)")
+	_check(prefab_ok, "standing props are instances of the per-model prefabs in areas/props")
+	_check(mesh_ok, "%d standing prop meshes are DmModels.prop_parts' meshes, where world_builder puts them (placement x normalisation x the part's own transform)" % meshes_n)
+	_check(range_ok, "%d standing props up to %s m have a visibility range and no shadow, the %d taller ones none and a shadow" % [small_n, Build.SMALL_PROP_MAX_HEIGHT, singles.size() - small_n])
+	_check(static_ok and uv2_ok, "standing prop meshes are static for baked lighting and carry lightmap UV2")
+	var merged_seen := _test_cells(cells)
+	_test_prop_draws(entries, cells)
+	_see("props", _sum(got_kind) + merged_seen)
 
 
-func _with_model(list: Array) -> int:
-	var n := 0
-	for p: Dictionary in list:
-		if _world.propSpecs[p.prop].url != null:
-			n += 1
-	return n
+## The cell meshes against world.json: which props each merges, how each is placed, its materials, its lightmap rects.
+func _test_cells(cells: Dictionary) -> int:
+	var names: Array[String] = []
+	names.assign(cells.keys())
+	var got: Array[String] = []
+	var files: Array[String] = []
+	for k in _kids("Props"):
+		if k is MeshInstance3D and String(k.name).begins_with("cell_"):
+			got.append(String(k.name))
+	var batch_dir := BATCH_DIR + _id
+	if DirAccess.dir_exists_absolute(batch_dir):
+		for f in DirAccess.get_files_at(batch_dir):
+			files.append(f.get_basename())
+	var want_files := names.duplicate()
+	_check(_sorted(names) == _sorted(got), "%d cell meshes stand where world.json puts repeated props: %s" % [names.size(), ", ".join(_sorted(names))])
+	_check(_sorted(files) == _sorted(want_files), "areas/batches/%s holds one mesh file for each cell mesh and nothing else (%d)" % [_id, files.size()])
+	var problems: Array[String] = []
+	var merged_seen := 0
+	var verts_n := 0
+	for name: String in names:
+		var c: Dictionary = cells[name]
+		var node := _scene.get_node_or_null("Props/%s" % name) as MeshInstance3D
+		if node == null:
+			continue
+		var mesh_path := "%s/%s.res" % [batch_dir, name]
+		var got_props: Array = node.get_meta("props", [])
+		merged_seen += got_props.size()
+		var want_props: Array = (c.entries as Array).map(func(e: Dictionary) -> String: return e.label)
+		var origin := Vector3((c.cell.x + 0.5) * Build.CELL, 0.0, (c.cell.y + 0.5) * Build.CELL)
+		if got_props != want_props:
+			problems.append("%s merges %s, not %s" % [name, str(got_props), str(want_props)])
+		if not (_near_v(node.position, origin) and node.basis.is_equal_approx(Basis.IDENTITY)):
+			problems.append("%s is not at its cell's centre" % name)
+		if node.gi_mode != GeometryInstance3D.GI_MODE_STATIC:
+			problems.append("%s is not static for the bake" % name)
+		if c.small:
+			if not (node.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and _near(node.visibility_range_end, Build.SMALL_PROP_VISIBLE_END + Build.CELL_RANGE_PAD)):
+				problems.append("%s (small props) has no shadow-off and visibility range of %s m" % [name, Build.SMALL_PROP_VISIBLE_END + Build.CELL_RANGE_PAD])
+		elif not (node.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON and node.visibility_range_end == 0.0):
+			problems.append("%s (tall props) does not cast a shadow, or has a visibility range" % name)
+		var mesh := node.mesh as ArrayMesh
+		if mesh == null or mesh.resource_path != mesh_path:
+			problems.append("%s does not use %s" % [name, mesh_path])
+			continue
+		var why := _cell_geometry(mesh, c.entries, origin)
+		if why != "":
+			problems.append("%s: %s" % [name, why])
+		for s in mesh.get_surface_count():
+			var mat := mesh.surface_get_material(s)
+			if mat != null:
+				_materials_used[mat.resource_path] = true
+		for s in mesh.get_surface_count():
+			verts_n += (mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	_check(problems.is_empty(), "%d cell meshes merge %d props exactly (their order, place, size class, vertices, normals, UVs, indices, one surface for each material, each prop's lightmap rect) (%s)" % [names.size(), merged_seen, "; ".join(problems.slice(0, 3))])
+	_see("merged props", merged_seen)
+	_see("cell meshes", names.size())
+	_see("merged vertices", verts_n)
+	return merged_seen
+
+
+## "" when the cell mesh holds the merged props as world.json places them, else why not: the surfaces are the models' materials (the shared files, equal to the
+## glTF's own) in order of first use; their vertices are every prop's mesh under (cell centre to world)^-1 x placement x the part's transform; the UV2 of each
+## prop is its mesh's own scaled and moved to a whole-texel rect of the cell mesh's lightmap, at the density the instance had, rects apart by the gutter.
+func _cell_geometry(mesh: ArrayMesh, entries: Array, origin: Vector3) -> String:
+	var units: Array = []   # {mesh, xf}
+	for e: Dictionary in entries:
+		var at := Transform3D(Basis.IDENTITY, -origin) * _placement(e.p)
+		for part: Dictionary in DmModels.prop_parts(e.spec.url, float(e.spec.height)):
+			units.append({"mesh": part.mesh, "xf": at * (part.local as Transform3D)})
+	# The expected surfaces: a material's resource path -> its units (and the surface of each), in order of first use.
+	var order: Array[String] = []
+	var members: Dictionary = {}
+	for u_i in units.size():
+		var m: ArrayMesh = units[u_i].mesh
+		for si in m.get_surface_count():
+			var key := m.surface_get_material(si).resource_path
+			if not members.has(key):
+				members[key] = []
+				order.append(key)
+			members[key].append([u_i, si])
+	if mesh.get_surface_count() != order.size():
+		return "%d surfaces, %d materials" % [mesh.get_surface_count(), order.size()]
+	var atlas := mesh.lightmap_size_hint
+	if atlas.x < 1 or atlas.y < 1 or atlas.x > Build.LIGHTMAP_MAX or atlas.y > Build.LIGHTMAP_MAX:
+		return "lightmap size hint %s is not within 1 to %d" % [atlas, Build.LIGHTMAP_MAX]
+	var rects: Dictionary = {}   # unit -> Rect2i in texels
+	for s in order.size():
+		var got := mesh.surface_get_arrays(s)
+		var gv: PackedVector3Array = got[Mesh.ARRAY_VERTEX]
+		var gn: PackedVector3Array = got[Mesh.ARRAY_NORMAL]
+		var gt: PackedFloat32Array = got[Mesh.ARRAY_TANGENT]
+		var gu: PackedVector2Array = got[Mesh.ARRAY_TEX_UV]
+		var gu2: PackedVector2Array = got[Mesh.ARRAY_TEX_UV2]
+		var gi: PackedInt32Array = got[Mesh.ARRAY_INDEX]
+		var off := 0
+		var ioff := 0
+		var mat := mesh.surface_get_material(s)
+		var first: Array = members[order[s]][0]
+		var src_mat: Material = (units[first[0]].mesh as ArrayMesh).surface_get_material(first[1])
+		if mat == null or not mat.resource_path.begins_with(MAT_DIR) or not _same_material(mat, src_mat):
+			return "surface %d does not use a shared copy of the glTF's material (%s)" % [s, "none" if mat == null else mat.resource_path]
+		var want_lods: Array = []
+		for pair: Array in members[order[s]]:
+			var u: Dictionary = units[pair[0]]
+			var um: ArrayMesh = u.mesh
+			var src := um.surface_get_arrays(pair[1])
+			var sv: PackedVector3Array = src[Mesh.ARRAY_VERTEX]
+			var sn: PackedVector3Array = src[Mesh.ARRAY_NORMAL]
+			var st: PackedFloat32Array = src[Mesh.ARRAY_TANGENT]
+			var su: PackedVector2Array = src[Mesh.ARRAY_TEX_UV]
+			var su2: PackedVector2Array = src[Mesh.ARRAY_TEX_UV2]
+			var si: PackedInt32Array = src[Mesh.ARRAY_INDEX]
+			var n := sv.size()
+			if off + n > gv.size() or gn.size() != gv.size() or gu.size() != gv.size() or gu2.size() != gv.size() or gt.size() != gv.size() * 4 or ioff + si.size() > gi.size():
+				return "surface %d is shorter than its props' meshes" % s
+			var xf: Transform3D = u.xf
+			var xv: PackedVector3Array = xf * sv
+			var rot := Transform3D(xf.basis.orthonormalized(), Vector3.ZERO)
+			var xn: PackedVector3Array = rot * sn
+			var hint := Vector2(um.lightmap_size_hint)
+			var k := Vector2(hint.x / atlas.x, hint.y / atlas.y)
+			var shift: Vector2 = gu2[off] - su2[0] * k
+			for j in n:
+				if gv[off + j].distance_to(xv[j]) > EPS:
+					return "surface %d vertex %d is %s, not %s" % [s, off + j, gv[off + j], xv[j]]
+				if gn[off + j].dot(xn[j]) < 0.9999:
+					return "surface %d normal %d is %s, not %s" % [s, off + j, gn[off + j], xn[j]]
+				if not gu[off + j].is_equal_approx(su[j]):
+					return "surface %d UV %d differs" % [s, off + j]
+				if gu2[off + j].x < -0.00002 or gu2[off + j].y < -0.00002 or gu2[off + j].x > 1.00002 or gu2[off + j].y > 1.00002:
+					return "surface %d UV2 %d lies outside the lightmap" % [s, off + j]
+				if gu2[off + j].distance_to(su2[j] * k + shift) > 0.00002:
+					return "surface %d UV2 %d is not its mesh's UV2 scaled to %s and moved by %s" % [s, off + j, k, shift]
+				var t := Vector3(st[4 * j], st[4 * j + 1], st[4 * j + 2])
+				var gt3 := Vector3(gt[4 * (off + j)], gt[4 * (off + j) + 1], gt[4 * (off + j) + 2])
+				if gt3.dot(rot * t) < 0.9999 or not _near(gt[4 * (off + j) + 3], st[4 * j + 3]):
+					return "surface %d tangent %d differs" % [s, off + j]
+			for j in si.size():
+				if gi[ioff + j] != si[j] + off:
+					return "surface %d index %d is %d, not %d" % [s, ioff + j, gi[ioff + j], si[j] + off]
+			# Mesh LODs: level i of the surface is every prop's level i, its indices moved to where the prop's vertices start, its size the largest of the props' (each
+			# scaled by the prop's own scale, as Godot scales it when it picks a level).
+			var src_lods := _lods_of(um, pair[1])
+			if want_lods.is_empty():
+				for i in src_lods.size():
+					want_lods.append({"edge": 0.0, "index": PackedInt32Array()})
+			if want_lods.size() != src_lods.size():
+				return "surface %d: its props disagree on how many mesh LODs they have" % s
+			for i in src_lods.size():
+				want_lods[i].edge = maxf(want_lods[i].edge, src_lods[i].edge * xf.basis.get_scale().x)
+				for v in src_lods[i].index:
+					want_lods[i].index.append(v + off)
+			# Its lightmap rect: whole texels, inside the atlas, and the same for every surface of the unit.
+			var px := shift * Vector2(atlas)
+			var r := Rect2i(Vector2i(roundi(px.x), roundi(px.y)), um.lightmap_size_hint)
+			if absf(px.x - r.position.x) > 0.01 or absf(px.y - r.position.y) > 0.01 or r.position.x < 0 or r.position.y < 0 or r.end.x > atlas.x or r.end.y > atlas.y:
+				return "the lightmap rect of a prop (%s of %s) is not whole texels inside the %s atlas" % [px, hint, atlas]
+			if rects.has(pair[0]) and rects[pair[0]] != r:
+				return "a prop's surfaces use different lightmap rects"
+			rects[pair[0]] = r
+			off += n
+			ioff += si.size()
+		if off != gv.size() or ioff != gi.size():
+			return "surface %d holds more than its props' meshes" % s
+		var got_lods := _lods_of(mesh, s)
+		if got_lods.size() != want_lods.size():
+			return "surface %d has %d mesh LODs, its props have %d" % [s, got_lods.size(), want_lods.size()]
+		for i in got_lods.size():
+			if got_lods[i].index != want_lods[i].index or absf(got_lods[i].edge - want_lods[i].edge) > 0.000001 * maxf(1.0, want_lods[i].edge):
+				return "surface %d mesh LOD %d is not its props' level %d merged (size %s, not %s; %d indices, not %d)" % [s, i, i, got_lods[i].edge, want_lods[i].edge, got_lods[i].index.size(), want_lods[i].index.size()]
+			if i > 0 and got_lods[i].edge <= got_lods[i - 1].edge:
+				return "surface %d mesh LODs are not in order of size" % s
+	var keys := rects.keys()
+	for a in keys.size():
+		for b in range(a + 1, keys.size()):
+			var ra: Rect2i = rects[keys[a]]
+			var rb: Rect2i = rects[keys[b]]
+			var apart := ra.end.x + Build.LIGHTMAP_GUTTER <= rb.position.x or rb.end.x + Build.LIGHTMAP_GUTTER <= ra.position.x \
+				or ra.end.y + Build.LIGHTMAP_GUTTER <= rb.position.y or rb.end.y + Build.LIGHTMAP_GUTTER <= ra.position.y
+			if not apart:
+				return "two props' lightmap rects %s and %s are less than %d texels apart" % [ra, rb, Build.LIGHTMAP_GUTTER]
+	return ""
+
+
+## A mesh surface's LOD levels as the renderer holds them: [{edge: the size Godot compares with the mesh's distance and scale, index: the level's triangle list}],
+## finest first. A level's index buffer is 16 bits wide unless the surface's own is 32.
+func _lods_of(mesh: Mesh, si: int) -> Array:
+	var sd := RenderingServer.mesh_get_surface(mesh.get_rid(), si)
+	var wide: bool = int(sd.index_data.size()) == int(sd.index_count) * 4
+	var out: Array = []
+	for lod: Dictionary in sd.get("lods", []):
+		var data: PackedByteArray = lod.index_data
+		var idx := PackedInt32Array()
+		if wide:
+			idx = data.to_int32_array()
+		else:
+			idx.resize(data.size() / 2)
+			for k in idx.size():
+				idx[k] = data.decode_u16(k * 2)
+		out.append({"edge": float(lod.edge_length), "index": idx})
+	return out
+
+
+## The triangles a mesh draws at its finest level and, when it has mesh LODs, at its coarsest (a surface without any draws the same).
+func _mesh_tris(mesh: Mesh) -> Vector2i:
+	var fine := 0
+	var coarse := 0
+	for si in mesh.get_surface_count():
+		var sd := RenderingServer.mesh_get_surface(mesh.get_rid(), si)
+		var base: int = int(sd.index_count) / 3
+		fine += base
+		var lods := _lods_of(mesh, si)
+		coarse += (lods[-1].index.size() / 3) if not lods.is_empty() else base
+	return Vector2i(fine, coarse)
+
+
+## A shared material file is the glTF's own: every stored property, a texture by its file.
+func _same_material(a: Material, b: Material) -> bool:
+	if a.get_class() != b.get_class():
+		return false
+	for prop: Dictionary in a.get_property_list():
+		var n: String = prop.name
+		if not (int(prop.usage) & PROPERTY_USAGE_STORAGE) or n.begins_with("resource_") or n == "script":
+			continue
+		var va: Variant = a.get(n)
+		var vb: Variant = b.get(n)
+		if va is Resource:
+			if not (vb is Resource and (va as Resource).resource_path == (vb as Resource).resource_path):
+				return false
+		elif va != vb:
+			return false
+	return true
+
+
+# ---------------------------------------------------------------- the props' draw calls
+## What the props cost the renderer, counted from the scenes (client/README.md "Areas"): one draw call for each surface of each prop mesh in the main pass, and
+## one for each surface of each shadow-casting mesh in each shadow cascade. `before` is every prop as an instance of its own mesh (the scene before batching,
+## worked out here from world.json); `after` is what the scene holds. "In view": the average, over hero places on a grid across the area, of the surfaces whose
+## bounds meet the default camera's ground footprint (a rectangle round the hero: VIEW_X to each side, VIEW_FAR ahead of him and VIEW_NEAR behind), a stand-in
+## for what the frustum keeps.
+func _test_prop_draws(entries: Array, cells: Dictionary) -> void:
+	var before: Array = []   # {aabb: AABB (world), shadow: bool, surfaces: int}
+	for e: Dictionary in entries:
+		var at := _placement(e.p)
+		for part: Dictionary in DmModels.prop_parts(e.spec.url, float(e.spec.height)):
+			before.append({"aabb": at * (part.local as Transform3D) * (part.mesh as Mesh).get_aabb(), "shadow": not e.small, "surfaces": (part.mesh as Mesh).get_surface_count()})
+	var after: Array = []
+	var tris := Vector2i.ZERO   # the props' triangles at the finest and at the coarsest mesh LOD (every instance of a model counts)
+	var cell_tris := Vector2i.ZERO
+	for k in _kids("Props"):
+		for mi in ([k as MeshInstance3D] if k is MeshInstance3D else _meshes_of(k)):
+			after.append({"aabb": mi.global_transform * mi.mesh.get_aabb(), "shadow": mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON, "surfaces": mi.mesh.get_surface_count()})
+			var t := _mesh_tris(mi.mesh)
+			tris += t
+			if k is MeshInstance3D:
+				cell_tris += t
+	var want_after := 0
+	for e: Dictionary in entries:
+		if not e.merged:
+			want_after += (DmModels.prop_parts(e.spec.url, float(e.spec.height)) as Array).reduce(func(acc: int, part: Dictionary) -> int: return acc + (part.mesh as Mesh).get_surface_count(), 0)
+	for name: String in cells:
+		var mats: Dictionary = {}
+		for e: Dictionary in cells[name].entries:
+			for part: Dictionary in DmModels.prop_parts(e.spec.url, float(e.spec.height)):
+				for s in (part.mesh as Mesh).get_surface_count():
+					mats[(part.mesh as Mesh).surface_get_material(s).resource_path] = true
+		want_after += mats.size()
+	var rows := {}
+	for pair in [["before", before], ["after", after]]:
+		var list: Array = pair[1]
+		var calls := 0
+		var casters := 0
+		for r: Dictionary in list:
+			calls += int(r.surfaces)
+			casters += int(r.surfaces) if r.shadow else 0
+		rows[pair[0]] = {"meshes": list.size(), "calls": calls, "casters": casters, "view": _in_view(list)}
+	_check(rows.after.calls == want_after, "the props draw %d surfaces (worked out from world.json: %d)" % [rows.after.calls, want_after])
+	_check(rows.after.calls <= rows.before.calls and rows.after.casters <= rows.before.casters and rows.after.view <= rows.before.view + 0.001,
+		"merging never adds a draw call: %d -> %d, shadow casters %d -> %d, in view %.1f -> %.1f" % [rows.before.calls, rows.after.calls, rows.before.casters, rows.after.casters, rows.before.view, rows.after.view])
+	for key in ["calls", "casters"]:
+		_draws["before_" + key] = int(_draws.get("before_" + key, 0)) + int(rows.before[key])
+		_draws["after_" + key] = int(_draws.get("after_" + key, 0)) + int(rows.after[key])
+	_draws["before_view"] = float(_draws.get("before_view", 0.0)) + float(rows.before.view)
+	_draws["after_view"] = float(_draws.get("after_view", 0.0)) + float(rows.after.view)
+	_draws["before_meshes"] = int(_draws.get("before_meshes", 0)) + int(rows.before.meshes)
+	_draws["after_meshes"] = int(_draws.get("after_meshes", 0)) + int(rows.after.meshes)
+	var before_tris := Vector2i.ZERO
+	for e: Dictionary in entries:
+		for part: Dictionary in DmModels.prop_parts(e.spec.url, float(e.spec.height)):
+			before_tris += _mesh_tris(part.mesh)
+	_check(tris == before_tris, "merging keeps every prop's triangles at the finest level and at the coarsest mesh LOD: %d and %d (cell meshes %d and %d)" % [tris.x, tris.y, cell_tris.x, cell_tris.y])
+	_draws["tris_fine"] = int(_draws.get("tris_fine", 0)) + tris.x
+	_draws["tris_coarse"] = int(_draws.get("tris_coarse", 0)) + tris.y
+	_draws["cell_fine"] = int(_draws.get("cell_fine", 0)) + cell_tris.x
+	_draws["cell_coarse"] = int(_draws.get("cell_coarse", 0)) + cell_tris.y
+	print("INFO areas: %s prop triangles %d at mesh LOD 0, %d at the coarsest (the cell meshes: %d and %d)" % [_id, tris.x, tris.y, cell_tris.x, cell_tris.y])
+	var others := "walls %d, decals and puddles %d, flames %d" % [_kids("Walls").size(), _kids("Decals").size(), _scene.find_children("flame", "MeshInstance3D", true, false).size()]
+	print("INFO areas: %s props, draw calls %d -> %d (in view %.1f -> %.1f), moon-shadow casters %d -> %d, mesh instances %d -> %d; not props: %s" % [_id,
+		rows.before.calls, rows.after.calls, rows.before.view, rows.after.view, rows.before.casters, rows.after.casters, rows.before.meshes, rows.after.meshes, others])
+
+
+## The average number of surfaces in view: hero places every VIEW_STEP metres across the area's rect, the footprint rectangle round each.
+func _in_view(list: Array) -> float:
+	var rect: Dictionary = _world.areas[_id].rect
+	var total := 0
+	var places := 0
+	var x := float(rect.x0)
+	while x <= float(rect.x1):
+		var z := float(rect.z0)
+		while z <= float(rect.z1):
+			var foot := Rect2(x - VIEW_X, z - VIEW_FAR, VIEW_X * 2.0, VIEW_FAR + VIEW_NEAR)
+			for r: Dictionary in list:
+				var b: AABB = r.aabb
+				if foot.intersects(Rect2(b.position.x, b.position.z, b.size.x, b.size.z)):
+					total += int(r.surfaces)
+			places += 1
+			z += VIEW_STEP
+		x += VIEW_STEP
+	return float(total) / maxf(places, 1)
 
 
 func _sum(d: Dictionary) -> int:
@@ -493,6 +875,7 @@ func _test_nodes() -> void:
 				continue
 			extra = 1
 			model_ok = model_ok and model.scene_file_path.begins_with("res://areas/props/")
+			_prefabs_used[model.scene_file_path.get_file().get_basename()] = true
 			var parts: Array = DmModels.prop_parts(n.model, float(n.modelHeight))
 			var meshes := _meshes_of(model)
 			model_ok = model_ok and meshes.size() == parts.size()
@@ -985,6 +1368,7 @@ func _test_lightmap(a: Dictionary, scene_path: String) -> void:
 	var data_path := scene_path.get_basename() + ".lmbake"
 	if not ResourceLoader.exists(data_path):
 		_check(lm.light_data == null, "no bake yet: the LightmapGI has no data")
+		_pending_bakes.append(_id)
 		return
 	var data := lm.light_data
 	_check(data != null and data.resource_path == data_path, "the LightmapGI points at %s" % data_path)
@@ -1432,9 +1816,13 @@ func _test_bounds(a: Dictionary) -> void:
 	_check(lo.distance_to(want_lo) < 0.01 and hi.distance_to(want_hi) < 0.01, "floor bounds %s to %s are the rect plus 0.8 m, the door corridors and the paths" % [lo, hi])
 	var inside := true
 	for k in _kids("Props"):
+		if k is MeshInstance3D and String(k.name).begins_with("cell_"):   # a cell mesh: the props it merges lie inside the rect, so its bounds lie within a prop's reach of it
+			var b := (k as MeshInstance3D).global_transform * (k as MeshInstance3D).mesh.get_aabb()
+			inside = inside and rect.x0 - 3.0 <= b.position.x and b.end.x <= rect.x1 + 3.0 and rect.z0 - 3.0 <= b.position.z and b.end.z <= rect.z1 + 3.0
+			continue
 		var p := (k as Node3D).position
 		inside = inside and _in_rect(rect, p.x, p.z)
-	_check(inside, "every prop stands inside the area's rect")
+	_check(inside, "every prop stands inside the area's rect (a cell mesh within 3 m of it)")
 
 
 # ---------------------------------------------------------------- what the scenes hold together
@@ -1458,6 +1846,36 @@ func _test_totals(ids: Array[String]) -> void:
 		want["wing floor quads"] += 2 if (f.kind == "rug" and f.alt != null) else 1
 	for k: String in want:
 		_check(int(_seen.get(k, 0)) == int(want[k]), "all %d %s of world.json are in the scenes, each once (scenes hold %d)" % [want[k], k, int(_seen.get(k, 0))])
+	# What the props' files hold: the prefabs some scene instances, the shared materials some cell mesh uses, one folder of cell meshes for each area that has any;
+	# nothing is left over from an earlier conversion.
+	var prefabs: Array[String] = []
+	for f in DirAccess.get_files_at("res://areas/props"):
+		if f.ends_with(".tscn"):
+			prefabs.append(f.get_basename())
+	var used: Array[String] = []
+	used.assign(_prefabs_used.keys())
+	_check(_sorted(prefabs) == _sorted(used), "areas/props holds exactly the %d prefabs the scenes instance (a standing prop, a gathering node); found %d (not instanced: %s)" % [used.size(), prefabs.size(), str(prefabs.filter(func(f: String) -> bool: return not used.has(f)))])
+	var mats: Array[String] = []
+	for f in DirAccess.get_files_at(MAT_DIR.trim_suffix("/")):
+		mats.append(MAT_DIR + f)
+	var mats_used: Array[String] = []
+	mats_used.assign(_materials_used.keys())
+	_check(_sorted(mats) == _sorted(mats_used), "areas/props/materials holds exactly the %d materials the cell meshes use; found %d (not used: %s)" % [mats_used.size(), mats.size(), str(mats.filter(func(f: String) -> bool: return not mats_used.has(f)))])
+	var batch_dirs: Array[String] = []
+	batch_dirs.assign(DirAccess.get_directories_at(BATCH_DIR.trim_suffix("/")))
+	var with_cells: Array[String] = []
+	for id in ids:
+		if not DirAccess.get_files_at(BATCH_DIR + id).is_empty():
+			with_cells.append(id)
+	_check(_sorted(batch_dirs) == _sorted(with_cells), "areas/batches holds a folder for each of the %d areas that merge props and no other" % with_cells.size())
+	if _draws.has("before_calls"):
+		print("INFO areas: all %d areas' props: draw calls %d -> %d, moon-shadow casters %d -> %d, mesh instances %d -> %d, in view on average %.1f -> %.1f per area (%d cell meshes merge %d props, %d vertices)" % [ids.size(),
+			_draws.before_calls, _draws.after_calls, _draws.before_casters, _draws.after_casters, _draws.before_meshes, _draws.after_meshes, _draws.before_view / ids.size(), _draws.after_view / ids.size(),
+			int(_seen.get("cell meshes", 0)), int(_seen.get("merged props", 0)), int(_seen.get("merged vertices", 0))])
+	if _draws.has("tris_fine"):
+		print("INFO areas: all %d areas' prop triangles: %d at mesh LOD 0, %d at the coarsest (the cell meshes: %d and %d)" % [ids.size(), _draws.tris_fine, _draws.tris_coarse, _draws.cell_fine, _draws.cell_coarse])
+	if not _pending_bakes.is_empty():
+		print("INFO areas: the lighting bake is pending for %d of %d areas (%s): their meshes changed, so the old bake was removed; bake again (client/addons/dm_bake/README.md)" % [_pending_bakes.size(), ids.size(), ", ".join(_pending_bakes)])
 	# A door is in the scene of each converted area it joins.
 	var doors_ok := true
 	for d: Dictionary in _world.doors:

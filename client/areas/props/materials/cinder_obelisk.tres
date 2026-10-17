@@ -1,0 +1,18 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/cinder_obelisk_Color_467f9bdc-131e-45ff-bc5b-18c2c7fc5c32.webp" id="1_3ec8d"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/cinder_obelisk_ORM_467f9bdc-131e-45ff-bc5b-18c2c7fc5c32.webp" id="2_1b58b"]
+[ext_resource type="Texture2D" path="res://assets/slice/models/props/cinder_obelisk_NormalGL_467f9bdc-131e-45ff-bc5b-18c2c7fc5c32.webp" id="3_e65af"]
+
+[resource]
+resource_name = "tripo_material_467f9bdc-131e-45ff-bc5b-18c2c7fc5c32"
+cull_mode = 2
+albedo_texture = ExtResource("1_3ec8d")
+metallic = 1.0
+metallic_texture = ExtResource("2_1b58b")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("2_1b58b")
+roughness_texture_channel = 1
+normal_enabled = true
+normal_texture = ExtResource("3_e65af")
+metadata/_gltf_primary_texture_coord = 0
