@@ -290,10 +290,10 @@ void DmCore::load_tuning(const Dictionary &p_content) {
 	const Dictionary wd = p_content.get("WARD", Dictionary());
 	u.ward_range = num(wd, "range", u.ward_range);
 	u.ward_max = int32_t(num(wd, "maxTargets", u.ward_max));
-	const Dictionary pf = p_content.get("PLAGUE_FLASK", Dictionary());
-	u.flask_r = num(pf, "radius", u.flask_r);
-	u.flask_pool_s = num(pf, "poolS", u.flask_pool_s);
-	u.flask_pool_dps = num(pf, "poolDpsMult", u.flask_pool_dps);
+	const Dictionary pfl = p_content.get("PLAGUE_FLASK", Dictionary());
+	u.flask_r = num(pfl, "radius", u.flask_r);
+	u.flask_pool_s = num(pfl, "poolS", u.flask_pool_s);
+	u.flask_pool_dps = num(pfl, "poolDpsMult", u.flask_pool_dps);
 	dm::PfTuning &pf = u.pf;  // EMBER_BOLT, EMBER_DEATH, SLAG_POOL: the Pyre's burning ground
 	const Dictionary eb = p_content.get("EMBER_BOLT", Dictionary());
 	pf.ember_r = num(eb, "radius", pf.ember_r);

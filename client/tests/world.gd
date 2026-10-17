@@ -557,6 +557,8 @@ func _break_seal(area: String) -> void:
 	var u: Dictionary = DmContent.area(area)["unlock"]
 	prog.local["areaKills"][String(u["area"])] = prog.unlock_kills(float(u["kills"]))
 	g.chapterhouse.check_seals()
+
+
 # ------------------------------------------------------------------------------------------------------------------ the Pyre's and the Fen's kinds
 
 func _the_pyre_and_fen() -> void:

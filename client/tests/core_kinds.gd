@@ -1,7 +1,7 @@
 extends SceneTree
 ## The kinds the other areas add to the combat core, against today's rules (godot/enemies): so far the Marrow Ossuary's two, the Bone Golem and the
-## Crypt Deacon, the Drowned Nave's five, the Censer Bearer, Lich Acolyte, Belfry Gargoyle, Bell-Sworn Templar and Choir Wraith, and the Cinder Pyre's and the Mourning Fen's eight (their section
-## opens with its own banner, at the end of the file). Later area groups append their kinds here.
+## Crypt Deacon, the Drowned Nave's five, the Censer Bearer, Lich Acolyte, Belfry Gargoyle, Bell-Sworn Templar and Choir Wraith, the Sanctum's and Cloister's three and the Cinder Pyre's
+## and the Mourning Fen's eight (each later group's section opens with its own banner, at the end of the file). Later area groups append their kinds here.
 ##   - the golem (dm_enemy_hazard.gd, the sac's script): its slam (radius, wind-up, cooldown, damage, the aim fixed at the wind-up's start, who it reaches), its
 ##     stats and the three corpses it falls into;
 ##   - the deacon (dm_enemy_deacon.gd, dm_state_cath_support.gd): the keep-away walk, the curse (wind-up, reach at the blow, damage), the raise (the corpse chosen,
@@ -2382,118 +2382,6 @@ func cloister_defs() -> void:
 		var spd := float(info["speed"])
 		check(spd >= float(d["speed"]) * 0.92 - 1e-6 and spd <= float(d["speed"]) * 1.08 + 1e-6, "%s: speed %.2f within the +-8%% roll of %.1f" % [id, spd, float(d["speed"])])
 		var ee: int = c.spawn_enemy(id, Vector2(5, 5), 1, 1.0, 1.0, true, SANCTUM, false)
-# ================================================================================================================== the Cinder Pyre and the Mourning Fen
-#
-# Their eight kinds, the "pf" family of godot/enemies/kinds: dm_enemy_pf_melee (the Cinder Husk), dm_enemy_pf_flanker (the Cinderhound, the Mire Leech), dm_enemy_pf_caster (the Pyre
-# Priest, the Bog Hag, the Fen Wisp), dm_enemy_pf_hazard (the Slag Brute, the Drowned Sexton), dm_pf_util and the states dm_state_pf_hook_chase and dm_state_pf_lure_kite.
-#   - the Husk: a melee body that bursts into a burning pool (EMBER_DEATH) where it falls, after `died`; nothing when it leaves alive;
-#   - the Priest: the caster set's walk, the coal (EMBER_BOLT: the ring at the aim fixed at the wind-up, kind ember, and the pool), the blow softened by Bone Hex;
-#   - the Hound: a flanker (a swift corpse, no pool); the Leech: a flanker whose bite is toxic, with no corpse;
-#   - the Slag Brute: the slam of the hazards with a burning pool on the aim (SLAG_POOL), which Bone Hex does not soften;
-#   - the Hag: the hex (HAG_HEX) aimed at the thickest knot of thralls, thralls cursed, heroes chilled; the Wisp: the pulse (WISP_PULSE), the chill, the retreat toward the lure;
-#   - the Sexton: the chain (SEXTON_HOOK: the window, the clear line, its own cooldown, the strip, the pull and the root, never a thrall), the slam otherwise;
-#   - the wire: a guest sees the coal, the hex, the pulse and the chain, the pools and the chain's cue; what a hero is made to suffer besides damage stays the host's;
-#   - the rosters: the whole Pyre and Fen waves run on the core, the models are drawn, and a seeded run replays bit for bit.
-
-const PYRE := "pyre"
-const FEN := "fen"
-const PF_KINDS: Array[String] = ["cinder_husk", "pyre_priest", "cinderhound", "slag_brute", "bog_hag", "drowned_sexton", "fen_wisp", "mire_leech"]
-const PF_EV_ZONE := 10
-const PF_EV_ZONE_PULSE := 11
-const PF_EV_ZONE_GONE := 12
-const PF_EV_EFFECT := 33
-const PF_TELL_EMBER := 10
-const PF_TELL_HEX := 11
-const PF_TELL_PULSE := 12
-const PF_TELL_HOOK := 13
-const PF_BLOW_EMBER := 8
-const PF_BLOW_HEX := 9
-const PF_BLOW_PULSE := 10
-const PF_BLOW_HOOK := 11
-const PF_CUE_HOOK := 8
-const PF_ZONE_EMBER := 2
-const PF_HK_MELEE := 0
-const PF_HK_TOXIC := 1
-const PF_HK_BURN := 2
-const PF_HK_EMBER := 3
-const PF_HK_DUST := 4
-const PF_TE_CHILL := 0
-const PF_TE_ROOT := 1
-const PF_TE_PULL := 2
-const PF_CK_NORMAL := 0
-const PF_CK_SWIFT := 1
-const PF_CK_RESONANT := 2
-const PF_CK_NONE := 4
-
-var fen: Dictionary       ## fen.json (HAG_HEX, WISP_PULSE, SEXTON_HOOK, FEN_LURE)
-
-
-## A body that does no damage and stays where it is: a stand-in for "something else in the area", in the Pyre.
-func pf_dummy(c: RefCounted, at: Vector2) -> int:
-	return c.spawn_enemy("robber", at, 1, 1.0, 0.0, false, PYRE, false)
-
-
-## Ticks in which a hostile zone pulses: a mirror of DmHostileZone._physics_process (age gains DT a tick, the zone ends when it reaches its life; the first countdown starts at
-## the first tick and a pulse is the tick it falls to zero).
-func pf_pulse_ticks(lifetime: float, period: float) -> Array:
-	var out := []
-	var age := 0.0
-	var cd := -1.0
-	var k := 0
-	while true:
-		k += 1
-		age += DT
-		if age >= lifetime:
-			break
-		if cd < 0.0:
-			cd = period
-		cd -= DT
-		if cd <= 0.0:
-			cd = period
-			out.append(k)
-	return out
-
-
-## The ticks (counted from the log's first tick) of the hits a zone dealt to hero `who`, with their damage and kind.
-func pf_zone_hits(log: Array, source: int, who: int) -> Array:
-	return log.filter(func(e: Dictionary) -> bool: return e["type"] == EV_HIT and e["id"] == source and e["ints"][0] == who)
-
-
-## A held thrall of `owner`: it rises, is stunned where it stands and put at `at` (it never moves), so that it counts as a target and a victim.
-func pf_thralls(c: RefCounted, owner: int, spots: Array, hp := 100.0) -> Array:
-	var ids := []
-	for at in spots:
-		ids.append(c.raise_thrall({"kind": "warrior", "hp": hp, "maxHp": hp, "damage": 0.0, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false, "allyHeal": 0.0}, owner, at, 0.0, 99.0))
-	var log := []
-	run(c, to_reach(0.9) + 2, log)
-	for i in ids.size():
-		c.stun(ids[i], 1.0e6)
-		c.set_thrall_pos(ids[i], spots[i])
-	drain(c, log)
-	return ids
-
-
-func pf_names_defs_and_numbers() -> void:
-	check(DmCoreEvents.TELLS.size() >= 14 and DmCoreEvents.TELLS[PF_TELL_EMBER] == &"ember" and DmCoreEvents.TELLS[PF_TELL_HEX] == &"hex" and DmCoreEvents.TELLS[PF_TELL_PULSE] == &"pulse"
-		and DmCoreEvents.TELLS[PF_TELL_HOOK] == &"hook", "the telegraph names: ember, hex, pulse and hook appended after flask (append only)")
-	check(DmCoreEvents.BLOWS.size() >= 12 and DmCoreEvents.BLOWS[PF_BLOW_EMBER] == &"ember" and DmCoreEvents.BLOWS[PF_BLOW_HEX] == &"hex" and DmCoreEvents.BLOWS[PF_BLOW_PULSE] == &"pulse"
-		and DmCoreEvents.BLOWS[PF_BLOW_HOOK] == &"hook", "the blow names: ember, hex, pulse and hook appended after flask")
-	check(DmCoreEvents.CUES.size() >= 9 and DmCoreEvents.CUES[PF_CUE_HOOK] == &"hook" and DmCoreEvents.ZONE_KINDS.size() >= 3 and DmCoreEvents.ZONE_KINDS[PF_ZONE_EMBER] == &"ember"
-		and DmCoreEvents.TARGET_EFFECT == PF_EV_EFFECT and DmCoreEvents.EFFECTS == [&"chill", &"root", &"pull"], "the cue hook, the zone kind ember and the hero effects chill, root, pull are appended")
-	var el: Dictionary = content["ELITE"]
-	for id in PF_KINDS:
-		var d := def(id)
-		var c := make(401)
-		hero(c, FAR)
-		var area := FEN if id in ["bog_hag", "drowned_sexton", "fen_wisp", "mire_leech"] else PYRE
-		var e: int = c.spawn_enemy(id, Vector2(0, 0), 6, 2.0, 1.5, false, area, false)
-		var info: Dictionary = c.enemy_info(e)
-		check(is_equal_approx(info["max_hp"], float(d["hp"]) * 2.0) and is_equal_approx(info["damage"], float(d["damage"]) * 1.5) and info["radius"] == float(d["radius"])
-			and is_equal_approx(info["windup_s"], float(d["windupMs"]) / 1000.0) and info["level"] == 6 and info["area"] == area,
-			"%s: hp, damage, radius and wind-up from the def, the spawn's multipliers and level" % id)
-		var spd := float(info["speed"])
-		check(spd >= float(d["speed"]) * 0.92 - 1e-6 and spd <= float(d["speed"]) * 1.08 + 1e-6, "%s: speed %.2f within the +-8%% roll of %.1f" % [id, spd, float(d["speed"])])
-		var ee: int = c.spawn_enemy(id, Vector2(5, 5), 1, 1.0, 1.0, true, area, false)
 		var ei: Dictionary = c.enemy_info(ee)
 		check(is_equal_approx(ei["max_hp"], float(d["hp"]) * float(el["hpMult"])) and is_equal_approx(ei["windup_s"], float(d["windupMs"]) / 1000.0 * ELITE_WINDUP) and is_equal_approx(ei["damage"], float(d["damage"]) * float(el["damageMult"])),
 			"%s: an elite has x%.1f health, x%.1f damage and a x%.2f wind-up" % [id, float(el["hpMult"]), float(el["damageMult"]), ELITE_WINDUP])
@@ -3369,6 +3257,274 @@ func cloister_on_the_wire() -> void:
 	host.set_replication(true)
 	hero(host, Vector2(6, 0))
 	var id := spawn_doctor(host, Vector2(0, 0), 3, 2.0, 1.5)
+	var guest := puppet()
+	var hl := []
+	var gl := []
+	var t := join(host, guest, hl, gl)
+	var k0 := to_zero(float(host.enemy_info(id)["attack_cd"]))
+	t = lockstep(host, guest, hl, gl, t, k0 + to_reach(windup) + 150)
+	var ht := of(hl, EV_TELEGRAPH, id, TELL_FLASK)
+	var gt := of(gl, EV_TELEGRAPH, id, TELL_FLASK)
+	check(ht.size() == 1 and gt.size() == 1, "wire: the guest sees the flask's telegraph once (host %d, guest %d)" % [ht.size(), gt.size()])
+	if gt.size() == 1:
+		var f: PackedFloat32Array = gt[0]["floats"]
+		check(absf(f[2] - 6.0) < 0.02 and absf(f[3]) < 0.02 and is_equal_approx(f[4], r) and f[5] >= 0.05 and f[5] <= windup + 1e-4, "wire: aimed at the target, %.1f m wide, for what is left of the %.1f s (%.2f s)" % [r, windup, f[5]])
+		check(int(gt[0]["tick"]) - int(ht[0]["tick"]) <= 6, "wire: within two snapshots of the host's (%d ticks later)" % (int(gt[0]["tick"]) - int(ht[0]["tick"])))
+	check(of(gl, EV_ATTACK, id).size() == 1 and of(gl, EV_ATTACK, id)[0]["ints"][0] == BLOW_FLASK, "wire: and its swing is a flask on the guest")
+	var hz := of(hl, EV_ZONE)
+	var gz := of(gl, EV_ZONE)
+	check(hz.size() == 1 and gz.size() == 1 and gz[0]["ints"][0] == ZONE_TOXIC and gz[0]["ints"][1] == id and absf(gz[0]["floats"][0] - 6.0) < 1e-4 and is_equal_approx(gz[0]["floats"][2], r),
+		"wire: the pool reaches the guest once, toxic, at the aim, with the doctor as its source")
+	check(of(gl, EV_ZONE_PULSE).size() == of(hl, EV_ZONE_PULSE).size() and of(gl, EV_ZONE_PULSE).size() >= 2 and of(gl, EV_ZONE_GONE).size() == of(hl, EV_ZONE_GONE).size(), "wire: and its pulses and its end (%d pulses)" % of(gl, EV_ZONE_PULSE).size())
+	check(of(gl, EV_CUE, id, CUE_FLASK).size() == 1 and of(hl, EV_CUE, id, CUE_FLASK).size() == 1, "wire: and the flask's cue")
+	check(of(hl, EV_HIT, id).size() >= 1 and of(gl, EV_HIT).is_empty(), "wire: the blow on the hero is the host's alone")
+	# The seraph's curse reaches the guest as a curse.
+	var s := make(602)
+	s.set_replication(true)
+	hero(s, Vector2(5, 0))
+	var sid := spawn_seraph(s, Vector2(0, 0), 2)
+	var sg := puppet()
+	var sl := []
+	var sgl := []
+	t = join(s, sg, sl, sgl)
+	t = lockstep(s, sg, sl, sgl, t, to_zero(float(s.enemy_info(sid)["attack_cd"])) + 12)
+	var cg := of(sgl, EV_TELEGRAPH, sid, TELL_CURSE)
+	check(cg.size() == 1 and of(sl, EV_TELEGRAPH, sid, TELL_CURSE).size() == 1 and absf(cg[0]["floats"][2] - 5.0) < 0.02 and of(sgl, EV_ATTACK, sid)[0]["ints"][0] == BLOW_CURSE and sg.enemy_info(sid).get("def", "") == "seraph",
+		"wire: the seraph's curse reaches the guest as a curse ring on the target")
+	# The ward: the cues and the blessings.
+	var w := make(603)
+	w.set_replication(true)
+	hero(w, FAR)
+	var wid := spawn_seraph(w, Vector2(0, 0))
+	var three := [ally(w, Vector2(3, 0), 0.5), ally(w, Vector2(-3, 0), 0.3), ally(w, Vector2(0, 3), 0.1)]
+	var wg := puppet()
+	var wl := []
+	var wgl := []
+	t = join(w, wg, wl, wgl)
+	t = lockstep(w, wg, wl, wgl, t, ward_ticks(float(w.enemy_info(wid)["attack_cd"]), float(def("seraph")["cooldownMs"]) / 1000.0, 1)[0] + 12)
+	var hc := of(wl, EV_CUE, wid, CUE_SANCTIFY)
+	var gc := of(wgl, EV_CUE, wid, CUE_SANCTIFY)
+	check(hc.size() == 3 and gc.size() == 3, "wire: the ward's three cues reach the guest once each (host %d, guest %d)" % [hc.size(), gc.size()])
+	var same := gc.size() == 3
+	for k in gc.size():
+		same = same and absf(gc[k]["floats"][0] - hc[k]["floats"][0]) < 1e-3 and absf(gc[k]["floats"][1] - hc[k]["floats"][1]) < 1e-3
+	check(same, "wire: in the host's order, at the same places")
+	var on_guest := three.all(func(i: int) -> bool: return wg.status_stacks(i, "sanctified") == 1.0 and is_equal_approx(float(wg.enemy_info(i)["taken_mult"]), float(statuses["SANCTIFIED"]["damageTakenMult"])))
+	check(on_guest and wg.status_stacks(wid, "sanctified") == 0.0, "wire: the three blessed bodies carry the status on the guest too, with its multiplier; the seraph does not")
+	# The frenzy.
+	var fz := make(604)
+	fz.set_replication(true)
+	hero(fz, FAR)
+	var fid: int = fz.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, false, CLOISTER, false)
+	var fg := puppet()
+	var fl := []
+	var fgl := []
+	t = join(fz, fg, fl, fgl)
+	wound(fz, fid, 0.6)
+	t = lockstep(fz, fg, fl, fgl, t, t + 30)
+	check(fz.status_stacks(fid, "frenzy") == 1.0 and fg.status_stacks(fid, "frenzy") == 1.0 and is_equal_approx(float(fg.enemy_info(fid)["speed_mult"]), float(FR["moveMult"]))
+		and is_equal_approx(float(fg.enemy_info(fid)["attack_rate_mult"]), float(FR["attackRateMult"])), "wire: the frenzy reaches the guest, with its factors")
+	# A guest that does not share the data refuses the host's messages: the seraph's ward, the flask's radius, the doctor's blow.
+	for change in [["seraph", "ward"], ["plague_doctor", "flask radius"], ["plague_doctor", "attack"]]:
+		var odd: RefCounted = ClassDB.instantiate("DmCore")
+		var defs: Dictionary = content["ENEMIES"].duplicate(true)
+		var tun_content: Dictionary = content.duplicate(true)
+		match String(change[1]):
+			"ward":
+				defs["seraph"].erase("ward")
+			"flask radius":
+				tun_content["PLAGUE_FLASK"]["radius"] = 2.4
+			"attack":
+				defs["plague_doctor"]["attack"] = "curse"
+		odd.load_enemy_defs(defs)
+		odd.load_tuning(tun_content)
+		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
+		odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
+		odd.set_puppet(true)
+		check(not odd.apply_snapshot(w.snapshot(900)) and "data" in str(odd.replication_error()), "wire: a guest with another %s of the %s refuses the host's snapshot (%s)" % [change[1], change[0], odd.replication_error()])
+
+
+# ------------------------------------------------------------------------------------------------------------------ the rosters and a replay
+
+## The whole rosters of the Bell Sanctum, the Bone Coliseum and the Plague Cloister (their enemy tables and the Sanctum's procession themes, leads included) are made by the core, the models are
+## drawn by the crowd, and a seeded run replays event for event.
+func cloister_rosters_and_a_replay() -> void:
+	var areas := DmCoreData.json(godot_dir.path_join("data/content/areas.json"))
+	for area in [SANCTUM, COLISEUM, CLOISTER]:
+		var ids := {}
+		for e in areas["AREAS"][area]["enemies"]:
+			ids[String(e["id"])] = true
+		for th in content["WAVE_THEMES"].get(area, []):
+			for e in th["roster"]:
+				ids[String(e["id"])] = true
+			if th.get("lead") != null:
+				ids[String(th["lead"])] = true
+		var missing := []
+		for id: String in ids:
+			if not DmWaveDirector.runs_on_core(id):
+				missing.append(id)
+		check(missing.is_empty() and ids.size() >= 5, "roster: every kind of the %s's waves and processions runs on the core (%d kinds, missing %s)" % [area, ids.size(), str(missing)])
+		if area == SANCTUM or area == COLISEUM:
+			check(ids.has("seraph"), "roster: the %s has the Weeping Seraph" % area)
+		else:
+			check(ids.has("plague_doctor") and ids.has("flagellant"), "roster: the %s has the Plague Doctor and the Flagellant" % area)
+	var looks := DmCoreData.json("res://crowd/crowd_looks.json")
+	var drawn := true
+	for id in CLOISTER_KINDS:
+		var slug := String(looks["enemy_model"].get(id, ""))
+		drawn = drawn and slug != "" and FileAccess.file_exists("res://assets/slice/models/%s/character.glb" % slug)
+	check(drawn and looks["casters"].has("seraph") and looks["casters"].has("plague_doctor") and not looks["casters"].has("flagellant") and float(def("seraph")["flying"]) == 0.7 and looks["wings"].has("weeping_seraph"),
+		"roster: the crowd draws them (their models; the seraph and the doctor as casters, the seraph hovering at %.1f m with its wings)" % float(def("seraph")["flying"]))
+	var dir := DmWaveDirector.new()
+	check(CLOISTER_KINDS.all(func(k: String) -> bool: return dir.makes(k)) and not dir.makes("pyre_priest_that_does_not_exist"), "roster: the director makes all three")
+	dir.free()
+	var logs := []
+	for round in 2:
+		var c := make(611)
+		var h1 := hero(c, Vector2(0, 0))
+		hero(c, Vector2(2, -3))
+		thrall(c, h1, Vector2(-2, 2), 400.0)
+		spawn_seraph(c, Vector2(9, 3), 4, 1.5, 1.2)
+		spawn_seraph(c, Vector2(-10, 4), 4, 1.5, 1.2, true)
+		spawn_doctor(c, Vector2(-9, -8), 4, 1.5, 1.2)
+		spawn_doctor(c, Vector2(8, -9), 4, 1.5, 1.2, true)
+		for i in 3:
+			c.spawn_enemy("flagellant", Vector2(12 - i * 6, 12), 4, 1.5, 1.2, i == 2, CLOISTER, false)
+		for i in 6:
+			c.spawn_enemy("robber" if i % 2 == 0 else "hound", Vector2(12 - i * 4, 13), 4, 1.5, 1.2, false, SANCTUM, false)
+		var rec := PackedInt32Array()
+		var recf := PackedFloat32Array()
+		for i in 1800:
+			c.step(DT)
+			var raw: Array = c.take_events()
+			rec.append_array(raw[0])
+			recf.append_array(raw[1])
+			if i == 400:
+				for id in c.enemy_ids():
+					if c.enemy_info(id)["def"] == "robber":
+						c.damage(id, 25.0, 0, true)
+					elif c.enemy_info(id)["def"] == "flagellant":
+						c.damage(id, 60.0, 0, true)
+		logs.append([rec, recf, c.enemy_count(), c.corpse_count()])
+	check(logs[0][0] == logs[1][0] and logs[0][1] == logs[1][1] and logs[0][0].size() > 300, "replay: a seeded fight of the seraphs, the doctors, the flagellants and a crowd replays event for event (%d ints)" % logs[0][0].size())
+
+
+# ================================================================================================================== the Cinder Pyre and the Mourning Fen
+#
+# Their eight kinds, the "pf" family of godot/enemies/kinds: dm_enemy_pf_melee (the Cinder Husk), dm_enemy_pf_flanker (the Cinderhound, the Mire Leech), dm_enemy_pf_caster (the Pyre
+# Priest, the Bog Hag, the Fen Wisp), dm_enemy_pf_hazard (the Slag Brute, the Drowned Sexton), dm_pf_util and the states dm_state_pf_hook_chase and dm_state_pf_lure_kite.
+#   - the Husk: a melee body that bursts into a burning pool (EMBER_DEATH) where it falls, after `died`; nothing when it leaves alive;
+#   - the Priest: the caster set's walk, the coal (EMBER_BOLT: the ring at the aim fixed at the wind-up, kind ember, and the pool), the blow softened by Bone Hex;
+#   - the Hound: a flanker (a swift corpse, no pool); the Leech: a flanker whose bite is toxic, with no corpse;
+#   - the Slag Brute: the slam of the hazards with a burning pool on the aim (SLAG_POOL), which Bone Hex does not soften;
+#   - the Hag: the hex (HAG_HEX) aimed at the thickest knot of thralls, thralls cursed, heroes chilled; the Wisp: the pulse (WISP_PULSE), the chill, the retreat toward the lure;
+#   - the Sexton: the chain (SEXTON_HOOK: the window, the clear line, its own cooldown, the strip, the pull and the root, never a thrall), the slam otherwise;
+#   - the wire: a guest sees the coal, the hex, the pulse and the chain, the pools and the chain's cue; what a hero is made to suffer besides damage stays the host's;
+#   - the rosters: the whole Pyre and Fen waves run on the core, the models are drawn, and a seeded run replays bit for bit.
+
+const PYRE := "pyre"
+const FEN := "fen"
+const PF_KINDS: Array[String] = ["cinder_husk", "pyre_priest", "cinderhound", "slag_brute", "bog_hag", "drowned_sexton", "fen_wisp", "mire_leech"]
+const PF_EV_ZONE := 10
+const PF_EV_ZONE_PULSE := 11
+const PF_EV_ZONE_GONE := 12
+const PF_EV_EFFECT := 33
+const PF_TELL_EMBER := 10
+const PF_TELL_HEX := 11
+const PF_TELL_PULSE := 12
+const PF_TELL_HOOK := 13
+const PF_BLOW_EMBER := 8
+const PF_BLOW_HEX := 9
+const PF_BLOW_PULSE := 10
+const PF_BLOW_HOOK := 11
+const PF_CUE_HOOK := 8
+const PF_ZONE_EMBER := 2
+const PF_HK_MELEE := 0
+const PF_HK_TOXIC := 1
+const PF_HK_BURN := 2
+const PF_HK_EMBER := 3
+const PF_HK_DUST := 4
+const PF_TE_CHILL := 0
+const PF_TE_ROOT := 1
+const PF_TE_PULL := 2
+const PF_CK_NORMAL := 0
+const PF_CK_SWIFT := 1
+const PF_CK_RESONANT := 2
+const PF_CK_NONE := 4
+
+var fen: Dictionary       ## fen.json (HAG_HEX, WISP_PULSE, SEXTON_HOOK, FEN_LURE)
+
+
+## A body that does no damage and stays where it is: a stand-in for "something else in the area", in the Pyre.
+func pf_dummy(c: RefCounted, at: Vector2) -> int:
+	return c.spawn_enemy("robber", at, 1, 1.0, 0.0, false, PYRE, false)
+
+
+## Ticks in which a hostile zone pulses: a mirror of DmHostileZone._physics_process (age gains DT a tick, the zone ends when it reaches its life; the first countdown starts at
+## the first tick and a pulse is the tick it falls to zero).
+func pf_pulse_ticks(lifetime: float, period: float) -> Array:
+	var out := []
+	var age := 0.0
+	var cd := -1.0
+	var k := 0
+	while true:
+		k += 1
+		age += DT
+		if age >= lifetime:
+			break
+		if cd < 0.0:
+			cd = period
+		cd -= DT
+		if cd <= 0.0:
+			cd = period
+			out.append(k)
+	return out
+
+
+## The ticks (counted from the log's first tick) of the hits a zone dealt to hero `who`, with their damage and kind.
+func pf_zone_hits(log: Array, source: int, who: int) -> Array:
+	return log.filter(func(e: Dictionary) -> bool: return e["type"] == EV_HIT and e["id"] == source and e["ints"][0] == who)
+
+
+## A held thrall of `owner`: it rises, is stunned where it stands and put at `at` (it never moves), so that it counts as a target and a victim.
+func pf_thralls(c: RefCounted, owner: int, spots: Array, hp := 100.0) -> Array:
+	var ids := []
+	for at in spots:
+		ids.append(c.raise_thrall({"kind": "warrior", "hp": hp, "maxHp": hp, "damage": 0.0, "attackInterval": 1.0, "range": 1.3, "speed": 5.6, "empowered": false, "champion": false, "allyHeal": 0.0}, owner, at, 0.0, 99.0))
+	var log := []
+	run(c, to_reach(0.9) + 2, log)
+	for i in ids.size():
+		c.stun(ids[i], 1.0e6)
+		c.set_thrall_pos(ids[i], spots[i])
+	drain(c, log)
+	return ids
+
+
+func pf_names_defs_and_numbers() -> void:
+	check(DmCoreEvents.TELLS.size() >= 14 and DmCoreEvents.TELLS[PF_TELL_EMBER] == &"ember" and DmCoreEvents.TELLS[PF_TELL_HEX] == &"hex" and DmCoreEvents.TELLS[PF_TELL_PULSE] == &"pulse"
+		and DmCoreEvents.TELLS[PF_TELL_HOOK] == &"hook", "the telegraph names: ember, hex, pulse and hook appended after flask (append only)")
+	check(DmCoreEvents.BLOWS.size() >= 12 and DmCoreEvents.BLOWS[PF_BLOW_EMBER] == &"ember" and DmCoreEvents.BLOWS[PF_BLOW_HEX] == &"hex" and DmCoreEvents.BLOWS[PF_BLOW_PULSE] == &"pulse"
+		and DmCoreEvents.BLOWS[PF_BLOW_HOOK] == &"hook", "the blow names: ember, hex, pulse and hook appended after flask")
+	check(DmCoreEvents.CUES.size() >= 9 and DmCoreEvents.CUES[PF_CUE_HOOK] == &"hook" and DmCoreEvents.ZONE_KINDS.size() >= 3 and DmCoreEvents.ZONE_KINDS[PF_ZONE_EMBER] == &"ember"
+		and DmCoreEvents.TARGET_EFFECT == PF_EV_EFFECT and DmCoreEvents.EFFECTS == [&"chill", &"root", &"pull"], "the cue hook, the zone kind ember and the hero effects chill, root, pull are appended")
+	var el: Dictionary = content["ELITE"]
+	for id in PF_KINDS:
+		var d := def(id)
+		var c := make(401)
+		hero(c, FAR)
+		var area := FEN if id in ["bog_hag", "drowned_sexton", "fen_wisp", "mire_leech"] else PYRE
+		var e: int = c.spawn_enemy(id, Vector2(0, 0), 6, 2.0, 1.5, false, area, false)
+		var info: Dictionary = c.enemy_info(e)
+		check(is_equal_approx(info["max_hp"], float(d["hp"]) * 2.0) and is_equal_approx(info["damage"], float(d["damage"]) * 1.5) and info["radius"] == float(d["radius"])
+			and is_equal_approx(info["windup_s"], float(d["windupMs"]) / 1000.0) and info["level"] == 6 and info["area"] == area,
+			"%s: hp, damage, radius and wind-up from the def, the spawn's multipliers and level" % id)
+		var spd := float(info["speed"])
+		check(spd >= float(d["speed"]) * 0.92 - 1e-6 and spd <= float(d["speed"]) * 1.08 + 1e-6, "%s: speed %.2f within the +-8%% roll of %.1f" % [id, spd, float(d["speed"])])
+		var ee: int = c.spawn_enemy(id, Vector2(5, 5), 1, 1.0, 1.0, true, area, false)
+		var ei: Dictionary = c.enemy_info(ee)
+		check(is_equal_approx(ei["max_hp"], float(d["hp"]) * float(el["hpMult"])) and is_equal_approx(ei["windup_s"], float(d["windupMs"]) / 1000.0 * ELITE_WINDUP) and is_equal_approx(ei["damage"], float(d["damage"]) * float(el["damageMult"])),
+			"%s: an elite has x%.1f health, x%.1f damage and a x%.2f wind-up" % [id, float(el["hpMult"]), float(el["damageMult"]), ELITE_WINDUP])
+	var t: Dictionary = make().tuning()
 	var EB: Dictionary = content["EMBER_BOLT"]
 	var ED: Dictionary = content["EMBER_DEATH"]
 	var SP: Dictionary = content["SLAG_POOL"]
@@ -4157,136 +4313,6 @@ func pf_on_the_wire() -> void:
 	var gl := []
 	var t := join(host, guest, hl, gl)
 	var k0 := to_zero(float(host.enemy_info(id)["attack_cd"]))
-	t = lockstep(host, guest, hl, gl, t, k0 + to_reach(windup) + 150)
-	var ht := of(hl, EV_TELEGRAPH, id, TELL_FLASK)
-	var gt := of(gl, EV_TELEGRAPH, id, TELL_FLASK)
-	check(ht.size() == 1 and gt.size() == 1, "wire: the guest sees the flask's telegraph once (host %d, guest %d)" % [ht.size(), gt.size()])
-	if gt.size() == 1:
-		var f: PackedFloat32Array = gt[0]["floats"]
-		check(absf(f[2] - 6.0) < 0.02 and absf(f[3]) < 0.02 and is_equal_approx(f[4], r) and f[5] >= 0.05 and f[5] <= windup + 1e-4, "wire: aimed at the target, %.1f m wide, for what is left of the %.1f s (%.2f s)" % [r, windup, f[5]])
-		check(int(gt[0]["tick"]) - int(ht[0]["tick"]) <= 6, "wire: within two snapshots of the host's (%d ticks later)" % (int(gt[0]["tick"]) - int(ht[0]["tick"])))
-	check(of(gl, EV_ATTACK, id).size() == 1 and of(gl, EV_ATTACK, id)[0]["ints"][0] == BLOW_FLASK, "wire: and its swing is a flask on the guest")
-	var hz := of(hl, EV_ZONE)
-	var gz := of(gl, EV_ZONE)
-	check(hz.size() == 1 and gz.size() == 1 and gz[0]["ints"][0] == ZONE_TOXIC and gz[0]["ints"][1] == id and absf(gz[0]["floats"][0] - 6.0) < 1e-4 and is_equal_approx(gz[0]["floats"][2], r),
-		"wire: the pool reaches the guest once, toxic, at the aim, with the doctor as its source")
-	check(of(gl, EV_ZONE_PULSE).size() == of(hl, EV_ZONE_PULSE).size() and of(gl, EV_ZONE_PULSE).size() >= 2 and of(gl, EV_ZONE_GONE).size() == of(hl, EV_ZONE_GONE).size(), "wire: and its pulses and its end (%d pulses)" % of(gl, EV_ZONE_PULSE).size())
-	check(of(gl, EV_CUE, id, CUE_FLASK).size() == 1 and of(hl, EV_CUE, id, CUE_FLASK).size() == 1, "wire: and the flask's cue")
-	check(of(hl, EV_HIT, id).size() >= 1 and of(gl, EV_HIT).is_empty(), "wire: the blow on the hero is the host's alone")
-	# The seraph's curse reaches the guest as a curse.
-	var s := make(602)
-	s.set_replication(true)
-	hero(s, Vector2(5, 0))
-	var sid := spawn_seraph(s, Vector2(0, 0), 2)
-	var sg := puppet()
-	var sl := []
-	var sgl := []
-	t = join(s, sg, sl, sgl)
-	t = lockstep(s, sg, sl, sgl, t, to_zero(float(s.enemy_info(sid)["attack_cd"])) + 12)
-	var cg := of(sgl, EV_TELEGRAPH, sid, TELL_CURSE)
-	check(cg.size() == 1 and of(sl, EV_TELEGRAPH, sid, TELL_CURSE).size() == 1 and absf(cg[0]["floats"][2] - 5.0) < 0.02 and of(sgl, EV_ATTACK, sid)[0]["ints"][0] == BLOW_CURSE and sg.enemy_info(sid).get("def", "") == "seraph",
-		"wire: the seraph's curse reaches the guest as a curse ring on the target")
-	# The ward: the cues and the blessings.
-	var w := make(603)
-	w.set_replication(true)
-	hero(w, FAR)
-	var wid := spawn_seraph(w, Vector2(0, 0))
-	var three := [ally(w, Vector2(3, 0), 0.5), ally(w, Vector2(-3, 0), 0.3), ally(w, Vector2(0, 3), 0.1)]
-	var wg := puppet()
-	var wl := []
-	var wgl := []
-	t = join(w, wg, wl, wgl)
-	t = lockstep(w, wg, wl, wgl, t, ward_ticks(float(w.enemy_info(wid)["attack_cd"]), float(def("seraph")["cooldownMs"]) / 1000.0, 1)[0] + 12)
-	var hc := of(wl, EV_CUE, wid, CUE_SANCTIFY)
-	var gc := of(wgl, EV_CUE, wid, CUE_SANCTIFY)
-	check(hc.size() == 3 and gc.size() == 3, "wire: the ward's three cues reach the guest once each (host %d, guest %d)" % [hc.size(), gc.size()])
-	var same := gc.size() == 3
-	for k in gc.size():
-		same = same and absf(gc[k]["floats"][0] - hc[k]["floats"][0]) < 1e-3 and absf(gc[k]["floats"][1] - hc[k]["floats"][1]) < 1e-3
-	check(same, "wire: in the host's order, at the same places")
-	var on_guest := three.all(func(i: int) -> bool: return wg.status_stacks(i, "sanctified") == 1.0 and is_equal_approx(float(wg.enemy_info(i)["taken_mult"]), float(statuses["SANCTIFIED"]["damageTakenMult"])))
-	check(on_guest and wg.status_stacks(wid, "sanctified") == 0.0, "wire: the three blessed bodies carry the status on the guest too, with its multiplier; the seraph does not")
-	# The frenzy.
-	var fz := make(604)
-	fz.set_replication(true)
-	hero(fz, FAR)
-	var fid: int = fz.spawn_enemy("flagellant", Vector2(0, 0), 1, 1.0, 1.0, false, CLOISTER, false)
-	var fg := puppet()
-	var fl := []
-	var fgl := []
-	t = join(fz, fg, fl, fgl)
-	wound(fz, fid, 0.6)
-	t = lockstep(fz, fg, fl, fgl, t, t + 30)
-	check(fz.status_stacks(fid, "frenzy") == 1.0 and fg.status_stacks(fid, "frenzy") == 1.0 and is_equal_approx(float(fg.enemy_info(fid)["speed_mult"]), float(FR["moveMult"]))
-		and is_equal_approx(float(fg.enemy_info(fid)["attack_rate_mult"]), float(FR["attackRateMult"])), "wire: the frenzy reaches the guest, with its factors")
-	# A guest that does not share the data refuses the host's messages: the seraph's ward, the flask's radius, the doctor's blow.
-	for change in [["seraph", "ward"], ["plague_doctor", "flask radius"], ["plague_doctor", "attack"]]:
-		var odd: RefCounted = ClassDB.instantiate("DmCore")
-		var defs: Dictionary = content["ENEMIES"].duplicate(true)
-		var tun_content: Dictionary = content.duplicate(true)
-		match String(change[1]):
-			"ward":
-				defs["seraph"].erase("ward")
-			"flask radius":
-				tun_content["PLAGUE_FLASK"]["radius"] = 2.4
-			"attack":
-				defs["plague_doctor"]["attack"] = "curse"
-		odd.load_enemy_defs(defs)
-		odd.load_tuning(tun_content)
-		odd.load_status_defs(DmStatusRules.build(DmCoreData.json(godot_dir.path_join("data/content/abilities.json")), statuses, content))
-		odd.set_area_bounds(Vector2(-60, -60), Vector2(60, 60))
-		odd.set_puppet(true)
-		check(not odd.apply_snapshot(w.snapshot(900)) and "data" in str(odd.replication_error()), "wire: a guest with another %s of the %s refuses the host's snapshot (%s)" % [change[1], change[0], odd.replication_error()])
-
-
-# ------------------------------------------------------------------------------------------------------------------ the rosters and a replay
-
-## The whole rosters of the Bell Sanctum, the Bone Coliseum and the Plague Cloister (their enemy tables and the Sanctum's procession themes, leads included) are made by the core, the models are
-## drawn by the crowd, and a seeded run replays event for event.
-func cloister_rosters_and_a_replay() -> void:
-	var areas := DmCoreData.json(godot_dir.path_join("data/content/areas.json"))
-	for area in [SANCTUM, COLISEUM, CLOISTER]:
-		var ids := {}
-		for e in areas["AREAS"][area]["enemies"]:
-			ids[String(e["id"])] = true
-		for th in content["WAVE_THEMES"].get(area, []):
-			for e in th["roster"]:
-				ids[String(e["id"])] = true
-			if th.get("lead") != null:
-				ids[String(th["lead"])] = true
-		var missing := []
-		for id: String in ids:
-			if not DmWaveDirector.runs_on_core(id):
-				missing.append(id)
-		check(missing.is_empty() and ids.size() >= 5, "roster: every kind of the %s's waves and processions runs on the core (%d kinds, missing %s)" % [area, ids.size(), str(missing)])
-		if area == SANCTUM or area == COLISEUM:
-			check(ids.has("seraph"), "roster: the %s has the Weeping Seraph" % area)
-		else:
-			check(ids.has("plague_doctor") and ids.has("flagellant"), "roster: the %s has the Plague Doctor and the Flagellant" % area)
-	var looks := DmCoreData.json("res://crowd/crowd_looks.json")
-	var drawn := true
-	for id in CLOISTER_KINDS:
-		var slug := String(looks["enemy_model"].get(id, ""))
-		drawn = drawn and slug != "" and FileAccess.file_exists("res://assets/slice/models/%s/character.glb" % slug)
-	check(drawn and looks["casters"].has("seraph") and looks["casters"].has("plague_doctor") and not looks["casters"].has("flagellant") and float(def("seraph")["flying"]) == 0.7 and looks["wings"].has("weeping_seraph"),
-		"roster: the crowd draws them (their models; the seraph and the doctor as casters, the seraph hovering at %.1f m with its wings)" % float(def("seraph")["flying"]))
-	var dir := DmWaveDirector.new()
-	check(CLOISTER_KINDS.all(func(k: String) -> bool: return dir.makes(k)) and not dir.makes("pyre_priest_that_does_not_exist"), "roster: the director makes all three")
-	dir.free()
-	var logs := []
-	for round in 2:
-		var c := make(611)
-		var h1 := hero(c, Vector2(0, 0))
-		hero(c, Vector2(2, -3))
-		thrall(c, h1, Vector2(-2, 2), 400.0)
-		spawn_seraph(c, Vector2(9, 3), 4, 1.5, 1.2)
-		spawn_seraph(c, Vector2(-10, 4), 4, 1.5, 1.2, true)
-		spawn_doctor(c, Vector2(-9, -8), 4, 1.5, 1.2)
-		spawn_doctor(c, Vector2(8, -9), 4, 1.5, 1.2, true)
-		for i in 3:
-			c.spawn_enemy("flagellant", Vector2(12 - i * 6, 12), 4, 1.5, 1.2, i == 2, CLOISTER, false)
-		for i in 6:
-			c.spawn_enemy("robber" if i % 2 == 0 else "hound", Vector2(12 - i * 4, 13), 4, 1.5, 1.2, false, SANCTUM, false)
 	t = lockstep(host, guest, hl, gl, t, t + k0 + 12)
 	var ht := of(hl, EV_TELEGRAPH, id, PF_TELL_EMBER)
 	var gt := of(gl, EV_TELEGRAPH, id, PF_TELL_EMBER)
@@ -4489,12 +4515,6 @@ func pf_roster_and_a_replay() -> void:
 			recf.append_array(raw[1])
 			if i == 400:
 				for id in c.enemy_ids():
-					if c.enemy_info(id)["def"] == "robber":
-						c.damage(id, 25.0, 0, true)
-					elif c.enemy_info(id)["def"] == "flagellant":
-						c.damage(id, 60.0, 0, true)
-		logs.append([rec, recf, c.enemy_count(), c.corpse_count()])
-	check(logs[0][0] == logs[1][0] and logs[0][1] == logs[1][1] and logs[0][0].size() > 300, "replay: a seeded fight of the seraphs, the doctors, the flagellants and a crowd replays event for event (%d ints)" % logs[0][0].size())
 					if c.enemy_info(id)["def"] == "cinder_husk":
 						c.damage(id, 25.0, 0, true)
 			if i == 700:
