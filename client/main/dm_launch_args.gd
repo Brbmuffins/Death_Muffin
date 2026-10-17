@@ -2,7 +2,8 @@ class_name DmLaunchArgs
 extends RefCounted
 ## The testing options after `--` that the boot (`--dev-offline`, `--benchmark`) and the dev entry (dev/dm_dev_entry.gd) both read. It lives with the boot:
 ## the export leaves dev/ out, so the boot must not name a class from there (2026-10-16: every rebuild test build until then stopped on a grey screen).
-## --class=N (default 2), --level=N (1-60, default 10), --seed=N, --no-waves, --boss, --crowd=N, --baked=<dir>, --shot=<png>, --shot-after=<s> (default 25), --shot-wall=<s>.
+## --class=N (default 2), --level=N (1-60, default 10), --seed=N, --no-waves, --boss, --crowd=N, --baked=<dir>, --shot=<png>, --shot-after=<s> (default 25), --shot-wall=<s>,
+## --bench-dir=<dir> (the benchmark keeps its files there and sends nothing).
 
 
 static func options(args: PackedStringArray) -> Dictionary:
@@ -22,6 +23,8 @@ static func options(args: PackedStringArray) -> Dictionary:
 			o["crowd"] = int(a.substr(8))
 		elif a.begins_with("--baked="):
 			o["baked"] = a.substr(8)
+		elif a.begins_with("--bench-dir="):
+			o["bench_dir"] = a.substr(12)
 		elif a.begins_with("--shot="):
 			o["shot"] = a.substr(7)
 		elif a.begins_with("--shot-after="):

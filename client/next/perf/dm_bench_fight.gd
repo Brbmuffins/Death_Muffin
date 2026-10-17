@@ -7,8 +7,9 @@ extends RefCounted
 
 
 ## Builds the game under `parent` and returns {game, hero, caster, api, mock, stats, at}. `stats.calls` counts the requests the mock served.
-## `opts` is merged over the game's start options (seed, the HUD on the core, the warm-up forced on, the benchmark's own director seed); Easy auto combat is opened for the fight
-## (the game has no settings store yet to open it) and the director follows Easy.
+## `opts` is merged over the game's start options (seed, the HUD on the core, the warm-up forced on, the benchmark's own director seed, and `areas`: only `area` is loaded, so the run
+## measures the room and not the world); Easy auto combat is opened for the fight (the game has no settings store yet to open it) and the director follows Easy. The director is off until `arm`: the hero starts inside the room (it is the only area), and a wave made
+## before the fight's rules are set would be on play's health and distances.
 static func boot(parent: Node, disc: int, opts: Dictionary = {}, area: String = "graves") -> Dictionary:
 	var mock := DmOffline.make_mock("")
 	var api := DmOffline.make_api(mock)
@@ -22,7 +23,7 @@ static func boot(parent: Node, disc: int, opts: Dictionary = {}, area: String = 
 	var c := await api.load_or_create_character(disc)
 	var g: DmNextGame = load("res://next/next_game.tscn").instantiate()
 	parent.add_child(g)
-	var o := {"name": "benchmark", "persist": false, "warmup": true, "hud": true, "waves": true, "seed": DmBenchmark.SEED}
+	var o := {"name": "benchmark", "persist": false, "warmup": true, "hud": true, "waves": false, "seed": DmBenchmark.SEED, "areas": [area]}
 	o.merge(opts, true)
 	await g.start(c.data, api, o)
 	var tree := parent.get_tree()
@@ -50,8 +51,9 @@ static func boot(parent: Node, disc: int, opts: Dictionary = {}, area: String = 
 
 
 ## The director set up the way the benchmark holds a fight: waves close to the hero (a small room), the cap at `enemies`, the body limit raised so
-## corpses don't stall spawning, every enemy on the standard health, the hero holding its ground (auto combat casts without walking).
+## corpses don't stall spawning, every enemy on the standard health, the hero holding its ground (auto combat casts without walking). Switches the waves on.
 static func arm(g: DmNextGame, enemies: int, seed_: int) -> void:
+	g.director.enabled = true
 	g.director.rng.seed = seed_
 	g.director.spawn_min = DmBenchmark.SPAWN_MIN_M
 	g.director.spawn_max = DmBenchmark.SPAWN_MAX_M
@@ -141,8 +143,8 @@ static func raise_thralls(g: DmNextGame, hero: DmHeroBody, want: int, at: Vector
 	return host.thrall_count(hero.core_id)
 
 
-## The boss that sleeps in `area` ("" = none). A boss only wakes for heroes standing in its own area, so a room's fight holds that room's boss; only the areas the
-## game serves count (the Hollow Graves' Gravedigger King so far).
+## The boss that sleeps in `area` ("" = none: the Warren and the Coliseum have no boss). A boss only wakes for heroes standing in its own area, so a room's fight holds that room's boss
+## (the boss host wakes all seven); the Bell Sanctum's Prelate has the whole room for its arena (radius 13 m in a 36 x 28 m room).
 static func boss_of(area: String) -> String:
 	for id: String in DmBossHost.LIVE:
 		if String(DmContent.boss(id)["area"]) == area:

@@ -168,13 +168,14 @@ func _bank_reaper_soul(b: DmHeroBody, at: Vector3) -> void:
 	if _soul_fx == null:
 		_soul_fx = DmRiteFx.with_autoloads()
 	var bw: WeakRef = weakref(b)   # a WeakRef, not the body: a lambda capturing a freed Object logs an engine error on every call
+	var fx := _soul_fx             # (and not this node: the wisp can arrive after the game is gone, and `_soul_fx` would be read from a freed node)
 	var from := Vector3(at.x, 0.9, at.z)
-	_soul_fx.emit(at.x, 0.9, at.z, 8, DmReaperRites.GREEN, 0.5, 1.2, 1.6, 0.7, 0.2, {"gravity": -0.4})   # the soul slips out of the body
-	_soul_fx.shot(from, func() -> Variant:
+	fx.emit(at.x, 0.9, at.z, 8, DmReaperRites.GREEN, 0.5, 1.2, 1.6, 0.7, 0.2, {"gravity": -0.4})   # the soul slips out of the body
+	fx.shot(from, func() -> Variant:
 		var hero: Node3D = bw.get_ref() as Node3D
 		return Vector3(hero.global_position.x, 1.2, hero.global_position.z) if hero != null else null,
 		9.0, 0.0, "sprite", DmReaperRites.GREEN, {"tex": "skull", "size": 0.7, "hover": SOUL_HOVER_S, "hover_r": 1.0,
-			"on_arrive": func(pos: Vector3) -> void: _soul_fx.emit(pos.x, pos.y, pos.z, 6, DmReaperRites.GREEN, 0.25, 1.4, 0.8, 0.4, 0.18)})
+			"on_arrive": func(pos: Vector3) -> void: fx.emit(pos.x, pos.y, pos.z, 6, DmReaperRites.GREEN, 0.25, 1.4, 0.8, 0.4, 0.18)})
 
 
 func _float(b: Node3D, y: float, text: String, kind: String) -> void:

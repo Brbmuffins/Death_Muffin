@@ -4,33 +4,32 @@ extends Node
 ## (client/code.list "Ported"): the same held fight on every PC so builds and machines compare, and the same fight as today's game so the rebuild can be measured
 ## against it (ROADMAP Gate B). An ISOLATED offline game (DmBenchFight: mock backend with an in-memory db, nothing persisted, no network); the player's settings
 ## file is only READ (graphics preset, fps cap for the report; the run itself is uncapped with V-Sync off).
-## Setup (`configure`, the setup window DmBenchmarkSetup): room (ROOMS: the Hollow Graves, the only area the client has), class (CLASSES: the Gravecaller), fight size (SIZES)
-## and length (LENGTHS); STANDARD is the setup that compares PCs. Fight: the room's own enemy kinds at the walkable point nearest its centre, every enemy with the same hp / damage
-## in every room (`standard_stats`, no elites), a god-mode level 60 hero on auto combat, thralls raised directly, enemies topped up to the size's count, the room's
-## boss held awake in a Full Party fight (BOSS_SIZES), fixed seed and camera zoom. Warm-up (not measured; the first frames compile shaders), then the measured window, then the
-## HUD's share, then the render breakdown.
+## Setup (`configure`, the setup window DmBenchmarkSetup): room (ROOMS: today's nine combat areas), class (`class_indices`: the four necromancers and the Reaper), fight size (SIZES)
+## and length (LENGTHS); STANDARD is the setup that compares PCs, today's. Fight: only the room's area is loaded, the room's own enemy kinds at the walkable point nearest its centre,
+## every enemy with the same hp / damage in every room (`standard_stats`, no elites), a god-mode level 60 hero on auto combat, thralls raised directly, enemies topped up to the size's
+## count, the room's boss held awake in a Full Party fight (BOSS_SIZES), fixed seed and camera zoom. Warm-up (not measured; the first frames compile shaders), then
+## the measured window, then the HUD's share, then the render breakdown.
 ## What the creatures cost is the combat core's: `DmCoreHost.measure` times its step, the crowd's sync and the event dispatch per tick during the measured window, and the report's
 ## budget section sets them (and the rest of the main thread) against the ROADMAP budgets (BUDGET_*).
 ## Per-frame cost: one float appended to a preallocated PackedFloat32Array plus a handful of engine counter reads; the fight upkeep (top-up,
 ## counts, progress text) runs at TICK_S. Wiring: `var b := DmBenchmark.new(); add_child(b); var r := await b.run()`; `progress(text)` fires ~1 Hz.
-## Text report: `format_text(results)`; `save_text(text)` writes user://benchmarks/bench-<datetime>.txt.
+## Text report: `format_text(results)`; `save_text(text)` writes bench-<datetime>.txt into `dir` (user://benchmarks).
 ## Render breakdown (`breakdown`, after the measured window): the fight is paused (the picture stays) and each of BREAK_CATS is hidden in turn for
 ## BREAK_MEASURE_S; the drop in draw calls / objects / render CPU / GPU / frame time against the everything-on sample is what that part costs
 ## on this PC. Hiding is visibility only (restored after each sample); nothing is freed or rebuilt.
 ## The fight plays at the player's graphics preset (DmNextPerf, as today's: uncapped, at full resolution), with rewards, loot drops and the kill ledger against the run's mock as
-## today's. Not in the rebuilt client yet, so not in the fight (client/README.md "The benchmark"): the panels (the HUD on the core is up), the other disciplines and rooms.
+## today's. Not in the rebuilt client yet, so not in the fight (client/README.md "The benchmark"): the guests' hero bodies.
 
 signal progress(text: String)
 signal breakdown_step(step: int, total: int, what: String)   ## the render breakdown froze the fight: step 0 = everything on, total + 1 = the re-measure
 signal _step
 
 const SEED := 20261011
-## The setup that compares PCs: today's is the Bell Sanctum (36 x 28 m: a small room keeps the pack on screen and the waves coming), which is not in the rebuilt client; here it is the
-## Hollow Graves, the Gravecaller (thrall master) and today's Standard size. The Full Party fight of Gate B is `--bench-size=full_party`.
-const STANDARD := {"room": "graves", "discipline": 2, "size": "standard", "length": "full"}
-const ROOMS := ["graves"]       ## the combat areas the client has (today's game has nine; the rest come with their areas)
-const CLASSES := [2]            ## the disciplines the client can run: the Gravecaller (the other kits' rites and hero models are not ported)
-const STATS_ROOM := "sanctum"   ## the room whose roster fixes every enemy's health and damage (`standard_stats`): today's, so the fight is as tough as it was; its data is here, its area is not
+## The setup that compares PCs, today's: the Bell Sanctum (36 x 28 m: a small room keeps the pack on screen and the waves coming), Gravecaller (thrall master), Standard size, Full length.
+## Gate B's Full Party fight is `--bench-room=graves --bench-size=full_party`.
+const STANDARD := {"room": "sanctum", "discipline": 2, "size": "standard", "length": "full"}
+const ROOMS := ["graves", "warren", "ossuary", "nave", "coliseum", "sanctum", "cloister", "pyre", "fen"]   ## the combat areas, today's list (not the Depths instance)
+const STATS_ROOM := "sanctum"   ## the room whose roster fixes every enemy's health and damage (`standard_stats`), in every room, as today's
 ## [enemies held, thralls]. Full Party is the biggest fight the game makes: the global enemy cap (DmSimData.GLOBAL_ENEMY_CAP, a test keeps the two equal)
 ## and 4 necromancers' legions (4 x 8 thralls, all raised by the one hero here), plus the room's boss (BOSS_SIZES).
 const SIZES := {"light": [15, 10], "standard": [30, 20], "heavy": [60, 30], "full_party": [72, 32]}
@@ -41,7 +40,7 @@ const LENGTH_NAMES := {"quick": "Quick (about 30 s)", "full": "Full (about 90 s)
 const ENEMY_LIMIT := 100        ## bodies alive or dying at once (play: GLOBAL_ENEMY_CAP 72, which a Heavy or Full Party fight's corpses would hit)
 const ZOOM := 1.0
 const TICK_S := 0.25
-const DIR := "user://benchmarks"
+const DIR := "user://benchmarks"   ## where the report, the history, the queue of runs to send and the last setup are kept
 const HITCH_MS := 50.0
 const HITCH_KEEP := 40
 ## [key, label, printf format] of the per-phase result rows (the text report and the results panel both read this).
@@ -71,6 +70,9 @@ const BUDGET_HUD_DRAWS := 150
 const HUD_ROUNDS := 8           ## the HUD's share: the fight with the HUD off, then on, this many times over ...
 const HUD_SAMPLE_S := 0.5       ## ... each sample this long, after a short settle: the fight's own slow swings (a boss attack, a wave) fall on both kinds alike
 const HUD_SETTLE_S := 0.1
+
+## Where a run keeps its files. Tests and `--bench-dir=` point it at a folder of their own, so a run never reads or leaves behind another run's history, queue or setup.
+static var dir := DIR
 
 var setup: Dictionary = STANDARD.duplicate()
 var area: String = STANDARD["room"]
@@ -189,22 +191,22 @@ static func is_standard(s: Dictionary) -> bool:
 		and String(s.get("size", "")) == STANDARD["size"] and String(s.get("length", "")) == STANDARD["length"]
 
 
-## The disciplines the client can run (CLASSES), in the character select's order.
+## The playable disciplines' indices (the four necromancers + the Reaper), in the character select's order.
 static func class_indices() -> Array:
 	var out: Array = []
 	for d: Dictionary in DmContent.file("disciplines").get("PLAYABLE_DISCIPLINES", []):
-		if DmCharacterBuild.is_playable(float(d["classIndex"])) and CLASSES.has(int(d["classIndex"])):
+		if DmCharacterBuild.is_playable(float(d["classIndex"])):
 			out.append(int(d["classIndex"]))
 	return out
 
 
-## "" when `want` ({room, discipline}, as a launch asked for them) is something this build can run, else a plain-words refusal: the rebuilt client has the Hollow Graves and the
-## Gravecaller only. Keys that are missing are not refused (they take the Standard setup's).
+## "" when `want` ({room, discipline}, as a launch asked for them) is something this build can run, else a plain-words refusal naming what it can. Keys that are missing are not
+## refused (they take the Standard setup's).
 static func refusal(want: Dictionary) -> String:
 	if want.has("room") and not ROOMS.has(String(want["room"])):
-		return "The rebuilt client has the %s only (--bench-room=%s); '%s' comes with its area." % [room_name(ROOMS[0]), ROOMS[0], want["room"]]
-	if want.has("discipline") and not CLASSES.has(int(want["discipline"])):
-		return "The rebuilt client can run the %s only (--bench-class=%d); class %d comes with its rites." % [class_name_of(CLASSES[0]), CLASSES[0], int(want["discipline"])]
+		return "There is no benchmark room '%s' (--bench-room=): the rooms are %s." % [want["room"], ", ".join(ROOMS)]
+	if want.has("discipline") and not class_indices().has(int(want["discipline"])):
+		return "There is no benchmark class %d (--bench-class=): the classes are %s." % [int(want["discipline"]), ", ".join(class_indices().map(func(i: int) -> String: return "%d %s" % [i, class_name_of(i)]))]
 	return ""
 
 
@@ -882,10 +884,10 @@ static func breakdown_capped(r: Dictionary) -> bool:
 	return not bd.is_empty() and float(bd["base"]["frame_ms"]) > 0.0 and at_refresh_rate(1000.0 / float(bd["base"]["frame_ms"]))
 
 
-## Writes the report to user://benchmarks/bench-<datetime>.txt; returns the path ("" on failure).
+## Writes the report to `dir`/bench-<datetime>.txt (user://benchmarks by default); returns the path ("" on failure).
 static func save_text(text: String) -> String:
-	DirAccess.make_dir_recursive_absolute(DIR)
-	var path := "%s/bench-%s.txt" % [DIR, Time.get_datetime_string_from_system(false, true).replace(":", "-").replace(" ", "_")]
+	DirAccess.make_dir_recursive_absolute(dir)
+	var path := "%s/bench-%s.txt" % [dir, Time.get_datetime_string_from_system(false, true).replace(":", "-").replace(" ", "_")]
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return ""

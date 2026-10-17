@@ -208,8 +208,8 @@ func boot_and_register(api: DmApi, shim: Shim) -> void:
 	sel.benchmark_requested.emit()
 	await process_frame
 	var bench_win: Array = m.get_children().filter(func(c: Node) -> bool: return c is CanvasLayer and c.get_child_count() > 0 and c.get_child(0) is DmBenchmarkSetup)
-	check(bench_win.size() == 1 and (bench_win[0].get_child(0) as DmBenchmarkSetup)._room.item_count == 1 and not m.flow.current.error_label.text.to_lower().contains("comes"),
-		"the Benchmark button opens the benchmark's setup window (the Graves, the only room the client has)")
+	check(bench_win.size() == 1 and (bench_win[0].get_child(0) as DmBenchmarkSetup)._room.item_count == DmBenchmark.ROOMS.size() and not m.flow.current.error_label.text.to_lower().contains("comes"),
+		"the Benchmark button opens the benchmark's setup window (today's nine rooms)")
 	if not bench_win.is_empty():
 		(bench_win[0].get_child(0) as DmBenchmarkSetup).closed.emit()
 		await process_frame

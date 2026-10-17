@@ -10,9 +10,9 @@ extends Node
 ## `--boot-smoke`: reach the first screen, print "BOOT OK <screen>" and quit (the test channel's publish check).
 ## `--benchmark`: runs the in-game benchmark straight away on an isolated offline game (DmBenchmark, no login; `--bench-room=`, `--bench-class=`, `--bench-size=`,
 ## `--bench-length=` pick the setup, default the Standard one, `--bench-warm=` / `--bench-measure=` shorten it, `--baked=<dir>` names the baked crowd models) and stays on the
-## results screen with a Quit button (a headless run quits by itself). The rebuilt client has the Hollow Graves and the Gravecaller only: another room or class is refused with
-## a message and exit code 2. Release builds then send the run, to the TEST server, with the saved login, if any. The character select screen's Benchmark button opens the setup
-## window (DmBenchmarkSetup) first.
+## results screen with a Quit button (a headless run quits by itself). A room or class the benchmark does not list is refused with a message and exit code 2. Release builds then
+## send the run, to the TEST server, with the saved login, if any, unless `--bench-dir=<dir>` keeps the run's files (report, history, queue, last setup) in a folder of its own: a trial,
+## which sends nothing. The character select screen's Benchmark button opens the setup window (DmBenchmarkSetup) first.
 ## `start_opts` (set before add_child; tests) are merged over DmNextGame.start's options.
 ##
 ## Co-op as today's: the party's `join_ready` hands the solo game over to a guest game on the same lobby socket, and a guest whose session ended (or whose join failed) is
@@ -29,6 +29,7 @@ var slice: DmNextGame
 var api: DmApi              ## set before add_child (tests) to inject a backend; otherwise built from the launch args
 var persist_token := true
 var start_opts := {}
+var bench_dir := ""         ## `--benchmark --bench-dir=<dir>`: the run's files are kept there and nothing is sent
 var _mock: DmMockBackend
 var _transport: DmHttpTransport
 var _idle_cam: Camera3D
@@ -60,7 +61,11 @@ func _ready() -> void:
 			printerr("BENCHMARK refused: " + why)
 			get_tree().quit(2)
 			return
-		_run_benchmark(true, bench_setup_from_args(args), _arg_float(args, "--bench-warm=", -1.0), _arg_float(args, "--bench-measure=", -1.0), String(DmLaunchArgs.options(args).get("baked", "")))
+		var launch := DmLaunchArgs.options(args)
+		bench_dir = String(launch.get("bench_dir", ""))
+		if bench_dir != "":
+			DmBenchmark.dir = bench_dir
+		_run_benchmark(true, bench_setup_from_args(args), _arg_float(args, "--bench-warm=", -1.0), _arg_float(args, "--bench-measure=", -1.0), String(launch.get("baked", "")))
 		return
 	if mode == "":
 		mode = mode_for(args)
@@ -186,11 +191,12 @@ func _open_benchmark_setup() -> void:
 
 
 ## The api the benchmark sends its runs with: the logged-in online one from the character select (the TEST server's: the transport refuses any other address, net/dm_config.gd);
-## for `--benchmark` (no login screen) a release build's saved login. null (dev-offline, tests, debug builds, never logged in) = the run waits in DmBenchHistory's queue.
+## for `--benchmark` (no login screen) a release build's saved login. null (dev-offline, tests, debug builds, a trial with its own `--bench-dir=`, never logged in) = the run waits in
+## DmBenchHistory's queue.
 func _bench_upload_api() -> DmApi:
 	if mode == "online" and api != null:
 		return api
-	if mode != "benchmark" or OS.is_debug_build() or not FileAccess.file_exists(DmApi.TOKEN_FILE):
+	if mode != "benchmark" or bench_dir != "" or OS.is_debug_build() or not FileAccess.file_exists(DmApi.TOKEN_FILE):
 		return null
 	if _transport == null:
 		_transport = DmHttpTransport.new()

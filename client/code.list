@@ -37,14 +37,14 @@ world_fx   # world dressing and atmosphere
 # net/dm_http_transport.gd                 refuses any request DmConfig does not allow
 # Easy auto combat and the benchmark (client/README.md "The benchmark"):
 # next/feel/dm_next_auto.gd                the adapter reads the core: the bulk arrays (enemy_ids / positions / states, corpse_ids / positions) and the facts the host's signals keep (radius, elite, health, wind-up, corpse kind, hostile zones); same decisions, same intents
-# next/perf/dm_benchmark.gd                the Hollow Graves and the Gravecaller only (refused otherwise); the core's step, crowd sync and event dispatch per tick timed (DmCoreHost.measure) for the report's budget section; the HUD's share
-# next/perf/dm_bench_fight.gd              boots the game scene; the counts are held through the core (top_up through the director, trim by remove_enemy, thralls raised into the core)
-# next/perf/dm_benchmark_screen.gd, next/perf/dm_benchmark_setup.gd   the budget section on the results; the rooms and classes the client has; the upload note names the test server; a headless run quits by itself
+# next/perf/dm_benchmark.gd                today's nine rooms and five classes (a room or class outside them is refused); the core's step, crowd sync and event dispatch per tick timed (DmCoreHost.measure) for the report's budget section; the HUD's share; the run's files in `DmBenchmark.dir`
+# next/perf/dm_bench_fight.gd              boots the game scene with the room's area alone; the counts are held through the core (top_up through the director, trim by remove_enemy, thralls raised into the core)
+# next/perf/dm_benchmark_screen.gd, next/perf/dm_benchmark_setup.gd   the budget section on the results; the upload note names the test server; the last setup in `DmBenchmark.dir`; a headless run quits by itself
 # next/perf/dm_next_warmup.gd, game/dm_warmup.gd   the boss models, effects and gear drawn once, every crowd model from rehearsal rows, the area tour; no per-creature bodies (DmWarmup's old own warm-up is gone); on request only
 # Graphics presets (client/README.md "Graphics presets", DECISIONS B45):
 # game/dm_graphics_preset.gd               today's four presets on Forward+: no prop-light count or prop shadow range (baked), ambient occlusion, the crowd's shadow policy, apply_environment
 # next/perf/dm_next_perf.gd                applies a preset to the game scene: moon, environment, viewport, the crowd's shadow policy, fx; Auto resolution upscales with FSR 1; no caster poll
-# Copied again because of them: next/perf/dm_bench_history.gd.
+# next/perf/dm_bench_history.gd            the history and the queue of runs to send live in `DmBenchmark.dir` (a test keeps its own); a script run never sends through a real transport (`flush`)
 # 2-player co-op (client/README.md "Co-op on the core"):
 # next/next_net.gd                         the core's snapshot (cut by body ranges to fit a packet), reliable batches and baseline over the session's peer, the heroes' ids and vitals, a guest's request for a baseline; no enemy dictionaries or cues (the core's events carry them)
 # next/party/dm_next_party.gd              the lobby link, hosting, joining, invites and asks against the TEST lobby and relay (DmConfig), friendship changes announced (friends_changed), the host's world (heat, difficulty) told to the lobby, the host <-> guest handshake of the guest's own account (B22), party chat and announcements, ground drops between members (sends go to connected guests one by one), the host's seals told to a joining guest and to every guest when they change (`send_seals`)
@@ -86,7 +86,7 @@ world_fx   # world dressing and atmosphere
 # Value on the server (client/README.md "Value on the server"): kills are the game's `kill_credited`, the bag is the game's `loot` (client-only next/rewards/dm_next_loot.gd:
 # today's DmNextUiHost take, pickup, claim and rune-ownership paths on their own):
 # next/rewards/dm_session_rewards.gd       kills from `kill_credited` (the killer is a peer), lifesteal from DmCoreHost.struck; no watch_enemy / attach_spawner
-# next/meta/dm_next_meta.gd                a kill's enemy is a core id; no vows, heat or Covenant Boons (DECISIONS B36: no Bonded Dead)
+# next/meta/dm_next_meta.gd                a kill's enemy is a core id; no vows, heat or Covenant Boons (DECISIONS B36: no Bonded Dead); the Reaper's soul wisp bursts through a local, not the node (a wisp can arrive after the game is gone)
 # next/progress/dm_next_progress.gd        the bag is the loot node's (the server's rows until it exists)
 # next/areas/dm_wave_milestones.gd         the Nightfall light dims the world's lights (DmNextWorld.builder); banners through the game's `game_event`
 # next/party/dm_next_joiner.gd             a party guest's own account; its bag is the loot node's

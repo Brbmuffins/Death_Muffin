@@ -30,7 +30,7 @@ bash client/setup.sh                                                       # bui
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/boss_meta.gd        # the Covenant Seal's Empowered call and the boss key prompt on the mock backend, the first-kill trophies, a bound summon
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/front.gd   # boot, login, character select and the game scene with the chosen character on the mock; the API rule; the real test server's health (bakes into a scratch folder)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/hud.gd     # the HUD on the core (today's DmGameUi on DmNextUiHost, driven through tests/hud_shim.gd): target frame, minimap dots, hotbar and cooldowns, thrall pips, floating number caps, pools, pieces, z layers, the draw-call model (bakes into a scratch folder)
-/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/benchmark.gd       # the benchmark on the core: the Full Party fight held as the setup says, Easy auto combat, the report and its budget section, real launches, nothing sent but to the test API (bakes into a scratch folder; about 2 minutes)
+/home/ubuntu/tools/godot/godot --headless --path client --script res://tests/benchmark.gd       # the benchmark on the core: the Full Party fight held as the setup says, every room and every class, Easy auto combat, the report and its budget section, real launches, nothing sent anywhere (its own folder for the models and every file; about 4 minutes)
 node tools/rebuild/compare-scenarios.mjs                                                       # the seeded scenario comparison with today's game: ten headless runs, one at a time, and a table against stated tolerances (about 6 minutes; "The seeded scenario")
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/coop.gd    # 2-player co-op: a host and a guest in one process over a real local lobby and relay (needs `cd server/death-muffin/lobby && npm ci`; bakes into a scratch folder; about a minute)
 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client --script res://tests/social.gd  # the Social window: open and close, host from the Party tab, a boot scene that joins from the list and comes home (needs the lobby's modules too; about 40 s)
@@ -216,22 +216,26 @@ Flagellants and rats, the Regent's Cinder Husks, Pyre Priests and Cinderhounds, 
 
 ## The benchmark
 
-Today's in-game benchmark (`godot/next/perf/README.md` "Benchmark"), ported to the core: the same held fight, so the Full Party fight can be measured in this client against today's game (ROADMAP Gate B).
+Today's in-game benchmark (`godot/next/perf/README.md` "Benchmark"), ported to the core: the same held fight in today's nine rooms with the four necromancers and the Reaper, so the Full Party fight can be measured in this client against today's game, room by room (ROADMAP Gates B and C).
 
 ```
 bash client/tools/bake_crowd.sh                                                                                                    # once: the crowd models the fight draws (with none baked the crowd does no view work: about 0.6 ms a frame cheaper, and the report says so)
 nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client -- --benchmark --bench-room=graves --bench-size=full_party --bench-class=2   # the VPS processor test; the report is in the log
-/home/ubuntu/tools/godot/godot --path client -- --benchmark --bench-size=full_party                                                 # on a PC: the fight in the window, then the render breakdown
+nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path client -- --benchmark --bench-room=fen --bench-size=full_party --bench-class=11 --bench-length=quick   # any of the nine rooms (graves warren ossuary nave coliseum sanctum cloister pyre fen), any of the five classes (1 2 3 4 11)
+/home/ubuntu/tools/godot/godot --path client -- --benchmark --bench-room=graves --bench-size=full_party                              # on a PC: the fight in the window, then the render breakdown
 ```
 
 - **Launch:** `-- --benchmark` runs it at once on an isolated offline game (no login) and stays on the results screen with a Quit button; a headless run quits by itself once the report is out (`BENCHMARK` lines in the log and
   `user://benchmarks/bench-<datetime>.txt`). From the character select, the **Benchmark** button opens the setup window; Start runs it and Back returns. `--bench-room=`, `--bench-class=`, `--bench-size=light|standard|heavy|full_party` and
   `--bench-length=quick|full` pick the setup (Quick: 6 s warm-up and 20 s measured; Full: 10 s and 30 s, then the render breakdown), `--bench-warm=<s>` / `--bench-measure=<s>` shorten it, `--baked=<dir>` names the baked crowd models.
-  The client has the **Hollow Graves** and the **Gravecaller** only: any other room or class is refused with a message and exit code 2 (`DmBenchmark.refusal`). The Standard setup is the Graves, Gravecaller, Standard size, Full
-  (today's is the Bell Sanctum); Gate B's Full Party fight is a custom setup, as it is today.
-- **The fight** is today's: the fixed seed 20261011, a god-mode level 60 Gravecaller on Easy auto combat holding his ground at the walkable point nearest the room's centre, no elites, every enemy on the health and damage of the Bell Sanctum
-  roster's average (272.9 hp, 10.8 damage: `DmBenchmark.STATS_ROOM`, the same in every room), waves brought in to 6 to 14 m, the count topped up and trimmed every 0.25 s, and for Full Party 72 enemies, 32 thralls and the Gravedigger King held awake
-  (woken through the real summon, again after each defeat). On the core: the director spawns through `DmCoreHost.spawn_enemy`, `trim` removes the farthest extras with `remove_enemy` (no death, no corpse, no reward), the thralls are raised
+  **The rooms** are today's nine (`DmBenchmark.ROOMS`: the Hollow Graves, Catacomb Warren, Marrow Ossuary, Drowned Nave, Bone Coliseum, Bell Sanctum, Plague Cloister, Cinder Pyre and Mourning Fen; the Depths is an instance, not a room) and **the classes** the four
+  necromancers and the Reaper (`class_indices`, 1 2 3 4 11, the playable disciplines): anything else (`--bench-room=depths`, a greyed-out `--bench-class=5`) is refused with a message that lists what the benchmark has, and exit code 2 (`DmBenchmark.refusal`).
+  The Standard setup is today's: the Bell Sanctum, Gravecaller, Standard size, Full; Gate B's Full Party fight is a custom setup in the Graves, as it is today. Only the picked room's area is loaded (`opts.areas`), so the run measures the room, not the world.
+- **Where the files go:** the report, the history, the queue of runs to send and the last setup are in `DmBenchmark.dir` (`user://benchmarks`); `--bench-dir=<dir>` keeps a run's in a folder of its own, and a run that has one is a trial that sends nothing.
+- **The fight** is today's: the fixed seed 20261011, a god-mode level 60 hero of the picked class on Easy auto combat holding his ground at the walkable point nearest the room's centre that a path joins to its doorway (the Sanctum's centre is a cut-off dais), no elites, every enemy on the health and damage of the Bell Sanctum
+  roster's average (272.9 hp, 10.8 damage: `DmBenchmark.STATS_ROOM`, the same in every room), waves brought in to 6 to 14 m, the count topped up and trimmed every 0.25 s, and for Full Party 72 enemies, 32 thralls and the room's boss held awake
+  (the one that sleeps in that room, `DmBenchFight.boss_of`, as today's: the Gravedigger King in the Graves, the Bone Abbess in the Ossuary, the Drowned Congregation in the Nave, the Bell-Sworn Prelate in the Sanctum, the Plague Saint in the Cloister, the Cinder Regent in the Pyre
+  and the Mire Mother in the Fen; woken through the real summon, again after each defeat; the Warren and the Coliseum have none and run without, and the Setup line says so). On the core: the director spawns through `DmCoreHost.spawn_enemy`, `trim` removes the farthest extras with `remove_enemy` (no death, no corpse, no reward), the thralls are raised
   straight into the core without the cap, and every count is read from the core. `DmBenchFight` holds these rules.
 - **The report** is today's (the table, the hitch log, the render breakdown) with the core's name in its header, and a **budget section** that sets the ROADMAP's budgets against this run: the combat core's step, the crowd's sync and the
   event dispatch per 60 Hz tick (`DmCoreHost.measure`, on for the measured window only) against 4 ms; the rest of the main thread per frame (the frame less the core's share, ticks a frame times its tick) against 4 ms; the HUD's main-thread
@@ -248,12 +252,14 @@ nice -n 10 /home/ubuntu/tools/godot/godot --headless --fixed-fps 60 --path clien
 - **The warm-up** (`DmNextWarmup`, with `DmWarmup`) runs when `opts.warmup` or `--warmup` ask for it, and the benchmark does: models and effects load on worker threads (not headless: its dummy renderer fails on them), the boss's models, the effects, the gear and the telegraph shapes are drawn
   once, every crowd model is drawn at its three levels of detail from rehearsal rows fed to the crowd (`DmCrowd.sync_rows`, with the core's tick held meanwhile so its sync does not forget them; the rows are cleared after), and the camera tours the areas
   the game has loaded, lit, with every point light off, and with the flash light. It has not been looked at on a GPU: play does not run it yet.
-- **Sends:** the run's backend is the in-memory mock. A finished run is queued in `user://benchmarks/pending.json` and sent to the **test server** only (`net/dm_config.gd`): from the character select with the logged-in api, from `--benchmark` with a
-  release build's saved login; debug builds, `--dev-offline` and tests never send (the run waits in the queue, and goes out when a player next enters the world on the test server). `tests/benchmark.gd` pins it.
+- **Sends:** the run's backend is the in-memory mock. A finished run is queued in `pending.json` (`DmBenchmark.dir`) and sent to the **test server** only (`net/dm_config.gd`): from the character select with the logged-in api, from `--benchmark` with a
+  release build's saved login; debug builds, `--dev-offline`, a run with its own `--bench-dir=` and tests never send (the run waits in the queue, and goes out when a player next enters the world on the test server). The one door a run leaves by is
+  `DmBenchHistory.flush`, and from a script run (every test is one) it refuses a real transport. `tests/benchmark.gd` pins it: it points `DmBenchmark.dir` at a folder of its own (with its baked models, removed at the end), so another run's history,
+  queue or setup can neither change a check nor be sent by it, and its uploads go to a mock that answers as the test API.
 - **In the fight as today:** rewards, loot drops and the kill ledger against the run's in-memory mock (the King's soul shards are granted to the throwaway character and charged, as today's `hold_boss`),
   and today's effects (`Vfx`), with one difference: the particle ring's per-frame loop is the core's C++ (`DmMotes`, native/README.md "Files"), which won back 0.7 ms of a Full Party
   frame on the VPS (5.7 to 5.0 ms; 2026-10-16).
-- **Not in the fight yet** (it is cheaper than today's by these): the other rooms and the guests' hero bodies (as today); the benchmark plays the Gravecaller only. `native/README.md` "Differences from today's game" has the rest.
+- **Not in the fight yet** (it is cheaper than today's by these): the guests' hero bodies, as today. `native/README.md` "Differences from today's game" has the rest.
 
 ## Graphics presets
 

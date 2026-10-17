@@ -1,14 +1,12 @@
 class_name DmBenchmarkSetup
 extends Control
 ## The window the character select's Benchmark button opens: room, class, fight size and length (DmBenchmark.ROOMS / class_indices / SIZES /
-## LENGTHS), Start / Back (Esc). It opens on the last setup used (`FILE`, per PC) and says whether the pick is the Standard setup (the one
+## LENGTHS), Start / Back (Esc). It opens on the last setup used (`file`, per PC) and says whether the pick is the Standard setup (the one
 ## that compares PCs) or a custom one. `start(setup)` hands the pick to main, which runs DmBenchmarkScreen with it. Ported to the rebuilt client (client/code.list "Ported"):
-## the rooms and classes it lists are the ones the client has (DmBenchmark.ROOMS / CLASSES), and the upload note names the test server.
+## the upload note names the test server, and the last setup is kept in `DmBenchmark.dir` (`file`).
 
 signal start(setup: Dictionary)
 signal closed
-
-const FILE := "user://benchmarks/setup.json"
 
 var setup: Dictionary = {}
 var _room: OptionButton
@@ -141,13 +139,18 @@ func _input(e: InputEvent) -> void:
 		closed.emit()
 
 
+## The last setup used on this PC.
+static func file() -> String:
+	return DmBenchmark.dir.path_join("setup.json")
+
+
 static func load_last() -> Dictionary:
-	var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(FILE)) if FileAccess.file_exists(FILE) else null
+	var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(file())) if FileAccess.file_exists(file()) else null
 	return DmBenchmark.normalize_setup(v if v is Dictionary else {})
 
 
 static func save_last(s: Dictionary) -> void:
-	DirAccess.make_dir_recursive_absolute(FILE.get_base_dir())
-	var f := FileAccess.open(FILE, FileAccess.WRITE)
+	DirAccess.make_dir_recursive_absolute(file().get_base_dir())
+	var f := FileAccess.open(file(), FileAccess.WRITE)
 	if f != null:
 		f.store_string(JSON.stringify(s))

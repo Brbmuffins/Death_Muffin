@@ -56,6 +56,14 @@ is now 3.8 to 4.1 ms of its 4: on the line (Gate B item below). With the effects
 of the main thread 3.1 ms: about **2.9 times** today's 14.7. With the core's own navmesh (ad7d68eb, DECISIONS B47; three runs each, alternating): today's game
 14.9 ms, the client 3.2 ms (p95 6.7, p99 14.2; the core 0.47 ms, the rest of the main thread 2.8 ms): **4.6 times on average, 3.3 at p95, 2.0 at p99**.
 
+**Full Party in every room, the rebuilt client** (VPS processor test, 2026-10-17, rebuild/bench-rooms on dcd89c4d, the seven bosses in: headless, `--fixed-fps 60`, Full length, `--benchmark --bench-room=<room> --bench-size=full_party --bench-class=2`, each room twice,
+in room order and then reversed, on a shared machine whose load swung between 6 and 12). Average frame in ms, the two runs: Graves 4.1 and 3.7, Warren 3.8 and 3.5, Ossuary 3.7 and 3.8, Nave 3.6 and 5.8, Coliseum 4.1 and 3.6, Bell Sanctum 3.4 and 3.3,
+Cloister 5.7 and 5.2, Pyre 5.1 and 6.3, Fen 4.2 and 3.8 (p95 7.0 to 12.4). Every room's boss was awake for the whole measured window (the Warren and the Coliseum have none; the Bone Abbess was defeated once and woken again in both of her runs).
+The combat core is 0.36 to 0.71 ms a tick of its 4, its event dispatch the largest part (0.24 to 0.51 ms). The rest of the main thread, against its 4 ms: 2.9 to 3.6 ms in the Graves, Warren, Ossuary, Coliseum, Sanctum and Fen; **over in the Cloister (5.2 and 4.7)
+and the Pyre (4.5 and 5.6)**, and in one of the Nave's two runs (3.2 and 5.2: the machine's noise or the room, not told yet). The report's timing shows no more than that: the Pyre has the highest event dispatch (0.43 and 0.51 ms) and physics time with about 29 corpses
+on the ground, the Cloister's core is ordinary (0.47 and 0.52 ms) and what its rest holds is not itemized there (a per-system timing of a Full Party frame in these two rooms, `tools/godot/profile.py`, is the next step). Loading the room's area alone instead of the whole world
+changed nothing measurable in the Graves (three runs each, alternating, Quick length: 3.7, 3.6 and 4.8 ms against 3.9, 3.5 and 4.8). Today's game's numbers per room are the other half of Gate C.
+
 **Phases and gates.** Gates are checked on Helix's PC and the VPS processor test; brbmuffins' and warbogar's PCs join before launch day, and
 at least one other graphics brand runs Forward+ before then. The team plays the rebuild through the launcher's Test build switch on a test
 server (B38).
@@ -258,7 +266,9 @@ they touched a creature), with today's tests replayed, and ends as a tested comm
   - [x] Their enemies in the core, kind by kind against today's (`client/tests/core_kinds.gd`): the Ossuary's golem and deacon (2026-10-16), the Drowned Nave's censer,
     acolyte, gargoyle, templar and wraith, the Sanctum's and Cloister's seraph, flagellant and plague doctor, and the Cinder Pyre's husk, priest, hound and slag brute and the
     Mourning Fen's hag, leech, wisp and sexton (2026-10-17), with their crowd models: every area's roster runs on the core (the bosses' adds come with the bosses).
-  - [ ] The benchmark's other rooms (today's Sanctum and the rest), so Gate C can compare every room.
+  - [x] The benchmark's other rooms and classes (2026-10-17; client/README.md "The benchmark", `client/tests/benchmark.gd`): today's nine rooms (each loads its own area alone), the four necromancers and the Reaper, each set up as today's
+    (the hero at the walkable point nearest the centre that a path joins to the doorway, the roster of the room on the core, the Bell Sanctum's health and damage for every enemy), so Gate C can compare every room; the Standard setup is today's Bell Sanctum again.
+    A Full Party fight holds the room's boss awake the whole fight as today's does (the seven bosses; the Warren and the Coliseum have none), woken through the real summon. The suite keeps its files in a folder of its own and never sends a run through a real transport.
 - [x] The six other bosses (a core zone for a boss, a call that sets a body's health, the Veilwalker's echoes), and the Covenant Seal's Empowered call (`DmBossMeta`, the boss key prompt).
   Progress (2026-10-17, client/README.md "The bosses"): all seven bosses wake in their areas (`served_areas`), their brains the copies of today's, each replayed against its recorded scenarios (44) and fought by hand against today's numbers
   (`client/tests/boss_abbess|congregation|prelate|saint|regent|mire.gd` on `boss_base.gd`, 130 to 160 checks each, with the summon at the altar, thralls, rites, wipe, defeat and rewards). The core got the `niche` kind (the Abbess's Skull Niche),
@@ -316,6 +326,9 @@ combat simulation for now.
     skips the send).
   - Today's game: the Plague Doctor's flask leaves a 5 s toxic pool that hurts but draws nothing on the ground (DmEnemyFx draws only dust and ember zones);
     the rebuild keeps it so until this is decided (2026-10-17).
+  - The rebuild: `client/tests/game_scene.gd` "the gargoyle dived: the mark was drawn, and the stone landed" failed once in three runs (no mark drawn, three stones landed) on a loaded machine and passed on both reruns (2026-10-17).
+  - Today's game: the Reaper's soul wisp bursts on arrival through a lambda that reads the meta node (`DmNextMeta._soul_fx`), so a wisp still flying when the game is left logs a script error
+    (the benchmark's Reaper run found it; the rebuild's port reads a local, 2026-10-17).
   - Today's game's benchmark: the fight's settings carry no V-Sync, so the game scene turns it back on during the measurement; a run faster than the monitor reads its
     refresh rate (the server flags it). The rebuild keeps it off (2026-10-17).
   - Today's game: cycles gathered in the last 8 s before the player leaves or closes the window are never sent (`flush_all` does not flush the gather loop). The rebuild keeps it (2026-10-17).

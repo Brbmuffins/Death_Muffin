@@ -451,7 +451,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   - **Its hazards are the core's zones:** the dust clouds and toxic pools from `zone` events (the group of `DmHostileZone` nodes is gone), padded by a hero's radius as before.
   - **Its gate is closed** in the rebuilt client until the settings exist (`gate_probe` opens it: the benchmark, the tests). **It runs on the physics clock** (`DmNextAutoCombat.clock_ms`, ticks at 60 a second), where today's reads the wall clock: the same
     cadence at real time, and the same fight when the game runs faster than real time (`--fixed-fps`, the headless processor test).
-  - **The benchmark has the Hollow Graves and the Gravecaller only** (other rooms and classes are refused); its Standard setup is the Graves. The fight is today's (seed, health, counts, rules), held through the core: the count is trimmed with `remove_enemy` (a Vengeful
+  - **The benchmark has today's nine rooms and five classes** (the Depths and the greyed-out classes are refused), each room alone in the world; its Standard setup is today's, the Bell Sanctum. The fight is today's (seed, health, counts, rules), held through the core: the count is trimmed with `remove_enemy` (a Vengeful
     Risen or a boss's add past the cap leaves like a node freed: no death, no corpse), the 32 thralls are raised into the core with no cap, the King is woken through the real summon (its shards granted and charged, as today). Rewards, loot drops and the kill ledger are in, against the run's mock, as today.
     **Not in the fight:** the panels (the HUD on the core is up and its share is measured), the graphics presets and the resolution governor (the report's preset is the settings file's and is not applied), so the fight is cheaper than today's by what those cost.
     The render breakdown's parts are Shadows, Creatures (the crowd and the boss, one MultiMesh per model not per kind), World, Effects and HUD.
@@ -501,7 +501,7 @@ Every place the core does not do exactly what today's GDScript does, so Helix ca
   `client/tests/boss.gd` (the Gravedigger King: his brain against today's scenarios, his fight by hand and on the real clock, the thralls, the rites, the defeat),
   `client/tests/core_boss.gd` (the core's half of the bosses: the Skull Niche against its script, a body's health, a boss's zones and their query, the wire of all three) and `client/tests/boss_abbess.gd`, `boss_congregation.gd`, `boss_prelate.gd`, `boss_saint.gd`, `boss_regent.gd` and
   `boss_mire.gd` on `boss_base.gd` (the other six bosses on the core: recorded scenarios, the generic parts, each fight by hand) and `boss_meta.gd` (the Covenant Seal on the mock backend),
-  `client/tests/benchmark.gd` (the benchmark: the Full Party fight held as its setup says, Easy auto combat on the core's arrays, the report and its budget section, real `--benchmark` launches, nothing sent but to the test API),
+  `client/tests/benchmark.gd` (the benchmark: the Full Party fight held as its setup says, Easy auto combat on the core's arrays, the report and its budget section, every room and class, real `--benchmark` launches, nothing sent anywhere, the suite's files in a folder of its own),
   `client/tests/crowd_view.gd` (the crowd's views against today's view code, and a Full Party driven by a real core) and `client/tests/game_scene.gd` (the game scene on
   the core: an offline run in the Graves, the director, the event signals, no node per creature, timings). Run
   `bash client/setup.sh` first in a fresh checkout: a script run in a
